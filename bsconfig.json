@@ -8,11 +8,11 @@
     "generators" : [
       {
         "name" : "ocamlyacc",
-        "edge" : ["jsonParser.ml", "jsonParser.mli", ":", "jsonParser.mly"]
+        "edge" : ["termParser.ml", "termParser.mli", ":", "termParser.mly"]
       },
       {
         "name" : "ocamllex",
-        "edge" : ["jsonLexer.ml", ":", "jsonLexer.mll"]
+        "edge" : ["termLexer.ml", ":", "termLexer.mll"]
       }
     ]
   },

@@ -67,4 +67,8 @@ type denotation_chart =
 let eval_core (core : core) : (core_val, string) Result.t = match core with
   | CoreVar v -> Error "TODO";;
 
-let () = Js.log "Hello, BuckleScript"
+let rec intersperse_after list el =
+  match list with
+  | []           -> []
+  | [ list_el ]  -> [ list_el; el ]
+  | x :: y :: tl -> x :: el :: intersperse_after (y::tl) el

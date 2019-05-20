@@ -1,18 +1,19 @@
 type token =
-  | INT of (int)
+  | INT of (Bigint.t)
   | FLOAT of (float)
   | ID of (string)
   | STRING of (string)
+  | DOT
   | TRUE
   | FALSE
   | NULL
-  | LEFT_BRACE
-  | RIGHT_BRACE
+  | LEFT_PAREN
+  | RIGHT_PAREN
   | LEFT_BRACK
   | RIGHT_BRACK
-  | COLON
+  | SEMICOLON
   | COMMA
   | EOF
 
-val prog :
-  (Lexing.lexbuf  -> token) -> Lexing.lexbuf -> Json.value option
+val term :
+  (Lexing.lexbuf  -> token) -> Lexing.lexbuf -> Demo.term

@@ -19,7 +19,35 @@ function eval_core(core) {
   }
 }
 
-console.log("Hello, BuckleScript");
+function intersperse_after(list, el) {
+  if (list) {
+    var match = list[1];
+    var list_el = list[0];
+    if (match) {
+      return /* :: */[
+              list_el,
+              /* :: */[
+                el,
+                intersperse_after(/* :: */[
+                      match[0],
+                      match[1]
+                    ], el)
+              ]
+            ];
+    } else {
+      return /* :: */[
+              list_el,
+              /* :: */[
+                el,
+                /* [] */0
+              ]
+            ];
+    }
+  } else {
+    return /* [] */0;
+  }
+}
 
 exports.eval_core = eval_core;
-/*  Not a pure module */
+exports.intersperse_after = intersperse_after;
+/* No side effect */
