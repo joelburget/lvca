@@ -9,9 +9,7 @@ var Abt = /* module */[];
 
 var Ast = /* module */[];
 
-var Core = /* module */[];
-
-function eval_core(core) {
+function $$eval(core) {
   var _ctx = Belt_MapString.empty;
   var _core = core;
   while(true) {
@@ -61,6 +59,10 @@ function eval_core(core) {
   };
 }
 
+var Core = /* module */[/* eval */$$eval];
+
+var Denotation = /* module */[];
+
 function intersperse_after(list, el) {
   if (list) {
     var match = list[1];
@@ -93,6 +95,6 @@ function intersperse_after(list, el) {
 exports.Abt = Abt;
 exports.Ast = Ast;
 exports.Core = Core;
-exports.eval_core = eval_core;
+exports.Denotation = Denotation;
 exports.intersperse_after = intersperse_after;
 /* No side effect */
