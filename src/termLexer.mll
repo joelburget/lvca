@@ -1,7 +1,6 @@
 {
 open Lexing
 open TermParser
-(* open Demo *)
 
 exception SyntaxError of string
 
@@ -31,7 +30,6 @@ rule read =
   (* | float    { FLOAT (float_of_string (Lexing.lexeme lexbuf)) } *)
   | "true"   { TRUE }
   | "false"  { FALSE }
-  | "null"   { NULL }
   | '"'      { read_string (Buffer.create 17) lexbuf }
   | '('      { LEFT_PAREN }
   | ')'      { RIGHT_PAREN }

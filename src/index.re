@@ -1,5 +1,6 @@
 module TermViewer = {
-  open Demo;
+  open Types;
+  open Types.Abt;
 
   let rec show_term(term:term) = switch (term) {
       | Term(name, lst) =>
@@ -23,7 +24,7 @@ module TermViewer = {
             [| React.string("]") |]
           ])
         )
-      | Primitive(_prim) => React.string("Primitive")
+      | Primitive(prim) => show_prim(prim)
       }
 
   and show_scope(scope:scope) = switch (scope) {
@@ -35,6 +36,13 @@ module TermViewer = {
           [| show_term(tm) |]
         ])
       )
+  }
+
+  and show_prim(prim:primitive) = switch (prim) {
+    | PrimInteger(i)  => React.string(Bigint.to_string(i))
+    | PrimString(str) => React.string(str)
+    | PrimBool(true)  => React.string("true")
+    | PrimBool(false) => React.string("false")
   };
 
   [@react.component]
@@ -51,8 +59,13 @@ module LvcaViewer = {
   [@react.component]
   let make = () => {
     open Belt.Result;
-    let (text, setText) = React.useState(() => "");
-    let termResult = switch (TermParser.term(TermLexer.read, Lexing.from_string(text))) {
+
+    let (termInput,          setTermInput)          = React.useState(() => "");
+    let (languageDefinition, setLanguageDefinition) = React.useState(() => "");
+    let (staticsDefinition,  setStaticsDefinition)  = React.useState(() => "");
+    let (dynamicsDefinition, setDynamicsDefinition) = React.useState(() => "");
+
+    let termResult = switch (TermParser.term(TermLexer.read, Lexing.from_string(termInput))) {
           | term                                 => Ok(term)
           | exception TermLexer.SyntaxError(msg) => Error(msg)
           | exception Parsing.Parse_error        => Error("Parse error")
@@ -65,7 +78,31 @@ module LvcaViewer = {
 
     <div>
       <h1>{React.string("LVCA")}</h1>
-      <textarea value=text onChange=(event => setText(ReactEvent.Form.target(event)##value)) />
+
+      <h2>{React.string("Language Definition")}</h2>
+      <textarea
+        value=languageDefinition
+        onChange=(event => setLanguageDefinition(ReactEvent.Form.target(event)##value))
+      />
+
+      <h2>{React.string("Statics")}</h2>
+      <textarea
+        value=staticsDefinition
+        onChange=(event => setStaticsDefinition(ReactEvent.Form.target(event)##value))
+      />
+
+      <h2>{React.string("Dynamics")}</h2>
+      <textarea
+        value=dynamicsDefinition
+        onChange=(event => setDynamicsDefinition(ReactEvent.Form.target(event)##value))
+      />
+
+      <h2>{React.string("Input")}</h2>
+      <textarea
+        value=termInput
+        onChange=(event => setTermInput(ReactEvent.Form.target(event)##value))
+      />
+
       {termView}
     </div>
   };

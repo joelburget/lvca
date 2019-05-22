@@ -5,7 +5,6 @@
 %token DOT
 %token TRUE
 %token FALSE
-%token NULL
 %token LEFT_PAREN
 %token RIGHT_PAREN
 %token LEFT_BRACK
@@ -15,10 +14,10 @@
 %token EOF
 
 %start term
-%type <Demo.term> term
-%type <Demo.scope list> subterms
-%type <Demo.term list> terms
-%type <Demo.primitive> primitive
+%type <Types.Abt.term> term
+%type <Types.Abt.scope list> subterms
+%type <Types.Abt.term list> terms
+%type <Types.primitive> primitive
 %%
 
 term:

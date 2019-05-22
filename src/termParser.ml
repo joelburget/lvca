@@ -6,7 +6,6 @@ type token =
   | DOT
   | TRUE
   | FALSE
-  | NULL
   | LEFT_PAREN
   | RIGHT_PAREN
   | LEFT_BRACK
@@ -21,13 +20,12 @@ let yytransl_const = [|
   261 (* DOT *);
   262 (* TRUE *);
   263 (* FALSE *);
-  264 (* NULL *);
-  265 (* LEFT_PAREN *);
-  266 (* RIGHT_PAREN *);
-  267 (* LEFT_BRACK *);
-  268 (* RIGHT_BRACK *);
-  269 (* SEMICOLON *);
-  270 (* COMMA *);
+  264 (* LEFT_PAREN *);
+  265 (* RIGHT_PAREN *);
+  266 (* LEFT_BRACK *);
+  267 (* RIGHT_BRACK *);
+  268 (* SEMICOLON *);
+  269 (* COMMA *);
     0 (* EOF *);
     0|]
 
@@ -56,27 +54,27 @@ let yydgoto = "\002\000\
 \016\000\017\000\013\000\010\000\018\000"
 
 let yysindex = "\003\000\
-\013\255\000\000\000\000\249\254\000\000\000\000\000\000\013\255\
-\000\000\000\000\002\255\253\254\009\255\006\255\000\000\000\000\
-\012\255\018\255\013\255\000\000\022\255\000\000\022\255\000\000\
+\013\255\000\000\000\000\250\254\000\000\000\000\000\000\013\255\
+\000\000\000\000\002\255\003\255\010\255\005\255\000\000\000\000\
+\023\255\018\255\013\255\000\000\021\255\000\000\021\255\000\000\
 \000\000\000\000"
 
 let yyrindex = "\000\000\
 \000\000\000\000\000\000\001\000\000\000\000\000\000\000\000\000\
-\000\000\000\000\000\000\020\255\000\000\017\255\000\000\000\000\
-\000\000\024\255\000\000\000\000\000\000\000\000\000\000\000\000\
+\000\000\000\000\000\000\022\255\000\000\017\255\000\000\000\000\
+\000\000\025\255\000\000\000\000\000\000\000\000\000\000\000\000\
 \000\000\000\000"
 
 let yygindex = "\000\000\
 \255\255\012\000\017\000\000\000\016\000"
 
-let yytablesize = 270
+let yytablesize = 269
 let yytable = "\009\000\
 \003\000\011\000\003\000\001\000\014\000\005\000\012\000\006\000\
-\007\000\019\000\021\000\015\000\008\000\003\000\011\000\004\000\
-\005\000\012\000\006\000\007\000\020\000\022\000\003\000\008\000\
-\014\000\005\000\003\000\006\000\007\000\003\000\023\000\011\000\
-\008\000\007\000\026\000\024\000\025\000\000\000\000\000\000\000\
+\007\000\021\000\015\000\008\000\011\000\003\000\019\000\004\000\
+\005\000\012\000\006\000\007\000\020\000\003\000\008\000\014\000\
+\005\000\003\000\006\000\007\000\003\000\023\000\008\000\022\000\
+\011\000\007\000\026\000\024\000\025\000\000\000\000\000\000\000\
 \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
 \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
 \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
@@ -105,14 +103,14 @@ let yytable = "\009\000\
 \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
 \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
 \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
-\000\000\000\000\000\000\000\000\003\000\003\000"
+\000\000\000\000\000\000\003\000\003\000"
 
 let yycheck = "\001\000\
-\000\000\009\001\001\001\001\000\003\001\004\001\008\000\006\001\
-\007\001\013\001\005\001\010\001\011\001\001\001\009\001\003\001\
-\004\001\019\000\006\001\007\001\012\001\010\001\001\001\011\001\
-\003\001\004\001\010\001\006\001\007\001\013\001\013\001\012\001\
-\011\001\010\001\023\000\019\000\021\000\255\255\255\255\255\255\
+\000\000\008\001\001\001\001\000\003\001\004\001\008\000\006\001\
+\007\001\005\001\009\001\010\001\008\001\001\001\012\001\003\001\
+\004\001\019\000\006\001\007\001\011\001\001\001\010\001\003\001\
+\004\001\009\001\006\001\007\001\012\001\012\001\010\001\009\001\
+\011\001\009\001\023\000\019\000\021\000\255\255\255\255\255\255\
 \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
 \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
 \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
@@ -141,13 +139,12 @@ let yycheck = "\001\000\
 \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
 \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
 \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
-\255\255\255\255\255\255\255\255\012\001\013\001"
+\255\255\255\255\255\255\011\001\012\001"
 
 let yynames_const = "\
   DOT\000\
   TRUE\000\
   FALSE\000\
-  NULL\000\
   LEFT_PAREN\000\
   RIGHT_PAREN\000\
   LEFT_BRACK\000\
@@ -169,110 +166,110 @@ let yyact = [|
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 2 : string) in
     Obj.repr(
-# 25 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 24 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
                                           ( Term (_1, []) )
-# 175 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-               : Demo.term))
+# 172 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+               : Types.Abt.term))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 3 : string) in
-    let _3 = (Parsing.peek_val __caml_parser_env 1 : Demo.scope list) in
+    let _3 = (Parsing.peek_val __caml_parser_env 1 : Types.Abt.scope list) in
     Obj.repr(
-# 26 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 25 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
                                           ( Term (_1, _3) )
-# 183 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-               : Demo.term))
+# 180 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+               : Types.Abt.term))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 0 : string) in
     Obj.repr(
-# 27 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 26 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
                                           ( Var _1        )
-# 190 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-               : Demo.term))
+# 187 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+               : Types.Abt.term))
 ; (fun __caml_parser_env ->
-    let _2 = (Parsing.peek_val __caml_parser_env 1 : Demo.term list) in
+    let _2 = (Parsing.peek_val __caml_parser_env 1 : Types.Abt.term list) in
+    Obj.repr(
+# 27 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+                                          ( Sequence _2   )
+# 194 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+               : Types.Abt.term))
+; (fun __caml_parser_env ->
+    let _1 = (Parsing.peek_val __caml_parser_env 0 : Types.primitive) in
     Obj.repr(
 # 28 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-                                          ( Sequence _2   )
-# 197 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-               : Demo.term))
-; (fun __caml_parser_env ->
-    let _1 = (Parsing.peek_val __caml_parser_env 0 : Demo.primitive) in
-    Obj.repr(
-# 29 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
                                           ( Primitive _1  )
-# 204 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-               : Demo.term))
+# 201 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+               : Types.Abt.term))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 2 : 'scope) in
-    let _3 = (Parsing.peek_val __caml_parser_env 0 : Demo.scope list) in
+    let _3 = (Parsing.peek_val __caml_parser_env 0 : Types.Abt.scope list) in
     Obj.repr(
-# 32 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 31 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
                              ( _1 :: _3 )
-# 212 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-               : Demo.scope list))
+# 209 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+               : Types.Abt.scope list))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 0 : 'scope) in
     Obj.repr(
-# 33 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 32 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
                              ( [_1]     )
-# 219 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-               : Demo.scope list))
+# 216 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+               : Types.Abt.scope list))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 2 : string) in
     let _3 = (Parsing.peek_val __caml_parser_env 0 : 'scope) in
     Obj.repr(
-# 36 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 35 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
                    ( match _3 with | Scope (scope, tm) -> Scope (_1 :: scope, tm) )
-# 227 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 224 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
                : 'scope))
 ; (fun __caml_parser_env ->
-    let _1 = (Parsing.peek_val __caml_parser_env 0 : Demo.term) in
+    let _1 = (Parsing.peek_val __caml_parser_env 0 : Types.Abt.term) in
     Obj.repr(
-# 37 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 36 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
                    ( Scope ([], _1) )
-# 234 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 231 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
                : 'scope))
 ; (fun __caml_parser_env ->
-    let _1 = (Parsing.peek_val __caml_parser_env 2 : Demo.term) in
-    let _3 = (Parsing.peek_val __caml_parser_env 0 : Demo.term list) in
+    let _1 = (Parsing.peek_val __caml_parser_env 2 : Types.Abt.term) in
+    let _3 = (Parsing.peek_val __caml_parser_env 0 : Types.Abt.term list) in
+    Obj.repr(
+# 39 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+                         ( _1 :: _3 )
+# 239 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+               : Types.Abt.term list))
+; (fun __caml_parser_env ->
+    let _1 = (Parsing.peek_val __caml_parser_env 0 : Types.Abt.term) in
     Obj.repr(
 # 40 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-                         ( _1 :: _3 )
-# 242 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-               : Demo.term list))
-; (fun __caml_parser_env ->
-    let _1 = (Parsing.peek_val __caml_parser_env 0 : Demo.term) in
-    Obj.repr(
-# 41 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
                          ( [_1]     )
-# 249 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-               : Demo.term list))
+# 246 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+               : Types.Abt.term list))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 0 : Bigint.t) in
     Obj.repr(
-# 44 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 43 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
            ( PrimInteger _1    )
-# 256 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-               : Demo.primitive))
+# 253 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+               : Types.primitive))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 0 : string) in
     Obj.repr(
-# 45 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 44 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
            ( PrimString  _1    )
-# 263 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-               : Demo.primitive))
+# 260 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+               : Types.primitive))
+; (fun __caml_parser_env ->
+    Obj.repr(
+# 45 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+           ( PrimBool    true  )
+# 266 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+               : Types.primitive))
 ; (fun __caml_parser_env ->
     Obj.repr(
 # 46 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-           ( PrimBool    true  )
-# 269 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-               : Demo.primitive))
-; (fun __caml_parser_env ->
-    Obj.repr(
-# 47 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
            ( PrimBool    false )
-# 275 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-               : Demo.primitive))
+# 272 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+               : Types.primitive))
 (* Entry term *)
 ; (fun __caml_parser_env -> raise (Parsing.YYexit (Parsing.peek_val __caml_parser_env 0)))
 |]
@@ -294,4 +291,4 @@ let yytables =
     Parsing.names_const=yynames_const;
     Parsing.names_block=yynames_block }
 let term (lexfun : Lexing.lexbuf -> token) (lexbuf : Lexing.lexbuf) =
-   (Parsing.yyparse yytables 1 lexfun lexbuf : Demo.term)
+   (Parsing.yyparse yytables 1 lexfun lexbuf : Types.Abt.term)

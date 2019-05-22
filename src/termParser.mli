@@ -6,7 +6,6 @@ type token =
   | DOT
   | TRUE
   | FALSE
-  | NULL
   | LEFT_PAREN
   | RIGHT_PAREN
   | LEFT_BRACK
@@ -16,4 +15,4 @@ type token =
   | EOF
 
 val term :
-  (Lexing.lexbuf  -> token) -> Lexing.lexbuf -> Demo.term
+  (Lexing.lexbuf  -> token) -> Lexing.lexbuf -> Types.Abt.term
