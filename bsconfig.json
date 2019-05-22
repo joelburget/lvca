@@ -7,7 +7,7 @@
     "subdirs" : true,
     "generators" : [
       {
-        "name" : "ocamlyacc",
+        "name" : "menhir",
         "edge" : ["termParser.ml", "termParser.mli", ":", "termParser.mly"]
       },
       {
@@ -31,8 +31,8 @@
   "refmt": 3,
   "generators" : [
     {
-      "name" : "ocamlyacc",
-      "command": "ocamlyacc $in"
+      "name" : "menhir",
+      "command": "menhir $in"
     },
     {
       "name" : "ocamllex",

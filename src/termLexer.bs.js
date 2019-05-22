@@ -41,7 +41,7 @@ function __ocaml_lex_read_string_rec(buf, lexbuf, ___ocaml_lex_state) {
     var __ocaml_lex_state$1 = Lexing.engine(__ocaml_lex_tables, __ocaml_lex_state, lexbuf);
     switch (__ocaml_lex_state$1) {
       case 0 : 
-          return /* STRING */Block.__(3, [$$Buffer.contents(buf)]);
+          return /* STRING */Block.__(0, [$$Buffer.contents(buf)]);
       case 1 : 
           $$Buffer.add_char(buf, /* "/" */47);
           ___ocaml_lex_state = 24;
@@ -107,34 +107,34 @@ function __ocaml_lex_read_rec(lexbuf, ___ocaml_lex_state) {
       case 2 : 
           return /* ID */Block.__(2, [Lexing.lexeme(lexbuf)]);
       case 3 : 
-          return /* INT */Block.__(0, [Bigint.of_string(Lexing.lexeme(lexbuf))]);
+          return /* INT */Block.__(1, [Bigint.of_string(Lexing.lexeme(lexbuf))]);
       case 4 : 
-          return /* TRUE */1;
+          return /* TRUE */0;
       case 5 : 
-          return /* FALSE */2;
+          return /* FALSE */6;
       case 6 : 
           return __ocaml_lex_read_string_rec($$Buffer.create(17), lexbuf, 24);
       case 7 : 
-          return /* LEFT_PAREN */3;
+          return /* LEFT_PAREN */4;
       case 8 : 
-          return /* RIGHT_PAREN */4;
+          return /* RIGHT_PAREN */2;
       case 9 : 
           return /* LEFT_BRACK */5;
       case 10 : 
-          return /* RIGHT_BRACK */6;
+          return /* RIGHT_BRACK */3;
       case 11 : 
-          return /* SEMICOLON */7;
+          return /* SEMICOLON */1;
       case 12 : 
-          return /* COMMA */8;
+          return /* COMMA */9;
       case 13 : 
-          return /* DOT */0;
+          return /* DOT */8;
       case 14 : 
           throw [
                 $$SyntaxError,
                 "Unexpected char: " + Lexing.lexeme(lexbuf)
               ];
       case 15 : 
-          return /* EOF */9;
+          return /* EOF */7;
       default:
         Curry._1(lexbuf[/* refill_buff */0], lexbuf);
         ___ocaml_lex_state = __ocaml_lex_state$1;
