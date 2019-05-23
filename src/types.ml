@@ -21,6 +21,11 @@ type language =
   | Language of sortDef Belt.Map.String.t
 ;;
 
+type sort =
+  | SortAp   of sort * sort
+  | SortName of string
+;;
+
 type primitive =
   | PrimInteger of Bigint.t
   | PrimString  of string

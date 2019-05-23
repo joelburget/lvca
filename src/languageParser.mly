@@ -4,6 +4,8 @@
 %token DOT
 %token LEFT_PAREN
 %token RIGHT_PAREN
+%token LEFT_BRACK
+%token RIGHT_BRACK
 %token SEMICOLON
 %token COMMA
 %token BAR
@@ -22,8 +24,15 @@ valence:
   | fixedValence                 { FixedValence    $1       } ;
 
 fixedValence:
-  | sort DOT fixedValence { match $3 with | FixedValence (binds, result) -> FixedValence ($1 :: binds, result) }
-  | sort                  { FixedValence ([], $1) } ;
+  | sort DOT fixedValence
+  { match $3 with | FixedValence (binds, result) -> FixedValence ($1 :: binds, result) }
+  | sort
+  { FixedValence ([], $1) } ;
+
+sort:
+  | LEFT_PAREN sort RIGHT_PAREN { $2             }
+  | ID                          { SortName $1    }
+  | sort sort                   { SortAp($1, $2) } ;
 
 arity:
   | LEFT_BRACK nameList RIGHT_BRACK LEFT_PAREN valenceList RIGHT_PAREN
@@ -32,22 +41,22 @@ arity:
     { Arity ([], $2) }
 
 nameList:
-  | STRING COMMA nameList { $1 :: $3 }
-  | STRING                { [$1]     } ;
+  | ID COMMA nameList { $1 :: $3 }
+  | ID                { [$1]     } ;
 
 valenceList:
   | valence DOT valenceList { $1 :: $3 }
   | valence                 { [$1]     } ;
 
 operatorDef:
-  | STRING LEFT_BRACK nameList RIGHT_BRACK LEFT_PAREN valenceList RIGHT_PAREN
+  | ID LEFT_BRACK nameList RIGHT_BRACK LEFT_PAREN valenceList RIGHT_PAREN
   { OperatorDef($1, Arity(nameList, valenceList)) }
-  | STRING                                 LEFT_PAREN valenceList RIGHT_PAREN
+  | ID                                 LEFT_PAREN valenceList RIGHT_PAREN
   { OperatorDef($1, Arity([], valenceList)) } ;
 
 languageDef:
-  | STRING ASSIGN operatorMultilineBodyDef  { OperatorDef ($1, $4) }
-  | STRING ASSIGN operatorSingleLineBodyDef { OperatorDef ($1, $3) } ;
+  | ID ASSIGN operatorMultilineBodyDef  { OperatorDef ($1, $3) }
+  | ID ASSIGN operatorSingleLineBodyDef { OperatorDef ($1, $3) } ;
 
 operatorMultilineBodyDef:
   | EOL BAR operatorDef operatorMultilineBodyDef { $3 :: $4 }

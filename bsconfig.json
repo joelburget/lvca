@@ -8,6 +8,14 @@
     "generators" : [
       {
         "name" : "menhir",
+        "edge" : ["languageParser.ml", "languageParser.mli", ":", "languageParser.mly"]
+      },
+      {
+        "name" : "ocamllex",
+        "edge" : ["languageLexer.ml", ":", "languageLexer.mll"]
+      },
+      {
+        "name" : "menhir",
         "edge" : ["termParser.ml", "termParser.mli", ":", "termParser.mly"]
       },
       {
