@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>LVCA Page</title>
+  <link href="./node_modules/codemirror/lib/codemirror.css" rel="stylesheet">
   <style type="text/css">
 input:focus, textarea {
   outline: none !important;
@@ -17,6 +18,23 @@ body, textarea, input {
 }
 error {
   color: #c12828;
+}
+div.lvca-viewer {
+  display: grid;
+  grid-template-columns: 50% 50%;
+  grid-template-rows: 100px auto;
+  grid-template-areas:
+    "header header"
+    "left-pane right-pane";
+}
+h1.header {
+  grid-area: header;
+}
+div.left-pane {
+  grid-area: left-pane;
+}
+div.right-pane {
+  grid-area: right-pane;
 }
   </style>
 </head>

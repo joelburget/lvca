@@ -1,15 +1,6 @@
 {
-open Lexing
 open TermParser
-
-exception SyntaxError of string
-
-let next_line lexbuf =
-  let pos = lexbuf.lex_curr_p in
-  lexbuf.lex_curr_p <-
-    { pos with pos_bol = lexbuf.lex_curr_pos;
-               pos_lnum = pos.pos_lnum + 1
-    }
+open LexerUtil
 }
 
 let int = '-'? ['0'-'9'] ['0'-'9']*

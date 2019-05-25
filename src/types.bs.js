@@ -3,11 +3,33 @@
 
 var Block = require("bs-platform/lib/js/block.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
+var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
+var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
 var Abt = /* module */[];
 
 var Ast = /* module */[];
+
+function matchBranch(v, pat, core) {
+  var exit = 0;
+  if (v.tag || typeof pat === "number" || pat.tag) {
+    exit = 1;
+  } else {
+    return Pervasives.failwith("TODO");
+  }
+  if (exit === 1) {
+    throw [
+          Caml_builtin_exceptions.match_failure,
+          /* tuple */[
+            "types.ml",
+            97,
+            37
+          ]
+        ];
+  }
+  
+}
 
 function $$eval(core) {
   var _ctx = Belt_MapString.empty;
@@ -59,9 +81,35 @@ function $$eval(core) {
   };
 }
 
-var Core = /* module */[/* eval */$$eval];
+var Core = /* module */[
+  /* M */0,
+  /* matchBranch */matchBranch,
+  /* eval */$$eval
+];
 
 var Denotation = /* module */[];
+
+function intersperse(list, el) {
+  if (list) {
+    var match = list[1];
+    if (match) {
+      return /* :: */[
+              list[0],
+              /* :: */[
+                el,
+                intersperse(/* :: */[
+                      match[0],
+                      match[1]
+                    ], el)
+              ]
+            ];
+    } else {
+      return list;
+    }
+  } else {
+    return list;
+  }
+}
 
 function intersperse_after(list, el) {
   if (list) {
@@ -96,5 +144,6 @@ exports.Abt = Abt;
 exports.Ast = Ast;
 exports.Core = Core;
 exports.Denotation = Denotation;
+exports.intersperse = intersperse;
 exports.intersperse_after = intersperse_after;
 /* No side effect */

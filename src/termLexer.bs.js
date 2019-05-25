@@ -6,20 +6,7 @@ var Curry = require("bs-platform/lib/js/curry.js");
 var Bigint = require("bs-zarith/src/Bigint.js");
 var $$Buffer = require("bs-platform/lib/js/buffer.js");
 var Lexing = require("bs-platform/lib/js/lexing.js");
-var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
-
-var $$SyntaxError = Caml_exceptions.create("TermLexer.SyntaxError");
-
-function next_line(lexbuf) {
-  var pos = lexbuf[/* lex_curr_p */11];
-  lexbuf[/* lex_curr_p */11] = /* record */[
-    /* pos_fname */pos[/* pos_fname */0],
-    /* pos_lnum */pos[/* pos_lnum */1] + 1 | 0,
-    /* pos_bol */lexbuf[/* lex_curr_pos */5],
-    /* pos_cnum */pos[/* pos_cnum */3]
-  ];
-  return /* () */0;
-}
+var LexerUtil = require("./lexerUtil.bs.js");
 
 var __ocaml_lex_tables = /* record */[
   /* lex_base */"\0\0\xf0\xff\xf1\xff\xf2\xff\xf3\xff\xf4\xff\xf5\xff\xf6\xff\xf7\xff\xf8\xff\xf9\xffK\0U\0_\0\xc0\0\x0b\x01\xfe\xff\x01\0\x03\0V\x01\xa1\x01\xec\x017\x02\x82\x02\xbb\x02\xf5\xff\xbc\x02\xb0\x02\xff\xff\xf8\xff\xf9\xff\xfa\xff\xfb\xff\xfc\xff\xfd\xff\xfe\xff",
@@ -76,12 +63,12 @@ function __ocaml_lex_read_string_rec(buf, lexbuf, ___ocaml_lex_state) {
           continue ;
       case 9 : 
           throw [
-                $$SyntaxError,
+                LexerUtil.$$SyntaxError,
                 "Illegal string character: " + Lexing.lexeme(lexbuf)
               ];
       case 10 : 
           throw [
-                $$SyntaxError,
+                LexerUtil.$$SyntaxError,
                 "String is not terminated"
               ];
       default:
@@ -101,7 +88,7 @@ function __ocaml_lex_read_rec(lexbuf, ___ocaml_lex_state) {
           ___ocaml_lex_state = 0;
           continue ;
       case 1 : 
-          next_line(lexbuf);
+          LexerUtil.next_line(lexbuf);
           ___ocaml_lex_state = 0;
           continue ;
       case 2 : 
@@ -130,7 +117,7 @@ function __ocaml_lex_read_rec(lexbuf, ___ocaml_lex_state) {
           return /* DOT */8;
       case 14 : 
           throw [
-                $$SyntaxError,
+                LexerUtil.$$SyntaxError,
                 "Unexpected char: " + Lexing.lexeme(lexbuf)
               ];
       case 15 : 
@@ -151,8 +138,6 @@ function read_string(buf, lexbuf) {
   return __ocaml_lex_read_string_rec(buf, lexbuf, 24);
 }
 
-exports.$$SyntaxError = $$SyntaxError;
-exports.next_line = next_line;
 exports.__ocaml_lex_tables = __ocaml_lex_tables;
 exports.read = read;
 exports.__ocaml_lex_read_rec = __ocaml_lex_read_rec;

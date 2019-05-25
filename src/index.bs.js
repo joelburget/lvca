@@ -9,11 +9,30 @@ var Types = require("./types.bs.js");
 var React = require("react");
 var Bigint = require("bs-zarith/src/Bigint.js");
 var Lexing = require("bs-platform/lib/js/lexing.js");
-var Parsing = require("bs-platform/lib/js/parsing.js");
+var LexerUtil = require("./lexerUtil.bs.js");
 var TermLexer = require("./termLexer.bs.js");
 var ReactDOMRe = require("reason-react/src/ReactDOMRe.js");
 var TermParser = require("./termParser.bs.js");
+var LvcaMode = require("./lvca-mode");
+var ReactCodemirror = require("react-codemirror");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
+
+var CodeMirror = /* module */[];
+
+function Index$Repl(Props) {
+  var input = Props.input;
+  var setInput = Props.setInput;
+  var options = {
+    mode: "lvca"
+  };
+  return React.createElement("div", undefined, React.createElement("h2", undefined, "repl"), React.createElement(ReactCodemirror, {
+                  value: input,
+                  onChange: setInput,
+                  options: options
+                }));
+}
+
+var Repl = /* module */[/* make */Index$Repl];
 
 function show_term(term) {
   switch (term.tag | 0) {
@@ -26,7 +45,7 @@ function show_term(term) {
                           /* :: */[
                             /* array */["("],
                             /* :: */[
-                              $$Array.of_list(List.map(show_scope, term[1])),
+                              $$Array.of_list(Types.intersperse(List.map(show_scope, term[1]), ";")),
                               /* :: */[
                                 /* array */[")"],
                                 /* [] */0
@@ -79,7 +98,7 @@ function show_prim(prim) {
     case 0 : 
         return Bigint.to_string(prim[0]);
     case 1 : 
-        return prim[0];
+        return "\"" + (prim[0] + "\"");
     case 2 : 
         if (prim[0]) {
           return "true";
@@ -104,7 +123,7 @@ var TermViewer = /* module */[
 
 function Index$LvcaViewer(Props) {
   var match = React.useState((function () {
-          return "";
+          return "foo()";
         }));
   var setTermInput = match[1];
   var termInput = match[0];
@@ -129,13 +148,7 @@ function Index$LvcaViewer(Props) {
   }
   catch (raw_exn){
     var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
-    if (exn[0] === TermLexer.$$SyntaxError) {
-      termResult = /* Error */Block.__(1, [exn[1]]);
-    } else if (exn === Parsing.Parse_error) {
-      termResult = /* Error */Block.__(1, ["Parse error"]);
-    } else {
-      throw exn;
-    }
+    termResult = exn[0] === LexerUtil.$$SyntaxError ? /* Error */Block.__(1, [exn[1]]) : /* Error */Block.__(1, ["Parse error"]);
   }
   if (exit === 1) {
     termResult = /* Ok */Block.__(0, [term]);
@@ -146,33 +159,48 @@ function Index$LvcaViewer(Props) {
         }, termResult[0]) : React.createElement(Index$TermViewer, {
           term: termResult[0]
         });
-  return React.createElement("div", undefined, React.createElement("h1", undefined, "LVCA"), React.createElement("h2", undefined, "Language Definition"), React.createElement("textarea", {
-                  value: match$1[0],
-                  onChange: (function ($$event) {
-                      return Curry._1(setLanguageDefinition, $$event.target.value);
-                    })
-                }), React.createElement("h2", undefined, "Statics"), React.createElement("textarea", {
-                  value: match$2[0],
-                  onChange: (function ($$event) {
-                      return Curry._1(setStaticsDefinition, $$event.target.value);
-                    })
-                }), React.createElement("h2", undefined, "Dynamics"), React.createElement("textarea", {
-                  value: match$3[0],
-                  onChange: (function ($$event) {
-                      return Curry._1(setDynamicsDefinition, $$event.target.value);
-                    })
-                }), React.createElement("h2", undefined, "Input"), React.createElement("textarea", {
-                  value: termInput,
-                  onChange: (function ($$event) {
-                      return Curry._1(setTermInput, $$event.target.value);
-                    })
-                }), termView);
+  return React.createElement("div", {
+              className: "lvca-viewer"
+            }, React.createElement("h1", {
+                  className: "header"
+                }, "LVCA"), React.createElement("div", {
+                  className: "left-pane"
+                }, React.createElement("h2", undefined, "Language Definition"), React.createElement("textarea", {
+                      value: match$1[0],
+                      onChange: (function ($$event) {
+                          return Curry._1(setLanguageDefinition, $$event.target.value);
+                        })
+                    }), React.createElement("h2", undefined, "Statics"), React.createElement("textarea", {
+                      value: match$2[0],
+                      onChange: (function ($$event) {
+                          return Curry._1(setStaticsDefinition, $$event.target.value);
+                        })
+                    }), React.createElement("h2", undefined, "Dynamics"), React.createElement("textarea", {
+                      value: match$3[0],
+                      onChange: (function ($$event) {
+                          return Curry._1(setDynamicsDefinition, $$event.target.value);
+                        })
+                    })), React.createElement("div", {
+                  className: "right-pane"
+                }, React.createElement(Index$Repl, {
+                      input: termInput,
+                      setInput: (function (str) {
+                          return Curry._1(setTermInput, (function (param) {
+                                        return str;
+                                      }));
+                        })
+                    }), termView));
 }
 
 var LvcaViewer = /* module */[/* make */Index$LvcaViewer];
 
 ReactDOMRe.renderToElementWithId(React.createElement(Index$LvcaViewer, { }), "index");
 
+var _modeImport = /* () */0;
+
+exports._modeImport = _modeImport;
+exports.CodeMirror = CodeMirror;
+exports.Repl = Repl;
 exports.TermViewer = TermViewer;
 exports.LvcaViewer = LvcaViewer;
 /*  Not a pure module */

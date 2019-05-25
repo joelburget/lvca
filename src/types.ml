@@ -1,8 +1,13 @@
 open Belt
 
+type sort =
+  | SortAp   of sort * sort
+  | SortName of string
+;;
+
 type valence =
-  | FixedValence    of string list * string
-  | VariableValence of string * string
+  | FixedValence    of sort list * sort
+  | VariableValence of string * sort
 ;;
 
 type arity =
@@ -19,11 +24,6 @@ type sortDef =
 
 type language =
   | Language of sortDef Belt.Map.String.t
-;;
-
-type sort =
-  | SortAp   of sort * sort
-  | SortName of string
 ;;
 
 type primitive =
@@ -56,10 +56,6 @@ module Ast = struct
 
 end
 
-type var =
-  | Var of string
-;;
-
 type literal =
   | LitText of string
   | LitInteger of Bigint.t
@@ -68,6 +64,10 @@ type literal =
 module Core = struct
 
   type ty = | Ty;; (* TODO *)
+
+  type var =
+    | Var of string
+  ;;
 
   type core_pat =
     | PatternTerm of string * core_pat list
@@ -91,11 +91,21 @@ module Core = struct
     | Metavar of string
   ;;
 
+  module M = Belt.Map.String
+
+  let matchBranch (v : core_val) (pat : core_pat) (core : core)
+    : (core_val M.t * core) option = match (v, pat) with
+
+    | (ValTm (tag1, vals), PatternTerm (tag2, pats)) ->
+        if tag1 == tag2
+        then failwith "TODO"
+        else failwith "TODO"
+
+
   (* val eval : core -> (core_val, string) result;; *)
   let eval (core : core) : (core_val, string) Result.t =
 
     let open Belt.Result in
-    let module M = Belt.Map.String in
 
     let rec go ctx core = match core with
           | CoreVar (Var v) -> (match M.get ctx v with
@@ -139,6 +149,11 @@ module Denotation = struct
   ;;
 
 end
+
+let rec intersperse list el =
+  match list with
+  | [] | [_]     -> list
+  | x :: y :: tl -> x :: el :: intersperse (y::tl) el
 
 let rec intersperse_after list el =
   match list with
