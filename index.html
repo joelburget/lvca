@@ -16,7 +16,16 @@ body, textarea, input {
   font-family: monospace;
   color: #1e1e5d;
 }
-error {
+body {
+  font-size: 16px;
+}
+h1 {
+  font-weight: 400;
+}
+h2 {
+  font-weight: 200;
+}
+.error {
   color: #c12828;
 }
 div.lvca-viewer {
@@ -24,17 +33,46 @@ div.lvca-viewer {
   grid-template-columns: 50% 50%;
   grid-template-rows: 100px auto;
   grid-template-areas:
-    "header header"
+    "header1 header1"
+    "header2-l header2-r"
     "left-pane right-pane";
 }
+h1, h2 {
+  margin: 0;
+}
 h1.header {
-  grid-area: header;
+  margin-left: 20px;
+  margin-top: 30px;
+  grid-area: header1;
+}
+h2.header2 {
+  padding: 15px 0 10px 20px;
+}
+h2.header2-left {
+  grid-area: header2-l;
+  border: 2px solid #1e1e5d;
+}
+h2.header2-right {
+  grid-area: header2-r;
+  border-top: 2px solid #1e1e5d;
+  border-right: 2px solid #1e1e5d;
+  border-bottom: 2px solid #1e1e5d;
 }
 div.left-pane {
   grid-area: left-pane;
+  border-left: 2px solid #1e1e5d;
+  border-right: 2px solid #1e1e5d;
+  border-bottom: 2px solid #1e1e5d;
+  padding: 20px;
 }
 div.right-pane {
   grid-area: right-pane;
+  border-right: 2px solid #1e1e5d;
+  border-bottom: 2px solid #1e1e5d;
+  padding: 20px;
+}
+.CodeMirror {
+  height: auto;
 }
   </style>
 </head>

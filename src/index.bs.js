@@ -14,6 +14,7 @@ var TermLexer = require("./termLexer.bs.js");
 var ReactDOMRe = require("reason-react/src/ReactDOMRe.js");
 var TermParser = require("./termParser.bs.js");
 var LvcaMode = require("./lvca-mode");
+var LanguageSimple = require("./languageSimple.bs.js");
 var ReactCodemirror = require("react-codemirror");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 
@@ -25,11 +26,11 @@ function Index$Repl(Props) {
   var options = {
     mode: "lvca"
   };
-  return React.createElement("div", undefined, React.createElement("h2", undefined, "repl"), React.createElement(ReactCodemirror, {
-                  value: input,
-                  onChange: setInput,
-                  options: options
-                }));
+  return React.createElement(ReactCodemirror, {
+              value: input,
+              onChange: setInput,
+              options: options
+            });
 }
 
 var Repl = /* module */[/* make */Index$Repl];
@@ -128,17 +129,9 @@ function Index$LvcaViewer(Props) {
   var setTermInput = match[1];
   var termInput = match[0];
   var match$1 = React.useState((function () {
-          return "";
+          return LanguageSimple.str;
         }));
   var setLanguageDefinition = match$1[1];
-  var match$2 = React.useState((function () {
-          return "";
-        }));
-  var setStaticsDefinition = match$2[1];
-  var match$3 = React.useState((function () {
-          return "";
-        }));
-  var setDynamicsDefinition = match$3[1];
   var termResult;
   var exit = 0;
   var term;
@@ -163,24 +156,21 @@ function Index$LvcaViewer(Props) {
               className: "lvca-viewer"
             }, React.createElement("h1", {
                   className: "header"
-                }, "LVCA"), React.createElement("div", {
+                }, "LVCA"), React.createElement("h2", {
+                  className: "header2 header2-left"
+                }, "Language Definition"), React.createElement("div", {
                   className: "left-pane"
-                }, React.createElement("h2", undefined, "Language Definition"), React.createElement("textarea", {
+                }, React.createElement(ReactCodemirror, {
                       value: match$1[0],
-                      onChange: (function ($$event) {
-                          return Curry._1(setLanguageDefinition, $$event.target.value);
-                        })
-                    }), React.createElement("h2", undefined, "Statics"), React.createElement("textarea", {
-                      value: match$2[0],
-                      onChange: (function ($$event) {
-                          return Curry._1(setStaticsDefinition, $$event.target.value);
-                        })
-                    }), React.createElement("h2", undefined, "Dynamics"), React.createElement("textarea", {
-                      value: match$3[0],
-                      onChange: (function ($$event) {
-                          return Curry._1(setDynamicsDefinition, $$event.target.value);
-                        })
-                    })), React.createElement("div", {
+                      onChange: (function (str) {
+                          return Curry._1(setLanguageDefinition, (function (param) {
+                                        return str;
+                                      }));
+                        }),
+                      options: { }
+                    })), React.createElement("h2", {
+                  className: "header2 header2-right"
+                }, "repl"), React.createElement("div", {
                   className: "right-pane"
                 }, React.createElement(Index$Repl, {
                       input: termInput,

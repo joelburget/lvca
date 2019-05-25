@@ -21,10 +21,7 @@ module Repl = {
   [@react.component]
   let make = (~input:string, ~setInput: string => unit) => {
     let options = CodeMirror.options(/* TODO ~keyMap="vim", */ ~mode="lvca", ());
-    <div>
-      <h2>{React.string("repl")}</h2>
-      <CodeMirror value=input onChange=setInput options=options />
-    </div>
+    <CodeMirror value=input onChange=setInput options=options />
   };
 };
 
@@ -91,9 +88,7 @@ module LvcaViewer = {
     open Belt.Result;
 
     let (termInput,          setTermInput)          = React.useState(() => "foo()");
-    let (languageDefinition, setLanguageDefinition) = React.useState(() => "");
-    let (staticsDefinition,  setStaticsDefinition)  = React.useState(() => "");
-    let (dynamicsDefinition, setDynamicsDefinition) = React.useState(() => "");
+    let (languageDefinition, setLanguageDefinition) = React.useState(() => LanguageSimple.str);
 
     let termResult = switch (TermParser.term(TermLexer.read, Lexing.from_string(termInput))) {
           | term                                 => Ok(term)
@@ -110,26 +105,16 @@ module LvcaViewer = {
     <div className="lvca-viewer">
       <h1 className="header">{React.string("LVCA")}</h1>
 
+      <h2 className="header2 header2-left">{React.string("Language Definition")}</h2>
       <div className="left-pane">
-        <h2>{React.string("Language Definition")}</h2>
-        <textarea
+        <CodeMirror
           value=languageDefinition
-          onChange=(event => setLanguageDefinition(ReactEvent.Form.target(event)##value))
-        />
-
-        <h2>{React.string("Statics")}</h2>
-        <textarea
-          value=staticsDefinition
-          onChange=(event => setStaticsDefinition(ReactEvent.Form.target(event)##value))
-        />
-
-        <h2>{React.string("Dynamics")}</h2>
-        <textarea
-          value=dynamicsDefinition
-          onChange=(event => setDynamicsDefinition(ReactEvent.Form.target(event)##value))
+          onChange=(str => setLanguageDefinition(_ => str))
+          options=CodeMirror.options(())
         />
       </div>
 
+      <h2 className="header2 header2-right">{React.string("repl")}</h2>
       <div className="right-pane">
         <Repl input=termInput setInput=(str => setTermInput(_ => str)) />
         {termView}
