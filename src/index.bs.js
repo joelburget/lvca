@@ -9,11 +9,15 @@ var Types = require("./types.bs.js");
 var React = require("react");
 var Bigint = require("bs-zarith/src/Bigint.js");
 var Lexing = require("bs-platform/lib/js/lexing.js");
+var Printf = require("bs-platform/lib/js/printf.js");
+var Parsing = require("bs-platform/lib/js/parsing.js");
 var LexerUtil = require("./lexerUtil.bs.js");
 var TermLexer = require("./termLexer.bs.js");
 var ReactDOMRe = require("reason-react/src/ReactDOMRe.js");
 var TermParser = require("./termParser.bs.js");
 var LvcaMode = require("./lvca-mode");
+var LanguageLexer = require("./languageLexer.bs.js");
+var LanguageParser = require("./languageParser.bs.js");
 var LanguageSimple = require("./languageSimple.bs.js");
 var ReactCodemirror = require("react-codemirror");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
@@ -129,21 +133,94 @@ function Index$LvcaViewer(Props) {
   var setTermInput = match[1];
   var termInput = match[0];
   var match$1 = React.useState((function () {
-          return LanguageSimple.str;
+          return LanguageSimple.abstractSyntax;
         }));
-  var setLanguageDefinition = match$1[1];
-  var termResult;
+  var setAsInput = match$1[1];
+  var asInput = match$1[0];
+  var match$2 = React.useState((function () {
+          return LanguageSimple.statics;
+        }));
+  var setStaticsInput = match$2[1];
+  var match$3 = React.useState((function () {
+          return LanguageSimple.dynamics;
+        }));
+  var setDynamicsInput = match$3[1];
+  var languageLexbuf = Lexing.from_string(asInput);
+  var languageResult;
   var exit = 0;
-  var term;
+  var language;
   try {
-    term = TermParser.term(TermLexer.read, Lexing.from_string(termInput));
+    language = LanguageParser.languageDef(LanguageLexer.read, languageLexbuf);
     exit = 1;
   }
   catch (raw_exn){
     var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
-    termResult = exn[0] === LexerUtil.$$SyntaxError ? /* Error */Block.__(1, [exn[1]]) : /* Error */Block.__(1, ["Parse error"]);
+    if (exn[0] === LexerUtil.$$SyntaxError) {
+      languageResult = /* Error */Block.__(1, [exn[1]]);
+    } else {
+      var pos = languageLexbuf[/* lex_curr_p */11];
+      var tok = Lexing.lexeme(languageLexbuf);
+      languageResult = /* Error */Block.__(1, [Curry._4(Printf.sprintf(/* Format */[
+                    /* String_literal */Block.__(11, [
+                        "Parse error (",
+                        /* String */Block.__(2, [
+                            /* No_padding */0,
+                            /* String_literal */Block.__(11, [
+                                ") ",
+                                /* String */Block.__(2, [
+                                    /* No_padding */0,
+                                    /* Char_literal */Block.__(12, [
+                                        /* ":" */58,
+                                        /* Int */Block.__(4, [
+                                            /* Int_d */0,
+                                            /* No_padding */0,
+                                            /* No_precision */0,
+                                            /* Char_literal */Block.__(12, [
+                                                /* ":" */58,
+                                                /* Int */Block.__(4, [
+                                                    /* Int_d */0,
+                                                    /* No_padding */0,
+                                                    /* No_precision */0,
+                                                    /* End_of_format */0
+                                                  ])
+                                              ])
+                                          ])
+                                      ])
+                                  ])
+                              ])
+                          ])
+                      ]),
+                    "Parse error (%s) %s:%d:%d"
+                  ]), tok, pos[/* pos_fname */0], pos[/* pos_lnum */1], (pos[/* pos_cnum */3] - pos[/* pos_bol */2] | 0) + 1 | 0)]);
+    }
   }
   if (exit === 1) {
+    languageResult = /* Ok */Block.__(0, [language]);
+  }
+  var languageView;
+  languageView = languageResult.tag ? React.createElement("span", {
+          className: "result-bad"
+        }, languageResult[0]) : React.createElement("span", {
+          className: "result-good"
+        }, "(good)");
+  var termResult;
+  var exit$1 = 0;
+  var term;
+  try {
+    term = TermParser.term(TermLexer.read, Lexing.from_string(termInput));
+    exit$1 = 1;
+  }
+  catch (raw_exn$1){
+    var exn$1 = Caml_js_exceptions.internalToOCamlException(raw_exn$1);
+    if (exn$1[0] === LexerUtil.$$SyntaxError) {
+      termResult = /* Error */Block.__(1, [exn$1[1]]);
+    } else if (exn$1 === Parsing.Parse_error || exn$1 === TermParser.$$Error) {
+      termResult = /* Error */Block.__(1, ["Parse error"]);
+    } else {
+      throw exn$1;
+    }
+  }
+  if (exit$1 === 1) {
     termResult = /* Ok */Block.__(0, [term]);
   }
   var termView;
@@ -157,21 +234,51 @@ function Index$LvcaViewer(Props) {
             }, React.createElement("h1", {
                   className: "header"
                 }, "LVCA"), React.createElement("h2", {
-                  className: "header2 header2-left"
-                }, "Language Definition"), React.createElement("div", {
-                  className: "left-pane"
+                  className: "header2 header2-abstract-syntax"
+                }, "Abstract Syntax ", languageView), React.createElement("div", {
+                  className: "abstract-syntax-pane"
                 }, React.createElement(ReactCodemirror, {
-                      value: match$1[0],
+                      value: asInput,
                       onChange: (function (str) {
-                          return Curry._1(setLanguageDefinition, (function (param) {
+                          return Curry._1(setAsInput, (function (param) {
                                         return str;
                                       }));
                         }),
-                      options: { }
+                      options: {
+                        mode: "default"
+                      }
                     })), React.createElement("h2", {
-                  className: "header2 header2-right"
+                  className: "header2 header2-statics"
+                }, "Statics"), React.createElement("div", {
+                  className: "statics-pane"
+                }, React.createElement(ReactCodemirror, {
+                      value: match$2[0],
+                      onChange: (function (str) {
+                          return Curry._1(setStaticsInput, (function (param) {
+                                        return str;
+                                      }));
+                        }),
+                      options: {
+                        mode: "default"
+                      }
+                    })), React.createElement("h2", {
+                  className: "header2 header2-dynamics"
+                }, "Dynamics"), React.createElement("div", {
+                  className: "dynamics-pane"
+                }, React.createElement(ReactCodemirror, {
+                      value: match$3[0],
+                      onChange: (function (str) {
+                          return Curry._1(setDynamicsInput, (function (param) {
+                                        return str;
+                                      }));
+                        }),
+                      options: {
+                        mode: "default"
+                      }
+                    })), React.createElement("h2", {
+                  className: "header2 header2-repl"
                 }, "repl"), React.createElement("div", {
-                  className: "right-pane"
+                  className: "repl-pane"
                 }, React.createElement(Index$Repl, {
                       input: termInput,
                       setInput: (function (str) {
@@ -179,7 +286,9 @@ function Index$LvcaViewer(Props) {
                                         return str;
                                       }));
                         })
-                    }), termView));
+                    }), React.createElement("div", {
+                      className: "term-view"
+                    }, termView)));
 }
 
 var LvcaViewer = /* module */[/* make */Index$LvcaViewer];

@@ -1,34 +1,34 @@
-# 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 1 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
  
 open TermParser
 open LexerUtil
 
-# 7 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+module L = Lexing
+module B = Buffer
+
+# 10 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base =
    "\000\000\240\255\241\255\242\255\243\255\244\255\245\255\246\255\
     \247\255\248\255\249\255\075\000\085\000\095\000\192\000\011\001\
     \254\255\001\000\003\000\086\001\161\001\236\001\055\002\130\002\
-    \187\002\245\255\188\002\176\002\255\255\248\255\249\255\250\255\
-    \251\255\252\255\253\255\254\255";
+    \243\002\250\255\251\255\002\000\254\255\244\002\253\255";
   Lexing.lex_backtrk =
    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     \255\255\255\255\255\255\003\000\014\000\002\000\002\000\002\000\
     \255\255\001\000\000\000\002\000\002\000\002\000\002\000\002\000\
-    \255\255\255\255\008\000\009\000\255\255\255\255\255\255\255\255\
-    \255\255\255\255\255\255\255\255";
+    \255\255\255\255\255\255\003\000\255\255\000\000\255\255";
   Lexing.lex_default =
    "\002\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
     \000\000\000\000\000\000\255\255\255\255\255\255\255\255\255\255\
     \000\000\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
-    \026\000\000\000\026\000\255\255\000\000\000\000\000\000\000\000\
-    \000\000\000\000\000\000\000\000";
+    \029\000\000\000\000\000\255\255\000\000\029\000\000\000";
   Lexing.lex_trans =
    "\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
     \000\000\018\000\016\000\016\000\018\000\017\000\000\000\000\000\
     \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
     \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
-    \018\000\000\000\010\000\018\000\000\000\000\000\000\000\000\000\
+    \018\000\000\000\010\000\018\000\030\000\000\000\000\000\000\000\
     \009\000\008\000\000\000\000\000\004\000\012\000\003\000\000\000\
     \011\000\011\000\011\000\011\000\011\000\011\000\011\000\011\000\
     \011\000\011\000\000\000\005\000\000\000\000\000\000\000\000\000\
@@ -115,16 +115,23 @@ let __ocaml_lex_tables = {
     \000\000\000\000\000\000\013\000\013\000\013\000\013\000\013\000\
     \013\000\013\000\013\000\013\000\013\000\013\000\013\000\013\000\
     \013\000\013\000\013\000\013\000\013\000\013\000\013\000\013\000\
-    \013\000\013\000\013\000\013\000\013\000\028\000\255\255\035\000\
+    \013\000\013\000\013\000\013\000\013\000\000\000\000\000\000\000\
     \000\000\013\000\000\000\013\000\013\000\013\000\013\000\013\000\
     \013\000\013\000\013\000\013\000\013\000\013\000\013\000\013\000\
     \013\000\013\000\013\000\013\000\013\000\013\000\013\000\013\000\
-    \013\000\013\000\013\000\013\000\013\000\000\000\000\000\000\000\
+    \013\000\013\000\013\000\013\000\013\000\028\000\255\255\000\000\
     \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
-    \000\000\000\000\000\000\000\000\034\000\000\000\000\000\000\000\
-    \000\000\000\000\033\000\000\000\000\000\000\000\032\000\027\000\
-    \255\255\000\000\000\000\000\000\000\000\000\000\031\000\000\000\
-    \000\000\000\000\030\000\000\000\029\000\000\000\000\000\000\000\
+    \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+    \000\000\000\000\000\000\000\000\000\000\026\000\255\255\000\000\
+    \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+    \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+    \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+    \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+    \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+    \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+    \000\000\000\000\000\000\000\000\000\000\000\000\000\000\027\000\
+    \255\255\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+    \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
     \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
     \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
     \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
@@ -149,7 +156,7 @@ let __ocaml_lex_tables = {
     \255\255\000\000\000\000\017\000\018\000\000\000\255\255\255\255\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
-    \000\000\255\255\000\000\018\000\255\255\255\255\255\255\255\255\
+    \000\000\255\255\000\000\018\000\027\000\255\255\255\255\255\255\
     \000\000\000\000\255\255\255\255\000\000\000\000\000\000\255\255\
     \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
     \000\000\000\000\255\255\000\000\255\255\255\255\255\255\255\255\
@@ -236,24 +243,22 @@ let __ocaml_lex_tables = {
     \255\255\255\255\255\255\023\000\023\000\023\000\023\000\023\000\
     \023\000\023\000\023\000\023\000\023\000\023\000\023\000\023\000\
     \023\000\023\000\023\000\023\000\023\000\023\000\023\000\023\000\
-    \023\000\023\000\023\000\023\000\023\000\024\000\026\000\027\000\
+    \023\000\023\000\023\000\023\000\023\000\255\255\255\255\255\255\
     \255\255\023\000\255\255\023\000\023\000\023\000\023\000\023\000\
     \023\000\023\000\023\000\023\000\023\000\023\000\023\000\023\000\
     \023\000\023\000\023\000\023\000\023\000\023\000\023\000\023\000\
-    \023\000\023\000\023\000\023\000\023\000\255\255\255\255\255\255\
+    \023\000\023\000\023\000\023\000\023\000\024\000\029\000\255\255\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
-    \255\255\255\255\255\255\255\255\027\000\255\255\255\255\255\255\
-    \255\255\255\255\027\000\255\255\255\255\255\255\027\000\024\000\
-    \026\000\255\255\255\255\255\255\255\255\255\255\027\000\255\255\
-    \255\255\255\255\027\000\255\255\027\000\255\255\255\255\255\255\
+    \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
+    \255\255\255\255\255\255\255\255\255\255\024\000\029\000\255\255\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
-    \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
-    \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
+    \255\255\255\255\255\255\255\255\255\255\255\255\255\255\024\000\
+    \029\000\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
@@ -264,7 +269,16 @@ let __ocaml_lex_tables = {
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
-    \255\255\255\255\255\255\024\000\026\000";
+    \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
+    \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
+    \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
+    \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
+    \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
+    \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
+    \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
+    \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
+    \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
+    \255\255\255\255\255\255\024\000\029\000";
   Lexing.lex_base_code =
    "";
   Lexing.lex_backtrk_code =
@@ -284,84 +298,84 @@ let rec read lexbuf =
 and __ocaml_lex_read_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 17 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 19 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( read lexbuf )
-# 290 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 304 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 1 ->
-# 18 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 20 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( next_line lexbuf; read lexbuf )
-# 295 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 309 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 2 ->
-# 19 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
-             ( ID (Lexing.lexeme lexbuf) )
-# 300 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 21 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+             ( ID (L.lexeme lexbuf) )
+# 314 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 3 ->
-# 20 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
-             ( INT (Bigint.of_string (Lexing.lexeme lexbuf)) )
-# 305 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 22 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+             ( INT (Bigint.of_string (L.lexeme lexbuf)) )
+# 319 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 4 ->
-# 22 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 24 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( TRUE )
-# 310 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 324 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 5 ->
-# 23 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 25 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( FALSE )
-# 315 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 329 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 6 ->
-# 24 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 26 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( read_string (Buffer.create 17) lexbuf )
-# 320 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 334 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 7 ->
-# 25 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 27 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( LEFT_PAREN )
-# 325 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 339 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 8 ->
-# 26 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 28 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( RIGHT_PAREN )
-# 330 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 344 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 9 ->
-# 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 29 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( LEFT_BRACK )
-# 335 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 349 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 10 ->
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 30 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( RIGHT_BRACK )
-# 340 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 354 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 11 ->
-# 29 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 31 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( SEMICOLON )
-# 345 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 359 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 12 ->
-# 30 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 32 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( COMMA )
-# 350 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 364 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 13 ->
-# 31 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 33 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( DOT )
-# 355 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 369 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 14 ->
-# 32 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
-      ( raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) )
-# 360 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 34 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+      ( error lexbuf ("Unexpected char: " ^ L.lexeme lexbuf) )
+# 374 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 15 ->
-# 33 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 35 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( EOF )
-# 365 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 379 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_rec lexbuf __ocaml_lex_state
@@ -371,61 +385,49 @@ and read_string buf lexbuf =
 and __ocaml_lex_read_string_rec buf lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 37 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
-              ( STRING (Buffer.contents buf) )
-# 377 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 39 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+              ( B.add_string buf @@ L.lexeme lexbuf
+              ; read_string buf lexbuf
+              )
+# 393 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 1 ->
-# 38 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
-              ( Buffer.add_char buf '/'; read_string buf lexbuf )
-# 382 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 42 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+              ( B.add_string buf @@ L.lexeme lexbuf
+              ; L.new_line lexbuf
+              ; read_string buf lexbuf
+              )
+# 401 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 2 ->
-# 39 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
-              ( Buffer.add_char buf '\\'; read_string buf lexbuf )
-# 387 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 46 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+              ( B.add_char buf '"'
+              ; read_string buf lexbuf
+              )
+# 408 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 3 ->
-# 40 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
-              ( Buffer.add_char buf '\b'; read_string buf lexbuf )
-# 392 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 49 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+              ( B.add_char buf '\\'
+              ; read_string buf lexbuf
+              )
+# 415 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 4 ->
-# 41 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
-              ( Buffer.add_char buf '\012'; read_string buf lexbuf )
-# 397 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 52 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+              ( STRING (B.contents buf) )
+# 420 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 5 ->
-# 42 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
-              ( Buffer.add_char buf '\n'; read_string buf lexbuf )
-# 402 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 53 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+              ( error lexbuf "end of input inside of a string" )
+# 425 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 6 ->
-# 43 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
-              ( Buffer.add_char buf '\r'; read_string buf lexbuf )
-# 407 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
-
-  | 7 ->
-# 44 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
-              ( Buffer.add_char buf '\t'; read_string buf lexbuf )
-# 412 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
-
-  | 8 ->
-# 46 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
-    ( Buffer.add_string buf (Lexing.lexeme lexbuf);
-      read_string buf lexbuf
-    )
-# 419 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
-
-  | 9 ->
-# 49 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
-      ( raise (SyntaxError ("Illegal string character: " ^ Lexing.lexeme lexbuf)) )
-# 424 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
-
-  | 10 ->
-# 50 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
-        ( raise (SyntaxError ("String is not terminated")) )
-# 429 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 54 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+              ( error lexbuf
+                  "found '%s' - don't know how to handle" @@ L.lexeme lexbuf )
+# 431 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_string_rec buf lexbuf __ocaml_lex_state

@@ -1,18 +1,15 @@
-let str = {|
-== abstract syntax ==
-
-tm :=
+let abstractSyntax = {|tm :=
   | var(var)
   | annot(tm; ty)
-  | ite(t1: tm; t2: tm; t3: tm)
-  | app(t1: tm; t2: tm)
+  | ite(tm; tm; tm)
+  | app(tm; tm)
   | val(val)
   | binary-op(binary-op)
 
 binary-op :=
-  | or(t1: tm; t2: tm)
-  | xor(t1: tm; t2: tm)
-  | and(t1: tm; t2: tm)
+  | or(tm; tm)
+  | xor(tm; tm)
+  | and(tm; tm)
 
 val :=
   | true()
@@ -21,11 +18,9 @@ val :=
 
 ty :=
   | bool()
-  | arr(ty; ty)
+  | arr(ty; ty)|}
 
-== statics ==
-
-// TODO:
+let statics = {|// TODO:
 // * should we use concrete syntax?
 // * how to show var separate from context?
 // * how to separate hypotheses?
@@ -60,16 +55,11 @@ ctx >> tm1 => arr(ty1; ty2)  ctx >> tm2 <= ty1
 // important: this rule must go last or else it will subsume all others
 ctx >> tm => ty
 --------------- (switch)
-ctx >> tm <= ty
+ctx >> tm <= ty|}
 
-== dynamics ==
-
-// [[_]] : tm -> core(val)
+let dynamics = {|// [[_]] : tm -> core(val)
 
 [[ value(v)        ]] = v
 [[ annot(tm; ty)   ]] = [[ tm ]]
 [[ ite(t1; t2; t3) ]] = case([[ t1 ]]; true() -> [[ t2 ]]; false() -> [[ t3 ]])
-[[ app(fun; arg)   ]] = app([[ fun ]]; [[ arg ]])
-
-== dynamics ==
-|}
+[[ app(fun; arg)   ]] = app([[ fun ]]; [[ arg ]])|}

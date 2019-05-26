@@ -3,14 +3,23 @@
 
 type token = 
   | SEMICOLON
+  | RULE_NAME of (string)
+  | RIGHT_S_ARR
   | RIGHT_PAREN
+  | RIGHT_OXFORD
+  | RIGHT_D_ARR
   | RIGHT_BRACK
+  | LINE
+  | LEFT_S_ARR
   | LEFT_PAREN
+  | LEFT_OXFORD
+  | LEFT_D_ARR
   | LEFT_BRACK
   | ID of (string)
-  | EOL
+  | EQ
   | EOF
   | DOT
+  | CTX_SEPARATOR
   | COMMA
   | BAR
   | ASSIGN

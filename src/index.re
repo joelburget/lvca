@@ -87,37 +87,78 @@ module LvcaViewer = {
   let make = () => {
     open Belt.Result;
 
-    let (termInput,          setTermInput)          = React.useState(() => "foo()");
-    let (languageDefinition, setLanguageDefinition) = React.useState(() => LanguageSimple.str);
+    let (termInput,     setTermInput)     = React.useState(() => "foo()");
+    let (asInput,       setAsInput)       = React.useState(() => LanguageSimple.abstractSyntax);
+    let (staticsInput,  setStaticsInput)  = React.useState(() => LanguageSimple.statics);
+    let (dynamicsInput, setDynamicsInput) = React.useState(() => LanguageSimple.dynamics);
+
+    let languageLexbuf = Lexing.from_string(asInput);
+    let languageResult =
+      switch (LanguageParser.languageDef(LanguageLexer.read, languageLexbuf)) {
+      | language                             => Ok(language)
+      | exception LexerUtil.SyntaxError(msg) => Error(msg)
+      /* Parsing.Parse_error / LanguageParser.Error */
+      | exception _ =>
+        let pos = languageLexbuf.lex_curr_p;
+        let tok = Lexing.lexeme(languageLexbuf);
+        Error(Printf.sprintf("Parse error (%s) %s:%d:%d", tok,
+          pos.pos_fname, pos.pos_lnum, pos.pos_cnum - pos.pos_bol + 1))
+      };
+
+    let languageView = switch (languageResult) {
+    | Ok(language) => <span className="result-good"> {React.string("(good)")} </span>
+    | Error(msg)   => <span className="result-bad"> {React.string(msg)} </span>
+    };
 
     let termResult = switch (TermParser.term(TermLexer.read, Lexing.from_string(termInput))) {
-          | term                                 => Ok(term)
-          | exception LexerUtil.SyntaxError(msg) => Error(msg)
-          | exception Parsing.Parse_error        => Error("Parse error")
-          | exception _ /* Menhirbasics.Error */ => Error("Parse error")
-          };
+    | term                                 => Ok(term)
+    | exception LexerUtil.SyntaxError(msg) => Error(msg)
+    | exception Parsing.Parse_error        => Error("Parse error")
+    | exception TermParser.Error           => Error("Parse error")
+    };
 
     let termView = switch (termResult) {
-          | Ok(term)   => <TermViewer term=term />
-          | Error(msg) => <div className="error"> {React.string(msg)} </div>
-          };
+    | Ok(term)   => <TermViewer term=term />
+    | Error(msg) => <div className="error"> {React.string(msg)} </div>
+    };
 
     <div className="lvca-viewer">
       <h1 className="header">{React.string("LVCA")}</h1>
 
-      <h2 className="header2 header2-left">{React.string("Language Definition")}</h2>
-      <div className="left-pane">
+      <h2 className="header2 header2-abstract-syntax">
+        {React.string("Abstract Syntax ")}
+        {languageView}
+      </h2>
+      <div className="abstract-syntax-pane">
         <CodeMirror
-          value=languageDefinition
-          onChange=(str => setLanguageDefinition(_ => str))
-          options=CodeMirror.options(())
+          value=asInput
+          onChange=(str => setAsInput(_ => str))
+          options=CodeMirror.options(~mode="default", ())
         />
       </div>
 
-      <h2 className="header2 header2-right">{React.string("repl")}</h2>
-      <div className="right-pane">
+      <h2 className="header2 header2-statics">{React.string("Statics")}</h2>
+      <div className="statics-pane">
+        <CodeMirror
+          value=staticsInput
+          onChange=(str => setStaticsInput(_ => str))
+          options=CodeMirror.options(~mode="default", ())
+        />
+      </div>
+
+      <h2 className="header2 header2-dynamics">{React.string("Dynamics")}</h2>
+      <div className="dynamics-pane">
+        <CodeMirror
+          value=dynamicsInput
+          onChange=(str => setDynamicsInput(_ => str))
+          options=CodeMirror.options(~mode="default", ())
+        />
+      </div>
+
+      <h2 className="header2 header2-repl">{React.string("repl")}</h2>
+      <div className="repl-pane">
         <Repl input=termInput setInput=(str => setTermInput(_ => str)) />
-        {termView}
+        <div className="term-view">{termView}</div>
       </div>
     </div>
   };
