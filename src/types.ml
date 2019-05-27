@@ -32,6 +32,12 @@ type primitive =
   | PrimBool    of bool
   ;;
 
+let prim_eq p1 p2 = match (p1, p2) with
+  | (PrimInteger i1, PrimInteger i2) -> Bigint.(i1 = i2)
+  | (PrimString  s1, PrimString  s2) -> s1 = s2
+  | (PrimBool    b1, PrimBool    b2) -> b1 = b2
+  | _                                -> false
+
 module Abt = struct
 
   type scope =
@@ -42,7 +48,7 @@ module Abt = struct
     | Var       of string
     | Sequence  of term list (* TODO: list vs array? *)
     | Primitive of primitive
-    ;;
+
 end
 
 module Ast = struct
@@ -56,34 +62,25 @@ module Ast = struct
 
 end
 
-type literal =
-  | LitText of string
-  | LitInteger of Bigint.t
-;;
-
 module Core = struct
 
   type ty = | Ty;; (* TODO *)
 
-  type var =
-    | Var of string
-  ;;
-
   type core_pat =
     | PatternTerm of string * core_pat list
     | PatternVar  of string option
-    | PatternLit  of literal
+    | PatternLit  of primitive
     | PatternDefault
   ;;
 
   type core_val =
     | ValTm  of string * core_val list
-    | ValLit of literal
+    | ValLit of primitive
     | ValPrimop of string
-    | ValLam of var list * core
+    | ValLam of string list * core
 
   and core =
-    | CoreVar of var
+    | CoreVar of string
     | CoreVal of core_val
     | CoreApp of core * core list
     | Lam     of string list * core
@@ -92,15 +89,66 @@ module Core = struct
   ;;
 
   module M = Belt.Map.String
+  module O = Belt.Option
 
-  let matchBranch (v : core_val) (pat : core_pat) (core : core)
-    : (core_val M.t * core) option = match (v, pat) with
+  let rec matchBranch (v : core_val) (pat : core_pat)
+    : core_val M.t option = match (v, pat) with
 
     | (ValTm (tag1, vals), PatternTerm (tag2, pats)) ->
-        if tag1 == tag2
-        then failwith "TODO"
-        else failwith "TODO"
+        let subResults = List.map
+          (List.zip vals pats)
+          (fun (v', pat') -> matchBranch v' pat') in
+        if tag1 = tag2 &&
+           List.length vals = List.length pats &&
+           List.every subResults O.isSome
+        then Some (List.reduce subResults M.empty
+          (fun m m' -> M.merge m (O.getExn m')
+             (fun _k v1 v2 -> match (v1, v2) with
+               | (_,      Some v) -> Some v (* TODO: except if both Some *)
+               | (Some v, None  ) -> Some v
+               | (None,   None  ) -> None)
+          ))
+        else None
+    | (ValLit l1, PatternLit l2) ->
+        if prim_eq l1 l2
+        then Some M.empty
+        else None
+    | (tm, PatternVar (Some v)) -> Some (M.fromArray [|v,tm|])
+    | (tm, PatternVar None)     -> Some M.empty
+    | (_val, PatternDefault)    -> Some M.empty
+    | _ -> None
 
+  let rec traverse_list_result (lst : (('a, 'b) Result.t) list)
+    : ('a list, 'b) Result.t = match lst with
+    | []             -> Ok []
+    | Ok a :: rest   -> (match traverse_list_result rest with
+      | Ok rest'  -> Ok (a :: rest')
+      | Error msg -> Error msg
+    )
+    | Error msg :: _ -> Error msg
+
+  let rec from_term (term : Abt.term) : (core, string) Result.t = match term with
+    | Abt.Var name -> Ok (CoreVar name)
+    | Abt.Sequence _tms ->  Error "TODO: conversion of sequences"
+    | Abt.Primitive prim -> Ok (CoreVal (ValLit prim))
+    | Abt.Term (name, children) -> match name with
+      | "app"  -> (match children with
+        | f :: args -> (match
+          (from_scope f, traverse_list_result (List.map args from_scope)) with
+          | (Ok f', Ok args') -> Ok (CoreApp(f', args'))
+          | (Error msg, _)
+          | (_, Error msg) -> Error msg
+        )
+        | []        -> Error "App must have a function"
+      )
+      | "lam"  -> Error "TODO 1"
+      | "case" -> Error "TODO 2"
+      | _      -> (match traverse_list_result (List.map children from_scope) with
+        | Ok children' -> Ok (CoreApp(CoreVar name, children'))
+        | Error msg    -> Error msg
+      )
+
+    and from_scope (scope : Abt.scope) : (core, string) Result.t = failwith "TODO"
 
   (* val eval : core -> (core_val, string) result;; *)
   let eval (core : core) : (core_val, string) Result.t =
@@ -108,7 +156,7 @@ module Core = struct
     let open Belt.Result in
 
     let rec go ctx core = match core with
-          | CoreVar (Var v) -> (match M.get ctx v with
+          | CoreVar v -> (match M.get ctx v with
             | Some result -> Ok result
             | None        -> Error ("Unbound variable " ^ v))
           | CoreVal v -> Ok v
@@ -128,7 +176,7 @@ module Core = struct
             let v = go ctx tm *)
           | Metavar _v -> Error "Found a metavar!"
 
-          | _ -> Error "TODO"
+          | _ -> Error "TODO 3"
 
     in go M.empty core
 
@@ -147,6 +195,33 @@ module Denotation = struct
   type chart =
     | DenotationChart of (pat * Core.core) list
   ;;
+
+end
+
+module Statics = struct
+
+  module M = Belt.Map.String
+
+  type scope = Scope of string list * term
+
+  and term =
+          | Term      of string * scope list
+          | Bound     of int
+          | Free      of string
+          | Sequence  of term list
+          | Primitive of primitive
+
+  type inferenceRule = InferenceRule of term * term
+  type checkingRule  = CheckingRule  of term * term
+
+  type typingClause =
+    | InferenceRule of inferenceRule
+    | CheckingRule  of checkingRule
+
+  type hypothesis = term M.t * typingClause
+
+  (* TODO: the conclusion type differs from LVCA *)
+  type rule = Rule of hypothesis list * string option * hypothesis
 
 end
 

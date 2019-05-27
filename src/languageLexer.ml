@@ -119,52 +119,52 @@ let rec read lexbuf =
 and __ocaml_lex_read_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 12 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 10 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( read lexbuf )
 # 125 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 1 ->
-# 13 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 11 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( ID (Lexing.lexeme lexbuf) )
 # 130 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 2 ->
-# 14 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 12 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( ASSIGN )
 # 135 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 3 ->
-# 15 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 13 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( LEFT_PAREN )
 # 140 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 4 ->
-# 16 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 14 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( RIGHT_PAREN )
 # 145 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 5 ->
-# 17 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 15 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( SEMICOLON )
 # 150 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 6 ->
-# 18 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 16 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( DOT )
 # 155 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 7 ->
-# 19 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 17 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( BAR )
 # 160 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 8 ->
-# 20 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 18 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( EOF )
 # 165 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 9 ->
-# 21 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 19 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
       ( error lexbuf ("Unexpected char: " ^ Lexing.lexeme lexbuf) )
 # 170 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
 

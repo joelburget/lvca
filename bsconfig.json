@@ -16,6 +16,22 @@
       },
       {
         "name" : "menhir",
+        "edge" : ["staticsParser.ml", "staticsParser.mli", ":", "staticsParser.mly"]
+      },
+      {
+        "name" : "ocamllex",
+        "edge" : ["staticsLexer.ml", ":", "staticsLexer.mll"]
+      },
+      {
+        "name" : "menhir",
+        "edge" : ["dynamicsParser.ml", "dynamicsParser.mli", ":", "dynamicsParser.mly"]
+      },
+      {
+        "name" : "ocamllex",
+        "edge" : ["dynamicsLexer.ml", ":", "dynamicsLexer.mll"]
+      },
+      {
+        "name" : "menhir",
         "edge" : ["termParser.ml", "termParser.mli", ":", "termParser.mly"]
       },
       {

@@ -10,20 +10,6 @@
 %token BAR
 %token EOF
 
-// statics
-%token CTX_SEPARATOR
-%token <string> RULE_NAME
-%token LEFT_D_ARR
-%token RIGHT_D_ARR
-%token LINE
-
-// dynamics
-%token EQ
-%token LEFT_OXFORD
-%token RIGHT_OXFORD
-%token LEFT_S_ARR
-%token RIGHT_S_ARR
-
 %start languageDef
 %type <Types.language>    languageDef
 %type <Types.sort>        sort

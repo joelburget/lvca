@@ -16,11 +16,32 @@ var TermLexer = require("./termLexer.bs.js");
 var ReactDOMRe = require("reason-react/src/ReactDOMRe.js");
 var TermParser = require("./termParser.bs.js");
 var LvcaMode = require("./lvca-mode");
+var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
+var StaticsLexer = require("./staticsLexer.bs.js");
+var DynamicsLexer = require("./dynamicsLexer.bs.js");
 var LanguageLexer = require("./languageLexer.bs.js");
+var StaticsParser = require("./staticsParser.bs.js");
+var DynamicsParser = require("./dynamicsParser.bs.js");
 var LanguageParser = require("./languageParser.bs.js");
 var LanguageSimple = require("./languageSimple.bs.js");
 var ReactCodemirror = require("react-codemirror");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
+
+function show_prim(prim) {
+  switch (prim.tag | 0) {
+    case 0 : 
+        return Bigint.to_string(prim[0]);
+    case 1 : 
+        return "\"" + (prim[0] + "\"");
+    case 2 : 
+        if (prim[0]) {
+          return "true";
+        } else {
+          return "false";
+        }
+    
+  }
+}
 
 var CodeMirror = /* module */[];
 
@@ -39,42 +60,42 @@ function Index$Repl(Props) {
 
 var Repl = /* module */[/* make */Index$Repl];
 
+function make_span(children) {
+  return Block.spliceApply(React.createElement, [
+              "span",
+              { },
+              $$Array.concat(children)
+            ]);
+}
+
 function show_term(term) {
   switch (term.tag | 0) {
     case 0 : 
-        return Block.spliceApply(React.createElement, [
-                    "span",
-                    { },
-                    $$Array.concat(/* :: */[
-                          /* array */[term[0]],
-                          /* :: */[
-                            /* array */["("],
-                            /* :: */[
-                              $$Array.of_list(Types.intersperse(List.map(show_scope, term[1]), ";")),
-                              /* :: */[
-                                /* array */[")"],
-                                /* [] */0
-                              ]
-                            ]
-                          ]
-                        ])
+        return make_span(/* :: */[
+                    /* array */[term[0]],
+                    /* :: */[
+                      /* array */["("],
+                      /* :: */[
+                        $$Array.of_list(Types.intersperse(List.map(show_scope, term[1]), ";")),
+                        /* :: */[
+                          /* array */[")"],
+                          /* [] */0
+                        ]
+                      ]
+                    ]
                   ]);
     case 1 : 
         return term[0];
     case 2 : 
-        return Block.spliceApply(React.createElement, [
-                    "span",
-                    { },
-                    $$Array.concat(/* :: */[
-                          /* array */["["],
-                          /* :: */[
-                            $$Array.of_list(List.map(show_term, term[0])),
-                            /* :: */[
-                              /* array */["]"],
-                              /* [] */0
-                            ]
-                          ]
-                        ])
+        return make_span(/* :: */[
+                    /* array */["["],
+                    /* :: */[
+                      $$Array.of_list(List.map(show_term, term[0])),
+                      /* :: */[
+                        /* array */["]"],
+                        /* [] */0
+                      ]
+                    ]
                   ]);
     case 3 : 
         return show_prim(term[0]);
@@ -83,35 +104,15 @@ function show_term(term) {
 }
 
 function show_scope(scope) {
-  return Block.spliceApply(React.createElement, [
-              "span",
-              { },
-              $$Array.concat(/* :: */[
-                    $$Array.of_list(Types.intersperse_after(List.map((function (prim) {
-                                    return prim;
-                                  }), scope[0]), ".")),
-                    /* :: */[
-                      /* array */[show_term(scope[1])],
-                      /* [] */0
-                    ]
-                  ])
+  return make_span(/* :: */[
+              $$Array.of_list(Types.intersperse_after(List.map((function (prim) {
+                              return prim;
+                            }), scope[0]), ".")),
+              /* :: */[
+                /* array */[show_term(scope[1])],
+                /* [] */0
+              ]
             ]);
-}
-
-function show_prim(prim) {
-  switch (prim.tag | 0) {
-    case 0 : 
-        return Bigint.to_string(prim[0]);
-    case 1 : 
-        return "\"" + (prim[0] + "\"");
-    case 2 : 
-        if (prim[0]) {
-          return "true";
-        } else {
-          return "false";
-        }
-    
-  }
 }
 
 function Index$TermViewer(Props) {
@@ -122,45 +123,150 @@ function Index$TermViewer(Props) {
 var TermViewer = /* module */[
   /* show_term */show_term,
   /* show_scope */show_scope,
-  /* show_prim */show_prim,
   /* make */Index$TermViewer
 ];
 
-function Index$LvcaViewer(Props) {
-  var match = React.useState((function () {
-          return "foo()";
-        }));
-  var setTermInput = match[1];
-  var termInput = match[0];
-  var match$1 = React.useState((function () {
-          return LanguageSimple.abstractSyntax;
-        }));
-  var setAsInput = match$1[1];
-  var asInput = match$1[0];
-  var match$2 = React.useState((function () {
-          return LanguageSimple.statics;
-        }));
-  var setStaticsInput = match$2[1];
-  var match$3 = React.useState((function () {
-          return LanguageSimple.dynamics;
-        }));
-  var setDynamicsInput = match$3[1];
-  var languageLexbuf = Lexing.from_string(asInput);
-  var languageResult;
+function view_core(core) {
+  switch (core.tag | 0) {
+    case 0 : 
+        return core[0];
+    case 1 : 
+        return view_core_val(core[0]);
+    case 2 : 
+        return make_span(/* :: */[
+                    /* array */["app("],
+                    /* :: */[
+                      /* array */[view_core(core[0])],
+                      /* :: */[
+                        /* array */["; "],
+                        /* :: */[
+                          $$Array.of_list(Types.intersperse(List.map(view_core, core[1]), "; ")),
+                          /* :: */[
+                            /* array */[")"],
+                            /* [] */0
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]);
+    case 3 : 
+        return make_span(/* :: */[
+                    /* array */["lam("],
+                    /* :: */[
+                      $$Array.of_list(Types.intersperse(List.map((function (prim) {
+                                      return prim;
+                                    }), core[0]), ". ")),
+                      /* :: */[
+                        /* array */[")"],
+                        /* [] */0
+                      ]
+                    ]
+                  ]);
+    case 4 : 
+        return make_span(/* :: */[
+                    /* array */["case("],
+                    /* :: */[
+                      /* array */[view_core(core[0])],
+                      /* :: */[
+                        /* array */["; ...)"],
+                        /* [] */0
+                      ]
+                    ]
+                  ]);
+    case 5 : 
+        return make_span(/* :: */[
+                    /* array */["[["],
+                    /* :: */[
+                      /* array */[core[0]],
+                      /* :: */[
+                        /* array */["]]"],
+                        /* [] */0
+                      ]
+                    ]
+                  ]);
+    
+  }
+}
+
+function view_core_val(coreVal) {
+  switch (coreVal.tag | 0) {
+    case 0 : 
+        return make_span(/* :: */[
+                    /* array */[coreVal[0]],
+                    /* :: */[
+                      $$Array.of_list(Types.intersperse(List.map(view_core_val, coreVal[1]), "; ")),
+                      /* [] */0
+                    ]
+                  ]);
+    case 1 : 
+        return show_prim(coreVal[0]);
+    case 2 : 
+        return coreVal[0];
+    case 3 : 
+        return view_core(coreVal[1]);
+    
+  }
+}
+
+function view_core_pat(pat) {
+  if (typeof pat === "number") {
+    return "default";
+  } else {
+    switch (pat.tag | 0) {
+      case 0 : 
+          return React.createElement("span", undefined, pat[0] + "(", ")");
+      case 1 : 
+          return "_";
+      case 2 : 
+          return show_prim(pat[0]);
+      
+    }
+  }
+}
+
+function Index$CoreValView(Props) {
+  var coreVal = Props.coreVal;
+  return React.createElement("div", undefined, view_core_val(coreVal));
+}
+
+var CoreValView = /* module */[
+  /* view_core_pat */view_core_pat,
+  /* view_core */view_core,
+  /* view_core_val */view_core_val,
+  /* make */Index$CoreValView
+];
+
+function Index$ParseStatus$Component(Props) {
+  var result = Props.result;
+  if (result.tag) {
+    return React.createElement("span", {
+                className: "result-bad"
+              }, result[0]);
+  } else {
+    return React.createElement("span", {
+                className: "result-good"
+              }, "(good)");
+  }
+}
+
+var Component = /* module */[/* make */Index$ParseStatus$Component];
+
+function parse(runParse, read, lexbuf) {
+  var result;
   var exit = 0;
-  var language;
+  var parsed;
   try {
-    language = LanguageParser.languageDef(LanguageLexer.read, languageLexbuf);
+    parsed = Curry._2(runParse, read, lexbuf);
     exit = 1;
   }
   catch (raw_exn){
     var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
     if (exn[0] === LexerUtil.$$SyntaxError) {
-      languageResult = /* Error */Block.__(1, [exn[1]]);
+      result = /* Error */Block.__(1, [exn[1]]);
     } else {
-      var pos = languageLexbuf[/* lex_curr_p */11];
-      var tok = Lexing.lexeme(languageLexbuf);
-      languageResult = /* Error */Block.__(1, [Curry._4(Printf.sprintf(/* Format */[
+      var pos = lexbuf[/* lex_curr_p */11];
+      var tok = Lexing.lexeme(lexbuf);
+      result = /* Error */Block.__(1, [Curry._4(Printf.sprintf(/* Format */[
                     /* String_literal */Block.__(11, [
                         "Parse error (",
                         /* String */Block.__(2, [
@@ -195,39 +301,89 @@ function Index$LvcaViewer(Props) {
     }
   }
   if (exit === 1) {
-    languageResult = /* Ok */Block.__(0, [language]);
+    result = /* Ok */Block.__(0, [parsed]);
   }
-  var languageView;
-  languageView = languageResult.tag ? React.createElement("span", {
-          className: "result-bad"
-        }, languageResult[0]) : React.createElement("span", {
-          className: "result-good"
-        }, "(good)");
+  return /* tuple */[
+          React.createElement(Index$ParseStatus$Component, {
+                result: result
+              }),
+          result
+        ];
+}
+
+var ParseStatus = /* module */[
+  /* Component */Component,
+  /* parse */parse
+];
+
+function Index$LvcaViewer(Props) {
+  var match = React.useState((function () {
+          return "true()";
+        }));
+  var setTermInput = match[1];
+  var termInput = match[0];
+  var match$1 = React.useState((function () {
+          return LanguageSimple.abstractSyntax;
+        }));
+  var setAsInput = match$1[1];
+  var asInput = match$1[0];
+  var match$2 = React.useState((function () {
+          return LanguageSimple.statics;
+        }));
+  var setStaticsInput = match$2[1];
+  var staticsInput = match$2[0];
+  var match$3 = React.useState((function () {
+          return LanguageSimple.dynamics;
+        }));
+  var setDynamicsInput = match$3[1];
+  var dynamicsInput = match$3[0];
+  var match$4 = parse(LanguageParser.languageDef, LanguageLexer.read, Lexing.from_string(asInput));
+  var match$5 = parse(StaticsParser.rules, StaticsLexer.read, Lexing.from_string(staticsInput));
+  var match$6 = parse(DynamicsParser.dynamics, DynamicsLexer.read, Lexing.from_string(dynamicsInput));
+  var show_term_pane = Belt_Result.isOk(match$4[1]) && Belt_Result.isOk(match$5[1]) && Belt_Result.isOk(match$6[1]);
   var termResult;
-  var exit$1 = 0;
+  var exit = 0;
   var term;
   try {
     term = TermParser.term(TermLexer.read, Lexing.from_string(termInput));
-    exit$1 = 1;
+    exit = 1;
   }
-  catch (raw_exn$1){
-    var exn$1 = Caml_js_exceptions.internalToOCamlException(raw_exn$1);
-    if (exn$1[0] === LexerUtil.$$SyntaxError) {
-      termResult = /* Error */Block.__(1, [exn$1[1]]);
-    } else if (exn$1 === Parsing.Parse_error || exn$1 === TermParser.$$Error) {
+  catch (raw_exn){
+    var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
+    if (exn[0] === LexerUtil.$$SyntaxError) {
+      termResult = /* Error */Block.__(1, [exn[1]]);
+    } else if (exn === Parsing.Parse_error || exn === TermParser.$$Error) {
       termResult = /* Error */Block.__(1, ["Parse error"]);
     } else {
-      throw exn$1;
+      throw exn;
     }
   }
-  if (exit$1 === 1) {
+  if (exit === 1) {
     termResult = /* Ok */Block.__(0, [term]);
   }
-  var termView;
-  termView = termResult.tag ? React.createElement("div", {
+  var core = Belt_Result.flatMap(termResult, Types.Core[/* from_term */4]);
+  var evalResult = Belt_Result.flatMap(core, Types.Core[/* eval */6]);
+  var evalView;
+  evalView = evalResult.tag ? React.createElement("div", {
           className: "error"
-        }, termResult[0]) : React.createElement(Index$TermViewer, {
-          term: termResult[0]
+        }, evalResult[0]) : React.createElement(Index$CoreValView, {
+          coreVal: evalResult[0]
+        });
+  var replPane = show_term_pane ? React.createElement("div", {
+          className: "repl-pane"
+        }, React.createElement("div", {
+              className: "term-input"
+            }, React.createElement(Index$Repl, {
+                  input: termInput,
+                  setInput: (function (str) {
+                      return Curry._1(setTermInput, (function (param) {
+                                    return str;
+                                  }));
+                    })
+                })), React.createElement("div", {
+              className: "term-view"
+            }, evalView)) : React.createElement("div", {
+          className: "repl-pane disabled"
         });
   return React.createElement("div", {
               className: "lvca-viewer"
@@ -235,7 +391,7 @@ function Index$LvcaViewer(Props) {
                   className: "header"
                 }, "LVCA"), React.createElement("h2", {
                   className: "header2 header2-abstract-syntax"
-                }, "Abstract Syntax ", languageView), React.createElement("div", {
+                }, "Abstract Syntax ", match$4[0]), React.createElement("div", {
                   className: "abstract-syntax-pane"
                 }, React.createElement(ReactCodemirror, {
                       value: asInput,
@@ -249,10 +405,10 @@ function Index$LvcaViewer(Props) {
                       }
                     })), React.createElement("h2", {
                   className: "header2 header2-statics"
-                }, "Statics"), React.createElement("div", {
+                }, "Statics", match$5[0]), React.createElement("div", {
                   className: "statics-pane"
                 }, React.createElement(ReactCodemirror, {
-                      value: match$2[0],
+                      value: staticsInput,
                       onChange: (function (str) {
                           return Curry._1(setStaticsInput, (function (param) {
                                         return str;
@@ -263,10 +419,10 @@ function Index$LvcaViewer(Props) {
                       }
                     })), React.createElement("h2", {
                   className: "header2 header2-dynamics"
-                }, "Dynamics"), React.createElement("div", {
+                }, "Dynamics", match$6[0]), React.createElement("div", {
                   className: "dynamics-pane"
                 }, React.createElement(ReactCodemirror, {
-                      value: match$3[0],
+                      value: dynamicsInput,
                       onChange: (function (str) {
                           return Curry._1(setDynamicsInput, (function (param) {
                                         return str;
@@ -277,18 +433,7 @@ function Index$LvcaViewer(Props) {
                       }
                     })), React.createElement("h2", {
                   className: "header2 header2-repl"
-                }, "repl"), React.createElement("div", {
-                  className: "repl-pane"
-                }, React.createElement(Index$Repl, {
-                      input: termInput,
-                      setInput: (function (str) {
-                          return Curry._1(setTermInput, (function (param) {
-                                        return str;
-                                      }));
-                        })
-                    }), React.createElement("div", {
-                      className: "term-view"
-                    }, termView)));
+                }, "repl"), replPane);
 }
 
 var LvcaViewer = /* module */[/* make */Index$LvcaViewer];
@@ -298,8 +443,12 @@ ReactDOMRe.renderToElementWithId(React.createElement(Index$LvcaViewer, { }), "in
 var _modeImport = /* () */0;
 
 exports._modeImport = _modeImport;
+exports.show_prim = show_prim;
 exports.CodeMirror = CodeMirror;
 exports.Repl = Repl;
+exports.make_span = make_span;
 exports.TermViewer = TermViewer;
+exports.CoreValView = CoreValView;
+exports.ParseStatus = ParseStatus;
 exports.LvcaViewer = LvcaViewer;
 /*  Not a pure module */

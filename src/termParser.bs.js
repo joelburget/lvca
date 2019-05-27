@@ -10,7 +10,7 @@ var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exception
 
 var $$Error = Caml_exceptions.create("TermParser.MenhirBasics.Error");
 
-function _menhir_reduce10(_menhir_env, _menhir_stack) {
+function _menhir_reduce16(_menhir_env, _menhir_stack) {
   var match = _menhir_stack[0];
   var _v_000 = match[2];
   var _v_001 = _menhir_stack[2];
@@ -97,7 +97,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                     Caml_builtin_exceptions.assert_failure,
                     /* tuple */[
                       "termParser.ml",
-                      389,
+                      303,
                       10
                     ]
                   ];
@@ -116,22 +116,22 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                     if (typeof _tok$1 === "number") {
                       switch (_tok$1) {
                         case 0 : 
-                            return _menhir_run4(_menhir_env$2, _menhir_stack$3, /* MenhirState20 */2);
+                            return _menhir_run4(_menhir_env$2, _menhir_stack$3, /* MenhirState19 */2);
                         case 5 : 
-                            return _menhir_run6(_menhir_env$2, _menhir_stack$3, /* MenhirState20 */2);
+                            return _menhir_run6(_menhir_env$2, _menhir_stack$3, /* MenhirState19 */2);
                         case 6 : 
-                            return _menhir_run13(_menhir_env$2, _menhir_stack$3, /* MenhirState20 */2);
+                            return _menhir_run13(_menhir_env$2, _menhir_stack$3, /* MenhirState19 */2);
                         default:
                           exit$3 = 3;
                       }
                     } else {
                       switch (_tok$1.tag | 0) {
                         case 0 : 
-                            return _menhir_run5(_menhir_env$2, _menhir_stack$3, /* MenhirState20 */2, _tok$1[0]);
+                            return _menhir_run5(_menhir_env$2, _menhir_stack$3, /* MenhirState19 */2, _tok$1[0]);
                         case 1 : 
-                            return _menhir_run7(_menhir_env$2, _menhir_stack$3, /* MenhirState20 */2, _tok$1[0]);
+                            return _menhir_run7(_menhir_env$2, _menhir_stack$3, /* MenhirState19 */2, _tok$1[0]);
                         case 2 : 
-                            return _menhir_run11(_menhir_env$2, _menhir_stack$3, /* MenhirState20 */2, _tok$1[0]);
+                            return _menhir_run11(_menhir_env$2, _menhir_stack$3, /* MenhirState19 */2, _tok$1[0]);
                         default:
                           exit$3 = 3;
                       }
@@ -142,13 +142,13 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                               Caml_builtin_exceptions.assert_failure,
                               /* tuple */[
                                 "termParser.ml",
-                                411,
+                                325,
                                 16
                               ]
                             ];
                       }
                       _menhir_env$2[/* _menhir_error */3] = true;
-                      return _menhir_errorcase(_menhir_env$2, _menhir_stack$3, /* MenhirState20 */2);
+                      return _menhir_errorcase(_menhir_env$2, _menhir_stack$3, /* MenhirState19 */2);
                     }
                     break;
                 case 2 : 
@@ -164,45 +164,8 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                       var _v$5 = __v$1;
                       var _menhir_s$2 = __menhir_s$1;
                       var _menhir_stack$4 = __menhir_stack$1;
-                      var _menhir_stack$5 = /* tuple */[
-                        _menhir_stack$4,
-                        _menhir_s$2,
-                        _v$5
-                      ];
+                      var exit$4 = 0;
                       switch (_menhir_s$2) {
-                        case 0 : 
-                            if (_menhir_env$3[/* _menhir_error */3]) {
-                              throw [
-                                    Caml_builtin_exceptions.assert_failure,
-                                    /* tuple */[
-                                      "termParser.ml",
-                                      213,
-                                      10
-                                    ]
-                                  ];
-                            }
-                            var _tok$2 = _menhir_env$3[/* _menhir_token */2];
-                            var exit$4 = 0;
-                            if (typeof _tok$2 === "number" && _tok$2 === 2) {
-                              return _menhir_reduce10(_menhir_env$3, _menhir_stack$5);
-                            } else {
-                              exit$4 = 1;
-                            }
-                            if (exit$4 === 1) {
-                              if (_menhir_env$3[/* _menhir_error */3]) {
-                                throw [
-                                      Caml_builtin_exceptions.assert_failure,
-                                      /* tuple */[
-                                        "termParser.ml",
-                                        229,
-                                        12
-                                      ]
-                                    ];
-                              }
-                              _menhir_env$3[/* _menhir_error */3] = true;
-                              return _menhir_errorcase(_menhir_env$3, _menhir_stack$4, _menhir_s$2);
-                            }
-                            break;
                         case 2 : 
                             var _v_000$1 = _menhir_stack$4[2];
                             var _v$6 = /* :: */[
@@ -213,39 +176,9 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                             __menhir_s$1 = _menhir_stack$4[1];
                             __menhir_stack$1 = _menhir_stack$4[0];
                             continue ;
+                        case 0 : 
                         case 4 : 
-                            if (_menhir_env$3[/* _menhir_error */3]) {
-                              throw [
-                                    Caml_builtin_exceptions.assert_failure,
-                                    /* tuple */[
-                                      "termParser.ml",
-                                      142,
-                                      10
-                                    ]
-                                  ];
-                            }
-                            var _tok$3 = _menhir_env$3[/* _menhir_token */2];
-                            var exit$5 = 0;
-                            if (typeof _tok$3 === "number" && _tok$3 === 2) {
-                              var _menhir_env$4 = _menhir_discard(_menhir_env$3);
-                              return _menhir_reduce10(_menhir_env$4, _menhir_stack$5);
-                            } else {
-                              exit$5 = 1;
-                            }
-                            if (exit$5 === 1) {
-                              if (_menhir_env$3[/* _menhir_error */3]) {
-                                throw [
-                                      Caml_builtin_exceptions.assert_failure,
-                                      /* tuple */[
-                                        "termParser.ml",
-                                        159,
-                                        12
-                                      ]
-                                    ];
-                              }
-                              _menhir_env$3[/* _menhir_error */3] = true;
-                              return _menhir_errorcase(_menhir_env$3, _menhir_stack$4, _menhir_s$2);
-                            }
+                            exit$4 = 1;
                             break;
                         case 1 : 
                         case 3 : 
@@ -255,6 +188,86 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                             return _menhir_fail(/* () */0);
                         
                       }
+                      if (exit$4 === 1) {
+                        var _menhir_stack$5 = /* tuple */[
+                          _menhir_stack$4,
+                          _menhir_s$2,
+                          _v$5
+                        ];
+                        if (_menhir_s$2 !== 4) {
+                          if (_menhir_s$2 !== 0) {
+                            return _menhir_fail(/* () */0);
+                          } else {
+                            if (_menhir_env$3[/* _menhir_error */3]) {
+                              throw [
+                                    Caml_builtin_exceptions.assert_failure,
+                                    /* tuple */[
+                                      "termParser.ml",
+                                      151,
+                                      14
+                                    ]
+                                  ];
+                            }
+                            var _tok$2 = _menhir_env$3[/* _menhir_token */2];
+                            var exit$5 = 0;
+                            if (typeof _tok$2 === "number" && _tok$2 === 2) {
+                              return _menhir_reduce16(_menhir_env$3, _menhir_stack$5);
+                            } else {
+                              exit$5 = 2;
+                            }
+                            if (exit$5 === 2) {
+                              if (_menhir_env$3[/* _menhir_error */3]) {
+                                throw [
+                                      Caml_builtin_exceptions.assert_failure,
+                                      /* tuple */[
+                                        "termParser.ml",
+                                        163,
+                                        16
+                                      ]
+                                    ];
+                              }
+                              _menhir_env$3[/* _menhir_error */3] = true;
+                              return _menhir_errorcase(_menhir_env$3, _menhir_stack$4, _menhir_s$2);
+                            }
+                            
+                          }
+                        } else {
+                          if (_menhir_env$3[/* _menhir_error */3]) {
+                            throw [
+                                  Caml_builtin_exceptions.assert_failure,
+                                  /* tuple */[
+                                    "termParser.ml",
+                                    121,
+                                    14
+                                  ]
+                                ];
+                          }
+                          var _tok$3 = _menhir_env$3[/* _menhir_token */2];
+                          var exit$6 = 0;
+                          if (typeof _tok$3 === "number" && _tok$3 === 2) {
+                            var _menhir_env$4 = _menhir_discard(_menhir_env$3);
+                            return _menhir_reduce16(_menhir_env$4, _menhir_stack$5);
+                          } else {
+                            exit$6 = 2;
+                          }
+                          if (exit$6 === 2) {
+                            if (_menhir_env$3[/* _menhir_error */3]) {
+                              throw [
+                                    Caml_builtin_exceptions.assert_failure,
+                                    /* tuple */[
+                                      "termParser.ml",
+                                      134,
+                                      16
+                                    ]
+                                  ];
+                            }
+                            _menhir_env$3[/* _menhir_error */3] = true;
+                            return _menhir_errorcase(_menhir_env$3, _menhir_stack$4, _menhir_s$2);
+                          }
+                          
+                        }
+                      }
+                      
                     };
                 
               }
@@ -267,7 +280,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                       Caml_builtin_exceptions.assert_failure,
                       /* tuple */[
                         "termParser.ml",
-                        429,
+                        339,
                         12
                       ]
                     ];
@@ -285,59 +298,59 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                 Caml_builtin_exceptions.assert_failure,
                 /* tuple */[
                   "termParser.ml",
-                  498,
+                  450,
                   10
                 ]
               ];
         }
         var _tok$4 = _menhir_env[/* _menhir_token */2];
-        var exit$6 = 0;
+        var exit$7 = 0;
         if (typeof _tok$4 === "number") {
           switch (_tok$4) {
             case 1 : 
                 var _menhir_env$5 = _menhir_discard(_menhir_env);
                 var _tok$5 = _menhir_env$5[/* _menhir_token */2];
-                var exit$7 = 0;
+                var exit$8 = 0;
                 if (typeof _tok$5 === "number") {
                   switch (_tok$5) {
                     case 0 : 
-                        return _menhir_run4(_menhir_env$5, _menhir_stack$1, /* MenhirState25 */1);
+                        return _menhir_run4(_menhir_env$5, _menhir_stack$1, /* MenhirState24 */1);
                     case 5 : 
-                        return _menhir_run6(_menhir_env$5, _menhir_stack$1, /* MenhirState25 */1);
+                        return _menhir_run6(_menhir_env$5, _menhir_stack$1, /* MenhirState24 */1);
                     case 6 : 
-                        return _menhir_run13(_menhir_env$5, _menhir_stack$1, /* MenhirState25 */1);
+                        return _menhir_run13(_menhir_env$5, _menhir_stack$1, /* MenhirState24 */1);
                     default:
-                      exit$7 = 4;
+                      exit$8 = 4;
                   }
                 } else {
                   switch (_tok$5.tag | 0) {
                     case 0 : 
-                        return _menhir_run5(_menhir_env$5, _menhir_stack$1, /* MenhirState25 */1, _tok$5[0]);
+                        return _menhir_run5(_menhir_env$5, _menhir_stack$1, /* MenhirState24 */1, _tok$5[0]);
                     case 1 : 
-                        return _menhir_run7(_menhir_env$5, _menhir_stack$1, /* MenhirState25 */1, _tok$5[0]);
+                        return _menhir_run7(_menhir_env$5, _menhir_stack$1, /* MenhirState24 */1, _tok$5[0]);
                     case 2 : 
-                        return _menhir_run8(_menhir_env$5, _menhir_stack$1, /* MenhirState25 */1, _tok$5[0]);
+                        return _menhir_run8(_menhir_env$5, _menhir_stack$1, /* MenhirState24 */1, _tok$5[0]);
                     default:
-                      exit$7 = 4;
+                      exit$8 = 4;
                   }
                 }
-                if (exit$7 === 4) {
+                if (exit$8 === 4) {
                   if (_menhir_env$5[/* _menhir_error */3]) {
                     throw [
                           Caml_builtin_exceptions.assert_failure,
                           /* tuple */[
                             "termParser.ml",
-                            524,
+                            476,
                             16
                           ]
                         ];
                   }
                   _menhir_env$5[/* _menhir_error */3] = true;
-                  return _menhir_errorcase(_menhir_env$5, _menhir_stack$1, /* MenhirState25 */1);
+                  return _menhir_errorcase(_menhir_env$5, _menhir_stack$1, /* MenhirState24 */1);
                 }
                 break;
             case 2 : 
-                exit$6 = 3;
+                exit$7 = 3;
                 break;
             case 3 : 
                 var _v$7 = /* :: */[
@@ -352,11 +365,6 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                   var _v$8 = __v$2;
                   var _menhir_s$3 = __menhir_s$2;
                   var _menhir_stack$6 = __menhir_stack$2;
-                  var _menhir_stack$7 = /* tuple */[
-                    _menhir_stack$6,
-                    _menhir_s$3,
-                    _v$8
-                  ];
                   switch (_menhir_s$3) {
                     case 1 : 
                         var _v_000$2 = _menhir_stack$6[2];
@@ -369,72 +377,8 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                         __menhir_stack$2 = _menhir_stack$6[0];
                         continue ;
                     case 5 : 
-                        if (_menhir_env$6[/* _menhir_error */3]) {
-                          throw [
-                                Caml_builtin_exceptions.assert_failure,
-                                /* tuple */[
-                                  "termParser.ml",
-                                  261,
-                                  10
-                                ]
-                              ];
-                        }
-                        var _tok$6 = _menhir_env$6[/* _menhir_token */2];
-                        var exit$8 = 0;
-                        if (typeof _tok$6 === "number" && _tok$6 === 3) {
-                          var _menhir_env$7 = _menhir_discard(_menhir_env$6);
-                          return _menhir_reduce12(_menhir_env$7, _menhir_stack$7);
-                        } else {
-                          exit$8 = 1;
-                        }
-                        if (exit$8 === 1) {
-                          if (_menhir_env$6[/* _menhir_error */3]) {
-                            throw [
-                                  Caml_builtin_exceptions.assert_failure,
-                                  /* tuple */[
-                                    "termParser.ml",
-                                    274,
-                                    12
-                                  ]
-                                ];
-                          }
-                          _menhir_env$6[/* _menhir_error */3] = true;
-                          return _menhir_errorcase(_menhir_env$6, _menhir_stack$6, _menhir_s$3);
-                        }
-                        break;
                     case 6 : 
-                        if (_menhir_env$6[/* _menhir_error */3]) {
-                          throw [
-                                Caml_builtin_exceptions.assert_failure,
-                                /* tuple */[
-                                  "termParser.ml",
-                                  332,
-                                  10
-                                ]
-                              ];
-                        }
-                        var _tok$7 = _menhir_env$6[/* _menhir_token */2];
-                        var exit$9 = 0;
-                        if (typeof _tok$7 === "number" && _tok$7 === 3) {
-                          return _menhir_reduce12(_menhir_env$6, _menhir_stack$7);
-                        } else {
-                          exit$9 = 1;
-                        }
-                        if (exit$9 === 1) {
-                          if (_menhir_env$6[/* _menhir_error */3]) {
-                            throw [
-                                  Caml_builtin_exceptions.assert_failure,
-                                  /* tuple */[
-                                    "termParser.ml",
-                                    344,
-                                    12
-                                  ]
-                                ];
-                          }
-                          _menhir_env$6[/* _menhir_error */3] = true;
-                          return _menhir_errorcase(_menhir_env$6, _menhir_stack$6, _menhir_s$3);
-                        }
-                        break;
+                        return _menhir_goto_loption_separated_nonempty_list_SEMICOLON_term__(_menhir_env$6, _menhir_stack$6, _menhir_s$3, _v$8);
                     case 0 : 
                     case 2 : 
                     case 3 : 
@@ -445,18 +389,18 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                   }
                 };
             default:
-              exit$6 = 3;
+              exit$7 = 3;
           }
         } else {
-          exit$6 = 3;
+          exit$7 = 3;
         }
-        if (exit$6 === 3) {
+        if (exit$7 === 3) {
           if (_menhir_env[/* _menhir_error */3]) {
             throw [
                   Caml_builtin_exceptions.assert_failure,
                   /* tuple */[
                     "termParser.ml",
-                    550,
+                    498,
                     12
                   ]
                 ];
@@ -469,79 +413,13 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
   }
 }
 
-function _menhir_run6(__menhir_env, __menhir_stack, __menhir_s) {
-  while(true) {
-    var _menhir_s = __menhir_s;
-    var _menhir_stack = __menhir_stack;
-    var _menhir_env = __menhir_env;
-    var _menhir_stack$1 = /* tuple */[
-      _menhir_stack,
-      _menhir_s
-    ];
-    var _menhir_env$1 = _menhir_discard(_menhir_env);
-    var _tok = _menhir_env$1[/* _menhir_token */2];
-    var exit = 0;
-    if (typeof _tok === "number") {
-      switch (_tok) {
-        case 0 : 
-            return _menhir_run4(_menhir_env$1, _menhir_stack$1, /* MenhirState6 */5);
-        case 5 : 
-            __menhir_s = /* MenhirState6 */5;
-            __menhir_stack = _menhir_stack$1;
-            __menhir_env = _menhir_env$1;
-            continue ;
-        case 6 : 
-            return _menhir_run13(_menhir_env$1, _menhir_stack$1, /* MenhirState6 */5);
-        default:
-          exit = 1;
-      }
-    } else {
-      switch (_tok.tag | 0) {
-        case 0 : 
-            return _menhir_run5(_menhir_env$1, _menhir_stack$1, /* MenhirState6 */5, _tok[0]);
-        case 1 : 
-            return _menhir_run7(_menhir_env$1, _menhir_stack$1, /* MenhirState6 */5, _tok[0]);
-        case 2 : 
-            return _menhir_run8(_menhir_env$1, _menhir_stack$1, /* MenhirState6 */5, _tok[0]);
-        default:
-          exit = 1;
-      }
-    }
-    if (exit === 1) {
-      if (_menhir_env$1[/* _menhir_error */3]) {
-        throw [
-              Caml_builtin_exceptions.assert_failure,
-              /* tuple */[
-                "termParser.ml",
-                864,
-                8
-              ]
-            ];
-      }
-      _menhir_env$1[/* _menhir_error */3] = true;
-      return _menhir_errorcase(_menhir_env$1, _menhir_stack$1, /* MenhirState6 */5);
-    }
-    
-  };
-}
-
-function _menhir_run7(_menhir_env, _menhir_stack, _menhir_s, _v) {
-  var _menhir_env$1 = _menhir_discard(_menhir_env);
-  return _menhir_reduce1(_menhir_env$1, _menhir_stack, _menhir_s, _v);
-}
-
-function _menhir_errorcase(_menhir_env, __menhir_stack, __menhir_s) {
-  while(true) {
-    var _menhir_s = __menhir_s;
-    var _menhir_stack = __menhir_stack;
-    if (_menhir_s >= 7) {
-      throw $$Error;
-    } else {
-      __menhir_s = _menhir_stack[1];
-      __menhir_stack = _menhir_stack[0];
-      continue ;
-    }
-  };
+function _menhir_goto_primitive(_menhir_env, _menhir_stack, _menhir_s, _v) {
+  var _menhir_env$1 = _menhir_env;
+  var _menhir_stack$1 = _menhir_stack;
+  var _menhir_s$1 = _menhir_s;
+  var _1 = _v;
+  var _v$1 = /* Primitive */Block.__(3, [_1]);
+  return _menhir_goto_term(_menhir_env$1, _menhir_stack$1, _menhir_s$1, _v$1);
 }
 
 function _menhir_run11(__menhir_env, __menhir_stack, __menhir_s, __v) {
@@ -562,7 +440,7 @@ function _menhir_run11(__menhir_env, __menhir_stack, __menhir_s, __v) {
       switch (_tok) {
         case 1 : 
         case 2 : 
-            return _menhir_reduce11(_menhir_env$1, _menhir_stack$1);
+            return _menhir_reduce17(_menhir_env$1, _menhir_stack$1);
         case 4 : 
             return _menhir_run9(_menhir_env$1, _menhir_stack$1);
         case 8 : 
@@ -602,7 +480,7 @@ function _menhir_run11(__menhir_env, __menhir_stack, __menhir_s, __v) {
                       Caml_builtin_exceptions.assert_failure,
                       /* tuple */[
                         "termParser.ml",
-                        910,
+                        869,
                         12
                       ]
                     ];
@@ -630,7 +508,7 @@ function _menhir_run11(__menhir_env, __menhir_stack, __menhir_s, __v) {
               Caml_builtin_exceptions.assert_failure,
               /* tuple */[
                 "termParser.ml",
-                918,
+                877,
                 8
               ]
             ];
@@ -642,79 +520,28 @@ function _menhir_run11(__menhir_env, __menhir_stack, __menhir_s, __v) {
   };
 }
 
-function _menhir_reduce2(_menhir_env, _menhir_stack, _menhir_s, _1) {
-  var _v = /* PrimString */Block.__(1, [_1]);
-  return _menhir_goto_primitive(_menhir_env, _menhir_stack, _menhir_s, _v);
-}
-
-function _menhir_reduce4(_menhir_env, _menhir_stack, _menhir_s) {
-  return _menhir_goto_primitive(_menhir_env, _menhir_stack, _menhir_s, /* PrimBool */Block.__(2, [false]));
-}
-
-function _menhir_run5(_menhir_env, _menhir_stack, _menhir_s, _v) {
+function _menhir_run4(_menhir_env, _menhir_stack, _menhir_s) {
   var _menhir_env$1 = _menhir_discard(_menhir_env);
-  return _menhir_reduce2(_menhir_env$1, _menhir_stack, _menhir_s, _v);
+  return _menhir_reduce7(_menhir_env$1, _menhir_stack, _menhir_s);
+}
+
+function _menhir_errorcase(_menhir_env, __menhir_stack, __menhir_s) {
+  while(true) {
+    var _menhir_s = __menhir_s;
+    var _menhir_stack = __menhir_stack;
+    if (_menhir_s >= 7) {
+      throw $$Error;
+    } else {
+      __menhir_s = _menhir_stack[1];
+      __menhir_stack = _menhir_stack[0];
+      continue ;
+    }
+  };
 }
 
 function _menhir_run13(_menhir_env, _menhir_stack, _menhir_s) {
   var _menhir_env$1 = _menhir_discard(_menhir_env);
-  return _menhir_reduce4(_menhir_env$1, _menhir_stack, _menhir_s);
-}
-
-function _menhir_run8(_menhir_env, _menhir_stack, _menhir_s, _v) {
-  var _menhir_stack$1 = /* tuple */[
-    _menhir_stack,
-    _menhir_s,
-    _v
-  ];
-  var _menhir_env$1 = _menhir_discard(_menhir_env);
-  var _tok = _menhir_env$1[/* _menhir_token */2];
-  var exit = 0;
-  if (typeof _tok === "number") {
-    switch (_tok) {
-      case 1 : 
-      case 3 : 
-          return _menhir_reduce11(_menhir_env$1, _menhir_stack$1);
-      case 4 : 
-          return _menhir_run9(_menhir_env$1, _menhir_stack$1);
-      case 0 : 
-      case 2 : 
-      case 5 : 
-      case 6 : 
-      case 7 : 
-      case 8 : 
-      case 9 : 
-          exit = 1;
-          break;
-      
-    }
-  } else {
-    exit = 1;
-  }
-  if (exit === 1) {
-    if (_menhir_env$1[/* _menhir_error */3]) {
-      throw [
-            Caml_builtin_exceptions.assert_failure,
-            /* tuple */[
-              "termParser.ml",
-              716,
-              8
-            ]
-          ];
-    }
-    _menhir_env$1[/* _menhir_error */3] = true;
-    return _menhir_errorcase(_menhir_env$1, _menhir_stack, _menhir_s);
-  }
-  
-}
-
-function _menhir_reduce1(_menhir_env, _menhir_stack, _menhir_s, _1) {
-  var _v = /* PrimInteger */Block.__(0, [_1]);
-  return _menhir_goto_primitive(_menhir_env, _menhir_stack, _menhir_s, _v);
-}
-
-function _menhir_reduce3(_menhir_env, _menhir_stack, _menhir_s) {
-  return _menhir_goto_primitive(_menhir_env, _menhir_stack, _menhir_s, /* PrimBool */Block.__(2, [true]));
+  return _menhir_reduce8(_menhir_env$1, _menhir_stack, _menhir_s);
 }
 
 function _menhir_discard(_menhir_env) {
@@ -729,18 +556,72 @@ function _menhir_discard(_menhir_env) {
         ];
 }
 
-function _menhir_run4(_menhir_env, _menhir_stack, _menhir_s) {
+function _menhir_run7(_menhir_env, _menhir_stack, _menhir_s, _v) {
   var _menhir_env$1 = _menhir_discard(_menhir_env);
-  return _menhir_reduce3(_menhir_env$1, _menhir_stack, _menhir_s);
+  return _menhir_reduce5(_menhir_env$1, _menhir_stack, _menhir_s, _v);
 }
 
-function _menhir_reduce9(_menhir_env, _menhir_stack, param) {
-  var _v_000 = _menhir_stack[2];
-  var _v = /* Term */Block.__(0, [
-      _v_000,
-      /* [] */0
-    ]);
-  return _menhir_goto_term(_menhir_env, _menhir_stack[0], _menhir_stack[1], _v);
+function _menhir_run6(__menhir_env, __menhir_stack, __menhir_s) {
+  while(true) {
+    var _menhir_s = __menhir_s;
+    var _menhir_stack = __menhir_stack;
+    var _menhir_env = __menhir_env;
+    var _menhir_stack$1 = /* tuple */[
+      _menhir_stack,
+      _menhir_s
+    ];
+    var _menhir_env$1 = _menhir_discard(_menhir_env);
+    var _tok = _menhir_env$1[/* _menhir_token */2];
+    var exit = 0;
+    if (typeof _tok === "number") {
+      switch (_tok) {
+        case 0 : 
+            return _menhir_run4(_menhir_env$1, _menhir_stack$1, /* MenhirState6 */5);
+        case 3 : 
+            return _menhir_reduce3(_menhir_env$1, _menhir_stack$1, /* MenhirState6 */5);
+        case 5 : 
+            __menhir_s = /* MenhirState6 */5;
+            __menhir_stack = _menhir_stack$1;
+            __menhir_env = _menhir_env$1;
+            continue ;
+        case 6 : 
+            return _menhir_run13(_menhir_env$1, _menhir_stack$1, /* MenhirState6 */5);
+        default:
+          exit = 1;
+      }
+    } else {
+      switch (_tok.tag | 0) {
+        case 0 : 
+            return _menhir_run5(_menhir_env$1, _menhir_stack$1, /* MenhirState6 */5, _tok[0]);
+        case 1 : 
+            return _menhir_run7(_menhir_env$1, _menhir_stack$1, /* MenhirState6 */5, _tok[0]);
+        case 2 : 
+            return _menhir_run8(_menhir_env$1, _menhir_stack$1, /* MenhirState6 */5, _tok[0]);
+        default:
+          exit = 1;
+      }
+    }
+    if (exit === 1) {
+      if (_menhir_env$1[/* _menhir_error */3]) {
+        throw [
+              Caml_builtin_exceptions.assert_failure,
+              /* tuple */[
+                "termParser.ml",
+                823,
+                8
+              ]
+            ];
+      }
+      _menhir_env$1[/* _menhir_error */3] = true;
+      return _menhir_errorcase(_menhir_env$1, _menhir_stack$1, /* MenhirState6 */5);
+    }
+    
+  };
+}
+
+function _menhir_run5(_menhir_env, _menhir_stack, _menhir_s, _v) {
+  var _menhir_env$1 = _menhir_discard(_menhir_env);
+  return _menhir_reduce6(_menhir_env$1, _menhir_stack, _menhir_s, _v);
 }
 
 function _menhir_fail(param) {
@@ -755,19 +636,19 @@ function _menhir_fail(param) {
         Caml_builtin_exceptions.assert_failure,
         /* tuple */[
           "termParser.ml",
-          121,
+          198,
           4
         ]
       ];
 }
 
-function _menhir_goto_primitive(_menhir_env, _menhir_stack, _menhir_s, _v) {
-  var _menhir_env$1 = _menhir_env;
-  var _menhir_stack$1 = _menhir_stack;
-  var _menhir_s$1 = _menhir_s;
-  var _1 = _v;
-  var _v$1 = /* Primitive */Block.__(3, [_1]);
-  return _menhir_goto_term(_menhir_env$1, _menhir_stack$1, _menhir_s$1, _v$1);
+function _menhir_reduce6(_menhir_env, _menhir_stack, _menhir_s, _1) {
+  var _v = /* PrimString */Block.__(1, [_1]);
+  return _menhir_goto_primitive(_menhir_env, _menhir_stack, _menhir_s, _v);
+}
+
+function _menhir_reduce7(_menhir_env, _menhir_stack, _menhir_s) {
+  return _menhir_goto_primitive(_menhir_env, _menhir_stack, _menhir_s, /* PrimBool */Block.__(2, [true]));
 }
 
 function _menhir_run9(_menhir_env, _menhir_stack) {
@@ -780,7 +661,7 @@ function _menhir_run9(_menhir_env, _menhir_stack) {
           return _menhir_run4(_menhir_env$1, _menhir_stack, /* MenhirState9 */4);
       case 2 : 
           var _menhir_env$2 = _menhir_discard(_menhir_env$1);
-          return _menhir_reduce9(_menhir_env$2, _menhir_stack, /* MenhirState9 */4);
+          return _menhir_reduce15(_menhir_env$2, _menhir_stack, /* MenhirState9 */4);
       case 5 : 
           return _menhir_run6(_menhir_env$1, _menhir_stack, /* MenhirState9 */4);
       case 6 : 
@@ -806,7 +687,7 @@ function _menhir_run9(_menhir_env, _menhir_stack) {
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "termParser.ml",
-              634,
+              582,
               8
             ]
           ];
@@ -817,12 +698,165 @@ function _menhir_run9(_menhir_env, _menhir_stack) {
   
 }
 
-function _menhir_reduce11(_menhir_env, _menhir_stack) {
+function _menhir_reduce17(_menhir_env, _menhir_stack) {
   var _v = /* Var */Block.__(1, [_menhir_stack[2]]);
   return _menhir_goto_term(_menhir_env, _menhir_stack[0], _menhir_stack[1], _v);
 }
 
-function _menhir_reduce12(_menhir_env, _menhir_stack) {
+function _menhir_reduce5(_menhir_env, _menhir_stack, _menhir_s, _1) {
+  var _v = /* PrimInteger */Block.__(0, [_1]);
+  return _menhir_goto_primitive(_menhir_env, _menhir_stack, _menhir_s, _v);
+}
+
+function _menhir_run8(_menhir_env, _menhir_stack, _menhir_s, _v) {
+  var _menhir_stack$1 = /* tuple */[
+    _menhir_stack,
+    _menhir_s,
+    _v
+  ];
+  var _menhir_env$1 = _menhir_discard(_menhir_env);
+  var _tok = _menhir_env$1[/* _menhir_token */2];
+  var exit = 0;
+  if (typeof _tok === "number") {
+    switch (_tok) {
+      case 1 : 
+      case 3 : 
+          return _menhir_reduce17(_menhir_env$1, _menhir_stack$1);
+      case 4 : 
+          return _menhir_run9(_menhir_env$1, _menhir_stack$1);
+      case 0 : 
+      case 2 : 
+      case 5 : 
+      case 6 : 
+      case 7 : 
+      case 8 : 
+      case 9 : 
+          exit = 1;
+          break;
+      
+    }
+  } else {
+    exit = 1;
+  }
+  if (exit === 1) {
+    if (_menhir_env$1[/* _menhir_error */3]) {
+      throw [
+            Caml_builtin_exceptions.assert_failure,
+            /* tuple */[
+              "termParser.ml",
+              673,
+              8
+            ]
+          ];
+    }
+    _menhir_env$1[/* _menhir_error */3] = true;
+    return _menhir_errorcase(_menhir_env$1, _menhir_stack, _menhir_s);
+  }
+  
+}
+
+function _menhir_reduce15(_menhir_env, _menhir_stack, param) {
+  var _v_000 = _menhir_stack[2];
+  var _v = /* Term */Block.__(0, [
+      _v_000,
+      /* [] */0
+    ]);
+  return _menhir_goto_term(_menhir_env, _menhir_stack[0], _menhir_stack[1], _v);
+}
+
+function _menhir_reduce3(_menhir_env, _menhir_stack, _menhir_s) {
+  return _menhir_goto_loption_separated_nonempty_list_SEMICOLON_term__(_menhir_env, _menhir_stack, _menhir_s, /* [] */0);
+}
+
+function _menhir_reduce8(_menhir_env, _menhir_stack, _menhir_s) {
+  return _menhir_goto_primitive(_menhir_env, _menhir_stack, _menhir_s, /* PrimBool */Block.__(2, [false]));
+}
+
+function _menhir_goto_loption_separated_nonempty_list_SEMICOLON_term__(_menhir_env, _menhir_stack, _menhir_s, _v) {
+  var _menhir_stack$1 = /* tuple */[
+    _menhir_stack,
+    _menhir_s,
+    _v
+  ];
+  if (_menhir_s >= 5) {
+    switch (_menhir_s - 5 | 0) {
+      case 0 : 
+          if (_menhir_env[/* _menhir_error */3]) {
+            throw [
+                  Caml_builtin_exceptions.assert_failure,
+                  /* tuple */[
+                    "termParser.ml",
+                    376,
+                    10
+                  ]
+                ];
+          }
+          var _tok = _menhir_env[/* _menhir_token */2];
+          var exit = 0;
+          if (typeof _tok === "number" && _tok === 3) {
+            var _menhir_env$1 = _menhir_discard(_menhir_env);
+            return _menhir_reduce18(_menhir_env$1, _menhir_stack$1);
+          } else {
+            exit = 1;
+          }
+          if (exit === 1) {
+            if (_menhir_env[/* _menhir_error */3]) {
+              throw [
+                    Caml_builtin_exceptions.assert_failure,
+                    /* tuple */[
+                      "termParser.ml",
+                      385,
+                      12
+                    ]
+                  ];
+            }
+            _menhir_env[/* _menhir_error */3] = true;
+            return _menhir_errorcase(_menhir_env, _menhir_stack, _menhir_s);
+          }
+          break;
+      case 1 : 
+          if (_menhir_env[/* _menhir_error */3]) {
+            throw [
+                  Caml_builtin_exceptions.assert_failure,
+                  /* tuple */[
+                    "termParser.ml",
+                    394,
+                    10
+                  ]
+                ];
+          }
+          var _tok$1 = _menhir_env[/* _menhir_token */2];
+          var exit$1 = 0;
+          if (typeof _tok$1 === "number" && _tok$1 === 3) {
+            return _menhir_reduce18(_menhir_env, _menhir_stack$1);
+          } else {
+            exit$1 = 1;
+          }
+          if (exit$1 === 1) {
+            if (_menhir_env[/* _menhir_error */3]) {
+              throw [
+                    Caml_builtin_exceptions.assert_failure,
+                    /* tuple */[
+                      "termParser.ml",
+                      402,
+                      12
+                    ]
+                  ];
+            }
+            _menhir_env[/* _menhir_error */3] = true;
+            return _menhir_errorcase(_menhir_env, _menhir_stack, _menhir_s);
+          }
+          break;
+      case 2 : 
+          return _menhir_fail(/* () */0);
+      
+    }
+  } else {
+    return _menhir_fail(/* () */0);
+  }
+}
+
+function _menhir_reduce18(_menhir_env, _menhir_stack) {
   var match = _menhir_stack[0];
   var _v = /* Sequence */Block.__(2, [_menhir_stack[2]]);
   return _menhir_goto_term(_menhir_env, match[0], match[1], _v);
@@ -846,7 +880,7 @@ function term(lexer, lexbuf) {
   if (typeof _tok === "number") {
     switch (_tok) {
       case 0 : 
-          return _menhir_reduce3(_menhir_env$1, _menhir_stack, /* MenhirState0 */7);
+          return _menhir_reduce7(_menhir_env$1, _menhir_stack, /* MenhirState0 */7);
       case 5 : 
           var _menhir_stack$1 = /* tuple */[
             _menhir_stack,
@@ -859,6 +893,8 @@ function term(lexer, lexbuf) {
             switch (_tok$1) {
               case 0 : 
                   return _menhir_run4(_menhir_env$2, _menhir_stack$1, /* MenhirState3 */6);
+              case 3 : 
+                  return _menhir_reduce3(_menhir_env$2, _menhir_stack$1, /* MenhirState3 */6);
               case 5 : 
                   return _menhir_run6(_menhir_env$2, _menhir_stack$1, /* MenhirState3 */6);
               case 6 : 
@@ -884,7 +920,7 @@ function term(lexer, lexbuf) {
                     Caml_builtin_exceptions.assert_failure,
                     /* tuple */[
                       "termParser.ml",
-                      1077,
+                      1038,
                       12
                     ]
                   ];
@@ -894,16 +930,16 @@ function term(lexer, lexbuf) {
           }
           break;
       case 6 : 
-          return _menhir_reduce4(_menhir_env$1, _menhir_stack, /* MenhirState0 */7);
+          return _menhir_reduce8(_menhir_env$1, _menhir_stack, /* MenhirState0 */7);
       default:
         exit = 1;
     }
   } else {
     switch (_tok.tag | 0) {
       case 0 : 
-          return _menhir_reduce2(_menhir_env$1, _menhir_stack, /* MenhirState0 */7, _tok[0]);
+          return _menhir_reduce6(_menhir_env$1, _menhir_stack, /* MenhirState0 */7, _tok[0]);
       case 1 : 
-          return _menhir_reduce1(_menhir_env$1, _menhir_stack, /* MenhirState0 */7, _tok[0]);
+          return _menhir_reduce5(_menhir_env$1, _menhir_stack, /* MenhirState0 */7, _tok[0]);
       case 2 : 
           var _menhir_stack_002 = _tok[0];
           var _menhir_stack$2 = /* tuple */[
@@ -921,24 +957,24 @@ function term(lexer, lexbuf) {
             if (typeof _tok$3 === "number") {
               switch (_tok$3) {
                 case 0 : 
-                    return _menhir_run4(_menhir_env$4, _menhir_stack$2, /* MenhirState31 */0);
+                    return _menhir_run4(_menhir_env$4, _menhir_stack$2, /* MenhirState33 */0);
                 case 2 : 
-                    return _menhir_reduce9(_menhir_env$4, _menhir_stack$2, /* MenhirState31 */0);
+                    return _menhir_reduce15(_menhir_env$4, _menhir_stack$2, /* MenhirState33 */0);
                 case 5 : 
-                    return _menhir_run6(_menhir_env$4, _menhir_stack$2, /* MenhirState31 */0);
+                    return _menhir_run6(_menhir_env$4, _menhir_stack$2, /* MenhirState33 */0);
                 case 6 : 
-                    return _menhir_run13(_menhir_env$4, _menhir_stack$2, /* MenhirState31 */0);
+                    return _menhir_run13(_menhir_env$4, _menhir_stack$2, /* MenhirState33 */0);
                 default:
                   exit$3 = 3;
               }
             } else {
               switch (_tok$3.tag | 0) {
                 case 0 : 
-                    return _menhir_run5(_menhir_env$4, _menhir_stack$2, /* MenhirState31 */0, _tok$3[0]);
+                    return _menhir_run5(_menhir_env$4, _menhir_stack$2, /* MenhirState33 */0, _tok$3[0]);
                 case 1 : 
-                    return _menhir_run7(_menhir_env$4, _menhir_stack$2, /* MenhirState31 */0, _tok$3[0]);
+                    return _menhir_run7(_menhir_env$4, _menhir_stack$2, /* MenhirState33 */0, _tok$3[0]);
                 case 2 : 
-                    return _menhir_run11(_menhir_env$4, _menhir_stack$2, /* MenhirState31 */0, _tok$3[0]);
+                    return _menhir_run11(_menhir_env$4, _menhir_stack$2, /* MenhirState33 */0, _tok$3[0]);
                 default:
                   exit$3 = 3;
               }
@@ -949,13 +985,13 @@ function term(lexer, lexbuf) {
                       Caml_builtin_exceptions.assert_failure,
                       /* tuple */[
                         "termParser.ml",
-                        1032,
+                        991,
                         16
                       ]
                     ];
               }
               _menhir_env$4[/* _menhir_error */3] = true;
-              return _menhir_errorcase(_menhir_env$4, _menhir_stack$2, /* MenhirState31 */0);
+              return _menhir_errorcase(_menhir_env$4, _menhir_stack$2, /* MenhirState33 */0);
             }
             
           } else {
@@ -967,7 +1003,7 @@ function term(lexer, lexbuf) {
                     Caml_builtin_exceptions.assert_failure,
                     /* tuple */[
                       "termParser.ml",
-                      1036,
+                      995,
                       12
                     ]
                   ];
@@ -986,7 +1022,7 @@ function term(lexer, lexbuf) {
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "termParser.ml",
-              1096,
+              1057,
               8
             ]
           ];

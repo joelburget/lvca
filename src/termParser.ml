@@ -50,307 +50,221 @@ type _menhir_env = {
 }
 
 and _menhir_state = 
-  | MenhirState31
-  | MenhirState25
-  | MenhirState20
+  | MenhirState33
+  | MenhirState24
+  | MenhirState19
   | MenhirState12
   | MenhirState9
   | MenhirState6
   | MenhirState3
   | MenhirState0
 
-let rec _menhir_reduce10 : _menhir_env -> (('ttv_tail * _menhir_state * (
+let rec _menhir_reduce16 : _menhir_env -> (('ttv_tail * _menhir_state * (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
 # 66 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-))) * _menhir_state * (
-# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.scope list)
-# 70 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-) -> 'ttv_return =
+))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_scope__ -> 'ttv_return =
   fun _menhir_env _menhir_stack ->
     let ((_menhir_stack, _menhir_s, (_1 : (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 76 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-    ))), _, (_3 : (
-# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.scope list)
-# 80 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-    ))) = _menhir_stack in
+# 72 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+    ))), _, (xs : 'tv_loption_separated_nonempty_list_SEMICOLON_scope__)) = _menhir_stack in
     let _4 = () in
     let _2 = () in
     let _v : (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 87 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-    ) = 
+# 79 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+    ) = let _3 = 
+# 232 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+    ( xs )
+# 83 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+     in
+    
 # 25 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-                                          ( Term (_1, _3) )
-# 91 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+  ( Term (_1, _3) )
+# 88 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
      in
     _menhir_goto_term _menhir_env _menhir_stack _menhir_s _v
 
-and _menhir_reduce12 : _menhir_env -> ('ttv_tail * _menhir_state) * _menhir_state * (
-# 19 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.term list)
-# 98 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-) -> 'ttv_return =
-  fun _menhir_env _menhir_stack ->
-    let ((_menhir_stack, _menhir_s), _, (_2 : (
-# 19 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.term list)
-# 104 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-    ))) = _menhir_stack in
-    let _3 = () in
-    let _1 = () in
-    let _v : (
-# 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.term)
-# 111 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-    ) = 
-# 27 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-                                          ( Sequence _2   )
-# 115 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-     in
-    _menhir_goto_term _menhir_env _menhir_stack _menhir_s _v
+and _menhir_goto_separated_nonempty_list_SEMICOLON_scope_ : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_separated_nonempty_list_SEMICOLON_scope_ -> 'ttv_return =
+  fun _menhir_env _menhir_stack _menhir_s _v ->
+    match _menhir_s with
+    | MenhirState33 | MenhirState9 ->
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : 'freshtv113) = Obj.magic _menhir_stack in
+        let (_menhir_s : _menhir_state) = _menhir_s in
+        let (_v : 'tv_separated_nonempty_list_SEMICOLON_scope_) = _v in
+        ((let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : 'freshtv111) = Obj.magic _menhir_stack in
+        let (_menhir_s : _menhir_state) = _menhir_s in
+        let ((x : 'tv_separated_nonempty_list_SEMICOLON_scope_) : 'tv_separated_nonempty_list_SEMICOLON_scope_) = _v in
+        ((let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_scope__ = 
+# 144 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+    ( x )
+# 107 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+         in
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : 'freshtv109) = _menhir_stack in
+        let (_menhir_s : _menhir_state) = _menhir_s in
+        let (_v : 'tv_loption_separated_nonempty_list_SEMICOLON_scope__) = _v in
+        ((let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
+        match _menhir_s with
+        | MenhirState9 ->
+            let (_menhir_env : _menhir_env) = _menhir_env in
+            let (_menhir_stack : (('freshtv101 * _menhir_state * (
+# 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+       (string)
+# 120 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+            ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_scope__) = Obj.magic _menhir_stack in
+            ((assert (not _menhir_env._menhir_error);
+            let _tok = _menhir_env._menhir_token in
+            match _tok with
+            | RIGHT_PAREN ->
+                let (_menhir_env : _menhir_env) = _menhir_env in
+                let (_menhir_stack : (('freshtv97 * _menhir_state * (
+# 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+       (string)
+# 130 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+                ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_scope__) = Obj.magic _menhir_stack in
+                ((let _menhir_env = _menhir_discard _menhir_env in
+                _menhir_reduce16 _menhir_env (Obj.magic _menhir_stack)) : 'freshtv98)
+            | _ ->
+                assert (not _menhir_env._menhir_error);
+                _menhir_env._menhir_error <- true;
+                let (_menhir_env : _menhir_env) = _menhir_env in
+                let (_menhir_stack : (('freshtv99 * _menhir_state * (
+# 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+       (string)
+# 141 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+                ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_scope__) = Obj.magic _menhir_stack in
+                ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
+                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv100)) : 'freshtv102)
+        | MenhirState33 ->
+            let (_menhir_env : _menhir_env) = _menhir_env in
+            let (_menhir_stack : (('freshtv107 * _menhir_state * (
+# 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+       (string)
+# 150 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+            ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_scope__) = Obj.magic _menhir_stack in
+            ((assert (not _menhir_env._menhir_error);
+            let _tok = _menhir_env._menhir_token in
+            match _tok with
+            | RIGHT_PAREN ->
+                let (_menhir_env : _menhir_env) = _menhir_env in
+                let (_menhir_stack : (('freshtv103 * _menhir_state * (
+# 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+       (string)
+# 160 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+                ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_scope__) = Obj.magic _menhir_stack in
+                (_menhir_reduce16 _menhir_env (Obj.magic _menhir_stack) : 'freshtv104)
+            | _ ->
+                assert (not _menhir_env._menhir_error);
+                _menhir_env._menhir_error <- true;
+                let (_menhir_env : _menhir_env) = _menhir_env in
+                let (_menhir_stack : (('freshtv105 * _menhir_state * (
+# 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+       (string)
+# 170 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+                ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_scope__) = Obj.magic _menhir_stack in
+                ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
+                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv106)) : 'freshtv108)
+        | _ ->
+            _menhir_fail ()) : 'freshtv110)) : 'freshtv112)) : 'freshtv114)
+    | MenhirState19 ->
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : ('freshtv117 * _menhir_state * 'tv_scope)) = Obj.magic _menhir_stack in
+        let (_menhir_s : _menhir_state) = _menhir_s in
+        let (_v : 'tv_separated_nonempty_list_SEMICOLON_scope_) = _v in
+        ((let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : ('freshtv115 * _menhir_state * 'tv_scope)) = Obj.magic _menhir_stack in
+        let (_ : _menhir_state) = _menhir_s in
+        let ((xs : 'tv_separated_nonempty_list_SEMICOLON_scope_) : 'tv_separated_nonempty_list_SEMICOLON_scope_) = _v in
+        ((let (_menhir_stack, _menhir_s, (x : 'tv_scope)) = _menhir_stack in
+        let _2 = () in
+        let _v : 'tv_separated_nonempty_list_SEMICOLON_scope_ = 
+# 243 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+    ( x :: xs )
+# 190 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+         in
+        _menhir_goto_separated_nonempty_list_SEMICOLON_scope_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv116)) : 'freshtv118)
+    | _ ->
+        _menhir_fail ()
 
 and _menhir_fail : unit -> 'a =
   fun () ->
     Printf.fprintf stderr "Internal failure -- please contact the parser generator's developers.\n%!";
     assert false
 
-and _menhir_goto_subterms : _menhir_env -> 'ttv_tail -> _menhir_state -> (
-# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.scope list)
-# 127 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-) -> 'ttv_return =
-  fun _menhir_env _menhir_stack _menhir_s _v ->
-    let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
-    match _menhir_s with
-    | MenhirState9 ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv97 * _menhir_state * (
-# 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-       (string)
-# 137 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-        ))) * _menhir_state * (
-# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.scope list)
-# 141 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-        )) = Obj.magic _menhir_stack in
-        ((assert (not _menhir_env._menhir_error);
-        let _tok = _menhir_env._menhir_token in
-        match _tok with
-        | RIGHT_PAREN ->
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (('freshtv93 * _menhir_state * (
-# 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-       (string)
-# 151 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-            ))) * _menhir_state * (
-# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.scope list)
-# 155 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-            )) = Obj.magic _menhir_stack in
-            ((let _menhir_env = _menhir_discard _menhir_env in
-            _menhir_reduce10 _menhir_env (Obj.magic _menhir_stack)) : 'freshtv94)
-        | _ ->
-            assert (not _menhir_env._menhir_error);
-            _menhir_env._menhir_error <- true;
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (('freshtv95 * _menhir_state * (
-# 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-       (string)
-# 166 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-            ))) * _menhir_state * (
-# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.scope list)
-# 170 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-            )) = Obj.magic _menhir_stack in
-            ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv96)) : 'freshtv98)
-    | MenhirState20 ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv101 * _menhir_state * 'tv_scope)) * _menhir_state * (
-# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.scope list)
-# 179 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-        )) = Obj.magic _menhir_stack in
-        ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv99 * _menhir_state * 'tv_scope)) * _menhir_state * (
-# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.scope list)
-# 185 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-        )) = Obj.magic _menhir_stack in
-        ((let ((_menhir_stack, _menhir_s, (_1 : 'tv_scope)), _, (_3 : (
-# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.scope list)
-# 190 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-        ))) = _menhir_stack in
-        let _2 = () in
-        let _v : (
-# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.scope list)
-# 196 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-        ) = 
-# 31 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-                             ( _1 :: _3 )
-# 200 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-         in
-        _menhir_goto_subterms _menhir_env _menhir_stack _menhir_s _v) : 'freshtv100)) : 'freshtv102)
-    | MenhirState31 ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv107 * _menhir_state * (
-# 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-       (string)
-# 208 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-        ))) * _menhir_state * (
-# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.scope list)
-# 212 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-        )) = Obj.magic _menhir_stack in
-        ((assert (not _menhir_env._menhir_error);
-        let _tok = _menhir_env._menhir_token in
-        match _tok with
-        | RIGHT_PAREN ->
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (('freshtv103 * _menhir_state * (
-# 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-       (string)
-# 222 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-            ))) * _menhir_state * (
-# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.scope list)
-# 226 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-            )) = Obj.magic _menhir_stack in
-            (_menhir_reduce10 _menhir_env (Obj.magic _menhir_stack) : 'freshtv104)
-        | _ ->
-            assert (not _menhir_env._menhir_error);
-            _menhir_env._menhir_error <- true;
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (('freshtv105 * _menhir_state * (
-# 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-       (string)
-# 236 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-            ))) * _menhir_state * (
-# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.scope list)
-# 240 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-            )) = Obj.magic _menhir_stack in
-            ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv106)) : 'freshtv108)
-    | _ ->
-        _menhir_fail ()
+and _menhir_reduce18 : _menhir_env -> ('ttv_tail * _menhir_state) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_term__ -> 'ttv_return =
+  fun _menhir_env _menhir_stack ->
+    let ((_menhir_stack, _menhir_s), _, (xs : 'tv_loption_separated_nonempty_list_SEMICOLON_term__)) = _menhir_stack in
+    let _3 = () in
+    let _1 = () in
+    let _v : (
+# 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+      (Types.Abt.term)
+# 209 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+    ) = let _2 = 
+# 232 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+    ( xs )
+# 213 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+     in
+    
+# 29 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+  ( Sequence _2   )
+# 218 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+     in
+    _menhir_goto_term _menhir_env _menhir_stack _menhir_s _v
 
-and _menhir_goto_terms : _menhir_env -> 'ttv_tail -> _menhir_state -> (
-# 19 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.term list)
-# 250 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-) -> 'ttv_return =
+and _menhir_goto_separated_nonempty_list_SEMICOLON_term_ : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_separated_nonempty_list_SEMICOLON_term_ -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
-    let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
     match _menhir_s with
-    | MenhirState6 ->
+    | MenhirState24 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : ('freshtv81 * _menhir_state) * _menhir_state * (
-# 19 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.term list)
-# 260 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-        )) = Obj.magic _menhir_stack in
-        ((assert (not _menhir_env._menhir_error);
-        let _tok = _menhir_env._menhir_token in
-        match _tok with
-        | RIGHT_BRACK ->
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : ('freshtv77 * _menhir_state) * _menhir_state * (
-# 19 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.term list)
-# 270 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-            )) = Obj.magic _menhir_stack in
-            ((let _menhir_env = _menhir_discard _menhir_env in
-            _menhir_reduce12 _menhir_env (Obj.magic _menhir_stack)) : 'freshtv78)
-        | _ ->
-            assert (not _menhir_env._menhir_error);
-            _menhir_env._menhir_error <- true;
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : ('freshtv79 * _menhir_state) * _menhir_state * (
-# 19 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.term list)
-# 281 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-            )) = Obj.magic _menhir_stack in
-            ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv80)) : 'freshtv82)
-    | MenhirState25 ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv85 * _menhir_state * (
+        let (_menhir_stack : ('freshtv91 * _menhir_state * (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 290 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-        ))) * _menhir_state * (
-# 19 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.term list)
-# 294 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-        )) = Obj.magic _menhir_stack in
+# 230 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+        ))) = Obj.magic _menhir_stack in
+        let (_menhir_s : _menhir_state) = _menhir_s in
+        let (_v : 'tv_separated_nonempty_list_SEMICOLON_term_) = _v in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv83 * _menhir_state * (
+        let (_menhir_stack : ('freshtv89 * _menhir_state * (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 300 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-        ))) * _menhir_state * (
-# 19 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.term list)
-# 304 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-        )) = Obj.magic _menhir_stack in
-        ((let ((_menhir_stack, _menhir_s, (_1 : (
+# 238 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+        ))) = Obj.magic _menhir_stack in
+        let (_ : _menhir_state) = _menhir_s in
+        let ((xs : 'tv_separated_nonempty_list_SEMICOLON_term_) : 'tv_separated_nonempty_list_SEMICOLON_term_) = _v in
+        ((let (_menhir_stack, _menhir_s, (x : (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 309 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-        ))), _, (_3 : (
-# 19 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.term list)
-# 313 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 245 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         ))) = _menhir_stack in
         let _2 = () in
-        let _v : (
-# 19 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.term list)
-# 319 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-        ) = 
-# 39 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-                         ( _1 :: _3 )
-# 323 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+        let _v : 'tv_separated_nonempty_list_SEMICOLON_term_ = 
+# 243 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+    ( x :: xs )
+# 251 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
          in
-        _menhir_goto_terms _menhir_env _menhir_stack _menhir_s _v) : 'freshtv84)) : 'freshtv86)
-    | MenhirState3 ->
+        _menhir_goto_separated_nonempty_list_SEMICOLON_term_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv90)) : 'freshtv92)
+    | MenhirState3 | MenhirState6 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : ('freshtv91 * _menhir_state) * _menhir_state * (
-# 19 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.term list)
-# 331 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-        )) = Obj.magic _menhir_stack in
-        ((assert (not _menhir_env._menhir_error);
-        let _tok = _menhir_env._menhir_token in
-        match _tok with
-        | RIGHT_BRACK ->
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : ('freshtv87 * _menhir_state) * _menhir_state * (
-# 19 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.term list)
-# 341 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-            )) = Obj.magic _menhir_stack in
-            (_menhir_reduce12 _menhir_env (Obj.magic _menhir_stack) : 'freshtv88)
-        | _ ->
-            assert (not _menhir_env._menhir_error);
-            _menhir_env._menhir_error <- true;
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : ('freshtv89 * _menhir_state) * _menhir_state * (
-# 19 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.term list)
-# 351 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-            )) = Obj.magic _menhir_stack in
-            ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv90)) : 'freshtv92)
+        let (_menhir_stack : 'freshtv95) = Obj.magic _menhir_stack in
+        let (_menhir_s : _menhir_state) = _menhir_s in
+        let (_v : 'tv_separated_nonempty_list_SEMICOLON_term_) = _v in
+        ((let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : 'freshtv93) = Obj.magic _menhir_stack in
+        let (_menhir_s : _menhir_state) = _menhir_s in
+        let ((x : 'tv_separated_nonempty_list_SEMICOLON_term_) : 'tv_separated_nonempty_list_SEMICOLON_term_) = _v in
+        ((let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_term__ = 
+# 144 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+    ( x )
+# 266 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+         in
+        _menhir_goto_loption_separated_nonempty_list_SEMICOLON_term__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv94)) : 'freshtv96)
     | _ ->
         _menhir_fail ()
 
@@ -360,140 +274,178 @@ and _menhir_goto_scope : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_scope 
     match _menhir_s with
     | MenhirState12 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv67 * _menhir_state * (
+        let (_menhir_stack : (('freshtv79 * _menhir_state * (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 367 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 281 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         ))) * _menhir_state * 'tv_scope) = Obj.magic _menhir_stack in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv65 * _menhir_state * (
+        let (_menhir_stack : (('freshtv77 * _menhir_state * (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 373 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 287 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         ))) * _menhir_state * 'tv_scope) = Obj.magic _menhir_stack in
         ((let ((_menhir_stack, _menhir_s, (_1 : (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 378 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 292 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         ))), _, (_3 : 'tv_scope)) = _menhir_stack in
         let _2 = () in
         let _v : 'tv_scope = 
-# 35 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 34 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
                    ( match _3 with | Scope (scope, tm) -> Scope (_1 :: scope, tm) )
-# 384 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 298 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
          in
-        _menhir_goto_scope _menhir_env _menhir_stack _menhir_s _v) : 'freshtv66)) : 'freshtv68)
-    | MenhirState31 | MenhirState20 | MenhirState9 ->
+        _menhir_goto_scope _menhir_env _menhir_stack _menhir_s _v) : 'freshtv78)) : 'freshtv80)
+    | MenhirState33 | MenhirState19 | MenhirState9 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv75 * _menhir_state * 'tv_scope) = Obj.magic _menhir_stack in
+        let (_menhir_stack : 'freshtv87 * _menhir_state * 'tv_scope) = Obj.magic _menhir_stack in
         ((assert (not _menhir_env._menhir_error);
         let _tok = _menhir_env._menhir_token in
         match _tok with
         | SEMICOLON ->
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv69 * _menhir_state * 'tv_scope) = Obj.magic _menhir_stack in
+            let (_menhir_stack : 'freshtv81 * _menhir_state * 'tv_scope) = Obj.magic _menhir_stack in
             ((let _menhir_env = _menhir_discard _menhir_env in
             let _tok = _menhir_env._menhir_token in
             match _tok with
             | FALSE ->
-                _menhir_run13 _menhir_env (Obj.magic _menhir_stack) MenhirState20
+                _menhir_run13 _menhir_env (Obj.magic _menhir_stack) MenhirState19
             | ID _v ->
-                _menhir_run11 _menhir_env (Obj.magic _menhir_stack) MenhirState20 _v
+                _menhir_run11 _menhir_env (Obj.magic _menhir_stack) MenhirState19 _v
             | INT _v ->
-                _menhir_run7 _menhir_env (Obj.magic _menhir_stack) MenhirState20 _v
+                _menhir_run7 _menhir_env (Obj.magic _menhir_stack) MenhirState19 _v
             | LEFT_BRACK ->
-                _menhir_run6 _menhir_env (Obj.magic _menhir_stack) MenhirState20
+                _menhir_run6 _menhir_env (Obj.magic _menhir_stack) MenhirState19
             | STRING _v ->
-                _menhir_run5 _menhir_env (Obj.magic _menhir_stack) MenhirState20 _v
+                _menhir_run5 _menhir_env (Obj.magic _menhir_stack) MenhirState19 _v
             | TRUE ->
-                _menhir_run4 _menhir_env (Obj.magic _menhir_stack) MenhirState20
+                _menhir_run4 _menhir_env (Obj.magic _menhir_stack) MenhirState19
             | _ ->
                 assert (not _menhir_env._menhir_error);
                 _menhir_env._menhir_error <- true;
-                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState20) : 'freshtv70)
+                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState19) : 'freshtv82)
         | RIGHT_PAREN ->
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv71 * _menhir_state * 'tv_scope) = Obj.magic _menhir_stack in
-            ((let (_menhir_stack, _menhir_s, (_1 : 'tv_scope)) = _menhir_stack in
-            let _v : (
-# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.scope list)
-# 422 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-            ) = 
-# 32 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-                             ( [_1]     )
-# 426 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+            let (_menhir_stack : 'freshtv83 * _menhir_state * 'tv_scope) = Obj.magic _menhir_stack in
+            ((let (_menhir_stack, _menhir_s, (x : 'tv_scope)) = _menhir_stack in
+            let _v : 'tv_separated_nonempty_list_SEMICOLON_scope_ = 
+# 241 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+    ( [ x ] )
+# 336 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
              in
-            _menhir_goto_subterms _menhir_env _menhir_stack _menhir_s _v) : 'freshtv72)
+            _menhir_goto_separated_nonempty_list_SEMICOLON_scope_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv84)
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv73 * _menhir_state * 'tv_scope) = Obj.magic _menhir_stack in
+            let (_menhir_stack : 'freshtv85 * _menhir_state * 'tv_scope) = Obj.magic _menhir_stack in
+            ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv86)) : 'freshtv88)
+    | _ ->
+        _menhir_fail ()
+
+and _menhir_reduce19 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
+# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+      (Types.primitive)
+# 352 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+) -> 'ttv_return =
+  fun _menhir_env _menhir_stack _menhir_s (_1 : (
+# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+      (Types.primitive)
+# 357 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+  )) ->
+    let _v : (
+# 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+      (Types.Abt.term)
+# 362 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+    ) = 
+# 31 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+  ( Primitive _1  )
+# 366 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+     in
+    _menhir_goto_term _menhir_env _menhir_stack _menhir_s _v
+
+and _menhir_goto_loption_separated_nonempty_list_SEMICOLON_term__ : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_loption_separated_nonempty_list_SEMICOLON_term__ -> 'ttv_return =
+  fun _menhir_env _menhir_stack _menhir_s _v ->
+    let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
+    match _menhir_s with
+    | MenhirState6 ->
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : ('freshtv69 * _menhir_state) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_term__) = Obj.magic _menhir_stack in
+        ((assert (not _menhir_env._menhir_error);
+        let _tok = _menhir_env._menhir_token in
+        match _tok with
+        | RIGHT_BRACK ->
+            let (_menhir_env : _menhir_env) = _menhir_env in
+            let (_menhir_stack : ('freshtv65 * _menhir_state) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_term__) = Obj.magic _menhir_stack in
+            ((let _menhir_env = _menhir_discard _menhir_env in
+            _menhir_reduce18 _menhir_env (Obj.magic _menhir_stack)) : 'freshtv66)
+        | _ ->
+            assert (not _menhir_env._menhir_error);
+            _menhir_env._menhir_error <- true;
+            let (_menhir_env : _menhir_env) = _menhir_env in
+            let (_menhir_stack : ('freshtv67 * _menhir_state) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_term__) = Obj.magic _menhir_stack in
+            ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv68)) : 'freshtv70)
+    | MenhirState3 ->
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : ('freshtv75 * _menhir_state) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_term__) = Obj.magic _menhir_stack in
+        ((assert (not _menhir_env._menhir_error);
+        let _tok = _menhir_env._menhir_token in
+        match _tok with
+        | RIGHT_BRACK ->
+            let (_menhir_env : _menhir_env) = _menhir_env in
+            let (_menhir_stack : ('freshtv71 * _menhir_state) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_term__) = Obj.magic _menhir_stack in
+            (_menhir_reduce18 _menhir_env (Obj.magic _menhir_stack) : 'freshtv72)
+        | _ ->
+            assert (not _menhir_env._menhir_error);
+            _menhir_env._menhir_error <- true;
+            let (_menhir_env : _menhir_env) = _menhir_env in
+            let (_menhir_stack : ('freshtv73 * _menhir_state) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_term__) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
             _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv74)) : 'freshtv76)
     | _ ->
         _menhir_fail ()
 
-and _menhir_reduce13 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
-# 20 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.primitive)
-# 442 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-) -> 'ttv_return =
-  fun _menhir_env _menhir_stack _menhir_s (_1 : (
-# 20 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.primitive)
-# 447 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-  )) ->
-    let _v : (
-# 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.term)
-# 452 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-    ) = 
-# 28 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-                                          ( Primitive _1  )
-# 456 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-     in
-    _menhir_goto_term _menhir_env _menhir_stack _menhir_s _v
-
 and _menhir_goto_term : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 463 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 415 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
     match _menhir_s with
-    | MenhirState31 | MenhirState20 | MenhirState9 | MenhirState12 ->
+    | MenhirState33 | MenhirState19 | MenhirState9 | MenhirState12 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : 'freshtv51 * _menhir_state * (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 473 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 425 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : 'freshtv49 * _menhir_state * (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 479 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 431 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, (_1 : (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 484 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 436 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         ))) = _menhir_stack in
         let _v : 'tv_scope = 
-# 36 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 35 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
                    ( Scope ([], _1) )
-# 489 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 441 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
          in
         _menhir_goto_scope _menhir_env _menhir_stack _menhir_s _v) : 'freshtv50)) : 'freshtv52)
-    | MenhirState3 | MenhirState25 | MenhirState6 ->
+    | MenhirState3 | MenhirState24 | MenhirState6 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : 'freshtv59 * _menhir_state * (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 497 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 449 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         )) = Obj.magic _menhir_stack in
         ((assert (not _menhir_env._menhir_error);
         let _tok = _menhir_env._menhir_token in
@@ -503,49 +455,45 @@ and _menhir_goto_term : _menhir_env -> 'ttv_tail -> _menhir_state -> (
             let (_menhir_stack : 'freshtv53 * _menhir_state * (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 507 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 459 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let _menhir_env = _menhir_discard _menhir_env in
             let _tok = _menhir_env._menhir_token in
             match _tok with
             | FALSE ->
-                _menhir_run13 _menhir_env (Obj.magic _menhir_stack) MenhirState25
+                _menhir_run13 _menhir_env (Obj.magic _menhir_stack) MenhirState24
             | ID _v ->
-                _menhir_run8 _menhir_env (Obj.magic _menhir_stack) MenhirState25 _v
+                _menhir_run8 _menhir_env (Obj.magic _menhir_stack) MenhirState24 _v
             | INT _v ->
-                _menhir_run7 _menhir_env (Obj.magic _menhir_stack) MenhirState25 _v
+                _menhir_run7 _menhir_env (Obj.magic _menhir_stack) MenhirState24 _v
             | LEFT_BRACK ->
-                _menhir_run6 _menhir_env (Obj.magic _menhir_stack) MenhirState25
+                _menhir_run6 _menhir_env (Obj.magic _menhir_stack) MenhirState24
             | STRING _v ->
-                _menhir_run5 _menhir_env (Obj.magic _menhir_stack) MenhirState25 _v
+                _menhir_run5 _menhir_env (Obj.magic _menhir_stack) MenhirState24 _v
             | TRUE ->
-                _menhir_run4 _menhir_env (Obj.magic _menhir_stack) MenhirState25
+                _menhir_run4 _menhir_env (Obj.magic _menhir_stack) MenhirState24
             | _ ->
                 assert (not _menhir_env._menhir_error);
                 _menhir_env._menhir_error <- true;
-                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState25) : 'freshtv54)
+                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState24) : 'freshtv54)
         | RIGHT_BRACK ->
             let (_menhir_env : _menhir_env) = _menhir_env in
             let (_menhir_stack : 'freshtv55 * _menhir_state * (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 533 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 485 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
             )) = Obj.magic _menhir_stack in
-            ((let (_menhir_stack, _menhir_s, (_1 : (
+            ((let (_menhir_stack, _menhir_s, (x : (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 538 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 490 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
             ))) = _menhir_stack in
-            let _v : (
-# 19 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-      (Types.Abt.term list)
-# 543 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
-            ) = 
-# 40 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-                         ( [_1]     )
-# 547 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+            let _v : 'tv_separated_nonempty_list_SEMICOLON_term_ = 
+# 241 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+    ( [ x ] )
+# 495 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
              in
-            _menhir_goto_terms _menhir_env _menhir_stack _menhir_s _v) : 'freshtv56)
+            _menhir_goto_separated_nonempty_list_SEMICOLON_term_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv56)
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
@@ -553,7 +501,7 @@ and _menhir_goto_term : _menhir_env -> 'ttv_tail -> _menhir_state -> (
             let (_menhir_stack : 'freshtv57 * _menhir_state * (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 557 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 505 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
             _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv58)) : 'freshtv60)
@@ -562,47 +510,47 @@ and _menhir_goto_term : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : 'freshtv63 * _menhir_state * (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 566 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 514 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : 'freshtv61 * _menhir_state * (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 572 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 520 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, (_1 : (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 577 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 525 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         ))) = _menhir_stack in
         Obj.magic _1) : 'freshtv62)) : 'freshtv64)
 
-and _menhir_reduce11 : _menhir_env -> 'ttv_tail * _menhir_state * (
+and _menhir_reduce17 : _menhir_env -> 'ttv_tail * _menhir_state * (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 584 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 532 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack ->
     let (_menhir_stack, _menhir_s, (_1 : (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 590 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 538 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
     ))) = _menhir_stack in
     let _v : (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 595 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 543 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
     ) = 
-# 26 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-                                          ( Var _1        )
-# 599 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 27 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+  ( Var _1        )
+# 547 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
      in
     _menhir_goto_term _menhir_env _menhir_stack _menhir_s _v
 
 and _menhir_run9 : _menhir_env -> 'ttv_tail * _menhir_state * (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 606 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 554 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack ->
     let _menhir_env = _menhir_discard _menhir_env in
@@ -621,11 +569,11 @@ and _menhir_run9 : _menhir_env -> 'ttv_tail * _menhir_state * (
         let (_menhir_stack : ('freshtv47 * _menhir_state * (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 625 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 573 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         ))) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = MenhirState9 in
         ((let _menhir_env = _menhir_discard _menhir_env in
-        _menhir_reduce9 _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv48)
+        _menhir_reduce15 _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv48)
     | STRING _v ->
         _menhir_run5 _menhir_env (Obj.magic _menhir_stack) MenhirState9 _v
     | TRUE ->
@@ -636,72 +584,81 @@ and _menhir_run9 : _menhir_env -> 'ttv_tail * _menhir_state * (
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState9
 
 and _menhir_goto_primitive : _menhir_env -> 'ttv_tail -> _menhir_state -> (
-# 20 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.primitive)
-# 642 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 590 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     match _menhir_s with
-    | MenhirState31 | MenhirState3 | MenhirState6 | MenhirState25 | MenhirState9 | MenhirState20 | MenhirState12 ->
+    | MenhirState33 | MenhirState3 | MenhirState6 | MenhirState24 | MenhirState9 | MenhirState19 | MenhirState12 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : 'freshtv43) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = _menhir_s in
         let (_v : (
-# 20 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.primitive)
-# 653 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 601 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         )) = _v in
-        (_menhir_reduce13 _menhir_env (Obj.magic _menhir_stack) _menhir_s _v : 'freshtv44)
+        (_menhir_reduce19 _menhir_env (Obj.magic _menhir_stack) _menhir_s _v : 'freshtv44)
     | MenhirState0 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : 'freshtv45) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = _menhir_s in
         let (_v : (
-# 20 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.primitive)
-# 663 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 611 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         )) = _v in
-        (_menhir_reduce13 _menhir_env (Obj.magic _menhir_stack) _menhir_s _v : 'freshtv46)
+        (_menhir_reduce19 _menhir_env (Obj.magic _menhir_stack) _menhir_s _v : 'freshtv46)
 
-and _menhir_reduce3 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
+and _menhir_reduce7 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _1 = () in
     let _v : (
-# 20 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.primitive)
-# 673 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 621 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
     ) = 
-# 45 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 40 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
            ( PrimBool    true  )
-# 677 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 625 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
      in
     _menhir_goto_primitive _menhir_env _menhir_stack _menhir_s _v
 
-and _menhir_reduce2 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
+and _menhir_reduce6 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 4 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 684 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 632 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s (_1 : (
 # 4 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 689 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 637 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
   )) ->
     let _v : (
-# 20 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.primitive)
-# 694 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 642 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
     ) = 
-# 44 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 39 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
            ( PrimString  _1    )
-# 698 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 646 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
      in
     _menhir_goto_primitive _menhir_env _menhir_stack _menhir_s _v
+
+and _menhir_reduce3 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
+  fun _menhir_env _menhir_stack _menhir_s ->
+    let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_term__ = 
+# 142 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+    ( [] )
+# 655 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+     in
+    _menhir_goto_loption_separated_nonempty_list_SEMICOLON_term__ _menhir_env _menhir_stack _menhir_s _v
 
 and _menhir_run8 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 705 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 662 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
@@ -711,7 +668,7 @@ and _menhir_run8 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
     | LEFT_PAREN ->
         _menhir_run9 _menhir_env (Obj.magic _menhir_stack)
     | RIGHT_BRACK | SEMICOLON ->
-        _menhir_reduce11 _menhir_env (Obj.magic _menhir_stack)
+        _menhir_reduce17 _menhir_env (Obj.magic _menhir_stack)
     | _ ->
         assert (not _menhir_env._menhir_error);
         _menhir_env._menhir_error <- true;
@@ -719,54 +676,54 @@ and _menhir_run8 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : 'freshtv41 * _menhir_state * (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 723 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 680 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv42)
 
-and _menhir_reduce1 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
+and _menhir_reduce5 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 1 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (Bigint.t)
-# 731 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 688 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s (_1 : (
 # 1 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (Bigint.t)
-# 736 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 693 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
   )) ->
     let _v : (
-# 20 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.primitive)
-# 741 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 698 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
     ) = 
-# 43 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 38 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
            ( PrimInteger _1    )
-# 745 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 702 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
      in
     _menhir_goto_primitive _menhir_env _menhir_stack _menhir_s _v
 
 and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     match _menhir_s with
-    | MenhirState31 ->
+    | MenhirState33 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ('freshtv25 * _menhir_state * (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 757 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 714 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         ))) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv26)
-    | MenhirState25 ->
+    | MenhirState24 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ('freshtv27 * _menhir_state * (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 766 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 723 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         ))) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv28)
-    | MenhirState20 ->
+    | MenhirState19 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ('freshtv29 * _menhir_state * 'tv_scope)) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
@@ -776,7 +733,7 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : ('freshtv31 * _menhir_state * (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 780 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 737 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         ))) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv32)
@@ -785,7 +742,7 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : ('freshtv33 * _menhir_state * (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 789 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 746 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         ))) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv34)
@@ -807,38 +764,38 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
 and _menhir_run4 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _menhir_env = _menhir_discard _menhir_env in
-    _menhir_reduce3 _menhir_env (Obj.magic _menhir_stack) _menhir_s
+    _menhir_reduce7 _menhir_env (Obj.magic _menhir_stack) _menhir_s
 
 and _menhir_run5 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 4 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 816 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 773 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_env = _menhir_discard _menhir_env in
-    _menhir_reduce2 _menhir_env (Obj.magic _menhir_stack) _menhir_s _v
+    _menhir_reduce6 _menhir_env (Obj.magic _menhir_stack) _menhir_s _v
 
-and _menhir_reduce9 : _menhir_env -> ('ttv_tail * _menhir_state * (
+and _menhir_reduce15 : _menhir_env -> ('ttv_tail * _menhir_state * (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 825 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 782 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
 )) -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _ ->
     let (_menhir_stack, _menhir_s, (_1 : (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 831 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 788 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
     ))) = _menhir_stack in
     let _3 = () in
     let _2 = () in
     let _v : (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 838 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 795 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
     ) = 
-# 24 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
-                                          ( Term (_1, []) )
-# 842 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 23 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+  ( Term (_1, []) )
+# 799 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
      in
     _menhir_goto_term _menhir_env _menhir_stack _menhir_s _v
 
@@ -860,6 +817,8 @@ and _menhir_run6 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
         _menhir_run5 _menhir_env (Obj.magic _menhir_stack) MenhirState6 _v
     | TRUE ->
         _menhir_run4 _menhir_env (Obj.magic _menhir_stack) MenhirState6
+    | RIGHT_BRACK ->
+        _menhir_reduce3 _menhir_env (Obj.magic _menhir_stack) MenhirState6
     | _ ->
         assert (not _menhir_env._menhir_error);
         _menhir_env._menhir_error <- true;
@@ -868,16 +827,16 @@ and _menhir_run6 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
 and _menhir_run7 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 1 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (Bigint.t)
-# 872 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 831 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_env = _menhir_discard _menhir_env in
-    _menhir_reduce1 _menhir_env (Obj.magic _menhir_stack) _menhir_s _v
+    _menhir_reduce5 _menhir_env (Obj.magic _menhir_stack) _menhir_s _v
 
 and _menhir_run11 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 881 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 840 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
@@ -889,7 +848,7 @@ and _menhir_run11 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : 'freshtv21 * _menhir_state * (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 893 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 852 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let _menhir_env = _menhir_discard _menhir_env in
         let _tok = _menhir_env._menhir_token in
@@ -913,7 +872,7 @@ and _menhir_run11 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
     | LEFT_PAREN ->
         _menhir_run9 _menhir_env (Obj.magic _menhir_stack)
     | RIGHT_PAREN | SEMICOLON ->
-        _menhir_reduce11 _menhir_env (Obj.magic _menhir_stack)
+        _menhir_reduce17 _menhir_env (Obj.magic _menhir_stack)
     | _ ->
         assert (not _menhir_env._menhir_error);
         _menhir_env._menhir_error <- true;
@@ -921,7 +880,7 @@ and _menhir_run11 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : 'freshtv23 * _menhir_state * (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 925 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 884 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv24)
@@ -929,19 +888,19 @@ and _menhir_run11 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 and _menhir_run13 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _menhir_env = _menhir_discard _menhir_env in
-    _menhir_reduce4 _menhir_env (Obj.magic _menhir_stack) _menhir_s
+    _menhir_reduce8 _menhir_env (Obj.magic _menhir_stack) _menhir_s
 
-and _menhir_reduce4 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
+and _menhir_reduce8 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _1 = () in
     let _v : (
-# 20 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 18 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.primitive)
-# 941 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 900 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
     ) = 
-# 46 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
+# 41 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
            ( PrimBool    false )
-# 945 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 904 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
      in
     _menhir_goto_primitive _menhir_env _menhir_stack _menhir_s _v
 
@@ -960,7 +919,7 @@ and _menhir_discard : _menhir_env -> _menhir_env =
 and term : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
 # 17 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
       (Types.Abt.term)
-# 964 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 923 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
 ) =
   fun lexer lexbuf ->
     let _menhir_env =
@@ -983,7 +942,7 @@ and term : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : 'freshtv1) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = MenhirState0 in
-        (_menhir_reduce4 _menhir_env (Obj.magic _menhir_stack) _menhir_s : 'freshtv2)
+        (_menhir_reduce8 _menhir_env (Obj.magic _menhir_stack) _menhir_s : 'freshtv2)
     | ID _v ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : 'freshtv9) = Obj.magic _menhir_stack in
@@ -991,7 +950,7 @@ and term : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
         let (_v : (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 995 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 954 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         )) = _v in
         ((let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
         let _menhir_env = _menhir_discard _menhir_env in
@@ -1002,36 +961,36 @@ and term : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
             let (_menhir_stack : 'freshtv5 * _menhir_state * (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 1006 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 965 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let _menhir_env = _menhir_discard _menhir_env in
             let _tok = _menhir_env._menhir_token in
             match _tok with
             | FALSE ->
-                _menhir_run13 _menhir_env (Obj.magic _menhir_stack) MenhirState31
+                _menhir_run13 _menhir_env (Obj.magic _menhir_stack) MenhirState33
             | ID _v ->
-                _menhir_run11 _menhir_env (Obj.magic _menhir_stack) MenhirState31 _v
+                _menhir_run11 _menhir_env (Obj.magic _menhir_stack) MenhirState33 _v
             | INT _v ->
-                _menhir_run7 _menhir_env (Obj.magic _menhir_stack) MenhirState31 _v
+                _menhir_run7 _menhir_env (Obj.magic _menhir_stack) MenhirState33 _v
             | LEFT_BRACK ->
-                _menhir_run6 _menhir_env (Obj.magic _menhir_stack) MenhirState31
+                _menhir_run6 _menhir_env (Obj.magic _menhir_stack) MenhirState33
             | RIGHT_PAREN ->
                 let (_menhir_env : _menhir_env) = _menhir_env in
                 let (_menhir_stack : ('freshtv3 * _menhir_state * (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 1024 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 983 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
                 ))) = Obj.magic _menhir_stack in
-                let (_menhir_s : _menhir_state) = MenhirState31 in
-                (_menhir_reduce9 _menhir_env (Obj.magic _menhir_stack) _menhir_s : 'freshtv4)
+                let (_menhir_s : _menhir_state) = MenhirState33 in
+                (_menhir_reduce15 _menhir_env (Obj.magic _menhir_stack) _menhir_s : 'freshtv4)
             | STRING _v ->
-                _menhir_run5 _menhir_env (Obj.magic _menhir_stack) MenhirState31 _v
+                _menhir_run5 _menhir_env (Obj.magic _menhir_stack) MenhirState33 _v
             | TRUE ->
-                _menhir_run4 _menhir_env (Obj.magic _menhir_stack) MenhirState31
+                _menhir_run4 _menhir_env (Obj.magic _menhir_stack) MenhirState33
             | _ ->
                 assert (not _menhir_env._menhir_error);
                 _menhir_env._menhir_error <- true;
-                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState31) : 'freshtv6)
+                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState33) : 'freshtv6)
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
@@ -1039,7 +998,7 @@ and term : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
             let (_menhir_stack : 'freshtv7 * _menhir_state * (
 # 3 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 1043 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 1002 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
             _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv8)) : 'freshtv10)
@@ -1050,9 +1009,9 @@ and term : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
         let (_v : (
 # 1 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (Bigint.t)
-# 1054 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 1013 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         )) = _v in
-        (_menhir_reduce1 _menhir_env (Obj.magic _menhir_stack) _menhir_s _v : 'freshtv12)
+        (_menhir_reduce5 _menhir_env (Obj.magic _menhir_stack) _menhir_s _v : 'freshtv12)
     | LEFT_BRACK ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : 'freshtv13) = Obj.magic _menhir_stack in
@@ -1073,6 +1032,8 @@ and term : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
             _menhir_run5 _menhir_env (Obj.magic _menhir_stack) MenhirState3 _v
         | TRUE ->
             _menhir_run4 _menhir_env (Obj.magic _menhir_stack) MenhirState3
+        | RIGHT_BRACK ->
+            _menhir_reduce3 _menhir_env (Obj.magic _menhir_stack) MenhirState3
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
@@ -1084,14 +1045,14 @@ and term : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
         let (_v : (
 # 4 "/Users/joel/code/lvca-bucklescript/src/termParser.mly"
        (string)
-# 1088 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 1049 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
         )) = _v in
-        (_menhir_reduce2 _menhir_env (Obj.magic _menhir_stack) _menhir_s _v : 'freshtv16)
+        (_menhir_reduce6 _menhir_env (Obj.magic _menhir_stack) _menhir_s _v : 'freshtv16)
     | TRUE ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : 'freshtv17) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = MenhirState0 in
-        (_menhir_reduce3 _menhir_env (Obj.magic _menhir_stack) _menhir_s : 'freshtv18)
+        (_menhir_reduce7 _menhir_env (Obj.magic _menhir_stack) _menhir_s : 'freshtv18)
     | _ ->
         assert (not _menhir_env._menhir_error);
         _menhir_env._menhir_error <- true;
@@ -1100,4 +1061,4 @@ and term : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
 # 269 "/Users/joel/.opam/default/lib/menhir/standard.mly"
   
 
-# 1104 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"
+# 1065 "/Users/joel/code/lvca-bucklescript/src/termParser.ml"

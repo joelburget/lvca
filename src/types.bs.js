@@ -2,33 +2,210 @@
 'use strict';
 
 var Block = require("bs-platform/lib/js/block.js");
+var Bigint = require("bs-zarith/src/Bigint.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
+var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
+var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
-var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
+
+function prim_eq(p1, p2) {
+  switch (p1.tag | 0) {
+    case 0 : 
+        switch (p2.tag | 0) {
+          case 0 : 
+              return Bigint.$eq(p1[0], p2[0]);
+          case 1 : 
+          case 2 : 
+              return false;
+          
+        }
+    case 1 : 
+        switch (p2.tag | 0) {
+          case 1 : 
+              return p1[0] === p2[0];
+          case 0 : 
+          case 2 : 
+              return false;
+          
+        }
+    case 2 : 
+        switch (p2.tag | 0) {
+          case 0 : 
+          case 1 : 
+              return false;
+          case 2 : 
+              return p1[0] === p2[0];
+          
+        }
+    
+  }
+}
 
 var Abt = /* module */[];
 
 var Ast = /* module */[];
 
-function matchBranch(v, pat, core) {
+function matchBranch(v, pat) {
   var exit = 0;
-  if (v.tag || typeof pat === "number" || pat.tag) {
-    exit = 1;
-  } else {
-    return Pervasives.failwith("TODO");
+  switch (v.tag | 0) {
+    case 0 : 
+        var vals = v[1];
+        if (typeof pat === "number") {
+          exit = 1;
+        } else {
+          switch (pat.tag | 0) {
+            case 0 : 
+                var pats = pat[1];
+                var subResults = Belt_List.map(Belt_List.zip(vals, pats), (function (param) {
+                        return matchBranch(param[0], param[1]);
+                      }));
+                if (v[0] === pat[0] && Belt_List.length(vals) === Belt_List.length(pats) && Belt_List.every(subResults, Belt_Option.isSome)) {
+                  return Caml_option.some(Belt_List.reduce(subResults, Belt_MapString.empty, (function (m, m$prime) {
+                                    return Belt_MapString.merge(m, Belt_Option.getExn(m$prime), (function (_k, v1, v2) {
+                                                  if (v2 !== undefined) {
+                                                    return v2;
+                                                  } else if (v1 !== undefined) {
+                                                    return v1;
+                                                  } else {
+                                                    return undefined;
+                                                  }
+                                                }));
+                                  })));
+                } else {
+                  return undefined;
+                }
+            case 1 : 
+                exit = 1;
+                break;
+            case 2 : 
+                return undefined;
+            
+          }
+        }
+        break;
+    case 1 : 
+        if (typeof pat === "number") {
+          exit = 1;
+        } else {
+          switch (pat.tag | 0) {
+            case 0 : 
+                return undefined;
+            case 1 : 
+                exit = 1;
+                break;
+            case 2 : 
+                if (prim_eq(v[0], pat[0])) {
+                  return Caml_option.some(Belt_MapString.empty);
+                } else {
+                  return undefined;
+                }
+            
+          }
+        }
+        break;
+    case 2 : 
+    case 3 : 
+        exit = 1;
+        break;
+    
   }
   if (exit === 1) {
-    throw [
-          Caml_builtin_exceptions.match_failure,
-          /* tuple */[
-            "types.ml",
-            97,
-            37
-          ]
-        ];
+    if (typeof pat === "number") {
+      return Caml_option.some(Belt_MapString.empty);
+    } else {
+      switch (pat.tag | 0) {
+        case 1 : 
+            var match = pat[0];
+            if (match !== undefined) {
+              return Caml_option.some(Belt_MapString.fromArray(/* array */[/* tuple */[
+                                match,
+                                v
+                              ]]));
+            } else {
+              return Caml_option.some(Belt_MapString.empty);
+            }
+        case 0 : 
+        case 2 : 
+            return undefined;
+        
+      }
+    }
   }
   
+}
+
+function traverse_list_result(lst) {
+  if (lst) {
+    var match = lst[0];
+    if (match.tag) {
+      return /* Error */Block.__(1, [match[0]]);
+    } else {
+      var match$1 = traverse_list_result(lst[1]);
+      if (match$1.tag) {
+        return /* Error */Block.__(1, [match$1[0]]);
+      } else {
+        return /* Ok */Block.__(0, [/* :: */[
+                    match[0],
+                    match$1[0]
+                  ]]);
+      }
+    }
+  } else {
+    return /* Ok */Block.__(0, [/* [] */0]);
+  }
+}
+
+function from_scope(scope) {
+  return Pervasives.failwith("TODO");
+}
+
+function from_term(term) {
+  switch (term.tag | 0) {
+    case 0 : 
+        var children = term[1];
+        var name = term[0];
+        switch (name) {
+          case "app" : 
+              if (children) {
+                var match = Pervasives.failwith("TODO");
+                var match$1 = traverse_list_result(Belt_List.map(children[1], from_scope));
+                if (match.tag) {
+                  return /* Error */Block.__(1, [match[0]]);
+                } else if (match$1.tag) {
+                  return /* Error */Block.__(1, [match$1[0]]);
+                } else {
+                  return /* Ok */Block.__(0, [/* CoreApp */Block.__(2, [
+                                match[0],
+                                match$1[0]
+                              ])]);
+                }
+              } else {
+                return /* Error */Block.__(1, ["App must have a function"]);
+              }
+          case "case" : 
+              return /* Error */Block.__(1, ["TODO 2"]);
+          case "lam" : 
+              return /* Error */Block.__(1, ["TODO 1"]);
+          default:
+            var match$2 = traverse_list_result(Belt_List.map(children, from_scope));
+            if (match$2.tag) {
+              return /* Error */Block.__(1, [match$2[0]]);
+            } else {
+              return /* Ok */Block.__(0, [/* CoreApp */Block.__(2, [
+                            /* CoreVar */Block.__(0, [name]),
+                            match$2[0]
+                          ])]);
+            }
+        }
+    case 1 : 
+        return /* Ok */Block.__(0, [/* CoreVar */Block.__(0, [term[0]])]);
+    case 2 : 
+        return /* Error */Block.__(1, ["TODO: conversion of sequences"]);
+    case 3 : 
+        return /* Ok */Block.__(0, [/* CoreVal */Block.__(1, [/* ValLit */Block.__(1, [term[0]])])]);
+    
+  }
 }
 
 function $$eval(core) {
@@ -39,7 +216,7 @@ function $$eval(core) {
     var ctx = _ctx;
     switch (core$1.tag | 0) {
       case 0 : 
-          var v = core$1[0][0];
+          var v = core$1[0];
           var match = Belt_MapString.get(ctx, v);
           if (match !== undefined) {
             return /* Ok */Block.__(0, [match]);
@@ -69,11 +246,11 @@ function $$eval(core) {
               continue ;
             }
           } else {
-            return /* Error */Block.__(1, ["TODO"]);
+            return /* Error */Block.__(1, ["TODO 3"]);
           }
       case 3 : 
       case 4 : 
-          return /* Error */Block.__(1, ["TODO"]);
+          return /* Error */Block.__(1, ["TODO 3"]);
       case 5 : 
           return /* Error */Block.__(1, ["Found a metavar!"]);
       
@@ -83,11 +260,17 @@ function $$eval(core) {
 
 var Core = /* module */[
   /* M */0,
+  /* O */0,
   /* matchBranch */matchBranch,
+  /* traverse_list_result */traverse_list_result,
+  /* from_term */from_term,
+  /* from_scope */from_scope,
   /* eval */$$eval
 ];
 
 var Denotation = /* module */[];
+
+var Statics = /* module */[/* M */0];
 
 function intersperse(list, el) {
   if (list) {
@@ -140,10 +323,12 @@ function intersperse_after(list, el) {
   }
 }
 
+exports.prim_eq = prim_eq;
 exports.Abt = Abt;
 exports.Ast = Ast;
 exports.Core = Core;
 exports.Denotation = Denotation;
+exports.Statics = Statics;
 exports.intersperse = intersperse;
 exports.intersperse_after = intersperse_after;
 /* No side effect */
