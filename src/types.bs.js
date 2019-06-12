@@ -11,7 +11,6 @@ var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Caml_module = require("bs-platform/lib/js/caml_module.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
-var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
 function prim_eq(p1, p2) {
   switch (p1.tag | 0) {
@@ -48,19 +47,13 @@ function prim_eq(p1, p2) {
 
 var Abt = Caml_module.init_mod([
       "types.ml",
-      73,
+      66,
       6
     ], [[
         0,
         0,
         0
       ]]);
-
-var Ast = Caml_module.init_mod([
-      "types.ml",
-      147,
-      6
-    ], [[0]]);
 
 function find_operator(_operators, tag) {
   while(true) {
@@ -161,23 +154,6 @@ Caml_module.update_mod([[
       /* from_ast_with_bindings */from_ast_with_bindings,
       /* scope_from_ast */scope_from_ast
     ]);
-
-function from_abt(param) {
-  if (param.tag === 1) {
-    return /* Error */Block.__(1, ["TODO 3"]);
-  } else {
-    throw [
-          Caml_builtin_exceptions.match_failure,
-          /* tuple */[
-            "types.ml",
-            158,
-            21
-          ]
-        ];
-  }
-}
-
-Caml_module.update_mod([[0]], Ast, /* module */[/* from_abt */from_abt]);
 
 function match_branch(v, pat) {
   var exit = 0;
@@ -510,6 +486,8 @@ var Core = /* module */[
 ];
 
 var Statics = /* module */[/* M */0];
+
+var Ast = /* () */0;
 
 exports.prim_eq = prim_eq;
 exports.Abt = Abt;

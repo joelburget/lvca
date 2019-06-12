@@ -4,38 +4,31 @@ open Util
 type sort =
   | SortAp   of sort * sort
   | SortName of string
-;;
 
 type valence =
   | FixedValence    of sort list * sort
   | VariableValence of string * sort
   (** A variable valence represents *)
-;;
 
 type arity =
   | Arity of string list * valence list
   (** An arity is defined its arity indices and valences *)
-;;
 
 type operatorDef =
   | OperatorDef of string * arity
   (** An operator is defined by its tag and arity *)
-;;
 
 type sortDef =
   | SortDef of string list * operatorDef list
   (** A sort is defined by a set of variables and a set of operators *)
-;;
 
 type language =
   | Language of sortDef Belt.Map.String.t
-;;
 
 type primitive =
   | PrimInteger of Bigint.t
   | PrimString  of string
   | PrimBool    of bool
-  ;;
 
 let prim_eq p1 p2 = match (p1, p2) with
   | (PrimInteger i1, PrimInteger i2) -> Bigint.(i1 = i2)
@@ -143,7 +136,6 @@ and Ast : sig
     | Sequence  of term list (* TODO: list vs array? *)
     | Primitive of primitive
 
-  val from_abt : Abt.term -> (term, string) Result.t
 end = struct
   type scope =
     | Scope of string list * term
@@ -153,12 +145,6 @@ end = struct
     | Var       of string
     | Sequence  of term list (* TODO: list vs array? *)
     | Primitive of primitive
-    ;;
-
-  let rec from_abt = function
-    (* | Abt.Term(tag, scopes) *)
-    | Abt.Var _ -> Result.Error "TODO 3"
-
 end
 
 module Core = struct
@@ -169,16 +155,14 @@ module Core = struct
   and denotation_pat =
     | DPatternTm of string * scope_pat list
     | DVar       of string option
-  ;;
 
-  type ty = | Ty;; (* TODO *)
+  type ty = | Ty (* TODO *)
 
   type core_pat =
     | PatternTerm of string * core_pat list
     | PatternVar  of string option
     | PatternLit  of primitive
     | PatternDefault
-  ;;
 
   type core_val =
     | ValTm  of string * core_val list
@@ -193,11 +177,9 @@ module Core = struct
     | Lam     of string list * core
     | Case    of core * ty * (core_pat * core) list
     | Metavar of string
-  ;;
 
   type denotation_chart =
     | DenotationChart of (denotation_pat * core) list
-  ;;
 
   module M = Belt.Map.String
   module O = Belt.Option
