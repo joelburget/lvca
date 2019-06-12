@@ -541,30 +541,26 @@ function fill_in_core(dynamics, mr, c) {
 function fill_in_val(dynamics, mr, v) {
   switch (v.tag | 0) {
     case 0 : 
-        var x = traverse_list_result(Belt_List.map(v[1], (function (param) {
-                    return fill_in_val(dynamics, mr, param);
-                  })));
-        if (x.tag) {
-          return /* Error */Block.__(1, [x[0]]);
-        } else {
-          return /* Ok */Block.__(0, [/* ValTm */Block.__(0, [
-                        v[0],
-                        x[0]
-                      ])]);
-        }
+        var tag = v[0];
+        return Belt_Result.map(traverse_list_result(Belt_List.map(v[1], (function (param) {
+                              return fill_in_val(dynamics, mr, param);
+                            }))), (function (vals$prime) {
+                      return /* ValTm */Block.__(0, [
+                                tag,
+                                vals$prime
+                              ]);
+                    }));
     case 1 : 
     case 2 : 
         return /* Ok */Block.__(0, [v]);
     case 3 : 
-        var match = fill_in_core(dynamics, mr, v[1]);
-        if (match.tag) {
-          return /* Error */Block.__(1, [match[0]]);
-        } else {
-          return /* Ok */Block.__(0, [/* ValLam */Block.__(3, [
-                        v[0],
-                        match[0]
-                      ])]);
-        }
+        var binders = v[0];
+        return Belt_Result.map(fill_in_core(dynamics, mr, v[1]), (function (core$prime) {
+                      return /* ValLam */Block.__(3, [
+                                binders,
+                                core$prime
+                              ]);
+                    }));
     
   }
 }

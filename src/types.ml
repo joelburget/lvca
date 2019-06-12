@@ -286,8 +286,8 @@ module Core = struct
            (List.zip subtms subpats)
            (Some ([], M.empty))
          else None
-      | (_, DPatternTm _) -> None
-      | (_, DVar None) -> Some ([], M.empty)
+      | (_, DPatternTm _)   -> None
+      | (_, DVar None)      -> Some ([], M.empty)
       | (tm, DVar (Some v)) -> Some ([], M.fromArray [|v,tm|])
 
   and matches_scope (scope : Abt.scope) (pat : scope_pat)
@@ -356,18 +356,14 @@ module Core = struct
       (v : core_val)
     : core_val translation_result
     = match v with
-      | ValTm (tag, vals) ->
-        let x = traverse_list_result (List.map vals (fill_in_val dynamics mr)) in
-        (match x with
-        | Ok vals'  -> Ok (ValTm (tag, vals'))
-        | Error msg -> Error msg
-      )
+      | ValTm (tag, vals) -> Result.map
+        (traverse_list_result (List.map vals (fill_in_val dynamics mr)))
+        (function vals' -> ValTm (tag, vals'))
       | ValLit _    -> Ok v
       | ValPrimop _ -> Ok v
-      | ValLam (binders, core) -> (match fill_in_core dynamics mr core with
-        | Ok core'  -> Ok (ValLam (binders, core'))
-        | Error msg -> Error msg
-      )
+      | ValLam (binders, core) -> Result.map
+        (fill_in_core dynamics mr core)
+        (function core' -> ValLam (binders, core'))
 
   and term_to_core (dynamics : denotation_chart) (tm : Abt.term)
     : core translation_result
