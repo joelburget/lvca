@@ -56,9 +56,7 @@ core_val:
   ;
 
 core:
-  | APP LEFT_PAREN core                                                    RIGHT_PAREN
-  { CoreApp ($3, []) }
-  | APP LEFT_PAREN core SEMICOLON separated_nonempty_list(SEMICOLON, core) RIGHT_PAREN
+  | APP LEFT_PAREN core SEMICOLON separated_list(SEMICOLON, core) RIGHT_PAREN
   { CoreApp ($3, $5) }
   | core_val
   { CoreVal $1 }
@@ -71,7 +69,7 @@ core:
   | CASE LEFT_PAREN arg = core SEMICOLON cases = separated_list(SEMICOLON, case) RIGHT_PAREN
   { Case (arg, Ty, cases) }
   | LEFT_OXFORD ID RIGHT_OXFORD
-  { Metavar $2 }
+  { Meaning $2 }
   ;
 
 case: core_pat RIGHT_S_ARR core { ($1, $3) } ;

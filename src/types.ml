@@ -107,7 +107,7 @@ end = struct
                        | FixedValence (_binds, SortName result_sort)
                          -> scope_from_ast lang result_sort env subtm
                        | _ -> Result.Error "TODO")))
-                   (function subtms' -> Term (tag, subtms'))))
+                   (fun subtms' -> Term (tag, subtms'))))
       | Ast.Var name -> (match M.get env name with
         | None    -> Error ("couldn't find variable " ^ name)
         | Some ix -> Ok (Var ix))
@@ -176,7 +176,7 @@ module Core = struct
     | CoreApp of core * core list
     | Lam     of string list * core
     | Case    of core * ty * (core_pat * core) list
-    | Metavar of string
+    | Meaning of string
 
   type denotation_chart =
     | DenotationChart of (denotation_pat * core) list
@@ -196,10 +196,8 @@ module Core = struct
            List.every sub_results O.isSome
         then Some (List.reduce (List.map sub_results O.getExn) M.empty union)
         else None
-    | (ValLit l1, PatternLit l2) ->
-        if prim_eq l1 l2
-        then Some M.empty
-        else None
+    | (ValLit l1, PatternLit l2)
+    -> if prim_eq l1 l2 then Some M.empty else None
     | (tm, PatternVar (Some v)) -> Some (M.fromArray [|v,tm|])
     | (tm, PatternVar None)     -> Some M.empty
     | (_val, PatternDefault)    -> Some M.empty
@@ -223,24 +221,25 @@ module Core = struct
       | (_, DVar None)      -> Some ([], M.empty)
       | (tm, DVar (Some v)) -> Some ([], M.fromArray [|v,tm|])
 
-  and matches_scope (scope : Abt.scope) (pat : scope_pat)
+  and matches_scope
+    (Scope (binders, tm) : Abt.scope)
+    (DenotationScopePat (patBinders, pat) : scope_pat)
     : ((string * string) list * Abt.term M.t) option
-    = match (scope, pat) with
-      | (Scope(binders, tm), DenotationScopePat(patBinders, pat))
-      -> if List.(length patBinders == length binders)
-        then O.map
-          (matches tm pat)
-          (function (assocs, tmMatches)
-            -> (List.zip patBinders binders @ assocs, tmMatches))
-        else None
+    = if List.(length patBinders == length binders)
+      then O.map
+        (matches tm pat)
+        (fun (assocs, tmMatches)
+          -> (List.zip patBinders binders @ assocs, tmMatches))
+      else None
 
-  let find_match (dynamics : denotation_chart) (term : Abt.term)
+  let find_match
+    (DenotationChart denotations : denotation_chart)
+    (term : Abt.term)
     : ((string * string) list * Abt.term M.t * core) option
-    = match dynamics with
-      | DenotationChart denotations -> get_first
-        (fun (pat, core) -> match matches term pat with
-          | None -> None
-          | Some (assocs, bindings) -> Some (assocs, bindings, core))
+    = get_first
+        (fun (pat, core) -> O.map
+          (matches term pat)
+          (fun (assocs, bindings) -> (assocs, bindings, core)))
         denotations
 
   type located_err = (string * Abt.term option)
@@ -252,14 +251,18 @@ module Core = struct
     (c : core)
     : core translation_result
     = match c with
-      | Metavar name -> (match M.get assignments name with
+      | Meaning name -> (match M.get assignments name with
         | Some tm -> term_to_core dynamics tm
         | None    -> Error ("TODO 4", None)
         )
-      | CoreVar _ -> Ok c
+      (* XXX same as Meaning *)
+      | CoreVar name -> (match M.get assignments name with
+        | Some tm -> Result.map (term_is_core_val tm) (fun cv -> CoreVal cv)
+        | None    -> Ok c
+        )
       | CoreVal v -> Result.map
         (fill_in_val dynamics mr v)
-        (function v' -> CoreVal v')
+        (fun v' -> CoreVal v')
       | CoreApp(f, args) -> (match
         ( fill_in_core dynamics mr f
         , traverse_list_result (List.map args (fill_in_core dynamics mr))
@@ -269,13 +272,13 @@ module Core = struct
         )
       | Lam (binders, core) -> Result.map
         (fill_in_core dynamics mr core)
-        (function core' -> (Lam (binders, core')))
+        (fun core' -> Lam (binders, core'))
       | Case (scrutinee, ty, branches) ->
           let x : ((core_pat * core) list) translation_result
                 = traverse_list_result (List.map branches
                 (fun (pat, core) -> Result.map
                   (fill_in_core dynamics mr core)
-                  (function core' -> (pat, core'))
+                  (fun core' -> (pat, core'))
                 )) in
           match (fill_in_core dynamics mr scrutinee, x) with
             | (Ok scrutinee', Ok branches')
@@ -291,12 +294,24 @@ module Core = struct
     = match v with
       | ValTm (tag, vals) -> Result.map
         (traverse_list_result (List.map vals (fill_in_val dynamics mr)))
-        (function vals' -> ValTm (tag, vals'))
+        (fun vals' -> ValTm (tag, vals'))
       | ValLit _    -> Ok v
       | ValPrimop _ -> Ok v
       | ValLam (binders, core) -> Result.map
         (fill_in_core dynamics mr core)
-        (function core' -> ValLam (binders, core'))
+        (fun core' -> ValLam (binders, core'))
+
+  and term_is_core_val (tm : Abt.term) : core_val translation_result
+    = match tm with
+    | Term (tag, subtms) -> Result.map
+      (traverse_list_result (List.map subtms scope_is_core_val))
+      (fun subtms' -> ValTm (tag, subtms'))
+    | Abt.Primitive prim -> Ok (ValLit prim)
+    | Abt.Var _ -> Error ("TODO", Some tm)
+    | _ -> Error ("TODO", Some tm)
+
+  and scope_is_core_val (scope : Abt.scope) : core_val translation_result
+    = failwith "TODO"
 
   and term_to_core (dynamics : denotation_chart) (tm : Abt.term)
     : core translation_result
@@ -324,7 +339,7 @@ module Core = struct
                    go (union ctx newArgs) body
           (* | Case tm _ty branches ->
             let v = go ctx tm *)
-          | Metavar _v -> Error "Found a metavar!"
+          | Meaning _v -> Error "Found a metavar!"
 
           | _ -> Error "TODO 5"
 

@@ -112,7 +112,7 @@ module CoreValView = {
     [| view_core(arg) |],
     [| React.string("; ...)") |],
   ])
-  | Metavar(name) => make_span([
+  | Meaning(name) => make_span([
     [| React.string("[[") |],
     [| React.string(name) |],
     [| React.string("]]") |],

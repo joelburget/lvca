@@ -127,6 +127,34 @@ var TermViewer = /* module */[
   /* make */Index$TermViewer
 ];
 
+function view_core_val(coreVal) {
+  switch (coreVal.tag | 0) {
+    case 0 : 
+        return make_span(/* :: */[
+                    /* array */[coreVal[0]],
+                    /* :: */[
+                      $$Array.of_list(Util.intersperse(List.map(view_core_val, coreVal[1]), "; ")),
+                      /* [] */0
+                    ]
+                  ]);
+    case 1 : 
+        return show_prim(coreVal[0]);
+    case 2 : 
+        return coreVal[0];
+    case 3 : 
+        return make_span(/* :: */[
+                    $$Array.of_list(Util.intersperse(List.map((function (prim) {
+                                    return prim;
+                                  }), coreVal[0]), ". ")),
+                    /* :: */[
+                      /* array */[view_core(coreVal[1])],
+                      /* [] */0
+                    ]
+                  ]);
+    
+  }
+}
+
 function view_core(core) {
   switch (core.tag | 0) {
     case 0 : 
@@ -186,34 +214,6 @@ function view_core(core) {
                         /* array */["]]"],
                         /* [] */0
                       ]
-                    ]
-                  ]);
-    
-  }
-}
-
-function view_core_val(coreVal) {
-  switch (coreVal.tag | 0) {
-    case 0 : 
-        return make_span(/* :: */[
-                    /* array */[coreVal[0]],
-                    /* :: */[
-                      $$Array.of_list(Util.intersperse(List.map(view_core_val, coreVal[1]), "; ")),
-                      /* [] */0
-                    ]
-                  ]);
-    case 1 : 
-        return show_prim(coreVal[0]);
-    case 2 : 
-        return coreVal[0];
-    case 3 : 
-        return make_span(/* :: */[
-                    $$Array.of_list(Util.intersperse(List.map((function (prim) {
-                                    return prim;
-                                  }), coreVal[0]), ". ")),
-                    /* :: */[
-                      /* array */[view_core(coreVal[1])],
-                      /* [] */0
                     ]
                   ]);
     
@@ -393,11 +393,11 @@ function Index$LvcaViewer(Props) {
         ]]);
   } else {
     var termResult_ = termResult[0];
-    var match$7 = Types.Core[/* term_to_core */8](dynamics[0], termResult_);
+    var match$7 = Types.Core[/* term_to_core */10](dynamics[0], termResult_);
     if (match$7.tag) {
       evalResult = /* Error */Block.__(1, [match$7[0]]);
     } else {
-      var match$8 = Types.Core[/* eval */9](match$7[0]);
+      var match$8 = Types.Core[/* eval */11](match$7[0]);
       evalResult = match$8.tag ? /* Error */Block.__(1, [/* tuple */[
               match$8[0],
               termResult_

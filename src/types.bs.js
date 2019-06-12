@@ -291,11 +291,11 @@ function matches(tm, pat) {
   
 }
 
-function matches_scope(scope, pat) {
-  var patBinders = pat[0];
-  var binders = scope[0];
+function matches_scope(param, param$1) {
+  var patBinders = param$1[0];
+  var binders = param[0];
   if (Belt_List.length(patBinders) === Belt_List.length(binders)) {
-    return Belt_Option.map(matches(scope[1], pat[1]), (function (param) {
+    return Belt_Option.map(matches(param[1], param$1[1]), (function (param) {
                   return /* tuple */[
                           Pervasives.$at(Belt_List.zip(patBinders, binders), param[0]),
                           param[1]
@@ -305,42 +305,48 @@ function matches_scope(scope, pat) {
   
 }
 
-function find_match(dynamics, term) {
+function find_match(param, term) {
   return Util.get_first((function (param) {
-                var match = matches(term, param[0]);
-                if (match !== undefined) {
-                  var match$1 = match;
-                  return /* tuple */[
-                          match$1[0],
-                          match$1[1],
-                          param[1]
-                        ];
-                }
-                
-              }), dynamics[0]);
+                var core = param[1];
+                return Belt_Option.map(matches(term, param[0]), (function (param) {
+                              return /* tuple */[
+                                      param[0],
+                                      param[1],
+                                      core
+                                    ];
+                            }));
+              }), param[0]);
 }
 
 function fill_in_core(dynamics, mr, c) {
+  var assignments = mr[1];
   switch (c.tag | 0) {
     case 0 : 
-        return /* Ok */Block.__(0, [c]);
+        var match = Belt_MapString.get(assignments, c[0]);
+        if (match !== undefined) {
+          return Belt_Result.map(term_is_core_val(match), (function (cv) {
+                        return /* CoreVal */Block.__(1, [cv]);
+                      }));
+        } else {
+          return /* Ok */Block.__(0, [c]);
+        }
     case 1 : 
         return Belt_Result.map(fill_in_val(dynamics, mr, c[0]), (function (v$prime) {
                       return /* CoreVal */Block.__(1, [v$prime]);
                     }));
     case 2 : 
-        var match = fill_in_core(dynamics, mr, c[0]);
-        var match$1 = Util.traverse_list_result(Belt_List.map(c[1], (function (param) {
+        var match$1 = fill_in_core(dynamics, mr, c[0]);
+        var match$2 = Util.traverse_list_result(Belt_List.map(c[1], (function (param) {
                     return fill_in_core(dynamics, mr, param);
                   })));
-        if (match.tag) {
-          return /* Error */Block.__(1, [match[0]]);
-        } else if (match$1.tag) {
+        if (match$1.tag) {
           return /* Error */Block.__(1, [match$1[0]]);
+        } else if (match$2.tag) {
+          return /* Error */Block.__(1, [match$2[0]]);
         } else {
           return /* Ok */Block.__(0, [/* CoreApp */Block.__(2, [
-                        match[0],
-                        match$1[0]
+                        match$1[0],
+                        match$2[0]
                       ])]);
         }
     case 3 : 
@@ -361,22 +367,22 @@ function fill_in_core(dynamics, mr, c) {
                                         ];
                                 }));
                   })));
-        var match$2 = fill_in_core(dynamics, mr, c[0]);
-        if (match$2.tag) {
-          return /* Error */Block.__(1, [match$2[0]]);
+        var match$3 = fill_in_core(dynamics, mr, c[0]);
+        if (match$3.tag) {
+          return /* Error */Block.__(1, [match$3[0]]);
         } else if (x.tag) {
           return /* Error */Block.__(1, [x[0]]);
         } else {
           return /* Ok */Block.__(0, [/* Case */Block.__(4, [
-                        match$2[0],
+                        match$3[0],
                         c[1],
                         x[0]
                       ])]);
         }
     case 5 : 
-        var match$3 = Belt_MapString.get(mr[1], c[0]);
-        if (match$3 !== undefined) {
-          return term_to_core(dynamics, match$3);
+        var match$4 = Belt_MapString.get(assignments, c[0]);
+        if (match$4 !== undefined) {
+          return term_to_core(dynamics, match$4);
         } else {
           return /* Error */Block.__(1, [/* tuple */[
                       "TODO 4",
@@ -412,6 +418,32 @@ function fill_in_val(dynamics, mr, v) {
                     }));
     
   }
+}
+
+function term_is_core_val(tm) {
+  switch (tm.tag | 0) {
+    case 0 : 
+        var tag = tm[0];
+        return Belt_Result.map(Util.traverse_list_result(Belt_List.map(tm[1], scope_is_core_val)), (function (subtms$prime) {
+                      return /* ValTm */Block.__(0, [
+                                tag,
+                                subtms$prime
+                              ]);
+                    }));
+    case 1 : 
+    case 2 : 
+        return /* Error */Block.__(1, [/* tuple */[
+                    "TODO",
+                    tm
+                  ]]);
+    case 3 : 
+        return /* Ok */Block.__(0, [/* ValLit */Block.__(1, [tm[0]])]);
+    
+  }
+}
+
+function scope_is_core_val(scope) {
+  return Pervasives.failwith("TODO");
 }
 
 function term_to_core(dynamics, tm) {
@@ -481,6 +513,8 @@ var Core = /* module */[
   /* find_match */find_match,
   /* fill_in_core */fill_in_core,
   /* fill_in_val */fill_in_val,
+  /* term_is_core_val */term_is_core_val,
+  /* scope_is_core_val */scope_is_core_val,
   /* term_to_core */term_to_core,
   /* eval */$$eval
 ];
