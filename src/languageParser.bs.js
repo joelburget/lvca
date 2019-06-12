@@ -70,7 +70,7 @@ function _menhir_run7(__menhir_env, __menhir_stack, __menhir_s) {
                 Caml_builtin_exceptions.assert_failure,
                 /* tuple */[
                   "languageParser.ml",
-                  817,
+                  820,
                   8
                 ]
               ];
@@ -101,7 +101,7 @@ function _menhir_fail(param) {
         Caml_builtin_exceptions.assert_failure,
         /* tuple */[
           "languageParser.ml",
-          989,
+          995,
           4
         ]
       ];
@@ -117,7 +117,7 @@ function _menhir_goto_loption_separated_nonempty_list_SEMICOLON_valence__(_menhi
               Caml_builtin_exceptions.assert_failure,
               /* tuple */[
                 "languageParser.ml",
-                649,
+                652,
                 10
               ]
             ];
@@ -140,7 +140,7 @@ function _menhir_goto_loption_separated_nonempty_list_SEMICOLON_valence__(_menhi
                 Caml_builtin_exceptions.assert_failure,
                 /* tuple */[
                   "languageParser.ml",
-                  672,
+                  675,
                   12
                 ]
               ];
@@ -156,7 +156,7 @@ function _menhir_goto_loption_separated_nonempty_list_SEMICOLON_valence__(_menhi
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "languageParser.ml",
-              681,
+              684,
               10
             ]
           ];
@@ -180,7 +180,7 @@ function _menhir_goto_loption_separated_nonempty_list_SEMICOLON_valence__(_menhi
               Caml_builtin_exceptions.assert_failure,
               /* tuple */[
                 "languageParser.ml",
-                706,
+                709,
                 12
               ]
             ];
@@ -208,7 +208,7 @@ function _menhir_reduce6(_menhir_env, _menhir_stack, _menhir_s) {
                 Caml_builtin_exceptions.assert_failure,
                 /* tuple */[
                   "languageParser.ml",
-                  1182,
+                  1191,
                   10
                 ]
               ];
@@ -226,7 +226,7 @@ function _menhir_reduce6(_menhir_env, _menhir_stack, _menhir_s) {
                   Caml_builtin_exceptions.assert_failure,
                   /* tuple */[
                     "languageParser.ml",
-                    1231,
+                    1240,
                     12
                   ]
                 ];
@@ -271,7 +271,7 @@ function _menhir_run1(_menhir_env, _menhir_stack, _menhir_s, _v) {
                 Caml_builtin_exceptions.assert_failure,
                 /* tuple */[
                   "languageParser.ml",
-                  1445,
+                  1454,
                   12
                 ]
               ];
@@ -295,7 +295,7 @@ function _menhir_run1(_menhir_env, _menhir_stack, _menhir_s, _v) {
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "languageParser.ml",
-              1456,
+              1465,
               8
             ]
           ];
@@ -327,7 +327,7 @@ function _menhir_run12(_menhir_env, _menhir_stack, _menhir_s, _v) {
                       Caml_builtin_exceptions.assert_failure,
                       /* tuple */[
                         "languageParser.ml",
-                        846,
+                        849,
                         12
                       ]
                     ];
@@ -363,7 +363,7 @@ function _menhir_run12(_menhir_env, _menhir_stack, _menhir_s, _v) {
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "languageParser.ml",
-              852,
+              855,
               8
             ]
           ];
@@ -401,7 +401,7 @@ function _menhir_goto_loption_separated_nonempty_list_BAR_operatorDef__(_menhir_
           Caml_builtin_exceptions.assert_failure,
           /* tuple */[
             "languageParser.ml",
-            1079,
+            1088,
             6
           ]
         ];
@@ -414,7 +414,7 @@ function _menhir_goto_loption_separated_nonempty_list_BAR_operatorDef__(_menhir_
               Caml_builtin_exceptions.assert_failure,
               /* tuple */[
                 "languageParser.ml",
-                1087,
+                1096,
                 8
               ]
             ];
@@ -439,7 +439,7 @@ function _menhir_goto_option_BAR_(_menhir_env, _menhir_stack, _v) {
           Caml_builtin_exceptions.assert_failure,
           /* tuple */[
             "languageParser.ml",
-            1245,
+            1254,
             6
           ]
         ];
@@ -452,7 +452,7 @@ function _menhir_goto_option_BAR_(_menhir_env, _menhir_stack, _v) {
               Caml_builtin_exceptions.assert_failure,
               /* tuple */[
                 "languageParser.ml",
-                1261,
+                1270,
                 8
               ]
             ];
@@ -926,7 +926,7 @@ function _menhir_run5(_menhir_env, _menhir_stack, _menhir_s, _v) {
                     Caml_builtin_exceptions.assert_failure,
                     /* tuple */[
                       "languageParser.ml",
-                      1120,
+                      1129,
                       12
                     ]
                   ];
@@ -967,7 +967,7 @@ function _menhir_run5(_menhir_env, _menhir_stack, _menhir_s, _v) {
                             Caml_builtin_exceptions.assert_failure,
                             /* tuple */[
                               "languageParser.ml",
-                              953,
+                              959,
                               12
                             ]
                           ];
@@ -1023,7 +1023,7 @@ function _menhir_run5(_menhir_env, _menhir_stack, _menhir_s, _v) {
                       Caml_builtin_exceptions.assert_failure,
                       /* tuple */[
                         "languageParser.ml",
-                        975,
+                        981,
                         8
                       ]
                     ];
@@ -1060,7 +1060,7 @@ function _menhir_run5(_menhir_env, _menhir_stack, _menhir_s, _v) {
                 Caml_builtin_exceptions.assert_failure,
                 /* tuple */[
                   "languageParser.ml",
-                  1136,
+                  1145,
                   12
                 ]
               ];
@@ -1079,7 +1079,7 @@ function _menhir_run5(_menhir_env, _menhir_stack, _menhir_s, _v) {
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "languageParser.ml",
-              1140,
+              1149,
               8
             ]
           ];
@@ -1101,7 +1101,7 @@ function _menhir_goto_loption_separated_nonempty_list_COMMA_ID__(_menhir_env, _m
           Caml_builtin_exceptions.assert_failure,
           /* tuple */[
             "languageParser.ml",
-            890,
+            896,
             6
           ]
         ];
@@ -1137,7 +1137,7 @@ function _menhir_goto_loption_separated_nonempty_list_COMMA_ID__(_menhir_env, _m
                 Caml_builtin_exceptions.assert_failure,
                 /* tuple */[
                   "languageParser.ml",
-                  912,
+                  918,
                   16
                 ]
               ];
@@ -1155,7 +1155,7 @@ function _menhir_goto_loption_separated_nonempty_list_COMMA_ID__(_menhir_env, _m
               Caml_builtin_exceptions.assert_failure,
               /* tuple */[
                 "languageParser.ml",
-                916,
+                922,
                 12
               ]
             ];
@@ -1173,7 +1173,7 @@ function _menhir_goto_loption_separated_nonempty_list_COMMA_ID__(_menhir_env, _m
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "languageParser.ml",
-              923,
+              929,
               8
             ]
           ];
@@ -1306,7 +1306,7 @@ function languageDef(lexer, lexbuf) {
               Caml_builtin_exceptions.assert_failure,
               /* tuple */[
                 "languageParser.ml",
-                1506,
+                1515,
                 8
               ]
             ];

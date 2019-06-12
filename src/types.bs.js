@@ -2,12 +2,128 @@
 'use strict';
 
 var Block = require("bs-platform/lib/js/block.js");
+var Curry = require("bs-platform/lib/js/curry.js");
 var Bigint = require("bs-zarith/src/Bigint.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
+var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
+var Caml_module = require("bs-platform/lib/js/caml_module.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
+var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
+
+function intersperse(list, el) {
+  if (list) {
+    var match = list[1];
+    if (match) {
+      return /* :: */[
+              list[0],
+              /* :: */[
+                el,
+                intersperse(/* :: */[
+                      match[0],
+                      match[1]
+                    ], el)
+              ]
+            ];
+    } else {
+      return list;
+    }
+  } else {
+    return list;
+  }
+}
+
+function intersperse_after(list, el) {
+  if (list) {
+    var match = list[1];
+    var list_el = list[0];
+    if (match) {
+      return /* :: */[
+              list_el,
+              /* :: */[
+                el,
+                intersperse_after(/* :: */[
+                      match[0],
+                      match[1]
+                    ], el)
+              ]
+            ];
+    } else {
+      return /* :: */[
+              list_el,
+              /* :: */[
+                el,
+                /* [] */0
+              ]
+            ];
+    }
+  } else {
+    return /* [] */0;
+  }
+}
+
+function get_first(f, _lst) {
+  while(true) {
+    var lst = _lst;
+    if (lst) {
+      var some_b = Curry._1(f, lst[0]);
+      if (some_b !== undefined) {
+        return some_b;
+      } else {
+        _lst = lst[1];
+        continue ;
+      }
+    } else {
+      return undefined;
+    }
+  };
+}
+
+function traverse_list_result(lst) {
+  if (lst) {
+    var match = lst[0];
+    if (match.tag) {
+      return /* Error */Block.__(1, [match[0]]);
+    } else {
+      var match$1 = traverse_list_result(lst[1]);
+      if (match$1.tag) {
+        return /* Error */Block.__(1, [match$1[0]]);
+      } else {
+        return /* Ok */Block.__(0, [/* :: */[
+                    match[0],
+                    match$1[0]
+                  ]]);
+      }
+    }
+  } else {
+    return /* Ok */Block.__(0, [/* [] */0]);
+  }
+}
+
+function union(m1, m2) {
+  return Belt_MapString.merge(m1, m2, (function (_k, v1, v2) {
+                if (v2 !== undefined) {
+                  return Caml_option.some(Caml_option.valFromOption(v2));
+                } else if (v1 !== undefined) {
+                  return Caml_option.some(Caml_option.valFromOption(v1));
+                } else {
+                  return undefined;
+                }
+              }));
+}
+
+function fold_right(f, lst, b) {
+  if (lst) {
+    return Curry._1(f, /* tuple */[
+                lst[0],
+                fold_right(f, lst[1], b)
+              ]);
+  } else {
+    return b;
+  }
+}
 
 function prim_eq(p1, p2) {
   switch (p1.tag | 0) {
@@ -42,9 +158,127 @@ function prim_eq(p1, p2) {
   }
 }
 
-var Abt = /* module */[];
+var Abt = Caml_module.init_mod([
+      "types.ml",
+      115,
+      6
+    ], [[
+        0,
+        0,
+        0
+      ]]);
 
-var Ast = /* module */[];
+var Ast = Caml_module.init_mod([
+      "types.ml",
+      182,
+      6
+    ], [[0]]);
+
+function find_operator(_operators, tag) {
+  while(true) {
+    var operators = _operators;
+    if (operators) {
+      var od = operators[0];
+      if (od[0] === tag) {
+        return od;
+      } else {
+        _operators = operators[1];
+        continue ;
+      }
+    } else {
+      return undefined;
+    }
+  };
+}
+
+function from_ast_with_bindings(lang, current_sort, env, param) {
+  switch (param.tag | 0) {
+    case 0 : 
+        var tag = param[0];
+        var match = Belt_MapString.get(lang[0], current_sort);
+        if (match !== undefined) {
+          var match$1 = find_operator(match[1], tag);
+          if (match$1 !== undefined) {
+            var x = traverse_list_result(Belt_List.map(param[1], (function (param) {
+                        return scope_from_ast(lang, current_sort, env, param);
+                      })));
+            if (x.tag) {
+              return /* Error */Block.__(1, [x[0]]);
+            } else {
+              return /* Ok */Block.__(0, [/* Term */Block.__(0, [
+                            tag,
+                            x[0]
+                          ])]);
+            }
+          } else {
+            return /* Error */Block.__(1, ["couldn't to find operator " + (tag + (" (in sort " + (current_sort + ")")))]);
+          }
+        } else {
+          return /* Error */Block.__(1, ["TODO 1"]);
+        }
+    case 1 : 
+        var name = param[0];
+        var match$2 = Belt_MapString.get(env, name);
+        if (match$2 !== undefined) {
+          return /* Ok */Block.__(0, [/* Var */Block.__(1, [match$2])]);
+        } else {
+          return /* Error */Block.__(1, ["couldn't find variable " + name]);
+        }
+    case 2 : 
+        var x$1 = traverse_list_result(Belt_List.map(param[0], (function (param) {
+                    return from_ast_with_bindings(lang, current_sort, env, param);
+                  })));
+        return Belt_Result.map(x$1, (function (x$prime) {
+                      return /* Sequence */Block.__(2, [x$prime]);
+                    }));
+    case 3 : 
+        return /* Ok */Block.__(0, [/* Primitive */Block.__(3, [param[0]])]);
+    
+  }
+}
+
+function scope_from_ast(lang, current_sort, env, param) {
+  var names = param[0];
+  return Belt_Result.map(from_ast_with_bindings(lang, current_sort, env, param[1]), (function (body$prime) {
+                return /* Scope */[
+                        names,
+                        body$prime
+                      ];
+              }));
+}
+
+function from_ast(lang, current_sort) {
+  return (function (param) {
+      return from_ast_with_bindings(lang, current_sort, Belt_MapString.empty, param);
+    });
+}
+
+Caml_module.update_mod([[
+        0,
+        0,
+        0
+      ]], Abt, /* module */[
+      /* from_ast */from_ast,
+      /* from_ast_with_bindings */from_ast_with_bindings,
+      /* scope_from_ast */scope_from_ast
+    ]);
+
+function from_abt(param) {
+  if (param.tag === 1) {
+    return /* Error */Block.__(1, ["TODO 3"]);
+  } else {
+    throw [
+          Caml_builtin_exceptions.match_failure,
+          /* tuple */[
+            "types.ml",
+            193,
+            21
+          ]
+        ];
+  }
+}
+
+Caml_module.update_mod([[0]], Ast, /* module */[/* from_abt */from_abt]);
 
 function matchBranch(v, pat) {
   var exit = 0;
@@ -135,76 +369,214 @@ function matchBranch(v, pat) {
   
 }
 
-function traverse_list_result(lst) {
-  if (lst) {
-    var match = lst[0];
-    if (match.tag) {
-      return /* Error */Block.__(1, [match[0]]);
+function matches(tm, pat) {
+  var exit = 0;
+  if (tm.tag) {
+    exit = 1;
+  } else {
+    var subtms = tm[1];
+    if (pat.tag) {
+      exit = 1;
     } else {
-      var match$1 = traverse_list_result(lst[1]);
-      if (match$1.tag) {
-        return /* Error */Block.__(1, [match$1[0]]);
+      var subpats = pat[1];
+      if (tm[0] === pat[0] && Belt_List.length(subtms) === Belt_List.length(subpats)) {
+        return fold_right((function (param) {
+                      var b_opt = param[1];
+                      var match = param[0];
+                      var match$1 = matches_scope(match[0], match[1]);
+                      if (match$1 !== undefined && b_opt !== undefined) {
+                        var match$2 = b_opt;
+                        var match$3 = match$1;
+                        return /* tuple */[
+                                Pervasives.$at(match$3[0], match$2[0]),
+                                union(match$3[1], match$2[1])
+                              ];
+                      }
+                      
+                    }), Belt_List.zip(subtms, subpats), /* tuple */[
+                    /* [] */0,
+                    Belt_MapString.empty
+                  ]);
       } else {
-        return /* Ok */Block.__(0, [/* :: */[
-                    match[0],
-                    match$1[0]
-                  ]]);
+        return undefined;
       }
     }
-  } else {
-    return /* Ok */Block.__(0, [/* [] */0]);
+  }
+  if (exit === 1) {
+    if (pat.tag) {
+      var match = pat[0];
+      if (match !== undefined) {
+        return /* tuple */[
+                /* [] */0,
+                Belt_MapString.fromArray(/* array */[/* tuple */[
+                        match,
+                        tm
+                      ]])
+              ];
+      } else {
+        return /* tuple */[
+                /* [] */0,
+                Belt_MapString.empty
+              ];
+      }
+    } else {
+      return undefined;
+    }
+  }
+  
+}
+
+function matches_scope(scope, pat) {
+  var patBinders = pat[0];
+  var binders = scope[0];
+  if (Belt_List.length(patBinders) === Belt_List.length(binders)) {
+    var match = matches(scope[1], pat[1]);
+    if (match !== undefined) {
+      var match$1 = match;
+      return /* tuple */[
+              Pervasives.$at(Belt_List.zip(patBinders, binders), match$1[0]),
+              match$1[1]
+            ];
+    } else {
+      return undefined;
+    }
+  }
+  
+}
+
+function find_match(dynamics, term) {
+  return get_first((function (param) {
+                var match = matches(term, param[0]);
+                if (match !== undefined) {
+                  var match$1 = match;
+                  return /* tuple */[
+                          match$1[0],
+                          match$1[1],
+                          param[1]
+                        ];
+                }
+                
+              }), dynamics[0]);
+}
+
+function fill_in_core(dynamics, mr, c) {
+  switch (c.tag | 0) {
+    case 0 : 
+        return /* Ok */Block.__(0, [c]);
+    case 1 : 
+        var match = fill_in_val(dynamics, mr, c[0]);
+        if (match.tag) {
+          return /* Error */Block.__(1, [match[0]]);
+        } else {
+          return /* Ok */Block.__(0, [/* CoreVal */Block.__(1, [match[0]])]);
+        }
+    case 2 : 
+        var match$1 = fill_in_core(dynamics, mr, c[0]);
+        var match$2 = traverse_list_result(Belt_List.map(c[1], (function (param) {
+                    return fill_in_core(dynamics, mr, param);
+                  })));
+        if (match$1.tag) {
+          return /* Error */Block.__(1, [match$1[0]]);
+        } else if (match$2.tag) {
+          return /* Error */Block.__(1, [match$2[0]]);
+        } else {
+          return /* Ok */Block.__(0, [/* CoreApp */Block.__(2, [
+                        match$1[0],
+                        match$2[0]
+                      ])]);
+        }
+    case 3 : 
+        var match$3 = fill_in_core(dynamics, mr, c[1]);
+        if (match$3.tag) {
+          return /* Error */Block.__(1, [match$3[0]]);
+        } else {
+          return /* Ok */Block.__(0, [/* Lam */Block.__(3, [
+                        c[0],
+                        match$3[0]
+                      ])]);
+        }
+    case 4 : 
+        var x = traverse_list_result(Belt_List.map(c[2], (function (param) {
+                    var match = fill_in_core(dynamics, mr, param[1]);
+                    if (match.tag) {
+                      return /* Error */Block.__(1, [match[0]]);
+                    } else {
+                      return /* Ok */Block.__(0, [/* tuple */[
+                                  param[0],
+                                  match[0]
+                                ]]);
+                    }
+                  })));
+        var match$4 = fill_in_core(dynamics, mr, c[0]);
+        if (match$4.tag) {
+          return /* Error */Block.__(1, [match$4[0]]);
+        } else if (x.tag) {
+          return /* Error */Block.__(1, [x[0]]);
+        } else {
+          return /* Ok */Block.__(0, [/* Case */Block.__(4, [
+                        match$4[0],
+                        c[1],
+                        x[0]
+                      ])]);
+        }
+    case 5 : 
+        var match$5 = Belt_MapString.get(mr[1], c[0]);
+        if (match$5 !== undefined) {
+          return term_to_core(dynamics, match$5);
+        } else {
+          return /* Error */Block.__(1, [/* tuple */[
+                      "TODO 4",
+                      undefined
+                    ]]);
+        }
+    
   }
 }
 
-function from_scope(scope) {
-  return Pervasives.failwith("TODO");
-}
-
-function from_term(term) {
-  switch (term.tag | 0) {
+function fill_in_val(dynamics, mr, v) {
+  switch (v.tag | 0) {
     case 0 : 
-        var children = term[1];
-        var name = term[0];
-        switch (name) {
-          case "app" : 
-              if (children) {
-                var match = Pervasives.failwith("TODO");
-                var match$1 = traverse_list_result(Belt_List.map(children[1], from_scope));
-                if (match.tag) {
-                  return /* Error */Block.__(1, [match[0]]);
-                } else if (match$1.tag) {
-                  return /* Error */Block.__(1, [match$1[0]]);
-                } else {
-                  return /* Ok */Block.__(0, [/* CoreApp */Block.__(2, [
-                                match[0],
-                                match$1[0]
-                              ])]);
-                }
-              } else {
-                return /* Error */Block.__(1, ["App must have a function"]);
-              }
-          case "case" : 
-              return /* Error */Block.__(1, ["TODO 2"]);
-          case "lam" : 
-              return /* Error */Block.__(1, ["TODO 1"]);
-          default:
-            var match$2 = traverse_list_result(Belt_List.map(children, from_scope));
-            if (match$2.tag) {
-              return /* Error */Block.__(1, [match$2[0]]);
-            } else {
-              return /* Ok */Block.__(0, [/* CoreApp */Block.__(2, [
-                            /* CoreVar */Block.__(0, [name]),
-                            match$2[0]
-                          ])]);
-            }
+        var x = traverse_list_result(Belt_List.map(v[1], (function (param) {
+                    return fill_in_val(dynamics, mr, param);
+                  })));
+        if (x.tag) {
+          return /* Error */Block.__(1, [x[0]]);
+        } else {
+          return /* Ok */Block.__(0, [/* ValTm */Block.__(0, [
+                        v[0],
+                        x[0]
+                      ])]);
         }
     case 1 : 
-        return /* Ok */Block.__(0, [/* CoreVar */Block.__(0, [term[0]])]);
     case 2 : 
-        return /* Error */Block.__(1, ["TODO: conversion of sequences"]);
+        return /* Ok */Block.__(0, [v]);
     case 3 : 
-        return /* Ok */Block.__(0, [/* CoreVal */Block.__(1, [/* ValLit */Block.__(1, [term[0]])])]);
+        var match = fill_in_core(dynamics, mr, v[1]);
+        if (match.tag) {
+          return /* Error */Block.__(1, [match[0]]);
+        } else {
+          return /* Ok */Block.__(0, [/* ValLam */Block.__(3, [
+                        v[0],
+                        match[0]
+                      ])]);
+        }
     
+  }
+}
+
+function term_to_core(dynamics, tm) {
+  var match = find_match(dynamics, tm);
+  if (match !== undefined) {
+    var match$1 = match;
+    return fill_in_core(dynamics, /* tuple */[
+                match$1[0],
+                match$1[1]
+              ], match$1[2]);
+  } else {
+    return /* Error */Block.__(1, [/* tuple */[
+                "no match found",
+                tm
+              ]]);
   }
 }
 
@@ -246,11 +618,11 @@ function $$eval(core) {
               continue ;
             }
           } else {
-            return /* Error */Block.__(1, ["TODO 3"]);
+            return /* Error */Block.__(1, ["TODO 5"]);
           }
       case 3 : 
       case 4 : 
-          return /* Error */Block.__(1, ["TODO 3"]);
+          return /* Error */Block.__(1, ["TODO 5"]);
       case 5 : 
           return /* Error */Block.__(1, ["Found a metavar!"]);
       
@@ -262,73 +634,26 @@ var Core = /* module */[
   /* M */0,
   /* O */0,
   /* matchBranch */matchBranch,
-  /* traverse_list_result */traverse_list_result,
-  /* from_term */from_term,
-  /* from_scope */from_scope,
+  /* matches */matches,
+  /* matches_scope */matches_scope,
+  /* find_match */find_match,
+  /* fill_in_core */fill_in_core,
+  /* fill_in_val */fill_in_val,
+  /* term_to_core */term_to_core,
   /* eval */$$eval
 ];
 
-var Denotation = /* module */[];
-
 var Statics = /* module */[/* M */0];
 
-function intersperse(list, el) {
-  if (list) {
-    var match = list[1];
-    if (match) {
-      return /* :: */[
-              list[0],
-              /* :: */[
-                el,
-                intersperse(/* :: */[
-                      match[0],
-                      match[1]
-                    ], el)
-              ]
-            ];
-    } else {
-      return list;
-    }
-  } else {
-    return list;
-  }
-}
-
-function intersperse_after(list, el) {
-  if (list) {
-    var match = list[1];
-    var list_el = list[0];
-    if (match) {
-      return /* :: */[
-              list_el,
-              /* :: */[
-                el,
-                intersperse_after(/* :: */[
-                      match[0],
-                      match[1]
-                    ], el)
-              ]
-            ];
-    } else {
-      return /* :: */[
-              list_el,
-              /* :: */[
-                el,
-                /* [] */0
-              ]
-            ];
-    }
-  } else {
-    return /* [] */0;
-  }
-}
-
+exports.intersperse = intersperse;
+exports.intersperse_after = intersperse_after;
+exports.get_first = get_first;
+exports.traverse_list_result = traverse_list_result;
+exports.union = union;
+exports.fold_right = fold_right;
 exports.prim_eq = prim_eq;
 exports.Abt = Abt;
 exports.Ast = Ast;
 exports.Core = Core;
-exports.Denotation = Denotation;
 exports.Statics = Statics;
-exports.intersperse = intersperse;
-exports.intersperse_after = intersperse_after;
-/* No side effect */
+/* Abt Not a pure module */

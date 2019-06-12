@@ -85,7 +85,7 @@ function show_term(term) {
                     ]
                   ]);
     case 1 : 
-        return term[0];
+        return String(term[0]);
     case 2 : 
         return make_span(/* :: */[
                     /* array */["["],
@@ -157,8 +157,11 @@ function view_core(core) {
                                       return prim;
                                     }), core[0]), ". ")),
                       /* :: */[
-                        /* array */[")"],
-                        /* [] */0
+                        /* array */[view_core(core[1])],
+                        /* :: */[
+                          /* array */[")"],
+                          /* [] */0
+                        ]
                       ]
                     ]
                   ]);
@@ -203,7 +206,15 @@ function view_core_val(coreVal) {
     case 2 : 
         return coreVal[0];
     case 3 : 
-        return view_core(coreVal[1]);
+        return make_span(/* :: */[
+                    $$Array.of_list(Types.intersperse(List.map((function (prim) {
+                                    return prim;
+                                  }), coreVal[0]), ". ")),
+                    /* :: */[
+                      /* array */[view_core(coreVal[1])],
+                      /* [] */0
+                    ]
+                  ]);
     
   }
 }
@@ -216,7 +227,12 @@ function view_core_pat(pat) {
       case 0 : 
           return React.createElement("span", undefined, pat[0] + "(", ")");
       case 1 : 
-          return "_";
+          var match = pat[0];
+          if (match !== undefined) {
+            return match;
+          } else {
+            return "_";
+          }
       case 2 : 
           return show_prim(pat[0]);
       
@@ -338,9 +354,11 @@ function Index$LvcaViewer(Props) {
   var setDynamicsInput = match$3[1];
   var dynamicsInput = match$3[0];
   var match$4 = parse(LanguageParser.languageDef, LanguageLexer.read, Lexing.from_string(asInput));
+  var language = match$4[1];
   var match$5 = parse(StaticsParser.rules, StaticsLexer.read, Lexing.from_string(staticsInput));
   var match$6 = parse(DynamicsParser.dynamics, DynamicsLexer.read, Lexing.from_string(dynamicsInput));
-  var show_term_pane = Belt_Result.isOk(match$4[1]) && Belt_Result.isOk(match$5[1]) && Belt_Result.isOk(match$6[1]);
+  var dynamics = match$6[1];
+  var show_term_pane = Belt_Result.isOk(language) && Belt_Result.isOk(match$5[1]) && Belt_Result.isOk(dynamics);
   var termResult;
   var exit = 0;
   var term;
@@ -359,16 +377,49 @@ function Index$LvcaViewer(Props) {
     }
   }
   if (exit === 1) {
-    termResult = /* Ok */Block.__(0, [term]);
+    termResult = Curry._3(Types.Abt[/* from_ast */0], Belt_Result.getExn(language), "tm", term);
   }
-  var core = Belt_Result.flatMap(termResult, Types.Core[/* from_term */4]);
-  var evalResult = Belt_Result.flatMap(core, Types.Core[/* eval */6]);
+  var evalResult;
+  if (dynamics.tag) {
+    evalResult = /* Error */Block.__(1, [/* tuple */[
+          dynamics[0],
+          undefined
+        ]]);
+  } else if (termResult.tag) {
+    evalResult = /* Error */Block.__(1, [/* tuple */[
+          termResult[0],
+          undefined
+        ]]);
+  } else {
+    var termResult_ = termResult[0];
+    var match$7 = Types.Core[/* term_to_core */8](dynamics[0], termResult_);
+    if (match$7.tag) {
+      evalResult = /* Error */Block.__(1, [match$7[0]]);
+    } else {
+      var match$8 = Types.Core[/* eval */9](match$7[0]);
+      evalResult = match$8.tag ? /* Error */Block.__(1, [/* tuple */[
+              match$8[0],
+              termResult_
+            ]]) : /* Ok */Block.__(0, [match$8[0]]);
+    }
+  }
   var evalView;
-  evalView = evalResult.tag ? React.createElement("div", {
-          className: "error"
-        }, evalResult[0]) : React.createElement(Index$CoreValView, {
+  if (evalResult.tag) {
+    var match$9 = evalResult[0];
+    var match$10 = match$9[1];
+    var msg = match$9[0];
+    evalView = match$10 !== undefined ? React.createElement("div", {
+            className: "error"
+          }, msg, React.createElement(Index$TermViewer, {
+                term: match$10
+              })) : React.createElement("div", {
+            className: "error"
+          }, msg);
+  } else {
+    evalView = React.createElement(Index$CoreValView, {
           coreVal: evalResult[0]
         });
+  }
   var replPane = show_term_pane ? React.createElement("div", {
           className: "repl-pane"
         }, React.createElement("div", {

@@ -1,5 +1,48 @@
 open Belt
 
+let rec intersperse list el =
+  match list with
+  | [] | [_]     -> list
+  | x :: y :: tl -> x :: el :: intersperse (y::tl) el
+
+let rec intersperse_after list el =
+  match list with
+  | []           -> []
+  | [ list_el ]  -> [ list_el; el ]
+  | x :: y :: tl -> x :: el :: intersperse_after (y::tl) el
+
+let rec get_first (f : 'a -> 'b option) (lst : 'a list) : 'b option
+  = match lst with
+  | [] -> None
+  | a :: as_ -> (match f a with
+    | None -> get_first f as_
+    | some_b -> some_b
+  )
+
+let rec traverse_list_result (lst : (('a, 'b) Result.t) list)
+  : ('a list, 'b) Result.t = match lst with
+  | []             -> Ok []
+  | Ok a :: rest   -> (match traverse_list_result rest with
+    | Ok rest'  -> Ok (a :: rest')
+    | Error msg -> Error msg
+  )
+  | Error msg :: _ -> Error msg
+
+let union m1 m2 =
+  Belt.Map.String.merge
+    m1
+    m2
+    (fun _k v1 v2 -> match (v1, v2) with
+      | (_,      Some v) -> Some v
+      | (Some v, None  ) -> Some v
+      | (None,   None  ) -> None
+    )
+
+let rec fold_right (f : ('a * 'b) -> 'b) (lst : 'a list) (b : 'b) : 'b
+  = match lst with
+    | [] -> b
+    | a :: as_ -> f(a, fold_right f as_ b)
+
 type sort =
   | SortAp   of sort * sort
   | SortName of string
@@ -8,18 +51,22 @@ type sort =
 type valence =
   | FixedValence    of sort list * sort
   | VariableValence of string * sort
+  (** A variable valence represents *)
 ;;
 
 type arity =
   | Arity of string list * valence list
+  (** An arity is defined its arity indices and valences *)
 ;;
 
 type operatorDef =
   | OperatorDef of string * arity
+  (** An operator is defined by its tag and arity *)
 ;;
 
 type sortDef =
   | SortDef of string list * operatorDef list
+  (** A sort is defined by a set of variables and a set of operators *)
 ;;
 
 type language =
@@ -38,8 +85,90 @@ let prim_eq p1 p2 = match (p1, p2) with
   | (PrimBool    b1, PrimBool    b2) -> b1 = b2
   | _                                -> false
 
-module Abt = struct
+module rec Abt : sig
+  type scope =
+    | Scope of string list * term
 
+  and term =
+    | Term      of string * scope list
+    | Var       of int
+    | Sequence  of term list (* TODO: list vs array? *)
+    | Primitive of primitive
+
+  val from_ast
+    : language
+    -> string
+    -> Ast.term
+    -> (term, string) Result.t
+  val from_ast_with_bindings
+    :  language
+    -> string
+    -> int Belt.Map.String.t
+    -> Ast.term
+    -> (term, string) Result.t
+  val scope_from_ast
+    :  language
+    -> string
+    -> int Belt.Map.String.t
+    -> Ast.scope
+    -> (scope, string) Result.t
+end = struct
+
+  type scope =
+    | Scope of string list * term
+
+  and term =
+    | Term      of string * scope list
+    | Var       of int
+    | Sequence  of term list (* TODO: list vs array? *)
+    | Primitive of primitive
+
+  let rec find_operator (operators : operatorDef list) (tag : string)
+    : operatorDef option
+    = match operators with
+      | [] -> None
+      | (OperatorDef (hd, _) as od) :: tl ->
+        if hd = tag
+        then Some od
+        else find_operator tl tag
+
+  module M = Belt.Map.String
+  let rec from_ast_with_bindings
+        (Language sorts as lang : language)
+        (current_sort : string)
+        (env : int M.t)
+    : Ast.term -> (term, string) Result.t
+    = function
+      | Ast.Term(tag, subtms) -> (match M.get sorts current_sort with
+        | None -> Result.Error "TODO 1"
+        | Some (SortDef (_vars, operators)) -> (match find_operator operators tag with
+          | None -> Result.Error ("couldn't to find operator " ^ tag ^
+            " (in sort " ^ current_sort ^ ")")
+          | Some (OperatorDef (_tag, arity)) ->
+            let x = traverse_list_result
+              (List.map subtms (scope_from_ast lang current_sort env)) in
+            (match x with
+              | Error msg  -> Result.Error msg
+              | Ok subtms' -> Ok (Term(tag, subtms')))))
+      | Ast.Var name -> (match M.get env name with
+        | None    -> Error ("couldn't find variable " ^ name)
+        | Some ix -> Ok (Var ix))
+      | Ast.Sequence tms ->
+        let x = traverse_list_result
+          (List.map tms (from_ast_with_bindings lang current_sort env)) in
+        Result.map x (fun x' -> Sequence x')
+      | Primitive prim -> Ok (Abt.Primitive prim)
+
+  and scope_from_ast lang current_sort env (Ast.Scope (names, body))
+    = Result.map
+      (from_ast_with_bindings lang current_sort env body)
+      (fun body' -> (Scope (names, body')))
+
+  let from_ast lang current_sort = from_ast_with_bindings lang current_sort M.empty
+
+end
+
+and Ast : sig
   type scope =
     | Scope of string list * term
 
@@ -49,20 +178,33 @@ module Abt = struct
     | Sequence  of term list (* TODO: list vs array? *)
     | Primitive of primitive
 
-end
+  val from_abt : Abt.term -> (term, string) Result.t
+end = struct
+  type scope =
+    | Scope of string list * term
 
-module Ast = struct
-
-  type term =
-    | Term      of string * term list
+  and term =
+    | Term      of string * scope list
     | Var       of string
     | Sequence  of term list (* TODO: list vs array? *)
     | Primitive of primitive
     ;;
 
+  let rec from_abt = function
+    (* | Abt.Term(tag, scopes) *)
+    | Abt.Var _ -> Result.Error "TODO 3"
+
 end
 
 module Core = struct
+
+  type scope_pat =
+    | DenotationScopePat of string list * denotation_pat
+
+  and denotation_pat =
+    | DPatternTm of string * scope_pat list
+    | DVar       of string option
+  ;;
 
   type ty = | Ty;; (* TODO *)
 
@@ -86,6 +228,10 @@ module Core = struct
     | Lam     of string list * core
     | Case    of core * ty * (core_pat * core) list
     | Metavar of string
+  ;;
+
+  type denotation_chart =
+    | DenotationChart of (denotation_pat * core) list
   ;;
 
   module M = Belt.Map.String
@@ -118,39 +264,114 @@ module Core = struct
     | (_val, PatternDefault)    -> Some M.empty
     | _ -> None
 
-  let rec traverse_list_result (lst : (('a, 'b) Result.t) list)
-    : ('a list, 'b) Result.t = match lst with
-    | []             -> Ok []
-    | Ok a :: rest   -> (match traverse_list_result rest with
-      | Ok rest'  -> Ok (a :: rest')
-      | Error msg -> Error msg
-    )
-    | Error msg :: _ -> Error msg
+  let rec matches (tm : Abt.term) (pat : denotation_pat)
+    : ((string * string) list * Abt.term M.t) option
+    = match (tm, pat) with
+      | (Term(tag1, subtms), DPatternTm(tag2, subpats))
+      -> if tag1 == tag2 && List.(length subtms == length subpats)
+         then fold_right
+           (fun ((scope, subpat), b_opt) -> match (matches_scope scope subpat, b_opt) with
+             | (Some (assocs, bindings), Some (assocs', bindings')) ->
+               Some (assocs @ assocs', union bindings bindings')
+             | _ -> None)
+           (List.zip subtms subpats)
+           (Some([], M.empty))
+         else None
+      | (_, DPatternTm _) -> None
+      | (_, DVar None) -> Some ([], M.empty)
+      | (tm, DVar (Some v)) -> Some ([], M.fromArray [|v,tm|])
 
-  let rec from_term (term : Abt.term) : (core, string) Result.t = match term with
-    | Abt.Var name -> Ok (CoreVar name)
-    | Abt.Sequence _tms ->  Error "TODO: conversion of sequences"
-    | Abt.Primitive prim -> Ok (CoreVal (ValLit prim))
-    | Abt.Term (name, children) -> match name with
-      | "app"  -> (match children with
-        | f :: args -> (match
-          (from_scope f, traverse_list_result (List.map args from_scope)) with
-          | (Ok f', Ok args') -> Ok (CoreApp(f', args'))
-          | (Error msg, _)
-          | (_, Error msg) -> Error msg
+  and matches_scope (scope : Abt.scope) (pat : scope_pat)
+    : ((string * string) list * Abt.term M.t) option
+    = match (scope, pat) with
+      | (Scope(binders, tm), DenotationScopePat(patBinders, pat))
+      -> if List.(length patBinders == length binders)
+        then (match matches tm pat with
+          | None
+          -> None
+          | Some(assocs, tmMatches)
+          -> Some(List.zip patBinders binders @ assocs, tmMatches)
         )
-        | []        -> Error "App must have a function"
+        else None
+
+  let find_match (dynamics : denotation_chart) (term : Abt.term)
+    : ((string * string) list * Abt.term M.t * core) option
+    = match dynamics with
+      | DenotationChart denotations -> get_first
+        (fun (pat, core) -> match matches term pat with
+          | None -> None
+          | Some(assocs, bindings) -> Some(assocs, bindings, core))
+        denotations
+
+  type located_err = (string * Abt.term option)
+  type 'a translation_result = ('a, located_err) Result.t
+
+  let rec fill_in_core
+    (dynamics : denotation_chart)
+    ((assocs, assignments) as mr : (string * string) list * Abt.term M.t)
+    (c : core)
+    : core translation_result
+    = match c with
+      | Metavar name -> (match M.get assignments name with
+        | Some tm -> term_to_core dynamics tm
+        | None    -> Error ("TODO 4", None)
+        )
+      | CoreVar _ -> Ok c
+      | CoreVal v -> (match fill_in_val dynamics mr v with
+        | Ok v'     -> Ok (CoreVal v')
+        | Error msg -> Error msg
+        )
+      | CoreApp(f, args) -> (match
+        ( fill_in_core dynamics mr f
+        , traverse_list_result (List.map args (fill_in_core dynamics mr))
+        ) with
+        | (Ok f', Ok args')               -> Ok (CoreApp (f', args'))
+        | (Error msg, _) | (_, Error msg) -> Error msg
+        )
+      | Lam (binders, core) -> (match fill_in_core dynamics mr core with
+        | Ok core' -> Ok (Lam (binders, core'))
+        | Error msg -> Error msg
+        )
+      | Case (scrutinee, ty, branches) ->
+          let x : ((core_pat * core) list) translation_result
+                = traverse_list_result (List.map branches
+                (fun (pat, core) -> match fill_in_core dynamics mr core with
+                  | Ok core'  -> Result.Ok (pat, core')
+                  | Error msg -> Result.Error msg
+                )) in
+          match (fill_in_core dynamics mr scrutinee, x) with
+            | (Ok scrutinee', Ok branches')
+            -> Ok (Case (scrutinee', ty, branches'))
+            | (Error msg, _) | (_, Error msg)
+            -> Error msg
+
+  and fill_in_val
+      (dynamics : denotation_chart)
+      (mr : (string * string) list * Abt.term M.t)
+      (v : core_val)
+    : core_val translation_result
+    = match v with
+      | ValTm (tag, vals) ->
+        let x = traverse_list_result (List.map vals (fill_in_val dynamics mr)) in
+        (match x with
+        | Ok vals'  -> Ok (ValTm (tag, vals'))
+        | Error msg -> Error msg
       )
-      | "lam"  -> Error "TODO 1"
-      | "case" -> Error "TODO 2"
-      | _      -> (match traverse_list_result (List.map children from_scope) with
-        | Ok children' -> Ok (CoreApp(CoreVar name, children'))
-        | Error msg    -> Error msg
+      | ValLit _    -> Ok v
+      | ValPrimop _ -> Ok v
+      | ValLam (binders, core) -> (match fill_in_core dynamics mr core with
+        | Ok core'  -> Ok (ValLam (binders, core'))
+        | Error msg -> Error msg
       )
 
-    and from_scope (scope : Abt.scope) : (core, string) Result.t = failwith "TODO"
+  and term_to_core (dynamics : denotation_chart) (tm : Abt.term)
+    : core translation_result
+    = match find_match dynamics tm with
+      | None
+      -> Error ("no match found", Some tm)
+      | Some (assocs, bindings, protoCore)
+      -> fill_in_core dynamics (assocs, bindings) protoCore
 
-  (* val eval : core -> (core_val, string) result;; *)
   let eval (core : core) : (core_val, string) Result.t =
 
     let open Belt.Result in
@@ -176,25 +397,9 @@ module Core = struct
             let v = go ctx tm *)
           | Metavar _v -> Error "Found a metavar!"
 
-          | _ -> Error "TODO 3"
+          | _ -> Error "TODO 5"
 
     in go M.empty core
-
-end
-
-module Denotation = struct
-
-  type scope_pat =
-    | DenotationScopePat of string list * pat
-
-  and pat =
-    | DPatternTm of string * scope_pat list
-    | DVar       of string option
-  ;;
-
-  type chart =
-    | DenotationChart of (pat * Core.core) list
-  ;;
 
 end
 
@@ -224,14 +429,3 @@ module Statics = struct
   type rule = Rule of hypothesis list * string option * hypothesis
 
 end
-
-let rec intersperse list el =
-  match list with
-  | [] | [_]     -> list
-  | x :: y :: tl -> x :: el :: intersperse (y::tl) el
-
-let rec intersperse_after list el =
-  match list with
-  | []           -> []
-  | [ list_el ]  -> [ list_el; el ]
-  | x :: y :: tl -> x :: el :: intersperse_after (y::tl) el

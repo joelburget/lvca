@@ -97,7 +97,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                     Caml_builtin_exceptions.assert_failure,
                     /* tuple */[
                       "termParser.ml",
-                      303,
+                      309,
                       10
                     ]
                   ];
@@ -142,7 +142,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                               Caml_builtin_exceptions.assert_failure,
                               /* tuple */[
                                 "termParser.ml",
-                                325,
+                                331,
                                 16
                               ]
                             ];
@@ -203,7 +203,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                                     Caml_builtin_exceptions.assert_failure,
                                     /* tuple */[
                                       "termParser.ml",
-                                      151,
+                                      154,
                                       14
                                     ]
                                   ];
@@ -221,7 +221,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                                       Caml_builtin_exceptions.assert_failure,
                                       /* tuple */[
                                         "termParser.ml",
-                                        163,
+                                        166,
                                         16
                                       ]
                                     ];
@@ -237,7 +237,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                                   Caml_builtin_exceptions.assert_failure,
                                   /* tuple */[
                                     "termParser.ml",
-                                    121,
+                                    124,
                                     14
                                   ]
                                 ];
@@ -256,7 +256,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                                     Caml_builtin_exceptions.assert_failure,
                                     /* tuple */[
                                       "termParser.ml",
-                                      134,
+                                      137,
                                       16
                                     ]
                                   ];
@@ -280,7 +280,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                       Caml_builtin_exceptions.assert_failure,
                       /* tuple */[
                         "termParser.ml",
-                        339,
+                        345,
                         12
                       ]
                     ];
@@ -298,7 +298,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                 Caml_builtin_exceptions.assert_failure,
                 /* tuple */[
                   "termParser.ml",
-                  450,
+                  456,
                   10
                 ]
               ];
@@ -340,7 +340,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                           Caml_builtin_exceptions.assert_failure,
                           /* tuple */[
                             "termParser.ml",
-                            476,
+                            482,
                             16
                           ]
                         ];
@@ -400,7 +400,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                   Caml_builtin_exceptions.assert_failure,
                   /* tuple */[
                     "termParser.ml",
-                    498,
+                    504,
                     12
                   ]
                 ];
@@ -480,7 +480,7 @@ function _menhir_run11(__menhir_env, __menhir_stack, __menhir_s, __v) {
                       Caml_builtin_exceptions.assert_failure,
                       /* tuple */[
                         "termParser.ml",
-                        869,
+                        875,
                         12
                       ]
                     ];
@@ -508,7 +508,7 @@ function _menhir_run11(__menhir_env, __menhir_stack, __menhir_s, __v) {
               Caml_builtin_exceptions.assert_failure,
               /* tuple */[
                 "termParser.ml",
-                877,
+                883,
                 8
               ]
             ];
@@ -607,7 +607,7 @@ function _menhir_run6(__menhir_env, __menhir_stack, __menhir_s) {
               Caml_builtin_exceptions.assert_failure,
               /* tuple */[
                 "termParser.ml",
-                823,
+                829,
                 8
               ]
             ];
@@ -636,7 +636,7 @@ function _menhir_fail(param) {
         Caml_builtin_exceptions.assert_failure,
         /* tuple */[
           "termParser.ml",
-          198,
+          201,
           4
         ]
       ];
@@ -687,7 +687,7 @@ function _menhir_run9(_menhir_env, _menhir_stack) {
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "termParser.ml",
-              582,
+              588,
               8
             ]
           ];
@@ -744,7 +744,7 @@ function _menhir_run8(_menhir_env, _menhir_stack, _menhir_s, _v) {
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "termParser.ml",
-              673,
+              679,
               8
             ]
           ];
@@ -786,7 +786,7 @@ function _menhir_goto_loption_separated_nonempty_list_SEMICOLON_term__(_menhir_e
                   Caml_builtin_exceptions.assert_failure,
                   /* tuple */[
                     "termParser.ml",
-                    376,
+                    382,
                     10
                   ]
                 ];
@@ -805,7 +805,7 @@ function _menhir_goto_loption_separated_nonempty_list_SEMICOLON_term__(_menhir_e
                     Caml_builtin_exceptions.assert_failure,
                     /* tuple */[
                       "termParser.ml",
-                      385,
+                      391,
                       12
                     ]
                   ];
@@ -820,7 +820,7 @@ function _menhir_goto_loption_separated_nonempty_list_SEMICOLON_term__(_menhir_e
                   Caml_builtin_exceptions.assert_failure,
                   /* tuple */[
                     "termParser.ml",
-                    394,
+                    400,
                     10
                   ]
                 ];
@@ -838,7 +838,7 @@ function _menhir_goto_loption_separated_nonempty_list_SEMICOLON_term__(_menhir_e
                     Caml_builtin_exceptions.assert_failure,
                     /* tuple */[
                       "termParser.ml",
-                      402,
+                      408,
                       12
                     ]
                   ];
@@ -920,7 +920,7 @@ function term(lexer, lexbuf) {
                     Caml_builtin_exceptions.assert_failure,
                     /* tuple */[
                       "termParser.ml",
-                      1038,
+                      1044,
                       12
                     ]
                   ];
@@ -985,7 +985,7 @@ function term(lexer, lexbuf) {
                       Caml_builtin_exceptions.assert_failure,
                       /* tuple */[
                         "termParser.ml",
-                        991,
+                        997,
                         16
                       ]
                     ];
@@ -1003,7 +1003,7 @@ function term(lexer, lexbuf) {
                     Caml_builtin_exceptions.assert_failure,
                     /* tuple */[
                       "termParser.ml",
-                      995,
+                      1001,
                       12
                     ]
                   ];
@@ -1022,7 +1022,7 @@ function term(lexer, lexbuf) {
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "termParser.ml",
-              1057,
+              1063,
               8
             ]
           ];

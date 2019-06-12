@@ -14,7 +14,7 @@
 %token EOF
 
 %start term
-%type <Types.Abt.term> term
+%type <Types.Ast.term> term
 %type <Types.primitive> primitive
 %%
 

@@ -1,9 +1,9 @@
-# 1 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.mll"
+# 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.mll"
  
 open StaticsParser
 open LexerUtil
 
-# 7 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.ml"
+# 7 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base =
    "\000\000\243\255\244\255\078\000\160\000\247\255\248\255\249\255\
@@ -222,69 +222,69 @@ let rec read lexbuf =
 and __ocaml_lex_read_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 12 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.mll"
+# 12 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.mll"
               ( read lexbuf )
-# 228 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.ml"
+# 228 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.ml"
 
   | 1 ->
-# 13 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.mll"
+# 13 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.mll"
               ( LINE )
-# 233 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.ml"
+# 233 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.ml"
 
   | 2 ->
-# 14 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.mll"
+# 14 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.mll"
               ( CTX_SEPARATOR )
-# 238 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.ml"
+# 238 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.ml"
 
   | 3 ->
-# 15 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.mll"
+# 15 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.mll"
               ( RIGHT_D_ARR )
-# 243 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.ml"
+# 243 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.ml"
 
   | 4 ->
-# 16 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.mll"
+# 16 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.mll"
               ( LEFT_D_ARR )
-# 248 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.ml"
+# 248 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.ml"
 
   | 5 ->
-# 18 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.mll"
+# 18 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.mll"
               ( LEFT_PAREN )
-# 253 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.ml"
+# 253 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.ml"
 
   | 6 ->
-# 19 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.mll"
+# 19 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.mll"
               ( RIGHT_PAREN )
-# 258 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.ml"
+# 258 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.ml"
 
   | 7 ->
-# 20 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.mll"
+# 20 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.mll"
               ( SEMICOLON )
-# 263 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.ml"
+# 263 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.ml"
 
   | 8 ->
-# 21 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.mll"
+# 21 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.mll"
               ( DOT )
-# 268 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.ml"
+# 268 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.ml"
 
   | 9 ->
-# 22 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.mll"
+# 22 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.mll"
               ( CTX )
-# 273 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.ml"
+# 273 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.ml"
 
   | 10 ->
-# 23 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.mll"
+# 23 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.mll"
               ( ID (Lexing.lexeme lexbuf) )
-# 278 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.ml"
+# 278 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.ml"
 
   | 11 ->
-# 24 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.mll"
+# 24 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.mll"
               ( EOF )
-# 283 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.ml"
+# 283 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.ml"
 
   | 12 ->
-# 25 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.mll"
+# 25 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.mll"
       ( error lexbuf ("Unexpected char: " ^ Lexing.lexeme lexbuf) )
-# 288 "/Users/joel/code/lvca-bucklescript/src/staticsLexer.ml"
+# 288 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/staticsLexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_rec lexbuf __ocaml_lex_state

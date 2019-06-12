@@ -23,4 +23,4 @@ exception Error
 
 (* The monolithic API. *)
 
-val term: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Types.Abt.term)
+val term: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Types.Ast.term)

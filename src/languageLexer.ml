@@ -1,9 +1,9 @@
-# 1 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.mll"
  
 open LanguageParser
 open LexerUtil
 
-# 7 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
+# 7 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base =
    "\000\000\246\255\247\255\248\255\249\255\250\255\251\255\252\255\
@@ -119,54 +119,54 @@ let rec read lexbuf =
 and __ocaml_lex_read_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 10 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 10 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( read lexbuf )
-# 125 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
+# 125 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 1 ->
-# 11 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 11 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( ID (Lexing.lexeme lexbuf) )
-# 130 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
+# 130 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 2 ->
-# 12 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 12 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( ASSIGN )
-# 135 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
+# 135 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 3 ->
-# 13 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 13 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( LEFT_PAREN )
-# 140 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
+# 140 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 4 ->
-# 14 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 14 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( RIGHT_PAREN )
-# 145 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
+# 145 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 5 ->
-# 15 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 15 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( SEMICOLON )
-# 150 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
+# 150 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 6 ->
-# 16 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 16 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( DOT )
-# 155 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
+# 155 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 7 ->
-# 17 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 17 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( BAR )
-# 160 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
+# 160 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 8 ->
-# 18 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 18 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.mll"
              ( EOF )
-# 165 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
+# 165 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | 9 ->
-# 19 "/Users/joel/code/lvca-bucklescript/src/languageLexer.mll"
+# 19 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.mll"
       ( error lexbuf ("Unexpected char: " ^ Lexing.lexeme lexbuf) )
-# 170 "/Users/joel/code/lvca-bucklescript/src/languageLexer.ml"
+# 170 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageLexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_rec lexbuf __ocaml_lex_state

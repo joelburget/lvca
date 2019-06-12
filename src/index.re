@@ -52,7 +52,7 @@ module TermViewer = {
           Array.of_list(intersperse(List.map(show_scope, lst), React.string(";"))),
           [| React.string(")") |]
         ])
-      | Var(name)     => React.string(name)
+      | Var(name)     => React.string(string_of_int(name)) // TODO: convert to ast
       | Sequence(tms) => make_span([
           [| React.string("[") |],
           Array.of_list(List.map(show_term, tms)),
@@ -84,7 +84,7 @@ module CoreValView = {
       {React.string(name ++ "(") /* XXX children */}
       {React.string(")")}
     </span>
-  | PatternVar(none) => React.string("_")
+  | PatternVar(None) => React.string("_")
   | PatternVar(Some(name)) => React.string(name)
   | PatternLit(lit)     => show_prim(lit)
   | PatternDefault      => React.string("default")
@@ -104,6 +104,7 @@ module CoreValView = {
   | Lam(args, body) => make_span([
     [| React.string("lam(") |],
     Array.of_list(intersperse(List.map(React.string, args), React.string(". "))),
+    [| view_core(body) |],
     [| React.string(")") |],
   ])
   | Case(arg, _ty, _cases) => make_span([
@@ -125,7 +126,10 @@ module CoreValView = {
   ])
   | ValLit(lit) => show_prim(lit)
   | ValPrimop(name) => React.string(name) /* TODO: take a look at this */
-  | ValLam(vars, core) => view_core(core) /* TODO */
+  | ValLam(vars, core) => make_span([
+    Array.of_list(intersperse(List.map(React.string, vars), React.string(". "))),
+    [| view_core(core) |],
+  ])
   };
 
   [@react.component]
@@ -194,11 +198,11 @@ module LvcaViewer = {
       Lexing.from_string(dynamicsInput)
     );
 
-    let show_term_pane = Belt.Result.
-      (isOk(language) && isOk(statics) && isOk(dynamics));
+    let show_term_pane = isOk(language) && isOk(statics) && isOk(dynamics);
 
     let termResult = switch (TermParser.term(TermLexer.read, Lexing.from_string(termInput))) {
-    | term                                 => Ok(term)
+    | term                                 =>
+      Types.Abt.from_ast(getExn(language), "tm", term) // XXX getExn
     | exception LexerUtil.SyntaxError(msg) => Error(msg)
     | exception Parsing.Parse_error        => Error("Parse error")
     | exception TermParser.Error           => Error("Parse error")
@@ -209,15 +213,31 @@ module LvcaViewer = {
 /*     | Error(msg) => <div className="error"> {React.string(msg)} </div> */
 /*     }; */
 
-    let evalResult = {
+    let evalResult : Types.Core.translation_result(Types.Core.core_val) = {
       open Types.Core;
-      let core = flatMap(termResult, from_term);
-      flatMap(core, eval);
+      switch (dynamics, termResult) {
+        | (Ok(dynamics_), Ok(termResult_)) => switch (term_to_core(dynamics_, termResult_)) {
+          | Ok(core) => switch (eval(core)) {
+            | Ok(core_val) => Ok(core_val)
+            | Error(msg)   => Error((msg, Some(termResult_)))
+          }
+          | Error(msg) => Error(msg)
+        }
+        | (Error(msg), _)
+        | (_, Error(msg)) => Error((msg, None))
+      }
     };
 
     let evalView = switch (evalResult) {
-    | Ok(coreVal) => <CoreValView coreVal=coreVal />
-    | Error(msg)  => <div className="error"> {React.string(msg)} </div>
+    | Ok(coreVal)
+      => <CoreValView coreVal=coreVal />
+    | Error((msg, None))
+      => <div className="error"> {React.string(msg)} </div>
+    | Error((msg, Some(tm)))
+      => <div className="error">
+           {React.string(msg)}
+           <TermViewer term=tm />
+         </div>
     };
 
     let replPane = if (show_term_pane) {

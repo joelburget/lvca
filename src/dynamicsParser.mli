@@ -26,4 +26,4 @@ exception Error
 
 (* The monolithic API. *)
 
-val dynamics: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Types.Denotation.chart)
+val dynamics: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Types.Core.denotation_chart)

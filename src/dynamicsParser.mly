@@ -18,28 +18,28 @@
 %token DEFAULT
 
 %start dynamics
-%type <Types.Denotation.pat> pat
+%type <Types.Core.denotation_pat> pat
 %type <Types.Core.core> core
-%type <Types.Denotation.pat * Types.Core.core> dynamics_rule
-%type <Types.Denotation.chart> dynamics
+%type <Types.Core.denotation_pat * Types.Core.core> dynamics_rule
+%type <Types.Core.denotation_chart> dynamics
 %%
 
 pat:
   | ID LEFT_PAREN separated_list(SEMICOLON, scope_pat) RIGHT_PAREN
-  { Types.Denotation.DPatternTm ($1, $3) }
+  { Types.Core.DPatternTm ($1, $3) }
   | APP LEFT_PAREN separated_list(SEMICOLON, scope_pat) RIGHT_PAREN
-  { Types.Denotation.DPatternTm ("app", $3) }
+  { Types.Core.DPatternTm ("app", $3) }
   (* XXX this is a hack *)
   | UNDERSCORE
-  { Types.Denotation.DVar None }
+  { Types.Core.DVar None }
   | ID
-  { Types.Denotation.DVar (Some $1) };
+  { Types.Core.DVar (Some $1) };
 
 scope_pat:
   | separated_list(DOT, ID) DOT pat
-  { Types.Denotation.DenotationScopePat ($1, $3) }
+  { Types.Core.DenotationScopePat ($1, $3) }
   | pat
-  { Types.Denotation.DenotationScopePat ([], $1) } ;
+  { Types.Core.DenotationScopePat ([], $1) } ;
 
 core:
   | APP LEFT_PAREN core                                                    RIGHT_PAREN

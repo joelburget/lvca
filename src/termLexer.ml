@@ -1,4 +1,4 @@
-# 1 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
  
 open TermParser
 open LexerUtil
@@ -6,7 +6,7 @@ open LexerUtil
 module L = Lexing
 module B = Buffer
 
-# 10 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 10 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base =
    "\000\000\240\255\241\255\242\255\243\255\244\255\245\255\246\255\
@@ -298,84 +298,84 @@ let rec read lexbuf =
 and __ocaml_lex_read_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 19 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 19 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( read lexbuf )
-# 304 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 304 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 1 ->
-# 20 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 20 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( next_line lexbuf; read lexbuf )
-# 309 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 309 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 2 ->
-# 21 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 21 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( ID (L.lexeme lexbuf) )
-# 314 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 314 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 3 ->
-# 22 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 22 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( INT (Bigint.of_string (L.lexeme lexbuf)) )
-# 319 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 319 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 4 ->
-# 24 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 24 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( TRUE )
-# 324 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 324 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 5 ->
-# 25 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 25 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( FALSE )
-# 329 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 329 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 6 ->
-# 26 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 26 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( read_string (Buffer.create 17) lexbuf )
-# 334 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 334 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 7 ->
-# 27 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( LEFT_PAREN )
-# 339 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 339 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 8 ->
-# 28 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( RIGHT_PAREN )
-# 344 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 344 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 9 ->
-# 29 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 29 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( LEFT_BRACK )
-# 349 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 349 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 10 ->
-# 30 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 30 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( RIGHT_BRACK )
-# 354 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 354 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 11 ->
-# 31 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 31 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( SEMICOLON )
-# 359 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 359 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 12 ->
-# 32 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 32 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( COMMA )
-# 364 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 364 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 13 ->
-# 33 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 33 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( DOT )
-# 369 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 369 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 14 ->
-# 34 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 34 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
       ( error lexbuf ("Unexpected char: " ^ L.lexeme lexbuf) )
-# 374 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 374 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 15 ->
-# 35 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 35 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
              ( EOF )
-# 379 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 379 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_rec lexbuf __ocaml_lex_state
@@ -385,49 +385,49 @@ and read_string buf lexbuf =
 and __ocaml_lex_read_string_rec buf lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 39 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 39 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
               ( B.add_string buf @@ L.lexeme lexbuf
               ; read_string buf lexbuf
               )
-# 393 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 393 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 1 ->
-# 42 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 42 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
               ( B.add_string buf @@ L.lexeme lexbuf
               ; L.new_line lexbuf
               ; read_string buf lexbuf
               )
-# 401 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 401 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 2 ->
-# 46 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 46 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
               ( B.add_char buf '"'
               ; read_string buf lexbuf
               )
-# 408 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 408 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 3 ->
-# 49 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 49 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
               ( B.add_char buf '\\'
               ; read_string buf lexbuf
               )
-# 415 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 415 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 4 ->
-# 52 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 52 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
               ( STRING (B.contents buf) )
-# 420 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 420 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 5 ->
-# 53 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 53 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
               ( error lexbuf "end of input inside of a string" )
-# 425 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 425 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | 6 ->
-# 54 "/Users/joel/code/lvca-bucklescript/src/termLexer.mll"
+# 54 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.mll"
               ( error lexbuf
                   "found '%s' - don't know how to handle" @@ L.lexeme lexbuf )
-# 431 "/Users/joel/code/lvca-bucklescript/src/termLexer.ml"
+# 431 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/termLexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_string_rec buf lexbuf __ocaml_lex_state
