@@ -184,7 +184,7 @@ function from_abt(param) {
 
 Caml_module.update_mod([[0]], Ast, /* module */[/* from_abt */from_abt]);
 
-function matchBranch(v, pat) {
+function match_branch(v, pat) {
   var exit = 0;
   switch (v.tag | 0) {
     case 0 : 
@@ -195,21 +195,11 @@ function matchBranch(v, pat) {
           switch (pat.tag | 0) {
             case 0 : 
                 var pats = pat[1];
-                var subResults = Belt_List.map(Belt_List.zip(vals, pats), (function (param) {
-                        return matchBranch(param[0], param[1]);
+                var sub_results = Belt_List.map(Belt_List.zip(vals, pats), (function (param) {
+                        return match_branch(param[0], param[1]);
                       }));
-                if (v[0] === pat[0] && Belt_List.length(vals) === Belt_List.length(pats) && Belt_List.every(subResults, Belt_Option.isSome)) {
-                  return Caml_option.some(Belt_List.reduce(subResults, Belt_MapString.empty, (function (m, m$prime) {
-                                    return Belt_MapString.merge(m, Belt_Option.getExn(m$prime), (function (_k, v1, v2) {
-                                                  if (v2 !== undefined) {
-                                                    return v2;
-                                                  } else if (v1 !== undefined) {
-                                                    return v1;
-                                                  } else {
-                                                    return undefined;
-                                                  }
-                                                }));
-                                  })));
+                if (v[0] === pat[0] && Belt_List.length(vals) === Belt_List.length(pats) && Belt_List.every(sub_results, Belt_Option.isSome)) {
+                  return Caml_option.some(Belt_List.reduce(Belt_List.map(sub_results, Belt_Option.getExn), Belt_MapString.empty, Util.union));
                 } else {
                   return undefined;
                 }
@@ -522,7 +512,7 @@ function $$eval(core) {
 var Core = /* module */[
   /* M */0,
   /* O */0,
-  /* matchBranch */matchBranch,
+  /* match_branch */match_branch,
   /* matches */matches,
   /* matches_scope */matches_scope,
   /* find_match */find_match,

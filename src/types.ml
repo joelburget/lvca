@@ -204,23 +204,17 @@ module Core = struct
   module M = Belt.Map.String
   module O = Belt.Option
 
-  let rec matchBranch (v : core_val) (pat : core_pat)
+  let rec match_branch (v : core_val) (pat : core_pat)
     : core_val M.t option = match (v, pat) with
 
     | (ValTm (tag1, vals), PatternTerm (tag2, pats)) ->
-        let subResults = List.map
+        let sub_results = List.map
           (List.zip vals pats)
-          (fun (v', pat') -> matchBranch v' pat') in
+          (fun (v', pat') -> match_branch v' pat') in
         if tag1 = tag2 &&
            List.length vals = List.length pats &&
-           List.every subResults O.isSome
-        then Some (List.reduce subResults M.empty
-          (fun m m' -> M.merge m (O.getExn m')
-             (fun _k v1 v2 -> match (v1, v2) with
-               | (_,      Some v) -> Some v (* TODO: except if both Some *)
-               | (Some v, None  ) -> Some v
-               | (None,   None  ) -> None)
-          ))
+           List.every sub_results O.isSome
+        then Some (List.reduce (List.map sub_results O.getExn) M.empty union)
         else None
     | (ValLit l1, PatternLit l2) ->
         if prim_eq l1 l2
@@ -237,9 +231,10 @@ module Core = struct
       | (Term(tag1, subtms), DPatternTm(tag2, subpats))
       -> if tag1 == tag2 && List.(length subtms == length subpats)
          then fold_right
-           (fun ((scope, subpat), b_opt) -> match (matches_scope scope subpat, b_opt) with
-             | (Some (assocs, bindings), Some (assocs', bindings')) ->
-               Some (assocs @ assocs', union bindings bindings')
+           (fun ((scope, subpat), b_opt) ->
+             match (matches_scope scope subpat, b_opt) with
+             | (Some (assocs, bindings), Some (assocs', bindings'))
+             -> Some (assocs @ assocs', union bindings bindings')
              | _ -> None)
            (List.zip subtms subpats)
            (Some ([], M.empty))

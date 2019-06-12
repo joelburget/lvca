@@ -1,4 +1,9 @@
 // dynamics
+
+%{
+  open Types.Core
+%}
+
 %token <Bigint.t> INT
 %token <string>   ID
 %token <string>   STRING
@@ -18,59 +23,70 @@
 %token DEFAULT
 
 %start dynamics
-%type <Types.Core.denotation_pat> pat
-%type <Types.Core.core> core
-%type <Types.Core.denotation_pat * Types.Core.core> dynamics_rule
+%type <denotation_pat> pat
+%type <core> core
+%type <denotation_pat * core> dynamics_rule
 %type <Types.Core.denotation_chart> dynamics
 %%
 
 pat:
   | ID LEFT_PAREN separated_list(SEMICOLON, scope_pat) RIGHT_PAREN
-  { Types.Core.DPatternTm ($1, $3) }
+  { DPatternTm ($1, $3) }
   | APP LEFT_PAREN separated_list(SEMICOLON, scope_pat) RIGHT_PAREN
-  { Types.Core.DPatternTm ("app", $3) }
+  { DPatternTm ("app", $3) }
   (* XXX this is a hack *)
   | UNDERSCORE
-  { Types.Core.DVar None }
+  { DVar None }
   | ID
-  { Types.Core.DVar (Some $1) };
+  { DVar (Some $1) };
 
 scope_pat:
   | separated_list(DOT, ID) DOT pat
-  { Types.Core.DenotationScopePat ($1, $3) }
+  { DenotationScopePat ($1, $3) }
   | pat
-  { Types.Core.DenotationScopePat ([], $1) } ;
+  { DenotationScopePat ([], $1) } ;
+
+core_val:
+  | ID LEFT_PAREN separated_nonempty_list(SEMICOLON, core_val) RIGHT_PAREN
+  { ValTm ($1, $3) }
+  | prim
+  { ValLit $1 }
+  (* ValPrimop? *)
+  (* ValLam? *)
+  ;
 
 core:
   | APP LEFT_PAREN core                                                    RIGHT_PAREN
-  { Types.Core.CoreApp ($3, []) }
+  { CoreApp ($3, []) }
   | APP LEFT_PAREN core SEMICOLON separated_nonempty_list(SEMICOLON, core) RIGHT_PAREN
-  { Types.Core.CoreApp ($3, $5) }
+  { CoreApp ($3, $5) }
+  | core_val
+  { CoreVal $1 }
   | ID
-  { Types.Core.CoreVar $1 }
+  { CoreVar $1 }
   | LAM LEFT_PAREN separated_nonempty_list(DOT, ID) DOT core RIGHT_PAREN
-  { Types.Core.Lam ($3, $5) }
+  { Lam ($3, $5) }
   | LAM LEFT_PAREN                                      core RIGHT_PAREN
-  { Types.Core.Lam ([], $3) }
+  { Lam ([], $3) }
   | CASE LEFT_PAREN arg = core SEMICOLON cases = separated_list(SEMICOLON, case) RIGHT_PAREN
-  { Types.Core.Case (arg, Types.Core.Ty, cases) }
+  { Case (arg, Ty, cases) }
   | LEFT_OXFORD ID RIGHT_OXFORD
-  { Types.Core.Metavar $2 }
+  { Metavar $2 }
   ;
 
 case: core_pat RIGHT_S_ARR core { ($1, $3) } ;
 
 core_pat:
   | ID LEFT_PAREN separated_list(SEMICOLON, core_pat) RIGHT_PAREN
-  { Types.Core.PatternTerm ($1, $3) }
+  { PatternTerm ($1, $3) }
   | UNDERSCORE
-  { Types.Core.PatternVar None }
+  { PatternVar None }
   | ID
-  { Types.Core.PatternVar (Some $1) }
+  { PatternVar (Some $1) }
   | prim
-  { Types.Core.PatternLit $1 }
+  { PatternLit $1 }
   | DEFAULT
-  { Types.Core.PatternDefault }
+  { PatternDefault }
   ;
 
 prim:
