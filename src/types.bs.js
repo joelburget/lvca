@@ -170,7 +170,7 @@ var Abt = Caml_module.init_mod([
 
 var Ast = Caml_module.init_mod([
       "types.ml",
-      182,
+      191,
       6
     ], [[0]]);
 
@@ -194,27 +194,43 @@ function find_operator(_operators, tag) {
 function from_ast_with_bindings(lang, current_sort, env, param) {
   switch (param.tag | 0) {
     case 0 : 
+        var subtms = param[1];
         var tag = param[0];
         var match = Belt_MapString.get(lang[0], current_sort);
         if (match !== undefined) {
           var match$1 = find_operator(match[1], tag);
           if (match$1 !== undefined) {
-            var x = traverse_list_result(Belt_List.map(param[1], (function (param) {
-                        return scope_from_ast(lang, current_sort, env, param);
-                      })));
-            if (x.tag) {
-              return /* Error */Block.__(1, [x[0]]);
+            var valences = match$1[1][1];
+            if (Belt_List.length(valences) !== Belt_List.length(subtms)) {
+              return /* Error */Block.__(1, ["TODO"]);
             } else {
-              return /* Ok */Block.__(0, [/* Term */Block.__(0, [
-                            tag,
-                            x[0]
-                          ])]);
+              var x = traverse_list_result(Belt_List.map(Belt_List.zip(valences, subtms), (function (param) {
+                          var valence = param[0];
+                          if (valence.tag) {
+                            return /* Error */Block.__(1, ["TODO"]);
+                          } else {
+                            var match = valence[1];
+                            if (match.tag) {
+                              return scope_from_ast(lang, match[0], env, param[1]);
+                            } else {
+                              return /* Error */Block.__(1, ["TODO"]);
+                            }
+                          }
+                        })));
+              if (x.tag) {
+                return /* Error */Block.__(1, [x[0]]);
+              } else {
+                return /* Ok */Block.__(0, [/* Term */Block.__(0, [
+                              tag,
+                              x[0]
+                            ])]);
+              }
             }
           } else {
-            return /* Error */Block.__(1, ["couldn't to find operator " + (tag + (" (in sort " + (current_sort + ")")))]);
+            return /* Error */Block.__(1, ["from_ast_with_bindings: couldn't find operator " + (tag + (" (in sort " + (current_sort + ")")))]);
           }
         } else {
-          return /* Error */Block.__(1, ["TODO 1"]);
+          return /* Error */Block.__(1, ["from_ast_with_bindings: couldn't find sort " + current_sort]);
         }
     case 1 : 
         var name = param[0];
@@ -271,7 +287,7 @@ function from_abt(param) {
           Caml_builtin_exceptions.match_failure,
           /* tuple */[
             "types.ml",
-            193,
+            202,
             21
           ]
         ];

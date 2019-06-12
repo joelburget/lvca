@@ -140,16 +140,25 @@ end = struct
     : Ast.term -> (term, string) Result.t
     = function
       | Ast.Term(tag, subtms) -> (match M.get sorts current_sort with
-        | None -> Result.Error "TODO 1"
+        | None -> Result.Error
+          ("from_ast_with_bindings: couldn't find sort " ^ current_sort)
         | Some (SortDef (_vars, operators)) -> (match find_operator operators tag with
-          | None -> Result.Error ("couldn't to find operator " ^ tag ^
+          | None -> Result.Error
+            ("from_ast_with_bindings: couldn't find operator " ^ tag ^
             " (in sort " ^ current_sort ^ ")")
-          | Some (OperatorDef (_tag, arity)) ->
-            let x = traverse_list_result
-              (List.map subtms (scope_from_ast lang current_sort env)) in
-            (match x with
-              | Error msg  -> Result.Error msg
-              | Ok subtms' -> Ok (Term(tag, subtms')))))
+          | Some (OperatorDef (_tag, Arity (_binds, valences))) ->
+            if List.length valences != List.length subtms
+            then Result.Error "TODO"
+            else let x = traverse_list_result
+                   (List.map
+                     (List.zip valences subtms)
+                     (fun (valence, subtm) -> match valence with
+                       | FixedValence (_binds, SortName result_sort)
+                         -> scope_from_ast lang result_sort env subtm
+                       | _ -> Result.Error "TODO")) in
+              (match x with
+                | Error msg  -> Result.Error msg
+                | Ok subtms' -> Ok (Term(tag, subtms')))))
       | Ast.Var name -> (match M.get env name with
         | None    -> Error ("couldn't find variable " ^ name)
         | Some ix -> Ok (Var ix))
@@ -159,7 +168,7 @@ end = struct
         Result.map x (fun x' -> Sequence x')
       | Primitive prim -> Ok (Abt.Primitive prim)
 
-  and scope_from_ast lang current_sort env (Ast.Scope (names, body))
+  and scope_from_ast lang (current_sort : string) env (Ast.Scope (names, body))
     = Result.map
       (from_ast_with_bindings lang current_sort env body)
       (fun body' -> (Scope (names, body')))

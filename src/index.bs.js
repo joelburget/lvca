@@ -334,7 +334,7 @@ var ParseStatus = /* module */[
 
 function Index$LvcaViewer(Props) {
   var match = React.useState((function () {
-          return "true()";
+          return "val(true())";
         }));
   var setTermInput = match[1];
   var termInput = match[0];

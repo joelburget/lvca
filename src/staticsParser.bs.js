@@ -43,7 +43,7 @@ function _menhir_goto_loption_separated_nonempty_list_SEMICOLON_scope__(_menhir_
           Caml_builtin_exceptions.assert_failure,
           /* tuple */[
             "staticsParser.ml",
-            749,
+            746,
             6
           ]
         ];
@@ -67,7 +67,7 @@ function _menhir_goto_loption_separated_nonempty_list_SEMICOLON_scope__(_menhir_
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "staticsParser.ml",
-              792,
+              786,
               8
             ]
           ];
@@ -120,7 +120,7 @@ function _menhir_run4(_menhir_env, _menhir_stack) {
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "staticsParser.ml",
-              1022,
+              1016,
               8
             ]
           ];
@@ -159,7 +159,7 @@ function _menhir_run1(_menhir_env, _menhir_stack, _menhir_s) {
               Caml_builtin_exceptions.assert_failure,
               /* tuple */[
                 "staticsParser.ml",
-                1059,
+                1053,
                 12
               ]
             ];
@@ -177,7 +177,7 @@ function _menhir_run1(_menhir_env, _menhir_stack, _menhir_s) {
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "staticsParser.ml",
-              1063,
+              1057,
               8
             ]
           ];
@@ -202,7 +202,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                 Caml_builtin_exceptions.assert_failure,
                 /* tuple */[
                   "staticsParser.ml",
-                  629,
+                  626,
                   10
                 ]
               ];
@@ -220,7 +220,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                   Caml_builtin_exceptions.assert_failure,
                   /* tuple */[
                     "staticsParser.ml",
-                    690,
+                    687,
                     12
                   ]
                 ];
@@ -262,7 +262,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                 Caml_builtin_exceptions.assert_failure,
                 /* tuple */[
                   "staticsParser.ml",
-                  420,
+                  417,
                   10
                 ]
               ];
@@ -288,7 +288,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                         Caml_builtin_exceptions.assert_failure,
                         /* tuple */[
                           "staticsParser.ml",
-                          436,
+                          433,
                           16
                         ]
                       ];
@@ -313,7 +313,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                       Caml_builtin_exceptions.assert_failure,
                       /* tuple */[
                         "staticsParser.ml",
-                        452,
+                        449,
                         16
                       ]
                     ];
@@ -332,7 +332,7 @@ function _menhir_goto_term(_menhir_env, _menhir_stack, _menhir_s, _v) {
                   Caml_builtin_exceptions.assert_failure,
                   /* tuple */[
                     "staticsParser.ml",
-                    456,
+                    453,
                     12
                   ]
                 ];
@@ -395,7 +395,7 @@ function _menhir_run3(_menhir_env, _menhir_stack, _menhir_s, _v) {
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "staticsParser.ml",
-              1175,
+              1169,
               8
             ]
           ];
@@ -417,7 +417,7 @@ function _menhir_reduce9(_menhir_env, _menhir_stack, _menhir_s) {
           Caml_builtin_exceptions.assert_failure,
           /* tuple */[
             "staticsParser.ml",
-            717,
+            714,
             6
           ]
         ];
@@ -439,7 +439,7 @@ function _menhir_reduce9(_menhir_env, _menhir_stack, _menhir_s) {
               Caml_builtin_exceptions.assert_failure,
               /* tuple */[
                 "staticsParser.ml",
-                729,
+                726,
                 12
               ]
             ];
@@ -457,7 +457,7 @@ function _menhir_reduce9(_menhir_env, _menhir_stack, _menhir_s) {
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "staticsParser.ml",
-              733,
+              730,
               8
             ]
           ];
@@ -563,7 +563,7 @@ function _menhir_run5(_menhir_env, _menhir_stack, _menhir_s, _v) {
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "staticsParser.ml",
-              820,
+              814,
               8
             ]
           ];
@@ -622,7 +622,7 @@ function _menhir_reduce5(_menhir_env, _menhir_stack, _menhir_s) {
               Caml_builtin_exceptions.assert_failure,
               /* tuple */[
                 "staticsParser.ml",
-                838,
+                832,
                 10
               ]
             ];
@@ -644,7 +644,7 @@ function _menhir_reduce5(_menhir_env, _menhir_stack, _menhir_s) {
                   Caml_builtin_exceptions.assert_failure,
                   /* tuple */[
                     "staticsParser.ml",
-                    850,
+                    844,
                     16
                   ]
                 ];
@@ -662,7 +662,7 @@ function _menhir_reduce5(_menhir_env, _menhir_stack, _menhir_s) {
                 Caml_builtin_exceptions.assert_failure,
                 /* tuple */[
                   "staticsParser.ml",
-                  854,
+                  848,
                   12
                 ]
               ];
@@ -692,7 +692,7 @@ function _menhir_reduce7(_menhir_env, _menhir_stack, _menhir_s) {
                 Caml_builtin_exceptions.assert_failure,
                 /* tuple */[
                   "staticsParser.ml",
-                  918,
+                  912,
                   10
                 ]
               ];
@@ -710,7 +710,7 @@ function _menhir_reduce7(_menhir_env, _menhir_stack, _menhir_s) {
                   Caml_builtin_exceptions.assert_failure,
                   /* tuple */[
                     "staticsParser.ml",
-                    967,
+                    961,
                     12
                   ]
                 ];
@@ -1027,7 +1027,7 @@ function rules(lexer, lexbuf) {
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "staticsParser.ml",
-              1227,
+              1221,
               8
             ]
           ];
@@ -1059,7 +1059,7 @@ function term_top(lexer, lexbuf) {
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "staticsParser.ml",
-              1246,
+              1240,
               8
             ]
           ];
