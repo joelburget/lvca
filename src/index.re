@@ -41,7 +41,7 @@ let make_span = children => {
 };
 
 module TermViewer = {
-  open Types;
+  open Util;
   open Types.Abt;
 
   let rec show_term(term:term) = switch (term) {
@@ -75,7 +75,7 @@ module TermViewer = {
 };
 
 module CoreValView = {
-  open Types
+  open Util;
   open Types.Core;
 
   let rec view_core_pat = pat => switch (pat) {

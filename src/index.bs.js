@@ -2,6 +2,7 @@
 'use strict';
 
 var List = require("bs-platform/lib/js/list.js");
+var Util = require("./util.bs.js");
 var $$Array = require("bs-platform/lib/js/array.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
@@ -76,7 +77,7 @@ function show_term(term) {
                     /* :: */[
                       /* array */["("],
                       /* :: */[
-                        $$Array.of_list(Types.intersperse(List.map(show_scope, term[1]), ";")),
+                        $$Array.of_list(Util.intersperse(List.map(show_scope, term[1]), ";")),
                         /* :: */[
                           /* array */[")"],
                           /* [] */0
@@ -105,7 +106,7 @@ function show_term(term) {
 
 function show_scope(scope) {
   return make_span(/* :: */[
-              $$Array.of_list(Types.intersperse_after(List.map((function (prim) {
+              $$Array.of_list(Util.intersperse_after(List.map((function (prim) {
                               return prim;
                             }), scope[0]), ".")),
               /* :: */[
@@ -140,7 +141,7 @@ function view_core(core) {
                       /* :: */[
                         /* array */["; "],
                         /* :: */[
-                          $$Array.of_list(Types.intersperse(List.map(view_core, core[1]), "; ")),
+                          $$Array.of_list(Util.intersperse(List.map(view_core, core[1]), "; ")),
                           /* :: */[
                             /* array */[")"],
                             /* [] */0
@@ -153,7 +154,7 @@ function view_core(core) {
         return make_span(/* :: */[
                     /* array */["lam("],
                     /* :: */[
-                      $$Array.of_list(Types.intersperse(List.map((function (prim) {
+                      $$Array.of_list(Util.intersperse(List.map((function (prim) {
                                       return prim;
                                     }), core[0]), ". ")),
                       /* :: */[
@@ -197,7 +198,7 @@ function view_core_val(coreVal) {
         return make_span(/* :: */[
                     /* array */[coreVal[0]],
                     /* :: */[
-                      $$Array.of_list(Types.intersperse(List.map(view_core_val, coreVal[1]), "; ")),
+                      $$Array.of_list(Util.intersperse(List.map(view_core_val, coreVal[1]), "; ")),
                       /* [] */0
                     ]
                   ]);
@@ -207,7 +208,7 @@ function view_core_val(coreVal) {
         return coreVal[0];
     case 3 : 
         return make_span(/* :: */[
-                    $$Array.of_list(Types.intersperse(List.map((function (prim) {
+                    $$Array.of_list(Util.intersperse(List.map((function (prim) {
                                     return prim;
                                   }), coreVal[0]), ". ")),
                     /* :: */[
