@@ -58,7 +58,7 @@ var Abt = Caml_module.init_mod([
 
 var Ast = Caml_module.init_mod([
       "types.ml",
-      149,
+      147,
       6
     ], [[0]]);
 
@@ -92,27 +92,23 @@ function from_ast_with_bindings(lang, current_sort, env, param) {
             if (Belt_List.length(valences) !== Belt_List.length(subtms)) {
               return /* Error */Block.__(1, ["TODO"]);
             } else {
-              var x = Util.traverse_list_result(Belt_List.map(Belt_List.zip(valences, subtms), (function (param) {
-                          var valence = param[0];
-                          if (valence.tag) {
-                            return /* Error */Block.__(1, ["TODO"]);
-                          } else {
-                            var match = valence[1];
-                            if (match.tag) {
-                              return scope_from_ast(lang, match[0], env, param[1]);
-                            } else {
-                              return /* Error */Block.__(1, ["TODO"]);
-                            }
-                          }
-                        })));
-              if (x.tag) {
-                return /* Error */Block.__(1, [x[0]]);
-              } else {
-                return /* Ok */Block.__(0, [/* Term */Block.__(0, [
-                              tag,
-                              x[0]
-                            ])]);
-              }
+              return Belt_Result.map(Util.traverse_list_result(Belt_List.zipBy(valences, subtms, (function (valence, subtm) {
+                                    if (valence.tag) {
+                                      return /* Error */Block.__(1, ["TODO"]);
+                                    } else {
+                                      var match = valence[1];
+                                      if (match.tag) {
+                                        return scope_from_ast(lang, match[0], env, subtm);
+                                      } else {
+                                        return /* Error */Block.__(1, ["TODO"]);
+                                      }
+                                    }
+                                  }))), (function (subtms$prime) {
+                            return /* Term */Block.__(0, [
+                                      tag,
+                                      subtms$prime
+                                    ]);
+                          }));
             }
           } else {
             return /* Error */Block.__(1, ["from_ast_with_bindings: couldn't find operator " + (tag + (" (in sort " + (current_sort + ")")))]);
@@ -129,10 +125,9 @@ function from_ast_with_bindings(lang, current_sort, env, param) {
           return /* Error */Block.__(1, ["couldn't find variable " + name]);
         }
     case 2 : 
-        var x$1 = Util.traverse_list_result(Belt_List.map(param[0], (function (param) {
-                    return from_ast_with_bindings(lang, current_sort, env, param);
-                  })));
-        return Belt_Result.map(x$1, (function (x$prime) {
+        return Belt_Result.map(Util.traverse_list_result(Belt_List.map(param[0], (function (param) {
+                              return from_ast_with_bindings(lang, current_sort, env, param);
+                            }))), (function (x$prime) {
                       return /* Sequence */Block.__(2, [x$prime]);
                     }));
     case 3 : 
@@ -175,7 +170,7 @@ function from_abt(param) {
           Caml_builtin_exceptions.match_failure,
           /* tuple */[
             "types.ml",
-            160,
+            158,
             21
           ]
         ];
@@ -483,17 +478,9 @@ function $$eval(core) {
             if (Belt_List.length(argNames) !== Belt_List.length(core$1[1])) {
               return /* Error */Block.__(1, ["mismatched application lengths"]);
             } else {
-              var ctx$prime = Belt_MapString.merge(ctx, Belt_MapString.fromArray(Belt_List.toArray(Belt_List.zip(argNames, /* [] */0))), (function (_k, v1, v2) {
-                      if (v2 !== undefined) {
-                        return v2;
-                      } else if (v1 !== undefined) {
-                        return v1;
-                      } else {
-                        return undefined;
-                      }
-                    }));
+              var newArgs = Belt_MapString.fromArray(Belt_List.toArray(Belt_List.zip(argNames, /* [] */0)));
               _core = match$1[1];
-              _ctx = ctx$prime;
+              _ctx = Util.union(ctx, newArgs);
               continue ;
             }
           } else {

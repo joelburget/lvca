@@ -98,32 +98,30 @@ end = struct
     : Ast.term -> (term, string) Result.t
     = function
       | Ast.Term(tag, subtms) -> (match M.get sorts current_sort with
-        | None -> Result.Error
+        | None -> Error
           ("from_ast_with_bindings: couldn't find sort " ^ current_sort)
         | Some (SortDef (_vars, operators)) -> (match find_operator operators tag with
-          | None -> Result.Error
+          | None -> Error
             ("from_ast_with_bindings: couldn't find operator " ^ tag ^
             " (in sort " ^ current_sort ^ ")")
           | Some (OperatorDef (_tag, Arity (_binds, valences))) ->
-            if List.length valences != List.length subtms
-            then Result.Error "TODO"
-            else let x = traverse_list_result
-                   (List.map
-                     (List.zip valences subtms)
-                     (fun (valence, subtm) -> match valence with
+            if List.(length valences != length subtms)
+            then Error "TODO"
+            else Result.map
+                   (traverse_list_result
+                     (List.zipBy valences subtms
+                     (fun valence subtm -> match valence with
                        | FixedValence (_binds, SortName result_sort)
                          -> scope_from_ast lang result_sort env subtm
-                       | _ -> Result.Error "TODO")) in
-              (match x with
-                | Error msg  -> Result.Error msg
-                | Ok subtms' -> Ok (Term(tag, subtms')))))
+                       | _ -> Result.Error "TODO")))
+                   (function subtms' -> Term (tag, subtms'))))
       | Ast.Var name -> (match M.get env name with
         | None    -> Error ("couldn't find variable " ^ name)
         | Some ix -> Ok (Var ix))
-      | Ast.Sequence tms ->
-        let x = traverse_list_result
-          (List.map tms (from_ast_with_bindings lang current_sort env)) in
-        Result.map x (fun x' -> Sequence x')
+      | Ast.Sequence tms -> Result.map
+        (traverse_list_result
+          (List.map tms (from_ast_with_bindings lang current_sort env)))
+        (fun x' -> Sequence x')
       | Primitive prim -> Ok (Abt.Primitive prim)
 
   and scope_from_ast lang (current_sort : string) env (Ast.Scope (names, body))
@@ -336,17 +334,12 @@ module Core = struct
             | None        -> Error ("Unbound variable " ^ v))
           | CoreVal v -> Ok v
           | CoreApp (Lam (argNames, body), args) ->
-              if List.length argNames != List.length args
+              if List.(length argNames != length args)
               then Error "mismatched application lengths"
               else let args' = [] (* List.map (go ctx) args *) in
-                   let ctx' = M.merge
-                         ctx
-                         (M.fromArray (List.toArray (List.zip argNames args')))
-                         (fun _k v1 v2 -> match (v1, v2) with
-                           | (_,      Some v) -> Some v
-                           | (Some v, None  ) -> Some v
-                           | (None,   None  ) -> None)
-                   in go ctx' body
+                   let newArgs = M.fromArray
+                     (List.toArray (List.zip argNames args')) in
+                   go (union ctx newArgs) body
           (* | Case tm _ty branches ->
             let v = go ctx tm *)
           | Metavar _v -> Error "Found a metavar!"
