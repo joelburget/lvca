@@ -284,7 +284,7 @@ module Core = struct
                Some (assocs @ assocs', union bindings bindings')
              | _ -> None)
            (List.zip subtms subpats)
-           (Some([], M.empty))
+           (Some ([], M.empty))
          else None
       | (_, DPatternTm _) -> None
       | (_, DVar None) -> Some ([], M.empty)
@@ -295,12 +295,10 @@ module Core = struct
     = match (scope, pat) with
       | (Scope(binders, tm), DenotationScopePat(patBinders, pat))
       -> if List.(length patBinders == length binders)
-        then (match matches tm pat with
-          | None
-          -> None
-          | Some(assocs, tmMatches)
-          -> Some(List.zip patBinders binders @ assocs, tmMatches)
-        )
+        then O.map
+          (matches tm pat)
+          (function (assocs, tmMatches)
+            -> (List.zip patBinders binders @ assocs, tmMatches))
         else None
 
   let find_match (dynamics : denotation_chart) (term : Abt.term)
@@ -309,7 +307,7 @@ module Core = struct
       | DenotationChart denotations -> get_first
         (fun (pat, core) -> match matches term pat with
           | None -> None
-          | Some(assocs, bindings) -> Some(assocs, bindings, core))
+          | Some (assocs, bindings) -> Some (assocs, bindings, core))
         denotations
 
   type located_err = (string * Abt.term option)
@@ -326,10 +324,9 @@ module Core = struct
         | None    -> Error ("TODO 4", None)
         )
       | CoreVar _ -> Ok c
-      | CoreVal v -> (match fill_in_val dynamics mr v with
-        | Ok v'     -> Ok (CoreVal v')
-        | Error msg -> Error msg
-        )
+      | CoreVal v -> Result.map
+        (fill_in_val dynamics mr v)
+        (function v' -> CoreVal v')
       | CoreApp(f, args) -> (match
         ( fill_in_core dynamics mr f
         , traverse_list_result (List.map args (fill_in_core dynamics mr))
@@ -337,16 +334,15 @@ module Core = struct
         | (Ok f', Ok args')               -> Ok (CoreApp (f', args'))
         | (Error msg, _) | (_, Error msg) -> Error msg
         )
-      | Lam (binders, core) -> (match fill_in_core dynamics mr core with
-        | Ok core' -> Ok (Lam (binders, core'))
-        | Error msg -> Error msg
-        )
+      | Lam (binders, core) -> Result.map
+        (fill_in_core dynamics mr core)
+        (function core' -> (Lam (binders, core')))
       | Case (scrutinee, ty, branches) ->
           let x : ((core_pat * core) list) translation_result
                 = traverse_list_result (List.map branches
-                (fun (pat, core) -> match fill_in_core dynamics mr core with
-                  | Ok core'  -> Result.Ok (pat, core')
-                  | Error msg -> Result.Error msg
+                (fun (pat, core) -> Result.map
+                  (fill_in_core dynamics mr core)
+                  (function core' -> (pat, core'))
                 )) in
           match (fill_in_core dynamics mr scrutinee, x) with
             | (Ok scrutinee', Ok branches')

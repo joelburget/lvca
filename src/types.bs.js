@@ -446,16 +446,12 @@ function matches_scope(scope, pat) {
   var patBinders = pat[0];
   var binders = scope[0];
   if (Belt_List.length(patBinders) === Belt_List.length(binders)) {
-    var match = matches(scope[1], pat[1]);
-    if (match !== undefined) {
-      var match$1 = match;
-      return /* tuple */[
-              Pervasives.$at(Belt_List.zip(patBinders, binders), match$1[0]),
-              match$1[1]
-            ];
-    } else {
-      return undefined;
-    }
+    return Belt_Option.map(matches(scope[1], pat[1]), (function (param) {
+                  return /* tuple */[
+                          Pervasives.$at(Belt_List.zip(patBinders, binders), param[0]),
+                          param[1]
+                        ];
+                }));
   }
   
 }
@@ -480,65 +476,58 @@ function fill_in_core(dynamics, mr, c) {
     case 0 : 
         return /* Ok */Block.__(0, [c]);
     case 1 : 
-        var match = fill_in_val(dynamics, mr, c[0]);
-        if (match.tag) {
-          return /* Error */Block.__(1, [match[0]]);
-        } else {
-          return /* Ok */Block.__(0, [/* CoreVal */Block.__(1, [match[0]])]);
-        }
+        return Belt_Result.map(fill_in_val(dynamics, mr, c[0]), (function (v$prime) {
+                      return /* CoreVal */Block.__(1, [v$prime]);
+                    }));
     case 2 : 
-        var match$1 = fill_in_core(dynamics, mr, c[0]);
-        var match$2 = traverse_list_result(Belt_List.map(c[1], (function (param) {
+        var match = fill_in_core(dynamics, mr, c[0]);
+        var match$1 = traverse_list_result(Belt_List.map(c[1], (function (param) {
                     return fill_in_core(dynamics, mr, param);
                   })));
-        if (match$1.tag) {
+        if (match.tag) {
+          return /* Error */Block.__(1, [match[0]]);
+        } else if (match$1.tag) {
           return /* Error */Block.__(1, [match$1[0]]);
-        } else if (match$2.tag) {
-          return /* Error */Block.__(1, [match$2[0]]);
         } else {
           return /* Ok */Block.__(0, [/* CoreApp */Block.__(2, [
-                        match$1[0],
-                        match$2[0]
+                        match[0],
+                        match$1[0]
                       ])]);
         }
     case 3 : 
-        var match$3 = fill_in_core(dynamics, mr, c[1]);
-        if (match$3.tag) {
-          return /* Error */Block.__(1, [match$3[0]]);
-        } else {
-          return /* Ok */Block.__(0, [/* Lam */Block.__(3, [
-                        c[0],
-                        match$3[0]
-                      ])]);
-        }
+        var binders = c[0];
+        return Belt_Result.map(fill_in_core(dynamics, mr, c[1]), (function (core$prime) {
+                      return /* Lam */Block.__(3, [
+                                binders,
+                                core$prime
+                              ]);
+                    }));
     case 4 : 
         var x = traverse_list_result(Belt_List.map(c[2], (function (param) {
-                    var match = fill_in_core(dynamics, mr, param[1]);
-                    if (match.tag) {
-                      return /* Error */Block.__(1, [match[0]]);
-                    } else {
-                      return /* Ok */Block.__(0, [/* tuple */[
-                                  param[0],
-                                  match[0]
-                                ]]);
-                    }
+                    var pat = param[0];
+                    return Belt_Result.map(fill_in_core(dynamics, mr, param[1]), (function (core$prime) {
+                                  return /* tuple */[
+                                          pat,
+                                          core$prime
+                                        ];
+                                }));
                   })));
-        var match$4 = fill_in_core(dynamics, mr, c[0]);
-        if (match$4.tag) {
-          return /* Error */Block.__(1, [match$4[0]]);
+        var match$2 = fill_in_core(dynamics, mr, c[0]);
+        if (match$2.tag) {
+          return /* Error */Block.__(1, [match$2[0]]);
         } else if (x.tag) {
           return /* Error */Block.__(1, [x[0]]);
         } else {
           return /* Ok */Block.__(0, [/* Case */Block.__(4, [
-                        match$4[0],
+                        match$2[0],
                         c[1],
                         x[0]
                       ])]);
         }
     case 5 : 
-        var match$5 = Belt_MapString.get(mr[1], c[0]);
-        if (match$5 !== undefined) {
-          return term_to_core(dynamics, match$5);
+        var match$3 = Belt_MapString.get(mr[1], c[0]);
+        if (match$3 !== undefined) {
+          return term_to_core(dynamics, match$3);
         } else {
           return /* Error */Block.__(1, [/* tuple */[
                       "TODO 4",
