@@ -47,7 +47,7 @@ function prim_eq(p1, p2) {
 
 var Abt = Caml_module.init_mod([
       "types.ml",
-      66,
+      74,
       6
     ], [[
         0,

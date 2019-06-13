@@ -1,15 +1,23 @@
+(** Types for representing languages *)
 open Belt
 open Util
 
+(** Sorts divide ASTs into syntactic categories. *)
 type sort =
   | SortAp   of sort * sort
+  (** A higher-kinded sort can be applied *)
   | SortName of string
 
+(** A valence represents the sort of an argument (to an operator), as well as
+ * the number and sorts of the variables bound within it *)
 type valence =
   | FixedValence    of sort list * sort
+  (** A fixed valence is known a priori *)
   | VariableValence of string * sort
-  (** A variable valence represents *)
+  (** A variable valence binds a number of variables not known a priori. All
+   must be of the same sort. *)
 
+(** An arity specifies the arguments to an operator *)
 type arity =
   | Arity of string list * valence list
   (** An arity is defined its arity indices and valences *)
