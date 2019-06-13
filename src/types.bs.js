@@ -166,9 +166,7 @@ function match_branch(v, pat) {
           switch (pat.tag | 0) {
             case 0 : 
                 var pats = pat[1];
-                var sub_results = Belt_List.map(Belt_List.zip(vals, pats), (function (param) {
-                        return match_branch(param[0], param[1]);
-                      }));
+                var sub_results = Belt_List.zipBy(vals, pats, match_branch);
                 if (v[0] === pat[0] && Belt_List.length(vals) === Belt_List.length(pats) && Belt_List.every(sub_results, Belt_Option.isSome)) {
                   return Caml_option.some(Belt_List.reduce(Belt_List.map(sub_results, Belt_Option.getExn), Belt_MapString.empty, Util.union));
                 } else {

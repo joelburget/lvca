@@ -13,6 +13,7 @@ type token =
   | LAM
   | INT of (Bigint.t)
   | ID of (string)
+  | HASH
   | EQ
   | EOF
   | DOT

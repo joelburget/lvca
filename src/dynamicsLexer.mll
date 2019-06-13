@@ -22,6 +22,7 @@ rule read = parse
   | ';'       { SEMICOLON }
   | '.'       { DOT }
   | "->"      { RIGHT_S_ARR }
+  | "#"       { HASH }
   | "app"     { APP }
   | "lam"     { LAM }
   | "case"    { CASE }

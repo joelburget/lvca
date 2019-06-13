@@ -21,6 +21,7 @@
 %token LAM
 %token CASE
 %token DEFAULT
+%token HASH
 
 %start dynamics
 %type <denotation_pat> pat
@@ -51,7 +52,8 @@ core_val:
   { ValTm ($1, $3) }
   | prim
   { ValLit $1 }
-  (* ValPrimop? *)
+  | HASH ID
+  { ValPrimop $2 }
   (* ValLam? *)
   ;
 

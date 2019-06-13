@@ -188,13 +188,10 @@ module Core = struct
     : core_val M.t option = match (v, pat) with
 
     | (ValTm (tag1, vals), PatternTerm (tag2, pats)) ->
-        let sub_results = List.map
-          (List.zip vals pats)
-          (fun (v', pat') -> match_branch v' pat') in
+        let sub_results = List.zipBy vals pats match_branch in
         if tag1 = tag2 &&
-           List.length vals = List.length pats &&
-           List.every sub_results O.isSome
-        then Some (List.reduce (List.map sub_results O.getExn) M.empty union)
+           List.(length vals = length pats && every sub_results O.isSome)
+        then Some List.(reduce (map sub_results O.getExn) M.empty union)
         else None
     | (ValLit l1, PatternLit l2)
     -> if prim_eq l1 l2 then Some M.empty else None
@@ -307,8 +304,8 @@ module Core = struct
       (traverse_list_result (List.map subtms scope_is_core_val))
       (fun subtms' -> ValTm (tag, subtms'))
     | Abt.Primitive prim -> Ok (ValLit prim)
-    | Abt.Var _ -> Error ("TODO", Some tm)
-    | _ -> Error ("TODO", Some tm)
+    | Abt.Var _          -> Error ("TODO", Some tm)
+    | _                  -> Error ("TODO", Some tm)
 
   and scope_is_core_val (scope : Abt.scope) : core_val translation_result
     = failwith "TODO"

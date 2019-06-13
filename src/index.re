@@ -267,7 +267,7 @@ module LvcaViewer = {
       </div>
 
       <h2 className="header2 header2-statics">
-        {React.string("Statics")}
+        {React.string("Statics ")}
         {staticsView}
       </h2>
       <div className="statics-pane">
@@ -279,7 +279,7 @@ module LvcaViewer = {
       </div>
 
       <h2 className="header2 header2-dynamics">
-        {React.string("Dynamics")}
+        {React.string("Dynamics ")}
         {dynamicsView}
       </h2>
       <div className="dynamics-pane">

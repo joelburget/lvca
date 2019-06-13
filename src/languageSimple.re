@@ -63,5 +63,9 @@ ctx >> tm <= ty|}
 // [[_]] : tm -> core(val)
 let dynamics = {|[[ val(v)          ]] = v
 [[ annot(tm; ty)   ]] = [[ tm ]]
-[[ ite(t1; t2; t3) ]] = case([[ t1 ]]; true() -> [[ t2 ]]; false() -> [[ t3 ]])
+[[ ite(t1; t2; t3) ]] = case(
+  [[ t1 ]];
+  true() -> [[ t2 ]];
+  false() -> [[ t3 ]]
+)
 [[ app(fun; arg)   ]] = app([[ fun ]]; [[ arg ]])|}

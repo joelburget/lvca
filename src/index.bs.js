@@ -457,7 +457,7 @@ function Index$LvcaViewer(Props) {
                       }
                     })), React.createElement("h2", {
                   className: "header2 header2-statics"
-                }, "Statics", match$5[0]), React.createElement("div", {
+                }, "Statics ", match$5[0]), React.createElement("div", {
                   className: "statics-pane"
                 }, React.createElement(ReactCodemirror, {
                       value: staticsInput,
@@ -471,7 +471,7 @@ function Index$LvcaViewer(Props) {
                       }
                     })), React.createElement("h2", {
                   className: "header2 header2-dynamics"
-                }, "Dynamics", match$6[0]), React.createElement("div", {
+                }, "Dynamics ", match$6[0]), React.createElement("div", {
                   className: "dynamics-pane"
                 }, React.createElement(ReactCodemirror, {
                       value: dynamicsInput,
