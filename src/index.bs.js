@@ -335,7 +335,7 @@ var ParseStatus = /* module */[
 
 function Index$LvcaViewer(Props) {
   var match = React.useState((function () {
-          return "val(true())";
+          return "ite(val(false()); val(false()); val(true()))";
         }));
   var setTermInput = match[1];
   var termInput = match[0];
@@ -393,11 +393,11 @@ function Index$LvcaViewer(Props) {
         ]]);
   } else {
     var termResult_ = termResult[0];
-    var match$7 = Types.Core[/* term_to_core */10](dynamics[0], termResult_);
+    var match$7 = Types.Core[/* term_to_core */11](dynamics[0], termResult_);
     if (match$7.tag) {
       evalResult = /* Error */Block.__(1, [match$7[0]]);
     } else {
-      var match$8 = Types.Core[/* eval */11](match$7[0]);
+      var match$8 = Types.Core[/* eval */12](match$7[0]);
       evalResult = match$8.tag ? /* Error */Block.__(1, [/* tuple */[
               match$8[0],
               termResult_

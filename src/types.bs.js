@@ -232,6 +232,27 @@ function match_branch(v, pat) {
   
 }
 
+function find_core_match(v, _pats) {
+  while(true) {
+    var pats = _pats;
+    if (pats) {
+      var match = pats[0];
+      var match$1 = match_branch(v, match[0]);
+      if (match$1 !== undefined) {
+        return /* tuple */[
+                match[1],
+                Caml_option.valFromOption(match$1)
+              ];
+      } else {
+        _pats = pats[1];
+        continue ;
+      }
+    } else {
+      return undefined;
+    }
+  };
+}
+
 function matches(tm, pat) {
   var exit = 0;
   if (tm.tag) {
@@ -461,51 +482,75 @@ function term_to_core(dynamics, tm) {
 }
 
 function $$eval(core) {
-  var _ctx = Belt_MapString.empty;
-  var _core = core;
-  while(true) {
-    var core$1 = _core;
-    var ctx = _ctx;
-    switch (core$1.tag | 0) {
-      case 0 : 
-          var v = core$1[0];
-          var match = Belt_MapString.get(ctx, v);
-          if (match !== undefined) {
-            return /* Ok */Block.__(0, [match]);
-          } else {
-            return /* Error */Block.__(1, ["Unbound variable " + v]);
-          }
-      case 1 : 
-          return /* Ok */Block.__(0, [core$1[0]]);
-      case 2 : 
-          var match$1 = core$1[0];
-          if (match$1.tag === 3) {
-            var argNames = match$1[0];
-            if (Belt_List.length(argNames) !== Belt_List.length(core$1[1])) {
-              return /* Error */Block.__(1, ["mismatched application lengths"]);
+  var go = function (_ctx, _param) {
+    while(true) {
+      var param = _param;
+      var ctx = _ctx;
+      switch (param.tag | 0) {
+        case 0 : 
+            var v = param[0];
+            var match = Belt_MapString.get(ctx, v);
+            if (match !== undefined) {
+              return /* Ok */Block.__(0, [match]);
             } else {
-              var newArgs = Belt_MapString.fromArray(Belt_List.toArray(Belt_List.zip(argNames, /* [] */0)));
-              _core = match$1[1];
-              _ctx = Util.union(ctx, newArgs);
-              continue ;
+              return /* Error */Block.__(1, ["Unbound variable " + v]);
             }
-          } else {
+        case 1 : 
+            return /* Ok */Block.__(0, [param[0]]);
+        case 2 : 
+            var match$1 = param[0];
+            if (match$1.tag === 3) {
+              var args = param[1];
+              var body = match$1[1];
+              var argNames = match$1[0];
+              if (Belt_List.length(argNames) !== Belt_List.length(args)) {
+                return /* Error */Block.__(1, ["mismatched application lengths"]);
+              } else {
+                return Belt_Result.flatMap(Util.traverse_list_result(Belt_List.map(args, (function(ctx){
+                                  return function (param) {
+                                    return go(ctx, param);
+                                  }
+                                  }(ctx)))), (function(ctx,argNames,body){
+                          return function (arg_vals) {
+                            var new_args = Belt_MapString.fromArray(Belt_List.toArray(Belt_List.zip(argNames, arg_vals)));
+                            return go(Util.union(ctx, new_args), body);
+                          }
+                          }(ctx,argNames,body)));
+              }
+            } else {
+              return /* Error */Block.__(1, ["TODO 5"]);
+            }
+        case 3 : 
             return /* Error */Block.__(1, ["TODO 5"]);
-          }
-      case 3 : 
-      case 4 : 
-          return /* Error */Block.__(1, ["TODO 5"]);
-      case 5 : 
-          return /* Error */Block.__(1, ["Found a metavar!"]);
-      
-    }
+        case 4 : 
+            var match$2 = go(ctx, param[0]);
+            if (match$2.tag) {
+              return /* Error */Block.__(1, [match$2[0]]);
+            } else {
+              var match$3 = find_core_match(match$2[0], param[2]);
+              if (match$3 !== undefined) {
+                var match$4 = match$3;
+                _param = match$4[0];
+                _ctx = Util.union(ctx, match$4[1]);
+                continue ;
+              } else {
+                return /* Error */Block.__(1, ["no match found in case"]);
+              }
+            }
+        case 5 : 
+            return /* Error */Block.__(1, ["Found a metavar!"]);
+        
+      }
+    };
   };
+  return go(Belt_MapString.empty, core);
 }
 
 var Core = /* module */[
   /* M */0,
   /* O */0,
   /* match_branch */match_branch,
+  /* find_core_match */find_core_match,
   /* matches */matches,
   /* matches_scope */matches_scope,
   /* find_match */find_match,

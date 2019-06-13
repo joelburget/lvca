@@ -101,13 +101,13 @@ end = struct
             if List.(length valences != length subtms)
             then Error "TODO"
             else Result.map
-                   (traverse_list_result
-                     (List.zipBy valences subtms
-                     (fun valence subtm -> match valence with
-                       | FixedValence (_binds, SortName result_sort)
-                         -> scope_from_ast lang result_sort env subtm
-                       | _ -> Result.Error "TODO")))
-                   (fun subtms' -> Term (tag, subtms'))))
+              (traverse_list_result
+                (List.zipBy valences subtms
+                (fun valence subtm -> match valence with
+                  | FixedValence (_binds, SortName result_sort)
+                    -> scope_from_ast lang result_sort env subtm
+                  | _ -> Result.Error "TODO")))
+              (fun subtms' -> Term (tag, subtms'))))
       | Ast.Var name -> (match M.get env name with
         | None    -> Error ("couldn't find variable " ^ name)
         | Some ix -> Ok (Var ix))
@@ -199,6 +199,13 @@ module Core = struct
     | (tm, PatternVar None)     -> Some M.empty
     | (_val, PatternDefault)    -> Some M.empty
     | _ -> None
+
+  let rec find_core_match (v : core_val) (pats : (core_pat * core) list)
+    : (core * core_val M.t) option = match pats with
+      | []                 -> None
+      | (pat, rhs) :: pats -> (match match_branch v pat with
+        | None          -> find_core_match v pats
+        | Some bindings -> Some (rhs, bindings))
 
   let rec matches (tm : Abt.term) (pat : denotation_pat)
     : ((string * string) list * Abt.term M.t) option
@@ -322,7 +329,7 @@ module Core = struct
 
     let open Belt.Result in
 
-    let rec go ctx core = match core with
+    let rec go ctx = function
           | CoreVar v -> (match M.get ctx v with
             | Some result -> Ok result
             | None        -> Error ("Unbound variable " ^ v))
@@ -330,12 +337,18 @@ module Core = struct
           | CoreApp (Lam (argNames, body), args) ->
               if List.(length argNames != length args)
               then Error "mismatched application lengths"
-              else let args' = [] (* List.map (go ctx) args *) in
-                   let newArgs = M.fromArray
-                     (List.toArray (List.zip argNames args')) in
-                   go (union ctx newArgs) body
-          (* | Case tm _ty branches ->
-            let v = go ctx tm *)
+              else Result.flatMap
+                (traverse_list_result (List.map args (go ctx)))
+                (fun arg_vals ->
+                   let new_args = M.fromArray
+                     (List.toArray (List.zip argNames arg_vals)) in
+                   go (union ctx new_args) body)
+          | Case (tm, _ty, branches) ->
+            (match go ctx tm with
+              | Ok v -> (match find_core_match v branches with
+                | None                    -> Error "no match found in case"
+                | Some (branch, bindings) -> go (union ctx bindings) branch)
+              | Error msg -> Error msg)
           | Meaning _v -> Error "Found a metavar!"
 
           | _ -> Error "TODO 5"
@@ -351,11 +364,11 @@ module Statics = struct
   type scope = Scope of string list * term
 
   and term =
-          | Term      of string * scope list
-          | Bound     of int
-          | Free      of string
-          | Sequence  of term list
-          | Primitive of primitive
+    | Term      of string * scope list
+    | Bound     of int
+    | Free      of string
+    | Sequence  of term list
+    | Primitive of primitive
 
   type inferenceRule = InferenceRule of term * term
   type checkingRule  = CheckingRule  of term * term

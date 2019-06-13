@@ -177,7 +177,7 @@ module LvcaViewer = {
   let make = () => {
     open Belt.Result;
 
-    let (termInput,     setTermInput)     = React.useState(() => "val(true())");
+    let (termInput,     setTermInput)     = React.useState(() => "ite(val(false()); val(false()); val(true()))");
     let (asInput,       setAsInput)       = React.useState(() => LanguageSimple.abstractSyntax);
     let (staticsInput,  setStaticsInput)  = React.useState(() => LanguageSimple.statics);
     let (dynamicsInput, setDynamicsInput) = React.useState(() => LanguageSimple.dynamics);
