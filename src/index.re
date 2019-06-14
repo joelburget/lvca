@@ -27,11 +27,11 @@ module CodeMirror = {
   [@react.component][@bs.module "react-codemirror2"]
   external make:
     (~value: string,
-     ~onChange: (editor, {.}, string) => unit,
+     ~onBeforeChange: (editor, {.}, string) => unit,
      ~options: options,
      ~onKeyDown: (editor, event) => unit =?)
     => React.element
-    = "UnControlled";
+    = "Controlled";
 };
 
 module Repl = {
@@ -50,7 +50,7 @@ module Repl = {
 
     <CodeMirror
       value=input
-      onChange=((editor, data, value) => setInput(value))
+      onBeforeChange=((editor, data, value) => setInput(value))
       onKeyDown=handleKey
       options=options
     />
@@ -302,7 +302,7 @@ module LvcaViewer = {
       <div className="abstract-syntax-pane">
         <CodeMirror
           value=asInput
-          onChange=((_, _, str) => setAsInput(_ => str))
+          onBeforeChange=((_, _, str) => setAsInput(_ => str))
           options=CodeMirror.options(~mode="default", ())
         />
       </div>
@@ -314,7 +314,7 @@ module LvcaViewer = {
       <div className="statics-pane">
         <CodeMirror
           value=staticsInput
-          onChange=((_, _, str) => setStaticsInput(_ => str))
+          onBeforeChange=((_, _, str) => setStaticsInput(_ => str))
           options=CodeMirror.options(~mode="default", ())
         />
       </div>
@@ -326,7 +326,7 @@ module LvcaViewer = {
       <div className="dynamics-pane">
         <CodeMirror
           value=dynamicsInput
-          onChange=((_, _, str) => setDynamicsInput(_ => str))
+          onBeforeChange=((_, _, str) => setDynamicsInput(_ => str))
           options=CodeMirror.options(~mode="default", ())
         />
       </div>
