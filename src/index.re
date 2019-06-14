@@ -22,6 +22,7 @@ module CodeMirror = {
   [@bs.deriving abstract]
   type event = {
     key: string,
+    shiftKey: bool,
   };
 
   [@react.component][@bs.module "react-codemirror2"]
@@ -34,22 +35,34 @@ module CodeMirror = {
     = "Controlled";
 };
 
+type item_result = Belt.Result.t(Types.Core.core_val, string);
+
+type historyItem = {
+  input: string,
+  result: item_result,
+};
+
+type history = {
+  before: list(historyItem),
+  after: list(historyItem),
+  input: string
+};
+
 module Repl = {
   [@react.component]
-  let make = (~input: string,
-              ~history: array(string),
-              ~future: array(string),
-              ~setInput: string => unit
-              ) => {
+  let make = (
+    ~history: history,
+    ~setInput: string => unit
+    ) => {
     let options = CodeMirror.options(~mode="lvca", ());
     let handleKey = (_editor, evt) => {
-      if (CodeMirror.keyGet(evt) == "Enter") {
-        Js.log("Enter");
+      if (CodeMirror.(keyGet(evt) == "Enter" && shiftKeyGet(evt))) {
+        Js.log("Shift-Enter");
       }
     };
 
     <CodeMirror
-      value=input
+      value=history.input
       onBeforeChange=((editor, data, value) => setInput(value))
       onKeyDown=handleKey
       options=options
@@ -202,13 +215,12 @@ module LvcaViewer = {
   let make = () => {
     open Belt.Result;
 
-    let (replHistory, setHistory)
-      = React.useState(() => [||]);
-    let (replFuture, setFuture)
-      = React.useState(() => [||]);
-
-    let (termInput,     setTermInput)
-      = React.useState(() => "ite(val(false()); val(false()); val(true()))");
+    let initialHistory: history = {
+        input: "ite(val(false()); val(false()); val(true()))",
+        before: [],
+        after: [],
+      }
+    let (replHistory, setHistory) = React.useState(() => initialHistory);
 
     let (asInput,       setAsInput)
       = React.useState(() => LanguageSimple.abstractSyntax);
@@ -235,6 +247,9 @@ module LvcaViewer = {
 
     let show_term_pane = isOk(language) && isOk(statics) && isOk(dynamics);
 
+    // XXX remove
+    let termInput = replHistory.input;
+
     let termResult = switch
       (TermParser.term(TermLexer.read, Lexing.from_string(termInput))) {
     | term                                 =>
@@ -252,13 +267,13 @@ module LvcaViewer = {
     let evalResult : Types.Core.translation_result(Types.Core.core_val) = {
       open Types.Core;
       switch (dynamics, termResult) {
-        | (Ok(dynamics_), Ok(termResult_)) => switch (term_to_core(dynamics_, termResult_)) {
-          | Ok(core) => switch (eval(core)) {
-            | Ok(core_val) => Ok(core_val)
-            | Error(msg)   => Error((msg, Some(termResult_)))
-          }
-          | Error(msg) => Error(msg)
-        }
+        | (Ok(dynamics_), Ok(termResult_)) => Belt.Result.flatMap(
+            term_to_core(dynamics_, termResult_),
+            core => switch (eval(core)) {
+              | Ok(core_val) => Ok(core_val)
+              | Error(msg)   => Error((msg, Some(termResult_)))
+            }
+          )
         | (Error(msg), _)
         | (_, Error(msg)) => Error((msg, None))
       }
@@ -280,10 +295,8 @@ module LvcaViewer = {
         <div className="repl-pane">
           <div className="term-input">
             <Repl
-              input=termInput
               history=replHistory
-              future=replFuture
-              setInput=(str => setTermInput(_ => str))
+              setInput=(str => Js.log(str)) // TODO setTermInput(_ => str))
             />
           </div>
           <div className="term-view">{evalView}</div>
