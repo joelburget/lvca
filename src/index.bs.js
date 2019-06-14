@@ -25,7 +25,7 @@ var StaticsParser = require("./staticsParser.bs.js");
 var DynamicsParser = require("./dynamicsParser.bs.js");
 var LanguageParser = require("./languageParser.bs.js");
 var LanguageSimple = require("./languageSimple.bs.js");
-var ReactCodemirror = require("react-codemirror");
+var ReactCodemirror2 = require("react-codemirror2");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 
 function show_prim(prim) {
@@ -48,14 +48,27 @@ var CodeMirror = /* module */[];
 
 function Index$Repl(Props) {
   var input = Props.input;
+  Props.history;
+  Props.future;
   var setInput = Props.setInput;
   var options = {
     mode: "lvca"
   };
-  return React.createElement(ReactCodemirror, {
+  var handleKey = function (_editor, evt) {
+    if (evt.key === "Enter") {
+      console.log("Enter");
+      return /* () */0;
+    } else {
+      return 0;
+    }
+  };
+  return React.createElement(ReactCodemirror2.UnControlled, {
               value: input,
-              onChange: setInput,
-              options: options
+              onChange: (function (editor, data, value) {
+                  return Curry._1(setInput, value);
+                }),
+              options: options,
+              onKeyDown: handleKey
             });
 }
 
@@ -335,31 +348,37 @@ var ParseStatus = /* module */[
 
 function Index$LvcaViewer(Props) {
   var match = React.useState((function () {
+          return /* array */[];
+        }));
+  var match$1 = React.useState((function () {
+          return /* array */[];
+        }));
+  var match$2 = React.useState((function () {
           return "ite(val(false()); val(false()); val(true()))";
         }));
-  var setTermInput = match[1];
-  var termInput = match[0];
-  var match$1 = React.useState((function () {
+  var setTermInput = match$2[1];
+  var termInput = match$2[0];
+  var match$3 = React.useState((function () {
           return LanguageSimple.abstractSyntax;
         }));
-  var setAsInput = match$1[1];
-  var asInput = match$1[0];
-  var match$2 = React.useState((function () {
+  var setAsInput = match$3[1];
+  var asInput = match$3[0];
+  var match$4 = React.useState((function () {
           return LanguageSimple.statics;
         }));
-  var setStaticsInput = match$2[1];
-  var staticsInput = match$2[0];
-  var match$3 = React.useState((function () {
+  var setStaticsInput = match$4[1];
+  var staticsInput = match$4[0];
+  var match$5 = React.useState((function () {
           return LanguageSimple.dynamics;
         }));
-  var setDynamicsInput = match$3[1];
-  var dynamicsInput = match$3[0];
-  var match$4 = parse(LanguageParser.languageDef, LanguageLexer.read, Lexing.from_string(asInput));
-  var language = match$4[1];
-  var match$5 = parse(StaticsParser.rules, StaticsLexer.read, Lexing.from_string(staticsInput));
-  var match$6 = parse(DynamicsParser.dynamics, DynamicsLexer.read, Lexing.from_string(dynamicsInput));
-  var dynamics = match$6[1];
-  var show_term_pane = Belt_Result.isOk(language) && Belt_Result.isOk(match$5[1]) && Belt_Result.isOk(dynamics);
+  var setDynamicsInput = match$5[1];
+  var dynamicsInput = match$5[0];
+  var match$6 = parse(LanguageParser.languageDef, LanguageLexer.read, Lexing.from_string(asInput));
+  var language = match$6[1];
+  var match$7 = parse(StaticsParser.rules, StaticsLexer.read, Lexing.from_string(staticsInput));
+  var match$8 = parse(DynamicsParser.dynamics, DynamicsLexer.read, Lexing.from_string(dynamicsInput));
+  var dynamics = match$8[1];
+  var show_term_pane = Belt_Result.isOk(language) && Belt_Result.isOk(match$7[1]) && Belt_Result.isOk(dynamics);
   var termResult;
   var exit = 0;
   var term;
@@ -393,26 +412,26 @@ function Index$LvcaViewer(Props) {
         ]]);
   } else {
     var termResult_ = termResult[0];
-    var match$7 = Types.Core[/* term_to_core */11](dynamics[0], termResult_);
-    if (match$7.tag) {
-      evalResult = /* Error */Block.__(1, [match$7[0]]);
+    var match$9 = Types.Core[/* term_to_core */11](dynamics[0], termResult_);
+    if (match$9.tag) {
+      evalResult = /* Error */Block.__(1, [match$9[0]]);
     } else {
-      var match$8 = Types.Core[/* eval */12](match$7[0]);
-      evalResult = match$8.tag ? /* Error */Block.__(1, [/* tuple */[
-              match$8[0],
+      var match$10 = Types.Core[/* eval */12](match$9[0]);
+      evalResult = match$10.tag ? /* Error */Block.__(1, [/* tuple */[
+              match$10[0],
               termResult_
-            ]]) : /* Ok */Block.__(0, [match$8[0]]);
+            ]]) : /* Ok */Block.__(0, [match$10[0]]);
     }
   }
   var evalView;
   if (evalResult.tag) {
-    var match$9 = evalResult[0];
-    var match$10 = match$9[1];
-    var msg = match$9[0];
-    evalView = match$10 !== undefined ? React.createElement("div", {
+    var match$11 = evalResult[0];
+    var match$12 = match$11[1];
+    var msg = match$11[0];
+    evalView = match$12 !== undefined ? React.createElement("div", {
             className: "error"
           }, msg, React.createElement(Index$TermViewer, {
-                term: match$10
+                term: match$12
               })) : React.createElement("div", {
             className: "error"
           }, msg);
@@ -427,6 +446,8 @@ function Index$LvcaViewer(Props) {
               className: "term-input"
             }, React.createElement(Index$Repl, {
                   input: termInput,
+                  history: match[0],
+                  future: match$1[0],
                   setInput: (function (str) {
                       return Curry._1(setTermInput, (function (param) {
                                     return str;
@@ -443,11 +464,11 @@ function Index$LvcaViewer(Props) {
                   className: "header"
                 }, "LVCA"), React.createElement("h2", {
                   className: "header2 header2-abstract-syntax"
-                }, "Abstract Syntax ", match$4[0]), React.createElement("div", {
+                }, "Abstract Syntax ", match$6[0]), React.createElement("div", {
                   className: "abstract-syntax-pane"
-                }, React.createElement(ReactCodemirror, {
+                }, React.createElement(ReactCodemirror2.UnControlled, {
                       value: asInput,
-                      onChange: (function (str) {
+                      onChange: (function (param, param$1, str) {
                           return Curry._1(setAsInput, (function (param) {
                                         return str;
                                       }));
@@ -457,11 +478,11 @@ function Index$LvcaViewer(Props) {
                       }
                     })), React.createElement("h2", {
                   className: "header2 header2-statics"
-                }, "Statics ", match$5[0]), React.createElement("div", {
+                }, "Statics ", match$7[0]), React.createElement("div", {
                   className: "statics-pane"
-                }, React.createElement(ReactCodemirror, {
+                }, React.createElement(ReactCodemirror2.UnControlled, {
                       value: staticsInput,
-                      onChange: (function (str) {
+                      onChange: (function (param, param$1, str) {
                           return Curry._1(setStaticsInput, (function (param) {
                                         return str;
                                       }));
@@ -471,11 +492,11 @@ function Index$LvcaViewer(Props) {
                       }
                     })), React.createElement("h2", {
                   className: "header2 header2-dynamics"
-                }, "Dynamics ", match$6[0]), React.createElement("div", {
+                }, "Dynamics ", match$8[0]), React.createElement("div", {
                   className: "dynamics-pane"
-                }, React.createElement(ReactCodemirror, {
+                }, React.createElement(ReactCodemirror2.UnControlled, {
                       value: dynamicsInput,
-                      onChange: (function (str) {
+                      onChange: (function (param, param$1, str) {
                           return Curry._1(setDynamicsInput, (function (param) {
                                         return str;
                                       }));

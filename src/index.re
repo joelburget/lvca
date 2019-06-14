@@ -15,20 +15,45 @@ module CodeMirror = {
     [@bs.optional] mode: string,
   };
 
-  [@react.component][@bs.module]
+  // A CodeMirror editor
+  type editor = {.};
+
+  // A React event
+  [@bs.deriving abstract]
+  type event = {
+    key: string,
+  };
+
+  [@react.component][@bs.module "react-codemirror2"]
   external make:
     (~value: string,
-     ~onChange: string => unit,
-     ~options: options)
+     ~onChange: (editor, {.}, string) => unit,
+     ~options: options,
+     ~onKeyDown: (editor, event) => unit =?)
     => React.element
-    = "react-codemirror";
+    = "UnControlled";
 };
 
 module Repl = {
   [@react.component]
-  let make = (~input:string, ~setInput: string => unit) => {
-    let options = CodeMirror.options(/* TODO ~keyMap="vim", */ ~mode="lvca", ());
-    <CodeMirror value=input onChange=setInput options=options />
+  let make = (~input: string,
+              ~history: array(string),
+              ~future: array(string),
+              ~setInput: string => unit
+              ) => {
+    let options = CodeMirror.options(~mode="lvca", ());
+    let handleKey = (_editor, evt) => {
+      if (CodeMirror.keyGet(evt) == "Enter") {
+        Js.log("Enter");
+      }
+    };
+
+    <CodeMirror
+      value=input
+      onChange=((editor, data, value) => setInput(value))
+      onKeyDown=handleKey
+      options=options
+    />
   };
 };
 
@@ -177,10 +202,20 @@ module LvcaViewer = {
   let make = () => {
     open Belt.Result;
 
-    let (termInput,     setTermInput)     = React.useState(() => "ite(val(false()); val(false()); val(true()))");
-    let (asInput,       setAsInput)       = React.useState(() => LanguageSimple.abstractSyntax);
-    let (staticsInput,  setStaticsInput)  = React.useState(() => LanguageSimple.statics);
-    let (dynamicsInput, setDynamicsInput) = React.useState(() => LanguageSimple.dynamics);
+    let (replHistory, setHistory)
+      = React.useState(() => [||]);
+    let (replFuture, setFuture)
+      = React.useState(() => [||]);
+
+    let (termInput,     setTermInput)
+      = React.useState(() => "ite(val(false()); val(false()); val(true()))");
+
+    let (asInput,       setAsInput)
+      = React.useState(() => LanguageSimple.abstractSyntax);
+    let (staticsInput,  setStaticsInput)
+      = React.useState(() => LanguageSimple.statics);
+    let (dynamicsInput, setDynamicsInput)
+      = React.useState(() => LanguageSimple.dynamics);
 
     let (languageView, language) = ParseStatus.parse(
       LanguageParser.languageDef,
@@ -200,7 +235,8 @@ module LvcaViewer = {
 
     let show_term_pane = isOk(language) && isOk(statics) && isOk(dynamics);
 
-    let termResult = switch (TermParser.term(TermLexer.read, Lexing.from_string(termInput))) {
+    let termResult = switch
+      (TermParser.term(TermLexer.read, Lexing.from_string(termInput))) {
     | term                                 =>
       Types.Abt.from_ast(getExn(language), "tm", term) // XXX getExn
     | exception LexerUtil.SyntaxError(msg) => Error(msg)
@@ -243,7 +279,12 @@ module LvcaViewer = {
     let replPane = if (show_term_pane) {
         <div className="repl-pane">
           <div className="term-input">
-            <Repl input=termInput setInput=(str => setTermInput(_ => str)) />
+            <Repl
+              input=termInput
+              history=replHistory
+              future=replFuture
+              setInput=(str => setTermInput(_ => str))
+            />
           </div>
           <div className="term-view">{evalView}</div>
         </div>
@@ -261,7 +302,7 @@ module LvcaViewer = {
       <div className="abstract-syntax-pane">
         <CodeMirror
           value=asInput
-          onChange=(str => setAsInput(_ => str))
+          onChange=((_, _, str) => setAsInput(_ => str))
           options=CodeMirror.options(~mode="default", ())
         />
       </div>
@@ -273,7 +314,7 @@ module LvcaViewer = {
       <div className="statics-pane">
         <CodeMirror
           value=staticsInput
-          onChange=(str => setStaticsInput(_ => str))
+          onChange=((_, _, str) => setStaticsInput(_ => str))
           options=CodeMirror.options(~mode="default", ())
         />
       </div>
@@ -285,7 +326,7 @@ module LvcaViewer = {
       <div className="dynamics-pane">
         <CodeMirror
           value=dynamicsInput
-          onChange=(str => setDynamicsInput(_ => str))
+          onChange=((_, _, str) => setDynamicsInput(_ => str))
           options=CodeMirror.options(~mode="default", ())
         />
       </div>

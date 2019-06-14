@@ -79,7 +79,7 @@ let rec _menhir_goto_separated_nonempty_list_SEMICOLON_valence_ : _menhir_env ->
         ))) = _menhir_stack in
         let _2 = () in
         let _v : 'tv_separated_nonempty_list_SEMICOLON_valence_ = 
-# 231 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 243 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
 # 85 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
          in
@@ -94,7 +94,7 @@ let rec _menhir_goto_separated_nonempty_list_SEMICOLON_valence_ : _menhir_env ->
         let (_menhir_s : _menhir_state) = _menhir_s in
         let ((x : 'tv_separated_nonempty_list_SEMICOLON_valence_) : 'tv_separated_nonempty_list_SEMICOLON_valence_) = _v in
         ((let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_valence__ = 
-# 144 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 144 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( x )
 # 100 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
          in
@@ -115,7 +115,7 @@ and _menhir_goto_separated_nonempty_list_BAR_operatorDef_ : _menhir_env -> 'ttv_
         let (_menhir_s : _menhir_state) = _menhir_s in
         let ((x : 'tv_separated_nonempty_list_BAR_operatorDef_) : 'tv_separated_nonempty_list_BAR_operatorDef_) = _v in
         ((let _v : 'tv_loption_separated_nonempty_list_BAR_operatorDef__ = 
-# 144 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 144 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( x )
 # 121 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
          in
@@ -144,7 +144,7 @@ and _menhir_goto_separated_nonempty_list_BAR_operatorDef_ : _menhir_env -> 'ttv_
         ))) = _menhir_stack in
         let _2 = () in
         let _v : 'tv_separated_nonempty_list_BAR_operatorDef_ = 
-# 231 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 243 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
 # 150 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
          in
@@ -253,7 +253,7 @@ and _menhir_goto_valence : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 254 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         ))) = _menhir_stack in
         let _v : 'tv_separated_nonempty_list_SEMICOLON_valence_ = 
-# 229 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 241 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [ x ] )
 # 259 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
          in
@@ -363,7 +363,7 @@ and _menhir_goto_arity : _menhir_env -> 'ttv_tail -> (
 # 364 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         ))) = _menhir_stack in
         let _v : 'tv_separated_nonempty_list_BAR_operatorDef_ = 
-# 229 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 241 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [ x ] )
 # 369 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
          in
@@ -626,19 +626,16 @@ and _menhir_goto_loption_separated_nonempty_list_SEMICOLON_valence__ : _menhir_e
     ((let (_menhir_env : _menhir_env) = _menhir_env in
     let (_menhir_stack : 'freshtv143) = Obj.magic _menhir_stack in
     let (_menhir_s : _menhir_state) = _menhir_s in
-    let ((xs0 : 'tv_loption_separated_nonempty_list_SEMICOLON_valence__) : 'tv_loption_separated_nonempty_list_SEMICOLON_valence__) = _v in
-    ((let _v : 'tv_valenceList = let _1 =
-      let xs = xs0 in
-      
-# 220 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+    let ((xs : 'tv_loption_separated_nonempty_list_SEMICOLON_valence__) : 'tv_loption_separated_nonempty_list_SEMICOLON_valence__) = _v in
+    ((let _v : 'tv_valenceList = let _1 = 
+# 232 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( xs )
-# 636 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
-      
-    in
+# 634 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+     in
     
 # 38 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
                                                 ( _1 )
-# 642 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 639 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
      in
     let (_menhir_env : _menhir_env) = _menhir_env in
     let (_menhir_stack : 'freshtv141) = _menhir_stack in
@@ -664,11 +661,11 @@ and _menhir_goto_loption_separated_nonempty_list_SEMICOLON_valence__ : _menhir_e
             let _v : (
 # 19 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.arity)
-# 668 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 665 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
             ) = 
 # 46 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
     ( Arity ([], valenceList) )
-# 672 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 669 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
              in
             _menhir_goto_arity _menhir_env _menhir_stack _v) : 'freshtv126)) : 'freshtv128)
         | _ ->
@@ -698,11 +695,11 @@ and _menhir_goto_loption_separated_nonempty_list_SEMICOLON_valence__ : _menhir_e
             let _v : (
 # 19 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.arity)
-# 702 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 699 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
             ) = 
 # 44 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
     ( Arity (_2, _5) )
-# 706 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 703 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
              in
             _menhir_goto_arity _menhir_env _menhir_stack _v) : 'freshtv134)) : 'freshtv136)
         | _ ->
@@ -718,29 +715,29 @@ and _menhir_goto_loption_separated_nonempty_list_SEMICOLON_valence__ : _menhir_e
 and _menhir_reduce26 : _menhir_env -> 'ttv_tail * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 722 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 719 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack ->
     let (_menhir_stack, _menhir_s, (_1 : (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 728 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 725 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
     ))) = _menhir_stack in
     let _v : (
 # 15 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.sort)
-# 733 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 730 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
     ) = 
 # 25 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
                                 ( SortName _1    )
-# 737 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 734 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
      in
     _menhir_goto_sort _menhir_env _menhir_stack _menhir_s _v
 
 and _menhir_run8 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 744 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 741 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
@@ -755,7 +752,7 @@ and _menhir_goto_separated_nonempty_list_COMMA_ID_ : _menhir_env -> 'ttv_tail ->
         let (_menhir_stack : ('freshtv119 * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 759 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 756 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         ))) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = _menhir_s in
         let (_v : 'tv_separated_nonempty_list_COMMA_ID_) = _v in
@@ -763,20 +760,20 @@ and _menhir_goto_separated_nonempty_list_COMMA_ID_ : _menhir_env -> 'ttv_tail ->
         let (_menhir_stack : ('freshtv117 * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 767 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 764 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         ))) = Obj.magic _menhir_stack in
         let (_ : _menhir_state) = _menhir_s in
         let ((xs : 'tv_separated_nonempty_list_COMMA_ID_) : 'tv_separated_nonempty_list_COMMA_ID_) = _v in
         ((let (_menhir_stack, _menhir_s, (x : (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 774 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 771 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         ))) = _menhir_stack in
         let _2 = () in
         let _v : 'tv_separated_nonempty_list_COMMA_ID_ = 
-# 231 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 243 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 780 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 777 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
          in
         _menhir_goto_separated_nonempty_list_COMMA_ID_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv118)) : 'freshtv120)
     | MenhirState27 ->
@@ -789,9 +786,9 @@ and _menhir_goto_separated_nonempty_list_COMMA_ID_ : _menhir_env -> 'ttv_tail ->
         let (_menhir_s : _menhir_state) = _menhir_s in
         let ((x : 'tv_separated_nonempty_list_COMMA_ID_) : 'tv_separated_nonempty_list_COMMA_ID_) = _v in
         ((let _v : 'tv_loption_separated_nonempty_list_COMMA_ID__ = 
-# 144 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 144 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( x )
-# 795 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 792 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
          in
         _menhir_goto_loption_separated_nonempty_list_COMMA_ID__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv122)) : 'freshtv124)
     | _ ->
@@ -800,9 +797,9 @@ and _menhir_goto_separated_nonempty_list_COMMA_ID_ : _menhir_env -> 'ttv_tail ->
 and _menhir_reduce12 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_valence__ = 
-# 142 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 142 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [] )
-# 806 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 803 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
      in
     _menhir_goto_loption_separated_nonempty_list_SEMICOLON_valence__ _menhir_env _menhir_stack _menhir_s _v
 
@@ -824,7 +821,7 @@ and _menhir_run7 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
 and _menhir_run12 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 828 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 825 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
@@ -836,7 +833,7 @@ and _menhir_run12 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : 'freshtv113 * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 840 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 837 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let _menhir_env = _menhir_discard _menhir_env in
         let _tok = _menhir_env._menhir_token in
@@ -858,7 +855,7 @@ and _menhir_run12 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : 'freshtv115 * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 862 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 859 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv116)
@@ -872,19 +869,16 @@ and _menhir_goto_loption_separated_nonempty_list_COMMA_ID__ : _menhir_env -> 'tt
     ((let (_menhir_env : _menhir_env) = _menhir_env in
     let (_menhir_stack : 'freshtv109) = Obj.magic _menhir_stack in
     let (_menhir_s : _menhir_state) = _menhir_s in
-    let ((xs0 : 'tv_loption_separated_nonempty_list_COMMA_ID__) : 'tv_loption_separated_nonempty_list_COMMA_ID__) = _v in
-    ((let _v : 'tv_nameList = let _1 =
-      let xs = xs0 in
-      
-# 220 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+    let ((xs : 'tv_loption_separated_nonempty_list_COMMA_ID__) : 'tv_loption_separated_nonempty_list_COMMA_ID__) = _v in
+    ((let _v : 'tv_nameList = let _1 = 
+# 232 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( xs )
-# 882 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
-      
-    in
+# 877 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+     in
     
 # 40 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
                                     ( _1 )
-# 888 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 882 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
      in
     let (_menhir_env : _menhir_env) = _menhir_env in
     let (_menhir_stack : 'freshtv107) = _menhir_stack in
@@ -936,7 +930,7 @@ and _menhir_goto_loption_separated_nonempty_list_COMMA_ID__ : _menhir_env -> 'tt
 and _menhir_run28 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 940 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 934 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
@@ -948,7 +942,7 @@ and _menhir_run28 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : 'freshtv91 * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 952 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 946 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let _menhir_env = _menhir_discard _menhir_env in
         let _tok = _menhir_env._menhir_token in
@@ -964,17 +958,17 @@ and _menhir_run28 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : 'freshtv93 * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 968 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 962 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, (x : (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 973 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 967 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         ))) = _menhir_stack in
         let _v : 'tv_separated_nonempty_list_COMMA_ID_ = 
-# 229 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 241 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [ x ] )
-# 978 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 972 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
          in
         _menhir_goto_separated_nonempty_list_COMMA_ID_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv94)
     | _ ->
@@ -984,14 +978,14 @@ and _menhir_run28 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : 'freshtv95 * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 988 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 982 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv96)
 
 and _menhir_fail : unit -> 'a =
   fun () ->
-    Printf.fprintf Pervasives.stderr "Internal failure -- please contact the parser generator's developers.\n%!";
+    Printf.fprintf stderr "Internal failure -- please contact the parser generator's developers.\n%!";
     assert false
 
 and _menhir_goto_loption_separated_nonempty_list_BAR_operatorDef__ : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_loption_separated_nonempty_list_BAR_operatorDef__ -> 'ttv_return =
@@ -1003,72 +997,69 @@ and _menhir_goto_loption_separated_nonempty_list_BAR_operatorDef__ : _menhir_env
     ((let (_menhir_env : _menhir_env) = _menhir_env in
     let (_menhir_stack : 'freshtv87 * 'tv_option_BAR_) = Obj.magic _menhir_stack in
     let (_ : _menhir_state) = _menhir_s in
-    let ((xs0 : 'tv_loption_separated_nonempty_list_BAR_operatorDef__) : 'tv_loption_separated_nonempty_list_BAR_operatorDef__) = _v in
+    let ((xs : 'tv_loption_separated_nonempty_list_BAR_operatorDef__) : 'tv_loption_separated_nonempty_list_BAR_operatorDef__) = _v in
     ((let (_menhir_stack, (_1 : 'tv_option_BAR_)) = _menhir_stack in
     let _v : (
 # 18 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.operatorDef list)
-# 1012 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
-    ) = let lst =
-      let xs = xs0 in
-      
-# 220 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 1006 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+    ) = let lst = 
+# 232 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( xs )
-# 1018 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
-      
-    in
+# 1010 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+     in
     
 # 50 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
                                                           ( lst )
-# 1024 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1015 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
      in
     let (_menhir_env : _menhir_env) = _menhir_env in
     let (_menhir_stack : 'freshtv85) = _menhir_stack in
     let (_v : (
 # 18 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.operatorDef list)
-# 1031 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1022 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
     )) = _v in
     ((let (_menhir_env : _menhir_env) = _menhir_env in
     let (_menhir_stack : ('freshtv83 * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 1037 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1028 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
     ))) = Obj.magic _menhir_stack in
     let (_v : (
 # 18 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.operatorDef list)
-# 1042 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1033 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
     )) = _v in
     ((let (_menhir_env : _menhir_env) = _menhir_env in
     let (_menhir_stack : ('freshtv81 * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 1048 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1039 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
     ))) = Obj.magic _menhir_stack in
     let ((defs : (
 # 18 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.operatorDef list)
-# 1053 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1044 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
     )) : (
 # 18 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.operatorDef list)
-# 1057 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1048 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
     )) = _v in
     ((let (_menhir_stack, _menhir_s, (sortName : (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 1062 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1053 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
     ))) = _menhir_stack in
     let _2 = () in
     let _v : (
 # 16 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (string * Types.sortDef)
-# 1068 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1059 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
     ) = 
 # 53 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
                                                   ( (sortName, SortDef ([], defs)) )
-# 1072 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1063 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
      in
     let (_menhir_env : _menhir_env) = _menhir_env in
     let (_menhir_stack : 'freshtv79) = _menhir_stack in
@@ -1076,14 +1067,14 @@ and _menhir_goto_loption_separated_nonempty_list_BAR_operatorDef__ : _menhir_env
     let (_v : (
 # 16 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (string * Types.sortDef)
-# 1080 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1071 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
     )) = _v in
     ((let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
     let (_menhir_env : _menhir_env) = _menhir_env in
     let (_menhir_stack : 'freshtv77 * _menhir_state * (
 # 16 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (string * Types.sortDef)
-# 1087 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1078 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
     )) = Obj.magic _menhir_stack in
     ((assert (not _menhir_env._menhir_error);
     let _tok = _menhir_env._menhir_token in
@@ -1100,7 +1091,7 @@ and _menhir_goto_loption_separated_nonempty_list_BAR_operatorDef__ : _menhir_env
 and _menhir_run5 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 1104 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1095 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
@@ -1120,9 +1111,9 @@ and _menhir_run5 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
             let (_menhir_stack : 'freshtv69) = Obj.magic _menhir_stack in
             let (_menhir_s : _menhir_state) = MenhirState27 in
             ((let _v : 'tv_loption_separated_nonempty_list_COMMA_ID__ = 
-# 142 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 142 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [] )
-# 1126 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1117 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
              in
             _menhir_goto_loption_separated_nonempty_list_COMMA_ID__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv70)
         | _ ->
@@ -1152,7 +1143,7 @@ and _menhir_run5 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : 'freshtv75 * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 1156 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1147 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv76)
@@ -1166,23 +1157,23 @@ and _menhir_goto_list_sortDef_ : _menhir_env -> 'ttv_tail -> _menhir_state -> 't
         let (_menhir_stack : ('freshtv53 * _menhir_state * (
 # 16 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (string * Types.sortDef)
-# 1170 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1161 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) * _menhir_state * 'tv_list_sortDef_) = Obj.magic _menhir_stack in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ('freshtv51 * _menhir_state * (
 # 16 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (string * Types.sortDef)
-# 1176 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1167 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) * _menhir_state * 'tv_list_sortDef_) = Obj.magic _menhir_stack in
         ((let ((_menhir_stack, _menhir_s, (x : (
 # 16 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (string * Types.sortDef)
-# 1181 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1172 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         ))), _, (xs : 'tv_list_sortDef_)) = _menhir_stack in
         let _v : 'tv_list_sortDef_ = 
-# 201 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 213 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 1186 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1177 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
          in
         _menhir_goto_list_sortDef_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv52)) : 'freshtv54)
     | MenhirState0 ->
@@ -1201,11 +1192,11 @@ and _menhir_goto_list_sortDef_ : _menhir_env -> 'ttv_tail -> _menhir_state -> 't
             let _v : (
 # 14 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.language)
-# 1205 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1196 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
             ) = 
 # 56 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
                       ( Language(Belt.Map.String.fromArray (Belt.List.toArray _1)) )
-# 1209 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1200 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
              in
             let (_menhir_env : _menhir_env) = _menhir_env in
             let (_menhir_stack : 'freshtv59) = _menhir_stack in
@@ -1213,7 +1204,7 @@ and _menhir_goto_list_sortDef_ : _menhir_env -> 'ttv_tail -> _menhir_state -> 't
             let (_v : (
 # 14 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.language)
-# 1217 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1208 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
             )) = _v in
             ((let (_menhir_env : _menhir_env) = _menhir_env in
             let (_menhir_stack : 'freshtv57) = Obj.magic _menhir_stack in
@@ -1221,7 +1212,7 @@ and _menhir_goto_list_sortDef_ : _menhir_env -> 'ttv_tail -> _menhir_state -> 't
             let (_v : (
 # 14 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.language)
-# 1225 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1216 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
             )) = _v in
             ((let (_menhir_env : _menhir_env) = _menhir_env in
             let (_menhir_stack : 'freshtv55) = Obj.magic _menhir_stack in
@@ -1229,11 +1220,11 @@ and _menhir_goto_list_sortDef_ : _menhir_env -> 'ttv_tail -> _menhir_state -> 't
             let ((_1 : (
 # 14 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.language)
-# 1233 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1224 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
             )) : (
 # 14 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.language)
-# 1237 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1228 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
             )) = _v in
             (Obj.magic _1 : 'freshtv56)) : 'freshtv58)) : 'freshtv60)) : 'freshtv62)) : 'freshtv64)
         | _ ->
@@ -1261,9 +1252,9 @@ and _menhir_goto_option_BAR_ : _menhir_env -> 'ttv_tail -> 'tv_option_BAR_ -> 't
         let (_menhir_stack : 'freshtv47) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = MenhirState4 in
         ((let _v : 'tv_loption_separated_nonempty_list_BAR_operatorDef__ = 
-# 142 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 142 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [] )
-# 1267 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1258 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
          in
         _menhir_goto_loption_separated_nonempty_list_BAR_operatorDef__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv48)
     | _ ->
@@ -1279,7 +1270,7 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : 'freshtv15 * _menhir_state * (
 # 16 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (string * Types.sortDef)
-# 1283 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1274 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv16)
@@ -1288,7 +1279,7 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : ('freshtv17 * _menhir_state * (
 # 17 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.operatorDef)
-# 1292 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1283 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         ))) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv18)
@@ -1302,7 +1293,7 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : ('freshtv21 * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 1306 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1297 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         ))) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv22)
@@ -1315,7 +1306,7 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : ('freshtv25 * _menhir_state * (
 # 15 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.sort)
-# 1319 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1310 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) * _menhir_state) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv26)
@@ -1324,7 +1315,7 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : 'freshtv27 * _menhir_state * (
 # 15 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.sort)
-# 1328 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1319 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv28)
@@ -1333,7 +1324,7 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : ('freshtv29 * _menhir_state * (
 # 20 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.valence)
-# 1337 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1328 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         ))) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv30)
@@ -1342,11 +1333,11 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : (('freshtv31 * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 1346 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1337 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         ))) * _menhir_state * (
 # 15 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.sort)
-# 1350 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1341 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv32)
@@ -1355,7 +1346,7 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : ('freshtv33 * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 1359 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1350 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         ))) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv34)
@@ -1364,11 +1355,11 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : ('freshtv35 * _menhir_state * (
 # 15 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.sort)
-# 1368 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1359 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) * _menhir_state * (
 # 15 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.sort)
-# 1372 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1363 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv36)
@@ -1377,7 +1368,7 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : ('freshtv37 * _menhir_state) * _menhir_state * (
 # 15 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.sort)
-# 1381 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1372 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv38)
@@ -1402,16 +1393,16 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
 and _menhir_reduce6 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _v : 'tv_list_sortDef_ = 
-# 199 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 211 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [] )
-# 1408 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1399 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
      in
     _menhir_goto_list_sortDef_ _menhir_env _menhir_stack _menhir_s _v
 
 and _menhir_run1 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 1415 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1406 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
@@ -1423,7 +1414,7 @@ and _menhir_run1 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : 'freshtv11 * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 1427 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1418 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let _menhir_env = _menhir_discard _menhir_env in
         let _tok = _menhir_env._menhir_token in
@@ -1436,18 +1427,18 @@ and _menhir_run1 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
             let (_menhir_stack : 'freshtv3) = Obj.magic _menhir_stack in
             ((let x = () in
             let _v : 'tv_option_BAR_ = 
-# 116 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 116 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( Some x )
-# 1442 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1433 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
              in
             _menhir_goto_option_BAR_ _menhir_env _menhir_stack _v) : 'freshtv4)) : 'freshtv6)
         | EOF | ID _ ->
             let (_menhir_env : _menhir_env) = _menhir_env in
             let (_menhir_stack : 'freshtv7) = Obj.magic _menhir_stack in
             ((let _v : 'tv_option_BAR_ = 
-# 114 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 114 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( None )
-# 1451 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1442 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
              in
             _menhir_goto_option_BAR_ _menhir_env _menhir_stack _v) : 'freshtv8)
         | _ ->
@@ -1457,7 +1448,7 @@ and _menhir_run1 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
             let (_menhir_stack : ('freshtv9 * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 1461 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1452 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
             ))) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
             _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv10)) : 'freshtv12)
@@ -1468,7 +1459,7 @@ and _menhir_run1 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : 'freshtv13 * _menhir_state * (
 # 1 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
        (string)
-# 1472 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1463 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv14)
@@ -1488,7 +1479,7 @@ and _menhir_discard : _menhir_env -> _menhir_env =
 and languageDef : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
 # 14 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.mly"
       (Types.language)
-# 1492 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1483 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
 ) =
   fun lexer lexbuf ->
     let _menhir_env =
@@ -1516,7 +1507,7 @@ and languageDef : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
         _menhir_env._menhir_error <- true;
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState0) : 'freshtv2))
 
-# 233 "/home/joel/.opam/4.06.0/lib/menhir/standard.mly"
+# 269 "/home/joel/.opam/default/lib/menhir/standard.mly"
   
 
-# 1523 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"
+# 1514 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/languageParser.ml"

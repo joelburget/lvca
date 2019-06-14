@@ -19,9 +19,10 @@
   },
   "dependencies": {
     "bs-zarith": "^1.0.1",
+    "codemirror": "^5.47.0",
     "git": "^0.1.5",
     "react": "^16.8.6",
-    "react-codemirror": "^1.0.0",
+    "react-codemirror2": "^6.0.0",
     "react-dom": "^16.8.6",
     "reason-react": "^0.7.0"
   }
