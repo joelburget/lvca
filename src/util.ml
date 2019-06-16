@@ -22,10 +22,9 @@ let rec get_first (f : 'a -> 'b option) (lst : 'a list) : 'b option
 let rec traverse_list_result (lst : (('a, 'b) Result.t) list)
   : ('a list, 'b) Result.t = match lst with
   | []             -> Ok []
-  | Ok a :: rest   -> (match traverse_list_result rest with
-    | Ok rest'  -> Ok (a :: rest')
-    | Error msg -> Error msg
-  )
+  | Ok a :: rest   -> Result.map
+    (traverse_list_result rest)
+    (fun rest' -> a :: rest')
   | Error msg :: _ -> Error msg
 
 let union m1 m2 =
@@ -42,3 +41,9 @@ let rec fold_right (f : ('a * 'b) -> 'b) (lst : 'a list) (b : 'b) : 'b
   = match lst with
     | [] -> b
     | a :: as_ -> f(a, fold_right f as_ b)
+
+let map_error (result : ('a, 'b) Result.t) (f : 'b -> 'c) : ('a, 'c) Result.t
+  = Result.(match result with
+  | Ok x      -> Ok x
+  | Error err -> Error (f(err))
+  )

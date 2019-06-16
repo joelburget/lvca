@@ -1,41 +1,6 @@
-[@bs.module "codemirror/keymap/vim"] external _vimImport : unit = "default";
-[@bs.module] external _modeImport : unit = "../../../src/lvca-mode";
+open Util
 
-let show_prim(prim:Types.primitive) = switch (prim) {
-  | PrimInteger(i)  => React.string(Bigint.to_string(i))
-  | PrimString(str) => React.string("\"" ++ str ++ "\"")
-  | PrimBool(true)  => React.string("true")
-  | PrimBool(false) => React.string("false")
-};
-
-module CodeMirror = {
-  [@bs.deriving abstract]
-  type options = {
-    [@bs.optional] keyMap: string,
-    [@bs.optional] mode: string,
-  };
-
-  // A CodeMirror editor
-  type editor = {.};
-
-  // A React event
-  [@bs.deriving abstract]
-  type event = {
-    key: string,
-    shiftKey: bool,
-  };
-
-  [@react.component][@bs.module "react-codemirror2"]
-  external make:
-    (~value: string,
-     ~onBeforeChange: (editor, {.}, string) => unit,
-     ~options: options,
-     ~onKeyDown: (editor, event) => unit =?)
-    => React.element
-    = "Controlled";
-};
-
-type item_result = Belt.Result.t(Types.Core.core_val, string);
+type item_result = Types.Core.translation_result(Types.Core.core_val);
 
 type historyItem = {
   input: string,
@@ -48,133 +13,94 @@ type history = {
   input: string
 };
 
-module Repl = {
-  [@react.component]
-  let make = (
-    ~history: history,
-    ~setInput: string => unit
-    ) => {
-    let options = CodeMirror.options(~mode="lvca", ());
-    let handleKey = (_editor, evt) => {
-      if (CodeMirror.(keyGet(evt) == "Enter" && shiftKeyGet(evt))) {
-        Js.log("Shift-Enter");
+let resultForInput = (language, dynamics, input) => {
+    let termResult = switch
+      (TermParser.term(TermLexer.read, Lexing.from_string(input))) {
+    | term
+      => Types.Abt.from_ast(language, "tm", term)
+    | exception LexerUtil.SyntaxError(msg) => Error(msg)
+    | exception Parsing.Parse_error        => Error("Parse error")
+    | exception TermParser.Error           => Error("Parse error")
+    };
+
+    let evalResult : item_result = {
+      open Types.Core;
+      switch (termResult) {
+        | Ok(termResult') => Belt.Result.flatMap(
+            term_to_core(dynamics, termResult'),
+            core => map_error(eval(core), msg => (msg, Some(termResult')))
+          )
+        | Error(msg) => Error((msg, None))
       }
     };
 
-    <CodeMirror
-      value=history.input
-      onBeforeChange=((editor, data, value) => setInput(value))
-      onKeyDown=handleKey
-      options=options
-    />
-  };
+    evalResult
 };
 
-let make_span = children => {
-  ReactDOMRe.createDOMElementVariadic(
-    "span",
-    ~props=ReactDOMRe.domProps(),
-    Array.concat(children)
-  )
-};
+module Repl = {
+  open Types;
 
-module TermViewer = {
-  open Util;
-  open Types.Abt;
+  [@react.component]
+  let make = (
+    ~history: history,
+    ~language: language,
+    ~statics: list(Statics.rule),
+    ~dynamics: Core.denotation_chart,
+    ~setInput: string => unit,
+    ~handleEnter: unit => unit
+    ) => {
+    let make_div = EvalView.make_div;
+    let {before, after, input} = history;
+    let options = CodeMirror.options(~mode="lvca", ());
 
-  let rec show_term(term:term) = switch (term) {
-      | Term(name, lst) =>
-        make_span([
-          [| React.string(name) |],
-          [| React.string("(") |],
-          Array.of_list(intersperse(List.map(show_scope, lst), React.string(";"))),
-          [| React.string(")") |]
-        ])
-      | Var(name)     => React.string(string_of_int(name)) // TODO: convert to ast
-      | Sequence(tms) => make_span([
-          [| React.string("[") |],
-          Array.of_list(List.map(show_term, tms)),
-          [| React.string("]") |]
-        ])
-      | Primitive(prim) => show_prim(prim)
+/*     let termView = switch (termResult) { */
+/*     | Ok(term)   => <TermViewer term=term /> */
+/*     | Error(msg) => <div className="error"> {React.string(msg)} </div> */
+/*     }; */
+
+    let evalResult = resultForInput(language, dynamics, input);
+
+    let handleKey = (_editor, evt) => {
+      if (CodeMirror.(keyGet(evt) == "Enter" && shiftKeyGet(evt))) {
+        handleEnter();
       }
+    };
 
-  and show_scope(scope:scope) = switch (scope) {
-    | Scope(names, tm) => make_span([
-      Array.of_list(intersperse_after(List.map(React.string, names), React.string("."))),
-      [| show_term(tm) |]
-    ])
-  };
+    let beforeElems = List.rev(List.map(
+      ({input, result}) =>
+        <div className="history-item">
+          {React.string(input)}
+          <div className="term-view"><EvalView evalResult=result /></div>
+        </div>,
+      before
+    ));
+    let afterElems = List.map(
+      ({input, result}) =>
+        <div className="history-item">
+          {React.string(input)}
+          <div className="term-view"><EvalView evalResult=result /></div>
+        </div>,
+      after
+    );
 
-  [@react.component]
-  let make = (~term:term) => {
-    <div>{show_term(term)}</div>
+    <>
+      {make_div(Array.of_list(beforeElems))}
+      <div>
+        <div className="term-input">
+          <CodeMirror
+            value=input
+            onBeforeChange=((_editor, _data, value) => setInput(value))
+            onKeyDown=handleKey
+            options=options
+            editorDidMount=CodeMirror.focusEditor
+          />
+        </div>
+        <div className="term-view"><EvalView evalResult=evalResult /></div>
+      </div>
+      {make_div(Array.of_list(afterElems))}
+    </>
   };
 };
-
-module CoreValView = {
-  open Util;
-  open Types.Core;
-
-  let rec view_core_pat = pat => switch (pat) {
-  | PatternTerm(name, pats) =>
-    <span>
-      {React.string(name ++ "(") /* XXX children */}
-      {React.string(")")}
-    </span>
-  | PatternVar(None) => React.string("_")
-  | PatternVar(Some(name)) => React.string(name)
-  | PatternLit(lit)     => show_prim(lit)
-  | PatternDefault      => React.string("default")
-  }
-
-  and view_core = core => switch (core) {
-  | CoreVar(name) => React.string(name)
-  | CoreVal(core_val) => view_core_val(core_val)
-  | CoreApp(f, args) =>
-    make_span([
-      [| React.string("app(") |],
-      [| view_core(f) |],
-      [| React.string("; ") |],
-      Array.of_list(intersperse(List.map(view_core, args), React.string("; "))),
-      [| React.string(")") |],
-    ])
-  | Lam(args, body) => make_span([
-    [| React.string("lam(") |],
-    Array.of_list(intersperse(List.map(React.string, args), React.string(". "))),
-    [| view_core(body) |],
-    [| React.string(")") |],
-  ])
-  | Case(arg, _ty, _cases) => make_span([
-    [| React.string("case(") |],
-    [| view_core(arg) |],
-    [| React.string("; ...)") |],
-  ])
-  | Meaning(name) => make_span([
-    [| React.string("[[") |],
-    [| React.string(name) |],
-    [| React.string("]]") |],
-  ])
-  }
-
-  and view_core_val = coreVal => switch (coreVal) {
-  | ValTm(name, children) => make_span([
-    [| React.string(name) |],
-    Array.of_list(intersperse(List.map(view_core_val, children), React.string("; "))),
-  ])
-  | ValLit(lit) => show_prim(lit)
-  | ValPrimop(name) => React.string(name) /* TODO: take a look at this */
-  | ValLam(vars, core) => make_span([
-    Array.of_list(intersperse(List.map(React.string, vars), React.string(". "))),
-    [| view_core(core) |],
-  ])
-  };
-
-  [@react.component]
-  let make = (~coreVal:core_val) => {
-    <div> {view_core_val(coreVal)} </div>
-  };
-}
 
 module ParseStatus = {
   open Belt.Result;
@@ -245,65 +171,29 @@ module LvcaViewer = {
       Lexing.from_string(dynamicsInput)
     );
 
-    let show_term_pane = isOk(language) && isOk(statics) && isOk(dynamics);
-
-    // XXX remove
-    let termInput = replHistory.input;
-
-    let termResult = switch
-      (TermParser.term(TermLexer.read, Lexing.from_string(termInput))) {
-    | term                                 =>
-      Types.Abt.from_ast(getExn(language), "tm", term) // XXX getExn
-    | exception LexerUtil.SyntaxError(msg) => Error(msg)
-    | exception Parsing.Parse_error        => Error("Parse error")
-    | exception TermParser.Error           => Error("Parse error")
-    };
-
-/*     let termView = switch (termResult) { */
-/*     | Ok(term)   => <TermViewer term=term /> */
-/*     | Error(msg) => <div className="error"> {React.string(msg)} </div> */
-/*     }; */
-
-    let evalResult : Types.Core.translation_result(Types.Core.core_val) = {
-      open Types.Core;
-      switch (dynamics, termResult) {
-        | (Ok(dynamics_), Ok(termResult_)) => Belt.Result.flatMap(
-            term_to_core(dynamics_, termResult_),
-            core => switch (eval(core)) {
-              | Ok(core_val) => Ok(core_val)
-              | Error(msg)   => Error((msg, Some(termResult_)))
-            }
-          )
-        | (Error(msg), _)
-        | (_, Error(msg)) => Error((msg, None))
-      }
-    };
-
-    let evalView = switch (evalResult) {
-    | Ok(coreVal)
-      => <CoreValView coreVal=coreVal />
-    | Error((msg, None))
-      => <div className="error"> {React.string(msg)} </div>
-    | Error((msg, Some(tm)))
-      => <div className="error">
-           {React.string(msg)}
-           <TermViewer term=tm />
-         </div>
-    };
-
-    let replPane = if (show_term_pane) {
+    let replPane = switch (language, statics, dynamics) {
+      | (Ok(language), Ok(statics), Ok(dynamics))
+      =>
         <div className="repl-pane">
-          <div className="term-input">
-            <Repl
-              history=replHistory
-              setInput=(str => Js.log(str)) // TODO setTermInput(_ => str))
-            />
-          </div>
-          <div className="term-view">{evalView}</div>
+          <Repl
+            history=replHistory
+            language=language
+            statics=statics
+            dynamics=dynamics
+            setInput=(input => setHistory(hist => {...hist, input}))
+            handleEnter=(() => setHistory(({input, before, after}) => {
+              let before' = [
+                { input, result: resultForInput(language, dynamics, input) },
+                ...before
+              ];
+              {before: before', after, input: ""}
+            }))
+          />
         </div>
-      } else {
+      | _
+      =>
         <div className="repl-pane disabled" />
-      };
+    };
 
     <div className="lvca-viewer">
       <h1 className="header">{React.string("LVCA")}</h1>
