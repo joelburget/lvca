@@ -37,8 +37,49 @@ let resultForInput = (language, dynamics, input) => {
     evalResult
 };
 
+let shift_from_to (
+  shift_from: list(historyItem),
+  shift_to: list(historyItem),
+  elem: historyItem
+  ) : (list(historyItem), list(historyItem), historyItem)
+  = switch (shift_from) {
+    | [] => (shift_from, shift_to, elem)
+    | [elem', ...shift_from'] =>
+      let shift_to' = [ elem, ...shift_to ];
+      (shift_from', shift_to', elem')
+  };
+
+
+let history_down (
+  language : Types.language,
+  dynamics : Types.Core.denotation_chart,
+  {input, before, after} as history : history,
+  ) : history
+  = {
+    let (after', before', {input: input', result}) =
+      shift_from_to(after, before,
+                    { input, result: resultForInput(language, dynamics, input) });
+    {before: before', after: after', input: input'}
+  };
+
+let history_up (
+  language : Types.language,
+  dynamics : Types.Core.denotation_chart,
+  {input, before, after} as history : history,
+  ) : history
+  = {
+    let (before', after', {input: input', result}) =
+      shift_from_to(before, after,
+                    { input, result: resultForInput(language, dynamics, input) });
+    {before: before', after: after', input: input'}
+  };
+
 module Repl = {
   open Types;
+
+  // TODO: move event type somewhere better
+  let preventDefault : CodeMirror.event => unit
+    = [%bs.raw "evt => evt.preventDefault()"];
 
   [@react.component]
   let make = (
@@ -47,7 +88,9 @@ module Repl = {
     ~statics: list(Statics.rule),
     ~dynamics: Core.denotation_chart,
     ~setInput: string => unit,
-    ~handleEnter: unit => unit
+    ~handleEnter: unit => unit,
+    ~handleUp: unit => unit,
+    ~handleDown: unit => unit,
     ) => {
     let make_div = EvalView.make_div;
     let {before, after, input} = history;
@@ -61,8 +104,19 @@ module Repl = {
     let evalResult = resultForInput(language, dynamics, input);
 
     let handleKey = (_editor, evt) => {
-      if (CodeMirror.(keyGet(evt) == "Enter" && shiftKeyGet(evt))) {
-        handleEnter();
+      let key = CodeMirror.keyGet(evt);
+      let shift = CodeMirror.shiftKeyGet(evt);
+      if (shift) {
+        if (key == "Enter") {
+          preventDefault(evt);
+          handleEnter();
+        } else if (key == "ArrowUp") {
+          preventDefault(evt);
+          handleUp();
+        } else if (key == "ArrowDown") {
+          preventDefault(evt);
+          handleDown();
+        }
       }
     };
 
@@ -181,13 +235,21 @@ module LvcaViewer = {
             statics=statics
             dynamics=dynamics
             setInput=(input => setHistory(hist => {...hist, input}))
-            handleEnter=(() => setHistory(({input, before, after}) => {
-              let before' = [
-                { input, result: resultForInput(language, dynamics, input) },
-                ...before
-              ];
-              {before: before', after, input: ""}
+            handleEnter=(() => setHistory(({input, before, after} as hist) => {
+              switch (after) {
+                | [] =>
+                  let before' = [
+                    { input, result: resultForInput(language, dynamics, input) },
+                    ...before
+                  ];
+                  {before: before', after, input: ""}
+                | _ => history_down(language, dynamics, hist)
+              }
             }))
+            handleUp=(() =>
+              setHistory(hist => history_up(language, dynamics, hist)))
+            handleDown=(() =>
+              setHistory(hist => history_down(language, dynamics, hist)))
           />
         </div>
       | _
