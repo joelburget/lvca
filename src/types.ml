@@ -107,14 +107,14 @@ end = struct
             " (in sort " ^ current_sort ^ ")")
           | Some (OperatorDef (_tag, Arity (_binds, valences))) ->
             if List.(length valences != length subtms)
-            then Error "TODO"
+            then Error "TODO 1"
             else Result.map
               (traverse_list_result
                 (List.zipBy valences subtms
                 (fun valence subtm -> match valence with
                   | FixedValence (_binds, SortName result_sort)
                     -> scope_from_ast lang result_sort env subtm
-                  | _ -> Result.Error "TODO")))
+                  | _ -> Result.Error "TODO 2")))
               (fun subtms' -> Term (tag, subtms'))))
       | Ast.Var name -> (match M.get env name with
         | None    -> Error ("couldn't find variable " ^ name)
@@ -265,7 +265,7 @@ module Core = struct
     = match c with
       | Meaning name -> (match M.get assignments name with
         | Some tm -> term_to_core dynamics tm
-        | None    -> Error ("TODO 4", None)
+        | None    -> Error ("TODO 3", None)
         )
       (* XXX same as Meaning *)
       | CoreVar name -> (match M.get assignments name with
@@ -319,11 +319,11 @@ module Core = struct
       (traverse_list_result (List.map subtms scope_is_core_val))
       (fun subtms' -> ValTm (tag, subtms'))
     | Abt.Primitive prim -> Ok (ValLit prim)
-    | Abt.Var _          -> Error ("TODO", Some tm)
-    | _                  -> Error ("TODO", Some tm)
+    | Abt.Var _          -> Error ("TODO 4", Some tm)
+    | _                  -> Error ("TODO 5", Some tm)
 
   and scope_is_core_val (scope : Abt.scope) : core_val translation_result
-    = failwith "TODO"
+    = failwith "TODO 6"
 
   and term_to_core (dynamics : denotation_chart) (tm : Abt.term)
     : core translation_result
@@ -359,7 +359,7 @@ module Core = struct
               | Error msg -> Error msg)
           | Meaning _v -> Error "Found a metavar!"
 
-          | _ -> Error "TODO 5"
+          | _ -> Error "TODO 7"
 
     in go M.empty core
 
