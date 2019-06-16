@@ -53,25 +53,25 @@ let shift_from_to (
 let history_down (
   language : Types.language,
   dynamics : Types.Core.denotation_chart,
-  {input, before, after} as history : history,
+  {input, before, after} : history,
   ) : history
   = {
-    let (after', before', {input: input', result}) =
+    let (after', before', elem) =
       shift_from_to(after, before,
                     { input, result: resultForInput(language, dynamics, input) });
-    {before: before', after: after', input: input'}
+    {before: before', after: after', input: elem.input}
   };
 
 let history_up (
   language : Types.language,
   dynamics : Types.Core.denotation_chart,
-  {input, before, after} as history : history,
+  {input, before, after} : history,
   ) : history
   = {
-    let (before', after', {input: input', result}) =
+    let (before', after', elem) =
       shift_from_to(before, after,
                     { input, result: resultForInput(language, dynamics, input) });
-    {before: before', after: after', input: input'}
+    {before: before', after: after', input: elem.input}
   };
 
 module Repl = {
