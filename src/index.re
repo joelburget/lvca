@@ -2,18 +2,20 @@ open Util
 
 type item_result = Types.Core.translation_result(Types.Core.core_val);
 
-type historyItem = {
+type history_item = {
   input: string,
   result: item_result,
 };
 
 type history = {
-  before: list(historyItem),
-  after: list(historyItem),
+  before: list(history_item),
+  after: list(history_item),
   input: string
 };
 
 let resultForInput = (language, dynamics, input) => {
+    open Types.Core;
+
     let termResult = switch
       (TermParser.term(TermLexer.read, Lexing.from_string(input))) {
     | term
@@ -23,25 +25,20 @@ let resultForInput = (language, dynamics, input) => {
     | exception TermParser.Error           => Error("Parse error")
     };
 
-    let evalResult : item_result = {
-      open Types.Core;
-      switch (termResult) {
-        | Ok(termResult') => Belt.Result.flatMap(
-            term_to_core(dynamics, termResult'),
-            core => map_error(eval(core), msg => (msg, Some(termResult')))
-          )
-        | Error(msg) => Error((msg, None))
-      }
-    };
-
-    evalResult
+    switch (termResult) {
+      | Ok(termResult') => Belt.Result.flatMap(
+          term_to_core(dynamics, termResult'),
+          core => map_error(eval(core), msg => (msg, Some(termResult')))
+        )
+      | Error(msg) => Error((msg, None))
+    }
 };
 
 let shift_from_to (
-  shift_from: list(historyItem),
-  shift_to: list(historyItem),
-  elem: historyItem
-  ) : (list(historyItem), list(historyItem), historyItem)
+  shift_from: list(history_item),
+  shift_to: list(history_item),
+  elem: history_item
+  ) : (list(history_item), list(history_item), history_item)
   = switch (shift_from) {
     | [] => (shift_from, shift_to, elem)
     | [elem', ...shift_from'] =>
@@ -123,7 +120,7 @@ module Repl = {
     let beforeElems = List.rev(List.map(
       ({input, result}) =>
         <div className="history-item">
-          {React.string(input)}
+          <div className="history-input">{React.string(input)}</div>
           <div className="term-view"><EvalView evalResult=result /></div>
         </div>,
       before
@@ -131,7 +128,7 @@ module Repl = {
     let afterElems = List.map(
       ({input, result}) =>
         <div className="history-item">
-          {React.string(input)}
+          <div className="history-input">{React.string(input)}</div>
           <div className="term-view"><EvalView evalResult=result /></div>
         </div>,
       after

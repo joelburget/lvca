@@ -51,9 +51,13 @@ core_val:
   | ID LEFT_PAREN separated_nonempty_list(SEMICOLON, core_val) RIGHT_PAREN
   { ValTm ($1, $3) }
   | prim
-  { ValLit $1 }
-  | HASH ID
-  { ValPrimop $2 }
+  { ValPrim $1 }
+  | LAM LEFT_PAREN separated_nonempty_list(DOT, ID) DOT core RIGHT_PAREN
+  { ValLam ($3, $5) }
+  | LAM LEFT_PAREN                                      core RIGHT_PAREN
+  { ValLam ([], $3) }
+  (* | HASH ID
+  { ValPrimop $2 } *)
   (* ValLam? *)
   ;
 
@@ -64,10 +68,6 @@ core:
   { CoreVal $1 }
   | ID
   { CoreVar $1 }
-  | LAM LEFT_PAREN separated_nonempty_list(DOT, ID) DOT core RIGHT_PAREN
-  { Lam ($3, $5) }
-  | LAM LEFT_PAREN                                      core RIGHT_PAREN
-  { Lam ([], $3) }
   | CASE LEFT_PAREN arg = core SEMICOLON cases = separated_list(SEMICOLON, case) RIGHT_PAREN
   { Case (arg, Ty, cases) }
   | LEFT_OXFORD ID RIGHT_OXFORD

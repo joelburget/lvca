@@ -32,6 +32,7 @@ type sortDef =
 
 type language =
   | Language of sortDef Belt.Map.String.t
+  (** A language is defined by its sorts *)
 
 type primitive =
   | PrimInteger of Bigint.t
@@ -51,26 +52,24 @@ module rec Abt : sig
   and term =
     | Term      of string * scope list
     | Var       of int
-    | Sequence  of term list (* TODO: list vs array? *)
+    | Sequence  of term list
     | Primitive of primitive
+
+  val to_ast : term -> Ast.term option
 
   val from_ast
     : language
     -> string
     -> Ast.term
     -> (term, string) Result.t
+
   val from_ast_with_bindings
     :  language
     -> string
     -> int Belt.Map.String.t
     -> Ast.term
     -> (term, string) Result.t
-  val scope_from_ast
-    :  language
-    -> string
-    -> int Belt.Map.String.t
-    -> Ast.scope
-    -> (scope, string) Result.t
+
 end = struct
 
   type scope =
@@ -79,7 +78,7 @@ end = struct
   and term =
     | Term      of string * scope list
     | Var       of int
-    | Sequence  of term list (* TODO: list vs array? *)
+    | Sequence  of term list
     | Primitive of primitive
 
   let rec find_operator (operators : operatorDef list) (tag : string)
@@ -91,15 +90,31 @@ end = struct
         then Some od
         else find_operator tl tag
 
-  module M = Belt.Map.String
-  let rec from_ast_with_bindings
-        (Language sorts as lang : language)
-        (current_sort : string)
-        (env : int M.t)
-    : Ast.term -> (term, string) Result.t
+  let rec to_ast' ctx = function
+    | Var ix
+    -> Option.map (List.get ctx ix) (fun name -> Ast.Var name)
+    | Term (tag, subtms)
+    -> Option.map
+      (traverse_list_option (List.map subtms (scope_to_ast ctx)))
+      (fun subtms' -> Ast.Term (tag, subtms'))
+    | Sequence tms
+    -> Option.map
+      (traverse_list_option (List.map tms (to_ast' ctx)))
+      (fun tms' -> Ast.Sequence tms')
+    | Primitive prim
+    -> Some (Ast.Primitive prim)
+
+  and scope_to_ast ctx (Scope (binders, body)) = Option.map
+    (to_ast' (List.concat binders ctx) body)
+    (fun body' -> Ast.Scope (binders, body'))
+
+  let to_ast = to_ast' []
+
+  let (get, empty) = Belt.Map.String.(get, empty)
+  let rec from_ast_with_bindings (Language sorts as lang) current_sort env
     = function
-      | Ast.Term(tag, subtms) -> (match M.get sorts current_sort with
-        | None -> Error
+      | Ast.Term(tag, subtms) as tm -> (match get sorts current_sort with
+        | None -> Result.Error
           ("from_ast_with_bindings: couldn't find sort " ^ current_sort)
         | Some (SortDef (_vars, operators)) -> (match find_operator operators tag with
           | None -> Error
@@ -107,7 +122,10 @@ end = struct
             " (in sort " ^ current_sort ^ ")")
           | Some (OperatorDef (_tag, Arity (_binds, valences))) ->
             if List.(length valences != length subtms)
-            then Error "TODO 1"
+            then Error (
+              "Unexpected number of subterms (does not match the valence of " ^
+              tag ^ ")"
+            )
             else Result.map
               (traverse_list_result
                 (List.zipBy valences subtms
@@ -116,7 +134,7 @@ end = struct
                     -> scope_from_ast lang result_sort env subtm
                   | _ -> Result.Error "TODO 2")))
               (fun subtms' -> Term (tag, subtms'))))
-      | Ast.Var name -> (match M.get env name with
+      | Ast.Var name -> (match get env name with
         | None    -> Error ("couldn't find variable " ^ name)
         | Some ix -> Ok (Var ix))
       | Ast.Sequence tms -> Result.map
@@ -130,7 +148,7 @@ end = struct
       (from_ast_with_bindings lang current_sort env body)
       (fun body' -> (Scope (names, body')))
 
-  let from_ast lang current_sort = from_ast_with_bindings lang current_sort M.empty
+  let from_ast lang current_sort = from_ast_with_bindings lang current_sort empty
 
 end
 
@@ -141,8 +159,11 @@ and Ast : sig
   and term =
     | Term      of string * scope list
     | Var       of string
-    | Sequence  of term list (* TODO: list vs array? *)
+    | Sequence  of term list
     | Primitive of primitive
+
+  val pp_term  : Format.formatter -> Ast.term -> unit
+  val pp_term' : Ast.term -> string
 
 end = struct
   type scope =
@@ -151,8 +172,43 @@ end = struct
   and term =
     | Term      of string * scope list
     | Var       of string
-    | Sequence  of term list (* TODO: list vs array? *)
+    | Sequence  of term list
     | Primitive of primitive
+
+  open Format
+
+  let rec pp_term ppf = function
+    | Term (tag, subtms) -> fprintf ppf "@[%s(%a)@]"
+      tag
+      pp_scope_list subtms
+    | Var v        -> print_string v
+    | Sequence tms -> fprintf ppf "@[[%a]@]" pp_inner_list tms
+    | Primitive p  -> pp_prim ppf p
+
+  and pp_inner_list ppf = function
+    | []      -> fprintf ppf ""
+    | [x]     -> fprintf ppf "%a"     pp_term x
+    | x :: xs -> fprintf ppf "%a, %a" pp_term x pp_inner_list xs
+
+  and pp_scope_list ppf = function
+    | []      -> fprintf ppf ""
+    | [x]     -> fprintf ppf "%a"     pp_scope x
+    | x :: xs -> fprintf ppf "%a, %a" pp_scope x pp_scope_list xs
+
+  and pp_scope ppf (Scope (bindings, body)) = match bindings with
+    | [] -> pp_term ppf body
+    | _  -> fprintf ppf "%a. %a" pp_bindings bindings pp_term body
+
+  and pp_bindings ppf = function
+    | []      -> fprintf ppf "."
+    | x :: xs -> fprintf ppf "%s. %a" x pp_bindings xs
+
+  and pp_prim ppf = function
+    | PrimInteger i -> fprintf ppf "%s" (Bigint.to_string i)
+    | PrimString  s -> fprintf ppf "\"%s\"" s
+    | PrimBool    b -> print_bool b
+
+  let pp_term' = asprintf "%a" pp_term
 end
 
 module Core = struct
@@ -173,16 +229,14 @@ module Core = struct
     | PatternDefault
 
   type core_val =
-    | ValTm  of string * core_val list
-    | ValLit of primitive
-    | ValPrimop of string
-    | ValLam of string list * core
+    | ValTm     of string * core_val list
+    | ValPrim   of primitive
+    | ValLam    of string list * core
 
   and core =
     | CoreVar of string
     | CoreVal of core_val
     | CoreApp of core * core list
-    | Lam     of string list * core
     | Case    of core * ty * (core_pat * core) list
     | Meaning of string
 
@@ -192,16 +246,33 @@ module Core = struct
   module M = Belt.Map.String
   module O = Belt.Option
 
+  let rec val_to_ast (core_val : core_val) : Ast.term
+    = match core_val with
+    (* | ValTm (name, vals)
+    -> Ast.Term ("ValTm" *)
+    | ValPrim prim -> Ast.Primitive prim
+
+  and pat_to_ast (pat : core_pat) : Ast.term
+    = failwith "TODO"
+
+  and to_ast (core : core) : Ast.term = match core with
+    | CoreVar name
+    -> Ast.Term ("CoreVar", [Ast.Scope ([], Ast.Primitive (PrimString name))])
+    | CoreVal core_val
+    -> Ast.Term ("CoreVal", [Ast.Scope ([], val_to_ast core_val)])
+    (* TODO *)
+
   let rec match_branch (v : core_val) (pat : core_pat)
     : core_val M.t option = match (v, pat) with
 
-    | (ValTm (tag1, vals), PatternTerm (tag2, pats)) ->
-        let sub_results = List.zipBy vals pats match_branch in
-        if tag1 = tag2 &&
-           List.(length vals = length pats && every sub_results O.isSome)
-        then Some List.(reduce (map sub_results O.getExn) M.empty union)
-        else None
-    | (ValLit l1, PatternLit l2)
+    | (ValTm (tag1, vals), PatternTerm (tag2, pats)) -> List.(
+      let sub_results = zipBy vals pats match_branch in
+      if tag1 = tag2 &&
+         length vals = length pats && every sub_results O.isSome
+      then Some (reduce (map sub_results O.getExn) M.empty union)
+      else None
+    )
+    | (ValPrim l1, PatternLit l2)
     -> if prim_eq l1 l2 then Some M.empty else None
     | (tm, PatternVar (Some v)) -> Some (M.fromArray [|v,tm|])
     | (tm, PatternVar None)     -> Some M.empty
@@ -282,17 +353,17 @@ module Core = struct
         | (Ok f', Ok args')               -> Ok (CoreApp (f', args'))
         | (Error msg, _) | (_, Error msg) -> Error msg
         )
-      | Lam (binders, core) -> Result.map
+      (* | Lam (binders, core) -> Result.map
         (fill_in_core dynamics mr core)
-        (fun core' -> Lam (binders, core'))
+        (fun core' -> Lam (binders, core')) *)
       | Case (scrutinee, ty, branches) ->
-          let x : ((core_pat * core) list) translation_result
+          let mBranches : ((core_pat * core) list) translation_result
                 = traverse_list_result (List.map branches
                 (fun (pat, core) -> Result.map
                   (fill_in_core dynamics mr core)
                   (fun core' -> (pat, core'))
                 )) in
-          match (fill_in_core dynamics mr scrutinee, x) with
+          match (fill_in_core dynamics mr scrutinee, mBranches) with
             | (Ok scrutinee', Ok branches')
             -> Ok (Case (scrutinee', ty, branches'))
             | (Error msg, _) | (_, Error msg)
@@ -307,8 +378,7 @@ module Core = struct
       | ValTm (tag, vals) -> Result.map
         (traverse_list_result (List.map vals (fill_in_val dynamics mr)))
         (fun vals' -> ValTm (tag, vals'))
-      | ValLit _    -> Ok v
-      | ValPrimop _ -> Ok v
+      | ValPrim _   -> Ok v
       | ValLam (binders, core) -> Result.map
         (fill_in_core dynamics mr core)
         (fun core' -> ValLam (binders, core'))
@@ -318,7 +388,7 @@ module Core = struct
     | Term (tag, subtms) -> Result.map
       (traverse_list_result (List.map subtms scope_is_core_val))
       (fun subtms' -> ValTm (tag, subtms'))
-    | Abt.Primitive prim -> Ok (ValLit prim)
+    | Abt.Primitive prim -> Ok (ValPrim prim)
     | Abt.Var _          -> Error ("TODO 4", Some tm)
     | _                  -> Error ("TODO 5", Some tm)
 
@@ -340,23 +410,23 @@ module Core = struct
     let rec go ctx = function
           | CoreVar v -> (match M.get ctx v with
             | Some result -> Ok result
-            | None        -> Error ("Unbound variable " ^ v))
+            | None        -> Error ("Unbound variable " ^ v)
+          )
           | CoreVal v -> Ok v
-          | CoreApp (Lam (argNames, body), args) ->
+          | CoreApp (CoreVal (ValLam (argNames, body)), args) ->
               if List.(length argNames != length args)
               then Error "mismatched application lengths"
               else Result.flatMap
                 (traverse_list_result (List.map args (go ctx)))
                 (fun arg_vals ->
                    let new_args = M.fromArray
-                     (List.toArray (List.zip argNames arg_vals)) in
+                     (List.(toArray (zip argNames arg_vals))) in
                    go (union ctx new_args) body)
-          | Case (tm, _ty, branches) ->
-            (match go ctx tm with
-              | Ok v -> (match find_core_match v branches with
-                | None                    -> Error "no match found in case"
-                | Some (branch, bindings) -> go (union ctx bindings) branch)
-              | Error msg -> Error msg)
+          | Case (tm, _ty, branches) -> Result.flatMap (go ctx tm)
+            (fun v -> (match find_core_match v branches with
+              | None                    -> Error "no match found in case"
+              | Some (branch, bindings) -> go (union ctx bindings) branch)
+            )
           | Meaning _v -> Error "Found a metavar!"
 
           | _ -> Error "TODO 7"

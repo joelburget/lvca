@@ -27,6 +27,14 @@ let rec traverse_list_result (lst : (('a, 'b) Result.t) list)
     (fun rest' -> a :: rest')
   | Error msg :: _ -> Error msg
 
+let rec traverse_list_option (lst : ('a option) list)
+  : ('a list option) = match lst with
+  | []             -> Some []
+  | Some a :: rest -> Option.map
+    (traverse_list_option rest)
+    (fun rest' -> a :: rest')
+  | None :: _ -> None
+
 let union m1 m2 =
   Belt.Map.String.merge
     m1

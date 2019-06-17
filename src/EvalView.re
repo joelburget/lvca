@@ -48,12 +48,6 @@ module CoreValView = {
       Array.of_list(intersperse(List.map(view_core, args), React.string("; "))),
       [| React.string(")") |],
     ])
-  | Lam(args, body) => make_span([
-    [| React.string("lam(") |],
-    Array.of_list(intersperse(List.map(React.string, args), React.string(". "))),
-    [| view_core(body) |],
-    [| React.string(")") |],
-  ])
   | Case(arg, _ty, _cases) => make_span([
     [| React.string("case(") |],
     [| view_core(arg) |],
@@ -71,8 +65,7 @@ module CoreValView = {
     [| React.string(name) |],
     Array.of_list(intersperse(List.map(view_core_val, children), React.string("; "))),
   ])
-  | ValLit(lit) => show_prim(lit)
-  | ValPrimop(name) => React.string(name) /* TODO: take a look at this */
+  | ValPrim(lit) => show_prim(lit)
   | ValLam(vars, core) => make_span([
     Array.of_list(intersperse(List.map(React.string, vars), React.string(". "))),
     [| view_core(core) |],
@@ -127,12 +120,15 @@ type item_result = Types.Core.translation_result(Types.Core.core_val);
 let make = (~evalResult: item_result) => {
   switch (evalResult) {
   | Ok(coreVal)
+    // => let ast = Types.Core.val_to_ast(coreVal);
+    //    <div>{React.string(Types.Ast.pp_term'(ast))}</div>
     => <CoreValView coreVal=coreVal />
   | Error((msg, None))
     => <div className="error"> {React.string(msg)} </div>
   | Error((msg, Some(tm)))
+         // <div>{React.string(Types.Ast.pp_term'(Types.Abt.to_ast(tm)))}k/div>
     => <div className="error">
-         {React.string(msg)}
+         <div>{React.string(msg)}</div>
          <TermViewer term=tm />
        </div>
   };

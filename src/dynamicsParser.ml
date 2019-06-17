@@ -50,18 +50,18 @@ type _menhir_env = {
 }
 
 and _menhir_state = 
-  | MenhirState90
-  | MenhirState82
-  | MenhirState79
-  | MenhirState76
-  | MenhirState70
-  | MenhirState63
-  | MenhirState60
-  | MenhirState57
-  | MenhirState52
-  | MenhirState49
-  | MenhirState46
-  | MenhirState43
+  | MenhirState88
+  | MenhirState80
+  | MenhirState77
+  | MenhirState74
+  | MenhirState68
+  | MenhirState61
+  | MenhirState58
+  | MenhirState55
+  | MenhirState50
+  | MenhirState47
+  | MenhirState44
+  | MenhirState41
   | MenhirState35
   | MenhirState32
   | MenhirState26
@@ -83,7 +83,7 @@ let rec _menhir_goto_loption_separated_nonempty_list_SEMICOLON_core_pat__ : _men
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
     let (_menhir_env : _menhir_env) = _menhir_env in
-    let (_menhir_stack : (('freshtv343 * _menhir_state * (
+    let (_menhir_stack : (('freshtv337 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
 # 90 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
@@ -93,14 +93,14 @@ let rec _menhir_goto_loption_separated_nonempty_list_SEMICOLON_core_pat__ : _men
     match _tok with
     | RIGHT_PAREN ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv339 * _menhir_state * (
+        let (_menhir_stack : (('freshtv333 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
 # 100 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_core_pat__) = Obj.magic _menhir_stack in
         ((let _menhir_env = _menhir_discard _menhir_env in
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv337 * _menhir_state * (
+        let (_menhir_stack : (('freshtv331 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
 # 107 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
@@ -122,29 +122,29 @@ let rec _menhir_goto_loption_separated_nonempty_list_SEMICOLON_core_pat__ : _men
   ( PatternTerm (_1, _3) )
 # 124 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
          in
-        _menhir_goto_core_pat _menhir_env _menhir_stack _menhir_s _v) : 'freshtv338)) : 'freshtv340)
+        _menhir_goto_core_pat _menhir_env _menhir_stack _menhir_s _v) : 'freshtv332)) : 'freshtv334)
     | _ ->
         assert (not _menhir_env._menhir_error);
         _menhir_env._menhir_error <- true;
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv341 * _menhir_state * (
+        let (_menhir_stack : (('freshtv335 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
 # 134 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_core_pat__) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv342)) : 'freshtv344)
+        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv336)) : 'freshtv338)
 
 and _menhir_goto_separated_nonempty_list_SEMICOLON_core_pat_ : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_separated_nonempty_list_SEMICOLON_core_pat_ -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     match _menhir_s with
-    | MenhirState63 ->
+    | MenhirState61 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv331) = Obj.magic _menhir_stack in
+        let (_menhir_stack : 'freshtv325) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = _menhir_s in
         let (_v : 'tv_separated_nonempty_list_SEMICOLON_core_pat_) = _v in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv329) = Obj.magic _menhir_stack in
+        let (_menhir_stack : 'freshtv323) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = _menhir_s in
         let ((x : 'tv_separated_nonempty_list_SEMICOLON_core_pat_) : 'tv_separated_nonempty_list_SEMICOLON_core_pat_) = _v in
         ((let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_core_pat__ = 
@@ -152,14 +152,14 @@ and _menhir_goto_separated_nonempty_list_SEMICOLON_core_pat_ : _menhir_env -> 't
     ( x )
 # 154 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
          in
-        _menhir_goto_loption_separated_nonempty_list_SEMICOLON_core_pat__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv330)) : 'freshtv332)
-    | MenhirState70 ->
+        _menhir_goto_loption_separated_nonempty_list_SEMICOLON_core_pat__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv324)) : 'freshtv326)
+    | MenhirState68 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : ('freshtv335 * _menhir_state * 'tv_core_pat)) = Obj.magic _menhir_stack in
+        let (_menhir_stack : ('freshtv329 * _menhir_state * 'tv_core_pat)) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = _menhir_s in
         let (_v : 'tv_separated_nonempty_list_SEMICOLON_core_pat_) = _v in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : ('freshtv333 * _menhir_state * 'tv_core_pat)) = Obj.magic _menhir_stack in
+        let (_menhir_stack : ('freshtv327 * _menhir_state * 'tv_core_pat)) = Obj.magic _menhir_stack in
         let (_ : _menhir_state) = _menhir_s in
         let ((xs : 'tv_separated_nonempty_list_SEMICOLON_core_pat_) : 'tv_separated_nonempty_list_SEMICOLON_core_pat_) = _v in
         ((let (_menhir_stack, _menhir_s, (x : 'tv_core_pat)) = _menhir_stack in
@@ -169,410 +169,7 @@ and _menhir_goto_separated_nonempty_list_SEMICOLON_core_pat_ : _menhir_env -> 't
     ( x :: xs )
 # 171 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
          in
-        _menhir_goto_separated_nonempty_list_SEMICOLON_core_pat_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv334)) : 'freshtv336)
-    | _ ->
-        _menhir_fail ()
-
-and _menhir_goto_separated_nonempty_list_SEMICOLON_case_ : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_separated_nonempty_list_SEMICOLON_case_ -> 'ttv_return =
-  fun _menhir_env _menhir_stack _menhir_s _v ->
-    match _menhir_s with
-    | MenhirState60 ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv323) = Obj.magic _menhir_stack in
-        let (_menhir_s : _menhir_state) = _menhir_s in
-        let (_v : 'tv_separated_nonempty_list_SEMICOLON_case_) = _v in
-        ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv321) = Obj.magic _menhir_stack in
-        let (_menhir_s : _menhir_state) = _menhir_s in
-        let ((x : 'tv_separated_nonempty_list_SEMICOLON_case_) : 'tv_separated_nonempty_list_SEMICOLON_case_) = _v in
-        ((let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_case__ = 
-# 144 "/home/joel/.opam/default/lib/menhir/standard.mly"
-    ( x )
-# 192 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-         in
-        _menhir_goto_loption_separated_nonempty_list_SEMICOLON_case__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv322)) : 'freshtv324)
-    | MenhirState79 ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : ('freshtv327 * _menhir_state * 'tv_case)) = Obj.magic _menhir_stack in
-        let (_menhir_s : _menhir_state) = _menhir_s in
-        let (_v : 'tv_separated_nonempty_list_SEMICOLON_case_) = _v in
-        ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : ('freshtv325 * _menhir_state * 'tv_case)) = Obj.magic _menhir_stack in
-        let (_ : _menhir_state) = _menhir_s in
-        let ((xs : 'tv_separated_nonempty_list_SEMICOLON_case_) : 'tv_separated_nonempty_list_SEMICOLON_case_) = _v in
-        ((let (_menhir_stack, _menhir_s, (x : 'tv_case)) = _menhir_stack in
-        let _2 = () in
-        let _v : 'tv_separated_nonempty_list_SEMICOLON_case_ = 
-# 243 "/home/joel/.opam/default/lib/menhir/standard.mly"
-    ( x :: xs )
-# 209 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-         in
-        _menhir_goto_separated_nonempty_list_SEMICOLON_case_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv326)) : 'freshtv328)
-    | _ ->
-        _menhir_fail ()
-
-and _menhir_goto_loption_separated_nonempty_list_SEMICOLON_case__ : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_loption_separated_nonempty_list_SEMICOLON_case__ -> 'ttv_return =
-  fun _menhir_env _menhir_stack _menhir_s _v ->
-    let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
-    let (_menhir_env : _menhir_env) = _menhir_env in
-    let (_menhir_stack : (((('freshtv319 * _menhir_state)) * _menhir_state * (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 222 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-    ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_case__) = Obj.magic _menhir_stack in
-    ((assert (not _menhir_env._menhir_error);
-    let _tok = _menhir_env._menhir_token in
-    match _tok with
-    | RIGHT_PAREN ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (((('freshtv315 * _menhir_state)) * _menhir_state * (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 232 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_case__) = Obj.magic _menhir_stack in
-        ((let _menhir_env = _menhir_discard _menhir_env in
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (((('freshtv313 * _menhir_state)) * _menhir_state * (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 239 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_case__) = Obj.magic _menhir_stack in
-        ((let (((_menhir_stack, _menhir_s), _, (arg : (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 244 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        ))), _, (xs : 'tv_loption_separated_nonempty_list_SEMICOLON_case__)) = _menhir_stack in
-        let _6 = () in
-        let _4 = () in
-        let _2 = () in
-        let _1 = () in
-        let _v : (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 253 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        ) = let cases = 
-# 232 "/home/joel/.opam/default/lib/menhir/standard.mly"
-    ( xs )
-# 257 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-         in
-        
-# 72 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-  ( Case (arg, Ty, cases) )
-# 262 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-         in
-        _menhir_goto_core _menhir_env _menhir_stack _menhir_s _v) : 'freshtv314)) : 'freshtv316)
-    | _ ->
-        assert (not _menhir_env._menhir_error);
-        _menhir_env._menhir_error <- true;
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (((('freshtv317 * _menhir_state)) * _menhir_state * (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 272 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_case__) = Obj.magic _menhir_stack in
-        ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv318)) : 'freshtv320)
-
-and _menhir_run61 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
-  fun _menhir_env _menhir_stack _menhir_s ->
-    let _menhir_env = _menhir_discard _menhir_env in
-    let (_menhir_env : _menhir_env) = _menhir_env in
-    let (_menhir_stack : 'freshtv311) = Obj.magic _menhir_stack in
-    let (_menhir_s : _menhir_state) = _menhir_s in
-    ((let _1 = () in
-    let _v : 'tv_core_pat = 
-# 83 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-  ( PatternVar None )
-# 287 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-     in
-    _menhir_goto_core_pat _menhir_env _menhir_stack _menhir_s _v) : 'freshtv312)
-
-and _menhir_run62 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
-# 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-       (string)
-# 294 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-) -> 'ttv_return =
-  fun _menhir_env _menhir_stack _menhir_s _v ->
-    let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
-    let _menhir_env = _menhir_discard _menhir_env in
-    let _tok = _menhir_env._menhir_token in
-    match _tok with
-    | LEFT_PAREN ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv305 * _menhir_state * (
-# 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-       (string)
-# 306 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        )) = Obj.magic _menhir_stack in
-        ((let _menhir_env = _menhir_discard _menhir_env in
-        let _tok = _menhir_env._menhir_token in
-        match _tok with
-        | DEFAULT ->
-            _menhir_run64 _menhir_env (Obj.magic _menhir_stack) MenhirState63
-        | ID _v ->
-            _menhir_run62 _menhir_env (Obj.magic _menhir_stack) MenhirState63 _v
-        | INT _v ->
-            _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState63 _v
-        | STRING _v ->
-            _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState63 _v
-        | UNDERSCORE ->
-            _menhir_run61 _menhir_env (Obj.magic _menhir_stack) MenhirState63
-        | RIGHT_PAREN ->
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv303) = Obj.magic _menhir_stack in
-            let (_menhir_s : _menhir_state) = MenhirState63 in
-            ((let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_core_pat__ = 
-# 142 "/home/joel/.opam/default/lib/menhir/standard.mly"
-    ( [] )
-# 328 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-             in
-            _menhir_goto_loption_separated_nonempty_list_SEMICOLON_core_pat__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv304)
-        | _ ->
-            assert (not _menhir_env._menhir_error);
-            _menhir_env._menhir_error <- true;
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState63) : 'freshtv306)
-    | RIGHT_PAREN | RIGHT_S_ARR | SEMICOLON ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv307 * _menhir_state * (
-# 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-       (string)
-# 340 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        )) = Obj.magic _menhir_stack in
-        ((let (_menhir_stack, _menhir_s, (_1 : (
-# 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-       (string)
-# 345 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        ))) = _menhir_stack in
-        let _v : 'tv_core_pat = 
-# 85 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-  ( PatternVar (Some _1) )
-# 350 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-         in
-        _menhir_goto_core_pat _menhir_env _menhir_stack _menhir_s _v) : 'freshtv308)
-    | _ ->
-        assert (not _menhir_env._menhir_error);
-        _menhir_env._menhir_error <- true;
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv309 * _menhir_state * (
-# 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-       (string)
-# 360 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        )) = Obj.magic _menhir_stack in
-        ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv310)
-
-and _menhir_run64 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
-  fun _menhir_env _menhir_stack _menhir_s ->
-    let _menhir_env = _menhir_discard _menhir_env in
-    let (_menhir_env : _menhir_env) = _menhir_env in
-    let (_menhir_stack : 'freshtv301) = Obj.magic _menhir_stack in
-    let (_menhir_s : _menhir_state) = _menhir_s in
-    ((let _1 = () in
-    let _v : 'tv_core_pat = 
-# 89 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-  ( PatternDefault )
-# 375 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-     in
-    _menhir_goto_core_pat _menhir_env _menhir_stack _menhir_s _v) : 'freshtv302)
-
-and _menhir_goto_separated_nonempty_list_SEMICOLON_core_ : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_separated_nonempty_list_SEMICOLON_core_ -> 'ttv_return =
-  fun _menhir_env _menhir_stack _menhir_s _v ->
-    match _menhir_s with
-    | MenhirState52 ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv295) = Obj.magic _menhir_stack in
-        let (_menhir_s : _menhir_state) = _menhir_s in
-        let (_v : 'tv_separated_nonempty_list_SEMICOLON_core_) = _v in
-        ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv293) = Obj.magic _menhir_stack in
-        let (_menhir_s : _menhir_state) = _menhir_s in
-        let ((x : 'tv_separated_nonempty_list_SEMICOLON_core_) : 'tv_separated_nonempty_list_SEMICOLON_core_) = _v in
-        ((let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_core__ = 
-# 144 "/home/joel/.opam/default/lib/menhir/standard.mly"
-    ( x )
-# 394 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-         in
-        _menhir_goto_loption_separated_nonempty_list_SEMICOLON_core__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv294)) : 'freshtv296)
-    | MenhirState57 ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : ('freshtv299 * _menhir_state * (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 402 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        ))) = Obj.magic _menhir_stack in
-        let (_menhir_s : _menhir_state) = _menhir_s in
-        let (_v : 'tv_separated_nonempty_list_SEMICOLON_core_) = _v in
-        ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : ('freshtv297 * _menhir_state * (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 410 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        ))) = Obj.magic _menhir_stack in
-        let (_ : _menhir_state) = _menhir_s in
-        let ((xs : 'tv_separated_nonempty_list_SEMICOLON_core_) : 'tv_separated_nonempty_list_SEMICOLON_core_) = _v in
-        ((let (_menhir_stack, _menhir_s, (x : (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 417 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        ))) = _menhir_stack in
-        let _2 = () in
-        let _v : 'tv_separated_nonempty_list_SEMICOLON_core_ = 
-# 243 "/home/joel/.opam/default/lib/menhir/standard.mly"
-    ( x :: xs )
-# 423 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-         in
-        _menhir_goto_separated_nonempty_list_SEMICOLON_core_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv298)) : 'freshtv300)
-    | _ ->
-        _menhir_fail ()
-
-and _menhir_goto_loption_separated_nonempty_list_SEMICOLON_core__ : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_loption_separated_nonempty_list_SEMICOLON_core__ -> 'ttv_return =
-  fun _menhir_env _menhir_stack _menhir_s _v ->
-    let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
-    let (_menhir_env : _menhir_env) = _menhir_env in
-    let (_menhir_stack : (((('freshtv291 * _menhir_state)) * _menhir_state * (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 436 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-    ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_core__) = Obj.magic _menhir_stack in
-    ((assert (not _menhir_env._menhir_error);
-    let _tok = _menhir_env._menhir_token in
-    match _tok with
-    | RIGHT_PAREN ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (((('freshtv287 * _menhir_state)) * _menhir_state * (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 446 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_core__) = Obj.magic _menhir_stack in
-        ((let _menhir_env = _menhir_discard _menhir_env in
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (((('freshtv285 * _menhir_state)) * _menhir_state * (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 453 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_core__) = Obj.magic _menhir_stack in
-        ((let (((_menhir_stack, _menhir_s), _, (_3 : (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 458 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        ))), _, (xs : 'tv_loption_separated_nonempty_list_SEMICOLON_core__)) = _menhir_stack in
-        let _6 = () in
-        let _4 = () in
-        let _2 = () in
-        let _1 = () in
-        let _v : (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 467 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        ) = let _5 = 
-# 232 "/home/joel/.opam/default/lib/menhir/standard.mly"
-    ( xs )
-# 471 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-         in
-        
-# 62 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-  ( CoreApp (_3, _5) )
-# 476 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-         in
-        _menhir_goto_core _menhir_env _menhir_stack _menhir_s _v) : 'freshtv286)) : 'freshtv288)
-    | _ ->
-        assert (not _menhir_env._menhir_error);
-        _menhir_env._menhir_error <- true;
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (((('freshtv289 * _menhir_state)) * _menhir_state * (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 486 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_core__) = Obj.magic _menhir_stack in
-        ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv290)) : 'freshtv292)
-
-and _menhir_goto_core_pat : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_core_pat -> 'ttv_return =
-  fun _menhir_env _menhir_stack _menhir_s _v ->
-    let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
-    match _menhir_s with
-    | MenhirState70 | MenhirState63 ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv277 * _menhir_state * 'tv_core_pat) = Obj.magic _menhir_stack in
-        ((assert (not _menhir_env._menhir_error);
-        let _tok = _menhir_env._menhir_token in
-        match _tok with
-        | SEMICOLON ->
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv271 * _menhir_state * 'tv_core_pat) = Obj.magic _menhir_stack in
-            ((let _menhir_env = _menhir_discard _menhir_env in
-            let _tok = _menhir_env._menhir_token in
-            match _tok with
-            | DEFAULT ->
-                _menhir_run64 _menhir_env (Obj.magic _menhir_stack) MenhirState70
-            | ID _v ->
-                _menhir_run62 _menhir_env (Obj.magic _menhir_stack) MenhirState70 _v
-            | INT _v ->
-                _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState70 _v
-            | STRING _v ->
-                _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState70 _v
-            | UNDERSCORE ->
-                _menhir_run61 _menhir_env (Obj.magic _menhir_stack) MenhirState70
-            | _ ->
-                assert (not _menhir_env._menhir_error);
-                _menhir_env._menhir_error <- true;
-                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState70) : 'freshtv272)
-        | RIGHT_PAREN ->
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv273 * _menhir_state * 'tv_core_pat) = Obj.magic _menhir_stack in
-            ((let (_menhir_stack, _menhir_s, (x : 'tv_core_pat)) = _menhir_stack in
-            let _v : 'tv_separated_nonempty_list_SEMICOLON_core_pat_ = 
-# 241 "/home/joel/.opam/default/lib/menhir/standard.mly"
-    ( [ x ] )
-# 528 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-             in
-            _menhir_goto_separated_nonempty_list_SEMICOLON_core_pat_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv274)
-        | _ ->
-            assert (not _menhir_env._menhir_error);
-            _menhir_env._menhir_error <- true;
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv275 * _menhir_state * 'tv_core_pat) = Obj.magic _menhir_stack in
-            ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv276)) : 'freshtv278)
-    | MenhirState79 | MenhirState60 ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv283 * _menhir_state * 'tv_core_pat) = Obj.magic _menhir_stack in
-        ((assert (not _menhir_env._menhir_error);
-        let _tok = _menhir_env._menhir_token in
-        match _tok with
-        | RIGHT_S_ARR ->
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv279 * _menhir_state * 'tv_core_pat) = Obj.magic _menhir_stack in
-            ((let _menhir_env = _menhir_discard _menhir_env in
-            let _tok = _menhir_env._menhir_token in
-            match _tok with
-            | APP ->
-                _menhir_run48 _menhir_env (Obj.magic _menhir_stack) MenhirState76
-            | CASE ->
-                _menhir_run45 _menhir_env (Obj.magic _menhir_stack) MenhirState76
-            | HASH ->
-                _menhir_run37 _menhir_env (Obj.magic _menhir_stack) MenhirState76
-            | ID _v ->
-                _menhir_run47 _menhir_env (Obj.magic _menhir_stack) MenhirState76 _v
-            | INT _v ->
-                _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState76 _v
-            | LAM ->
-                _menhir_run31 _menhir_env (Obj.magic _menhir_stack) MenhirState76
-            | LEFT_OXFORD ->
-                _menhir_run28 _menhir_env (Obj.magic _menhir_stack) MenhirState76
-            | STRING _v ->
-                _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState76 _v
-            | _ ->
-                assert (not _menhir_env._menhir_error);
-                _menhir_env._menhir_error <- true;
-                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState76) : 'freshtv280)
-        | _ ->
-            assert (not _menhir_env._menhir_error);
-            _menhir_env._menhir_error <- true;
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv281 * _menhir_state * 'tv_core_pat) = Obj.magic _menhir_stack in
-            ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv282)) : 'freshtv284)
+        _menhir_goto_separated_nonempty_list_SEMICOLON_core_pat_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv328)) : 'freshtv330)
     | _ ->
         _menhir_fail ()
 
@@ -582,72 +179,537 @@ and _menhir_goto_separated_nonempty_list_SEMICOLON_core_val_ : _menhir_env -> 't
     match _menhir_s with
     | MenhirState35 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv265 * _menhir_state * (
+        let (_menhir_stack : (('freshtv317 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 589 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 186 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))) * _menhir_state * 'tv_separated_nonempty_list_SEMICOLON_core_val_) = Obj.magic _menhir_stack in
         ((assert (not _menhir_env._menhir_error);
         let _tok = _menhir_env._menhir_token in
         match _tok with
         | RIGHT_PAREN ->
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (('freshtv261 * _menhir_state * (
+            let (_menhir_stack : (('freshtv313 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 599 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 196 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             ))) * _menhir_state * 'tv_separated_nonempty_list_SEMICOLON_core_val_) = Obj.magic _menhir_stack in
             ((let _menhir_env = _menhir_discard _menhir_env in
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (('freshtv259 * _menhir_state * (
+            let (_menhir_stack : (('freshtv311 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 606 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 203 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             ))) * _menhir_state * 'tv_separated_nonempty_list_SEMICOLON_core_val_) = Obj.magic _menhir_stack in
             ((let ((_menhir_stack, _menhir_s, (_1 : (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 611 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 208 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             ))), _, (_3 : 'tv_separated_nonempty_list_SEMICOLON_core_val_)) = _menhir_stack in
             let _4 = () in
             let _2 = () in
             let _v : 'tv_core_val = 
 # 52 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
   ( ValTm (_1, _3) )
-# 618 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 215 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
              in
-            _menhir_goto_core_val _menhir_env _menhir_stack _menhir_s _v) : 'freshtv260)) : 'freshtv262)
+            _menhir_goto_core_val _menhir_env _menhir_stack _menhir_s _v) : 'freshtv312)) : 'freshtv314)
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (('freshtv263 * _menhir_state * (
+            let (_menhir_stack : (('freshtv315 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 628 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 225 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             ))) * _menhir_state * 'tv_separated_nonempty_list_SEMICOLON_core_val_) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv264)) : 'freshtv266)
-    | MenhirState43 ->
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv316)) : 'freshtv318)
+    | MenhirState41 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv269 * _menhir_state * 'tv_core_val)) * _menhir_state * 'tv_separated_nonempty_list_SEMICOLON_core_val_) = Obj.magic _menhir_stack in
+        let (_menhir_stack : (('freshtv321 * _menhir_state * 'tv_core_val)) * _menhir_state * 'tv_separated_nonempty_list_SEMICOLON_core_val_) = Obj.magic _menhir_stack in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv267 * _menhir_state * 'tv_core_val)) * _menhir_state * 'tv_separated_nonempty_list_SEMICOLON_core_val_) = Obj.magic _menhir_stack in
+        let (_menhir_stack : (('freshtv319 * _menhir_state * 'tv_core_val)) * _menhir_state * 'tv_separated_nonempty_list_SEMICOLON_core_val_) = Obj.magic _menhir_stack in
         ((let ((_menhir_stack, _menhir_s, (x : 'tv_core_val)), _, (xs : 'tv_separated_nonempty_list_SEMICOLON_core_val_)) = _menhir_stack in
         let _2 = () in
         let _v : 'tv_separated_nonempty_list_SEMICOLON_core_val_ = 
 # 243 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 642 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 239 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
          in
-        _menhir_goto_separated_nonempty_list_SEMICOLON_core_val_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv268)) : 'freshtv270)
+        _menhir_goto_separated_nonempty_list_SEMICOLON_core_val_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv320)) : 'freshtv322)
+    | _ ->
+        _menhir_fail ()
+
+and _menhir_goto_separated_nonempty_list_SEMICOLON_case_ : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_separated_nonempty_list_SEMICOLON_case_ -> 'ttv_return =
+  fun _menhir_env _menhir_stack _menhir_s _v ->
+    match _menhir_s with
+    | MenhirState58 ->
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : 'freshtv305) = Obj.magic _menhir_stack in
+        let (_menhir_s : _menhir_state) = _menhir_s in
+        let (_v : 'tv_separated_nonempty_list_SEMICOLON_case_) = _v in
+        ((let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : 'freshtv303) = Obj.magic _menhir_stack in
+        let (_menhir_s : _menhir_state) = _menhir_s in
+        let ((x : 'tv_separated_nonempty_list_SEMICOLON_case_) : 'tv_separated_nonempty_list_SEMICOLON_case_) = _v in
+        ((let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_case__ = 
+# 144 "/home/joel/.opam/default/lib/menhir/standard.mly"
+    ( x )
+# 260 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+         in
+        _menhir_goto_loption_separated_nonempty_list_SEMICOLON_case__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv304)) : 'freshtv306)
+    | MenhirState77 ->
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : ('freshtv309 * _menhir_state * 'tv_case)) = Obj.magic _menhir_stack in
+        let (_menhir_s : _menhir_state) = _menhir_s in
+        let (_v : 'tv_separated_nonempty_list_SEMICOLON_case_) = _v in
+        ((let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : ('freshtv307 * _menhir_state * 'tv_case)) = Obj.magic _menhir_stack in
+        let (_ : _menhir_state) = _menhir_s in
+        let ((xs : 'tv_separated_nonempty_list_SEMICOLON_case_) : 'tv_separated_nonempty_list_SEMICOLON_case_) = _v in
+        ((let (_menhir_stack, _menhir_s, (x : 'tv_case)) = _menhir_stack in
+        let _2 = () in
+        let _v : 'tv_separated_nonempty_list_SEMICOLON_case_ = 
+# 243 "/home/joel/.opam/default/lib/menhir/standard.mly"
+    ( x :: xs )
+# 277 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+         in
+        _menhir_goto_separated_nonempty_list_SEMICOLON_case_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv308)) : 'freshtv310)
+    | _ ->
+        _menhir_fail ()
+
+and _menhir_goto_loption_separated_nonempty_list_SEMICOLON_case__ : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_loption_separated_nonempty_list_SEMICOLON_case__ -> 'ttv_return =
+  fun _menhir_env _menhir_stack _menhir_s _v ->
+    let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
+    let (_menhir_env : _menhir_env) = _menhir_env in
+    let (_menhir_stack : (((('freshtv301 * _menhir_state)) * _menhir_state * (
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+      (core)
+# 290 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+    ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_case__) = Obj.magic _menhir_stack in
+    ((assert (not _menhir_env._menhir_error);
+    let _tok = _menhir_env._menhir_token in
+    match _tok with
+    | RIGHT_PAREN ->
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : (((('freshtv297 * _menhir_state)) * _menhir_state * (
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+      (core)
+# 300 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_case__) = Obj.magic _menhir_stack in
+        ((let _menhir_env = _menhir_discard _menhir_env in
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : (((('freshtv295 * _menhir_state)) * _menhir_state * (
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+      (core)
+# 307 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_case__) = Obj.magic _menhir_stack in
+        ((let (((_menhir_stack, _menhir_s), _, (arg : (
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+      (core)
+# 312 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        ))), _, (xs : 'tv_loption_separated_nonempty_list_SEMICOLON_case__)) = _menhir_stack in
+        let _6 = () in
+        let _4 = () in
+        let _2 = () in
+        let _1 = () in
+        let _v : (
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+      (core)
+# 321 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        ) = let cases = 
+# 232 "/home/joel/.opam/default/lib/menhir/standard.mly"
+    ( xs )
+# 325 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+         in
+        
+# 72 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+  ( Case (arg, Ty, cases) )
+# 330 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+         in
+        _menhir_goto_core _menhir_env _menhir_stack _menhir_s _v) : 'freshtv296)) : 'freshtv298)
+    | _ ->
+        assert (not _menhir_env._menhir_error);
+        _menhir_env._menhir_error <- true;
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : (((('freshtv299 * _menhir_state)) * _menhir_state * (
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+      (core)
+# 340 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_case__) = Obj.magic _menhir_stack in
+        ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
+        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv300)) : 'freshtv302)
+
+and _menhir_run59 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
+  fun _menhir_env _menhir_stack _menhir_s ->
+    let _menhir_env = _menhir_discard _menhir_env in
+    let (_menhir_env : _menhir_env) = _menhir_env in
+    let (_menhir_stack : 'freshtv293) = Obj.magic _menhir_stack in
+    let (_menhir_s : _menhir_state) = _menhir_s in
+    ((let _1 = () in
+    let _v : 'tv_core_pat = 
+# 83 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+  ( PatternVar None )
+# 355 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+     in
+    _menhir_goto_core_pat _menhir_env _menhir_stack _menhir_s _v) : 'freshtv294)
+
+and _menhir_run60 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
+# 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+       (string)
+# 362 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+) -> 'ttv_return =
+  fun _menhir_env _menhir_stack _menhir_s _v ->
+    let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
+    let _menhir_env = _menhir_discard _menhir_env in
+    let _tok = _menhir_env._menhir_token in
+    match _tok with
+    | LEFT_PAREN ->
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : 'freshtv287 * _menhir_state * (
+# 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+       (string)
+# 374 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        )) = Obj.magic _menhir_stack in
+        ((let _menhir_env = _menhir_discard _menhir_env in
+        let _tok = _menhir_env._menhir_token in
+        match _tok with
+        | DEFAULT ->
+            _menhir_run62 _menhir_env (Obj.magic _menhir_stack) MenhirState61
+        | ID _v ->
+            _menhir_run60 _menhir_env (Obj.magic _menhir_stack) MenhirState61 _v
+        | INT _v ->
+            _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState61 _v
+        | STRING _v ->
+            _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState61 _v
+        | UNDERSCORE ->
+            _menhir_run59 _menhir_env (Obj.magic _menhir_stack) MenhirState61
+        | RIGHT_PAREN ->
+            let (_menhir_env : _menhir_env) = _menhir_env in
+            let (_menhir_stack : 'freshtv285) = Obj.magic _menhir_stack in
+            let (_menhir_s : _menhir_state) = MenhirState61 in
+            ((let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_core_pat__ = 
+# 142 "/home/joel/.opam/default/lib/menhir/standard.mly"
+    ( [] )
+# 396 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+             in
+            _menhir_goto_loption_separated_nonempty_list_SEMICOLON_core_pat__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv286)
+        | _ ->
+            assert (not _menhir_env._menhir_error);
+            _menhir_env._menhir_error <- true;
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState61) : 'freshtv288)
+    | RIGHT_PAREN | RIGHT_S_ARR | SEMICOLON ->
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : 'freshtv289 * _menhir_state * (
+# 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+       (string)
+# 408 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        )) = Obj.magic _menhir_stack in
+        ((let (_menhir_stack, _menhir_s, (_1 : (
+# 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+       (string)
+# 413 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        ))) = _menhir_stack in
+        let _v : 'tv_core_pat = 
+# 85 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+  ( PatternVar (Some _1) )
+# 418 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+         in
+        _menhir_goto_core_pat _menhir_env _menhir_stack _menhir_s _v) : 'freshtv290)
+    | _ ->
+        assert (not _menhir_env._menhir_error);
+        _menhir_env._menhir_error <- true;
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : 'freshtv291 * _menhir_state * (
+# 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+       (string)
+# 428 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        )) = Obj.magic _menhir_stack in
+        ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
+        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv292)
+
+and _menhir_run62 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
+  fun _menhir_env _menhir_stack _menhir_s ->
+    let _menhir_env = _menhir_discard _menhir_env in
+    let (_menhir_env : _menhir_env) = _menhir_env in
+    let (_menhir_stack : 'freshtv283) = Obj.magic _menhir_stack in
+    let (_menhir_s : _menhir_state) = _menhir_s in
+    ((let _1 = () in
+    let _v : 'tv_core_pat = 
+# 89 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+  ( PatternDefault )
+# 443 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+     in
+    _menhir_goto_core_pat _menhir_env _menhir_stack _menhir_s _v) : 'freshtv284)
+
+and _menhir_goto_separated_nonempty_list_SEMICOLON_core_ : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_separated_nonempty_list_SEMICOLON_core_ -> 'ttv_return =
+  fun _menhir_env _menhir_stack _menhir_s _v ->
+    match _menhir_s with
+    | MenhirState50 ->
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : 'freshtv277) = Obj.magic _menhir_stack in
+        let (_menhir_s : _menhir_state) = _menhir_s in
+        let (_v : 'tv_separated_nonempty_list_SEMICOLON_core_) = _v in
+        ((let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : 'freshtv275) = Obj.magic _menhir_stack in
+        let (_menhir_s : _menhir_state) = _menhir_s in
+        let ((x : 'tv_separated_nonempty_list_SEMICOLON_core_) : 'tv_separated_nonempty_list_SEMICOLON_core_) = _v in
+        ((let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_core__ = 
+# 144 "/home/joel/.opam/default/lib/menhir/standard.mly"
+    ( x )
+# 462 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+         in
+        _menhir_goto_loption_separated_nonempty_list_SEMICOLON_core__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv276)) : 'freshtv278)
+    | MenhirState55 ->
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : ('freshtv281 * _menhir_state * (
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+      (core)
+# 470 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        ))) = Obj.magic _menhir_stack in
+        let (_menhir_s : _menhir_state) = _menhir_s in
+        let (_v : 'tv_separated_nonempty_list_SEMICOLON_core_) = _v in
+        ((let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : ('freshtv279 * _menhir_state * (
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+      (core)
+# 478 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        ))) = Obj.magic _menhir_stack in
+        let (_ : _menhir_state) = _menhir_s in
+        let ((xs : 'tv_separated_nonempty_list_SEMICOLON_core_) : 'tv_separated_nonempty_list_SEMICOLON_core_) = _v in
+        ((let (_menhir_stack, _menhir_s, (x : (
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+      (core)
+# 485 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        ))) = _menhir_stack in
+        let _2 = () in
+        let _v : 'tv_separated_nonempty_list_SEMICOLON_core_ = 
+# 243 "/home/joel/.opam/default/lib/menhir/standard.mly"
+    ( x :: xs )
+# 491 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+         in
+        _menhir_goto_separated_nonempty_list_SEMICOLON_core_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv280)) : 'freshtv282)
+    | _ ->
+        _menhir_fail ()
+
+and _menhir_goto_loption_separated_nonempty_list_SEMICOLON_core__ : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_loption_separated_nonempty_list_SEMICOLON_core__ -> 'ttv_return =
+  fun _menhir_env _menhir_stack _menhir_s _v ->
+    let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
+    let (_menhir_env : _menhir_env) = _menhir_env in
+    let (_menhir_stack : (((('freshtv273 * _menhir_state)) * _menhir_state * (
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+      (core)
+# 504 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+    ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_core__) = Obj.magic _menhir_stack in
+    ((assert (not _menhir_env._menhir_error);
+    let _tok = _menhir_env._menhir_token in
+    match _tok with
+    | RIGHT_PAREN ->
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : (((('freshtv269 * _menhir_state)) * _menhir_state * (
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+      (core)
+# 514 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_core__) = Obj.magic _menhir_stack in
+        ((let _menhir_env = _menhir_discard _menhir_env in
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : (((('freshtv267 * _menhir_state)) * _menhir_state * (
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+      (core)
+# 521 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_core__) = Obj.magic _menhir_stack in
+        ((let (((_menhir_stack, _menhir_s), _, (_3 : (
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+      (core)
+# 526 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        ))), _, (xs : 'tv_loption_separated_nonempty_list_SEMICOLON_core__)) = _menhir_stack in
+        let _6 = () in
+        let _4 = () in
+        let _2 = () in
+        let _1 = () in
+        let _v : (
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+      (core)
+# 535 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        ) = let _5 = 
+# 232 "/home/joel/.opam/default/lib/menhir/standard.mly"
+    ( xs )
+# 539 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+         in
+        
+# 66 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+  ( CoreApp (_3, _5) )
+# 544 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+         in
+        _menhir_goto_core _menhir_env _menhir_stack _menhir_s _v) : 'freshtv268)) : 'freshtv270)
+    | _ ->
+        assert (not _menhir_env._menhir_error);
+        _menhir_env._menhir_error <- true;
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : (((('freshtv271 * _menhir_state)) * _menhir_state * (
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+      (core)
+# 554 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_core__) = Obj.magic _menhir_stack in
+        ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
+        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv272)) : 'freshtv274)
+
+and _menhir_goto_core_pat : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_core_pat -> 'ttv_return =
+  fun _menhir_env _menhir_stack _menhir_s _v ->
+    let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
+    match _menhir_s with
+    | MenhirState68 | MenhirState61 ->
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : 'freshtv259 * _menhir_state * 'tv_core_pat) = Obj.magic _menhir_stack in
+        ((assert (not _menhir_env._menhir_error);
+        let _tok = _menhir_env._menhir_token in
+        match _tok with
+        | SEMICOLON ->
+            let (_menhir_env : _menhir_env) = _menhir_env in
+            let (_menhir_stack : 'freshtv253 * _menhir_state * 'tv_core_pat) = Obj.magic _menhir_stack in
+            ((let _menhir_env = _menhir_discard _menhir_env in
+            let _tok = _menhir_env._menhir_token in
+            match _tok with
+            | DEFAULT ->
+                _menhir_run62 _menhir_env (Obj.magic _menhir_stack) MenhirState68
+            | ID _v ->
+                _menhir_run60 _menhir_env (Obj.magic _menhir_stack) MenhirState68 _v
+            | INT _v ->
+                _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState68 _v
+            | STRING _v ->
+                _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState68 _v
+            | UNDERSCORE ->
+                _menhir_run59 _menhir_env (Obj.magic _menhir_stack) MenhirState68
+            | _ ->
+                assert (not _menhir_env._menhir_error);
+                _menhir_env._menhir_error <- true;
+                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState68) : 'freshtv254)
+        | RIGHT_PAREN ->
+            let (_menhir_env : _menhir_env) = _menhir_env in
+            let (_menhir_stack : 'freshtv255 * _menhir_state * 'tv_core_pat) = Obj.magic _menhir_stack in
+            ((let (_menhir_stack, _menhir_s, (x : 'tv_core_pat)) = _menhir_stack in
+            let _v : 'tv_separated_nonempty_list_SEMICOLON_core_pat_ = 
+# 241 "/home/joel/.opam/default/lib/menhir/standard.mly"
+    ( [ x ] )
+# 596 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+             in
+            _menhir_goto_separated_nonempty_list_SEMICOLON_core_pat_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv256)
+        | _ ->
+            assert (not _menhir_env._menhir_error);
+            _menhir_env._menhir_error <- true;
+            let (_menhir_env : _menhir_env) = _menhir_env in
+            let (_menhir_stack : 'freshtv257 * _menhir_state * 'tv_core_pat) = Obj.magic _menhir_stack in
+            ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv258)) : 'freshtv260)
+    | MenhirState77 | MenhirState58 ->
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : 'freshtv265 * _menhir_state * 'tv_core_pat) = Obj.magic _menhir_stack in
+        ((assert (not _menhir_env._menhir_error);
+        let _tok = _menhir_env._menhir_token in
+        match _tok with
+        | RIGHT_S_ARR ->
+            let (_menhir_env : _menhir_env) = _menhir_env in
+            let (_menhir_stack : 'freshtv261 * _menhir_state * 'tv_core_pat) = Obj.magic _menhir_stack in
+            ((let _menhir_env = _menhir_discard _menhir_env in
+            let _tok = _menhir_env._menhir_token in
+            match _tok with
+            | APP ->
+                _menhir_run46 _menhir_env (Obj.magic _menhir_stack) MenhirState74
+            | CASE ->
+                _menhir_run43 _menhir_env (Obj.magic _menhir_stack) MenhirState74
+            | ID _v ->
+                _menhir_run45 _menhir_env (Obj.magic _menhir_stack) MenhirState74 _v
+            | INT _v ->
+                _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState74 _v
+            | LAM ->
+                _menhir_run31 _menhir_env (Obj.magic _menhir_stack) MenhirState74
+            | LEFT_OXFORD ->
+                _menhir_run28 _menhir_env (Obj.magic _menhir_stack) MenhirState74
+            | STRING _v ->
+                _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState74 _v
+            | _ ->
+                assert (not _menhir_env._menhir_error);
+                _menhir_env._menhir_error <- true;
+                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState74) : 'freshtv262)
+        | _ ->
+            assert (not _menhir_env._menhir_error);
+            _menhir_env._menhir_error <- true;
+            let (_menhir_env : _menhir_env) = _menhir_env in
+            let (_menhir_stack : 'freshtv263 * _menhir_state * 'tv_core_pat) = Obj.magic _menhir_stack in
+            ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv264)) : 'freshtv266)
+    | _ ->
+        _menhir_fail ()
+
+and _menhir_goto_core_val : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_core_val -> 'ttv_return =
+  fun _menhir_env _menhir_stack _menhir_s _v ->
+    let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
+    match _menhir_s with
+    | MenhirState41 | MenhirState35 ->
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : 'freshtv247 * _menhir_state * 'tv_core_val) = Obj.magic _menhir_stack in
+        ((assert (not _menhir_env._menhir_error);
+        let _tok = _menhir_env._menhir_token in
+        match _tok with
+        | SEMICOLON ->
+            let (_menhir_env : _menhir_env) = _menhir_env in
+            let (_menhir_stack : 'freshtv241 * _menhir_state * 'tv_core_val) = Obj.magic _menhir_stack in
+            ((let _menhir_env = _menhir_discard _menhir_env in
+            let _tok = _menhir_env._menhir_token in
+            match _tok with
+            | ID _v ->
+                _menhir_run36 _menhir_env (Obj.magic _menhir_stack) MenhirState41 _v
+            | INT _v ->
+                _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState41 _v
+            | LAM ->
+                _menhir_run31 _menhir_env (Obj.magic _menhir_stack) MenhirState41
+            | STRING _v ->
+                _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState41 _v
+            | _ ->
+                assert (not _menhir_env._menhir_error);
+                _menhir_env._menhir_error <- true;
+                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState41) : 'freshtv242)
+        | RIGHT_PAREN ->
+            let (_menhir_env : _menhir_env) = _menhir_env in
+            let (_menhir_stack : 'freshtv243 * _menhir_state * 'tv_core_val) = Obj.magic _menhir_stack in
+            ((let (_menhir_stack, _menhir_s, (x : 'tv_core_val)) = _menhir_stack in
+            let _v : 'tv_separated_nonempty_list_SEMICOLON_core_val_ = 
+# 241 "/home/joel/.opam/default/lib/menhir/standard.mly"
+    ( [ x ] )
+# 681 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+             in
+            _menhir_goto_separated_nonempty_list_SEMICOLON_core_val_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv244)
+        | _ ->
+            assert (not _menhir_env._menhir_error);
+            _menhir_env._menhir_error <- true;
+            let (_menhir_env : _menhir_env) = _menhir_env in
+            let (_menhir_stack : 'freshtv245 * _menhir_state * 'tv_core_val) = Obj.magic _menhir_stack in
+            ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv246)) : 'freshtv248)
+    | MenhirState26 | MenhirState32 | MenhirState80 | MenhirState74 | MenhirState44 | MenhirState55 | MenhirState50 | MenhirState47 ->
+        let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : 'freshtv251 * _menhir_state * 'tv_core_val) = Obj.magic _menhir_stack in
+        ((let (_menhir_env : _menhir_env) = _menhir_env in
+        let (_menhir_stack : 'freshtv249 * _menhir_state * 'tv_core_val) = Obj.magic _menhir_stack in
+        ((let (_menhir_stack, _menhir_s, (_1 : 'tv_core_val)) = _menhir_stack in
+        let _v : (
+# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+      (core)
+# 700 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+        ) = 
+# 68 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+  ( CoreVal _1 )
+# 704 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+         in
+        _menhir_goto_core _menhir_env _menhir_stack _menhir_s _v) : 'freshtv250)) : 'freshtv252)
     | _ ->
         _menhir_fail ()
 
 and _menhir_run36 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 651 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 713 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
@@ -660,414 +722,402 @@ and _menhir_run36 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         assert (not _menhir_env._menhir_error);
         _menhir_env._menhir_error <- true;
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv257 * _menhir_state * (
+        let (_menhir_stack : 'freshtv239 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 667 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 729 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv258)
+        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv240)
 
 and _menhir_goto_core : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 675 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 737 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
     match _menhir_s with
-    | MenhirState49 ->
+    | MenhirState47 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv201 * _menhir_state)) * _menhir_state * (
+        let (_menhir_stack : (('freshtv183 * _menhir_state)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 685 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 747 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((assert (not _menhir_env._menhir_error);
         let _tok = _menhir_env._menhir_token in
         match _tok with
         | SEMICOLON ->
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (('freshtv197 * _menhir_state)) * _menhir_state * (
+            let (_menhir_stack : (('freshtv179 * _menhir_state)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 695 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 757 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let _menhir_env = _menhir_discard _menhir_env in
             let _tok = _menhir_env._menhir_token in
             match _tok with
             | APP ->
-                _menhir_run48 _menhir_env (Obj.magic _menhir_stack) MenhirState52
+                _menhir_run46 _menhir_env (Obj.magic _menhir_stack) MenhirState50
             | CASE ->
-                _menhir_run45 _menhir_env (Obj.magic _menhir_stack) MenhirState52
-            | HASH ->
-                _menhir_run37 _menhir_env (Obj.magic _menhir_stack) MenhirState52
+                _menhir_run43 _menhir_env (Obj.magic _menhir_stack) MenhirState50
             | ID _v ->
-                _menhir_run47 _menhir_env (Obj.magic _menhir_stack) MenhirState52 _v
+                _menhir_run45 _menhir_env (Obj.magic _menhir_stack) MenhirState50 _v
             | INT _v ->
-                _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState52 _v
+                _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState50 _v
             | LAM ->
-                _menhir_run31 _menhir_env (Obj.magic _menhir_stack) MenhirState52
+                _menhir_run31 _menhir_env (Obj.magic _menhir_stack) MenhirState50
             | LEFT_OXFORD ->
-                _menhir_run28 _menhir_env (Obj.magic _menhir_stack) MenhirState52
+                _menhir_run28 _menhir_env (Obj.magic _menhir_stack) MenhirState50
             | STRING _v ->
-                _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState52 _v
+                _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState50 _v
             | RIGHT_PAREN ->
                 let (_menhir_env : _menhir_env) = _menhir_env in
-                let (_menhir_stack : 'freshtv195) = Obj.magic _menhir_stack in
-                let (_menhir_s : _menhir_state) = MenhirState52 in
+                let (_menhir_stack : 'freshtv177) = Obj.magic _menhir_stack in
+                let (_menhir_s : _menhir_state) = MenhirState50 in
                 ((let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_core__ = 
 # 142 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [] )
-# 723 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 783 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
                  in
-                _menhir_goto_loption_separated_nonempty_list_SEMICOLON_core__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv196)
+                _menhir_goto_loption_separated_nonempty_list_SEMICOLON_core__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv178)
             | _ ->
                 assert (not _menhir_env._menhir_error);
                 _menhir_env._menhir_error <- true;
-                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState52) : 'freshtv198)
+                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState50) : 'freshtv180)
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (('freshtv199 * _menhir_state)) * _menhir_state * (
+            let (_menhir_stack : (('freshtv181 * _menhir_state)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 737 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 797 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv200)) : 'freshtv202)
-    | MenhirState57 | MenhirState52 ->
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv182)) : 'freshtv184)
+    | MenhirState55 | MenhirState50 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv209 * _menhir_state * (
+        let (_menhir_stack : 'freshtv191 * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 746 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 806 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((assert (not _menhir_env._menhir_error);
         let _tok = _menhir_env._menhir_token in
         match _tok with
         | SEMICOLON ->
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv203 * _menhir_state * (
+            let (_menhir_stack : 'freshtv185 * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 756 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 816 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let _menhir_env = _menhir_discard _menhir_env in
             let _tok = _menhir_env._menhir_token in
             match _tok with
             | APP ->
-                _menhir_run48 _menhir_env (Obj.magic _menhir_stack) MenhirState57
+                _menhir_run46 _menhir_env (Obj.magic _menhir_stack) MenhirState55
             | CASE ->
-                _menhir_run45 _menhir_env (Obj.magic _menhir_stack) MenhirState57
-            | HASH ->
-                _menhir_run37 _menhir_env (Obj.magic _menhir_stack) MenhirState57
+                _menhir_run43 _menhir_env (Obj.magic _menhir_stack) MenhirState55
             | ID _v ->
-                _menhir_run47 _menhir_env (Obj.magic _menhir_stack) MenhirState57 _v
+                _menhir_run45 _menhir_env (Obj.magic _menhir_stack) MenhirState55 _v
             | INT _v ->
-                _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState57 _v
+                _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState55 _v
             | LAM ->
-                _menhir_run31 _menhir_env (Obj.magic _menhir_stack) MenhirState57
+                _menhir_run31 _menhir_env (Obj.magic _menhir_stack) MenhirState55
             | LEFT_OXFORD ->
-                _menhir_run28 _menhir_env (Obj.magic _menhir_stack) MenhirState57
+                _menhir_run28 _menhir_env (Obj.magic _menhir_stack) MenhirState55
             | STRING _v ->
-                _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState57 _v
+                _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState55 _v
             | _ ->
                 assert (not _menhir_env._menhir_error);
                 _menhir_env._menhir_error <- true;
-                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState57) : 'freshtv204)
+                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState55) : 'freshtv186)
         | RIGHT_PAREN ->
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv205 * _menhir_state * (
+            let (_menhir_stack : 'freshtv187 * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 786 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 844 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, (x : (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 791 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 849 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             ))) = _menhir_stack in
             let _v : 'tv_separated_nonempty_list_SEMICOLON_core_ = 
 # 241 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [ x ] )
-# 796 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 854 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
              in
-            _menhir_goto_separated_nonempty_list_SEMICOLON_core_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv206)
+            _menhir_goto_separated_nonempty_list_SEMICOLON_core_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv188)
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv207 * _menhir_state * (
+            let (_menhir_stack : 'freshtv189 * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 806 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 864 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv208)) : 'freshtv210)
-    | MenhirState46 ->
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv190)) : 'freshtv192)
+    | MenhirState44 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv217 * _menhir_state)) * _menhir_state * (
+        let (_menhir_stack : (('freshtv199 * _menhir_state)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 815 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 873 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((assert (not _menhir_env._menhir_error);
         let _tok = _menhir_env._menhir_token in
         match _tok with
         | SEMICOLON ->
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (('freshtv213 * _menhir_state)) * _menhir_state * (
+            let (_menhir_stack : (('freshtv195 * _menhir_state)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 825 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 883 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let _menhir_env = _menhir_discard _menhir_env in
             let _tok = _menhir_env._menhir_token in
             match _tok with
             | DEFAULT ->
-                _menhir_run64 _menhir_env (Obj.magic _menhir_stack) MenhirState60
+                _menhir_run62 _menhir_env (Obj.magic _menhir_stack) MenhirState58
             | ID _v ->
-                _menhir_run62 _menhir_env (Obj.magic _menhir_stack) MenhirState60 _v
+                _menhir_run60 _menhir_env (Obj.magic _menhir_stack) MenhirState58 _v
             | INT _v ->
-                _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState60 _v
+                _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState58 _v
             | STRING _v ->
-                _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState60 _v
+                _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState58 _v
             | UNDERSCORE ->
-                _menhir_run61 _menhir_env (Obj.magic _menhir_stack) MenhirState60
+                _menhir_run59 _menhir_env (Obj.magic _menhir_stack) MenhirState58
             | RIGHT_PAREN ->
                 let (_menhir_env : _menhir_env) = _menhir_env in
-                let (_menhir_stack : 'freshtv211) = Obj.magic _menhir_stack in
-                let (_menhir_s : _menhir_state) = MenhirState60 in
+                let (_menhir_stack : 'freshtv193) = Obj.magic _menhir_stack in
+                let (_menhir_s : _menhir_state) = MenhirState58 in
                 ((let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_case__ = 
 # 142 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [] )
-# 847 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 905 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
                  in
-                _menhir_goto_loption_separated_nonempty_list_SEMICOLON_case__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv212)
+                _menhir_goto_loption_separated_nonempty_list_SEMICOLON_case__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv194)
             | _ ->
                 assert (not _menhir_env._menhir_error);
                 _menhir_env._menhir_error <- true;
-                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState60) : 'freshtv214)
+                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState58) : 'freshtv196)
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (('freshtv215 * _menhir_state)) * _menhir_state * (
+            let (_menhir_stack : (('freshtv197 * _menhir_state)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 861 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 919 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv216)) : 'freshtv218)
-    | MenhirState76 ->
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv198)) : 'freshtv200)
+    | MenhirState74 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv231 * _menhir_state * 'tv_core_pat)) * _menhir_state * (
+        let (_menhir_stack : (('freshtv213 * _menhir_state * 'tv_core_pat)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 870 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 928 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv229 * _menhir_state * 'tv_core_pat)) * _menhir_state * (
+        let (_menhir_stack : (('freshtv211 * _menhir_state * 'tv_core_pat)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 876 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 934 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let ((_menhir_stack, _menhir_s, (_1 : 'tv_core_pat)), _, (_3 : (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 881 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 939 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))) = _menhir_stack in
         let _2 = () in
         let _v : 'tv_case = 
 # 77 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
                                 ( (_1, _3) )
-# 887 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 945 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
          in
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv227) = _menhir_stack in
+        let (_menhir_stack : 'freshtv209) = _menhir_stack in
         let (_menhir_s : _menhir_state) = _menhir_s in
         let (_v : 'tv_case) = _v in
         ((let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv225 * _menhir_state * 'tv_case) = Obj.magic _menhir_stack in
+        let (_menhir_stack : 'freshtv207 * _menhir_state * 'tv_case) = Obj.magic _menhir_stack in
         ((assert (not _menhir_env._menhir_error);
         let _tok = _menhir_env._menhir_token in
         match _tok with
         | SEMICOLON ->
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv219 * _menhir_state * 'tv_case) = Obj.magic _menhir_stack in
+            let (_menhir_stack : 'freshtv201 * _menhir_state * 'tv_case) = Obj.magic _menhir_stack in
             ((let _menhir_env = _menhir_discard _menhir_env in
             let _tok = _menhir_env._menhir_token in
             match _tok with
             | DEFAULT ->
-                _menhir_run64 _menhir_env (Obj.magic _menhir_stack) MenhirState79
+                _menhir_run62 _menhir_env (Obj.magic _menhir_stack) MenhirState77
             | ID _v ->
-                _menhir_run62 _menhir_env (Obj.magic _menhir_stack) MenhirState79 _v
+                _menhir_run60 _menhir_env (Obj.magic _menhir_stack) MenhirState77 _v
             | INT _v ->
-                _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState79 _v
+                _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState77 _v
             | STRING _v ->
-                _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState79 _v
+                _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState77 _v
             | UNDERSCORE ->
-                _menhir_run61 _menhir_env (Obj.magic _menhir_stack) MenhirState79
+                _menhir_run59 _menhir_env (Obj.magic _menhir_stack) MenhirState77
             | _ ->
                 assert (not _menhir_env._menhir_error);
                 _menhir_env._menhir_error <- true;
-                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState79) : 'freshtv220)
+                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState77) : 'freshtv202)
         | RIGHT_PAREN ->
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv221 * _menhir_state * 'tv_case) = Obj.magic _menhir_stack in
+            let (_menhir_stack : 'freshtv203 * _menhir_state * 'tv_case) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, (x : 'tv_case)) = _menhir_stack in
             let _v : 'tv_separated_nonempty_list_SEMICOLON_case_ = 
 # 241 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [ x ] )
-# 926 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 984 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
              in
-            _menhir_goto_separated_nonempty_list_SEMICOLON_case_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv222)
+            _menhir_goto_separated_nonempty_list_SEMICOLON_case_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv204)
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv223 * _menhir_state * 'tv_case) = Obj.magic _menhir_stack in
+            let (_menhir_stack : 'freshtv205 * _menhir_state * 'tv_case) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv224)) : 'freshtv226)) : 'freshtv228)) : 'freshtv230)) : 'freshtv232)
-    | MenhirState82 ->
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv206)) : 'freshtv208)) : 'freshtv210)) : 'freshtv212)) : 'freshtv214)
+    | MenhirState80 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (((('freshtv239 * _menhir_state)) * _menhir_state * 'tv_separated_nonempty_list_DOT_ID_)) * _menhir_state * (
+        let (_menhir_stack : (((('freshtv221 * _menhir_state)) * _menhir_state * 'tv_separated_nonempty_list_DOT_ID_)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 941 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 999 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((assert (not _menhir_env._menhir_error);
         let _tok = _menhir_env._menhir_token in
         match _tok with
         | RIGHT_PAREN ->
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (((('freshtv235 * _menhir_state)) * _menhir_state * 'tv_separated_nonempty_list_DOT_ID_)) * _menhir_state * (
+            let (_menhir_stack : (((('freshtv217 * _menhir_state)) * _menhir_state * 'tv_separated_nonempty_list_DOT_ID_)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 951 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1009 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let _menhir_env = _menhir_discard _menhir_env in
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (((('freshtv233 * _menhir_state)) * _menhir_state * 'tv_separated_nonempty_list_DOT_ID_)) * _menhir_state * (
+            let (_menhir_stack : (((('freshtv215 * _menhir_state)) * _menhir_state * 'tv_separated_nonempty_list_DOT_ID_)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 958 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1016 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let (((_menhir_stack, _menhir_s), _, (_3 : 'tv_separated_nonempty_list_DOT_ID_)), _, (_5 : (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 963 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1021 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             ))) = _menhir_stack in
             let _6 = () in
             let _4 = () in
             let _2 = () in
             let _1 = () in
-            let _v : (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 972 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-            ) = 
-# 68 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-  ( Lam (_3, _5) )
-# 976 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+            let _v : 'tv_core_val = 
+# 56 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+  ( ValLam (_3, _5) )
+# 1030 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
              in
-            _menhir_goto_core _menhir_env _menhir_stack _menhir_s _v) : 'freshtv234)) : 'freshtv236)
+            _menhir_goto_core_val _menhir_env _menhir_stack _menhir_s _v) : 'freshtv216)) : 'freshtv218)
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (((('freshtv237 * _menhir_state)) * _menhir_state * 'tv_separated_nonempty_list_DOT_ID_)) * _menhir_state * (
+            let (_menhir_stack : (((('freshtv219 * _menhir_state)) * _menhir_state * 'tv_separated_nonempty_list_DOT_ID_)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 986 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1040 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv238)) : 'freshtv240)
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv220)) : 'freshtv222)
     | MenhirState32 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (('freshtv247 * _menhir_state)) * _menhir_state * (
+        let (_menhir_stack : (('freshtv229 * _menhir_state)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 995 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1049 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((assert (not _menhir_env._menhir_error);
         let _tok = _menhir_env._menhir_token in
         match _tok with
         | RIGHT_PAREN ->
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (('freshtv243 * _menhir_state)) * _menhir_state * (
+            let (_menhir_stack : (('freshtv225 * _menhir_state)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 1005 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1059 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let _menhir_env = _menhir_discard _menhir_env in
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (('freshtv241 * _menhir_state)) * _menhir_state * (
+            let (_menhir_stack : (('freshtv223 * _menhir_state)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 1012 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1066 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let ((_menhir_stack, _menhir_s), _, (_3 : (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 1017 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1071 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             ))) = _menhir_stack in
             let _4 = () in
             let _2 = () in
             let _1 = () in
-            let _v : (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 1025 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-            ) = 
-# 70 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-  ( Lam ([], _3) )
-# 1029 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+            let _v : 'tv_core_val = 
+# 58 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+  ( ValLam ([], _3) )
+# 1079 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
              in
-            _menhir_goto_core _menhir_env _menhir_stack _menhir_s _v) : 'freshtv242)) : 'freshtv244)
+            _menhir_goto_core_val _menhir_env _menhir_stack _menhir_s _v) : 'freshtv224)) : 'freshtv226)
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : (('freshtv245 * _menhir_state)) * _menhir_state * (
+            let (_menhir_stack : (('freshtv227 * _menhir_state)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 1039 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1089 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv246)) : 'freshtv248)
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv228)) : 'freshtv230)
     | MenhirState26 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (((('freshtv255 * _menhir_state) * _menhir_state * (
+        let (_menhir_stack : (((('freshtv237 * _menhir_state) * _menhir_state * (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1048 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1098 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )))) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 1052 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1102 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : (((('freshtv253 * _menhir_state) * _menhir_state * (
+        let (_menhir_stack : (((('freshtv235 * _menhir_state) * _menhir_state * (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1058 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1108 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )))) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 1062 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1112 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (((_menhir_stack, _menhir_s), _, (_2 : (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1067 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1117 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))), _, (_5 : (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 1071 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1121 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))) = _menhir_stack in
         let _4 = () in
         let _3 = () in
@@ -1075,114 +1125,114 @@ and _menhir_goto_core : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let _v : (
 # 29 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat * core)
-# 1079 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1129 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ) = 
 # 96 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
                                                     ( (_2, _5) )
-# 1083 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1133 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
          in
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv251) = _menhir_stack in
+        let (_menhir_stack : 'freshtv233) = _menhir_stack in
         let (_menhir_s : _menhir_state) = _menhir_s in
         let (_v : (
 # 29 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat * core)
-# 1091 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1141 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = _v in
         ((let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv249 * _menhir_state * (
+        let (_menhir_stack : 'freshtv231 * _menhir_state * (
 # 29 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat * core)
-# 1098 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1148 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((assert (not _menhir_env._menhir_error);
         let _tok = _menhir_env._menhir_token in
         match _tok with
         | LEFT_OXFORD ->
-            _menhir_run1 _menhir_env (Obj.magic _menhir_stack) MenhirState90
+            _menhir_run1 _menhir_env (Obj.magic _menhir_stack) MenhirState88
         | EOF ->
-            _menhir_reduce19 _menhir_env (Obj.magic _menhir_stack) MenhirState90
+            _menhir_reduce18 _menhir_env (Obj.magic _menhir_stack) MenhirState88
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState90) : 'freshtv250)) : 'freshtv252)) : 'freshtv254)) : 'freshtv256)
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState88) : 'freshtv232)) : 'freshtv234)) : 'freshtv236)) : 'freshtv238)
     | _ ->
         _menhir_fail ()
 
 and _menhir_goto_prim : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_prim -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     match _menhir_s with
-    | MenhirState26 | MenhirState32 | MenhirState82 | MenhirState76 | MenhirState46 | MenhirState57 | MenhirState52 | MenhirState49 | MenhirState43 | MenhirState35 ->
+    | MenhirState26 | MenhirState32 | MenhirState80 | MenhirState74 | MenhirState44 | MenhirState55 | MenhirState50 | MenhirState47 | MenhirState41 | MenhirState35 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv189) = Obj.magic _menhir_stack in
+        let (_menhir_stack : 'freshtv171) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = _menhir_s in
         let (_v : 'tv_prim) = _v in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv187) = Obj.magic _menhir_stack in
+        let (_menhir_stack : 'freshtv169) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = _menhir_s in
         let ((_1 : 'tv_prim) : 'tv_prim) = _v in
         ((let _v : 'tv_core_val = 
 # 54 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-  ( ValLit _1 )
-# 1129 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+  ( ValPrim _1 )
+# 1179 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
          in
-        _menhir_goto_core_val _menhir_env _menhir_stack _menhir_s _v) : 'freshtv188)) : 'freshtv190)
-    | MenhirState79 | MenhirState60 | MenhirState70 | MenhirState63 ->
+        _menhir_goto_core_val _menhir_env _menhir_stack _menhir_s _v) : 'freshtv170)) : 'freshtv172)
+    | MenhirState77 | MenhirState58 | MenhirState68 | MenhirState61 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv193) = Obj.magic _menhir_stack in
+        let (_menhir_stack : 'freshtv175) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = _menhir_s in
         let (_v : 'tv_prim) = _v in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv191) = Obj.magic _menhir_stack in
+        let (_menhir_stack : 'freshtv173) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = _menhir_s in
         let ((_1 : 'tv_prim) : 'tv_prim) = _v in
         ((let _v : 'tv_core_pat = 
 # 87 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
   ( PatternLit _1 )
-# 1144 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1194 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
          in
-        _menhir_goto_core_pat _menhir_env _menhir_stack _menhir_s _v) : 'freshtv192)) : 'freshtv194)
+        _menhir_goto_core_pat _menhir_env _menhir_stack _menhir_s _v) : 'freshtv174)) : 'freshtv176)
     | _ ->
         _menhir_fail ()
 
 and _menhir_reduce4 : _menhir_env -> 'ttv_tail * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1153 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1203 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack ->
     let (_menhir_stack, _menhir_s, (_1 : (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1159 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1209 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
     ))) = _menhir_stack in
     let _v : (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 1164 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1214 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
     ) = 
-# 66 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
+# 70 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
   ( CoreVar _1 )
-# 1168 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1218 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
      in
     _menhir_goto_core _menhir_env _menhir_stack _menhir_s _v
 
 and _menhir_run35 : _menhir_env -> 'ttv_tail * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1175 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1225 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack ->
     let _menhir_env = _menhir_discard _menhir_env in
     let _tok = _menhir_env._menhir_token in
     match _tok with
-    | HASH ->
-        _menhir_run37 _menhir_env (Obj.magic _menhir_stack) MenhirState35
     | ID _v ->
         _menhir_run36 _menhir_env (Obj.magic _menhir_stack) MenhirState35 _v
     | INT _v ->
         _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState35 _v
+    | LAM ->
+        _menhir_run31 _menhir_env (Obj.magic _menhir_stack) MenhirState35
     | STRING _v ->
         _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState35 _v
     | _ ->
@@ -1190,95 +1240,31 @@ and _menhir_run35 : _menhir_env -> 'ttv_tail * _menhir_state * (
         _menhir_env._menhir_error <- true;
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState35
 
-and _menhir_goto_core_val : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_core_val -> 'ttv_return =
-  fun _menhir_env _menhir_stack _menhir_s _v ->
-    let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
-    match _menhir_s with
-    | MenhirState43 | MenhirState35 ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv181 * _menhir_state * 'tv_core_val) = Obj.magic _menhir_stack in
-        ((assert (not _menhir_env._menhir_error);
-        let _tok = _menhir_env._menhir_token in
-        match _tok with
-        | SEMICOLON ->
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv175 * _menhir_state * 'tv_core_val) = Obj.magic _menhir_stack in
-            ((let _menhir_env = _menhir_discard _menhir_env in
-            let _tok = _menhir_env._menhir_token in
-            match _tok with
-            | HASH ->
-                _menhir_run37 _menhir_env (Obj.magic _menhir_stack) MenhirState43
-            | ID _v ->
-                _menhir_run36 _menhir_env (Obj.magic _menhir_stack) MenhirState43 _v
-            | INT _v ->
-                _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState43 _v
-            | STRING _v ->
-                _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState43 _v
-            | _ ->
-                assert (not _menhir_env._menhir_error);
-                _menhir_env._menhir_error <- true;
-                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState43) : 'freshtv176)
-        | RIGHT_PAREN ->
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv177 * _menhir_state * 'tv_core_val) = Obj.magic _menhir_stack in
-            ((let (_menhir_stack, _menhir_s, (x : 'tv_core_val)) = _menhir_stack in
-            let _v : 'tv_separated_nonempty_list_SEMICOLON_core_val_ = 
-# 241 "/home/joel/.opam/default/lib/menhir/standard.mly"
-    ( [ x ] )
-# 1229 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-             in
-            _menhir_goto_separated_nonempty_list_SEMICOLON_core_val_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv178)
-        | _ ->
-            assert (not _menhir_env._menhir_error);
-            _menhir_env._menhir_error <- true;
-            let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv179 * _menhir_state * 'tv_core_val) = Obj.magic _menhir_stack in
-            ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv180)) : 'freshtv182)
-    | MenhirState26 | MenhirState32 | MenhirState82 | MenhirState76 | MenhirState46 | MenhirState57 | MenhirState52 | MenhirState49 ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv185 * _menhir_state * 'tv_core_val) = Obj.magic _menhir_stack in
-        ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv183 * _menhir_state * 'tv_core_val) = Obj.magic _menhir_stack in
-        ((let (_menhir_stack, _menhir_s, (_1 : 'tv_core_val)) = _menhir_stack in
-        let _v : (
-# 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-      (core)
-# 1248 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        ) = 
-# 64 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-  ( CoreVal _1 )
-# 1252 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-         in
-        _menhir_goto_core _menhir_env _menhir_stack _menhir_s _v) : 'freshtv184)) : 'freshtv186)
-    | _ ->
-        _menhir_fail ()
-
 and _menhir_goto_separated_nonempty_list_SEMICOLON_scope_pat_ : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_separated_nonempty_list_SEMICOLON_scope_pat_ -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     match _menhir_s with
     | MenhirState4 | MenhirState10 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv169) = Obj.magic _menhir_stack in
+        let (_menhir_stack : 'freshtv163) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = _menhir_s in
         let (_v : 'tv_separated_nonempty_list_SEMICOLON_scope_pat_) = _v in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv167) = Obj.magic _menhir_stack in
+        let (_menhir_stack : 'freshtv161) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = _menhir_s in
         let ((x : 'tv_separated_nonempty_list_SEMICOLON_scope_pat_) : 'tv_separated_nonempty_list_SEMICOLON_scope_pat_) = _v in
         ((let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_scope_pat__ = 
 # 144 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( x )
-# 1273 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1259 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
          in
-        _menhir_goto_loption_separated_nonempty_list_SEMICOLON_scope_pat__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv168)) : 'freshtv170)
+        _menhir_goto_loption_separated_nonempty_list_SEMICOLON_scope_pat__ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv162)) : 'freshtv164)
     | MenhirState14 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : ('freshtv173 * _menhir_state * 'tv_scope_pat)) = Obj.magic _menhir_stack in
+        let (_menhir_stack : ('freshtv167 * _menhir_state * 'tv_scope_pat)) = Obj.magic _menhir_stack in
         let (_menhir_s : _menhir_state) = _menhir_s in
         let (_v : 'tv_separated_nonempty_list_SEMICOLON_scope_pat_) = _v in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : ('freshtv171 * _menhir_state * 'tv_scope_pat)) = Obj.magic _menhir_stack in
+        let (_menhir_stack : ('freshtv165 * _menhir_state * 'tv_scope_pat)) = Obj.magic _menhir_stack in
         let (_ : _menhir_state) = _menhir_s in
         let ((xs : 'tv_separated_nonempty_list_SEMICOLON_scope_pat_) : 'tv_separated_nonempty_list_SEMICOLON_scope_pat_) = _v in
         ((let (_menhir_stack, _menhir_s, (x : 'tv_scope_pat)) = _menhir_stack in
@@ -1286,37 +1272,37 @@ and _menhir_goto_separated_nonempty_list_SEMICOLON_scope_pat_ : _menhir_env -> '
         let _v : 'tv_separated_nonempty_list_SEMICOLON_scope_pat_ = 
 # 243 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 1290 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1276 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
          in
-        _menhir_goto_separated_nonempty_list_SEMICOLON_scope_pat_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv172)) : 'freshtv174)
+        _menhir_goto_separated_nonempty_list_SEMICOLON_scope_pat_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv166)) : 'freshtv168)
     | _ ->
         _menhir_fail ()
 
 and _menhir_run27 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 9 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1299 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1285 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_env = _menhir_discard _menhir_env in
     let (_menhir_env : _menhir_env) = _menhir_env in
-    let (_menhir_stack : 'freshtv165) = Obj.magic _menhir_stack in
+    let (_menhir_stack : 'freshtv159) = Obj.magic _menhir_stack in
     let (_menhir_s : _menhir_state) = _menhir_s in
     let ((_1 : (
 # 9 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1309 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1295 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
     )) : (
 # 9 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1313 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1299 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
     )) = _v in
     ((let _v : 'tv_prim = 
 # 94 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
            ( PrimString  _1     )
-# 1318 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1304 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
      in
-    _menhir_goto_prim _menhir_env _menhir_stack _menhir_s _v) : 'freshtv166)
+    _menhir_goto_prim _menhir_env _menhir_stack _menhir_s _v) : 'freshtv160)
 
 and _menhir_run28 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
@@ -1326,11 +1312,11 @@ and _menhir_run28 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
     match _tok with
     | ID _v ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv161 * _menhir_state) = Obj.magic _menhir_stack in
+        let (_menhir_stack : 'freshtv155 * _menhir_state) = Obj.magic _menhir_stack in
         let (_v : (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1334 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1320 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = _v in
         ((let _menhir_stack = (_menhir_stack, _v) in
         let _menhir_env = _menhir_discard _menhir_env in
@@ -1338,53 +1324,53 @@ and _menhir_run28 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
         match _tok with
         | RIGHT_OXFORD ->
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : ('freshtv157 * _menhir_state) * (
+            let (_menhir_stack : ('freshtv151 * _menhir_state) * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1345 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1331 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let _menhir_env = _menhir_discard _menhir_env in
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : ('freshtv155 * _menhir_state) * (
+            let (_menhir_stack : ('freshtv149 * _menhir_state) * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1352 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1338 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let ((_menhir_stack, _menhir_s), (_2 : (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1357 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1343 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             ))) = _menhir_stack in
             let _3 = () in
             let _1 = () in
             let _v : (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 1364 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1350 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             ) = 
 # 74 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
   ( Meaning _2 )
-# 1368 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1354 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
              in
-            _menhir_goto_core _menhir_env _menhir_stack _menhir_s _v) : 'freshtv156)) : 'freshtv158)
+            _menhir_goto_core _menhir_env _menhir_stack _menhir_s _v) : 'freshtv150)) : 'freshtv152)
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : ('freshtv159 * _menhir_state) * (
+            let (_menhir_stack : ('freshtv153 * _menhir_state) * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1378 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1364 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let ((_menhir_stack, _menhir_s), _) = _menhir_stack in
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv160)) : 'freshtv162)
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv154)) : 'freshtv156)
     | _ ->
         assert (not _menhir_env._menhir_error);
         _menhir_env._menhir_error <- true;
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv163 * _menhir_state) = Obj.magic _menhir_stack in
+        let (_menhir_stack : 'freshtv157 * _menhir_state) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s) = _menhir_stack in
-        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv164)
+        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv158)
 
 and _menhir_run31 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
@@ -1394,24 +1380,22 @@ and _menhir_run31 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
     match _tok with
     | LEFT_PAREN ->
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv151 * _menhir_state) = Obj.magic _menhir_stack in
+        let (_menhir_stack : 'freshtv145 * _menhir_state) = Obj.magic _menhir_stack in
         ((let _menhir_env = _menhir_discard _menhir_env in
         let _tok = _menhir_env._menhir_token in
         match _tok with
         | APP ->
-            _menhir_run48 _menhir_env (Obj.magic _menhir_stack) MenhirState32
+            _menhir_run46 _menhir_env (Obj.magic _menhir_stack) MenhirState32
         | CASE ->
-            _menhir_run45 _menhir_env (Obj.magic _menhir_stack) MenhirState32
-        | HASH ->
-            _menhir_run37 _menhir_env (Obj.magic _menhir_stack) MenhirState32
+            _menhir_run43 _menhir_env (Obj.magic _menhir_stack) MenhirState32
         | ID _v ->
             let (_menhir_env : _menhir_env) = _menhir_env in
-            let (_menhir_stack : 'freshtv149) = Obj.magic _menhir_stack in
+            let (_menhir_stack : 'freshtv143) = Obj.magic _menhir_stack in
             let (_menhir_s : _menhir_state) = MenhirState32 in
             let (_v : (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1415 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1399 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = _v in
             ((let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
             let _menhir_env = _menhir_discard _menhir_env in
@@ -1427,13 +1411,13 @@ and _menhir_run31 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
                 assert (not _menhir_env._menhir_error);
                 _menhir_env._menhir_error <- true;
                 let (_menhir_env : _menhir_env) = _menhir_env in
-                let (_menhir_stack : 'freshtv147 * _menhir_state * (
+                let (_menhir_stack : 'freshtv141 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1434 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1418 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
                 )) = Obj.magic _menhir_stack in
                 ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv148)) : 'freshtv150)
+                _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv142)) : 'freshtv144)
         | INT _v ->
             _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState32 _v
         | LAM ->
@@ -1445,45 +1429,45 @@ and _menhir_run31 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState32) : 'freshtv152)
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState32) : 'freshtv146)
     | _ ->
         assert (not _menhir_env._menhir_error);
         _menhir_env._menhir_error <- true;
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv153 * _menhir_state) = Obj.magic _menhir_stack in
+        let (_menhir_stack : 'freshtv147 * _menhir_state) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s) = _menhir_stack in
-        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv154)
+        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv148)
 
 and _menhir_run33 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 7 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (Bigint.t)
-# 1461 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1445 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_env = _menhir_discard _menhir_env in
     let (_menhir_env : _menhir_env) = _menhir_env in
-    let (_menhir_stack : 'freshtv145) = Obj.magic _menhir_stack in
+    let (_menhir_stack : 'freshtv139) = Obj.magic _menhir_stack in
     let (_menhir_s : _menhir_state) = _menhir_s in
     let ((_1 : (
 # 7 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (Bigint.t)
-# 1471 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1455 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
     )) : (
 # 7 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (Bigint.t)
-# 1475 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1459 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
     )) = _v in
     ((let _v : 'tv_prim = 
 # 93 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
            ( PrimInteger _1     )
-# 1480 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1464 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
      in
-    _menhir_goto_prim _menhir_env _menhir_stack _menhir_s _v) : 'freshtv146)
+    _menhir_goto_prim _menhir_env _menhir_stack _menhir_s _v) : 'freshtv140)
 
-and _menhir_run47 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
+and _menhir_run45 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1487 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1471 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
@@ -1498,57 +1482,15 @@ and _menhir_run47 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         assert (not _menhir_env._menhir_error);
         _menhir_env._menhir_error <- true;
         let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv143 * _menhir_state * (
+        let (_menhir_stack : 'freshtv137 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1505 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1489 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
-        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv144)
+        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv138)
 
-and _menhir_run37 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
-  fun _menhir_env _menhir_stack _menhir_s ->
-    let _menhir_stack = (_menhir_stack, _menhir_s) in
-    let _menhir_env = _menhir_discard _menhir_env in
-    let _tok = _menhir_env._menhir_token in
-    match _tok with
-    | ID _v ->
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv139 * _menhir_state) = Obj.magic _menhir_stack in
-        let (_v : (
-# 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-       (string)
-# 1522 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        )) = _v in
-        ((let _menhir_env = _menhir_discard _menhir_env in
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv137 * _menhir_state) = Obj.magic _menhir_stack in
-        let ((_2 : (
-# 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-       (string)
-# 1530 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        )) : (
-# 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-       (string)
-# 1534 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-        )) = _v in
-        ((let (_menhir_stack, _menhir_s) = _menhir_stack in
-        let _1 = () in
-        let _v : 'tv_core_val = 
-# 56 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
-  ( ValPrimop _2 )
-# 1541 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
-         in
-        _menhir_goto_core_val _menhir_env _menhir_stack _menhir_s _v) : 'freshtv138)) : 'freshtv140)
-    | _ ->
-        assert (not _menhir_env._menhir_error);
-        _menhir_env._menhir_error <- true;
-        let (_menhir_env : _menhir_env) = _menhir_env in
-        let (_menhir_stack : 'freshtv141 * _menhir_state) = Obj.magic _menhir_stack in
-        ((let (_menhir_stack, _menhir_s) = _menhir_stack in
-        _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv142)
-
-and _menhir_run45 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
+and _menhir_run43 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _menhir_stack = (_menhir_stack, _menhir_s) in
     let _menhir_env = _menhir_discard _menhir_env in
@@ -1561,25 +1503,23 @@ and _menhir_run45 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
         let _tok = _menhir_env._menhir_token in
         match _tok with
         | APP ->
-            _menhir_run48 _menhir_env (Obj.magic _menhir_stack) MenhirState46
+            _menhir_run46 _menhir_env (Obj.magic _menhir_stack) MenhirState44
         | CASE ->
-            _menhir_run45 _menhir_env (Obj.magic _menhir_stack) MenhirState46
-        | HASH ->
-            _menhir_run37 _menhir_env (Obj.magic _menhir_stack) MenhirState46
+            _menhir_run43 _menhir_env (Obj.magic _menhir_stack) MenhirState44
         | ID _v ->
-            _menhir_run47 _menhir_env (Obj.magic _menhir_stack) MenhirState46 _v
+            _menhir_run45 _menhir_env (Obj.magic _menhir_stack) MenhirState44 _v
         | INT _v ->
-            _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState46 _v
+            _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState44 _v
         | LAM ->
-            _menhir_run31 _menhir_env (Obj.magic _menhir_stack) MenhirState46
+            _menhir_run31 _menhir_env (Obj.magic _menhir_stack) MenhirState44
         | LEFT_OXFORD ->
-            _menhir_run28 _menhir_env (Obj.magic _menhir_stack) MenhirState46
+            _menhir_run28 _menhir_env (Obj.magic _menhir_stack) MenhirState44
         | STRING _v ->
-            _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState46 _v
+            _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState44 _v
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState46) : 'freshtv134)
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState44) : 'freshtv134)
     | _ ->
         assert (not _menhir_env._menhir_error);
         _menhir_env._menhir_error <- true;
@@ -1588,7 +1528,7 @@ and _menhir_run45 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
         ((let (_menhir_stack, _menhir_s) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv136)
 
-and _menhir_run48 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
+and _menhir_run46 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _menhir_stack = (_menhir_stack, _menhir_s) in
     let _menhir_env = _menhir_discard _menhir_env in
@@ -1601,25 +1541,23 @@ and _menhir_run48 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
         let _tok = _menhir_env._menhir_token in
         match _tok with
         | APP ->
-            _menhir_run48 _menhir_env (Obj.magic _menhir_stack) MenhirState49
+            _menhir_run46 _menhir_env (Obj.magic _menhir_stack) MenhirState47
         | CASE ->
-            _menhir_run45 _menhir_env (Obj.magic _menhir_stack) MenhirState49
-        | HASH ->
-            _menhir_run37 _menhir_env (Obj.magic _menhir_stack) MenhirState49
+            _menhir_run43 _menhir_env (Obj.magic _menhir_stack) MenhirState47
         | ID _v ->
-            _menhir_run47 _menhir_env (Obj.magic _menhir_stack) MenhirState49 _v
+            _menhir_run45 _menhir_env (Obj.magic _menhir_stack) MenhirState47 _v
         | INT _v ->
-            _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState49 _v
+            _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState47 _v
         | LAM ->
-            _menhir_run31 _menhir_env (Obj.magic _menhir_stack) MenhirState49
+            _menhir_run31 _menhir_env (Obj.magic _menhir_stack) MenhirState47
         | LEFT_OXFORD ->
-            _menhir_run28 _menhir_env (Obj.magic _menhir_stack) MenhirState49
+            _menhir_run28 _menhir_env (Obj.magic _menhir_stack) MenhirState47
         | STRING _v ->
-            _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState49 _v
+            _menhir_run27 _menhir_env (Obj.magic _menhir_stack) MenhirState47 _v
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
-            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState49) : 'freshtv130)
+            _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState47) : 'freshtv130)
     | _ ->
         assert (not _menhir_env._menhir_error);
         _menhir_env._menhir_error <- true;
@@ -1649,7 +1587,7 @@ and _menhir_goto_scope_pat : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_sc
         | UNDERSCORE ->
             _menhir_run2 _menhir_env (Obj.magic _menhir_stack) MenhirState14
         | DOT ->
-            _menhir_reduce21 _menhir_env (Obj.magic _menhir_stack) MenhirState14
+            _menhir_reduce20 _menhir_env (Obj.magic _menhir_stack) MenhirState14
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
@@ -1661,7 +1599,7 @@ and _menhir_goto_scope_pat : _menhir_env -> 'ttv_tail -> _menhir_state -> 'tv_sc
         let _v : 'tv_separated_nonempty_list_SEMICOLON_scope_pat_ = 
 # 241 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [ x ] )
-# 1665 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1603 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
          in
         _menhir_goto_separated_nonempty_list_SEMICOLON_scope_pat_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv124)
     | _ ->
@@ -1695,16 +1633,16 @@ and _menhir_goto_loption_separated_nonempty_list_SEMICOLON_scope_pat__ : _menhir
             let _v : (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1699 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1637 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             ) = let _3 = 
 # 232 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( xs )
-# 1703 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1641 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
              in
             
 # 37 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
   ( DPatternTm ("app", _3) )
-# 1708 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1646 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
              in
             _menhir_goto_pat _menhir_env _menhir_stack _menhir_s _v) : 'freshtv106)) : 'freshtv108)
         | _ ->
@@ -1719,7 +1657,7 @@ and _menhir_goto_loption_separated_nonempty_list_SEMICOLON_scope_pat__ : _menhir
         let (_menhir_stack : (('freshtv119 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1723 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1661 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_scope_pat__) = Obj.magic _menhir_stack in
         ((assert (not _menhir_env._menhir_error);
         let _tok = _menhir_env._menhir_token in
@@ -1729,35 +1667,35 @@ and _menhir_goto_loption_separated_nonempty_list_SEMICOLON_scope_pat__ : _menhir
             let (_menhir_stack : (('freshtv115 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1733 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1671 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_scope_pat__) = Obj.magic _menhir_stack in
             ((let _menhir_env = _menhir_discard _menhir_env in
             let (_menhir_env : _menhir_env) = _menhir_env in
             let (_menhir_stack : (('freshtv113 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1740 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1678 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_scope_pat__) = Obj.magic _menhir_stack in
             ((let ((_menhir_stack, _menhir_s, (_1 : (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1745 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1683 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             ))), _, (xs : 'tv_loption_separated_nonempty_list_SEMICOLON_scope_pat__)) = _menhir_stack in
             let _4 = () in
             let _2 = () in
             let _v : (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1752 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1690 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             ) = let _3 = 
 # 232 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( xs )
-# 1756 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1694 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
              in
             
 # 35 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
   ( DPatternTm (_1, _3) )
-# 1761 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1699 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
              in
             _menhir_goto_pat _menhir_env _menhir_stack _menhir_s _v) : 'freshtv114)) : 'freshtv116)
         | _ ->
@@ -1767,7 +1705,7 @@ and _menhir_goto_loption_separated_nonempty_list_SEMICOLON_scope_pat__ : _menhir
             let (_menhir_stack : (('freshtv117 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1771 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1709 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             ))) * _menhir_state * 'tv_loption_separated_nonempty_list_SEMICOLON_scope_pat__) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
             _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv118)) : 'freshtv120)
@@ -1777,7 +1715,7 @@ and _menhir_goto_loption_separated_nonempty_list_SEMICOLON_scope_pat__ : _menhir
 and _menhir_run6 : _menhir_env -> 'ttv_tail * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1781 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1719 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack ->
     let _menhir_env = _menhir_discard _menhir_env in
@@ -1790,7 +1728,7 @@ and _menhir_run6 : _menhir_env -> 'ttv_tail * _menhir_state * (
         let (_v : (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1794 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1732 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = _v in
         ((let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
         let _menhir_env = _menhir_discard _menhir_env in
@@ -1805,7 +1743,7 @@ and _menhir_run6 : _menhir_env -> 'ttv_tail * _menhir_state * (
             let (_menhir_stack : 'freshtv101 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1809 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1747 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
             _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv102)) : 'freshtv104)
@@ -1822,7 +1760,7 @@ and _menhir_fail : unit -> 'a =
 and _menhir_goto_pat : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1826 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1764 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
@@ -1832,23 +1770,23 @@ and _menhir_goto_pat : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : 'freshtv85 * _menhir_state * (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1836 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1774 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : 'freshtv83 * _menhir_state * (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1842 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1780 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, (_1 : (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1847 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1785 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))) = _menhir_stack in
         let _v : 'tv_scope_pat = 
 # 48 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
   ( DenotationScopePat ([], _1) )
-# 1852 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1790 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
          in
         _menhir_goto_scope_pat _menhir_env _menhir_stack _menhir_s _v) : 'freshtv84)) : 'freshtv86)
     | MenhirState18 ->
@@ -1856,29 +1794,29 @@ and _menhir_goto_pat : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : (('freshtv89 * _menhir_state * 'tv_loption_separated_nonempty_list_DOT_ID__)) * _menhir_state * (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1860 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1798 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : (('freshtv87 * _menhir_state * 'tv_loption_separated_nonempty_list_DOT_ID__)) * _menhir_state * (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1866 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1804 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let ((_menhir_stack, _menhir_s, (xs : 'tv_loption_separated_nonempty_list_DOT_ID__)), _, (_3 : (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1871 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1809 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))) = _menhir_stack in
         let _2 = () in
         let _v : 'tv_scope_pat = let _1 = 
 # 232 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( xs )
-# 1877 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1815 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
          in
         
 # 46 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
   ( DenotationScopePat (_1, _3) )
-# 1882 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1820 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
          in
         _menhir_goto_scope_pat _menhir_env _menhir_stack _menhir_s _v) : 'freshtv88)) : 'freshtv90)
     | MenhirState1 ->
@@ -1886,7 +1824,7 @@ and _menhir_goto_pat : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : ('freshtv99 * _menhir_state) * _menhir_state * (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1890 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1828 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((assert (not _menhir_env._menhir_error);
         let _tok = _menhir_env._menhir_token in
@@ -1896,7 +1834,7 @@ and _menhir_goto_pat : _menhir_env -> 'ttv_tail -> _menhir_state -> (
             let (_menhir_stack : ('freshtv95 * _menhir_state) * _menhir_state * (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1900 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1838 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let _menhir_env = _menhir_discard _menhir_env in
             let _tok = _menhir_env._menhir_token in
@@ -1906,19 +1844,17 @@ and _menhir_goto_pat : _menhir_env -> 'ttv_tail -> _menhir_state -> (
                 let (_menhir_stack : (('freshtv91 * _menhir_state) * _menhir_state * (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1910 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1848 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
                 ))) = Obj.magic _menhir_stack in
                 ((let _menhir_env = _menhir_discard _menhir_env in
                 let _tok = _menhir_env._menhir_token in
                 match _tok with
                 | APP ->
-                    _menhir_run48 _menhir_env (Obj.magic _menhir_stack) MenhirState26
+                    _menhir_run46 _menhir_env (Obj.magic _menhir_stack) MenhirState26
                 | CASE ->
-                    _menhir_run45 _menhir_env (Obj.magic _menhir_stack) MenhirState26
-                | HASH ->
-                    _menhir_run37 _menhir_env (Obj.magic _menhir_stack) MenhirState26
+                    _menhir_run43 _menhir_env (Obj.magic _menhir_stack) MenhirState26
                 | ID _v ->
-                    _menhir_run47 _menhir_env (Obj.magic _menhir_stack) MenhirState26 _v
+                    _menhir_run45 _menhir_env (Obj.magic _menhir_stack) MenhirState26 _v
                 | INT _v ->
                     _menhir_run33 _menhir_env (Obj.magic _menhir_stack) MenhirState26 _v
                 | LAM ->
@@ -1938,7 +1874,7 @@ and _menhir_goto_pat : _menhir_env -> 'ttv_tail -> _menhir_state -> (
                 let (_menhir_stack : (('freshtv93 * _menhir_state) * _menhir_state * (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1942 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1878 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
                 ))) = Obj.magic _menhir_stack in
                 ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
                 _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv94)) : 'freshtv96)
@@ -1949,39 +1885,39 @@ and _menhir_goto_pat : _menhir_env -> 'ttv_tail -> _menhir_state -> (
             let (_menhir_stack : ('freshtv97 * _menhir_state) * _menhir_state * (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1953 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1889 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
             _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv98)) : 'freshtv100)
     | _ ->
         _menhir_fail ()
 
-and _menhir_reduce34 : _menhir_env -> 'ttv_tail * _menhir_state * (
+and _menhir_reduce33 : _menhir_env -> 'ttv_tail * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1963 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1899 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack ->
     let (_menhir_stack, _menhir_s, (_1 : (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1969 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1905 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
     ))) = _menhir_stack in
     let _v : (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 1974 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1910 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
     ) = 
 # 42 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
   ( DVar (Some _1) )
-# 1978 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1914 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
      in
     _menhir_goto_pat _menhir_env _menhir_stack _menhir_s _v
 
 and _menhir_run4 : _menhir_env -> 'ttv_tail * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 1985 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1921 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack ->
     let _menhir_env = _menhir_discard _menhir_env in
@@ -1994,20 +1930,20 @@ and _menhir_run4 : _menhir_env -> 'ttv_tail * _menhir_state * (
     | UNDERSCORE ->
         _menhir_run2 _menhir_env (Obj.magic _menhir_stack) MenhirState4
     | RIGHT_PAREN ->
-        _menhir_reduce29 _menhir_env (Obj.magic _menhir_stack) MenhirState4
+        _menhir_reduce28 _menhir_env (Obj.magic _menhir_stack) MenhirState4
     | DOT ->
-        _menhir_reduce21 _menhir_env (Obj.magic _menhir_stack) MenhirState4
+        _menhir_reduce20 _menhir_env (Obj.magic _menhir_stack) MenhirState4
     | _ ->
         assert (not _menhir_env._menhir_error);
         _menhir_env._menhir_error <- true;
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) MenhirState4
 
-and _menhir_reduce21 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
+and _menhir_reduce20 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _v : 'tv_loption_separated_nonempty_list_DOT_ID__ = 
 # 142 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [] )
-# 2011 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1947 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
      in
     let (_menhir_env : _menhir_env) = _menhir_env in
     let (_menhir_stack : 'freshtv81) = _menhir_stack in
@@ -2043,19 +1979,19 @@ and _menhir_reduce21 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return 
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv78)) : 'freshtv80)) : 'freshtv82)
 
-and _menhir_reduce29 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
+and _menhir_reduce28 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_scope_pat__ = 
 # 142 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [] )
-# 2052 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1988 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
      in
     _menhir_goto_loption_separated_nonempty_list_SEMICOLON_scope_pat__ _menhir_env _menhir_stack _menhir_s _v
 
 and _menhir_run5 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 2059 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 1995 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
@@ -2067,7 +2003,7 @@ and _menhir_run5 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
     | LEFT_PAREN ->
         _menhir_run4 _menhir_env (Obj.magic _menhir_stack)
     | RIGHT_PAREN | SEMICOLON ->
-        _menhir_reduce34 _menhir_env (Obj.magic _menhir_stack)
+        _menhir_reduce33 _menhir_env (Obj.magic _menhir_stack)
     | _ ->
         assert (not _menhir_env._menhir_error);
         _menhir_env._menhir_error <- true;
@@ -2075,7 +2011,7 @@ and _menhir_run5 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : 'freshtv73 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 2079 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2015 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv74)
@@ -2100,11 +2036,11 @@ and _menhir_goto_list_dynamics_rule_ : _menhir_env -> 'ttv_tail -> _menhir_state
             let _v : (
 # 30 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (Types.Core.denotation_chart)
-# 2104 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2040 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             ) = 
 # 98 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
                                   ( DenotationChart _1 )
-# 2108 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2044 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
              in
             let (_menhir_env : _menhir_env) = _menhir_env in
             let (_menhir_stack : 'freshtv59) = _menhir_stack in
@@ -2112,7 +2048,7 @@ and _menhir_goto_list_dynamics_rule_ : _menhir_env -> 'ttv_tail -> _menhir_state
             let (_v : (
 # 30 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (Types.Core.denotation_chart)
-# 2116 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2052 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = _v in
             ((let (_menhir_env : _menhir_env) = _menhir_env in
             let (_menhir_stack : 'freshtv57) = Obj.magic _menhir_stack in
@@ -2120,7 +2056,7 @@ and _menhir_goto_list_dynamics_rule_ : _menhir_env -> 'ttv_tail -> _menhir_state
             let (_v : (
 # 30 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (Types.Core.denotation_chart)
-# 2124 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2060 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = _v in
             ((let (_menhir_env : _menhir_env) = _menhir_env in
             let (_menhir_stack : 'freshtv55) = Obj.magic _menhir_stack in
@@ -2128,11 +2064,11 @@ and _menhir_goto_list_dynamics_rule_ : _menhir_env -> 'ttv_tail -> _menhir_state
             let ((_1 : (
 # 30 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (Types.Core.denotation_chart)
-# 2132 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2068 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) : (
 # 30 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (Types.Core.denotation_chart)
-# 2136 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2072 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
             )) = _v in
             (Obj.magic _1 : 'freshtv56)) : 'freshtv58)) : 'freshtv60)) : 'freshtv62)) : 'freshtv64)
         | _ ->
@@ -2142,28 +2078,28 @@ and _menhir_goto_list_dynamics_rule_ : _menhir_env -> 'ttv_tail -> _menhir_state
             let (_menhir_stack : 'freshtv65 * _menhir_state * 'tv_list_dynamics_rule_) = Obj.magic _menhir_stack in
             ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
             _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv66)) : 'freshtv68)
-    | MenhirState90 ->
+    | MenhirState88 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ('freshtv71 * _menhir_state * (
 # 29 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat * core)
-# 2151 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2087 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) * _menhir_state * 'tv_list_dynamics_rule_) = Obj.magic _menhir_stack in
         ((let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ('freshtv69 * _menhir_state * (
 # 29 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat * core)
-# 2157 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2093 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) * _menhir_state * 'tv_list_dynamics_rule_) = Obj.magic _menhir_stack in
         ((let ((_menhir_stack, _menhir_s, (x : (
 # 29 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat * core)
-# 2162 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2098 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))), _, (xs : 'tv_list_dynamics_rule_)) = _menhir_stack in
         let _v : 'tv_list_dynamics_rule_ = 
 # 213 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 2167 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2103 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
          in
         _menhir_goto_list_dynamics_rule_ _menhir_env _menhir_stack _menhir_s _v) : 'freshtv70)) : 'freshtv72)
     | _ ->
@@ -2179,18 +2115,18 @@ and _menhir_run2 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
     let _v : (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 2183 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2119 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
     ) = 
 # 40 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
   ( DVar None )
-# 2187 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2123 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
      in
     _menhir_goto_pat _menhir_env _menhir_stack _menhir_s _v) : 'freshtv54)
 
 and _menhir_run3 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 2194 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2130 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
 ) -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s _v ->
     let _menhir_stack = (_menhir_stack, _menhir_s, _v) in
@@ -2200,7 +2136,7 @@ and _menhir_run3 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
     | LEFT_PAREN ->
         _menhir_run4 _menhir_env (Obj.magic _menhir_stack)
     | RIGHT_OXFORD | RIGHT_PAREN | SEMICOLON ->
-        _menhir_reduce34 _menhir_env (Obj.magic _menhir_stack)
+        _menhir_reduce33 _menhir_env (Obj.magic _menhir_stack)
     | _ ->
         assert (not _menhir_env._menhir_error);
         _menhir_env._menhir_error <- true;
@@ -2208,7 +2144,7 @@ and _menhir_run3 : _menhir_env -> 'ttv_tail -> _menhir_state -> (
         let (_menhir_stack : 'freshtv51 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 2212 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2148 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv52)
@@ -2232,9 +2168,9 @@ and _menhir_run9 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
         | UNDERSCORE ->
             _menhir_run2 _menhir_env (Obj.magic _menhir_stack) MenhirState10
         | RIGHT_PAREN ->
-            _menhir_reduce29 _menhir_env (Obj.magic _menhir_stack) MenhirState10
+            _menhir_reduce28 _menhir_env (Obj.magic _menhir_stack) MenhirState10
         | DOT ->
-            _menhir_reduce21 _menhir_env (Obj.magic _menhir_stack) MenhirState10
+            _menhir_reduce20 _menhir_env (Obj.magic _menhir_stack) MenhirState10
         | _ ->
             assert (not _menhir_env._menhir_error);
             _menhir_env._menhir_error <- true;
@@ -2250,82 +2186,82 @@ and _menhir_run9 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
 and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     match _menhir_s with
-    | MenhirState90 ->
+    | MenhirState88 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : 'freshtv3 * _menhir_state * (
 # 29 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat * core)
-# 2259 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2195 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv4)
-    | MenhirState82 ->
+    | MenhirState80 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ((('freshtv5 * _menhir_state)) * _menhir_state * 'tv_separated_nonempty_list_DOT_ID_)) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv6)
-    | MenhirState79 ->
+    | MenhirState77 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ('freshtv7 * _menhir_state * 'tv_case)) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv8)
-    | MenhirState76 ->
+    | MenhirState74 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ('freshtv9 * _menhir_state * 'tv_core_pat)) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv10)
-    | MenhirState70 ->
+    | MenhirState68 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ('freshtv11 * _menhir_state * 'tv_core_pat)) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv12)
-    | MenhirState63 ->
+    | MenhirState61 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ('freshtv13 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 2288 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2224 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv14)
-    | MenhirState60 ->
+    | MenhirState58 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ((('freshtv15 * _menhir_state)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 2297 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2233 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv16)
-    | MenhirState57 ->
+    | MenhirState55 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ('freshtv17 * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 2306 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2242 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv18)
-    | MenhirState52 ->
+    | MenhirState50 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ((('freshtv19 * _menhir_state)) * _menhir_state * (
 # 28 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (core)
-# 2315 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2251 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv20)
-    | MenhirState49 ->
+    | MenhirState47 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ('freshtv21 * _menhir_state)) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv22)
-    | MenhirState46 ->
+    | MenhirState44 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ('freshtv23 * _menhir_state)) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv24)
-    | MenhirState43 ->
+    | MenhirState41 ->
         let (_menhir_env : _menhir_env) = _menhir_env in
         let (_menhir_stack : ('freshtv25 * _menhir_state * 'tv_core_val)) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
@@ -2335,7 +2271,7 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : ('freshtv27 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 2339 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2275 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv28)
@@ -2349,7 +2285,7 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : ((('freshtv31 * _menhir_state) * _menhir_state * (
 # 27 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (denotation_pat)
-# 2353 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2289 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         )))) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv32)
@@ -2373,7 +2309,7 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : ('freshtv39 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 2377 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2313 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv40)
@@ -2382,7 +2318,7 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : ('freshtv41 * _menhir_state * (
 # 8 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
        (string)
-# 2386 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2322 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
         ))) = Obj.magic _menhir_stack in
         ((let (_menhir_stack, _menhir_s, _) = _menhir_stack in
         _menhir_errorcase _menhir_env (Obj.magic _menhir_stack) _menhir_s) : 'freshtv42)
@@ -2396,12 +2332,12 @@ and _menhir_errorcase : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return
         let (_menhir_stack : 'freshtv45) = Obj.magic _menhir_stack in
         (raise _eRR : 'freshtv46)
 
-and _menhir_reduce19 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
+and _menhir_reduce18 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _v : 'tv_list_dynamics_rule_ = 
 # 211 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [] )
-# 2405 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2341 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
      in
     _menhir_goto_list_dynamics_rule_ _menhir_env _menhir_stack _menhir_s _v
 
@@ -2437,7 +2373,7 @@ and _menhir_discard : _menhir_env -> _menhir_env =
 and dynamics : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
 # 30 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.mly"
       (Types.Core.denotation_chart)
-# 2441 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2377 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
 ) =
   fun lexer lexbuf ->
     let _menhir_env =
@@ -2459,7 +2395,7 @@ and dynamics : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
     | LEFT_OXFORD ->
         _menhir_run1 _menhir_env (Obj.magic _menhir_stack) MenhirState0
     | EOF ->
-        _menhir_reduce19 _menhir_env (Obj.magic _menhir_stack) MenhirState0
+        _menhir_reduce18 _menhir_env (Obj.magic _menhir_stack) MenhirState0
     | _ ->
         assert (not _menhir_env._menhir_error);
         _menhir_env._menhir_error <- true;
@@ -2468,4 +2404,4 @@ and dynamics : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
 # 269 "/home/joel/.opam/default/lib/menhir/standard.mly"
   
 
-# 2472 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
+# 2408 "/media/joel/nixos/home/joel/code/lvca-bucklescript/src/dynamicsParser.ml"
