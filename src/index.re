@@ -47,7 +47,7 @@ let shift_from_to (
   };
 
 
-let history_down (
+let step_forward (
   language : Types.language,
   dynamics : Types.Core.denotation_chart,
   {input, before, after} : history,
@@ -59,7 +59,7 @@ let history_down (
     {before: before', after: after', input: elem.input}
   };
 
-let history_up (
+let step_back (
   language : Types.language,
   dynamics : Types.Core.denotation_chart,
   {input, before, after} : history,
@@ -70,6 +70,16 @@ let history_up (
                     { input, result: resultForInput(language, dynamics, input) });
     {before: before', after: after', input: elem.input}
   };
+
+let rec go_back    = (lang, dyn, hist, i) => switch(i) {
+  | 0 => hist
+  | _ => step_back(lang, dyn, go_back(lang, dyn, hist, i - 1))
+};
+
+let rec go_forward = (lang, dyn, hist, i) => switch(i) {
+  | 0 => hist
+  | _ => step_forward(lang, dyn, go_forward(lang, dyn, hist, i - 1))
+}
 
 module Repl = {
   open Types;
@@ -86,8 +96,8 @@ module Repl = {
     ~dynamics: Core.denotation_chart,
     ~setInput: string => unit,
     ~handleEnter: unit => unit,
-    ~handleUp: unit => unit,
-    ~handleDown: unit => unit,
+    ~handleUp: int => unit,
+    ~handleDown: int => unit,
     ) => {
     let make_div = EvalView.make_div;
     let {before, after, input} = history;
@@ -109,26 +119,36 @@ module Repl = {
           handleEnter();
         } else if (key == "ArrowUp") {
           preventDefault(evt);
-          handleUp();
+          handleUp(1);
         } else if (key == "ArrowDown") {
           preventDefault(evt);
-          handleDown();
+          handleDown(1);
         }
       }
     };
 
-    let beforeElems = List.rev(List.map(
-      ({input, result}) =>
+    let beforeElems = List.rev(List.mapi(
+      (i, {input, result}) =>
         <div className="history-item">
-          <div className="history-input">{React.string(input)}</div>
+          <div
+            className="history-input"
+            onClick={_evt => handleUp(i + 1)}
+          >
+            {React.string(input)}
+          </div>
           <div className="term-view"><EvalView evalResult=result /></div>
         </div>,
       before
     ));
-    let afterElems = List.map(
-      ({input, result}) =>
+    let afterElems = List.mapi(
+      (i, {input, result}) =>
         <div className="history-item">
-          <div className="history-input">{React.string(input)}</div>
+          <div
+            className="history-input"
+            onClick={_evt => handleDown(i + 1)}
+          >
+            {React.string(input)}
+          </div>
           <div className="term-view"><EvalView evalResult=result /></div>
         </div>,
       after
@@ -240,13 +260,13 @@ module LvcaViewer = {
                     ...before
                   ];
                   {before: before', after, input: ""}
-                | _ => history_down(language, dynamics, hist)
+                | _ => step_forward(language, dynamics, hist)
               }
             }))
-            handleUp=(() =>
-              setHistory(hist => history_up(language, dynamics, hist)))
-            handleDown=(() =>
-              setHistory(hist => history_down(language, dynamics, hist)))
+            handleUp=(n =>
+              setHistory(hist => go_back(language, dynamics, hist, n)))
+            handleDown=(n =>
+              setHistory(hist => go_forward(language, dynamics, hist, n)))
           />
         </div>
       | _
