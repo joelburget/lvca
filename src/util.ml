@@ -19,19 +19,21 @@ let rec get_first (f : 'a -> 'b option) (lst : 'a list) : 'b option
     | some_b -> some_b
   )
 
-let rec traverse_list_result (lst : (('a, 'b) Result.t) list)
+let rec sequence_list_result
+  (lst : (('a, 'b) Result.t) list)
   : ('a list, 'b) Result.t = match lst with
   | []             -> Ok []
   | Ok a :: rest   -> Result.map
-    (traverse_list_result rest)
+    (sequence_list_result rest)
     (fun rest' -> a :: rest')
   | Error msg :: _ -> Error msg
 
-let rec traverse_list_option (lst : ('a option) list)
+let rec sequence_list_option
+  (lst : ('a option) list)
   : ('a list option) = match lst with
   | []             -> Some []
   | Some a :: rest -> Option.map
-    (traverse_list_option rest)
+    (sequence_list_option rest)
     (fun rest' -> a :: rest')
   | None :: _ -> None
 

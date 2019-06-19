@@ -95,11 +95,11 @@ end = struct
     -> Option.map (List.get ctx ix) (fun name -> Ast.Var name)
     | Term (tag, subtms)
     -> Option.map
-      (traverse_list_option (List.map subtms (scope_to_ast ctx)))
+      (sequence_list_option (List.map subtms (scope_to_ast ctx)))
       (fun subtms' -> Ast.Term (tag, subtms'))
     | Sequence tms
     -> Option.map
-      (traverse_list_option (List.map tms (to_ast' ctx)))
+      (sequence_list_option (List.map tms (to_ast' ctx)))
       (fun tms' -> Ast.Sequence tms')
     | Primitive prim
     -> Some (Ast.Primitive prim)
@@ -127,7 +127,7 @@ end = struct
               tag ^ ")"
             )
             else Result.map
-              (traverse_list_result
+              (sequence_list_result
                 (List.zipBy valences subtms
                 (fun valence subtm -> match valence with
                   | FixedValence (_binds, SortName result_sort)
@@ -138,7 +138,7 @@ end = struct
         | None    -> Error ("couldn't find variable " ^ name)
         | Some ix -> Ok (Var ix))
       | Ast.Sequence tms -> Result.map
-        (traverse_list_result
+        (sequence_list_result
           (List.map tms (from_ast_with_bindings lang current_sort env)))
         (fun x' -> Sequence x')
       | Primitive prim -> Ok (Abt.Primitive prim)
@@ -348,7 +348,7 @@ module Core = struct
         (fun v' -> CoreVal v')
       | CoreApp(f, args) -> (match
         ( fill_in_core dynamics mr f
-        , traverse_list_result (List.map args (fill_in_core dynamics mr))
+        , sequence_list_result (List.map args (fill_in_core dynamics mr))
         ) with
         | (Ok f', Ok args')               -> Ok (CoreApp (f', args'))
         | (Error msg, _) | (_, Error msg) -> Error msg
@@ -358,7 +358,7 @@ module Core = struct
         (fun core' -> Lam (binders, core')) *)
       | Case (scrutinee, ty, branches) ->
           let mBranches : ((core_pat * core) list) translation_result
-                = traverse_list_result (List.map branches
+                = sequence_list_result (List.map branches
                 (fun (pat, core) -> Result.map
                   (fill_in_core dynamics mr core)
                   (fun core' -> (pat, core'))
@@ -376,7 +376,7 @@ module Core = struct
     : core_val translation_result
     = match v with
       | ValTm (tag, vals) -> Result.map
-        (traverse_list_result (List.map vals (fill_in_val dynamics mr)))
+        (sequence_list_result (List.map vals (fill_in_val dynamics mr)))
         (fun vals' -> ValTm (tag, vals'))
       | ValPrim _   -> Ok v
       | ValLam (binders, core) -> Result.map
@@ -386,7 +386,7 @@ module Core = struct
   and term_is_core_val (tm : Abt.term) : core_val translation_result
     = match tm with
     | Term (tag, subtms) -> Result.map
-      (traverse_list_result (List.map subtms scope_is_core_val))
+      (sequence_list_result (List.map subtms scope_is_core_val))
       (fun subtms' -> ValTm (tag, subtms'))
     | Abt.Primitive prim -> Ok (ValPrim prim)
     | Abt.Var _          -> Error ("TODO 4", Some tm)
@@ -417,7 +417,7 @@ module Core = struct
               if List.(length argNames != length args)
               then Error "mismatched application lengths"
               else Result.flatMap
-                (traverse_list_result (List.map args (go ctx)))
+                (sequence_list_result (List.map args (go ctx)))
                 (fun arg_vals ->
                    let new_args = M.fromArray
                      (List.(toArray (zip argNames arg_vals))) in
