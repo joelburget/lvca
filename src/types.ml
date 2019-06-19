@@ -249,7 +249,7 @@ module Core = struct
   let rec val_to_ast (core_val : core_val) : Ast.term
     = match core_val with
     (* | ValTm (name, vals)
-    -> Ast.Term ("ValTm" *)
+    -> Ast.Term ("ValTm" TODO *)
     | ValPrim prim -> Ast.Primitive prim
 
   and pat_to_ast (pat : core_pat) : Ast.term
