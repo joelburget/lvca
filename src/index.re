@@ -81,6 +81,15 @@ let rec go_forward = (lang, dyn, hist, i) => switch(i) {
   | _ => step_forward(lang, dyn, go_forward(lang, dyn, hist, i - 1))
 }
 
+let make_div = children => {
+  ReactDOMRe.createDOMElementVariadic(
+    "div",
+    ~props=ReactDOMRe.domProps(),
+    children
+  )
+};
+
+
 module Repl = {
   open Types;
 
@@ -99,7 +108,6 @@ module Repl = {
     ~handleUp: int => unit,
     ~handleDown: int => unit,
     ) => {
-    let make_div = EvalView.make_div;
     let {before, after, input} = history;
     let options = CodeMirror.options(~mode="lvca", ());
 

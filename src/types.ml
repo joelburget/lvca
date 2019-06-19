@@ -248,9 +248,12 @@ module Core = struct
 
   let rec val_to_ast (core_val : core_val) : Ast.term
     = match core_val with
-    (* | ValTm (name, vals)
-    -> Ast.Term ("ValTm" TODO *)
-    | ValPrim prim -> Ast.Primitive prim
+    | ValTm (name, vals)
+    -> Ast.Term (name, failwith "TODO")
+    | ValPrim prim
+    -> Ast.Primitive prim
+    | ValLam (args, body)
+    -> Ast.Term ("lam", [ Ast.Scope (args, to_ast body) ])
 
   and pat_to_ast (pat : core_pat) : Ast.term
     = failwith "TODO"
