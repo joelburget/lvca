@@ -45,6 +45,120 @@ let prim_eq p1 p2 = match (p1, p2) with
   | (PrimBool    b1, PrimBool    b2) -> b1 = b2
   | _                                -> false
 
+module ArrayBuffer = struct
+  type t
+end
+
+(* JavaScript built-in Uint8Array *)
+module rec Uint8Array : sig
+  type t
+
+  val from_b_array      : BitArray.t    -> t
+  val from_array_buffer : ArrayBuffer.t -> t
+end = struct
+  type t
+
+  (* from https://stackoverflow.com/q/26734033/383958 *)
+  let from_b_array (arr : BitArray.t) = [%raw {|
+    function fromBitArrayCodec(arr) {
+        var out = [], bl = sjcl.bitArray.bitLength(arr), i, tmp;
+        for (i=0; i<bl/8; i++) {
+            if ((i&3) === 0) {
+                tmp = arr[i/4];
+            }
+            out.push(tmp >>> 24);
+            tmp <<= 8;
+        }
+        return out;
+    }
+  |}] arr
+
+  let from_array_buffer buf
+    = [%raw "function(buf) { return Uint8Array(buf) }"] buf
+end
+
+(* SJCL bitArray *)
+and BitArray : sig
+  type t
+
+  val from_u8_array : Uint8Array.t -> t
+end = struct
+  type t
+
+  (* from https://stackoverflow.com/q/26734033/383958 *)
+  let from_u8_array (arr : Uint8Array.t) = [%raw {|
+    function toBitArrayCodec(bytes) {
+        var out = [], i, tmp=0;
+        for (i=0; i<bytes.length; i++) {
+            tmp = tmp << 8 | bytes[i];
+            if ((i&3) === 3) {
+                out.push(tmp);
+                tmp = 0;
+            }
+        }
+        if (i&3) {
+            out.push(sjcl.bitArray.partial(8*(i&3), tmp));
+        }
+        return out;
+    }
+  |}] arr
+end
+
+module Sha256 = struct
+  type t
+  type sjcl
+
+  external sjcl : sjcl = "sjcl" [@@bs.module]
+
+  (*
+  let make () : t
+    = [%raw "function (sjcl) { return new sjcl.hash.sha256(); }"] sjcl
+
+  let update (hasher : t) (str : string) : t
+    = [%raw "function (hasher, str) { hasher.update(str); }"]
+
+  let finalize (hasher : t) : string = [%raw {|
+    function (sjcl, hasher) {
+      var bitArray = hasher.finalize();
+      return sjcl.codec.hex.fromBits(bitArray);
+    }
+  |}] sjcl hasher
+  *)
+
+  let hash_str (str : string) : string = [%raw {|
+    function(sjcl, str) {
+      var bitArray = sjcl.hash.sha256.hash(str);
+      return sjcl.codec.hex.fromBits(bitArray);
+    }
+  |}] sjcl str
+
+  let hash_bs (bs : BitArray.t) (str : string) : string = [%raw {|
+    function(sjcl, str) {
+      var bitArray = sjcl.hash.sha256.hash(str);
+      return sjcl.codec.hex.fromBits(bitArray);
+    }
+  |}] sjcl str
+end
+
+module Cbor = struct
+  type t
+
+  external cbor : t = "cbor" [@@bs.module]
+
+  let encode_ab (it : Js.Json.t) : ArrayBuffer.t
+    = [%raw "function(cbor, it) { return cbor.encode(it); }"] cbor it
+
+  let encode_str (it : Js.Json.t) : string
+    = failwith "TODO"
+
+  (* TODO how do these fail? *)
+  let decode_ab (it : ArrayBuffer.t) : Js.Json.t
+    = [%raw "function(cbor, it) { return cbor.decode(it); }"] cbor it
+
+  let decode_str (it : string) : Js.Json.t
+    = failwith "TODO"
+end
+
 module rec Abt : sig
   type scope =
     | Scope of string list * term
@@ -165,6 +279,8 @@ and Ast : sig
   val pp_term  : Format.formatter -> Ast.term -> unit
   val pp_term' : Ast.term -> string
 
+  (* val hash : Ast.term -> string *)
+
 end = struct
   type scope =
     | Scope of string list * term
@@ -209,6 +325,35 @@ end = struct
     | PrimBool    b -> print_bool b
 
   let pp_term' = asprintf "%a" pp_term
+
+  let array_map f args = Js.Json.array (List.toArray (List.map args f))
+
+  let jsonify_prim = Js.Json.(function
+    | PrimInteger i -> array [| string "i"; string (Bigint.to_string i) |]
+    | PrimString  s -> array [| string "s"; string s                    |]
+    | PrimBool    b -> array [| string "b"; string (string_of_bool b)   |]
+  )
+
+  let rec jsonify (tm : term) : Js.Json.t = Js.Json.(match tm with
+    | Term (tag, tms)
+    -> array [|
+      string "t";
+      string tag;
+      array_map jsonify_scope tms
+    |]
+    | Var name     -> array [| string "v"; string name           |]
+    | Sequence tms -> array [| string "s"; array_map jsonify tms |]
+    | Primitive p  -> array [| string "p"; jsonify_prim p        |]
+  )
+
+  and jsonify_scope (Scope (args, body)) : Js.Json.t
+    = Js.Json.(array [| array_map string args; jsonify body |])
+
+  (* serialize by converting to JSON then cboring *)
+  let serialize (tm : term) : Uint8Array.t
+    = Uint8Array.from_array_buffer (Cbor.encode_ab (jsonify tm))
+
+  let hash hasher tm = Sha256.hash_bs (BitArray.from_u8_array (serialize tm))
 end
 
 module Core = struct

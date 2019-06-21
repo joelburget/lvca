@@ -2,44 +2,49 @@
   "name": "lvca-bucklescript",
   "version": "0.1.0",
   "reason": { "react-jsx": 3 },
-  "sources": {
-    "dir" : "src",
-    "subdirs" : true,
-    "generators" : [
-      {
-        "name" : "menhir",
-        "edge" : ["languageParser.ml", "languageParser.mli", ":", "languageParser.mly"]
-      },
-      {
-        "name" : "ocamllex",
-        "edge" : ["languageLexer.ml", ":", "languageLexer.mll"]
-      },
-      {
-        "name" : "menhir",
-        "edge" : ["staticsParser.ml", "staticsParser.mli", ":", "staticsParser.mly"]
-      },
-      {
-        "name" : "ocamllex",
-        "edge" : ["staticsLexer.ml", ":", "staticsLexer.mll"]
-      },
-      {
-        "name" : "menhir",
-        "edge" : ["dynamicsParser.ml", "dynamicsParser.mli", ":", "dynamicsParser.mly"]
-      },
-      {
-        "name" : "ocamllex",
-        "edge" : ["dynamicsLexer.ml", ":", "dynamicsLexer.mll"]
-      },
-      {
-        "name" : "menhir",
-        "edge" : ["termParser.ml", "termParser.mli", ":", "termParser.mly"]
-      },
-      {
-        "name" : "ocamllex",
-        "edge" : ["termLexer.ml", ":", "termLexer.mll"]
-      }
-    ]
-  },
+  "sources": [
+    {
+      "dir" : "src",
+      "subdirs" : true,
+      "generators" : [
+        {
+          "name" : "menhir",
+          "edge" : ["languageParser.ml", "languageParser.mli", ":", "languageParser.mly"]
+        },
+        {
+          "name" : "ocamllex",
+          "edge" : ["languageLexer.ml", ":", "languageLexer.mll"]
+        },
+        {
+          "name" : "menhir",
+          "edge" : ["staticsParser.ml", "staticsParser.mli", ":", "staticsParser.mly"]
+        },
+        {
+          "name" : "ocamllex",
+          "edge" : ["staticsLexer.ml", ":", "staticsLexer.mll"]
+        },
+        {
+          "name" : "menhir",
+          "edge" : ["dynamicsParser.ml", "dynamicsParser.mli", ":", "dynamicsParser.mly"]
+        },
+        {
+          "name" : "ocamllex",
+          "edge" : ["dynamicsLexer.ml", ":", "dynamicsLexer.mll"]
+        },
+        {
+          "name" : "menhir",
+          "edge" : ["termParser.ml", "termParser.mli", ":", "termParser.mly"]
+        },
+        {
+          "name" : "ocamllex",
+          "edge" : ["termLexer.ml", ":", "termLexer.mll"]
+        }
+      ]
+    },
+    { "dir": "__tests__",
+      "type": "dev"
+    }
+  ],
   "package-specs": {
     "module": "commonjs"
   },
@@ -48,6 +53,7 @@
     "bs-zarith",
     "reason-react"
   ],
+  "bs-dev-dependencies": ["@glennsl/bs-jest"],
   "warnings": {
     "error" : "+101"
   },

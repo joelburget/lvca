@@ -5,7 +5,8 @@
     "clean": "bsb -clean-world",
     "build": "bsb -make-world",
     "watch": "bsb -make-world -w",
-    "webpack": "webpack -w"
+    "webpack": "webpack -w",
+    "test": "jest"
   },
   "keywords": [
     "BuckleScript"
@@ -13,7 +14,9 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@glennsl/bs-jest": "^0.4.8",
     "bs-platform": "^5.0.4",
+    "jest": "^24.8.0",
     "webpack": "^4.31.0",
     "webpack-cli": "^3.3.2"
   },
@@ -24,6 +27,15 @@
     "react": "^16.8.6",
     "react-codemirror2": "^6.0.0",
     "react-dom": "^16.8.6",
-    "reason-react": "^0.7.0"
+    "reason-react": "^0.7.0",
+    "sjcl": "^1.0.8"
+  },
+  "resolutions": {
+    "@jest/core": "24.3.1",
+    "@jest/console": "24.3.0",
+    "@jest/environment": "24.3.1"
+  },
+  "jest": {
+    "testMatch": ["/__tests__/types_test.re"]
   }
 }
