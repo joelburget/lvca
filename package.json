@@ -34,8 +34,5 @@
     "@jest/core": "24.3.1",
     "@jest/console": "24.3.0",
     "@jest/environment": "24.3.1"
-  },
-  "jest": {
-    "testMatch": ["/__tests__/types_test.re"]
   }
 }
