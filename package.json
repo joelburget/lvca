@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "bs-zarith": "^1.0.1",
+    "cbor": "^4.1.5",
     "codemirror": "^5.47.0",
     "git": "^0.1.5",
     "react": "^16.8.6",
