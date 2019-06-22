@@ -1,36 +1,41 @@
 open Util
 
-type item_result = Types.Core.translation_result(Types.Core.core_val);
+type parse_result = Types.Core.translation_result(Types.Ast.term);
+type item_result  = Types.Core.translation_result(Types.Core.core_val);
 
 type history_item = {
   input: string,
+  parsed: parse_result,
   result: item_result,
 };
 
 type history = {
   before: list(history_item),
   after: list(history_item),
-  input: string
+  input: string,
 };
 
-let resultForInput = (language, dynamics, input) => {
+let resultForInput = (language, dynamics, input): (parse_result, item_result) => {
     open Types.Core;
 
-    let termResult = switch
+    let (astResult, abtResult) = switch
       (TermParser.term(TermLexer.read, Lexing.from_string(input))) {
-    | term
-      => Types.Abt.from_ast(language, "tm", term)
-    | exception LexerUtil.SyntaxError(msg) => Error(msg)
-    | exception Parsing.Parse_error        => Error("Parse error")
-    | exception TermParser.Error           => Error("Parse error")
+    | ast
+      => (Belt.Result.Ok(ast), Types.Abt.from_ast(language, "tm", ast))
+    | exception LexerUtil.SyntaxError(msg) => (Error((msg, None)),           Error(msg))
+    | exception Parsing.Parse_error        => (Error(("Parse error", None)), Error("Parse error"))
+    | exception TermParser.Error           => (Error(("Parse error", None)), Error("Parse error"))
     };
 
-    switch (termResult) {
-      | Ok(termResult') => Belt.Result.flatMap(
-          term_to_core(dynamics, termResult'),
-          core => map_error(eval(core), msg => (msg, Some(termResult')))
-        )
-      | Error(msg) => Error((msg, None))
+    let eval' = tm => map_error(eval(tm), fun(msg) => (msg, None));
+
+    switch (abtResult) {
+      | Ok(abtResult') => switch
+        (Belt.Result.flatMap(term_to_core(dynamics, abtResult'), eval')) {
+        | Ok(core_val) => (astResult, Ok(core_val))
+        | Error(msg)   => (astResult, Error(msg)) // Error((msg, Some(abtResult'))))
+        }
+      | Error(msg) => (Error((msg, None)), Error(("no parse", None)))
     }
 };
 
@@ -53,10 +58,10 @@ let step_forward (
   {input, before, after} : history,
   ) : history
   = {
-    let (after', before', elem) =
-      shift_from_to(after, before,
-                    { input, result: resultForInput(language, dynamics, input) });
-    {before: before', after: after', input: elem.input}
+    let (parsed, result) = resultForInput(language, dynamics, input);
+    let (after, before, elem) =
+      shift_from_to(after, before, { input, result, parsed });
+    {before, after, input: elem.input}
   };
 
 let step_back (
@@ -65,10 +70,10 @@ let step_back (
   {input, before, after} : history,
   ) : history
   = {
-    let (before', after', elem) =
-      shift_from_to(before, after,
-                    { input, result: resultForInput(language, dynamics, input) });
-    {before: before', after: after', input: elem.input}
+    let (parsed, result) = resultForInput(language, dynamics, input);
+    let (before, after, elem) =
+      shift_from_to(before, after, { input, result, parsed });
+    {before, after, input: elem.input}
   };
 
 let rec go_back    = (lang, dyn, hist, i) => switch(i) {
@@ -116,7 +121,7 @@ module Repl = {
 /*     | Error(msg) => <div className="error"> {React.string(msg)} </div> */
 /*     }; */
 
-    let evalResult = resultForInput(language, dynamics, input);
+    let (parsed, evalResult) = resultForInput(language, dynamics, input);
 
     let handleKey = (_editor, evt) => {
       let key = CodeMirror.keyGet(evt);
@@ -136,7 +141,7 @@ module Repl = {
     };
 
     let beforeElems = List.rev(List.mapi(
-      (i, {input, result}) =>
+      (i, {input, parsed, result}) =>
         <div className="history-item">
           <div
             className="history-input"
@@ -144,12 +149,14 @@ module Repl = {
           >
             {React.string(input)}
           </div>
-          <div className="term-view"><EvalView evalResult=result /></div>
+          <div className="term-view">
+            <EvalView input=parsed evalResult=result />
+          </div>
         </div>,
       before
     ));
     let afterElems = List.mapi(
-      (i, {input, result}) =>
+      (i, {input, parsed, result}) =>
         <div className="history-item">
           <div
             className="history-input"
@@ -157,7 +164,9 @@ module Repl = {
           >
             {React.string(input)}
           </div>
-          <div className="term-view"><EvalView evalResult=result /></div>
+          <div className="term-view">
+            <EvalView input=parsed evalResult=result />
+          </div>
         </div>,
       after
     );
@@ -174,7 +183,9 @@ module Repl = {
             editorDidMount=CodeMirror.focusEditor
           />
         </div>
-        <div className="term-view"><EvalView evalResult=evalResult /></div>
+        <div className="term-view">
+          <EvalView input=parsed evalResult=evalResult />
+        </div>
       </div>
       {make_div(Array.of_list(afterElems))}
     </>
@@ -263,10 +274,8 @@ module LvcaViewer = {
             handleEnter=(() => setHistory(({input, before, after} as hist) => {
               switch (after) {
                 | [] =>
-                  let before' = [
-                    { input, result: resultForInput(language, dynamics, input) },
-                    ...before
-                  ];
+                  let (parsed, result) = resultForInput(language, dynamics, input);
+                  let before' = [ { input, parsed, result }, ...before ];
                   {before: before', after, input: ""}
                 | _ => step_forward(language, dynamics, hist)
               }

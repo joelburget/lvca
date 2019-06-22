@@ -1,12 +1,20 @@
 // TODO: duplicated in index
-type item_result = Types.Core.translation_result(Types.Core.core_val);
+type input = Types.Core.translation_result(Types.Ast.term);
+type eval_result = Types.Core.translation_result(Types.Core.core_val);
 
 [@react.component]
-let make = (~evalResult: item_result) => {
+let make = (~input: input, ~evalResult: eval_result) => {
   switch (evalResult) {
   | Ok(coreVal)
     => let ast = Types.Core.val_to_ast(coreVal);
-       <div>{React.string(Types.Ast.pp_term'(ast))}</div>
+       let hash = switch (input) {
+         | Error((msg, _)) => msg
+         | Ok(tm)          => String.sub(Types.Ast.hash(tm), 0, 8)
+       };
+       <div>
+         {React.string(Types.Ast.pp_term'(ast))}
+         <div>{React.string(hash)}</div>
+       </div>
   | Error((msg, None))
     => <div className="error"> {React.string(msg)} </div>
   | Error((msg, Some(tm)))
@@ -15,6 +23,7 @@ let make = (~evalResult: item_result) => {
          | Some (ast_tm)
          => <div>{React.string(Types.Ast.pp_term'(ast_tm))}</div>
        };
+
     <div className="error">
       <div>{React.string(msg)}</div>
       {ast_view}
