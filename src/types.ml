@@ -523,7 +523,7 @@ module Core = struct
     : core_val translation_result
     = match v with
       | ValTm (tag, vals) -> Result.map
-        (sequence_list_result (List.map vals (fill_in_val dynamics mr)))
+        (traverse_list_result (fill_in_val dynamics mr) vals)
         (fun vals' -> ValTm (tag, vals'))
       | ValPrim _   -> Ok v
       | ValLam (binders, core) -> Result.map

@@ -19,6 +19,18 @@ let rec get_first (f : 'a -> 'b option) (lst : 'a list) : 'b option
     | some_b -> some_b
   )
 
+let rec traverse_list_result
+  (f : 'a -> ('b, 'c) Result.t)
+  (lst : 'a list)
+  : ('b list, 'c) Result.t = match lst with
+  | [] -> Ok []
+  | a :: rest -> (match f a with
+    | Error msg -> Error msg
+    | Ok b -> Result.flatMap
+      (traverse_list_result f rest)
+      (fun rest' -> Ok (b :: rest'))
+    )
+
 let rec sequence_list_result
   (lst : (('a, 'b) Result.t) list)
   : ('a list, 'b) Result.t = match lst with
