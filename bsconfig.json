@@ -9,35 +9,35 @@
       "generators" : [
         {
           "name" : "menhir",
-          "edge" : ["languageParser.ml", "languageParser.mli", ":", "languageParser.mly"]
+          "edge" : ["LanguageParser.ml", "LanguageParser.mli", ":", "LanguageParser.mly"]
         },
         {
           "name" : "ocamllex",
-          "edge" : ["languageLexer.ml", ":", "languageLexer.mll"]
+          "edge" : ["LanguageLexer.ml", ":", "LanguageLexer.mll"]
         },
         {
           "name" : "menhir",
-          "edge" : ["staticsParser.ml", "staticsParser.mli", ":", "staticsParser.mly"]
+          "edge" : ["StaticsParser.ml", "StaticsParser.mli", ":", "StaticsParser.mly"]
         },
         {
           "name" : "ocamllex",
-          "edge" : ["staticsLexer.ml", ":", "staticsLexer.mll"]
+          "edge" : ["StaticsLexer.ml", ":", "StaticsLexer.mll"]
         },
         {
           "name" : "menhir",
-          "edge" : ["dynamicsParser.ml", "dynamicsParser.mli", ":", "dynamicsParser.mly"]
+          "edge" : ["DynamicsParser.ml", "DynamicsParser.mli", ":", "DynamicsParser.mly"]
         },
         {
           "name" : "ocamllex",
-          "edge" : ["dynamicsLexer.ml", ":", "dynamicsLexer.mll"]
+          "edge" : ["DynamicsLexer.ml", ":", "DynamicsLexer.mll"]
         },
         {
           "name" : "menhir",
-          "edge" : ["termParser.ml", "termParser.mli", ":", "termParser.mly"]
+          "edge" : ["TermParser.ml", "TermParser.mli", ":", "TermParser.mly"]
         },
         {
           "name" : "ocamllex",
-          "edge" : ["termLexer.ml", ":", "termLexer.mll"]
+          "edge" : ["TermLexer.ml", ":", "TermLexer.mll"]
         }
       ]
     },
