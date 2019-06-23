@@ -220,6 +220,7 @@ end = struct
 
   let to_ast = to_ast' []
 
+  module M = Belt.Map.String
   let (get, empty) = Belt.Map.String.(get, empty)
   let rec from_ast_with_bindings (Language sorts as lang) current_sort env
     = function
@@ -253,10 +254,20 @@ end = struct
         (fun x' -> Sequence x')
       | Primitive prim -> Ok (Abt.Primitive prim)
 
-  and scope_from_ast lang (current_sort : string) env (Ast.Scope (names, body))
-    = Result.map
-      (from_ast_with_bindings lang current_sort env body)
-      (fun body' -> (Scope (names, body')))
+  and scope_from_ast
+    lang
+    (current_sort : string)
+    env
+    (Ast.Scope (names, body))
+    =
+      let n = List.length names in
+      let argNums = List.zip names (List.makeBy n (fun i -> i)) in
+      let env' = union
+            (M.map env (fun i -> i + n))
+            (M.fromArray (List.(toArray argNums)))
+      in Result.map
+           (from_ast_with_bindings lang current_sort env' body)
+           (fun body' -> (Scope (names, body')))
 
   let from_ast lang current_sort = from_ast_with_bindings lang current_sort empty
 
@@ -398,7 +409,10 @@ module Core = struct
   let rec val_to_ast (core_val : core_val) : Ast.term
     = match core_val with
     | ValTm (name, vals)
-    -> Ast.Term (name, failwith "TODO")
+    -> Ast.Term
+      ( name
+      , List.map vals (fun value -> Ast.Scope([], val_to_ast value))
+      )
     | ValPrim prim
     -> Ast.Primitive prim
     | ValLam (args, body)
@@ -409,7 +423,8 @@ module Core = struct
 
   and to_ast (core : core) : Ast.term = match core with
     | CoreVar name
-    -> Ast.Term ("CoreVar", [Ast.Scope ([], Ast.Primitive (PrimString name))])
+    -> Ast.Var name
+    (* -> Ast.Term ("CoreVar", [Ast.Scope ([], Ast.Primitive (PrimString name))]) *)
     | CoreVal core_val
     -> Ast.Term ("CoreVal", [Ast.Scope ([], val_to_ast core_val)])
     (* TODO *)
@@ -492,7 +507,7 @@ module Core = struct
         )
       (* XXX same as Meaning *)
       | CoreVar name -> (match M.get assignments name with
-        | Some tm -> Result.map (term_is_core_val tm) (fun cv -> CoreVal cv)
+        | Some tm -> Result.map (term_is_core_val [] tm) (fun cv -> CoreVal cv)
         | None    -> Ok c
         )
       | CoreVal v -> Result.map
@@ -535,17 +550,35 @@ module Core = struct
         (fill_in_core dynamics mr core)
         (fun core' -> ValLam (binders, core'))
 
-  and term_is_core_val (tm : Abt.term) : core_val translation_result
+  and term_is_core_val (env : string list) (tm : Abt.term)
+    : core_val translation_result
     = match tm with
+    | Term ("lam", [Scope (names, body)])
+    -> let env' = List.concat names env
+       in Result.map
+         (term_is_core env' body)
+         (fun body' -> ValLam (names, body'))
     | Term (tag, subtms) -> Result.map
-      (sequence_list_result (List.map subtms scope_is_core_val))
+      (traverse_list_result (scope_is_core_val env) subtms)
       (fun subtms' -> ValTm (tag, subtms'))
     | Abt.Primitive prim -> Ok (ValPrim prim)
     | Abt.Var _          -> Error ("TODO 4", Some tm)
     | _                  -> Error ("TODO 5", Some tm)
 
-  and scope_is_core_val (scope : Abt.scope) : core_val translation_result
-    = failwith "TODO 6"
+  and scope_is_core_val
+    (env : string list)
+    (Scope (names, body) : Abt.scope)
+    : core_val translation_result
+    = match names with
+    | [] -> term_is_core_val env body
+    | _  -> Error ("Unexpected binding TODO", None)
+
+  and term_is_core (env : string list) (tm : Abt.term) : core translation_result
+    = match tm with
+    | Abt.Var ix -> (match List.get env ix with
+      | None -> Error ("failed to look up variable", Some tm)
+      | Some name -> Ok (CoreVar name)
+      )
 
   and term_to_core (dynamics : denotation_chart) (tm : Abt.term)
     : core translation_result
