@@ -352,6 +352,11 @@ end = struct
   let serialize (tm : term) : Uint8Array.t
     = Uint8Array.from_array_buffer (Cbor.encode_ab (jsonify tm))
 
+    (*
+  let deserialize (buf : Uint8Array.t) : term option
+    = dejsonify (Cbor.decode_ab (Uint8Array.to_array_buffer buf))
+    *)
+
   let hash tm = Sha256.hash_ba (BitArray.from_u8_array (serialize tm))
 end
 
