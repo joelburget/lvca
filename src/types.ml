@@ -295,32 +295,33 @@ end = struct
     | Term (tag, subtms) -> fprintf ppf "@[%s(%a)@]"
       tag
       pp_scope_list subtms
-    | Var v        -> print_string v
+    | Var v        -> fprintf ppf "%s" v
     | Sequence tms -> fprintf ppf "@[[%a]@]" pp_inner_list tms
     | Primitive p  -> pp_prim ppf p
 
   and pp_inner_list ppf = function
-    | []      -> fprintf ppf ""
+    | []      -> ()
     | [x]     -> fprintf ppf "%a"     pp_term x
     | x :: xs -> fprintf ppf "%a, %a" pp_term x pp_inner_list xs
 
   and pp_scope_list ppf = function
-    | []      -> fprintf ppf ""
+    | []      -> ()
     | [x]     -> fprintf ppf "%a"     pp_scope x
     | x :: xs -> fprintf ppf "%a, %a" pp_scope x pp_scope_list xs
 
   and pp_scope ppf (Scope (bindings, body)) = match bindings with
     | [] -> pp_term ppf body
-    | _  -> fprintf ppf "%a. %a" pp_bindings bindings pp_term body
+    | _  -> fprintf ppf "%a %a" pp_bindings bindings pp_term body
 
   and pp_bindings ppf = function
-    | []      -> fprintf ppf "."
+    | []      -> ()
+    | [x]     -> fprintf ppf "%s." x
     | x :: xs -> fprintf ppf "%s. %a" x pp_bindings xs
 
   and pp_prim ppf = function
     | PrimInteger i -> fprintf ppf "%s" (Bigint.to_string i)
     | PrimString  s -> fprintf ppf "\"%s\"" s
-    | PrimBool    b -> print_bool b
+    | PrimBool    b -> fprintf ppf "%b" b
 
   let pp_term' = asprintf "%a" pp_term
 
