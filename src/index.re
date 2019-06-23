@@ -15,16 +15,19 @@ type history = {
   input: string,
 };
 
-let resultForInput = (language, dynamics, input): (parse_result, item_result) => {
+let read_eval_input = (language, dynamics, input): (parse_result, item_result) => {
     open Types.Core;
 
     let (astResult, abtResult) = switch
       (TermParser.term(TermLexer.read, Lexing.from_string(input))) {
     | ast
       => (Belt.Result.Ok(ast), Types.Abt.from_ast(language, "tm", ast))
-    | exception LexerUtil.SyntaxError(msg) => (Error((msg, None)),           Error(msg))
-    | exception Parsing.Parse_error        => (Error(("Parse error", None)), Error("Parse error"))
-    | exception TermParser.Error           => (Error(("Parse error", None)), Error("Parse error"))
+    | exception LexerUtil.SyntaxError(msg)
+    => (Error((msg, None)),           Error(msg))
+    | exception Parsing.Parse_error
+    => (Error(("Parse error", None)), Error("Parse error"))
+    | exception TermParser.Error
+    => (Error(("Parse error", None)), Error("Parse error"))
     };
 
     let eval' = tm => map_error(eval(tm), fun(msg) => (msg, None));
@@ -35,7 +38,7 @@ let resultForInput = (language, dynamics, input): (parse_result, item_result) =>
         | Ok(core_val) => (astResult, Ok(core_val))
         | Error(msg)   => (astResult, Error(msg)) // Error((msg, Some(abtResult'))))
         }
-      | Error(msg) => (Error((msg, None)), Error(("no parse", None)))
+      | Error(msg) => (Error((msg, None)), Error((msg, None)))
     }
 };
 
@@ -58,7 +61,7 @@ let step_forward (
   {input, before, after} : history,
   ) : history
   = {
-    let (parsed, result) = resultForInput(language, dynamics, input);
+    let (parsed, result) = read_eval_input(language, dynamics, input);
     let (after, before, elem) =
       shift_from_to(after, before, { input, result, parsed });
     {before, after, input: elem.input}
@@ -70,7 +73,7 @@ let step_back (
   {input, before, after} : history,
   ) : history
   = {
-    let (parsed, result) = resultForInput(language, dynamics, input);
+    let (parsed, result) = read_eval_input(language, dynamics, input);
     let (before, after, elem) =
       shift_from_to(before, after, { input, result, parsed });
     {before, after, input: elem.input}
@@ -121,7 +124,7 @@ module Repl = {
 /*     | Error(msg) => <div className="error"> {React.string(msg)} </div> */
 /*     }; */
 
-    let (parsed, evalResult) = resultForInput(language, dynamics, input);
+    let (parsed, evalResult) = read_eval_input(language, dynamics, input);
 
     let handleKey = (_editor, evt) => {
       let key = CodeMirror.keyGet(evt);
@@ -274,7 +277,7 @@ module LvcaViewer = {
             handleEnter=(() => setHistory(({input, before, after} as hist) => {
               switch (after) {
                 | [] =>
-                  let (parsed, result) = resultForInput(language, dynamics, input);
+                  let (parsed, result) = read_eval_input(language, dynamics, input);
                   let before' = [ { input, parsed, result }, ...before ];
                   {before: before', after, input: ""}
                 | _ => step_forward(language, dynamics, hist)
