@@ -1,12 +1,12 @@
 open Util
 
 type parse_result = Types.Core.translation_result(Types.Ast.term);
-type item_result  = Types.Core.translation_result(Types.Core.core_val);
+type eval_result  = Types.Core.translation_result(Types.Core.core_val);
 
 type history_item = {
   input: string,
   parsed: parse_result,
-  result: item_result,
+  result: eval_result,
 };
 
 type history = {
@@ -15,11 +15,28 @@ type history = {
   input: string,
 };
 
-let read_eval_input = (language, dynamics, input): (parse_result, item_result) => {
+/*
+let parse_term = str => {
+  let lexbuf = Lexing.from_string(str);
+  // let open MenhirLib.General;
+  let module Interp = TermParser.MenhirInterpreter;
+  let input = Interp.lexer_lexbuf_to_supplier(TermLexer.token, lexbuf);
+  let success = prog => prog;
+  let failure = error_state => {
+    failwith("TODO");
+  };
+  switch (Interp.loop_handle(success, failure, input, parse_fun(lexbuf.Lexing.lex_curr_p))) {
+    | result => result
+    | exception Lexer.Error(input, pos) => raise Error(Lexing(input, pos))
+  }
+};
+*/
+
+let read_eval_input = (language, dynamics, input): (parse_result, eval_result) => {
     open Types.Core;
 
     let (astResult, abtResult) = switch
-      (TermParser.term(TermLexer.read, Lexing.from_string(input))) {
+      (TermParser.top_term(TermLexer.read, Lexing.from_string(input))) {
     | ast
       => (Belt.Result.Ok(ast), Types.Abt.from_ast(language, "tm", ast))
     | exception LexerUtil.SyntaxError(msg)

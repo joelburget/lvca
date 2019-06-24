@@ -18,18 +18,18 @@ let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '-' '_']*
 rule read = parse
   | white    { read lexbuf }
   | newline  { next_line lexbuf; read lexbuf }
-  | id       { ID (L.lexeme lexbuf) }
   | int      { INT (Bigint.of_string (L.lexeme lexbuf)) }
   (* | float    { FLOAT (float_of_string (L.lexeme lexbuf)) } *)
   | "true"   { TRUE }
   | "false"  { FALSE }
+  | id       { ID (L.lexeme lexbuf) }
   | '"'      { read_string (Buffer.create 17) lexbuf }
   | '('      { LEFT_PAREN }
   | ')'      { RIGHT_PAREN }
   | '['      { LEFT_BRACK }
   | ']'      { RIGHT_BRACK }
   | ';'      { SEMICOLON }
-  | ','      { COMMA }
+  (* | ','      { COMMA } *)
   | '.'      { DOT }
   | _ { error lexbuf ("Unexpected char: " ^ L.lexeme lexbuf) }
   | eof      { EOF }

@@ -1,5 +1,4 @@
 %token <Bigint.t> INT
-%token <float> FLOAT
 %token <string> ID
 %token <string> STRING
 %token DOT
@@ -10,17 +9,19 @@
 %token LEFT_BRACK
 %token RIGHT_BRACK
 %token SEMICOLON
-%token COMMA
 %token EOF
 
-%start term
+%start top_term
+%type <Types.Ast.term> top_term
 %type <Types.Ast.term> term
 %type <Types.primitive> primitive
 %%
 
+top_term:
+  | term; EOF
+  { $1 } ;
+
 term:
-  | ID; LEFT_PAREN; RIGHT_PAREN
-  { Term ($1, []) }
   | ID; LEFT_PAREN; separated_list(SEMICOLON, scope) RIGHT_PAREN
   { Term ($1, $3) }
   | ID;
@@ -31,8 +32,10 @@ term:
   { Primitive $1  } ;
 
 scope:
-  | ID; DOT; scope { match $3 with | Scope (scope, tm) -> Scope ($1 :: scope, tm) }
-  | term           { Scope ([], $1) }
+  | ID; DOT; scope
+  { match $3 with | Types.Ast.Scope (scope, tm) -> Scope ($1 :: scope, tm) }
+  | term
+  { Scope ([], $1) } ;
 
 primitive:
   | INT    { PrimInteger $1    }
