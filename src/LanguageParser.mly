@@ -21,13 +21,13 @@
 %%
 
 sort:
-  | LEFT_PAREN sort RIGHT_PAREN { $2                   }
+  | LEFT_PAREN sort RIGHT_PAREN { $2             }
   | ID                          { SortName $1    }
   | sort sort                   { SortAp($1, $2) } ;
 
 fixedValence:
   | sort DOT fixedValence
-  { match $3 with | Types.FixedValence (binds, result) -> FixedValence ($1 :: binds, result) }
+  { match $3 with Types.FixedValence (binds, result) -> FixedValence ($1 :: binds, result) }
   | sort
   { FixedValence ([], $1) } ;
 
@@ -41,9 +41,9 @@ nameList: separated_list(COMMA, ID) { $1 } ;
 
 arity:
   | LEFT_BRACK nameList RIGHT_BRACK LEFT_PAREN valenceList RIGHT_PAREN
-    { Arity ($2, $5) }
+  { Arity ($2, $5) }
   | LEFT_PAREN valenceList = valenceList RIGHT_PAREN
-    { Arity ([], valenceList) } ;
+  { Arity ([], valenceList) } ;
 
 operatorDef: ID arity { OperatorDef($1, $2) } ;
 
