@@ -2,8 +2,8 @@
 %token <string> ID
 %token <string> STRING
 %token DOT
-%token TRUE
-%token FALSE
+// %token TRUE
+// %token FALSE
 %token LEFT_PAREN
 %token RIGHT_PAREN
 %token LEFT_BRACK
@@ -39,7 +39,7 @@ scope:
 
 primitive:
   | INT    { PrimInteger $1    }
-  | STRING { PrimString  $1    }
-  | TRUE   { PrimBool    true  }
+  | STRING { PrimString  $1    } ;
+  /* | TRUE   { PrimBool    true  }
   | FALSE  { PrimBool    false } ;
-  /* TODO: Float? */
+  TODO: Float? */

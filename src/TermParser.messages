@@ -1,0 +1,137 @@
+top_term: ID LEFT_PAREN ID DOT SEMICOLON
+##
+## Ends in an error in state: 7.
+##
+## scope -> ID DOT . scope [ SEMICOLON RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## ID DOT
+##
+
+Missing body after binding. Example of a binding and use: `lam(x. x)`.
+
+top_term: ID LEFT_PAREN ID STRING
+##
+## Ends in an error in state: 6.
+##
+## scope -> ID . DOT scope [ SEMICOLON RIGHT_PAREN ]
+## term -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,scope)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN ]
+## term -> ID . [ SEMICOLON RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## ID
+##
+
+Unexpected token after identifier. Expected `.`, `(`, or `;`.
+
+top_term: ID LEFT_PAREN SEMICOLON
+##
+## Ends in an error in state: 5.
+##
+## term -> ID LEFT_PAREN . loption(separated_nonempty_list(SEMICOLON,scope)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_BRACK EOF ]
+##
+## The known suffix of the stack is as follows:
+## ID LEFT_PAREN
+##
+
+Unexpected token after opening paren. Expected a variable name or term.
+
+top_term: ID LEFT_PAREN STRING SEMICOLON SEMICOLON
+##
+## Ends in an error in state: 13.
+##
+## separated_nonempty_list(SEMICOLON,scope) -> scope SEMICOLON . separated_nonempty_list(SEMICOLON,scope) [ RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## scope SEMICOLON
+##
+
+Unexpected symbol after semicolon.
+
+top_term: ID LEFT_PAREN STRING STRING
+##
+## Ends in an error in state: 12.
+##
+## separated_nonempty_list(SEMICOLON,scope) -> scope . [ RIGHT_PAREN ]
+## separated_nonempty_list(SEMICOLON,scope) -> scope . SEMICOLON separated_nonempty_list(SEMICOLON,scope) [ RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## scope
+##
+
+Unexpected token. Missing right paren?
+
+top_term: ID STRING
+##
+## Ends in an error in state: 4.
+##
+## term -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,scope)) RIGHT_PAREN [ SEMICOLON RIGHT_BRACK EOF ]
+## term -> ID . [ SEMICOLON RIGHT_BRACK EOF ]
+##
+## The known suffix of the stack is as follows:
+## ID
+##
+
+Unexpected token after identifier. Expected left paren or semicolon.
+
+top_term: LEFT_BRACK SEMICOLON
+##
+## Ends in an error in state: 2.
+##
+## term -> LEFT_BRACK . loption(separated_nonempty_list(SEMICOLON,term)) RIGHT_BRACK [ SEMICOLON RIGHT_PAREN RIGHT_BRACK EOF ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_BRACK
+##
+
+Unexpected token after left bracket. Expected (semicolon-separated) list of terms.
+
+top_term: LEFT_BRACK STRING SEMICOLON SEMICOLON
+##
+## Ends in an error in state: 18.
+##
+## separated_nonempty_list(SEMICOLON,term) -> term SEMICOLON . separated_nonempty_list(SEMICOLON,term) [ RIGHT_BRACK ]
+##
+## The known suffix of the stack is as follows:
+## term SEMICOLON
+##
+
+Unexpected token after semicolon. Expected list of terms.
+
+top_term: LEFT_BRACK STRING STRING
+##
+## Ends in an error in state: 17.
+##
+## separated_nonempty_list(SEMICOLON,term) -> term . [ RIGHT_BRACK ]
+## separated_nonempty_list(SEMICOLON,term) -> term . SEMICOLON separated_nonempty_list(SEMICOLON,term) [ RIGHT_BRACK ]
+##
+## The known suffix of the stack is as follows:
+## term
+##
+
+Unexpected token after term. Expected `]` or `;`.
+
+top_term: SEMICOLON
+##
+## Ends in an error in state: 0.
+##
+## top_term' -> . top_term [ # ]
+##
+## The known suffix of the stack is as follows:
+##
+##
+
+Unexpected token. Expected term.
+
+top_term: STRING STRING
+##
+## Ends in an error in state: 24.
+##
+## top_term -> term . EOF [ # ]
+##
+## The known suffix of the stack is as follows:
+## term
+##
+
+Unexpected token. Expected end of file.
+

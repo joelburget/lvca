@@ -61,7 +61,7 @@
   "generators" : [
     {
       "name" : "menhir",
-      "command": "menhir $in"
+      "command": "menhir --explain --table $in"
     },
     {
       "name" : "ocamllex",

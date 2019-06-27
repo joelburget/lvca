@@ -1,4 +1,5 @@
 open Util
+module Result = Belt.Result
 
 type parse_result = Types.Core.translation_result(Types.Ast.term);
 type eval_result  = Types.Core.translation_result(Types.Core.core_val);
@@ -15,36 +16,16 @@ type history = {
   input: string,
 };
 
-/*
-let parse_term = str => {
-  let lexbuf = Lexing.from_string(str);
-  // let open MenhirLib.General;
-  let module Interp = TermParser.MenhirInterpreter;
-  let input = Interp.lexer_lexbuf_to_supplier(TermLexer.token, lexbuf);
-  let success = prog => prog;
-  let failure = error_state => {
-    failwith("TODO");
-  };
-  switch (Interp.loop_handle(success, failure, input, parse_fun(lexbuf.Lexing.lex_curr_p))) {
-    | result => result
-    | exception Lexer.Error(input, pos) => raise Error(Lexing(input, pos))
-  }
-};
-*/
+module Parse_term = Parsing.Incremental(Parsing.Parseable_term)
 
 let read_eval_input = (language, dynamics, input): (parse_result, eval_result) => {
     open Types.Core;
 
-    let (astResult, abtResult) = switch
-      (TermParser.top_term(TermLexer.read, Lexing.from_string(input))) {
-    | ast
-      => (Belt.Result.Ok(ast), Types.Abt.from_ast(language, "tm", ast))
-    | exception LexerUtil.SyntaxError(msg)
-    => (Error((msg, None)),           Error(msg))
-    | exception Parsing.Parse_error
-    => (Error(("Parse error", None)), Error("Parse error"))
-    | exception TermParser.Error
-    => (Error(("Parse error", None)), Error("Parse error"))
+    let (astResult, abtResult) = switch (Parse_term.parse(input)) {
+    | Ok(ast)
+      => (Result.Ok(ast), Types.Abt.from_ast(language, "tm", ast))
+    | Error(msg)
+    => (Error((msg, None)), Error(msg))
     };
 
     let eval' = tm => map_error(eval(tm), fun(msg) => (msg, None));
@@ -212,36 +193,6 @@ module Repl = {
   };
 };
 
-module ParseStatus = {
-  open Belt.Result;
-
-  module Component = {
-    [@react.component]
-    let make = (~result) => {
-      switch (result) {
-      | Ok(_parsed) => <span className="result-good"> {React.string("(good)")} </span>
-      | Error(msg)  => <span className="result-bad"> {React.string(msg)} </span>
-      }
-    };
-  };
-
-  let parse = fun(runParse, read, lexbuf) => {
-    let result =
-      switch (runParse(read, lexbuf)) {
-      | parsed                               => Ok(parsed)
-      | exception LexerUtil.SyntaxError(msg) => Error(msg)
-      /* Parsing.Parse_error / ***Parser.Error */
-      | exception _ =>
-        let pos = lexbuf.Lexing.lex_curr_p;
-        let tok = Lexing.lexeme(lexbuf);
-        Error(Printf.sprintf("Parse error (%s) %s:%d:%d", tok,
-          pos.pos_fname, pos.pos_lnum, pos.pos_cnum - pos.pos_bol + 1))
-      };
-
-    (<Component result=result />, result)
-  }
-}
-
 module LvcaViewer = {
   type action =
     | Type(string)
@@ -265,21 +216,14 @@ module LvcaViewer = {
     let (dynamicsInput, setDynamicsInput)
       = React.useState(() => LanguageSimple.dynamics);
 
-    let (languageView, language) = ParseStatus.parse(
-      LanguageParser.languageDef,
-      LanguageLexer.read,
-      Lexing.from_string(asInput));
+    module Parseable_language' = ParseStatus.Make(Parsing.Parseable_language);
+    let (languageView, language) = Parseable_language'.parse(asInput);
 
-    let (staticsView, statics) = ParseStatus.parse(
-      StaticsParser.rules,
-      StaticsLexer.read,
-      Lexing.from_string(staticsInput));
+    module Parseable_statics' = ParseStatus.Make(Parsing.Parseable_statics);
+    let (staticsView, statics) = Parseable_statics'.parse(staticsInput);
 
-    let (dynamicsView, dynamics) = ParseStatus.parse(
-      DynamicsParser.dynamics,
-      DynamicsLexer.read,
-      Lexing.from_string(dynamicsInput)
-    );
+    module Parseable_dynamics' = ParseStatus.Make(Parsing.Parseable_dynamics);
+    let (dynamicsView, dynamics) = Parseable_dynamics'.parse(dynamicsInput);
 
     let replPane = switch (language, statics, dynamics) {
       | (Ok(language), Ok(statics), Ok(dynamics))

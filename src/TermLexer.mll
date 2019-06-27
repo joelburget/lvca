@@ -19,9 +19,9 @@ rule read = parse
   | white    { read lexbuf }
   | newline  { next_line lexbuf; read lexbuf }
   | int      { INT (Bigint.of_string (L.lexeme lexbuf)) }
-  (* | float    { FLOAT (float_of_string (L.lexeme lexbuf)) } *)
+  (* | float    { FLOAT (float_of_string (L.lexeme lexbuf)) }
   | "true"   { TRUE }
-  | "false"  { FALSE }
+  | "false"  { FALSE } *)
   | id       { ID (L.lexeme lexbuf) }
   | '"'      { read_string (Buffer.create 17) lexbuf }
   | '('      { LEFT_PAREN }
