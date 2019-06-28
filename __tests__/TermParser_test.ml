@@ -8,7 +8,7 @@ let _ = describe "TermParser" (fun () ->
   let open Ast in
 
   let expectParse str tm = test ("'" ^ str ^ "'") (fun () ->
-    (match TermParser.top_term TermLexer.read  (Lexing.from_string str) with
+    (match TermParser.top_term TermLexer.read (Lexing.from_string str) with
     | tm' -> expect tm' |> toEqual tm
     | exception _except -> fail ("'" ^ str ^ "' triggered an exception")
   )) in
