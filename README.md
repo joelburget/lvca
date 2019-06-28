@@ -1,16 +1,12 @@
-
+# Language Verification, Construction, and Analysis
 
 # Build
 ```
-npm run build
+bsb -make-world -clean-world
+yarn run webpack
 ```
 
-# Watch
-
+# Test
 ```
-npm run watch
+yarn test
 ```
-
-
-# Editor
-If you use `vscode`, Press `Windows + Shift + B` it will build automatically
