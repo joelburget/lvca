@@ -38,6 +38,14 @@
         {
           "name" : "ocamllex",
           "edge" : ["TermLexer.ml", ":", "TermLexer.mll"]
+        },
+        {
+          "name" : "menhir",
+          "edge" : ["ConcreteSyntaxParser.ml", "ConcreteSyntaxParser.mli", ":", "ConcreteSyntaxParser.mly"]
+        },
+        {
+          "name" : "ocamllex",
+          "edge" : ["ConcreteSyntaxLexer.ml", ":", "ConcreteSyntaxLexer.mll"]
         }
       ]
     },

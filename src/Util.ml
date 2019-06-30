@@ -1,5 +1,11 @@
 open Belt
 
+let rec unsnoc lst =
+  match lst with
+  | []        -> failwith "unsnoc empty list"
+  | [x]       -> ([], x)
+  | x :: lst' -> let (front, last) = unsnoc lst' in (x :: front, last)
+
 let rec intersperse list el =
   match list with
   | [] | [_]     -> list

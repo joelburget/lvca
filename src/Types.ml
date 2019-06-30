@@ -646,3 +646,32 @@ module Statics = struct
   type rule = Rule of hypothesis list * string option * hypothesis
 
 end
+
+module ConcreteSyntax = struct
+
+  type fixity         = Infixl | Infixr | Infix
+  type capture_number = int
+  type terminal_id    = string
+  type regex          = string
+  type terminal_rule  = TerminalRule of terminal_id * regex
+
+  type nonterminal_token =
+    | Ellipsis
+    | TerminalName    of string
+    | NonterminalName of string
+
+  type term_scope = TermScope of capture_number list * capture_number
+
+  type nonterminal_match' =
+    { tokens       : nonterminal_token list;
+      term_pattern : string * term_scope list;
+    }
+  type nonterminal_match = NonterminalMatch of nonterminal_match'
+
+  type nonterminal_rule' =
+    { sort_name : string;
+      variants  : nonterminal_match list;
+    }
+  type nonterminal_rule = NonterminalRule of nonterminal_rule'
+
+end
