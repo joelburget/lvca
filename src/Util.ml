@@ -67,7 +67,7 @@ let union m1 m2 =
 
 let rec fold_right (f : ('a * 'b) -> 'b) (lst : 'a list) (b : 'b) : 'b
   = match lst with
-    | [] -> b
+    | []       -> b
     | a :: as_ -> f(a, fold_right f as_ b)
 
 let map_error (result : ('a, 'b) Result.t) (f : 'b -> 'c) : ('a, 'c) Result.t
@@ -75,3 +75,7 @@ let map_error (result : ('a, 'b) Result.t) (f : 'b -> 'c) : ('a, 'c) Result.t
   | Ok x      -> Ok x
   | Error err -> Error (f(err))
   )
+
+let rec sum = function
+  | []       -> 0
+  | x  :: xs -> x + sum xs
