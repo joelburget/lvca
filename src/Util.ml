@@ -79,3 +79,7 @@ let map_error (result : ('a, 'b) Result.t) (f : 'b -> 'c) : ('a, 'c) Result.t
 let rec sum = function
   | []       -> 0
   | x  :: xs -> x + sum xs
+
+let rec find (f: 'a -> bool) (lst: 'a list) : 'a option = match lst with
+  | []       -> None
+  | x  :: xs -> if f x then Some x else find f xs
