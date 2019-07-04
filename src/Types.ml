@@ -40,7 +40,7 @@ type primitive =
   | PrimBool    of bool
 
 let prim_eq p1 p2 = match (p1, p2) with
-  | (PrimInteger i1, PrimInteger i2) -> Bigint.(i1 = i2)
+  | (PrimInteger i1, PrimInteger i2) -> Bigint.(i1 = i2) [@warning "-44"]
   | (PrimString  s1, PrimString  s2) -> s1 = s2
   | (PrimBool    b1, PrimBool    b2) -> b1 = b2
   | _                                -> false
@@ -54,14 +54,14 @@ end
 module ArrayBuffer = struct
   type t
 
-  let to_hex (buf : t) : string = [%raw {|
+  let to_hex (buf : t) : string = ([%raw {|
     function to_hex(buffer) {
       return Array.prototype.map.call(
         new Uint8Array(buffer),
         x => ('00' + x.toString(16)).slice(-2)
       ).join('');
     }
-  |}] buf;
+  |}] : t -> string) buf;
 end
 
 (* JavaScript built-in Uint8Array *)
@@ -75,7 +75,7 @@ end = struct
   type t
 
   (* from https://stackoverflow.com/q/26734033/383958 *)
-  let from_b_array (arr : BitArray.t) = [%raw {|
+  let from_b_array (arr : BitArray.t) = ([%raw {|
     function fromBitArrayCodec(sjcl, arr) {
         var out = [], bl = sjcl.bitArray.bitLength(arr), i, tmp;
         for (i=0; i<bl/8; i++) {
@@ -87,13 +87,15 @@ end = struct
         }
         return out;
     }
-  |}] Sjcl.sjcl arr
+  |}]: Sjcl.sjcl -> BitArray.t -> t) Sjcl.sjcl arr
 
   let from_array_buffer buf
-    = [%raw "function(buf) { return new Uint8Array(buf); }"] buf
+    = ([%raw "function(buf) { return new Uint8Array(buf); }"]
+      : ArrayBuffer.t -> t)
+      buf
 
   let to_array_buffer buf
-    = [%raw "function(arr) { return arr.buffer; }"] buf
+    = ([%raw "function(arr) { return arr.buffer; }"] : t -> ArrayBuffer.t) buf
 end
 
 (* SJCL bitArray *)
@@ -105,7 +107,7 @@ end = struct
   type t
 
   (* from https://stackoverflow.com/q/26734033/383958 *)
-  let from_u8_array (arr : Uint8Array.t) = [%raw {|
+  let from_u8_array (arr : Uint8Array.t) = ([%raw {|
     function toBitArrayCodec(sjcl, bytes) {
         var out = [], i, tmp=0;
         for (i=0; i<bytes.length; i++) {
@@ -120,25 +122,25 @@ end = struct
         }
         return out;
     }
-  |}] Sjcl.sjcl arr
+  |}] : Sjcl.sjcl -> Uint8Array.t -> t) Sjcl.sjcl arr
 end
 
 module Sha256 = struct
   type t
 
-  let hash_str (str : string) : string = [%raw {|
+  let hash_str (str : string) : string = ([%raw {|
     function(sjcl, str) {
       var bitArray = sjcl.hash.sha256.hash(str);
       return sjcl.codec.hex.fromBits(bitArray);
     }
-  |}] Sjcl.sjcl str
+  |}] : Sjcl.sjcl -> string -> string) Sjcl.sjcl str
 
-  let hash_ba (ba : BitArray.t) : string = [%raw {|
+  let hash_ba (ba : BitArray.t) : string = ([%raw {|
     function(sjcl, ba) {
       var bitArray = sjcl.hash.sha256.hash(ba);
       return sjcl.codec.hex.fromBits(bitArray);
     }
-  |}] Sjcl.sjcl ba
+  |}] : Sjcl.sjcl -> BitArray.t -> string) Sjcl.sjcl ba
 end
 
 module Cbor = struct
@@ -148,11 +150,15 @@ module Cbor = struct
   external cbor : t = "../../../src/cbor" [@@bs.module]
 
   let encode_ab (it : Js.Json.t) : ArrayBuffer.t
-    = [%raw "function(cbor, it) { return cbor.encode(it); }"] cbor it
+    = ([%raw "function(cbor, it) { return cbor.encode(it); }"]
+      : t -> Js.Json.t -> ArrayBuffer.t)
+      cbor it
 
   (* TODO how do these fail? *)
   let decode_ab (it : ArrayBuffer.t) : Js.Json.t
-    = [%raw "function(cbor, it) { return cbor.decode(it); }"] cbor it
+    = ([%raw "function(cbor, it) { return cbor.decode(it); }"]
+      : t -> ArrayBuffer.t -> Js.Json.t)
+      cbor it
 end
 
 module rec Abt : sig
@@ -224,7 +230,7 @@ end = struct
   let (get, empty) = Belt.Map.String.(get, empty)
   let rec from_ast_with_bindings (Language sorts as lang) current_sort env
     = function
-      | Ast.Term(tag, subtms) as tm -> (match get sorts current_sort with
+      | Ast.Term(tag, subtms) -> (match get sorts current_sort with
         | None -> Result.Error
           ("from_ast_with_bindings: couldn't find sort " ^ current_sort)
         | Some (SortDef (_vars, operators)) -> (match find_operator operators tag with
