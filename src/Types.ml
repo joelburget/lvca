@@ -653,7 +653,10 @@ module Statics = struct
 
 end
 
+(** A description of the concrete syntax for a language *)
 module ConcreteSyntax = struct
+
+  module M = Belt.Map.String
 
   type fixity         = Infixl | Infixr | Infix
   type capture_number = int
@@ -661,23 +664,53 @@ module ConcreteSyntax = struct
   type regex          = string
   type terminal_rule  = TerminalRule of terminal_id * regex
 
+  type terminal_rules = regex M.t
+
   type nonterminal_token =
-    | Ellipsis
     | TerminalName    of string
     | NonterminalName of string
 
   type term_scope = TermScope of capture_number list * capture_number
 
-  type nonterminal_match' =
+  type operator_match' =
     { tokens       : nonterminal_token list;
       term_pattern : string * term_scope list;
     }
-  type nonterminal_match = NonterminalMatch of nonterminal_match'
+  type operator_match = OperatorMatch of operator_match'
 
-  type nonterminal_rule' =
+  type variable_rule = { tokens: nonterminal_token list; }
+
+  exception DuplicateVarRules
+
+  let partition_nonterminal_matches
+    (matches: operator_match list)
+    : (operator_match list * variable_rule option)
+    = fold_right
+      (fun (match_, (matches, v_rule)) -> match match_ with
+        | OperatorMatch { tokens; term_pattern = ("var", _) }
+        -> (match v_rule with
+          | Some _ -> raise DuplicateVarRules
+          | None   -> (matches, Some { tokens })
+        )
+        | _
+        -> (match_ :: matches, v_rule)
+      )
+      matches ([], None)
+
+  type sort_rule' =
     { sort_name : string;
-      variants  : nonterminal_match list;
+      operator_rules : operator_match list;
+      variable  : variable_rule option;
     }
-  type nonterminal_rule = NonterminalRule of nonterminal_rule'
+  (** A sort rule shows how to parse / pretty-print a sort *)
+  type sort_rule = SortRule of sort_rule'
+
+  (** Mapping from sort names to sort rules *)
+  type sort_rules = sort_rule M.t
+
+  type t = {
+    terminal_rules: terminal_rules;
+    sort_rules:     sort_rules;
+  }
 
 end

@@ -10,15 +10,18 @@ let _ = describe "ConcreteSyntaxParser" (fun () ->
   )) in
 
   expectParse ConcreteSyntaxParser.regex "\"foo\"" "foo";
-  expectParse ConcreteSyntaxParser.terminal_rule "TERMINAL := \"foo\""
+
+  expectParse ConcreteSyntaxParser.terminal_rule
+    "TERMINAL := \"foo\""
     (TerminalRule ("TERMINAL", "foo"));
+
   expectParse ConcreteSyntaxParser.capture_number "$2" 2;
   expectParse ConcreteSyntaxParser.nonterminal_token "foo" (NonterminalName "foo");
   expectParse ConcreteSyntaxParser.nonterminal_token "BAR" (TerminalName "BAR");
 
-  expectParse ConcreteSyntaxParser.nonterminal_match__test
+  expectParse ConcreteSyntaxParser.operator_match__test
     "foo; BAR; baz { foo($1; $2) }"
-    (NonterminalMatch
+    (OperatorMatch
       { tokens =
           [ NonterminalName "foo";
             TerminalName    "BAR";
@@ -28,17 +31,18 @@ let _ = describe "ConcreteSyntaxParser" (fun () ->
       }
     );
 
-  expectParse ConcreteSyntaxParser.nonterminal_rule__test
+  expectParse ConcreteSyntaxParser.sort_rule__test
     {|
        arith :=
          | arith; ADD; arith { add($1; $3) }
          | arith; SUB; arith { sub($1; $3) }
+         | NAME              { var($1)     }
     |}
-    (NonterminalRule
+    (SortRule
       { sort_name = "arith";
-        variants  =
+        operator_rules =
           [
-            NonterminalMatch
+            OperatorMatch
               { tokens =
                   [ NonterminalName "arith";
                     TerminalName    "ADD";
@@ -46,7 +50,7 @@ let _ = describe "ConcreteSyntaxParser" (fun () ->
                   ];
                 term_pattern = ("add", [TermScope ([], 1); TermScope ([], 3)])
               };
-            NonterminalMatch
+            OperatorMatch
               { tokens =
                   [ NonterminalName "arith";
                     TerminalName    "SUB";
@@ -54,6 +58,7 @@ let _ = describe "ConcreteSyntaxParser" (fun () ->
                   ];
                 term_pattern = ("sub", [TermScope ([], 1); TermScope ([], 3)])
               };
-          ]
+          ];
+        variable = Some { tokens = [TerminalName "NAME"] };
       });
 )

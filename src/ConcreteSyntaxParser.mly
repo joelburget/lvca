@@ -28,19 +28,19 @@
 %start fixity
 %start capture_number
 %start nonterminal_token
-%start nonterminal_match
-%start nonterminal_match__test
-%start nonterminal_rule
-%start nonterminal_rule__test
+%start operator_match
+%start operator_match__test
+%start sort_rule
+%start sort_rule__test
 %type <Types.ConcreteSyntax.terminal_rule> terminal_rule
 %type <Types.ConcreteSyntax.regex> regex
 %type <Types.ConcreteSyntax.fixity> fixity
 %type <Types.ConcreteSyntax.capture_number> capture_number
 %type <Types.ConcreteSyntax.nonterminal_token> nonterminal_token
-%type <Types.ConcreteSyntax.nonterminal_match> nonterminal_match
-%type <Types.ConcreteSyntax.nonterminal_match> nonterminal_match__test
-%type <Types.ConcreteSyntax.nonterminal_rule> nonterminal_rule
-%type <Types.ConcreteSyntax.nonterminal_rule> nonterminal_rule__test
+%type <Types.ConcreteSyntax.operator_match> operator_match
+%type <Types.ConcreteSyntax.operator_match> operator_match__test
+%type <Types.ConcreteSyntax.sort_rule> sort_rule
+%type <Types.ConcreteSyntax.sort_rule> sort_rule__test
 %type <(string * Types.ConcreteSyntax.term_scope list)> term_pattern
 %%
 
@@ -51,16 +51,19 @@ terminal_rule:
 
 capture_number: DOLLAR; NAT { $2 } ;
 
-nonterminal_rule__test: nonterminal_rule; EOF { $1 }
+sort_rule__test: sort_rule; EOF { $1 }
 
-nonterminal_rule:
-  | NONTERMINAL_ID; ASSIGN; BAR?; separated_nonempty_list(BAR, nonterminal_match)
-  { NonterminalRule { sort_name = $1; variants = $4 } }
+sort_rule:
+  | NONTERMINAL_ID; ASSIGN; BAR?; separated_nonempty_list(BAR, operator_match)
+  { let (operator_rules, variable) = partition_nonterminal_matches($4) in
+    SortRule { sort_name = $1; operator_rules; variable }
+  }
+  ;
 
-nonterminal_match:
+operator_match:
   | separated_nonempty_list(SEMICOLON, nonterminal_token);
     LEFT_BRACE; term_pattern; RIGHT_BRACE
-  { NonterminalMatch { tokens = $1; term_pattern = $3 } }
+  { OperatorMatch { tokens = $1; term_pattern = $3 } }
   ;
 
 (* TODO: should this id allow uppercase? *)
@@ -74,7 +77,7 @@ term_scope_pattern:
   { let (binds, body) = Util.unsnoc $1 in TermScope (binds, body) }
   ;
 
-nonterminal_match__test: | nonterminal_match; EOF { $1 } ;
+operator_match__test: | operator_match; EOF { $1 } ;
 
 nonterminal_token:
   | TERMINAL_ID    { TerminalName $1 }
