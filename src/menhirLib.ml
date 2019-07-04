@@ -3203,8 +3203,8 @@ module Make
      [Engine]. It is available here. *)
 
   open EngineTypes
-  open ET
-  open E
+  open! ET
+  open! E
 
   (* [feed] fails if the current state does not have an outgoing transition
      labeled with the desired symbol. This check is carried out at runtime. *)
