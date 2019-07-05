@@ -1,12 +1,12 @@
 // TODO: duplicated in index
-type input = Types.Core.translation_result(Types.Ast.term);
-type eval_result = Types.Core.translation_result(Types.Core.core_val);
+type input = Core.translation_result(Types.Ast.term);
+type eval_result = Core.translation_result(Core.core_val);
 
 [@react.component]
 let make = (~input: input, ~evalResult: eval_result) => {
   switch (evalResult) {
   | Ok(coreVal)
-    => let ast = Types.Core.val_to_ast(coreVal);
+    => let ast = Core.val_to_ast(coreVal);
        let hash = switch (input) {
          | Error((msg, _)) => msg
          | Ok(tm)          => "#" ++ String.sub(Types.Ast.hash(tm), 0, 8)

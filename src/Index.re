@@ -1,8 +1,8 @@
 open Util
 module Result = Belt.Result
 
-type parse_result = Types.Core.translation_result(Types.Ast.term);
-type eval_result  = Types.Core.translation_result(Types.Core.core_val);
+type parse_result = Core.translation_result(Types.Ast.term);
+type eval_result  = Core.translation_result(Core.core_val);
 
 type history_item = {
   input: string,
@@ -19,7 +19,7 @@ type history = {
 module Parse_term = Parsing.Incremental(Parsing.Parseable_term)
 
 let read_eval_input = (language, dynamics, input): (parse_result, eval_result) => {
-    open Types.Core;
+    open Core;
 
     let (astResult, abtResult) = switch (Parse_term.parse(input)) {
     | Ok(ast)
@@ -55,7 +55,7 @@ let shift_from_to (
 
 let step_forward (
   language : Types.language,
-  dynamics : Types.Core.denotation_chart,
+  dynamics : Core.denotation_chart,
   {input, before, after} : history,
   ) : history
   = {
@@ -67,7 +67,7 @@ let step_forward (
 
 let step_back (
   language : Types.language,
-  dynamics : Types.Core.denotation_chart,
+  dynamics : Core.denotation_chart,
   {input, before, after} : history,
   ) : history
   = {

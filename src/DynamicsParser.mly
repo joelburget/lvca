@@ -1,7 +1,7 @@
 // dynamics
 
 %{
-  open Types.Core
+  open Core
 %}
 
 %token <Bigint.t> INT
@@ -27,7 +27,7 @@
 %type <denotation_pat> pat
 %type <core> core
 %type <denotation_pat * core> dynamics_rule
-%type <Types.Core.denotation_chart> dynamics
+%type <Core.denotation_chart> dynamics
 %%
 
 pat:
