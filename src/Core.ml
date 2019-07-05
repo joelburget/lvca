@@ -2,6 +2,9 @@ open Belt
 open Types
 open Util
 
+module M = Belt.Map.String
+module O = Belt.Option
+
 type scope_pat =
   | DenotationScopePat of string list * denotation_pat
 
@@ -31,9 +34,6 @@ and core =
 
 type denotation_chart =
   | DenotationChart of (denotation_pat * core) list
-
-module M = Belt.Map.String
-module O = Belt.Option
 
 let rec val_to_ast (core_val : core_val) : Ast.term
   = match core_val with
