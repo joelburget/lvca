@@ -12,7 +12,8 @@ and denotation_pat =
   | DPatternTm of string * scope_pat list
   | DVar       of string option
 
-type ty = | Ty (* TODO *)
+(* A core term extended with values of some sort *)
+type ty = CoreTy of sort
 
 type core_pat =
   | PatternTerm of string * core_pat list

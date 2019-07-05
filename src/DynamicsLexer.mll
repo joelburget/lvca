@@ -27,6 +27,7 @@ rule read = parse
   | "lam"     { LAM }
   | "case"    { CASE }
   | "default" { DEFAULT }
+  | "core"    { CORE }
   | int       { INT (Bigint.of_string (L.lexeme lexbuf)) }
   | id        { ID (Lexing.lexeme lexbuf) }
   | eof       { EOF }

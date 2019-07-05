@@ -22,6 +22,7 @@
 %token CASE
 %token DEFAULT
 %token HASH
+%token CORE
 
 %start dynamics
 %type <denotation_pat> pat
@@ -68,11 +69,21 @@ core:
   { CoreVal $1 }
   | ID
   { CoreVar $1 }
-  | CASE LEFT_PAREN arg = core SEMICOLON cases = separated_list(SEMICOLON, case) RIGHT_PAREN
-  { Case (arg, Ty, cases) }
+  | CASE LEFT_PAREN
+    arg = core SEMICOLON
+    CORE sort = sort SEMICOLON
+    cases = separated_list(SEMICOLON, case)
+    RIGHT_PAREN
+  { Case (arg, CoreTy sort, cases) }
   | LEFT_OXFORD ID RIGHT_OXFORD
   { Meaning $2 }
   ;
+
+(* TODO: duplicated from LanguageParser *)
+sort:
+  | LEFT_PAREN sort RIGHT_PAREN { $2             }
+  | ID                          { SortName $1    }
+  | sort sort                   { SortAp($1, $2) } ;
 
 case: core_pat RIGHT_S_ARR core { ($1, $3) } ;
 
