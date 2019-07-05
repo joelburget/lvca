@@ -36,6 +36,9 @@ and core =
 type denotation_chart =
   | DenotationChart of (denotation_pat * core) list
 
+type located_err = (string * Abt.term option)
+type 'a translation_result = ('a, located_err) Result.t
+
 let rec val_to_ast (core_val : core_val) : Ast.term
   = match core_val with
   | ValTm (name, vals)
@@ -121,9 +124,6 @@ let find_match
         (matches term pat)
         (fun (assocs, bindings) -> (assocs, bindings, core)))
       denotations
-
-type located_err = (string * Abt.term option)
-type 'a translation_result = ('a, located_err) Result.t
 
 let rec fill_in_core
   (dynamics : denotation_chart)
