@@ -154,11 +154,13 @@ module Cbor = struct
       : t -> Js.Json.t -> ArrayBuffer.t)
       cbor it
 
-  (* TODO how do these fail? *)
-  let decode_ab (it : ArrayBuffer.t) : Js.Json.t
-    = ([%raw "function(cbor, it) { return cbor.decode(it); }"]
-      : t -> ArrayBuffer.t -> Js.Json.t)
-      cbor it
+  let decode_ab (it : ArrayBuffer.t) : Js.Json.t option
+    = let raw_decode : t -> ArrayBuffer.t -> Js.Json.t
+            = [%raw "function(cbor, it) { return cbor.decode(it); }"]
+      in try
+           Some (raw_decode cbor it)
+         with
+           _ -> None
 end
 
 module rec Abt : sig
