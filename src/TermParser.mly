@@ -12,8 +12,8 @@
 %token EOF
 
 %start top_term
-%type <Types.Ast.term> top_term
-%type <Types.Ast.term> term
+%type <Binding.Nominal.term> top_term
+%type <Binding.Nominal.term> term
 %type <Types.primitive> primitive
 %%
 
@@ -33,7 +33,7 @@ term:
 
 scope:
   | ID; DOT; scope
-  { match $3 with | Types.Ast.Scope (scope, tm) -> Scope ($1 :: scope, tm) }
+  { match $3 with | Binding.Nominal.Scope (scope, tm) -> Scope ($1 :: scope, tm) }
   | term
   { Scope ([], $1) } ;
 

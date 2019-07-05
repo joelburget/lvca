@@ -1,5 +1,5 @@
 // TODO: duplicated in index
-type input = Core.translation_result(Types.Ast.term);
+type input = Core.translation_result(Binding.Nominal.term);
 type eval_result = Core.translation_result(Core.core_val);
 
 [@react.component]
@@ -9,12 +9,12 @@ let make = (~input: input, ~evalResult: eval_result) => {
     => let ast = Core.val_to_ast(coreVal);
        let hash = switch (input) {
          | Error((msg, _)) => msg
-         | Ok(tm)          => "#" ++ String.sub(Types.Ast.hash(tm), 0, 8)
+         | Ok(tm)          => "#" ++ String.sub(Binding.Nominal.hash(tm), 0, 8)
        };
 
     <div className="eval-result-row">
       <div className="eval-result">
-        {React.string(Types.Ast.pp_term'(ast))}
+        {React.string(Binding.Nominal.pp_term'(ast))}
       </div>
       <div className="eval-result-hash">
         {React.string(hash)}
@@ -24,10 +24,10 @@ let make = (~input: input, ~evalResult: eval_result) => {
   | Error((msg, None))
     => <div className="error"> {React.string(msg)} </div>
   | Error((msg, Some(tm)))
-    => let ast_view = switch (Types.Abt.to_ast(tm)) {
+    => let ast_view = switch (Binding.DeBruijn.to_nominal(tm)) {
          | None => <div />
          | Some (ast_tm)
-         => <div>{React.string(Types.Ast.pp_term'(ast_tm))}</div>
+         => <div>{React.string(Binding.Nominal.pp_term'(ast_tm))}</div>
        };
 
     <div className="error">

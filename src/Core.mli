@@ -1,5 +1,6 @@
 open Belt
 open Types
+open Binding
 
 type scope_pat =
   | DenotationScopePat of string list * denotation_pat
@@ -31,9 +32,9 @@ and core =
 type denotation_chart =
   | DenotationChart of (denotation_pat * core) list
 
-type located_err = (string * Abt.term option)
+type located_err = (string * DeBruijn.term option)
 type 'a translation_result = ('a, located_err) Result.t
 
-val val_to_ast   : core_val -> Ast.term
+val val_to_ast   : core_val -> Nominal.term
 val eval         : core -> (core_val, string) Result.t
-val term_to_core : denotation_chart -> Abt.term -> core translation_result
+val term_to_core : denotation_chart -> Binding.DeBruijn.term -> core translation_result

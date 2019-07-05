@@ -56,8 +56,8 @@ module Incremental (M : Parseable) = struct
 
 end
 
-module Parseable_term : (Parseable with type t = Types.Ast.term) = struct
-  type t                   = Types.Ast.term
+module Parseable_term : (Parseable with type t = Binding.Nominal.term) = struct
+  type t                   = Binding.Nominal.term
   module MenhirInterpreter = TermParser.MenhirInterpreter
   module ParseErrors       = TermParseErrors
   module Lexer             = TermLexer

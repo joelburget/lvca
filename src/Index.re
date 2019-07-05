@@ -1,7 +1,7 @@
 open Util
 module Result = Belt.Result
 
-type parse_result = Core.translation_result(Types.Ast.term);
+type parse_result = Core.translation_result(Binding.Nominal.term);
 type eval_result  = Core.translation_result(Core.core_val);
 
 type history_item = {
@@ -23,7 +23,7 @@ let read_eval_input = (language, dynamics, input): (parse_result, eval_result) =
 
     let (astResult, abtResult) = switch (Parse_term.parse(input)) {
     | Ok(ast)
-      => (Result.Ok(ast), Types.Abt.from_ast(language, "tm", ast))
+      => (Result.Ok(ast), Binding.DeBruijn.from_nominal(language, "tm", ast))
     | Error(msg)
     => (Error((msg, None)), Error(msg))
     };

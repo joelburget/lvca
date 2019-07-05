@@ -1,11 +1,12 @@
 open Jest
 open Expect
 open Types
+open Binding
 
 (* expected serialized values via http://cbor.me/ *)
 
 let _ = describe "TermParser" (fun () ->
-  let open Ast in
+  let open Nominal in
 
   let expectParse str tm = test ("'" ^ str ^ "'") (fun () ->
     (match TermParser.top_term TermLexer.read (Lexing.from_string str) with

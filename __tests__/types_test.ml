@@ -1,15 +1,16 @@
 open Jest
 open Expect
 open Types
+open Binding
 
 (* expected serialized values via http://cbor.me/ *)
 
-let _ = describe "Ast.(jsonify, serialize, hash)" (fun () ->
-  let open Ast in
+let _ = describe "Nominal.(jsonify, serialize, hash)" (fun () ->
+  let open Nominal in
 
   let serialize tm = ArrayBuffer.to_hex
     (Uint8Array.to_array_buffer
-    (Ast.serialize tm)) in
+    (Nominal.serialize tm)) in
 
   let tm = Var "x" in
   testAll "(var) x"

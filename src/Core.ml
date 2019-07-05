@@ -1,5 +1,6 @@
 open Belt
 open Types
+open Binding
 open Util
 
 module M = Belt.Map.String
@@ -36,30 +37,30 @@ and core =
 type denotation_chart =
   | DenotationChart of (denotation_pat * core) list
 
-type located_err = (string * Abt.term option)
+type located_err = (string * DeBruijn.term option)
 type 'a translation_result = ('a, located_err) Result.t
 
-let rec val_to_ast (core_val : core_val) : Ast.term
+let rec val_to_ast (core_val : core_val) : Nominal.term
   = match core_val with
   | ValTm (name, vals)
-  -> Ast.Term
+  -> Nominal.Term
     ( name
-    , List.map vals (fun value -> Ast.Scope([], val_to_ast value))
+    , List.map vals (fun value -> Nominal.Scope([], val_to_ast value))
     )
   | ValPrim prim
-  -> Ast.Primitive prim
+  -> Nominal.Primitive prim
   | ValLam (args, body)
-  -> Ast.Term ("lam", [ Ast.Scope (args, to_ast body) ])
+  -> Nominal.Term ("lam", [ Nominal.Scope (args, to_ast body) ])
 
-and pat_to_ast (pat : core_pat) : Ast.term
+and pat_to_ast (pat : core_pat) : Nominal.term
   = failwith "TODO"
 
-and to_ast (core : core) : Ast.term = match core with
+and to_ast (core : core) : Nominal.term = match core with
   | CoreVar name
-  -> Ast.Var name
-  (* -> Ast.Term ("CoreVar", [Ast.Scope ([], Ast.Primitive (PrimString name))]) *)
+  -> Nominal.Var name
+  (* -> Nominal.Term ("CoreVar", [Nominal.Scope ([], Nominal.Primitive (PrimString name))]) *)
   | CoreVal core_val
-  -> Ast.Term ("CoreVal", [Ast.Scope ([], val_to_ast core_val)])
+  -> Nominal.Term ("CoreVal", [Nominal.Scope ([], val_to_ast core_val)])
   (* TODO *)
 
 let rec match_branch (v : core_val) (pat : core_pat)
@@ -86,8 +87,8 @@ let rec find_core_match (v : core_val) (pats : (core_pat * core) list)
       | None          -> find_core_match v pats
       | Some bindings -> Some (rhs, bindings))
 
-let rec matches (tm : Abt.term) (pat : denotation_pat)
-  : ((string * string) list * Abt.term M.t) option
+let rec matches (tm : DeBruijn.term) (pat : denotation_pat)
+  : ((string * string) list * DeBruijn.term M.t) option
   = match (tm, pat) with
     | (Term(tag1, subtms), DPatternTm(tag2, subpats))
     -> if tag1 == tag2 && List.(length subtms == length subpats)
@@ -105,9 +106,9 @@ let rec matches (tm : Abt.term) (pat : denotation_pat)
     | (tm, DVar (Some v)) -> Some ([], M.fromArray [|v,tm|])
 
 and matches_scope
-  (Scope (binders, tm) : Abt.scope)
+  (Scope (binders, tm) : DeBruijn.scope)
   (DenotationScopePat (patBinders, pat) : scope_pat)
-  : ((string * string) list * Abt.term M.t) option
+  : ((string * string) list * DeBruijn.term M.t) option
   = if List.(length patBinders == length binders)
     then O.map
       (matches tm pat)
@@ -117,8 +118,8 @@ and matches_scope
 
 let find_match
   (DenotationChart denotations : denotation_chart)
-  (term : Abt.term)
-  : ((string * string) list * Abt.term M.t * core) option
+  (term : DeBruijn.term)
+  : ((string * string) list * DeBruijn.term M.t * core) option
   = get_first
       (fun (pat, core) -> O.map
         (matches term pat)
@@ -127,7 +128,7 @@ let find_match
 
 let rec fill_in_core
   (dynamics : denotation_chart)
-  ((assocs, assignments) as mr : (string * string) list * Abt.term M.t)
+  ((assocs, assignments) as mr : (string * string) list * DeBruijn.term M.t)
   (c : core)
   : core translation_result
   = match c with
@@ -168,7 +169,7 @@ let rec fill_in_core
 
 and fill_in_val
     (dynamics : denotation_chart)
-    (mr : (string * string) list * Abt.term M.t)
+    (mr : (string * string) list * DeBruijn.term M.t)
     (v : core_val)
   : core_val translation_result
   = match v with
@@ -180,7 +181,7 @@ and fill_in_val
       (fill_in_core dynamics mr core)
       (fun core' -> ValLam (binders, core'))
 
-and term_is_core_val (env : string list) (tm : Abt.term)
+and term_is_core_val (env : string list) (tm : DeBruijn.term)
   : core_val translation_result
   = match tm with
   | Term ("lam", [Scope (names, body)])
@@ -191,26 +192,26 @@ and term_is_core_val (env : string list) (tm : Abt.term)
   | Term (tag, subtms) -> Result.map
     (traverse_list_result (scope_is_core_val env) subtms)
     (fun subtms' -> ValTm (tag, subtms'))
-  | Abt.Primitive prim -> Ok (ValPrim prim)
-  | Abt.Var _          -> Error ("TODO 4", Some tm)
+  | DeBruijn.Primitive prim -> Ok (ValPrim prim)
+  | DeBruijn.Var _          -> Error ("TODO 4", Some tm)
   | _                  -> Error ("TODO 5", Some tm)
 
 and scope_is_core_val
   (env : string list)
-  (Scope (names, body) : Abt.scope)
+  (Scope (names, body) : DeBruijn.scope)
   : core_val translation_result
   = match names with
   | [] -> term_is_core_val env body
   | _  -> Error ("Unexpected binding TODO", None)
 
-and term_is_core (env : string list) (tm : Abt.term) : core translation_result
+and term_is_core (env : string list) (tm : DeBruijn.term) : core translation_result
   = match tm with
-  | Abt.Var ix -> (match List.get env ix with
+  | DeBruijn.Var ix -> (match List.get env ix with
     | None -> Error ("failed to look up variable", Some tm)
     | Some name -> Ok (CoreVar name)
     )
 
-and term_to_core (dynamics : denotation_chart) (tm : Abt.term)
+and term_to_core (dynamics : denotation_chart) (tm : DeBruijn.term)
   : core translation_result
   = match find_match dynamics tm with
     | None
