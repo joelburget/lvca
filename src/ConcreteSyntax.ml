@@ -35,8 +35,7 @@ type nonterminal_capture = tree
  * on the leftmost newline.
  *)
 and tree =
-  { (* rule            : sort_rule; *)
-    sort            : sort;
+  { sort            : sort;
     node_type       : node_type;
     leading_trivia  : string;
     trailing_trivia : string;

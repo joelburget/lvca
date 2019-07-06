@@ -18,7 +18,6 @@ type terminal_capture    = string
 type nonterminal_capture = tree
 
 and tree =
-    (* rule            : ConcreteSyntax.sort_rule; *)
   { sort            : sort;
     node_type       : node_type;
     leading_trivia  : string;
