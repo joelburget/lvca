@@ -193,7 +193,6 @@ module ConcreteSyntax = struct
 
   module M = Belt.Map.String
 
-  type fixity         = Infixl | Infixr | Infix
   type capture_number = int
   type terminal_id    = string
   type regex          = string

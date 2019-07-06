@@ -16,14 +16,12 @@
 %token INFIXR
 %token INFIX
 %token DOLLAR
-%token ELLIPSIS
 %token BAR
 
 %{ open Types.ConcreteSyntax %}
 
 %start terminal_rule
 %start regex
-%start fixity
 %start capture_number
 %start nonterminal_token
 %start operator_match
@@ -32,7 +30,6 @@
 %start sort_rule__test
 %type <Types.ConcreteSyntax.terminal_rule> terminal_rule
 %type <Types.ConcreteSyntax.regex> regex
-%type <Types.ConcreteSyntax.fixity> fixity
 %type <Types.ConcreteSyntax.capture_number> capture_number
 %type <Types.ConcreteSyntax.nonterminal_token> nonterminal_token
 %type <Types.ConcreteSyntax.operator_match> operator_match
@@ -80,13 +77,6 @@ operator_match__test: | operator_match; EOF { $1 } ;
 nonterminal_token:
   | TERMINAL_ID    { TerminalName $1 }
   | NONTERMINAL_ID { NonterminalName $1 }
-  ;
-
-(* XXX do we want fixity? *)
-fixity:
-  | INFIXL { Infixl }
-  | INFIXR { Infixr }
-  | INFIX  { Infix  }
   ;
 
 regex: STRING { $1 } ;

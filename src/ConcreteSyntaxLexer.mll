@@ -30,10 +30,6 @@ rule read = parse
   | ":="           { ASSIGN }
   | '$'            { DOLLAR }
   | '|'            { BAR }
-  | "infixl"       { INFIXL }
-  | "infixr"       { INFIXR }
-  | "infix"        { INFIX }
-  | "..."          { ELLIPSIS } (* TODO: conflicts with dollar? *)
   | eof            { EOF }
   | _ { error lexbuf ("Unexpected char: " ^ L.lexeme lexbuf) }
 
