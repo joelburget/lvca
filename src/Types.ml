@@ -235,9 +235,9 @@ module ConcreteSyntax = struct
       matches ([], None)
 
   type sort_rule' =
-    { sort_name : string;
+    { sort_name      : string;
       operator_rules : operator_match list;
-      variable  : variable_rule option;
+      variable       : variable_rule option;
     }
   (** A sort rule shows how to parse / pretty-print a sort *)
   type sort_rule = SortRule of sort_rule'

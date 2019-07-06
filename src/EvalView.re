@@ -1,5 +1,5 @@
 // TODO: duplicated in index
-type input = Core.translation_result(Binding.Nominal.term);
+type input       = Core.translation_result(Binding.Nominal.term);
 type eval_result = Core.translation_result(Core.core_val);
 
 [@react.component]
