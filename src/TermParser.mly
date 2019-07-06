@@ -23,7 +23,7 @@ top_term:
 
 term:
   | ID; LEFT_PAREN; separated_list(SEMICOLON, scope) RIGHT_PAREN
-  { Term ($1, $3) }
+  { Operator ($1, $3) }
   | ID;
   { Var $1        }
   | LEFT_BRACK; separated_list(SEMICOLON, term) RIGHT_BRACK

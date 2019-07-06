@@ -81,7 +81,7 @@ exception BadRules
 (* val of_ast    : ConcreteSyntax.t -> Nominal.term -> tree *)
 let rec of_ast ({ terminal_rules; sort_rules } as rules) current_sort tm
   = match current_sort, tm with
-  | _, Nominal.Term (name, scopes) ->
+  | _, Nominal.Operator (name, scopes) ->
     let SortRule { operator_rules } = M.getExn sort_rules name in
     (* TODO: remove possible exception. possible to have var-only sort? *)
     let OperatorMatch { tokens; term_pattern } = find_operator_match operator_rules name in

@@ -43,14 +43,14 @@ type 'a translation_result = ('a, located_err) Result.t
 let rec val_to_ast (core_val : core_val) : Nominal.term
   = match core_val with
   | ValTm (name, vals)
-  -> Nominal.Term
+  -> Nominal.Operator
     ( name
     , List.map vals (fun value -> Nominal.Scope([], val_to_ast value))
     )
   | ValPrim prim
   -> Nominal.Primitive prim
   | ValLam (args, body)
-  -> Nominal.Term ("lam", [ Nominal.Scope (args, to_ast body) ])
+  -> Nominal.Operator ("lam", [ Nominal.Scope (args, to_ast body) ])
 
 and pat_to_ast (pat : core_pat) : Nominal.term
   = failwith "TODO"
@@ -58,9 +58,9 @@ and pat_to_ast (pat : core_pat) : Nominal.term
 and to_ast (core : core) : Nominal.term = match core with
   | CoreVar name
   -> Nominal.Var name
-  (* -> Nominal.Term ("CoreVar", [Nominal.Scope ([], Nominal.Primitive (PrimString name))]) *)
+  (* -> Nominal.Operator ("CoreVar", [Nominal.Scope ([], Nominal.Primitive (PrimString name))]) *)
   | CoreVal core_val
-  -> Nominal.Term ("CoreVal", [Nominal.Scope ([], val_to_ast core_val)])
+  -> Nominal.Operator ("CoreVal", [Nominal.Scope ([], val_to_ast core_val)])
   (* TODO *)
 
 let rec match_branch (v : core_val) (pat : core_pat)
@@ -90,7 +90,7 @@ let rec find_core_match (v : core_val) (pats : (core_pat * core) list)
 let rec matches (tm : DeBruijn.term) (pat : denotation_pat)
   : ((string * string) list * DeBruijn.term M.t) option
   = match (tm, pat) with
-    | (Term(tag1, subtms), DPatternTm(tag2, subpats))
+    | (Operator(tag1, subtms), DPatternTm(tag2, subpats))
     -> if tag1 == tag2 && List.(length subtms == length subpats)
        then fold_right
          (fun ((scope, subpat), b_opt) ->
@@ -184,12 +184,12 @@ and fill_in_val
 and term_is_core_val (env : string list) (tm : DeBruijn.term)
   : core_val translation_result
   = match tm with
-  | Term ("lam", [Scope (names, body)])
+  | Operator ("lam", [Scope (names, body)])
   -> let env' = List.concat names env
      in Result.map
        (term_is_core env' body)
        (fun body' -> ValLam (names, body'))
-  | Term (tag, subtms) -> Result.map
+  | Operator (tag, subtms) -> Result.map
     (traverse_list_result (scope_is_core_val env) subtms)
     (fun subtms' -> ValTm (tag, subtms'))
   | DeBruijn.Primitive prim -> Ok (ValPrim prim)

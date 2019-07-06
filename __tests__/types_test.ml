@@ -23,7 +23,7 @@ let _ = describe "Nominal.(jsonify, serialize, hash)" (fun () ->
     ]
     (fun x -> x);
 
-  let tm = Term ("Z", []) in
+  let tm = Operator ("Z", []) in
   testAll "Z()"
     [ expect (jsonify tm)
       |> toEqual [%raw {| ["t", "Z", []] |} ];
@@ -34,7 +34,7 @@ let _ = describe "Nominal.(jsonify, serialize, hash)" (fun () ->
     ]
     (fun x -> x);
 
-  let tm = Term ("S", [Scope (["x"], Var "x")]) in
+  let tm = Operator ("S", [Scope (["x"], Var "x")]) in
   testAll "S(x. x)"
     [ expect (jsonify tm)
       |> toEqual [%raw {| ["t", "S", [[["x"], ["v", "x"]]]] |}];

@@ -7,7 +7,7 @@ module rec DeBruijn : sig
   type scope = Scope of string list * term
 
   and term =
-    | Term      of string * scope list
+    | Operator  of string * scope list
     | Var       of int
     | Sequence  of term list
     | Primitive of primitive
@@ -33,7 +33,7 @@ end = struct
     | Scope of string list * term
 
   and term =
-    | Term      of string * scope list
+    | Operator  of string * scope list
     | Var       of int
     | Sequence  of term list
     | Primitive of primitive
@@ -50,10 +50,10 @@ end = struct
   let rec to_nominal' ctx = function
     | Var ix
     -> Option.map (List.get ctx ix) (fun name -> Nominal.Var name)
-    | Term (tag, subtms)
+    | Operator (tag, subtms)
     -> Option.map
       (sequence_list_option (List.map subtms (scope_to_nominal ctx)))
-      (fun subtms' -> Nominal.Term (tag, subtms'))
+      (fun subtms' -> Nominal.Operator (tag, subtms'))
     | Sequence tms
     -> Option.map
       (sequence_list_option (List.map tms (to_nominal' ctx)))
@@ -71,7 +71,7 @@ end = struct
   let (get, empty) = Belt.Map.String.(get, empty)
   let rec from_nominal_with_bindings (Language sorts as lang) current_sort env
     = function
-      | Nominal.Term(tag, subtms) -> (match get sorts current_sort with
+      | Nominal.Operator(tag, subtms) -> (match get sorts current_sort with
         | None -> Result.Error
           ("from_nominal_with_bindings: couldn't find sort " ^ current_sort)
         | Some (SortDef (_vars, operators)) -> (match find_operator operators tag with
@@ -91,7 +91,7 @@ end = struct
                   | FixedValence (_binds, SortName result_sort)
                     -> scope_from_nominal lang result_sort env subtm
                   | _ -> Result.Error "TODO 2")))
-              (fun subtms' -> Term (tag, subtms'))))
+              (fun subtms' -> Operator (tag, subtms'))))
       | Nominal.Var name -> (match get env name with
         | None    -> Error ("couldn't find variable " ^ name)
         | Some ix -> Ok (Var ix))
@@ -125,7 +125,7 @@ and Nominal : sig
     | Scope of string list * term
 
   and term =
-    | Term      of string * scope list
+    | Operator  of string * scope list
     | Var       of string
     | Sequence  of term list
     | Primitive of primitive
@@ -142,7 +142,7 @@ end = struct
     | Scope of string list * term
 
   and term =
-    | Term      of string * scope list
+    | Operator  of string * scope list
     | Var       of string
     | Sequence  of term list
     | Primitive of primitive
@@ -150,7 +150,7 @@ end = struct
   open Format
 
   let rec pp_term ppf = function
-    | Term (tag, subtms) -> fprintf ppf "@[%s(%a)@]"
+    | Operator (tag, subtms) -> fprintf ppf "@[%s(%a)@]"
       tag
       pp_scope_list subtms
     | Var v        -> fprintf ppf "%s" v
@@ -192,7 +192,7 @@ end = struct
   )
 
   let rec jsonify (tm : term) : Js.Json.t = Js.Json.(match tm with
-    | Term (tag, tms)
+    | Operator (tag, tms)
     -> array [|
       string "t";
       string tag;
