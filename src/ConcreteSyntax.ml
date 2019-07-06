@@ -3,7 +3,7 @@ open Binding
 open Either
 open Types
 open Types.ConcreteSyntax
-let (find, sum) = Util.(find, sum)
+let (find, sum, traverse_list_result) = Util.(find, sum, traverse_list_result)
 
 let sprintf = Printf.sprintf
 
@@ -163,4 +163,35 @@ let rec to_string { leading_trivia; children; trailing_trivia } =
 
 let parse concrete str = failwith "TODO"
 
-let to_ast tree = failwith "TODO"
+(* Convert a concrete tree to an AST. We ignore trivia (and size). *)
+let rec to_ast lang { sort; node_type; children; } =
+  match node_type, children with
+    | Var, [ Left name ] -> Result.Ok (Nominal.Var name)
+    | Sequence, _ -> Result.map
+      (traverse_list_result
+        (function
+          | Left _      -> Result.Error "TODO: message"
+          | Right child -> to_ast lang child
+        )
+        children)
+      (fun children' -> Nominal.Sequence children')
+    | Primitive prim_ty, [ Left str ] -> (match prim_ty with
+      | String  -> Ok (Nominal.Primitive (PrimString str))
+      | Integer ->
+        try
+          Ok (Nominal.Primitive (PrimInteger (Bigint.of_string str)))
+        with
+          _ -> Error "TODO: message"
+      )
+    (* TODO: check validity *)
+    | Operator, Left tag :: children' -> Result.map
+      (traverse_list_result
+        (function
+          | Left _      -> Result.Error "TODO: message"
+          | Right child -> scope_to_ast lang child
+        )
+        children
+      )
+      (fun children'' -> Nominal.Operator (tag, children''))
+
+and scope_to_ast lang _ = failwith "TODO"
