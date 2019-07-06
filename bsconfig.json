@@ -16,6 +16,14 @@
           "edge" : ["LanguageLexer.ml", ":", "LanguageLexer.mll"]
         },
         {
+          "name" : "menhir-messages",
+          "edge" : ["LanguageParser.messages", ":", "LanguageParser.mly"]
+        },
+        // {
+        //   "name" : "menhir-errors",
+        //   "edge" : ["LanguageParseErrors.ml", ":", "LanguageParser"]
+        // },
+        {
           "name" : "menhir",
           "edge" : ["StaticsParser.ml", "StaticsParser.mli", ":", "StaticsParser.mly"]
         },
@@ -72,8 +80,17 @@
       "command": "menhir --explain --table $in"
     },
     {
+      "name": "menhir-messages",
+      "command": "menhir $in --update-errors $out | sponge $out"
+    },
+    {
+      "name": "menhir-errors",
+      "command":
+        "menhir $in.mly --compile-errors $in.messages >| $out"
+    },
+    {
       "name" : "ocamllex",
       "command": "ocamllex $in"
     }
-  ],
+  ]
 }

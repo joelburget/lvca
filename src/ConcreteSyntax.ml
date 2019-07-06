@@ -145,16 +145,6 @@ let rec of_ast ({ terminal_rules; sort_rules } as rules) current_sort tm
       size            = String.length str;
     }
 
-  | SortName "bool", Nominal.Primitive (PrimBool b) ->
-    let str = sprintf "%b" b in
-    { sort            = current_sort;
-      node_type       = Primitive Bool;
-      leading_trivia  = "";
-      trailing_trivia = "";
-      children        = [Left str];
-      size            = String.length str;
-    }
-
   | SortName "integer", Nominal.Primitive (PrimInteger i) ->
     let str = Bigint.to_string i in
     { sort            = current_sort;

@@ -5,7 +5,6 @@ open Types
 
 type prim_ty =
   | Integer
-  | Bool
   | String
 
 type node_type =

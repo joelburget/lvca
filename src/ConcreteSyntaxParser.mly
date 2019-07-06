@@ -3,8 +3,6 @@
 %token <string> NONTERMINAL_ID
 %token <string> STRING
 %token DOT
-// %token TRUE
-// %token FALSE
 %token LEFT_PAREN
 %token RIGHT_PAREN
 %token LEFT_BRACK

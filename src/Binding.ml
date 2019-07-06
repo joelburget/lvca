@@ -179,7 +179,6 @@ end = struct
   and pp_prim ppf = function
     | PrimInteger i -> fprintf ppf "%s" (Bigint.to_string i)
     | PrimString  s -> fprintf ppf "\"%s\"" s
-    | PrimBool    b -> fprintf ppf "%b" b
 
   let pp_term' = asprintf "%a" pp_term
 
@@ -188,7 +187,6 @@ end = struct
   let jsonify_prim = Js.Json.(function
     | PrimInteger i -> array [| string "i"; string (Bigint.to_string i) |]
     | PrimString  s -> array [| string "s"; string s                    |]
-    | PrimBool    b -> array [| string "b"; boolean b                   |]
   )
 
   let rec jsonify (tm : term) : Js.Json.t = Js.Json.(match tm with

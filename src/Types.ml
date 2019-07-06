@@ -37,12 +37,10 @@ type language =
 type primitive =
   | PrimInteger of Bigint.t
   | PrimString  of string
-  | PrimBool    of bool
 
 let prim_eq p1 p2 = match (p1, p2) with
   | (PrimInteger i1, PrimInteger i2) -> Bigint.(i1 = i2) [@warning "-44"]
   | (PrimString  s1, PrimString  s2) -> s1 = s2
-  | (PrimBool    b1, PrimBool    b2) -> b1 = b2
   | _                                -> false
 
 module Sjcl = struct
