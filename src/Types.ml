@@ -189,12 +189,13 @@ module Statics = struct
 end
 
 (** A description of the concrete syntax for a language *)
-module ConcreteSyntax = struct
+module ConcreteSyntaxDescription = struct
 
   module M = Belt.Map.String
 
   type capture_number = int
   type terminal_id    = string
+  (* TODO: rename from regex *)
   type regex          = string
   type terminal_rule  = TerminalRule of terminal_id * regex
 
@@ -212,7 +213,10 @@ module ConcreteSyntax = struct
     }
   type operator_match = OperatorMatch of operator_match'
 
-  type variable_rule = { tokens: nonterminal_token list; }
+  type variable_rule =
+    { tokens      : nonterminal_token list;
+      var_capture : capture_number;
+    }
 
   exception DuplicateVarRules
 
@@ -221,10 +225,13 @@ module ConcreteSyntax = struct
     : (operator_match list * variable_rule option)
     = fold_right
       (fun (match_, (matches, v_rule)) -> match match_ with
-        | OperatorMatch { tokens; term_pattern = ("var", _) }
+        | OperatorMatch
+          { tokens;
+            term_pattern = ("var", [TermScope ([], var_capture)]);
+          }
         -> (match v_rule with
           | Some _ -> raise DuplicateVarRules
-          | None   -> (matches, Some { tokens })
+          | None   -> (matches, Some { tokens; var_capture })
         )
         | _
         -> (match_ :: matches, v_rule)

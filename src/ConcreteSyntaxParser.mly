@@ -18,7 +18,7 @@
 %token DOLLAR
 %token BAR
 
-%{ open Types.ConcreteSyntax %}
+%{ open Types.ConcreteSyntaxDescription %}
 
 %start terminal_rule
 %start regex
@@ -28,15 +28,15 @@
 %start operator_match__test
 %start sort_rule
 %start sort_rule__test
-%type <Types.ConcreteSyntax.terminal_rule> terminal_rule
-%type <Types.ConcreteSyntax.regex> regex
-%type <Types.ConcreteSyntax.capture_number> capture_number
-%type <Types.ConcreteSyntax.nonterminal_token> nonterminal_token
-%type <Types.ConcreteSyntax.operator_match> operator_match
-%type <Types.ConcreteSyntax.operator_match> operator_match__test
-%type <Types.ConcreteSyntax.sort_rule> sort_rule
-%type <Types.ConcreteSyntax.sort_rule> sort_rule__test
-%type <(string * Types.ConcreteSyntax.term_scope list)> term_pattern
+%type <Types.ConcreteSyntaxDescription.terminal_rule> terminal_rule
+%type <Types.ConcreteSyntaxDescription.regex> regex
+%type <Types.ConcreteSyntaxDescription.capture_number> capture_number
+%type <Types.ConcreteSyntaxDescription.nonterminal_token> nonterminal_token
+%type <Types.ConcreteSyntaxDescription.operator_match> operator_match
+%type <Types.ConcreteSyntaxDescription.operator_match> operator_match__test
+%type <Types.ConcreteSyntaxDescription.sort_rule> sort_rule
+%type <Types.ConcreteSyntaxDescription.sort_rule> sort_rule__test
+%type <(string * Types.ConcreteSyntaxDescription.term_scope list)> term_pattern
 %%
 
 terminal_rule:

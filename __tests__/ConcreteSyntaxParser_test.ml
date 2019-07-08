@@ -1,6 +1,6 @@
 open Jest
 open Expect
-open Types.ConcreteSyntax
+open Types.ConcreteSyntaxDescription
 
 let _ = describe "ConcreteSyntaxParser" (fun () ->
   let expectParse parser str tm = test ("'" ^ str ^ "'") (fun () ->
@@ -59,6 +59,6 @@ let _ = describe "ConcreteSyntaxParser" (fun () ->
                 term_pattern = ("sub", [TermScope ([], 1); TermScope ([], 3)])
               };
           ];
-        variable = Some { tokens = [TerminalName "NAME"] };
+        variable = Some { tokens = [TerminalName "NAME"]; var_capture = 1 };
       });
 )

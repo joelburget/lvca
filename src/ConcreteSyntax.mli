@@ -25,7 +25,7 @@ and tree =
     size            : int;
   }
 
-val of_ast    : ConcreteSyntax.t -> sort -> Nominal.term -> tree
+val of_ast    : ConcreteSyntaxDescription.t -> sort -> Nominal.term -> tree
 val to_string : tree -> string
-val parse     : ConcreteSyntax.sort_rule -> string -> (tree, string) Result.t
+val parse     : ConcreteSyntaxDescription.sort_rule -> string -> (tree, string) Result.t
 val to_ast    : language -> tree -> (Nominal.term, string) Result.t

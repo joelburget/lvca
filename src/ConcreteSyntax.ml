@@ -2,7 +2,7 @@ open Belt
 open Binding
 open Either
 open Types
-open Types.ConcreteSyntax
+open Types.ConcreteSyntaxDescription
 let (find, sum, traverse_list_result) = Util.(find, sum, traverse_list_result)
 
 let sprintf = Printf.sprintf
@@ -161,7 +161,7 @@ let rec to_string { leading_trivia; children; trailing_trivia } =
     ))
   in leading_trivia ^ children_str ^ trailing_trivia
 
-let parse concrete str = failwith "TODO"
+let parse (SortRule { sort_name; operator_rules; variable }) str = failwith "TODO"
 
 (* Convert a concrete tree to an AST. We ignore trivia (and size). *)
 let rec to_ast lang { sort; node_type; children; } =
