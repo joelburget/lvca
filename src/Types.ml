@@ -1,5 +1,4 @@
 (** Types for representing languages *)
-open Belt
 open Util
 
 (** Sorts divide ASTs into syntactic categories. *)
@@ -195,7 +194,8 @@ module ConcreteSyntaxDescription = struct
 
   type capture_number = int
   type terminal_id    = string
-  (* TODO: rename from regex *)
+
+  (* A regular expression used for lexical analysis. Currently, this uses the jison format. *)
   type regex          = string
   type terminal_rule  = TerminalRule of terminal_id * regex
 
