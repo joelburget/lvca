@@ -12,9 +12,6 @@
 %token SEMICOLON
 %token EOF
 %token ASSIGN
-%token INFIXL
-%token INFIXR
-%token INFIX
 %token DOLLAR
 %token BAR
 

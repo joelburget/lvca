@@ -6,7 +6,6 @@
 %token EOF
 %token CTX
 %token CTX_SEPARATOR
-%token <string> RULE_NAME
 %token LEFT_D_ARR
 %token RIGHT_D_ARR
 %token LINE
