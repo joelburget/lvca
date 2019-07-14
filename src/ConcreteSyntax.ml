@@ -1,4 +1,4 @@
-open Belt
+module Result = Belt.Result
 open Binding
 open Either
 open Types
@@ -12,12 +12,12 @@ type prim_ty =
   | String
 
 type node_type =
-  | Operator
+  | Operator  of string
   | Var
   | Sequence
   | Primitive of prim_ty
 
-type terminal_capture    = string
+type    terminal_capture = string
 type nonterminal_capture = tree
 
 (* Inspired by:
@@ -42,6 +42,16 @@ and tree =
     size            : int;
   }
 
+let rec equivalent t1 t2 =
+  t1.sort = t2.sort &&
+  t1.node_type = t2.node_type &&
+  Belt.List.(every (zipBy t1.children t2.children equivalent')) (fun b -> b)
+
+and equivalent' child1 child2 = match child1, child2 with
+  | Left   tc1, Left   tc2 -> tc1 = tc2
+  | Right ntc1, Right ntc2 -> equivalent ntc1 ntc2
+  | _, _ -> false
+
 let find_operator_match
   (matches: operator_match list)
   (opname : string)
@@ -55,113 +65,133 @@ let find_operator_match
 
 type subterm_result =
   | NotFound
-  | FoundTerm of Nominal.term
-  | FoundBinder
+  | FoundTerm   of int * Nominal.term
+  | FoundBinder of string
 
-let rec find_subtm
-  (token_ix: int)
-  (scopes: Nominal.scope list)
-  (term_pattern: term_scope list)
-  : subterm_result
+(* Find a subterm or binder given a term pattern template and the index of the
+ * subterm / binder we're looking for *)
+let rec find_subtm' slot_num token_ix scopes term_pattern
   = match scopes, term_pattern with
     | _, [] -> NotFound
-    | Scope (_, body) :: scopes', TermScope (binder_nums, body_num) :: pattern_scopes
-    -> (match find (fun num -> num = token_ix) binder_nums with
-      | Some _ -> FoundBinder
+    | Nominal.Scope (binders, body) :: scopes', NumberedScopePattern (binder_nums, body_num) :: pattern_scopes
+    -> (match Belt.List.zip binders binder_nums |> find (fun (_, num) -> num = token_ix) with
+      | Some (name, _ix) -> FoundBinder name
       | None -> if token_ix = body_num
-        then FoundTerm body
-        else find_subtm token_ix scopes' pattern_scopes
+        then FoundTerm (slot_num, body)
+        else find_subtm' (slot_num + 1) token_ix scopes' pattern_scopes
       )
-    | _, _ -> failwith "invariant violation"
+    | _, _ -> failwith "invariant violation: mismatched scopes / term patterns"
 
-exception BadRules
+let find_subtm
+  : int -> Nominal.scope list -> numbered_scope_pattern list -> subterm_result
+  = find_subtm' 0
 
-(* val of_ast    : ConcreteSyntax.t -> Nominal.term -> tree *)
-let rec of_ast ({ terminal_rules; sort_rules } as rules) current_sort tm
+exception BadRules of string
+
+(** raised from of_ast when we need to emit a token but don't have a capture,
+ * and the terminal match is a regex, not a string literal. This could actually
+ * be a form of BadRules *)
+exception CantEmitTokenRegex of string * string
+
+(* XXX *)
+let regex_is_literal : string -> bool = fun _ -> true
+
+let mk_tree sort node_type children size =
+  { sort;
+    node_type;
+    leading_trivia  = "";
+    trailing_trivia = "";
+    children;
+    size;
+  }
+
+(* TODO: handle non-happy cases *)
+let rec of_ast (Language sorts as lang) ({ terminal_rules; sort_rules } as rules) current_sort tm
   = match current_sort, tm with
-  | _, Nominal.Operator (name, scopes) ->
-    let SortRule { operator_rules } = M.getExn sort_rules name in
+  | SortAp (sort_name, _), Nominal.Operator (op_name, scopes) ->
+    let SortRule { operator_rules } = M.getExn sort_rules sort_name in
     (* TODO: remove possible exception. possible to have var-only sort? *)
-    let OperatorMatch { tokens; term_pattern } = find_operator_match operator_rules name in
-    let sizes, children = List.unzip (List.mapWithIndex tokens (fun token_ix token ->
-      match find_subtm token_ix scopes (snd term_pattern), token with
+    let OperatorMatch { tokens; term_pattern }
+      = find_operator_match operator_rules op_name
+    in
+    let _term_name, numbered_scope_patterns = term_pattern in
+    let sizes, children = Belt.List.unzip (Belt.List.mapWithIndex tokens (fun token_ix token ->
+      let token_ix' = token_ix + 1 in (* switch from 0- to 1-based indexing *)
+      match find_subtm token_ix' scopes numbered_scope_patterns, token with
 
-        | FoundTerm subtm, NonterminalName sort
-        -> let subtree = of_ast rules (failwith "TODO") subtm in
-           subtree.size, Right subtree
-        | FoundTerm subtm, TerminalName _name
-        -> let subtree = of_ast rules current_sort subtm in
+        | FoundTerm (tm_ix, subtm), NonterminalName sort
+        -> let SortDef (_, operator_defs) = M.getExn sorts sort in
+           let Some (OperatorDef (_, Arity (_, valences))) = find
+             (fun (OperatorDef (op_name', _)) -> op_name' = op_name)
+             operator_defs
+           in
+           let valence = Belt.List.getExn valences tm_ix in
+           let new_sort = (match valence with
+             | FixedValence    (_, new_sort)
+             | VariableValence (_, new_sort)
+             -> new_sort
+           ) in
+           let subtree = of_ast lang rules new_sort subtm in
            subtree.size, Right subtree
 
-        (* *)
-        | FoundBinder, TerminalName name
-        | NotFound   , TerminalName name
-        -> let lit = M.getExn terminal_rules name in String.length lit, Left lit
+        | FoundTerm (_tm_ix, subtm), TerminalName _name
+        -> let subtree = of_ast lang rules current_sort subtm in
+           subtree.size, Right subtree
+
+        | FoundBinder binder_name, TerminalName name
+        -> String.length binder_name, Left binder_name
+
+        (* if the current token is a terminal, and we didn't capture a binder
+         * or term, we just emit the contents of the token *)
+        | NotFound, TerminalName name
+        -> let terminal_rule = M.getExn terminal_rules name in
+           if regex_is_literal terminal_rule
+           then String.length terminal_rule, Left terminal_rule
+           else raise (CantEmitTokenRegex (name, terminal_rule))
+
+        (* XXX right now emitting the token name, not contents
+        -> String.length name, Left name *)
 
         (* if the current token is naming a nonterminal, there has to be a
          * subterm *)
-        | FoundBinder, NonterminalName _
-        | NotFound   , NonterminalName _
-        -> raise BadRules
+        | FoundBinder binder_name, NonterminalName name
+        -> raise (BadRules
+          ("binder (" ^ binder_name ^ ") found, nonterminal name: " ^ name))
+        | NotFound     , NonterminalName name
+        -> raise (BadRules ("subterm not found, nonterminal name: " ^ name))
     )) in
     let size = sum sizes in
 
-    { sort            = current_sort;
-      node_type       = Operator;
-      leading_trivia  = "";
-      trailing_trivia = "";
-      children;
-      size;
-    }
+    mk_tree current_sort (Operator op_name) children size
 
-  | _, Nominal.Var name ->
-    { sort            = current_sort;
-      node_type       = Var;
-      leading_trivia  = "";
-      trailing_trivia = "";
-      children        = [Left name];
-      size            = String.length name;
-    }
+  | _, Nominal.Var name
+  -> mk_tree current_sort Var [Left name] (String.length name)
 
-  | SortAp (SortName "sequence", sort), Nominal.Sequence tms ->
-    let sizes, children = List.unzip (List.map tms (fun tm ->
-      let child = of_ast rules sort tm in
-        child.size, Right child)) in
-    { sort            = current_sort;
-      node_type       = Sequence;
-      leading_trivia  = "";
-      trailing_trivia = "";
-      children;
-      size            = sum sizes;
-    }
+  | SortAp ("sequence", [sort]), Nominal.Sequence tms ->
+    let sizes, children = tms
+      |> List.map (fun tm ->
+        let child = of_ast lang rules sort tm in
+          child.size, Right child)
+      |> Belt.List.unzip
+    in
+    mk_tree current_sort Sequence children (sum sizes)
 
-  | SortName "string", Nominal.Primitive (PrimString str) ->
-    { sort            = current_sort;
-      node_type       = Primitive String;
-      leading_trivia  = "";
-      trailing_trivia = "";
-      children        = [Left str];
-      size            = String.length str;
-    }
+  | SortAp ("string", []), Nominal.Primitive (PrimString str) ->
+    mk_tree current_sort (Primitive String) [Left str] (String.length str)
 
-  | SortName "integer", Nominal.Primitive (PrimInteger i) ->
+  | SortAp ("integer", []), Nominal.Primitive (PrimInteger i) ->
     let str = Bigint.to_string i in
-    { sort            = current_sort;
-      node_type       = Primitive Integer;
-      leading_trivia  = "";
-      trailing_trivia = "";
-      children        = [Left str];
-      size            = String.length str;
-    }
+    mk_tree current_sort (Primitive Integer) [Left str] (String.length str)
 
 let rec to_string { leading_trivia; children; trailing_trivia } =
-  let children_str = String.concat "" (List.map children (function
-    | Left terminal_capture     -> terminal_capture
-    | Right nonterminal_capture -> to_string nonterminal_capture
-    ))
+  let children_str = children
+    |> List.map
+      (function
+      | Left terminal_capture     -> terminal_capture
+      | Right nonterminal_capture -> to_string nonterminal_capture
+      )
+    |> String.concat ""
   in leading_trivia ^ children_str ^ trailing_trivia
-
-let parse (SortRule { sort_name; operator_rules; variable }) str = failwith "TODO"
 
 (* Convert a concrete tree to an AST. We ignore trivia (and size). *)
 let rec to_ast lang { sort; node_type; children; } =
@@ -183,15 +213,91 @@ let rec to_ast lang { sort; node_type; children; } =
         with
           _ -> Error "TODO: message"
       )
-    (* TODO: check validity *)
-    | Operator, Left tag :: children' -> Result.map
-      (traverse_list_result
-        (function
-          | Left _      -> Result.Error "TODO: message"
-          | Right child -> scope_to_ast lang child
-        )
-        children
-      )
-      (fun children'' -> Nominal.Operator (tag, children''))
 
-and scope_to_ast lang _ = failwith "TODO"
+    (* TODO: check validity *)
+    | Operator op_name, _ ->
+      let children' = children
+        |> Util.list_flat_map (function
+          | Left _      -> []
+          | Right child -> [scope_to_ast lang child]
+        )
+        |> sequence_list_result
+      in Result.map children'
+           (fun children'' -> Nominal.Operator (op_name, children''))
+
+and scope_to_ast lang ({ children } as tree) = match List.rev children with
+  | body :: binders -> (match to_ast lang {tree with children = [ body ]} with
+    | Ok body' -> binders
+      |> traverse_list_result
+        (function
+          | Left binder_name
+          -> Ok binder_name
+          | Right _nonterminal_capture
+          -> Error "expected binder name, got TODO"
+        )
+      |> Util.flip Result.map
+        (fun binders' -> Nominal.Scope (List.rev binders', body'))
+    | Error err -> Error err
+  )
+  | [] -> Error "scope_to_ast called on no children"
+
+let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
+  : Jison.grammar
+  =
+    let lex' = Jison.js_lex ~rules: (terminal_rules
+      |> M.toList
+      |> List.map
+        (fun (name, regex) -> (regex, "return '" ^ name ^ "'"))
+      |> Belt.List.toArray
+      )
+    in
+    let print_token = function
+      | TerminalName    name -> name
+      | NonterminalName name -> name
+    in
+    let rec print_tokens = function
+      | []            -> ""
+      | [tok]         -> print_token tok
+      | tok   :: toks -> print_token tok ^ " " ^ print_tokens toks
+    in
+    let mk_variable: variable_rule option -> string array = function
+      | None
+      -> [||]
+      | Some { tokens; var_capture }
+      -> [| print_tokens tokens; Printf.sprintf "$$ = %i" var_capture |]
+    in
+    let mk_operator_rules: operator_match list -> string array list
+      = List.map (fun (OperatorMatch { tokens; term_pattern }) ->
+          let operator_name, term_scopes = term_pattern in
+          [| print_tokens tokens;
+            (* TODO: conversion from this format to a term *)
+            Printf.sprintf
+            "$$ = { name: %s, scopes: %s }"
+            operator_name
+            "TODO"
+          |]
+        )
+    in
+    let mk_sort_rule = fun (sort_name, SortRule { operator_rules; variable }) ->
+      (sort_name, Belt.List.toArray (mk_variable variable :: mk_operator_rules operator_rules))
+    in
+    let bnf = sort_rules
+      |> M.toList
+      |> List.map mk_sort_rule
+      |> Js.Dict.fromList
+    in
+    Jison.grammar ~lex:lex' ~bnf:bnf
+
+(* XXX: need to fix return value *)
+let jison_parse (parser: Jison.parser) (str: string) : tree =
+  ([%raw "function(parser, str) { return parser.parse(str); }"]
+  : Jison.parser -> string -> tree
+  ) parser str
+
+let parse desc str =
+  let grammar = to_grammar desc in
+  let parser = Jison.to_parser grammar in
+  try
+    Result.Ok (jison_parse parser str)
+  with
+    _ -> Result.Error "parse error"

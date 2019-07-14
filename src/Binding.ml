@@ -1,5 +1,7 @@
 open Types
-open Belt
+module Result = Belt.Result
+module Option = Belt.Option
+
 let (sequence_list_option, sequence_list_result, union) =
   Util.(sequence_list_option, sequence_list_result, union)
 
@@ -47,22 +49,24 @@ end = struct
         then Some od
         else find_operator tl tag
 
+  module L = Belt.List
+
   let rec to_nominal' ctx = function
     | Var ix
-    -> Option.map (List.get ctx ix) (fun name -> Nominal.Var name)
+    -> Option.map (L.get ctx ix) (fun name -> Nominal.Var name)
     | Operator (tag, subtms)
     -> Option.map
-      (sequence_list_option (List.map subtms (scope_to_nominal ctx)))
+      (sequence_list_option (L.map subtms (scope_to_nominal ctx)))
       (fun subtms' -> Nominal.Operator (tag, subtms'))
     | Sequence tms
     -> Option.map
-      (sequence_list_option (List.map tms (to_nominal' ctx)))
+      (sequence_list_option (L.map tms (to_nominal' ctx)))
       (fun tms' -> Nominal.Sequence tms')
     | Primitive prim
     -> Some (Nominal.Primitive prim)
 
   and scope_to_nominal ctx (Scope (binders, body)) = Option.map
-    (to_nominal' (List.concat binders ctx) body)
+    (to_nominal' (L.concat binders ctx) body)
     (fun body' -> Nominal.Scope (binders, body'))
 
   let to_nominal = to_nominal' []
@@ -79,16 +83,16 @@ end = struct
             ("from_nominal_with_bindings: couldn't find operator " ^ tag ^
             " (in sort " ^ current_sort ^ ")")
           | Some (OperatorDef (_tag, Arity (_binds, valences))) ->
-            if List.(length valences != length subtms)
+            if L.(length valences != length subtms)
             then Error (
               "Unexpected number of subterms (does not match the valence of " ^
               tag ^ ")"
             )
             else Result.map
               (sequence_list_result
-                (List.zipBy valences subtms
+                (L.zipBy valences subtms
                 (fun valence subtm -> match valence with
-                  | FixedValence (_binds, SortName result_sort)
+                  | FixedValence (_binds, SortAp (result_sort, _))
                     -> scope_from_nominal lang result_sort env subtm
                   | _ -> Result.Error "TODO 2")))
               (fun subtms' -> Operator (tag, subtms'))))
@@ -97,7 +101,7 @@ end = struct
         | Some ix -> Ok (Var ix))
       | Nominal.Sequence tms -> Result.map
         (sequence_list_result
-          (List.map tms (from_nominal_with_bindings lang current_sort env)))
+          (L.map tms (from_nominal_with_bindings lang current_sort env)))
         (fun x' -> Sequence x')
       | Primitive prim -> Ok (DeBruijn.Primitive prim)
 
@@ -107,11 +111,12 @@ end = struct
     env
     (Nominal.Scope (names, body))
     =
-      let n = List.length names in
-      let argNums = List.zip names (List.makeBy n (fun i -> i)) in
+      let module L = Belt.List in
+      let n = L.length names in
+      let argNums = L.(zip names (makeBy n (fun i -> i))) in
       let env' = union
             (M.map env (fun i -> i + n))
-            (M.fromArray (List.(toArray argNums)))
+            (M.fromArray (L.toArray argNums))
       in Result.map
            (from_nominal_with_bindings lang current_sort env' body)
            (fun body' -> (Scope (names, body')))
@@ -182,7 +187,7 @@ end = struct
 
   let pp_term' = asprintf "%a" pp_term
 
-  let array_map f args = Js.Json.array (List.toArray (List.map args f))
+  let array_map f args = Js.Json.array (Belt.List.(toArray (map args f)))
 
   let jsonify_prim = Js.Json.(function
     | PrimInteger i -> array [| string "i"; string (Bigint.to_string i) |]

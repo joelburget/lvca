@@ -38,7 +38,7 @@ let rec traverse_list_result
     )
 
 let rec sequence_list_result
-  (lst : (('a, 'b) Result.t) list)
+  (lst : ('a, 'b) Result.t list)
   : ('a list, 'b) Result.t = match lst with
   | []             -> Ok []
   | Ok a :: rest   -> Result.map
@@ -47,7 +47,7 @@ let rec sequence_list_result
   | Error msg :: _ -> Error msg
 
 let rec sequence_list_option
-  (lst : ('a option) list)
+  (lst : 'a option list)
   : ('a list option) = match lst with
   | []             -> Some []
   | Some a :: rest -> Option.map
@@ -83,3 +83,11 @@ let rec sum = function
 let rec find (f: 'a -> bool) (lst: 'a list) : 'a option = match lst with
   | []       -> None
   | x  :: xs -> if f x then Some x else find f xs
+
+let flip (f : 'a -> 'b -> 'c): ('b -> 'a -> 'c)
+  = fun b a -> f a b
+
+let id a = a
+
+let rec list_flat_map : ('a -> 'b list) -> 'a list -> 'b list
+  = fun f lst -> List.(map lst f |> flatten)

@@ -1,7 +1,7 @@
 open Belt
 open Types
 open Binding
-open Util
+open! Util
 
 module M = Belt.Map.String
 module O = Belt.Option

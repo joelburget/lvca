@@ -27,7 +27,7 @@ let _ = describe "ConcreteSyntaxParser" (fun () ->
             TerminalName    "BAR";
             NonterminalName "baz"
           ];
-        term_pattern = ("foo", [TermScope ([], 1); TermScope ([], 2)])
+        term_pattern = ("foo", [NumberedScopePattern ([], 1); NumberedScopePattern ([], 2)])
       }
     );
 
@@ -48,7 +48,7 @@ let _ = describe "ConcreteSyntaxParser" (fun () ->
                     TerminalName    "ADD";
                     NonterminalName "arith"
                   ];
-                term_pattern = ("add", [TermScope ([], 1); TermScope ([], 3)])
+                term_pattern = ("add", [NumberedScopePattern ([], 1); NumberedScopePattern ([], 3)])
               };
             OperatorMatch
               { tokens =
@@ -56,7 +56,7 @@ let _ = describe "ConcreteSyntaxParser" (fun () ->
                     TerminalName    "SUB";
                     NonterminalName "arith"
                   ];
-                term_pattern = ("sub", [TermScope ([], 1); TermScope ([], 3)])
+                term_pattern = ("sub", [NumberedScopePattern ([], 1); NumberedScopePattern ([], 3)])
               };
           ];
         variable = Some { tokens = [TerminalName "NAME"]; var_capture = 1 };

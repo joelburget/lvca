@@ -21,9 +21,9 @@
 %%
 
 sort:
-  | LEFT_PAREN sort RIGHT_PAREN { $2             }
-  | ID                          { SortName $1    }
-  | sort sort                   { SortAp($1, $2) } ;
+  | LEFT_PAREN sort RIGHT_PAREN { $2              }
+  | ID list(sort)               { SortAp ($1, $2) }
+  ;
 
 fixedValence:
   | sort DOT fixedValence

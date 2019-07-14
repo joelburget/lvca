@@ -25,6 +25,7 @@
 %start operator_match__test
 %start sort_rule
 %start sort_rule__test
+%start language
 %type <Types.ConcreteSyntaxDescription.terminal_rule> terminal_rule
 %type <Types.ConcreteSyntaxDescription.regex> regex
 %type <Types.ConcreteSyntaxDescription.capture_number> capture_number
@@ -33,8 +34,14 @@
 %type <Types.ConcreteSyntaxDescription.operator_match> operator_match__test
 %type <Types.ConcreteSyntaxDescription.sort_rule> sort_rule
 %type <Types.ConcreteSyntaxDescription.sort_rule> sort_rule__test
-%type <(string * Types.ConcreteSyntaxDescription.term_scope list)> term_pattern
+%type <(string * Types.ConcreteSyntaxDescription.numbered_scope_pattern list)> term_pattern
+%type <Types.ConcreteSyntaxDescription.t> language
 %%
+
+language:
+  | terminal_rule+ sort_rule+ EOF
+  { Types.ConcreteSyntaxDescription.make $1 $2 }
+  ;
 
 terminal_rule:
   | TERMINAL_ID; ASSIGN; regex
@@ -66,7 +73,7 @@ term_pattern:
 
 term_scope_pattern:
   | separated_nonempty_list(DOT, capture_number)
-  { let (binds, body) = Util.unsnoc $1 in TermScope (binds, body) }
+  { let (binds, body) = Util.unsnoc $1 in NumberedScopePattern (binds, body) }
   ;
 
 operator_match__test: | operator_match; EOF { $1 } ;

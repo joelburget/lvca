@@ -8,7 +8,6 @@ open Binding
 let _ = describe "Nominal.(jsonify, serialize, hash)" (fun () ->
   let open Nominal in
 
-  let id = fun x -> x in
   let serialize tm = ArrayBuffer.to_hex
     (Uint8Array.to_array_buffer
     (Nominal.serialize tm)) in
@@ -22,7 +21,7 @@ let _ = describe "Nominal.(jsonify, serialize, hash)" (fun () ->
       expect (hash tm)
       |> toBe "bbc37ed1e26f8481398dc797bd0b3ec2e3ae954e1c3f69b461a487d8703ec3d6";
     ]
-    id;
+    Util.id;
 
   let tm = Operator ("Z", []) in
   testAll "Z()"
@@ -33,7 +32,7 @@ let _ = describe "Nominal.(jsonify, serialize, hash)" (fun () ->
       expect (hash tm)
       |> toBe "cc55b934e76de136a1664dc89c473b2fdc52948d8ba4394bfad5e1219841ffb3";
     ]
-    id;
+    Util.id;
 
   let tm = Operator ("S", [Scope (["x"], Var "x")]) in
   testAll "S(x. x)"
@@ -44,7 +43,7 @@ let _ = describe "Nominal.(jsonify, serialize, hash)" (fun () ->
       expect (hash tm)
       |> toBe "22e98205b448e5d79e3dd8fe46469288e9292c0a10eb1b6eb0b896d54e016661";
     ]
-    id;
+    Util.id;
 
   let tm = Primitive (PrimInteger (Bigint.of_string "12345")) in
   testAll "12345"
@@ -55,7 +54,7 @@ let _ = describe "Nominal.(jsonify, serialize, hash)" (fun () ->
       expect (hash tm)
       |> toBe "e69505a495d739f89cf515c31cf3a2cca4e29a1a4fede9a331b45207a6fb33e5";
     ]
-    id;
+    Util.id;
 
   let tm = Sequence [] in
   testAll "[]"
@@ -66,7 +65,7 @@ let _ = describe "Nominal.(jsonify, serialize, hash)" (fun () ->
       expect (hash tm)
       |> toBe "8afbfb879b5a95214c4c483c401313235040663bbdc08220992a5841801a421e";
     ]
-    id;
+    Util.id;
 
   let tm = Sequence [Var "x"] in
   testAll "[x]"
@@ -77,5 +76,5 @@ let _ = describe "Nominal.(jsonify, serialize, hash)" (fun () ->
       expect (hash tm)
       |> toBe "28b6e8f2124dd5931d69e1a5350f5c44ebdec7e0f6be9f98d2c717fcf09fa3d8";
     ]
-    id;
+    Util.id;
 )

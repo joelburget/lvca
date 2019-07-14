@@ -82,8 +82,8 @@ core:
 (* TODO: duplicated from LanguageParser *)
 sort:
   | LEFT_PAREN sort RIGHT_PAREN { $2             }
-  | ID                          { SortName $1    }
-  | sort sort                   { SortAp($1, $2) } ;
+  | ID list(sort)               { SortAp ($1, $2) }
+  ;
 
 case: core_pat RIGHT_S_ARR core { ($1, $3) } ;
 

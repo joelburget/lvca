@@ -3,9 +3,8 @@ open Util
 
 (** Sorts divide ASTs into syntactic categories. *)
 type sort =
-  | SortAp   of sort * sort
   (** A higher-kinded sort can be applied *)
-  | SortName of string
+  | SortAp   of string * sort list
 
 (** A valence represents the sort of an argument (to an operator), as well as
  * the number and sorts of the variables bound within it *)
@@ -195,7 +194,8 @@ module ConcreteSyntaxDescription = struct
   type capture_number = int
   type terminal_id    = string
 
-  (* A regular expression used for lexical analysis. Currently, this uses the jison format. *)
+  (* A regular expression used for lexical analysis. Currently, this uses the
+   * jison format. *)
   type regex          = string
   type terminal_rule  = TerminalRule of terminal_id * regex
 
@@ -205,11 +205,13 @@ module ConcreteSyntaxDescription = struct
     | TerminalName    of string
     | NonterminalName of string
 
-  type term_scope = TermScope of capture_number list * capture_number
+  (* A term pattern with numbered holes for binder names and subterms *)
+  type numbered_scope_pattern =
+    NumberedScopePattern of capture_number list * capture_number
 
   type operator_match' =
     { tokens       : nonterminal_token list;
-      term_pattern : string * term_scope list;
+      term_pattern : string * numbered_scope_pattern list;
     }
   type operator_match = OperatorMatch of operator_match'
 
@@ -227,7 +229,7 @@ module ConcreteSyntaxDescription = struct
       (fun (match_, (matches, v_rule)) -> match match_ with
         | OperatorMatch
           { tokens;
-            term_pattern = ("var", [TermScope ([], var_capture)]);
+            term_pattern = ("var", [NumberedScopePattern ([], var_capture)]);
           }
         -> (match v_rule with
           | Some _ -> raise DuplicateVarRules
@@ -250,8 +252,19 @@ module ConcreteSyntaxDescription = struct
   type sort_rules = sort_rule M.t
 
   type t = {
-    terminal_rules: terminal_rules;
-    sort_rules:     sort_rules;
+    terminal_rules : terminal_rules;
+    sort_rules     : sort_rules;
   }
+
+  let make (terminal_rules: terminal_rule list) (sort_rules : sort_rule list) =
+    { terminal_rules = terminal_rules
+      |> List.map (fun (TerminalRule (name, rule)) -> (name, rule))
+      |> Belt.List.toArray
+      |> M.fromArray;
+    sort_rules = sort_rules
+      |> List.map (fun ((SortRule { sort_name }) as rule) -> (sort_name, rule))
+      |> Belt.List.toArray
+      |> M.fromArray;
+    }
 
 end
