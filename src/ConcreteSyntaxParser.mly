@@ -2,23 +2,29 @@
 %token <string> TERMINAL_ID
 %token <string> NONTERMINAL_ID
 %token <string> STRING
+%token <string> CHARACTER_SET
 %token DOT
 %token LEFT_PAREN
 %token RIGHT_PAREN
-%token LEFT_BRACK
-%token RIGHT_BRACK
 %token LEFT_BRACE
 %token RIGHT_BRACE
+%token DASH
+%token CARET
 %token SEMICOLON
 %token EOF
 %token ASSIGN
 %token DOLLAR
 %token BAR
+%token STAR
+%token PLUS
+%token QUESTION
 
 %{ open Types.ConcreteSyntaxDescription %}
 
 %start terminal_rule
+%start terminal_rule__test
 %start regex
+%start regex__test
 %start capture_number
 %start nonterminal_token
 %start operator_match
@@ -27,7 +33,10 @@
 %start sort_rule__test
 %start language
 %type <Types.ConcreteSyntaxDescription.terminal_rule> terminal_rule
+%type <Types.ConcreteSyntaxDescription.terminal_rule> terminal_rule__test
 %type <Types.ConcreteSyntaxDescription.regex> regex
+%type <Types.ConcreteSyntaxDescription.regex> regex__test
+%type <Types.ConcreteSyntaxDescription.regex_piece> regex_piece
 %type <Types.ConcreteSyntaxDescription.capture_number> capture_number
 %type <Types.ConcreteSyntaxDescription.nonterminal_token> nonterminal_token
 %type <Types.ConcreteSyntaxDescription.operator_match> operator_match
@@ -47,6 +56,8 @@ terminal_rule:
   | TERMINAL_ID; ASSIGN; regex
   { TerminalRule ($1, $3) }
   ;
+
+terminal_rule__test: terminal_rule; EOF { $1 }
 
 capture_number: DOLLAR; NAT { $2 } ;
 
@@ -76,11 +87,21 @@ term_scope_pattern:
   { let (binds, body) = Util.unsnoc $1 in NumberedScopePattern (binds, body) }
   ;
 
-operator_match__test: | operator_match; EOF { $1 } ;
+operator_match__test: operator_match; EOF { $1 } ;
 
 nonterminal_token:
   | TERMINAL_ID    { TerminalName $1 }
   | NONTERMINAL_ID { NonterminalName $1 }
   ;
 
-regex: STRING { $1 } ;
+regex: nonempty_list(regex_piece) { $1 };
+
+regex__test: regex; EOF { $1 };
+
+regex_piece:
+  | STRING               { ReString $1 }
+  | CHARACTER_SET        { ReSet    $1 }
+  | regex_piece STAR     { ReStar   $1 }
+  | regex_piece PLUS     { RePlus   $1 }
+  | regex_piece QUESTION { ReOption $1 }
+  ;

@@ -9,11 +9,17 @@ let _ = describe "ConcreteSyntaxParser" (fun () ->
     (* | exception ConcreteSyntaxParser.Error -> fail ("'" ^ str ^ "' triggered an exception") *)
   )) in
 
-  expectParse ConcreteSyntaxParser.regex "\"foo\"" "foo";
+  expectParse ConcreteSyntaxParser.regex__test "\"foo\""    [ReString "foo"];
+  expectParse ConcreteSyntaxParser.regex__test "[a-z]"      [ReSet    "a-z"];
+  expectParse ConcreteSyntaxParser.regex__test "[a-zA-Z]"   [ReSet    "a-zA-Z"];
+  expectParse ConcreteSyntaxParser.regex__test "[a-z][A-Z]" [ReSet    "a-z"; ReSet "A-Z"];
+  expectParse ConcreteSyntaxParser.regex__test "\"foo\"*"   [ReStar   (ReString "foo")];
+  expectParse ConcreteSyntaxParser.regex__test "\"foo\"+"   [RePlus   (ReString "foo")];
+  expectParse ConcreteSyntaxParser.regex__test "\"foo\"?"   [ReOption (ReString "foo")];
 
-  expectParse ConcreteSyntaxParser.terminal_rule
+  expectParse ConcreteSyntaxParser.terminal_rule__test
     "TERMINAL := \"foo\""
-    (TerminalRule ("TERMINAL", "foo"));
+    (TerminalRule ("TERMINAL", [ReString "foo"]));
 
   expectParse ConcreteSyntaxParser.capture_number "$2" 2;
   expectParse ConcreteSyntaxParser.nonterminal_token "foo" (NonterminalName "foo");

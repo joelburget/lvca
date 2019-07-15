@@ -91,10 +91,22 @@ exception BadRules of string
 (** raised from of_ast when we need to emit a token but don't have a capture,
  * and the terminal match is a regex, not a string literal. This could actually
  * be a form of BadRules *)
-exception CantEmitTokenRegex of string * string
+exception CantEmitTokenRegex of string * regex
 
-(* XXX *)
-let regex_is_literal : string -> bool = fun _ -> true
+let regex_is_literal : regex -> string option = function
+  | [ReString str] -> Some str
+  | _              -> None
+
+let rec regex_piece_to_string : regex_piece -> string = function
+  | ReString str   -> "\"" ^ str ^ "\""
+  | ReSet    str   -> str
+  | ReStar   piece -> regex_piece_to_string piece ^ "*"
+  | RePlus   piece -> regex_piece_to_string piece ^ "+"
+  | ReOption piece -> regex_piece_to_string piece ^ "?"
+
+let regex_to_string : regex -> string = fun re_parts -> re_parts
+  |> List.map regex_piece_to_string
+  |> String.concat ""
 
 let mk_tree sort node_type children size =
   { sort;
@@ -115,6 +127,8 @@ let rec of_ast (Language sorts as lang) ({ terminal_rules; sort_rules } as rules
       = find_operator_match operator_rules op_name
     in
     let _term_name, numbered_scope_patterns = term_pattern in
+
+    (* Map each token to a subtree *)
     let sizes, children = Belt.List.unzip (Belt.List.mapWithIndex tokens (fun token_ix token ->
       let token_ix' = token_ix + 1 in (* switch from 0- to 1-based indexing *)
       match find_subtm token_ix' scopes numbered_scope_patterns, token with
@@ -145,9 +159,10 @@ let rec of_ast (Language sorts as lang) ({ terminal_rules; sort_rules } as rules
          * or term, we just emit the contents of the token *)
         | NotFound, TerminalName name
         -> let terminal_rule = M.getExn terminal_rules name in
-           if regex_is_literal terminal_rule
-           then String.length terminal_rule, Left terminal_rule
-           else raise (CantEmitTokenRegex (name, terminal_rule))
+           (match regex_is_literal terminal_rule with
+             | Some re_str -> String.length re_str, Left re_str
+             | None -> raise (CantEmitTokenRegex (name, terminal_rule))
+           )
 
         (* XXX right now emitting the token name, not contents
         -> String.length name, Left name *)
@@ -244,22 +259,22 @@ and scope_to_ast lang ({ children } as tree) = match List.rev children with
 let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
   : Jison.grammar
   =
-    let lex' = Jison.js_lex ~rules: (terminal_rules
+    let rules = terminal_rules
       |> M.toList
       |> List.map
-        (fun (name, regex) -> (regex, "return '" ^ name ^ "'"))
+        (fun (name, regex) -> (regex_to_string regex, "return '" ^ name ^ "'"))
       |> Belt.List.toArray
-      )
     in
+    let lex = Jison.js_lex ~rules: rules in
     let print_token = function
       | TerminalName    name -> name
       | NonterminalName name -> name
     in
-    let rec print_tokens = function
-      | []            -> ""
-      | [tok]         -> print_token tok
-      | tok   :: toks -> print_token tok ^ " " ^ print_tokens toks
+    let print_tokens toks = toks
+      |> List.map print_token
+      |> String.concat " "
     in
+
     let mk_variable: variable_rule option -> string array = function
       | None
       -> [||]
@@ -286,7 +301,7 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
       |> List.map mk_sort_rule
       |> Js.Dict.fromList
     in
-    Jison.grammar ~lex:lex' ~bnf:bnf
+    Jison.grammar ~lex:lex ~bnf:bnf
 
 (* XXX: need to fix return value *)
 let jison_parse (parser: Jison.parser) (str: string) : tree =

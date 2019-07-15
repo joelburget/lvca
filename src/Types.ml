@@ -194,9 +194,16 @@ module ConcreteSyntaxDescription = struct
   type capture_number = int
   type terminal_id    = string
 
+  type regex_piece =
+    | ReString of string
+    | ReSet    of string
+    | ReStar   of regex_piece
+    | RePlus   of regex_piece
+    | ReOption of regex_piece
+
   (* A regular expression used for lexical analysis. Currently, this uses the
    * jison format. *)
-  type regex          = string
+  type regex          = regex_piece list
   type terminal_rule  = TerminalRule of terminal_id * regex
 
   type terminal_rules = regex M.t
