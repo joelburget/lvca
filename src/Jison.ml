@@ -12,7 +12,7 @@ type js_lex = {
   rules: (string * string) array;
 } [@@bs.deriving abstract]
 
-type operators = (string * string array) array
+type operators = string array array
 
 type grammar = {
   lex       : js_lex;

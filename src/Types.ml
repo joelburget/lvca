@@ -4,7 +4,7 @@ open Util
 (** Sorts divide ASTs into syntactic categories. *)
 type sort =
   (** A higher-kinded sort can be applied *)
-  | SortAp   of string * sort list
+  | SortAp   of string * sort list (* TODO: convert to array *)
 
 (** A valence represents the sort of an argument (to an operator), as well as
  * the number and sorts of the variables bound within it *)
@@ -211,6 +211,10 @@ module ConcreteSyntaxDescription = struct
   type nonterminal_token =
     | TerminalName    of string
     | NonterminalName of string
+
+  let token_name = function
+    | TerminalName    name -> name
+    | NonterminalName name -> name
 
   (* A term pattern with numbered holes for binder names and subterms *)
   type numbered_scope_pattern =

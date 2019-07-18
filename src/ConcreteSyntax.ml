@@ -3,8 +3,9 @@ module Nominal = Binding.Nominal
 open Either
 open Types
 open Types.ConcreteSyntaxDescription
-let (find, sum, traverse_list_result, traverse_array_result, sequence_array_result) =
-  Util.(find, sum, traverse_list_result, traverse_array_result, sequence_array_result)
+module AA = Util.ArrayApplicative(struct type t = string end)
+open AA
+let (find, sum, traverse_list_result) = Util.(find, sum, traverse_list_result)
 
 let sprintf = Printf.sprintf
 
@@ -42,6 +43,7 @@ and tree =
     children        : (terminal_capture, nonterminal_capture) either array;
   }
 
+(* equality mod trivia *)
 let rec equivalent t1 t2 =
   t1.sort = t2.sort &&
   t1.node_type = t2.node_type &&
@@ -169,15 +171,12 @@ let rec of_ast (Language sorts as lang) ({ terminal_rules; sort_rules } as rules
              | None -> raise (CantEmitTokenRegex (name, terminal_rule))
            )
 
-        (* XXX right now emitting the token name, not contents
-        -> String.length name, Left name *)
-
         (* if the current token is naming a nonterminal, there has to be a
          * subterm *)
         | FoundBinder binder_name, NonterminalName name
         -> raise (BadRules
           ("binder (" ^ binder_name ^ ") found, nonterminal name: " ^ name))
-        | NotFound     , NonterminalName name
+        | NotFound, NonterminalName name
         -> raise (BadRules ("subterm not found, nonterminal name: " ^ name))
     ) in
 
@@ -256,7 +255,7 @@ and scope_to_ast lang ({ children } as tree)
           | Right _nonterminal_capture
           -> Error "expected binder name, got TODO"
         )
-      |> Util.flip Result.map
+      |. Result.map
         (fun binders' -> Nominal.Scope (List.rev binders', body'))
     | Error err -> Error err
   )
@@ -265,78 +264,106 @@ and scope_to_ast lang ({ children } as tree)
 let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
   : Jison.grammar
   =
-    let rules = terminal_rules
-      |> M.toList
-      |> List.map
+    let rules = Belt.List.(terminal_rules
+      |. M.toList
+      |. map
         (fun (name, regex) -> (regex_to_string regex, "return '" ^ name ^ "'"))
-      |> Util.flip Belt.List.add ("$", "return 'EOF'")
+      |. add ("$", "return 'EOF'")
       (* TODO: we probably don't want to do this in general *)
-      |> Util.flip Belt.List.add ("\\s+", "/* skip whitespace */")
-      |> Belt.List.toArray
+      |. add ("\\s+", "/* skip whitespace */")
+      |. toArray
+    )
     in
     let lex = Jison.js_lex ~rules: rules in
 
-    let print_token = function
-      | TerminalName    name -> name
-      | NonterminalName name -> name
+    let nonterminal_tok_num = function
+      | TerminalName    _ -> 0
+      | NonterminalName _ -> 1
     in
 
     let print_tokens toks = toks
-      |> List.map print_token
+      |> List.map token_name
       |> String.concat " "
     in
 
-    let mk_variable: variable_rule option -> string array = function
+    let mk_variable sort_name: variable_rule option -> string array = function
       | None
       -> [||]
       | Some { tokens; var_capture }
       -> [|
         print_tokens tokens;
-        (* XXX hardcoded 'arith' *)
-        Printf.sprintf "$$ = [['arith',0],0,'','',[[$%i]]]" var_capture
+        Printf.sprintf {|
+          $$ = /* record */[
+            /* SortAp */['%s',0],
+            /* Var */0,
+            '',
+            '',
+            /* array */[(function(tag,x){x.tag=tag;return x;})(/* TerminalName */0, [$%i])]
+          ]
+        |}
+        sort_name
+        var_capture
       |]
     in
 
     let mk_scope (NumberedScopePattern (binder_captures, body_capture)) =
-      Printf.sprintf "[[%s], $%i]"
+      Printf.sprintf "/* Scope */[[%s], $%i]"
       (binder_captures |> List.map (Printf.sprintf "$%i") |> String.concat ", ")
       body_capture
     in
 
     let mk_operator_rule
+      sort_name
       (OperatorMatch { tokens; term_pattern = operator_name, _ })
       : string array =
       [| print_tokens tokens;
-        (* TODO: conversion from this format to a term *)
         Printf.sprintf
-        (* XXX hardcoded arith *)
-        "$$ = [['arith', 0], ['%s'], '', '', [%s]]"
+        {|
+          $$ = /* record */[
+            /* SortAp */['%s', 0],
+            /* Operator */(function(tag,x){x.tag=tag;return x;})(0, ['%s']),
+            '',
+            '',
+            /* array */[%s]
+          ]
+        |}
+        sort_name
         operator_name
-        (tokens |> List.mapi (fun i _ -> Printf.sprintf "[$%i]" (i + 1)) |> String.concat ", ")
+        (tokens
+          |> List.mapi (fun i tok -> Printf.sprintf
+            "(function(tag,x){x.tag=tag;return x;})(%i, [$%i])"
+            (nonterminal_tok_num tok)
+            (i + 1) (* convert from 0- to 1- indexed *)
+          )
+          |> String.concat ", "
+        )
       |]
     in
 
     let mk_sort_rule = fun (sort_name, SortRule { operator_rules; variable }) ->
-      (sort_name, Belt.List.toArray (mk_variable variable :: List.map mk_operator_rule operator_rules))
+      (sort_name, Belt.List.toArray
+        (mk_variable sort_name variable ::
+          List.map (mk_operator_rule sort_name) operator_rules
+        )
+      )
     in
 
-    (* XXX *)
+    (* XXX hardcoded *)
     let operators = [|
-      "left", [| "ADD" |];
-      "left", [| "SUB" |];
-      (* [%raw {| ["start", "start"] |}] *)
+      [| "left"; "ADD"; "SUB" |];
       |]
     in
     let bnf = sort_rules
-      |> M.toList
-      |> List.map mk_sort_rule
+      |. M.toList
+      |. Belt.List.map mk_sort_rule
       (* XXX what is the start? *)
-      |> Util.flip Belt.List.add ("start", [%raw {|[["arith EOF", "/*console.log($1);*/ return $1"]]|}])
-      |> Js.Dict.fromList
+      |. Belt.List.add ("start", [%raw {|
+        [["arith EOF", "/*console.log($1);*/ return $1"]]
+      |}])
+      |. Js.Dict.fromList
     in
     Jison.grammar ~lex:lex ~operators:operators ~bnf:bnf
 
-(* XXX: need to fix return value *)
 let jison_parse (parser: Jison.parser) (str: string) : tree =
   ([%raw "function(parser, str) { return parser.parse(str); }"]
   : Jison.parser -> string -> tree
