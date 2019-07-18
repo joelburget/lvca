@@ -4,9 +4,12 @@ type js_lex = {
   rules: (string * string) array;
 } [@@bs.deriving abstract]
 
+type operators = (string * string array) array
+
 type grammar = {
-  lex: js_lex;
-  bnf: string array array Js.Dict.t;
+  lex       : js_lex;
+  operators : operators;
+  bnf       : string array array Js.Dict.t;
 } [@@bs.deriving abstract]
 
 val to_parser : grammar -> parser

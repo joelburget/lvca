@@ -37,6 +37,20 @@ let rec traverse_list_result
       (fun rest' -> Ok (b :: rest'))
     )
 
+exception Traversal_exn of string
+
+let rec traverse_array_result
+  (f : 'a -> ('b, string) Result.t)
+  (arr : 'a array)
+  : ('b array, 'c) Result.t =
+    try
+      Ok (Array.map arr (fun a -> match f a with
+        | Ok    b -> b
+        | Error c -> raise (Traversal_exn c)
+      ))
+    with
+      Traversal_exn err -> Error err
+
 let rec sequence_list_result
   (lst : ('a, 'b) Result.t list)
   : ('a list, 'b) Result.t = match lst with
@@ -45,6 +59,18 @@ let rec sequence_list_result
     (sequence_list_result rest)
     (fun rest' -> a :: rest')
   | Error msg :: _ -> Error msg
+
+let rec sequence_array_result
+  (arr : ('a, string) Result.t array)
+  : ('a array, string) Result.t =
+
+    try
+      Ok (Array.map arr (function
+        | Ok a    -> a
+        | Error b -> raise (Traversal_exn b)
+      ))
+    with
+      Traversal_exn err -> Error err
 
 let rec sequence_list_option
   (lst : 'a option list)

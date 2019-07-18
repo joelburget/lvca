@@ -1,9 +1,10 @@
 module Result = Belt.Result
-open Binding
+module Nominal = Binding.Nominal
 open Either
 open Types
 open Types.ConcreteSyntaxDescription
-let (find, sum, traverse_list_result) = Util.(find, sum, traverse_list_result)
+let (find, sum, traverse_list_result, traverse_array_result, sequence_array_result) =
+  Util.(find, sum, traverse_list_result, traverse_array_result, sequence_array_result)
 
 let sprintf = Printf.sprintf
 
@@ -38,14 +39,13 @@ and tree =
     node_type       : node_type;
     leading_trivia  : string;
     trailing_trivia : string;
-    children        : (terminal_capture, nonterminal_capture) either list;
-    size            : int;
+    children        : (terminal_capture, nonterminal_capture) either array;
   }
 
 let rec equivalent t1 t2 =
   t1.sort = t2.sort &&
   t1.node_type = t2.node_type &&
-  Belt.List.(every (zipBy t1.children t2.children equivalent')) (fun b -> b)
+  Belt.Array.(every (zipBy t1.children t2.children equivalent')) (fun b -> b)
 
 and equivalent' child1 child2 = match child1, child2 with
   | Left   tc1, Left   tc2 -> tc1 = tc2
@@ -97,9 +97,14 @@ let regex_is_literal : regex -> string option = function
   | [ReString str] -> Some str
   | _              -> None
 
+(* TODO: do we need to insert \b? *)
 let rec regex_piece_to_string : regex_piece -> string = function
-  | ReString str   -> "\"" ^ str ^ "\""
-  | ReSet    str   -> str
+  | ReString str   -> str
+    |> Js.String.replaceByRe [%re "/\\+/g"] "\\+"
+    |> Js.String.replaceByRe [%re "/\\*/g"] "\\*"
+    |> Js.String.replaceByRe [%re "/\\?/g"] "\\?"
+    |> Js.String.replaceByRe [%re "/\\-/g"] "\\-"
+  | ReSet    str   -> "[" ^ str ^ "]"
   | ReStar   piece -> regex_piece_to_string piece ^ "*"
   | RePlus   piece -> regex_piece_to_string piece ^ "+"
   | ReOption piece -> regex_piece_to_string piece ^ "?"
@@ -108,13 +113,12 @@ let regex_to_string : regex -> string = fun re_parts -> re_parts
   |> List.map regex_piece_to_string
   |> String.concat ""
 
-let mk_tree sort node_type children size =
+let mk_tree sort node_type children =
   { sort;
     node_type;
     leading_trivia  = "";
     trailing_trivia = "";
     children;
-    size;
   }
 
 (* TODO: handle non-happy cases *)
@@ -129,7 +133,8 @@ let rec of_ast (Language sorts as lang) ({ terminal_rules; sort_rules } as rules
     let _term_name, numbered_scope_patterns = term_pattern in
 
     (* Map each token to a subtree *)
-    let sizes, children = Belt.List.unzip (Belt.List.mapWithIndex tokens (fun token_ix token ->
+    let children = Belt.Array.mapWithIndex (Belt.List.toArray tokens)
+      (fun token_ix token ->
       let token_ix' = token_ix + 1 in (* switch from 0- to 1-based indexing *)
       match find_subtm token_ix' scopes numbered_scope_patterns, token with
 
@@ -146,21 +151,21 @@ let rec of_ast (Language sorts as lang) ({ terminal_rules; sort_rules } as rules
              -> new_sort
            ) in
            let subtree = of_ast lang rules new_sort subtm in
-           subtree.size, Right subtree
+           Right subtree
 
         | FoundTerm (_tm_ix, subtm), TerminalName _name
         -> let subtree = of_ast lang rules current_sort subtm in
-           subtree.size, Right subtree
+           Right subtree
 
         | FoundBinder binder_name, TerminalName name
-        -> String.length binder_name, Left binder_name
+        -> Left binder_name
 
         (* if the current token is a terminal, and we didn't capture a binder
          * or term, we just emit the contents of the token *)
         | NotFound, TerminalName name
         -> let terminal_rule = M.getExn terminal_rules name in
            (match regex_is_literal terminal_rule with
-             | Some re_str -> String.length re_str, Left re_str
+             | Some re_str -> Left re_str
              | None -> raise (CantEmitTokenRegex (name, terminal_rule))
            )
 
@@ -174,74 +179,75 @@ let rec of_ast (Language sorts as lang) ({ terminal_rules; sort_rules } as rules
           ("binder (" ^ binder_name ^ ") found, nonterminal name: " ^ name))
         | NotFound     , NonterminalName name
         -> raise (BadRules ("subterm not found, nonterminal name: " ^ name))
-    )) in
-    let size = sum sizes in
+    ) in
 
-    mk_tree current_sort (Operator op_name) children size
+    mk_tree current_sort (Operator op_name) children
 
   | _, Nominal.Var name
-  -> mk_tree current_sort Var [Left name] (String.length name)
+  -> mk_tree current_sort Var [| Left name |]
 
   | SortAp ("sequence", [sort]), Nominal.Sequence tms ->
-    let sizes, children = tms
-      |> List.map (fun tm ->
-        let child = of_ast lang rules sort tm in
-          child.size, Right child)
-      |> Belt.List.unzip
+    let children = tms
+      |> List.map (fun tm -> Right (of_ast lang rules sort tm))
+      |> Belt.List.toArray
     in
-    mk_tree current_sort Sequence children (sum sizes)
+    mk_tree current_sort Sequence children
 
   | SortAp ("string", []), Nominal.Primitive (PrimString str) ->
-    mk_tree current_sort (Primitive String) [Left str] (String.length str)
+    mk_tree current_sort (Primitive String) [| Left str |]
 
   | SortAp ("integer", []), Nominal.Primitive (PrimInteger i) ->
     let str = Bigint.to_string i in
-    mk_tree current_sort (Primitive Integer) [Left str] (String.length str)
+    mk_tree current_sort (Primitive Integer) [| Left str |]
 
 let rec to_string { leading_trivia; children; trailing_trivia } =
   let children_str = children
-    |> List.map
+    |> Array.map
       (function
       | Left terminal_capture     -> terminal_capture
       | Right nonterminal_capture -> to_string nonterminal_capture
       )
+    |> Belt.List.fromArray
     |> String.concat ""
   in leading_trivia ^ children_str ^ trailing_trivia
 
-(* Convert a concrete tree to an AST. We ignore trivia (and size). *)
-let rec to_ast lang { sort; node_type; children; } =
-  match node_type, children with
-    | Var, [ Left name ] -> Result.Ok (Nominal.Var name)
+(* Convert a concrete tree to an AST. We ignore trivia. *)
+let rec to_ast lang { sort; node_type; children; }
+  : (Nominal.term, string) Result.t
+  = match node_type, children with
+    | Var, [| Left name |] -> Result.Ok (Nominal.Var name)
     | Sequence, _ -> Result.map
-      (traverse_list_result
+      (traverse_array_result
         (function
-          | Left _      -> Result.Error "TODO: message"
+          | Left _      -> Error "TODO: message"
           | Right child -> to_ast lang child
         )
         children)
-      (fun children' -> Nominal.Sequence children')
-    | Primitive prim_ty, [ Left str ] -> (match prim_ty with
+      (fun children' -> Nominal.Sequence (Belt.List.fromArray children'))
+    | Primitive prim_ty, [| Left str |] -> (match prim_ty with
       | String  -> Ok (Nominal.Primitive (PrimString str))
       | Integer ->
         try
           Ok (Nominal.Primitive (PrimInteger (Bigint.of_string str)))
         with
-          _ -> Error "TODO: message"
+          _ -> Error "failed to read integer literal"
       )
 
     (* TODO: check validity *)
     | Operator op_name, _ ->
-      let children' = children
-        |> Util.list_flat_map (function
-          | Left _      -> []
-          | Right child -> [scope_to_ast lang child]
+      let children' =
+        Belt.Array.keepMap children (function
+          | Left _      -> None
+          | Right child -> Some (scope_to_ast lang child)
         )
-        |> sequence_list_result
+        |> sequence_array_result
       in Result.map children'
-           (fun children'' -> Nominal.Operator (op_name, children''))
+           (fun children'' -> Nominal.Operator (op_name, Belt.List.fromArray children''))
 
-and scope_to_ast lang ({ children } as tree) = match List.rev children with
-  | body :: binders -> (match to_ast lang {tree with children = [ body ]} with
+and scope_to_ast lang ({ children } as tree)
+  : (Nominal.scope, string) Result.t
+  = match Belt.List.fromArray (Belt.Array.reverse children) with
+  | body :: binders -> (match to_ast lang {tree with children = [| body |]} with
     | Ok body' -> binders
       |> traverse_list_result
         (function
@@ -263,13 +269,18 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
       |> M.toList
       |> List.map
         (fun (name, regex) -> (regex_to_string regex, "return '" ^ name ^ "'"))
+      |> Util.flip Belt.List.add ("$", "return 'EOF'")
+      (* TODO: we probably don't want to do this in general *)
+      |> Util.flip Belt.List.add ("\\s+", "/* skip whitespace */")
       |> Belt.List.toArray
     in
     let lex = Jison.js_lex ~rules: rules in
+
     let print_token = function
       | TerminalName    name -> name
       | NonterminalName name -> name
     in
+
     let print_tokens toks = toks
       |> List.map print_token
       |> String.concat " "
@@ -279,29 +290,51 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
       | None
       -> [||]
       | Some { tokens; var_capture }
-      -> [| print_tokens tokens; Printf.sprintf "$$ = %i" var_capture |]
+      -> [|
+        print_tokens tokens;
+        (* XXX hardcoded 'arith' *)
+        Printf.sprintf "$$ = [['arith',0],0,'','',[[$%i]]]" var_capture
+      |]
     in
-    let mk_operator_rules: operator_match list -> string array list
-      = List.map (fun (OperatorMatch { tokens; term_pattern }) ->
-          let operator_name, term_scopes = term_pattern in
-          [| print_tokens tokens;
-            (* TODO: conversion from this format to a term *)
-            Printf.sprintf
-            "$$ = { name: %s, scopes: %s }"
-            operator_name
-            "TODO"
-          |]
-        )
+
+    let mk_scope (NumberedScopePattern (binder_captures, body_capture)) =
+      Printf.sprintf "[[%s], $%i]"
+      (binder_captures |> List.map (Printf.sprintf "$%i") |> String.concat ", ")
+      body_capture
     in
+
+    let mk_operator_rule
+      (OperatorMatch { tokens; term_pattern = operator_name, _ })
+      : string array =
+      [| print_tokens tokens;
+        (* TODO: conversion from this format to a term *)
+        Printf.sprintf
+        (* XXX hardcoded arith *)
+        "$$ = [['arith', 0], ['%s'], '', '', [%s]]"
+        operator_name
+        (tokens |> List.mapi (fun i _ -> Printf.sprintf "[$%i]" (i + 1)) |> String.concat ", ")
+      |]
+    in
+
     let mk_sort_rule = fun (sort_name, SortRule { operator_rules; variable }) ->
-      (sort_name, Belt.List.toArray (mk_variable variable :: mk_operator_rules operator_rules))
+      (sort_name, Belt.List.toArray (mk_variable variable :: List.map mk_operator_rule operator_rules))
+    in
+
+    (* XXX *)
+    let operators = [|
+      "left", [| "ADD" |];
+      "left", [| "SUB" |];
+      (* [%raw {| ["start", "start"] |}] *)
+      |]
     in
     let bnf = sort_rules
       |> M.toList
       |> List.map mk_sort_rule
+      (* XXX what is the start? *)
+      |> Util.flip Belt.List.add ("start", [%raw {|[["arith EOF", "/*console.log($1);*/ return $1"]]|}])
       |> Js.Dict.fromList
     in
-    Jison.grammar ~lex:lex ~bnf:bnf
+    Jison.grammar ~lex:lex ~operators:operators ~bnf:bnf
 
 (* XXX: need to fix return value *)
 let jison_parse (parser: Jison.parser) (str: string) : tree =
@@ -312,7 +345,10 @@ let jison_parse (parser: Jison.parser) (str: string) : tree =
 let parse desc str =
   let grammar = to_grammar desc in
   let parser = Jison.to_parser grammar in
+  Result.Ok (jison_parse parser str)
+  (*
   try
     Result.Ok (jison_parse parser str)
   with
     _ -> Result.Error "parse error"
+    *)

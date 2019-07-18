@@ -21,8 +21,7 @@ and tree =
     node_type       : node_type;
     leading_trivia  : string;
     trailing_trivia : string;
-    children        : (terminal_capture, nonterminal_capture) either list;
-    size            : int;
+    children        : (terminal_capture, nonterminal_capture) either array;
   }
 
 val equivalent : tree -> tree -> bool
@@ -30,11 +29,13 @@ val equivalent : tree -> tree -> bool
 val mk_tree
   : sort
   -> node_type
-  -> (terminal_capture, nonterminal_capture) either list
-  -> int
+  -> (terminal_capture, nonterminal_capture) either array
   -> tree
 
 val of_ast    : language -> ConcreteSyntaxDescription.t -> sort -> Nominal.term -> tree
 val to_string : tree -> string
 val parse     : ConcreteSyntaxDescription.t -> string -> (tree, string) Result.t
 val to_ast    : language -> tree -> (Nominal.term, string) Result.t
+
+(* exported for testing: *)
+val regex_piece_to_string : ConcreteSyntaxDescription.regex_piece -> string
