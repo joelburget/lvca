@@ -13,12 +13,12 @@ var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
-function val_to_ast(core_val) {
-  switch (core_val.tag | 0) {
+function val_to_ast(param) {
+  switch (param.tag | 0) {
     case 0 : 
         return /* Operator */Block.__(0, [
-                  core_val[0],
-                  Belt_List.map(core_val[1], (function (value) {
+                  param[0],
+                  Belt_List.map(param[1], (function (value) {
                           return /* Scope */[
                                   /* [] */0,
                                   val_to_ast(value)
@@ -26,14 +26,14 @@ function val_to_ast(core_val) {
                         }))
                 ]);
     case 1 : 
-        return /* Primitive */Block.__(3, [core_val[0]]);
+        return /* Primitive */Block.__(3, [param[0]]);
     case 2 : 
         return /* Operator */Block.__(0, [
                   "lam",
                   /* :: */[
                     /* Scope */[
-                      core_val[0],
-                      to_ast(core_val[1])
+                      param[0],
+                      to_ast(param[1])
                     ],
                     /* [] */0
                   ]
@@ -145,11 +145,11 @@ function match_branch(v, pat) {
   
 }
 
-function find_core_match(v, _pats) {
+function find_core_match(v, _param) {
   while(true) {
-    var pats = _pats;
-    if (pats) {
-      var match = pats[0];
+    var param = _param;
+    if (param) {
+      var match = param[0];
       var match$1 = match_branch(v, match[0]);
       if (match$1 !== undefined) {
         return /* tuple */[
@@ -157,7 +157,7 @@ function find_core_match(v, _pats) {
                 Caml_option.valFromOption(match$1)
               ];
       } else {
-        _pats = pats[1];
+        _param = param[1];
         continue ;
       }
     } else {
@@ -418,8 +418,8 @@ function term_is_core(env, tm) {
           Caml_builtin_exceptions.match_failure,
           /* tuple */[
             "Core.ml",
-            209,
-            4
+            215,
+            26
           ]
         ];
   }
