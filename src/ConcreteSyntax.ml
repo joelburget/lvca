@@ -185,17 +185,17 @@ let rec of_ast (Language sorts as lang) ({ terminal_rules; sort_rules } as rules
   | _, Nominal.Var name
   -> mk_tree current_sort Var [| Left name |]
 
-  | SortAp ("sequence", [sort]), Nominal.Sequence tms ->
+  | SortAp ("sequence", [|sort|]), Nominal.Sequence tms ->
     let children = tms
       |> List.map (fun tm -> Right (of_ast lang rules sort tm))
       |> Belt.List.toArray
     in
     mk_tree current_sort Sequence children
 
-  | SortAp ("string", []), Nominal.Primitive (PrimString str) ->
+  | SortAp ("string", [||]), Nominal.Primitive (PrimString str) ->
     mk_tree current_sort (Primitive String) [| Left str |]
 
-  | SortAp ("integer", []), Nominal.Primitive (PrimInteger i) ->
+  | SortAp ("integer", [||]), Nominal.Primitive (PrimInteger i) ->
     let str = Bigint.to_string i in
     mk_tree current_sort (Primitive Integer) [| Left str |]
 
@@ -294,7 +294,7 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
         print_tokens tokens;
         Printf.sprintf {|
           $$ = /* record */[
-            /* SortAp */['%s',0],
+            /* SortAp */['%s',[]],
             /* Var */0,
             '',
             '',
@@ -320,7 +320,7 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
         Printf.sprintf
         {|
           $$ = /* record */[
-            /* SortAp */['%s', 0],
+            /* SortAp */['%s', []],
             /* Operator */(function(tag,x){x.tag=tag;return x;})(0, ['%s']),
             '',
             '',

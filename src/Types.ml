@@ -4,7 +4,7 @@ open Util
 (** Sorts divide ASTs into syntactic categories. *)
 type sort =
   (** A higher-kinded sort can be applied *)
-  | SortAp   of string * sort list (* TODO: convert to array *)
+  | SortAp   of string * sort array
 
 (** A valence represents the sort of an argument (to an operator), as well as
  * the number and sorts of the variables bound within it *)

@@ -36,8 +36,8 @@ let _ = describe "ConcreteSyntax" (fun () ->
   let language = Types.(Language (Belt.Map.String.fromArray [|
     "arith", SortDef ([], [
       OperatorDef ("add", Arity ([], [
-        FixedValence ([], SortAp ("arith", []));
-        FixedValence ([], SortAp ("arith", []));
+        FixedValence ([], SortAp ("arith", [||]));
+        FixedValence ([], SortAp ("arith", [||]));
         ]))
     ])
   |]))
@@ -61,7 +61,7 @@ let _ = describe "ConcreteSyntax" (fun () ->
   let lex = Lexing.from_string description in
   match ConcreteSyntaxParser.language ConcreteSyntaxLexer.read lex with
     concrete ->
-      let arith = Types.SortAp ("arith", []) in
+      let arith = Types.SortAp ("arith", [||]) in
       let tree = mk_tree arith (Operator "add")
             [| Right (mk_tree arith Var [| Left "x" |]);
                Left "+";

@@ -27,7 +27,7 @@ Jest.describe("ConcreteSyntax", (function (param) {
                                 /* [] */0,
                                 /* SortAp */[
                                   "arith",
-                                  /* [] */0
+                                  /* array */[]
                                 ]
                               ]),
                             /* :: */[
@@ -35,7 +35,7 @@ Jest.describe("ConcreteSyntax", (function (param) {
                                   /* [] */0,
                                   /* SortAp */[
                                     "arith",
-                                    /* [] */0
+                                    /* array */[]
                                   ]
                                 ]),
                               /* [] */0
@@ -70,9 +70,10 @@ Jest.describe("ConcreteSyntax", (function (param) {
               }));
         var lex = Lexing.from_string(description);
         var concrete = ConcreteSyntaxParser.language(ConcreteSyntaxLexer.read, lex);
+        var arith_001 = /* array */[];
         var arith = /* SortAp */[
           "arith",
-          /* [] */0
+          arith_001
         ];
         var tree = ConcreteSyntax.mk_tree(arith, /* Operator */Block.__(0, ["add"]), /* array */[
               /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith, /* Var */0, /* array */[/* Left */Block.__(0, ["x"])])]),

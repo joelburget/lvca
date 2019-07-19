@@ -3,6 +3,7 @@
 
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
+var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var MenhirLib = require("./menhirLib.bs.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 
@@ -801,7 +802,7 @@ var semantic_action = /* array */[
       var _menhir_stack = _menhir_env[/* stack */2];
       var match = _menhir_stack[/* next */4];
       var _v_000 = match[/* semv */1];
-      var _v_001 = _menhir_stack[/* semv */1];
+      var _v_001 = Belt_List.toArray(_menhir_stack[/* semv */1]);
       var _v = /* SortAp */[
         _v_000,
         _v_001

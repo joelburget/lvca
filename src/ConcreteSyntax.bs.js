@@ -230,7 +230,9 @@ function of_ast(lang, rules, current_sort, tm) {
   if (exit$2 === 3) {
     switch (sort_name) {
       case "integer" : 
-          if (current_sort[1] || tm.tag === 2) {
+          if (current_sort[1].length !== 0) {
+            exit$1 = 2;
+          } else if (tm.tag === 2) {
             exit = 1;
           } else {
             var match$3 = tm[0];
@@ -244,7 +246,9 @@ function of_ast(lang, rules, current_sort, tm) {
           break;
       case "sequence" : 
           var match$4 = current_sort[1];
-          if (match$4 && !match$4[1]) {
+          if (match$4.length !== 1) {
+            exit$1 = 2;
+          } else {
             var sort = match$4[0];
             if (tm.tag === 2) {
               var children$1 = Belt_List.toArray(List.map((function (tm) {
@@ -254,12 +258,12 @@ function of_ast(lang, rules, current_sort, tm) {
             } else {
               exit = 1;
             }
-          } else {
-            exit = 1;
           }
           break;
       case "string" : 
-          if (current_sort[1] || tm.tag === 2) {
+          if (current_sort[1].length !== 0) {
+            exit$1 = 2;
+          } else if (tm.tag === 2) {
             exit = 1;
           } else {
             var match$5 = tm[0];
@@ -454,7 +458,7 @@ function to_grammar(param) {
                             /* String */Block.__(2, [
                                 /* No_padding */0,
                                 /* String_literal */Block.__(11, [
-                                    "',0],\n            /* Var */0,\n            '',\n            '',\n            /* array */[(function(tag,x){x.tag=tag;return x;})(/* TerminalName */0, [$",
+                                    "',[]],\n            /* Var */0,\n            '',\n            '',\n            /* array */[(function(tag,x){x.tag=tag;return x;})(/* TerminalName */0, [$",
                                     /* Int */Block.__(4, [
                                         /* Int_i */3,
                                         /* No_padding */0,
@@ -467,7 +471,7 @@ function to_grammar(param) {
                                   ])
                               ])
                           ]),
-                        "\n          $$ = /* record */[\n            /* SortAp */['%s',0],\n            /* Var */0,\n            '',\n            '',\n            /* array */[(function(tag,x){x.tag=tag;return x;})(/* TerminalName */0, [$%i])]\n          ]\n        "
+                        "\n          $$ = /* record */[\n            /* SortAp */['%s',[]],\n            /* Var */0,\n            '',\n            '',\n            /* array */[(function(tag,x){x.tag=tag;return x;})(/* TerminalName */0, [$%i])]\n          ]\n        "
                       ]), sort_name, match[/* var_capture */1])
             ];
     } else {
@@ -494,7 +498,7 @@ function to_grammar(param) {
                                                 /* String */Block.__(2, [
                                                     /* No_padding */0,
                                                     /* String_literal */Block.__(11, [
-                                                        "', 0],\n            /* Operator */(function(tag,x){x.tag=tag;return x;})(0, ['",
+                                                        "', []],\n            /* Operator */(function(tag,x){x.tag=tag;return x;})(0, ['",
                                                         /* String */Block.__(2, [
                                                             /* No_padding */0,
                                                             /* String_literal */Block.__(11, [
@@ -511,7 +515,7 @@ function to_grammar(param) {
                                                       ])
                                                   ])
                                               ]),
-                                            "\n          $$ = /* record */[\n            /* SortAp */['%s', 0],\n            /* Operator */(function(tag,x){x.tag=tag;return x;})(0, ['%s']),\n            '',\n            '',\n            /* array */[%s]\n          ]\n        "
+                                            "\n          $$ = /* record */[\n            /* SortAp */['%s', []],\n            /* Operator */(function(tag,x){x.tag=tag;return x;})(0, ['%s']),\n            '',\n            '',\n            /* array */[%s]\n          ]\n        "
                                           ]), sort_name$1, match[/* term_pattern */1][0], $$String.concat(", ", List.mapi((function (i, tok) {
                                                   return Curry._2(Printf.sprintf(/* Format */[
                                                                   /* String_literal */Block.__(11, [

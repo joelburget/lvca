@@ -81,8 +81,8 @@ core:
 
 (* TODO: duplicated from LanguageParser *)
 sort:
-  | LEFT_PAREN sort RIGHT_PAREN { $2             }
-  | ID list(sort)               { SortAp ($1, $2) }
+  | LEFT_PAREN sort RIGHT_PAREN { $2                                }
+  | ID list(sort)               { SortAp ($1, Belt.List.toArray $2) }
   ;
 
 case: core_pat RIGHT_S_ARR core { ($1, $3) } ;
