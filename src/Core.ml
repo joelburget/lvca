@@ -1,7 +1,8 @@
 open Belt
 open Types
 open Binding
-open! Util
+let (fold_right, get_first, traverse_list_result) =
+  Util.(fold_right, get_first, traverse_list_result)
 
 module M = Belt.Map.String
 module O = Belt.Option

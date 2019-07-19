@@ -4,6 +4,7 @@
 var Util = require("./Util.bs.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Types = require("./Types.bs.js");
+var Binding = require("./Binding.bs.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
@@ -61,7 +62,7 @@ function to_ast(core) {
             Caml_builtin_exceptions.match_failure,
             /* tuple */[
               "Core.ml",
-              58,
+              59,
               42
             ]
           ];
@@ -81,7 +82,7 @@ function match_branch(v, pat) {
                 var pats = pat[1];
                 var sub_results = Belt_List.zipBy(vals, pats, match_branch);
                 if (v[0] === pat[0] && Belt_List.length(vals) === Belt_List.length(pats) && Belt_List.every(sub_results, Belt_Option.isSome)) {
-                  return Caml_option.some(Belt_List.reduce(Belt_List.map(sub_results, Belt_Option.getExn), Belt_MapString.empty, Util.union));
+                  return Caml_option.some(Belt_List.reduce(Belt_List.map(sub_results, Belt_Option.getExn), Belt_MapString.empty, Binding.union));
                 } else {
                   return undefined;
                 }
@@ -185,7 +186,7 @@ function matches(tm, pat) {
                         var match$3 = match$1;
                         return /* tuple */[
                                 Pervasives.$at(match$3[0], match$2[0]),
-                                Util.union(match$3[1], match$2[1])
+                                Binding.union(match$3[1], match$2[1])
                               ];
                       }
                       
@@ -267,7 +268,7 @@ function fill_in_core(dynamics, mr, c) {
                     }));
     case 2 : 
         var match$1 = fill_in_core(dynamics, mr, c[0]);
-        var match$2 = Util.sequence_list_result(Belt_List.map(c[1], (function (param) {
+        var match$2 = Binding.sequence_list_result(Belt_List.map(c[1], (function (param) {
                     return fill_in_core(dynamics, mr, param);
                   })));
         if (match$1.tag) {
@@ -281,7 +282,7 @@ function fill_in_core(dynamics, mr, c) {
                       ])]);
         }
     case 3 : 
-        var mBranches = Util.sequence_list_result(Belt_List.map(c[2], (function (param) {
+        var mBranches = Binding.sequence_list_result(Belt_List.map(c[2], (function (param) {
                     var pat = param[0];
                     return Belt_Result.map(fill_in_core(dynamics, mr, param[1]), (function (core$prime) {
                                   return /* tuple */[
@@ -417,7 +418,7 @@ function term_is_core(env, tm) {
           Caml_builtin_exceptions.match_failure,
           /* tuple */[
             "Core.ml",
-            208,
+            209,
             4
           ]
         ];
@@ -468,11 +469,11 @@ function $$eval(core) {
                   if (Belt_List.length(argNames) !== Belt_List.length(args)) {
                     return /* Error */Block.__(1, ["mismatched application lengths"]);
                   } else {
-                    return Belt_Result.flatMap(Util.sequence_list_result(Belt_List.map(args, (function (param) {
+                    return Belt_Result.flatMap(Binding.sequence_list_result(Belt_List.map(args, (function (param) {
                                           return go(ctx, param);
                                         }))), (function (arg_vals) {
                                   var new_args = Belt_MapString.fromArray(Belt_List.toArray(Belt_List.zip(argNames, arg_vals)));
-                                  return go(Util.union(ctx, new_args), body);
+                                  return go(Binding.union(ctx, new_args), body);
                                 }));
                   }
               
@@ -486,7 +487,7 @@ function $$eval(core) {
                         var match = find_core_match(v, branches);
                         if (match !== undefined) {
                           var match$1 = match;
-                          return go(Util.union(ctx, match$1[1]), match$1[0]);
+                          return go(Binding.union(ctx, match$1[1]), match$1[0]);
                         } else {
                           return /* Error */Block.__(1, ["no match found in case"]);
                         }
