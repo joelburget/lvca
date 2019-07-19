@@ -24,9 +24,9 @@ type core_pat =
   | PatternDefault
 
 type core_val =
-  | ValTm     of string * core_val list
-  | ValPrim   of primitive
-  | ValLam    of string list * core
+  | ValTm   of string * core_val list
+  | ValPrim of primitive
+  | ValLam  of string list * core
 
 and core =
   | CoreVar of string
@@ -96,22 +96,21 @@ let rec find_core_match v = function
   -> denotation_pat
   -> ((string * string) list * DeBruijn.term M.t) option
 *)
-let rec matches tm pat
-  = match (tm, pat) with
-    | (DeBruijn.Operator(tag1, subtms), DPatternTm(tag2, subpats))
-    -> if tag1 == tag2 && List.(length subtms == length subpats)
-       then fold_right
-         (fun ((scope, subpat), b_opt) ->
-           match (matches_scope scope subpat, b_opt) with
-           | (Some (assocs, bindings), Some (assocs', bindings'))
-           -> Some (assocs @ assocs', union bindings bindings')
-           | _ -> None)
-         (List.zip subtms subpats)
-         (Some ([], M.empty))
-       else None
-    | (_, DPatternTm _)   -> None
-    | (_, DVar None)      -> Some ([], M.empty)
-    | (tm, DVar (Some v)) -> Some ([], M.fromArray [|v,tm|])
+let rec matches tm pat = match (tm, pat) with
+  | (DeBruijn.Operator(tag1, subtms), DPatternTm(tag2, subpats))
+  -> if tag1 == tag2 && List.(length subtms == length subpats)
+     then fold_right
+       (fun ((scope, subpat), b_opt) ->
+         match (matches_scope scope subpat, b_opt) with
+         | (Some (assocs, bindings), Some (assocs', bindings'))
+         -> Some (assocs @ assocs', union bindings bindings')
+         | _ -> None)
+       (List.zip subtms subpats)
+       (Some ([], M.empty))
+     else None
+  | (_, DPatternTm _)   -> None
+  | (_, DVar None)      -> Some ([], M.empty)
+  | (tm, DVar (Some v)) -> Some ([], M.fromArray [|v,tm|])
 
 (* val matches_scope
   : DeBruijn.scope
