@@ -323,7 +323,7 @@ function fill_in_val(dynamics, mr, v) {
         return Belt_Result.map(Util.traverse_list_result((function (param) {
                           return fill_in_val(dynamics, mr, param);
                         }), v[1]), (function (vals$prime) {
-                      return /* ValTm */Block.__(0, [
+                      return /* OperatorVal */Block.__(0, [
                                 tag,
                                 vals$prime
                               ]);
@@ -333,7 +333,7 @@ function fill_in_val(dynamics, mr, v) {
     case 2 : 
         var binders = v[0];
         return Belt_Result.map(fill_in_core(dynamics, mr, v[1]), (function (core$prime) {
-                      return /* ValLam */Block.__(2, [
+                      return /* LamVal */Block.__(2, [
                                 binders,
                                 core$prime
                               ]);

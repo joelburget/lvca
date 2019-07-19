@@ -18,9 +18,9 @@ type core_pat =
   | PatternDefault
 
 type core_val =
-  | ValTm     of string * core_val list
-  | ValPrim   of primitive
-  | ValLam    of string list * core
+  | OperatorVal of string * core_val list
+  | PrimVal     of primitive
+  | LamVal      of string list * core
 
 and core =
   | CoreVar of string

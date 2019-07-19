@@ -10,7 +10,7 @@ var Bigint = require("bs-zarith/src/Bigint.js");
 Jest.describe("Core", (function (param) {
         var one = Bigint.of_int(1);
         Jest.testAll("val_to_ast", /* :: */[
-              Jest.Expect[/* toEqual */12](/* Primitive */Block.__(3, [/* PrimInteger */Block.__(0, [one])]), Jest.Expect[/* expect */0](Core.val_to_ast(/* ValPrim */Block.__(1, [/* PrimInteger */Block.__(0, [one])])))),
+              Jest.Expect[/* toEqual */12](/* Primitive */Block.__(3, [/* PrimInteger */Block.__(0, [one])]), Jest.Expect[/* expect */0](Core.val_to_ast(/* PrimVal */Block.__(1, [/* PrimInteger */Block.__(0, [one])])))),
               /* :: */[
                 Jest.Expect[/* toEqual */12](/* Operator */Block.__(0, [
                         "lam",
@@ -27,7 +27,7 @@ Jest.describe("Core", (function (param) {
                           ],
                           /* [] */0
                         ]
-                      ]), Jest.Expect[/* expect */0](Core.val_to_ast(/* ValLam */Block.__(2, [
+                      ]), Jest.Expect[/* expect */0](Core.val_to_ast(/* LamVal */Block.__(2, [
                                 /* :: */[
                                   "x",
                                   /* :: */[
@@ -47,10 +47,10 @@ Jest.describe("Core", (function (param) {
                             ],
                             /* [] */0
                           ]
-                        ]), Jest.Expect[/* expect */0](Core.val_to_ast(/* ValTm */Block.__(0, [
+                        ]), Jest.Expect[/* expect */0](Core.val_to_ast(/* OperatorVal */Block.__(0, [
                                   "foo",
                                   /* :: */[
-                                    /* ValPrim */Block.__(1, [/* PrimInteger */Block.__(0, [one])]),
+                                    /* PrimVal */Block.__(1, [/* PrimInteger */Block.__(0, [one])]),
                                     /* [] */0
                                   ]
                                 ])))),
@@ -69,7 +69,7 @@ Jest.describe("Core", (function (param) {
                   "true",
                   /* [] */0
                 ]),
-              /* CoreVal */Block.__(1, [/* ValTm */Block.__(0, [
+              /* CoreVal */Block.__(1, [/* OperatorVal */Block.__(0, [
                       "true",
                       /* [] */0
                     ])])
@@ -80,7 +80,7 @@ Jest.describe("Core", (function (param) {
                     "false",
                     /* [] */0
                   ]),
-                /* CoreVal */Block.__(1, [/* ValTm */Block.__(0, [
+                /* CoreVal */Block.__(1, [/* OperatorVal */Block.__(0, [
                         "false",
                         /* [] */0
                       ])])
@@ -145,11 +145,11 @@ Jest.describe("Core", (function (param) {
             "false",
             /* [] */0
           ]);
-        var true_val = /* CoreVal */Block.__(1, [/* ValTm */Block.__(0, [
+        var true_val = /* CoreVal */Block.__(1, [/* OperatorVal */Block.__(0, [
                 "true",
                 /* [] */0
               ])]);
-        var false_val = /* CoreVal */Block.__(1, [/* ValTm */Block.__(0, [
+        var false_val = /* CoreVal */Block.__(1, [/* OperatorVal */Block.__(0, [
                 "false",
                 /* [] */0
               ])]);
@@ -212,17 +212,17 @@ Jest.describe("Core", (function (param) {
               ]
             ], Util.id);
         return Jest.testAll("eval", /* :: */[
-                    Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* ValTm */Block.__(0, [
+                    Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* OperatorVal */Block.__(0, [
                                 "true",
                                 /* [] */0
                               ])]), Jest.Expect[/* expect */0](Core.$$eval(true_val))),
                     /* :: */[
-                      Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* ValTm */Block.__(0, [
+                      Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* OperatorVal */Block.__(0, [
                                   "false",
                                   /* [] */0
                                 ])]), Jest.Expect[/* expect */0](Core.$$eval(false_val))),
                       /* :: */[
-                        Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* ValTm */Block.__(0, [
+                        Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* OperatorVal */Block.__(0, [
                                     "false",
                                     /* [] */0
                                   ])]), Jest.Expect[/* expect */0](Core.$$eval(ite_val))),

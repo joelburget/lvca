@@ -50,16 +50,16 @@ scope_pat:
 
 core_val:
   | ID LEFT_PAREN separated_nonempty_list(SEMICOLON, core_val) RIGHT_PAREN
-  { ValTm ($1, $3) }
+  { OperatorVal ($1, $3) }
   | prim
-  { ValPrim $1 }
+  { PrimVal $1 }
   | LAM LEFT_PAREN separated_nonempty_list(DOT, ID) DOT core RIGHT_PAREN
-  { ValLam ($3, $5) }
+  { LamVal ($3, $5) }
   | LAM LEFT_PAREN                                      core RIGHT_PAREN
-  { ValLam ([], $3) }
+  { LamVal ([], $3) }
   (* | HASH ID
   { ValPrimop $2 } *)
-  (* ValLam? *)
+  (* LamVal? *)
   ;
 
 core:

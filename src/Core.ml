@@ -24,9 +24,9 @@ type core_pat =
   | PatternDefault
 
 type core_val =
-  | ValTm   of string * core_val list (* TODO: ValOperator *)
-  | ValPrim of primitive
-  | ValLam  of string list * core
+  | OperatorVal of string * core_val list
+  | PrimVal     of primitive
+  | LamVal      of string list * core
 
 and core =
   (* core variables, introduced by lambda or case bindings *)
@@ -45,14 +45,14 @@ type 'a translation_result = ('a, located_err) Result.t
 
 (* val val_to_ast : core_val -> Nominal.term *)
 let rec val_to_ast = function
-  | ValTm (name, vals)
+  | OperatorVal (name, vals)
   -> Nominal.Operator
     ( name
     , List.map vals (fun value -> Nominal.Scope([], val_to_ast value))
     )
-  | ValPrim prim
+  | PrimVal prim
   -> Primitive prim
-  | ValLam (args, body)
+  | LamVal (args, body)
   (* TODO: is "lam" the right name? *)
   -> Operator ("lam", [ Scope (args, to_ast body) ])
 
@@ -70,14 +70,14 @@ and to_ast (core : core) : Nominal.term = match core with
 (* val match_branch : core_val -> core_pat -> core_val M.t option *)
 let rec match_branch v pat = match (v, pat) with
 
-  | (ValTm (tag1, vals), PatternTerm (tag2, pats)) -> List.(
+  | (OperatorVal (tag1, vals), PatternTerm (tag2, pats)) -> List.(
     let sub_results = zipBy vals pats match_branch in
     if tag1 = tag2 &&
        length vals = length pats && every sub_results O.isSome
     then Some (reduce (map sub_results O.getExn) M.empty union)
     else None
   )
-  | (ValPrim l1, PatternLit l2)
+  | (PrimVal l1, PatternLit l2)
   -> if prim_eq l1 l2 then Some M.empty else None
   | (tm, PatternVar (Some v))
   -> Some (M.fromArray [|v,tm|])
@@ -192,13 +192,13 @@ let rec fill_in_core dynamics ((assocs, assignments) as mr) = function
   -> core_val translation_result
 *)
 and fill_in_val dynamics mr = function
-  | ValTm (tag, vals) -> Result.map
+  | OperatorVal (tag, vals) -> Result.map
     (traverse_list_result (fill_in_val dynamics mr) vals)
-    (fun vals' -> ValTm (tag, vals'))
-  | ValPrim _  as v -> Ok v
-  | ValLam (binders, core) -> Result.map
+    (fun vals' -> OperatorVal (tag, vals'))
+  | PrimVal _  as v -> Ok v
+  | LamVal (binders, core) -> Result.map
     (fill_in_core dynamics mr core)
-    (fun core' -> ValLam (binders, core'))
+    (fun core' -> LamVal (binders, core'))
 
 (* val term_is_core_val : string list -> DeBruijn.term -> core_val translation_result *)
 and term_is_core_val env = function
@@ -206,11 +206,11 @@ and term_is_core_val env = function
   -> let env' = List.concat names env in
      Result.map
        (term_is_core env' body)
-       (fun body' -> ValLam (names, body'))
+       (fun body' -> LamVal (names, body'))
   | Operator (tag, subtms) -> Result.map
     (traverse_list_result (scope_is_core_val env) subtms)
-    (fun subtms' -> ValTm (tag, subtms'))
-  | Primitive prim -> Ok (ValPrim prim)
+    (fun subtms' -> OperatorVal (tag, subtms'))
+  | Primitive prim -> Ok (PrimVal prim)
   | Var _ as tm -> Error ("TODO 4", Some tm)
   | tm          -> Error ("TODO 5", Some tm)
 
@@ -244,7 +244,7 @@ let eval core =
           | None        -> Error ("Unbound variable " ^ v)
         )
         | CoreVal v -> Ok v
-        | CoreApp (CoreVal (ValLam (argNames, body)), args) ->
+        | CoreApp (CoreVal (LamVal (argNames, body)), args) ->
             if List.(length argNames != length args)
             then Error "mismatched application lengths"
             else Result.flatMap

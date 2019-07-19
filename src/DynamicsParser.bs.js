@@ -227,7 +227,7 @@ var semantic_action = /* array */[
       var match$1 = match[/* next */4][/* next */4];
       var _v_000 = match$1[/* semv */1];
       var _v_001 = match[/* semv */1];
-      var _v = /* ValTm */Block.__(0, [
+      var _v = /* OperatorVal */Block.__(0, [
           _v_000,
           _v_001
         ]);
@@ -241,7 +241,7 @@ var semantic_action = /* array */[
     }),
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
-      var _v = /* ValPrim */Block.__(1, [_menhir_stack[/* semv */1]]);
+      var _v = /* PrimVal */Block.__(1, [_menhir_stack[/* semv */1]]);
       return /* record */[
               /* state */_menhir_stack[/* state */0],
               /* semv */_v,
@@ -257,7 +257,7 @@ var semantic_action = /* array */[
       var match$2 = match$1[/* next */4][/* next */4];
       var _v_000 = match$1[/* semv */1];
       var _v_001 = match[/* semv */1];
-      var _v = /* ValLam */Block.__(2, [
+      var _v = /* LamVal */Block.__(2, [
           _v_000,
           _v_001
         ]);
@@ -274,7 +274,7 @@ var semantic_action = /* array */[
       var match = _menhir_stack[/* next */4];
       var match$1 = match[/* next */4][/* next */4];
       var _v_001 = match[/* semv */1];
-      var _v = /* ValLam */Block.__(2, [
+      var _v = /* LamVal */Block.__(2, [
           /* [] */0,
           _v_001
         ]);
