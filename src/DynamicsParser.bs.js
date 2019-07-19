@@ -152,7 +152,7 @@ var semantic_action = /* array */[
       var _menhir_stack = _menhir_env[/* stack */2];
       var match = _menhir_stack[/* next */4];
       var match$1 = match[/* next */4];
-      var _v = /* Meaning */Block.__(4, [match[/* semv */1]]);
+      var _v = /* Meaning */Block.__(5, [match[/* semv */1]]);
       return /* record */[
               /* state */match$1[/* state */0],
               /* semv */_v,

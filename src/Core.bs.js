@@ -62,7 +62,7 @@ function to_ast(core) {
             Caml_builtin_exceptions.match_failure,
             /* tuple */[
               "Core.ml",
-              59,
+              62,
               42
             ]
           ];
@@ -251,34 +251,27 @@ function find_match(param, term) {
 }
 
 function fill_in_core(dynamics, mr, c) {
-  var assignments = mr[1];
+  var exit = 0;
   switch (c.tag | 0) {
     case 0 : 
-        var match = Belt_MapString.get(assignments, c[0]);
-        if (match !== undefined) {
-          return Belt_Result.map(term_is_core_val(/* [] */0, match), (function (cv) {
-                        return /* CoreVal */Block.__(1, [cv]);
-                      }));
-        } else {
-          return /* Ok */Block.__(0, [c]);
-        }
+        return /* Ok */Block.__(0, [c]);
     case 1 : 
         return Belt_Result.map(fill_in_val(dynamics, mr, c[0]), (function (v$prime) {
                       return /* CoreVal */Block.__(1, [v$prime]);
                     }));
     case 2 : 
-        var match$1 = fill_in_core(dynamics, mr, c[0]);
-        var match$2 = Binding.sequence_list_result(Belt_List.map(c[1], (function (param) {
+        var match = fill_in_core(dynamics, mr, c[0]);
+        var match$1 = Binding.sequence_list_result(Belt_List.map(c[1], (function (param) {
                     return fill_in_core(dynamics, mr, param);
                   })));
-        if (match$1.tag) {
+        if (match.tag) {
+          return /* Error */Block.__(1, [match[0]]);
+        } else if (match$1.tag) {
           return /* Error */Block.__(1, [match$1[0]]);
-        } else if (match$2.tag) {
-          return /* Error */Block.__(1, [match$2[0]]);
         } else {
           return /* Ok */Block.__(0, [/* CoreApp */Block.__(2, [
-                        match$1[0],
-                        match$2[0]
+                        match[0],
+                        match$1[0]
                       ])]);
         }
     case 3 : 
@@ -291,30 +284,36 @@ function fill_in_core(dynamics, mr, c) {
                                         ];
                                 }));
                   })));
-        var match$3 = fill_in_core(dynamics, mr, c[0]);
-        if (match$3.tag) {
-          return /* Error */Block.__(1, [match$3[0]]);
+        var match$2 = fill_in_core(dynamics, mr, c[0]);
+        if (match$2.tag) {
+          return /* Error */Block.__(1, [match$2[0]]);
         } else if (mBranches.tag) {
           return /* Error */Block.__(1, [mBranches[0]]);
         } else {
           return /* Ok */Block.__(0, [/* Case */Block.__(3, [
-                        match$3[0],
+                        match$2[0],
                         c[1],
                         mBranches[0]
                       ])]);
         }
     case 4 : 
-        var match$4 = Belt_MapString.get(assignments, c[0]);
-        if (match$4 !== undefined) {
-          return term_to_core(dynamics, match$4);
-        } else {
-          return /* Error */Block.__(1, [/* tuple */[
-                      "TODO 3",
-                      undefined
-                    ]]);
-        }
+    case 5 : 
+        exit = 1;
+        break;
     
   }
+  if (exit === 1) {
+    var match$3 = Belt_MapString.get(mr[1], c[0]);
+    if (match$3 !== undefined) {
+      return term_to_core(dynamics, match$3);
+    } else {
+      return /* Error */Block.__(1, [/* tuple */[
+                  "TODO 3",
+                  undefined
+                ]]);
+    }
+  }
+  
 }
 
 function fill_in_val(dynamics, mr, v) {
@@ -340,88 +339,6 @@ function fill_in_val(dynamics, mr, v) {
                               ]);
                     }));
     
-  }
-}
-
-function term_is_core_val(env, tm) {
-  switch (tm.tag | 0) {
-    case 0 : 
-        var tag = tm[0];
-        var exit = 0;
-        if (tag === "lam") {
-          var match = tm[1];
-          if (match && !match[1]) {
-            var match$1 = match[0];
-            var names = match$1[0];
-            var env$prime = Belt_List.concat(names, env);
-            return Belt_Result.map(term_is_core(env$prime, match$1[1]), (function (body$prime) {
-                          return /* ValLam */Block.__(2, [
-                                    names,
-                                    body$prime
-                                  ]);
-                        }));
-          } else {
-            exit = 1;
-          }
-        } else {
-          exit = 1;
-        }
-        if (exit === 1) {
-          return Belt_Result.map(Util.traverse_list_result((function (param) {
-                            var env$1 = env;
-                            var param$1 = param;
-                            if (param$1[0]) {
-                              return /* Error */Block.__(1, [/* tuple */[
-                                          "Unexpected binding TODO",
-                                          undefined
-                                        ]]);
-                            } else {
-                              return term_is_core_val(env$1, param$1[1]);
-                            }
-                          }), tm[1]), (function (subtms$prime) {
-                        return /* ValTm */Block.__(0, [
-                                  tag,
-                                  subtms$prime
-                                ]);
-                      }));
-        }
-        break;
-    case 1 : 
-        return /* Error */Block.__(1, [/* tuple */[
-                    "TODO 4",
-                    tm
-                  ]]);
-    case 2 : 
-        return /* Error */Block.__(1, [/* tuple */[
-                    "TODO 5",
-                    tm
-                  ]]);
-    case 3 : 
-        return /* Ok */Block.__(0, [/* ValPrim */Block.__(1, [tm[0]])]);
-    
-  }
-}
-
-function term_is_core(env, tm) {
-  if (tm.tag === 1) {
-    var match = Belt_List.get(env, tm[0]);
-    if (match !== undefined) {
-      return /* Ok */Block.__(0, [/* CoreVar */Block.__(0, [match])]);
-    } else {
-      return /* Error */Block.__(1, [/* tuple */[
-                  "failed to look up variable",
-                  tm
-                ]]);
-    }
-  } else {
-    throw [
-          Caml_builtin_exceptions.match_failure,
-          /* tuple */[
-            "Core.ml",
-            214,
-            26
-          ]
-        ];
   }
 }
 
@@ -493,6 +410,7 @@ function $$eval(core) {
                         }
                       }));
       case 4 : 
+      case 5 : 
           return /* Error */Block.__(1, ["Found a metavar!"]);
       
     }

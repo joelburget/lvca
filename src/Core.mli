@@ -2,11 +2,11 @@ open Belt
 open Types
 open Binding
 
-type scope_pat =
+type denotation_scope_pat =
   | DenotationScopePat of string list * denotation_pat
 
 and denotation_pat =
-  | DPatternTm of string * scope_pat list
+  | DPatternTm of string * denotation_scope_pat list
   | DVar       of string option
 
 type ty = CoreTy of sort
@@ -27,6 +27,7 @@ and core =
   | CoreVal of core_val
   | CoreApp of core * core list
   | Case    of core * ty * (core_pat * core) list
+  | Metavar of string
   | Meaning of string
 
 type denotation_chart =

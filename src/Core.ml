@@ -7,11 +7,11 @@ let (fold_right, get_first, traverse_list_result) =
 module M = Belt.Map.String
 module O = Belt.Option
 
-type scope_pat =
+type denotation_scope_pat =
   | DenotationScopePat of string list * denotation_pat
 
 and denotation_pat =
-  | DPatternTm of string * scope_pat list
+  | DPatternTm of string * denotation_scope_pat list
   | DVar       of string option
 
 (* A core term extended with values of some sort *)
@@ -24,15 +24,17 @@ type core_pat =
   | PatternDefault
 
 type core_val =
-  | ValTm   of string * core_val list
+  | ValTm   of string * core_val list (* TODO: ValOperator *)
   | ValPrim of primitive
   | ValLam  of string list * core
 
 and core =
+  (* core variables, introduced by lambda or case bindings *)
   | CoreVar of string
   | CoreVal of core_val
   | CoreApp of core * core list
   | Case    of core * ty * (core_pat * core) list
+  | Metavar of string
   | Meaning of string
 
 type denotation_chart =
@@ -49,9 +51,10 @@ let rec val_to_ast = function
     , List.map vals (fun value -> Nominal.Scope([], val_to_ast value))
     )
   | ValPrim prim
-  -> Nominal.Primitive prim
+  -> Primitive prim
   | ValLam (args, body)
-  -> Nominal.Operator ("lam", [ Nominal.Scope (args, to_ast body) ])
+  (* TODO: is "lam" the right name? *)
+  -> Operator ("lam", [ Scope (args, to_ast body) ])
 
 and pat_to_ast (pat : core_pat) : Nominal.term
   = failwith "TODO"
@@ -61,7 +64,7 @@ and to_ast (core : core) : Nominal.term = match core with
   -> Nominal.Var name
   (* -> Nominal.Operator ("CoreVar", [Nominal.Scope ([], Nominal.Primitive (PrimString name))]) *)
   | CoreVal core_val
-  -> Nominal.Operator ("CoreVal", [Nominal.Scope ([], val_to_ast core_val)])
+  -> Operator ("CoreVal", [Nominal.Scope ([], val_to_ast core_val)])
   (* TODO *)
 
 (* val match_branch : core_val -> core_pat -> core_val M.t option *)
@@ -114,7 +117,7 @@ let rec matches tm pat = match (tm, pat) with
 
 (* val matches_scope
   : DeBruijn.scope
-  -> scope_pat
+  -> denotation_scope_pat
   -> ((string * string) list * DeBruijn.term M.t) option
 *)
 and matches_scope (Scope (binders, tm)) (DenotationScopePat (patBinders, pat))
@@ -136,21 +139,27 @@ let find_match (DenotationChart denotations) term = get_first
     (fun (assocs, bindings) -> (assocs, bindings, core)))
   denotations
 
-(* val fill_in_core: denotation_chart -> (string * string) list * DeBruijn.term M.t -> core -> core translation_result *)
+(* val fill_in_core
+  : denotation_chart
+  -> (string * string) list * DeBruijn.term M.t
+  -> core
+  -> core translation_result
+*)
 let rec fill_in_core dynamics ((assocs, assignments) as mr) = function
+  | Metavar name -> (match M.get assignments name with
+    | Some tm -> term_to_core dynamics tm
+    | None    -> Result.Error ("TODO 3", None)
+    )
+  (* XXX same as Metavar? *)
   | Meaning name -> (match M.get assignments name with
     | Some tm -> term_to_core dynamics tm
     | None    -> Result.Error ("TODO 3", None)
     )
-  (* XXX same as Meaning *)
-  | CoreVar name as c -> (match M.get assignments name with
-    | Some tm -> Result.map (term_is_core_val [] tm) (fun cv -> CoreVal cv)
-    | None    -> Ok c
-    )
+  | CoreVar _ as c -> Ok c
   | CoreVal v -> Result.map
     (fill_in_val dynamics mr v)
     (fun v' -> CoreVal v')
-  | CoreApp(f, args) -> (match
+  | CoreApp (f, args) -> (match
     ( fill_in_core dynamics mr f
     , mr
       |> fill_in_core dynamics
@@ -203,7 +212,7 @@ and term_is_core_val env = function
     (fun subtms' -> ValTm (tag, subtms'))
   | Primitive prim -> Ok (ValPrim prim)
   | Var _ as tm -> Error ("TODO 4", Some tm)
-  | tm                   -> Error ("TODO 5", Some tm)
+  | tm          -> Error ("TODO 5", Some tm)
 
 (* val scope_is_core_val : string list -> DeBruijn.scope -> core_val translation_result *)
 and scope_is_core_val env (Scope (names, body)) = match names with
@@ -253,7 +262,7 @@ let eval core =
             | None                    -> Error "no match found in case"
             | Some (branch, bindings) -> go (union ctx bindings) branch)
           )
-        | Meaning _v -> Error "Found a metavar!"
+        | Metavar _v | Meaning _v -> Error "Found a metavar!"
 
         | _ -> Error "TODO 7"
 
