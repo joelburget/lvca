@@ -111,7 +111,7 @@ Jest.describe("Core", (function (param) {
                     ]),
                   /* Case */Block.__(3, [
                       /* Meaning */Block.__(5, ["t1"]),
-                      /* CoreTy */[sort],
+                      sort,
                       /* :: */[
                         /* tuple */[
                           /* PatternTerm */Block.__(0, [
@@ -176,7 +176,6 @@ Jest.describe("Core", (function (param) {
             "ite",
             ite_tm_001
           ]);
-        var ite_val_001 = /* CoreTy */[sort];
         var ite_val_002 = /* :: */[
           /* tuple */[
             /* PatternTerm */Block.__(0, [
@@ -198,7 +197,7 @@ Jest.describe("Core", (function (param) {
         ];
         var ite_val = /* Case */Block.__(3, [
             true_val,
-            ite_val_001,
+            sort,
             ite_val_002
           ]);
         Jest.testAll("term_to_core", /* :: */[

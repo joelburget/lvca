@@ -11,7 +11,29 @@ var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
+var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
+
+var AstConversionMetavar = Caml_exceptions.create("Core.AstConversionMetavar");
+
+function sort_to_ast(param) {
+  return /* Operator */Block.__(0, [
+            "sort",
+            /* :: */[
+              /* Scope */[
+                /* [] */0,
+                /* Primitive */Block.__(3, [/* PrimString */Block.__(1, [param[0]])])
+              ],
+              /* :: */[
+                /* Scope */[
+                  /* [] */0,
+                  /* Sequence */Block.__(2, [Belt_List.map(Belt_List.fromArray(param[1]), sort_to_ast)])
+                ],
+                /* [] */0
+              ]
+            ]
+          ]);
+}
 
 function val_to_ast(param) {
   switch (param.tag | 0) {
@@ -42,6 +64,34 @@ function val_to_ast(param) {
   }
 }
 
+function pat_to_ast(param) {
+  if (typeof param === "number") {
+    return /* Operator */Block.__(0, [
+              "PatternDefault",
+              /* [] */0
+            ]);
+  } else {
+    throw [
+          Caml_builtin_exceptions.match_failure,
+          /* tuple */[
+            "Core.ml",
+            65,
+            44
+          ]
+        ];
+  }
+}
+
+function branch_to_ast(param) {
+  return /* Sequence */Block.__(2, [/* :: */[
+              pat_to_ast(param[0]),
+              /* :: */[
+                to_ast(param[1]),
+                /* [] */0
+              ]
+            ]]);
+}
+
 function to_ast(core) {
   switch (core.tag | 0) {
     case 0 : 
@@ -57,15 +107,53 @@ function to_ast(core) {
                     /* [] */0
                   ]
                 ]);
-    default:
-      throw [
-            Caml_builtin_exceptions.match_failure,
-            /* tuple */[
-              "Core.ml",
-              62,
-              42
-            ]
-          ];
+    case 2 : 
+        return /* Operator */Block.__(0, [
+                  "CoreApp",
+                  /* :: */[
+                    /* Scope */[
+                      /* [] */0,
+                      to_ast(core[0])
+                    ],
+                    /* :: */[
+                      /* Scope */[
+                        /* [] */0,
+                        /* Sequence */Block.__(2, [Belt_List.map(core[1], to_ast)])
+                      ],
+                      /* [] */0
+                    ]
+                  ]
+                ]);
+    case 3 : 
+        return /* Operator */Block.__(0, [
+                  "Case",
+                  /* :: */[
+                    /* Scope */[
+                      /* [] */0,
+                      to_ast(core[0])
+                    ],
+                    /* :: */[
+                      /* Scope */[
+                        /* [] */0,
+                        sort_to_ast(core[1])
+                      ],
+                      /* :: */[
+                        /* Scope */[
+                          /* [] */0,
+                          /* Sequence */Block.__(2, [Belt_List.map(core[2], branch_to_ast)])
+                        ],
+                        /* [] */0
+                      ]
+                    ]
+                  ]
+                ]);
+    case 4 : 
+    case 5 : 
+        throw [
+              AstConversionMetavar,
+              core[0]
+            ];
+    
   }
 }
 

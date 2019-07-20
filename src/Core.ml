@@ -14,9 +14,6 @@ and denotation_pat =
   | DPatternTm of string * denotation_scope_pat list
   | DVar       of string option
 
-(* A core term extended with values of some sort *)
-type ty = CoreTy of sort
-
 type core_pat =
   | PatternTerm of string * core_pat list
   | PatternVar  of string option
@@ -29,11 +26,11 @@ type core_val =
   | LamVal      of string list * core
 
 and core =
-  (* core variables, introduced by lambda or case bindings *)
   | CoreVar of string
+  (** core variables, introduced by lambda or case bindings *)
   | CoreVal of core_val
   | CoreApp of core * core list
-  | Case    of core * ty * (core_pat * core) list
+  | Case    of core * sort * (core_pat * core) list
   | Metavar of string
   | Meaning of string
 
@@ -42,6 +39,15 @@ type denotation_chart =
 
 type located_err = string * DeBruijn.term option
 type 'a translation_result = ('a, located_err) Result.t
+
+(** Raised by val_to_ast when the presence of metavars makes the value invalid
+ *)
+exception AstConversionMetavar of string
+
+let rec sort_to_ast (SortAp (name, args)) = Nominal.Operator ("sort",
+  [ Scope ([], Primitive (PrimString name));
+    Scope ([], Sequence (args |. List.fromArray |. List.map sort_to_ast))
+  ])
 
 (* val val_to_ast : core_val -> Nominal.term *)
 let rec val_to_ast = function
@@ -56,16 +62,30 @@ let rec val_to_ast = function
   (* TODO: is "lam" the right name? *)
   -> Operator ("lam", [ Scope (args, to_ast body) ])
 
-and pat_to_ast (pat : core_pat) : Nominal.term
-  = failwith "TODO"
+and pat_to_ast : core_pat -> Nominal.term = function
+  (* | PatternLit lit -> Nominal.Operator TODO *)
+  | PatternDefault -> Nominal.Operator ("PatternDefault", [])
+
+and branch_to_ast (pat, core) : Nominal.term
+  = Sequence [ pat_to_ast pat; to_ast core ]
 
 and to_ast (core : core) : Nominal.term = match core with
   | CoreVar name
   -> Nominal.Var name
-  (* -> Nominal.Operator ("CoreVar", [Nominal.Scope ([], Nominal.Primitive (PrimString name))]) *)
   | CoreVal core_val
-  -> Operator ("CoreVal", [Nominal.Scope ([], val_to_ast core_val)])
-  (* TODO *)
+  -> Operator ("CoreVal", [Scope ([], val_to_ast core_val)])
+  | CoreApp (f, args)
+  -> Operator ("CoreApp",
+    [ Scope ([], to_ast f);
+      Scope ([], Sequence (args |. List.map to_ast));
+    ])
+  | Case (tm, ty, branches)
+  -> Operator ("Case",
+    [ Scope ([], to_ast tm);
+      Scope ([], sort_to_ast ty);
+      Scope ([], Sequence (branches |. List.map branch_to_ast));
+    ])
+  | Metavar v | Meaning v -> raise (AstConversionMetavar v)
 
 (* val match_branch : core_val -> core_pat -> core_val M.t option *)
 let rec match_branch v pat = match (v, pat) with

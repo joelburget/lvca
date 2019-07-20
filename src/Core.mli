@@ -8,8 +8,6 @@ and denotation_pat =
   | DPatternTm of string * denotation_scope_pat list
   | DVar       of string option
 
-type ty = CoreTy of sort
-
 type core_pat =
   | PatternTerm of string * core_pat list
   | PatternVar  of string option
@@ -25,7 +23,7 @@ and core =
   | CoreVar of string
   | CoreVal of core_val
   | CoreApp of core * core list
-  | Case    of core * ty * (core_pat * core) list
+  | Case    of core * sort * (core_pat * core) list
   | Metavar of string
   | Meaning of string
 

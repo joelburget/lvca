@@ -40,7 +40,7 @@ let _ = describe "Core" (fun () ->
       ]),
       Case
         ( Meaning "t1"
-        , CoreTy sort
+        , sort
         , [ PatternTerm ("true" , []), Meaning "t2";
             PatternTerm ("false", []), Meaning "t3";
           ]
@@ -60,7 +60,7 @@ let _ = describe "Core" (fun () ->
   in
   let ite_val = Case
     ( true_val
-    , CoreTy sort
+    , sort
     , [ PatternTerm ("true" , []), false_val;
         PatternTerm ("false", []), true_val;
       ]

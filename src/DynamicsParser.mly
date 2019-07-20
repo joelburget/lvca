@@ -74,7 +74,7 @@ core:
     CORE sort = sort SEMICOLON
     cases = separated_list(SEMICOLON, case)
     RIGHT_PAREN
-  { Case (arg, CoreTy sort, cases) }
+  { Case (arg, sort, cases) }
   | LEFT_OXFORD ID RIGHT_OXFORD
   { Meaning $2 }
   ;

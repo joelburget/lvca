@@ -133,7 +133,7 @@ var semantic_action = /* array */[
       var match$2 = match$1[/* next */4][/* next */4][/* next */4];
       var match$3 = match$2[/* next */4][/* next */4];
       var _v_000 = match$2[/* semv */1];
-      var _v_001 = /* CoreTy */[match$1[/* semv */1]];
+      var _v_001 = match$1[/* semv */1];
       var _v_002 = match[/* semv */1];
       var _v = /* Case */Block.__(3, [
           _v_000,
