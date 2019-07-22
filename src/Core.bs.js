@@ -12,148 +12,37 @@ var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
-var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
-var AstConversionMetavar = Caml_exceptions.create("Core.AstConversionMetavar");
-
-function sort_to_ast(param) {
-  return /* Operator */Block.__(0, [
-            "sort",
-            /* :: */[
-              /* Scope */[
-                /* [] */0,
-                /* Primitive */Block.__(3, [/* PrimString */Block.__(1, [param[0]])])
-              ],
-              /* :: */[
-                /* Scope */[
-                  /* [] */0,
-                  /* Sequence */Block.__(2, [Belt_List.map(Belt_List.fromArray(param[1]), sort_to_ast)])
-                ],
-                /* [] */0
-              ]
-            ]
-          ]);
-}
-
-function val_to_ast(param) {
-  switch (param.tag | 0) {
-    case 0 : 
-        return /* Operator */Block.__(0, [
-                  param[0],
-                  Belt_List.map(param[1], (function (value) {
-                          return /* Scope */[
-                                  /* [] */0,
-                                  val_to_ast(value)
-                                ];
-                        }))
-                ]);
-    case 1 : 
-        return /* Primitive */Block.__(3, [param[0]]);
-    case 2 : 
-        return /* Operator */Block.__(0, [
-                  "lam",
-                  /* :: */[
-                    /* Scope */[
-                      param[0],
-                      to_ast(param[1])
-                    ],
-                    /* [] */0
-                  ]
-                ]);
-    
-  }
-}
-
-function pat_to_ast(param) {
-  if (typeof param === "number") {
-    return /* Operator */Block.__(0, [
-              "PatternDefault",
-              /* [] */0
-            ]);
-  } else {
-    throw [
-          Caml_builtin_exceptions.match_failure,
-          /* tuple */[
-            "Core.ml",
-            65,
-            44
-          ]
-        ];
-  }
-}
-
-function branch_to_ast(param) {
-  return /* Sequence */Block.__(2, [/* :: */[
-              pat_to_ast(param[0]),
-              /* :: */[
-                to_ast(param[1]),
-                /* [] */0
-              ]
-            ]]);
-}
+var AstConversionErr = Caml_exceptions.create("Core.AstConversionErr");
 
 function to_ast(core) {
   switch (core.tag | 0) {
     case 0 : 
-        return /* Var */Block.__(1, [core[0]]);
+        return /* Operator */Block.__(0, [
+                  core[0],
+                  Belt_List.map(core[1], (function (value) {
+                          return /* Scope */[
+                                  /* [] */0,
+                                  to_ast(value)
+                                ];
+                        }))
+                ]);
     case 1 : 
-        return /* Operator */Block.__(0, [
-                  "CoreVal",
-                  /* :: */[
-                    /* Scope */[
-                      /* [] */0,
-                      val_to_ast(core[0])
-                    ],
-                    /* [] */0
-                  ]
-                ]);
+        return /* Var */Block.__(1, [core[0]]);
     case 2 : 
-        return /* Operator */Block.__(0, [
-                  "CoreApp",
-                  /* :: */[
-                    /* Scope */[
-                      /* [] */0,
-                      to_ast(core[0])
-                    ],
-                    /* :: */[
-                      /* Scope */[
-                        /* [] */0,
-                        /* Sequence */Block.__(2, [Belt_List.map(core[1], to_ast)])
-                      ],
-                      /* [] */0
-                    ]
-                  ]
-                ]);
+        return /* Sequence */Block.__(2, [Belt_List.map(core[0], to_ast)]);
     case 3 : 
-        return /* Operator */Block.__(0, [
-                  "Case",
-                  /* :: */[
-                    /* Scope */[
-                      /* [] */0,
-                      to_ast(core[0])
-                    ],
-                    /* :: */[
-                      /* Scope */[
-                        /* [] */0,
-                        sort_to_ast(core[1])
-                      ],
-                      /* :: */[
-                        /* Scope */[
-                          /* [] */0,
-                          /* Sequence */Block.__(2, [Belt_List.map(core[2], branch_to_ast)])
-                        ],
-                        /* [] */0
-                      ]
-                    ]
-                  ]
-                ]);
+        return /* Primitive */Block.__(3, [core[0]]);
     case 4 : 
-    case 5 : 
         throw [
-              AstConversionMetavar,
-              core[0]
+              AstConversionErr,
+              core
             ];
-    
+    default:
+      throw [
+            AstConversionErr,
+            core
+          ];
   }
 }
 
@@ -178,22 +67,48 @@ function match_branch(v, pat) {
                 exit = 1;
                 break;
             case 2 : 
+            case 3 : 
                 return undefined;
             
           }
         }
         break;
-    case 1 : 
+    case 2 : 
+        var s1 = v[0];
         if (typeof pat === "number") {
           exit = 1;
         } else {
           switch (pat.tag | 0) {
-            case 0 : 
-                return undefined;
             case 1 : 
                 exit = 1;
                 break;
             case 2 : 
+                var s2 = pat[0];
+                var sub_results$1 = Belt_List.zipBy(s1, s2, match_branch);
+                if (Belt_List.length(s1) === Belt_List.length(s2) && Belt_List.every(sub_results$1, Belt_Option.isSome)) {
+                  return Caml_option.some(Belt_List.reduce(Belt_List.map(sub_results$1, Belt_Option.getExn), Belt_MapString.empty, Binding.union));
+                } else {
+                  return undefined;
+                }
+            case 0 : 
+            case 3 : 
+                return undefined;
+            
+          }
+        }
+        break;
+    case 3 : 
+        if (typeof pat === "number") {
+          exit = 1;
+        } else {
+          switch (pat.tag | 0) {
+            case 1 : 
+                exit = 1;
+                break;
+            case 0 : 
+            case 2 : 
+                return undefined;
+            case 3 : 
                 if (Types.prim_eq(v[0], pat[0])) {
                   return Caml_option.some(Belt_MapString.empty);
                 } else {
@@ -203,31 +118,24 @@ function match_branch(v, pat) {
           }
         }
         break;
-    case 2 : 
-        exit = 1;
-        break;
-    
+    default:
+      exit = 1;
   }
   if (exit === 1) {
     if (typeof pat === "number") {
       return Caml_option.some(Belt_MapString.empty);
-    } else {
-      switch (pat.tag | 0) {
-        case 1 : 
-            var match = pat[0];
-            if (match !== undefined) {
-              return Caml_option.some(Belt_MapString.fromArray(/* array */[/* tuple */[
-                                match,
-                                v
-                              ]]));
-            } else {
-              return Caml_option.some(Belt_MapString.empty);
-            }
-        case 0 : 
-        case 2 : 
-            return undefined;
-        
+    } else if (pat.tag === 1) {
+      var match = pat[0];
+      if (match !== undefined) {
+        return Caml_option.some(Belt_MapString.fromArray(/* array */[/* tuple */[
+                          match,
+                          v
+                        ]]));
+      } else {
+        return Caml_option.some(Belt_MapString.empty);
       }
+    } else {
+      return undefined;
     }
   }
   
@@ -339,15 +247,36 @@ function find_match(param, term) {
 }
 
 function fill_in_core(dynamics, mr, c) {
-  var exit = 0;
+  var assignments = mr[1];
   switch (c.tag | 0) {
     case 0 : 
-        return /* Ok */Block.__(0, [c]);
-    case 1 : 
-        return Belt_Result.map(fill_in_val(dynamics, mr, c[0]), (function (v$prime) {
-                      return /* CoreVal */Block.__(1, [v$prime]);
+        var tag = c[0];
+        return Belt_Result.map(Util.traverse_list_result((function (param) {
+                          return fill_in_core(dynamics, mr, param);
+                        }), c[1]), (function (vals$prime) {
+                      return /* Operator */Block.__(0, [
+                                tag,
+                                vals$prime
+                              ]);
                     }));
     case 2 : 
+        return Belt_Result.map(Util.traverse_list_result((function (param) {
+                          return fill_in_core(dynamics, mr, param);
+                        }), c[0]), (function (tms$prime) {
+                      return /* Sequence */Block.__(2, [tms$prime]);
+                    }));
+    case 1 : 
+    case 3 : 
+        return /* Ok */Block.__(0, [c]);
+    case 4 : 
+        var binders = c[0];
+        return Belt_Result.map(fill_in_core(dynamics, mr, c[1]), (function (core$prime) {
+                      return /* Lambda */Block.__(4, [
+                                binders,
+                                core$prime
+                              ]);
+                    }));
+    case 5 : 
         var match = fill_in_core(dynamics, mr, c[0]);
         var match$1 = Binding.sequence_list_result(Belt_List.map(c[1], (function (param) {
                     return fill_in_core(dynamics, mr, param);
@@ -357,12 +286,12 @@ function fill_in_core(dynamics, mr, c) {
         } else if (match$1.tag) {
           return /* Error */Block.__(1, [match$1[0]]);
         } else {
-          return /* Ok */Block.__(0, [/* CoreApp */Block.__(2, [
+          return /* Ok */Block.__(0, [/* CoreApp */Block.__(5, [
                         match[0],
                         match$1[0]
                       ])]);
         }
-    case 3 : 
+    case 6 : 
         var mBranches = Binding.sequence_list_result(Belt_List.map(c[2], (function (param) {
                     var pat = param[0];
                     return Belt_Result.map(fill_in_core(dynamics, mr, param[1]), (function (core$prime) {
@@ -378,54 +307,34 @@ function fill_in_core(dynamics, mr, c) {
         } else if (mBranches.tag) {
           return /* Error */Block.__(1, [mBranches[0]]);
         } else {
-          return /* Ok */Block.__(0, [/* Case */Block.__(3, [
+          return /* Ok */Block.__(0, [/* Case */Block.__(6, [
                         match$2[0],
                         c[1],
                         mBranches[0]
                       ])]);
         }
-    case 4 : 
-    case 5 : 
-        exit = 1;
-        break;
-    
-  }
-  if (exit === 1) {
-    var match$3 = Belt_MapString.get(mr[1], c[0]);
-    if (match$3 !== undefined) {
-      return term_to_core(dynamics, match$3);
-    } else {
-      return /* Error */Block.__(1, [/* tuple */[
-                  "TODO 3",
-                  undefined
-                ]]);
-    }
-  }
-  
-}
-
-function fill_in_val(dynamics, mr, v) {
-  switch (v.tag | 0) {
-    case 0 : 
-        var tag = v[0];
-        return Belt_Result.map(Util.traverse_list_result((function (param) {
-                          return fill_in_val(dynamics, mr, param);
-                        }), v[1]), (function (vals$prime) {
-                      return /* OperatorVal */Block.__(0, [
-                                tag,
-                                vals$prime
-                              ]);
-                    }));
-    case 1 : 
-        return /* Ok */Block.__(0, [v]);
-    case 2 : 
-        var binders = v[0];
-        return Belt_Result.map(fill_in_core(dynamics, mr, v[1]), (function (core$prime) {
-                      return /* LamVal */Block.__(2, [
-                                binders,
-                                core$prime
-                              ]);
-                    }));
+    case 7 : 
+        var name = c[0];
+        var match$3 = Belt_MapString.get(assignments, name);
+        if (match$3 !== undefined) {
+          return term_to_core(dynamics, match$3);
+        } else {
+          return /* Error */Block.__(1, [/* tuple */[
+                      "Metavariable " + (name + " not found"),
+                      undefined
+                    ]]);
+        }
+    case 8 : 
+        var name$1 = c[0];
+        var match$4 = Belt_MapString.get(assignments, name$1);
+        if (match$4 !== undefined) {
+          return term_to_core(dynamics, match$4);
+        } else {
+          return /* Error */Block.__(1, [/* tuple */[
+                      "Metavariable " + (name$1 + " not found"),
+                      undefined
+                    ]]);
+        }
     
   }
 }
@@ -449,7 +358,7 @@ function term_to_core(dynamics, tm) {
 function $$eval(core) {
   var go = function (ctx, param) {
     switch (param.tag | 0) {
-      case 0 : 
+      case 1 : 
           var v = param[0];
           var match = Belt_MapString.get(ctx, v);
           if (match !== undefined) {
@@ -457,36 +366,26 @@ function $$eval(core) {
           } else {
             return /* Error */Block.__(1, ["Unbound variable " + v]);
           }
-      case 1 : 
-          return /* Ok */Block.__(0, [param[0]]);
-      case 2 : 
+      case 5 : 
           var match$1 = param[0];
-          if (match$1.tag === 1) {
-            var match$2 = match$1[0];
-            switch (match$2.tag | 0) {
-              case 0 : 
-              case 1 : 
-                  return /* Error */Block.__(1, ["TODO 7"]);
-              case 2 : 
-                  var args = param[1];
-                  var body = match$2[1];
-                  var argNames = match$2[0];
-                  if (Belt_List.length(argNames) !== Belt_List.length(args)) {
-                    return /* Error */Block.__(1, ["mismatched application lengths"]);
-                  } else {
-                    return Belt_Result.flatMap(Binding.sequence_list_result(Belt_List.map(args, (function (param) {
-                                          return go(ctx, param);
-                                        }))), (function (arg_vals) {
-                                  var new_args = Belt_MapString.fromArray(Belt_List.toArray(Belt_List.zip(argNames, arg_vals)));
-                                  return go(Binding.union(ctx, new_args), body);
-                                }));
-                  }
-              
+          if (match$1.tag === 4) {
+            var args = param[1];
+            var body = match$1[1];
+            var argNames = match$1[0];
+            if (Belt_List.length(argNames) !== Belt_List.length(args)) {
+              return /* Error */Block.__(1, ["mismatched application lengths"]);
+            } else {
+              return Belt_Result.flatMap(Binding.sequence_list_result(Belt_List.map(args, (function (param) {
+                                    return go(ctx, param);
+                                  }))), (function (arg_vals) {
+                            var new_args = Belt_MapString.fromArray(Belt_List.toArray(Belt_List.zip(argNames, arg_vals)));
+                            return go(Binding.union(ctx, new_args), body);
+                          }));
             }
           } else {
             return /* Error */Block.__(1, ["TODO 7"]);
           }
-      case 3 : 
+      case 6 : 
           var branches = param[2];
           return Belt_Result.flatMap(go(ctx, param[0]), (function (v) {
                         var match = find_core_match(v, branches);
@@ -497,16 +396,17 @@ function $$eval(core) {
                           return /* Error */Block.__(1, ["no match found in case"]);
                         }
                       }));
-      case 4 : 
-      case 5 : 
+      case 7 : 
+      case 8 : 
           return /* Error */Block.__(1, ["Found a metavar!"]);
-      
+      default:
+        return /* Error */Block.__(1, ["TODO 7"]);
     }
   };
   return go(Belt_MapString.empty, core);
 }
 
-exports.val_to_ast = val_to_ast;
+exports.to_ast = to_ast;
 exports.$$eval = $$eval;
 exports.term_to_core = term_to_core;
 /* Types Not a pure module */

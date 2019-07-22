@@ -10,11 +10,14 @@
 %token LEFT_PAREN
 %token RIGHT_PAREN
 %token SEMICOLON
+%token COMMA
 %token DOT
 %token UNDERSCORE
 %token EQ
 %token LEFT_OXFORD
 %token RIGHT_OXFORD
+%token LEFT_BRACKET
+%token RIGHT_BRACKET
 %token RIGHT_S_ARR
 %token EOF
 %token APP
@@ -48,27 +51,21 @@ scope_pat:
   | pat
   { DenotationScopePat ([], $1) } ;
 
-core_val:
-  | ID LEFT_PAREN separated_nonempty_list(SEMICOLON, core_val) RIGHT_PAREN
-  { OperatorVal ($1, $3) }
-  | prim
-  { PrimVal $1 }
-  | LAM LEFT_PAREN separated_nonempty_list(DOT, ID) DOT core RIGHT_PAREN
-  { LamVal ($3, $5) }
-  | LAM LEFT_PAREN                                      core RIGHT_PAREN
-  { LamVal ([], $3) }
-  (* | HASH ID
-  { ValPrimop $2 } *)
-  (* LamVal? *)
-  ;
-
 core:
   | APP LEFT_PAREN core SEMICOLON separated_list(SEMICOLON, core) RIGHT_PAREN
   { CoreApp ($3, $5) }
-  | core_val
-  { CoreVal $1 }
+  | ID LEFT_PAREN separated_nonempty_list(SEMICOLON, core) RIGHT_PAREN
+  { Operator ($1, $3) }
+  | prim
+  { Primitive $1 }
+  | LAM LEFT_PAREN separated_nonempty_list(DOT, ID) DOT core RIGHT_PAREN
+  { Lambda ($3, $5) }
+  | LAM LEFT_PAREN                                      core RIGHT_PAREN
+  { Lambda ([], $3) }
+  (* | core_val *)
+  (* { CoreVal $1 } *)
   | ID
-  { CoreVar $1 }
+  { Var $1 }
   | CASE LEFT_PAREN
     arg = core SEMICOLON
     CORE sort = sort SEMICOLON
@@ -77,6 +74,9 @@ core:
   { Case (arg, sort, cases) }
   | LEFT_OXFORD ID RIGHT_OXFORD
   { Meaning $2 }
+  (* | HASH ID
+  { ValPrimop $2 } *)
+  (* Lambda? *)
   ;
 
 (* TODO: duplicated from LanguageParser *)
@@ -94,8 +94,10 @@ core_pat:
   { PatternVar None }
   | ID
   { PatternVar (Some $1) }
+  | LEFT_BRACKET separated_list(COMMA, core_pat) RIGHT_BRACKET
+  { PatternSequence $2 }
   | prim
-  { PatternLit $1 }
+  { PatternPrim $1 }
   | DEFAULT
   { PatternDefault }
   ;

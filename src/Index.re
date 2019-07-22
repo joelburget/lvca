@@ -2,7 +2,7 @@ open Util
 module Result = Belt.Result
 
 type parse_result = Core.translation_result(Binding.Nominal.term);
-type eval_result  = Core.translation_result(Core.core_val);
+type eval_result  = Core.translation_result(Core.core);
 
 type history_item = {
   input: string,

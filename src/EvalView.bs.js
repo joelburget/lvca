@@ -26,7 +26,7 @@ function EvalView(Props) {
                 }, msg);
     }
   } else {
-    var ast = Core.val_to_ast(evalResult[0]);
+    var ast = Core.to_ast(evalResult[0]);
     var hash;
     hash = input.tag ? input[0][0] : "#" + $$String.sub(Curry._1(Binding.Nominal[/* hash */4], input[0]), 0, 8);
     return React.createElement("div", {

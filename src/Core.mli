@@ -9,23 +9,22 @@ and denotation_pat =
   | DVar       of string option
 
 type core_pat =
-  | PatternTerm of string * core_pat list
-  | PatternVar  of string option
-  | PatternLit  of primitive
+  | PatternTerm     of string * core_pat list
+  | PatternVar      of string option
+  | PatternSequence of core_pat list
+  | PatternPrim     of primitive
   | PatternDefault
 
-type core_val =
-  | OperatorVal of string * core_val list
-  | PrimVal     of primitive
-  | LamVal      of string list * core
-
 and core =
-  | CoreVar of string
-  | CoreVal of core_val
-  | CoreApp of core * core list
-  | Case    of core * sort * (core_pat * core) list
-  | Metavar of string
-  | Meaning of string
+  | Operator  of string * core list
+  | Var       of string
+  | Sequence  of core list
+  | Primitive of primitive
+  | Lambda    of string list * core
+  | CoreApp   of core * core list
+  | Case      of core * sort * (core_pat * core) list
+  | Metavar   of string
+  | Meaning   of string
 
 type denotation_chart =
   | DenotationChart of (denotation_pat * core) list
@@ -33,6 +32,6 @@ type denotation_chart =
 type located_err = (string * DeBruijn.term option)
 type 'a translation_result = ('a, located_err) Result.t
 
-val val_to_ast   : core_val -> Nominal.term
-val eval         : core -> (core_val, string) Result.t
+val to_ast       : core -> Nominal.term
+val eval         : core -> (core, string) Result.t
 val term_to_core : denotation_chart -> Binding.DeBruijn.term -> core translation_result

@@ -14,12 +14,15 @@ rule read = parse
   | white     { read lexbuf }
   | "[["      { LEFT_OXFORD }
   | "]]"      { RIGHT_OXFORD }
+  | "["       { LEFT_BRACKET }
+  | "]"       { RIGHT_BRACKET }
   | '"'       { read_string (Buffer.create 17) lexbuf }
   | '_'       { UNDERSCORE }
   | '='       { EQ }
   | '('       { LEFT_PAREN }
   | ')'       { RIGHT_PAREN }
   | ';'       { SEMICOLON }
+  | ';'       { COMMA }
   | '.'       { DOT }
   | "->"      { RIGHT_S_ARR }
   | "#"       { HASH }

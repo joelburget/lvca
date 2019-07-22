@@ -1,6 +1,5 @@
 open Belt
 open Binding
-open Either
 open Types
 
 type prim_ty =
@@ -21,7 +20,7 @@ and tree =
     node_type       : node_type;
     leading_trivia  : string;
     trailing_trivia : string;
-    children        : (terminal_capture, nonterminal_capture) either array;
+    children        : (terminal_capture, nonterminal_capture) Either.t array;
   }
 
 val equivalent : tree -> tree -> bool
@@ -29,7 +28,7 @@ val equivalent : tree -> tree -> bool
 val mk_tree
   : sort
   -> node_type
-  -> (terminal_capture, nonterminal_capture) either array
+  -> (terminal_capture, nonterminal_capture) Either.t array
   -> tree
 
 val of_ast    : language -> ConcreteSyntaxDescription.t -> sort -> Nominal.term -> tree

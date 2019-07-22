@@ -40,7 +40,7 @@ and tree =
     node_type       : node_type;
     leading_trivia  : string;
     trailing_trivia : string;
-    children        : (terminal_capture, nonterminal_capture) either array;
+    children        : (terminal_capture, nonterminal_capture) Either.t array;
   }
 
 (* equality mod trivia *)

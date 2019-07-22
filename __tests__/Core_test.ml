@@ -6,19 +6,19 @@ open Types
 
 let _ = describe "Core" (fun () ->
   let one = Bigint.of_int 1 in
-  testAll "val_to_ast"
-    [ expect (val_to_ast (PrimVal (PrimInteger one)))
+  testAll "to_ast"
+    [ expect (to_ast (Primitive (PrimInteger one)))
       |> toEqual (Nominal.Primitive (PrimInteger one));
 
-      expect (val_to_ast (LamVal (["x"; "y"], CoreVar "x")))
+      expect (to_ast (Lambda (["x"; "y"], Var "x")))
       |> toEqual (Nominal.Operator
         ( "lam"
         , [Nominal.Scope (["x"; "y"], Var "x")]
         ));
 
-      expect (val_to_ast (OperatorVal
+      expect (to_ast (Operator
         ( "foo"
-        , [PrimVal (PrimInteger one)]
+        , [Primitive (PrimInteger one)]
         )))
       |> toEqual (Nominal.Operator
         ( "foo"
@@ -30,8 +30,8 @@ let _ = describe "Core" (fun () ->
   let sort = SortAp ("bool", [||]) in
 
   let dynamics = DenotationChart
-    [ DPatternTm ("true",  []), CoreVal (OperatorVal ("true",  []));
-      DPatternTm ("false", []), CoreVal (OperatorVal ("false", []));
+    [ DPatternTm ("true",  []), Operator ("true",  []);
+      DPatternTm ("false", []), Operator ("false", []);
 
       DPatternTm ("ite",
       [ DenotationScopePat ([], DVar (Some "t1"));
@@ -50,8 +50,8 @@ let _ = describe "Core" (fun () ->
 
   let true_tm   = DeBruijn.Operator ("true", []) in
   let false_tm  = DeBruijn.Operator ("false", []) in
-  let true_val  = CoreVal (OperatorVal ("true", [])) in
-  let false_val = CoreVal (OperatorVal ("false", [])) in
+  let true_val  = Operator ("true", []) in
+  let false_val = Operator ("false", []) in
   let ite_tm = DeBruijn.Operator ("ite",
     [ Scope ([], true_tm);
       Scope ([], false_tm);
@@ -81,11 +81,11 @@ let _ = describe "Core" (fun () ->
 
   testAll "eval"
     [ expect (eval true_val)
-      |> toEqual (Ok (OperatorVal ("true", [])));
+      |> toEqual (Ok (Operator ("true", [])));
       expect (eval false_val)
-      |> toEqual (Ok (OperatorVal ("false", [])));
+      |> toEqual (Ok (Operator ("false", [])));
       expect (eval ite_val)
-      |> toEqual (Ok (OperatorVal ("false", [])));
+      |> toEqual (Ok (Operator ("false", [])));
     ]
     Util.id;
 )
