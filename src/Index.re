@@ -32,7 +32,7 @@ let read_eval_input = (language, dynamics, input): (parse_result, eval_result) =
 
     switch (abtResult) {
       | Ok(abtResult') => switch
-        (Belt.Result.flatMap(term_to_core(dynamics, abtResult'), eval')) {
+        (Belt.Result.flatMap(term_denotation(dynamics, [], abtResult'), eval')) {
         | Ok(core_val) => (astResult, Ok(core_val))
         | Error(msg)   => (astResult, Error(msg)) // Error((msg, Some(abtResult'))))
         }

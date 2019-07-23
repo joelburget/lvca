@@ -1,7 +1,20 @@
 // dynamics
 
 %{
-  open Core
+open Core
+
+let rec vars_of = function
+  | PatternVar (Some v)
+  -> [v]
+  | PatternTerm (_, children)
+  -> Belt.List.(flatten (map children vars_of_binding))
+  | PatternSequence children
+  -> Belt.List.(flatten (map children vars_of))
+  | _
+  -> []
+
+and vars_of_binding (CoreBindingPat (binders, body)) =
+  binders @ vars_of body
 %}
 
 %token <Bigint.t> INT
@@ -51,17 +64,24 @@ scope_pat:
   | pat
   { DenotationScopePat ([], $1) } ;
 
+core_scope:
+  | separated_list(DOT, ID) DOT core
+  { CoreScope ($1, $3) }
+  | core
+  { CoreScope ([], $1) }
+  ;
+
 core:
   | APP LEFT_PAREN core SEMICOLON separated_list(SEMICOLON, core) RIGHT_PAREN
   { CoreApp ($3, $5) }
-  | ID LEFT_PAREN separated_nonempty_list(SEMICOLON, core) RIGHT_PAREN
+  | ID LEFT_PAREN separated_nonempty_list(SEMICOLON, core_scope) RIGHT_PAREN
   { Operator ($1, $3) }
   | prim
   { Primitive $1 }
   | LAM LEFT_PAREN separated_nonempty_list(DOT, ID) DOT core RIGHT_PAREN
-  { Lambda ($3, $5) }
+  { Lambda (CoreScope ($3, $5)) }
   | LAM LEFT_PAREN                                      core RIGHT_PAREN
-  { Lambda ([], $3) }
+  { Lambda (CoreScope ([], $3)) }
   (* | core_val *)
   (* { CoreVal $1 } *)
   | ID
@@ -85,10 +105,10 @@ sort:
   | ID list(sort)               { SortAp ($1, Belt.List.toArray $2) }
   ;
 
-case: core_pat RIGHT_S_ARR core { ($1, $3) } ;
+case: core_pat RIGHT_S_ARR core { ($1, CoreScope (vars_of $1, $3)) } ;
 
 core_pat:
-  | ID LEFT_PAREN separated_list(SEMICOLON, core_pat) RIGHT_PAREN
+  | ID LEFT_PAREN separated_list(SEMICOLON, core_binding_pat) RIGHT_PAREN
   { PatternTerm ($1, $3) }
   | UNDERSCORE
   { PatternVar None }
@@ -100,6 +120,13 @@ core_pat:
   { PatternPrim $1 }
   | DEFAULT
   { PatternDefault }
+  ;
+
+core_binding_pat:
+  | separated_list(DOT, ID) DOT core_pat
+  { CoreBindingPat ($1, $3) }
+  | core_pat
+  { CoreBindingPat ([], $1) }
   ;
 
 prim:

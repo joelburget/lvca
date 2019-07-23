@@ -4,7 +4,6 @@
 var Util = require("./Util.bs.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Types = require("./Types.bs.js");
-var Binding = require("./Binding.bs.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
@@ -12,6 +11,7 @@ var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
+var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
 var AstConversionErr = Caml_exceptions.create("Core.AstConversionErr");
 
@@ -20,12 +20,7 @@ function to_ast(core) {
     case 0 : 
         return /* Operator */Block.__(0, [
                   core[0],
-                  Belt_List.map(core[1], (function (value) {
-                          return /* Scope */[
-                                  /* [] */0,
-                                  to_ast(value)
-                                ];
-                        }))
+                  Belt_List.map(core[1], scope_to_ast)
                 ]);
     case 1 : 
         return /* Var */Block.__(1, [core[0]]);
@@ -46,6 +41,13 @@ function to_ast(core) {
   }
 }
 
+function scope_to_ast(param) {
+  return /* Scope */[
+          param[0],
+          to_ast(param[1])
+        ];
+}
+
 function match_branch(v, pat) {
   var exit = 0;
   switch (v.tag | 0) {
@@ -57,9 +59,9 @@ function match_branch(v, pat) {
           switch (pat.tag | 0) {
             case 0 : 
                 var pats = pat[1];
-                var sub_results = Belt_List.zipBy(vals, pats, match_branch);
+                var sub_results = Belt_List.zipBy(vals, pats, match_binding_branch);
                 if (v[0] === pat[0] && Belt_List.length(vals) === Belt_List.length(pats) && Belt_List.every(sub_results, Belt_Option.isSome)) {
-                  return Caml_option.some(Belt_List.reduce(Belt_List.map(sub_results, Belt_Option.getExn), Belt_MapString.empty, Binding.union));
+                  return Caml_option.some(Belt_List.reduce(Belt_List.map(sub_results, Belt_Option.getExn), Belt_MapString.empty, Util.union));
                 } else {
                   return undefined;
                 }
@@ -86,7 +88,7 @@ function match_branch(v, pat) {
                 var s2 = pat[0];
                 var sub_results$1 = Belt_List.zipBy(s1, s2, match_branch);
                 if (Belt_List.length(s1) === Belt_List.length(s2) && Belt_List.every(sub_results$1, Belt_Option.isSome)) {
-                  return Caml_option.some(Belt_List.reduce(Belt_List.map(sub_results$1, Belt_Option.getExn), Belt_MapString.empty, Binding.union));
+                  return Caml_option.some(Belt_List.reduce(Belt_List.map(sub_results$1, Belt_Option.getExn), Belt_MapString.empty, Util.union));
                 } else {
                   return undefined;
                 }
@@ -141,6 +143,10 @@ function match_branch(v, pat) {
   
 }
 
+function match_binding_branch(param, param$1) {
+  return match_branch(param[1], param$1[1]);
+}
+
 function find_core_match(v, _param) {
   while(true) {
     var param = _param;
@@ -149,7 +155,7 @@ function find_core_match(v, _param) {
       var match$1 = match_branch(v, match[0]);
       if (match$1 !== undefined) {
         return /* tuple */[
-                match[1],
+                match[1][1],
                 Caml_option.valFromOption(match$1)
               ];
       } else {
@@ -182,7 +188,7 @@ function matches(tm, pat) {
                         var match$3 = match$1;
                         return /* tuple */[
                                 Pervasives.$at(match$3[0], match$2[0]),
-                                Binding.union(match$3[1], match$2[1])
+                                Util.union(match$3[1], match$2[1])
                               ];
                       }
                       
@@ -225,7 +231,12 @@ function matches_scope(param, param$1) {
   if (Belt_List.length(patBinders) === Belt_List.length(binders)) {
     return Belt_Option.map(matches(param[1], param$1[1]), (function (param) {
                   return /* tuple */[
-                          Pervasives.$at(Belt_List.zip(patBinders, binders), param[0]),
+                          Pervasives.$at(Belt_List.zipBy(patBinders, binders, (function (pattern_name, term_name) {
+                                      return /* record */[
+                                              /* pattern_name */pattern_name,
+                                              /* term_name */term_name
+                                            ];
+                                    })), param[0]),
                           param[1]
                         ];
                 }));
@@ -246,13 +257,13 @@ function find_match(param, term) {
               }), param[0]);
 }
 
-function fill_in_core(dynamics, mr, c) {
+function fill_in_core(dynamics, vars, mr, c) {
   var assignments = mr[1];
   switch (c.tag | 0) {
     case 0 : 
         var tag = c[0];
         return Belt_Result.map(Util.traverse_list_result((function (param) {
-                          return fill_in_core(dynamics, mr, param);
+                          return fill_in_core_scope(dynamics, vars, mr, param);
                         }), c[1]), (function (vals$prime) {
                       return /* Operator */Block.__(0, [
                                 tag,
@@ -261,7 +272,7 @@ function fill_in_core(dynamics, mr, c) {
                     }));
     case 2 : 
         return Belt_Result.map(Util.traverse_list_result((function (param) {
-                          return fill_in_core(dynamics, mr, param);
+                          return fill_in_core(dynamics, vars, mr, param);
                         }), c[0]), (function (tms$prime) {
                       return /* Sequence */Block.__(2, [tms$prime]);
                     }));
@@ -269,17 +280,13 @@ function fill_in_core(dynamics, mr, c) {
     case 3 : 
         return /* Ok */Block.__(0, [c]);
     case 4 : 
-        var binders = c[0];
-        return Belt_Result.map(fill_in_core(dynamics, mr, c[1]), (function (core$prime) {
-                      return /* Lambda */Block.__(4, [
-                                binders,
-                                core$prime
-                              ]);
+        return Belt_Result.map(fill_in_core_scope(dynamics, vars, mr, c[0]), (function (body$prime) {
+                      return /* Lambda */Block.__(4, [body$prime]);
                     }));
     case 5 : 
-        var match = fill_in_core(dynamics, mr, c[0]);
-        var match$1 = Binding.sequence_list_result(Belt_List.map(c[1], (function (param) {
-                    return fill_in_core(dynamics, mr, param);
+        var match = fill_in_core(dynamics, vars, mr, c[0]);
+        var match$1 = Util.sequence_list_result(Belt_List.map(c[1], (function (param) {
+                    return fill_in_core(dynamics, vars, mr, param);
                   })));
         if (match.tag) {
           return /* Error */Block.__(1, [match[0]]);
@@ -292,16 +299,16 @@ function fill_in_core(dynamics, mr, c) {
                       ])]);
         }
     case 6 : 
-        var mBranches = Binding.sequence_list_result(Belt_List.map(c[2], (function (param) {
-                    var pat = param[0];
-                    return Belt_Result.map(fill_in_core(dynamics, mr, param[1]), (function (core$prime) {
-                                  return /* tuple */[
-                                          pat,
-                                          core$prime
-                                        ];
-                                }));
-                  })));
-        var match$2 = fill_in_core(dynamics, mr, c[0]);
+        var mBranches = Util.traverse_list_result((function (param) {
+                var pat = param[0];
+                return Belt_Result.map(fill_in_core_scope(dynamics, vars, mr, param[1]), (function (scope$prime) {
+                              return /* tuple */[
+                                      pat,
+                                      scope$prime
+                                    ];
+                            }));
+              }), c[2]);
+        var match$2 = fill_in_core(dynamics, vars, mr, c[0]);
         if (match$2.tag) {
           return /* Error */Block.__(1, [match$2[0]]);
         } else if (mBranches.tag) {
@@ -317,7 +324,7 @@ function fill_in_core(dynamics, mr, c) {
         var name = c[0];
         var match$3 = Belt_MapString.get(assignments, name);
         if (match$3 !== undefined) {
-          return term_to_core(dynamics, match$3);
+          return term_to_core(/* [] */0, match$3);
         } else {
           return /* Error */Block.__(1, [/* tuple */[
                       "Metavariable " + (name + " not found"),
@@ -328,7 +335,7 @@ function fill_in_core(dynamics, mr, c) {
         var name$1 = c[0];
         var match$4 = Belt_MapString.get(assignments, name$1);
         if (match$4 !== undefined) {
-          return term_to_core(dynamics, match$4);
+          return term_denotation(dynamics, vars, match$4);
         } else {
           return /* Error */Block.__(1, [/* tuple */[
                       "Metavariable " + (name$1 + " not found"),
@@ -339,59 +346,126 @@ function fill_in_core(dynamics, mr, c) {
   }
 }
 
-function term_to_core(dynamics, tm) {
-  var match = find_match(dynamics, tm);
-  if (match !== undefined) {
-    var match$1 = match;
-    return fill_in_core(dynamics, /* tuple */[
-                match$1[0],
-                match$1[1]
-              ], match$1[2]);
+function fill_in_core_scope(dynamics, vars, mr, param) {
+  var names = param[0];
+  return Belt_Result.map(fill_in_core(dynamics, Pervasives.$at(names, vars), mr, param[1]), (function (body$prime) {
+                return /* CoreScope */[
+                        names,
+                        body$prime
+                      ];
+              }));
+}
+
+function term_to_core(env, tm) {
+  switch (tm.tag | 0) {
+    case 0 : 
+        var tag = tm[0];
+        return Belt_Result.map(Util.traverse_list_result((function (param) {
+                          var env$1 = env;
+                          var param$1 = param;
+                          var names = param$1[0];
+                          return Belt_Result.map(term_to_core(env$1, param$1[1]), (function (body$prime) {
+                                        return /* CoreScope */[
+                                                names,
+                                                body$prime
+                                              ];
+                                      }));
+                        }), tm[1]), (function (subtms$prime) {
+                      return /* Operator */Block.__(0, [
+                                tag,
+                                subtms$prime
+                              ]);
+                    }));
+    case 1 : 
+        throw [
+              Caml_builtin_exceptions.match_failure,
+              /* tuple */[
+                "Core.ml",
+                235,
+                26
+              ]
+            ];
+    case 2 : 
+        return Belt_Result.map(Util.traverse_list_result((function (param) {
+                          return term_to_core(env, param);
+                        }), tm[0]), (function (tms$prime) {
+                      return /* Sequence */Block.__(2, [tms$prime]);
+                    }));
+    case 3 : 
+        return /* Ok */Block.__(0, [/* Primitive */Block.__(3, [tm[0]])]);
+    
+  }
+}
+
+function term_denotation(dynamics, vars, tm) {
+  if (tm.tag === 1) {
+    var i = tm[0];
+    var match = Belt_List.get(vars, i);
+    if (match !== undefined) {
+      return /* Ok */Block.__(0, [/* Var */Block.__(1, [match])]);
+    } else {
+      return /* Error */Block.__(1, [/* tuple */[
+                  "couldn't find variable " + (String(i) + (" in variable context of size " + String(Belt_List.length(vars)))),
+                  tm
+                ]]);
+    }
   } else {
-    return /* Error */Block.__(1, [/* tuple */[
-                "no match found",
-                tm
-              ]]);
+    var match$1 = find_match(dynamics, tm);
+    if (match$1 !== undefined) {
+      var match$2 = match$1;
+      return fill_in_core(dynamics, vars, /* tuple */[
+                  match$2[0],
+                  match$2[1]
+                ], match$2[2]);
+    } else {
+      return /* Error */Block.__(1, [/* tuple */[
+                  "no match found",
+                  tm
+                ]]);
+    }
   }
 }
 
 function $$eval(core) {
-  var go = function (ctx, param) {
-    switch (param.tag | 0) {
+  var go = function (ctx, tm) {
+    switch (tm.tag | 0) {
       case 1 : 
-          var v = param[0];
+          var v = tm[0];
           var match = Belt_MapString.get(ctx, v);
           if (match !== undefined) {
             return /* Ok */Block.__(0, [match]);
           } else {
             return /* Error */Block.__(1, ["Unbound variable " + v]);
           }
+      case 4 : 
+          return /* Error */Block.__(1, ["Found a term we can't evaluate"]);
       case 5 : 
-          var match$1 = param[0];
+          var match$1 = tm[0];
           if (match$1.tag === 4) {
-            var args = param[1];
-            var body = match$1[1];
-            var argNames = match$1[0];
+            var args = tm[1];
+            var match$2 = match$1[0];
+            var body = match$2[1];
+            var argNames = match$2[0];
             if (Belt_List.length(argNames) !== Belt_List.length(args)) {
               return /* Error */Block.__(1, ["mismatched application lengths"]);
             } else {
-              return Belt_Result.flatMap(Binding.sequence_list_result(Belt_List.map(args, (function (param) {
+              return Belt_Result.flatMap(Util.sequence_list_result(Belt_List.map(args, (function (param) {
                                     return go(ctx, param);
                                   }))), (function (arg_vals) {
                             var new_args = Belt_MapString.fromArray(Belt_List.toArray(Belt_List.zip(argNames, arg_vals)));
-                            return go(Binding.union(ctx, new_args), body);
+                            return go(Util.union(ctx, new_args), body);
                           }));
             }
           } else {
-            return /* Error */Block.__(1, ["TODO 7"]);
+            return /* Error */Block.__(1, ["Found a term we can't evaluate"]);
           }
       case 6 : 
-          var branches = param[2];
-          return Belt_Result.flatMap(go(ctx, param[0]), (function (v) {
+          var branches = tm[2];
+          return Belt_Result.flatMap(go(ctx, tm[0]), (function (v) {
                         var match = find_core_match(v, branches);
                         if (match !== undefined) {
                           var match$1 = match;
-                          return go(Binding.union(ctx, match$1[1]), match$1[0]);
+                          return go(Util.union(ctx, match$1[1]), match$1[0]);
                         } else {
                           return /* Error */Block.__(1, ["no match found in case"]);
                         }
@@ -400,7 +474,7 @@ function $$eval(core) {
       case 8 : 
           return /* Error */Block.__(1, ["Found a metavar!"]);
       default:
-        return /* Error */Block.__(1, ["TODO 7"]);
+        return /* Ok */Block.__(0, [tm]);
     }
   };
   return go(Belt_MapString.empty, core);
@@ -408,5 +482,5 @@ function $$eval(core) {
 
 exports.to_ast = to_ast;
 exports.$$eval = $$eval;
-exports.term_to_core = term_to_core;
+exports.term_denotation = term_denotation;
 /* Types Not a pure module */

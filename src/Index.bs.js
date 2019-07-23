@@ -62,7 +62,7 @@ function read_eval_input(language, dynamics, input) {
                 ]])
           ];
   } else {
-    var match$2 = Belt_Result.flatMap(Core.term_to_core(dynamics, abtResult[0]), eval$prime);
+    var match$2 = Belt_Result.flatMap(Core.term_denotation(dynamics, /* [] */0, abtResult[0]), eval$prime);
     if (match$2.tag) {
       return /* tuple */[
               astResult,

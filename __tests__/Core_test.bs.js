@@ -9,60 +9,36 @@ var Bigint = require("bs-zarith/src/Bigint.js");
 
 Jest.describe("Core", (function (param) {
         var one = Bigint.of_int(1);
-        Jest.testAll("to_ast", /* :: */[
-              Jest.Expect[/* toEqual */12](/* Primitive */Block.__(3, [/* PrimInteger */Block.__(0, [one])]), Jest.Expect[/* expect */0](Core.to_ast(/* Primitive */Block.__(3, [/* PrimInteger */Block.__(0, [one])])))),
-              /* :: */[
-                Jest.Expect[/* toEqual */12](/* Operator */Block.__(0, [
-                        "lam",
-                        /* :: */[
-                          /* Scope */[
-                            /* :: */[
-                              "x",
-                              /* :: */[
-                                "y",
-                                /* [] */0
-                              ]
-                            ],
-                            /* Var */Block.__(1, ["x"])
-                          ],
-                          /* [] */0
-                        ]
-                      ]), Jest.Expect[/* expect */0](Core.to_ast(/* Lambda */Block.__(4, [
-                                /* :: */[
-                                  "x",
-                                  /* :: */[
-                                    "y",
-                                    /* [] */0
-                                  ]
-                                ],
-                                /* Var */Block.__(1, ["x"])
-                              ])))),
-                /* :: */[
-                  Jest.Expect[/* toEqual */12](/* Operator */Block.__(0, [
-                          "foo",
-                          /* :: */[
-                            /* Scope */[
-                              /* [] */0,
-                              /* Primitive */Block.__(3, [/* PrimInteger */Block.__(0, [one])])
-                            ],
-                            /* [] */0
-                          ]
-                        ]), Jest.Expect[/* expect */0](Core.to_ast(/* Operator */Block.__(0, [
-                                  "foo",
-                                  /* :: */[
-                                    /* Primitive */Block.__(3, [/* PrimInteger */Block.__(0, [one])]),
-                                    /* [] */0
-                                  ]
-                                ])))),
-                  /* [] */0
-                ]
-              ]
-            ], Util.id);
         var sort_001 = /* array */[];
         var sort = /* SortAp */[
           "bool",
           sort_001
         ];
+        Jest.testAll("to_ast", /* :: */[
+              Jest.Expect[/* toEqual */12](/* Primitive */Block.__(3, [/* PrimInteger */Block.__(0, [one])]), Jest.Expect[/* expect */0](Core.to_ast(/* Primitive */Block.__(3, [/* PrimInteger */Block.__(0, [one])])))),
+              /* :: */[
+                Jest.Expect[/* toEqual */12](/* Operator */Block.__(0, [
+                        "foo",
+                        /* :: */[
+                          /* Scope */[
+                            /* [] */0,
+                            /* Primitive */Block.__(3, [/* PrimInteger */Block.__(0, [one])])
+                          ],
+                          /* [] */0
+                        ]
+                      ]), Jest.Expect[/* expect */0](Core.to_ast(/* Operator */Block.__(0, [
+                                "foo",
+                                /* :: */[
+                                  /* CoreScope */[
+                                    /* [] */0,
+                                    /* Primitive */Block.__(3, [/* PrimInteger */Block.__(0, [one])])
+                                  ],
+                                  /* [] */0
+                                ]
+                              ])))),
+                /* [] */0
+              ]
+            ], Util.id);
         var dynamics = /* DenotationChart */[/* :: */[
             /* tuple */[
               /* DPatternTm */Block.__(0, [
@@ -118,7 +94,10 @@ Jest.describe("Core", (function (param) {
                               "true",
                               /* [] */0
                             ]),
-                          /* Meaning */Block.__(8, ["t2"])
+                          /* CoreScope */[
+                            /* [] */0,
+                            /* Meaning */Block.__(8, ["t2"])
+                          ]
                         ],
                         /* :: */[
                           /* tuple */[
@@ -126,14 +105,68 @@ Jest.describe("Core", (function (param) {
                                 "false",
                                 /* [] */0
                               ]),
-                            /* Meaning */Block.__(8, ["t3"])
+                            /* CoreScope */[
+                              /* [] */0,
+                              /* Meaning */Block.__(8, ["t3"])
+                            ]
                           ],
                           /* [] */0
                         ]
                       ]
                     ])
                 ],
-                /* [] */0
+                /* :: */[
+                  /* tuple */[
+                    /* DPatternTm */Block.__(0, [
+                        "ap",
+                        /* :: */[
+                          /* DenotationScopePat */[
+                            /* [] */0,
+                            /* DVar */Block.__(1, ["f"])
+                          ],
+                          /* :: */[
+                            /* DenotationScopePat */[
+                              /* [] */0,
+                              /* DVar */Block.__(1, ["arg"])
+                            ],
+                            /* [] */0
+                          ]
+                        ]
+                      ]),
+                    /* CoreApp */Block.__(5, [
+                        /* Meaning */Block.__(8, ["f"]),
+                        /* :: */[
+                          /* Meaning */Block.__(8, ["arg"]),
+                          /* [] */0
+                        ]
+                      ])
+                  ],
+                  /* :: */[
+                    /* tuple */[
+                      /* DPatternTm */Block.__(0, [
+                          "fun",
+                          /* :: */[
+                            /* DenotationScopePat */[
+                              /* :: */[
+                                "v",
+                                /* [] */0
+                              ],
+                              /* DVar */Block.__(1, ["body"])
+                            ],
+                            /* [] */0
+                          ]
+                        ]),
+                      /* Lambda */Block.__(4, [/* CoreScope */[
+                            /* :: */[
+                              "v",
+                              /* [] */0
+                            ],
+                            /* Meaning */Block.__(8, ["body"])
+                          ]])
+                    ],
+                    /* [] */0
+                  ]
+                ]
               ]
             ]
           ]];
@@ -182,7 +215,10 @@ Jest.describe("Core", (function (param) {
                 "true",
                 /* [] */0
               ]),
-            false_val
+            /* CoreScope */[
+              /* [] */0,
+              false_val
+            ]
           ],
           /* :: */[
             /* tuple */[
@@ -190,7 +226,10 @@ Jest.describe("Core", (function (param) {
                   "false",
                   /* [] */0
                 ]),
-              true_val
+              /* CoreScope */[
+                /* [] */0,
+                true_val
+              ]
             ],
             /* [] */0
           ]
@@ -200,32 +239,73 @@ Jest.describe("Core", (function (param) {
             sort,
             ite_val_002
           ]);
-        Jest.testAll("term_to_core", /* :: */[
-              Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [true_val]), Jest.Expect[/* expect */0](Core.term_to_core(dynamics, true_tm))),
-              /* :: */[
-                Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [false_val]), Jest.Expect[/* expect */0](Core.term_to_core(dynamics, false_tm))),
+        var fun_tm_001 = /* :: */[
+          /* Scope */[
+            /* [] */0,
+            /* Operator */Block.__(0, [
+                "fun",
                 /* :: */[
-                  Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [ite_val]), Jest.Expect[/* expect */0](Core.term_to_core(dynamics, ite_tm))),
+                  /* Scope */[
+                    /* :: */[
+                      "x",
+                      /* [] */0
+                    ],
+                    /* Var */Block.__(1, [0])
+                  ],
                   /* [] */0
+                ]
+              ])
+          ],
+          /* :: */[
+            /* Scope */[
+              /* [] */0,
+              true_tm
+            ],
+            /* [] */0
+          ]
+        ];
+        var fun_tm = /* Operator */Block.__(0, [
+            "ap",
+            fun_tm_001
+          ]);
+        var fun_val_000 = /* Lambda */Block.__(4, [/* CoreScope */[
+              /* :: */[
+                "x",
+                /* [] */0
+              ],
+              /* Var */Block.__(1, ["x"])
+            ]]);
+        var fun_val_001 = /* :: */[
+          true_val,
+          /* [] */0
+        ];
+        var fun_val = /* CoreApp */Block.__(5, [
+            fun_val_000,
+            fun_val_001
+          ]);
+        Jest.testAll("term_denotation", /* :: */[
+              Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [true_val]), Jest.Expect[/* expect */0](Core.term_denotation(dynamics, /* [] */0, true_tm))),
+              /* :: */[
+                Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [false_val]), Jest.Expect[/* expect */0](Core.term_denotation(dynamics, /* [] */0, false_tm))),
+                /* :: */[
+                  Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [ite_val]), Jest.Expect[/* expect */0](Core.term_denotation(dynamics, /* [] */0, ite_tm))),
+                  /* :: */[
+                    Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [fun_val]), Jest.Expect[/* expect */0](Core.term_denotation(dynamics, /* [] */0, fun_tm))),
+                    /* [] */0
+                  ]
                 ]
               ]
             ], Util.id);
         return Jest.testAll("eval", /* :: */[
-                    Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* Operator */Block.__(0, [
-                                "true",
-                                /* [] */0
-                              ])]), Jest.Expect[/* expect */0](Core.$$eval(true_val))),
+                    Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [true_val]), Jest.Expect[/* expect */0](Core.$$eval(true_val))),
                     /* :: */[
-                      Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* Operator */Block.__(0, [
-                                  "false",
-                                  /* [] */0
-                                ])]), Jest.Expect[/* expect */0](Core.$$eval(false_val))),
+                      Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [false_val]), Jest.Expect[/* expect */0](Core.$$eval(false_val))),
                       /* :: */[
-                        Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* Operator */Block.__(0, [
-                                    "false",
-                                    /* [] */0
-                                  ])]), Jest.Expect[/* expect */0](Core.$$eval(ite_val))),
-                        /* [] */0
+                        Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [false_val]), Jest.Expect[/* expect */0](Core.$$eval(ite_val))),
+                        /* :: */[
+                          Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [true_val]), Jest.Expect[/* expect */0](Core.$$eval(fun_val))),
+                          /* [] */0
+                        ]
                       ]
                     ]
                   ], Util.id);
