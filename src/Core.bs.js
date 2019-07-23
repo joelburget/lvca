@@ -260,40 +260,40 @@ function find_match(param, term) {
 
 var TranslationError = Caml_exceptions.create("Core.TranslationError");
 
-function fill_in_core(dynamics, vars, mr, v) {
-  var assignments = mr[1];
+function fill_in_core(args, v) {
+  var assignments = args[/* assignments */3];
   switch (v.tag | 0) {
     case 0 : 
         return /* Operator */Block.__(0, [
                   v[0],
                   Belt_List.map(v[1], (function (param) {
-                          return fill_in_core_scope(dynamics, vars, mr, param);
+                          return fill_in_core_scope(args, param);
                         }))
                 ]);
     case 2 : 
         return /* Sequence */Block.__(2, [Belt_List.map(v[0], (function (param) {
-                          return fill_in_core(dynamics, vars, mr, param);
+                          return fill_in_core(args, param);
                         }))]);
     case 1 : 
     case 3 : 
         return v;
     case 4 : 
-        return /* Lambda */Block.__(4, [fill_in_core_scope(dynamics, vars, mr, v[0])]);
+        return /* Lambda */Block.__(4, [fill_in_core_scope(args, v[0])]);
     case 5 : 
         return /* CoreApp */Block.__(5, [
-                  fill_in_core(dynamics, vars, mr, v[0]),
+                  fill_in_core(args, v[0]),
                   Belt_List.map(v[1], (function (param) {
-                          return fill_in_core(dynamics, vars, mr, param);
+                          return fill_in_core(args, param);
                         }))
                 ]);
     case 6 : 
         return /* Case */Block.__(6, [
-                  fill_in_core(dynamics, vars, mr, v[0]),
+                  fill_in_core(args, v[0]),
                   v[1],
                   Belt_List.map(v[2], (function (param) {
                           return /* tuple */[
                                   param[0],
-                                  fill_in_core_scope(dynamics, vars, mr, param[1])
+                                  fill_in_core_scope(args, param[1])
                                 ];
                         }))
                 ]);
@@ -315,7 +315,7 @@ function fill_in_core(dynamics, vars, mr, v) {
         var name$1 = v[0];
         var match$1 = Belt_MapString.get(assignments, name$1);
         if (match$1 !== undefined) {
-          var match$2 = term_denotation(dynamics, vars, match$1);
+          var match$2 = term_denotation(args[/* dynamics */0], args[/* vars */1], match$1);
           if (match$2.tag) {
             throw [
                   TranslationError,
@@ -337,11 +337,16 @@ function fill_in_core(dynamics, vars, mr, v) {
   }
 }
 
-function fill_in_core_scope(dynamics, vars, mr, param) {
+function fill_in_core_scope(args, param) {
   var names = param[0];
   return /* CoreScope */[
           names,
-          fill_in_core(dynamics, Pervasives.$at(names, vars), mr, param[1])
+          fill_in_core(/* record */[
+                /* dynamics */args[/* dynamics */0],
+                /* vars */Pervasives.$at(names, args[/* vars */1]),
+                /* assocs */args[/* assocs */2],
+                /* assignments */args[/* assignments */3]
+              ], param[1])
         ];
 }
 
@@ -364,7 +369,7 @@ function term_to_core(env, tm) {
               Caml_builtin_exceptions.match_failure,
               /* tuple */[
                 "Core.ml",
-                218,
+                224,
                 26
               ]
             ];
@@ -395,9 +400,11 @@ function term_denotation(dynamics, vars, tm) {
     if (match$1 !== undefined) {
       var match$2 = match$1;
       try {
-        return /* Ok */Block.__(0, [fill_in_core(dynamics, vars, /* tuple */[
-                        match$2[0],
-                        match$2[1]
+        return /* Ok */Block.__(0, [fill_in_core(/* record */[
+                        /* dynamics */dynamics,
+                        /* vars */vars,
+                        /* assocs */match$2[0],
+                        /* assignments */match$2[1]
                       ], match$2[2])]);
       }
       catch (raw_exn){

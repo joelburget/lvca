@@ -169,6 +169,13 @@ let find_match (DenotationChart denotations) term = get_first
 
 exception TranslationError of located_err
 
+type fill_in_args =
+  { dynamics    : denotation_chart;
+    vars        : string list;
+    assocs      : assoc list;
+    assignments : DeBruijn.term M.t;
+  }
+
 (* val fill_in_core
   : denotation_chart
   -> assoc list * DeBruijn.term M.t
@@ -178,8 +185,7 @@ exception TranslationError of located_err
 (** Fill in a core representation of a value with metavars (the raw
   right-hand-side of a denotation chart) with the core terms that go there.
   *)
-let rec fill_in_core (dynamics : denotation_chart) (vars : string list)
-  ((assocs, assignments) as mr : assoc list * DeBruijn.term M.t) = function
+let rec fill_in_core ({ dynamics; vars; assocs; assignments } as args) = function
   | Metavar name -> (match M.get assignments name with
     | Some tm -> term_to_core [] tm
     | None
@@ -195,24 +201,24 @@ let rec fill_in_core (dynamics : denotation_chart) (vars : string list)
     )
   | Var _ as v -> v
   | Operator (tag, vals)
-  -> Operator (tag, vals |. List.map (fill_in_core_scope dynamics vars mr))
+  -> Operator (tag, vals |. List.map (fill_in_core_scope args))
   | Primitive _  as v -> v
-  | Sequence tms -> Sequence (tms |. List.map (fill_in_core dynamics vars mr))
-  | Lambda body -> Lambda (fill_in_core_scope dynamics vars mr body)
-  | CoreApp (f, args) -> CoreApp
-    ( fill_in_core dynamics vars mr f
-    , args |. List.map (fill_in_core dynamics vars mr)
+  | Sequence tms -> Sequence (tms |. List.map (fill_in_core args))
+  | Lambda body -> Lambda (fill_in_core_scope args body)
+  | CoreApp (f, app_args) -> CoreApp
+    ( fill_in_core args f
+    , app_args |. List.map (fill_in_core args)
     )
   | Case (scrutinee, ty, branches) -> Case
-      ( fill_in_core dynamics vars mr scrutinee
+      ( fill_in_core args scrutinee
       , ty
       , branches |. List.map (fun (pat, scope) ->
-         (pat, fill_in_core_scope dynamics vars mr scope))
+         (pat, fill_in_core_scope args scope))
       )
 
 (* XXX use assocs *)
-and fill_in_core_scope dynamics vars mr (CoreScope (names, body)) =
-  CoreScope (names, fill_in_core dynamics (names @ vars) mr body)
+and fill_in_core_scope ({ dynamics; vars } as args) (CoreScope (names, body)) =
+  CoreScope (names, fill_in_core {args with vars = names @ vars} body)
 
 (** Translate a term directly to core, with no interpretation *)
 and term_to_core env tm = match tm with
@@ -248,7 +254,7 @@ and term_denotation dynamics vars tm : core translation_result = match tm with
     -> Error ("no match found", Some tm)
     | Some (assocs, bindings, protoCore)
     -> try
-         Ok (fill_in_core dynamics vars (assocs, bindings) protoCore)
+        Ok (fill_in_core {dynamics; vars; assocs; assignments=bindings} protoCore)
        with
          TranslationError err -> Error err
   )
