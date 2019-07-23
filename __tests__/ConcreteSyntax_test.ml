@@ -17,9 +17,9 @@ in
 
 let _ = describe "ConcreteSyntax" (fun () ->
   let description = {|
-  ADD    := "+"
-  SUB    := "-"
-  NAME   := [a-z][a-zA-Z0-9]*
+  ADD  := "+"
+  SUB  := "-"
+  NAME := [a-z][a-zA-Z0-9]*
 
   arith :=
     | arith; ADD; arith     { add($1; $3) }

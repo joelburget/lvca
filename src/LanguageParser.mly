@@ -11,13 +11,13 @@
 %token EOF
 
 %start languageDef
-%type <Types.language>    languageDef
-%type <Types.sort>        sort
-%type <string * Types.sortDef>     sortDef
-%type <Types.operatorDef> operatorDef
+%type <Types.language>         languageDef
+%type <Types.sort>             sort
+%type <string * Types.sortDef> sortDef
+%type <Types.operatorDef>      operatorDef
 %type <Types.operatorDef list> operatorDefs
-%type <Types.arity>       arity
-%type <Types.valence>     valence
+%type <Types.arity>            arity
+%type <Types.valence>          valence
 %%
 
 sort:
@@ -29,11 +29,13 @@ fixedValence:
   | sort DOT fixedValence
   { match $3 with Types.FixedValence (binds, result) -> FixedValence ($1 :: binds, result) }
   | sort
-  { FixedValence ([], $1) } ;
+  { FixedValence ([], $1) }
+  ;
 
 valence:
   | ID LEFT_BRACK sort RIGHT_BRACK { VariableValence ($1, $3) } (* sort instead of ID? *)
-  | fixedValence                   { $1                       } ;
+  | fixedValence                   { $1                       }
+  ;
 
 valenceList: separated_list(SEMICOLON, valence) { $1 } ;
 
@@ -43,7 +45,8 @@ arity:
   | LEFT_BRACK nameList RIGHT_BRACK LEFT_PAREN valenceList RIGHT_PAREN
   { Arity ($2, $5) }
   | LEFT_PAREN valenceList = valenceList RIGHT_PAREN
-  { Arity ([], valenceList) } ;
+  { Arity ([], valenceList) }
+  ;
 
 operatorDef: ID arity { OperatorDef($1, $2) } ;
 
