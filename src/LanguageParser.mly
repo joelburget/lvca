@@ -33,7 +33,7 @@ fixedValence:
   ;
 
 valence:
-  | ID LEFT_BRACK sort RIGHT_BRACK { VariableValence ($1, $3) } (* sort instead of ID? *)
+  | ID LEFT_BRACK sort RIGHT_BRACK { VariableValence ($1, $3) }
   | fixedValence                   { $1                       }
   ;
 
