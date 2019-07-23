@@ -21,7 +21,6 @@ ty :=
   | arr(ty; ty)|}
 
 // TODO:
-// * should we use concrete syntax?
 // * how to show var separate from context?
 // * how to separate hypotheses?
 // * should we make var rule explicit instead of implicit?
