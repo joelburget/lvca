@@ -167,6 +167,8 @@ let find_match (DenotationChart denotations) term = get_first
     (fun (assocs, bindings) -> (assocs, bindings, core)))
   denotations
 
+exception TranslationError of located_err
+
 (* val fill_in_core
   : denotation_chart
   -> assoc list * DeBruijn.term M.t
@@ -180,82 +182,60 @@ let rec fill_in_core (dynamics : denotation_chart) (vars : string list)
   ((assocs, assignments) as mr : assoc list * DeBruijn.term M.t) = function
   | Metavar name -> (match M.get assignments name with
     | Some tm -> term_to_core [] tm
-    | None    -> Result.Error ("Metavariable " ^ name ^ " not found", None)
+    | None
+    -> raise (TranslationError ("Metavariable " ^ name ^ " not found", None))
     )
   | Meaning name -> (match M.get assignments name with
-    | Some tm -> term_denotation dynamics vars tm
-    | None    -> Result.Error ("Metavariable " ^ name ^ " not found", None)
+    | Some tm -> (match term_denotation dynamics vars tm with
+      | Result.Ok tm' -> tm'
+      | Error err     -> raise (TranslationError err)
     )
-  | Var _ as c -> Ok c
-  | Operator (tag, vals) -> Result.map
-    (traverse_list_result (fill_in_core_scope dynamics vars mr) vals)
-    (fun vals' -> Operator (tag, vals'))
-  | Primitive _  as v -> Ok v
-  | Sequence tms -> Result.map
-    (traverse_list_result (fill_in_core dynamics vars mr) tms)
-    (fun tms' -> Sequence tms')
-  | Lambda body -> Result.map
-    (fill_in_core_scope dynamics vars mr body)
-    (fun body' -> Lambda body')
-  | CoreApp (f, args) -> (match
-    fill_in_core dynamics vars mr f,
-    mr
-      |> fill_in_core dynamics vars
-      |> List.map args
-      |> sequence_list_result
-     with
-    | Ok f', Ok args'             -> Ok (CoreApp (f', args'))
-    | Error msg, _ | _, Error msg -> Error msg
+    | None
+    -> raise (TranslationError ("Metavariable " ^ name ^ " not found", None))
     )
-  (* | Lam (binders, core) -> Result.map
-    (fill_in_core dynamics vars mr core)
-    (fun core' -> Lam (binders, core')) *)
-  | Case (scrutinee, ty, branches) ->
-      let mBranches : ((core_pat * core_scope) list) translation_result =
-        traverse_list_result
-          (fun (pat, scope) -> Result.map
-            (fill_in_core_scope dynamics vars mr scope)
-            (fun scope' -> (pat, scope'))
-          )
-          branches
-      in
-      match fill_in_core dynamics vars mr scrutinee, mBranches with
-        | Ok scrutinee', Ok branches'
-        -> Ok (Case (scrutinee', ty, branches'))
-        | Error msg, _ | _, Error msg
-        -> Error msg
+  | Var _ as v -> v
+  | Operator (tag, vals)
+  -> Operator (tag, vals |. List.map (fill_in_core_scope dynamics vars mr))
+  | Primitive _  as v -> v
+  | Sequence tms -> Sequence (tms |. List.map (fill_in_core dynamics vars mr))
+  | Lambda body -> Lambda (fill_in_core_scope dynamics vars mr body)
+  | CoreApp (f, args) -> CoreApp
+    ( fill_in_core dynamics vars mr f
+    , args |. List.map (fill_in_core dynamics vars mr)
+    )
+  | Case (scrutinee, ty, branches) -> Case
+      ( fill_in_core dynamics vars mr scrutinee
+      , ty
+      , branches |. List.map (fun (pat, scope) ->
+         (pat, fill_in_core_scope dynamics vars mr scope))
+      )
 
 (* XXX use assocs *)
 and fill_in_core_scope dynamics vars mr (CoreScope (names, body)) =
-  Result.map
-  (fill_in_core dynamics (names @ vars) mr body)
-  (fun body' -> CoreScope (names, body'))
+  CoreScope (names, fill_in_core dynamics (names @ vars) mr body)
 
 (** Translate a term directly to core, with no interpretation *)
 and term_to_core env tm = match tm with
-  | Operator (tag, subtms) -> Result.map
-    (traverse_list_result (scope_to_core env) subtms)
-    (fun subtms' -> Operator (tag, subtms'))
+  | Operator (tag, subtms) ->
+      Operator (tag, subtms |. List.map (scope_to_core env))
     (* XXX
   | Var ix -> (match List.get env ix with
     | None -> Error ("failed to look up variable", Some tm)
-    | Some name -> Ok (Var name)
+    | Some name -> Var name
     )
     *)
-  | Sequence tms -> Result.map
-    (traverse_list_result (term_to_core env) tms)
-    (fun tms' -> Sequence tms')
-  | Primitive prim -> Ok (Primitive prim)
+  | Sequence tms -> Sequence (tms |. List.map (term_to_core env))
+  | Primitive prim -> Primitive prim
 
-and scope_to_core env (Scope (names, body)) = Result.map
-  (term_to_core env body)
-  (fun body' -> CoreScope (names, body')) (* XXX change names (assocs)? *)
+(* XXX change names (assocs)? *)
+and scope_to_core env (Scope (names, body)) =
+  CoreScope (names, term_to_core env body)
 
 (* val term_denotation
   : denotation_chart -> DeBruijn.term -> core translation_result
 *)
 (** Match a term in the denotation chart, and return its core term. *)
-and term_denotation dynamics vars tm = match tm with
+and term_denotation dynamics vars tm : core translation_result = match tm with
   | DeBruijn.Var i ->
       (match List.get vars i with
     | Some var_name -> Ok (Var var_name)
@@ -267,7 +247,10 @@ and term_denotation dynamics vars tm = match tm with
     | None
     -> Error ("no match found", Some tm)
     | Some (assocs, bindings, protoCore)
-    -> fill_in_core dynamics vars (assocs, bindings) protoCore
+    -> try
+         Ok (fill_in_core dynamics vars (assocs, bindings) protoCore)
+       with
+         TranslationError err -> Error err
   )
 
 (* val eval : core -> (core, string) Result.t *)

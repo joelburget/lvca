@@ -11,6 +11,7 @@ var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
+var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
 var AstConversionErr = Caml_exceptions.create("Core.AstConversionErr");
@@ -257,90 +258,80 @@ function find_match(param, term) {
               }), param[0]);
 }
 
-function fill_in_core(dynamics, vars, mr, c) {
+var TranslationError = Caml_exceptions.create("Core.TranslationError");
+
+function fill_in_core(dynamics, vars, mr, v) {
   var assignments = mr[1];
-  switch (c.tag | 0) {
+  switch (v.tag | 0) {
     case 0 : 
-        var tag = c[0];
-        return Belt_Result.map(Util.traverse_list_result((function (param) {
+        return /* Operator */Block.__(0, [
+                  v[0],
+                  Belt_List.map(v[1], (function (param) {
                           return fill_in_core_scope(dynamics, vars, mr, param);
-                        }), c[1]), (function (vals$prime) {
-                      return /* Operator */Block.__(0, [
-                                tag,
-                                vals$prime
-                              ]);
-                    }));
+                        }))
+                ]);
     case 2 : 
-        return Belt_Result.map(Util.traverse_list_result((function (param) {
+        return /* Sequence */Block.__(2, [Belt_List.map(v[0], (function (param) {
                           return fill_in_core(dynamics, vars, mr, param);
-                        }), c[0]), (function (tms$prime) {
-                      return /* Sequence */Block.__(2, [tms$prime]);
-                    }));
+                        }))]);
     case 1 : 
     case 3 : 
-        return /* Ok */Block.__(0, [c]);
+        return v;
     case 4 : 
-        return Belt_Result.map(fill_in_core_scope(dynamics, vars, mr, c[0]), (function (body$prime) {
-                      return /* Lambda */Block.__(4, [body$prime]);
-                    }));
+        return /* Lambda */Block.__(4, [fill_in_core_scope(dynamics, vars, mr, v[0])]);
     case 5 : 
-        var match = fill_in_core(dynamics, vars, mr, c[0]);
-        var match$1 = Util.sequence_list_result(Belt_List.map(c[1], (function (param) {
-                    return fill_in_core(dynamics, vars, mr, param);
-                  })));
-        if (match.tag) {
-          return /* Error */Block.__(1, [match[0]]);
-        } else if (match$1.tag) {
-          return /* Error */Block.__(1, [match$1[0]]);
-        } else {
-          return /* Ok */Block.__(0, [/* CoreApp */Block.__(5, [
-                        match[0],
-                        match$1[0]
-                      ])]);
-        }
+        return /* CoreApp */Block.__(5, [
+                  fill_in_core(dynamics, vars, mr, v[0]),
+                  Belt_List.map(v[1], (function (param) {
+                          return fill_in_core(dynamics, vars, mr, param);
+                        }))
+                ]);
     case 6 : 
-        var mBranches = Util.traverse_list_result((function (param) {
-                var pat = param[0];
-                return Belt_Result.map(fill_in_core_scope(dynamics, vars, mr, param[1]), (function (scope$prime) {
-                              return /* tuple */[
-                                      pat,
-                                      scope$prime
-                                    ];
-                            }));
-              }), c[2]);
-        var match$2 = fill_in_core(dynamics, vars, mr, c[0]);
-        if (match$2.tag) {
-          return /* Error */Block.__(1, [match$2[0]]);
-        } else if (mBranches.tag) {
-          return /* Error */Block.__(1, [mBranches[0]]);
-        } else {
-          return /* Ok */Block.__(0, [/* Case */Block.__(6, [
-                        match$2[0],
-                        c[1],
-                        mBranches[0]
-                      ])]);
-        }
+        return /* Case */Block.__(6, [
+                  fill_in_core(dynamics, vars, mr, v[0]),
+                  v[1],
+                  Belt_List.map(v[2], (function (param) {
+                          return /* tuple */[
+                                  param[0],
+                                  fill_in_core_scope(dynamics, vars, mr, param[1])
+                                ];
+                        }))
+                ]);
     case 7 : 
-        var name = c[0];
-        var match$3 = Belt_MapString.get(assignments, name);
-        if (match$3 !== undefined) {
-          return term_to_core(/* [] */0, match$3);
+        var name = v[0];
+        var match = Belt_MapString.get(assignments, name);
+        if (match !== undefined) {
+          return term_to_core(/* [] */0, match);
         } else {
-          return /* Error */Block.__(1, [/* tuple */[
-                      "Metavariable " + (name + " not found"),
-                      undefined
-                    ]]);
+          throw [
+                TranslationError,
+                /* tuple */[
+                  "Metavariable " + (name + " not found"),
+                  undefined
+                ]
+              ];
         }
     case 8 : 
-        var name$1 = c[0];
-        var match$4 = Belt_MapString.get(assignments, name$1);
-        if (match$4 !== undefined) {
-          return term_denotation(dynamics, vars, match$4);
+        var name$1 = v[0];
+        var match$1 = Belt_MapString.get(assignments, name$1);
+        if (match$1 !== undefined) {
+          var match$2 = term_denotation(dynamics, vars, match$1);
+          if (match$2.tag) {
+            throw [
+                  TranslationError,
+                  match$2[0]
+                ];
+          } else {
+            return match$2[0];
+          }
         } else {
-          return /* Error */Block.__(1, [/* tuple */[
-                      "Metavariable " + (name$1 + " not found"),
-                      undefined
-                    ]]);
+          throw [
+                TranslationError,
+                /* tuple */[
+                  "Metavariable " + (name$1 + " not found"),
+                  undefined
+                ]
+              ];
         }
     
   }
@@ -348,51 +339,41 @@ function fill_in_core(dynamics, vars, mr, c) {
 
 function fill_in_core_scope(dynamics, vars, mr, param) {
   var names = param[0];
-  return Belt_Result.map(fill_in_core(dynamics, Pervasives.$at(names, vars), mr, param[1]), (function (body$prime) {
-                return /* CoreScope */[
-                        names,
-                        body$prime
-                      ];
-              }));
+  return /* CoreScope */[
+          names,
+          fill_in_core(dynamics, Pervasives.$at(names, vars), mr, param[1])
+        ];
 }
 
 function term_to_core(env, tm) {
   switch (tm.tag | 0) {
     case 0 : 
-        var tag = tm[0];
-        return Belt_Result.map(Util.traverse_list_result((function (param) {
+        return /* Operator */Block.__(0, [
+                  tm[0],
+                  Belt_List.map(tm[1], (function (param) {
                           var env$1 = env;
                           var param$1 = param;
-                          var names = param$1[0];
-                          return Belt_Result.map(term_to_core(env$1, param$1[1]), (function (body$prime) {
-                                        return /* CoreScope */[
-                                                names,
-                                                body$prime
-                                              ];
-                                      }));
-                        }), tm[1]), (function (subtms$prime) {
-                      return /* Operator */Block.__(0, [
-                                tag,
-                                subtms$prime
-                              ]);
-                    }));
+                          return /* CoreScope */[
+                                  param$1[0],
+                                  term_to_core(env$1, param$1[1])
+                                ];
+                        }))
+                ]);
     case 1 : 
         throw [
               Caml_builtin_exceptions.match_failure,
               /* tuple */[
                 "Core.ml",
-                235,
+                218,
                 26
               ]
             ];
     case 2 : 
-        return Belt_Result.map(Util.traverse_list_result((function (param) {
+        return /* Sequence */Block.__(2, [Belt_List.map(tm[0], (function (param) {
                           return term_to_core(env, param);
-                        }), tm[0]), (function (tms$prime) {
-                      return /* Sequence */Block.__(2, [tms$prime]);
-                    }));
+                        }))]);
     case 3 : 
-        return /* Ok */Block.__(0, [/* Primitive */Block.__(3, [tm[0]])]);
+        return /* Primitive */Block.__(3, [tm[0]]);
     
   }
 }
@@ -413,10 +394,20 @@ function term_denotation(dynamics, vars, tm) {
     var match$1 = find_match(dynamics, tm);
     if (match$1 !== undefined) {
       var match$2 = match$1;
-      return fill_in_core(dynamics, vars, /* tuple */[
-                  match$2[0],
-                  match$2[1]
-                ], match$2[2]);
+      try {
+        return /* Ok */Block.__(0, [fill_in_core(dynamics, vars, /* tuple */[
+                        match$2[0],
+                        match$2[1]
+                      ], match$2[2])]);
+      }
+      catch (raw_exn){
+        var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
+        if (exn[0] === TranslationError) {
+          return /* Error */Block.__(1, [exn[1]]);
+        } else {
+          throw exn;
+        }
+      }
     } else {
       return /* Error */Block.__(1, [/* tuple */[
                   "no match found",
