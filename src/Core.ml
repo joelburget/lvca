@@ -254,9 +254,9 @@ and term_denotation dynamics vars tm : core translation_result = match tm with
   | _ -> (match find_match dynamics tm with
     | None
     -> Error ("no match found", Some tm)
-    | Some (assocs, bindings, protoCore)
+    | Some (assocs, assignments, protoCore)
     -> try
-        Ok (fill_in_core {dynamics; vars; assocs; assignments=bindings} protoCore)
+        Ok (fill_in_core {dynamics; vars; assocs; assignments} protoCore)
        with
          TranslationError err -> Error err
   )
