@@ -22,7 +22,8 @@ rule read = parse
   | '('       { LEFT_PAREN }
   | ')'       { RIGHT_PAREN }
   | ';'       { SEMICOLON }
-  | ';'       { COMMA }
+  | ':'       { COLON }
+  | ','       { COMMA }
   | '.'       { DOT }
   | "->"      { RIGHT_S_ARR }
   | "#"       { HASH }
@@ -30,7 +31,6 @@ rule read = parse
   | "lam"     { LAM }
   | "case"    { CASE }
   | "default" { DEFAULT }
-  | "core"    { CORE }
   | int       { INT (Bigint.of_string (L.lexeme lexbuf)) }
   | id        { ID (Lexing.lexeme lexbuf) }
   | eof       { EOF }

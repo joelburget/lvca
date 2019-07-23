@@ -45,6 +45,8 @@ type core =
 
 and core_scope = CoreScope of string list * core
 
+(** An association of variable names between pattern and term. IE the named
+ * pattern variable and term variable are the same. *)
 type assoc =
   { pattern_name : string;
     term_name    : string;

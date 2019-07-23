@@ -24,6 +24,7 @@ and vars_of_binding (CoreBindingPat (binders, body)) =
 %token RIGHT_PAREN
 %token SEMICOLON
 %token COMMA
+%token COLON
 %token DOT
 %token UNDERSCORE
 %token EQ
@@ -38,7 +39,6 @@ and vars_of_binding (CoreBindingPat (binders, body)) =
 %token CASE
 %token DEFAULT
 %token HASH
-%token CORE
 
 %start dynamics
 %type <denotation_pat> pat
@@ -76,6 +76,8 @@ core:
   { CoreApp ($3, $5) }
   | ID LEFT_PAREN separated_nonempty_list(SEMICOLON, core_scope) RIGHT_PAREN
   { Operator ($1, $3) }
+  | ID LEFT_PAREN RIGHT_PAREN
+  { Operator ($1, []) }
   | prim
   { Primitive $1 }
   | LAM LEFT_PAREN separated_nonempty_list(DOT, ID) DOT core RIGHT_PAREN
@@ -87,8 +89,8 @@ core:
   | ID
   { Var $1 }
   | CASE LEFT_PAREN
-    arg = core SEMICOLON
-    CORE sort = sort SEMICOLON
+    arg = core COLON
+    sort = sort SEMICOLON
     cases = separated_list(SEMICOLON, case)
     RIGHT_PAREN
   { Case (arg, sort, cases) }
