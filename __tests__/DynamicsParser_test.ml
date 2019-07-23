@@ -54,4 +54,18 @@ let _ = describe "TermParser" (fun () ->
     ]
   in
   expectParse dyn1 expected;
+
+  let metavar_test_str = "[[ lit(v) ]] = v" in
+  let metavar_test = Result.getExn (P_dyn.parse metavar_test_str) in
+  let metavar_test_expected = DenotationChart
+    [ DPatternTm ("lit",  [pat_scope @@ DVar (Some "v")]),
+      Metavar "v";
+    ]
+  in
+
+  test "metavar fixing-up" (fun () ->
+    expect metavar_test |> toEqual metavar_test_expected
+  );
+
+  (* expectParse *)
 )

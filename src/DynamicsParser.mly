@@ -3,18 +3,41 @@
 %{
 open Core
 
-let rec vars_of = function
+let rec vars_of_pattern = function
   | PatternVar (Some v)
   -> [v]
   | PatternTerm (_, children)
-  -> Belt.List.(flatten (map children vars_of_binding))
+  -> Belt.List.(flatten (map children vars_of_binding_pattern))
   | PatternSequence children
-  -> Belt.List.(flatten (map children vars_of))
+  -> Belt.List.(flatten (map children vars_of_pattern))
   | _
   -> []
 
-and vars_of_binding (CoreBindingPat (binders, body)) =
-  binders @ vars_of body
+and vars_of_binding_pattern (CoreBindingPat (binders, body)) =
+  binders @ vars_of_pattern body
+
+let fix_up_core : core -> core =
+  let module Set = Belt.Set.String in
+  let rec go (vars : Set.t) tm = match tm with
+    (* This is the crux *)
+    | Var s -> if Set.has vars s then tm else Metavar s
+
+    | Operator (name, scopes) -> Operator (name, List.map (go_scope vars) scopes)
+    | Sequence tms -> Sequence (List.map (go vars) tms)
+    | Lambda scope -> Lambda (go_scope vars scope)
+    | CoreApp (func, args) -> CoreApp (go vars func, List.map (go vars) args)
+    | Case (scrutinee, ty, branches) -> Case
+      ( go vars scrutinee
+      , ty
+      , List.map (fun (pat, scope) -> (pat, go_scope vars scope)) branches
+      )
+    | Primitive _ | Metavar _ | Meaning _ -> tm
+
+  and go_scope vars (CoreScope (binders, body)) = CoreScope
+        ( binders
+        , go (Set.union vars (Set.fromArray (Belt.List.toArray binders))) body
+        )
+  in go Set.empty
 %}
 
 %token <Bigint.t> INT
@@ -65,14 +88,18 @@ scope_pat:
   { DenotationScopePat ([], $1) } ;
 
 core_scope:
-  | separated_list(DOT, ID) DOT core
+  | separated_list(DOT, ID) DOT raw_core
   { CoreScope ($1, $3) }
-  | core
+  | raw_core
   { CoreScope ([], $1) }
   ;
 
-core:
-  | APP LEFT_PAREN core SEMICOLON separated_list(SEMICOLON, core) RIGHT_PAREN
+(* We parse a raw core term, which has both metavars and vars represented as
+ vars, then fix it up, by changing all vars that weren't bound to metavars *)
+core: raw_core { fix_up_core $1 } ;
+
+raw_core:
+  | APP LEFT_PAREN raw_core SEMICOLON separated_list(SEMICOLON, raw_core) RIGHT_PAREN
   { CoreApp ($3, $5) }
   | ID LEFT_PAREN separated_nonempty_list(SEMICOLON, core_scope) RIGHT_PAREN
   { Operator ($1, $3) }
@@ -80,16 +107,16 @@ core:
   { Operator ($1, []) }
   | prim
   { Primitive $1 }
-  | LAM LEFT_PAREN separated_nonempty_list(DOT, ID) DOT core RIGHT_PAREN
+  | LAM LEFT_PAREN separated_nonempty_list(DOT, ID) DOT raw_core RIGHT_PAREN
   { Lambda (CoreScope ($3, $5)) }
-  | LAM LEFT_PAREN                                      core RIGHT_PAREN
+  | LAM LEFT_PAREN                                      raw_core RIGHT_PAREN
   { Lambda (CoreScope ([], $3)) }
   (* | core_val *)
   (* { CoreVal $1 } *)
   | ID
   { Var $1 }
   | CASE LEFT_PAREN
-    arg = core COLON
+    arg = raw_core COLON
     sort = sort SEMICOLON
     cases = separated_list(SEMICOLON, case)
     RIGHT_PAREN
@@ -107,7 +134,7 @@ sort:
   | ID list(sort)               { SortAp ($1, Belt.List.toArray $2) }
   ;
 
-case: core_pat RIGHT_S_ARR core { ($1, CoreScope (vars_of $1, $3)) } ;
+case: core_pat RIGHT_S_ARR raw_core { ($1, CoreScope (vars_of_pattern $1, $3)) } ;
 
 core_pat:
   | ID LEFT_PAREN separated_list(SEMICOLON, core_binding_pat) RIGHT_PAREN

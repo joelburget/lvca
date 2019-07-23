@@ -5,9 +5,15 @@ var Jest = require("@glennsl/bs-jest/src/jest.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Parsing = require("../src/Parsing.bs.js");
+var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 
 Jest.describe("TermParser", (function (param) {
         var P_dyn = Parsing.Incremental(Parsing.Parseable_dynamics);
+        var expectParse = function (str, tm) {
+          return Jest.test("'" + (str + "'"), (function (param) {
+                        return Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [tm]), Jest.Expect[/* expect */0](Curry._1(P_dyn[/* parse */5], str)));
+                      }));
+        };
         var expected = /* DenotationChart */[/* :: */[
             /* tuple */[
               /* DPatternTm */Block.__(0, [
@@ -154,10 +160,26 @@ Jest.describe("TermParser", (function (param) {
               ]
             ]
           ]];
-        var str = "\n[[ true()          ]] = true()\n[[ false()         ]] = false()\n[[ val(v)          ]] = v\n[[ annot(tm; ty)   ]] = [[ tm ]]\n[[ app(fun; arg)   ]] = app([[ fun ]]; [[ arg ]])\n[[ ite(t1; t2; t3) ]] = case(\n  [[ t1 ]]: bool;\n  true() -> [[ t2 ]];\n  false() -> [[ t3 ]]\n)\n  ";
-        var tm = expected;
-        return Jest.test("'" + (str + "'"), (function (param) {
-                      return Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [tm]), Jest.Expect[/* expect */0](Curry._1(P_dyn[/* parse */5], str)));
+        expectParse("\n[[ true()          ]] = true()\n[[ false()         ]] = false()\n[[ val(v)          ]] = v\n[[ annot(tm; ty)   ]] = [[ tm ]]\n[[ app(fun; arg)   ]] = app([[ fun ]]; [[ arg ]])\n[[ ite(t1; t2; t3) ]] = case(\n  [[ t1 ]]: bool;\n  true() -> [[ t2 ]];\n  false() -> [[ t3 ]]\n)\n  ", expected);
+        var metavar_test = Belt_Result.getExn(Curry._1(P_dyn[/* parse */5], "[[ lit(v) ]] = v"));
+        var metavar_test_expected = /* DenotationChart */[/* :: */[
+            /* tuple */[
+              /* DPatternTm */Block.__(0, [
+                  "lit",
+                  /* :: */[
+                    /* DenotationScopePat */[
+                      /* [] */0,
+                      /* DVar */Block.__(1, ["v"])
+                    ],
+                    /* [] */0
+                  ]
+                ]),
+              /* Metavar */Block.__(7, ["v"])
+            ],
+            /* [] */0
+          ]];
+        return Jest.test("metavar fixing-up", (function (param) {
+                      return Jest.Expect[/* toEqual */12](metavar_test_expected, Jest.Expect[/* expect */0](metavar_test));
                     }));
       }));
 
