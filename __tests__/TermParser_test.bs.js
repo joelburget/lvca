@@ -11,19 +11,7 @@ var TermParser = require("../src/TermParser.bs.js");
 Jest.describe("TermParser", (function (param) {
         var expectParse = function (str, tm) {
           return Jest.test("'" + (str + "'"), (function (param) {
-                        var exit = 0;
-                        var tm$prime;
-                        try {
-                          tm$prime = TermParser.top_term(TermLexer.read, Lexing.from_string(str));
-                          exit = 1;
-                        }
-                        catch (_except){
-                          return Jest.fail("'" + (str + "' triggered an exception"));
-                        }
-                        if (exit === 1) {
-                          return Jest.Expect[/* toEqual */12](tm, Jest.Expect[/* expect */0](tm$prime));
-                        }
-                        
+                        return Jest.Expect[/* toEqual */12](tm, Jest.Expect[/* expect */0](TermParser.top_term(TermLexer.read, Lexing.from_string(str))));
                       }));
         };
         expectParse("[x]", /* Sequence */Block.__(2, [/* :: */[

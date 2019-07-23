@@ -3,16 +3,13 @@ open Expect
 open Types
 open Binding
 
-(* expected serialized values via http://cbor.me/ *)
-
 let _ = describe "TermParser" (fun () ->
   let open Nominal in
 
   let expectParse str tm = test ("'" ^ str ^ "'") (fun () ->
-    (match TermParser.top_term TermLexer.read (Lexing.from_string str) with
-    | tm' -> expect tm' |> toEqual tm
-    | exception _except -> fail ("'" ^ str ^ "' triggered an exception")
-  )) in
+    expect (TermParser.top_term TermLexer.read (Lexing.from_string str))
+    |> toEqual tm
+  ) in
 
   expectParse "[x]" (Sequence [Var "x"]);
   expectParse "x" (Var "x");
