@@ -6,14 +6,13 @@ type denotation_scope_pat =
 
 and denotation_pat =
   | DPatternTm of string * denotation_scope_pat list
-  | DVar       of string option
+  | DVar       of string
 
 type core_pat =
   | PatternTerm     of string * core_binding_pat list
-  | PatternVar      of string option
+  | PatternVar      of string
   | PatternSequence of core_pat list
   | PatternPrim     of primitive
-  | PatternDefault
 
 and core_binding_pat = CoreBindingPat of string list * core_pat
 
@@ -22,9 +21,9 @@ and core =
   | Var       of string
   | Sequence  of core list
   | Primitive of primitive
-  | Lambda    of core_scope
+  | Lambda    of sort list * core_scope
   | CoreApp   of core * core list
-  | Case      of core * sort * (core_pat * core_scope) list
+  | Case      of core * (core_pat * core_scope) list
   | Metavar   of string
   | Meaning   of string
 

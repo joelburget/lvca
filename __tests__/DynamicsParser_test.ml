@@ -17,36 +17,37 @@ let _ = describe "TermParser" (fun () ->
 [[ false()         ]] = false()
 [[ val(v)          ]] = v
 [[ annot(tm; ty)   ]] = [[ tm ]]
-[[ app(fun; arg)   ]] = app([[ fun ]]; [[ arg ]])
-[[ ite(t1; t2; t3) ]] = case(
-  [[ t1 ]]: bool;
-  true() -> [[ t2 ]];
-  false() -> [[ t3 ]]
-)
+[[ ite(t1; t2; t3) ]] = case [[ t1 ]] of {
+  | true()  -> [[ t2 ]]
+  | false() -> [[ t3 ]]
+}
   |}
+
+(*
+[[ app(fun; arg)   ]] = app([[ fun ]]; [[ arg ]])
+*)
   in
   let expected = DenotationChart
     [ DPatternTm ("true",  []), Operator ("true",  []);
       DPatternTm ("false", []), Operator ("false", []);
-      DPatternTm ("val", [pat_scope @@ DVar (Some "v")]), Metavar "v";
+      DPatternTm ("val", [pat_scope @@ DVar "v"]), Metavar "v";
       DPatternTm ("annot",
-        [ pat_scope @@ DVar (Some "tm");
-          pat_scope @@ DVar (Some "ty");
+        [ pat_scope @@ DVar "tm";
+          pat_scope @@ DVar "ty";
         ]),
         Meaning "tm";
       DPatternTm ("app",
-        [ pat_scope @@ DVar (Some "fun");
-          pat_scope @@ DVar (Some "arg");
+        [ pat_scope @@ DVar "fun";
+          pat_scope @@ DVar "arg";
         ]),
         CoreApp (Meaning "fun", [ Meaning "arg" ]);
       DPatternTm ("ite",
-        [ pat_scope @@ DVar (Some "t1");
-          pat_scope @@ DVar (Some "t2");
-          pat_scope @@ DVar (Some "t3");
+        [ pat_scope @@ DVar "t1";
+          pat_scope @@ DVar "t2";
+          pat_scope @@ DVar "t3";
         ]),
         Case
           ( Meaning "t1"
-          , SortAp ("bool", [||])
           , [ PatternTerm ("true", []),  core_scope @@ Meaning "t2";
               PatternTerm ("false", []), core_scope @@ Meaning "t3";
             ]
@@ -57,7 +58,7 @@ let _ = describe "TermParser" (fun () ->
 
   let metavar_test = Result.getExn (P_dyn.parse "[[ lit(v) ]] = v") in
   let metavar_test_expected = DenotationChart
-    [ DPatternTm ("lit",  [pat_scope @@ DVar (Some "v")]),
+    [ DPatternTm ("lit",  [pat_scope @@ DVar "v"]),
       Metavar "v";
     ]
   in

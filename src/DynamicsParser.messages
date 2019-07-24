@@ -1,30 +1,26 @@
-dynamics: LEFT_OXFORD APP LEFT_PAREN STRING
+dynamics: LEFT_OXFORD ID LEFT_PAREN DOT ID RIGHT_OXFORD
 ##
 ## Ends in an error in state: 10.
 ##
-## pat -> APP LEFT_PAREN . loption(separated_nonempty_list(SEMICOLON,scope_pat)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_OXFORD ]
+## separated_nonempty_list(SEMICOLON,scope_pat) -> scope_pat . [ RIGHT_PAREN ]
+## separated_nonempty_list(SEMICOLON,scope_pat) -> scope_pat . SEMICOLON separated_nonempty_list(SEMICOLON,scope_pat) [ RIGHT_PAREN ]
 ##
 ## The known suffix of the stack is as follows:
-## APP LEFT_PAREN
+## scope_pat
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 2, spurious reduction of production pat -> ID
+## In state 16, spurious reduction of production scope_pat -> loption(separated_nonempty_list(DOT,ID)) DOT pat
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD APP UNDERSCORE
-##
-## Ends in an error in state: 9.
-##
-## pat -> APP . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,scope_pat)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_OXFORD ]
-##
-## The known suffix of the stack is as follows:
-## APP
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
+<YOUR SYNTAX ERROR MESSAGE HERE 1>
 
 dynamics: LEFT_OXFORD ID LEFT_PAREN DOT STRING
 ##
-## Ends in an error in state: 18.
+## Ends in an error in state: 15.
 ##
 ## scope_pat -> loption(separated_nonempty_list(DOT,ID)) DOT . pat [ SEMICOLON RIGHT_PAREN ]
 ##
@@ -32,11 +28,11 @@ dynamics: LEFT_OXFORD ID LEFT_PAREN DOT STRING
 ## loption(separated_nonempty_list(DOT,ID)) DOT
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+<YOUR SYNTAX ERROR MESSAGE HERE 2>
 
-dynamics: LEFT_OXFORD ID LEFT_PAREN ID DOT ID UNDERSCORE
+dynamics: LEFT_OXFORD ID LEFT_PAREN ID DOT ID STRING
 ##
-## Ends in an error in state: 7.
+## Ends in an error in state: 6.
 ##
 ## separated_nonempty_list(DOT,ID) -> ID . [ DOT ]
 ## separated_nonempty_list(DOT,ID) -> ID . DOT separated_nonempty_list(DOT,ID) [ DOT ]
@@ -45,11 +41,11 @@ dynamics: LEFT_OXFORD ID LEFT_PAREN ID DOT ID UNDERSCORE
 ## ID
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+<YOUR SYNTAX ERROR MESSAGE HERE 3>
 
-dynamics: LEFT_OXFORD ID LEFT_PAREN ID DOT UNDERSCORE
+dynamics: LEFT_OXFORD ID LEFT_PAREN ID DOT STRING
 ##
-## Ends in an error in state: 6.
+## Ends in an error in state: 5.
 ##
 ## separated_nonempty_list(DOT,ID) -> ID DOT . separated_nonempty_list(DOT,ID) [ DOT ]
 ##
@@ -57,11 +53,23 @@ dynamics: LEFT_OXFORD ID LEFT_PAREN ID DOT UNDERSCORE
 ## ID DOT
 ##
 
+<YOUR SYNTAX ERROR MESSAGE HERE 4>
+
+dynamics: LEFT_OXFORD ID LEFT_PAREN ID SEMICOLON STRING
+##
+## Ends in an error in state: 11.
+##
+## separated_nonempty_list(SEMICOLON,scope_pat) -> scope_pat SEMICOLON . separated_nonempty_list(SEMICOLON,scope_pat) [ RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## scope_pat SEMICOLON
+##
+
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-dynamics: LEFT_OXFORD ID LEFT_PAREN ID UNDERSCORE
+dynamics: LEFT_OXFORD ID LEFT_PAREN ID STRING
 ##
-## Ends in an error in state: 5.
+## Ends in an error in state: 4.
 ##
 ## pat -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,scope_pat)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN ]
 ## pat -> ID . [ SEMICOLON RIGHT_PAREN ]
@@ -76,7 +84,7 @@ dynamics: LEFT_OXFORD ID LEFT_PAREN ID UNDERSCORE
 
 dynamics: LEFT_OXFORD ID LEFT_PAREN STRING
 ##
-## Ends in an error in state: 4.
+## Ends in an error in state: 3.
 ##
 ## pat -> ID LEFT_PAREN . loption(separated_nonempty_list(SEMICOLON,scope_pat)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_OXFORD ]
 ##
@@ -86,34 +94,592 @@ dynamics: LEFT_OXFORD ID LEFT_PAREN STRING
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-dynamics: LEFT_OXFORD ID LEFT_PAREN UNDERSCORE SEMICOLON STRING
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ APP LEFT_PAREN SEMICOLON
 ##
-## Ends in an error in state: 14.
+## Ends in an error in state: 49.
 ##
-## separated_nonempty_list(SEMICOLON,scope_pat) -> scope_pat SEMICOLON . separated_nonempty_list(SEMICOLON,scope_pat) [ RIGHT_PAREN ]
+## raw_core -> APP LEFT_PAREN . raw_core SEMICOLON loption(separated_nonempty_list(SEMICOLON,raw_core)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_BRACE OF LEFT_OXFORD EOF BAR ]
 ##
 ## The known suffix of the stack is as follows:
-## scope_pat SEMICOLON
+## APP LEFT_PAREN
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-dynamics: LEFT_OXFORD ID LEFT_PAREN UNDERSCORE UNDERSCORE
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ APP LEFT_PAREN STRING SEMICOLON SEMICOLON
 ##
-## Ends in an error in state: 13.
+## Ends in an error in state: 51.
 ##
-## separated_nonempty_list(SEMICOLON,scope_pat) -> scope_pat . [ RIGHT_PAREN ]
-## separated_nonempty_list(SEMICOLON,scope_pat) -> scope_pat . SEMICOLON separated_nonempty_list(SEMICOLON,scope_pat) [ RIGHT_PAREN ]
+## raw_core -> APP LEFT_PAREN raw_core SEMICOLON . loption(separated_nonempty_list(SEMICOLON,raw_core)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_BRACE OF LEFT_OXFORD EOF BAR ]
 ##
 ## The known suffix of the stack is as follows:
-## scope_pat
+## APP LEFT_PAREN raw_core SEMICOLON
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-dynamics: LEFT_OXFORD ID UNDERSCORE
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ APP LEFT_PAREN STRING SEMICOLON STRING SEMICOLON SEMICOLON
 ##
-## Ends in an error in state: 3.
+## Ends in an error in state: 54.
+##
+## separated_nonempty_list(SEMICOLON,raw_core) -> raw_core SEMICOLON . separated_nonempty_list(SEMICOLON,raw_core) [ RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## raw_core SEMICOLON
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ APP LEFT_PAREN STRING SEMICOLON STRING STRING
+##
+## Ends in an error in state: 53.
+##
+## separated_nonempty_list(SEMICOLON,raw_core) -> raw_core . [ RIGHT_PAREN ]
+## separated_nonempty_list(SEMICOLON,raw_core) -> raw_core . SEMICOLON separated_nonempty_list(SEMICOLON,raw_core) [ RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## raw_core
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ APP LEFT_PAREN STRING STRING
+##
+## Ends in an error in state: 50.
+##
+## raw_core -> APP LEFT_PAREN raw_core . SEMICOLON loption(separated_nonempty_list(SEMICOLON,raw_core)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_BRACE OF LEFT_OXFORD EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## APP LEFT_PAREN raw_core
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ APP STRING
+##
+## Ends in an error in state: 48.
+##
+## raw_core -> APP . LEFT_PAREN raw_core SEMICOLON loption(separated_nonempty_list(SEMICOLON,raw_core)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_BRACE OF LEFT_OXFORD EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## APP
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ BACKSLASH ARR SEMICOLON
+##
+## Ends in an error in state: 47.
+##
+## raw_core -> BACKSLASH list(typed_arg) ARR . raw_core [ SEMICOLON RIGHT_PAREN RIGHT_BRACE OF LEFT_OXFORD EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## BACKSLASH list(typed_arg) ARR
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ BACKSLASH LEFT_PAREN ID COLON ID LEFT_PAREN ID RIGHT_PAREN RIGHT_OXFORD
+##
+## Ends in an error in state: 37.
+##
+## list(sort) -> sort . list(sort) [ RIGHT_PAREN LEFT_PAREN ID ]
+##
+## The known suffix of the stack is as follows:
+## sort
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ BACKSLASH LEFT_PAREN ID COLON ID RIGHT_PAREN STRING
+##
+## Ends in an error in state: 44.
+##
+## list(typed_arg) -> typed_arg . list(typed_arg) [ ARR ]
+##
+## The known suffix of the stack is as follows:
+## typed_arg
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ BACKSLASH LEFT_PAREN ID COLON ID STRING
+##
+## Ends in an error in state: 36.
+##
+## sort -> ID . list(sort) [ RIGHT_PAREN LEFT_PAREN ID ]
+##
+## The known suffix of the stack is as follows:
+## ID
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ BACKSLASH LEFT_PAREN ID COLON LEFT_PAREN ID RIGHT_PAREN RIGHT_OXFORD
+##
+## Ends in an error in state: 42.
+##
+## typed_arg -> LEFT_PAREN ID COLON sort . RIGHT_PAREN [ LEFT_PAREN ARR ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_PAREN ID COLON sort
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ BACKSLASH LEFT_PAREN ID COLON LEFT_PAREN LEFT_PAREN ID RIGHT_PAREN RIGHT_OXFORD
+##
+## Ends in an error in state: 40.
+##
+## sort -> LEFT_PAREN sort . RIGHT_PAREN [ RIGHT_PAREN LEFT_PAREN ID ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_PAREN sort
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ BACKSLASH LEFT_PAREN ID COLON LEFT_PAREN STRING
+##
+## Ends in an error in state: 35.
+##
+## sort -> LEFT_PAREN . sort RIGHT_PAREN [ RIGHT_PAREN LEFT_PAREN ID ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_PAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ BACKSLASH LEFT_PAREN ID COLON STRING
+##
+## Ends in an error in state: 34.
+##
+## typed_arg -> LEFT_PAREN ID COLON . sort RIGHT_PAREN [ LEFT_PAREN ARR ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_PAREN ID COLON
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ BACKSLASH LEFT_PAREN ID STRING
+##
+## Ends in an error in state: 33.
+##
+## typed_arg -> LEFT_PAREN ID . COLON sort RIGHT_PAREN [ LEFT_PAREN ARR ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_PAREN ID
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ BACKSLASH LEFT_PAREN STRING
+##
+## Ends in an error in state: 32.
+##
+## typed_arg -> LEFT_PAREN . ID COLON sort RIGHT_PAREN [ LEFT_PAREN ARR ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_PAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ BACKSLASH STRING
+##
+## Ends in an error in state: 31.
+##
+## raw_core -> BACKSLASH . list(typed_arg) ARR raw_core [ SEMICOLON RIGHT_PAREN RIGHT_BRACE OF LEFT_OXFORD EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## BACKSLASH
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE SEMICOLON
+##
+## Ends in an error in state: 30.
+##
+## raw_core -> CASE . raw_core OF LEFT_BRACE option(BAR) loption(separated_nonempty_list(BAR,branch)) RIGHT_BRACE [ SEMICOLON RIGHT_PAREN RIGHT_BRACE OF LEFT_OXFORD EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## CASE
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING OF LEFT_BRACE BAR SEMICOLON
+##
+## Ends in an error in state: 64.
+##
+## raw_core -> CASE raw_core OF LEFT_BRACE option(BAR) . loption(separated_nonempty_list(BAR,branch)) RIGHT_BRACE [ SEMICOLON RIGHT_PAREN RIGHT_BRACE OF LEFT_OXFORD EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## CASE raw_core OF LEFT_BRACE option(BAR)
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING OF LEFT_BRACE ID LEFT_PAREN DOT SEMICOLON
+##
+## Ends in an error in state: 74.
+##
+## core_binding_pat -> loption(separated_nonempty_list(DOT,ID)) DOT . core_pat [ SEMICOLON RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## loption(separated_nonempty_list(DOT,ID)) DOT
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING OF LEFT_BRACE ID LEFT_PAREN ID STRING
+##
+## Ends in an error in state: 68.
+##
+## core_pat -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,core_binding_pat)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN ]
+## core_pat -> ID . [ SEMICOLON RIGHT_PAREN ]
+## separated_nonempty_list(DOT,ID) -> ID . [ DOT ]
+## separated_nonempty_list(DOT,ID) -> ID . DOT separated_nonempty_list(DOT,ID) [ DOT ]
+##
+## The known suffix of the stack is as follows:
+## ID
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING OF LEFT_BRACE ID LEFT_PAREN SEMICOLON
+##
+## Ends in an error in state: 67.
+##
+## core_pat -> ID LEFT_PAREN . loption(separated_nonempty_list(SEMICOLON,core_binding_pat)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_BRACKET COMMA ARR ]
+##
+## The known suffix of the stack is as follows:
+## ID LEFT_PAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING OF LEFT_BRACE ID LEFT_PAREN STRING SEMICOLON SEMICOLON
+##
+## Ends in an error in state: 78.
+##
+## separated_nonempty_list(SEMICOLON,core_binding_pat) -> core_binding_pat SEMICOLON . separated_nonempty_list(SEMICOLON,core_binding_pat) [ RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## core_binding_pat SEMICOLON
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING OF LEFT_BRACE ID LEFT_PAREN STRING STRING
+##
+## Ends in an error in state: 77.
+##
+## separated_nonempty_list(SEMICOLON,core_binding_pat) -> core_binding_pat . [ RIGHT_PAREN ]
+## separated_nonempty_list(SEMICOLON,core_binding_pat) -> core_binding_pat . SEMICOLON separated_nonempty_list(SEMICOLON,core_binding_pat) [ RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## core_binding_pat
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING OF LEFT_BRACE ID STRING
+##
+## Ends in an error in state: 66.
+##
+## core_pat -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,core_binding_pat)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_BRACKET COMMA ARR ]
+## core_pat -> ID . [ SEMICOLON RIGHT_PAREN RIGHT_BRACKET COMMA ARR ]
+##
+## The known suffix of the stack is as follows:
+## ID
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING OF LEFT_BRACE LEFT_BRACKET SEMICOLON
+##
+## Ends in an error in state: 65.
+##
+## core_pat -> LEFT_BRACKET . loption(separated_nonempty_list(COMMA,core_pat)) RIGHT_BRACKET [ SEMICOLON RIGHT_PAREN RIGHT_BRACKET COMMA ARR ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_BRACKET
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING OF LEFT_BRACE LEFT_BRACKET STRING COMMA SEMICOLON
+##
+## Ends in an error in state: 84.
+##
+## separated_nonempty_list(COMMA,core_pat) -> core_pat COMMA . separated_nonempty_list(COMMA,core_pat) [ RIGHT_BRACKET ]
+##
+## The known suffix of the stack is as follows:
+## core_pat COMMA
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING OF LEFT_BRACE LEFT_BRACKET STRING STRING
+##
+## Ends in an error in state: 83.
+##
+## separated_nonempty_list(COMMA,core_pat) -> core_pat . [ RIGHT_BRACKET ]
+## separated_nonempty_list(COMMA,core_pat) -> core_pat . COMMA separated_nonempty_list(COMMA,core_pat) [ RIGHT_BRACKET ]
+##
+## The known suffix of the stack is as follows:
+## core_pat
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING OF LEFT_BRACE SEMICOLON
+##
+## Ends in an error in state: 62.
+##
+## raw_core -> CASE raw_core OF LEFT_BRACE . option(BAR) loption(separated_nonempty_list(BAR,branch)) RIGHT_BRACE [ SEMICOLON RIGHT_PAREN RIGHT_BRACE OF LEFT_OXFORD EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## CASE raw_core OF LEFT_BRACE
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING OF LEFT_BRACE STRING ARR ID BAR SEMICOLON
+##
+## Ends in an error in state: 93.
+##
+## separated_nonempty_list(BAR,branch) -> branch BAR . separated_nonempty_list(BAR,branch) [ RIGHT_BRACE ]
+##
+## The known suffix of the stack is as follows:
+## branch BAR
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING OF LEFT_BRACE STRING ARR INT STRING
+##
+## Ends in an error in state: 92.
+##
+## separated_nonempty_list(BAR,branch) -> branch . [ RIGHT_BRACE ]
+## separated_nonempty_list(BAR,branch) -> branch . BAR separated_nonempty_list(BAR,branch) [ RIGHT_BRACE ]
+##
+## The known suffix of the stack is as follows:
+## branch
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING OF LEFT_BRACE STRING ARR SEMICOLON
+##
+## Ends in an error in state: 90.
+##
+## branch -> core_pat ARR . raw_core [ RIGHT_BRACE BAR ]
+##
+## The known suffix of the stack is as follows:
+## core_pat ARR
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING OF LEFT_BRACE STRING STRING
+##
+## Ends in an error in state: 89.
+##
+## branch -> core_pat . ARR raw_core [ RIGHT_BRACE BAR ]
+##
+## The known suffix of the stack is as follows:
+## core_pat
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING OF STRING
+##
+## Ends in an error in state: 61.
+##
+## raw_core -> CASE raw_core OF . LEFT_BRACE option(BAR) loption(separated_nonempty_list(BAR,branch)) RIGHT_BRACE [ SEMICOLON RIGHT_PAREN RIGHT_BRACE OF LEFT_OXFORD EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## CASE raw_core OF
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ CASE STRING STRING
+##
+## Ends in an error in state: 60.
+##
+## raw_core -> CASE raw_core . OF LEFT_BRACE option(BAR) loption(separated_nonempty_list(BAR,branch)) RIGHT_BRACE [ SEMICOLON RIGHT_PAREN RIGHT_BRACE OF LEFT_OXFORD EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## CASE raw_core
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ ID LEFT_PAREN DOT SEMICOLON
+##
+## Ends in an error in state: 100.
+##
+## core_scope -> loption(separated_nonempty_list(DOT,ID)) DOT . raw_core [ SEMICOLON RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## loption(separated_nonempty_list(DOT,ID)) DOT
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ ID LEFT_PAREN ID STRING
+##
+## Ends in an error in state: 29.
+##
+## raw_core -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,core_scope)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN ]
+## raw_core -> ID . [ SEMICOLON RIGHT_PAREN ]
+## separated_nonempty_list(DOT,ID) -> ID . [ DOT ]
+## separated_nonempty_list(DOT,ID) -> ID . DOT separated_nonempty_list(DOT,ID) [ DOT ]
+##
+## The known suffix of the stack is as follows:
+## ID
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ ID LEFT_PAREN SEMICOLON
+##
+## Ends in an error in state: 28.
+##
+## raw_core -> ID LEFT_PAREN . loption(separated_nonempty_list(SEMICOLON,core_scope)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_BRACE OF LEFT_OXFORD EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## ID LEFT_PAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ ID LEFT_PAREN STRING SEMICOLON SEMICOLON
+##
+## Ends in an error in state: 103.
+##
+## separated_nonempty_list(SEMICOLON,core_scope) -> core_scope SEMICOLON . separated_nonempty_list(SEMICOLON,core_scope) [ RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## core_scope SEMICOLON
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ ID LEFT_PAREN STRING STRING
+##
+## Ends in an error in state: 102.
+##
+## separated_nonempty_list(SEMICOLON,core_scope) -> core_scope . [ RIGHT_PAREN ]
+## separated_nonempty_list(SEMICOLON,core_scope) -> core_scope . SEMICOLON separated_nonempty_list(SEMICOLON,core_scope) [ RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## core_scope
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ ID STRING
+##
+## Ends in an error in state: 27.
+##
+## raw_core -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,core_scope)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_BRACE OF LEFT_OXFORD EOF BAR ]
+## raw_core -> ID . [ SEMICOLON RIGHT_PAREN RIGHT_BRACE OF LEFT_OXFORD EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## ID
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ INT STRING
+##
+## Ends in an error in state: 109.
+##
+## list(dynamics_rule) -> dynamics_rule . list(dynamics_rule) [ EOF ]
+##
+## The known suffix of the stack is as follows:
+## dynamics_rule
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ LEFT_OXFORD ID STRING
+##
+## Ends in an error in state: 24.
+##
+## raw_core -> LEFT_OXFORD ID . RIGHT_OXFORD [ SEMICOLON RIGHT_PAREN RIGHT_BRACE OF LEFT_OXFORD EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_OXFORD ID
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ LEFT_OXFORD STRING
+##
+## Ends in an error in state: 23.
+##
+## raw_core -> LEFT_OXFORD . ID RIGHT_OXFORD [ SEMICOLON RIGHT_PAREN RIGHT_BRACE OF LEFT_OXFORD EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_OXFORD
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD EQ SEMICOLON
+##
+## Ends in an error in state: 21.
+##
+## dynamics_rule -> LEFT_OXFORD pat RIGHT_OXFORD EQ . core [ LEFT_OXFORD EOF ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_OXFORD pat RIGHT_OXFORD EQ
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID RIGHT_OXFORD STRING
+##
+## Ends in an error in state: 20.
+##
+## dynamics_rule -> LEFT_OXFORD pat RIGHT_OXFORD . EQ core [ LEFT_OXFORD EOF ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_OXFORD pat RIGHT_OXFORD
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID SEMICOLON
+##
+## Ends in an error in state: 19.
+##
+## dynamics_rule -> LEFT_OXFORD pat . RIGHT_OXFORD EQ core [ LEFT_OXFORD EOF ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_OXFORD pat
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 2, spurious reduction of production pat -> ID
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+dynamics: LEFT_OXFORD ID STRING
+##
+## Ends in an error in state: 2.
 ##
 ## pat -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,scope_pat)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_OXFORD ]
 ## pat -> ID . [ SEMICOLON RIGHT_PAREN RIGHT_OXFORD ]
@@ -136,414 +702,7 @@ dynamics: LEFT_OXFORD STRING
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ APP LEFT_PAREN STRING SEMICOLON STRING SEMICOLON UNDERSCORE
-##
-## Ends in an error in state: 55.
-##
-## separated_nonempty_list(SEMICOLON,core) -> core SEMICOLON . separated_nonempty_list(SEMICOLON,core) [ RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## core SEMICOLON
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ APP LEFT_PAREN STRING SEMICOLON STRING UNDERSCORE
-##
-## Ends in an error in state: 54.
-##
-## separated_nonempty_list(SEMICOLON,core) -> core . [ RIGHT_PAREN ]
-## separated_nonempty_list(SEMICOLON,core) -> core . SEMICOLON separated_nonempty_list(SEMICOLON,core) [ RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## core
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ APP LEFT_PAREN STRING SEMICOLON UNDERSCORE
-##
-## Ends in an error in state: 50.
-##
-## core -> APP LEFT_PAREN core SEMICOLON . loption(separated_nonempty_list(SEMICOLON,core)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## APP LEFT_PAREN core SEMICOLON
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ APP LEFT_PAREN STRING UNDERSCORE
-##
-## Ends in an error in state: 49.
-##
-## core -> APP LEFT_PAREN core . SEMICOLON loption(separated_nonempty_list(SEMICOLON,core)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## APP LEFT_PAREN core
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ APP LEFT_PAREN UNDERSCORE
-##
-## Ends in an error in state: 47.
-##
-## core -> APP LEFT_PAREN . core SEMICOLON loption(separated_nonempty_list(SEMICOLON,core)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## APP LEFT_PAREN
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ APP UNDERSCORE
-##
-## Ends in an error in state: 46.
-##
-## core -> APP . LEFT_PAREN core SEMICOLON loption(separated_nonempty_list(SEMICOLON,core)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## APP
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ CASE LEFT_PAREN STRING SEMICOLON ID LEFT_PAREN SEMICOLON
-##
-## Ends in an error in state: 61.
-##
-## core_pat -> ID LEFT_PAREN . loption(separated_nonempty_list(SEMICOLON,core_pat)) RIGHT_PAREN [ SEMICOLON RIGHT_S_ARR RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## ID LEFT_PAREN
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ CASE LEFT_PAREN STRING SEMICOLON ID LEFT_PAREN UNDERSCORE SEMICOLON SEMICOLON
-##
-## Ends in an error in state: 68.
-##
-## separated_nonempty_list(SEMICOLON,core_pat) -> core_pat SEMICOLON . separated_nonempty_list(SEMICOLON,core_pat) [ RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## core_pat SEMICOLON
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ CASE LEFT_PAREN STRING SEMICOLON ID LEFT_PAREN UNDERSCORE UNDERSCORE
-##
-## Ends in an error in state: 67.
-##
-## separated_nonempty_list(SEMICOLON,core_pat) -> core_pat . [ RIGHT_PAREN ]
-## separated_nonempty_list(SEMICOLON,core_pat) -> core_pat . SEMICOLON separated_nonempty_list(SEMICOLON,core_pat) [ RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## core_pat
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ CASE LEFT_PAREN STRING SEMICOLON ID UNDERSCORE
-##
-## Ends in an error in state: 60.
-##
-## core_pat -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,core_pat)) RIGHT_PAREN [ SEMICOLON RIGHT_S_ARR RIGHT_PAREN ]
-## core_pat -> ID . [ SEMICOLON RIGHT_S_ARR RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## ID
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ CASE LEFT_PAREN STRING SEMICOLON SEMICOLON
-##
-## Ends in an error in state: 58.
-##
-## core -> CASE LEFT_PAREN core SEMICOLON . loption(separated_nonempty_list(SEMICOLON,case)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## CASE LEFT_PAREN core SEMICOLON
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ CASE LEFT_PAREN STRING SEMICOLON UNDERSCORE RIGHT_S_ARR ID SEMICOLON SEMICOLON
-##
-## Ends in an error in state: 77.
-##
-## separated_nonempty_list(SEMICOLON,case) -> case SEMICOLON . separated_nonempty_list(SEMICOLON,case) [ RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## case SEMICOLON
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ CASE LEFT_PAREN STRING SEMICOLON UNDERSCORE RIGHT_S_ARR INT UNDERSCORE
-##
-## Ends in an error in state: 76.
-##
-## separated_nonempty_list(SEMICOLON,case) -> case . [ RIGHT_PAREN ]
-## separated_nonempty_list(SEMICOLON,case) -> case . SEMICOLON separated_nonempty_list(SEMICOLON,case) [ RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## case
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ CASE LEFT_PAREN STRING SEMICOLON UNDERSCORE RIGHT_S_ARR UNDERSCORE
-##
-## Ends in an error in state: 74.
-##
-## case -> core_pat RIGHT_S_ARR . core [ SEMICOLON RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## core_pat RIGHT_S_ARR
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ CASE LEFT_PAREN STRING SEMICOLON UNDERSCORE UNDERSCORE
-##
-## Ends in an error in state: 73.
-##
-## case -> core_pat . RIGHT_S_ARR core [ SEMICOLON RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## core_pat
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ CASE LEFT_PAREN STRING UNDERSCORE
-##
-## Ends in an error in state: 57.
-##
-## core -> CASE LEFT_PAREN core . SEMICOLON loption(separated_nonempty_list(SEMICOLON,case)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## CASE LEFT_PAREN core
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ CASE LEFT_PAREN UNDERSCORE
-##
-## Ends in an error in state: 44.
-##
-## core -> CASE LEFT_PAREN . core SEMICOLON loption(separated_nonempty_list(SEMICOLON,case)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## CASE LEFT_PAREN
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ CASE UNDERSCORE
-##
-## Ends in an error in state: 43.
-##
-## core -> CASE . LEFT_PAREN core SEMICOLON loption(separated_nonempty_list(SEMICOLON,case)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## CASE
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ ID LEFT_PAREN ID UNDERSCORE
-##
-## Ends in an error in state: 36.
-##
-## core_val -> ID . LEFT_PAREN separated_nonempty_list(SEMICOLON,core_val) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## ID
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ ID LEFT_PAREN STRING SEMICOLON UNDERSCORE
-##
-## Ends in an error in state: 41.
-##
-## separated_nonempty_list(SEMICOLON,core_val) -> core_val SEMICOLON . separated_nonempty_list(SEMICOLON,core_val) [ RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## core_val SEMICOLON
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ ID LEFT_PAREN STRING UNDERSCORE
-##
-## Ends in an error in state: 40.
-##
-## separated_nonempty_list(SEMICOLON,core_val) -> core_val . [ RIGHT_PAREN ]
-## separated_nonempty_list(SEMICOLON,core_val) -> core_val . SEMICOLON separated_nonempty_list(SEMICOLON,core_val) [ RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## core_val
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ ID LEFT_PAREN UNDERSCORE
-##
-## Ends in an error in state: 35.
-##
-## core_val -> ID LEFT_PAREN . separated_nonempty_list(SEMICOLON,core_val) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## ID LEFT_PAREN
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ ID UNDERSCORE
-##
-## Ends in an error in state: 45.
-##
-## core -> ID . [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-## core_val -> ID . LEFT_PAREN separated_nonempty_list(SEMICOLON,core_val) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## ID
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ INT UNDERSCORE
-##
-## Ends in an error in state: 88.
-##
-## list(dynamics_rule) -> dynamics_rule . list(dynamics_rule) [ EOF ]
-##
-## The known suffix of the stack is as follows:
-## dynamics_rule
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ LAM LEFT_PAREN ID UNDERSCORE
-##
-## Ends in an error in state: 34.
-##
-## core -> ID . [ RIGHT_PAREN ]
-## core_val -> ID . LEFT_PAREN separated_nonempty_list(SEMICOLON,core_val) RIGHT_PAREN [ RIGHT_PAREN ]
-## separated_nonempty_list(DOT,ID) -> ID . [ DOT ]
-## separated_nonempty_list(DOT,ID) -> ID . DOT separated_nonempty_list(DOT,ID) [ DOT ]
-##
-## The known suffix of the stack is as follows:
-## ID
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ LAM LEFT_PAREN STRING UNDERSCORE
-##
-## Ends in an error in state: 83.
-##
-## core_val -> LAM LEFT_PAREN core . RIGHT_PAREN [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## LAM LEFT_PAREN core
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ LAM LEFT_PAREN UNDERSCORE
-##
-## Ends in an error in state: 32.
-##
-## core_val -> LAM LEFT_PAREN . separated_nonempty_list(DOT,ID) DOT core RIGHT_PAREN [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-## core_val -> LAM LEFT_PAREN . core RIGHT_PAREN [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## LAM LEFT_PAREN
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ LAM UNDERSCORE
-##
-## Ends in an error in state: 31.
-##
-## core_val -> LAM . LEFT_PAREN separated_nonempty_list(DOT,ID) DOT core RIGHT_PAREN [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-## core_val -> LAM . LEFT_PAREN core RIGHT_PAREN [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## LAM
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ LEFT_OXFORD ID UNDERSCORE
-##
-## Ends in an error in state: 29.
-##
-## core -> LEFT_OXFORD ID . RIGHT_OXFORD [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## LEFT_OXFORD ID
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ LEFT_OXFORD UNDERSCORE
-##
-## Ends in an error in state: 28.
-##
-## core -> LEFT_OXFORD . ID RIGHT_OXFORD [ SEMICOLON RIGHT_PAREN LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## LEFT_OXFORD
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD EQ UNDERSCORE
-##
-## Ends in an error in state: 26.
-##
-## dynamics_rule -> LEFT_OXFORD pat RIGHT_OXFORD EQ . core [ LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## LEFT_OXFORD pat RIGHT_OXFORD EQ
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE RIGHT_OXFORD UNDERSCORE
-##
-## Ends in an error in state: 25.
-##
-## dynamics_rule -> LEFT_OXFORD pat RIGHT_OXFORD . EQ core [ LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## LEFT_OXFORD pat RIGHT_OXFORD
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: LEFT_OXFORD UNDERSCORE UNDERSCORE
-##
-## Ends in an error in state: 24.
-##
-## dynamics_rule -> LEFT_OXFORD pat . RIGHT_OXFORD EQ core [ LEFT_OXFORD EOF ]
-##
-## The known suffix of the stack is as follows:
-## LEFT_OXFORD pat
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-dynamics: UNDERSCORE
+dynamics: STRING
 ##
 ## Ends in an error in state: 0.
 ##

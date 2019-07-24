@@ -16,21 +16,23 @@ rule read = parse
   | "]]"      { RIGHT_OXFORD }
   | "["       { LEFT_BRACKET }
   | "]"       { RIGHT_BRACKET }
-  | '"'       { read_string (Buffer.create 17) lexbuf }
-  | '_'       { UNDERSCORE }
-  | '='       { EQ }
   | '('       { LEFT_PAREN }
   | ')'       { RIGHT_PAREN }
+  | '{'       { LEFT_BRACE }
+  | '}'       { RIGHT_BRACE }
+  | '"'       { read_string (Buffer.create 17) lexbuf }
+  | '='       { EQ }
   | ';'       { SEMICOLON }
   | ':'       { COLON }
   | ','       { COMMA }
   | '.'       { DOT }
-  | "->"      { RIGHT_S_ARR }
-  | "#"       { HASH }
+  | '\\'      { BACKSLASH }
+  | "->"      { ARR }
+  | "|"       { BAR }
+  (* | "#"       { HASH } *)
   | "app"     { APP }
-  | "lam"     { LAM }
   | "case"    { CASE }
-  | "default" { DEFAULT }
+  | "of"      { OF }
   | int       { INT (Bigint.of_string (L.lexeme lexbuf)) }
   | id        { ID (Lexing.lexeme lexbuf) }
   | eof       { EOF }

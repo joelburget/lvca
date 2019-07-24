@@ -11,6 +11,8 @@ var Parsing = require("../src/Parsing.bs.js");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 
 Jest.describe("Core", (function (param) {
+        Parsing.Incremental(Parsing.Parseable_language);
+        var P_dyn = Parsing.Incremental(Parsing.Parseable_dynamics);
         var one = Bigint.of_int(1);
         var sort_001 = /* array */[];
         var sort = /* SortAp */[
@@ -65,7 +67,6 @@ Jest.describe("Core", (function (param) {
                     ]),
                   /* Case */Block.__(6, [
                       /* Meaning */Block.__(8, ["t1"]),
-                      sort,
                       /* :: */[
                         /* tuple */[
                           /* PatternTerm */Block.__(0, [
@@ -134,13 +135,19 @@ Jest.describe("Core", (function (param) {
                             /* [] */0
                           ]
                         ]),
-                      /* Lambda */Block.__(4, [/* CoreScope */[
+                      /* Lambda */Block.__(4, [
+                          /* :: */[
+                            sort,
+                            /* [] */0
+                          ],
+                          /* CoreScope */[
                             /* :: */[
                               "v",
                               /* [] */0
                             ],
                             /* Meaning */Block.__(8, ["body"])
-                          ]])
+                          ]
+                        ])
                     ],
                     /* [] */0
                   ]
@@ -148,10 +155,11 @@ Jest.describe("Core", (function (param) {
               ]
             ]
           ]];
-        var P_lang = Parsing.Incremental(Parsing.Parseable_language);
-        var P_dyn = Parsing.Incremental(Parsing.Parseable_dynamics);
-        Curry._1(P_lang[/* parse */5], "\n  bool := true() | false()\n  expr :=\n    | lit(bool)\n    | ite(expr; expr; expr)\n  ");
-        var lit_dynamics = Belt_Result.getExn(Curry._1(P_dyn[/* parse */5], "\n  [[ lit(b) ]] = b\n  [[ ite(t; l; r) ]] = case(\n    [[ t ]] : bool;\n    true()  -> [[ l ]];\n    false() -> [[ r ]]\n  )\n  "));
+        var dynamics$prime = Curry._1(P_dyn[/* parse */5], "\n  [[ true() ]] = true()\n  [[ false() ]] = false()\n  [[ ite(t1; t2; t3) ]] = case [[ t1 ]] of {\n    | true()  -> [[ t2 ]]\n    | false() -> [[ t3 ]]\n  }\n  [[ fun(v. body) ]] = \\(v : bool) -> [[ body ]]\n  ");
+        Jest.test("dynamics as expected", (function (param) {
+                return Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [dynamics]), Jest.Expect[/* expect */0](dynamics$prime));
+              }));
+        var lit_dynamics = Belt_Result.getExn(Curry._1(P_dyn[/* parse */5], "\n  [[ lit(b) ]] = b\n  [[ ite(t; l; r) ]] = case [[ t ]] of {\n    | true()  -> [[ l ]]\n    | false() -> [[ r ]]\n  }\n  "));
         var true_tm = /* Operator */Block.__(0, [
             "true",
             /* [] */0
@@ -191,7 +199,7 @@ Jest.describe("Core", (function (param) {
             "ite",
             ite_tm_001
           ]);
-        var ite_val_002 = /* :: */[
+        var ite_val_001 = /* :: */[
           /* tuple */[
             /* PatternTerm */Block.__(0, [
                 "true",
@@ -218,8 +226,7 @@ Jest.describe("Core", (function (param) {
         ];
         var ite_val = /* Case */Block.__(6, [
             true_val,
-            sort,
-            ite_val_002
+            ite_val_001
           ]);
         var fun_tm_001 = /* :: */[
           /* Scope */[
@@ -250,13 +257,19 @@ Jest.describe("Core", (function (param) {
             "ap",
             fun_tm_001
           ]);
-        var fun_val_000 = /* Lambda */Block.__(4, [/* CoreScope */[
+        var fun_val_000 = /* Lambda */Block.__(4, [
+            /* :: */[
+              sort,
+              /* [] */0
+            ],
+            /* CoreScope */[
               /* :: */[
                 "x",
                 /* [] */0
               ],
               /* Var */Block.__(1, ["x"])
-            ]]);
+            ]
+          ]);
         var fun_val_001 = /* :: */[
           true_val,
           /* [] */0

@@ -5,62 +5,71 @@ open Core
 open Types
 
 let _ = describe "Core" (fun () ->
+  let module P_lang = Parsing.Incremental(Parsing.Parseable_language) in
+  let module P_dyn = Parsing.Incremental(Parsing.Parseable_dynamics) in
   let one = Bigint.of_int 1 in
   let sort = SortAp ("bool", [||]) in
   let pat_scope body = DenotationScopePat ([], body) in
   let core_scope body = CoreScope ([], body) in
   let scope body = DeBruijn.Scope ([], body) in
 
+  let dynamics_str = {|
+  [[ true() ]] = true()
+  [[ false() ]] = false()
+  [[ ite(t1; t2; t3) ]] = case [[ t1 ]] of {
+    | true()  -> [[ t2 ]]
+    | false() -> [[ t3 ]]
+  }
+  [[ fun(v. body) ]] = \(v : bool) -> [[ body ]]
+  |}
+  in
+  (*
+  [[ ap(f; arg) ]] = app([[ f ]]; [ [[ arg ]] ])
+*)
+
   let dynamics = DenotationChart
     [ DPatternTm ("true",  []), Operator ("true",  []);
       DPatternTm ("false", []), Operator ("false", []);
 
       DPatternTm ("ite",
-      [ pat_scope @@ DVar (Some "t1");
-        pat_scope @@ DVar (Some "t2");
-        pat_scope @@ DVar (Some "t3");
+      [ pat_scope @@ DVar "t1";
+        pat_scope @@ DVar "t2";
+        pat_scope @@ DVar "t3";
       ]),
       Case
         ( Meaning "t1"
-        , sort
         , [ PatternTerm ("true" , []), core_scope @@ Meaning "t2";
             PatternTerm ("false", []), core_scope @@ Meaning "t3";
           ]
         );
 
       DPatternTm ("ap",
-        [ pat_scope @@ DVar (Some "f");
-          pat_scope @@ DVar (Some "arg");
+        [ pat_scope @@ DVar "f";
+          pat_scope @@ DVar "arg";
         ]),
       CoreApp (Meaning "f", [Meaning "arg"]);
 
       DPatternTm("fun",
-        [ DenotationScopePat(["v"], DVar (Some "body"))
+        [ DenotationScopePat(["v"], DVar "body")
         ]),
-      Lambda (CoreScope (["v"], Meaning "body"));
+      Lambda ([sort], CoreScope (["v"], Meaning "body"));
     ]
   in
+  let dynamics' = P_dyn.parse dynamics_str in
 
-  let lit_language_str = {|
-  bool := true() | false()
-  expr :=
-    | lit(bool)
-    | ite(expr; expr; expr)
-  |}
-  in
+  test "dynamics as expected" (fun () ->
+    expect dynamics' |> toEqual (Result.Ok dynamics);
+  );
+
   let lit_dynamics_str = {|
   [[ lit(b) ]] = b
-  [[ ite(t; l; r) ]] = case(
-    [[ t ]] : bool;
-    true()  -> [[ l ]];
-    false() -> [[ r ]]
-  )
+  [[ ite(t; l; r) ]] = case [[ t ]] of {
+    | true()  -> [[ l ]]
+    | false() -> [[ r ]]
+  }
   |}
   in
 
-  let module P_lang = Parsing.Incremental(Parsing.Parseable_language) in
-  let module P_dyn = Parsing.Incremental(Parsing.Parseable_dynamics) in
-  let lit_language = P_lang.parse lit_language_str in
   let lit_dynamics = Result.getExn (P_dyn.parse lit_dynamics_str) in
 
   let true_tm   = DeBruijn.Operator ("true", []) in
@@ -75,7 +84,6 @@ let _ = describe "Core" (fun () ->
   in
   let ite_val = Case
     ( true_val
-    , sort
     , [ PatternTerm ("true" , []), core_scope false_val;
         PatternTerm ("false", []), core_scope true_val;
       ]
@@ -89,7 +97,7 @@ let _ = describe "Core" (fun () ->
   in
 
   let fun_val = CoreApp
-    ( Lambda (CoreScope (["x"], Var "x"))
+    ( Lambda ([sort], CoreScope (["x"], Var "x"))
     , [ true_val ]
     )
   in
@@ -99,7 +107,7 @@ let _ = describe "Core" (fun () ->
       |> toEqual (Nominal.Primitive (PrimInteger one));
 
       (*
-      expect (to_ast (Lambda (["x"; "y"], Var "x")))
+      expect (to_ast (Lambda ([sort; sort], CoreScope (["x"; "y"], Var "x"))))
       |> toEqual (Nominal.Operator
         ( "lam"
         , [Nominal.Scope (["x"; "y"], Var "x")]

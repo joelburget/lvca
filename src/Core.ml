@@ -2,9 +2,8 @@ open Belt
 open Types
 module DeBruijn = Binding.DeBruijn
 module Nominal = Binding.Nominal
-let (fold_right, get_first, traverse_list_result, union, sequence_list_result)
-  = Util.(fold_right, get_first, traverse_list_result, union,
-    sequence_list_result)
+let (fold_right, get_first, traverse_list_result, union)
+  = Util.(fold_right, get_first, traverse_list_result, union)
 
 module M = Belt.Map.String
 module O = Belt.Option
@@ -14,14 +13,13 @@ type denotation_scope_pat =
 
 and denotation_pat =
   | DPatternTm of string * denotation_scope_pat list
-  | DVar       of string option
+  | DVar       of string
 
 type core_pat =
   | PatternTerm     of string * core_binding_pat list
-  | PatternVar      of string option
+  | PatternVar      of string
   | PatternSequence of core_pat list
   | PatternPrim     of primitive
-  | PatternDefault
 
 and core_binding_pat = CoreBindingPat of string list * core_pat
 
@@ -33,9 +31,9 @@ type core =
   | Primitive of primitive
 
   (* plus, core-specific ctors *)
-  | Lambda   of core_scope (*  string list * core *)
+  | Lambda   of sort list * core_scope
   | CoreApp  of core * core list
-  | Case     of core * sort * (core_pat * core_scope) list
+  | Case     of core * (core_pat * core_scope) list
   (** A metavariable refers to a term captured directly from the left-hand-side
    *)
   | Metavar  of string
@@ -81,28 +79,27 @@ let rec to_ast (core : core) : Nominal.term = match core with
 and scope_to_ast (CoreScope (names, body)) = Nominal.Scope (names, to_ast body)
 
 (* val match_branch : core -> core_pat -> core M.t option *)
-let rec match_branch v pat = match (v, pat) with
+let rec match_branch v pat = match v, pat with
 
-  | (Operator (tag1, vals), PatternTerm (tag2, pats)) -> List.(
+  | Operator (tag1, vals), PatternTerm (tag2, pats) -> List.(
     let sub_results = zipBy vals pats match_binding_branch in
     if tag1 = tag2 && length vals = length pats && every sub_results O.isSome
     then Some (reduce (map sub_results O.getExn) M.empty union)
     else None
   )
-  | (Sequence s1, PatternSequence s2)
+  | Sequence s1, PatternSequence s2
   -> List.(
     let sub_results = zipBy s1 s2 match_branch in
     if length s1 = length s2 && every sub_results O.isSome
     then Some (reduce (map sub_results O.getExn) M.empty union)
     else None
   )
-  | (Primitive l1, PatternPrim l2)
+  | Primitive l1, PatternPrim l2
   -> if prim_eq l1 l2 then Some M.empty else None
-  | (tm, PatternVar (Some v))
-  -> Some (M.fromArray [|v,tm|])
-  | (_, PatternVar None)
-  | (_, PatternDefault)
+  | _, PatternVar "_"
   -> Some M.empty
+  | (tm, PatternVar v)
+  -> Some (M.fromArray [|v,tm|])
   | _
   -> None
 
@@ -137,9 +134,9 @@ let rec matches tm pat = match tm, pat with
        (List.zip subtms subpats)
        (Some ([], M.empty))
      else None
-  | _, DPatternTm _   -> None
-  | _, DVar None      -> Some ([], M.empty)
-  | tm, DVar (Some v) -> Some ([], M.fromArray [|v,tm|])
+  | _, DPatternTm _ -> None
+  | _, DVar "_"     -> Some ([], M.empty)
+  | tm, DVar v      -> Some ([], M.fromArray [|v,tm|])
 
 (* val matches_scope
   : DeBruijn.scope
@@ -193,8 +190,9 @@ let associate_name (assocs : assoc list) (pat_name : string) =
 (** Fill in a core representation of a value with metavars (the raw
   right-hand-side of a denotation chart) with the core terms that go there.
   *)
-let rec fill_in_core ({ dynamics; vars; assocs; assignments } as args) = function
-  | Metavar name -> (match M.get assignments name with
+let rec fill_in_core ({ dynamics; vars; assignments } as args) = function
+  | Metavar name ->
+    (match M.get assignments name with
     | Some tm -> term_to_core [] tm
     | None
     -> raise (TranslationError ("Metavariable " ^ name ^ " not found", None))
@@ -212,34 +210,32 @@ let rec fill_in_core ({ dynamics; vars; assocs; assignments } as args) = functio
   -> Operator (tag, vals |. List.map (fill_in_core_scope args))
   | Primitive _  as v -> v
   | Sequence tms -> Sequence (tms |. List.map (fill_in_core args))
-  | Lambda body -> Lambda (fill_in_core_scope args body)
+  | Lambda (tys, body) -> Lambda (tys, fill_in_core_scope args body)
   | CoreApp (f, app_args) -> CoreApp
     ( fill_in_core args f
     , app_args |. List.map (fill_in_core args)
     )
-  | Case (scrutinee, ty, branches) -> Case
+  | Case (scrutinee, branches) -> Case
       ( fill_in_core args scrutinee
-      , ty
       , branches |. List.map (fun (pat, scope) ->
          (pat, fill_in_core_scope args scope))
       )
 
 and fill_in_core_scope
-  ({ assocs; dynamics; vars } as args)
+  ({ assocs; vars } as args)
   (CoreScope (names, body))
   = let names' = names |. List.map (associate_name assocs)
     in CoreScope (names', fill_in_core {args with vars = names' @ vars} body)
 
-(** Translate a term directly to core, with no interpretation *)
+(** Translate a term directly to core, with no interpretation. In other words,
+  this term is supposed to directly represent a term in the codomain. *)
 and term_to_core env tm = match tm with
   | Operator (tag, subtms) ->
       Operator (tag, subtms |. List.map (scope_to_core env))
-    (* XXX
   | Var ix -> (match List.get env ix with
-    | None -> Error ("failed to look up variable", Some tm)
+    | None -> raise (TranslationError ("failed to look up variable", Some tm))
     | Some name -> Var name
     )
-    *)
   | Sequence tms -> Sequence (tms |. List.map (term_to_core env))
   | Primitive prim -> Primitive prim
 
@@ -278,11 +274,11 @@ let eval core =
           | Some result -> Ok result
           | None        -> Error ("Unbound variable " ^ v)
         )
-        | CoreApp (Lambda (CoreScope (argNames, body)), args) ->
+        | CoreApp (Lambda (_tys, CoreScope (argNames, body)), args) ->
             if List.(length argNames != length args)
             then Error "mismatched application lengths"
             else Result.flatMap
-              (sequence_list_result (List.map args (go ctx)))
+              (traverse_list_result (go ctx) args)
               (fun arg_vals ->
                  let new_args = List.(arg_vals
                    |> zip argNames
@@ -291,13 +287,13 @@ let eval core =
                  ) in
                  go (union ctx new_args) body
               )
-        | Case (tm, _ty, branches) -> Result.flatMap (go ctx tm)
-          (fun v -> (match find_core_match v branches with
+        | Case (tm, branches) -> Result.flatMap (go ctx tm)
+          (fun v -> match find_core_match v branches with
             | None
             -> Error "no match found in case"
             | Some (branch, bindings)
             -> go (union ctx bindings) branch
-          ))
+          )
         | Metavar _v | Meaning _v -> Error "Found a metavar!"
 
         | Operator _  | Sequence _ | Primitive _

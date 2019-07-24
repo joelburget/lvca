@@ -12,7 +12,6 @@ var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
-var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
 var AstConversionErr = Caml_exceptions.create("Core.AstConversionErr");
 
@@ -54,88 +53,74 @@ function match_branch(v, pat) {
   switch (v.tag | 0) {
     case 0 : 
         var vals = v[1];
-        if (typeof pat === "number") {
-          exit = 1;
-        } else {
-          switch (pat.tag | 0) {
-            case 0 : 
-                var pats = pat[1];
-                var sub_results = Belt_List.zipBy(vals, pats, match_binding_branch);
-                if (v[0] === pat[0] && Belt_List.length(vals) === Belt_List.length(pats) && Belt_List.every(sub_results, Belt_Option.isSome)) {
-                  return Caml_option.some(Belt_List.reduce(Belt_List.map(sub_results, Belt_Option.getExn), Belt_MapString.empty, Util.union));
-                } else {
-                  return undefined;
-                }
-            case 1 : 
-                exit = 1;
-                break;
-            case 2 : 
-            case 3 : 
+        switch (pat.tag | 0) {
+          case 0 : 
+              var pats = pat[1];
+              var sub_results = Belt_List.zipBy(vals, pats, match_binding_branch);
+              if (v[0] === pat[0] && Belt_List.length(vals) === Belt_List.length(pats) && Belt_List.every(sub_results, Belt_Option.isSome)) {
+                return Caml_option.some(Belt_List.reduce(Belt_List.map(sub_results, Belt_Option.getExn), Belt_MapString.empty, Util.union));
+              } else {
                 return undefined;
-            
-          }
+              }
+          case 1 : 
+              exit = 1;
+              break;
+          case 2 : 
+          case 3 : 
+              return undefined;
+          
         }
         break;
     case 2 : 
         var s1 = v[0];
-        if (typeof pat === "number") {
-          exit = 1;
-        } else {
-          switch (pat.tag | 0) {
-            case 1 : 
-                exit = 1;
-                break;
-            case 2 : 
-                var s2 = pat[0];
-                var sub_results$1 = Belt_List.zipBy(s1, s2, match_branch);
-                if (Belt_List.length(s1) === Belt_List.length(s2) && Belt_List.every(sub_results$1, Belt_Option.isSome)) {
-                  return Caml_option.some(Belt_List.reduce(Belt_List.map(sub_results$1, Belt_Option.getExn), Belt_MapString.empty, Util.union));
-                } else {
-                  return undefined;
-                }
-            case 0 : 
-            case 3 : 
+        switch (pat.tag | 0) {
+          case 1 : 
+              exit = 1;
+              break;
+          case 2 : 
+              var s2 = pat[0];
+              var sub_results$1 = Belt_List.zipBy(s1, s2, match_branch);
+              if (Belt_List.length(s1) === Belt_List.length(s2) && Belt_List.every(sub_results$1, Belt_Option.isSome)) {
+                return Caml_option.some(Belt_List.reduce(Belt_List.map(sub_results$1, Belt_Option.getExn), Belt_MapString.empty, Util.union));
+              } else {
                 return undefined;
-            
-          }
+              }
+          case 0 : 
+          case 3 : 
+              return undefined;
+          
         }
         break;
     case 3 : 
-        if (typeof pat === "number") {
-          exit = 1;
-        } else {
-          switch (pat.tag | 0) {
-            case 1 : 
-                exit = 1;
-                break;
-            case 0 : 
-            case 2 : 
+        switch (pat.tag | 0) {
+          case 1 : 
+              exit = 1;
+              break;
+          case 0 : 
+          case 2 : 
+              return undefined;
+          case 3 : 
+              if (Types.prim_eq(v[0], pat[0])) {
+                return Caml_option.some(Belt_MapString.empty);
+              } else {
                 return undefined;
-            case 3 : 
-                if (Types.prim_eq(v[0], pat[0])) {
-                  return Caml_option.some(Belt_MapString.empty);
-                } else {
-                  return undefined;
-                }
-            
-          }
+              }
+          
         }
         break;
     default:
       exit = 1;
   }
   if (exit === 1) {
-    if (typeof pat === "number") {
-      return Caml_option.some(Belt_MapString.empty);
-    } else if (pat.tag === 1) {
-      var match = pat[0];
-      if (match !== undefined) {
+    if (pat.tag === 1) {
+      var v$1 = pat[0];
+      if (v$1 === "_") {
+        return Caml_option.some(Belt_MapString.empty);
+      } else {
         return Caml_option.some(Belt_MapString.fromArray(/* array */[/* tuple */[
-                          match,
+                          v$1,
                           v
                         ]]));
-      } else {
-        return Caml_option.some(Belt_MapString.empty);
       }
     } else {
       return undefined;
@@ -204,19 +189,19 @@ function matches(tm, pat) {
   }
   if (exit === 1) {
     if (pat.tag) {
-      var match = pat[0];
-      if (match !== undefined) {
+      var v = pat[0];
+      if (v === "_") {
         return /* tuple */[
                 /* [] */0,
-                Belt_MapString.fromArray(/* array */[/* tuple */[
-                        match,
-                        tm
-                      ]])
+                Belt_MapString.empty
               ];
       } else {
         return /* tuple */[
                 /* [] */0,
-                Belt_MapString.empty
+                Belt_MapString.fromArray(/* array */[/* tuple */[
+                        v,
+                        tm
+                      ]])
               ];
       }
     } else {
@@ -278,7 +263,10 @@ function fill_in_core(args, v) {
     case 3 : 
         return v;
     case 4 : 
-        return /* Lambda */Block.__(4, [fill_in_core_scope(args, v[0])]);
+        return /* Lambda */Block.__(4, [
+                  v[0],
+                  fill_in_core_scope(args, v[1])
+                ]);
     case 5 : 
         return /* CoreApp */Block.__(5, [
                   fill_in_core(args, v[0]),
@@ -289,8 +277,7 @@ function fill_in_core(args, v) {
     case 6 : 
         return /* Case */Block.__(6, [
                   fill_in_core(args, v[0]),
-                  v[1],
-                  Belt_List.map(v[2], (function (param) {
+                  Belt_List.map(v[1], (function (param) {
                           return /* tuple */[
                                   param[0],
                                   fill_in_core_scope(args, param[1])
@@ -338,12 +325,30 @@ function fill_in_core(args, v) {
 }
 
 function fill_in_core_scope(args, param) {
-  var names = param[0];
+  var assocs = args[/* assocs */2];
+  var names$prime = Belt_List.map(param[0], (function (param) {
+          var assocs$1 = assocs;
+          var pat_name = param;
+          var match = Util.find((function (param) {
+                  return param[/* pattern_name */0] === pat_name;
+                }), assocs$1);
+          if (match !== undefined) {
+            return match[/* term_name */1];
+          } else {
+            throw [
+                  TranslationError,
+                  /* tuple */[
+                    "Pattern name " + (pat_name + " not found"),
+                    undefined
+                  ]
+                ];
+          }
+        }));
   return /* CoreScope */[
-          names,
+          names$prime,
           fill_in_core(/* record */[
                 /* dynamics */args[/* dynamics */0],
-                /* vars */Pervasives.$at(names, args[/* vars */1]),
+                /* vars */Pervasives.$at(names$prime, args[/* vars */1]),
                 /* assocs */args[/* assocs */2],
                 /* assignments */args[/* assignments */3]
               ], param[1])
@@ -365,14 +370,18 @@ function term_to_core(env, tm) {
                         }))
                 ]);
     case 1 : 
-        throw [
-              Caml_builtin_exceptions.match_failure,
-              /* tuple */[
-                "Core.ml",
-                226,
-                26
-              ]
-            ];
+        var match = Belt_List.get(env, tm[0]);
+        if (match !== undefined) {
+          return /* Var */Block.__(1, [match]);
+        } else {
+          throw [
+                TranslationError,
+                /* tuple */[
+                  "failed to look up variable",
+                  tm
+                ]
+              ];
+        }
     case 2 : 
         return /* Sequence */Block.__(2, [Belt_List.map(tm[0], (function (param) {
                           return term_to_core(env, param);
@@ -441,15 +450,15 @@ function $$eval(core) {
           var match$1 = tm[0];
           if (match$1.tag === 4) {
             var args = tm[1];
-            var match$2 = match$1[0];
+            var match$2 = match$1[1];
             var body = match$2[1];
             var argNames = match$2[0];
             if (Belt_List.length(argNames) !== Belt_List.length(args)) {
               return /* Error */Block.__(1, ["mismatched application lengths"]);
             } else {
-              return Belt_Result.flatMap(Util.sequence_list_result(Belt_List.map(args, (function (param) {
-                                    return go(ctx, param);
-                                  }))), (function (arg_vals) {
+              return Belt_Result.flatMap(Util.traverse_list_result((function (param) {
+                                return go(ctx, param);
+                              }), args), (function (arg_vals) {
                             var new_args = Belt_MapString.fromArray(Belt_List.toArray(Belt_List.zip(argNames, arg_vals)));
                             return go(Util.union(ctx, new_args), body);
                           }));
@@ -458,7 +467,7 @@ function $$eval(core) {
             return /* Error */Block.__(1, ["Found a term we can't evaluate"]);
           }
       case 6 : 
-          var branches = tm[2];
+          var branches = tm[1];
           return Belt_Result.flatMap(go(ctx, tm[0]), (function (v) {
                         var match = find_core_match(v, branches);
                         if (match !== undefined) {
