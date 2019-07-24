@@ -178,6 +178,12 @@ type fill_in_args =
     assignments : DeBruijn.term M.t;
   }
 
+let associate_name (assocs : assoc list) (pat_name : string) =
+  match Util.find (fun { pattern_name } -> pattern_name = pat_name) assocs with
+    | None -> raise
+      (TranslationError ("Pattern name " ^ pat_name ^ " not found", None))
+    | Some { term_name } -> term_name
+
 (* val fill_in_core
   : denotation_chart
   -> assoc list * DeBruijn.term M.t
@@ -218,9 +224,11 @@ let rec fill_in_core ({ dynamics; vars; assocs; assignments } as args) = functio
          (pat, fill_in_core_scope args scope))
       )
 
-(* XXX use assocs *)
-and fill_in_core_scope ({ dynamics; vars } as args) (CoreScope (names, body)) =
-  CoreScope (names, fill_in_core {args with vars = names @ vars} body)
+and fill_in_core_scope
+  ({ assocs; dynamics; vars } as args)
+  (CoreScope (names, body))
+  = let names' = names |. List.map (associate_name assocs)
+    in CoreScope (names', fill_in_core {args with vars = names' @ vars} body)
 
 (** Translate a term directly to core, with no interpretation *)
 and term_to_core env tm = match tm with
