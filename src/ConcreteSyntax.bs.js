@@ -96,6 +96,8 @@ function find_subtm(param, param$1, param$2) {
   };
 }
 
+var BadSortTerm = Caml_exceptions.create("ConcreteSyntax.BadSortTerm");
+
 var BadRules = Caml_exceptions.create("ConcreteSyntax.BadRules");
 
 var CantEmitTokenRegex = Caml_exceptions.create("ConcreteSyntax.CantEmitTokenRegex");
@@ -146,9 +148,8 @@ function of_ast(lang, rules, current_sort, tm) {
   var terminal_rules = rules[/* terminal_rules */0];
   var sorts = lang[0];
   var exit = 0;
-  var exit$1 = 0;
   var sort_name = current_sort[0];
-  var exit$2 = 0;
+  var exit$1 = 0;
   switch (tm.tag | 0) {
     case 0 : 
         var scopes = tm[1];
@@ -205,7 +206,7 @@ function of_ast(lang, rules, current_sort, tm) {
                             Caml_builtin_exceptions.assert_failure,
                             /* tuple */[
                               "ConcreteSyntax.ml",
-                              148,
+                              152,
                               23
                             ]
                           ];
@@ -221,25 +222,33 @@ function of_ast(lang, rules, current_sort, tm) {
               }));
         return mk_tree(current_sort, /* Operator */Block.__(0, [op_name]), children);
     case 1 : 
-        exit$1 = 2;
+        exit = 1;
         break;
     case 2 : 
     case 3 : 
-        exit$2 = 3;
+        exit$1 = 2;
         break;
     
   }
-  if (exit$2 === 3) {
+  if (exit$1 === 2) {
     switch (sort_name) {
       case "integer" : 
           if (current_sort[1].length !== 0) {
-            exit$1 = 2;
-          } else if (tm.tag === 2) {
             exit = 1;
+          } else if (tm.tag === 2) {
+            throw [
+                  BadSortTerm,
+                  current_sort,
+                  tm
+                ];
           } else {
             var match$3 = tm[0];
             if (match$3.tag) {
-              exit = 1;
+              throw [
+                    BadSortTerm,
+                    current_sort,
+                    tm
+                  ];
             } else {
               var str = Bigint.to_string(match$3[0]);
               return mk_tree(current_sort, /* Primitive */Block.__(1, [/* Integer */0]), /* array */[/* Left */Block.__(0, [str])]);
@@ -249,7 +258,7 @@ function of_ast(lang, rules, current_sort, tm) {
       case "sequence" : 
           var match$4 = current_sort[1];
           if (match$4.length !== 1) {
-            exit$1 = 2;
+            exit = 1;
           } else {
             var sort = match$4[0];
             if (tm.tag === 2) {
@@ -258,48 +267,53 @@ function of_ast(lang, rules, current_sort, tm) {
                         }), tm[0]));
               return mk_tree(current_sort, /* Sequence */1, children$1);
             } else {
-              exit = 1;
+              throw [
+                    BadSortTerm,
+                    current_sort,
+                    tm
+                  ];
             }
           }
           break;
       case "string" : 
           if (current_sort[1].length !== 0) {
-            exit$1 = 2;
-          } else if (tm.tag === 2) {
             exit = 1;
+          } else if (tm.tag === 2) {
+            throw [
+                  BadSortTerm,
+                  current_sort,
+                  tm
+                ];
           } else {
             var match$5 = tm[0];
             if (match$5.tag) {
               return mk_tree(current_sort, /* Primitive */Block.__(1, [/* String */1]), /* array */[/* Left */Block.__(0, [match$5[0]])]);
             } else {
-              exit = 1;
+              throw [
+                    BadSortTerm,
+                    current_sort,
+                    tm
+                  ];
             }
           }
           break;
       default:
-        exit$1 = 2;
+        exit = 1;
     }
   }
-  if (exit$1 === 2) {
+  if (exit === 1) {
     switch (tm.tag | 0) {
       case 1 : 
           return mk_tree(current_sort, /* Var */0, /* array */[/* Left */Block.__(0, [tm[0]])]);
       case 2 : 
       case 3 : 
-          exit = 1;
-          break;
+          throw [
+                BadSortTerm,
+                current_sort,
+                tm
+              ];
       
     }
-  }
-  if (exit === 1) {
-    throw [
-          Caml_builtin_exceptions.match_failure,
-          /* tuple */[
-            "ConcreteSyntax.ml",
-            125,
-            4
-          ]
-        ];
   }
   
 }
@@ -383,7 +397,7 @@ function to_ast(lang, param) {
           Caml_builtin_exceptions.match_failure,
           /* tuple */[
             "ConcreteSyntax.ml",
-            217,
+            223,
             4
           ]
         ];

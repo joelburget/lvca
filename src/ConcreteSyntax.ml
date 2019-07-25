@@ -5,6 +5,7 @@ open Types.ConcreteSyntaxDescription
 module AA = Util.ArrayApplicative(struct type t = string end)
 open AA
 let (find, traverse_list_result) = Util.(find, traverse_list_result)
+let fromArray = Belt.List.fromArray
 
 type prim_ty =
   | Integer
@@ -84,6 +85,9 @@ let rec find_subtm' slot_num token_ix scopes term_pattern
 let find_subtm
   : int -> Nominal.scope list -> numbered_scope_pattern list -> subterm_result
   = find_subtm' 0
+
+(** The current term and sort don't match *)
+exception BadSortTerm of sort * Nominal.term
 
 exception BadRules of string
 
@@ -200,6 +204,8 @@ let rec of_ast (Language sorts as lang) ({ terminal_rules; sort_rules } as rules
     let str = Bigint.to_string i in
     mk_tree current_sort (Primitive Integer) [| Left str |]
 
+  | _, _ -> raise (BadSortTerm (current_sort, tm))
+
 let rec to_string { leading_trivia; children; trailing_trivia } =
   let children_str = children
     |> Array.map
@@ -207,7 +213,7 @@ let rec to_string { leading_trivia; children; trailing_trivia } =
       | Either.Left terminal_capture -> terminal_capture
       | Right nonterminal_capture    -> to_string nonterminal_capture
       )
-    |> Belt.List.fromArray
+    |> fromArray
     |> String.concat ""
   in leading_trivia ^ children_str ^ trailing_trivia
 
@@ -223,7 +229,7 @@ let rec to_ast lang { sort; node_type; children; }
           | Right child   -> to_ast lang child
         )
         children)
-      (fun children' -> Nominal.Sequence (Belt.List.fromArray children'))
+      (fun children' -> Nominal.Sequence (fromArray children'))
     | Primitive prim_ty, [| Left str |] -> (match prim_ty with
       | String  -> Ok (Nominal.Primitive (PrimString str))
       | Integer ->
@@ -242,11 +248,11 @@ let rec to_ast lang { sort; node_type; children; }
         )
         |> sequence_array_result
       in Result.map children'
-           (fun children'' -> Nominal.Operator (op_name, Belt.List.fromArray children''))
+           (fun children'' -> Nominal.Operator (op_name, fromArray children''))
 
 and scope_to_ast lang ({ children } as tree)
   : (Nominal.scope, string) Result.t
-  = match Belt.List.fromArray (Belt.Array.reverse children) with
+  = match fromArray (Belt.Array.reverse children) with
   | body :: binders -> (match to_ast lang {tree with children = [| body |]} with
     | Ok body' -> binders
       |> traverse_list_result
