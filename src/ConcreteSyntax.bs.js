@@ -194,23 +194,25 @@ function of_ast(lang, rules, current_sort, tm) {
                   var subtm = match[1];
                   if (token.tag) {
                     var match$2 = Belt_MapString.getExn(sorts, token[0]);
-                    var match$3 = Util.find((function (param) {
+                    var some_operator = Util.find((function (param) {
                             return param[0] === op_name;
                           }), match$2[1]);
-                    if (match$3 !== undefined) {
-                      var valence = Belt_List.getExn(match$3[1][1], match[0]);
-                      var subtree = of_ast(lang, rules, valence[1], subtm);
-                      return /* Right */Block.__(1, [subtree]);
+                    var valences;
+                    if (some_operator !== undefined) {
+                      valences = some_operator[1][1];
                     } else {
                       throw [
-                            Caml_builtin_exceptions.match_failure,
+                            Caml_builtin_exceptions.assert_failure,
                             /* tuple */[
                               "ConcreteSyntax.ml",
-                              145,
-                              15
+                              148,
+                              23
                             ]
                           ];
                     }
+                    var valence = Belt_List.getExn(valences, match[0]);
+                    var subtree = of_ast(lang, rules, valence[1], subtm);
+                    return /* Right */Block.__(1, [subtree]);
                   } else {
                     var subtree$1 = of_ast(lang, rules, current_sort, subtm);
                     return /* Right */Block.__(1, [subtree$1]);
@@ -294,7 +296,7 @@ function of_ast(lang, rules, current_sort, tm) {
           Caml_builtin_exceptions.match_failure,
           /* tuple */[
             "ConcreteSyntax.ml",
-            128,
+            125,
             4
           ]
         ];
@@ -381,7 +383,7 @@ function to_ast(lang, param) {
           Caml_builtin_exceptions.match_failure,
           /* tuple */[
             "ConcreteSyntax.ml",
-            216,
+            217,
             4
           ]
         ];

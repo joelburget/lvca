@@ -26,7 +26,7 @@ let _ = describe "ConcreteSyntaxParser" (fun () ->
   expectParse ConcreteSyntaxParser.nonterminal_token "BAR" (TerminalName "BAR");
 
   expectParse ConcreteSyntaxParser.operator_match__test
-    "foo; BAR; baz { foo($1; $2) }"
+    "foo BAR baz { foo($1; $2) }"
     (OperatorMatch
       { tokens =
           [ NonterminalName "foo";
@@ -40,8 +40,8 @@ let _ = describe "ConcreteSyntaxParser" (fun () ->
   expectParse ConcreteSyntaxParser.sort_rule__test
     {|
        arith :=
-         | arith; ADD; arith { add($1; $3) }
-         | arith; SUB; arith { sub($1; $3) }
+         | arith ADD arith { add($1; $3) }
+         | arith SUB arith { sub($1; $3) }
          | NAME              { var($1)     }
     |}
     (SortRule

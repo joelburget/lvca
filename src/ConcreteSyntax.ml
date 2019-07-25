@@ -1,13 +1,10 @@
 module Result = Belt.Result
 module Nominal = Binding.Nominal
-open Either
 open Types
 open Types.ConcreteSyntaxDescription
 module AA = Util.ArrayApplicative(struct type t = string end)
 open AA
-let (find, sum, traverse_list_result) = Util.(find, sum, traverse_list_result)
-
-let sprintf = Printf.sprintf
+let (find, traverse_list_result) = Util.(find, traverse_list_result)
 
 type prim_ty =
   | Integer
@@ -142,9 +139,13 @@ let rec of_ast (Language sorts as lang) ({ terminal_rules; sort_rules } as rules
 
         | FoundTerm (tm_ix, subtm), NonterminalName sort
         -> let SortDef (_, operator_defs) = M.getExn sorts sort in
-           let Some (OperatorDef (_, Arity (_, valences))) = find
+           let some_operator = find
              (fun (OperatorDef (op_name', _)) -> op_name' = op_name)
              operator_defs
+           in
+           let valences = match some_operator with
+             | Some (OperatorDef (_, Arity (_, valences))) -> valences
+             | None -> assert false
            in
            let valence = Belt.List.getExn valences tm_ix in
            let new_sort = (match valence with
@@ -153,7 +154,7 @@ let rec of_ast (Language sorts as lang) ({ terminal_rules; sort_rules } as rules
              -> new_sort
            ) in
            let subtree = of_ast lang rules new_sort subtm in
-           Right subtree
+           Either.Right subtree
 
         | FoundTerm (_tm_ix, subtm), TerminalName _name
         -> let subtree = of_ast lang rules current_sort subtm in
@@ -187,7 +188,7 @@ let rec of_ast (Language sorts as lang) ({ terminal_rules; sort_rules } as rules
 
   | SortAp ("sequence", [|sort|]), Nominal.Sequence tms ->
     let children = tms
-      |> List.map (fun tm -> Right (of_ast lang rules sort tm))
+      |> List.map (fun tm -> Either.Right (of_ast lang rules sort tm))
       |> Belt.List.toArray
     in
     mk_tree current_sort Sequence children
@@ -203,8 +204,8 @@ let rec to_string { leading_trivia; children; trailing_trivia } =
   let children_str = children
     |> Array.map
       (function
-      | Left terminal_capture     -> terminal_capture
-      | Right nonterminal_capture -> to_string nonterminal_capture
+      | Either.Left terminal_capture -> terminal_capture
+      | Right nonterminal_capture    -> to_string nonterminal_capture
       )
     |> Belt.List.fromArray
     |> String.concat ""
@@ -218,8 +219,8 @@ let rec to_ast lang { sort; node_type; children; }
     | Sequence, _ -> Result.map
       (traverse_array_result
         (function
-          | Left _      -> Error "TODO: message"
-          | Right child -> to_ast lang child
+          | Either.Left _ -> Error "TODO: message"
+          | Right child   -> to_ast lang child
         )
         children)
       (fun children' -> Nominal.Sequence (Belt.List.fromArray children'))
@@ -250,7 +251,7 @@ and scope_to_ast lang ({ children } as tree)
     | Ok body' -> binders
       |> traverse_list_result
         (function
-          | Left binder_name
+          | Either.Left binder_name
           -> Ok binder_name
           | Right _nonterminal_capture
           -> Error "expected binder name, got TODO"
@@ -306,11 +307,13 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
       |]
     in
 
+    (*
     let mk_scope (NumberedScopePattern (binder_captures, body_capture)) =
       Printf.sprintf "/* Scope */[[%s], $%i]"
       (binder_captures |> List.map (Printf.sprintf "$%i") |> String.concat ", ")
       body_capture
     in
+    *)
 
     let mk_operator_rule
       sort_name

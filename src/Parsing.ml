@@ -72,7 +72,7 @@ module Parseable_language : (Parseable with type t = Types.language) = struct
   module ParseErrors       = LanguageParseErrors
   module Lexer             = LanguageLexer
   module Parser            = struct
-    let parse = LanguageParser.Incremental.languageDef
+    let parse = LanguageParser.Incremental.language_def
   end
 end
 

@@ -24,7 +24,7 @@ function token2terminal(_tok) {
       case 4 : 
           return 7;
       case 5 : 
-          return 8;
+          return 10;
       case 6 : 
           return 11;
       case 7 : 
@@ -34,15 +34,9 @@ function token2terminal(_tok) {
       case 9 : 
           return 14;
       case 10 : 
-          return 15;
-      case 11 : 
           return 16;
-      case 12 : 
-          return 18;
-      case 13 : 
-          return 19;
-      case 14 : 
-          return 20;
+      case 11 : 
+          return 17;
       
     }
   } else {
@@ -52,11 +46,11 @@ function token2terminal(_tok) {
       case 1 : 
           return 2;
       case 2 : 
-          return 9;
+          return 8;
       case 3 : 
-          return 10;
+          return 9;
       case 4 : 
-          return 17;
+          return 15;
       
     }
   }
@@ -109,12 +103,51 @@ var semantic_action = /* array */[
     }),
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
+      var match = _menhir_stack[/* next */4];
+      var _v_000 = match[/* semv */1];
+      var _v_001 = _menhir_stack[/* semv */1];
+      var _v = /* :: */[
+        _v_000,
+        _v_001
+      ];
+      return /* record */[
+              /* state */match[/* state */0],
+              /* semv */_v,
+              /* startp */match[/* startp */2],
+              /* endp */_menhir_stack[/* endp */3],
+              /* next */match[/* next */4]
+            ];
+    }),
+  (function (_menhir_env) {
+      var _menhir_stack = _menhir_env[/* stack */2];
+      var _v_000 = _menhir_stack[/* semv */1];
+      var _v = /* :: */[
+        _v_000,
+        /* [] */0
+      ];
       return /* record */[
               /* state */_menhir_stack[/* state */0],
-              /* semv */_menhir_stack[/* semv */1],
+              /* semv */_v,
               /* startp */_menhir_stack[/* startp */2],
               /* endp */_menhir_stack[/* endp */3],
               /* next */_menhir_stack[/* next */4]
+            ];
+    }),
+  (function (_menhir_env) {
+      var _menhir_stack = _menhir_env[/* stack */2];
+      var match = _menhir_stack[/* next */4];
+      var _v_000 = match[/* semv */1];
+      var _v_001 = _menhir_stack[/* semv */1];
+      var _v = /* :: */[
+        _v_000,
+        _v_001
+      ];
+      return /* record */[
+              /* state */match[/* state */0],
+              /* semv */_v,
+              /* startp */match[/* startp */2],
+              /* endp */_menhir_stack[/* endp */3],
+              /* next */match[/* next */4]
             ];
     }),
   (function (_menhir_env) {
@@ -430,70 +463,6 @@ var semantic_action = /* array */[
     }),
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
-      var _v_000 = _menhir_stack[/* semv */1];
-      var _v = /* :: */[
-        _v_000,
-        /* [] */0
-      ];
-      return /* record */[
-              /* state */_menhir_stack[/* state */0],
-              /* semv */_v,
-              /* startp */_menhir_stack[/* startp */2],
-              /* endp */_menhir_stack[/* endp */3],
-              /* next */_menhir_stack[/* next */4]
-            ];
-    }),
-  (function (_menhir_env) {
-      var _menhir_stack = _menhir_env[/* stack */2];
-      var match = _menhir_stack[/* next */4][/* next */4];
-      var _v_000 = match[/* semv */1];
-      var _v_001 = _menhir_stack[/* semv */1];
-      var _v = /* :: */[
-        _v_000,
-        _v_001
-      ];
-      return /* record */[
-              /* state */match[/* state */0],
-              /* semv */_v,
-              /* startp */match[/* startp */2],
-              /* endp */_menhir_stack[/* endp */3],
-              /* next */match[/* next */4]
-            ];
-    }),
-  (function (_menhir_env) {
-      var _menhir_stack = _menhir_env[/* stack */2];
-      var _v_000 = _menhir_stack[/* semv */1];
-      var _v = /* :: */[
-        _v_000,
-        /* [] */0
-      ];
-      return /* record */[
-              /* state */_menhir_stack[/* state */0],
-              /* semv */_v,
-              /* startp */_menhir_stack[/* startp */2],
-              /* endp */_menhir_stack[/* endp */3],
-              /* next */_menhir_stack[/* next */4]
-            ];
-    }),
-  (function (_menhir_env) {
-      var _menhir_stack = _menhir_env[/* stack */2];
-      var match = _menhir_stack[/* next */4][/* next */4];
-      var _v_000 = match[/* semv */1];
-      var _v_001 = _menhir_stack[/* semv */1];
-      var _v = /* :: */[
-        _v_000,
-        _v_001
-      ];
-      return /* record */[
-              /* state */match[/* state */0],
-              /* semv */_v,
-              /* startp */match[/* startp */2],
-              /* endp */_menhir_stack[/* endp */3],
-              /* next */match[/* next */4]
-            ];
-    }),
-  (function (_menhir_env) {
-      var _menhir_stack = _menhir_env[/* stack */2];
       var match = _menhir_stack[/* next */4][/* next */4][/* next */4];
       var match$1 = Types.ConcreteSyntaxDescription[/* partition_nonterminal_matches */3](_menhir_stack[/* semv */1]);
       var _v = /* SortRule */[/* record */[
@@ -591,37 +560,37 @@ var ET = MenhirLib.TableInterpreter[/* MakeEngineTable */0]([
       token2value,
       /* tuple */[
         8,
-        "\0\0\f\x01\0\0\0\x1e\x1f\0 \"!\x11/\x1c\0\x15\0\0\0\x1b\0\x16\x17\0\0\0\0\0\f\0\0*.\0\0&\x0f\0-\0\x18+\0\0$\0\0(\0\x13\0\r\x02\0\x16\x17\x03\0\0\0\0\x04\0\x05\0\x19\0\0\x11\x06\x1c\0\x07\0\x1d\0\0\0\0+\0\0$\b\0\t\0,\0\0\0/\n\0\x0b\x000"
+        "\0\0\b\x01\0\0\0\x1c\x1d\0\x1e \x1f\x0f)\x1a\0\x13\0\0\0\x19\0\x14\x15%\0\0\"\0\r\0\0\0\0\0\b\0(\x0b\0\0$\0'\0\x16\0\x11\0\t\x02\0\x14\x15\x03\0\x04\0\x17\0\x05\0\x1b\0\x06\0&\0\x07\0*"
       ],
       /* tuple */[
-        21,
-        "\0\x01\0\x01\0\0\0\0\0\0\x04\0\0\0\0\x04\x80\x01\0\0\0\0\0\x03\x8e\"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0@@\0\0\0\0\x10\0\0\0\x14\x04\x01\0\0\x01\x01\0\0\0\0\0\0\0\0@\0\x10\0\0 \0@\x10\0\x10\0\0\0\x01\x80\0\0\x01\0\0\0\0\0\0\x18\x04\0\0\x10\0\0\0\0\0\0\x80\0\0\0\0\x10\0\0\0\0\0\0\0\x04A  \0\0\0\x01\x01\0@@\0\0\0\0\x11\0\0\0\0\0@\0\0\0\0\0\b\b\0\0\0\0\0\0\0\0\0\x80\x80\0\0\x80\0 \0\b\0\0\0\0@@\0\0\0\0\x01\0\0\0\x02\0\x04\x18\xc0 \0\0\0\0\0\0\0\x01\0\x02\0\0\0\0\b\0\0\0\0 \0\0\0(\b\x02@@\0\0\0\0\0\x04\x80\x80\0\0\0\0\0\0\x01\0\0\0\0\0\x04\0\0\0\x10\0\0\0\0\x12\0\x04\0\0\0\0\0\b\0\0\0\0\0\0 \0\0\0"
+        18,
+        "\0\x02\0\x10\0\0\0\0\0@\0\0\0\x12\0\x10\0\0\0\0\x1c\xe2@\0\0\0\0\0\0\0\0\0\0\0\0\0@\x80\0\0\0\b\0\0\x01@\x80\x80\0\x04\b\0\0\0\0\0\0\0\0\b\x89\x02\0\0\0\x10$\0\0\0\0@\0\x80\0\b\0\x80 \x01\0\0\0\x02\0\x80\0\0\0\0\b\x06\0\0\x80\0\0 \0\0\0\x01\0\0\0\0\x02 \0\0\0\x02\0\0\0\0\0@\x80\0\0\0\0\0\0\0@\x80\0\0\0\0\x80\0\0 \x01\0\0\0\0\x80\0\0\0\x80\0\0\0\0\x80\0\0@\0\0\0\0\0\x80\0\0"
       ],
       /* tuple */[
         /* tuple */[
           8,
-          "\x1e*\0\0\x12\x18\x03\0\0\x03\0\0\0\0\0\0\x12\0\x1a\x1a\x04\0\x1c\0\0,42\x188\0(\x18\0\0\0\x18\0\0D\0D\0\0\0\x1c\0 \x1c\0\x1a\x008\0\x008\0\0\0\x1c<4D\0\x1c\0<\0\x03\x03\0\0\0\x03\0>\0H4\x04\x1c\x008\x1c\0\0\x1a\0F\0`<\x03\0\0\x12\0L\0"
+          "\x0e&\0\0 \x18\x03\0\0\x03\0\0\0\0\0\0 \0$\x1c\x04\0\x10\0\0\0\t\x10\0\x10\0*20\x164\0\x16\0\0\x12\x16\0@\0@\0$\x004\0\0&\0\0\0\x10\x006\0\x03\x008\0$\0:\0 \0<\0"
         ],
         /* tuple */[
           16,
-          "\0=\0\x1e\0*\0e\0\x91\0\x91\0.\x002\0=\0\x89\0\x16\0e\0=\0\x89\0\x92\0^\0\"\x005\0M\0\xb6\0\xc2\0V\0N\0b\0\x82\0\xa1\0E\0v\0\x99\0\xe3\0\x06\0\x0b\0\x1a\0R\0j\0n\0r\0\xe7\0z\0\xa2\0\xaa\0\xd7\0\xf6\x01\x0f\x013\x01:\x01>\x01N\x01g\x01n\x01r\x01\x8b"
+          "\x005\0\x1e\0*\0]\0\x81\0.\x002\x005\0\x81\0^\0]\x005\0n\0\x89\0\"\0%\0b\0\x16\0V\0-\0\xd7\0\x06\0\xa6\0\x89\0E\0\x8e\0N\0\xdb\0\x0b\0\x1a\0=\0R\0\x82\0\x86\0\x8a\0\x92\0\xb2\0\xba\0\xcb\0\xef\0\xff\x01\x0f\x01\x1f"
         ]
       ],
       /* tuple */[
         8,
-        "\n\t\b\x07\x06\x05\x04\x03\x02\x01\0! \x1f\x1f\x1e\x1e\x1d\x1d\x1c\x1c\x1b\x1b\x1a\x19\x18\x18\x17\x16\x15\x15\x15\x15\x15\x14\x14\x13\x13\x12\x12\x11\x11\x10\x0f\x0e\r\f\x0b"
+        "\x06\x05\x04\x03\x02\x01\0\x1c\x1b\x1a\x1a\x19\x19\x18\x18\x17\x17\x16\x16\x15\x15\x14\x13\x12\x12\x11\x10\x0f\x0f\x0f\x0f\x0f\x0e\x0e\r\r\f\x0b\n\t\b\x07"
       ],
       /* tuple */[
         /* tuple */[
           8,
-          "9\0\0\0(\0.\0\0\x13\0\0\0\0\0\0\x0e\0\x1d\0!\0#\0\0\x000\0\x1b\0\0\0\r\0\0\0@\0\0\0\0\0\0\0\0\t\0\0P\0P\0\0\0\0N\0\0\0.\0p\0\0\x03\0\0\x000L\0\0\0\x0e\0\0\0n\0`\x1a\0\0 \0\0Z\0\0\0z\0D\0\0f\0\0\0"
+          "1\0\0\0\x16\0\x16\0\0\x19\0\0\0\0\0\0\"\0$\0,\0\x1d\0\0\0\0\x19\0\x16\0\0H\0\x11\0\0\x02\0\0\0*\0\0\0\0\x002\0\0\0\x004\0\0\0\t\0\0\0\x0e\0\0\0>\0\0\0J\0\0\0"
         ],
         /* tuple */[
           8,
-          " \x1a3,'\x04# \x17-0\"\n#\x1a5/\x1a(\x11$\x0e-0BC0$\nKL=\x11R=\x12U\x10*S0=S0\nF\x0fH\x13@0&7\x10IF3^2FXYabI$;0G4?VQ_"
+          "\x1a&\x1d\n\x04'\x1b\x1e\x1b\x1e& \x0e ':;\x1e,\x11) \n>?\x11\n(\x0f)0\x10\x1e\x13+\x10\x1f04\x12\x172BCFG.81)"
         ]
       ],
-      11,
+      7,
       semantic_action,
       $$Error,
       undefined
@@ -654,39 +623,23 @@ var start = TI[32];
 var entry = TI[37];
 
 function terminal_rule__test(lexer, lexbuf) {
-  return Curry._3(entry, 95, lexer, lexbuf);
-}
-
-function terminal_rule(lexer, lexbuf) {
-  return Curry._3(entry, 90, lexer, lexbuf);
-}
-
-function sort_rule__test(lexer, lexbuf) {
-  return Curry._3(entry, 86, lexer, lexbuf);
-}
-
-function sort_rule(lexer, lexbuf) {
-  return Curry._3(entry, 77, lexer, lexbuf);
-}
-
-function regex__test(lexer, lexbuf) {
-  return Curry._3(entry, 73, lexer, lexbuf);
-}
-
-function regex(lexer, lexbuf) {
   return Curry._3(entry, 68, lexer, lexbuf);
 }
 
-function operator_match__test(lexer, lexbuf) {
+function sort_rule__test(lexer, lexbuf) {
   return Curry._3(entry, 64, lexer, lexbuf);
 }
 
-function operator_match(lexer, lexbuf) {
-  return Curry._3(entry, 59, lexer, lexbuf);
+function regex__test(lexer, lexbuf) {
+  return Curry._3(entry, 60, lexer, lexbuf);
+}
+
+function operator_match__test(lexer, lexbuf) {
+  return Curry._3(entry, 56, lexer, lexbuf);
 }
 
 function nonterminal_token(lexer, lexbuf) {
-  return Curry._3(entry, 55, lexer, lexbuf);
+  return Curry._3(entry, 52, lexer, lexbuf);
 }
 
 function language(lexer, lexbuf) {
@@ -698,39 +651,23 @@ function capture_number(lexer, lexbuf) {
 }
 
 function terminal_rule__test$1(initial_position) {
-  return Curry._2(start, 95, initial_position);
-}
-
-function terminal_rule$1(initial_position) {
-  return Curry._2(start, 90, initial_position);
-}
-
-function sort_rule__test$1(initial_position) {
-  return Curry._2(start, 86, initial_position);
-}
-
-function sort_rule$1(initial_position) {
-  return Curry._2(start, 77, initial_position);
-}
-
-function regex__test$1(initial_position) {
-  return Curry._2(start, 73, initial_position);
-}
-
-function regex$1(initial_position) {
   return Curry._2(start, 68, initial_position);
 }
 
-function operator_match__test$1(initial_position) {
+function sort_rule__test$1(initial_position) {
   return Curry._2(start, 64, initial_position);
 }
 
-function operator_match$1(initial_position) {
-  return Curry._2(start, 59, initial_position);
+function regex__test$1(initial_position) {
+  return Curry._2(start, 60, initial_position);
+}
+
+function operator_match__test$1(initial_position) {
+  return Curry._2(start, 56, initial_position);
 }
 
 function nonterminal_token$1(initial_position) {
-  return Curry._2(start, 55, initial_position);
+  return Curry._2(start, 52, initial_position);
 }
 
 function language$1(initial_position) {
@@ -743,13 +680,9 @@ function capture_number$1(initial_position) {
 
 var Incremental = /* module */[
   /* terminal_rule__test */terminal_rule__test$1,
-  /* terminal_rule */terminal_rule$1,
   /* sort_rule__test */sort_rule__test$1,
-  /* sort_rule */sort_rule$1,
   /* regex__test */regex__test$1,
-  /* regex */regex$1,
   /* operator_match__test */operator_match__test$1,
-  /* operator_match */operator_match$1,
   /* nonterminal_token */nonterminal_token$1,
   /* language */language$1,
   /* capture_number */capture_number$1
@@ -829,13 +762,9 @@ var MenhirInterpreter = [
 
 exports.$$Error = $$Error;
 exports.terminal_rule__test = terminal_rule__test;
-exports.terminal_rule = terminal_rule;
 exports.sort_rule__test = sort_rule__test;
-exports.sort_rule = sort_rule;
 exports.regex__test = regex__test;
-exports.regex = regex;
 exports.operator_match__test = operator_match__test;
-exports.operator_match = operator_match;
 exports.nonterminal_token = nonterminal_token;
 exports.language = language;
 exports.capture_number = capture_number;

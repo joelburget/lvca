@@ -15,16 +15,16 @@
           "name" : "ocamllex",
           "edge" : ["LanguageLexer.ml", ":", "LanguageLexer.mll"]
         },
-        {
-          "name" : "menhir-messages",
-          "edge" : ["LanguageParser.messages", ":", "LanguageParser.mly"]
-        },
+        // {
+        //   "name" : "menhir-messages",
+        //   "edge" : ["LanguageParser.messages", ":", "LanguageParser.mly"]
+        // },
         // {
         //   "name" : "menhir-errors",
         //   "edge" : ["LanguageParseErrors.ml", ":", "LanguageParser"]
         // },
         {
-          "name" : "menhir",
+          "name" : "menhir-parserlib",
           "edge" : ["StaticsParser.ml", "StaticsParser.mli", ":", "StaticsParser.mly"]
         },
         {
@@ -32,7 +32,7 @@
           "edge" : ["StaticsLexer.ml", ":", "StaticsLexer.mll"]
         },
         {
-          "name" : "menhir",
+          "name" : "menhir-parserlib",
           "edge" : ["DynamicsParser.ml", "DynamicsParser.mli", ":", "DynamicsParser.mly"]
         },
         {
@@ -76,6 +76,10 @@
   },
   "refmt": 3,
   "generators" : [
+    {
+      "name" : "menhir-parserlib",
+      "command": "menhir --explain --table --base `echo $in | cut -f 1 -d '.'` `dirname $in`/ParserLib.mly $in"
+    },
     {
       "name" : "menhir",
       "command": "menhir --explain --table $in"

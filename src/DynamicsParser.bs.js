@@ -193,11 +193,28 @@ var semantic_action = /* array */[
     }),
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
-      var match = _menhir_stack[/* next */4][/* next */4];
-      var _v_000 = match[/* semv */1];
+      var match = _menhir_stack[/* next */4];
+      var _1 = List.rev(/* [] */0);
       var _v_001 = _menhir_stack[/* semv */1];
       var _v = /* CoreBindingPat */[
-        _v_000,
+        _1,
+        _v_001
+      ];
+      return /* record */[
+              /* state */match[/* state */0],
+              /* semv */_v,
+              /* startp */match[/* startp */2],
+              /* endp */_menhir_stack[/* endp */3],
+              /* next */match[/* next */4]
+            ];
+    }),
+  (function (_menhir_env) {
+      var _menhir_stack = _menhir_env[/* stack */2];
+      var match = _menhir_stack[/* next */4][/* next */4];
+      var _1 = List.rev(match[/* semv */1]);
+      var _v_001 = _menhir_stack[/* semv */1];
+      var _v = /* CoreBindingPat */[
+        _1,
         _v_001
       ];
       return /* record */[
@@ -278,11 +295,28 @@ var semantic_action = /* array */[
     }),
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
-      var match = _menhir_stack[/* next */4][/* next */4];
-      var _v_000 = match[/* semv */1];
+      var match = _menhir_stack[/* next */4];
+      var _1 = List.rev(/* [] */0);
       var _v_001 = _menhir_stack[/* semv */1];
       var _v = /* CoreScope */[
-        _v_000,
+        _1,
+        _v_001
+      ];
+      return /* record */[
+              /* state */match[/* state */0],
+              /* semv */_v,
+              /* startp */match[/* startp */2],
+              /* endp */_menhir_stack[/* endp */3],
+              /* next */match[/* next */4]
+            ];
+    }),
+  (function (_menhir_env) {
+      var _menhir_stack = _menhir_env[/* stack */2];
+      var match = _menhir_stack[/* next */4][/* next */4];
+      var _1 = List.rev(match[/* semv */1]);
+      var _v_001 = _menhir_stack[/* semv */1];
+      var _v = /* CoreScope */[
+        _1,
         _v_001
       ];
       return /* record */[
@@ -336,35 +370,6 @@ var semantic_action = /* array */[
               /* startp */match$1[/* startp */2],
               /* endp */_menhir_stack[/* endp */3],
               /* next */match$1[/* next */4]
-            ];
-    }),
-  (function (_menhir_env) {
-      var _menhir_stack = _menhir_env[/* stack */2];
-      var _menhir_s = _menhir_env[/* current */3];
-      var _startpos = _menhir_stack[/* endp */3];
-      return /* record */[
-              /* state */_menhir_s,
-              /* semv : [] */0,
-              /* startp */_startpos,
-              /* endp */_startpos,
-              /* next */_menhir_stack
-            ];
-    }),
-  (function (_menhir_env) {
-      var _menhir_stack = _menhir_env[/* stack */2];
-      var match = _menhir_stack[/* next */4];
-      var _v_000 = match[/* semv */1];
-      var _v_001 = _menhir_stack[/* semv */1];
-      var _v = /* :: */[
-        _v_000,
-        _v_001
-      ];
-      return /* record */[
-              /* state */match[/* state */0],
-              /* semv */_v,
-              /* startp */match[/* startp */2],
-              /* endp */_menhir_stack[/* endp */3],
-              /* next */match[/* next */4]
             ];
     }),
   (function (_menhir_env) {
@@ -768,11 +773,60 @@ var semantic_action = /* array */[
     }),
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
+      var _v_000 = _menhir_stack[/* semv */1];
+      var _v = /* :: */[
+        _v_000,
+        /* [] */0
+      ];
+      return /* record */[
+              /* state */_menhir_stack[/* state */0],
+              /* semv */_v,
+              /* startp */_menhir_stack[/* startp */2],
+              /* endp */_menhir_stack[/* endp */3],
+              /* next */_menhir_stack[/* next */4]
+            ];
+    }),
+  (function (_menhir_env) {
+      var _menhir_stack = _menhir_env[/* stack */2];
       var match = _menhir_stack[/* next */4][/* next */4];
-      var _v_000 = match[/* semv */1];
+      var _v_000 = _menhir_stack[/* semv */1];
+      var _v_001 = match[/* semv */1];
+      var _v = /* :: */[
+        _v_000,
+        _v_001
+      ];
+      return /* record */[
+              /* state */match[/* state */0],
+              /* semv */_v,
+              /* startp */match[/* startp */2],
+              /* endp */_menhir_stack[/* endp */3],
+              /* next */match[/* next */4]
+            ];
+    }),
+  (function (_menhir_env) {
+      var _menhir_stack = _menhir_env[/* stack */2];
+      var match = _menhir_stack[/* next */4];
+      var _1 = List.rev(/* [] */0);
       var _v_001 = _menhir_stack[/* semv */1];
       var _v = /* DenotationScopePat */[
-        _v_000,
+        _1,
+        _v_001
+      ];
+      return /* record */[
+              /* state */match[/* state */0],
+              /* semv */_v,
+              /* startp */match[/* startp */2],
+              /* endp */_menhir_stack[/* endp */3],
+              /* next */match[/* next */4]
+            ];
+    }),
+  (function (_menhir_env) {
+      var _menhir_stack = _menhir_env[/* stack */2];
+      var match = _menhir_stack[/* next */4][/* next */4];
+      var _1 = List.rev(match[/* semv */1]);
+      var _v_001 = _menhir_stack[/* semv */1];
+      var _v = /* DenotationScopePat */[
+        _1,
         _v_001
       ];
       return /* record */[
@@ -1025,30 +1079,19 @@ var semantic_action = /* array */[
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
       var match = _menhir_stack[/* next */4];
-      var match$1 = match[/* next */4];
-      return /* record */[
-              /* state */match$1[/* state */0],
-              /* semv */match[/* semv */1],
-              /* startp */match$1[/* startp */2],
-              /* endp */_menhir_stack[/* endp */3],
-              /* next */match$1[/* next */4]
-            ];
-    }),
-  (function (_menhir_env) {
-      var _menhir_stack = _menhir_env[/* stack */2];
-      var match = _menhir_stack[/* next */4];
-      var _v_000 = match[/* semv */1];
-      var _v_001 = Belt_List.toArray(_menhir_stack[/* semv */1]);
+      var match$1 = match[/* next */4][/* next */4];
+      var _v_000 = match$1[/* semv */1];
+      var _v_001 = Belt_List.toArray(match[/* semv */1]);
       var _v = /* SortAp */[
         _v_000,
         _v_001
       ];
       return /* record */[
-              /* state */match[/* state */0],
+              /* state */match$1[/* state */0],
               /* semv */_v,
-              /* startp */match[/* startp */2],
+              /* startp */match$1[/* startp */2],
               /* endp */_menhir_stack[/* endp */3],
-              /* next */match[/* next */4]
+              /* next */match$1[/* next */4]
             ];
     }),
   (function (_menhir_env) {
@@ -1078,34 +1121,34 @@ var ET = MenhirLib.TableInterpreter[/* MakeEngineTable */0]([
       token2value,
       /* tuple */[
         8,
-        "\0\0\0\0\0\0\x006!\x19\0\0>0\0\0/\0$\0\0\0'\0\0.&\0\0\0\0\0\0\0\0\0\0\0\x11@\0?\0A\0\x13\0\0\0\0\0\0\x1f\0\0<*\0(+\0\0\0#\0\0\0\0\0\x1b\t\0\x06\0\0\x04\x05\0\x008\x17\0\b\0\x004\x15\0-\0\0\x02\0\x002\x1d\x0b\0)\0\0\n\0\0:\x03\r\0\f\0\x0f\x01"
+        "\0\0\0\0\0\x001\x1f\0\0?\0\0\x0023\0$\0\0\0'\0\0.&\0\0\0\0\0\0\0\0\0\0\0\0\0A!\0B\0C\0\x13\0\0\0\0\0\0\x1d\0\0=*\0(+\0\0\0#\0\0\0\0\0\0\n\x04\x19\0\0\0\x05\0\x07\x06\0\x009\x17\0\t\0\x007\x15\0-\0\0\x02\0\x005\x0b\x1b\0\0\0\f\r\0)\0\0;\x03\x0f\0\x0e\0\x11\x01"
       ],
       /* tuple */[
         24,
-        "\0A\0\0\x04\x008\x80\0\x10\x04\x800\x80\x80\0\x04\0\0\0\x80\0\0\0\0\0\0\0\0\x000\0\0\0\x04\x80\0\0\0\0\0\0\0\0\x80\0\x04\0\0\0\0\x10\0\0\0\0\0\b\0\0\0\x02\0@L\x15\0\0\0\0\x04\0\b\0\0\0\0\0\0\0\x003\xc1\bPL\x950\x80\x80@L\x15\0\x80\x02\0\x04\0\0\0 \0\x84\0\0\x84\0\x10\x84\0\x10\x84\0\0\0\0\0\0\0\x10\0\0\0\0\0\x10\0\0\0\0\0\0\x80\x02\0\0\0\0\0\x02@L\x15\0\x80\0@L\x15 \0\0PL\x15\0\0\x000\0\0@L\x15\0\0\0\0\0\0\x10\0\0\0\0\0\0\0\0\x01\0\0\0\x10\0B,\b\0\0\0B,\0D,\x004\x80BP,\x800\x80\x80\0\0\0\0\0\0\x10\0\0\0\0\0\0\0\x80@,\0\0\0\0\0\0\x000\0\0@,\x80\0\0\0\0\0\0\x04\0\0\0\0\0\x04\0@@,\0\0\0\0\0\0\0\x02\0\0\0\0\0\0\0\x02@L\x15\0\0\0\x02\0\b@,\0\0\0\0\0\0\0\0\0\0\x10\0\0\0\0\0\0\0\x80@L\x15\0\0\x000\0\0@L\x95\0\0\0\0\0\0\0\0\0\0\x01\0\0\0\0\0A\0\0\0\0\0\0\0"
+        "\0A\0\0\x04\x008\x80\0\x10\x04\x800\x80\x80\0\x04\0\0\0\0\0\0\x000\0\0\0\x04\x80\0\0\0\0\0\x80\0\x04\x000\x80\x80\0\0\0\0\0\0\x10\0\0\0\0\0\b\0\0\0\x02\0@L\x15\0\0\0\0\x04\0\b\0\0\0\0\0\0\0\x003\xc1\bPL\x950\x80\x80@L\x15@L\x15\0\x80\x02\0\x04\0\0\0 \0\x04\0\0\x80\0\x10\x04\x000\0\0\0\x04\0\0\0\0\0\0\0\x10\0\0\0\0\0\x10\0\0\0\0\0\0\x80\x02\0\0\0\0\0\x02@L\x15\0\x80\0@L\x15 \0\0PL\x15\0\0\x000\0\0@L\x15\0\0\0\0\0\0\x10\0\0\0\0\0\0\0\0\x01\0\0\0\x10\0B,\b\0\0\0B,\0D,\x004\x80BP,\x800\x80\x80@,\0\0\0\0\0\0\0\0\0\0\0\0\x80@,\x000\x80\x80\0\0\0\x10\0\0\0\0\0\0\0\x000\0\0@,\x80\0\0\0\0\0\0\x04\0\0\0\0\0\x04\0@@,\0\0\0\0\0\0\0\x02\0\0\0\0\0\0\0\x02@L\x15\0\0\0\x02\0\b@,\0\0\0\0\0\0\0\0\0\0\0\0\x80@L\x150\x80\x80\0\0\0\0\0\0\x10\0\0\0\0\x000\0\0@L\x95\0\0\0\0\0\0\0\0\0\0\x01\0\0\0\0\0A\0\0\0\0\0\0\0"
       ],
       /* tuple */[
         /* tuple */[
-          8,
-          "\x11\x0f\x9cn\x96\f\n\0\0\0\x02&\0\x000\x0f\0X\0~z2\0\xae\xcc\0\0*\x03\xa42X\xbc\xb4\xa8\xa8\xac\xac\0\0\xd4\0\xd6\0X\0\xb22\xd02\xde<\0\xba2\0\0\xde\0\0\xd8\xd2X\0\b\brx\xaa\0\0\xe4\0\xcc\b\0\0\xc8x\0\0\xe4\0\x10\b\0\0\xe4\0\xc62\0b\b\0\0\0\xee\0\xd62\0\xcc\x03\0\0\0\xda\0\x11\0\0"
+          16,
+          "\0\x11\0\x0f\0\xa8\0\xde\0\xa2\0\x0f\0\0\0\0\0\x02\0&\0\0\0\x06\0\x10\0\xa8\0\0\0\0\0J\0\0\0`\0|\x002\0\0\0\xaa\0\xf8\0\0\0\0\0*\0\x03\0\xb0\x002\x002\0\xae\0\xea\0\xe2\0\x82\0\xf8\0\x82\0\xe6\0\x82\0\0\0\0\x01\x04\0\0\x01\x06\0\0\0\xae\0\0\0\xe2\x002\x01\0\x002\x01\x0e\0<\0\0\0\xec\x002\0\0\0\0\x01\x0e\0\0\0\0\x01\b\x01\x02\0X\0\0\0\b\0\b\0t\0\x8a\0\xb6\0\b\0\0\0\0\0\0\0\xfa\0\xc8\0\xc8\0\0\x01\x16\0\0\0\0\0\xf0\0z\0\0\0\0\x01\x14\0\0\0\x10\0\b\0\0\0\0\x01\x14\0\0\0\xf6\x002\0\0\0\xda\0\b\0\0\0\0\0\0\x01\x04\0\\\0\xce\0\0\0\0\x01 \0\0\0\xf6\0\x03\0\0\0\0\0\0\x01\n\0\0\0\x11\0\0\0\0"
         ],
         /* tuple */[
           16,
-          "\0Z\0\x06\0m\0.\0\xf1\0Z\0\n\x005\0^\0U\0M\0j\0v\0\xc9\x01\x06\0]\0j\x01\n\0z\0\x1a\0~\0\x16\0\xc2\0\xad\0\xad\x01R\0Z\0\xad\0\xad\0r\0\xad\0Z\0\x12\0u\0^\0]\0\xad\0j\0n\0^\0>\0\xad\0j\0n\0z\0\x85\0~\0J\0\xc2\0z\0\x85\0~\0\x82\0\xc2\0\x85\0\xc1\0\x85\0\x85\0}\0\x19\0\x19\0Z\0\x19\0e\0\xfe\x01\x0e\0E\0R\0\x12\x01v\x01\x06\0]\0j\x01\x12\0\x19\0V\0]\0\x91\0\x91\0\x19\0\x91\0\x91\0\x91\0\x0e\0\xad\0\xad\0\x0e\0\x19\0\x19\0=\0r\0\x16\0\x8e\x01\x0e\0\x8e\0\xda\0\xe9\0\x92\0\x16\0\x92\0b\0\x16\x01:\0\xd9\x01\x9e\0\xe1\0f\0\x86\0\x8a\0\xa6\0\xae\0\xbe\0\xc6\0\xce\0\xea\0\xf6\0\xfa\x01\"\x01*\x01J\x01b\x01j\x01\x8a\x01\x92\x01\xb3"
+          "\0V\0\x06\0e\0&\0\xf5\0V\0\n\0=\0Z\0U\0M\0f\0r\0\xd5\x01\n\0v\0f\x01\x0e\0z\x002\0~\x006\0\xc6\0\xad\0\xad\x01b\0V\0\xad\0\xad\0n\0\xad\0V\0\x12\0m\0Z\0\x16\0\xad\0f\0j\0Z\0F\0\xad\0f\0j\0z\0\x85\0~\0V\0\xc6\0z\0\x85\0~\0N\0\xc6\0\x85\0Z\0\x85\0\x85\0f\x01\x9e\0\x1d\0\x1d\0V\0\x1d\x01\x02\0z\x01\x12\0~\0}\0\xc6\0V\x01\n\0]\0f\x01\x16\0\x1d\0R\x01\x1a\0\x8e\x01\n\0\x1d\0f\x01\x16\0\x91\0\x91\x01\x1a\0\x91\0\x91\0\x91\0\x0e\0\xad\0\xad\0\x0e\0\x1d\0\x1d\0\x82\0n\0\xb9\0^\x01\x12\0\xbd\0V\0\x1d\0\x1d\0\xb9\0\xad\0\xad\0\xb9\x01\x12\0E\x01\n\0n\0f\x012\0u\0\xcd\0\xbd\0\x9a\0\xfd\0\xbd\0\xde\0\xed\x01J\0\xdd\0\x12\x01\xb6\0\xe5\0\x16\0b\x01\x86\0\x86\0\x8a\0\x92\0\xaa\0\xb2\0\xc2\0\xca\0\xd2\0\xee\0\xfa\0\xfe\x01.\x01>\x01Z\x01r\x01z\x01\x9a\x01\xae\x01\xcb"
         ]
       ],
       /* tuple */[
         8,
-        "\0\x1f\x1e\x1d\x1d\x1c\x1c\x1c\x1c\x1b\x1b\x1a\x19\x18\x18\x17\x17\x16\x16\x15\x15\x14\x14\x13\x13\x12\x12\x11\x11\x10\x10\x0f\x0f\x0e\x0e\r\r\f\f\x0b\x0b\x0b\x0b\x0b\x0b\x0b\n\n\t\t\b\b\x07\x07\x06\x06\x05\x05\x04\x04\x03\x03\x02\x02\x01"
+        "\0\x1f\x1e\x1d\x1d\x1d\x1c\x1c\x1c\x1c\x1b\x1b\x1b\x1a\x19\x18\x18\x17\x17\x16\x16\x15\x15\x14\x14\x13\x13\x12\x12\x11\x11\x10\x10\x0f\x0f\x0e\x0e\r\r\f\f\f\f\f\f\f\x0b\x0b\n\n\n\t\t\b\b\x07\x07\x06\x06\x05\x05\x04\x04\x03\x03\x02\x01"
       ],
       /* tuple */[
         /* tuple */[
           8,
-          "H\x07\0\x05\0\x1a\0\0\0\0\x004\0\0\0\"\0\0\0\0\0\\\0\0\0\0\0\0\x0b\0r|\0\0<H\x80\x88\0\0\0\0\0\0\x94\0\0\x84\0\x88\0L\0\0z\0\0\0\0\0\0\0\x98\x002N\0\x07\0\0\0\0\0\0\x8a\0\0\0\x18\0\0\0\0\0H\0\0\0\0\0\x8e\0\0V\0\0\0\0\0\0\x94\0\0 \0\0\0\0\0\x80\0\0"
+          "/\f\0\n\0\x12\0\0\0<\0\0\"\0\0\0\0\0\0\0\x03\0\0\0\0\0\0\r\0dh`\0\0\xa0\0l\0\x8e\0\0\0\0\0\0l\0\0~\0\x84\0<\0\0\\\0\0\0\0\0\0\0\x96\0\nN\0\x07\0n\0\0\0\0\x86\0\0\0\0\0\0\"\0\0\0\0\0j\0\0\0\0\0\x90\0\0R\0\0\0\0\x94\0\0\0\0\0\x004\0\0\0\0\0\x80\0\0"
         ],
         /* tuple */[
           8,
-          "`\t\nF\n\na9\x0bG\x14\x0eb\x12dHJ\x0fP\n\big\nGMNa9\r\x11J+\nWd\x0bG)\x0eMN5gV\x0fXQG69G_Z:G]j9Rlnp-T8&T=9&Z69]-k<939G\\9/f9(onA'\0\0\0\0.L"
+          "ertvJfj:K\bHp:k[\t\fOH\x10\x13m\x11\x07TQR\\KqH\x0fo^\x0b6afj:\t\f7:\x10QRU;.c9HmH.&)7:VZd:>:HXH^*0a&(=:/4:HX,I`:i:utB\0\0\0\0N"
         ]
       ],
       1,

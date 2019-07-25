@@ -54,7 +54,7 @@ module ArrayApplicative (A: Any) = struct
 
   exception Traversal_exn of A.t
 
-  let rec sequence_array_result
+  let sequence_array_result
     (arr : ('a, A.t) Result.t array)
     : ('a array, A.t) Result.t =
 
@@ -66,7 +66,7 @@ module ArrayApplicative (A: Any) = struct
       with
         Traversal_exn err -> Error err
 
-  let rec traverse_array_result
+  let traverse_array_result
     (f : 'a -> ('b, A.t) Result.t)
     (arr : 'a array)
     : ('b array, A.t) Result.t =
@@ -124,5 +124,5 @@ let flip (f : 'a -> 'b -> 'c): ('b -> 'a -> 'c)
 
 let id a = a
 
-let rec list_flat_map : ('a -> 'b list) -> 'a list -> 'b list
+let list_flat_map : ('a -> 'b list) -> 'a list -> 'b list
   = fun f lst -> List.(map lst f |> flatten)

@@ -1,0 +1,294 @@
+language_def: ID ASSIGN BAR SEMICOLON
+##
+## Ends in an error in state: 4.
+##
+## sort_def -> ID ASSIGN option(BAR) . separated_nonempty_list(BAR,operator_def) [ ID EOF ]
+##
+## The known suffix of the stack is as follows:
+## ID ASSIGN option(BAR)
+##
+
+Malformed sort declaration -- expected an operator, eg `add(arith; arith)`
+
+language_def: ID ASSIGN ID LEFT_BRACK ID COMMA SEMICOLON
+##
+## Ends in an error in state: 32.
+##
+## separated_nonempty_list(COMMA,ID) -> ID COMMA . separated_nonempty_list(COMMA,ID) [ RIGHT_BRACK ]
+##
+## The known suffix of the stack is as follows:
+## ID COMMA
+##
+
+Identifier expected.
+
+language_def: ID ASSIGN ID LEFT_BRACK ID RIGHT_BRACK LEFT_PAREN SEMICOLON
+##
+## Ends in an error in state: 36.
+##
+## arity -> LEFT_BRACK separated_nonempty_list(COMMA,ID) RIGHT_BRACK LEFT_PAREN . valence_list RIGHT_PAREN [ ID EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_BRACK separated_nonempty_list(COMMA,ID) RIGHT_BRACK LEFT_PAREN
+##
+
+Expected a valence.
+
+language_def: ID ASSIGN ID LEFT_BRACK ID RIGHT_BRACK SEMICOLON
+##
+## Ends in an error in state: 35.
+##
+## arity -> LEFT_BRACK separated_nonempty_list(COMMA,ID) RIGHT_BRACK . LEFT_PAREN valence_list RIGHT_PAREN [ ID EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_BRACK separated_nonempty_list(COMMA,ID) RIGHT_BRACK
+##
+
+Expected a paren-enclosed list of valences.
+
+language_def: ID ASSIGN ID LEFT_BRACK ID SEMICOLON
+##
+## Ends in an error in state: 31.
+##
+## separated_nonempty_list(COMMA,ID) -> ID . [ RIGHT_BRACK ]
+## separated_nonempty_list(COMMA,ID) -> ID . COMMA separated_nonempty_list(COMMA,ID) [ RIGHT_BRACK ]
+##
+## The known suffix of the stack is as follows:
+## ID
+##
+
+Comma-separated list of identifiers (followed by a bracket) expected.
+
+language_def: ID ASSIGN ID LEFT_BRACK SEMICOLON
+##
+## Ends in an error in state: 30.
+##
+## arity -> LEFT_BRACK . separated_nonempty_list(COMMA,ID) RIGHT_BRACK LEFT_PAREN valence_list RIGHT_PAREN [ ID EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_BRACK
+##
+
+Identifier expected.
+
+language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_BRACK ID LEFT_PAREN RIGHT_PAREN RIGHT_BRACK RIGHT_BRACK
+##
+## Ends in an error in state: 21.
+##
+## separated_nonempty_list(SEMICOLON,valence) -> valence . [ RIGHT_PAREN ]
+## separated_nonempty_list(SEMICOLON,valence) -> valence . SEMICOLON separated_nonempty_list(SEMICOLON,valence) [ RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## valence
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_BRACK ID LEFT_PAREN RIGHT_PAREN SEMICOLON
+##
+## Ends in an error in state: 17.
+##
+## valence -> ID LEFT_BRACK sort . RIGHT_BRACK [ SEMICOLON RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## ID LEFT_BRACK sort
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_BRACK SEMICOLON
+##
+## Ends in an error in state: 16.
+##
+## valence -> ID LEFT_BRACK . sort RIGHT_BRACK [ SEMICOLON RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## ID LEFT_BRACK
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN ID LEFT_PAREN RIGHT_PAREN RIGHT_BRACK
+##
+## Ends in an error in state: 10.
+##
+## separated_nonempty_list(SEMICOLON,sort) -> sort . [ RIGHT_PAREN ]
+## separated_nonempty_list(SEMICOLON,sort) -> sort . SEMICOLON separated_nonempty_list(SEMICOLON,sort) [ RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## sort
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN ID LEFT_PAREN RIGHT_PAREN SEMICOLON SEMICOLON
+##
+## Ends in an error in state: 11.
+##
+## separated_nonempty_list(SEMICOLON,sort) -> sort SEMICOLON . separated_nonempty_list(SEMICOLON,sort) [ RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## sort SEMICOLON
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN ID SEMICOLON
+##
+## Ends in an error in state: 9.
+##
+## sort -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,sort)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_BRACK DOT ]
+##
+## The known suffix of the stack is as follows:
+## ID
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN RIGHT_PAREN DOT SEMICOLON
+##
+## Ends in an error in state: 24.
+##
+## separated_nonempty_list(DOT,sort) -> sort DOT . separated_nonempty_list(DOT,sort) [ SEMICOLON RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## sort DOT
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN RIGHT_PAREN RIGHT_BRACK
+##
+## Ends in an error in state: 23.
+##
+## separated_nonempty_list(DOT,sort) -> sort . [ SEMICOLON RIGHT_PAREN ]
+## separated_nonempty_list(DOT,sort) -> sort . DOT separated_nonempty_list(DOT,sort) [ SEMICOLON RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## sort
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN RIGHT_PAREN SEMICOLON SEMICOLON
+##
+## Ends in an error in state: 22.
+##
+## separated_nonempty_list(SEMICOLON,valence) -> valence SEMICOLON . separated_nonempty_list(SEMICOLON,valence) [ RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## valence SEMICOLON
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN SEMICOLON
+##
+## Ends in an error in state: 8.
+##
+## sort -> ID LEFT_PAREN . loption(separated_nonempty_list(SEMICOLON,sort)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_BRACK DOT ]
+##
+## The known suffix of the stack is as follows:
+## ID LEFT_PAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: ID ASSIGN ID LEFT_PAREN ID SEMICOLON
+##
+## Ends in an error in state: 7.
+##
+## sort -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,sort)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN DOT ]
+## valence -> ID . LEFT_BRACK sort RIGHT_BRACK [ SEMICOLON RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## ID
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: ID ASSIGN ID LEFT_PAREN RIGHT_PAREN BAR SEMICOLON
+##
+## Ends in an error in state: 42.
+##
+## separated_nonempty_list(BAR,operator_def) -> operator_def BAR . separated_nonempty_list(BAR,operator_def) [ ID EOF ]
+##
+## The known suffix of the stack is as follows:
+## operator_def BAR
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: ID ASSIGN ID LEFT_PAREN RIGHT_PAREN SEMICOLON
+##
+## Ends in an error in state: 41.
+##
+## separated_nonempty_list(BAR,operator_def) -> operator_def . [ ID EOF ]
+## separated_nonempty_list(BAR,operator_def) -> operator_def . BAR separated_nonempty_list(BAR,operator_def) [ ID EOF ]
+##
+## The known suffix of the stack is as follows:
+## operator_def
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: ID ASSIGN ID LEFT_PAREN SEMICOLON
+##
+## Ends in an error in state: 6.
+##
+## arity -> LEFT_PAREN . valence_list RIGHT_PAREN [ ID EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_PAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: ID ASSIGN ID SEMICOLON
+##
+## Ends in an error in state: 5.
+##
+## operator_def -> ID . arity [ ID EOF BAR ]
+##
+## The known suffix of the stack is as follows:
+## ID
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: ID ASSIGN SEMICOLON
+##
+## Ends in an error in state: 2.
+##
+## sort_def -> ID ASSIGN . option(BAR) separated_nonempty_list(BAR,operator_def) [ ID EOF ]
+##
+## The known suffix of the stack is as follows:
+## ID ASSIGN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: ID SEMICOLON
+##
+## Ends in an error in state: 1.
+##
+## sort_def -> ID . ASSIGN option(BAR) separated_nonempty_list(BAR,operator_def) [ ID EOF ]
+##
+## The known suffix of the stack is as follows:
+## ID
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+language_def: SEMICOLON
+##
+## Ends in an error in state: 0.
+##
+## language_def' -> . language_def [ # ]
+##
+## The known suffix of the stack is as follows:
+##
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+

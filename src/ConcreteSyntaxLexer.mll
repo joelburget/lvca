@@ -24,7 +24,6 @@ rule read = parse
   | '['            { read_character_set (Buffer.create 17) lexbuf }
   | '{'            { LEFT_BRACE }
   | '}'            { RIGHT_BRACE }
-  | ';'            { SEMICOLON }
   | '.'            { DOT }
   | ":="           { ASSIGN }
   | '$'            { DOLLAR }

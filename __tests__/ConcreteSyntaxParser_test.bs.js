@@ -56,7 +56,7 @@ Jest.describe("ConcreteSyntaxParser", (function (param) {
         expectParse(ConcreteSyntaxParser.capture_number, "$2", 2);
         expectParse(ConcreteSyntaxParser.nonterminal_token, "foo", /* NonterminalName */Block.__(1, ["foo"]));
         expectParse(ConcreteSyntaxParser.nonterminal_token, "BAR", /* TerminalName */Block.__(0, ["BAR"]));
-        expectParse(ConcreteSyntaxParser.operator_match__test, "foo; BAR; baz { foo($1; $2) }", /* OperatorMatch */[/* record */[
+        expectParse(ConcreteSyntaxParser.operator_match__test, "foo BAR baz { foo($1; $2) }", /* OperatorMatch */[/* record */[
                 /* tokens : :: */[
                   /* NonterminalName */Block.__(1, ["foo"]),
                   /* :: */[
@@ -84,7 +84,7 @@ Jest.describe("ConcreteSyntaxParser", (function (param) {
                   ]
                 ]
               ]]);
-        return expectParse(ConcreteSyntaxParser.sort_rule__test, "\n       arith :=\n         | arith; ADD; arith { add($1; $3) }\n         | arith; SUB; arith { sub($1; $3) }\n         | NAME              { var($1)     }\n    ", /* SortRule */[/* record */[
+        return expectParse(ConcreteSyntaxParser.sort_rule__test, "\n       arith :=\n         | arith ADD arith { add($1; $3) }\n         | arith SUB arith { sub($1; $3) }\n         | NAME              { var($1)     }\n    ", /* SortRule */[/* record */[
                       /* sort_name */"arith",
                       /* operator_rules : :: */[
                         /* OperatorMatch */[/* record */[

@@ -1,5 +1,3 @@
-// dynamics
-
 %{
 open Core
 let (flatten, unzip, toArray) = Belt.List.(flatten, unzip, toArray)
@@ -44,16 +42,16 @@ let fix_up_core : core -> core =
 %}
 
 %token <Bigint.t> INT
-%token <string>   ID
 %token <string>   STRING
-%token LEFT_PAREN
-%token RIGHT_PAREN
+%token <string>   ID
 %token LEFT_OXFORD
 %token RIGHT_OXFORD
 %token LEFT_BRACKET
 %token RIGHT_BRACKET
 %token LEFT_BRACE
 %token RIGHT_BRACE
+%token LEFT_PAREN
+%token RIGHT_PAREN
 %token SEMICOLON
 %token COMMA
 %token COLON
@@ -66,7 +64,6 @@ let fix_up_core : core -> core =
 %token APP
 %token CASE
 %token OF
-// %token HASH
 
 %start dynamics
 %type <denotation_pat> pat
@@ -74,6 +71,11 @@ let fix_up_core : core -> core =
 %type <denotation_pat * core> dynamics_rule
 %type <Core.denotation_chart> dynamics
 %%
+
+/* TODO: duplicated */
+sort:
+  ID LEFT_PAREN separated_list(SEMICOLON, sort) RIGHT_PAREN
+  { Types.SortAp ($1, Belt.List.toArray $3) }
 
 pat:
   | ID LEFT_PAREN separated_list(SEMICOLON, scope_pat) RIGHT_PAREN
@@ -83,21 +85,21 @@ pat:
   ;
 
 scope_pat:
-  | separated_list(DOT, ID) DOT pat
+  | separated_llist(DOT, ID) DOT pat
   { DenotationScopePat ($1, $3) }
   | pat
   { DenotationScopePat ([], $1) }
   ;
 
 core_scope:
-  | separated_list(DOT, ID) DOT raw_core
+  | separated_llist(DOT, ID) DOT raw_core
   { CoreScope ($1, $3) }
   | raw_core
   { CoreScope ([], $1) }
   ;
 
 core_binding_pat:
-  | separated_list(DOT, ID) DOT core_pat
+  | separated_llist(DOT, ID) DOT core_pat
   { CoreBindingPat ($1, $3) }
   | core_pat
   { CoreBindingPat ([], $1) }
@@ -124,17 +126,9 @@ raw_core:
   { Case (arg, branches) }
   | LEFT_OXFORD ID RIGHT_OXFORD
   { Meaning $2 }
-  (* | HASH ID
-  { ValPrimop $2 } *)
   ;
 
 typed_arg: LEFT_PAREN ID COLON sort RIGHT_PAREN { ($2, $4) } ;
-
-(* TODO: duplicated from LanguageParser *)
-sort:
-  | LEFT_PAREN sort RIGHT_PAREN { $2                            }
-  | ID list(sort)               { Types.SortAp ($1, toArray $2) }
-  ;
 
 branch: core_pat ARR raw_core { ($1, CoreScope (vars_of_pattern $1, $3)) } ;
 

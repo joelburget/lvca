@@ -3,14 +3,11 @@
 %token <string> NONTERMINAL_ID
 %token <string> STRING
 %token <string> CHARACTER_SET
-%token DOT
 %token LEFT_PAREN
 %token RIGHT_PAREN
+%token DOT
 %token LEFT_BRACE
 %token RIGHT_BRACE
-%token DASH
-%token CARET
-%token SEMICOLON
 %token EOF
 %token ASSIGN
 %token DOLLAR
@@ -21,15 +18,11 @@
 
 %{ open Types.ConcreteSyntaxDescription %}
 
-%start terminal_rule
 %start terminal_rule__test
-%start regex
 %start regex__test
 %start capture_number
 %start nonterminal_token
-%start operator_match
 %start operator_match__test
-%start sort_rule
 %start sort_rule__test
 %start language
 %type <Types.ConcreteSyntaxDescription.terminal_rule> terminal_rule
@@ -71,14 +64,13 @@ sort_rule:
   ;
 
 operator_match:
-  | separated_nonempty_list(SEMICOLON, nonterminal_token);
-    LEFT_BRACE; term_pattern; RIGHT_BRACE
+  | nonempty_list(nonterminal_token); LEFT_BRACE; term_pattern; RIGHT_BRACE
   { OperatorMatch { tokens = $1; term_pattern = $3 } }
   ;
 
 (* TODO: should this id allow uppercase? *)
 term_pattern:
-  | NONTERMINAL_ID; LEFT_PAREN; separated_list(SEMICOLON, term_scope_pattern); RIGHT_PAREN
+  | NONTERMINAL_ID; LEFT_PAREN; list(term_scope_pattern); RIGHT_PAREN
   { ($1, $3) }
   ;
 

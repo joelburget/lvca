@@ -8,7 +8,7 @@ module B = Buffer
 
 let int = '-'? ['0'-'9'] ['0'-'9']*
 let white = [' ' '\t' '\r' '\n']+
-let id = ['a'-'z' 'A'-'Z' '_' '-'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '-']*
+let id = ['a'-'z' 'A'-'Z' '_' '-' '#'] ['a'-'z' 'A'-'Z' '0'-'9' '\'' '_' '-' '#']*
 
 rule read = parse
   | white     { read lexbuf }
@@ -29,7 +29,6 @@ rule read = parse
   | '\\'      { BACKSLASH }
   | "->"      { ARR }
   | "|"       { BAR }
-  (* | "#"       { HASH } *)
   | "app"     { APP }
   | "case"    { CASE }
   | "of"      { OF }

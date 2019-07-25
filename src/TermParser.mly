@@ -1,6 +1,6 @@
 %token <Bigint.t> INT
-%token <string> ID
 %token <string> STRING
+%token <string> ID
 %token DOT
 // %token TRUE
 // %token FALSE

@@ -130,7 +130,7 @@ var Parseable_term = /* module */[
   /* Parser */Parser
 ];
 
-var parse$1 = LanguageParser.Incremental[/* languageDef */0];
+var parse$1 = LanguageParser.Incremental[/* language_def */0];
 
 var Parser$1 = /* module */[/* parse */parse$1];
 
