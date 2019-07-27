@@ -42,7 +42,7 @@ let _ = describe "ConcreteSyntaxParser" (fun () ->
        arith :=
          | arith ADD arith { add($1; $3) }
          | arith SUB arith { sub($1; $3) }
-         | NAME              { var($1)     }
+         | NAME            { var($1)     }
     |}
     (SortRule
       { sort_name = "arith";
