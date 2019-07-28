@@ -78,42 +78,40 @@ sort:
   { Types.SortAp ($1, Belt.List.toArray $3) }
 
 pat:
-  | ID LEFT_PAREN separated_list(SEMICOLON, scope_pat) RIGHT_PAREN
+  | pat_id LEFT_PAREN separated_list(SEMICOLON, scope_pat) RIGHT_PAREN
   { DPatternTm ($1, $3) }
-  | ID
+  | pat_id
   { DVar $1 }
-  ;
 
 scope_pat:
-  | separated_llist(DOT, ID) DOT pat
+  | separated_llist(DOT, pat_id) DOT pat
   { DenotationScopePat ($1, $3) }
   | pat
   { DenotationScopePat ([], $1) }
-  ;
 
 core_scope:
   | separated_llist(DOT, ID) DOT raw_core
   { CoreScope ($1, $3) }
   | raw_core
   { CoreScope ([], $1) }
-  ;
 
 core_binding_pat:
   | separated_llist(DOT, ID) DOT core_pat
   { CoreBindingPat ($1, $3) }
   | core_pat
   { CoreBindingPat ([], $1) }
-  ;
 
 (* We parse a raw core term, which has both metavars and vars represented as
  vars, then fix it up, by changing all vars that weren't bound to metavars *)
-core: raw_core { fix_up_core $1 } ;
+core: raw_core { fix_up_core $1 }
 
 raw_core:
   | APP LEFT_PAREN raw_core SEMICOLON separated_list(SEMICOLON, raw_core) RIGHT_PAREN
   { CoreApp ($3, $5) }
   | ID LEFT_PAREN separated_list(SEMICOLON, core_scope) RIGHT_PAREN
   { Operator ($1, $3) }
+  | LEFT_BRACKET separated_list(COMMA, raw_core) RIGHT_BRACKET
+  { Sequence $2 }
   | prim
   { Primitive $1 }
   | BACKSLASH list(typed_arg) ARR raw_core
@@ -126,28 +124,31 @@ raw_core:
   { Case (arg, branches) }
   | LEFT_OXFORD ID RIGHT_OXFORD
   { Meaning $2 }
-  ;
 
-typed_arg: LEFT_PAREN ID COLON sort RIGHT_PAREN { ($2, $4) } ;
+typed_arg: LEFT_PAREN ID COLON sort RIGHT_PAREN { ($2, $4) }
 
-branch: core_pat ARR raw_core { ($1, CoreScope (vars_of_pattern $1, $3)) } ;
+branch: core_pat ARR raw_core { ($1, CoreScope (vars_of_pattern $1, $3)) }
+
+pat_id:
+  | ID   { $1     }
+  | APP  { "app"  }
+  | CASE { "case" }
+  | OF   { "of"   }
 
 core_pat:
-  | ID LEFT_PAREN separated_list(SEMICOLON, core_binding_pat) RIGHT_PAREN
+  | pat_id LEFT_PAREN separated_list(SEMICOLON, core_binding_pat) RIGHT_PAREN
   { PatternTerm ($1, $3) }
-  | ID
+  | pat_id
   { PatternVar $1 }
   | LEFT_BRACKET separated_list(COMMA, core_pat) RIGHT_BRACKET
   { PatternSequence $2 }
   | prim
   { PatternPrim $1 }
-  ;
 
 prim:
   | INT    { PrimInteger $1 }
   | STRING { PrimString  $1 }
-  ;
 
-dynamics_rule: LEFT_OXFORD pat RIGHT_OXFORD EQ core { ($2, $5) } ;
+dynamics_rule: LEFT_OXFORD pat RIGHT_OXFORD EQ core { ($2, $5) }
 
-dynamics: list(dynamics_rule) EOF { DenotationChart $1 } ;
+dynamics: list(dynamics_rule) EOF { DenotationChart $1 }

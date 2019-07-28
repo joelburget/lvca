@@ -5,122 +5,175 @@ var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exception
 
 function message(s) {
   switch (s) {
+    case 0 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 57\n";
+    case 1 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 56\n";
+    case 2 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 55\n";
+    case 3 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE 7>\n";
+    case 4 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE 6>\n";
     case 5 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 4>\n";
-    case 6 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 3>\n";
-    case 10 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 1>\n";
-    case 15 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE 2>\n";
-    case 7 : 
     case 8 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE 1>\n";
     case 9 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE 5>\n";
     case 12 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE 4>\n";
     case 13 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE 3>\n";
+    case 18 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 54\n";
+    case 19 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 53\n";
+    case 20 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 52\n";
+    case 22 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 51\n";
+    case 23 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 50\n";
+    case 26 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 48\n";
+    case 27 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 45\n";
+    case 28 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 44\n";
+    case 29 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 43\n";
+    case 30 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 25\n";
+    case 31 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 24\n";
+    case 32 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 23\n";
+    case 33 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 22\n";
+    case 34 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 21\n";
+    case 35 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 17\n";
+    case 48 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 14\n";
+    case 49 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 13\n";
+    case 50 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 8\n";
+    case 51 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 12\n";
+    case 52 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 9\n";
+    case 54 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 11\n";
+    case 55 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 10\n";
+    case 61 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 42\n";
+    case 62 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 41\n";
+    case 63 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 36\n";
+    case 65 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 26\n";
+    case 66 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 33\n";
+    case 67 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 32\n";
+    case 68 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 29\n";
+    case 69 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 28\n";
+    case 70 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 27\n";
+    case 81 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 31\n";
+    case 82 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 30\n";
+    case 87 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 35\n";
+    case 88 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 34\n";
+    case 93 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 40\n";
+    case 94 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 39\n";
+    case 96 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 38\n";
+    case 97 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 37\n";
+    case 108 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 47\n";
+    case 109 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 46\n";
+    case 6 : 
+    case 7 : 
+    case 10 : 
+    case 11 : 
     case 14 : 
+    case 15 : 
     case 16 : 
     case 17 : 
-    case 18 : 
-    case 22 : 
+    case 21 : 
+    case 24 : 
     case 25 : 
-    case 26 : 
+    case 36 : 
+    case 37 : 
     case 38 : 
     case 39 : 
+    case 40 : 
     case 41 : 
+    case 42 : 
     case 43 : 
+    case 44 : 
     case 45 : 
     case 46 : 
-    case 52 : 
-    case 55 : 
+    case 47 : 
+    case 53 : 
     case 56 : 
     case 57 : 
     case 58 : 
     case 59 : 
-    case 63 : 
-    case 69 : 
-    case 70 : 
+    case 60 : 
+    case 64 : 
     case 71 : 
     case 72 : 
     case 73 : 
+    case 74 : 
     case 75 : 
     case 76 : 
+    case 77 : 
+    case 78 : 
     case 79 : 
     case 80 : 
-    case 81 : 
-    case 82 : 
+    case 83 : 
+    case 84 : 
     case 85 : 
     case 86 : 
-    case 87 : 
-    case 88 : 
+    case 89 : 
+    case 90 : 
     case 91 : 
-    case 94 : 
+    case 92 : 
     case 95 : 
-    case 96 : 
-    case 97 : 
     case 98 : 
     case 99 : 
+    case 100 : 
     case 101 : 
+    case 102 : 
+    case 103 : 
     case 104 : 
     case 105 : 
     case 106 : 
     case 107 : 
-    case 108 : 
+    case 110 : 
+    case 111 : 
+    case 112 : 
+    case 113 : 
+    case 114 : 
         throw Caml_builtin_exceptions.not_found;
-    case 0 : 
-    case 1 : 
-    case 2 : 
-    case 3 : 
-    case 4 : 
-    case 11 : 
-    case 19 : 
-    case 20 : 
-    case 21 : 
-    case 23 : 
-    case 24 : 
-    case 27 : 
-    case 28 : 
-    case 29 : 
-    case 30 : 
-    case 31 : 
-    case 32 : 
-    case 33 : 
-    case 34 : 
-    case 35 : 
-    case 36 : 
-    case 37 : 
-    case 40 : 
-    case 42 : 
-    case 44 : 
-    case 47 : 
-    case 48 : 
-    case 49 : 
-    case 50 : 
-    case 51 : 
-    case 53 : 
-    case 54 : 
-    case 60 : 
-    case 61 : 
-    case 62 : 
-    case 64 : 
-    case 65 : 
-    case 66 : 
-    case 67 : 
-    case 68 : 
-    case 74 : 
-    case 77 : 
-    case 78 : 
-    case 83 : 
-    case 84 : 
-    case 89 : 
-    case 90 : 
-    case 92 : 
-    case 93 : 
-    case 100 : 
-    case 102 : 
-    case 103 : 
-    case 109 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE>\n";
+    case 115 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE> 49\n";
     default:
       throw Caml_builtin_exceptions.not_found;
   }

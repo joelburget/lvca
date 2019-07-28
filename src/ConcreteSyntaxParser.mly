@@ -15,6 +15,7 @@
 %token STAR
 %token PLUS
 %token QUESTION
+%token SEMICOLON
 
 %{ open Types.ConcreteSyntaxDescription %}
 
@@ -70,7 +71,7 @@ operator_match:
 
 (* TODO: should this id allow uppercase? *)
 term_pattern:
-  | NONTERMINAL_ID; LEFT_PAREN; list(term_scope_pattern); RIGHT_PAREN
+  | NONTERMINAL_ID; LEFT_PAREN; separated_list(SEMICOLON, term_scope_pattern); RIGHT_PAREN
   { ($1, $3) }
   ;
 

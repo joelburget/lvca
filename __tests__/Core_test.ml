@@ -20,12 +20,10 @@ let _ = describe "Core" (fun () ->
     | true()  -> [[ t2 ]]
     | false() -> [[ t3 ]]
   }
-  [[ fun(v. body) ]] = \(v : bool) -> [[ body ]]
+  [[ ap(f; arg) ]] = app([[ f ]]; [[ arg ]])
+  [[ fun(v. body) ]] = \(v : bool()) -> [[ body ]]
   |}
   in
-  (*
-  [[ ap(f; arg) ]] = app([[ f ]]; [ [[ arg ]] ])
-*)
 
   let dynamics = DenotationChart
     [ DPatternTm ("true",  []), Operator ("true",  []);

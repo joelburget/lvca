@@ -31,6 +31,7 @@ rule read = parse
   | '*'            { STAR }
   | '+'            { PLUS }
   | '?'            { QUESTION }
+  | ';'            { SEMICOLON }
   | eof            { EOF }
   | _ { error lexbuf ("Unexpected char: " ^ L.lexeme lexbuf) }
 

@@ -22,9 +22,9 @@ let _ = describe "ConcreteSyntax" (fun () ->
   NAME := [a-z][a-zA-Z0-9]*
 
   arith :=
-    | arith; ADD; arith     { add($1; $3) }
-    | arith; SUB; arith     { sub($1; $3) }
-    | NAME                  { var($1)     }
+    | arith ADD arith { add($1; $3) }
+    | arith SUB arith { sub($1; $3) }
+    | NAME            { var($1)     }
   |}
   in
   (*

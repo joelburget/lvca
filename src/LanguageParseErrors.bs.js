@@ -5,72 +5,56 @@ var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exception
 
 function message(s) {
   switch (s) {
-    case 0 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 23>\n";
-    case 1 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 22>\n";
-    case 2 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 21>\n";
     case 4 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 1>\n";
-    case 5 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 20>\n";
-    case 6 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 19>\n";
-    case 7 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 16>\n";
-    case 9 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 15>\n";
-    case 11 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 8>\n";
-    case 12 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 13>\n";
-    case 13 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 12>\n";
-    case 14 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 11>\n";
-    case 18 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 10>\n";
-    case 19 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 14>\n";
-    case 20 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 9>\n";
-    case 21 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 7>\n";
-    case 27 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 6>\n";
-    case 28 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 3>\n";
-    case 29 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 2>\n";
-    case 33 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 5>\n";
-    case 34 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 4>\n";
+        return "Malformed sort declaration -- expected an operator, eg `add(arith; arith)`\n";
+    case 31 : 
+        return "Comma-separated list of identifiers (followed by a bracket) expected.\n";
+    case 30 : 
+    case 32 : 
+        return "Identifier expected.\n";
+    case 35 : 
+        return "Expected a paren-enclosed list of valences.\n";
+    case 36 : 
+        return "Expected a valence.\n";
     case 3 : 
-    case 8 : 
-    case 10 : 
+    case 12 : 
+    case 13 : 
+    case 14 : 
     case 15 : 
-    case 16 : 
-    case 17 : 
-    case 22 : 
-    case 23 : 
-    case 24 : 
+    case 18 : 
+    case 19 : 
+    case 20 : 
     case 25 : 
     case 26 : 
-    case 30 : 
-    case 31 : 
-    case 32 : 
-    case 35 : 
-    case 36 : 
+    case 27 : 
+    case 28 : 
+    case 29 : 
+    case 33 : 
+    case 34 : 
     case 37 : 
     case 38 : 
     case 39 : 
-        throw Caml_builtin_exceptions.not_found;
     case 40 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 18>\n";
+        throw Caml_builtin_exceptions.not_found;
+    case 0 : 
+    case 1 : 
+    case 2 : 
+    case 5 : 
+    case 6 : 
+    case 7 : 
+    case 8 : 
+    case 9 : 
+    case 10 : 
+    case 11 : 
+    case 16 : 
+    case 17 : 
+    case 21 : 
+    case 22 : 
+    case 23 : 
+    case 24 : 
     case 41 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE 17>\n";
+    case 42 : 
+        return "<YOUR SYNTAX ERROR MESSAGE HERE>\n";
     default:
       throw Caml_builtin_exceptions.not_found;
   }

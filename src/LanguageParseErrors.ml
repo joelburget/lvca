@@ -7,50 +7,52 @@ let message =
   fun s ->
     match s with
     | 0 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 23>\n"
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
     | 1 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 22>\n"
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
     | 2 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 21>\n"
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
     | 5 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 20>\n"
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
     | 6 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 19>\n"
-    | 40 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 18>\n"
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
     | 41 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 17>\n"
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 42 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
     | 7 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 16>\n"
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 8 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 22 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 23 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 24 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
     | 9 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 15>\n"
-    | 19 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 14>\n"
-    | 12 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 13>\n"
-    | 13 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 12>\n"
-    | 14 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 11>\n"
-    | 18 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 10>\n"
-    | 20 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 9>\n"
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
     | 11 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 8>\n"
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 10 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 16 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 17 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
     | 21 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 7>\n"
-    | 27 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 6>\n"
-    | 33 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 5>\n"
-    | 34 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 4>\n"
-    | 28 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 3>\n"
-    | 29 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 2>\n"
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 30 ->
+        "Identifier expected.\n"
+    | 31 ->
+        "Comma-separated list of identifiers (followed by a bracket) expected.\n"
+    | 35 ->
+        "Expected a paren-enclosed list of valences.\n"
+    | 36 ->
+        "Expected a valence.\n"
+    | 32 ->
+        "Identifier expected.\n"
     | 4 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE 1>\n"
+        "Malformed sort declaration -- expected an operator, eg `add(arith; arith)`\n"
     | _ ->
         raise Not_found

@@ -17,16 +17,14 @@ let _ = describe "TermParser" (fun () ->
 [[ false()         ]] = false()
 [[ val(v)          ]] = v
 [[ annot(tm; ty)   ]] = [[ tm ]]
+[[ app(fun; arg)   ]] = app([[ fun ]]; [[ arg ]])
 [[ ite(t1; t2; t3) ]] = case [[ t1 ]] of {
   | true()  -> [[ t2 ]]
   | false() -> [[ t3 ]]
 }
   |}
-
-(*
-[[ app(fun; arg)   ]] = app([[ fun ]]; [[ arg ]])
-*)
   in
+
   let expected = DenotationChart
     [ DPatternTm ("true",  []), Operator ("true",  []);
       DPatternTm ("false", []), Operator ("false", []);

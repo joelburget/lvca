@@ -12,7 +12,7 @@ var ConcreteSyntaxLexer = require("../src/ConcreteSyntaxLexer.bs.js");
 var ConcreteSyntaxParser = require("../src/ConcreteSyntaxParser.bs.js");
 
 Jest.describe("ConcreteSyntax", (function (param) {
-        var description = "\n  ADD  := \"+\"\n  SUB  := \"-\"\n  NAME := [a-z][a-zA-Z0-9]*\n\n  arith :=\n    | arith; ADD; arith     { add($1; $3) }\n    | arith; SUB; arith     { sub($1; $3) }\n    | NAME                  { var($1)     }\n  ";
+        var description = "\n  ADD  := \"+\"\n  SUB  := \"-\"\n  NAME := [a-z][a-zA-Z0-9]*\n\n  arith :=\n    | arith ADD arith { add($1; $3) }\n    | arith SUB arith { sub($1; $3) }\n    | NAME            { var($1)     }\n  ";
         var language = /* Language */[Belt_MapString.fromArray(/* array */[/* tuple */[
                   "arith",
                   /* SortDef */[

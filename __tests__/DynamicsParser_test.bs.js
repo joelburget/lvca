@@ -156,7 +156,7 @@ Jest.describe("TermParser", (function (param) {
               ]
             ]
           ]];
-        expectParse("\n[[ true()          ]] = true()\n[[ false()         ]] = false()\n[[ val(v)          ]] = v\n[[ annot(tm; ty)   ]] = [[ tm ]]\n[[ ite(t1; t2; t3) ]] = case [[ t1 ]] of {\n  | true()  -> [[ t2 ]]\n  | false() -> [[ t3 ]]\n}\n  ", expected);
+        expectParse("\n[[ true()          ]] = true()\n[[ false()         ]] = false()\n[[ val(v)          ]] = v\n[[ annot(tm; ty)   ]] = [[ tm ]]\n[[ app(fun; arg)   ]] = app([[ fun ]]; [[ arg ]])\n[[ ite(t1; t2; t3) ]] = case [[ t1 ]] of {\n  | true()  -> [[ t2 ]]\n  | false() -> [[ t3 ]]\n}\n  ", expected);
         var metavar_test = Belt_Result.getExn(Curry._1(P_dyn[/* parse */5], "[[ lit(v) ]] = v"));
         var metavar_test_expected = /* DenotationChart */[/* :: */[
             /* tuple */[
