@@ -19,12 +19,17 @@ let _ = describe "ConcreteSyntax" (fun () ->
   let description = {|
   ADD  := "+"
   SUB  := "-"
+  MUL  := "*"
+  DIV  := "/"
   NAME := [a-z][a-zA-Z0-9]*
 
   arith :=
-    | arith ADD arith { add($1; $3) }
-    | arith SUB arith { sub($1; $3) }
-    | NAME            { var($1)     }
+    | LPAREN arith RPAREN { $2          }
+    > arith _ MUL _ arith { sub($1; $3) } %left
+    | arith _ DIV _ arith { sub($1; $3) } %left
+    > arith _ ADD _ arith { add($1; $3) } %left
+    | arith _ SUB _ arith { sub($1; $3) } %left
+    > NAME                { var($1)     }
   |}
   in
   (*

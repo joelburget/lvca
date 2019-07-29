@@ -16,6 +16,10 @@
 %token PLUS
 %token QUESTION
 %token SEMICOLON
+%token UNDERSCORE
+%token LEFT_FIXITY
+%token RIGHT_FIXITY
+%token GREATER
 
 %{ open Types.ConcreteSyntaxDescription %}
 
@@ -35,6 +39,7 @@
 %type <Types.ConcreteSyntaxDescription.nonterminal_token> nonterminal_token
 %type <Types.ConcreteSyntaxDescription.operator_match> operator_match
 %type <Types.ConcreteSyntaxDescription.operator_match> operator_match__test
+%type <Types.ConcreteSyntaxDescription.operator_match list list> operator_match_list
 %type <Types.ConcreteSyntaxDescription.sort_rule> sort_rule
 %type <Types.ConcreteSyntaxDescription.sort_rule> sort_rule__test
 %type <(string * Types.ConcreteSyntaxDescription.numbered_scope_pattern list)> term_pattern
@@ -44,52 +49,65 @@
 language:
   | terminal_rule+ sort_rule+ EOF
   { Types.ConcreteSyntaxDescription.make $1 $2 }
-  ;
 
 terminal_rule:
-  | TERMINAL_ID; ASSIGN; regex
+  | TERMINAL_ID ASSIGN regex
   { TerminalRule ($1, $3) }
-  ;
 
-terminal_rule__test: terminal_rule; EOF { $1 }
+terminal_rule__test: terminal_rule EOF { $1 }
 
-capture_number: DOLLAR; NAT { $2 } ;
+capture_number: DOLLAR NAT { $2 }
 
-sort_rule__test: sort_rule; EOF { $1 }
+sort_rule__test: sort_rule EOF { $1 }
 
 sort_rule:
-  | NONTERMINAL_ID; ASSIGN; BAR?; separated_nonempty_list(BAR, operator_match)
+  | NONTERMINAL_ID ASSIGN BAR? operator_match_list
   { let (operator_rules, variable) = partition_nonterminal_matches($4) in
     SortRule { sort_name = $1; operator_rules; variable }
   }
-  ;
+
+operator_match_list:
+  | operator_match
+    { [[ $1 ]] }
+  | operator_match BAR     operator_match_list
+    { match $3 with
+      | []      -> [[ $1 ]]
+      | x :: xs -> ($1 :: x) :: xs
+    }
+  | operator_match GREATER operator_match_list
+    { [ $1 ] :: $3 }
+
+fixity:
+  | LEFT_FIXITY  { Infixl }
+  | RIGHT_FIXITY { Infixr }
 
 operator_match:
-  | nonempty_list(nonterminal_token); LEFT_BRACE; term_pattern; RIGHT_BRACE
-  { OperatorMatch { tokens = $1; term_pattern = $3 } }
-  ;
+  | nonempty_list(nonterminal_token) LEFT_BRACE term_pattern RIGHT_BRACE option(fixity)
+  { let fixity = (match $5 with
+    | None   -> Nofix
+    | Some f -> f
+    )
+    in OperatorMatch { tokens = $1; term_pattern = $3; fixity } }
 
 (* TODO: should this id allow uppercase? *)
 term_pattern:
-  | NONTERMINAL_ID; LEFT_PAREN; separated_list(SEMICOLON, term_scope_pattern); RIGHT_PAREN
+  | NONTERMINAL_ID LEFT_PAREN separated_list(SEMICOLON, term_scope_pattern) RIGHT_PAREN
   { ($1, $3) }
-  ;
 
 term_scope_pattern:
   | separated_nonempty_list(DOT, capture_number)
   { let (binds, body) = Util.unsnoc $1 in NumberedScopePattern (binds, body) }
-  ;
 
-operator_match__test: operator_match; EOF { $1 } ;
+operator_match__test: operator_match EOF { $1 }
 
 nonterminal_token:
-  | TERMINAL_ID    { TerminalName $1 }
+  | TERMINAL_ID    { TerminalName    $1 }
   | NONTERMINAL_ID { NonterminalName $1 }
-  ;
+  | UNDERSCORE     { Underscore         }
 
-regex: nonempty_list(regex_piece) { $1 };
+regex: nonempty_list(regex_piece) { $1 }
 
-regex__test: regex; EOF { $1 };
+regex__test: regex EOF { $1 }
 
 regex_piece:
   | STRING               { ReString $1 }
@@ -97,4 +115,3 @@ regex_piece:
   | regex_piece STAR     { ReStar   $1 }
   | regex_piece PLUS     { RePlus   $1 }
   | regex_piece QUESTION { ReOption $1 }
-  ;

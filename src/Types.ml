@@ -210,6 +210,7 @@ module ConcreteSyntaxDescription = struct
   type nonterminal_token =
     | TerminalName    of string
     | NonterminalName of string
+    | Underscore
 
   let token_name = function
     | TerminalName    name -> name
@@ -219,9 +220,15 @@ module ConcreteSyntaxDescription = struct
   type numbered_scope_pattern =
     NumberedScopePattern of capture_number list * capture_number
 
+  type fixity =
+    | Infixl
+    | Infixr
+    | Nofix
+
   type operator_match' =
     { tokens       : nonterminal_token list;
       term_pattern : string * numbered_scope_pattern list;
+      fixity       : fixity
     }
   type operator_match = OperatorMatch of operator_match'
 
@@ -232,15 +239,20 @@ module ConcreteSyntaxDescription = struct
 
   exception DuplicateVarRules
 
+  (* Extract a variable rule, if present. Currently we only recognize it on its
+   * own precedence level, which seems like what you usually want, but still
+   * arbitrary
+   *)
   let partition_nonterminal_matches
-    (matches: operator_match list)
-    : (operator_match list * variable_rule option)
+    (matches: operator_match list list)
+    : (operator_match list list * variable_rule option)
     = fold_right
       (fun (match_, (matches, v_rule)) -> match match_ with
-        | OperatorMatch
-          { tokens;
-            term_pattern = ("var", [NumberedScopePattern ([], var_capture)]);
-          }
+        | [ OperatorMatch
+            { tokens;
+              term_pattern = ("var", [NumberedScopePattern ([], var_capture)]);
+            }
+          ]
         -> (match v_rule with
           | Some _ -> raise DuplicateVarRules
           | None   -> (matches, Some { tokens; var_capture })
@@ -252,7 +264,7 @@ module ConcreteSyntaxDescription = struct
 
   type sort_rule' =
     { sort_name      : string;
-      operator_rules : operator_match list;
+      operator_rules : operator_match list list;
       variable       : variable_rule option;
     }
   (** A sort rule shows how to parse / pretty-print a sort *)

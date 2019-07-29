@@ -33,28 +33,30 @@ let _ = describe "ConcreteSyntaxParser" (fun () ->
             TerminalName    "BAR";
             NonterminalName "baz"
           ];
-        term_pattern = ("foo", [NumberedScopePattern ([], 1); NumberedScopePattern ([], 2)])
+        term_pattern = ("foo", [NumberedScopePattern ([], 1); NumberedScopePattern ([], 2)]);
+        fixity = Nofix;
       }
     );
 
   expectParse ConcreteSyntaxParser.sort_rule__test
     {|
        arith :=
-         | arith ADD arith { add($1; $3) }
-         | arith SUB arith { sub($1; $3) }
-         | NAME            { var($1)     }
+         | arith ADD arith { add($1; $3) } %left
+         | arith SUB arith { sub($1; $3) } %left
+         > NAME            { var($1)     }
     |}
     (SortRule
       { sort_name = "arith";
         operator_rules =
-          [
+          [[
             OperatorMatch
               { tokens =
                   [ NonterminalName "arith";
                     TerminalName    "ADD";
                     NonterminalName "arith"
                   ];
-                term_pattern = ("add", [NumberedScopePattern ([], 1); NumberedScopePattern ([], 3)])
+                term_pattern = ("add", [NumberedScopePattern ([], 1); NumberedScopePattern ([], 3)]);
+                fixity = Infixl;
               };
             OperatorMatch
               { tokens =
@@ -62,9 +64,10 @@ let _ = describe "ConcreteSyntaxParser" (fun () ->
                     TerminalName    "SUB";
                     NonterminalName "arith"
                   ];
-                term_pattern = ("sub", [NumberedScopePattern ([], 1); NumberedScopePattern ([], 3)])
+                term_pattern = ("sub", [NumberedScopePattern ([], 1); NumberedScopePattern ([], 3)]);
+                fixity = Infixl;
               };
-          ];
+          ]];
         variable = Some { tokens = [TerminalName "NAME"]; var_capture = 1 };
       });
 )

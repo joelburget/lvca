@@ -12,6 +12,7 @@ var Caml_module = require("bs-platform/lib/js/caml_module.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
+var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
 function prim_eq(p1, p2) {
   if (p1.tag) {
@@ -161,7 +162,18 @@ var Cbor$1 = /* module */[
 var Statics = /* module */[/* M */0];
 
 function token_name(param) {
-  return param[0];
+  if (typeof param === "number") {
+    throw [
+          Caml_builtin_exceptions.match_failure,
+          /* tuple */[
+            "Types.ml",
+            215,
+            19
+          ]
+        ];
+  } else {
+    return param[0];
+  }
 }
 
 var DuplicateVarRules = Caml_exceptions.create("Types.ConcreteSyntaxDescription.DuplicateVarRules");
@@ -173,24 +185,28 @@ function partition_nonterminal_matches(matches) {
                 var matches = match[0];
                 var match_ = param[0];
                 var exit = 0;
-                var match$1 = match_[0];
-                var match$2 = match$1[/* term_pattern */1];
-                if (match$2[0] === "var") {
-                  var match$3 = match$2[1];
-                  if (match$3) {
-                    var match$4 = match$3[0];
-                    if (match$4[0] || match$3[1]) {
-                      exit = 1;
-                    } else if (v_rule !== undefined) {
-                      throw DuplicateVarRules;
+                if (match_) {
+                  var match$1 = match_[0][0];
+                  var match$2 = match$1[/* term_pattern */1];
+                  if (match$2[0] === "var") {
+                    var match$3 = match$2[1];
+                    if (match$3) {
+                      var match$4 = match$3[0];
+                      if (match$4[0] || match$3[1] || match_[1]) {
+                        exit = 1;
+                      } else if (v_rule !== undefined) {
+                        throw DuplicateVarRules;
+                      } else {
+                        return /* tuple */[
+                                matches,
+                                /* record */[
+                                  /* tokens */match$1[/* tokens */0],
+                                  /* var_capture */match$4[1]
+                                ]
+                              ];
+                      }
                     } else {
-                      return /* tuple */[
-                              matches,
-                              /* record */[
-                                /* tokens */match$1[/* tokens */0],
-                                /* var_capture */match$4[1]
-                              ]
-                            ];
+                      exit = 1;
                     }
                   } else {
                     exit = 1;

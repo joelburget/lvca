@@ -48,11 +48,11 @@ function equivalent$prime(child1, child2) {
 }
 
 function find_operator_match(matches, opname) {
-  var maybeMatch = Util.find((function (param) {
+  var maybe_match = Util.find((function (param) {
           return param[0][/* term_pattern */1][0] === opname;
-        }), matches);
-  if (maybeMatch !== undefined) {
-    return maybeMatch;
+        }), Belt_List.flatten(matches));
+  if (maybe_match !== undefined) {
+    return maybe_match;
   } else {
     return Pervasives.failwith("TODO: default match");
   }
@@ -161,8 +161,11 @@ function of_ast(lang, rules, current_sort, tm) {
         var children = Belt_Array.mapWithIndex(Belt_List.toArray(match$2[/* tokens */0]), (function (token_ix, token) {
                 var token_ix$prime = token_ix + 1 | 0;
                 var match = find_subtm(token_ix$prime, scopes, numbered_scope_patterns);
+                var exit = 0;
                 if (typeof match === "number") {
-                  if (token.tag) {
+                  if (typeof token === "number") {
+                    exit = 1;
+                  } else if (token.tag) {
                     throw [
                           BadRules,
                           "subterm not found, nonterminal name: " + token[0]
@@ -183,7 +186,9 @@ function of_ast(lang, rules, current_sort, tm) {
                   }
                 } else if (match.tag) {
                   var binder_name = match[0];
-                  if (token.tag) {
+                  if (typeof token === "number") {
+                    exit = 1;
+                  } else if (token.tag) {
                     throw [
                           BadRules,
                           "binder (" + (binder_name + (") found, nonterminal name: " + token[0]))
@@ -193,7 +198,9 @@ function of_ast(lang, rules, current_sort, tm) {
                   }
                 } else {
                   var subtm = match[1];
-                  if (token.tag) {
+                  if (typeof token === "number") {
+                    exit = 1;
+                  } else if (token.tag) {
                     var match$2 = Belt_MapString.getExn(sorts, token[0]);
                     var some_operator = Util.find((function (param) {
                             return param[0] === op_name;
@@ -206,7 +213,7 @@ function of_ast(lang, rules, current_sort, tm) {
                             Caml_builtin_exceptions.assert_failure,
                             /* tuple */[
                               "ConcreteSyntax.ml",
-                              152,
+                              153,
                               23
                             ]
                           ];
@@ -219,6 +226,17 @@ function of_ast(lang, rules, current_sort, tm) {
                     return /* Right */Block.__(1, [subtree$1]);
                   }
                 }
+                if (exit === 1) {
+                  throw [
+                        Caml_builtin_exceptions.match_failure,
+                        /* tuple */[
+                          "ConcreteSyntax.ml",
+                          143,
+                          6
+                        ]
+                      ];
+                }
+                
               }));
         return mk_tree(current_sort, /* Operator */Block.__(0, [op_name]), children);
     case 1 : 
@@ -397,7 +415,7 @@ function to_ast(lang, param) {
           Caml_builtin_exceptions.match_failure,
           /* tuple */[
             "ConcreteSyntax.ml",
-            223,
+            224,
             4
           ]
         ];
@@ -454,7 +472,16 @@ function to_grammar(param) {
     rules: rules
   };
   var nonterminal_tok_num = function (param) {
-    if (param.tag) {
+    if (typeof param === "number") {
+      throw [
+            Caml_builtin_exceptions.match_failure,
+            /* tuple */[
+              "ConcreteSyntax.ml",
+              287,
+              30
+            ]
+          ];
+    } else if (param.tag) {
       return 1;
     } else {
       return 0;
@@ -503,61 +530,68 @@ function to_grammar(param) {
                   mk_variable(sort_name, match[/* variable */2]),
                   List.map((function (param) {
                           var sort_name$1 = sort_name;
-                          var param$1 = param;
-                          var match = param$1[0];
-                          var tokens = match[/* tokens */0];
-                          return /* array */[
-                                  print_tokens(tokens),
-                                  Curry._3(Printf.sprintf(/* Format */[
-                                            /* String_literal */Block.__(11, [
-                                                "\n          $$ = /* record */[\n            /* SortAp */['",
-                                                /* String */Block.__(2, [
-                                                    /* No_padding */0,
-                                                    /* String_literal */Block.__(11, [
-                                                        "', []],\n            /* Operator */(function(tag,x){x.tag=tag;return x;})(0, ['",
-                                                        /* String */Block.__(2, [
-                                                            /* No_padding */0,
-                                                            /* String_literal */Block.__(11, [
-                                                                "']),\n            '',\n            '',\n            /* array */[",
-                                                                /* String */Block.__(2, [
-                                                                    /* No_padding */0,
+                          var matches = param;
+                          return Belt_List.toArray(Belt_List.flatten(Belt_List.map(matches, (function (param) {
+                                                var sort_name$2 = sort_name$1;
+                                                var param$1 = param;
+                                                var match = param$1[0];
+                                                var tokens = match[/* tokens */0];
+                                                return /* :: */[
+                                                        print_tokens(tokens),
+                                                        /* :: */[
+                                                          Curry._3(Printf.sprintf(/* Format */[
                                                                     /* String_literal */Block.__(11, [
-                                                                        "]\n          ]\n        ",
-                                                                        /* End_of_format */0
-                                                                      ])
-                                                                  ])
-                                                              ])
-                                                          ])
-                                                      ])
-                                                  ])
-                                              ]),
-                                            "\n          $$ = /* record */[\n            /* SortAp */['%s', []],\n            /* Operator */(function(tag,x){x.tag=tag;return x;})(0, ['%s']),\n            '',\n            '',\n            /* array */[%s]\n          ]\n        "
-                                          ]), sort_name$1, match[/* term_pattern */1][0], $$String.concat(", ", List.mapi((function (i, tok) {
-                                                  return Curry._2(Printf.sprintf(/* Format */[
-                                                                  /* String_literal */Block.__(11, [
-                                                                      "(function(tag,x){x.tag=tag;return x;})(",
-                                                                      /* Int */Block.__(4, [
-                                                                          /* Int_i */3,
-                                                                          /* No_padding */0,
-                                                                          /* No_precision */0,
-                                                                          /* String_literal */Block.__(11, [
-                                                                              ", [$",
-                                                                              /* Int */Block.__(4, [
-                                                                                  /* Int_i */3,
-                                                                                  /* No_padding */0,
-                                                                                  /* No_precision */0,
-                                                                                  /* String_literal */Block.__(11, [
-                                                                                      "])",
-                                                                                      /* End_of_format */0
-                                                                                    ])
-                                                                                ])
-                                                                            ])
-                                                                        ])
-                                                                    ]),
-                                                                  "(function(tag,x){x.tag=tag;return x;})(%i, [$%i])"
-                                                                ]), nonterminal_tok_num(tok), i + 1 | 0);
-                                                }), tokens)))
-                                ];
+                                                                        "\n          $$ = /* record */[\n            /* SortAp */['",
+                                                                        /* String */Block.__(2, [
+                                                                            /* No_padding */0,
+                                                                            /* String_literal */Block.__(11, [
+                                                                                "', []],\n            /* Operator */(function(tag,x){x.tag=tag;return x;})(0, ['",
+                                                                                /* String */Block.__(2, [
+                                                                                    /* No_padding */0,
+                                                                                    /* String_literal */Block.__(11, [
+                                                                                        "']),\n            '',\n            '',\n            /* array */[",
+                                                                                        /* String */Block.__(2, [
+                                                                                            /* No_padding */0,
+                                                                                            /* String_literal */Block.__(11, [
+                                                                                                "]\n          ]\n        ",
+                                                                                                /* End_of_format */0
+                                                                                              ])
+                                                                                          ])
+                                                                                      ])
+                                                                                  ])
+                                                                              ])
+                                                                          ])
+                                                                      ]),
+                                                                    "\n          $$ = /* record */[\n            /* SortAp */['%s', []],\n            /* Operator */(function(tag,x){x.tag=tag;return x;})(0, ['%s']),\n            '',\n            '',\n            /* array */[%s]\n          ]\n        "
+                                                                  ]), sort_name$2, match[/* term_pattern */1][0], $$String.concat(", ", List.mapi((function (i, tok) {
+                                                                          return Curry._2(Printf.sprintf(/* Format */[
+                                                                                          /* String_literal */Block.__(11, [
+                                                                                              "(function(tag,x){x.tag=tag;return x;})(",
+                                                                                              /* Int */Block.__(4, [
+                                                                                                  /* Int_i */3,
+                                                                                                  /* No_padding */0,
+                                                                                                  /* No_precision */0,
+                                                                                                  /* String_literal */Block.__(11, [
+                                                                                                      ", [$",
+                                                                                                      /* Int */Block.__(4, [
+                                                                                                          /* Int_i */3,
+                                                                                                          /* No_padding */0,
+                                                                                                          /* No_precision */0,
+                                                                                                          /* String_literal */Block.__(11, [
+                                                                                                              "])",
+                                                                                                              /* End_of_format */0
+                                                                                                            ])
+                                                                                                        ])
+                                                                                                    ])
+                                                                                                ])
+                                                                                            ]),
+                                                                                          "(function(tag,x){x.tag=tag;return x;})(%i, [$%i])"
+                                                                                        ]), nonterminal_tok_num(tok), i + 1 | 0);
+                                                                        }), tokens))),
+                                                          /* [] */0
+                                                        ]
+                                                      ];
+                                              }))));
                         }), match[/* operator_rules */1])
                 ])
           ];

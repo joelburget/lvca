@@ -82,45 +82,18 @@ Jest.describe("ConcreteSyntaxParser", (function (param) {
                       /* [] */0
                     ]
                   ]
-                ]
+                ],
+                /* fixity : Nofix */2
               ]]);
-        return expectParse(ConcreteSyntaxParser.sort_rule__test, "\n       arith :=\n         | arith ADD arith { add($1; $3) }\n         | arith SUB arith { sub($1; $3) }\n         | NAME            { var($1)     }\n    ", /* SortRule */[/* record */[
+        return expectParse(ConcreteSyntaxParser.sort_rule__test, "\n       arith :=\n         | arith ADD arith { add($1; $3) } %left\n         | arith SUB arith { sub($1; $3) } %left\n         > NAME            { var($1)     }\n    ", /* SortRule */[/* record */[
                       /* sort_name */"arith",
                       /* operator_rules : :: */[
-                        /* OperatorMatch */[/* record */[
-                            /* tokens : :: */[
-                              /* NonterminalName */Block.__(1, ["arith"]),
-                              /* :: */[
-                                /* TerminalName */Block.__(0, ["ADD"]),
-                                /* :: */[
-                                  /* NonterminalName */Block.__(1, ["arith"]),
-                                  /* [] */0
-                                ]
-                              ]
-                            ],
-                            /* term_pattern : tuple */[
-                              "add",
-                              /* :: */[
-                                /* NumberedScopePattern */[
-                                  /* [] */0,
-                                  1
-                                ],
-                                /* :: */[
-                                  /* NumberedScopePattern */[
-                                    /* [] */0,
-                                    3
-                                  ],
-                                  /* [] */0
-                                ]
-                              ]
-                            ]
-                          ]],
                         /* :: */[
                           /* OperatorMatch */[/* record */[
                               /* tokens : :: */[
                                 /* NonterminalName */Block.__(1, ["arith"]),
                                 /* :: */[
-                                  /* TerminalName */Block.__(0, ["SUB"]),
+                                  /* TerminalName */Block.__(0, ["ADD"]),
                                   /* :: */[
                                     /* NonterminalName */Block.__(1, ["arith"]),
                                     /* [] */0
@@ -128,7 +101,7 @@ Jest.describe("ConcreteSyntaxParser", (function (param) {
                                 ]
                               ],
                               /* term_pattern : tuple */[
-                                "sub",
+                                "add",
                                 /* :: */[
                                   /* NumberedScopePattern */[
                                     /* [] */0,
@@ -142,10 +115,43 @@ Jest.describe("ConcreteSyntaxParser", (function (param) {
                                     /* [] */0
                                   ]
                                 ]
-                              ]
+                              ],
+                              /* fixity : Infixl */0
                             ]],
-                          /* [] */0
-                        ]
+                          /* :: */[
+                            /* OperatorMatch */[/* record */[
+                                /* tokens : :: */[
+                                  /* NonterminalName */Block.__(1, ["arith"]),
+                                  /* :: */[
+                                    /* TerminalName */Block.__(0, ["SUB"]),
+                                    /* :: */[
+                                      /* NonterminalName */Block.__(1, ["arith"]),
+                                      /* [] */0
+                                    ]
+                                  ]
+                                ],
+                                /* term_pattern : tuple */[
+                                  "sub",
+                                  /* :: */[
+                                    /* NumberedScopePattern */[
+                                      /* [] */0,
+                                      1
+                                    ],
+                                    /* :: */[
+                                      /* NumberedScopePattern */[
+                                        /* [] */0,
+                                        3
+                                      ],
+                                      /* [] */0
+                                    ]
+                                  ]
+                                ],
+                                /* fixity : Infixl */0
+                              ]],
+                            /* [] */0
+                          ]
+                        ],
+                        /* [] */0
                       ],
                       /* variable *//* record */[
                         /* tokens : :: */[

@@ -53,13 +53,14 @@ and equivalent' child1 child2 = match child1, child2 with
   | _, _ -> false
 
 let find_operator_match
-  (matches: operator_match list)
+  (matches: operator_match list list)
   (opname : string)
   : operator_match
-  = let maybeMatch = find
-    (fun (OperatorMatch { term_pattern = (opname', _) }) -> opname' = opname)
-    matches in
-    match maybeMatch with
+  = let maybe_match = find
+      (fun (OperatorMatch { term_pattern = (opname', _) }) -> opname' = opname)
+      (Belt.List.flatten matches)
+    in
+    match maybe_match with
       | Some m -> m
       | None -> failwith "TODO: default match"
 
@@ -324,8 +325,8 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
     let mk_operator_rule
       sort_name
       (OperatorMatch { tokens; term_pattern = operator_name, _ })
-      : string array =
-      [| print_tokens tokens;
+      : string list =
+      [ print_tokens tokens;
         Printf.sprintf
         {|
           $$ = /* record */[
@@ -346,13 +347,20 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
           )
           |> String.concat ", "
         )
-      |]
+      ]
+    in
+
+    let mk_precedence_level_rule sort_name matches = Belt.List.(matches
+        |. map (mk_operator_rule sort_name)
+        |. flatten
+        |. toArray
+      )
     in
 
     let mk_sort_rule = fun (sort_name, SortRule { operator_rules; variable }) ->
       (sort_name, Belt.List.toArray
         (mk_variable sort_name variable ::
-          List.map (mk_operator_rule sort_name) operator_rules
+          List.map (mk_precedence_level_rule sort_name) operator_rules
         )
       )
     in

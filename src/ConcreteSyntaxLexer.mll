@@ -32,6 +32,11 @@ rule read = parse
   | '+'            { PLUS }
   | '?'            { QUESTION }
   | ';'            { SEMICOLON }
+  | '_'            { UNDERSCORE }
+  | '_'            { UNDERSCORE }
+  | '>'            { GREATER }
+  | "%left"        { LEFT_FIXITY }
+  | "%right"       { RIGHT_FIXITY }
   | eof            { EOF }
   | _ { error lexbuf ("Unexpected char: " ^ L.lexeme lexbuf) }
 
