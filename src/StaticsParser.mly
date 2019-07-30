@@ -39,8 +39,8 @@ scope:
 
 term_top: term EOF { $1 }
 
-inference_rule: term RIGHT_D_ARR term { InferenceRule ($1, $3) }
-checking_rule:  term LEFT_D_ARR  term { CheckingRule  ($1, $3) }
+inference_rule: term RIGHT_D_ARR term { {tm = $1; ty = $3} }
+checking_rule:  term LEFT_D_ARR  term { {tm = $1; ty = $3} }
 
 typing_clause:
   | inference_rule { InferenceRule $1 }

@@ -171,8 +171,12 @@ module Statics = struct
     | Sequence  of term list
     | Primitive of primitive
 
-  type inference_rule = InferenceRule of term * term
-  type checking_rule  = CheckingRule  of term * term
+  type inference_rule = {
+    tm : term;
+    ty : term;
+  }
+
+  type checking_rule = inference_rule
 
   type typing_clause =
     | InferenceRule of inference_rule

@@ -52,9 +52,9 @@ var semantic_action = /* array */[
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
       var match = _menhir_stack[/* next */4][/* next */4];
-      var _v_000 = match[/* semv */1];
-      var _v_001 = _menhir_stack[/* semv */1];
-      var _v = /* CheckingRule */[
+      var _v_000 = /* tm */match[/* semv */1];
+      var _v_001 = /* ty */_menhir_stack[/* semv */1];
+      var _v = /* record */[
         _v_000,
         _v_001
       ];
@@ -85,9 +85,9 @@ var semantic_action = /* array */[
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
       var match = _menhir_stack[/* next */4][/* next */4];
-      var _v_000 = match[/* semv */1];
-      var _v_001 = _menhir_stack[/* semv */1];
-      var _v = /* InferenceRule */[
+      var _v_000 = /* tm */match[/* semv */1];
+      var _v_001 = /* ty */_menhir_stack[/* semv */1];
+      var _v = /* record */[
         _v_000,
         _v_001
       ];
