@@ -171,14 +171,14 @@ module Statics = struct
     | Sequence  of term list
     | Primitive of primitive
 
-  type inferenceRule = InferenceRule of term * term
-  type checkingRule  = CheckingRule  of term * term
+  type inference_rule = InferenceRule of term * term
+  type checking_rule  = CheckingRule  of term * term
 
-  type typingClause =
-    | InferenceRule of inferenceRule
-    | CheckingRule  of checkingRule
+  type typing_clause =
+    | InferenceRule of inference_rule
+    | CheckingRule  of checking_rule
 
-  type hypothesis = term M.t * typingClause
+  type hypothesis = term M.t * typing_clause
 
   (* TODO: the conclusion type differs from LVCA *)
   type rule = Rule of hypothesis list * string option * hypothesis
