@@ -90,6 +90,11 @@ let rec sequence_list_option
     (fun rest' -> a :: rest')
   | None :: _ -> None
 
+let rec keep_some (lst : 'a option list) : 'a list = match lst with
+  | []             -> []
+  | Some a :: rest -> a :: keep_some rest
+  | None   :: rest -> keep_some rest
+
 let union m1 m2 =
   Belt.Map.String.merge
     m1
@@ -126,3 +131,11 @@ let id a = a
 
 let list_flat_map : ('a -> 'b list) -> 'a list -> 'b list
   = fun f lst -> List.(map lst f |> flatten)
+
+let is_none = function
+  | None   -> true
+  | Some _ -> false
+
+let is_some = function
+  | None   -> false
+  | Some _ -> true

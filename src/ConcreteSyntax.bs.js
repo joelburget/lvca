@@ -19,6 +19,7 @@ var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
+var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
 var AA = Util.ArrayApplicative(/* module */[]);
@@ -49,51 +50,18 @@ function equivalent$prime(child1, child2) {
 
 function find_operator_match(matches, opname) {
   var maybe_match = Util.find((function (param) {
-          return param[0][/* term_pattern */1][0] === opname;
+          var term_pattern = param[0][/* term_pattern */1];
+          if (term_pattern.tag) {
+            return false;
+          } else {
+            return term_pattern[0] === opname;
+          }
         }), Belt_List.flatten(matches));
   if (maybe_match !== undefined) {
     return maybe_match;
   } else {
     return Pervasives.failwith("TODO: default match");
   }
-}
-
-function find_subtm(param, param$1, param$2) {
-  var _slot_num = 0;
-  var token_ix = param;
-  var _scopes = param$1;
-  var _term_pattern = param$2;
-  while(true) {
-    var term_pattern = _term_pattern;
-    var scopes = _scopes;
-    var slot_num = _slot_num;
-    if (term_pattern) {
-      if (scopes) {
-        var match = term_pattern[0];
-        var match$1 = scopes[0];
-        var match$2 = Util.find((function (param) {
-                return param[1] === token_ix;
-              }), Belt_List.zip(match$1[0], match[0]));
-        if (match$2 !== undefined) {
-          return /* FoundBinder */Block.__(1, [match$2[0]]);
-        } else if (token_ix === match[1]) {
-          return /* FoundTerm */Block.__(0, [
-                    slot_num,
-                    match$1[1]
-                  ]);
-        } else {
-          _term_pattern = term_pattern[1];
-          _scopes = scopes[1];
-          _slot_num = slot_num + 1 | 0;
-          continue ;
-        }
-      } else {
-        return Pervasives.failwith("invariant violation: mismatched scopes / term patterns");
-      }
-    } else {
-      return /* NotFound */0;
-    }
-  };
 }
 
 var BadSortTerm = Caml_exceptions.create("ConcreteSyntax.BadSortTerm");
@@ -117,7 +85,7 @@ function regex_is_literal(param) {
 function regex_piece_to_string(param) {
   switch (param.tag | 0) {
     case 0 : 
-        return param[0].replace((/\+/g), "\\+").replace((/\*/g), "\\*").replace((/\?/g), "\\?").replace((/\-/g), "\\-");
+        return param[0].replace((/\+/g), "\\+").replace((/\*/g), "\\*").replace((/\?/g), "\\?").replace((/\-/g), "\\-").replace((/\(/g), "\\(").replace((/\)/g), "\\)");
     case 1 : 
         return "[" + (param[0] + "]");
     case 2 : 
@@ -157,32 +125,106 @@ function of_ast(lang, rules, current_sort, tm) {
         var match = Belt_MapString.getExn(rules[/* sort_rules */1], sort_name);
         var match$1 = find_operator_match(match[0][/* operator_rules */1], op_name);
         var match$2 = match$1[0];
-        var numbered_scope_patterns = match$2[/* term_pattern */1][1];
-        var children = Belt_Array.mapWithIndex(Belt_List.toArray(match$2[/* tokens */0]), (function (token_ix, token) {
-                var token_ix$prime = token_ix + 1 | 0;
-                var match = find_subtm(token_ix$prime, scopes, numbered_scope_patterns);
+        var term_pattern = match$2[/* term_pattern */1];
+        var find_subtm$prime = function (ix) {
+          if (term_pattern.tag) {
+            return /* FoundCapture */1;
+          } else {
+            var param = ix;
+            var param$1 = scopes;
+            var param$2 = term_pattern[1];
+            var _slot_num = 0;
+            var token_ix = param;
+            var _scopes = param$1;
+            var _term_pattern = param$2;
+            while(true) {
+              var term_pattern$1 = _term_pattern;
+              var scopes$1 = _scopes;
+              var slot_num = _slot_num;
+              if (term_pattern$1) {
+                if (scopes$1) {
+                  var match = term_pattern$1[0];
+                  var match$1 = scopes$1[0];
+                  var binder_matches = Util.find((function (param) {
+                          return param[1] === token_ix;
+                        }), Belt_List.zip(match$1[0], match[0]));
+                  if (binder_matches !== undefined) {
+                    return /* FoundBinder */Block.__(1, [binder_matches[0]]);
+                  } else if (token_ix === match[1]) {
+                    return /* FoundTerm */Block.__(0, [
+                              slot_num,
+                              match$1[1]
+                            ]);
+                  } else {
+                    _term_pattern = term_pattern$1[1];
+                    _scopes = scopes$1[1];
+                    _slot_num = slot_num + 1 | 0;
+                    continue ;
+                  }
+                } else {
+                  return Pervasives.failwith("invariant violation: mismatched scopes / term patterns");
+                }
+              } else {
+                return /* NotFound */0;
+              }
+            };
+          }
+        };
+        var children = Belt_Array.map(Belt_List.toArray(Belt_List.keep(Belt_List.mapWithIndex(match$2[/* tokens */0], (function (token_ix, token) {
+                            return /* tuple */[
+                                    token_ix,
+                                    token
+                                  ];
+                          })), (function (param) {
+                        if (typeof param[1] === "number") {
+                          return false;
+                        } else {
+                          return true;
+                        }
+                      }))), (function (param) {
+                var token = param[1];
+                var token_ix$prime = param[0] + 1 | 0;
+                var match = find_subtm$prime(token_ix$prime);
                 var exit = 0;
                 if (typeof match === "number") {
-                  if (typeof token === "number") {
+                  if (match === 0) {
+                    if (typeof token === "number") {
+                      exit = 1;
+                    } else if (token.tag) {
+                      throw [
+                            BadRules,
+                            "subterm not found, nonterminal name: " + token[0]
+                          ];
+                    } else {
+                      var name = token[0];
+                      var terminal_rule = Belt_MapString.getExn(terminal_rules, name);
+                      var match$1 = regex_is_literal(terminal_rule);
+                      if (match$1 !== undefined) {
+                        return /* Left */Block.__(0, [match$1]);
+                      } else {
+                        throw [
+                              CantEmitTokenRegex,
+                              name,
+                              terminal_rule
+                            ];
+                      }
+                    }
+                  } else if (typeof token === "number") {
                     exit = 1;
                   } else if (token.tag) {
                     throw [
-                          BadRules,
-                          "subterm not found, nonterminal name: " + token[0]
+                          Caml_builtin_exceptions.assert_failure,
+                          /* tuple */[
+                            "ConcreteSyntax.ml",
+                            184,
+                            11
+                          ]
                         ];
                   } else {
-                    var name = token[0];
-                    var terminal_rule = Belt_MapString.getExn(terminal_rules, name);
-                    var match$1 = regex_is_literal(terminal_rule);
-                    if (match$1 !== undefined) {
-                      return /* Left */Block.__(0, [match$1]);
-                    } else {
-                      throw [
-                            CantEmitTokenRegex,
-                            name,
-                            terminal_rule
-                          ];
-                    }
+                    throw [
+                          BadRules,
+                          "capture found, terminal name: " + token[0]
+                        ];
                   }
                 } else if (match.tag) {
                   var binder_name = match[0];
@@ -213,26 +255,24 @@ function of_ast(lang, rules, current_sort, tm) {
                             Caml_builtin_exceptions.assert_failure,
                             /* tuple */[
                               "ConcreteSyntax.ml",
-                              153,
+                              197,
                               23
                             ]
                           ];
                     }
                     var valence = Belt_List.getExn(valences, match[0]);
-                    var subtree = of_ast(lang, rules, valence[1], subtm);
-                    return /* Right */Block.__(1, [subtree]);
+                    return /* Right */Block.__(1, [of_ast(lang, rules, valence[1], subtm)]);
                   } else {
-                    var subtree$1 = of_ast(lang, rules, current_sort, subtm);
-                    return /* Right */Block.__(1, [subtree$1]);
+                    return /* Right */Block.__(1, [of_ast(lang, rules, current_sort, subtm)]);
                   }
                 }
                 if (exit === 1) {
                   throw [
-                        Caml_builtin_exceptions.match_failure,
+                        Caml_builtin_exceptions.assert_failure,
                         /* tuple */[
                           "ConcreteSyntax.ml",
-                          143,
-                          6
+                          231,
+                          27
                         ]
                       ];
                 }
@@ -412,11 +452,11 @@ function to_ast(lang, param) {
   }
   if (exit === 1) {
     throw [
-          Caml_builtin_exceptions.match_failure,
+          Caml_builtin_exceptions.assert_failure,
           /* tuple */[
             "ConcreteSyntax.ml",
-            224,
-            4
+            301,
+            7
           ]
         ];
   }
@@ -455,6 +495,276 @@ function scope_to_ast(lang, tree) {
   }
 }
 
+var NonMatchingFixities = Caml_exceptions.create("ConcreteSyntax.NonMatchingFixities");
+
+function print_tokens(toks) {
+  return $$String.concat(" ", Util.keep_some(List.map(Types.ConcreteSyntaxDescription[/* token_name */1], toks)));
+}
+
+function mk_variable(sort_name, param) {
+  return /* tuple */[
+          print_tokens(param[/* tokens */0]),
+          Curry._2(Printf.sprintf(/* Format */[
+                    /* String_literal */Block.__(11, [
+                        "\n           $$ = /* record */[\n             /* SortAp */['",
+                        /* String */Block.__(2, [
+                            /* No_padding */0,
+                            /* String_literal */Block.__(11, [
+                                "',[]],\n             /* Var */0,\n             '',\n             '',\n             /* array */[(function(tag,x){x.tag=tag;return x;})(/* TerminalName */0, [$",
+                                /* Int */Block.__(4, [
+                                    /* Int_i */3,
+                                    /* No_padding */0,
+                                    /* No_precision */0,
+                                    /* String_literal */Block.__(11, [
+                                        "])]\n           ]\n         ",
+                                        /* End_of_format */0
+                                      ])
+                                  ])
+                              ])
+                          ])
+                      ]),
+                    "\n           $$ = /* record */[\n             /* SortAp */['%s',[]],\n             /* Var */0,\n             '',\n             '',\n             /* array */[(function(tag,x){x.tag=tag;return x;})(/* TerminalName */0, [$%i])]\n           ]\n         "
+                  ]), sort_name, param[/* var_capture */1])
+        ];
+}
+
+function nonterminal_tok_num(param) {
+  if (typeof param === "number") {
+    throw [
+          Caml_builtin_exceptions.assert_failure,
+          /* tuple */[
+            "ConcreteSyntax.ml",
+            355,
+            27
+          ]
+        ];
+  } else if (param.tag) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+function mk_sort_rule(param) {
+  var match = param[1][0];
+  var variable = match[/* variable */2];
+  var sort_name = param[0];
+  var match$1 = Belt_List.unzip(Belt_List.map(match[/* operator_rules */1], (function (param) {
+              var sort_name$1 = sort_name;
+              var matches = param;
+              var match = Belt_List.unzip(Belt_List.map(matches, (function (param) {
+                          var sort_name$2 = sort_name$1;
+                          var param$1 = param;
+                          var match = param$1[0];
+                          var fixity = match[/* fixity */2];
+                          var term_pattern = match[/* term_pattern */1];
+                          var tokens = match[/* tokens */0];
+                          if (term_pattern.tag) {
+                            return /* tuple */[
+                                    /* tuple */[
+                                      fixity,
+                                      undefined
+                                    ],
+                                    /* tuple */[
+                                      print_tokens(tokens),
+                                      Curry._1(Printf.sprintf(/* Format */[
+                                                /* String_literal */Block.__(11, [
+                                                    "$$ = $",
+                                                    /* Int */Block.__(4, [
+                                                        /* Int_i */3,
+                                                        /* No_padding */0,
+                                                        /* No_precision */0,
+                                                        /* End_of_format */0
+                                                      ])
+                                                  ]),
+                                                "$$ = $%i"
+                                              ]), term_pattern[0])
+                                    ]
+                                  ];
+                          } else {
+                            var tmp;
+                            if (tokens) {
+                              var tmp$1 = tokens[0];
+                              if (typeof tmp$1 === "number" || !tmp$1.tag) {
+                                tmp = undefined;
+                              } else {
+                                var match$1 = tokens[1];
+                                if (match$1) {
+                                  var match$2 = match$1[0];
+                                  if (typeof match$2 === "number") {
+                                    var match$3 = match$1[1];
+                                    if (match$3) {
+                                      var match$4 = match$3[0];
+                                      if (typeof match$4 === "number" || match$4.tag) {
+                                        tmp = undefined;
+                                      } else {
+                                        var match$5 = match$3[1];
+                                        if (match$5) {
+                                          var name = match$4[0];
+                                          var tmp$2 = match$5[0];
+                                          if (typeof tmp$2 === "number") {
+                                            var match$6 = match$5[1];
+                                            if (match$6) {
+                                              var tmp$3 = match$6[0];
+                                              tmp = typeof tmp$3 === "number" || !(tmp$3.tag && !match$6[1]) ? undefined : name;
+                                            } else {
+                                              tmp = undefined;
+                                            }
+                                          } else {
+                                            tmp = tmp$2.tag && !match$5[1] ? name : undefined;
+                                          }
+                                        } else {
+                                          tmp = undefined;
+                                        }
+                                      }
+                                    } else {
+                                      tmp = undefined;
+                                    }
+                                  } else if (match$2.tag) {
+                                    tmp = undefined;
+                                  } else {
+                                    var match$7 = match$1[1];
+                                    if (match$7) {
+                                      var name$1 = match$2[0];
+                                      var tmp$4 = match$7[0];
+                                      if (typeof tmp$4 === "number") {
+                                        var match$8 = match$7[1];
+                                        if (match$8) {
+                                          var tmp$5 = match$8[0];
+                                          tmp = typeof tmp$5 === "number" || !(tmp$5.tag && !match$8[1]) ? undefined : name$1;
+                                        } else {
+                                          tmp = undefined;
+                                        }
+                                      } else {
+                                        tmp = tmp$4.tag && !match$7[1] ? name$1 : undefined;
+                                      }
+                                    } else {
+                                      tmp = undefined;
+                                    }
+                                  }
+                                } else {
+                                  tmp = undefined;
+                                }
+                              }
+                            } else {
+                              tmp = undefined;
+                            }
+                            return /* tuple */[
+                                    /* tuple */[
+                                      fixity,
+                                      tmp
+                                    ],
+                                    /* tuple */[
+                                      print_tokens(tokens),
+                                      Curry._3(Printf.sprintf(/* Format */[
+                                                /* String_literal */Block.__(11, [
+                                                    "\n          $$ = /* record */[\n            /* SortAp */['",
+                                                    /* String */Block.__(2, [
+                                                        /* No_padding */0,
+                                                        /* String_literal */Block.__(11, [
+                                                            "', []],\n            /* Operator */(function(tag,x){x.tag=tag;return x;})(0, ['",
+                                                            /* String */Block.__(2, [
+                                                                /* No_padding */0,
+                                                                /* String_literal */Block.__(11, [
+                                                                    "']),\n            '',\n            '',\n            /* array */[",
+                                                                    /* String */Block.__(2, [
+                                                                        /* No_padding */0,
+                                                                        /* String_literal */Block.__(11, [
+                                                                            "]\n          ]\n        ",
+                                                                            /* End_of_format */0
+                                                                          ])
+                                                                      ])
+                                                                  ])
+                                                              ])
+                                                          ])
+                                                      ])
+                                                  ]),
+                                                "\n          $$ = /* record */[\n            /* SortAp */['%s', []],\n            /* Operator */(function(tag,x){x.tag=tag;return x;})(0, ['%s']),\n            '',\n            '',\n            /* array */[%s]\n          ]\n        "
+                                              ]), sort_name$2, term_pattern[0], $$String.concat(", ", List.mapi((function (i, tok) {
+                                                      return Curry._2(Printf.sprintf(/* Format */[
+                                                                      /* String_literal */Block.__(11, [
+                                                                          "(function(tag,x){x.tag=tag;return x;})(",
+                                                                          /* Int */Block.__(4, [
+                                                                              /* Int_i */3,
+                                                                              /* No_padding */0,
+                                                                              /* No_precision */0,
+                                                                              /* String_literal */Block.__(11, [
+                                                                                  ", [$",
+                                                                                  /* Int */Block.__(4, [
+                                                                                      /* Int_i */3,
+                                                                                      /* No_padding */0,
+                                                                                      /* No_precision */0,
+                                                                                      /* String_literal */Block.__(11, [
+                                                                                          "])",
+                                                                                          /* End_of_format */0
+                                                                                        ])
+                                                                                    ])
+                                                                                ])
+                                                                            ])
+                                                                        ]),
+                                                                      "(function(tag,x){x.tag=tag;return x;})(%i, [$%i])"
+                                                                    ]), nonterminal_tok_num(tok), i + 1 | 0);
+                                                    }), List.filter((function (param) {
+                                                            if (typeof param === "number") {
+                                                              return false;
+                                                            } else {
+                                                              return true;
+                                                            }
+                                                          }))(tokens))))
+                                    ]
+                                  ];
+                          }
+                        })));
+              var rules = match[1];
+              var match$1 = Belt_List.unzip(match[0]);
+              var fixity_token_names = match$1[1];
+              var fixities = match$1[0];
+              var fixity = Belt_List.headExn(fixities);
+              var match$2 = Belt_List.every(fixity_token_names, Util.is_none);
+              var match$3 = Belt_List.every(fixity_token_names, Util.is_some);
+              if (match$2) {
+                if (match$3) {
+                  return Pervasives.failwith("TODO throw error");
+                } else {
+                  return /* tuple */[
+                          undefined,
+                          Belt_List.toArray(rules)
+                        ];
+                }
+              } else if (match$3) {
+                var fixity_token_names$1 = Util.keep_some(fixity_token_names);
+                if (!Belt_List.every(fixities, (function (fixity$prime) {
+                          return fixity$prime === fixity;
+                        }))) {
+                  throw [
+                        NonMatchingFixities,
+                        /* tuple */[
+                          sort_name$1,
+                          fixity_token_names$1
+                        ]
+                      ];
+                }
+                return /* tuple */[
+                        /* tuple */[
+                          fixity,
+                          fixity_token_names$1
+                        ],
+                        Belt_List.toArray(rules)
+                      ];
+              } else {
+                return Pervasives.failwith("TODO throw error");
+              }
+            })));
+  var prec_level_rules = Belt_Array.concatMany(Belt_List.toArray(match$1[1]));
+  return /* tuple */[
+          Util.keep_some(match$1[0]),
+          /* tuple */[
+            sort_name,
+            variable !== undefined ? Belt_Array.concat(/* array */[mk_variable(sort_name, variable)], prec_level_rules) : prec_level_rules
+          ]
+        ];
+}
+
 function to_grammar(param) {
   var rules = Belt_List.toArray(Belt_List.add(Belt_List.add(Belt_List.map(Belt_MapString.toList(param[/* terminal_rules */0]), (function (param) {
                       return /* tuple */[
@@ -471,142 +781,16 @@ function to_grammar(param) {
   var lex = {
     rules: rules
   };
-  var nonterminal_tok_num = function (param) {
-    if (typeof param === "number") {
-      throw [
-            Caml_builtin_exceptions.match_failure,
-            /* tuple */[
-              "ConcreteSyntax.ml",
-              287,
-              30
-            ]
-          ];
-    } else if (param.tag) {
-      return 1;
-    } else {
-      return 0;
-    }
-  };
-  var print_tokens = function (toks) {
-    return $$String.concat(" ", List.map(Types.ConcreteSyntaxDescription[/* token_name */1], toks));
-  };
-  var mk_variable = function (sort_name, param) {
-    if (param !== undefined) {
-      var match = param;
-      return /* array */[
-              print_tokens(match[/* tokens */0]),
-              Curry._2(Printf.sprintf(/* Format */[
-                        /* String_literal */Block.__(11, [
-                            "\n          $$ = /* record */[\n            /* SortAp */['",
-                            /* String */Block.__(2, [
-                                /* No_padding */0,
-                                /* String_literal */Block.__(11, [
-                                    "',[]],\n            /* Var */0,\n            '',\n            '',\n            /* array */[(function(tag,x){x.tag=tag;return x;})(/* TerminalName */0, [$",
-                                    /* Int */Block.__(4, [
-                                        /* Int_i */3,
-                                        /* No_padding */0,
-                                        /* No_precision */0,
-                                        /* String_literal */Block.__(11, [
-                                            "])]\n          ]\n        ",
-                                            /* End_of_format */0
-                                          ])
-                                      ])
-                                  ])
-                              ])
-                          ]),
-                        "\n          $$ = /* record */[\n            /* SortAp */['%s',[]],\n            /* Var */0,\n            '',\n            '',\n            /* array */[(function(tag,x){x.tag=tag;return x;})(/* TerminalName */0, [$%i])]\n          ]\n        "
-                      ]), sort_name, match[/* var_capture */1])
-            ];
-    } else {
-      return /* array */[];
-    }
-  };
-  var mk_sort_rule = function (param) {
-    var match = param[1][0];
-    var sort_name = param[0];
-    return /* tuple */[
-            sort_name,
-            Belt_List.toArray(/* :: */[
-                  mk_variable(sort_name, match[/* variable */2]),
-                  List.map((function (param) {
-                          var sort_name$1 = sort_name;
-                          var matches = param;
-                          return Belt_List.toArray(Belt_List.flatten(Belt_List.map(matches, (function (param) {
-                                                var sort_name$2 = sort_name$1;
-                                                var param$1 = param;
-                                                var match = param$1[0];
-                                                var tokens = match[/* tokens */0];
-                                                return /* :: */[
-                                                        print_tokens(tokens),
-                                                        /* :: */[
-                                                          Curry._3(Printf.sprintf(/* Format */[
-                                                                    /* String_literal */Block.__(11, [
-                                                                        "\n          $$ = /* record */[\n            /* SortAp */['",
-                                                                        /* String */Block.__(2, [
-                                                                            /* No_padding */0,
-                                                                            /* String_literal */Block.__(11, [
-                                                                                "', []],\n            /* Operator */(function(tag,x){x.tag=tag;return x;})(0, ['",
-                                                                                /* String */Block.__(2, [
-                                                                                    /* No_padding */0,
-                                                                                    /* String_literal */Block.__(11, [
-                                                                                        "']),\n            '',\n            '',\n            /* array */[",
-                                                                                        /* String */Block.__(2, [
-                                                                                            /* No_padding */0,
-                                                                                            /* String_literal */Block.__(11, [
-                                                                                                "]\n          ]\n        ",
-                                                                                                /* End_of_format */0
-                                                                                              ])
-                                                                                          ])
-                                                                                      ])
-                                                                                  ])
-                                                                              ])
-                                                                          ])
-                                                                      ]),
-                                                                    "\n          $$ = /* record */[\n            /* SortAp */['%s', []],\n            /* Operator */(function(tag,x){x.tag=tag;return x;})(0, ['%s']),\n            '',\n            '',\n            /* array */[%s]\n          ]\n        "
-                                                                  ]), sort_name$2, match[/* term_pattern */1][0], $$String.concat(", ", List.mapi((function (i, tok) {
-                                                                          return Curry._2(Printf.sprintf(/* Format */[
-                                                                                          /* String_literal */Block.__(11, [
-                                                                                              "(function(tag,x){x.tag=tag;return x;})(",
-                                                                                              /* Int */Block.__(4, [
-                                                                                                  /* Int_i */3,
-                                                                                                  /* No_padding */0,
-                                                                                                  /* No_precision */0,
-                                                                                                  /* String_literal */Block.__(11, [
-                                                                                                      ", [$",
-                                                                                                      /* Int */Block.__(4, [
-                                                                                                          /* Int_i */3,
-                                                                                                          /* No_padding */0,
-                                                                                                          /* No_precision */0,
-                                                                                                          /* String_literal */Block.__(11, [
-                                                                                                              "])",
-                                                                                                              /* End_of_format */0
-                                                                                                            ])
-                                                                                                        ])
-                                                                                                    ])
-                                                                                                ])
-                                                                                            ]),
-                                                                                          "(function(tag,x){x.tag=tag;return x;})(%i, [$%i])"
-                                                                                        ]), nonterminal_tok_num(tok), i + 1 | 0);
-                                                                        }), tokens))),
-                                                          /* [] */0
-                                                        ]
-                                                      ];
-                                              }))));
-                        }), match[/* operator_rules */1])
-                ])
-          ];
-  };
-  var operators = /* array */[/* array */[
-      "left",
-      "ADD",
-      "SUB"
-    ]];
-  var bnf = Js_dict.fromList(Belt_List.add(Belt_List.map(Belt_MapString.toList(param[/* sort_rules */1]), mk_sort_rule), /* tuple */[
+  var match = Belt_List.unzip(Belt_List.map(Belt_MapString.toList(param[/* sort_rules */1]), mk_sort_rule));
+  var bnf = Js_dict.fromList(Belt_List.add(match[1], /* tuple */[
             "start",
             (
         [["arith EOF", "/*console.log($1);*/ return $1"]]
       )
           ]));
+  var operators = Belt_Array.reverse(Belt_List.toArray(Belt_List.map(Belt_List.flatten(match[0]), (function (param) {
+                  return Belt_Array.concat(/* array */[Types.ConcreteSyntaxDescription[/* fixity_str */2](param[0])], Belt_List.toArray(param[1]));
+                }))));
   return {
           lex: lex,
           operators: operators,
@@ -619,9 +803,20 @@ function jison_parse(parser, str) {
 }
 
 function parse(desc, str) {
-  var grammar = to_grammar(desc);
-  var parser = Jison.to_parser(grammar);
-  return /* Ok */Block.__(0, [jison_parse(parser, str)]);
+  try {
+    var grammar = to_grammar(desc);
+    var parser = Jison.to_parser(grammar);
+    return /* Ok */Block.__(0, [jison_parse(parser, str)]);
+  }
+  catch (raw_exn){
+    var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
+    if (exn[0] === NonMatchingFixities) {
+      var match = exn[1];
+      return /* Error */Block.__(1, ["In sort " + (match[0] + (": all fixities in a precedence level must be the same fixity (this is a limitation of Bison-style parsers (Jison in particular). The operators identified by [" + ($$String.concat(", ", match[1]) + "] must all share the same fixity.")))]);
+    } else {
+      throw exn;
+    }
+  }
 }
 
 exports.equivalent = equivalent;

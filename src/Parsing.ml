@@ -97,3 +97,14 @@ module Parseable_dynamics
     let parse = DynamicsParser.Incremental.dynamics
   end
 end
+
+module Parseable_concrete_syntax
+  : (Parseable with type t = Types.ConcreteSyntaxDescription.t) = struct
+  type t                   = Types.ConcreteSyntaxDescription.t
+  module MenhirInterpreter = ConcreteSyntaxParser.MenhirInterpreter
+  module ParseErrors       = ConcreteSyntaxParseErrors
+  module Lexer             = ConcreteSyntaxLexer
+  module Parser            = struct
+    let parse = ConcreteSyntaxParser.Incremental.language
+  end
+end

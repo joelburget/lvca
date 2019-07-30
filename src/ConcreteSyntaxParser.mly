@@ -42,7 +42,7 @@
 %type <Types.ConcreteSyntaxDescription.operator_match list list> operator_match_list
 %type <Types.ConcreteSyntaxDescription.sort_rule> sort_rule
 %type <Types.ConcreteSyntaxDescription.sort_rule> sort_rule__test
-%type <(string * Types.ConcreteSyntaxDescription.numbered_scope_pattern list)> term_pattern
+%type <Types.ConcreteSyntaxDescription.term_pattern> term_pattern
 %type <Types.ConcreteSyntaxDescription.t> language
 %%
 
@@ -91,8 +91,10 @@ operator_match:
 
 (* TODO: should this id allow uppercase? *)
 term_pattern:
+  | capture_number
+  { CapturePattern $1 }
   | NONTERMINAL_ID LEFT_PAREN separated_list(SEMICOLON, term_scope_pattern) RIGHT_PAREN
-  { ($1, $3) }
+  { TermPattern ($1, $3) }
 
 term_scope_pattern:
   | separated_nonempty_list(DOT, capture_number)

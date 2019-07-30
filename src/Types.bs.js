@@ -12,7 +12,6 @@ var Caml_module = require("bs-platform/lib/js/caml_module.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
-var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
 function prim_eq(p1, p2) {
   if (p1.tag) {
@@ -163,16 +162,21 @@ var Statics = /* module */[/* M */0];
 
 function token_name(param) {
   if (typeof param === "number") {
-    throw [
-          Caml_builtin_exceptions.match_failure,
-          /* tuple */[
-            "Types.ml",
-            215,
-            19
-          ]
-        ];
+    return undefined;
   } else {
     return param[0];
+  }
+}
+
+function fixity_str(param) {
+  switch (param) {
+    case 0 : 
+        return "left";
+    case 1 : 
+        return "right";
+    case 2 : 
+        return "nonassoc";
+    
   }
 }
 
@@ -188,7 +192,9 @@ function partition_nonterminal_matches(matches) {
                 if (match_) {
                   var match$1 = match_[0][0];
                   var match$2 = match$1[/* term_pattern */1];
-                  if (match$2[0] === "var") {
+                  if (match$2.tag || match$2[0] !== "var") {
+                    exit = 1;
+                  } else {
                     var match$3 = match$2[1];
                     if (match$3) {
                       var match$4 = match$3[0];
@@ -208,8 +214,6 @@ function partition_nonterminal_matches(matches) {
                     } else {
                       exit = 1;
                     }
-                  } else {
-                    exit = 1;
                   }
                 } else {
                   exit = 1;
@@ -250,6 +254,7 @@ function make(terminal_rules, sort_rules) {
 var ConcreteSyntaxDescription = /* module */[
   /* M */0,
   /* token_name */token_name,
+  /* fixity_str */fixity_str,
   /* DuplicateVarRules */DuplicateVarRules,
   /* partition_nonterminal_matches */partition_nonterminal_matches,
   /* make */make

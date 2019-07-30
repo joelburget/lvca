@@ -216,6 +216,26 @@ function sequence_list_option(lst) {
   }
 }
 
+function keep_some(_lst) {
+  while(true) {
+    var lst = _lst;
+    if (lst) {
+      var match = lst[0];
+      if (match !== undefined) {
+        return /* :: */[
+                Caml_option.valFromOption(match),
+                keep_some(lst[1])
+              ];
+      } else {
+        _lst = lst[1];
+        continue ;
+      }
+    } else {
+      return /* [] */0;
+    }
+  };
+}
+
 function union(m1, m2) {
   return Belt_MapString.merge(m1, m2, (function (_k, v1, v2) {
                 if (v2 !== undefined) {
@@ -284,6 +304,14 @@ function list_flat_map(f, lst) {
   return Belt_List.flatten(Belt_List.map(lst, f));
 }
 
+function is_none(param) {
+  return param === undefined;
+}
+
+function is_some(param) {
+  return param !== undefined;
+}
+
 exports.unsnoc = unsnoc;
 exports.intersperse = intersperse;
 exports.intersperse_after = intersperse_after;
@@ -292,6 +320,7 @@ exports.traverse_list_result = traverse_list_result;
 exports.sequence_list_result = sequence_list_result;
 exports.ArrayApplicative = ArrayApplicative;
 exports.sequence_list_option = sequence_list_option;
+exports.keep_some = keep_some;
 exports.union = union;
 exports.fold_right = fold_right;
 exports.map_error = map_error;
@@ -300,4 +329,6 @@ exports.find = find;
 exports.flip = flip;
 exports.id = id;
 exports.list_flat_map = list_flat_map;
+exports.is_none = is_none;
+exports.is_some = is_some;
 /* No side effect */

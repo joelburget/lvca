@@ -213,21 +213,31 @@ module ConcreteSyntaxDescription = struct
     | Underscore
 
   let token_name = function
-    | TerminalName    name -> name
-    | NonterminalName name -> name
+    | TerminalName    name -> Some name
+    | NonterminalName name -> Some name
+    | Underscore           -> None
 
   (* A term pattern with numbered holes for binder names and subterms *)
   type numbered_scope_pattern =
     NumberedScopePattern of capture_number list * capture_number
+
+  type term_pattern =
+    | TermPattern    of string * numbered_scope_pattern list
+    | CapturePattern of capture_number
 
   type fixity =
     | Infixl
     | Infixr
     | Nofix
 
+  let fixity_str = function
+    | Infixl -> "left"
+    | Infixr -> "right"
+    | Nofix  -> "nonassoc"
+
   type operator_match' =
     { tokens       : nonterminal_token list;
-      term_pattern : string * numbered_scope_pattern list;
+      term_pattern : term_pattern;
       fixity       : fixity
     }
   type operator_match = OperatorMatch of operator_match'
@@ -250,7 +260,7 @@ module ConcreteSyntaxDescription = struct
       (fun (match_, (matches, v_rule)) -> match match_ with
         | [ OperatorMatch
             { tokens;
-              term_pattern = ("var", [NumberedScopePattern ([], var_capture)]);
+              term_pattern = TermPattern ("var", [NumberedScopePattern ([], var_capture)]);
             }
           ]
         -> (match v_rule with

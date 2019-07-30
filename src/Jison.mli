@@ -9,7 +9,7 @@ type operators = string array array
 type grammar = {
   lex       : js_lex;
   operators : operators;
-  bnf       : string array array Js.Dict.t;
+  bnf       : (string * string) array Js.Dict.t;
 } [@@bs.deriving abstract]
 
 val to_parser : grammar -> parser

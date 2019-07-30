@@ -1,5 +1,5 @@
 
-(* This file was auto-generated based on "TermParser.messages". *)
+(* This file was auto-generated based on "src/TermParser.messages". *)
 
 (* Please note that the function [message] can raise [Not_found]. *)
 

@@ -67,22 +67,22 @@ Jest.describe("ConcreteSyntaxParser", (function (param) {
                     ]
                   ]
                 ],
-                /* term_pattern : tuple */[
-                  "foo",
-                  /* :: */[
-                    /* NumberedScopePattern */[
-                      /* [] */0,
-                      1
-                    ],
+                /* term_pattern : TermPattern */Block.__(0, [
+                    "foo",
                     /* :: */[
                       /* NumberedScopePattern */[
                         /* [] */0,
-                        2
+                        1
                       ],
-                      /* [] */0
+                      /* :: */[
+                        /* NumberedScopePattern */[
+                          /* [] */0,
+                          2
+                        ],
+                        /* [] */0
+                      ]
                     ]
-                  ]
-                ],
+                  ]),
                 /* fixity : Nofix */2
               ]]);
         return expectParse(ConcreteSyntaxParser.sort_rule__test, "\n       arith :=\n         | arith ADD arith { add($1; $3) } %left\n         | arith SUB arith { sub($1; $3) } %left\n         > NAME            { var($1)     }\n    ", /* SortRule */[/* record */[
@@ -100,22 +100,22 @@ Jest.describe("ConcreteSyntaxParser", (function (param) {
                                   ]
                                 ]
                               ],
-                              /* term_pattern : tuple */[
-                                "add",
-                                /* :: */[
-                                  /* NumberedScopePattern */[
-                                    /* [] */0,
-                                    1
-                                  ],
+                              /* term_pattern : TermPattern */Block.__(0, [
+                                  "add",
                                   /* :: */[
                                     /* NumberedScopePattern */[
                                       /* [] */0,
-                                      3
+                                      1
                                     ],
-                                    /* [] */0
+                                    /* :: */[
+                                      /* NumberedScopePattern */[
+                                        /* [] */0,
+                                        3
+                                      ],
+                                      /* [] */0
+                                    ]
                                   ]
-                                ]
-                              ],
+                                ]),
                               /* fixity : Infixl */0
                             ]],
                           /* :: */[
@@ -130,22 +130,22 @@ Jest.describe("ConcreteSyntaxParser", (function (param) {
                                     ]
                                   ]
                                 ],
-                                /* term_pattern : tuple */[
-                                  "sub",
-                                  /* :: */[
-                                    /* NumberedScopePattern */[
-                                      /* [] */0,
-                                      1
-                                    ],
+                                /* term_pattern : TermPattern */Block.__(0, [
+                                    "sub",
                                     /* :: */[
                                       /* NumberedScopePattern */[
                                         /* [] */0,
-                                        3
+                                        1
                                       ],
-                                      /* [] */0
+                                      /* :: */[
+                                        /* NumberedScopePattern */[
+                                          /* [] */0,
+                                          3
+                                        ],
+                                        /* [] */0
+                                      ]
                                     ]
-                                  ]
-                                ],
+                                  ]),
                                 /* fixity : Infixl */0
                               ]],
                             /* [] */0

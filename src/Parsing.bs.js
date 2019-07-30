@@ -18,9 +18,12 @@ var TermParseErrors = require("./TermParseErrors.bs.js");
 var CamlinternalLazy = require("bs-platform/lib/js/camlinternalLazy.js");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 var StaticsParseErrors = require("./StaticsParseErrors.bs.js");
+var ConcreteSyntaxLexer = require("./ConcreteSyntaxLexer.bs.js");
 var DynamicsParseErrors = require("./DynamicsParseErrors.bs.js");
 var LanguageParseErrors = require("./LanguageParseErrors.bs.js");
+var ConcreteSyntaxParser = require("./ConcreteSyntaxParser.bs.js");
 var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
+var ConcreteSyntaxParseErrors = require("./ConcreteSyntaxParseErrors.bs.js");
 
 function Incremental(M) {
   var I = M[/* MenhirInterpreter */0];
@@ -175,9 +178,25 @@ var Parseable_dynamics = /* module */[
   /* Parser */Parser$3
 ];
 
+var parse$4 = ConcreteSyntaxParser.Incremental[/* language */5];
+
+var Parser$4 = /* module */[/* parse */parse$4];
+
+var Parseable_concrete_syntax_001 = /* ParseErrors : ConcreteSyntaxParseErrors */[ConcreteSyntaxParseErrors.message];
+
+var Parseable_concrete_syntax_002 = /* Lexer */[ConcreteSyntaxLexer.read];
+
+var Parseable_concrete_syntax = /* module */[
+  /* MenhirInterpreter */ConcreteSyntaxParser.MenhirInterpreter,
+  Parseable_concrete_syntax_001,
+  Parseable_concrete_syntax_002,
+  /* Parser */Parser$4
+];
+
 exports.Incremental = Incremental;
 exports.Parseable_term = Parseable_term;
 exports.Parseable_language = Parseable_language;
 exports.Parseable_statics = Parseable_statics;
 exports.Parseable_dynamics = Parseable_dynamics;
+exports.Parseable_concrete_syntax = Parseable_concrete_syntax;
 /* TermParser Not a pure module */

@@ -17,33 +17,32 @@ in
 
 let _ = describe "ConcreteSyntax" (fun () ->
   let description = {|
-  ADD  := "+"
-  SUB  := "-"
-  MUL  := "*"
-  DIV  := "/"
-  NAME := [a-z][a-zA-Z0-9]*
+  ADD    := "+"
+  SUB    := "-"
+  MUL    := "*"
+  DIV    := "/"
+  LPAREN := "("
+  RPAREN := ")"
+  NAME   := [a-z][a-zA-Z0-9]*
 
   arith :=
     | LPAREN arith RPAREN { $2          }
-    > arith _ MUL _ arith { sub($1; $3) } %left
-    | arith _ DIV _ arith { sub($1; $3) } %left
-    > arith _ ADD _ arith { add($1; $3) } %left
-    | arith _ SUB _ arith { sub($1; $3) } %left
+    > arith _ MUL _ arith { mul($1; $5) } %left
+    | arith _ DIV _ arith { div($1; $5) } %left
+    > arith _ ADD _ arith { add($1; $5) } %left
+    | arith _ SUB _ arith { sub($1; $5) } %left
     > NAME                { var($1)     }
   |}
   in
-  (*
-  LPAREN := "("
-  RPAREN := ")"
-    | LPAREN; arith; RPAREN { $1 }
-    *)
 
+  let arith = Types.SortAp ("arith", [||]) in
+  let arith' = Types.FixedValence ([], arith) in
   let language = Types.(Language (Belt.Map.String.fromArray [|
     "arith", SortDef ([], [
-      OperatorDef ("add", Arity ([], [
-        FixedValence ([], SortAp ("arith", [||]));
-        FixedValence ([], SortAp ("arith", [||]));
-        ]))
+      OperatorDef ("mul", Arity ([], [ arith'; arith' ]));
+      OperatorDef ("div", Arity ([], [ arith'; arith' ]));
+      OperatorDef ("add", Arity ([], [ arith'; arith' ]));
+      OperatorDef ("sub", Arity ([], [ arith'; arith' ]));
     ])
   |]))
   in
@@ -57,15 +56,17 @@ let _ = describe "ConcreteSyntax" (fun () ->
     ]
     Util.id;
 
+  let module Parse_concrete = Parsing.Incremental(Parsing.Parseable_concrete_syntax) in
+
   test "language parses" (fun () ->
-    let lex = Lexing.from_string description in
-    match ConcreteSyntaxParser.language ConcreteSyntaxLexer.read lex with
-      _concrete -> pass
+    match Parse_concrete.parse description with
+      | Ok _concrete -> pass
+      | Error msg    -> fail msg
   );
 
-  let lex = Lexing.from_string description in
-  match ConcreteSyntaxParser.language ConcreteSyntaxLexer.read lex with
-    concrete ->
+  match Parse_concrete.parse description with
+    | Error msg -> failwith msg
+    | Ok concrete ->
       let arith = Types.SortAp ("arith", [||]) in
       let tree = mk_tree arith (Operator "add")
             [| Right (mk_tree arith Var [| Left "x" |]);
@@ -82,6 +83,17 @@ let _ = describe "ConcreteSyntax" (fun () ->
                );
                Left "-";
                Right (mk_tree arith Var [| Left "z" |]);
+            |]
+      in
+      let tree'' = mk_tree arith (Operator "add")
+            [| Right (mk_tree arith Var [| Left "x" |]);
+               Left "+";
+               Right (mk_tree arith (Operator "mul")
+                 [| Right (mk_tree arith Var [| Left "y" |]);
+                    Left "*";
+                    Right (mk_tree arith Var [| Left "z" |]);
+                 |]
+               );
             |]
       in
       let ast =
@@ -114,6 +126,8 @@ let _ = describe "ConcreteSyntax" (fun () ->
             parse concrete "x + y-z"
               |. Belt.Result.map (equivalent tree')
           ) |> toEqual (Ok true);
+          expect (parse concrete "x + y * z") |> toEqual (Ok tree'');
+          expect (parse concrete "x + (y * z)") |> toEqual (Ok tree'');
         ]
         Util.id;
 )

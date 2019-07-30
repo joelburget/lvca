@@ -4,46 +4,88 @@
 var Jest = require("@glennsl/bs-jest/src/jest.js");
 var Util = require("../src/Util.bs.js");
 var Block = require("bs-platform/lib/js/block.js");
-var Lexing = require("bs-platform/lib/js/lexing.js");
+var Curry = require("bs-platform/lib/js/curry.js");
+var Parsing = require("../src/Parsing.bs.js");
+var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var ConcreteSyntax = require("../src/ConcreteSyntax.bs.js");
-var ConcreteSyntaxLexer = require("../src/ConcreteSyntaxLexer.bs.js");
-var ConcreteSyntaxParser = require("../src/ConcreteSyntaxParser.bs.js");
 
 Jest.describe("ConcreteSyntax", (function (param) {
-        var description = "\n  ADD  := \"+\"\n  SUB  := \"-\"\n  MUL  := \"*\"\n  DIV  := \"/\"\n  NAME := [a-z][a-zA-Z0-9]*\n\n  arith :=\n    | LPAREN arith RPAREN { $2          }\n    > arith _ MUL _ arith { sub($1; $3) } %left\n    | arith _ DIV _ arith { sub($1; $3) } %left\n    > arith _ ADD _ arith { add($1; $3) } %left\n    | arith _ SUB _ arith { sub($1; $3) } %left\n    > NAME                { var($1)     }\n  ";
+        var description = "\n  ADD    := \"+\"\n  SUB    := \"-\"\n  MUL    := \"*\"\n  DIV    := \"/\"\n  LPAREN := \"(\"\n  RPAREN := \")\"\n  NAME   := [a-z][a-zA-Z0-9]*\n\n  arith :=\n    | LPAREN arith RPAREN { $2          }\n    > arith _ MUL _ arith { mul($1; $5) } %left\n    | arith _ DIV _ arith { div($1; $5) } %left\n    > arith _ ADD _ arith { add($1; $5) } %left\n    | arith _ SUB _ arith { sub($1; $5) } %left\n    > NAME                { var($1)     }\n  ";
+        var arith_001 = /* array */[];
+        var arith = /* SortAp */[
+          "arith",
+          arith_001
+        ];
+        var arith$prime = /* FixedValence */Block.__(0, [
+            /* [] */0,
+            arith
+          ]);
         var language = /* Language */[Belt_MapString.fromArray(/* array */[/* tuple */[
                   "arith",
                   /* SortDef */[
                     /* [] */0,
                     /* :: */[
                       /* OperatorDef */[
-                        "add",
+                        "mul",
                         /* Arity */[
                           /* [] */0,
                           /* :: */[
-                            /* FixedValence */Block.__(0, [
-                                /* [] */0,
-                                /* SortAp */[
-                                  "arith",
-                                  /* array */[]
-                                ]
-                              ]),
+                            arith$prime,
                             /* :: */[
-                              /* FixedValence */Block.__(0, [
-                                  /* [] */0,
-                                  /* SortAp */[
-                                    "arith",
-                                    /* array */[]
-                                  ]
-                                ]),
+                              arith$prime,
                               /* [] */0
                             ]
                           ]
                         ]
                       ],
-                      /* [] */0
+                      /* :: */[
+                        /* OperatorDef */[
+                          "div",
+                          /* Arity */[
+                            /* [] */0,
+                            /* :: */[
+                              arith$prime,
+                              /* :: */[
+                                arith$prime,
+                                /* [] */0
+                              ]
+                            ]
+                          ]
+                        ],
+                        /* :: */[
+                          /* OperatorDef */[
+                            "add",
+                            /* Arity */[
+                              /* [] */0,
+                              /* :: */[
+                                arith$prime,
+                                /* :: */[
+                                  arith$prime,
+                                  /* [] */0
+                                ]
+                              ]
+                            ]
+                          ],
+                          /* :: */[
+                            /* OperatorDef */[
+                              "sub",
+                              /* Arity */[
+                                /* [] */0,
+                                /* :: */[
+                                  arith$prime,
+                                  /* :: */[
+                                    arith$prime,
+                                    /* [] */0
+                                  ]
+                                ]
+                              ]
+                            ],
+                            /* [] */0
+                          ]
+                        ]
+                      ]
                     ]
                   ]
                 ]])];
@@ -63,74 +105,97 @@ Jest.describe("ConcreteSyntax", (function (param) {
                 ]
               ]
             ], Util.id);
+        var Parse_concrete = Parsing.Incremental(Parsing.Parseable_concrete_syntax);
         Jest.test("language parses", (function (param) {
-                var lex = Lexing.from_string(description);
-                ConcreteSyntaxParser.language(ConcreteSyntaxLexer.read, lex);
-                return Jest.pass;
+                var match = Curry._1(Parse_concrete[/* parse */5], description);
+                if (match.tag) {
+                  return Jest.fail(match[0]);
+                } else {
+                  return Jest.pass;
+                }
               }));
-        var lex = Lexing.from_string(description);
-        var concrete = ConcreteSyntaxParser.language(ConcreteSyntaxLexer.read, lex);
-        var arith_001 = /* array */[];
-        var arith = /* SortAp */[
-          "arith",
-          arith_001
-        ];
-        var tree = ConcreteSyntax.mk_tree(arith, /* Operator */Block.__(0, ["add"]), /* array */[
-              /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith, /* Var */0, /* array */[/* Left */Block.__(0, ["x"])])]),
-              /* Left */Block.__(0, ["+"]),
-              /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith, /* Var */0, /* array */[/* Left */Block.__(0, ["y"])])])
-            ]);
-        var tree$prime = ConcreteSyntax.mk_tree(arith, /* Operator */Block.__(0, ["sub"]), /* array */[
-              /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith, /* Operator */Block.__(0, ["add"]), /* array */[
-                        /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith, /* Var */0, /* array */[/* Left */Block.__(0, ["x"])])]),
-                        /* Left */Block.__(0, ["+"]),
-                        /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith, /* Var */0, /* array */[/* Left */Block.__(0, ["y"])])])
-                      ])]),
-              /* Left */Block.__(0, ["-"]),
-              /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith, /* Var */0, /* array */[/* Left */Block.__(0, ["z"])])])
-            ]);
-        var ast = /* Operator */Block.__(0, [
-            "add",
-            /* :: */[
-              /* Scope */[
-                /* [] */0,
-                /* Var */Block.__(1, ["x"])
-              ],
+        var match = Curry._1(Parse_concrete[/* parse */5], description);
+        if (match.tag) {
+          return Pervasives.failwith(match[0]);
+        } else {
+          var concrete = match[0];
+          var arith_001$1 = /* array */[];
+          var arith$1 = /* SortAp */[
+            "arith",
+            arith_001$1
+          ];
+          var tree = ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["add"]), /* array */[
+                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, ["x"])])]),
+                /* Left */Block.__(0, ["+"]),
+                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, ["y"])])])
+              ]);
+          var tree$prime = ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["sub"]), /* array */[
+                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["add"]), /* array */[
+                          /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, ["x"])])]),
+                          /* Left */Block.__(0, ["+"]),
+                          /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, ["y"])])])
+                        ])]),
+                /* Left */Block.__(0, ["-"]),
+                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, ["z"])])])
+              ]);
+          var tree$prime$prime = ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["add"]), /* array */[
+                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, ["x"])])]),
+                /* Left */Block.__(0, ["+"]),
+                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["mul"]), /* array */[
+                          /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, ["y"])])]),
+                          /* Left */Block.__(0, ["*"]),
+                          /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, ["z"])])])
+                        ])])
+              ]);
+          var ast = /* Operator */Block.__(0, [
+              "add",
               /* :: */[
                 /* Scope */[
                   /* [] */0,
-                  /* Var */Block.__(1, ["y"])
+                  /* Var */Block.__(1, ["x"])
                 ],
-                /* [] */0
+                /* :: */[
+                  /* Scope */[
+                    /* [] */0,
+                    /* Var */Block.__(1, ["y"])
+                  ],
+                  /* [] */0
+                ]
               ]
-            ]
-          ]);
-        Jest.test("of_ast", (function (param) {
-                return Jest.Expect[/* toEqual */12](tree, Jest.Expect[/* expect */0](ConcreteSyntax.of_ast(language, concrete, arith, ast)));
-              }));
-        Jest.test("to_ast", (function (param) {
-                return Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [ast]), Jest.Expect[/* expect */0](ConcreteSyntax.to_ast(language, tree)));
-              }));
-        Jest.test("to_string", (function (param) {
-                return Jest.Expect[/* toEqual */12]("x+y", Jest.Expect[/* expect */0](ConcreteSyntax.to_string(tree)));
-              }));
-        return Jest.testAll("parse", /* :: */[
-                    Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [tree]), Jest.Expect[/* expect */0](ConcreteSyntax.parse(concrete, "x+y"))),
-                    /* :: */[
-                      Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [true]), Jest.Expect[/* expect */0](Belt_Result.map(ConcreteSyntax.parse(concrete, "x + y"), (function (param) {
-                                      return ConcreteSyntax.equivalent(tree, param);
-                                    })))),
+            ]);
+          Jest.test("of_ast", (function (param) {
+                  return Jest.Expect[/* toEqual */12](tree, Jest.Expect[/* expect */0](ConcreteSyntax.of_ast(language, concrete, arith$1, ast)));
+                }));
+          Jest.test("to_ast", (function (param) {
+                  return Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [ast]), Jest.Expect[/* expect */0](ConcreteSyntax.to_ast(language, tree)));
+                }));
+          Jest.test("to_string", (function (param) {
+                  return Jest.Expect[/* toEqual */12]("x+y", Jest.Expect[/* expect */0](ConcreteSyntax.to_string(tree)));
+                }));
+          return Jest.testAll("parse", /* :: */[
+                      Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [tree]), Jest.Expect[/* expect */0](ConcreteSyntax.parse(concrete, "x+y"))),
                       /* :: */[
-                        Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [tree$prime]), Jest.Expect[/* expect */0](ConcreteSyntax.parse(concrete, "x+y-z"))),
+                        Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [true]), Jest.Expect[/* expect */0](Belt_Result.map(ConcreteSyntax.parse(concrete, "x + y"), (function (param) {
+                                        return ConcreteSyntax.equivalent(tree, param);
+                                      })))),
                         /* :: */[
-                          Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [true]), Jest.Expect[/* expect */0](Belt_Result.map(ConcreteSyntax.parse(concrete, "x + y-z"), (function (param) {
-                                          return ConcreteSyntax.equivalent(tree$prime, param);
-                                        })))),
-                          /* [] */0
+                          Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [tree$prime]), Jest.Expect[/* expect */0](ConcreteSyntax.parse(concrete, "x+y-z"))),
+                          /* :: */[
+                            Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [true]), Jest.Expect[/* expect */0](Belt_Result.map(ConcreteSyntax.parse(concrete, "x + y-z"), (function (param) {
+                                            return ConcreteSyntax.equivalent(tree$prime, param);
+                                          })))),
+                            /* :: */[
+                              Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [tree$prime$prime]), Jest.Expect[/* expect */0](ConcreteSyntax.parse(concrete, "x + y * z"))),
+                              /* :: */[
+                                Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [tree$prime$prime]), Jest.Expect[/* expect */0](ConcreteSyntax.parse(concrete, "x + (y * z)"))),
+                                /* [] */0
+                              ]
+                            ]
+                          ]
                         ]
                       ]
-                    ]
-                  ], Util.id);
+                    ], Util.id);
+        }
       }));
 
 var to_ast = ConcreteSyntax.to_ast;

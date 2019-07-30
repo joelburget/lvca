@@ -1,11 +1,13 @@
 module Result = Belt.Result
+module BL = Belt.List
+module BA = Belt.Array
 module Nominal = Binding.Nominal
 open Types
 open Types.ConcreteSyntaxDescription
 module AA = Util.ArrayApplicative(struct type t = string end)
 open AA
 let (find, traverse_list_result) = Util.(find, traverse_list_result)
-let fromArray = Belt.List.fromArray
+let (toArray, fromArray) = BL.(toArray, fromArray)
 
 type prim_ty =
   | Integer
@@ -45,7 +47,7 @@ and tree =
 let rec equivalent t1 t2 =
   t1.sort = t2.sort &&
   t1.node_type = t2.node_type &&
-  Belt.Array.(every (zipBy t1.children t2.children equivalent')) (fun b -> b)
+  BA.(every (zipBy t1.children t2.children equivalent')) (fun b -> b)
 
 and equivalent' child1 child2 = match child1, child2 with
   | Left   tc1, Left   tc2 -> tc1 = tc2
@@ -57,8 +59,12 @@ let find_operator_match
   (opname : string)
   : operator_match
   = let maybe_match = find
-      (fun (OperatorMatch { term_pattern = (opname', _) }) -> opname' = opname)
-      (Belt.List.flatten matches)
+      (* TODO now need to match *)
+      (fun (OperatorMatch { term_pattern }) -> match term_pattern with
+        | TermPattern (opname', _) -> opname' = opname
+        | CapturePattern _         -> false
+      )
+      (BL.flatten matches)
     in
     match maybe_match with
       | Some m -> m
@@ -66,6 +72,7 @@ let find_operator_match
 
 type subterm_result =
   | NotFound
+  | FoundCapture
   | FoundTerm   of int * Nominal.term
   | FoundBinder of string
 
@@ -75,7 +82,12 @@ let rec find_subtm' slot_num token_ix scopes term_pattern
   = match scopes, term_pattern with
     | _, [] -> NotFound
     | Nominal.Scope (binders, body) :: scopes', NumberedScopePattern (binder_nums, body_num) :: pattern_scopes
-    -> (match Belt.List.zip binders binder_nums |> find (fun (_, num) -> num = token_ix) with
+    ->
+      let binder_matches = binders
+        |. BL.zip binder_nums
+        |> find (fun (_, num) -> num = token_ix)
+      in
+      (match binder_matches with
       | Some (name, _ix) -> FoundBinder name
       | None -> if token_ix = body_num
         then FoundTerm (slot_num, body)
@@ -102,12 +114,16 @@ let regex_is_literal : regex -> string option = function
   | _              -> None
 
 (* TODO: do we need to insert \b? *)
+(* Escape special characters *)
 let rec regex_piece_to_string : regex_piece -> string = function
-  | ReString str   -> str
-    |> Js.String.replaceByRe [%re "/\\+/g"] "\\+"
-    |> Js.String.replaceByRe [%re "/\\*/g"] "\\*"
-    |> Js.String.replaceByRe [%re "/\\?/g"] "\\?"
-    |> Js.String.replaceByRe [%re "/\\-/g"] "\\-"
+  | ReString str   -> Js.String.(str
+    |> replaceByRe [%re "/\\+/g"] "\\+"
+    |> replaceByRe [%re "/\\*/g"] "\\*"
+    |> replaceByRe [%re "/\\?/g"] "\\?"
+    |> replaceByRe [%re "/\\-/g"] "\\-"
+    |> replaceByRe [%re "/\\(/g"] "\\("
+    |> replaceByRe [%re "/\\)/g"] "\\)"
+  )
   | ReSet    str   -> "[" ^ str ^ "]"
   | ReStar   piece -> regex_piece_to_string piece ^ "*"
   | RePlus   piece -> regex_piece_to_string piece ^ "+"
@@ -126,21 +142,49 @@ let mk_tree sort node_type children =
   }
 
 (* TODO: handle non-happy cases *)
-let rec of_ast (Language sorts as lang) ({ terminal_rules; sort_rules } as rules) current_sort tm
+let rec of_ast
+  (Language sorts as lang)
+  ({ terminal_rules; sort_rules } as rules)
+  current_sort
+  tm
   = match current_sort, tm with
   | SortAp (sort_name, _), Nominal.Operator (op_name, scopes) ->
     let SortRule { operator_rules } = M.getExn sort_rules sort_name in
     (* TODO: remove possible exception. possible to have var-only sort? *)
-    let OperatorMatch { tokens; term_pattern }
+    let OperatorMatch { tokens; term_pattern } (* TODO: variable rule? *)
       = find_operator_match operator_rules op_name
     in
-    let _term_name, numbered_scope_patterns = term_pattern in
 
-    (* Map each token to a subtree *)
-    let children = Belt.Array.mapWithIndex (Belt.List.toArray tokens)
-      (fun token_ix token ->
+    let find_subtm' = fun ix -> match term_pattern with
+      | CapturePattern _
+      -> FoundCapture
+
+      | TermPattern (_term_name, numbered_scope_patterns)
+      -> find_subtm ix scopes numbered_scope_patterns
+    in
+
+    (* Map each token to a subtree. For each token:
+      * if it's a space, ignore it
+      * if it's a terminal, print it
+      * if it's a nonterminal, look up the subterm (by token number)
+    *)
+    let children = tokens
+      |. BL.mapWithIndex (fun token_ix token -> token_ix, token)
+      |. BL.keep (fun (_, tok) -> match tok with
+        | Underscore -> false
+        | _          -> true
+        )
+      |. toArray
+      |. BA.map (fun (token_ix, token) ->
+
       let token_ix' = token_ix + 1 in (* switch from 0- to 1-based indexing *)
-      match find_subtm token_ix' scopes numbered_scope_patterns, token with
+      match find_subtm' token_ix', token with
+
+        | FoundCapture, NonterminalName _sort
+        -> assert false
+
+        | FoundCapture, TerminalName name
+        -> raise (BadRules ("capture found, terminal name: " ^ name))
 
         | FoundTerm (tm_ix, subtm), NonterminalName sort
         -> let SortDef (_, operator_defs) = M.getExn sorts sort in
@@ -152,20 +196,18 @@ let rec of_ast (Language sorts as lang) ({ terminal_rules; sort_rules } as rules
              | Some (OperatorDef (_, Arity (_, valences))) -> valences
              | None -> assert false
            in
-           let valence = Belt.List.getExn valences tm_ix in
+           let valence = BL.getExn valences tm_ix in
            let new_sort = (match valence with
              | FixedValence    (_, new_sort)
              | VariableValence (_, new_sort)
              -> new_sort
            ) in
-           let subtree = of_ast lang rules new_sort subtm in
-           Either.Right subtree
+           Either.Right (of_ast lang rules new_sort subtm)
 
         | FoundTerm (_tm_ix, subtm), TerminalName _name
-        -> let subtree = of_ast lang rules current_sort subtm in
-           Right subtree
+        -> Right (of_ast lang rules current_sort subtm)
 
-        | FoundBinder binder_name, TerminalName name
+        | FoundBinder binder_name, TerminalName _name
         -> Left binder_name
 
         (* if the current token is a terminal, and we didn't capture a binder
@@ -184,6 +226,9 @@ let rec of_ast (Language sorts as lang) ({ terminal_rules; sort_rules } as rules
           ("binder (" ^ binder_name ^ ") found, nonterminal name: " ^ name))
         | NotFound, NonterminalName name
         -> raise (BadRules ("subterm not found, nonterminal name: " ^ name))
+
+        (* need to attach trivia to node *)
+        | _, Underscore -> assert false
     ) in
 
     mk_tree current_sort (Operator op_name) children
@@ -194,7 +239,7 @@ let rec of_ast (Language sorts as lang) ({ terminal_rules; sort_rules } as rules
   | SortAp ("sequence", [|sort|]), Nominal.Sequence tms ->
     let children = tms
       |> List.map (fun tm -> Either.Right (of_ast lang rules sort tm))
-      |> Belt.List.toArray
+      |> toArray
     in
     mk_tree current_sort Sequence children
 
@@ -219,7 +264,7 @@ let rec to_string { leading_trivia; children; trailing_trivia } =
   in leading_trivia ^ children_str ^ trailing_trivia
 
 (* Convert a concrete tree to an AST. We ignore trivia. *)
-let rec to_ast lang { sort; node_type; children; }
+let rec to_ast lang { node_type; children; }
   : (Nominal.term, string) Result.t
   = match node_type, children with
     | Var, [| Left name |] -> Result.Ok (Nominal.Var name)
@@ -243,7 +288,7 @@ let rec to_ast lang { sort; node_type; children; }
     (* TODO: check validity *)
     | Operator op_name, _ ->
       let children' =
-        Belt.Array.keepMap children (function
+        BA.keepMap children (function
           | Left _      -> None
           | Right child -> Some (scope_to_ast lang child)
         )
@@ -251,9 +296,13 @@ let rec to_ast lang { sort; node_type; children; }
       in Result.map children'
            (fun children'' -> Nominal.Operator (op_name, fromArray children''))
 
+    | Primitive _, _
+    | Var        , _
+    -> assert false
+
 and scope_to_ast lang ({ children } as tree)
   : (Nominal.scope, string) Result.t
-  = match fromArray (Belt.Array.reverse children) with
+  = match fromArray (BA.reverse children) with
   | body :: binders -> (match to_ast lang {tree with children = [| body |]} with
     | Ok body' -> binders
       |> traverse_list_result
@@ -269,65 +318,71 @@ and scope_to_ast lang ({ children } as tree)
   )
   | [] -> Error "scope_to_ast called on no children"
 
-let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
-  : Jison.grammar
-  =
-    let rules = Belt.List.(terminal_rules
-      |. M.toList
-      |. map
-        (fun (name, regex) -> (regex_to_string regex, "return '" ^ name ^ "'"))
-      |. add ("$", "return 'EOF'")
-      (* TODO: we probably don't want to do this in general *)
-      |. add ("\\s+", "/* skip whitespace */")
-      |. toArray
-    )
-    in
-    let lex = Jison.js_lex ~rules: rules in
+exception NonMatchingFixities of (string * string list)
 
-    let nonterminal_tok_num = function
-      | TerminalName    _ -> 0
-      | NonterminalName _ -> 1
-    in
+module ToGrammarHelp = struct
+  (* space-separated list of token names, eg "arith ADD arith". We strip out
+   whitespace tokens (via token_name) *)
+  let print_tokens toks = toks
+    |> List.map token_name
+    |> Util.keep_some
+    |> String.concat " "
 
-    let print_tokens toks = toks
-      |> List.map token_name
-      |> String.concat " "
-    in
+  (* make a variable rule *)
+  let mk_variable sort_name: variable_rule -> string * string
+    = fun { tokens; var_capture }
+    -> ( print_tokens tokens
+       , Printf.sprintf {|
+           $$ = /* record */[
+             /* SortAp */['%s',[]],
+             /* Var */0,
+             '',
+             '',
+             /* array */[(function(tag,x){x.tag=tag;return x;})(/* TerminalName */0, [$%i])]
+           ]
+         |}
+         sort_name
+         var_capture
+       )
 
-    let mk_variable sort_name: variable_rule option -> string array = function
-      | None
-      -> [||]
-      | Some { tokens; var_capture }
-      -> [|
-        print_tokens tokens;
-        Printf.sprintf {|
-          $$ = /* record */[
-            /* SortAp */['%s',[]],
-            /* Var */0,
-            '',
-            '',
-            /* array */[(function(tag,x){x.tag=tag;return x;})(/* TerminalName */0, [$%i])]
-          ]
-        |}
-        sort_name
-        var_capture
-      |]
-    in
+  (* Very dangerous function used to capture an implementation detail of
+   * bucklescript's implementation. Return the tag number for a nonterminal_token
+   * (except for Underscore)
+   * *)
+  let nonterminal_tok_num = function
+    | TerminalName    _ -> 0
+    | NonterminalName _ -> 1
+    | Underscore        -> assert false
 
-    (*
-    let mk_scope (NumberedScopePattern (binder_captures, body_capture)) =
-      Printf.sprintf "/* Scope */[[%s], $%i]"
-      (binder_captures |> List.map (Printf.sprintf "$%i") |> String.concat ", ")
-      body_capture
-    in
-    *)
+  (* Fixity and the token to attach it to *)
+  type operator_fixity_info = fixity * string option
 
-    let mk_operator_rule
-      sort_name
-      (OperatorMatch { tokens; term_pattern = operator_name, _ })
-      : string list =
-      [ print_tokens tokens;
-        Printf.sprintf
+  (* The list of tokens, the action to execute *)
+  type operator_parse_rule = string * string
+
+  let mk_operator_rule
+    sort_name
+    (* TODO: now need to match *)
+    (OperatorMatch { tokens; term_pattern; fixity })
+    : operator_fixity_info * operator_parse_rule
+    = match term_pattern with
+    | CapturePattern cap_num ->
+      (fixity, None),
+      ( print_tokens tokens
+      , Printf.sprintf "$$ = $%i" cap_num
+      )
+    | TermPattern (operator_name, _) ->
+      (fixity, match tokens with
+        | [ NonterminalName _;             TerminalName name;             NonterminalName _ ]
+        | [ NonterminalName _; Underscore; TerminalName name; Underscore; NonterminalName _ ]
+        | [ NonterminalName _; Underscore; TerminalName name;             NonterminalName _ ]
+        | [ NonterminalName _;             TerminalName name; Underscore; NonterminalName _ ]
+        -> Some name
+        | _
+        -> None
+      ),
+      ( print_tokens tokens
+      , Printf.sprintf
         {|
           $$ = /* record */[
             /* SortAp */['%s', []],
@@ -340,6 +395,7 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
         sort_name
         operator_name
         (tokens
+          |> List.filter (function Underscore -> false | _ -> true)
           |> List.mapi (fun i tok -> Printf.sprintf
             "(function(tag,x){x.tag=tag;return x;})(%i, [$%i])"
             (nonterminal_tok_num tok)
@@ -347,37 +403,86 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
           )
           |> String.concat ", "
         )
-      ]
-    in
+      )
 
-    let mk_precedence_level_rule sort_name matches = Belt.List.(matches
-        |. map (mk_operator_rule sort_name)
-        |. flatten
-        |. toArray
+  type level_fixity_info = fixity * string list
+
+  let mk_precedence_level_rule sort_name matches
+    : (level_fixity_info option * operator_parse_rule array) =
+    let fixity_infos, rules = BL.(matches
+      |. map (mk_operator_rule sort_name)
+      |. unzip
+    )
+    in
+    (* All operators in this precedence level must have the same fixity *)
+    let fixities, fixity_token_names = BL.unzip fixity_infos in
+    let fixity = BL.headExn fixities in
+    match BL.every fixity_token_names Util.is_none, BL.every fixity_token_names Util.is_some with
+      | true, false -> None, rules |. BL.toArray
+      | false, true ->
+        let fixity_token_names = fixity_token_names |. Util.keep_some in
+        if BL.every fixities (fun fixity' -> fixity' = fixity)
+          then ()
+          else raise (NonMatchingFixities (sort_name, fixity_token_names));
+        (Some (fixity, fixity_token_names), rules |. BL.toArray)
+      | _, _ -> failwith "TODO throw error"
+
+  let mk_sort_rule
+    : string * sort_rule -> level_fixity_info list * (string * operator_parse_rule array)
+    = fun (sort_name, SortRule { operator_rules; variable }) ->
+    let fixity_levels, (prec_level_rules : operator_parse_rule array list) = BL.(operator_rules
+      |. map (mk_precedence_level_rule sort_name)
+      |. unzip
       )
     in
+    let prec_level_rules = prec_level_rules |. BL.toArray |. BA.concatMany in
+    (fixity_levels |. Util.keep_some : level_fixity_info list),
+    ( sort_name
+    , match variable with
+      | None -> prec_level_rules
+      | Some variable_rule
+      -> BA.concat [| mk_variable sort_name variable_rule |] prec_level_rules
+    )
+end
 
-    let mk_sort_rule = fun (sort_name, SortRule { operator_rules; variable }) ->
-      (sort_name, Belt.List.toArray
-        (mk_variable sort_name variable ::
-          List.map (mk_precedence_level_rule sort_name) operator_rules
-        )
-      )
-    in
-
-    (* XXX hardcoded *)
-    let operators = [|
-      [| "left"; "ADD"; "SUB" |];
-      |]
-    in
-    let bnf = sort_rules
+let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
+  : Jison.grammar
+  = let open ToGrammarHelp in
+    let rules = terminal_rules
       |. M.toList
-      |. Belt.List.map mk_sort_rule
+      |. BL.map
+        (fun (name, regex) -> (regex_to_string regex, "return '" ^ name ^ "'"))
+      |. BL.add ("$", "return 'EOF'")
+      (* TODO: we probably don't want to do this in general *)
+      |. BL.add ("\\s+", "/* skip whitespace */")
+      |. BL.toArray
+    in
+    let lex = Jison.js_lex ~rules: rules in
+
+    let (pre_operators : (fixity * string list) list list),
+        (pre_bnf : (string * (string * string) array) list) = BL.(sort_rules
+      |. M.toList
+      |. map mk_sort_rule
+      |. unzip
+    )
+    in
+
+    let bnf = pre_bnf
       (* XXX what is the start? *)
-      |. Belt.List.add ("start", [%raw {|
+      |. BL.add ("start", [%raw {|
         [["arith EOF", "/*console.log($1);*/ return $1"]]
       |}])
       |. Js.Dict.fromList
+    in
+
+    let operators = pre_operators
+      |. BL.flatten
+      |. BL.map (fun (fixity, names) ->
+          BA.concat [| fixity_str fixity |] (toArray names))
+      |. BL.toArray
+      (* Jison has highest precedence at the bottom, we have highest precedence
+       * at the top *)
+      |. BA.reverse
     in
     Jison.grammar ~lex:lex ~operators:operators ~bnf:bnf
 
@@ -387,9 +492,13 @@ let jison_parse (parser: Jison.parser) (str: string) : tree =
   ) parser str
 
 let parse desc str =
-  let grammar = to_grammar desc in
-  let parser = Jison.to_parser grammar in
-  Result.Ok (jison_parse parser str)
+  try
+    let grammar = to_grammar desc in
+    let parser = Jison.to_parser grammar in
+    Result.Ok (jison_parse parser str)
+  with
+    NonMatchingFixities (sort_name, token_names) -> Result.Error
+      ("In sort " ^ sort_name ^ ": all fixities in a precedence level must be the same fixity (this is a limitation of Bison-style parsers (Jison in particular). The operators identified by [" ^ String.concat ", " token_names ^ "] must all share the same fixity.")
   (*
   try
     Result.Ok (jison_parse parser str)
