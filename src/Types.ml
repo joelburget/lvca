@@ -222,8 +222,8 @@ module ConcreteSyntaxDescription = struct
     NumberedScopePattern of capture_number list * capture_number
 
   type term_pattern =
-    | TermPattern    of string * numbered_scope_pattern list
-    | CapturePattern of capture_number
+    | TermPattern           of string * numbered_scope_pattern list
+    | ParenthesizingPattern of capture_number
 
   type fixity =
     | Infixl
@@ -255,20 +255,21 @@ module ConcreteSyntaxDescription = struct
    *)
   let partition_nonterminal_matches
     (matches: operator_match list list)
-    : (operator_match list list * variable_rule option)
+    : operator_match list list * variable_rule option
     = fold_right
       (fun (match_, (matches, v_rule)) -> match match_ with
         | [ OperatorMatch
             { tokens;
-              term_pattern = TermPattern ("var", [NumberedScopePattern ([], var_capture)]);
+              term_pattern = TermPattern
+                ("var", [NumberedScopePattern ([], var_capture)]);
             }
           ]
         -> (match v_rule with
           | Some _ -> raise DuplicateVarRules
-          | None   -> (matches, Some { tokens; var_capture })
+          | None   -> matches, Some { tokens; var_capture }
         )
         | _
-        -> (match_ :: matches, v_rule)
+        -> match_ :: matches, v_rule
       )
       matches ([], None)
 
@@ -290,11 +291,11 @@ module ConcreteSyntaxDescription = struct
 
   let make (terminal_rules: terminal_rule list) (sort_rules : sort_rule list) =
     { terminal_rules = terminal_rules
-      |> List.map (fun (TerminalRule (name, rule)) -> (name, rule))
+      |> List.map (fun (TerminalRule (name, rule)) -> name, rule)
       |> Belt.List.toArray
       |> M.fromArray;
     sort_rules = sort_rules
-      |> List.map (fun ((SortRule { sort_name }) as rule) -> (sort_name, rule))
+      |> List.map (fun ((SortRule { sort_name }) as rule) -> sort_name, rule)
       |> Belt.List.toArray
       |> M.fromArray;
     }

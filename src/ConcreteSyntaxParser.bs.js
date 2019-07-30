@@ -614,7 +614,7 @@ var semantic_action = /* array */[
     }),
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
-      var _v = /* CapturePattern */Block.__(1, [_menhir_stack[/* semv */1]]);
+      var _v = /* ParenthesizingPattern */Block.__(1, [_menhir_stack[/* semv */1]]);
       return /* record */[
               /* state */_menhir_stack[/* state */0],
               /* semv */_v,

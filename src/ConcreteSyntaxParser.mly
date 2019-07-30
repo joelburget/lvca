@@ -92,7 +92,7 @@ operator_match:
 (* TODO: should this id allow uppercase? *)
 term_pattern:
   | capture_number
-  { CapturePattern $1 }
+  { ParenthesizingPattern $1 }
   | NONTERMINAL_ID LEFT_PAREN separated_list(SEMICOLON, term_scope_pattern) RIGHT_PAREN
   { TermPattern ($1, $3) }
 

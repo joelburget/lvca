@@ -7,7 +7,6 @@ open Types.ConcreteSyntaxDescription
 module AA = Util.ArrayApplicative(struct type t = string end)
 open AA
 let (find, traverse_list_result) = Util.(find, traverse_list_result)
-let (toArray, fromArray) = BL.(toArray, fromArray)
 
 type prim_ty =
   | Integer
@@ -62,7 +61,7 @@ let find_operator_match
       (* TODO now need to match *)
       (fun (OperatorMatch { term_pattern }) -> match term_pattern with
         | TermPattern (opname', _) -> opname' = opname
-        | CapturePattern _         -> false
+        | ParenthesizingPattern _  -> false
       )
       (BL.flatten matches)
     in
@@ -156,7 +155,7 @@ let rec of_ast
     in
 
     let find_subtm' = fun ix -> match term_pattern with
-      | CapturePattern _
+      | ParenthesizingPattern _
       -> FoundCapture
 
       | TermPattern (_term_name, numbered_scope_patterns)
@@ -168,13 +167,14 @@ let rec of_ast
       * if it's a terminal, print it
       * if it's a nonterminal, look up the subterm (by token number)
     *)
-    let children = tokens
-      |. BL.mapWithIndex (fun token_ix token -> token_ix, token)
-      |. BL.keep (fun (_, tok) -> match tok with
+    let children = BL.(tokens
+      |. mapWithIndex (fun token_ix token -> token_ix, token)
+      |. keep (fun (_, tok) -> match tok with
         | Underscore -> false
         | _          -> true
         )
       |. toArray
+      )
       |. BA.map (fun (token_ix, token) ->
 
       let token_ix' = token_ix + 1 in (* switch from 0- to 1-based indexing *)
@@ -239,7 +239,7 @@ let rec of_ast
   | SortAp ("sequence", [|sort|]), Nominal.Sequence tms ->
     let children = tms
       |> List.map (fun tm -> Either.Right (of_ast lang rules sort tm))
-      |> toArray
+      |> BL.toArray
     in
     mk_tree current_sort Sequence children
 
@@ -259,7 +259,7 @@ let rec to_string { leading_trivia; children; trailing_trivia } =
       | Either.Left terminal_capture -> terminal_capture
       | Right nonterminal_capture    -> to_string nonterminal_capture
       )
-    |> fromArray
+    |> BL.fromArray
     |> String.concat ""
   in leading_trivia ^ children_str ^ trailing_trivia
 
@@ -275,7 +275,7 @@ let rec to_ast lang { node_type; children; }
           | Right child   -> to_ast lang child
         )
         children)
-      (fun children' -> Nominal.Sequence (fromArray children'))
+      (fun children' -> Nominal.Sequence (BL.fromArray children'))
     | Primitive prim_ty, [| Left str |] -> (match prim_ty with
       | String  -> Ok (Nominal.Primitive (PrimString str))
       | Integer ->
@@ -294,7 +294,7 @@ let rec to_ast lang { node_type; children; }
         )
         |> sequence_array_result
       in Result.map children'
-           (fun children'' -> Nominal.Operator (op_name, fromArray children''))
+           (fun children'' -> Nominal.Operator (op_name, BL.fromArray children''))
 
     | Primitive _, _
     | Var        , _
@@ -302,7 +302,7 @@ let rec to_ast lang { node_type; children; }
 
 and scope_to_ast lang ({ children } as tree)
   : (Nominal.scope, string) Result.t
-  = match fromArray (BA.reverse children) with
+  = match BL.fromArray (BA.reverse children) with
   | body :: binders -> (match to_ast lang {tree with children = [| body |]} with
     | Ok body' -> binders
       |> traverse_list_result
@@ -366,7 +366,7 @@ module ToGrammarHelp = struct
     (OperatorMatch { tokens; term_pattern; fixity })
     : operator_fixity_info * operator_parse_rule
     = match term_pattern with
-    | CapturePattern cap_num ->
+    | ParenthesizingPattern cap_num ->
       (fixity, None),
       ( print_tokens tokens
       , Printf.sprintf "$$ = $%i" cap_num
@@ -448,14 +448,15 @@ end
 let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
   : Jison.grammar
   = let open ToGrammarHelp in
-    let rules = terminal_rules
+    let rules = BL.(terminal_rules
       |. M.toList
-      |. BL.map
+      |. map
         (fun (name, regex) -> (regex_to_string regex, "return '" ^ name ^ "'"))
-      |. BL.add ("$", "return 'EOF'")
+      |. add ("$", "return 'EOF'")
       (* TODO: we probably don't want to do this in general *)
-      |. BL.add ("\\s+", "/* skip whitespace */")
-      |. BL.toArray
+      |. add ("\\s+", "/* skip whitespace */")
+      |. toArray
+    )
     in
     let lex = Jison.js_lex ~rules: rules in
 
@@ -475,14 +476,15 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
       |. Js.Dict.fromList
     in
 
-    let operators = pre_operators
-      |. BL.flatten
-      |. BL.map (fun (fixity, names) ->
+    let operators = BL.(pre_operators
+      |. flatten
+      |. map (fun (fixity, names) ->
           BA.concat [| fixity_str fixity |] (toArray names))
-      |. BL.toArray
+      |. toArray
       (* Jison has highest precedence at the bottom, we have highest precedence
        * at the top *)
       |. BA.reverse
+    )
     in
     Jison.grammar ~lex:lex ~operators:operators ~bnf:bnf
 
