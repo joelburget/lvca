@@ -2,13 +2,16 @@
 'use strict';
 
 
-var abstractSyntax = "tm :=\n  | var(var())\n  | annot(tm(); ty())\n  | ite(tm(); tm(); tm())\n  | app(tm(); tm())\n  | val(val())\n  | binary-op(binary-op())\n\nbinary-op :=\n  | or(tm(); tm())\n  | xor(tm(); tm())\n  | and(tm(); tm())\n\nval :=\n  | true()\n  | false()\n  | lam(val(). tm())\n\nty :=\n  | bool()\n  | arr(ty(); ty())";
+var abstractSyntax = "string := import \"builtin/string\"\n\ntm :=\n  | var(string())\n  | annot(tm(); ty())\n  | ite(tm(); tm(); tm())\n  | app(tm(); tm())\n  | val(val())\n  | binary-op(binary-op())\n\nbinary-op :=\n  | or(tm(); tm())\n  | xor(tm(); tm())\n  | and(tm(); tm())\n\nval :=\n  | true()\n  | false()\n  | lam(val(). tm())\n\nty :=\n  | bool()\n  | arr(ty(); ty())";
+
+var concrete = "\nID    := ['a' - 'z' 'A' - 'Z'] ['a' - 'z' 'A' - 'Z' '0' - '9' '_'] *\nCOLON := \":\"\nIF    := \"if\"\nTHEN  := \"then\"\nELSE  := \"else\"\n\ntm :=\n  | ID                    { var($1) }\n  | tm COLON ty           { annot($1; $3) }\n  | IF tm THEN tm ELSE tm { ite($2; $4; $6) }\n";
 
 var statics = "\n-----------------------\nctx >> true() => bool()\n\n------------------------\nctx >> false() => bool()\n\n  ctx >> v => ty\n-------------------\nctx >> val(v) => ty\n\n      ctx >> tm <= ty\n--------------------------\nctx >> annot(tm; ty) => ty\n\nctx >> t1 <= bool()  ctx >> t2 <= ty  ctx >> t3 <= ty\n-----------------------------------------------------\n           ctx >> ite(t1; t2; t3) <= ty\n\nctx >> tm1 => arr(ty1; ty2)  ctx >> tm2 <= ty1\n----------------------------------------------\n        ctx >> app(tm1; tm2) => ty2\n\nctx >> tm => ty\n---------------\nctx >> tm <= ty";
 
 var dynamics = "[[ val(v)          ]] = v\n[[ annot(tm; ty)   ]] = [[ tm ]]\n[[ ite(t1; t2; t3) ]] = case [[ t1 ]] of {\n  | true()  -> [[ t2 ]]\n  | false() -> [[ t3 ]]\n}\n[[ app(fun; arg)   ]] = app([[ fun ]]; [[ arg ]])";
 
 exports.abstractSyntax = abstractSyntax;
+exports.concrete = concrete;
 exports.statics = statics;
 exports.dynamics = dynamics;
 /* No side effect */
