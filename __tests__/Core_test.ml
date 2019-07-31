@@ -5,7 +5,6 @@ open Core
 open Types
 
 let _ = describe "Core" (fun () ->
-  let module P_lang = Parsing.Incremental(Parsing.Parseable_language) in
   let module P_dyn = Parsing.Incremental(Parsing.Parseable_dynamics) in
   let one = Bigint.of_int 1 in
   let sort = SortAp ("bool", [||]) in
@@ -21,7 +20,7 @@ let _ = describe "Core" (fun () ->
     | false() -> [[ t3 ]]
   }
   [[ ap(f; arg) ]] = app([[ f ]]; [[ arg ]])
-  [[ fun(v. body) ]] = \(v : bool()) -> [[ body ]]
+  [[ fun(v. body) ]] = \(v : bool) -> [[ body ]]
   |}
   in
 

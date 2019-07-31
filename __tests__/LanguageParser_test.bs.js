@@ -57,7 +57,7 @@ Jest.describe("LanguageParser", (function (param) {
             /* [] */0,
             ty_sort
           ]);
-        return expectParse("\n  ty :=\n    | bool()\n    | arr(ty(); ty())\n\n  tm :=\n    | app(tm(); tm())\n    | lam(tm(). tm())\n  ", /* Language */[Belt_MapString.fromArray(/* array */[
+        return expectParse("\n  ty :=\n    | bool()\n    | arr(ty; ty)\n\n  tm :=\n    | app(tm; tm)\n    | lam(tm. tm)\n  ", /* Language */[Belt_MapString.fromArray(/* array */[
                           /* tuple */[
                             "ty",
                             /* SortDef */[

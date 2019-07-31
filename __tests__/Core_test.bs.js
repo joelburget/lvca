@@ -11,7 +11,6 @@ var Parsing = require("../src/Parsing.bs.js");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 
 Jest.describe("Core", (function (param) {
-        Parsing.Incremental(Parsing.Parseable_language);
         var P_dyn = Parsing.Incremental(Parsing.Parseable_dynamics);
         var one = Bigint.of_int(1);
         var sort_001 = /* array */[];
@@ -155,7 +154,7 @@ Jest.describe("Core", (function (param) {
               ]
             ]
           ]];
-        var dynamics$prime = Curry._1(P_dyn[/* parse */5], "\n  [[ true() ]] = true()\n  [[ false() ]] = false()\n  [[ ite(t1; t2; t3) ]] = case [[ t1 ]] of {\n    | true()  -> [[ t2 ]]\n    | false() -> [[ t3 ]]\n  }\n  [[ ap(f; arg) ]] = app([[ f ]]; [[ arg ]])\n  [[ fun(v. body) ]] = \\(v : bool()) -> [[ body ]]\n  ");
+        var dynamics$prime = Curry._1(P_dyn[/* parse */5], "\n  [[ true() ]] = true()\n  [[ false() ]] = false()\n  [[ ite(t1; t2; t3) ]] = case [[ t1 ]] of {\n    | true()  -> [[ t2 ]]\n    | false() -> [[ t3 ]]\n  }\n  [[ ap(f; arg) ]] = app([[ f ]]; [[ arg ]])\n  [[ fun(v. body) ]] = \\(v : bool) -> [[ body ]]\n  ");
         Jest.test("dynamics as expected", (function (param) {
                 return Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [dynamics]), Jest.Expect[/* expect */0](dynamics$prime));
               }));

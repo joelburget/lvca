@@ -21,8 +21,16 @@
 
 /* TODO: duplicated */
 sort:
-  ID LEFT_PAREN separated_list(SEMICOLON, sort) RIGHT_PAREN
-  { Types.SortAp ($1, Belt.List.toArray $3) }
+  | ID nonempty_list(atomic_sort)
+  { Types.SortAp ($1, Belt.List.toArray $2) }
+  | atomic_sort
+  { $1 }
+
+atomic_sort:
+  | LEFT_PAREN sort RIGHT_PAREN
+  { $2 }
+  | ID
+  { Types.SortAp ($1, [||]) }
 
 valence:
   | ID LEFT_BRACK sort RIGHT_BRACK

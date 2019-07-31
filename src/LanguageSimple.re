@@ -1,26 +1,26 @@
-let abstractSyntax = {|string := import "builtin/string"
+let abstractSyntax = {|// string := import "builtin/string"
 
 tm :=
-  | var(string())
-  | annot(tm(); ty())
-  | ite(tm(); tm(); tm())
-  | app(tm(); tm())
-  | val(val())
-  | binary-op(binary-op())
+  | var(string)
+  | annot(tm; ty)
+  | ite(tm; tm; tm)
+  | app(tm; tm)
+  | val(val)
+  | binary-op(binary-op)
 
 binary-op :=
-  | or(tm(); tm())
-  | xor(tm(); tm())
-  | and(tm(); tm())
+  | or(tm; tm)
+  | xor(tm; tm)
+  | and(tm; tm)
 
 val :=
   | true()
   | false()
-  | lam(val(). tm())
+  | lam(val. tm)
 
 ty :=
   | bool()
-  | arr(ty(); ty())|}
+  | arr(ty; ty)|}
 
 let concrete = {|
 ID    := ['a' - 'z' 'A' - 'Z'] ['a' - 'z' 'A' - 'Z' '0' - '9' '_'] *

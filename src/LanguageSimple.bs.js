@@ -2,7 +2,7 @@
 'use strict';
 
 
-var abstractSyntax = "string := import \"builtin/string\"\n\ntm :=\n  | var(string())\n  | annot(tm(); ty())\n  | ite(tm(); tm(); tm())\n  | app(tm(); tm())\n  | val(val())\n  | binary-op(binary-op())\n\nbinary-op :=\n  | or(tm(); tm())\n  | xor(tm(); tm())\n  | and(tm(); tm())\n\nval :=\n  | true()\n  | false()\n  | lam(val(). tm())\n\nty :=\n  | bool()\n  | arr(ty(); ty())";
+var abstractSyntax = "// string := import \"builtin/string\"\n\ntm :=\n  | var(string)\n  | annot(tm; ty)\n  | ite(tm; tm; tm)\n  | app(tm; tm)\n  | val(val)\n  | binary-op(binary-op)\n\nbinary-op :=\n  | or(tm; tm)\n  | xor(tm; tm)\n  | and(tm; tm)\n\nval :=\n  | true()\n  | false()\n  | lam(val. tm)\n\nty :=\n  | bool()\n  | arr(ty; ty)";
 
 var concrete = "\nID    := ['a' - 'z' 'A' - 'Z'] ['a' - 'z' 'A' - 'Z' '0' - '9' '_'] *\nCOLON := \":\"\nIF    := \"if\"\nTHEN  := \"then\"\nELSE  := \"else\"\n\ntm :=\n  | ID                    { var($1) }\n  | tm COLON ty           { annot($1; $3) }\n  | IF tm THEN tm ELSE tm { ite($2; $4; $6) }\n";
 

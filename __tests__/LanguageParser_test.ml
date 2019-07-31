@@ -28,11 +28,11 @@ let _ = describe "LanguageParser" (fun () ->
   expectParse {|
   ty :=
     | bool()
-    | arr(ty(); ty())
+    | arr(ty; ty)
 
   tm :=
-    | app(tm(); tm())
-    | lam(tm(). tm())
+    | app(tm; tm)
+    | lam(tm. tm)
   |}
     (Language (M.fromArray [|
       "ty", SortDef
