@@ -21,7 +21,7 @@ let message =
     | 62 ->
         "<YOUR SYNTAX ERROR MESSAGE HERE> 26\n"
     | 30 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 25\n"
+        "Invalid syntax for matching an operator (Example: `arith ADD arith { add($1; $3) } %left`).\n"
     | 33 ->
         "Invalid term pattern.\n"
     | 34 ->

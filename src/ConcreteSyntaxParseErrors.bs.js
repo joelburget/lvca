@@ -30,7 +30,7 @@ function message(s) {
     case 28 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 7\n";
     case 30 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE> 25\n";
+        return "Invalid syntax for matching an operator (Example: `arith ADD arith { add($1; $3) } %left`).\n";
     case 33 : 
         return "Invalid term pattern.\n";
     case 34 : 
