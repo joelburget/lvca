@@ -70,11 +70,11 @@
   "generators" : [
     {
       "name" : "menhir-parserlib",
-      "command": "menhir --explain --table --base `echo $in | cut -f 1 -d '.'` `dirname $in`/ParserLib.mly $in"
+      "command": "menhir --table --base `echo $in | cut -f 1 -d '.'` `dirname $in`/ParserLib.mly $in"
     },
     {
       "name" : "menhir",
-      "command": "menhir --explain --table $in"
+      "command": "menhir --table $in"
     },
     {
       "name" : "ocamllex",
