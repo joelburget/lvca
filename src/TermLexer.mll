@@ -31,8 +31,9 @@ rule read = parse
   | ';'      { SEMICOLON }
   (* | ','      { COMMA } *)
   | '.'      { DOT }
-  | _ { error lexbuf ("Unexpected char: " ^ L.lexeme lexbuf) }
+  | "//" [^ '\r' '\n']* newline
   | eof      { EOF }
+  | _        { error lexbuf ("Unexpected char: " ^ L.lexeme lexbuf) }
 
 and read_string buf = parse (* use buf to build up result *)
   | [^'"' '\n' '\\']+

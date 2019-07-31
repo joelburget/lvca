@@ -7,6 +7,7 @@ let white = [' ' '\t' '\r' '\n']+
 let id = ['a'-'z' 'A'-'Z' '_' '-'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '-']*
 let line = '-' '-'+
 (* let rule_name = '(' [^ '\n' ')']+ ')' *)
+let newline = '\r' | '\n' | "\r\n"
 
 rule read = parse
   | white     { read lexbuf }
@@ -20,6 +21,8 @@ rule read = parse
   | ';'       { SEMICOLON }
   | '.'       { DOT }
   | "ctx"     { CTX }
+  | "//" [^ '\r' '\n']* newline
   | id        { ID (Lexing.lexeme lexbuf) }
   | eof       { EOF }
+  | newline   { next_line lexbuf; read lexbuf }
   | _ { error lexbuf ("Unexpected char: " ^ Lexing.lexeme lexbuf) }

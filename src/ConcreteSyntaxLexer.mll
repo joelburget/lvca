@@ -18,6 +18,7 @@ rule read = parse
   | nat            { NAT (int_of_string (L.lexeme lexbuf)) }
   | terminal_id    { TERMINAL_ID (L.lexeme lexbuf) }
   | nonterminal_id { NONTERMINAL_ID (L.lexeme lexbuf) }
+  | "//" [^ '\r' '\n']* newline
   | '"'            { read_string (Buffer.create 17) lexbuf }
   | '('            { LEFT_PAREN }
   | ')'            { RIGHT_PAREN }
