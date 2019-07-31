@@ -10,7 +10,6 @@ module type Parseable = sig
     val read : Lexing.lexbuf -> MenhirInterpreter.token
   end
   module Parser : sig
-    (* val parse: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> t *)
     val parse: Lexing.position -> t MenhirInterpreter.checkpoint
   end
 end

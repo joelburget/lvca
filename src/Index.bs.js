@@ -157,6 +157,7 @@ var preventDefault = (evt => evt.preventDefault());
 function Index$Repl(Props) {
   var history = Props.history;
   var language = Props.language;
+  Props.concrete;
   Props.statics;
   var dynamics = Props.dynamics;
   var setInput = Props.setInput;
@@ -256,31 +257,39 @@ function Index$LvcaViewer(Props) {
   var setAsInput = match$1[1];
   var asInput = match$1[0];
   var match$2 = React.useState((function () {
+          return LanguageSimple.concrete;
+        }));
+  var setConcreteInput = match$2[1];
+  var concreteInput = match$2[0];
+  var match$3 = React.useState((function () {
           return LanguageSimple.statics;
         }));
-  var setStaticsInput = match$2[1];
-  var staticsInput = match$2[0];
-  var match$3 = React.useState((function () {
+  var setStaticsInput = match$3[1];
+  var staticsInput = match$3[0];
+  var match$4 = React.useState((function () {
           return LanguageSimple.dynamics;
         }));
-  var setDynamicsInput = match$3[1];
-  var dynamicsInput = match$3[0];
+  var setDynamicsInput = match$4[1];
+  var dynamicsInput = match$4[0];
   var Parseable_language$prime = ParseStatus.Make(Parsing.Parseable_language);
-  var match$4 = Curry._1(Parseable_language$prime[/* parse */1], asInput);
-  var language = match$4[1];
+  var match$5 = Curry._1(Parseable_language$prime[/* parse */1], asInput);
+  var language = match$5[1];
+  var Parseable_concrete = ParseStatus.Make(Parsing.Parseable_concrete_syntax);
+  var match$6 = Curry._1(Parseable_concrete[/* parse */1], concreteInput);
+  var concrete = match$6[1];
   var Parseable_statics$prime = ParseStatus.Make(Parsing.Parseable_statics);
-  var match$5 = Curry._1(Parseable_statics$prime[/* parse */1], staticsInput);
-  var statics = match$5[1];
+  var match$7 = Curry._1(Parseable_statics$prime[/* parse */1], staticsInput);
+  var statics = match$7[1];
   var Parseable_dynamics$prime = ParseStatus.Make(Parsing.Parseable_dynamics);
-  var match$6 = Curry._1(Parseable_dynamics$prime[/* parse */1], dynamicsInput);
-  var dynamics = match$6[1];
+  var match$8 = Curry._1(Parseable_dynamics$prime[/* parse */1], dynamicsInput);
+  var dynamics = match$8[1];
   var replPane;
   var exit = 0;
   if (language.tag) {
     exit = 1;
   } else {
     var language$1 = language[0];
-    if (statics.tag || dynamics.tag) {
+    if (concrete.tag || statics.tag || dynamics.tag) {
       exit = 1;
     } else {
       var dynamics$1 = dynamics[0];
@@ -289,6 +298,7 @@ function Index$LvcaViewer(Props) {
           }, React.createElement(Index$Repl, {
                 history: match[0],
                 language: language$1,
+                concrete: concrete[0],
                 statics: statics[0],
                 dynamics: dynamics$1,
                 setInput: (function (input) {
@@ -350,7 +360,7 @@ function Index$LvcaViewer(Props) {
                   className: "header"
                 }, "LVCA"), React.createElement("h2", {
                   className: "header2 header2-abstract-syntax"
-                }, "Abstract Syntax ", match$4[0]), React.createElement("div", {
+                }, "Abstract Syntax ", match$5[0]), React.createElement("div", {
                   className: "abstract-syntax-pane"
                 }, React.createElement(ReactCodemirror2.Controlled, {
                       value: asInput,
@@ -363,8 +373,22 @@ function Index$LvcaViewer(Props) {
                         mode: "default"
                       }
                     })), React.createElement("h2", {
+                  className: "header2 header2-concrete"
+                }, "Concrete Syntax ", match$6[0]), React.createElement("div", {
+                  className: "concrete-pane"
+                }, React.createElement(ReactCodemirror2.Controlled, {
+                      value: concreteInput,
+                      onBeforeChange: (function (param, param$1, str) {
+                          return Curry._1(setConcreteInput, (function (param) {
+                                        return str;
+                                      }));
+                        }),
+                      options: {
+                        mode: "default"
+                      }
+                    })), React.createElement("h2", {
                   className: "header2 header2-statics"
-                }, "Statics ", match$5[0]), React.createElement("div", {
+                }, "Statics ", match$7[0]), React.createElement("div", {
                   className: "statics-pane"
                 }, React.createElement(ReactCodemirror2.Controlled, {
                       value: staticsInput,
@@ -378,7 +402,7 @@ function Index$LvcaViewer(Props) {
                       }
                     })), React.createElement("h2", {
                   className: "header2 header2-dynamics"
-                }, "Dynamics ", match$6[0]), React.createElement("div", {
+                }, "Dynamics ", match$8[0]), React.createElement("div", {
                   className: "dynamics-pane"
                 }, React.createElement(ReactCodemirror2.Controlled, {
                       value: dynamicsInput,

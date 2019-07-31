@@ -107,6 +107,7 @@ module Repl = {
   let make = (
     ~history: history,
     ~language: language,
+    ~concrete: ConcreteSyntaxDescription.t,
     ~statics: list(Statics.rule),
     ~dynamics: Core.denotation_chart,
     ~setInput: string => unit,
@@ -211,6 +212,8 @@ module LvcaViewer = {
 
     let (asInput,       setAsInput)
       = React.useState(() => LanguageSimple.abstractSyntax);
+    let (concreteInput,  setConcreteInput)
+      = React.useState(() => LanguageSimple.concrete);
     let (staticsInput,  setStaticsInput)
       = React.useState(() => LanguageSimple.statics);
     let (dynamicsInput, setDynamicsInput)
@@ -219,20 +222,24 @@ module LvcaViewer = {
     module Parseable_language' = ParseStatus.Make(Parsing.Parseable_language);
     let (languageView, language) = Parseable_language'.parse(asInput);
 
+    module Parseable_concrete = ParseStatus.Make(Parsing.Parseable_concrete_syntax);
+    let (concreteView, concrete) = Parseable_concrete.parse(concreteInput);
+
     module Parseable_statics' = ParseStatus.Make(Parsing.Parseable_statics);
     let (staticsView, statics) = Parseable_statics'.parse(staticsInput);
 
     module Parseable_dynamics' = ParseStatus.Make(Parsing.Parseable_dynamics);
     let (dynamicsView, dynamics) = Parseable_dynamics'.parse(dynamicsInput);
 
-    let replPane = switch (language, statics, dynamics) {
-      | (Ok(language), Ok(statics), Ok(dynamics))
+    let replPane = switch (language, concrete, statics, dynamics) {
+      | (Ok(language), Ok(concrete), Ok(statics), Ok(dynamics))
       =>
         <div className="repl-pane">
           <Repl
             history=replHistory
             language=language
             statics=statics
+            concrete=concrete
             dynamics=dynamics
             setInput=(input => setHistory(hist => {...hist, input}))
             handleEnter=(() => setHistory(({input, before, after} as hist) => {
@@ -266,6 +273,18 @@ module LvcaViewer = {
         <CodeMirror
           value=asInput
           onBeforeChange=((_, _, str) => setAsInput(_ => str))
+          options=CodeMirror.options(~mode="default", ())
+        />
+      </div>
+
+      <h2 className="header2 header2-concrete">
+        {React.string("Concrete Syntax ")}
+        {concreteView}
+      </h2>
+      <div className="concrete-pane">
+        <CodeMirror
+          value=concreteInput
+          onBeforeChange=((_, _, str) => setConcreteInput(_ => str))
           options=CodeMirror.options(~mode="default", ())
         />
       </div>

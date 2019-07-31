@@ -1,5 +1,7 @@
-let abstractSyntax = {|tm :=
-  | var(var())
+let abstractSyntax = {|string := import "builtin/string"
+
+tm :=
+  | var(string())
   | annot(tm(); ty())
   | ite(tm(); tm(); tm())
   | app(tm(); tm())
@@ -19,6 +21,19 @@ val :=
 ty :=
   | bool()
   | arr(ty(); ty())|}
+
+let concrete = {|
+ID    := ['a' - 'z' 'A' - 'Z'] ['a' - 'z' 'A' - 'Z' '0' - '9' '_'] *
+COLON := ":"
+IF    := "if"
+THEN  := "then"
+ELSE  := "else"
+
+tm :=
+  | ID                    { var($1) }
+  | tm COLON ty           { annot($1; $3) }
+  | IF tm THEN tm ELSE tm { ite($2; $4; $6) }
+|}
 
 // TODO:
 // * how to show var separate from context?

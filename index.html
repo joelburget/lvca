@@ -36,6 +36,8 @@ div.lvca-viewer {
     "header1                 header1" /* LVCA */
     "header2-abstract-syntax header2-repl"
     "abstract-syntax-pane    repl-pane"
+    "header2-concrete        repl-pane"
+    "concrete-pane           repl-pane"
     "header2-statics         repl-pane"
     "statics-pane            repl-pane"
     "header2-dynamics        repl-pane"
@@ -58,6 +60,11 @@ h2.header2-abstract-syntax {
   border-top: 2px solid #1e1e5d;
   border-bottom: 2px solid #1e1e5d;
 }
+h2.header2-concrete {
+  grid-area: header2-concrete;
+  border-left: 2px solid #1e1e5d;
+  border-bottom: 2px solid #1e1e5d;
+}
 h2.header2-statics {
   grid-area: header2-statics;
   border-left: 2px solid #1e1e5d;
@@ -77,6 +84,12 @@ h2.header2-repl {
 }
 div.abstract-syntax-pane {
   grid-area: abstract-syntax-pane;
+  border-left: 2px solid #1e1e5d;
+  border-bottom: 2px solid #1e1e5d;
+  padding: 20px;
+}
+div.concrete-pane {
+  grid-area: concrete-pane;
   border-left: 2px solid #1e1e5d;
   border-bottom: 2px solid #1e1e5d;
   padding: 20px;
