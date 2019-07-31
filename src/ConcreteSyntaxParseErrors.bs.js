@@ -6,7 +6,7 @@ var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exception
 function message(s) {
   switch (s) {
     case 0 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE> 32\n";
+        return "Expected a capture number.\n";
     case 1 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 31\n";
     case 4 : 
@@ -14,13 +14,13 @@ function message(s) {
     case 5 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 29\n";
     case 6 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE> 28\n";
+        return "Invalid terminal rule declaration.\n";
     case 9 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 12\n";
     case 16 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 27\n";
     case 19 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE> 9\n";
+        return "Invalid declaration of a sort (nonterminal).\n";
     case 20 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 5\n";
     case 22 : 
@@ -48,24 +48,24 @@ function message(s) {
     case 48 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 21\n";
     case 49 : 
-        return "<YOUR SYNTAX ERROR MESSAGE HERE> 20\n";
-    case 54 : 
+        return "Invalid operator declaration.\n";
+    case 55 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 6\n";
-    case 61 : 
+    case 62 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 26\n";
-    case 66 : 
+    case 67 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 14\n";
-    case 68 : 
+    case 69 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 19\n";
-    case 70 : 
+    case 71 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 13\n";
-    case 72 : 
+    case 73 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 11\n";
-    case 74 : 
+    case 75 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 10\n";
-    case 76 : 
+    case 77 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 4\n";
-    case 78 : 
+    case 79 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 2\n";
     case 2 : 
     case 3 : 
@@ -99,25 +99,26 @@ function message(s) {
     case 51 : 
     case 52 : 
     case 53 : 
-    case 55 : 
+    case 54 : 
     case 56 : 
     case 57 : 
     case 58 : 
     case 59 : 
     case 60 : 
-    case 62 : 
+    case 61 : 
     case 63 : 
     case 64 : 
     case 65 : 
-    case 67 : 
-    case 69 : 
-    case 71 : 
-    case 73 : 
-    case 75 : 
-    case 77 : 
-    case 79 : 
-        throw Caml_builtin_exceptions.not_found;
+    case 66 : 
+    case 68 : 
+    case 70 : 
+    case 72 : 
+    case 74 : 
+    case 76 : 
+    case 78 : 
     case 80 : 
+        throw Caml_builtin_exceptions.not_found;
+    case 81 : 
         return "<YOUR SYNTAX ERROR MESSAGE HERE> 1\n";
     default:
       throw Caml_builtin_exceptions.not_found;

@@ -123,7 +123,7 @@ sort_rule__test: NONTERMINAL_ID UNDERSCORE
 ## NONTERMINAL_ID
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 9
+Invalid declaration of a sort (nonterminal).
 
 sort_rule__test: UNDERSCORE
 ##
@@ -274,7 +274,7 @@ operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN RIGHT_PARE
 ## nonempty_list(nonterminal_token) LEFT_BRACE term_pattern RIGHT_BRACE
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 20
+Invalid operator declaration.
 
 operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN RIGHT_PAREN UNDERSCORE
 ##
@@ -380,7 +380,7 @@ language: TERMINAL_ID ASSIGN UNDERSCORE
 ## TERMINAL_ID ASSIGN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 28
+Invalid terminal rule declaration.
 
 language: TERMINAL_ID UNDERSCORE
 ##
@@ -428,5 +428,5 @@ capture_number: UNDERSCORE
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 32
+Expected a capture number.
 
