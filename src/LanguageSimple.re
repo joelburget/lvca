@@ -1,24 +1,24 @@
 let abstractSyntax = {|tm :=
-  | var(var)
-  | annot(tm; ty)
-  | ite(tm; tm; tm)
-  | app(tm; tm)
-  | val(val)
-  | binary-op(binary-op)
+  | var(var())
+  | annot(tm(); ty())
+  | ite(tm(); tm(); tm())
+  | app(tm(); tm())
+  | val(val())
+  | binary-op(binary-op())
 
 binary-op :=
-  | or(tm; tm)
-  | xor(tm; tm)
-  | and(tm; tm)
+  | or(tm(); tm())
+  | xor(tm(); tm())
+  | and(tm(); tm())
 
 val :=
   | true()
   | false()
-  | lam(val. tm)
+  | lam(val(). tm())
 
 ty :=
   | bool()
-  | arr(ty; ty)|}
+  | arr(ty(); ty())|}
 
 // TODO:
 // * how to show var separate from context?
