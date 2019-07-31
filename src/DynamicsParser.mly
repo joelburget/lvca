@@ -66,8 +66,8 @@ let fix_up_core : core -> core =
 %token OF
 
 %start dynamics
-%type <denotation_pat> pat
-%type <core> core
+%type <denotation_pat>        pat
+%type <core>                  core
 %type <denotation_pat * core> dynamics_rule
 %type <Core.denotation_chart> dynamics
 %%
