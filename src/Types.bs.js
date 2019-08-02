@@ -158,8 +158,6 @@ var Cbor$1 = /* module */[
   /* decode_ab */decode_ab
 ];
 
-var Statics = /* module */[/* M */0];
-
 function token_name(param) {
   if (typeof param === "number") {
     return undefined;
@@ -268,6 +266,5 @@ exports.$$Uint8Array = $$Uint8Array;
 exports.BitArray = BitArray;
 exports.Sha256 = Sha256;
 exports.Cbor = Cbor$1;
-exports.Statics = Statics;
 exports.ConcreteSyntaxDescription = ConcreteSyntaxDescription;
 /* Uint8Array Not a pure module */

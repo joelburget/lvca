@@ -76,8 +76,8 @@ module Parseable_language : (Parseable with type t = Types.language) = struct
 end
 
 module Parseable_statics
-  : (Parseable with type t = Types.Statics.rule list) = struct
-  type t                   = Types.Statics.rule list
+  : (Parseable with type t = Statics.rule list) = struct
+  type t                   = Statics.rule list
   module MenhirInterpreter = StaticsParser.MenhirInterpreter
   module ParseErrors       = StaticsParseErrors
   module Lexer             = StaticsLexer

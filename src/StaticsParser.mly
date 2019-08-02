@@ -13,20 +13,20 @@
 %token COMMA
 
 %{
-open Types.Statics
+open Statics
 %}
 
 %start rules
 %start term_top
-%type <Types.Statics.term>           term
-%type <Types.Statics.term>           term_top
-%type <Types.Statics.scope>          scope
-%type <Types.Statics.inference_rule> inference_rule
-%type <Types.Statics.checking_rule>  checking_rule
-%type <Types.Statics.typing_clause>  typing_clause
-%type <Types.Statics.hypothesis>     hypothesis
-%type <Types.Statics.rule>           rule
-%type <Types.Statics.rule list>      rules
+%type <Statics.term>           term
+%type <Statics.term>           term_top
+%type <Statics.scope>          scope
+%type <Statics.inference_rule> inference_rule
+%type <Statics.checking_rule>  checking_rule
+%type <Statics.typing_clause>  typing_clause
+%type <Statics.hypothesis>     hypothesis
+%type <Statics.rule>           rule
+%type <Statics.rule list>      rules
 %%
 
 term:

@@ -36,9 +36,9 @@ ctx >> tm <= ty
   in
   let Belt.Result.Ok statics = P_statics.parse statics_str in
   test "check / infer" (fun () ->
-    let true_tm  = Types.Statics.Term ("true", []) in
-    let false_tm = Types.Statics.Term ("true", []) in
-    let bool_ty  = Types.Statics.Term ("bool", []) in
+    let true_tm  = Statics.Term ("true", []) in
+    let false_tm = Statics.Term ("true", []) in
+    let bool_ty  = Statics.Term ("bool", []) in
     let env      = { rules = statics; var_types = M.empty } in
 
     expect (check env (Typing (true_tm, bool_ty)))
@@ -46,13 +46,13 @@ ctx >> tm <= ty
     expect (infer env true_tm)
       |> toEqual bool_ty;
 
-    let ite = Types.Statics.(Term ("ite",
+    let ite = Statics.(Term ("ite",
       [ Scope ([], true_tm);
         Scope ([], false_tm);
         Scope ([], true_tm);
       ]))
     in
-    let annot_ite = Types.Statics.(Term ("annot",
+    let annot_ite = Statics.(Term ("annot",
       [ Scope ([], ite);
         Scope ([], bool_ty);
       ]))
@@ -68,10 +68,10 @@ ctx >> tm <= ty
     (* let Belt.Result.Ok tm = P_term.parse "annot(lam(x. true()); arr(bool; bool))" in *)
     (* let Belt.Result.Ok ty = P_term.parse "bool" in *)
 
-    let lam_tm = Types.Statics.(Term("lam", [ Scope (["x"], Term ("true", [])) ])) in
-    let bool_to_bool = Types.Statics.(Term("arr", [ Scope ([], bool_ty); Scope ([], bool_ty) ])) in
+    let lam_tm = Statics.(Term("lam", [ Scope (["x"], Term ("true", [])) ])) in
+    let bool_to_bool = Statics.(Term("arr", [ Scope ([], bool_ty); Scope ([], bool_ty) ])) in
 
-    let annot_lam = Types.Statics.(
+    let annot_lam = Statics.(
       Term ("annot", [
         Scope ([], lam_tm);
         Scope ([], bool_to_bool);
@@ -86,7 +86,7 @@ ctx >> tm <= ty
     expect (check env (Typing (annot_lam, bool_to_bool)))
       |> toBe ();
 
-    let app_annot = Types.Statics.(
+    let app_annot = Statics.(
       Term ("app", [
         Scope ([], annot_lam);
         Scope ([], true_tm);

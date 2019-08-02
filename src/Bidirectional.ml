@@ -1,4 +1,4 @@
-open Types.Statics
+open Statics
 module M = Belt.Map.String
 module BL = Belt.List
 module BO = Belt.Option
