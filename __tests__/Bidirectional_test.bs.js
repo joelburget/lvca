@@ -2,173 +2,99 @@
 'use strict';
 
 var Jest = require("@glennsl/bs-jest/src/jest.js");
+var Util = require("../src/Util.bs.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
+var Binding = require("../src/Binding.bs.js");
 var Parsing = require("../src/Parsing.bs.js");
+var Statics = require("../src/Statics.bs.js");
+var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Bidirectional = require("../src/Bidirectional.bs.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
-var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
 Jest.describe("Bidirectional", (function (param) {
         var P_statics = Parsing.Incremental(Parsing.Parseable_statics);
+        var P_term = Parsing.Incremental(Parsing.Parseable_term);
         var match = Curry._1(P_statics[/* parse */5], "\n\n----------------------- (infer true)\nctx >> true() => bool()\n\n------------------------ (infer false)\nctx >> false() => bool()\n\nctx >> tm1 => arr(ty1; ty2)   ctx >> tm2 <= ty1\n----------------------------------------------- (infer app)\n          ctx >> app(tm1; tm2) => ty2\n\n    ctx, x : ty1 >> body <= ty2\n------------------------------------ (check lam)\nctx >> lam(x. body) <= arr(ty1; ty2)\n\n     ctx >> tm <= ty\n-------------------------- (infer annot)\nctx >> annot(tm; ty) => ty\n\nctx >> t1 <= bool()  ctx >> t2 => ty  ctx >> t3 => ty\n----------------------------------------------------- (infer ite)\n           ctx >> ite(t1; t2; t3) => ty\n\nctx >> tm => ty\n--------------- (reverse)\nctx >> tm <= ty\n  ");
-        if (match.tag) {
-          throw [
-                Caml_builtin_exceptions.match_failure,
-                /* tuple */[
-                  "Bidirectional_test.ml",
-                  37,
-                  6
-                ]
-              ];
-        } else {
-          var statics = match[0];
-          return Jest.test("check / infer", (function (param) {
-                        var true_tm = /* Operator */Block.__(0, [
-                            "true",
-                            /* [] */0
-                          ]);
-                        var bool_ty = /* Operator */Block.__(0, [
-                            "bool",
-                            /* [] */0
-                          ]);
-                        var env = /* record */[
-                          /* rules */statics,
-                          /* var_types */Belt_MapString.empty
-                        ];
-                        Jest.Expect[/* toBe */2](/* () */0, Jest.Expect[/* expect */0](Bidirectional.check(env, /* Typing */[
-                                      true_tm,
-                                      bool_ty
-                                    ])));
-                        Jest.Expect[/* toEqual */12](bool_ty, Jest.Expect[/* expect */0](Bidirectional.infer(env, true_tm)));
-                        var ite_001 = /* :: */[
-                          /* Scope */[
-                            /* [] */0,
-                            true_tm
-                          ],
-                          /* :: */[
-                            /* Scope */[
-                              /* [] */0,
-                              /* Operator */Block.__(0, [
-                                  "true",
-                                  /* [] */0
-                                ])
-                            ],
-                            /* :: */[
-                              /* Scope */[
-                                /* [] */0,
-                                true_tm
-                              ],
-                              /* [] */0
-                            ]
-                          ]
-                        ];
-                        var ite = /* Operator */Block.__(0, [
-                            "ite",
-                            ite_001
-                          ]);
-                        var annot_ite_001 = /* :: */[
-                          /* Scope */[
-                            /* [] */0,
-                            ite
-                          ],
-                          /* :: */[
-                            /* Scope */[
-                              /* [] */0,
-                              bool_ty
-                            ],
-                            /* [] */0
-                          ]
-                        ];
-                        var annot_ite = /* Operator */Block.__(0, [
-                            "annot",
-                            annot_ite_001
-                          ]);
+        var statics;
+        statics = match.tag ? Pervasives.failwith(match[0]) : match[0];
+        var parse_cvt = function (str) {
+          var match = Curry._1(P_term[/* parse */5], str);
+          var tm;
+          tm = match.tag ? Pervasives.failwith(match[0]) : match[0];
+          var match$1 = Curry._1(Binding.DeBruijn[/* from_nominal */1], tm);
+          var tmp;
+          tmp = match$1.tag ? Pervasives.failwith(match$1[0]) : match$1[0];
+          return Statics.of_de_bruijn(tmp);
+        };
+        var true_tm = parse_cvt("true()");
+        var bool_ty = parse_cvt("bool()");
+        var env = /* record */[
+          /* rules */statics,
+          /* var_types */Belt_MapString.empty
+        ];
+        var ite = parse_cvt("ite(true(); false(); true())");
+        var annot_ite = parse_cvt("annot(ite(true(); false(); true()); bool())");
+        var lam_tm = parse_cvt("lam(x. true())");
+        var bool_to_bool = parse_cvt("arr(bool(); bool())");
+        var annot_lam = parse_cvt("annot(lam(x. true()); arr(bool(); bool()))");
+        var app_annot_001 = /* :: */[
+          /* Scope */[
+            /* [] */0,
+            annot_lam
+          ],
+          /* :: */[
+            /* Scope */[
+              /* [] */0,
+              true_tm
+            ],
+            /* [] */0
+          ]
+        ];
+        var app_annot = /* Operator */Block.__(0, [
+            "app",
+            app_annot_001
+          ]);
+        return Jest.testAll("check / infer", /* :: */[
+                    Jest.Expect[/* toBe */2](/* () */0, Jest.Expect[/* expect */0](Bidirectional.check(env, /* Typing */[
+                                  true_tm,
+                                  bool_ty
+                                ]))),
+                    /* :: */[
+                      Jest.Expect[/* toEqual */12](bool_ty, Jest.Expect[/* expect */0](Bidirectional.infer(env, true_tm))),
+                      /* :: */[
                         Jest.Expect[/* toBe */2](/* () */0, Jest.Expect[/* expect */0](Bidirectional.check(env, /* Typing */[
                                       ite,
                                       bool_ty
-                                    ])));
-                        Jest.Expect[/* toEqual */12](bool_ty, Jest.Expect[/* expect */0](Bidirectional.infer(env, ite)));
-                        Jest.Expect[/* toEqual */12](bool_ty, Jest.Expect[/* expect */0](Bidirectional.infer(env, annot_ite)));
-                        var lam_tm = /* Operator */Block.__(0, [
-                            "lam",
+                                    ]))),
+                        /* :: */[
+                          Jest.Expect[/* toEqual */12](bool_ty, Jest.Expect[/* expect */0](Bidirectional.infer(env, ite))),
+                          /* :: */[
+                            Jest.Expect[/* toEqual */12](bool_ty, Jest.Expect[/* expect */0](Bidirectional.infer(env, annot_ite))),
                             /* :: */[
-                              /* Scope */[
+                              Jest.Expect[/* toBe */2](/* () */0, Jest.Expect[/* expect */0](Bidirectional.check(env, /* Typing */[
+                                            lam_tm,
+                                            bool_to_bool
+                                          ]))),
+                              /* :: */[
+                                Jest.Expect[/* toEqual */12](bool_to_bool, Jest.Expect[/* expect */0](Bidirectional.infer(env, annot_lam))),
                                 /* :: */[
-                                  "x",
-                                  /* [] */0
-                                ],
-                                /* Operator */Block.__(0, [
-                                    "true",
+                                  Jest.Expect[/* toBe */2](/* () */0, Jest.Expect[/* expect */0](Bidirectional.check(env, /* Typing */[
+                                                annot_lam,
+                                                bool_to_bool
+                                              ]))),
+                                  /* :: */[
+                                    Jest.Expect[/* toEqual */12](bool_ty, Jest.Expect[/* expect */0](Bidirectional.infer(env, app_annot))),
                                     /* [] */0
-                                  ])
-                              ],
-                              /* [] */0
+                                  ]
+                                ]
+                              ]
                             ]
-                          ]);
-                        var bool_to_bool_001 = /* :: */[
-                          /* Scope */[
-                            /* [] */0,
-                            bool_ty
-                          ],
-                          /* :: */[
-                            /* Scope */[
-                              /* [] */0,
-                              bool_ty
-                            ],
-                            /* [] */0
                           ]
-                        ];
-                        var bool_to_bool = /* Operator */Block.__(0, [
-                            "arr",
-                            bool_to_bool_001
-                          ]);
-                        var annot_lam_001 = /* :: */[
-                          /* Scope */[
-                            /* [] */0,
-                            lam_tm
-                          ],
-                          /* :: */[
-                            /* Scope */[
-                              /* [] */0,
-                              bool_to_bool
-                            ],
-                            /* [] */0
-                          ]
-                        ];
-                        var annot_lam = /* Operator */Block.__(0, [
-                            "annot",
-                            annot_lam_001
-                          ]);
-                        Jest.Expect[/* toBe */2](/* () */0, Jest.Expect[/* expect */0](Bidirectional.check(env, /* Typing */[
-                                      lam_tm,
-                                      bool_to_bool
-                                    ])));
-                        Jest.Expect[/* toEqual */12](bool_to_bool, Jest.Expect[/* expect */0](Bidirectional.infer(env, annot_lam)));
-                        Jest.Expect[/* toBe */2](/* () */0, Jest.Expect[/* expect */0](Bidirectional.check(env, /* Typing */[
-                                      annot_lam,
-                                      bool_to_bool
-                                    ])));
-                        var app_annot_001 = /* :: */[
-                          /* Scope */[
-                            /* [] */0,
-                            annot_lam
-                          ],
-                          /* :: */[
-                            /* Scope */[
-                              /* [] */0,
-                              true_tm
-                            ],
-                            /* [] */0
-                          ]
-                        ];
-                        var app_annot = /* Operator */Block.__(0, [
-                            "app",
-                            app_annot_001
-                          ]);
-                        return Jest.Expect[/* toEqual */12](bool_ty, Jest.Expect[/* expect */0](Bidirectional.infer(env, app_annot)));
-                      }));
-        }
+                        ]
+                      ]
+                    ]
+                  ], Util.id);
       }));
 
 var M = 0;
