@@ -1,6 +1,7 @@
 %token <string> ID
 %token LEFT_PAREN
 %token RIGHT_PAREN
+%token COLON
 %token SEMICOLON
 %token DOT
 %token EOF
@@ -9,6 +10,7 @@
 %token LEFT_D_ARR
 %token RIGHT_D_ARR
 %token LINE
+%token COMMA
 
 %{
 open Types.Statics
@@ -46,10 +48,17 @@ typing_clause:
   | inference_rule { InferenceRule $1 }
   | checking_rule  { CheckingRule  $1 }
 
-hypothesis: CTX CTX_SEPARATOR clause = typing_clause { (M.empty, clause) }
+typed_term: ID COLON term { $1, $3 }
+
+context:
+  | CTX { M.empty }
+  | CTX COMMA separated_nonempty_list(COMMA, typed_term)
+  { M.fromArray (Belt.List.toArray $3) }
+
+hypothesis: context CTX_SEPARATOR clause = typing_clause { (M.empty, clause) }
 
 rule:
-  hyps = list(hypothesis) LINE conclusion = hypothesis
-  { Rule (hyps, None, conclusion) }
+  hypotheses = list(hypothesis) LINE conclusion = hypothesis
+  { { hypotheses; name = None; conclusion } }
 
 rules: rules = list(rule) EOF { rules }

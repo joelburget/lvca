@@ -19,7 +19,9 @@ rule read = parse
   | '('       { LEFT_PAREN }
   | ')'       { RIGHT_PAREN }
   | ';'       { SEMICOLON }
+  | ':'       { COLON }
   | '.'       { DOT }
+  | ','       { COMMA }
   | "ctx"     { CTX }
   | "//" [^ '\r' '\n']* newline
   | id        { ID (Lexing.lexeme lexbuf) }

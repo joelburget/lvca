@@ -4,6 +4,7 @@
 var List = require("bs-platform/lib/js/list.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
+var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var MenhirLib = require("./menhirLib.bs.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
@@ -33,6 +34,10 @@ function token2terminal(_tok) {
           return 10;
       case 9 : 
           return 11;
+      case 10 : 
+          return 12;
+      case 11 : 
+          return 13;
       
     }
   } else {
@@ -58,6 +63,28 @@ var semantic_action = /* array */[
         _v_000,
         _v_001
       ];
+      return /* record */[
+              /* state */match[/* state */0],
+              /* semv */_v,
+              /* startp */match[/* startp */2],
+              /* endp */_menhir_stack[/* endp */3],
+              /* next */match[/* next */4]
+            ];
+    }),
+  (function (_menhir_env) {
+      var _menhir_stack = _menhir_env[/* stack */2];
+      return /* record */[
+              /* state */_menhir_stack[/* state */0],
+              /* semv */Belt_MapString.empty,
+              /* startp */_menhir_stack[/* startp */2],
+              /* endp */_menhir_stack[/* endp */3],
+              /* next */_menhir_stack[/* next */4]
+            ];
+    }),
+  (function (_menhir_env) {
+      var _menhir_stack = _menhir_env[/* stack */2];
+      var match = _menhir_stack[/* next */4][/* next */4];
+      var _v = Belt_MapString.fromArray(Belt_List.toArray(_menhir_stack[/* semv */1]));
       return /* record */[
               /* state */match[/* state */0],
               /* semv */_v,
@@ -214,11 +241,11 @@ var semantic_action = /* array */[
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
       var match = _menhir_stack[/* next */4][/* next */4];
-      var _v_000 = match[/* semv */1];
-      var _v_002 = _menhir_stack[/* semv */1];
-      var _v = /* Rule */[
+      var _v_000 = /* hypotheses */match[/* semv */1];
+      var _v_002 = /* conclusion */_menhir_stack[/* semv */1];
+      var _v = /* record */[
         _v_000,
-        undefined,
+        /* name */undefined,
         _v_002
       ];
       return /* record */[
@@ -323,6 +350,38 @@ var semantic_action = /* array */[
     }),
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
+      var _v_000 = _menhir_stack[/* semv */1];
+      var _v = /* :: */[
+        _v_000,
+        /* [] */0
+      ];
+      return /* record */[
+              /* state */_menhir_stack[/* state */0],
+              /* semv */_v,
+              /* startp */_menhir_stack[/* startp */2],
+              /* endp */_menhir_stack[/* endp */3],
+              /* next */_menhir_stack[/* next */4]
+            ];
+    }),
+  (function (_menhir_env) {
+      var _menhir_stack = _menhir_env[/* stack */2];
+      var match = _menhir_stack[/* next */4][/* next */4];
+      var _v_000 = match[/* semv */1];
+      var _v_001 = _menhir_stack[/* semv */1];
+      var _v = /* :: */[
+        _v_000,
+        _v_001
+      ];
+      return /* record */[
+              /* state */match[/* state */0],
+              /* semv */_v,
+              /* startp */match[/* startp */2],
+              /* endp */_menhir_stack[/* endp */3],
+              /* next */match[/* next */4]
+            ];
+    }),
+  (function (_menhir_env) {
+      var _menhir_stack = _menhir_env[/* stack */2];
       var match = _menhir_stack[/* next */4];
       var match$1 = match[/* next */4][/* next */4];
       var _v_000 = match$1[/* semv */1];
@@ -363,6 +422,23 @@ var semantic_action = /* array */[
     }),
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
+      var match = _menhir_stack[/* next */4][/* next */4];
+      var _v_000 = match[/* semv */1];
+      var _v_001 = _menhir_stack[/* semv */1];
+      var _v = /* tuple */[
+        _v_000,
+        _v_001
+      ];
+      return /* record */[
+              /* state */match[/* state */0],
+              /* semv */_v,
+              /* startp */match[/* startp */2],
+              /* endp */_menhir_stack[/* endp */3],
+              /* next */match[/* next */4]
+            ];
+    }),
+  (function (_menhir_env) {
+      var _menhir_stack = _menhir_env[/* stack */2];
       var _v = /* InferenceRule */Block.__(0, [_menhir_stack[/* semv */1]]);
       return /* record */[
               /* state */_menhir_stack[/* state */0],
@@ -391,34 +467,34 @@ var ET = MenhirLib.TableInterpreter[/* MakeEngineTable */0]([
       token2value,
       /* tuple */[
         8,
-        "\0\0\0\0\0\0\0\x10\x12\x0b\0\0\x14\0\0\0\x11\0\x15\x04\0\0\x05\0\x03\x18\x19\x01\0\t\0\0\x0e\0\x07\0\x0f\0\x02\0\x17"
+        "\0\0\0\0\0\0\0\0\0\x12\x14\r\0\0\x18\0\0\0\x13\0\x19\x1c\0\0\x16\x05\x01\0\x0b\0\0\x10\0\0\x06\0\0\x07\0\x03\x1d\x1e\0\t\0\x11\0\x02\0\x1b"
       ],
       /* tuple */[
-        12,
-        "\b\x90\x02\x01\x07\xe9!FD\x01\0\0\0\0\0`\0\x14\0\0\x04\x01\x06D\0\x02\0\0\0\0\x12\0\x10\0\0\x10\0\0\0\0\0\0\b\x90\0\b\0\x01\0\0\x81\0\0\b\0\0\x10\0\0\b\0\0"
+        14,
+        "\b\x90\0\xa0\x10\0\x01\x01\x01\xfa\xe2\x14\x19\x10\x01\0\0\0\0\0\0`\0\x05\0\0\0\x10\x01\x01\x91\0\0\b\0\0\0\0\0\x02\x80@\0\0\0\0\0\x02$\0\0 \0\x01\0\0\0 \x04\0\0\x04\x80\x01\0\0\0\x10\0\0\0\0\0\0\x81\0\0\0\x80\0\0\x10\0\0\0\x80\0\0"
       ],
       /* tuple */[
         /* tuple */[
           8,
-          "\x0e\x1a\"\x03\x14\x03\"\0\0\0&\x0e\0\"(\b\x004\0\0&\"\0\"\0\0\0\0\x0e\x002\x0e\0\x0e\0,\0\"\0.\0"
+          "\x10\x16\x03\x02\x16\x03\x1a\x03\x16\0\0\0.\x1a\0(0\x10\0<\0\0 \x03\0\0\0\x10\0:\x10\x000\x16\x000\x16\0\x16\0\0\0\x10\x006\0\x16\x008\0"
         ],
         /* tuple */[
           8,
-          "UUUU\x12UUU-\x12U\x15%1\x16\x1d\x1a\x16\x06\x1a.IV\n\x0e^:>J~\x93\xa3"
+          "eeee\x1ae\x0ee5eee\x1d\x1a\x12-%9\x16\x06\x1e\r\"\n6YQ\x92^B\x9aFRz\x86\xb7\xc7"
         ]
       ],
       /* tuple */[
-        4,
-        "\x10\xfe\xdc\xcb\xba\xa9\x98vfUD2 "
+        8,
+        "\x01\0\x12\x11\x11\x10\x0f\x0e\x0e\r\r\f\f\x0b\x0b\n\t\b\b\b\x07\x07\x06\x06\x05\x05\x04\x03\x02\x02"
       ],
       /* tuple */[
         /* tuple */[
           8,
-          "\x0f\0\x1a\0\b\0\x04\0\0\0\0\x1c\0\0\x0e\0\0\0\0\0\0\x10\0\x18\0\0\0\0\x1a\0\0\x10\0\"\0\0\0\x03\0\0\0"
+          "\x13\0\x03\0\x05\0\b\0\f\0\0\0\0\"\0\0\x10\0\0\0\0\0\0.\0\0\0\b\0\0\"\0\0,\0\0\x1c\0B\0\0\0\x1e\0\0\0>\0\0\0"
         ],
         /* tuple */[
           8,
-          "\x1c\x1d'($\x1f\b\"\t\n\x0b\x11\x17\x0e\x12\x14\x19\x15\t\r\x0b\x1d!\x0e\x1e\x1f\x1a\"\x1b#\0\""
+          "\x1b\x1c\x17\x16-\x1e\x1a+!\x0b\f\n\r\x13\x1c\x10\x14\x1d\x1e&+!\x0b\x0f#\r\x17$\x10,\x19+! !01)(\0*"
         ]
       ],
       2,
@@ -454,7 +530,7 @@ var start = TI[32];
 var entry = TI[37];
 
 function term_top(lexer, lexbuf) {
-  return Curry._3(entry, 37, lexer, lexbuf);
+  return Curry._3(entry, 46, lexer, lexbuf);
 }
 
 function rules(lexer, lexbuf) {
@@ -462,7 +538,7 @@ function rules(lexer, lexbuf) {
 }
 
 function term_top$1(initial_position) {
-  return Curry._2(start, 37, initial_position);
+  return Curry._2(start, 46, initial_position);
 }
 
 function rules$1(initial_position) {

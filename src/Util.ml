@@ -105,10 +105,13 @@ let union m1 m2 =
       | (None,   None  ) -> None
     )
 
-let rec fold_right (f : ('a * 'b) -> 'b) (lst : 'a list) (b : 'b) : 'b
+let rec fold_right (f : 'a * 'b -> 'b) (lst : 'a list) (b : 'b) : 'b
   = match lst with
     | []       -> b
     | a :: as_ -> f(a, fold_right f as_ b)
+
+let unions maps
+  = fold_right (fun (m1, m2) -> union m1 m2) maps Belt.Map.String.empty
 
 let map_error (result : ('a, 'b) Result.t) (f : 'b -> 'c) : ('a, 'c) Result.t
   = Result.(match result with
@@ -139,3 +142,11 @@ let is_none = function
 let is_some = function
   | None   -> false
   | Some _ -> true
+
+let first_by (lst : 'a list) (f : 'a -> 'b option) : 'b option
+  = let rec first_by' = function
+      | [] -> None
+      | x :: xs -> match f x with
+        | None -> first_by' xs
+        | Some b -> Some b
+    in first_by' lst

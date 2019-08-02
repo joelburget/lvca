@@ -185,7 +185,15 @@ module Statics = struct
   type hypothesis = term M.t * typing_clause
 
   (* TODO: the conclusion type differs from LVCA *)
-  type rule = Rule of hypothesis list * string option * hypothesis
+  (* type rule = Rule of hypothesis list * string option * hypothesis *)
+
+  type rule = {
+      hypotheses : hypothesis list;
+      name       : string option;
+      conclusion : hypothesis;
+    }
+
+  type typing = Typing of term * term
 
 end
 

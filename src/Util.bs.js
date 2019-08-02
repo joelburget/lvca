@@ -259,6 +259,12 @@ function fold_right(f, lst, b) {
   }
 }
 
+function unions(maps) {
+  return fold_right((function (param) {
+                return union(param[0], param[1]);
+              }), maps, Belt_MapString.empty);
+}
+
 function map_error(result, f) {
   if (result.tag) {
     return /* Error */Block.__(1, [Curry._1(f, result[0])]);
@@ -312,6 +318,24 @@ function is_some(param) {
   return param !== undefined;
 }
 
+function first_by(lst, f) {
+  var _param = lst;
+  while(true) {
+    var param = _param;
+    if (param) {
+      var match = Curry._1(f, param[0]);
+      if (match !== undefined) {
+        return Caml_option.some(Caml_option.valFromOption(match));
+      } else {
+        _param = param[1];
+        continue ;
+      }
+    } else {
+      return undefined;
+    }
+  };
+}
+
 exports.unsnoc = unsnoc;
 exports.intersperse = intersperse;
 exports.intersperse_after = intersperse_after;
@@ -323,6 +347,7 @@ exports.sequence_list_option = sequence_list_option;
 exports.keep_some = keep_some;
 exports.union = union;
 exports.fold_right = fold_right;
+exports.unions = unions;
 exports.map_error = map_error;
 exports.sum = sum;
 exports.find = find;
@@ -331,4 +356,5 @@ exports.id = id;
 exports.list_flat_map = list_flat_map;
 exports.is_none = is_none;
 exports.is_some = is_some;
+exports.first_by = first_by;
 /* No side effect */
