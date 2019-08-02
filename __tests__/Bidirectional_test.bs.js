@@ -24,11 +24,11 @@ Jest.describe("Bidirectional", (function (param) {
         } else {
           var statics = match[0];
           return Jest.test("check / infer", (function (param) {
-                        var true_tm = /* Term */Block.__(0, [
+                        var true_tm = /* Operator */Block.__(0, [
                             "true",
                             /* [] */0
                           ]);
-                        var bool_ty = /* Term */Block.__(0, [
+                        var bool_ty = /* Operator */Block.__(0, [
                             "bool",
                             /* [] */0
                           ]);
@@ -49,7 +49,7 @@ Jest.describe("Bidirectional", (function (param) {
                           /* :: */[
                             /* Scope */[
                               /* [] */0,
-                              /* Term */Block.__(0, [
+                              /* Operator */Block.__(0, [
                                   "true",
                                   /* [] */0
                                 ])
@@ -63,7 +63,7 @@ Jest.describe("Bidirectional", (function (param) {
                             ]
                           ]
                         ];
-                        var ite = /* Term */Block.__(0, [
+                        var ite = /* Operator */Block.__(0, [
                             "ite",
                             ite_001
                           ]);
@@ -80,7 +80,7 @@ Jest.describe("Bidirectional", (function (param) {
                             /* [] */0
                           ]
                         ];
-                        var annot_ite = /* Term */Block.__(0, [
+                        var annot_ite = /* Operator */Block.__(0, [
                             "annot",
                             annot_ite_001
                           ]);
@@ -90,7 +90,7 @@ Jest.describe("Bidirectional", (function (param) {
                                     ])));
                         Jest.Expect[/* toEqual */12](bool_ty, Jest.Expect[/* expect */0](Bidirectional.infer(env, ite)));
                         Jest.Expect[/* toEqual */12](bool_ty, Jest.Expect[/* expect */0](Bidirectional.infer(env, annot_ite)));
-                        var lam_tm = /* Term */Block.__(0, [
+                        var lam_tm = /* Operator */Block.__(0, [
                             "lam",
                             /* :: */[
                               /* Scope */[
@@ -98,7 +98,7 @@ Jest.describe("Bidirectional", (function (param) {
                                   "x",
                                   /* [] */0
                                 ],
-                                /* Term */Block.__(0, [
+                                /* Operator */Block.__(0, [
                                     "true",
                                     /* [] */0
                                   ])
@@ -119,7 +119,7 @@ Jest.describe("Bidirectional", (function (param) {
                             /* [] */0
                           ]
                         ];
-                        var bool_to_bool = /* Term */Block.__(0, [
+                        var bool_to_bool = /* Operator */Block.__(0, [
                             "arr",
                             bool_to_bool_001
                           ]);
@@ -136,7 +136,7 @@ Jest.describe("Bidirectional", (function (param) {
                             /* [] */0
                           ]
                         ];
-                        var annot_lam = /* Term */Block.__(0, [
+                        var annot_lam = /* Operator */Block.__(0, [
                             "annot",
                             annot_lam_001
                           ]);
@@ -162,7 +162,7 @@ Jest.describe("Bidirectional", (function (param) {
                             /* [] */0
                           ]
                         ];
-                        var app_annot = /* Term */Block.__(0, [
+                        var app_annot = /* Operator */Block.__(0, [
                             "app",
                             app_annot_001
                           ]);

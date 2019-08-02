@@ -105,7 +105,7 @@ function open_scope(args, param) {
                                                       ];
                                               }));
                                 }))), (function (subtms$prime) {
-                          return /* Term */Block.__(0, [
+                          return /* Operator */Block.__(0, [
                                     tag,
                                     subtms$prime
                                   ]);
@@ -146,7 +146,7 @@ function instantiate(env, tm) {
                                                   ];
                                           }));
                             }))), (function (subtms$prime) {
-                      return /* Term */Block.__(0, [
+                      return /* Operator */Block.__(0, [
                                 tag,
                                 subtms$prime
                               ]);

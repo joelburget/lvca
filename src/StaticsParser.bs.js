@@ -388,7 +388,7 @@ var semantic_action = /* array */[
       var match$1 = match[/* next */4][/* next */4];
       var _v_000 = match$1[/* semv */1];
       var _v_001 = match[/* semv */1];
-      var _v = /* Term */Block.__(0, [
+      var _v = /* Operator */Block.__(0, [
           _v_000,
           _v_001
         ]);

@@ -19,7 +19,7 @@ exception NoMatch
 
 let rec match_schema_vars' t1 t2 = match t1, t2 with
   | Free v, tm -> M.fromArray [| v, Scope ([], tm) |]
-  | Term (tag1, args1), Term (tag2, args2)
+  | Operator (tag1, args1), Operator (tag2, args2)
   -> if tag1 = tag2 && BL.(length args1 = length args2)
      then Util.unions @@ BL.zipBy args1 args2 match_schema_vars_scope
      else raise NoMatch
@@ -43,13 +43,13 @@ let open_scope (args : term list) (Scope (names, body)) : term option
     then None
     else
       let rec open' offset tm = match tm with
-        | Term (tag, subtms) -> subtms
+        | Operator (tag, subtms) -> subtms
           |. BL.map (fun (Scope (binders, subtm)) ->
             open' (offset + BL.length binders) subtm
             |. BO.map (fun subtm' -> Scope (binders, subtm'))
           )
           |. Util.sequence_list_option
-          |. BO.map (fun subtms' -> Term (tag, subtms'))
+          |. BO.map (fun subtms' -> Operator (tag, subtms'))
         | Bound i -> if i >= offset
           then BL.get args (i - offset)
           else Some tm
@@ -62,13 +62,13 @@ let open_scope (args : term list) (Scope (names, body)) : term option
       in open' 0 body
 
 let rec instantiate (env : scope M.t) (tm : term) : (term, string) BR.t = match tm with
-  | Term (tag, subtms) -> subtms
+  | Operator (tag, subtms) -> subtms
     |. BL.map (fun (Scope (binders, body)) ->
       instantiate (M.removeMany env (BL.toArray binders)) body
       |. BR.map (fun body' -> Scope (binders, body'))
     )
     |. Util.sequence_list_result
-    |. BR.map (fun subtms' -> Term (tag, subtms'))
+    |. BR.map (fun subtms' -> Operator (tag, subtms'))
   | Bound _ -> Ok tm
   | Free v -> (match M.get env v with
     | None -> Js.log3 env tm v; Error ("instantiate: couldn't find var " ^ v)

@@ -1,11 +1,12 @@
 open Types
 
 module M = Belt.Map.String
+module BL = Belt.List
 
 type scope = Scope of string list * term
 
 and term =
-  | Term      of string * scope list
+  | Operator  of string * scope list
   | Bound     of int
   | Free      of string
   | Sequence  of term list
@@ -34,3 +35,17 @@ type rule = {
   }
 
 type typing = Typing of term * term
+
+let rec of_de_bruijn : Binding.DeBruijn.term -> term
+  = function
+    | Operator (tag, scopes)
+    -> Operator (tag, scopes |. BL.map scope_of_de_bruijn)
+    | Var i
+    -> Bound i
+    | Sequence tms
+    -> Sequence (tms |. BL.map of_de_bruijn)
+    | Primitive p
+    -> Primitive p
+
+and scope_of_de_bruijn : Binding.DeBruijn.scope -> scope
+  = fun (Scope (binders, body)) -> Scope (binders, of_de_bruijn body)

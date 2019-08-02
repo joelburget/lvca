@@ -31,7 +31,7 @@ open Statics
 
 term:
   | ID LEFT_PAREN separated_list(SEMICOLON, scope) RIGHT_PAREN
-  { Term ($1, $3) }
+  { Operator ($1, $3) }
   | ID
   { Free $1 }
 
