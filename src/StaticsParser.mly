@@ -9,7 +9,7 @@
 %token CTX_SEPARATOR
 %token LEFT_D_ARR
 %token RIGHT_D_ARR
-%token LINE
+%token <string option> LINE
 %token COMMA
 
 %{
@@ -58,7 +58,7 @@ context:
 hypothesis: context CTX_SEPARATOR clause = typing_clause { (M.empty, clause) }
 
 rule:
-  hypotheses = list(hypothesis) LINE conclusion = hypothesis
-  { { hypotheses; name = None; conclusion } }
+  | hypotheses = list(hypothesis) LINE conclusion = hypothesis
+  { { hypotheses; name = $2; conclusion } }
 
 rules: rules = list(rule) EOF { rules }

@@ -2,6 +2,7 @@ open Types.Statics
 module M = Belt.Map.String
 module BL = Belt.List
 module BO = Belt.Option
+module BR = Belt.Result
 
 type env = {
     (** The (checking / inference) rules we can apply *)
@@ -60,25 +61,28 @@ let open_scope (args : term list) (Scope (names, body)) : term option
         | Primitive _ -> Some tm
       in open' 0 body
 
-let rec instantiate (env : scope M.t) (tm : term) : term option = match tm with
+let rec instantiate (env : scope M.t) (tm : term) : (term, string) BR.t = match tm with
   | Term (tag, subtms) -> subtms
     |. BL.map (fun (Scope (binders, body)) ->
       instantiate (M.removeMany env (BL.toArray binders)) body
-      |. BO.map (fun body' -> Scope (binders, body'))
+      |. BR.map (fun body' -> Scope (binders, body'))
     )
-    |. Util.sequence_list_option
-    |. BO.map (fun subtms' -> Term (tag, subtms'))
-  | Bound _ -> Some tm
+    |. Util.sequence_list_result
+    |. BR.map (fun subtms' -> Term (tag, subtms'))
+  | Bound _ -> Ok tm
   | Free v -> (match M.get env v with
-    | None -> None (* TODO: describe error *)
+    | None -> Js.log3 env tm v; Error ("instantiate: couldn't find var " ^ v)
     | Some (Scope (names, _) as sc)
-    -> open_scope (names |. BL.map (fun name -> Free name)) sc
+    -> (match open_scope (names |. BL.map (fun name -> Free name)) sc with
+      | None -> Error "instantiate: failed to open scope"
+      | Some tm -> Ok tm
+    )
   )
   | Sequence tms -> tms
     |. BL.map (instantiate env)
-    |. Util.sequence_list_option
-    |. BO.map (fun tms' -> Sequence tms')
-  | Primitive _ -> Some tm
+    |. Util.sequence_list_result
+    |. BR.map (fun tms' -> Sequence tms')
+  | Primitive _ -> Ok tm
 
 exception BadMerge
 
@@ -89,17 +93,16 @@ let safe_union m1 m2 : 'a M.t = M.merge m1 m2 (fun _ mv1 mv2 ->
   | None, Some v
   -> Some v
   | Some v1, Some v2
-  -> if v1 = v2 then Some v1 else raise BadMerge
-  | _ -> raise BadMerge
+  -> if v1 = v2 then Some v1 else (Js.log3 "safe_union" v1 v2; raise BadMerge)
+  | _ -> assert false
   )
 
 exception CheckError of string
 
 let update_ctx (ctx_state : scope M.t ref) (learned_tys : scope M.t) =
-  let ctx = !ctx_state in
-  let do_assignment = fun (k, v) -> match M.get ctx k with
-    | None -> ctx_state := M.set ctx k v
-    | Some v' -> if v <> v' then raise BadMerge
+  let do_assignment = fun (k, v) -> match M.get !ctx_state k with
+    | None    -> ctx_state := M.set !ctx_state k v
+    | Some v' -> if v <> v' then (Js.log3 "update_ctx" v v'; raise BadMerge)
   in
   List.iter do_assignment (learned_tys |. M.toList)
 
@@ -107,47 +110,89 @@ let get_or_raise msg = function
   | Some x -> x
   | None   -> raise (CheckError msg)
 
+let raise_if_not_ok outer_msg = function
+  | BR.Ok x   -> x
+  | Error msg -> raise (CheckError (outer_msg ^ ":\n" ^ msg))
+
+let ctx_infer (var_types : term M.t) : term -> term = function
+  | Free v -> (match M.get var_types v with
+    | None -> raise (CheckError ("ctx_infer: couldn't find variable " ^ v))
+    | Some ty -> ty
+    )
+  | tm -> raise (CheckError "ctx_infer: called with non-free-variable")
+
 let rec check ({ rules } as env : env) (Typing (tm, ty)) : unit
   = let match_rule = function
       | { conclusion = _, InferenceRule _ } -> None
       (* XXX conclusion context *)
-      | { hypotheses; conclusion = _, CheckingRule { tm = rule_tm; ty = rule_ty } } -> (
+      | { name; hypotheses; conclusion = _, CheckingRule { tm = rule_tm; ty = rule_ty } } -> (
         let match1 = match_schema_vars rule_tm tm in
         let match2 = match_schema_vars rule_ty ty in
         match match1, match2 with
           | Some tm_assignments, Some ty_assignments
-          -> Some (hypotheses, tm_assignments, ty_assignments)
+          -> Some (name, hypotheses, tm_assignments, ty_assignments)
           | _
           -> None
       )
-    in let (hypotheses, tm_assignments, ty_assignments) =
-      get_or_raise "1" (Util.first_by rules match_rule) in
-    (* ctx_state is a mapping of type variables we've learned *)
-    let ctx_state : scope M.t ref = ref M.empty in
+    in let (name, hypotheses, tm_assignments, ty_assignments) =
+      get_or_raise "check: no matching rule found" (Util.first_by rules match_rule) in
     (* TODO: check term / type assignments disjoint *)
-    let assignments = Util.union tm_assignments ty_assignments in
-    List.iter (check_hyp ctx_state assignments env) hypotheses
+    let schema_assignments = Util.union tm_assignments ty_assignments in
+    (* ctx_state is a mapping of schema variables we've learned:
+      * We fill this in initially with `schema_assignments` from matching the
+        conclusion.
+      * It's also updated as we evaluate the hypotheses (from left to right) if
+        we learn any more assignments. Example:
 
-and infer ({ rules } as env : env) (tm : term) : term
-  = let match_rule = fun { hypotheses; conclusion } -> match conclusion with
+            ctx >> tm1 => arr(ty1; ty2)   ctx >> tm2 <= ty1
+            ------- (infer app)
+            ctx >> app(tm1; tm2) => ty2
+
+        Here we initially learn tm1, tm2, and ty2, but only learn ty1 via
+        checking of hypotheses.
+    *)
+    let ctx_state : scope M.t ref = ref schema_assignments in
+    let name' = match name with
+      | None      -> "infer"
+      | Some name -> "infer " ^ name
+    in
+    List.iter (check_hyp name ctx_state env) hypotheses
+
+and infer ({ rules; var_types } as env : env) (tm : term) : term
+  = let match_rule = fun { name; hypotheses; conclusion } -> match conclusion with
     | _, CheckingRule _ -> None
     (* XXX conclusion context *)
     | _, InferenceRule { tm = rule_tm; ty = rule_ty } ->
       match_schema_vars rule_tm tm
-      |. BO.map (fun assignments -> (hypotheses, assignments, rule_ty))
-    in let (hypotheses, assignments, rule_ty) =
-      get_or_raise "2" (Util.first_by rules match_rule) in
-    let ctx_state : scope M.t ref = ref M.empty in
-    List.iter (check_hyp ctx_state assignments env) hypotheses;
-    get_or_raise "3" (instantiate !ctx_state rule_ty)
+      |. BO.map (fun schema_assignments ->
+          (name, hypotheses, schema_assignments, rule_ty))
+    in
+    match Util.first_by rules match_rule with
+      | Some (name, hypotheses, schema_assignments, rule_ty)
+      -> let ctx_state : scope M.t ref = ref schema_assignments in
+         let name' = match name with
+           | None      -> "infer"
+           | Some name -> "infer " ^ name
+         in
+         List.iter (check_hyp name ctx_state env) hypotheses;
+         instantiate !ctx_state rule_ty |> raise_if_not_ok name'
+      | None -> ctx_infer var_types tm
 
-and check_hyp = fun ctx_state assignments env (pattern_ctx, rule) -> match rule with
+and check_hyp = fun name ctx_state env (pattern_ctx, rule) ->
+  let name' = match name with
+    | None      -> "check_hyp"
+    | Some name -> "check_hyp " ^ name
+  in
+  match rule with
   | CheckingRule { tm = hyp_tm; ty = hyp_ty } ->
-    let tm = get_or_raise "4" (instantiate assignments hyp_tm) in
-    let ty = get_or_raise "5" (instantiate assignments hyp_ty) in
+    let tm = instantiate !ctx_state hyp_tm |> raise_if_not_ok name' in
+    let ty = instantiate !ctx_state hyp_ty |> raise_if_not_ok name' in
     check env (Typing (tm, ty))
   | InferenceRule { tm = hyp_tm; ty = hyp_ty } ->
-    let tm = get_or_raise "6" (instantiate assignments hyp_tm) in
+    let tm = instantiate !ctx_state hyp_tm |> raise_if_not_ok name' in
     let ty = infer env tm in
-    let learned_tys = get_or_raise "7" (match_schema_vars hyp_ty ty) in
+    let learned_tys = get_or_raise
+      "check_hyp: failed to match schema vars"
+      (match_schema_vars hyp_ty ty)
+    in
     update_ctx ctx_state learned_tys

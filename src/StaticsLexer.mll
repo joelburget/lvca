@@ -4,14 +4,16 @@ open LexerUtil
 }
 
 let white = [' ' '\t' '\r' '\n']+
+let opt_white = [' ' '\t' '\r' '\n']*
 let id = ['a'-'z' 'A'-'Z' '_' '-'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '-']*
-let line = '-' '-'+
-(* let rule_name = '(' [^ '\n' ')']+ ')' *)
+let named_line = '-' '-'+ opt_white '(' ([^ '\n' ')']+ as name) ')'
+let unnamed_line = '-' '-'+
 let newline = '\r' | '\n' | "\r\n"
 
 rule read = parse
   | white     { read lexbuf }
-  | line      { LINE }
+  | named_line   { LINE (Some name) }
+  | unnamed_line { LINE None }
   | ">>"      { CTX_SEPARATOR }
   | "=>"      { RIGHT_D_ARR }
   | "<="      { LEFT_D_ARR }

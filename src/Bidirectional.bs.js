@@ -8,6 +8,7 @@ var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
+var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
@@ -30,7 +31,7 @@ function match_schema_vars$prime(t1, t2) {
                 Caml_builtin_exceptions.match_failure,
                 /* tuple */[
                   "Bidirectional.ml",
-                  19,
+                  20,
                   35
                 ]
               ];
@@ -56,7 +57,7 @@ function match_schema_vars$prime(t1, t2) {
             Caml_builtin_exceptions.match_failure,
             /* tuple */[
               "Bidirectional.ml",
-              19,
+              20,
               35
             ]
           ];
@@ -136,9 +137,9 @@ function instantiate(env, tm) {
   switch (tm.tag | 0) {
     case 0 : 
         var tag = tm[0];
-        return Belt_Option.map(Util.sequence_list_option(Belt_List.map(tm[1], (function (param) {
+        return Belt_Result.map(Util.sequence_list_result(Belt_List.map(tm[1], (function (param) {
                               var binders = param[0];
-                              return Belt_Option.map(instantiate(Belt_MapString.removeMany(env, Belt_List.toArray(binders)), param[1]), (function (body$prime) {
+                              return Belt_Result.map(instantiate(Belt_MapString.removeMany(env, Belt_List.toArray(binders)), param[1]), (function (body$prime) {
                                             return /* Scope */[
                                                     binders,
                                                     body$prime
@@ -151,24 +152,31 @@ function instantiate(env, tm) {
                               ]);
                     }));
     case 2 : 
-        var match = Belt_MapString.get(env, tm[0]);
+        var v = tm[0];
+        var match = Belt_MapString.get(env, v);
         if (match !== undefined) {
           var sc = match;
-          return open_scope(Belt_List.map(sc[0], (function (name) {
-                            return /* Free */Block.__(2, [name]);
-                          })), sc);
+          var match$1 = open_scope(Belt_List.map(sc[0], (function (name) {
+                      return /* Free */Block.__(2, [name]);
+                    })), sc);
+          if (match$1 !== undefined) {
+            return /* Ok */Block.__(0, [match$1]);
+          } else {
+            return /* Error */Block.__(1, ["instantiate: failed to open scope"]);
+          }
         } else {
-          return undefined;
+          console.log(env, tm, v);
+          return /* Error */Block.__(1, ["instantiate: couldn't find var " + v]);
         }
     case 3 : 
-        return Belt_Option.map(Util.sequence_list_option(Belt_List.map(tm[0], (function (param) {
+        return Belt_Result.map(Util.sequence_list_result(Belt_List.map(tm[0], (function (param) {
                               return instantiate(env, param);
                             }))), (function (tms$prime) {
                       return /* Sequence */Block.__(3, [tms$prime]);
                     }));
     case 1 : 
     case 4 : 
-        return tm;
+        return /* Ok */Block.__(0, [tm]);
     
   }
 }
@@ -179,15 +187,28 @@ function safe_union(m1, m2) {
   return Belt_MapString.merge(m1, m2, (function (param, mv1, mv2) {
                 if (mv1 !== undefined) {
                   var v1 = Caml_option.valFromOption(mv1);
-                  if (mv2 !== undefined && !Caml_obj.caml_equal(v1, Caml_option.valFromOption(mv2))) {
-                    throw BadMerge;
+                  if (mv2 !== undefined) {
+                    var v2 = Caml_option.valFromOption(mv2);
+                    if (Caml_obj.caml_equal(v1, v2)) {
+                      return Caml_option.some(v1);
+                    } else {
+                      console.log("safe_union", v1, v2);
+                      throw BadMerge;
+                    }
                   } else {
                     return Caml_option.some(v1);
                   }
                 } else if (mv2 !== undefined) {
                   return Caml_option.some(Caml_option.valFromOption(mv2));
                 } else {
-                  throw BadMerge;
+                  throw [
+                        Caml_builtin_exceptions.assert_failure,
+                        /* tuple */[
+                          "Bidirectional.ml",
+                          97,
+                          9
+                        ]
+                      ];
                 }
               }));
 }
@@ -195,19 +216,20 @@ function safe_union(m1, m2) {
 var CheckError = Caml_exceptions.create("Bidirectional.CheckError");
 
 function update_ctx(ctx_state, learned_tys) {
-  var ctx = ctx_state[0];
   var do_assignment = function (param) {
     var v = param[1];
     var k = param[0];
-    var match = Belt_MapString.get(ctx, k);
+    var match = Belt_MapString.get(ctx_state[0], k);
     if (match !== undefined) {
-      if (Caml_obj.caml_notequal(v, match)) {
+      var v$prime = match;
+      if (Caml_obj.caml_notequal(v, v$prime)) {
+        console.log("update_ctx", v, v$prime);
         throw BadMerge;
       } else {
         return 0;
       }
     } else {
-      ctx_state[0] = Belt_MapString.set(ctx, k, v);
+      ctx_state[0] = Belt_MapString.set(ctx_state[0], k, v);
       return /* () */0;
     }
   };
@@ -225,6 +247,37 @@ function get_or_raise(msg, param) {
   }
 }
 
+function raise_if_not_ok(outer_msg, param) {
+  if (param.tag) {
+    throw [
+          CheckError,
+          outer_msg + (":\n" + param[0])
+        ];
+  } else {
+    return param[0];
+  }
+}
+
+function ctx_infer(var_types, tm) {
+  if (tm.tag === 2) {
+    var v = tm[0];
+    var match = Belt_MapString.get(var_types, v);
+    if (match !== undefined) {
+      return match;
+    } else {
+      throw [
+            CheckError,
+            "ctx_infer: couldn't find variable " + v
+          ];
+    }
+  } else {
+    throw [
+          CheckError,
+          "ctx_infer: called with non-free-variable"
+        ];
+  }
+}
+
 function check(env, param) {
   var ty = param[1];
   var tm = param[0];
@@ -236,6 +289,7 @@ function check(env, param) {
       var match2 = match_schema_vars(match$1[/* ty */1], ty);
       if (match1 !== undefined && match2 !== undefined) {
         return /* tuple */[
+                param[/* name */1],
                 param[/* hypotheses */0],
                 Caml_option.valFromOption(match1),
                 Caml_option.valFromOption(match2)
@@ -246,56 +300,66 @@ function check(env, param) {
     }
     
   };
-  var match = get_or_raise("1", Util.first_by(env[/* rules */0], match_rule));
-  var ctx_state = /* record */[/* contents */Belt_MapString.empty];
-  var assignments = Util.union(match[1], match[2]);
+  var match = get_or_raise("check: no matching rule found", Util.first_by(env[/* rules */0], match_rule));
+  var name = match[0];
+  var schema_assignments = Util.union(match[2], match[3]);
+  var ctx_state = /* record */[/* contents */schema_assignments];
   return List.iter((function (param) {
-                return check_hyp(ctx_state, assignments, env, param);
-              }), match[0]);
+                return check_hyp(name, ctx_state, env, param);
+              }), match[1]);
 }
 
 function infer(env, tm) {
   var match_rule = function (param) {
     var match = param[/* conclusion */2][1];
+    var name = param[/* name */1];
     var hypotheses = param[/* hypotheses */0];
     if (match.tag) {
       return undefined;
     } else {
       var match$1 = match[0];
       var rule_ty = match$1[/* ty */1];
-      return Belt_Option.map(match_schema_vars(match$1[/* tm */0], tm), (function (assignments) {
+      return Belt_Option.map(match_schema_vars(match$1[/* tm */0], tm), (function (schema_assignments) {
                     return /* tuple */[
+                            name,
                             hypotheses,
-                            assignments,
+                            schema_assignments,
                             rule_ty
                           ];
                   }));
     }
   };
-  var match = get_or_raise("2", Util.first_by(env[/* rules */0], match_rule));
-  var assignments = match[1];
-  var ctx_state = /* record */[/* contents */Belt_MapString.empty];
-  List.iter((function (param) {
-          return check_hyp(ctx_state, assignments, env, param);
-        }), match[0]);
-  return get_or_raise("3", instantiate(ctx_state[0], match[2]));
+  var match = Util.first_by(env[/* rules */0], match_rule);
+  if (match !== undefined) {
+    var match$1 = match;
+    var name = match$1[0];
+    var ctx_state = /* record */[/* contents */match$1[2]];
+    var name$prime = name !== undefined ? "infer " + name : "infer";
+    List.iter((function (param) {
+            return check_hyp(name, ctx_state, env, param);
+          }), match$1[1]);
+    return raise_if_not_ok(name$prime, instantiate(ctx_state[0], match$1[3]));
+  } else {
+    return ctx_infer(env[/* var_types */1], tm);
+  }
 }
 
-function check_hyp(ctx_state, assignments, env, param) {
+function check_hyp(name, ctx_state, env, param) {
   var rule = param[1];
+  var name$prime = name !== undefined ? "check_hyp " + name : "check_hyp";
   if (rule.tag) {
     var match = rule[0];
-    var tm = get_or_raise("4", instantiate(assignments, match[/* tm */0]));
-    var ty = get_or_raise("5", instantiate(assignments, match[/* ty */1]));
+    var tm = raise_if_not_ok(name$prime, instantiate(ctx_state[0], match[/* tm */0]));
+    var ty = raise_if_not_ok(name$prime, instantiate(ctx_state[0], match[/* ty */1]));
     return check(env, /* Typing */[
                 tm,
                 ty
               ]);
   } else {
     var match$1 = rule[0];
-    var tm$1 = get_or_raise("6", instantiate(assignments, match$1[/* tm */0]));
+    var tm$1 = raise_if_not_ok(name$prime, instantiate(ctx_state[0], match$1[/* tm */0]));
     var ty$1 = infer(env, tm$1);
-    var learned_tys = get_or_raise("7", match_schema_vars(match$1[/* ty */1], ty$1));
+    var learned_tys = get_or_raise("check_hyp: failed to match schema vars", match_schema_vars(match$1[/* ty */1], ty$1));
     return update_ctx(ctx_state, learned_tys);
   }
 }
@@ -306,9 +370,12 @@ var BL = 0;
 
 var BO = 0;
 
+var BR = 0;
+
 exports.M = M;
 exports.BL = BL;
 exports.BO = BO;
+exports.BR = BR;
 exports.enscope = enscope;
 exports.NoMatch = NoMatch;
 exports.match_schema_vars$prime = match_schema_vars$prime;
@@ -321,6 +388,8 @@ exports.safe_union = safe_union;
 exports.CheckError = CheckError;
 exports.update_ctx = update_ctx;
 exports.get_or_raise = get_or_raise;
+exports.raise_if_not_ok = raise_if_not_ok;
+exports.ctx_infer = ctx_infer;
 exports.check = check;
 exports.infer = infer;
 exports.check_hyp = check_hyp;

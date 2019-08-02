@@ -21,27 +21,27 @@ function token2terminal(_tok) {
       case 2 : 
           return 3;
       case 3 : 
-          return 4;
-      case 4 : 
           return 5;
-      case 5 : 
+      case 4 : 
           return 6;
-      case 6 : 
+      case 5 : 
           return 8;
-      case 7 : 
+      case 6 : 
           return 9;
-      case 8 : 
+      case 7 : 
           return 10;
-      case 9 : 
+      case 8 : 
           return 11;
-      case 10 : 
+      case 9 : 
           return 12;
-      case 11 : 
+      case 10 : 
           return 13;
       
     }
-  } else {
+  } else if (_tok.tag) {
     return 7;
+  } else {
+    return 4;
   }
 }
 
@@ -240,20 +240,22 @@ var semantic_action = /* array */[
     }),
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
-      var match = _menhir_stack[/* next */4][/* next */4];
-      var _v_000 = /* hypotheses */match[/* semv */1];
+      var match = _menhir_stack[/* next */4];
+      var match$1 = match[/* next */4];
+      var _v_000 = /* hypotheses */match$1[/* semv */1];
+      var _v_001 = /* name */match[/* semv */1];
       var _v_002 = /* conclusion */_menhir_stack[/* semv */1];
       var _v = /* record */[
         _v_000,
-        /* name */undefined,
+        _v_001,
         _v_002
       ];
       return /* record */[
-              /* state */match[/* state */0],
+              /* state */match$1[/* state */0],
               /* semv */_v,
-              /* startp */match[/* startp */2],
+              /* startp */match$1[/* startp */2],
               /* endp */_menhir_stack[/* endp */3],
-              /* next */match[/* next */4]
+              /* next */match$1[/* next */4]
             ];
     }),
   (function (_menhir_env) {
