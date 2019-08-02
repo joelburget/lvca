@@ -1,6 +1,8 @@
 open Types
 module Result = Belt.Result
 module Option = Belt.Option
+module L = Belt.List
+module M = Belt.Map.String
 
 let (sequence_list_option, sequence_list_result, union) =
   Util.(sequence_list_option, sequence_list_result, union)
@@ -71,11 +73,9 @@ end = struct
 
   let to_nominal = to_nominal' []
 
-  module M = Belt.Map.String
-  let (get, empty) = Belt.Map.String.(get, empty)
   let rec from_nominal_with_bindings (Language sorts as lang) current_sort env
     = function
-      | Nominal.Operator(tag, subtms) -> (match get sorts current_sort with
+      | Nominal.Operator(tag, subtms) -> (match M.get sorts current_sort with
         | None -> Result.Error
           ("from_nominal_with_bindings: couldn't find sort " ^ current_sort)
         | Some (SortDef (_vars, operators)) -> (match find_operator operators tag with
@@ -96,10 +96,10 @@ end = struct
                     -> scope_from_nominal lang result_sort env subtm
                   | _ -> Result.Error "TODO 2")))
               (fun subtms' -> Operator (tag, subtms'))))
-      | Nominal.Var name -> (match get env name with
+      | Var name -> (match M.get env name with
         | None    -> Error ("couldn't find variable " ^ name)
         | Some ix -> Ok (Var ix))
-      | Nominal.Sequence tms -> Result.map
+      | Sequence tms -> Result.map
         (sequence_list_result
           (L.map tms (from_nominal_with_bindings lang current_sort env)))
         (fun x' -> Sequence x')
@@ -111,7 +111,6 @@ end = struct
     env
     (Nominal.Scope (names, body))
     =
-      let module L = Belt.List in
       let n = L.length names in
       let argNums = L.(zip names (makeBy n (fun i -> i))) in
       let env' = union
@@ -121,7 +120,8 @@ end = struct
            (from_nominal_with_bindings lang current_sort env' body)
            (fun body' -> (Scope (names, body')))
 
-  let from_nominal lang current_sort = from_nominal_with_bindings lang current_sort empty
+  let from_nominal lang current_sort =
+    from_nominal_with_bindings lang current_sort M.empty
 
 end
 

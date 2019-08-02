@@ -15,7 +15,7 @@ var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 
 var DeBruijn = Caml_module.init_mod([
       "Binding.ml",
-      32,
+      34,
       6
     ], [[
         0,
@@ -435,6 +435,10 @@ var Result = 0;
 
 var $$Option = 0;
 
+var L = 0;
+
+var M = 0;
+
 var sequence_list_option = Util.sequence_list_option;
 
 var sequence_list_result = Util.sequence_list_result;
@@ -443,6 +447,8 @@ var union = Util.union;
 
 exports.Result = Result;
 exports.$$Option = $$Option;
+exports.L = L;
+exports.M = M;
 exports.sequence_list_option = sequence_list_option;
 exports.sequence_list_result = sequence_list_result;
 exports.union = union;
