@@ -19,15 +19,11 @@ module rec DeBruijn : sig
   val to_nominal : term -> Nominal.term option
 
   val from_nominal
-    : language
-    -> string
-    -> Nominal.term
+    :  Nominal.term
     -> (term, string) Result.t
 
   val from_nominal_with_bindings
-    :  language
-    -> string
-    -> int Belt.Map.String.t
+    :  int Belt.Map.String.t
     -> Nominal.term
     -> (term, string) Result.t
 
@@ -73,55 +69,34 @@ end = struct
 
   let to_nominal = to_nominal' []
 
-  let rec from_nominal_with_bindings (Language sorts as lang) current_sort env
-    = function
-      | Nominal.Operator(tag, subtms) -> (match M.get sorts current_sort with
-        | None -> Result.Error
-          ("from_nominal_with_bindings: couldn't find sort " ^ current_sort)
-        | Some (SortDef (_vars, operators)) -> (match find_operator operators tag with
-          | None -> Error
-            ("from_nominal_with_bindings: couldn't find operator " ^ tag ^
-            " (in sort " ^ current_sort ^ ")")
-          | Some (OperatorDef (_tag, Arity (_binds, valences))) ->
-            if L.(length valences != length subtms)
-            then Error (
-              "Unexpected number of subterms (does not match the valence of " ^
-              tag ^ ")"
-            )
-            else Result.map
-              (sequence_list_result
-                (L.zipBy valences subtms
-                (fun valence subtm -> match valence with
-                  | FixedValence (_binds, SortAp (result_sort, _))
-                    -> scope_from_nominal lang result_sort env subtm
-                  | _ -> Result.Error "TODO 2")))
-              (fun subtms' -> Operator (tag, subtms'))))
-      | Var name -> (match M.get env name with
-        | None    -> Error ("couldn't find variable " ^ name)
-        | Some ix -> Ok (Var ix))
-      | Sequence tms -> Result.map
-        (sequence_list_result
-          (L.map tms (from_nominal_with_bindings lang current_sort env)))
-        (fun x' -> Sequence x')
-      | Primitive prim -> Ok (DeBruijn.Primitive prim)
+  exception FailedFromNominal of string
 
-  and scope_from_nominal
-    lang
-    (current_sort : string)
-    env
-    (Nominal.Scope (names, body))
+  let rec from_nominal_with_bindings' env
+    = function
+      | Nominal.Operator(tag, subtms) ->
+        Operator (tag, subtms |. L.map (scope_from_nominal' env))
+      | Var name -> (match M.get env name with
+        | None    -> raise (FailedFromNominal ("couldn't find variable " ^ name))
+        | Some ix -> Var ix)
+      | Sequence tms -> Sequence (tms |. L.map (from_nominal_with_bindings' env))
+      | Primitive prim -> Primitive prim
+
+  and scope_from_nominal' env (Nominal.Scope (names, body))
     =
       let n = L.length names in
       let argNums = L.(zip names (makeBy n (fun i -> i))) in
       let env' = union
             (M.map env (fun i -> i + n))
             (M.fromArray (L.toArray argNums))
-      in Result.map
-           (from_nominal_with_bindings lang current_sort env' body)
-           (fun body' -> (Scope (names, body')))
+      in Scope (names, from_nominal_with_bindings' env' body)
 
-  let from_nominal lang current_sort =
-    from_nominal_with_bindings lang current_sort M.empty
+  let from_nominal_with_bindings bindings tm =
+    try
+      Result.Ok (from_nominal_with_bindings' bindings tm)
+    with
+      FailedFromNominal msg -> Error msg
+
+  let from_nominal = from_nominal_with_bindings M.empty
 
 end
 

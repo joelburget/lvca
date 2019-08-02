@@ -37,7 +37,7 @@ function read_eval_input(language, dynamics, input) {
     var ast = match[0];
     match$1 = /* tuple */[
       /* Ok */Block.__(0, [ast]),
-      Curry._3(Binding.DeBruijn[/* from_nominal */1], language, "tm", ast)
+      Curry._1(Binding.DeBruijn[/* from_nominal */1], ast)
     ];
   }
   var abtResult = match$1[1];

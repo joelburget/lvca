@@ -23,7 +23,7 @@ let read_eval_input = (language, dynamics, input): (parse_result, eval_result) =
 
     let (astResult, abtResult) = switch (Parse_term.parse(input)) {
     | Ok(ast)
-      => (Result.Ok(ast), Binding.DeBruijn.from_nominal(language, "tm", ast))
+      => (Result.Ok(ast), Binding.DeBruijn.from_nominal(ast))
     | Error(msg)
     => (Error((msg, None)), Error(msg))
     };

@@ -9,13 +9,14 @@ var Bigint = require("bs-zarith/src/Bigint.js");
 var Format = require("bs-platform/lib/js/format.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
-var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Caml_module = require("bs-platform/lib/js/caml_module.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
+var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
+var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 
 var DeBruijn = Caml_module.init_mod([
       "Binding.ml",
-      34,
+      30,
       6
     ], [[
         0,
@@ -25,7 +26,7 @@ var DeBruijn = Caml_module.init_mod([
 
 var Nominal = Caml_module.init_mod([
       "Binding.ml",
-      145,
+      120,
       6
     ], [[
         0,
@@ -34,23 +35,6 @@ var Nominal = Caml_module.init_mod([
         0,
         0
       ]]);
-
-function find_operator(_operators, tag) {
-  while(true) {
-    var operators = _operators;
-    if (operators) {
-      var od = operators[0];
-      if (od[0] === tag) {
-        return od;
-      } else {
-        _operators = operators[1];
-        continue ;
-      }
-    } else {
-      return undefined;
-    }
-  };
-}
 
 function to_nominal$prime(ctx, param) {
   switch (param.tag | 0) {
@@ -92,79 +76,67 @@ function to_nominal(param) {
   return to_nominal$prime(/* [] */0, param);
 }
 
-function from_nominal_with_bindings(lang, current_sort, env, param) {
+var FailedFromNominal = Caml_exceptions.create("Binding.DeBruijn.FailedFromNominal");
+
+function from_nominal_with_bindings$prime(env, param) {
   switch (param.tag | 0) {
     case 0 : 
-        var subtms = param[1];
-        var tag = param[0];
-        var match = Belt_MapString.get(lang[0], current_sort);
-        if (match !== undefined) {
-          var match$1 = find_operator(match[1], tag);
-          if (match$1 !== undefined) {
-            var valences = match$1[1][1];
-            if (Belt_List.length(valences) !== Belt_List.length(subtms)) {
-              return /* Error */Block.__(1, ["Unexpected number of subterms (does not match the valence of " + (tag + ")")]);
-            } else {
-              return Belt_Result.map(Util.sequence_list_result(Belt_List.zipBy(valences, subtms, (function (valence, subtm) {
-                                    if (valence.tag) {
-                                      return /* Error */Block.__(1, ["TODO 2"]);
-                                    } else {
-                                      var lang$1 = lang;
-                                      var current_sort = valence[1][0];
-                                      var env$1 = env;
-                                      var param = subtm;
-                                      var names = param[0];
-                                      var n = Belt_List.length(names);
-                                      var argNums = Belt_List.zip(names, Belt_List.makeBy(n, (function (i) {
-                                                  return i;
-                                                })));
-                                      var env$prime = Util.union(Belt_MapString.map(env$1, (function (i) {
-                                                  return i + n | 0;
-                                                })), Belt_MapString.fromArray(Belt_List.toArray(argNums)));
-                                      return Belt_Result.map(from_nominal_with_bindings(lang$1, current_sort, env$prime, param[1]), (function (body$prime) {
-                                                    return /* Scope */[
-                                                            names,
-                                                            body$prime
-                                                          ];
-                                                  }));
-                                    }
-                                  }))), (function (subtms$prime) {
-                            return /* Operator */Block.__(0, [
-                                      tag,
-                                      subtms$prime
-                                    ]);
-                          }));
-            }
-          } else {
-            return /* Error */Block.__(1, ["from_nominal_with_bindings: couldn't find operator " + (tag + (" (in sort " + (current_sort + ")")))]);
-          }
-        } else {
-          return /* Error */Block.__(1, ["from_nominal_with_bindings: couldn't find sort " + current_sort]);
-        }
+        return /* Operator */Block.__(0, [
+                  param[0],
+                  Belt_List.map(param[1], (function (param) {
+                          var env$1 = env;
+                          var param$1 = param;
+                          var names = param$1[0];
+                          var n = Belt_List.length(names);
+                          var argNums = Belt_List.zip(names, Belt_List.makeBy(n, (function (i) {
+                                      return i;
+                                    })));
+                          var env$prime = Util.union(Belt_MapString.map(env$1, (function (i) {
+                                      return i + n | 0;
+                                    })), Belt_MapString.fromArray(Belt_List.toArray(argNums)));
+                          return /* Scope */[
+                                  names,
+                                  from_nominal_with_bindings$prime(env$prime, param$1[1])
+                                ];
+                        }))
+                ]);
     case 1 : 
         var name = param[0];
-        var match$2 = Belt_MapString.get(env, name);
-        if (match$2 !== undefined) {
-          return /* Ok */Block.__(0, [/* Var */Block.__(1, [match$2])]);
+        var match = Belt_MapString.get(env, name);
+        if (match !== undefined) {
+          return /* Var */Block.__(1, [match]);
         } else {
-          return /* Error */Block.__(1, ["couldn't find variable " + name]);
+          throw [
+                FailedFromNominal,
+                "couldn't find variable " + name
+              ];
         }
     case 2 : 
-        return Belt_Result.map(Util.sequence_list_result(Belt_List.map(param[0], (function (param) {
-                              return from_nominal_with_bindings(lang, current_sort, env, param);
-                            }))), (function (x$prime) {
-                      return /* Sequence */Block.__(2, [x$prime]);
-                    }));
+        return /* Sequence */Block.__(2, [Belt_List.map(param[0], (function (param) {
+                          return from_nominal_with_bindings$prime(env, param);
+                        }))]);
     case 3 : 
-        return /* Ok */Block.__(0, [/* Primitive */Block.__(3, [param[0]])]);
+        return /* Primitive */Block.__(3, [param[0]]);
     
   }
 }
 
-function from_nominal(lang, current_sort) {
-  return (function (param) {
-      return from_nominal_with_bindings(lang, current_sort, Belt_MapString.empty, param);
-    });
+function from_nominal_with_bindings(bindings, tm) {
+  try {
+    return /* Ok */Block.__(0, [from_nominal_with_bindings$prime(bindings, tm)]);
+  }
+  catch (raw_exn){
+    var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
+    if (exn[0] === FailedFromNominal) {
+      return /* Error */Block.__(1, [exn[1]]);
+    } else {
+      throw exn;
+    }
+  }
+}
+
+function from_nominal(param) {
+  return from_nominal_with_bindings(Belt_MapString.empty, param);
 }
 
 Caml_module.update_mod([[
