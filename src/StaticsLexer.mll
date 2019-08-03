@@ -11,6 +11,7 @@ let unnamed_line = '-' '-'+
 let newline = '\r' | '\n' | "\r\n"
 
 rule read = parse
+  | "//" [^ '\r' '\n']* newline
   | white     { read lexbuf }
   | named_line   { LINE (Some name) }
   | unnamed_line { LINE None }
@@ -25,7 +26,6 @@ rule read = parse
   | '.'       { DOT }
   | ','       { COMMA }
   | "ctx"     { CTX }
-  | "//" [^ '\r' '\n']* newline
   | id        { ID (Lexing.lexeme lexbuf) }
   | eof       { EOF }
   | newline   { next_line lexbuf; read lexbuf }

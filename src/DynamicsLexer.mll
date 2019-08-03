@@ -12,6 +12,7 @@ let id = ['a'-'z' 'A'-'Z' '_' '-' '#'] ['a'-'z' 'A'-'Z' '0'-'9' '\'' '_' '-' '#'
 let newline = '\r' | '\n' | "\r\n"
 
 rule read = parse
+  | "//" [^ '\r' '\n']* newline
   | white     { read lexbuf }
   | "[["      { LEFT_OXFORD }
   | "]]"      { RIGHT_OXFORD }
@@ -35,7 +36,6 @@ rule read = parse
   | "of"      { OF }
   | int       { INT (Bigint.of_string (L.lexeme lexbuf)) }
   | id        { ID (Lexing.lexeme lexbuf) }
-  | "//" [^ '\r' '\n']* newline
   | eof       { EOF }
   | newline   { next_line lexbuf; read lexbuf }
   | _ { error lexbuf ("Unexpected char: " ^ Lexing.lexeme lexbuf) }

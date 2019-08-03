@@ -16,6 +16,7 @@ let newline = '\r' | '\n' | "\r\n"
 let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '-' '_']*
 
 rule read = parse
+  | "//" [^ '\r' '\n']* newline
   | white    { read lexbuf }
   | newline  { next_line lexbuf; read lexbuf }
   | int      { INT (Bigint.of_string (L.lexeme lexbuf)) }
@@ -31,7 +32,6 @@ rule read = parse
   | ';'      { SEMICOLON }
   (* | ','      { COMMA } *)
   | '.'      { DOT }
-  | "//" [^ '\r' '\n']* newline
   | eof      { EOF }
   | _        { error lexbuf ("Unexpected char: " ^ L.lexeme lexbuf) }
 
