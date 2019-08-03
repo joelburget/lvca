@@ -11,4 +11,7 @@ module.exports = {
     path: path.join(__dirname, "bundledOutputs"),
     filename: '[name].js',
   },
+  node: {
+    fs: "empty",
+  },
 };
