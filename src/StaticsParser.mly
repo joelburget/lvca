@@ -51,7 +51,8 @@ typing_clause:
 typed_term: ID COLON term { $1, $3 }
 
 context:
-  | CTX { M.empty }
+  | CTX
+  { M.empty }
   | CTX COMMA separated_nonempty_list(COMMA, typed_term)
   { M.fromArray (Belt.List.toArray $3) }
 
