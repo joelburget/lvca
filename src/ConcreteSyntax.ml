@@ -318,7 +318,8 @@ and scope_to_ast lang ({ children } as tree)
   )
   | [] -> Error "scope_to_ast called on no children"
 
-exception NonMatchingFixities of (string * string list)
+exception NonMatchingFixities of string * string list
+exception MixedFixities of bool * int
 
 module ToGrammarHelp = struct
   (* space-separated list of token names, eg "arith ADD arith". We strip out
@@ -417,15 +418,19 @@ module ToGrammarHelp = struct
     (* All operators in this precedence level must have the same fixity *)
     let fixities, fixity_token_names = BL.unzip fixity_infos in
     let fixity = BL.headExn fixities in
+    Js.log "precedence level:";
+    List.iter (fun name -> Js.log (Util.is_none name)) fixity_token_names;
     match BL.every fixity_token_names Util.is_none, BL.every fixity_token_names Util.is_some with
       | true, false -> None, rules |. BL.toArray
-      | false, true ->
+      | _ ->
         let fixity_token_names = fixity_token_names |. Util.keep_some in
-        if BL.every fixities (fun fixity' -> fixity' = fixity)
-          then ()
-          else raise (NonMatchingFixities (sort_name, fixity_token_names));
+        if not (BL.every fixities (fun fixity' -> fixity' = fixity))
+          then raise (NonMatchingFixities (sort_name, fixity_token_names));
         (Some (fixity, fixity_token_names), rules |. BL.toArray)
-      | _, _ -> failwith "TODO throw error"
+        (*
+      | true, true -> raise (MixedFixities (true, BL.length fixity_token_names))
+      | false, false -> raise (MixedFixities (false, BL.length fixity_token_names))
+      *)
 
   let mk_sort_rule
     : string * sort_rule -> level_fixity_info list * (string * operator_parse_rule array)
@@ -471,7 +476,7 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
     let bnf = pre_bnf
       (* XXX what is the start? *)
       |. BL.add ("start", [%raw {|
-        [["arith EOF", "/*console.log($1);*/ return $1"]]
+        [["tm EOF", "/*console.log($1);*/ return $1"]]
       |}])
       |. Js.Dict.fromList
     in
@@ -499,8 +504,9 @@ let parse desc str =
     let parser = Jison.to_parser grammar in
     Result.Ok (jison_parse parser str)
   with
-    NonMatchingFixities (sort_name, token_names) -> Result.Error
+    | NonMatchingFixities (sort_name, token_names) -> Result.Error
       ("In sort " ^ sort_name ^ ": all fixities in a precedence level must be the same fixity (this is a limitation of Bison-style parsers (Jison in particular). The operators identified by [" ^ String.concat ", " token_names ^ "] must all share the same fixity.")
+    | MixedFixities (b, l) -> Error ("Found a mix of fixities -- all must be uniform " ^ string_of_bool b ^ " " ^ string_of_int l)
   (*
   try
     Result.Ok (jison_parse parser str)

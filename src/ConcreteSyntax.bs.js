@@ -497,6 +497,8 @@ function scope_to_ast(lang, tree) {
 
 var NonMatchingFixities = Caml_exceptions.create("ConcreteSyntax.NonMatchingFixities");
 
+var MixedFixities = Caml_exceptions.create("ConcreteSyntax.MixedFixities");
+
 function print_tokens(toks) {
   return $$String.concat(" ", Util.keep_some(List.map(Types.ConcreteSyntaxDescription[/* token_name */1], toks)));
 }
@@ -534,7 +536,7 @@ function nonterminal_tok_num(param) {
           Caml_builtin_exceptions.assert_failure,
           /* tuple */[
             "ConcreteSyntax.ml",
-            355,
+            356,
             27
           ]
         ];
@@ -720,28 +722,31 @@ function mk_sort_rule(param) {
               var fixity_token_names = match$1[1];
               var fixities = match$1[0];
               var fixity = Belt_List.headExn(fixities);
+              console.log("precedence level:");
+              List.iter((function (name) {
+                      console.log(Util.is_none(name));
+                      return /* () */0;
+                    }), fixity_token_names);
               var match$2 = Belt_List.every(fixity_token_names, Util.is_none);
               var match$3 = Belt_List.every(fixity_token_names, Util.is_some);
-              if (match$2) {
-                if (match$3) {
-                  return Pervasives.failwith("TODO throw error");
-                } else {
-                  return /* tuple */[
-                          undefined,
-                          Belt_List.toArray(rules)
-                        ];
-                }
-              } else if (match$3) {
+              var exit = 0;
+              if (match$2 && !match$3) {
+                return /* tuple */[
+                        undefined,
+                        Belt_List.toArray(rules)
+                      ];
+              } else {
+                exit = 1;
+              }
+              if (exit === 1) {
                 var fixity_token_names$1 = Util.keep_some(fixity_token_names);
                 if (!Belt_List.every(fixities, (function (fixity$prime) {
                           return fixity$prime === fixity;
                         }))) {
                   throw [
                         NonMatchingFixities,
-                        /* tuple */[
-                          sort_name$1,
-                          fixity_token_names$1
-                        ]
+                        sort_name$1,
+                        fixity_token_names$1
                       ];
                 }
                 return /* tuple */[
@@ -751,9 +756,8 @@ function mk_sort_rule(param) {
                         ],
                         Belt_List.toArray(rules)
                       ];
-              } else {
-                return Pervasives.failwith("TODO throw error");
               }
+              
             })));
   var prec_level_rules = Belt_Array.concatMany(Belt_List.toArray(match$1[1]));
   return /* tuple */[
@@ -785,7 +789,7 @@ function to_grammar(param) {
   var bnf = Js_dict.fromList(Belt_List.add(match[1], /* tuple */[
             "start",
             (
-        [["arith EOF", "/*console.log($1);*/ return $1"]]
+        [["tm EOF", "/*console.log($1);*/ return $1"]]
       )
           ]));
   var operators = Belt_Array.reverse(Belt_List.toArray(Belt_List.map(Belt_List.flatten(match[0]), (function (param) {
@@ -811,8 +815,9 @@ function parse(desc, str) {
   catch (raw_exn){
     var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
     if (exn[0] === NonMatchingFixities) {
-      var match = exn[1];
-      return /* Error */Block.__(1, ["In sort " + (match[0] + (": all fixities in a precedence level must be the same fixity (this is a limitation of Bison-style parsers (Jison in particular). The operators identified by [" + ($$String.concat(", ", match[1]) + "] must all share the same fixity.")))]);
+      return /* Error */Block.__(1, ["In sort " + (exn[1] + (": all fixities in a precedence level must be the same fixity (this is a limitation of Bison-style parsers (Jison in particular). The operators identified by [" + ($$String.concat(", ", exn[2]) + "] must all share the same fixity.")))]);
+    } else if (exn[0] === MixedFixities) {
+      return /* Error */Block.__(1, ["Found a mix of fixities -- all must be uniform " + (Pervasives.string_of_bool(exn[1]) + (" " + String(exn[2])))]);
     } else {
       throw exn;
     }

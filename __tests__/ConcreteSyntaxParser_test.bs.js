@@ -53,6 +53,13 @@ Jest.describe("ConcreteSyntaxParser", (function (param) {
                 /* [] */0
               ]
             ]);
+        expectParse(ConcreteSyntaxParser.terminal_rule__test, "TERMINAL := \"->\"", /* TerminalRule */[
+              "TERMINAL",
+              /* :: */[
+                /* ReString */Block.__(0, ["->"]),
+                /* [] */0
+              ]
+            ]);
         expectParse(ConcreteSyntaxParser.capture_number, "$2", 2);
         expectParse(ConcreteSyntaxParser.nonterminal_token, "foo", /* NonterminalName */Block.__(1, ["foo"]));
         expectParse(ConcreteSyntaxParser.nonterminal_token, "BAR", /* TerminalName */Block.__(0, ["BAR"]));
