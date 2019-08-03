@@ -18,6 +18,7 @@ let _ = describe "TermParser" (fun () ->
 [[ val(v)          ]] = v
 [[ annot(tm; ty)   ]] = [[ tm ]]
 [[ app(fun; arg)   ]] = app([[ fun ]]; [[ arg ]])
+[[ lam(x. body)    ]] = \(x : bool) -> [[ body ]]
 [[ ite(t1; t2; t3) ]] = case [[ t1 ]] of {
   | true()  -> [[ t2 ]]
   | false() -> [[ t3 ]]
@@ -39,6 +40,8 @@ let _ = describe "TermParser" (fun () ->
           pat_scope @@ DVar "arg";
         ]),
         CoreApp (Meaning "fun", [ Meaning "arg" ]);
+      DPatternTm ("lam", [ DenotationScopePat (["x"], DVar "body") ]),
+        Lambda ([SortAp ("bool", [||])], CoreScope (["x"], Meaning "body"));
       DPatternTm ("ite",
         [ pat_scope @@ DVar "t1";
           pat_scope @@ DVar "t2";

@@ -99,64 +99,97 @@ Jest.describe("TermParser", (function (param) {
                     /* :: */[
                       /* tuple */[
                         /* DPatternTm */Block.__(0, [
-                            "ite",
+                            "lam",
                             /* :: */[
                               /* DenotationScopePat */[
-                                /* [] */0,
-                                /* DVar */Block.__(1, ["t1"])
+                                /* :: */[
+                                  "x",
+                                  /* [] */0
+                                ],
+                                /* DVar */Block.__(1, ["body"])
                               ],
+                              /* [] */0
+                            ]
+                          ]),
+                        /* Lambda */Block.__(4, [
+                            /* :: */[
+                              /* SortAp */[
+                                "bool",
+                                /* array */[]
+                              ],
+                              /* [] */0
+                            ],
+                            /* CoreScope */[
+                              /* :: */[
+                                "x",
+                                /* [] */0
+                              ],
+                              /* Meaning */Block.__(8, ["body"])
+                            ]
+                          ])
+                      ],
+                      /* :: */[
+                        /* tuple */[
+                          /* DPatternTm */Block.__(0, [
+                              "ite",
                               /* :: */[
                                 /* DenotationScopePat */[
                                   /* [] */0,
-                                  /* DVar */Block.__(1, ["t2"])
+                                  /* DVar */Block.__(1, ["t1"])
                                 ],
                                 /* :: */[
                                   /* DenotationScopePat */[
                                     /* [] */0,
-                                    /* DVar */Block.__(1, ["t3"])
+                                    /* DVar */Block.__(1, ["t2"])
                                   ],
-                                  /* [] */0
+                                  /* :: */[
+                                    /* DenotationScopePat */[
+                                      /* [] */0,
+                                      /* DVar */Block.__(1, ["t3"])
+                                    ],
+                                    /* [] */0
+                                  ]
                                 ]
                               ]
-                            ]
-                          ]),
-                        /* Case */Block.__(6, [
-                            /* Meaning */Block.__(8, ["t1"]),
-                            /* :: */[
-                              /* tuple */[
-                                /* PatternTerm */Block.__(0, [
-                                    "true",
-                                    /* [] */0
-                                  ]),
-                                /* CoreScope */[
-                                  /* [] */0,
-                                  /* Meaning */Block.__(8, ["t2"])
-                                ]
-                              ],
+                            ]),
+                          /* Case */Block.__(6, [
+                              /* Meaning */Block.__(8, ["t1"]),
                               /* :: */[
                                 /* tuple */[
                                   /* PatternTerm */Block.__(0, [
-                                      "false",
+                                      "true",
                                       /* [] */0
                                     ]),
                                   /* CoreScope */[
                                     /* [] */0,
-                                    /* Meaning */Block.__(8, ["t3"])
+                                    /* Meaning */Block.__(8, ["t2"])
                                   ]
                                 ],
-                                /* [] */0
+                                /* :: */[
+                                  /* tuple */[
+                                    /* PatternTerm */Block.__(0, [
+                                        "false",
+                                        /* [] */0
+                                      ]),
+                                    /* CoreScope */[
+                                      /* [] */0,
+                                      /* Meaning */Block.__(8, ["t3"])
+                                    ]
+                                  ],
+                                  /* [] */0
+                                ]
                               ]
-                            ]
-                          ])
-                      ],
-                      /* [] */0
+                            ])
+                        ],
+                        /* [] */0
+                      ]
                     ]
                   ]
                 ]
               ]
             ]
           ]];
-        expectParse("\n[[ true()          ]] = true()\n[[ false()         ]] = false()\n[[ val(v)          ]] = v\n[[ annot(tm; ty)   ]] = [[ tm ]]\n[[ app(fun; arg)   ]] = app([[ fun ]]; [[ arg ]])\n[[ ite(t1; t2; t3) ]] = case [[ t1 ]] of {\n  | true()  -> [[ t2 ]]\n  | false() -> [[ t3 ]]\n}\n  ", expected);
+        expectParse("\n[[ true()          ]] = true()\n[[ false()         ]] = false()\n[[ val(v)          ]] = v\n[[ annot(tm; ty)   ]] = [[ tm ]]\n[[ app(fun; arg)   ]] = app([[ fun ]]; [[ arg ]])\n[[ lam(x. body)    ]] = \\(x : bool) -> [[ body ]]\n[[ ite(t1; t2; t3) ]] = case [[ t1 ]] of {\n  | true()  -> [[ t2 ]]\n  | false() -> [[ t3 ]]\n}\n  ", expected);
         var metavar_test = Belt_Result.getExn(Curry._1(P_dyn[/* parse */5], "[[ lit(v) ]] = v"));
         var metavar_test_expected = /* DenotationChart */[/* :: */[
             /* tuple */[
