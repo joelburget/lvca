@@ -15,14 +15,13 @@ var CodeMirror = require("./CodeMirror.bs.js");
 var ReactDOMRe = require("reason-react/src/ReactDOMRe.js");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var ParseStatus = require("./ParseStatus.bs.js");
+var ConcreteSyntax = require("./ConcreteSyntax.bs.js");
 var LanguageSimple = require("./LanguageSimple.bs.js");
 var Caml_splice_call = require("bs-platform/lib/js/caml_splice_call.js");
 var ReactCodemirror2 = require("react-codemirror2");
 
-var Parse_term = Parsing.Incremental(Parsing.Parseable_term);
-
-function read_eval_input(language, dynamics, input) {
-  var match = Curry._1(Parse_term[/* parse */5], input);
+function read_eval_input(language, concrete, statics, dynamics, input) {
+  var match = ConcreteSyntax.parse(concrete, input);
   var match$1;
   if (match.tag) {
     var msg = match[0];
@@ -34,11 +33,23 @@ function read_eval_input(language, dynamics, input) {
       /* Error */Block.__(1, [msg])
     ];
   } else {
-    var ast = match[0];
-    match$1 = /* tuple */[
-      /* Ok */Block.__(0, [ast]),
-      Curry._1(Binding.DeBruijn[/* from_nominal */1], ast)
-    ];
+    var match$2 = ConcreteSyntax.to_ast(language, match[0]);
+    if (match$2.tag) {
+      var msg$1 = match$2[0];
+      match$1 = /* tuple */[
+        /* Error */Block.__(1, [/* tuple */[
+              msg$1,
+              undefined
+            ]]),
+        /* Error */Block.__(1, [msg$1])
+      ];
+    } else {
+      var ast = match$2[0];
+      match$1 = /* tuple */[
+        /* Ok */Block.__(0, [ast]),
+        Curry._1(Binding.DeBruijn[/* from_nominal */1], ast)
+      ];
+    }
   }
   var abtResult = match$1[1];
   var astResult = match$1[0];
@@ -51,28 +62,28 @@ function read_eval_input(language, dynamics, input) {
                 }));
   };
   if (abtResult.tag) {
-    var msg$1 = abtResult[0];
+    var msg$2 = abtResult[0];
     return /* tuple */[
             /* Error */Block.__(1, [/* tuple */[
-                  msg$1,
+                  msg$2,
                   undefined
                 ]]),
             /* Error */Block.__(1, [/* tuple */[
-                  msg$1,
+                  msg$2,
                   undefined
                 ]])
           ];
   } else {
-    var match$2 = Belt_Result.flatMap(Core.term_denotation(dynamics, /* [] */0, abtResult[0]), eval$prime);
-    if (match$2.tag) {
+    var match$3 = Belt_Result.flatMap(Core.term_denotation(dynamics, /* [] */0, abtResult[0]), eval$prime);
+    if (match$3.tag) {
       return /* tuple */[
               astResult,
-              /* Error */Block.__(1, [match$2[0]])
+              /* Error */Block.__(1, [match$3[0]])
             ];
     } else {
       return /* tuple */[
               astResult,
-              /* Ok */Block.__(0, [match$2[0]])
+              /* Ok */Block.__(0, [match$3[0]])
             ];
     }
   }
@@ -98,9 +109,9 @@ function shift_from_to(shift_from, shift_to, elem) {
   }
 }
 
-function step_forward(language, dynamics, param) {
+function step_forward(language, concrete, statics, dynamics, param) {
   var input = param[/* input */2];
-  var match = read_eval_input(language, dynamics, input);
+  var match = read_eval_input(language, concrete, statics, dynamics, input);
   var match$1 = shift_from_to(param[/* after */1], param[/* before */0], /* record */[
         /* input */input,
         /* parsed */match[0],
@@ -113,9 +124,9 @@ function step_forward(language, dynamics, param) {
         ];
 }
 
-function step_back(language, dynamics, param) {
+function step_back(language, concrete, statics, dynamics, param) {
   var input = param[/* input */2];
-  var match = read_eval_input(language, dynamics, input);
+  var match = read_eval_input(language, concrete, statics, dynamics, input);
   var match$1 = shift_from_to(param[/* before */0], param[/* after */1], /* record */[
         /* input */input,
         /* parsed */match[0],
@@ -128,17 +139,17 @@ function step_back(language, dynamics, param) {
         ];
 }
 
-function go_back(lang, dyn, hist, i) {
+function go_back(lang, concrete, statics, dyn, hist, i) {
   if (i !== 0) {
-    return step_back(lang, dyn, go_back(lang, dyn, hist, i - 1 | 0));
+    return step_back(lang, concrete, statics, dyn, go_back(lang, concrete, statics, dyn, hist, i - 1 | 0));
   } else {
     return hist;
   }
 }
 
-function go_forward(lang, dyn, hist, i) {
+function go_forward(lang, concrete, statics, dyn, hist, i) {
   if (i !== 0) {
-    return step_forward(lang, dyn, go_forward(lang, dyn, hist, i - 1 | 0));
+    return step_forward(lang, concrete, statics, dyn, go_forward(lang, concrete, statics, dyn, hist, i - 1 | 0));
   } else {
     return hist;
   }
@@ -157,8 +168,8 @@ var preventDefault = (evt => evt.preventDefault());
 function Index$Repl(Props) {
   var history = Props.history;
   var language = Props.language;
-  Props.concrete;
-  Props.statics;
+  var concrete = Props.concrete;
+  var statics = Props.statics;
   var dynamics = Props.dynamics;
   var setInput = Props.setInput;
   var handleEnter = Props.handleEnter;
@@ -168,7 +179,7 @@ function Index$Repl(Props) {
   var options = {
     mode: "lvca"
   };
-  var match = read_eval_input(language, dynamics, input);
+  var match = read_eval_input(language, concrete, statics, dynamics, input);
   var handleKey = function (_editor, evt) {
     var key = evt.key;
     var shift = evt.shiftKey;
@@ -247,7 +258,7 @@ function Index$LvcaViewer(Props) {
           return /* record */[
                   /* before : [] */0,
                   /* after : [] */0,
-                  /* input */"ite(val(false()); val(false()); val(true()))"
+                  /* input */"if false then false else true"
                 ];
         }));
   var setHistory = match[1];
@@ -289,64 +300,74 @@ function Index$LvcaViewer(Props) {
     exit = 1;
   } else {
     var language$1 = language[0];
-    if (concrete.tag || statics.tag || dynamics.tag) {
+    if (concrete.tag) {
       exit = 1;
     } else {
-      var dynamics$1 = dynamics[0];
-      replPane = React.createElement("div", {
-            className: "repl-pane"
-          }, React.createElement(Index$Repl, {
-                history: match[0],
-                language: language$1,
-                concrete: concrete[0],
-                statics: statics[0],
-                dynamics: dynamics$1,
-                setInput: (function (input) {
-                    return Curry._1(setHistory, (function (hist) {
-                                  return /* record */[
-                                          /* before */hist[/* before */0],
-                                          /* after */hist[/* after */1],
-                                          /* input */input
+      var concrete$1 = concrete[0];
+      if (statics.tag) {
+        exit = 1;
+      } else {
+        var statics$1 = statics[0];
+        if (dynamics.tag) {
+          exit = 1;
+        } else {
+          var dynamics$1 = dynamics[0];
+          replPane = React.createElement("div", {
+                className: "repl-pane"
+              }, React.createElement(Index$Repl, {
+                    history: match[0],
+                    language: language$1,
+                    concrete: concrete$1,
+                    statics: statics$1,
+                    dynamics: dynamics$1,
+                    setInput: (function (input) {
+                        return Curry._1(setHistory, (function (hist) {
+                                      return /* record */[
+                                              /* before */hist[/* before */0],
+                                              /* after */hist[/* after */1],
+                                              /* input */input
+                                            ];
+                                    }));
+                      }),
+                    handleEnter: (function (param) {
+                        return Curry._1(setHistory, (function (hist) {
+                                      var input = hist[/* input */2];
+                                      var after = hist[/* after */1];
+                                      if (after) {
+                                        return step_forward(language$1, concrete$1, statics$1, dynamics$1, hist);
+                                      } else {
+                                        var match = read_eval_input(language$1, concrete$1, statics$1, dynamics$1, input);
+                                        var before$prime_000 = /* record */[
+                                          /* input */input,
+                                          /* parsed */match[0],
+                                          /* result */match[1]
                                         ];
-                                }));
-                  }),
-                handleEnter: (function (param) {
-                    return Curry._1(setHistory, (function (hist) {
-                                  var input = hist[/* input */2];
-                                  var after = hist[/* after */1];
-                                  if (after) {
-                                    return step_forward(language$1, dynamics$1, hist);
-                                  } else {
-                                    var match = read_eval_input(language$1, dynamics$1, input);
-                                    var before$prime_000 = /* record */[
-                                      /* input */input,
-                                      /* parsed */match[0],
-                                      /* result */match[1]
-                                    ];
-                                    var before$prime_001 = hist[/* before */0];
-                                    var before$prime = /* :: */[
-                                      before$prime_000,
-                                      before$prime_001
-                                    ];
-                                    return /* record */[
-                                            /* before */before$prime,
-                                            /* after */after,
-                                            /* input */""
-                                          ];
-                                  }
-                                }));
-                  }),
-                handleUp: (function (n) {
-                    return Curry._1(setHistory, (function (hist) {
-                                  return go_back(language$1, dynamics$1, hist, n);
-                                }));
-                  }),
-                handleDown: (function (n) {
-                    return Curry._1(setHistory, (function (hist) {
-                                  return go_forward(language$1, dynamics$1, hist, n);
-                                }));
-                  })
-              }));
+                                        var before$prime_001 = hist[/* before */0];
+                                        var before$prime = /* :: */[
+                                          before$prime_000,
+                                          before$prime_001
+                                        ];
+                                        return /* record */[
+                                                /* before */before$prime,
+                                                /* after */after,
+                                                /* input */""
+                                              ];
+                                      }
+                                    }));
+                      }),
+                    handleUp: (function (n) {
+                        return Curry._1(setHistory, (function (hist) {
+                                      return go_back(language$1, concrete$1, statics$1, dynamics$1, hist, n);
+                                    }));
+                      }),
+                    handleDown: (function (n) {
+                        return Curry._1(setHistory, (function (hist) {
+                                      return go_forward(language$1, concrete$1, statics$1, dynamics$1, hist, n);
+                                    }));
+                      })
+                  }));
+        }
+      }
     }
   }
   if (exit === 1) {
@@ -426,7 +447,6 @@ ReactDOMRe.renderToElementWithId(React.createElement(Index$LvcaViewer, { }), "in
 var Result = 0;
 
 exports.Result = Result;
-exports.Parse_term = Parse_term;
 exports.read_eval_input = read_eval_input;
 exports.shift_from_to = shift_from_to;
 exports.step_forward = step_forward;
@@ -436,4 +456,4 @@ exports.go_forward = go_forward;
 exports.make_div = make_div;
 exports.Repl = Repl;
 exports.LvcaViewer = LvcaViewer;
-/* Parse_term Not a pure module */
+/* preventDefault Not a pure module */

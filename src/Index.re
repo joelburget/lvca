@@ -16,15 +16,23 @@ type history = {
   input: string,
 };
 
-module Parse_term = Parsing.Incremental(Parsing.Parseable_term)
+/* module Parse_term = Parsing.Incremental(Parsing.Parseable_term) */
 
-let read_eval_input = (language, dynamics, input): (parse_result, eval_result) => {
+/* Read and evaluate the user's input */
+let read_eval_input = (language, concrete, statics, dynamics, input)
+  : (parse_result, eval_result) => {
     open Core;
 
-    let (astResult, abtResult) = switch (Parse_term.parse(input)) {
-    | Ok(ast)
+    let (astResult, abtResult) = switch (ConcreteSyntax.parse(concrete, input)) {
+    | Ok(tree)
+    => switch (ConcreteSyntax.to_ast(language, tree)) {
+      | Ok(ast)
       => (Result.Ok(ast), Binding.DeBruijn.from_nominal(ast))
+      | Error(msg)
+      => (Error((msg, None)), Error(msg))
+    }
     | Error(msg)
+    /* TODO: this is not really an ast error message */
     => (Error((msg, None)), Error(msg))
     };
 
@@ -55,11 +63,13 @@ let shift_from_to (
 
 let step_forward (
   language : Types.language,
+  concrete : Types.ConcreteSyntaxDescription.t,
+  statics  : list(Statics.rule),
   dynamics : Core.denotation_chart,
   {input, before, after} : history,
   ) : history
   = {
-    let (parsed, result) = read_eval_input(language, dynamics, input);
+    let (parsed, result) = read_eval_input(language, concrete, statics, dynamics, input);
     let (after, before, elem) =
       shift_from_to(after, before, { input, result, parsed });
     {before, after, input: elem.input}
@@ -67,24 +77,26 @@ let step_forward (
 
 let step_back (
   language : Types.language,
+  concrete : Types.ConcreteSyntaxDescription.t,
+  statics  : list(Statics.rule),
   dynamics : Core.denotation_chart,
   {input, before, after} : history,
   ) : history
   = {
-    let (parsed, result) = read_eval_input(language, dynamics, input);
+    let (parsed, result) = read_eval_input(language, concrete, statics, dynamics, input);
     let (before, after, elem) =
       shift_from_to(before, after, { input, result, parsed });
     {before, after, input: elem.input}
   };
 
-let rec go_back    = (lang, dyn, hist, i) => switch(i) {
+let rec go_back    = (lang, concrete, statics, dyn, hist, i) => switch(i) {
   | 0 => hist
-  | _ => step_back(lang, dyn, go_back(lang, dyn, hist, i - 1))
+  | _ => step_back(lang, concrete, statics, dyn, go_back(lang, concrete, statics, dyn, hist, i - 1))
 };
 
-let rec go_forward = (lang, dyn, hist, i) => switch(i) {
+let rec go_forward = (lang, concrete, statics, dyn, hist, i) => switch(i) {
   | 0 => hist
-  | _ => step_forward(lang, dyn, go_forward(lang, dyn, hist, i - 1))
+  | _ => step_forward(lang, concrete, statics, dyn, go_forward(lang, concrete, statics, dyn, hist, i - 1))
 }
 
 let make_div = children => {
@@ -123,7 +135,7 @@ module Repl = {
 /*     | Error(msg) => <div className="error"> {React.string(msg)} </div> */
 /*     }; */
 
-    let (parsed, evalResult) = read_eval_input(language, dynamics, input);
+    let (parsed, evalResult) = read_eval_input(language, concrete, statics, dynamics, input);
 
     let handleKey = (_editor, evt) => {
       let key = CodeMirror.keyGet(evt);
@@ -204,7 +216,7 @@ module LvcaViewer = {
     open Belt.Result;
 
     let initialHistory: history = {
-        input: "ite(val(false()); val(false()); val(true()))",
+        input: "if false then false else true",
         before: [],
         after: [],
       }
@@ -245,16 +257,16 @@ module LvcaViewer = {
             handleEnter=(() => setHistory(({input, before, after} as hist) => {
               switch (after) {
                 | [] =>
-                  let (parsed, result) = read_eval_input(language, dynamics, input);
+                  let (parsed, result) = read_eval_input(language, concrete, statics, dynamics, input);
                   let before' = [ { input, parsed, result }, ...before ];
                   {before: before', after, input: ""}
-                | _ => step_forward(language, dynamics, hist)
+                | _ => step_forward(language, concrete, statics, dynamics, hist)
               }
             }))
             handleUp=(n =>
-              setHistory(hist => go_back(language, dynamics, hist, n)))
+              setHistory(hist => go_back(language, concrete, statics, dynamics, hist, n)))
             handleDown=(n =>
-              setHistory(hist => go_forward(language, dynamics, hist, n)))
+              setHistory(hist => go_forward(language, concrete, statics, dynamics, hist, n)))
           />
         </div>
       | _
