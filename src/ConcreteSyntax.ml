@@ -507,9 +507,4 @@ let parse desc str =
     | NonMatchingFixities (sort_name, token_names) -> Result.Error
       ("In sort " ^ sort_name ^ ": all fixities in a precedence level must be the same fixity (this is a limitation of Bison-style parsers (Jison in particular). The operators identified by [" ^ String.concat ", " token_names ^ "] must all share the same fixity.")
     | MixedFixities (b, l) -> Error ("Found a mix of fixities -- all must be uniform " ^ string_of_bool b ^ " " ^ string_of_int l)
-  (*
-  try
-    Result.Ok (jison_parse parser str)
-  with
-    _ -> Result.Error "parse error"
-    *)
+    | x -> Js.log x; Result.Error "Jison parse error"

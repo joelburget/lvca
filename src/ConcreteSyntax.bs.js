@@ -812,14 +812,15 @@ function parse(desc, str) {
     var parser = Jison.to_parser(grammar);
     return /* Ok */Block.__(0, [jison_parse(parser, str)]);
   }
-  catch (raw_exn){
-    var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
-    if (exn[0] === NonMatchingFixities) {
-      return /* Error */Block.__(1, ["In sort " + (exn[1] + (": all fixities in a precedence level must be the same fixity (this is a limitation of Bison-style parsers (Jison in particular). The operators identified by [" + ($$String.concat(", ", exn[2]) + "] must all share the same fixity.")))]);
-    } else if (exn[0] === MixedFixities) {
-      return /* Error */Block.__(1, ["Found a mix of fixities -- all must be uniform " + (Pervasives.string_of_bool(exn[1]) + (" " + String(exn[2])))]);
+  catch (raw_x){
+    var x = Caml_js_exceptions.internalToOCamlException(raw_x);
+    if (x[0] === NonMatchingFixities) {
+      return /* Error */Block.__(1, ["In sort " + (x[1] + (": all fixities in a precedence level must be the same fixity (this is a limitation of Bison-style parsers (Jison in particular). The operators identified by [" + ($$String.concat(", ", x[2]) + "] must all share the same fixity.")))]);
+    } else if (x[0] === MixedFixities) {
+      return /* Error */Block.__(1, ["Found a mix of fixities -- all must be uniform " + (Pervasives.string_of_bool(x[1]) + (" " + String(x[2])))]);
     } else {
-      throw exn;
+      console.log(x);
+      return /* Error */Block.__(1, ["Jison parse error"]);
     }
   }
 }
