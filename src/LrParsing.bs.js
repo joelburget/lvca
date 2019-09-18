@@ -3,14 +3,17 @@
 
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
+var Belt_Id = require("bs-platform/lib/js/belt_Id.js");
 var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Bitstring = require("./Bitstring.bs.js");
+var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Belt_MapInt = require("bs-platform/lib/js/belt_MapInt.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Belt_SetInt = require("bs-platform/lib/js/belt_SetInt.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Belt_MutableSet = require("bs-platform/lib/js/belt_MutableSet.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 var Belt_MutableMapInt = require("bs-platform/lib/js/belt_MutableMapInt.js");
 var Belt_MutableSetInt = require("bs-platform/lib/js/belt_MutableSetInt.js");
@@ -31,6 +34,8 @@ function mk_item$prime(production_num, position) {
 function mk_item(param) {
   return mk_item$prime(param[/* production_num */0], param[/* position */1]);
 }
+
+var ComparableSet = Belt_Id.MakeComparable(/* module */[/* cmp */Belt_SetInt.cmp]);
 
 function Lr0(G) {
   var production_map = Belt_MutableMapInt.make(/* () */0);
@@ -139,21 +144,32 @@ function Lr0(G) {
               /* production_num */0,
               /* position */0
             ])]);
-  var c = /* record */[/* contents : :: */[
-      simplify_config_set(closure(augmented_start)),
-      /* [] */0
-    ]];
+  var ca = simplify_config_set(closure(augmented_start));
+  var c = Belt_MutableSet.fromArray(/* array */[ca], ComparableSet);
   var $$continue = /* record */[/* contents */true];
   while($$continue[0]) {
     $$continue[0] = false;
-    Belt_List.forEach(c[0], (function (i) {
-            return Belt_MapInt.forEach(G[/* grammar */0], (function (x, param) {
+    Belt_MutableSet.forEach(c, (function (i) {
+            return Belt_List.forEach(/* :: */[
+                        0,
+                        /* :: */[
+                          1,
+                          /* :: */[
+                            2,
+                            /* :: */[
+                              3,
+                              /* :: */[
+                                4,
+                                /* [] */0
+                              ]
+                            ]
+                          ]
+                        ]
+                      ], (function (x) {
+                          console.log("considering grammar symbol", x);
                           var goto_i_x = simplify_config_set(closure(goto_kernel(i, x)));
-                          if (!Belt_SetInt.isEmpty(goto_i_x) && !Belt_List.has(c[0], goto_i_x, Caml_obj.caml_equal)) {
-                            c[0] = /* :: */[
-                              goto_i_x,
-                              c[0]
-                            ];
+                          if (!Belt_SetInt.isEmpty(goto_i_x) && !Belt_MutableSet.has(c, goto_i_x)) {
+                            Belt_MutableSet.add(c, goto_i_x);
                             $$continue[0] = true;
                             return /* () */0;
                           } else {
@@ -162,13 +178,17 @@ function Lr0(G) {
                         }));
           }));
   };
-  var items = c[0];
-  var items$prime = Belt_MapInt.fromArray(Belt_List.toArray(Belt_List.mapWithIndex(items, (function (i, item_set) {
-                  return /* tuple */[
-                          i,
-                          item_set
-                        ];
-                }))));
+  console.log("items:");
+  Belt_MutableSet.forEach(c, (function (item_set) {
+          console.log(Belt_SetInt.toArray(item_set));
+          return /* () */0;
+        }));
+  var items$prime = Belt_MapInt.fromArray(Belt_Array.mapWithIndex(Belt_MutableSet.toArray(c), (function (i, item_set) {
+              return /* tuple */[
+                      i,
+                      item_set
+                    ];
+            })));
   var state_to_item_set = function (param) {
     return Belt_MapInt.getExn(items$prime, param);
   };
@@ -204,7 +224,7 @@ function Lr0(G) {
             Caml_builtin_exceptions.match_failure,
             /* tuple */[
               "LrParsing.ml",
-              255,
+              272,
               8
             ]
           ];
@@ -232,7 +252,7 @@ function Lr0(G) {
           /* closure' */closure$prime,
           /* goto_kernel */goto_kernel,
           /* goto */$$goto,
-          /* items */items,
+          /* items */c,
           /* items' */items$prime,
           /* state_to_item_set */state_to_item_set,
           /* item_set_to_state */item_set_to_state,
@@ -311,7 +331,7 @@ function parse(param, toks) {
               Caml_builtin_exceptions.match_failure,
               /* tuple */[
                 "LrParsing.ml",
-                309,
+                326,
                 12
               ]
             ];
@@ -358,6 +378,7 @@ exports.Result = Result;
 exports.view_item = view_item;
 exports.mk_item$prime = mk_item$prime;
 exports.mk_item = mk_item;
+exports.ComparableSet = ComparableSet;
 exports.Lr0 = Lr0;
 exports.lalr_tables = lalr_tables;
 exports.ParseFinished = ParseFinished;
@@ -365,4 +386,4 @@ exports.ParseFailed = ParseFailed;
 exports.PopFailed = PopFailed;
 exports.pop_exn = pop_exn;
 exports.parse = parse;
-/* No side effect */
+/* ComparableSet Not a pure module */

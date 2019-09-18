@@ -108,10 +108,74 @@ let () = describe "LrParsing" (fun () ->
       { kernel_items = goto_kernel; nonkernel_items = goto_nonkernel };
   ] Util.id;
 
+  let x = Lr0'.state_to_item_set 0 in
+  Js.log "state_to_item_set items";
+  SI.forEach x (fun item ->
+    Printf.printf "%x\n" item;
+  );
 
-  Js.log2 "M.get Lr0'.items' 0" (M.get Lr0'.items' 0);
+
+  let expected_item_sets = Belt.MutableSet.fromArray [|
+    SI.fromArray
+      [| mk_item' 0 0;
+         mk_item' 1 0;
+         mk_item' 2 0;
+         mk_item' 3 0;
+         mk_item' 4 0;
+         mk_item' 5 0;
+         mk_item' 6 0;
+      |];
+    SI.fromArray
+      [| mk_item' 0 1;
+         mk_item' 1 1;
+      |];
+    SI.fromArray
+      [| mk_item' 2 1;
+         mk_item' 3 1;
+      |];
+    SI.fromArray [| mk_item' 4 1; |];
+    SI.fromArray
+      [| mk_item' 5 1;
+         mk_item' 1 0;
+         mk_item' 2 0;
+         mk_item' 3 0;
+         mk_item' 4 0;
+         mk_item' 5 0;
+         mk_item' 6 0;
+      |];
+    SI.fromArray [| mk_item' 6 1; |];
+    SI.fromArray
+      [| mk_item' 1 2;
+         mk_item' 3 0;
+         mk_item' 4 0;
+         mk_item' 5 0;
+         mk_item' 6 0;
+      |];
+    SI.fromArray
+      [| mk_item' 3 2;
+         mk_item' 5 0;
+         mk_item' 6 0;
+      |];
+    SI.fromArray
+      [|
+        mk_item' 1 1;
+        mk_item' 5 2;
+      |];
+    SI.fromArray (* 9 *)
+      [|
+        mk_item' 1 3;
+        mk_item' 3 1;
+      |];
+    SI.fromArray [| mk_item' 3 3 |]; (* 10 *)
+    SI.fromArray [| mk_item' 5 3 |]; (* 11 *)
+  |]
+  ~id:(module ComparableSet)
+  in
+
+  let actual_item_sets : mutable_int_set_set = Lr0'.items in
+
   testAll "items" [
-    expect (Lr0'.state_to_item_set 0 == SI.fromArray items0) |> toBe true;
+    expect (actual_item_sets = expected_item_sets) |> toBe true;
     (*
     expect (M.get Lr0'.items' 1 == Some (SI.fromArray items1)) |> toBe true;
     expect (M.get Lr0'.items' 7 == Some (SI.fromArray items7)) |> toBe true;

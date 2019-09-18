@@ -92,6 +92,14 @@ type goto_table = state -> nonterminal_num -> state
 
 type parser_tables = action_table * goto_table
 
+module ComparableSet = Belt.Id.MakeComparable(struct
+  type t = SI.t
+  let cmp = SI.cmp
+end)
+
+type int_set_set = (SI.t, ComparableSet.identity) Belt.Set.t
+type mutable_int_set_set = (SI.t, ComparableSet.identity) Belt.MutableSet.t
+
 module type GRAMMAR = sig
   val grammar : grammar
 end
@@ -209,32 +217,41 @@ module Lr0 (G : GRAMMAR) = struct
     = fun item_set nt -> closure @@ goto_kernel item_set nt
 
   (** Compute the canonical collection of sets of LR(0) items. CPTT fig 4.33. *)
-  let items : item_set list
+  let items : mutable_int_set_set
     = let augmented_start = SI.fromArray
           [| mk_item {production_num = 0; position = 0} |]
       in
-      let c = ref [closure' augmented_start] in
+      let ca = closure' augmented_start in
+      let c = Belt.MutableSet.fromArray [| ca |] ~id:(module ComparableSet) in
       let continue = ref true in
       while !continue do
         continue := false;
         (* for each set of items i in c: *)
-        L.forEach !c @@ fun i ->
+        Belt.MutableSet.forEach c @@ fun i ->
           (* for each grammar symbol x: *)
-          M.forEach G.grammar @@ fun x _ ->
-              let goto_i_x = simplify_config_set @@ goto i x in
-              (* if GOTO(i, x) is not empty and not in c: *)
-              if not (SI.isEmpty goto_i_x) && not (L.has !c goto_i_x (=))
-              then (
-                c := goto_i_x :: !c;
-                continue := true
-              )
+          L.forEach [0; 1; 2; 3; 4] @@ fun x -> (* XXX *)
+          (* M.forEach G.grammar @@ fun x _ -> *)
+            Js.log2 "considering grammar symbol" x;
+            let goto_i_x = simplify_config_set @@ goto i x in
+            (* if GOTO(i, x) is not empty and not in c: *)
+            if not (SI.isEmpty goto_i_x) && not (Belt.MutableSet.has c goto_i_x)
+            then (
+              c |. Belt.MutableSet.add goto_i_x;
+              continue := true
+            )
       done;
-      !c
+      Js.log "items:";
+      Belt.MutableSet.forEach c (fun item_set ->
+        item_set |. SI.toArray |. Js.log
+      );
+      c
 
   let items' : item_set M.t
     = items
-    |. L.mapWithIndex (fun i item_set -> i, item_set)
-    |. L.toArray
+    (* |. L.mapWithIndex (fun i item_set -> i, item_set) *)
+    (* |. L.toArray *)
+    |. Belt.MutableSet.toArray
+    |. A.mapWithIndex (fun i item_set -> i, item_set)
     |. M.fromArray
 
   let state_to_item_set : state -> item_set
