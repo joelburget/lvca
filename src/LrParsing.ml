@@ -79,7 +79,10 @@ type terminal = int (* TODO *)
   * A non-augmented grammar has keys starting at 1 (start)
   * An augmented grammar has key 0 (augmented start)
  *)
-type grammar = nonterminal M.t
+type grammar = {
+  nonterminals : nonterminal M.t;
+  num_terminals : int
+}
 
 type action =
   | Shift  of state
@@ -88,7 +91,7 @@ type action =
   | Error
 
 type action_table = state -> terminal -> action
-type goto_table = state -> nonterminal_num -> state
+type goto_table = state -> piece -> state
 
 type parser_tables = action_table * goto_table
 
@@ -118,7 +121,7 @@ module Lr0 (G : GRAMMAR) = struct
     = MM.make ()
 
   let production_cnt = ref 0
-  let () = M.forEach G.grammar
+  let () = M.forEach G.grammar.nonterminals
     (fun nt_num { productions } ->
       nonterminal_production_map |. MM.set nt_num (MSI.make ());
       L.forEach productions (fun production ->
@@ -133,13 +136,13 @@ module Lr0 (G : GRAMMAR) = struct
 
   (* TODO: clarify if this is for the augmented grammar or not *)
   let number_of_nonterminals : int
-    = M.size G.grammar
+    = M.size G.grammar.nonterminals
 
   let get_nonterminal_num : production_num -> nonterminal_num
     = MM.getExn production_nonterminal_map
 
   let get_nonterminal : production_num -> nonterminal
-    = fun pn -> M.getExn G.grammar @@ get_nonterminal_num pn
+    = fun pn -> M.getExn G.grammar.nonterminals @@ get_nonterminal_num pn
 
   (** The closure of an item set. CPTT fig 4.32. *)
   (* We could save memory by not even calculating nonkernel items here *)
@@ -175,7 +178,7 @@ module Lr0 (G : GRAMMAR) = struct
           MSI.forEach production_set (fun production_num ->
             nonkernel_items |. MSI.add (mk_item' production_num 0)
           );
-          let { productions } = M.getExn G.grammar nonterminal_num in
+          let { productions } = M.getExn G.grammar.nonterminals nonterminal_num in
           L.forEach productions (fun production ->
             match production with
               | Terminal _         :: _ -> ()
@@ -198,23 +201,23 @@ module Lr0 (G : GRAMMAR) = struct
   (* Examine for items with the nonterminal immediately to the right of the
    * dot. Move the dot over the nonterminal and take the closure of those sets.
    *)
-  let goto_kernel : item_set -> nonterminal_num -> item_set
-    = fun item_set nt ->
+  let goto_kernel : item_set -> piece -> item_set
+    = fun item_set piece ->
       let result = MSI.make () in
       SI.forEach item_set (fun item ->
         let { production_num; position } = view_item item in
         let production = production_map |. MM.getExn production_num in
         match L.get production position with
-          | Some (Terminal next_nt) ->
-            if nt = next_nt then (
+          | Some next_piece ->
+            if piece = next_piece then (
               result |. MSI.add (mk_item' production_num (position + 1))
             )
           | _ -> ()
       );
       result |. MSI.toArray |. SI.fromArray
 
-  let goto : item_set -> nonterminal_num -> configuration_set
-    = fun item_set nt -> closure @@ goto_kernel item_set nt
+  let goto : item_set -> piece -> configuration_set
+    = fun item_set piece -> closure @@ goto_kernel item_set piece
 
   (** Compute the canonical collection of sets of LR(0) items. CPTT fig 4.33. *)
   let items : mutable_int_set_set
@@ -228,10 +231,13 @@ module Lr0 (G : GRAMMAR) = struct
         continue := false;
         (* for each set of items i in c: *)
         Belt.MutableSet.forEach c @@ fun i ->
+          let grammar_symbols = L.concat
+            (L.makeBy G.grammar.num_terminals (fun n -> Terminal n))
+            (L.makeBy number_of_nonterminals (fun n -> Nonterminal n))
+          in
           (* for each grammar symbol x: *)
-          L.forEach [0; 1; 2; 3; 4] @@ fun x -> (* XXX *)
+          L.forEach grammar_symbols @@ fun x ->
           (* M.forEach G.grammar @@ fun x _ -> *)
-            Js.log2 "considering grammar symbol" x;
             let goto_i_x = simplify_config_set @@ goto i x in
             (* if GOTO(i, x) is not empty and not in c: *)
             if not (SI.isEmpty goto_i_x) && not (Belt.MutableSet.has c goto_i_x)
@@ -240,16 +246,10 @@ module Lr0 (G : GRAMMAR) = struct
               continue := true
             )
       done;
-      Js.log "items:";
-      Belt.MutableSet.forEach c (fun item_set ->
-        item_set |. SI.toArray |. Js.log
-      );
       c
 
   let items' : item_set M.t
     = items
-    (* |. L.mapWithIndex (fun i item_set -> i, item_set) *)
-    (* |. L.toArray *)
     |. Belt.MutableSet.toArray
     |. A.mapWithIndex (fun i item_set -> i, item_set)
     |. M.fromArray

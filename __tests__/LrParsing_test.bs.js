@@ -5,14 +5,13 @@ var Jest = require("@glennsl/bs-jest/src/jest.js");
 var Util = require("../src/Util.bs.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
-var Printf = require("bs-platform/lib/js/printf.js");
-var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
+var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var LrParsing = require("../src/LrParsing.bs.js");
 var Belt_MapInt = require("bs-platform/lib/js/belt_MapInt.js");
 var Belt_SetInt = require("bs-platform/lib/js/belt_SetInt.js");
 var Belt_MutableSet = require("bs-platform/lib/js/belt_MutableSet.js");
 
-var grammar = Belt_MapInt.fromArray(/* array */[
+var grammar_000 = /* nonterminals */Belt_MapInt.fromArray(/* array */[
       /* tuple */[
         0,
         /* record */[/* productions : :: */[
@@ -90,6 +89,11 @@ var grammar = Belt_MapInt.fromArray(/* array */[
           ]]
       ]
     ]);
+
+var grammar = /* record */[
+  grammar_000,
+  /* num_terminals */5
+];
 
 var Grammar = /* module */[/* grammar */grammar];
 
@@ -172,31 +176,15 @@ Jest.describe("LrParsing", (function (param) {
               LrParsing.mk_item$prime(6, 0)
             ]);
         Jest.testAll("goto", /* :: */[
-              Jest.Expect[/* toEqual */12](goto_kernel, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto_kernel */10], Belt_SetInt.fromArray(items1), 0))),
+              Jest.Expect[/* toEqual */12](goto_kernel, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto_kernel */10], Belt_SetInt.fromArray(items1), /* Terminal */Block.__(0, [0])))),
               /* :: */[
                 Jest.Expect[/* toEqual */12](/* record */[
                       /* kernel_items */goto_kernel,
                       /* nonkernel_items */goto_nonkernel
-                    ], Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto */11], Belt_SetInt.fromArray(items1), 0))),
+                    ], Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto */11], Belt_SetInt.fromArray(items1), /* Terminal */Block.__(0, [0])))),
                 /* [] */0
               ]
             ], Util.id);
-        var x = Curry._1(Lr0$prime[/* state_to_item_set */14], 0);
-        console.log("state_to_item_set items");
-        Belt_SetInt.forEach(x, (function (item) {
-                return Curry._1(Printf.printf(/* Format */[
-                                /* Int */Block.__(4, [
-                                    /* Int_x */6,
-                                    /* No_padding */0,
-                                    /* No_precision */0,
-                                    /* Char_literal */Block.__(12, [
-                                        /* "\n" */10,
-                                        /* End_of_format */0
-                                      ])
-                                  ]),
-                                "%x\n"
-                              ]), item);
-              }));
         var expected_item_sets = Belt_MutableSet.fromArray(/* array */[
               Belt_SetInt.fromArray(/* array */[
                     LrParsing.mk_item$prime(0, 0),
@@ -249,9 +237,11 @@ Jest.describe("LrParsing", (function (param) {
               Belt_SetInt.fromArray(/* array */[LrParsing.mk_item$prime(3, 3)]),
               Belt_SetInt.fromArray(/* array */[LrParsing.mk_item$prime(5, 3)])
             ], LrParsing.ComparableSet);
-        var actual_item_sets = Lr0$prime[/* items */12];
+        var normalize = function (items) {
+          return Belt_List.map(Belt_MutableSet.toList(items), Belt_SetInt.toList);
+        };
         return Jest.testAll("items", /* :: */[
-                    Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Caml_obj.caml_equal(actual_item_sets, expected_item_sets))),
+                    Jest.Expect[/* toEqual */12](normalize(expected_item_sets), Jest.Expect[/* expect */0](normalize(Lr0$prime[/* items */12]))),
                     /* [] */0
                   ], Util.id);
       }));

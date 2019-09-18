@@ -5,7 +5,8 @@ module M = Belt.Map.Int
 module SI = Belt.Set.Int
 
 module Grammar : GRAMMAR = struct
-  let grammar = M.fromArray
+  let grammar = {
+    nonterminals = M.fromArray
     [|
        (* E' *)
        0, { productions = [[Nonterminal 1]] }; (* E' -> E *)
@@ -27,7 +28,9 @@ module Grammar : GRAMMAR = struct
          [Terminal 4];                            (* F -> id *)
          ]
        };
-    |]
+    |];
+    num_terminals = 5;
+  }
 end
 
 let () = describe "LrParsing" (fun () ->
@@ -101,19 +104,12 @@ let () = describe "LrParsing" (fun () ->
   in
 
   testAll "goto" [
-    expect (Lr0'.goto_kernel (SI.fromArray items1) 0)
+    expect (Lr0'.goto_kernel (SI.fromArray items1) (Terminal 0))
       |> toEqual goto_kernel;
-    expect (Lr0'.goto (SI.fromArray items1) 0)
+    expect (Lr0'.goto (SI.fromArray items1) (Terminal 0))
       |> toEqual
       { kernel_items = goto_kernel; nonkernel_items = goto_nonkernel };
   ] Util.id;
-
-  let x = Lr0'.state_to_item_set 0 in
-  Js.log "state_to_item_set items";
-  SI.forEach x (fun item ->
-    Printf.printf "%x\n" item;
-  );
-
 
   let expected_item_sets = Belt.MutableSet.fromArray [|
     SI.fromArray
@@ -172,10 +168,14 @@ let () = describe "LrParsing" (fun () ->
   ~id:(module ComparableSet)
   in
 
-  let actual_item_sets : mutable_int_set_set = Lr0'.items in
+  let normalize = fun items -> items
+    |. Belt.MutableSet.toList
+    |. L.map (fun items' -> items' |. SI.toList)
+  in
 
   testAll "items" [
-    expect (actual_item_sets = expected_item_sets) |> toBe true;
+    expect (normalize Lr0'.items)
+      |> toEqual (normalize expected_item_sets);
     (*
     expect (M.get Lr0'.items' 1 == Some (SI.fromArray items1)) |> toBe true;
     expect (M.get Lr0'.items' 7 == Some (SI.fromArray items7)) |> toBe true;

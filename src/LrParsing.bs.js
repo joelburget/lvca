@@ -42,7 +42,7 @@ function Lr0(G) {
   var production_nonterminal_map = Belt_MutableMapInt.make(/* () */0);
   var nonterminal_production_map = Belt_MutableMapInt.make(/* () */0);
   var production_cnt = /* record */[/* contents */0];
-  Belt_MapInt.forEach(G[/* grammar */0], (function (nt_num, param) {
+  Belt_MapInt.forEach(G[/* grammar */0][/* nonterminals */0], (function (nt_num, param) {
           Belt_MutableMapInt.set(nonterminal_production_map, nt_num, Belt_MutableSetInt.make(/* () */0));
           return Belt_List.forEach(param[/* productions */0], (function (production) {
                         var production_num = production_cnt[0];
@@ -53,12 +53,12 @@ function Lr0(G) {
                         return Belt_MutableSetInt.add(prod_set, production_num);
                       }));
         }));
-  var number_of_nonterminals = Belt_MapInt.size(G[/* grammar */0]);
+  var number_of_nonterminals = Belt_MapInt.size(G[/* grammar */0][/* nonterminals */0]);
   var get_nonterminal_num = function (param) {
     return Belt_MutableMapInt.getExn(production_nonterminal_map, param);
   };
   var get_nonterminal = function (pn) {
-    return Belt_MapInt.getExn(G[/* grammar */0], Belt_MutableMapInt.getExn(production_nonterminal_map, pn));
+    return Belt_MapInt.getExn(G[/* grammar */0][/* nonterminals */0], Belt_MutableMapInt.getExn(production_nonterminal_map, pn));
   };
   var closure = function (initial_items) {
     var added = Bitstring.alloc(number_of_nonterminals, false);
@@ -89,7 +89,7 @@ function Lr0(G) {
         Belt_MutableSetInt.forEach(production_set, (function (production_num) {
                 return Belt_MutableSetInt.add(nonkernel_items, mk_item$prime(production_num, 0));
               }));
-        var match$1 = Belt_MapInt.getExn(G[/* grammar */0], nonterminal_num);
+        var match$1 = Belt_MapInt.getExn(G[/* grammar */0][/* nonterminals */0], nonterminal_num);
         Belt_List.forEach(match$1[/* productions */0], (function (production) {
                 if (production) {
                   var match = production[0];
@@ -116,7 +116,7 @@ function Lr0(G) {
   var closure$prime = function (items) {
     return simplify_config_set(closure(items));
   };
-  var goto_kernel = function (item_set, nt) {
+  var goto_kernel = function (item_set, piece) {
     var result = Belt_MutableSetInt.make(/* () */0);
     Belt_SetInt.forEach(item_set, (function (item) {
             var match = view_item(item);
@@ -124,21 +124,16 @@ function Lr0(G) {
             var production_num = match[/* production_num */0];
             var production = Belt_MutableMapInt.getExn(production_map, production_num);
             var match$1 = Belt_List.get(production, position);
-            if (match$1 !== undefined) {
-              var match$2 = match$1;
-              if (match$2.tag || nt !== match$2[0]) {
-                return /* () */0;
-              } else {
-                return Belt_MutableSetInt.add(result, mk_item$prime(production_num, position + 1 | 0));
-              }
+            if (match$1 !== undefined && Caml_obj.caml_equal(piece, match$1)) {
+              return Belt_MutableSetInt.add(result, mk_item$prime(production_num, position + 1 | 0));
             } else {
               return /* () */0;
             }
           }));
     return Belt_SetInt.fromArray(Belt_MutableSetInt.toArray(result));
   };
-  var $$goto = function (item_set, nt) {
-    return closure(goto_kernel(item_set, nt));
+  var $$goto = function (item_set, piece) {
+    return closure(goto_kernel(item_set, piece));
   };
   var augmented_start = Belt_SetInt.fromArray(/* array */[mk_item(/* record */[
               /* production_num */0,
@@ -150,23 +145,12 @@ function Lr0(G) {
   while($$continue[0]) {
     $$continue[0] = false;
     Belt_MutableSet.forEach(c, (function (i) {
-            return Belt_List.forEach(/* :: */[
-                        0,
-                        /* :: */[
-                          1,
-                          /* :: */[
-                            2,
-                            /* :: */[
-                              3,
-                              /* :: */[
-                                4,
-                                /* [] */0
-                              ]
-                            ]
-                          ]
-                        ]
-                      ], (function (x) {
-                          console.log("considering grammar symbol", x);
+            var grammar_symbols = Belt_List.concat(Belt_List.makeBy(G[/* grammar */0][/* num_terminals */1], (function (n) {
+                        return /* Terminal */Block.__(0, [n]);
+                      })), Belt_List.makeBy(number_of_nonterminals, (function (n) {
+                        return /* Nonterminal */Block.__(1, [n]);
+                      })));
+            return Belt_List.forEach(grammar_symbols, (function (x) {
                           var goto_i_x = simplify_config_set(closure(goto_kernel(i, x)));
                           if (!Belt_SetInt.isEmpty(goto_i_x) && !Belt_MutableSet.has(c, goto_i_x)) {
                             Belt_MutableSet.add(c, goto_i_x);
@@ -178,11 +162,6 @@ function Lr0(G) {
                         }));
           }));
   };
-  console.log("items:");
-  Belt_MutableSet.forEach(c, (function (item_set) {
-          console.log(Belt_SetInt.toArray(item_set));
-          return /* () */0;
-        }));
   var items$prime = Belt_MapInt.fromArray(Belt_Array.mapWithIndex(Belt_MutableSet.toArray(c), (function (i, item_set) {
               return /* tuple */[
                       i,
