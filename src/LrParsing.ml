@@ -11,11 +11,22 @@ module Result = Belt.Result
   * augment grammar
  *)
 
-type piece =
-  | Terminal    of int
-  | Nonterminal of int
+type terminal_num = int (* TODO *)
+type nonterminal_num = int
 
-type production = piece list
+type symbol =
+  | Terminal    of terminal_num
+  | Nonterminal of nonterminal_num
+
+module SymbolCmp = Belt.Id.MakeComparable(struct
+  type t = terminal_num * symbol
+  let cmp (a0, a1) (b0, b1) =
+    match Pervasives.compare a0 b0 with
+      | 0 -> Pervasives.compare a1 b1
+      | c -> c
+end)
+
+type production = symbol list
 
 type production_num = int
 
@@ -59,8 +70,6 @@ let mk_item' : int -> int -> item
 let mk_item : item_view -> item
   = fun { production_num; position } ->  mk_item' production_num position
 
-type nonterminal_num = int
-
 type configuration_set =
   { kernel_items : item_set;    (* set of items *)
     nonkernel_items : item_set; (* set of nonterminals *)
@@ -72,8 +81,6 @@ type nonterminal =
   }
 
 type state = int
-
-type terminal = int (* TODO *)
 
 (* By convention:
   * A non-augmented grammar has keys starting at 1 (start)
@@ -90,8 +97,8 @@ type action =
   | Accept
   | Error
 
-type action_table = state -> terminal -> action
-type goto_table = state -> piece -> state
+type action_table = state -> terminal_num -> action
+type goto_table = state -> symbol -> state
 
 type parser_tables = action_table * goto_table
 
@@ -157,7 +164,7 @@ module Lr0 (G : GRAMMAR) = struct
       SI.forEach initial_items (fun item ->
         let { production_num; position } = view_item item in
         let production = MM.getExn production_map production_num in
-        (* first piece right of the dot *)
+        (* first symbol right of the dot *)
         match production |. L.get position with
           | Some (Nonterminal nt) ->
               nt_stack |. MSI.add nt
@@ -201,23 +208,23 @@ module Lr0 (G : GRAMMAR) = struct
   (* Examine for items with the nonterminal immediately to the right of the
    * dot. Move the dot over the nonterminal and take the closure of those sets.
    *)
-  let goto_kernel : item_set -> piece -> item_set
-    = fun item_set piece ->
+  let goto_kernel : item_set -> symbol -> item_set
+    = fun item_set symbol ->
       let result = MSI.make () in
       SI.forEach item_set (fun item ->
         let { production_num; position } = view_item item in
         let production = production_map |. MM.getExn production_num in
         match L.get production position with
-          | Some next_piece ->
-            if piece = next_piece then (
+          | Some next_symbol ->
+            if symbol = next_symbol then (
               result |. MSI.add (mk_item' production_num (position + 1))
             )
           | _ -> ()
       );
       result |. MSI.toArray |. SI.fromArray
 
-  let goto : item_set -> piece -> configuration_set
-    = fun item_set piece -> closure @@ goto_kernel item_set piece
+  let goto : item_set -> symbol -> configuration_set
+    = fun item_set symbol -> closure @@ goto_kernel item_set symbol
 
   (** Compute the canonical collection of sets of LR(0) items. CPTT fig 4.33. *)
   let items : mutable_int_set_set
@@ -264,22 +271,159 @@ module Lr0 (G : GRAMMAR) = struct
       |. Belt.Option.getExn
     in state
 
+  let in_first_cache : (terminal_num * symbol, bool, SymbolCmp.identity) Belt.Map.t
+    = Belt.Map.make ~id:(module SymbolCmp)
+
+  let in_first : terminal_num -> symbol -> bool
+    =
+      (* We use this stack (which is a set) to track which nonterminals we're
+       * currently looking through, to prevent loops *)
+      let stack = MSI.make () in
+      let rec in_first' t_num sym =
+        match in_first_cache |. Belt.Map.get (t_num, sym) with
+        | Some result -> result
+        | None -> (match sym with
+          | Terminal t_num'    -> t_num' = t_num
+          | Nonterminal nt_num ->
+          let { productions } = G.grammar.nonterminals |. M.getExn nt_num in
+          let result, _ = Util.fold_right
+            (fun (symbol, (already_found, all_derive_empty)) ->
+              let found_it = productions |. L.some (function
+                | Terminal t_num' :: _ -> t_num' = t_num
+                | (Nonterminal nt_num as nt) :: _ ->
+                  if stack |. MSI.has nt_num
+                  then false
+                  else (
+                    stack |. MSI.add nt_num;
+                    let result = in_first' t_num nt in
+                    stack |. MSI.remove nt_num;
+                    result
+                )
+                | [] -> false
+              )
+              in
+              (* TODO: update to allow empty productions *)
+              let this_derives_empty = false in
+              ( already_found || found_it
+              , all_derive_empty && this_derives_empty
+              )
+            )
+            productions
+            (false, true)
+          in
+          in_first_cache |. Belt.Map.set (t_num, sym) result;
+          result
+        )
+      in in_first'
+
+  let in_first_str : terminal_num -> symbol list -> bool
+    = fun t_num str -> match str with
+      (* TODO: update to allow empty productions *)
+      | x :: _ -> in_first t_num x
+      | _ -> false
+
+  let end_marker : terminal_num
+    = 0
+
+  exception FoundInFollow
+
+  (* nts_visited (which is a set) tracks the nonterminals we've looked in
+   *)
+
+  (* find all `t`s in the production, then look at their following
+   * sentences *)
+  let rec in_follow''
+    : SI.t -> terminal_num -> nonterminal_num -> production -> bool
+    = fun nts_visited t_num nt_num -> function
+      | Terminal _ :: rest -> in_follow'' nts_visited t_num nt_num rest
+      (* TODO: update to allow empty productions *)
+      | Nonterminal nt'_num :: rest ->
+        (nt'_num = nt_num && in_first_str t_num rest) ||
+        in_follow'' nts_visited t_num nt_num rest
+      | [] -> false
+
+  and in_follow' : SI.t -> terminal_num -> nonterminal_num -> bool
+    = fun nts_visited t_num nt_num ->
+      if nts_visited |. SI.has nt_num then false else
+      (* treat the augmenting production specially (rule 1):
+         $ is in Follow(S)
+       *)
+      if nt_num = 0 then
+        t_num = end_marker
+      else
+        (* TODO: update to allow empty productions *)
+        try
+          let nts_visited' = nts_visited |. SI.add nt_num in
+          production_map |. MM.forEach (fun prod_num production ->
+            (* First look for this terminal following nt directly (rule 2) *)
+            if in_follow'' nts_visited' t_num nt_num production
+              then raise FoundInFollow;
+
+            (* Then look for this terminal following nonterminals which end in
+               nt. (rule 3)
+               IE, if there is a production A -> xB, then everything in
+               Follow(A) is in Follow(B)
+             *)
+            let nt_num' = production_nonterminal_map |. MM.getExn prod_num in
+            match Util.unsnoc production with
+              | _, Nonterminal last
+              -> if last = nt_num && in_follow' nts_visited' t_num nt_num'
+                then raise FoundInFollow;
+              | _ -> ()
+          );
+          false
+        with
+          FoundInFollow -> true
+
+  let in_follow : terminal_num -> nonterminal_num -> bool
+    = in_follow' (SI.fromArray [||])
+
   let slr_tables : parser_tables
-    = let action_table = fun state terminal ->
-        let shift_action = failwith "TODO" in
-        let reduce_action = failwith "TODO" in
-        let accept_action = failwith "TODO" in
+    = let goto_table state nt =
+        item_set_to_state
+          @@ simplify_config_set
+          @@ goto (state_to_item_set state) nt
+      in
+
+      let action_table = fun state terminal_num ->
+        let item_set = state_to_item_set state in
+
+        let item_set_l = SI.toList item_set in
+
+        (* If [A -> xs . a ys] is in I_i and GOTO(I_i, a) = I_j, set
+         * ACTION[i, a] to `shift j` *)
+        let shift_action = item_set_l
+          |. Util.find_by (fun item ->
+            let { production_num; position } = view_item item in
+            let symbols = production_map |. MM.getExn production_num in
+            match symbols |. L.get position  with
+              | Some ((Terminal a) as next_symbol) ->
+                Some (Shift (goto_table state next_symbol))
+              | _ -> None
+          )
+        in
+        (* If [A -> xs .] is in I_i, set ACTION[i, a] to `Reduce A -> a` for
+         * all a in FOLLOW(A) *)
+        let reduce_action = item_set_l
+          |. Util.find_by (fun item ->
+            let { production_num; position } = view_item item in
+            if production_num = terminal_num && position = 1
+            (* XXX check in follow set *)
+            then Some (Reduce
+              (production_nonterminal_map |. MM.getExn production_num))
+            else None
+          )
+        in
+        (* If [S' -> S .] is in I_i, set ACTION[i, $] to `accept` *)
+        let accept_action =
+          (* XXX check is $ *)
+          if item_set |. SI.has (mk_item' 0 1) then Some Accept else None
+        in
         match shift_action, reduce_action, accept_action with
           | Some act, None, None -> act
           | None, Some act, None -> act
           | None, None, Some act -> act
           | None, None, None     -> Error
-      in
-
-      let goto_table state nt =
-        item_set_to_state
-          @@ simplify_config_set
-          @@ goto (state_to_item_set state) nt
       in
 
       (action_table, goto_table)

@@ -28,7 +28,7 @@ var grammar_000 = /* nonterminals */Belt_MapInt.fromArray(/* array */[
             /* :: */[
               /* Nonterminal */Block.__(1, [1]),
               /* :: */[
-                /* Terminal */Block.__(0, [0]),
+                /* Terminal */Block.__(0, [1]),
                 /* :: */[
                   /* Nonterminal */Block.__(1, [2]),
                   /* [] */0
@@ -50,7 +50,7 @@ var grammar_000 = /* nonterminals */Belt_MapInt.fromArray(/* array */[
             /* :: */[
               /* Nonterminal */Block.__(1, [2]),
               /* :: */[
-                /* Terminal */Block.__(0, [1]),
+                /* Terminal */Block.__(0, [2]),
                 /* :: */[
                   /* Nonterminal */Block.__(1, [3]),
                   /* [] */0
@@ -70,18 +70,18 @@ var grammar_000 = /* nonterminals */Belt_MapInt.fromArray(/* array */[
         3,
         /* record */[/* productions : :: */[
             /* :: */[
-              /* Terminal */Block.__(0, [2]),
+              /* Terminal */Block.__(0, [3]),
               /* :: */[
                 /* Nonterminal */Block.__(1, [1]),
                 /* :: */[
-                  /* Terminal */Block.__(0, [3]),
+                  /* Terminal */Block.__(0, [4]),
                   /* [] */0
                 ]
               ]
             ],
             /* :: */[
               /* :: */[
-                /* Terminal */Block.__(0, [4]),
+                /* Terminal */Block.__(0, [5]),
                 /* [] */0
               ],
               /* [] */0
@@ -92,7 +92,7 @@ var grammar_000 = /* nonterminals */Belt_MapInt.fromArray(/* array */[
 
 var grammar = /* record */[
   grammar_000,
-  /* num_terminals */5
+  /* num_terminals */6
 ];
 
 var Grammar = /* module */[/* grammar */grammar];
@@ -120,6 +120,56 @@ Jest.describe("LrParsing", (function (param) {
                           /* position */1
                         ], Jest.Expect[/* expect */0](LrParsing.view_item(LrParsing.mk_item$prime(1, 1)))),
                     /* [] */0
+                  ]
+                ]
+              ]
+            ], Util.id);
+        Jest.testAll("in_first", /* :: */[
+              Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_first */17], 1, /* Terminal */Block.__(0, [1])))),
+              /* :: */[
+                Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_first */17], 0, /* Nonterminal */Block.__(1, [0])))),
+                /* :: */[
+                  Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_first */17], 1, /* Nonterminal */Block.__(1, [0])))),
+                  /* :: */[
+                    Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_first */17], 2, /* Nonterminal */Block.__(1, [0])))),
+                    /* :: */[
+                      Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_first */17], 3, /* Nonterminal */Block.__(1, [0])))),
+                      /* :: */[
+                        Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_first */17], 4, /* Nonterminal */Block.__(1, [0])))),
+                        /* [] */0
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ], Util.id);
+        Jest.testAll("in_follow", /* :: */[
+              Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 0, 0))),
+              /* :: */[
+                Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 1, 0))),
+                /* :: */[
+                  Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 2, 0))),
+                  /* :: */[
+                    Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 3, 0))),
+                    /* :: */[
+                      Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 4, 0))),
+                      /* :: */[
+                        Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 0, 1))),
+                        /* :: */[
+                          Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 1, 1))),
+                          /* :: */[
+                            Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 2, 1))),
+                            /* :: */[
+                              Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 3, 1))),
+                              /* :: */[
+                                Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 4, 1))),
+                                /* [] */0
+                              ]
+                            ]
+                          ]
+                        ]
+                      ]
+                    ]
                   ]
                 ]
               ]
@@ -176,12 +226,12 @@ Jest.describe("LrParsing", (function (param) {
               LrParsing.mk_item$prime(6, 0)
             ]);
         Jest.testAll("goto", /* :: */[
-              Jest.Expect[/* toEqual */12](goto_kernel, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto_kernel */10], Belt_SetInt.fromArray(items1), /* Terminal */Block.__(0, [0])))),
+              Jest.Expect[/* toEqual */12](goto_kernel, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto_kernel */10], Belt_SetInt.fromArray(items1), /* Terminal */Block.__(0, [1])))),
               /* :: */[
                 Jest.Expect[/* toEqual */12](/* record */[
                       /* kernel_items */goto_kernel,
                       /* nonkernel_items */goto_nonkernel
-                    ], Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto */11], Belt_SetInt.fromArray(items1), /* Terminal */Block.__(0, [0])))),
+                    ], Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto */11], Belt_SetInt.fromArray(items1), /* Terminal */Block.__(0, [1])))),
                 /* [] */0
               ]
             ], Util.id);

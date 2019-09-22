@@ -12,24 +12,24 @@ module Grammar : GRAMMAR = struct
        0, { productions = [[Nonterminal 1]] }; (* E' -> E *)
        (* E *)
        1, { productions = [
-         [Nonterminal 1; Terminal 0; Nonterminal 2]; (* E -> E + T *)
+         [Nonterminal 1; Terminal 1; Nonterminal 2]; (* E -> E + T *)
          [Nonterminal 2];                            (* E -> T *)
          ]
        };
        (* T *)
        2, { productions = [
-         [Nonterminal 2; Terminal 1; Nonterminal 3]; (* T -> T * F *)
+         [Nonterminal 2; Terminal 2; Nonterminal 3]; (* T -> T * F *)
          [Nonterminal 3]                             (* T -> F *)
          ]
        };
        (* F *)
        3, { productions = [
-         [Terminal 2; Nonterminal 1; Terminal 3]; (* F -> (E) *)
-         [Terminal 4];                            (* F -> id *)
+         [Terminal 3; Nonterminal 1; Terminal 4]; (* F -> (E) *)
+         [Terminal 5];                            (* F -> id *)
          ]
        };
     |];
-    num_terminals = 5;
+    num_terminals = 6;
   }
 end
 
@@ -46,6 +46,31 @@ let () = describe "LrParsing" (fun () ->
       |> toEqual { production_num = 1; position = 0 };
     expect (view_item @@ mk_item' 1 1)
       |> toEqual { production_num = 1; position = 1 };
+  ] Util.id;
+
+  testAll "in_first" [
+    (* for terminals X, First(X) = {X} *)
+    expect (Lr0'.in_first 1 (Terminal 1)) |> toBe true;
+    expect (Lr0'.in_first 0 (Nonterminal 0)) |> toBe false;
+    expect (Lr0'.in_first 1 (Nonterminal 0)) |> toBe false;
+    expect (Lr0'.in_first 2 (Nonterminal 0)) |> toBe false;
+    expect (Lr0'.in_first 3 (Nonterminal 0)) |> toBe true;
+    expect (Lr0'.in_first 4 (Nonterminal 0)) |> toBe false;
+  ] Util.id;
+
+  testAll "in_follow" [
+    (* $ is in the follow set for the start symbol *)
+    expect (Lr0'.in_follow 0 0) |> toBe true;
+    expect (Lr0'.in_follow 1 0) |> toBe false;
+    expect (Lr0'.in_follow 2 0) |> toBe false;
+    expect (Lr0'.in_follow 3 0) |> toBe false;
+    expect (Lr0'.in_follow 4 0) |> toBe false;
+    (* '$', '+', and ')' follow E, '*' and '(' don't *)
+    expect (Lr0'.in_follow 0 1) |> toBe true;
+    expect (Lr0'.in_follow 1 1) |> toBe true;
+    expect (Lr0'.in_follow 2 1) |> toBe false; (* XXX *)
+    expect (Lr0'.in_follow 3 1) |> toBe false;
+    expect (Lr0'.in_follow 4 1) |> toBe true;
   ] Util.id;
 
   (* I0 *)
@@ -104,9 +129,9 @@ let () = describe "LrParsing" (fun () ->
   in
 
   testAll "goto" [
-    expect (Lr0'.goto_kernel (SI.fromArray items1) (Terminal 0))
+    expect (Lr0'.goto_kernel (SI.fromArray items1) (Terminal 1))
       |> toEqual goto_kernel;
-    expect (Lr0'.goto (SI.fromArray items1) (Terminal 0))
+    expect (Lr0'.goto (SI.fromArray items1) (Terminal 1))
       |> toEqual
       { kernel_items = goto_kernel; nonkernel_items = goto_nonkernel };
   ] Util.id;
@@ -176,7 +201,7 @@ let () = describe "LrParsing" (fun () ->
   testAll "items" [
     expect (normalize Lr0'.items)
       |> toEqual (normalize expected_item_sets);
-    (*
+    (* TODO
     expect (M.get Lr0'.items' 1 == Some (SI.fromArray items1)) |> toBe true;
     expect (M.get Lr0'.items' 7 == Some (SI.fromArray items7)) |> toBe true;
     *)

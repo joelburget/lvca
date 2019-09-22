@@ -123,9 +123,17 @@ let rec sum = function
   | []       -> 0
   | x  :: xs -> x + sum xs
 
+(* TODO: remove (getBy) *)
 let rec find (f: 'a -> bool) (lst: 'a list) : 'a option = match lst with
   | []       -> None
   | x  :: xs -> if f x then Some x else find f xs
+
+let rec find_by (lst: 'a list) (f: 'a -> 'b option) : 'b option = match lst with
+  | []       -> None
+  | x  :: xs -> (match f x with
+    | Some b -> Some b
+    | None -> find_by xs f
+  )
 
 let flip (f : 'a -> 'b -> 'c): ('b -> 'a -> 'c)
   = fun b a -> f a b

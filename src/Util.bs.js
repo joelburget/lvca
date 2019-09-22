@@ -298,6 +298,23 @@ function find(f, _lst) {
   };
 }
 
+function find_by(_lst, f) {
+  while(true) {
+    var lst = _lst;
+    if (lst) {
+      var match = Curry._1(f, lst[0]);
+      if (match !== undefined) {
+        return Caml_option.some(Caml_option.valFromOption(match));
+      } else {
+        _lst = lst[1];
+        continue ;
+      }
+    } else {
+      return undefined;
+    }
+  };
+}
+
 function flip(f, b, a) {
   return Curry._2(f, a, b);
 }
@@ -351,6 +368,7 @@ exports.unions = unions;
 exports.map_error = map_error;
 exports.sum = sum;
 exports.find = find;
+exports.find_by = find_by;
 exports.flip = flip;
 exports.id = id;
 exports.list_flat_map = list_flat_map;
