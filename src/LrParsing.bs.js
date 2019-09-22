@@ -330,12 +330,14 @@ function Lr0(G) {
     var reduce_action = Util.find_by(item_set_l, (function (item) {
             var match = view_item(item);
             var production_num = match[/* production_num */0];
-            if (production_num === terminal_num && match[/* position */1] === 1) {
-              return /* Reduce */Block.__(1, [Belt_MutableMapInt.getExn(production_nonterminal_map, production_num)]);
+            var nt_num = Belt_MutableMapInt.getExn(production_nonterminal_map, production_num);
+            var production = Belt_MutableMapInt.getExn(production_map, production_num);
+            if (match[/* position */1] === Belt_List.length(production) && Curry._2(in_follow, terminal_num, nt_num)) {
+              return /* Reduce */Block.__(1, [nt_num]);
             }
             
           }));
-    var accept_action = Belt_SetInt.has(item_set, 16777216) ? /* Accept */0 : undefined;
+    var accept_action = terminal_num === 0 && Belt_SetInt.has(item_set, 16777216) ? /* Accept */0 : undefined;
     var exit = 0;
     if (shift_action !== undefined) {
       if (reduce_action !== undefined || accept_action !== undefined) {
@@ -359,7 +361,7 @@ function Lr0(G) {
             Caml_builtin_exceptions.match_failure,
             /* tuple */[
               "LrParsing.ml",
-              422,
+              424,
               8
             ]
           ];
@@ -470,7 +472,7 @@ function parse(param, toks) {
               Caml_builtin_exceptions.match_failure,
               /* tuple */[
                 "LrParsing.ml",
-                470,
+                472,
                 12
               ]
             ];

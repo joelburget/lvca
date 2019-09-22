@@ -163,7 +163,37 @@ Jest.describe("LrParsing", (function (param) {
                               Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 3, 1))),
                               /* :: */[
                                 Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 4, 1))),
-                                /* [] */0
+                                /* :: */[
+                                  Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 0, 2))),
+                                  /* :: */[
+                                    Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 1, 2))),
+                                    /* :: */[
+                                      Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 2, 2))),
+                                      /* :: */[
+                                        Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 3, 2))),
+                                        /* :: */[
+                                          Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 4, 2))),
+                                          /* :: */[
+                                            Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 0, 3))),
+                                            /* :: */[
+                                              Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 1, 3))),
+                                              /* :: */[
+                                                Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 2, 3))),
+                                                /* :: */[
+                                                  Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 3, 3))),
+                                                  /* :: */[
+                                                    Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* in_follow */23], 4, 3))),
+                                                    /* [] */0
+                                                  ]
+                                                ]
+                                              ]
+                                            ]
+                                          ]
+                                        ]
+                                      ]
+                                    ]
+                                  ]
+                                ]
                               ]
                             ]
                           ]
@@ -290,10 +320,12 @@ Jest.describe("LrParsing", (function (param) {
         var normalize = function (items) {
           return Belt_List.map(Belt_MutableSet.toList(items), Belt_SetInt.toList);
         };
-        return Jest.testAll("items", /* :: */[
-                    Jest.Expect[/* toEqual */12](normalize(expected_item_sets), Jest.Expect[/* expect */0](normalize(Lr0$prime[/* items */12]))),
-                    /* [] */0
-                  ], Util.id);
+        Jest.testAll("items", /* :: */[
+              Jest.Expect[/* toEqual */12](normalize(expected_item_sets), Jest.Expect[/* expect */0](normalize(Lr0$prime[/* items */12]))),
+              /* [] */0
+            ], Util.id);
+        Jest.testAll("goto_table", /* [] */0, Util.id);
+        return Jest.testAll("action_table", /* [] */0, Util.id);
       }));
 
 var M = 0;

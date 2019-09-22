@@ -407,17 +407,19 @@ module Lr0 (G : GRAMMAR) = struct
         let reduce_action = item_set_l
           |. Util.find_by (fun item ->
             let { production_num; position } = view_item item in
-            if production_num = terminal_num && position = 1
-            (* XXX check in follow set *)
-            then Some (Reduce
-              (production_nonterminal_map |. MM.getExn production_num))
-            else None
+            let nt_num = production_nonterminal_map |. MM.getExn production_num
+            in
+            let production = production_map |. MM.getExn production_num in
+            if position = L.length production && in_follow terminal_num nt_num
+              then Some (Reduce nt_num)
+              else None
           )
         in
         (* If [S' -> S .] is in I_i, set ACTION[i, $] to `accept` *)
         let accept_action =
-          (* XXX check is $ *)
-          if item_set |. SI.has (mk_item' 0 1) then Some Accept else None
+          if terminal_num = end_marker && item_set |. SI.has (mk_item' 0 1)
+            then Some Accept
+            else None
         in
         match shift_action, reduce_action, accept_action with
           | Some act, None, None -> act

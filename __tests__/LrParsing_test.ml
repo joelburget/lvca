@@ -65,12 +65,27 @@ let () = describe "LrParsing" (fun () ->
     expect (Lr0'.in_follow 2 0) |> toBe false;
     expect (Lr0'.in_follow 3 0) |> toBe false;
     expect (Lr0'.in_follow 4 0) |> toBe false;
+
     (* '$', '+', and ')' follow E, '*' and '(' don't *)
     expect (Lr0'.in_follow 0 1) |> toBe true;
     expect (Lr0'.in_follow 1 1) |> toBe true;
-    expect (Lr0'.in_follow 2 1) |> toBe false; (* XXX *)
+    expect (Lr0'.in_follow 2 1) |> toBe false;
     expect (Lr0'.in_follow 3 1) |> toBe false;
     expect (Lr0'.in_follow 4 1) |> toBe true;
+
+    (* '$', '+', '*', and ')' follow T, '(' doesn't *)
+    expect (Lr0'.in_follow 0 2) |> toBe true;
+    expect (Lr0'.in_follow 1 2) |> toBe true;
+    expect (Lr0'.in_follow 2 2) |> toBe true;
+    expect (Lr0'.in_follow 3 2) |> toBe false;
+    expect (Lr0'.in_follow 4 2) |> toBe true;
+
+    (* '$', '+', '*', and ')' follow F, '(' doesn't *)
+    expect (Lr0'.in_follow 0 3) |> toBe true;
+    expect (Lr0'.in_follow 1 3) |> toBe true;
+    expect (Lr0'.in_follow 2 3) |> toBe true;
+    expect (Lr0'.in_follow 3 3) |> toBe false;
+    expect (Lr0'.in_follow 4 3) |> toBe true;
   ] Util.id;
 
   (* I0 *)
@@ -205,5 +220,11 @@ let () = describe "LrParsing" (fun () ->
     expect (M.get Lr0'.items' 1 == Some (SI.fromArray items1)) |> toBe true;
     expect (M.get Lr0'.items' 7 == Some (SI.fromArray items7)) |> toBe true;
     *)
+  ] Util.id;
+
+  testAll "goto_table" [
+  ] Util.id;
+
+  testAll "action_table" [
   ] Util.id;
 )
