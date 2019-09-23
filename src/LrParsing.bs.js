@@ -49,6 +49,21 @@ function mk_item(param) {
 
 var ComparableSet = Belt_Id.MakeComparable(/* module */[/* cmp */Belt_SetInt.cmp]);
 
+var ParseFinished = Caml_exceptions.create("LrParsing.ParseFinished");
+
+var ParseFailed = Caml_exceptions.create("LrParsing.ParseFailed");
+
+var PopFailed = Caml_exceptions.create("LrParsing.PopFailed");
+
+function pop_exn(arr) {
+  var match = arr.pop();
+  if (match !== undefined) {
+    return match;
+  } else {
+    throw PopFailed;
+  }
+}
+
 function Lr0(G) {
   var production_map = Belt_MutableMapInt.make(/* () */0);
   var production_nonterminal_map = Belt_MutableMapInt.make(/* () */0);
@@ -361,8 +376,8 @@ function Lr0(G) {
             Caml_builtin_exceptions.match_failure,
             /* tuple */[
               "LrParsing.ml",
-              424,
-              8
+              434,
+              4
             ]
           ];
     }
@@ -372,6 +387,68 @@ function Lr0(G) {
     action_table,
     goto_table
   ];
+  var parse = function (toks) {
+    var stack = /* :: */[
+      0,
+      /* [] */0
+    ];
+    try {
+      while(true) {
+        var match = stack;
+        if (match) {
+          var a = /* record */[/* contents */pop_exn(toks)];
+          var a$prime = Curry._1(Pervasives.failwith("TODO"), a);
+          var match$1 = action_table(match[0], a$prime);
+          if (typeof match$1 === "number") {
+            if (match$1 === 0) {
+              throw ParseFinished;
+            } else {
+              throw [
+                    ParseFailed,
+                    Pervasives.failwith("TODO")
+                  ];
+            }
+          } else if (match$1.tag) {
+            var match$2 = stack;
+            if (match$2) {
+              stack = /* :: */[
+                goto_table(match$2[0], a$prime),
+                match$2[1]
+              ];
+            } else {
+              Pervasives.failwith("invariant violation: reduction with empty stack");
+            }
+          } else {
+            stack = /* :: */[
+              match$1[0],
+              stack
+            ];
+            a[0] = pop_exn(toks);
+          }
+        } else {
+          throw [
+                Caml_builtin_exceptions.match_failure,
+                /* tuple */[
+                  "LrParsing.ml",
+                  448,
+                  14
+                ]
+              ];
+        }
+      };
+      return Pervasives.failwith("can't make it here");
+    }
+    catch (raw_exn){
+      var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
+      if (exn === ParseFinished) {
+        return Pervasives.failwith("TODO");
+      } else if (exn[0] === ParseFailed) {
+        return /* Error */Block.__(1, [exn[1]]);
+      } else {
+        throw exn;
+      }
+    }
+  };
   return /* module */[
           /* production_map */production_map,
           /* production_nonterminal_map */production_nonterminal_map,
@@ -397,7 +474,10 @@ function Lr0(G) {
           /* in_follow'' */in_follow$prime$prime,
           /* in_follow' */in_follow$prime,
           /* in_follow */in_follow,
-          /* slr_tables */slr_tables
+          /* goto_table */goto_table,
+          /* action_table */action_table,
+          /* slr_tables */slr_tables,
+          /* parse */parse
         ];
 }
 
@@ -410,86 +490,6 @@ function lalr_tables(grammar) {
           action_table,
           goto_table
         ];
-}
-
-var ParseFinished = Caml_exceptions.create("LrParsing.ParseFinished");
-
-var ParseFailed = Caml_exceptions.create("LrParsing.ParseFailed");
-
-var PopFailed = Caml_exceptions.create("LrParsing.PopFailed");
-
-function pop_exn(arr) {
-  var match = arr.pop();
-  if (match !== undefined) {
-    return match;
-  } else {
-    throw PopFailed;
-  }
-}
-
-function parse(param, toks) {
-  var goto_table = param[1];
-  var action_table = param[0];
-  var stack = /* :: */[
-    0,
-    /* [] */0
-  ];
-  try {
-    while(true) {
-      var match = stack;
-      if (match) {
-        var a = /* record */[/* contents */pop_exn(toks)];
-        var a$prime = Curry._1(Pervasives.failwith("TODO"), a);
-        var match$1 = Curry._2(action_table, match[0], a$prime);
-        if (typeof match$1 === "number") {
-          if (match$1 === 0) {
-            throw ParseFinished;
-          } else {
-            throw [
-                  ParseFailed,
-                  Pervasives.failwith("TODO")
-                ];
-          }
-        } else if (match$1.tag) {
-          var match$2 = stack;
-          if (match$2) {
-            stack = /* :: */[
-              Curry._2(goto_table, match$2[0], a$prime),
-              match$2[1]
-            ];
-          } else {
-            Pervasives.failwith("invariant violation: reduction with empty stack");
-          }
-        } else {
-          stack = /* :: */[
-            match$1[0],
-            stack
-          ];
-          a[0] = pop_exn(toks);
-        }
-      } else {
-        throw [
-              Caml_builtin_exceptions.match_failure,
-              /* tuple */[
-                "LrParsing.ml",
-                472,
-                12
-              ]
-            ];
-      }
-    };
-    return Pervasives.failwith("can't make it here");
-  }
-  catch (raw_exn){
-    var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
-    if (exn === ParseFinished) {
-      return Pervasives.failwith("TODO");
-    } else if (exn[0] === ParseFailed) {
-      return /* Error */Block.__(1, [exn[1]]);
-    } else {
-      throw exn;
-    }
-  }
 }
 
 var A = 0;
@@ -521,11 +521,10 @@ exports.view_item = view_item;
 exports.mk_item$prime = mk_item$prime;
 exports.mk_item = mk_item;
 exports.ComparableSet = ComparableSet;
-exports.Lr0 = Lr0;
-exports.lalr_tables = lalr_tables;
 exports.ParseFinished = ParseFinished;
 exports.ParseFailed = ParseFailed;
 exports.PopFailed = PopFailed;
 exports.pop_exn = pop_exn;
-exports.parse = parse;
+exports.Lr0 = Lr0;
+exports.lalr_tables = lalr_tables;
 /* SymbolCmp Not a pure module */

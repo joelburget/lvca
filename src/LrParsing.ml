@@ -110,6 +110,18 @@ end)
 type int_set_set = (SI.t, ComparableSet.identity) Belt.Set.t
 type mutable_int_set_set = (SI.t, ComparableSet.identity) Belt.MutableSet.t
 
+(* TODO *)
+type parse_error = Lex.position * string
+
+exception ParseFinished
+exception ParseFailed of parse_error
+exception PopFailed
+
+let pop_exn : 'a array -> 'a
+  = fun arr -> match Js.Array2.pop arr with
+    | None -> raise PopFailed
+    | Some a -> a
+
 module type GRAMMAR = sig
   val grammar : grammar
 end
@@ -378,57 +390,85 @@ module Lr0 (G : GRAMMAR) = struct
   let in_follow : terminal_num -> nonterminal_num -> bool
     = in_follow' (SI.fromArray [||])
 
+  let goto_table state nt =
+    item_set_to_state
+      @@ simplify_config_set
+      @@ goto (state_to_item_set state) nt
+
+  let action_table = fun state terminal_num ->
+    let item_set = state_to_item_set state in
+
+    let item_set_l = SI.toList item_set in
+
+    (* If [A -> xs . a ys] is in I_i and GOTO(I_i, a) = I_j, set
+     * ACTION[i, a] to `shift j` *)
+    let shift_action = item_set_l
+      |. Util.find_by (fun item ->
+        let { production_num; position } = view_item item in
+        let symbols = production_map |. MM.getExn production_num in
+        match symbols |. L.get position  with
+          | Some ((Terminal a) as next_symbol) ->
+            Some (Shift (goto_table state next_symbol))
+          | _ -> None
+      )
+    in
+    (* If [A -> xs .] is in I_i, set ACTION[i, a] to `Reduce A -> a` for
+     * all a in FOLLOW(A) *)
+    let reduce_action = item_set_l
+      |. Util.find_by (fun item ->
+        let { production_num; position } = view_item item in
+        let nt_num = production_nonterminal_map |. MM.getExn production_num
+        in
+        let production = production_map |. MM.getExn production_num in
+        if position = L.length production && in_follow terminal_num nt_num
+          then Some (Reduce nt_num)
+          else None
+      )
+    in
+    (* If [S' -> S .] is in I_i, set ACTION[i, $] to `accept` *)
+    let accept_action =
+      if terminal_num = end_marker && item_set |. SI.has (mk_item' 0 1)
+        then Some Accept
+        else None
+    in
+    match shift_action, reduce_action, accept_action with
+      | Some act, None, None -> act
+      | None, Some act, None -> act
+      | None, None, Some act -> act
+      | None, None, None     -> Error
+
   let slr_tables : parser_tables
-    = let goto_table state nt =
-        item_set_to_state
-          @@ simplify_config_set
-          @@ goto (state_to_item_set state) nt
-      in
+    = action_table, goto_table
 
-      let action_table = fun state terminal_num ->
-        let item_set = state_to_item_set state in
+  let parse : Lex.token array -> (nonterminal, parse_error) Result.t
+    = fun toks ->
+      let stack = ref [0] in
+      try
+        while true do
+          let s :: _ = !stack in
+          let a = ref @@ pop_exn toks in
+          let a' = failwith "TODO" a in
+          match action_table s a' with
+            | Shift t ->
+                stack := t :: !stack;
+                a := pop_exn toks
+            | Reduce t ->
+                (); (* pop symbols off the stack *)
+                (match !stack with
+                  (* push GOTO[t, A] onto the stack *)
+                  | t :: stack' -> stack := goto_table t a' :: stack'
+                  | [] -> failwith "invariant violation: reduction with empty stack"
+                );
+                () (* output production *)
+            | Accept -> raise ParseFinished
+            | Error -> raise (ParseFailed (failwith "TODO"))
+            ;
+        done;
+        failwith "can't make it here"
+      with
+        | ParseFinished -> failwith "TODO"
+        | ParseFailed parse_error -> Result.Error parse_error
 
-        let item_set_l = SI.toList item_set in
-
-        (* If [A -> xs . a ys] is in I_i and GOTO(I_i, a) = I_j, set
-         * ACTION[i, a] to `shift j` *)
-        let shift_action = item_set_l
-          |. Util.find_by (fun item ->
-            let { production_num; position } = view_item item in
-            let symbols = production_map |. MM.getExn production_num in
-            match symbols |. L.get position  with
-              | Some ((Terminal a) as next_symbol) ->
-                Some (Shift (goto_table state next_symbol))
-              | _ -> None
-          )
-        in
-        (* If [A -> xs .] is in I_i, set ACTION[i, a] to `Reduce A -> a` for
-         * all a in FOLLOW(A) *)
-        let reduce_action = item_set_l
-          |. Util.find_by (fun item ->
-            let { production_num; position } = view_item item in
-            let nt_num = production_nonterminal_map |. MM.getExn production_num
-            in
-            let production = production_map |. MM.getExn production_num in
-            if position = L.length production && in_follow terminal_num nt_num
-              then Some (Reduce nt_num)
-              else None
-          )
-        in
-        (* If [S' -> S .] is in I_i, set ACTION[i, $] to `accept` *)
-        let accept_action =
-          if terminal_num = end_marker && item_set |. SI.has (mk_item' 0 1)
-            then Some Accept
-            else None
-        in
-        match shift_action, reduce_action, accept_action with
-          | Some act, None, None -> act
-          | None, Some act, None -> act
-          | None, None, Some act -> act
-          | None, None, None     -> Error
-      in
-
-      (action_table, goto_table)
 end
 
 (* lalr table construction (both action and goto tables) *)
@@ -451,47 +491,6 @@ let lalr_tables : grammar -> parser_tables
     in
 
     (action_table, goto_table)
-
-(* TODO *)
-type parse_error = Lex.position * string
-
-exception ParseFinished
-exception ParseFailed of parse_error
-exception PopFailed
-
-let pop_exn : 'a array -> 'a
-  = fun arr -> match Js.Array2.pop arr with
-    | None -> raise PopFailed
-    | Some a -> a
-
-let parse : parser_tables -> Lex.token array -> (nonterminal, parse_error) Result.t
-  = fun (action_table, goto_table) toks ->
-    let stack = ref [0] in
-    try
-      while true do
-        let s :: _ = !stack in
-        let a = ref @@ pop_exn toks in
-        let a' = failwith "TODO" a in
-        match action_table s a' with
-          | Shift t ->
-              stack := t :: !stack;
-              a := pop_exn toks
-          | Reduce t ->
-              (); (* pop symbols off the stack *)
-              (match !stack with
-                (* push GOTO[t, A] onto the stack *)
-                | t :: stack' -> stack := goto_table t a' :: stack'
-                | [] -> failwith "invariant violation: reduction with empty stack"
-              );
-              () (* output production *)
-          | Accept -> raise ParseFinished
-          | Error -> raise (ParseFailed (failwith "TODO"))
-          ;
-      done;
-      failwith "can't make it here"
-    with
-      | ParseFinished -> failwith "TODO"
-      | ParseFailed parse_error -> Result.Error parse_error
 
 (* TODO: menhir compatibility?
 
