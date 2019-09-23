@@ -376,17 +376,13 @@ function Lr0(G) {
             Caml_builtin_exceptions.match_failure,
             /* tuple */[
               "LrParsing.ml",
-              434,
+              432,
               4
             ]
           ];
     }
     
   };
-  var slr_tables = /* tuple */[
-    action_table,
-    goto_table
-  ];
   var parse = function (toks) {
     var stack = /* :: */[
       0,
@@ -430,7 +426,7 @@ function Lr0(G) {
                 Caml_builtin_exceptions.match_failure,
                 /* tuple */[
                   "LrParsing.ml",
-                  448,
+                  443,
                   14
                 ]
               ];
@@ -476,19 +472,7 @@ function Lr0(G) {
           /* in_follow */in_follow,
           /* goto_table */goto_table,
           /* action_table */action_table,
-          /* slr_tables */slr_tables,
           /* parse */parse
-        ];
-}
-
-function lalr_tables(grammar) {
-  Pervasives.failwith("TODO");
-  Pervasives.failwith("TODO");
-  var action_table = Pervasives.failwith("TODO");
-  var goto_table = Pervasives.failwith("TODO");
-  return /* tuple */[
-          action_table,
-          goto_table
         ];
 }
 
@@ -526,5 +510,4 @@ exports.ParseFailed = ParseFailed;
 exports.PopFailed = PopFailed;
 exports.pop_exn = pop_exn;
 exports.Lr0 = Lr0;
-exports.lalr_tables = lalr_tables;
 /* SymbolCmp Not a pure module */

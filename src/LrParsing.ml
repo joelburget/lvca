@@ -100,8 +100,6 @@ type action =
 type action_table = state -> terminal_num -> action
 type goto_table = state -> symbol -> state
 
-type parser_tables = action_table * goto_table
-
 module ComparableSet = Belt.Id.MakeComparable(struct
   type t = SI.t
   let cmp = SI.cmp
@@ -437,9 +435,6 @@ module Lr0 (G : GRAMMAR) = struct
       | None, None, Some act -> act
       | None, None, None     -> Error
 
-  let slr_tables : parser_tables
-    = action_table, goto_table
-
   let parse : Lex.token array -> (nonterminal, parse_error) Result.t
     = fun toks ->
       let stack = ref [0] in
@@ -470,27 +465,6 @@ module Lr0 (G : GRAMMAR) = struct
         | ParseFailed parse_error -> Result.Error parse_error
 
 end
-
-(* lalr table construction (both action and goto tables) *)
-let lalr_tables : grammar -> parser_tables
-  = fun grammar ->
-
-    (* the sets of LR(1) items *)
-    let item_sets : item M.t = failwith "TODO"
-    in
-
-    (* for each core, find all sets having that core, and replace by their
-     * union *)
-    let item_sets' = failwith "TODO"
-    in
-
-    let action_table = failwith "TODO"
-    in
-
-    let goto_table = failwith "TODO"
-    in
-
-    (action_table, goto_table)
 
 (* TODO: menhir compatibility?
 
