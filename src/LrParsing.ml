@@ -1,9 +1,11 @@
 module A = Belt.Array
 module L = Belt.List
 module M = Belt.Map.Int
-module MM = Belt.MutableMap.Int
+module MM = Belt.MutableMap
+module MMI = Belt.MutableMap.Int
 module SI = Belt.Set.Int
 module SS = Belt.Set.String
+module MS = Belt.MutableSet
 module MSI = Belt.MutableSet.Int
 module Result = Belt.Result
 
@@ -106,7 +108,7 @@ module ComparableSet = Belt.Id.MakeComparable(struct
 end)
 
 type int_set_set = (SI.t, ComparableSet.identity) Belt.Set.t
-type mutable_int_set_set = (SI.t, ComparableSet.identity) Belt.MutableSet.t
+type mutable_int_set_set = (SI.t, ComparableSet.identity) MS.t
 
 (* TODO *)
 type parse_error = Lex.position * string
@@ -127,26 +129,26 @@ end
 (* TODO: remove exns *)
 module Lr0 (G : GRAMMAR) = struct
 
-  let production_map : production MM.t
-    = MM.make ()
+  let production_map : production MMI.t
+    = MMI.make ()
 
-  let production_nonterminal_map : nonterminal_num MM.t
-    = MM.make ()
+  let production_nonterminal_map : nonterminal_num MMI.t
+    = MMI.make ()
 
   (* Map from a nonterminal num to the set of productions it holds *)
-  let nonterminal_production_map : MSI.t MM.t
-    = MM.make ()
+  let nonterminal_production_map : MSI.t MMI.t
+    = MMI.make ()
 
   let production_cnt = ref 0
   let () = M.forEach G.grammar.nonterminals
     (fun nt_num { productions } ->
-      nonterminal_production_map |. MM.set nt_num (MSI.make ());
+      nonterminal_production_map |. MMI.set nt_num (MSI.make ());
       L.forEach productions (fun production ->
         let production_num = !production_cnt in
         production_cnt := production_num + 1;
-        production_map |. MM.set production_num production;
-        production_nonterminal_map |. MM.set production_num nt_num;
-        let prod_set = nonterminal_production_map |. MM.getExn nt_num in
+        production_map |. MMI.set production_num production;
+        production_nonterminal_map |. MMI.set production_num nt_num;
+        let prod_set = nonterminal_production_map |. MMI.getExn nt_num in
         prod_set |. MSI.add production_num
       )
     )
@@ -156,7 +158,7 @@ module Lr0 (G : GRAMMAR) = struct
     = M.size G.grammar.nonterminals
 
   let get_nonterminal_num : production_num -> nonterminal_num
-    = MM.getExn production_nonterminal_map
+    = MMI.getExn production_nonterminal_map
 
   let get_nonterminal : production_num -> nonterminal
     = fun pn -> M.getExn G.grammar.nonterminals @@ get_nonterminal_num pn
@@ -173,7 +175,7 @@ module Lr0 (G : GRAMMAR) = struct
       (* Create the set (nt_stack) of nonterminals to look at *)
       SI.forEach initial_items (fun item ->
         let { production_num; position } = view_item item in
-        let production = MM.getExn production_map production_num in
+        let production = MMI.getExn production_map production_num in
         (* first symbol right of the dot *)
         match production |. L.get position with
           | Some (Nonterminal nt) ->
@@ -190,7 +192,7 @@ module Lr0 (G : GRAMMAR) = struct
         if not (added |. Bitstring.getExn nonterminal_num) then (
           added |. Bitstring.setExn nonterminal_num true;
           let production_set =
-            MM.getExn nonterminal_production_map nonterminal_num
+            MMI.getExn nonterminal_production_map nonterminal_num
           in
           MSI.forEach production_set (fun production_num ->
             nonkernel_items |. MSI.add (mk_item' production_num 0)
@@ -223,7 +225,7 @@ module Lr0 (G : GRAMMAR) = struct
       let result = MSI.make () in
       SI.forEach item_set (fun item ->
         let { production_num; position } = view_item item in
-        let production = production_map |. MM.getExn production_num in
+        let production = production_map |. MMI.getExn production_num in
         match L.get production position with
           | Some next_symbol ->
             if symbol = next_symbol then (
@@ -242,12 +244,12 @@ module Lr0 (G : GRAMMAR) = struct
           [| mk_item {production_num = 0; position = 0} |]
       in
       let ca = closure' augmented_start in
-      let c = Belt.MutableSet.fromArray [| ca |] ~id:(module ComparableSet) in
+      let c = MS.fromArray [| ca |] ~id:(module ComparableSet) in
       let continue = ref true in
       while !continue do
         continue := false;
         (* for each set of items i in c: *)
-        Belt.MutableSet.forEach c @@ fun i ->
+        MS.forEach c @@ fun i ->
           let grammar_symbols = L.concat
             (L.makeBy G.grammar.num_terminals (fun n -> Terminal n))
             (L.makeBy number_of_nonterminals (fun n -> Nonterminal n))
@@ -257,9 +259,9 @@ module Lr0 (G : GRAMMAR) = struct
           (* M.forEach G.grammar @@ fun x _ -> *)
             let goto_i_x = simplify_config_set @@ goto i x in
             (* if GOTO(i, x) is not empty and not in c: *)
-            if not (SI.isEmpty goto_i_x) && not (Belt.MutableSet.has c goto_i_x)
+            if not (SI.isEmpty goto_i_x) && not (MS.has c goto_i_x)
             then (
-              c |. Belt.MutableSet.add goto_i_x;
+              c |. MS.add goto_i_x;
               continue := true
             )
       done;
@@ -267,7 +269,7 @@ module Lr0 (G : GRAMMAR) = struct
 
   let items' : item_set M.t
     = items
-    |. Belt.MutableSet.toArray
+    |. MS.toArray
     |. A.mapWithIndex (fun i item_set -> i, item_set)
     |. M.fromArray
 
@@ -277,12 +279,12 @@ module Lr0 (G : GRAMMAR) = struct
   let item_set_to_state : item_set -> state
     = fun item_set ->
     let state, _ = items'
-      |. M.findFirstBy (fun k item_set' -> item_set' = item_set)
+      |. M.findFirstBy (fun _ item_set' -> item_set' = item_set)
       |. Belt.Option.getExn
     in state
 
-  let in_first_cache : (terminal_num * symbol, bool, SymbolCmp.identity) Belt.Map.t
-    = Belt.Map.make ~id:(module SymbolCmp)
+  let in_first_cache : (terminal_num * symbol, bool, SymbolCmp.identity) MM.t
+    = MM.make ~id:(module SymbolCmp)
 
   let in_first : terminal_num -> symbol -> bool
     =
@@ -290,13 +292,14 @@ module Lr0 (G : GRAMMAR) = struct
        * currently looking through, to prevent loops *)
       let stack = MSI.make () in
       let rec in_first' t_num sym =
-        match in_first_cache |. Belt.Map.get (t_num, sym) with
+        match in_first_cache |. MM.get (t_num, sym) with
         | Some result -> result
         | None -> (match sym with
           | Terminal t_num'    -> t_num' = t_num
           | Nonterminal nt_num ->
           let { productions } = G.grammar.nonterminals |. M.getExn nt_num in
           let result, _ = Util.fold_right
+            (* XXX doesn't use symbol? *)
             (fun (symbol, (already_found, all_derive_empty)) ->
               let found_it = productions |. L.some (function
                 | Terminal t_num' :: _ -> t_num' = t_num
@@ -321,7 +324,7 @@ module Lr0 (G : GRAMMAR) = struct
             productions
             (false, true)
           in
-          in_first_cache |. Belt.Map.set (t_num, sym) result;
+          in_first_cache |. MM.set (t_num, sym) result;
           result
         )
       in in_first'
@@ -364,7 +367,7 @@ module Lr0 (G : GRAMMAR) = struct
         (* TODO: update to allow empty productions *)
         try
           let nts_visited' = nts_visited |. SI.add nt_num in
-          production_map |. MM.forEach (fun prod_num production ->
+          production_map |. MMI.forEach (fun prod_num production ->
             (* First look for this terminal following nt directly (rule 2) *)
             if in_follow'' nts_visited' t_num nt_num production
               then raise FoundInFollow;
@@ -374,7 +377,7 @@ module Lr0 (G : GRAMMAR) = struct
                IE, if there is a production A -> xB, then everything in
                Follow(A) is in Follow(B)
              *)
-            let nt_num' = production_nonterminal_map |. MM.getExn prod_num in
+            let nt_num' = production_nonterminal_map |. MMI.getExn prod_num in
             match Util.unsnoc production with
               | _, Nonterminal last
               -> if last = nt_num && in_follow' nts_visited' t_num nt_num'
@@ -393,7 +396,7 @@ module Lr0 (G : GRAMMAR) = struct
       @@ simplify_config_set
       @@ goto (state_to_item_set state) nt
 
-  let action_table = fun state terminal_num ->
+  let action_table state terminal_num =
     let item_set = state_to_item_set state in
 
     let item_set_l = SI.toList item_set in
@@ -403,9 +406,9 @@ module Lr0 (G : GRAMMAR) = struct
     let shift_action = item_set_l
       |. Util.find_by (fun item ->
         let { production_num; position } = view_item item in
-        let symbols = production_map |. MM.getExn production_num in
+        let symbols = production_map |. MMI.getExn production_num in
         match symbols |. L.get position  with
-          | Some ((Terminal a) as next_symbol) ->
+          | Some (Terminal _ as next_symbol) ->
             Some (Shift (goto_table state next_symbol))
           | _ -> None
       )
@@ -415,9 +418,9 @@ module Lr0 (G : GRAMMAR) = struct
     let reduce_action = item_set_l
       |. Util.find_by (fun item ->
         let { production_num; position } = view_item item in
-        let nt_num = production_nonterminal_map |. MM.getExn production_num
+        let nt_num = production_nonterminal_map |. MMI.getExn production_num
         in
-        let production = production_map |. MM.getExn production_num in
+        let production = production_map |. MMI.getExn production_num in
         if position = L.length production && in_follow terminal_num nt_num
           then Some (Reduce nt_num)
           else None
@@ -430,17 +433,20 @@ module Lr0 (G : GRAMMAR) = struct
         else None
     in
     match shift_action, reduce_action, accept_action with
-      | Some act, None, None -> act
-      | None, Some act, None -> act
-      | None, None, Some act -> act
-      | None, None, None     -> Error
+      | Some act,     None,     None -> act
+      |     None, Some act,     None -> act
+      |     None,     None, Some act -> act
+      |        _,        _,        _ -> Error
 
   let parse : Lex.token array -> (nonterminal, parse_error) Result.t
     = fun toks ->
       let stack = ref [0] in
       try
         while true do
-          let s :: _ = !stack in
+          let s = match !stack with
+            | s' :: _ -> s'
+            | [] -> failwith "invariant violation: empty stack"
+          in
           let a = ref @@ pop_exn toks in
           let a' = failwith "TODO" a in
           match action_table s a' with
@@ -459,7 +465,7 @@ module Lr0 (G : GRAMMAR) = struct
             | Error -> raise (ParseFailed (failwith "TODO"))
             ;
         done;
-        failwith "can't make it here"
+        failwith "invariant violation: can't make it here"
       with
         | ParseFinished -> failwith "TODO"
         | ParseFailed parse_error -> Result.Error parse_error

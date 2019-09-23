@@ -5,7 +5,6 @@ var Util = require("./Util.bs.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Belt_Id = require("bs-platform/lib/js/belt_Id.js");
-var Belt_Map = require("bs-platform/lib/js/belt_Map.js");
 var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Bitstring = require("./Bitstring.bs.js");
@@ -14,12 +13,12 @@ var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Belt_MapInt = require("bs-platform/lib/js/belt_MapInt.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Belt_SetInt = require("bs-platform/lib/js/belt_SetInt.js");
+var Belt_MutableMap = require("bs-platform/lib/js/belt_MutableMap.js");
 var Belt_MutableSet = require("bs-platform/lib/js/belt_MutableSet.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 var Belt_MutableMapInt = require("bs-platform/lib/js/belt_MutableMapInt.js");
 var Belt_MutableSetInt = require("bs-platform/lib/js/belt_MutableSetInt.js");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
-var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
 function cmp(param, param$1) {
   var c = Caml_obj.caml_compare(param[0], param$1[0]);
@@ -199,14 +198,14 @@ function Lr0(G) {
     return Belt_MapInt.getExn(items$prime, param);
   };
   var item_set_to_state = function (item_set) {
-    return Belt_Option.getExn(Belt_MapInt.findFirstBy(items$prime, (function (k, item_set$prime) {
+    return Belt_Option.getExn(Belt_MapInt.findFirstBy(items$prime, (function (param, item_set$prime) {
                         return Caml_obj.caml_equal(item_set$prime, item_set);
                       })))[0];
   };
-  var in_first_cache = Belt_Map.make(SymbolCmp);
+  var in_first_cache = Belt_MutableMap.make(SymbolCmp);
   var stack = Belt_MutableSetInt.make(/* () */0);
   var in_first$prime = function (t_num, sym) {
-    var match = Belt_Map.get(in_first_cache, /* tuple */[
+    var match = Belt_MutableMap.get(in_first_cache, /* tuple */[
           t_num,
           sym
         ]);
@@ -246,7 +245,7 @@ function Lr0(G) {
             true
           ]);
       var result = match$2[0];
-      Belt_Map.set(in_first_cache, /* tuple */[
+      Belt_MutableMap.set(in_first_cache, /* tuple */[
             t_num,
             sym
           ], result);
@@ -353,16 +352,15 @@ function Lr0(G) {
             
           }));
     var accept_action = terminal_num === 0 && Belt_SetInt.has(item_set, 16777216) ? /* Accept */0 : undefined;
-    var exit = 0;
     if (shift_action !== undefined) {
       if (reduce_action !== undefined || accept_action !== undefined) {
-        exit = 1;
+        return /* Error */1;
       } else {
         return shift_action;
       }
     } else if (reduce_action !== undefined) {
       if (accept_action !== undefined) {
-        exit = 1;
+        return /* Error */1;
       } else {
         return reduce_action;
       }
@@ -371,17 +369,6 @@ function Lr0(G) {
     } else {
       return /* Error */1;
     }
-    if (exit === 1) {
-      throw [
-            Caml_builtin_exceptions.match_failure,
-            /* tuple */[
-              "LrParsing.ml",
-              432,
-              4
-            ]
-          ];
-    }
-    
   };
   var parse = function (toks) {
     var stack = /* :: */[
@@ -391,48 +378,38 @@ function Lr0(G) {
     try {
       while(true) {
         var match = stack;
-        if (match) {
-          var a = /* record */[/* contents */pop_exn(toks)];
-          var a$prime = Curry._1(Pervasives.failwith("TODO"), a);
-          var match$1 = action_table(match[0], a$prime);
-          if (typeof match$1 === "number") {
-            if (match$1 === 0) {
-              throw ParseFinished;
-            } else {
-              throw [
-                    ParseFailed,
-                    Pervasives.failwith("TODO")
-                  ];
-            }
-          } else if (match$1.tag) {
-            var match$2 = stack;
-            if (match$2) {
-              stack = /* :: */[
-                goto_table(match$2[0], a$prime),
-                match$2[1]
-              ];
-            } else {
-              Pervasives.failwith("invariant violation: reduction with empty stack");
-            }
+        var s = match ? match[0] : Pervasives.failwith("invariant violation: empty stack");
+        var a = /* record */[/* contents */pop_exn(toks)];
+        var a$prime = Curry._1(Pervasives.failwith("TODO"), a);
+        var match$1 = action_table(s, a$prime);
+        if (typeof match$1 === "number") {
+          if (match$1 === 0) {
+            throw ParseFinished;
           } else {
+            throw [
+                  ParseFailed,
+                  Pervasives.failwith("TODO")
+                ];
+          }
+        } else if (match$1.tag) {
+          var match$2 = stack;
+          if (match$2) {
             stack = /* :: */[
-              match$1[0],
-              stack
+              goto_table(match$2[0], a$prime),
+              match$2[1]
             ];
-            a[0] = pop_exn(toks);
+          } else {
+            Pervasives.failwith("invariant violation: reduction with empty stack");
           }
         } else {
-          throw [
-                Caml_builtin_exceptions.match_failure,
-                /* tuple */[
-                  "LrParsing.ml",
-                  443,
-                  14
-                ]
-              ];
+          stack = /* :: */[
+            match$1[0],
+            stack
+          ];
+          a[0] = pop_exn(toks);
         }
       };
-      return Pervasives.failwith("can't make it here");
+      return Pervasives.failwith("invariant violation: can't make it here");
     }
     catch (raw_exn){
       var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
@@ -484,9 +461,13 @@ var M = 0;
 
 var MM = 0;
 
+var MMI = 0;
+
 var SI = 0;
 
 var SS = 0;
+
+var MS = 0;
 
 var MSI = 0;
 
@@ -496,8 +477,10 @@ exports.A = A;
 exports.L = L;
 exports.M = M;
 exports.MM = MM;
+exports.MMI = MMI;
 exports.SI = SI;
 exports.SS = SS;
+exports.MS = MS;
 exports.MSI = MSI;
 exports.Result = Result;
 exports.SymbolCmp = SymbolCmp;

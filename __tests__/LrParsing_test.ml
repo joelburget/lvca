@@ -226,5 +226,6 @@ let () = describe "LrParsing" (fun () ->
   ] Util.id;
 
   testAll "action_table" [
+    (* expect (Lr0'.action_table 0 5) |> toEqual (Shift 5); *)
   ] Util.id;
 )
