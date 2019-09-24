@@ -90,7 +90,9 @@ type state = int
  *)
 type grammar = {
   nonterminals : nonterminal M.t;
-  num_terminals : int
+  num_terminals : int;
+  terminal_names : terminal_num Belt.Map.String.t;
+  nonterminal_names : nonterminal_num Belt.Map.String.t;
 }
 
 type action =
@@ -279,7 +281,9 @@ module Lr0 (G : GRAMMAR) = struct
   let item_set_to_state : item_set -> state
     = fun item_set ->
     let state, _ = items'
-      |. M.findFirstBy (fun _ item_set' -> item_set' = item_set)
+      |. M.findFirstBy (fun _ item_set' ->
+          SI.toArray item_set' = SI.toArray item_set
+      )
       |. Belt.Option.getExn
     in state
 
@@ -438,18 +442,39 @@ module Lr0 (G : GRAMMAR) = struct
       |     None,     None, Some act -> act
       |        _,        _,        _ -> Error
 
-  let parse : Lex.token array -> (nonterminal, parse_error) Result.t
-    = fun toks ->
+  let token_to_terminal
+    : string -> Lex.token -> terminal_num
+    = fun buffer { name } ->
+      G.grammar.terminal_names |. Belt.Map.String.getExn name
+
+  let token_to_symbol
+    : string -> Lex.token -> symbol
+    = fun buffer { name } ->
+      let t_match = G.grammar.terminal_names |. Belt.Map.String.get name in
+      let nt_match = G.grammar.nonterminal_names |. Belt.Map.String.get name in
+      match t_match, nt_match with
+        | Some t_num, None -> Terminal t_num
+        | None, Some nt_num -> Nonterminal nt_num
+        | None, None -> failwith
+          ("Failed to find a terminal or nonterminal named " ^ name)
+        | Some _, Some _ -> failwith
+          ("Found both a terminal *and* nonterminal with name " ^ name
+          ^ " (this should never happen)")
+
+  let parse : string -> Lex.token array -> (nonterminal, parse_error) Result.t
+    = fun buffer toks ->
       let stack = ref [0] in
       try
         while true do
+          (* let x be the state on top of the stack *)
           let s = match !stack with
             | s' :: _ -> s'
             | [] -> failwith "invariant violation: empty stack"
           in
           let a = ref @@ pop_exn toks in
-          let a' = failwith "TODO" a in
-          match action_table s a' with
+          let terminal_num = token_to_terminal buffer !a in
+          let symbol = token_to_symbol buffer !a in
+          match action_table s terminal_num with
             | Shift t ->
                 stack := t :: !stack;
                 a := pop_exn toks
@@ -457,7 +482,7 @@ module Lr0 (G : GRAMMAR) = struct
                 (); (* pop symbols off the stack *)
                 (match !stack with
                   (* push GOTO[t, A] onto the stack *)
-                  | t :: stack' -> stack := goto_table t a' :: stack'
+                  | t :: stack' -> stack := goto_table t symbol :: stack'
                   | [] -> failwith "invariant violation: reduction with empty stack"
                 );
                 () (* output production *)

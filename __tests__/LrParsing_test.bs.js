@@ -7,8 +7,11 @@ var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var LrParsing = require("../src/LrParsing.bs.js");
+var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Belt_MapInt = require("bs-platform/lib/js/belt_MapInt.js");
 var Belt_SetInt = require("bs-platform/lib/js/belt_SetInt.js");
+var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Belt_MutableSet = require("bs-platform/lib/js/belt_MutableSet.js");
 
 var grammar_000 = /* nonterminals */Belt_MapInt.fromArray(/* array */[
@@ -90,9 +93,57 @@ var grammar_000 = /* nonterminals */Belt_MapInt.fromArray(/* array */[
       ]
     ]);
 
+var grammar_002 = /* terminal_names */Belt_MapString.fromArray(/* array */[
+      /* tuple */[
+        "$",
+        0
+      ],
+      /* tuple */[
+        "+",
+        1
+      ],
+      /* tuple */[
+        "*",
+        2
+      ],
+      /* tuple */[
+        "(",
+        3
+      ],
+      /* tuple */[
+        ")",
+        4
+      ],
+      /* tuple */[
+        "id",
+        5
+      ]
+    ]);
+
+var grammar_003 = /* nonterminal_names */Belt_MapString.fromArray(/* array */[
+      /* tuple */[
+        "E'",
+        0
+      ],
+      /* tuple */[
+        "E",
+        1
+      ],
+      /* tuple */[
+        "T",
+        2
+      ],
+      /* tuple */[
+        "F",
+        3
+      ]
+    ]);
+
 var grammar = /* record */[
   grammar_000,
-  /* num_terminals */6
+  /* num_terminals */6,
+  grammar_002,
+  grammar_003
 ];
 
 var Grammar = /* module */[/* grammar */grammar];
@@ -265,58 +316,59 @@ Jest.describe("LrParsing", (function (param) {
                 /* [] */0
               ]
             ], Util.id);
-        var expected_item_sets = Belt_MutableSet.fromArray(/* array */[
-              Belt_SetInt.fromArray(/* array */[
-                    LrParsing.mk_item$prime(0, 0),
-                    LrParsing.mk_item$prime(1, 0),
-                    LrParsing.mk_item$prime(2, 0),
-                    LrParsing.mk_item$prime(3, 0),
-                    LrParsing.mk_item$prime(4, 0),
-                    LrParsing.mk_item$prime(5, 0),
-                    LrParsing.mk_item$prime(6, 0)
-                  ]),
-              Belt_SetInt.fromArray(/* array */[
-                    LrParsing.mk_item$prime(0, 1),
-                    LrParsing.mk_item$prime(1, 1)
-                  ]),
-              Belt_SetInt.fromArray(/* array */[
-                    LrParsing.mk_item$prime(2, 1),
-                    LrParsing.mk_item$prime(3, 1)
-                  ]),
-              Belt_SetInt.fromArray(/* array */[LrParsing.mk_item$prime(4, 1)]),
-              Belt_SetInt.fromArray(/* array */[
-                    LrParsing.mk_item$prime(5, 1),
-                    LrParsing.mk_item$prime(1, 0),
-                    LrParsing.mk_item$prime(2, 0),
-                    LrParsing.mk_item$prime(3, 0),
-                    LrParsing.mk_item$prime(4, 0),
-                    LrParsing.mk_item$prime(5, 0),
-                    LrParsing.mk_item$prime(6, 0)
-                  ]),
-              Belt_SetInt.fromArray(/* array */[LrParsing.mk_item$prime(6, 1)]),
-              Belt_SetInt.fromArray(/* array */[
-                    LrParsing.mk_item$prime(1, 2),
-                    LrParsing.mk_item$prime(3, 0),
-                    LrParsing.mk_item$prime(4, 0),
-                    LrParsing.mk_item$prime(5, 0),
-                    LrParsing.mk_item$prime(6, 0)
-                  ]),
-              Belt_SetInt.fromArray(/* array */[
-                    LrParsing.mk_item$prime(3, 2),
-                    LrParsing.mk_item$prime(5, 0),
-                    LrParsing.mk_item$prime(6, 0)
-                  ]),
-              Belt_SetInt.fromArray(/* array */[
-                    LrParsing.mk_item$prime(1, 1),
-                    LrParsing.mk_item$prime(5, 2)
-                  ]),
-              Belt_SetInt.fromArray(/* array */[
-                    LrParsing.mk_item$prime(1, 3),
-                    LrParsing.mk_item$prime(3, 1)
-                  ]),
-              Belt_SetInt.fromArray(/* array */[LrParsing.mk_item$prime(3, 3)]),
-              Belt_SetInt.fromArray(/* array */[LrParsing.mk_item$prime(5, 3)])
-            ], LrParsing.ComparableSet);
+        var item_sets = /* array */[
+          Belt_SetInt.fromArray(/* array */[
+                LrParsing.mk_item$prime(0, 0),
+                LrParsing.mk_item$prime(1, 0),
+                LrParsing.mk_item$prime(2, 0),
+                LrParsing.mk_item$prime(3, 0),
+                LrParsing.mk_item$prime(4, 0),
+                LrParsing.mk_item$prime(5, 0),
+                LrParsing.mk_item$prime(6, 0)
+              ]),
+          Belt_SetInt.fromArray(/* array */[
+                LrParsing.mk_item$prime(0, 1),
+                LrParsing.mk_item$prime(1, 1)
+              ]),
+          Belt_SetInt.fromArray(/* array */[
+                LrParsing.mk_item$prime(2, 1),
+                LrParsing.mk_item$prime(3, 1)
+              ]),
+          Belt_SetInt.fromArray(/* array */[LrParsing.mk_item$prime(4, 1)]),
+          Belt_SetInt.fromArray(/* array */[
+                LrParsing.mk_item$prime(5, 1),
+                LrParsing.mk_item$prime(1, 0),
+                LrParsing.mk_item$prime(2, 0),
+                LrParsing.mk_item$prime(3, 0),
+                LrParsing.mk_item$prime(4, 0),
+                LrParsing.mk_item$prime(5, 0),
+                LrParsing.mk_item$prime(6, 0)
+              ]),
+          Belt_SetInt.fromArray(/* array */[LrParsing.mk_item$prime(6, 1)]),
+          Belt_SetInt.fromArray(/* array */[
+                LrParsing.mk_item$prime(1, 2),
+                LrParsing.mk_item$prime(3, 0),
+                LrParsing.mk_item$prime(4, 0),
+                LrParsing.mk_item$prime(5, 0),
+                LrParsing.mk_item$prime(6, 0)
+              ]),
+          Belt_SetInt.fromArray(/* array */[
+                LrParsing.mk_item$prime(3, 2),
+                LrParsing.mk_item$prime(5, 0),
+                LrParsing.mk_item$prime(6, 0)
+              ]),
+          Belt_SetInt.fromArray(/* array */[
+                LrParsing.mk_item$prime(1, 1),
+                LrParsing.mk_item$prime(5, 2)
+              ]),
+          Belt_SetInt.fromArray(/* array */[
+                LrParsing.mk_item$prime(1, 3),
+                LrParsing.mk_item$prime(3, 1)
+              ]),
+          Belt_SetInt.fromArray(/* array */[LrParsing.mk_item$prime(3, 3)]),
+          Belt_SetInt.fromArray(/* array */[LrParsing.mk_item$prime(5, 3)])
+        ];
+        var expected_item_sets = Belt_MutableSet.fromArray(item_sets, LrParsing.ComparableSet);
         var normalize = function (items) {
           return Belt_List.map(Belt_MutableSet.toList(items), Belt_SetInt.toList);
         };
@@ -324,15 +376,85 @@ Jest.describe("LrParsing", (function (param) {
               Jest.Expect[/* toEqual */12](normalize(expected_item_sets), Jest.Expect[/* expect */0](normalize(Lr0$prime[/* items */12]))),
               /* [] */0
             ], Util.id);
-        Jest.testAll("goto_table", /* [] */0, Util.id);
-        return Jest.testAll("action_table", /* [] */0, Util.id);
+        var state = Belt_Array.map(item_sets, Lr0$prime[/* item_set_to_state */15]);
+        Jest.testAll("goto_table", /* :: */[
+              Jest.Expect[/* toEqual */12](Caml_array.caml_array_get(state, 1), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto_table */24], Caml_array.caml_array_get(state, 0), /* Nonterminal */Block.__(1, [1])))),
+              /* :: */[
+                Jest.Expect[/* toEqual */12](Caml_array.caml_array_get(state, 2), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto_table */24], Caml_array.caml_array_get(state, 0), /* Nonterminal */Block.__(1, [2])))),
+                /* :: */[
+                  Jest.Expect[/* toEqual */12](Caml_array.caml_array_get(state, 3), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto_table */24], Caml_array.caml_array_get(state, 0), /* Nonterminal */Block.__(1, [3])))),
+                  /* :: */[
+                    Jest.Expect[/* toEqual */12](Caml_array.caml_array_get(state, 8), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto_table */24], Caml_array.caml_array_get(state, 4), /* Nonterminal */Block.__(1, [1])))),
+                    /* :: */[
+                      Jest.Expect[/* toEqual */12](Caml_array.caml_array_get(state, 2), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto_table */24], Caml_array.caml_array_get(state, 4), /* Nonterminal */Block.__(1, [2])))),
+                      /* :: */[
+                        Jest.Expect[/* toEqual */12](Caml_array.caml_array_get(state, 3), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto_table */24], Caml_array.caml_array_get(state, 4), /* Nonterminal */Block.__(1, [3])))),
+                        /* :: */[
+                          Jest.Expect[/* toThrow */18](Jest.Expect[/* expect */0]((function (param) {
+                                      return Curry._2(Lr0$prime[/* goto_table */24], Caml_array.caml_array_get(state, 6), /* Nonterminal */Block.__(1, [1]));
+                                    }))),
+                          /* :: */[
+                            Jest.Expect[/* toEqual */12](Caml_array.caml_array_get(state, 9), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto_table */24], Caml_array.caml_array_get(state, 6), /* Nonterminal */Block.__(1, [2])))),
+                            /* :: */[
+                              Jest.Expect[/* toEqual */12](Caml_array.caml_array_get(state, 3), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto_table */24], Caml_array.caml_array_get(state, 6), /* Nonterminal */Block.__(1, [3])))),
+                              /* :: */[
+                                Jest.Expect[/* toThrow */18](Jest.Expect[/* expect */0]((function (param) {
+                                            return Curry._2(Lr0$prime[/* goto_table */24], Caml_array.caml_array_get(state, 7), /* Nonterminal */Block.__(1, [1]));
+                                          }))),
+                                /* :: */[
+                                  Jest.Expect[/* toThrow */18](Jest.Expect[/* expect */0]((function (param) {
+                                              return Curry._2(Lr0$prime[/* goto_table */24], Caml_array.caml_array_get(state, 7), /* Nonterminal */Block.__(1, [2]));
+                                            }))),
+                                  /* :: */[
+                                    Jest.Expect[/* toEqual */12](Caml_array.caml_array_get(state, 10), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* goto_table */24], Caml_array.caml_array_get(state, 7), /* Nonterminal */Block.__(1, [3])))),
+                                    /* [] */0
+                                  ]
+                                ]
+                              ]
+                            ]
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ], Util.id);
+        return Jest.testAll("action_table", /* :: */[
+                    Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 5)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 0), 5))),
+                    /* :: */[
+                      Jest.Expect[/* toEqual */12](/* Error */1, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 0), 1))),
+                      /* :: */[
+                        Jest.Expect[/* toEqual */12](/* Error */1, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 0), 2))),
+                        /* :: */[
+                          Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 4)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 0), 3))),
+                          /* :: */[
+                            Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 6)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 1), 1))),
+                            /* :: */[
+                              Jest.Expect[/* toEqual */12](/* Accept */0, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 1), 0))),
+                              /* :: */[
+                                Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 7)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 2), 2))),
+                                /* :: */[
+                                  Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 5)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 4), 5))),
+                                  /* [] */0
+                                ]
+                              ]
+                            ]
+                          ]
+                        ]
+                      ]
+                    ]
+                  ], Util.id);
       }));
 
 var M = 0;
 
+var MS = 0;
+
 var SI = 0;
 
 exports.M = M;
+exports.MS = MS;
 exports.SI = SI;
 exports.Grammar = Grammar;
 /* grammar Not a pure module */

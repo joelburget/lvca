@@ -2,6 +2,7 @@ open Jest
 open Expect
 open LrParsing
 module M = Belt.Map.Int
+module MS = Belt.Map.String
 module SI = Belt.Set.Int
 
 module Grammar : GRAMMAR = struct
@@ -30,6 +31,22 @@ module Grammar : GRAMMAR = struct
        };
     |];
     num_terminals = 6;
+    terminal_names = MS.fromArray
+    [|
+      "$", 0;
+      "+", 1;
+      "*", 2;
+      "(", 3;
+      ")", 4;
+      "id", 5;
+    |];
+    nonterminal_names = MS.fromArray
+    [|
+      "E'", 0;
+      "E", 1;
+      "T", 2;
+      "F", 3;
+    |];
   }
 end
 
@@ -151,7 +168,7 @@ let () = describe "LrParsing" (fun () ->
       { kernel_items = goto_kernel; nonkernel_items = goto_nonkernel };
   ] Util.id;
 
-  let expected_item_sets = Belt.MutableSet.fromArray [|
+  let item_sets = [|
     SI.fromArray
       [| mk_item' 0 0;
          mk_item' 1 0;
@@ -205,7 +222,10 @@ let () = describe "LrParsing" (fun () ->
     SI.fromArray [| mk_item' 3 3 |]; (* 10 *)
     SI.fromArray [| mk_item' 5 3 |]; (* 11 *)
   |]
-  ~id:(module ComparableSet)
+  in
+
+  let expected_item_sets =
+    Belt.MutableSet.fromArray item_sets ~id:(module ComparableSet)
   in
 
   let normalize = fun items -> items
@@ -222,10 +242,58 @@ let () = describe "LrParsing" (fun () ->
     *)
   ] Util.id;
 
+  let state = item_sets |. Belt.Array.map Lr0'.item_set_to_state in
+  let plus_num : terminal_num = 1 in
+  let times_num : terminal_num = 2 in
+  let lparen_num : terminal_num = 3 in
+  let rparen_num : terminal_num = 4 in
+  (* TODO: use these up above *)
+  let id_num : terminal_num = 5 in
+  let e_num : nonterminal_num = 1 in
+  let t_num : nonterminal_num = 2 in
+  let f_num : nonterminal_num = 3 in
+  (* Question: since these are all Nonterminals, what's the correct type of
+   * goto? *)
+  (* Test for a match with CPTT Figure 4.37 *)
   testAll "goto_table" [
+    expect (Lr0'.goto_table state.(0) (Nonterminal e_num)) |> toEqual state.(1);
+    expect (Lr0'.goto_table state.(0) (Nonterminal t_num)) |> toEqual state.(2);
+    expect (Lr0'.goto_table state.(0) (Nonterminal f_num)) |> toEqual state.(3);
+    expect (Lr0'.goto_table state.(4) (Nonterminal e_num)) |> toEqual state.(8);
+    expect (Lr0'.goto_table state.(4) (Nonterminal t_num)) |> toEqual state.(2);
+    expect (Lr0'.goto_table state.(4) (Nonterminal f_num)) |> toEqual state.(3);
+    (* TODO: test other invalid GOTOs *)
+    (* TODO: should this throw? *)
+    expect (fun () -> Lr0'.goto_table state.(6) (Nonterminal e_num)) |> toThrow;
+    expect (Lr0'.goto_table state.(6) (Nonterminal t_num)) |> toEqual state.(9);
+    expect (Lr0'.goto_table state.(6) (Nonterminal f_num)) |> toEqual state.(3);
+    expect (fun () -> Lr0'.goto_table state.(7) (Nonterminal e_num)) |> toThrow;
+    expect (fun () -> Lr0'.goto_table state.(7) (Nonterminal t_num)) |> toThrow;
+    expect (Lr0'.goto_table state.(7) (Nonterminal f_num)) |> toEqual state.(10);
   ] Util.id;
 
+  (* Test for a match with CPTT Figure 4.37 *)
   testAll "action_table" [
-    (* expect (Lr0'.action_table 0 5) |> toEqual (Shift 5); *)
+    expect (Lr0'.action_table state.(0) id_num)
+      |> toEqual (Shift state.(5));
+    expect (Lr0'.action_table state.(0) plus_num)
+      |> toEqual Error;
+    expect (Lr0'.action_table state.(0) times_num)
+      |> toEqual Error;
+    expect (Lr0'.action_table state.(0) lparen_num)
+      |> toEqual (Shift state.(4));
+    expect (Lr0'.action_table state.(1) plus_num)
+      |> toEqual (Shift state.(6));
+    expect (Lr0'.action_table state.(1) 0)
+      |> toEqual Accept;
+    (* is 2 the right nonterminal num here?
+    expect (Lr0'.action_table state.(2) plus_num)
+      |> toEqual (Reduce 2);
+      *)
+
+    expect (Lr0'.action_table state.(2) times_num)
+      |> toEqual (Shift state.(7));
+    expect (Lr0'.action_table state.(4) id_num)
+      |> toEqual (Shift state.(5));
   ] Util.id;
 )

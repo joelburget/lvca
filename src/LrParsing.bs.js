@@ -13,6 +13,7 @@ var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Belt_MapInt = require("bs-platform/lib/js/belt_MapInt.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Belt_SetInt = require("bs-platform/lib/js/belt_SetInt.js");
+var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Belt_MutableMap = require("bs-platform/lib/js/belt_MutableMap.js");
 var Belt_MutableSet = require("bs-platform/lib/js/belt_MutableSet.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
@@ -199,7 +200,7 @@ function Lr0(G) {
   };
   var item_set_to_state = function (item_set) {
     return Belt_Option.getExn(Belt_MapInt.findFirstBy(items$prime, (function (param, item_set$prime) {
-                        return Caml_obj.caml_equal(item_set$prime, item_set);
+                        return Caml_obj.caml_equal(Belt_SetInt.toArray(item_set$prime), Belt_SetInt.toArray(item_set));
                       })))[0];
   };
   var in_first_cache = Belt_MutableMap.make(SymbolCmp);
@@ -370,7 +371,26 @@ function Lr0(G) {
       return /* Error */1;
     }
   };
-  var parse = function (toks) {
+  var token_to_terminal = function (buffer, param) {
+    return Belt_MapString.getExn(G[/* grammar */0][/* terminal_names */2], param[/* name */0]);
+  };
+  var token_to_symbol = function (buffer, param) {
+    var name = param[/* name */0];
+    var t_match = Belt_MapString.get(G[/* grammar */0][/* terminal_names */2], name);
+    var nt_match = Belt_MapString.get(G[/* grammar */0][/* nonterminal_names */3], name);
+    if (t_match !== undefined) {
+      if (nt_match !== undefined) {
+        return Pervasives.failwith("Found both a terminal *and* nonterminal with name " + (name + " (this should never happen)"));
+      } else {
+        return /* Terminal */Block.__(0, [t_match]);
+      }
+    } else if (nt_match !== undefined) {
+      return /* Nonterminal */Block.__(1, [nt_match]);
+    } else {
+      return Pervasives.failwith("Failed to find a terminal or nonterminal named " + name);
+    }
+  };
+  var parse = function (buffer, toks) {
     var stack = /* :: */[
       0,
       /* [] */0
@@ -379,9 +399,10 @@ function Lr0(G) {
       while(true) {
         var match = stack;
         var s = match ? match[0] : Pervasives.failwith("invariant violation: empty stack");
-        var a = /* record */[/* contents */pop_exn(toks)];
-        var a$prime = Curry._1(Pervasives.failwith("TODO"), a);
-        var match$1 = action_table(s, a$prime);
+        var a = pop_exn(toks);
+        var terminal_num = token_to_terminal(buffer, a);
+        var symbol = token_to_symbol(buffer, a);
+        var match$1 = action_table(s, terminal_num);
         if (typeof match$1 === "number") {
           if (match$1 === 0) {
             throw ParseFinished;
@@ -395,7 +416,7 @@ function Lr0(G) {
           var match$2 = stack;
           if (match$2) {
             stack = /* :: */[
-              goto_table(match$2[0], a$prime),
+              goto_table(match$2[0], symbol),
               match$2[1]
             ];
           } else {
@@ -406,7 +427,7 @@ function Lr0(G) {
             match$1[0],
             stack
           ];
-          a[0] = pop_exn(toks);
+          a = pop_exn(toks);
         }
       };
       return Pervasives.failwith("invariant violation: can't make it here");
@@ -449,6 +470,8 @@ function Lr0(G) {
           /* in_follow */in_follow,
           /* goto_table */goto_table,
           /* action_table */action_table,
+          /* token_to_terminal */token_to_terminal,
+          /* token_to_symbol */token_to_symbol,
           /* parse */parse
         ];
 }
