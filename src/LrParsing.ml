@@ -437,8 +437,8 @@ module Lr0 (G : GRAMMAR) = struct
         else None
     in
     match shift_action, reduce_action, accept_action with
-      | Some act,     None,     None -> act
-      |     None, Some act,     None -> act
+      | Some act,     None,     None
+      |     None, Some act,     None
       |     None,     None, Some act -> act
       |        _,        _,        _ -> Error
 
