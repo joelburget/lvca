@@ -97,7 +97,7 @@ type grammar = {
 
 type action =
   | Shift  of state
-  | Reduce of nonterminal_num (* Q: nonterminal_num = state? *)
+  | Reduce of nonterminal_num * int
   | Accept
   | Error
 
@@ -115,6 +115,13 @@ type mutable_int_set_set = (SI.t, ComparableSet.identity) MS.t
 (* TODO *)
 type parse_error = Lex.position * string
 
+type parse_result =
+  { nonterminal : nonterminal_num;
+    children : parse_result list;
+    start_pos : int;
+    end_pos : int;
+  }
+
 exception ParseFinished
 exception ParseFailed of parse_error
 exception PopFailed
@@ -131,9 +138,12 @@ end
 (* TODO: remove exns *)
 module Lr0 (G : GRAMMAR) = struct
 
+  (* Map from production number to the actual production *)
   let production_map : production MMI.t
     = MMI.make ()
 
+  (* Map from production number to the number of the nonterminal it belongs to
+   *)
   let production_nonterminal_map : nonterminal_num MMI.t
     = MMI.make ()
 
@@ -412,8 +422,10 @@ module Lr0 (G : GRAMMAR) = struct
         let { production_num; position } = view_item item in
         let symbols = production_map |. MMI.getExn production_num in
         match symbols |. L.get position  with
-          | Some (Terminal _ as next_symbol) ->
-            Some (Shift (goto_table state next_symbol))
+          | Some (Terminal t_num as next_symbol) ->
+            if t_num = terminal_num
+              then Some (Shift (goto_table state next_symbol))
+              else None
           | _ -> None
       )
     in
@@ -422,11 +434,13 @@ module Lr0 (G : GRAMMAR) = struct
     let reduce_action = item_set_l
       |. Util.find_by (fun item ->
         let { production_num; position } = view_item item in
-        let nt_num = production_nonterminal_map |. MMI.getExn production_num
-        in
+        let nt_num = production_nonterminal_map |. MMI.getExn production_num in
         let production = production_map |. MMI.getExn production_num in
-        if position = L.length production && in_follow terminal_num nt_num
-          then Some (Reduce nt_num)
+        if position = L.length production &&
+           in_follow terminal_num nt_num &&
+           (* Accept in this case -- don't reduce. Is this a hack? *)
+           terminal_num != 0
+          then Some (Reduce (nt_num, L.length production))
           else None
       )
     in
@@ -461,9 +475,10 @@ module Lr0 (G : GRAMMAR) = struct
           ("Found both a terminal *and* nonterminal with name " ^ name
           ^ " (this should never happen)")
 
-  let parse : string -> Lex.token array -> (nonterminal, parse_error) Result.t
+  let parse : string -> Lex.token array -> (parse_result, parse_error) Result.t
     = fun buffer toks ->
       let stack = ref [0] in
+      let results = [||] in
       try
         while true do
           (* let x be the state on top of the stack *)
@@ -478,22 +493,26 @@ module Lr0 (G : GRAMMAR) = struct
             | Shift t ->
                 stack := t :: !stack;
                 a := pop_exn toks
-            | Reduce t ->
-                (); (* pop symbols off the stack *)
+            | Reduce (t, num_symbols) -> (* XXX t shadowed / not used *)
+                (); (* TODO: pop symbols off the stack *)
                 (match !stack with
                   (* push GOTO[t, A] onto the stack *)
                   | t :: stack' -> stack := goto_table t symbol :: stack'
                   | [] -> failwith "invariant violation: reduction with empty stack"
                 );
-                () (* output production *)
+                () (* TODO: output production *)
             | Accept -> raise ParseFinished
             | Error -> raise (ParseFailed (failwith "TODO"))
             ;
         done;
         failwith "invariant violation: can't make it here"
       with
-        | ParseFinished -> failwith "TODO"
-        | ParseFailed parse_error -> Result.Error parse_error
+        | ParseFinished -> (match results with
+          | [| result |] -> Result.Ok result
+          | [| |] -> failwith "invariant violation: no result"
+          | _ -> failwith "invariant violation: multiple results"
+        )
+        | ParseFailed parse_error -> Error parse_error
 
 end
 

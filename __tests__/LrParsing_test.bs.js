@@ -433,10 +433,91 @@ Jest.describe("LrParsing", (function (param) {
                             /* :: */[
                               Jest.Expect[/* toEqual */12](/* Accept */0, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 1), 0))),
                               /* :: */[
-                                Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 7)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 2), 2))),
+                                Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [
+                                        1,
+                                        1
+                                      ]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 2), 1))),
                                 /* :: */[
-                                  Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 5)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 4), 5))),
-                                  /* [] */0
+                                  Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 7)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 2), 2))),
+                                  /* :: */[
+                                    Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [
+                                            1,
+                                            1
+                                          ]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 2), 4))),
+                                    /* :: */[
+                                      Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [
+                                              1,
+                                              1
+                                            ]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 2), 0))),
+                                      /* :: */[
+                                        Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [
+                                                2,
+                                                1
+                                              ]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 3), 1))),
+                                        /* :: */[
+                                          Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [
+                                                  2,
+                                                  1
+                                                ]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 3), 2))),
+                                          /* :: */[
+                                            Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [
+                                                    2,
+                                                    1
+                                                  ]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 3), 4))),
+                                            /* :: */[
+                                              Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [
+                                                      2,
+                                                      1
+                                                    ]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 3), 0))),
+                                              /* :: */[
+                                                Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 5)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 4), 5))),
+                                                /* :: */[
+                                                  Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 4)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 4), 3))),
+                                                  /* :: */[
+                                                    Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [
+                                                            3,
+                                                            1
+                                                          ]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 5), 1))),
+                                                    /* :: */[
+                                                      Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [
+                                                              3,
+                                                              1
+                                                            ]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 5), 2))),
+                                                      /* :: */[
+                                                        Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [
+                                                                3,
+                                                                1
+                                                              ]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 5), 4))),
+                                                        /* :: */[
+                                                          Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [
+                                                                  3,
+                                                                  1
+                                                                ]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 5), 0))),
+                                                          /* :: */[
+                                                            Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 5)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 6), 5))),
+                                                            /* :: */[
+                                                              Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 4)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 6), 3))),
+                                                              /* :: */[
+                                                                Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 5)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 7), 5))),
+                                                                /* :: */[
+                                                                  Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 4)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 7), 3))),
+                                                                  /* [] */0
+                                                                ]
+                                                              ]
+                                                            ]
+                                                          ]
+                                                        ]
+                                                      ]
+                                                    ]
+                                                  ]
+                                                ]
+                                              ]
+                                            ]
+                                          ]
+                                        ]
+                                      ]
+                                    ]
+                                  ]
                                 ]
                               ]
                             ]

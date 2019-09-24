@@ -334,7 +334,7 @@ function Lr0(G) {
             var match$1 = Belt_List.get(symbols, match[/* position */1]);
             if (match$1 !== undefined) {
               var next_symbol = match$1;
-              if (next_symbol.tag) {
+              if (next_symbol.tag || next_symbol[0] !== terminal_num) {
                 return undefined;
               } else {
                 return /* Shift */Block.__(0, [goto_table(state, next_symbol)]);
@@ -347,8 +347,11 @@ function Lr0(G) {
             var production_num = match[/* production_num */0];
             var nt_num = Belt_MutableMapInt.getExn(production_nonterminal_map, production_num);
             var production = Belt_MutableMapInt.getExn(production_map, production_num);
-            if (match[/* position */1] === Belt_List.length(production) && Curry._2(in_follow, terminal_num, nt_num)) {
-              return /* Reduce */Block.__(1, [nt_num]);
+            if (match[/* position */1] === Belt_List.length(production) && Curry._2(in_follow, terminal_num, nt_num) && terminal_num !== 0) {
+              return /* Reduce */Block.__(1, [
+                        nt_num,
+                        Belt_List.length(production)
+                      ]);
             }
             
           }));
@@ -395,6 +398,7 @@ function Lr0(G) {
       0,
       /* [] */0
     ];
+    var results = /* array */[];
     try {
       while(true) {
         var match = stack;
@@ -435,7 +439,17 @@ function Lr0(G) {
     catch (raw_exn){
       var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
       if (exn === ParseFinished) {
-        return Pervasives.failwith("TODO");
+        var len = results.length;
+        if (len !== 1) {
+          if (len !== 0) {
+            return Pervasives.failwith("invariant violation: multiple results");
+          } else {
+            return Pervasives.failwith("invariant violation: no result");
+          }
+        } else {
+          var result = results[0];
+          return /* Ok */Block.__(0, [result]);
+        }
       } else if (exn[0] === ParseFailed) {
         return /* Error */Block.__(1, [exn[1]]);
       } else {
