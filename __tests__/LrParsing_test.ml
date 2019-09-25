@@ -289,23 +289,22 @@ let () = describe "LrParsing" (fun () ->
       |> toEqual Accept;
 
     expect (Lr0'.action_table state.(2) plus_num)
-      |> toEqual (Reduce (1, 1));
+      |> toEqual (Reduce 2);
     expect (Lr0'.action_table state.(2) times_num)
       |> toEqual (Shift state.(7));
     expect (Lr0'.action_table state.(2) rparen_num)
-      |> toEqual (Reduce (1, 1));
+      |> toEqual (Reduce 2);
     expect (Lr0'.action_table state.(2) 0)
-      |> toEqual (Reduce (1, 1));
+      |> toEqual (Reduce 2);
 
-    (* XXX: the book uses production numbers instead of nonterminal, count pairs *)
     expect (Lr0'.action_table state.(3) plus_num)
-      |> toEqual (Reduce (2, 1));
+      |> toEqual (Reduce 4);
     expect (Lr0'.action_table state.(3) times_num)
-      |> toEqual (Reduce (2, 1));
+      |> toEqual (Reduce 4);
     expect (Lr0'.action_table state.(3) rparen_num)
-      |> toEqual (Reduce (2, 1));
+      |> toEqual (Reduce 4);
     expect (Lr0'.action_table state.(3) 0)
-      |> toEqual (Reduce (2, 1));
+      |> toEqual (Reduce 4);
 
     expect (Lr0'.action_table state.(4) id_num)
       |> toEqual (Shift state.(5));
@@ -313,13 +312,13 @@ let () = describe "LrParsing" (fun () ->
       |> toEqual (Shift state.(4));
 
     expect (Lr0'.action_table state.(5) plus_num)
-      |> toEqual (Reduce (3, 1));
+      |> toEqual (Reduce 6);
     expect (Lr0'.action_table state.(5) times_num)
-      |> toEqual (Reduce (3, 1));
+      |> toEqual (Reduce 6);
     expect (Lr0'.action_table state.(5) rparen_num)
-      |> toEqual (Reduce (3, 1));
+      |> toEqual (Reduce 6);
     expect (Lr0'.action_table state.(5) 0)
-      |> toEqual (Reduce (3, 1));
+      |> toEqual (Reduce 6);
 
     expect (Lr0'.action_table state.(6) id_num)
       |> toEqual (Shift state.(5));

@@ -97,7 +97,7 @@ type grammar = {
 
 type action =
   | Shift  of state
-  | Reduce of nonterminal_num * int
+  | Reduce of production_num
   | Accept
   | Error
 
@@ -440,7 +440,7 @@ module Lr0 (G : GRAMMAR) = struct
            in_follow terminal_num nt_num &&
            (* Accept in this case -- don't reduce. Is this a hack? *)
            terminal_num != 0
-          then Some (Reduce (nt_num, L.length production))
+          then Some (Reduce production_num)
           else None
       )
     in
@@ -493,7 +493,8 @@ module Lr0 (G : GRAMMAR) = struct
             | Shift t ->
                 stack := t :: !stack;
                 a := pop_exn toks
-            | Reduce (t, num_symbols) -> (* XXX t shadowed / not used *)
+            | Reduce production_num -> (* XXX t shadowed / not used *)
+                let symbols = production_map |. MMI.getExn production_num in
                 (); (* TODO: pop symbols off the stack *)
                 (match !stack with
                   (* push GOTO[t, A] onto the stack *)
