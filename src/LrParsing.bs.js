@@ -347,7 +347,7 @@ function Lr0(G) {
             var production_num = match[/* production_num */0];
             var nt_num = Belt_MutableMapInt.getExn(production_nonterminal_map, production_num);
             var production = Belt_MutableMapInt.getExn(production_map, production_num);
-            if (match[/* position */1] === Belt_List.length(production) && Curry._2(in_follow, terminal_num, nt_num) && terminal_num !== 0) {
+            if (match[/* position */1] === Belt_List.length(production) && Curry._2(in_follow, terminal_num, nt_num) && nt_num !== 0) {
               return /* Reduce */Block.__(1, [production_num]);
             }
             

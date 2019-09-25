@@ -438,8 +438,9 @@ module Lr0 (G : GRAMMAR) = struct
         let production = production_map |. MMI.getExn production_num in
         if position = L.length production &&
            in_follow terminal_num nt_num &&
-           (* Accept in this case -- don't reduce. Is this a hack? *)
-           terminal_num != 0
+           (* Accept in this case (end marker on the augmented nonterminal) --
+              don't reduce. *)
+           nt_num != 0
           then Some (Reduce production_num)
           else None
       )
