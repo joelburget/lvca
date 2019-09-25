@@ -273,61 +273,98 @@ let () = describe "LrParsing" (fun () ->
   ] Util.id;
 
   (* Test for a match with CPTT Figure 4.37 *)
-  testAll "action_table" [
-    expect (Lr0'.action_table state.(0) id_num)
-      |> toEqual (Shift state.(5));
-    expect (Lr0'.action_table state.(0) plus_num)
-      |> toEqual Error;
-    expect (Lr0'.action_table state.(0) times_num)
-      |> toEqual Error;
-    expect (Lr0'.action_table state.(0) lparen_num)
-      |> toEqual (Shift state.(4));
+  let action_table_tests =
+    [ 0, id_num, Shift state.(5);
+      0, plus_num, Error;
+      0, times_num, Error;
+      0, lparen_num, Shift state.(4);
+      0, rparen_num, Error;
+      0, 0, Error;
 
-    expect (Lr0'.action_table state.(1) plus_num)
-      |> toEqual (Shift state.(6));
-    expect (Lr0'.action_table state.(1) 0)
-      |> toEqual Accept;
+      1, id_num, Error;
+      1, plus_num, Shift state.(6);
+      1, times_num, Error;
+      1, lparen_num, Error;
+      1, rparen_num, Error;
+      1, 0, Accept;
 
-    expect (Lr0'.action_table state.(2) plus_num)
-      |> toEqual (Reduce 2);
-    expect (Lr0'.action_table state.(2) times_num)
-      |> toEqual (Shift state.(7));
-    expect (Lr0'.action_table state.(2) rparen_num)
-      |> toEqual (Reduce 2);
-    expect (Lr0'.action_table state.(2) 0)
-      |> toEqual (Reduce 2);
+      2, id_num, Error;
+      2, plus_num, Reduce 2;
+      2, times_num, Shift state.(7);
+      2, lparen_num, Error;
+      2, rparen_num, Reduce 2;
+      2, 0, Reduce 2;
 
-    expect (Lr0'.action_table state.(3) plus_num)
-      |> toEqual (Reduce 4);
-    expect (Lr0'.action_table state.(3) times_num)
-      |> toEqual (Reduce 4);
-    expect (Lr0'.action_table state.(3) rparen_num)
-      |> toEqual (Reduce 4);
-    expect (Lr0'.action_table state.(3) 0)
-      |> toEqual (Reduce 4);
+      3, id_num, Error;
+      3, plus_num, Reduce 4;
+      3, times_num, Reduce 4;
+      3, lparen_num, Error;
+      3, rparen_num, Reduce 4;
+      3, 0, Reduce 4;
 
-    expect (Lr0'.action_table state.(4) id_num)
-      |> toEqual (Shift state.(5));
-    expect (Lr0'.action_table state.(4) lparen_num)
-      |> toEqual (Shift state.(4));
+      4, id_num, Shift state.(5);
+      4, plus_num, Error;
+      4, times_num, Error;
+      4, lparen_num, Shift state.(4);
+      4, rparen_num, Error;
+      4, 0, Error;
 
-    expect (Lr0'.action_table state.(5) plus_num)
-      |> toEqual (Reduce 6);
-    expect (Lr0'.action_table state.(5) times_num)
-      |> toEqual (Reduce 6);
-    expect (Lr0'.action_table state.(5) rparen_num)
-      |> toEqual (Reduce 6);
-    expect (Lr0'.action_table state.(5) 0)
-      |> toEqual (Reduce 6);
+      5, id_num, Error;
+      5, plus_num, Reduce 6;
+      5, times_num, Reduce 6;
+      5, lparen_num, Error;
+      5, rparen_num, Reduce 6;
+      5, 0, Reduce 6;
 
-    expect (Lr0'.action_table state.(6) id_num)
-      |> toEqual (Shift state.(5));
-    expect (Lr0'.action_table state.(6) lparen_num)
-      |> toEqual (Shift state.(4));
+      6, id_num, Shift state.(5);
+      6, plus_num, Error;
+      6, times_num, Error;
+      6, lparen_num, Shift state.(4);
+      6, rparen_num, Error;
+      6, 0, Error;
 
-    expect (Lr0'.action_table state.(7) id_num)
-      |> toEqual (Shift state.(5));
-    expect (Lr0'.action_table state.(7) lparen_num)
-      |> toEqual (Shift state.(4));
-  ] Util.id;
+      7, id_num, Shift state.(5);
+      7, plus_num, Error;
+      7, times_num, Error;
+      7, lparen_num, Shift state.(4);
+      7, rparen_num, Error;
+      7, 0, Error;
+
+      8, id_num, Error;
+      8, plus_num, Shift state.(6);
+      8, times_num, Error;
+      8, lparen_num, Error;
+      8, rparen_num, Shift state.(11);
+      8, 0, Error;
+
+      9, id_num, Error;
+      9, plus_num, Reduce 1;
+      9, times_num, Shift state.(7);
+      9, lparen_num, Error;
+      9, rparen_num, Reduce 1;
+      9, 0, Reduce 1;
+
+      10, id_num, Error;
+      10, plus_num, Reduce 3;
+      10, times_num, Reduce 3;
+      10, lparen_num, Error;
+      10, rparen_num, Reduce 3;
+      10, 0, Reduce 3;
+
+      11, id_num, Error;
+      11, plus_num, Reduce 5;
+      11, times_num, Reduce 5;
+      11, lparen_num, Error;
+      11, rparen_num, Reduce 5;
+      11, 0, Reduce 5;
+
+    ]
+  in
+  let action_table_tests' = action_table_tests
+    |. Belt.List.map (fun (init_state, token, action) ->
+      expect (Lr0'.action_table state.(init_state) token)
+        |> toEqual action
+    )
+  in
+  testAll "action_table" action_table_tests' Util.id;
 )

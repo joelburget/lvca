@@ -420,55 +420,480 @@ Jest.describe("LrParsing", (function (param) {
                 ]
               ]
             ], Util.id);
-        return Jest.testAll("action_table", /* :: */[
-                    Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 5)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 0), 5))),
+        var action_table_tests_000 = /* tuple */[
+          0,
+          5,
+          /* Shift */Block.__(0, [Caml_array.caml_array_get(state, 5)])
+        ];
+        var action_table_tests_001 = /* :: */[
+          /* tuple */[
+            0,
+            1,
+            /* Error */1
+          ],
+          /* :: */[
+            /* tuple */[
+              0,
+              2,
+              /* Error */1
+            ],
+            /* :: */[
+              /* tuple */[
+                0,
+                3,
+                /* Shift */Block.__(0, [Caml_array.caml_array_get(state, 4)])
+              ],
+              /* :: */[
+                /* tuple */[
+                  0,
+                  4,
+                  /* Error */1
+                ],
+                /* :: */[
+                  /* tuple */[
+                    0,
+                    0,
+                    /* Error */1
+                  ],
+                  /* :: */[
+                    /* tuple */[
+                      1,
+                      5,
+                      /* Error */1
+                    ],
                     /* :: */[
-                      Jest.Expect[/* toEqual */12](/* Error */1, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 0), 1))),
+                      /* tuple */[
+                        1,
+                        1,
+                        /* Shift */Block.__(0, [Caml_array.caml_array_get(state, 6)])
+                      ],
                       /* :: */[
-                        Jest.Expect[/* toEqual */12](/* Error */1, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 0), 2))),
+                        /* tuple */[
+                          1,
+                          2,
+                          /* Error */1
+                        ],
                         /* :: */[
-                          Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 4)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 0), 3))),
+                          /* tuple */[
+                            1,
+                            3,
+                            /* Error */1
+                          ],
                           /* :: */[
-                            Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 6)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 1), 1))),
+                            /* tuple */[
+                              1,
+                              4,
+                              /* Error */1
+                            ],
                             /* :: */[
-                              Jest.Expect[/* toEqual */12](/* Accept */0, Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 1), 0))),
+                              /* tuple */[
+                                1,
+                                0,
+                                /* Accept */0
+                              ],
                               /* :: */[
-                                Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [2]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 2), 1))),
+                                /* tuple */[
+                                  2,
+                                  5,
+                                  /* Error */1
+                                ],
                                 /* :: */[
-                                  Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 7)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 2), 2))),
+                                  /* tuple */[
+                                    2,
+                                    1,
+                                    /* Reduce */Block.__(1, [2])
+                                  ],
                                   /* :: */[
-                                    Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [2]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 2), 4))),
+                                    /* tuple */[
+                                      2,
+                                      2,
+                                      /* Shift */Block.__(0, [Caml_array.caml_array_get(state, 7)])
+                                    ],
                                     /* :: */[
-                                      Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [2]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 2), 0))),
+                                      /* tuple */[
+                                        2,
+                                        3,
+                                        /* Error */1
+                                      ],
                                       /* :: */[
-                                        Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [4]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 3), 1))),
+                                        /* tuple */[
+                                          2,
+                                          4,
+                                          /* Reduce */Block.__(1, [2])
+                                        ],
                                         /* :: */[
-                                          Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [4]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 3), 2))),
+                                          /* tuple */[
+                                            2,
+                                            0,
+                                            /* Reduce */Block.__(1, [2])
+                                          ],
                                           /* :: */[
-                                            Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [4]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 3), 4))),
+                                            /* tuple */[
+                                              3,
+                                              5,
+                                              /* Error */1
+                                            ],
                                             /* :: */[
-                                              Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [4]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 3), 0))),
+                                              /* tuple */[
+                                                3,
+                                                1,
+                                                /* Reduce */Block.__(1, [4])
+                                              ],
                                               /* :: */[
-                                                Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 5)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 4), 5))),
+                                                /* tuple */[
+                                                  3,
+                                                  2,
+                                                  /* Reduce */Block.__(1, [4])
+                                                ],
                                                 /* :: */[
-                                                  Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 4)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 4), 3))),
+                                                  /* tuple */[
+                                                    3,
+                                                    3,
+                                                    /* Error */1
+                                                  ],
                                                   /* :: */[
-                                                    Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [6]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 5), 1))),
+                                                    /* tuple */[
+                                                      3,
+                                                      4,
+                                                      /* Reduce */Block.__(1, [4])
+                                                    ],
                                                     /* :: */[
-                                                      Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [6]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 5), 2))),
+                                                      /* tuple */[
+                                                        3,
+                                                        0,
+                                                        /* Reduce */Block.__(1, [4])
+                                                      ],
                                                       /* :: */[
-                                                        Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [6]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 5), 4))),
+                                                        /* tuple */[
+                                                          4,
+                                                          5,
+                                                          /* Shift */Block.__(0, [Caml_array.caml_array_get(state, 5)])
+                                                        ],
                                                         /* :: */[
-                                                          Jest.Expect[/* toEqual */12](/* Reduce */Block.__(1, [6]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 5), 0))),
+                                                          /* tuple */[
+                                                            4,
+                                                            1,
+                                                            /* Error */1
+                                                          ],
                                                           /* :: */[
-                                                            Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 5)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 6), 5))),
+                                                            /* tuple */[
+                                                              4,
+                                                              2,
+                                                              /* Error */1
+                                                            ],
                                                             /* :: */[
-                                                              Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 4)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 6), 3))),
+                                                              /* tuple */[
+                                                                4,
+                                                                3,
+                                                                /* Shift */Block.__(0, [Caml_array.caml_array_get(state, 4)])
+                                                              ],
                                                               /* :: */[
-                                                                Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 5)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 7), 5))),
+                                                                /* tuple */[
+                                                                  4,
+                                                                  4,
+                                                                  /* Error */1
+                                                                ],
                                                                 /* :: */[
-                                                                  Jest.Expect[/* toEqual */12](/* Shift */Block.__(0, [Caml_array.caml_array_get(state, 4)]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, 7), 3))),
-                                                                  /* [] */0
+                                                                  /* tuple */[
+                                                                    4,
+                                                                    0,
+                                                                    /* Error */1
+                                                                  ],
+                                                                  /* :: */[
+                                                                    /* tuple */[
+                                                                      5,
+                                                                      5,
+                                                                      /* Error */1
+                                                                    ],
+                                                                    /* :: */[
+                                                                      /* tuple */[
+                                                                        5,
+                                                                        1,
+                                                                        /* Reduce */Block.__(1, [6])
+                                                                      ],
+                                                                      /* :: */[
+                                                                        /* tuple */[
+                                                                          5,
+                                                                          2,
+                                                                          /* Reduce */Block.__(1, [6])
+                                                                        ],
+                                                                        /* :: */[
+                                                                          /* tuple */[
+                                                                            5,
+                                                                            3,
+                                                                            /* Error */1
+                                                                          ],
+                                                                          /* :: */[
+                                                                            /* tuple */[
+                                                                              5,
+                                                                              4,
+                                                                              /* Reduce */Block.__(1, [6])
+                                                                            ],
+                                                                            /* :: */[
+                                                                              /* tuple */[
+                                                                                5,
+                                                                                0,
+                                                                                /* Reduce */Block.__(1, [6])
+                                                                              ],
+                                                                              /* :: */[
+                                                                                /* tuple */[
+                                                                                  6,
+                                                                                  5,
+                                                                                  /* Shift */Block.__(0, [Caml_array.caml_array_get(state, 5)])
+                                                                                ],
+                                                                                /* :: */[
+                                                                                  /* tuple */[
+                                                                                    6,
+                                                                                    1,
+                                                                                    /* Error */1
+                                                                                  ],
+                                                                                  /* :: */[
+                                                                                    /* tuple */[
+                                                                                      6,
+                                                                                      2,
+                                                                                      /* Error */1
+                                                                                    ],
+                                                                                    /* :: */[
+                                                                                      /* tuple */[
+                                                                                        6,
+                                                                                        3,
+                                                                                        /* Shift */Block.__(0, [Caml_array.caml_array_get(state, 4)])
+                                                                                      ],
+                                                                                      /* :: */[
+                                                                                        /* tuple */[
+                                                                                          6,
+                                                                                          4,
+                                                                                          /* Error */1
+                                                                                        ],
+                                                                                        /* :: */[
+                                                                                          /* tuple */[
+                                                                                            6,
+                                                                                            0,
+                                                                                            /* Error */1
+                                                                                          ],
+                                                                                          /* :: */[
+                                                                                            /* tuple */[
+                                                                                              7,
+                                                                                              5,
+                                                                                              /* Shift */Block.__(0, [Caml_array.caml_array_get(state, 5)])
+                                                                                            ],
+                                                                                            /* :: */[
+                                                                                              /* tuple */[
+                                                                                                7,
+                                                                                                1,
+                                                                                                /* Error */1
+                                                                                              ],
+                                                                                              /* :: */[
+                                                                                                /* tuple */[
+                                                                                                  7,
+                                                                                                  2,
+                                                                                                  /* Error */1
+                                                                                                ],
+                                                                                                /* :: */[
+                                                                                                  /* tuple */[
+                                                                                                    7,
+                                                                                                    3,
+                                                                                                    /* Shift */Block.__(0, [Caml_array.caml_array_get(state, 4)])
+                                                                                                  ],
+                                                                                                  /* :: */[
+                                                                                                    /* tuple */[
+                                                                                                      7,
+                                                                                                      4,
+                                                                                                      /* Error */1
+                                                                                                    ],
+                                                                                                    /* :: */[
+                                                                                                      /* tuple */[
+                                                                                                        7,
+                                                                                                        0,
+                                                                                                        /* Error */1
+                                                                                                      ],
+                                                                                                      /* :: */[
+                                                                                                        /* tuple */[
+                                                                                                          8,
+                                                                                                          5,
+                                                                                                          /* Error */1
+                                                                                                        ],
+                                                                                                        /* :: */[
+                                                                                                          /* tuple */[
+                                                                                                            8,
+                                                                                                            1,
+                                                                                                            /* Shift */Block.__(0, [Caml_array.caml_array_get(state, 6)])
+                                                                                                          ],
+                                                                                                          /* :: */[
+                                                                                                            /* tuple */[
+                                                                                                              8,
+                                                                                                              2,
+                                                                                                              /* Error */1
+                                                                                                            ],
+                                                                                                            /* :: */[
+                                                                                                              /* tuple */[
+                                                                                                                8,
+                                                                                                                3,
+                                                                                                                /* Error */1
+                                                                                                              ],
+                                                                                                              /* :: */[
+                                                                                                                /* tuple */[
+                                                                                                                  8,
+                                                                                                                  4,
+                                                                                                                  /* Shift */Block.__(0, [Caml_array.caml_array_get(state, 11)])
+                                                                                                                ],
+                                                                                                                /* :: */[
+                                                                                                                  /* tuple */[
+                                                                                                                    8,
+                                                                                                                    0,
+                                                                                                                    /* Error */1
+                                                                                                                  ],
+                                                                                                                  /* :: */[
+                                                                                                                    /* tuple */[
+                                                                                                                      9,
+                                                                                                                      5,
+                                                                                                                      /* Error */1
+                                                                                                                    ],
+                                                                                                                    /* :: */[
+                                                                                                                      /* tuple */[
+                                                                                                                        9,
+                                                                                                                        1,
+                                                                                                                        /* Reduce */Block.__(1, [1])
+                                                                                                                      ],
+                                                                                                                      /* :: */[
+                                                                                                                        /* tuple */[
+                                                                                                                          9,
+                                                                                                                          2,
+                                                                                                                          /* Shift */Block.__(0, [Caml_array.caml_array_get(state, 7)])
+                                                                                                                        ],
+                                                                                                                        /* :: */[
+                                                                                                                          /* tuple */[
+                                                                                                                            9,
+                                                                                                                            3,
+                                                                                                                            /* Error */1
+                                                                                                                          ],
+                                                                                                                          /* :: */[
+                                                                                                                            /* tuple */[
+                                                                                                                              9,
+                                                                                                                              4,
+                                                                                                                              /* Reduce */Block.__(1, [1])
+                                                                                                                            ],
+                                                                                                                            /* :: */[
+                                                                                                                              /* tuple */[
+                                                                                                                                9,
+                                                                                                                                0,
+                                                                                                                                /* Reduce */Block.__(1, [1])
+                                                                                                                              ],
+                                                                                                                              /* :: */[
+                                                                                                                                /* tuple */[
+                                                                                                                                  10,
+                                                                                                                                  5,
+                                                                                                                                  /* Error */1
+                                                                                                                                ],
+                                                                                                                                /* :: */[
+                                                                                                                                  /* tuple */[
+                                                                                                                                    10,
+                                                                                                                                    1,
+                                                                                                                                    /* Reduce */Block.__(1, [3])
+                                                                                                                                  ],
+                                                                                                                                  /* :: */[
+                                                                                                                                    /* tuple */[
+                                                                                                                                      10,
+                                                                                                                                      2,
+                                                                                                                                      /* Reduce */Block.__(1, [3])
+                                                                                                                                    ],
+                                                                                                                                    /* :: */[
+                                                                                                                                      /* tuple */[
+                                                                                                                                        10,
+                                                                                                                                        3,
+                                                                                                                                        /* Error */1
+                                                                                                                                      ],
+                                                                                                                                      /* :: */[
+                                                                                                                                        /* tuple */[
+                                                                                                                                          10,
+                                                                                                                                          4,
+                                                                                                                                          /* Reduce */Block.__(1, [3])
+                                                                                                                                        ],
+                                                                                                                                        /* :: */[
+                                                                                                                                          /* tuple */[
+                                                                                                                                            10,
+                                                                                                                                            0,
+                                                                                                                                            /* Reduce */Block.__(1, [3])
+                                                                                                                                          ],
+                                                                                                                                          /* :: */[
+                                                                                                                                            /* tuple */[
+                                                                                                                                              11,
+                                                                                                                                              5,
+                                                                                                                                              /* Error */1
+                                                                                                                                            ],
+                                                                                                                                            /* :: */[
+                                                                                                                                              /* tuple */[
+                                                                                                                                                11,
+                                                                                                                                                1,
+                                                                                                                                                /* Reduce */Block.__(1, [5])
+                                                                                                                                              ],
+                                                                                                                                              /* :: */[
+                                                                                                                                                /* tuple */[
+                                                                                                                                                  11,
+                                                                                                                                                  2,
+                                                                                                                                                  /* Reduce */Block.__(1, [5])
+                                                                                                                                                ],
+                                                                                                                                                /* :: */[
+                                                                                                                                                  /* tuple */[
+                                                                                                                                                    11,
+                                                                                                                                                    3,
+                                                                                                                                                    /* Error */1
+                                                                                                                                                  ],
+                                                                                                                                                  /* :: */[
+                                                                                                                                                    /* tuple */[
+                                                                                                                                                      11,
+                                                                                                                                                      4,
+                                                                                                                                                      /* Reduce */Block.__(1, [5])
+                                                                                                                                                    ],
+                                                                                                                                                    /* :: */[
+                                                                                                                                                      /* tuple */[
+                                                                                                                                                        11,
+                                                                                                                                                        0,
+                                                                                                                                                        /* Reduce */Block.__(1, [5])
+                                                                                                                                                      ],
+                                                                                                                                                      /* [] */0
+                                                                                                                                                    ]
+                                                                                                                                                  ]
+                                                                                                                                                ]
+                                                                                                                                              ]
+                                                                                                                                            ]
+                                                                                                                                          ]
+                                                                                                                                        ]
+                                                                                                                                      ]
+                                                                                                                                    ]
+                                                                                                                                  ]
+                                                                                                                                ]
+                                                                                                                              ]
+                                                                                                                            ]
+                                                                                                                          ]
+                                                                                                                        ]
+                                                                                                                      ]
+                                                                                                                    ]
+                                                                                                                  ]
+                                                                                                                ]
+                                                                                                              ]
+                                                                                                            ]
+                                                                                                          ]
+                                                                                                        ]
+                                                                                                      ]
+                                                                                                    ]
+                                                                                                  ]
+                                                                                                ]
+                                                                                              ]
+                                                                                            ]
+                                                                                          ]
+                                                                                        ]
+                                                                                      ]
+                                                                                    ]
+                                                                                  ]
+                                                                                ]
+                                                                              ]
+                                                                            ]
+                                                                          ]
+                                                                        ]
+                                                                      ]
+                                                                    ]
+                                                                  ]
                                                                 ]
                                                               ]
                                                             ]
@@ -492,7 +917,20 @@ Jest.describe("LrParsing", (function (param) {
                         ]
                       ]
                     ]
-                  ], Util.id);
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ];
+        var action_table_tests = /* :: */[
+          action_table_tests_000,
+          action_table_tests_001
+        ];
+        var action_table_tests$prime = Belt_List.map(action_table_tests, (function (param) {
+                return Jest.Expect[/* toEqual */12](param[2], Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, param[0]), param[1])));
+              }));
+        return Jest.testAll("action_table", action_table_tests$prime, Util.id);
       }));
 
 var M = 0;
