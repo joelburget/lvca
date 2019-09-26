@@ -930,7 +930,17 @@ Jest.describe("LrParsing", (function (param) {
         var action_table_tests$prime = Belt_List.map(action_table_tests, (function (param) {
                 return Jest.Expect[/* toEqual */12](param[2], Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */25], Caml_array.caml_array_get(state, param[0]), param[1])));
               }));
-        return Jest.testAll("action_table", action_table_tests$prime, Util.id);
+        Jest.testAll("action_table", action_table_tests$prime, Util.id);
+        var tokens = /* array */[];
+        return Jest.testAll("parse", /* :: */[
+                    Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* record */[
+                              /* nonterminal */0,
+                              /* children : [] */0,
+                              /* start_pos */0,
+                              /* end_pos */9
+                            ]]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* parse */28], "foo + bar", tokens))),
+                    /* [] */0
+                  ], Util.id);
       }));
 
 var M = 0;

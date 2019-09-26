@@ -478,7 +478,8 @@ module Lr0 (G : GRAMMAR) = struct
 
   let parse : string -> Lex.token array -> (parse_result, parse_error) Result.t
     = fun buffer toks ->
-      let stack = ref [0] in
+      (* TODO: convert to mutable stack *)
+      let stack : state list ref = ref [0] in
       let results = [||] in
       try
         while true do

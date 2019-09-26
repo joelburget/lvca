@@ -367,4 +367,17 @@ let () = describe "LrParsing" (fun () ->
     )
   in
   testAll "action_table" action_table_tests' Util.id;
+
+  let tokens =
+    [|
+    |]
+  in
+  testAll "parse" [
+    expect (Lr0'.parse "foo + bar" tokens) |> toEqual (Result.Ok
+      { nonterminal = 0;
+        children = []; (* TODO *)
+        start_pos = 0;
+        end_pos = 9;
+      })
+  ] Util.id;
 )
