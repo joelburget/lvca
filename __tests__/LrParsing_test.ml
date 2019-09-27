@@ -169,7 +169,7 @@ let () = describe "LrParsing" (fun () ->
   ] Util.id;
 
   let item_sets = [|
-    SI.fromArray
+    SI.fromArray (* 0 *)
       [| mk_item' 0 0;
          mk_item' 1 0;
          mk_item' 2 0;
@@ -178,16 +178,16 @@ let () = describe "LrParsing" (fun () ->
          mk_item' 5 0;
          mk_item' 6 0;
       |];
-    SI.fromArray
+    SI.fromArray (* 1 *)
       [| mk_item' 0 1;
          mk_item' 1 1;
       |];
-    SI.fromArray
+    SI.fromArray (* 2 *)
       [| mk_item' 2 1;
          mk_item' 3 1;
       |];
-    SI.fromArray [| mk_item' 4 1; |];
-    SI.fromArray
+    SI.fromArray [| mk_item' 4 1; |]; (* 3 *)
+    SI.fromArray (* 4 *)
       [| mk_item' 5 1;
          mk_item' 1 0;
          mk_item' 2 0;
@@ -196,20 +196,20 @@ let () = describe "LrParsing" (fun () ->
          mk_item' 5 0;
          mk_item' 6 0;
       |];
-    SI.fromArray [| mk_item' 6 1; |];
-    SI.fromArray
+    SI.fromArray [| mk_item' 6 1; |]; (* 5 *)
+    SI.fromArray (* 6 *)
       [| mk_item' 1 2;
          mk_item' 3 0;
          mk_item' 4 0;
          mk_item' 5 0;
          mk_item' 6 0;
       |];
-    SI.fromArray
+    SI.fromArray (* 7 *)
       [| mk_item' 3 2;
          mk_item' 5 0;
          mk_item' 6 0;
       |];
-    SI.fromArray
+    SI.fromArray (* 8 *)
       [|
         mk_item' 1 1;
         mk_item' 5 2;
@@ -361,15 +361,18 @@ let () = describe "LrParsing" (fun () ->
     ]
   in
   let action_table_tests' = action_table_tests
-    |. Belt.List.map (fun (init_state, token, action) ->
-      expect (Lr0'.action_table state.(init_state) token)
+    |. Belt.List.map (fun (init_state, terminal_num, action) ->
+      expect (Lr0'.action_table state.(init_state) terminal_num)
         |> toEqual action
     )
   in
   testAll "action_table" action_table_tests' Util.id;
 
+  let mk_tok name start finish : Lex.token = { name; start; finish } in
   let tokens =
-    [|
+    [| mk_tok "id" 0 3;
+       mk_tok "+" 4 5;
+       mk_tok "id" 6 9;
     |]
   in
   testAll "parse" [

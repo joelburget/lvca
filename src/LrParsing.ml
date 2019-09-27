@@ -8,6 +8,7 @@ module SS = Belt.Set.String
 module MS = Belt.MutableSet
 module MSI = Belt.MutableSet.Int
 module Result = Belt.Result
+module MStack = Belt.MutableStack
 
 (* TODO:
   * augment grammar
@@ -126,8 +127,8 @@ exception ParseFinished
 exception ParseFailed of parse_error
 exception PopFailed
 
-let pop_exn : 'a array -> 'a
-  = fun arr -> match Js.Array2.pop arr with
+let pop_front_exn : 'a array -> 'a
+  = fun arr -> match Js.Array2.shift arr with
     | None -> raise PopFailed
     | Some a -> a
 
@@ -297,6 +298,9 @@ module Lr0 (G : GRAMMAR) = struct
       |. Belt.Option.getExn
     in state
 
+  let augmented_state : state
+    = item_set_to_state @@ closure' @@ SI.fromArray [| mk_item' 0 0 |]
+
   let in_first_cache : (terminal_num * symbol, bool, SymbolCmp.identity) MM.t
     = MM.make ~id:(module SymbolCmp)
 
@@ -458,13 +462,13 @@ module Lr0 (G : GRAMMAR) = struct
       |        _,        _,        _ -> Error
 
   let token_to_terminal
-    : string -> Lex.token -> terminal_num
-    = fun buffer { name } ->
+    : Lex.token -> terminal_num
+    = fun { name } ->
       G.grammar.terminal_names |. Belt.Map.String.getExn name
 
   let token_to_symbol
-    : string -> Lex.token -> symbol
-    = fun buffer { name } ->
+    : Lex.token -> symbol
+    = fun { name } ->
       let t_match = G.grammar.terminal_names |. Belt.Map.String.get name in
       let nt_match = G.grammar.nonterminal_names |. Belt.Map.String.get name in
       match t_match, nt_match with
@@ -478,41 +482,64 @@ module Lr0 (G : GRAMMAR) = struct
 
   let parse : string -> Lex.token array -> (parse_result, parse_error) Result.t
     = fun buffer toks ->
-      (* TODO: convert to mutable stack *)
-      let stack : state list ref = ref [0] in
-      let results = [||] in
+      let stack : state MStack.t = MStack.make () in
+      MStack.push stack augmented_state;
+      let results : parse_result MStack.t = MStack.make () in
       try
         while true do
           (* let x be the state on top of the stack *)
-          let s = match !stack with
-            | s' :: _ -> s'
-            | [] -> failwith "invariant violation: empty stack"
+          let s = match MStack.top stack with
+            | Some s' -> s'
+            | None -> failwith "invariant violation: empty stack"
           in
-          let a = ref @@ pop_exn toks in
-          let terminal_num = token_to_terminal buffer !a in
-          let symbol = token_to_symbol buffer !a in
+          let a = ref @@ pop_front_exn toks in
+          let terminal_num = token_to_terminal !a in
+          let symbol = token_to_symbol !a in
           match action_table s terminal_num with
             | Shift t ->
-                stack := t :: !stack;
-                a := pop_exn toks
-            | Reduce production_num -> (* XXX t shadowed / not used *)
+                Js.log2 "shift" t;
+                stack |. MStack.push t;
+                a := pop_front_exn toks
+            | Reduce production_num ->
+                Js.log2 "reduce" production_num;
                 let symbols = production_map |. MMI.getExn production_num in
-                (); (* TODO: pop symbols off the stack *)
-                (match !stack with
+                (* pop symbols off the stack *)
+                let children : parse_result list ref = ref [] in
+                (* XXX conflating stack / results *)
+                for _ = 1 to L.length symbols do
+                  let _ = stack |. MStack.pop in
+                  match results |. MStack.pop with
+                    | Some child -> children := child :: !children
+                    | None -> failwith
+                      "invariant violation: popping from empty stack"
+                done;
+                (match stack |. MStack.pop with
                   (* push GOTO[t, A] onto the stack *)
-                  | t :: stack' -> stack := goto_table t symbol :: stack'
-                  | [] -> failwith "invariant violation: reduction with empty stack"
+                  | Some t -> stack |. MStack.push (goto_table t symbol)
+                  | None -> failwith "invariant violation: reduction with empty stack"
                 );
-                () (* TODO: output production *)
-            | Accept -> raise ParseFinished
-            | Error -> raise (ParseFailed (failwith "TODO"))
+                (* output production A -> B *)
+                results |. MStack.push {
+                  nonterminal =
+                    production_nonterminal_map |. MMI.getExn production_num;
+                  children = !children;
+                  start_pos = failwith "TODO";
+                  end_pos =  failwith "TODO";
+                };
+            | Accept -> Js.log "accept"; raise ParseFinished
+            | Error ->
+              Js.log "error";
+              raise (ParseFailed (failwith "TODO (parse failed)"))
             ;
         done;
         failwith "invariant violation: can't make it here"
       with
-        | ParseFinished -> (match results with
-          | [| result |] -> Result.Ok result
-          | [| |] -> failwith "invariant violation: no result"
+        | ParseFinished -> (match results |. MStack.size with
+          | 1 -> (match results |. MStack.top with
+            | Some result -> Result.Ok result
+            | None -> failwith "invariant violation: no result"
+            )
+          | 0 -> failwith "invariant violation: no result"
           | _ -> failwith "invariant violation: multiple results"
         )
         | ParseFailed parse_error -> Error parse_error

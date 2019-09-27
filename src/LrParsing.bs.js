@@ -17,6 +17,7 @@ var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Belt_MutableMap = require("bs-platform/lib/js/belt_MutableMap.js");
 var Belt_MutableSet = require("bs-platform/lib/js/belt_MutableSet.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
+var Belt_MutableStack = require("bs-platform/lib/js/belt_MutableStack.js");
 var Belt_MutableMapInt = require("bs-platform/lib/js/belt_MutableMapInt.js");
 var Belt_MutableSetInt = require("bs-platform/lib/js/belt_MutableSetInt.js");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
@@ -55,8 +56,8 @@ var ParseFailed = Caml_exceptions.create("LrParsing.ParseFailed");
 
 var PopFailed = Caml_exceptions.create("LrParsing.PopFailed");
 
-function pop_exn(arr) {
-  var match = arr.pop();
+function pop_front_exn(arr) {
+  var match = arr.shift();
   if (match !== undefined) {
     return match;
   } else {
@@ -203,6 +204,8 @@ function Lr0(G) {
                         return Caml_obj.caml_equal(Belt_SetInt.toArray(item_set$prime), Belt_SetInt.toArray(item_set));
                       })))[0];
   };
+  var items = Belt_SetInt.fromArray(/* array */[0]);
+  var augmented_state = item_set_to_state(simplify_config_set(closure(items)));
   var in_first_cache = Belt_MutableMap.make(SymbolCmp);
   var stack = Belt_MutableSetInt.make(/* () */0);
   var in_first$prime = function (t_num, sym) {
@@ -371,10 +374,10 @@ function Lr0(G) {
       return /* Error */1;
     }
   };
-  var token_to_terminal = function (buffer, param) {
+  var token_to_terminal = function (param) {
     return Belt_MapString.getExn(G[/* grammar */0][/* terminal_names */2], param[/* name */0]);
   };
-  var token_to_symbol = function (buffer, param) {
+  var token_to_symbol = function (param) {
     var name = param[/* name */0];
     var t_match = Belt_MapString.get(G[/* grammar */0][/* terminal_names */2], name);
     var nt_match = Belt_MapString.get(G[/* grammar */0][/* nonterminal_names */3], name);
@@ -391,45 +394,62 @@ function Lr0(G) {
     }
   };
   var parse = function (buffer, toks) {
-    var stack = /* :: */[
-      0,
-      /* [] */0
-    ];
-    var results = /* array */[];
+    var stack = Belt_MutableStack.make(/* () */0);
+    Belt_MutableStack.push(stack, augmented_state);
+    var results = Belt_MutableStack.make(/* () */0);
     try {
       while(true) {
-        var match = stack;
-        var s = match ? match[0] : Pervasives.failwith("invariant violation: empty stack");
-        var a = pop_exn(toks);
-        var terminal_num = token_to_terminal(buffer, a);
-        var symbol = token_to_symbol(buffer, a);
+        var match = Belt_MutableStack.top(stack);
+        var s = match !== undefined ? match : Pervasives.failwith("invariant violation: empty stack");
+        var a = pop_front_exn(toks);
+        var terminal_num = token_to_terminal(a);
+        var symbol = token_to_symbol(a);
         var match$1 = action_table(s, terminal_num);
         if (typeof match$1 === "number") {
           if (match$1 === 0) {
+            console.log("accept");
             throw ParseFinished;
           } else {
+            console.log("error");
             throw [
                   ParseFailed,
-                  Pervasives.failwith("TODO")
+                  Pervasives.failwith("TODO (parse failed)")
                 ];
           }
         } else if (match$1.tag) {
-          Belt_MutableMapInt.getExn(production_map, match$1[0]);
-          var match$2 = stack;
-          if (match$2) {
-            stack = /* :: */[
-              goto_table(match$2[0], symbol),
-              match$2[1]
-            ];
+          var production_num = match$1[0];
+          console.log("reduce", production_num);
+          var symbols = Belt_MutableMapInt.getExn(production_map, production_num);
+          var children = /* [] */0;
+          for(var _for = 1 ,_for_finish = Belt_List.length(symbols); _for <= _for_finish; ++_for){
+            Belt_MutableStack.pop(stack);
+            var match$2 = Belt_MutableStack.pop(results);
+            if (match$2 !== undefined) {
+              children = /* :: */[
+                match$2,
+                children
+              ];
+            } else {
+              Pervasives.failwith("invariant violation: popping from empty stack");
+            }
+          }
+          var match$3 = Belt_MutableStack.pop(stack);
+          if (match$3 !== undefined) {
+            Belt_MutableStack.push(stack, goto_table(match$3, symbol));
           } else {
             Pervasives.failwith("invariant violation: reduction with empty stack");
           }
+          Belt_MutableStack.push(results, /* record */[
+                /* nonterminal */Belt_MutableMapInt.getExn(production_nonterminal_map, production_num),
+                /* children */children,
+                /* start_pos */Pervasives.failwith("TODO"),
+                /* end_pos */Pervasives.failwith("TODO")
+              ]);
         } else {
-          stack = /* :: */[
-            match$1[0],
-            stack
-          ];
-          a = pop_exn(toks);
+          var t = match$1[0];
+          console.log("shift", t);
+          Belt_MutableStack.push(stack, t);
+          a = pop_front_exn(toks);
         }
       };
       return Pervasives.failwith("invariant violation: can't make it here");
@@ -437,16 +457,20 @@ function Lr0(G) {
     catch (raw_exn){
       var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
       if (exn === ParseFinished) {
-        var len = results.length;
-        if (len !== 1) {
-          if (len !== 0) {
+        var match$4 = Belt_MutableStack.size(results);
+        if (match$4 !== 0) {
+          if (match$4 !== 1) {
             return Pervasives.failwith("invariant violation: multiple results");
           } else {
-            return Pervasives.failwith("invariant violation: no result");
+            var match$5 = Belt_MutableStack.top(results);
+            if (match$5 !== undefined) {
+              return /* Ok */Block.__(0, [match$5]);
+            } else {
+              return Pervasives.failwith("invariant violation: no result");
+            }
           }
         } else {
-          var result = results[0];
-          return /* Ok */Block.__(0, [result]);
+          return Pervasives.failwith("invariant violation: no result");
         }
       } else if (exn[0] === ParseFailed) {
         return /* Error */Block.__(1, [exn[1]]);
@@ -472,6 +496,7 @@ function Lr0(G) {
           /* items' */items$prime,
           /* state_to_item_set */state_to_item_set,
           /* item_set_to_state */item_set_to_state,
+          /* augmented_state */augmented_state,
           /* in_first_cache */in_first_cache,
           /* in_first */in_first$prime,
           /* in_first_str */in_first_str,
@@ -508,6 +533,8 @@ var MSI = 0;
 
 var Result = 0;
 
+var MStack = 0;
+
 exports.A = A;
 exports.L = L;
 exports.M = M;
@@ -518,6 +545,7 @@ exports.SS = SS;
 exports.MS = MS;
 exports.MSI = MSI;
 exports.Result = Result;
+exports.MStack = MStack;
 exports.SymbolCmp = SymbolCmp;
 exports.view_item = view_item;
 exports.mk_item$prime = mk_item$prime;
@@ -526,6 +554,6 @@ exports.ComparableSet = ComparableSet;
 exports.ParseFinished = ParseFinished;
 exports.ParseFailed = ParseFailed;
 exports.PopFailed = PopFailed;
-exports.pop_exn = pop_exn;
+exports.pop_front_exn = pop_front_exn;
 exports.Lr0 = Lr0;
 /* SymbolCmp Not a pure module */
