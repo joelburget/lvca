@@ -9,6 +9,7 @@ module MS = Belt.MutableSet
 module MSI = Belt.MutableSet.Int
 module Result = Belt.Result
 module MStack = Belt.MutableStack
+module MQueue = Belt.MutableQueue
 
 (* TODO:
   * augment grammar
@@ -117,7 +118,7 @@ type mutable_int_set_set = (SI.t, ComparableSet.identity) MS.t
 type parse_error = Lex.position * string
 
 type parse_result =
-  { nonterminal : nonterminal_num;
+  { symbol : symbol;
     children : parse_result list;
     start_pos : int;
     end_pos : int;
@@ -127,8 +128,8 @@ exception ParseFinished
 exception ParseFailed of parse_error
 exception PopFailed
 
-let pop_front_exn : 'a array -> 'a
-  = fun arr -> match Js.Array2.shift arr with
+let pop_front_exn : 'a MQueue.t -> 'a
+  = fun arr -> match MQueue.pop arr with
     | None -> raise PopFailed
     | Some a -> a
 
@@ -480,11 +481,20 @@ module Lr0 (G : GRAMMAR) = struct
           ("Found both a terminal *and* nonterminal with name " ^ name
           ^ " (this should never happen)")
 
-  let parse : string -> Lex.token array -> (parse_result, parse_error) Result.t
+  let parse : string -> Lex.token MQueue.t -> (parse_result, parse_error) Result.t
     = fun buffer toks ->
+      (* Re stack / results:
+       * These are called `stack` and `symbols` in CPTT. Their structure
+       * mirrors one another: there is a 1-1 correspondence between states in
+       * `stack` and symbols in `results`, expept that `stack` always has
+       * `augmented_state`, at the bottom of its stack.
+       *)
       let stack : state MStack.t = MStack.make () in
       MStack.push stack augmented_state;
       let results : parse_result MStack.t = MStack.make () in
+      let a = ref @@ pop_front_exn toks in
+      Js.log2 "a" a;
+      Js.log2 "stack" stack;
       try
         while true do
           (* let x be the state on top of the stack *)
@@ -492,40 +502,98 @@ module Lr0 (G : GRAMMAR) = struct
             | Some s' -> s'
             | None -> failwith "invariant violation: empty stack"
           in
-          let a = ref @@ pop_front_exn toks in
-          let terminal_num = token_to_terminal !a in
-          let symbol = token_to_symbol !a in
+          let tok = !a in
+          let terminal_num = token_to_terminal tok in
+          let symbol = token_to_symbol tok in
           match action_table s terminal_num with
             | Shift t ->
                 Js.log2 "shift" t;
                 stack |. MStack.push t;
-                a := pop_front_exn toks
+                results |. MStack.push
+                  { symbol = Terminal t;
+                    children = [];
+                    start_pos = tok.start;
+                    end_pos = tok.finish;
+                  };
+                Js.log2 "stack" stack;
+                Js.log2 "results" results;
+                a := pop_front_exn toks;
+                Js.log2 "a" !a;
             | Reduce production_num ->
                 Js.log2 "reduce" production_num;
-                let symbols = production_map |. MMI.getExn production_num in
+                Js.log2 "stack (before)" stack;
+                Js.log2 "results (before)" results;
+                let pop_count = production_map
+                  |. MMI.getExn production_num
+                  |. L.length
+                in
+                Js.log2 "pop_count" pop_count;
+                Js.log2 "stack, results size" (MStack.size stack, MStack.size results);
                 (* pop symbols off the stack *)
                 let children : parse_result list ref = ref [] in
+                let start_pos : int ref = ref 0 in
+                let end_pos : int ref = ref 0 in
                 (* XXX conflating stack / results *)
-                for _ = 1 to L.length symbols do
+                for i = 1 to pop_count do
                   let _ = stack |. MStack.pop in
                   match results |. MStack.pop with
-                    | Some child -> children := child :: !children
+                    | Some child -> (
+                      children := child :: !children;
+                      if i = 1 then start_pos := child.start_pos;
+                      if i = pop_count then end_pos := child.end_pos;
+                    )
                     | None -> failwith
                       "invariant violation: popping from empty stack"
                 done;
-                (match stack |. MStack.pop with
+                Js.log2 "children" children;
+                Js.log2 "stack (after popping)" stack;
+                Js.log2 "results (after popping)" results;
+
+                (match MStack.top stack with
+                  Some t -> (
+                    Js.log "here 1";
+                    MStack.push stack (goto_table t symbol);
+                    Js.log "here 2";
+                  )
+                );
+
+                Js.log "getting nt num";
+                let nt_num = MMI.getExn production_nonterminal_map production_num in
+                Js.log "got nt num";
+                MStack.push results
+                  { symbol = Nonterminal nt_num;
+                    children = !children;
+                    start_pos = !start_pos;
+                    end_pos =  !end_pos;
+                  };
+
+                Js.log2 "stack (after swapping)" stack;
+                Js.log2 "results (after swapping)" results;
+
+                (*
+                (match MStack.pop stack, MStack.pop results with
                   (* push GOTO[t, A] onto the stack *)
-                  | Some t -> stack |. MStack.push (goto_table t symbol)
-                  | None -> failwith "invariant violation: reduction with empty stack"
+                  | Some t, Some ({ start_pos; end_pos} as sub_result)
+                  -> (
+                    stack |. MStack.push (goto_table t symbol);
+                    MStack.push results
+                      { symbol = Nonterminal t;
+                        children = [sub_result];
+                        start_pos; end_pos;
+                      };
+                  )
+                  | _, _ -> failwith
+                    "invariant violation: mismatched / empty stack and results"
                 );
                 (* output production A -> B *)
-                results |. MStack.push {
-                  nonterminal =
-                    production_nonterminal_map |. MMI.getExn production_num;
-                  children = !children;
-                  start_pos = failwith "TODO";
-                  end_pos =  failwith "TODO";
-                };
+                MStack.push results
+                  { symbol = Nonterminal
+                      (production_nonterminal_map |. MMI.getExn production_num);
+                    children = !children;
+                    start_pos = failwith "TODO";
+                    end_pos =  failwith "TODO";
+                  };
+                  *)
             | Accept -> Js.log "accept"; raise ParseFinished
             | Error ->
               Js.log "error";

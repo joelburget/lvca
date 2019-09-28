@@ -4,6 +4,7 @@ open LrParsing
 module M = Belt.Map.Int
 module MS = Belt.Map.String
 module SI = Belt.Set.Int
+module MStack = Belt.MutableStack
 
 module Grammar : GRAMMAR = struct
   let grammar = {
@@ -369,16 +370,24 @@ let () = describe "LrParsing" (fun () ->
   testAll "action_table" action_table_tests' Util.id;
 
   let mk_tok name start finish : Lex.token = { name; start; finish } in
-  let tokens =
-    [| mk_tok "id" 0 3;
-       mk_tok "+" 4 5;
-       mk_tok "id" 6 9;
-    |]
+  let mk_parse_result symbol children start_pos end_pos =
+    { symbol; children; start_pos; end_pos; }
+  in
+  let tokens = MQueue.fromArray [|
+    mk_tok "id" 0 3;
+    mk_tok "*"  4 5;
+    mk_tok "id" 6 9;
+    mk_tok "$"  9 9;
+  |]
   in
   testAll "parse" [
-    expect (Lr0'.parse "foo + bar" tokens) |> toEqual (Result.Ok
-      { nonterminal = 0;
-        children = []; (* TODO *)
+    expect (Lr0'.parse "foo * bar" tokens) |> toEqual (Result.Ok
+      { symbol = Nonterminal 0;
+        children = [
+          mk_parse_result (Terminal id_num)    [] 0 3;
+          mk_parse_result (Terminal times_num) [] 4 5;
+          mk_parse_result (Terminal id_num)    [] 6 9;
+        ];
         start_pos = 0;
         end_pos = 9;
       })

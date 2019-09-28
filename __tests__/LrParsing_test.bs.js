@@ -13,6 +13,7 @@ var Belt_MapInt = require("bs-platform/lib/js/belt_MapInt.js");
 var Belt_SetInt = require("bs-platform/lib/js/belt_SetInt.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Belt_MutableSet = require("bs-platform/lib/js/belt_MutableSet.js");
+var Belt_MutableQueue = require("bs-platform/lib/js/belt_MutableQueue.js");
 
 var grammar_000 = /* nonterminals */Belt_MapInt.fromArray(/* array */[
       /* tuple */[
@@ -931,30 +932,52 @@ Jest.describe("LrParsing", (function (param) {
                 return Jest.Expect[/* toEqual */12](param[2], Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */26], Caml_array.caml_array_get(state, param[0]), param[1])));
               }));
         Jest.testAll("action_table", action_table_tests$prime, Util.id);
-        var tokens = /* array */[
-          /* record */[
-            /* name */"id",
-            /* start */0,
-            /* finish */3
-          ],
-          /* record */[
-            /* name */"+",
-            /* start */4,
-            /* finish */5
-          ],
-          /* record */[
-            /* name */"id",
-            /* start */6,
-            /* finish */9
-          ]
-        ];
+        var mk_parse_result = function (symbol, children, start_pos, end_pos) {
+          return /* record */[
+                  /* symbol */symbol,
+                  /* children */children,
+                  /* start_pos */start_pos,
+                  /* end_pos */end_pos
+                ];
+        };
+        var tokens = Belt_MutableQueue.fromArray(/* array */[
+              /* record */[
+                /* name */"id",
+                /* start */0,
+                /* finish */3
+              ],
+              /* record */[
+                /* name */"*",
+                /* start */4,
+                /* finish */5
+              ],
+              /* record */[
+                /* name */"id",
+                /* start */6,
+                /* finish */9
+              ],
+              /* record */[
+                /* name */"$",
+                /* start */9,
+                /* finish */9
+              ]
+            ]);
         return Jest.testAll("parse", /* :: */[
                     Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* record */[
-                              /* nonterminal */0,
-                              /* children : [] */0,
+                              /* symbol : Nonterminal */Block.__(1, [0]),
+                              /* children : :: */[
+                                mk_parse_result(/* Terminal */Block.__(0, [5]), /* [] */0, 0, 3),
+                                /* :: */[
+                                  mk_parse_result(/* Terminal */Block.__(0, [2]), /* [] */0, 4, 5),
+                                  /* :: */[
+                                    mk_parse_result(/* Terminal */Block.__(0, [5]), /* [] */0, 6, 9),
+                                    /* [] */0
+                                  ]
+                                ]
+                              ],
                               /* start_pos */0,
                               /* end_pos */9
-                            ]]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* parse */29], "foo + bar", tokens))),
+                            ]]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* parse */29], "foo * bar", tokens))),
                     /* [] */0
                   ], Util.id);
       }));
@@ -965,8 +988,11 @@ var MS = 0;
 
 var SI = 0;
 
+var MStack = 0;
+
 exports.M = M;
 exports.MS = MS;
 exports.SI = SI;
+exports.MStack = MStack;
 exports.Grammar = Grammar;
 /* grammar Not a pure module */
