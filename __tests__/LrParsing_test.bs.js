@@ -932,15 +932,26 @@ Jest.describe("LrParsing", (function (param) {
                 return Jest.Expect[/* toEqual */12](param[2], Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* action_table */26], Caml_array.caml_array_get(state, param[0]), param[1])));
               }));
         Jest.testAll("action_table", action_table_tests$prime, Util.id);
-        var mk_parse_result = function (symbol, children, start_pos, end_pos) {
+        var mk_terminal = function (num, start_pos, end_pos) {
           return /* record */[
-                  /* symbol */symbol,
-                  /* children */children,
+                  /* symbol : Terminal */Block.__(0, [num]),
+                  /* children : [] */0,
                   /* start_pos */start_pos,
                   /* end_pos */end_pos
                 ];
         };
-        var tokens = Belt_MutableQueue.fromArray(/* array */[
+        var mk_nonterminal = function (nt_num, child) {
+          return /* record */[
+                  /* symbol : Nonterminal */Block.__(1, [nt_num]),
+                  /* children : :: */[
+                    child,
+                    /* [] */0
+                  ],
+                  /* start_pos */child[/* start_pos */2],
+                  /* end_pos */child[/* end_pos */3]
+                ];
+        };
+        var tokens1 = Belt_MutableQueue.fromArray(/* array */[
               /* record */[
                 /* name */"id",
                 /* start */0,
@@ -963,21 +974,21 @@ Jest.describe("LrParsing", (function (param) {
               ]
             ]);
         return Jest.testAll("parse", /* :: */[
-                    Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* record */[
-                              /* symbol : Nonterminal */Block.__(1, [0]),
-                              /* children : :: */[
-                                mk_parse_result(/* Terminal */Block.__(0, [5]), /* [] */0, 0, 3),
-                                /* :: */[
-                                  mk_parse_result(/* Terminal */Block.__(0, [2]), /* [] */0, 4, 5),
-                                  /* :: */[
-                                    mk_parse_result(/* Terminal */Block.__(0, [5]), /* [] */0, 6, 9),
-                                    /* [] */0
-                                  ]
-                                ]
-                              ],
-                              /* start_pos */0,
-                              /* end_pos */9
-                            ]]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* parse */29], "foo * bar", tokens))),
+                    Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [mk_nonterminal(1, /* record */[
+                                  /* symbol : Nonterminal */Block.__(1, [2]),
+                                  /* children : :: */[
+                                    mk_nonterminal(2, mk_nonterminal(3, mk_terminal(5, 0, 3))),
+                                    /* :: */[
+                                      mk_terminal(2, 4, 5),
+                                      /* :: */[
+                                        mk_nonterminal(3, mk_terminal(5, 6, 9)),
+                                        /* [] */0
+                                      ]
+                                    ]
+                                  ],
+                                  /* start_pos */0,
+                                  /* end_pos */9
+                                ])]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* parse */29], "foo * bar", tokens1))),
                     /* [] */0
                   ], Util.id);
       }));

@@ -370,10 +370,17 @@ let () = describe "LrParsing" (fun () ->
   testAll "action_table" action_table_tests' Util.id;
 
   let mk_tok name start finish : Lex.token = { name; start; finish } in
-  let mk_parse_result symbol children start_pos end_pos =
-    { symbol; children; start_pos; end_pos; }
+  let mk_terminal num start_pos end_pos =
+    { symbol = Terminal num; children = []; start_pos; end_pos; }
   in
-  let tokens = MQueue.fromArray [|
+  let mk_nonterminal nt_num ({start_pos; end_pos} as child) =
+    { symbol = Nonterminal nt_num;
+      children = [ child ];
+      start_pos;
+      end_pos;
+    }
+  in
+  let tokens1 = MQueue.fromArray [|
     mk_tok "id" 0 3;
     mk_tok "*"  4 5;
     mk_tok "id" 6 9;
@@ -381,15 +388,16 @@ let () = describe "LrParsing" (fun () ->
   |]
   in
   testAll "parse" [
-    expect (Lr0'.parse "foo * bar" tokens) |> toEqual (Result.Ok
-      { symbol = Nonterminal 0;
-        children = [
-          mk_parse_result (Terminal id_num)    [] 0 3;
-          mk_parse_result (Terminal times_num) [] 4 5;
-          mk_parse_result (Terminal id_num)    [] 6 9;
-        ];
-        start_pos = 0;
-        end_pos = 9;
-      })
+    expect (Lr0'.parse "foo * bar" tokens1) |> toEqual (Result.Ok
+      (mk_nonterminal 1
+        { symbol = Nonterminal 2;
+          children = [
+            mk_nonterminal 2 @@ mk_nonterminal 3 @@ mk_terminal id_num 0 3;
+            mk_terminal times_num 4 5;
+            mk_nonterminal 3 @@ mk_terminal id_num 6 9;
+          ];
+          start_pos = 0;
+          end_pos = 9;
+        }))
   ] Util.id;
 )

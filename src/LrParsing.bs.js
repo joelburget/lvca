@@ -400,23 +400,19 @@ function Lr0(G) {
     var stack = Belt_MutableStack.make(/* () */0);
     Belt_MutableStack.push(stack, augmented_state);
     var results = Belt_MutableStack.make(/* () */0);
-    var a = /* record */[/* contents */pop_front_exn(toks)];
-    console.log("a", a);
-    console.log("stack", stack);
+    var a = pop_front_exn(toks);
     try {
       while(true) {
         var match = Belt_MutableStack.top(stack);
         var s = match !== undefined ? match : Pervasives.failwith("invariant violation: empty stack");
-        var tok = a[0];
+        var tok = a;
         var terminal_num = token_to_terminal(tok);
-        var symbol = token_to_symbol(tok);
+        token_to_symbol(tok);
         var match$1 = action_table(s, terminal_num);
         if (typeof match$1 === "number") {
           if (match$1 === 0) {
-            console.log("accept");
             throw ParseFinished;
           } else {
-            console.log("error");
             throw [
                   ParseFailed,
                   Pervasives.failwith("TODO (parse failed)")
@@ -424,16 +420,8 @@ function Lr0(G) {
           }
         } else if (match$1.tag) {
           var production_num = match$1[0];
-          console.log("reduce", production_num);
-          console.log("stack (before)", stack);
-          console.log("results (before)", results);
           var pop_count = Belt_List.length(Belt_MutableMapInt.getExn(production_map, production_num));
-          console.log("pop_count", pop_count);
-          console.log("stack, results size", /* tuple */[
-                Belt_MutableStack.size(stack),
-                Belt_MutableStack.size(results)
-              ]);
-          var children = /* record */[/* contents : [] */0];
+          var children = /* [] */0;
           var start_pos = 0;
           var end_pos = 0;
           for(var i = 1; i <= pop_count; ++i){
@@ -441,14 +429,14 @@ function Lr0(G) {
             var match$2 = Belt_MutableStack.pop(results);
             if (match$2 !== undefined) {
               var child = match$2;
-              children[0] = /* :: */[
+              children = /* :: */[
                 child,
-                children[0]
+                children
               ];
-              if (i === 1) {
+              if (i === pop_count) {
                 start_pos = child[/* start_pos */2];
               }
-              if (i === pop_count) {
+              if (i === 1) {
                 end_pos = child[/* end_pos */3];
               }
               
@@ -456,49 +444,35 @@ function Lr0(G) {
               Pervasives.failwith("invariant violation: popping from empty stack");
             }
           }
-          console.log("children", children);
-          console.log("stack (after popping)", stack);
-          console.log("results (after popping)", results);
+          var nt_num = Belt_MutableMapInt.getExn(production_nonterminal_map, production_num);
           var match$3 = Belt_MutableStack.top(stack);
           if (match$3 !== undefined) {
-            console.log("here 1");
-            Belt_MutableStack.push(stack, goto_table(match$3, symbol));
-            console.log("here 2");
+            Belt_MutableStack.push(stack, goto_table(match$3, /* Nonterminal */Block.__(1, [nt_num])));
           } else {
             throw [
                   Caml_builtin_exceptions.match_failure,
                   /* tuple */[
                     "LrParsing.ml",
-                    552,
+                    539,
                     16
                   ]
                 ];
           }
-          console.log("getting nt num");
-          var nt_num = Belt_MutableMapInt.getExn(production_nonterminal_map, production_num);
-          console.log("got nt num");
           Belt_MutableStack.push(results, /* record */[
                 /* symbol : Nonterminal */Block.__(1, [nt_num]),
-                /* children */children[0],
+                /* children */children,
                 /* start_pos */start_pos,
                 /* end_pos */end_pos
               ]);
-          console.log("stack (after swapping)", stack);
-          console.log("results (after swapping)", results);
         } else {
-          var t = match$1[0];
-          console.log("shift", t);
-          Belt_MutableStack.push(stack, t);
+          Belt_MutableStack.push(stack, match$1[0]);
           Belt_MutableStack.push(results, /* record */[
-                /* symbol : Terminal */Block.__(0, [t]),
+                /* symbol : Terminal */Block.__(0, [terminal_num]),
                 /* children : [] */0,
                 /* start_pos */tok[/* start */1],
                 /* end_pos */tok[/* finish */2]
               ]);
-          console.log("stack", stack);
-          console.log("results", results);
-          a[0] = pop_front_exn(toks);
-          console.log("a", a[0]);
+          a = pop_front_exn(toks);
         }
       };
       return Pervasives.failwith("invariant violation: can't make it here");
