@@ -373,13 +373,17 @@ let () = describe "LrParsing" (fun () ->
   let mk_terminal num start_pos end_pos =
     { symbol = Terminal num; children = []; start_pos; end_pos; }
   in
-  let mk_nonterminal nt_num ({start_pos; end_pos} as child) =
+  let mk_wrapper nt_num ({start_pos; end_pos} as child) =
     { symbol = Nonterminal nt_num;
       children = [ child ];
       start_pos;
       end_pos;
     }
   in
+
+  (* foo * bar
+   * 0123456789
+   *)
   let tokens1 = MQueue.fromArray [|
     mk_tok "id" 0 3;
     mk_tok "*"  4 5;
@@ -387,17 +391,53 @@ let () = describe "LrParsing" (fun () ->
     mk_tok "$"  9 9;
   |]
   in
+
+  (* foo * bar + baz
+   * 0123456789012345
+   *)
+  let tokens2 = MQueue.fromArray [|
+    mk_tok "id" 0 3;
+    mk_tok "*"  4 5;
+    mk_tok "id" 6 9;
+    mk_tok "+"  10 11;
+    mk_tok "id" 12 15;
+    mk_tok "$"  15 15;
+  |]
+  in
+
   testAll "parse" [
+
     expect (Lr0'.parse "foo * bar" tokens1) |> toEqual (Result.Ok
-      (mk_nonterminal 1
+      (mk_wrapper 1
         { symbol = Nonterminal 2;
           children = [
-            mk_nonterminal 2 @@ mk_nonterminal 3 @@ mk_terminal id_num 0 3;
+            mk_wrapper 2 @@ mk_wrapper 3 @@ mk_terminal id_num 0 3;
             mk_terminal times_num 4 5;
-            mk_nonterminal 3 @@ mk_terminal id_num 6 9;
+            mk_wrapper 3 @@ mk_terminal id_num 6 9;
           ];
           start_pos = 0;
           end_pos = 9;
-        }))
+        }));
+
+    expect (Lr0'.parse "foo * bar + baz" tokens2) |> toEqual (Result.Ok
+      { symbol = Nonterminal 1;
+        children =
+          [ mk_wrapper 1
+            { symbol = Nonterminal 2;
+              children = [
+                mk_wrapper 2 @@ mk_wrapper 3 @@ mk_terminal id_num 0 3;
+                mk_terminal times_num 4 5;
+                mk_wrapper 3 @@ mk_terminal id_num 6 9;
+              ];
+              start_pos = 0;
+              end_pos = 9;
+            };
+            mk_terminal plus_num 10 11;
+            mk_wrapper 2 @@ mk_wrapper 3 @@ mk_terminal id_num 12 15;
+          ];
+        start_pos = 0;
+        end_pos = 15;
+      });
+
   ] Util.id;
 )
