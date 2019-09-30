@@ -40,7 +40,7 @@ function find_first_capture(tok_names, captures) {
 
 function get_next_tok(tok_names, re, param) {
   var pos = param[/* pos */1];
-  var param$1 = re.exec(param[/* buf */0].slice(pos[/* character */1]));
+  var param$1 = re.exec(param[/* buf */0].slice(pos));
   if (param$1 !== null) {
     var match = Caml_array.caml_array_get(param$1, 0);
     var match$1 = find_first_capture(tok_names, param$1);
@@ -56,8 +56,8 @@ function get_next_tok(tok_names, re, param) {
     } else if (match$1 !== undefined) {
       return /* record */[
               /* name */match$1,
-              /* start */pos[/* character */1],
-              /* finish */pos[/* character */1] + match.length | 0
+              /* start */pos,
+              /* finish */pos + match.length | 0
             ];
     } else {
       throw [
@@ -85,10 +85,7 @@ function lex$prime(lexer, input) {
   var result = /* array */[];
   var lexbuf = /* record */[
     /* buf */input,
-    /* pos : record */[
-      /* line */0,
-      /* character */0
-    ]
+    /* pos */0
   ];
   var mut_tok_names = Belt_MutableMapInt.make(/* () */0);
   var re_str = Belt_Array.mapWithIndex(Belt_List.toArray(lexer), (function (i, param) {
@@ -97,9 +94,9 @@ function lex$prime(lexer, input) {
           })).join("|");
   var tok_names = Belt_MapInt.fromArray(Belt_MutableMapInt.toArray(mut_tok_names));
   var re = new RegExp(re_str);
-  while(lexbuf[/* pos */1][/* character */1] < lexbuf[/* buf */0].length) {
+  while(lexbuf[/* pos */1] < lexbuf[/* buf */0].length) {
     var tok = get_next_tok(tok_names, re, lexbuf);
-    if (tok[/* start */1] !== lexbuf[/* pos */1][/* character */1]) {
+    if (tok[/* start */1] !== lexbuf[/* pos */1]) {
       throw [
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
@@ -109,10 +106,7 @@ function lex$prime(lexer, input) {
             ]
           ];
     }
-    lexbuf[/* pos */1] = /* record */[
-      /* line */0,
-      /* character */tok[/* finish */2]
-    ];
+    lexbuf[/* pos */1] = tok[/* finish */2];
     result.push(tok);
   };
   return result;

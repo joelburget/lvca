@@ -19,7 +19,7 @@ type token =
     finish: int; (* exclusive *)
   }
 
-type position = { line: int; character: int }
+type position = int
 
 type lex_error =
   { start_pos: position;
@@ -51,15 +51,15 @@ let find_first_capture : string M.t -> 'a Js.nullable array -> string option
 
 let get_next_tok : string M.t -> Js.Re.t -> lexbuf -> token
   = fun tok_names re { buf; pos } -> re
-    |. Js.Re.exec_ (buf |. Js.String2.sliceToEnd ~from:pos.character)
+    |. Js.Re.exec_ (buf |. Js.String2.sliceToEnd ~from:pos)
     |. function
       | Some result ->
         let captures = Js.Re.captures result in
         (match Js.Nullable.toOption captures.(0), find_first_capture tok_names captures with
         | Some token_contents, Some name ->
             { name;
-              start = pos.character;
-              finish = pos.character + Js.String2.length token_contents
+              start = pos;
+              finish = pos + Js.String2.length token_contents
             }
         | _, _ ->
           raise (LexError {
@@ -76,7 +76,7 @@ let get_next_tok : string M.t -> Js.Re.t -> lexbuf -> token
 let lex' : lexer -> string -> token array
   = fun lexer input ->
     let result = [||] in
-    let lexbuf = { buf = input; pos = { character = 0; line = 0 } } in
+    let lexbuf = { buf = input; pos = 0 } in
     let mut_tok_names = MM.make () in
     let re_str = lexer
       |. L.toArray
@@ -88,12 +88,11 @@ let lex' : lexer -> string -> token array
     in
     let tok_names = mut_tok_names |. MM.toArray |> M.fromArray in
     let re = Js.Re.fromString @@ re_str in
-    while lexbuf.pos.character < Js.String2.length lexbuf.buf do
+    while lexbuf.pos < Js.String2.length lexbuf.buf do
       let tok = get_next_tok tok_names re lexbuf in
       let { start; finish } = tok in
-      assert (start = lexbuf.pos.character);
-      (* TODO: update lines *)
-      lexbuf.pos <- { character = finish; line = 0 };
+      assert (start = lexbuf.pos);
+      lexbuf.pos <- finish;
       ignore (Js.Array2.push result tok)
     done;
     result

@@ -9,7 +9,7 @@ type token =
     finish: int; (* exclusive *)
   }
 
-type position = { line: int; character: int }
+type position = int
 
 type lex_error =
   { start_pos: position;
