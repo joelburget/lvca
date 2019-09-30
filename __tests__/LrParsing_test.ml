@@ -405,6 +405,16 @@ let () = describe "LrParsing" (fun () ->
   |]
   in
 
+  (* foo * bar + baz
+   * 0123456789012345
+   *)
+  let tokens3 = MQueue.fromArray [|
+    mk_tok "id" 0 3;
+    mk_tok "*"  4 5;
+  |]
+  in
+
+  (* TODO: test failed parses *)
   testAll "parse" [
 
     expect (Lr0'.parse "foo * bar" tokens1) |> toEqual (Result.Ok
@@ -419,6 +429,7 @@ let () = describe "LrParsing" (fun () ->
           end_pos = 9;
         }));
 
+    (* Figure 4.38 from CPTT *)
     expect (Lr0'.parse "foo * bar + baz" tokens2) |> toEqual (Result.Ok
       { symbol = Nonterminal 1;
         children =
@@ -438,6 +449,10 @@ let () = describe "LrParsing" (fun () ->
         start_pos = 0;
         end_pos = 15;
       });
+
+    (* Figure 4.38 from CPTT *)
+    expect (Lr0'.parse "foo *" tokens2) |> toEqual
+      (Result.Error (0, "bad parse"));
 
   ] Util.id;
 )
