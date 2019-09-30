@@ -166,6 +166,9 @@ function Lr0(G) {
   var $$goto = function (item_set, symbol) {
     return closure(goto_kernel(item_set, symbol));
   };
+  var goto$prime = function (item_set, symbol) {
+    return simplify_config_set(closure(goto_kernel(item_set, symbol)));
+  };
   var augmented_start = Belt_SetInt.fromArray(/* array */[mk_item(/* record */[
               /* production_num */0,
               /* position */0
@@ -400,8 +403,8 @@ function Lr0(G) {
     var stack = Belt_MutableStack.make(/* () */0);
     Belt_MutableStack.push(stack, augmented_state);
     var results = Belt_MutableStack.make(/* () */0);
-    var a = pop_front_exn(toks);
     try {
+      var a = pop_front_exn(toks);
       while(true) {
         var match = Belt_MutableStack.top(stack);
         var s = match !== undefined ? match : Pervasives.failwith("invariant violation: empty stack");
@@ -415,7 +418,10 @@ function Lr0(G) {
           } else {
             throw [
                   ParseFailed,
-                  Pervasives.failwith("TODO (parse failed)")
+                  /* tuple */[
+                    0,
+                    "TODO (parse failed)"
+                  ]
                 ];
           }
         } else if (match$1.tag) {
@@ -497,6 +503,11 @@ function Lr0(G) {
         }
       } else if (exn[0] === ParseFailed) {
         return /* Error */Block.__(1, [exn[1]]);
+      } else if (exn === PopFailed) {
+        return /* Error */Block.__(1, [/* tuple */[
+                    0,
+                    "TODO (parse failed)"
+                  ]]);
       } else {
         throw exn;
       }
@@ -515,6 +526,7 @@ function Lr0(G) {
           /* closure' */closure$prime,
           /* goto_kernel */goto_kernel,
           /* goto */$$goto,
+          /* goto' */goto$prime,
           /* items */c,
           /* items' */items$prime,
           /* state_to_item_set */state_to_item_set,
