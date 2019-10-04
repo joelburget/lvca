@@ -430,7 +430,7 @@ let () = describe "LrParsing" (fun () ->
   (* TODO: test failed parses *)
   testAll "parse" [
 
-    expect (Lr0'.parse "foo * bar" tokens1) |> toEqual (Result.Ok
+    expect (Lr0'.parse (* "foo * bar" *) tokens1) |> toEqual (Result.Ok
       (mk_wrapper 1
         { symbol = Nonterminal 2;
           children = [
@@ -443,7 +443,7 @@ let () = describe "LrParsing" (fun () ->
         }));
 
     (* Figure 4.38 from CPTT *)
-    expect (Lr0'.parse "foo * bar + baz" tokens2) |> toEqual (Result.Ok
+    expect (Lr0'.parse (* "foo * bar + baz" *) tokens2) |> toEqual (Result.Ok
       { symbol = Nonterminal 1;
         children =
           [ mk_wrapper 1
@@ -464,10 +464,10 @@ let () = describe "LrParsing" (fun () ->
       });
 
     (* Figure 4.38 from CPTT *)
-    expect (Lr0'.parse "foo *" tokens3) |> toEqual
+    expect (Lr0'.parse (* "foo *" *) tokens3) |> toEqual
       (Result.Error (4, "parsing invariant violation -- pop failed"));
 
-    expect (Lr0'.parse "foo + bar" tokens4) |> toEqual (Result.Ok
+    expect (Lr0'.parse (* "foo + bar" *) tokens4) |> toEqual (Result.Ok
       { symbol = Nonterminal 1;
         children = [
           mk_wrapper 1 @@ mk_wrapper 2 @@ mk_wrapper 3 @@ mk_terminal id_num 0 3;

@@ -25,7 +25,6 @@ var Belt_MutableStack = require("bs-platform/lib/js/belt_MutableStack.js");
 var Belt_MutableMapInt = require("bs-platform/lib/js/belt_MutableMapInt.js");
 var Belt_MutableSetInt = require("bs-platform/lib/js/belt_MutableSetInt.js");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
-var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
 function cmp(param, param$1) {
   var c = Caml_obj.caml_compare(param[0], param$1[0]);
@@ -415,7 +414,7 @@ function Lr0(G) {
       return Pervasives.failwith("Failed to find a terminal or nonterminal named " + name);
     }
   };
-  var parse = function (buffer, toks) {
+  var parse = function (toks) {
     var stack = Belt_MutableStack.make(/* () */0);
     Belt_MutableStack.push(stack, augmented_state);
     var results = Belt_MutableStack.make(/* () */0);
@@ -426,7 +425,6 @@ function Lr0(G) {
         var s = match !== undefined ? match : Pervasives.failwith("invariant violation: empty stack");
         var tok = a;
         var terminal_num = token_to_terminal(tok);
-        token_to_symbol(tok);
         var match$1 = action_table(s, terminal_num);
         if (typeof match$1 === "number") {
           if (match$1 === 0) {
@@ -471,14 +469,7 @@ function Lr0(G) {
           if (match$3 !== undefined) {
             Belt_MutableStack.push(stack, goto_table(match$3, /* Nonterminal */Block.__(1, [nt_num])));
           } else {
-            throw [
-                  Caml_builtin_exceptions.match_failure,
-                  /* tuple */[
-                    "LrParsing.ml",
-                    561,
-                    16
-                  ]
-                ];
+            Pervasives.failwith("invariant violation: peeking empty stack");
           }
           Belt_MutableStack.push(results, /* record */[
                 /* symbol : Nonterminal */Block.__(1, [nt_num]),
@@ -541,7 +532,7 @@ function Lr0(G) {
             /* start */len,
             /* finish */len
           ]);
-      var match$1 = parse(input, toks$prime);
+      var match$1 = parse(toks$prime);
       if (match$1.tag) {
         return /* Error */Block.__(1, [/* Right */Block.__(1, [match$1[0]])]);
       } else {

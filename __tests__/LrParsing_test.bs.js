@@ -1054,7 +1054,7 @@ Jest.describe("LrParsing", (function (param) {
                             ],
                             /* start_pos */0,
                             /* end_pos */9
-                          ])]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* parse */30], "foo * bar", tokens1))),
+                          ])]), Jest.Expect[/* expect */0](Curry._1(Lr0$prime[/* parse */30], tokens1))),
               /* :: */[
                 Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* record */[
                           /* symbol : Nonterminal */Block.__(1, [1]),
@@ -1084,12 +1084,12 @@ Jest.describe("LrParsing", (function (param) {
                           ],
                           /* start_pos */0,
                           /* end_pos */15
-                        ]]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* parse */30], "foo * bar + baz", tokens2))),
+                        ]]), Jest.Expect[/* expect */0](Curry._1(Lr0$prime[/* parse */30], tokens2))),
                 /* :: */[
                   Jest.Expect[/* toEqual */12](/* Error */Block.__(1, [/* tuple */[
                             4,
                             "parsing invariant violation -- pop failed"
-                          ]]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* parse */30], "foo *", tokens3))),
+                          ]]), Jest.Expect[/* expect */0](Curry._1(Lr0$prime[/* parse */30], tokens3))),
                   /* :: */[
                     Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* record */[
                               /* symbol : Nonterminal */Block.__(1, [1]),
@@ -1105,7 +1105,7 @@ Jest.describe("LrParsing", (function (param) {
                               ],
                               /* start_pos */0,
                               /* end_pos */9
-                            ]]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* parse */30], "foo + bar", tokens4))),
+                            ]]), Jest.Expect[/* expect */0](Curry._1(Lr0$prime[/* parse */30], tokens4))),
                     /* [] */0
                   ]
                 ]

@@ -503,8 +503,8 @@ module Lr0 (G : GRAMMAR) = struct
           ("Found both a terminal *and* nonterminal with name " ^ name
           ^ " (this should never happen)")
 
-  let parse : string -> Lex.token MQueue.t -> (parse_result, parse_error) Result.t
-    = fun buffer toks ->
+  let parse : Lex.token MQueue.t -> (parse_result, parse_error) Result.t
+    = fun toks ->
       (* Re stack / results:
        * These are called `stack` and `symbols` in CPTT. Their structure
        * mirrors one another: there is a 1-1 correspondence between states in
@@ -524,7 +524,6 @@ module Lr0 (G : GRAMMAR) = struct
           in
           let tok = !a in
           let terminal_num = token_to_terminal tok in
-          let symbol = token_to_symbol tok in
           match action_table s terminal_num with
             | Shift t ->
                 stack |. MStack.push t;
@@ -559,8 +558,9 @@ module Lr0 (G : GRAMMAR) = struct
 
                 let nt_num = MMI.getExn production_nonterminal_map production_num in
                 (match MStack.top stack with
-                  Some t ->
+                  | Some t ->
                     MStack.push stack @@ goto_table t (Nonterminal nt_num);
+                  | None -> failwith "invariant violation: peeking empty stack"
                 );
 
                 MStack.push results
@@ -601,7 +601,7 @@ module Lr0 (G : GRAMMAR) = struct
         let toks' = MQueue.fromArray toks in
         (* TODO: name might not always be "$" *)
         MQueue.add toks' { name = "$"; start = len; finish = len};
-        (match parse input toks' with
+        (match parse toks' with
         | Error error -> Error (Right error)
         | Ok result -> Ok result
         )
