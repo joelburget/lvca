@@ -1005,7 +1005,7 @@ Jest.describe("LrParsing", (function (param) {
                 /* finish */15
               ]
             ]);
-        Belt_MutableQueue.fromArray(/* array */[
+        var tokens3 = Belt_MutableQueue.fromArray(/* array */[
               /* record */[
                 /* name */"id",
                 /* start */0,
@@ -1017,8 +1017,49 @@ Jest.describe("LrParsing", (function (param) {
                 /* finish */5
               ]
             ]);
-        return Jest.testAll("parse", /* :: */[
-                    Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [mk_wrapper(1, /* record */[
+        var tokens4 = Belt_MutableQueue.fromArray(/* array */[
+              /* record */[
+                /* name */"id",
+                /* start */0,
+                /* finish */3
+              ],
+              /* record */[
+                /* name */"+",
+                /* start */4,
+                /* finish */5
+              ],
+              /* record */[
+                /* name */"id",
+                /* start */6,
+                /* finish */9
+              ],
+              /* record */[
+                /* name */"$",
+                /* start */9,
+                /* finish */9
+              ]
+            ]);
+        Jest.testAll("parse", /* :: */[
+              Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [mk_wrapper(1, /* record */[
+                            /* symbol : Nonterminal */Block.__(1, [2]),
+                            /* children : :: */[
+                              mk_wrapper(2, mk_wrapper(3, mk_terminal(5, 0, 3))),
+                              /* :: */[
+                                mk_terminal(2, 4, 5),
+                                /* :: */[
+                                  mk_wrapper(3, mk_terminal(5, 6, 9)),
+                                  /* [] */0
+                                ]
+                              ]
+                            ],
+                            /* start_pos */0,
+                            /* end_pos */9
+                          ])]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* parse */30], "foo * bar", tokens1))),
+              /* :: */[
+                Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* record */[
+                          /* symbol : Nonterminal */Block.__(1, [1]),
+                          /* children : :: */[
+                            mk_wrapper(1, /* record */[
                                   /* symbol : Nonterminal */Block.__(1, [2]),
                                   /* children : :: */[
                                     mk_wrapper(2, mk_wrapper(3, mk_terminal(5, 0, 3))),
@@ -1032,46 +1073,82 @@ Jest.describe("LrParsing", (function (param) {
                                   ],
                                   /* start_pos */0,
                                   /* end_pos */9
-                                ])]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* parse */30], "foo * bar", tokens1))),
-                    /* :: */[
-                      Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* record */[
-                                /* symbol : Nonterminal */Block.__(1, [1]),
-                                /* children : :: */[
-                                  mk_wrapper(1, /* record */[
-                                        /* symbol : Nonterminal */Block.__(1, [2]),
-                                        /* children : :: */[
-                                          mk_wrapper(2, mk_wrapper(3, mk_terminal(5, 0, 3))),
-                                          /* :: */[
-                                            mk_terminal(2, 4, 5),
-                                            /* :: */[
-                                              mk_wrapper(3, mk_terminal(5, 6, 9)),
-                                              /* [] */0
-                                            ]
-                                          ]
-                                        ],
-                                        /* start_pos */0,
-                                        /* end_pos */9
-                                      ]),
+                                ]),
+                            /* :: */[
+                              mk_terminal(1, 10, 11),
+                              /* :: */[
+                                mk_wrapper(2, mk_wrapper(3, mk_terminal(5, 12, 15))),
+                                /* [] */0
+                              ]
+                            ]
+                          ],
+                          /* start_pos */0,
+                          /* end_pos */15
+                        ]]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* parse */30], "foo * bar + baz", tokens2))),
+                /* :: */[
+                  Jest.Expect[/* toEqual */12](/* Error */Block.__(1, [/* tuple */[
+                            4,
+                            "parsing invariant violation -- pop failed"
+                          ]]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* parse */30], "foo *", tokens3))),
+                  /* :: */[
+                    Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* record */[
+                              /* symbol : Nonterminal */Block.__(1, [1]),
+                              /* children : :: */[
+                                mk_wrapper(1, mk_wrapper(2, mk_wrapper(3, mk_terminal(5, 0, 3)))),
+                                /* :: */[
+                                  mk_terminal(1, 4, 5),
                                   /* :: */[
-                                    mk_terminal(1, 10, 11),
-                                    /* :: */[
-                                      mk_wrapper(2, mk_wrapper(3, mk_terminal(5, 12, 15))),
-                                      /* [] */0
-                                    ]
+                                    mk_wrapper(2, mk_wrapper(3, mk_terminal(5, 6, 9))),
+                                    /* [] */0
                                   ]
+                                ]
+                              ],
+                              /* start_pos */0,
+                              /* end_pos */9
+                            ]]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* parse */30], "foo + bar", tokens4))),
+                    /* [] */0
+                  ]
+                ]
+              ]
+            ], Util.id);
+        return Jest.test("lex-parse", (function (param) {
+                      var match = Curry._2(Lr0$prime[/* lex_and_parse */31], /* :: */[
+                            /* tuple */[
+                              "\\+",
+                              "+"
+                            ],
+                            /* :: */[
+                              /* tuple */[
+                                "\\*",
+                                "*"
+                              ],
+                              /* :: */[
+                                /* tuple */[
+                                  "\\(",
+                                  "("
                                 ],
-                                /* start_pos */0,
-                                /* end_pos */15
-                              ]]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* parse */30], "foo * bar + baz", tokens2))),
-                      /* :: */[
-                        Jest.Expect[/* toEqual */12](/* Error */Block.__(1, [/* tuple */[
-                                  0,
-                                  "bad parse"
-                                ]]), Jest.Expect[/* expect */0](Curry._2(Lr0$prime[/* parse */30], "foo *", tokens2))),
-                        /* [] */0
-                      ]
-                    ]
-                  ], Util.id);
+                                /* :: */[
+                                  /* tuple */[
+                                    "\\)",
+                                    ")"
+                                  ],
+                                  /* :: */[
+                                    /* tuple */[
+                                      "\\w+",
+                                      "id"
+                                    ],
+                                    /* [] */0
+                                  ]
+                                ]
+                              ]
+                            ]
+                          ], "foo+bar");
+                      if (match.tag) {
+                        return Jest.fail("lex_and_parse error");
+                      } else {
+                        return Jest.pass;
+                      }
+                    }));
       }));
 
 var M = 0;
@@ -1082,9 +1159,12 @@ var SI = 0;
 
 var MStack = 0;
 
+var MQueue = 0;
+
 exports.M = M;
 exports.MS = MS;
 exports.SI = SI;
 exports.MStack = MStack;
+exports.MQueue = MQueue;
 exports.Grammar = Grammar;
 /* grammar Not a pure module */

@@ -5,6 +5,7 @@ module M = Belt.Map.Int
 module MS = Belt.Map.String
 module SI = Belt.Set.Int
 module MStack = Belt.MutableStack
+module MQueue = Belt.MutableQueue
 
 module Grammar : GRAMMAR = struct
   let grammar = {
@@ -108,7 +109,7 @@ let () = describe "LrParsing" (fun () ->
 
   (* I0 *)
   let items0 = [| mk_item' 0 0 |] in
-  let expected0 =
+  let expected0 : configuration_set =
     { kernel_items = SI.fromArray items0;
       nonkernel_items = SI.fromArray
         [| mk_item' 1 0;
@@ -128,7 +129,7 @@ let () = describe "LrParsing" (fun () ->
   |]
   in
 
-  let expected1 =
+  let expected1 : configuration_set =
     { kernel_items = SI.fromArray items1;
       nonkernel_items = SI.fromArray [||];
     }
@@ -136,7 +137,7 @@ let () = describe "LrParsing" (fun () ->
 
   (* I7 *)
   let items7 = [| mk_item' 3 2 |] in
-  let expected7 =
+  let expected7 : configuration_set =
     { kernel_items = SI.fromArray items7;
       nonkernel_items = SI.fromArray [| mk_item' 5 0; mk_item' 6 0 |];
     }
@@ -166,7 +167,8 @@ let () = describe "LrParsing" (fun () ->
       |> toEqual goto_kernel;
     expect (Lr0'.goto (SI.fromArray items1) (Terminal 1))
       |> toEqual
-      { kernel_items = goto_kernel; nonkernel_items = goto_nonkernel };
+      ({ kernel_items = goto_kernel; nonkernel_items = goto_nonkernel }
+        : configuration_set);
   ] Util.id;
 
   let item_sets = [|
@@ -275,89 +277,89 @@ let () = describe "LrParsing" (fun () ->
 
   (* Test for a match with CPTT Figure 4.37 *)
   let action_table_tests =
-    [ 0, id_num, Shift state.(5);
-      0, plus_num, Error;
-      0, times_num, Error;
+    [ 0, id_num,     Shift state.(5);
+      0, plus_num,   Error;
+      0, times_num,  Error;
       0, lparen_num, Shift state.(4);
       0, rparen_num, Error;
-      0, 0, Error;
+      0, 0,          Error;
 
-      1, id_num, Error;
-      1, plus_num, Shift state.(6);
-      1, times_num, Error;
+      1, id_num,     Error;
+      1, plus_num,   Shift state.(6);
+      1, times_num,  Error;
       1, lparen_num, Error;
       1, rparen_num, Error;
-      1, 0, Accept;
+      1, 0,          Accept;
 
-      2, id_num, Error;
-      2, plus_num, Reduce 2;
-      2, times_num, Shift state.(7);
+      2, id_num,     Error;
+      2, plus_num,   Reduce 2;
+      2, times_num,  Shift state.(7);
       2, lparen_num, Error;
       2, rparen_num, Reduce 2;
-      2, 0, Reduce 2;
+      2, 0,          Reduce 2;
 
-      3, id_num, Error;
-      3, plus_num, Reduce 4;
-      3, times_num, Reduce 4;
+      3, id_num,     Error;
+      3, plus_num,   Reduce 4;
+      3, times_num,  Reduce 4;
       3, lparen_num, Error;
       3, rparen_num, Reduce 4;
-      3, 0, Reduce 4;
+      3, 0,          Reduce 4;
 
-      4, id_num, Shift state.(5);
-      4, plus_num, Error;
-      4, times_num, Error;
+      4, id_num,     Shift state.(5);
+      4, plus_num,   Error;
+      4, times_num,  Error;
       4, lparen_num, Shift state.(4);
       4, rparen_num, Error;
-      4, 0, Error;
+      4, 0,          Error;
 
-      5, id_num, Error;
-      5, plus_num, Reduce 6;
-      5, times_num, Reduce 6;
+      5, id_num,     Error;
+      5, plus_num,   Reduce 6;
+      5, times_num,  Reduce 6;
       5, lparen_num, Error;
       5, rparen_num, Reduce 6;
-      5, 0, Reduce 6;
+      5, 0,          Reduce 6;
 
-      6, id_num, Shift state.(5);
-      6, plus_num, Error;
-      6, times_num, Error;
+      6, id_num,     Shift state.(5);
+      6, plus_num,   Error;
+      6, times_num,  Error;
       6, lparen_num, Shift state.(4);
       6, rparen_num, Error;
-      6, 0, Error;
+      6, 0,          Error;
 
-      7, id_num, Shift state.(5);
-      7, plus_num, Error;
-      7, times_num, Error;
+      7, id_num,     Shift state.(5);
+      7, plus_num,   Error;
+      7, times_num,  Error;
       7, lparen_num, Shift state.(4);
       7, rparen_num, Error;
-      7, 0, Error;
+      7, 0,          Error;
 
-      8, id_num, Error;
-      8, plus_num, Shift state.(6);
-      8, times_num, Error;
+      8, id_num,     Error;
+      8, plus_num,   Shift state.(6);
+      8, times_num,  Error;
       8, lparen_num, Error;
       8, rparen_num, Shift state.(11);
-      8, 0, Error;
+      8, 0,          Error;
 
-      9, id_num, Error;
-      9, plus_num, Reduce 1;
-      9, times_num, Shift state.(7);
+      9, id_num,     Error;
+      9, plus_num,   Reduce 1;
+      9, times_num,  Shift state.(7);
       9, lparen_num, Error;
       9, rparen_num, Reduce 1;
-      9, 0, Reduce 1;
+      9, 0,          Reduce 1;
 
-      10, id_num, Error;
-      10, plus_num, Reduce 3;
-      10, times_num, Reduce 3;
+      10, id_num,     Error;
+      10, plus_num,   Reduce 3;
+      10, times_num,  Reduce 3;
       10, lparen_num, Error;
       10, rparen_num, Reduce 3;
-      10, 0, Reduce 3;
+      10, 0,          Reduce 3;
 
-      11, id_num, Error;
-      11, plus_num, Reduce 5;
-      11, times_num, Reduce 5;
+      11, id_num,     Error;
+      11, plus_num,   Reduce 5;
+      11, times_num,  Reduce 5;
       11, lparen_num, Error;
       11, rparen_num, Reduce 5;
-      11, 0, Reduce 5;
+      11, 0,          Reduce 5;
 
     ]
   in
@@ -414,6 +416,17 @@ let () = describe "LrParsing" (fun () ->
   |]
   in
 
+  (* foo + bar
+   * 0123456789
+   *)
+  let tokens4 = MQueue.fromArray [|
+    mk_tok "id" 0 3;
+    mk_tok "+"  4 5;
+    mk_tok "id" 6 9;
+    mk_tok "$"  9 9;
+  |]
+  in
+
   (* TODO: test failed parses *)
   testAll "parse" [
 
@@ -451,8 +464,35 @@ let () = describe "LrParsing" (fun () ->
       });
 
     (* Figure 4.38 from CPTT *)
-    expect (Lr0'.parse "foo *" tokens2) |> toEqual
-      (Result.Error (0, "bad parse"));
+    expect (Lr0'.parse "foo *" tokens3) |> toEqual
+      (Result.Error (4, "parsing invariant violation -- pop failed"));
+
+    expect (Lr0'.parse "foo + bar" tokens4) |> toEqual (Result.Ok
+      { symbol = Nonterminal 1;
+        children = [
+          mk_wrapper 1 @@ mk_wrapper 2 @@ mk_wrapper 3 @@ mk_terminal id_num 0 3;
+          mk_terminal plus_num 4 5;
+          mk_wrapper 2 @@ mk_wrapper 3 @@ mk_terminal id_num 6 9;
+        ];
+        start_pos = 0;
+        end_pos = 9;
+      });
 
   ] Util.id;
+
+  test "lex-parse" (fun () ->
+    let lexer =
+      [ "\\+", "+";
+        "\\*", "*";
+        "\\(", "(";
+        "\\)", ")";
+        "\\w+", "id";
+      ]
+    in
+    (* let input = "if 1 < 2 then foo else \"str\"" in *)
+    let input = "foo+bar" in
+    match Lr0'.lex_and_parse lexer input with
+      | Error _err -> fail "lex_and_parse error"
+      | Ok _ -> pass
+  );
 )

@@ -3,6 +3,7 @@ module L = Belt.List
 module M = Belt.Map.Int
 module MM = Belt.MutableMap
 module MMI = Belt.MutableMap.Int
+module S = Belt.Set
 module SI = Belt.Set.Int
 module SS = Belt.Set.String
 module MS = Belt.MutableSet
@@ -15,7 +16,7 @@ module MQueue = Belt.MutableQueue
   * augment grammar
  *)
 
-type terminal_num = int (* TODO *)
+type terminal_num = int
 type nonterminal_num = int
 
 type symbol =
@@ -59,7 +60,23 @@ type item_view =
  *)
 type item = int
 
+type lookahead_item =
+  { item : item;
+    (* the set of terminals that can follow this item *)
+    lookhead_set : SI.t;
+  }
+
 type item_set = SI.t
+
+module LookaheadItemCmp = Belt.Id.MakeComparable(struct
+  type t = lookahead_item
+  let cmp { item = i1; lookhead_set = s1 } { item = i2; lookhead_set = s2 } =
+    match Pervasives.compare i1 i2 with
+      | 0 -> SI.cmp s1 s2
+      | c -> c
+end)
+
+type lookahead_item_set = (lookahead_item, LookaheadItemCmp.identity) S.t
 
 (* TODO: test *)
 let view_item : item -> item_view
@@ -77,6 +94,11 @@ let mk_item : item_view -> item
 type configuration_set =
   { kernel_items : item_set;    (* set of items *)
     nonkernel_items : item_set; (* set of nonterminals *)
+  }
+
+type lookahead_configuration_set =
+  { kernel_items : lookahead_item_set;    (* set of items *)
+    nonkernel_items : lookahead_item_set; (* set of nonterminals *)
   }
 
 type nonterminal =
@@ -114,8 +136,7 @@ end)
 type int_set_set = (SI.t, ComparableSet.identity) Belt.Set.t
 type mutable_int_set_set = (SI.t, ComparableSet.identity) MS.t
 
-(* TODO *)
-type parse_error = Lex.position * string
+type parse_error = int (* character number *) * string
 
 type parse_result =
   { symbol : symbol;
@@ -126,11 +147,11 @@ type parse_result =
 
 exception ParseFinished
 exception ParseFailed of parse_error
-exception PopFailed
+exception PopFailed of int
 
-let pop_front_exn : 'a MQueue.t -> 'a
-  = fun arr -> match MQueue.pop arr with
-    | None -> raise PopFailed
+let pop_front_exn : int -> 'a MQueue.t -> 'a
+  = fun position arr -> match MQueue.pop arr with
+    | None -> raise (PopFailed position)
     | Some a -> a
 
 module type GRAMMAR = sig
@@ -252,6 +273,9 @@ module Lr0 (G : GRAMMAR) = struct
   let goto : item_set -> symbol -> configuration_set
     = fun item_set symbol -> closure @@ goto_kernel item_set symbol
 
+  let goto' : item_set -> symbol -> item_set
+    = fun item_set symbol -> simplify_config_set @@ goto item_set symbol
+
   (** Compute the canonical collection of sets of LR(0) items. CPTT fig 4.33. *)
   let items : mutable_int_set_set
     = let augmented_start = SI.fromArray
@@ -271,7 +295,7 @@ module Lr0 (G : GRAMMAR) = struct
           (* for each grammar symbol x: *)
           L.forEach grammar_symbols @@ fun x ->
           (* M.forEach G.grammar @@ fun x _ -> *)
-            let goto_i_x = simplify_config_set @@ goto i x in
+            let goto_i_x = goto' i x in
             (* if GOTO(i, x) is not empty and not in c: *)
             if not (SI.isEmpty goto_i_x) && not (MS.has c goto_i_x)
             then (
@@ -411,9 +435,7 @@ module Lr0 (G : GRAMMAR) = struct
     = in_follow' (SI.fromArray [||])
 
   let goto_table state nt =
-    item_set_to_state
-      @@ simplify_config_set
-      @@ goto (state_to_item_set state) nt
+    item_set_to_state @@ goto' (state_to_item_set state) nt
 
   let action_table state terminal_num =
     let item_set = state_to_item_set state in
@@ -492,8 +514,8 @@ module Lr0 (G : GRAMMAR) = struct
       let stack : state MStack.t = MStack.make () in
       MStack.push stack augmented_state;
       let results : parse_result MStack.t = MStack.make () in
-      let a = ref @@ pop_front_exn toks in
       try
+        let a = ref @@ pop_front_exn 0 toks in
         while true do
           (* let x be the state on top of the stack *)
           let s = match MStack.top stack with
@@ -512,7 +534,7 @@ module Lr0 (G : GRAMMAR) = struct
                     start_pos = tok.start;
                     end_pos = tok.finish;
                   };
-                a := pop_front_exn toks;
+                a := pop_front_exn tok.start toks;
             | Reduce production_num ->
                 let pop_count = production_map
                   |. MMI.getExn production_num
@@ -549,7 +571,11 @@ module Lr0 (G : GRAMMAR) = struct
                   };
             | Accept -> raise ParseFinished
             | Error ->
-              raise (ParseFailed (failwith "TODO (parse failed)"))
+                raise (ParseFailed
+                  ( tok.start
+                  (* TODO: give a decent error message *)
+                  , "parse failed -- no valid transition on this token"
+                  ))
             ;
         done;
         failwith "invariant violation: can't make it here"
@@ -563,6 +589,22 @@ module Lr0 (G : GRAMMAR) = struct
           | _ -> failwith "invariant violation: multiple results"
         )
         | ParseFailed parse_error -> Error parse_error
+        | PopFailed pos
+        -> Error (pos, "parsing invariant violation -- pop failed")
+
+  let lex_and_parse : Lex.lexer -> string
+    -> (parse_result, (Lex.lex_error, parse_error) Either.t) Result.t
+    = fun lexer input -> match Lex.lex lexer input with
+      | Error error -> Error (Left error)
+      | Ok toks ->
+        let len = String.length input in
+        let toks' = MQueue.fromArray toks in
+        (* TODO: name might not always be "$" *)
+        MQueue.add toks' { name = "$"; start = len; finish = len};
+        (match parse input toks' with
+        | Error error -> Error (Right error)
+        | Ok result -> Ok result
+        )
 
 end
 

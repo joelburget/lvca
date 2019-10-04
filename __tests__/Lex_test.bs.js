@@ -55,84 +55,150 @@ Jest.describe("Lex", (function (param) {
                 ]
               ]
             ], "if a > b then 90 else 91");
-        return Jest.test("lex", (function (param) {
+        Jest.test("lex 1", (function (param) {
+                return Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* array */[
+                                /* record */[
+                                  /* name */"IF",
+                                  /* start */0,
+                                  /* finish */2
+                                ],
+                                /* record */[
+                                  /* name */"WHITE",
+                                  /* start */2,
+                                  /* finish */3
+                                ],
+                                /* record */[
+                                  /* name */"ID",
+                                  /* start */3,
+                                  /* finish */4
+                                ],
+                                /* record */[
+                                  /* name */"WHITE",
+                                  /* start */4,
+                                  /* finish */5
+                                ],
+                                /* record */[
+                                  /* name */"OP",
+                                  /* start */5,
+                                  /* finish */6
+                                ],
+                                /* record */[
+                                  /* name */"WHITE",
+                                  /* start */6,
+                                  /* finish */7
+                                ],
+                                /* record */[
+                                  /* name */"ID",
+                                  /* start */7,
+                                  /* finish */8
+                                ],
+                                /* record */[
+                                  /* name */"WHITE",
+                                  /* start */8,
+                                  /* finish */9
+                                ],
+                                /* record */[
+                                  /* name */"THEN",
+                                  /* start */9,
+                                  /* finish */13
+                                ],
+                                /* record */[
+                                  /* name */"WHITE",
+                                  /* start */13,
+                                  /* finish */14
+                                ],
+                                /* record */[
+                                  /* name */"NUM",
+                                  /* start */14,
+                                  /* finish */16
+                                ],
+                                /* record */[
+                                  /* name */"WHITE",
+                                  /* start */16,
+                                  /* finish */17
+                                ],
+                                /* record */[
+                                  /* name */"ELSE",
+                                  /* start */17,
+                                  /* finish */21
+                                ],
+                                /* record */[
+                                  /* name */"WHITE",
+                                  /* start */21,
+                                  /* finish */22
+                                ],
+                                /* record */[
+                                  /* name */"NUM",
+                                  /* start */22,
+                                  /* finish */24
+                                ]
+                              ]]), Jest.Expect[/* expect */0](result));
+              }));
+        var result$1 = Lex.lex(/* :: */[
+              /* tuple */[
+                "\\+",
+                "+"
+              ],
+              /* :: */[
+                /* tuple */[
+                  "\\*",
+                  "*"
+                ],
+                /* :: */[
+                  /* tuple */[
+                    "\\(",
+                    "("
+                  ],
+                  /* :: */[
+                    /* tuple */[
+                      "\\)",
+                      ")"
+                    ],
+                    /* :: */[
+                      /* tuple */[
+                        "\\w+",
+                        "id"
+                      ],
+                      /* :: */[
+                        /* tuple */[
+                          "\\s+",
+                          "WHITE"
+                        ],
+                        /* [] */0
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ], "foo + bar");
+        return Jest.test("lex 2", (function (param) {
                       return Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* array */[
                                       /* record */[
-                                        /* name */"IF",
+                                        /* name */"id",
                                         /* start */0,
-                                        /* finish */2
-                                      ],
-                                      /* record */[
-                                        /* name */"WHITE",
-                                        /* start */2,
                                         /* finish */3
                                       ],
                                       /* record */[
-                                        /* name */"ID",
+                                        /* name */"WHITE",
                                         /* start */3,
                                         /* finish */4
                                       ],
                                       /* record */[
-                                        /* name */"WHITE",
+                                        /* name */"+",
                                         /* start */4,
                                         /* finish */5
                                       ],
                                       /* record */[
-                                        /* name */"OP",
+                                        /* name */"WHITE",
                                         /* start */5,
                                         /* finish */6
                                       ],
                                       /* record */[
-                                        /* name */"WHITE",
+                                        /* name */"id",
                                         /* start */6,
-                                        /* finish */7
-                                      ],
-                                      /* record */[
-                                        /* name */"ID",
-                                        /* start */7,
-                                        /* finish */8
-                                      ],
-                                      /* record */[
-                                        /* name */"WHITE",
-                                        /* start */8,
                                         /* finish */9
-                                      ],
-                                      /* record */[
-                                        /* name */"THEN",
-                                        /* start */9,
-                                        /* finish */13
-                                      ],
-                                      /* record */[
-                                        /* name */"WHITE",
-                                        /* start */13,
-                                        /* finish */14
-                                      ],
-                                      /* record */[
-                                        /* name */"NUM",
-                                        /* start */14,
-                                        /* finish */16
-                                      ],
-                                      /* record */[
-                                        /* name */"WHITE",
-                                        /* start */16,
-                                        /* finish */17
-                                      ],
-                                      /* record */[
-                                        /* name */"ELSE",
-                                        /* start */17,
-                                        /* finish */21
-                                      ],
-                                      /* record */[
-                                        /* name */"WHITE",
-                                        /* start */21,
-                                        /* finish */22
-                                      ],
-                                      /* record */[
-                                        /* name */"NUM",
-                                        /* start */22,
-                                        /* finish */24
                                       ]
-                                    ]]), Jest.Expect[/* expect */0](result));
+                                    ]]), Jest.Expect[/* expect */0](result$1));
                     }));
       }));
 
