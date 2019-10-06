@@ -66,6 +66,10 @@ sort_rule:
     SortRule { sort_name = $1; operator_rules; variable }
   }
 
+(* The list of operator matches making up a nonterminal. Each operator match is
+ * separated by '|' to indicate the same precedence level, or '>' to indicate
+ * different precedence levels.
+ *)
 operator_match_list:
   | operator_match
     { [[ $1 ]] }

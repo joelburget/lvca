@@ -15,6 +15,9 @@ let toBeEquivalent : ('a -> 'a -> bool) -> 'a -> [< 'a partial] -> assertion
 in
 *)
 
+let mk_left content = Either.Left
+  { ConcreteSyntax.leading_trivia = ""; content; trailing_trivia = "" }
+
 let _ = describe "ConcreteSyntax" (fun () ->
   let description = {|
   ADD    := "+"
@@ -69,29 +72,29 @@ let _ = describe "ConcreteSyntax" (fun () ->
     | Ok concrete ->
       let arith = Types.SortAp ("arith", [||]) in
       let tree = mk_tree arith (Operator "add")
-            [| Right (mk_tree arith Var [| Left "x" |]);
-               Left "+";
-               Right (mk_tree arith Var [| Left "y" |]);
+            [| Right (mk_tree arith Var [| mk_left "x" |]);
+               mk_left "+";
+               Right (mk_tree arith Var [| mk_left "y" |]);
             |]
       in
       let tree' = mk_tree arith (Operator "sub")
             [| Right (mk_tree arith (Operator "add")
-                 [| Right (mk_tree arith Var [| Left "x" |]);
-                    Left "+";
-                    Right (mk_tree arith Var [| Left "y" |]);
+                 [| Right (mk_tree arith Var [| mk_left "x" |]);
+                    mk_left "+";
+                    Right (mk_tree arith Var [| mk_left "y" |]);
                  |]
                );
-               Left "-";
-               Right (mk_tree arith Var [| Left "z" |]);
+               mk_left "-";
+               Right (mk_tree arith Var [| mk_left "z" |]);
             |]
       in
       let tree'' = mk_tree arith (Operator "add")
-            [| Right (mk_tree arith Var [| Left "x" |]);
-               Left "+";
+            [| Right (mk_tree arith Var [| mk_left "x" |]);
+               mk_left "+";
                Right (mk_tree arith (Operator "mul")
-                 [| Right (mk_tree arith Var [| Left "y" |]);
-                    Left "*";
-                    Right (mk_tree arith Var [| Left "z" |]);
+                 [| Right (mk_tree arith Var [| mk_left "y" |]);
+                    mk_left "*";
+                    Right (mk_tree arith Var [| mk_left "z" |]);
                  |]
                );
             |]

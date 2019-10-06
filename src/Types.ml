@@ -173,8 +173,7 @@ module ConcreteSyntaxDescription = struct
     | RePlus   of regex_piece
     | ReOption of regex_piece
 
-  (* A regular expression used for lexical analysis. Currently, this uses the
-   * jison format. *)
+  (* A regular expression used for lexical analysis. *)
   type regex          = regex_piece list
   type terminal_rule  = TerminalRule of terminal_id * regex
 
@@ -224,7 +223,9 @@ module ConcreteSyntaxDescription = struct
 
   (* Extract a variable rule, if present. Currently we only recognize it on its
    * own precedence level, which seems like what you usually want, but still
-   * arbitrary
+   * arbitrary.
+   *
+   * By "variable rule", we mean a rule that matches exactly `var($n)`.
    *)
   let partition_nonterminal_matches
     (matches: operator_match list list)

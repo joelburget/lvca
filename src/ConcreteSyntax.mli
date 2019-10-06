@@ -11,7 +11,12 @@ type node_type =
   | Sequence
   | Primitive of prim_ty
 
-type terminal_capture    = string
+type terminal_capture =
+  { content         : string;
+    leading_trivia  : string;
+    trailing_trivia : string;
+  }
+
 type nonterminal_capture = tree
 
 and tree =

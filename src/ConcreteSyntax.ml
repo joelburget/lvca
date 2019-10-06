@@ -6,6 +6,8 @@ open Types
 open Types.ConcreteSyntaxDescription
 module AA = Util.ArrayApplicative(struct type t = string end)
 open AA
+module MS = Belt.Map.String
+module MI = Belt.Map.Int
 let (find, traverse_list_result) = Util.(find, traverse_list_result)
 
 type prim_ty =
@@ -18,7 +20,12 @@ type node_type =
   | Sequence
   | Primitive of prim_ty
 
-type    terminal_capture = string
+type terminal_capture =
+  { content         : string;
+    leading_trivia  : string;
+    trailing_trivia : string;
+  }
+
 type nonterminal_capture = tree
 
 (* Inspired by:
@@ -42,7 +49,7 @@ and tree =
     children        : (terminal_capture, nonterminal_capture) Either.t array;
   }
 
-(* equality mod trivia *)
+(* tree equality mod trivia *)
 let rec equivalent t1 t2 =
   t1.sort = t2.sort &&
   t1.node_type = t2.node_type &&
@@ -51,7 +58,7 @@ let rec equivalent t1 t2 =
 and equivalent' child1 child2 = match child1, child2 with
   | Left   tc1, Left   tc2 -> tc1 = tc2
   | Right ntc1, Right ntc2 -> equivalent ntc1 ntc2
-  | _, _ -> false
+  |          _,          _ -> false
 
 let find_operator_match
   (matches: operator_match list list)
@@ -140,6 +147,10 @@ let mk_tree sort node_type children =
     children;
   }
 
+(* Helper for use in of_ast *)
+let mk_left content =
+  Either.Left { leading_trivia = ""; content; trailing_trivia = "" }
+
 (* TODO: handle non-happy cases *)
 let rec of_ast
   (Language sorts as lang)
@@ -208,14 +219,14 @@ let rec of_ast
         -> Right (of_ast lang rules current_sort subtm)
 
         | FoundBinder binder_name, TerminalName _name
-        -> Left binder_name
+        -> mk_left binder_name
 
         (* if the current token is a terminal, and we didn't capture a binder
          * or term, we just emit the contents of the token *)
         | NotFound, TerminalName name
         -> let terminal_rule = M.getExn terminal_rules name in
            (match regex_is_literal terminal_rule with
-             | Some re_str -> Left re_str
+             | Some re_str -> mk_left re_str
              | None -> raise (CantEmitTokenRegex (name, terminal_rule))
            )
 
@@ -234,7 +245,7 @@ let rec of_ast
     mk_tree current_sort (Operator op_name) children
 
   | _, Nominal.Var name
-  -> mk_tree current_sort Var [| Left name |]
+  -> mk_tree current_sort Var [| mk_left name |]
 
   | SortAp ("sequence", [|sort|]), Nominal.Sequence tms ->
     let children = tms
@@ -244,11 +255,11 @@ let rec of_ast
     mk_tree current_sort Sequence children
 
   | SortAp ("string", [||]), Nominal.Primitive (PrimString str) ->
-    mk_tree current_sort (Primitive String) [| Left str |]
+    mk_tree current_sort (Primitive String) [| mk_left str |]
 
   | SortAp ("integer", [||]), Nominal.Primitive (PrimInteger i) ->
     let str = Bigint.to_string i in
-    mk_tree current_sort (Primitive Integer) [| Left str |]
+    mk_tree current_sort (Primitive Integer) [| mk_left str |]
 
   | _, _ -> raise (BadSortTerm (current_sort, tm))
 
@@ -256,7 +267,8 @@ let rec to_string { leading_trivia; children; trailing_trivia } =
   let children_str = children
     |> Array.map
       (function
-      | Either.Left terminal_capture -> terminal_capture
+      | Either.Left { leading_trivia; content; trailing_trivia }
+      -> leading_trivia ^ content ^ trailing_trivia
       | Right nonterminal_capture    -> to_string nonterminal_capture
       )
     |> BL.fromArray
@@ -267,7 +279,7 @@ let rec to_string { leading_trivia; children; trailing_trivia } =
 let rec to_ast lang { node_type; children; }
   : (Nominal.term, string) Result.t
   = match node_type, children with
-    | Var, [| Left name |] -> Result.Ok (Nominal.Var name)
+    | Var, [| Left { content = name } |] -> Result.Ok (Nominal.Var name)
     | Sequence, _ -> Result.map
       (traverse_array_result
         (function
@@ -276,7 +288,7 @@ let rec to_ast lang { node_type; children; }
         )
         children)
       (fun children' -> Nominal.Sequence (BL.fromArray children'))
-    | Primitive prim_ty, [| Left str |] -> (match prim_ty with
+    | Primitive prim_ty, [| Left { content = str } |] -> (match prim_ty with
       | String  -> Ok (Nominal.Primitive (PrimString str))
       | Integer ->
         try
@@ -307,7 +319,7 @@ and scope_to_ast lang ({ children } as tree)
     | Ok body' -> binders
       |> traverse_list_result
         (function
-          | Either.Left binder_name
+          | Either.Left { content = binder_name }
           -> Ok binder_name
           | Right _nonterminal_capture
           -> Error "expected binder name, got TODO"
@@ -321,190 +333,163 @@ and scope_to_ast lang ({ children } as tree)
 exception NonMatchingFixities of string * string list
 exception MixedFixities of bool * int
 
-module ToGrammarHelp = struct
-  (* space-separated list of token names, eg "arith ADD arith". We strip out
-   whitespace tokens (via token_name) *)
-  let print_tokens toks = toks
-    |> List.map token_name
-    |> Util.keep_some
-    |> String.concat " "
-
-  (* make a variable rule *)
-  let mk_variable sort_name: variable_rule -> string * string
-    = fun { tokens; var_capture }
-    -> ( print_tokens tokens
-       , Printf.sprintf {|
-           $$ = /* record */[
-             /* SortAp */['%s',[]],
-             /* Var */0,
-             '',
-             '',
-             /* array */[(function(tag,x){x.tag=tag;return x;})(/* TerminalName */0, [$%i])]
-           ]
-         |}
-         sort_name
-         var_capture
-       )
-
-  (* Very dangerous function used to capture an implementation detail of
-   * bucklescript's implementation. Return the tag number for a nonterminal_token
-   * (except for Underscore)
-   * *)
-  let nonterminal_tok_num = function
-    | TerminalName    _ -> 0
-    | NonterminalName _ -> 1
-    | Underscore        -> assert false
-
-  (* Fixity and the token to attach it to *)
-  type operator_fixity_info = fixity * string option
-
-  (* The list of tokens, the action to execute *)
-  type operator_parse_rule = string * string
-
-  let mk_operator_rule
-    sort_name
-    (* TODO: now need to match *)
-    (OperatorMatch { tokens; term_pattern; fixity })
-    : operator_fixity_info * operator_parse_rule
-    = match term_pattern with
-    | ParenthesizingPattern cap_num ->
-      (fixity, None),
-      ( print_tokens tokens
-      , Printf.sprintf "$$ = $%i" cap_num
-      )
-    | TermPattern (operator_name, _) ->
-      (fixity, match tokens with
-        | [ NonterminalName _;             TerminalName name;             NonterminalName _ ]
-        | [ NonterminalName _; Underscore; TerminalName name; Underscore; NonterminalName _ ]
-        | [ NonterminalName _; Underscore; TerminalName name;             NonterminalName _ ]
-        | [ NonterminalName _;             TerminalName name; Underscore; NonterminalName _ ]
-        -> Some name
-        | _
-        -> None
-      ),
-      ( print_tokens tokens
-      , Printf.sprintf
-        {|
-          $$ = /* record */[
-            /* SortAp */['%s', []],
-            /* Operator */(function(tag,x){x.tag=tag;return x;})(0, ['%s']),
-            '',
-            '',
-            /* array */[%s]
-          ]
-        |}
-        sort_name
-        operator_name
-        (tokens
-          |> List.filter (function Underscore -> false | _ -> true)
-          |> List.mapi (fun i tok -> Printf.sprintf
-            "(function(tag,x){x.tag=tag;return x;})(%i, [$%i])"
-            (nonterminal_tok_num tok)
-            (i + 1) (* convert from 0- to 1- indexed *)
-          )
-          |> String.concat ", "
-        )
-      )
-
-  type level_fixity_info = fixity * string list
-
-  let mk_precedence_level_rule sort_name matches
-    : (level_fixity_info option * operator_parse_rule array) =
-    let fixity_infos, rules = BL.(matches
-      |. map (mk_operator_rule sort_name)
-      |. unzip
-    )
-    in
-    (* All operators in this precedence level must have the same fixity *)
-    let fixities, fixity_token_names = BL.unzip fixity_infos in
-    let fixity = BL.headExn fixities in
-    Js.log "precedence level:";
-    List.iter (fun name -> Js.log (Util.is_none name)) fixity_token_names;
-    match BL.every fixity_token_names Util.is_none, BL.every fixity_token_names Util.is_some with
-      | true, false -> None, rules |. BL.toArray
-      | _ ->
-        let fixity_token_names = fixity_token_names |. Util.keep_some in
-        if not (BL.every fixities (fun fixity' -> fixity' = fixity))
-          then raise (NonMatchingFixities (sort_name, fixity_token_names));
-        (Some (fixity, fixity_token_names), rules |. BL.toArray)
-        (*
-      | true, true -> raise (MixedFixities (true, BL.length fixity_token_names))
-      | false, false -> raise (MixedFixities (false, BL.length fixity_token_names))
-      *)
-
-  let mk_sort_rule
-    : string * sort_rule -> level_fixity_info list * (string * operator_parse_rule array)
-    = fun (sort_name, SortRule { operator_rules; variable }) ->
-    let fixity_levels, (prec_level_rules : operator_parse_rule array list) = BL.(operator_rules
-      |. map (mk_precedence_level_rule sort_name)
-      |. unzip
-      )
-    in
-    let prec_level_rules = prec_level_rules |. BL.toArray |. BA.concatMany in
-    (fixity_levels |. Util.keep_some : level_fixity_info list),
-    ( sort_name
-    , match variable with
-      | None -> prec_level_rules
-      | Some variable_rule
-      -> BA.concat [| mk_variable sort_name variable_rule |] prec_level_rules
-    )
-end
-
 let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
-  : Jison.grammar
-  = let open ToGrammarHelp in
-    let rules = BL.(terminal_rules
-      |. M.toList
-      |. map
-        (fun (name, regex) -> (regex_to_string regex, "return '" ^ name ^ "'"))
-      |. add ("$", "return 'EOF'")
-      (* TODO: we probably don't want to do this in general *)
-      |. add ("\\s+", "/* skip whitespace */")
-      |. toArray
-    )
+  : LrParsing.grammar
+      (* TODO: how to do string -> int mapping? *)
+  = let terminal_key_arr = MS.keysToArray terminal_rules in
+    let nonterminal_key_arr = MS.keysToArray sort_rules in
+    let terminal_names = terminal_rules
+        |. MS.keysToArray
+        |. BA.mapWithIndex (fun i name -> name, i)
+        |. MS.fromArray;
     in
-    let lex = Jison.js_lex ~rules: rules in
-
-    let (pre_operators : (fixity * string list) list list),
-        (pre_bnf : (string * (string * string) array) list) = BL.(sort_rules
-      |. M.toList
-      |. map mk_sort_rule
-      |. unzip
-    )
+    let nonterminal_names = sort_rules
+        |. MS.keysToArray
+        |. BA.mapWithIndex (fun i name -> name, i)
+        |. MS.fromArray;
     in
 
-    let bnf = pre_bnf
-      (* XXX what is the start? *)
-      |. BL.add ("start", [%raw {|
-        [["tm EOF", "/*console.log($1);*/ return $1"]]
-      |}])
-      |. Js.Dict.fromList
+    { nonterminals = sort_rules
+        |. MS.valuesToArray
+        |. BA.mapWithIndex (fun i (SortRule { operator_rules; variable }) ->
+          let productions = operator_rules
+            |. BL.map (fun operator_level -> operator_level |.
+              BL.map (fun (OperatorMatch { tokens }) ->
+                tokens |. BL.map (function
+                  | TerminalName tn
+                  -> LrParsing.Terminal (terminal_names |. MS.getExn tn)
+                  | NonterminalName ntn
+                  -> Nonterminal (nonterminal_names |. MS.getExn ntn)
+                  | Underscore
+                  -> failwith "TODO"
+                )
+              )
+            )
+            (* TODO: temporary? *)
+            |. BL.flatten
+          in
+          (* production list *)
+          (* production = symbol list *)
+          i, { LrParsing.productions = productions }
+        )
+        |. MI.fromArray;
+      num_terminals = MS.size terminal_rules;
+      terminal_names; nonterminal_names;
+    }
+
+(* TODO: this is going to need the grammar *)
+let symbol_info : LrParsing.symbol -> node_type * sort
+  = failwith "TODO"
+
+let tree_of_parse_result : string -> LrParsing.parse_result -> tree
+  = fun str root ->
+    let str_pos = ref 0 in
+    let str_len = Js.String2.length str in
+    (* TODO: update positions *)
+
+    let get_trivia : int -> int -> string * string
+      = fun start_pos end_pos ->
+        (* look back consuming all whitespace to (and including) a newline *)
+        let leading_trivia =
+          str |. Js.String2.slice ~from:!str_pos ~to_:start_pos
+        in
+
+        (* look forward consuming all whitespace up to a newline *)
+        str_pos := end_pos;
+        let continue = ref true in
+        while !continue do
+          let got_space, got_newline = match Js.String2.charAt str !str_pos with
+            | " "  -> true,  false
+            | "\ " -> true,  false
+            | "\n" -> false, true
+            | _    -> false, false
+          in
+          continue := !str_pos < str_len && got_space;
+          if !continue then str_pos := !str_pos + 1;
+        done;
+
+        let trailing_trivia =
+          str |. Js.String2.slice ~from:end_pos ~to_:!str_pos
+        in
+
+        leading_trivia, trailing_trivia
     in
 
-    let operators = BL.(pre_operators
-      |. flatten
-      |. map (fun (fixity, names) ->
-          BA.concat [| fixity_str fixity |] (toArray names))
-      |. toArray
-      (* Jison has highest precedence at the bottom, we have highest precedence
-       * at the top *)
-      |. BA.reverse
-    )
-    in
-    Jison.grammar ~lex:lex ~operators:operators ~bnf:bnf
+    let rec go_nt : LrParsing.parse_result -> tree
+      = fun { symbol; children; start_pos; end_pos } ->
+        let node_type, sort = symbol_info symbol in
+        let leading_trivia, trailing_trivia = get_trivia start_pos end_pos in
 
-let jison_parse (parser: Jison.parser) (str: string) : tree =
-  ([%raw "function(parser, str) { return parser.parse(str); }"]
-  : Jison.parser -> string -> tree
-  ) parser str
+        let tokens : nonterminal_token list
+          = failwith "TODO"
+        in
+
+        { sort; node_type; leading_trivia; trailing_trivia;
+          children = children
+            |. BL.zip tokens
+            |. BL.map (function (parse_result, token) -> match token with
+              | TerminalName tn -> Either.Left (go_t parse_result)
+              (* TODO: I think we need to use the (non-)terminal name *)
+              | NonterminalName ntn -> Right (go_nt parse_result)
+              | Underscore -> failwith "TODO"
+              (* (terminal_capture, nonterminal_capture) Either.t *)
+            )
+            |. BL.toArray
+        }
+
+        (*
+        match symbol with
+          | Terminal tn ->
+            { sort; node_type; leading_trivia; trailing_trivia;
+              children = [|
+                Either.Left
+                  { leading_trivia;
+                    content = Js.String.slice str ~from:start_pos ~to_:end_pos;
+                    trailing_trivia;
+                  }
+              |];
+            }
+          | Nonterminal ntn ->
+              *)
+
+    and go_t : LrParsing.parse_result -> terminal_capture
+      = fun { start_pos; end_pos } ->
+        let leading_trivia, trailing_trivia = get_trivia start_pos end_pos in
+        let content = Js.String.slice str ~from:start_pos ~to_:end_pos in
+        { leading_trivia; content; trailing_trivia }
+
+    in
+
+    go_nt root
+
+let lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer
+  = fun { terminal_rules } -> terminal_rules
+    |. M.map regex_to_string
+    |. M.toArray
+    |. BL.fromArray
 
 let parse desc str =
   try
-    let grammar = to_grammar desc in
-    let parser = Jison.to_parser grammar in
-    Result.Ok (jison_parse parser str)
+    let module Lr0' = LrParsing.Lr0(struct
+      let grammar = to_grammar desc
+    end) in
+    let lexer = lexer_of_desc desc in
+    match Lr0'.lex_and_parse lexer str with
+      | Result.Ok result -> Result.Ok (tree_of_parse_result str result)
+      | Result.Error (Either.Left { start_pos; end_pos; message })
+      -> Error (Printf.sprintf
+        "lexical error at characters %n - %n (%s):\n%s"
+        start_pos
+        end_pos
+        (Js.String2.slice str ~from:start_pos ~to_:end_pos)
+        message
+      )
+      | Result.Error (Either.Right (char_no, message)) -> Error (Printf.sprintf
+        "parser error at character %n:\n%s"
+        char_no
+        message
+      )
   with
     | NonMatchingFixities (sort_name, token_names) -> Result.Error
       ("In sort " ^ sort_name ^ ": all fixities in a precedence level must be the same fixity (this is a limitation of Bison-style parsers (Jison in particular). The operators identified by [" ^ String.concat ", " token_names ^ "] must all share the same fixity.")
     | MixedFixities (b, l) -> Error ("Found a mix of fixities -- all must be uniform " ^ string_of_bool b ^ " " ^ string_of_int l)
-    | x -> Js.log x; Result.Error "Jison parse error"

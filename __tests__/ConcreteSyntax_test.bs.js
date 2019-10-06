@@ -11,6 +11,14 @@ var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var ConcreteSyntax = require("../src/ConcreteSyntax.bs.js");
 
+function mk_left(content) {
+  return /* Left */Block.__(0, [/* record */[
+              /* content */content,
+              /* leading_trivia */"",
+              /* trailing_trivia */""
+            ]]);
+}
+
 Jest.describe("ConcreteSyntax", (function (param) {
         var description = "\n  ADD    := \"+\"\n  SUB    := \"-\"\n  MUL    := \"*\"\n  DIV    := \"/\"\n  LPAREN := \"(\"\n  RPAREN := \")\"\n  NAME   := [a-z][a-zA-Z0-9]*\n\n  arith :=\n    | LPAREN arith RPAREN { $2          }\n    > arith _ MUL _ arith { mul($1; $5) } %left\n    | arith _ DIV _ arith { div($1; $5) } %left\n    > arith _ ADD _ arith { add($1; $5) } %left\n    | arith _ SUB _ arith { sub($1; $5) } %left\n    > NAME                { var($1)     }\n  ";
         var arith_001 = /* array */[];
@@ -125,26 +133,78 @@ Jest.describe("ConcreteSyntax", (function (param) {
             arith_001$1
           ];
           var tree = ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["add"]), /* array */[
-                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, ["x"])])]),
-                /* Left */Block.__(0, ["+"]),
-                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, ["y"])])])
+                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, [/* record */[
+                                /* content */"x",
+                                /* leading_trivia */"",
+                                /* trailing_trivia */""
+                              ]])])]),
+                /* Left */Block.__(0, [/* record */[
+                      /* content */"+",
+                      /* leading_trivia */"",
+                      /* trailing_trivia */""
+                    ]]),
+                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, [/* record */[
+                                /* content */"y",
+                                /* leading_trivia */"",
+                                /* trailing_trivia */""
+                              ]])])])
               ]);
           var tree$prime = ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["sub"]), /* array */[
                 /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["add"]), /* array */[
-                          /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, ["x"])])]),
-                          /* Left */Block.__(0, ["+"]),
-                          /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, ["y"])])])
+                          /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, [/* record */[
+                                          /* content */"x",
+                                          /* leading_trivia */"",
+                                          /* trailing_trivia */""
+                                        ]])])]),
+                          /* Left */Block.__(0, [/* record */[
+                                /* content */"+",
+                                /* leading_trivia */"",
+                                /* trailing_trivia */""
+                              ]]),
+                          /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, [/* record */[
+                                          /* content */"y",
+                                          /* leading_trivia */"",
+                                          /* trailing_trivia */""
+                                        ]])])])
                         ])]),
-                /* Left */Block.__(0, ["-"]),
-                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, ["z"])])])
+                /* Left */Block.__(0, [/* record */[
+                      /* content */"-",
+                      /* leading_trivia */"",
+                      /* trailing_trivia */""
+                    ]]),
+                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, [/* record */[
+                                /* content */"z",
+                                /* leading_trivia */"",
+                                /* trailing_trivia */""
+                              ]])])])
               ]);
           var tree$prime$prime = ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["add"]), /* array */[
-                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, ["x"])])]),
-                /* Left */Block.__(0, ["+"]),
+                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, [/* record */[
+                                /* content */"x",
+                                /* leading_trivia */"",
+                                /* trailing_trivia */""
+                              ]])])]),
+                /* Left */Block.__(0, [/* record */[
+                      /* content */"+",
+                      /* leading_trivia */"",
+                      /* trailing_trivia */""
+                    ]]),
                 /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["mul"]), /* array */[
-                          /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, ["y"])])]),
-                          /* Left */Block.__(0, ["*"]),
-                          /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, ["z"])])])
+                          /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, [/* record */[
+                                          /* content */"y",
+                                          /* leading_trivia */"",
+                                          /* trailing_trivia */""
+                                        ]])])]),
+                          /* Left */Block.__(0, [/* record */[
+                                /* content */"*",
+                                /* leading_trivia */"",
+                                /* trailing_trivia */""
+                              ]]),
+                          /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, [/* record */[
+                                          /* content */"z",
+                                          /* leading_trivia */"",
+                                          /* trailing_trivia */""
+                                        ]])])])
                         ])])
               ]);
           var ast = /* Operator */Block.__(0, [
@@ -219,4 +279,5 @@ exports.mk_tree = mk_tree;
 exports.parse = parse;
 exports.equivalent = equivalent;
 exports.regex_piece_to_string = regex_piece_to_string;
+exports.mk_left = mk_left;
 /*  Not a pure module */
