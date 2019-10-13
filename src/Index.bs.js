@@ -11,14 +11,17 @@ var React = require("react");
 var Binding = require("./Binding.bs.js");
 var Parsing = require("./Parsing.bs.js");
 var EvalView = require("./EvalView.bs.js");
+var LrParsing = require("./LrParsing.bs.js");
 var CodeMirror = require("./CodeMirror.bs.js");
 var ReactDOMRe = require("reason-react/src/ReactDOMRe.js");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var ParseStatus = require("./ParseStatus.bs.js");
+var LrParsingView = require("./LrParsingView.bs.js");
 var ConcreteSyntax = require("./ConcreteSyntax.bs.js");
 var LanguageSimple = require("./LanguageSimple.bs.js");
 var Caml_splice_call = require("bs-platform/lib/js/caml_splice_call.js");
 var ReactCodemirror2 = require("react-codemirror2");
+var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 
 function read_eval_input(language, concrete, statics, dynamics, input) {
   var match = ConcreteSyntax.parse(concrete, input);
@@ -375,6 +378,33 @@ function Index$LvcaViewer(Props) {
           className: "repl-pane disabled"
         });
   }
+  var getGrammarPane = function (concrete) {
+    var grammar = ConcreteSyntax.to_grammar(concrete);
+    var Lr0$prime = LrParsing.Lr0(/* module */[/* grammar */grammar]);
+    var action_table = Curry._1(Lr0$prime[/* full_action_table */31], /* () */0);
+    var goto_table = Curry._1(Lr0$prime[/* full_goto_table */32], /* () */0);
+    return React.createElement(LrParsingView.Tables[/* make */0], {
+                grammar: grammar,
+                action_table: action_table,
+                goto_table: goto_table
+              });
+  };
+  var grammarPane;
+  if (concrete.tag) {
+    grammarPane = React.createElement("div", undefined, "grammar not available");
+  } else {
+    try {
+      grammarPane = getGrammarPane(concrete[0]);
+    }
+    catch (raw_exn){
+      var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
+      if (exn[0] === Util.InvariantViolation) {
+        grammarPane = React.createElement("div", undefined, exn[1]);
+      } else {
+        throw exn;
+      }
+    }
+  }
   return React.createElement("div", {
               className: "lvca-viewer"
             }, React.createElement("h1", {
@@ -395,7 +425,7 @@ function Index$LvcaViewer(Props) {
                       }
                     })), React.createElement("h2", {
                   className: "header2 header2-concrete"
-                }, "Concrete Syntax ", match$6[0]), React.createElement("div", {
+                }, "Concrete Syntax ", match$6[0], grammarPane), React.createElement("div", {
                   className: "concrete-pane"
                 }, React.createElement(ReactCodemirror2.Controlled, {
                       value: concreteInput,
@@ -446,7 +476,10 @@ ReactDOMRe.renderToElementWithId(React.createElement(Index$LvcaViewer, { }), "in
 
 var Result = 0;
 
+var LrTables = 0;
+
 exports.Result = Result;
+exports.LrTables = LrTables;
 exports.read_eval_input = read_eval_input;
 exports.shift_from_to = shift_from_to;
 exports.step_forward = step_forward;

@@ -76,10 +76,15 @@ function alloc(len, b) {
         ];
 }
 
+function length(param) {
+  return param[0];
+}
+
 exports.index = index;
 exports.getExn = getExn;
 exports.get = get;
 exports.setExn = setExn;
 exports.set = set;
 exports.alloc = alloc;
+exports.length = length;
 /* No side effect */

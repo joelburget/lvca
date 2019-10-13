@@ -7,12 +7,15 @@ var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Parsing = require("../src/Parsing.bs.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
-var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var ConcreteSyntax = require("../src/ConcreteSyntax.bs.js");
 
-function mk_left(content) {
-  return /* Left */Block.__(0, [/* record */[
+function nt_capture(capture) {
+  return /* NonterminalCapture */Block.__(1, [capture]);
+}
+
+function mk_terminal_capture(content) {
+  return /* TerminalCapture */Block.__(0, [/* record */[
               /* content */content,
               /* leading_trivia */"",
               /* trailing_trivia */""
@@ -20,7 +23,7 @@ function mk_left(content) {
 }
 
 Jest.describe("ConcreteSyntax", (function (param) {
-        var description = "\n  ADD    := \"+\"\n  SUB    := \"-\"\n  MUL    := \"*\"\n  DIV    := \"/\"\n  LPAREN := \"(\"\n  RPAREN := \")\"\n  NAME   := [a-z][a-zA-Z0-9]*\n\n  arith :=\n    | LPAREN arith RPAREN { $2          }\n    > arith _ MUL _ arith { mul($1; $5) } %left\n    | arith _ DIV _ arith { div($1; $5) } %left\n    > arith _ ADD _ arith { add($1; $5) } %left\n    | arith _ SUB _ arith { sub($1; $5) } %left\n    > NAME                { var($1)     }\n  ";
+        var description = "\n  ADD    := \"+\"\n  SUB    := \"-\"\n  MUL    := \"*\"\n  DIV    := \"/\"\n  LPAREN := \"(\"\n  RPAREN := \")\"\n  NAME   := [a-z][a-zA-Z0-9]*\n  SPACE  := [ ]+\n\n  arith :=\n    | LPAREN arith RPAREN { $2          }\n    > arith _ MUL _ arith { mul($1; $5) } %left\n    | arith _ DIV _ arith { div($1; $5) } %left\n    > arith _ ADD _ arith { add($1; $5) } %left\n    | arith _ SUB _ arith { sub($1; $5) } %left\n    > NAME                { var($1)     }\n  ";
         var arith_001 = /* array */[];
         var arith = /* SortAp */[
           "arith",
@@ -106,7 +109,7 @@ Jest.describe("ConcreteSyntax", (function (param) {
                   /* :: */[
                     Jest.Expect[/* toBe */2]("\\-", Jest.Expect[/* expect */0](ConcreteSyntax.regex_piece_to_string(/* ReString */Block.__(0, ["-"])))),
                     /* :: */[
-                      Jest.Expect[/* toBe */2]("[a-z]", Jest.Expect[/* expect */0](ConcreteSyntax.regex_piece_to_string(/* ReSet */Block.__(1, ["a-z"])))),
+                      Jest.Expect[/* toBe */2]("[a-z]", Jest.Expect[/* expect */0](ConcreteSyntax.regex_piece_to_string(/* ReSet */Block.__(2, ["a-z"])))),
                       /* [] */0
                     ]
                   ]
@@ -133,74 +136,75 @@ Jest.describe("ConcreteSyntax", (function (param) {
             arith_001$1
           ];
           var tree = ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["add"]), /* array */[
-                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, [/* record */[
+                /* NonterminalCapture */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* TerminalCapture */Block.__(0, [/* record */[
                                 /* content */"x",
                                 /* leading_trivia */"",
                                 /* trailing_trivia */""
                               ]])])]),
-                /* Left */Block.__(0, [/* record */[
+                /* TerminalCapture */Block.__(0, [/* record */[
                       /* content */"+",
                       /* leading_trivia */"",
                       /* trailing_trivia */""
                     ]]),
-                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, [/* record */[
+                /* NonterminalCapture */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* TerminalCapture */Block.__(0, [/* record */[
                                 /* content */"y",
                                 /* leading_trivia */"",
                                 /* trailing_trivia */""
                               ]])])])
               ]);
-          var tree$prime = ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["sub"]), /* array */[
-                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["add"]), /* array */[
-                          /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, [/* record */[
+          console.log(tree);
+          ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["sub"]), /* array */[
+                /* NonterminalCapture */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["add"]), /* array */[
+                          /* NonterminalCapture */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* TerminalCapture */Block.__(0, [/* record */[
                                           /* content */"x",
                                           /* leading_trivia */"",
                                           /* trailing_trivia */""
                                         ]])])]),
-                          /* Left */Block.__(0, [/* record */[
+                          /* TerminalCapture */Block.__(0, [/* record */[
                                 /* content */"+",
                                 /* leading_trivia */"",
                                 /* trailing_trivia */""
                               ]]),
-                          /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, [/* record */[
+                          /* NonterminalCapture */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* TerminalCapture */Block.__(0, [/* record */[
                                           /* content */"y",
                                           /* leading_trivia */"",
                                           /* trailing_trivia */""
                                         ]])])])
                         ])]),
-                /* Left */Block.__(0, [/* record */[
+                /* TerminalCapture */Block.__(0, [/* record */[
                       /* content */"-",
                       /* leading_trivia */"",
                       /* trailing_trivia */""
                     ]]),
-                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, [/* record */[
+                /* NonterminalCapture */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* TerminalCapture */Block.__(0, [/* record */[
                                 /* content */"z",
                                 /* leading_trivia */"",
                                 /* trailing_trivia */""
                               ]])])])
               ]);
-          var tree$prime$prime = ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["add"]), /* array */[
-                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, [/* record */[
+          ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["add"]), /* array */[
+                /* NonterminalCapture */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* TerminalCapture */Block.__(0, [/* record */[
                                 /* content */"x",
                                 /* leading_trivia */"",
                                 /* trailing_trivia */""
                               ]])])]),
-                /* Left */Block.__(0, [/* record */[
+                /* TerminalCapture */Block.__(0, [/* record */[
                       /* content */"+",
                       /* leading_trivia */"",
                       /* trailing_trivia */""
                     ]]),
-                /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["mul"]), /* array */[
-                          /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, [/* record */[
+                /* NonterminalCapture */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Operator */Block.__(0, ["mul"]), /* array */[
+                          /* NonterminalCapture */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* TerminalCapture */Block.__(0, [/* record */[
                                           /* content */"y",
                                           /* leading_trivia */"",
                                           /* trailing_trivia */""
                                         ]])])]),
-                          /* Left */Block.__(0, [/* record */[
+                          /* TerminalCapture */Block.__(0, [/* record */[
                                 /* content */"*",
                                 /* leading_trivia */"",
                                 /* trailing_trivia */""
                               ]]),
-                          /* Right */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* Left */Block.__(0, [/* record */[
+                          /* NonterminalCapture */Block.__(1, [ConcreteSyntax.mk_tree(arith$1, /* Var */0, /* array */[/* TerminalCapture */Block.__(0, [/* record */[
                                           /* content */"z",
                                           /* leading_trivia */"",
                                           /* trailing_trivia */""
@@ -234,26 +238,7 @@ Jest.describe("ConcreteSyntax", (function (param) {
                 }));
           return Jest.testAll("parse", /* :: */[
                       Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [tree]), Jest.Expect[/* expect */0](ConcreteSyntax.parse(concrete, "x+y"))),
-                      /* :: */[
-                        Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [true]), Jest.Expect[/* expect */0](Belt_Result.map(ConcreteSyntax.parse(concrete, "x + y"), (function (param) {
-                                        return ConcreteSyntax.equivalent(tree, param);
-                                      })))),
-                        /* :: */[
-                          Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [tree$prime]), Jest.Expect[/* expect */0](ConcreteSyntax.parse(concrete, "x+y-z"))),
-                          /* :: */[
-                            Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [true]), Jest.Expect[/* expect */0](Belt_Result.map(ConcreteSyntax.parse(concrete, "x + y-z"), (function (param) {
-                                            return ConcreteSyntax.equivalent(tree$prime, param);
-                                          })))),
-                            /* :: */[
-                              Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [tree$prime$prime]), Jest.Expect[/* expect */0](ConcreteSyntax.parse(concrete, "x + y * z"))),
-                              /* :: */[
-                                Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [tree$prime$prime]), Jest.Expect[/* expect */0](ConcreteSyntax.parse(concrete, "x + (y * z)"))),
-                                /* [] */0
-                              ]
-                            ]
-                          ]
-                        ]
-                      ]
+                      /* [] */0
                     ], Util.id);
         }
       }));
@@ -279,5 +264,6 @@ exports.mk_tree = mk_tree;
 exports.parse = parse;
 exports.equivalent = equivalent;
 exports.regex_piece_to_string = regex_piece_to_string;
-exports.mk_left = mk_left;
+exports.nt_capture = nt_capture;
+exports.mk_terminal_capture = mk_terminal_capture;
 /*  Not a pure module */

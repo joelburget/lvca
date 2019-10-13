@@ -22,6 +22,8 @@ FUN   := "fun"
 ARROW := "->"
 TRUE  := "true"
 FALSE := "false"
+BOOL  := "bool"
+SPACE := [ ]+
 
 tm :=
   | ID                    { var($1)         }
@@ -31,6 +33,10 @@ tm :=
   | TRUE                  { true()          }
   | FALSE                 { false()         }
   > tm _ tm               { app($1; $2)     } // %right
+
+ty :=
+  | BOOL         { bool()      }
+  | ty ARROW ty  { arr($1; $3) }
 |}
 
 // TODO:

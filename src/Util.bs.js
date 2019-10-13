@@ -353,6 +353,48 @@ function first_by(lst, f) {
   };
 }
 
+function array_map_keep(f, arr) {
+  var result = /* array */[];
+  Belt_Array.forEach(arr, (function (a) {
+          var match = Curry._1(f, a);
+          if (match !== undefined) {
+            result.push(Caml_option.valFromOption(match));
+            return /* () */0;
+          } else {
+            return /* () */0;
+          }
+        }));
+  return result;
+}
+
+function get_option(err, param) {
+  if (param !== undefined) {
+    return Caml_option.valFromOption(param);
+  } else {
+    throw err;
+  }
+}
+
+var InvariantViolation = Caml_exceptions.create("Util.InvariantViolation");
+
+function invariant_violation(str) {
+  return [
+          InvariantViolation,
+          str
+        ];
+}
+
+function get_option$prime(msg) {
+  var partial_arg_001 = "invariant violation: " + msg;
+  var partial_arg = [
+    InvariantViolation,
+    partial_arg_001
+  ];
+  return (function (param) {
+      return get_option(partial_arg, param);
+    });
+}
+
 exports.unsnoc = unsnoc;
 exports.intersperse = intersperse;
 exports.intersperse_after = intersperse_after;
@@ -375,4 +417,9 @@ exports.list_flat_map = list_flat_map;
 exports.is_none = is_none;
 exports.is_some = is_some;
 exports.first_by = first_by;
+exports.array_map_keep = array_map_keep;
+exports.get_option = get_option;
+exports.InvariantViolation = InvariantViolation;
+exports.invariant_violation = invariant_violation;
+exports.get_option$prime = get_option$prime;
 /* No side effect */

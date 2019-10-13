@@ -11,7 +11,7 @@ module Grammar : GRAMMAR = struct
   let grammar = {
     nonterminals = M.fromArray
     [|
-       (* E' *)
+       (* E' (note: the grammar we provide is already augmented) *)
        0, { productions = [[Nonterminal 1]] }; (* E' -> E *)
        (* E *)
        1, { productions = [
@@ -259,20 +259,20 @@ let () = describe "LrParsing" (fun () ->
    * goto? *)
   (* Test for a match with CPTT Figure 4.37 *)
   testAll "goto_table" [
-    expect (Lr0'.goto_table state.(0) (Nonterminal e_num)) |> toEqual state.(1);
-    expect (Lr0'.goto_table state.(0) (Nonterminal t_num)) |> toEqual state.(2);
-    expect (Lr0'.goto_table state.(0) (Nonterminal f_num)) |> toEqual state.(3);
-    expect (Lr0'.goto_table state.(4) (Nonterminal e_num)) |> toEqual state.(8);
-    expect (Lr0'.goto_table state.(4) (Nonterminal t_num)) |> toEqual state.(2);
-    expect (Lr0'.goto_table state.(4) (Nonterminal f_num)) |> toEqual state.(3);
+    expect (Lr0'.goto_table state.(0) (Nonterminal e_num)) |> toEqual (Some state.(1));
+    expect (Lr0'.goto_table state.(0) (Nonterminal t_num)) |> toEqual (Some state.(2));
+    expect (Lr0'.goto_table state.(0) (Nonterminal f_num)) |> toEqual (Some state.(3));
+    expect (Lr0'.goto_table state.(4) (Nonterminal e_num)) |> toEqual (Some state.(8));
+    expect (Lr0'.goto_table state.(4) (Nonterminal t_num)) |> toEqual (Some state.(2));
+    expect (Lr0'.goto_table state.(4) (Nonterminal f_num)) |> toEqual (Some state.(3));
     (* TODO: test other invalid GOTOs *)
     (* TODO: should this throw? *)
-    expect (fun () -> Lr0'.goto_table state.(6) (Nonterminal e_num)) |> toThrow;
-    expect (Lr0'.goto_table state.(6) (Nonterminal t_num)) |> toEqual state.(9);
-    expect (Lr0'.goto_table state.(6) (Nonterminal f_num)) |> toEqual state.(3);
-    expect (fun () -> Lr0'.goto_table state.(7) (Nonterminal e_num)) |> toThrow;
-    expect (fun () -> Lr0'.goto_table state.(7) (Nonterminal t_num)) |> toThrow;
-    expect (Lr0'.goto_table state.(7) (Nonterminal f_num)) |> toEqual state.(10);
+    expect (Lr0'.goto_table state.(6) (Nonterminal e_num)) |> toEqual None;
+    expect (Lr0'.goto_table state.(6) (Nonterminal t_num)) |> toEqual (Some state.(9));
+    expect (Lr0'.goto_table state.(6) (Nonterminal f_num)) |> toEqual (Some state.(3));
+    expect (Lr0'.goto_table state.(7) (Nonterminal e_num)) |> toEqual None;
+    expect (Lr0'.goto_table state.(7) (Nonterminal t_num)) |> toEqual None;
+    expect (Lr0'.goto_table state.(7) (Nonterminal f_num)) |> toEqual (Some state.(10));
   ] Util.id;
 
   (* Test for a match with CPTT Figure 4.37 *)
@@ -373,10 +373,10 @@ let () = describe "LrParsing" (fun () ->
 
   let mk_tok name start finish : Lex.token = { name; start; finish } in
   let mk_terminal num start_pos end_pos =
-    { symbol = Terminal num; children = []; start_pos; end_pos; }
+    { production = Either.Left num; children = []; start_pos; end_pos; }
   in
-  let mk_wrapper nt_num ({start_pos; end_pos} as child) =
-    { symbol = Nonterminal nt_num;
+  let mk_wrapper prod_num ({start_pos; end_pos} as child) =
+    { production = Either.Right prod_num;
       children = [ child ];
       start_pos;
       end_pos;
@@ -431,12 +431,12 @@ let () = describe "LrParsing" (fun () ->
   testAll "parse" [
 
     expect (Lr0'.parse (* "foo * bar" *) tokens1) |> toEqual (Result.Ok
-      (mk_wrapper 1
-        { symbol = Nonterminal 2;
+      (mk_wrapper 2
+        { production = Either.Right 3;
           children = [
-            mk_wrapper 2 @@ mk_wrapper 3 @@ mk_terminal id_num 0 3;
+            mk_wrapper 4 @@ mk_wrapper 6 @@ mk_terminal id_num 0 3;
             mk_terminal times_num 4 5;
-            mk_wrapper 3 @@ mk_terminal id_num 6 9;
+            mk_wrapper 6 @@ mk_terminal id_num 6 9;
           ];
           start_pos = 0;
           end_pos = 9;
@@ -444,20 +444,20 @@ let () = describe "LrParsing" (fun () ->
 
     (* Figure 4.38 from CPTT *)
     expect (Lr0'.parse (* "foo * bar + baz" *) tokens2) |> toEqual (Result.Ok
-      { symbol = Nonterminal 1;
+      { production = Either.Right 1;
         children =
-          [ mk_wrapper 1
-            { symbol = Nonterminal 2;
+          [ mk_wrapper 2
+            { production = Either.Right 3;
               children = [
-                mk_wrapper 2 @@ mk_wrapper 3 @@ mk_terminal id_num 0 3;
+                mk_wrapper 4 @@ mk_wrapper 6 @@ mk_terminal id_num 0 3;
                 mk_terminal times_num 4 5;
-                mk_wrapper 3 @@ mk_terminal id_num 6 9;
+                mk_wrapper 6 @@ mk_terminal id_num 6 9;
               ];
               start_pos = 0;
               end_pos = 9;
             };
             mk_terminal plus_num 10 11;
-            mk_wrapper 2 @@ mk_wrapper 3 @@ mk_terminal id_num 12 15;
+            mk_wrapper 4 @@ mk_wrapper 6 @@ mk_terminal id_num 12 15;
           ];
         start_pos = 0;
         end_pos = 15;
@@ -468,11 +468,11 @@ let () = describe "LrParsing" (fun () ->
       (Result.Error (4, "parsing invariant violation -- pop failed"));
 
     expect (Lr0'.parse (* "foo + bar" *) tokens4) |> toEqual (Result.Ok
-      { symbol = Nonterminal 1;
+      { production = Either.Right 1;
         children = [
-          mk_wrapper 1 @@ mk_wrapper 2 @@ mk_wrapper 3 @@ mk_terminal id_num 0 3;
+          mk_wrapper 2 @@ mk_wrapper 4 @@ mk_wrapper 6 @@ mk_terminal id_num 0 3;
           mk_terminal plus_num 4 5;
-          mk_wrapper 2 @@ mk_wrapper 3 @@ mk_terminal id_num 6 9;
+          mk_wrapper 4 @@ mk_wrapper 6 @@ mk_terminal id_num 6 9;
         ];
         start_pos = 0;
         end_pos = 9;

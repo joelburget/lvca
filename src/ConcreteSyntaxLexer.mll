@@ -11,6 +11,7 @@ let white          = [' ' '\t']+
 let newline        = '\r' | '\n' | "\r\n"
 let terminal_id    = ['A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9' '-' '_']*
 let nonterminal_id = ['a'-'z'] ['a'-'z' 'A'-'Z' '0'-'9' '-' '_']*
+let escaped        = '\\' ['a'-'z' 'A'-'Z']+
 
 rule read = parse
   | "//" [^ '\r' '\n']* newline

@@ -5,6 +5,7 @@ var Lex = require("./Lex.bs.js");
 var Util = require("./Util.bs.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
+var Printf = require("bs-platform/lib/js/printf.js");
 var Belt_Id = require("bs-platform/lib/js/belt_Id.js");
 var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
@@ -95,16 +96,16 @@ function Lr0(G) {
                         production_cnt[0] = production_num + 1 | 0;
                         Belt_MutableMapInt.set(production_map, production_num, production);
                         Belt_MutableMapInt.set(production_nonterminal_map, production_num, nt_num);
-                        var prod_set = Belt_MutableMapInt.getExn(nonterminal_production_map, nt_num);
+                        var prod_set = Util.get_option$prime("Lr0 preprocessing -- unable to find nonterminal " + String(nt_num))(Belt_MutableMapInt.get(nonterminal_production_map, nt_num));
                         return Belt_MutableSetInt.add(prod_set, production_num);
                       }));
         }));
   var number_of_nonterminals = Belt_MapInt.size(G[/* grammar */0][/* nonterminals */0]);
-  var get_nonterminal_num = function (param) {
-    return Belt_MutableMapInt.getExn(production_nonterminal_map, param);
+  var get_nonterminal_num = function (p_num) {
+    return Util.get_option$prime("get_nonterminal_num: couldn't find production " + String(p_num))(Belt_MutableMapInt.get(production_nonterminal_map, p_num));
   };
   var get_nonterminal = function (pn) {
-    return Belt_MapInt.getExn(G[/* grammar */0][/* nonterminals */0], Belt_MutableMapInt.getExn(production_nonterminal_map, pn));
+    return Util.get_option$prime("get_nonterminal: couldn't find production " + String(pn))(Belt_MapInt.get(G[/* grammar */0][/* nonterminals */0], get_nonterminal_num(pn)));
   };
   var closure = function (initial_items) {
     var added = Bitstring.alloc(number_of_nonterminals, false);
@@ -112,7 +113,8 @@ function Lr0(G) {
     var nt_stack = Belt_MutableSetInt.make(/* () */0);
     Belt_SetInt.forEach(initial_items, (function (item) {
             var match = view_item(item);
-            var production = Belt_MutableMapInt.getExn(production_map, match[/* production_num */0]);
+            var production_num = match[/* production_num */0];
+            var production = Util.get_option$prime("closure: couldn't find production " + String(production_num))(Belt_MutableMapInt.get(production_map, production_num));
             var match$1 = Belt_List.get(production, match[/* position */1]);
             if (match$1 !== undefined) {
               var match$2 = match$1;
@@ -126,17 +128,35 @@ function Lr0(G) {
             }
           }));
     while(!Belt_MutableSetInt.isEmpty(nt_stack)) {
-      var match = Belt_MutableSetInt.minimum(nt_stack);
-      var nonterminal_num = match !== undefined ? match : Pervasives.failwith("invariant violation: the set is not empty!");
+      var nonterminal_num = Util.get_option$prime("the set is not empty!")(Belt_MutableSetInt.minimum(nt_stack));
       Belt_MutableSetInt.remove(nt_stack, nonterminal_num);
-      if (!Bitstring.getExn(added, nonterminal_num)) {
+      var is_added = Util.get_option$prime(Curry._2(Printf.sprintf(/* Format */[
+                      /* String_literal */Block.__(11, [
+                          "closure: couldn't find nonterminal ",
+                          /* Scan_get_counter */Block.__(21, [
+                              /* Char_counter */1,
+                              /* String_literal */Block.__(11, [
+                                  " (nonterminal count ",
+                                  /* Scan_get_counter */Block.__(21, [
+                                      /* Char_counter */1,
+                                      /* Char_literal */Block.__(12, [
+                                          /* ")" */41,
+                                          /* End_of_format */0
+                                        ])
+                                    ])
+                                ])
+                            ])
+                        ]),
+                      "closure: couldn't find nonterminal %n (nonterminal count %n)"
+                    ]), nonterminal_num, Bitstring.length(added)))(Bitstring.get(added, nonterminal_num));
+      if (!is_added) {
         Bitstring.setExn(added, nonterminal_num, true);
         var production_set = Belt_MutableMapInt.getExn(nonterminal_production_map, nonterminal_num);
         Belt_MutableSetInt.forEach(production_set, (function (production_num) {
                 return Belt_MutableSetInt.add(nonkernel_items, mk_item$prime(production_num, 0));
               }));
-        var match$1 = Belt_MapInt.getExn(G[/* grammar */0][/* nonterminals */0], nonterminal_num);
-        Belt_List.forEach(match$1[/* productions */0], (function (production) {
+        var match = Belt_MapInt.getExn(G[/* grammar */0][/* nonterminals */0], nonterminal_num);
+        Belt_List.forEach(match[/* productions */0], (function (production) {
                 if (production) {
                   var match = production[0];
                   if (match.tag) {
@@ -217,11 +237,26 @@ function Lr0(G) {
                       item_set
                     ];
             })));
-  var state_to_item_set = function (param) {
-    return Belt_MapInt.getExn(items$prime, param);
+  var state_to_item_set = function (state) {
+    return Util.get_option$prime("state_to_item_set -- couldn't find state " + String(state))(Belt_MapInt.get(items$prime, state));
   };
   var item_set_to_state = function (item_set) {
-    return Belt_Option.getExn(Belt_MapInt.findFirstBy(items$prime, (function (param, item_set$prime) {
+    var item_set_str = Belt_Array.map(Belt_SetInt.toArray(item_set), (function (prim) {
+              return String(prim);
+            })).join(" ");
+    return Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                            /* String_literal */Block.__(11, [
+                                "item_set_to_state -- couldn't find item_set (",
+                                /* String */Block.__(2, [
+                                    /* No_padding */0,
+                                    /* Char_literal */Block.__(12, [
+                                        /* ")" */41,
+                                        /* End_of_format */0
+                                      ])
+                                  ])
+                              ]),
+                            "item_set_to_state -- couldn't find item_set (%s)"
+                          ]), item_set_str))(Belt_MapInt.findFirstBy(items$prime, (function (param, item_set$prime) {
                         return Caml_obj.caml_equal(Belt_SetInt.toArray(item_set$prime), Belt_SetInt.toArray(item_set));
                       })))[0];
   };
@@ -346,11 +381,21 @@ function Lr0(G) {
     return in_follow$prime(partial_arg, param, param$1);
   };
   var goto_table = function (state, nt) {
-    var item_set = Belt_MapInt.getExn(items$prime, state);
-    return item_set_to_state(simplify_config_set(closure(goto_kernel(item_set, nt))));
+    try {
+      var item_set = state_to_item_set(state);
+      return item_set_to_state(simplify_config_set(closure(goto_kernel(item_set, nt))));
+    }
+    catch (raw_exn){
+      var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
+      if (exn[0] === Util.InvariantViolation) {
+        return undefined;
+      } else {
+        throw exn;
+      }
+    }
   };
   var action_table = function (state, terminal_num) {
-    var item_set = Belt_MapInt.getExn(items$prime, state);
+    var item_set = state_to_item_set(state);
     var item_set_l = Belt_SetInt.toList(item_set);
     var shift_action = Util.find_by(item_set_l, (function (item) {
             var match = view_item(item);
@@ -361,7 +406,9 @@ function Lr0(G) {
               if (next_symbol.tag || next_symbol[0] !== terminal_num) {
                 return undefined;
               } else {
-                return /* Shift */Block.__(0, [goto_table(state, next_symbol)]);
+                return Belt_Option.map(goto_table(state, next_symbol), (function (x) {
+                              return /* Shift */Block.__(0, [x]);
+                            }));
               }
             }
             
@@ -394,6 +441,28 @@ function Lr0(G) {
     } else {
       return /* Error */1;
     }
+  };
+  var states = Belt_Array.makeBy(Belt_MapInt.size(items$prime), Util.id);
+  var terminals = Belt_Array.makeBy(G[/* grammar */0][/* num_terminals */1] + 1 | 0, Util.id);
+  var nonterminals = Belt_Array.makeBy(Belt_MapString.size(G[/* grammar */0][/* terminal_names */2]), Util.id);
+  var full_action_table = function (param) {
+    return Belt_Array.map(states, (function (state) {
+                  return Belt_Array.map(terminals, (function (param) {
+                                return action_table(state, param);
+                              }));
+                }));
+  };
+  var full_goto_table = function (param) {
+    return Belt_Array.map(states, (function (state) {
+                  return Belt_Array.map(Belt_Array.map(nonterminals, (function (nt) {
+                                    return /* Nonterminal */Block.__(1, [nt]);
+                                  })), (function (sym) {
+                                return /* tuple */[
+                                        sym,
+                                        goto_table(state, sym)
+                                      ];
+                              }));
+                }));
   };
   var token_to_terminal = function (param) {
     return Belt_MapString.getExn(G[/* grammar */0][/* terminal_names */2], param[/* name */0]);
@@ -434,7 +503,19 @@ function Lr0(G) {
                   ParseFailed,
                   /* tuple */[
                     tok[/* start */1],
-                    "parse failed -- no valid transition on this token"
+                    Curry._1(Printf.sprintf(/* Format */[
+                              /* String_literal */Block.__(11, [
+                                  "parse failed -- no valid transition on this token (",
+                                  /* String */Block.__(2, [
+                                      /* No_padding */0,
+                                      /* Char_literal */Block.__(12, [
+                                          /* ")" */41,
+                                          /* End_of_format */0
+                                        ])
+                                    ])
+                                ]),
+                              "parse failed -- no valid transition on this token (%s)"
+                            ]), tok[/* name */0])
                   ]
                 ];
           }
@@ -467,12 +548,17 @@ function Lr0(G) {
           var nt_num = Belt_MutableMapInt.getExn(production_nonterminal_map, production_num);
           var match$3 = Belt_MutableStack.top(stack);
           if (match$3 !== undefined) {
-            Belt_MutableStack.push(stack, goto_table(match$3, /* Nonterminal */Block.__(1, [nt_num])));
+            var match$4 = goto_table(match$3, /* Nonterminal */Block.__(1, [nt_num]));
+            if (match$4 !== undefined) {
+              Belt_MutableStack.push(stack, match$4);
+            } else {
+              Pervasives.failwith("invariant violation: invalid GOTO transition");
+            }
           } else {
             Pervasives.failwith("invariant violation: peeking empty stack");
           }
           Belt_MutableStack.push(results, /* record */[
-                /* symbol : Nonterminal */Block.__(1, [nt_num]),
+                /* production : Right */Block.__(1, [production_num]),
                 /* children */children,
                 /* start_pos */start_pos,
                 /* end_pos */end_pos
@@ -480,7 +566,7 @@ function Lr0(G) {
         } else {
           Belt_MutableStack.push(stack, match$1[0]);
           Belt_MutableStack.push(results, /* record */[
-                /* symbol : Terminal */Block.__(0, [terminal_num]),
+                /* production : Left */Block.__(0, [terminal_num]),
                 /* children : [] */0,
                 /* start_pos */tok[/* start */1],
                 /* end_pos */tok[/* finish */2]
@@ -493,14 +579,14 @@ function Lr0(G) {
     catch (raw_exn){
       var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
       if (exn === ParseFinished) {
-        var match$4 = Belt_MutableStack.size(results);
-        if (match$4 !== 0) {
-          if (match$4 !== 1) {
+        var match$5 = Belt_MutableStack.size(results);
+        if (match$5 !== 0) {
+          if (match$5 !== 1) {
             return Pervasives.failwith("invariant violation: multiple results");
           } else {
-            var match$5 = Belt_MutableStack.top(results);
-            if (match$5 !== undefined) {
-              return /* Ok */Block.__(0, [match$5]);
+            var match$6 = Belt_MutableStack.top(results);
+            if (match$6 !== undefined) {
+              return /* Ok */Block.__(0, [match$6]);
             } else {
               return Pervasives.failwith("invariant violation: no result");
             }
@@ -526,7 +612,9 @@ function Lr0(G) {
       return /* Error */Block.__(1, [/* Left */Block.__(0, [match[0]])]);
     } else {
       var len = input.length;
-      var toks$prime = Belt_MutableQueue.fromArray(match[0]);
+      var toks$prime = Belt_MutableQueue.fromArray(match[0].filter((function (param) {
+                  return param[/* name */0] !== "SPACE";
+                })));
       Belt_MutableQueue.add(toks$prime, /* record */[
             /* name */"$",
             /* start */len,
@@ -569,6 +657,11 @@ function Lr0(G) {
           /* in_follow */in_follow,
           /* goto_table */goto_table,
           /* action_table */action_table,
+          /* states */states,
+          /* terminals */terminals,
+          /* nonterminals */nonterminals,
+          /* full_action_table */full_action_table,
+          /* full_goto_table */full_goto_table,
           /* token_to_terminal */token_to_terminal,
           /* token_to_symbol */token_to_symbol,
           /* parse */parse,
@@ -582,6 +675,8 @@ var L = 0;
 
 var M = 0;
 
+var MS = 0;
+
 var MM = 0;
 
 var MMI = 0;
@@ -592,7 +687,7 @@ var SI = 0;
 
 var SS = 0;
 
-var MS = 0;
+var MSet = 0;
 
 var MSI = 0;
 
@@ -602,19 +697,26 @@ var MStack = 0;
 
 var MQueue = 0;
 
+var get_option$prime = Util.get_option$prime;
+
+var invariant_violation = Util.invariant_violation;
+
 exports.A = A;
 exports.L = L;
 exports.M = M;
+exports.MS = MS;
 exports.MM = MM;
 exports.MMI = MMI;
 exports.S = S;
 exports.SI = SI;
 exports.SS = SS;
-exports.MS = MS;
+exports.MSet = MSet;
 exports.MSI = MSI;
 exports.Result = Result;
 exports.MStack = MStack;
 exports.MQueue = MQueue;
+exports.get_option$prime = get_option$prime;
+exports.invariant_violation = invariant_violation;
 exports.SymbolCmp = SymbolCmp;
 exports.LookaheadItemCmp = LookaheadItemCmp;
 exports.view_item = view_item;

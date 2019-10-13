@@ -19,26 +19,29 @@ type terminal_capture =
 
 type nonterminal_capture = tree
 
+and capture =
+  | TerminalCapture    of terminal_capture
+  | NonterminalCapture of nonterminal_capture
+  | SpaceCapture       of string
+
 and tree =
   { sort            : sort;
     node_type       : node_type;
     leading_trivia  : string;
     trailing_trivia : string;
-    children        : (terminal_capture, nonterminal_capture) Either.t array;
+    children        : capture array;
   }
 
 val equivalent : tree -> tree -> bool
 
-val mk_tree
-  : sort
-  -> node_type
-  -> (terminal_capture, nonterminal_capture) Either.t array
-  -> tree
+val mk_tree : sort -> node_type -> capture array -> tree
 
 val of_ast    : language -> ConcreteSyntaxDescription.t -> sort -> Nominal.term -> tree
 val to_string : tree -> string
 val parse     : ConcreteSyntaxDescription.t -> string -> (tree, string) Result.t
 val to_ast    : language -> tree -> (Nominal.term, string) Result.t
+
+val to_grammar : ConcreteSyntaxDescription.t -> LrParsing.grammar
 
 (* exported for testing: *)
 val regex_piece_to_string : ConcreteSyntaxDescription.regex_piece -> string

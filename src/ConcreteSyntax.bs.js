@@ -18,6 +18,7 @@ var Belt_MapInt = require("bs-platform/lib/js/belt_MapInt.js");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
+var Belt_MutableMapInt = require("bs-platform/lib/js/belt_MutableMapInt.js");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
@@ -34,16 +35,35 @@ function equivalent(t1, t2) {
 }
 
 function equivalent$prime(child1, child2) {
-  if (child1.tag) {
-    if (child2.tag) {
-      return equivalent(child1[0], child2[0]);
-    } else {
-      return false;
-    }
-  } else if (child2.tag) {
-    return false;
-  } else {
-    return Caml_obj.caml_equal(child1[0], child2[0]);
+  switch (child1.tag | 0) {
+    case 0 : 
+        switch (child2.tag | 0) {
+          case 0 : 
+              return Caml_obj.caml_equal(child1[0], child2[0]);
+          case 1 : 
+          case 2 : 
+              return false;
+          
+        }
+    case 1 : 
+        switch (child2.tag | 0) {
+          case 1 : 
+              return equivalent(child1[0], child2[0]);
+          case 0 : 
+          case 2 : 
+              return false;
+          
+        }
+    case 2 : 
+        switch (child2.tag | 0) {
+          case 0 : 
+          case 1 : 
+              return false;
+          case 2 : 
+              return child1[0] === child2[0];
+          
+        }
+    
   }
 }
 
@@ -84,14 +104,23 @@ function regex_is_literal(param) {
 function regex_piece_to_string(param) {
   switch (param.tag | 0) {
     case 0 : 
-        return param[0].replace((/\+/g), "\\+").replace((/\*/g), "\\*").replace((/\?/g), "\\?").replace((/\-/g), "\\-").replace((/\(/g), "\\(").replace((/\)/g), "\\)");
+        return param[0].replace((/\//g), "\\/").replace((/\+/g), "\\+").replace((/\*/g), "\\*").replace((/\?/g), "\\?").replace((/\-/g), "\\-").replace((/\(/g), "\\(").replace((/\)/g), "\\)");
     case 1 : 
-        return "[" + (param[0] + "]");
+        throw [
+              Caml_builtin_exceptions.match_failure,
+              /* tuple */[
+                "ConcreteSyntax.ml",
+                132,
+                56
+              ]
+            ];
     case 2 : 
-        return regex_piece_to_string(param[0]) + "*";
+        return "[" + (param[0] + "]");
     case 3 : 
-        return regex_piece_to_string(param[0]) + "+";
+        return regex_piece_to_string(param[0]) + "*";
     case 4 : 
+        return regex_piece_to_string(param[0]) + "+";
+    case 5 : 
         return regex_piece_to_string(param[0]) + "?";
     
   }
@@ -111,8 +140,8 @@ function mk_tree(sort, node_type, children) {
         ];
 }
 
-function mk_left(content) {
-  return /* Left */Block.__(0, [/* record */[
+function mk_terminal_capture(content) {
+  return /* TerminalCapture */Block.__(0, [/* record */[
               /* content */content,
               /* leading_trivia */"",
               /* trailing_trivia */""
@@ -129,7 +158,7 @@ function of_ast(lang, rules, current_sort, tm) {
     case 0 : 
         var scopes = tm[1];
         var op_name = tm[0];
-        var match = Belt_MapString.getExn(rules[/* sort_rules */1], sort_name);
+        var match = Util.get_option$prime("of_ast: failed to get sort " + sort_name)(Belt_MapString.get(rules[/* sort_rules */1], sort_name));
         var match$1 = find_operator_match(match[0][/* operator_rules */1], op_name);
         var match$2 = match$1[0];
         var term_pattern = match$2[/* term_pattern */1];
@@ -204,10 +233,10 @@ function of_ast(lang, rules, current_sort, tm) {
                           ];
                     } else {
                       var name = token[0];
-                      var terminal_rule = Belt_MapString.getExn(terminal_rules, name);
+                      var terminal_rule = Util.get_option$prime("of_ast: failed to get terminal rule " + name)(Belt_MapString.get(terminal_rules, name));
                       var match$1 = regex_is_literal(terminal_rule);
                       if (match$1 !== undefined) {
-                        return mk_left(match$1);
+                        return mk_terminal_capture(match$1);
                       } else {
                         throw [
                               CantEmitTokenRegex,
@@ -223,7 +252,7 @@ function of_ast(lang, rules, current_sort, tm) {
                           Caml_builtin_exceptions.assert_failure,
                           /* tuple */[
                             "ConcreteSyntax.ml",
-                            195,
+                            208,
                             11
                           ]
                         ];
@@ -243,14 +272,16 @@ function of_ast(lang, rules, current_sort, tm) {
                           "binder (" + (binder_name + (") found, nonterminal name: " + token[0]))
                         ];
                   } else {
-                    return mk_left(binder_name);
+                    return mk_terminal_capture(binder_name);
                   }
                 } else {
                   var subtm = match[1];
+                  var tm_ix = match[0];
                   if (typeof token === "number") {
                     exit = 1;
                   } else if (token.tag) {
-                    var match$2 = Belt_MapString.getExn(sorts, token[0]);
+                    var sort = token[0];
+                    var match$2 = Util.get_option$prime("of_ast: failed to get sort" + sort)(Belt_MapString.get(sorts, sort));
                     var some_operator = Util.find((function (param) {
                             return param[0] === op_name;
                           }), match$2[1]);
@@ -262,15 +293,15 @@ function of_ast(lang, rules, current_sort, tm) {
                             Caml_builtin_exceptions.assert_failure,
                             /* tuple */[
                               "ConcreteSyntax.ml",
-                              208,
+                              224,
                               23
                             ]
                           ];
                     }
-                    var valence = Belt_List.getExn(valences, match[0]);
-                    return /* Right */Block.__(1, [of_ast(lang, rules, valence[1], subtm)]);
+                    var valence = Util.get_option$prime("of_ast: failed to get term " + String(tm_ix))(Belt_List.get(valences, tm_ix));
+                    return /* NonterminalCapture */Block.__(1, [of_ast(lang, rules, valence[1], subtm)]);
                   } else {
-                    return /* Right */Block.__(1, [of_ast(lang, rules, current_sort, subtm)]);
+                    return /* NonterminalCapture */Block.__(1, [of_ast(lang, rules, current_sort, subtm)]);
                   }
                 }
                 if (exit === 1) {
@@ -278,7 +309,7 @@ function of_ast(lang, rules, current_sort, tm) {
                         Caml_builtin_exceptions.assert_failure,
                         /* tuple */[
                           "ConcreteSyntax.ml",
-                          242,
+                          264,
                           27
                         ]
                       ];
@@ -316,7 +347,7 @@ function of_ast(lang, rules, current_sort, tm) {
                   ];
             } else {
               var str = Bigint.to_string(match$3[0]);
-              return mk_tree(current_sort, /* Primitive */Block.__(1, [/* Integer */0]), /* array */[mk_left(str)]);
+              return mk_tree(current_sort, /* Primitive */Block.__(1, [/* Integer */0]), /* array */[mk_terminal_capture(str)]);
             }
           }
           break;
@@ -328,7 +359,7 @@ function of_ast(lang, rules, current_sort, tm) {
             var sort = match$4[0];
             if (tm.tag === 2) {
               var children$1 = Belt_List.toArray(List.map((function (tm) {
-                          return /* Right */Block.__(1, [of_ast(lang, rules, sort, tm)]);
+                          return /* NonterminalCapture */Block.__(1, [of_ast(lang, rules, sort, tm)]);
                         }), tm[0]));
               return mk_tree(current_sort, /* Sequence */1, children$1);
             } else {
@@ -352,7 +383,7 @@ function of_ast(lang, rules, current_sort, tm) {
           } else {
             var match$5 = tm[0];
             if (match$5.tag) {
-              return mk_tree(current_sort, /* Primitive */Block.__(1, [/* String */1]), /* array */[mk_left(match$5[0])]);
+              return mk_tree(current_sort, /* Primitive */Block.__(1, [/* String */1]), /* array */[mk_terminal_capture(match$5[0])]);
             } else {
               throw [
                     BadSortTerm,
@@ -369,7 +400,7 @@ function of_ast(lang, rules, current_sort, tm) {
   if (exit === 1) {
     switch (tm.tag | 0) {
       case 1 : 
-          return mk_tree(current_sort, /* Var */0, /* array */[mk_left(tm[0])]);
+          return mk_tree(current_sort, /* Var */0, /* array */[mk_terminal_capture(tm[0])]);
       case 2 : 
       case 3 : 
           throw [
@@ -385,38 +416,72 @@ function of_ast(lang, rules, current_sort, tm) {
 
 function to_string(param) {
   var children_str = $$String.concat("", Belt_List.fromArray($$Array.map((function (param) {
-                  if (param.tag) {
-                    return to_string(param[0]);
-                  } else {
-                    var match = param[0];
-                    return match[/* leading_trivia */1] + (match[/* content */0] + match[/* trailing_trivia */2]);
+                  switch (param.tag | 0) {
+                    case 0 : 
+                        var match = param[0];
+                        return match[/* leading_trivia */1] + (match[/* content */0] + match[/* trailing_trivia */2]);
+                    case 1 : 
+                        return to_string(param[0]);
+                    case 2 : 
+                        return param[0];
+                    
                   }
                 }), param[/* children */4])));
   return param[/* leading_trivia */2] + (children_str + param[/* trailing_trivia */3]);
 }
 
-function to_ast(lang, param) {
-  var children = param[/* children */4];
-  var node_type = param[/* node_type */1];
+function remove_spaces(param) {
+  var children$prime = Util.array_map_keep((function (param) {
+          switch (param.tag | 0) {
+            case 0 : 
+                return /* TerminalCapture */Block.__(0, [param[0]]);
+            case 1 : 
+                return /* NonterminalCapture */Block.__(1, [remove_spaces(param[0])]);
+            case 2 : 
+                return undefined;
+            
+          }
+        }), param[/* children */4]);
+  return /* record */[
+          /* sort */param[/* sort */0],
+          /* node_type */param[/* node_type */1],
+          /* leading_trivia */param[/* leading_trivia */2],
+          /* trailing_trivia */param[/* trailing_trivia */3],
+          /* children */children$prime
+        ];
+}
+
+function to_ast(lang, tree) {
+  var match = remove_spaces(tree);
+  var children = match[/* children */4];
+  var node_type = match[/* node_type */1];
   var exit = 0;
   if (typeof node_type === "number") {
     if (node_type === 0) {
       if (children.length !== 1) {
         exit = 1;
       } else {
-        var match = children[0];
-        if (match.tag) {
-          exit = 1;
-        } else {
-          return /* Ok */Block.__(0, [/* Var */Block.__(1, [match[0][/* content */0]])]);
+        var match$1 = children[0];
+        switch (match$1.tag | 0) {
+          case 0 : 
+              return /* Ok */Block.__(0, [/* Var */Block.__(1, [match$1[0][/* content */0]])]);
+          case 1 : 
+          case 2 : 
+              exit = 1;
+              break;
+          
         }
       }
     } else {
       return Belt_Result.map(Curry._2(AA[/* traverse_array_result */2], (function (param) {
-                        if (param.tag) {
-                          return to_ast(lang, param[0]);
-                        } else {
-                          return /* Error */Block.__(1, ["TODO: message"]);
+                        switch (param.tag | 0) {
+                          case 0 : 
+                              return /* Error */Block.__(1, ["TODO: message"]);
+                          case 1 : 
+                              return to_ast(lang, param[0]);
+                          case 2 : 
+                              return Pervasives.failwith("invariant violation: space found in to_ast sequence");
+                          
                         }
                       }), children), (function (children$prime) {
                     return /* Sequence */Block.__(2, [Belt_List.fromArray(children$prime)]);
@@ -426,30 +491,39 @@ function to_ast(lang, param) {
     if (children.length !== 1) {
       exit = 1;
     } else {
-      var match$1 = children[0];
-      if (match$1.tag) {
-        exit = 1;
-      } else {
-        var str = match$1[0][/* content */0];
-        if (node_type[0]) {
-          return /* Ok */Block.__(0, [/* Primitive */Block.__(3, [/* PrimString */Block.__(1, [str])])]);
-        } else {
-          try {
-            return /* Ok */Block.__(0, [/* Primitive */Block.__(3, [/* PrimInteger */Block.__(0, [Bigint.of_string(str)])])]);
-          }
-          catch (exn){
-            return /* Error */Block.__(1, ["failed to read integer literal"]);
-          }
-        }
+      var match$2 = children[0];
+      switch (match$2.tag | 0) {
+        case 0 : 
+            var str = match$2[0][/* content */0];
+            if (node_type[0]) {
+              return /* Ok */Block.__(0, [/* Primitive */Block.__(3, [/* PrimString */Block.__(1, [str])])]);
+            } else {
+              try {
+                return /* Ok */Block.__(0, [/* Primitive */Block.__(3, [/* PrimInteger */Block.__(0, [Bigint.of_string(str)])])]);
+              }
+              catch (exn){
+                return /* Error */Block.__(1, ["failed to read integer literal"]);
+              }
+            }
+        case 1 : 
+        case 2 : 
+            exit = 1;
+            break;
+        
       }
     }
   } else {
     var op_name = node_type[0];
     var children$prime = Curry._1(AA[/* sequence_array_result */1], Belt_Array.keepMap(children, (function (param) {
-                if (param.tag) {
-                  return scope_to_ast(lang, param[0]);
+                switch (param.tag | 0) {
+                  case 0 : 
+                      return undefined;
+                  case 1 : 
+                      return scope_to_ast(lang, param[0]);
+                  case 2 : 
+                      return Pervasives.failwith("invariant violation: space found in to_ast");
+                  
                 }
-                
               })));
     return Belt_Result.map(children$prime, (function (children$prime$prime) {
                   return /* Operator */Block.__(0, [
@@ -463,7 +537,7 @@ function to_ast(lang, param) {
           Caml_builtin_exceptions.assert_failure,
           /* tuple */[
             "ConcreteSyntax.ml",
-            313,
+            354,
             7
           ]
         ];
@@ -486,10 +560,14 @@ function scope_to_ast(lang, tree) {
     } else {
       var body$prime = match$1[0];
       return Belt_Result.map(Util.traverse_list_result((function (param) {
-                        if (param.tag) {
-                          return /* Error */Block.__(1, ["expected binder name, got TODO"]);
-                        } else {
-                          return /* Ok */Block.__(0, [param[0][/* content */0]]);
+                        switch (param.tag | 0) {
+                          case 0 : 
+                              return /* Ok */Block.__(0, [param[0][/* content */0]]);
+                          case 1 : 
+                              return /* Error */Block.__(1, ["expected binder name, got TODO"]);
+                          case 2 : 
+                              return Pervasives.failwith("invariant violation: space found in to_ast");
+                          
                         }
                       }), match[1]), (function (binders$prime) {
                     return /* Scope */[
@@ -518,41 +596,64 @@ function to_grammar(param) {
                       i
                     ];
             })));
-  var nonterminal_names = Belt_MapString.fromArray(Belt_Array.mapWithIndex(Belt_MapString.keysToArray(sort_rules), (function (i, name) {
-              return /* tuple */[
-                      name,
-                      i
-                    ];
-            })));
+  var nonterminal_names = Belt_MapString.set(Belt_MapString.fromArray(Belt_Array.mapWithIndex(Belt_MapString.keysToArray(sort_rules), (function (i, name) {
+                  return /* tuple */[
+                          name,
+                          i
+                        ];
+                }))), "root", 0);
+  var nonterminals = Belt_MapInt.set(Belt_MapInt.fromArray(Belt_Array.mapWithIndex(Belt_MapString.valuesToArray(sort_rules), (function (i, param) {
+                  var productions = Belt_List.flatten(Belt_List.map(param[0][/* operator_rules */1], (function (operator_level) {
+                              return Belt_List.map(operator_level, (function (param) {
+                                            return Belt_List.map(param[0][/* tokens */0], (function (param) {
+                                                          if (typeof param === "number") {
+                                                            return /* Terminal */Block.__(0, [Util.get_option$prime("to_grammar: failed to get SPACE")(Belt_MapString.get(terminal_names, "SPACE"))]);
+                                                          } else if (param.tag) {
+                                                            var ntn = param[0];
+                                                            return /* Nonterminal */Block.__(1, [Util.get_option$prime("to_grammar: failed to get " + ntn)(Belt_MapString.get(nonterminal_names, ntn))]);
+                                                          } else {
+                                                            var tn = param[0];
+                                                            return /* Terminal */Block.__(0, [Util.get_option$prime("to_grammar: failed to get " + tn)(Belt_MapString.get(terminal_names, tn))]);
+                                                          }
+                                                        }));
+                                          }));
+                            })));
+                  return /* tuple */[
+                          i + 1 | 0,
+                          /* record */[/* productions */productions]
+                        ];
+                }))), 0, /* record */[/* productions : :: */[
+          /* :: */[
+            /* Nonterminal */Block.__(1, [1]),
+            /* [] */0
+          ],
+          /* [] */0
+        ]]);
   return /* record */[
-          /* nonterminals */Belt_MapInt.fromArray(Belt_Array.mapWithIndex(Belt_MapString.valuesToArray(sort_rules), (function (i, param) {
-                      var productions = Belt_List.flatten(Belt_List.map(param[0][/* operator_rules */1], (function (operator_level) {
-                                  return Belt_List.map(operator_level, (function (param) {
-                                                return Belt_List.map(param[0][/* tokens */0], (function (param) {
-                                                              if (typeof param === "number") {
-                                                                return Pervasives.failwith("TODO");
-                                                              } else if (param.tag) {
-                                                                return /* Nonterminal */Block.__(1, [Belt_MapString.getExn(nonterminal_names, param[0])]);
-                                                              } else {
-                                                                return /* Terminal */Block.__(0, [Belt_MapString.getExn(terminal_names, param[0])]);
-                                                              }
-                                                            }));
-                                              }));
-                                })));
-                      return /* tuple */[
-                              i,
-                              /* record */[/* productions */productions]
-                            ];
-                    }))),
+          /* nonterminals */nonterminals,
           /* num_terminals */Belt_MapString.size(terminal_rules),
           /* terminal_names */terminal_names,
           /* nonterminal_names */nonterminal_names
         ];
 }
 
-var symbol_info = Pervasives.failwith("TODO");
+function production_info(nt_map, nonterminal_names, prod_num) {
+  var nt_num = Util.get_option$prime("production_info: failed to get " + String(prod_num))(Belt_MutableMapInt.get(nt_map, prod_num));
+  var f = function (param, nt_num$prime) {
+    return nt_num$prime === nt_num;
+  };
+  var match = Belt_MapString.findFirstBy(nonterminal_names, f);
+  var sort_name = match !== undefined ? match[0] : Pervasives.failwith("production_info: invariant violation: sort not found");
+  return /* tuple */[
+          /* Operator */Block.__(0, [sort_name]),
+          /* SortAp */[
+            sort_name,
+            /* array */[]
+          ]
+        ];
+}
 
-function tree_of_parse_result(str, root) {
+function tree_of_parse_result(Lr0, nonterminal_names, sort_rules, str, root) {
   var str_pos = /* record */[/* contents */0];
   var str_len = str.length;
   var get_trivia = function (start_pos, end_pos) {
@@ -593,29 +694,45 @@ function tree_of_parse_result(str, root) {
             trailing_trivia
           ];
   };
-  var go_nt = function (param) {
-    var match = Curry._1(symbol_info, param[/* symbol */0]);
+  var go_nt = function (nt_name, param) {
+    var production = param[/* production */0];
+    var prod_num;
+    prod_num = production.tag ? production[0] : Pervasives.failwith("invariant violation: go_nt received a terminal production");
+    var match = production_info(Lr0[/* production_nonterminal_map */1], nonterminal_names, prod_num);
+    var node_type = match[0];
     var match$1 = get_trivia(param[/* start_pos */2], param[/* end_pos */3]);
-    var tokens = Pervasives.failwith("TODO");
+    var ctor_name;
+    ctor_name = typeof node_type === "number" || node_type.tag ? Pervasives.failwith("invariant violation: got non-operator when handling a nonterminal") : node_type[0];
+    var err = "tree_of_parse_result: failed to get " + nt_name;
+    var match$2 = Util.get_option$prime(err)(Belt_MapString.get(sort_rules, nt_name));
+    var maybe_op_rule = Belt_List.getBy(Belt_List.flatten(match$2[0][/* operator_rules */1]), (function (param) {
+            var term_pattern = param[0][/* term_pattern */1];
+            if (term_pattern.tag) {
+              return true;
+            } else {
+              return ctor_name === term_pattern[0];
+            }
+          }));
+    var tokens = maybe_op_rule !== undefined ? maybe_op_rule[0][/* tokens */0] : Pervasives.failwith("error: unable to find operator");
     return /* record */[
             /* sort */match[1],
-            /* node_type */match[0],
+            /* node_type */node_type,
             /* leading_trivia */match$1[0],
             /* trailing_trivia */match$1[1],
             /* children */Belt_List.toArray(Belt_List.map(Belt_List.zip(param[/* children */1], tokens), (function (param) {
+                        var token = param[1];
                         var parse_result = param[0];
-                        var tmp = param[1];
-                        if (typeof tmp === "number") {
-                          return Pervasives.failwith("TODO");
-                        } else if (tmp.tag) {
-                          return /* Right */Block.__(1, [go_nt(parse_result)]);
+                        if (typeof token === "number") {
+                          return /* SpaceCapture */Block.__(2, [" "]);
+                        } else if (token.tag) {
+                          return /* NonterminalCapture */Block.__(1, [go_nt(token[0], parse_result)]);
                         } else {
-                          return /* Left */Block.__(0, [go_t(parse_result)]);
+                          return /* TerminalCapture */Block.__(0, [go_t(token[0], parse_result)]);
                         }
                       })))
           ];
   };
-  var go_t = function (param) {
+  var go_t = function (t_name, param) {
     var end_pos = param[/* end_pos */3];
     var start_pos = param[/* start_pos */2];
     var match = get_trivia(start_pos, end_pos);
@@ -626,11 +743,16 @@ function tree_of_parse_result(str, root) {
             /* trailing_trivia */match[1]
           ];
   };
-  return go_nt(root);
+  return go_nt("root", root);
 }
 
 function lexer_of_desc(param) {
-  return Belt_List.fromArray(Belt_MapString.toArray(Belt_MapString.map(param[/* terminal_rules */0], regex_to_string)));
+  return Belt_List.fromArray(Belt_Array.map(Belt_MapString.toArray(Belt_MapString.map(param[/* terminal_rules */0], regex_to_string)), (function (param) {
+                    return /* tuple */[
+                            param[1],
+                            param[0]
+                          ];
+                  })));
 }
 
 function parse(desc, str) {
@@ -638,7 +760,7 @@ function parse(desc, str) {
     var grammar = to_grammar(desc);
     var Lr0$prime = LrParsing.Lr0(/* module */[/* grammar */grammar]);
     var lexer = lexer_of_desc(desc);
-    var match = Curry._2(Lr0$prime[/* lex_and_parse */31], lexer, str);
+    var match = Curry._2(Lr0$prime[/* lex_and_parse */36], lexer, str);
     if (match.tag) {
       var match$1 = match[0];
       if (match$1.tag) {
@@ -693,7 +815,10 @@ function parse(desc, str) {
                           ]), start_pos, end_pos, str.slice(start_pos, end_pos), match$3[/* message */2])]);
       }
     } else {
-      return /* Ok */Block.__(0, [tree_of_parse_result(str, match[0])]);
+      return /* Ok */Block.__(0, [tree_of_parse_result([
+                      Lr0$prime[0],
+                      Lr0$prime[1]
+                    ], grammar[/* nonterminal_names */3], desc[/* sort_rules */1], str, match[0])]);
     }
   }
   catch (raw_exn){
@@ -714,5 +839,6 @@ exports.of_ast = of_ast;
 exports.to_string = to_string;
 exports.parse = parse;
 exports.to_ast = to_ast;
+exports.to_grammar = to_grammar;
 exports.regex_piece_to_string = regex_piece_to_string;
 /* AA Not a pure module */

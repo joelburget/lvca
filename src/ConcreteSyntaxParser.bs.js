@@ -44,9 +44,9 @@ function token2terminal(_tok) {
       case 14 : 
           return 19;
       case 15 : 
-          return 21;
-      case 16 : 
           return 22;
+      case 16 : 
+          return 23;
       
     }
   } else {
@@ -61,6 +61,8 @@ function token2terminal(_tok) {
           return 12;
       case 4 : 
           return 20;
+      case 5 : 
+          return 21;
       
     }
   }
@@ -475,7 +477,18 @@ var semantic_action = /* array */[
     }),
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
-      var _v = /* ReSet */Block.__(1, [_menhir_stack[/* semv */1]]);
+      var _v = /* ReSet */Block.__(2, [_menhir_stack[/* semv */1]]);
+      return /* record */[
+              /* state */_menhir_stack[/* state */0],
+              /* semv */_v,
+              /* startp */_menhir_stack[/* startp */2],
+              /* endp */_menhir_stack[/* endp */3],
+              /* next */_menhir_stack[/* next */4]
+            ];
+    }),
+  (function (_menhir_env) {
+      var _menhir_stack = _menhir_env[/* stack */2];
+      var _v = /* ReClass */Block.__(1, [_menhir_stack[/* semv */1]]);
       return /* record */[
               /* state */_menhir_stack[/* state */0],
               /* semv */_v,
@@ -487,7 +500,7 @@ var semantic_action = /* array */[
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
       var match = _menhir_stack[/* next */4];
-      var _v = /* ReStar */Block.__(2, [match[/* semv */1]]);
+      var _v = /* ReStar */Block.__(3, [match[/* semv */1]]);
       return /* record */[
               /* state */match[/* state */0],
               /* semv */_v,
@@ -499,7 +512,7 @@ var semantic_action = /* array */[
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
       var match = _menhir_stack[/* next */4];
-      var _v = /* RePlus */Block.__(3, [match[/* semv */1]]);
+      var _v = /* RePlus */Block.__(4, [match[/* semv */1]]);
       return /* record */[
               /* state */match[/* state */0],
               /* semv */_v,
@@ -511,7 +524,7 @@ var semantic_action = /* array */[
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
       var match = _menhir_stack[/* next */4];
-      var _v = /* ReOption */Block.__(4, [match[/* semv */1]]);
+      var _v = /* ReOption */Block.__(5, [match[/* semv */1]]);
       return /* record */[
               /* state */match[/* state */0],
               /* semv */_v,
@@ -694,34 +707,34 @@ var ET = MenhirLib.TableInterpreter[/* MakeEngineTable */0]([
       token2value,
       /* tuple */[
         8,
-        "\0\0\b\x01\0\0\0$%\0&('\x112\"\0\x15\0\0\0\x1f\0\x18\x16\x17-\0\0\x1d\0\x0f\0\0\0\0\0\b\0\0,1\0\0*\r\x000\0\0\n\t\x19!/\0\x1c\0\x13\0\x0b\x02\0\x18\x16\x17\x03\0\x04\0\x1a\0\x05\0#\0\x06\0.\0\x07\x003"
+        "\0\0\b\x01\0\0\0$%&\0')(\x113\"\0\x15\0\0\0\x1f\0\x18\x16\x17.\0\0\x1d\0\x0f\0\0\0\0\0\b\0\0-2\0\0+\r\x001\0\0\n\t\x19!0\0\x1c\0\x13\0\x0b\x02\0\x18\x16\x17\x03\0\x04\0\x1a\0\x05\0#\0\x06\0/\0\x07\x004"
       ],
       /* tuple */[
-        23,
-        "\0\0\x10\0\x10\0\0\0\0\0\0\x02\0\0\0\0\0D\0\x02\0\0\0\0\0\0p\xe0\x90\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0 \x10\0\0\0\0\0@\0\0\0\x16\x01\0@\0\0\x18\x04\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x86&\x01\0\0\0\0\x18\x04@\0\0\0\0\x01\0\0  \0\x10\0\x10\0\x80\0\x80\0\0\0\x01\x80\0\0\0\b\0\0\0\0\0\0\x18\0\x80\0\0\x80\0\0\0\0\0\0\x80\0\0\0\0\0\x80\0\x02%\x88\0\0\0\0\0\0\0\0\0\0\0\0\0\x000\b\0\0\0\0\0 \x80\0\0\0\0\x02\0\0\0\0\0\0\x18\x04\0\0\0\0\0\0\0\0\0\0\0\0\x03\0\x80\0\0\0\0\0\b\0\0\0\b\0\x04\0\0\0\0\0\x80\0\0\0\0\x80\0\0\0\0\0\b\0\0\0\x10\0\0\0\0\0\0\0\x80\0\0\0"
+        24,
+        "\0\0\x10\0\b\0\0\0\0\0\0\0 \0\0\0\0\x01\x10\0\f\0\0\0\0\0\0\0\0\x008pL\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0 \x10\0\0\0\0\0\x10\0\0\0\x01`\x10\x02\0\0\0`\x10\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x10\xc2`\x10\0\0\0\0`\x11\0\0\0\0\0\x01\0\0\x10\x10\0\x04\0\x02\0\x10\0\b\0\0\0\0\x06\0\0\0\0\x10\0\0\0\0\0\0\x06\0 \0\0\x10\0\0\0\0\0\0\x02\0\0\0\0\0\0\x80\0\x01\x12\xc2\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0`\x10\0\0\0\0\0\x10@\0\0\0\0\0@\0\0\0\0\0\0`\x10\0\0\0\0\0\0\0\0\0\0\0\0\0`\x10\0\0\0\0\0\0@\0\0\0\x10\0\f\0\0\0\0\0@\0\0\0\0\x10\0\0\0\0\0\0@\0\0\0 \0\0\0\0\0\0\0@\0\0\0"
       ],
       /* tuple */[
         /* tuple */[
           8,
-          "\x1d0\0\x008*\x05\0\0\x05\0\0\0\0\0\x008\0<,\x04\0(\0\0\0\0\x0b(\0(\0<*B.H\x008*\0\0(*\0\0V\0T\x06\0\0\0\0\0(\0<\0D\0\x004\0\0\0\0(\0F\0\x05\0H\0<\0J\x008\0L\0"
+          "\x1b\x05\0\0:\x1e\x05\0\0\0\x05\0\0\0\0\0\0:\0>,\x06\x008\0\0\0\0\x148\x008\0>,D\x07J\0>\x07\0\0\f\x07\0\0X\0V\f\0\0\0\0\x008\0>\0F\0\0B\0\0\0\x008\0H\0\x05\0J\0>\0L\0:\0N\0"
         ],
         /* tuple */[
           16,
-          "\0=\0\x1e\0*\0u\0u\0\x06\0i\0.\x002\0=\0\xca\0r\0i\0u\0}\0=\0\xde\0\xce\0\"\0}\0}\0^\0b\0V\0}\0\xa1\0\xa1\0\xff\x01\x03\0-\0\x16\0f\0\x8a\0\x9e\0\xa9\x005\0\x0b\x01\x07\0\xae\0M\0\x92\0N\0\x92\0\x1a\0R\0\x86\0\x8e\0E\0\x96\0\xbe\0\xc6\0\xf3\x01\x1b\x01+\x01;\x01K"
+          "\0=\0\x1e\0.\0-\0u\0u\0\x06\x002\x006\0=\0\x0b\0\xa5\0\xa5\0\xce\0u\0=\0\x96\0}\0\"\0&\0\xd2\0i\0}\0}\0\xb2\0Z\0v\0i\0}\0b\0f\0\x16\0\xe2\0\x8e\x01\x03\x01\x07\0\xa2\0\xad\0\x1a\0j\0M\0\x96\0R\x005\x01\x0b\0V\0\x8a\0\x92\0E\0\x9a\0\xc2\0\xca\0\xf7\x01\x1f\x01/\x01?\x01O"
         ]
       ],
       /* tuple */[
         8,
-        "\x06\x05\x04\x03\x02\x01\0\x1f\x1e\x1e\x1d\x1c\x1c\x1b\x1b\x1a\x1a\x19\x19\x18\x18\x17\x17\x17\x16\x15\x14\x14\x14\x13\x13\x12\x12\x11\x10\x0f\x0f\x0f\x0f\x0f\x0e\x0e\r\r\f\x0b\n\n\t\b\x07"
+        "\x06\x05\x04\x03\x02\x01\0\x1f\x1e\x1e\x1d\x1c\x1c\x1b\x1b\x1a\x1a\x19\x19\x18\x18\x17\x17\x17\x16\x15\x14\x14\x14\x13\x13\x12\x12\x11\x10\x0f\x0f\x0f\x0f\x0f\x0f\x0e\x0e\r\r\f\x0b\n\n\t\b\x07"
       ],
       /* tuple */[
         /* tuple */[
           8,
-          "=\0\0\0&\0.\0\0\x1a\0\0\0\0\0\0\r\0:\0\x13\0\x1d\0\0\0\0\0\r\0\x07\0\0@\0\x13\0\0\0\x05\0\0\0<\0\0\0\0\0\x1f\0\0\0\0\0\x06\0D\0\0\0\x000\0\0\0\0\x14\0\0\0&\0\0\0N\0\0\0Z\0\0\0"
+          "=\0\0\0&\0.\0\0\0\x1a\0\0\0\0\0\0\r\0:\0\x13\0\x1d\0\0\0\0\0\r\0\x07\0\0@\0\x13\0\0\0\x05\0\0\0<\0\0\0\0\0\x1f\0\0\0\0\0\x06\0D\0\0\0\x000\0\0\0\0\x14\0\0\0&\0\0\0N\0\0\0Z\0\0\0"
         ],
         /* tuple */[
           8,
-          "'\x04\x115.*\x1b'\x1c\x1f\x17)*!\x1e6\x1c\x1f\x12/\x1f!+9 \x1c\x1f\x11\n+!EF\x1f\nIJ!\n\x0e\x0f:1\x13-\x10:C>\x10MNQR<\0\0\0\0;\0+\x007"
+          "(\x04\x126/+\x1c(\x1d \x18*+\"\x1f7\x1d \x130 \",:!\x1d \x12\x0b,\"FG \x0bJK\"\x0b\x0f\x10;2\x14.\x11;D?\x11NORS=\0\0\0\0<\0,\x008"
         ]
       ],
       7,
@@ -757,23 +770,23 @@ var start = TI[32];
 var entry = TI[37];
 
 function terminal_rule__test(lexer, lexbuf) {
-  return Curry._3(entry, 79, lexer, lexbuf);
+  return Curry._3(entry, 80, lexer, lexbuf);
 }
 
 function sort_rule__test(lexer, lexbuf) {
-  return Curry._3(entry, 75, lexer, lexbuf);
+  return Curry._3(entry, 76, lexer, lexbuf);
 }
 
 function regex__test(lexer, lexbuf) {
-  return Curry._3(entry, 71, lexer, lexbuf);
+  return Curry._3(entry, 72, lexer, lexbuf);
 }
 
 function operator_match__test(lexer, lexbuf) {
-  return Curry._3(entry, 67, lexer, lexbuf);
+  return Curry._3(entry, 68, lexer, lexbuf);
 }
 
 function nonterminal_token(lexer, lexbuf) {
-  return Curry._3(entry, 62, lexer, lexbuf);
+  return Curry._3(entry, 63, lexer, lexbuf);
 }
 
 function language(lexer, lexbuf) {
@@ -785,23 +798,23 @@ function capture_number(lexer, lexbuf) {
 }
 
 function terminal_rule__test$1(initial_position) {
-  return Curry._2(start, 79, initial_position);
+  return Curry._2(start, 80, initial_position);
 }
 
 function sort_rule__test$1(initial_position) {
-  return Curry._2(start, 75, initial_position);
+  return Curry._2(start, 76, initial_position);
 }
 
 function regex__test$1(initial_position) {
-  return Curry._2(start, 71, initial_position);
+  return Curry._2(start, 72, initial_position);
 }
 
 function operator_match__test$1(initial_position) {
-  return Curry._2(start, 67, initial_position);
+  return Curry._2(start, 68, initial_position);
 }
 
 function nonterminal_token$1(initial_position) {
-  return Curry._2(start, 62, initial_position);
+  return Curry._2(start, 63, initial_position);
 }
 
 function language$1(initial_position) {

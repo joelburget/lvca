@@ -48,3 +48,6 @@ let alloc : int -> bool -> bitstring
       ( len,
         Bytes.make (len / 8 + one) @@ Char.chr @@ if b then 0xff else 0x00
       )
+
+let length : bitstring -> int
+  = fun (Bitstring (bs_len, _)) -> bs_len

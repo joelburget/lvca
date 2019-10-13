@@ -39,8 +39,9 @@ function find_first_capture(tok_names, captures) {
 }
 
 function get_next_tok(tok_names, re, param) {
+  var buf = param[/* buf */0];
   var pos = param[/* pos */1];
-  var param$1 = re.exec(param[/* buf */0].slice(pos));
+  var param$1 = re.exec(buf.slice(pos));
   if (param$1 !== null) {
     var match = Caml_array.caml_array_get(param$1, 0);
     var match$1 = find_first_capture(tok_names, param$1);
@@ -75,7 +76,7 @@ function get_next_tok(tok_names, re, param) {
           /* record */[
             /* start_pos */pos,
             /* end_pos */pos,
-            /* message */"TODO 2"
+            /* message */"Failed lex, re: " + (re.source + ("\nlexbuf: " + buf))
           ]
         ];
   }

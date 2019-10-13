@@ -167,10 +167,21 @@ module ConcreteSyntaxDescription = struct
   type terminal_id    = string
 
   type regex_piece =
+    (** Just a string of characters, eg `foo` *)
     | ReString of string
+    (** A character class, eg `\w` or `\d`. Syntactically, these are all
+     * started by a backslash. We just use javascript character classes. *)
+    (* Question: do we support octal escapes (\40)? The lex manual points out
+     * this is non-portable. But don't we presuppose unicode? We accept unicode
+     * categories, right? `\cc`, `\cf`, etc. *)
+    | ReClass  of string
+    (** A character set, eg `[a-z]` or `[^abc]` *)
     | ReSet    of string
+    (** Zero-or-more repetition, eg `(ab)*` *)
     | ReStar   of regex_piece
+    (** One-or-more repetition, eg `(ab)+` *)
     | RePlus   of regex_piece
+    (** Option, eg `(ab)?` *)
     | ReOption of regex_piece
 
   (* A regular expression used for lexical analysis. *)
@@ -252,6 +263,7 @@ module ConcreteSyntaxDescription = struct
       operator_rules : operator_match list list;
       variable       : variable_rule option;
     }
+
   (** A sort rule shows how to parse / pretty-print a sort *)
   type sort_rule = SortRule of sort_rule'
 

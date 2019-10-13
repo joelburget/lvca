@@ -158,3 +158,24 @@ let first_by (lst : 'a list) (f : 'a -> 'b option) : 'b option
         | None -> first_by' xs
         | Some b -> Some b
     in first_by' lst
+
+let array_map_keep : ('a -> 'b option) -> 'a array -> 'b array
+  = fun f arr ->
+    let result = [||] in
+    arr |. Belt.Array.forEach (fun a -> match f a with
+      | None -> ()
+      | Some b -> result |. Js.Array2.push b; ()
+    );
+    result
+
+let get_option : 'b -> 'a option -> 'a
+  = fun err -> function
+    | None   -> raise err
+    | Some a -> a
+
+exception InvariantViolation of string
+
+let invariant_violation str = InvariantViolation str
+
+let get_option' : string -> 'a option -> 'a
+  = fun msg -> get_option @@ invariant_violation ("invariant violation: " ^ msg)

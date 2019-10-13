@@ -20,30 +20,30 @@ Jest.describe("ConcreteSyntaxParser", (function (param) {
               /* [] */0
             ]);
         expectParse(ConcreteSyntaxParser.regex__test, "[a-z]", /* :: */[
-              /* ReSet */Block.__(1, ["a-z"]),
+              /* ReSet */Block.__(2, ["a-z"]),
               /* [] */0
             ]);
         expectParse(ConcreteSyntaxParser.regex__test, "[a-zA-Z]", /* :: */[
-              /* ReSet */Block.__(1, ["a-zA-Z"]),
+              /* ReSet */Block.__(2, ["a-zA-Z"]),
               /* [] */0
             ]);
         expectParse(ConcreteSyntaxParser.regex__test, "[a-z][A-Z]", /* :: */[
-              /* ReSet */Block.__(1, ["a-z"]),
+              /* ReSet */Block.__(2, ["a-z"]),
               /* :: */[
-                /* ReSet */Block.__(1, ["A-Z"]),
+                /* ReSet */Block.__(2, ["A-Z"]),
                 /* [] */0
               ]
             ]);
         expectParse(ConcreteSyntaxParser.regex__test, "\"foo\"*", /* :: */[
-              /* ReStar */Block.__(2, [/* ReString */Block.__(0, ["foo"])]),
+              /* ReStar */Block.__(3, [/* ReString */Block.__(0, ["foo"])]),
               /* [] */0
             ]);
         expectParse(ConcreteSyntaxParser.regex__test, "\"foo\"+", /* :: */[
-              /* RePlus */Block.__(3, [/* ReString */Block.__(0, ["foo"])]),
+              /* RePlus */Block.__(4, [/* ReString */Block.__(0, ["foo"])]),
               /* [] */0
             ]);
         expectParse(ConcreteSyntaxParser.regex__test, "\"foo\"?", /* :: */[
-              /* ReOption */Block.__(4, [/* ReString */Block.__(0, ["foo"])]),
+              /* ReOption */Block.__(5, [/* ReString */Block.__(0, ["foo"])]),
               /* [] */0
             ]);
         expectParse(ConcreteSyntaxParser.terminal_rule__test, "TERMINAL := \"foo\"", /* TerminalRule */[

@@ -1,5 +1,6 @@
 open Util
 module Result = Belt.Result
+module LrTables = LrParsingView.Tables
 
 type parse_result = Core.translation_result(Binding.Nominal.term);
 type eval_result  = Core.translation_result(Core.core);
@@ -274,6 +275,27 @@ module LvcaViewer = {
         <div className="repl-pane disabled" />
     };
 
+    let getGrammarPane = concrete => {
+      let grammar = ConcreteSyntax.to_grammar(concrete);
+      let module Lr0' = LrParsing.Lr0({ let grammar = grammar });
+      let action_table = Lr0'.full_action_table(());
+      let goto_table = Lr0'.full_goto_table(());
+      <LrTables
+        grammar=grammar
+        action_table=action_table
+        goto_table=goto_table
+      />
+    };
+
+    let grammarPane = switch (concrete) {
+        | Ok(concrete) => {
+          try (getGrammarPane(concrete)) {
+            | InvariantViolation(msg) => <div>{React.string(msg)}</div>
+          }
+        }
+        | _ => <div>{React.string("grammar not available")}</div>
+    };
+
     <div className="lvca-viewer">
       <h1 className="header">{React.string("LVCA")}</h1>
 
@@ -292,6 +314,7 @@ module LvcaViewer = {
       <h2 className="header2 header2-concrete">
         {React.string("Concrete Syntax ")}
         {concreteView}
+        {grammarPane}
       </h2>
       <div className="concrete-pane">
         <CodeMirror

@@ -70,7 +70,7 @@ let get_next_tok : string M.t -> Js.Re.t -> lexbuf -> token
       | None -> raise (LexError {
           start_pos = pos;
           end_pos = pos (* TODO *);
-          message = "TODO 2"
+          message = ("Failed lex, re: " ^ Js.Re.source re ^ "\nlexbuf: " ^ buf)
       })
 
 let lex' : lexer -> string -> token array
@@ -93,7 +93,7 @@ let lex' : lexer -> string -> token array
       let { start; finish } = tok in
       assert (start = lexbuf.pos);
       lexbuf.pos <- finish;
-      ignore (Js.Array2.push result tok)
+      ignore (Js.Array2.push result tok);
     done;
     result
 

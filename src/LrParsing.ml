@@ -1,22 +1,25 @@
 module A = Belt.Array
 module L = Belt.List
 module M = Belt.Map.Int
+module MS = Belt.Map.String
 module MM = Belt.MutableMap
 module MMI = Belt.MutableMap.Int
 module S = Belt.Set
 module SI = Belt.Set.Int
 module SS = Belt.Set.String
-module MS = Belt.MutableSet
+module MSet = Belt.MutableSet
 module MSI = Belt.MutableSet.Int
 module Result = Belt.Result
 module MStack = Belt.MutableStack
 module MQueue = Belt.MutableQueue
+let (get_option', invariant_violation) = Util.(get_option', invariant_violation)
 
-(* TODO:
-  * augment grammar
- *)
-
+(* by convention, we reserve 0 for the `$` terminal, and number the rest
+ * contiguously from 1 *)
 type terminal_num = int
+
+(* by convention, we reserve 0 for the root nonterminal, and number the rest
+ * contiguously from 1 *)
 type nonterminal_num = int
 
 type symbol =
@@ -37,7 +40,8 @@ type production_num = int
 
 (** A production with a dot at some position.
  *
- * Note: Menhir encodes this as a single integer.
+ * We encode this as a single integer -- see `item`, `mk_item`, `mk_item'`, and
+ * `view_item`.
  *)
 type item_view =
   (** The number of one of the productions of the underlying grammar *)
@@ -66,8 +70,6 @@ type lookahead_item =
     lookhead_set : SI.t;
   }
 
-type item_set = SI.t
-
 module LookaheadItemCmp = Belt.Id.MakeComparable(struct
   type t = lookahead_item
   let cmp { item = i1; lookhead_set = s1 } { item = i2; lookhead_set = s2 } =
@@ -78,7 +80,6 @@ end)
 
 type lookahead_item_set = (lookahead_item, LookaheadItemCmp.identity) S.t
 
-(* TODO: test *)
 let view_item : item -> item_view
   = fun item ->
     { production_num = item land 0x00ffffff;
@@ -87,6 +88,8 @@ let view_item : item -> item_view
 
 let mk_item' : int -> int -> item
   = fun production_num position -> (position lsl 24) lor production_num
+
+type item_set = SI.t
 
 let mk_item : item_view -> item
   = fun { production_num; position } ->  mk_item' production_num position
@@ -106,6 +109,7 @@ type nonterminal =
     productions: production list;
   }
 
+(** An LR(0) state number *)
 type state = int
 
 (* By convention:
@@ -115,8 +119,8 @@ type state = int
 type grammar = {
   nonterminals : nonterminal M.t;
   num_terminals : int;
-  terminal_names : terminal_num Belt.Map.String.t;
-  nonterminal_names : nonterminal_num Belt.Map.String.t;
+  terminal_names : terminal_num MS.t;
+  nonterminal_names : nonterminal_num MS.t;
 }
 
 type action =
@@ -125,24 +129,25 @@ type action =
   | Accept
   | Error
 
+(* Our action / goto table formulations are lazy (not actually tables). Tables
+ * can be computed with `full_action_table` / `full_goto_table` *)
 type action_table = state -> terminal_num -> action
-type goto_table = state -> symbol -> state
+type goto_table = state -> symbol -> state option
 
 module ComparableSet = Belt.Id.MakeComparable(struct
   type t = SI.t
   let cmp = SI.cmp
 end)
 
-type int_set_set = (SI.t, ComparableSet.identity) Belt.Set.t
-type mutable_int_set_set = (SI.t, ComparableSet.identity) MS.t
+type mutable_int_set_set = (SI.t, ComparableSet.identity) MSet.t
 
 type parse_error = int (* character number *) * string
 
 type parse_result =
-  { symbol : symbol;
+  { production : (terminal_num, production_num) Either.t;
     children : parse_result list;
-    start_pos : int;
-    end_pos : int;
+    start_pos : int; (* inclusive *)
+    end_pos : int; (* exclusive *)
   }
 
 exception ParseFinished
@@ -155,7 +160,14 @@ let pop_front_exn : int -> 'a MQueue.t -> 'a
     | Some a -> a
 
 module type GRAMMAR = sig
+  (* An *augmented* grammar, or else this won't work right *)
   val grammar : grammar
+end
+
+module type LR0 = sig
+  (* TODO: fill in the rest of the signature *)
+  val production_map : production MMI.t
+  val production_nonterminal_map : nonterminal_num MMI.t
 end
 
 (* TODO: remove exns *)
@@ -183,20 +195,32 @@ module Lr0 (G : GRAMMAR) = struct
         production_cnt := production_num + 1;
         production_map |. MMI.set production_num production;
         production_nonterminal_map |. MMI.set production_num nt_num;
-        let prod_set = nonterminal_production_map |. MMI.getExn nt_num in
+        let prod_set = nonterminal_production_map
+          |. MMI.get nt_num
+          |> get_option'
+            ("Lr0 preprocessing -- unable to find nonterminal " ^
+              string_of_int nt_num)
+        in
         prod_set |. MSI.add production_num
       )
     )
 
-  (* TODO: clarify if this is for the augmented grammar or not *)
+  (* number of nonterminals in the passed-in grammar (which ought to be
+   * augmented) *)
   let number_of_nonterminals : int
     = M.size G.grammar.nonterminals
 
   let get_nonterminal_num : production_num -> nonterminal_num
-    = MMI.getExn production_nonterminal_map
+    = fun p_num -> production_nonterminal_map
+        |. MMI.get p_num
+        |> get_option' ("get_nonterminal_num: couldn't find production " ^
+          string_of_int p_num)
 
   let get_nonterminal : production_num -> nonterminal
-    = fun pn -> M.getExn G.grammar.nonterminals @@ get_nonterminal_num pn
+    = fun pn -> get_option'
+        ("get_nonterminal: couldn't find production " ^ string_of_int pn) @@
+      M.get G.grammar.nonterminals @@
+      get_nonterminal_num pn
 
   (** The closure of an item set. CPTT fig 4.32. *)
   (* We could save memory by not even calculating nonkernel items here *)
@@ -210,21 +234,30 @@ module Lr0 (G : GRAMMAR) = struct
       (* Create the set (nt_stack) of nonterminals to look at *)
       SI.forEach initial_items (fun item ->
         let { production_num; position } = view_item item in
-        let production = MMI.getExn production_map production_num in
+        let production = get_option'
+          ("closure: couldn't find production " ^ string_of_int production_num)
+          @@ MMI.get production_map production_num
+        in
         (* first symbol right of the dot *)
         match production |. L.get position with
-          | Some (Nonterminal nt) ->
-              nt_stack |. MSI.add nt
-          | _              -> ()
+          | Some (Nonterminal nt) -> nt_stack |. MSI.add nt
+          | _                     -> ()
         );
 
       while not (MSI.isEmpty nt_stack) do
-        let nonterminal_num = match MSI.minimum nt_stack with
-          | Some nonterminal_num -> nonterminal_num
-          | None -> failwith "invariant violation: the set is not empty!"
+        let nonterminal_num =
+          get_option' "the set is not empty!" @@ MSI.minimum nt_stack
         in
         nt_stack |. MSI.remove nonterminal_num;
-        if not (added |. Bitstring.getExn nonterminal_num) then (
+        let is_added = added
+          |. Bitstring.get nonterminal_num
+          |> get_option' (Printf.sprintf
+            "closure: couldn't find nonterminal %n (nonterminal count %n)"
+            nonterminal_num
+            (Bitstring.length added)
+          )
+        in
+        if not is_added then (
           added |. Bitstring.setExn nonterminal_num true;
           let production_set =
             MMI.getExn nonterminal_production_map nonterminal_num
@@ -282,12 +315,12 @@ module Lr0 (G : GRAMMAR) = struct
           [| mk_item {production_num = 0; position = 0} |]
       in
       let ca = closure' augmented_start in
-      let c = MS.fromArray [| ca |] ~id:(module ComparableSet) in
+      let c = MSet.fromArray [| ca |] ~id:(module ComparableSet) in
       let continue = ref true in
       while !continue do
         continue := false;
         (* for each set of items i in c: *)
-        MS.forEach c @@ fun i ->
+        MSet.forEach c @@ fun i ->
           let grammar_symbols = L.concat
             (L.makeBy G.grammar.num_terminals (fun n -> Terminal n))
             (L.makeBy number_of_nonterminals (fun n -> Nonterminal n))
@@ -297,9 +330,9 @@ module Lr0 (G : GRAMMAR) = struct
           (* M.forEach G.grammar @@ fun x _ -> *)
             let goto_i_x = goto' i x in
             (* if GOTO(i, x) is not empty and not in c: *)
-            if not (SI.isEmpty goto_i_x) && not (MS.has c goto_i_x)
+            if not (SI.isEmpty goto_i_x) && not (MSet.has c goto_i_x)
             then (
-              c |. MS.add goto_i_x;
+              c |. MSet.add goto_i_x;
               continue := true
             )
       done;
@@ -307,20 +340,31 @@ module Lr0 (G : GRAMMAR) = struct
 
   let items' : item_set M.t
     = items
-    |. MS.toArray
+    |. MSet.toArray
     |. A.mapWithIndex (fun i item_set -> i, item_set)
     |. M.fromArray
 
   let state_to_item_set : state -> item_set
-    = M.getExn items'
+    = fun state -> items'
+      |. M.get state
+      |> get_option'
+        ("state_to_item_set -- couldn't find state " ^ string_of_int state)
 
   let item_set_to_state : item_set -> state
     = fun item_set ->
+    let item_set_str = item_set
+      |. SI.toArray
+      |. A.map string_of_int
+      |. Js.Array2.joinWith " "
+    in
     let state, _ = items'
       |. M.findFirstBy (fun _ item_set' ->
-          SI.toArray item_set' = SI.toArray item_set
+        SI.toArray item_set' = SI.toArray item_set
       )
-      |. Belt.Option.getExn
+      |> get_option' (Printf.sprintf
+        "item_set_to_state -- couldn't find item_set (%s)"
+        item_set_str
+      )
     in state
 
   let augmented_state : state
@@ -435,7 +479,10 @@ module Lr0 (G : GRAMMAR) = struct
     = in_follow' (SI.fromArray [||])
 
   let goto_table state nt =
-    item_set_to_state @@ goto' (state_to_item_set state) nt
+    try
+      Some (item_set_to_state @@ goto' (state_to_item_set state) nt)
+    with
+      Util.InvariantViolation _ -> None
 
   let action_table state terminal_num =
     let item_set = state_to_item_set state in
@@ -451,7 +498,8 @@ module Lr0 (G : GRAMMAR) = struct
         match symbols |. L.get position  with
           | Some (Terminal t_num as next_symbol) ->
             if t_num = terminal_num
-              then Some (Shift (goto_table state next_symbol))
+              then goto_table state next_symbol
+                |. Belt.Option.map (fun x -> Shift x)
               else None
           | _ -> None
       )
@@ -484,16 +532,40 @@ module Lr0 (G : GRAMMAR) = struct
       |     None,     None, Some act -> act
       |        _,        _,        _ -> Error
 
+  (* TODO: is this right? *)
+  let states : state array =
+    A.makeBy (M.size items') Util.id
+  let terminals : terminal_num array =
+    (* Add one to include the `$` terminal *)
+    A.makeBy (G.grammar.num_terminals + 1) Util.id
+  let nonterminals : nonterminal_num array =
+    A.makeBy (MS.size G.grammar.terminal_names) Util.id
+
+  let full_action_table : unit -> action array array
+    = fun () -> states |. A.map (fun state ->
+      terminals |. A.map (action_table state)
+    )
+
+  let full_goto_table : unit -> (symbol * state option) array array
+    = fun () -> states
+      |. A.map (fun state ->
+      nonterminals
+        |. A.map (fun nt -> Nonterminal nt)
+        |. A.map (fun sym ->
+            sym, goto_table state sym
+        )
+    )
+
   let token_to_terminal
     : Lex.token -> terminal_num
     = fun { name } ->
-      G.grammar.terminal_names |. Belt.Map.String.getExn name
+      G.grammar.terminal_names |. MS.getExn name
 
   let token_to_symbol
     : Lex.token -> symbol
     = fun { name } ->
-      let t_match = G.grammar.terminal_names |. Belt.Map.String.get name in
-      let nt_match = G.grammar.nonterminal_names |. Belt.Map.String.get name in
+      let t_match = G.grammar.terminal_names |. MS.get name in
+      let nt_match = G.grammar.nonterminal_names |. MS.get name in
       match t_match, nt_match with
         | Some t_num, None -> Terminal t_num
         | None, Some nt_num -> Nonterminal nt_num
@@ -528,7 +600,7 @@ module Lr0 (G : GRAMMAR) = struct
             | Shift t ->
                 stack |. MStack.push t;
                 results |. MStack.push
-                  { symbol = Terminal terminal_num;
+                  { production = Either.Left terminal_num;
                     children = [];
                     start_pos = tok.start;
                     end_pos = tok.finish;
@@ -558,13 +630,15 @@ module Lr0 (G : GRAMMAR) = struct
 
                 let nt_num = MMI.getExn production_nonterminal_map production_num in
                 (match MStack.top stack with
-                  | Some t ->
-                    MStack.push stack @@ goto_table t (Nonterminal nt_num);
+                  | Some t -> (match goto_table t (Nonterminal nt_num) with
+                      | None -> failwith "invariant violation: invalid GOTO transition"
+                      | Some state -> MStack.push stack state
+                  )
                   | None -> failwith "invariant violation: peeking empty stack"
                 );
 
                 MStack.push results
-                  { symbol = Nonterminal nt_num;
+                  { production = Either.Right production_num;
                     children = !children;
                     start_pos = !start_pos;
                     end_pos =  !end_pos;
@@ -574,7 +648,9 @@ module Lr0 (G : GRAMMAR) = struct
                 raise (ParseFailed
                   ( tok.start
                   (* TODO: give a decent error message *)
-                  , "parse failed -- no valid transition on this token"
+                  , Printf.sprintf
+                    "parse failed -- no valid transition on this token (%s)"
+                    tok.name
                   ))
             ;
         done;
@@ -598,7 +674,11 @@ module Lr0 (G : GRAMMAR) = struct
       | Error error -> Error (Left error)
       | Ok toks ->
         let len = String.length input in
-        let toks' = MQueue.fromArray toks in
+        let toks' = toks
+          (* XXX: justify this *)
+          |. Js.Array2.filter (fun { name } -> name != "SPACE")
+          |. MQueue.fromArray
+        in
         (* TODO: name might not always be "$" *)
         MQueue.add toks' { name = "$"; start = len; finish = len};
         (match parse toks' with
@@ -607,54 +687,3 @@ module Lr0 (G : GRAMMAR) = struct
         )
 
 end
-
-(* TODO: menhir compatibility?
-
-module MenhirBasics = struct
-  exception Error
-
-  type token = Lex.token
-end
-
-module Tables = struct
-  include MenhirBasics
-
-  let token2terminal : token -> int = failwith "TODO"
-
-  (* This is the integer code for the error pseudo-token. *)
-  and error_terminal = 0
-
-  (* TODO: change if tokens start holding values *)
-  and token2value : token -> Obj.t = fun _ -> Obj.repr ()
-  and default_reduction = failwith "TODO"
-  and error = failwith "TODO"
-  and start = 1
-  and action =  failwith "TODO"
-  and lhs =  failwith "TODO"
-  and goto = failwith "TODO"
-  and semantic_action = failwith "TODO"
-  and trace = failwith "TODO"
-  (* TODO *)
-end
-
-module MenhirParser = struct
-  include MenhirBasics
-
-  let top_term : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> nonterminal
-    = failwith "TODO"
-
-  module MenhirInterpreter = struct
-    module ET = MenhirLib.TableInterpreter.MakeEngineTable (Tables)
-
-    module TI = MenhirLib.Engine.Make (ET)
-
-    include TI
-  end
-
-  module Incremental = struct
-    let top_term : Lexing.position -> nonterminal MenhirInterpreter.checkpoint
-      = failwith "TODO"
-  end
-end
-
-*)

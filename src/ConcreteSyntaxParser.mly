@@ -3,6 +3,7 @@
 %token <string> NONTERMINAL_ID
 %token <string> STRING
 %token <string> CHARACTER_SET
+%token <string> CHARACTER_CLASS
 %token LEFT_PAREN
 %token RIGHT_PAREN
 %token DOT
@@ -118,6 +119,7 @@ regex__test: regex EOF { $1 }
 regex_piece:
   | STRING               { ReString $1 }
   | CHARACTER_SET        { ReSet    $1 }
+  | CHARACTER_CLASS      { ReClass  $1 }
   | regex_piece STAR     { ReStar   $1 }
   | regex_piece PLUS     { RePlus   $1 }
   | regex_piece QUESTION { ReOption $1 }
