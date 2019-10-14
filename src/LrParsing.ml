@@ -680,7 +680,7 @@ module Lr0 (G : GRAMMAR) = struct
           |. MQueue.fromArray
         in
         (* TODO: name might not always be "$" *)
-        MQueue.add toks' { name = "$"; start = len; finish = len};
+        MQueue.add toks' { name = "$"; start = len; finish = len };
         (match parse toks' with
         | Error error -> Error (Right error)
         | Ok result -> Ok result

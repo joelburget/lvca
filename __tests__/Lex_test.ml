@@ -1,6 +1,7 @@
 open Jest
 open Expect
 open Lex
+open Belt.Result
 
 let _ = describe "Lex" (fun () ->
   let lexer1 =
@@ -21,7 +22,7 @@ let _ = describe "Lex" (fun () ->
 
   test "lex 1" (fun () ->
     expect result
-      |> toEqual (Belt.Result.Ok
+      |> toEqual (Ok
       [| mk_tok "IF" 0 2;
          mk_tok "WHITE" 2 3;
          mk_tok "ID" 3 4;
@@ -54,12 +55,46 @@ let _ = describe "Lex" (fun () ->
                         (* 012345678 *)
 
   test "lex 2" (fun () ->
-    expect result |> toEqual (Belt.Result.Ok
+    expect result |> toEqual (Ok
       [| mk_tok "id" 0 3;
          mk_tok "WHITE" 3 4;
          mk_tok "+" 4 5;
          mk_tok "WHITE" 5 6;
          mk_tok "id" 6 9;
+      |]
+    );
+  );
+
+  let lexer3 =
+    (* TODO: is this even a valid regex? *)
+    [ "['a' - 'z' 'A' - 'Z'] ['a' - 'z' 'A' - 'Z' '0' - '9' '_'] *", "ID";
+      ":", "COLON";
+      "if", "IF";
+      "then", "THEN";
+      "else", "ELSE";
+      "fun", "FUN";
+      "->", "ARROW";
+      "true", "TRUE";
+      "false", "FALSE";
+      "bool", "BOOL";
+      "[ ]+", "SPACE";
+    ]
+  in let result = lex lexer3 "if false then false else true" in
+                           (* 01234567890123456789012345678 *)
+
+  test "lex 3" (fun () ->
+    expect result |> toEqual (Ok
+      [| mk_tok "IF" 0 2;
+         mk_tok "SPACE" 2 3;
+         mk_tok "FALSE" 3 8;
+         mk_tok "SPACE" 8 9;
+         mk_tok "THEN" 9 13;
+         mk_tok "SPACE" 13 14;
+         mk_tok "FALSE" 14 19;
+         mk_tok "SPACE" 19 20;
+         mk_tok "ELSE" 20 24;
+         mk_tok "SPACE" 24 25;
+         mk_tok "TRUE" 25 29;
       |]
     );
   );

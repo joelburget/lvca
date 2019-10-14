@@ -5,11 +5,11 @@ input, textarea {
   height: 500px;
   width: 400px;
 }
-body, textarea, input {
+body, textarea, input, table {
   font-family: monospace;
   color: #1e1e5d;
 }
-body {
+body, table {
   font-size: 16px;
 }
 h1 {
@@ -46,6 +46,9 @@ h1.header {
 }
 h2.header2 {
   padding: 15px 0 10px 20px;
+}
+h2.header2 checkbox {
+  font-size: 20px;
 }
 h2.header2-abstract-syntax {
   grid-area: header2-abstract-syntax;
@@ -143,13 +146,19 @@ div.eval-result-row {
   justify-content: space-between;
 }
 
+table {
+  border-collapse: collapse;
+}
+
 table,
-td {
-    border: 1px solid #333;
+td, th {
+    border: 1px solid #1e1e5d;
+    padding: 5px;
 }
 
 thead,
 tfoot {
-    background-color: #333;
+    /* background-color: #1e1e5d;
     color: #fff;
+    */
 }

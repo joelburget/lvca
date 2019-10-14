@@ -35,6 +35,8 @@ let read_eval_input = (language, concrete, statics, dynamics, input)
     | Error(msg)
     /* TODO: this is not really an ast error message */
     => (Error((msg, None)), Error(msg))
+    | exception Util.InvariantViolation(msg)
+    => (Error((msg, None)), Error(msg))
     };
 
     let eval' = tm => map_error(eval(tm), fun(msg) => (msg, None));
@@ -208,9 +210,9 @@ module Repl = {
 };
 
 module LvcaViewer = {
-  type action =
-    | Type(string)
-    ;
+  /* type action = */
+  /*   | Type(string) */
+  /*   ; */
 
   [@react.component]
   let make = () => {
@@ -231,6 +233,9 @@ module LvcaViewer = {
       = React.useState(() => LanguageSimple.statics);
     let (dynamicsInput, setDynamicsInput)
       = React.useState(() => LanguageSimple.dynamics);
+
+    let (showGrammarPane, setShowGrammarPane)
+      = React.useState(() => false);
 
     module Parseable_language' = ParseStatus.Make(Parsing.Parseable_language);
     let (languageView, language) = Parseable_language'.parse(asInput);
@@ -314,9 +319,14 @@ module LvcaViewer = {
       <h2 className="header2 header2-concrete">
         {React.string("Concrete Syntax ")}
         {concreteView}
-        {grammarPane}
+        <button onClick=(_ => setShowGrammarPane(_ => !showGrammarPane))>
+          {React.string(showGrammarPane ?
+                        "hide grammar tables" :
+                        "show grammar tables")}
+        </button>
       </h2>
       <div className="concrete-pane">
+        {showGrammarPane ? grammarPane : ReasonReact.null}
         <CodeMirror
           value=concreteInput
           onBeforeChange=((_, _, str) => setConcreteInput(_ => str))

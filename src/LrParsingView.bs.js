@@ -68,13 +68,13 @@ function LrParsingView$Tables(Props) {
         { },
         Belt_Array.concat(action_headers, goto_headers)
       ]);
-  var data = Belt_Array.map(shared_table, (function (param) {
+  var data = Belt_Array.mapWithIndex(shared_table, (function (i, param) {
           var action_row_elems = Belt_Array.map(Belt_Array.map(param[0], (function (action) {
                       if (typeof action === "number") {
                         if (action === 0) {
                           return "acc";
                         } else {
-                          return "err";
+                          return "";
                         }
                       } else if (action.tag) {
                         return "r" + String(action[0]);
@@ -97,7 +97,7 @@ function LrParsingView$Tables(Props) {
           return Caml_splice_call.spliceApply(React.createElement, [
                       "tr",
                       { },
-                      Belt_Array.concat(/* array */[React.createElement("td", undefined)], Belt_Array.concat(action_row_elems, goto_row_elems))
+                      Belt_Array.concat(/* array */[React.createElement("td", undefined, String(i))], Belt_Array.concat(action_row_elems, goto_row_elems))
                     ]);
         }));
   var tbody = Caml_splice_call.spliceApply(React.createElement, [

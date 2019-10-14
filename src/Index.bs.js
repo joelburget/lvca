@@ -24,22 +24,32 @@ var ReactCodemirror2 = require("react-codemirror2");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 
 function read_eval_input(language, concrete, statics, dynamics, input) {
-  var match = ConcreteSyntax.parse(concrete, input);
-  var match$1;
-  if (match.tag) {
-    var msg = match[0];
-    match$1 = /* tuple */[
-      /* Error */Block.__(1, [/* tuple */[
-            msg,
-            undefined
-          ]]),
-      /* Error */Block.__(1, [msg])
-    ];
-  } else {
-    var match$2 = ConcreteSyntax.to_ast(language, match[0]);
-    if (match$2.tag) {
-      var msg$1 = match$2[0];
-      match$1 = /* tuple */[
+  var match;
+  var exit = 0;
+  var val;
+  try {
+    val = ConcreteSyntax.parse(concrete, input);
+    exit = 1;
+  }
+  catch (raw_exn){
+    var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
+    if (exn[0] === Util.InvariantViolation) {
+      var msg = exn[1];
+      match = /* tuple */[
+        /* Error */Block.__(1, [/* tuple */[
+              msg,
+              undefined
+            ]]),
+        /* Error */Block.__(1, [msg])
+      ];
+    } else {
+      throw exn;
+    }
+  }
+  if (exit === 1) {
+    if (val.tag) {
+      var msg$1 = val[0];
+      match = /* tuple */[
         /* Error */Block.__(1, [/* tuple */[
               msg$1,
               undefined
@@ -47,15 +57,27 @@ function read_eval_input(language, concrete, statics, dynamics, input) {
         /* Error */Block.__(1, [msg$1])
       ];
     } else {
-      var ast = match$2[0];
-      match$1 = /* tuple */[
-        /* Ok */Block.__(0, [ast]),
-        Curry._1(Binding.DeBruijn[/* from_nominal */1], ast)
-      ];
+      var match$1 = ConcreteSyntax.to_ast(language, val[0]);
+      if (match$1.tag) {
+        var msg$2 = match$1[0];
+        match = /* tuple */[
+          /* Error */Block.__(1, [/* tuple */[
+                msg$2,
+                undefined
+              ]]),
+          /* Error */Block.__(1, [msg$2])
+        ];
+      } else {
+        var ast = match$1[0];
+        match = /* tuple */[
+          /* Ok */Block.__(0, [ast]),
+          Curry._1(Binding.DeBruijn[/* from_nominal */1], ast)
+        ];
+      }
     }
   }
-  var abtResult = match$1[1];
-  var astResult = match$1[0];
+  var abtResult = match[1];
+  var astResult = match[0];
   var eval$prime = function (tm) {
     return Util.map_error(Core.$$eval(tm), (function (msg) {
                   return /* tuple */[
@@ -65,28 +87,28 @@ function read_eval_input(language, concrete, statics, dynamics, input) {
                 }));
   };
   if (abtResult.tag) {
-    var msg$2 = abtResult[0];
+    var msg$3 = abtResult[0];
     return /* tuple */[
             /* Error */Block.__(1, [/* tuple */[
-                  msg$2,
+                  msg$3,
                   undefined
                 ]]),
             /* Error */Block.__(1, [/* tuple */[
-                  msg$2,
+                  msg$3,
                   undefined
                 ]])
           ];
   } else {
-    var match$3 = Belt_Result.flatMap(Core.term_denotation(dynamics, /* [] */0, abtResult[0]), eval$prime);
-    if (match$3.tag) {
+    var match$2 = Belt_Result.flatMap(Core.term_denotation(dynamics, /* [] */0, abtResult[0]), eval$prime);
+    if (match$2.tag) {
       return /* tuple */[
               astResult,
-              /* Error */Block.__(1, [match$3[0]])
+              /* Error */Block.__(1, [match$2[0]])
             ];
     } else {
       return /* tuple */[
               astResult,
-              /* Ok */Block.__(0, [match$3[0]])
+              /* Ok */Block.__(0, [match$2[0]])
             ];
     }
   }
@@ -285,18 +307,23 @@ function Index$LvcaViewer(Props) {
         }));
   var setDynamicsInput = match$4[1];
   var dynamicsInput = match$4[0];
+  var match$5 = React.useState((function () {
+          return false;
+        }));
+  var setShowGrammarPane = match$5[1];
+  var showGrammarPane = match$5[0];
   var Parseable_language$prime = ParseStatus.Make(Parsing.Parseable_language);
-  var match$5 = Curry._1(Parseable_language$prime[/* parse */1], asInput);
-  var language = match$5[1];
+  var match$6 = Curry._1(Parseable_language$prime[/* parse */1], asInput);
+  var language = match$6[1];
   var Parseable_concrete = ParseStatus.Make(Parsing.Parseable_concrete_syntax);
-  var match$6 = Curry._1(Parseable_concrete[/* parse */1], concreteInput);
-  var concrete = match$6[1];
+  var match$7 = Curry._1(Parseable_concrete[/* parse */1], concreteInput);
+  var concrete = match$7[1];
   var Parseable_statics$prime = ParseStatus.Make(Parsing.Parseable_statics);
-  var match$7 = Curry._1(Parseable_statics$prime[/* parse */1], staticsInput);
-  var statics = match$7[1];
+  var match$8 = Curry._1(Parseable_statics$prime[/* parse */1], staticsInput);
+  var statics = match$8[1];
   var Parseable_dynamics$prime = ParseStatus.Make(Parsing.Parseable_dynamics);
-  var match$8 = Curry._1(Parseable_dynamics$prime[/* parse */1], dynamicsInput);
-  var dynamics = match$8[1];
+  var match$9 = Curry._1(Parseable_dynamics$prime[/* parse */1], dynamicsInput);
+  var dynamics = match$9[1];
   var replPane;
   var exit = 0;
   if (language.tag) {
@@ -411,7 +438,7 @@ function Index$LvcaViewer(Props) {
                   className: "header"
                 }, "LVCA"), React.createElement("h2", {
                   className: "header2 header2-abstract-syntax"
-                }, "Abstract Syntax ", match$5[0]), React.createElement("div", {
+                }, "Abstract Syntax ", match$6[0]), React.createElement("div", {
                   className: "abstract-syntax-pane"
                 }, React.createElement(ReactCodemirror2.Controlled, {
                       value: asInput,
@@ -425,9 +452,15 @@ function Index$LvcaViewer(Props) {
                       }
                     })), React.createElement("h2", {
                   className: "header2 header2-concrete"
-                }, "Concrete Syntax ", match$6[0], grammarPane), React.createElement("div", {
+                }, "Concrete Syntax ", match$7[0], React.createElement("button", {
+                      onClick: (function (param) {
+                          return Curry._1(setShowGrammarPane, (function (param) {
+                                        return !showGrammarPane;
+                                      }));
+                        })
+                    }, showGrammarPane ? "hide grammar tables" : "show grammar tables")), React.createElement("div", {
                   className: "concrete-pane"
-                }, React.createElement(ReactCodemirror2.Controlled, {
+                }, showGrammarPane ? grammarPane : null, React.createElement(ReactCodemirror2.Controlled, {
                       value: concreteInput,
                       onBeforeChange: (function (param, param$1, str) {
                           return Curry._1(setConcreteInput, (function (param) {
@@ -439,7 +472,7 @@ function Index$LvcaViewer(Props) {
                       }
                     })), React.createElement("h2", {
                   className: "header2 header2-statics"
-                }, "Statics ", match$7[0]), React.createElement("div", {
+                }, "Statics ", match$8[0]), React.createElement("div", {
                   className: "statics-pane"
                 }, React.createElement(ReactCodemirror2.Controlled, {
                       value: staticsInput,
@@ -453,7 +486,7 @@ function Index$LvcaViewer(Props) {
                       }
                     })), React.createElement("h2", {
                   className: "header2 header2-dynamics"
-                }, "Dynamics ", match$8[0]), React.createElement("div", {
+                }, "Dynamics ", match$9[0]), React.createElement("div", {
                   className: "dynamics-pane"
                 }, React.createElement(ReactCodemirror2.Controlled, {
                       value: dynamicsInput,

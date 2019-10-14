@@ -66,13 +66,13 @@ module Tables = {
     );
 
     let data = shared_table
-      |. map(((action_row, goto_row)) => {
+      |. mapWithIndex((i, (action_row, goto_row)) => {
         let action_row_elems = action_row
           |. map(action => switch (action) {
             | Shift(n) => "s" ++ string_of_int(n)
             | Reduce(n) => "r" ++ string_of_int(n)
             | Accept => "acc"
-            | Error => "err"
+            | Error => ""
           })
           |. map(x => <td>{React.string(x)}</td>);
 
@@ -87,7 +87,7 @@ module Tables = {
           "tr",
           ~props=ReactDOMRe.domProps(),
           concat (
-            [| <td></td> |],
+            [| <td>{React.string(string_of_int(i))}</td> |],
             concat(action_row_elems, goto_row_elems)
           )
         )

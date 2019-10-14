@@ -171,34 +171,160 @@ Jest.describe("Lex", (function (param) {
                 ]
               ]
             ], "foo + bar");
-        return Jest.test("lex 2", (function (param) {
+        Jest.test("lex 2", (function (param) {
+                return Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* array */[
+                                /* record */[
+                                  /* name */"id",
+                                  /* start */0,
+                                  /* finish */3
+                                ],
+                                /* record */[
+                                  /* name */"WHITE",
+                                  /* start */3,
+                                  /* finish */4
+                                ],
+                                /* record */[
+                                  /* name */"+",
+                                  /* start */4,
+                                  /* finish */5
+                                ],
+                                /* record */[
+                                  /* name */"WHITE",
+                                  /* start */5,
+                                  /* finish */6
+                                ],
+                                /* record */[
+                                  /* name */"id",
+                                  /* start */6,
+                                  /* finish */9
+                                ]
+                              ]]), Jest.Expect[/* expect */0](result$1));
+              }));
+        var result$2 = Lex.lex(/* :: */[
+              /* tuple */[
+                "['a' - 'z' 'A' - 'Z'] ['a' - 'z' 'A' - 'Z' '0' - '9' '_'] *",
+                "ID"
+              ],
+              /* :: */[
+                /* tuple */[
+                  ":",
+                  "COLON"
+                ],
+                /* :: */[
+                  /* tuple */[
+                    "if",
+                    "IF"
+                  ],
+                  /* :: */[
+                    /* tuple */[
+                      "then",
+                      "THEN"
+                    ],
+                    /* :: */[
+                      /* tuple */[
+                        "else",
+                        "ELSE"
+                      ],
+                      /* :: */[
+                        /* tuple */[
+                          "fun",
+                          "FUN"
+                        ],
+                        /* :: */[
+                          /* tuple */[
+                            "->",
+                            "ARROW"
+                          ],
+                          /* :: */[
+                            /* tuple */[
+                              "true",
+                              "TRUE"
+                            ],
+                            /* :: */[
+                              /* tuple */[
+                                "false",
+                                "FALSE"
+                              ],
+                              /* :: */[
+                                /* tuple */[
+                                  "bool",
+                                  "BOOL"
+                                ],
+                                /* :: */[
+                                  /* tuple */[
+                                    "[ ]+",
+                                    "SPACE"
+                                  ],
+                                  /* [] */0
+                                ]
+                              ]
+                            ]
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ], "if false then false else true");
+        return Jest.test("lex 3", (function (param) {
                       return Jest.Expect[/* toEqual */12](/* Ok */Block.__(0, [/* array */[
                                       /* record */[
-                                        /* name */"id",
+                                        /* name */"IF",
                                         /* start */0,
+                                        /* finish */2
+                                      ],
+                                      /* record */[
+                                        /* name */"SPACE",
+                                        /* start */2,
                                         /* finish */3
                                       ],
                                       /* record */[
-                                        /* name */"WHITE",
+                                        /* name */"FALSE",
                                         /* start */3,
-                                        /* finish */4
+                                        /* finish */8
                                       ],
                                       /* record */[
-                                        /* name */"+",
-                                        /* start */4,
-                                        /* finish */5
-                                      ],
-                                      /* record */[
-                                        /* name */"WHITE",
-                                        /* start */5,
-                                        /* finish */6
-                                      ],
-                                      /* record */[
-                                        /* name */"id",
-                                        /* start */6,
+                                        /* name */"SPACE",
+                                        /* start */8,
                                         /* finish */9
+                                      ],
+                                      /* record */[
+                                        /* name */"THEN",
+                                        /* start */9,
+                                        /* finish */13
+                                      ],
+                                      /* record */[
+                                        /* name */"SPACE",
+                                        /* start */13,
+                                        /* finish */14
+                                      ],
+                                      /* record */[
+                                        /* name */"FALSE",
+                                        /* start */14,
+                                        /* finish */19
+                                      ],
+                                      /* record */[
+                                        /* name */"SPACE",
+                                        /* start */19,
+                                        /* finish */20
+                                      ],
+                                      /* record */[
+                                        /* name */"ELSE",
+                                        /* start */20,
+                                        /* finish */24
+                                      ],
+                                      /* record */[
+                                        /* name */"SPACE",
+                                        /* start */24,
+                                        /* finish */25
+                                      ],
+                                      /* record */[
+                                        /* name */"TRUE",
+                                        /* start */25,
+                                        /* finish */29
                                       ]
-                                    ]]), Jest.Expect[/* expect */0](result$1));
+                                    ]]), Jest.Expect[/* expect */0](result$2));
                     }));
       }));
 
