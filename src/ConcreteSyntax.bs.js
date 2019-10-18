@@ -16,9 +16,11 @@ var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Belt_MapInt = require("bs-platform/lib/js/belt_MapInt.js");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
+var Belt_SetInt = require("bs-platform/lib/js/belt_SetInt.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 var Belt_MutableMapInt = require("bs-platform/lib/js/belt_MutableMapInt.js");
+var Belt_MutableSetInt = require("bs-platform/lib/js/belt_MutableSetInt.js");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
@@ -110,7 +112,7 @@ function regex_piece_to_string(param) {
               Caml_builtin_exceptions.match_failure,
               /* tuple */[
                 "ConcreteSyntax.ml",
-                132,
+                134,
                 56
               ]
             ];
@@ -128,6 +130,157 @@ function regex_piece_to_string(param) {
 
 function regex_to_string(re_parts) {
   return $$String.concat("", List.map(regex_piece_to_string, re_parts));
+}
+
+var CheckValidExn = Caml_exceptions.create("ConcreteSyntax.CheckValidExn");
+
+function accumulate_tokens(param, param$1) {
+  var seen_toks$prime = param$1[/* captured_tokens */0];
+  var seen_toks = param[/* captured_tokens */0];
+  var isect = Belt_SetInt.intersect(seen_toks, seen_toks$prime);
+  return /* record */[
+          /* captured_tokens */Belt_SetInt.diff(Belt_SetInt.union(seen_toks, seen_toks$prime), isect),
+          /* repeated_tokens */Belt_SetInt.union(isect, Belt_SetInt.union(param[/* repeated_tokens */1], param$1[/* repeated_tokens */1]))
+        ];
+}
+
+var empty_tokens_info = /* record */[
+  /* captured_tokens */Belt_SetInt.empty,
+  /* repeated_tokens */Belt_SetInt.empty
+];
+
+function scope_token_usage(param) {
+  return Belt_List.reduce(/* :: */[
+              param[1],
+              param[0]
+            ], empty_tokens_info, (function (accum, tok) {
+                return accumulate_tokens(accum, /* record */[
+                            /* captured_tokens */Belt_SetInt.fromArray(/* array */[tok]),
+                            /* repeated_tokens */Belt_SetInt.empty
+                          ]);
+              }));
+}
+
+function token_usage(param) {
+  if (param.tag) {
+    return /* record */[
+            /* captured_tokens */Belt_SetInt.fromArray(/* array */[param[0]]),
+            /* repeated_tokens */Belt_SetInt.empty
+          ];
+  } else {
+    return Belt_List.reduce(param[1], empty_tokens_info, (function (accum, scope_pat) {
+                  return accumulate_tokens(accum, scope_token_usage(scope_pat));
+                }));
+  }
+}
+
+function check_operator_match_validity(token_list, term_pat) {
+  var numbered_toks = Belt_MutableMapInt.fromArray(Belt_Array.mapWithIndex(Belt_List.toArray(token_list), (function (i, tok) {
+              return /* tuple */[
+                      i,
+                      tok
+                    ];
+            })));
+  var match = token_usage(term_pat);
+  var non_existent_tokens = Belt_MutableSetInt.make(/* () */0);
+  Belt_SetInt.forEach(match[/* captured_tokens */0], (function (tok_num) {
+          if (Belt_MutableMapInt.has(numbered_toks, tok_num)) {
+            return Belt_MutableMapInt.remove(numbered_toks, tok_num);
+          } else {
+            return Belt_MutableSetInt.add(non_existent_tokens, tok_num);
+          }
+        }));
+  return /* tuple */[
+          non_existent_tokens,
+          match[/* repeated_tokens */1],
+          Belt_MutableMapInt.toList(numbered_toks)
+        ];
+}
+
+function check_description_validity(param) {
+  var terminal_rules = param[/* terminal_rules */0];
+  try {
+    Belt_MapString.map(param[/* sort_rules */1], (function (param) {
+            var operator_maches = Belt_List.flatten(param[0][/* operator_rules */1]);
+            Belt_List.map(operator_maches, (function (param) {
+                    var match = param[0];
+                    var match$1 = check_operator_match_validity(match[/* tokens */0], match[/* term_pattern */1]);
+                    var duplicate_captures = match$1[1];
+                    var non_existent_tokens = match$1[0];
+                    if (!Belt_SetInt.isEmpty(duplicate_captures)) {
+                      var tok_names = Belt_Array.map(Belt_SetInt.toArray(duplicate_captures), Printf.sprintf(/* Format */[
+                                  /* Char_literal */Block.__(12, [
+                                      /* "$" */36,
+                                      /* Scan_get_counter */Block.__(21, [
+                                          /* Char_counter */1,
+                                          /* End_of_format */0
+                                        ])
+                                    ]),
+                                  "$%n"
+                                ])).join(", ");
+                      throw [
+                            CheckValidExn,
+                            /* InvalidGrammar */["tokens captured more than once: " + tok_names]
+                          ];
+                    }
+                    if (!Belt_MutableSetInt.isEmpty(non_existent_tokens)) {
+                      var tok_names$1 = Belt_Array.map(Belt_MutableSetInt.toArray(non_existent_tokens), Printf.sprintf(/* Format */[
+                                  /* Char_literal */Block.__(12, [
+                                      /* "$" */36,
+                                      /* Scan_get_counter */Block.__(21, [
+                                          /* Char_counter */1,
+                                          /* End_of_format */0
+                                        ])
+                                    ]),
+                                  "$%n"
+                                ])).join(", ");
+                      throw [
+                            CheckValidExn,
+                            /* InvalidGrammar */["non-existent tokens mentioned: " + tok_names$1]
+                          ];
+                    }
+                    return Belt_List.map(match$1[2], (function (param) {
+                                  var tok = param[1];
+                                  if (typeof tok === "number") {
+                                    return /* () */0;
+                                  } else if (tok.tag) {
+                                    throw [
+                                          CheckValidExn,
+                                          /* InvalidGrammar */["uncaptured nonterminal: " + tok[0]]
+                                        ];
+                                  } else {
+                                    var nt_name = tok[0];
+                                    var match = Belt_MapString.get(terminal_rules, nt_name);
+                                    if (match !== undefined) {
+                                      if (Util.is_some(regex_is_literal(match))) {
+                                        return /* () */0;
+                                      } else {
+                                        throw [
+                                              CheckValidExn,
+                                              /* InvalidGrammar */["Uncaptured regex which is not a string literal"]
+                                            ];
+                                      }
+                                    } else {
+                                      throw [
+                                            CheckValidExn,
+                                            /* InvalidGrammar */["Named terminal " + (nt_name + " does not exist")]
+                                          ];
+                                    }
+                                  }
+                                }));
+                  }));
+            return /* () */0;
+          }));
+    return undefined;
+  }
+  catch (raw_exn){
+    var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
+    if (exn[0] === CheckValidExn) {
+      return exn[1];
+    } else {
+      throw exn;
+    }
+  }
 }
 
 function mk_tree(sort, node_type, children) {
@@ -252,7 +405,7 @@ function of_ast(lang, rules, current_sort, tm) {
                           Caml_builtin_exceptions.assert_failure,
                           /* tuple */[
                             "ConcreteSyntax.ml",
-                            208,
+                            334,
                             11
                           ]
                         ];
@@ -293,7 +446,7 @@ function of_ast(lang, rules, current_sort, tm) {
                             Caml_builtin_exceptions.assert_failure,
                             /* tuple */[
                               "ConcreteSyntax.ml",
-                              224,
+                              350,
                               23
                             ]
                           ];
@@ -309,7 +462,7 @@ function of_ast(lang, rules, current_sort, tm) {
                         Caml_builtin_exceptions.assert_failure,
                         /* tuple */[
                           "ConcreteSyntax.ml",
-                          264,
+                          390,
                           27
                         ]
                       ];
@@ -537,7 +690,7 @@ function to_ast(lang, tree) {
           Caml_builtin_exceptions.assert_failure,
           /* tuple */[
             "ConcreteSyntax.ml",
-            354,
+            480,
             7
           ]
         ];
@@ -840,5 +993,6 @@ exports.to_string = to_string;
 exports.parse = parse;
 exports.to_ast = to_ast;
 exports.to_grammar = to_grammar;
+exports.check_description_validity = check_description_validity;
 exports.regex_piece_to_string = regex_piece_to_string;
 /* AA Not a pure module */

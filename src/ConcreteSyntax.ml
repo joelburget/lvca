@@ -11,6 +11,8 @@ module MI = Belt.Map.Int
 let (find, get_option', invariant_violation, traverse_list_result) =
   Util.(find, get_option', invariant_violation, traverse_list_result)
 module MMI = Belt.MutableMap.Int
+module MSI = Belt.MutableSet.Int
+module SI = Belt.Set.Int
 
 type prim_ty =
   | Integer
@@ -128,7 +130,7 @@ let regex_is_literal : regex -> string option = function
   | _              -> None
 
 (* TODO: do we need to insert \b? *)
-(* Escape special characters *)
+(* Escape special characters: TODO more explanation *)
 let rec regex_piece_to_string : regex_piece -> string = function
   | ReString str   -> Js.String.(str
     |> replaceByRe [%re "/\\//g"] "\\/"
@@ -147,6 +149,130 @@ let rec regex_piece_to_string : regex_piece -> string = function
 let regex_to_string : regex -> string = fun re_parts -> re_parts
   |> List.map regex_piece_to_string
   |> String.concat ""
+
+type invalid_grammar = InvalidGrammar of string
+exception CheckValidExn of invalid_grammar
+
+(* Used to analyze token usage (see `token_usage`). We use this to check if
+  there are any tokens not captured (a problem in some circumstances), or if
+  there are tokens captured twice (always a problem). *)
+type tokens_info =
+  { captured_tokens : SI.t;
+    repeated_tokens : SI.t;
+  }
+
+let accumulate_tokens = fun
+  { captured_tokens = seen_toks;  repeated_tokens = repeated_toks }
+  { captured_tokens = seen_toks'; repeated_tokens = repeated_toks' } ->
+  let isect = SI.intersect seen_toks seen_toks' in
+  { captured_tokens = SI.diff (SI.union seen_toks seen_toks') isect;
+    repeated_tokens = SI.union isect (SI.union repeated_toks repeated_toks');
+  }
+
+let empty_tokens_info =
+  { captured_tokens = SI.empty; repeated_tokens = SI.empty }
+
+let rec token_usage
+  : term_pattern -> tokens_info
+  = function
+  | TermPattern (_, scope_patterns) -> scope_patterns
+    |. BL.reduce empty_tokens_info
+      (fun accum scope_pat ->
+        accumulate_tokens accum (scope_token_usage scope_pat)
+      )
+  | ParenthesizingPattern cap_num ->
+      { captured_tokens = SI.fromArray [| cap_num |];
+        repeated_tokens = SI.empty;
+      }
+
+and scope_token_usage (NumberedScopePattern (binder_captures, body_capture))
+  = (body_capture :: binder_captures)
+    |. BL.reduce empty_tokens_info (fun accum tok -> accumulate_tokens accum
+        { captured_tokens = SI.fromArray [| tok |];
+          repeated_tokens = SI.empty;
+        }
+    )
+
+let check_operator_match_validity
+  : nonterminal_token list -> term_pattern
+  -> MSI.t * SI.t * (int * nonterminal_token) list
+  = fun token_list term_pat ->
+    let numbered_toks = token_list
+      |. BL.toArray
+      |. BA.mapWithIndex (fun i tok -> i, tok)
+      |. MMI.fromArray
+    in
+    let { captured_tokens; repeated_tokens } = token_usage term_pat in
+    let non_existent_tokens = MSI.make () in
+    SI.forEach captured_tokens (fun tok_num ->
+      if MMI.has numbered_toks tok_num
+      then MMI.remove numbered_toks tok_num
+      else MSI.add non_existent_tokens tok_num
+    );
+    non_existent_tokens, repeated_tokens, MMI.toList numbered_toks
+
+(* Check invariants of concrete syntax descriptions:
+ * 1. For all tokens on the LHS (token list),
+ *    if the token is not captured on the RHS (term pattern):
+ *   a. If the token refers to a nonterminal, this is an error.
+ *   b. If the token refers to a terminal, it must be a string literal.
+ * 2. No token is used twice on the RHS.
+ * 2. No token is mentioned on the RHS that doesn't exist on the left
+ *
+ * Examples:
+ * * FOO bar BAZ { op($1; $2; $3) } valid
+ * * FOO bar BAZ { op($1; $3) } invalid (uncaptured nonterminal)
+ * * FOO bar BAZ { op($1; $2) } possibly invalid (if BAZ isn't a string literal)
+ * * FOO bar BAZ { op($2; $2) } invalid (repeated token)
+ * * FOO bar BAZ { op($2; $4) } invalid (non-existent token)
+ *)
+let check_description_validity { terminal_rules; sort_rules } =
+  try
+    sort_rules
+      |. M.map (fun (SortRule { operator_rules }) ->
+        let operator_maches = BL.flatten operator_rules in
+        BL.map operator_maches (fun (OperatorMatch { tokens; term_pattern }) ->
+          let non_existent_tokens, duplicate_captures, uncaptured_tokens =
+            check_operator_match_validity tokens term_pattern
+          in
+          if not (SI.isEmpty duplicate_captures) then (
+            let tok_names = duplicate_captures
+              |. SI.toArray
+              |. BA.map (Printf.sprintf "$%n")
+              |. Js.Array2.joinWith ", "
+            in
+            raise (CheckValidExn (InvalidGrammar
+              ("tokens captured more than once: " ^ tok_names)));
+          );
+          if not (MSI.isEmpty non_existent_tokens) then (
+            let tok_names = non_existent_tokens
+              |. MSI.toArray
+              |. BA.map (Printf.sprintf "$%n")
+              |. Js.Array2.joinWith ", "
+            in
+            raise (CheckValidExn (InvalidGrammar
+              ("non-existent tokens mentioned: " ^ tok_names)));
+          );
+          BL.map uncaptured_tokens (fun (i, tok) -> match tok with
+            | NonterminalName name -> raise (CheckValidExn
+              (InvalidGrammar ("uncaptured nonterminal: " ^ name)))
+            | TerminalName nt_name -> (match M.get terminal_rules nt_name with
+              | None -> raise (CheckValidExn (InvalidGrammar
+                ("Named terminal " ^ nt_name ^ " does not exist")))
+              | Some regex -> if Util.is_some (regex_is_literal regex)
+                then ()
+                (* TODO: print it *)
+                else raise (CheckValidExn (InvalidGrammar
+                  "Uncaptured regex which is not a string literal"))
+            )
+            | Underscore -> ()
+          )
+        );
+        ()
+      );
+    None
+  with
+    CheckValidExn err -> Some err
 
 let mk_tree sort node_type children =
   { sort;
@@ -415,6 +541,7 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
                 )
                 | Underscore
                 -> Terminal (terminal_names
+                  (* XXX name consistency -- is it SPACE or WHITESPACE? *)
                   |. MS.get "SPACE"
                   |> get_option'
                     ("to_grammar: failed to get SPACE")

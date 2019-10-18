@@ -43,5 +43,10 @@ val to_ast    : language -> tree -> (Nominal.term, string) Result.t
 
 val to_grammar : ConcreteSyntaxDescription.t -> LrParsing.grammar
 
+type invalid_grammar
+
+val check_description_validity
+  : ConcreteSyntaxDescription.t -> invalid_grammar option
+
 (* exported for testing: *)
 val regex_piece_to_string : ConcreteSyntaxDescription.regex_piece -> string
