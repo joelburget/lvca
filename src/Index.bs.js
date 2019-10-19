@@ -13,6 +13,7 @@ var Parsing = require("./Parsing.bs.js");
 var EvalView = require("./EvalView.bs.js");
 var LrParsing = require("./LrParsing.bs.js");
 var CodeMirror = require("./CodeMirror.bs.js");
+var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var ReactDOMRe = require("reason-react/src/ReactDOMRe.js");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var ParseStatus = require("./ParseStatus.bs.js");
@@ -22,6 +23,7 @@ var LanguageSimple = require("./LanguageSimple.bs.js");
 var Caml_splice_call = require("bs-platform/lib/js/caml_splice_call.js");
 var ReactCodemirror2 = require("react-codemirror2");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
+var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
 function read_eval_input(language, concrete, statics, dynamics, input) {
   var match;
@@ -278,133 +280,84 @@ var Repl = /* module */[
   /* make */Index$Repl
 ];
 
-function Index$LvcaViewer(Props) {
+function Index$AbstractSyntaxEditor(Props) {
+  var onContinue = Props.onContinue;
   var match = React.useState((function () {
-          return /* record */[
-                  /* before : [] */0,
-                  /* after : [] */0,
-                  /* input */"if false then false else true"
-                ];
-        }));
-  var setHistory = match[1];
-  var match$1 = React.useState((function () {
           return LanguageSimple.abstractSyntax;
         }));
-  var setAsInput = match$1[1];
-  var asInput = match$1[0];
-  var match$2 = React.useState((function () {
-          return LanguageSimple.concrete;
-        }));
-  var setConcreteInput = match$2[1];
-  var concreteInput = match$2[0];
-  var match$3 = React.useState((function () {
-          return LanguageSimple.statics;
-        }));
-  var setStaticsInput = match$3[1];
-  var staticsInput = match$3[0];
-  var match$4 = React.useState((function () {
-          return LanguageSimple.dynamics;
-        }));
-  var setDynamicsInput = match$4[1];
-  var dynamicsInput = match$4[0];
-  var match$5 = React.useState((function () {
-          return false;
-        }));
-  var setShowGrammarPane = match$5[1];
-  var showGrammarPane = match$5[0];
+  var setAsInput = match[1];
+  var asInput = match[0];
   var Parseable_language$prime = ParseStatus.Make(Parsing.Parseable_language);
-  var match$6 = Curry._1(Parseable_language$prime[/* parse */1], asInput);
-  var language = match$6[1];
-  var Parseable_concrete = ParseStatus.Make(Parsing.Parseable_concrete_syntax);
-  var match$7 = Curry._1(Parseable_concrete[/* parse */1], concreteInput);
-  var concrete = match$7[1];
-  var Parseable_statics$prime = ParseStatus.Make(Parsing.Parseable_statics);
-  var match$8 = Curry._1(Parseable_statics$prime[/* parse */1], staticsInput);
-  var statics = match$8[1];
-  var Parseable_dynamics$prime = ParseStatus.Make(Parsing.Parseable_dynamics);
-  var match$9 = Curry._1(Parseable_dynamics$prime[/* parse */1], dynamicsInput);
-  var dynamics = match$9[1];
-  var replPane;
-  var exit = 0;
+  var match$1 = Curry._1(Parseable_language$prime[/* parse */1], asInput);
+  var language = match$1[1];
+  var continueView;
   if (language.tag) {
-    exit = 1;
+    continueView = null;
   } else {
-    var language$1 = language[0];
-    if (concrete.tag) {
-      exit = 1;
-    } else {
-      var concrete$1 = concrete[0];
-      if (statics.tag) {
-        exit = 1;
-      } else {
-        var statics$1 = statics[0];
-        if (dynamics.tag) {
-          exit = 1;
-        } else {
-          var dynamics$1 = dynamics[0];
-          replPane = React.createElement("div", {
-                className: "repl-pane"
-              }, React.createElement(Index$Repl, {
-                    history: match[0],
-                    language: language$1,
-                    concrete: concrete$1,
-                    statics: statics$1,
-                    dynamics: dynamics$1,
-                    setInput: (function (input) {
-                        return Curry._1(setHistory, (function (hist) {
-                                      return /* record */[
-                                              /* before */hist[/* before */0],
-                                              /* after */hist[/* after */1],
-                                              /* input */input
-                                            ];
-                                    }));
-                      }),
-                    handleEnter: (function (param) {
-                        return Curry._1(setHistory, (function (hist) {
-                                      var input = hist[/* input */2];
-                                      var after = hist[/* after */1];
-                                      if (after) {
-                                        return step_forward(language$1, concrete$1, statics$1, dynamics$1, hist);
-                                      } else {
-                                        var match = read_eval_input(language$1, concrete$1, statics$1, dynamics$1, input);
-                                        var before$prime_000 = /* record */[
-                                          /* input */input,
-                                          /* parsed */match[0],
-                                          /* result */match[1]
-                                        ];
-                                        var before$prime_001 = hist[/* before */0];
-                                        var before$prime = /* :: */[
-                                          before$prime_000,
-                                          before$prime_001
-                                        ];
-                                        return /* record */[
-                                                /* before */before$prime,
-                                                /* after */after,
-                                                /* input */""
-                                              ];
-                                      }
-                                    }));
-                      }),
-                    handleUp: (function (n) {
-                        return Curry._1(setHistory, (function (hist) {
-                                      return go_back(language$1, concrete$1, statics$1, dynamics$1, hist, n);
-                                    }));
-                      }),
-                    handleDown: (function (n) {
-                        return Curry._1(setHistory, (function (hist) {
-                                      return go_forward(language$1, concrete$1, statics$1, dynamics$1, hist, n);
-                                    }));
-                      })
-                  }));
-        }
-      }
-    }
+    var language$prime = language[0];
+    continueView = React.createElement("button", {
+          onClick: (function (param) {
+              return Curry._1(onContinue, language$prime);
+            })
+        }, "continue");
   }
-  if (exit === 1) {
-    replPane = React.createElement("div", {
-          className: "repl-pane disabled"
-        });
-  }
+  return React.createElement("div", undefined, React.createElement("h2", {
+                  className: "header2 header2-abstract-syntax"
+                }, "Abstract Syntax ", match$1[0]), React.createElement("div", {
+                  className: "abstract-syntax-pane"
+                }, React.createElement(ReactCodemirror2.Controlled, {
+                      value: asInput,
+                      onBeforeChange: (function (param, param$1, str) {
+                          return Curry._1(setAsInput, (function (param) {
+                                        return str;
+                                      }));
+                        }),
+                      options: {
+                        mode: "default"
+                      }
+                    })), continueView);
+}
+
+var AbstractSyntaxEditor = /* module */[/* make */Index$AbstractSyntaxEditor];
+
+function Index$ConcreteSyntaxEditor(Props) {
+  var onComplete = Props.onComplete;
+  var match = React.useReducer((function (param, action) {
+          var syntaxDesc = param[2];
+          var showGrammarPane = param[1];
+          if (action) {
+            return /* tuple */[
+                    action[0],
+                    showGrammarPane,
+                    syntaxDesc
+                  ];
+          } else {
+            return /* tuple */[
+                    param[0],
+                    !showGrammarPane,
+                    syntaxDesc
+                  ];
+          }
+        }), /* tuple */[
+        LanguageSimple.concrete,
+        false,
+        undefined
+      ]);
+  var dispatch = match[1];
+  var match$1 = match[0];
+  var showGrammarPane = match$1[1];
+  var concreteInput = match$1[0];
+  var Parseable_concrete = ParseStatus.Make(Parsing.Parseable_concrete_syntax);
+  var match$2 = Curry._1(Parseable_concrete[/* parse */1], concreteInput);
+  var concrete = match$2[1];
+  React.useEffect((function () {
+          if (concrete.tag) {
+            return undefined;
+          } else {
+            Curry._1(onComplete, concrete[0]);
+            return undefined;
+          }
+        }), /* array */[concrete]);
   var getGrammarPane = function (concrete) {
     var grammar = ConcreteSyntax.to_grammar(concrete);
     var Lr0$prime = LrParsing.Lr0(/* module */[/* grammar */grammar]);
@@ -432,47 +385,48 @@ function Index$LvcaViewer(Props) {
       }
     }
   }
-  return React.createElement("div", {
-              className: "lvca-viewer"
-            }, React.createElement("h1", {
-                  className: "header"
-                }, "LVCA"), React.createElement("h2", {
-                  className: "header2 header2-abstract-syntax"
-                }, "Abstract Syntax ", match$6[0]), React.createElement("div", {
-                  className: "abstract-syntax-pane"
-                }, React.createElement(ReactCodemirror2.Controlled, {
-                      value: asInput,
-                      onBeforeChange: (function (param, param$1, str) {
-                          return Curry._1(setAsInput, (function (param) {
-                                        return str;
-                                      }));
-                        }),
-                      options: {
-                        mode: "default"
-                      }
-                    })), React.createElement("h2", {
+  return React.createElement("div", undefined, React.createElement("h2", {
                   className: "header2 header2-concrete"
-                }, "Concrete Syntax ", match$7[0], React.createElement("button", {
+                }, "Concrete Syntax ", match$2[0], React.createElement("button", {
                       onClick: (function (param) {
-                          return Curry._1(setShowGrammarPane, (function (param) {
-                                        return !showGrammarPane;
-                                      }));
+                          return Curry._1(dispatch, /* ToggleGrammarPane */0);
                         })
                     }, showGrammarPane ? "hide grammar tables" : "show grammar tables")), React.createElement("div", {
                   className: "concrete-pane"
                 }, showGrammarPane ? grammarPane : null, React.createElement(ReactCodemirror2.Controlled, {
                       value: concreteInput,
                       onBeforeChange: (function (param, param$1, str) {
-                          return Curry._1(setConcreteInput, (function (param) {
-                                        return str;
-                                      }));
+                          return Curry._1(dispatch, /* Typing */[str]);
                         }),
                       options: {
                         mode: "default"
                       }
-                    })), React.createElement("h2", {
+                    })));
+}
+
+var ConcreteSyntaxEditor = /* module */[/* make */Index$ConcreteSyntaxEditor];
+
+function Index$StaticsEditor(Props) {
+  var onComplete = Props.onComplete;
+  var match = React.useState((function () {
+          return LanguageSimple.statics;
+        }));
+  var setStaticsInput = match[1];
+  var staticsInput = match[0];
+  var Parseable_statics$prime = ParseStatus.Make(Parsing.Parseable_statics);
+  var match$1 = Curry._1(Parseable_statics$prime[/* parse */1], staticsInput);
+  var statics = match$1[1];
+  React.useEffect((function () {
+          if (statics.tag) {
+            return undefined;
+          } else {
+            Curry._1(onComplete, statics[0]);
+            return undefined;
+          }
+        }), /* array */[statics]);
+  return React.createElement("div", undefined, React.createElement("h2", {
                   className: "header2 header2-statics"
-                }, "Statics ", match$8[0]), React.createElement("div", {
+                }, "Statics ", match$1[0]), React.createElement("div", {
                   className: "statics-pane"
                 }, React.createElement(ReactCodemirror2.Controlled, {
                       value: staticsInput,
@@ -484,9 +438,32 @@ function Index$LvcaViewer(Props) {
                       options: {
                         mode: "default"
                       }
-                    })), React.createElement("h2", {
+                    })));
+}
+
+var StaticsEditor = /* module */[/* make */Index$StaticsEditor];
+
+function Index$DynamicsEditor(Props) {
+  var onComplete = Props.onComplete;
+  var match = React.useState((function () {
+          return LanguageSimple.dynamics;
+        }));
+  var setDynamicsInput = match[1];
+  var dynamicsInput = match[0];
+  var Parseable_dynamics$prime = ParseStatus.Make(Parsing.Parseable_dynamics);
+  var match$1 = Curry._1(Parseable_dynamics$prime[/* parse */1], dynamicsInput);
+  var dynamics = match$1[1];
+  React.useEffect((function () {
+          if (dynamics.tag) {
+            return undefined;
+          } else {
+            Curry._1(onComplete, dynamics[0]);
+            return undefined;
+          }
+        }), /* array */[dynamics]);
+  return React.createElement("div", undefined, React.createElement("h2", {
                   className: "header2 header2-dynamics"
-                }, "Dynamics ", match$9[0]), React.createElement("div", {
+                }, "Dynamics ", match$1[0]), React.createElement("div", {
                   className: "dynamics-pane"
                 }, React.createElement(ReactCodemirror2.Controlled, {
                       value: dynamicsInput,
@@ -498,12 +475,272 @@ function Index$LvcaViewer(Props) {
                       options: {
                         mode: "default"
                       }
-                    })), React.createElement("h2", {
-                  className: "header2 header2-repl"
-                }, "repl"), replPane);
+                    })));
 }
 
-var LvcaViewer = /* module */[/* make */Index$LvcaViewer];
+var DynamicsEditor = /* module */[/* make */Index$DynamicsEditor];
+
+function Index$ReplPane(Props) {
+  var language = Props.language;
+  var concrete = Props.concrete;
+  var statics = Props.statics;
+  var dynamics = Props.dynamics;
+  var match = React.useState((function () {
+          return /* record */[
+                  /* before : [] */0,
+                  /* after : [] */0,
+                  /* input */"if false then false else true"
+                ];
+        }));
+  var setHistory = match[1];
+  return React.createElement("div", undefined, React.createElement("h2", {
+                  className: "header2 header2-repl"
+                }, "repl"), React.createElement("div", {
+                  className: "repl-pane"
+                }, React.createElement(Index$Repl, {
+                      history: match[0],
+                      language: language,
+                      concrete: concrete,
+                      statics: statics,
+                      dynamics: dynamics,
+                      setInput: (function (input) {
+                          return Curry._1(setHistory, (function (hist) {
+                                        return /* record */[
+                                                /* before */hist[/* before */0],
+                                                /* after */hist[/* after */1],
+                                                /* input */input
+                                              ];
+                                      }));
+                        }),
+                      handleEnter: (function (param) {
+                          return Curry._1(setHistory, (function (hist) {
+                                        var input = hist[/* input */2];
+                                        var after = hist[/* after */1];
+                                        if (after) {
+                                          return step_forward(language, concrete, statics, dynamics, hist);
+                                        } else {
+                                          var match = read_eval_input(language, concrete, statics, dynamics, input);
+                                          var before$prime_000 = /* record */[
+                                            /* input */input,
+                                            /* parsed */match[0],
+                                            /* result */match[1]
+                                          ];
+                                          var before$prime_001 = hist[/* before */0];
+                                          var before$prime = /* :: */[
+                                            before$prime_000,
+                                            before$prime_001
+                                          ];
+                                          return /* record */[
+                                                  /* before */before$prime,
+                                                  /* after */after,
+                                                  /* input */""
+                                                ];
+                                        }
+                                      }));
+                        }),
+                      handleUp: (function (n) {
+                          return Curry._1(setHistory, (function (hist) {
+                                        return go_back(language, concrete, statics, dynamics, hist, n);
+                                      }));
+                        }),
+                      handleDown: (function (n) {
+                          return Curry._1(setHistory, (function (hist) {
+                                        return go_forward(language, concrete, statics, dynamics, hist, n);
+                                      }));
+                        })
+                    })));
+}
+
+var ReplPane = /* module */[/* make */Index$ReplPane];
+
+function mk_details(abstract_syntax) {
+  return /* DetailsStage */Block.__(0, [
+            /* record */[
+              /* abstract_syntax */abstract_syntax,
+              /* concrete_syntax */undefined,
+              /* statics */undefined,
+              /* dynamics */undefined
+            ],
+            /* ConcreteTab */0
+          ]);
+}
+
+function change_tab(details, tab) {
+  return /* DetailsStage */Block.__(0, [
+            details,
+            tab
+          ]);
+}
+
+function Index$LvcaViewer(Props) {
+  var match = React.useReducer((function (state, action) {
+          if (typeof state === "number") {
+            if (typeof action === "number" || action.tag !== 1) {
+              return Pervasives.failwith("invariant violation: unexpected action in AbstractSyntaxStage");
+            } else {
+              return mk_details(action[0]);
+            }
+          } else if (state.tag) {
+            throw [
+                  Caml_builtin_exceptions.match_failure,
+                  /* tuple */[
+                    "Index.re",
+                    491,
+                    25
+                  ]
+                ];
+          } else {
+            var tab = state[1];
+            var details = state[0];
+            if (typeof action === "number") {
+              return Pervasives.failwith("invariant violation: unexpected action in DetailsStage");
+            } else {
+              switch (action.tag | 0) {
+                case 0 : 
+                    return /* DetailsStage */Block.__(0, [
+                              details,
+                              action[0]
+                            ]);
+                case 1 : 
+                    return Pervasives.failwith("invariant violation: unexpected action in DetailsStage");
+                case 2 : 
+                    return /* DetailsStage */Block.__(0, [
+                              /* record */[
+                                /* abstract_syntax */details[/* abstract_syntax */0],
+                                /* concrete_syntax */action[0],
+                                /* statics */details[/* statics */2],
+                                /* dynamics */details[/* dynamics */3]
+                              ],
+                              tab
+                            ]);
+                case 3 : 
+                    return /* DetailsStage */Block.__(0, [
+                              /* record */[
+                                /* abstract_syntax */details[/* abstract_syntax */0],
+                                /* concrete_syntax */details[/* concrete_syntax */1],
+                                /* statics */action[0],
+                                /* dynamics */details[/* dynamics */3]
+                              ],
+                              tab
+                            ]);
+                case 4 : 
+                    return /* DetailsStage */Block.__(0, [
+                              /* record */[
+                                /* abstract_syntax */details[/* abstract_syntax */0],
+                                /* concrete_syntax */details[/* concrete_syntax */1],
+                                /* statics */details[/* statics */2],
+                                /* dynamics */action[0]
+                              ],
+                              tab
+                            ]);
+                case 5 : 
+                    return /* ReplStage */Block.__(1, [action[0]]);
+                
+              }
+            }
+          }
+        }), /* AbstractSyntaxStage */0);
+  var dispatch = match[1];
+  var state = match[0];
+  var view;
+  if (typeof state === "number") {
+    view = React.createElement(Index$AbstractSyntaxEditor, {
+          onContinue: (function (lang) {
+              return Curry._1(dispatch, /* ASContinue */Block.__(1, [lang]));
+            })
+        });
+  } else if (state.tag) {
+    var match$1 = state[0];
+    view = React.createElement(Index$ReplPane, {
+          language: match$1[/* abstract_syntax */0],
+          concrete: match$1[/* concrete_syntax */1],
+          statics: match$1[/* statics */2],
+          dynamics: match$1[/* dynamics */3]
+        });
+  } else {
+    var details = state[0];
+    var tab_contents;
+    switch (state[1]) {
+      case 0 : 
+          tab_contents = React.createElement(Index$ConcreteSyntaxEditor, {
+                onComplete: (function (syntax_desc) {
+                    return Curry._1(dispatch, /* CompleteConcreteSyntax */Block.__(2, [syntax_desc]));
+                  })
+              });
+          break;
+      case 1 : 
+          tab_contents = React.createElement(Index$StaticsEditor, {
+                onComplete: (function (statics) {
+                    return Curry._1(dispatch, /* CompleteStatics */Block.__(3, [statics]));
+                  })
+              });
+          break;
+      case 2 : 
+          tab_contents = React.createElement(Index$DynamicsEditor, {
+                onComplete: (function (dynamics) {
+                    return Curry._1(dispatch, /* CompleteDynamics */Block.__(4, [dynamics]));
+                  })
+              });
+          break;
+      
+    }
+    var details$prime_000 = details[/* concrete_syntax */1];
+    var details$prime_001 = details[/* statics */2];
+    var details$prime_002 = details[/* dynamics */3];
+    var match$2 = details$prime_000;
+    var continue_button;
+    if (match$2 !== undefined) {
+      var match$3 = details$prime_001;
+      if (match$3 !== undefined) {
+        var match$4 = details$prime_002;
+        if (match$4 !== undefined) {
+          var details_000 = /* abstract_syntax */details[/* abstract_syntax */0];
+          var details$1 = /* record */[
+            details_000,
+            /* concrete_syntax */match$2,
+            /* statics */match$3,
+            /* dynamics */match$4
+          ];
+          continue_button = React.createElement("button", {
+                onClick: (function (param) {
+                    return Curry._1(dispatch, /* DetailsContinue */Block.__(5, [details$1]));
+                  })
+              }, "Continue to REPL");
+        } else {
+          continue_button = null;
+        }
+      } else {
+        continue_button = null;
+      }
+    } else {
+      continue_button = null;
+    }
+    view = React.createElement("div", undefined, React.createElement("button", {
+              onClick: (function (param) {
+                  return Curry._1(dispatch, /* ChangeTab */Block.__(0, [/* ConcreteTab */0]));
+                })
+            }, "Concrete syntax"), React.createElement("button", {
+              onClick: (function (param) {
+                  return Curry._1(dispatch, /* ChangeTab */Block.__(0, [/* StaticsTab */1]));
+                })
+            }, "Statics"), React.createElement("button", {
+              onClick: (function (param) {
+                  return Curry._1(dispatch, /* ChangeTab */Block.__(0, [/* DynamicsTab */2]));
+                })
+            }, "Dynamics"), continue_button, tab_contents);
+  }
+  return React.createElement("div", {
+              className: "lvca-viewer"
+            }, React.createElement("h1", {
+                  className: "header"
+                }, "LVCA"), view);
+}
+
+var LvcaViewer = /* module */[
+  /* mk_details */mk_details,
+  /* change_tab */change_tab,
+  /* make */Index$LvcaViewer
+];
 
 ReactDOMRe.renderToElementWithId(React.createElement(Index$LvcaViewer, { }), "index");
 
@@ -521,5 +758,10 @@ exports.go_back = go_back;
 exports.go_forward = go_forward;
 exports.make_div = make_div;
 exports.Repl = Repl;
+exports.AbstractSyntaxEditor = AbstractSyntaxEditor;
+exports.ConcreteSyntaxEditor = ConcreteSyntaxEditor;
+exports.StaticsEditor = StaticsEditor;
+exports.DynamicsEditor = DynamicsEditor;
+exports.ReplPane = ReplPane;
 exports.LvcaViewer = LvcaViewer;
 /* preventDefault Not a pure module */
