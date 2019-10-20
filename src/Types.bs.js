@@ -8,6 +8,8 @@ var Curry = require("bs-platform/lib/js/curry.js");
 var Cbor = require("./cbor");
 var Bigint = require("bs-zarith/src/Bigint.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
+var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Caml_module = require("bs-platform/lib/js/caml_module.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
@@ -158,6 +160,82 @@ var Cbor$1 = /* module */[
   /* decode_ab */decode_ab
 ];
 
+function canonical_piece_representative(_param) {
+  while(true) {
+    var param = _param;
+    switch (param.tag | 0) {
+      case 0 : 
+          return param[0];
+      case 1 : 
+      case 2 : 
+          return Pervasives.failwith("TODO");
+      case 4 : 
+          _param = param[0];
+          continue ;
+      case 3 : 
+      case 5 : 
+          return "";
+      
+    }
+  };
+}
+
+function canonical_representative(pieces) {
+  return Belt_Array.map(Belt_List.toArray(pieces), canonical_piece_representative).join("");
+}
+
+function piece_accepts_empty(_param) {
+  while(true) {
+    var param = _param;
+    switch (param.tag | 0) {
+      case 0 : 
+          return param[0].length === 0;
+      case 1 : 
+          var str = param[0];
+          if (str === "\\b") {
+            return true;
+          } else {
+            return str === "\\B";
+          }
+      case 2 : 
+          return false;
+      case 4 : 
+          _param = param[0];
+          continue ;
+      case 3 : 
+      case 5 : 
+          return true;
+      
+    }
+  };
+}
+
+function accepts_empty(regex) {
+  return Belt_List.every(regex, piece_accepts_empty);
+}
+
+function show_regex_piece(param) {
+  switch (param.tag | 0) {
+    case 0 : 
+        return "\"" + (param[0] + "\"");
+    case 1 : 
+        return param[0];
+    case 2 : 
+        return "[" + (param[0] + "]");
+    case 3 : 
+        return show_regex_piece(param[0]) + "*";
+    case 4 : 
+        return show_regex_piece(param[0]) + "+";
+    case 5 : 
+        return show_regex_piece(param[0]) + "?";
+    
+  }
+}
+
+function show_regex(regex) {
+  return Belt_Array.map(Belt_List.toArray(regex), show_regex_piece).join("");
+}
+
 function token_name(param) {
   if (typeof param === "number") {
     return undefined;
@@ -235,12 +313,12 @@ function partition_nonterminal_matches(matches) {
 
 function make(terminal_rules, sort_rules) {
   return /* record */[
-          /* terminal_rules */Belt_MapString.fromArray(Belt_List.toArray(List.map((function (param) {
-                          return /* tuple */[
-                                  param[0],
-                                  param[1]
-                                ];
-                        }), terminal_rules))),
+          /* terminal_rules */Belt_List.toArray(List.map((function (param) {
+                      return /* tuple */[
+                              param[0],
+                              param[1]
+                            ];
+                    }), terminal_rules)),
           /* sort_rules */Belt_MapString.fromArray(Belt_List.toArray(List.map((function (rule) {
                           return /* tuple */[
                                   rule[0][/* sort_name */0],
@@ -252,6 +330,13 @@ function make(terminal_rules, sort_rules) {
 
 var ConcreteSyntaxDescription = /* module */[
   /* M */0,
+  /* BL */0,
+  /* canonical_piece_representative */canonical_piece_representative,
+  /* canonical_representative */canonical_representative,
+  /* piece_accepts_empty */piece_accepts_empty,
+  /* accepts_empty */accepts_empty,
+  /* show_regex_piece */show_regex_piece,
+  /* show_regex */show_regex,
   /* token_name */token_name,
   /* fixity_str */fixity_str,
   /* DuplicateVarRules */DuplicateVarRules,

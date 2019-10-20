@@ -217,7 +217,9 @@ let check_operator_match_validity
  *   a. If the token refers to a nonterminal, this is an error.
  *   b. If the token refers to a terminal, it must be a string literal.
  * 2. No token is used twice on the RHS.
- * 2. No token is mentioned on the RHS that doesn't exist on the left
+ * 3. No token is mentioned on the RHS that doesn't exist on the left
+ * 4. No regex admits empty strings (these tokens could be arbitrarily inserted
+ *    everywhere)
  *
  * Examples:
  * * FOO bar BAZ { op($1; $2; $3) } valid
@@ -227,6 +229,8 @@ let check_operator_match_validity
  * * FOO bar BAZ { op($2; $4) } invalid (non-existent token)
  *)
 let check_description_validity { terminal_rules; sort_rules } =
+  let terminal_rules' = M.fromArray terminal_rules in
+
   try
     sort_rules
       |. M.map (fun (SortRule { operator_rules }) ->
@@ -256,20 +260,25 @@ let check_description_validity { terminal_rules; sort_rules } =
           BL.map uncaptured_tokens (fun (i, tok) -> match tok with
             | NonterminalName name -> raise (CheckValidExn
               (InvalidGrammar ("uncaptured nonterminal: " ^ name)))
-            | TerminalName nt_name -> (match M.get terminal_rules nt_name with
+            | TerminalName nt_name -> (match M.get terminal_rules' nt_name with
               | None -> raise (CheckValidExn (InvalidGrammar
                 ("Named terminal " ^ nt_name ^ " does not exist")))
-              | Some regex -> if Util.is_some (regex_is_literal regex)
-                then ()
+              | Some regex -> if Util.is_none (regex_is_literal regex)
                 (* TODO: print it *)
-                else raise (CheckValidExn (InvalidGrammar
+                then raise (CheckValidExn (InvalidGrammar
                   "Uncaptured regex which is not a string literal"))
             )
             | Underscore -> ()
           )
         );
-        ()
       );
+    terminal_rules' |. M.map (fun regex ->
+      if Types.ConcreteSyntaxDescription.accepts_empty regex then
+        raise (CheckValidExn (InvalidGrammar
+          (* TODO: print it *)
+          "Regex accepts empty strings"
+        ))
+    );
     None
   with
     CheckValidExn err -> Some err
@@ -293,7 +302,8 @@ let rec of_ast
   ({ terminal_rules; sort_rules } as rules)
   current_sort
   tm
-  = match current_sort, tm with
+  = let terminal_rules' = M.fromArray terminal_rules in
+    match current_sort, tm with
   | SortAp (sort_name, _), Nominal.Operator (op_name, scopes) ->
     let SortRule { operator_rules } = get_option'
       ("of_ast: failed to get sort " ^ sort_name)
@@ -371,7 +381,7 @@ let rec of_ast
         | NotFound, TerminalName name
         -> let terminal_rule = get_option'
               ("of_ast: failed to get terminal rule " ^ name) @@
-              M.get terminal_rules name
+              M.get terminal_rules' name
            in
            (match regex_is_literal terminal_rule with
              | Some re_str -> mk_terminal_capture re_str
@@ -506,10 +516,9 @@ exception MixedFixities of bool * int
 let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
   : LrParsing.grammar
       (* TODO: how to do string -> int mapping? *)
-  = let terminal_key_arr = MS.keysToArray terminal_rules in
+  = let terminal_key_arr = BA.map terminal_rules (fun (k, _) -> k) in
     let nonterminal_key_arr = MS.keysToArray sort_rules in
-    let terminal_names = terminal_rules
-        |. MS.keysToArray
+    let terminal_names = terminal_key_arr
         |. BA.mapWithIndex (fun i name -> name, i)
         |. MS.fromArray
     in
@@ -560,7 +569,7 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
 
     {
       nonterminals; terminal_names; nonterminal_names;
-      num_terminals = MS.size terminal_rules;
+      num_terminals = BA.length terminal_rules;
     }
 
 let production_info
@@ -684,9 +693,7 @@ let tree_of_parse_result
 
 let lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer
   = fun { terminal_rules } -> terminal_rules
-    |. M.map regex_to_string
-    |. M.toArray
-    |. BA.map (fun (tok_name, re) -> re, tok_name)
+    |. BA.map (fun (tok_name, re) -> regex_to_string re, tok_name)
     |. BL.fromArray
 
 let parse desc str =

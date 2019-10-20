@@ -4,15 +4,22 @@
 var Jest = require("@glennsl/bs-jest/src/jest.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
+var Types = require("../src/Types.bs.js");
 var Lexing = require("bs-platform/lib/js/lexing.js");
 var ConcreteSyntaxLexer = require("../src/ConcreteSyntaxLexer.bs.js");
 var ConcreteSyntaxParser = require("../src/ConcreteSyntaxParser.bs.js");
 
 Jest.describe("ConcreteSyntaxParser", (function (param) {
         var expectParse = function (parser, str, tm) {
-          return Jest.test("'" + (str + "'"), (function (param) {
+          return Jest.test("parse '" + (str + "'"), (function (param) {
                         var tm$prime = Curry._2(parser, ConcreteSyntaxLexer.read, Lexing.from_string(str));
                         return Jest.Expect[/* toEqual */12](tm, Jest.Expect[/* expect */0](tm$prime));
+                      }));
+        };
+        var expectRoundTrip = function (parser, str) {
+          return Jest.test("round trip '" + (str + "'"), (function (param) {
+                        var re = Curry._2(parser, ConcreteSyntaxLexer.read, Lexing.from_string(str));
+                        return Jest.Expect[/* toEqual */12](str, Jest.Expect[/* expect */0](Types.ConcreteSyntaxDescription[/* show_regex */7](re)));
                       }));
         };
         expectParse(ConcreteSyntaxParser.regex__test, "\"foo\"", /* :: */[
@@ -46,6 +53,21 @@ Jest.describe("ConcreteSyntaxParser", (function (param) {
               /* ReOption */Block.__(5, [/* ReString */Block.__(0, ["foo"])]),
               /* [] */0
             ]);
+        expectParse(ConcreteSyntaxParser.regex__test, "\"\\\\\"", /* :: */[
+              /* ReString */Block.__(0, ["\\"]),
+              /* [] */0
+            ]);
+        expectParse(ConcreteSyntaxParser.regex__test, "\"\\b\"", /* :: */[
+              /* ReClass */Block.__(1, ["\\b"]),
+              /* [] */0
+            ]);
+        expectRoundTrip(ConcreteSyntaxParser.regex__test, "\"foo\"");
+        expectRoundTrip(ConcreteSyntaxParser.regex__test, "[a-z]");
+        expectRoundTrip(ConcreteSyntaxParser.regex__test, "[a-zA-Z]");
+        expectRoundTrip(ConcreteSyntaxParser.regex__test, "[a-z][A-Z]");
+        expectRoundTrip(ConcreteSyntaxParser.regex__test, "\"foo\"*");
+        expectRoundTrip(ConcreteSyntaxParser.regex__test, "\"foo\"+");
+        expectRoundTrip(ConcreteSyntaxParser.regex__test, "\"foo\"?");
         expectParse(ConcreteSyntaxParser.terminal_rule__test, "TERMINAL := \"foo\"", /* TerminalRule */[
               "TERMINAL",
               /* :: */[
@@ -57,6 +79,23 @@ Jest.describe("ConcreteSyntaxParser", (function (param) {
               "TERMINAL",
               /* :: */[
                 /* ReString */Block.__(0, ["->"]),
+                /* [] */0
+              ]
+            ]);
+        expectParse(ConcreteSyntaxParser.terminal_rule__test, "ID := [a-zA-Z][a-zA-Z0-9_]*", /* TerminalRule */[
+              "ID",
+              /* :: */[
+                /* ReSet */Block.__(2, ["a-zA-Z"]),
+                /* :: */[
+                  /* ReStar */Block.__(3, [/* ReSet */Block.__(2, ["a-zA-Z0-9_"])]),
+                  /* [] */0
+                ]
+              ]
+            ]);
+        expectParse(ConcreteSyntaxParser.terminal_rule__test, "SPACE := [ ]+", /* TerminalRule */[
+              "SPACE",
+              /* :: */[
+                /* RePlus */Block.__(4, [/* ReSet */Block.__(2, [" "])]),
                 /* [] */0
               ]
             ]);

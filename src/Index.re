@@ -40,8 +40,20 @@ let read_eval_input = (language, concrete, statics, dynamics, input)
     let eval' = tm => map_error(eval(tm), fun(msg) => (msg, None));
 
     switch (abtResult) {
-      | Ok(abtResult') => switch
-        (Belt.Result.flatMap(term_denotation(dynamics, [], abtResult'), eval')) {
+      | Ok(abtResult') =>
+
+        let env = {
+          Bidirectional.rules: statics,
+          var_types: Belt.Map.String.empty,
+        };
+        let tm = Statics.of_de_bruijn(abtResult');
+        /* TODO: actually show this to the user */
+        switch (Bidirectional.infer(env, tm)) {
+          | _           => Js.log("check success")
+          | exception _ => Js.log("check failure")
+        };
+
+        switch (Belt.Result.flatMap(term_denotation(dynamics, [], abtResult'), eval')) {
         | Ok(core_val) => (astResult, Ok(core_val))
         | Error(msg)   => (astResult, Error(msg)) // Error((msg, Some(abtResult'))))
         }
@@ -238,6 +250,7 @@ module AbstractSyntaxEditor = {
     };
 
     <div>
+      {continueView}
       <h2 className="header2 header2-abstract-syntax">
         {React.string("Abstract Syntax ")}
         {languageView}
@@ -249,7 +262,6 @@ module AbstractSyntaxEditor = {
           options=CodeMirror.options(~mode="default", ())
         />
       </div>
-      {continueView}
     </div>
   };
 };
@@ -471,6 +483,7 @@ module LvcaViewer = {
     | CompleteStatics(list(Statics.rule))
     | CompleteDynamics(Core.denotation_chart)
     | DetailsContinue(details)
+    | ReplBack
     | Evaluate
     ;
 
@@ -502,11 +515,23 @@ module LvcaViewer = {
         | (DetailsStage(_, _), DetailsContinue(details))
         => ReplStage(details)
 
+        | (ReplStage({ abstract_syntax, concrete_syntax, statics, dynamics }),
+          ReplBack)
+        => DetailsStage({
+          abstract_syntax,
+          concrete_syntax: Some(concrete_syntax),
+          statics: Some(statics),
+          dynamics: Some(dynamics),
+        }, ConcreteTab)
+        | (ReplStage(_), Evaluate) => failwith("TODO: evaluation")
+
         | (AbstractSyntaxStage, _)
         => failwith(
           "invariant violation: unexpected action in AbstractSyntaxStage")
         | (DetailsStage(_, _), _)
         => failwith("invariant violation: unexpected action in DetailsStage")
+        | (ReplStage(_), _)
+        => failwith("invariant violation: unexpected action in ReplStage")
       },
       AbstractSyntaxStage
     );
@@ -560,12 +585,17 @@ module LvcaViewer = {
       }
       | ReplStage({ abstract_syntax, concrete_syntax, statics, dynamics })
       =>
-        <ReplPane
-          language=abstract_syntax
-          concrete=concrete_syntax
-          statics=statics
-          dynamics=dynamics
-        />
+        <div>
+          <button onClick=(_ => dispatch(ReplBack))>
+            {React.string("back")}
+          </button>
+          <ReplPane
+            language=abstract_syntax
+            concrete=concrete_syntax
+            statics=statics
+            dynamics=dynamics
+          />
+        </div>
     };
 
     <div className="lvca-viewer">

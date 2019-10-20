@@ -112,7 +112,7 @@ var semantic_action = /* array */[
       var _menhir_stack = _menhir_env[/* stack */2];
       var match = _menhir_stack[/* next */4];
       var match$1 = match[/* next */4];
-      var _v = Types.ConcreteSyntaxDescription[/* make */5](match$1[/* semv */1], match[/* semv */1]);
+      var _v = Types.ConcreteSyntaxDescription[/* make */12](match$1[/* semv */1], match[/* semv */1]);
       return /* record */[
               /* state */match$1[/* state */0],
               /* semv */_v,
@@ -600,7 +600,7 @@ var semantic_action = /* array */[
   (function (_menhir_env) {
       var _menhir_stack = _menhir_env[/* stack */2];
       var match = _menhir_stack[/* next */4][/* next */4][/* next */4];
-      var match$1 = Types.ConcreteSyntaxDescription[/* partition_nonterminal_matches */4](_menhir_stack[/* semv */1]);
+      var match$1 = Types.ConcreteSyntaxDescription[/* partition_nonterminal_matches */11](_menhir_stack[/* semv */1]);
       var _v = /* SortRule */[/* record */[
           /* sort_name */match[/* semv */1],
           /* operator_rules */match$1[0],

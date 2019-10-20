@@ -202,7 +202,7 @@ Jest.describe("Lex", (function (param) {
               }));
         var result$2 = Lex.lex(/* :: */[
               /* tuple */[
-                "['a' - 'z' 'A' - 'Z'] ['a' - 'z' 'A' - 'Z' '0' - '9' '_'] *",
+                "[a-zA-Z][a-zA-Z0-9_]*",
                 "ID"
               ],
               /* :: */[

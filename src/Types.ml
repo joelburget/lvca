@@ -162,6 +162,7 @@ end
 module ConcreteSyntaxDescription = struct
 
   module M = Belt.Map.String
+  module BL = Belt.List
 
   type capture_number = int
   type terminal_id    = string
@@ -188,7 +189,51 @@ module ConcreteSyntaxDescription = struct
   type regex          = regex_piece list
   type terminal_rule  = TerminalRule of terminal_id * regex
 
-  type terminal_rules = regex M.t
+  type terminal_rules = (string * regex) array
+
+  let rec canonical_piece_representative : regex_piece -> string
+    = function
+      | ReString str -> str
+      | ReClass _ -> failwith "TODO"
+      | ReSet _ -> failwith "TODO"
+      | RePlus piece -> canonical_piece_representative piece
+      | ReStar _
+      | ReOption _ -> ""
+
+  let canonical_representative : regex -> string
+    = function pieces -> pieces
+      |. BL.toArray
+      |. Belt.Array.map canonical_piece_representative
+      |. Js.Array2.joinWith ""
+
+  let rec piece_accepts_empty : regex_piece -> bool
+    = function
+      | ReString str -> Js.String2.length str = 0
+      | ReSet    str -> false
+      (* TODO: are boundaries the only empty classes? *)
+      | ReClass str -> str = "\\b" || str = "\\B"
+      | RePlus piece -> piece_accepts_empty piece
+      | ReStar _
+      | ReOption _ -> true
+
+  let accepts_empty : regex -> bool
+    = fun regex -> BL.every regex
+      (fun piece -> piece_accepts_empty piece)
+
+  let rec show_regex_piece : regex_piece -> string
+    = function
+      | ReString str -> "\"" ^ str ^ "\""
+      | ReSet    str -> "[" ^ str ^ "]"
+      | ReClass  str -> str
+      | ReStar   piece -> show_regex_piece piece ^ "*"
+      | RePlus   piece -> show_regex_piece piece ^ "+"
+      | ReOption piece -> show_regex_piece piece ^ "?"
+
+  let show_regex : regex -> string
+    = fun regex -> regex
+      |. BL.toArray
+      |. Belt.Array.map show_regex_piece
+      |. Js.Array2.joinWith ""
 
   type nonterminal_token =
     | TerminalName    of string
@@ -278,8 +323,7 @@ module ConcreteSyntaxDescription = struct
   let make (terminal_rules: terminal_rule list) (sort_rules : sort_rule list) =
     { terminal_rules = terminal_rules
       |> List.map (fun (TerminalRule (name, rule)) -> name, rule)
-      |> Belt.List.toArray
-      |> M.fromArray;
+      |> Belt.List.toArray;
     sort_rules = sort_rules
       |> List.map (fun ((SortRule { sort_name }) as rule) -> sort_name, rule)
       |> Belt.List.toArray

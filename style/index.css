@@ -21,6 +21,7 @@ h2 {
 .error {
   color: #c12828;
 }
+/* XXX grid no longer valid */
 div.lvca-viewer {
   display: grid;
   grid-template-columns: 50% 50%;
@@ -50,63 +51,14 @@ h2.header2 {
 h2.header2 checkbox {
   font-size: 20px;
 }
-h2.header2-abstract-syntax {
-  grid-area: header2-abstract-syntax;
-  border-left: 2px solid #1e1e5d;
-  border-top: 2px solid #1e1e5d;
-  border-bottom: 2px solid #1e1e5d;
+h2.header2-concrete, h2.header2-statics, h2.header2-dynamics, h2.header2-abstract-syntax, h2.header2-repl {
+  border: 2px solid #1e1e5d;
 }
-h2.header2-concrete {
-  grid-area: header2-concrete;
-  border-left: 2px solid #1e1e5d;
-  border-bottom: 2px solid #1e1e5d;
-}
-h2.header2-statics {
-  grid-area: header2-statics;
-  border-left: 2px solid #1e1e5d;
-  border-bottom: 2px solid #1e1e5d;
-}
-h2.header2-dynamics {
-  grid-area: header2-dynamics;
-  border-left: 2px solid #1e1e5d;
-  border-bottom: 2px solid #1e1e5d;
-}
-h2.header2-repl {
-  grid-area: header2-repl;
-  border-left: 2px solid #1e1e5d;
-  border-right: 2px solid #1e1e5d;
-  border-top: 2px solid #1e1e5d;
-  border-bottom: 2px solid #1e1e5d;
-}
-div.abstract-syntax-pane {
-  grid-area: abstract-syntax-pane;
-  border-left: 2px solid #1e1e5d;
-  border-bottom: 2px solid #1e1e5d;
-  padding: 20px;
-}
-div.concrete-pane {
+div.concrete-pane, div.abstract-syntax-pane, div.statics-pane, div.dynamics-pane, div.repl-pane {
   grid-area: concrete-pane;
   border-left: 2px solid #1e1e5d;
   border-bottom: 2px solid #1e1e5d;
-  padding: 20px;
-}
-div.statics-pane {
-  grid-area: statics-pane;
-  border-left: 2px solid #1e1e5d;
-  border-bottom: 2px solid #1e1e5d;
-  padding: 20px;
-}
-div.dynamics-pane {
-  grid-area: dynamics-pane;
-  border-left: 2px solid #1e1e5d;
-  border-bottom: 2px solid #1e1e5d;
-  padding: 20px;
-}
-div.repl-pane {
-  grid-area: repl-pane;
-  border-left: 2px solid #1e1e5d;
   border-right: 2px solid #1e1e5d;
-  border-bottom: 2px solid #1e1e5d;
   padding: 20px;
 }
 div.term-input {

@@ -13,7 +13,6 @@ ty :=
   | arr(ty; ty)|}
 
 let concrete = {|
-ID    := ['a' - 'z' 'A' - 'Z'] ['a' - 'z' 'A' - 'Z' '0' - '9' '_'] *
 COLON := ":"
 IF    := "if"
 THEN  := "then"
@@ -23,6 +22,7 @@ ARROW := "->"
 TRUE  := "true"
 FALSE := "false"
 BOOL  := "bool"
+ID    := [a-zA-Z][a-zA-Z0-9_]*
 SPACE := [ ]+
 
 tm :=

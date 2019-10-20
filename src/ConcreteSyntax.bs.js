@@ -6,6 +6,7 @@ var Util = require("./Util.bs.js");
 var $$Array = require("bs-platform/lib/js/array.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
+var Types = require("./Types.bs.js");
 var Bigint = require("bs-zarith/src/Bigint.js");
 var Printf = require("bs-platform/lib/js/printf.js");
 var $$String = require("bs-platform/lib/js/string.js");
@@ -198,78 +199,87 @@ function check_operator_match_validity(token_list, term_pat) {
 }
 
 function check_description_validity(param) {
-  var terminal_rules = param[/* terminal_rules */0];
+  var terminal_rules$prime = Belt_MapString.fromArray(param[/* terminal_rules */0]);
   try {
     Belt_MapString.map(param[/* sort_rules */1], (function (param) {
             var operator_maches = Belt_List.flatten(param[0][/* operator_rules */1]);
-            Belt_List.map(operator_maches, (function (param) {
-                    var match = param[0];
-                    var match$1 = check_operator_match_validity(match[/* tokens */0], match[/* term_pattern */1]);
-                    var duplicate_captures = match$1[1];
-                    var non_existent_tokens = match$1[0];
-                    if (!Belt_SetInt.isEmpty(duplicate_captures)) {
-                      var tok_names = Belt_Array.map(Belt_SetInt.toArray(duplicate_captures), Printf.sprintf(/* Format */[
-                                  /* Char_literal */Block.__(12, [
-                                      /* "$" */36,
-                                      /* Scan_get_counter */Block.__(21, [
-                                          /* Char_counter */1,
-                                          /* End_of_format */0
-                                        ])
-                                    ]),
-                                  "$%n"
-                                ])).join(", ");
-                      throw [
-                            CheckValidExn,
-                            /* InvalidGrammar */["tokens captured more than once: " + tok_names]
-                          ];
-                    }
-                    if (!Belt_MutableSetInt.isEmpty(non_existent_tokens)) {
-                      var tok_names$1 = Belt_Array.map(Belt_MutableSetInt.toArray(non_existent_tokens), Printf.sprintf(/* Format */[
-                                  /* Char_literal */Block.__(12, [
-                                      /* "$" */36,
-                                      /* Scan_get_counter */Block.__(21, [
-                                          /* Char_counter */1,
-                                          /* End_of_format */0
-                                        ])
-                                    ]),
-                                  "$%n"
-                                ])).join(", ");
-                      throw [
-                            CheckValidExn,
-                            /* InvalidGrammar */["non-existent tokens mentioned: " + tok_names$1]
-                          ];
-                    }
-                    return Belt_List.map(match$1[2], (function (param) {
-                                  var tok = param[1];
-                                  if (typeof tok === "number") {
-                                    return /* () */0;
-                                  } else if (tok.tag) {
-                                    throw [
-                                          CheckValidExn,
-                                          /* InvalidGrammar */["uncaptured nonterminal: " + tok[0]]
-                                        ];
-                                  } else {
-                                    var nt_name = tok[0];
-                                    var match = Belt_MapString.get(terminal_rules, nt_name);
-                                    if (match !== undefined) {
-                                      if (Util.is_some(regex_is_literal(match))) {
-                                        return /* () */0;
-                                      } else {
-                                        throw [
-                                              CheckValidExn,
-                                              /* InvalidGrammar */["Uncaptured regex which is not a string literal"]
-                                            ];
-                                      }
-                                    } else {
-                                      throw [
-                                            CheckValidExn,
-                                            /* InvalidGrammar */["Named terminal " + (nt_name + " does not exist")]
-                                          ];
-                                    }
-                                  }
-                                }));
-                  }));
-            return /* () */0;
+            return Belt_List.map(operator_maches, (function (param) {
+                          var match = param[0];
+                          var match$1 = check_operator_match_validity(match[/* tokens */0], match[/* term_pattern */1]);
+                          var duplicate_captures = match$1[1];
+                          var non_existent_tokens = match$1[0];
+                          if (!Belt_SetInt.isEmpty(duplicate_captures)) {
+                            var tok_names = Belt_Array.map(Belt_SetInt.toArray(duplicate_captures), Printf.sprintf(/* Format */[
+                                        /* Char_literal */Block.__(12, [
+                                            /* "$" */36,
+                                            /* Scan_get_counter */Block.__(21, [
+                                                /* Char_counter */1,
+                                                /* End_of_format */0
+                                              ])
+                                          ]),
+                                        "$%n"
+                                      ])).join(", ");
+                            throw [
+                                  CheckValidExn,
+                                  /* InvalidGrammar */["tokens captured more than once: " + tok_names]
+                                ];
+                          }
+                          if (!Belt_MutableSetInt.isEmpty(non_existent_tokens)) {
+                            var tok_names$1 = Belt_Array.map(Belt_MutableSetInt.toArray(non_existent_tokens), Printf.sprintf(/* Format */[
+                                        /* Char_literal */Block.__(12, [
+                                            /* "$" */36,
+                                            /* Scan_get_counter */Block.__(21, [
+                                                /* Char_counter */1,
+                                                /* End_of_format */0
+                                              ])
+                                          ]),
+                                        "$%n"
+                                      ])).join(", ");
+                            throw [
+                                  CheckValidExn,
+                                  /* InvalidGrammar */["non-existent tokens mentioned: " + tok_names$1]
+                                ];
+                          }
+                          return Belt_List.map(match$1[2], (function (param) {
+                                        var tok = param[1];
+                                        if (typeof tok === "number") {
+                                          return /* () */0;
+                                        } else if (tok.tag) {
+                                          throw [
+                                                CheckValidExn,
+                                                /* InvalidGrammar */["uncaptured nonterminal: " + tok[0]]
+                                              ];
+                                        } else {
+                                          var nt_name = tok[0];
+                                          var match = Belt_MapString.get(terminal_rules$prime, nt_name);
+                                          if (match !== undefined) {
+                                            if (Util.is_none(regex_is_literal(match))) {
+                                              throw [
+                                                    CheckValidExn,
+                                                    /* InvalidGrammar */["Uncaptured regex which is not a string literal"]
+                                                  ];
+                                            } else {
+                                              return 0;
+                                            }
+                                          } else {
+                                            throw [
+                                                  CheckValidExn,
+                                                  /* InvalidGrammar */["Named terminal " + (nt_name + " does not exist")]
+                                                ];
+                                          }
+                                        }
+                                      }));
+                        }));
+          }));
+    Belt_MapString.map(terminal_rules$prime, (function (regex) {
+            if (Types.ConcreteSyntaxDescription[/* accepts_empty */5](regex)) {
+              throw [
+                    CheckValidExn,
+                    /* InvalidGrammar */["Regex accepts empty strings"]
+                  ];
+            } else {
+              return 0;
+            }
           }));
     return undefined;
   }
@@ -302,8 +312,8 @@ function mk_terminal_capture(content) {
 }
 
 function of_ast(lang, rules, current_sort, tm) {
-  var terminal_rules = rules[/* terminal_rules */0];
   var sorts = lang[0];
+  var terminal_rules$prime = Belt_MapString.fromArray(rules[/* terminal_rules */0]);
   var exit = 0;
   var sort_name = current_sort[0];
   var exit$1 = 0;
@@ -386,7 +396,7 @@ function of_ast(lang, rules, current_sort, tm) {
                           ];
                     } else {
                       var name = token[0];
-                      var terminal_rule = Util.get_option$prime("of_ast: failed to get terminal rule " + name)(Belt_MapString.get(terminal_rules, name));
+                      var terminal_rule = Util.get_option$prime("of_ast: failed to get terminal rule " + name)(Belt_MapString.get(terminal_rules$prime, name));
                       var match$1 = regex_is_literal(terminal_rule);
                       if (match$1 !== undefined) {
                         return mk_terminal_capture(match$1);
@@ -405,7 +415,7 @@ function of_ast(lang, rules, current_sort, tm) {
                           Caml_builtin_exceptions.assert_failure,
                           /* tuple */[
                             "ConcreteSyntax.ml",
-                            334,
+                            344,
                             11
                           ]
                         ];
@@ -446,7 +456,7 @@ function of_ast(lang, rules, current_sort, tm) {
                             Caml_builtin_exceptions.assert_failure,
                             /* tuple */[
                               "ConcreteSyntax.ml",
-                              350,
+                              360,
                               23
                             ]
                           ];
@@ -462,7 +472,7 @@ function of_ast(lang, rules, current_sort, tm) {
                         Caml_builtin_exceptions.assert_failure,
                         /* tuple */[
                           "ConcreteSyntax.ml",
-                          390,
+                          400,
                           27
                         ]
                       ];
@@ -690,7 +700,7 @@ function to_ast(lang, tree) {
           Caml_builtin_exceptions.assert_failure,
           /* tuple */[
             "ConcreteSyntax.ml",
-            480,
+            490,
             7
           ]
         ];
@@ -741,9 +751,11 @@ var MixedFixities = Caml_exceptions.create("ConcreteSyntax.MixedFixities");
 function to_grammar(param) {
   var sort_rules = param[/* sort_rules */1];
   var terminal_rules = param[/* terminal_rules */0];
-  Belt_MapString.keysToArray(terminal_rules);
+  var terminal_key_arr = Belt_Array.map(terminal_rules, (function (param) {
+          return param[0];
+        }));
   Belt_MapString.keysToArray(sort_rules);
-  var terminal_names = Belt_MapString.fromArray(Belt_Array.mapWithIndex(Belt_MapString.keysToArray(terminal_rules), (function (i, name) {
+  var terminal_names = Belt_MapString.fromArray(Belt_Array.mapWithIndex(terminal_key_arr, (function (i, name) {
               return /* tuple */[
                       name,
                       i
@@ -784,7 +796,7 @@ function to_grammar(param) {
         ]]);
   return /* record */[
           /* nonterminals */nonterminals,
-          /* num_terminals */Belt_MapString.size(terminal_rules),
+          /* num_terminals */terminal_rules.length,
           /* terminal_names */terminal_names,
           /* nonterminal_names */nonterminal_names
         ];
@@ -900,9 +912,9 @@ function tree_of_parse_result(Lr0, nonterminal_names, sort_rules, str, root) {
 }
 
 function lexer_of_desc(param) {
-  return Belt_List.fromArray(Belt_Array.map(Belt_MapString.toArray(Belt_MapString.map(param[/* terminal_rules */0], regex_to_string)), (function (param) {
+  return Belt_List.fromArray(Belt_Array.map(param[/* terminal_rules */0], (function (param) {
                     return /* tuple */[
-                            param[1],
+                            regex_to_string(param[1]),
                             param[0]
                           ];
                   })));

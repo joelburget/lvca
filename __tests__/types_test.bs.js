@@ -99,4 +99,95 @@ Jest.describe("Nominal.(jsonify, serialize, hash)", (function (param) {
                   ], Util.id);
       }));
 
+Jest.describe("ConcreteSyntaxDescription.(accepts_empty, show_regex)", (function (param) {
+        var accepts_empty = Types.ConcreteSyntaxDescription[/* accepts_empty */5];
+        var show_regex = Types.ConcreteSyntaxDescription[/* show_regex */7];
+        Jest.testAll("accepts_empty", /* :: */[
+              Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._1(accepts_empty, /* :: */[
+                            /* ReString */Block.__(0, ["foo"]),
+                            /* [] */0
+                          ]))),
+              /* :: */[
+                Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._1(accepts_empty, /* :: */[
+                              /* ReStar */Block.__(3, [/* ReString */Block.__(0, ["foo"])]),
+                              /* :: */[
+                                /* ReOption */Block.__(5, [/* ReString */Block.__(0, ["bar"])]),
+                                /* [] */0
+                              ]
+                            ]))),
+                /* :: */[
+                  Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._1(accepts_empty, /* :: */[
+                                /* ReStar */Block.__(3, [/* ReString */Block.__(0, ["foo"])]),
+                                /* :: */[
+                                  /* RePlus */Block.__(4, [/* ReString */Block.__(0, ["bar"])]),
+                                  /* [] */0
+                                ]
+                              ]))),
+                  /* :: */[
+                    Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._1(accepts_empty, /* :: */[
+                                  /* ReClass */Block.__(1, ["\\b"]),
+                                  /* [] */0
+                                ]))),
+                    /* :: */[
+                      Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._1(accepts_empty, /* :: */[
+                                    /* ReClass */Block.__(1, ["\\d"]),
+                                    /* [] */0
+                                  ]))),
+                      /* :: */[
+                        Jest.Expect[/* toBe */2](false, Jest.Expect[/* expect */0](Curry._1(accepts_empty, /* :: */[
+                                      /* ReSet */Block.__(2, ["a-z"]),
+                                      /* [] */0
+                                    ]))),
+                        /* :: */[
+                          Jest.Expect[/* toBe */2](true, Jest.Expect[/* expect */0](Curry._1(accepts_empty, /* :: */[
+                                        /* RePlus */Block.__(4, [/* ReString */Block.__(0, [""])]),
+                                        /* [] */0
+                                      ]))),
+                          /* [] */0
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+              ]
+            ], Util.id);
+        return Jest.testAll("show_regex", /* :: */[
+                    Jest.Expect[/* toBe */2]("\"foo\"\"bar\"", Jest.Expect[/* expect */0](Curry._1(show_regex, /* :: */[
+                                  /* ReString */Block.__(0, ["foo"]),
+                                  /* :: */[
+                                    /* ReString */Block.__(0, ["bar"]),
+                                    /* [] */0
+                                  ]
+                                ]))),
+                    /* :: */[
+                      Jest.Expect[/* toBe */2]("[a-z]", Jest.Expect[/* expect */0](Curry._1(show_regex, /* :: */[
+                                    /* ReSet */Block.__(2, ["a-z"]),
+                                    /* [] */0
+                                  ]))),
+                      /* :: */[
+                        Jest.Expect[/* toBe */2]("\\b\\B", Jest.Expect[/* expect */0](Curry._1(show_regex, /* :: */[
+                                      /* ReClass */Block.__(1, ["\\b"]),
+                                      /* :: */[
+                                        /* ReClass */Block.__(1, ["\\B"]),
+                                        /* [] */0
+                                      ]
+                                    ]))),
+                        /* :: */[
+                          Jest.Expect[/* toBe */2]("\"foo\"*\"foo\"+\"foo\"?", Jest.Expect[/* expect */0](Curry._1(show_regex, /* :: */[
+                                        /* ReStar */Block.__(3, [/* ReString */Block.__(0, ["foo"])]),
+                                        /* :: */[
+                                          /* RePlus */Block.__(4, [/* ReString */Block.__(0, ["foo"])]),
+                                          /* :: */[
+                                            /* ReOption */Block.__(5, [/* ReString */Block.__(0, ["foo"])]),
+                                            /* [] */0
+                                          ]
+                                        ]
+                                      ]))),
+                          /* [] */0
+                        ]
+                      ]
+                    ]
+                  ], Util.id);
+      }));
+
 /*  Not a pure module */

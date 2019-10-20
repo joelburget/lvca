@@ -66,8 +66,7 @@ let _ = describe "Lex" (fun () ->
   );
 
   let lexer3 =
-    (* TODO: is this even a valid regex? *)
-    [ "['a' - 'z' 'A' - 'Z'] ['a' - 'z' 'A' - 'Z' '0' - '9' '_'] *", "ID";
+    [ "[a-zA-Z][a-zA-Z0-9_]*", "ID";
       ":", "COLON";
       "if", "IF";
       "then", "THEN";

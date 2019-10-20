@@ -3,11 +3,17 @@ open Expect
 open Types.ConcreteSyntaxDescription
 
 let _ = describe "ConcreteSyntaxParser" (fun () ->
-  let expectParse parser str tm = test ("'" ^ str ^ "'") (fun () ->
-    (match parser ConcreteSyntaxLexer.read (Lexing.from_string str) with
+  let expectParse parser str tm = test ("parse '" ^ str ^ "'") (fun () ->
+    match parser ConcreteSyntaxLexer.read (Lexing.from_string str) with
     | tm' -> expect tm' |> toEqual tm
     (* | exception ConcreteSyntaxParser.Error -> fail ("'" ^ str ^ "' triggered an exception") *)
-  )) in
+  ) in
+
+  (* Expect (show_regex . parse) = id *)
+  let expectRoundTrip parser str = test ("round trip '" ^ str ^ "'") (fun () ->
+    match parser ConcreteSyntaxLexer.read (Lexing.from_string str) with
+    | re -> expect (show_regex re) |> toEqual str
+  ) in
 
   expectParse ConcreteSyntaxParser.regex__test {|"foo"|}    [ReString "foo"];
   expectParse ConcreteSyntaxParser.regex__test "[a-z]"      [ReSet    "a-z"];
@@ -16,8 +22,17 @@ let _ = describe "ConcreteSyntaxParser" (fun () ->
   expectParse ConcreteSyntaxParser.regex__test {|"foo"*|}   [ReStar   (ReString "foo")];
   expectParse ConcreteSyntaxParser.regex__test {|"foo"+|}   [RePlus   (ReString "foo")];
   expectParse ConcreteSyntaxParser.regex__test {|"foo"?|}   [ReOption (ReString "foo")];
-  (* TODO *)
-  (* expectParse ConcreteSyntaxParser.regex__test {|"\\"|}     [ReString "\\\\"]; *)
+
+  expectParse ConcreteSyntaxParser.regex__test {|"\\"|}     [ReString {|\|}];
+  expectParse ConcreteSyntaxParser.regex__test {|"\b"|}     [ReClass  {|\b|}];
+
+  expectRoundTrip ConcreteSyntaxParser.regex__test {|"foo"|};
+  expectRoundTrip ConcreteSyntaxParser.regex__test "[a-z]";
+  expectRoundTrip ConcreteSyntaxParser.regex__test "[a-zA-Z]";
+  expectRoundTrip ConcreteSyntaxParser.regex__test "[a-z][A-Z]";
+  expectRoundTrip ConcreteSyntaxParser.regex__test {|"foo"*|};
+  expectRoundTrip ConcreteSyntaxParser.regex__test {|"foo"+|};
+  expectRoundTrip ConcreteSyntaxParser.regex__test {|"foo"?|};
 
   expectParse ConcreteSyntaxParser.terminal_rule__test
     {|TERMINAL := "foo"|}
@@ -30,6 +45,13 @@ let _ = describe "ConcreteSyntaxParser" (fun () ->
   expectParse ConcreteSyntaxParser.terminal_rule__test
     {|TERMINAL := "->"|}
     (TerminalRule ("TERMINAL", [ReString "->"]));
+
+  expectParse ConcreteSyntaxParser.terminal_rule__test
+    {|ID := [a-zA-Z][a-zA-Z0-9_]*|}
+    (TerminalRule ("ID", [ReSet "a-zA-Z"; ReStar (ReSet "a-zA-Z0-9_")]));
+  expectParse ConcreteSyntaxParser.terminal_rule__test
+    {|SPACE := [ ]+|}
+    (TerminalRule ("SPACE", [RePlus (ReSet " ")]));
 
   expectParse ConcreteSyntaxParser.capture_number "$2" 2;
   expectParse ConcreteSyntaxParser.nonterminal_token "foo" (NonterminalName "foo");

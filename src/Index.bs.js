@@ -10,6 +10,7 @@ var Curry = require("bs-platform/lib/js/curry.js");
 var React = require("react");
 var Binding = require("./Binding.bs.js");
 var Parsing = require("./Parsing.bs.js");
+var Statics = require("./Statics.bs.js");
 var EvalView = require("./EvalView.bs.js");
 var LrParsing = require("./LrParsing.bs.js");
 var CodeMirror = require("./CodeMirror.bs.js");
@@ -17,13 +18,14 @@ var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var ReactDOMRe = require("reason-react/src/ReactDOMRe.js");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var ParseStatus = require("./ParseStatus.bs.js");
+var Bidirectional = require("./Bidirectional.bs.js");
 var LrParsingView = require("./LrParsingView.bs.js");
+var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var ConcreteSyntax = require("./ConcreteSyntax.bs.js");
 var LanguageSimple = require("./LanguageSimple.bs.js");
 var Caml_splice_call = require("bs-platform/lib/js/caml_splice_call.js");
 var ReactCodemirror2 = require("react-codemirror2");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
-var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
 function read_eval_input(language, concrete, statics, dynamics, input) {
   var match;
@@ -101,7 +103,25 @@ function read_eval_input(language, concrete, statics, dynamics, input) {
                 ]])
           ];
   } else {
-    var match$2 = Belt_Result.flatMap(Core.term_denotation(dynamics, /* [] */0, abtResult[0]), eval$prime);
+    var abtResult$prime = abtResult[0];
+    var env = /* record */[
+      /* rules */statics,
+      /* var_types */Belt_MapString.empty
+    ];
+    var tm = Statics.of_de_bruijn(abtResult$prime);
+    var exit$1 = 0;
+    var val$1;
+    try {
+      val$1 = Bidirectional.infer(env, tm);
+      exit$1 = 1;
+    }
+    catch (exn$1){
+      console.log("check failure");
+    }
+    if (exit$1 === 1) {
+      console.log("check success");
+    }
+    var match$2 = Belt_Result.flatMap(Core.term_denotation(dynamics, /* [] */0, abtResult$prime), eval$prime);
     if (match$2.tag) {
       return /* tuple */[
               astResult,
@@ -301,7 +321,7 @@ function Index$AbstractSyntaxEditor(Props) {
             })
         }, "continue");
   }
-  return React.createElement("div", undefined, React.createElement("h2", {
+  return React.createElement("div", undefined, continueView, React.createElement("h2", {
                   className: "header2 header2-abstract-syntax"
                 }, "Abstract Syntax ", match$1[0]), React.createElement("div", {
                   className: "abstract-syntax-pane"
@@ -315,7 +335,7 @@ function Index$AbstractSyntaxEditor(Props) {
                       options: {
                         mode: "default"
                       }
-                    })), continueView);
+                    })));
 }
 
 var AbstractSyntaxEditor = /* module */[/* make */Index$AbstractSyntaxEditor];
@@ -581,14 +601,24 @@ function Index$LvcaViewer(Props) {
               return mk_details(action[0]);
             }
           } else if (state.tag) {
-            throw [
-                  Caml_builtin_exceptions.match_failure,
-                  /* tuple */[
-                    "Index.re",
-                    491,
-                    25
-                  ]
-                ];
+            var match = state[0];
+            if (typeof action === "number") {
+              if (action !== 0) {
+                return Pervasives.failwith("TODO: evaluation");
+              } else {
+                return /* DetailsStage */Block.__(0, [
+                          /* record */[
+                            /* abstract_syntax */match[/* abstract_syntax */0],
+                            /* concrete_syntax */match[/* concrete_syntax */1],
+                            /* statics */match[/* statics */2],
+                            /* dynamics */match[/* dynamics */3]
+                          ],
+                          /* ConcreteTab */0
+                        ]);
+              }
+            } else {
+              return Pervasives.failwith("invariant violation: unexpected action in ReplStage");
+            }
           } else {
             var tab = state[1];
             var details = state[0];
@@ -601,8 +631,6 @@ function Index$LvcaViewer(Props) {
                               details,
                               action[0]
                             ]);
-                case 1 : 
-                    return Pervasives.failwith("invariant violation: unexpected action in DetailsStage");
                 case 2 : 
                     return /* DetailsStage */Block.__(0, [
                               /* record */[
@@ -635,7 +663,8 @@ function Index$LvcaViewer(Props) {
                             ]);
                 case 5 : 
                     return /* ReplStage */Block.__(1, [action[0]]);
-                
+                default:
+                  return Pervasives.failwith("invariant violation: unexpected action in DetailsStage");
               }
             }
           }
@@ -651,12 +680,16 @@ function Index$LvcaViewer(Props) {
         });
   } else if (state.tag) {
     var match$1 = state[0];
-    view = React.createElement(Index$ReplPane, {
-          language: match$1[/* abstract_syntax */0],
-          concrete: match$1[/* concrete_syntax */1],
-          statics: match$1[/* statics */2],
-          dynamics: match$1[/* dynamics */3]
-        });
+    view = React.createElement("div", undefined, React.createElement("button", {
+              onClick: (function (param) {
+                  return Curry._1(dispatch, /* ReplBack */0);
+                })
+            }, "back"), React.createElement(Index$ReplPane, {
+              language: match$1[/* abstract_syntax */0],
+              concrete: match$1[/* concrete_syntax */1],
+              statics: match$1[/* statics */2],
+              dynamics: match$1[/* dynamics */3]
+            }));
   } else {
     var details = state[0];
     var tab_contents;

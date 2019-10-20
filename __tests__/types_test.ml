@@ -78,3 +78,45 @@ let _ = describe "Nominal.(jsonify, serialize, hash)" (fun () ->
     ]
     Util.id;
 )
+
+let _ = describe "ConcreteSyntaxDescription.(accepts_empty, show_regex)"
+  (fun () ->
+    let (accepts_empty, show_regex) =
+      ConcreteSyntaxDescription.(accepts_empty, show_regex) in
+
+    testAll "accepts_empty"
+      [ expect (accepts_empty [ReString "foo"])
+        |> toBe false;
+        expect
+          (accepts_empty [ReStar (ReString "foo"); ReOption (ReString "bar")])
+        |> toBe true;
+        expect
+          (accepts_empty [ReStar (ReString "foo"); RePlus (ReString "bar")])
+        |> toBe false;
+        expect (accepts_empty [ReClass "\\b"])
+        |> toBe true;
+        expect (accepts_empty [ReClass "\\d"])
+        |> toBe false;
+        expect (accepts_empty [ReSet "a-z"])
+        |> toBe false;
+        expect (accepts_empty [RePlus (ReString "")])
+        |> toBe true;
+      ]
+      Util.id;
+
+    testAll "show_regex"
+      [ expect (show_regex [ReString "foo"; ReString "bar"])
+        |> toBe {|"foo""bar"|};
+        expect (show_regex [ReSet "a-z"])
+        |> toBe "[a-z]";
+        expect (show_regex [ReClass "\\b"; ReClass "\\B"])
+        |> toBe {|\b\B|};
+        expect (show_regex
+          [ ReStar (ReString "foo");
+            RePlus (ReString "foo");
+            ReOption (ReString "foo")
+          ])
+        |> toBe {|"foo"*"foo"+"foo"?|};
+      ]
+      Util.id;
+);
