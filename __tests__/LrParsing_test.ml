@@ -32,8 +32,7 @@ module Grammar : GRAMMAR = struct
          ]
        };
     |];
-    num_terminals = 6;
-    terminal_names = MS.fromArray
+    terminal_nums =
     [|
       "$", 0;
       "+", 1;
@@ -42,7 +41,7 @@ module Grammar : GRAMMAR = struct
       ")", 4;
       "id", 5;
     |];
-    nonterminal_names = MS.fromArray
+    nonterminal_nums =
     [|
       "E'", 0;
       "E", 1;

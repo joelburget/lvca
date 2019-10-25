@@ -8,8 +8,8 @@ module AA = Util.ArrayApplicative(struct type t = string end)
 open AA
 module MS = Belt.Map.String
 module MI = Belt.Map.Int
-let (find, get_option', invariant_violation, traverse_list_result) =
-  Util.(find, get_option', invariant_violation, traverse_list_result)
+let (find, get_option', traverse_list_result) =
+  Util.(find, get_option', traverse_list_result)
 module MMI = Belt.MutableMap.Int
 module MSI = Belt.MutableSet.Int
 module SI = Belt.Set.Int
@@ -145,6 +145,7 @@ let rec regex_piece_to_string : regex_piece -> string = function
   | ReStar   piece -> regex_piece_to_string piece ^ "*"
   | RePlus   piece -> regex_piece_to_string piece ^ "+"
   | ReOption piece -> regex_piece_to_string piece ^ "?"
+  | ReClass  str   -> str
 
 let regex_to_string : regex -> string = fun re_parts -> re_parts
   |> List.map regex_piece_to_string
@@ -233,9 +234,9 @@ let check_description_validity { terminal_rules; sort_rules } =
 
   try
     sort_rules
-      |. M.map (fun (SortRule { operator_rules }) ->
+      |. M.forEach (fun _i (SortRule { operator_rules }) ->
         let operator_maches = BL.flatten operator_rules in
-        BL.map operator_maches (fun (OperatorMatch { tokens; term_pattern }) ->
+        BL.forEach operator_maches (fun _i (OperatorMatch { tokens; term_pattern }) ->
           let non_existent_tokens, duplicate_captures, uncaptured_tokens =
             check_operator_match_validity tokens term_pattern
           in
@@ -257,7 +258,7 @@ let check_description_validity { terminal_rules; sort_rules } =
             raise (CheckValidExn (InvalidGrammar
               ("non-existent tokens mentioned: " ^ tok_names)));
           );
-          BL.map uncaptured_tokens (fun (i, tok) -> match tok with
+          BL.map uncaptured_tokens (fun (_i, tok) -> match tok with
             | NonterminalName name -> raise (CheckValidExn
               (InvalidGrammar ("uncaptured nonterminal: " ^ name)))
             | TerminalName nt_name -> (match M.get terminal_rules' nt_name with
@@ -272,7 +273,7 @@ let check_description_validity { terminal_rules; sort_rules } =
           )
         );
       );
-    terminal_rules' |. M.map (fun regex ->
+    terminal_rules' |. M.forEach (fun _i regex ->
       if Types.ConcreteSyntaxDescription.accepts_empty regex then
         raise (CheckValidExn (InvalidGrammar
           (* TODO: print it *)
@@ -477,9 +478,12 @@ let rec to_ast lang tree
     | Operator op_name, _ ->
       let children' = children
         |. BA.keepMap (function
-          | TerminalCapture { content } -> None
-          | SpaceCapture _ -> failwith "invariant violation: space found in to_ast"
-          | NonterminalCapture child -> Some (scope_to_ast lang child)
+          | TerminalCapture { content }
+          -> None
+          | SpaceCapture _
+          -> failwith "invariant violation: space found in to_ast"
+          | NonterminalCapture child
+          -> Some (scope_to_ast lang child)
         )
         |> sequence_array_result
       in Result.map children'
@@ -517,17 +521,19 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
   : LrParsing.grammar
       (* TODO: how to do string -> int mapping? *)
   = let terminal_key_arr = BA.map terminal_rules (fun (k, _) -> k) in
-    let nonterminal_key_arr = MS.keysToArray sort_rules in
-    let terminal_names = terminal_key_arr
-        |. BA.mapWithIndex (fun i name -> name, i)
-        |. MS.fromArray
+    let terminal_nums = terminal_key_arr
+      |. BA.mapWithIndex (fun i name -> name, i)
+      |. BA.concat [| "$", 0 |]
     in
-    let nonterminal_names = sort_rules
+    let terminal_nums_map = MS.fromArray terminal_nums in
+
+    let nonterminal_names_map = sort_rules
         |. MS.keysToArray
         |. BA.mapWithIndex (fun i name -> name, i)
         |. MS.fromArray
         |. MS.set "root" 0
     in
+    let nonterminal_nums = MS.toArray nonterminal_names_map in
 
     let nonterminals = sort_rules
       |. MS.valuesToArray
@@ -537,20 +543,21 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
             BL.map (fun (OperatorMatch { tokens }) ->
               tokens |. BL.map (function
                 | TerminalName tn
-                -> LrParsing.Terminal (terminal_names
+                -> LrParsing.Terminal (terminal_nums_map
                   |. MS.get tn
                   |> get_option'
                     ("to_grammar: failed to get " ^ tn)
                 )
                 | NonterminalName ntn
-                -> Nonterminal (nonterminal_names
+                -> Nonterminal (nonterminal_names_map
                   |. MS.get ntn
                   |> get_option'
                     ("to_grammar: failed to get " ^ ntn)
                 )
                 | Underscore
-                -> Terminal (terminal_names
-                  (* XXX name consistency -- is it SPACE or WHITESPACE? *)
+                -> Terminal (terminal_nums_map
+                  (* XXX name consistency -- is it SPACE or WHITESPACE? (it
+                   * shouldn't be here anyway) *)
                   |. MS.get "SPACE"
                   |> get_option'
                     ("to_grammar: failed to get SPACE")
@@ -567,24 +574,21 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
       |. MI.set 0 { productions = [ [ Nonterminal 1 ] ] }
     in
 
-    {
-      nonterminals; terminal_names; nonterminal_names;
-      num_terminals = BA.length terminal_rules;
-    }
+    { nonterminals; terminal_nums; nonterminal_nums }
 
 let production_info
   : LrParsing.nonterminal_num MMI.t
   -> LrParsing.nonterminal_num MS.t
   -> LrParsing.production_num
   -> node_type * sort
-  = fun nt_map nonterminal_names prod_num ->
+  = fun nt_map nonterminal_nums prod_num ->
     let nt_num = nt_map
       |. MMI.get prod_num
       |> get_option'
         ("production_info: failed to get " ^ string_of_int prod_num)
     in
     let f _ nt_num' = nt_num' = nt_num in
-    let sort_name = match nonterminal_names |. MS.findFirstBy f with
+    let sort_name = match nonterminal_nums |. MS.findFirstBy f with
       | None -> failwith "production_info: invariant violation: sort not found"
       | Some (name, _) -> name
     in
@@ -598,7 +602,7 @@ let tree_of_parse_result
   -> string
   -> LrParsing.parse_result
   -> tree
-  = fun nonterminal_names sort_rules str root ->
+  = fun nonterminal_nums sort_rules str root ->
     let str_pos = ref 0 in
     let str_len = Js.String2.length str in
 
@@ -615,7 +619,6 @@ let tree_of_parse_result
         while !continue do
           let got_space, got_newline = match Js.String2.charAt str !str_pos with
             | " "  -> true,  false
-            | "\ " -> true,  false
             | "\n" -> false, true
             | _    -> false, false
           in
@@ -639,7 +642,7 @@ let tree_of_parse_result
         in
         let node_type, sort = production_info
           (Lr0.production_nonterminal_map)
-          nonterminal_names
+          nonterminal_nums
           prod_num
         in
         let leading_trivia, trailing_trivia = get_trivia start_pos end_pos in
@@ -672,7 +675,7 @@ let tree_of_parse_result
           children = children
             |. BL.zip tokens
             |. BL.map (function (parse_result, token) -> match token with
-              | TerminalName tn -> TerminalCapture (go_t tn parse_result)
+              | TerminalName tn -> TerminalCapture (go_t parse_result)
               | NonterminalName ntn -> NonterminalCapture (go_nt ntn parse_result)
               (* Attach whitespace to its neighbor *)
               | Underscore -> SpaceCapture " " (* TODO *)
@@ -681,8 +684,8 @@ let tree_of_parse_result
             |. BL.toArray
         }
 
-    and go_t : string -> LrParsing.parse_result -> terminal_capture
-      = fun t_name { start_pos; end_pos } ->
+    and go_t : LrParsing.parse_result -> terminal_capture
+      = fun { start_pos; end_pos } ->
         let leading_trivia, trailing_trivia = get_trivia start_pos end_pos in
         let content = Js.String.slice str ~from:start_pos ~to_:end_pos in
         { leading_trivia; content; trailing_trivia }
@@ -708,7 +711,7 @@ let parse desc str =
       | Result.Ok result
       -> Result.Ok (tree_of_parse_result
         (module Lr0')
-        grammar.nonterminal_names
+        (MS.fromArray grammar.nonterminal_nums)
         desc.sort_rules
         str
         result)

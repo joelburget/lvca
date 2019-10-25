@@ -2,19 +2,74 @@ open LrParsing;
 module BA = Belt.Array;
 module MS = Belt.Map.String;
 
-/*
-let string_of_grammar : grammar -> string
-  = failwith "TODO"
-  */
+let make_div = children => {
+  ReactDOMRe.createDOMElementVariadic(
+    "div",
+    ~props=ReactDOMRe.domProps(),
+    children
+  )
+};
 
 module Grammar = {
   [@react.component]
-  let make = (~grammar : grammar) => {
+  let make = (~grammar : grammar, ~states : array((int, string))) => {
+    /* TODO: make table, sort */
+    let terminalElems = grammar.terminal_nums
+      |. Belt.List.fromArray
+      /* |. MS.toList */
+      |. Belt.List.sort
+        (((_, num), (_', num')) => Pervasives.compare(num, num'))
+      |. Belt.List.toArray
+      |. BA.map (((name, num)) =>
+        <tr>
+          <td>{React.string(string_of_int(num))}</td>
+          <td>{React.string(name)}</td>
+        </tr>
+      );
+    /* Js.Array2.sortInPlace terminalElems; */
+
+    let terminalsView = ReactDOMRe.createDOMElementVariadic(
+      "tbody",
+      ~props=ReactDOMRe.domProps(),
+      terminalElems
+    );
+
+    let stateElems = states
+      |. BA.map(((num, states)) =>
+        <tr>
+          <td>{React.string(string_of_int(num))}</td>
+          <td><pre><code>{React.string(states)}</code></pre></td>
+        </tr>
+      );
+
+    let stateElemsView = ReactDOMRe.createDOMElementVariadic(
+      "tbody",
+      ~props=ReactDOMRe.domProps(),
+      stateElems
+    );
+
     <div>
       <h2>{React.string("terminals")}</h2>
-      /* TODO */
+      <table>
+        <thead>
+          <tr>
+            <th>{React.string("number")}</th>
+            <th>{React.string("symbol")}</th>
+          </tr>
+        </thead>
+        terminalsView
+      </table>
+
       <h2>{React.string("states")}</h2>
-      /* TODO */
+      <table>
+        <thead>
+          <tr>
+            <th>{React.string("state number")}</th>
+            <th>{React.string("elements")}</th>
+          </tr>
+        </thead>
+        stateElemsView
+      </table>
     </div>
   }
 }
@@ -30,15 +85,19 @@ module Tables = {
 
     assert(length(action_table) == length(goto_table));
 
+    /* TODO: don't do this */
+    let terminal_nums' = MS.fromArray(grammar.terminal_nums);
+    let nonterminal_nums' = MS.fromArray(grammar.nonterminal_nums);
+
     let lookup_terminal_name = i =>
-      switch (MS.findFirstBy(grammar.terminal_names,
+      switch (MS.findFirstBy(terminal_nums',
                          ((_, num) => num == i))) {
         | Some((name, _)) => name
         | None => "T" ++ string_of_int(i)
       };
 
     let lookup_nonterminal_name = i =>
-      switch (MS.findFirstBy(grammar.nonterminal_names,
+      switch (MS.findFirstBy(nonterminal_nums',
                          ((_, num) => num == i))) {
         | Some((name, _)) => name
         | None => "NT" ++ string_of_int(i)
@@ -69,10 +128,10 @@ module Tables = {
       |. mapWithIndex((i, (action_row, goto_row)) => {
         let action_row_elems = action_row
           |. map(action => switch (action) {
-            | Shift(n) => "s" ++ string_of_int(n)
+            | Shift(n)  => "s" ++ string_of_int(n)
             | Reduce(n) => "r" ++ string_of_int(n)
-            | Accept => "acc"
-            | Error => ""
+            | Accept    => "acc"
+            | Error     => ""
           })
           |. map(x => <td>{React.string(x)}</td>);
 

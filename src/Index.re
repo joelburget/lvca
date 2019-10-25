@@ -1,5 +1,6 @@
 open Util
 module Result = Belt.Result
+module Grammar = LrParsingView.Grammar
 module LrTables = LrParsingView.Tables
 
 type parse_result = Core.translation_result(Binding.Nominal.term);
@@ -266,22 +267,118 @@ module AbstractSyntaxEditor = {
   };
 };
 
+module SyntaxDebugger = {
+  module MQueue = Belt.MutableQueue
+
+  [@react.component]
+  let make = (~grammar : LrParsing.grammar, ~lexer : Lex.lexer) => {
+    let (input, setInput) = React.useState(() => "");
+    let (hoverSpan, setHoverSpan) = React.useState(() => None);
+    let inputRef = React.useRef(Js.Nullable.null);
+
+    React.useEffect1(() => switch (hoverSpan) {
+      | None => None
+      | Some((start_span, end_span)) => {
+        let node = inputRef
+          -> React.Ref.current
+          -> Js.Nullable.toOption;
+        switch (node) {
+          | Some(node')
+          => ReactDOMRe.domElementToObj(node')
+               ##setSelectionRange(start_span, end_span)
+          | None
+          => ()
+        };
+        None
+      }
+      },
+      [|hoverSpan|]
+    );
+
+    switch (Lex.lex(lexer, input)) {
+      /* TODO: highlight affected area */
+      | Error({ message }) => React.string(message)
+      | Ok(tokens) => {
+        let tokenElems = tokens |. Belt.Array.map
+          (({ name, start, finish }) =>
+             <span
+               className="token"
+               onMouseOver=(_ => { setHoverSpan(_ => Some((start, finish))) })
+               onMouseOut=(_ => { setHoverSpan(_ => None) })
+             >
+               {React.string(name)}
+             </span>
+          );
+
+        let tokens' = MQueue.fromArray(tokens);
+        let len = String.length(input);
+        /* TODO: name might not always be "$" */
+        MQueue.add(tokens', { name: "$", start: len, finish: len });
+
+        /* TODO: avoid building this module twice */
+        let module Lr0' = LrParsing.Lr0({ let grammar = grammar });
+        let (_parse_result, trace) = Lr0'.parse_trace(tokens');
+
+        let traceElems = trace
+          |. Belt.Array.map (action => switch (action) {
+            | Shift(state) => "s" ++ string_of_int(state)
+            | Reduce(prod) => "r" ++ string_of_int(prod)
+            | Accept => "acc"
+            | Error => "err"
+          })
+          |. Belt.Array.map(str => <div>{React.string(str)}</div>);
+
+        <div className="syntax-debugger">
+          <label htmlFor="example-input">{React.string("Example string:")}</label>
+          <input
+            autoFocus=true
+            id="example-input"
+            type_="text"
+            size=50
+            value=input
+            ref={ReactDOMRe.Ref.domRef(inputRef)}
+            onChange=(event => setInput(ReactEvent.Form.target(event)##value))
+          />
+          {make_div(tokenElems)}
+          {make_div(traceElems)}
+        </div>
+      }
+    }
+  };
+};
+
 module ConcreteSyntaxEditor = {
-  type state = (string, bool, option(Types.ConcreteSyntaxDescription.t));
+  type state =
+    { concreteInput : string,
+      showGrammarPane : bool,
+      debuggerContents : string,
+      showDebugger : bool,
+      syntaxDesc : option(Types.ConcreteSyntaxDescription.t),
+    };
 
   type action =
-    | Typing(string)
+    | DefinitionUpdate(string)
     | ToggleGrammarPane
+    | ToggleDebugger
     ;
 
   [@react.component]
   let make = (~onComplete : Types.ConcreteSyntaxDescription.t => unit) => {
-    let ((concreteInput, showGrammarPane, _), dispatch) = React.useReducer(
-      ((concreteInput, showGrammarPane, syntaxDesc), action) => switch (action) {
-        | ToggleGrammarPane => (concreteInput, !showGrammarPane, syntaxDesc)
-        | Typing(concreteInput') => (concreteInput', showGrammarPane, syntaxDesc)
+    let ({ concreteInput, showGrammarPane, showDebugger }, dispatch) = React.useReducer(
+      ({concreteInput, showGrammarPane, debuggerContents, showDebugger, syntaxDesc}, action) => switch (action) {
+        | ToggleGrammarPane
+        => {concreteInput, showGrammarPane: !showGrammarPane, debuggerContents, showDebugger, syntaxDesc}
+        | ToggleDebugger
+        => {concreteInput, showGrammarPane, debuggerContents, showDebugger: !showDebugger, syntaxDesc}
+        | DefinitionUpdate(concreteInput')
+        => {concreteInput: concreteInput', showGrammarPane, debuggerContents, showDebugger, syntaxDesc}
       },
-      (LanguageSimple.concrete, false, None)
+      { concreteInput: LanguageSimple.concrete,
+        showGrammarPane: false,
+        debuggerContents: "",
+        showDebugger: false,
+        syntaxDesc: None,
+      }
     );
 
     module Parseable_concrete =
@@ -292,28 +389,70 @@ module ConcreteSyntaxEditor = {
       | Error(_) => None
       | Ok(concrete') => onComplete(concrete'); None
       },
-      [|concrete|]
+      [|concreteInput|]
     );
 
-    let getGrammarPane = concrete => {
+    let getGrammarPaneAndDebugger = (concrete, showGrammarPane, showDebugger) => {
       let grammar = ConcreteSyntax.to_grammar(concrete);
       let module Lr0' = LrParsing.Lr0({ let grammar = grammar });
-      let action_table = Lr0'.full_action_table(());
-      let goto_table = Lr0'.full_goto_table(());
-      <LrTables
-        grammar=grammar
-        action_table=action_table
-        goto_table=goto_table
-      />
+
+      let states = Lr0'.states
+        |. Belt.Array.map(state => {
+          let repr = state
+            |. Lr0'.state_to_item_set
+            |. Belt.Set.Int.toArray
+            |. Belt.Array.map(Lr0'.string_of_item)
+            |. Js.Array2.joinWith("\n");
+          (state, repr)
+        })
+        ;
+
+      let grammarPane = if (showGrammarPane) {
+        let action_table = Lr0'.full_action_table(());
+        let goto_table = Lr0'.full_goto_table(());
+        <div>
+          <Grammar
+            grammar=grammar
+            states=states
+          />
+          <LrTables
+            grammar=grammar
+            action_table=action_table
+            goto_table=goto_table
+          />
+        </div>
+      } else {
+        ReasonReact.null;
+      };
+
+      /* The debugger first lexes and shows the sequence of tokens. You can
+       * hover over a token to highlight the text in the original string.
+       *
+       * It then parses. We show a table of parser transitions where you can
+       * hover over any reduction to show the string included in the
+       * production.
+       */
+      let debugger = if (showDebugger) {
+        let lexer = ConcreteSyntax.lexer_of_desc(concrete);
+        <SyntaxDebugger grammar=grammar lexer=lexer />;
+      } else {
+        ReasonReact.null
+      };
+
+      (grammarPane, debugger)
     };
 
-    let grammarPane = switch (concrete) {
-      | Ok(concrete) => {
-        try (getGrammarPane(concrete)) {
-          | InvariantViolation(msg) => <div>{React.string(msg)}</div>
-        }
+    let (grammarPane, debugger) = switch (showGrammarPane, showDebugger, concrete) {
+      | (false, false, _) => (ReasonReact.null, ReasonReact.null)
+      | (_, _, Ok(concrete)) => {
+        try (getGrammarPaneAndDebugger(concrete, showGrammarPane, showDebugger)) {
+          | InvariantViolation(msg) =>
+            (<div>{React.string(msg)}</div>, <div>{React.string(msg)}</div>)
+        };
       }
-      | _ => <div>{React.string("grammar not available")}</div>
+
+      /* Just show one error message, even if both are supposed to be shown */
+      | (_, _, Error(err)) => (React.string(err), ReasonReact.null)
     };
 
     <div>
@@ -325,15 +464,19 @@ module ConcreteSyntaxEditor = {
                         "hide grammar tables" :
                         "show grammar tables")}
         </button>
+        <button onClick=(_ => dispatch(ToggleDebugger))>
+          {React.string(showDebugger ?  "hide debugger" : "show debugger")}
+        </button>
       </h2>
       <div className="concrete-pane">
-        {showGrammarPane ? grammarPane : ReasonReact.null}
         <CodeMirror
           value=concreteInput
-          onBeforeChange=((_, _, str) => dispatch(Typing(str)))
+          onBeforeChange=((_, _, str) => dispatch(DefinitionUpdate(str)))
           options=CodeMirror.options(~mode="default", ())
         />
       </div>
+      {debugger}
+      {grammarPane}
     </div>
 
   };
@@ -355,7 +498,7 @@ module StaticsEditor = {
       | Error(_) => None
       | Ok(statics') => onComplete(statics'); None
       },
-      [|statics|]
+      [|staticsInput|]
     );
 
     <div>
@@ -387,7 +530,7 @@ module DynamicsEditor = {
       | Error(_) => None
       | Ok(dynamics') => onComplete(dynamics'); None
       },
-      [|dynamics|]
+      [|dynamicsInput|]
     );
 
     <div>
@@ -532,7 +675,7 @@ module LvcaViewer = {
         => failwith("invariant violation: unexpected action in DetailsStage")
         | (ReplStage(_), _)
         => failwith("invariant violation: unexpected action in ReplStage")
-      },
+        },
       AbstractSyntaxStage
     );
 

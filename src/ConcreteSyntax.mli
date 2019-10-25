@@ -50,3 +50,6 @@ val check_description_validity
 
 (* exported for testing: *)
 val regex_piece_to_string : ConcreteSyntaxDescription.regex_piece -> string
+
+(* exported for debugger: *)
+val lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer

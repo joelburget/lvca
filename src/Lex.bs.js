@@ -102,7 +102,7 @@ function lex$prime(lexer, input) {
             Caml_builtin_exceptions.assert_failure,
             /* tuple */[
               "Lex.ml",
-              94,
+              95,
               6
             ]
           ];

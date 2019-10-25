@@ -109,14 +109,7 @@ function regex_piece_to_string(param) {
     case 0 : 
         return param[0].replace((/\//g), "\\/").replace((/\+/g), "\\+").replace((/\*/g), "\\*").replace((/\?/g), "\\?").replace((/\-/g), "\\-").replace((/\(/g), "\\(").replace((/\)/g), "\\)");
     case 1 : 
-        throw [
-              Caml_builtin_exceptions.match_failure,
-              /* tuple */[
-                "ConcreteSyntax.ml",
-                134,
-                56
-              ]
-            ];
+        return param[0];
     case 2 : 
         return "[" + (param[0] + "]");
     case 3 : 
@@ -201,9 +194,9 @@ function check_operator_match_validity(token_list, term_pat) {
 function check_description_validity(param) {
   var terminal_rules$prime = Belt_MapString.fromArray(param[/* terminal_rules */0]);
   try {
-    Belt_MapString.map(param[/* sort_rules */1], (function (param) {
+    Belt_MapString.forEach(param[/* sort_rules */1], (function (_i, param) {
             var operator_maches = Belt_List.flatten(param[0][/* operator_rules */1]);
-            return Belt_List.map(operator_maches, (function (param) {
+            return Belt_List.forEach(operator_maches, (function (_i, param) {
                           var match = param[0];
                           var match$1 = check_operator_match_validity(match[/* tokens */0], match[/* term_pattern */1]);
                           var duplicate_captures = match$1[1];
@@ -271,7 +264,7 @@ function check_description_validity(param) {
                                       }));
                         }));
           }));
-    Belt_MapString.map(terminal_rules$prime, (function (regex) {
+    Belt_MapString.forEach(terminal_rules$prime, (function (_i, regex) {
             if (Types.ConcreteSyntaxDescription[/* accepts_empty */5](regex)) {
               throw [
                     CheckValidExn,
@@ -415,7 +408,7 @@ function of_ast(lang, rules, current_sort, tm) {
                           Caml_builtin_exceptions.assert_failure,
                           /* tuple */[
                             "ConcreteSyntax.ml",
-                            344,
+                            345,
                             11
                           ]
                         ];
@@ -456,7 +449,7 @@ function of_ast(lang, rules, current_sort, tm) {
                             Caml_builtin_exceptions.assert_failure,
                             /* tuple */[
                               "ConcreteSyntax.ml",
-                              360,
+                              361,
                               23
                             ]
                           ];
@@ -472,7 +465,7 @@ function of_ast(lang, rules, current_sort, tm) {
                         Caml_builtin_exceptions.assert_failure,
                         /* tuple */[
                           "ConcreteSyntax.ml",
-                          400,
+                          401,
                           27
                         ]
                       ];
@@ -700,7 +693,7 @@ function to_ast(lang, tree) {
           Caml_builtin_exceptions.assert_failure,
           /* tuple */[
             "ConcreteSyntax.ml",
-            490,
+            494,
             7
           ]
         ];
@@ -750,35 +743,38 @@ var MixedFixities = Caml_exceptions.create("ConcreteSyntax.MixedFixities");
 
 function to_grammar(param) {
   var sort_rules = param[/* sort_rules */1];
-  var terminal_rules = param[/* terminal_rules */0];
-  var terminal_key_arr = Belt_Array.map(terminal_rules, (function (param) {
+  var terminal_key_arr = Belt_Array.map(param[/* terminal_rules */0], (function (param) {
           return param[0];
         }));
-  Belt_MapString.keysToArray(sort_rules);
-  var terminal_names = Belt_MapString.fromArray(Belt_Array.mapWithIndex(terminal_key_arr, (function (i, name) {
+  var terminal_nums = Belt_Array.concat(Belt_Array.mapWithIndex(terminal_key_arr, (function (i, name) {
               return /* tuple */[
                       name,
                       i
                     ];
-            })));
-  var nonterminal_names = Belt_MapString.set(Belt_MapString.fromArray(Belt_Array.mapWithIndex(Belt_MapString.keysToArray(sort_rules), (function (i, name) {
+            })), /* array */[/* tuple */[
+          "$",
+          0
+        ]]);
+  var terminal_nums_map = Belt_MapString.fromArray(terminal_nums);
+  var nonterminal_names_map = Belt_MapString.set(Belt_MapString.fromArray(Belt_Array.mapWithIndex(Belt_MapString.keysToArray(sort_rules), (function (i, name) {
                   return /* tuple */[
                           name,
                           i
                         ];
                 }))), "root", 0);
+  var nonterminal_nums = Belt_MapString.toArray(nonterminal_names_map);
   var nonterminals = Belt_MapInt.set(Belt_MapInt.fromArray(Belt_Array.mapWithIndex(Belt_MapString.valuesToArray(sort_rules), (function (i, param) {
                   var productions = Belt_List.flatten(Belt_List.map(param[0][/* operator_rules */1], (function (operator_level) {
                               return Belt_List.map(operator_level, (function (param) {
                                             return Belt_List.map(param[0][/* tokens */0], (function (param) {
                                                           if (typeof param === "number") {
-                                                            return /* Terminal */Block.__(0, [Util.get_option$prime("to_grammar: failed to get SPACE")(Belt_MapString.get(terminal_names, "SPACE"))]);
+                                                            return /* Terminal */Block.__(0, [Util.get_option$prime("to_grammar: failed to get SPACE")(Belt_MapString.get(terminal_nums_map, "SPACE"))]);
                                                           } else if (param.tag) {
                                                             var ntn = param[0];
-                                                            return /* Nonterminal */Block.__(1, [Util.get_option$prime("to_grammar: failed to get " + ntn)(Belt_MapString.get(nonterminal_names, ntn))]);
+                                                            return /* Nonterminal */Block.__(1, [Util.get_option$prime("to_grammar: failed to get " + ntn)(Belt_MapString.get(nonterminal_names_map, ntn))]);
                                                           } else {
                                                             var tn = param[0];
-                                                            return /* Terminal */Block.__(0, [Util.get_option$prime("to_grammar: failed to get " + tn)(Belt_MapString.get(terminal_names, tn))]);
+                                                            return /* Terminal */Block.__(0, [Util.get_option$prime("to_grammar: failed to get " + tn)(Belt_MapString.get(terminal_nums_map, tn))]);
                                                           }
                                                         }));
                                           }));
@@ -796,18 +792,17 @@ function to_grammar(param) {
         ]]);
   return /* record */[
           /* nonterminals */nonterminals,
-          /* num_terminals */terminal_rules.length,
-          /* terminal_names */terminal_names,
-          /* nonterminal_names */nonterminal_names
+          /* terminal_nums */terminal_nums,
+          /* nonterminal_nums */nonterminal_nums
         ];
 }
 
-function production_info(nt_map, nonterminal_names, prod_num) {
+function production_info(nt_map, nonterminal_nums, prod_num) {
   var nt_num = Util.get_option$prime("production_info: failed to get " + String(prod_num))(Belt_MutableMapInt.get(nt_map, prod_num));
   var f = function (param, nt_num$prime) {
     return nt_num$prime === nt_num;
   };
-  var match = Belt_MapString.findFirstBy(nonterminal_names, f);
+  var match = Belt_MapString.findFirstBy(nonterminal_nums, f);
   var sort_name = match !== undefined ? match[0] : Pervasives.failwith("production_info: invariant violation: sort not found");
   return /* tuple */[
           /* Operator */Block.__(0, [sort_name]),
@@ -818,7 +813,7 @@ function production_info(nt_map, nonterminal_names, prod_num) {
         ];
 }
 
-function tree_of_parse_result(Lr0, nonterminal_names, sort_rules, str, root) {
+function tree_of_parse_result(Lr0, nonterminal_nums, sort_rules, str, root) {
   var str_pos = /* record */[/* contents */0];
   var str_len = str.length;
   var get_trivia = function (start_pos, end_pos) {
@@ -863,7 +858,7 @@ function tree_of_parse_result(Lr0, nonterminal_names, sort_rules, str, root) {
     var production = param[/* production */0];
     var prod_num;
     prod_num = production.tag ? production[0] : Pervasives.failwith("invariant violation: go_nt received a terminal production");
-    var match = production_info(Lr0[/* production_nonterminal_map */1], nonterminal_names, prod_num);
+    var match = production_info(Lr0[/* production_nonterminal_map */1], nonterminal_nums, prod_num);
     var node_type = match[0];
     var match$1 = get_trivia(param[/* start_pos */2], param[/* end_pos */3]);
     var ctor_name;
@@ -892,12 +887,12 @@ function tree_of_parse_result(Lr0, nonterminal_names, sort_rules, str, root) {
                         } else if (token.tag) {
                           return /* NonterminalCapture */Block.__(1, [go_nt(token[0], parse_result)]);
                         } else {
-                          return /* TerminalCapture */Block.__(0, [go_t(token[0], parse_result)]);
+                          return /* TerminalCapture */Block.__(0, [go_t(parse_result)]);
                         }
                       })))
           ];
   };
-  var go_t = function (t_name, param) {
+  var go_t = function (param) {
     var end_pos = param[/* end_pos */3];
     var start_pos = param[/* start_pos */2];
     var match = get_trivia(start_pos, end_pos);
@@ -925,7 +920,7 @@ function parse(desc, str) {
     var grammar = to_grammar(desc);
     var Lr0$prime = LrParsing.Lr0(/* module */[/* grammar */grammar]);
     var lexer = lexer_of_desc(desc);
-    var match = Curry._2(Lr0$prime[/* lex_and_parse */36], lexer, str);
+    var match = Curry._2(Lr0$prime[/* lex_and_parse */42], lexer, str);
     if (match.tag) {
       var match$1 = match[0];
       if (match$1.tag) {
@@ -983,7 +978,7 @@ function parse(desc, str) {
       return /* Ok */Block.__(0, [tree_of_parse_result([
                       Lr0$prime[0],
                       Lr0$prime[1]
-                    ], grammar[/* nonterminal_names */3], desc[/* sort_rules */1], str, match[0])]);
+                    ], Belt_MapString.fromArray(grammar[/* nonterminal_nums */2]), desc[/* sort_rules */1], str, match[0])]);
     }
   }
   catch (raw_exn){
@@ -1007,4 +1002,5 @@ exports.to_ast = to_ast;
 exports.to_grammar = to_grammar;
 exports.check_description_validity = check_description_validity;
 exports.regex_piece_to_string = regex_piece_to_string;
+exports.lexer_of_desc = lexer_of_desc;
 /* AA Not a pure module */

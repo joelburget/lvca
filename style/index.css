@@ -1,10 +1,6 @@
 input:focus, textarea {
   outline: none !important;
 }
-input, textarea {
-  height: 500px;
-  width: 400px;
-}
 body, textarea, input, table {
   font-family: monospace;
   color: #1e1e5d;
@@ -113,4 +109,15 @@ tfoot {
     /* background-color: #1e1e5d;
     color: #fff;
     */
+}
+
+.syntax-debugger {
+  margin: 20px;
+}
+
+/* TODO: fix padding of first token */
+.token {
+  cursor: pointer;
+  display: inline-block;
+  padding: 8px 4px;
 }

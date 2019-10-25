@@ -2,15 +2,44 @@
 'use strict';
 
 var React = require("react");
+var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
+var Caml_primitive = require("bs-platform/lib/js/caml_primitive.js");
 var Caml_splice_call = require("bs-platform/lib/js/caml_splice_call.js");
 var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 
+function make_div(children) {
+  return Caml_splice_call.spliceApply(React.createElement, [
+              "div",
+              { },
+              children
+            ]);
+}
+
 function LrParsingView$Grammar(Props) {
-  Props.grammar;
-  return React.createElement("div", undefined, React.createElement("h2", undefined, "terminals"), React.createElement("h2", undefined, "states"));
+  var grammar = Props.grammar;
+  var states = Props.states;
+  var terminalElems = Belt_Array.map(Belt_List.toArray(Belt_List.sort(Belt_List.fromArray(grammar[/* terminal_nums */1]), (function (param, param$1) {
+                  return Caml_primitive.caml_int_compare(param[1], param$1[1]);
+                }))), (function (param) {
+          return React.createElement("tr", undefined, React.createElement("td", undefined, String(param[1])), React.createElement("td", undefined, param[0]));
+        }));
+  var terminalsView = Caml_splice_call.spliceApply(React.createElement, [
+        "tbody",
+        { },
+        terminalElems
+      ]);
+  var stateElems = Belt_Array.map(states, (function (param) {
+          return React.createElement("tr", undefined, React.createElement("td", undefined, String(param[0])), React.createElement("td", undefined, React.createElement("pre", undefined, React.createElement("code", undefined, param[1]))));
+        }));
+  var stateElemsView = Caml_splice_call.spliceApply(React.createElement, [
+        "tbody",
+        { },
+        stateElems
+      ]);
+  return React.createElement("div", undefined, React.createElement("h2", undefined, "terminals"), React.createElement("table", undefined, React.createElement("thead", undefined, React.createElement("tr", undefined, React.createElement("th", undefined, "number"), React.createElement("th", undefined, "symbol"))), terminalsView), React.createElement("h2", undefined, "states"), React.createElement("table", undefined, React.createElement("thead", undefined, React.createElement("tr", undefined, React.createElement("th", undefined, "state number"), React.createElement("th", undefined, "elements"))), stateElemsView));
 }
 
 var Grammar = /* module */[/* make */LrParsingView$Grammar];
@@ -24,13 +53,15 @@ function LrParsingView$Tables(Props) {
           Caml_builtin_exceptions.assert_failure,
           /* tuple */[
             "LrParsingView.re",
-            31,
+            86,
             4
           ]
         ];
   }
+  var terminal_nums$prime = Belt_MapString.fromArray(grammar[/* terminal_nums */1]);
+  var nonterminal_nums$prime = Belt_MapString.fromArray(grammar[/* nonterminal_nums */2]);
   var lookup_terminal_name = function (i) {
-    var match = Belt_MapString.findFirstBy(grammar[/* terminal_names */2], (function (param, num) {
+    var match = Belt_MapString.findFirstBy(terminal_nums$prime, (function (param, num) {
             return num === i;
           }));
     if (match !== undefined) {
@@ -49,7 +80,7 @@ function LrParsingView$Tables(Props) {
               var symbol = param[0];
               if (symbol.tag) {
                 var i = symbol[0];
-                var match = Belt_MapString.findFirstBy(grammar[/* nonterminal_names */3], (function (param, num) {
+                var match = Belt_MapString.findFirstBy(nonterminal_nums$prime, (function (param, num) {
                         return num === i;
                       }));
                 if (match !== undefined) {
@@ -122,6 +153,7 @@ var MS = 0;
 
 exports.BA = BA;
 exports.MS = MS;
+exports.make_div = make_div;
 exports.Grammar = Grammar;
 exports.Tables = Tables;
 /* react Not a pure module */
