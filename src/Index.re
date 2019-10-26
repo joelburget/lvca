@@ -125,14 +125,15 @@ let rec go_forward = (lang, concrete, statics, dyn, hist, i) => switch(i) {
   )
 }
 
-let make_div = children => {
+let make_elem = (name, children) => {
   ReactDOMRe.createDOMElementVariadic(
-    "div",
+    name,
     ~props=ReactDOMRe.domProps(),
     children
   )
 };
 
+let make_div = make_elem("div");
 
 module Repl = {
   open Types;
@@ -310,37 +311,62 @@ module SyntaxDebugger = {
              </span>
           );
 
-        let tokens' = MQueue.fromArray(tokens);
+        let tokens' = tokens
+          |. Js.Array2.filter(({ name }) => name != "SPACE")
+          |. MQueue.fromArray;
         let len = String.length(input);
         /* TODO: name might not always be "$" */
         MQueue.add(tokens', { name: "$", start: len, finish: len });
 
         /* TODO: avoid building this module twice */
         let module Lr0' = LrParsing.Lr0({ let grammar = grammar });
-        let (_parse_result, trace) = Lr0'.parse_trace(tokens');
+        let (_parse_result, trace) = Lr0'.parse_trace(true, tokens');
 
         let traceElems = trace
-          |. Belt.Array.map (action => switch (action) {
-            | Shift(state) => "s" ++ string_of_int(state)
-            | Reduce(prod) => "r" ++ string_of_int(prod)
-            | Accept => "acc"
-            | Error => "err"
-          })
-          |. Belt.Array.map(str => <div>{React.string(str)}</div>);
+          |. Belt.Array.map(((action, stack, results, trace_tokens)) => {
+            let cls = switch(action) {
+              | Accept => "result-good"
+              | Error  => "result-bad"
+              | _      => ""
+            };
+            <tr className=cls>
+              <td>{React.string(LrParsing.string_of_stack(stack))}</td>
+              <td>{React.string(Lr0'.string_of_symbols(results))}</td>
+              <td>{React.string(LrParsing.string_of_tokens(trace_tokens))}</td>
+              <td>{React.string(Lr0'.string_of_action(action))}</td>
+            </tr>
+          });
 
         <div className="syntax-debugger">
-          <label htmlFor="example-input">{React.string("Example string:")}</label>
-          <input
-            autoFocus=true
-            id="example-input"
-            type_="text"
-            size=50
-            value=input
-            ref={ReactDOMRe.Ref.domRef(inputRef)}
-            onChange=(event => setInput(ReactEvent.Form.target(event)##value))
-          />
-          {make_div(tokenElems)}
-          {make_div(traceElems)}
+          <div>
+            <label htmlFor="example-input">
+              {React.string("Example string: ")}
+            </label>
+            <input
+              autoFocus=true
+              id="example-input"
+              type_="text"
+              size=50
+              value=input
+              ref={ReactDOMRe.Ref.domRef(inputRef)}
+              onChange=(event => setInput(ReactEvent.Form.target(event)##value))
+            />
+          </div>
+          <div className="debugger-tokens">
+            <span>{React.string("Tokens: ")}</span>
+            {make_elem("span", tokenElems)}
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>{React.string("stack")}</th>
+                <th>{React.string("symbols")}</th>
+                <th>{React.string("input")}</th>
+                <th>{React.string("action")}</th>
+              </tr>
+            </thead>
+            {make_elem("tbody", traceElems)}
+          </table>
         </div>
       }
     }
@@ -383,7 +409,8 @@ module ConcreteSyntaxEditor = {
 
     module Parseable_concrete =
       ParseStatus.Make(Parsing.Parseable_concrete_syntax);
-    let (concreteView, concrete) = Parseable_concrete.parse(concreteInput);
+    let (concreteDidParseView, concrete) =
+      Parseable_concrete.parse(concreteInput);
 
     React.useEffect1(() => switch (concrete) {
       | Error(_) => None
@@ -458,7 +485,14 @@ module ConcreteSyntaxEditor = {
     <div>
       <h2 className="header2 header2-concrete">
         {React.string("Concrete Syntax ")}
-        {concreteView}
+        {concreteDidParseView}
+      </h2>
+      <div className="concrete-pane">
+        <CodeMirror
+          value=concreteInput
+          onBeforeChange=((_, _, str) => dispatch(DefinitionUpdate(str)))
+          options=CodeMirror.options(~mode="default", ())
+        />
         <button onClick=(_ => dispatch(ToggleGrammarPane))>
           {React.string(showGrammarPane ?
                         "hide grammar tables" :
@@ -467,13 +501,6 @@ module ConcreteSyntaxEditor = {
         <button onClick=(_ => dispatch(ToggleDebugger))>
           {React.string(showDebugger ?  "hide debugger" : "show debugger")}
         </button>
-      </h2>
-      <div className="concrete-pane">
-        <CodeMirror
-          value=concreteInput
-          onBeforeChange=((_, _, str) => dispatch(DefinitionUpdate(str)))
-          options=CodeMirror.options(~mode="default", ())
-        />
       </div>
       {debugger}
       {grammarPane}

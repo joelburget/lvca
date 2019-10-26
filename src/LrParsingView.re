@@ -127,13 +127,9 @@ module Tables = {
     let data = shared_table
       |. mapWithIndex((i, (action_row, goto_row)) => {
         let action_row_elems = action_row
-          |. map(action => switch (action) {
-            | Shift(n)  => "s" ++ string_of_int(n)
-            | Reduce(n) => "r" ++ string_of_int(n)
-            | Accept    => "acc"
-            | Error     => ""
-          })
-          |. map(x => <td>{React.string(x)}</td>);
+          |. map(action =>
+            <td>{React.string(LrParsing.action_abbrev(action))}</td>
+          );
 
         let goto_row_elems = goto_row
           |. map(((_symbol, m_state)) => switch (m_state) {
@@ -158,16 +154,19 @@ module Tables = {
       data
     );
 
-    <table>
-      <thead>
-        <tr>
-          <th rowSpan=2>{React.string("state")}</th>
-          <th colSpan=action_span>{React.string("action")}</th>
-          <th colSpan=goto_span>{React.string("goto")}</th>
-        </tr>
-        headers_row
-      </thead>
-      tbody
-    </table>
+    <div>
+      <h2>{React.string("action / goto tables")}</h2>
+      <table>
+        <thead>
+          <tr>
+            <th rowSpan=2>{React.string("state")}</th>
+            <th colSpan=action_span>{React.string("action")}</th>
+            <th colSpan=goto_span>{React.string("goto")}</th>
+          </tr>
+          headers_row
+        </thead>
+        tbody
+      </table>
+    </div>
   }
 }

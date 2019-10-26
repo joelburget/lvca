@@ -749,7 +749,7 @@ function to_grammar(param) {
   var terminal_nums = Belt_Array.concat(Belt_Array.mapWithIndex(terminal_key_arr, (function (i, name) {
               return /* tuple */[
                       name,
-                      i
+                      i + 1 | 0
                     ];
             })), /* array */[/* tuple */[
           "$",
@@ -759,7 +759,7 @@ function to_grammar(param) {
   var nonterminal_names_map = Belt_MapString.set(Belt_MapString.fromArray(Belt_Array.mapWithIndex(Belt_MapString.keysToArray(sort_rules), (function (i, name) {
                   return /* tuple */[
                           name,
-                          i
+                          i + 1 | 0
                         ];
                 }))), "root", 0);
   var nonterminal_nums = Belt_MapString.toArray(nonterminal_names_map);
@@ -873,7 +873,7 @@ function tree_of_parse_result(Lr0, nonterminal_nums, sort_rules, str, root) {
               return ctor_name === term_pattern[0];
             }
           }));
-    var tokens = maybe_op_rule !== undefined ? maybe_op_rule[0][/* tokens */0] : Pervasives.failwith("error: unable to find operator");
+    var tokens = maybe_op_rule !== undefined ? maybe_op_rule[0][/* tokens */0] : Pervasives.failwith("error: unable to find operator " + ctor_name);
     return /* record */[
             /* sort */match[1],
             /* node_type */node_type,
@@ -920,7 +920,21 @@ function parse(desc, str) {
     var grammar = to_grammar(desc);
     var Lr0$prime = LrParsing.Lr0(/* module */[/* grammar */grammar]);
     var lexer = lexer_of_desc(desc);
-    var match = Curry._2(Lr0$prime[/* lex_and_parse */42], lexer, str);
+    var augmented_sort_rules = Belt_MapString.set(desc[/* sort_rules */1], "root", /* SortRule */[/* record */[
+            /* sort_name */"root",
+            /* operator_rules : :: */[
+              /* [] */0,
+              /* [] */0
+            ],
+            /* variable *//* record */[
+              /* tokens : :: */[
+                /* NonterminalName */Block.__(1, ["tm"]),
+                /* [] */0
+              ],
+              /* var_capture */1
+            ]
+          ]]);
+    var match = Curry._2(Lr0$prime[/* lex_and_parse */47], lexer, str);
     if (match.tag) {
       var match$1 = match[0];
       if (match$1.tag) {
@@ -978,7 +992,7 @@ function parse(desc, str) {
       return /* Ok */Block.__(0, [tree_of_parse_result([
                       Lr0$prime[0],
                       Lr0$prime[1]
-                    ], Belt_MapString.fromArray(grammar[/* nonterminal_nums */2]), desc[/* sort_rules */1], str, match[0])]);
+                    ], Belt_MapString.fromArray(grammar[/* nonterminal_nums */2]), augmented_sort_rules, str, match[0])]);
     }
   }
   catch (raw_exn){

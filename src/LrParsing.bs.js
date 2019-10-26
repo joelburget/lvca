@@ -84,6 +84,32 @@ function pop_front_exn(position, arr) {
   }
 }
 
+function action_abbrev(param) {
+  if (typeof param === "number") {
+    if (param === 0) {
+      return "acc";
+    } else {
+      return "";
+    }
+  } else if (param.tag) {
+    return "r" + String(param[0]);
+  } else {
+    return "s" + String(param[0]);
+  }
+}
+
+function string_of_stack(states) {
+  return Belt_Array.map(states, (function (prim) {
+                  return String(prim);
+                })).join(" ");
+}
+
+function string_of_tokens(toks) {
+  return Belt_Array.map(toks, (function (param) {
+                  return param[/* name */0];
+                })).join(" ");
+}
+
 function Lr0(G) {
   var production_map = Belt_MutableMapInt.make(/* () */0);
   var production_nonterminal_map = Belt_MutableMapInt.make(/* () */0);
@@ -104,6 +130,165 @@ function Lr0(G) {
             })));
   var terminal_nums = Belt_MapString.fromArray(G[/* grammar */0][/* terminal_nums */1]);
   var nonterminal_nums = Belt_MapString.fromArray(G[/* grammar */0][/* nonterminal_nums */2]);
+  var string_of_symbol = function (param) {
+    if (param.tag) {
+      var nt_num = param[0];
+      return Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                            /* String_literal */Block.__(11, [
+                                "string_of_item: failed to get nonterminal ",
+                                /* Scan_get_counter */Block.__(21, [
+                                    /* Char_counter */1,
+                                    /* End_of_format */0
+                                  ])
+                              ]),
+                            "string_of_item: failed to get nonterminal %n"
+                          ]), nt_num))(Belt_MapInt.get(nonterminal_names, nt_num));
+    } else {
+      var t_num = param[0];
+      return Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                            /* String_literal */Block.__(11, [
+                                "string_of_item: failed to get terminal ",
+                                /* Scan_get_counter */Block.__(21, [
+                                    /* Char_counter */1,
+                                    /* End_of_format */0
+                                  ])
+                              ]),
+                            "string_of_item: failed to get terminal %n"
+                          ]), t_num))(Belt_MapInt.get(terminal_names, t_num));
+    }
+  };
+  var string_of_item = function (item) {
+    var match = view_item(item);
+    var position = match[/* position */1];
+    var production_num = match[/* production_num */0];
+    var production = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                    /* String_literal */Block.__(11, [
+                        "Lr0 string_of_item: unable to find production ",
+                        /* Scan_get_counter */Block.__(21, [
+                            /* Char_counter */1,
+                            /* String_literal */Block.__(11, [
+                                " in production_map",
+                                /* End_of_format */0
+                              ])
+                          ])
+                      ]),
+                    "Lr0 string_of_item: unable to find production %n in production_map"
+                  ]), production_num))(Belt_MutableMapInt.get(production_map, production_num));
+    var pieces = /* array */[];
+    Belt_List.forEachWithIndex(production, (function (i, symbol) {
+            if (position === i) {
+              pieces.push(".");
+            }
+            return pieces.push(string_of_symbol(symbol));
+          }));
+    var nt_num = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                    /* String_literal */Block.__(11, [
+                        "Lr0 string_of_item: unable to find production ",
+                        /* Scan_get_counter */Block.__(21, [
+                            /* Char_counter */1,
+                            /* String_literal */Block.__(11, [
+                                " in production_nonterminal_map",
+                                /* End_of_format */0
+                              ])
+                          ])
+                      ]),
+                    "Lr0 string_of_item: unable to find production %n in production_nonterminal_map"
+                  ]), production_num))(Belt_MutableMapInt.get(production_nonterminal_map, production_num));
+    var nt_name = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                    /* String_literal */Block.__(11, [
+                        "Lr0 string_of_production: unable to find nonterminal ",
+                        /* Scan_get_counter */Block.__(21, [
+                            /* Char_counter */1,
+                            /* String_literal */Block.__(11, [
+                                " in nonterminal_names",
+                                /* End_of_format */0
+                              ])
+                          ])
+                      ]),
+                    "Lr0 string_of_production: unable to find nonterminal %n in nonterminal_names"
+                  ]), production_num))(Belt_MapInt.get(nonterminal_names, nt_num));
+    return Curry._2(Printf.sprintf(/* Format */[
+                    /* String */Block.__(2, [
+                        /* No_padding */0,
+                        /* String_literal */Block.__(11, [
+                            " -> ",
+                            /* String */Block.__(2, [
+                                /* No_padding */0,
+                                /* End_of_format */0
+                              ])
+                          ])
+                      ]),
+                    "%s -> %s"
+                  ]), nt_name, pieces.join(" "));
+  };
+  var string_of_production = function (production_num) {
+    var production = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                    /* String_literal */Block.__(11, [
+                        "Lr0 string_of_item: unable to find production ",
+                        /* Scan_get_counter */Block.__(21, [
+                            /* Char_counter */1,
+                            /* String_literal */Block.__(11, [
+                                " in production_map",
+                                /* End_of_format */0
+                              ])
+                          ])
+                      ]),
+                    "Lr0 string_of_item: unable to find production %n in production_map"
+                  ]), production_num))(Belt_MutableMapInt.get(production_map, production_num));
+    var nt_num = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                    /* String_literal */Block.__(11, [
+                        "Lr0 string_of_item: unable to find production ",
+                        /* Scan_get_counter */Block.__(21, [
+                            /* Char_counter */1,
+                            /* String_literal */Block.__(11, [
+                                " in production_nonterminal_map",
+                                /* End_of_format */0
+                              ])
+                          ])
+                      ]),
+                    "Lr0 string_of_item: unable to find production %n in production_nonterminal_map"
+                  ]), production_num))(Belt_MutableMapInt.get(production_nonterminal_map, production_num));
+    var rhs = Belt_List.toArray(Belt_List.map(production, string_of_symbol)).join(" ");
+    var nt_name = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                    /* String_literal */Block.__(11, [
+                        "Lr0 string_of_production: unable to find nonterminal ",
+                        /* Scan_get_counter */Block.__(21, [
+                            /* Char_counter */1,
+                            /* String_literal */Block.__(11, [
+                                " in nonterminal_names",
+                                /* End_of_format */0
+                              ])
+                          ])
+                      ]),
+                    "Lr0 string_of_production: unable to find nonterminal %n in nonterminal_names"
+                  ]), production_num))(Belt_MapInt.get(nonterminal_names, nt_num));
+    return Curry._2(Printf.sprintf(/* Format */[
+                    /* String */Block.__(2, [
+                        /* No_padding */0,
+                        /* String_literal */Block.__(11, [
+                            " -> ",
+                            /* String */Block.__(2, [
+                                /* No_padding */0,
+                                /* End_of_format */0
+                              ])
+                          ])
+                      ]),
+                    "%s -> %s"
+                  ]), nt_name, rhs);
+  };
+  var string_of_action = function (param) {
+    if (typeof param === "number") {
+      if (param === 0) {
+        return "accept";
+      } else {
+        return "error";
+      }
+    } else if (param.tag) {
+      return "reduce by " + string_of_production(param[0]);
+    } else {
+      return "shift to " + String(param[0]);
+    }
+  };
   var production_cnt = /* record */[/* contents */0];
   Belt_MapInt.forEach(G[/* grammar */0][/* nonterminals */0], (function (nt_num, param) {
           Belt_MutableMapInt.set(nonterminal_production_map, nt_num, Belt_MutableSetInt.make(/* () */0));
@@ -609,7 +794,53 @@ function Lr0(G) {
       return Pervasives.failwith("Failed to find a terminal or nonterminal named " + name);
     }
   };
-  var parse_trace = function (toks) {
+  var string_of_symbols = function (parse_results) {
+    return Belt_Array.map(parse_results, (function (param) {
+                    var production = param[/* production */0];
+                    if (production.tag) {
+                      var production_num = production[0];
+                      var nt_num = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                                      /* String_literal */Block.__(11, [
+                                          "Lr0 string_of_item: unable to find production ",
+                                          /* Scan_get_counter */Block.__(21, [
+                                              /* Char_counter */1,
+                                              /* String_literal */Block.__(11, [
+                                                  " in production_nonterminal_map",
+                                                  /* End_of_format */0
+                                                ])
+                                            ])
+                                        ]),
+                                      "Lr0 string_of_item: unable to find production %n in production_nonterminal_map"
+                                    ]), production_num))(Belt_MutableMapInt.get(production_nonterminal_map, production_num));
+                      return Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                                            /* String_literal */Block.__(11, [
+                                                "Lr0 string_of_production: unable to find nonterminal ",
+                                                /* Scan_get_counter */Block.__(21, [
+                                                    /* Char_counter */1,
+                                                    /* String_literal */Block.__(11, [
+                                                        " in nonterminal_names",
+                                                        /* End_of_format */0
+                                                      ])
+                                                  ])
+                                              ]),
+                                            "Lr0 string_of_production: unable to find nonterminal %n in nonterminal_names"
+                                          ]), production_num))(Belt_MapInt.get(nonterminal_names, nt_num));
+                    } else {
+                      var terminal_num = production[0];
+                      return Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                                            /* String_literal */Block.__(11, [
+                                                "string_of_symbols: failed to get terminal ",
+                                                /* Scan_get_counter */Block.__(21, [
+                                                    /* Char_counter */1,
+                                                    /* End_of_format */0
+                                                  ])
+                                              ]),
+                                            "string_of_symbols: failed to get terminal %n"
+                                          ]), terminal_num))(Belt_MapInt.get(terminal_names, terminal_num));
+                    }
+                  })).join(" ");
+  };
+  var parse_trace = function (do_trace, toks) {
     var stack = Belt_MutableStack.make(/* () */0);
     Belt_MutableStack.push(stack, augmented_state);
     var results = Belt_MutableStack.make(/* () */0);
@@ -622,7 +853,14 @@ function Lr0(G) {
         var tok = a;
         var terminal_num = token_to_terminal(tok);
         var action = action_table(s, terminal_num);
-        Belt_MutableQueue.add(trace, action);
+        if (do_trace) {
+          Belt_MutableQueue.add(trace, /* tuple */[
+                action,
+                Util.array_of_stack(stack),
+                Util.array_of_stack(results),
+                Belt_MutableQueue.toArray(toks)
+              ]);
+        }
         if (typeof action === "number") {
           if (action === 0) {
             throw ParseFinished;
@@ -731,15 +969,27 @@ function Lr0(G) {
     catch (raw_exn){
       var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
       if (exn === ParseFinished) {
-        var match$4 = Belt_MutableStack.size(results);
-        if (match$4 !== 0) {
-          if (match$4 !== 1) {
-            return Pervasives.failwith("invariant violation: multiple results");
+        var n = Belt_MutableStack.size(results);
+        if (n !== 0) {
+          if (n !== 1) {
+            return Pervasives.failwith(Curry._1(Printf.sprintf(/* Format */[
+                                /* String_literal */Block.__(11, [
+                                    "invariant violation: multiple results (",
+                                    /* Scan_get_counter */Block.__(21, [
+                                        /* Char_counter */1,
+                                        /* Char_literal */Block.__(12, [
+                                            /* ")" */41,
+                                            /* End_of_format */0
+                                          ])
+                                      ])
+                                  ]),
+                                "invariant violation: multiple results (%n)"
+                              ]), n));
           } else {
-            var match$5 = Belt_MutableStack.top(results);
-            if (match$5 !== undefined) {
+            var match$4 = Belt_MutableStack.top(results);
+            if (match$4 !== undefined) {
               return /* tuple */[
-                      /* Ok */Block.__(0, [match$5]),
+                      /* Ok */Block.__(0, [match$4]),
                       Belt_MutableQueue.toArray(trace)
                     ];
             } else {
@@ -768,17 +1018,15 @@ function Lr0(G) {
     }
   };
   var parse = function (toks) {
-    return parse_trace(toks)[0];
+    return parse_trace(false, toks)[0];
   };
   var lex_and_parse = function (lexer, input) {
     var match = Lex.lex(lexer, input);
     if (match.tag) {
       return /* Error */Block.__(1, [/* Left */Block.__(0, [match[0]])]);
     } else {
-      var tokens = match[0];
-      console.log("tokens", tokens);
       var len = input.length;
-      var tokens$prime = Belt_MutableQueue.fromArray(tokens.filter((function (param) {
+      var tokens$prime = Belt_MutableQueue.fromArray(match[0].filter((function (param) {
                   return param[/* name */0] !== "SPACE";
                 })));
       Belt_MutableQueue.add(tokens$prime, /* record */[
@@ -794,58 +1042,6 @@ function Lr0(G) {
       }
     }
   };
-  var string_of_item = function (item) {
-    var match = view_item(item);
-    var position = match[/* position */1];
-    var production_num = match[/* production_num */0];
-    var production = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
-                    /* String_literal */Block.__(11, [
-                        "Lr0 string_of_item: unable to find production ",
-                        /* Scan_get_counter */Block.__(21, [
-                            /* Char_counter */1,
-                            /* String_literal */Block.__(11, [
-                                " in production_map",
-                                /* End_of_format */0
-                              ])
-                          ])
-                      ]),
-                    "Lr0 string_of_item: unable to find production %n in production_map"
-                  ]), production_num))(Belt_MutableMapInt.get(production_map, production_num));
-    var pieces = /* array */[];
-    Belt_List.forEachWithIndex(production, (function (i, symbol) {
-            if (position === i) {
-              pieces.push(".");
-            }
-            var symbol$prime;
-            if (symbol.tag) {
-              var nt_num = symbol[0];
-              symbol$prime = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
-                              /* String_literal */Block.__(11, [
-                                  "string_of_item: failed to get nonterminal ",
-                                  /* Scan_get_counter */Block.__(21, [
-                                      /* Char_counter */1,
-                                      /* End_of_format */0
-                                    ])
-                                ]),
-                              "string_of_item: failed to get nonterminal %n"
-                            ]), nt_num))(Belt_MapInt.get(nonterminal_names, nt_num));
-            } else {
-              var t_num = symbol[0];
-              symbol$prime = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
-                              /* String_literal */Block.__(11, [
-                                  "string_of_item: failed to get terminal ",
-                                  /* Scan_get_counter */Block.__(21, [
-                                      /* Char_counter */1,
-                                      /* End_of_format */0
-                                    ])
-                                ]),
-                              "string_of_item: failed to get terminal %n"
-                            ]), t_num))(Belt_MapInt.get(terminal_names, t_num));
-            }
-            return pieces.push(symbol$prime);
-          }));
-    return pieces.join(" ");
-  };
   return /* module */[
           /* production_map */production_map,
           /* production_nonterminal_map */production_nonterminal_map,
@@ -856,6 +1052,10 @@ function Lr0(G) {
           /* nonterminal_names */nonterminal_names,
           /* terminal_nums */terminal_nums,
           /* nonterminal_nums */nonterminal_nums,
+          /* string_of_symbol */string_of_symbol,
+          /* string_of_item */string_of_item,
+          /* string_of_production */string_of_production,
+          /* string_of_action */string_of_action,
           /* production_cnt */production_cnt,
           /* get_nonterminal_num */get_nonterminal_num,
           /* get_nonterminal */get_nonterminal,
@@ -887,10 +1087,10 @@ function Lr0(G) {
           /* full_goto_table */full_goto_table,
           /* token_to_terminal */token_to_terminal,
           /* token_to_symbol */token_to_symbol,
+          /* string_of_symbols */string_of_symbols,
           /* parse_trace */parse_trace,
           /* parse */parse,
-          /* lex_and_parse */lex_and_parse,
-          /* string_of_item */string_of_item
+          /* lex_and_parse */lex_and_parse
         ];
 }
 
@@ -952,5 +1152,8 @@ exports.ParseFinished = ParseFinished;
 exports.ParseFailed = ParseFailed;
 exports.PopFailed = PopFailed;
 exports.pop_front_exn = pop_front_exn;
+exports.action_abbrev = action_abbrev;
+exports.string_of_stack = string_of_stack;
+exports.string_of_tokens = string_of_tokens;
 exports.Lr0 = Lr0;
 /* SymbolCmp Not a pure module */

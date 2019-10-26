@@ -206,12 +206,16 @@ function go_forward(lang, concrete, statics, dyn, hist, i) {
   }
 }
 
-function make_div(children) {
+function make_elem(name, children) {
   return Caml_splice_call.spliceApply(React.createElement, [
-              "div",
+              name,
               { },
               children
             ]);
+}
+
+function make_div(param) {
+  return make_elem("div", param);
 }
 
 var preventDefault = (evt => evt.preventDefault());
@@ -281,7 +285,7 @@ function Index$Repl(Props) {
                               evalResult: param[/* result */2]
                             })));
         }), history[/* after */1]);
-  return React.createElement(React.Fragment, undefined, make_div($$Array.of_list(beforeElems)), React.createElement("div", undefined, React.createElement("div", {
+  return React.createElement(React.Fragment, undefined, make_elem("div", $$Array.of_list(beforeElems)), React.createElement("div", undefined, React.createElement("div", {
                       className: "term-input"
                     }, React.createElement(ReactCodemirror2.Controlled, {
                           value: input,
@@ -296,7 +300,7 @@ function Index$Repl(Props) {
                     }, React.createElement(EvalView.make, {
                           input: match[0],
                           evalResult: match[1]
-                        }))), make_div($$Array.of_list(afterElems)));
+                        }))), make_elem("div", $$Array.of_list(afterElems)));
 }
 
 var Repl = /* module */[
@@ -394,7 +398,9 @@ function Index$SyntaxDebugger(Props) {
                           })
                       }, param[/* name */0]);
           }));
-    var tokens$prime = Belt_MutableQueue.fromArray(tokens);
+    var tokens$prime = Belt_MutableQueue.fromArray(tokens.filter((function (param) {
+                return param[/* name */0] !== "SPACE";
+              })));
     var len = input.length;
     Belt_MutableQueue.add(tokens$prime, /* record */[
           /* name */"$",
@@ -402,37 +408,33 @@ function Index$SyntaxDebugger(Props) {
           /* finish */len
         ]);
     var Lr0$prime = LrParsing.Lr0(/* module */[/* grammar */grammar]);
-    var match$3 = Curry._1(Lr0$prime[/* parse_trace */40], tokens$prime);
-    var traceElems = Belt_Array.map(Belt_Array.map(match$3[1], (function (action) {
-                if (typeof action === "number") {
-                  if (action === 0) {
-                    return "acc";
-                  } else {
-                    return "err";
-                  }
-                } else if (action.tag) {
-                  return "r" + String(action[0]);
-                } else {
-                  return "s" + String(action[0]);
-                }
-              })), (function (str) {
-            return React.createElement("div", undefined, str);
+    var match$3 = Curry._2(Lr0$prime[/* parse_trace */45], true, tokens$prime);
+    var traceElems = Belt_Array.map(match$3[1], (function (param) {
+            var action = param[0];
+            var cls = typeof action === "number" ? (
+                action !== 0 ? "result-bad" : "result-good"
+              ) : "";
+            return React.createElement("tr", {
+                        className: cls
+                      }, React.createElement("td", undefined, LrParsing.string_of_stack(param[1])), React.createElement("td", undefined, Curry._1(Lr0$prime[/* string_of_symbols */44], param[2])), React.createElement("td", undefined, LrParsing.string_of_tokens(param[3])), React.createElement("td", undefined, Curry._1(Lr0$prime[/* string_of_action */12], action)));
           }));
     return React.createElement("div", {
                 className: "syntax-debugger"
-              }, React.createElement("label", {
-                    htmlFor: "example-input"
-                  }, "Example string:"), React.createElement("input", {
-                    ref: inputRef,
-                    id: "example-input",
-                    autoFocus: true,
-                    size: 50,
-                    type: "text",
-                    value: input,
-                    onChange: (function ($$event) {
-                        return Curry._1(setInput, $$event.target.value);
-                      })
-                  }), make_div(tokenElems), make_div(traceElems));
+              }, React.createElement("div", undefined, React.createElement("label", {
+                        htmlFor: "example-input"
+                      }, "Example string: "), React.createElement("input", {
+                        ref: inputRef,
+                        id: "example-input",
+                        autoFocus: true,
+                        size: 50,
+                        type: "text",
+                        value: input,
+                        onChange: (function ($$event) {
+                            return Curry._1(setInput, $$event.target.value);
+                          })
+                      })), React.createElement("div", {
+                    className: "debugger-tokens"
+                  }, React.createElement("span", undefined, "Tokens: "), make_elem("span", tokenElems)), React.createElement("table", undefined, React.createElement("thead", undefined, React.createElement("tr", undefined, React.createElement("th", undefined, "stack"), React.createElement("th", undefined, "symbols"), React.createElement("th", undefined, "input"), React.createElement("th", undefined, "action"))), make_elem("tbody", traceElems)));
   }
 }
 
@@ -502,8 +504,8 @@ function Index$ConcreteSyntaxEditor(Props) {
   var getGrammarPaneAndDebugger = function (concrete, showGrammarPane, showDebugger) {
     var grammar = ConcreteSyntax.to_grammar(concrete);
     var Lr0$prime = LrParsing.Lr0(/* module */[/* grammar */grammar]);
-    var states = Belt_Array.map(Lr0$prime[/* states */33], (function (state) {
-            var repr = Belt_Array.map(Belt_SetInt.toArray(Curry._1(Lr0$prime[/* state_to_item_set */20], state)), Lr0$prime[/* string_of_item */43]).join("\n");
+    var states = Belt_Array.map(Lr0$prime[/* states */37], (function (state) {
+            var repr = Belt_Array.map(Belt_SetInt.toArray(Curry._1(Lr0$prime[/* state_to_item_set */24], state)), Lr0$prime[/* string_of_item */10]).join("\n");
             return /* tuple */[
                     state,
                     repr
@@ -511,8 +513,8 @@ function Index$ConcreteSyntaxEditor(Props) {
           }));
     var grammarPane;
     if (showGrammarPane) {
-      var action_table = Curry._1(Lr0$prime[/* full_action_table */36], /* () */0);
-      var goto_table = Curry._1(Lr0$prime[/* full_goto_table */37], /* () */0);
+      var action_table = Curry._1(Lr0$prime[/* full_action_table */40], /* () */0);
+      var goto_table = Curry._1(Lr0$prime[/* full_goto_table */41], /* () */0);
       grammarPane = React.createElement("div", undefined, React.createElement(LrParsingView.Grammar[/* make */0], {
                 grammar: grammar,
                 states: states
@@ -575,15 +577,7 @@ function Index$ConcreteSyntaxEditor(Props) {
   }
   return React.createElement("div", undefined, React.createElement("h2", {
                   className: "header2 header2-concrete"
-                }, "Concrete Syntax ", match$2[0], React.createElement("button", {
-                      onClick: (function (param) {
-                          return Curry._1(dispatch, /* ToggleGrammarPane */0);
-                        })
-                    }, showGrammarPane ? "hide grammar tables" : "show grammar tables"), React.createElement("button", {
-                      onClick: (function (param) {
-                          return Curry._1(dispatch, /* ToggleDebugger */1);
-                        })
-                    }, showDebugger ? "hide debugger" : "show debugger")), React.createElement("div", {
+                }, "Concrete Syntax ", match$2[0]), React.createElement("div", {
                   className: "concrete-pane"
                 }, React.createElement(ReactCodemirror2.Controlled, {
                       value: concreteInput,
@@ -593,7 +587,15 @@ function Index$ConcreteSyntaxEditor(Props) {
                       options: {
                         mode: "default"
                       }
-                    })), match$3[1], match$3[0]);
+                    }), React.createElement("button", {
+                      onClick: (function (param) {
+                          return Curry._1(dispatch, /* ToggleGrammarPane */0);
+                        })
+                    }, showGrammarPane ? "hide grammar tables" : "show grammar tables"), React.createElement("button", {
+                      onClick: (function (param) {
+                          return Curry._1(dispatch, /* ToggleDebugger */1);
+                        })
+                    }, showDebugger ? "hide debugger" : "show debugger")), match$3[1], match$3[0]);
 }
 
 var ConcreteSyntaxEditor = /* module */[/* make */Index$ConcreteSyntaxEditor];
@@ -964,6 +966,7 @@ exports.step_forward = step_forward;
 exports.step_back = step_back;
 exports.go_back = go_back;
 exports.go_forward = go_forward;
+exports.make_elem = make_elem;
 exports.make_div = make_div;
 exports.Repl = Repl;
 exports.AbstractSyntaxEditor = AbstractSyntaxEditor;

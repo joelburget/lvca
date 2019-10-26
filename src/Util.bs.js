@@ -11,6 +11,7 @@ var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
+var Belt_MutableStack = require("bs-platform/lib/js/belt_MutableStack.js");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 
 function unsnoc(lst) {
@@ -395,6 +396,15 @@ function get_option$prime(msg) {
     });
 }
 
+function array_of_stack(stack) {
+  var result = /* array */[];
+  Belt_MutableStack.forEach(stack, (function (item) {
+          result.push(item);
+          return /* () */0;
+        }));
+  return result;
+}
+
 exports.unsnoc = unsnoc;
 exports.intersperse = intersperse;
 exports.intersperse_after = intersperse_after;
@@ -422,4 +432,5 @@ exports.get_option = get_option;
 exports.InvariantViolation = InvariantViolation;
 exports.invariant_violation = invariant_violation;
 exports.get_option$prime = get_option$prime;
+exports.array_of_stack = array_of_stack;
 /* No side effect */

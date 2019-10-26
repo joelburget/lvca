@@ -519,17 +519,18 @@ exception MixedFixities of bool * int
 (* Produce an augmented grammar *)
 let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
   : LrParsing.grammar
-      (* TODO: how to do string -> int mapping? *)
   = let terminal_key_arr = BA.map terminal_rules (fun (k, _) -> k) in
     let terminal_nums = terminal_key_arr
-      |. BA.mapWithIndex (fun i name -> name, i)
+      (* start other terminals (besides $) at 1 *)
+      |. BA.mapWithIndex (fun i name -> name, i + 1)
       |. BA.concat [| "$", 0 |]
     in
     let terminal_nums_map = MS.fromArray terminal_nums in
 
     let nonterminal_names_map = sort_rules
         |. MS.keysToArray
-        |. BA.mapWithIndex (fun i name -> name, i)
+        (* start other nonterminals (besides root) at 1 *)
+        |. BA.mapWithIndex (fun i name -> name, i + 1)
         |. MS.fromArray
         |. MS.set "root" 0
     in
@@ -592,6 +593,7 @@ let production_info
       | None -> failwith "production_info: invariant violation: sort not found"
       | Some (name, _) -> name
     in
+    (* XXX sort / operator mismatch! *)
     (* XXX sort name not applied to anything *)
     Operator sort_name, SortAp (sort_name, [||])
 
@@ -641,7 +643,7 @@ let tree_of_parse_result
           | Right prod_num -> prod_num
         in
         let node_type, sort = production_info
-          (Lr0.production_nonterminal_map)
+          Lr0.production_nonterminal_map
           nonterminal_nums
           prod_num
         in
@@ -667,7 +669,8 @@ let tree_of_parse_result
               )
               in
               match maybe_op_rule with
-                | None -> failwith "error: unable to find operator"
+                | None -> failwith
+                  ("error: unable to find operator " ^ ctor_name)
                 | Some (OperatorMatch { tokens }) -> tokens
         in
 
@@ -707,12 +710,24 @@ let parse desc str =
     end) in
     let lexer = lexer_of_desc desc in
 
+    (* TODO: come up with better idea where to do this *)
+    let augmented_sort_rules = MS.set desc.sort_rules "root"
+      (SortRule (
+        { sort_name = "root";
+          operator_rules = [[]];
+          variable = Some
+            (* XXX tm vs expr *)
+            { tokens = [NonterminalName "tm"]; var_capture = 1 };
+        }
+      ))
+    in
+
     match Lr0'.lex_and_parse lexer str with
       | Result.Ok result
       -> Result.Ok (tree_of_parse_result
         (module Lr0')
         (MS.fromArray grammar.nonterminal_nums)
-        desc.sort_rules
+        augmented_sort_rules
         str
         result)
       | Result.Error (Either.Left { start_pos; end_pos; message })

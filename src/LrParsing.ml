@@ -169,6 +169,25 @@ module type LR0 = sig
   val production_nonterminal_map : nonterminal_num MMI.t
 end
 
+(* Used for action table entries. Compare with string_of_action. *)
+let action_abbrev : action -> string
+  = function
+  | Shift state -> "s" ^ string_of_int state
+  | Reduce prod -> "r" ^ string_of_int prod
+  | Accept      -> "acc"
+  | Error       -> ""
+
+let string_of_stack : state array -> string
+  = fun states -> states
+    |. A.map string_of_int
+    |. Js.Array2.joinWith " "
+
+(* TODO: where to put this? *)
+let string_of_tokens : Lex.token array -> string
+  = fun toks -> toks
+      |. A.map (fun { name } -> name)
+      |. Js.Array2.joinWith " "
+
 (* TODO: remove exns *)
 module Lr0 (G : GRAMMAR) = struct
 
@@ -208,6 +227,99 @@ module Lr0 (G : GRAMMAR) = struct
 
   let nonterminal_nums : int MS.t
     = MS.fromArray G.grammar.nonterminal_nums
+
+  let string_of_symbol : symbol -> string
+    = function
+    | Terminal t_num -> terminal_names
+      |. M.get t_num
+      |> get_option' (Printf.sprintf
+        "string_of_item: failed to get terminal %n"
+        t_num
+      )
+    | Nonterminal nt_num -> nonterminal_names
+      |. M.get nt_num
+      |> get_option' (Printf.sprintf
+        "string_of_item: failed to get nonterminal %n"
+        nt_num
+      )
+
+  let string_of_item : item -> string
+    = fun item ->
+      let { production_num; position } = view_item item in
+      let production = production_map
+        |. MMI.get production_num
+        |> get_option' (Printf.sprintf
+          "Lr0 string_of_item: unable to find production %n in production_map"
+          production_num
+        )
+      in
+      let pieces = [||] in
+      L.forEachWithIndex production (fun i symbol ->
+        if position = i then (let _ = Js.Array2.push pieces "." in ());
+        Js.Array2.push pieces (string_of_symbol symbol);
+      );
+
+      let nt_num = production_nonterminal_map
+        |. MMI.get production_num
+        |> get_option' (Printf.sprintf
+          "Lr0 string_of_item: unable to find production %n in production_nonterminal_map"
+          production_num
+        )
+      in
+
+      let nt_name = nonterminal_names
+        |. M.get nt_num
+        |> get_option' (Printf.sprintf
+          "Lr0 string_of_production: unable to find nonterminal %n in nonterminal_names"
+          production_num
+        )
+      in
+
+      (* output if trailing *)
+      Printf.sprintf "%s -> %s" nt_name (Js.Array2.joinWith pieces " ")
+
+  let string_of_production : production_num -> string
+    = fun production_num ->
+
+      let production = production_map
+        |. MMI.get production_num
+        |> get_option' (Printf.sprintf
+          "Lr0 string_of_item: unable to find production %n in production_map"
+          production_num
+        )
+      in
+
+      let nt_num = production_nonterminal_map
+        |. MMI.get production_num
+        |> get_option' (Printf.sprintf
+          "Lr0 string_of_item: unable to find production %n in production_nonterminal_map"
+          production_num
+        )
+      in
+
+      let rhs = production
+        |. L.map string_of_symbol
+        |. L.toArray
+        |. Js.Array2.joinWith " "
+      in
+
+      let nt_name = nonterminal_names
+        |. M.get nt_num
+        |> get_option' (Printf.sprintf
+          "Lr0 string_of_production: unable to find nonterminal %n in nonterminal_names"
+          production_num
+        )
+      in
+
+      Printf.sprintf "%s -> %s" nt_name rhs
+
+  (* Used for logging actions. Compare with action_abbrev. *)
+  let string_of_action : action -> string
+    = function
+    | Shift state -> "shift to " ^ string_of_int state
+    | Reduce prod -> "reduce by " ^ string_of_production prod
+    | Accept      -> "accept"
+    | Error       -> "error"
 
   let production_cnt = ref 0
   let () = M.forEach G.grammar.nonterminals
@@ -642,8 +754,41 @@ module Lr0 (G : GRAMMAR) = struct
           ("Found both a terminal *and* nonterminal with name " ^ name
           ^ " (this should never happen)")
 
-  let parse_trace : Lex.token MQueue.t -> (parse_result, parse_error) Result.t * action array
-    = fun toks ->
+  let string_of_symbols : parse_result array -> string
+    = fun parse_results -> parse_results
+      |. A.map (fun { production } -> match production with
+        | Left terminal_num -> terminal_names
+          |. M.get terminal_num
+          |> get_option' (Printf.sprintf
+            "string_of_symbols: failed to get terminal %n"
+            terminal_num
+          )
+        | Right production_num ->
+          let nt_num = production_nonterminal_map
+            |. MMI.get production_num
+            |> get_option' (Printf.sprintf
+              "Lr0 string_of_item: unable to find production %n in production_nonterminal_map"
+              production_num
+            )
+          in
+
+          let nt_name = nonterminal_names
+            |. M.get nt_num
+            |> get_option' (Printf.sprintf
+              "Lr0 string_of_production: unable to find nonterminal %n in nonterminal_names"
+              production_num
+            )
+
+          in nt_name
+      )
+      |. Js.Array2.joinWith " "
+
+  let parse_trace
+    : bool (* trace or not *)
+    -> Lex.token MQueue.t
+    -> (parse_result, parse_error) Result.t *
+       (action * state array * parse_result array * Lex.token array) array
+    = fun do_trace toks ->
       (* Re stack / results:
        * These are called `stack` and `symbols` in CPTT. Their structure
        * mirrors one another: there is a 1-1 correspondence between states in
@@ -665,7 +810,13 @@ module Lr0 (G : GRAMMAR) = struct
           let tok = !a in
           let terminal_num = token_to_terminal tok in
           let action = action_table s terminal_num in
-          MQueue.add trace action;
+          if do_trace then
+            MQueue.add trace
+              ( action,
+                Util.array_of_stack stack,
+                Util.array_of_stack results,
+                MQueue.toArray toks
+              );
           match action with
             | Shift t ->
                 stack |. MStack.push t;
@@ -690,8 +841,8 @@ module Lr0 (G : GRAMMAR) = struct
                 let start_pos : int ref = ref 0 in
                 let end_pos : int ref = ref 0 in
                 for i = 1 to pop_count do
-                  let _ = stack |. MStack.pop in
-                  match results |. MStack.pop with
+                  let _ = MStack.pop stack in
+                  match MStack.pop results with
                     | Some child -> (
                       children := child :: !children;
                       (* Note: children appear in reverse *)
@@ -721,7 +872,7 @@ module Lr0 (G : GRAMMAR) = struct
                   { production = Either.Right production_num;
                     children = !children;
                     start_pos = !start_pos;
-                    end_pos =  !end_pos;
+                    end_pos = !end_pos;
                   };
             | Accept -> raise ParseFinished
             | Error ->
@@ -736,27 +887,30 @@ module Lr0 (G : GRAMMAR) = struct
         done;
         failwith "invariant violation: can't make it here"
       with
-        | ParseFinished -> (match results |. MStack.size with
-          | 1 -> (match results |. MStack.top with
-            | Some result -> (Result.Ok result, MQueue.toArray trace)
+        | ParseFinished -> (match MStack.size results with
+          | 1 -> (match MStack.top results with
+            | Some result -> Result.Ok result, MQueue.toArray trace
             | None -> failwith "invariant violation: no result"
             )
           | 0 -> failwith "invariant violation: no result"
-          | _ -> failwith "invariant violation: multiple results"
+          | n -> failwith (Printf.sprintf
+            "invariant violation: multiple results (%n)"
+            n
+          )
         )
         | ParseFailed parse_error -> (Error parse_error, MQueue.toArray trace)
         | PopFailed pos
         -> (Error (pos, "parsing invariant violation -- pop failed"), MQueue.toArray trace)
 
   let parse : Lex.token MQueue.t -> (parse_result, parse_error) Result.t
-    = fun toks -> match parse_trace toks with result, _ -> result
+    = fun toks -> match parse_trace false toks with result, _ -> result
 
   let lex_and_parse : Lex.lexer -> string
     -> (parse_result, (Lex.lex_error, parse_error) Either.t) Result.t
     = fun lexer input -> match Lex.lex lexer input with
       | Error error -> Error (Left error)
       | Ok tokens ->
-          Js.log2 "tokens" tokens;
+          (* Js.log2 "tokens" tokens; *)
         let len = String.length input in
         let tokens' = tokens
           (* XXX: don't do this *)
@@ -769,37 +923,5 @@ module Lr0 (G : GRAMMAR) = struct
         | Error error -> Error (Right error)
         | Ok result -> Ok result
         )
-
-  let string_of_item : item -> string
-    = fun item ->
-      let { production_num; position } = view_item item in
-      let production = production_map
-        |. MMI.get production_num
-        |> get_option' (Printf.sprintf
-          "Lr0 string_of_item: unable to find production %n in production_map"
-          production_num
-        )
-      in
-      let pieces = [||] in
-      L.forEachWithIndex production (fun i symbol ->
-        if position = i then (Js.Array2.push pieces "."; ());
-        let symbol' = match symbol with
-          | Terminal t_num -> terminal_names
-            |. M.get t_num
-            |> get_option' (Printf.sprintf
-              "string_of_item: failed to get terminal %n"
-              t_num
-            )
-          | Nonterminal nt_num -> nonterminal_names
-            |. M.get nt_num
-            |> get_option' (Printf.sprintf
-              "string_of_item: failed to get nonterminal %n"
-              nt_num
-            )
-        in
-        Js.Array2.push pieces symbol';
-      );
-      (* output if trailing *)
-      Js.Array2.joinWith pieces " "
 
 end

@@ -2,7 +2,7 @@
 'use strict';
 
 
-var abstractSyntax = "// string := import \"builtin/string\"\n\ntm :=\n  | true()\n  | false()\n  | ite(tm; tm; tm)\n  | annot(tm; ty)\n  | app(tm; tm)\n  | fun(tm. tm)\n\nty :=\n  | bool()\n  | arr(ty; ty)";
+var abstractSyntax = "\ntm :=\n  | true()\n  | false()\n  | ite(tm; tm; tm)\n  | annot(tm; ty)\n  | app(tm; tm)\n  | fun(tm. tm)\n\nty :=\n  | bool()\n  | arr(ty; ty)";
 
 var concrete = "\nCOLON := \":\"\nIF    := \"if\"\nTHEN  := \"then\"\nELSE  := \"else\"\nFUN   := \"fun\"\nARROW := \"->\"\nTRUE  := \"true\"\nFALSE := \"false\"\nBOOL  := \"bool\"\nID    := [a-zA-Z][a-zA-Z0-9_]*\nSPACE := [ ]+\n\ntm :=\n  | ID                    { var($1)         }\n  | IF tm THEN tm ELSE tm { ite($2; $4; $6) }\n  | tm COLON ty           { annot($1; $3)   }\n  | FUN ID ARROW tm       { fun($2; $4)     }\n  | TRUE                  { true()          }\n  | FALSE                 { false()         }\n  > tm _ tm               { app($1; $2)     } // %right\n\nty :=\n  | BOOL         { bool()      }\n  | ty ARROW ty  { arr($1; $3) }\n";
 

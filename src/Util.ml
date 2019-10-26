@@ -179,3 +179,9 @@ let invariant_violation str = InvariantViolation str
 
 let get_option' : string -> 'a option -> 'a
   = fun msg -> get_option @@ invariant_violation ("invariant violation: " ^ msg)
+
+let array_of_stack : 'a MutableStack.t -> 'a array
+  = fun stack ->
+    let result = [||] in
+    MutableStack.forEach stack (fun item -> Js.Array2.push result item; ());
+    result

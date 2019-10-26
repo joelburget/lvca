@@ -1,5 +1,4 @@
-let abstractSyntax = {|// string := import "builtin/string"
-
+let abstractSyntax = {|
 tm :=
   | true()
   | false()

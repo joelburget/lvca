@@ -80,10 +80,10 @@ div.repl-pane .CodeMirror pre {
 div.repl-pane.disabled {
   background: #f5f5f5;
 }
-span.result-bad {
+.result-bad {
   color: #c12828;
 }
-span.result-good {
+.result-good {
   color: #06925a;
 }
 .CodeMirror {
@@ -112,12 +112,20 @@ tfoot {
 }
 
 .syntax-debugger {
-  margin: 20px;
+  margin: 20px 20px 20px 0;
 }
 
 /* TODO: fix padding of first token */
 .token {
   cursor: pointer;
   display: inline-block;
-  padding: 8px 4px;
+  padding: 0 4px;
+}
+
+.token:first-child {
+  padding: 0 4px 0 0;
+}
+
+.debugger-tokens {
+  padding: 8px 0;
 }

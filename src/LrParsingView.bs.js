@@ -3,6 +3,7 @@
 
 var React = require("react");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
+var LrParsing = require("./LrParsing.bs.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Belt_MapString = require("bs-platform/lib/js/belt_MapString.js");
@@ -100,20 +101,8 @@ function LrParsingView$Tables(Props) {
         Belt_Array.concat(action_headers, goto_headers)
       ]);
   var data = Belt_Array.mapWithIndex(shared_table, (function (i, param) {
-          var action_row_elems = Belt_Array.map(Belt_Array.map(param[0], (function (action) {
-                      if (typeof action === "number") {
-                        if (action === 0) {
-                          return "acc";
-                        } else {
-                          return "";
-                        }
-                      } else if (action.tag) {
-                        return "r" + String(action[0]);
-                      } else {
-                        return "s" + String(action[0]);
-                      }
-                    })), (function (x) {
-                  return React.createElement("td", undefined, x);
+          var action_row_elems = Belt_Array.map(param[0], (function (action) {
+                  return React.createElement("td", undefined, LrParsing.action_abbrev(action));
                 }));
           var goto_row_elems = Belt_Array.map(Belt_Array.map(param[1], (function (param) {
                       var m_state = param[1];
@@ -136,13 +125,13 @@ function LrParsingView$Tables(Props) {
         { },
         data
       ]);
-  return React.createElement("table", undefined, React.createElement("thead", undefined, React.createElement("tr", undefined, React.createElement("th", {
-                          rowSpan: 2
-                        }, "state"), React.createElement("th", {
-                          colSpan: action_span
-                        }, "action"), React.createElement("th", {
-                          colSpan: goto_span
-                        }, "goto")), headers_row), tbody);
+  return React.createElement("div", undefined, React.createElement("h2", undefined, "action / goto tables"), React.createElement("table", undefined, React.createElement("thead", undefined, React.createElement("tr", undefined, React.createElement("th", {
+                              rowSpan: 2
+                            }, "state"), React.createElement("th", {
+                              colSpan: action_span
+                            }, "action"), React.createElement("th", {
+                              colSpan: goto_span
+                            }, "goto")), headers_row), tbody));
 }
 
 var Tables = /* module */[/* make */LrParsingView$Tables];
