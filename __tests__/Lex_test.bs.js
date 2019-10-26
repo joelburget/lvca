@@ -202,53 +202,53 @@ Jest.describe("Lex", (function (param) {
               }));
         var result$2 = Lex.lex(/* :: */[
               /* tuple */[
-                "[a-zA-Z][a-zA-Z0-9_]*",
-                "ID"
+                ":",
+                "COLON"
               ],
               /* :: */[
                 /* tuple */[
-                  ":",
-                  "COLON"
+                  "if",
+                  "IF"
                 ],
                 /* :: */[
                   /* tuple */[
-                    "if",
-                    "IF"
+                    "then",
+                    "THEN"
                   ],
                   /* :: */[
                     /* tuple */[
-                      "then",
-                      "THEN"
+                      "else",
+                      "ELSE"
                     ],
                     /* :: */[
                       /* tuple */[
-                        "else",
-                        "ELSE"
+                        "fun",
+                        "FUN"
                       ],
                       /* :: */[
                         /* tuple */[
-                          "fun",
-                          "FUN"
+                          "->",
+                          "ARROW"
                         ],
                         /* :: */[
                           /* tuple */[
-                            "->",
-                            "ARROW"
+                            "true",
+                            "TRUE"
                           ],
                           /* :: */[
                             /* tuple */[
-                              "true",
-                              "TRUE"
+                              "false",
+                              "FALSE"
                             ],
                             /* :: */[
                               /* tuple */[
-                                "false",
-                                "FALSE"
+                                "bool",
+                                "BOOL"
                               ],
                               /* :: */[
                                 /* tuple */[
-                                  "bool",
-                                  "BOOL"
+                                  "[a-zA-Z][a-zA-Z0-9_]*",
+                                  "ID"
                                 ],
                                 /* :: */[
                                   /* tuple */[

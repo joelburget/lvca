@@ -66,8 +66,7 @@ let _ = describe "Lex" (fun () ->
   );
 
   let lexer3 =
-    [ "[a-zA-Z][a-zA-Z0-9_]*", "ID";
-      ":", "COLON";
+    [ ":", "COLON";
       "if", "IF";
       "then", "THEN";
       "else", "ELSE";
@@ -76,6 +75,7 @@ let _ = describe "Lex" (fun () ->
       "true", "TRUE";
       "false", "FALSE";
       "bool", "BOOL";
+      "[a-zA-Z][a-zA-Z0-9_]*", "ID";
       "[ ]+", "SPACE";
     ]
   in let result = lex lexer3 "if false then false else true" in
