@@ -1034,12 +1034,9 @@ function Lr0(G) {
             /* start */len,
             /* finish */len
           ]);
-      var match$1 = parse(tokens$prime);
-      if (match$1.tag) {
-        return /* Error */Block.__(1, [/* Right */Block.__(1, [match$1[0]])]);
-      } else {
-        return /* Ok */Block.__(0, [match$1[0]]);
-      }
+      return Util.map_error(parse(tokens$prime), (function (err) {
+                    return /* Right */Block.__(1, [err]);
+                  }));
     }
   };
   return /* module */[
