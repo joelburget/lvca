@@ -143,11 +143,11 @@ let () = describe "LrParsing" (fun () ->
   in
 
   testAll "closure" [
-    expect (Lr0'.closure @@ SI.fromArray items0)
+    expect (Lr0'.closure' @@ SI.fromArray items0)
       |> toEqual expected0;
-    expect (Lr0'.closure @@ SI.fromArray items1)
+    expect (Lr0'.closure' @@ SI.fromArray items1)
       |> toEqual expected1;
-    expect (Lr0'.closure @@ SI.fromArray items7)
+    expect (Lr0'.closure' @@ SI.fromArray items7)
       |> toEqual expected7;
   ] Util.id;
 
@@ -164,7 +164,8 @@ let () = describe "LrParsing" (fun () ->
   testAll "goto" [
     expect (Lr0'.goto_kernel (SI.fromArray items1) (Terminal 1))
       |> toEqual goto_kernel;
-    expect (Lr0'.closure @@ Lr0'.goto_kernel (SI.fromArray items1) (Terminal 1))
+    expect
+      (Lr0'.closure' @@ Lr0'.goto_kernel (SI.fromArray items1) (Terminal 1))
       |> toEqual
       ({ kernel_items = goto_kernel; nonkernel_items = goto_nonkernel }
         : configuration_set);

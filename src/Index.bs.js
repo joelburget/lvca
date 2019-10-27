@@ -505,7 +505,7 @@ function Index$ConcreteSyntaxEditor(Props) {
     var Lr0$prime = LrParsing.Lr0(/* module */[/* grammar */grammar]);
     var states = Belt_Array.map(Lr0$prime[/* states */36], (function (state) {
             var kernel_items = Curry._1(Lr0$prime[/* state_to_item_set */23], state);
-            var match = Curry._1(Lr0$prime[/* closure */17], kernel_items);
+            var match = Curry._1(Lr0$prime[/* closure' */17], kernel_items);
             var kernel_repr = Curry._2(Lr0$prime[/* string_of_item_set */11], "\n", kernel_items);
             var nonkernel_repr = Curry._2(Lr0$prime[/* string_of_item_set */11], "\n", match[/* nonkernel_items */1]);
             return /* tuple */[

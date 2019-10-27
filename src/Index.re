@@ -427,11 +427,11 @@ module ConcreteSyntaxEditor = {
         |. Belt.Array.map(state => {
           let kernel_items = Lr0'.state_to_item_set(state);
           let { LrParsing.nonkernel_items } : LrParsing.configuration_set
-            = Lr0'.closure(kernel_items);
-          let kernel_repr =
-            Lr0'.string_of_item_set(kernel_items, ~sep="\n");
-          let nonkernel_repr =
-            Lr0'.string_of_item_set(nonkernel_items, ~sep="\n");
+            = Lr0'.closure'(kernel_items);
+          let kernel_repr
+            = Lr0'.string_of_item_set(kernel_items, ~sep="\n");
+          let nonkernel_repr
+            = Lr0'.string_of_item_set(nonkernel_items, ~sep="\n");
           (state, kernel_repr, nonkernel_repr)
         })
         ;
