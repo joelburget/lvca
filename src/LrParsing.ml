@@ -78,6 +78,7 @@ module LookaheadItemCmp = Belt.Id.MakeComparable(struct
       | c -> c
 end)
 
+(* TODO: do we use this? *)
 type lookahead_item_set = (lookahead_item, LookaheadItemCmp.identity) S.t
 
 let view_item : item -> item_view
@@ -99,6 +100,11 @@ type configuration_set =
     nonkernel_items : item_set; (* set of nonterminals *)
   }
 
+let simplify_config_set : configuration_set -> item_set
+  = fun { kernel_items; nonkernel_items } ->
+    SI.union kernel_items nonkernel_items
+
+(* TODO: do we use this? *)
 type lookahead_configuration_set =
   { kernel_items : lookahead_item_set;    (* set of items *)
     nonkernel_items : lookahead_item_set; (* set of nonterminals *)
@@ -187,6 +193,12 @@ let string_of_tokens : Lex.token array -> string
   = fun toks -> toks
       |. A.map (fun { name } -> name)
       |. Js.Array2.joinWith " "
+
+let string_of_item_set : item_set -> string
+  = fun item_set -> item_set
+    |. SI.toArray
+    |. A.map string_of_int
+    |. Js.Array2.joinWith " "
 
 (* TODO: remove exns *)
 module Lr0 (G : GRAMMAR) = struct
@@ -357,7 +369,6 @@ module Lr0 (G : GRAMMAR) = struct
   let closure : item_set -> configuration_set
     = fun initial_items ->
       let added = Bitstring.alloc number_of_nonterminals false in
-      let kernel_items = initial_items in (* XXX wrong *)
       let nonkernel_items = MSI.make () in
       let nt_stack = MSI.make () in
 
@@ -369,8 +380,8 @@ module Lr0 (G : GRAMMAR) = struct
           @@ MMI.get production_map production_num
         in
         (* first symbol right of the dot *)
-        match production |. L.get position with
-          | Some (Nonterminal nt) -> nt_stack |. MSI.add nt
+        match L.get production position with
+          | Some (Nonterminal nt) -> MSI.add nt_stack nt
           | _                     -> ()
         );
 
@@ -378,7 +389,7 @@ module Lr0 (G : GRAMMAR) = struct
         let nonterminal_num =
           get_option' "the set is not empty!" @@ MSI.minimum nt_stack
         in
-        nt_stack |. MSI.remove nonterminal_num;
+        MSI.remove nt_stack nonterminal_num;
         let is_added = added
           |. Bitstring.get nonterminal_num
           |> get_option' (Printf.sprintf
@@ -388,7 +399,7 @@ module Lr0 (G : GRAMMAR) = struct
           )
         in
         if not is_added then (
-          added |. Bitstring.setExn nonterminal_num true;
+          Bitstring.setExn added nonterminal_num true;
           let production_set =
             MMI.get nonterminal_production_map nonterminal_num
               |> get_option' (Printf.sprintf
@@ -397,7 +408,7 @@ module Lr0 (G : GRAMMAR) = struct
               )
           in
           MSI.forEach production_set (fun production_num ->
-            nonkernel_items |. MSI.add (mk_item' production_num 0)
+            MSI.add nonkernel_items (mk_item' production_num 0)
           );
           let { productions } = M.get G.grammar.nonterminals nonterminal_num
             |> get_option' (Printf.sprintf
@@ -408,7 +419,7 @@ module Lr0 (G : GRAMMAR) = struct
           L.forEach productions (fun production ->
             match production with
               | Terminal _         :: _ -> ()
-              | Nonterminal new_nt :: _ -> nt_stack |. MSI.add new_nt
+              | Nonterminal new_nt :: _ -> MSI.add nt_stack new_nt
               | _                       -> failwith "Empty production"
           )
         )
@@ -417,67 +428,62 @@ module Lr0 (G : GRAMMAR) = struct
         nonkernel_items = nonkernel_items |. MSI.toArray |. SI.fromArray;
       }
 
-  let simplify_config_set : configuration_set -> item_set
-    = fun { kernel_items; nonkernel_items } ->
-      SI.union kernel_items nonkernel_items
-
+  (* closure returning an item set (rather than a configuration set) *)
   let closure' : item_set -> item_set
     = fun items -> simplify_config_set @@ closure items
 
   (* Examine for items with the nonterminal immediately to the right of the
-   * dot. Move the dot over the nonterminal and take the closure of those sets.
+   * dot. Move the dot over the nonterminal.
    *)
   let goto_kernel : item_set -> symbol -> item_set
     = fun item_set symbol ->
       let result = MSI.make () in
-      SI.forEach item_set (fun item ->
+      SI.forEach (closure' item_set) (fun item ->
         let { production_num; position } = view_item item in
         let production = production_map
-              |. MMI.get production_num
-              |> get_option' (Printf.sprintf
-              "Lr0 goto_kernel: unable to find production %n in production_map"
-              production_num
-              )
+          |. MMI.get production_num
+          |> get_option' (Printf.sprintf
+            "Lr0 goto_kernel: unable to find production %n in production_map"
+            production_num
+          )
         in
         match L.get production position with
           | Some next_symbol ->
-            if symbol = next_symbol then (
+            if symbol = next_symbol then
               result |. MSI.add (mk_item' production_num (position + 1))
-            )
           | _ -> ()
       );
       result |. MSI.toArray |. SI.fromArray
 
-  let goto : item_set -> symbol -> configuration_set
-    = fun item_set symbol -> closure @@ goto_kernel item_set symbol
-
-  let goto' : item_set -> symbol -> item_set
-    = fun item_set symbol -> simplify_config_set @@ goto item_set symbol
+  (* A list of all grammar symbols (terminals and nonterminals) *)
+  let grammar_symbols = L.concat
+    (L.makeBy number_of_terminals    (fun n -> Terminal n))
+    (L.makeBy number_of_nonterminals (fun n -> Nonterminal n))
 
   (** Compute the canonical collection of sets of LR(0) items. CPTT fig 4.33. *)
   let items : mutable_int_set_set
     = let augmented_start = SI.fromArray
           [| mk_item {production_num = 0; position = 0} |]
       in
-      let ca = closure' augmented_start in
-      let c = MSet.fromArray [| ca |] ~id:(module ComparableSet) in
+      let c = MSet.fromArray [| augmented_start |] ~id:(module ComparableSet) in
+
+      (* iterate through every set of items in the collection, compute the GOTO
+       * kernel of each item set, and add any new sets. `continue` is set to
+       * `true` if we find a new item set, indicating we need to loop again. *)
+      (* TODO: don't examine item sets we've already used *)
       let continue = ref true in
       while !continue do
         continue := false;
-        (* for each set of items i in c: *)
-        MSet.forEach c @@ fun i ->
-          let grammar_symbols = L.concat
-            (L.makeBy number_of_terminals (fun n -> Terminal n))
-            (L.makeBy number_of_nonterminals (fun n -> Nonterminal n))
-          in
-          (* for each grammar symbol x: *)
-          L.forEach grammar_symbols @@ fun x ->
-          (* M.forEach G.grammar @@ fun x _ -> *)
-            let goto_i_x = goto' i x in
-            (* if GOTO(i, x) is not empty and not in c: *)
-            if not (SI.isEmpty goto_i_x) && not (MSet.has c goto_i_x)
+        (* for each set of items in c: *)
+        MSet.forEach c @@ fun items ->
+          (* for each grammar symbol: *)
+          L.forEach grammar_symbols @@ fun symbol ->
+            let goto_items_symbol = goto_kernel items symbol in
+            (* if GOTO(items, symbol) is not empty and not in c: *)
+            if not (SI.isEmpty goto_items_symbol) &&
+               not (MSet.has c goto_items_symbol)
             then (
-              c |. MSet.add goto_i_x;
+              MSet.add c goto_items_symbol;
               continue := true
             )
       done;
@@ -497,23 +503,22 @@ module Lr0 (G : GRAMMAR) = struct
 
   let item_set_to_state : item_set -> state
     = fun item_set ->
-    let item_set_str = item_set
-      |. SI.toArray
-      |. A.map string_of_int
-      |. Js.Array2.joinWith " "
-    in
     let state, _ = items'
       |. M.findFirstBy (fun _ item_set' ->
         SI.toArray item_set' = SI.toArray item_set
       )
       |> get_option' (Printf.sprintf
-        "item_set_to_state -- couldn't find item_set (%s)"
-        item_set_str
+        "item_set_to_state -- couldn't find item_set (%s) (options: %s)"
+        (string_of_item_set item_set)
+        (items'
+          |. M.valuesToArray
+          |. A.map (fun item_set -> string_of_item_set item_set)
+          |. Js.Array2.joinWith ", ")
       )
     in state
 
   let augmented_state : state
-    = item_set_to_state @@ closure' @@ SI.fromArray [| mk_item' 0 0 |]
+    = item_set_to_state @@ SI.fromArray [| mk_item' 0 0 |]
 
   let in_first_cache : (terminal_num * symbol, bool, SymbolCmp.identity) MM.t
     = MM.make ~id:(module SymbolCmp)
@@ -637,12 +642,13 @@ module Lr0 (G : GRAMMAR) = struct
 
   let goto_table state nt =
     try
-      Some (item_set_to_state @@ goto' (state_to_item_set state) nt)
+      Some (item_set_to_state @@ goto_kernel (state_to_item_set state) nt)
     with
+      (* TODO: this shouldn't catch all invariant violations *)
       Util.InvariantViolation _ -> None
 
   let action_table state terminal_num =
-    let item_set = state_to_item_set state in
+    let item_set = closure' @@ state_to_item_set state in
 
     let item_set_l = SI.toList item_set in
 
@@ -667,6 +673,7 @@ module Lr0 (G : GRAMMAR) = struct
           | _ -> None
       )
     in
+
     (* If [A -> xs .] is in I_i, set ACTION[i, a] to `Reduce A -> a` for
      * all a in FOLLOW(A) *)
     let reduce_action = item_set_l
@@ -695,6 +702,7 @@ module Lr0 (G : GRAMMAR) = struct
           else None
       )
     in
+
     (* If [S' -> S .] is in I_i, set ACTION[i, $] to `accept` *)
     let accept_action =
       if terminal_num = end_marker && item_set |. SI.has (mk_item' 0 1)
@@ -910,7 +918,6 @@ module Lr0 (G : GRAMMAR) = struct
     = fun lexer input -> match Lex.lex lexer input with
       | Error error -> Error (Left error)
       | Ok tokens ->
-          (* Js.log2 "tokens" tokens; *)
         let len = String.length input in
         let tokens' = tokens
           (* XXX: don't do this *)

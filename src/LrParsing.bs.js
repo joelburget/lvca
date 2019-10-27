@@ -64,6 +64,10 @@ function mk_item(param) {
   return mk_item$prime(param[/* production_num */0], param[/* position */1]);
 }
 
+function simplify_config_set(param) {
+  return Belt_SetInt.union(param[/* kernel_items */0], param[/* nonkernel_items */1]);
+}
+
 var ComparableSet = Belt_Id.MakeComparable(/* module */[/* cmp */Belt_SetInt.cmp]);
 
 var ParseFinished = Caml_exceptions.create("LrParsing.ParseFinished");
@@ -107,6 +111,12 @@ function string_of_stack(states) {
 function string_of_tokens(toks) {
   return Belt_Array.map(toks, (function (param) {
                   return param[/* name */0];
+                })).join(" ");
+}
+
+function string_of_item_set(item_set) {
+  return Belt_Array.map(Belt_SetInt.toArray(item_set), (function (prim) {
+                  return String(prim);
                 })).join(" ");
 }
 
@@ -400,15 +410,12 @@ function Lr0(G) {
             /* nonkernel_items */Belt_SetInt.fromArray(Belt_MutableSetInt.toArray(nonkernel_items))
           ];
   };
-  var simplify_config_set = function (param) {
-    return Belt_SetInt.union(param[/* kernel_items */0], param[/* nonkernel_items */1]);
-  };
   var closure$prime = function (items) {
     return simplify_config_set(closure(items));
   };
   var goto_kernel = function (item_set, symbol) {
     var result = Belt_MutableSetInt.make(/* () */0);
-    Belt_SetInt.forEach(item_set, (function (item) {
+    Belt_SetInt.forEach(simplify_config_set(closure(item_set)), (function (item) {
             var match = view_item(item);
             var position = match[/* position */1];
             var production_num = match[/* production_num */0];
@@ -434,31 +441,24 @@ function Lr0(G) {
           }));
     return Belt_SetInt.fromArray(Belt_MutableSetInt.toArray(result));
   };
-  var $$goto = function (item_set, symbol) {
-    return closure(goto_kernel(item_set, symbol));
-  };
-  var goto$prime = function (item_set, symbol) {
-    return simplify_config_set(closure(goto_kernel(item_set, symbol)));
-  };
+  var grammar_symbols = Belt_List.concat(Belt_List.makeBy(number_of_terminals, (function (n) {
+              return /* Terminal */Block.__(0, [n]);
+            })), Belt_List.makeBy(number_of_nonterminals, (function (n) {
+              return /* Nonterminal */Block.__(1, [n]);
+            })));
   var augmented_start = Belt_SetInt.fromArray(/* array */[mk_item(/* record */[
               /* production_num */0,
               /* position */0
             ])]);
-  var ca = simplify_config_set(closure(augmented_start));
-  var c = Belt_MutableSet.fromArray(/* array */[ca], ComparableSet);
+  var c = Belt_MutableSet.fromArray(/* array */[augmented_start], ComparableSet);
   var $$continue = /* record */[/* contents */true];
   while($$continue[0]) {
     $$continue[0] = false;
-    Belt_MutableSet.forEach(c, (function (i) {
-            var grammar_symbols = Belt_List.concat(Belt_List.makeBy(number_of_terminals, (function (n) {
-                        return /* Terminal */Block.__(0, [n]);
-                      })), Belt_List.makeBy(number_of_nonterminals, (function (n) {
-                        return /* Nonterminal */Block.__(1, [n]);
-                      })));
-            return Belt_List.forEach(grammar_symbols, (function (x) {
-                          var goto_i_x = simplify_config_set(closure(goto_kernel(i, x)));
-                          if (!Belt_SetInt.isEmpty(goto_i_x) && !Belt_MutableSet.has(c, goto_i_x)) {
-                            Belt_MutableSet.add(c, goto_i_x);
+    Belt_MutableSet.forEach(c, (function (items) {
+            return Belt_List.forEach(grammar_symbols, (function (symbol) {
+                          var goto_items_symbol = goto_kernel(items, symbol);
+                          if (!Belt_SetInt.isEmpty(goto_items_symbol) && !Belt_MutableSet.has(c, goto_items_symbol)) {
+                            Belt_MutableSet.add(c, goto_items_symbol);
                             $$continue[0] = true;
                             return /* () */0;
                           } else {
@@ -477,27 +477,29 @@ function Lr0(G) {
     return Util.get_option$prime("state_to_item_set -- couldn't find state " + String(state))(Belt_MapInt.get(items$prime, state));
   };
   var item_set_to_state = function (item_set) {
-    var item_set_str = Belt_Array.map(Belt_SetInt.toArray(item_set), (function (prim) {
-              return String(prim);
-            })).join(" ");
-    return Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+    return Util.get_option$prime(Curry._2(Printf.sprintf(/* Format */[
                             /* String_literal */Block.__(11, [
                                 "item_set_to_state -- couldn't find item_set (",
                                 /* String */Block.__(2, [
                                     /* No_padding */0,
-                                    /* Char_literal */Block.__(12, [
-                                        /* ")" */41,
-                                        /* End_of_format */0
+                                    /* String_literal */Block.__(11, [
+                                        ") (options: ",
+                                        /* String */Block.__(2, [
+                                            /* No_padding */0,
+                                            /* Char_literal */Block.__(12, [
+                                                /* ")" */41,
+                                                /* End_of_format */0
+                                              ])
+                                          ])
                                       ])
                                   ])
                               ]),
-                            "item_set_to_state -- couldn't find item_set (%s)"
-                          ]), item_set_str))(Belt_MapInt.findFirstBy(items$prime, (function (param, item_set$prime) {
+                            "item_set_to_state -- couldn't find item_set (%s) (options: %s)"
+                          ]), string_of_item_set(item_set), Belt_Array.map(Belt_MapInt.valuesToArray(items$prime), string_of_item_set).join(", ")))(Belt_MapInt.findFirstBy(items$prime, (function (param, item_set$prime) {
                         return Caml_obj.caml_equal(Belt_SetInt.toArray(item_set$prime), Belt_SetInt.toArray(item_set));
                       })))[0];
   };
-  var items = Belt_SetInt.fromArray(/* array */[0]);
-  var augmented_state = item_set_to_state(simplify_config_set(closure(items)));
+  var augmented_state = item_set_to_state(Belt_SetInt.fromArray(/* array */[0]));
   var in_first_cache = Belt_MutableMap.make(SymbolCmp);
   var stack = Belt_MutableSetInt.make(/* () */0);
   var in_first$prime = function (t_num, sym) {
@@ -643,8 +645,7 @@ function Lr0(G) {
   };
   var goto_table = function (state, nt) {
     try {
-      var item_set = state_to_item_set(state);
-      return item_set_to_state(simplify_config_set(closure(goto_kernel(item_set, nt))));
+      return item_set_to_state(goto_kernel(state_to_item_set(state), nt));
     }
     catch (raw_exn){
       var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
@@ -656,7 +657,8 @@ function Lr0(G) {
     }
   };
   var action_table = function (state, terminal_num) {
-    var item_set = state_to_item_set(state);
+    var items = state_to_item_set(state);
+    var item_set = simplify_config_set(closure(items));
     var item_set_l = Belt_SetInt.toList(item_set);
     var shift_action = Util.find_by(item_set_l, (function (item) {
             var match = view_item(item);
@@ -1057,11 +1059,9 @@ function Lr0(G) {
           /* get_nonterminal_num */get_nonterminal_num,
           /* get_nonterminal */get_nonterminal,
           /* closure */closure,
-          /* simplify_config_set */simplify_config_set,
           /* closure' */closure$prime,
           /* goto_kernel */goto_kernel,
-          /* goto */$$goto,
-          /* goto' */goto$prime,
+          /* grammar_symbols */grammar_symbols,
           /* items */c,
           /* items' */items$prime,
           /* state_to_item_set */state_to_item_set,
@@ -1144,6 +1144,7 @@ exports.LookaheadItemCmp = LookaheadItemCmp;
 exports.view_item = view_item;
 exports.mk_item$prime = mk_item$prime;
 exports.mk_item = mk_item;
+exports.simplify_config_set = simplify_config_set;
 exports.ComparableSet = ComparableSet;
 exports.ParseFinished = ParseFinished;
 exports.ParseFailed = ParseFailed;
@@ -1152,5 +1153,6 @@ exports.pop_front_exn = pop_front_exn;
 exports.action_abbrev = action_abbrev;
 exports.string_of_stack = string_of_stack;
 exports.string_of_tokens = string_of_tokens;
+exports.string_of_item_set = string_of_item_set;
 exports.Lr0 = Lr0;
 /* SymbolCmp Not a pure module */

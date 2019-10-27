@@ -164,22 +164,14 @@ let () = describe "LrParsing" (fun () ->
   testAll "goto" [
     expect (Lr0'.goto_kernel (SI.fromArray items1) (Terminal 1))
       |> toEqual goto_kernel;
-    expect (Lr0'.goto (SI.fromArray items1) (Terminal 1))
+    expect (Lr0'.closure @@ Lr0'.goto_kernel (SI.fromArray items1) (Terminal 1))
       |> toEqual
       ({ kernel_items = goto_kernel; nonkernel_items = goto_nonkernel }
         : configuration_set);
   ] Util.id;
 
   let item_sets = [|
-    SI.fromArray (* 0 *)
-      [| mk_item' 0 0;
-         mk_item' 1 0;
-         mk_item' 2 0;
-         mk_item' 3 0;
-         mk_item' 4 0;
-         mk_item' 5 0;
-         mk_item' 6 0;
-      |];
+    SI.fromArray [| mk_item' 0 0 |]; (* 0 *)
     SI.fromArray (* 1 *)
       [| mk_item' 0 1;
          mk_item' 1 1;
@@ -189,28 +181,10 @@ let () = describe "LrParsing" (fun () ->
          mk_item' 3 1;
       |];
     SI.fromArray [| mk_item' 4 1; |]; (* 3 *)
-    SI.fromArray (* 4 *)
-      [| mk_item' 5 1;
-         mk_item' 1 0;
-         mk_item' 2 0;
-         mk_item' 3 0;
-         mk_item' 4 0;
-         mk_item' 5 0;
-         mk_item' 6 0;
-      |];
+    SI.fromArray [| mk_item' 5 1; |]; (* 4 *)
     SI.fromArray [| mk_item' 6 1; |]; (* 5 *)
-    SI.fromArray (* 6 *)
-      [| mk_item' 1 2;
-         mk_item' 3 0;
-         mk_item' 4 0;
-         mk_item' 5 0;
-         mk_item' 6 0;
-      |];
-    SI.fromArray (* 7 *)
-      [| mk_item' 3 2;
-         mk_item' 5 0;
-         mk_item' 6 0;
-      |];
+    SI.fromArray [| mk_item' 1 2; |]; (* 6 *)
+    SI.fromArray [| mk_item' 3 2; |]; (* 7 *)
     SI.fromArray (* 8 *)
       [|
         mk_item' 1 1;
