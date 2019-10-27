@@ -114,12 +114,6 @@ function string_of_tokens(toks) {
                 })).join(" ");
 }
 
-function string_of_item_set(item_set) {
-  return Belt_Array.map(Belt_SetInt.toArray(item_set), (function (prim) {
-                  return String(prim);
-                })).join(" ");
-}
-
 function Lr0(G) {
   var production_map = Belt_MutableMapInt.make(/* () */0);
   var production_nonterminal_map = Belt_MutableMapInt.make(/* () */0);
@@ -230,6 +224,10 @@ function Lr0(G) {
                       ]),
                     "%s -> %s"
                   ]), nt_name, pieces.join(" "));
+  };
+  var string_of_item_set = function ($staropt$star, item_set) {
+    var sep = $staropt$star !== undefined ? $staropt$star : " ";
+    return Belt_Array.map(Belt_SetInt.toArray(item_set), string_of_item).join(sep);
   };
   var string_of_production = function (production_num) {
     var production = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
@@ -495,7 +493,9 @@ function Lr0(G) {
                                   ])
                               ]),
                             "item_set_to_state -- couldn't find item_set (%s) (options: %s)"
-                          ]), string_of_item_set(item_set), Belt_Array.map(Belt_MapInt.valuesToArray(items$prime), string_of_item_set).join(", ")))(Belt_MapInt.findFirstBy(items$prime, (function (param, item_set$prime) {
+                          ]), string_of_item_set(undefined, item_set), Belt_Array.map(Belt_MapInt.valuesToArray(items$prime), (function (eta) {
+                                return string_of_item_set(undefined, eta);
+                              })).join(", ")))(Belt_MapInt.findFirstBy(items$prime, (function (param, item_set$prime) {
                         return Caml_obj.caml_equal(Belt_SetInt.toArray(item_set$prime), Belt_SetInt.toArray(item_set));
                       })))[0];
   };
@@ -1053,6 +1053,7 @@ function Lr0(G) {
           /* nonterminal_nums */nonterminal_nums,
           /* string_of_symbol */string_of_symbol,
           /* string_of_item */string_of_item,
+          /* string_of_item_set */string_of_item_set,
           /* string_of_production */string_of_production,
           /* string_of_action */string_of_action,
           /* production_cnt */production_cnt,
@@ -1153,6 +1154,5 @@ exports.pop_front_exn = pop_front_exn;
 exports.action_abbrev = action_abbrev;
 exports.string_of_stack = string_of_stack;
 exports.string_of_tokens = string_of_tokens;
-exports.string_of_item_set = string_of_item_set;
 exports.Lr0 = Lr0;
 /* SymbolCmp Not a pure module */

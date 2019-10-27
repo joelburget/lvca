@@ -194,12 +194,6 @@ let string_of_tokens : Lex.token array -> string
       |. A.map (fun { name } -> name)
       |. Js.Array2.joinWith " "
 
-let string_of_item_set : item_set -> string
-  = fun item_set -> item_set
-    |. SI.toArray
-    |. A.map string_of_int
-    |. Js.Array2.joinWith " "
-
 (* TODO: remove exns *)
 module Lr0 (G : GRAMMAR) = struct
 
@@ -289,6 +283,12 @@ module Lr0 (G : GRAMMAR) = struct
 
       (* output if trailing *)
       Printf.sprintf "%s -> %s" nt_name (Js.Array2.joinWith pieces " ")
+
+  let string_of_item_set : ?sep:string -> item_set -> string
+    = fun ?(sep=" ") item_set -> item_set
+      |. SI.toArray
+      |. A.map string_of_item
+      |. Js.Array2.joinWith sep
 
   let string_of_production : production_num -> string
     = fun production_num ->
@@ -512,7 +512,7 @@ module Lr0 (G : GRAMMAR) = struct
         (string_of_item_set item_set)
         (items'
           |. M.valuesToArray
-          |. A.map (fun item_set -> string_of_item_set item_set)
+          |. A.map string_of_item_set
           |. Js.Array2.joinWith ", ")
       )
     in state

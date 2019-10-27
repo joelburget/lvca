@@ -425,12 +425,14 @@ module ConcreteSyntaxEditor = {
 
       let states = Lr0'.states
         |. Belt.Array.map(state => {
-          let repr = state
-            |. Lr0'.state_to_item_set
-            |. Belt.Set.Int.toArray
-            |. Belt.Array.map(Lr0'.string_of_item)
-            |. Js.Array2.joinWith("\n");
-          (state, repr)
+          let kernel_items = Lr0'.state_to_item_set(state);
+          let { LrParsing.nonkernel_items } : LrParsing.configuration_set
+            = Lr0'.closure(kernel_items);
+          let kernel_repr =
+            Lr0'.string_of_item_set(kernel_items, ~sep="\n");
+          let nonkernel_repr =
+            Lr0'.string_of_item_set(nonkernel_items, ~sep="\n");
+          (state, kernel_repr, nonkernel_repr)
         })
         ;
 

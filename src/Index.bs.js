@@ -19,7 +19,6 @@ var CodeMirror = require("./CodeMirror.bs.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var ReactDOMRe = require("reason-react/src/ReactDOMRe.js");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
-var Belt_SetInt = require("bs-platform/lib/js/belt_SetInt.js");
 var ParseStatus = require("./ParseStatus.bs.js");
 var Bidirectional = require("./Bidirectional.bs.js");
 var LrParsingView = require("./LrParsingView.bs.js");
@@ -408,7 +407,7 @@ function Index$SyntaxDebugger(Props) {
           /* finish */len
         ]);
     var Lr0$prime = LrParsing.Lr0(/* module */[/* grammar */grammar]);
-    var match$3 = Curry._2(Lr0$prime[/* parse_trace */45], true, tokens$prime);
+    var match$3 = Curry._2(Lr0$prime[/* parse_trace */44], true, tokens$prime);
     var traceElems = Belt_Array.map(match$3[1], (function (param) {
             var action = param[0];
             var cls = typeof action === "number" ? (
@@ -416,7 +415,7 @@ function Index$SyntaxDebugger(Props) {
               ) : "";
             return React.createElement("tr", {
                         className: cls
-                      }, React.createElement("td", undefined, LrParsing.string_of_stack(param[1])), React.createElement("td", undefined, Curry._1(Lr0$prime[/* string_of_symbols */44], param[2])), React.createElement("td", undefined, LrParsing.string_of_tokens(param[3])), React.createElement("td", undefined, Curry._1(Lr0$prime[/* string_of_action */12], action)));
+                      }, React.createElement("td", undefined, LrParsing.string_of_stack(param[1])), React.createElement("td", undefined, Curry._1(Lr0$prime[/* string_of_symbols */43], param[2])), React.createElement("td", undefined, LrParsing.string_of_tokens(param[3])), React.createElement("td", undefined, Curry._1(Lr0$prime[/* string_of_action */13], action)));
           }));
     return React.createElement("div", {
                 className: "syntax-debugger"
@@ -504,17 +503,21 @@ function Index$ConcreteSyntaxEditor(Props) {
   var getGrammarPaneAndDebugger = function (concrete, showGrammarPane, showDebugger) {
     var grammar = ConcreteSyntax.to_grammar(concrete);
     var Lr0$prime = LrParsing.Lr0(/* module */[/* grammar */grammar]);
-    var states = Belt_Array.map(Lr0$prime[/* states */37], (function (state) {
-            var repr = Belt_Array.map(Belt_SetInt.toArray(Curry._1(Lr0$prime[/* state_to_item_set */24], state)), Lr0$prime[/* string_of_item */10]).join("\n");
+    var states = Belt_Array.map(Lr0$prime[/* states */36], (function (state) {
+            var kernel_items = Curry._1(Lr0$prime[/* state_to_item_set */23], state);
+            var match = Curry._1(Lr0$prime[/* closure */17], kernel_items);
+            var kernel_repr = Curry._2(Lr0$prime[/* string_of_item_set */11], "\n", kernel_items);
+            var nonkernel_repr = Curry._2(Lr0$prime[/* string_of_item_set */11], "\n", match[/* nonkernel_items */1]);
             return /* tuple */[
                     state,
-                    repr
+                    kernel_repr,
+                    nonkernel_repr
                   ];
           }));
     var grammarPane;
     if (showGrammarPane) {
-      var action_table = Curry._1(Lr0$prime[/* full_action_table */40], /* () */0);
-      var goto_table = Curry._1(Lr0$prime[/* full_goto_table */41], /* () */0);
+      var action_table = Curry._1(Lr0$prime[/* full_action_table */39], /* () */0);
+      var goto_table = Curry._1(Lr0$prime[/* full_goto_table */40], /* () */0);
       grammarPane = React.createElement("div", undefined, React.createElement(LrParsingView.Grammar[/* make */0], {
                 grammar: grammar,
                 states: states

@@ -33,7 +33,11 @@ function LrParsingView$Grammar(Props) {
         terminalElems
       ]);
   var stateElems = Belt_Array.map(states, (function (param) {
-          return React.createElement("tr", undefined, React.createElement("td", undefined, String(param[0])), React.createElement("td", undefined, React.createElement("pre", undefined, React.createElement("code", undefined, param[1]))));
+          return React.createElement("tr", undefined, React.createElement("td", undefined, String(param[0])), React.createElement("td", undefined, React.createElement("pre", {
+                              className: "kernel-items"
+                            }, React.createElement("code", undefined, param[1])), React.createElement("pre", {
+                              className: "nonkernel-items"
+                            }, React.createElement("code", undefined, param[2]))));
         }));
   var stateElemsView = Caml_splice_call.spliceApply(React.createElement, [
         "tbody",
@@ -54,7 +58,7 @@ function LrParsingView$Tables(Props) {
           Caml_builtin_exceptions.assert_failure,
           /* tuple */[
             "LrParsingView.re",
-            86,
+            93,
             4
           ]
         ];

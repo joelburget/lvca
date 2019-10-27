@@ -12,7 +12,7 @@ let make_div = children => {
 
 module Grammar = {
   [@react.component]
-  let make = (~grammar : grammar, ~states : array((int, string))) => {
+  let make = (~grammar : grammar, ~states : array((int, string, string))) => {
     /* TODO: make table, sort */
     let terminalElems = grammar.terminal_nums
       |. Belt.List.fromArray
@@ -35,10 +35,17 @@ module Grammar = {
     );
 
     let stateElems = states
-      |. BA.map(((num, states)) =>
+      |. BA.map(((num, kernel_items, nonkernel_items)) =>
         <tr>
           <td>{React.string(string_of_int(num))}</td>
-          <td><pre><code>{React.string(states)}</code></pre></td>
+          <td>
+            <pre className="kernel-items"><code>
+              {React.string(kernel_items)}
+            </code></pre>
+            <pre className="nonkernel-items"><code>
+              {React.string(nonkernel_items)}
+            </code></pre>
+          </td>
         </tr>
       );
 
