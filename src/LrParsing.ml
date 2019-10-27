@@ -460,11 +460,12 @@ module Lr0 (G : GRAMMAR) = struct
     (L.makeBy number_of_nonterminals (fun n -> Nonterminal n))
 
   (** Compute the canonical collection of sets of LR(0) items. CPTT fig 4.33. *)
-  let items : mutable_int_set_set
+  let mutable_lr0_items : mutable_int_set_set
     = let augmented_start = SI.fromArray
           [| mk_item {production_num = 0; position = 0} |]
       in
-      let c = MSet.fromArray [| augmented_start |] ~id:(module ComparableSet) in
+      let c = MSet.fromArray [| augmented_start |] ~id:(module ComparableSet)
+      in
 
       (* iterate through every set of items in the collection, compute the GOTO
        * kernel of each item set, and add any new sets. `continue` is set to
@@ -488,28 +489,28 @@ module Lr0 (G : GRAMMAR) = struct
       done;
       c
 
-  let items' : item_set M.t
-    = items
+  let lr0_items : item_set M.t
+    = mutable_lr0_items
     |. MSet.toArray
     |. A.mapWithIndex (fun i item_set -> i, item_set)
     |. M.fromArray
 
   let state_to_item_set : state -> item_set
-    = fun state -> items'
+    = fun state -> lr0_items
       |. M.get state
       |> get_option'
         ("state_to_item_set -- couldn't find state " ^ string_of_int state)
 
   let item_set_to_state : item_set -> state
     = fun item_set ->
-    let state, _ = items'
+    let state, _ = lr0_items
       |. M.findFirstBy (fun _ item_set' ->
         SI.toArray item_set' = SI.toArray item_set
       )
       |> get_option' (Printf.sprintf
         "item_set_to_state -- couldn't find item_set (%s) (options: %s)"
         (string_of_item_set item_set)
-        (items'
+        (lr0_items
           |. M.valuesToArray
           |. A.map string_of_item_set
           |. Js.Array2.joinWith ", ")
@@ -716,7 +717,7 @@ module Lr0 (G : GRAMMAR) = struct
 
   (* TODO: is this right? *)
   let states : state array =
-    A.makeBy (M.size items') Util.id
+    A.makeBy (M.size lr0_items) Util.id
   let terminals : terminal_num array =
     (* Add one to include the `$` terminal *)
     A.makeBy (number_of_terminals + 1) Util.id

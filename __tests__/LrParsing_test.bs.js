@@ -342,11 +342,8 @@ Jest.describe("LrParsing", (function (param) {
           Belt_SetInt.fromArray(/* array */[LrParsing.mk_item$prime(5, 3)])
         ];
         var expected_item_sets = Belt_MutableSet.fromArray(item_sets, LrParsing.ComparableSet);
-        var normalize = function (items) {
-          return Belt_List.map(Belt_MutableSet.toList(items), Belt_SetInt.toList);
-        };
-        Jest.testAll("items", /* :: */[
-              Jest.Expect[/* toEqual */12](normalize(expected_item_sets), Jest.Expect[/* expect */0](normalize(Lr0$prime[/* items */21]))),
+        Jest.testAll("lr0_items", /* :: */[
+              Jest.Expect[/* toEqual */12](Belt_List.map(Belt_MutableSet.toList(expected_item_sets), Belt_SetInt.toList), Jest.Expect[/* expect */0](Belt_List.map(Belt_MutableSet.toList(Lr0$prime[/* mutable_lr0_items */21]), Belt_SetInt.toList))),
               /* [] */0
             ], Util.id);
         var state = Belt_Array.map(item_sets, Lr0$prime[/* item_set_to_state */24]);

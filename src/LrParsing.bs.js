@@ -465,14 +465,14 @@ function Lr0(G) {
                         }));
           }));
   };
-  var items$prime = Belt_MapInt.fromArray(Belt_Array.mapWithIndex(Belt_MutableSet.toArray(c), (function (i, item_set) {
+  var lr0_items = Belt_MapInt.fromArray(Belt_Array.mapWithIndex(Belt_MutableSet.toArray(c), (function (i, item_set) {
               return /* tuple */[
                       i,
                       item_set
                     ];
             })));
   var state_to_item_set = function (state) {
-    return Util.get_option$prime("state_to_item_set -- couldn't find state " + String(state))(Belt_MapInt.get(items$prime, state));
+    return Util.get_option$prime("state_to_item_set -- couldn't find state " + String(state))(Belt_MapInt.get(lr0_items, state));
   };
   var item_set_to_state = function (item_set) {
     return Util.get_option$prime(Curry._2(Printf.sprintf(/* Format */[
@@ -493,9 +493,9 @@ function Lr0(G) {
                                   ])
                               ]),
                             "item_set_to_state -- couldn't find item_set (%s) (options: %s)"
-                          ]), string_of_item_set(undefined, item_set), Belt_Array.map(Belt_MapInt.valuesToArray(items$prime), (function (eta) {
+                          ]), string_of_item_set(undefined, item_set), Belt_Array.map(Belt_MapInt.valuesToArray(lr0_items), (function (eta) {
                                 return string_of_item_set(undefined, eta);
-                              })).join(", ")))(Belt_MapInt.findFirstBy(items$prime, (function (param, item_set$prime) {
+                              })).join(", ")))(Belt_MapInt.findFirstBy(lr0_items, (function (param, item_set$prime) {
                         return Caml_obj.caml_equal(Belt_SetInt.toArray(item_set$prime), Belt_SetInt.toArray(item_set));
                       })))[0];
   };
@@ -742,7 +742,7 @@ function Lr0(G) {
       return /* Error */1;
     }
   };
-  var states = Belt_Array.makeBy(Belt_MapInt.size(items$prime), Util.id);
+  var states = Belt_Array.makeBy(Belt_MapInt.size(lr0_items), Util.id);
   var terminals = Belt_Array.makeBy(number_of_terminals + 1 | 0, Util.id);
   var nonterminals = Belt_Array.makeBy(Belt_MapString.size(terminal_nums), Util.id);
   var full_action_table = function (param) {
@@ -1063,8 +1063,8 @@ function Lr0(G) {
           /* closure */closure,
           /* goto_kernel */goto_kernel,
           /* grammar_symbols */grammar_symbols,
-          /* items */c,
-          /* items' */items$prime,
+          /* mutable_lr0_items */c,
+          /* lr0_items */lr0_items,
           /* state_to_item_set */state_to_item_set,
           /* item_set_to_state */item_set_to_state,
           /* augmented_state */augmented_state,

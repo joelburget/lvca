@@ -207,11 +207,11 @@ let () = describe "LrParsing" (fun () ->
 
   let normalize = fun items -> items
     |. Belt.MutableSet.toList
-    |. L.map (fun items' -> items' |. SI.toList)
+    |. L.map SI.toList
   in
 
-  testAll "items" [
-    expect (normalize Lr0'.items)
+  testAll "lr0_items" [
+    expect (normalize Lr0'.mutable_lr0_items)
       |> toEqual (normalize expected_item_sets);
     (* TODO
     expect (M.get Lr0'.items' 1 == Some (SI.fromArray items1)) |> toBe true;
