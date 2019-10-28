@@ -159,6 +159,10 @@ exception ParseFinished
 exception ParseFailed of parse_error
 exception PopFailed of int
 
+type do_trace =
+  | DoTrace
+  | DontTrace
+
 let pop_front_exn : int -> 'a MQueue.t -> 'a
   = fun position arr -> match MQueue.pop arr with
     | None -> raise (PopFailed position)
@@ -434,7 +438,14 @@ module Lr0 (G : GRAMMAR) = struct
   let lr0_closure : item_set -> item_set
     = fun items -> simplify_config_set @@ lr0_closure' items
 
-  (* Examine for items with the nonterminal immediately to the right of the
+  (* Quoting CPTT:
+   *
+   * > Intuitively, the GOTO function is used to defined the transitions in the
+   * > LR(0) automaton for a grammar. The states of the automaton correspond to
+   * > sets of items, and GOTO(I, X) specifies the transition from the state
+   * > for I under input X.
+   *
+   * Examine for items with the nonterminal immediately to the right of the
    * dot. Move the dot over the nonterminal.
    *)
   let goto_kernel : item_set -> symbol -> item_set
@@ -643,6 +654,9 @@ module Lr0 (G : GRAMMAR) = struct
   let in_follow : terminal_num -> nonterminal_num -> bool
     = in_follow' (SI.fromArray [||])
 
+  (* This is the GOTO function operating on states. See `goto_kernel` for the
+   * version operating on item set.
+   *)
   let goto_table state nt =
     try
       Some (item_set_to_state @@ goto_kernel (state_to_item_set state) nt)
@@ -712,6 +726,10 @@ module Lr0 (G : GRAMMAR) = struct
         then Some Accept
         else None
     in
+
+    (* We should always have exactly one action, otherwise it's a
+     * shift-reduce(-accept) conflict.
+     *)
     match shift_action, reduce_action, accept_action with
       | Some act,     None,     None
       |     None, Some act,     None
@@ -794,8 +812,9 @@ module Lr0 (G : GRAMMAR) = struct
       )
       |. Js.Array2.joinWith " "
 
+  (* This is the main parsing function: CPTT Algorithm 4.44 / Figure 4.36. *)
   let parse_trace
-    : bool (* trace or not *)
+    : do_trace (* trace or not *)
     -> Lex.token MQueue.t
     -> (parse_result, parse_error) Result.t *
        (action * state array * parse_result array * Lex.token array) array
@@ -821,7 +840,7 @@ module Lr0 (G : GRAMMAR) = struct
           let tok = !a in
           let terminal_num = token_to_terminal tok in
           let action = action_table s terminal_num in
-          if do_trace then
+          if do_trace = DoTrace then
             MQueue.add trace
               ( action,
                 Util.array_of_stack stack,
@@ -830,8 +849,8 @@ module Lr0 (G : GRAMMAR) = struct
               );
           match action with
             | Shift t ->
-                stack |. MStack.push t;
-                results |. MStack.push
+                MStack.push stack t;
+                MStack.push results
                   { production = Either.Left terminal_num;
                     children = [];
                     start_pos = tok.start;
@@ -873,7 +892,8 @@ module Lr0 (G : GRAMMAR) = struct
                 in
                 (match MStack.top stack with
                   | Some t -> (match goto_table t (Nonterminal nt_num) with
-                      | None -> failwith "invariant violation: invalid GOTO transition"
+                      | None -> failwith
+                        "invariant violation: invalid GOTO transition"
                       | Some state -> MStack.push stack state
                   )
                   | None -> failwith "invariant violation: peeking empty stack"
@@ -914,7 +934,7 @@ module Lr0 (G : GRAMMAR) = struct
         -> (Error (pos, "parsing invariant violation -- pop failed"), MQueue.toArray trace)
 
   let parse : Lex.token MQueue.t -> (parse_result, parse_error) Result.t
-    = fun toks -> match parse_trace false toks with result, _ -> result
+    = fun toks -> match parse_trace DontTrace toks with result, _ -> result
 
   let lex_and_parse : Lex.lexer -> string
     -> (parse_result, (Lex.lex_error, parse_error) Either.t) Result.t

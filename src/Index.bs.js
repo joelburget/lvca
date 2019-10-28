@@ -407,7 +407,7 @@ function Index$SyntaxDebugger(Props) {
           /* finish */len
         ]);
     var Lr0$prime = LrParsing.Lr0(/* module */[/* grammar */grammar]);
-    var match$3 = Curry._2(Lr0$prime[/* parse_trace */44], true, tokens$prime);
+    var match$3 = Curry._2(Lr0$prime[/* parse_trace */44], /* DoTrace */0, tokens$prime);
     var traceElems = Belt_Array.map(match$3[1], (function (param) {
             var action = param[0];
             var cls = typeof action === "number" ? (

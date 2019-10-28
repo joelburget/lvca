@@ -320,7 +320,8 @@ module SyntaxDebugger = {
 
         /* TODO: avoid building this module twice */
         let module Lr0' = LrParsing.Lr0({ let grammar = grammar });
-        let (_parse_result, trace) = Lr0'.parse_trace(true, tokens');
+        let (_parse_result, trace) =
+          Lr0'.parse_trace(LrParsing.DoTrace, tokens');
 
         let traceElems = trace
           |. Belt.Array.map(((action, stack, results, trace_tokens)) => {

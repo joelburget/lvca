@@ -864,7 +864,7 @@ function Lr0(G) {
         var tok = a;
         var terminal_num = token_to_terminal(tok);
         var action = action_table(s, terminal_num);
-        if (do_trace) {
+        if (do_trace === /* DoTrace */0) {
           Belt_MutableQueue.add(trace, /* tuple */[
                 action,
                 Util.array_of_stack(stack),
@@ -1029,7 +1029,7 @@ function Lr0(G) {
     }
   };
   var parse = function (toks) {
-    return parse_trace(false, toks)[0];
+    return parse_trace(/* DontTrace */1, toks)[0];
   };
   var lex_and_parse = function (lexer, input) {
     var match = Lex.lex(lexer, input);
