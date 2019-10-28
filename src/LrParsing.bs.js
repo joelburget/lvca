@@ -43,7 +43,7 @@ function cmp$1(param, param$1) {
   if (c !== 0) {
     return c;
   } else {
-    return Belt_SetInt.cmp(param[/* lookhead_set */1], param$1[/* lookhead_set */1]);
+    return Belt_SetInt.cmp(param[/* lookahead_set */1], param$1[/* lookahead_set */1]);
   }
 }
 
@@ -315,14 +315,23 @@ function Lr0(G) {
   var get_nonterminal = function (pn) {
     return Util.get_option$prime("get_nonterminal: couldn't find production " + String(pn))(Belt_MapInt.get(G[/* grammar */0][/* nonterminals */0], get_nonterminal_num(pn)));
   };
-  var closure$prime = function (initial_items) {
+  var lr0_closure$prime = function (initial_items) {
     var added = Bitstring.alloc(number_of_nonterminals, false);
     var nonkernel_items = Belt_MutableSetInt.make(/* () */0);
     var nt_stack = Belt_MutableSetInt.make(/* () */0);
     Belt_SetInt.forEach(initial_items, (function (item) {
             var match = view_item(item);
             var production_num = match[/* production_num */0];
-            var production = Util.get_option$prime("closure': couldn't find production " + String(production_num))(Belt_MutableMapInt.get(production_map, production_num));
+            var production = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                            /* String_literal */Block.__(11, [
+                                "lr0_closure': couldn't find production ",
+                                /* Scan_get_counter */Block.__(21, [
+                                    /* Char_counter */1,
+                                    /* End_of_format */0
+                                  ])
+                              ]),
+                            "lr0_closure': couldn't find production %n"
+                          ]), production_num))(Belt_MutableMapInt.get(production_map, production_num));
             var match$1 = Belt_List.get(production, match[/* position */1]);
             if (match$1 !== undefined) {
               var match$2 = match$1;
@@ -340,7 +349,7 @@ function Lr0(G) {
       Belt_MutableSetInt.remove(nt_stack, nonterminal_num);
       var is_added = Util.get_option$prime(Curry._2(Printf.sprintf(/* Format */[
                       /* String_literal */Block.__(11, [
-                          "Lr0 closure': couldn't find nonterminal ",
+                          "lr0_closure': couldn't find nonterminal ",
                           /* Scan_get_counter */Block.__(21, [
                               /* Char_counter */1,
                               /* String_literal */Block.__(11, [
@@ -355,13 +364,13 @@ function Lr0(G) {
                                 ])
                             ])
                         ]),
-                      "Lr0 closure': couldn't find nonterminal %n in added (nonterminal count %n)"
+                      "lr0_closure': couldn't find nonterminal %n in added (nonterminal count %n)"
                     ]), nonterminal_num, Bitstring.length(added)))(Bitstring.get(added, nonterminal_num));
       if (!is_added) {
         Bitstring.setExn(added, nonterminal_num, true);
         var production_set = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
                         /* String_literal */Block.__(11, [
-                            "Lr0 closure': unable to find nonterminal ",
+                            "lr0_closure': unable to find nonterminal ",
                             /* Scan_get_counter */Block.__(21, [
                                 /* Char_counter */1,
                                 /* String_literal */Block.__(11, [
@@ -370,14 +379,14 @@ function Lr0(G) {
                                   ])
                               ])
                           ]),
-                        "Lr0 closure': unable to find nonterminal %n nonterminal_production_map"
+                        "lr0_closure': unable to find nonterminal %n nonterminal_production_map"
                       ]), nonterminal_num))(Belt_MutableMapInt.get(nonterminal_production_map, nonterminal_num));
         Belt_MutableSetInt.forEach(production_set, (function (production_num) {
                 return Belt_MutableSetInt.add(nonkernel_items, mk_item$prime(production_num, 0));
               }));
         var match = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
                         /* String_literal */Block.__(11, [
-                            "Lr0 closure': unable to find nonterminal ",
+                            "lr0_closure': unable to find nonterminal ",
                             /* Scan_get_counter */Block.__(21, [
                                 /* Char_counter */1,
                                 /* String_literal */Block.__(11, [
@@ -386,7 +395,7 @@ function Lr0(G) {
                                   ])
                               ])
                           ]),
-                        "Lr0 closure': unable to find nonterminal %n in G.grammar.nonterminals"
+                        "lr0_closure': unable to find nonterminal %n in G.grammar.nonterminals"
                       ]), nonterminal_num))(Belt_MapInt.get(G[/* grammar */0][/* nonterminals */0], nonterminal_num));
         Belt_List.forEach(match[/* productions */0], (function (production) {
                 if (production) {
@@ -408,12 +417,12 @@ function Lr0(G) {
             /* nonkernel_items */Belt_SetInt.fromArray(Belt_MutableSetInt.toArray(nonkernel_items))
           ];
   };
-  var closure = function (items) {
-    return simplify_config_set(closure$prime(items));
+  var lr0_closure = function (items) {
+    return simplify_config_set(lr0_closure$prime(items));
   };
   var goto_kernel = function (item_set, symbol) {
     var result = Belt_MutableSetInt.make(/* () */0);
-    Belt_SetInt.forEach(simplify_config_set(closure$prime(item_set)), (function (item) {
+    Belt_SetInt.forEach(simplify_config_set(lr0_closure$prime(item_set)), (function (item) {
             var match = view_item(item);
             var position = match[/* position */1];
             var production_num = match[/* production_num */0];
@@ -658,7 +667,7 @@ function Lr0(G) {
   };
   var action_table = function (state, terminal_num) {
     var items = state_to_item_set(state);
-    var item_set = simplify_config_set(closure$prime(items));
+    var item_set = simplify_config_set(lr0_closure$prime(items));
     var item_set_l = Belt_SetInt.toList(item_set);
     var shift_action = Util.find_by(item_set_l, (function (item) {
             var match = view_item(item);
@@ -1059,8 +1068,8 @@ function Lr0(G) {
           /* production_cnt */production_cnt,
           /* get_nonterminal_num */get_nonterminal_num,
           /* get_nonterminal */get_nonterminal,
-          /* closure' */closure$prime,
-          /* closure */closure,
+          /* lr0_closure' */lr0_closure$prime,
+          /* lr0_closure */lr0_closure,
           /* goto_kernel */goto_kernel,
           /* grammar_symbols */grammar_symbols,
           /* mutable_lr0_items */c,

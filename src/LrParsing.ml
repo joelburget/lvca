@@ -67,12 +67,12 @@ type item = int
 type lookahead_item =
   { item : item;
     (* the set of terminals that can follow this item *)
-    lookhead_set : SI.t;
+    lookahead_set : SI.t;
   }
 
 module LookaheadItemCmp = Belt.Id.MakeComparable(struct
   type t = lookahead_item
-  let cmp { item = i1; lookhead_set = s1 } { item = i2; lookhead_set = s2 } =
+  let cmp { item = i1; lookahead_set = s1 } { item = i2; lookahead_set = s2 } =
     match Pervasives.compare i1 i2 with
       | 0 -> SI.cmp s1 s2
       | c -> c
@@ -365,7 +365,7 @@ module Lr0 (G : GRAMMAR) = struct
       get_nonterminal_num pn
 
   (** The closure of an item set. CPTT fig 4.32. *)
-  let closure' : item_set -> configuration_set
+  let lr0_closure' : item_set -> configuration_set
     = fun initial_items ->
       let added = Bitstring.alloc number_of_nonterminals false in
       let nonkernel_items = MSI.make () in
@@ -374,8 +374,11 @@ module Lr0 (G : GRAMMAR) = struct
       (* Create the set (nt_stack) of nonterminals to look at *)
       SI.forEach initial_items (fun item ->
         let { production_num; position } = view_item item in
-        let production = get_option'
-          ("closure': couldn't find production " ^ string_of_int production_num)
+        let production =
+          get_option' (Printf.sprintf
+            "lr0_closure': couldn't find production %n"
+            production_num
+          )
           @@ MMI.get production_map production_num
         in
         (* first symbol right of the dot *)
@@ -392,7 +395,7 @@ module Lr0 (G : GRAMMAR) = struct
         let is_added = added
           |. Bitstring.get nonterminal_num
           |> get_option' (Printf.sprintf
-            "Lr0 closure': couldn't find nonterminal %n in added (nonterminal count %n)"
+            "lr0_closure': couldn't find nonterminal %n in added (nonterminal count %n)"
             nonterminal_num
             (Bitstring.length added)
           )
@@ -402,7 +405,7 @@ module Lr0 (G : GRAMMAR) = struct
           let production_set =
             MMI.get nonterminal_production_map nonterminal_num
               |> get_option' (Printf.sprintf
-              "Lr0 closure': unable to find nonterminal %n nonterminal_production_map"
+              "lr0_closure': unable to find nonterminal %n nonterminal_production_map"
               nonterminal_num
               )
           in
@@ -411,7 +414,7 @@ module Lr0 (G : GRAMMAR) = struct
           );
           let { productions } = M.get G.grammar.nonterminals nonterminal_num
             |> get_option' (Printf.sprintf
-            "Lr0 closure': unable to find nonterminal %n in G.grammar.nonterminals"
+            "lr0_closure': unable to find nonterminal %n in G.grammar.nonterminals"
             nonterminal_num
             )
           in
@@ -428,8 +431,8 @@ module Lr0 (G : GRAMMAR) = struct
       }
 
   (* closure returning an item set (rather than a configuration set) *)
-  let closure : item_set -> item_set
-    = fun items -> simplify_config_set @@ closure' items
+  let lr0_closure : item_set -> item_set
+    = fun items -> simplify_config_set @@ lr0_closure' items
 
   (* Examine for items with the nonterminal immediately to the right of the
    * dot. Move the dot over the nonterminal.
@@ -437,7 +440,7 @@ module Lr0 (G : GRAMMAR) = struct
   let goto_kernel : item_set -> symbol -> item_set
     = fun item_set symbol ->
       let result = MSI.make () in
-      SI.forEach (closure item_set) (fun item ->
+      SI.forEach (lr0_closure item_set) (fun item ->
         let { production_num; position } = view_item item in
         let production = production_map
           |. MMI.get production_num
@@ -648,7 +651,7 @@ module Lr0 (G : GRAMMAR) = struct
       Util.InvariantViolation _ -> None
 
   let action_table state terminal_num =
-    let item_set = closure @@ state_to_item_set state in
+    let item_set = lr0_closure @@ state_to_item_set state in
 
     let item_set_l = SI.toList item_set in
 

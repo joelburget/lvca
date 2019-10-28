@@ -289,11 +289,11 @@ Jest.describe("LrParsing", (function (param) {
           expected7_001
         ];
         Jest.testAll("closure", /* :: */[
-              Jest.Expect[/* toEqual */12](expected0, Jest.Expect[/* expect */0](Curry._1(Lr0$prime[/* closure' */17], Belt_SetInt.fromArray(items0)))),
+              Jest.Expect[/* toEqual */12](expected0, Jest.Expect[/* expect */0](Curry._1(Lr0$prime[/* lr0_closure' */17], Belt_SetInt.fromArray(items0)))),
               /* :: */[
-                Jest.Expect[/* toEqual */12](expected1, Jest.Expect[/* expect */0](Curry._1(Lr0$prime[/* closure' */17], Belt_SetInt.fromArray(items1)))),
+                Jest.Expect[/* toEqual */12](expected1, Jest.Expect[/* expect */0](Curry._1(Lr0$prime[/* lr0_closure' */17], Belt_SetInt.fromArray(items1)))),
                 /* :: */[
-                  Jest.Expect[/* toEqual */12](expected7, Jest.Expect[/* expect */0](Curry._1(Lr0$prime[/* closure' */17], Belt_SetInt.fromArray(items7)))),
+                  Jest.Expect[/* toEqual */12](expected7, Jest.Expect[/* expect */0](Curry._1(Lr0$prime[/* lr0_closure' */17], Belt_SetInt.fromArray(items7)))),
                   /* [] */0
                 ]
               ]
@@ -311,7 +311,7 @@ Jest.describe("LrParsing", (function (param) {
                 Jest.Expect[/* toEqual */12](/* record */[
                       /* kernel_items */goto_kernel,
                       /* nonkernel_items */goto_nonkernel
-                    ], Jest.Expect[/* expect */0](Curry._1(Lr0$prime[/* closure' */17], Curry._2(Lr0$prime[/* goto_kernel */19], Belt_SetInt.fromArray(items1), /* Terminal */Block.__(0, [1]))))),
+                    ], Jest.Expect[/* expect */0](Curry._1(Lr0$prime[/* lr0_closure' */17], Curry._2(Lr0$prime[/* goto_kernel */19], Belt_SetInt.fromArray(items1), /* Terminal */Block.__(0, [1]))))),
                 /* [] */0
               ]
             ], Util.id);
