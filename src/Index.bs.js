@@ -30,7 +30,7 @@ var Belt_MutableQueue = require("bs-platform/lib/js/belt_MutableQueue.js");
 var ReactCodemirror2 = require("react-codemirror2");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 
-function read_eval_input(language, concrete, statics, dynamics, input) {
+function read_and_eval(language, concrete, statics, dynamics, input) {
   var match;
   var exit = 0;
   var val;
@@ -161,7 +161,7 @@ function shift_from_to(shift_from, shift_to, elem) {
 
 function step_forward(language, concrete, statics, dynamics, param) {
   var input = param[/* input */2];
-  var match = read_eval_input(language, concrete, statics, dynamics, input);
+  var match = read_and_eval(language, concrete, statics, dynamics, input);
   var match$1 = shift_from_to(param[/* after */1], param[/* before */0], /* record */[
         /* input */input,
         /* parsed */match[0],
@@ -176,7 +176,7 @@ function step_forward(language, concrete, statics, dynamics, param) {
 
 function step_back(language, concrete, statics, dynamics, param) {
   var input = param[/* input */2];
-  var match = read_eval_input(language, concrete, statics, dynamics, input);
+  var match = read_and_eval(language, concrete, statics, dynamics, input);
   var match$1 = shift_from_to(param[/* before */0], param[/* after */1], /* record */[
         /* input */input,
         /* parsed */match[0],
@@ -233,7 +233,7 @@ function Index$Repl(Props) {
   var options = {
     mode: "lvca"
   };
-  var match = read_eval_input(language, concrete, statics, dynamics, input);
+  var match = read_and_eval(language, concrete, statics, dynamics, input);
   var handleKey = function (_editor, evt) {
     var key = evt.key;
     var shift = evt.shiftKey;
@@ -716,7 +716,7 @@ function Index$ReplPane(Props) {
                                         if (after) {
                                           return step_forward(language, concrete, statics, dynamics, hist);
                                         } else {
-                                          var match = read_eval_input(language, concrete, statics, dynamics, input);
+                                          var match = read_and_eval(language, concrete, statics, dynamics, input);
                                           var before$prime_000 = /* record */[
                                             /* input */input,
                                             /* parsed */match[0],
@@ -963,7 +963,7 @@ var LrTables = 0;
 exports.Result = Result;
 exports.Grammar = Grammar;
 exports.LrTables = LrTables;
-exports.read_eval_input = read_eval_input;
+exports.read_and_eval = read_and_eval;
 exports.shift_from_to = shift_from_to;
 exports.step_forward = step_forward;
 exports.step_back = step_back;

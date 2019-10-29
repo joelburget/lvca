@@ -19,7 +19,7 @@ type history = {
 };
 
 /* Read and evaluate the user's input */
-let read_eval_input = (language, concrete, statics, dynamics, input)
+let read_and_eval = (language, concrete, statics, dynamics, input)
   : (parse_result, eval_result) => {
     open Core;
 
@@ -54,7 +54,7 @@ let read_eval_input = (language, concrete, statics, dynamics, input)
           | exception _ => Js.log("check failure")
         };
 
-        switch (Belt.Result.flatMap(term_denotation(dynamics, [], abtResult'), eval')) {
+        switch (Result.flatMap(term_denotation(dynamics, [], abtResult'), eval')) {
         | Ok(core_val) => (astResult, Ok(core_val))
         | Error(msg)   => (astResult, Error(msg)) // Error((msg, Some(abtResult'))))
         }
@@ -83,7 +83,8 @@ let step_forward (
   {input, before, after} : history,
   ) : history
   = {
-    let (parsed, result) = read_eval_input(language, concrete, statics, dynamics, input);
+    let (parsed, result) =
+      read_and_eval(language, concrete, statics, dynamics, input);
     let (after, before, elem) =
       shift_from_to(after, before, { input, result, parsed });
     {before, after, input: elem.input}
@@ -97,7 +98,8 @@ let step_back (
   {input, before, after} : history,
   ) : history
   = {
-    let (parsed, result) = read_eval_input(language, concrete, statics, dynamics, input);
+    let (parsed, result) =
+      read_and_eval(language, concrete, statics, dynamics, input);
     let (before, after, elem) =
       shift_from_to(before, after, { input, result, parsed });
     {before, after, input: elem.input}
@@ -163,7 +165,7 @@ module Repl = {
 /*     }; */
 
     let (parsed, evalResult) =
-      read_eval_input(language, concrete, statics, dynamics, input);
+      read_and_eval(language, concrete, statics, dynamics, input);
 
     let handleKey = (_editor, evt) => {
       let key = CodeMirror.keyGet(evt);
@@ -610,16 +612,23 @@ module ReplPane = {
           handleEnter=(() => setHistory(({input, before, after} as hist) => {
             switch (after) {
               | [] =>
-                let (parsed, result) = read_eval_input(language, concrete, statics, dynamics, input);
+                let (parsed, result) =
+                  read_and_eval(language, concrete, statics, dynamics, input);
                 let before' = [ { input, parsed, result }, ...before ];
                 {before: before', after, input: ""}
               | _ => step_forward(language, concrete, statics, dynamics, hist)
             }
           }))
           handleUp=(n =>
-            setHistory(hist => go_back(language, concrete, statics, dynamics, hist, n)))
+            setHistory(hist =>
+              go_back(language, concrete, statics, dynamics, hist, n)
+            )
+          )
           handleDown=(n =>
-            setHistory(hist => go_forward(language, concrete, statics, dynamics, hist, n)))
+            setHistory(hist =>
+              go_forward(language, concrete, statics, dynamics, hist, n)
+            )
+          )
         />
       </div>
     </div>

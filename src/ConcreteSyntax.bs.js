@@ -934,7 +934,7 @@ function parse(desc, str) {
               /* var_capture */1
             ]
           ]]);
-    var match = Curry._2(Lr0$prime[/* lex_and_parse */47], lexer, str);
+    var match = Curry._2(Lr0$prime[/* lex_and_parse */46], lexer, str);
     if (match.tag) {
       var match$1 = match[0];
       if (match$1.tag) {
