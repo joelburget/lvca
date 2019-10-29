@@ -7,6 +7,7 @@ var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Printf = require("bs-platform/lib/js/printf.js");
 var Belt_Id = require("bs-platform/lib/js/belt_Id.js");
+var Belt_Set = require("bs-platform/lib/js/belt_Set.js");
 var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Bitstring = require("./Bitstring.bs.js");
@@ -48,6 +49,10 @@ function cmp$1(param, param$1) {
 }
 
 var LookaheadItemCmp = Belt_Id.MakeComparable(/* module */[/* cmp */cmp$1]);
+
+var cmp$2 = Caml_obj.caml_compare;
+
+var LookaheadClosureItemCmp = Belt_Id.MakeComparable(/* module */[/* cmp */cmp$2]);
 
 function view_item(item) {
   return /* record */[
@@ -314,6 +319,131 @@ function Lr0(G) {
   };
   var get_nonterminal = function (pn) {
     return Util.get_option$prime("get_nonterminal: couldn't find production " + String(pn))(Belt_MapInt.get(G[/* grammar */0][/* nonterminals */0], get_nonterminal_num(pn)));
+  };
+  var lr1_closure$prime = function (initial_items) {
+    var nonkernel_items = Belt_MutableMapInt.make(/* () */0);
+    var stack = Belt_MutableSet.make(LookaheadClosureItemCmp);
+    Belt_Set.forEach(initial_items, (function (lookahead_item) {
+            var match = view_item(lookahead_item[/* item */0]);
+            var position = match[/* position */1];
+            var production_num = match[/* production_num */0];
+            var production = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                            /* String_literal */Block.__(11, [
+                                "lr0_closure': couldn't find production ",
+                                /* Scan_get_counter */Block.__(21, [
+                                    /* Char_counter */1,
+                                    /* End_of_format */0
+                                  ])
+                              ]),
+                            "lr0_closure': couldn't find production %n"
+                          ]), production_num))(Belt_MutableMapInt.get(production_map, production_num));
+            return Belt_SetInt.forEach(lookahead_item[/* lookahead_set */1], (function (lookahead_terminal_num) {
+                          var match = Belt_List.get(production, position);
+                          if (match !== undefined) {
+                            var match$1 = match;
+                            if (match$1.tag) {
+                              return Belt_MutableSet.add(stack, /* tuple */[
+                                          match$1[0],
+                                          lookahead_terminal_num
+                                        ]);
+                            } else {
+                              return /* () */0;
+                            }
+                          } else {
+                            return /* () */0;
+                          }
+                        }));
+          }));
+    while(!Belt_MutableSet.isEmpty(stack)) {
+      var set_min = Util.get_option$prime("the set is not empty!")(Belt_MutableSet.minimum(stack));
+      var lookahead = set_min[1];
+      var nonterminal_num = set_min[0];
+      Belt_MutableSet.remove(stack, set_min);
+      var is_added = Belt_MutableMapInt.has(nonkernel_items, nonterminal_num);
+      if (!is_added) {
+        var production_set = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                        /* String_literal */Block.__(11, [
+                            "lr0_closure': unable to find nonterminal ",
+                            /* Scan_get_counter */Block.__(21, [
+                                /* Char_counter */1,
+                                /* String_literal */Block.__(11, [
+                                    " nonterminal_production_map",
+                                    /* End_of_format */0
+                                  ])
+                              ])
+                          ]),
+                        "lr0_closure': unable to find nonterminal %n nonterminal_production_map"
+                      ]), nonterminal_num))(Belt_MutableMapInt.get(nonterminal_production_map, nonterminal_num));
+        Belt_MutableSetInt.forEach(production_set, (function(nonterminal_num,lookahead){
+            return function (production_num) {
+              var old_set = Belt_MutableMapInt.getExn(nonkernel_items, nonterminal_num);
+              return Belt_MutableSetInt.add(old_set, lookahead);
+            }
+            }(nonterminal_num,lookahead)));
+        var match = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                        /* String_literal */Block.__(11, [
+                            "lr0_closure': unable to find nonterminal ",
+                            /* Scan_get_counter */Block.__(21, [
+                                /* Char_counter */1,
+                                /* String_literal */Block.__(11, [
+                                    " in G.grammar.nonterminals",
+                                    /* End_of_format */0
+                                  ])
+                              ])
+                          ]),
+                        "lr0_closure': unable to find nonterminal %n in G.grammar.nonterminals"
+                      ]), nonterminal_num))(Belt_MapInt.get(G[/* grammar */0][/* nonterminals */0], nonterminal_num));
+        Belt_List.forEach(match[/* productions */0], (function(lookahead){
+            return function (param) {
+              if (param) {
+                var match = param[0];
+                if (match.tag) {
+                  return Belt_MutableSet.add(stack, /* tuple */[
+                              match[0],
+                              lookahead
+                            ]);
+                } else {
+                  return /* () */0;
+                }
+              } else {
+                return Pervasives.failwith("Empty production");
+              }
+            }
+            }(lookahead)));
+      }
+      
+    };
+    return /* record */[
+            /* kernel_items */initial_items,
+            /* nonkernel_items */Belt_Set.fromArray(Belt_Array.concatMany(Belt_Array.map(Belt_MutableMapInt.toArray(nonkernel_items), (function (param) {
+                            var mut_lookahead_set = param[1];
+                            var nonterminal_num = param[0];
+                            var production_set = Util.get_option$prime(Curry._1(Printf.sprintf(/* Format */[
+                                            /* String_literal */Block.__(11, [
+                                                "lr0_closure': unable to find nonterminal ",
+                                                /* Scan_get_counter */Block.__(21, [
+                                                    /* Char_counter */1,
+                                                    /* String_literal */Block.__(11, [
+                                                        " nonterminal_production_map",
+                                                        /* End_of_format */0
+                                                      ])
+                                                  ])
+                                              ]),
+                                            "lr0_closure': unable to find nonterminal %n nonterminal_production_map"
+                                          ]), nonterminal_num))(Belt_MutableMapInt.get(nonterminal_production_map, nonterminal_num));
+                            return Belt_Array.map(Belt_MutableSetInt.toArray(production_set), (function (production_num) {
+                                          var item = mk_item(/* record */[
+                                                /* production_num */production_num,
+                                                /* position */0
+                                              ]);
+                                          var lookahead_set = Belt_SetInt.fromArray(Belt_MutableSetInt.toArray(mut_lookahead_set));
+                                          return /* record */[
+                                                  /* item */item,
+                                                  /* lookahead_set */lookahead_set
+                                                ];
+                                        }));
+                          }))), LookaheadItemCmp)
+          ];
   };
   var lr0_closure$prime = function (initial_items) {
     var added = Bitstring.alloc(number_of_nonterminals, false);
@@ -1068,6 +1198,7 @@ function Lr0(G) {
           /* production_cnt */production_cnt,
           /* get_nonterminal_num */get_nonterminal_num,
           /* get_nonterminal */get_nonterminal,
+          /* lr1_closure' */lr1_closure$prime,
           /* lr0_closure' */lr0_closure$prime,
           /* lr0_closure */lr0_closure,
           /* goto_kernel */goto_kernel,
@@ -1151,6 +1282,7 @@ exports.get_option$prime = get_option$prime;
 exports.invariant_violation = invariant_violation;
 exports.SymbolCmp = SymbolCmp;
 exports.LookaheadItemCmp = LookaheadItemCmp;
+exports.LookaheadClosureItemCmp = LookaheadClosureItemCmp;
 exports.view_item = view_item;
 exports.mk_item$prime = mk_item$prime;
 exports.mk_item = mk_item;

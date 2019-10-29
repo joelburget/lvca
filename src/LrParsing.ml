@@ -78,6 +78,11 @@ module LookaheadItemCmp = Belt.Id.MakeComparable(struct
       | c -> c
 end)
 
+module LookaheadClosureItemCmp = Belt.Id.MakeComparable(struct
+  type t = nonterminal_num * terminal_num
+  let cmp = Pervasives.compare
+end)
+
 (* TODO: do we use this? *)
 type lookahead_item_set = (lookahead_item, LookaheadItemCmp.identity) S.t
 
@@ -367,6 +372,112 @@ module Lr0 (G : GRAMMAR) = struct
         ("get_nonterminal: couldn't find production " ^ string_of_int pn) @@
       M.get G.grammar.nonterminals @@
       get_nonterminal_num pn
+
+  let lr1_closure' : lookahead_item_set -> lookahead_configuration_set
+    = fun initial_items ->
+
+      (* Map from nonterminal number to a (mutable) set of tokens in the
+       * lookahead set
+       *)
+      let nonkernel_items = MMI.make () in
+
+      (* Set of (nonterminal, terminal that might be in its lookahead set) to
+       * consider.
+       *)
+      let stack = MSet.make ~id:(module LookaheadClosureItemCmp) in
+
+      (* For each initial item, add an entry to the stack containing a
+       * nonterminal and lookahead set to consider.
+       * TODO: should this be a set of lookahead tokens instead of a single one?
+       *)
+      S.forEach initial_items (fun lookahead_item ->
+        let { lookahead_set; item } = lookahead_item in
+        let { production_num; position } = view_item item in
+        let production =
+          get_option' (Printf.sprintf
+            "lr0_closure': couldn't find production %n"
+            production_num
+          )
+          @@ MMI.get production_map production_num
+        in
+        lookahead_set |. SI.forEach (fun lookahead_terminal_num ->
+          (* first symbol right of the dot *)
+          match L.get production position with
+            | Some (Nonterminal nt) ->
+                (* MSI.add nt_stack nt *)
+                MSet.add stack (nt, lookahead_terminal_num)
+            | _                     -> ()
+        )
+      );
+
+      (* Consider every (nonterminal, lookahead terminal pair), adding it to
+       * the nonkernel_items set if appropriate, and adding new entries to the
+       * stack if appropriate
+       *)
+      while not (MSet.isEmpty stack) do
+        let (nonterminal_num, lookahead) as set_min =
+          get_option' "the set is not empty!" @@ MSet.minimum stack
+        in
+        MSet.remove stack set_min;
+
+        let is_added = MMI.has nonkernel_items nonterminal_num in
+
+        if not is_added then (
+          let production_set =
+            MMI.get nonterminal_production_map nonterminal_num
+              |> get_option' (Printf.sprintf
+              "lr0_closure': unable to find nonterminal %n nonterminal_production_map"
+              nonterminal_num
+              )
+          in
+          MSI.forEach production_set (fun production_num ->
+            (* XXX doesn't use production_num *)
+            let old_set = MMI.getExn nonkernel_items nonterminal_num in
+            MSI.add old_set lookahead;
+          );
+          (* XXX what's the point of nonterminal_production_map given we can just do this? *)
+          let { productions } = M.get G.grammar.nonterminals nonterminal_num
+            |> get_option' (Printf.sprintf
+            "lr0_closure': unable to find nonterminal %n in G.grammar.nonterminals"
+            nonterminal_num
+            )
+          in
+          L.forEach productions (function
+            | Terminal _         :: _ -> ()
+            | Nonterminal new_nt :: _ ->
+              (* XXX do we need to modify lookahead? *)
+              MSet.add stack (new_nt, lookahead)
+            | _                       -> failwith "Empty production"
+          )
+        )
+      done;
+
+      { kernel_items = initial_items;
+        nonkernel_items = nonkernel_items
+          |. MMI.toArray
+          |. A.map (fun (nonterminal_num, mut_lookahead_set) ->
+            let production_set =
+              MMI.get nonterminal_production_map nonterminal_num
+                |> get_option' (Printf.sprintf
+                "lr0_closure': unable to find nonterminal %n nonterminal_production_map"
+                nonterminal_num
+                )
+            in
+
+            production_set
+              |. MSI.toArray
+              |. A.map (fun production_num ->
+                let item = mk_item { production_num; position = 0 } in
+                let lookahead_set = mut_lookahead_set
+                  |. MSI.toArray
+                  |. SI.fromArray
+                in
+                { item; lookahead_set }
+              )
+          )
+          |. A.concatMany
+          |. S.fromArray ~id:(module LookaheadItemCmp);
+      }
 
   (** The closure of an item set. CPTT fig 4.32. *)
   let lr0_closure' : item_set -> configuration_set
