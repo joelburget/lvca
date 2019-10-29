@@ -142,7 +142,7 @@ end
 module Cbor = struct
   type t
 
-  external cbor : t = "./cbor" [@@bs.module]
+  external cbor : t = "cbor" [@@bs.module]
 
   let encode_ab (it : Js.Json.t) : ArrayBuffer.t
     = ([%raw "function(cbor, it) { return cbor.encode(it); }"]
