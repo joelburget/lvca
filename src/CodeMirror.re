@@ -1,5 +1,5 @@
 [@bs.module "codemirror/keymap/vim"] external _vimImport : unit = "default";
-[@bs.module] external _modeImport : unit = "./lvca-mode";
+[@bs.module] external _modeImport : unit = "lvca-mode";
 
 [@bs.deriving abstract]
 type options = {
