@@ -1,5 +1,5 @@
 {
-open LanguageParser
+open Language_Parser
 open LexerUtil
 }
 

@@ -3,6 +3,11 @@ open Types
 module M = Belt.Map.String
 module BL = Belt.List
 
+(* TODO: untangle Statics_Lexer -> Statics_Parser -> Statics *)
+(* module Lexer = Statics_Lexer *)
+(* module Parser = Statics_Parser *)
+module ParseErrors = Statics_ParseErrors
+
 type scope = Scope of string list * term
 
 and term =

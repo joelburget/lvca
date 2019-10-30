@@ -2,9 +2,9 @@ open Jest
 open Expect
 open Types
 
-let _ = describe "LanguageParser" (fun () ->
+let _ = describe "Language.Parser" (fun () ->
   let expectParse str lang = test ("'" ^ str ^ "'") (fun () ->
-    expect (LanguageParser.language_def LanguageLexer.read (Lexing.from_string str))
+    expect (Language_Parser.language_def Language_Lexer.read (Lexing.from_string str))
     |> toEqual lang
   ) in
 

@@ -1,5 +1,5 @@
 {
-open StaticsParser
+open Statics_Parser
 open LexerUtil
 }
 

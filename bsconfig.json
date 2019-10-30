@@ -9,43 +9,43 @@
       "generators" : [
         {
           "name" : "menhir",
-          "edge" : ["LanguageParser.ml", "LanguageParser.mli", ":", "LanguageParser.mly"]
+          "edge" : ["Language_Parser.ml", "Language_Parser.mli", ":", "Language_Parser.mly"]
         },
         {
           "name" : "ocamllex",
-          "edge" : ["LanguageLexer.ml", ":", "LanguageLexer.mll"]
+          "edge" : ["Language_Lexer.ml", ":", "Language_Lexer.mll"]
         },
         {
           "name" : "menhir-parserlib",
-          "edge" : ["StaticsParser.ml", "StaticsParser.mli", ":", "StaticsParser.mly"]
+          "edge" : ["Statics_Parser.ml", "Statics_Parser.mli", ":", "Statics_Parser.mly"]
         },
         {
           "name" : "ocamllex",
-          "edge" : ["StaticsLexer.ml", ":", "StaticsLexer.mll"]
+          "edge" : ["Statics_Lexer.ml", ":", "Statics_Lexer.mll"]
         },
         {
           "name" : "menhir-parserlib",
-          "edge" : ["DynamicsParser.ml", "DynamicsParser.mli", ":", "DynamicsParser.mly"]
+          "edge" : ["Dynamics_Parser.ml", "Dynamics_Parser.mli", ":", "Dynamics_Parser.mly"]
         },
         {
           "name" : "ocamllex",
-          "edge" : ["DynamicsLexer.ml", ":", "DynamicsLexer.mll"]
+          "edge" : ["Dynamics_Lexer.ml", ":", "Dynamics_Lexer.mll"]
         },
         {
           "name" : "menhir",
-          "edge" : ["TermParser.ml", "TermParser.mli", ":", "TermParser.mly"]
+          "edge" : ["Term_Parser.ml", "Term_Parser.mli", ":", "Term_Parser.mly"]
         },
         {
           "name" : "ocamllex",
-          "edge" : ["TermLexer.ml", ":", "TermLexer.mll"]
+          "edge" : ["Term_Lexer.ml", ":", "Term_Lexer.mll"]
         },
         {
           "name" : "menhir",
-          "edge" : ["ConcreteSyntaxParser.ml", "ConcreteSyntaxParser.mli", ":", "ConcreteSyntaxParser.mly"]
+          "edge" : ["ConcreteSyntax_Parser.ml", "ConcreteSyntax_Parser.mli", ":", "ConcreteSyntax_Parser.mly"]
         },
         {
           "name" : "ocamllex",
-          "edge" : ["ConcreteSyntaxLexer.ml", ":", "ConcreteSyntaxLexer.mll"]
+          "edge" : ["ConcreteSyntax_Lexer.ml", ":", "ConcreteSyntax_Lexer.mll"]
         }
       ]
     },

@@ -1,6 +1,10 @@
 open Binding
 open Types
 
+module Lexer = ConcreteSyntax_Lexer
+module Parser = ConcreteSyntax_Parser
+module ParseErrors = ConcreteSyntax_ParseErrors
+
 type prim_ty =
   | Integer
   | String

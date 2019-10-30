@@ -1,5 +1,5 @@
 {
-open DynamicsParser
+open Dynamics_Parser
 open LexerUtil
 
 module L = Lexing

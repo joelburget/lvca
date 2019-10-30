@@ -7,7 +7,7 @@ let _ = describe "TermParser" (fun () ->
   let open Nominal in
 
   let expectParse str tm = test ("'" ^ str ^ "'") (fun () ->
-    expect (TermParser.top_term TermLexer.read (Lexing.from_string str))
+    expect (Term.Parser.top_term Term.Lexer.read (Lexing.from_string str))
     |> toEqual tm
   ) in
 

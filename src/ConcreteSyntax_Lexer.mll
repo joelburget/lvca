@@ -1,5 +1,5 @@
 {
-open ConcreteSyntaxParser
+open ConcreteSyntax_Parser
 open LexerUtil
 
 module L = Lexing

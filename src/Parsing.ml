@@ -57,53 +57,53 @@ end
 
 module Parseable_term : (Parseable with type t = Binding.Nominal.term) = struct
   type t                   = Binding.Nominal.term
-  module MenhirInterpreter = TermParser.MenhirInterpreter
-  module ParseErrors       = TermParseErrors
-  module Lexer             = TermLexer
+  module MenhirInterpreter = Term.Parser.MenhirInterpreter
+  module ParseErrors       = Term.ParseErrors
+  module Lexer             = Term.Lexer
   module Parser            = struct
-    let parse = TermParser.Incremental.top_term
+    let parse = Term.Parser.Incremental.top_term
   end
 end
 
 module Parseable_language : (Parseable with type t = Types.language) = struct
   type t                   = Types.language
-  module MenhirInterpreter = LanguageParser.MenhirInterpreter
-  module ParseErrors       = LanguageParseErrors
-  module Lexer             = LanguageLexer
+  module MenhirInterpreter = Language.Parser.MenhirInterpreter
+  module ParseErrors       = Language.ParseErrors
+  module Lexer             = Language.Lexer
   module Parser            = struct
-    let parse = LanguageParser.Incremental.language_def
+    let parse = Language.Parser.Incremental.language_def
   end
 end
 
 module Parseable_statics
   : (Parseable with type t = Statics.rule list) = struct
   type t                   = Statics.rule list
-  module MenhirInterpreter = StaticsParser.MenhirInterpreter
-  module ParseErrors       = StaticsParseErrors
-  module Lexer             = StaticsLexer
+  module MenhirInterpreter = Statics_Parser.MenhirInterpreter
+  module ParseErrors       = Statics.ParseErrors
+  module Lexer             = Statics_Lexer
   module Parser            = struct
-    let parse = StaticsParser.Incremental.rules
+    let parse = Statics_Parser.Incremental.rules
   end
 end
 
 module Parseable_dynamics
   : (Parseable with type t = Core.denotation_chart) = struct
   type t                   = Core.denotation_chart
-  module MenhirInterpreter = DynamicsParser.MenhirInterpreter
-  module ParseErrors       = DynamicsParseErrors
-  module Lexer             = DynamicsLexer
+  module MenhirInterpreter = Dynamics.Parser.MenhirInterpreter
+  module ParseErrors       = Dynamics.ParseErrors
+  module Lexer             = Dynamics.Lexer
   module Parser            = struct
-    let parse = DynamicsParser.Incremental.dynamics
+    let parse = Dynamics.Parser.Incremental.dynamics
   end
 end
 
 module Parseable_concrete_syntax
   : (Parseable with type t = Types.ConcreteSyntaxDescription.t) = struct
   type t                   = Types.ConcreteSyntaxDescription.t
-  module MenhirInterpreter = ConcreteSyntaxParser.MenhirInterpreter
-  module ParseErrors       = ConcreteSyntaxParseErrors
-  module Lexer             = ConcreteSyntaxLexer
+  module MenhirInterpreter = ConcreteSyntax.Parser.MenhirInterpreter
+  module ParseErrors       = ConcreteSyntax.ParseErrors
+  module Lexer             = ConcreteSyntax.Lexer
   module Parser            = struct
-    let parse = ConcreteSyntaxParser.Incremental.language
+    let parse = ConcreteSyntax.Parser.Incremental.language
   end
 end

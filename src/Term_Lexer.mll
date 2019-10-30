@@ -1,5 +1,5 @@
 {
-open TermParser
+open Term_Parser
 open LexerUtil
 
 module L = Lexing
