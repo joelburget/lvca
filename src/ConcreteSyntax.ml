@@ -39,7 +39,6 @@ type nonterminal_capture = tree
 and capture =
   | TerminalCapture    of terminal_capture
   | NonterminalCapture of nonterminal_capture
-  | SpaceCapture       of string
 
 (* Inspired by:
  * - https://github.com/apple/swift/tree/master/lib/Syntax
@@ -71,7 +70,6 @@ let rec equivalent t1 t2 =
 and equivalent' child1 child2 = match child1, child2 with
   | TerminalCapture     tc1, TerminalCapture     tc2 -> tc1 = tc2
   | NonterminalCapture ntc1, NonterminalCapture ntc2 -> equivalent ntc1 ntc2
-  | SpaceCapture       str1, SpaceCapture       str2 -> str1 = str2
   |                       _,                       _ -> false
 
 let find_operator_match
@@ -273,7 +271,6 @@ let check_description_validity { terminal_rules; sort_rules } =
                 then raise (CheckValidExn (InvalidGrammar
                   "Uncaptured regex which is not a string literal"))
             )
-            | Underscore -> ()
           )
         );
       );
@@ -328,16 +325,11 @@ let rec of_ast
     in
 
     (* Map each token to a subtree. For each token:
-      * if it's a space, ignore it
       * if it's a terminal, print it
       * if it's a nonterminal, look up the subterm (by token number)
     *)
     let children = BL.(tokens
       |. mapWithIndex (fun token_ix token -> token_ix, token)
-      |. keep (fun (_, tok) -> match tok with
-        | Underscore -> false
-        | _          -> true
-        )
       |. toArray
       )
       |. BA.map (fun (token_ix, token) ->
@@ -400,9 +392,6 @@ let rec of_ast
           ("binder (" ^ binder_name ^ ") found, nonterminal name: " ^ name))
         | NotFound, NonterminalName name
         -> raise (BadRules ("subterm not found, nonterminal name: " ^ name))
-
-        (* need to attach trivia to node *)
-        | _, Underscore -> assert false
     ) in
 
     mk_tree current_sort (Operator op_name) children
@@ -434,7 +423,6 @@ let rec to_string { leading_trivia; children; trailing_trivia } =
       -> leading_trivia ^ content ^ trailing_trivia
       | NonterminalCapture nonterminal_capture
       -> to_string nonterminal_capture
-      | SpaceCapture str -> str
       )
     |> BL.fromArray
     |> String.concat ""
@@ -443,11 +431,10 @@ let rec to_string { leading_trivia; children; trailing_trivia } =
 let rec remove_spaces : tree -> tree
   = fun { sort; node_type; leading_trivia; trailing_trivia; children }
     -> let children' = children
-         |> Util.array_map_keep (function
-           | SpaceCapture _ -> None
-           | TerminalCapture tc -> Some (TerminalCapture tc)
+         |. BA.map (function
+           | TerminalCapture tc -> TerminalCapture tc
            | NonterminalCapture ntc
-           -> Some (NonterminalCapture (remove_spaces ntc))
+           -> NonterminalCapture (remove_spaces ntc)
          )
        in { sort; node_type; leading_trivia; trailing_trivia; children = children' }
 
@@ -461,8 +448,6 @@ let rec to_ast lang tree
     | Sequence, _ -> Result.map
       (traverse_array_result
         (function
-          | SpaceCapture _
-          -> failwith "invariant violation: space found in to_ast sequence"
           | TerminalCapture _ -> Error "TODO: message"
           | NonterminalCapture child -> to_ast lang child
         )
@@ -484,8 +469,6 @@ let rec to_ast lang tree
         |. BA.keepMap (function
           | TerminalCapture { content }
           -> None
-          | SpaceCapture _
-          -> failwith "invariant violation: space found in to_ast"
           | NonterminalCapture child
           -> Some (scope_to_ast lang child)
         )
@@ -504,8 +487,6 @@ and scope_to_ast lang ({ children } as tree)
     | Ok body' -> binders
       |> traverse_list_result
         (function
-          | SpaceCapture _
-          -> failwith "invariant violation: space found in to_ast"
           | TerminalCapture { content = binder_name }
           -> Ok binder_name
           | NonterminalCapture _nonterminal_capture
@@ -558,14 +539,6 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
                   |. MS.get ntn
                   |> get_option'
                     ("to_grammar: failed to get " ^ ntn)
-                )
-                | Underscore
-                -> Terminal (terminal_nums_map
-                  (* XXX name consistency -- is it SPACE or WHITESPACE? (it
-                   * shouldn't be here anyway) *)
-                  |. MS.get "SPACE"
-                  |> get_option'
-                    ("to_grammar: failed to get SPACE")
                 )
               )
             )
@@ -684,9 +657,6 @@ let tree_of_parse_result
             |. BL.map (function (parse_result, token) -> match token with
               | TerminalName tn -> TerminalCapture (go_t parse_result)
               | NonterminalName ntn -> NonterminalCapture (go_nt ntn parse_result)
-              (* Attach whitespace to its neighbor *)
-              | Underscore -> SpaceCapture " " (* TODO *)
-              (* (terminal_capture, nonterminal_capture) Either.t *)
             )
             |. BL.toArray
         }

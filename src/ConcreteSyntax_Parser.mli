@@ -2,7 +2,6 @@
 (* The type of tokens. *)
 
 type token = 
-  | UNDERSCORE
   | TERMINAL_ID of (string)
   | STRING of (string)
   | STAR

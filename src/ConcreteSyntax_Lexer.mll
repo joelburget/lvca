@@ -34,8 +34,6 @@ rule read = parse
   | '+'            { PLUS }
   | '?'            { QUESTION }
   | ';'            { SEMICOLON }
-  | '_'            { UNDERSCORE }
-  | '_'            { UNDERSCORE }
   | '>'            { GREATER }
   | "%left"        { LEFT_FIXITY }
   | "%right"       { RIGHT_FIXITY }

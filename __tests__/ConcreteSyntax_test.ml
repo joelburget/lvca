@@ -32,12 +32,12 @@ let _ = describe "ConcreteSyntax" (fun () ->
   SPACE  := [ ]+
 
   arith :=
-    | LPAREN arith RPAREN { $2          }
-    > arith _ MUL _ arith { mul($1; $5) } %left
-    | arith _ DIV _ arith { div($1; $5) } %left
-    > arith _ ADD _ arith { add($1; $5) } %left
-    | arith _ SUB _ arith { sub($1; $5) } %left
-    > NAME                { var($1)     }
+    | LPAREN arith RPAREN         { $2          }
+    > arith SPACE MUL SPACE arith { mul($1; $5) } %left
+    | arith SPACE DIV SPACE arith { div($1; $5) } %left
+    > arith SPACE ADD SPACE arith { add($1; $5) } %left
+    | arith SPACE SUB SPACE arith { sub($1; $5) } %left
+    > NAME                        { var($1)     }
   |}
   in
 

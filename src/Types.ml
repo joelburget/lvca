@@ -238,12 +238,6 @@ module ConcreteSyntaxDescription = struct
   type nonterminal_token =
     | TerminalName    of string
     | NonterminalName of string
-    | Underscore
-
-  let token_name = function
-    | TerminalName    name -> Some name
-    | NonterminalName name -> Some name
-    | Underscore           -> None
 
   (* A term pattern with numbered holes for binder names and subterms *)
   type numbered_scope_pattern =

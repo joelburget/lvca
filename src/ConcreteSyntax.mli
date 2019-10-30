@@ -26,7 +26,6 @@ type nonterminal_capture = tree
 and capture =
   | TerminalCapture    of terminal_capture
   | NonterminalCapture of nonterminal_capture
-  | SpaceCapture       of string
 
 and tree =
   { sort            : sort;

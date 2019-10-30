@@ -17,7 +17,6 @@
 %token PLUS
 %token QUESTION
 %token SEMICOLON
-%token UNDERSCORE
 %token LEFT_FIXITY
 %token RIGHT_FIXITY
 %token GREATER
@@ -110,7 +109,6 @@ operator_match__test: operator_match EOF { $1 }
 nonterminal_token:
   | TERMINAL_ID    { TerminalName    $1 }
   | NONTERMINAL_ID { NonterminalName $1 }
-  | UNDERSCORE     { Underscore         }
 
 regex: nonempty_list(regex_piece) { $1 }
 
