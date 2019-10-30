@@ -2,10 +2,12 @@ open Jest
 open Expect
 open Types
 
-let _ = describe "Language.Parser" (fun () ->
+let _ = describe "AbstractSyntax.Parser" (fun () ->
   let expectParse str lang = test ("'" ^ str ^ "'") (fun () ->
-    expect (Language_Parser.language_def Language_Lexer.read (Lexing.from_string str))
-    |> toEqual lang
+    expect (AbstractSyntax.Parser.language_def
+      AbstractSyntax.Lexer.read
+      (Lexing.from_string str)
+    ) |> toEqual lang
   ) in
 
   let module M = Belt.Map.String in

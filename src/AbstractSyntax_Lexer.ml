@@ -1,9 +1,9 @@
-# 1 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.mll"
+# 1 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.mll"
  
-open Language_Parser
+open AbstractSyntax_Parser
 open LexerUtil
 
-# 7 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.ml"
+# 7 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base =
    "\000\000\245\255\247\255\248\255\249\255\250\255\251\255\252\255\
@@ -122,59 +122,59 @@ let rec read lexbuf =
 and __ocaml_lex_read_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 12 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.mll"
+# 12 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.mll"
              ( read lexbuf )
-# 128 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.ml"
+# 128 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.ml"
 
   | 1 ->
-# 13 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.mll"
+# 13 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.mll"
              ( ID (Lexing.lexeme lexbuf) )
-# 133 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.ml"
+# 133 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.ml"
 
   | 2 ->
-# 14 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.mll"
+# 14 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.mll"
              ( ASSIGN )
-# 138 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.ml"
+# 138 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.ml"
 
   | 3 ->
-# 15 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.mll"
+# 15 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.mll"
              ( LEFT_PAREN )
-# 143 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.ml"
+# 143 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.ml"
 
   | 4 ->
-# 16 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.mll"
+# 16 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.mll"
              ( RIGHT_PAREN )
-# 148 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.ml"
+# 148 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.ml"
 
   | 5 ->
-# 17 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.mll"
+# 17 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.mll"
              ( SEMICOLON )
-# 153 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.ml"
+# 153 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.ml"
 
   | 6 ->
-# 18 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.mll"
+# 18 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.mll"
              ( DOT )
-# 158 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.ml"
+# 158 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.ml"
 
   | 7 ->
-# 19 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.mll"
+# 19 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.mll"
              ( BAR )
-# 163 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.ml"
+# 163 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.ml"
 
   | 8 ->
-# 20 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.mll"
+# 20 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.mll"
              ( EOF )
-# 168 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.ml"
+# 168 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.ml"
 
   | 9 ->
-# 21 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.mll"
+# 21 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.mll"
             ( next_line lexbuf; read lexbuf )
-# 173 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.ml"
+# 173 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.ml"
 
   | 10 ->
-# 22 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.mll"
+# 22 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.mll"
       ( error lexbuf ("Unexpected char: " ^ Lexing.lexeme lexbuf) )
-# 178 "/Users/joel/code/lvca-bucklescript/src/Language_Lexer.ml"
+# 178 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Lexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_rec lexbuf __ocaml_lex_state

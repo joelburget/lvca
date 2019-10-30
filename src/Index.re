@@ -242,8 +242,9 @@ module AbstractSyntaxEditor = {
     let (asInput, setAsInput) =
       React.useState(() => LanguageSimple.abstractSyntax);
 
-    module Parseable_language' = ParseStatus.Make(Parsing.Parseable_language);
-    let (languageView, language) = Parseable_language'.parse(asInput);
+    module Parseable_abstract_syntax' =
+      ParseStatus.Make(Parsing.Parseable_abstract_syntax);
+    let (languageView, language) = Parseable_abstract_syntax'.parse(asInput);
 
     let continueView = switch (language) {
       | Error(_) => ReasonReact.null
