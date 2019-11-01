@@ -1,31 +1,31 @@
-src/ConcreteSyntaxParser.messages: src/ConcreteSyntaxParser.mly
-	menhir src/ConcreteSyntaxParser.mly --update-errors src/ConcreteSyntaxParser.messages
+src/ConcreteSyntax_Parser.messages: src/ConcreteSyntax_Parser.mly
+	menhir src/ConcreteSyntax_Parser.mly --update-errors src/ConcreteSyntax_Parser.messages
 
-src/TermParser.messages: src/TermParser.mly
-	menhir src/TermParser.mly --update-errors src/TermParser.messages
+src/Term_Parser.messages: src/Term_Parser.mly
+	menhir src/Term_Parser.mly --update-errors src/Term_Parser.messages
 
-src/LanguageParser.messages: src/LanguageParser.mly
-	menhir src/LanguageParser.mly --update-errors src/LanguageParser.messages
+src/AbstractSyntax_Parser.messages: src/AbstractSyntax_Parser.mly
+	menhir src/AbstractSyntax_Parser.mly --update-errors src/AbstractSyntax_Parser.messages
 
-src/StaticsParser.messages: src/StaticsParser.mly
-	menhir src/StaticsParser.mly src/ParserLib.mly --base StaticsParser --update-errors src/StaticsParser.messages
+src/Statics_Parser.messages: src/Statics_Parser.mly
+	menhir src/Statics_Parser.mly src/ParserLib.mly --base Statics_Parser --update-errors src/Statics_Parser.messages
 
-src/DynamicsParser.messages: src/DynamicsParser.mly
-	menhir src/DynamicsParser.mly src/ParserLib.mly --base DynamicsParser --update-errors src/DynamicsParser.messages
+src/Dynamics_Parser.messages: src/Dynamics_Parser.mly
+	menhir src/Dynamics_Parser.mly src/ParserLib.mly --base Dynamics_Parser --update-errors src/Dynamics_Parser.messages
 
 
 
-src/ConcreteSyntaxParseErrors.ml: src/ConcreteSyntaxParser.mly src/ConcreteSyntaxParser.messages
-	menhir src/ConcreteSyntaxParser.mly --compile-errors src/ConcreteSyntaxParser.messages > src/ConcreteSyntaxParseErrors.ml
+src/ConcreteSyntax_ParseErrors.ml: src/ConcreteSyntax_Parser.mly src/ConcreteSyntax_Parser.messages
+	menhir src/ConcreteSyntax_Parser.mly --compile-errors src/ConcreteSyntax_Parser.messages > src/ConcreteSyntax_ParseErrors.ml
 
-src/TermParseErrors.ml: src/TermParser.mly src/TermParser.messages
-	menhir src/TermParser.mly --compile-errors src/TermParser.messages > src/TermParseErrors.ml
+src/Term_ParseErrors.ml: src/Term_Parser.mly src/Term_Parser.messages
+	menhir src/Term_Parser.mly --compile-errors src/Term_Parser.messages > src/Term_ParseErrors.ml
 
-src/LanguageParseErrors.ml: src/LanguageParser.mly src/LanguageParser.messages
-	menhir src/LanguageParser.mly --compile-errors src/LanguageParser.messages > src/LanguageParseErrors.ml
+src/AbstractSyntax_ParseErrors.ml: src/AbstractSyntax_Parser.mly src/AbstractSyntax_Parser.messages
+	menhir src/AbstractSyntax_Parser.mly --compile-errors src/AbstractSyntax_Parser.messages > src/AbstractSyntax_ParseErrors.ml
 
-src/StaticsParseErrors.ml: src/StaticsParser.mly src/StaticsParser.messages
-	menhir src/StaticsParser.mly src/ParserLib.mly --base StaticsParser --compile-errors src/StaticsParser.messages > src/StaticsParseErrors.ml
+src/Statics_ParseErrors.ml: src/Statics_Parser.mly src/Statics_Parser.messages
+	menhir src/Statics_Parser.mly src/ParserLib.mly --base Statics_Parser --compile-errors src/Statics_Parser.messages > src/Statics_ParseErrors.ml
 
-src/DynamicsParseErrors.ml: src/DynamicsParser.mly src/DynamicsParser.messages
-	menhir src/DynamicsParser.mly src/ParserLib.mly --base DynamicsParser --compile-errors src/DynamicsParser.messages > src/DynamicsParseErrors.ml
+src/Dynamics_ParseErrors.ml: src/Dynamics_Parser.mly src/Dynamics_Parser.messages
+	menhir src/Dynamics_Parser.mly src/ParserLib.mly --base Dynamics_Parser --compile-errors src/Dynamics_Parser.messages > src/Dynamics_ParseErrors.ml

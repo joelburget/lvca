@@ -69,32 +69,7 @@ language_def: ID ASSIGN ID LEFT_BRACK SEMICOLON
 ## LEFT_BRACK
 ##
 
-Identifier expected.
-
-language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_BRACK ID LEFT_PAREN RIGHT_PAREN RIGHT_BRACK RIGHT_BRACK
-##
-## Ends in an error in state: 21.
-##
-## separated_nonempty_list(SEMICOLON,valence) -> valence . [ RIGHT_PAREN ]
-## separated_nonempty_list(SEMICOLON,valence) -> valence . SEMICOLON separated_nonempty_list(SEMICOLON,valence) [ RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## valence
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_BRACK ID LEFT_PAREN RIGHT_PAREN SEMICOLON
-##
-## Ends in an error in state: 17.
-##
-## valence -> ID LEFT_BRACK sort . RIGHT_BRACK [ SEMICOLON RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## ID LEFT_BRACK sort
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Identifier expected or "]" expected.
 
 language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_BRACK SEMICOLON
 ##
@@ -106,32 +81,7 @@ language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_BRACK SEMICOLON
 ## ID LEFT_BRACK
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN ID LEFT_PAREN RIGHT_PAREN RIGHT_BRACK
-##
-## Ends in an error in state: 10.
-##
-## separated_nonempty_list(SEMICOLON,sort) -> sort . [ RIGHT_PAREN ]
-## separated_nonempty_list(SEMICOLON,sort) -> sort . SEMICOLON separated_nonempty_list(SEMICOLON,sort) [ RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## sort
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN ID LEFT_PAREN RIGHT_PAREN SEMICOLON SEMICOLON
-##
-## Ends in an error in state: 11.
-##
-## separated_nonempty_list(SEMICOLON,sort) -> sort SEMICOLON . separated_nonempty_list(SEMICOLON,sort) [ RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## sort SEMICOLON
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Sort expected (got ";").
 
 language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN ID SEMICOLON
 ##
@@ -143,44 +93,7 @@ language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN ID SEMICOLON
 ## ID
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN RIGHT_PAREN DOT SEMICOLON
-##
-## Ends in an error in state: 24.
-##
-## separated_nonempty_list(DOT,sort) -> sort DOT . separated_nonempty_list(DOT,sort) [ SEMICOLON RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## sort DOT
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN RIGHT_PAREN RIGHT_BRACK
-##
-## Ends in an error in state: 23.
-##
-## separated_nonempty_list(DOT,sort) -> sort . [ SEMICOLON RIGHT_PAREN ]
-## separated_nonempty_list(DOT,sort) -> sort . DOT separated_nonempty_list(DOT,sort) [ SEMICOLON RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## sort
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN RIGHT_PAREN SEMICOLON SEMICOLON
-##
-## Ends in an error in state: 22.
-##
-## separated_nonempty_list(SEMICOLON,valence) -> valence SEMICOLON . separated_nonempty_list(SEMICOLON,valence) [ RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## valence SEMICOLON
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected ";". Expected "(" (parsing a sort).
 
 language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN SEMICOLON
 ##
@@ -192,20 +105,7 @@ language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN SEMICOLON
 ## ID LEFT_PAREN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-language_def: ID ASSIGN ID LEFT_PAREN ID SEMICOLON
-##
-## Ends in an error in state: 7.
-##
-## sort -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,sort)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN DOT ]
-## valence -> ID . LEFT_BRACK sort RIGHT_BRACK [ SEMICOLON RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## ID
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected ";" when parsing a sort. Expected a sort or ")".
 
 language_def: ID ASSIGN ID LEFT_PAREN RIGHT_PAREN BAR SEMICOLON
 ##
@@ -217,7 +117,7 @@ language_def: ID ASSIGN ID LEFT_PAREN RIGHT_PAREN BAR SEMICOLON
 ## operator_def BAR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected ";" when parsing a list of operator definitions. Expected an operator definition.
 
 language_def: ID ASSIGN ID LEFT_PAREN RIGHT_PAREN SEMICOLON
 ##
@@ -230,7 +130,7 @@ language_def: ID ASSIGN ID LEFT_PAREN RIGHT_PAREN SEMICOLON
 ## operator_def
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected ";" when parsing a list of operator definitions. Expected an identifier or "|".
 
 language_def: ID ASSIGN ID LEFT_PAREN SEMICOLON
 ##
@@ -242,7 +142,7 @@ language_def: ID ASSIGN ID LEFT_PAREN SEMICOLON
 ## LEFT_PAREN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected ";" when parsing an arity. Expected a list of valences.
 
 language_def: ID ASSIGN ID SEMICOLON
 ##
@@ -254,7 +154,7 @@ language_def: ID ASSIGN ID SEMICOLON
 ## ID
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected ";" when parsing an operator definition. Expecte an arity.
 
 language_def: ID ASSIGN SEMICOLON
 ##
@@ -266,7 +166,7 @@ language_def: ID ASSIGN SEMICOLON
 ## ID ASSIGN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected ";" when parsing a sort definition. Expected an operator definition or "|".
 
 language_def: ID SEMICOLON
 ##
@@ -278,7 +178,7 @@ language_def: ID SEMICOLON
 ## ID
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected ";". Expected ":=".
 
 language_def: SEMICOLON
 ##
@@ -290,5 +190,5 @@ language_def: SEMICOLON
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected ";". Expected a set of sort definitions.
 
