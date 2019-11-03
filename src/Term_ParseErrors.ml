@@ -1,5 +1,5 @@
 
-(* This file was auto-generated based on "src/TermParser.messages". *)
+(* This file was auto-generated based on "src/Term_Parser.messages". *)
 
 (* Please note that the function [message] can raise [Not_found]. *)
 
@@ -7,21 +7,21 @@ let message =
   fun s ->
     match s with
     | 24 ->
-        "Unexpected token. Expected end of file.\n"
+        "Unexpected token after term.\n"
     | 0 ->
         "Unexpected token. Expected term.\n"
     | 17 ->
-        "Unexpected token after term. Expected `]` or `;`.\n"
+        "Unexpected token after term. Expected \"]\" or \";\".\n"
     | 18 ->
-        "Unexpected token after semicolon. Expected list of terms.\n"
+        "Unexpected token after \";\". Expected list of terms.\n"
     | 2 ->
-        "Unexpected token after left bracket. Expected (semicolon-separated) list of terms.\n"
+        "Unexpected token after \"[\". Expected (semicolon-separated) list of terms.\n"
     | 4 ->
-        "Unexpected token after identifier. Expected left paren or semicolon.\n"
+        "Unexpected token after identifier. Expected \"(\" or \";\".\n"
     | 12 ->
-        "Unexpected token. Missing right paren?\n"
+        "Unexpected token after scope. Expected \")\" or \";\".\n"
     | 13 ->
-        "Unexpected symbol after semicolon.\n"
+        "Unexpected symbol after semicolon. Expected a term.\n"
     | 5 ->
         "Unexpected token after opening paren. Expected a variable name or term.\n"
     | 6 ->

@@ -1,5 +1,4 @@
-let abstractSyntax = {|
-tm :=
+let abstractSyntax = {|tm :=
   | true()
   | false()
   | ite(tm; tm; tm)

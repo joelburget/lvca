@@ -46,7 +46,7 @@ top_term: ID LEFT_PAREN STRING SEMICOLON SEMICOLON
 ## scope SEMICOLON
 ##
 
-Unexpected symbol after semicolon.
+Unexpected symbol after semicolon. Expected a term.
 
 top_term: ID LEFT_PAREN STRING STRING
 ##
@@ -59,7 +59,7 @@ top_term: ID LEFT_PAREN STRING STRING
 ## scope
 ##
 
-Unexpected token. Missing right paren?
+Unexpected token after scope. Expected ")" or ";".
 
 top_term: ID STRING
 ##
@@ -72,7 +72,7 @@ top_term: ID STRING
 ## ID
 ##
 
-Unexpected token after identifier. Expected left paren or semicolon.
+Unexpected token after identifier. Expected "(" or ";".
 
 top_term: LEFT_BRACK SEMICOLON
 ##
@@ -84,7 +84,7 @@ top_term: LEFT_BRACK SEMICOLON
 ## LEFT_BRACK
 ##
 
-Unexpected token after left bracket. Expected (semicolon-separated) list of terms.
+Unexpected token after "[". Expected (semicolon-separated) list of terms.
 
 top_term: LEFT_BRACK STRING SEMICOLON SEMICOLON
 ##
@@ -96,7 +96,7 @@ top_term: LEFT_BRACK STRING SEMICOLON SEMICOLON
 ## term SEMICOLON
 ##
 
-Unexpected token after semicolon. Expected list of terms.
+Unexpected token after ";". Expected list of terms.
 
 top_term: LEFT_BRACK STRING STRING
 ##
@@ -109,7 +109,7 @@ top_term: LEFT_BRACK STRING STRING
 ## term
 ##
 
-Unexpected token after term. Expected `]` or `;`.
+Unexpected token after term. Expected "]" or ";".
 
 top_term: SEMICOLON
 ##
@@ -133,5 +133,5 @@ top_term: STRING STRING
 ## term
 ##
 
-Unexpected token. Expected end of file.
+Unexpected token after term.
 
