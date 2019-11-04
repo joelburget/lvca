@@ -587,6 +587,29 @@ module Lr0 (G : GRAMMAR) = struct
       );
       result |. MSI.toArray |. SI.fromArray
 
+  let lr1_goto_kernel : lookahead_item_set -> symbol -> lookahead_item_set
+    = fun item_set symbol ->
+      let result = MSet.make ~id:(module LookaheadItemCmp) in
+      S.forEach (lr1_closure item_set) (fun { item; lookahead_set } ->
+        let { production_num; position } = view_item item in
+        let production = production_map
+          |. MMI.get production_num
+          |> get_option' (Printf.sprintf
+            "lr0_goto_kernel: unable to find production %n in production_map"
+            production_num
+          )
+        in
+        match L.get production position with
+          | Some next_symbol ->
+            if symbol = next_symbol then
+              result |. MSet.add
+                { item = mk_item' production_num (position + 1);
+                  lookahead_set;
+                }
+          | _ -> ()
+      );
+      result |. MSet.toArray |. S.fromArray ~id:(module LookaheadItemCmp)
+
   (* A list of all grammar symbols (terminals and nonterminals) *)
   let grammar_symbols = L.concat
     (L.makeBy number_of_terminals    (fun n -> Terminal n))
