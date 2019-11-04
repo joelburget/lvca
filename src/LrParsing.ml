@@ -115,6 +115,11 @@ type lookahead_configuration_set =
     nonkernel_items : lookahead_item_set; (* set of nonterminals *)
   }
 
+let simplify_lookahead_config_set
+  : lookahead_configuration_set -> lookahead_item_set
+  = fun { kernel_items; nonkernel_items } ->
+    S.union kernel_items nonkernel_items
+
 type nonterminal =
   { (* nonterminal_num: nonterminal_num; *)
     productions: production list;
@@ -548,6 +553,9 @@ module Lr0 (G : GRAMMAR) = struct
   (* closure returning an item set (rather than a configuration set) *)
   let lr0_closure : item_set -> item_set
     = fun items -> simplify_config_set @@ lr0_closure' items
+
+  let lr1_closure : lookahead_item_set -> lookahead_item_set
+    = fun items -> simplify_lookahead_config_set @@ lr1_closure' items
 
   (* Quoting CPTT:
    *
