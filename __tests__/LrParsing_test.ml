@@ -151,7 +151,7 @@ let () = describe "LrParsing" (fun () ->
       |> toEqual expected7;
   ] Util.id;
 
-  let goto_kernel = SI.fromArray [| mk_item' 1 2 |] in
+  let lr0_goto_kernel = SI.fromArray [| mk_item' 1 2 |] in
 
   let goto_nonkernel = SI.fromArray [|
     mk_item' 3 0;
@@ -162,12 +162,13 @@ let () = describe "LrParsing" (fun () ->
   in
 
   testAll "goto" [
-    expect (Lr0'.goto_kernel (SI.fromArray items1) (Terminal 1))
-      |> toEqual goto_kernel;
+    expect (Lr0'.lr0_goto_kernel (SI.fromArray items1) (Terminal 1))
+      |> toEqual lr0_goto_kernel;
     expect
-      (Lr0'.lr0_closure' @@ Lr0'.goto_kernel (SI.fromArray items1) (Terminal 1))
+      (Lr0'.lr0_closure' @@
+       Lr0'.lr0_goto_kernel (SI.fromArray items1) (Terminal 1))
       |> toEqual
-      ({ kernel_items = goto_kernel; nonkernel_items = goto_nonkernel }
+      ({ kernel_items = lr0_goto_kernel; nonkernel_items = goto_nonkernel }
         : configuration_set);
   ] Util.id;
 

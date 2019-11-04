@@ -559,7 +559,7 @@ module Lr0 (G : GRAMMAR) = struct
    * Examine for items with the nonterminal immediately to the right of the
    * dot. Move the dot over the nonterminal.
    *)
-  let goto_kernel : item_set -> symbol -> item_set
+  let lr0_goto_kernel : item_set -> symbol -> item_set
     = fun item_set symbol ->
       let result = MSI.make () in
       SI.forEach (lr0_closure item_set) (fun item ->
@@ -567,7 +567,7 @@ module Lr0 (G : GRAMMAR) = struct
         let production = production_map
           |. MMI.get production_num
           |> get_option' (Printf.sprintf
-            "Lr0 goto_kernel: unable to find production %n in production_map"
+            "lr0_goto_kernel: unable to find production %n in production_map"
             production_num
           )
         in
@@ -603,7 +603,7 @@ module Lr0 (G : GRAMMAR) = struct
         MSet.forEach c @@ fun items ->
           (* for each grammar symbol: *)
           L.forEach grammar_symbols @@ fun symbol ->
-            let goto_items_symbol = goto_kernel items symbol in
+            let goto_items_symbol = lr0_goto_kernel items symbol in
             (* if GOTO(items, symbol) is not empty and not in c: *)
             if not (SI.isEmpty goto_items_symbol) &&
                not (MSet.has c goto_items_symbol)
@@ -765,12 +765,12 @@ module Lr0 (G : GRAMMAR) = struct
   let in_follow : terminal_num -> nonterminal_num -> bool
     = in_follow' (SI.fromArray [||])
 
-  (* This is the GOTO function operating on states. See `goto_kernel` for the
-   * version operating on item set.
+  (* This is the GOTO function operating on states. See `lr0_goto_kernel` for
+   * the version operating on item set.
    *)
   let goto_table state nt =
     try
-      Some (item_set_to_state @@ goto_kernel (state_to_item_set state) nt)
+      Some (item_set_to_state @@ lr0_goto_kernel (state_to_item_set state) nt)
     with
       (* TODO: this shouldn't catch all invariant violations *)
       Util.InvariantViolation _ -> None
