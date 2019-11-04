@@ -406,8 +406,8 @@ module ConcreteSyntaxEditor = {
         ;
 
       let grammarPane = if (showGrammarPane) {
-        let action_table = Lr0'.full_action_table(());
-        let goto_table = Lr0'.full_goto_table(());
+        let action_table = Lr0'.full_lr0_action_table(());
+        let goto_table = Lr0'.full_lr0_goto_table(());
         <div>
           <Grammar
             grammar=grammar

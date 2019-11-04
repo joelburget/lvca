@@ -233,21 +233,21 @@ let () = describe "LrParsing" (fun () ->
   (* Question: since these are all Nonterminals, what's the correct type of
    * goto? *)
   (* Test for a match with CPTT Figure 4.37 *)
-  testAll "goto_table" [
-    expect (Lr0'.goto_table state.(0) (Nonterminal e_num)) |> toEqual (Some state.(1));
-    expect (Lr0'.goto_table state.(0) (Nonterminal t_num)) |> toEqual (Some state.(2));
-    expect (Lr0'.goto_table state.(0) (Nonterminal f_num)) |> toEqual (Some state.(3));
-    expect (Lr0'.goto_table state.(4) (Nonterminal e_num)) |> toEqual (Some state.(8));
-    expect (Lr0'.goto_table state.(4) (Nonterminal t_num)) |> toEqual (Some state.(2));
-    expect (Lr0'.goto_table state.(4) (Nonterminal f_num)) |> toEqual (Some state.(3));
+  testAll "lr0_goto_table" [
+    expect (Lr0'.lr0_goto_table state.(0) (Nonterminal e_num)) |> toEqual (Some state.(1));
+    expect (Lr0'.lr0_goto_table state.(0) (Nonterminal t_num)) |> toEqual (Some state.(2));
+    expect (Lr0'.lr0_goto_table state.(0) (Nonterminal f_num)) |> toEqual (Some state.(3));
+    expect (Lr0'.lr0_goto_table state.(4) (Nonterminal e_num)) |> toEqual (Some state.(8));
+    expect (Lr0'.lr0_goto_table state.(4) (Nonterminal t_num)) |> toEqual (Some state.(2));
+    expect (Lr0'.lr0_goto_table state.(4) (Nonterminal f_num)) |> toEqual (Some state.(3));
     (* TODO: test other invalid GOTOs *)
     (* TODO: should this throw? *)
-    expect (Lr0'.goto_table state.(6) (Nonterminal e_num)) |> toEqual None;
-    expect (Lr0'.goto_table state.(6) (Nonterminal t_num)) |> toEqual (Some state.(9));
-    expect (Lr0'.goto_table state.(6) (Nonterminal f_num)) |> toEqual (Some state.(3));
-    expect (Lr0'.goto_table state.(7) (Nonterminal e_num)) |> toEqual None;
-    expect (Lr0'.goto_table state.(7) (Nonterminal t_num)) |> toEqual None;
-    expect (Lr0'.goto_table state.(7) (Nonterminal f_num)) |> toEqual (Some state.(10));
+    expect (Lr0'.lr0_goto_table state.(6) (Nonterminal e_num)) |> toEqual None;
+    expect (Lr0'.lr0_goto_table state.(6) (Nonterminal t_num)) |> toEqual (Some state.(9));
+    expect (Lr0'.lr0_goto_table state.(6) (Nonterminal f_num)) |> toEqual (Some state.(3));
+    expect (Lr0'.lr0_goto_table state.(7) (Nonterminal e_num)) |> toEqual None;
+    expect (Lr0'.lr0_goto_table state.(7) (Nonterminal t_num)) |> toEqual None;
+    expect (Lr0'.lr0_goto_table state.(7) (Nonterminal f_num)) |> toEqual (Some state.(10));
   ] Util.id;
 
   (* Test for a match with CPTT Figure 4.37 *)
@@ -340,11 +340,11 @@ let () = describe "LrParsing" (fun () ->
   in
   let action_table_tests' = action_table_tests
     |. Belt.List.map (fun (init_state, terminal_num, action) ->
-      expect (Lr0'.action_table state.(init_state) terminal_num)
+      expect (Lr0'.lr0_action_table state.(init_state) terminal_num)
         |> toEqual action
     )
   in
-  testAll "action_table" action_table_tests' Util.id;
+  testAll "lr0_action_table" action_table_tests' Util.id;
 
   let mk_tok name start finish : Lex.token = { name; start; finish } in
   let mk_terminal num start_pos end_pos =

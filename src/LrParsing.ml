@@ -146,8 +146,8 @@ type action =
 
 (* Our action / goto table formulations are lazy (not actually tables). Tables
  * can be computed with `full_action_table` / `full_goto_table` *)
-type action_table = state -> terminal_num -> action
-type goto_table = state -> symbol -> state option
+type lr0_action_table = state -> terminal_num -> action
+type lr0_goto_table = state -> symbol -> state option
 
 module ComparableSet = Belt.Id.MakeComparable(struct
   type t = SI.t
@@ -799,14 +799,14 @@ module Lr0 (G : GRAMMAR) = struct
   (* This is the GOTO function operating on states. See `lr0_goto_kernel` for
    * the version operating on item set.
    *)
-  let goto_table state nt =
+  let lr0_goto_table state nt =
     try
       Some (item_set_to_state @@ lr0_goto_kernel (state_to_item_set state) nt)
     with
       (* TODO: this shouldn't catch all invariant violations *)
       Util.InvariantViolation _ -> None
 
-  let action_table state terminal_num =
+  let lr0_action_table state terminal_num =
     let item_set = lr0_closure @@ state_to_item_set state in
 
     let item_set_l = SI.toList item_set in
@@ -826,7 +826,7 @@ module Lr0 (G : GRAMMAR) = struct
         match symbols |. L.get position  with
           | Some (Terminal t_num as next_symbol) ->
             if t_num = terminal_num
-              then goto_table state next_symbol
+              then lr0_goto_table state next_symbol
                 |. Belt.Option.map (fun x -> Shift x)
               else None
           | _ -> None
@@ -887,18 +887,18 @@ module Lr0 (G : GRAMMAR) = struct
   let nonterminals : nonterminal_num array =
     A.makeBy (MS.size terminal_nums) Util.id
 
-  let full_action_table : unit -> action array array
+  let full_lr0_action_table : unit -> action array array
     = fun () -> states |. A.map (fun state ->
-      terminals |. A.map (action_table state)
+      terminals |. A.map (lr0_action_table state)
     )
 
-  let full_goto_table : unit -> (symbol * state option) array array
+  let full_lr0_goto_table : unit -> (symbol * state option) array array
     = fun () -> states
       |. A.map (fun state ->
       nonterminals
         |. A.map (fun nt -> Nonterminal nt)
         |. A.map (fun sym ->
-            sym, goto_table state sym
+            sym, lr0_goto_table state sym
         )
     )
 
@@ -981,7 +981,7 @@ module Lr0 (G : GRAMMAR) = struct
           in
           let tok = !a in
           let terminal_num = token_to_terminal tok in
-          let action = action_table s terminal_num in
+          let action = lr0_action_table s terminal_num in
           if do_trace = DoTrace then
             MQueue.add trace
               ( action,
@@ -1033,7 +1033,7 @@ module Lr0 (G : GRAMMAR) = struct
                   )
                 in
                 (match MStack.top stack with
-                  | Some t -> (match goto_table t (Nonterminal nt_num) with
+                  | Some t -> (match lr0_goto_table t (Nonterminal nt_num) with
                       | None -> failwith
                         "invariant violation: invalid GOTO transition"
                       | Some state -> MStack.push stack state
