@@ -1,12 +1,12 @@
-open Belt
 open Types
-module DeBruijn = Binding.DeBruijn
-module Nominal = Binding.Nominal
+open Binding
 let (fold_right, get_first, traverse_list_result, union)
   = Util.(fold_right, get_first, traverse_list_result, union)
 
+module List = Belt.List
 module M = Belt.Map.String
 module O = Belt.Option
+module Result = Belt.Result
 
 type denotation_scope_pat =
   | DenotationScopePat of string list * denotation_pat
@@ -267,11 +267,10 @@ and term_denotation dynamics vars tm : core translation_result = match tm with
 
 (* val eval : core -> (core, string) Result.t *)
 let eval core =
-  let open Belt.Result in
 
   let rec go ctx tm = match tm with
         | Var v -> (match M.get ctx v with
-          | Some result -> Ok result
+          | Some result -> Result.Ok result
           | None        -> Error ("Unbound variable " ^ v)
         )
         | CoreApp (Lambda (_tys, CoreScope (argNames, body)), args) ->

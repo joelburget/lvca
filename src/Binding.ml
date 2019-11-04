@@ -4,9 +4,6 @@ module Option = Belt.Option
 module L = Belt.List
 module M = Belt.Map.String
 
-let (sequence_list_option, sequence_list_result, union) =
-  Util.(sequence_list_option, sequence_list_result, union)
-
 module rec DeBruijn : sig
   type scope = Scope of string list * term
 
@@ -54,11 +51,11 @@ end = struct
     -> Option.map (L.get ctx ix) (fun name -> Nominal.Var name)
     | Operator (tag, subtms)
     -> Option.map
-      (sequence_list_option (L.map subtms (scope_to_nominal ctx)))
+      (Util.sequence_list_option (L.map subtms (scope_to_nominal ctx)))
       (fun subtms' -> Nominal.Operator (tag, subtms'))
     | Sequence tms
     -> Option.map
-      (sequence_list_option (L.map tms (to_nominal' ctx)))
+      (Util.sequence_list_option (L.map tms (to_nominal' ctx)))
       (fun tms' -> Nominal.Sequence tms')
     | Primitive prim
     -> Some (Nominal.Primitive prim)
@@ -85,7 +82,7 @@ end = struct
     =
       let n = L.length names in
       let argNums = L.(zip names (makeBy n (fun i -> i))) in
-      let env' = union
+      let env' = Util.union
             (M.map env (fun i -> i + n))
             (M.fromArray (L.toArray argNums))
       in Scope (names, from_nominal_with_bindings' env' body)
