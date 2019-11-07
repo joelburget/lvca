@@ -1,3 +1,11 @@
+(** Tools for dealing with the core language in LVCA.
+ - denotation_chart is the data type for declaring a mapping from some language to core
+ - core, core_scope, core_pat, core_binding_pat, denotation_pat, and denotation_scope_pat define the core language
+ - term_denotation is used to map some language to core
+ - eval is then used to evaluate the core term
+ - finally, to_ast is used to give the resulting term
+ *)
+
 open Types
 open Binding
 
@@ -35,7 +43,9 @@ type denotation_chart =
 type located_err = (string * DeBruijn.term option)
 type 'a translation_result = ('a, located_err) Result.t
 
-val to_ast : core -> Nominal.term
-val eval   : core -> (core, string) Result.t
 val term_denotation
   : denotation_chart -> string list -> DeBruijn.term -> core translation_result
+
+val eval   : core -> (core, string) Result.t
+
+val to_ast : core -> Nominal.term

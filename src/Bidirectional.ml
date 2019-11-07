@@ -84,7 +84,8 @@ let rec instantiate (env : scope M.t) (tm : term) : (term, string) BR.t = match 
     |. BR.map (fun tms' -> Sequence tms')
   | Primitive _ -> Ok tm
 
-exception BadMerge
+exception BadTermMerge of term * term
+exception BadScopeMerge of scope * scope
 
 (* TODO: remove? *)
 let safe_union m1 m2 : 'a M.t = M.merge m1 m2 (fun _ mv1 mv2 ->
@@ -93,7 +94,7 @@ let safe_union m1 m2 : 'a M.t = M.merge m1 m2 (fun _ mv1 mv2 ->
   | None, Some v
   -> Some v
   | Some v1, Some v2
-  -> if v1 = v2 then Some v1 else (Js.log3 "safe_union" v1 v2; raise BadMerge)
+  -> if v1 = v2 then Some v1 else (Js.log3 "safe_union" v1 v2; raise (BadTermMerge(v1, v2)))
   | _ -> assert false
   )
 
@@ -102,7 +103,7 @@ exception CheckError of string
 let update_ctx (ctx_state : scope M.t ref) (learned_tys : scope M.t) =
   let do_assignment = fun (k, v) -> match M.get !ctx_state k with
     | None    -> ctx_state := M.set !ctx_state k v
-    | Some v' -> if v <> v' then (Js.log3 "update_ctx" v v'; raise BadMerge)
+    | Some v' -> if v <> v' then (Js.log3 "update_ctx" v v'; raise (BadScopeMerge(v, v')))
   in
   List.iter do_assignment (learned_tys |. M.toList)
 
@@ -121,8 +122,20 @@ let ctx_infer (var_types : term M.t) : term -> term = function
     )
   | tm -> raise (CheckError "ctx_infer: called with non-free-variable")
 
-let rec check ({ rules } as env : env) (Typing (tm, ty)) : unit
-  = let match_rule = function
+type trace_entry =
+  | CheckTrace of env * typing
+  | CheckSuccess
+  | CheckFailure of string
+  | InferTrace of env * term
+  | Inferred   of term
+
+type trace_step = trace_entry list
+
+let rec check' trace_stack emit_trace ({ rules } as env) (Typing (tm, ty) as typing)
+  = let trace_entry = CheckTrace (env, typing) in
+    let trace_stack' = trace_entry :: trace_stack in
+    emit_trace trace_stack';
+    let match_rule = function
       | { conclusion = _, InferenceRule _ } -> None
       (* XXX conclusion context *)
       | { name; hypotheses; conclusion = _, CheckingRule { tm = rule_tm; ty = rule_ty } } -> (
@@ -135,7 +148,7 @@ let rec check ({ rules } as env : env) (Typing (tm, ty)) : unit
           -> None
       )
     in let (name, hypotheses, tm_assignments, ty_assignments) =
-      get_or_raise "check: no matching rule found" (Util.first_by rules match_rule) in
+      get_or_raise "check': no matching rule found" (Util.first_by rules match_rule) in
     (* TODO: check term / type assignments disjoint *)
     let schema_assignments = Util.union tm_assignments ty_assignments in
     (* ctx_state is a mapping of schema variables we've learned:
@@ -156,10 +169,35 @@ let rec check ({ rules } as env : env) (Typing (tm, ty)) : unit
       | None      -> "infer"
       | Some name -> "infer " ^ name
     in
-    List.iter (check_hyp name ctx_state env) hypotheses
+    try
+      List.iter (check_hyp trace_stack' emit_trace name ctx_state env) hypotheses;
+      emit_trace (CheckSuccess :: trace_stack');
+    with
+      | (CheckError msg) as err ->
+        emit_trace (CheckFailure msg :: trace_stack');
+        raise err
+      | BadTermMerge (v1, v2) ->
+        let msg = Printf.sprintf
+          "bad merge: %s vs %s"
+          (string_of_term v1)
+          (string_of_term v2)
+        in
+        emit_trace (CheckFailure msg :: trace_stack');
+        raise (BadTermMerge (v1, v2))
+      | BadScopeMerge (v1, v2) ->
+        let msg = Printf.sprintf
+          "bad merge: %s vs %s"
+          (string_of_scope v1)
+          (string_of_scope v2)
+        in
+        emit_trace (CheckFailure msg :: trace_stack');
+        raise (BadScopeMerge (v1, v2))
+      (* TODO: catch other exception? *)
 
-and infer ({ rules; var_types } as env : env) (tm : term) : term
-  = let match_rule = fun { name; hypotheses; conclusion } -> match conclusion with
+and infer' trace_stack emit_trace ({ rules; var_types } as env) tm
+  = let trace_stack' = InferTrace (env, tm) :: trace_stack in
+    emit_trace trace_stack';
+    let match_rule = fun { name; hypotheses; conclusion } -> match conclusion with
     | _, CheckingRule _ -> None
     (* XXX conclusion context *)
     | _, InferenceRule { tm = rule_tm; ty = rule_ty } ->
@@ -167,18 +205,21 @@ and infer ({ rules; var_types } as env : env) (tm : term) : term
       |. BO.map (fun schema_assignments ->
           (name, hypotheses, schema_assignments, rule_ty))
     in
-    match Util.first_by rules match_rule with
+    let ty = match Util.first_by rules match_rule with
       | Some (name, hypotheses, schema_assignments, rule_ty)
       -> let ctx_state : scope M.t ref = ref schema_assignments in
          let name' = match name with
-           | None      -> "infer"
-           | Some name -> "infer " ^ name
+           | None      -> "infer'"
+           | Some name -> "infer' " ^ name
          in
-         List.iter (check_hyp name ctx_state env) hypotheses;
+         List.iter (check_hyp trace_stack' emit_trace name ctx_state env) hypotheses;
          instantiate !ctx_state rule_ty |> raise_if_not_ok name'
       | None -> ctx_infer var_types tm
+    in
+    emit_trace (Inferred ty :: trace_stack');
+    ty
 
-and check_hyp = fun name ctx_state env (pattern_ctx, rule) ->
+and check_hyp = fun trace_stack emit_trace name ctx_state env (pattern_ctx, rule) ->
   let name' = match name with
     | None      -> "check_hyp"
     | Some name -> "check_hyp " ^ name
@@ -187,12 +228,17 @@ and check_hyp = fun name ctx_state env (pattern_ctx, rule) ->
   | CheckingRule { tm = hyp_tm; ty = hyp_ty } ->
     let tm = instantiate !ctx_state hyp_tm |> raise_if_not_ok name' in
     let ty = instantiate !ctx_state hyp_ty |> raise_if_not_ok name' in
-    check env (Typing (tm, ty))
+    check' trace_stack emit_trace env (Typing (tm, ty))
   | InferenceRule { tm = hyp_tm; ty = hyp_ty } ->
     let tm = instantiate !ctx_state hyp_tm |> raise_if_not_ok name' in
-    let ty = infer env tm in
+    let ty = infer' trace_stack emit_trace env tm in
     let learned_tys = get_or_raise
       "check_hyp: failed to match schema vars"
       (match_schema_vars hyp_ty ty)
     in
     update_ctx ctx_state learned_tys
+
+let check_trace = check' []
+let infer_trace = infer' []
+let check = check_trace (fun _ -> ())
+let infer = infer_trace (fun _ -> ())

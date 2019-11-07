@@ -1,3 +1,4 @@
+open ReactUtil
 open Util
 module Result = Belt.Result
 module Grammar = LrParsingView.Grammar
@@ -126,16 +127,6 @@ let rec go_forward = (lang, concrete, statics, dyn, hist, i) => switch(i) {
     go_forward(lang, concrete, statics, dyn, hist, i - 1)
   )
 }
-
-let make_elem = (name, children) => {
-  ReactDOMRe.createDOMElementVariadic(
-    name,
-    ~props=ReactDOMRe.domProps(),
-    children
-  )
-};
-
-let make_div = make_elem("div");
 
 module Repl = {
   open Types;
@@ -480,41 +471,6 @@ module ConcreteSyntaxEditor = {
   };
 };
 
-module StaticsEditor = {
-  type state = (string, option(list(Statics.rule)));
-  type action = string;
-
-  [@react.component]
-  let make = (~onComplete : list(Statics.rule) => unit) => {
-    let (staticsInput, setStaticsInput) =
-      React.useState(() => LanguageSimple.statics);
-
-    module Parseable_statics' = ParseStatus.Make(Parsing.Parseable_statics);
-    let (staticsView, statics) = Parseable_statics'.parse(staticsInput);
-
-    React.useEffect1(() => switch (statics) {
-      | Error(_) => None
-      | Ok(statics') => onComplete(statics'); None
-      },
-      [|staticsInput|]
-    );
-
-    <div>
-      <h2 className="header2 header2-statics">
-        {React.string("Statics ")}
-        {staticsView}
-      </h2>
-      <div className="statics-pane">
-        <CodeMirror
-          value=staticsInput
-          onBeforeChange=((_, _, str) => setStaticsInput(_ => str))
-          options=CodeMirror.options(~mode="default", ())
-        />
-      </div>
-    </div>
-  };
-};
-
 module DynamicsEditor = {
   [@react.component]
   let make = (~onComplete : Core.denotation_chart => unit) => {
@@ -601,41 +557,6 @@ module ReplPane = {
   };
 };
 
-module ContainedAbstractSyntaxEditor = {
-  [@react.component]
-  let make = (~onContinue : Types.language => unit) => {
-    let (asInput, setAsInput) =
-      React.useState(() => LanguageSimple.abstractSyntax);
-
-    module Parseable_abstract_syntax' =
-      ParseStatus.Make(Parsing.Parseable_abstract_syntax);
-    let (languageView, language) = Parseable_abstract_syntax'.parse(asInput);
-
-    let continueView = switch (language) {
-      | Error(_) => ReasonReact.null
-      | Ok(language') =>
-      <button onClick=(_ => onContinue(language')) >
-        {React.string("continue")}
-      </button>
-    };
-
-    <div>
-      {continueView}
-      <h2 className="header2 header2-abstract-syntax">
-        {React.string("Abstract Syntax ")}
-        {languageView}
-      </h2>
-      <div className="abstract-syntax-pane">
-        <CodeMirror
-          value=asInput
-          onBeforeChange=((_, _, str) => setAsInput(_ => str))
-          options=CodeMirror.options(~mode="default", ())
-        />
-      </div>
-    </div>
-  };
-}
-
 module LvcaViewer = {
 
   type editing_details =
@@ -659,6 +580,7 @@ module LvcaViewer = {
     | DetailsStage(editing_details, details_tab)
     | ReplStage(details)
     ;
+
   type action =
     | ChangeTab(details_tab)
     | ASContinue(Types.language)

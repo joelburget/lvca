@@ -17,6 +17,33 @@ and term =
   | Sequence  of term list
   | Primitive of primitive
 
+let rec string_of_term = function
+  | Operator (name, scopes) ->
+    let scopes' = scopes
+      |. Belt.List.toArray
+      |. Belt.Array.map string_of_scope
+      |. Js.Array2.joinWith "; "
+    in Printf.sprintf "%s(%s)" name scopes'
+  | Bound i -> string_of_int i
+  | Free str -> str
+  | Sequence tms ->
+    let tms' = tms
+      |. Belt.List.toArray
+      |. Belt.Array.map string_of_term
+      |. Js.Array2.joinWith ", "
+    in
+    "[" ^ tms' ^ "]"
+  | Primitive prim -> string_of_primitive prim
+
+and string_of_scope = fun (Scope (names, tm)) -> match names with
+  | [] -> string_of_term tm
+  | _ ->
+    let names' = names
+      |. Belt.List.toArray
+      |. Js.Array2.joinWith ". "
+    in
+    Printf.sprintf "%s. %s" names' (string_of_term tm)
+
 type inference_rule = {
   tm : term;
   ty : term;
