@@ -286,6 +286,7 @@ let eval core =
                  ) in
                  go (union ctx new_args) body
               )
+
         | Case (tm, branches) -> Result.flatMap (go ctx tm)
           (fun v -> match find_core_match v branches with
             | None
@@ -294,6 +295,22 @@ let eval core =
             -> go (union ctx bindings) branch
           )
         | Metavar _v | Meaning _v -> Error "Found a metavar!"
+
+        (* TODO: or should this be an app? *)
+        | Operator ("#add", [CoreScope ([], a); CoreScope ([], b)])
+        -> (match go ctx a, go ctx b with
+          | Ok (Primitive (PrimInteger a')), Ok (Primitive (PrimInteger b'))
+          -> Ok (Primitive (PrimInteger (Bigint.add a' b')))
+          | Error err, _
+          | _, Error err -> Error err
+        )
+        | Operator ("#sub", [CoreScope ([], a); CoreScope ([], b)])
+        -> (match go ctx a, go ctx b with
+          | Ok (Primitive (PrimInteger a')), Ok (Primitive (PrimInteger b'))
+          -> Ok (Primitive (PrimInteger (Bigint.sub a' b')))
+          | Error err, _
+          | _, Error err -> Error err
+        )
 
         | Operator _  | Sequence _ | Primitive _
         -> Ok tm

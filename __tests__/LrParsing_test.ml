@@ -172,7 +172,7 @@ let () = describe "LrParsing" (fun () ->
         : configuration_set);
   ] Util.id;
 
-  let item_sets = [|
+  let lr0_item_sets = [|
     SI.fromArray [| mk_item' 0 0 |]; (* 0 *)
     SI.fromArray (* 1 *)
       [| mk_item' 0 1;
@@ -202,8 +202,8 @@ let () = describe "LrParsing" (fun () ->
   |]
   in
 
-  let expected_item_sets =
-    Belt.MutableSet.fromArray item_sets ~id:(module ComparableSet)
+  let expected_lr0_item_sets =
+    Belt.MutableSet.fromArray lr0_item_sets ~id:(module ComparableIntSet)
   in
 
   let normalize = fun items -> items
@@ -213,14 +213,14 @@ let () = describe "LrParsing" (fun () ->
 
   testAll "lr0_items" [
     expect (normalize Lr0'.mutable_lr0_items)
-      |> toEqual (normalize expected_item_sets);
+      |> toEqual (normalize expected_lr0_item_sets);
     (* TODO
     expect (M.get Lr0'.items' 1 == Some (SI.fromArray items1)) |> toBe true;
     expect (M.get Lr0'.items' 7 == Some (SI.fromArray items7)) |> toBe true;
     *)
   ] Util.id;
 
-  let state = item_sets |. Belt.Array.map Lr0'.item_set_to_state in
+  let state = lr0_item_sets |. Belt.Array.map Lr0'.item_set_to_state in
   let plus_num : terminal_num = 1 in
   let times_num : terminal_num = 2 in
   let lparen_num : terminal_num = 3 in

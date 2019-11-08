@@ -149,12 +149,26 @@ type action =
 type lr0_action_table = state -> terminal_num -> action
 type lr0_goto_table = state -> symbol -> state option
 
-module ComparableSet = Belt.Id.MakeComparable(struct
+module ComparableIntSet = Belt.Id.MakeComparable(struct
   type t = SI.t
   let cmp = SI.cmp
 end)
 
-type mutable_int_set_set = (SI.t, ComparableSet.identity) MSet.t
+(* A mutable set of int sets. This is used to represent the set of LR(0) items.
+ * Each int set represents a set of encoded items.
+ *)
+type mutable_lr0_item_set = (SI.t, ComparableIntSet.identity) MSet.t
+
+module LookaheadItemSetCmp = Belt.Id.MakeComparable(struct
+  type t = lookahead_item_set
+  let cmp = S.cmp
+end)
+
+(* A mutable set of lookahead item sets. This is used to represent the set of
+ * LR(1) items. Each set represents a set of encoded items with lookaheads.
+ *)
+type mutable_lookahead_item_set =
+  (lookahead_item_set, LookaheadItemSetCmp.identity) MSet.t
 
 type parse_error = int (* character number *) * string
 
@@ -253,13 +267,13 @@ module Lr0 (G : GRAMMAR) = struct
     | Terminal t_num -> terminal_names
       |. M.get t_num
       |> get_option' (Printf.sprintf
-        "string_of_item: failed to get terminal %n"
+        "string_of_symbol: failed to get terminal %n"
         t_num
       )
     | Nonterminal nt_num -> nonterminal_names
       |. M.get nt_num
       |> get_option' (Printf.sprintf
-        "string_of_item: failed to get nonterminal %n"
+        "string_of_symbol: failed to get nonterminal %n"
         nt_num
       )
 
@@ -278,6 +292,9 @@ module Lr0 (G : GRAMMAR) = struct
         if position = i then (let _ = Js.Array2.push pieces "." in ());
         Js.Array2.push pieces (string_of_symbol symbol);
       );
+
+      if position = L.length production then
+        (let _ = Js.Array2.push pieces "." in ());
 
       let nt_num = production_nonterminal_map
         |. MMI.get production_num
@@ -428,25 +445,18 @@ module Lr0 (G : GRAMMAR) = struct
         let is_added = MMI.has nonkernel_items nonterminal_num in
 
         if not is_added then (
-          let production_set =
-            MMI.get nonterminal_production_map nonterminal_num
-              |> get_option' (Printf.sprintf
-              "lr0_closure': unable to find nonterminal %n nonterminal_production_map"
-              nonterminal_num
-              )
-          in
-          MSI.forEach production_set (fun production_num ->
-            (* XXX doesn't use production_num *)
-            let old_set = MMI.getExn nonkernel_items nonterminal_num in
-            MSI.add old_set lookahead;
-          );
-          (* XXX what's the point of nonterminal_production_map given we can just do this? *)
+          match MMI.get nonkernel_items nonterminal_num with
+            | None -> MMI.set nonkernel_items nonterminal_num
+              (MSI.fromArray [| lookahead |])
+            | Some old_set -> MSI.add old_set lookahead;
+
           let { productions } = M.get G.grammar.nonterminals nonterminal_num
             |> get_option' (Printf.sprintf
             "lr0_closure': unable to find nonterminal %n in G.grammar.nonterminals"
             nonterminal_num
             )
           in
+
           L.forEach productions (function
             | Terminal _         :: _ -> ()
             | Nonterminal new_nt :: _ ->
@@ -616,11 +626,11 @@ module Lr0 (G : GRAMMAR) = struct
     (L.makeBy number_of_nonterminals (fun n -> Nonterminal n))
 
   (** Compute the canonical collection of sets of LR(0) items. CPTT fig 4.33. *)
-  let mutable_lr0_items : mutable_int_set_set
+  let mutable_lr0_items : mutable_lr0_item_set
     = let augmented_start = SI.fromArray
           [| mk_item {production_num = 0; position = 0} |]
       in
-      let c = MSet.fromArray [| augmented_start |] ~id:(module ComparableSet)
+      let c = MSet.fromArray [| augmented_start |] ~id:(module ComparableIntSet)
       in
 
       (* iterate through every set of items in the collection, compute the GOTO
@@ -645,10 +655,46 @@ module Lr0 (G : GRAMMAR) = struct
       done;
       c
 
+  let mutable_lr1_items : mutable_lookahead_item_set
+    = let augmented_start : lookahead_item_set = S.fromArray
+        [|
+           { item = mk_item {production_num = 0; position = 0};
+             lookahead_set = SI.fromArray [| 0 |];
+           }
+        |]
+        ~id:(module LookaheadItemCmp)
+      in
+      let c = MSet.fromArray [| augmented_start |]
+                             ~id:(module LookaheadItemSetCmp)
+      in
+      let continue = ref true in
+      while !continue do
+        continue := false;
+        (* for each set of items in c: *)
+        MSet.forEach c @@ fun items ->
+          (* for each grammar symbol: *)
+          L.forEach grammar_symbols @@ fun symbol ->
+            let goto_items_symbol = lr1_goto_kernel items symbol in
+            (* if GOTO(items, symbol) is not empty and not in c: *)
+            if not (S.isEmpty goto_items_symbol) &&
+               not (MSet.has c goto_items_symbol)
+            then (
+              MSet.add c goto_items_symbol;
+              continue := true
+            )
+      done;
+      c
+
   let lr0_items : item_set M.t
     = mutable_lr0_items
     |. MSet.toArray
     |. A.mapWithIndex (fun i item_set -> i, item_set)
+    |. M.fromArray
+
+  let lr1_items : lookahead_item_set M.t
+    = mutable_lr1_items
+    |. MSet.toArray
+    |. A.mapWithIndex (fun i lookahead_item_set -> i, lookahead_item_set)
     |. M.fromArray
 
   let state_to_item_set : state -> item_set

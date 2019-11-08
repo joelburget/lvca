@@ -99,6 +99,12 @@ let _ = describe "Core" (fun () ->
     )
   in
 
+  let binary_int_op op a b = Operator (op,
+    [ CoreScope ([], Primitive (PrimInteger (Bigint.of_int a)));
+      CoreScope ([], Primitive (PrimInteger (Bigint.of_int b)));
+    ])
+  in
+
   testAll "to_ast"
     [ expect (to_ast (Primitive (PrimInteger one)))
       |> toEqual (Nominal.Primitive (PrimInteger one));
@@ -148,6 +154,11 @@ let _ = describe "Core" (fun () ->
       |> toEqual (Ok false_val);
       expect (eval fun_val)
       |> toEqual (Ok true_val);
+
+      expect (eval (binary_int_op "#add" 1 2))
+      |> toEqual (Ok (Primitive (PrimInteger (Bigint.of_int 3))));
+      expect (eval (binary_int_op "#sub" 1 2))
+      |> toEqual (Ok (Primitive (PrimInteger (Bigint.of_int (-1)))));
     ]
     Util.id;
 )
