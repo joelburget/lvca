@@ -46,7 +46,7 @@ let prim_eq p1 p2 = match (p1, p2) with
   | _                                -> false
 
 type import =
-  { imported_symbols: string list;
+  { imported_symbols: (string * string) list;
     location: string;
   }
 

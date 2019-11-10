@@ -18,6 +18,7 @@ type token =
   | COMMA
   | BAR
   | ASSIGN
+  | AS
 
 (* This exception is raised by the monolithic API functions. *)
 

@@ -1,5 +1,5 @@
 [@react.component]
-let make = (~onContinue : Types.language => unit) => {
+let make = (~onContinue : Types.abstract_syntax => unit) => {
   let (asInput, setAsInput) =
     React.useState(() => LanguageSimple.abstractSyntax);
 

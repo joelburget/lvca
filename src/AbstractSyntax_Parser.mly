@@ -2,6 +2,7 @@
 %token <string> STRING
 %token IMPORT
 %token FROM
+%token AS
 %token ASSIGN
 %token DOT
 %token LEFT_PAREN
@@ -22,6 +23,7 @@
 %type <Types.operatorDef>      operator_def
 %type <Types.arity>            arity
 %type <Types.valence>          valence
+%type <string * string>        import_symbol
 %%
 
 /* TODO: duplicated */
@@ -58,14 +60,19 @@ sort_def:
   ID list(ID) ASSIGN BAR? separated_nonempty_list(BAR, operator_def)
   { ($1, SortDef ($2, $5)) }
 
+import_symbol:
+  | ID       { ($1, $1) }
+  | ID AS ID { ($1, $3) }
+
 import:
-  IMPORT LEFT_BRACE separated_nonempty_list(COMMA, ID) RIGHT_BRACE FROM STRING
+  IMPORT LEFT_BRACE separated_nonempty_list(COMMA, import_symbol) RIGHT_BRACE
+  FROM STRING
   { { Types.imported_symbols = $3; location = $6 } }
 
 language_def:
   | list(import) nonempty_list(sort_def) EOF
   { let language =
-      Types.Language(Belt.Map.String.fromArray (Belt.List.toArray $2))
+      Types.Language (Belt.Map.String.fromArray (Belt.List.toArray $2))
     in
     { imports = $1; language }
   }

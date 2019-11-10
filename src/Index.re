@@ -20,9 +20,11 @@ type history = {
 };
 
 /* Read and evaluate the user's input */
-let read_and_eval = (language, concrete, statics, dynamics, input)
+let read_and_eval = (abstract_syntax, concrete, statics, dynamics, input)
   : (parse_result, eval_result) => {
     open Core;
+
+    let { Types.imports, language } = abstract_syntax;
 
     let (astResult, abtResult) = switch (ConcreteSyntax.parse(concrete, input)) {
     | Ok(tree)
@@ -77,30 +79,30 @@ let shift_from_to (
 
 
 let step_forward (
-  language : Types.language,
-  concrete : Types.ConcreteSyntaxDescription.t,
-  statics  : list(Statics.rule),
-  dynamics : Core.denotation_chart,
+  abstract_syntax : Types.abstract_syntax,
+  concrete        : Types.ConcreteSyntaxDescription.t,
+  statics         : list(Statics.rule),
+  dynamics        : Core.denotation_chart,
   {input, before, after} : history,
   ) : history
   = {
     let (parsed, result) =
-      read_and_eval(language, concrete, statics, dynamics, input);
+      read_and_eval(abstract_syntax, concrete, statics, dynamics, input);
     let (after, before, elem) =
       shift_from_to(after, before, { input, result, parsed });
     {before, after, input: elem.input}
   };
 
 let step_back (
-  language : Types.language,
-  concrete : Types.ConcreteSyntaxDescription.t,
-  statics  : list(Statics.rule),
-  dynamics : Core.denotation_chart,
+  abstract_syntax : Types.abstract_syntax,
+  concrete        : Types.ConcreteSyntaxDescription.t,
+  statics         : list(Statics.rule),
+  dynamics        : Core.denotation_chart,
   {input, before, after} : history,
   ) : history
   = {
     let (parsed, result) =
-      read_and_eval(language, concrete, statics, dynamics, input);
+      read_and_eval(abstract_syntax, concrete, statics, dynamics, input);
     let (before, after, elem) =
       shift_from_to(before, after, { input, result, parsed });
     {before, after, input: elem.input}
@@ -138,7 +140,7 @@ module Repl = {
   [@react.component]
   let make = (
     ~history: history,
-    ~language: language,
+    ~abstract_syntax: abstract_syntax,
     ~concrete: ConcreteSyntaxDescription.t,
     ~statics: list(Statics.rule),
     ~dynamics: Core.denotation_chart,
@@ -156,7 +158,7 @@ module Repl = {
 /*     }; */
 
     let (parsed, evalResult) =
-      read_and_eval(language, concrete, statics, dynamics, input);
+      read_and_eval(abstract_syntax, concrete, statics, dynamics, input);
 
     let handleKey = (_editor, evt) => {
       let key = CodeMirror.keyGet(evt);
@@ -508,7 +510,7 @@ module ReplPane = {
 
   [@react.component]
   let make = (
-    ~language: language,
+    ~abstract_syntax: abstract_syntax,
     ~concrete: ConcreteSyntaxDescription.t,
     ~statics: list(Statics.rule),
     ~dynamics: Core.denotation_chart,
@@ -526,7 +528,7 @@ module ReplPane = {
       <div className="repl-pane">
         <Repl
           history=replHistory
-          language=language
+          abstract_syntax=abstract_syntax
           statics=statics
           concrete=concrete
           dynamics=dynamics
@@ -535,20 +537,20 @@ module ReplPane = {
             switch (after) {
               | [] =>
                 let (parsed, result) =
-                  read_and_eval(language, concrete, statics, dynamics, input);
+                  read_and_eval(abstract_syntax, concrete, statics, dynamics, input);
                 let before' = [ { input, parsed, result }, ...before ];
                 {before: before', after, input: ""}
-              | _ => step_forward(language, concrete, statics, dynamics, hist)
+              | _ => step_forward(abstract_syntax, concrete, statics, dynamics, hist)
             }
           }))
           handleUp=(n =>
             setHistory(hist =>
-              go_back(language, concrete, statics, dynamics, hist, n)
+              go_back(abstract_syntax, concrete, statics, dynamics, hist, n)
             )
           )
           handleDown=(n =>
             setHistory(hist =>
-              go_forward(language, concrete, statics, dynamics, hist, n)
+              go_forward(abstract_syntax, concrete, statics, dynamics, hist, n)
             )
           )
         />
@@ -560,14 +562,14 @@ module ReplPane = {
 module LvcaViewer = {
 
   type editing_details =
-    { abstract_syntax: Types.language,
+    { abstract_syntax: Types.abstract_syntax,
       concrete_syntax: option(Types.ConcreteSyntaxDescription.t),
       statics: option(list(Statics.rule)),
       dynamics: option(Core.denotation_chart),
     };
 
   type details =
-    { abstract_syntax: Types.language,
+    { abstract_syntax: Types.abstract_syntax,
       concrete_syntax: Types.ConcreteSyntaxDescription.t,
       statics: list(Statics.rule),
       dynamics: Core.denotation_chart,
@@ -583,7 +585,7 @@ module LvcaViewer = {
 
   type action =
     | ChangeTab(details_tab)
-    | ASContinue(Types.language)
+    | ASContinue(Types.abstract_syntax)
     | CompleteConcreteSyntax(Types.ConcreteSyntaxDescription.t)
     | CompleteStatics(list(Statics.rule))
     | CompleteDynamics(Core.denotation_chart)
@@ -695,7 +697,7 @@ module LvcaViewer = {
             {React.string("back")}
           </button>
           <ReplPane
-            language=abstract_syntax
+            abstract_syntax=abstract_syntax
             concrete=concrete_syntax
             statics=statics
             dynamics=dynamics

@@ -66,8 +66,8 @@ module Parseable_term : (Parseable with type t = Binding.Nominal.term) = struct
 end
 
 module Parseable_abstract_syntax
-  : (Parseable with type t = Types.language) = struct
-  type t                   = Types.language
+  : (Parseable with type t = Types.abstract_syntax) = struct
+  type t                   = Types.abstract_syntax
   module MenhirInterpreter = AbstractSyntax.Parser.MenhirInterpreter
   module ParseErrors       = AbstractSyntax.ParseErrors
   module Lexer             = AbstractSyntax.Lexer
