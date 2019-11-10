@@ -1,8 +1,13 @@
 %token <string> ID
+%token <string> STRING
+%token IMPORT
+%token FROM
 %token ASSIGN
 %token DOT
 %token LEFT_PAREN
 %token RIGHT_PAREN
+%token LEFT_BRACE
+%token RIGHT_BRACE
 %token LEFT_BRACK
 %token RIGHT_BRACK
 %token SEMICOLON
@@ -11,7 +16,7 @@
 %token EOF
 
 %start language_def
-%type <Types.language>         language_def
+%type <Types.abstract_syntax>  language_def
 %type <Types.sort>             sort
 %type <string * Types.sortDef> sort_def
 %type <Types.operatorDef>      operator_def
@@ -49,11 +54,18 @@ arity:
 
 operator_def: ID arity { OperatorDef($1, $2) }
 
-/* TODO: generalize to sorts taking args */
 sort_def:
-  ID ASSIGN BAR? separated_nonempty_list(BAR, operator_def)
-  { ($1, SortDef ([], $4)) }
+  ID list(ID) ASSIGN BAR? separated_nonempty_list(BAR, operator_def)
+  { ($1, SortDef ($2, $5)) }
+
+import:
+  IMPORT LEFT_BRACE separated_nonempty_list(COMMA, ID) RIGHT_BRACE FROM STRING
+  { { Types.imported_symbols = $3; location = $6 } }
 
 language_def:
-  | nonempty_list(sort_def) EOF
-  { Language(Belt.Map.String.fromArray (Belt.List.toArray $1)) }
+  | list(import) nonempty_list(sort_def) EOF
+  { let language =
+      Types.Language(Belt.Map.String.fromArray (Belt.List.toArray $2))
+    in
+    { imports = $1; language }
+  }

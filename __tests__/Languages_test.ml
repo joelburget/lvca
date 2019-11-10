@@ -47,3 +47,14 @@ let () = describe "Integer Language" (fun () ->
     expect (eval_str "max(1; 2)") |> toEqual (mk_result_int 2);
   ] Util.id;
 )
+
+let () = describe "Document Language" (fun () ->
+  test "parse abstract syntax" (fun () ->
+    let (_, language) =
+      Parseable_abstract_syntax'.parse LanguageDocument.abstractSyntax
+    in
+    match language with
+      | Belt.Result.Ok _ -> pass
+      | Error msg -> fail msg
+  );
+)

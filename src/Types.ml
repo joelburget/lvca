@@ -45,6 +45,16 @@ let prim_eq p1 p2 = match (p1, p2) with
   | (PrimString  s1, PrimString  s2) -> s1 = s2
   | _                                -> false
 
+type import =
+  { imported_symbols: string list;
+    location: string;
+  }
+
+type abstract_syntax =
+  { imports: import list;
+    language: language;
+  }
+
 module Sjcl = struct
   type sjcl
 
