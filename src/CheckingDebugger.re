@@ -98,7 +98,7 @@ module CheckingDebugger = {
   };
 
   type action =
-    | CompleteAbstractSyntax(Types.language)
+    | CompleteAbstractSyntax(Types.abstract_syntax)
     | CompleteStatics(list(Statics.rule))
     | Evaluate(string)
     | StepForward
@@ -108,10 +108,10 @@ module CheckingDebugger = {
 
   type state =
     | EditingAbstractSyntax
-    | EditingStatics(Types.language)
-    | EditingInfer(Types.language, list(Statics.rule))
-    | EditingCheck(Types.language, list(Statics.rule))
-    | Tracing(Types.language, list(Statics.rule), string, array(trace_step), int)
+    | EditingStatics(Types.abstract_syntax)
+    | EditingInfer(Types.abstract_syntax, list(Statics.rule))
+    | EditingCheck(Types.abstract_syntax, list(Statics.rule))
+    | Tracing(Types.abstract_syntax, list(Statics.rule), string, array(trace_step), int)
     ;
 
   [@react.component]

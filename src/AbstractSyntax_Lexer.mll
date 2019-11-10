@@ -15,6 +15,7 @@ rule read = parse
   | white    { read lexbuf }
   | "import" { IMPORT }
   | "from"   { FROM }
+  | "as"     { AS }
   | id       { ID (Lexing.lexeme lexbuf) }
   | ":="     { ASSIGN }
   | '('      { LEFT_PAREN }
