@@ -260,7 +260,7 @@ module ConcreteSyntaxDescription = struct
     NumberedScopePattern of capture_number list * capture_number
 
   type operator_match_pattern =
-    | TermPattern           of string * numbered_scope_pattern list
+    | OperatorPattern       of string * numbered_scope_pattern list
     | ParenthesizingPattern of capture_number
 
   type fixity =
@@ -300,7 +300,7 @@ module ConcreteSyntaxDescription = struct
       (fun (match_, (matches, v_rule)) -> match match_ with
         | [ OperatorMatch
             { tokens;
-              operator_match_pattern = TermPattern
+              operator_match_pattern = OperatorPattern
                 ("var", [NumberedScopePattern ([], var_capture)]);
             }
           ]
