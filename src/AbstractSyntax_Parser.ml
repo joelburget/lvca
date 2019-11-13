@@ -126,22 +126,22 @@ module Tables = struct
           Obj.repr _v
   
   and default_reduction =
-    (8, "\000\000\000\000\000\b\000\000\000\006\000\000\028\000\000\000\011\000\000\022\000\000\000\000\000\005!\000\017\000\004\"\000\000\000$\000\003\000\000\000\000\030 %\015&\000\000\000\026\000\000\000\000\002\020#\000\000\024\000\019\000\t\001\000\r")
+    (8, "\000\000\000\000\000\b\000\000\000\006\000\000\030\000\000\000\011\000\000\024\000\000\000\000\000\005#\000\019\000\004$\000\000\000&\000\003\000\000\000\000 \"'\017(\000\000\000\028\015\000\000\000\000\002\022%\000\000\026\000\021\000\t\001\000\r")
   
   and error =
-    (18, "\000`\000 \000\002\000\016\t\000 \000\000\000@\000\000@@\000\000\000\000@ \000\128\000\000\000\b\000\002\b\000\130\000\000\000\000 \002\016\000\000\000 \000\192\001\"\000\b\128:$\000\000\000\000\000\232\144\000\000\004\000\000\000\000\000\0003$\000\136\000\128\000\000\000\016\000\000\000\003\000\000\b\1280\004\000\136\000\000\000\000\000\000\000\000\000\000\000\000\000\128\b\002\000\b\000\000\000 \000\002\000\004\136\001\000\000\000\000\000\000\000\000\000\002\144\000\128\000\000\000\n\000\000\000\000 \000\000\000\000\000\006\000\000\000")
+    (18, "\000`\000 \000\002\000\016\t\000 \000\000\000@\000\000@@\000\000\000\000@ \000\128\000\000\000\b\000\002\b\000\130\000\000\000\000 \002\016\000\000\000 \000\192\001\"\000\b\128:$\000\000\000\000\000\232\144\000\000\004\000\000\000\000\000\0003$\000\136\000\128\000\000\000\016\000\000\000\003\000\000\b\1280\004\000\136\000\000\000\000\000\000\000\000\000\000\000\000 \128\b\002\000\b\000\000\000\000\000\b\000\000\128\001\"\000@\000\000\000\000\000\000\000\000\000\164\000 \000\000\000\002\128\000\000\000\b\000\000\000\000\000\001\128\000\000\000")
   
   and start =
     1
   
   and action =
-    ((8, ",\022\024\024J\000XNd\000\005\024\000H00\000J4\000X>\"B\005\000\000\006\000h\000\000\016Bh\000l\000T\",B\000\000\000\000\000`L`\000nl\"t\000\000\000$X\000H\000d\000\000,\000"), (16, "\000\017\000\017\000\017\000i\000^\000=\000=\000=\000f\000^\000\017\000\017\000.\000f\000^\000\134\000=\000\025\000f\000\n\0005\000\017\000\014\000^\000q\000q\000\025\000\130\000Y\000\018\000Y\000\006\000-\000\238\000>\000\166\000Q\000Z\000\190\000^\000%\000N\000a\000b\000\158\000y\000:\000\022\000E\000\030\000\"\000&\000\198\000J\000V\000z\000\142\000\150\000\194\000\210\000\214\000\222\001\003"))
+    ((8, ",\022\024\024P\000\\Rh\000\005\024\000J00\000L4\000Z>\"B\005\000\000\006\000l\000\000\016Bl\000p\000T\",B\000\000\000\000\000LTL\000\000pn\"v\000\000\000$Z\000J\000f\000\000,\000"), (16, "\000\017\000\017\000\017\000q\000^\000E\000E\000E\000f\000^\000\017\000\017\000.\000f\000^\000\134\000E\000\025\000f\000\n\000=\000\017\000\014\000^\000y\000y\000\025\000\130\000a\000\018\000a\000\006\000-\000\242\000>\000\166\000Y\000Z\000\190\000^\000%\000N\0005\000b\000\158\000\129\000i\000:\000\194\000M\000\022\000\030\000\"\000&\000J\000V\000\198\000z\000\142\000\150\000\214\000\218\000\226\001\007"))
   
   and lhs =
-    (8, "\000\021\021\020\020\019\018\018\017\016\016\015\015\014\014\r\r\012\012\011\n\n\t\t\b\b\007\007\006\006\005\005\004\004\003\002\002\001")
+    (8, "\000\022\022\021\021\020\019\019\018\017\017\016\016\015\015\014\014\r\r\012\012\011\n\n\t\t\b\b\007\007\006\006\005\005\004\004\003\002\002\001")
   
   and goto =
-    ((8, "\012\000*\000\000\000\000\000\000\000\000,\000\006&2\000\000H\000,6\003.\023\000\000\"\000\000\000\000\023<\000\000\000\000\000\024\000$\000\000\000\000\000R\000X\000\000\000\012\000\000\000\000\000B\000B\000\000\000\000@\000"), (8, "%'\027).->7'\028).-/'@),- /\014)B+C \030\007\r\029: ;#\018>\028 \011\011\017= ;?\021D94 C3"))
+    ((8, "\n\000\020\000\000\000\000\000\000\000\000\022\0000\031\019\000\0008\000.6\0030(\000\000,\000\000\000\000(B\000\000\000\000\000\020\000$\000\000\000\000\000@\000T\000\000\000\000\n\000\000\000\000\000B\000V\000\000\000\000@\000"), (8, "%'\018).-8'\017).-'/),-\007\r/ \014)C+D ?\030\011\011 ;\027<\029A#\021 4\028>\028< ?5E:3\000D\000 @"))
   
   and semantic_action =
     [|
@@ -169,9 +169,9 @@ module Tables = struct
                 MenhirLib.EngineTypes.endp = _endpos__3_;
                 MenhirLib.EngineTypes.next = {
                   MenhirLib.EngineTypes.state = _;
-                  MenhirLib.EngineTypes.semv = _2;
-                  MenhirLib.EngineTypes.startp = _startpos__2_;
-                  MenhirLib.EngineTypes.endp = _endpos__2_;
+                  MenhirLib.EngineTypes.semv = xs;
+                  MenhirLib.EngineTypes.startp = _startpos_xs_;
+                  MenhirLib.EngineTypes.endp = _endpos_xs_;
                   MenhirLib.EngineTypes.next = {
                     MenhirLib.EngineTypes.state = _menhir_s;
                     MenhirLib.EngineTypes.semv = _1;
@@ -188,7 +188,7 @@ module Tables = struct
         let _5 : 'tv_valence_list = Obj.magic _5 in
         let _4 : unit = Obj.magic _4 in
         let _3 : unit = Obj.magic _3 in
-        let _2 : 'tv_separated_nonempty_list_COMMA_ID_ = Obj.magic _2 in
+        let xs : 'tv_loption_separated_nonempty_list_COMMA_ID__ = Obj.magic xs in
         let _1 : unit = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
@@ -197,10 +197,15 @@ module Tables = struct
 # 24 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.arity)
 # 200 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
-        ) = 
+        ) = let _2 = 
+# 232 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+    ( xs )
+# 204 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+         in
+        
 # 53 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
   ( Arity (_2, _5) )
-# 204 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 209 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -239,11 +244,11 @@ module Tables = struct
         let _v : (
 # 24 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.arity)
-# 243 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 248 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
 # 55 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
   ( Arity ([], _2) )
-# 247 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 252 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -277,7 +282,7 @@ module Tables = struct
         let _2 : (
 # 21 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.sort)
-# 281 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 286 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic _2 in
         let _1 : unit = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
@@ -286,7 +291,7 @@ module Tables = struct
         let _v : 'tv_atomic_sort = 
 # 38 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
   ( _2 )
-# 290 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 295 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -307,7 +312,7 @@ module Tables = struct
         let _1 : (
 # 1 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
        (string)
-# 311 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 316 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
@@ -315,7 +320,7 @@ module Tables = struct
         let _v : 'tv_atomic_sort = 
 # 40 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
   ( Types.SortAp (_1, [||]) )
-# 319 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 324 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -366,7 +371,7 @@ module Tables = struct
         let _6 : (
 # 2 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
        (string)
-# 370 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 375 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic _6 in
         let _5 : unit = Obj.magic _5 in
         let _4 : unit = Obj.magic _4 in
@@ -379,7 +384,7 @@ module Tables = struct
         let _v : 'tv_import = 
 # 70 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
   ( { Types.imported_symbols = _3; location = _6 } )
-# 383 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 388 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -400,7 +405,7 @@ module Tables = struct
         let _1 : (
 # 1 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
        (string)
-# 404 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 409 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
@@ -408,11 +413,11 @@ module Tables = struct
         let _v : (
 # 26 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (string * string)
-# 412 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 417 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
 # 64 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
              ( (_1, _1) )
-# 416 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 421 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -445,13 +450,13 @@ module Tables = struct
         let _3 : (
 # 1 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
        (string)
-# 449 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 454 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
 # 1 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
        (string)
-# 455 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 460 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
@@ -459,11 +464,11 @@ module Tables = struct
         let _v : (
 # 26 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (string * string)
-# 463 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 468 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
 # 65 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
              ( (_1, _3) )
-# 467 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 472 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -502,7 +507,7 @@ module Tables = struct
         let _v : (
 # 20 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.abstract_syntax)
-# 506 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 511 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
 # 74 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
   ( let language =
@@ -510,7 +515,7 @@ module Tables = struct
     in
     { imports = _1; language }
   )
-# 514 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 519 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -528,7 +533,7 @@ module Tables = struct
         let _v : 'tv_list_ID_ = 
 # 211 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( [] )
-# 532 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 537 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -556,7 +561,7 @@ module Tables = struct
         let x : (
 # 1 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
        (string)
-# 560 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 565 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -564,7 +569,7 @@ module Tables = struct
         let _v : 'tv_list_ID_ = 
 # 213 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 568 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 573 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -582,7 +587,7 @@ module Tables = struct
         let _v : 'tv_list_import_ = 
 # 211 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( [] )
-# 586 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 591 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -614,7 +619,50 @@ module Tables = struct
         let _v : 'tv_list_import_ = 
 # 213 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 618 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 623 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+         in
+        {
+          MenhirLib.EngineTypes.state = _menhir_s;
+          MenhirLib.EngineTypes.semv = Obj.repr _v;
+          MenhirLib.EngineTypes.startp = _startpos;
+          MenhirLib.EngineTypes.endp = _endpos;
+          MenhirLib.EngineTypes.next = _menhir_stack;
+        });
+      (fun _menhir_env ->
+        let _menhir_stack = _menhir_env.MenhirLib.EngineTypes.stack in
+        let _menhir_s = _menhir_env.MenhirLib.EngineTypes.current in
+        let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
+        let _startpos = _menhir_stack.MenhirLib.EngineTypes.endp in
+        let _endpos = _startpos in
+        let _v : 'tv_loption_separated_nonempty_list_COMMA_ID__ = 
+# 142 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+    ( [] )
+# 641 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+         in
+        {
+          MenhirLib.EngineTypes.state = _menhir_s;
+          MenhirLib.EngineTypes.semv = Obj.repr _v;
+          MenhirLib.EngineTypes.startp = _startpos;
+          MenhirLib.EngineTypes.endp = _endpos;
+          MenhirLib.EngineTypes.next = _menhir_stack;
+        });
+      (fun _menhir_env ->
+        let _menhir_stack = _menhir_env.MenhirLib.EngineTypes.stack in
+        let {
+          MenhirLib.EngineTypes.state = _menhir_s;
+          MenhirLib.EngineTypes.semv = x;
+          MenhirLib.EngineTypes.startp = _startpos_x_;
+          MenhirLib.EngineTypes.endp = _endpos_x_;
+          MenhirLib.EngineTypes.next = _menhir_stack;
+        } = _menhir_stack in
+        let x : 'tv_separated_nonempty_list_COMMA_ID_ = Obj.magic x in
+        let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
+        let _startpos = _startpos_x_ in
+        let _endpos = _endpos_x_ in
+        let _v : 'tv_loption_separated_nonempty_list_COMMA_ID__ = 
+# 144 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+    ( x )
+# 666 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -632,7 +680,7 @@ module Tables = struct
         let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_valence__ = 
 # 142 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( [] )
-# 636 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 684 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -657,7 +705,7 @@ module Tables = struct
         let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_valence__ = 
 # 144 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( x )
-# 661 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 709 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -682,7 +730,7 @@ module Tables = struct
         let _v : 'tv_nonempty_list_atomic_sort_ = 
 # 221 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( [ x ] )
-# 686 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 734 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -714,7 +762,7 @@ module Tables = struct
         let _v : 'tv_nonempty_list_atomic_sort_ = 
 # 223 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 718 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 766 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -735,7 +783,7 @@ module Tables = struct
         let x : (
 # 22 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (string * Types.sortDef)
-# 739 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 787 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -743,7 +791,7 @@ module Tables = struct
         let _v : 'tv_nonempty_list_sort_def_ = 
 # 221 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( [ x ] )
-# 747 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 795 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -771,7 +819,7 @@ module Tables = struct
         let x : (
 # 22 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (string * Types.sortDef)
-# 775 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 823 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -779,7 +827,7 @@ module Tables = struct
         let _v : 'tv_nonempty_list_sort_def_ = 
 # 223 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 783 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 831 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -806,12 +854,12 @@ module Tables = struct
         let _2 : (
 # 24 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.arity)
-# 810 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 858 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic _2 in
         let _1 : (
 # 1 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
        (string)
-# 815 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 863 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
@@ -819,11 +867,11 @@ module Tables = struct
         let _v : (
 # 23 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.operatorDef)
-# 823 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 871 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
 # 57 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
                        ( OperatorDef(_1, _2) )
-# 827 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 875 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -841,7 +889,7 @@ module Tables = struct
         let _v : 'tv_option_BAR_ = 
 # 114 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( None )
-# 845 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 893 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -866,7 +914,7 @@ module Tables = struct
         let _v : 'tv_option_BAR_ = 
 # 116 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( Some x )
-# 870 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 918 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -887,7 +935,7 @@ module Tables = struct
         let x : (
 # 23 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.operatorDef)
-# 891 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 939 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -895,7 +943,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_BAR_operator_def_ = 
 # 241 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( [ x ] )
-# 899 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 947 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -930,7 +978,7 @@ module Tables = struct
         let x : (
 # 23 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.operatorDef)
-# 934 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 982 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -938,7 +986,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_BAR_operator_def_ = 
 # 243 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 942 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 990 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -959,7 +1007,7 @@ module Tables = struct
         let x : (
 # 1 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
        (string)
-# 963 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1011 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -967,7 +1015,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_COMMA_ID_ = 
 # 241 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( [ x ] )
-# 971 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1019 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1002,7 +1050,7 @@ module Tables = struct
         let x : (
 # 1 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
        (string)
-# 1006 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1054 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -1010,7 +1058,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_COMMA_ID_ = 
 # 243 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 1014 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1062 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1031,7 +1079,7 @@ module Tables = struct
         let x : (
 # 26 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (string * string)
-# 1035 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1083 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -1039,7 +1087,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_COMMA_import_symbol_ = 
 # 241 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( [ x ] )
-# 1043 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1091 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1074,7 +1122,7 @@ module Tables = struct
         let x : (
 # 26 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (string * string)
-# 1078 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1126 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -1082,7 +1130,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_COMMA_import_symbol_ = 
 # 243 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 1086 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1134 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1103,7 +1151,7 @@ module Tables = struct
         let x : (
 # 21 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.sort)
-# 1107 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1155 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -1111,7 +1159,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_DOT_sort_ = 
 # 241 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( [ x ] )
-# 1115 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1163 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1146,7 +1194,7 @@ module Tables = struct
         let x : (
 # 21 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.sort)
-# 1150 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1198 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -1154,7 +1202,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_DOT_sort_ = 
 # 243 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 1158 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1206 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1175,7 +1223,7 @@ module Tables = struct
         let x : (
 # 25 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.valence)
-# 1179 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1227 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -1183,7 +1231,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_SEMICOLON_valence_ = 
 # 241 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( [ x ] )
-# 1187 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1235 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1218,7 +1266,7 @@ module Tables = struct
         let x : (
 # 25 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.valence)
-# 1222 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1270 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -1226,7 +1274,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_SEMICOLON_valence_ = 
 # 243 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 1230 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1278 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1254,7 +1302,7 @@ module Tables = struct
         let _1 : (
 # 1 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
        (string)
-# 1258 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1306 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
@@ -1262,11 +1310,11 @@ module Tables = struct
         let _v : (
 # 21 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.sort)
-# 1266 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1314 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
 # 32 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
   ( Types.SortAp (_1, Belt.List.toArray _2) )
-# 1270 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1318 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1291,11 +1339,11 @@ module Tables = struct
         let _v : (
 # 21 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.sort)
-# 1295 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1343 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
 # 34 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
   ( _1 )
-# 1299 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1347 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1344,7 +1392,7 @@ module Tables = struct
         let _1 : (
 # 1 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
        (string)
-# 1348 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1396 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
@@ -1352,11 +1400,11 @@ module Tables = struct
         let _v : (
 # 22 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (string * Types.sortDef)
-# 1356 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1404 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
 # 61 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
   ( (_1, SortDef (_2, _5)) )
-# 1360 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1408 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1396,13 +1444,13 @@ module Tables = struct
         let _3 : (
 # 21 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.sort)
-# 1400 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1448 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
 # 1 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
        (string)
-# 1406 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1454 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
@@ -1410,11 +1458,11 @@ module Tables = struct
         let _v : (
 # 25 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.valence)
-# 1414 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1462 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
 # 44 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
   ( VariableValence (_1, _3) )
-# 1418 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1466 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1439,11 +1487,11 @@ module Tables = struct
         let _v : (
 # 25 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.valence)
-# 1443 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1491 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
 # 46 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
   ( let binds, result = Util.unsnoc _1 in Types.FixedValence (binds, result) )
-# 1447 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1495 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1468,12 +1516,12 @@ module Tables = struct
         let _v : 'tv_valence_list = let _1 = 
 # 232 "/Users/joel/.opam/default/lib/menhir/standard.mly"
     ( xs )
-# 1472 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1520 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         
 # 48 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
                                                  ( _1 )
-# 1477 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1525 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1504,7 +1552,7 @@ let language_def =
     (Obj.magic (MenhirInterpreter.entry 0 lexer lexbuf) : (
 # 20 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.abstract_syntax)
-# 1508 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1556 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
     ))
 
 module Incremental = struct
@@ -1514,7 +1562,7 @@ module Incremental = struct
       (Obj.magic (MenhirInterpreter.start 0 initial_position) : (
 # 20 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
       (Types.abstract_syntax)
-# 1518 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1566 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
       ) MenhirInterpreter.checkpoint)
   
 end
@@ -1522,4 +1570,4 @@ end
 # 269 "/Users/joel/.opam/default/lib/menhir/standard.mly"
   
 
-# 1526 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
+# 1574 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
