@@ -80,7 +80,7 @@ let find_operator_match
       (* TODO now need to match *)
       (fun (OperatorMatch { operator_match_pattern }) ->
         match operator_match_pattern with
-        | TermPattern (opname', _) -> opname' = opname
+        | OperatorPattern (opname', _) -> opname' = opname
         | ParenthesizingPattern _  -> false
       )
       (BL.flatten matches)
@@ -179,7 +179,7 @@ let empty_tokens_info =
 let rec token_usage
   : operator_match_pattern -> tokens_info
   = function
-  | TermPattern (_, scope_patterns) -> scope_patterns
+  | OperatorPattern (_, scope_patterns) -> scope_patterns
     |. BL.reduce empty_tokens_info
       (fun accum scope_pat ->
         accumulate_tokens accum (scope_token_usage scope_pat)
@@ -322,7 +322,7 @@ let rec of_ast
       | ParenthesizingPattern _
       -> FoundCapture
 
-      | TermPattern (_term_name, numbered_scope_patterns)
+      | OperatorPattern (_term_name, numbered_scope_patterns)
       -> find_subtm ix scopes numbered_scope_patterns
     in
 
@@ -643,7 +643,7 @@ let tree_of_parse_result
               |. BL.flatten
               |. BL.getBy (fun (OperatorMatch { operator_match_pattern }) ->
                 match operator_match_pattern with
-                  | TermPattern (op_name, _) -> ctor_name = op_name
+                  | OperatorPattern (op_name, _) -> ctor_name = op_name
                   | ParenthesizingPattern _ -> true
               )
               in
