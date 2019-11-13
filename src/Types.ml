@@ -259,6 +259,11 @@ module ConcreteSyntaxDescription = struct
   type numbered_scope_pattern =
     NumberedScopePattern of capture_number list * capture_number
 
+  (** An operator match pattern appears in the right-hand-side of a concrete
+      syntax declaration, to show how to parse and pretty-print operators. They
+      either match an operator, eg `expr PLUS expr { add($1; $3) }` or are
+      "parenthesizing", eg `LPAREN expr RPAREN { $2 }`.
+   *)
   type operator_match_pattern =
     | OperatorPattern       of string * numbered_scope_pattern list
     | ParenthesizingPattern of capture_number
