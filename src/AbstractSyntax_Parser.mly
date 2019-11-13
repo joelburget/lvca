@@ -26,7 +26,7 @@
 %type <string * string>        import_symbol
 %%
 
-/* TODO: duplicated */
+/* TODO: duplicated (sort / atomic_sort) */
 sort:
   | ID nonempty_list(atomic_sort)
   { Types.SortAp ($1, Belt.List.toArray $2) }
@@ -48,7 +48,7 @@ valence:
 valence_list: separated_list(SEMICOLON, valence) { $1 }
 
 arity:
-  | LEFT_BRACK separated_nonempty_list(COMMA, ID) RIGHT_BRACK
+  | LEFT_BRACK separated_list(COMMA, ID) RIGHT_BRACK
     LEFT_PAREN valence_list RIGHT_PAREN
   { Arity ($2, $5) }
   | LEFT_PAREN valence_list RIGHT_PAREN
