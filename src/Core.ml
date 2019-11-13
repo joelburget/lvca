@@ -59,7 +59,7 @@ type 'a translation_result = ('a, located_err) Result.t
 (** Raised by to_ast when the presence of metavars, lambdas, and cases make
    the value invalid
  *)
-exception AstConversionErr of core
+exception ToAstConversionErr of core
 
 let rec to_ast (core : core) : Nominal.term = match core with
   | Var name
@@ -70,11 +70,11 @@ let rec to_ast (core : core) : Nominal.term = match core with
   -> Primitive prim
   | Sequence tms
   -> Sequence (List.map tms to_ast)
-  | Lambda _ as v -> raise @@ AstConversionErr v
+  | Lambda _ as v -> raise @@ ToAstConversionErr v
   | CoreApp _
   | Case _
   | Metavar _
-  | Meaning _ -> raise @@ AstConversionErr core
+  | Meaning _ -> raise @@ ToAstConversionErr core
 
 and scope_to_ast (CoreScope (names, body)) = Nominal.Scope (names, to_ast body)
 
