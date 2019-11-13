@@ -72,7 +72,7 @@ let fix_up_core : core -> core =
 %type <Core.denotation_chart> dynamics
 %%
 
-/* TODO: duplicated */
+/* TODO: duplicated (sort / atomic_sort) */
 sort:
   | ID nonempty_list(atomic_sort)
   { Types.SortAp ($1, Belt.List.toArray $2) }

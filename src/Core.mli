@@ -48,4 +48,6 @@ val term_denotation
 
 val eval   : core -> (core, string) Result.t
 
+(** Convert a core term to a nominal term, ensuring that it contains no core
+ operators (note this is not the inverse of from_ast) *)
 val to_ast : core -> Nominal.term
