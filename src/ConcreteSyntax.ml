@@ -78,7 +78,8 @@ let find_operator_match
   : operator_match
   = let maybe_match = find
       (* TODO now need to match *)
-      (fun (OperatorMatch { term_pattern }) -> match term_pattern with
+      (fun (OperatorMatch { operator_match_pattern }) ->
+        match operator_match_pattern with
         | TermPattern (opname', _) -> opname' = opname
         | ParenthesizingPattern _  -> false
       )
@@ -96,8 +97,8 @@ type subterm_result =
 
 (* Find a subterm or binder given a term pattern template and the index of the
  * subterm / binder we're looking for *)
-let rec find_subtm' slot_num token_ix scopes term_pattern
-  = match scopes, term_pattern with
+let rec find_subtm' slot_num token_ix scopes operator_match_pattern
+  = match scopes, operator_match_pattern with
     | _, [] -> NotFound
     | Nominal.Scope (binders, body) :: scopes', NumberedScopePattern (binder_nums, body_num) :: pattern_scopes
     ->
@@ -176,7 +177,7 @@ let empty_tokens_info =
   { captured_tokens = SI.empty; repeated_tokens = SI.empty }
 
 let rec token_usage
-  : term_pattern -> tokens_info
+  : operator_match_pattern -> tokens_info
   = function
   | TermPattern (_, scope_patterns) -> scope_patterns
     |. BL.reduce empty_tokens_info
@@ -197,7 +198,7 @@ and scope_token_usage (NumberedScopePattern (binder_captures, body_capture))
     )
 
 let check_operator_match_validity
-  : nonterminal_token list -> term_pattern
+  : nonterminal_token list -> operator_match_pattern
   -> MSI.t * SI.t * (int * nonterminal_token) list
   = fun token_list term_pat ->
     let numbered_toks = token_list
@@ -238,9 +239,10 @@ let check_description_validity { terminal_rules; sort_rules } =
     sort_rules
       |. M.forEach (fun _i (SortRule { operator_rules }) ->
         let operator_maches = BL.flatten operator_rules in
-        BL.forEach operator_maches (fun _i (OperatorMatch { tokens; term_pattern }) ->
+        BL.forEach operator_maches (fun _i
+          (OperatorMatch { tokens; operator_match_pattern }) ->
           let non_existent_tokens, duplicate_captures, uncaptured_tokens =
-            check_operator_match_validity tokens term_pattern
+            check_operator_match_validity tokens operator_match_pattern
           in
           if not (SI.isEmpty duplicate_captures) then (
             let tok_names = duplicate_captures
@@ -312,11 +314,11 @@ let rec of_ast
       (M.get sort_rules sort_name)
     in
     (* TODO: remove possible exception. possible to have var-only sort? *)
-    let OperatorMatch { tokens; term_pattern } (* TODO: variable rule? *)
+    let OperatorMatch { tokens; operator_match_pattern } (* TODO: variable rule? *)
       = find_operator_match operator_rules op_name
     in
 
-    let find_subtm' = fun ix -> match term_pattern with
+    let find_subtm' = fun ix -> match operator_match_pattern with
       | ParenthesizingPattern _
       -> FoundCapture
 
@@ -639,8 +641,8 @@ let tree_of_parse_result
             | SortRule { operator_rules } ->
               let maybe_op_rule = operator_rules
               |. BL.flatten
-              |. BL.getBy (fun (OperatorMatch { term_pattern }) ->
-                match term_pattern with
+              |. BL.getBy (fun (OperatorMatch { operator_match_pattern }) ->
+                match operator_match_pattern with
                   | TermPattern (op_name, _) -> ctor_name = op_name
                   | ParenthesizingPattern _ -> true
               )

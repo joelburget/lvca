@@ -65,7 +65,10 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
             TerminalName    "BAR";
             NonterminalName "baz"
           ];
-        term_pattern = TermPattern ("foo", [NumberedScopePattern ([], 1); NumberedScopePattern ([], 2)]);
+        operator_match_pattern = TermPattern ("foo",
+          [ NumberedScopePattern ([], 1);
+            NumberedScopePattern ([], 2);
+          ]);
         fixity = Nofix;
       }
     );
@@ -87,7 +90,10 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
                     TerminalName    "ADD";
                     NonterminalName "arith"
                   ];
-                term_pattern = TermPattern ("add", [NumberedScopePattern ([], 1); NumberedScopePattern ([], 3)]);
+                operator_match_pattern = TermPattern ("add",
+                  [ NumberedScopePattern ([], 1);
+                    NumberedScopePattern ([], 3);
+                  ]);
                 fixity = Infixl;
               };
             OperatorMatch
@@ -96,7 +102,10 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
                     TerminalName    "SUB";
                     NonterminalName "arith"
                   ];
-                term_pattern = TermPattern ("sub", [NumberedScopePattern ([], 1); NumberedScopePattern ([], 3)]);
+                operator_match_pattern = TermPattern ("sub",
+                  [ NumberedScopePattern ([], 1);
+                    NumberedScopePattern ([], 3);
+                  ]);
                 fixity = Infixl;
               };
           ]];

@@ -42,7 +42,7 @@
 %type <Types.ConcreteSyntaxDescription.operator_match list list> operator_match_list
 %type <Types.ConcreteSyntaxDescription.sort_rule> sort_rule
 %type <Types.ConcreteSyntaxDescription.sort_rule> sort_rule__test
-%type <Types.ConcreteSyntaxDescription.term_pattern> term_pattern
+%type <Types.ConcreteSyntaxDescription.operator_match_pattern> operator_match_pattern
 %type <Types.ConcreteSyntaxDescription.t> language
 %%
 
@@ -86,15 +86,16 @@ fixity:
   | RIGHT_FIXITY { Infixr }
 
 operator_match:
-  | nonempty_list(nonterminal_token) LEFT_BRACE term_pattern RIGHT_BRACE option(fixity)
+  | nonempty_list(nonterminal_token)
+    LEFT_BRACE operator_match_pattern RIGHT_BRACE option(fixity)
   { let fixity = (match $5 with
     | None   -> Nofix
     | Some f -> f
     )
-    in OperatorMatch { tokens = $1; term_pattern = $3; fixity } }
+    in OperatorMatch { tokens = $1; operator_match_pattern = $3; fixity } }
 
 (* TODO: should this id allow uppercase? *)
-term_pattern:
+operator_match_pattern:
   | capture_number
   { ParenthesizingPattern $1 }
   | NONTERMINAL_ID LEFT_PAREN separated_list(SEMICOLON, term_scope_pattern) RIGHT_PAREN
