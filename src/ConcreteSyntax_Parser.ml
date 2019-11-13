@@ -648,7 +648,7 @@ module Tables = struct
       (Types.ConcreteSyntaxDescription.nonterminal_token)
 # 650 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
         ) = 
-# 111 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 112 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
                    ( TerminalName    _1 )
 # 654 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
          in
@@ -681,7 +681,7 @@ module Tables = struct
       (Types.ConcreteSyntaxDescription.nonterminal_token)
 # 683 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
         ) = 
-# 112 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 113 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
                    ( NonterminalName _1 )
 # 687 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
          in
@@ -786,7 +786,7 @@ module Tables = struct
       (Types.ConcreteSyntaxDescription.operator_match)
 # 788 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
         ) = 
-# 108 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 109 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
                                          ( _1 )
 # 792 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
          in
@@ -1016,7 +1016,7 @@ module Tables = struct
 # 1017 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
          in
         
-# 102 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 103 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
   ( OperatorPattern (_1, _3) )
 # 1022 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
          in
@@ -1131,7 +1131,7 @@ module Tables = struct
       (Types.ConcreteSyntaxDescription.regex)
 # 1133 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
         ) = 
-# 114 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 115 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
                                   ( _1 )
 # 1137 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
          in
@@ -1171,7 +1171,7 @@ module Tables = struct
       (Types.ConcreteSyntaxDescription.regex)
 # 1173 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
         ) = 
-# 116 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 117 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
                        ( _1 )
 # 1177 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
          in
@@ -1204,7 +1204,7 @@ module Tables = struct
       (Types.ConcreteSyntaxDescription.regex_piece)
 # 1206 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
         ) = 
-# 119 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 120 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
                          ( ReString _1 )
 # 1210 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
          in
@@ -1237,7 +1237,7 @@ module Tables = struct
       (Types.ConcreteSyntaxDescription.regex_piece)
 # 1239 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
         ) = 
-# 120 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 121 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
                          ( ReSet    _1 )
 # 1243 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
          in
@@ -1270,7 +1270,7 @@ module Tables = struct
       (Types.ConcreteSyntaxDescription.regex_piece)
 # 1272 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
         ) = 
-# 121 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 122 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
                          ( ReClass  _1 )
 # 1276 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
          in
@@ -1310,7 +1310,7 @@ module Tables = struct
       (Types.ConcreteSyntaxDescription.regex_piece)
 # 1312 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
         ) = 
-# 122 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 123 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
                          ( ReStar   _1 )
 # 1316 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
          in
@@ -1350,7 +1350,7 @@ module Tables = struct
       (Types.ConcreteSyntaxDescription.regex_piece)
 # 1352 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
         ) = 
-# 123 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 124 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
                          ( RePlus   _1 )
 # 1356 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
          in
@@ -1390,7 +1390,7 @@ module Tables = struct
       (Types.ConcreteSyntaxDescription.regex_piece)
 # 1392 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
         ) = 
-# 124 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 125 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
                          ( ReOption _1 )
 # 1396 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
          in
@@ -1651,7 +1651,7 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : 'tv_term_scope_pattern = 
-# 106 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 107 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
   ( let (binds, body) = Util.unsnoc _1 in NumberedScopePattern (binds, body) )
 # 1657 "/Users/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
          in

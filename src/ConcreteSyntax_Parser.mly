@@ -98,7 +98,8 @@ operator_match:
 operator_match_pattern:
   | capture_number
   { ParenthesizingPattern $1 }
-  | NONTERMINAL_ID LEFT_PAREN separated_list(SEMICOLON, term_scope_pattern) RIGHT_PAREN
+  | NONTERMINAL_ID
+    LEFT_PAREN separated_list(SEMICOLON, term_scope_pattern) RIGHT_PAREN
   { OperatorPattern ($1, $3) }
 
 term_scope_pattern:
