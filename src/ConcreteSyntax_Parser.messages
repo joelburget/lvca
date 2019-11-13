@@ -56,7 +56,7 @@ sort_rule__test: NONTERMINAL_ID ASSIGN NONTERMINAL_ID LEFT_BRACE NONTERMINAL_ID 
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 49, spurious reduction of production option(fixity) ->
-## In state 52, spurious reduction of production operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE term_pattern RIGHT_BRACE option(fixity)
+## In state 52, spurious reduction of production operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE option(fixity)
 ## In state 27, spurious reduction of production operator_match_list -> operator_match
 ## In state 26, spurious reduction of production sort_rule -> NONTERMINAL_ID ASSIGN option(BAR) operator_match_list
 ##
@@ -259,7 +259,7 @@ operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN RIGHT_PARE
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 49, spurious reduction of production option(fixity) ->
-## In state 52, spurious reduction of production operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE term_pattern RIGHT_BRACE option(fixity)
+## In state 52, spurious reduction of production operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE option(fixity)
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE> 19
@@ -268,10 +268,10 @@ operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN RIGHT_PARE
 ##
 ## Ends in an error in state: 49.
 ##
-## operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE term_pattern RIGHT_BRACE . option(fixity) [ NONTERMINAL_ID GREATER EOF BAR ]
+## operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE . option(fixity) [ NONTERMINAL_ID GREATER EOF BAR ]
 ##
 ## The known suffix of the stack is as follows:
-## nonempty_list(nonterminal_token) LEFT_BRACE term_pattern RIGHT_BRACE
+## nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE
 ##
 
 Invalid operator declaration.
@@ -280,10 +280,10 @@ operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN RIGHT_PARE
 ##
 ## Ends in an error in state: 48.
 ##
-## operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE term_pattern . RIGHT_BRACE option(fixity) [ NONTERMINAL_ID GREATER EOF BAR ]
+## operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern . RIGHT_BRACE option(fixity) [ NONTERMINAL_ID GREATER EOF BAR ]
 ##
 ## The known suffix of the stack is as follows:
-## nonempty_list(nonterminal_token) LEFT_BRACE term_pattern
+## nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE> 21
@@ -292,7 +292,7 @@ operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN UNDERSCORE
 ##
 ## Ends in an error in state: 35.
 ##
-## term_pattern -> NONTERMINAL_ID LEFT_PAREN . loption(separated_nonempty_list(SEMICOLON,term_scope_pattern)) RIGHT_PAREN [ RIGHT_BRACE ]
+## operator_match_pattern -> NONTERMINAL_ID LEFT_PAREN . loption(separated_nonempty_list(SEMICOLON,term_scope_pattern)) RIGHT_PAREN [ RIGHT_BRACE ]
 ##
 ## The known suffix of the stack is as follows:
 ## NONTERMINAL_ID LEFT_PAREN
@@ -304,7 +304,7 @@ operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID UNDERSCORE
 ##
 ## Ends in an error in state: 34.
 ##
-## term_pattern -> NONTERMINAL_ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,term_scope_pattern)) RIGHT_PAREN [ RIGHT_BRACE ]
+## operator_match_pattern -> NONTERMINAL_ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,term_scope_pattern)) RIGHT_PAREN [ RIGHT_BRACE ]
 ##
 ## The known suffix of the stack is as follows:
 ## NONTERMINAL_ID
@@ -316,7 +316,7 @@ operator_match__test: UNDERSCORE LEFT_BRACE UNDERSCORE
 ##
 ## Ends in an error in state: 33.
 ##
-## operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE . term_pattern RIGHT_BRACE option(fixity) [ NONTERMINAL_ID GREATER EOF BAR ]
+## operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE . operator_match_pattern RIGHT_BRACE option(fixity) [ NONTERMINAL_ID GREATER EOF BAR ]
 ##
 ## The known suffix of the stack is as follows:
 ## nonempty_list(nonterminal_token) LEFT_BRACE

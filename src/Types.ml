@@ -257,7 +257,7 @@ module ConcreteSyntaxDescription = struct
   type numbered_scope_pattern =
     NumberedScopePattern of capture_number list * capture_number
 
-  type term_pattern =
+  type operator_match_pattern =
     | TermPattern           of string * numbered_scope_pattern list
     | ParenthesizingPattern of capture_number
 
@@ -272,9 +272,9 @@ module ConcreteSyntaxDescription = struct
     | Nofix  -> "nonassoc"
 
   type operator_match' =
-    { tokens       : nonterminal_token list;
-      term_pattern : term_pattern;
-      fixity       : fixity
+    { tokens                 : nonterminal_token list;
+      operator_match_pattern : operator_match_pattern;
+      fixity                 : fixity
     }
   type operator_match = OperatorMatch of operator_match'
 
@@ -298,7 +298,7 @@ module ConcreteSyntaxDescription = struct
       (fun (match_, (matches, v_rule)) -> match match_ with
         | [ OperatorMatch
             { tokens;
-              term_pattern = TermPattern
+              operator_match_pattern = TermPattern
                 ("var", [NumberedScopePattern ([], var_capture)]);
             }
           ]
