@@ -18,7 +18,9 @@ type valence =
 (** An arity specifies the arguments to an operator *)
 type arity =
   | Arity of string list * valence list
-  (** An arity is defined its arity indices and valences *)
+  (** An arity is defined its arity indices and valences. Arity indices are
+   variables bound in an arity rule specifying the length of variable-length
+   slots. *)
 
 type operatorDef =
   | OperatorDef of string * arity
