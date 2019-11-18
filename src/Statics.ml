@@ -8,41 +8,28 @@ module BL = Belt.List
 (* module Parser = Statics_Parser *)
 module ParseErrors = Statics_ParseErrors
 
-type scope = Scope of string list * term
+type scope = Scope of Pattern.t list * term
 
 and term =
   | Operator  of string * scope list
-  | Bound     of int
+  | Bound     of int * int
   | Free      of string
   | Sequence  of term list
   | Primitive of primitive
 
 let rec string_of_term = function
-  | Operator (name, scopes) ->
-    let scopes' = scopes
-      |. Belt.List.toArray
-      |. Belt.Array.map string_of_scope
-      |. Js.Array2.joinWith "; "
-    in Printf.sprintf "%s(%s)" name scopes'
-  | Bound i -> string_of_int i
+  | Operator (name, scopes) -> Printf.sprintf "%s(%s)" name
+    (Util.stringify_list string_of_scope "; " scopes)
+  | Bound (i, j) -> Printf.sprintf "%d, %d" i j
   | Free str -> str
-  | Sequence tms ->
-    let tms' = tms
-      |. Belt.List.toArray
-      |. Belt.Array.map string_of_term
-      |. Js.Array2.joinWith ", "
-    in
-    "[" ^ tms' ^ "]"
+  | Sequence tms -> "[" ^ Util.stringify_list string_of_term ", "tms ^ "]"
   | Primitive prim -> string_of_primitive prim
 
-and string_of_scope = fun (Scope (names, tm)) -> match names with
+and string_of_scope = fun (Scope (pats, tm)) -> match pats with
   | [] -> string_of_term tm
   | _ ->
-    let names' = names
-      |. Belt.List.toArray
-      |. Js.Array2.joinWith ". "
-    in
-    Printf.sprintf "%s. %s" names' (string_of_term tm)
+    let pats' = Util.stringify_list Pattern.string_of_pattern ". " pats in
+    Printf.sprintf "%s. %s" pats' (string_of_term tm)
 
 type inference_rule = {
   tm : term;
@@ -72,12 +59,12 @@ let rec of_de_bruijn : Binding.DeBruijn.term -> term
   = function
     | Operator (tag, scopes)
     -> Operator (tag, scopes |. BL.map scope_of_de_bruijn)
-    | Var i
-    -> Bound i
+    | Var (i, j)
+    -> Bound (i, j)
     | Sequence tms
     -> Sequence (tms |. BL.map of_de_bruijn)
     | Primitive p
     -> Primitive p
 
 and scope_of_de_bruijn : Binding.DeBruijn.scope -> scope
-  = fun (Scope (binders, body)) -> Scope (binders, of_de_bruijn body)
+  = fun (Scope (pats, body)) -> Scope (pats, of_de_bruijn body)

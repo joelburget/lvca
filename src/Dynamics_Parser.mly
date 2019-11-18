@@ -3,21 +3,6 @@ open Core
 let (flatten, unzip, toArray) = Belt.List.(flatten, unzip, toArray)
 let map = List.map
 
-let rec vars_of_pattern = function
-  | PatternVar "_"
-  -> []
-  | PatternVar v
-  -> [v]
-  | PatternTerm (_, children)
-  -> flatten (map vars_of_binding_pattern children)
-  | PatternSequence children
-  -> flatten (map vars_of_pattern children)
-  | _
-  -> []
-
-and vars_of_binding_pattern (CoreBindingPat (binders, body)) =
-  binders @ vars_of_pattern body
-
 let fix_up_core : core -> core =
   let module Set = Belt.Set.String in
   let rec go (vars : Set.t) tm = match tm with
@@ -98,16 +83,10 @@ scope_pat:
   { DenotationScopePat ([], $1) }
 
 core_scope:
-  | separated_llist(DOT, ID) DOT raw_core
+  | separated_llist(DOT, pattern) DOT raw_core
   { CoreScope ($1, $3) }
   | raw_core
   { CoreScope ([], $1) }
-
-core_binding_pat:
-  | separated_llist(DOT, ID) DOT core_pat
-  { CoreBindingPat ($1, $3) }
-  | core_pat
-  { CoreBindingPat ([], $1) }
 
 (* We parse a raw core term, which has both metavars and vars represented as
  vars, then fix it up, by changing all vars that weren't bound to metavars *)

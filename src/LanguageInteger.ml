@@ -46,8 +46,9 @@ let rec eval' : Bigint.t list -> Binding.DeBruijn.term -> Bigint.t option
       | Some a', Some b' -> Some (Bigint.min a' b')
       | _, _ -> None
     )
-    | Var i -> Belt.List.get env i
+    | Var (i, 0) -> Belt.List.get env i
     | Primitive (PrimInteger i) -> Some i
+    | Var _
     | Operator _
     | Sequence _
     | Primitive (PrimString _) -> None

@@ -7,6 +7,7 @@ let (fold_right, get_first, traverse_list_result, union)
 
 module M = Belt.Map.String
 module O = Belt.Option
+module S = Belt.Set.String
 
 type denotation_scope_pat =
   | DenotationScopePat of string list * denotation_pat
@@ -14,14 +15,6 @@ type denotation_scope_pat =
 and denotation_pat =
   | DPatternTm of string * denotation_scope_pat list
   | DVar       of string
-
-type core_pat =
-  | PatternTerm     of string * core_binding_pat list
-  | PatternVar      of string
-  | PatternSequence of core_pat list
-  | PatternPrim     of primitive
-
-and core_binding_pat = CoreBindingPat of string list * core_pat
 
 type core =
   (* first four constructors correspond to regular term constructors *)
@@ -33,7 +26,7 @@ type core =
   (* plus, core-specific ctors *)
   | Lambda   of sort list * core_scope
   | CoreApp  of core * core list
-  | Case     of core * (core_pat * core_scope) list
+  | Case     of core * core_scope list
   (** A metavariable refers to a term captured directly from the left-hand-side
    *)
   | Metavar  of string

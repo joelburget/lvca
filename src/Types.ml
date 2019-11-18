@@ -40,7 +40,7 @@ type primitive =
 
 let string_of_primitive = function
   | PrimInteger i  -> Bigint.to_string i
-  | PrimString str -> str
+  | PrimString str -> "\"" ^ String.escaped str ^ "\""
 
 let prim_eq p1 p2 = match (p1, p2) with
   | (PrimInteger i1, PrimInteger i2) -> Bigint.(i1 = i2) [@warning "-44"]
@@ -255,14 +255,16 @@ module ConcreteSyntaxDescription = struct
     | TerminalName    of string
     | NonterminalName of string
 
-  (* A term pattern with numbered holes for binder names and subterms *)
+  (** A term pattern with numbered holes for binder names and subterms, eg
+    `$2. $4` (for tokens `FUN name ARR expr`) *)
   type numbered_scope_pattern =
     NumberedScopePattern of capture_number list * capture_number
 
   (** An operator match pattern appears in the right-hand-side of a concrete
       syntax declaration, to show how to parse and pretty-print operators. They
-      either match an operator, eg `expr PLUS expr { add($1; $3) }` or are
-      "parenthesizing", eg `LPAREN expr RPAREN { $2 }`.
+      either match an operator, eg `{ add($1; $3) }` (for tokens `expr PLUS
+      expr`) or are "parenthesizing", eg `{ $2 }` (for tokens `LPAREN expr
+      RPAREN`).
    *)
   type operator_match_pattern =
     | OperatorPattern       of string * numbered_scope_pattern list

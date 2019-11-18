@@ -41,7 +41,7 @@ let _ = describe "TermParser" (fun () ->
         ]),
         CoreApp (Meaning "fun", [ Meaning "arg" ]);
       DPatternTm ("lam", [ DenotationScopePat (["x"], DVar "body") ]),
-        Lambda ([SortAp ("bool", [||])], CoreScope (["x"], Meaning "body"));
+        Lambda ([SortAp ("bool", [||])], CoreScope ([Var "x"], Meaning "body"));
       DPatternTm ("ite",
         [ pat_scope @@ DVar "t1";
           pat_scope @@ DVar "t2";
@@ -49,8 +49,8 @@ let _ = describe "TermParser" (fun () ->
         ]),
         Case
           ( Meaning "t1"
-          , [ PatternTerm ("true", []),  core_scope @@ Meaning "t2";
-              PatternTerm ("false", []), core_scope @@ Meaning "t3";
+          , [ CoreScope ([Operator ("true", [])], Meaning "t2");
+              CoreScope ([Operator ("false", [])], Meaning "t3");
             ]
           );
     ]

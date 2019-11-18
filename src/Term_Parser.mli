@@ -12,6 +12,7 @@ type token =
   | ID of (string)
   | EOF
   | DOT
+  | COMMA
 
 (* This exception is raised by the monolithic API functions. *)
 
