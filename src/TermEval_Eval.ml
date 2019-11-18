@@ -57,7 +57,7 @@ let rec ty_of : DeBruijn.term -> ty
 
 let rec check : ty list -> ty -> DeBruijn.term -> bool
   = fun env ty tm -> match tm with
-  | Var ix
+  | Var (ix, 0)
   -> let ty' = Belt.List.get env ix
        |> Util.get_option (InvariantViolation (Printf.sprintf
          "bad environment index %n, environment size %n"
@@ -66,6 +66,7 @@ let rec check : ty list -> ty -> DeBruijn.term -> bool
        ))
      in
      ty' = ty
+  | Var _ -> raise (InvariantViolation ("unexpected non-variable binding"))
   | Operator ("true", [])
   | Operator ("false", [])
   -> ty = Bool
@@ -92,7 +93,7 @@ let rec check : ty list -> ty -> DeBruijn.term -> bool
 
 and infer : ty list -> DeBruijn.term -> ty option
   = fun env tm -> match tm with
-  | Var ix
+  | Var (ix, 0)
   -> Some (Belt.List.get env ix
        |> Util.get_option (InvariantViolation (Printf.sprintf
          "bad environment index %n, environment size %n"
@@ -139,22 +140,31 @@ let is_true = function
 
 let rec eval' : DeBruijn.term list -> DeBruijn.term -> DeBruijn.term
   = fun env tm -> match tm with
-    | Var ix -> Belt.List.get env ix
+    | Var (ix, 0)
+    -> Belt.List.get env ix
        |> Util.get_option (InvariantViolation (Printf.sprintf
          "bad environment index %n, environment size %n"
          ix
          (Belt.List.length env)
        ))
+    | Var _ -> raise (InvariantViolation ("unexpected non-variable binding"))
     | Operator ("true", [])
-    | Operator ("false", []) -> tm
-    | Operator ("ite", [Scope ([], cond); Scope ([], b1); Scope ([], b2)])
+    | Operator ("false", [])
+    -> tm
+    | Operator ("ite",
+      [ Scope ([], cond);
+        Scope ([], b1);
+        Scope ([], b2)
+      ])
     -> if is_true (eval' env cond) then eval' env b1 else eval' env b2
     | Operator ("annot", [Scope ([], tm'); _])
     -> eval' env tm'
     | Operator ("app", [Scope([], f); Scope([], arg)])
     -> (match eval' env f with
-      | Operator ("fun", [Scope ([_var], body)]) -> eval' (arg :: env) body
-      | other -> raise (InvariantViolation ("unexpected " ^ to_string other))
+      | Operator ("fun", [Scope ([_var], body)])
+      -> eval' (arg :: env) body
+      | other
+      -> raise (InvariantViolation ("unexpected " ^ to_string other))
     )
     | Primitive _
     | Sequence _ -> raise (InvariantViolation "eval' Primitive or Sequence")

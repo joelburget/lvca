@@ -5,11 +5,11 @@ module L = Belt.List
 module M = Belt.Map.String
 
 module rec DeBruijn : sig
-  type scope = Scope of string list * term
+  type scope = Scope of Pattern.t list * term
 
   and term =
     | Operator  of string * scope list
-    | Var       of int
+    | Var       of int * int
     | Sequence  of term list
     | Primitive of primitive
 
@@ -20,18 +20,17 @@ module rec DeBruijn : sig
     -> (term, string) Result.t
 
   val from_nominal_with_bindings
-    :  int Belt.Map.String.t
+    :  (int * int) Belt.Map.String.t
     -> Nominal.term
     -> (term, string) Result.t
 
 end = struct
 
-  type scope =
-    | Scope of string list * term
+  type scope = Scope of Pattern.t list * term
 
   and term =
     | Operator  of string * scope list
-    | Var       of int
+    | Var       of int * int
     | Sequence  of term list
     | Primitive of primitive
 
@@ -47,8 +46,13 @@ end = struct
   module L = Belt.List
 
   let rec to_nominal' ctx = function
-    | Var ix
-    -> Option.map (L.get ctx ix) (fun name -> Nominal.Var name)
+    | Var (ix1, ix2)
+    -> ctx
+      |. L.get ix1
+      |. Option.flatMap
+        (fun x -> x |. L.get ix2)
+      |. Option.map
+        (fun name -> Nominal.Var name)
     | Operator (tag, subtms)
     -> Option.map
       (Util.sequence_list_option (L.map subtms (scope_to_nominal ctx)))
@@ -61,7 +65,7 @@ end = struct
     -> Some (Nominal.Primitive prim)
 
   and scope_to_nominal ctx (Scope (binders, body)) = Option.map
-    (to_nominal' (L.concat binders ctx) body)
+    (to_nominal' (L.concat (L.map binders Pattern.list_vars_of_pattern) ctx) body)
     (fun body' -> Nominal.Scope (binders, body'))
 
   let to_nominal = to_nominal' []
@@ -70,22 +74,35 @@ end = struct
 
   let rec from_nominal_with_bindings' env
     = function
-      | Nominal.Operator(tag, subtms) ->
-        Operator (tag, subtms |. L.map (scope_from_nominal' env))
+      | Nominal.Operator(tag, subtms)
+      -> Operator (tag, subtms |. L.map (scope_from_nominal' env))
       | Var name -> (match M.get env name with
-        | None    -> raise (FailedFromNominal ("couldn't find variable " ^ name))
-        | Some ix -> Var ix)
-      | Sequence tms -> Sequence (tms |. L.map (from_nominal_with_bindings' env))
-      | Primitive prim -> Primitive prim
+        | None
+        -> raise (FailedFromNominal ("couldn't find variable " ^ name))
+        | Some (i, j)
+        -> Var (i, j))
+      | Sequence tms
+      -> Sequence (tms |. L.map (from_nominal_with_bindings' env))
+      | Primitive prim
+      -> Primitive prim
 
-  and scope_from_nominal' env (Nominal.Scope (names, body))
+  and scope_from_nominal' env (Nominal.Scope (pats, body))
     =
-      let n = L.length names in
-      let argNums = L.(zip names (makeBy n (fun i -> i))) in
-      let env' = Util.union
-            (M.map env (fun i -> i + n))
-            (M.fromArray (L.toArray argNums))
-      in Scope (names, from_nominal_with_bindings' env' body)
+      let n = L.length pats in
+      let varNums : (string * (int * int)) list
+        = L.(
+             zip pats (makeBy n (fun i -> i))
+          |. map (fun (pat, i) ->
+            let vars = Pattern.list_vars_of_pattern pat in
+            zip vars (makeBy (length vars) (fun j -> (i, j)))
+          )
+          |. flatten
+        )
+      in
+      let env' : (int * int) M.t = Util.union
+            (M.map env (fun (i, j) -> i + n, j))
+            (M.fromArray (L.toArray varNums))
+      in Scope (pats, from_nominal_with_bindings' env' body)
 
   let from_nominal_with_bindings bindings tm =
     try
@@ -98,8 +115,7 @@ end = struct
 end
 
 and Nominal : sig
-  type scope =
-    | Scope of string list * term
+  type scope = Scope of Pattern.t list * term
 
   and term =
     | Operator  of string * scope list
@@ -113,10 +129,10 @@ and Nominal : sig
   val jsonify   : Nominal.term -> Js.Json.t
   val serialize : Nominal.term -> Uint8Array.t
   val hash      : Nominal.term -> string
+  val term_to_pattern : Nominal.term -> Pattern.t
 
 end = struct
-  type scope =
-    | Scope of string list * term
+  type scope = Scope of Pattern.t list * term
 
   and term =
     | Operator  of string * scope list
@@ -148,16 +164,28 @@ end = struct
     | [] -> pp_term ppf body
     | _  -> fprintf ppf "%a %a" pp_bindings bindings pp_term body
 
+  and pp_pattern_list ppf = function
+    | []          -> ()
+    | [pat]       -> pp_pattern ppf pat
+    | pat :: pats -> fprintf ppf "%a, %a" pp_pattern pat pp_pattern_list pats
+
+  and pp_pattern ppf (pat : Pattern.t) = match pat with
+    | Var name -> fprintf ppf "%s" name
+    | Operator (name, pats) -> fprintf ppf "%s(%a)" name pp_pattern_list pats
+    | Sequence pats -> fprintf ppf "[%a]" pp_pattern_list pats
+    | Primitive prim -> pp_prim ppf prim
+
   and pp_bindings ppf = function
     | []      -> ()
-    | [x]     -> fprintf ppf "%s." x
-    | x :: xs -> fprintf ppf "%s. %a" x pp_bindings xs
+    | [x]     -> fprintf ppf "%a."    pp_pattern x
+    | x :: xs -> fprintf ppf "%a. %a" pp_pattern x pp_bindings xs
 
   and pp_prim ppf = function
     | PrimInteger i -> fprintf ppf "%s" (Bigint.to_string i)
     | PrimString  s -> fprintf ppf "\"%s\"" s
 
   let pp_term' = asprintf "%a" pp_term
+  let pp_scope' = asprintf "%a" pp_scope
 
   let array_map f args = Js.Json.array (Belt.List.(toArray (map args f)))
 
@@ -178,8 +206,21 @@ end = struct
     | Primitive p  -> array [| string "p"; jsonify_prim p        |]
   )
 
-  and jsonify_scope (Scope (args, body)) : Js.Json.t
-    = Js.Json.(array [| array_map string args; jsonify body |])
+  and jsonify_pat (pat : Pattern.t) : Js.Json.t
+    = Js.Json.(match pat with
+    | Operator (tag, tms)
+    -> array [|
+      string "t";
+      string tag;
+      array_map jsonify_pat tms
+    |]
+    | Var name     -> array [| string "v"; string name               |]
+    | Sequence tms -> array [| string "s"; array_map jsonify_pat tms |]
+    | Primitive p  -> array [| string "p"; jsonify_prim p            |]
+  )
+
+  and jsonify_scope (Scope (pats, body)) : Js.Json.t
+    = Js.Json.(array [| array_map jsonify_pat pats; jsonify body |])
 
   (* serialize by converting to JSON then cboring *)
   let serialize (tm : term) : Uint8Array.t
@@ -191,4 +232,20 @@ end = struct
     *)
 
   let hash tm = Sha256.hash_ba (BitArray.from_u8_array (serialize tm))
+
+  let rec term_to_pattern : term -> Pattern.t
+    = function
+      | Var name -> Var name
+      | Operator (name, tms)
+      -> Operator (name, tms |. Belt.List.map scope_to_pattern)
+      | Sequence tms
+      -> Sequence (Belt.List.map tms term_to_pattern)
+      | Primitive prim
+      -> Primitive prim
+
+  and scope_to_pattern : scope -> Pattern.t
+    = function
+      | Scope ([], tm) -> term_to_pattern tm
+      | scope -> failwith
+        ("Parse error: invalid pattern: " ^ pp_scope' scope)
 end

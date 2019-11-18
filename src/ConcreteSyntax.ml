@@ -28,14 +28,19 @@ type node_type =
   | Sequence
   | Primitive of prim_ty
 
+(** Terminals capture text from the input buffer *)
 type terminal_capture =
   { content         : string;
     leading_trivia  : string;
     trailing_trivia : string;
   }
 
+(** Nonterminals capture their children *)
 type nonterminal_capture = tree
 
+(** Terminals and nonterminals both capture data about why they were
+ constructed
+ *)
 and capture =
   | TerminalCapture    of terminal_capture
   | NonterminalCapture of nonterminal_capture
@@ -55,6 +60,7 @@ and capture =
  *)
 and tree =
   { sort            : sort;
+    (* TODO: pattern_or_term *)
     node_type       : node_type;
     leading_trivia  : string;
     trailing_trivia : string;
@@ -93,27 +99,44 @@ type subterm_result =
   | NotFound
   | FoundCapture
   | FoundTerm   of int * Nominal.term
-  | FoundBinder of string
+  | FoundBinder of Pattern.t
 
-(* Find a subterm or binder given a term pattern template and the index of the
- * subterm / binder we're looking for *)
 let rec find_subtm' slot_num token_ix scopes operator_match_pattern
   = match scopes, operator_match_pattern with
     | _, [] -> NotFound
-    | Nominal.Scope (binders, body) :: scopes', NumberedScopePattern (binder_nums, body_num) :: pattern_scopes
+    | Nominal.Scope (binders, body) :: scopes',
+      NumberedScopePattern (binder_nums, body_num) :: pattern_scopes
     ->
       let binder_matches = binders
         |. BL.zip binder_nums
         |> find (fun (_, num) -> num = token_ix)
       in
       (match binder_matches with
-      | Some (name, _ix) -> FoundBinder name
+      | Some (pat, _ix) -> FoundBinder pat
       | None -> if token_ix = body_num
         then FoundTerm (slot_num, body)
         else find_subtm' (slot_num + 1) token_ix scopes' pattern_scopes
       )
     | _, _ -> failwith "invariant violation: mismatched scopes / term patterns"
 
+(** Find a subterm or binder given a term pattern template and the index of the
+  subterm / binder we're looking for. We either (a) don't find it, (b) find a
+  term, or (c) find a binder. Example:
+
+  scopes:
+    * a. b. c
+    * e
+  numbered scope patterns:
+    * $1. $2. $3
+    * $4
+
+  * If we're looking for term $1, we'll return binder a
+  * term $4 -> term e
+  * term $5 -> not found
+
+  Note that the scopes and numbered scope patterns should mirror each other in
+  structure, otherwise an invariant violation may be raised.
+ *)
 let find_subtm
   : int -> Nominal.scope list -> numbered_scope_pattern list -> subterm_result
   = find_subtm' 0
@@ -299,8 +322,29 @@ let mk_tree sort node_type children =
 let mk_terminal_capture content =
   TerminalCapture { leading_trivia = ""; content; trailing_trivia = "" }
 
+let rec pattern_to_tree : sort -> Pattern.t -> tree
+  = fun sort pat -> match pat with
+  | Var name -> mk_tree sort Var [||]
+  | Operator (name, pats) -> mk_tree sort (Operator name)
+    (pats
+      |. Belt.List.toArray
+      |. Belt.Array.map (fun pat ->
+          NonterminalCapture (pattern_to_tree (failwith "TODO") pat)
+      )
+    )
+  | Sequence pats -> mk_tree sort Sequence
+    (pats
+      |. Belt.List.toArray
+      |. Belt.Array.map (fun pat ->
+          NonterminalCapture (pattern_to_tree (failwith "TODO") pat)
+      )
+    )
+  | Primitive p -> mk_tree sort (Primitive (* XXX *)Integer) [||]
+
 (* TODO: handle non-happy cases *)
-(* Raises: InvariantViolation *)
+(** Pretty-print an abstract term to a concrete syntax tree
+   Raises: InvariantViolation, BadRules
+  *)
 let rec of_ast
   (Language sorts as lang)
   ({ terminal_rules; sort_rules } as rules)
@@ -314,7 +358,8 @@ let rec of_ast
       (M.get sort_rules sort_name)
     in
     (* TODO: remove possible exception. possible to have var-only sort? *)
-    let OperatorMatch { tokens; operator_match_pattern } (* TODO: variable rule? *)
+    let OperatorMatch { tokens = operator_match_tokens; operator_match_pattern }
+      (* TODO: variable rule? *)
       = find_operator_match operator_rules op_name
     in
 
@@ -330,7 +375,7 @@ let rec of_ast
       * if it's a terminal, print it
       * if it's a nonterminal, look up the subterm (by token number)
     *)
-    let children = BL.(tokens
+    let children = BL.(operator_match_tokens
       |. mapWithIndex (fun token_ix token -> token_ix, token)
       |. toArray
       )
@@ -340,7 +385,7 @@ let rec of_ast
       match find_subtm' token_ix', token with
 
         | FoundCapture, NonterminalName _sort
-        -> assert false
+        -> assert false (* TODO: raise invariant violation *)
 
         | FoundCapture, TerminalName name
         -> raise (BadRules ("capture found, terminal name: " ^ name))
@@ -372,9 +417,6 @@ let rec of_ast
         | FoundTerm (_tm_ix, subtm), TerminalName _name
         -> NonterminalCapture (of_ast lang rules current_sort subtm)
 
-        | FoundBinder binder_name, TerminalName _name
-        -> mk_terminal_capture binder_name
-
         (* if the current token is a terminal, and we didn't capture a binder
          * or term, we just emit the contents of the token *)
         | NotFound, TerminalName name
@@ -387,11 +429,18 @@ let rec of_ast
              | None -> raise (CantEmitTokenRegex (name, terminal_rule))
            )
 
-        (* if the current token is naming a nonterminal, there has to be a
-         * subterm *)
-        | FoundBinder binder_name, NonterminalName name
+        | FoundBinder pattern, NonterminalName _name
+        -> let sort = failwith "TODO" in
+          NonterminalCapture (pattern_to_tree sort pattern)
+
+        | FoundBinder pattern, TerminalName name
         -> raise (BadRules
-          ("binder (" ^ binder_name ^ ") found, nonterminal name: " ^ name))
+          (Printf.sprintf
+            "binder (%s) found, terminal name: %s"
+            (Pattern.string_of_pattern pattern)
+            name
+        ))
+
         | NotFound, NonterminalName name
         -> raise (BadRules ("subterm not found, nonterminal name: " ^ name))
     ) in
@@ -440,6 +489,15 @@ let rec remove_spaces : tree -> tree
          )
        in { sort; node_type; leading_trivia; trailing_trivia; children = children' }
 
+let prim_to_ast : prim_ty -> string -> (primitive, string) Result.t
+  = fun prim_ty str -> match prim_ty with
+    | String  -> Ok (PrimString str)
+    | Integer ->
+      try
+        Ok (PrimInteger (Bigint.of_string str))
+      with
+        _ -> Error "failed to read integer literal"
+
 (* Convert a concrete tree to an AST. We ignore trivia. *)
 let rec to_ast lang tree
   : (Nominal.term, string) Result.t
@@ -455,15 +513,9 @@ let rec to_ast lang tree
         )
         children)
       (fun children' -> Nominal.Sequence (BL.fromArray children'))
-    | Primitive prim_ty, [| TerminalCapture { content = str } |]
-    -> (match prim_ty with
-      | String  -> Ok (Nominal.Primitive (PrimString str))
-      | Integer ->
-        try
-          Ok (Nominal.Primitive (PrimInteger (Bigint.of_string str)))
-        with
-          _ -> Error "failed to read integer literal"
-      )
+    | Primitive prim_ty, [| TerminalCapture { content } |]
+    -> prim_to_ast prim_ty content
+      |. Belt.Result.map (fun prim -> Nominal.Primitive prim)
 
     (* TODO: check validity *)
     | Operator op_name, _ ->
@@ -482,18 +534,41 @@ let rec to_ast lang tree
     | Var        , _
     -> assert false
 
+and capture_to_pat : capture -> (Pattern.t, string) Result.t
+  = function
+    | TerminalCapture { content = name } -> Error "TODO"
+    | NonterminalCapture { sort; node_type; children } -> match node_type with
+      | Operator op -> (match children with
+        | [| |] -> Error "TODO"
+        | _ ->
+          let head = children |. Belt.Array.getExn 0 in
+          (* check == op *)
+          children
+            |. Js.Array2.sliceFrom 1
+            |> traverse_array_result capture_to_pat
+            |. Belt.Result.map
+            (fun children' ->
+              Pattern.Operator (op, Belt.List.fromArray children'))
+      )
+      | Var -> (match children with
+        | [| TerminalCapture { content = name } |] -> Ok (Var name)
+      )
+      | Sequence -> children
+        |> traverse_array_result capture_to_pat
+        |. Belt.Result.map
+          (fun children' -> Pattern.Sequence (Belt.List.fromArray children'))
+      | Primitive prim_ty -> (match children with
+        | [| TerminalCapture { content } |] -> prim_to_ast prim_ty content
+          |. Belt.Result.map (fun prim -> Pattern.Primitive prim)
+        | _ -> Error "TODO"
+      )
+
 and scope_to_ast lang ({ children } as tree)
   : (Nominal.scope, string) Result.t
   = match BL.fromArray (BA.reverse children) with
   | body :: binders -> (match to_ast lang {tree with children = [| body |]} with
     | Ok body' -> binders
-      |> traverse_list_result
-        (function
-          | TerminalCapture { content = binder_name }
-          -> Ok binder_name
-          | NonterminalCapture _nonterminal_capture
-          -> Error "expected binder name, got TODO"
-        )
+      |> traverse_list_result capture_to_pat
       |. Result.map
         (fun binders' -> Nominal.Scope (List.rev binders', body'))
     | Error err -> Error err

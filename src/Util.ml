@@ -3,8 +3,8 @@ open Belt
 let rec unsnoc lst =
   match lst with
   | []        -> failwith "unsnoc empty list"
-  | [x]       -> ([], x)
-  | x :: lst' -> let (front, last) = unsnoc lst' in (x :: front, last)
+  | [x]       -> [], x
+  | x :: lst' -> let front, last = unsnoc lst' in x :: front, last
 
 let rec intersperse list el =
   match list with
@@ -185,3 +185,9 @@ let array_of_stack : 'a MutableStack.t -> 'a array
     let result = [||] in
     MutableStack.forEach stack (fun item -> Js.Array2.push result item; ());
     result
+
+let stringify_list : ('a -> string) -> string -> 'a list -> string
+  = fun f sep elems -> elems
+    |. Belt.List.toArray
+    |. Belt.Array.map f
+    |. Js.Array2.joinWith sep

@@ -8,10 +8,10 @@ type env = {
     (** The (checking / inference) rules we can apply *)
     rules     : rule list;
     (** The types of all known free variables *)
-    var_types : term M.t;
+    var_types : term Belt.Map.String.t;
   }
 
-let enscope (binders : string list) (Scope (binders', body))
+let enscope (binders : Pattern.t list) (Scope (binders', body))
   = Scope (binders' @ binders, body)
 
 (** Only used internally to match_schema_vars  *)
@@ -30,7 +30,7 @@ and match_schema_vars_scope (Scope (names1, body1)) (Scope (names2, body2)) =
   then match_schema_vars' body1 body2 |. M.map (enscope names1)
   else raise NoMatch
 
-let match_schema_vars : term -> term -> scope M.t option
+let match_schema_vars : term -> term -> scope Belt.Map.String.t option
   = fun t1 t2 ->
     try
       Some (match_schema_vars' t1 t2)
@@ -38,7 +38,7 @@ let match_schema_vars : term -> term -> scope M.t option
       NoMatch -> None
 
 (** Open a scope, instantiating all of its bound variables *)
-let open_scope (args : term list) (Scope (names, body)) : term option
+let open_scope (args : term list list) (Scope (names, body)) : term option
   = if BL.(length args <> length names)
     then None
     else
@@ -50,8 +50,9 @@ let open_scope (args : term list) (Scope (names, body)) : term option
           )
           |. Util.sequence_list_option
           |. BO.map (fun subtms' -> Operator (tag, subtms'))
-        | Bound i -> if i >= offset
+        | Bound (i, j) -> if i >= offset
           then BL.get args (i - offset)
+            |. BO.flatMap (fun args' -> BL.get args' j)
           else Some tm
         | Free _ -> Some tm
         | Sequence tms -> tms
@@ -61,10 +62,23 @@ let open_scope (args : term list) (Scope (names, body)) : term option
         | Primitive _ -> Some tm
       in open' 0 body
 
-let rec instantiate (env : scope M.t) (tm : term) : (term, string) BR.t = match tm with
+(** Create free variables from a pattern *)
+let pat_to_free_vars : Pattern.t -> term list
+  = fun pat -> Pattern.list_vars_of_pattern pat
+    |. BL.map (fun name -> Free name)
+
+let rec instantiate (env : scope Belt.Map.String.t) (tm : term)
+  : (term, string) BR.t
+  = match tm with
   | Operator (tag, subtms) -> subtms
     |. BL.map (fun (Scope (binders, body)) ->
-      instantiate (M.removeMany env (BL.toArray binders)) body
+      let new_var_names = binders
+        |. BL.toArray
+        |. Belt.Array.map
+          (fun pat -> BL.toArray (Pattern.list_vars_of_pattern pat))
+        |. Belt.Array.concatMany
+      in
+      instantiate (M.removeMany env new_var_names) body
       |. BR.map (fun body' -> Scope (binders, body'))
     )
     |. Util.sequence_list_result
@@ -72,8 +86,10 @@ let rec instantiate (env : scope M.t) (tm : term) : (term, string) BR.t = match 
   | Bound _ -> Ok tm
   | Free v -> (match M.get env v with
     | None -> Js.log3 env tm v; Error ("instantiate: couldn't find var " ^ v)
-    | Some (Scope (names, _) as sc)
-    -> (match open_scope (names |. BL.map (fun name -> Free name)) sc with
+    | Some (Scope (pats, _) as sc)
+
+    (* Open the scope, instantiating all variables it binds as free *)
+    -> (match open_scope (BL.map pats pat_to_free_vars) sc with
       | None -> Error "instantiate: failed to open scope"
       | Some tm -> Ok tm
     )
@@ -88,7 +104,7 @@ exception BadTermMerge of term * term
 exception BadScopeMerge of scope * scope
 
 (* TODO: remove? *)
-let safe_union m1 m2 : 'a M.t = M.merge m1 m2 (fun _ mv1 mv2 ->
+let safe_union m1 m2 : 'a Belt.Map.String.t = M.merge m1 m2 (fun _ mv1 mv2 ->
   match mv1, mv2 with
   | Some v, None
   | None, Some v
@@ -212,8 +228,11 @@ and infer' trace_stack emit_trace ({ rules; var_types } as env) tm
            | None      -> "infer'"
            | Some name -> "infer' " ^ name
          in
-         List.iter (check_hyp trace_stack' emit_trace name ctx_state env) hypotheses;
-         instantiate !ctx_state rule_ty |> raise_if_not_ok name'
+         List.iter
+           (check_hyp trace_stack' emit_trace name ctx_state env)
+           hypotheses;
+         instantiate !ctx_state rule_ty
+           |> raise_if_not_ok name'
       | None -> ctx_infer var_types tm
     in
     emit_trace (Inferred ty :: trace_stack');

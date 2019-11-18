@@ -1,3 +1,9 @@
+/* TODO:
+  * implement yields keyword (`pattern yields vars`)
+    - or perhaps this should just be `vars(pattern)`?
+  * should we add `=` judgement?
+*/
+
 %token <string> ID
 %token LEFT_PAREN
 %token RIGHT_PAREN
@@ -14,6 +20,18 @@
 
 %{
 open Statics
+
+let rec term_to_pattern : Statics.term -> Pattern.t
+  = function
+    | Operator (name, args)
+    -> Operator (name, Belt.List.map args scope_to_pattern)
+    | Free var -> Var var
+    | _ -> failwith
+      "bad parse -- can only match operators and variables in a pattern"
+
+and scope_to_pattern = function
+  | Scope ([], body) -> term_to_pattern body
+  | _ -> failwith "bad parse -- can't match binders in a pattern"
 %}
 
 %start rules
@@ -36,8 +54,11 @@ term:
   { Free $1 }
 
 scope:
-  | separated_llist(DOT, ID) DOT term { Scope ($1, $3) }
-  | term                              { Scope ([], $1) }
+  separated_nonempty_list(DOT, term)
+  { let binders_tm, body = Util.unsnoc $1 in
+    let binders_pat = Belt.List.map binders_tm term_to_pattern in
+    Scope (binders_pat, body)
+  }
 
 term_top: term EOF { $1 }
 

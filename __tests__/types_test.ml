@@ -34,7 +34,7 @@ let _ = describe "Nominal.(jsonify, serialize, hash)" (fun () ->
     ]
     Util.id;
 
-  let tm = Operator ("S", [Scope (["x"], Var "x")]) in
+  let tm = Operator ("S", [Scope ([Var "x"], Var "x")]) in
   testAll "S(x. x)"
     [ expect (jsonify tm)
       |> toEqual [%raw {| ["t", "S", [[["x"], ["v", "x"]]]] |}];

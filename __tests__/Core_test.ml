@@ -35,8 +35,8 @@ let _ = describe "Core" (fun () ->
       ]),
       Case
         ( Meaning "t1"
-        , [ PatternTerm ("true" , []), core_scope @@ Meaning "t2";
-            PatternTerm ("false", []), core_scope @@ Meaning "t3";
+        , [ CoreScope ([Operator ("true", [])], Meaning "t2");
+            CoreScope ([Operator ("false", [])], Meaning "t3");
           ]
         );
 
@@ -49,7 +49,7 @@ let _ = describe "Core" (fun () ->
       DPatternTm("fun",
         [ DenotationScopePat(["v"], DVar "body")
         ]),
-      Lambda ([sort], CoreScope (["v"], Meaning "body"));
+      Lambda ([sort], CoreScope ([Var "v"], Meaning "body"));
     ]
   in
   let dynamics' = P_dyn.parse dynamics_str in
@@ -81,20 +81,20 @@ let _ = describe "Core" (fun () ->
   in
   let ite_val = Case
     ( true_val
-    , [ PatternTerm ("true" , []), core_scope false_val;
-        PatternTerm ("false", []), core_scope true_val;
+    , [ CoreScope ([Operator ("true", [])], false_val);
+        CoreScope ([Operator ("false", [])], true_val);
       ]
     )
   in
 
   let fun_tm = DeBruijn.Operator ("ap",
-    [ scope @@ Operator ("fun", [ Scope (["x"], Var 0) ]);
+    [ scope @@ Operator ("fun", [ Scope ([Var "x"], Var (0, 0)) ]);
       scope true_tm;
     ])
   in
 
   let fun_val = CoreApp
-    ( Lambda ([sort], CoreScope (["x"], Var "x"))
+    ( Lambda ([sort], CoreScope ([Var "x"], Var "x"))
     , [ true_val ]
     )
   in
@@ -113,7 +113,7 @@ let _ = describe "Core" (fun () ->
       expect (to_ast (Lambda ([sort; sort], CoreScope (["x"; "y"], Var "x"))))
       |> toEqual (Nominal.Operator
         ( "lam"
-        , [Nominal.Scope (["x"; "y"], Var "x")]
+        , [Nominal.Scope ([Var "x"; Var "y"], Var "x")]
         ));
         *)
 

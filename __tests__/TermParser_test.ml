@@ -18,5 +18,5 @@ let _ = describe "TermParser" (fun () ->
   expectParse "true" (Primitive (PrimBool true));
   expectParse "false" (Primitive (PrimBool false)); *)
   expectParse "\"abc\"" (Primitive (PrimString "abc"));
-  expectParse "lam(x. x)" (Operator ("lam", [Scope (["x"], Var "x")]));
+  expectParse "lam(x. x)" (Operator ("lam", [Scope ([Var "x"], Var "x")]));
 )
