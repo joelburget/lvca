@@ -15,12 +15,12 @@ let _ = describe "Core" (fun () ->
   let dynamics_str = {|
   [[ true() ]] = true()
   [[ false() ]] = false()
-  [[ ite(t1; t2; t3) ]] = case [[ t1 ]] of {
-    | true()  -> [[ t2 ]]
-    | false() -> [[ t3 ]]
-  }
+  [[ ite(t1; t2; t3) ]] = case([[ t1 ]]; [
+    branch(true();  [[ t2 ]]),
+    branch(false(); [[ t3 ]]),
+  ])
   [[ ap(f; arg) ]] = app([[ f ]]; [[ arg ]])
-  [[ fun(v. body) ]] = \(v : bool) -> [[ body ]]
+  [[ fun(v. body) ]] = fun(annot(v; bool()); [[ body ]])
   |}
   in
 
@@ -52,7 +52,9 @@ let _ = describe "Core" (fun () ->
       Lambda ([sort], CoreScope ([Var "v"], Meaning "body"));
     ]
   in
-  let dynamics' = P_dyn.parse dynamics_str in
+  let dynamics' = P_dyn.parse dynamics_str
+    |. Result.map produce_denotation_chart
+  in
 
   test "dynamics as expected" (fun () ->
     expect dynamics' |> toEqual (Result.Ok dynamics);
@@ -60,14 +62,17 @@ let _ = describe "Core" (fun () ->
 
   let lit_dynamics_str = {|
   [[ lit(b) ]] = b
-  [[ ite(t; l; r) ]] = case [[ t ]] of {
-    | true()  -> [[ l ]]
-    | false() -> [[ r ]]
-  }
+  [[ ite(t; l; r) ]] = case([[ t ]]; [
+    branch(true();  [[ l ]]),
+    branch(false(); [[ r ]]),
+  ])
   |}
   in
 
-  let lit_dynamics = Result.getExn (P_dyn.parse lit_dynamics_str) in
+  let lit_dynamics = produce_denotation_chart @@
+    Result.getExn @@
+    P_dyn.parse lit_dynamics_str
+  in
 
   let true_tm   = DeBruijn.Operator ("true", []) in
   let false_tm  = DeBruijn.Operator ("false", []) in
