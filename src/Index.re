@@ -484,7 +484,10 @@ module DynamicsEditor = {
 
     React.useEffect1(() => switch (dynamics) {
       | Error(_) => None
-      | Ok(dynamics') => onComplete(dynamics'); None
+      | Ok(dynamics') => {
+          onComplete(Core.produce_denotation_chart(dynamics'));
+          None
+        }
       },
       [|dynamicsInput|]
     );

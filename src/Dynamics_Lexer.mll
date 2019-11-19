@@ -20,20 +20,11 @@ rule read = parse
   | "]"       { RIGHT_BRACKET }
   | '('       { LEFT_PAREN }
   | ')'       { RIGHT_PAREN }
-  | '{'       { LEFT_BRACE }
-  | '}'       { RIGHT_BRACE }
   | '"'       { read_string (Buffer.create 17) lexbuf }
   | '='       { EQ }
   | ';'       { SEMICOLON }
-  | ':'       { COLON }
   | ','       { COMMA }
   | '.'       { DOT }
-  | '\\'      { BACKSLASH }
-  | "->"      { ARR }
-  | "|"       { BAR }
-  | "app"     { APP }
-  | "case"    { CASE }
-  | "of"      { OF }
   | int       { INT (Bigint.of_string (L.lexeme lexbuf)) }
   | id        { ID (Lexing.lexeme lexbuf) }
   | eof       { EOF }

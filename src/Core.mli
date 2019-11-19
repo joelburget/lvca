@@ -16,6 +16,22 @@ and denotation_pat =
   | DPatternTm of string * denotation_scope_pat list
   | DVar       of string
 
+type denotation_term =
+  (* first four constructors correspond to regular term constructors *)
+  | Operator  of string * denotation_term_pat list
+  | Var       of string
+  | Sequence  of denotation_term list
+  | Primitive of primitive
+
+  (* Also, oxford bracketed var *)
+  | Meaning of string
+
+and denotation_term_pat =
+  | PatOperator of string * denotation_term_pat list
+  | PatVar      of string
+  | Sequence    of denotation_term_pat list
+  | Primitive   of primitive
+
 and core =
   | Operator  of string * core_scope list
   | Var       of string
@@ -29,8 +45,13 @@ and core =
 
 and core_scope = CoreScope of Pattern.t list * core
 
+type pre_denotation_chart =
+  | DenotationChart of (denotation_pat * denotation_term) list
+
 type denotation_chart =
   | DenotationChart of (denotation_pat * core) list
+
+val produce_denotation_chart : pre_denotation_chart -> denotation_chart
 
 type located_err = (string * DeBruijn.term option)
 type 'a translation_result = ('a, located_err) Result.t

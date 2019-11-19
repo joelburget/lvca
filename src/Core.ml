@@ -9,12 +9,29 @@ module M = Belt.Map.String
 module O = Belt.Option
 module S = Belt.Set.String
 
+(* TODO: update for patterns *)
 type denotation_scope_pat =
   | DenotationScopePat of string list * denotation_pat
 
 and denotation_pat =
   | DPatternTm of string * denotation_scope_pat list
   | DVar       of string
+
+type denotation_term =
+  (* first four constructors correspond to regular term constructors *)
+  | Operator  of string * denotation_term_pat list
+  | Var       of string
+  | Sequence  of denotation_term list
+  | Primitive of primitive
+
+  (* Also, oxford bracketed var *)
+  | Meaning of string
+
+and denotation_term_pat =
+  | PatOperator of string * denotation_term_pat list
+  | PatVar      of string
+  | Sequence    of denotation_term_pat list
+  | Primitive   of primitive
 
 type core =
   (* first four constructors correspond to regular term constructors *)
@@ -34,7 +51,78 @@ type core =
    the left-hand-side. However, a meaning variable is interpreted. *)
   | Meaning  of string
 
-and core_scope = CoreScope of string list * core
+and core_scope = CoreScope of Pattern.t list * core
+
+let rec term_to_core' vars : denotation_term -> core =
+  function
+  | Var s -> if S.has vars s then Var s else Metavar s
+  | Sequence tms -> Sequence (Belt.List.map tms @@ term_to_core' vars)
+  | Primitive p -> Primitive p
+  | Meaning v -> Meaning v
+  | _ -> failwith "TODO"
+
+  (*
+  | Operator ("annot", [t1; t2]) ->
+  | Operator ("fun", ...)
+  | Operator ("app", ...)
+  | Operator ("case", ...)
+  *)
+
+let term_to_core : denotation_term -> core
+  = term_to_core' S.empty
+
+let rec sort_from_ast (term : Nominal.term) : sort = match term with
+  | Operator ("sort_ap",
+    [ Scope ([], Primitive (PrimString name));
+      Scope ([], Sequence subtms);
+    ])
+  -> SortAp (
+    name,
+    subtms
+      |. Belt.List.toArray
+      |. Belt.Array.map sort_from_ast
+  )
+  | _ -> failwith "TODO: throw"
+
+let rec from_ast' (vars : S.t) (term : Nominal.term) : core = match term with
+  (* Sequence, and Primitive are translated directly: *)
+  | Sequence tms -> Sequence (tms |. Belt.List.map (from_ast' vars))
+  | Primitive p -> Primitive p
+
+  (* A variable is just a variable if we've encountered a binder for it.
+   * Otherwise it's a metavar. *)
+  | Var name -> if S.has vars name then Var name else Metavar name
+
+  (* The other operators are more involved: *)
+  | Operator ("lam", [Scope ([], Sequence tys); body])
+  -> Lambda (tys |. Belt.List.map sort_from_ast, from_ast_scope vars body)
+  | Operator ("app", Scope ([], f) :: args)
+  -> CoreApp (from_ast' vars f, args |. Belt.List.map (from_ast_no_scope vars))
+  | Operator ("case", Scope ([], tm) :: branches)
+  (* XXX how do variable arity terms appear? *)
+  -> Case (from_ast' vars tm, branches |. Belt.List.map (failwith "TODO"))
+  | Operator ("[[]]", [Scope ([], Var name)])
+  -> Meaning name
+  | _
+  -> failwith "TODO: throw"
+
+(* and branch_from_ast ( *)
+
+and from_ast_no_scope vars (Scope (pats, tm) : Nominal.scope) : core =
+  match pats with
+    | [] -> from_ast' vars tm
+    | _ -> failwith "TODO: throw"
+
+and from_ast_scope vars (Scope (pats, tm) : Nominal.scope) : core_scope =
+  CoreScope
+    ( pats,
+      (* from_ast' (S.union vars (S.fromArray (Belt.List.toArray pats))) tm *)
+      from_ast' (failwith "TODO") tm
+    )
+
+let from_ast
+  : Nominal.term -> core
+  = from_ast' S.empty
 
 (** An association of variable names between pattern and term. IE the named
  * pattern variable and term variable are the same. *)
@@ -43,8 +131,16 @@ type assoc =
     term_name    : string;
   }
 
+type pre_denotation_chart
+  = DenotationChart of (denotation_pat * denotation_term) list
+
 type denotation_chart
   = DenotationChart of (denotation_pat * core) list
+
+let produce_denotation_chart : pre_denotation_chart -> denotation_chart
+  = fun (DenotationChart lines) -> DenotationChart (
+    lines |. Belt.List.map (fun (pat, tm) -> pat, term_to_core tm)
+  )
 
 type located_err = string * DeBruijn.term option
 type 'a translation_result = ('a, located_err) Result.t
@@ -69,44 +165,43 @@ let rec to_ast (core : core) : Nominal.term = match core with
   | Metavar _
   | Meaning _ -> raise @@ ToAstConversionErr core
 
-and scope_to_ast (CoreScope (names, body)) = Nominal.Scope (names, to_ast body)
+and scope_to_ast (CoreScope (pats, body)) =
+  Nominal.Scope (pats, to_ast body)
 
-(* val match_branch : core -> core_pat -> core M.t option *)
+(* val match_branch : core -> Pattern.t -> core M.t option *)
 let rec match_branch v pat = match v, pat with
 
-  | Operator (tag1, vals), PatternTerm (tag2, pats) -> List.(
-    let sub_results = zipBy vals pats match_binding_branch in
+  | Operator (tag1, vals), Pattern.Operator (tag2, pats) -> List.(
+    (* let sub_results = zipBy vals pats match_binding_branch in *)
+    let sub_results = failwith "TODO" in
     if tag1 = tag2 && length vals = length pats && every sub_results O.isSome
     then Some (reduce (map sub_results O.getExn) M.empty union)
     else None
   )
-  | Sequence s1, PatternSequence s2
+  | Sequence s1, Sequence s2
   -> List.(
     let sub_results = zipBy s1 s2 match_branch in
     if length s1 = length s2 && every sub_results O.isSome
     then Some (reduce (map sub_results O.getExn) M.empty union)
     else None
   )
-  | Primitive l1, PatternPrim l2
+  | Primitive l1, Primitive l2
   -> if prim_eq l1 l2 then Some M.empty else None
-  | _, PatternVar "_"
+  | _, Var "_"
   -> Some M.empty
-  | (tm, PatternVar v)
+  | (tm, Var v)
   -> Some (M.fromArray [|v,tm|])
   | _
   -> None
 
-and match_binding_branch (CoreScope (names, tm)) (CoreBindingPat (names', pat))
-  = match_branch tm pat (* XXX names? *)
-
 let rec find_core_match v
-  : (core_pat * core_scope) list -> (core * core M.t) option
+  : core_scope list -> (core * core M.t) option
   = function
   | []
   -> None
-  | (pat, CoreScope (_, rhs)) :: pats
+  | CoreScope ([pat], rhs) :: scopes
   -> (match match_branch v pat with
-    | None          -> find_core_match v pats
+    | None          -> find_core_match v scopes
     | Some bindings -> Some (rhs, bindings)
     )
 
@@ -136,13 +231,16 @@ let rec matches tm pat = match tm, pat with
   -> denotation_scope_pat
   -> (assoc list * DeBruijn.term M.t) option
 *)
-and matches_scope (Scope (binders, tm)) (DenotationScopePat (patBinders, pat))
+and matches_scope
+  (Scope (binders, tm))
+  (DenotationScopePat (patBinders, pat))
   = if List.(length patBinders == length binders)
     then O.map
       (matches tm pat)
       (fun (assocs, tmMatches)
       -> List.zipBy patBinders binders
-           (fun pattern_name term_name -> {pattern_name; term_name})
+           (failwith "TODO")
+           (* (fun pattern_name term_name -> {pattern_name; term_name}) *)
          @ assocs
          , tmMatches
       )
@@ -210,14 +308,17 @@ let rec fill_in_core ({ dynamics; vars; assignments } as args) = function
     )
   | Case (scrutinee, branches) -> Case
       ( fill_in_core args scrutinee
+      , failwith "TODO"
+      (*
       , branches |. List.map (fun (pat, scope) ->
          (pat, fill_in_core_scope args scope))
+      *)
       )
 
 and fill_in_core_scope
   ({ assocs; vars } as args)
   (CoreScope (names, body))
-  = let names' = names |. List.map (associate_name assocs)
+  = let names' = names |. List.map (failwith "TODO") (* associate_name assocs *)
     in CoreScope (names', fill_in_core {args with vars = names' @ vars} body)
 
 (** Translate a term directly to core, with no interpretation. In other words,
@@ -225,10 +326,10 @@ and fill_in_core_scope
 and term_to_core env tm = match tm with
   | Operator (tag, subtms) ->
       Operator (tag, subtms |. List.map (scope_to_core env))
-  | Var ix -> (match List.get env ix with
+  | Var (i, j) -> failwith "TODO" (*match List.get env ix with
     | None -> raise (TranslationError ("failed to look up variable", Some tm))
     | Some name -> Var name
-    )
+    *)
   | Sequence tms -> Sequence (tms |. List.map (term_to_core env))
   | Primitive prim -> Primitive prim
 
@@ -241,13 +342,13 @@ and scope_to_core env (Scope (names, body)) =
 *)
 (** Match a term in the denotation chart, and return its core term. *)
 and term_denotation dynamics vars tm : core translation_result = match tm with
-  | DeBruijn.Var i ->
-      (match List.get vars i with
+  | DeBruijn.Var (i, j) -> failwith "TODO"
+      (*match List.get vars i with
     | Some var_name -> Ok (Var var_name)
     | None -> Error ("couldn't find variable " ^ string_of_int i ^
       " in variable context of size " ^ string_of_int (List.length vars),
       Some tm)
-  )
+  *)
   | _ -> (match find_match dynamics tm with
     | None
     -> Error ("no match found", Some tm)
@@ -273,11 +374,14 @@ let eval core =
             else Result.flatMap
               (traverse_list_result (go ctx) args)
               (fun arg_vals ->
+                 let new_args = failwith "TODO" in
+                 (*
                  let new_args = List.(arg_vals
                    |> zip argNames
                    |> toArray
                    |> M.fromArray
                  ) in
+                 *)
                  go (union ctx new_args) body
               )
         | Case (tm, branches) -> Result.flatMap (go ctx tm)
