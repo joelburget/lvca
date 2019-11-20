@@ -26,22 +26,22 @@ let _ = describe "Nominal.(jsonify, serialize, hash)" (fun () ->
   let tm = Operator ("Z", []) in
   testAll "Z()"
     [ expect (jsonify tm)
-      |> toEqual [%raw {| ["t", "Z", []] |} ];
+      |> toEqual [%raw {| ["o", "Z", []] |} ];
       expect (serialize tm)
-      |> toBe "836174615a80";
+      |> toBe "83616f615a80";
       expect (hash tm)
-      |> toBe "cc55b934e76de136a1664dc89c473b2fdc52948d8ba4394bfad5e1219841ffb3";
+      |> toBe "2380ed848a0c5ce3d0ad7420e841578e4068f394b37b9b11bd3c34cea391436c";
     ]
     Util.id;
 
   let tm = Operator ("S", [Scope ([Var "x"], Var "x")]) in
   testAll "S(x. x)"
     [ expect (jsonify tm)
-      |> toEqual [%raw {| ["t", "S", [[["x"], ["v", "x"]]]] |}];
+      |> toEqual [%raw {| ["o", "S", [[[["v", "x"]], ["v", "x"]]]] |}];
       expect (serialize tm)
-      |> toBe "836174615381828161788261766178";
+      |> toBe "83616f615381828182617661788261766178";
       expect (hash tm)
-      |> toBe "22e98205b448e5d79e3dd8fe46469288e9292c0a10eb1b6eb0b896d54e016661";
+      |> toBe "391e4a6e3dc6964d60c642c52416d18b102dca357a3e4953834dfefc0e02dfbc";
     ]
     Util.id;
 
