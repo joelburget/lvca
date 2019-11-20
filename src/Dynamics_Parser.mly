@@ -23,29 +23,41 @@
 
 %start dynamics
 %type <Core.denotation_pat>                        denotation_pat
+%type <Core.denotation_pat_scope>                  denotation_pat_scope
 %type <Core.denotation_term>                       denotation_term
+(* %type <Core.denotation_scope>                      denotation_scope *)
 %type <Core.denotation_pat * Core.denotation_term> dynamics_rule
 %type <Core.pre_denotation_chart>                  dynamics
 %%
 
 denotation_pat:
-  | ID LEFT_PAREN separated_list(SEMICOLON, scope_pat) RIGHT_PAREN
-  { DPatternTm ($1, $3) }
+  | ID LEFT_PAREN separated_list(SEMICOLON, denotation_pat_scope) RIGHT_PAREN
+  { Operator ($1, $3) }
   | ID
-  { DVar $1 }
+  { Var $1 }
 
-scope_pat:
+denotation_pat_scope:
   | separated_llist(DOT, ID) DOT denotation_pat
-  { DenotationScopePat ($1, $3) }
+  { Scope ($1, $3) }
   | denotation_pat
-  { DenotationScopePat ([], $1) }
+  { Scope ([], $1) }
+
+denotation_term_pat:
+  | ID LEFT_PAREN separated_list(SEMICOLON, denotation_term_pat) RIGHT_PAREN
+  { Pattern.Operator ($1, $3) }
+  | ID
+  { Var $1 }
+  | LEFT_BRACKET separated_list(COMMA, denotation_term_pat) COMMA? RIGHT_BRACKET
+  { Sequence $2 }
+  | prim
+  { Primitive $1 }
 
 denotation_term:
-  /* TODO
-  | ID LEFT_PAREN separated_list(SEMICOLON, core_scope) RIGHT_PAREN
+  /*
+  | ID LEFT_PAREN separated_list(SEMICOLON, denotation_scope) RIGHT_PAREN
   { Operator ($1, $3) }
   */
-  | LEFT_BRACKET separated_list(COMMA, denotation_term) RIGHT_BRACKET
+  | LEFT_BRACKET separated_list(COMMA, denotation_term) COMMA? RIGHT_BRACKET
   { Sequence $2 }
   | prim
   { Primitive $1 }
@@ -53,6 +65,14 @@ denotation_term:
   { Var $1 }
   | LEFT_OXFORD ID RIGHT_OXFORD
   { Meaning $2 }
+
+  /*
+denotation_scope:
+  | separated_llist(DOT, ID) DOT denotation_scope
+  { Scope ($1 |. Belt.List.map (fun x -> PatVar x), $3) }
+  | denotation_scope
+  { Scope ([], $1) }
+  */
 
 prim:
   | INT    { PrimInteger $1 }
@@ -81,13 +101,4 @@ typed_arg: LEFT_PAREN pattern COLON sort RIGHT_PAREN { ($2, $4) }
 
 branch: pattern ARR raw_core { CoreScope ([$1], $3) }
 
-denotation_term_pat:
-  | ID LEFT_PAREN separated_list(SEMICOLON, denotation_term_pat) RIGHT_PAREN
-  { Pattern.Operator ($1, $3) }
-  | ID
-  { Var $1 }
-  | LEFT_BRACKET separated_list(COMMA, denotation_term_pat) RIGHT_BRACKET
-  { Sequence $2 }
-  | prim
-  { Primitive $1 }
 */

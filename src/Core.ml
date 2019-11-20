@@ -9,17 +9,19 @@ module M = Belt.Map.String
 module O = Belt.Option
 module S = Belt.Set.String
 
-(* TODO: update for patterns *)
-type denotation_scope_pat =
-  | DenotationScopePat of string list * denotation_pat
+(** Represents the LHS of a denotation rule *)
+type denotation_pat =
+  | Operator  of string * denotation_pat_scope list
+  | Sequence  of denotation_pat list
+  | Primitive of primitive
+  | Var       of string
 
-and denotation_pat =
-  | DPatternTm of string * denotation_scope_pat list
-  | DVar       of string
+and denotation_pat_scope = Scope of string list * denotation_pat
 
+(** Represents the RHS of a denotation rule *)
 type denotation_term =
   (* first four constructors correspond to regular term constructors *)
-  | Operator  of string * denotation_term_pat list
+  | Operator  of string * denotation_scope list
   | Var       of string
   | Sequence  of denotation_term list
   | Primitive of primitive
@@ -27,10 +29,13 @@ type denotation_term =
   (* Also, oxford bracketed var *)
   | Meaning of string
 
-and denotation_term_pat =
-  | PatOperator of string * denotation_term_pat list
+and denotation_scope =
+  Scope of denotation_scope_pat list * denotation_term
+
+and denotation_scope_pat =
+  | PatOperator of string * denotation_scope_pat list
   | PatVar      of string
-  | Sequence    of denotation_term_pat list
+  | Sequence    of denotation_scope_pat list
   | Primitive   of primitive
 
 type core =
@@ -210,8 +215,8 @@ let rec find_core_match v
   -> denotation_pat
   -> (assoc list * DeBruijn.term M.t) option
 *)
-let rec matches tm pat = match tm, pat with
-  | DeBruijn.Operator (tag1, subtms), DPatternTm (tag2, subpats)
+let rec matches tm (pat : denotation_pat) = match tm, pat with
+  | DeBruijn.Operator (tag1, subtms), Operator (tag2, subpats)
   -> if tag1 == tag2 && List.(length subtms == length subpats)
      then fold_right
        (fun ((scope, subpat), b_opt) ->
@@ -222,18 +227,16 @@ let rec matches tm pat = match tm, pat with
        (List.zip subtms subpats)
        (Some ([], M.empty))
      else None
-  | _, DPatternTm _ -> None
-  | _, DVar "_"     -> Some ([], M.empty)
-  | tm, DVar v      -> Some ([], M.fromArray [|v,tm|])
+  | _, Operator _ -> None
+  | _, Var "_"     -> Some ([], M.empty)
+  | tm, Var v      -> Some ([], M.fromArray [|v,tm|])
 
 (* val matches_scope
   : DeBruijn.scope
   -> denotation_scope_pat
   -> (assoc list * DeBruijn.term M.t) option
 *)
-and matches_scope
-  (Scope (binders, tm))
-  (DenotationScopePat (patBinders, pat))
+and matches_scope (Scope (binders, tm)) (Scope (patBinders, pat))
   = if List.(length patBinders == length binders)
     then O.map
       (matches tm pat)

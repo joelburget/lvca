@@ -8,7 +8,7 @@ let _ = describe "Core" (fun () ->
   let module P_dyn = Parsing.Incremental(Parsing.Parseable_dynamics) in
   let one = Bigint.of_int 1 in
   let sort = SortAp ("bool", [||]) in
-  let pat_scope body = DenotationScopePat ([], body) in
+  let pat_scope body : denotation_pat_scope = Scope ([], body) in
   let core_scope body = CoreScope ([], body) in
   let scope body = DeBruijn.Scope ([], body) in
 
@@ -25,13 +25,13 @@ let _ = describe "Core" (fun () ->
   in
 
   let dynamics = DenotationChart
-    [ DPatternTm ("true",  []), Operator ("true",  []);
-      DPatternTm ("false", []), Operator ("false", []);
+    [ Operator ("true",  []), Operator ("true",  []);
+      Operator ("false", []), Operator ("false", []);
 
-      DPatternTm ("ite",
-      [ pat_scope @@ DVar "t1";
-        pat_scope @@ DVar "t2";
-        pat_scope @@ DVar "t3";
+      Operator ("ite",
+      [ pat_scope @@ Var "t1";
+        pat_scope @@ Var "t2";
+        pat_scope @@ Var "t3";
       ]),
       Case
         ( Meaning "t1"
@@ -40,15 +40,13 @@ let _ = describe "Core" (fun () ->
           ]
         );
 
-      DPatternTm ("ap",
-        [ pat_scope @@ DVar "f";
-          pat_scope @@ DVar "arg";
+      Operator ("ap",
+        [ pat_scope @@ Var "f";
+          pat_scope @@ Var "arg";
         ]),
       CoreApp (Meaning "f", [Meaning "arg"]);
 
-      DPatternTm("fun",
-        [ DenotationScopePat(["v"], DVar "body")
-        ]),
+      Operator("fun", [ Scope (["v"], Var "body") ]),
       Lambda ([sort], CoreScope ([Var "v"], Meaning "body"));
     ]
   in
