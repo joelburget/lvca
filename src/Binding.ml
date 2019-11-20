@@ -197,7 +197,7 @@ end = struct
   let rec jsonify (tm : term) : Js.Json.t = Js.Json.(match tm with
     | Operator (tag, tms)
     -> array [|
-      string "t";
+      string "o";
       string tag;
       array_map jsonify_scope tms
     |]
@@ -210,7 +210,7 @@ end = struct
     = Js.Json.(match pat with
     | Operator (tag, tms)
     -> array [|
-      string "t";
+      string "o";
       string tag;
       array_map jsonify_pat tms
     |]
