@@ -9,16 +9,30 @@
 open Types
 open Binding
 
-type denotation_scope_pat =
-  | DenotationScopePat of string list * denotation_pat
+(** Represents the LHS of a denotation rule. Why is this not just `Pattern.t`?
+ Because patterns can't match binders. For example, we want to be able to write
+ this on the LHS of a denotation rule:
 
-and denotation_pat =
-  | DPatternTm of string * denotation_scope_pat list
-  | DVar       of string
+     [[ lam(x. x) ]] = ...
 
+ This is not allowed by regular patterns.
+ *)
+type denotation_pat =
+  | Operator  of string * denotation_pat_scope list
+  | Sequence  of denotation_pat list
+  | Primitive of primitive
+  | Var       of string
+
+(** A scope within the LHS of a denotation rule. Note that it's not currently
+  allowed to match on specific patterns -- you can only match on an entire
+  slot at once.
+*)
+and denotation_pat_scope = Scope of string list * denotation_pat
+
+(** Represents the RHS of a denotation rule *)
 type denotation_term =
   (* first four constructors correspond to regular term constructors *)
-  | Operator  of string * denotation_term_pat list
+  | Operator  of string * denotation_scope list
   | Var       of string
   | Sequence  of denotation_term list
   | Primitive of primitive
@@ -26,10 +40,13 @@ type denotation_term =
   (* Also, oxford bracketed var *)
   | Meaning of string
 
-and denotation_term_pat =
-  | PatOperator of string * denotation_term_pat list
+and denotation_scope =
+  Scope of denotation_scope_pat list * denotation_term
+
+and denotation_scope_pat =
+  | PatOperator of string * denotation_scope_pat list
   | PatVar      of string
-  | Sequence    of denotation_term_pat list
+  | Sequence    of denotation_scope_pat list
   | Primitive   of primitive
 
 and core =

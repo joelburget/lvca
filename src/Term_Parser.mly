@@ -23,7 +23,7 @@ term:
   { Operator ($1, $3) }
   | ID;
   { Var $1       }
-  | LEFT_BRACK separated_list(COMMA, term) RIGHT_BRACK
+  | LEFT_BRACK separated_list(COMMA, term) COMMA? RIGHT_BRACK
   { Sequence $2  }
   | primitive
   { Primitive $1 }

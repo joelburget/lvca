@@ -10,7 +10,7 @@ let _ = describe "TermParser" (fun () ->
     let parsed = P_dyn.parse str |. Result.map produce_denotation_chart in
     expect parsed |> toEqual (Result.Ok tm)
   ) in
-  let pat_scope body = DenotationScopePat ([], body) in
+  let pat_scope body : denotation_pat_scope = Scope ([], body) in
   let core_scope body = CoreScope ([], body) in
 
   let dyn1 = {|
@@ -19,34 +19,34 @@ let _ = describe "TermParser" (fun () ->
 [[ val(v)          ]] = v
 [[ annot(tm; ty)   ]] = [[ tm ]]
 [[ app(fun; arg)   ]] = app([[ fun ]]; [[ arg ]])
-[[ lam(x. body)    ]] = \(x : bool) -> [[ body ]]
-[[ ite(t1; t2; t3) ]] = case [[ t1 ]] of {
-  | true()  -> [[ t2 ]]
-  | false() -> [[ t3 ]]
-}
+[[ lam(x. body)    ]] = fun([bool()]; x. [[ body ]])
+[[ ite(t1; t2; t3) ]] = case([[ t1 ]]; [
+  true(). [[ t2 ]],
+  false(). [[ t3 ]],
+])
   |}
   in
 
   let expected = DenotationChart
-    [ DPatternTm ("true",  []), Operator ("true",  []);
-      DPatternTm ("false", []), Operator ("false", []);
-      DPatternTm ("val", [pat_scope @@ DVar "v"]), Metavar "v";
-      DPatternTm ("annot",
-        [ pat_scope @@ DVar "tm";
-          pat_scope @@ DVar "ty";
+    [ Operator ("true",  []), Operator ("true",  []);
+      Operator ("false", []), Operator ("false", []);
+      Operator ("val", [pat_scope @@ Var "v"]), Metavar "v";
+      Operator ("annot",
+        [ pat_scope @@ Var "tm";
+          pat_scope @@ Var "ty";
         ]),
         Meaning "tm";
-      DPatternTm ("app",
-        [ pat_scope @@ DVar "fun";
-          pat_scope @@ DVar "arg";
+      Operator ("app",
+        [ pat_scope @@ Var "fun";
+          pat_scope @@ Var "arg";
         ]),
         CoreApp (Meaning "fun", [ Meaning "arg" ]);
-      DPatternTm ("lam", [ DenotationScopePat (["x"], DVar "body") ]),
+      Operator ("lam", [ Scope (["x"], Var "body") ]),
         Lambda ([SortAp ("bool", [||])], CoreScope ([Var "x"], Meaning "body"));
-      DPatternTm ("ite",
-        [ pat_scope @@ DVar "t1";
-          pat_scope @@ DVar "t2";
-          pat_scope @@ DVar "t3";
+      Operator ("ite",
+        [ pat_scope @@ Var "t1";
+          pat_scope @@ Var "t2";
+          pat_scope @@ Var "t3";
         ]),
         Case
           ( Meaning "t1"
@@ -63,7 +63,7 @@ let _ = describe "TermParser" (fun () ->
     P_dyn.parse "[[ lit(v) ]] = v"
   in
   let metavar_test_expected = DenotationChart
-    [ DPatternTm ("lit",  [pat_scope @@ DVar "v"]),
+    [ Operator ("lit",  [pat_scope @@ Var "v"]),
       Metavar "v";
     ]
   in
