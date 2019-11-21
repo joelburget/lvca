@@ -1,4 +1,5 @@
 %token <int> NAT
+%token <string> REGEX
 %token <string> TERMINAL_ID
 %token <string> NONTERMINAL_ID
 %token <string> STRING
@@ -24,17 +25,13 @@
 %{ open Types.ConcreteSyntaxDescription %}
 
 %start terminal_rule__test
-%start regex__test
 %start capture_number
 %start nonterminal_token
 %start operator_match__test
 %start sort_rule__test
 %start language
-%type <Types.ConcreteSyntaxDescription.terminal_rule> terminal_rule
-%type <Types.ConcreteSyntaxDescription.terminal_rule> terminal_rule__test
-%type <Types.ConcreteSyntaxDescription.regex> regex
-%type <Types.ConcreteSyntaxDescription.regex> regex__test
-%type <Types.ConcreteSyntaxDescription.regex_piece> regex_piece
+%type <Types.ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule
+%type <Types.ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule__test
 %type <Types.ConcreteSyntaxDescription.capture_number> capture_number
 %type <Types.ConcreteSyntaxDescription.nonterminal_token> nonterminal_token
 %type <Types.ConcreteSyntaxDescription.operator_match> operator_match
@@ -51,8 +48,10 @@ language:
   { Types.ConcreteSyntaxDescription.make $1 $2 }
 
 terminal_rule:
-  | TERMINAL_ID ASSIGN regex
-  { TerminalRule ($1, $3) }
+  | TERMINAL_ID ASSIGN REGEX
+  { PreTerminalRule ($1, Left $3) }
+  | TERMINAL_ID ASSIGN STRING
+  { PreTerminalRule ($1, Right $3) }
 
 terminal_rule__test: terminal_rule EOF { $1 }
 
@@ -112,6 +111,7 @@ nonterminal_token:
   | TERMINAL_ID    { TerminalName    $1 }
   | NONTERMINAL_ID { NonterminalName $1 }
 
+(*
 regex: nonempty_list(regex_piece) { $1 }
 
 regex__test: regex EOF { $1 }
@@ -123,3 +123,4 @@ regex_piece:
   | regex_piece STAR     { ReStar   $1 }
   | regex_piece PLUS     { RePlus   $1 }
   | regex_piece QUESTION { ReOption $1 }
+*)

@@ -46,6 +46,14 @@
         {
           "name" : "ocamllex",
           "edge" : ["ConcreteSyntax_Lexer.ml", ":", "ConcreteSyntax_Lexer.mll"]
+        },
+        {
+          "name" : "menhir",
+          "edge" : ["Regex_Parser.ml", "Regex_Parser.mli", ":", "Regex_Parser.mly"]
+        },
+        {
+          "name" : "ocamllex",
+          "edge" : ["Regex_Lexer.ml", ":", "Regex_Lexer.mll"]
         }
       ]
     },

@@ -9,6 +9,7 @@ type token =
   | RIGHT_PAREN
   | RIGHT_FIXITY
   | RIGHT_BRACE
+  | REGEX of (string)
   | QUESTION
   | PLUS
   | NONTERMINAL_ID of (string)
@@ -31,11 +32,9 @@ exception Error
 
 (* The monolithic API. *)
 
-val terminal_rule__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Types.ConcreteSyntaxDescription.terminal_rule)
+val terminal_rule__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Types.ConcreteSyntaxDescription.pre_terminal_rule)
 
 val sort_rule__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Types.ConcreteSyntaxDescription.sort_rule)
-
-val regex__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Types.ConcreteSyntaxDescription.regex)
 
 val operator_match__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Types.ConcreteSyntaxDescription.operator_match)
 
@@ -58,11 +57,9 @@ end
 
 module Incremental : sig
   
-  val terminal_rule__test: Lexing.position -> (Types.ConcreteSyntaxDescription.terminal_rule) MenhirInterpreter.checkpoint
+  val terminal_rule__test: Lexing.position -> (Types.ConcreteSyntaxDescription.pre_terminal_rule) MenhirInterpreter.checkpoint
   
   val sort_rule__test: Lexing.position -> (Types.ConcreteSyntaxDescription.sort_rule) MenhirInterpreter.checkpoint
-  
-  val regex__test: Lexing.position -> (Types.ConcreteSyntaxDescription.regex) MenhirInterpreter.checkpoint
   
   val operator_match__test: Lexing.position -> (Types.ConcreteSyntaxDescription.operator_match) MenhirInterpreter.checkpoint
   

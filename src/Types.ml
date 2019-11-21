@@ -183,73 +183,11 @@ module ConcreteSyntaxDescription = struct
   type capture_number = int
   type terminal_id    = string
 
-  type regex_piece =
-    (** Just a string of characters, eg `foo` *)
-    | ReString of string
-    (** A character class, eg `\w` or `\d`. Syntactically, these are all
-     * started by a backslash. We just use javascript character classes. *)
-    (* Question: do we support octal escapes (\40)? The lex manual points out
-     * this is non-portable. But don't we presuppose unicode? We accept unicode
-     * categories, right? `\cc`, `\cf`, etc. *)
-    | ReClass  of string
-    (** A character set, eg `[a-z]` or `[^abc]` *)
-    | ReSet    of string
-    (** Zero-or-more repetition, eg `(ab)*` *)
-    | ReStar   of regex_piece
-    (** One-or-more repetition, eg `(ab)+` *)
-    | RePlus   of regex_piece
-    (** Option, eg `(ab)?` *)
-    | ReOption of regex_piece
+	type pre_terminal_rule =
+    PreTerminalRule of terminal_id * (string, string) Either.t
+  type terminal_rule = TerminalRule of terminal_id * Regex.t
 
-  (* A regular expression used for lexical analysis. *)
-  type regex          = regex_piece list
-  type terminal_rule  = TerminalRule of terminal_id * regex
-
-  type terminal_rules = (string * regex) array
-
-  let rec canonical_piece_representative : regex_piece -> string
-    = function
-      | ReString str -> str
-      | ReClass _ -> failwith "TODO"
-      | ReSet _ -> failwith "TODO"
-      | RePlus piece -> canonical_piece_representative piece
-      | ReStar _
-      | ReOption _ -> ""
-
-  let canonical_representative : regex -> string
-    = function pieces -> pieces
-      |. BL.toArray
-      |. Belt.Array.map canonical_piece_representative
-      |. Js.Array2.joinWith ""
-
-  let rec piece_accepts_empty : regex_piece -> bool
-    = function
-      | ReString str -> Js.String2.length str = 0
-      | ReSet    str -> false
-      (* TODO: are boundaries the only empty classes? *)
-      | ReClass str -> str = "\\b" || str = "\\B"
-      | RePlus piece -> piece_accepts_empty piece
-      | ReStar _
-      | ReOption _ -> true
-
-  let accepts_empty : regex -> bool
-    = fun regex -> BL.every regex
-      (fun piece -> piece_accepts_empty piece)
-
-  let rec show_regex_piece : regex_piece -> string
-    = function
-      | ReString str -> "\"" ^ str ^ "\""
-      | ReSet    str -> "[" ^ str ^ "]"
-      | ReClass  str -> str
-      | ReStar   piece -> show_regex_piece piece ^ "*"
-      | RePlus   piece -> show_regex_piece piece ^ "+"
-      | ReOption piece -> show_regex_piece piece ^ "?"
-
-  let show_regex : regex -> string
-    = fun regex -> regex
-      |. BL.toArray
-      |. Belt.Array.map show_regex_piece
-      |. Js.Array2.joinWith ""
+  type terminal_rules = (string * Regex.t) array
 
   type nonterminal_token =
     | TerminalName    of string
@@ -337,9 +275,9 @@ module ConcreteSyntaxDescription = struct
     sort_rules     : sort_rules;
   }
 
-  let make (terminal_rules: terminal_rule list) (sort_rules : sort_rule list) =
+  let make (terminal_rules: pre_terminal_rule list) (sort_rules : sort_rule list) =
     { terminal_rules = terminal_rules
-      |> List.map (fun (TerminalRule (name, rule)) -> name, rule)
+      |> List.map (fun (PreTerminalRule (name, _)) -> name, failwith "TODO")
       |> Belt.List.toArray;
     sort_rules = sort_rules
       |> List.map (fun ((SortRule { sort_name }) as rule) -> sort_name, rule)

@@ -1,9 +1,7 @@
 open Jest
 open Expect
-let (to_ast, to_string, of_ast, mk_tree, parse, equivalent,
-  regex_piece_to_string) =
-  ConcreteSyntax.(to_ast, to_string, of_ast, mk_tree, parse, equivalent,
-    regex_piece_to_string)
+let (to_ast, to_string, of_ast, mk_tree, parse, equivalent) =
+  ConcreteSyntax.(to_ast, to_string, of_ast, mk_tree, parse, equivalent)
 type tree = ConcreteSyntax.tree
 open Belt.Result
 
@@ -53,12 +51,12 @@ let _ = describe "ConcreteSyntax" (fun () ->
   |]))
   in
 
-  testAll "regex_piece_to_string"
-    [ expect (regex_piece_to_string (ReString "+")) |> toBe "\\+";
-      expect (regex_piece_to_string (ReString "*")) |> toBe "\\*";
-      expect (regex_piece_to_string (ReString "?")) |> toBe "\\?";
-      expect (regex_piece_to_string (ReString "-")) |> toBe "\\-";
-      expect (regex_piece_to_string (ReSet  "a-z")) |> toBe "[a-z]";
+  testAll "to_string"
+    [ expect (Regex.to_string (ReString "+")) |> toBe "\\+";
+      expect (Regex.to_string (ReString "*")) |> toBe "\\*";
+      expect (Regex.to_string (ReString "?")) |> toBe "\\?";
+      expect (Regex.to_string (ReString "-")) |> toBe "\\-";
+      expect (Regex.to_string (ReSet  "a-z")) |> toBe "[a-z]";
     ]
     Util.id;
 

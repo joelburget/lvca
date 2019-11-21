@@ -149,33 +149,7 @@ exception BadRules of string
 (** raised from of_ast when we need to emit a token but don't have a capture,
  * and the terminal match is a regex, not a string literal. This could actually
  * be a form of BadRules *)
-exception CantEmitTokenRegex of string * regex
-
-let regex_is_literal : regex -> string option = function
-  | [ReString str] -> Some str
-  | _              -> None
-
-(* TODO: do we need to insert \b? *)
-(* Escape special characters: TODO more explanation *)
-let rec regex_piece_to_string : regex_piece -> string = function
-  | ReString str   -> Js.String.(str
-    |> replaceByRe [%re "/\\//g"] "\\/"
-    |> replaceByRe [%re "/\\+/g"] "\\+"
-    |> replaceByRe [%re "/\\*/g"] "\\*"
-    |> replaceByRe [%re "/\\?/g"] "\\?"
-    |> replaceByRe [%re "/\\-/g"] "\\-"
-    |> replaceByRe [%re "/\\(/g"] "\\("
-    |> replaceByRe [%re "/\\)/g"] "\\)"
-  )
-  | ReSet    str   -> "[" ^ str ^ "]"
-  | ReStar   piece -> regex_piece_to_string piece ^ "*"
-  | RePlus   piece -> regex_piece_to_string piece ^ "+"
-  | ReOption piece -> regex_piece_to_string piece ^ "?"
-  | ReClass  str   -> str
-
-let regex_to_string : regex -> string = fun re_parts -> re_parts
-  |> List.map regex_piece_to_string
-  |> String.concat ""
+exception CantEmitTokenRegex of string * Regex.t
 
 type invalid_grammar = InvalidGrammar of string
 exception CheckValidExn of invalid_grammar
@@ -291,7 +265,7 @@ let check_description_validity { terminal_rules; sort_rules } =
             | TerminalName nt_name -> (match M.get terminal_rules' nt_name with
               | None -> raise (CheckValidExn (InvalidGrammar
                 ("Named terminal " ^ nt_name ^ " does not exist")))
-              | Some regex -> if Util.is_none (regex_is_literal regex)
+              | Some regex -> if Util.is_none (Regex.is_literal regex)
                 (* TODO: print it *)
                 then raise (CheckValidExn (InvalidGrammar
                   "Uncaptured regex which is not a string literal"))
@@ -300,7 +274,7 @@ let check_description_validity { terminal_rules; sort_rules } =
         );
       );
     terminal_rules' |. M.forEach (fun _i regex ->
-      if Types.ConcreteSyntaxDescription.accepts_empty regex then
+      if Regex.accepts_empty regex then
         raise (CheckValidExn (InvalidGrammar
           (* TODO: print it *)
           "Regex accepts empty strings"
@@ -424,7 +398,7 @@ let rec of_ast
               ("of_ast: failed to get terminal rule " ^ name) @@
               M.get terminal_rules' name
            in
-           (match regex_is_literal terminal_rule with
+           (match Regex.is_literal terminal_rule with
              | Some re_str -> mk_terminal_capture re_str
              | None -> raise (CantEmitTokenRegex (name, terminal_rule))
            )
@@ -750,7 +724,7 @@ let tree_of_parse_result
 
 let lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer
   = fun { terminal_rules } -> terminal_rules
-    |. BA.map (fun (tok_name, re) -> regex_to_string re, tok_name)
+    |. BA.map (fun (tok_name, re) -> Regex.to_string re, tok_name)
     |. BL.fromArray
 
 let parse desc str =
