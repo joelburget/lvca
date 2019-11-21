@@ -164,7 +164,7 @@ let array_map_keep : ('a -> 'b option) -> 'a array -> 'b array
     let result = [||] in
     arr |. Belt.Array.forEach (fun a -> match f a with
       | None -> ()
-      | Some b -> result |. Js.Array2.push b; ()
+      | Some b -> let _ = Js.Array2.push result b in ()
     );
     result
 
@@ -183,7 +183,9 @@ let get_option' : string -> 'a option -> 'a
 let array_of_stack : 'a MutableStack.t -> 'a array
   = fun stack ->
     let result = [||] in
-    MutableStack.forEach stack (fun item -> Js.Array2.push result item; ());
+    MutableStack.forEach stack (fun item ->
+      let _ = Js.Array2.push result item in ()
+    );
     result
 
 let stringify_list : ('a -> string) -> string -> 'a list -> string
