@@ -10,7 +10,6 @@ type token =
   | ESCAPED of (string)
   | EOF
   | DOT
-  | DOLLAR
   | CHARS of (string)
   | CHARACTER_SET of (string)
   | CHARACTER_CLASS of (string)
