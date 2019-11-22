@@ -63,33 +63,34 @@ let rec show : regex -> string
       |> String.concat "; "
     )
 
-let rec canonical_representative : regex -> string
+let rec canonical_representative : regex -> string option
   = function
-    | ReString str -> str
-    | ReClass _ -> failwith "TODO"
-    | ReSet _ -> failwith "TODO"
-    | ReAny -> failwith "TODO"
+    | ReString str -> Some str
+    | ReClass _ -> None
+    | ReSet _ -> None
+    | ReAny -> None
     | RePlus re -> canonical_representative re
     | ReStar _
-    | ReOption _ -> ""
-    | ReChoice (re, _) -> canonical_representative re
+    | ReOption _ -> Some ""
+    | ReChoice (re, re') -> Util.get_first canonical_representative [re; re']
     | ReConcat pieces -> pieces
-      |. Belt.List.toArray
-      |. Belt.Array.map canonical_representative
-      |. Js.Array2.joinWith ""
+      |> Util.traverse_list_option canonical_representative
+      |. Belt.Option.map (fun pieces' -> pieces'
+        |. Belt.List.toArray
+        |. Js.Array2.joinWith ""
+      )
 
 let rec accepts_empty : regex -> bool
   = function
     | ReString str -> Js.String2.length str = 0
-    | ReSet    _ -> false
-    (* TODO: are boundaries the only empty classes? *)
     | ReClass cls -> cls = PosClass Boundary || cls = NegClass Boundary
     | RePlus re -> accepts_empty re
+    | ReChoice (a, b) -> accepts_empty a || accepts_empty b
+    | ReConcat pieces -> Belt.List.every pieces accepts_empty
     | ReStar _
     | ReOption _ -> true
-    | ReChoice (a, b) -> accepts_empty a || accepts_empty b
+    | ReSet _
     | ReAny -> false
-    | ReConcat pieces -> Belt.List.every pieces accepts_empty
 
 let is_literal : regex -> string option = function
   | ReString str -> Some str
@@ -119,11 +120,10 @@ let parenthesize : bool -> string -> string
   = fun condition str ->
     if condition then "(" ^ str ^ ")" else str
 
-(* TODO: do we need to insert \b? *)
 let rec to_string' : int -> regex -> string
   = fun precedence re -> match re with
   (* We need to escape special characters in strings *)
-  | ReString str   -> Js.String.(str
+  | ReString str -> Js.String.(str
     |> replaceByRe [%re {|/\\/g|}] {|\\|}
     |> replaceByRe [%re {|/\//g|}] {|\/|}
     |> replaceByRe [%re {|/\+/g|}] {|\+|}
@@ -135,7 +135,7 @@ let rec to_string' : int -> regex -> string
     |> parenthesize (precedence > 1 && length str > 1)
   )
 
-  | ReSet    str   -> "[" ^ str ^ "]"
+  | ReSet    str -> "[" ^ str ^ "]"
   | ReStar   re -> to_string' 2 re ^ "*"
   | RePlus   re -> to_string' 2 re ^ "+"
   | ReOption re -> to_string' 2 re ^ "?"
@@ -153,6 +153,8 @@ let rec to_string' : int -> regex -> string
   valid regexes,
   - to_string . parse = id
   - parse . to_string = id
+
+  This has no delimiters, ie it returns "abc", not "/abc/".
 *)
 let to_string : regex -> string
   = to_string' 0

@@ -5,7 +5,6 @@
 %token LEFT_PAREN
 %token RIGHT_PAREN
 %token DOT
-%token DOLLAR
 %token BAR
 %token STAR
 %token PLUS

@@ -81,6 +81,17 @@ module ArrayApplicative (A: Any) = struct
 
 end
 
+let rec traverse_list_option
+  (f : 'a -> 'b option)
+  (lst : 'a list)
+  : ('b list) option = match lst with
+  | [] -> Some []
+  | a :: rest -> Option.flatMap (f a)
+    (fun b -> Option.flatMap
+      (traverse_list_option f rest)
+      (fun rest' -> Some (b :: rest'))
+    )
+
 let rec sequence_list_option
   (lst : 'a option list)
   : ('a list option) = match lst with
