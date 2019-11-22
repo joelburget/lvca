@@ -1,13 +1,10 @@
-module Result = Belt.Result
 module BL = Belt.List
 module BA = Belt.Array
 module Nominal = Binding.Nominal
 open Types
 open Types.ConcreteSyntaxDescription
 module AA = Util.ArrayApplicative(struct type t = string end)
-open AA
 module MS = Belt.Map.String
-module MI = Belt.Map.Int
 let (find, get_option', traverse_list_result) =
   Util.(find, get_option', traverse_list_result)
 module MMI = Belt.MutableMap.Int
@@ -17,6 +14,8 @@ module SI = Belt.Set.Int
 module Lexer = ConcreteSyntax_Lexer
 module Parser = ConcreteSyntax_Parser
 module ParseErrors = ConcreteSyntax_ParseErrors
+
+type ('a, 'b) result = ('a, 'b) Belt.Result.t
 
 type prim_ty =
   | Integer
@@ -59,7 +58,7 @@ and capture =
  * on the leftmost newline.
  *)
 and tree =
-  { sort            : sort;
+  { sort_name       : sort_name;
     (* TODO: pattern_or_term *)
     node_type       : node_type;
     leading_trivia  : string;
@@ -69,7 +68,7 @@ and tree =
 
 (* tree equality mod trivia *)
 let rec equivalent t1 t2 =
-  t1.sort = t2.sort &&
+  t1.sort_name = t2.sort_name &&
   t1.node_type = t2.node_type &&
   BA.(every (zipBy t1.children t2.children equivalent')) (fun b -> b)
 
@@ -284,8 +283,8 @@ let check_description_validity { terminal_rules; sort_rules } =
   with
     CheckValidExn err -> Some err
 
-let mk_tree sort node_type children =
-  { sort;
+let mk_tree sort_name node_type children =
+  { sort_name;
     node_type;
     leading_trivia  = "";
     trailing_trivia = "";
@@ -296,24 +295,24 @@ let mk_tree sort node_type children =
 let mk_terminal_capture content =
   TerminalCapture { leading_trivia = ""; content; trailing_trivia = "" }
 
-let rec pattern_to_tree : sort -> Pattern.t -> tree
-  = fun sort pat -> match pat with
-  | Var name -> mk_tree sort Var [||]
-  | Operator (name, pats) -> mk_tree sort (Operator name)
+let rec pattern_to_tree : sort_name -> Pattern.t -> tree
+  = fun sort_name pat -> match pat with
+  | Var name -> mk_tree sort_name Var [||]
+  | Operator (name, pats) -> mk_tree sort_name (Operator name)
     (pats
       |. Belt.List.toArray
       |. Belt.Array.map (fun pat ->
           NonterminalCapture (pattern_to_tree (failwith "TODO") pat)
       )
     )
-  | Sequence pats -> mk_tree sort Sequence
+  | Sequence pats -> mk_tree sort_name Sequence
     (pats
       |. Belt.List.toArray
       |. Belt.Array.map (fun pat ->
           NonterminalCapture (pattern_to_tree (failwith "TODO") pat)
       )
     )
-  | Primitive p -> mk_tree sort (Primitive (* XXX *)Integer) [||]
+  | Primitive p -> mk_tree sort_name (Primitive (* XXX *)Integer) [||]
 
 (* TODO: handle non-happy cases *)
 (** Pretty-print an abstract term to a concrete syntax tree
@@ -322,11 +321,11 @@ let rec pattern_to_tree : sort -> Pattern.t -> tree
 let rec of_ast
   (Language sorts as lang)
   ({ terminal_rules; sort_rules } as rules)
-  current_sort
+  (SortAp (sort_name, _) as current_sort)
   tm
   = let terminal_rules' = M.fromArray terminal_rules in
     match current_sort, tm with
-  | SortAp (sort_name, _), Nominal.Operator (op_name, scopes) ->
+  | _, Nominal.Operator (op_name, scopes) ->
     let SortRule { operator_rules } = get_option'
       ("of_ast: failed to get sort " ^ sort_name)
       (M.get sort_rules sort_name)
@@ -364,10 +363,10 @@ let rec of_ast
         | FoundCapture, TerminalName name
         -> raise (BadRules ("capture found, terminal name: " ^ name))
 
-        | FoundTerm (tm_ix, subtm), NonterminalName sort
+        | FoundTerm (tm_ix, subtm), NonterminalName sort_name
         -> let SortDef (_, operator_defs) = get_option'
-             ("of_ast: failed to get sort" ^ sort) @@
-             M.get sorts sort
+             ("of_ast: failed to get sort" ^ sort_name) @@
+             M.get sorts sort_name
            in
            let some_operator = find
              (fun (OperatorDef (op_name', _)) -> op_name' = op_name)
@@ -404,8 +403,8 @@ let rec of_ast
            )
 
         | FoundBinder pattern, NonterminalName _name
-        -> let sort = failwith "TODO" in
-          NonterminalCapture (pattern_to_tree sort pattern)
+        -> let sort_name = failwith "TODO" in
+          NonterminalCapture (pattern_to_tree sort_name pattern)
 
         | FoundBinder pattern, TerminalName name
         -> raise (BadRules
@@ -419,24 +418,24 @@ let rec of_ast
         -> raise (BadRules ("subterm not found, nonterminal name: " ^ name))
     ) in
 
-    mk_tree current_sort (Operator op_name) children
+    mk_tree sort_name (Operator op_name) children
 
   | _, Nominal.Var name
-  -> mk_tree current_sort Var [| mk_terminal_capture name |]
+  -> mk_tree sort_name Var [| mk_terminal_capture name |]
 
   | SortAp ("sequence", [|sort|]), Nominal.Sequence tms ->
     let children = tms
       |> List.map (fun tm -> NonterminalCapture (of_ast lang rules sort tm))
       |> BL.toArray
     in
-    mk_tree current_sort Sequence children
+    mk_tree sort_name Sequence children
 
   | SortAp ("string", [||]), Nominal.Primitive (PrimString str) ->
-    mk_tree current_sort (Primitive String) [| mk_terminal_capture str |]
+    mk_tree sort_name (Primitive String) [| mk_terminal_capture str |]
 
   | SortAp ("integer", [||]), Nominal.Primitive (PrimInteger i) ->
     let str = Bigint.to_string i in
-    mk_tree current_sort (Primitive Integer) [| mk_terminal_capture str |]
+    mk_tree sort_name (Primitive Integer) [| mk_terminal_capture str |]
 
   | _, _ -> raise (BadSortTerm (current_sort, tm))
 
@@ -454,16 +453,19 @@ let rec to_string { leading_trivia; children; trailing_trivia } =
   in leading_trivia ^ children_str ^ trailing_trivia
 
 let rec remove_spaces : tree -> tree
-  = fun { sort; node_type; leading_trivia; trailing_trivia; children }
+  = fun { sort_name; node_type; leading_trivia; trailing_trivia; children }
     -> let children' = children
          |. BA.map (function
            | TerminalCapture tc -> TerminalCapture tc
            | NonterminalCapture ntc
            -> NonterminalCapture (remove_spaces ntc)
          )
-       in { sort; node_type; leading_trivia; trailing_trivia; children = children' }
+       in {
+           sort_name; node_type; leading_trivia; trailing_trivia;
+           children = children'
+         }
 
-let prim_to_ast : prim_ty -> string -> (primitive, string) Result.t
+let prim_to_ast : prim_ty -> string -> (primitive, string) result
   = fun prim_ty str -> match prim_ty with
     | String  -> Ok (PrimString str)
     | Integer ->
@@ -474,13 +476,13 @@ let prim_to_ast : prim_ty -> string -> (primitive, string) Result.t
 
 (* Convert a concrete tree to an AST. We ignore trivia. *)
 let rec to_ast lang tree
-  : (Nominal.term, string) Result.t
+  : (Nominal.term, string) result
   = let { node_type; children; } = remove_spaces tree in
     match node_type, children with
     | Var, [| TerminalCapture { content = name } |]
-    -> Result.Ok (Nominal.Var name)
-    | Sequence, _ -> Result.map
-      (traverse_array_result
+    -> Ok (Nominal.Var name)
+    | Sequence, _ -> Belt.Result.map
+      (AA.traverse_array_result
         (function
           | TerminalCapture _ -> Error "TODO: message"
           | NonterminalCapture child -> to_ast lang child
@@ -500,18 +502,19 @@ let rec to_ast lang tree
           | NonterminalCapture child
           -> Some (scope_to_ast lang child)
         )
-        |> sequence_array_result
-      in Result.map children'
+        |> AA.sequence_array_result
+      in Belt.Result.map children'
            (fun children'' -> Nominal.Operator (op_name, BL.fromArray children''))
 
     | Primitive _, _
     | Var        , _
     -> assert false
 
-and capture_to_pat : capture -> (Pattern.t, string) Result.t
+and capture_to_pat : capture -> (Pattern.t, string) result
   = function
     | TerminalCapture { content = name } -> Error "TODO"
-    | NonterminalCapture { sort; node_type; children } -> match node_type with
+    | NonterminalCapture { sort_name; node_type; children } ->
+      match node_type with
       | Operator op -> (match children with
         | [| |] -> Error "TODO"
         | _ ->
@@ -519,7 +522,7 @@ and capture_to_pat : capture -> (Pattern.t, string) Result.t
           (* check == op *)
           children
             |. Js.Array2.sliceFrom 1
-            |> traverse_array_result capture_to_pat
+            |> AA.traverse_array_result capture_to_pat
             |. Belt.Result.map
             (fun children' ->
               Pattern.Operator (op, Belt.List.fromArray children'))
@@ -528,7 +531,7 @@ and capture_to_pat : capture -> (Pattern.t, string) Result.t
         | [| TerminalCapture { content = name } |] -> Ok (Var name)
       )
       | Sequence -> children
-        |> traverse_array_result capture_to_pat
+        |> AA.traverse_array_result capture_to_pat
         |. Belt.Result.map
           (fun children' -> Pattern.Sequence (Belt.List.fromArray children'))
       | Primitive prim_ty -> (match children with
@@ -538,12 +541,12 @@ and capture_to_pat : capture -> (Pattern.t, string) Result.t
       )
 
 and scope_to_ast lang ({ children } as tree)
-  : (Nominal.scope, string) Result.t
+  : (Nominal.scope, string) result
   = match BL.fromArray (BA.reverse children) with
   | body :: binders -> (match to_ast lang {tree with children = [| body |]} with
     | Ok body' -> binders
       |> traverse_list_result capture_to_pat
-      |. Result.map
+      |. Belt.Result.map
         (fun binders' -> Nominal.Scope (List.rev binders', body'))
     | Error err -> Error err
   )
@@ -599,8 +602,8 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
         in
         i + 1, { LrParsing.productions = productions }
       )
-      |. MI.fromArray
-      |. MI.set 0 { productions = [ [ Nonterminal 1 ] ] }
+      |. Belt.Map.Int.fromArray
+      |. Belt.Map.Int.set 0 { productions = [ [ Nonterminal 1 ] ] }
     in
 
     { nonterminals; terminal_nums; nonterminal_nums }
@@ -609,7 +612,7 @@ let production_info
   : LrParsing.nonterminal_num MMI.t
   -> LrParsing.nonterminal_num MS.t
   -> LrParsing.production_num
-  -> node_type * sort
+  -> node_type * string
   = fun nt_map nonterminal_nums prod_num ->
     let nt_num = nt_map
       |. MMI.get prod_num
@@ -617,13 +620,13 @@ let production_info
         ("production_info: failed to get " ^ string_of_int prod_num)
     in
     let f _ nt_num' = nt_num' = nt_num in
-    let sort_name = match nonterminal_nums |. MS.findFirstBy f with
+    let sort_name = match Belt.Map.String.findFirstBy nonterminal_nums f with
       | None -> failwith "production_info: invariant violation: sort not found"
       | Some (name, _) -> name
     in
     (* XXX sort / operator mismatch! *)
     (* XXX sort name not applied to anything *)
-    Operator sort_name, SortAp (sort_name, [||])
+    Operator sort_name, sort_name
 
 let tree_of_parse_result
   (module Lr0 : LrParsing.LR0)
@@ -640,7 +643,7 @@ let tree_of_parse_result
       = fun start_pos end_pos ->
         (* look back consuming all whitespace to (and including) a newline *)
         let leading_trivia =
-          str |. Js.String2.slice ~from:!str_pos ~to_:start_pos
+          Js.String2.slice str ~from:!str_pos ~to_:start_pos
         in
 
         (* look forward consuming all whitespace up to a newline *)
@@ -657,7 +660,7 @@ let tree_of_parse_result
         done;
 
         let trailing_trivia =
-          str |. Js.String2.slice ~from:end_pos ~to_:!str_pos
+          Js.String2.slice str ~from:end_pos ~to_:!str_pos
         in
 
         leading_trivia, trailing_trivia
@@ -670,7 +673,7 @@ let tree_of_parse_result
             "invariant violation: go_nt received a terminal production"
           | Right prod_num -> prod_num
         in
-        let node_type, sort = production_info
+        let node_type, sort_name = production_info
           Lr0.production_nonterminal_map
           nonterminal_nums
           prod_num
@@ -702,7 +705,7 @@ let tree_of_parse_result
                 | Some (OperatorMatch { tokens }) -> tokens
         in
 
-        { sort; node_type; leading_trivia; trailing_trivia;
+        { sort_name; node_type; leading_trivia; trailing_trivia;
           children = children
             |. BL.zip tokens
             |. BL.map (function (parse_result, token) -> match token with
@@ -748,14 +751,14 @@ let parse desc str =
     in
 
     match Lr0'.lex_and_parse lexer str with
-      | Result.Ok result
-      -> Result.Ok (tree_of_parse_result
+      | Ok result
+      -> Belt.Result.Ok (tree_of_parse_result
         (module Lr0')
         (MS.fromArray grammar.nonterminal_nums)
         augmented_sort_rules
         str
         result)
-      | Result.Error (Either.Left { start_pos; end_pos; message })
+      | Error (Either.Left { start_pos; end_pos; message })
       -> Error (Printf.sprintf
         "lexical error at characters %n - %n (%s):\n%s"
         start_pos
@@ -763,13 +766,13 @@ let parse desc str =
         (Js.String2.slice str ~from:start_pos ~to_:end_pos)
         message
       )
-      | Result.Error (Either.Right (char_no, message)) -> Error (Printf.sprintf
+      | Error (Either.Right (char_no, message)) -> Error (Printf.sprintf
         "parser error at character %n:\n%s"
         char_no
         message
       )
 
   with
-    | NonMatchingFixities (sort_name, token_names) -> Result.Error
+    | NonMatchingFixities (sort_name, token_names) -> Error
       ("In sort " ^ sort_name ^ ": all fixities in a precedence level must be the same fixity (this is a limitation of Bison-style parsers (Jison in particular). The operators identified by [" ^ String.concat ", " token_names ^ "] must all share the same fixity.")
     | MixedFixities (b, l) -> Error ("Found a mix of fixities -- all must be uniform " ^ string_of_bool b ^ " " ^ string_of_int l)
