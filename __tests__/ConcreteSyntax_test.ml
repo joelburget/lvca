@@ -71,32 +71,31 @@ let _ = describe "ConcreteSyntax" (fun () ->
   match Parse_concrete.parse description with
     | Error msg -> failwith msg
     | Ok concrete ->
-      let arith = Types.SortAp ("arith", [||]) in
-      let tree = mk_tree arith (Operator "add")
-            [| nt_capture (mk_tree arith Var [| mk_terminal_capture "x" |]);
+      let tree = mk_tree "arith" (Operator "add")
+            [| nt_capture (mk_tree "arith" Var [| mk_terminal_capture "x" |]);
                mk_terminal_capture "+";
-               nt_capture (mk_tree arith Var [| mk_terminal_capture "y" |]);
+               nt_capture (mk_tree "arith" Var [| mk_terminal_capture "y" |]);
             |]
       in
       Js.log tree;
-      let tree' = mk_tree arith (Operator "sub")
-            [| nt_capture (mk_tree arith (Operator "add")
-                 [| nt_capture (mk_tree arith Var [| mk_terminal_capture "x" |]);
+      let tree' = mk_tree "arith" (Operator "sub")
+            [| nt_capture (mk_tree "arith" (Operator "add")
+                 [| nt_capture (mk_tree "arith" Var [| mk_terminal_capture "x" |]);
                     mk_terminal_capture "+";
-                    nt_capture (mk_tree arith Var [| mk_terminal_capture "y" |]);
+                    nt_capture (mk_tree "arith" Var [| mk_terminal_capture "y" |]);
                  |]
                );
                mk_terminal_capture "-";
-               nt_capture (mk_tree arith Var [| mk_terminal_capture "z" |]);
+               nt_capture (mk_tree "arith" Var [| mk_terminal_capture "z" |]);
             |]
       in
-      let tree'' = mk_tree arith (Operator "add")
-            [| nt_capture (mk_tree arith Var [| mk_terminal_capture "x" |]);
+      let tree'' = mk_tree "arith" (Operator "add")
+            [| nt_capture (mk_tree "arith" Var [| mk_terminal_capture "x" |]);
                mk_terminal_capture "+";
-               nt_capture (mk_tree arith (Operator "mul")
-                 [| nt_capture (mk_tree arith Var [| mk_terminal_capture "y" |]);
+               nt_capture (mk_tree "arith" (Operator "mul")
+                 [| nt_capture (mk_tree "arith" Var [| mk_terminal_capture "y" |]);
                     mk_terminal_capture "*";
-                    nt_capture (mk_tree arith Var [| mk_terminal_capture "z" |]);
+                    nt_capture (mk_tree "arith" Var [| mk_terminal_capture "z" |]);
                  |]
                );
             |]
