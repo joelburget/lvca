@@ -25,6 +25,9 @@ let _ = describe "Regex_Parser" (fun () ->
   expectParseAndRT Regex_Parser.regex__test "." ReAny;
 
   expectParseAndRT Regex_Parser.regex__test {|\\|} (ReString {|\|});
-  expectParseAndRT Regex_Parser.regex__test {|\b|} (ReClass Boundary);
+  expectParseAndRT Regex_Parser.regex__test {|\b|}
+    (ReClass (PosClass Boundary));
+  expectParseAndRT Regex_Parser.regex__test {|\B|}
+    (ReClass (NegClass Boundary));
 
 );
