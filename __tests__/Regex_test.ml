@@ -18,9 +18,13 @@ let _ = describe "Regex.(accepts_empty, to_string)"
             [ReStar (ReString "foo"); RePlus (ReString "bar")]
           ))
         |> toBe false;
-        expect (accepts_empty (ReClass Boundary))
+        expect (accepts_empty (ReClass (PosClass Boundary)))
         |> toBe true;
-        expect (accepts_empty (ReClass Digit))
+        expect (accepts_empty (ReClass (NegClass Boundary)))
+        |> toBe true;
+        expect (accepts_empty (ReClass (PosClass Digit)))
+        |> toBe false;
+        expect (accepts_empty (ReClass (NegClass Digit)))
         |> toBe false;
         expect (accepts_empty (ReSet "a-z"))
         |> toBe false;
@@ -34,11 +38,9 @@ let _ = describe "Regex.(accepts_empty, to_string)"
         |> toBe {|foobar|};
         expect (to_string (ReSet "a-z"))
         |> toBe "[a-z]";
-        (*
         expect (to_string
-          (ReConcat [ReClass Boundary; ReClass (Negate Boundary)]))
+          (ReConcat [ReClass (PosClass Boundary); ReClass (NegClass Boundary)]))
         |> toBe {|\b\B|};
-        *)
         expect (to_string (ReConcat
           [ ReStar (ReString "foo");
             RePlus (ReString "foo");

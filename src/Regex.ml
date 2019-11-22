@@ -1,10 +1,13 @@
-type re_class =
-  | Word (* \w *)
-  | Whitespace (* \s *)
-  | Digit (* \d *)
-  | Boundary (* \b *)
+type re_class_base =
+  | Word (* \w / \W *)
+  | Whitespace (* \s / \S *)
+  | Digit (* \d / \D *)
+  | Boundary (* \b / \B *)
   (* TODO: other javascript classes *)
   (* TODO: unicode categories *)
+
+(** Accept the positive or negative version of a class *)
+type re_class = PosClass of re_class_base | NegClass of re_class_base
 
 (** A regular expression used for lexical analysis. *)
 type regex =
@@ -34,10 +37,14 @@ type regex =
 type t = regex
 
 let show_class = function
-  | Word -> {|\w|}
-  | Whitespace -> {|\s|}
-  | Digit -> {|\d|}
-  | Boundary -> {|\b|}
+  | PosClass Word -> {|\w|}
+  | PosClass Whitespace -> {|\s|}
+  | PosClass Digit -> {|\d|}
+  | PosClass Boundary -> {|\b|}
+  | NegClass Word -> {|\W|}
+  | NegClass Whitespace -> {|\S|}
+  | NegClass Digit -> {|\D|}
+  | NegClass Boundary -> {|\B|}
 
 (* TODO: add parens (not a big deal; just used for debugging) *)
 let rec show : regex -> string
@@ -76,7 +83,7 @@ let rec accepts_empty : regex -> bool
     | ReString str -> Js.String2.length str = 0
     | ReSet    _ -> false
     (* TODO: are boundaries the only empty classes? *)
-    | ReClass cls -> cls = Boundary
+    | ReClass cls -> cls = PosClass Boundary || cls = NegClass Boundary
     | RePlus re -> accepts_empty re
     | ReStar _
     | ReOption _ -> true
@@ -90,10 +97,14 @@ let is_literal : regex -> string option = function
 
 let class_char : re_class -> char
   = function
-    | Word -> 'w'
-    | Whitespace -> 's'
-    | Digit -> 'd'
-    | Boundary -> 'b'
+    | PosClass Word -> 'w'
+    | PosClass Whitespace -> 's'
+    | PosClass Digit -> 'd'
+    | PosClass Boundary -> 'b'
+    | NegClass Word -> 'W'
+    | NegClass Whitespace -> 'S'
+    | NegClass Digit -> 'D'
+    | NegClass Boundary -> 'B'
 
 let class_to_string : re_class -> string
   = fun cls -> Printf.sprintf "\\%c" (class_char cls)
@@ -128,7 +139,7 @@ let rec to_string' : int -> regex -> string
   | ReStar   re -> to_string' 2 re ^ "*"
   | RePlus   re -> to_string' 2 re ^ "+"
   | ReOption re -> to_string' 2 re ^ "?"
-  | ReClass  cls   -> class_to_string cls
+  | ReClass  cls -> class_to_string cls
   | ReChoice (re, re') -> parenthesize
     (precedence > 0)
     (to_string' 0 re ^ "|" ^ to_string' 0 re')

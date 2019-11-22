@@ -22,10 +22,14 @@
 %%
 
 re_class: CHARACTER_CLASS { match $1 with
-  | {|\w|} -> Word
-  | {|\s|} -> Whitespace
-  | {|\d|} -> Digit
-  | {|\b|} -> Boundary
+  | {|\w|} -> PosClass Word
+  | {|\s|} -> PosClass Whitespace
+  | {|\d|} -> PosClass Digit
+  | {|\b|} -> PosClass Boundary
+  | {|\W|} -> NegClass Word
+  | {|\S|} -> NegClass Whitespace
+  | {|\D|} -> NegClass Digit
+  | {|\B|} -> NegClass Boundary
   | _ -> failwith "unexpected character class"
   }
 
