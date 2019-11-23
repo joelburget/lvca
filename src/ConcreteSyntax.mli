@@ -47,8 +47,7 @@ val of_ast
 val to_string : tree -> string
 
 (** Parse from a string to a concrete syntax tree *)
-val parse
-  : ConcreteSyntaxDescription.t -> string -> (tree, string) Result.t
+val parse : ConcreteSyntaxDescription.t -> string -> (tree, string) Result.t
 
 (** Convert form a concrete to an abstract syntax tree *)
 val to_ast : language -> tree -> (Nominal.term, string) Result.t

@@ -59,7 +59,6 @@ and capture =
  *)
 and tree =
   { sort_name       : sort_name;
-    (* TODO: pattern_or_term *)
     node_type       : node_type;
     leading_trivia  : string;
     trailing_trivia : string;
@@ -264,10 +263,11 @@ let check_description_validity { terminal_rules; sort_rules } =
             | TerminalName nt_name -> (match M.get terminal_rules' nt_name with
               | None -> raise (CheckValidExn (InvalidGrammar
                 ("Named terminal " ^ nt_name ^ " does not exist")))
+              (* TODO: switch to using canonical representatives *)
               | Some regex -> if Util.is_none (Regex.is_literal regex)
-                (* TODO: print it *)
                 then raise (CheckValidExn (InvalidGrammar
-                  "Uncaptured regex which is not a string literal"))
+                  ("Uncaptured regex which is not a string literal: " ^
+                    Regex.to_string regex)))
             )
           )
         );
@@ -275,8 +275,7 @@ let check_description_validity { terminal_rules; sort_rules } =
     terminal_rules' |. M.forEach (fun _i regex ->
       if Regex.accepts_empty regex then
         raise (CheckValidExn (InvalidGrammar
-          (* TODO: print it *)
-          "Regex accepts empty strings"
+          ("Regex accepts empty strings: " ^ Regex.to_string regex)
         ))
     );
     None
@@ -312,7 +311,14 @@ let rec pattern_to_tree : sort_name -> Pattern.t -> tree
           NonterminalCapture (pattern_to_tree (failwith "TODO") pat)
       )
     )
-  | Primitive p -> mk_tree sort_name (Primitive (* XXX *)Integer) [||]
+  | Primitive p ->
+    (* TODO: what about other integral types? *)
+    let prim_ty = match sort_name with
+      | "string" -> String
+      | "integer" -> Integer
+      | _ -> failwith ("unexpected primitive sort name: " ^ sort_name)
+    in
+    mk_tree sort_name (Primitive prim_ty) [||]
 
 (* TODO: handle non-happy cases *)
 (** Pretty-print an abstract term to a concrete syntax tree
@@ -403,8 +409,7 @@ let rec of_ast
            )
 
         | FoundBinder pattern, NonterminalName _name
-        -> let sort_name = failwith "TODO" in
-          NonterminalCapture (pattern_to_tree sort_name pattern)
+        -> NonterminalCapture (pattern_to_tree sort_name pattern)
 
         | FoundBinder pattern, TerminalName name
         -> raise (BadRules
@@ -625,7 +630,6 @@ let production_info
       | Some (name, _) -> name
     in
     (* XXX sort / operator mismatch! *)
-    (* XXX sort name not applied to anything *)
     Operator sort_name, sort_name
 
 let tree_of_parse_result
