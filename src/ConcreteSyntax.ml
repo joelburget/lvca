@@ -470,33 +470,33 @@ let rec remove_spaces : tree -> tree
            children = children'
          }
 
-let prim_to_ast : prim_ty -> string -> (primitive, string) result
+exception ToAstError of string
+
+let prim_to_ast : prim_ty -> string -> primitive
   = fun prim_ty str -> match prim_ty with
-    | String  -> Ok (PrimString str)
+    | String  -> PrimString str
     | Integer ->
       try
-        Ok (PrimInteger (Bigint.of_string str))
+        PrimInteger (Bigint.of_string str)
       with
-        _ -> Error "failed to read integer literal"
+        _ -> raise (ToAstError "failed to read integer literal")
 
 (* Convert a concrete tree to an AST. We ignore trivia. *)
-let rec to_ast lang tree
-  : (Nominal.term, string) result
+let rec to_ast' lang tree : Nominal.term
   = let { node_type; children; } = remove_spaces tree in
     match node_type, children with
     | Var, [| TerminalCapture { content = name } |]
-    -> Ok (Nominal.Var name)
-    | Sequence, _ -> Belt.Result.map
-      (AA.traverse_array_result
+    -> Nominal.Var name
+    | Sequence, _ ->
+      let children' = Belt.Array.map children
         (function
-          | TerminalCapture _ -> Error "TODO: message"
-          | NonterminalCapture child -> to_ast lang child
+          | TerminalCapture _ -> raise (ToAstError "TODO: message")
+          | NonterminalCapture child -> to_ast' lang child
         )
-        children)
-      (fun children' -> Nominal.Sequence (BL.fromArray children'))
+      in
+      Nominal.Sequence (BL.fromArray children')
     | Primitive prim_ty, [| TerminalCapture { content } |]
-    -> prim_to_ast prim_ty content
-      |. Belt.Result.map (fun prim -> Nominal.Primitive prim)
+    -> Nominal.Primitive (prim_to_ast prim_ty content)
 
     (* TODO: check validity *)
     | Operator op_name, _ ->
@@ -507,55 +507,53 @@ let rec to_ast lang tree
           | NonterminalCapture child
           -> Some (scope_to_ast lang child)
         )
-        |> AA.sequence_array_result
-      in Belt.Result.map children'
-           (fun children'' -> Nominal.Operator (op_name, BL.fromArray children''))
+      in Nominal.Operator (op_name, BL.fromArray children')
 
     | Primitive _, _
     | Var        , _
     -> assert false
 
-and capture_to_pat : capture -> (Pattern.t, string) result
+and capture_to_pat : capture -> Pattern.t
   = function
-    | TerminalCapture { content = name } -> Error "TODO"
+    | TerminalCapture { content = name } -> raise (ToAstError "TODO")
     | NonterminalCapture { sort_name; node_type; children } ->
       match node_type with
       | Operator op -> (match children with
-        | [| |] -> Error "TODO"
+        | [| |] -> raise (ToAstError "TODO")
         | _ ->
           let head = children |. Belt.Array.getExn 0 in
           (* check == op *)
-          children
+          let children' = children
             |. Js.Array2.sliceFrom 1
-            |> AA.traverse_array_result capture_to_pat
-            |. Belt.Result.map
-            (fun children' ->
-              Pattern.Operator (op, Belt.List.fromArray children'))
+            |. Belt.Array.map capture_to_pat
+          in Pattern.Operator (op, Belt.List.fromArray children')
       )
       | Var -> (match children with
-        | [| TerminalCapture { content = name } |] -> Ok (Var name)
+        | [| TerminalCapture { content = name } |] -> Var name
       )
-      | Sequence -> children
-        |> AA.traverse_array_result capture_to_pat
-        |. Belt.Result.map
-          (fun children' -> Pattern.Sequence (Belt.List.fromArray children'))
+      | Sequence ->
+        let children' = Belt.Array.map children capture_to_pat
+        in Pattern.Sequence (Belt.List.fromArray children')
       | Primitive prim_ty -> (match children with
-        | [| TerminalCapture { content } |] -> prim_to_ast prim_ty content
-          |. Belt.Result.map (fun prim -> Pattern.Primitive prim)
-        | _ -> Error "TODO"
+        | [| TerminalCapture { content } |]
+        -> Pattern.Primitive (prim_to_ast prim_ty content)
+        | _ -> raise (ToAstError "TODO")
       )
 
-and scope_to_ast lang ({ children } as tree)
-  : (Nominal.scope, string) result
+and scope_to_ast lang ({ children } as tree) : Nominal.scope
   = match BL.fromArray (BA.reverse children) with
-  | body :: binders -> (match to_ast lang {tree with children = [| body |]} with
-    | Ok body' -> binders
-      |> traverse_list_result capture_to_pat
-      |. Belt.Result.map
-        (fun binders' -> Nominal.Scope (List.rev binders', body'))
-    | Error err -> Error err
-  )
-  | [] -> Error "scope_to_ast called on no children"
+  | body :: binders ->
+    let body' = to_ast' lang {tree with children = [| body |]} in
+    let binders' = binders |. Belt.List.map capture_to_pat in
+    Nominal.Scope (List.rev binders', body')
+  | [] -> raise (ToAstError "scope_to_ast called on no children")
+
+let to_ast : language -> tree -> (Nominal.term, string) Belt.Result.t
+  = fun lang tree ->
+    try
+      Ok (to_ast' lang tree)
+    with
+      ToAstError msg -> Error msg
 
 exception NonMatchingFixities of string * string list
 exception MixedFixities of bool * int
