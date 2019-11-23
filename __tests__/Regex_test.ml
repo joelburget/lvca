@@ -47,6 +47,11 @@ let _ = describe "Regex.(accepts_empty, to_string)"
             ReOption (ReString "foo");
           ]))
         |> toBe {|(foo)*(foo)+(foo)?|};
+        expect (to_string (ReString "+")) |> toBe "\\+";
+        expect (to_string (ReString "*")) |> toBe "\\*";
+        expect (to_string (ReString "?")) |> toBe "\\?";
+        expect (to_string (ReString "-")) |> toBe "\\-";
       ]
       Util.id;
+
 );

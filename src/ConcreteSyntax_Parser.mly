@@ -22,7 +22,7 @@
 %token RIGHT_FIXITY
 %token GREATER
 
-%{ open Types.ConcreteSyntaxDescription %}
+%{ open ConcreteSyntaxDescription %}
 
 %start terminal_rule__test
 %start capture_number
@@ -30,22 +30,20 @@
 %start operator_match__test
 %start sort_rule__test
 %start language
-%type <Types.ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule
-%type <Types.ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule__test
-%type <Types.ConcreteSyntaxDescription.capture_number> capture_number
-%type <Types.ConcreteSyntaxDescription.nonterminal_token> nonterminal_token
-%type <Types.ConcreteSyntaxDescription.operator_match> operator_match
-%type <Types.ConcreteSyntaxDescription.operator_match> operator_match__test
-%type <Types.ConcreteSyntaxDescription.operator_match list list> operator_match_list
-%type <Types.ConcreteSyntaxDescription.sort_rule> sort_rule
-%type <Types.ConcreteSyntaxDescription.sort_rule> sort_rule__test
-%type <Types.ConcreteSyntaxDescription.operator_match_pattern> operator_match_pattern
-%type <Types.ConcreteSyntaxDescription.t> language
+%type <ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule
+%type <ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule__test
+%type <ConcreteSyntaxDescription.capture_number> capture_number
+%type <ConcreteSyntaxDescription.nonterminal_token> nonterminal_token
+%type <ConcreteSyntaxDescription.operator_match> operator_match
+%type <ConcreteSyntaxDescription.operator_match> operator_match__test
+%type <ConcreteSyntaxDescription.operator_match list list> operator_match_list
+%type <ConcreteSyntaxDescription.sort_rule> sort_rule
+%type <ConcreteSyntaxDescription.sort_rule> sort_rule__test
+%type <ConcreteSyntaxDescription.operator_match_pattern> operator_match_pattern
+%type <ConcreteSyntaxDescription.pre_terminal_rule list * ConcreteSyntaxDescription.sort_rule list> language
 %%
 
-language:
-  | terminal_rule+ sort_rule+ EOF
-  { Types.ConcreteSyntaxDescription.make $1 $2 }
+language: terminal_rule+ sort_rule+ EOF { ($1, $2) }
 
 terminal_rule:
   | TERMINAL_ID ASSIGN REGEX

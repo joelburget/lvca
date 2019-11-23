@@ -13,7 +13,6 @@
 
 %start regex
 %start regex__test
-%start prec0_re
 %type <Regex.re_class> re_class
 %type <Regex.t> regex
 %type <Regex.t> regex__test

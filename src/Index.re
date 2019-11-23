@@ -80,7 +80,7 @@ let shift_from_to (
 
 let step_forward (
   abstract_syntax : Types.abstract_syntax,
-  concrete        : Types.ConcreteSyntaxDescription.t,
+  concrete        : ConcreteSyntaxDescription.t,
   statics         : list(Statics.rule),
   dynamics        : Core.denotation_chart,
   {input, before, after} : history,
@@ -95,7 +95,7 @@ let step_forward (
 
 let step_back (
   abstract_syntax : Types.abstract_syntax,
-  concrete        : Types.ConcreteSyntaxDescription.t,
+  concrete        : ConcreteSyntaxDescription.t,
   statics         : list(Statics.rule),
   dynamics        : Core.denotation_chart,
   {input, before, after} : history,
@@ -341,7 +341,7 @@ module ConcreteSyntaxEditor = {
       showGrammarPane : bool,
       debuggerContents : string,
       showDebugger : bool,
-      syntaxDesc : option(Types.ConcreteSyntaxDescription.t),
+      syntaxDesc : option(ConcreteSyntaxDescription.t),
     };
 
   type action =
@@ -351,7 +351,7 @@ module ConcreteSyntaxEditor = {
     ;
 
   [@react.component]
-  let make = (~onComplete : Types.ConcreteSyntaxDescription.t => unit) => {
+  let make = (~onComplete : ConcreteSyntaxDescription.t => unit) => {
     let ({ concreteInput, showGrammarPane, showDebugger }, dispatch) = React.useReducer(
       ({concreteInput, showGrammarPane, debuggerContents, showDebugger, syntaxDesc}, action) => switch (action) {
         | ToggleGrammarPane
@@ -371,12 +371,27 @@ module ConcreteSyntaxEditor = {
 
     module Parseable_concrete =
       ParseStatus.Make(Parsing.Parseable_concrete_syntax);
-    let (concreteDidParseView, concrete) =
+    let (concreteDidParseView, pre_concrete) =
       Parseable_concrete.parse(concreteInput);
+
+    /*
+    module Parseable_regex' =
+      ParseStatus.Make(Parsing.Parseable_regex);
+      */
+
+    let concrete = switch(pre_concrete) {
+      | Belt.Result.Error(err) => Belt.Result.Error(err)
+      | Ok((pre_terminal_rules, sort_rules)) => Ok(
+        ConcreteSyntax.make_concrete_description(pre_terminal_rules, sort_rules)
+      )
+    };
 
     React.useEffect1(() => switch (concrete) {
       | Error(_) => None
-      | Ok(concrete') => onComplete(concrete'); None
+      | Ok(concrete') => {
+          onComplete(concrete');
+          None
+        }
       },
       [|concreteInput|]
     );
@@ -566,14 +581,14 @@ module LvcaViewer = {
 
   type editing_details =
     { abstract_syntax: Types.abstract_syntax,
-      concrete_syntax: option(Types.ConcreteSyntaxDescription.t),
+      concrete_syntax: option(ConcreteSyntaxDescription.t),
       statics: option(list(Statics.rule)),
       dynamics: option(Core.denotation_chart),
     };
 
   type details =
     { abstract_syntax: Types.abstract_syntax,
-      concrete_syntax: Types.ConcreteSyntaxDescription.t,
+      concrete_syntax: ConcreteSyntaxDescription.t,
       statics: list(Statics.rule),
       dynamics: Core.denotation_chart,
     };
@@ -589,7 +604,7 @@ module LvcaViewer = {
   type action =
     | ChangeTab(details_tab)
     | ASContinue(Types.abstract_syntax)
-    | CompleteConcreteSyntax(Types.ConcreteSyntaxDescription.t)
+    | CompleteConcreteSyntax(ConcreteSyntaxDescription.t)
     | CompleteStatics(list(Statics.rule))
     | CompleteDynamics(Core.denotation_chart)
     | DetailsContinue(details)
