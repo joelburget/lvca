@@ -109,22 +109,22 @@ module Tables = struct
           Obj.repr ()
   
   and default_reduction =
-    (8, "\000\000\012\017\n\t\019\011\000\r\015\014\000\005\007\000\018\000\000\b\000\000\002\000\000\003\000\021\000")
+    (8, "\000\000\011\016\t\b\018\n\000\012\014\r\000\004\006\000\017\000\000\007\001\000\000\002\000\020\000")
   
   and error =
-    (13, "\006\2407\128\000\000\000\000\000\000\000\000\000\127\248\000\000\000\000\002\127\128\000\000\004\001\000\0007\136B\000\000\000\131x\000\000\001\006\240\000\000@\000\000\016\128")
+    (13, "\006\2407\128\000\000\000\000\000\000\000\000\000\127\248\000\000\000\000\002\127\128\000\000\004\001\000\0007\136B\000\000\000\000\004\027\192\000\001\000\000\000B")
   
   and start =
-    3
+    2
   
   and action =
-    ((8, "\020\020\000\000\000\000\000\000\003\000\000\000\020\000\000\024\000\020*\000\002\020\000\002\020\000&\000$"), (8, "&=*.========\rFB\006\n\r\014\018\022\026\r\021FMo\000\021\000F\000\000F"))
+    ((8, "\020\020\000\000\000\000\000\000\003\000\000\000\020\000\000\024\000\020*\000\000\002\020\000&\000$"), (8, "&9*.99999999\tFB\006\n\t\014\018\022\026\t\017FIg\000\017\000F\000\000F"))
   
   and lhs =
-    (4, "!\n\169\152wwwwvT0")
+    (4, "\016\153\136vffffT2")
   
   and goto =
-    ((8, "\020 \000\000\000\000\000\000\000\000\000\0008\000\000\000\000,\000\000\000\b\000\000\007\000\000\000\000"), (8, "\026\027\b\t\r\015\029\020\023\b\t\r\015\024\020\b\t\r\015\021\020\b\t\r\015\016\020\b\t\r\015\019\020\b\t\r\000\000\014"))
+    ((8, "\n\022\000\000\000\000\000\000\000\000\000\000.\000\000\000\000\"\000\000\000\000\005\000\000\000\000"), (8, "\024\025\b\t\r\015\027\020\021\b\t\r\015\022\020\b\t\r\015\016\020\b\t\r\015\019\020\b\t\r\000\000\014"))
   
   and semantic_action =
     [|
@@ -207,13 +207,13 @@ module Tables = struct
           };
         } = _menhir_stack in
         let _3 : (
-# 20 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 19 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
       (Regex.t)
 # 213 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
         ) = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 20 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 19 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
       (Regex.t)
 # 219 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
         ) = Obj.magic _1 in
@@ -221,11 +221,11 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__3_ in
         let _v : (
-# 20 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 19 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
       (Regex.t)
 # 227 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
         ) = 
-# 36 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 35 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
                           ( ReChoice (_1, _3) )
 # 231 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -250,11 +250,11 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : (
-# 20 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 19 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
       (Regex.t)
 # 256 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
         ) = 
-# 37 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 36 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
              ( _1 )
 # 260 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -279,7 +279,7 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : 'tv_prec1_re = 
-# 40 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 39 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
                             ( match _1 with
     | [ re ] -> re
     | res -> ReConcat res
@@ -311,7 +311,7 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : 'tv_prec2_re = 
-# 46 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 45 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
                   ( ReSet _1 )
 # 317 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -340,7 +340,7 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : 'tv_prec2_re = 
-# 47 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 46 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
           ( ReString _1 )
 # 346 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -361,7 +361,7 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let _1 : (
-# 17 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 16 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
       (Regex.re_class)
 # 367 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
         ) = Obj.magic _1 in
@@ -369,7 +369,7 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : 'tv_prec2_re = 
-# 48 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 47 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
              ( ReClass _1 )
 # 375 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -398,7 +398,7 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : 'tv_prec2_re = 
-# 50 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 49 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
             ( ReString (String.sub _1 1 1) )
 # 404 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -430,7 +430,7 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : 'tv_prec2_re = 
-# 51 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 50 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
                   ( ReStar _1 )
 # 436 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -462,7 +462,7 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : 'tv_prec2_re = 
-# 52 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 51 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
                   ( RePlus _1 )
 # 468 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -494,7 +494,7 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : 'tv_prec2_re = 
-# 53 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 52 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
                       ( ReOption _1 )
 # 500 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -519,7 +519,7 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : 'tv_prec2_re = 
-# 54 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 53 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
              ( _1 )
 # 525 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -544,7 +544,7 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : 'tv_prec2_re = 
-# 55 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 54 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
         ( ReAny )
 # 550 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -578,7 +578,7 @@ module Tables = struct
         } = _menhir_stack in
         let _3 : unit = Obj.magic _3 in
         let _2 : (
-# 20 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 19 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
       (Regex.t)
 # 584 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
         ) = Obj.magic _2 in
@@ -587,7 +587,7 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__3_ in
         let _v : 'tv_prec3_re = 
-# 57 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 56 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
                                           ( _2 )
 # 593 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -616,11 +616,11 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : (
-# 17 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 16 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
       (Regex.re_class)
 # 622 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
         ) = 
-# 23 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 22 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
                           ( match _1 with
   | {|\w|} -> PosClass Word
   | {|\s|} -> PosClass Whitespace
@@ -651,7 +651,7 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let _1 : (
-# 20 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 19 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
       (Regex.t)
 # 657 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
         ) = Obj.magic _1 in
@@ -659,11 +659,11 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : (
-# 18 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 17 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
       (Regex.t)
 # 665 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
         ) = 
-# 59 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 58 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
                 ( _1 )
 # 669 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -691,7 +691,7 @@ module Tables = struct
         } = _menhir_stack in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 18 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 17 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
       (Regex.t)
 # 697 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
         ) = Obj.magic _1 in
@@ -699,11 +699,11 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : (
-# 19 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 18 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
       (Regex.t)
 # 705 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
         ) = 
-# 61 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 60 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
                        ( _1 )
 # 709 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -733,52 +733,36 @@ end
 
 let regex__test =
   fun lexer lexbuf ->
-    (Obj.magic (MenhirInterpreter.entry 24 lexer lexbuf) : (
-# 19 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+    (Obj.magic (MenhirInterpreter.entry 22 lexer lexbuf) : (
+# 18 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
       (Regex.t)
 # 740 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
     ))
 
 and regex =
   fun lexer lexbuf ->
-    (Obj.magic (MenhirInterpreter.entry 21 lexer lexbuf) : (
-# 18 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+    (Obj.magic (MenhirInterpreter.entry 0 lexer lexbuf) : (
+# 17 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
       (Regex.t)
 # 748 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
-    ))
-
-and prec0_re =
-  fun lexer lexbuf ->
-    (Obj.magic (MenhirInterpreter.entry 0 lexer lexbuf) : (
-# 20 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
-      (Regex.t)
-# 756 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
     ))
 
 module Incremental = struct
   
   let regex__test =
     fun initial_position ->
-      (Obj.magic (MenhirInterpreter.start 24 initial_position) : (
-# 19 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+      (Obj.magic (MenhirInterpreter.start 22 initial_position) : (
+# 18 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
       (Regex.t)
-# 766 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
+# 758 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
       ) MenhirInterpreter.checkpoint)
   
   and regex =
     fun initial_position ->
-      (Obj.magic (MenhirInterpreter.start 21 initial_position) : (
-# 18 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
-      (Regex.t)
-# 774 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
-      ) MenhirInterpreter.checkpoint)
-  
-  and prec0_re =
-    fun initial_position ->
       (Obj.magic (MenhirInterpreter.start 0 initial_position) : (
-# 20 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
+# 17 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.mly"
       (Regex.t)
-# 782 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
+# 766 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
       ) MenhirInterpreter.checkpoint)
   
 end
@@ -786,4 +770,4 @@ end
 # 269 "/Users/joel/.opam/default/lib/menhir/standard.mly"
   
 
-# 790 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
+# 774 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"

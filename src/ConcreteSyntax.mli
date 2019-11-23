@@ -35,9 +35,8 @@ and tree =
     children        : capture array;
   }
 
+(** Are two trees equivalent, ignoring trivia *)
 val equivalent : tree -> tree -> bool
-
-val mk_tree : sort_name -> node_type -> capture array -> tree
 
 (** Convert an abstract syntax tree to a concrete syntax tree *)
 val of_ast
@@ -61,3 +60,15 @@ val check_description_validity
 
 (* exported for debugger: *)
 val lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer
+
+(* exported for testing: *)
+val mk_tree : sort_name -> node_type -> capture array -> tree
+
+(** Make a concrete syntax description from its parsed rules. This morally
+ belongs to the ConcreteSyntaxDescription module, but it's here to break a
+ dependency cycle with Parsing -> ConcreteSyntaxDescription.
+*)
+val make_concrete_description
+  : ConcreteSyntaxDescription.pre_terminal_rule list
+  -> ConcreteSyntaxDescription.sort_rule list
+  -> ConcreteSyntaxDescription.t

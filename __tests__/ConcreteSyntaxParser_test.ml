@@ -1,6 +1,6 @@
 open Jest
 open Expect
-open Types.ConcreteSyntaxDescription
+open ConcreteSyntaxDescription
 
 let _ = describe "ConcreteSyntax_Parser" (fun () ->
   let expectParse parser str tm = test ("parse '" ^ str ^ "'") (fun () ->
@@ -26,7 +26,7 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
     (PreTerminalRule ("ID", Left "[a-zA-Z][a-zA-Z0-9_]*"));
   expectParse ConcreteSyntax.Parser.terminal_rule__test
     {|SPACE := /[ ]+/|}
-    (PreTerminalRule ("SPACE", Left " "));
+    (PreTerminalRule ("SPACE", Left "[ ]+"));
 
   expectParse ConcreteSyntax.Parser.capture_number "$2" 2;
   expectParse ConcreteSyntax.Parser.nonterminal_token "foo" (NonterminalName "foo");

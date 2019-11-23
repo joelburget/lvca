@@ -20,8 +20,8 @@ ARROW := "->"
 TRUE  := "true"
 FALSE := "false"
 BOOL  := "bool"
-ID    := [a-zA-Z][a-zA-Z0-9_]*
-SPACE := [ ]+
+ID    := /[a-zA-Z][a-zA-Z0-9_]*/
+SPACE := /[ ]+/
 
 tm :=
   | ID                    { var($1)         }

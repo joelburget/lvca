@@ -13,6 +13,9 @@ src/Statics_Parser.messages: src/Statics_Parser.mly
 src/Dynamics_Parser.messages: src/Dynamics_Parser.mly
 	menhir src/Dynamics_Parser.mly src/ParserLib.mly --base Dynamics_Parser --update-errors src/Dynamics_Parser.messages
 
+src/Regex_Parser.messages: src/Regex_Parser.mly
+	menhir src/Regex_Parser.mly --update-errors src/Regex_Parser.messages
+
 
 
 src/ConcreteSyntax_ParseErrors.ml: src/ConcreteSyntax_Parser.mly src/ConcreteSyntax_Parser.messages
@@ -29,3 +32,6 @@ src/Statics_ParseErrors.ml: src/Statics_Parser.mly src/Statics_Parser.messages
 
 src/Dynamics_ParseErrors.ml: src/Dynamics_Parser.mly src/Dynamics_Parser.messages
 	menhir src/Dynamics_Parser.mly src/ParserLib.mly --base Dynamics_Parser --compile-errors src/Dynamics_Parser.messages > src/Dynamics_ParseErrors.ml
+
+src/Regex_ParseErrors.ml: src/Regex_Parser.mly src/Regex_Parser.messages
+	menhir src/Regex_Parser.mly --compile-errors src/Regex_Parser.messages > src/Regex_ParseErrors.ml

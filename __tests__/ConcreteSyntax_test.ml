@@ -4,6 +4,8 @@ let (to_ast, to_string, of_ast, mk_tree, parse, equivalent) =
   ConcreteSyntax.(to_ast, to_string, of_ast, mk_tree, parse, equivalent)
 type tree = ConcreteSyntax.tree
 open Belt.Result
+module Parse_concrete = Parsing.Incremental(Parsing.Parseable_concrete_syntax)
+
 
 (*
 let toBeEquivalent : ('a -> 'a -> bool) -> 'a -> [< 'a partial] -> assertion
@@ -26,8 +28,8 @@ let _ = describe "ConcreteSyntax" (fun () ->
   DIV    := "/"
   LPAREN := "("
   RPAREN := ")"
-  NAME   := [a-z][a-zA-Z0-9]*
-  SPACE  := [ ]+
+  NAME   := /[a-z][a-zA-Z0-9]*/
+  SPACE  := /[ ]+/
 
   arith :=
     | LPAREN arith RPAREN         { $2          }
@@ -51,17 +53,6 @@ let _ = describe "ConcreteSyntax" (fun () ->
   |]))
   in
 
-  testAll "to_string"
-    [ expect (Regex.to_string (ReString "+")) |> toBe "\\+";
-      expect (Regex.to_string (ReString "*")) |> toBe "\\*";
-      expect (Regex.to_string (ReString "?")) |> toBe "\\?";
-      expect (Regex.to_string (ReString "-")) |> toBe "\\-";
-      expect (Regex.to_string (ReSet  "a-z")) |> toBe "[a-z]";
-    ]
-    Util.id;
-
-  let module Parse_concrete = Parsing.Incremental(Parsing.Parseable_concrete_syntax) in
-
   test "language parses" (fun () ->
     match Parse_concrete.parse description with
       | Ok _concrete -> pass
@@ -70,7 +61,10 @@ let _ = describe "ConcreteSyntax" (fun () ->
 
   match Parse_concrete.parse description with
     | Error msg -> failwith msg
-    | Ok concrete ->
+    | Ok (pre_terminal_rules, sort_rules) ->
+      let concrete =
+        ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
+      in
       let mk_tree' = mk_tree "arith" in
       let tree = mk_tree' (Operator "add")
             [| nt_capture (mk_tree' Var [| mk_terminal_capture "x" |]);
@@ -78,7 +72,6 @@ let _ = describe "ConcreteSyntax" (fun () ->
                nt_capture (mk_tree' Var [| mk_terminal_capture "y" |]);
             |]
       in
-      Js.log tree;
       let tree' = mk_tree' (Operator "sub")
             [| nt_capture (mk_tree' (Operator "add")
                  [| nt_capture (mk_tree' Var [| mk_terminal_capture "x" |]);
@@ -122,7 +115,6 @@ let _ = describe "ConcreteSyntax" (fun () ->
 
       testAll "parse"
         [ expect (parse concrete "x+y") |> toEqual (Ok tree);
-          (*
           expect (
             parse concrete "x + y"
               |. Belt.Result.map (equivalent tree)
@@ -134,7 +126,29 @@ let _ = describe "ConcreteSyntax" (fun () ->
           ) |> toEqual (Ok true);
           expect (parse concrete "x + y * z") |> toEqual (Ok tree'');
           expect (parse concrete "x + (y * z)") |> toEqual (Ok tree'');
-          *)
         ]
         Util.id;
+
+      let expect_round_trip_tree tree = expect (tree
+          |> to_ast language
+          |. Belt.Result.map (of_ast language concrete arith)
+          |. Belt.Result.map (equivalent tree)
+        ) |> toEqual (Ok true)
+      in
+
+      let expect_round_trip_ast tm = expect (tm
+          |> of_ast language concrete arith
+          |> to_ast language
+        ) |> toEqual (Ok tm)
+      in
+
+      testAll "round trip ast->tree->ast"
+        [ expect_round_trip_tree tree;
+          expect_round_trip_tree tree';
+          expect_round_trip_tree tree'';
+        ] Util.id;
+
+      testAll "round trip tree->ast->tree"
+        [ expect_round_trip_ast ast;
+        ] Util.id;
 )

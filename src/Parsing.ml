@@ -99,12 +99,22 @@ module Parseable_dynamics
 end
 
 module Parseable_concrete_syntax
-  : (Parseable with type t = Types.ConcreteSyntaxDescription.t) = struct
-  type t                   = Types.ConcreteSyntaxDescription.t
-  module MenhirInterpreter = ConcreteSyntax.Parser.MenhirInterpreter
-  module ParseErrors       = ConcreteSyntax.ParseErrors
-  module Lexer             = ConcreteSyntax.Lexer
+  : (Parseable with type t = ConcreteSyntaxDescription.pre_t) = struct
+  type t                   = ConcreteSyntaxDescription.pre_t
+  module MenhirInterpreter = ConcreteSyntax_Parser.MenhirInterpreter
+  module ParseErrors       = ConcreteSyntax_ParseErrors
+  module Lexer             = ConcreteSyntax_Lexer
   module Parser            = struct
-    let parse = ConcreteSyntax.Parser.Incremental.language
+    let parse = ConcreteSyntax_Parser.Incremental.language
+  end
+end
+
+module Parseable_regex : (Parseable with type t = Regex.t) = struct
+  type t                   = Regex.t
+  module MenhirInterpreter = Regex_Parser.MenhirInterpreter
+  module ParseErrors       = Regex_ParseErrors
+  module Lexer             = Regex_Lexer
+  module Parser            = struct
+    let parse = Regex_Parser.Incremental.regex
   end
 end

@@ -32,17 +32,17 @@ exception Error
 
 (* The monolithic API. *)
 
-val terminal_rule__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Types.ConcreteSyntaxDescription.pre_terminal_rule)
+val terminal_rule__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.pre_terminal_rule)
 
-val sort_rule__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Types.ConcreteSyntaxDescription.sort_rule)
+val sort_rule__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.sort_rule)
 
-val operator_match__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Types.ConcreteSyntaxDescription.operator_match)
+val operator_match__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.operator_match)
 
-val nonterminal_token: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Types.ConcreteSyntaxDescription.nonterminal_token)
+val nonterminal_token: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.nonterminal_token)
 
-val language: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Types.ConcreteSyntaxDescription.t)
+val language: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.pre_terminal_rule list * ConcreteSyntaxDescription.sort_rule list)
 
-val capture_number: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Types.ConcreteSyntaxDescription.capture_number)
+val capture_number: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.capture_number)
 
 module MenhirInterpreter : sig
   
@@ -57,16 +57,16 @@ end
 
 module Incremental : sig
   
-  val terminal_rule__test: Lexing.position -> (Types.ConcreteSyntaxDescription.pre_terminal_rule) MenhirInterpreter.checkpoint
+  val terminal_rule__test: Lexing.position -> (ConcreteSyntaxDescription.pre_terminal_rule) MenhirInterpreter.checkpoint
   
-  val sort_rule__test: Lexing.position -> (Types.ConcreteSyntaxDescription.sort_rule) MenhirInterpreter.checkpoint
+  val sort_rule__test: Lexing.position -> (ConcreteSyntaxDescription.sort_rule) MenhirInterpreter.checkpoint
   
-  val operator_match__test: Lexing.position -> (Types.ConcreteSyntaxDescription.operator_match) MenhirInterpreter.checkpoint
+  val operator_match__test: Lexing.position -> (ConcreteSyntaxDescription.operator_match) MenhirInterpreter.checkpoint
   
-  val nonterminal_token: Lexing.position -> (Types.ConcreteSyntaxDescription.nonterminal_token) MenhirInterpreter.checkpoint
+  val nonterminal_token: Lexing.position -> (ConcreteSyntaxDescription.nonterminal_token) MenhirInterpreter.checkpoint
   
-  val language: Lexing.position -> (Types.ConcreteSyntaxDescription.t) MenhirInterpreter.checkpoint
+  val language: Lexing.position -> (ConcreteSyntaxDescription.pre_terminal_rule list * ConcreteSyntaxDescription.sort_rule list) MenhirInterpreter.checkpoint
   
-  val capture_number: Lexing.position -> (Types.ConcreteSyntaxDescription.capture_number) MenhirInterpreter.checkpoint
+  val capture_number: Lexing.position -> (ConcreteSyntaxDescription.capture_number) MenhirInterpreter.checkpoint
   
 end

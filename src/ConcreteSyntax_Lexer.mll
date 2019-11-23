@@ -24,6 +24,7 @@ rule read = parse
   | '('            { LEFT_PAREN }
   | ')'            { RIGHT_PAREN }
   | '['            { read_character_set (Buffer.create 17) lexbuf }
+  | '/'            { read_regex (Buffer.create 17) lexbuf }
   | '{'            { LEFT_BRACE }
   | '}'            { RIGHT_BRACE }
   | '.'            { DOT }
@@ -59,6 +60,23 @@ and read_string buf = parse (* use buf to build up result *)
   | eof       { error lexbuf "end of input inside of a string" }
   | _         { error lexbuf
                   "found '%s' - don't know how to handle" @@ L.lexeme lexbuf }
+
+and read_regex buf = parse
+  | [^ '/' '\n' '\\'] +
+    { B.add_string buf @@ L.lexeme lexbuf
+    ; read_regex buf lexbuf
+    }
+  | '\\' '/'
+    { B.add_char buf '/'
+    ; read_regex buf lexbuf
+    }
+  | '/'  { REGEX (B.contents buf) }
+  | '\\' { B.add_char buf '\\'
+         ; read_string buf lexbuf
+         }
+  | eof { error lexbuf "end of input inside of a regex" }
+  | _   { error lexbuf
+          "found '%s' - don't know how to handle" @@ L.lexeme lexbuf }
 
 and read_character_set buf = parse
   | [^ ']' '\n'] +
