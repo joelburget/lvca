@@ -12,10 +12,8 @@
 %token EOF
 
 %start regex
-%start regex__test
 %type <Regex.re_class> re_class
 %type <Regex.t> regex
-%type <Regex.t> regex__test
 %type <Regex.t> prec0_re
 %%
 
@@ -47,14 +45,12 @@ prec2_re:
   | re_class { ReClass $1 }
   (* Remove the escape character, leaving only the unescaped content *)
   | ESCAPED { ReString (String.sub $1 1 1) }
-  | prec3_re STAR { ReStar $1 }
-  | prec3_re PLUS { RePlus $1 }
-  | prec3_re QUESTION { ReOption $1 }
+  | prec2_re STAR { ReStar $1 }
+  | prec2_re PLUS { RePlus $1 }
+  | prec2_re QUESTION { ReOption $1 }
   | prec3_re { $1 }
   | DOT { ReAny }
 
 prec3_re: LEFT_PAREN prec0_re RIGHT_PAREN { $2 }
 
-regex: prec0_re { $1 }
-
-regex__test: regex EOF { $1 }
+regex: prec0_re EOF { $1 }

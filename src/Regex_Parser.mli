@@ -21,8 +21,6 @@ exception Error
 
 (* The monolithic API. *)
 
-val regex__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Regex.t)
-
 val regex: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Regex.t)
 
 module MenhirInterpreter : sig
@@ -37,8 +35,6 @@ end
 (* The entry point(s) to the incremental API. *)
 
 module Incremental : sig
-  
-  val regex__test: Lexing.position -> (Regex.t) MenhirInterpreter.checkpoint
   
   val regex: Lexing.position -> (Regex.t) MenhirInterpreter.checkpoint
   

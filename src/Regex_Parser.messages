@@ -12,12 +12,12 @@ regex__test: ESCAPED RIGHT_PAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 12, spurious reduction of production nonempty_list(prec2_re) -> prec2_re 
-## In state 19, spurious reduction of production prec1_re -> nonempty_list(prec2_re) 
-## In state 14, spurious reduction of production prec0_re -> prec1_re 
+## In state 12, spurious reduction of production nonempty_list(prec2_re) -> prec2_re
+## In state 19, spurious reduction of production prec1_re -> nonempty_list(prec2_re)
+## In state 14, spurious reduction of production prec0_re -> prec1_re
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected token after regex.
 
 regex__test: STAR
 ##
@@ -29,7 +29,7 @@ regex__test: STAR
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected token. Expected regex.
 
 regex: ESCAPED BAR STAR
 ##
@@ -41,7 +41,7 @@ regex: ESCAPED BAR STAR
 ## prec0_re BAR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected token after "|".
 
 regex: ESCAPED RIGHT_PAREN
 ##
@@ -57,12 +57,12 @@ regex: ESCAPED RIGHT_PAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 12, spurious reduction of production nonempty_list(prec2_re) -> prec2_re 
-## In state 19, spurious reduction of production prec1_re -> nonempty_list(prec2_re) 
-## In state 14, spurious reduction of production prec0_re -> prec1_re 
+## In state 12, spurious reduction of production nonempty_list(prec2_re) -> prec2_re
+## In state 19, spurious reduction of production prec1_re -> nonempty_list(prec2_re)
+## In state 14, spurious reduction of production prec0_re -> prec1_re
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected token after regex.
 
 regex: ESCAPED STAR
 ##
@@ -75,7 +75,7 @@ regex: ESCAPED STAR
 ## prec2_re
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+<YOUR SYNTAX ERROR MESSAGE HERE TODO>
 
 regex: LEFT_PAREN ESCAPED EOF
 ##
@@ -91,12 +91,12 @@ regex: LEFT_PAREN ESCAPED EOF
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 12, spurious reduction of production nonempty_list(prec2_re) -> prec2_re 
-## In state 19, spurious reduction of production prec1_re -> nonempty_list(prec2_re) 
-## In state 14, spurious reduction of production prec0_re -> prec1_re 
+## In state 12, spurious reduction of production nonempty_list(prec2_re) -> prec2_re
+## In state 19, spurious reduction of production prec1_re -> nonempty_list(prec2_re)
+## In state 14, spurious reduction of production prec0_re -> prec1_re
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+<YOUR SYNTAX ERROR MESSAGE HERE TODO 2>
 
 regex: LEFT_PAREN STAR
 ##
@@ -108,7 +108,7 @@ regex: LEFT_PAREN STAR
 ## LEFT_PAREN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected token. Expected regex.
 
 regex: STAR
 ##
@@ -120,5 +120,5 @@ regex: STAR
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected token. Expected regex.
 

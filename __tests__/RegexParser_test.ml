@@ -9,25 +9,27 @@ let _ = describe "Regex_Parser" (fun () ->
       expect (Regex.to_string re) |> toEqual str
   ) in
 
-  expectParseAndRT Regex_Parser.regex__test "foo" (ReString "foo");
-  expectParseAndRT Regex_Parser.regex__test "(foo)(bar)"
+  expectParseAndRT Regex_Parser.regex "foo" (ReString "foo");
+  expectParseAndRT Regex_Parser.regex "(foo)(bar)"
     (ReConcat [ReString "foo"; ReString "bar"]);
-  expectParseAndRT Regex_Parser.regex__test "[a-z]"    (ReSet "a-z");
-  expectParseAndRT Regex_Parser.regex__test "[a-zA-Z]" (ReSet "a-zA-Z");
-  expectParseAndRT Regex_Parser.regex__test "[a-z][A-Z]"
-    (ReConcat [ReSet "a-z"; ReSet "A-Z"]);
-  expectParseAndRT Regex_Parser.regex__test "(foo)*" (ReStar (ReString "foo"));
-  expectParseAndRT Regex_Parser.regex__test "(foo)+" (RePlus (ReString "foo"));
-  expectParseAndRT Regex_Parser.regex__test "(foo)?"
+  expectParseAndRT Regex_Parser.regex "[a-z]"    (ReSet "a-z");
+  expectParseAndRT Regex_Parser.regex "[a-zA-Z]" (ReSet "a-zA-Z");
+  expectParseAndRT Regex_Parser.regex "(foo)*" (ReStar (ReString "foo"));
+  expectParseAndRT Regex_Parser.regex "(foo)+" (RePlus (ReString "foo"));
+  expectParseAndRT Regex_Parser.regex "(foo)?"
     (ReOption (ReString "foo"));
-  expectParseAndRT Regex_Parser.regex__test "foo|bar"
+  expectParseAndRT Regex_Parser.regex "foo|bar"
     (ReChoice (ReString "foo", ReString "bar"));
-  expectParseAndRT Regex_Parser.regex__test "." ReAny;
+  expectParseAndRT Regex_Parser.regex "." ReAny;
 
-  expectParseAndRT Regex_Parser.regex__test {|\\|} (ReString {|\|});
-  expectParseAndRT Regex_Parser.regex__test {|\b|}
+  expectParseAndRT Regex_Parser.regex "[a-z][a-zA-Z0-9]*"
+    (ReStar (ReConcat [ReSet "a-z"; ReSet "a-zA-Z0-9"]));
+  expectParseAndRT Regex_Parser.regex "[ ]+" (RePlus (ReSet " "));
+
+  expectParseAndRT Regex_Parser.regex {|\\|} (ReString {|\|});
+  expectParseAndRT Regex_Parser.regex {|\b|}
     (ReClass (PosClass Boundary));
-  expectParseAndRT Regex_Parser.regex__test {|\B|}
+  expectParseAndRT Regex_Parser.regex {|\B|}
     (ReClass (NegClass Boundary));
 
 );
