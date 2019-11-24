@@ -272,9 +272,7 @@ module SyntaxDebugger = {
              </span>
           );
 
-        let tokens' = tokens
-          |. Js.Array2.filter(({ name }) => name != "SPACE")
-          |. MQueue.fromArray;
+        let tokens' = MQueue.fromArray(tokens);
         let len = String.length(input);
         /* TODO: name might not always be "$" */
         MQueue.add(tokens', { name: "$", start: len, finish: len });

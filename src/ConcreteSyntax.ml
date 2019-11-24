@@ -91,7 +91,7 @@ let find_operator_match
     in
     match maybe_match with
       | Some m -> m
-      | None -> failwith "TODO: default match"
+      | None -> failwith ("failed to find a rule matching operator " ^ opname)
 
 type subterm_result =
   | NotFound
@@ -264,10 +264,18 @@ let check_description_validity { terminal_rules; sort_rules } =
               | None -> raise (CheckValidExn (InvalidGrammar
                 ("Named terminal " ^ nt_name ^ " does not exist")))
               (* TODO: switch to using canonical representatives *)
-              | Some regex -> if Util.is_none (Regex.is_literal regex)
+              | Some regex -> (match Regex.canonical_representative regex with
+                | Some str -> str
+                | None -> raise (CheckValidExn (InvalidGrammar
+                  ("Uncaptured regex with no canonical representative: " ^
+                    Regex.to_string regex)))
+              )
+                  (*
+                  if Util.is_none (Regex.is_literal regex)
                 then raise (CheckValidExn (InvalidGrammar
                   ("Uncaptured regex which is not a string literal: " ^
                     Regex.to_string regex)))
+            *)
             )
           )
         );
@@ -405,10 +413,19 @@ let rec of_ast
               ("of_ast: failed to get terminal rule " ^ name) @@
               MS.get terminal_rules' name
            in
+           (match Regex.canonical_representative terminal_rule with
+             | Some str -> mk_terminal_capture str
+             | None ->
+                 Js.log ("re: " ^ Regex.to_string terminal_rule);
+                 raise (CantEmitTokenRegex (name, terminal_rule))
+           )
+
+           (*
            (match Regex.is_literal terminal_rule with
              | Some re_str -> mk_terminal_capture re_str
              | None -> raise (CantEmitTokenRegex (name, terminal_rule))
            )
+      *)
 
         | FoundBinder pattern, NonterminalName _name
         -> NonterminalCapture (pattern_to_tree sort_name pattern)
@@ -544,8 +561,8 @@ and capture_to_pat : capture -> Pattern.t
       | Primitive prim_ty -> (match children with
         | [| TerminalCapture { content } |]
         -> Primitive (prim_to_ast prim_ty content)
-        | _ -> raise
-          (ToAstError "Unexpected primitive capture in capture_to_pat")
+        | _ -> raise @@
+          ToAstError "Unexpected primitive capture in capture_to_pat"
       )
 
 and scope_to_ast lang ({ children } as tree) : Nominal.scope

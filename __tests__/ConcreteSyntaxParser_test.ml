@@ -25,8 +25,8 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
     {|ID := /[a-zA-Z][a-zA-Z0-9_]*/|}
     (PreTerminalRule ("ID", Left "[a-zA-Z][a-zA-Z0-9_]*"));
   expectParse ConcreteSyntax.Parser.terminal_rule__test
-    {|SPACE := /[ ]+/|}
-    (PreTerminalRule ("SPACE", Left "[ ]+"));
+    {|SPACE := / +/|}
+    (PreTerminalRule ("SPACE", Left " +"));
 
   expectParse ConcreteSyntax.Parser.capture_number "$2" 2;
   expectParse ConcreteSyntax.Parser.nonterminal_token "foo" (NonterminalName "foo");
