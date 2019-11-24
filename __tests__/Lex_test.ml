@@ -76,7 +76,7 @@ let _ = describe "Lex" (fun () ->
       "false", "FALSE";
       "bool", "BOOL";
       "[a-zA-Z][a-zA-Z0-9_]*", "ID";
-      "[ ]+", "SPACE";
+      " +", "SPACE";
     ]
   in let result = lex lexer3 "if false then false else true" in
                            (* 01234567890123456789012345678 *)

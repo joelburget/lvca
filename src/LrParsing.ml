@@ -1130,11 +1130,7 @@ module Lr0 (G : GRAMMAR) = struct
       | Error error -> Error (Left error)
       | Ok tokens ->
         let len = String.length input in
-        let tokens' = tokens
-          (* XXX: don't do this *)
-          |. Js.Array2.filter (fun { name } -> name != "SPACE")
-          |. MQueue.fromArray
-        in
+        let tokens' = MQueue.fromArray tokens in
         (* TODO: name might not always be "$" *)
         MQueue.add tokens' { name = "$"; start = len; finish = len };
         parse tokens' |. Util.map_error (fun err -> Either.Right err)

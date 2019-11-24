@@ -6,12 +6,11 @@ module L = Lexing
 module B = Buffer
 }
 
-let chars = ['a'-'z' 'A'-'Z' '0'-'9' '-' '_']+
+let chars = [^ '(' ')' '[' '|' '*' '+' '?' '.' '\\']+
 let char_class = '\\' ['w' 's' 'd' 'b']
 let escaped = '\\' [^ 'w' 's' 'd' 'b']
 
 rule read = parse
-  (* TODO: accept more chars *)
   | chars { CHARS (L.lexeme lexbuf) }
   | char_class { CHARACTER_CLASS (L.lexeme lexbuf) }
   | escaped { ESCAPED (L.lexeme lexbuf) }

@@ -29,7 +29,7 @@ let _ = describe "ConcreteSyntax" (fun () ->
   LPAREN := "("
   RPAREN := ")"
   NAME   := /[a-z][a-zA-Z0-9]*/
-  SPACE  := /[ ]+/
+  SPACE  := / +/
 
   arith :=
     | LPAREN arith RPAREN         { $2          }
@@ -68,27 +68,37 @@ let _ = describe "ConcreteSyntax" (fun () ->
       let mk_tree' = mk_tree "arith" in
       let tree = mk_tree' (Operator "add")
             [| nt_capture (mk_tree' Var [| mk_terminal_capture "x" |]);
+               mk_terminal_capture " ";
                mk_terminal_capture "+";
+               mk_terminal_capture " ";
                nt_capture (mk_tree' Var [| mk_terminal_capture "y" |]);
             |]
       in
       let tree' = mk_tree' (Operator "sub")
             [| nt_capture (mk_tree' (Operator "add")
                  [| nt_capture (mk_tree' Var [| mk_terminal_capture "x" |]);
+                    mk_terminal_capture " ";
                     mk_terminal_capture "+";
+                    mk_terminal_capture " ";
                     nt_capture (mk_tree' Var [| mk_terminal_capture "y" |]);
                  |]
                );
+               mk_terminal_capture " ";
                mk_terminal_capture "-";
+               mk_terminal_capture " ";
                nt_capture (mk_tree' Var [| mk_terminal_capture "z" |]);
             |]
       in
       let tree'' = mk_tree' (Operator "add")
             [| nt_capture (mk_tree' Var [| mk_terminal_capture "x" |]);
+               mk_terminal_capture " ";
                mk_terminal_capture "+";
+               mk_terminal_capture " ";
                nt_capture (mk_tree' (Operator "mul")
                  [| nt_capture (mk_tree' Var [| mk_terminal_capture "y" |]);
+                    mk_terminal_capture " ";
                     mk_terminal_capture "*";
+                    mk_terminal_capture " ";
                     nt_capture (mk_tree' Var [| mk_terminal_capture "z" |]);
                  |]
                );
@@ -110,7 +120,7 @@ let _ = describe "ConcreteSyntax" (fun () ->
       );
 
       test "to_string" (fun () ->
-        expect (to_string tree) |> toEqual "x+y";
+        expect (to_string tree) |> toEqual "x + y";
       );
 
       testAll "parse"

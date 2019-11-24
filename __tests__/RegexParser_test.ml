@@ -25,6 +25,7 @@ let _ = describe "Regex_Parser" (fun () ->
   expectParseAndRT Regex_Parser.regex "[a-z][a-zA-Z0-9]*"
     (ReStar (ReConcat [ReSet "a-z"; ReSet "a-zA-Z0-9"]));
   expectParseAndRT Regex_Parser.regex "[ ]+" (RePlus (ReSet " "));
+  expectParseAndRT Regex_Parser.regex " +" (RePlus (ReString " "));
 
   expectParseAndRT Regex_Parser.regex {|\\|} (ReString {|\|});
   expectParseAndRT Regex_Parser.regex {|\b|}
