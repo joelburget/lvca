@@ -1,4 +1,4 @@
-# 1 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 1 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
  
 open Dynamics_Parser
 open LexerUtil
@@ -6,7 +6,7 @@ open LexerUtil
 module L = Lexing
 module B = Buffer
 
-# 10 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 10 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base =
    "\000\000\239\255\241\255\088\000\163\000\192\000\244\255\245\255\
@@ -208,89 +208,89 @@ let rec read lexbuf =
 and __ocaml_lex_read_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 16 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 16 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( read lexbuf )
-# 214 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 214 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 1 ->
-# 17 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 17 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( LEFT_OXFORD )
-# 219 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 219 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 2 ->
-# 18 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 18 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( RIGHT_OXFORD )
-# 224 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 224 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 3 ->
-# 19 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 19 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( LEFT_BRACKET )
-# 229 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 229 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 4 ->
-# 20 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 20 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( RIGHT_BRACKET )
-# 234 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 234 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 5 ->
-# 21 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 21 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( LEFT_PAREN )
-# 239 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 239 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 6 ->
-# 22 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 22 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( RIGHT_PAREN )
-# 244 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 244 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 7 ->
-# 23 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 23 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( read_string (Buffer.create 17) lexbuf )
-# 249 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 249 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 8 ->
-# 24 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 24 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( EQ )
-# 254 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 254 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 9 ->
-# 25 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 25 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( SEMICOLON )
-# 259 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 259 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 10 ->
-# 26 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 26 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( COMMA )
-# 264 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 264 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 11 ->
-# 27 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 27 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( DOT )
-# 269 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 269 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 12 ->
-# 28 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 28 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( INT (Bigint.of_string (L.lexeme lexbuf)) )
-# 274 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 274 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 13 ->
-# 29 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 29 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( ID (Lexing.lexeme lexbuf) )
-# 279 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 279 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 14 ->
-# 30 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 30 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( EOF )
-# 284 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 284 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 15 ->
-# 31 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 31 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( next_line lexbuf; read lexbuf )
-# 289 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 289 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 16 ->
-# 32 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 32 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
       ( error lexbuf ("Unexpected char: " ^ Lexing.lexeme lexbuf) )
-# 294 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 294 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_rec lexbuf __ocaml_lex_state
@@ -300,49 +300,49 @@ and read_string buf lexbuf =
 and __ocaml_lex_read_string_rec buf lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 37 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 37 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( B.add_string buf @@ L.lexeme lexbuf
               ; read_string buf lexbuf
               )
-# 308 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 308 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 1 ->
-# 40 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 40 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( B.add_string buf @@ L.lexeme lexbuf
               ; L.new_line lexbuf
               ; read_string buf lexbuf
               )
-# 316 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 316 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 2 ->
-# 44 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 44 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( B.add_char buf '"'
               ; read_string buf lexbuf
               )
-# 323 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 323 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 3 ->
-# 47 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 47 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( B.add_char buf '\\'
               ; read_string buf lexbuf
               )
-# 330 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 330 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 4 ->
-# 50 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 50 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( STRING (B.contents buf) )
-# 335 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 335 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 5 ->
-# 51 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 51 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( error lexbuf "end of input inside of a string" )
-# 340 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 340 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 6 ->
-# 52 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 52 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( error lexbuf
                   "found '%s' - don't know how to handle" @@ L.lexeme lexbuf )
-# 346 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
+# 346 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_string_rec buf lexbuf __ocaml_lex_state
