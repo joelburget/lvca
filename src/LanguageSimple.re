@@ -30,7 +30,7 @@ tm :=
   | FUN ID ARROW tm       { fun($2; $4)     }
   | TRUE                  { true()          }
   | FALSE                 { false()         }
-  > tm _ tm               { app($1; $2)     } // %right
+  > tm SPACE tm           { app($1; $2)     } // %right
 
 ty :=
   | BOOL         { bool()      }

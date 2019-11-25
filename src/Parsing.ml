@@ -46,8 +46,10 @@ module Incremental (M : Parseable) = struct
 
   let loop (lexbuf: Lexing.lexbuf) (result: M.t I.checkpoint) =
     let supplier = I.lexer_lexbuf_to_supplier M.Lexer.read lexbuf in
-    try I.loop_handle (fun v -> Result.Ok v) (fail lexbuf) supplier result
-    with LexerUtil.SyntaxError(msg) -> Error(msg)
+    try
+      I.loop_handle (fun v -> Result.Ok v) (fail lexbuf) supplier result
+    with
+      LexerUtil.SyntaxError(msg) -> Error(msg)
 
   let parse (str: string): parse_result =
     let lexbuf = Lexing.from_string str in
