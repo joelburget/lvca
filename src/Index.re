@@ -372,17 +372,10 @@ module ConcreteSyntaxEditor = {
     let (concreteDidParseView, pre_concrete) =
       Parseable_concrete.parse(concreteInput);
 
-    /*
-    module Parseable_regex' =
-      ParseStatus.Make(Parsing.Parseable_regex);
-      */
-
-    let concrete = switch(pre_concrete) {
-      | Belt.Result.Error(err) => Belt.Result.Error(err)
-      | Ok((pre_terminal_rules, sort_rules)) => Ok(
+    let concrete = pre_concrete
+      |. Belt.Result.map(((pre_terminal_rules, sort_rules)) =>
         ConcreteSyntax.make_concrete_description(pre_terminal_rules, sort_rules)
-      )
-    };
+      );
 
     React.useEffect1(() => switch (concrete) {
       | Error(_) => None
