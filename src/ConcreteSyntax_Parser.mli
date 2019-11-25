@@ -4,14 +4,11 @@
 type token = 
   | TERMINAL_ID of (string)
   | STRING of (string)
-  | STAR
   | SEMICOLON
   | RIGHT_PAREN
   | RIGHT_FIXITY
   | RIGHT_BRACE
   | REGEX of (string)
-  | QUESTION
-  | PLUS
   | NONTERMINAL_ID of (string)
   | NAT of (int)
   | LEFT_PAREN
@@ -21,8 +18,6 @@ type token =
   | EOF
   | DOT
   | DOLLAR
-  | CHARACTER_SET of (string)
-  | CHARACTER_CLASS of (string)
   | BAR
   | ASSIGN
 

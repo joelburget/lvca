@@ -23,7 +23,6 @@ rule read = parse
   | '"'            { read_string (Buffer.create 17) lexbuf }
   | '('            { LEFT_PAREN }
   | ')'            { RIGHT_PAREN }
-  | '['            { read_character_set (Buffer.create 17) lexbuf }
   | '/'            { read_regex (Buffer.create 17) lexbuf }
   | '{'            { LEFT_BRACE }
   | '}'            { RIGHT_BRACE }
@@ -31,9 +30,6 @@ rule read = parse
   | ":="           { ASSIGN }
   | '$'            { DOLLAR }
   | '|'            { BAR }
-  | '*'            { STAR }
-  | '+'            { PLUS }
-  | '?'            { QUESTION }
   | ';'            { SEMICOLON }
   | '>'            { GREATER }
   | "%left"        { LEFT_FIXITY }
@@ -76,14 +72,6 @@ and read_regex buf = parse
          }
   | eof { error lexbuf "end of input inside of a regex" }
   | _   { error lexbuf
-          "found '%s' - don't know how to handle" @@ L.lexeme lexbuf }
-
-and read_character_set buf = parse
-  | [^ ']' '\n'] +
-    { B.add_string buf @@ L.lexeme lexbuf
-    ; read_character_set buf lexbuf
-    }
-  | ']' { CHARACTER_SET (B.contents buf) } (* return *)
-  | eof { error lexbuf "end of input inside of a character set" }
-  | _   { error lexbuf
-          "found '%s' - don't know how to handle" @@ L.lexeme lexbuf }
+          (Printf.sprintf "found '%s' - don't know how to handle"
+            (L.lexeme lexbuf))
+        }

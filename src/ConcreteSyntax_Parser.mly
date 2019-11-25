@@ -3,8 +3,6 @@
 %token <string> TERMINAL_ID
 %token <string> NONTERMINAL_ID
 %token <string> STRING
-%token <string> CHARACTER_SET
-%token <string> CHARACTER_CLASS
 %token LEFT_PAREN
 %token RIGHT_PAREN
 %token DOT
@@ -14,9 +12,6 @@
 %token ASSIGN
 %token DOLLAR
 %token BAR
-%token STAR
-%token PLUS
-%token QUESTION
 %token SEMICOLON
 %token LEFT_FIXITY
 %token RIGHT_FIXITY
@@ -108,17 +103,3 @@ operator_match__test: operator_match EOF { $1 }
 nonterminal_token:
   | TERMINAL_ID    { TerminalName    $1 }
   | NONTERMINAL_ID { NonterminalName $1 }
-
-(*
-regex: nonempty_list(regex_piece) { $1 }
-
-regex__test: regex EOF { $1 }
-
-regex_piece:
-  | STRING               { ReString $1 }
-  | CHARACTER_SET        { ReSet    $1 }
-  | CHARACTER_CLASS      { ReClass  $1 }
-  | regex_piece STAR     { ReStar   $1 }
-  | regex_piece PLUS     { RePlus   $1 }
-  | regex_piece QUESTION { ReOption $1 }
-*)
