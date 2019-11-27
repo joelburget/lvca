@@ -22,7 +22,7 @@
 
 %start terminal_rule__test
 %start capture_number
-%start nonterminal_token
+%start nonterminal_token__test
 %start operator_match__test
 %start sort_rule__test
 %start language
@@ -30,6 +30,7 @@
 %type <ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule__test
 %type <ConcreteSyntaxDescription.capture_number> capture_number
 %type <ConcreteSyntaxDescription.nonterminal_token> nonterminal_token
+%type <ConcreteSyntaxDescription.nonterminal_token> nonterminal_token__test
 %type <ConcreteSyntaxDescription.operator_match> operator_match
 %type <ConcreteSyntaxDescription.operator_match> operator_match__test
 %type <ConcreteSyntaxDescription.operator_match list list> operator_match_list
@@ -104,10 +105,6 @@ operator_match__test: operator_match EOF { $1 }
 nonterminal_token:
   | TERMINAL_ID     { TerminalName    $1 }
   | NONTERMINAL_ID  { NonterminalName $1 }
-  | UNDERSCORE NAT? {
-    let n = match $2 with
-      | Some n -> n
-      | None -> 1
-    in
-    Underscore n
-  }
+  | UNDERSCORE NAT? { Underscore (Belt.Option.getWithDefault $2 1) }
+
+nonterminal_token__test: nonterminal_token EOF { $1 }

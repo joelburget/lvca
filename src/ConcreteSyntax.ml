@@ -5,8 +5,7 @@ open Types
 open ConcreteSyntaxDescription
 module AA = Util.ArrayApplicative(struct type t = string end)
 module MS = Belt.Map.String
-let (find, get_option', traverse_list_result) =
-  Util.(find, get_option', traverse_list_result)
+let (find, get_option') = Util.(find, get_option')
 module MMI = Belt.MutableMap.Int
 module MSI = Belt.MutableSet.Int
 module SI = Belt.Set.Int
@@ -14,8 +13,6 @@ module SI = Belt.Set.Int
 module Lexer = ConcreteSyntax_Lexer
 module Parser = ConcreteSyntax_Parser
 module ParseErrors = ConcreteSyntax_ParseErrors
-
-type ('a, 'b) result = ('a, 'b) Belt.Result.t
 
 type prim_ty =
   | Integer
@@ -492,8 +489,8 @@ let rec to_string { leading_trivia; children; trailing_trivia } =
 let rec remove_spaces : tree -> tree
   = fun { sort_name; node_type; leading_trivia; trailing_trivia; children }
     -> let children' = children
-         |. BA.array_map_keep (function
-           | SpaceCapture -> None
+         |> Util.array_map_keep (function
+           | SpaceCapture _ -> None
            | TerminalCapture tc -> Some (TerminalCapture tc)
            | NonterminalCapture ntc
            -> Some (NonterminalCapture (remove_spaces ntc))
@@ -529,7 +526,7 @@ let rec tree_to_ast lang tree : Nominal.term
             )
             | NonterminalCapture child -> tree_to_ast lang child
             | SpaceCapture _
-            -> failwith "invariant violation: space found in to_ast"
+            -> failwith "invariant violation: space found in to_ast (sequence)"
           )
         |. Belt.List.fromArray
       in
@@ -543,6 +540,8 @@ let rec tree_to_ast lang tree : Nominal.term
         |. BA.keepMap (function
           | TerminalCapture { content } -> None
           | NonterminalCapture child    -> Some (scope_to_ast lang child)
+          | SpaceCapture _ -> failwith
+            "invariant violation: space found in to_ast (operator)"
         )
         |. Belt.List.fromArray
       in Operator (op_name, children')
@@ -553,8 +552,10 @@ let rec tree_to_ast lang tree : Nominal.term
 
 and capture_to_pat : capture -> Pattern.t
   = function
-    | TerminalCapture { content = name } -> raise
-      (ToAstError "Unexpected bare terminal capture in capture_to_pat")
+    | SpaceCapture _ -> raise @@
+      ToAstError "Unexpected bare space capture in capture_to_pat"
+    | TerminalCapture { content = name } -> raise @@
+      ToAstError "Unexpected bare terminal capture in capture_to_pat"
     | NonterminalCapture { sort_name; node_type; children } ->
       match node_type with
       | Operator op_name ->
@@ -562,12 +563,16 @@ and capture_to_pat : capture -> Pattern.t
           |. BA.keepMap (fun cap -> match cap with
             | TerminalCapture { content } -> None
             | NonterminalCapture child    -> Some (capture_to_pat cap)
+            | SpaceCapture _ -> failwith
+              "invariant violation: space found in capture_to_pat"
           )
           |. Belt.List.fromArray
         in
         Operator (op_name, children')
       | Var -> (match children with
         | [| TerminalCapture { content = name } |] -> Var name
+        | _ -> raise @@ ToAstError
+          "Unexpected children of a var capture (expected a single terminal capture)"
       )
       | Sequence ->
         let children' = children
@@ -723,7 +728,7 @@ let tree_of_parse_result
           Js.String2.slice str ~from:end_pos ~to_:!str_pos
         in
 
-        Printf.printf "get_trivia -> \"%s\", \"%s\"\n" leading_trivia, trailing_trivia;
+        let _ = Printf.printf "get_trivia -> \"%s\", \"%s\"\n" leading_trivia, trailing_trivia in
         leading_trivia, trailing_trivia
     in
 
@@ -747,7 +752,7 @@ let tree_of_parse_result
         let SortRule rule = MS.getExn sort_rules sort_name in
 
         Printf.printf "sort_name: %s\n" sort_name;
-        Printf.printf "leading_trivia: \"%s\", trailing_trivia: \"%s\"\n" leading_trivia, trailing_trivia;
+        let _ = Printf.printf "leading_trivia: \"%s\", trailing_trivia: \"%s\"\n" leading_trivia, trailing_trivia in
         let { operator_match_pattern } =
           Belt.MutableMap.Int.getExn production_rule_map prod_num
         in
@@ -790,6 +795,7 @@ let tree_of_parse_result
             |. BL.map (function (parse_result, token) -> match token with
               | TerminalName tn -> TerminalCapture (go_t parse_result)
               | NonterminalName ntn -> NonterminalCapture (go_nt ntn parse_result)
+              | Underscore n -> SpaceCapture (String.make n ' ')
             )
             |. BL.toArray
         }

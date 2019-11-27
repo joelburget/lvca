@@ -34,7 +34,7 @@ val sort_rule__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSynta
 
 val operator_match__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.operator_match)
 
-val nonterminal_token: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.nonterminal_token)
+val nonterminal_token__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.nonterminal_token)
 
 val language: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.pre_terminal_rule list * ConcreteSyntaxDescription.sort_rule list)
 
@@ -59,7 +59,7 @@ module Incremental : sig
   
   val operator_match__test: Lexing.position -> (ConcreteSyntaxDescription.operator_match) MenhirInterpreter.checkpoint
   
-  val nonterminal_token: Lexing.position -> (ConcreteSyntaxDescription.nonterminal_token) MenhirInterpreter.checkpoint
+  val nonterminal_token__test: Lexing.position -> (ConcreteSyntaxDescription.nonterminal_token) MenhirInterpreter.checkpoint
   
   val language: Lexing.position -> (ConcreteSyntaxDescription.pre_terminal_rule list * ConcreteSyntaxDescription.sort_rule list) MenhirInterpreter.checkpoint
   

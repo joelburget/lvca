@@ -29,10 +29,14 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
     (PreTerminalRule ("SPACE", Left " +"));
 
   expectParse ConcreteSyntax.Parser.capture_number "$2" 2;
-  expectParse ConcreteSyntax.Parser.nonterminal_token "foo" (NonterminalName "foo");
-  expectParse ConcreteSyntax.Parser.nonterminal_token "BAR" (TerminalName "BAR");
-  expectParse ConcreteSyntax.Parser.nonterminal_token "_" (Underscore 1);
-  expectParse ConcreteSyntax.Parser.nonterminal_token "_0" (Underscore 0);
+  expectParse ConcreteSyntax.Parser.nonterminal_token__test
+    "foo" (NonterminalName "foo");
+  expectParse ConcreteSyntax.Parser.nonterminal_token__test
+    "BAR" (TerminalName "BAR");
+  expectParse ConcreteSyntax.Parser.nonterminal_token__test
+    "_" (Underscore 1);
+  expectParse ConcreteSyntax.Parser.nonterminal_token__test
+    "_0" (Underscore 0);
 
   expectParse ConcreteSyntax.Parser.operator_match__test
     "foo BAR baz { foo($1; $2) }"

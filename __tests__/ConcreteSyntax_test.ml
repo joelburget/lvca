@@ -120,7 +120,7 @@ let _ = describe "ConcreteSyntax" (fun () ->
 
       testAll "parse"
         [
-          (* expect (parse concrete "x+y") |> toEqual (Ok tree); *)
+          (* expect (parse concrete "arith" "x+y") |> toEqual (Ok tree); *)
           expect (
             parse concrete "arith" "x + y"
           ) |> toEqual (Ok tree);
