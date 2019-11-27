@@ -32,6 +32,7 @@ rule read = parse
   | '|'            { BAR }
   | ';'            { SEMICOLON }
   | '>'            { GREATER }
+  | '_'            { UNDERSCORE }
   | "%left"        { LEFT_FIXITY }
   | "%right"       { RIGHT_FIXITY }
   | eof            { EOF }

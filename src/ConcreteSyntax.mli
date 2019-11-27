@@ -46,12 +46,18 @@ val of_ast
 val to_string : tree -> string
 
 (** Parse from a string to a concrete syntax tree *)
-val parse : ConcreteSyntaxDescription.t -> string -> (tree, string) Result.t
+val parse
+  : ConcreteSyntaxDescription.t
+  -> string (* root name *)
+  -> string (* string to parse *)
+  -> (tree, string) Result.t
 
 (** Convert form a concrete to an abstract syntax tree *)
 val to_ast : language -> tree -> (Nominal.term, string) Result.t
 
-val to_grammar : ConcreteSyntaxDescription.t -> LrParsing.grammar
+val to_grammar
+  : ConcreteSyntaxDescription.t
+  -> (LrParsing.grammar * ConcreteSyntaxDescription.operator_match' Belt.MutableMap.Int.t)
 
 type invalid_grammar
 

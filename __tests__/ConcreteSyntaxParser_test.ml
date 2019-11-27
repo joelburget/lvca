@@ -31,6 +31,8 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
   expectParse ConcreteSyntax.Parser.capture_number "$2" 2;
   expectParse ConcreteSyntax.Parser.nonterminal_token "foo" (NonterminalName "foo");
   expectParse ConcreteSyntax.Parser.nonterminal_token "BAR" (TerminalName "BAR");
+  expectParse ConcreteSyntax.Parser.nonterminal_token "_" (Underscore 1);
+  expectParse ConcreteSyntax.Parser.nonterminal_token "_0" (Underscore 0);
 
   expectParse ConcreteSyntax.Parser.operator_match__test
     "foo BAR baz { foo($1; $2) }"
@@ -38,7 +40,7 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
       { tokens =
           [ NonterminalName "foo";
             TerminalName    "BAR";
-            NonterminalName "baz"
+            NonterminalName "baz";
           ];
         operator_match_pattern = OperatorPattern ("foo",
           [ NumberedScopePattern ([], 1);
@@ -63,7 +65,7 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
               { tokens =
                   [ NonterminalName "arith";
                     TerminalName    "ADD";
-                    NonterminalName "arith"
+                    NonterminalName "arith";
                   ];
                 operator_match_pattern = OperatorPattern ("add",
                   [ NumberedScopePattern ([], 1);

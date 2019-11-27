@@ -16,6 +16,7 @@
 %token LEFT_FIXITY
 %token RIGHT_FIXITY
 %token GREATER
+%token UNDERSCORE
 
 %{ open ConcreteSyntaxDescription %}
 
@@ -101,5 +102,12 @@ term_scope_pattern:
 operator_match__test: operator_match EOF { $1 }
 
 nonterminal_token:
-  | TERMINAL_ID    { TerminalName    $1 }
-  | NONTERMINAL_ID { NonterminalName $1 }
+  | TERMINAL_ID     { TerminalName    $1 }
+  | NONTERMINAL_ID  { NonterminalName $1 }
+  | UNDERSCORE NAT? {
+    let n = match $2 with
+      | Some n -> n
+      | None -> 1
+    in
+    Underscore n
+  }

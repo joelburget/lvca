@@ -133,7 +133,7 @@ type state = int
   * An augmented grammar has key 0 (augmented start)
  *)
 type grammar = {
-  nonterminals : nonterminal M.t;
+  nonterminals : nonterminal Belt.Map.Int.t;
   terminal_nums : (string * terminal_num) array;
   nonterminal_nums : (string * nonterminal_num) array;
 }
@@ -178,6 +178,14 @@ type parse_result =
     start_pos : int; (* inclusive *)
     end_pos : int; (* exclusive *)
   }
+
+let rec parse_result_to_string : parse_result -> string
+  = fun { production; children } -> Printf.sprintf "%s[%s]"
+    (match production with
+      | Left n -> "t" ^ string_of_int n
+      | Right n -> "n" ^ string_of_int n
+    )
+    (Util.stringify_list parse_result_to_string ", " children)
 
 exception ParseFinished
 exception ParseFailed of parse_error
@@ -226,16 +234,16 @@ let string_of_tokens : Lex.token array -> string
 module Lr0 (G : GRAMMAR) = struct
 
   (* Map from production number to the actual production *)
-  let production_map : production MMI.t
+  let production_map : production Belt.MutableMap.Int.t
     = MMI.make ()
 
   (* Map from production number to the number of the nonterminal it belongs to
    *)
-  let production_nonterminal_map : nonterminal_num MMI.t
+  let production_nonterminal_map : nonterminal_num Belt.MutableMap.Int.t
     = MMI.make ()
 
   (* Map from a nonterminal num to the set of productions it holds *)
-  let nonterminal_production_map : MSI.t MMI.t
+  let nonterminal_production_map : MSI.t Belt.MutableMap.Int.t
     = MMI.make ()
 
   (* number of nonterminals in the passed-in grammar (which ought to be
@@ -246,20 +254,20 @@ module Lr0 (G : GRAMMAR) = struct
   let number_of_terminals : int
     = A.length G.grammar.terminal_nums
 
-  let terminal_names : string M.t
+  let terminal_names : string Belt.Map.Int.t
     = G.grammar.terminal_nums
       |. A.map (fun (name, num) -> (num, name))
       |. M.fromArray
 
-  let nonterminal_names : string M.t
+  let nonterminal_names : string Belt.Map.Int.t
     = G.grammar.nonterminal_nums
       |. A.map (fun (name, num) -> (num, name))
       |. M.fromArray
 
-  let terminal_nums : int MS.t
+  let terminal_nums : int Belt.Map.String.t
     = MS.fromArray G.grammar.terminal_nums
 
-  let nonterminal_nums : int MS.t
+  let nonterminal_nums : int Belt.Map.String.t
     = MS.fromArray G.grammar.nonterminal_nums
 
   let string_of_symbol : symbol -> string

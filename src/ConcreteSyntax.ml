@@ -43,6 +43,7 @@ type nonterminal_capture = tree
 and capture =
   | TerminalCapture    of terminal_capture
   | NonterminalCapture of nonterminal_capture
+  | SpaceCapture       of string
 
 (* Inspired by:
  * - https://github.com/apple/swift/tree/master/lib/Syntax
@@ -74,6 +75,7 @@ let rec equivalent t1 t2 =
 and equivalent' child1 child2 = match child1, child2 with
   | TerminalCapture     tc1, TerminalCapture     tc2 -> tc1 = tc2
   | NonterminalCapture ntc1, NonterminalCapture ntc2 -> equivalent ntc1 ntc2
+  | SpaceCapture       str1, SpaceCapture       str2 -> str1 = str2
   |                       _,                       _ -> false
 
 let find_operator_match
@@ -277,6 +279,7 @@ let check_description_validity { terminal_rules; sort_rules } =
                     Regex.to_string regex)))
             *)
             )
+            | Underscore _n -> ""
           )
         );
       );
@@ -361,11 +364,16 @@ let rec of_ast
     in
 
     (* Map each token to a subtree. For each token:
+      * if it's a space, ignore it
       * if it's a terminal, print it
       * if it's a nonterminal, look up the subterm (by token number)
     *)
     let children = BL.(operator_match_tokens
       |. mapWithIndex (fun token_ix token -> token_ix, token)
+      |. keep (fun (_, tok) -> match tok with
+        | Underscore _n -> false
+        | _             -> true
+      )
       |. toArray
       )
       |. BA.map (fun (token_ix, token) ->
@@ -430,6 +438,10 @@ let rec of_ast
         | FoundBinder pattern, NonterminalName _name
         -> NonterminalCapture (pattern_to_tree sort_name pattern)
 
+        (* Invariant: underscores are filtered out in the previous `keep` stage
+         *)
+        | _, Underscore _ -> assert false
+
         | FoundBinder pattern, TerminalName name
         -> raise (BadRules
           (Printf.sprintf
@@ -471,6 +483,7 @@ let rec to_string { leading_trivia; children; trailing_trivia } =
       -> leading_trivia ^ content ^ trailing_trivia
       | NonterminalCapture nonterminal_capture
       -> to_string nonterminal_capture
+      | SpaceCapture str -> str
       )
     |> BL.fromArray
     |> String.concat ""
@@ -479,10 +492,11 @@ let rec to_string { leading_trivia; children; trailing_trivia } =
 let rec remove_spaces : tree -> tree
   = fun { sort_name; node_type; leading_trivia; trailing_trivia; children }
     -> let children' = children
-         |. BA.map (function
-           | TerminalCapture tc -> TerminalCapture tc
+         |. BA.array_map_keep (function
+           | SpaceCapture -> None
+           | TerminalCapture tc -> Some (TerminalCapture tc)
            | NonterminalCapture ntc
-           -> NonterminalCapture (remove_spaces ntc)
+           -> Some (NonterminalCapture (remove_spaces ntc))
          )
        in {
            sort_name; node_type; leading_trivia; trailing_trivia;
@@ -514,6 +528,8 @@ let rec tree_to_ast lang tree : Nominal.term
               "Unexpected terminal found in a sequence"
             )
             | NonterminalCapture child -> tree_to_ast lang child
+            | SpaceCapture _
+            -> failwith "invariant violation: space found in to_ast"
           )
         |. Belt.List.fromArray
       in
@@ -589,31 +605,40 @@ exception NonMatchingFixities of string * string list
 exception MixedFixities of bool * int
 
 (* Produce an augmented grammar *)
-let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
-  : LrParsing.grammar
-  = let terminal_key_arr = BA.map terminal_rules (fun (k, _) -> k) in
+let to_grammar
+  : ConcreteSyntaxDescription.t
+  -> (LrParsing.grammar * ConcreteSyntaxDescription.operator_match' Belt.MutableMap.Int.t)
+  = fun {terminal_rules; sort_rules} ->
+    let terminal_key_arr = BA.map terminal_rules (fun (k, _) -> k) in
     let terminal_nums = terminal_key_arr
-      (* start other terminals (besides $) at 1 *)
-      |. BA.mapWithIndex (fun i name -> name, i + 1)
-      |. BA.concat [| "$", 0 |]
+      (* start other terminals (besides $ and SPACE) at 2 *)
+      |. BA.mapWithIndex (fun i name -> name, i + 2)
+      |. BA.concat [| "$", 0; "SPACE", 1 |]
     in
     let terminal_nums_map = MS.fromArray terminal_nums in
 
     let nonterminal_names_map = sort_rules
-        |. MS.keysToArray
-        (* start other nonterminals (besides root) at 1 *)
-        |. BA.mapWithIndex (fun i name -> name, i + 1)
-        |. MS.fromArray
-        |. MS.set "root" 0
+      |. MS.keysToArray
+      (* start other nonterminals (besides root) at 1 *)
+      |. BA.mapWithIndex (fun i name -> name, i + 1)
+      |. MS.fromArray
+      |. MS.set "root" 0
     in
     let nonterminal_nums = MS.toArray nonterminal_names_map in
+
+    (* We're dealing with a non-augmented grammar here. Start counting from 0.
+     *)
+    let prod_num = ref 1 in
+    let production_rule_map = Belt.MutableMap.Int.make () in
 
     let nonterminals = sort_rules
       |. MS.valuesToArray
       |. BA.mapWithIndex (fun i (SortRule { operator_rules; variable }) ->
-        let productions = operator_rules
+        let productions : LrParsing.symbol list list = operator_rules
           |. BL.map (fun operator_level -> operator_level |.
-            BL.map (fun (OperatorMatch { tokens }) ->
+            BL.map (fun (OperatorMatch ({ tokens } as rule)) ->
+              Belt.MutableMap.Int.set production_rule_map !prod_num rule;
+              prod_num := !prod_num + 1;
               tokens |. BL.map (function
                 | TerminalName tn
                 -> LrParsing.Terminal (terminal_nums_map
@@ -627,52 +652,55 @@ let to_grammar ({terminal_rules; sort_rules}: ConcreteSyntaxDescription.t)
                   |> get_option'
                     ("to_grammar: failed to get " ^ ntn)
                 )
+                | Underscore n -> Nonterminal 1
               )
             )
           )
-          (* TODO: temporary? *)
+          (* TODO: temporary pending precedence parsing *)
           |. BL.flatten
         in
         i + 1, { LrParsing.productions = productions }
       )
       |. Belt.Map.Int.fromArray
+      (* TODO: we don't necessarily start with production 1 *)
       |. Belt.Map.Int.set 0 { productions = [ [ Nonterminal 1 ] ] }
     in
 
-    { nonterminals; terminal_nums; nonterminal_nums }
+    { nonterminals; terminal_nums; nonterminal_nums }, production_rule_map
 
-let production_info
-  : LrParsing.nonterminal_num MMI.t
-  -> LrParsing.nonterminal_num MS.t
+let production_sort_name
+  : LrParsing.nonterminal_num Belt.MutableMap.Int.t
+  -> LrParsing.nonterminal_num Belt.Map.String.t
   -> LrParsing.production_num
-  -> node_type * string
+  -> string
   = fun nt_map nonterminal_nums prod_num ->
     let nt_num = nt_map
       |. MMI.get prod_num
       |> get_option'
-        ("production_info: failed to get " ^ string_of_int prod_num)
+        ("production_sort_name: failed to get " ^ string_of_int prod_num)
     in
     let f _ nt_num' = nt_num' = nt_num in
-    let sort_name = match Belt.Map.String.findFirstBy nonterminal_nums f with
-      | None -> failwith "production_info: invariant violation: sort not found"
+    match Belt.Map.String.findFirstBy nonterminal_nums f with
+      | None -> failwith
+        "production_sort_name: invariant violation: sort not found"
       | Some (name, _) -> name
-    in
-    (* XXX sort / operator mismatch! *)
-    Operator sort_name, sort_name
 
 let tree_of_parse_result
   (module Lr0 : LrParsing.LR0)
-  : LrParsing.nonterminal_num MS.t
+  : ConcreteSyntaxDescription.operator_match' Belt.MutableMap.Int.t
+  -> LrParsing.nonterminal_num MS.t
   -> ConcreteSyntaxDescription.sort_rules
-  -> string
+  -> string (* root name *)
+  -> string (* parsed string *)
   -> LrParsing.parse_result
   -> tree
-  = fun nonterminal_nums sort_rules str root ->
+  = fun production_rule_map nonterminal_nums sort_rules root_name str root ->
     let str_pos = ref 0 in
     let str_len = Js.String2.length str in
 
     let get_trivia : int -> int -> string * string
       = fun start_pos end_pos ->
+        Printf.printf "get_trivia %n %n\n" start_pos end_pos;
         (* look back consuming all whitespace to (and including) a newline *)
         let leading_trivia =
           Js.String2.slice str ~from:!str_pos ~to_:start_pos
@@ -695,6 +723,7 @@ let tree_of_parse_result
           Js.String2.slice str ~from:end_pos ~to_:!str_pos
         in
 
+        Printf.printf "get_trivia -> \"%s\", \"%s\"\n" leading_trivia, trailing_trivia;
         leading_trivia, trailing_trivia
     in
 
@@ -705,17 +734,33 @@ let tree_of_parse_result
             "invariant violation: go_nt received a terminal production"
           | Right prod_num -> prod_num
         in
-        let node_type, sort_name = production_info
+
+        Printf.printf "go_nt %s (production_num %n)\n" nt_name prod_num;
+
+        let sort_name = production_sort_name
           Lr0.production_nonterminal_map
           nonterminal_nums
           prod_num
         in
         let leading_trivia, trailing_trivia = get_trivia start_pos end_pos in
 
-        let ctor_name = match node_type with
-          | Operator ctor_name -> ctor_name
-          | _ -> failwith
-            "invariant violation: got non-operator when handling a nonterminal"
+        let SortRule rule = MS.getExn sort_rules sort_name in
+
+        Printf.printf "sort_name: %s\n" sort_name;
+        Printf.printf "leading_trivia: \"%s\", trailing_trivia: \"%s\"\n" leading_trivia, trailing_trivia;
+        let { operator_match_pattern } =
+          Belt.MutableMap.Int.getExn production_rule_map prod_num
+        in
+
+        let ctor_name = match operator_match_pattern with
+          | OperatorPattern (op_name, _) -> op_name
+          | ParenthesizingPattern _ -> failwith "TODO"
+        in
+        Printf.printf "ctor_name: %s\n" ctor_name;
+        Printf.printf "nt_name: %s\n" nt_name;
+        let node_type = match ctor_name with
+          | "var" -> Var (* TODO this seems wrong *)
+          | _ -> Operator ctor_name
         in
 
         let err = "tree_of_parse_result: failed to get " ^ nt_name in
@@ -727,7 +772,9 @@ let tree_of_parse_result
               |. BL.flatten
               |. BL.getBy (fun (OperatorMatch { operator_match_pattern }) ->
                 match operator_match_pattern with
-                  | OperatorPattern (op_name, _) -> ctor_name = op_name
+                  | OperatorPattern (op_name, _) ->
+                      Printf.printf "checking ctor_name: %s\n" op_name;
+                      ctor_name = op_name
                   | ParenthesizingPattern _ -> true
               )
               in
@@ -755,16 +802,16 @@ let tree_of_parse_result
 
     in
 
-    go_nt "root" (* XXX assumption: root is called root *) root
+    go_nt root_name root
 
 let lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer
   = fun { terminal_rules } -> terminal_rules
     |. BA.map (fun (tok_name, re) -> Regex.to_string re, tok_name)
     |. BL.fromArray
 
-let parse desc str =
+let parse desc root_name str =
   try
-    let grammar = to_grammar desc in
+    let grammar, production_rule_map = to_grammar desc in
     let module Lr0' = LrParsing.Lr0(struct
       let grammar = grammar
     end) in
@@ -783,13 +830,17 @@ let parse desc str =
     in
 
     match Lr0'.lex_and_parse lexer str with
-      | Ok result
-      -> Belt.Result.Ok (tree_of_parse_result
+      | Ok root
+      ->
+        Printf.printf "parse result: %s\n" (LrParsing.parse_result_to_string root);
+        Belt.Result.Ok (tree_of_parse_result
         (module Lr0')
+        production_rule_map
         (MS.fromArray grammar.nonterminal_nums)
         augmented_sort_rules
+        root_name
         str
-        result)
+        root)
       | Error (Either.Left { start_pos; end_pos; message })
       -> Error (Printf.sprintf
         "lexical error at characters %n - %n (%s):\n%s"

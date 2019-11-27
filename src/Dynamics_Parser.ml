@@ -10,9 +10,9 @@ module MenhirBasics = struct
   
   type token = 
     | STRING of (
-# 10 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 10 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
        (string)
-# 16 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 16 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
   )
     | SEMICOLON
     | RIGHT_PAREN
@@ -22,14 +22,14 @@ module MenhirBasics = struct
     | LEFT_OXFORD
     | LEFT_BRACKET
     | INT of (
-# 9 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 9 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
        (Bigint.t)
-# 28 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 28 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
   )
     | ID of (
-# 11 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 11 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
        (string)
-# 33 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 33 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
   )
     | EQ
     | EOF
@@ -43,9 +43,9 @@ include MenhirBasics
 let _eRR =
   MenhirBasics.Error
 
-# 7 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 7 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
    open Core 
-# 49 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 49 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
 
 module Tables = struct
   
@@ -169,26 +169,26 @@ module Tables = struct
         let xs : 'tv_loption_separated_nonempty_list_SEMICOLON_denotation_pat_scope__ = Obj.magic xs in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 11 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 11 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
        (string)
-# 175 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 175 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__4_ in
         let _v : (
-# 25 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 25 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_pat)
-# 183 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 183 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = let _3 = 
-# 232 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 232 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( xs )
-# 187 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 187 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         
-# 35 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 35 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
   ( Operator (_1, _3) )
-# 192 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 192 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -207,21 +207,21 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let _1 : (
-# 11 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 11 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
        (string)
-# 213 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 213 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : (
-# 25 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 25 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_pat)
-# 221 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 221 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = 
-# 37 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 37 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
   ( Var _1 )
-# 225 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 225 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -246,34 +246,34 @@ module Tables = struct
           };
         } = _menhir_stack in
         let _3 : (
-# 25 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 25 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_pat)
-# 252 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 252 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__2_ in
         let _endpos = _endpos__3_ in
         let _v : (
-# 26 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 26 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_pat_scope)
-# 261 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 261 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = let _1 =
           let xs = 
-# 10 "/Users/joel/code/lvca-bucklescript/src/ParserLib.mly"
+# 10 "/home/joel/code/lvca-bucklescript/src/ParserLib.mly"
     ( [] )
-# 266 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 266 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
            in
           
-# 16 "/Users/joel/code/lvca-bucklescript/src/ParserLib.mly"
+# 16 "/home/joel/code/lvca-bucklescript/src/ParserLib.mly"
     ( List.rev xs )
-# 271 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 271 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
           
         in
         
-# 41 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 41 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
   ( Scope (_1, _3) )
-# 277 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 277 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -304,9 +304,9 @@ module Tables = struct
           };
         } = _menhir_stack in
         let _3 : (
-# 25 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 25 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_pat)
-# 310 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 310 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
         let xs : 'tv_reverse_separated_nonempty_llist_DOT_ID_ = Obj.magic xs in
@@ -314,25 +314,25 @@ module Tables = struct
         let _startpos = _startpos_xs_ in
         let _endpos = _endpos__3_ in
         let _v : (
-# 26 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 26 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_pat_scope)
-# 320 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 320 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = let _1 =
           let xs = 
-# 12 "/Users/joel/code/lvca-bucklescript/src/ParserLib.mly"
+# 12 "/home/joel/code/lvca-bucklescript/src/ParserLib.mly"
     ( xs )
-# 325 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 325 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
            in
           
-# 16 "/Users/joel/code/lvca-bucklescript/src/ParserLib.mly"
+# 16 "/home/joel/code/lvca-bucklescript/src/ParserLib.mly"
     ( List.rev xs )
-# 330 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 330 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
           
         in
         
-# 41 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 41 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
   ( Scope (_1, _3) )
-# 336 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 336 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -351,21 +351,21 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let _1 : (
-# 25 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 25 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_pat)
-# 357 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 357 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : (
-# 26 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 26 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_pat_scope)
-# 365 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 365 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = 
-# 43 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 43 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
   ( Scope ([], _1) )
-# 369 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 369 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -409,18 +409,18 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__4_ in
         let _v : (
-# 27 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 27 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_term)
-# 415 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 415 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = let _2 = 
-# 232 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 232 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( xs )
-# 419 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 419 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         
-# 61 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 61 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
   ( Sequence _2 )
-# 424 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 424 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -443,13 +443,13 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : (
-# 27 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 27 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_term)
-# 449 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 449 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = 
-# 63 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 63 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
   ( Primitive _1 )
-# 453 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 453 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -468,21 +468,21 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let _1 : (
-# 11 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 11 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
        (string)
-# 474 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 474 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : (
-# 27 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 27 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_term)
-# 482 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 482 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = 
-# 65 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 65 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
   ( Var _1 )
-# 486 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 486 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -514,22 +514,22 @@ module Tables = struct
         } = _menhir_stack in
         let _3 : unit = Obj.magic _3 in
         let _2 : (
-# 11 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 11 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
        (string)
-# 520 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 520 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic _2 in
         let _1 : unit = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__3_ in
         let _v : (
-# 27 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 27 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_term)
-# 529 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 529 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = 
-# 67 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 67 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
   ( Meaning _2 )
-# 533 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 533 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -559,13 +559,13 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : (
-# 30 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 30 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.pre_denotation_chart)
-# 565 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 565 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = 
-# 85 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 85 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
                                   ( DenotationChart _1 )
-# 569 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 569 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -608,29 +608,29 @@ module Tables = struct
           };
         } = _menhir_stack in
         let _5 : (
-# 27 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 27 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_term)
-# 614 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 614 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic _5 in
         let _4 : unit = Obj.magic _4 in
         let _3 : unit = Obj.magic _3 in
         let _2 : (
-# 25 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 25 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_pat)
-# 621 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 621 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic _2 in
         let _1 : unit = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__5_ in
         let _v : (
-# 29 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 29 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_pat * Core.denotation_term)
-# 630 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 630 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = 
-# 83 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 83 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
   ( (_2, _5) )
-# 634 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 634 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -646,9 +646,9 @@ module Tables = struct
         let _startpos = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _endpos = _startpos in
         let _v : 'tv_list_dynamics_rule_ = 
-# 211 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 211 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [] )
-# 652 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 652 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -674,17 +674,17 @@ module Tables = struct
         } = _menhir_stack in
         let xs : 'tv_list_dynamics_rule_ = Obj.magic xs in
         let x : (
-# 29 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 29 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_pat * Core.denotation_term)
-# 680 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 680 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_xs_ in
         let _v : 'tv_list_dynamics_rule_ = 
-# 213 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 213 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 688 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 688 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -700,9 +700,9 @@ module Tables = struct
         let _startpos = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _endpos = _startpos in
         let _v : 'tv_loption_separated_nonempty_list_COMMA_denotation_term__ = 
-# 142 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 142 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [] )
-# 706 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 706 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -725,9 +725,9 @@ module Tables = struct
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_x_ in
         let _v : 'tv_loption_separated_nonempty_list_COMMA_denotation_term__ = 
-# 144 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 144 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( x )
-# 731 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 731 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -743,9 +743,9 @@ module Tables = struct
         let _startpos = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _endpos = _startpos in
         let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_denotation_pat_scope__ = 
-# 142 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 142 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [] )
-# 749 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 749 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -768,9 +768,9 @@ module Tables = struct
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_x_ in
         let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_denotation_pat_scope__ = 
-# 144 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 144 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( x )
-# 774 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 774 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -786,9 +786,9 @@ module Tables = struct
         let _startpos = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _endpos = _startpos in
         let _v : 'tv_option_COMMA_ = 
-# 114 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 114 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( None )
-# 792 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 792 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -811,9 +811,9 @@ module Tables = struct
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_x_ in
         let _v : 'tv_option_COMMA_ = 
-# 116 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 116 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( Some x )
-# 817 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 817 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -832,17 +832,17 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let _1 : (
-# 9 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 9 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
        (Bigint.t)
-# 838 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 838 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : 'tv_prim = 
-# 78 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 78 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
            ( PrimInteger _1 )
-# 846 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 846 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -861,17 +861,17 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let _1 : (
-# 10 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 10 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
        (string)
-# 867 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 867 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : 'tv_prim = 
-# 79 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 79 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
            ( PrimString  _1 )
-# 875 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 875 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -890,17 +890,17 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let x : (
-# 11 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 11 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
        (string)
-# 896 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 896 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_x_ in
         let _v : 'tv_reverse_separated_nonempty_llist_DOT_ID_ = 
-# 5 "/Users/joel/code/lvca-bucklescript/src/ParserLib.mly"
+# 5 "/home/joel/code/lvca-bucklescript/src/ParserLib.mly"
     ( [ x ] )
-# 904 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 904 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -931,9 +931,9 @@ module Tables = struct
           };
         } = _menhir_stack in
         let x : (
-# 11 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 11 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
        (string)
-# 937 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 937 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic x in
         let _2 : unit = Obj.magic _2 in
         let xs : 'tv_reverse_separated_nonempty_llist_DOT_ID_ = Obj.magic xs in
@@ -941,9 +941,9 @@ module Tables = struct
         let _startpos = _startpos_xs_ in
         let _endpos = _endpos_x_ in
         let _v : 'tv_reverse_separated_nonempty_llist_DOT_ID_ = 
-# 7 "/Users/joel/code/lvca-bucklescript/src/ParserLib.mly"
+# 7 "/home/joel/code/lvca-bucklescript/src/ParserLib.mly"
     ( x :: xs )
-# 947 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 947 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -962,17 +962,17 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let x : (
-# 27 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 27 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_term)
-# 968 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 968 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_x_ in
         let _v : 'tv_separated_nonempty_list_COMMA_denotation_term_ = 
-# 241 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 241 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [ x ] )
-# 976 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 976 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1005,17 +1005,17 @@ module Tables = struct
         let xs : 'tv_separated_nonempty_list_COMMA_denotation_term_ = Obj.magic xs in
         let _2 : unit = Obj.magic _2 in
         let x : (
-# 27 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 27 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_term)
-# 1011 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 1011 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_xs_ in
         let _v : 'tv_separated_nonempty_list_COMMA_denotation_term_ = 
-# 243 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 243 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 1019 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 1019 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1034,17 +1034,17 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let x : (
-# 26 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 26 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_pat_scope)
-# 1040 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 1040 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_x_ in
         let _v : 'tv_separated_nonempty_list_SEMICOLON_denotation_pat_scope_ = 
-# 241 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 241 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( [ x ] )
-# 1048 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 1048 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1077,17 +1077,17 @@ module Tables = struct
         let xs : 'tv_separated_nonempty_list_SEMICOLON_denotation_pat_scope_ = Obj.magic xs in
         let _2 : unit = Obj.magic _2 in
         let x : (
-# 26 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 26 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.denotation_pat_scope)
-# 1083 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 1083 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_xs_ in
         let _v : 'tv_separated_nonempty_list_SEMICOLON_denotation_pat_scope_ = 
-# 243 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 243 "/home/joel/.opam/default/lib/menhir/standard.mly"
     ( x :: xs )
-# 1091 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 1091 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1116,9 +1116,9 @@ end
 let dynamics =
   fun lexer lexbuf ->
     (Obj.magic (MenhirInterpreter.entry 0 lexer lexbuf) : (
-# 30 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 30 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.pre_denotation_chart)
-# 1122 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 1122 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
     ))
 
 module Incremental = struct
@@ -1126,14 +1126,14 @@ module Incremental = struct
   let dynamics =
     fun initial_position ->
       (Obj.magic (MenhirInterpreter.start 0 initial_position) : (
-# 30 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
+# 30 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
       (Core.pre_denotation_chart)
-# 1132 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 1132 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
       ) MenhirInterpreter.checkpoint)
   
 end
 
-# 269 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 269 "/home/joel/.opam/default/lib/menhir/standard.mly"
   
 
-# 1140 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
+# 1140 "/home/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"

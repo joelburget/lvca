@@ -26,7 +26,7 @@ let read_and_eval = (abstract_syntax, concrete, statics, dynamics, input)
 
     let { Types.imports, language } = abstract_syntax;
 
-    let (astResult, abtResult) = switch (ConcreteSyntax.parse(concrete, input)) {
+    let (astResult, abtResult) = switch (ConcreteSyntax.parse(concrete, "TODO", input)) {
     | Ok(tree)
     => switch (ConcreteSyntax.to_ast(language, tree)) {
       | Ok(ast)
@@ -388,7 +388,7 @@ module ConcreteSyntaxEditor = {
     );
 
     let getGrammarPaneAndDebugger = (concrete, showGrammarPane, showDebugger) => {
-      let grammar = ConcreteSyntax.to_grammar(concrete);
+      let (grammar, _) = ConcreteSyntax.to_grammar(concrete);
       let module Lr0' = LrParsing.Lr0({ let grammar = grammar });
 
       let states = Lr0'.states

@@ -10,6 +10,7 @@ type terminal_rules = (string * Regex.t) array
 type nonterminal_token =
   | TerminalName    of string
   | NonterminalName of string
+  | Underscore      of int
 
 (** A term pattern with numbered holes for binder names and subterms, eg
   `$2. $4` (for tokens `FUN name ARR expr`) *)
