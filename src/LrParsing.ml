@@ -86,6 +86,9 @@ end)
 (* TODO: do we use this? *)
 type lookahead_item_set = (lookahead_item, LookaheadItemCmp.identity) S.t
 
+let lookahead_item_set_from_array : lookahead_item array -> lookahead_item_set
+  = S.fromArray ~id:(module LookaheadItemCmp)
+
 let view_item : item -> item_view
   = fun item ->
     { production_num = item land 0x00ffffff;
@@ -519,7 +522,7 @@ module Lr0 (G : GRAMMAR) = struct
               )
           )
           |. A.concatMany
-          |. S.fromArray ~id:(module LookaheadItemCmp);
+          |. lookahead_item_set_from_array;
       }
 
   (** The closure of an item set. CPTT fig 4.32. *)
@@ -646,7 +649,7 @@ module Lr0 (G : GRAMMAR) = struct
                 }
           | _ -> ()
       );
-      result |. MSet.toArray |. S.fromArray ~id:(module LookaheadItemCmp)
+      result |. MSet.toArray |. lookahead_item_set_from_array
 
   (* A list of all grammar symbols (terminals and nonterminals) *)
   let grammar_symbols = L.concat
@@ -684,13 +687,12 @@ module Lr0 (G : GRAMMAR) = struct
       c
 
   let mutable_lr1_items : mutable_lookahead_item_set
-    = let augmented_start : lookahead_item_set = S.fromArray
+    = let augmented_start : lookahead_item_set = lookahead_item_set_from_array
         [|
            { item = mk_item {production_num = 0; position = 0};
              lookahead_set = SI.fromArray [| 0 |];
            }
         |]
-        ~id:(module LookaheadItemCmp)
       in
       let c = MSet.fromArray [| augmented_start |]
                              ~id:(module LookaheadItemSetCmp)
