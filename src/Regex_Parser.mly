@@ -11,6 +11,14 @@
 %token QUESTION
 %token EOF
 
+%{
+let rec mk_choices : Regex.t list -> Regex.t
+  = function
+    | [] -> failwith "invariant violation: mk_choices called with empty list"
+    | [ re ] -> re
+    | re :: res -> ReChoice (re, mk_choices res)
+%}
+
 %start regex
 %type <Regex.re_class> re_class
 %type <Regex.t> regex
@@ -29,14 +37,12 @@ re_class: CHARACTER_CLASS { match $1 with
   | _ -> failwith "unexpected character class"
   }
 
-prec0_re:
-  | prec0_re BAR prec0_re { ReChoice ($1, $3) }
-  | prec1_re { $1 }
+prec0_re: separated_nonempty_list(BAR, prec1_re) { mk_choices $1 }
 
 prec1_re:
   | nonempty_list(prec2_re) { match $1 with
     | [ re ] -> re
-    | res -> ReConcat res
+    | res -> Regex.ReConcat res
   }
 
 prec2_re:
