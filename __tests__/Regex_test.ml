@@ -35,7 +35,7 @@ let _ = describe "Regex.(accepts_empty, to_string)"
 
     testAll "to_string"
       [ expect (to_string (ReConcat [ReString "foo"; ReString "bar"]))
-        |> toBe {|foobar|};
+        |> toBe {|(foo)(bar)|};
         expect (to_string (ReSet "a-z"))
         |> toBe "[a-z]";
         expect (to_string

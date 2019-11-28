@@ -145,7 +145,7 @@ let rec to_string' : int -> regex -> string
     (to_string' 0 re ^ "|" ^ to_string' 0 re')
   | ReAny -> "."
   | ReConcat pieces -> pieces
-    |> List.map (to_string' 1)
+    |> List.map (to_string' 2)
     |> String.concat ""
     |> parenthesize (precedence > 1)
 
