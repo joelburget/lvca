@@ -1,7 +1,8 @@
 open Jest
 open Expect
-let (to_ast, to_string, of_ast, mk_tree, parse, equivalent) =
-  ConcreteSyntax.(to_ast, to_string, of_ast, mk_tree, parse, equivalent)
+let (to_ast, to_string, of_ast, mk_tree, parse, equivalent, remove_spaces) =
+  ConcreteSyntax.(to_ast, to_string, of_ast, mk_tree, parse, equivalent,
+    remove_spaces)
 type tree = ConcreteSyntax.tree
 open Belt.Result
 module Parse_concrete = Parsing.Incremental(Parsing.Parseable_concrete_syntax)
@@ -17,8 +18,9 @@ in
 
 let nt_capture capture = ConcreteSyntax.NonterminalCapture capture
 
-let mk_terminal_capture content = ConcreteSyntax.TerminalCapture
-  { ConcreteSyntax.leading_trivia = ""; content; trailing_trivia = "" }
+let mk_terminal_capture content trailing_trivia =
+  ConcreteSyntax.TerminalCapture
+    { ConcreteSyntax.leading_trivia = ""; content; trailing_trivia }
 
 let _ = describe "ConcreteSyntax" (fun () ->
   let description = {|
@@ -58,11 +60,9 @@ let _ = describe "ConcreteSyntax" (fun () ->
       in
       let mk_tree' = mk_tree "arith" in
       let tree = mk_tree' (Operator "add")
-            [| nt_capture (mk_tree' Var [| mk_terminal_capture "x" |]);
-               mk_terminal_capture " ";
-               mk_terminal_capture "+";
-               mk_terminal_capture " ";
-               nt_capture (mk_tree' Var [| mk_terminal_capture "y" |]);
+            [| nt_capture (mk_tree' Var [| mk_terminal_capture "x" " " |]);
+               mk_terminal_capture "+" " ";
+               nt_capture (mk_tree' Var [| mk_terminal_capture "y" "" |]);
             |]
       in
       (*
@@ -120,7 +120,8 @@ let _ = describe "ConcreteSyntax" (fun () ->
 
       testAll "parse"
         [
-          (* expect (parse concrete "arith" "x+y") |> toEqual (Ok tree); *)
+          expect (parse concrete "arith" "x+y")
+            |> toEqual (Ok (remove_spaces tree));
           expect (
             parse concrete "arith" "x + y"
           ) |> toEqual (Ok tree);

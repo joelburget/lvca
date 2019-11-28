@@ -40,7 +40,6 @@ type nonterminal_capture = tree
 and capture =
   | TerminalCapture    of terminal_capture
   | NonterminalCapture of nonterminal_capture
-  | SpaceCapture       of string
 
 (* Inspired by:
  * - https://github.com/apple/swift/tree/master/lib/Syntax
@@ -58,8 +57,6 @@ and capture =
 and tree =
   { sort_name       : sort_name;
     node_type       : node_type;
-    leading_trivia  : string;
-    trailing_trivia : string;
     children        : capture array;
   }
 
@@ -72,7 +69,6 @@ let rec equivalent t1 t2 =
 and equivalent' child1 child2 = match child1, child2 with
   | TerminalCapture     tc1, TerminalCapture     tc2 -> tc1 = tc2
   | NonterminalCapture ntc1, NonterminalCapture ntc2 -> equivalent ntc1 ntc2
-  | SpaceCapture       str1, SpaceCapture       str2 -> str1 = str2
   |                       _,                       _ -> false
 
 let find_operator_match
@@ -291,12 +287,7 @@ let check_description_validity { terminal_rules; sort_rules } =
     CheckValidExn err -> Some err
 
 let mk_tree sort_name node_type children =
-  { sort_name;
-    node_type;
-    leading_trivia  = "";
-    trailing_trivia = "";
-    children;
-  }
+  { sort_name; node_type; children; }
 
 (* Helper for use in of_ast *)
 let mk_terminal_capture content =
@@ -472,33 +463,26 @@ let rec of_ast
 
   | _, _ -> raise (BadSortTerm (current_sort, tm))
 
-let rec to_string { leading_trivia; children; trailing_trivia } =
-  let children_str = children
-    |> Array.map
-      (function
-      | TerminalCapture { leading_trivia; content; trailing_trivia }
-      -> leading_trivia ^ content ^ trailing_trivia
-      | NonterminalCapture nonterminal_capture
-      -> to_string nonterminal_capture
-      | SpaceCapture str -> str
-      )
-    |> BL.fromArray
-    |> String.concat ""
-  in leading_trivia ^ children_str ^ trailing_trivia
+let rec to_string { children } = children
+  |> Array.map
+    (function
+    | TerminalCapture { leading_trivia; content; trailing_trivia }
+    -> leading_trivia ^ content ^ trailing_trivia
+    | NonterminalCapture nonterminal_capture
+    -> to_string nonterminal_capture
+    )
+  |> BL.fromArray
+  |> String.concat ""
 
 let rec remove_spaces : tree -> tree
-  = fun { sort_name; node_type; leading_trivia; trailing_trivia; children }
-    -> let children' = children
-         |> Util.array_map_keep (function
-           | SpaceCapture _ -> None
-           | TerminalCapture tc -> Some (TerminalCapture tc)
-           | NonterminalCapture ntc
-           -> Some (NonterminalCapture (remove_spaces ntc))
-         )
-       in {
-           sort_name; node_type; leading_trivia; trailing_trivia;
-           children = children'
-         }
+  = fun { sort_name; node_type; children } ->
+    let children' = children
+      |. Belt.Array.map (function
+        | TerminalCapture { content } -> TerminalCapture
+          { content; leading_trivia = ""; trailing_trivia = "" }
+        | NonterminalCapture ntc -> NonterminalCapture (remove_spaces ntc)
+      )
+    in { sort_name; node_type; children = children' }
 
 exception ToAstError of string
 
@@ -513,7 +497,7 @@ let prim_to_ast : prim_ty -> string -> primitive
 
 (* Convert a concrete tree to an AST. We ignore trivia. *)
 let rec tree_to_ast lang tree : Nominal.term
-  = let { node_type; children; } = remove_spaces tree in
+  = let { node_type; children; } = tree in
     match node_type, children with
     | Var, [| TerminalCapture { content = name } |]
     -> Var name
@@ -525,8 +509,6 @@ let rec tree_to_ast lang tree : Nominal.term
               "Unexpected terminal found in a sequence"
             )
             | NonterminalCapture child -> tree_to_ast lang child
-            | SpaceCapture _
-            -> failwith "invariant violation: space found in to_ast (sequence)"
           )
         |. Belt.List.fromArray
       in
@@ -540,8 +522,6 @@ let rec tree_to_ast lang tree : Nominal.term
         |. BA.keepMap (function
           | TerminalCapture { content } -> None
           | NonterminalCapture child    -> Some (scope_to_ast lang child)
-          | SpaceCapture _ -> failwith
-            "invariant violation: space found in to_ast (operator)"
         )
         |. Belt.List.fromArray
       in Operator (op_name, children')
@@ -552,8 +532,6 @@ let rec tree_to_ast lang tree : Nominal.term
 
 and capture_to_pat : capture -> Pattern.t
   = function
-    | SpaceCapture _ -> raise @@
-      ToAstError "Unexpected bare space capture in capture_to_pat"
     | TerminalCapture { content = name } -> raise @@
       ToAstError "Unexpected bare terminal capture in capture_to_pat"
     | NonterminalCapture { sort_name; node_type; children } ->
@@ -563,8 +541,6 @@ and capture_to_pat : capture -> Pattern.t
           |. BA.keepMap (fun cap -> match cap with
             | TerminalCapture { content } -> None
             | NonterminalCapture child    -> Some (capture_to_pat cap)
-            | SpaceCapture _ -> failwith
-              "invariant violation: space found in capture_to_pat"
           )
           |. Belt.List.fromArray
         in
@@ -644,20 +620,21 @@ let to_grammar
             BL.map (fun (OperatorMatch ({ tokens } as rule)) ->
               Belt.MutableMap.Int.set production_rule_map !prod_num rule;
               prod_num := !prod_num + 1;
-              tokens |. BL.map (function
+              tokens |. BL.keepMap (function
                 | TerminalName tn
-                -> LrParsing.Terminal (terminal_nums_map
+                -> Some (LrParsing.Terminal (terminal_nums_map
                   |. MS.get tn
                   |> get_option'
-                    ("to_grammar: failed to get " ^ tn)
+                    ("to_grammar: failed to get " ^ tn))
                 )
                 | NonterminalName ntn
-                -> Nonterminal (nonterminal_names_map
+                -> Some (Nonterminal (nonterminal_names_map
                   |. MS.get ntn
                   |> get_option'
-                    ("to_grammar: failed to get " ^ ntn)
+                    ("to_grammar: failed to get " ^ ntn))
                 )
-                | Underscore n -> Nonterminal 1
+                | Underscore _ -> None
+                (* | Underscore n -> Nonterminal 1 *)
               )
             )
           )
@@ -728,12 +705,12 @@ let tree_of_parse_result
           Js.String2.slice str ~from:end_pos ~to_:!str_pos
         in
 
-        let _ = Printf.printf "get_trivia -> \"%s\", \"%s\"\n" leading_trivia, trailing_trivia in
+        Printf.printf "get_trivia -> \"%s\", \"%s\"\n" leading_trivia trailing_trivia;
         leading_trivia, trailing_trivia
     in
 
     let rec go_nt : string -> LrParsing.parse_result -> tree
-      = fun nt_name { production; children; start_pos; end_pos } ->
+      = fun nt_name { production; children } ->
         let prod_num = match production with
           | Left _ -> failwith
             "invariant violation: go_nt received a terminal production"
@@ -747,12 +724,8 @@ let tree_of_parse_result
           nonterminal_nums
           prod_num
         in
-        let leading_trivia, trailing_trivia = get_trivia start_pos end_pos in
-
-        let SortRule rule = MS.getExn sort_rules sort_name in
 
         Printf.printf "sort_name: %s\n" sort_name;
-        let _ = Printf.printf "leading_trivia: \"%s\", trailing_trivia: \"%s\"\n" leading_trivia, trailing_trivia in
         let { operator_match_pattern } =
           Belt.MutableMap.Int.getExn production_rule_map prod_num
         in
@@ -789,15 +762,23 @@ let tree_of_parse_result
                 | Some (OperatorMatch { tokens }) -> tokens
         in
 
-        { sort_name; node_type; leading_trivia; trailing_trivia;
+        let tokens_no_space = tokens
+          |. Belt.List.keep (function
+            | Underscore _ -> false
+            | _ -> true
+          )
+        in
+
+        { sort_name; node_type;
           children = children
-            |. BL.zip tokens
-            |. BL.map (function (parse_result, token) -> match token with
-              | TerminalName tn -> TerminalCapture (go_t parse_result)
-              | NonterminalName ntn -> NonterminalCapture (go_nt ntn parse_result)
-              | Underscore n -> SpaceCapture (String.make n ' ')
-            )
+            |. BL.zip tokens_no_space
             |. BL.toArray
+            |> Util.array_map_keep (function (parse_result, token) -> match token with
+              | TerminalName tn -> Some (TerminalCapture (go_t parse_result))
+              | NonterminalName ntn -> Some (NonterminalCapture (go_nt ntn parse_result))
+              (* TODO: trivia *)
+              | Underscore n -> None
+            )
         }
 
     and go_t : LrParsing.parse_result -> terminal_capture
@@ -811,9 +792,11 @@ let tree_of_parse_result
     go_nt root_name root
 
 let lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer
-  = fun { terminal_rules } -> terminal_rules
-    |. BA.map (fun (tok_name, re) -> Regex.to_string re, tok_name)
-    |. BL.fromArray
+  = fun { terminal_rules } ->
+    let lex_items = terminal_rules
+      |. Belt.Array.map (fun (tok_name, re) -> Regex.to_string re, tok_name)
+      |. Belt.List.fromArray
+    in ({|[ \n\r\t]+|}, "SPACE") :: lex_items
 
 let parse desc root_name str =
   try

@@ -26,13 +26,10 @@ type nonterminal_capture = tree
 and capture =
   | TerminalCapture    of terminal_capture
   | NonterminalCapture of nonterminal_capture
-  | SpaceCapture       of string
 
 and tree =
   { sort_name       : sort_name;
     node_type       : node_type;
-    leading_trivia  : string;
-    trailing_trivia : string;
     children        : capture array;
   }
 
@@ -70,6 +67,8 @@ val lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer
 
 (* exported for testing: *)
 val mk_tree : sort_name -> node_type -> capture array -> tree
+
+val remove_spaces : tree -> tree
 
 (** Make a concrete syntax description from its parsed rules. This morally
  belongs to the ConcreteSyntaxDescription module, but it's here to break a
