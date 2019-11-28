@@ -19,6 +19,7 @@ type prim_ty =
   | String
 
 type node_type =
+  | Parenthesizing
   | Operator  of string
   | Var
   | Sequence
@@ -67,7 +68,7 @@ let rec equivalent t1 t2 =
   BA.(every (zipBy t1.children t2.children equivalent')) (fun b -> b)
 
 and equivalent' child1 child2 = match child1, child2 with
-  | TerminalCapture     tc1, TerminalCapture     tc2 -> tc1 = tc2
+  | TerminalCapture     tc1, TerminalCapture     tc2 -> tc1.content = tc2.content
   | NonterminalCapture ntc1, NonterminalCapture ntc2 -> equivalent ntc1 ntc2
   |                       _,                       _ -> false
 
@@ -497,17 +498,15 @@ let prim_to_ast : prim_ty -> string -> primitive
 
 (* Convert a concrete tree to an AST. We ignore trivia. *)
 let rec tree_to_ast lang tree : Nominal.term
-  = let { node_type; children; } = tree in
-    match node_type, children with
+    = match tree.node_type, tree.children with
     | Var, [| TerminalCapture { content = name } |]
     -> Var name
-    | Sequence, _ ->
+    | Sequence, children ->
       let children' = children
         |. Belt.Array.map
           (function
-            | TerminalCapture _ -> raise (ToAstError
-              "Unexpected terminal found in a sequence"
-            )
+            | TerminalCapture _ -> raise @@
+              ToAstError "Unexpected terminal found in a sequence"
             | NonterminalCapture child -> tree_to_ast lang child
           )
         |. Belt.List.fromArray
@@ -517,14 +516,33 @@ let rec tree_to_ast lang tree : Nominal.term
     -> Primitive (prim_to_ast prim_ty content)
 
     (* TODO: check validity *)
-    | Operator op_name, _ ->
+    | Operator op_name, children ->
       let children' = children
         |. BA.keepMap (function
           | TerminalCapture { content } -> None
-          | NonterminalCapture child    -> Some (scope_to_ast lang child)
+          | NonterminalCapture child    -> Some
+            (Nominal.Scope ([], tree_to_ast lang child))
+            (* XXX *)
+            (* (scope_to_ast lang child) *)
         )
         |. Belt.List.fromArray
       in Operator (op_name, children')
+
+    | Parenthesizing, children ->
+      Js.log children;
+      let children' = children
+        |. Belt.Array.keepMap (function
+          | TerminalCapture _ -> None
+          | NonterminalCapture child -> Some
+            (Nominal.Scope ([], tree_to_ast lang child))
+            (* XXX *)
+            (* (scope_to_ast lang child) *)
+        )
+      in
+      Js.log children';
+      (match children' with
+        [| Scope ([], child) |] -> child
+      )
 
     | Primitive _, _
     | Var        , _
@@ -682,7 +700,7 @@ let tree_of_parse_result
 
     let get_trivia : int -> int -> string * string
       = fun start_pos end_pos ->
-        Printf.printf "get_trivia %n %n\n" start_pos end_pos;
+        (* Printf.printf "get_trivia %n %n\n" start_pos end_pos; *)
         (* look back consuming all whitespace to (and including) a newline *)
         let leading_trivia =
           Js.String2.slice str ~from:!str_pos ~to_:start_pos
@@ -705,7 +723,7 @@ let tree_of_parse_result
           Js.String2.slice str ~from:end_pos ~to_:!str_pos
         in
 
-        Printf.printf "get_trivia -> \"%s\", \"%s\"\n" leading_trivia trailing_trivia;
+        (* Printf.printf "get_trivia -> \"%s\", \"%s\"\n" leading_trivia trailing_trivia; *)
         leading_trivia, trailing_trivia
     in
 
@@ -717,7 +735,7 @@ let tree_of_parse_result
           | Right prod_num -> prod_num
         in
 
-        Printf.printf "go_nt %s (production_num %n)\n" nt_name prod_num;
+        (* Printf.printf "go_nt %s (production_num %n)\n" nt_name prod_num; *)
 
         let sort_name = production_sort_name
           Lr0.production_nonterminal_map
@@ -725,20 +743,23 @@ let tree_of_parse_result
           prod_num
         in
 
-        Printf.printf "sort_name: %s\n" sort_name;
+        (* Printf.printf "sort_name: %s\n" sort_name; *)
         let { operator_match_pattern } =
           Belt.MutableMap.Int.getExn production_rule_map prod_num
         in
 
-        let ctor_name = match operator_match_pattern with
-          | OperatorPattern (op_name, _) -> op_name
-          | ParenthesizingPattern _ -> failwith "TODO"
+        let m_ctor_name = match operator_match_pattern with
+          | OperatorPattern (op_name, _) ->
+              (* Printf.printf "ctor_name: %s\n" op_name; *)
+              Some op_name
+          | ParenthesizingPattern _ -> None
         in
-        Printf.printf "ctor_name: %s\n" ctor_name;
-        Printf.printf "nt_name: %s\n" nt_name;
-        let node_type = match ctor_name with
-          | "var" -> Var (* TODO this seems wrong *)
-          | _ -> Operator ctor_name
+
+        (* Printf.printf "nt_name: %s\n" nt_name; *)
+        let node_type = match m_ctor_name with
+          | None -> Parenthesizing
+          | Some "var" -> Var (* TODO this seems wrong *)
+          | Some ctor_name -> Operator ctor_name
         in
 
         let err = "tree_of_parse_result: failed to get " ^ nt_name in
@@ -749,17 +770,21 @@ let tree_of_parse_result
               let maybe_op_rule = operator_rules
               |. BL.flatten
               |. BL.getBy (fun (OperatorMatch { operator_match_pattern }) ->
-                match operator_match_pattern with
-                  | OperatorPattern (op_name, _) ->
-                      Printf.printf "checking ctor_name: %s\n" op_name;
+                match m_ctor_name, operator_match_pattern with
+                  | None, ParenthesizingPattern _ -> true
+                  | Some ctor_name, OperatorPattern (op_name, _) ->
                       ctor_name = op_name
-                  | ParenthesizingPattern _ -> true
+                  | _, _ -> false
               )
               in
               match maybe_op_rule with
-                | None -> failwith
-                  ("error: unable to find operator " ^ ctor_name)
                 | Some (OperatorMatch { tokens }) -> tokens
+                | None -> (match m_ctor_name with
+                   | None -> failwith
+                     "error: unable to find parenthesizing pattern"
+                   | Some ctor_name -> failwith
+                     ("error: unable to find operator " ^ ctor_name)
+                )
         in
 
         let tokens_no_space = tokens
@@ -821,7 +846,7 @@ let parse desc root_name str =
     match Lr0'.lex_and_parse lexer str with
       | Ok root
       ->
-        Printf.printf "parse result: %s\n" (LrParsing.parse_result_to_string root);
+        (* Printf.printf "parse result: %s\n" (LrParsing.parse_result_to_string root); *)
         Belt.Result.Ok (tree_of_parse_result
         (module Lr0')
         production_rule_map

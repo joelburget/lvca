@@ -1138,8 +1138,6 @@ module Lr0 (G : GRAMMAR) = struct
       | Error error -> Error (Left error)
       | Ok tokens ->
         let len = String.length input in
-        Js.log (tokens
-          |. Belt.Array.keep (fun token -> token.name != "SPACE"));
         let tokens' = tokens
           |. Belt.Array.keep (fun token -> token.name != "SPACE")
           |. MQueue.fromArray

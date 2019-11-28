@@ -10,6 +10,7 @@ type prim_ty =
   | String
 
 type node_type =
+  | Parenthesizing
   | Operator  of string
   | Var
   | Sequence
