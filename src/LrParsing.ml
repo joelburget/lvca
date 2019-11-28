@@ -329,13 +329,33 @@ module Lr0 (G : GRAMMAR) = struct
       |. A.map string_of_item
       |. Js.Array2.joinWith sep
 
+  (* TODO: move to module *)
+  let string_of_lookahead_item = fun { item; lookahead_set } ->
+    let lookahead_nums = lookahead_set
+      |. SI.toArray
+      |. Belt.Array.map (fun t_num -> Belt.Map.Int.get terminal_names t_num
+        |> get_option' (Printf.sprintf
+          "Lr0 string_of_lookahead_item: unable to find terminal %n in terminal_names"
+          t_num
+        )
+      )
+      |. Js.Array2.joinWith "/"
+    in
+    Printf.sprintf "[%s, %s]" (string_of_item item) lookahead_nums
+
+  let string_of_lookahead_item_set = fun lookahead_item_set ->
+    lookahead_item_set
+      |. S.toArray
+      |. Belt.Array.map string_of_lookahead_item
+      |. Js.Array2.joinWith "\n"
+
   let string_of_production : production_num -> string
     = fun production_num ->
 
       let production = production_map
         |. MMI.get production_num
         |> get_option' (Printf.sprintf
-          "Lr0 string_of_item: unable to find production %n in production_map"
+          "Lr0 string_of_production: unable to find production %n in production_map"
           production_num
         )
       in
@@ -343,7 +363,7 @@ module Lr0 (G : GRAMMAR) = struct
       let nt_num = production_nonterminal_map
         |. MMI.get production_num
         |> get_option' (Printf.sprintf
-          "Lr0 string_of_item: unable to find production %n in production_nonterminal_map"
+          "Lr0 string_of_production: unable to find production %n in production_nonterminal_map"
           production_num
         )
       in

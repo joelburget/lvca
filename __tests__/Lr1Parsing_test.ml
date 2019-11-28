@@ -93,30 +93,20 @@ let () = describe "LrParsing" (fun () ->
     |. L.map S.toList
   in
 
-  (* TODO: move to module *)
-  let string_of_lookahead_item = fun { item; lookahead_set } ->
-    let lookahead_nums = lookahead_set
-      |. SI.toArray
-      |. Belt.Array.map string_of_int
-      |. Js.Array2.joinWith " "
-    in
-    Printf.sprintf "[%s, %s]" (Lr0'.string_of_item item) lookahead_nums
-  in
-
-  let string_of_lookahead_item_set = fun lookahead_item_set ->
-    lookahead_item_set
-      |. S.toArray
-      |. Belt.Array.map string_of_lookahead_item
-      |. Js.Array2.joinWith "\n"
-  in
-
   let actual_items = Lr0'.mutable_lr1_items
     |. MSet.toArray
-    |. Belt.Array.map string_of_lookahead_item_set
+    |. Belt.Array.map Lr0'.string_of_lookahead_item_set
+    |. Js.Array2.joinWith "\n\n"
+  in
+
+  let expected_items = expected_lr1_item_sets
+    |. MSet.toArray
+    |. Belt.Array.map Lr0'.string_of_lookahead_item_set
     |. Js.Array2.joinWith "\n\n"
   in
 
   Js.log actual_items;
+  Js.log expected_items;
 
   testAll "lr1_items" [
     expect (normalize Lr0'.mutable_lr1_items)
