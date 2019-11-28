@@ -45,6 +45,7 @@ let () = describe "LrParsing" (fun () ->
 
   let mk_arr items = S.fromArray items ~id:(module LookaheadItemCmp) in
 
+  (* CPTT Fig 4.41 *)
   let lr1_item_sets : lookahead_item_set array = [|
     mk_arr (* 0 *)
       [| { item = mk_item' 0 0; lookahead_set = SI.fromArray [| 0 |] };
@@ -77,9 +78,9 @@ let () = describe "LrParsing" (fun () ->
     mk_arr (* 7 *)
       [| { item = mk_item' 3 1; lookahead_set = SI.fromArray [| 0 |] } |];
     mk_arr (* 8 *)
-      [| { item = mk_item' 2 2; lookahead_set = SI.fromArray [| 0 |] } |];
-    mk_arr (* 9 *)
       [| { item = mk_item' 2 2; lookahead_set = SI.fromArray [| 1; 2 |] } |];
+    mk_arr (* 9 *)
+      [| { item = mk_item' 2 2; lookahead_set = SI.fromArray [| 0 |] } |];
   |]
   in
 
