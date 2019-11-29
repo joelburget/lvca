@@ -99,13 +99,13 @@ let () = describe "LrParsing" (fun () ->
   |]
   in
 
-  testAll "lr1_items" [
+  testAll "lookahead_lr0_items" [
     (* First check the kernels are as expected *)
     expect (lr1_config_sets
       |. Belt.Array.map (fun config_set -> config_set.kernel_items)
       |. lookahead_item_set_set
     ) |> toBeEquivalent Belt.Set.eq
-      (Lr0'.mutable_lr1_items
+      (Lr0'.mutable_lookahead_lr0_items
         |. Belt.MutableSet.toArray
         |. lookahead_item_set_set
     );
@@ -115,7 +115,7 @@ let () = describe "LrParsing" (fun () ->
       |. Belt.Array.map simplify_lookahead_config_set
       |. lookahead_item_set_set
     ) |> toBeEquivalent Belt.Set.eq
-      (Lr0'.mutable_lr1_items
+      (Lr0'.mutable_lookahead_lr0_items
         |. Belt.MutableSet.toArray
         |. Belt.Array.map Lr0'.lr1_closure
         |. lookahead_item_set_set

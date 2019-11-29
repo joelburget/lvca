@@ -495,7 +495,7 @@ module Lr0 (G : GRAMMAR) = struct
         let production = production_map
             |. MMI.get production_num
             |> get_option' (Printf.sprintf
-              "lr0_closure': couldn't find production %n"
+              "lr1_closure': couldn't find production %n"
               production_num
             )
         in
@@ -559,7 +559,7 @@ module Lr0 (G : GRAMMAR) = struct
 
           let { productions } = M.get G.grammar.nonterminals nonterminal_num
             |> get_option' (Printf.sprintf
-            "lr0_closure': unable to find nonterminal %n in G.grammar.nonterminals"
+            "lr1_closure': unable to find nonterminal %n in G.grammar.nonterminals"
             nonterminal_num
             )
           in
@@ -594,7 +594,7 @@ module Lr0 (G : GRAMMAR) = struct
             let production_set =
               MMI.get nonterminal_production_map nonterminal_num
                 |> get_option' (Printf.sprintf
-                "lr0_closure': unable to find nonterminal %n nonterminal_production_map"
+                "lr1_closure': unable to find nonterminal %n nonterminal_production_map"
                 nonterminal_num
                 )
             in
@@ -775,7 +775,8 @@ module Lr0 (G : GRAMMAR) = struct
       done;
       c
 
-  let mutable_lr1_items : mutable_lookahead_item_set
+  (** Compute the canonical collection of LR(0) items. CPTT fig 4.33. *)
+  let mutable_lookahead_lr0_items : mutable_lookahead_item_set
     = let augmented_start : lookahead_item_set = lookahead_item_set_from_array
         [|
            { item = mk_item {production_num = 0; position = 0};
@@ -810,8 +811,8 @@ module Lr0 (G : GRAMMAR) = struct
     |. A.mapWithIndex (fun i item_set -> i, item_set)
     |. M.fromArray
 
-  let lr1_items : lookahead_item_set M.t
-    = mutable_lr1_items
+  let lookahead_lr0_items : lookahead_item_set M.t
+    = mutable_lookahead_lr0_items
     |. MSet.toArray
     |. A.mapWithIndex (fun i lookahead_item_set -> i, lookahead_item_set)
     |. M.fromArray
