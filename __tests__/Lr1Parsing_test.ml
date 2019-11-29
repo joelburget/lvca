@@ -105,11 +105,45 @@ let () = describe "LrParsing" (fun () ->
     |. Js.Array2.joinWith "\n\n"
   in
 
-  Js.log actual_items;
-  Js.log expected_items;
+  Js.log2 "actual_items" actual_items;
+  Js.log2 "expected_items" expected_items;
 
+  let actual_closure = Lr0'.lr1_closure' @@
+    lookahead_item_set_from_array
+      [| { item = mk_item' 0 0; lookahead_set = SI.fromArray [| 0 |] } |]
+  in
+
+  actual_closure
+    |> LrParsing.simplify_lookahead_config_set
+    |> Lr0'.string_of_lookahead_item_set
+    |> Js.log2 "actual_closure";
+
+  let expected_closure =
+        { kernel_items = lookahead_item_set_from_array
+          [| { item = mk_item' 0 0; lookahead_set = SI.fromArray [| 0 |] } |];
+          nonkernel_items = lookahead_item_set_from_array
+          [|
+             { item = mk_item' 1 0; lookahead_set = SI.fromArray [| 0 |] };
+             { item = mk_item' 2 0; lookahead_set = SI.fromArray [| 1; 2 |] };
+             { item = mk_item' 3 0; lookahead_set = SI.fromArray [| 1; 2 |] };
+          |]
+        }
+  in
+
+  expected_closure
+    |> LrParsing.simplify_lookahead_config_set
+    |> Lr0'.string_of_lookahead_item_set
+    |> Js.log2 "expected_closure";
+
+  testAll "closure" [
+    expect actual_closure |> toEqual expected_closure
+  ] Util.id;
+
+  (*
   testAll "lr1_items" [
     expect (normalize Lr0'.mutable_lr1_items)
       |> toEqual (normalize expected_lr1_item_sets);
   ] Util.id;
+  *)
+
 )
