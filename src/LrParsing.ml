@@ -455,7 +455,7 @@ module Lr0 (G : GRAMMAR) = struct
             ("Lr0 preprocessing -- unable to find nonterminal " ^
               string_of_int nt_num)
         in
-        Printf.printf "Adding prod %n to nt %n set\n" production_num nt_num;
+        (* Printf.printf "Adding prod %n to nt %n set\n" production_num nt_num; *)
         prod_set |. MSI.add production_num
       )
     )
@@ -499,8 +499,8 @@ module Lr0 (G : GRAMMAR) = struct
               production_num
             )
         in
-        Printf.printf "considering lookahead item %s\n" (string_of_lookahead_item lookahead_item);
-        Printf.printf "it has %n items in its lookahead set\n" (SI.size lookahead_set);
+        (* Printf.printf "considering lookahead item %s\n" (string_of_lookahead_item lookahead_item); *)
+        (* Printf.printf "it has %n items in its lookahead set\n" (SI.size lookahead_set); *)
         lookahead_set |. SI.forEach (fun lookahead_terminal_num ->
           (* first symbol right of the dot *)
           match L.get production position with
@@ -509,15 +509,19 @@ module Lr0 (G : GRAMMAR) = struct
                 | None -> first_set [Terminal lookahead_terminal_num]
                 | Some (Nonterminal nt') -> first_set [Nonterminal nt'; Terminal lookahead_terminal_num]
               in
+              (*
               Printf.printf "its first_set is %n items: [%s]\n"
                 (SI.size first_set')
                 (first_set' |. SI.toList |> Util.stringify_list string_of_terminal ", ");
+                *)
               SI.forEach
                 first_set'
                 (fun new_lookahead ->
+                  (*
                   Printf.printf "stack <- nonterminal %s, lookahead %s\n"
                     (string_of_nonterminal nt)
                     (string_of_terminal new_lookahead);
+                    *)
                   MStack.push stack (nt, new_lookahead)
                 )
             | _                     -> ()
@@ -533,17 +537,21 @@ module Lr0 (G : GRAMMAR) = struct
           get_option' "the set is not empty!" @@ MStack.pop stack
         in
 
+        (*
         Printf.printf "stack -> nonterminal %s, lookahead %s\n"
           (string_of_nonterminal nonterminal_num)
           (string_of_terminal lookahead);
+          *)
 
         let is_added = MMI.has nonkernel_items nonterminal_num &&
           nonkernel_items |. MMI.getExn nonterminal_num |. MSI.has lookahead
         in
 
         if not is_added then (
+          (*
           Printf.printf "adding nonterminal %s, lookahead %s\n"
             (string_of_nonterminal nonterminal_num) (string_of_terminal lookahead);
+            *)
           (match MMI.get nonkernel_items nonterminal_num with
             | None -> MMI.set nonkernel_items nonterminal_num
               (MSI.fromArray [| lookahead |])
@@ -556,7 +564,7 @@ module Lr0 (G : GRAMMAR) = struct
             )
           in
 
-          Printf.printf "productions: %n\n" (Belt.List.length productions);
+          (* Printf.printf "productions: %n\n" (Belt.List.length productions); *)
 
           L.forEach productions (function
             | Terminal _         :: _ -> ()
@@ -567,9 +575,11 @@ module Lr0 (G : GRAMMAR) = struct
                 | symbol :: _ -> first_set [symbol; Terminal lookahead]
               in
               SI.forEach first_set' (fun new_lookahead ->
+                (*
                 Printf.printf "stack <- nonterminal %s, lookahead %s\n"
                   (string_of_nonterminal new_nt)
                   (string_of_terminal new_lookahead);
+                  *)
                 MStack.push stack (new_nt, new_lookahead)
               );
             | _                       -> failwith "Empty production"
