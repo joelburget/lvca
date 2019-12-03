@@ -830,28 +830,26 @@ module Lr0 (G : GRAMMAR) = struct
   (** Given the kernel (K) of a set of LR(0) items (I) and a grammar symbol
    * (X), return the set of lookaheads in GOTO(I, X) (1) generated
    * spontaneously and (2) propagated from I *)
-  let generate_lookaheads : item_set -> lookahead_propagation
-    = fun kernel ->
+  let generate_lookaheads : item -> lookahead_propagation
+    = fun item ->
       let propagated = MSI.make () in
       let generated = Belt.MutableSet.make ~id:(module LookaheadItemCmp) in
-      SI.forEach kernel (fun item ->
-        let hash_terminal = number_of_terminals + 1 in
-        let modified_item = { item; lookahead_set = SI.fromArray [| hash_terminal |] } in
-        let j = lr1_closure @@
-          lookahead_item_set_from_array [| modified_item |]
-        in
-        Belt.Set.forEach j (fun ({ lookahead_set; item } as lookahead_item) ->
-          Printf.printf "looking at item %s\n" (string_of_lookahead_item lookahead_item);
+      let hash_terminal = number_of_terminals + 1 in
+      let modified_item = { item; lookahead_set = SI.fromArray [| hash_terminal |] } in
+      let j = lr1_closure @@
+        lookahead_item_set_from_array [| modified_item |]
+      in
+      Belt.Set.forEach j (fun ({ lookahead_set; item } as lookahead_item) ->
+        Printf.printf "looking at item %s\n" (string_of_lookahead_item lookahead_item);
 
-          (* The hash terminal has propagated to this item *)
-          if SI.has lookahead_set hash_terminal
-          then MSI.add propagated item;
+        (* The hash terminal has propagated to this item *)
+        if SI.has lookahead_set hash_terminal
+        then MSI.add propagated item;
 
-          (* Another terminal has been spontaneously generated *)
-          let lookahead_set' = SI.remove lookahead_set hash_terminal in
-          if not (SI.isEmpty lookahead_set')
-          then Belt.MutableSet.add generated { item; lookahead_set = lookahead_set' }
-        );
+        (* Another terminal has been spontaneously generated *)
+        let lookahead_set' = SI.remove lookahead_set hash_terminal in
+        if not (SI.isEmpty lookahead_set')
+        then Belt.MutableSet.add generated { item; lookahead_set = lookahead_set' }
       );
       { spontaneous_generation = generated
           |. Belt.MutableSet.toArray
@@ -899,17 +897,13 @@ module Lr0 (G : GRAMMAR) = struct
       |. M.fromArray
 
   (* CPTT Algorithm 4.63 step 2 *)
-  let lookahead_info : lookahead_propagation M.t
+  let lookahead_info : lookahead_propagation M.t M.t
     = mutable_lalr1_items
-      |. M.mapWithKey (fun state_num mutable_lookahead_item_set (* { items; lookahead } *) ->
-        let items = failwith "TODO 1" in
-        let lookahead = failwith "TODO 2" in
-        let lookahead_info = generate_lookaheads items in
-        let f : lookahead_item_set -> int array = failwith "TODO 3" in
-        lookahead
-          |. Belt.MutableSet.Int.mergeMany
-            (f lookahead_info.spontaneous_generation);
-        lookahead_info
+      |. M.map (fun mutable_lookahead_item_set ->
+        M.mapWithKey mutable_lookahead_item_set (fun item lookahead_set ->
+          (* XXX what about lookahead_set? *)
+          generate_lookaheads item
+        )
       )
 
   (* Fill in LALR(1) item lookaheads. CPTT Algorithm 4.63 steps 3 & 4 *)

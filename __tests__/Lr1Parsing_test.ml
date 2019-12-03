@@ -244,7 +244,7 @@ let () = describe "LrParsing" (fun () ->
   );
 
   let { spontaneous_generation; propagation } =
-    Grammar2LR.generate_lookaheads @@ SI.fromArray [| mk_item' 0 0 |]
+    Grammar2LR.generate_lookaheads @@ mk_item' 0 0
   in
   let expected_propagation = SI.fromArray
     [| mk_item' 0 0; (* S' -> . S *)
