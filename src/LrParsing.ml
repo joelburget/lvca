@@ -83,7 +83,6 @@ module LookaheadClosureItemCmp = Belt.Id.MakeComparable(struct
   let cmp = Pervasives.compare
 end)
 
-(* TODO: do we use this? *)
 type lookahead_item_set = (lookahead_item, LookaheadItemCmp.identity) S.t
 
 let lookahead_item_set_from_array : lookahead_item array -> lookahead_item_set
@@ -122,6 +121,13 @@ let simplify_lookahead_config_set
   : lookahead_configuration_set -> lookahead_item_set
   = fun { kernel_items; nonkernel_items } ->
     S.union kernel_items nonkernel_items
+
+type lookahead_propagation =
+  { (** A set of items with lookahead that were generated *)
+    spontaneous_generation : lookahead_item_set;
+    (** A set of items where the lookahead propagates *)
+    propagation : item_set;
+  }
 
 type nonterminal =
   { (* nonterminal_num: nonterminal_num; *)
@@ -162,6 +168,8 @@ end)
  *)
 type mutable_lr0_item_set = (SI.t, ComparableIntSet.identity) MSet.t
 
+type item_set_set = (item_set, ComparableIntSet.identity) Belt.Set.t
+
 module LookaheadItemSetCmp = Belt.Id.MakeComparable(struct
   type t = lookahead_item_set
   let cmp = S.cmp
@@ -170,8 +178,11 @@ end)
 (* A mutable set of lookahead item sets. This is used to represent the set of
  * LR(1) items. Each set represents a set of encoded items with lookaheads.
  *)
-type mutable_lookahead_item_set =
+type mutable_lookahead_item_sets =
   (lookahead_item_set, LookaheadItemSetCmp.identity) MSet.t
+
+(* Set of items with mutable lookahead *)
+type mutable_lookahead_item_set = Belt.MutableSet.Int.t M.t
 
 type parse_error = int (* character number *) * string
 
@@ -278,19 +289,19 @@ module Lr0 (G : GRAMMAR) = struct
 
       let productions : MSI.t = nonterminal_production_map
         |. MMI.get nt
-        |> get_option' "TODO"
+        |> get_option' "TODO 1"
         |. MSI.copy
       in
 
       while not (MSI.isEmpty productions) do
         let production_num = productions
           |. MSI.minimum
-          |> get_option' "TODO"
+          |> get_option' "TODO 2"
         in
         MSI.remove productions production_num;
         let production = production_map
           |. MMI.get production_num
-          |> get_option' "TODO"
+          |> get_option' "TODO 3"
         in
         first_set' already_seen_nts result production
       done;
@@ -381,12 +392,8 @@ module Lr0 (G : GRAMMAR) = struct
   let string_of_lookahead_item = fun { item; lookahead_set } ->
     let lookahead_nums = lookahead_set
       |. SI.toArray
-      |. Belt.Array.map (fun t_num -> Belt.Map.Int.get terminal_names t_num
-        |> get_option' (Printf.sprintf
-          "Lr0 string_of_lookahead_item: unable to find terminal %n in terminal_names"
-          t_num
-        )
-      )
+      |. Belt.Array.map
+        (fun t_num -> Belt.Map.Int.getWithDefault terminal_names t_num "#")
       |. Js.Array2.joinWith "/"
     in
     Printf.sprintf "[%s, %s]" (string_of_item item) lookahead_nums
@@ -775,8 +782,11 @@ module Lr0 (G : GRAMMAR) = struct
       done;
       c
 
-  (** Compute the canonical collection of LR(0) items. CPTT fig 4.33. *)
-  let mutable_lookahead_lr0_items : mutable_lookahead_item_set
+  (** Compute the canonical collection of LR(0) items. CPTT fig 4.33.
+   * Note: This is part of the LALR(1) algorithm (despite containing LR(0)
+   * items)
+   *)
+  let mutable_lookahead_lr0_items : mutable_lookahead_item_sets
     = let augmented_start : lookahead_item_set = lookahead_item_set_from_array
         [|
            { item = mk_item {production_num = 0; position = 0};
@@ -817,6 +827,41 @@ module Lr0 (G : GRAMMAR) = struct
     |. A.mapWithIndex (fun i lookahead_item_set -> i, lookahead_item_set)
     |. M.fromArray
 
+  (** Given the kernel (K) of a set of LR(0) items (I) and a grammar symbol
+   * (X), return the set of lookaheads in GOTO(I, X) (1) generated
+   * spontaneously and (2) propagated from I *)
+  let generate_lookaheads : item_set -> lookahead_propagation
+    = fun kernel ->
+      let propagated = MSI.make () in
+      let generated = Belt.MutableSet.make ~id:(module LookaheadItemCmp) in
+      SI.forEach kernel (fun item ->
+        let hash_terminal = number_of_terminals + 1 in
+        let modified_item = { item; lookahead_set = SI.fromArray [| hash_terminal |] } in
+        let j = lr1_closure @@
+          lookahead_item_set_from_array [| modified_item |]
+        in
+        Belt.Set.forEach j (fun ({ lookahead_set; item } as lookahead_item) ->
+          Printf.printf "looking at item %s\n" (string_of_lookahead_item lookahead_item);
+
+          (* The hash terminal has propagated to this item *)
+          if SI.has lookahead_set hash_terminal
+          then MSI.add propagated item;
+
+          (* Another terminal has been spontaneously generated *)
+          let lookahead_set' = SI.remove lookahead_set hash_terminal in
+          if not (SI.isEmpty lookahead_set')
+          then Belt.MutableSet.add generated { item; lookahead_set = lookahead_set' }
+        );
+      );
+      { spontaneous_generation = generated
+          |. Belt.MutableSet.toArray
+          |. lookahead_item_set_from_array;
+        propagation = propagated |. MSI.toArray |. SI.fromArray;
+      }
+
+  let state_to_lookahead_item_set : state -> lookahead_item_set
+    = fun state -> failwith "TODO 5"
+
   let state_to_item_set : state -> item_set
     = fun state -> lr0_items
       |. M.get state
@@ -826,9 +871,7 @@ module Lr0 (G : GRAMMAR) = struct
   let item_set_to_state : item_set -> state
     = fun item_set ->
     let state, _ = lr0_items
-      |. M.findFirstBy (fun _ item_set' ->
-        SI.toArray item_set' = SI.toArray item_set
-      )
+      |. M.findFirstBy (fun _ item_set' -> item_set' = item_set)
       |> get_option' (Printf.sprintf
         "item_set_to_state -- couldn't find item_set (%s) (options: %s)"
         (string_of_item_set item_set)
@@ -838,6 +881,51 @@ module Lr0 (G : GRAMMAR) = struct
           |. Js.Array2.joinWith ", ")
       )
     in state
+
+  (* CPTT Algorithm 4.63 step 1 *)
+  let mutable_lalr1_items : mutable_lookahead_item_set M.t
+    = mutable_lookahead_lr0_items
+      |. MSet.toArray
+      |. Belt.Array.mapWithIndex (fun i lookahead_item_set ->
+        let items = lookahead_item_set
+          |. Belt.Set.toArray
+          |. Belt.Array.map (fun lookahead_item ->
+            lookahead_item.item, Belt.MutableSet.Int.make ()
+          )
+          |. M.fromArray
+        in
+        i, items
+      )
+      |. M.fromArray
+
+  (* CPTT Algorithm 4.63 step 2 *)
+  let lookahead_info : lookahead_propagation M.t
+    = mutable_lalr1_items
+      |. M.mapWithKey (fun state_num mutable_lookahead_item_set (* { items; lookahead } *) ->
+        let items = failwith "TODO 1" in
+        let lookahead = failwith "TODO 2" in
+        let lookahead_info = generate_lookaheads items in
+        let f : lookahead_item_set -> int array = failwith "TODO 3" in
+        lookahead
+          |. Belt.MutableSet.Int.mergeMany
+            (f lookahead_info.spontaneous_generation);
+        lookahead_info
+      )
+
+  (* Fill in LALR(1) item lookaheads. CPTT Algorithm 4.63 steps 3 & 4 *)
+  let () =
+    (* Set lookaheads that were generated spontaneously *)
+
+    (* Propagate lookaheads *)
+    let continue = ref true in
+    while !continue do
+      let made_update = ref false in
+      failwith "TODO 4"
+      continue := !made_update
+    done
+
+  let lookahead_item_set_to_state : lookahead_item_set -> state
+    = fun lookahead_item_set -> failwith "TODO 6"
 
   let augmented_state : state
     = item_set_to_state @@ SI.fromArray [| mk_item' 0 0 |]
@@ -968,6 +1056,14 @@ module Lr0 (G : GRAMMAR) = struct
   let lr0_goto_table state nt =
     try
       Some (item_set_to_state @@ lr0_goto_kernel (state_to_item_set state) nt)
+    with
+      (* TODO: this shouldn't catch all invariant violations *)
+      Util.InvariantViolation _ -> None
+
+  let lr1_goto_table state nt =
+    try
+      Some (lookahead_item_set_to_state @@
+        lr1_goto_kernel (state_to_lookahead_item_set state) nt)
     with
       (* TODO: this shouldn't catch all invariant violations *)
       Util.InvariantViolation _ -> None
