@@ -34,6 +34,9 @@ module SymbolCmp = Belt.Id.MakeComparable(struct
       | c -> c
 end)
 
+(** A state number *)
+type state = int
+
 type production = symbol list
 
 type production_num = int
@@ -125,17 +128,14 @@ let simplify_lookahead_config_set
 type lookahead_propagation =
   { (** A set of items with lookahead that were generated *)
     spontaneous_generation : lookahead_item_set;
-    (** A set of items where the lookahead propagates *)
-    propagation : item_set;
+    (** A set of kernel items where the lookahead propagates *)
+    propagation : (state * item) array;
   }
 
 type nonterminal =
   { (* nonterminal_num: nonterminal_num; *)
     productions: production list;
   }
-
-(** An LR(0) state number *)
-type state = int
 
 (* By convention:
   * A non-augmented grammar has keys starting at 1 (start)
@@ -757,7 +757,8 @@ module Lr0 (G : GRAMMAR) = struct
     = let augmented_start = SI.fromArray
           [| mk_item {production_num = 0; position = 0} |]
       in
-      let c = MSet.fromArray [| augmented_start |] ~id:(module ComparableIntSet)
+      let c =
+        MSet.fromArray [| augmented_start |] ~id:(module ComparableIntSet)
       in
 
       (* iterate through every set of items in the collection, compute the GOTO
@@ -821,40 +822,84 @@ module Lr0 (G : GRAMMAR) = struct
     |. A.mapWithIndex (fun i item_set -> i, item_set)
     |. M.fromArray
 
+  let () = Printf.printf "lr0_items:\n%s\n" (lr0_items
+    |. M.toArray
+    |. Belt.Array.map (fun (i, item_set) -> Printf.sprintf
+      "%n -> %s" i (string_of_item_set item_set)
+    )
+    |. Js.Array2.joinWith "\n"
+  )
+
   let lookahead_lr0_items : lookahead_item_set M.t
     = mutable_lookahead_lr0_items
     |. MSet.toArray
     |. A.mapWithIndex (fun i lookahead_item_set -> i, lookahead_item_set)
     |. M.fromArray
 
+  let () = Printf.printf "lookahead_lr0_items:\n%s\n"
+    (lookahead_lr0_items
+    |. M.toArray
+    |. Belt.Array.map (fun (i, l_item_set) -> Printf.sprintf
+      "%n -> %s" i (string_of_lookahead_item_set l_item_set)
+    )
+    |. Js.Array2.joinWith "\n"
+    )
+
   (** Given the kernel (K) of a set of LR(0) items (I) and a grammar symbol
    * (X), return the set of lookaheads in GOTO(I, X) (1) generated
    * spontaneously and (2) propagated from I *)
-  let generate_lookaheads : item -> lookahead_propagation
-    = fun item ->
-      let propagated = MSI.make () in
+  let generate_lookaheads : lookahead_item_set -> item -> lookahead_propagation
+    = fun kernel item ->
+      let propagation = [||] in
       let generated = Belt.MutableSet.make ~id:(module LookaheadItemCmp) in
       let hash_terminal = number_of_terminals + 1 in
-      let modified_item = { item; lookahead_set = SI.fromArray [| hash_terminal |] } in
+      let modified_item =
+        { item; lookahead_set = SI.fromArray [| hash_terminal |] }
+      in
       let j = lr1_closure @@
         lookahead_item_set_from_array [| modified_item |]
       in
-      Belt.Set.forEach j (fun ({ lookahead_set; item } as lookahead_item) ->
-        Printf.printf "looking at item %s\n" (string_of_lookahead_item lookahead_item);
 
-        (* The hash terminal has propagated to this item *)
-        if SI.has lookahead_set hash_terminal
-        then MSI.add propagated item;
+      Belt.Set.forEach j (fun { lookahead_set; item = pre_item } ->
+        let { production_num; position } = view_item pre_item in
+        let item = mk_item { production_num; position = position + 1 } in
+
+        let x = production_map
+          |. MMI.getExn production_num
+          |. Belt.List.getExn position
+        in
+
+        let state = lr1_goto_kernel kernel x in
 
         (* Another terminal has been spontaneously generated *)
         let lookahead_set' = SI.remove lookahead_set hash_terminal in
         if not (SI.isEmpty lookahead_set')
-        then Belt.MutableSet.add generated { item; lookahead_set = lookahead_set' }
+        then Belt.MutableSet.add generated
+          { item; lookahead_set = lookahead_set' };
+
+        if SI.has lookahead_set hash_terminal
+        then let _ = Js.Array2.push propagation (state, item) in ();
+
+        (* The hash terminal has propagated to this item *)
+        (* TODO: can we just use lr0_items? what is the relationship between it
+         * and lookahead_lr0_items? *)
+        (*
+        match lr0_items
+          |. M.findFirstBy (fun _ item_set -> item_set |. SI.has item) with
+          | None ->
+            Printf.printf "generate_lookaheads not using item %s\n"
+            (string_of_item item)
+          | Some (state, _) -> (
+            if SI.has lookahead_set hash_terminal
+            then let _ = Js.Array2.push propagation (state, item) in ();
+          )
+      *)
       );
-      { spontaneous_generation = generated
+
+      { propagation;
+        spontaneous_generation = generated
           |. Belt.MutableSet.toArray
           |. lookahead_item_set_from_array;
-        propagation = propagated |. MSI.toArray |. SI.fromArray;
       }
 
   let state_to_lookahead_item_set : state -> lookahead_item_set
@@ -896,17 +941,47 @@ module Lr0 (G : GRAMMAR) = struct
       )
       |. M.fromArray
 
-  (* CPTT Algorithm 4.63 step 2 *)
-  let lookahead_info : lookahead_propagation M.t M.t
+  (* CPTT Algorithm 4.63 steps 2 & 3 *)
+  (* For each item set:
+      for each item:
+        what items (in what state) does its lookahead propagate to?
+  *)
+  let lookahead_propagation : (state * item) array M.t M.t
     = mutable_lalr1_items
-      |. M.map (fun mutable_lookahead_item_set ->
+      |. M.mapWithKey (fun state_num mutable_lookahead_item_set ->
+        let kernel : lookahead_item_set = mutable_lookahead_item_set
+          |. M.toArray
+          |. Belt.Array.map (fun (item, mutable_lookahead_set) ->
+            let lookahead_set = mutable_lookahead_set
+              |. MSI.toArray
+              |. SI.fromArray
+            in
+            { item; lookahead_set })
+          |. Belt.Set.fromArray ~id:(module LookaheadItemCmp)
+        in
         M.mapWithKey mutable_lookahead_item_set (fun item lookahead_set ->
-          (* XXX what about lookahead_set? *)
-          generate_lookaheads item
+          let { spontaneous_generation; propagation } = generate_lookaheads kernel item in
+          (* map from item to lookahead *)
+          let spontaneous_generation' : SI.t M.t
+            = spontaneous_generation
+            |. S.toArray
+            |. Belt.Array.map (fun { item; lookahead_set } -> item, lookahead_set)
+            |. M.fromArray
+          in
+
+          mutable_lalr1_items
+            |. M.getExn state_num
+            |. M.forEach (fun item mut_lookahead_set ->
+                match M.get spontaneous_generation' item with
+                  | None -> ()
+                  | Some lookaheads -> Belt.MutableSet.Int.mergeMany mut_lookahead_set (SI.toArray lookaheads)
+            );
+
+          propagation
         )
       )
 
-  (* Fill in LALR(1) item lookaheads. CPTT Algorithm 4.63 steps 3 & 4 *)
+  (* Fill in LALR(1) item lookaheads. CPTT Algorithm 4.63 step 4 *)
   let () =
     (* Set lookaheads that were generated spontaneously *)
 
@@ -914,7 +989,35 @@ module Lr0 (G : GRAMMAR) = struct
     let continue = ref true in
     while !continue do
       let made_update = ref false in
-      failwith "TODO 4"
+
+      (*
+      M.forEach mutable_lalr1_items (fun state_num mutable_lookahead_item_set ->
+        M.forEach mutable_lookahead_item_set (fun item current_lookahead ->
+          let propagation : (state * item) array = lookahead_propagation
+            |. M.getExn state_num
+            |. M.getExn item
+          in
+          Belt.Array.forEach propagation (fun (state_num', item') ->
+            let current_lookahead' : MSI.t = mutable_lalr1_items
+              |. M.getExn state_num'
+              |. M.getExn item'
+            in
+
+            (* See if we can propagate any lookaheads (and do it) *)
+            Belt.Array.forEach propagation (fun (prop_state, prop_item) ->
+              if prop_state = state_num' &&
+                 prop_item = item' &&
+                 not (MSI.subset current_lookahead' current_lookahead)
+              then (
+                made_update := true;
+                MSI.mergeMany current_lookahead' (MSI.toArray current_lookahead);
+              )
+            );
+          );
+        );
+      );
+      *)
+
       continue := !made_update
     done
 
