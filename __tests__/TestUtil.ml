@@ -1,11 +1,13 @@
 open Jest
 open Expect
 
-let toBeEquivalent : ('a -> 'a -> bool) -> 'a -> [< 'a partial] -> assertion
-  = fun equiv t1 -> function
-    | `Just t2 -> if equiv t1 t2 then pass else (
-      Js.log (Js.Json.stringifyAny t1);
-      Js.log (Js.Json.stringifyAny t2);
+let toBeEquivalent
+  : ('a -> string) -> ('a -> 'a -> bool) -> 'a -> [< 'a partial] -> assertion
+  = fun show_a equiv a_expected -> function
+    | `Just a_actual -> if equiv a_expected a_actual then pass else (
+      Printf.printf "not equivalent:\nexpected:\n%s\n\nactual:\n%s\n"
+        (show_a a_expected)
+        (show_a a_actual);
       fail "not equivalent"
     )
-    | `Not  t2 -> if equiv t1 t2 then fail "equivalent" else pass
+    | `Not  a_actual -> if equiv a_expected a_actual then fail "equivalent" else pass

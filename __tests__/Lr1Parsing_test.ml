@@ -91,6 +91,9 @@ module Grammar2 : GRAMMAR = struct
   }
 end
 
+type lookahead_item_sets =
+  (LrParsing.lookahead_item_set, LrParsing.LookaheadItemSetCmp.identity) Belt.Set.t
+
 let () = describe "LrParsing" (fun () ->
 
   (* TODO: separate Lr0 / Lr1 modules *)
@@ -104,8 +107,9 @@ let () = describe "LrParsing" (fun () ->
     }
   in
 
-  let lookahead_item_set_set =
-    Belt.Set.fromArray  ~id:(module LrParsing.LookaheadItemSetCmp)
+  let lookahead_item_set_set
+    : LrParsing.lookahead_item_set array -> lookahead_item_sets =
+    Belt.Set.fromArray ~id:(module LrParsing.LookaheadItemSetCmp)
   in
 
   (* CPTT Fig 4.41 *)
@@ -158,7 +162,7 @@ let () = describe "LrParsing" (fun () ->
       (Grammar1LR.mutable_lookahead_lr0_items
         |. Belt.MutableSet.toArray
         |. lookahead_item_set_set
-    ) |> toBeEquivalent Belt.Set.eq
+    ) |> toBeEquivalent (fun _ -> "TODO: show lookahead_lr0_items") Belt.Set.eq
       (gram1_lr1_config_sets
         |. Belt.Array.map (fun config_set -> config_set.kernel_items)
         |. lookahead_item_set_set
@@ -171,7 +175,7 @@ let () = describe "LrParsing" (fun () ->
         |. Belt.MutableSet.toArray
         |. Belt.Array.map Grammar1LR.lr1_closure
         |. lookahead_item_set_set
-    ) |> toBeEquivalent Belt.Set.eq
+    ) |> toBeEquivalent (fun _ -> "TODO: show closures") Belt.Set.eq
       (gram1_lr1_config_sets
         |. Belt.Array.map simplify_lookahead_config_set
         |. lookahead_item_set_set
@@ -217,7 +221,7 @@ let () = describe "LrParsing" (fun () ->
 
   testAll "grammar 2 lr0 items" [
     expect actual_gram2_lr0_kernels
-      |> toBeEquivalent Belt.Set.eq (mk_set
+      |> toBeEquivalent (fun _ -> "TODO: show lr0 kernels") Belt.Set.eq (mk_set
         (Belt.Array.map expected_gram2_lr0_kernels (fun (_, k) -> k)))
   ] Util.id;
 
@@ -259,12 +263,13 @@ let () = describe "LrParsing" (fun () ->
       |]
     in
     expect (Grammar2LR.lr1_closure lookahead_item_set)
-      |> toBeEquivalent S.eq expected_closure;
+      |> toBeEquivalent (fun _ -> "TODO: show lr_closure") S.eq expected_closure;
   );
 
   let { spontaneous_generation; propagation } =
-    Grammar2LR.generate_lookaheads (lookahead_item_set_from_array [| { item = mk_item' 0 0; lookahead_set = SI.fromArray [| 4 |] } |])
-      @@ mk_item' 0 0
+    Grammar2LR.generate_lookaheads
+      (SI.fromArray [| mk_item' 0 0 |])
+      (mk_item' 0 0)
   in
   let expected_propagation =
     [| book_state.(1), mk_item' 0 1; (* S' -> S . *)
@@ -309,11 +314,11 @@ let () = describe "LrParsing" (fun () ->
   describe "generate_lookaheads" (fun () ->
     test "propagation" (fun () ->
       expect propagation
-        |> toBeEquivalent equivalent_propagation expected_propagation
+        |> toBeEquivalent string_of_propagation equivalent_propagation expected_propagation
     );
     test "spontaneous_generation" (fun () ->
       expect spontaneous_generation
-        |> toBeEquivalent Belt.Set.eq expected_generation
+        |> toBeEquivalent Grammar2LR.string_of_lookahead_item_set Belt.Set.eq expected_generation
     );
   );
 
@@ -348,10 +353,27 @@ let () = describe "LrParsing" (fun () ->
     |. Belt.Set.fromArray ~id:(module MutableLookaheadItemSetCmp)
   in
 
-  (* Printf.printf "lalr1_items_set: %s" (string *)
+  let string_of_lalr1_items_set = fun lalr1_items_set -> lalr1_items_set
+    |. Belt.Set.toArray
+    |. Belt.Array.map (fun mutable_lookahead_item_set -> mutable_lookahead_item_set
+      |. M.toArray
+      |. Belt.Array.map (fun (item, mutable_lookahead) ->
+        let lookahead_set = mutable_lookahead
+          |. Belt.MutableSet.Int.toArray
+          |. SI.fromArray
+        in
+        let lookahead_item = { item; lookahead_set } in
+        Grammar2LR.string_of_lookahead_item lookahead_item
+      )
+      |. Js.Array2.joinWith "\n"
+    )
+    |. Js.Array2.joinWith "\n\n"
+  in
 
   testAll "mutable_lalr1_items" [
-    (* expect lalr1_items_set |> toBeEquivalent Belt.Set.eq expected_lalr1_items *)
+    expect lalr1_items_set
+      |> toBeEquivalent string_of_lalr1_items_set Belt.Set.eq
+        expected_lalr1_items
   ] Util.id;
 
 )

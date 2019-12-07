@@ -147,7 +147,7 @@ let _ = describe "ConcreteSyntax" (fun () ->
           |> to_ast language
           |. Belt.Result.map (of_ast language concrete arith)
           |. Belt.Result.getExn
-        ) |> toBeEquivalent equivalent tree
+        ) |> toBeEquivalent to_string equivalent tree
       in
 
       let expect_round_trip_ast tm = expect (tm
