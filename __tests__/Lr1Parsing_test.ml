@@ -20,6 +20,13 @@ module PropagationCmp = Belt.Id.MakeComparable(struct
     | c -> c
 end)
 
+module GenerationCmp = Belt.Id.MakeComparable(struct
+  type t = LrParsing.state * LrParsing.lookahead_item
+  let cmp (s1, i1) (s2, i2) = match Pervasives.compare s1 s2 with
+    | 0 -> Pervasives.compare i1 i2
+    | c -> c
+end)
+
 module Grammar1 : GRAMMAR = struct
   let grammar = {
     nonterminals = M.fromArray
@@ -112,6 +119,7 @@ let () = describe "LrParsing" (fun () ->
     Belt.Set.fromArray ~id:(module LrParsing.LookaheadItemSetCmp)
   in
 
+  (*
   (* CPTT Fig 4.41 *)
   let gram1_lr1_config_sets : lookahead_configuration_set array = [|
     mk_config_set (* 0 *)
@@ -181,6 +189,7 @@ let () = describe "LrParsing" (fun () ->
         |. lookahead_item_set_set
       );
   ] Util.id;
+  *)
 
   let mk_item_set pruduction_num position =
     SI.fromArray [| mk_item' pruduction_num position |]
@@ -208,6 +217,7 @@ let () = describe "LrParsing" (fun () ->
     = Belt.Set.fromArray ~id:(module LrParsing.ComparableIntSet)
   in
 
+  (*
   let actual_gram2_lr0_kernels : item_set_set
     = Grammar2LR.lookahead_lr0_items
       |. Belt.Map.Int.valuesToArray
@@ -224,6 +234,7 @@ let () = describe "LrParsing" (fun () ->
       |> toBeEquivalent (fun _ -> "TODO: show lr0 kernels") Belt.Set.eq (mk_set
         (Belt.Array.map expected_gram2_lr0_kernels (fun (_, k) -> k)))
   ] Util.id;
+  *)
 
   let book_state_mapping = expected_gram2_lr0_kernels
     |. Belt.Array.map
@@ -281,11 +292,11 @@ let () = describe "LrParsing" (fun () ->
     |]
   in
 
-  let expected_generation = lookahead_item_set_from_array
+  let expected_generation =
     [| (* L -> * . R, = *)
-       { item = mk_item' 3 1; lookahead_set = SI.fromArray [| 1 |] };
+       book_state.(4), { item = mk_item' 3 1; lookahead_set = SI.fromArray [| 1 |] };
        (* L -> id ., = *)
-       { item = mk_item' 4 1; lookahead_set = SI.fromArray [| 1 |] };
+       book_state.(5), { item = mk_item' 4 1; lookahead_set = SI.fromArray [| 1 |] };
     |]
   in
 
@@ -295,10 +306,10 @@ let () = describe "LrParsing" (fun () ->
     |. Js.Array2.joinWith "\n"
   in
 
+  (*
   Printf.printf "expected_propagation\n%s\n" (string_of_propagation expected_propagation);
   Printf.printf "propagation\n%s\n" (string_of_propagation propagation);
 
-  (*
   Printf.printf "spontaneous_generation:\n%s\n"
     (Grammar2LR.string_of_lookahead_item_set spontaneous_generation);
   Printf.printf "expected_generation:\n%s\n"
@@ -311,6 +322,20 @@ let () = describe "LrParsing" (fun () ->
       (Belt.Set.fromArray ~id:(module PropagationCmp) p2)
   in
 
+  let equivalent_generation : (state * lookahead_item) array -> (state * lookahead_item) array -> bool
+    = fun g1 g2 -> Belt.Set.eq
+      (Belt.Set.fromArray ~id:(module GenerationCmp) g1)
+      (Belt.Set.fromArray ~id:(module GenerationCmp) g2)
+  in
+
+  let string_of_generation : (state * lookahead_item) array -> string
+    = fun generation -> generation
+      |. Belt.Array.map (fun (state, lookahead_item) ->
+        Printf.sprintf "%n: %s" state (Grammar2LR.string_of_lookahead_item lookahead_item)
+      )
+      |. Js.Array2.joinWith "\n"
+  in
+
   describe "generate_lookaheads" (fun () ->
     test "propagation" (fun () ->
       expect propagation
@@ -318,7 +343,7 @@ let () = describe "LrParsing" (fun () ->
     );
     test "spontaneous_generation" (fun () ->
       expect spontaneous_generation
-        |> toBeEquivalent Grammar2LR.string_of_lookahead_item_set Belt.Set.eq expected_generation
+        |> toBeEquivalent string_of_generation equivalent_generation expected_generation
     );
   );
 
