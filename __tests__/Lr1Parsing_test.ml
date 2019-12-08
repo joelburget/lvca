@@ -1,6 +1,7 @@
 open Jest
 open Expect
 open LrParsing
+open LalrParsing
 open TestUtil
 module M = Belt.Map.Int
 module MS = Belt.Map.String
@@ -9,7 +10,7 @@ module MStack = Belt.MutableStack
 module MQueue = Belt.MutableQueue
 
 module MutableLookaheadItemSetCmp = Belt.Id.MakeComparable(struct
-  type t = LrParsing.mutable_lookahead_item_set
+  type t = mutable_lookahead_item_set
   let cmp x y = M.cmp x y Belt.MutableSet.Int.cmp
 end)
 
@@ -21,7 +22,7 @@ module PropagationCmp = Belt.Id.MakeComparable(struct
 end)
 
 module GenerationCmp = Belt.Id.MakeComparable(struct
-  type t = LrParsing.state * LrParsing.lookahead_item
+  type t = LrParsing.state * lookahead_item
   let cmp (s1, i1) (s2, i2) = match Pervasives.compare s1 s2 with
     | 0 -> Pervasives.compare i1 i2
     | c -> c
@@ -99,14 +100,14 @@ module Grammar2 : GRAMMAR = struct
 end
 
 type lookahead_item_sets =
-  (LrParsing.lookahead_item_set, LrParsing.LookaheadItemSetCmp.identity) Belt.Set.t
+  (lookahead_item_set, LookaheadItemSetCmp.identity) Belt.Set.t
 
 let () = describe "LrParsing" (fun () ->
 
   (* TODO: separate Lr0 / Lr1 modules *)
   let module Grammar1LR = Lr0(Grammar1) in
   let module Grammar2LR = Lr0(Grammar2) in
-  let module Grammar2Lalr = LalrParsing.Lalr1(Grammar2) in
+  let module Grammar2Lalr = Lalr1(Grammar2) in
 
   let mk_arr items = S.fromArray items ~id:(module LookaheadItemCmp) in
   let mk_config_set kernel_items nonkernel_items =
@@ -116,8 +117,8 @@ let () = describe "LrParsing" (fun () ->
   in
 
   let lookahead_item_set_set
-    : LrParsing.lookahead_item_set array -> lookahead_item_sets =
-    Belt.Set.fromArray ~id:(module LrParsing.LookaheadItemSetCmp)
+    : lookahead_item_set array -> lookahead_item_sets =
+    Belt.Set.fromArray ~id:(module LookaheadItemSetCmp)
   in
 
   (*
@@ -332,7 +333,7 @@ let () = describe "LrParsing" (fun () ->
   let string_of_generation : (state * lookahead_item) array -> string
     = fun generation -> generation
       |. Belt.Array.map (fun (state, lookahead_item) ->
-        Printf.sprintf "%n: %s" state (Grammar2LR.string_of_lookahead_item lookahead_item)
+        Printf.sprintf "%n: %s" state (Grammar2Lalr.string_of_lookahead_item lookahead_item)
       )
       |. Js.Array2.joinWith "\n"
   in
@@ -353,7 +354,7 @@ let () = describe "LrParsing" (fun () ->
   in
 
   let expected_lalr1_items
-    : (LrParsing.mutable_lookahead_item_set, MutableLookaheadItemSetCmp.identity) Belt.Set.t
+    : (mutable_lookahead_item_set, MutableLookaheadItemSetCmp.identity) Belt.Set.t
     = Belt.Set.fromArray
       ~id:(module MutableLookaheadItemSetCmp)
       [| mk (mk_item' 0 0) [| 0 |];
@@ -373,7 +374,7 @@ let () = describe "LrParsing" (fun () ->
   in
 
   let lalr1_items_set
-    : (LrParsing.mutable_lookahead_item_set, MutableLookaheadItemSetCmp.identity) Belt.Set.t
+    : (mutable_lookahead_item_set, MutableLookaheadItemSetCmp.identity) Belt.Set.t
     = Grammar2Lalr.mutable_lalr1_items
     |. Belt.Map.Int.valuesToArray
     |. Belt.Set.fromArray ~id:(module MutableLookaheadItemSetCmp)
@@ -389,7 +390,7 @@ let () = describe "LrParsing" (fun () ->
           |. SI.fromArray
         in
         let lookahead_item = { item; lookahead_set } in
-        Grammar2LR.string_of_lookahead_item lookahead_item
+        Grammar2Lalr.string_of_lookahead_item lookahead_item
       )
       |. Js.Array2.joinWith "\n"
     )

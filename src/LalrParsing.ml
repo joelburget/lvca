@@ -1,14 +1,87 @@
 open LrParsing
 
+type lookahead_item =
+  { item : item;
+    (* the set of terminals that can follow this item *)
+    lookahead_set : SI.t;
+  }
+
+module LookaheadItemCmp = Belt.Id.MakeComparable(struct
+  type t = lookahead_item
+  let cmp { item = i1; lookahead_set = s1 } { item = i2; lookahead_set = s2 } =
+    match Pervasives.compare i1 i2 with
+      | 0 -> SI.cmp s1 s2
+      | c -> c
+end)
+
+module LookaheadClosureItemCmp = Belt.Id.MakeComparable(struct
+  type t = nonterminal_num * terminal_num
+  let cmp = Pervasives.compare
+end)
+
+type lookahead_item_set = (lookahead_item, LookaheadItemCmp.identity) S.t
+
+let lookahead_item_set_from_array : lookahead_item array -> lookahead_item_set
+  = S.fromArray ~id:(module LookaheadItemCmp)
+
+type lookahead_configuration_set =
+  { kernel_items : lookahead_item_set;    (* set of items *)
+    nonkernel_items : lookahead_item_set; (* set of nonterminals *)
+  }
+
+let simplify_lookahead_config_set
+  : lookahead_configuration_set -> lookahead_item_set
+  = fun { kernel_items; nonkernel_items } ->
+    S.union kernel_items nonkernel_items
+
+type lookahead_propagation =
+  { (** A set of items with lookahead that were generated *)
+    spontaneous_generation : (state * lookahead_item) array;
+    (** A set of kernel items where the lookahead propagates *)
+    propagation : (state * item) array;
+  }
+
+module LookaheadItemSetCmp = Belt.Id.MakeComparable(struct
+  type t = lookahead_item_set
+  let cmp = S.cmp
+end)
+
+(* A mutable set of lookahead item sets. This is used to represent the set of
+ * LR(1) items. Each set represents a set of encoded items with lookaheads.
+ *)
+type mutable_lookahead_item_sets =
+  (lookahead_item_set, LookaheadItemSetCmp.identity) MSet.t
+
+(* Set of items with mutable lookahead *)
+type mutable_lookahead_item_set = Belt.MutableSet.Int.t M.t
+
 module Lalr1 (G : GRAMMAR) = struct
 
   module Lr0' = Lr0(G)
 
   let (string_of_item, production_map, first_set, nonterminal_production_map,
     number_of_terminals, string_of_production, item_set_to_state,
-    lr0_goto_kernel, lr0_items) = Lr0'.(string_of_item, production_map,
+    lr0_goto_kernel, lr0_items, terminal_names) = Lr0'.(string_of_item, production_map,
     first_set, nonterminal_production_map, number_of_terminals,
-    string_of_production, item_set_to_state, lr0_goto_kernel, lr0_items)
+    string_of_production, item_set_to_state, lr0_goto_kernel, lr0_items, terminal_names)
+
+  let string_of_lookahead_set = fun lookahead_set -> lookahead_set
+    |. SI.toArray
+    |. Belt.Array.map
+      (fun t_num -> Belt.Map.Int.getWithDefault terminal_names t_num "#")
+    |. Js.Array2.joinWith "/"
+
+  (* TODO: move to module *)
+  let string_of_lookahead_item = fun { item; lookahead_set } ->
+    Printf.sprintf "[%s, %s]"
+      (string_of_item item)
+      (string_of_lookahead_set lookahead_set)
+
+  let string_of_lookahead_item_set = fun lookahead_item_set ->
+    lookahead_item_set
+      |. S.toArray
+      |. Belt.Array.map string_of_lookahead_item
+      |. Js.Array2.joinWith "\n"
 
   let lr1_closure' : lookahead_item_set -> lookahead_configuration_set
     = fun initial_items ->
