@@ -106,6 +106,7 @@ let () = describe "LrParsing" (fun () ->
   (* TODO: separate Lr0 / Lr1 modules *)
   let module Grammar1LR = Lr0(Grammar1) in
   let module Grammar2LR = Lr0(Grammar2) in
+  let module Grammar2Lalr = LalrParsing.Lalr1(Grammar2) in
 
   let mk_arr items = S.fromArray items ~id:(module LookaheadItemCmp) in
   let mk_config_set kernel_items nonkernel_items =
@@ -273,12 +274,12 @@ let () = describe "LrParsing" (fun () ->
         { item = mk_item' 5 0; lookahead_set = SI.fromArray [| no_terminal_num |] };
       |]
     in
-    expect (Grammar2LR.lr1_closure lookahead_item_set)
+    expect (Grammar2Lalr.lr1_closure lookahead_item_set)
       |> toBeEquivalent (fun _ -> "TODO: show lr_closure") S.eq expected_closure;
   );
 
   let { spontaneous_generation; propagation } =
-    Grammar2LR.generate_lookaheads
+    Grammar2Lalr.generate_lookaheads
       (SI.fromArray [| mk_item' 0 0 |])
       (mk_item' 0 0)
   in
@@ -373,7 +374,7 @@ let () = describe "LrParsing" (fun () ->
 
   let lalr1_items_set
     : (LrParsing.mutable_lookahead_item_set, MutableLookaheadItemSetCmp.identity) Belt.Set.t
-    = Grammar2LR.mutable_lalr1_items
+    = Grammar2Lalr.mutable_lalr1_items
     |. Belt.Map.Int.valuesToArray
     |. Belt.Set.fromArray ~id:(module MutableLookaheadItemSetCmp)
   in
