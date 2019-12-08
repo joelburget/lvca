@@ -59,11 +59,29 @@ module Lalr1 (G : GRAMMAR) = struct
 
   module Lr0' = Lr0(G)
 
-  let (string_of_item, production_map, first_set, nonterminal_production_map,
-    number_of_terminals, string_of_production, item_set_to_state,
-    lr0_goto_kernel, lr0_items, terminal_names) = Lr0'.(string_of_item, production_map,
-    first_set, nonterminal_production_map, number_of_terminals,
-    string_of_production, item_set_to_state, lr0_goto_kernel, lr0_items, terminal_names)
+  let (
+    string_of_item,
+    production_map,
+    first_set,
+    nonterminal_production_map,
+    number_of_terminals,
+    string_of_production,
+    item_set_to_state,
+    lr0_goto_kernel,
+    lr0_items,
+    terminal_names
+  ) = Lr0'.(
+    string_of_item,
+    production_map,
+    first_set,
+    nonterminal_production_map,
+    number_of_terminals,
+    string_of_production,
+    item_set_to_state,
+    lr0_goto_kernel,
+    lr0_items,
+    terminal_names
+  )
 
   let string_of_lookahead_set = fun lookahead_set -> lookahead_set
     |. SI.toArray
