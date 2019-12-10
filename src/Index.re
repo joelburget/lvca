@@ -26,9 +26,9 @@ let read_and_eval = (abstract_syntax, concrete, statics, dynamics, input)
 
     let { Types.imports, language } = abstract_syntax;
 
-    let (astResult, abtResult) = switch (ConcreteSyntax.parse(concrete, "TODO", input)) {
+    let (astResult, abtResult) = switch (ConcreteSyntax.parse(concrete, "tm", input)) {
     | Ok(tree)
-    => switch (ConcreteSyntax.to_ast(language, tree)) {
+    => switch (ConcreteSyntax.to_ast(language, concrete, "tm", tree)) {
       | Ok(ast)
       => (Result.Ok(ast), Binding.DeBruijn.from_nominal(ast))
       | Error(msg)

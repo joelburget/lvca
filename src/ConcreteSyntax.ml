@@ -1,4 +1,3 @@
-module BL = Belt.List
 module BA = Belt.Array
 module Nominal = Binding.Nominal
 open Types
@@ -56,9 +55,9 @@ and capture =
  * on the leftmost newline.
  *)
 and tree =
-  { sort_name       : sort_name;
-    node_type       : node_type;
-    children        : capture array;
+  { sort_name : sort_name;
+    node_type : node_type;
+    children  : capture array;
   }
 
 (* tree equality mod trivia *)
@@ -83,7 +82,7 @@ let find_operator_match
         | OperatorPattern (opname', _) -> opname' = opname
         | ParenthesizingPattern _  -> false
       )
-      (BL.flatten matches)
+      (Belt.List.flatten matches)
     in
     match maybe_match with
       | Some m -> m
@@ -102,7 +101,7 @@ let rec find_subtm' slot_num token_ix scopes operator_match_pattern
       NumberedScopePattern (binder_nums, body_num) :: pattern_scopes
     ->
       let binder_matches = binders
-        |. BL.zip binder_nums
+        |. Belt.List.zip binder_nums
         |> find (fun (_, num) -> num = token_ix)
       in
       (match binder_matches with
@@ -171,7 +170,7 @@ let rec token_usage
   : operator_match_pattern -> tokens_info
   = function
   | OperatorPattern (_, scope_patterns) -> scope_patterns
-    |. BL.reduce empty_tokens_info
+    |. Belt.List.reduce empty_tokens_info
       (fun accum scope_pat ->
         accumulate_tokens accum (scope_token_usage scope_pat)
       )
@@ -182,18 +181,19 @@ let rec token_usage
 
 and scope_token_usage (NumberedScopePattern (binder_captures, body_capture))
   = (body_capture :: binder_captures)
-    |. BL.reduce empty_tokens_info (fun accum tok -> accumulate_tokens accum
-        { captured_tokens = SI.fromArray [| tok |];
-          repeated_tokens = SI.empty;
-        }
-    )
+    |. Belt.List.reduce empty_tokens_info
+      (fun accum tok -> accumulate_tokens accum
+          { captured_tokens = SI.fromArray [| tok |];
+            repeated_tokens = SI.empty;
+          }
+      )
 
 let check_operator_match_validity
   : nonterminal_token list -> operator_match_pattern
   -> MSI.t * SI.t * (int * nonterminal_token) list
   = fun token_list term_pat ->
     let numbered_toks = token_list
-      |. BL.toArray
+      |. Belt.List.toArray
       |. BA.mapWithIndex (fun i tok -> i, tok)
       |. MMI.fromArray
     in
@@ -229,8 +229,8 @@ let check_description_validity { terminal_rules; sort_rules } =
   try
     sort_rules
       |. Belt.Map.String.forEach (fun _i (SortRule { operator_rules }) ->
-        let operator_maches = BL.flatten operator_rules in
-        BL.forEach operator_maches (fun _i
+        let operator_maches = Belt.List.flatten operator_rules in
+        Belt.List.forEach operator_maches (fun _i
           (OperatorMatch { tokens; operator_match_pattern }) ->
           let non_existent_tokens, duplicate_captures, uncaptured_tokens =
             check_operator_match_validity tokens operator_match_pattern
@@ -253,7 +253,7 @@ let check_description_validity { terminal_rules; sort_rules } =
             raise (CheckValidExn (InvalidGrammar
               ("non-existent tokens mentioned: " ^ tok_names)));
           );
-          BL.map uncaptured_tokens (fun (_i, tok) -> match tok with
+          Belt.List.map uncaptured_tokens (fun (_i, tok) -> match tok with
             | NonterminalName name -> raise (CheckValidExn
               (InvalidGrammar ("uncaptured nonterminal: " ^ name)))
             | TerminalName nt_name -> (match MS.get terminal_rules' nt_name with
@@ -296,7 +296,7 @@ let mk_terminal_capture content =
 
 let rec pattern_to_tree : sort_name -> Pattern.t -> tree
   = fun sort_name pat -> match pat with
-  | Var name -> mk_tree sort_name Var [||]
+  | Var name -> mk_tree sort_name Var [| (* XXX shouldn't something go here? *) |]
   | Operator (name, pats) -> mk_tree sort_name (Operator name)
     (pats
       |. Belt.List.toArray
@@ -357,15 +357,15 @@ let rec of_ast
       * if it's a terminal, print it
       * if it's a nonterminal, look up the subterm (by token number)
     *)
-    let children = BL.(operator_match_tokens
-      |. mapWithIndex (fun token_ix token -> token_ix, token)
-      |. keep (fun (_, tok) -> match tok with
+    let children = Belt.List.(operator_match_tokens
+      |. keep (function
         | Underscore _n -> false
         | _             -> true
       )
+      |. mapWithIndex (fun token_ix token -> token_ix, token)
       |. toArray
       )
-      |. BA.map (fun (token_ix, token) ->
+      |. Belt.Array.map (fun (token_ix, token) ->
 
       let token_ix' = token_ix + 1 in (* switch from 0- to 1-based indexing *)
       match find_subtm' token_ix', token with
@@ -391,7 +391,7 @@ let rec of_ast
            in
            let valence = get_option'
                ("of_ast: failed to get term " ^ string_of_int tm_ix) @@
-             BL.get valences tm_ix
+             Belt.List.get valences tm_ix
            in
            let new_sort = (match valence with
              | FixedValence    (_, new_sort)
@@ -413,8 +413,7 @@ let rec of_ast
            (match Regex.canonical_representative terminal_rule with
              | Some str -> mk_terminal_capture str
              | None ->
-                 Js.log ("re: " ^ Regex.to_string terminal_rule);
-                 raise (CantEmitTokenRegex (name, terminal_rule))
+               raise (CantEmitTokenRegex (name, terminal_rule))
            )
 
            (*
@@ -431,27 +430,45 @@ let rec of_ast
          *)
         | _, Underscore _ -> assert false
 
+        | FoundBinder (Var var_name), TerminalName terminal_name
+        -> NonterminalCapture (mk_tree sort_name Var
+          [| mk_terminal_capture var_name |])
+
         | FoundBinder pattern, TerminalName name
         -> raise (BadRules
           (Printf.sprintf
-            "binder (%s) found, terminal name: %s"
+            "of_ast: binder (%s) found in match pattern %s, terminal name: %s"
             (Pattern.string_of_pattern pattern)
+            (string_of_operator_match_pattern operator_match_pattern)
             name
         ))
 
         | NotFound, NonterminalName name
-        -> raise (BadRules ("subterm not found, nonterminal name: " ^ name))
+        -> raise (BadRules (Printf.sprintf
+          "of_ast: subterm %n not found in match pattern %s, nonterminal name: %s"
+          token_ix'
+          (string_of_operator_match_pattern operator_match_pattern)
+          name
+        ))
     ) in
 
     mk_tree sort_name (Operator op_name) children
 
   | _, Nominal.Var name
-  -> mk_tree sort_name Var [| mk_terminal_capture name |]
+  ->
+    (* variable rule *)
+    let SortRule { variable } = sort_rules |. Belt.Map.String.getExn sort_name
+    in
+    (match variable with
+      | None -> failwith
+        ("TODO: no variable rule available for sort " ^ sort_name)
+      | Some { tokens; var_capture }
+      -> mk_tree sort_name Var [| mk_terminal_capture name |])
 
   | SortAp ("sequence", [|sort|]), Nominal.Sequence tms ->
     let children = tms
       |> List.map (fun tm -> NonterminalCapture (of_ast lang rules sort tm))
-      |> BL.toArray
+      |> Belt.List.toArray
     in
     mk_tree sort_name Sequence children
 
@@ -472,7 +489,7 @@ let rec to_string { children } = children
     | NonterminalCapture nonterminal_capture
     -> to_string nonterminal_capture
     )
-  |> BL.fromArray
+  |> Belt.List.fromArray
   |> String.concat ""
 
 let rec remove_spaces : tree -> tree
@@ -497,7 +514,12 @@ let prim_to_ast : prim_ty -> string -> primitive
         _ -> raise (ToAstError "failed to read integer literal")
 
 (* Convert a concrete tree to an AST. We ignore trivia. *)
-let rec tree_to_ast lang tree : Nominal.term
+let rec tree_to_ast
+  (Language sorts as lang)
+  ({ sort_rules } as rules)
+  sort_name
+  tree
+  : Nominal.term
     = match tree.node_type, tree.children with
     | Var, [| TerminalCapture { content = name } |]
     -> Var name
@@ -507,7 +529,7 @@ let rec tree_to_ast lang tree : Nominal.term
           (function
             | TerminalCapture _ -> raise @@
               ToAstError "Unexpected terminal found in a sequence"
-            | NonterminalCapture child -> tree_to_ast lang child
+            | NonterminalCapture child -> tree_to_ast lang rules sort_name child
           )
         |. Belt.List.fromArray
       in
@@ -516,32 +538,71 @@ let rec tree_to_ast lang tree : Nominal.term
     -> Primitive (prim_to_ast prim_ty content)
 
     (* TODO: check validity *)
-    | Operator op_name, children ->
-      let children' = children
-        |. BA.keepMap (function
-          | TerminalCapture { content } -> None
-          | NonterminalCapture child    -> Some
-            (Nominal.Scope ([], tree_to_ast lang child))
-            (* XXX *)
-            (* (scope_to_ast lang child) *)
-        )
-        |. Belt.List.fromArray
-      in Operator (op_name, children')
+    | Operator op_name, tree_children ->
+      let SortRule { operator_rules } = get_option'
+        ("of_ast: failed to get sort " ^ sort_name)
+        (MS.get sort_rules sort_name)
+      in
 
-    | Parenthesizing, children ->
-      Js.log children;
-      let children' = children
-        |. Belt.Array.keepMap (function
-          | TerminalCapture _ -> None
-          | NonterminalCapture child -> Some
-            (Nominal.Scope ([], tree_to_ast lang child))
-            (* XXX *)
-            (* (scope_to_ast lang child) *)
+      let OperatorMatch { operator_match_pattern }
+        (* TODO: variable rule? *)
+        = find_operator_match operator_rules op_name
+      in
+
+      let scope_patterns = match operator_match_pattern with
+        | ParenthesizingPattern _ -> failwith "TODO: error 1"
+        | OperatorPattern(pat_op_name, scope_patterns) ->
+          assert (pat_op_name = op_name);
+          scope_patterns
+      in
+
+      (* Note: have to be careful to re-index capture numbers from 1-based to
+       * 0-based *)
+      let ast_children = scope_patterns
+        |. Belt.List.map (fun (NumberedScopePattern (var_caps, body_cap)) ->
+          let binders = var_caps
+            |. Belt.List.map (fun cap_num ->
+              match Belt.Array.get tree_children (cap_num - 1) with
+              | Some cap -> capture_to_pat cap
+              | None -> failwith "TODO: error 2"
+            )
+          in
+          let body = match Belt.Array.get tree_children (body_cap - 1) with
+            | Some (NonterminalCapture tree) ->
+              tree_to_ast lang rules sort_name (* XXX sort name *) tree
+            | Some (TerminalCapture { content }) -> failwith
+              (Printf.sprintf
+                "Unexpected terminal capture (%s) in tree (%s), capture %n, match pattern %s"
+                content
+                (to_string tree)
+                body_cap
+                (string_of_operator_match_pattern operator_match_pattern)
+              )
+            | None -> failwith
+              (Printf.sprintf
+                "Failed to find capture %n in tree (%s), match pattern %s"
+                body_cap
+                (to_string tree)
+                (string_of_operator_match_pattern operator_match_pattern)
+              )
+          in
+          Nominal.Scope(binders, body)
         )
       in
-      Js.log children';
+
+      Operator (op_name, ast_children)
+
+    | Parenthesizing, children ->
+      let children' = children
+        |. Belt.Array.keepMap (function
+          | NonterminalCapture child
+          -> Some (Nominal.Scope ([], tree_to_ast lang rules sort_name child))
+          | TerminalCapture _ -> None
+        )
+      in
       (match children' with
-        [| Scope ([], child) |] -> child
+        | [| Scope ([], child) |] -> child
+        | _ -> failwith "TODO: error 5"
       )
 
     | Primitive _, _
@@ -550,13 +611,15 @@ let rec tree_to_ast lang tree : Nominal.term
 
 and capture_to_pat : capture -> Pattern.t
   = function
-    | TerminalCapture { content = name } -> raise @@
-      ToAstError "Unexpected bare terminal capture in capture_to_pat"
-    | NonterminalCapture { sort_name; node_type; children } ->
+    | TerminalCapture { content } -> raise @@ ToAstError (Printf.sprintf
+      "Unexpected bare terminal capture (%s) in capture_to_pat"
+      content
+    )
+    | NonterminalCapture { node_type; children } ->
       match node_type with
       | Operator op_name ->
         let children' = children
-          |. BA.keepMap (fun cap -> match cap with
+          |. Belt.Array.keepMap (fun cap -> match cap with
             | TerminalCapture { content } -> None
             | NonterminalCapture child    -> Some (capture_to_pat cap)
           )
@@ -580,27 +643,32 @@ and capture_to_pat : capture -> Pattern.t
           ToAstError "Unexpected primitive capture in capture_to_pat"
       )
 
-and scope_to_ast lang ({ children } as tree) : Nominal.scope
-  = match children |. BA.reverse |. BL.fromArray with
+and scope_to_ast lang rules sort valences ({ children } as tree) : Nominal.scope
+  = match children |. BA.reverse |. Belt.List.fromArray with
   | body :: binders ->
-    let body' = tree_to_ast lang {tree with children = [| body |]} in
+    let body' = tree_to_ast lang rules sort {tree with children = [| body |]} in
     let binders' = binders
       |. Belt.List.map capture_to_pat
-      |. List.rev
+      |. Belt.List.reverse
     in
     Scope (binders', body')
   | [] -> raise (ToAstError "scope_to_ast called on no children")
 
-let to_ast : language -> tree -> (Nominal.term, string) Belt.Result.t
-  = fun lang tree ->
+let to_ast
+  : language
+  -> ConcreteSyntaxDescription.t
+  -> string
+  -> tree
+  -> (Nominal.term, string) Belt.Result.t
+  = fun lang rules sort tree ->
     try
-      Ok (tree_to_ast lang tree)
+      Ok (tree_to_ast lang rules sort tree)
     with
       ToAstError msg -> Error msg
 
-(* TODO: now that we're no longer using Jison we can remove NonMatchingFixities
+(* All infix operators of the same priority must have the same fixity.
+ * TODO: is this a restriction that still makes sense?
  *)
-exception NonMatchingFixities of string * string list
 exception MixedFixities of bool * int
 
 (* Produce an augmented grammar *)
@@ -611,8 +679,8 @@ let to_grammar
     let terminal_key_arr = BA.map terminal_rules (fun (k, _) -> k) in
     let terminal_nums = terminal_key_arr
       (* start other terminals (besides $ and SPACE) at 2 *)
-      |. BA.mapWithIndex (fun i name -> name, i + 2)
-      |. BA.concat [| "$", 0; "SPACE", 1 |]
+      |. Belt.Array.mapWithIndex (fun i name -> name, i + 2)
+      |. Belt.Array.concat [| "$", 0; "SPACE", 1 |]
     in
     let terminal_nums_map = MS.fromArray terminal_nums in
 
@@ -630,36 +698,43 @@ let to_grammar
     let prod_num = ref 1 in
     let production_rule_map = Belt.MutableMap.Int.make () in
 
+    (* Spaces are removed by the parsing step, so we need to remove them from
+     * our token list. *)
+    let non_space_tokens : nonterminal_token -> LrParsing.symbol option
+      = function
+      | TerminalName tn
+      -> Some (LrParsing.Terminal (terminal_nums_map
+        |. MS.get tn
+        |> get_option' ("to_grammar: failed to get " ^ tn)
+      ))
+      | NonterminalName ntn
+      -> Some (Nonterminal (nonterminal_names_map
+        |. MS.get ntn
+        |> get_option' ("to_grammar: failed to get " ^ ntn)
+      ))
+      | Underscore _ -> None
+    in
+
     let nonterminals = sort_rules
       |. MS.valuesToArray
       |. BA.mapWithIndex (fun i (SortRule { operator_rules; variable }) ->
         let productions : LrParsing.symbol list list = operator_rules
-          |. BL.map (fun operator_level -> operator_level |.
-            BL.map (fun (OperatorMatch ({ tokens } as rule)) ->
+          |. Belt.List.map (fun operator_level -> operator_level |.
+            Belt.List.map (fun (OperatorMatch ({ tokens } as rule)) ->
               Belt.MutableMap.Int.set production_rule_map !prod_num rule;
               prod_num := !prod_num + 1;
-              tokens |. BL.keepMap (function
-                | TerminalName tn
-                -> Some (LrParsing.Terminal (terminal_nums_map
-                  |. MS.get tn
-                  |> get_option'
-                    ("to_grammar: failed to get " ^ tn))
-                )
-                | NonterminalName ntn
-                -> Some (Nonterminal (nonterminal_names_map
-                  |. MS.get ntn
-                  |> get_option'
-                    ("to_grammar: failed to get " ^ ntn))
-                )
-                | Underscore _ -> None
-                (* | Underscore n -> Nonterminal 1 *)
-              )
+              Belt.List.keepMap tokens non_space_tokens
             )
           )
           (* TODO: temporary pending precedence parsing *)
-          |. BL.flatten
+          |. Belt.List.flatten
         in
-        i + 1, { LrParsing.productions = productions }
+        let productions' = match variable with
+          | None -> productions
+          | Some { tokens } ->
+            Belt.List.keepMap tokens non_space_tokens :: productions
+        in
+        i + 1, { LrParsing.productions = productions' }
       )
       |. Belt.Map.Int.fromArray
       (* TODO: we don't necessarily start with production 1 *)
@@ -700,7 +775,6 @@ let tree_of_parse_result
 
     let get_trivia : int -> int -> string * string
       = fun start_pos end_pos ->
-        (* Printf.printf "get_trivia %n %n\n" start_pos end_pos; *)
         (* look back consuming all whitespace to (and including) a newline *)
         let leading_trivia =
           Js.String2.slice str ~from:!str_pos ~to_:start_pos
@@ -710,11 +784,8 @@ let tree_of_parse_result
         str_pos := end_pos;
         let continue = ref true in
         while !continue do
-          let got_space, got_newline = match Js.String2.charAt str !str_pos with
-            | " "  -> true,  false
-            | "\n" -> false, true
-            | _    -> false, false
-          in
+          (* TODO: need to be aware of other whitespace tokens *)
+          let got_space = Js.String2.charAt str !str_pos = " " in
           continue := !str_pos < str_len && got_space;
           if !continue then str_pos := !str_pos + 1;
         done;
@@ -723,7 +794,6 @@ let tree_of_parse_result
           Js.String2.slice str ~from:end_pos ~to_:!str_pos
         in
 
-        (* Printf.printf "get_trivia -> \"%s\", \"%s\"\n" leading_trivia trailing_trivia; *)
         leading_trivia, trailing_trivia
     in
 
@@ -768,8 +838,9 @@ let tree_of_parse_result
           = match sort_rules |. MS.get nt_name |> get_option' err with
             | SortRule { operator_rules } ->
               let maybe_op_rule = operator_rules
-              |. BL.flatten
-              |. BL.getBy (fun (OperatorMatch { operator_match_pattern }) ->
+              |. Belt.List.flatten
+              |. Belt.List.getBy
+                (fun (OperatorMatch { operator_match_pattern }) ->
                 match m_ctor_name, operator_match_pattern with
                   | None, ParenthesizingPattern _ -> true
                   | Some ctor_name, OperatorPattern (op_name, _) ->
@@ -796,13 +867,15 @@ let tree_of_parse_result
 
         { sort_name; node_type;
           children = children
-            |. BL.zip tokens_no_space
-            |. BL.toArray
+            |. Belt.List.zip tokens_no_space
+            |. Belt.List.toArray
             |> Util.array_map_keep (function (parse_result, token) -> match token with
-              | TerminalName tn -> Some (TerminalCapture (go_t parse_result))
-              | NonterminalName ntn -> Some (NonterminalCapture (go_nt ntn parse_result))
+              | TerminalName _
+              -> Some (TerminalCapture (go_t parse_result))
+              | NonterminalName ntn
+              -> Some (NonterminalCapture (go_nt ntn parse_result))
               (* TODO: trivia *)
-              | Underscore n -> None
+              | Underscore _ -> None
             )
         }
 
@@ -870,8 +943,6 @@ let parse desc root_name str =
       )
 
   with
-    | NonMatchingFixities (sort_name, token_names) -> Error
-      ("In sort " ^ sort_name ^ ": all fixities in a precedence level must be the same fixity (this is a limitation of Bison-style parsers (Jison in particular). The operators identified by [" ^ String.concat ", " token_names ^ "] must all share the same fixity.")
     | MixedFixities (b, l) -> Error ("Found a mix of fixities -- all must be uniform " ^ string_of_bool b ^ " " ^ string_of_int l)
 
 let make_concrete_description

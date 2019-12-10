@@ -57,6 +57,10 @@ sort_rule__test: sort_rule EOF { $1 }
 sort_rule:
   | NONTERMINAL_ID ASSIGN BAR? operator_match_list
   { let (operator_rules, variable) = partition_nonterminal_matches($4) in
+    let len =  operator_rules
+      |. Belt.List.headExn
+      |. Belt.List.length
+    in
     SortRule { sort_name = $1; operator_rules; variable }
   }
 

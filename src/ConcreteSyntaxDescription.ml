@@ -17,6 +17,12 @@ type nonterminal_token =
 type numbered_scope_pattern =
   NumberedScopePattern of capture_number list * capture_number
 
+let string_of_numbered_scope_pattern : numbered_scope_pattern -> string
+  = fun (NumberedScopePattern (binders, body)) -> Belt.List.toArray binders
+    |. Array.append [| body |]
+    |. Belt.Array.map (fun n -> "$" ^ string_of_int n)
+    |. Js.Array2.joinWith ". "
+
 (** An operator match pattern appears in the right-hand-side of a concrete
     syntax declaration, to show how to parse and pretty-print operators. They
     either match an operator, eg `{ add($1; $3) }` (for tokens `expr PLUS
@@ -26,6 +32,19 @@ type numbered_scope_pattern =
 type operator_match_pattern =
   | OperatorPattern       of string * numbered_scope_pattern list
   | ParenthesizingPattern of capture_number
+
+let string_of_operator_match_pattern : operator_match_pattern -> string
+  = let to_string = function
+      | OperatorPattern (name, scope_pats) -> Printf.sprintf "%s(%s)"
+        name
+        (scope_pats
+          |. Belt.List.toArray
+          |. Belt.Array.map string_of_numbered_scope_pattern
+          |. Js.Array2.joinWith "; "
+        )
+      | ParenthesizingPattern num -> "$" ^ string_of_int num
+    in
+    fun pat -> "{ " ^ to_string pat ^ " }"
 
 type fixity =
   | Infixl

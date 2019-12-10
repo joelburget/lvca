@@ -52,7 +52,12 @@ val parse
   -> (tree, string) Result.t
 
 (** Convert form a concrete to an abstract syntax tree *)
-val to_ast : language -> tree -> (Nominal.term, string) Result.t
+val to_ast
+  : language
+  -> ConcreteSyntaxDescription.t
+  -> string
+  -> tree
+  -> (Nominal.term, string) Result.t
 
 val to_grammar
   : ConcreteSyntaxDescription.t
