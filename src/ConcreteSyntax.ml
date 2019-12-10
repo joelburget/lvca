@@ -13,6 +13,8 @@ module Lexer = ConcreteSyntax_Lexer
 module Parser = ConcreteSyntax_Parser
 module ParseErrors = ConcreteSyntax_ParseErrors
 
+type ('a, 'b) result = ('a, 'b) Belt.Result.t
+
 type prim_ty =
   | Integer
   | String
@@ -288,7 +290,7 @@ let check_description_validity { terminal_rules; sort_rules } =
     CheckValidExn err -> Some err
 
 let mk_tree sort_name node_type children =
-  { sort_name; node_type; children; }
+  { sort_name; node_type; children }
 
 (* Helper for use in of_ast *)
 let mk_terminal_capture content =

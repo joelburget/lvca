@@ -34,6 +34,52 @@ sort_rule__test: NONTERMINAL_ID ASSIGN BAR STRING
 
 <YOUR SYNTAX ERROR MESSAGE HERE> 3
 
+<<<<<<< HEAD
+||||||| merged common ancestors
+sort_rule__test: NONTERMINAL_ID ASSIGN NONTERMINAL_ID LEFT_BRACE NONTERMINAL_ID LEFT_PAREN RIGHT_PAREN RIGHT_BRACE NONTERMINAL_ID
+##
+## Ends in an error in state: 76.
+##
+## sort_rule__test -> sort_rule . EOF [ # ]
+##
+## The known suffix of the stack is as follows:
+## sort_rule
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 49, spurious reduction of production option(fixity) ->
+## In state 52, spurious reduction of production operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE term_pattern RIGHT_BRACE option(fixity)
+## In state 27, spurious reduction of production operator_match_list -> operator_match
+## In state 26, spurious reduction of production sort_rule -> NONTERMINAL_ID ASSIGN option(BAR) operator_match_list
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE> 4
+
+=======
+sort_rule__test: NONTERMINAL_ID ASSIGN NONTERMINAL_ID LEFT_BRACE NONTERMINAL_ID LEFT_PAREN RIGHT_PAREN RIGHT_BRACE NONTERMINAL_ID
+##
+## Ends in an error in state: 76.
+##
+## sort_rule__test -> sort_rule . EOF [ # ]
+##
+## The known suffix of the stack is as follows:
+## sort_rule
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 49, spurious reduction of production option(fixity) ->
+## In state 52, spurious reduction of production operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE option(fixity)
+## In state 27, spurious reduction of production operator_match_list -> operator_match
+## In state 26, spurious reduction of production sort_rule -> NONTERMINAL_ID ASSIGN option(BAR) operator_match_list
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE> 4
+
+>>>>>>> master
 sort_rule__test: NONTERMINAL_ID ASSIGN STRING
 ##
 ## Ends in an error in state: 13.
@@ -203,7 +249,27 @@ operator_match__test: TERMINAL_ID LEFT_BRACE NONTERMINAL_ID LEFT_PAREN DOLLAR NA
 ## separated_nonempty_list(DOT,capture_number) -> capture_number DOT . separated_nonempty_list(DOT,capture_number) [ SEMICOLON RIGHT_PAREN ]
 ##
 ## The known suffix of the stack is as follows:
+<<<<<<< HEAD
 ## capture_number DOT
+||||||| merged common ancestors
+## operator_match
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 49, spurious reduction of production option(fixity) ->
+## In state 52, spurious reduction of production operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE term_pattern RIGHT_BRACE option(fixity)
+=======
+## operator_match
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 49, spurious reduction of production option(fixity) ->
+## In state 52, spurious reduction of production operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE option(fixity)
+>>>>>>> master
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE> 16
@@ -212,10 +278,22 @@ operator_match__test: TERMINAL_ID LEFT_BRACE NONTERMINAL_ID LEFT_PAREN DOLLAR NA
 ##
 ## Ends in an error in state: 31.
 ##
+<<<<<<< HEAD
 ## separated_nonempty_list(SEMICOLON,term_scope_pattern) -> term_scope_pattern SEMICOLON . separated_nonempty_list(SEMICOLON,term_scope_pattern) [ RIGHT_PAREN ]
+||||||| merged common ancestors
+## operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE term_pattern RIGHT_BRACE . option(fixity) [ NONTERMINAL_ID GREATER EOF BAR ]
+=======
+## operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE . option(fixity) [ NONTERMINAL_ID GREATER EOF BAR ]
+>>>>>>> master
 ##
 ## The known suffix of the stack is as follows:
+<<<<<<< HEAD
 ## term_scope_pattern SEMICOLON
+||||||| merged common ancestors
+## nonempty_list(nonterminal_token) LEFT_BRACE term_pattern RIGHT_BRACE
+=======
+## nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE
+>>>>>>> master
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE> 17
@@ -224,11 +302,23 @@ operator_match__test: TERMINAL_ID LEFT_BRACE NONTERMINAL_ID LEFT_PAREN DOLLAR NA
 ##
 ## Ends in an error in state: 34.
 ##
+<<<<<<< HEAD
 ## separated_nonempty_list(DOT,capture_number) -> capture_number . [ SEMICOLON RIGHT_PAREN ]
 ## separated_nonempty_list(DOT,capture_number) -> capture_number . DOT separated_nonempty_list(DOT,capture_number) [ SEMICOLON RIGHT_PAREN ]
+||||||| merged common ancestors
+## operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE term_pattern . RIGHT_BRACE option(fixity) [ NONTERMINAL_ID GREATER EOF BAR ]
+=======
+## operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern . RIGHT_BRACE option(fixity) [ NONTERMINAL_ID GREATER EOF BAR ]
+>>>>>>> master
 ##
 ## The known suffix of the stack is as follows:
+<<<<<<< HEAD
 ## capture_number
+||||||| merged common ancestors
+## nonempty_list(nonterminal_token) LEFT_BRACE term_pattern
+=======
+## nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern
+>>>>>>> master
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE> 18
