@@ -26,23 +26,19 @@ let string_of_numbered_scope_pattern : numbered_scope_pattern -> string
 (** An operator match pattern appears in the right-hand-side of a concrete
     syntax declaration, to show how to parse and pretty-print operators. They
     either match an operator, eg `{ add($1; $3) }` (for tokens `expr PLUS
-    expr`) or are "parenthesizing", eg `{ $2 }` (for tokens `LPAREN expr
+    expr`) or are "single capture", eg `{ $2 }` (for tokens `LPAREN expr
     RPAREN`).
  *)
 type operator_match_pattern =
-  | OperatorPattern       of string * numbered_scope_pattern list
-  | ParenthesizingPattern of capture_number
+  | OperatorPattern      of string * numbered_scope_pattern list
+  | SingleCapturePattern of capture_number
 
 let string_of_operator_match_pattern : operator_match_pattern -> string
   = let to_string = function
       | OperatorPattern (name, scope_pats) -> Printf.sprintf "%s(%s)"
         name
-        (scope_pats
-          |. Belt.List.toArray
-          |. Belt.Array.map string_of_numbered_scope_pattern
-          |. Js.Array2.joinWith "; "
-        )
-      | ParenthesizingPattern num -> "$" ^ string_of_int num
+        (Util.stringify_list string_of_numbered_scope_pattern "; " scope_pats)
+      | SingleCapturePattern num -> "$" ^ string_of_int num
     in
     fun pat -> "{ " ^ to_string pat ^ " }"
 
@@ -63,12 +59,19 @@ type operator_match' =
   }
 type operator_match = OperatorMatch of operator_match'
 
+let string_of_tokens : nonterminal_token list -> string
+  = Util.stringify_list
+  (function
+    | TerminalName    str -> str
+    | NonterminalName str -> str
+    | Underscore      i   -> "_" ^ string_of_int i
+  )
+  " "
+
 type variable_rule =
   { tokens      : nonterminal_token list;
     var_capture : capture_number;
   }
-
-exception DuplicateVarRules
 
 (* Extract a variable rule, if present. Currently we only recognize it on its
  * own precedence level, which seems like what you usually want, but still
@@ -76,30 +79,22 @@ exception DuplicateVarRules
  *
  * By "variable rule", we mean a rule that matches exactly `var($n)`.
  *)
-let partition_nonterminal_matches
+let find_first_single_capture
   (matches: operator_match list list)
-  : operator_match list list * variable_rule option
-  = Util.fold_right
-    (fun (match_, (matches, v_rule)) -> match match_ with
-      | [ OperatorMatch
-          { tokens;
-            operator_match_pattern = OperatorPattern
-              ("var", [NumberedScopePattern ([], var_capture)]);
-          }
-        ]
-      -> (match v_rule with
-        | Some _ -> raise DuplicateVarRules
-        | None   -> matches, Some { tokens; var_capture }
-      )
-      | _
-      -> match_ :: matches, v_rule
-    )
-    matches ([], None)
+  : variable_rule option
+  = Util.find_by matches @@ function
+    | [ OperatorMatch
+        { tokens;
+          operator_match_pattern = SingleCapturePattern var_capture;
+        }
+      ]
+    -> Some { tokens; var_capture }
+    | _
+    -> None
 
 type sort_rule' =
   { sort_name      : string;
     operator_rules : operator_match list list;
-    variable       : variable_rule option;
   }
 
 (** A sort rule shows how to parse / pretty-print a sort *)

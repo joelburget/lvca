@@ -167,6 +167,10 @@ module type LR0 = sig
   (* TODO: fill in the rest of the signature *)
   val production_map : production MMI.t
   val production_nonterminal_map : nonterminal_num MMI.t
+  val string_of_terminal : terminal_num -> string
+  val string_of_production_num : production_num -> string
+  val string_of_production : production -> string
+  val string_of_nonterminal : nonterminal -> string
 end
 
 (* Used for action table entries. Compare with string_of_action. *)
@@ -275,7 +279,7 @@ module Lr0 (G : GRAMMAR) = struct
         t_num
       )
 
-  let string_of_nonterminal : nonterminal_num -> string
+  let string_of_nonterminal_num : nonterminal_num -> string
     = fun nt_num -> nonterminal_names
       |. M.get nt_num
       |> get_option' (Printf.sprintf
@@ -286,7 +290,7 @@ module Lr0 (G : GRAMMAR) = struct
   let string_of_symbol : symbol -> string
     = function
     | Terminal t_num -> string_of_terminal t_num
-    | Nonterminal nt_num -> string_of_nonterminal nt_num
+    | Nonterminal nt_num -> string_of_nonterminal_num nt_num
 
   let string_of_item : item -> string
     = fun item ->
@@ -318,7 +322,7 @@ module Lr0 (G : GRAMMAR) = struct
       let nt_name = nonterminal_names
         |. M.get nt_num
         |> get_option' (Printf.sprintf
-          "Lr0 string_of_production: unable to find nonterminal %n in nonterminal_names"
+          "Lr0 string_of_item: unable to find nonterminal %n in nonterminal_names"
           production_num
         )
       in
@@ -332,16 +336,14 @@ module Lr0 (G : GRAMMAR) = struct
       |. A.map string_of_item
       |. Js.Array2.joinWith sep
 
-  let string_of_production : production_num -> string
-    = fun production_num ->
+  let string_of_production : production -> string
+    = fun production -> production
+        |. L.map string_of_symbol
+        |. L.toArray
+        |. Js.Array2.joinWith " "
 
-      let production = production_map
-        |. MMI.get production_num
-        |> get_option' (Printf.sprintf
-          "Lr0 string_of_production: unable to find production %n in production_map"
-          production_num
-        )
-      in
+  let string_of_production_num : production_num -> string
+    = fun production_num ->
 
       let nt_num = production_nonterminal_map
         |. MMI.get production_num
@@ -351,10 +353,12 @@ module Lr0 (G : GRAMMAR) = struct
         )
       in
 
-      let rhs = production
-        |. L.map string_of_symbol
-        |. L.toArray
-        |. Js.Array2.joinWith " "
+      let production = production_map
+        |. MMI.get production_num
+        |> get_option' (Printf.sprintf
+          "Lr0 string_of_production_num: unable to find production %n in production_map"
+          production_num
+        )
       in
 
       let nt_name = nonterminal_names
@@ -365,13 +369,17 @@ module Lr0 (G : GRAMMAR) = struct
         )
       in
 
-      Printf.sprintf "%s -> %s" nt_name rhs
+      Printf.sprintf "%s -> %s" nt_name (string_of_production production)
+
+  let string_of_nonterminal : nonterminal -> string
+    = fun { productions } ->
+      Util.stringify_list string_of_production "\n" productions
 
   (* Used for logging actions. Compare with action_abbrev. *)
   let string_of_action : action -> string
     = function
     | Shift state -> "shift to " ^ string_of_int state
-    | Reduce prod -> "reduce by " ^ string_of_production prod
+    | Reduce prod -> "reduce by " ^ string_of_production_num prod
     | Accept      -> "accept"
     | Error       -> "error"
 
@@ -393,6 +401,10 @@ module Lr0 (G : GRAMMAR) = struct
         (* Printf.printf "Adding prod %n to nt %n set\n" production_num nt_num; *)
         prod_set |. MSI.add production_num
       )
+    )
+
+  let _ = MMI.mapWithKey production_map (fun i _ ->
+      Printf.printf "%n: %s\n" i (string_of_production_num i)
     )
 
   let get_nonterminal_num : production_num -> nonterminal_num
@@ -834,7 +846,7 @@ module Lr0 (G : GRAMMAR) = struct
           let nt_num = production_nonterminal_map
             |. MMI.get production_num
             |> get_option' (Printf.sprintf
-              "Lr0 string_of_item: unable to find production %n in production_nonterminal_map"
+              "Lr0 string_of_symbols: unable to find production %n in production_nonterminal_map"
               production_num
             )
           in
@@ -842,7 +854,7 @@ module Lr0 (G : GRAMMAR) = struct
           let nt_name = nonterminal_names
             |. M.get nt_num
             |> get_option' (Printf.sprintf
-              "Lr0 string_of_production: unable to find nonterminal %n in nonterminal_names"
+              "Lr0 string_of_symbols: unable to find nonterminal %n in nonterminal_names"
               production_num
             )
 

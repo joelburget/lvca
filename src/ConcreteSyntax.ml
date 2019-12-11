@@ -20,7 +20,7 @@ type prim_ty =
   | String
 
 type node_type =
-  | Parenthesizing
+  | SingleCapture
   | Operator  of string
   | Var
   | Sequence
@@ -82,7 +82,7 @@ let find_operator_match
       (fun (OperatorMatch { operator_match_pattern }) ->
         match operator_match_pattern with
         | OperatorPattern (opname', _) -> opname' = opname
-        | ParenthesizingPattern _  -> false
+        | SingleCapturePattern _  -> false
       )
       (Belt.List.flatten matches)
     in
@@ -176,7 +176,7 @@ let rec token_usage
       (fun accum scope_pat ->
         accumulate_tokens accum (scope_token_usage scope_pat)
       )
-  | ParenthesizingPattern cap_num ->
+  | SingleCapturePattern cap_num ->
       { captured_tokens = SI.fromArray [| cap_num |];
         repeated_tokens = SI.empty;
       }
@@ -342,12 +342,11 @@ let rec of_ast
     in
     (* TODO: remove possible exception. possible to have var-only sort? *)
     let OperatorMatch { tokens = operator_match_tokens; operator_match_pattern }
-      (* TODO: variable rule? *)
       = find_operator_match operator_rules op_name
     in
 
     let find_subtm' = fun ix -> match operator_match_pattern with
-      | ParenthesizingPattern _
+      | SingleCapturePattern _
       -> FoundCapture
 
       | OperatorPattern (_term_name, numbered_scope_patterns)
@@ -458,19 +457,20 @@ let rec of_ast
 
   | _, Nominal.Var name
   ->
-    (* variable rule *)
-    let SortRule { variable } = sort_rules |. Belt.Map.String.getExn sort_name
+    let variable_rule = sort_rules
+      |. Belt.Map.String.get sort_name
+      |> get_option' ("of_ast: failed to find sort " ^ sort_name)
+      |> (fun (SortRule { operator_rules }) -> operator_rules)
+      |. find_first_single_capture
+      |> get_option' ("of_ast: failed to get sort rule for " ^ sort_name)
     in
-    (match variable with
-      | None -> failwith
-        ("TODO: no variable rule available for sort " ^ sort_name)
-      | Some { tokens; var_capture }
-      -> mk_tree sort_name Var [| mk_terminal_capture name |])
+    mk_tree sort_name Var [| mk_terminal_capture name |]
 
   | SortAp ("sequence", [|sort|]), Nominal.Sequence tms ->
     let children = tms
-      |> List.map (fun tm -> NonterminalCapture (of_ast lang rules sort tm))
-      |> Belt.List.toArray
+      |. Belt.List.map
+        (fun tm -> NonterminalCapture (of_ast lang rules sort tm))
+      |. Belt.List.toArray
     in
     mk_tree sort_name Sequence children
 
@@ -547,12 +547,11 @@ let rec tree_to_ast
       in
 
       let OperatorMatch { operator_match_pattern }
-        (* TODO: variable rule? *)
         = find_operator_match operator_rules op_name
       in
 
       let scope_patterns = match operator_match_pattern with
-        | ParenthesizingPattern _ -> failwith "TODO: error 1"
+        | SingleCapturePattern _ -> failwith "TODO: error 1"
         | OperatorPattern(pat_op_name, scope_patterns) ->
           assert (pat_op_name = op_name);
           scope_patterns
@@ -594,7 +593,7 @@ let rec tree_to_ast
 
       Operator (op_name, ast_children)
 
-    | Parenthesizing, children ->
+    | SingleCapture, children ->
       let children' = children
         |. Belt.Array.keepMap (function
           | NonterminalCapture child
@@ -676,73 +675,72 @@ exception MixedFixities of bool * int
 (* Produce an augmented grammar *)
 let to_grammar
   : ConcreteSyntaxDescription.t
-  -> (LrParsing.grammar * ConcreteSyntaxDescription.operator_match' Belt.MutableMap.Int.t)
+  -> (LrParsing.grammar *
+      (nonterminal_token list * operator_match_pattern option) Belt.MutableMap.Int.t)
   = fun {terminal_rules; sort_rules} ->
-    let terminal_key_arr = BA.map terminal_rules (fun (k, _) -> k) in
-    let terminal_nums = terminal_key_arr
+    let terminal_key_arr = Belt.Array.map terminal_rules (fun (k, _) -> k) in
+    let terminal_nums = Belt.Array.(terminal_key_arr
       (* start other terminals (besides $ and SPACE) at 2 *)
-      |. Belt.Array.mapWithIndex (fun i name -> name, i + 2)
-      |. Belt.Array.concat [| "$", 0; "SPACE", 1 |]
+      |. mapWithIndex (fun i name -> name, i + 2)
+      |. concat [| "$", 0; "SPACE", 1 |]
+    )
     in
-    let terminal_nums_map = MS.fromArray terminal_nums in
 
-    let nonterminal_names_map = sort_rules
-      |. MS.keysToArray
+    let nonterminal_names_map = Belt.Map.String.(sort_rules
+      |. keysToArray
       (* start other nonterminals (besides root) at 1 *)
-      |. BA.mapWithIndex (fun i name -> name, i + 1)
-      |. MS.fromArray
-      |. MS.set "root" 0
+      |. Belt.Array.mapWithIndex (fun i name -> name, i + 1)
+      |. fromArray
+      |. set "root" 0
+    )
     in
-    let nonterminal_nums = MS.toArray nonterminal_names_map in
-
-    (* We're dealing with a non-augmented grammar here. Start counting from 0.
-     *)
-    let prod_num = ref 1 in
-    let production_rule_map = Belt.MutableMap.Int.make () in
 
     (* Spaces are removed by the parsing step, so we need to remove them from
      * our token list. *)
     let non_space_tokens : nonterminal_token -> LrParsing.symbol option
       = function
       | TerminalName tn
-      -> Some (LrParsing.Terminal (terminal_nums_map
+      -> Some (LrParsing.Terminal (MS.fromArray terminal_nums
         |. MS.get tn
-        |> get_option' ("to_grammar: failed to get " ^ tn)
+        |> get_option' ("to_grammar: failed to get terminal " ^ tn)
       ))
       | NonterminalName ntn
       -> Some (Nonterminal (nonterminal_names_map
         |. MS.get ntn
-        |> get_option' ("to_grammar: failed to get " ^ ntn)
+        |> get_option' ("to_grammar: failed to get nonterminal " ^ ntn)
       ))
       | Underscore _ -> None
     in
 
+    (* We're dealing with a non-augmented grammar here. Start counting from 0.
+     *)
+    let prod_num = ref 1 in
+    let production_rule_map = Belt.MutableMap.Int.make () in
+
     let nonterminals = sort_rules
       |. MS.valuesToArray
-      |. BA.mapWithIndex (fun i (SortRule { operator_rules; variable }) ->
-        let productions : LrParsing.symbol list list = operator_rules
+      |. BA.mapWithIndex (fun i (SortRule { operator_rules }) ->
+        let op_prods : LrParsing.symbol list list = operator_rules
           |. Belt.List.map (fun operator_level -> operator_level |.
-            Belt.List.map (fun (OperatorMatch ({ tokens } as rule)) ->
-              Belt.MutableMap.Int.set production_rule_map !prod_num rule;
+            Belt.List.map (fun (OperatorMatch rule) ->
+              Belt.MutableMap.Int.set production_rule_map !prod_num
+                (rule.tokens, Some rule.operator_match_pattern);
               prod_num := !prod_num + 1;
-              Belt.List.keepMap tokens non_space_tokens
+              Belt.List.keepMap rule.tokens non_space_tokens
             )
           )
           (* TODO: temporary pending precedence parsing *)
           |. Belt.List.flatten
         in
-        let productions' = match variable with
-          | None -> productions
-          | Some { tokens } ->
-            Belt.List.keepMap tokens non_space_tokens :: productions
-        in
-        i + 1, { LrParsing.productions = productions' }
+
+        i + 1, { LrParsing.productions = op_prods }
       )
       |. Belt.Map.Int.fromArray
       (* TODO: we don't necessarily start with production 1 *)
       |. Belt.Map.Int.set 0 { productions = [ [ Nonterminal 1 ] ] }
     in
 
+    let nonterminal_nums = MS.toArray nonterminal_names_map in
     { nonterminals; terminal_nums; nonterminal_nums }, production_rule_map
 
 let production_sort_name
@@ -764,7 +762,7 @@ let production_sort_name
 
 let tree_of_parse_result
   (module Lr0 : LrParsing.LR0)
-  : ConcreteSyntaxDescription.operator_match' Belt.MutableMap.Int.t
+  : (nonterminal_token list * operator_match_pattern option) Belt.MutableMap.Int.t
   -> LrParsing.nonterminal_num MS.t
   -> ConcreteSyntaxDescription.sort_rules
   -> string (* root name *)
@@ -772,6 +770,7 @@ let tree_of_parse_result
   -> LrParsing.parse_result
   -> tree
   = fun production_rule_map nonterminal_nums sort_rules root_name str root ->
+    Printf.printf "%s\n" (LrParsing.parse_result_to_string root);
     let str_pos = ref 0 in
     let str_len = Js.String2.length str in
 
@@ -802,12 +801,16 @@ let tree_of_parse_result
     let rec go_nt : string -> LrParsing.parse_result -> tree
       = fun nt_name { production; children } ->
         let prod_num = match production with
-          | Left _ -> failwith
-            "invariant violation: go_nt received a terminal production"
+          | Left prod -> failwith (Printf.sprintf
+            "invariant violation: go_nt (nt_name %s) received a terminal production: %s"
+            nt_name
+            (Lr0.string_of_terminal prod)
+          )
           | Right prod_num -> prod_num
         in
 
-        (* Printf.printf "go_nt %s (production_num %n)\n" nt_name prod_num; *)
+        Printf.printf "go_nt %s (production %n: %s)\n"
+          nt_name prod_num (Lr0.string_of_production_num prod_num);
 
         let sort_name = production_sort_name
           Lr0.production_nonterminal_map
@@ -815,56 +818,31 @@ let tree_of_parse_result
           prod_num
         in
 
-        (* Printf.printf "sort_name: %s\n" sort_name; *)
-        let { operator_match_pattern } =
-          Belt.MutableMap.Int.getExn production_rule_map prod_num
+        Printf.printf "sort_name: %s\n" sort_name;
+        let tokens, m_operator_match_pattern =
+          match Belt.MutableMap.Int.get production_rule_map prod_num with
+          | None -> failwith "TODO: error"
+          | Some result -> result
         in
 
-        let m_ctor_name = match operator_match_pattern with
-          | OperatorPattern (op_name, _) ->
-              (* Printf.printf "ctor_name: %s\n" op_name; *)
-              Some op_name
-          | ParenthesizingPattern _ -> None
-        in
-
-        (* Printf.printf "nt_name: %s\n" nt_name; *)
-        let node_type = match m_ctor_name with
-          | None -> Parenthesizing
-          | Some "var" -> Var (* TODO this seems wrong *)
-          | Some ctor_name -> Operator ctor_name
-        in
-
-        let err = "tree_of_parse_result: failed to get " ^ nt_name in
-
-        let tokens : nonterminal_token list
-          = match sort_rules |. MS.get nt_name |> get_option' err with
-            | SortRule { operator_rules } ->
-              let maybe_op_rule = operator_rules
-              |. Belt.List.flatten
-              |. Belt.List.getBy
-                (fun (OperatorMatch { operator_match_pattern }) ->
-                match m_ctor_name, operator_match_pattern with
-                  | None, ParenthesizingPattern _ -> true
-                  | Some ctor_name, OperatorPattern (op_name, _) ->
-                      ctor_name = op_name
-                  | _, _ -> false
-              )
-              in
-              match maybe_op_rule with
-                | Some (OperatorMatch { tokens }) -> tokens
-                | None -> (match m_ctor_name with
-                   | None -> failwith
-                     "error: unable to find parenthesizing pattern"
-                   | Some ctor_name -> failwith
-                     ("error: unable to find operator " ^ ctor_name)
-                )
+        Printf.printf "nt_name: %s\n" nt_name;
+        let node_type = match m_operator_match_pattern with
+          | None -> failwith "TODO: error"
+          | Some (SingleCapturePattern pat)
+          -> let captured_symbol = Lr0.production_map
+               |. Belt.MutableMap.Int.getExn prod_num
+               |. Belt.List.getExn (pat - 1)
+             in
+             (* Slight assumption: a captured terminal is a variable *)
+             (match captured_symbol with
+               | Terminal _ -> Var
+               | Nonterminal _ -> SingleCapture
+             )
+          | Some (OperatorPattern (ctor_name, _)) -> Operator ctor_name
         in
 
         let tokens_no_space = tokens
-          |. Belt.List.keep (function
-            | Underscore _ -> false
-            | _ -> true
-          )
+          |. Belt.List.keep (function Underscore _ -> false | _ -> true)
         in
 
         { sort_name; node_type;
@@ -885,6 +863,7 @@ let tree_of_parse_result
       = fun { start_pos; end_pos } ->
         let leading_trivia, trailing_trivia = get_trivia start_pos end_pos in
         let content = Js.String.slice str ~from:start_pos ~to_:end_pos in
+        Printf.printf "go_t content %s\n" content;
         { leading_trivia; content; trailing_trivia }
 
     in
@@ -901,21 +880,26 @@ let lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer
 let parse desc root_name str =
   try
     let grammar, production_rule_map = to_grammar desc in
+    production_rule_map
+      |. Belt.MutableMap.Int.mapWithKey (fun i (tokens, m_operator_match_pattern) ->
+        Printf.printf "production rule %n: %s %s\n"
+          i
+          (string_of_tokens tokens)
+          (match m_operator_match_pattern with
+            | Some x -> string_of_operator_match_pattern x
+            | None -> "(none)")
+      );
     let module Lr0' = LrParsing.Lr0(struct
       let grammar = grammar
     end) in
     let lexer = lexer_of_desc desc in
+    grammar.nonterminals |. Belt.Map.Int.mapWithKey (fun i nt ->
+      Printf.printf "nonterminal %n: %s\n" i (Lr0'.string_of_nonterminal nt)
+    );
 
     (* TODO: come up with better idea where to do this *)
     let augmented_sort_rules = MS.set desc.sort_rules "root"
-      (SortRule (
-        { sort_name = "root";
-          operator_rules = [[]];
-          variable = Some
-            (* XXX tm vs expr *)
-            { tokens = [NonterminalName "tm"]; var_capture = 1 };
-        }
-      ))
+      (SortRule { sort_name = "root"; operator_rules = [[]] })
     in
 
     match Lr0'.lex_and_parse lexer str with
@@ -952,7 +936,7 @@ let make_concrete_description
   (sort_rules : sort_rule list) =
   let module Parse_regex = Parsing.Incremental(Parsing.Parseable_regex) in
   { terminal_rules = terminal_rules
-    |> List.map (fun (PreTerminalRule (name, str_or_re_str)) ->
+    |. Belt.List.map (fun (PreTerminalRule (name, str_or_re_str)) ->
       match str_or_re_str with
         | Left re_str -> (match Parse_regex.parse re_str with
           | Ok re -> name, re
@@ -960,9 +944,9 @@ let make_concrete_description
         )
         | Right str -> name, Regex.ReString str
     )
-    |> Belt.List.toArray;
+    |. Belt.List.toArray;
   sort_rules = sort_rules
-    |> List.map (fun ((SortRule { sort_name }) as rule) -> sort_name, rule)
-    |> Belt.List.toArray
-    |> Belt.Map.String.fromArray;
+    |. Belt.List.map (fun ((SortRule { sort_name }) as rule) -> sort_name, rule)
+    |. Belt.List.toArray
+    |. Belt.Map.String.fromArray;
   }

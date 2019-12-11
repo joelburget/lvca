@@ -65,7 +65,7 @@ module Lalr1 (G : GRAMMAR) = struct
     first_set,
     nonterminal_production_map,
     number_of_terminals,
-    string_of_production,
+    string_of_production_num,
     item_set_to_state,
     lr0_goto_kernel,
     lr0_items,
@@ -76,7 +76,7 @@ module Lalr1 (G : GRAMMAR) = struct
     first_set,
     nonterminal_production_map,
     number_of_terminals,
-    string_of_production,
+    string_of_production_num,
     item_set_to_state,
     lr0_goto_kernel,
     lr0_items,
@@ -250,7 +250,7 @@ module Lalr1 (G : GRAMMAR) = struct
             |> get_option' (Printf.sprintf
               "failed to get position %n in production %s"
               position
-              (string_of_production production_num)
+              (string_of_production_num production_num)
             )
           in
 

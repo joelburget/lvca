@@ -56,12 +56,7 @@ sort_rule__test: sort_rule EOF { $1 }
 
 sort_rule:
   | NONTERMINAL_ID ASSIGN BAR? operator_match_list
-  { let (operator_rules, variable) = partition_nonterminal_matches($4) in
-    let len =  operator_rules
-      |. Belt.List.headExn
-      |. Belt.List.length
-    in
-    SortRule { sort_name = $1; operator_rules; variable }
+  { SortRule { sort_name = $1; operator_rules = $4 }
   }
 
 (* The list of operator matches making up a nonterminal. Each operator match is
@@ -95,7 +90,7 @@ operator_match:
 (* TODO: should this id allow uppercase? *)
 operator_match_pattern:
   | capture_number
-  { ParenthesizingPattern $1 }
+  { SingleCapturePattern $1 }
   | NONTERMINAL_ID
     LEFT_PAREN separated_list(SEMICOLON, term_scope_pattern) RIGHT_PAREN
   { OperatorPattern ($1, $3) }

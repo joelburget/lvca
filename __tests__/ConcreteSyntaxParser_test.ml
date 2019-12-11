@@ -59,12 +59,13 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
        arith :=
          | arith ADD arith { add($1; $3) } %left
          | arith SUB arith { sub($1; $3) } %left
-         > NAME            { var($1)     }
+         > NAME            { $1          }
     |}
     (SortRule
       { sort_name = "arith";
         operator_rules =
           [[
+
             OperatorMatch
               { tokens =
                   [ NonterminalName "arith";
@@ -77,6 +78,7 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
                   ]);
                 fixity = Infixl;
               };
+
             OperatorMatch
               { tokens =
                   [ NonterminalName "arith";
@@ -89,7 +91,13 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
                   ]);
                 fixity = Infixl;
               };
+          ];
+
+          [ OperatorMatch
+              { tokens = [TerminalName "NAME"];
+                operator_match_pattern = SingleCapturePattern 1;
+                fixity = Nofix;
+              };
           ]];
-        variable = Some { tokens = [TerminalName "NAME"]; var_capture = 1 };
       });
 )

@@ -16,13 +16,13 @@ let mk_terminal_capture content trailing_trivia =
 
 let _ = describe "ConcreteSyntax" (fun () ->
   let description = {|
+  ARR    := "->"
   ADD    := "+"
   SUB    := "-"
   MUL    := "*"
   DIV    := "/"
   LPAREN := "("
   RPAREN := ")"
-  ARR    := "->"
   NAME   := /[a-z][a-zA-Z0-9]*/
 
   arith :=
@@ -33,7 +33,7 @@ let _ = describe "ConcreteSyntax" (fun () ->
     | arith _       arith { app($1; $2) }
     | NAME  _ ARR _ arith { fun($1. $3) }
     | LPAREN arith RPAREN { $2          }
-    > NAME                { var($1)     }
+    > NAME                { $1          }
   |}
   in
 
@@ -73,7 +73,7 @@ let _ = describe "ConcreteSyntax" (fun () ->
       in
 
       let tree2 = mk_tree' (Operator "sub")
-        [| nt_capture (mk_tree' Parenthesizing
+        [| nt_capture (mk_tree' SingleCapture
             [|
               nt_capture (mk_tree' (Operator "add")
                 [| nt_capture (mk_tree' Var [| mk_terminal_capture "x" " " |]);
@@ -91,7 +91,7 @@ let _ = describe "ConcreteSyntax" (fun () ->
       let tree3 = mk_tree' (Operator "add")
         [| nt_capture (mk_tree' Var [| mk_terminal_capture "x" " " |]);
            mk_terminal_capture "+" " ";
-           nt_capture (mk_tree' Parenthesizing
+           nt_capture (mk_tree' SingleCapture
              [|
                mk_terminal_capture "(" "";
                nt_capture (mk_tree' (Operator "mul")
@@ -108,6 +108,7 @@ let _ = describe "ConcreteSyntax" (fun () ->
 
       let tree4 = mk_tree' (Operator "fun")
         [| nt_capture (mk_tree' Var [| mk_terminal_capture "x" " " |]);
+        (* [| mk_terminal_capture "x" " "; *)
            mk_terminal_capture "->" " ";
            nt_capture (mk_tree' Var [| mk_terminal_capture "x" "" |]);
         |]
@@ -146,24 +147,27 @@ let _ = describe "ConcreteSyntax" (fun () ->
         expect (to_string tree4) |> toEqual "x -> x";
       ] Util.id;
 
+
+      match parse concrete "arith" "x -> x" with
+        Ok tree -> Printf.printf "x -> x tree: %s\n" (to_string tree);
+
       testAll "parse"
         [
-          (*
           expect (parse concrete "arith" "x + y")
             |> toEqual (Ok tree1);
+
           expect (parse concrete "arith" "x+y")
             |> toEqual (Ok (remove_spaces tree1));
-            *)
-          (*
-          expect (parse concrete "x+y-z") |> toEqual (Ok tree2);
-          expect (
-            parse concrete "x + y-z"
-              |. Belt.Result.map (equivalent tree2)
-          ) |> toEqual (Ok true);
-          expect (parse concrete "x + y * z") |> toEqual (Ok tree3);
-          *)
 
           (*
+          expect (parse concrete "arith" "x+y-z") |> toEqual (Ok tree2);
+          (*
+          expect (parse concrete "arith" "x + y-z")
+            |> toBeEquivalent to_string equivalent tree2;
+            *)
+          expect (parse concrete "arith" "x + y * z") |> toEqual (Ok tree3);
+          *)
+
           expect (parse concrete "arith" "x + (y * z)")
             |> toEqual (Ok tree3);
           expect (parse concrete "arith" "x+(y*z)")
@@ -173,7 +177,6 @@ let _ = describe "ConcreteSyntax" (fun () ->
             |> toEqual (Ok tree4);
           expect (parse concrete "arith" "x->x")
             |> toEqual (Ok (remove_spaces tree4));
-        *)
         ]
         Util.id;
 

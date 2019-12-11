@@ -10,7 +10,7 @@ type prim_ty =
   | String
 
 type node_type =
-  | Parenthesizing
+  | SingleCapture
   | Operator  of string
   | Var
   | Sequence
@@ -61,7 +61,10 @@ val to_ast
 
 val to_grammar
   : ConcreteSyntaxDescription.t
-  -> (LrParsing.grammar * ConcreteSyntaxDescription.operator_match' Belt.MutableMap.Int.t)
+  -> (LrParsing.grammar *
+      (ConcreteSyntaxDescription.nonterminal_token list *
+       ConcreteSyntaxDescription.operator_match_pattern option
+      ) Belt.MutableMap.Int.t)
 
 type invalid_grammar
 
