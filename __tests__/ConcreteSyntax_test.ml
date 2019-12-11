@@ -66,9 +66,9 @@ let _ = describe "ConcreteSyntax" (fun () ->
       let mk_tree' = mk_tree "arith" in
 
       let tree1 = mk_tree' (Operator "add")
-        [| nt_capture (mk_tree' Var [| mk_terminal_capture "x" " " |]);
+        [| nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "x" " " |]);
            mk_terminal_capture "+" " ";
-           nt_capture (mk_tree' Var [| mk_terminal_capture "y" "" |]);
+           nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "y" "" |]);
         |]
       in
 
@@ -76,28 +76,28 @@ let _ = describe "ConcreteSyntax" (fun () ->
         [| nt_capture (mk_tree' SingleCapture
             [|
               nt_capture (mk_tree' (Operator "add")
-                [| nt_capture (mk_tree' Var [| mk_terminal_capture "x" " " |]);
+                [| nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "x" " " |]);
                    mk_terminal_capture "+" " ";
-                   nt_capture (mk_tree' Var [| mk_terminal_capture "y" "" |]);
+                   nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "y" " " |]);
                 |]
               );
             |]
             );
             mk_terminal_capture "-" " ";
-            nt_capture (mk_tree' Var [| mk_terminal_capture "z" "" |]);
+            nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "z" "" |]);
         |]
       in
 
       let tree3 = mk_tree' (Operator "add")
-        [| nt_capture (mk_tree' Var [| mk_terminal_capture "x" " " |]);
+        [| nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "x" " " |]);
            mk_terminal_capture "+" " ";
            nt_capture (mk_tree' SingleCapture
              [|
                mk_terminal_capture "(" "";
                nt_capture (mk_tree' (Operator "mul")
-                 [| nt_capture (mk_tree' Var [| mk_terminal_capture "y" " " |]);
+                 [| nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "y" " " |]);
                     mk_terminal_capture "*" " ";
-                    nt_capture (mk_tree' Var [| mk_terminal_capture "z" "" |]);
+                    nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "z" "" |]);
                  |]
                );
                mk_terminal_capture ")" "";
@@ -107,10 +107,10 @@ let _ = describe "ConcreteSyntax" (fun () ->
       in
 
       let tree4 = mk_tree' (Operator "fun")
-        [| nt_capture (mk_tree' Var [| mk_terminal_capture "x" " " |]);
-        (* [| mk_terminal_capture "x" " "; *)
+        (* [| nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "x" " " |]); *)
+        [| mk_terminal_capture "x" " ";
            mk_terminal_capture "->" " ";
-           nt_capture (mk_tree' Var [| mk_terminal_capture "x" "" |]);
+           nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "x" "" |]);
         |]
       in
 
@@ -119,6 +119,21 @@ let _ = describe "ConcreteSyntax" (fun () ->
           [ Scope ([], Var "x");
             Scope ([], Var "y");
           ]))
+      in
+
+      let tree2_ast = Binding.Nominal.(Operator ("sub",
+        [ Scope ([], tree1_ast);
+          Scope ([], Var "z");
+        ]))
+      in
+
+      let tree3_ast = Binding.Nominal.(Operator ("add",
+        [ Scope ([], Var "x");
+          Scope ([], Operator ("mul",
+          [ Scope ([], Var "y");
+            Scope ([], Var "z");
+          ]));
+        ]))
       in
 
       let tree4_ast =
@@ -146,10 +161,6 @@ let _ = describe "ConcreteSyntax" (fun () ->
         expect (to_string tree1) |> toEqual "x + y";
         expect (to_string tree4) |> toEqual "x -> x";
       ] Util.id;
-
-
-      match parse concrete "arith" "x -> x" with
-        Ok tree -> Printf.printf "x -> x tree: %s\n" (to_string tree);
 
       testAll "parse"
         [
@@ -193,15 +204,17 @@ let _ = describe "ConcreteSyntax" (fun () ->
         ) |> toEqual (Ok tm)
       in
 
-      testAll "round trip ast->tree->ast"
+      testAll "round trip tree -> ast -> tree"
         [ expect_round_trip_tree tree1;
-          (* expect_round_trip_tree tree2; *)
-          (* expect_round_trip_tree tree3; *)
-          (* expect_round_trip_tree tree4; *)
+          expect_round_trip_tree tree2;
+          expect_round_trip_tree tree3;
+          expect_round_trip_tree tree4;
         ] Util.id;
 
-      testAll "round trip tree->ast->tree"
+      testAll "round trip ast -> tree -> ast"
         [ expect_round_trip_ast tree1_ast;
-          (* TODO: others *)
+          expect_round_trip_ast tree2_ast;
+          expect_round_trip_ast tree3_ast;
+          expect_round_trip_ast tree4_ast;
         ] Util.id;
 )

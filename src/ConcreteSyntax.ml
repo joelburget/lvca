@@ -22,7 +22,6 @@ type prim_ty =
 type node_type =
   | SingleCapture
   | Operator  of string
-  | Var
   | Sequence
   | Primitive of prim_ty
 
@@ -298,7 +297,8 @@ let mk_terminal_capture content =
 
 let rec pattern_to_tree : sort_name -> Pattern.t -> tree
   = fun sort_name pat -> match pat with
-  | Var name -> mk_tree sort_name Var [| (* XXX shouldn't something go here? *) |]
+  | Var name -> mk_tree sort_name SingleCapture
+    [| mk_terminal_capture name |]
   | Operator (name, pats) -> mk_tree sort_name (Operator name)
     (pats
       |. Belt.List.toArray
@@ -345,6 +345,7 @@ let rec of_ast
       = find_operator_match operator_rules op_name
     in
 
+    (* Helper to look up (Nominal) subterms by token index. See find_subtm. *)
     let find_subtm' = fun ix -> match operator_match_pattern with
       | SingleCapturePattern _
       -> FoundCapture
@@ -359,17 +360,14 @@ let rec of_ast
       * if it's a nonterminal, look up the subterm (by token number)
     *)
     let children = Belt.List.(operator_match_tokens
-      |. keep (function
-        | Underscore _n -> false
-        | _             -> true
-      )
-      |. mapWithIndex (fun token_ix token -> token_ix, token)
+      |. keep (function Underscore _n -> false | _ -> true)
+      (* switch from 0- to 1-based indexing *)
+      |. mapWithIndex (fun token_ix token -> token_ix + 1, token)
       |. toArray
       )
       |. Belt.Array.map (fun (token_ix, token) ->
 
-      let token_ix' = token_ix + 1 in (* switch from 0- to 1-based indexing *)
-      match find_subtm' token_ix', token with
+      match find_subtm' token_ix, token with
 
         | FoundCapture, NonterminalName _sort
         -> assert false (* TODO: raise invariant violation *)
@@ -424,16 +422,11 @@ let rec of_ast
            )
       *)
 
-        | FoundBinder pattern, NonterminalName _name
+        | FoundBinder pattern, NonterminalName name
         -> NonterminalCapture (pattern_to_tree sort_name pattern)
 
-        (* Invariant: underscores are filtered out in the previous `keep` stage
-         *)
-        | _, Underscore _ -> assert false
-
         | FoundBinder (Var var_name), TerminalName terminal_name
-        -> NonterminalCapture (mk_tree sort_name Var
-          [| mk_terminal_capture var_name |])
+        -> mk_terminal_capture var_name
 
         | FoundBinder pattern, TerminalName name
         -> raise (BadRules
@@ -444,10 +437,14 @@ let rec of_ast
             name
         ))
 
+        (* Invariant: underscores are filtered out in the previous `keep` stage
+         *)
+        | _, Underscore _ -> assert false
+
         | NotFound, NonterminalName name
         -> raise (BadRules (Printf.sprintf
           "of_ast: subterm %n not found in match pattern %s, nonterminal name: %s"
-          token_ix'
+          token_ix
           (string_of_operator_match_pattern operator_match_pattern)
           name
         ))
@@ -464,7 +461,7 @@ let rec of_ast
       |. find_first_single_capture
       |> get_option' ("of_ast: failed to get sort rule for " ^ sort_name)
     in
-    mk_tree sort_name Var [| mk_terminal_capture name |]
+    mk_tree sort_name SingleCapture [| mk_terminal_capture name |]
 
   | SortAp ("sequence", [|sort|]), Nominal.Sequence tms ->
     let children = tms
@@ -523,7 +520,7 @@ let rec tree_to_ast
   tree
   : Nominal.term
     = match tree.node_type, tree.children with
-    | Var, [| TerminalCapture { content = name } |]
+    | SingleCapture, [| TerminalCapture { content = name } |]
     -> Var name
     | Sequence, children ->
       let children' = children
@@ -542,7 +539,7 @@ let rec tree_to_ast
     (* TODO: check validity *)
     | Operator op_name, tree_children ->
       let SortRule { operator_rules } = get_option'
-        ("of_ast: failed to get sort " ^ sort_name)
+        ("tree_to_ast: failed to get sort " ^ sort_name)
         (MS.get sort_rules sort_name)
       in
 
@@ -607,15 +604,17 @@ let rec tree_to_ast
       )
 
     | Primitive _, _
-    | Var        , _
+    | SingleCapture , _
     -> assert false
 
 and capture_to_pat : capture -> Pattern.t
   = function
-    | TerminalCapture { content } -> raise @@ ToAstError (Printf.sprintf
+    | TerminalCapture { content } -> Var content
+        (*
+        raise @@ ToAstError (Printf.sprintf
       "Unexpected bare terminal capture (%s) in capture_to_pat"
       content
-    )
+    *)
     | NonterminalCapture { node_type; children } ->
       match node_type with
       | Operator op_name ->
@@ -627,7 +626,7 @@ and capture_to_pat : capture -> Pattern.t
           |. Belt.List.fromArray
         in
         Operator (op_name, children')
-      | Var -> (match children with
+      | SingleCapture -> (match children with
         | [| TerminalCapture { content = name } |] -> Var name
         | _ -> raise @@ ToAstError
           "Unexpected children of a var capture (expected a single terminal capture)"
@@ -812,32 +811,18 @@ let tree_of_parse_result
         Printf.printf "go_nt %s (production %n: %s)\n"
           nt_name prod_num (Lr0.string_of_production_num prod_num);
 
-        let sort_name = production_sort_name
-          Lr0.production_nonterminal_map
-          nonterminal_nums
-          prod_num
-        in
-
-        Printf.printf "sort_name: %s\n" sort_name;
         let tokens, m_operator_match_pattern =
           match Belt.MutableMap.Int.get production_rule_map prod_num with
           | None -> failwith "TODO: error"
           | Some result -> result
         in
 
-        Printf.printf "nt_name: %s\n" nt_name;
         let node_type = match m_operator_match_pattern with
-          | None -> failwith "TODO: error"
-          | Some (SingleCapturePattern pat)
-          -> let captured_symbol = Lr0.production_map
-               |. Belt.MutableMap.Int.getExn prod_num
-               |. Belt.List.getExn (pat - 1)
-             in
-             (* Slight assumption: a captured terminal is a variable *)
-             (match captured_symbol with
-               | Terminal _ -> Var
-               | Nonterminal _ -> SingleCapture
-             )
+          | None -> failwith (Printf.sprintf
+            "invariant violation: go_nt couldn't find production %n"
+            prod_num
+          )
+          | Some (SingleCapturePattern pat) -> SingleCapture
           | Some (OperatorPattern (ctor_name, _)) -> Operator ctor_name
         in
 
@@ -845,7 +830,7 @@ let tree_of_parse_result
           |. Belt.List.keep (function Underscore _ -> false | _ -> true)
         in
 
-        { sort_name; node_type;
+        { sort_name = nt_name; node_type;
           children = children
             |. Belt.List.zip tokens_no_space
             |. Belt.List.toArray

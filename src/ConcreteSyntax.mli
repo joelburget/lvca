@@ -12,7 +12,6 @@ type prim_ty =
 type node_type =
   | SingleCapture
   | Operator  of string
-  | Var
   | Sequence
   | Primitive of prim_ty
 
