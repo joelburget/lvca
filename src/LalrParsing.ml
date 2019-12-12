@@ -69,7 +69,9 @@ module Lalr1 (G : GRAMMAR) = struct
     item_set_to_state,
     lr0_goto_kernel,
     lr0_items,
-    terminal_names
+    terminal_names,
+    token_to_terminal,
+    augmented_state
   ) = Lr0'.(
     string_of_item,
     production_map,
@@ -80,7 +82,9 @@ module Lalr1 (G : GRAMMAR) = struct
     item_set_to_state,
     lr0_goto_kernel,
     lr0_items,
-    terminal_names
+    terminal_names,
+    token_to_terminal,
+    augmented_state
   )
 
   let string_of_lookahead_set = fun lookahead_set -> lookahead_set
@@ -372,4 +376,126 @@ module Lalr1 (G : GRAMMAR) = struct
         );
       );
     done
+
+  (* This is the main parsing function: CPTT Algorithm 4.44 / Figure 4.36. *)
+  let parse_trace
+    : do_trace (* trace or not *)
+    -> Lex.token MQueue.t
+    -> (parse_result, parse_error) Result.t *
+       (action * state array * parse_result array * Lex.token array) array
+    = fun do_trace toks ->
+      (* Re stack / results:
+       * These are called `stack` and `symbols` in CPTT. Their structure
+       * mirrors one another: there is a 1-1 correspondence between states in
+       * `stack` and symbols in `results`, expept that `stack` always has
+       * `augmented_state`, at the bottom of its stack.
+       *)
+      let stack : state MStack.t = MStack.make () in
+      MStack.push stack augmented_state;
+      let results : parse_result MStack.t = MStack.make () in
+      let trace = MQueue.make () in
+      try
+        let a = ref @@ pop_front_exn 0 toks in
+        while true do
+          (* let x be the state on top of the stack *)
+          let s = match MStack.top stack with
+            | Some s' -> s'
+            | None -> failwith "invariant violation: empty stack"
+          in
+          let tok = !a in
+          let terminal_num = token_to_terminal tok in
+          let action = lr0_action_table s terminal_num in
+          if do_trace = DoTrace then
+            MQueue.add trace
+              ( action,
+                Util.array_of_stack stack,
+                Util.array_of_stack results,
+                MQueue.toArray toks
+              );
+          match action with
+            | Shift t ->
+                MStack.push stack t;
+                MStack.push results
+                  { production = Either.Left terminal_num;
+                    children = [];
+                    start_pos = tok.start;
+                    end_pos = tok.finish;
+                  };
+                a := pop_front_exn tok.start toks;
+            | Reduce production_num ->
+                let pop_count = production_map
+                  |. MMI.get production_num
+                  |> get_option' (Printf.sprintf
+                    "Lr0 parse_trace: unable to find production %n in production_map"
+                    production_num
+                  )
+                  |. L.length
+                in
+                (* pop symbols off the stack *)
+                let children : parse_result list ref = ref [] in
+                let start_pos : int ref = ref 0 in
+                let end_pos : int ref = ref 0 in
+                for i = 1 to pop_count do
+                  let _ = MStack.pop stack in
+                  match MStack.pop results with
+                    | Some child -> (
+                      children := child :: !children;
+                      (* Note: children appear in reverse *)
+                      if i = pop_count then start_pos := child.start_pos;
+                      if i = 1 then end_pos := child.end_pos;
+                    )
+                    | None -> failwith
+                      "invariant violation: popping from empty stack"
+                done;
+
+                let nt_num = production_nonterminal_map
+                  |. MMI.get production_num
+                  |> get_option' (Printf.sprintf
+                    "Lr0 parse_trace: unable to find production %n in production_nonterminal_map"
+                    production_num
+                  )
+                in
+                (match MStack.top stack with
+                  | Some t -> (match lr0_goto_table t (Nonterminal nt_num) with
+                      | None -> failwith
+                        "invariant violation: invalid GOTO transition"
+                      | Some state -> MStack.push stack state
+                  )
+                  | None -> failwith "invariant violation: peeking empty stack"
+                );
+
+                MStack.push results
+                  { production = Either.Right production_num;
+                    children = !children;
+                    start_pos = !start_pos;
+                    end_pos = !end_pos;
+                  };
+            | Accept -> raise ParseFinished
+            | Error ->
+                raise (ParseFailed
+                  ( tok.start
+                  (* TODO: give a decent error message *)
+                  , Printf.sprintf
+                    "parse failed -- no valid transition on this token (%s)"
+                    tok.name
+                  ))
+            ;
+        done;
+        failwith "invariant violation: can't make it here"
+      with
+        | ParseFinished -> (match MStack.size results with
+          | 1 -> (match MStack.top results with
+            | Some result -> Result.Ok result, MQueue.toArray trace
+            | None -> failwith "invariant violation: no result"
+            )
+          | 0 -> failwith "invariant violation: no result"
+          | n -> failwith (Printf.sprintf
+            "invariant violation: multiple results (%n)"
+            n
+          )
+        )
+        | ParseFailed parse_error -> (Error parse_error, MQueue.toArray trace)
+        | PopFailed pos
+        -> (Error (pos, "parsing invariant violation -- pop failed"), MQueue.toArray trace)
+
 end
