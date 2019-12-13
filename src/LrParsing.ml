@@ -726,7 +726,7 @@ module Lr0 (G : GRAMMAR) = struct
           production_num
           )
         in
-        match symbols |. L.get position  with
+        match symbols |. L.get position with
           | Some (Terminal t_num as next_symbol) ->
             if t_num = terminal_num
               then lr0_goto_table state next_symbol

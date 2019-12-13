@@ -105,7 +105,6 @@ type lookahead_item_sets =
 
 let () = describe "LrParsing" (fun () ->
 
-  (* TODO: separate Lr0 / Lr1 modules *)
   let module Grammar1LR = Lr0(Grammar1) in
   let module Grammar2LR = Lr0(Grammar2) in
   let module Grammar1Lalr = Lalr1(Grammar1) in
@@ -427,31 +426,105 @@ let () = describe "LrParsing" (fun () ->
   |]
   in
 
-  let c_num = 1 in
-  let d_num = 2 in
+  let s'_num : nonterminal_num = 0 in
+  let s_num : nonterminal_num = 1 in
+  let c_num : nonterminal_num = 2 in
+
+  let state = gram1_lr1_config_sets
+    |. Belt.Array.map (fun config_set -> Grammar1LR.item_set_to_state @@
+      lookahead_item_set_to_item_set config_set.kernel_items
+    )
+  in
+
+  let expect_no_goto = fun start_state nt_num ->
+    expect (Grammar1Lalr.lalr1_goto_table state.(start_state) (Nonterminal nt_num))
+      |> toEqual None
+  in
+  let expect_goto = fun start_state nt_num result_state ->
+    expect (Grammar1Lalr.lalr1_goto_table state.(start_state) (Nonterminal nt_num))
+      |> toEqual (Some state.(result_state))
+  in
+
+  testAll "lalr1_goto_table" [
+    (* first, four gotos that are actually valid *)
+    expect_goto 0 s_num 1;
+    expect_goto 0 c_num 2;
+    expect_goto 2 c_num 5;
+    expect_goto 3 c_num 6;
+    (* the rest of the table is empty *)
+    expect_no_goto 0 s'_num;
+    expect_no_goto 1 s'_num;
+    expect_no_goto 2 s'_num;
+    expect_no_goto 3 s'_num;
+    expect_no_goto 4 s'_num;
+    expect_no_goto 5 s'_num;
+    expect_no_goto 6 s'_num;
+    expect_no_goto 1 s_num;
+    expect_no_goto 2 s_num;
+    expect_no_goto 3 s_num;
+    expect_no_goto 4 s_num;
+    expect_no_goto 5 s_num;
+    expect_no_goto 6 s_num;
+    expect_no_goto 1 c_num;
+    expect_no_goto 4 c_num;
+    expect_no_goto 5 c_num;
+    expect_no_goto 6 c_num;
+  ] Util.id;
+
+  let c_num : terminal_num = 1 in
+  let d_num : terminal_num = 2 in
+
+  let action_table_tests =
+    [ 0, c_num, Shift state.(3);
+      0, d_num, Shift state.(4);
+      0, 0,     Error;
+      1, c_num, Error;
+      1, c_num, Error;
+      1, 0,     Accept;
+      2, c_num, Shift state.(3);
+      2, d_num, Shift state.(4);
+      2, 0,     Error;
+      3, c_num, Shift state.(3);
+      3, d_num, Shift state.(4);
+      3, 0,     Error;
+      4, c_num, Reduce state.(3);
+      4, d_num, Reduce state.(3);
+      4, 0,     Reduce state.(3);
+      5, c_num, Error;
+      5, d_num, Error;
+      5, 0,     Reduce state.(1);
+      6, c_num, Reduce state.(2);
+      6, d_num, Reduce state.(2);
+      6, 0,     Reduce state.(2);
+    ]
+  in
+
+  let action_table_tests' = action_table_tests
+    |. Belt.List.map (fun (init_state, terminal_num, action) ->
+      expect (Grammar1Lalr.lalr1_action_table state.(init_state) terminal_num)
+        |> toEqual action
+    )
+  in
+  testAll "lalr1_action_table" action_table_tests' Util.id;
 
   testAll "parse" [
 
-    (*
     expect (Grammar1Lalr.parse (* "cdd" *) tokens1) |> toEqual (Result.Ok
-      (mk_wrapper 1
-        { production = Either.Right 1;
-          children = [
-            mk_wrapper 2
-              { production = Either.Right 2;
-                children = [
-                  mk_terminal c_num 0 1;
-                  mk_wrapper 3 @@ mk_terminal d_num 1 2;
-                ];
-                start_pos = 0;
-                end_pos = 2;
-              };
-            mk_wrapper 2 @@ mk_terminal d_num 2 3;
-          ];
-          start_pos = 0;
-          end_pos = 3;
-        }));
-        *)
+      { production = Either.Right 1;
+        children = [
+          { production = Either.Right 2;
+            children = [
+              mk_terminal c_num 0 1;
+              mk_wrapper 3 @@ mk_terminal d_num 1 2;
+            ];
+            start_pos = 0;
+            end_pos = 2;
+          };
+          mk_wrapper 3 @@ mk_terminal d_num 2 3;
+        ];
+        start_pos = 0;
+        end_pos = 3;
+      });
 
   ] Util.id;
 

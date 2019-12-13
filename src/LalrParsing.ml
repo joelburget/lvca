@@ -59,6 +59,19 @@ type mutable_lookahead_item_set = Belt.MutableSet.Int.t M.t
 type lalr1_action_table = state -> terminal_num -> action
 type lalr1_goto_table = state -> symbol -> state option
 
+let lookahead_item_set_to_item_set
+  : lookahead_item_set -> item_set
+  = fun x -> x
+  |. S.toArray
+  |. Belt.Array.map (fun { item } -> item)
+  |. SI.fromArray
+
+let mutable_lookahead_item_set_to_item_set
+  : mutable_lookahead_item_set -> item_set
+  = fun x -> x
+  |. M.keysToArray
+  |. SI.fromArray
+
 module Lalr1 (G : GRAMMAR) = struct
 
   module Lr0' = Lr0(G)
@@ -274,7 +287,7 @@ module Lalr1 (G : GRAMMAR) = struct
             )
           in
 
-          let state : state = item_set_to_state @@ lr0_goto_kernel kernel x in
+          let state = item_set_to_state @@ lr0_goto_kernel kernel x in
 
           (* Another terminal has been spontaneously generated *)
           let lookahead_set' = SI.remove lookahead_set hash_terminal in
@@ -310,9 +323,8 @@ module Lalr1 (G : GRAMMAR) = struct
   let lookahead_propagation : (state * item) array M.t M.t
     = mutable_lalr1_items
       |. M.mapWithKey (fun state_num mutable_lookahead_item_set ->
-        let kernel : item_set = mutable_lookahead_item_set
-          |. M.keysToArray
-          |. SI.fromArray
+        let kernel : item_set =
+          mutable_lookahead_item_set_to_item_set mutable_lookahead_item_set
         in
 
         M.mapWithKey mutable_lookahead_item_set (fun item lookahead_set ->
@@ -414,12 +426,18 @@ module Lalr1 (G : GRAMMAR) = struct
       (* TODO: this shouldn't catch all invariant violations *)
       Util.InvariantViolation _ -> None
 
+  let state_to_lookahead_item_set
+    : state -> lookahead_item_set
+    = fun state -> lalr1_items
+      |. Belt.Map.Int.getExn state
+      |> lr1_closure
+
   let lalr1_action_table : lalr1_action_table
     = fun state terminal_num ->
 
     let item_set_l : lookahead_item list
-      = lalr1_items
-      |. Belt.Map.Int.getExn state
+      = state
+      |. state_to_lookahead_item_set
       |. Belt.Set.toArray
       |. Belt.List.fromArray
     in
@@ -436,11 +454,13 @@ module Lalr1 (G : GRAMMAR) = struct
         production_num
         )
       in
-      match L.get symbols position  with
+
+      match L.get symbols position with
         | Some (Terminal t_num as next_symbol) ->
           if t_num = terminal_num
-          then lalr1_goto_table state next_symbol
+          then (lalr1_goto_table state next_symbol
             |. Belt.Option.map (fun x -> Shift x)
+          )
           else None
         | _ -> None
     in
