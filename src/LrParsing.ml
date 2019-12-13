@@ -398,13 +398,8 @@ module Lr0 (G : GRAMMAR) = struct
             ("Lr0 preprocessing -- unable to find nonterminal " ^
               string_of_int nt_num)
         in
-        (* Printf.printf "Adding prod %n to nt %n set\n" production_num nt_num; *)
         prod_set |. MSI.add production_num
       )
-    )
-
-  let _ = MMI.mapWithKey production_map (fun i _ ->
-      Printf.printf "%n: %s\n" i (string_of_production_num i)
     )
 
   let get_nonterminal_num : production_num -> nonterminal_num
@@ -741,7 +736,7 @@ module Lr0 (G : GRAMMAR) = struct
       )
     in
 
-    (* If [A -> xs .] is in I_i, set ACTION[i, a] to `Reduce A -> a` for
+    (* If [A -> xs .] is in I_i, set ACTION[i, a] to `Reduce A -> xs` for
      * all a in FOLLOW(A) *)
     let reduce_action = item_set_l
       |. Util.find_by (fun item ->
@@ -863,12 +858,14 @@ module Lr0 (G : GRAMMAR) = struct
       |. Js.Array2.joinWith " "
 
   (* This is the main parsing function: CPTT Algorithm 4.44 / Figure 4.36. *)
-  let parse_trace
-    : do_trace (* trace or not *)
+  let parse_trace_tables
+    : lr0_action_table
+    -> lr0_goto_table
+    -> do_trace (* trace or not *)
     -> Lex.token MQueue.t
     -> (parse_result, parse_error) Result.t *
        (action * state array * parse_result array * Lex.token array) array
-    = fun do_trace toks ->
+    = fun lr0_action_table lr0_goto_table do_trace toks ->
       (* Re stack / results:
        * These are called `stack` and `symbols` in CPTT. Their structure
        * mirrors one another: there is a 1-1 correspondence between states in
@@ -983,8 +980,17 @@ module Lr0 (G : GRAMMAR) = struct
         | PopFailed pos
         -> (Error (pos, "parsing invariant violation -- pop failed"), MQueue.toArray trace)
 
+  let parse_trace
+    : do_trace (* trace or not *)
+    -> Lex.token MQueue.t
+    -> (parse_result, parse_error) Result.t *
+       (action * state array * parse_result array * Lex.token array) array
+    = parse_trace_tables lr0_action_table lr0_goto_table
+
   let parse : Lex.token MQueue.t -> (parse_result, parse_error) Result.t
-    = fun toks -> match parse_trace DontTrace toks with result, _ -> result
+    = fun toks ->
+      match parse_trace DontTrace toks with
+        result, _ -> result
 
   let lex_and_parse : Lex.lexer -> string
     -> (parse_result, (Lex.lex_error, parse_error) Either.t) Result.t

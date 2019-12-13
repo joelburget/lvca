@@ -55,6 +55,10 @@ type mutable_lookahead_item_sets =
 (* Set of items with mutable lookahead *)
 type mutable_lookahead_item_set = Belt.MutableSet.Int.t M.t
 
+(* Same as the corresponding lr0 types *)
+type lalr1_action_table = state -> terminal_num -> action
+type lalr1_goto_table = state -> symbol -> state option
+
 module Lalr1 (G : GRAMMAR) = struct
 
   module Lr0' = Lr0(G)
@@ -67,11 +71,15 @@ module Lalr1 (G : GRAMMAR) = struct
     number_of_terminals,
     string_of_production_num,
     item_set_to_state,
+    state_to_item_set,
     lr0_goto_kernel,
     lr0_items,
     terminal_names,
     token_to_terminal,
-    augmented_state
+    augmented_state,
+    production_nonterminal_map,
+    parse_trace_tables,
+    end_marker
   ) = Lr0'.(
     string_of_item,
     production_map,
@@ -80,11 +88,15 @@ module Lalr1 (G : GRAMMAR) = struct
     number_of_terminals,
     string_of_production_num,
     item_set_to_state,
+    state_to_item_set,
     lr0_goto_kernel,
     lr0_items,
     terminal_names,
     token_to_terminal,
-    augmented_state
+    augmented_state,
+    production_nonterminal_map,
+    parse_trace_tables,
+    end_marker
   )
 
   let string_of_lookahead_set = fun lookahead_set -> lookahead_set
@@ -134,17 +146,21 @@ module Lalr1 (G : GRAMMAR) = struct
         in
         lookahead_set |. SI.forEach (fun lookahead_terminal_num ->
           (* first symbol right of the dot *)
-          match L.get production position with
-            | Some (Nonterminal nt) ->
-              let first_set' = first_set (match L.get production (position + 1) with
+          match Belt.List.get production position with
+            | Some (Nonterminal nt) -> (
+              let first_set' = first_set (
+                match Belt.List.get production (position + 1) with
                 | None -> [Terminal lookahead_terminal_num]
-                | Some (Nonterminal nt') -> [Nonterminal nt'; Terminal lookahead_terminal_num]
+                | Some (Nonterminal nt')
+                -> [Nonterminal nt'; Terminal lookahead_terminal_num]
+                | Some (Terminal _) -> failwith "TODO: found a terminal error"
               ) in
 
               SI.forEach
                 first_set'
                 (fun new_lookahead -> MStack.push stack (nt, new_lookahead))
-            | _                    -> ()
+            )
+            | _ -> ()
         )
       );
 
@@ -176,7 +192,7 @@ module Lalr1 (G : GRAMMAR) = struct
 
           (* Printf.printf "productions: %n\n" (Belt.List.length productions); *)
 
-          L.forEach productions (function
+          Belt.List.forEach productions (function
             | Terminal _         :: _ -> ()
             | Nonterminal new_nt :: rest ->
               (* XXX do we need to modify lookahead? *)
@@ -377,125 +393,114 @@ module Lalr1 (G : GRAMMAR) = struct
       );
     done
 
+  let lalr1_items : lookahead_item_set M.t
+    = mutable_lalr1_items
+    |. M.map (fun mutable_lookahead_item_set -> mutable_lookahead_item_set
+      |. M.toArray
+      |. Belt.Array.map (fun (item, mutable_lookahead) ->
+        { item; lookahead_set = mutable_lookahead
+          |. Belt.MutableSet.Int.toArray
+          |. Belt.Set.Int.fromArray
+        }
+      )
+      |. lookahead_item_set_from_array
+    )
+
+  let lalr1_goto_table : lalr1_goto_table = fun state nt ->
+    try
+      Some (item_set_to_state @@
+        lr0_goto_kernel (state_to_item_set state) nt)
+    with
+      (* TODO: this shouldn't catch all invariant violations *)
+      Util.InvariantViolation _ -> None
+
+  let lalr1_action_table : lalr1_action_table
+    = fun state terminal_num ->
+
+    let item_set_l : lookahead_item list
+      = lalr1_items
+      |. Belt.Map.Int.getExn state
+      |. Belt.Set.toArray
+      |. Belt.List.fromArray
+    in
+
+    (* If [A -> xs . a ys, b] is in I_i and GOTO(I_i, a) = I_j, set
+     * ACTION[i, a] to `shift j` *)
+    let shift_action = Util.find_by item_set_l @@ fun l_item ->
+      let { item; lookahead_set } = l_item in
+      let { production_num; position } = view_item item in
+      let symbols = production_map
+        |. MMI.get production_num
+        |> get_option' (Printf.sprintf
+        "Lr0 shift_action: unable to find production %n in production_map"
+        production_num
+        )
+      in
+      match L.get symbols position  with
+        | Some (Terminal t_num as next_symbol) ->
+          if t_num = terminal_num
+          then lalr1_goto_table state next_symbol
+            |. Belt.Option.map (fun x -> Shift x)
+          else None
+        | _ -> None
+    in
+
+    (* If [A -> xs ., a] is in I_i, set ACTION[i, a] to `Reduce A -> xs` *)
+    let reduce_action = Util.find_by item_set_l @@ fun l_item ->
+      let { item; lookahead_set } = l_item in
+      let { production_num; position } = view_item item in
+      let nt_num = production_nonterminal_map
+        |. MMI.get production_num
+        |> get_option' (Printf.sprintf
+        "Lr0 shift_action: unable to find production %n in production_nonterminal_map"
+        production_num
+        )
+      in
+      let production = production_map
+        |. MMI.get production_num
+        |> get_option' (Printf.sprintf
+        "Lr0 shift_action: unable to find production %n in production_map"
+        production_num
+        )
+      in
+      if position = L.length production &&
+         SI.has lookahead_set terminal_num &&
+         (* Accept in this case (end marker on the augmented nonterminal) --
+            don't reduce. *)
+         nt_num != 0
+        then Some (Reduce production_num)
+        else None
+    in
+
+    (* If [S' -> S .] is in I_i, set ACTION[i, $] to `accept` *)
+    let accept_action = Util.find_by item_set_l @@ fun l_item ->
+      let { item; lookahead_set } = l_item in
+      if item = mk_item' 0 1 && terminal_num = end_marker
+        then Some Accept
+        else None
+    in
+
+    (* We should always have exactly one action, otherwise it's a
+     * shift-reduce(-accept) conflict.
+     *)
+    match shift_action, reduce_action, accept_action with
+      | Some act,     None,     None
+      |     None, Some act,     None
+      |     None,     None, Some act -> act
+      |        _,        _,        _ -> Error
+
   (* This is the main parsing function: CPTT Algorithm 4.44 / Figure 4.36. *)
   let parse_trace
     : do_trace (* trace or not *)
     -> Lex.token MQueue.t
     -> (parse_result, parse_error) Result.t *
        (action * state array * parse_result array * Lex.token array) array
-    = fun do_trace toks ->
-      (* Re stack / results:
-       * These are called `stack` and `symbols` in CPTT. Their structure
-       * mirrors one another: there is a 1-1 correspondence between states in
-       * `stack` and symbols in `results`, expept that `stack` always has
-       * `augmented_state`, at the bottom of its stack.
-       *)
-      let stack : state MStack.t = MStack.make () in
-      MStack.push stack augmented_state;
-      let results : parse_result MStack.t = MStack.make () in
-      let trace = MQueue.make () in
-      try
-        let a = ref @@ pop_front_exn 0 toks in
-        while true do
-          (* let x be the state on top of the stack *)
-          let s = match MStack.top stack with
-            | Some s' -> s'
-            | None -> failwith "invariant violation: empty stack"
-          in
-          let tok = !a in
-          let terminal_num = token_to_terminal tok in
-          let action = lr0_action_table s terminal_num in
-          if do_trace = DoTrace then
-            MQueue.add trace
-              ( action,
-                Util.array_of_stack stack,
-                Util.array_of_stack results,
-                MQueue.toArray toks
-              );
-          match action with
-            | Shift t ->
-                MStack.push stack t;
-                MStack.push results
-                  { production = Either.Left terminal_num;
-                    children = [];
-                    start_pos = tok.start;
-                    end_pos = tok.finish;
-                  };
-                a := pop_front_exn tok.start toks;
-            | Reduce production_num ->
-                let pop_count = production_map
-                  |. MMI.get production_num
-                  |> get_option' (Printf.sprintf
-                    "Lr0 parse_trace: unable to find production %n in production_map"
-                    production_num
-                  )
-                  |. L.length
-                in
-                (* pop symbols off the stack *)
-                let children : parse_result list ref = ref [] in
-                let start_pos : int ref = ref 0 in
-                let end_pos : int ref = ref 0 in
-                for i = 1 to pop_count do
-                  let _ = MStack.pop stack in
-                  match MStack.pop results with
-                    | Some child -> (
-                      children := child :: !children;
-                      (* Note: children appear in reverse *)
-                      if i = pop_count then start_pos := child.start_pos;
-                      if i = 1 then end_pos := child.end_pos;
-                    )
-                    | None -> failwith
-                      "invariant violation: popping from empty stack"
-                done;
 
-                let nt_num = production_nonterminal_map
-                  |. MMI.get production_num
-                  |> get_option' (Printf.sprintf
-                    "Lr0 parse_trace: unable to find production %n in production_nonterminal_map"
-                    production_num
-                  )
-                in
-                (match MStack.top stack with
-                  | Some t -> (match lr0_goto_table t (Nonterminal nt_num) with
-                      | None -> failwith
-                        "invariant violation: invalid GOTO transition"
-                      | Some state -> MStack.push stack state
-                  )
-                  | None -> failwith "invariant violation: peeking empty stack"
-                );
+    = parse_trace_tables lalr1_action_table lalr1_goto_table
 
-                MStack.push results
-                  { production = Either.Right production_num;
-                    children = !children;
-                    start_pos = !start_pos;
-                    end_pos = !end_pos;
-                  };
-            | Accept -> raise ParseFinished
-            | Error ->
-                raise (ParseFailed
-                  ( tok.start
-                  (* TODO: give a decent error message *)
-                  , Printf.sprintf
-                    "parse failed -- no valid transition on this token (%s)"
-                    tok.name
-                  ))
-            ;
-        done;
-        failwith "invariant violation: can't make it here"
-      with
-        | ParseFinished -> (match MStack.size results with
-          | 1 -> (match MStack.top results with
-            | Some result -> Result.Ok result, MQueue.toArray trace
-            | None -> failwith "invariant violation: no result"
-            )
-          | 0 -> failwith "invariant violation: no result"
-          | n -> failwith (Printf.sprintf
-            "invariant violation: multiple results (%n)"
-            n
-          )
-        )
-        | ParseFailed parse_error -> (Error parse_error, MQueue.toArray trace)
-        | PopFailed pos
-        -> (Error (pos, "parsing invariant violation -- pop failed"), MQueue.toArray trace)
+  let parse : Lex.token MQueue.t -> (parse_result, parse_error) Result.t
+    = fun toks ->
+      match parse_trace DontTrace toks with
+        result, _ -> result
 
 end

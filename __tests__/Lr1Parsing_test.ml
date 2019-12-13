@@ -28,6 +28,7 @@ module GenerationCmp = Belt.Id.MakeComparable(struct
     | c -> c
 end)
 
+(* CPTT Example 4.54 *)
 module Grammar1 : GRAMMAR = struct
   let grammar = {
     nonterminals = M.fromArray
@@ -107,6 +108,7 @@ let () = describe "LrParsing" (fun () ->
   (* TODO: separate Lr0 / Lr1 modules *)
   let module Grammar1LR = Lr0(Grammar1) in
   let module Grammar2LR = Lr0(Grammar2) in
+  let module Grammar1Lalr = Lalr1(Grammar1) in
   let module Grammar2Lalr = Lalr1(Grammar2) in
 
   let mk_arr items = S.fromArray items ~id:(module LookaheadItemCmp) in
@@ -121,7 +123,6 @@ let () = describe "LrParsing" (fun () ->
     Belt.Set.fromArray ~id:(module LookaheadItemSetCmp)
   in
 
-  (*
   (* CPTT Fig 4.41 *)
   let gram1_lr1_config_sets : lookahead_configuration_set array = [|
     mk_config_set (* 0 *)
@@ -166,39 +167,42 @@ let () = describe "LrParsing" (fun () ->
   |]
   in
 
-  testAll "lookahead_lr0_items" [
+  let show_lookahead_item_sets : lookahead_item_sets -> string
+    = fun set -> set
+    |. Belt.Set.toArray
+    |. Belt.Array.map Grammar1Lalr.string_of_lookahead_item_set
+    |. Js.Array2.joinWith "\n\n"
+  in
+
+  testAll "lalr1_items" [
     (* First check the kernels are as expected *)
-    expect
-      (Grammar1LR.mutable_lookahead_lr0_items
-        |. Belt.MutableSet.toArray
+    expect (Grammar1Lalr.lalr1_items
+        |. Belt.Map.Int.valuesToArray
         |. lookahead_item_set_set
-    ) |> toBeEquivalent (fun _ -> "TODO: show lookahead_lr0_items") Belt.Set.eq
+    ) |> toBeEquivalent show_lookahead_item_sets Belt.Set.eq
       (gram1_lr1_config_sets
         |. Belt.Array.map (fun config_set -> config_set.kernel_items)
         |. lookahead_item_set_set
-      );
+    );
 
     (* Then verify all closures are as expected *)
-    expect
-      (* TODO use lookahead_lr0_items *)
-      (Grammar1LR.mutable_lookahead_lr0_items
-        |. Belt.MutableSet.toArray
-        |. Belt.Array.map Grammar1LR.lr1_closure
+    expect (Grammar1Lalr.lalr1_items
+        |. Belt.Map.Int.valuesToArray
+        |. Belt.Array.map Grammar1Lalr.lr1_closure
         |. lookahead_item_set_set
-    ) |> toBeEquivalent (fun _ -> "TODO: show closures") Belt.Set.eq
+    ) |> toBeEquivalent show_lookahead_item_sets Belt.Set.eq
       (gram1_lr1_config_sets
         |. Belt.Array.map simplify_lookahead_config_set
         |. lookahead_item_set_set
-      );
+    );
   ] Util.id;
-  *)
 
   let mk_item_set pruduction_num position =
     SI.fromArray [| mk_item' pruduction_num position |]
   in
 
   (* CPTT Figure 4.44 *)
-  let expected_gram2_lr0_kernels : (state * item_set) array = [|
+  let expected_grammar2_lalr1_kernels : (state * item_set) array = [|
     0, mk_item_set 0 0; (* S' -> . S *)
     1, mk_item_set 0 1; (* S' -> S . *)
     (* S -> L . = R
@@ -219,9 +223,8 @@ let () = describe "LrParsing" (fun () ->
     = Belt.Set.fromArray ~id:(module LrParsing.ComparableIntSet)
   in
 
-  (*
-  let actual_gram2_lr0_kernels : item_set_set
-    = Grammar2LR.lookahead_lr0_items
+  let actual_grammar2_lalr1_kernels : item_set_set
+    = Grammar2Lalr.lalr1_items
       |. Belt.Map.Int.valuesToArray
       |. Belt.Array.map (fun lookahead_item_set -> lookahead_item_set
         |. Belt.Set.toArray
@@ -231,17 +234,23 @@ let () = describe "LrParsing" (fun () ->
       |. mk_set
   in
 
-  testAll "grammar 2 lr0 items" [
-    expect actual_gram2_lr0_kernels
-      |> toBeEquivalent (fun _ -> "TODO: show lr0 kernels") Belt.Set.eq (mk_set
-        (Belt.Array.map expected_gram2_lr0_kernels (fun (_, k) -> k)))
-  ] Util.id;
-  *)
+  let show_item_set_set : LrParsing.item_set_set -> string
+    = fun sets -> sets
+    |. Belt.Set.toArray
+    |. Belt.Array.map Grammar2LR.string_of_item_set
+    |. Js.Array2.joinWith "\n"
+  in
 
-  let book_state_mapping = expected_gram2_lr0_kernels
-    |. Belt.Array.map
-      (fun (i, item_set) -> (i, Grammar2LR.item_set_to_state item_set))
-    |. M.fromArray
+  testAll "grammar 2 lalr1 kernel items" [
+    expect actual_grammar2_lalr1_kernels
+      |> toBeEquivalent show_item_set_set Belt.Set.eq (mk_set
+        (Belt.Array.map expected_grammar2_lalr1_kernels (fun (_, k) -> k)))
+  ] Util.id;
+
+  let book_state_mapping = Belt.Map.Int.(expected_grammar2_lalr1_kernels
+    |. fromArray
+    |. map Grammar2LR.item_set_to_state
+  )
   in
 
   let book_state : int array
@@ -401,6 +410,57 @@ let () = describe "LrParsing" (fun () ->
     expect lalr1_items_set
       |> toBeEquivalent string_of_lalr1_items_set Belt.Set.eq
         expected_lalr1_items
+  ] Util.id;
+
+  let mk_tok name start finish : Lex.token = { name; start; finish } in
+  let mk_terminal num start_pos end_pos =
+    { production = Either.Left num; children = []; start_pos; end_pos; }
+  in
+  let mk_wrapper prod_num ({start_pos; end_pos} as child) =
+    { production = Either.Right prod_num;
+      children = [ child ];
+      start_pos;
+      end_pos;
+    }
+  in
+
+  (* cdd
+   * 0123
+   *)
+  let tokens1 = MQueue.fromArray [|
+    mk_tok "c" 0 1;
+    mk_tok "d" 1 2;
+    mk_tok "d" 2 3;
+    mk_tok "$" 3 3;
+  |]
+  in
+
+  let c_num = 1 in
+  let d_num = 2 in
+
+  testAll "parse" [
+
+    (*
+    expect (Grammar1Lalr.parse (* "cdd" *) tokens1) |> toEqual (Result.Ok
+      (mk_wrapper 1
+        { production = Either.Right 1;
+          children = [
+            mk_wrapper 2
+              { production = Either.Right 2;
+                children = [
+                  mk_terminal c_num 0 1;
+                  mk_wrapper 3 @@ mk_terminal d_num 1 2;
+                ];
+                start_pos = 0;
+                end_pos = 2;
+              };
+            mk_wrapper 2 @@ mk_terminal d_num 2 3;
+          ];
+          start_pos = 0;
+          end_pos = 3;
+        }));
+        *)
+
   ] Util.id;
 
 )
