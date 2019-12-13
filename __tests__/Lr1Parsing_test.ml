@@ -123,7 +123,6 @@ let () = describe "LrParsing" (fun () ->
     Belt.Set.fromArray ~id:(module LookaheadItemSetCmp)
   in
 
-  (* CPTT Fig 4.41 *)
   let gram1_lr1_config_sets : lookahead_configuration_set array = [|
     mk_config_set (* 0 *)
       [| { item = mk_item' 0 0; lookahead_set = SI.fromArray [| 0 |] } |]
@@ -140,29 +139,18 @@ let () = describe "LrParsing" (fun () ->
          { item = mk_item' 3 0; lookahead_set = SI.fromArray [| 0 |] };
       |];
     mk_config_set (* 3 *)
-      [| { item = mk_item' 2 1; lookahead_set = SI.fromArray [| 1; 2 |] } |]
-      [| { item = mk_item' 2 0; lookahead_set = SI.fromArray [| 1; 2 |] };
-         { item = mk_item' 3 0; lookahead_set = SI.fromArray [| 1; 2 |] };
+      [| { item = mk_item' 2 1; lookahead_set = SI.fromArray [| 0; 1; 2 |] } |]
+      [| { item = mk_item' 2 0; lookahead_set = SI.fromArray [| 0; 1; 2 |] };
+         { item = mk_item' 3 0; lookahead_set = SI.fromArray [| 0; 1; 2 |] };
       |];
     mk_config_set (* 4 *)
-      [| { item = mk_item' 3 1; lookahead_set = SI.fromArray [| 1; 2 |] } |]
+      [| { item = mk_item' 3 1; lookahead_set = SI.fromArray [| 0; 1; 2 |] } |]
       [||];
     mk_config_set (* 5 *)
       [| { item = mk_item' 1 2; lookahead_set = SI.fromArray [| 0 |] } |]
       [||];
     mk_config_set (* 6 *)
-      [| { item = mk_item' 2 1; lookahead_set = SI.fromArray [| 0 |] } |]
-      [| { item = mk_item' 2 0; lookahead_set = SI.fromArray [| 0 |] };
-         { item = mk_item' 3 0; lookahead_set = SI.fromArray [| 0 |] };
-      |];
-    mk_config_set (* 7 *)
-      [| { item = mk_item' 3 1; lookahead_set = SI.fromArray [| 0 |] } |]
-      [||];
-    mk_config_set (* 8 *)
-      [| { item = mk_item' 2 2; lookahead_set = SI.fromArray [| 1; 2 |] } |]
-      [||];
-    mk_config_set (* 9 *)
-      [| { item = mk_item' 2 2; lookahead_set = SI.fromArray [| 0 |] } |]
+      [| { item = mk_item' 2 2; lookahead_set = SI.fromArray [| 0; 1; 2 |] } |]
       [||];
   |]
   in
@@ -174,28 +162,32 @@ let () = describe "LrParsing" (fun () ->
     |. Js.Array2.joinWith "\n\n"
   in
 
-  testAll "lalr1_items" [
+  describe "lalr1_items" (fun () ->
     (* First check the kernels are as expected *)
-    expect (Grammar1Lalr.lalr1_items
+    test "kernels" (fun () ->
+      expect (Grammar1Lalr.lalr1_items
         |. Belt.Map.Int.valuesToArray
         |. lookahead_item_set_set
-    ) |> toBeEquivalent show_lookahead_item_sets Belt.Set.eq
-      (gram1_lr1_config_sets
-        |. Belt.Array.map (fun config_set -> config_set.kernel_items)
-        |. lookahead_item_set_set
+      ) |> toBeEquivalent show_lookahead_item_sets Belt.Set.eq
+        (gram1_lr1_config_sets
+          |. Belt.Array.map (fun config_set -> config_set.kernel_items)
+          |. lookahead_item_set_set
+      )
     );
 
     (* Then verify all closures are as expected *)
-    expect (Grammar1Lalr.lalr1_items
+    test "closures" (fun () ->
+      expect (Grammar1Lalr.lalr1_items
         |. Belt.Map.Int.valuesToArray
         |. Belt.Array.map Grammar1Lalr.lr1_closure
         |. lookahead_item_set_set
-    ) |> toBeEquivalent show_lookahead_item_sets Belt.Set.eq
-      (gram1_lr1_config_sets
-        |. Belt.Array.map simplify_lookahead_config_set
-        |. lookahead_item_set_set
+      ) |> toBeEquivalent show_lookahead_item_sets Belt.Set.eq
+        (gram1_lr1_config_sets
+          |. Belt.Array.map simplify_lookahead_config_set
+          |. lookahead_item_set_set
+      )
     );
-  ] Util.id;
+  );
 
   let mk_item_set pruduction_num position =
     SI.fromArray [| mk_item' pruduction_num position |]
