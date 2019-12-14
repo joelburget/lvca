@@ -105,11 +105,13 @@ type grammar = {
   nonterminal_nums : (string * nonterminal_num) array;
 }
 
+type conflict_type = ShiftReduce | ReduceReduce
+
 type action =
   | Shift  of state
   | Reduce of production_num
   | Accept
-  | Error
+  | Error of conflict_type option
 
 (* Our action / goto table formulations are lazy (not actually tables). Tables
  * can be computed with `full_action_table` / `full_goto_table` *)
@@ -186,7 +188,9 @@ let action_abbrev : action -> string
   | Shift state -> "s" ^ string_of_int state
   | Reduce prod -> "r" ^ string_of_int prod
   | Accept      -> "acc"
-  | Error       -> ""
+  | Error None  -> ""
+  | Error (Some ShiftReduce) -> "s/r"
+  | Error (Some ReduceReduce) -> "r/r"
 
 let string_of_stack : state array -> string
   = fun states -> states
@@ -387,7 +391,9 @@ module Lr0 (G : GRAMMAR) = struct
     | Shift state -> "shift to " ^ string_of_int state
     | Reduce prod -> "reduce by " ^ string_of_production_num prod
     | Accept      -> "accept"
-    | Error       -> "error"
+    | Error None  -> "error"
+    | Error (Some ReduceReduce) -> "error (reduce/reduce conflict)"
+    | Error (Some ShiftReduce) -> "error (shift/reduce conflict)"
 
   let production_cnt = ref 0
   let () = M.forEach G.grammar.nonterminals
@@ -785,7 +791,8 @@ module Lr0 (G : GRAMMAR) = struct
       | Some act,     None,     None
       |     None, Some act,     None
       |     None,     None, Some act -> act
-      |        _,        _,        _ -> Error
+      |   Some _,   Some _,     None -> Error (Some ShiftReduce)
+      |        _,        _,        _ -> Error None
 
   (* TODO: is this right? *)
   let states : state array =
@@ -969,7 +976,23 @@ module Lr0 (G : GRAMMAR) = struct
                     end_pos = !end_pos;
                   };
             | Accept -> raise ParseFinished
-            | Error ->
+            | Error (Some ReduceReduce) ->
+                raise (ParseFailed
+                  ( tok.start
+                  , Printf.sprintf
+                    "parse failed -- reduce/reduce conflict on this token (%s) from state %n"
+                    tok.name
+                    s
+                  ))
+            | Error (Some ShiftReduce) ->
+                raise (ParseFailed
+                  ( tok.start
+                  , Printf.sprintf
+                    "parse failed -- shift/reduce conflict on this token (%s) from state %n"
+                    tok.name
+                    s
+                  ))
+            | Error None ->
                 raise (ParseFailed
                   ( tok.start
                   (* TODO: give a decent error message *)

@@ -288,9 +288,9 @@ module SyntaxDebugger = {
         let traceElems = trace
           |. Belt.Array.map(({action, stack, results, input}) => {
             let cls = switch(action) {
-              | Accept => "result-good"
-              | Error  => "result-bad"
-              | _      => ""
+              | Accept   => "result-good"
+              | Error(_) => "result-bad"
+              | _        => ""
             };
             <tr className=cls>
               <td>{React.string(LrParsing.string_of_stack(stack))}</td>

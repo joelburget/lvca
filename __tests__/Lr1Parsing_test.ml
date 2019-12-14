@@ -477,21 +477,21 @@ let () = describe "LrParsing" (fun () ->
   let action_table_tests =
     [ 0, c_num, Shift state.(3);
       0, d_num, Shift state.(4);
-      0, 0,     Error;
-      1, c_num, Error;
-      1, c_num, Error;
+      0, 0,     Error None;
+      1, c_num, Error None;
+      1, c_num, Error None;
       1, 0,     Accept;
       2, c_num, Shift state.(3);
       2, d_num, Shift state.(4);
-      2, 0,     Error;
+      2, 0,     Error None;
       3, c_num, Shift state.(3);
       3, d_num, Shift state.(4);
-      3, 0,     Error;
+      3, 0,     Error None;
       4, c_num, Reduce state.(3);
       4, d_num, Reduce state.(3);
       4, 0,     Reduce state.(3);
-      5, c_num, Error;
-      5, d_num, Error;
+      5, c_num, Error None;
+      5, d_num, Error None;
       5, 0,     Reduce state.(1);
       6, c_num, Reduce state.(2);
       6, d_num, Reduce state.(2);

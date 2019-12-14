@@ -528,7 +528,8 @@ module Lalr1 (G : GRAMMAR) = struct
       | Some act,     None,     None
       |     None, Some act,     None
       |     None,     None, Some act -> act
-      |        _,        _,        _ -> Error
+      |   Some _,   Some _,     None -> Error (Some ShiftReduce)
+      |        _,        _,        _ -> Error None
 
   let full_lalr1_action_table : unit -> action array array
     = fun () -> states |. Belt.Array.map (fun state ->
