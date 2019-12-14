@@ -78,6 +78,9 @@ module Lalr1 (G : GRAMMAR) = struct
 
   let (
     string_of_item,
+    string_of_nonterminal,
+    string_of_production,
+    string_of_terminal,
     production_map,
     first_set,
     nonterminal_production_map,
@@ -92,9 +95,18 @@ module Lalr1 (G : GRAMMAR) = struct
     augmented_state,
     production_nonterminal_map,
     parse_trace_tables,
-    end_marker
+    end_marker,
+    string_of_trace_line,
+    string_of_symbols,
+    string_of_action,
+    states,
+    terminals,
+    nonterminals
   ) = Lr0'.(
     string_of_item,
+    string_of_nonterminal,
+    string_of_production,
+    string_of_terminal,
     production_map,
     first_set,
     nonterminal_production_map,
@@ -109,7 +121,13 @@ module Lalr1 (G : GRAMMAR) = struct
     augmented_state,
     production_nonterminal_map,
     parse_trace_tables,
-    end_marker
+    end_marker,
+    string_of_trace_line,
+    string_of_symbols,
+    string_of_action,
+    states,
+    terminals,
+    nonterminals
   )
 
   let string_of_lookahead_set = fun lookahead_set -> lookahead_set
@@ -161,13 +179,13 @@ module Lalr1 (G : GRAMMAR) = struct
           (* first symbol right of the dot *)
           match Belt.List.get production position with
             | Some (Nonterminal nt) -> (
-              let first_set' = first_set (
+              let first_set' =
                 match Belt.List.get production (position + 1) with
-                | None -> [Terminal lookahead_terminal_num]
+                | None -> first_set [Terminal lookahead_terminal_num]
                 | Some (Nonterminal nt')
-                -> [Nonterminal nt'; Terminal lookahead_terminal_num]
-                | Some (Terminal _) -> failwith "TODO: found a terminal error"
-              ) in
+                -> first_set [Nonterminal nt'; Terminal lookahead_terminal_num]
+                | Some (Terminal t) -> SI.empty
+              in
 
               SI.forEach
                 first_set'
@@ -203,12 +221,11 @@ module Lalr1 (G : GRAMMAR) = struct
             )
           in
 
-          (* Printf.printf "productions: %n\n" (Belt.List.length productions); *)
-
-          Belt.List.forEach productions (function
+          productions
+            |. Belt.List.toArray
+            |. Belt.Array.forEach (function
             | Terminal _         :: _ -> ()
             | Nonterminal new_nt :: rest ->
-              (* XXX do we need to modify lookahead? *)
               let first_set' = first_set (match rest with
                 | [] -> [Terminal lookahead]
                 | symbol :: _ -> [symbol; Terminal lookahead]
@@ -218,7 +235,7 @@ module Lalr1 (G : GRAMMAR) = struct
               );
             | _ -> failwith "Empty production"
           )
-        )
+        );
       done;
 
       { kernel_items = initial_items;
@@ -328,15 +345,19 @@ module Lalr1 (G : GRAMMAR) = struct
         in
 
         M.mapWithKey mutable_lookahead_item_set (fun item lookahead_set ->
-          let { spontaneous_generation; propagation } = generate_lookaheads kernel item in
+          let { spontaneous_generation; propagation } =
+            generate_lookaheads kernel item
+          in
 
-          let spontaneous_generation_arr : (state * item * SI.t) array = spontaneous_generation
+          let spontaneous_generation_arr : (state * item * SI.t) array
+            = spontaneous_generation
             |. Belt.Array.map (fun (state, { item; lookahead_set }) ->
               state, item, lookahead_set
             )
           in
 
-          Belt.Array.forEach spontaneous_generation_arr (fun (state, item, lookahead_set) ->
+          Belt.Array.forEach spontaneous_generation_arr
+            (fun (state, item, lookahead_set) ->
             mutable_lalr1_items
               |. M.getExn state
               |. M.getExn item
@@ -450,7 +471,7 @@ module Lalr1 (G : GRAMMAR) = struct
       let symbols = production_map
         |. MMI.get production_num
         |> get_option' (Printf.sprintf
-        "Lr0 shift_action: unable to find production %n in production_map"
+        "Lalr1 shift_action: unable to find production %n in production_map"
         production_num
         )
       in
@@ -472,14 +493,14 @@ module Lalr1 (G : GRAMMAR) = struct
       let nt_num = production_nonterminal_map
         |. MMI.get production_num
         |> get_option' (Printf.sprintf
-        "Lr0 shift_action: unable to find production %n in production_nonterminal_map"
+        "Lalr1 shift_action: unable to find production %n in production_nonterminal_map"
         production_num
         )
       in
       let production = production_map
         |. MMI.get production_num
         |> get_option' (Printf.sprintf
-        "Lr0 shift_action: unable to find production %n in production_map"
+        "Lalr1 shift_action: unable to find production %n in production_map"
         production_num
         )
       in
@@ -509,18 +530,47 @@ module Lalr1 (G : GRAMMAR) = struct
       |     None,     None, Some act -> act
       |        _,        _,        _ -> Error
 
+  let full_lalr1_action_table : unit -> action array array
+    = fun () -> states |. Belt.Array.map (fun state ->
+      terminals |. Belt.Array.map (lalr1_action_table state)
+    )
+
+  let full_lalr1_goto_table : unit -> (symbol * state option) array array
+    = fun () -> states
+      |. Belt.Array.map (fun state ->
+      nonterminals
+        |. Belt.Array.map (fun nt ->
+          let sym = Nonterminal nt in
+          sym, lalr1_goto_table state sym
+        )
+    )
+
   (* This is the main parsing function: CPTT Algorithm 4.44 / Figure 4.36. *)
   let parse_trace
     : do_trace (* trace or not *)
     -> Lex.token MQueue.t
-    -> (parse_result, parse_error) Result.t *
-       (action * state array * parse_result array * Lex.token array) array
+    -> (parse_result, parse_error) Result.t * trace_line array
 
     = parse_trace_tables lalr1_action_table lalr1_goto_table
 
   let parse : Lex.token MQueue.t -> (parse_result, parse_error) Result.t
     = fun toks ->
-      match parse_trace DontTrace toks with
-        result, _ -> result
+      let result, trace = parse_trace DoTrace toks in
+      Belt.Array.forEach trace string_of_trace_line;
+      result
+
+  let lex_and_parse : Lex.lexer -> string
+    -> (parse_result, (Lex.lex_error, parse_error) Either.t) Result.t
+    = fun lexer input -> match Lex.lex lexer input with
+      | Error error -> Error (Left error)
+      | Ok tokens ->
+        let len = String.length input in
+        let tokens' = tokens
+          |. Belt.Array.keep (fun token -> token.name != "SPACE")
+          |. MQueue.fromArray
+        in
+        (* TODO: name might not always be "$" *)
+        MQueue.add tokens' { name = "$"; start = len; finish = len };
+        parse tokens' |. Util.map_error (fun err -> Either.Right err)
 
 end

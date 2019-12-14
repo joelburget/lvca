@@ -261,7 +261,10 @@ module SyntaxDebugger = {
       /* TODO: highlight affected area */
       | Error({ message }) => React.string(message)
       | Ok(tokens) => {
-        let tokenElems = tokens |. Belt.Array.map
+        let tokens' = tokens
+          |. Belt.Array.keep (token => token.name != "SPACE");
+        let tokenElems = tokens'
+          |. Belt.Array.map
           (({ name, start, finish }) =>
              <span
                className="token"
@@ -272,18 +275,18 @@ module SyntaxDebugger = {
              </span>
           );
 
-        let tokens' = MQueue.fromArray(tokens);
+        let tokens'' = MQueue.fromArray(tokens');
         let len = String.length(input);
         /* TODO: name might not always be "$" */
-        MQueue.add(tokens', { name: "$", start: len, finish: len });
+        MQueue.add(tokens'', { name: "$", start: len, finish: len });
 
         /* TODO: avoid building this module twice */
-        let module Lr0' = LrParsing.Lr0({ let grammar = grammar });
+        let module Lalr = LalrParsing.Lalr1({ let grammar = grammar });
         let (_parse_result, trace) =
-          Lr0'.parse_trace(LrParsing.DoTrace, tokens');
+          Lalr.parse_trace(LrParsing.DoTrace, tokens'');
 
         let traceElems = trace
-          |. Belt.Array.map(((action, stack, results, trace_tokens)) => {
+          |. Belt.Array.map(({action, stack, results, input}) => {
             let cls = switch(action) {
               | Accept => "result-good"
               | Error  => "result-bad"
@@ -291,9 +294,9 @@ module SyntaxDebugger = {
             };
             <tr className=cls>
               <td>{React.string(LrParsing.string_of_stack(stack))}</td>
-              <td>{React.string(Lr0'.string_of_symbols(results))}</td>
-              <td>{React.string(LrParsing.string_of_tokens(trace_tokens))}</td>
-              <td>{React.string(Lr0'.string_of_action(action))}</td>
+              <td>{React.string(Lalr.string_of_symbols(results))}</td>
+              <td>{React.string(LrParsing.string_of_tokens(input))}</td>
+              <td>{React.string(Lalr.string_of_action(action))}</td>
             </tr>
           });
 
@@ -389,24 +392,24 @@ module ConcreteSyntaxEditor = {
 
     let getGrammarPaneAndDebugger = (concrete, showGrammarPane, showDebugger) => {
       let (grammar, _) = ConcreteSyntax.to_grammar(concrete);
-      let module Lr0' = LrParsing.Lr0({ let grammar = grammar });
+      let module Lalr = LalrParsing.Lalr1({ let grammar = grammar });
 
-      let states = Lr0'.states
+      let states = Lalr.states
         |. Belt.Array.map(state => {
-          let kernel_items = Lr0'.state_to_item_set(state);
-          let { LrParsing.nonkernel_items } : LrParsing.configuration_set
-            = Lr0'.lr0_closure'(kernel_items);
+          let kernel_items = Lalr.state_to_lookahead_item_set(state);
+          let { LalrParsing.nonkernel_items }
+            = Lalr.lr1_closure'(kernel_items);
           let kernel_repr
-            = Lr0'.string_of_item_set(kernel_items, ~sep="\n");
+            = Lalr.string_of_lookahead_item_set(kernel_items);
           let nonkernel_repr
-            = Lr0'.string_of_item_set(nonkernel_items, ~sep="\n");
+            = Lalr.string_of_lookahead_item_set(nonkernel_items);
           (state, kernel_repr, nonkernel_repr)
         })
         ;
 
       let grammarPane = if (showGrammarPane) {
-        let action_table = Lr0'.full_lr0_action_table(());
-        let goto_table = Lr0'.full_lr0_goto_table(());
+        let action_table = Lalr.full_lalr1_action_table(());
+        let goto_table = Lalr.full_lalr1_goto_table(());
         <div>
           <Grammar
             grammar=grammar

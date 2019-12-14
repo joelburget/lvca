@@ -1,32 +1,18 @@
 open LrParsing;
-module BA = Belt.Array;
-module MS = Belt.Map.String;
-
-let make_div = children => {
-  ReactDOMRe.createDOMElementVariadic(
-    "div",
-    ~props=ReactDOMRe.domProps(),
-    children
-  )
-};
 
 module Grammar = {
   [@react.component]
   let make = (~grammar : grammar, ~states : array((int, string, string))) => {
     /* TODO: make table, sort */
     let terminalElems = grammar.terminal_nums
-      |. Belt.List.fromArray
-      /* |. MS.toList */
-      |. Belt.List.sort
+      |. Belt.SortArray.stableSortBy
         (((_, num), (_', num')) => Pervasives.compare(num, num'))
-      |. Belt.List.toArray
-      |. BA.map (((name, num)) =>
+      |. Belt.Array.map (((name, num)) =>
         <tr>
           <td>{React.string(string_of_int(num))}</td>
           <td>{React.string(name)}</td>
         </tr>
       );
-    /* Js.Array2.sortInPlace terminalElems; */
 
     let terminalsView = ReactDOMRe.createDOMElementVariadic(
       "tbody",
@@ -35,7 +21,7 @@ module Grammar = {
     );
 
     let stateElems = states
-      |. BA.map(((num, kernel_items, nonkernel_items)) =>
+      |. Belt.Array.map(((num, kernel_items, nonkernel_items)) =>
         <tr>
           <td>{React.string(string_of_int(num))}</td>
           <td>
@@ -87,8 +73,9 @@ module Tables = {
               ~action_table : array(array(action)),
               ~goto_table : array(array((symbol, option(state)))))
     => {
+    module MS = Belt.Map.String;
     let (concat, length, map, mapWithIndex, zip) =
-      BA.(concat, length, map, mapWithIndex, zip);
+      Belt.Array.(concat, length, map, mapWithIndex, zip);
 
     assert(length(action_table) == length(goto_table));
 

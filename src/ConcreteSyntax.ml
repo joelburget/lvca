@@ -769,7 +769,6 @@ let tree_of_parse_result
   -> LrParsing.parse_result
   -> tree
   = fun production_rule_map nonterminal_nums sort_rules root_name str root ->
-    Printf.printf "%s\n" (LrParsing.parse_result_to_string root);
     let str_pos = ref 0 in
     let str_len = Js.String2.length str in
 
@@ -808,9 +807,6 @@ let tree_of_parse_result
           | Right prod_num -> prod_num
         in
 
-        Printf.printf "go_nt %s (production %n: %s)\n"
-          nt_name prod_num (Lr0.string_of_production_num prod_num);
-
         let tokens, m_operator_match_pattern =
           match Belt.MutableMap.Int.get production_rule_map prod_num with
           | None -> failwith "TODO: error"
@@ -848,7 +844,6 @@ let tree_of_parse_result
       = fun { start_pos; end_pos } ->
         let leading_trivia, trailing_trivia = get_trivia start_pos end_pos in
         let content = Js.String.slice str ~from:start_pos ~to_:end_pos in
-        Printf.printf "go_t content %s\n" content;
         { leading_trivia; content; trailing_trivia }
 
     in
@@ -874,25 +869,21 @@ let parse desc root_name str =
             | Some x -> string_of_operator_match_pattern x
             | None -> "(none)")
       );
-    let module Lr0' = LrParsing.Lr0(struct
+    let module Lalr = LalrParsing.Lalr1(struct
       let grammar = grammar
     end) in
     let lexer = lexer_of_desc desc in
-    grammar.nonterminals |. Belt.Map.Int.mapWithKey (fun i nt ->
-      Printf.printf "nonterminal %n: %s\n" i (Lr0'.string_of_nonterminal nt)
-    );
 
     (* TODO: come up with better idea where to do this *)
     let augmented_sort_rules = MS.set desc.sort_rules "root"
       (SortRule { sort_name = "root"; operator_rules = [[]] })
     in
 
-    match Lr0'.lex_and_parse lexer str with
+    match Lalr.lex_and_parse lexer str with
       | Ok root
       ->
-        (* Printf.printf "parse result: %s\n" (LrParsing.parse_result_to_string root); *)
         Belt.Result.Ok (tree_of_parse_result
-        (module Lr0')
+        (module Lalr)
         production_rule_map
         (MS.fromArray grammar.nonterminal_nums)
         augmented_sort_rules

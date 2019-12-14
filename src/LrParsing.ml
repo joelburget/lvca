@@ -153,6 +153,13 @@ type do_trace =
   | DoTrace
   | DontTrace
 
+type trace_line =
+  { action : action ;
+    stack : state array;
+    results : parse_result array;
+    input : Lex.token array;
+  }
+
 let pop_front_exn : int -> 'a MQueue.t -> 'a
   = fun position arr -> match MQueue.pop arr with
     | None -> raise (PopFailed position)
@@ -234,7 +241,6 @@ module Lr0 (G : GRAMMAR) = struct
 
   let rec nonterminal_first_set : SI.t -> MSI.t -> nonterminal_num -> unit
     = fun already_seen_nts result nt ->
-
       let productions : MSI.t = nonterminal_production_map
         |. MMI.get nt
         |> get_option' "TODO 1"
@@ -262,7 +268,7 @@ module Lr0 (G : GRAMMAR) = struct
     (* TODO: update when we allow empty productions *)
     | Nonterminal num :: _
     -> if not (already_seen_nts |. SI.has num)
-       then nonterminal_first_set already_seen_nts result num
+       then nonterminal_first_set (SI.add already_seen_nts num) result num
 
   let first_set : production -> SI.t
     = fun prod ->
@@ -791,17 +797,17 @@ module Lr0 (G : GRAMMAR) = struct
     A.makeBy (MS.size terminal_nums) Util.id
 
   let full_lr0_action_table : unit -> action array array
-    = fun () -> states |. A.map (fun state ->
-      terminals |. A.map (lr0_action_table state)
+    = fun () -> states |. Belt.Array.map (fun state ->
+      terminals |. Belt.Array.map (lr0_action_table state)
     )
 
   let full_lr0_goto_table : unit -> (symbol * state option) array array
     = fun () -> states
-      |. A.map (fun state ->
+      |. Belt.Array.map (fun state ->
       nonterminals
-        |. A.map (fun nt -> Nonterminal nt)
-        |. A.map (fun sym ->
-            sym, lr0_goto_table state sym
+        |. Belt.Array.map (fun nt ->
+          let sym = Nonterminal nt in
+          sym, lr0_goto_table state sym
         )
     )
 
@@ -830,7 +836,7 @@ module Lr0 (G : GRAMMAR) = struct
 
   let string_of_symbols : parse_result array -> string
     = fun parse_results -> parse_results
-      |. A.map (fun { production } -> match production with
+      |. Belt.Array.map (fun { production } -> match production with
         | Left terminal_num -> terminal_names
           |. M.get terminal_num
           |> get_option' (Printf.sprintf
@@ -857,14 +863,24 @@ module Lr0 (G : GRAMMAR) = struct
       )
       |. Js.Array2.joinWith " "
 
+  let string_of_trace_line = fun { action; stack; results; input } ->
+    Printf.printf "action: %s\nstack: %s\nresults: %s\ninput: %s\n\n"
+      (string_of_action action)
+      (stack
+        |. Belt.Array.map string_of_int
+        |. Js.Array2.joinWith " ")
+      (string_of_symbols results)
+      (input
+        |. Belt.Array.map (fun tok -> tok.name)
+        |. Js.Array2.joinWith " ")
+
   (* This is the main parsing function: CPTT Algorithm 4.44 / Figure 4.36. *)
   let parse_trace_tables
     : lr0_action_table
     -> lr0_goto_table
     -> do_trace (* trace or not *)
     -> Lex.token MQueue.t
-    -> (parse_result, parse_error) Result.t *
-       (action * state array * parse_result array * Lex.token array) array
+    -> (parse_result, parse_error) Result.t * trace_line array
     = fun lr0_action_table lr0_goto_table do_trace toks ->
       (* Re stack / results:
        * These are called `stack` and `symbols` in CPTT. Their structure
@@ -889,11 +905,11 @@ module Lr0 (G : GRAMMAR) = struct
           let action = lr0_action_table s terminal_num in
           if do_trace = DoTrace then
             MQueue.add trace
-              ( action,
-                Util.array_of_stack stack,
-                Util.array_of_stack results,
-                MQueue.toArray toks
-              );
+              { action;
+                stack = Util.array_of_stack stack;
+                results = Util.array_of_stack results;
+                input = MQueue.toArray toks;
+              };
           match action with
             | Shift t ->
                 MStack.push stack t;
@@ -958,12 +974,14 @@ module Lr0 (G : GRAMMAR) = struct
                   ( tok.start
                   (* TODO: give a decent error message *)
                   , Printf.sprintf
-                    "parse failed -- no valid transition on this token (%s)"
+                    "parse failed -- no valid transition on this token (%s) from state %n"
                     tok.name
+                    s
                   ))
             ;
         done;
         failwith "invariant violation: can't make it here"
+
       with
         | ParseFinished -> (match MStack.size results with
           | 1 -> (match MStack.top results with
@@ -983,8 +1001,7 @@ module Lr0 (G : GRAMMAR) = struct
   let parse_trace
     : do_trace (* trace or not *)
     -> Lex.token MQueue.t
-    -> (parse_result, parse_error) Result.t *
-       (action * state array * parse_result array * Lex.token array) array
+    -> (parse_result, parse_error) Result.t * trace_line array
     = parse_trace_tables lr0_action_table lr0_goto_table
 
   let parse : Lex.token MQueue.t -> (parse_result, parse_error) Result.t
