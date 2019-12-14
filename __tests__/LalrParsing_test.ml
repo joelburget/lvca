@@ -415,17 +415,6 @@ let () = describe "LrParsing" (fun () ->
     }
   in
 
-  (* cdd
-   * 0123
-   *)
-  let tokens1 = MQueue.fromArray [|
-    mk_tok "c" 0 1;
-    mk_tok "d" 1 2;
-    mk_tok "d" 2 3;
-    mk_tok "$" 3 3;
-  |]
-  in
-
   let s'_num : nonterminal_num = 0 in
   let s_num : nonterminal_num = 1 in
   let c_num : nonterminal_num = 2 in
@@ -507,6 +496,31 @@ let () = describe "LrParsing" (fun () ->
   in
   testAll "lalr1_action_table" action_table_tests' Util.id;
 
+  (* cdd
+   * 0123
+   *)
+  let tokens1 = MQueue.fromArray [|
+    mk_tok "c" 0 1;
+    mk_tok "d" 1 2;
+    mk_tok "d" 2 3;
+    mk_tok "$" 3 3;
+  |]
+  in
+
+  (* **foo = *bar
+   * 012345678901
+   *)
+  let tokens2 = MQueue.fromArray [|
+    mk_tok "*" 0 1;
+    mk_tok "*" 1 2;
+    mk_tok "id" 2 5;
+    mk_tok "=" 6 7;
+    mk_tok "*" 8 9;
+    mk_tok "id" 9 12;
+    mk_tok "$" 12 12;
+  |]
+  in
+
   testAll "parse" [
 
     expect (Grammar1Lalr.parse (* "cdd" *) tokens1) |> toEqual (Result.Ok
@@ -524,6 +538,58 @@ let () = describe "LrParsing" (fun () ->
         ];
         start_pos = 0;
         end_pos = 3;
+      });
+
+    let eq_num = 1 in
+    let star_num = 2 in
+    let id_num = 3 in
+
+    expect (Grammar2Lalr.parse (* "**foo = *bar" *) tokens2) |> toEqual (Result.Ok
+      { production = Either.Right 1;
+        children = [
+          { production = Either.Right 3;
+            children = [
+              mk_terminal star_num 0 1;
+              mk_wrapper 5 @@
+                { production = Either.Right 3;
+                  children = [
+                    mk_terminal star_num 1 2;
+                    mk_wrapper 5 @@
+                      { production = Either.Right 4;
+                        children = [
+                          mk_terminal id_num 2 5;
+                        ];
+                        start_pos = 2;
+                        end_pos = 5;
+                      };
+                  ];
+                  start_pos = 1;
+                  end_pos = 5;
+                };
+            ];
+            start_pos = 0;
+            end_pos = 5;
+          };
+          mk_terminal eq_num 6 7;
+          mk_wrapper 5 @@
+            { production = Either.Right 3;
+              children = [
+                mk_terminal star_num 8 9;
+                mk_wrapper 5
+                  { production = Either.Right 4;
+                    children = [
+                      mk_terminal id_num 9 12;
+                    ];
+                    start_pos = 9;
+                    end_pos = 12;
+                  };
+              ];
+              start_pos = 8;
+              end_pos = 12;
+            };
+        ];
+        start_pos = 0;
+        end_pos = 12;
       });
 
   ] Util.id;
