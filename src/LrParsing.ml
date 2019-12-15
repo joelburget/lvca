@@ -271,15 +271,17 @@ module Lr0 (G : GRAMMAR) = struct
     | Terminal num :: _ -> MSI.add result num
     (* TODO: update when we allow empty productions *)
     | Nonterminal num :: _
-    -> if not (already_seen_nts |. SI.has num)
+    -> if not (SI.has already_seen_nts num)
        then nonterminal_first_set (SI.add already_seen_nts num) result num
 
   let first_set : production -> SI.t
-    = fun prod ->
-      let result = MSI.make () in
-      let already_seen_nts = SI.fromArray [||] in
-      first_set' already_seen_nts result prod;
-      result |. MSI.toArray |. SI.fromArray
+    = function
+      | [] -> SI.fromArray [||]
+      | prod ->
+        let result = MSI.make () in
+        let already_seen_nts = SI.fromArray [||] in
+        first_set' already_seen_nts result prod;
+        result |. MSI.toArray |. SI.fromArray
 
   let string_of_terminal : terminal_num -> string
     = fun t_num -> terminal_names
@@ -586,8 +588,11 @@ module Lr0 (G : GRAMMAR) = struct
   let state_to_item_set : state -> item_set
     = fun state -> lr0_items
       |. M.get state
-      |> get_option'
-        ("state_to_item_set -- couldn't find state " ^ string_of_int state)
+      |> get_option' (Printf.sprintf
+        "state_to_item_set -- couldn't find state %n (%n item sets)"
+        state
+        (M.size lr0_items)
+      )
 
   let item_set_to_state : item_set -> state
     = fun item_set ->
@@ -598,71 +603,13 @@ module Lr0 (G : GRAMMAR) = struct
         (string_of_item_set item_set)
         (lr0_items
           |. M.valuesToArray
-          |. A.map string_of_item_set
+          |. Belt.Array.map string_of_item_set
           |. Js.Array2.joinWith ", ")
       )
     in state
 
   let augmented_state : state
     = item_set_to_state @@ SI.fromArray [| mk_item' 0 0 |]
-
-  let in_first_cache : (terminal_num * symbol, bool, SymbolCmp.identity) MM.t
-    = MM.make ~id:(module SymbolCmp)
-
-  let in_first : terminal_num -> symbol -> bool
-    =
-      (* We use this stack (which is a set) to track which nonterminals we're
-       * currently looking through, to prevent loops *)
-      let stack = MSI.make () in
-      let rec in_first' t_num sym =
-        match in_first_cache |. MM.get (t_num, sym) with
-        | Some result -> result
-        | None -> (match sym with
-          | Terminal t_num'    -> t_num' = t_num
-          | Nonterminal nt_num ->
-          let { productions } = G.grammar.nonterminals
-            |. M.get nt_num
-            |> get_option' (Printf.sprintf
-            "Lr0 in_first: unable to find nonterminal %n in G.grammar.nonterminals"
-            nt_num
-            )
-          in
-          let result, _ = Util.fold_right
-            (* XXX doesn't use symbol? *)
-            (fun (symbol, (already_found, all_derive_empty)) ->
-              let found_it = productions |. L.some (function
-                | Terminal t_num' :: _ -> t_num' = t_num
-                | (Nonterminal nt_num as nt) :: _ ->
-                  if stack |. MSI.has nt_num
-                  then false
-                  else (
-                    stack |. MSI.add nt_num;
-                    let result = in_first' t_num nt in
-                    stack |. MSI.remove nt_num;
-                    result
-                )
-                | [] -> false
-              )
-              in
-              (* TODO: update to allow empty productions *)
-              let this_derives_empty = false in
-              ( already_found || found_it
-              , all_derive_empty && this_derives_empty
-              )
-            )
-            productions
-            (false, true)
-          in
-          in_first_cache |. MM.set (t_num, sym) result;
-          result
-        )
-      in in_first'
-
-  let in_first_str : terminal_num -> symbol list -> bool
-    = fun t_num str -> match str with
-      (* TODO: update to allow empty productions *)
-      | x :: _ -> in_first t_num x
-      | _ -> false
 
   let end_marker : terminal_num
     = 0
@@ -680,13 +627,13 @@ module Lr0 (G : GRAMMAR) = struct
       | Terminal _ :: rest -> in_follow'' nts_visited t_num nt_num rest
       (* TODO: update to allow empty productions *)
       | Nonterminal nt'_num :: rest ->
-        (nt'_num = nt_num && in_first_str t_num rest) ||
+        (nt'_num = nt_num && (first_set rest |. SI.has t_num)) ||
         in_follow'' nts_visited t_num nt_num rest
       | [] -> false
 
   and in_follow' : SI.t -> terminal_num -> nonterminal_num -> bool
     = fun nts_visited t_num nt_num ->
-      if nts_visited |. SI.has nt_num then false else
+      if SI.has nts_visited nt_num then false else
       (* treat the augmenting production specially (rule 1):
          $ is in Follow(S)
        *)

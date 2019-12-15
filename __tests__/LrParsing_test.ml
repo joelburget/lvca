@@ -66,14 +66,19 @@ let () = describe "LrParsing" (fun () ->
       |> toEqual { production_num = 1; position = 1 };
   ] Util.id;
 
-  testAll "in_first" [
-    (* for terminals X, First(X) = {X} *)
-    expect (Lr0'.in_first 1 (Terminal 1)) |> toBe true;
-    expect (Lr0'.in_first 0 (Nonterminal 0)) |> toBe false;
-    expect (Lr0'.in_first 1 (Nonterminal 0)) |> toBe false;
-    expect (Lr0'.in_first 2 (Nonterminal 0)) |> toBe false;
-    expect (Lr0'.in_first 3 (Nonterminal 0)) |> toBe true;
-    expect (Lr0'.in_first 4 (Nonterminal 0)) |> toBe false;
+  testAll "first_set" [
+    expect (Lr0'.first_set [Nonterminal 1; Terminal 1; Nonterminal 2])
+      |> toEqual (SI.fromArray [|3;5|]);
+    expect (Lr0'.first_set [Nonterminal 2])
+      |> toEqual (SI.fromArray [|3;5|]);
+    expect (Lr0'.first_set [Nonterminal 2; Terminal 2; Nonterminal 3])
+      |> toEqual (SI.fromArray [|3;5|]);
+    expect (Lr0'.first_set [Nonterminal 3])
+      |> toEqual (SI.fromArray [|3;5|]);
+    expect (Lr0'.first_set [Terminal 3; Nonterminal 1; Terminal 4])
+      |> toEqual (SI.fromArray [|3|]);
+    expect (Lr0'.first_set [Terminal 5])
+      |> toEqual (SI.fromArray [|5|]);
   ] Util.id;
 
   testAll "in_follow" [
