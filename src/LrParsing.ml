@@ -871,7 +871,7 @@ module Lr0 (G : GRAMMAR) = struct
       |. Js.Array2.joinWith " "
 
   let string_of_trace_line = fun { action; stack; results; input } ->
-    Printf.printf "action: %s\nstack: %s\nresults: %s\ninput: %s\n\n"
+    Printf.sprintf "action: %s\nstack: %s\nresults: %s\ninput: %s\n\n"
       (string_of_action action)
       (stack
         |. Belt.Array.map string_of_int
@@ -1019,7 +1019,8 @@ module Lr0 (G : GRAMMAR) = struct
         )
         | ParseFailed parse_error -> (Error parse_error, MQueue.toArray trace)
         | PopFailed pos
-        -> (Error (pos, "parsing invariant violation -- pop failed"), MQueue.toArray trace)
+        -> (Error (pos, "parsing invariant violation -- pop failed"),
+            MQueue.toArray trace)
 
   let parse_trace
     : do_trace (* trace or not *)
