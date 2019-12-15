@@ -430,31 +430,40 @@ module Lr0 (G : GRAMMAR) = struct
   let lr0_closure' : item_set -> configuration_set
     = fun initial_items ->
       let added = Bitstring.alloc number_of_nonterminals false in
+      let kernel_items = MSI.make () in
       let nonkernel_items = MSI.make () in
-      let nt_stack = MSI.make () in
+      let nt_set = MSI.make () in
 
-      (* Create the set (nt_stack) of nonterminals to look at *)
+      (* Create the set (nt_set) of nonterminals to look at. Add each initial
+       * item to the kernel or nonkernel set. *)
       SI.forEach initial_items (fun item ->
         let { production_num; position } = view_item item in
-        let production =
-          get_option' (Printf.sprintf
+
+        if production_num = 0 or position > 0
+        then MSI.add kernel_items item
+        else MSI.add nonkernel_items item;
+
+        let production = production_map
+          |. MMI.get production_num
+          |> get_option' (Printf.sprintf
             "lr0_closure': couldn't find production %n"
             production_num
           )
-          @@ MMI.get production_map production_num
         in
-        (* first symbol right of the dot *)
+        (* first symbol right of the dot. if it's a nonterminal, look at it *)
         match L.get production position with
-          | Some (Nonterminal nt) -> MSI.add nt_stack nt
+          | Some (Nonterminal nt) -> MSI.add nt_set nt
           | _                     -> ()
-        );
+      );
 
-      while not (MSI.isEmpty nt_stack) do
+      (* Examine each accessible nonterminal, adding its initial items as
+       * nonkernel items. *)
+      while not (MSI.isEmpty nt_set) do
         let nonterminal_num =
-          get_option' "the set is not empty!" @@ MSI.minimum nt_stack
+          get_option' "the set is not empty!" @@ MSI.minimum nt_set
         in
-        MSI.remove nt_stack nonterminal_num;
-        let is_added = added
+        MSI.remove nt_set nonterminal_num;
+        let is_alrady_added = added
           |. Bitstring.get nonterminal_num
           |> get_option' (Printf.sprintf
             "lr0_closure': couldn't find nonterminal %n in added (nonterminal count %n)"
@@ -462,16 +471,16 @@ module Lr0 (G : GRAMMAR) = struct
             (Bitstring.length added)
           )
         in
-        if not is_added then (
+        if not is_alrady_added then (
           Bitstring.setExn added nonterminal_num true;
-          let production_set =
-            MMI.get nonterminal_production_map nonterminal_num
-              |> get_option' (Printf.sprintf
+          let production_num_set = nonterminal_production_map
+            |. MMI.get nonterminal_num
+            |> get_option' (Printf.sprintf
               "lr0_closure': unable to find nonterminal %n nonterminal_production_map"
               nonterminal_num
-              )
+            )
           in
-          MSI.forEach production_set (fun production_num ->
+          MSI.forEach production_num_set (fun production_num ->
             MSI.add nonkernel_items (mk_item' production_num 0)
           );
           let { productions } = M.get G.grammar.nonterminals nonterminal_num
@@ -483,12 +492,13 @@ module Lr0 (G : GRAMMAR) = struct
           L.forEach productions (fun production ->
             match production with
               | Terminal _         :: _ -> ()
-              | Nonterminal new_nt :: _ -> MSI.add nt_stack new_nt
+              | Nonterminal new_nt :: _ -> MSI.add nt_set new_nt
               | _                       -> failwith "Empty production"
           )
         )
       done;
-      { kernel_items = initial_items;
+
+      { kernel_items = kernel_items |. MSI.toArray |. SI.fromArray;
         nonkernel_items = nonkernel_items |. MSI.toArray |. SI.fromArray;
       }
 
