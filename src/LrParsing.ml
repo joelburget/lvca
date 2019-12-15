@@ -439,7 +439,7 @@ module Lr0 (G : GRAMMAR) = struct
       SI.forEach initial_items (fun item ->
         let { production_num; position } = view_item item in
 
-        if production_num = 0 or position > 0
+        if production_num = 0 || position > 0
         then MSI.add kernel_items item
         else MSI.add nonkernel_items item;
 
@@ -531,7 +531,7 @@ module Lr0 (G : GRAMMAR) = struct
         match L.get production position with
           | Some next_symbol ->
             if symbol = next_symbol then
-              result |. MSI.add (mk_item' production_num (position + 1))
+              MSI.add result (mk_item' production_num (position + 1))
           | _ -> ()
       );
       result |. MSI.toArray |. SI.fromArray
@@ -546,36 +546,41 @@ module Lr0 (G : GRAMMAR) = struct
     = let augmented_start = SI.fromArray
           [| mk_item {production_num = 0; position = 0} |]
       in
+      (* canonical collection of sets *)
       let c =
         MSet.fromArray [| augmented_start |] ~id:(module ComparableIntSet)
       in
+      (* set of item sets we've added to c but not yet explored *)
+      let active_set = ref @@ MSet.copy c in
 
       (* iterate through every set of items in the collection, compute the GOTO
        * kernel of each item set, and add any new sets. `continue` is set to
        * `true` if we find a new item set, indicating we need to loop again. *)
-      (* TODO: don't examine item sets we've already used *)
-      let continue = ref true in
-      while !continue do
-        continue := false;
-        (* for each set of items in c: *)
-        MSet.forEach c @@ fun items ->
+      while not (MSet.isEmpty !active_set) do
+        let new_active_set = MSet.fromArray [||] ~id:(module ComparableIntSet)
+        in
+        (* for each set of items in the active set: *)
+        MSet.forEach !active_set (fun items ->
           (* for each grammar symbol: *)
-          L.forEach grammar_symbols @@ fun symbol ->
-            let goto_items_symbol = lr0_goto_kernel items symbol in
+          Belt.List.forEach grammar_symbols (fun symbol ->
+            let goto_result = lr0_goto_kernel items symbol in
             (* if GOTO(items, symbol) is not empty and not in c: *)
-            if not (SI.isEmpty goto_items_symbol) &&
-               not (MSet.has c goto_items_symbol)
+            if not (SI.isEmpty goto_result) &&
+               not (MSet.has c goto_result)
             then (
-              MSet.add c goto_items_symbol;
-              continue := true
+              MSet.add c goto_result;
+              MSet.add new_active_set goto_result;
             )
+          )
+        );
+        active_set := new_active_set;
       done;
       c
 
   let lr0_items : item_set M.t
     = mutable_lr0_items
     |. MSet.toArray
-    |. A.mapWithIndex (fun i item_set -> i, item_set)
+    |. Belt.Array.mapWithIndex (fun i item_set -> i, item_set)
     |. M.fromArray
 
   let state_to_item_set : state -> item_set
