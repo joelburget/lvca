@@ -614,65 +614,6 @@ module Lr0 (G : GRAMMAR) = struct
   let end_marker : terminal_num
     = 0
 
-  exception FoundInFollow
-
-  (* nts_visited (which is a set) tracks the nonterminals we've looked in
-   *)
-
-  (* find all `t`s in the production, then look at their following
-   * sentences *)
-  let rec in_follow''
-    : SI.t -> terminal_num -> nonterminal_num -> production -> bool
-    = fun nts_visited t_num nt_num -> function
-      | Terminal _ :: rest -> in_follow'' nts_visited t_num nt_num rest
-      (* TODO: update to allow empty productions *)
-      | Nonterminal nt'_num :: rest ->
-        (nt'_num = nt_num && (first_set rest |. SI.has t_num)) ||
-        in_follow'' nts_visited t_num nt_num rest
-      | [] -> false
-
-  and in_follow' : SI.t -> terminal_num -> nonterminal_num -> bool
-    = fun nts_visited t_num nt_num ->
-      if SI.has nts_visited nt_num then false else
-      (* treat the augmenting production specially (rule 1):
-         $ is in Follow(S)
-       *)
-      if nt_num = 0 then
-        t_num = end_marker
-      else
-        (* TODO: update to allow empty productions *)
-        try
-          let nts_visited' = nts_visited |. SI.add nt_num in
-          production_map |. MMI.forEach (fun prod_num production ->
-            (* First look for this terminal following nt directly (rule 2) *)
-            if in_follow'' nts_visited' t_num nt_num production
-              then raise FoundInFollow;
-
-            (* Then look for this terminal following nonterminals which end in
-               nt. (rule 3)
-               IE, if there is a production A -> xB, then everything in
-               Follow(A) is in Follow(B)
-             *)
-            let nt_num' = production_nonterminal_map
-              |. MMI.get prod_num
-              |> get_option' (Printf.sprintf
-              "Lr0 in_follow': unable to find nonterminal %n in production_nonterminal_map"
-              prod_num
-              )
-            in
-            match Util.unsnoc production with
-              | _, Nonterminal last
-              -> if last = nt_num && in_follow' nts_visited' t_num nt_num'
-                then raise FoundInFollow;
-              | _ -> ()
-          );
-          false
-        with
-          FoundInFollow -> true
-
-  let in_follow : terminal_num -> nonterminal_num -> bool
-    = in_follow' SI.empty
-
   let rec follow' : SI.t -> nonterminal_num -> SI.t
     = fun nts_visited nt_num -> if nt_num = 0
       then SI.fromArray [| end_marker |]
@@ -686,7 +627,7 @@ module Lr0 (G : GRAMMAR) = struct
             let parent_nt = production_nonterminal_map
               |. MMI.get prod_num
               |> get_option' (Printf.sprintf
-              "Lr0 in_follow': unable to find nonterminal %n in production_nonterminal_map"
+              "Lr0 follow': unable to find nonterminal %n in production_nonterminal_map"
               prod_num
               )
             in
@@ -777,7 +718,7 @@ module Lr0 (G : GRAMMAR) = struct
           )
         in
         if position = L.length production &&
-           in_follow terminal_num nt_num &&
+           follow_set nt_num |. SI.has terminal_num &&
            (* Accept in this case (end marker on the augmented nonterminal) --
               don't reduce. *)
            nt_num != 0

@@ -101,36 +101,6 @@ let () = describe "LrParsing" (fun () ->
     test_follow_set 3 [| 0; 1; 2; 4 |];
   );
 
-  testAll "in_follow" [
-    (* $ is in the follow set for the start symbol *)
-    expect (Lr0'.in_follow 0 0) |> toBe true;
-    expect (Lr0'.in_follow 1 0) |> toBe false;
-    expect (Lr0'.in_follow 2 0) |> toBe false;
-    expect (Lr0'.in_follow 3 0) |> toBe false;
-    expect (Lr0'.in_follow 4 0) |> toBe false;
-
-    (* '$', '+', and ')' follow E, '*' and '(' don't *)
-    expect (Lr0'.in_follow 0 1) |> toBe true;
-    expect (Lr0'.in_follow 1 1) |> toBe true;
-    expect (Lr0'.in_follow 2 1) |> toBe false;
-    expect (Lr0'.in_follow 3 1) |> toBe false;
-    expect (Lr0'.in_follow 4 1) |> toBe true;
-
-    (* '$', '+', '*', and ')' follow T, '(' doesn't *)
-    expect (Lr0'.in_follow 0 2) |> toBe true;
-    expect (Lr0'.in_follow 1 2) |> toBe true;
-    expect (Lr0'.in_follow 2 2) |> toBe true;
-    expect (Lr0'.in_follow 3 2) |> toBe false;
-    expect (Lr0'.in_follow 4 2) |> toBe true;
-
-    (* '$', '+', '*', and ')' follow F, '(' doesn't *)
-    expect (Lr0'.in_follow 0 3) |> toBe true;
-    expect (Lr0'.in_follow 1 3) |> toBe true;
-    expect (Lr0'.in_follow 2 3) |> toBe true;
-    expect (Lr0'.in_follow 3 3) |> toBe false;
-    expect (Lr0'.in_follow 4 3) |> toBe true;
-  ] Util.id;
-
   (* I0 *)
   let items0 = [| mk_item' 0 0 |] in
   let expected0 : configuration_set =
