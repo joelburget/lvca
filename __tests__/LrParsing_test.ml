@@ -363,102 +363,106 @@ let () = describe "LrParsing" (fun () ->
     }
   in
 
-  (* foo * bar
-   * 0123456789
-   *)
-  let tokens1 = MQueue.fromArray [|
-    mk_tok "id" 0 3;
-    mk_tok "*"  4 5;
-    mk_tok "id" 6 9;
-    mk_tok "$"  9 9;
-  |]
-  in
-
-  (* foo * bar + baz
-   * 0123456789012345
-   *)
-  let tokens2 = MQueue.fromArray [|
-    mk_tok "id" 0 3;
-    mk_tok "*"  4 5;
-    mk_tok "id" 6 9;
-    mk_tok "+"  10 11;
-    mk_tok "id" 12 15;
-    mk_tok "$"  15 15;
-  |]
-  in
-
-  (* foo * bar + baz
-   * 0123456789012345
-   *)
-  let tokens3 = MQueue.fromArray [|
-    mk_tok "id" 0 3;
-    mk_tok "*"  4 5;
-  |]
-  in
-
-  (* foo + bar
-   * 0123456789
-   *)
-  let tokens4 = MQueue.fromArray [|
-    mk_tok "id" 0 3;
-    mk_tok "+"  4 5;
-    mk_tok "id" 6 9;
-    mk_tok "$"  9 9;
-  |]
-  in
-
   (* TODO: test failed parses *)
-  testAll "parse" [
+  describe "parse" (fun () ->
 
-    expect (Lr0'.parse (* "foo * bar" *) tokens1) |> toEqual (Result.Ok
-      (mk_wrapper 2
-        { production = Either.Right 3;
+    test "foo * bar" (fun () ->
+      (* foo * bar
+       * 0123456789
+       *)
+      let tokens1 = MQueue.fromArray [|
+        mk_tok "id" 0 3;
+        mk_tok "*"  4 5;
+        mk_tok "id" 6 9;
+        mk_tok "$"  9 9;
+      |]
+      in
+      expect (Lr0'.parse tokens1) |> toEqual (Result.Ok
+        (mk_wrapper 2
+          { production = Either.Right 3;
+            children = [
+              mk_wrapper 4 @@ mk_wrapper 6 @@ mk_terminal id_num 0 3;
+              mk_terminal times_num 4 5;
+              mk_wrapper 6 @@ mk_terminal id_num 6 9;
+            ];
+            start_pos = 0;
+            end_pos = 9;
+          }))
+    );
+
+    (* Figure 4.38 from CPTT *)
+    test "foo * bar + baz" (fun () ->
+      (* foo * bar + baz
+       * 0123456789012345
+       *)
+      let tokens2 = MQueue.fromArray [|
+        mk_tok "id" 0 3;
+        mk_tok "*"  4 5;
+        mk_tok "id" 6 9;
+        mk_tok "+"  10 11;
+        mk_tok "id" 12 15;
+        mk_tok "$"  15 15;
+      |]
+      in
+      expect (Lr0'.parse tokens2) |> toEqual (Result.Ok
+        { production = Either.Right 1;
+          children =
+            [ mk_wrapper 2
+              { production = Either.Right 3;
+                children = [
+                  mk_wrapper 4 @@ mk_wrapper 6 @@ mk_terminal id_num 0 3;
+                  mk_terminal times_num 4 5;
+                  mk_wrapper 6 @@ mk_terminal id_num 6 9;
+                ];
+                start_pos = 0;
+                end_pos = 9;
+              };
+              mk_terminal plus_num 10 11;
+              mk_wrapper 4 @@ mk_wrapper 6 @@ mk_terminal id_num 12 15;
+            ];
+          start_pos = 0;
+          end_pos = 15;
+        })
+    );
+
+    (* Figure 4.38 from CPTT *)
+    test "foo *" (fun () ->
+      (* foo * bar + baz
+       * 0123456789012345
+       *)
+      let tokens3 = MQueue.fromArray [|
+        mk_tok "id" 0 3;
+        mk_tok "*"  4 5;
+      |]
+      in
+      expect (Lr0'.parse tokens3) |> toEqual
+        (Result.Error (4, "parsing invariant violation -- pop failed"))
+    );
+
+    test "foo + bar" (fun () ->
+      (* foo + bar
+       * 0123456789
+       *)
+      let tokens4 = MQueue.fromArray [|
+        mk_tok "id" 0 3;
+        mk_tok "+"  4 5;
+        mk_tok "id" 6 9;
+        mk_tok "$"  9 9;
+      |]
+      in
+      expect (Lr0'.parse tokens4) |> toEqual (Result.Ok
+        { production = Either.Right 1;
           children = [
-            mk_wrapper 4 @@ mk_wrapper 6 @@ mk_terminal id_num 0 3;
-            mk_terminal times_num 4 5;
-            mk_wrapper 6 @@ mk_terminal id_num 6 9;
+            mk_wrapper 2 @@ mk_wrapper 4 @@ mk_wrapper 6 @@ mk_terminal id_num 0 3;
+            mk_terminal plus_num 4 5;
+            mk_wrapper 4 @@ mk_wrapper 6 @@ mk_terminal id_num 6 9;
           ];
           start_pos = 0;
           end_pos = 9;
-        }));
+        })
+    );
 
-    (* Figure 4.38 from CPTT *)
-    expect (Lr0'.parse (* "foo * bar + baz" *) tokens2) |> toEqual (Result.Ok
-      { production = Either.Right 1;
-        children =
-          [ mk_wrapper 2
-            { production = Either.Right 3;
-              children = [
-                mk_wrapper 4 @@ mk_wrapper 6 @@ mk_terminal id_num 0 3;
-                mk_terminal times_num 4 5;
-                mk_wrapper 6 @@ mk_terminal id_num 6 9;
-              ];
-              start_pos = 0;
-              end_pos = 9;
-            };
-            mk_terminal plus_num 10 11;
-            mk_wrapper 4 @@ mk_wrapper 6 @@ mk_terminal id_num 12 15;
-          ];
-        start_pos = 0;
-        end_pos = 15;
-      });
-
-    (* Figure 4.38 from CPTT *)
-    expect (Lr0'.parse (* "foo *" *) tokens3) |> toEqual
-      (Result.Error (4, "parsing invariant violation -- pop failed"));
-
-    expect (Lr0'.parse (* "foo + bar" *) tokens4) |> toEqual (Result.Ok
-      { production = Either.Right 1;
-        children = [
-          mk_wrapper 2 @@ mk_wrapper 4 @@ mk_wrapper 6 @@ mk_terminal id_num 0 3;
-          mk_terminal plus_num 4 5;
-          mk_wrapper 4 @@ mk_wrapper 6 @@ mk_terminal id_num 6 9;
-        ];
-        start_pos = 0;
-        end_pos = 9;
-      });
-
-  ] Util.id;
+  );
 
   test "lex-parse" (fun () ->
     let lexer =
