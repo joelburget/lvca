@@ -100,6 +100,36 @@ module Grammar2 : GRAMMAR = struct
   }
 end
 
+module Grammar3 : GRAMMAR = struct
+  let grammar = {
+    nonterminals = M.fromArray
+    [|
+       0, { productions = [[Nonterminal 1]] }; (* arith' -> arith *)
+       1, { productions = [
+         [Nonterminal 1; Terminal 1; Nonterminal 1]; (* arith + arith *)
+         [Terminal 2; Nonterminal 1; Terminal 3]; (* (arith) *)
+         [Terminal 4]; (* id *)
+         ]
+       };
+    |];
+
+    terminal_nums =
+    [|
+      "$", 0;
+      "+", 1;
+      "(", 2;
+      ")", 3;
+      "id", 4;
+    |];
+
+    nonterminal_nums =
+    [|
+      "arith'", 0;
+      "arith", 1;
+    |];
+  }
+end
+
 type lookahead_item_sets =
   (lookahead_item_set, LookaheadItemSetCmp.identity) Belt.Set.t
 
@@ -109,6 +139,7 @@ let () = describe "LrParsing" (fun () ->
   let module Grammar2LR = Lr0(Grammar2) in
   let module Grammar1Lalr = Lalr1(Grammar1) in
   let module Grammar2Lalr = Lalr1(Grammar2) in
+  let module Grammar3Lalr = Lalr1(Grammar3) in
 
   let mk_arr items = S.fromArray items ~id:(module LookaheadItemCmp) in
   let mk_config_set kernel_items nonkernel_items =
@@ -496,102 +527,184 @@ let () = describe "LrParsing" (fun () ->
   in
   testAll "lalr1_action_table" action_table_tests' Util.id;
 
-  (* cdd
-   * 0123
-   *)
-  let tokens1 = MQueue.fromArray [|
-    mk_tok "c" 0 1;
-    mk_tok "d" 1 2;
-    mk_tok "d" 2 3;
-    mk_tok "$" 3 3;
-  |]
-  in
+  describe "parse" (fun () ->
 
-  (* **foo = *bar
-   * 012345678901
-   *)
-  let tokens2 = MQueue.fromArray [|
-    mk_tok "*" 0 1;
-    mk_tok "*" 1 2;
-    mk_tok "id" 2 5;
-    mk_tok "=" 6 7;
-    mk_tok "*" 8 9;
-    mk_tok "id" 9 12;
-    mk_tok "$" 12 12;
-  |]
-  in
+    test "cdd" (fun () ->
+      (* cdd
+       * 0123
+       *)
+      let tokens1 = MQueue.fromArray [|
+        mk_tok "c" 0 1;
+        mk_tok "d" 1 2;
+        mk_tok "d" 2 3;
+        mk_tok "$" 3 3;
+      |]
+      in
+      expect (Grammar1Lalr.parse (* "cdd" *) tokens1) |> toEqual (Result.Ok
+        { production = Either.Right 1;
+          children = [
+            { production = Either.Right 2;
+              children = [
+                mk_terminal c_num 0 1;
+                mk_wrapper 3 @@ mk_terminal d_num 1 2;
+              ];
+              start_pos = 0;
+              end_pos = 2;
+            };
+            mk_wrapper 3 @@ mk_terminal d_num 2 3;
+          ];
+          start_pos = 0;
+          end_pos = 3;
+        })
+    );
 
-  testAll "parse" [
+    test "**foo = *bar" (fun () ->
+      let eq_num = 1 in
+      let star_num = 2 in
+      let id_num = 3 in
 
-    expect (Grammar1Lalr.parse (* "cdd" *) tokens1) |> toEqual (Result.Ok
-      { production = Either.Right 1;
-        children = [
-          { production = Either.Right 2;
-            children = [
-              mk_terminal c_num 0 1;
-              mk_wrapper 3 @@ mk_terminal d_num 1 2;
-            ];
-            start_pos = 0;
-            end_pos = 2;
-          };
-          mk_wrapper 3 @@ mk_terminal d_num 2 3;
-        ];
-        start_pos = 0;
-        end_pos = 3;
-      });
+      (* **foo = *bar
+       * 012345678901
+       *)
+      let tokens2 = MQueue.fromArray [|
+        mk_tok "*" 0 1;
+        mk_tok "*" 1 2;
+        mk_tok "id" 2 5;
+        mk_tok "=" 6 7;
+        mk_tok "*" 8 9;
+        mk_tok "id" 9 12;
+        mk_tok "$" 12 12;
+      |]
+      in
 
-    let eq_num = 1 in
-    let star_num = 2 in
-    let id_num = 3 in
-
-    expect (Grammar2Lalr.parse (* "**foo = *bar" *) tokens2) |> toEqual (Result.Ok
-      { production = Either.Right 1;
-        children = [
-          { production = Either.Right 3;
-            children = [
-              mk_terminal star_num 0 1;
-              mk_wrapper 5 @@
-                { production = Either.Right 3;
-                  children = [
-                    mk_terminal star_num 1 2;
-                    mk_wrapper 5 @@
-                      { production = Either.Right 4;
-                        children = [
-                          mk_terminal id_num 2 5;
-                        ];
-                        start_pos = 2;
-                        end_pos = 5;
-                      };
-                  ];
-                  start_pos = 1;
-                  end_pos = 5;
-                };
-            ];
-            start_pos = 0;
-            end_pos = 5;
-          };
-          mk_terminal eq_num 6 7;
-          mk_wrapper 5 @@
+      expect (Grammar2Lalr.parse tokens2) |> toEqual (Result.Ok
+        { production = Either.Right 1;
+          children = [
             { production = Either.Right 3;
               children = [
-                mk_terminal star_num 8 9;
-                mk_wrapper 5
-                  { production = Either.Right 4;
+                mk_terminal star_num 0 1;
+                mk_wrapper 5 @@
+                  { production = Either.Right 3;
                     children = [
-                      mk_terminal id_num 9 12;
+                      mk_terminal star_num 1 2;
+                      mk_wrapper 5 @@
+                        { production = Either.Right 4;
+                          children = [
+                            mk_terminal id_num 2 5;
+                          ];
+                          start_pos = 2;
+                          end_pos = 5;
+                        };
                     ];
-                    start_pos = 9;
-                    end_pos = 12;
+                    start_pos = 1;
+                    end_pos = 5;
                   };
               ];
-              start_pos = 8;
-              end_pos = 12;
+              start_pos = 0;
+              end_pos = 5;
             };
-        ];
-        start_pos = 0;
-        end_pos = 12;
-      });
+            mk_terminal eq_num 6 7;
+            mk_wrapper 5 @@
+              { production = Either.Right 3;
+                children = [
+                  mk_terminal star_num 8 9;
+                  mk_wrapper 5
+                    { production = Either.Right 4;
+                      children = [
+                        mk_terminal id_num 9 12;
+                      ];
+                      start_pos = 9;
+                      end_pos = 12;
+                    };
+                ];
+                start_pos = 8;
+                end_pos = 12;
+              };
+          ];
+          start_pos = 0;
+          end_pos = 12;
+        })
+    );
 
-  ] Util.id;
+    let plus_num = 1 in
+    let lparen_num = 2 in
+    let rparen_num = 3 in
+    let id_num = 4 in
+
+    test "(x + y)" (fun () ->
+      (* (x + y)
+       * 0123456
+       *)
+      let tokens3 = MQueue.fromArray [|
+        mk_tok "(" 0 1;
+        mk_tok "id" 1 2;
+        mk_tok "+" 3 4;
+        mk_tok "id" 5 6;
+        mk_tok ")" 6 7;
+      |]
+      in
+      expect (Grammar3Lalr.parse tokens3) |> toEqual (Result.Ok
+        { production = Either.Right 2;
+          children = [
+            mk_terminal lparen_num 0 1;
+            { production = Either.Right 1;
+              children = [
+                mk_wrapper 3 @@ mk_terminal id_num 1 2;
+                mk_terminal plus_num 7 8;
+                mk_wrapper 3 @@ mk_terminal id_num 9 10;
+              ];
+              start_pos = 0;
+              end_pos = 7;
+            };
+            mk_terminal lparen_num 0 7;
+          ];
+          start_pos = 0;
+          end_pos = 7;
+        })
+    );
+
+    test "x + (y + z)" (fun () ->
+      (* x + (y + z)
+       * 01234567890
+       *)
+      let tokens4 = MQueue.fromArray [|
+        mk_tok "id" 0 1;
+        mk_tok "+" 2 3;
+        mk_tok "(" 4 5;
+        mk_tok "id" 5 6;
+        mk_tok "+" 7 8;
+        mk_tok "id" 9 10;
+        mk_tok ")" 10 11;
+      |]
+      in
+      expect (Grammar3Lalr.parse tokens4) |> toEqual (Result.Ok
+        { production = Either.Right 1;
+          children = [
+            mk_wrapper 3 @@ mk_terminal id_num 0 1;
+            mk_terminal plus_num 2 3;
+            { production = Either.Right 2;
+              children = [
+                mk_terminal lparen_num 4 5;
+                { production = Either.Right 1;
+                  children = [
+                    mk_wrapper 3 @@ mk_terminal id_num 5 6;
+                    mk_terminal plus_num 7 8;
+                    mk_wrapper 3 @@ mk_terminal id_num 9 10;
+                  ];
+                  start_pos = 5;
+                  end_pos = 10;
+                };
+                mk_terminal lparen_num 10 11;
+              ];
+              start_pos = 4;
+              end_pos = 11;
+            };
+          ];
+          start_pos = 0;
+          end_pos = 11;
+        })
+    );
+
+  );
 
 )
