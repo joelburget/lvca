@@ -671,7 +671,54 @@ module Lr0 (G : GRAMMAR) = struct
           FoundInFollow -> true
 
   let in_follow : terminal_num -> nonterminal_num -> bool
-    = in_follow' (SI.fromArray [||])
+    = in_follow' SI.empty
+
+  let rec follow' : SI.t -> nonterminal_num -> SI.t
+    = fun nts_visited nt_num -> if nt_num = 0
+      then SI.fromArray [| end_marker |]
+      else production_map
+        |. MMI.toArray
+        |. Belt.Array.reduce
+          SI.empty
+          (fun follow_set (prod_num, production) ->
+            let rule_2_follow_set = first_after_nt nt_num production in
+
+            let parent_nt = production_nonterminal_map
+              |. MMI.get prod_num
+              |> get_option' (Printf.sprintf
+              "Lr0 in_follow': unable to find nonterminal %n in production_nonterminal_map"
+              prod_num
+              )
+            in
+
+            let rule_3_follow_set = match Util.unsnoc production with
+              | _, Nonterminal nt_num'
+              when nt_num' = nt_num && not (SI.has nts_visited nt_num)
+              -> follow' (SI.add nts_visited nt_num) parent_nt
+              | _ -> SI.empty
+            in
+
+            follow_set
+              |. SI.union rule_2_follow_set
+              |. SI.union rule_3_follow_set
+          )
+
+  (* Find all the terminals occuring in first sets directly after the
+   * nonterminal *)
+  and first_after_nt : nonterminal_num -> production -> SI.t
+    = fun nt_num -> function
+      | Nonterminal nt_num' :: rest
+        when nt_num' = nt_num
+      -> SI.union (first_set rest) (first_after_nt nt_num rest)
+      | _ :: rest
+      -> first_after_nt nt_num rest
+      | []
+      -> SI.empty
+
+  (* Compute the set of terminals that can appear immediately to the right of
+   * nt in some production *)
+  let follow_set : nonterminal_num -> SI.t
+    = follow' SI.empty
 
   (* This is the GOTO function operating on states. See `lr0_goto_kernel` for
    * the version operating on item set.

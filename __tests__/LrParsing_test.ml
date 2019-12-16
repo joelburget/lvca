@@ -1,6 +1,7 @@
 open Jest
 open Expect
 open LrParsing
+open TestUtil
 module M = Belt.Map.Int
 module MS = Belt.Map.String
 module SI = Belt.Set.Int
@@ -80,6 +81,25 @@ let () = describe "LrParsing" (fun () ->
     expect (Lr0'.first_set [Terminal 5])
       |> toEqual (SI.fromArray [|5|]);
   ] Util.id;
+
+  describe "follow_set" (fun () ->
+    let show_follow_set = fun follow_set -> follow_set
+      |. SI.toArray
+      |. Belt.Array.map Lr0'.string_of_terminal
+      |. Js.Array2.joinWith " "
+    in
+    let test_follow_set nt expected_set = test
+      ("follow_set " ^ Lr0'.string_of_nonterminal_num nt)
+      (fun () -> expect (Lr0'.follow_set nt)
+        |> toBeEquivalent show_follow_set SI.eq (SI.fromArray expected_set)
+      )
+    in
+
+    test_follow_set 0 [| 0 |];
+    test_follow_set 1 [| 0; 1; 4 |];
+    test_follow_set 2 [| 0; 1; 2; 4 |];
+    test_follow_set 3 [| 0; 1; 2; 4 |];
+  );
 
   testAll "in_follow" [
     (* $ is in the follow set for the start symbol *)
