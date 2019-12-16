@@ -616,12 +616,23 @@ module Lr0 (G : GRAMMAR) = struct
 
   let rec follow' : SI.t -> nonterminal_num -> SI.t
     = fun nts_visited nt_num -> if nt_num = 0
+      (* Rule 1 from the CPTT algorithm for FOLLOW(A):
+       * $ is in FOLLOW(S), where S is the start symbol.
+       *)
       then SI.fromArray [| end_marker |]
+
+      (* For each production, accumulate the terminals it adds to the follow
+       * set
+       *)
       else production_map
         |. MMI.toArray
         |. Belt.Array.reduce
           SI.empty
           (fun follow_set (prod_num, production) ->
+            (* Rule 2 from the CPTT algorithm for FOLLOW(A):
+             * If there is a production A -> aBb, then everything in FIRST(b),
+             * except e, is in FOLLOW(B).
+             *)
             let rule_2_follow_set = first_after_nt nt_num production in
 
             let parent_nt = production_nonterminal_map
@@ -632,6 +643,11 @@ module Lr0 (G : GRAMMAR) = struct
               )
             in
 
+            (* Rule 3 from the CPTT algorithm for FOLLOW(A):
+             * If there is a production A -> aB, or a production A -> aBb,
+             * where FIRST(b) contains e, then everything in FOLLOW(A) is in
+             * FOLLOW(B)
+             *)
             let rule_3_follow_set = match Util.unsnoc production with
               | _, Nonterminal nt_num'
               when nt_num' = nt_num && not (SI.has nts_visited nt_num)
