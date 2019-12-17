@@ -860,6 +860,7 @@ let lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer
 let parse desc root_name str =
   try
     let grammar, production_rule_map = to_grammar desc in
+    (*
     production_rule_map
       |. Belt.MutableMap.Int.mapWithKey (fun i (tokens, m_operator_match_pattern) ->
         Printf.printf "production rule %n: %s %s\n"
@@ -869,6 +870,7 @@ let parse desc root_name str =
             | Some x -> string_of_operator_match_pattern x
             | None -> "(none)")
       );
+      *)
     let module Lalr = LalrParsing.Lalr1(struct
       let grammar = grammar
     end) in

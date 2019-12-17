@@ -343,10 +343,12 @@ module Lr0 (G : GRAMMAR) = struct
       Printf.sprintf "%s -> %s" nt_name (Js.Array2.joinWith pieces " ")
 
   let string_of_item_set : ?sep:string -> item_set -> string
-    = fun ?(sep=" ") item_set -> item_set
-      |. SI.toArray
-      |. A.map string_of_item
-      |. Js.Array2.joinWith sep
+    = fun ?(sep=" ") item_set -> match SI.size item_set with
+      | 0 -> "empty"
+      | _ -> item_set
+        |. SI.toArray
+        |. A.map string_of_item
+        |. Js.Array2.joinWith sep
 
   let string_of_production : production -> string
     = fun production -> production

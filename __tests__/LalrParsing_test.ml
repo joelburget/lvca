@@ -133,7 +133,7 @@ end
 type lookahead_item_sets =
   (lookahead_item_set, LookaheadItemSetCmp.identity) Belt.Set.t
 
-let () = describe "LrParsing" (fun () ->
+let () = describe "LalrParsing" (fun () ->
 
   let module Grammar1LR = Lr0(Grammar1) in
   let module Grammar2LR = Lr0(Grammar2) in
@@ -339,16 +339,6 @@ let () = describe "LrParsing" (fun () ->
     |. Js.Array2.joinWith "\n"
   in
 
-  (*
-  Printf.printf "expected_propagation\n%s\n" (string_of_propagation expected_propagation);
-  Printf.printf "propagation\n%s\n" (string_of_propagation propagation);
-
-  Printf.printf "spontaneous_generation:\n%s\n"
-    (Grammar2LR.string_of_lookahead_item_set spontaneous_generation);
-  Printf.printf "expected_generation:\n%s\n"
-    (Grammar2LR.string_of_lookahead_item_set expected_generation);
-    *)
-
   let equivalent_propagation : (state * item) array -> (state * item) array -> bool
     = fun p1 p2 -> Belt.Set.eq
       (Belt.Set.fromArray ~id:(module PropagationCmp) p1)
@@ -446,10 +436,6 @@ let () = describe "LrParsing" (fun () ->
     }
   in
 
-  let s'_num : nonterminal_num = 0 in
-  let s_num : nonterminal_num = 1 in
-  let c_num : nonterminal_num = 2 in
-
   let state = gram1_lr1_config_sets
     |. Belt.Array.map (fun config_set -> Grammar1LR.item_set_to_state @@
       lookahead_item_set_to_item_set config_set.kernel_items
@@ -464,6 +450,10 @@ let () = describe "LrParsing" (fun () ->
     expect (Grammar1Lalr.lalr1_goto_table state.(start_state) (Nonterminal nt_num))
       |> toEqual (Some state.(result_state))
   in
+
+  let s'_num : nonterminal_num = 0 in
+  let s_num : nonterminal_num = 1 in
+  let c_num : nonterminal_num = 2 in
 
   testAll "lalr1_goto_table" [
     (* first, four gotos that are actually valid *)
@@ -519,13 +509,22 @@ let () = describe "LrParsing" (fun () ->
     ]
   in
 
-  let action_table_tests' = action_table_tests
-    |. Belt.List.map (fun (init_state, terminal_num, action) ->
-      expect (Grammar1Lalr.lalr1_action_table state.(init_state) terminal_num)
-        |> toEqual action
+  let action_table_tests' = fun () -> action_table_tests
+    |. Belt.List.forEach (fun (init_state, terminal_num, action) ->
+      test
+        (Printf.sprintf "lalr1_action_table %n %s -> %s"
+          init_state
+          (Grammar1LR.string_of_terminal terminal_num)
+          (Grammar1LR.string_of_action action)
+        )
+        (fun () ->
+        expect
+          (Grammar1Lalr.lalr1_action_table state.(init_state) terminal_num)
+          |> toEqual action
+      );
     )
   in
-  testAll "lalr1_action_table" action_table_tests' Util.id;
+  describe "lalr1_action_table" action_table_tests';
 
   describe "parse" (fun () ->
 
@@ -632,17 +631,20 @@ let () = describe "LrParsing" (fun () ->
     let id_num = 4 in
 
     test "(x + y)" (fun () ->
+
       (* (x + y)
        * 0123456
        *)
       let tokens3 = MQueue.fromArray [|
-        mk_tok "(" 0 1;
+        mk_tok "("  0 1;
         mk_tok "id" 1 2;
-        mk_tok "+" 3 4;
+        mk_tok "+"  3 4;
         mk_tok "id" 5 6;
-        mk_tok ")" 6 7;
+        mk_tok ")"  6 7;
+        mk_tok "$"  7 7;
       |]
       in
+
       expect (Grammar3Lalr.parse tokens3) |> toEqual (Result.Ok
         { production = Either.Right 2;
           children = [
@@ -650,13 +652,13 @@ let () = describe "LrParsing" (fun () ->
             { production = Either.Right 1;
               children = [
                 mk_wrapper 3 @@ mk_terminal id_num 1 2;
-                mk_terminal plus_num 7 8;
-                mk_wrapper 3 @@ mk_terminal id_num 9 10;
+                mk_terminal plus_num 3 4;
+                mk_wrapper 3 @@ mk_terminal id_num 5 6;
               ];
-              start_pos = 0;
-              end_pos = 7;
+              start_pos = 1;
+              end_pos = 6;
             };
-            mk_terminal lparen_num 0 7;
+            mk_terminal rparen_num 6 7;
           ];
           start_pos = 0;
           end_pos = 7;
@@ -668,13 +670,14 @@ let () = describe "LrParsing" (fun () ->
        * 01234567890
        *)
       let tokens4 = MQueue.fromArray [|
-        mk_tok "id" 0 1;
-        mk_tok "+" 2 3;
-        mk_tok "(" 4 5;
-        mk_tok "id" 5 6;
-        mk_tok "+" 7 8;
-        mk_tok "id" 9 10;
-        mk_tok ")" 10 11;
+        mk_tok "id" 0  1;
+        mk_tok "+"  2  3;
+        mk_tok "("  4  5;
+        mk_tok "id" 5  6;
+        mk_tok "+"  7  8;
+        mk_tok "id" 9  10;
+        mk_tok ")"  10 11;
+        mk_tok "$"  11 11;
       |]
       in
       expect (Grammar3Lalr.parse tokens4) |> toEqual (Result.Ok
@@ -694,7 +697,7 @@ let () = describe "LrParsing" (fun () ->
                   start_pos = 5;
                   end_pos = 10;
                 };
-                mk_terminal lparen_num 10 11;
+                mk_terminal rparen_num 10 11;
               ];
               start_pos = 4;
               end_pos = 11;
