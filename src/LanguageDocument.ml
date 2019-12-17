@@ -1,4 +1,5 @@
-let abstractSyntax = {|
+let abstractSyntax =
+  {|
 import {list, string} from "builtin"
 
 document := document(list block)
@@ -22,3 +23,4 @@ attribute :=
   | bold()
   | italic()
 |}
+;;

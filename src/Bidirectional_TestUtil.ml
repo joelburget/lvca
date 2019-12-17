@@ -1,8 +1,9 @@
-module P_statics = Parsing.Incremental(Parsing.Parseable_statics)
-module P_term    = Parsing.Incremental(Parsing.Parseable_term)
+module P_statics = Parsing.Incremental (Parsing.Parseable_statics)
+module P_term = Parsing.Incremental (Parsing.Parseable_term)
 open Bidirectional
 
-let statics_str = {|
+let statics_str =
+  {|
 
 ----------------------- (infer true)
 ctx >> true() => bool()
@@ -30,39 +31,37 @@ ctx >> tm => ty
 --------------- (reverse)
 ctx >> tm <= ty
 |}
+;;
 
-let statics = match P_statics.parse statics_str with
+let statics =
+  match P_statics.parse statics_str with
   | Ok statics -> statics
-  | Error msg  -> failwith msg
+  | Error msg -> failwith msg
+;;
 
 let parse_cvt str =
-  let tm = match P_term.parse str with
+  let tm =
+    match P_term.parse str with
     | Ok tm -> tm
     | Error msg -> failwith msg
   in
-  let tm' = match Binding.DeBruijn.from_nominal tm with
+  let tm' =
+    match Binding.DeBruijn.from_nominal tm with
     | Ok tm -> tm
     | Error msg -> failwith msg
   in
   Statics.of_de_bruijn tm'
+;;
 
-let true_tm  = parse_cvt "true()"
-let bool_ty  = parse_cvt "bool()"
-let env      = { rules = statics; var_types = Belt.Map.String.empty }
-
+let true_tm = parse_cvt "true()"
+let bool_ty = parse_cvt "bool()"
+let env = { rules = statics; var_types = Belt.Map.String.empty }
 let ite = parse_cvt "ite(true(); false(); true())"
 let annot_ite = parse_cvt "annot(ite(true(); false(); true()); bool())"
-
 let lam_tm = parse_cvt "lam(x. true())"
 let bool_to_bool = parse_cvt "arr(bool(); bool())"
-
 let annot_lam = parse_cvt "annot(lam(x. true()); arr(bool(); bool()))"
 
-
-let app_annot = Statics.(
-  Operator ("app", [
-    Scope ([], annot_lam);
-    Scope ([], true_tm);
-  ])
-)
-
+let app_annot =
+  Statics.(Operator ("app", [ Scope ([], annot_lam); Scope ([], true_tm) ]))
+;;
