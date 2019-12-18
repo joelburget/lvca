@@ -48,11 +48,11 @@ type core =
   | Lambda of sort list * core_scope
   | CoreApp of core * core list
   | Case of core * core_scope list
-      (** A metavariable refers to a term captured directly from the left-hand-side
-   *)
+  (** A metavariable refers to a term captured directly from the left-hand-side
+  *)
   | Metavar of string
-      (** Meaning is very similar to a metavar in that it refers to a capture from
-   the left-hand-side. However, a meaning variable is interpreted. *)
+  (** Meaning is very similar to a metavar in that it refers to a capture from
+      the left-hand-side. However, a meaning variable is interpreted. *)
   | Meaning of string
 
 and core_scope = CoreScope of Pattern.t list * core
@@ -66,11 +66,11 @@ let rec term_to_core' vars : denotation_term -> core = function
 ;;
 
 (*
-  | Operator ("annot", [t1; t2]) ->
-  | Operator ("fun", ...)
-  | Operator ("app", ...)
-  | Operator ("case", ...)
-  *)
+   | Operator ("annot", [t1; t2]) ->
+   | Operator ("fun", ...)
+   | Operator ("app", ...)
+   | Operator ("case", ...)
+*)
 
 let term_to_core : denotation_term -> core = term_to_core' S.empty
 
@@ -97,7 +97,7 @@ let rec from_ast' (vars : S.t) (term : Nominal.term) : core =
   | Operator ("app", Scope ([], f) :: args) ->
     CoreApp (from_ast' vars f, args |. Belt.List.map (from_ast_no_scope vars))
   | Operator ("case", Scope ([], tm) :: branches)
-  (* XXX how do variable arity terms appear? *) ->
+    (* XXX how do variable arity terms appear? *) ->
     Case (from_ast' vars tm, branches |. Belt.List.map (failwith "TODO"))
   | Operator ("[[]]", [ Scope ([], Var name) ]) -> Meaning name
   | _ -> failwith "TODO: throw"
@@ -111,7 +111,7 @@ and from_ast_no_scope vars (Scope (pats, tm) : Nominal.scope) : core =
 and from_ast_scope vars (Scope (pats, tm) : Nominal.scope) : core_scope =
   CoreScope
     ( pats
-    , (* from_ast' (S.union vars (S.fromArray (Belt.List.toArray pats))) tm *)
+      , (* from_ast' (S.union vars (S.fromArray (Belt.List.toArray pats))) tm *)
       from_ast' (failwith "TODO") tm )
 ;;
 
@@ -128,7 +128,7 @@ type pre_denotation_chart = DenotationChart of (denotation_pat * denotation_term
 type denotation_chart = DenotationChart of (denotation_pat * core) list
 
 let produce_denotation_chart : pre_denotation_chart -> denotation_chart =
- fun (DenotationChart lines) ->
+  fun (DenotationChart lines) ->
   DenotationChart (lines |. Belt.List.map (fun (pat, tm) -> pat, term_to_core tm))
 ;;
 
@@ -136,8 +136,8 @@ type located_err = string * DeBruijn.term option
 type 'a translation_result = ('a, located_err) Result.t
 
 (** Raised by to_ast when the presence of metavars, lambdas, and cases make
-   the value invalid
- *)
+    the value invalid
+*)
 exception ToAstConversionErr of core
 
 let rec to_ast (core : core) : Nominal.term =
@@ -177,14 +177,14 @@ let rec find_core_match v : core_scope list -> (core * core M.t) option = functi
   | [] -> None
   | CoreScope ([ pat ], rhs) :: scopes ->
     (match match_branch v pat with
-    | None -> find_core_match v scopes
-    | Some bindings -> Some (rhs, bindings))
+     | None -> find_core_match v scopes
+     | Some bindings -> Some (rhs, bindings))
 ;;
 
 (* val matches
-  : DeBruijn.term
-  -> denotation_pat
-  -> (assoc list * DeBruijn.term M.t) option
+   : DeBruijn.term
+   -> denotation_pat
+   -> (assoc list * DeBruijn.term M.t) option
 *)
 let rec matches tm (pat : denotation_pat) =
   match tm, pat with
@@ -193,10 +193,10 @@ let rec matches tm (pat : denotation_pat) =
     then
       fold_right
         (fun ((scope, subpat), b_opt) ->
-          match matches_scope scope subpat, b_opt with
-          | Some (assocs, bindings), Some (assocs', bindings') ->
-            Some (assocs @ assocs', union bindings bindings')
-          | _ -> None)
+           match matches_scope scope subpat, b_opt with
+           | Some (assocs, bindings), Some (assocs', bindings') ->
+             Some (assocs @ assocs', union bindings bindings')
+           | _ -> None)
         (List.zip subtms subpats)
         (Some ([], M.empty))
     else None
@@ -205,30 +205,30 @@ let rec matches tm (pat : denotation_pat) =
   | tm, Var v -> Some ([], M.fromArray [| v, tm |])
 
 (* val matches_scope
-  : DeBruijn.scope
-  -> denotation_scope_pat
-  -> (assoc list * DeBruijn.term M.t) option
+   : DeBruijn.scope
+   -> denotation_scope_pat
+   -> (assoc list * DeBruijn.term M.t) option
 *)
 and matches_scope (Scope (binders, tm)) (Scope (patBinders, pat)) =
   if List.(length patBinders == length binders)
   then
     O.map (matches tm pat) (fun (assocs, tmMatches) ->
-        ( List.zipBy patBinders binders (failwith "TODO")
-          (* (fun pattern_name term_name -> {pattern_name; term_name}) *)
-          @ assocs
-        , tmMatches ))
+      ( List.zipBy patBinders binders (failwith "TODO")
+        (* (fun pattern_name term_name -> {pattern_name; term_name}) *)
+        @ assocs
+      , tmMatches ))
   else None
 ;;
 
 (* val find_match
-  : denotation_chart
-  -> DeBruijn.term
-  -> (assoc list * DeBruijn.term M.t * core) option
+   : denotation_chart
+   -> DeBruijn.term
+   -> (assoc list * DeBruijn.term M.t * core) option
 *)
 let find_match (DenotationChart denotations) term =
   get_first
     (fun (pat, core) ->
-      O.map (matches term pat) (fun (assocs, bindings) -> assocs, bindings, core))
+       O.map (matches term pat) (fun (assocs, bindings) -> assocs, bindings, core))
     denotations
 ;;
 
@@ -248,27 +248,27 @@ let associate_name (assocs : assoc list) (pat_name : string) =
 ;;
 
 (* val fill_in_core
-  : denotation_chart
-  -> assoc list * DeBruijn.term M.t
-  -> core
-  -> core translation_result
+   : denotation_chart
+   -> assoc list * DeBruijn.term M.t
+   -> core
+   -> core translation_result
 *)
 
 (** Fill in a core representation of a value with metavars (the raw
-  right-hand-side of a denotation chart) with the core terms that go there.
-  *)
+    right-hand-side of a denotation chart) with the core terms that go there.
+*)
 let rec fill_in_core ({ dynamics; vars; assignments } as args) = function
   | Metavar name ->
     (match M.get assignments name with
-    | Some tm -> term_to_core [] tm
-    | None -> raise (TranslationError ("Metavariable " ^ name ^ " not found", None)))
+     | Some tm -> term_to_core [] tm
+     | None -> raise (TranslationError ("Metavariable " ^ name ^ " not found", None)))
   | Meaning name ->
     (match M.get assignments name with
-    | Some tm ->
-      (match term_denotation dynamics vars tm with
-      | Result.Ok tm' -> tm'
-      | Error err -> raise (TranslationError err))
-    | None -> raise (TranslationError ("Metavariable " ^ name ^ " not found", None)))
+     | Some tm ->
+       (match term_denotation dynamics vars tm with
+        | Result.Ok tm' -> tm'
+        | Error err -> raise (TranslationError err))
+     | None -> raise (TranslationError ("Metavariable " ^ name ^ " not found", None)))
   | Var _ as v -> v
   | Operator (tag, vals) -> Operator (tag, vals |. List.map (fill_in_core_scope args))
   | Primitive _ as v -> v
@@ -281,18 +281,18 @@ let rec fill_in_core ({ dynamics; vars; assignments } as args) = function
       ( fill_in_core args scrutinee
       , failwith "TODO"
         (*
-      , branches |. List.map (fun (pat, scope) ->
-         (pat, fill_in_core_scope args scope))
-      *)
+           , branches |. List.map (fun (pat, scope) ->
+           (pat, fill_in_core_scope args scope))
+        *)
       )
 
 and fill_in_core_scope ({ assocs; vars } as args)
-                       (CoreScope (names, body)) =
+      (CoreScope (names, body)) =
   let names' = names |. List.map (failwith "TODO") (* associate_name assocs *) in
   CoreScope (names', fill_in_core { args with vars = names' @ vars } body)
 
 (** Translate a term directly to core, with no interpretation. In other words,
-  this term is supposed to directly represent a term in the codomain. *)
+    this term is supposed to directly represent a term in the codomain. *)
 and term_to_core env tm =
   match tm with
   | Operator (tag, subtms) -> Operator (tag, subtms |. List.map (scope_to_core env))
@@ -300,15 +300,15 @@ and term_to_core env tm =
   (*match List.get env ix with
     | None -> raise (TranslationError ("failed to look up variable", Some tm))
     | Some name -> Var name
-    *)
+  *)
   | Sequence tms -> Sequence (tms |. List.map (term_to_core env))
   | Primitive prim -> Primitive prim
 
 (* XXX change names (assocs)? *)
 and scope_to_core env (Scope (names, body)) =
   CoreScope (names, term_to_core env body)
-  (* val term_denotation
-  : denotation_chart -> DeBruijn.term -> core translation_result
+(* val term_denotation
+   : denotation_chart -> DeBruijn.term -> core translation_result
 *)
 
 (** Match a term in the denotation chart, and return its core term. *)
@@ -318,15 +318,15 @@ and term_denotation dynamics vars tm : core translation_result =
   (*match List.get vars i with
     | Some var_name -> Ok (Var var_name)
     | None -> Error ("couldn't find variable " ^ string_of_int i ^
-      " in variable context of size " ^ string_of_int (List.length vars),
-      Some tm)
+    " in variable context of size " ^ string_of_int (List.length vars),
+    Some tm)
   *)
   | _ ->
     (match find_match dynamics tm with
-    | None -> Error ("no match found", Some tm)
-    | Some (assocs, assignments, protoCore) ->
-      (try Ok (fill_in_core { dynamics; vars; assocs; assignments } protoCore) with
-      | TranslationError err -> Error err))
+     | None -> Error ("no match found", Some tm)
+     | Some (assocs, assignments, protoCore) ->
+       (try Ok (fill_in_core { dynamics; vars; assocs; assignments } protoCore) with
+        | TranslationError err -> Error err))
 ;;
 
 (* val eval : core -> (core, string) Result.t *)
@@ -335,8 +335,8 @@ let eval core =
     match tm with
     | Var v ->
       (match M.get ctx v with
-      | Some result -> Result.Ok result
-      | None -> Error ("Unbound variable " ^ v))
+       | Some result -> Result.Ok result
+       | None -> Error ("Unbound variable " ^ v))
     | CoreApp (Lambda (_tys, CoreScope (argNames, body)), args) ->
       if List.(length argNames != length args)
       then Error "mismatched application lengths"
@@ -344,32 +344,32 @@ let eval core =
         Result.flatMap
           (traverse_list_result (go ctx) args)
           (fun arg_vals ->
-            let new_args = failwith "TODO" in
+             let new_args = failwith "TODO" in
             (*
-                 let new_args = List.(arg_vals
-                   |> zip argNames
-                   |> toArray
-                   |> M.fromArray
-                 ) in
-                 *)
-            go (union ctx new_args) body)
+                let new_args = List.(arg_vals
+                |> zip argNames
+                |> toArray
+                |> M.fromArray
+                ) in
+             *)
+             go (union ctx new_args) body)
     | Case (tm, branches) ->
       Result.flatMap (go ctx tm) (fun v ->
-          match find_core_match v branches with
-          | None -> Error "no match found in case"
-          | Some (branch, bindings) -> go (union ctx bindings) branch)
+        match find_core_match v branches with
+        | None -> Error "no match found in case"
+        | Some (branch, bindings) -> go (union ctx bindings) branch)
     | Metavar _v | Meaning _v -> Error "Found a metavar!"
     (* TODO: or should this be an app? *)
     | Operator ("#add", [ CoreScope ([], a); CoreScope ([], b) ]) ->
       (match go ctx a, go ctx b with
-      | Ok (Primitive (PrimInteger a')), Ok (Primitive (PrimInteger b')) ->
-        Ok (Primitive (PrimInteger (Bigint.add a' b')))
-      | Error err, _ | _, Error err -> Error err)
+       | Ok (Primitive (PrimInteger a')), Ok (Primitive (PrimInteger b')) ->
+         Ok (Primitive (PrimInteger (Bigint.add a' b')))
+       | Error err, _ | _, Error err -> Error err)
     | Operator ("#sub", [ CoreScope ([], a); CoreScope ([], b) ]) ->
       (match go ctx a, go ctx b with
-      | Ok (Primitive (PrimInteger a')), Ok (Primitive (PrimInteger b')) ->
-        Ok (Primitive (PrimInteger (Bigint.sub a' b')))
-      | Error err, _ | _, Error err -> Error err)
+       | Ok (Primitive (PrimInteger a')), Ok (Primitive (PrimInteger b')) ->
+         Ok (Primitive (PrimInteger (Bigint.sub a' b')))
+       | Error err, _ | _, Error err -> Error err)
     | Operator _ | Sequence _ | Primitive _ -> Ok tm
     (* TODO: include the term in error *)
     | _ -> Error "Found a term we can't evaluate"

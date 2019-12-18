@@ -27,12 +27,12 @@ type symbol =
   | Nonterminal of nonterminal_num
 
 module SymbolCmp = Belt.Id.MakeComparable(struct
-  type t = terminal_num * symbol
-  let cmp (a0, a1) (b0, b1) =
-    match Pervasives.compare a0 b0 with
+    type t = terminal_num * symbol
+    let cmp (a0, a1) (b0, b1) =
+      match Pervasives.compare a0 b0 with
       | 0 -> Pervasives.compare a1 b1
       | c -> c
-end)
+  end)
 
 (** A state number *)
 type state = int
@@ -45,11 +45,11 @@ type production_num = int
  *
  * We encode this as a single integer -- see `item`, `mk_item`, `mk_item'`, and
  * `view_item`.
- *)
+*)
 type item_view =
   (** The number of one of the productions of the underlying grammar *)
   { production_num: production_num;
-  (** The position of the dot *)
+    (** The position of the dot *)
     position: int;
   }
 
@@ -62,9 +62,9 @@ type item_view =
    production index. *)
 
 (* Note that this implies some maximums:
-   * The maximum length of a production is 255
-   * The maximum number of different productions is 16777215
- *)
+ * The maximum length of a production is 255
+ * The maximum number of different productions is 16777215
+*)
 type item = int
 
 let view_item : item -> item_view
@@ -96,9 +96,9 @@ type nonterminal =
   }
 
 (* By convention:
-  * A non-augmented grammar has keys starting at 1 (start)
-  * An augmented grammar has key 0 (augmented start)
- *)
+ * A non-augmented grammar has keys starting at 1 (start)
+ * An augmented grammar has key 0 (augmented start)
+*)
 type grammar = {
   nonterminals : nonterminal Belt.Map.Int.t;
   terminal_nums : (string * terminal_num) array;
@@ -119,13 +119,13 @@ type lr0_action_table = state -> terminal_num -> action
 type lr0_goto_table = state -> symbol -> state option
 
 module ComparableIntSet = Belt.Id.MakeComparable(struct
-  type t = SI.t
-  let cmp = SI.cmp
-end)
+    type t = SI.t
+    let cmp = SI.cmp
+  end)
 
 (* A mutable set of int sets. This is used to represent the set of LR(0) items.
  * Each int set represents a set of encoded items.
- *)
+*)
 type mutable_lr0_item_set = (SI.t, ComparableIntSet.identity) MSet.t
 
 type item_set_set = (item_set, ComparableIntSet.identity) Belt.Set.t
@@ -141,11 +141,11 @@ type parse_result =
 
 let rec parse_result_to_string : parse_result -> string
   = fun { production; children } -> Printf.sprintf "%s[%s]"
-    (match production with
-      | Left n -> "t" ^ string_of_int n
-      | Right n -> "n" ^ string_of_int n
-    )
-    (Util.stringify_list parse_result_to_string ", " children)
+                                      (match production with
+                                       | Left n -> "t" ^ string_of_int n
+                                       | Right n -> "n" ^ string_of_int n
+                                      )
+                                      (Util.stringify_list parse_result_to_string ", " children)
 
 exception ParseFinished
 exception ParseFailed of parse_error
@@ -185,23 +185,23 @@ end
 (* Used for action table entries. Compare with string_of_action. *)
 let action_abbrev : action -> string
   = function
-  | Shift state -> "s" ^ string_of_int state
-  | Reduce prod -> "r" ^ string_of_int prod
-  | Accept      -> "acc"
-  | Error None  -> ""
-  | Error (Some ShiftReduce) -> "s/r"
-  | Error (Some ReduceReduce) -> "r/r"
+    | Shift state -> "s" ^ string_of_int state
+    | Reduce prod -> "r" ^ string_of_int prod
+    | Accept      -> "acc"
+    | Error None  -> ""
+    | Error (Some ShiftReduce) -> "s/r"
+    | Error (Some ReduceReduce) -> "r/r"
 
 let string_of_stack : state array -> string
   = fun states -> states
-    |. A.map string_of_int
-    |. Js.Array2.joinWith " "
+                  |. A.map string_of_int
+                  |. Js.Array2.joinWith " "
 
 (* TODO: where to put this? *)
 let string_of_tokens : Lex.token array -> string
   = fun toks -> toks
-      |. A.map (fun { name } -> name)
-      |. Js.Array2.joinWith " "
+                |. A.map (fun { name } -> name)
+                |. Js.Array2.joinWith " "
 
 (* TODO: remove exns *)
 module Lr0 (G : GRAMMAR) = struct
@@ -211,7 +211,7 @@ module Lr0 (G : GRAMMAR) = struct
     = MMI.make ()
 
   (* Map from production number to the number of the nonterminal it belongs to
-   *)
+  *)
   let production_nonterminal_map : nonterminal_num Belt.MutableMap.Int.t
     = MMI.make ()
 
@@ -246,33 +246,33 @@ module Lr0 (G : GRAMMAR) = struct
   let rec nonterminal_first_set : SI.t -> MSI.t -> nonterminal_num -> unit
     = fun already_seen_nts result nt ->
       let productions : MSI.t = nonterminal_production_map
-        |. MMI.get nt
-        |> get_option' "TODO 1"
-        |. MSI.copy
+                                |. MMI.get nt
+                                |> get_option' "TODO 1"
+                                   |. MSI.copy
       in
 
       while not (MSI.isEmpty productions) do
         let production_num = productions
-          |. MSI.minimum
-          |> get_option' "TODO 2"
+                             |. MSI.minimum
+                             |> get_option' "TODO 2"
         in
         MSI.remove productions production_num;
         let production = production_map
-          |. MMI.get production_num
-          |> get_option' "TODO 3"
+                         |. MMI.get production_num
+                         |> get_option' "TODO 3"
         in
         first_set' already_seen_nts result production
       done;
 
   and first_set' : SI.t -> MSI.t -> production -> unit
     = fun already_seen_nts result -> function
-    | [] -> failwith
-      "invariant violation: first_set must be called with a non-empty list"
-    | Terminal num :: _ -> MSI.add result num
-    (* TODO: update when we allow empty productions *)
-    | Nonterminal num :: _
-    -> if not (SI.has already_seen_nts num)
-       then nonterminal_first_set (SI.add already_seen_nts num) result num
+      | [] -> failwith
+                "invariant violation: first_set must be called with a non-empty list"
+      | Terminal num :: _ -> MSI.add result num
+      (* TODO: update when we allow empty productions *)
+      | Nonterminal num :: _
+        -> if not (SI.has already_seen_nts num)
+        then nonterminal_first_set (SI.add already_seen_nts num) result num
 
   let first_set : production -> SI.t
     = function
@@ -285,34 +285,34 @@ module Lr0 (G : GRAMMAR) = struct
 
   let string_of_terminal : terminal_num -> string
     = fun t_num -> terminal_names
-      |. M.get t_num
-      |> get_option' (Printf.sprintf
-        "string_of_symbol: failed to get terminal %n"
-        t_num
-      )
+                   |. M.get t_num
+                   |> get_option' (Printf.sprintf
+                                     "string_of_symbol: failed to get terminal %n"
+                                     t_num
+                                  )
 
   let string_of_nonterminal_num : nonterminal_num -> string
     = fun nt_num -> nonterminal_names
-      |. M.get nt_num
-      |> get_option' (Printf.sprintf
-        "string_of_symbol: failed to get nonterminal %n"
-        nt_num
-      )
+                    |. M.get nt_num
+                    |> get_option' (Printf.sprintf
+                                      "string_of_symbol: failed to get nonterminal %n"
+                                      nt_num
+                                   )
 
   let string_of_symbol : symbol -> string
     = function
-    | Terminal t_num -> string_of_terminal t_num
-    | Nonterminal nt_num -> string_of_nonterminal_num nt_num
+      | Terminal t_num -> string_of_terminal t_num
+      | Nonterminal nt_num -> string_of_nonterminal_num nt_num
 
   let string_of_item : item -> string
     = fun item ->
       let { production_num; position } = view_item item in
       let production = production_map
-        |. MMI.get production_num
-        |> get_option' (Printf.sprintf
-          "Lr0 string_of_item: unable to find production %n in production_map"
-          production_num
-        )
+                       |. MMI.get production_num
+                       |> get_option' (Printf.sprintf
+                                         "Lr0 string_of_item: unable to find production %n in production_map"
+                                         production_num
+                                      )
       in
       let pieces = [||] in
       L.forEachWithIndex production (fun i symbol ->
@@ -324,19 +324,19 @@ module Lr0 (G : GRAMMAR) = struct
         (let _ = Js.Array2.push pieces "." in ());
 
       let nt_num = production_nonterminal_map
-        |. MMI.get production_num
-        |> get_option' (Printf.sprintf
-          "Lr0 string_of_item: unable to find production %n in production_nonterminal_map"
-          production_num
-        )
+                   |. MMI.get production_num
+                   |> get_option' (Printf.sprintf
+                                     "Lr0 string_of_item: unable to find production %n in production_nonterminal_map"
+                                     production_num
+                                  )
       in
 
       let nt_name = nonterminal_names
-        |. M.get nt_num
-        |> get_option' (Printf.sprintf
-          "Lr0 string_of_item: unable to find nonterminal %n in nonterminal_names"
-          production_num
-        )
+                    |. M.get nt_num
+                    |> get_option' (Printf.sprintf
+                                      "Lr0 string_of_item: unable to find nonterminal %n in nonterminal_names"
+                                      production_num
+                                   )
       in
 
       (* output if trailing *)
@@ -346,41 +346,41 @@ module Lr0 (G : GRAMMAR) = struct
     = fun ?(sep=" ") item_set -> match SI.size item_set with
       | 0 -> "empty"
       | _ -> item_set
-        |. SI.toArray
-        |. A.map string_of_item
-        |. Js.Array2.joinWith sep
+             |. SI.toArray
+             |. A.map string_of_item
+             |. Js.Array2.joinWith sep
 
   let string_of_production : production -> string
     = fun production -> production
-        |. L.map string_of_symbol
-        |. L.toArray
-        |. Js.Array2.joinWith " "
+                        |. L.map string_of_symbol
+                        |. L.toArray
+                        |. Js.Array2.joinWith " "
 
   let string_of_production_num : production_num -> string
     = fun production_num ->
 
       let nt_num = production_nonterminal_map
-        |. MMI.get production_num
-        |> get_option' (Printf.sprintf
-          "Lr0 string_of_production: unable to find production %n in production_nonterminal_map"
-          production_num
-        )
+                   |. MMI.get production_num
+                   |> get_option' (Printf.sprintf
+                                     "Lr0 string_of_production: unable to find production %n in production_nonterminal_map"
+                                     production_num
+                                  )
       in
 
       let production = production_map
-        |. MMI.get production_num
-        |> get_option' (Printf.sprintf
-          "Lr0 string_of_production_num: unable to find production %n in production_map"
-          production_num
-        )
+                       |. MMI.get production_num
+                       |> get_option' (Printf.sprintf
+                                         "Lr0 string_of_production_num: unable to find production %n in production_map"
+                                         production_num
+                                      )
       in
 
       let nt_name = nonterminal_names
-        |. M.get nt_num
-        |> get_option' (Printf.sprintf
-          "Lr0 string_of_production: unable to find nonterminal %n in nonterminal_names"
-          production_num
-        )
+                    |. M.get nt_num
+                    |> get_option' (Printf.sprintf
+                                      "Lr0 string_of_production: unable to find nonterminal %n in nonterminal_names"
+                                      production_num
+                                   )
       in
 
       Printf.sprintf "%s -> %s" nt_name (string_of_production production)
@@ -392,41 +392,41 @@ module Lr0 (G : GRAMMAR) = struct
   (* Used for logging actions. Compare with action_abbrev. *)
   let string_of_action : action -> string
     = function
-    | Shift state -> "shift to " ^ string_of_int state
-    | Reduce prod -> "reduce by " ^ string_of_production_num prod
-    | Accept      -> "accept"
-    | Error None  -> "error"
-    | Error (Some ReduceReduce) -> "error (reduce/reduce conflict)"
-    | Error (Some ShiftReduce) -> "error (shift/reduce conflict)"
+      | Shift state -> "shift to " ^ string_of_int state
+      | Reduce prod -> "reduce by " ^ string_of_production_num prod
+      | Accept      -> "accept"
+      | Error None  -> "error"
+      | Error (Some ReduceReduce) -> "error (reduce/reduce conflict)"
+      | Error (Some ShiftReduce) -> "error (shift/reduce conflict)"
 
   let production_cnt = ref 0
   let () = M.forEach G.grammar.nonterminals
-    (fun nt_num { productions } ->
-      nonterminal_production_map |. MMI.set nt_num (MSI.make ());
-      L.forEach productions (fun production ->
-        let production_num = !production_cnt in
-        production_cnt := production_num + 1;
-        production_map |. MMI.set production_num production;
-        production_nonterminal_map |. MMI.set production_num nt_num;
-        let prod_set = nonterminal_production_map
-          |. MMI.get nt_num
-          |> get_option'
-            ("Lr0 preprocessing -- unable to find nonterminal " ^
-              string_of_int nt_num)
-        in
-        prod_set |. MSI.add production_num
-      )
-    )
+             (fun nt_num { productions } ->
+                nonterminal_production_map |. MMI.set nt_num (MSI.make ());
+                L.forEach productions (fun production ->
+                  let production_num = !production_cnt in
+                  production_cnt := production_num + 1;
+                  production_map |. MMI.set production_num production;
+                  production_nonterminal_map |. MMI.set production_num nt_num;
+                  let prod_set = nonterminal_production_map
+                                 |. MMI.get nt_num
+                                 |> get_option'
+                                      ("Lr0 preprocessing -- unable to find nonterminal " ^
+                                       string_of_int nt_num)
+                  in
+                  prod_set |. MSI.add production_num
+                )
+             )
 
   let get_nonterminal_num : production_num -> nonterminal_num
     = fun p_num -> production_nonterminal_map
-        |. MMI.get p_num
-        |> get_option' ("get_nonterminal_num: couldn't find production " ^
-          string_of_int p_num)
+                   |. MMI.get p_num
+                   |> get_option' ("get_nonterminal_num: couldn't find production " ^
+                                   string_of_int p_num)
 
   let get_nonterminal : production_num -> nonterminal
     = fun pn -> get_option'
-        ("get_nonterminal: couldn't find production " ^ string_of_int pn) @@
+                  ("get_nonterminal: couldn't find production " ^ string_of_int pn) @@
       M.get G.grammar.nonterminals @@
       get_nonterminal_num pn
 
@@ -448,16 +448,16 @@ module Lr0 (G : GRAMMAR) = struct
         else MSI.add nonkernel_items item;
 
         let production = production_map
-          |. MMI.get production_num
-          |> get_option' (Printf.sprintf
-            "lr0_closure': couldn't find production %n"
-            production_num
-          )
+                         |. MMI.get production_num
+                         |> get_option' (Printf.sprintf
+                                           "lr0_closure': couldn't find production %n"
+                                           production_num
+                                        )
         in
         (* first symbol right of the dot. if it's a nonterminal, look at it *)
         match L.get production position with
-          | Some (Nonterminal nt) -> MSI.add nt_set nt
-          | _                     -> ()
+        | Some (Nonterminal nt) -> MSI.add nt_set nt
+        | _                     -> ()
       );
 
       (* Examine each accessible nonterminal, adding its initial items as
@@ -468,36 +468,36 @@ module Lr0 (G : GRAMMAR) = struct
         in
         MSI.remove nt_set nonterminal_num;
         let is_alrady_added = added
-          |. Bitstring.get nonterminal_num
-          |> get_option' (Printf.sprintf
-            "lr0_closure': couldn't find nonterminal %n in added (nonterminal count %n)"
-            nonterminal_num
-            (Bitstring.length added)
-          )
+                              |. Bitstring.get nonterminal_num
+                              |> get_option' (Printf.sprintf
+                                                "lr0_closure': couldn't find nonterminal %n in added (nonterminal count %n)"
+                                                nonterminal_num
+                                                (Bitstring.length added)
+                                             )
         in
         if not is_alrady_added then (
           Bitstring.setExn added nonterminal_num true;
           let production_num_set = nonterminal_production_map
-            |. MMI.get nonterminal_num
-            |> get_option' (Printf.sprintf
-              "lr0_closure': unable to find nonterminal %n nonterminal_production_map"
-              nonterminal_num
-            )
+                                   |. MMI.get nonterminal_num
+                                   |> get_option' (Printf.sprintf
+                                                     "lr0_closure': unable to find nonterminal %n nonterminal_production_map"
+                                                     nonterminal_num
+                                                  )
           in
           MSI.forEach production_num_set (fun production_num ->
             MSI.add nonkernel_items (mk_item' production_num 0)
           );
           let { productions } = M.get G.grammar.nonterminals nonterminal_num
-            |> get_option' (Printf.sprintf
-            "lr0_closure': unable to find nonterminal %n in G.grammar.nonterminals"
-            nonterminal_num
-            )
+                                |> get_option' (Printf.sprintf
+                                                  "lr0_closure': unable to find nonterminal %n in G.grammar.nonterminals"
+                                                  nonterminal_num
+                                               )
           in
           L.forEach productions (fun production ->
             match production with
-              | Terminal _         :: _ -> ()
-              | Nonterminal new_nt :: _ -> MSI.add nt_set new_nt
-              | _                       -> failwith "Empty production"
+            | Terminal _         :: _ -> ()
+            | Nonterminal new_nt :: _ -> MSI.add nt_set new_nt
+            | _                       -> failwith "Empty production"
           )
         )
       done;
@@ -519,96 +519,96 @@ module Lr0 (G : GRAMMAR) = struct
    *
    * Examine for items with the nonterminal immediately to the right of the
    * dot. Move the dot over the nonterminal.
-   *)
+  *)
   let lr0_goto_kernel : item_set -> symbol -> item_set
     = fun item_set symbol ->
       let result = MSI.make () in
       SI.forEach (lr0_closure item_set) (fun item ->
         let { production_num; position } = view_item item in
         let production = production_map
-          |. MMI.get production_num
-          |> get_option' (Printf.sprintf
-            "lr0_goto_kernel: unable to find production %n in production_map"
-            production_num
-          )
+                         |. MMI.get production_num
+                         |> get_option' (Printf.sprintf
+                                           "lr0_goto_kernel: unable to find production %n in production_map"
+                                           production_num
+                                        )
         in
         match L.get production position with
-          | Some next_symbol ->
-            if symbol = next_symbol then
-              MSI.add result (mk_item' production_num (position + 1))
-          | _ -> ()
+        | Some next_symbol ->
+          if symbol = next_symbol then
+            MSI.add result (mk_item' production_num (position + 1))
+        | _ -> ()
       );
       result |. MSI.toArray |. SI.fromArray
 
   (* A list of all grammar symbols (terminals and nonterminals) *)
   let grammar_symbols = L.concat
-    (L.makeBy number_of_terminals    (fun n -> Terminal n))
-    (L.makeBy number_of_nonterminals (fun n -> Nonterminal n))
+                          (L.makeBy number_of_terminals    (fun n -> Terminal n))
+                          (L.makeBy number_of_nonterminals (fun n -> Nonterminal n))
 
   (** Compute the canonical collection of sets of LR(0) items. CPTT fig 4.33. *)
   let mutable_lr0_items : mutable_lr0_item_set
     = let augmented_start = SI.fromArray
-          [| mk_item {production_num = 0; position = 0} |]
-      in
-      (* canonical collection of sets *)
-      let c =
-        MSet.fromArray [| augmented_start |] ~id:(module ComparableIntSet)
-      in
-      (* set of item sets we've added to c but not yet explored *)
-      let active_set = ref @@ MSet.copy c in
+                              [| mk_item {production_num = 0; position = 0} |]
+    in
+    (* canonical collection of sets *)
+    let c =
+      MSet.fromArray [| augmented_start |] ~id:(module ComparableIntSet)
+    in
+    (* set of item sets we've added to c but not yet explored *)
+    let active_set = ref @@ MSet.copy c in
 
-      (* iterate through every set of items in the collection, compute the GOTO
-       * kernel of each item set, and add any new sets. `continue` is set to
-       * `true` if we find a new item set, indicating we need to loop again. *)
-      while not (MSet.isEmpty !active_set) do
-        let new_active_set = MSet.fromArray [||] ~id:(module ComparableIntSet)
-        in
-        (* for each set of items in the active set: *)
-        MSet.forEach !active_set (fun items ->
-          (* for each grammar symbol: *)
-          Belt.List.forEach grammar_symbols (fun symbol ->
-            let goto_result = lr0_goto_kernel items symbol in
-            (* if GOTO(items, symbol) is not empty and not in c: *)
-            if not (SI.isEmpty goto_result) &&
-               not (MSet.has c goto_result)
-            then (
-              MSet.add c goto_result;
-              MSet.add new_active_set goto_result;
-            )
+    (* iterate through every set of items in the collection, compute the GOTO
+     * kernel of each item set, and add any new sets. `continue` is set to
+     * `true` if we find a new item set, indicating we need to loop again. *)
+    while not (MSet.isEmpty !active_set) do
+      let new_active_set = MSet.fromArray [||] ~id:(module ComparableIntSet)
+      in
+      (* for each set of items in the active set: *)
+      MSet.forEach !active_set (fun items ->
+        (* for each grammar symbol: *)
+        Belt.List.forEach grammar_symbols (fun symbol ->
+          let goto_result = lr0_goto_kernel items symbol in
+          (* if GOTO(items, symbol) is not empty and not in c: *)
+          if not (SI.isEmpty goto_result) &&
+             not (MSet.has c goto_result)
+          then (
+            MSet.add c goto_result;
+            MSet.add new_active_set goto_result;
           )
-        );
-        active_set := new_active_set;
-      done;
-      c
+        )
+      );
+      active_set := new_active_set;
+    done;
+    c
 
   let lr0_items : item_set M.t
     = mutable_lr0_items
-    |. MSet.toArray
-    |. Belt.Array.mapWithIndex (fun i item_set -> i, item_set)
-    |. M.fromArray
+      |. MSet.toArray
+      |. Belt.Array.mapWithIndex (fun i item_set -> i, item_set)
+      |. M.fromArray
 
   let state_to_item_set : state -> item_set
     = fun state -> lr0_items
-      |. M.get state
-      |> get_option' (Printf.sprintf
-        "state_to_item_set -- couldn't find state %n (%n item sets)"
-        state
-        (M.size lr0_items)
-      )
+                   |. M.get state
+                   |> get_option' (Printf.sprintf
+                                     "state_to_item_set -- couldn't find state %n (%n item sets)"
+                                     state
+                                     (M.size lr0_items)
+                                  )
 
   let item_set_to_state : item_set -> state
     = fun item_set ->
-    let state, _ = lr0_items
-      |. M.findFirstBy (fun _ item_set' -> item_set' = item_set)
-      |> get_option' (Printf.sprintf
-        "item_set_to_state -- couldn't find item_set (%s) (options: %s)"
-        (string_of_item_set item_set)
-        (lr0_items
-          |. M.valuesToArray
-          |. Belt.Array.map string_of_item_set
-          |. Js.Array2.joinWith ", ")
-      )
-    in state
+      let state, _ = lr0_items
+                     |. M.findFirstBy (fun _ item_set' -> item_set' = item_set)
+                     |> get_option' (Printf.sprintf
+                                       "item_set_to_state -- couldn't find item_set (%s) (options: %s)"
+                                       (string_of_item_set item_set)
+                                       (lr0_items
+                                        |. M.valuesToArray
+                                        |. Belt.Array.map string_of_item_set
+                                        |. Js.Array2.joinWith ", ")
+                                    )
+      in state
 
   let augmented_state : state
     = item_set_to_state @@ SI.fromArray [| mk_item' 0 0 |]
@@ -618,49 +618,49 @@ module Lr0 (G : GRAMMAR) = struct
 
   let rec follow' : SI.t -> nonterminal_num -> SI.t
     = fun nts_visited nt_num -> if nt_num = 0
-      (* Rule 1 from the CPTT algorithm for FOLLOW(A):
-       * $ is in FOLLOW(S), where S is the start symbol.
-       *)
+    (* Rule 1 from the CPTT algorithm for FOLLOW(A):
+     * $ is in FOLLOW(S), where S is the start symbol.
+    *)
       then SI.fromArray [| end_marker |]
 
       (* For each production, accumulate the terminals it adds to the follow
        * set
-       *)
+      *)
       else production_map
-        |. MMI.toArray
-        |. Belt.Array.reduce
-          SI.empty
-          (fun follow_set (prod_num, production) ->
-            (* Rule 2 from the CPTT algorithm for FOLLOW(A):
-             * If there is a production A -> aBb, then everything in FIRST(b),
-             * except e, is in FOLLOW(B).
-             *)
-            let rule_2_follow_set = first_after_nt nt_num production in
+           |. MMI.toArray
+           |. Belt.Array.reduce
+                SI.empty
+                (fun follow_set (prod_num, production) ->
+                   (* Rule 2 from the CPTT algorithm for FOLLOW(A):
+                    * If there is a production A -> aBb, then everything in FIRST(b),
+                    * except e, is in FOLLOW(B).
+                   *)
+                   let rule_2_follow_set = first_after_nt nt_num production in
 
-            let parent_nt = production_nonterminal_map
-              |. MMI.get prod_num
-              |> get_option' (Printf.sprintf
-              "Lr0 follow': unable to find nonterminal %n in production_nonterminal_map"
-              prod_num
-              )
-            in
+                   let parent_nt = production_nonterminal_map
+                                   |. MMI.get prod_num
+                                   |> get_option' (Printf.sprintf
+                                                     "Lr0 follow': unable to find nonterminal %n in production_nonterminal_map"
+                                                     prod_num
+                                                  )
+                   in
 
-            (* Rule 3 from the CPTT algorithm for FOLLOW(A):
-             * If there is a production A -> aB, or a production A -> aBb,
-             * where FIRST(b) contains e, then everything in FOLLOW(A) is in
-             * FOLLOW(B)
-             *)
-            let rule_3_follow_set = match Util.unsnoc production with
-              | _, Nonterminal nt_num'
-              when nt_num' = nt_num && not (SI.has nts_visited nt_num)
-              -> follow' (SI.add nts_visited nt_num) parent_nt
-              | _ -> SI.empty
-            in
+                   (* Rule 3 from the CPTT algorithm for FOLLOW(A):
+                    * If there is a production A -> aB, or a production A -> aBb,
+                    * where FIRST(b) contains e, then everything in FOLLOW(A) is in
+                    * FOLLOW(B)
+                   *)
+                   let rule_3_follow_set = match Util.unsnoc production with
+                     | _, Nonterminal nt_num'
+                       when nt_num' = nt_num && not (SI.has nts_visited nt_num)
+                       -> follow' (SI.add nts_visited nt_num) parent_nt
+                     | _ -> SI.empty
+                   in
 
-            follow_set
-              |. SI.union rule_2_follow_set
-              |. SI.union rule_3_follow_set
-          )
+                   follow_set
+                   |. SI.union rule_2_follow_set
+                   |. SI.union rule_3_follow_set
+                )
 
   (* Find all the terminals occuring in first sets directly after the
    * nonterminal *)
@@ -668,11 +668,11 @@ module Lr0 (G : GRAMMAR) = struct
     = fun nt_num -> function
       | Nonterminal nt_num' :: rest
         when nt_num' = nt_num
-      -> SI.union (first_set rest) (first_after_nt nt_num rest)
+        -> SI.union (first_set rest) (first_after_nt nt_num rest)
       | _ :: rest
-      -> first_after_nt nt_num rest
+        -> first_after_nt nt_num rest
       | []
-      -> SI.empty
+        -> SI.empty
 
   (* Compute the set of terminals that can appear immediately to the right of
    * nt in some production *)
@@ -681,12 +681,12 @@ module Lr0 (G : GRAMMAR) = struct
 
   (* This is the GOTO function operating on states. See `lr0_goto_kernel` for
    * the version operating on item set.
-   *)
+  *)
   let lr0_goto_table state nt =
     try
       Some (item_set_to_state @@ lr0_goto_kernel (state_to_item_set state) nt)
     with
-      (* TODO: this shouldn't catch all invariant violations *)
+    (* TODO: this shouldn't catch all invariant violations *)
       Util.InvariantViolation _ -> None
 
   let lr0_action_table state terminal_num =
@@ -697,70 +697,70 @@ module Lr0 (G : GRAMMAR) = struct
     (* If [A -> xs . a ys] is in I_i and GOTO(I_i, a) = I_j, set
      * ACTION[i, a] to `shift j` *)
     let shift_action = item_set_l
-      |. Util.find_by (fun item ->
-        let { production_num; position } = view_item item in
-        let symbols = production_map
-          |. MMI.get production_num
-          |> get_option' (Printf.sprintf
-          "Lr0 shift_action: unable to find production %n in production_map"
-          production_num
-          )
-        in
-        match symbols |. L.get position with
-          | Some (Terminal t_num as next_symbol) ->
-            if t_num = terminal_num
-              then lr0_goto_table state next_symbol
-                |. Belt.Option.map (fun x -> Shift x)
-              else None
-          | _ -> None
-      )
+                       |. Util.find_by (fun item ->
+                         let { production_num; position } = view_item item in
+                         let symbols = production_map
+                                       |. MMI.get production_num
+                                       |> get_option' (Printf.sprintf
+                                                         "Lr0 shift_action: unable to find production %n in production_map"
+                                                         production_num
+                                                      )
+                         in
+                         match symbols |. L.get position with
+                         | Some (Terminal t_num as next_symbol) ->
+                           if t_num = terminal_num
+                           then lr0_goto_table state next_symbol
+                                |. Belt.Option.map (fun x -> Shift x)
+                           else None
+                         | _ -> None
+                       )
     in
 
     (* If [A -> xs .] is in I_i, set ACTION[i, a] to `Reduce A -> xs` for
      * all a in FOLLOW(A) *)
     let reduce_action = item_set_l
-      |. Util.find_by (fun item ->
-        let { production_num; position } = view_item item in
-        let nt_num = production_nonterminal_map
-          |. MMI.get production_num
-          |> get_option' (Printf.sprintf
-          "Lr0 shift_action: unable to find production %n in production_nonterminal_map"
-          production_num
-          )
-        in
-        let production = production_map
-          |. MMI.get production_num
-          |> get_option' (Printf.sprintf
-          "Lr0 shift_action: unable to find production %n in production_map"
-          production_num
-          )
-        in
-        if position = L.length production &&
-           follow_set nt_num |. SI.has terminal_num &&
-           (* Accept in this case (end marker on the augmented nonterminal) --
-              don't reduce. *)
-           nt_num != 0
-          then Some (Reduce production_num)
-          else None
-      )
+                        |. Util.find_by (fun item ->
+                          let { production_num; position } = view_item item in
+                          let nt_num = production_nonterminal_map
+                                       |. MMI.get production_num
+                                       |> get_option' (Printf.sprintf
+                                                         "Lr0 shift_action: unable to find production %n in production_nonterminal_map"
+                                                         production_num
+                                                      )
+                          in
+                          let production = production_map
+                                           |. MMI.get production_num
+                                           |> get_option' (Printf.sprintf
+                                                             "Lr0 shift_action: unable to find production %n in production_map"
+                                                             production_num
+                                                          )
+                          in
+                          if position = L.length production &&
+                             follow_set nt_num |. SI.has terminal_num &&
+                             (* Accept in this case (end marker on the augmented nonterminal) --
+                                don't reduce. *)
+                             nt_num != 0
+                          then Some (Reduce production_num)
+                          else None
+                        )
     in
 
     (* If [S' -> S .] is in I_i, set ACTION[i, $] to `accept` *)
     let accept_action =
       if terminal_num = end_marker && item_set |. SI.has (mk_item' 0 1)
-        then Some Accept
-        else None
+      then Some Accept
+      else None
     in
 
     (* We should always have exactly one action, otherwise it's a
      * shift-reduce(-accept) conflict.
-     *)
+    *)
     match shift_action, reduce_action, accept_action with
-      | Some act,     None,     None
-      |     None, Some act,     None
-      |     None,     None, Some act -> act
-      |   Some _,   Some _,     None -> Error (Some ShiftReduce)
-      |        _,        _,        _ -> Error None
+    | Some act,     None,     None
+    |     None, Some act,     None
+    |     None,     None, Some act -> act
+    |   Some _,   Some _,     None -> Error (Some ShiftReduce)
+    |        _,        _,        _ -> Error None
 
   (* TODO: is this right? *)
   let states : state array =
@@ -778,22 +778,22 @@ module Lr0 (G : GRAMMAR) = struct
 
   let full_lr0_goto_table : unit -> (symbol * state option) array array
     = fun () -> states
-      |. Belt.Array.map (fun state ->
-      nonterminals
-        |. Belt.Array.map (fun nt ->
-          let sym = Nonterminal nt in
-          sym, lr0_goto_table state sym
-        )
-    )
+                |. Belt.Array.map (fun state ->
+                  nonterminals
+                  |. Belt.Array.map (fun nt ->
+                    let sym = Nonterminal nt in
+                    sym, lr0_goto_table state sym
+                  )
+                )
 
   let token_to_terminal
     : Lex.token -> terminal_num
     = fun { name } -> terminal_nums
-        |. MS.get name
-        |> get_option' (Printf.sprintf
-        "Lr0 token_to_terminal: unable to find name %s in terminal_nums"
-        name
-        )
+                      |. MS.get name
+                      |> get_option' (Printf.sprintf
+                                        "Lr0 token_to_terminal: unable to find name %s in terminal_nums"
+                                        name
+                                     )
 
   let token_to_symbol
     : Lex.token -> symbol
@@ -801,68 +801,68 @@ module Lr0 (G : GRAMMAR) = struct
       let t_match = terminal_nums |. MS.get name in
       let nt_match = nonterminal_nums |. MS.get name in
       match t_match, nt_match with
-        | Some t_num, None -> Terminal t_num
-        | None, Some nt_num -> Nonterminal nt_num
-        | None, None -> failwith
-          ("Failed to find a terminal or nonterminal named " ^ name)
-        | Some _, Some _ -> failwith
-          ("Found both a terminal *and* nonterminal with name " ^ name
-          ^ " (this should never happen)")
+      | Some t_num, None -> Terminal t_num
+      | None, Some nt_num -> Nonterminal nt_num
+      | None, None -> failwith
+                        ("Failed to find a terminal or nonterminal named " ^ name)
+      | Some _, Some _ -> failwith
+                            ("Found both a terminal *and* nonterminal with name " ^ name
+                             ^ " (this should never happen)")
 
   let string_of_symbols : parse_result array -> string
     = fun parse_results -> parse_results
-      |. Belt.Array.map (fun { production } -> match production with
-        | Left terminal_num -> terminal_names
-          |. M.get terminal_num
-          |> get_option' (Printf.sprintf
-            "string_of_symbols: failed to get terminal %n"
-            terminal_num
-          )
-        | Right production_num ->
-          let nt_num = production_nonterminal_map
-            |. MMI.get production_num
-            |> get_option' (Printf.sprintf
-              "Lr0 string_of_symbols: unable to find production %n in production_nonterminal_map"
-              production_num
-            )
-          in
+                           |. Belt.Array.map (fun { production } -> match production with
+                             | Left terminal_num -> terminal_names
+                                                    |. M.get terminal_num
+                                                    |> get_option' (Printf.sprintf
+                                                                      "string_of_symbols: failed to get terminal %n"
+                                                                      terminal_num
+                                                                   )
+                             | Right production_num ->
+                               let nt_num = production_nonterminal_map
+                                            |. MMI.get production_num
+                                            |> get_option' (Printf.sprintf
+                                                              "Lr0 string_of_symbols: unable to find production %n in production_nonterminal_map"
+                                                              production_num
+                                                           )
+                               in
 
-          let nt_name = nonterminal_names
-            |. M.get nt_num
-            |> get_option' (Printf.sprintf
-              "Lr0 string_of_symbols: unable to find nonterminal %n in nonterminal_names"
-              production_num
-            )
+                               let nt_name = nonterminal_names
+                                             |. M.get nt_num
+                                             |> get_option' (Printf.sprintf
+                                                               "Lr0 string_of_symbols: unable to find nonterminal %n in nonterminal_names"
+                                                               production_num
+                                                            )
 
-          in nt_name
-      )
-      |. Js.Array2.joinWith " "
+                               in nt_name
+                           )
+                           |. Js.Array2.joinWith " "
 
   let string_of_trace_line = fun { action; stack; results; input } ->
     Printf.sprintf "action: %s\nstack: %s\nresults: %s\ninput: %s\n\n"
       (string_of_action action)
       (stack
-        |. Belt.Array.map string_of_int
-        |. Js.Array2.joinWith " ")
+       |. Belt.Array.map string_of_int
+       |. Js.Array2.joinWith " ")
       (string_of_symbols results)
       (input
-        |. Belt.Array.map (fun tok -> tok.name)
-        |. Js.Array2.joinWith " ")
+       |. Belt.Array.map (fun tok -> tok.name)
+       |. Js.Array2.joinWith " ")
 
   (* This is the main parsing function: CPTT Algorithm 4.44 / Figure 4.36. *)
   let parse_trace_tables
     : lr0_action_table
-    -> lr0_goto_table
-    -> do_trace (* trace or not *)
-    -> Lex.token MQueue.t
-    -> (parse_result, parse_error) Result.t * trace_line array
+      -> lr0_goto_table
+      -> do_trace (* trace or not *)
+      -> Lex.token MQueue.t
+      -> (parse_result, parse_error) Result.t * trace_line array
     = fun lr0_action_table lr0_goto_table do_trace toks ->
       (* Re stack / results:
        * These are called `stack` and `symbols` in CPTT. Their structure
        * mirrors one another: there is a 1-1 correspondence between states in
        * `stack` and symbols in `results`, expept that `stack` always has
        * `augmented_state`, at the bottom of its stack.
-       *)
+      *)
       let stack : state MStack.t = MStack.make () in
       MStack.push stack augmented_state;
       let results : parse_result MStack.t = MStack.make () in
@@ -886,114 +886,114 @@ module Lr0 (G : GRAMMAR) = struct
                 input = MQueue.toArray toks;
               };
           match action with
-            | Shift t ->
-                MStack.push stack t;
-                MStack.push results
-                  { production = Either.Left terminal_num;
-                    children = [];
-                    start_pos = tok.start;
-                    end_pos = tok.finish;
-                  };
-                a := pop_front_exn tok.start toks;
-            | Reduce production_num ->
-                let pop_count = production_map
-                  |. MMI.get production_num
-                  |> get_option' (Printf.sprintf
-                    "Lr0 parse_trace: unable to find production %n in production_map"
-                    production_num
-                  )
-                  |. L.length
-                in
-                (* pop symbols off the stack *)
-                let children : parse_result list ref = ref [] in
-                let start_pos : int ref = ref 0 in
-                let end_pos : int ref = ref 0 in
-                for i = 1 to pop_count do
-                  let _ = MStack.pop stack in
-                  match MStack.pop results with
-                    | Some child -> (
-                      children := child :: !children;
-                      (* Note: children appear in reverse *)
-                      if i = pop_count then start_pos := child.start_pos;
-                      if i = 1 then end_pos := child.end_pos;
-                    )
-                    | None -> failwith
-                      "invariant violation: popping from empty stack"
-                done;
+          | Shift t ->
+            MStack.push stack t;
+            MStack.push results
+              { production = Either.Left terminal_num;
+                children = [];
+                start_pos = tok.start;
+                end_pos = tok.finish;
+              };
+            a := pop_front_exn tok.start toks;
+          | Reduce production_num ->
+            let pop_count = production_map
+                            |. MMI.get production_num
+                            |> get_option' (Printf.sprintf
+                                              "Lr0 parse_trace: unable to find production %n in production_map"
+                                              production_num
+                                           )
+                               |. L.length
+            in
+            (* pop symbols off the stack *)
+            let children : parse_result list ref = ref [] in
+            let start_pos : int ref = ref 0 in
+            let end_pos : int ref = ref 0 in
+            for i = 1 to pop_count do
+              let _ = MStack.pop stack in
+              match MStack.pop results with
+              | Some child -> (
+                  children := child :: !children;
+                  (* Note: children appear in reverse *)
+                  if i = pop_count then start_pos := child.start_pos;
+                  if i = 1 then end_pos := child.end_pos;
+                )
+              | None -> failwith
+                          "invariant violation: popping from empty stack"
+            done;
 
-                let nt_num = production_nonterminal_map
-                  |. MMI.get production_num
-                  |> get_option' (Printf.sprintf
-                    "Lr0 parse_trace: unable to find production %n in production_nonterminal_map"
-                    production_num
-                  )
-                in
-                (match MStack.top stack with
-                  | Some t -> (match lr0_goto_table t (Nonterminal nt_num) with
-                      | None -> failwith
-                        "invariant violation: invalid GOTO transition"
-                      | Some state -> MStack.push stack state
-                  )
-                  | None -> failwith "invariant violation: peeking empty stack"
-                );
+            let nt_num = production_nonterminal_map
+                         |. MMI.get production_num
+                         |> get_option' (Printf.sprintf
+                                           "Lr0 parse_trace: unable to find production %n in production_nonterminal_map"
+                                           production_num
+                                        )
+            in
+            (match MStack.top stack with
+             | Some t -> (match lr0_goto_table t (Nonterminal nt_num) with
+               | None -> failwith
+                           "invariant violation: invalid GOTO transition"
+               | Some state -> MStack.push stack state
+             )
+             | None -> failwith "invariant violation: peeking empty stack"
+            );
 
-                MStack.push results
-                  { production = Either.Right production_num;
-                    children = !children;
-                    start_pos = !start_pos;
-                    end_pos = !end_pos;
-                  };
-            | Accept -> raise ParseFinished
-            | Error (Some ReduceReduce) ->
-                raise (ParseFailed
-                  ( tok.start
-                  , Printf.sprintf
-                    "parse failed -- reduce/reduce conflict on this token (%s) from state %n"
-                    tok.name
-                    s
-                  ))
-            | Error (Some ShiftReduce) ->
-                raise (ParseFailed
-                  ( tok.start
-                  , Printf.sprintf
-                    "parse failed -- shift/reduce conflict on this token (%s) from state %n"
-                    tok.name
-                    s
-                  ))
-            | Error None ->
-                raise (ParseFailed
-                  ( tok.start
-                  (* TODO: give a decent error message *)
-                  , Printf.sprintf
-                    "parse failed -- no valid transition on this token (%s) from state %n"
-                    tok.name
-                    s
-                  ))
+            MStack.push results
+              { production = Either.Right production_num;
+                children = !children;
+                start_pos = !start_pos;
+                end_pos = !end_pos;
+              };
+          | Accept -> raise ParseFinished
+          | Error (Some ReduceReduce) ->
+            raise (ParseFailed
+                     ( tok.start
+                     , Printf.sprintf
+                         "parse failed -- reduce/reduce conflict on this token (%s) from state %n"
+                         tok.name
+                         s
+                     ))
+          | Error (Some ShiftReduce) ->
+            raise (ParseFailed
+                     ( tok.start
+                     , Printf.sprintf
+                         "parse failed -- shift/reduce conflict on this token (%s) from state %n"
+                         tok.name
+                         s
+                     ))
+          | Error None ->
+            raise (ParseFailed
+                     ( tok.start
+                     (* TODO: give a decent error message *)
+                     , Printf.sprintf
+                         "parse failed -- no valid transition on this token (%s) from state %n"
+                         tok.name
+                         s
+                     ))
             ;
         done;
         failwith "invariant violation: can't make it here"
 
       with
-        | ParseFinished -> (match MStack.size results with
-          | 1 -> (match MStack.top results with
-            | Some result -> Result.Ok result, MQueue.toArray trace
-            | None -> failwith "invariant violation: no result"
-            )
-          | 0 -> failwith "invariant violation: no result"
-          | n -> failwith (Printf.sprintf
-            "invariant violation: multiple results (%n)"
-            n
-          )
+      | ParseFinished -> (match MStack.size results with
+        | 1 -> (match MStack.top results with
+          | Some result -> Result.Ok result, MQueue.toArray trace
+          | None -> failwith "invariant violation: no result"
         )
-        | ParseFailed parse_error -> (Error parse_error, MQueue.toArray trace)
-        | PopFailed pos
+        | 0 -> failwith "invariant violation: no result"
+        | n -> failwith (Printf.sprintf
+                           "invariant violation: multiple results (%n)"
+                           n
+                        )
+      )
+      | ParseFailed parse_error -> (Error parse_error, MQueue.toArray trace)
+      | PopFailed pos
         -> (Error (pos, "parsing invariant violation -- pop failed"),
             MQueue.toArray trace)
 
   let parse_trace
     : do_trace (* trace or not *)
-    -> Lex.token MQueue.t
-    -> (parse_result, parse_error) Result.t * trace_line array
+      -> Lex.token MQueue.t
+      -> (parse_result, parse_error) Result.t * trace_line array
     = parse_trace_tables lr0_action_table lr0_goto_table
 
   let parse : Lex.token MQueue.t -> (parse_result, parse_error) Result.t
@@ -1008,8 +1008,8 @@ module Lr0 (G : GRAMMAR) = struct
       | Ok tokens ->
         let len = String.length input in
         let tokens' = tokens
-          |. Belt.Array.keep (fun token -> token.name != "SPACE")
-          |. MQueue.fromArray
+                      |. Belt.Array.keep (fun token -> token.name != "SPACE")
+                      |. MQueue.fromArray
         in
         (* TODO: name might not always be "$" *)
         MQueue.add tokens' { name = "$"; start = len; finish = len };

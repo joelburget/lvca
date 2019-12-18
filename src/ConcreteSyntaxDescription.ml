@@ -10,12 +10,12 @@ type nonterminal_token =
   | Underscore of int
 
 (** A term pattern with numbered holes for binder names and subterms, eg
-  `$2. $4` (for tokens `FUN name ARR expr`) *)
+    `$2. $4` (for tokens `FUN name ARR expr`) *)
 type numbered_scope_pattern =
   | NumberedScopePattern of capture_number list * capture_number
 
 let string_of_numbered_scope_pattern : numbered_scope_pattern -> string =
- fun (NumberedScopePattern (binders, body)) ->
+  fun (NumberedScopePattern (binders, body)) ->
   Belt.List.toArray binders
   |. Array.append [| body |]
   |. Belt.Array.map (fun n -> "$" ^ string_of_int n)
@@ -27,7 +27,7 @@ let string_of_numbered_scope_pattern : numbered_scope_pattern -> string =
     either match an operator, eg `{ add($1; $3) }` (for tokens `expr PLUS
     expr`) or are "single capture", eg `{ $2 }` (for tokens `LPAREN expr
     RPAREN`).
- *)
+*)
 type operator_match_pattern =
   | OperatorPattern of string * numbered_scope_pattern list
   | SingleCapturePattern of capture_number
@@ -82,7 +82,7 @@ type variable_rule =
  * arbitrary.
  *
  * By "variable rule", we mean a rule that matches exactly `var($n)`.
- *)
+*)
 let find_first_single_capture (matches : operator_match list list) : variable_rule option
   =
   Util.find_by matches

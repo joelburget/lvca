@@ -3,8 +3,8 @@ type re_class_base =
   | Whitespace (* \s / \S *)
   | Digit (* \d / \D *)
   | Boundary (* \b / \B *)
-  (* TODO: other javascript classes *)
-  (* TODO: unicode categories *)
+(* TODO: other javascript classes *)
+(* TODO: unicode categories *)
 
 (** Accept the positive or negative version of a class *)
 type re_class = PosClass of re_class_base | NegClass of re_class_base
@@ -14,8 +14,8 @@ type regex =
   (** Just a string of characters, eg `foo` *)
   | ReString of string
   (** A character class, eg `\w` or `\d`. Syntactically, these are all
-   started by a backslash. We just use javascript character classes.
-   *)
+      started by a backslash. We just use javascript character classes.
+  *)
   (* Question: do we support octal escapes (\40)? The lex manual points out
    * this is non-portable. But don't we presuppose unicode? We accept unicode
    * categories, right? `\cc`, `\cf`, etc. *)
@@ -56,12 +56,12 @@ let rec show : regex -> string
     | RePlus re -> "RePlus " ^ show re
     | ReOption re -> "ReOption " ^ show re
     | ReChoice (re, re')
-    -> Printf.sprintf "ReChoice (%s, %s)" (show re) (show re')
+      -> Printf.sprintf "ReChoice (%s, %s)" (show re) (show re')
     | ReAny -> "ReAny"
     | ReConcat res -> Printf.sprintf "ReConcat [%s]" (res
-      |. Belt.List.map show
-      |> String.concat "; "
-    )
+                                                      |. Belt.List.map show
+                                                      |> String.concat "; "
+                                                     )
 
 let rec canonical_representative : regex -> string option
   = function
@@ -74,11 +74,11 @@ let rec canonical_representative : regex -> string option
     | ReOption _ -> Some ""
     | ReChoice (re, re') -> Util.get_first canonical_representative [re; re']
     | ReConcat pieces -> pieces
-      |> Util.traverse_list_option canonical_representative
-      |. Belt.Option.map (fun pieces' -> pieces'
-        |. Belt.List.toArray
-        |. Js.Array2.joinWith ""
-      )
+                         |> Util.traverse_list_option canonical_representative
+                            |. Belt.Option.map (fun pieces' -> pieces'
+                                                               |. Belt.List.toArray
+                                                               |. Js.Array2.joinWith ""
+                                               )
 
 let rec accepts_empty : regex -> bool
   = function
@@ -114,7 +114,7 @@ let class_to_string : re_class -> string
  * 2: * + ?
  * 1: concat
  * 0: |
- *)
+*)
 
 let parenthesize : bool -> string -> string
   = fun condition str ->
@@ -122,39 +122,39 @@ let parenthesize : bool -> string -> string
 
 let rec to_string' : int -> regex -> string
   = fun precedence re -> match re with
-  (* We need to escape special characters in strings *)
-  | ReString str -> Js.String.(str
-    |> replaceByRe [%re {|/\\/g|}] {|\\|}
-    |> replaceByRe [%re {|/\//g|}] {|\/|}
-    |> replaceByRe [%re {|/\+/g|}] {|\+|}
-    |> replaceByRe [%re {|/\*/g|}] {|\*|}
-    |> replaceByRe [%re {|/\?/g|}] {|\?|}
-    |> replaceByRe [%re {|/\-/g|}] {|\-|}
-    |> replaceByRe [%re {|/\(/g|}] {|\(|}
-    |> replaceByRe [%re {|/\)/g|}] {|\)|}
-    |> parenthesize (precedence > 1 && length str > 1)
-  )
+    (* We need to escape special characters in strings *)
+    | ReString str -> Js.String.(str
+                                 |> replaceByRe [%re {|/\\/g|}] {|\\|}
+                                 |> replaceByRe [%re {|/\//g|}] {|\/|}
+                                 |> replaceByRe [%re {|/\+/g|}] {|\+|}
+                                 |> replaceByRe [%re {|/\*/g|}] {|\*|}
+                                 |> replaceByRe [%re {|/\?/g|}] {|\?|}
+                                 |> replaceByRe [%re {|/\-/g|}] {|\-|}
+                                 |> replaceByRe [%re {|/\(/g|}] {|\(|}
+                                 |> replaceByRe [%re {|/\)/g|}] {|\)|}
+                                 |> parenthesize (precedence > 1 && length str > 1)
+                                )
 
-  | ReSet    str -> "[" ^ str ^ "]"
-  | ReStar   re -> to_string' 2 re ^ "*"
-  | RePlus   re -> to_string' 2 re ^ "+"
-  | ReOption re -> to_string' 2 re ^ "?"
-  | ReClass  cls -> class_to_string cls
-  | ReChoice (re, re') -> parenthesize
-    (precedence > 0)
-    (to_string' 0 re ^ "|" ^ to_string' 0 re')
-  | ReAny -> "."
-  | ReConcat pieces -> pieces
-    |> List.map (to_string' 2)
-    |> String.concat ""
-    |> parenthesize (precedence > 1)
+    | ReSet    str -> "[" ^ str ^ "]"
+    | ReStar   re -> to_string' 2 re ^ "*"
+    | RePlus   re -> to_string' 2 re ^ "+"
+    | ReOption re -> to_string' 2 re ^ "?"
+    | ReClass  cls -> class_to_string cls
+    | ReChoice (re, re') -> parenthesize
+                              (precedence > 0)
+                              (to_string' 0 re ^ "|" ^ to_string' 0 re')
+    | ReAny -> "."
+    | ReConcat pieces -> pieces
+                         |> List.map (to_string' 2)
+                         |> String.concat ""
+                         |> parenthesize (precedence > 1)
 
 (** Convert a regex to a string which is parseable back to a regex. IE, for
-  valid regexes,
-  - to_string . parse = id
-  - parse . to_string = id
+    valid regexes,
+    - to_string . parse = id
+    - parse . to_string = id
 
-  This has no delimiters, ie it returns "abc", not "/abc/".
+    This has no delimiters, ie it returns "abc", not "/abc/".
 *)
 let to_string : regex -> string
   = to_string' 0

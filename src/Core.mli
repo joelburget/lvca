@@ -1,22 +1,22 @@
 (** Tools for dealing with the core language in LVCA.
- - denotation_chart is the data type for declaring a mapping from some language to core
- - core, core_scope, denotation_pat, and denotation_scope_pat define the core language
- - term_denotation is used to map some language to core
- - eval is then used to evaluate the core term
- - finally, to_ast is used to give the resulting term
- *)
+    - denotation_chart is the data type for declaring a mapping from some language to core
+    - core, core_scope, denotation_pat, and denotation_scope_pat define the core language
+    - term_denotation is used to map some language to core
+    - eval is then used to evaluate the core term
+    - finally, to_ast is used to give the resulting term
+*)
 
 open Types
 open Binding
 
 (** Represents the LHS of a denotation rule. Why is this not just `Pattern.t`?
- Because patterns can't match binders. For example, we want to be able to write
- this on the LHS of a denotation rule:
+    Because patterns can't match binders. For example, we want to be able to write
+    this on the LHS of a denotation rule:
 
-     [[ lam(x. x) ]] = ...
+    [[ lam(x. x) ]] = ...
 
- This is not allowed by regular patterns.
- *)
+    This is not allowed by regular patterns.
+*)
 type denotation_pat =
   | Operator of string * denotation_pat_scope list
   | Sequence of denotation_pat list
@@ -24,8 +24,8 @@ type denotation_pat =
   | Var of string
 
 (** A scope within the LHS of a denotation rule. Note that it's not currently
-  allowed to match on specific patterns -- you can only match on an entire
-  slot at once.
+    allowed to match on specific patterns -- you can only match on an entire
+    slot at once.
 *)
 and denotation_pat_scope = Scope of string list * denotation_pat
 
@@ -77,9 +77,9 @@ val term_denotation
 val eval : core -> (core, string) Result.t
 
 (** Convert a core term to a nominal term, ensuring that it contains no core
- operators (note this is not the inverse of from_ast) *)
+    operators (note this is not the inverse of from_ast) *)
 val to_ast : core -> Nominal.term
 
 (** Convert a nominal term (with core operators) to a core term (note this is
- not the inverse of to_ast) *)
+    not the inverse of to_ast) *)
 val from_ast : Nominal.term -> core

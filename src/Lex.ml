@@ -36,7 +36,7 @@ exception LexError of lex_error
 exception FoundFirstCapture of int
 
 let find_first_capture : string M.t -> 'a Js.nullable array -> string option =
- fun tok_names captures ->
+  fun tok_names captures ->
   try
     for i = 1 to Js.Array2.length captures - 1 do
       if Js.Nullable.isNullable captures.(i)
@@ -51,28 +51,28 @@ let find_first_capture : string M.t -> 'a Js.nullable array -> string option =
 (* TODO: no exn *)
 
 let get_next_tok : string M.t -> Js.Re.t -> lexbuf -> token =
- fun tok_names re { buf; pos } ->
+  fun tok_names re { buf; pos } ->
   re
   |. Js.Re.exec_ (buf |. Js.String2.sliceToEnd ~from:pos)
   |. function
-  | Some result ->
-    let captures = Js.Re.captures result in
-    (match Js.Nullable.toOption captures.(0), find_first_capture tok_names captures with
-    | Some token_contents, Some name ->
-      { name; start = pos; finish = pos + Js.String2.length token_contents }
-    | _, _ ->
-      raise (LexError { start_pos = pos; end_pos = pos (* TODO *); message = "TODO 1" }))
-  | None ->
-    raise
-      (LexError
-         { start_pos = pos
-         ; end_pos = pos (* TODO *)
-         ; message = "Failed lex, re: " ^ Js.Re.source re ^ "\nlexbuf: " ^ buf
-         })
+    | Some result ->
+      let captures = Js.Re.captures result in
+      (match Js.Nullable.toOption captures.(0), find_first_capture tok_names captures with
+       | Some token_contents, Some name ->
+         { name; start = pos; finish = pos + Js.String2.length token_contents }
+       | _, _ ->
+         raise (LexError { start_pos = pos; end_pos = pos (* TODO *); message = "TODO 1" }))
+    | None ->
+      raise
+        (LexError
+           { start_pos = pos
+           ; end_pos = pos (* TODO *)
+           ; message = "Failed lex, re: " ^ Js.Re.source re ^ "\nlexbuf: " ^ buf
+           })
 ;;
 
 let lex' : lexer -> string -> token array =
- fun lexer input ->
+  fun lexer input ->
   let result = [||] in
   let lexbuf = { buf = input; pos = 0 } in
   let mut_tok_names = MM.make () in
@@ -80,8 +80,8 @@ let lex' : lexer -> string -> token array =
     lexer
     |. L.toArray
     |. A.mapWithIndex (fun i (re, tok_name) ->
-           MM.set mut_tok_names i tok_name;
-           "(" ^ re ^ ")")
+      MM.set mut_tok_names i tok_name;
+      "(" ^ re ^ ")")
     |. Js.Array2.joinWith "|"
   in
   let tok_names = mut_tok_names |. MM.toArray |> M.fromArray in
@@ -97,7 +97,7 @@ let lex' : lexer -> string -> token array =
 ;;
 
 let lex : lexer -> string -> (token array, lex_error) Result.t =
- fun lexer input ->
+  fun lexer input ->
   try Result.Ok (lex' lexer input) with
   | LexError err -> Result.Error err
 ;;

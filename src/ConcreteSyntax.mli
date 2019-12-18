@@ -60,8 +60,8 @@ val to_grammar
   :  ConcreteSyntaxDescription.t
   -> LrParsing.grammar
      * (ConcreteSyntaxDescription.nonterminal_token list
-       * ConcreteSyntaxDescription.operator_match_pattern option)
-       Belt.MutableMap.Int.t
+        * ConcreteSyntaxDescription.operator_match_pattern option)
+         Belt.MutableMap.Int.t
 
 type invalid_grammar
 
@@ -75,8 +75,8 @@ val mk_tree : sort_name -> node_type -> capture array -> tree
 val remove_spaces : tree -> tree
 
 (** Make a concrete syntax description from its parsed rules. This morally
- belongs to the ConcreteSyntaxDescription module, but it's here to break a
- dependency cycle with Parsing -> ConcreteSyntaxDescription.
+    belongs to the ConcreteSyntaxDescription module, but it's here to break a
+    dependency cycle with Parsing -> ConcreteSyntaxDescription.
 *)
 val make_concrete_description
   :  ConcreteSyntaxDescription.pre_terminal_rule list

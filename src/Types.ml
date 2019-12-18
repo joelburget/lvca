@@ -14,14 +14,14 @@ type valence =
   (** A fixed valence is known a priori *)
   | VariableValence of string * sort
   (** A variable valence binds a number of variables not known a priori. All
-   must be of the same sort. *)
+      must be of the same sort. *)
 
 (** An arity specifies the arguments to an operator *)
 type arity =
   | Arity of string list * valence list
   (** An arity is defined its arity indices and valences. Arity indices are
-   variables bound in an arity rule specifying the length of variable-length
-   slots. *)
+      variables bound in an arity rule specifying the length of variable-length
+      slots. *)
 
 type operatorDef =
   | OperatorDef of string * arity
@@ -104,8 +104,8 @@ end = struct
 
   let from_array_buffer buf
     = ([%raw "function(buf) { return new Uint8Array(buf); }"]
-      : ArrayBuffer.t -> t)
-      buf
+       : ArrayBuffer.t -> t)
+        buf
 
   let to_array_buffer buf
     = ([%raw "function(arr) { return arr.buffer; }"] : t -> ArrayBuffer.t) buf
@@ -163,14 +163,14 @@ module Cbor = struct
 
   let encode_ab (it : Js.Json.t) : ArrayBuffer.t
     = ([%raw "function(cbor, it) { return cbor.encode(it); }"]
-      : t -> Js.Json.t -> ArrayBuffer.t)
-      cbor it
+       : t -> Js.Json.t -> ArrayBuffer.t)
+        cbor it
 
   let decode_ab (it : ArrayBuffer.t) : Js.Json.t option
     = let raw_decode : t -> ArrayBuffer.t -> Js.Json.t
-            = [%raw "function(cbor, it) { return cbor.decode(it); }"]
-      in try
-           Some (raw_decode cbor it)
-         with
-           _ -> None
+      = [%raw "function(cbor, it) { return cbor.decode(it); }"]
+    in try
+      Some (raw_decode cbor it)
+    with
+      _ -> None
 end

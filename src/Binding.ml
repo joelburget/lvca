@@ -30,7 +30,7 @@ end = struct
     | Primitive of primitive
 
   let rec find_operator (operators : operatorDef list) (tag : string)
-      : operatorDef option
+    : operatorDef option
     =
     match operators with
     | [] -> None
@@ -71,8 +71,8 @@ end = struct
       Operator (tag, subtms |. L.map (scope_from_nominal' env))
     | Var name ->
       (match M.get env name with
-      | None -> raise (FailedFromNominal ("couldn't find variable " ^ name))
-      | Some (i, j) -> Var (i, j))
+       | None -> raise (FailedFromNominal ("couldn't find variable " ^ name))
+       | Some (i, j) -> Var (i, j))
     | Sequence tms -> Sequence (tms |. L.map (from_nominal_with_bindings' env))
     | Primitive prim -> Primitive prim
 
@@ -82,8 +82,8 @@ end = struct
       L.(
         zip pats (makeBy n (fun i -> i))
         |. map (fun (pat, i) ->
-               let vars = Pattern.list_vars_of_pattern pat in
-               zip vars (makeBy (length vars) (fun j -> i, j)))
+          let vars = Pattern.list_vars_of_pattern pat in
+          zip vars (makeBy (length vars) (fun j -> i, j)))
         |. flatten)
     in
     let env' : (int * int) M.t =
@@ -208,9 +208,9 @@ end = struct
   ;;
 
   (*
-  let deserialize (buf : Uint8Array.t) : term option
-    = dejsonify (Cbor.decode_ab (Uint8Array.to_array_buffer buf))
-    *)
+     let deserialize (buf : Uint8Array.t) : term option
+     = dejsonify (Cbor.decode_ab (Uint8Array.to_array_buffer buf))
+  *)
 
   let hash tm = Sha256.hash_ba (BitArray.from_u8_array (serialize tm))
 
