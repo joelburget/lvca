@@ -143,8 +143,8 @@ let () = describe "LalrParsing" (fun () ->
 
   let mk_arr items = S.fromArray items ~id:(module LookaheadItemCmp) in
   let mk_config_set kernel_items nonkernel_items =
-    { kernel_items = mk_arr kernel_items;
-      nonkernel_items = mk_arr nonkernel_items;
+    { LalrParsing.kernel_items = mk_arr kernel_items;
+      LalrParsing.nonkernel_items = mk_arr nonkernel_items;
     }
   in
 
@@ -200,7 +200,7 @@ let () = describe "LalrParsing" (fun () ->
         |. lookahead_item_set_set
       ) |> toBeEquivalent show_lookahead_item_sets Belt.Set.eq
         (gram1_lr1_config_sets
-          |. Belt.Array.map (fun config_set -> config_set.kernel_items)
+          |. Belt.Array.map (fun { LalrParsing.kernel_items } -> kernel_items)
           |. lookahead_item_set_set
       )
     );
@@ -437,8 +437,9 @@ let () = describe "LalrParsing" (fun () ->
   in
 
   let state = gram1_lr1_config_sets
-    |. Belt.Array.map (fun config_set -> Grammar1LR.item_set_to_state @@
-      lookahead_item_set_to_item_set config_set.kernel_items
+    |. Belt.Array.map (fun { LalrParsing.kernel_items } ->
+      Grammar1LR.item_set_to_state @@
+        lookahead_item_set_to_item_set kernel_items
     )
   in
 

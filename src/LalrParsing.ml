@@ -226,7 +226,7 @@ module Lalr1 (G : GRAMMAR) = struct
           |. MMI.getExn production_num
         in
 
-        if production_num = 0 or position > 0
+        if production_num = 0 || position > 0
         then Belt.MutableSet.add kernel_items lookahead_item
         else add_all_to nonkernel_items nonterminal_num lookahead_set;
 
@@ -391,28 +391,27 @@ module Lalr1 (G : GRAMMAR) = struct
      While we're finding propagation, also fill in spontaneous generation.
   *)
   let lookahead_propagation : (state * item) array M.t M.t
-    = mutable_lalr1_items
-      |. M.mapWithKey (fun state_num mutable_lookahead_item_set ->
-        let kernel : item_set =
-          mutable_lookahead_item_set_to_item_set mutable_lookahead_item_set
+    = mutable_lalr1_items |. M.map (fun mutable_lookahead_item_set ->
+      let kernel : item_set =
+        mutable_lookahead_item_set_to_item_set mutable_lookahead_item_set
+      in
+
+      M.mapWithKey mutable_lookahead_item_set (fun item _ ->
+        let { spontaneous_generation; propagation } =
+          generate_lookaheads kernel item
         in
 
-        M.mapWithKey mutable_lookahead_item_set (fun item lookahead_set ->
-          let { spontaneous_generation; propagation } =
-            generate_lookaheads kernel item
-          in
+        Belt.Array.forEach spontaneous_generation
+          (fun (state, { item; lookahead_set }) ->
+          mutable_lalr1_items
+            |. M.getExn state
+            |. M.getExn item
+            |. Belt.MutableSet.Int.mergeMany (SI.toArray lookahead_set);
+        );
 
-          Belt.Array.forEach spontaneous_generation
-            (fun (state, { item; lookahead_set }) ->
-            mutable_lalr1_items
-              |. M.getExn state
-              |. M.getExn item
-              |. Belt.MutableSet.Int.mergeMany (SI.toArray lookahead_set);
-          );
-
-          propagation
-        )
+        propagation
       )
+    )
 
   (* Special-case augmented item `S' -> . S` with lookahead $. *)
   let () = mutable_lalr1_items
@@ -511,8 +510,7 @@ module Lalr1 (G : GRAMMAR) = struct
     (* If [A -> xs . a ys, b] is in I_i and GOTO(I_i, a) = I_j, set
      * ACTION[i, a] to `shift j` *)
     let shift_action = Util.find_by item_set_l @@ fun l_item ->
-      let { item; lookahead_set } = l_item in
-      let { production_num; position } = view_item item in
+      let { production_num; position } = view_item l_item.item in
       let symbols = production_map
         |. MMI.get production_num
         |> get_option' (Printf.sprintf
@@ -559,8 +557,7 @@ module Lalr1 (G : GRAMMAR) = struct
 
     (* If [S' -> S .] is in I_i, set ACTION[i, $] to `accept` *)
     let accept_action = Util.find_by item_set_l @@ fun l_item ->
-      let { item; lookahead_set } = l_item in
-      if item = mk_item' 0 1 && terminal_num = end_marker
+      if l_item.item = mk_item' 0 1 && terminal_num = end_marker
         then Some Accept
         else None
     in
