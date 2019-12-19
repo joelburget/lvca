@@ -347,7 +347,52 @@ let rec pattern_to_tree : sort_name -> Pattern.t -> tree =
     mk_tree sort_name (Primitive prim_ty) [||]
 ;;
 
-(* TODO: handle non-happy cases *)
+type doc =
+  | DocNil
+  | DocCons of doc * doc
+  | DocText of string
+  | DocNest of int * doc
+  | DocBreak of string
+  | DocGroup of doc
+
+type sdoc =
+  | SNil
+  | SText of string * sdoc
+  | SLine of int * sdoc (* newline + spaces *)
+
+let rec string_of_sdoc = function
+  | SNil -> ""
+  | SText (s, d) -> s ^ string_of_sdoc d
+  | SLine (i, d) ->
+    let prefix = String.make i ' ' in
+    "\n" ^ prefix ^ string_of_sdoc d
+
+type mode = Flat | Break
+
+let rec fits w : (int * mode * doc) list -> bool
+  = function
+  | _ when w < 0 -> false
+  | [] -> true
+  | (i, m, DocNil) :: z -> fits w z
+  | (i, m, DocCons (x, y)) :: z -> fits w ((i, m, x) :: (i, m, y) :: z)
+  | (i, m, DocNest (j, x)) :: z -> fits w ((i + j, m, x) :: z)
+  | (i, m, DocText s) :: z -> fits (w - String.length s) z
+  | (i, Flat, DocBreak s) :: z -> fits (w - String.length s) z
+  | (i, Break, DocBreak _) :: z -> true (* impossible *)
+  | (i, m, DocGroup x) :: z -> fits w ((i, Flat, x) :: z)
+
+let rec format w k : (int * mode * doc) list -> sdoc
+  = function
+  | [] -> SNil
+  | (i, m, DocNil) :: z -> format w k z
+  | (i, m, DocCons (x, y)) :: z -> format w k ((i, m, x) :: (i, m, y) :: z)
+  | (i, m, DocNest (j, x)) :: z -> format w k ((i + j, m, x) :: z)
+  | (i, m, DocText s) :: z -> SText (s, format w (k + String.length s) z)
+  | (i, Flat, DocBreak s) :: z -> SText (s, format w (k + String.length s) z)
+  | (i, Break, DocBreak s) :: z -> SLine (i, format w i z)
+  | (i, m, DocGroup x) :: z -> if fits (w - k) ((i, Flat, x) :: z)
+    then format w k ((i, Flat, x) :: z)
+    else format w k ((i, Break, x) :: z)
 
 (** Pretty-print an abstract term to a concrete syntax tree
     Raises: InvariantViolation, BadRules
