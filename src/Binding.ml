@@ -29,15 +29,6 @@ end = struct
     | Sequence of term list
     | Primitive of primitive
 
-  let rec find_operator (operators : operatorDef list) (tag : string)
-    : operatorDef option
-    =
-    match operators with
-    | [] -> None
-    | (OperatorDef (hd, _) as od) :: tl ->
-      if hd = tag then Some od else find_operator tl tag
-  ;;
-
   module L = Belt.List
 
   let rec to_nominal' ctx = function
