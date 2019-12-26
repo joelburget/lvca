@@ -14,7 +14,11 @@ type denotation_pat =
 
 and denotation_pat_scope = Scope of string list * denotation_pat
 
-(** Represents the RHS of a denotation rule *)
+(** This type represents the RHS of a denotation rule as parsed. We use
+ * denotation_term_to_core to translate it to a core term which can actually be
+ * executed.
+ * (See produce_denotation_chart : pre_denotation_chart -> denotation_chart).
+ * *)
 type denotation_term =
   (* first four constructors correspond to regular term constructors *)
   | Operator of string * denotation_scope list
@@ -42,6 +46,7 @@ type core =
   | Lambda of sort list * core_scope
   | CoreApp of core * core list
   | Case of core * core_scope list
+  | Let of core * core_scope
   (** A metavariable refers to a term captured directly from the left-hand-side
   *)
   | Metavar of string
@@ -66,7 +71,8 @@ let rec term_to_core' vars : denotation_term -> core = function
    | Operator ("case", ...)
 *)
 
-let term_to_core : denotation_term -> core = term_to_core' Belt.Set.String.empty
+let denotation_term_to_core : denotation_term -> core
+  = term_to_core' Belt.Set.String.empty
 
 let rec sort_from_ast (term : Nominal.term) : sort =
   match term with
@@ -123,7 +129,7 @@ type denotation_chart = DenotationChart of (denotation_pat * core) list
 
 let produce_denotation_chart : pre_denotation_chart -> denotation_chart =
   fun (DenotationChart lines) ->
-  DenotationChart (lines |. Belt.List.map (fun (pat, tm) -> pat, term_to_core tm))
+  DenotationChart (lines |. Belt.List.map (fun (pat, tm) -> pat, denotation_term_to_core tm))
 ;;
 
 type located_err = string * DeBruijn.term option
@@ -254,7 +260,7 @@ let associate_name (assocs : assoc list) (pat_name : string) =
 let rec fill_in_core ({ dynamics; vars; assignments } as args) = function
   | Metavar name ->
     (match Belt.Map.String.get assignments name with
-     | Some tm -> term_to_core [] tm
+     | Some tm -> debruijn_to_core [] tm
      | None -> raise (TranslationError ("Metavariable " ^ name ^ " not found", None)))
   | Meaning name ->
     (match Belt.Map.String.get assignments name with
@@ -287,7 +293,9 @@ and fill_in_core_scope ({ assocs; vars } as args)
 
 (** Translate a term directly to core, with no interpretation. In other words,
     this term is supposed to directly represent a term in the codomain. *)
-and term_to_core env tm =
+and debruijn_to_core
+  : int list -> DeBruijn.term -> core
+  = fun env tm ->
   match tm with
   | Operator (tag, subtms) -> Operator (tag, subtms |. Belt.List.map (scope_to_core env))
   | Var (i, j) -> failwith "TODO"
@@ -295,12 +303,12 @@ and term_to_core env tm =
     | None -> raise (TranslationError ("failed to look up variable", Some tm))
     | Some name -> Var name
   *)
-  | Sequence tms -> Sequence (tms |. Belt.List.map (term_to_core env))
+  | Sequence tms -> Sequence (tms |. Belt.List.map (debruijn_to_core env))
   | Primitive prim -> Primitive prim
 
 (* XXX change names (assocs)? *)
 and scope_to_core env (Scope (names, body)) =
-  CoreScope (names, term_to_core env body)
+  CoreScope (names, debruijn_to_core env body)
 (* val term_denotation
    : denotation_chart -> DeBruijn.term -> core translation_result
 *)

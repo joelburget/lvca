@@ -55,6 +55,7 @@ and core =
   | Lambda of sort list * core_scope
   | CoreApp of core * core list
   | Case of core * core_scope list
+  | Let of core * core_scope
   | Metavar of string
   | Meaning of string
 
