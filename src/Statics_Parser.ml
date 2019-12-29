@@ -2,7 +2,7 @@
 (* This generated code requires the following version of MenhirLib: *)
 
 let () =
-  MenhirLib.StaticVersion.require_20181113
+  MenhirLib.StaticVersion.require_20190924
 
 module MenhirBasics = struct
   
@@ -363,7 +363,7 @@ module Tables = struct
         let _startpos = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _endpos = _startpos in
         let _v : 'tv_list_hypothesis_ = 
-# 211 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 211 "<standard.mly>"
     ( [] )
 # 369 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
@@ -399,7 +399,7 @@ module Tables = struct
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_xs_ in
         let _v : 'tv_list_hypothesis_ = 
-# 213 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 213 "<standard.mly>"
     ( x :: xs )
 # 405 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
@@ -417,7 +417,7 @@ module Tables = struct
         let _startpos = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _endpos = _startpos in
         let _v : 'tv_list_rule_ = 
-# 211 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 211 "<standard.mly>"
     ( [] )
 # 423 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
@@ -453,7 +453,7 @@ module Tables = struct
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_xs_ in
         let _v : 'tv_list_rule_ = 
-# 213 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 213 "<standard.mly>"
     ( x :: xs )
 # 459 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
@@ -471,7 +471,7 @@ module Tables = struct
         let _startpos = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _endpos = _startpos in
         let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_scope__ = 
-# 142 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 142 "<standard.mly>"
     ( [] )
 # 477 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
@@ -496,7 +496,7 @@ module Tables = struct
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_x_ in
         let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_scope__ = 
-# 144 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 144 "<standard.mly>"
     ( x )
 # 502 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
@@ -640,7 +640,7 @@ module Tables = struct
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_x_ in
         let _v : 'tv_separated_nonempty_list_COMMA_typed_term_ = 
-# 241 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 241 "<standard.mly>"
     ( [ x ] )
 # 646 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
@@ -679,7 +679,7 @@ module Tables = struct
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_xs_ in
         let _v : 'tv_separated_nonempty_list_COMMA_typed_term_ = 
-# 243 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 243 "<standard.mly>"
     ( x :: xs )
 # 685 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
@@ -708,7 +708,7 @@ module Tables = struct
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_x_ in
         let _v : 'tv_separated_nonempty_list_DOT_term_ = 
-# 241 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 241 "<standard.mly>"
     ( [ x ] )
 # 714 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
@@ -751,7 +751,7 @@ module Tables = struct
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_xs_ in
         let _v : 'tv_separated_nonempty_list_DOT_term_ = 
-# 243 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 243 "<standard.mly>"
     ( x :: xs )
 # 757 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
@@ -780,7 +780,7 @@ module Tables = struct
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_x_ in
         let _v : 'tv_separated_nonempty_list_SEMICOLON_scope_ = 
-# 241 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 241 "<standard.mly>"
     ( [ x ] )
 # 786 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
@@ -823,7 +823,7 @@ module Tables = struct
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_xs_ in
         let _v : 'tv_separated_nonempty_list_SEMICOLON_scope_ = 
-# 243 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 243 "<standard.mly>"
     ( x :: xs )
 # 829 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
@@ -877,7 +877,7 @@ module Tables = struct
       (Statics.term)
 # 879 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = let _3 = 
-# 232 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 232 "<standard.mly>"
     ( xs )
 # 883 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
@@ -1132,7 +1132,7 @@ module Incremental = struct
   
 end
 
-# 269 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 269 "<standard.mly>"
   
 
 # 1139 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"

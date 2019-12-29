@@ -2,7 +2,7 @@
 (* This generated code requires the following version of MenhirLib: *)
 
 let () =
-  MenhirLib.StaticVersion.require_20181113
+  MenhirLib.StaticVersion.require_20190924
 
 module MenhirBasics = struct
   
@@ -152,7 +152,7 @@ module Tables = struct
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_x_ in
         let _v : 'tv_nonempty_list_prec2_re_ = 
-# 221 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 221 "<standard.mly>"
     ( [ x ] )
 # 158 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -184,7 +184,7 @@ module Tables = struct
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_xs_ in
         let _v : 'tv_nonempty_list_prec2_re_ = 
-# 223 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 223 "<standard.mly>"
     ( x :: xs )
 # 190 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -654,7 +654,7 @@ module Tables = struct
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_x_ in
         let _v : 'tv_separated_nonempty_list_BAR_prec1_re_ = 
-# 241 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 241 "<standard.mly>"
     ( [ x ] )
 # 660 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -693,7 +693,7 @@ module Tables = struct
         let _startpos = _startpos_x_ in
         let _endpos = _endpos_xs_ in
         let _v : 'tv_separated_nonempty_list_BAR_prec1_re_ = 
-# 243 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 243 "<standard.mly>"
     ( x :: xs )
 # 699 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"
          in
@@ -741,7 +741,7 @@ module Incremental = struct
   
 end
 
-# 269 "/Users/joel/.opam/default/lib/menhir/standard.mly"
+# 269 "<standard.mly>"
   
 
 # 748 "/Users/joel/code/lvca-bucklescript/src/Regex_Parser.ml"

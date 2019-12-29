@@ -1,5 +1,3 @@
-(* copied directly from the menhir distribution *)
-
 module General = struct
 (******************************************************************************)
 (*                                                                            *)
@@ -3203,8 +3201,8 @@ module Make
      [Engine]. It is available here. *)
 
   open EngineTypes
-  open! ET
-  open! E
+  open ET
+  open E
 
   (* [feed] fails if the current state does not have an outgoing transition
      labeled with the desired symbol. This check is carried out at runtime. *)
@@ -3515,5 +3513,5 @@ module MakeEngineTable (T : TableFormat.TABLES) = struct
 end
 end
 module StaticVersion = struct
-let require_20181113 = ()
+let require_20190924 = ()
 end
