@@ -2,13 +2,11 @@ let (fromArray, empty, union, toList) =
   Belt.Set.String.(fromArray, empty, union, toList)
 let stringify_list = Util.stringify_list
 
-type primitive = Types.primitive
-
 type pattern =
   | Operator of string * pattern list
   | Var of string
   | Sequence of pattern list
-  | Primitive of primitive
+  | Primitive of Types.primitive
 
 type t = pattern
 

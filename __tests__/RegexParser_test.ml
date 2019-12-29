@@ -3,10 +3,12 @@ open Expect
 
 let _ = describe "Regex_Parser" (fun () ->
   (* Expect round trip: to_string . parse = id *)
-  let expectParseAndRT parser str re = test ("parse '" ^ str ^ "'") (fun () ->
-    match parser Regex_Lexer.read (Lexing.from_string str) with
-      re' -> expect re' |> toEqual re;
-      expect (Regex.to_string re) |> toEqual str
+  let expectParseAndRT parser str re = describe ("parse '" ^ str ^ "'") (fun () ->
+    test "round-trip" (fun () ->
+      let re' = parser Regex_Lexer.read (Lexing.from_string str) in
+      expect re' |> toEqual re
+    );
+    test "to_string" (fun () -> expect (Regex.to_string re) |> toEqual str);
   ) in
 
   expectParseAndRT Regex_Parser.regex "foo" (ReString "foo");
