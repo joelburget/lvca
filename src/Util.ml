@@ -105,7 +105,7 @@ let rec keep_some (lst : 'a option list) : 'a list =
   | None :: rest -> keep_some rest
 ;;
 
-let union m1 m2 =
+let map_union m1 m2 =
   Belt.Map.String.merge m1 m2 (fun _k v1 v2 ->
     match v1, v2 with
     | _, Some v -> Some v
@@ -119,7 +119,12 @@ let rec fold_right (f : 'a * 'b -> 'b) (lst : 'a list) (b : 'b) : 'b =
   | a :: as_ -> f (a, fold_right f as_ b)
 ;;
 
-let unions maps = fold_right (fun (m1, m2) -> union m1 m2) maps Belt.Map.String.empty
+let map_unions maps = fold_right (fun (m1, m2) -> map_union m1 m2) maps Belt.Map.String.empty
+
+let set_unions sets = fold_right
+  (fun (s1, s2) -> Belt.Set.String.union s1 s2)
+  sets
+  Belt.Set.String.empty
 
 let map_error (result : ('a, 'b) Result.t) (f : 'b -> 'c) : ('a, 'c) Result.t =
   Result.(

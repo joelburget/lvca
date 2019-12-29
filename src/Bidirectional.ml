@@ -21,7 +21,7 @@ let rec match_schema_vars' t1 t2 = match t1, t2 with
   | Free v, tm -> M.fromArray [| v, Scope ([], tm) |]
   | Operator (tag1, args1), Operator (tag2, args2)
     -> if tag1 = tag2 && BL.(length args1 = length args2)
-    then Util.unions @@ BL.zipBy args1 args2 match_schema_vars_scope
+    then Util.map_unions @@ BL.zipBy args1 args2 match_schema_vars_scope
     else raise NoMatch
 
 and match_schema_vars_scope (Scope (names1, body1)) (Scope (names2, body2)) =
@@ -166,7 +166,7 @@ let rec check' trace_stack emit_trace ({ rules } as env) (Typing (tm, ty) as typ
   in let (name, hypotheses, tm_assignments, ty_assignments) =
        get_or_raise "check': no matching rule found" (Util.first_by rules match_rule) in
   (* TODO: check term / type assignments disjoint *)
-  let schema_assignments = Util.union tm_assignments ty_assignments in
+  let schema_assignments = Util.map_union tm_assignments ty_assignments in
   (* ctx_state is a mapping of schema variables we've learned:
    * We fill this in initially with `schema_assignments` from matching the
      conclusion.

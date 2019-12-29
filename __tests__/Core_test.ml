@@ -8,8 +8,8 @@ let _ = describe "Core" (fun () ->
   let module P_dyn = Parsing.Incremental(Parsing.Parseable_dynamics) in
   let one = Bigint.of_int 1 in
   let sort = SortAp ("bool", [||]) in
-  let pat_scope body : denotation_pat_scope = Scope ([], body) in
-  let core_scope body = CoreScope ([], body) in
+  let pat_scope body : BindingAwarePattern.scope = Scope ([], body) in
+  let core_scope body = Scope ([], body) in
   let scope body = DeBruijn.Scope ([], body) in
 
   let dynamics_str = {|
@@ -35,8 +35,8 @@ let _ = describe "Core" (fun () ->
       ]),
       Case
         ( Meaning "t1"
-        , [ CoreScope ([Operator ("true", [])], Meaning "t2");
-            CoreScope ([Operator ("false", [])], Meaning "t3");
+        , [ Scope ([Operator ("true", [])], Meaning "t2");
+            Scope ([Operator ("false", [])], Meaning "t3");
           ]
         );
 
@@ -47,7 +47,7 @@ let _ = describe "Core" (fun () ->
       CoreApp (Meaning "f", [Meaning "arg"]);
 
       Operator("fun", [ Scope (["v"], Var "body") ]),
-      Lambda ([sort], CoreScope ([Var "v"], Meaning "body"));
+      Lambda ([sort], Scope ([Var "v"], Meaning "body"));
     ]
   in
   let dynamics' = P_dyn.parse dynamics_str
@@ -84,8 +84,8 @@ let _ = describe "Core" (fun () ->
   in
   let ite_val = Case
     ( true_val
-    , [ CoreScope ([Operator ("true", [])], false_val);
-        CoreScope ([Operator ("false", [])], true_val);
+    , [ Scope ([Operator ("true", [])], false_val);
+        Scope ([Operator ("false", [])], true_val);
       ]
     )
   in
@@ -97,14 +97,14 @@ let _ = describe "Core" (fun () ->
   in
 
   let fun_val = CoreApp
-    ( Lambda ([sort], CoreScope ([Var "x"], Var "x"))
+    ( Lambda ([sort], Scope ([Var "x"], Var "x"))
     , [ true_val ]
     )
   in
 
   let binary_int_op op a b = Operator (op,
-    [ CoreScope ([], Primitive (PrimInteger (Bigint.of_int a)));
-      CoreScope ([], Primitive (PrimInteger (Bigint.of_int b)));
+    [ Scope ([], Primitive (PrimInteger (Bigint.of_int a)));
+      Scope ([], Primitive (PrimInteger (Bigint.of_int b)));
     ])
   in
 
@@ -113,7 +113,7 @@ let _ = describe "Core" (fun () ->
       |> toEqual (Nominal.Primitive (PrimInteger one));
 
       (*
-      expect (to_ast (Lambda ([sort; sort], CoreScope (["x"; "y"], Var "x"))))
+      expect (to_ast (Lambda ([sort; sort], Scope (["x"; "y"], Var "x"))))
       |> toEqual (Nominal.Operator
         ( "lam"
         , [Nominal.Scope ([Var "x"; Var "y"], Var "x")]

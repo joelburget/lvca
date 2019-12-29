@@ -1,6 +1,6 @@
 (** Tools for dealing with the core language in LVCA.
     - denotation_chart is the data type for declaring a mapping from some language to core
-    - core, core_scope, denotation_pat, and denotation_scope_pat define the core language
+    - core and core_scope (and BindingAwarePattern.t) define the core language
     - term_denotation is used to map some language to core
     - eval is then used to evaluate the core term
     - finally, to_ast is used to give the resulting term
@@ -9,25 +9,6 @@
 open Types
 open Binding
 
-(** Represents the LHS of a denotation rule. Why is this not just `Pattern.t`?
-    Because patterns can't match binders. For example, we want to be able to write
-    this on the LHS of a denotation rule:
-
-    [[ lam(x. x) ]] = ...
-
-    This is not allowed by regular patterns.
-*)
-type denotation_pat =
-  | Operator of string * denotation_pat_scope list
-  | Sequence of denotation_pat list
-  | Primitive of primitive
-  | Var of string
-
-(** A scope within the LHS of a denotation rule. Note that it's not currently
-    allowed to match on specific patterns -- you can only match on an entire
-    slot at once.
-*)
-and denotation_pat_scope = Scope of string list * denotation_pat
 
 (** Represents the RHS of a denotation rule *)
 type denotation_term =
@@ -39,13 +20,7 @@ type denotation_term =
   (* Also, oxford bracketed var *)
   | Meaning of string
 
-and denotation_scope = Scope of denotation_scope_pat list * denotation_term
-
-and denotation_scope_pat =
-  | PatOperator of string * denotation_scope_pat list
-  | PatVar of string
-  | Sequence of denotation_scope_pat list
-  | Primitive of primitive
+and denotation_scope = Scope of Pattern.t list * denotation_term
 
 and core =
   | Operator of string * core_scope list
@@ -59,10 +34,12 @@ and core =
   | Metavar of string
   | Meaning of string
 
-and core_scope = CoreScope of Pattern.t list * core
+and core_scope = Scope of Pattern.t list * core
 
-type pre_denotation_chart = DenotationChart of (denotation_pat * denotation_term) list
-type denotation_chart = DenotationChart of (denotation_pat * core) list
+type pre_denotation_chart =
+  DenotationChart of (BindingAwarePattern.t * denotation_term) list
+type denotation_chart =
+  DenotationChart of (BindingAwarePattern.t * core) list
 
 val produce_denotation_chart : pre_denotation_chart -> denotation_chart
 
@@ -83,4 +60,4 @@ val to_ast : core -> Nominal.term
 
 (** Convert a nominal term (with core operators) to a core term (note this is
     not the inverse of to_ast) *)
-val from_ast : Nominal.term -> core
+(* val from_ast : Nominal.term -> core *)

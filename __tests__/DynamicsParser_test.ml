@@ -10,8 +10,7 @@ let _ = describe "TermParser" (fun () ->
     let parsed = P_dyn.parse str |. Result.map produce_denotation_chart in
     expect parsed |> toEqual (Result.Ok tm)
   ) in
-  let pat_scope body : denotation_pat_scope = Scope ([], body) in
-  let core_scope body = CoreScope ([], body) in
+  let pat_scope body : BindingAwarePattern.scope = Scope ([], body) in
 
   let dyn1 = {|
 [[ true()          ]] = true()
@@ -42,7 +41,7 @@ let _ = describe "TermParser" (fun () ->
         ]),
         CoreApp (Meaning "fun", [ Meaning "arg" ]);
       Operator ("lam", [ Scope (["x"], Var "body") ]),
-        Lambda ([SortAp ("bool", [||])], CoreScope ([Var "x"], Meaning "body"));
+        Lambda ([SortAp ("bool", [||])], Scope ([Var "x"], Meaning "body"));
       Operator ("ite",
         [ pat_scope @@ Var "t1";
           pat_scope @@ Var "t2";
@@ -50,8 +49,8 @@ let _ = describe "TermParser" (fun () ->
         ]),
         Case
           ( Meaning "t1"
-          , [ CoreScope ([Operator ("true", [])], Meaning "t2");
-              CoreScope ([Operator ("false", [])], Meaning "t3");
+          , [ Scope ([Operator ("true", [])], Meaning "t2");
+              Scope ([Operator ("false", [])], Meaning "t3");
             ]
           );
     ]

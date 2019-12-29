@@ -178,7 +178,7 @@ module Tables = struct
         let _endpos = _endpos__4_ in
         let _v : (
 # 25 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
-      (Core.denotation_pat)
+      (BindingAwarePattern.t)
 # 183 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = let _3 = 
 # 232 "/Users/joel/.opam/default/lib/menhir/standard.mly"
@@ -216,7 +216,7 @@ module Tables = struct
         let _endpos = _endpos__1_ in
         let _v : (
 # 25 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
-      (Core.denotation_pat)
+      (BindingAwarePattern.t)
 # 221 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = 
 # 37 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
@@ -247,7 +247,7 @@ module Tables = struct
         } = _menhir_stack in
         let _3 : (
 # 25 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
-      (Core.denotation_pat)
+      (BindingAwarePattern.t)
 # 252 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
@@ -256,7 +256,7 @@ module Tables = struct
         let _endpos = _endpos__3_ in
         let _v : (
 # 26 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
-      (Core.denotation_pat_scope)
+      (BindingAwarePattern.scope)
 # 261 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = let _1 =
           let xs = 
@@ -305,7 +305,7 @@ module Tables = struct
         } = _menhir_stack in
         let _3 : (
 # 25 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
-      (Core.denotation_pat)
+      (BindingAwarePattern.t)
 # 310 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
@@ -315,7 +315,7 @@ module Tables = struct
         let _endpos = _endpos__3_ in
         let _v : (
 # 26 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
-      (Core.denotation_pat_scope)
+      (BindingAwarePattern.scope)
 # 320 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = let _1 =
           let xs = 
@@ -352,7 +352,7 @@ module Tables = struct
         } = _menhir_stack in
         let _1 : (
 # 25 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
-      (Core.denotation_pat)
+      (BindingAwarePattern.t)
 # 357 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
@@ -360,7 +360,7 @@ module Tables = struct
         let _endpos = _endpos__1_ in
         let _v : (
 # 26 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
-      (Core.denotation_pat_scope)
+      (BindingAwarePattern.scope)
 # 365 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = 
 # 43 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
@@ -616,7 +616,7 @@ module Tables = struct
         let _3 : unit = Obj.magic _3 in
         let _2 : (
 # 25 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
-      (Core.denotation_pat)
+      (BindingAwarePattern.t)
 # 621 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic _2 in
         let _1 : unit = Obj.magic _1 in
@@ -625,7 +625,7 @@ module Tables = struct
         let _endpos = _endpos__5_ in
         let _v : (
 # 29 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
-      (Core.denotation_pat * Core.denotation_term)
+      (BindingAwarePattern.t * Core.denotation_term)
 # 630 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = 
 # 83 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
@@ -675,7 +675,7 @@ module Tables = struct
         let xs : 'tv_list_dynamics_rule_ = Obj.magic xs in
         let x : (
 # 29 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
-      (Core.denotation_pat * Core.denotation_term)
+      (BindingAwarePattern.t * Core.denotation_term)
 # 680 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
@@ -1035,7 +1035,7 @@ module Tables = struct
         } = _menhir_stack in
         let x : (
 # 26 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
-      (Core.denotation_pat_scope)
+      (BindingAwarePattern.scope)
 # 1040 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
@@ -1078,7 +1078,7 @@ module Tables = struct
         let _2 : unit = Obj.magic _2 in
         let x : (
 # 26 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.mly"
-      (Core.denotation_pat_scope)
+      (BindingAwarePattern.scope)
 # 1083 "/Users/joel/code/lvca-bucklescript/src/Dynamics_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in

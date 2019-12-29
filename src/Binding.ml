@@ -78,7 +78,7 @@ end = struct
         |. flatten)
     in
     let env' : (int * int) M.t =
-      Util.union (M.map env (fun (i, j) -> i + n, j)) (M.fromArray (L.toArray varNums))
+      Util.map_union (M.map env (fun (i, j) -> i + n, j)) (M.fromArray (L.toArray varNums))
     in
     Scope (pats, from_nominal_with_bindings' env' body)
   ;;

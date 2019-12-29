@@ -22,12 +22,12 @@
 %token EOF
 
 %start dynamics
-%type <Core.denotation_pat>                        denotation_pat
-%type <Core.denotation_pat_scope>                  denotation_pat_scope
-%type <Core.denotation_term>                       denotation_term
+%type <BindingAwarePattern.t>                        denotation_pat
+%type <BindingAwarePattern.scope>                    denotation_pat_scope
+%type <Core.denotation_term>                         denotation_term
 (* %type <Core.denotation_scope>                      denotation_scope *)
-%type <Core.denotation_pat * Core.denotation_term> dynamics_rule
-%type <Core.pre_denotation_chart>                  dynamics
+%type <BindingAwarePattern.t * Core.denotation_term> dynamics_rule
+%type <Core.pre_denotation_chart>                    dynamics
 %%
 
 denotation_pat:
@@ -99,6 +99,6 @@ atomic_sort:
 
 typed_arg: LEFT_PAREN pattern COLON sort RIGHT_PAREN { ($2, $4) }
 
-branch: pattern ARR raw_core { CoreScope ([$1], $3) }
+branch: pattern ARR raw_core { Scope ([$1], $3) }
 
 */
