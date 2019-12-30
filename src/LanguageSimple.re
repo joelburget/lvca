@@ -70,13 +70,16 @@ ctx >> tm => ty
 --------------- (reverse)
 ctx >> tm <= ty|}
 
-// [[_]] : tm -> core(val)
-let dynamics = {|[[ true() ]] = true()
-[[ false() ]] = false()
-[[ ite(t1; t2; t3) ]] = case [[ t1 ]] of {
-  | true()  -> [[ t2 ]]
-  | false() -> [[ t3 ]]
-}
-[[ annot(tm; ty) ]] = [[ tm ]]
-[[ app(fun; arg) ]] = app([[ fun ]]; [[ arg ]])
-[[ fun(x. body)  ]] = \(x : bool) -> [[ body ]]|}
+// TODO: we don't support separate signatures
+let dynamics = {|dynamics : tm -> core(val)
+dynamics = \tm -> match tm with {
+  | true() -> true()
+  | false() -> false()
+  | ite(t1; t2; t3) = match dynamics t1 with {
+    | true()  -> dynamics t2
+    | false() -> dynamics t3
+  }
+  | annot(tm; ty) = dynamics tm
+  | app(fun; arg) = app(dynamics fun; dynamics arg)
+  | fun(x. body)  = \(x : bool) -> dynamics body
+}|}

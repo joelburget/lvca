@@ -14,14 +14,11 @@ let newline = '\r' | '\n' | "\r\n"
 rule read = parse
   | "//" [^ '\r' '\n']* newline
   | white     { read lexbuf }
-  | "[["      { LEFT_OXFORD }
-  | "]]"      { RIGHT_OXFORD }
   | "["       { LEFT_BRACKET }
   | "]"       { RIGHT_BRACKET }
   | '('       { LEFT_PAREN }
   | ')'       { RIGHT_PAREN }
   | '"'       { read_string (Buffer.create 17) lexbuf }
-  | '='       { EQ }
   | ';'       { SEMICOLON }
   | ','       { COMMA }
   | '.'       { DOT }

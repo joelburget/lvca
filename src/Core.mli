@@ -46,18 +46,8 @@ val produce_denotation_chart : pre_denotation_chart -> denotation_chart
 type located_err = string * DeBruijn.term option
 type 'a translation_result = ('a, located_err) Result.t
 
-val term_denotation
-  :  denotation_chart
-  -> string list
-  -> DeBruijn.term
-  -> core translation_result
-
 val eval : core -> (core, string) Result.t
 
 (** Convert a core term to a nominal term, ensuring that it contains no core
-    operators (note this is not the inverse of from_ast) *)
+    operators. *)
 val to_ast : core -> Nominal.term
-
-(** Convert a nominal term (with core operators) to a core term (note this is
-    not the inverse of to_ast) *)
-(* val from_ast : Nominal.term -> core *)

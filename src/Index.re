@@ -57,10 +57,13 @@ let read_and_eval = (abstract_syntax, concrete, statics, dynamics, input)
           | exception _ => Js.log("check failure")
         };
 
+        failwith("TODO");
+        /*
         switch (Result.flatMap(term_denotation(dynamics, [], abtResult'), eval')) {
         | Ok(core_val) => (astResult, Ok(core_val))
         | Error(msg)   => (astResult, Error(msg)) // Error((msg, Some(abtResult'))))
         }
+        */
       | Error(msg) => (Error((msg, None)), Error((msg, None)))
     }
 };

@@ -133,21 +133,6 @@ let _ = describe "Core" (fun () ->
 
   let open Result in
 
-  testAll "term_denotation"
-    [ expect (term_denotation dynamics [] true_tm)
-      |> toEqual (Ok true_val);
-      expect (term_denotation dynamics [] false_tm)
-      |> toEqual (Ok false_val);
-      expect (term_denotation dynamics [] ite_tm)
-      |> toEqual (Ok ite_val);
-      expect (term_denotation dynamics [] fun_tm)
-      |> toEqual (Ok fun_val);
-      expect (term_denotation lit_dynamics []
-        (DeBruijn.Operator ("lit", [ scope @@ true_tm ])))
-      |> toEqual (Ok true_val);
-    ]
-    Util.id;
-
   testAll "eval"
     [ expect (eval true_val)
       |> toEqual (Ok true_val);
