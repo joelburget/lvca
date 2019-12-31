@@ -10,91 +10,125 @@ let _ = describe "Core" (fun () ->
   let sort = SortAp ("bool", [||]) in
   let pat_scope body : BindingAwarePattern.scope = Scope ([], body) in
   let core_scope body = Scope ([], body) in
-  let scope body = DeBruijn.Scope ([], body) in
+  (* let scope body = DeBruijn.Scope ([], body) in *)
 
   let dynamics_str = {|
-  [[ true() ]] = true()
-  [[ false() ]] = false()
-  [[ ite(t1; t2; t3) ]] = case([[ t1 ]]; [
-    branch(true();  [[ t2 ]]),
-    branch(false(); [[ t3 ]]),
-  ])
-  [[ ap(f; arg) ]] = app([[ f ]]; [[ arg ]])
-  [[ fun(v. body) ]] = fun(annot(v; bool()); [[ body ]])
+meaning = \(tm : ty()) -> match tm with {
+  | true() -> true()
+  | false() -> false()
+  | ite(t1; t2; t3) -> match meaning t1 with {
+    | true()  -> meaning t2
+    | false() -> meaning t3
+  }
+  | ap(f; arg) -> (meaning f) (meaning arg)
+}
   |}
+  (*
+  | fun(v. body) -> \(v : bool()) -> meaning body // XXX need to open body
+  *)
   in
+
+  let meaning x = CoreApp (Var "meaning", [x]) in
 
   let dynamics = DenotationChart
-    [ Operator ("true",  []), Operator ("true",  []);
-      Operator ("false", []), Operator ("false", []);
-
-      Operator ("ite",
-      [ pat_scope @@ Var "t1";
-        pat_scope @@ Var "t2";
-        pat_scope @@ Var "t3";
-      ]),
-      Case
-        ( Meaning "t1"
-        , [ Scope ([Operator ("true", [])], Meaning "t2");
-            Scope ([Operator ("false", [])], Meaning "t3");
-          ]
-        );
-
-      Operator ("ap",
-        [ pat_scope @@ Var "f";
-          pat_scope @@ Var "arg";
-        ]),
-      CoreApp (Meaning "f", [Meaning "arg"]);
-
-      Operator("fun", [ Scope (["v"], Var "body") ]),
-      Lambda ([sort], Scope ([Var "v"], Meaning "body"));
+    [ "meaning"
+    , Lambda
+        ( [SortAp ("ty", [||])]
+        , Scope
+          ( [Var "tm"]
+          , Case
+            ( Var "tm"
+            , [
+                CaseScope ([Operator ("true",  [])], Operator ("true",  []));
+                CaseScope ([Operator ("false", [])], Operator ("false", []));
+                CaseScope (
+                  [ Operator ("ite",
+                    [ pat_scope @@ Var "t1";
+                      pat_scope @@ Var "t2";
+                      pat_scope @@ Var "t3";
+                    ])
+                  ],
+                  Case
+                    ( CoreApp (Var "meaning", [Var "t1"])
+                    , [ CaseScope
+                          ( [Operator ("true", [])], meaning (Var "t2"));
+                        CaseScope
+                          ( [Operator ("false", [])], meaning (Var "t3"));
+                      ]
+                    )
+                );
+                CaseScope (
+                  [ Operator ("ap",
+                    [ pat_scope @@ Var "f";
+                      pat_scope @@ Var "arg";
+                    ])
+                  ],
+                  CoreApp (meaning @@ Var "f", [meaning @@ Var "arg"])
+                );
+                CaseScope (
+                  [ Operator("fun", [ Scope (["v"], Var "body") ]) ],
+                  Lambda ([sort], Scope ([Var "v"], Var "body"))
+                );
+              ]
+            )
+          )
+        )
     ]
+
   in
-  let dynamics' = P_dyn.parse dynamics_str
-    |. Result.map produce_denotation_chart
-  in
+  let dynamics' = P_dyn.parse dynamics_str in
 
   test "dynamics as expected" (fun () ->
     expect dynamics' |> toEqual (Result.Ok dynamics);
   );
 
+  (*
   let lit_dynamics_str = {|
-  [[ lit(b) ]] = b
-  [[ ite(t; l; r) ]] = case([[ t ]]; [
-    branch(true();  [[ l ]]),
-    branch(false(); [[ r ]]),
+meaning = \(tm : ty()) -> match tm with {
+  | lit(b) -> b
+  | ite(t; l; r) -> case(meaning t; [
+    branch(true();  meaning l),
+    branch(false(); meaning r),
   ])
+}
   |}
   in
 
-  let lit_dynamics = produce_denotation_chart @@
-    Result.getExn @@
-    P_dyn.parse lit_dynamics_str
-  in
+  let lit_dynamics = P_dyn.parse lit_dynamics_str in
+  *)
 
+  (*
   let true_tm   = DeBruijn.Operator ("true", []) in
   let false_tm  = DeBruijn.Operator ("false", []) in
+  *)
+
   let true_val  = Operator ("true", []) in
   let false_val = Operator ("false", []) in
+
+  (*
   let ite_tm = DeBruijn.Operator ("ite",
     [ scope true_tm;
       scope false_tm;
       scope true_tm;
     ])
   in
+  *)
+
   let ite_val = Case
     ( true_val
-    , [ Scope ([Operator ("true", [])], false_val);
-        Scope ([Operator ("false", [])], true_val);
+    , [ CaseScope ([Operator ("true", [])], false_val);
+        CaseScope ([Operator ("false", [])], true_val);
       ]
     )
   in
 
+  (*
   let fun_tm = DeBruijn.Operator ("ap",
     [ scope @@ Operator ("fun", [ Scope ([Var "x"], Var (0, 0)) ]);
       scope true_tm;
     ])
   in
+  *)
 
   let fun_val = CoreApp
     ( Lambda ([sort], Scope ([Var "x"], Var "x"))

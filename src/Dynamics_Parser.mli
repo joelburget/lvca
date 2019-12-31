@@ -2,17 +2,28 @@
 (* The type of tokens. *)
 
 type token = 
+  | WITH
   | STRING of (string)
   | SEMICOLON
   | RIGHT_PAREN
   | RIGHT_BRACKET
+  | RIGHT_BRACE
+  | MATCH
+  | LET
   | LEFT_PAREN
   | LEFT_BRACKET
+  | LEFT_BRACE
   | INT of (Bigint.t)
+  | IN
   | ID of (string)
+  | EQ
   | EOF
   | DOT
   | COMMA
+  | COLON
+  | BAR
+  | BACKSLASH
+  | ARROW
 
 (* This exception is raised by the monolithic API functions. *)
 
@@ -20,7 +31,7 @@ exception Error
 
 (* The monolithic API. *)
 
-val dynamics: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Core.core list)
+val dynamics: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Core.denotation_chart)
 
 module MenhirInterpreter : sig
   
@@ -35,6 +46,6 @@ end
 
 module Incremental : sig
   
-  val dynamics: Lexing.position -> (Core.core list) MenhirInterpreter.checkpoint
+  val dynamics: Lexing.position -> (Core.denotation_chart) MenhirInterpreter.checkpoint
   
 end

@@ -1,6 +1,8 @@
 // TODO: duplicated in index
-type input       = Core.translation_result(Binding.Nominal.term);
-type eval_result = Core.translation_result(Core.core);
+type located_err = (string, option(Binding.DeBruijn.term))
+type translation_result('a) = Belt.Result.t('a, located_err)
+type input = translation_result(Binding.Nominal.term);
+type eval_result  = translation_result(Core.core);
 
 [@react.component]
 let make = (~input: input, ~evalResult: eval_result) => {

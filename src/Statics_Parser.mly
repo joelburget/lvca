@@ -21,6 +21,7 @@
 %{
 open Statics
 
+(* raises unnamed exception *)
 let rec term_to_pattern : Statics.term -> Pattern.t
   = function
     | Operator (name, args)
@@ -29,6 +30,7 @@ let rec term_to_pattern : Statics.term -> Pattern.t
     | _ -> failwith
       "bad parse -- can only match operators and variables in a pattern"
 
+(* raises unnamed exception *)
 and scope_to_pattern = function
   | Scope ([], body) -> term_to_pattern body
   | _ -> failwith "bad parse -- can't match binders in a pattern"

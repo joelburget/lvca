@@ -4,8 +4,11 @@ module Result = Belt.Result
 module Grammar = LrParsingView.Grammar
 module LrTables = LrParsingView.Tables
 
-type parse_result = Core.translation_result(Binding.Nominal.term);
-type eval_result  = Core.translation_result(Core.core);
+// TODO: duplicated in EvalView
+type located_err = (string, option(Binding.DeBruijn.term))
+type translation_result('a) = Belt.Result.t('a, located_err)
+type parse_result = translation_result(Binding.Nominal.term);
+type eval_result  = translation_result(Core.core);
 
 type history_item = {
   input: string,
@@ -497,7 +500,9 @@ module DynamicsEditor = {
     React.useEffect1(() => switch (dynamics) {
       | Error(_) => None
       | Ok(dynamics') => {
+          /* XXX
           onComplete(Core.produce_denotation_chart(dynamics'));
+          */
           None
         }
       },

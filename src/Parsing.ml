@@ -99,8 +99,8 @@ module Parseable_statics : Parseable with type t = Statics.rule list = struct
   end
 end
 
-module Parseable_dynamics : Parseable with type t = Core.pre_denotation_chart = struct
-  type t = Core.pre_denotation_chart
+module Parseable_dynamics : Parseable with type t = Core.denotation_chart = struct
+  type t = Core.denotation_chart
 
   module MenhirInterpreter = Dynamics.Parser.MenhirInterpreter
   module ParseErrors = Dynamics.ParseErrors

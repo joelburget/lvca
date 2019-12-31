@@ -14,6 +14,8 @@ type term =
 
 exception ScopeEncountered
 
+(* TODO: rename to from_de_bruijn_exn *)
+(* raises ScopeEncountered *)
 let rec from_de_bruijn' = function
   | DeBruijn.Operator (tag, scopes) ->
     Operator (tag, scopes |. BL.map from_de_bruijn_scope)
@@ -21,6 +23,7 @@ let rec from_de_bruijn' = function
   | Sequence tms -> Sequence (tms |. BL.map from_de_bruijn')
   | Primitive p -> Primitive p
 
+(* raises ScopeEncountered *)
 and from_de_bruijn_scope = function
   | DeBruijn.Scope ([], tm) -> from_de_bruijn' tm
   | _ -> raise ScopeEncountered
@@ -40,12 +43,15 @@ let rec to_de_bruijn tm : DeBruijn.term =
   | Primitive p -> Primitive p
 ;;
 
+(* TODO: rename to from_nominal_exn *)
+(* raises ScopeEncountered *)
 let rec from_nominal' = function
   | Nominal.Operator (tag, scopes) -> Operator (tag, scopes |. BL.map from_nominal_scope)
   | Var _ -> raise ScopeEncountered
   | Sequence tms -> Sequence (tms |. BL.map from_nominal')
   | Primitive p -> Primitive p
 
+(* raises ScopeEncountered *)
 and from_nominal_scope = function
   | Nominal.Scope ([], tm) -> from_nominal' tm
   | _ -> raise ScopeEncountered

@@ -9,42 +9,20 @@
 open Types
 open Binding
 
-
-(** Represents the RHS of a denotation rule *)
-type denotation_term =
-  (* first four constructors correspond to regular term constructors *)
-  | Operator of string * denotation_scope list
-  | Var of string
-  | Sequence of denotation_term list
-  | Primitive of primitive
-  (* Also, oxford bracketed var *)
-  | Meaning of string
-
-and denotation_scope = Scope of Pattern.t list * denotation_term
-
-and core =
+type core =
   | Operator of string * core_scope list
   | Var of string
   | Sequence of core list
   | Primitive of primitive
   | Lambda of sort list * core_scope
   | CoreApp of core * core list
-  | Case of core * core_scope list
+  | Case of core * core_case_scope list
   | Let of core * core_scope
-  | Metavar of string
-  | Meaning of string
 
 and core_scope = Scope of Pattern.t list * core
+and core_case_scope = CaseScope of BindingAwarePattern.t list * core
 
-type pre_denotation_chart =
-  DenotationChart of (BindingAwarePattern.t * denotation_term) list
-type denotation_chart =
-  DenotationChart of (BindingAwarePattern.t * core) list
-
-val produce_denotation_chart : pre_denotation_chart -> denotation_chart
-
-type located_err = string * DeBruijn.term option
-type 'a translation_result = ('a, located_err) Result.t
+type denotation_chart = DenotationChart of (string * core) list
 
 val eval : core -> (core, string) Result.t
 

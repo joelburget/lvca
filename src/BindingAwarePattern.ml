@@ -4,10 +4,10 @@ let (toArray, map, reduce) = Belt.List.(toArray, map, reduce)
 let (stringify_list, id) = Util.(stringify_list, id)
 
 (** Represents the LHS of a denotation rule. Why is this not just `Pattern.t`?
-    Because patterns can't match binders. For example, we want to be able to write
-    this on the LHS of a denotation rule:
+    Because patterns can't match binders. For example, we want to be able to match
+    this pattern on the LHS of a denotation rule:
 
-    [[ lam(x. x) ]] = ...
+    | lam(x. x) -> ...
 
     This is not allowed by regular patterns.
 *)
@@ -65,4 +65,25 @@ and scope_to_string : scope -> string
     | _ -> Printf.sprintf "%s. %s"
       (stringify_list id ". " bound_vars)
       (to_string pat)
+;;
+
+exception BindingAwareScopePatternEncountered
+
+(* raises BindingAwareScopePatternEncountered *)
+let rec from_ast : Binding.Nominal.term -> pattern = function
+  | Var name -> Var name
+  | Operator (name, tms) -> Operator (name, tms |. Belt.List.map from_ast_scope)
+  | Sequence tms -> Sequence (Belt.List.map tms from_ast)
+  | Primitive prim -> Primitive prim
+
+(* raises BindingAwareScopePatternEncountered *)
+and from_ast_scope : Binding.Nominal.scope -> scope
+  = fun (Scope (binders, body))
+  -> Scope
+    ( map binders (function
+      | Var v -> v
+      | _ -> raise BindingAwareScopePatternEncountered
+      )
+    , from_ast body
+    )
 ;;

@@ -90,12 +90,14 @@ ctx |- tm <= ty
 Lastly, we define the denotational semantics of the language.
 
 ```
-[[ true()          ]] = true()
-[[ false()         ]] = false()
-[[ annot(tm; ty)   ]] = [[ tm ]]
-[[ ite(t1; t2; t3) ]] = case([[ t1 ]]; true() -> [[ t2 ]]; false() -> [[ t3 ]])
-[[ lam(x. body)    ]] = lam(x. [[ body ]])
-[[ app(fun; arg)   ]] = app([[ fun ]]; [[ arg ]])
+meaning = \(tm : tm) -> match tm with {
+  | true()          -> true()
+  | false()         -> false()
+  | annot(tm; ty)   -> meaning tm
+  | ite(t1; t2; t3) -> case(meaning t1; true() -> meaning t2; false() -> meaning t3)
+  | lam(x. body)    -> lam(x. meaning body)
+  | app(fun; arg)   -> app(meaning fun; meaning arg)
+}
 ```
 
 Given all of these pieces, we can automatically produce an interpreter that

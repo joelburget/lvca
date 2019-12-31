@@ -105,7 +105,9 @@ and Nominal : sig
   val jsonify : Nominal.term -> Js.Json.t
   val serialize : Nominal.term -> Uint8Array.t
   val hash : Nominal.term -> string
-  val term_to_pattern : Nominal.term -> Pattern.t
+
+  exception ToPatternScopeEncountered
+  val to_pattern_exn : Nominal.term -> Pattern.t
 end = struct
   type scope = Scope of Pattern.t list * term
 
@@ -205,14 +207,18 @@ end = struct
 
   let hash tm = Sha256.hash_ba (BitArray.from_u8_array (serialize tm))
 
-  let rec term_to_pattern : term -> Pattern.t = function
+  exception ToPatternScopeEncountered
+
+  (* raises ToPatternScopeEncountered *)
+  let rec to_pattern_exn : term -> Pattern.t = function
     | Var name -> Var name
-    | Operator (name, tms) -> Operator (name, tms |. Belt.List.map scope_to_pattern)
-    | Sequence tms -> Sequence (Belt.List.map tms term_to_pattern)
+    | Operator (name, tms) -> Operator (name, tms |. Belt.List.map scope_to_pattern_exn)
+    | Sequence tms -> Sequence (Belt.List.map tms to_pattern_exn)
     | Primitive prim -> Primitive prim
 
-  and scope_to_pattern : scope -> Pattern.t = function
-    | Scope ([], tm) -> term_to_pattern tm
+  (* raises ToPatternScopeEncountered *)
+  and scope_to_pattern_exn : scope -> Pattern.t = function
+    | Scope ([], tm) -> to_pattern_exn tm
     | scope -> failwith ("Parse error: invalid pattern: " ^ pp_scope' scope)
   ;;
 end

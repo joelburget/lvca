@@ -18,10 +18,21 @@ rule read = parse
   | "]"       { RIGHT_BRACKET }
   | '('       { LEFT_PAREN }
   | ')'       { RIGHT_PAREN }
+  | '{'       { LEFT_BRACE }
+  | '}'       { RIGHT_BRACE }
   | '"'       { read_string (Buffer.create 17) lexbuf }
   | ';'       { SEMICOLON }
   | ','       { COMMA }
   | '.'       { DOT }
+  | '\\'      { BACKSLASH }
+  | ':'       { COLON }
+  | '|'       { BAR }
+  | '='       { EQ }
+  | "->"      { ARROW }
+  | "let"     { LET }
+  | "in"      { IN }
+  | "match"   { MATCH }
+  | "with"    { WITH }
   | int       { INT (Bigint.of_string (L.lexeme lexbuf)) }
   | id        { ID (Lexing.lexeme lexbuf) }
   | eof       { EOF }

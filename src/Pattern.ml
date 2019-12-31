@@ -1,4 +1,4 @@
-let (fromArray, empty, union, toList) =
+let fromArray, empty, union, toList =
   Belt.Set.String.(fromArray, empty, union, toList)
 let stringify_list = Util.stringify_list
 

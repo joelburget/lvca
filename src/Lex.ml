@@ -45,7 +45,10 @@ let find_first_capture : string M.t -> 'a Js.nullable array -> string option =
     done;
     None
   with
-  | FoundFirstCapture i -> Some (tok_names |. M.getExn i)
+  | FoundFirstCapture i -> Some (tok_names
+    |. M.get i
+    |> Util.get_option' ("unable to find token name " ^ string_of_int i)
+  )
 ;;
 
 (* TODO: no exn *)
