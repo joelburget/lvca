@@ -21,7 +21,7 @@ dynamics = \(tm : ty()) -> match tm with {
   | val(v)          -> v
   | annot(tm; ty)   -> dynamics tm
   | app(fun; arg)   -> (dynamics fun) (dynamics arg)
-  | lam(scope) -> lambda([]; scope)
+  | lam(scope) -> lambda([]; scope) // TODO: add type
   | ite(t1; t2; t3) -> match dynamics t1 with {
     | true()  -> dynamics t2
     | false() -> dynamics t3

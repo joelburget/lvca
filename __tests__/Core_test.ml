@@ -21,7 +21,7 @@ meaning = \(tm : ty()) -> match tm with {
     | false() -> meaning t3
   }
   | ap(f; arg) -> (meaning f) (meaning arg)
-  | fun(scope) -> lambda([]; scope)
+  | fun(scope) -> lambda([]; scope) // TODO: add type
 }
   |}
   in

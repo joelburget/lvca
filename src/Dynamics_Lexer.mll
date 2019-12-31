@@ -38,7 +38,6 @@ rule read = parse
   | eof       { EOF }
   | newline   { next_line lexbuf; read lexbuf }
   | _ { error lexbuf ("Unexpected char: " ^ Lexing.lexeme lexbuf) }
-  (* XXX what about binding / lambdas? *)
 
 and read_string buf = parse (* use buf to build up result *)
   | [^'"' '\n' '\\']+
