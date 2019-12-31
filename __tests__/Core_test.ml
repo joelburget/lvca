@@ -10,7 +10,7 @@ let _ = describe "Core" (fun () ->
   let sort = SortAp ("bool", [||]) in
   let pat_scope body : BindingAwarePattern.scope = Scope ([], body) in
   let core_scope body = Scope ([], body) in
-  (* let scope body = DeBruijn.Scope ([], body) in *)
+  let scope body = Core.Scope ([], body) in
 
   let dynamics_str = {|
 meaning = \(tm : ty()) -> match tm with {
@@ -21,11 +21,9 @@ meaning = \(tm : ty()) -> match tm with {
     | false() -> meaning t3
   }
   | ap(f; arg) -> (meaning f) (meaning arg)
+  | fun(scope) -> lambda([]; scope)
 }
   |}
-  (*
-  | fun(v. body) -> \(v : bool()) -> meaning body // XXX need to open body
-  *)
   in
 
   let meaning x = CoreApp (Var "meaning", [x]) in
@@ -66,8 +64,8 @@ meaning = \(tm : ty()) -> match tm with {
                   CoreApp (meaning @@ Var "f", [meaning @@ Var "arg"])
                 );
                 CaseScope (
-                  [ Operator("fun", [ Scope (["v"], Var "body") ]) ],
-                  Lambda ([sort], Scope ([Var "v"], Var "body"))
+                  [ Operator ("fun", [ pat_scope @@ Var "scope" ]) ],
+                  Operator ("lambda", [scope @@ Sequence []; scope @@ Var "scope"])
                 );
               ]
             )

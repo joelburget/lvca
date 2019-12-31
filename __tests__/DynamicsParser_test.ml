@@ -12,6 +12,7 @@ let _ = describe "TermParser" (fun () ->
   ) in
   let pat_scope body : BindingAwarePattern.scope = Scope ([], body) in
   let dynamics x = CoreApp (Var "dynamics", [x]) in
+  let scope x = Scope ([], x) in
 
   let dyn1 = {|
 dynamics = \(tm : ty()) -> match tm with {
@@ -20,13 +21,13 @@ dynamics = \(tm : ty()) -> match tm with {
   | val(v)          -> v
   | annot(tm; ty)   -> dynamics tm
   | app(fun; arg)   -> (dynamics fun) (dynamics arg)
+  | lam(scope) -> lambda([]; scope)
   | ite(t1; t2; t3) -> match dynamics t1 with {
     | true()  -> dynamics t2
     | false() -> dynamics t3
   }
 }
   |}
-  (* | lam(x. body)    -> \(x : bool()) -> dynamics body // XXX need to open body *)
   in
 
   let expected = DenotationChart
@@ -56,8 +57,8 @@ dynamics = \(tm : ty()) -> match tm with {
                  CoreApp (dynamics @@ Var "fun", [ dynamics @@ Var "arg" ])
                );
                CaseScope (
-                 [ Operator ("lam", [ Scope (["x"], Var "body") ]) ],
-                 Lambda ([SortAp ("bool", [||])], Scope ([Var "x"], Var "body"))
+                 [ Operator ("lam", [ pat_scope @@ Var "scope" ]) ], (* XXX should we have binding aware patterns? *)
+                 Operator ("lambda", [scope @@ Sequence []; scope @@ Var "scope"])
                );
                CaseScope (
                  [ Operator ("ite",
