@@ -16,8 +16,8 @@ type node_type =
 
 type terminal_capture =
   { content : string
-  ; leading_trivia : string
-  ; trailing_trivia : string
+  ; mutable leading_trivia : string
+  ; mutable trailing_trivia : string
   }
 
 type nonterminal_capture = tree

@@ -8,6 +8,8 @@ type nonterminal_token =
   | TerminalName of string
   | NonterminalName of string
   | Underscore of int
+  | OpenBox
+  | CloseBox
 
 (** A term pattern with numbered holes for binder names and subterms, eg
     `$2. $4` (for tokens `FUN name ARR expr`) *)
@@ -68,7 +70,10 @@ let string_of_tokens : nonterminal_token list -> string =
     (function
       | TerminalName str -> str
       | NonterminalName str -> str
-      | Underscore i -> "_" ^ string_of_int i)
+      | Underscore i -> "_" ^ string_of_int i
+      | OpenBox -> "["
+      | CloseBox -> "]"
+    )
     " "
 ;;
 

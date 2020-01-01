@@ -63,23 +63,6 @@ let rec show : regex -> string
                                                       |> String.concat "; "
                                                      )
 
-let rec canonical_representative : regex -> string option
-  = function
-    | ReString str -> Some str
-    | ReClass _ -> None
-    | ReSet _ -> None
-    | ReAny -> None
-    | RePlus re -> canonical_representative re
-    | ReStar _
-    | ReOption _ -> Some ""
-    | ReChoice (re, re') -> Util.get_first canonical_representative [re; re']
-    | ReConcat pieces -> pieces
-                         |> Util.traverse_list_option canonical_representative
-                            |. Belt.Option.map (fun pieces' -> pieces'
-                                                               |. Belt.List.toArray
-                                                               |. Js.Array2.joinWith ""
-                                               )
-
 let rec accepts_empty : regex -> bool
   = function
     | ReString str -> Js.String2.length str = 0

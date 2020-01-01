@@ -1,16 +1,6 @@
 module BA = Belt.Array
 module Nominal = Binding.Nominal
-open Types
-open ConcreteSyntaxDescription
-
-module AA = Util.ArrayApplicative (struct
-    type t = string
-  end)
-
 module MS = Belt.Map.String
-
-let find, get_option' = Util.(find, get_option')
-
 module MMI = Belt.MutableMap.Int
 module MSI = Belt.MutableSet.Int
 module SI = Belt.Set.Int
@@ -18,141 +8,12 @@ module Lexer = ConcreteSyntax_Lexer
 module Parser = ConcreteSyntax_Parser
 module ParseErrors = ConcreteSyntax_ParseErrors
 
-type ('a, 'b) result = ('a, 'b) Belt.Result.t
+open Types
+open ConcreteSyntaxDescription
+include ConcreteSyntax_Private
 
-type prim_ty =
-  | Integer
-  | String
-
-type node_type =
-  | SingleCapture
-  | Operator of string
-  | Sequence
-  | Primitive of prim_ty
-
-(** Terminals capture text from the input buffer *)
-type terminal_capture =
-  { content : string
-  ; leading_trivia : string
-  ; trailing_trivia : string
-  }
-
-(** Nonterminals capture their children *)
-type nonterminal_capture = tree
-
-(** Terminals and nonterminals both capture data about why they were
-    constructed
-*)
-and capture =
-  | TerminalCapture of terminal_capture
-  | NonterminalCapture of nonterminal_capture
-
-(* Inspired by:
- * - https://github.com/apple/swift/tree/master/lib/Syntax
- * - https://github.com/dotnet/roslyn/wiki/Roslyn-Overview#syntax-trees
- *
- * Rules of trivia (same as for swift):
- * - A token owns all of its trailing trivia up to, but not including, the
- *   next newline character.
- * - Looking backward in the text, a token owns all of the leading trivia up
- *   to and including the first newline character.
- *
- * In other words, a contiguous stretch of trivia between two tokens is split
- * on the leftmost newline.
-*)
-and tree =
-  { sort_name : sort_name
-  ; node_type : node_type
-  ; children : capture array
-  }
-
-(* tree equality mod trivia *)
-let rec equivalent t1 t2 =
-  t1.sort_name = t2.sort_name
-  && t1.node_type = t2.node_type
-  && BA.(every (zipBy t1.children t2.children equivalent')) (fun b -> b)
-
-and equivalent' child1 child2 =
-  match child1, child2 with
-  | TerminalCapture tc1, TerminalCapture tc2 -> tc1.content = tc2.content
-  | NonterminalCapture ntc1, NonterminalCapture ntc2 -> equivalent ntc1 ntc2
-  | _, _ -> false
-;;
-
-let find_operator_match (matches : operator_match list list)
-      (opname : string)
-  : operator_match
-  =
-  let maybe_match =
-    find
-      (* TODO now need to match *)
-      (fun (OperatorMatch { operator_match_pattern }) ->
-         match operator_match_pattern with
-         | OperatorPattern (opname', _) -> opname' = opname
-         | SingleCapturePattern _ -> false)
-      (Belt.List.flatten matches)
-  in
-  match maybe_match with
-  | Some m -> m
-  | None -> failwith ("failed to find a rule matching operator " ^ opname)
-;;
-
-type subterm_result =
-  | NotFound
-  | FoundCapture
-  | FoundTerm of int * Nominal.term
-  | FoundBinder of Pattern.t
-
-let rec find_subtm' slot_num token_ix scopes operator_match_pattern =
-  match scopes, operator_match_pattern with
-  | _, [] -> NotFound
-  | ( Nominal.Scope (binders, body) :: scopes'
-    , NumberedScopePattern (binder_nums, body_num) :: pattern_scopes ) ->
-    let binder_matches =
-      binders |. Belt.List.zip binder_nums |> find (fun (_, num) -> num = token_ix)
-    in
-    (match binder_matches with
-     | Some (pat, _ix) -> FoundBinder pat
-     | None ->
-       if token_ix = body_num
-       then FoundTerm (slot_num, body)
-       else find_subtm' (slot_num + 1) token_ix scopes' pattern_scopes)
-  | _, _ -> failwith "invariant violation: mismatched scopes / term patterns"
-;;
-
-(** Find a subterm or binder given a term pattern template and the index of the
-    subterm / binder we're looking for. We either (a) don't find it, (b) find a
-    term, or (c) find a binder. Example:
-
-    scopes:
-      - a. b. c
-      - e
-         numbered scope patterns:
-      - $1. $2. $3
-      - $4
-
-    - If we're looking for term $1, we'll return binder a
-    - term $4 -> term e
-    - term $5 -> not found
-
-    Note that the scopes and numbered scope patterns should mirror each other in
-    structure, otherwise an invariant violation may be raised.
-*)
-let find_subtm
-  : int -> Nominal.scope list -> numbered_scope_pattern list -> subterm_result
-  =
-  find_subtm' 0
-;;
-
-(** The current term and sort don't match *)
-exception BadSortTerm of sort * Nominal.term
-
-exception BadRules of string
-
-(** raised from of_ast when we need to emit a token but don't have a capture,
- * and the terminal match is a regex, not a string literal. This could actually
- * be a form of BadRules *)
-exception CantEmitTokenRegex of string * Regex.t
+let find, get_option' = Util.(find, get_option')
+let of_ast = ConcreteSyntax_OfAst.of_ast
 
 type invalid_grammar = InvalidGrammar of string
 
@@ -278,23 +139,13 @@ let check_description_validity { terminal_rules; sort_rules } =
                     (CheckValidExn
                        (InvalidGrammar
                           ("Named terminal " ^ nt_name ^ " does not exist")))
-                (* TODO: switch to using canonical representatives *)
                 | Some regex ->
-                  (match Regex.canonical_representative regex with
-                   | Some str -> str
-                   | None ->
-                     raise
-                       (CheckValidExn
-                          (InvalidGrammar
-                             ("Uncaptured regex with no canonical representative: "
-                              ^ Regex.to_string regex))))
-                       (*
-                     if Util.is_none (Regex.is_literal regex)
-                     then raise (CheckValidExn (InvalidGrammar
-                     ("Uncaptured regex which is not a string literal: " ^
-                     Regex.to_string regex)))
-                  *))
-             | Underscore _n -> "")));
+                  if Util.is_none (Regex.is_literal regex)
+                  then raise (CheckValidExn (InvalidGrammar
+                  ("Uncaptured regex which is not a string literal: " ^
+                  Regex.to_string regex)))
+                  )
+             | Underscore _n -> ())));
     Belt.Map.String.forEach terminal_rules' (fun _i regex ->
       if Regex.accepts_empty regex
       then
@@ -308,232 +159,6 @@ let check_description_validity { terminal_rules; sort_rules } =
 ;;
 
 let mk_tree sort_name node_type children = { sort_name; node_type; children }
-
-(* Helper for use in of_ast *)
-let mk_terminal_capture content =
-  TerminalCapture { leading_trivia = ""; content; trailing_trivia = "" }
-;;
-
-let rec pattern_to_tree : sort_name -> Pattern.t -> tree =
-  fun sort_name pat ->
-  match pat with
-  | Var name -> mk_tree sort_name SingleCapture [| mk_terminal_capture name |]
-  | Operator (name, pats) ->
-    mk_tree
-      sort_name
-      (Operator name)
-      (pats
-       |. Belt.List.toArray
-       |. Belt.Array.map (fun pat ->
-         NonterminalCapture
-           (pattern_to_tree (failwith "TODO: pattern_to_tree 1") pat)))
-  | Sequence pats ->
-    mk_tree
-      sort_name
-      Sequence
-      (pats
-       |. Belt.List.toArray
-       |. Belt.Array.map (fun pat ->
-         NonterminalCapture
-           (pattern_to_tree (failwith "TODO: pattern_to_tree 2") pat)))
-  | Primitive p ->
-    (* TODO: what about other integral types? *)
-    let prim_ty =
-      match sort_name with
-      | "string" -> String
-      | "integer" -> Integer
-      | _ -> failwith ("unexpected primitive sort name: " ^ sort_name)
-    in
-    mk_tree sort_name (Primitive prim_ty) [||]
-;;
-
-type doc =
-  | DocNil
-  | DocCons of doc * doc
-  | DocText of string
-  | DocNest of int * doc
-  | DocBreak of string
-  | DocGroup of doc
-
-type sdoc =
-  | SNil
-  | SText of string * sdoc
-  | SLine of int * sdoc (* newline + spaces *)
-
-let rec string_of_sdoc = function
-  | SNil -> ""
-  | SText (s, d) -> s ^ string_of_sdoc d
-  | SLine (i, d) ->
-    let prefix = String.make i ' ' in
-    "\n" ^ prefix ^ string_of_sdoc d
-
-type mode = Flat | Break
-
-let rec fits w : (int * mode * doc) list -> bool
-  = function
-  | _ when w < 0 -> false
-  | [] -> true
-  | (i, m, DocNil) :: z -> fits w z
-  | (i, m, DocCons (x, y)) :: z -> fits w ((i, m, x) :: (i, m, y) :: z)
-  | (i, m, DocNest (j, x)) :: z -> fits w ((i + j, m, x) :: z)
-  | (i, m, DocText s) :: z -> fits (w - String.length s) z
-  | (i, Flat, DocBreak s) :: z -> fits (w - String.length s) z
-  | (i, Break, DocBreak _) :: z -> true (* impossible *)
-  | (i, m, DocGroup x) :: z -> fits w ((i, Flat, x) :: z)
-
-let rec format w k : (int * mode * doc) list -> sdoc
-  = function
-  | [] -> SNil
-  | (i, m, DocNil) :: z -> format w k z
-  | (i, m, DocCons (x, y)) :: z -> format w k ((i, m, x) :: (i, m, y) :: z)
-  | (i, m, DocNest (j, x)) :: z -> format w k ((i + j, m, x) :: z)
-  | (i, m, DocText s) :: z -> SText (s, format w (k + String.length s) z)
-  | (i, Flat, DocBreak s) :: z -> SText (s, format w (k + String.length s) z)
-  | (i, Break, DocBreak s) :: z -> SLine (i, format w i z)
-  | (i, m, DocGroup x) :: z -> if fits (w - k) ((i, Flat, x) :: z)
-    then format w k ((i, Flat, x) :: z)
-    else format w k ((i, Break, x) :: z)
-
-(** Pretty-print an abstract term to a concrete syntax tree
-    Raises: InvariantViolation, BadRules
-*)
-let rec of_ast
-          (Language sorts as lang)
-          ({ terminal_rules; sort_rules } as rules)
-          (SortAp (sort_name, _) as current_sort)
-          tm
-  =
-  let terminal_rules' = Belt.Map.String.fromArray terminal_rules in
-  match current_sort, tm with
-  | _, Nominal.Operator (op_name, scopes) ->
-    let (SortRule { operator_rules }) =
-      get_option'
-        ("of_ast: failed to get sort " ^ sort_name)
-        (MS.get sort_rules sort_name)
-    in
-    (* TODO: remove possible exception. possible to have var-only sort? *)
-    let (OperatorMatch { tokens = operator_match_tokens; operator_match_pattern }) =
-      find_operator_match operator_rules op_name
-    in
-    (* Helper to look up (Nominal) subterms by token index. See find_subtm. *)
-    let find_subtm' ix =
-      match operator_match_pattern with
-      | SingleCapturePattern _ -> FoundCapture
-      | OperatorPattern (_term_name, numbered_scope_patterns) ->
-        find_subtm ix scopes numbered_scope_patterns
-    in
-    (* Map each token to a subtree. For each token:
-       - if it's a space, ignore it
-       - if it's a terminal, print it
-       - if it's a nonterminal, look up the subterm (by token number)
-    *)
-    let children =
-      Belt.List.(
-        operator_match_tokens
-        |. keep (function
-          | Underscore _n -> false
-          | _ -> true)
-        (* switch from 0- to 1-based indexing *)
-        |. mapWithIndex (fun token_ix token -> token_ix + 1, token)
-        |. toArray)
-      |. Belt.Array.map (fun (token_ix, token) ->
-        match find_subtm' token_ix, token with
-        | FoundCapture, NonterminalName _sort ->
-          assert false (* TODO: raise invariant violation *)
-        | FoundCapture, TerminalName name ->
-          raise (BadRules ("capture found, terminal name: " ^ name))
-        | FoundTerm (tm_ix, subtm), NonterminalName sort_name ->
-          let (SortDef (_, operator_defs)) =
-            get_option' ("of_ast: failed to get sort" ^ sort_name)
-            @@ MS.get sorts sort_name
-          in
-          let some_operator =
-            find
-              (fun (OperatorDef (op_name', _)) -> op_name' = op_name)
-              operator_defs
-          in
-          let valences =
-            match some_operator with
-            | Some (OperatorDef (_, Arity (_, valences))) -> valences
-            | None -> assert false
-          in
-          let valence =
-            get_option' ("of_ast: failed to get term " ^ string_of_int tm_ix)
-            @@ Belt.List.get valences tm_ix
-          in
-          let new_sort =
-            match valence with
-            | FixedValence (_, new_sort) | VariableValence (_, new_sort) -> new_sort
-          in
-          NonterminalCapture (of_ast lang rules new_sort subtm)
-        | FoundTerm (_tm_ix, subtm), TerminalName _name ->
-          NonterminalCapture (of_ast lang rules current_sort subtm)
-        (* if the current token is a terminal, and we didn't capture a binder
-         * or term, we just emit the contents of the token *)
-        | NotFound, TerminalName name ->
-          let terminal_rule =
-            get_option' ("of_ast: failed to get terminal rule " ^ name)
-            @@ MS.get terminal_rules' name
-          in
-          (match Regex.canonical_representative terminal_rule with
-           | Some str -> mk_terminal_capture str
-           | None -> raise (CantEmitTokenRegex (name, terminal_rule)))
-             (*
-           (match Regex.is_literal terminal_rule with
-           | Some re_str -> mk_terminal_capture re_str
-           | None -> raise (CantEmitTokenRegex (name, terminal_rule))
-           )
-        *)
-        | FoundBinder pattern, NonterminalName name ->
-          NonterminalCapture (pattern_to_tree sort_name pattern)
-        | FoundBinder (Var var_name), TerminalName terminal_name ->
-          mk_terminal_capture var_name
-        | FoundBinder pattern, TerminalName name ->
-          raise
-            (BadRules
-               (Printf.sprintf
-                  "of_ast: binder (%s) found in match pattern %s, terminal name: %s"
-                  (Pattern.string_of_pattern pattern)
-                  (string_of_operator_match_pattern operator_match_pattern)
-                  name))
-        (* Invariant: underscores are filtered out in the previous `keep` stage
-        *)
-        | _, Underscore _ -> assert false
-        | NotFound, NonterminalName name ->
-          raise
-            (BadRules
-               (Printf.sprintf
-                  "of_ast: subterm %n not found in match pattern %s, nonterminal \
-                   name: %s"
-                  token_ix
-                  (string_of_operator_match_pattern operator_match_pattern)
-                  name)))
-    in
-    mk_tree sort_name (Operator op_name) children
-  | _, Nominal.Var name ->
-    let variable_rule =
-      sort_rules
-      |. Belt.Map.String.get sort_name
-      |> get_option' ("of_ast: failed to find sort " ^ sort_name)
-      |> (fun (SortRule { operator_rules }) -> operator_rules)
-         |. find_first_single_capture
-      |> get_option' ("of_ast: failed to get sort rule for " ^ sort_name)
-    in
-    mk_tree sort_name SingleCapture [| mk_terminal_capture name |]
-  | SortAp ("sequence", [| sort |]), Nominal.Sequence tms ->
-    let children =
-      tms
-      |. Belt.List.map (fun tm -> NonterminalCapture (of_ast lang rules sort tm))
-      |. Belt.List.toArray
-    in
-    mk_tree sort_name Sequence children
-  | SortAp ("string", [||]), Nominal.Primitive (PrimString str) ->
-    mk_tree sort_name (Primitive String) [| mk_terminal_capture str |]
-  | SortAp ("integer", [||]), Nominal.Primitive (PrimInteger i) ->
-    let str = Bigint.to_string i in
-    mk_tree sort_name (Primitive Integer) [| mk_terminal_capture str |]
-  | _, _ -> raise (BadSortTerm (current_sort, tm))
-;;
 
 let rec to_string { children } =
   children
@@ -591,10 +216,9 @@ let rec tree_to_ast (Language sorts as lang)
     Primitive (prim_to_ast prim_ty content)
   (* TODO: check validity *)
   | Operator op_name, tree_children ->
-    let (SortRule { operator_rules }) =
-      get_option'
-        ("tree_to_ast: failed to get sort " ^ sort_name)
-        (MS.get sort_rules sort_name)
+    let (SortRule { operator_rules }) = sort_rules
+      |. MS.get sort_name
+      |> get_option' ("tree_to_ast: failed to get sort " ^ sort_name)
     in
     let (OperatorMatch { operator_match_pattern }) =
       find_operator_match operator_rules op_name
