@@ -144,13 +144,11 @@ meaning = \(tm : ty()) -> match tm with {
     [ expect (to_ast (Primitive (PrimInteger one)))
       |> toEqual (Nominal.Primitive (PrimInteger one));
 
-      (*
-      expect (to_ast (Lambda ([sort; sort], Scope (["x"; "y"], Var "x"))))
+      expect (to_ast (Lambda ([sort; sort], Scope ([Var "x"; Var "y"], Var "x"))))
       |> toEqual (Nominal.Operator
         ( "lam"
         , [Nominal.Scope ([Var "x"; Var "y"], Var "x")]
         ));
-        *)
 
       expect (to_ast (Operator
         ( "foo"
