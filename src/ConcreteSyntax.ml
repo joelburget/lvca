@@ -453,12 +453,11 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
     fun nt_name { production; children } ->
       let prod_num =
         match production with
-        | Left prod ->
-          failwith
-            (Printf.sprintf
-               "invariant violation: go_nt (nt_name %s) received a terminal production: %s"
-               nt_name
-               (Lr0.string_of_terminal prod))
+        | Left prod -> failwith
+          (Printf.sprintf
+             "invariant violation: go_nt (nt_name %s) received a terminal production: %s"
+             nt_name
+             (Lr0.string_of_terminal prod))
         | Right prod_num -> prod_num
       in
       let tokens, m_operator_match_pattern =
@@ -468,11 +467,10 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
       in
       let node_type =
         match m_operator_match_pattern with
-        | None ->
-          failwith
-            (Printf.sprintf
-               "invariant violation: go_nt couldn't find production %n"
-               prod_num)
+        | None -> failwith
+          (Printf.sprintf
+             "invariant violation: go_nt couldn't find production %n"
+             prod_num)
         | Some (SingleCapturePattern pat) -> SingleCapture
         | Some (OperatorPattern (ctor_name, _)) -> Operator ctor_name
       in
