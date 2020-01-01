@@ -476,7 +476,7 @@ module Lr0 (G : GRAMMAR) = struct
                                              )
         in
         if not is_alrady_added then (
-          Bitstring.setExn added nonterminal_num true;
+          Bitstring.set_exn added nonterminal_num true;
           let production_num_set = nonterminal_production_map
                                    |. MMI.get nonterminal_num
                                    |> get_option' (Printf.sprintf
