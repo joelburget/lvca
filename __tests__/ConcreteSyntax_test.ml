@@ -63,7 +63,7 @@ let _ = describe "ConcreteSyntax" (fun () ->
       let concrete =
         ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
       in
-      let mk_tree' = mk_tree "arith" in
+      let mk_tree' ty = mk_tree "arith" ty () in
 
       let tree1 = mk_tree' (Operator "add")
         [| nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "x" " " |]);

@@ -45,6 +45,7 @@ and 'a tree =
   { sort_name : sort_name
   ; node_type : node_type
   ; children : 'a capture array
+  ; metadata : 'a
   }
 
 (* tree equality mod trivia *)

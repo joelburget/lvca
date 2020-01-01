@@ -158,7 +158,8 @@ let check_description_validity { terminal_rules; sort_rules } =
   | CheckValidExn err -> Some err
 ;;
 
-let mk_tree sort_name node_type children = { sort_name; node_type; children }
+let mk_tree sort_name node_type metadata children =
+  { sort_name; node_type; children; metadata }
 
 let rec to_string { children } =
   children
@@ -171,7 +172,7 @@ let rec to_string { children } =
 ;;
 
 let rec remove_spaces : 'a tree -> 'a tree =
-  fun { sort_name; node_type; children } ->
+  fun { sort_name; node_type; children; metadata } ->
   let children' =
     children
     |. Belt.Array.map (function
@@ -179,7 +180,7 @@ let rec remove_spaces : 'a tree -> 'a tree =
         TerminalCapture { content; leading_trivia = ""; trailing_trivia = "" }
       | NonterminalCapture ntc -> NonterminalCapture (remove_spaces ntc))
   in
-  { sort_name; node_type; children = children' }
+  { sort_name; node_type; children = children'; metadata }
 ;;
 
 exception ToAstError of string
@@ -493,6 +494,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
                Some (NonterminalCapture (go_nt ntn parse_result))
              (* TODO: trivia *)
              | Underscore _ -> None))
+      ; metadata = ()
       }
   and go_t : LrParsing.parse_result -> terminal_capture =
     fun { start_pos; end_pos } ->

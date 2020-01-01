@@ -30,6 +30,7 @@ and 'a tree =
   { sort_name : sort_name
   ; node_type : node_type
   ; children : 'a capture array
+  ; metadata : 'a
   }
 
 (** Are two trees equivalent, ignoring trivia *)
@@ -37,7 +38,11 @@ val equivalent : 'a tree -> 'a tree -> bool
 
 (** Convert an abstract syntax tree to a concrete syntax tree *)
 val of_ast
-  : language -> ConcreteSyntaxDescription.t -> sort -> Nominal.term -> unit tree
+  : language
+  -> ConcreteSyntaxDescription.t
+  -> sort
+  -> Nominal.term
+  -> unit tree
 
 (** Print a concrete syntax tree to a string *)
 val to_string : 'a tree -> string
@@ -72,7 +77,7 @@ val check_description_validity : ConcreteSyntaxDescription.t -> invalid_grammar 
 val lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer
 
 (* exported for testing: *)
-val mk_tree : sort_name -> node_type -> 'a capture array -> 'a tree
+val mk_tree : sort_name -> node_type -> 'a -> 'a capture array -> 'a tree
 val remove_spaces : 'a tree -> 'a tree
 
 (** Make a concrete syntax description from its parsed rules. This morally
