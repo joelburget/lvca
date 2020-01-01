@@ -94,6 +94,10 @@ let check_operator_match_validity
 *)
 let check_description_validity { terminal_rules; sort_rules } =
   let terminal_rules' = Belt.Map.String.fromArray terminal_rules in
+  let show_toks toks = toks
+    |. BA.map (Printf.sprintf "$%n")
+    |. Js.Array2.joinWith ", "
+  in
   try
     sort_rules
     |. Belt.Map.String.forEach (fun _i (SortRule { operator_rules }) ->
@@ -106,23 +110,13 @@ let check_description_validity { terminal_rules; sort_rules } =
            in
            if not (SI.isEmpty duplicate_captures)
            then (
-             let tok_names =
-               duplicate_captures
-               |. SI.toArray
-               |. BA.map (Printf.sprintf "$%n")
-               |. Js.Array2.joinWith ", "
-             in
+             let tok_names = duplicate_captures |. SI.toArray |. show_toks in
              raise
                (CheckValidExn
                   (InvalidGrammar ("tokens captured more than once: " ^ tok_names))));
            if not (MSI.isEmpty non_existent_tokens)
            then (
-             let tok_names =
-               non_existent_tokens
-               |. MSI.toArray
-               |. BA.map (Printf.sprintf "$%n")
-               |. Js.Array2.joinWith ", "
-             in
+             let tok_names = non_existent_tokens |. MSI.toArray |. show_toks in
              raise
                (CheckValidExn
                   (InvalidGrammar ("non-existent tokens mentioned: " ^ tok_names))));

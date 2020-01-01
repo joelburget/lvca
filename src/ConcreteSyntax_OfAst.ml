@@ -1,3 +1,4 @@
+(* Heavily borrowing from "Strictly Pretty" *)
 module Nominal = Binding.Nominal
 open Types
 open ConcreteSyntaxDescription
@@ -14,18 +15,33 @@ exception BadRules of string
  * be a form of BadRules *)
 exception CantEmitTokenRegex of string * Regex.t
 
+type doc_meta =
+  { sort_name : sort_name
+  ; node_type : node_type
+  }
+
+type doc =
+  | DocNil
+  | DocCons of doc * doc
+  | DocText of string
+  | DocNest of int * doc
+  | DocBreak of string
+  | DocGroup of doc
+  | DocMeta of doc * doc_meta
+
+type sdoc =
+  | SNil
+  | SText of string * sdoc
+  | SLine of int * sdoc (* newline + spaces *)
+  | SDocMeta of doc_meta * sdoc
+
+type mode = Flat | Break
+
 type subterm_result =
   | NotFound
   | FoundCapture
   | FoundTerm of int * Nominal.term
   | FoundBinder of Pattern.t
-
-(** Sorted (from longer to shorter) array of possible lengths
- * Doesn't include lengths over the limit
- * TODO finish description *)
-type possible_lengths = (int * Bitstring.t) array
-
-type break_type = int (* how many spaces to break TODO other params from Oppen *)
 
 type box_type =
   | HBox
@@ -34,14 +50,18 @@ type box_type =
   | BBox
   | HvBox
 
+  (*
+(** Sorted (from longer to shorter) array of possible lengths
+ * Doesn't include lengths over the limit
+ * TODO finish description *)
+type possible_lengths = (int * Bitstring.t) array
+
+type break_type = int (* how many spaces to break TODO other params from Oppen *)
+
 type box_break_info =
   { box_type : box_type
   ; breakpoints : (int * break_type) list
   }
-
-type break_info =
-  | DontBreak
-  | DoBreak of box_break_info
 
 let mk_tree sort_name node_type children metadata =
   { sort_name; node_type; children; metadata }
@@ -50,13 +70,23 @@ let mk_tree sort_name node_type children metadata =
 let mk_terminal_capture content =
   TerminalCapture { leading_trivia = ""; content; trailing_trivia = "" }
 ;;
+  *)
 
-let rec pattern_to_tree : sort_name -> Pattern.t -> break_info tree =
+let rec pattern_to_doc : sort_name -> Pattern.t -> doc =
   fun sort_name pat ->
   match pat with
   | Var name
-  -> mk_tree sort_name SingleCapture [| mk_terminal_capture name |] DontBreak
-  | Operator (name, pats) -> mk_tree
+  -> DocMeta (DocText name, { sort_name; node_type = SingleCapture })
+  (* -> mk_tree sort_name SingleCapture [| mk_terminal_capture name |] DontBreak *)
+  | Operator (name, pats) ->
+    let children = Util.fold_right
+      (fun (pat, doc) -> DocCons (pattern_to_doc sort_name pat, doc))
+      pats
+      DocNil
+    in
+    DocMeta (children, { sort_name; node_type = Operator name })
+
+      (*mk_tree
     sort_name
     (Operator name)
     (pats
@@ -64,7 +94,16 @@ let rec pattern_to_tree : sort_name -> Pattern.t -> break_info tree =
      |. Belt.Array.map (fun pat -> NonterminalCapture
        (pattern_to_tree (failwith "TODO: pattern_to_tree error 1") pat)))
     DontBreak
-  | Sequence pats -> mk_tree
+    *)
+
+  | Sequence pats ->
+    let children = Util.fold_right
+      (fun (pat, doc) -> DocCons (pattern_to_doc sort_name pat, doc))
+      pats
+      DocNil
+    in
+    DocMeta (children, { sort_name; node_type = Sequence })
+      (*mk_tree
     sort_name
     Sequence
     (pats
@@ -72,6 +111,7 @@ let rec pattern_to_tree : sort_name -> Pattern.t -> break_info tree =
      |. Belt.Array.map (fun pat -> NonterminalCapture
        (pattern_to_tree (failwith "TODO: pattern_to_tree error 2") pat)))
     DontBreak
+    *)
   | Primitive p ->
     (* TODO: what about other integral types? *)
     let prim_ty = match sort_name with
@@ -83,7 +123,9 @@ let rec pattern_to_tree : sort_name -> Pattern.t -> break_info tree =
       | PrimString str -> str
       | PrimInteger i -> Bigint.to_string i
     in
-    mk_tree sort_name (Primitive prim_ty) [| mk_terminal_capture str |] DontBreak
+    DocMeta (DocText str, { sort_name; node_type = Primitive prim_ty })
+
+    (* mk_tree sort_name (Primitive prim_ty) [| mk_terminal_capture str |] DontBreak *)
 ;;
 
 let rec find_subtm' slot_num token_ix scopes operator_match_pattern =
@@ -130,18 +172,20 @@ let find_subtm
 (** Pretty-print an abstract term to a concrete syntax tree
     Raises: InvariantViolation, BadRules
 *)
-let rec of_ast'
+let rec term_to_doc
    : Types.language
   -> ConcreteSyntaxDescription.t
   -> Types.sort
   -> Binding.Nominal.term
-  -> break_info tree
-  (* * possible_lengths *)
+  -> doc
   = fun lang rules (SortAp (sort_name, _) as current_sort) tm ->
   match current_sort, tm with
-  | _, Operator (op_name, scopes) -> go_operator lang rules current_sort op_name scopes
+  (* | _, Operator (op_name, scopes) -> go_operator lang rules current_sort op_name scopes *)
   | _, Var name
-  -> mk_tree sort_name SingleCapture [| mk_terminal_capture name |] DontBreak
+  -> DocMeta (DocText name, { sort_name; node_type = SingleCapture })
+  (* -> mk_tree sort_name SingleCapture [| mk_terminal_capture name |] DontBreak *)
+
+  (*
   | SortAp ("sequence", [| sort |]), Sequence tms ->
     let children = tms
       |. Belt.List.map (fun tm -> NonterminalCapture (of_ast' lang rules sort tm))
@@ -149,13 +193,17 @@ let rec of_ast'
     in
     (* XXX how to format sequences? *)
     mk_tree sort_name Sequence children DontBreak
+*)
   | SortAp ("string", [||]), Primitive (PrimString str) ->
-    mk_tree sort_name (Primitive String) [| mk_terminal_capture str |] DontBreak
+    (* mk_tree sort_name (Primitive String) [| mk_terminal_capture str |] DontBreak *)
+    DocMeta (DocText str, { sort_name; node_type = Primitive String })
   | SortAp ("integer", [||]), Primitive (PrimInteger i) ->
     let str = Bigint.to_string i in
-    mk_tree sort_name (Primitive Integer) [| mk_terminal_capture str |] DontBreak
+    DocMeta (DocText str, { sort_name; node_type = Primitive Integer })
+    (* mk_tree sort_name (Primitive Integer) [| mk_terminal_capture str |] DontBreak *)
   | _, _ -> raise (BadSortTerm (current_sort, tm))
 
+(*
 and go_operator = fun
   (Language sorts as lang)
   ({ terminal_rules; sort_rules } as rules)
@@ -272,12 +320,55 @@ and go_operator = fun
             name))
   )
   |> (fun children -> mk_tree sort_name (Operator op_name) children break_info)
+*)
 ;;
+
+let rec tree_of_sdoc
+  : sdoc -> unit tree
+  = failwith "TODO"
+
+let rec string_of_sdoc = function
+  | SNil -> ""
+  | SText (s, d) -> s ^ string_of_sdoc d
+  | SLine (i, d) ->
+    let prefix = String.make i ' ' in
+    "\n" ^ prefix ^ string_of_sdoc d
+
+let rec fits w : (int * mode * doc) list -> bool
+  = function
+  | _ when w < 0 -> false
+  | [] -> true
+  | (_, _, DocNil) :: z -> fits w z
+  | (i, m, DocCons (x, y)) :: z -> fits w ((i, m, x) :: (i, m, y) :: z)
+  | (i, m, DocNest (j, x)) :: z -> fits w ((i + j, m, x) :: z)
+  | (_, _, DocText s) :: z -> fits (w - String.length s) z
+  | (_, Flat, DocBreak s) :: z -> fits (w - String.length s) z
+  | (_, Break, DocBreak _) :: _ -> true (* impossible *)
+  | (i, _, DocGroup x) :: z -> fits w ((i, Flat, x) :: z)
+
+let rec format w k : (int * mode * doc) list -> sdoc
+  = function
+  | [] -> SNil
+  | (i, m, DocMeta (doc, meta)) :: z
+  -> SDocMeta (meta, format w k ((i, m, doc) :: z))
+  | (_, _, DocNil) :: z -> format w k z
+  | (i, m, DocCons (x, y)) :: z -> format w k ((i, m, x) :: (i, m, y) :: z)
+  | (i, m, DocNest (j, x)) :: z -> format w k ((i + j, m, x) :: z)
+  | (_, _, DocText s) :: z -> SText (s, format w (k + String.length s) z)
+  | (_, Flat, DocBreak s) :: z -> SText (s, format w (k + String.length s) z)
+  | (i, Break, DocBreak _) :: z -> SLine (i, format w i z)
+  | (i, _, DocGroup x) :: z -> if fits (w - k) ((i, Flat, x) :: z)
+    then format w k ((i, Flat, x) :: z)
+    else format w k ((i, Break, x) :: z)
 
 let of_ast
    : Types.language
   -> ConcreteSyntaxDescription.t
   -> Types.sort
+  -> int
   -> Binding.Nominal.term
   -> unit tree
-  = failwith "TODO"
+  = fun lang desc sort width tm ->
+  let doc = term_to_doc lang desc sort tm in
+  let sdoc = format width 0 [0, Flat, DocGroup doc] in
+  tree_of_sdoc sdoc

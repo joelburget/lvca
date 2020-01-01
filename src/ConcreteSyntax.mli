@@ -41,6 +41,7 @@ val of_ast
   : language
   -> ConcreteSyntaxDescription.t
   -> sort
+  -> int
   -> Nominal.term
   -> unit tree
 

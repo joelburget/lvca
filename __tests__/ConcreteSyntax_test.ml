@@ -144,9 +144,9 @@ let _ = describe "ConcreteSyntax" (fun () ->
 
       testAll "of_ast" [
         (* TODO: should have spaces *)
-        expect (of_ast language concrete arith tree1_ast)
+        expect (of_ast language concrete arith 80 tree1_ast)
           |> toEqual (remove_spaces tree1);
-        expect (of_ast language concrete arith tree4_ast)
+        expect (of_ast language concrete arith 80 tree4_ast)
           |> toEqual (remove_spaces tree4);
       ] Util.id;
 
@@ -194,13 +194,13 @@ let _ = describe "ConcreteSyntax" (fun () ->
 
       let expect_round_trip_tree tree = expect (tree
           |> to_ast language concrete "arith"
-          |. Belt.Result.map (of_ast language concrete arith)
+          |. Belt.Result.map (of_ast language concrete arith 80)
           |. Belt.Result.getExn
         ) |> toBeEquivalent to_string equivalent tree
       in
 
       let expect_round_trip_ast tm = expect (tm
-          |> of_ast language concrete arith
+          |> of_ast language concrete arith 80
           |> to_ast language concrete "arith"
         ) |> toEqual (Ok tm)
       in
