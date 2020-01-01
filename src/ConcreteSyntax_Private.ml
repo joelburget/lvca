@@ -19,14 +19,14 @@ type terminal_capture =
   }
 
 (** Nonterminals capture their children *)
-type nonterminal_capture = tree
+type 'a nonterminal_capture = 'a tree
 
 (** Terminals and nonterminals both capture data about why they were
     constructed
 *)
-and capture =
+and 'a capture =
   | TerminalCapture of terminal_capture
-  | NonterminalCapture of nonterminal_capture
+  | NonterminalCapture of 'a nonterminal_capture
 
 (* Inspired by:
  * - https://github.com/apple/swift/tree/master/lib/Syntax
@@ -41,10 +41,10 @@ and capture =
  * In other words, a contiguous stretch of trivia between two tokens is split
  * on the leftmost newline.
 *)
-and tree =
+and 'a tree =
   { sort_name : sort_name
   ; node_type : node_type
-  ; children : capture array
+  ; children : 'a capture array
   }
 
 (* tree equality mod trivia *)

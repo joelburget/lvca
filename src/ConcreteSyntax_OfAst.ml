@@ -27,7 +27,7 @@ let mk_terminal_capture content =
   TerminalCapture { leading_trivia = ""; content; trailing_trivia = "" }
 ;;
 
-let rec pattern_to_tree : sort_name -> Pattern.t -> tree =
+let rec pattern_to_tree : sort_name -> Pattern.t -> unit tree =
   fun sort_name pat ->
   match pat with
   | Var name -> mk_tree sort_name SingleCapture [| mk_terminal_capture name |]
@@ -113,7 +113,7 @@ let rec of_ast
   -> ConcreteSyntaxDescription.t
   -> Types.sort
   -> Binding.Nominal.term
-  -> tree
+  -> unit tree
   = fun lang rules (SortAp (sort_name, _) as current_sort) tm ->
   match current_sort, tm with
   | _, Operator (op_name, scopes) -> go_operator lang rules current_sort op_name scopes

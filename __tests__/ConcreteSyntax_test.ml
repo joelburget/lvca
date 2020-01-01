@@ -3,7 +3,7 @@ open Expect
 let (to_ast, to_string, of_ast, mk_tree, parse, equivalent, remove_spaces) =
   ConcreteSyntax.(to_ast, to_string, of_ast, mk_tree, parse, equivalent,
     remove_spaces)
-type tree = ConcreteSyntax.tree
+type 'a tree = 'a ConcreteSyntax.tree
 open Belt.Result
 module Parse_concrete = Parsing.Incremental(Parsing.Parseable_concrete_syntax)
 open TestUtil

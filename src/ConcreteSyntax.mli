@@ -20,40 +20,41 @@ type terminal_capture =
   ; mutable trailing_trivia : string
   }
 
-type nonterminal_capture = tree
+type 'a nonterminal_capture = 'a tree
 
-and capture =
+and 'a capture =
   | TerminalCapture of terminal_capture
-  | NonterminalCapture of nonterminal_capture
+  | NonterminalCapture of 'a nonterminal_capture
 
-and tree =
+and 'a tree =
   { sort_name : sort_name
   ; node_type : node_type
-  ; children : capture array
+  ; children : 'a capture array
   }
 
 (** Are two trees equivalent, ignoring trivia *)
-val equivalent : tree -> tree -> bool
+val equivalent : 'a tree -> 'a tree -> bool
 
 (** Convert an abstract syntax tree to a concrete syntax tree *)
-val of_ast : language -> ConcreteSyntaxDescription.t -> sort -> Nominal.term -> tree
+val of_ast
+  : language -> ConcreteSyntaxDescription.t -> sort -> Nominal.term -> unit tree
 
 (** Print a concrete syntax tree to a string *)
-val to_string : tree -> string
+val to_string : 'a tree -> string
 
 (** Parse from a string to a concrete syntax tree *)
 val parse
   :  ConcreteSyntaxDescription.t
   -> string (* root name *)
   -> string (* string to parse *)
-  -> (tree, string) Result.t
+  -> (unit tree, string) Result.t
 
 (** Convert form a concrete to an abstract syntax tree *)
 val to_ast
   :  language
   -> ConcreteSyntaxDescription.t
   -> string
-  -> tree
+  -> 'a tree
   -> (Nominal.term, string) Result.t
 
 val to_grammar
@@ -71,8 +72,8 @@ val check_description_validity : ConcreteSyntaxDescription.t -> invalid_grammar 
 val lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer
 
 (* exported for testing: *)
-val mk_tree : sort_name -> node_type -> capture array -> tree
-val remove_spaces : tree -> tree
+val mk_tree : sort_name -> node_type -> 'a capture array -> 'a tree
+val remove_spaces : 'a tree -> 'a tree
 
 (** Make a concrete syntax description from its parsed rules. This morally
     belongs to the ConcreteSyntaxDescription module, but it's here to break a

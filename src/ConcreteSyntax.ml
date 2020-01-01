@@ -170,7 +170,7 @@ let rec to_string { children } =
   |> String.concat ""
 ;;
 
-let rec remove_spaces : tree -> tree =
+let rec remove_spaces : 'a tree -> 'a tree =
   fun { sort_name; node_type; children } ->
   let children' =
     children
@@ -279,7 +279,7 @@ let rec tree_to_ast (Language sorts as lang)
      | _ -> failwith "TODO: error 5")
   | Primitive _, _ | SingleCapture, _ -> assert false
 
-and capture_to_pat : capture -> Pattern.t = function
+and capture_to_pat : 'a capture -> Pattern.t = function
   | TerminalCapture { content } -> Var content
   (*
      raise @@ ToAstError (Printf.sprintf
@@ -323,7 +323,7 @@ and scope_to_ast lang rules sort valences ({ children } as tree) : Nominal.scope
 ;;
 
 let to_ast
-  :  language -> ConcreteSyntaxDescription.t -> string -> tree
+  : language -> ConcreteSyntaxDescription.t -> string -> 'a tree
     -> (Nominal.term, string) Belt.Result.t
   =
   fun lang rules sort tree ->
@@ -428,7 +428,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
   :  (nonterminal_token list * operator_match_pattern option) Belt.MutableMap.Int.t
     -> LrParsing.nonterminal_num MS.t -> ConcreteSyntaxDescription.sort_rules
     -> string (* root name *) -> string (* parsed string *) -> LrParsing.parse_result
-    -> tree
+    -> unit tree
   =
   fun production_rule_map nonterminal_nums sort_rules root_name str root ->
   let str_pos = ref 0 in
@@ -449,7 +449,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
       let trailing_trivia = Js.String2.slice str ~from:end_pos ~to_:!str_pos in
       leading_trivia, trailing_trivia
   in
-  let rec go_nt : string -> LrParsing.parse_result -> tree =
+  let rec go_nt : string -> LrParsing.parse_result -> unit tree =
     fun nt_name { production; children } ->
       let prod_num =
         match production with
