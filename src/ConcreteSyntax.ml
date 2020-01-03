@@ -152,11 +152,12 @@ let check_description_validity { terminal_rules; sort_rules } =
   | CheckValidExn err -> Some err
 ;;
 
-let mk_tree sort_name node_type metadata children =
-  { sort_name; node_type; children; metadata }
+let mk_tree
+  : sort_name -> node_type -> formatted_capture array -> formatted_tree
+  = fun sort_name node_type children -> { sort_name; node_type; children }
 
-let rec to_string { children } =
-  children
+let rec to_string : formatted_tree -> string
+  = fun { children } -> children
   |> Array.map (function
     | TerminalCapture { leading_trivia; content; trailing_trivia } ->
       leading_trivia ^ content ^ trailing_trivia
@@ -165,8 +166,8 @@ let rec to_string { children } =
   |> String.concat ""
 ;;
 
-let rec remove_spaces : 'a tree -> 'a tree =
-  fun { sort_name; node_type; children; metadata } ->
+let rec remove_spaces : formatted_tree -> formatted_tree =
+  fun { sort_name; node_type; children } ->
   let children' =
     children
     |. Belt.Array.map (function
@@ -174,7 +175,7 @@ let rec remove_spaces : 'a tree -> 'a tree =
         TerminalCapture { content; leading_trivia = ""; trailing_trivia = "" }
       | NonterminalCapture ntc -> NonterminalCapture (remove_spaces ntc))
   in
-  { sort_name; node_type; children = children'; metadata }
+  { sort_name; node_type; children = children' }
 ;;
 
 exception ToAstError of string
@@ -189,12 +190,13 @@ let prim_to_ast : prim_ty -> string -> primitive =
 ;;
 
 (* Convert a concrete tree to an AST. We ignore trivia. *)
-let rec tree_to_ast (Language sorts as lang)
-          ({ sort_rules } as rules)
-          sort_name
-          tree
-  : Nominal.term
-  =
+let rec tree_to_ast
+  :  language
+  -> ConcreteSyntaxDescription.t
+  -> string
+  -> formatted_tree
+  -> Nominal.term
+  = fun (Language sorts as lang) ({ sort_rules } as rules) sort_name tree ->
   match tree.node_type, tree.children with
   | SingleCapture, [| TerminalCapture { content = name } |] -> Var name
   | Sequence, children ->
@@ -274,7 +276,7 @@ let rec tree_to_ast (Language sorts as lang)
      | _ -> failwith "TODO: error 5")
   | Primitive _, _ | SingleCapture, _ -> assert false
 
-and capture_to_pat : 'a capture -> Pattern.t = function
+and capture_to_pat : formatted_capture -> Pattern.t = function
   | TerminalCapture { content } -> Var content
   (*
      raise @@ ToAstError (Printf.sprintf
@@ -308,17 +310,25 @@ and capture_to_pat : 'a capture -> Pattern.t = function
         | [| TerminalCapture { content } |] -> Primitive (prim_to_ast prim_ty content)
         | _ -> raise @@ ToAstError "Unexpected primitive capture in capture_to_pat"))
 
-and scope_to_ast lang rules sort valences ({ children } as tree) : Nominal.scope =
+    (*
+and scope_to_ast
+  :  language
+  -> ConcreteSyntaxDescription.t
+  -> string
+  (* ... *)
+  -> Nominal.scope
+  = fun lang rules sort valences ({ children } as tree) ->
   match children |. BA.reverse |. Belt.List.fromArray with
   | body :: binders ->
     let body' = tree_to_ast lang rules sort { tree with children = [| body |] } in
     let binders' = binders |. Belt.List.map capture_to_pat |. Belt.List.reverse in
     Scope (binders', body')
   | [] -> raise (ToAstError "scope_to_ast called on no children")
+*)
 ;;
 
 let to_ast
-  : language -> ConcreteSyntaxDescription.t -> string -> 'a tree
+  : language -> ConcreteSyntaxDescription.t -> string -> formatted_tree
     -> (Nominal.term, string) Belt.Result.t
   =
   fun lang rules sort tree ->
@@ -423,7 +433,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
   :  (nonterminal_token list * operator_match_pattern option) Belt.MutableMap.Int.t
     -> LrParsing.nonterminal_num MS.t -> ConcreteSyntaxDescription.sort_rules
     -> string (* root name *) -> string (* parsed string *) -> LrParsing.parse_result
-    -> unit tree
+    -> formatted_tree
   =
   fun production_rule_map nonterminal_nums sort_rules root_name str root ->
   let str_pos = ref 0 in
@@ -444,7 +454,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
       let trailing_trivia = Js.String2.slice str ~from:end_pos ~to_:!str_pos in
       leading_trivia, trailing_trivia
   in
-  let rec go_nt : string -> LrParsing.parse_result -> unit tree =
+  let rec go_nt : string -> LrParsing.parse_result -> formatted_tree =
     fun nt_name { production; children } ->
       let prod_num =
         match production with
@@ -488,9 +498,8 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
                Some (NonterminalCapture (go_nt ntn parse_result))
              (* TODO: trivia *)
              | Underscore _ -> None))
-      ; metadata = ()
       }
-  and go_t : LrParsing.parse_result -> terminal_capture =
+  and go_t : LrParsing.parse_result -> formatted_terminal_capture =
     fun { start_pos; end_pos } ->
       let leading_trivia, trailing_trivia = get_trivia start_pos end_pos in
       let content = Js.String.slice str ~from:start_pos ~to_:end_pos in

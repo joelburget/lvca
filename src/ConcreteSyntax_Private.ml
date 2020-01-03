@@ -12,21 +12,21 @@ type node_type =
   | Primitive of prim_ty
 
 (** Terminals capture text from the input buffer *)
-type terminal_capture =
+type formatted_terminal_capture =
   { content : string
-  ; mutable leading_trivia : string
-  ; mutable trailing_trivia : string
+  ; leading_trivia : string
+  ; trailing_trivia : string
   }
 
 (** Nonterminals capture their children *)
-type 'a nonterminal_capture = 'a tree
+type formatted_nonterminal_capture = formatted_tree
 
 (** Terminals and nonterminals both capture data about why they were
     constructed
 *)
-and 'a capture =
-  | TerminalCapture of terminal_capture
-  | NonterminalCapture of 'a nonterminal_capture
+and formatted_capture =
+  | TerminalCapture of formatted_terminal_capture
+  | NonterminalCapture of formatted_nonterminal_capture
 
 (* Inspired by:
  * - https://github.com/apple/swift/tree/master/lib/Syntax
@@ -41,15 +41,29 @@ and 'a capture =
  * In other words, a contiguous stretch of trivia between two tokens is split
  * on the leftmost newline.
 *)
-and 'a tree =
+and formatted_tree =
   { sort_name : sort_name
   ; node_type : node_type
-  ; children : 'a capture array
-  ; metadata : 'a
+  ; children : formatted_capture array
+  }
+
+type doc =
+  | TerminalChild of string
+  | NonterminalChild of unformatted_tree
+  | DocList of doc list
+  | DocNest of int * doc
+  | DocGroup of doc
+  | DocBreak of int
+
+and unformatted_tree =
+  { sort_name : sort_name
+  ; node_type : node_type
+  ; doc : doc
   }
 
 (* tree equality mod trivia *)
-let rec equivalent t1 t2 =
+let rec equivalent : formatted_tree -> formatted_tree -> bool
+  = fun t1 t2 ->
   t1.sort_name = t2.sort_name
   && t1.node_type = t2.node_type
   && Belt.Array.(every (zipBy t1.children t2.children equivalent')) (fun b -> b)

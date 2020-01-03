@@ -3,7 +3,6 @@ open Expect
 let (to_ast, to_string, of_ast, mk_tree, parse, equivalent, remove_spaces) =
   ConcreteSyntax.(to_ast, to_string, of_ast, mk_tree, parse, equivalent,
     remove_spaces)
-type 'a tree = 'a ConcreteSyntax.tree
 open Belt.Result
 module Parse_concrete = Parsing.Incremental(Parsing.Parseable_concrete_syntax)
 open TestUtil
@@ -63,7 +62,7 @@ let _ = describe "ConcreteSyntax" (fun () ->
       let concrete =
         ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
       in
-      let mk_tree' ty = mk_tree "arith" ty () in
+      let mk_tree' = mk_tree "arith" in
 
       let tree1 = mk_tree' (Operator "add")
         [| nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "x" " " |]);
