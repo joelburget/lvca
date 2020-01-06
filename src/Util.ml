@@ -113,18 +113,15 @@ let map_union m1 m2 =
     | None, None -> None)
 ;;
 
-let rec fold_right (f : 'a * 'b -> 'b) (lst : 'a list) (b : 'b) : 'b =
+let rec fold_right (f : 'a -> 'b -> 'b) (lst : 'a list) (b : 'b) : 'b =
   match lst with
   | [] -> b
-  | a :: as_ -> f (a, fold_right f as_ b)
+  | a :: as_ -> f a (fold_right f as_ b)
 ;;
 
-let map_unions maps = fold_right (fun (m1, m2) -> map_union m1 m2) maps Belt.Map.String.empty
+let map_unions maps = fold_right map_union maps Belt.Map.String.empty
 
-let set_unions sets = fold_right
-  (fun (s1, s2) -> Belt.Set.String.union s1 s2)
-  sets
-  Belt.Set.String.empty
+let set_unions sets = Belt.Set.String.(fold_right union sets empty)
 
 let rec fold_left
   : ('b -> 'a -> 'b) -> 'b -> 'a list -> 'b

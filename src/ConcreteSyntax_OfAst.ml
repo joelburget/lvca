@@ -331,7 +331,7 @@ let rec tree_fits : int -> int -> mode -> nonterminal_doc_child -> fit_info
       |> group_fits max_width start_col Flat
 
 and group_fits max_width start_col mode children = Util.fold_right
-  (fun (child, rest_fits) -> match rest_fits with
+  (fun child rest_fits -> match rest_fits with
     | DoesntFit -> DoesntFit
     | Fits col -> tree_fits max_width col mode child
   )

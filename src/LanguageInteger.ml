@@ -1,47 +1,63 @@
 let abstractSyntax =
   {|
+import { integer } from "builtins";
+
 tm :=
+  | lit(integer)
   | neg(tm)
   | abs(tm)
   | add(tm; tm)
   | sub(tm; tm)
+  | mul(tm; tm)
   | max(tm; tm)
   | min(tm; tm)
-  // TODO: how to express literal
 |}
 ;;
 
 let concrete = {|
-  // TODO
+INT := [0-9]+
+BAR := "|"
+ADD := "+"
+SUB := "-"
+MUL := "*"
+ABS := "abs"
+MAX := "max"
+MIN := "min"
+LPAREN := "("
+RPAREN := ")"
+
+tm :=
+  | INT { lit($1) }
+  | SUB tm { neg($2) }
+  | BAR tm BAR { abs($2) }
+  | tm ADD tm { add($1; $3) }
+  | tm SUB tm { sub($1; $3) }
+  | tm MUL tm { mul($1; $3) }
+  | MAX tm tm { max($2; $3) }
+  | MIN tm tm { min($2; $3) }
+  | LPAREN tm RPAREN { $2 }
 |}
 
 (* TODO: lessen duplication *)
 let rec eval' : Bigint.t list -> Binding.DeBruijn.term -> Bigint.t option =
   fun env tm ->
   match tm with
-  | Operator ("neg", [ Scope ([], a) ]) ->
+  | Operator (op, [ Scope ([], a) ]) ->
     (match eval' env a with
-     | Some a' -> Some (Bigint.neg a')
+     | Some a' -> (match op with
+       | "neg" -> Some (Bigint.neg a')
+       | "abs" -> Some (Bigint.abs a')
+     )
      | _ -> None)
-  | Operator ("abs", [ Scope ([], a) ]) ->
-    (match eval' env a with
-     | Some a' -> Some (Bigint.abs a')
-     | _ -> None)
-  | Operator ("add", [ Scope ([], a); Scope ([], b) ]) ->
+  | Operator (op, [ Scope ([], a); Scope ([], b) ]) ->
     (match eval' env a, eval' env b with
-     | Some a', Some b' -> Some (Bigint.add a' b')
-     | _, _ -> None)
-  | Operator ("sub", [ Scope ([], a); Scope ([], b) ]) ->
-    (match eval' env a, eval' env b with
-     | Some a', Some b' -> Some (Bigint.sub a' b')
-     | _, _ -> None)
-  | Operator ("max", [ Scope ([], a); Scope ([], b) ]) ->
-    (match eval' env a, eval' env b with
-     | Some a', Some b' -> Some (Bigint.max a' b')
-     | _, _ -> None)
-  | Operator ("min", [ Scope ([], a); Scope ([], b) ]) ->
-    (match eval' env a, eval' env b with
-     | Some a', Some b' -> Some (Bigint.min a' b')
+     | Some a', Some b' -> (match op with
+       | "add" -> Some (Bigint.add a' b')
+       | "sub" -> Some (Bigint.sub a' b')
+       | "mul" -> Some (Bigint.mul a' b')
+       | "max" -> Some (Bigint.max a' b')
+       | "min" -> Some (Bigint.min a' b')
+     )
      | _, _ -> None)
   | Var (i, 0) -> Belt.List.get env i
   | Primitive (PrimInteger i) -> Some i

@@ -198,7 +198,7 @@ let rec find_core_match
 let associate_all associate_one tm_seq pat_seq =
   if length tm_seq = length pat_seq
   then fold_right
-    (fun ((tm, pat), b_opt) ->
+    (fun (tm, pat) b_opt ->
       match associate_one tm pat, b_opt with
         | Some (assocs, bindings), Some (assocs', bindings') ->
           Some (assocs @ assocs', map_union bindings bindings')
