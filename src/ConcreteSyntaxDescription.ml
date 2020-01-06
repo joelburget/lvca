@@ -65,16 +65,15 @@ type operator_match' =
 
 type operator_match = OperatorMatch of operator_match'
 
+let string_of_token : nonterminal_token -> string = function
+  | TerminalName str -> str
+  | NonterminalName str -> str
+  | Underscore i -> "_" ^ string_of_int i
+  | OpenBox -> "["
+  | CloseBox -> "]"
+
 let string_of_tokens : nonterminal_token list -> string =
-  Util.stringify_list
-    (function
-      | TerminalName str -> str
-      | NonterminalName str -> str
-      | Underscore i -> "_" ^ string_of_int i
-      | OpenBox -> "["
-      | CloseBox -> "]"
-    )
-    " "
+  Util.stringify_list string_of_token " "
 ;;
 
 type variable_rule =

@@ -152,12 +152,8 @@ let check_description_validity { terminal_rules; sort_rules } =
   | CheckValidExn err -> Some err
 ;;
 
-let mk_tree
-  : sort_name -> node_type -> formatted_capture array -> formatted_tree
-  = fun sort_name node_type children -> { sort_name; node_type; children }
-
 let rec to_string : formatted_tree -> string
-  = fun { children } -> children
+  = fun { children; node_type } -> children
   |> Array.map (function
     | TerminalCapture { leading_trivia; content; trailing_trivia } ->
       leading_trivia ^ content ^ trailing_trivia
@@ -168,12 +164,10 @@ let rec to_string : formatted_tree -> string
 
 let rec remove_spaces : formatted_tree -> formatted_tree =
   fun { sort_name; node_type; children } ->
-  let children' =
-    children
-    |. Belt.Array.map (function
-      | TerminalCapture { content } ->
-        TerminalCapture { content; leading_trivia = ""; trailing_trivia = "" }
-      | NonterminalCapture ntc -> NonterminalCapture (remove_spaces ntc))
+  let children' = Belt.Array.map children (function
+    | TerminalCapture { content } ->
+      TerminalCapture { content; leading_trivia = ""; trailing_trivia = "" }
+    | NonterminalCapture ntc -> NonterminalCapture (remove_spaces ntc))
   in
   { sort_name; node_type; children = children' }
 ;;
@@ -567,11 +561,8 @@ let parse desc root_name str =
       Error (Printf.sprintf "parser error at character %n:\n%s" char_no message)
   with
   | MixedFixities (b, l) ->
-    Error
-      ("Found a mix of fixities -- all must be uniform "
-       ^ string_of_bool b
-       ^ " "
-       ^ string_of_int l)
+    Error (Printf.sprintf
+      "Found a mix of fixities -- all must be uniform: %b / %n" b l)
 ;;
 
 let make_concrete_description

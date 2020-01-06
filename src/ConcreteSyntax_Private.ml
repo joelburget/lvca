@@ -36,7 +36,7 @@ and formatted_capture =
  * - A token owns all of its trailing trivia up to, but not including, the
  *   next newline character.
  * - Looking backward in the text, a token owns all of the leading trivia up
- *   to and including the first newline character.
+ *   back and including the first newline character.
  *
  * In other words, a contiguous stretch of trivia between two tokens is split
  * on the leftmost newline.
@@ -47,19 +47,25 @@ and formatted_tree =
   ; children : formatted_capture array
   }
 
-type doc =
-  | TerminalChild of string
-  | NonterminalChild of unformatted_tree
-  | DocList of doc list
-  | DocNest of int * doc
-  | DocGroup of doc
+type sdoc =
+  | SNil
+  | SText of string * sdoc
+  | SLine of int * sdoc
+
+type terminal_doc =
+  | DocText of string
+  | DocNest of int * terminal_doc
   | DocBreak of int
 
-and unformatted_tree =
-  { sort_name : sort_name
-  ; node_type : node_type
-  ; doc : doc
-  }
+type nonterminal_doc = nonterminal_doc_child list * sort_name * node_type
+
+and doc_group = (terminal_doc, nonterminal_doc) Either.t list
+
+(* TODO: rename to doc? *)
+and nonterminal_doc_child =
+  | TerminalDoc of terminal_doc
+  | NonterminalDoc of nonterminal_doc
+  | DocGroup of doc_group
 
 (* tree equality mod trivia *)
 let rec equivalent : formatted_tree -> formatted_tree -> bool

@@ -1,3 +1,14 @@
+(** Types and functions for dealing with concrete syntax.
+ *
+ * This module is all about this diagram:
+ *
+ *        ---parse--->                -to_ast->
+ * string              formatted_tree           Nominal.term
+ *        <-to_string-                <-of_ast-
+ *
+ * The other important functions are to_grammar, lexer_of_desc, and
+ * make_concrete_description
+ *)
 open Binding
 open Types
 module Lexer = ConcreteSyntax_Lexer
@@ -50,21 +61,6 @@ and formatted_tree =
   ; children : formatted_capture array
   }
 
-type doc =
-  | TerminalChild of string
-  | NonterminalChild of unformatted_tree
-  | DocList of doc list
-  | DocNest of int * doc
-  | DocGroup of doc
-  (* Attach breaks to the document they trail *)
-  | DocBreak of int
-
-and unformatted_tree =
-  { sort_name : sort_name
-  ; node_type : node_type
-  ; doc : doc
-  }
-
 (** Are two trees equivalent, ignoring trivia *)
 val equivalent : formatted_tree -> formatted_tree -> bool
 
@@ -110,8 +106,6 @@ val check_description_validity : ConcreteSyntaxDescription.t -> invalid_grammar 
 val lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer
 
 (* exported for testing: *)
-val mk_tree
-  : sort_name -> node_type -> formatted_capture array -> formatted_tree
 val remove_spaces : formatted_tree -> formatted_tree
 
 (** Make a concrete syntax description from its parsed rules. This morally

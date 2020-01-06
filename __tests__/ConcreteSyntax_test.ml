@@ -1,17 +1,24 @@
 open Jest
 open Expect
-let (to_ast, to_string, of_ast, mk_tree, parse, equivalent, remove_spaces) =
-  ConcreteSyntax.(to_ast, to_string, of_ast, mk_tree, parse, equivalent,
-    remove_spaces)
+let (to_ast, to_string, of_ast, parse, equivalent, remove_spaces) =
+  ConcreteSyntax.(to_ast, to_string, of_ast, parse, equivalent, remove_spaces)
 open Belt.Result
 module Parse_concrete = Parsing.Incremental(Parsing.Parseable_concrete_syntax)
 open TestUtil
+type sort_name = Types.sort_name
 
 let nt_capture capture = ConcreteSyntax.NonterminalCapture capture
 
 let mk_terminal_capture content trailing_trivia =
   ConcreteSyntax.TerminalCapture
     { ConcreteSyntax.leading_trivia = ""; content; trailing_trivia }
+
+let mk_tree
+  : sort_name
+  -> ConcreteSyntax.node_type
+  -> ConcreteSyntax.formatted_capture array
+  -> ConcreteSyntax.formatted_tree
+  = fun sort_name node_type children -> { sort_name; node_type; children }
 
 let _ = describe "ConcreteSyntax" (fun () ->
   let description = {|
@@ -144,9 +151,9 @@ let _ = describe "ConcreteSyntax" (fun () ->
       testAll "of_ast" [
         (* TODO: should have spaces *)
         expect (of_ast language concrete arith 80 tree1_ast)
-          |> toEqual (remove_spaces tree1);
+          |> toEqual tree1;
         expect (of_ast language concrete arith 80 tree4_ast)
-          |> toEqual (remove_spaces tree4);
+          |> toEqual tree4;
       ] Util.id;
 
       testAll "to_ast" [

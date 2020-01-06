@@ -37,38 +37,24 @@ type box_break_info =
   ; breakpoints : (int * break_type) list
   }
 
-let mk_tree sort_name node_type doc : unformatted_tree =
-  { sort_name; node_type; doc }
-
-  (*
-(* Helper for use in of_ast *)
-let mk_terminal_capture content =
-  TerminalCapture { leading_trivia = ""; content; trailing_trivia = "" }
-;;
-*)
-
-let rec pattern_to_tree : sort_name -> Pattern.t -> unformatted_tree =
+let rec pattern_to_tree : sort_name -> Pattern.t -> nonterminal_doc_child =
   fun sort_name pat ->
   match pat with
   | Var name
-  -> mk_tree sort_name SingleCapture (TerminalChild name)
-    (*
-  | Operator (name, pats) -> mk_tree
-    sort_name
-    (Operator name)
-    (pats
-     |. Belt.List.toArray
-     |. Belt.Array.map (fun pat -> NonterminalChild
-       (pattern_to_tree (failwith "TODO: pattern_to_tree error 1") pat)))
+  -> NonterminalDoc ([TerminalDoc (DocText name)], sort_name, SingleCapture)
+  | Operator (name, pats) -> NonterminalDoc
+    ( Belt.List.map pats
+        (pattern_to_tree (failwith "TODO: pattern_to_tree error 1"))
+    , sort_name
+    , Operator name
+    )
 
-  | Sequence pats -> mk_tree
-    sort_name
-    Sequence
-    (pats
-     |. Belt.List.toArray
-     |. Belt.Array.map (fun pat -> NonterminalChild
-       (pattern_to_tree (failwith "TODO: pattern_to_tree error 2") pat)))
-       *)
+  | Sequence pats -> NonterminalDoc
+    ( Belt.List.map pats
+        (pattern_to_tree (failwith "TODO: pattern_to_tree error 2"))
+    , sort_name
+    , Sequence
+    )
   | Primitive p ->
     (* TODO: what about other integral types? *)
     let prim_ty = match sort_name with
@@ -81,7 +67,7 @@ let rec pattern_to_tree : sort_name -> Pattern.t -> unformatted_tree =
       | PrimInteger i -> Bigint.to_string i
     in
 
-    mk_tree sort_name (Primitive prim_ty) (TerminalChild str)
+    TerminalDoc (DocText str)
 ;;
 
 let rec find_subtm' slot_num token_ix scopes operator_match_pattern =
@@ -128,36 +114,38 @@ let find_subtm
 (** Pretty-print an abstract term to a concrete syntax tree
     Raises: InvariantViolation, BadRules
 *)
-let rec term_to_unformatted
+let rec term_to_tree
    : Types.language
   -> ConcreteSyntaxDescription.t
   -> Types.sort
-  -> Binding.Nominal.term
-  -> unformatted_tree
+  -> Nominal.term
+  -> nonterminal_doc_child
   = fun lang rules (SortAp (sort_name, _) as current_sort) tm ->
   match current_sort, tm with
-  | _, Operator (op_name, scopes) -> go_operator lang rules current_sort op_name scopes
+  | _, Operator (op_name, scopes)
+  -> NonterminalDoc (go_operator lang rules current_sort op_name scopes, sort_name, Operator op_name)
   | _, Var name
-  -> mk_tree sort_name SingleCapture (TerminalChild name)
-
-  (*
+  -> NonterminalDoc ([TerminalDoc (DocText name)], sort_name, SingleCapture)
   | SortAp ("sequence", [| sort |]), Sequence tms ->
-    let children = tms
-      |. Belt.List.map
-        (fun tm -> NonterminalChild (term_to_unformatted lang rules sort tm))
-      |. Belt.List.toArray
-    in
+    let children = Belt.List.map tms (term_to_tree lang rules sort) in
+    NonterminalDoc (children, sort_name, Sequence)
     (* XXX how to format sequences? *)
-    mk_tree sort_name Sequence children
-    *)
   | SortAp ("string", [||]), Primitive (PrimString str) ->
-    mk_tree sort_name (Primitive String) (TerminalChild str)
+    TerminalDoc (DocText str)
   | SortAp ("integer", [||]), Primitive (PrimInteger i) ->
     let str = Bigint.to_string i in
-    mk_tree sort_name (Primitive Integer) (TerminalChild str)
+    TerminalDoc (DocText str)
   | _, _ -> raise (BadSortTerm (current_sort, tm))
 
-and go_operator = fun
+and go_operator
+   : Types.language
+  -> ConcreteSyntaxDescription.t
+  -> Types.sort
+  -> string
+  -> Nominal.scope list
+  -> nonterminal_doc_child list
+  =
+  fun
   (Language sorts as lang)
   ({ terminal_rules; sort_rules } as rules)
   (SortAp (sort_name, _) as current_sort)
@@ -166,7 +154,7 @@ and go_operator = fun
 
   let (SortRule { operator_rules }) = sort_rules
     |. Belt.Map.String.get sort_name
-    |> get_option' ("term_to_unformatted: failed to get sort " ^ sort_name)
+    |> get_option' ("term_to_tree: failed to get sort " ^ sort_name)
   in
 
   (* TODO: remove possible exception. possible to have var-only sort? *)
@@ -182,19 +170,19 @@ and go_operator = fun
     |. Util.keep_some
   in
 
-  let m_box_type : box_type option = failwith "TODO" in
-
   (* Map each token to a subtree. For each token:
-     - if it's a space, ignore it
-     - if it's a terminal, print it
+     - if it's a space or terminal, print it
      - if it's a nonterminal, look up the subterm (by token number)
   *)
   operator_match_tokens
-    |. Belt.List.keep (function Underscore _n -> false | _ -> true)
-    (* switch from 0- to 1-based indexing *)
-    |. Belt.List.mapWithIndex (fun token_ix token -> token_ix + 1, token)
-    |. Belt.List.toArray
-    |. Belt.Array.map (fun (token_ix, token) ->
+    (* Go through every token giving it an index. Underscores are not indexed *)
+    |. Belt.List.reduce (1, [])
+      (fun (ix, indexed_toks) tok -> match tok with
+        | Underscore _ -> (ix, (0, tok) :: indexed_toks)
+        | _ -> (ix + 1, (ix, tok) :: indexed_toks))
+    |> fun (_, lst) -> lst
+    |. Belt.List.reverse (* TODO: O(n^2) reverse *)
+    |. Belt.List.map (fun (token_ix, token) ->
 
     (* Helper to look up (Nominal) subterms by token index (specialized to this
      * operator). See find_subtm. *)
@@ -208,7 +196,7 @@ and go_operator = fun
     | FoundTerm (tm_ix, subtm), NonterminalName sort_name ->
       let SortDef (_, operator_defs) = sorts
         |. Belt.Map.String.get sort_name
-        |> get_option' ("term_to_unformatted: failed to get sort" ^ sort_name)
+        |> get_option' ("term_to_tree: failed to get sort" ^ sort_name)
       in
       let new_sort = operator_defs
         |> find (fun (OperatorDef (op_name', _)) -> op_name' = op_name)
@@ -217,110 +205,307 @@ and go_operator = fun
           | None -> assert false
         )
         |. Belt.List.get tm_ix
-        |> get_option' ("term_to_unformatted: failed to get term " ^ string_of_int tm_ix)
+        |> get_option' ("term_to_tree: failed to get term " ^ string_of_int tm_ix)
         |> (function
           FixedValence (_, new_sort) | VariableValence (_, new_sort) -> new_sort
         )
       in
-      NonterminalChild (term_to_unformatted lang rules new_sort subtm)
+      term_to_tree lang rules new_sort subtm
     | FoundTerm (_tm_ix, subtm), TerminalName _name ->
-      NonterminalChild (term_to_unformatted lang rules current_sort subtm)
+      term_to_tree lang rules current_sort subtm
     (* if the current token is a terminal, and we didn't capture a binder
      * or term, we just emit the contents of the token *)
     | NotFound, TerminalName name ->
       let terminal_rule = terminal_rules
         |. Belt.Map.String.fromArray
         |. Belt.Map.String.get name
-        |> get_option' ("term_to_unformatted: failed to get terminal rule " ^ name)
+        |> get_option' ("term_to_tree: failed to get terminal rule " ^ name)
       in
       (match Regex.is_literal terminal_rule with
-      | Some re_str -> TerminalChild re_str
+      | Some re_str -> TerminalDoc (DocText re_str)
       | None -> raise (CantEmitTokenRegex (name, terminal_rule))
       )
     | FoundBinder pattern, NonterminalName name ->
-      NonterminalChild (pattern_to_tree sort_name pattern)
+      pattern_to_tree sort_name pattern
     | FoundBinder (Var var_name), TerminalName terminal_name ->
-      TerminalChild var_name
+      TerminalDoc (DocText var_name)
 
     (* TODO: we never use FoundCapture successfully! *)
     | FoundCapture, NonterminalName _sort -> raise
-      (BadRules "term_to_unformatted: found a capture matched with a nonterminal token")
+      (BadRules "term_to_tree: found a capture matched with a nonterminal token")
     | FoundCapture, TerminalName name ->
       raise (BadRules ("capture found, terminal name: " ^ name))
     | FoundBinder pattern, TerminalName name -> raise
       (BadRules
          (Printf.sprintf
-            "term_to_unformatted: binder (%s) found in match pattern %s, terminal name: %s"
+            "term_to_tree: binder (%s) found in match pattern %s, terminal name: %s"
             (Pattern.string_of_pattern pattern)
             (string_of_operator_match_pattern operator_match_pattern)
             name))
-    | _, Underscore _
+    | _, Underscore n -> TerminalDoc (DocBreak n)
     | _, OpenBox
     | _, CloseBox -> failwith
-      "invariant violation: term_to_unformatted->go_operator: underscores are filtered out in the previous `keep` stage"
+      "invariant violation: term_to_tree->go_operator: underscores are filtered out in the previous `keep` stage"
     | NotFound, NonterminalName name -> raise
       (BadRules
          (Printf.sprintf
-            "term_to_unformatted: subterm %n not found in match pattern %s, nonterminal \
+            "term_to_tree: subterm %n not found in match pattern %s, nonterminal \
              name: %s"
             token_ix
             (string_of_operator_match_pattern operator_match_pattern)
             name))
   )
-  |> failwith "TODO"
-  (* |> (fun children -> mk_tree sort_name (Operator op_name) children) *)
 ;;
 
-let rec fits : int -> (int * mode * doc) list -> bool
+let coerce_doc_child
+  : (terminal_doc, nonterminal_doc) Either.t -> nonterminal_doc_child
+  = function
+  | Left doc -> TerminalDoc doc
+  | Right doc -> NonterminalDoc doc
+
+let rec fits : int -> (int * mode * nonterminal_doc_child) list -> bool
   = fun w -> function
   | _ when w < 0 -> false
   | [] -> true
-  | (i, m, DocList children) :: z ->
-    let children' = Belt.List.map children (fun child -> (i, m, child)) in
+  | (_, _, TerminalDoc (DocText s)) :: z -> fits (w - String.length s) z
+  | (i, m, TerminalDoc (DocNest (j, x))) :: z -> fits w ((i + j, m, TerminalDoc x) :: z)
+  | (_, Flat, TerminalDoc (DocBreak size)) :: z -> fits (w - size) z
+  | (_, Break, TerminalDoc (DocBreak _)) :: _ -> true (* impossible *)
+  | (i, m, NonterminalDoc (children, _, _)) :: z ->
+    let children' = Belt.List.map children (fun child -> i, m, child) in
     fits w (children' @ z)
-  | (i, m, DocNest (j, x)) :: z -> fits w ((i + j, m, x) :: z)
-  | (_, _, TerminalChild s) :: z -> fits (w - String.length s) z
-  | (_, Flat, DocBreak size) :: z -> fits (w - size) z
-  | (_, Break, DocBreak _) :: _ -> true (* impossible *)
-  | (i, _, DocGroup x) :: z -> fits w ((i, Flat, x) :: z)
+  | (i, _, DocGroup children) :: z ->
+    let children' = children
+      |. Belt.List.map coerce_doc_child
+      |. Belt.List.map (fun doc -> i, Flat, doc)
+    in
+    fits w (children' @ z)
 
-(*
-let rec format w k : (int * mode * doc) list -> sdoc
+let rec format w k : (int * mode * nonterminal_doc_child) list -> sdoc
   = function
   | [] -> SNil
-  | (_, _, DocNil) :: z -> format w k z
-  | (i, m, DocCons (x, y)) :: z -> format w k ((i, m, x) :: (i, m, y) :: z)
-  | (i, m, DocNest (j, x)) :: z -> format w k ((i + j, m, x) :: z)
-  | (_, _, DocText s) :: z -> SText (s, format w (k + String.length s) z)
-  | (_, Flat, DocBreak s) :: z -> SText (s, format w (k + String.length s) z)
-  | (i, Break, DocBreak _) :: z -> SLine (i, format w i z)
-  | (i, _, DocGroup x) :: z -> if fits (w - k) ((i, Flat, x) :: z)
-    then format w k ((i, Flat, x) :: z)
-    else format w k ((i, Break, x) :: z)
-*)
+  | (_, _, TerminalDoc (DocText s)) :: z -> SText (s, format w (k + String.length s) z)
+  | (i, m, TerminalDoc (DocNest (j, x))) :: z -> format w k ((i + j, m, TerminalDoc x) :: z)
+  | (_, Flat, TerminalDoc (DocBreak len)) :: z -> SText (String.make len ' ', format w (k + len) z)
+  | (i, Break, TerminalDoc (DocBreak _)) :: z -> SLine (i, format w i z)
+  | (i, m, NonterminalDoc (docs, _, _)) :: z -> docs (* XXX z *)
+    |. Belt.List.map (fun doc -> i, m, doc)
+    |> format w k
+  | (i, _, DocGroup group) :: z ->
+    let flat_group = group
+      |. Belt.List.map coerce_doc_child
+      |. Belt.List.map (fun doc -> i, Flat, doc)
+    in
+    if fits (w - k) (flat_group @ z)
+    then format w k (flat_group @ z)
+    else
+      let break_group = group
+        |. Belt.List.map coerce_doc_child
+        |. Belt.List.map (fun doc -> i, Break, doc)
+      in
+      format w k (break_group @ z)
 
-let rec format'' w k : (int * mode * doc) list -> formatted_capture list
+let rec sdoc_to_string : sdoc -> string
   = function
-    | [] -> []
-    (* | (_, _, TerminalChild str) :: z -> TerminalCapture *)
-    | NonterminalChild tree :: z -> format'' w k
-    | (i, m, DocList docs) :: z ->
-      let docs' = Belt.List.map docs (fun doc -> (i, m, doc))
-      in format'' w k (docs' @ z)
-    | (i, m, DocNest (j, x)) :: z -> format'' w k ((i + j, m, x) :: z)
-    | (i, _, DocGroup x) :: z -> if fits (w - k) ((i, Flat, x) :: z)
-      then format'' w k ((i, Flat, x) :: z)
-      else format'' w k ((i, Break, x) :: z)
-    (* | (_, Flat, DocBreak s) :: z -> SText (s, format w (k + String.length s) z) *)
-    (* | (i, Break, DocBreak _) :: z -> SLine (i, format w i z) *)
+    | SNil -> ""
+    | SText (s, d) -> s ^ sdoc_to_string d
+    | SLine (i, d) -> let prefix = String.make i ' ' in "\n" ^ prefix ^ sdoc_to_string d
 
-let format' : int -> int -> mode -> doc -> formatted_capture array
-  = fun w k mode doc -> Belt.List.toArray @@ format'' w k [0, mode, doc]
+type fit_info = Fits of int | DoesntFit
 
-let format : int -> int -> mode -> unformatted_tree -> formatted_tree
-  = fun w k mode { sort_name; node_type; doc } ->
-    let children = format' w k mode doc in
-    { sort_name; node_type; children }
+let rec tree_fits : int -> int -> mode -> nonterminal_doc_child -> fit_info
+  = fun max_width start_col mode -> function
+    | _ when start_col >= max_width -> DoesntFit
+    | TerminalDoc (DocText str) ->
+      let len = String.length str in
+      if start_col + len < max_width then Fits (start_col + len) else DoesntFit
+    | TerminalDoc (DocNest (n, doc)) -> tree_fits max_width n mode (TerminalDoc doc)
+    | TerminalDoc (DocBreak size) when mode = Flat
+    -> if size < max_width then Fits size else DoesntFit
+    | TerminalDoc (DocBreak _)
+    -> failwith "impossible"
+    | NonterminalDoc (children, _, _)
+    -> group_fits max_width start_col mode children
+    | DocGroup group -> group
+      |. Belt.List.map coerce_doc_child
+      |> group_fits max_width start_col Flat
+
+and group_fits max_width start_col mode children = Util.fold_right
+  (fun (child, rest_fits) -> match rest_fits with
+    | DoesntFit -> DoesntFit
+    | Fits col -> tree_fits max_width col mode child
+  )
+  children
+  (Fits start_col)
+
+type indentation = int
+
+type space =
+  | SSpace of int
+  | SLine of int
+
+type pre_formatted_nonterminal =
+  { children : pre_formatted array
+  ; sort_name : sort_name
+  ; node_type : node_type
+  }
+
+and pre_formatted =
+  | Terminal of string
+  | Nonterminal of pre_formatted_nonterminal
+  | Space of space
+  | Group of pre_formatted array
+
+let rec tree_format
+  (* takes the starting column, returns the ending column *)
+  : int -> indentation -> mode -> nonterminal_doc_child -> indentation * pre_formatted
+  = fun max_width indentation mode -> function
+  | TerminalDoc (DocText str)
+  -> indentation + String.length str, Terminal str
+  | TerminalDoc (DocNest (len, doc))
+  -> tree_format max_width (indentation + len) mode (TerminalDoc doc)
+  | TerminalDoc (DocBreak len) when mode = Flat
+  -> indentation + len, Space (SSpace len)
+  | TerminalDoc (DocBreak _) (* when mode = Break *)
+  -> indentation, Space (SLine indentation)
+  | NonterminalDoc (children, sort_name, node_type) ->
+    let indentation', children' =
+      format_group max_width indentation mode children
+    in
+    indentation', Nonterminal { children = children'; sort_name; node_type }
+  | DocGroup group as doc ->
+    let mode' = match tree_fits max_width indentation Flat doc with
+      | DoesntFit -> Break
+      | Fits _ -> Flat
+    in
+    let indentation', group' = group
+      |. Belt.List.map (function
+        | Left t_doc -> TerminalDoc t_doc
+        | Right nt_doc -> NonterminalDoc nt_doc
+      )
+      |> format_group max_width indentation mode'
+    in
+    indentation', Group group'
+
+and format_group max_width indentation mode children =
+  let children' = [||] in
+  let indentation' = Util.fold_left
+    (fun indentation' child ->
+      let indentation'', child' =
+        tree_format max_width indentation' mode child
+      in
+      Js.Array2.push children' child';
+      indentation''
+    )
+    indentation
+    children
+  in
+  indentation', children'
+
+(* Accumulate all leading trivia for each terminal. So, all whitespace leading
+ * back to and including the first newline. *)
+let rec walk_forwards : pre_formatted_nonterminal -> string array
+  = fun tree ->
+
+    let accum = ref "" in
+    let accumulating = ref false in
+    let result = [||] in
+
+    let rec go_nt = fun { children } -> Belt.Array.forEach children go_pft
+
+    and go_pft = (function
+      (* Stop accumulating when we hit a token, clear accumulator *)
+      | Terminal _ ->
+        let _ = Js.Array2.push result !accum in
+        accumulating := false;
+        accum := ""
+      | Space (SSpace n)
+      -> if !accumulating then accum := !accum ^ String.make n ' '
+      (* Start accumulating when we hit a newline.
+       * Invariant relied upon: accum = "" if not accumulating
+       *)
+      | Space (SLine n) ->
+        accumulating := true;
+        accum := !accum ^ "\n" ^ String.make n ' '
+      | Group children' -> Belt.Array.forEach children' go_pft
+      | Nonterminal nt -> go_nt nt
+    )
+    in
+
+    go_nt tree;
+    result
+
+(* Accumulate all trailing trivia up to, but not including the next newline.
+ *)
+let rec walk_reverse : pre_formatted_nonterminal -> string array
+  = fun tree ->
+
+    let accum = ref "" in
+    let result = [||] in
+
+    (* Traverse all children in reverse *)
+    let rec go_nt = fun { children } -> children
+      |. Belt.Array.reverse
+      |. Belt.Array.forEach go_pft
+
+    and go_pft = (function
+      | Terminal _ ->
+        let _ = Js.Array2.push result !accum in
+        accum := ""
+      | Space (SSpace n) -> accum := !accum ^ String.make n ' '
+      (* Every time we hit a newline, clear the accumulator. *)
+      | Space (SLine n) -> accum := ""
+      | Group children' -> children'
+        |. Belt.Array.reverse
+        |. Belt.Array.forEach go_pft
+      | Nonterminal nt -> go_nt nt
+    )
+    in
+
+    go_nt tree;
+
+    result
+
+(* Traverse the pre-formatted tree, normalizing spacing.
+ *)
+let rec normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
+  = fun tree ->
+
+    let forward_trivia = tree |. walk_forwards in
+    let reverse_trivia = tree |. walk_reverse |. Belt.Array.reverse in
+    let overall_ix = ref 0 in
+
+    let rec go_nt = fun { children; sort_name; node_type } ->
+
+      let children' = [||] in
+
+      Belt.Array.forEach children (function
+        | Terminal content ->
+          let leading_trivia = forward_trivia.(!overall_ix) in
+          let trailing_trivia = reverse_trivia.(!overall_ix) in
+          overall_ix := !overall_ix + 1;
+          let _ = Js.Array2.push children'
+            (TerminalCapture { content; leading_trivia; trailing_trivia })
+          in ()
+        | Space _ -> ()
+        | Nonterminal pfnt ->
+          let _ = Js.Array2.push children' (NonterminalCapture (go_nt pfnt))
+          in ()
+      );
+
+      { sort_name; node_type; children = children' }
+
+    in go_nt tree
+
+let string_of_ast
+   : Types.language
+  -> ConcreteSyntaxDescription.t
+  -> Types.sort
+  -> int
+  -> Binding.Nominal.term
+  -> string
+  = fun lang desc sort width tm ->
+  sdoc_to_string @@ format width 0 [0, Flat, term_to_tree lang desc sort tm]
 
 let of_ast
    : Types.language
@@ -330,4 +515,9 @@ let of_ast
   -> Binding.Nominal.term
   -> formatted_tree
   = fun lang desc sort width tm ->
-  format width 0 Flat (term_to_unformatted lang desc sort tm )
+    let doc = term_to_tree lang desc sort tm in
+    let _, pre_formatted = tree_format width 0 Flat doc in
+    match pre_formatted with
+      | Nonterminal pre_formatted_tree
+      -> normalize_nonterminal pre_formatted_tree
+      | _ -> failwith "invariant violation"

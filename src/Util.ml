@@ -126,6 +126,14 @@ let set_unions sets = fold_right
   sets
   Belt.Set.String.empty
 
+let rec fold_left
+  : ('b -> 'a -> 'b) -> 'b -> 'a list -> 'b
+  = fun f b lst ->
+  match lst with
+  | [] -> b
+  | a :: as_ -> fold_left f (f b a) as_
+;;
+
 let map_error (result : ('a, 'b) Result.t) (f : 'b -> 'c) : ('a, 'c) Result.t =
   Result.(
     match result with
