@@ -43,7 +43,7 @@ and read_string buf = parse (* use buf to build up result *)
   | '\\' '"'  { B.add_char buf '"'
               ; read_string buf lexbuf
               }
-  | '\\'      { B.add_char buf '\\'
+  | '\\' '\\' { B.add_char buf '\\'
               ; read_string buf lexbuf
               }
   | '"'       { STRING (B.contents buf) } (* return *)
