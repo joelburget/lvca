@@ -263,54 +263,6 @@ let coerce_doc_child
   | Left doc -> TerminalDoc doc
   | Right doc -> NonterminalDoc doc
 
-let rec fits : int -> (int * mode * nonterminal_doc_child) list -> bool
-  = fun w -> function
-  | _ when w < 0 -> false
-  | [] -> true
-  | (_, _, TerminalDoc (DocText s)) :: z -> fits (w - String.length s) z
-  | (i, m, TerminalDoc (DocNest (j, x))) :: z -> fits w ((i + j, m, TerminalDoc x) :: z)
-  | (_, Flat, TerminalDoc (DocBreak size)) :: z -> fits (w - size) z
-  | (_, Break, TerminalDoc (DocBreak _)) :: _ -> true (* impossible *)
-  | (i, m, NonterminalDoc (children, _, _)) :: z ->
-    let children' = Belt.List.map children (fun child -> i, m, child) in
-    fits w (children' @ z)
-  | (i, _, DocGroup children) :: z ->
-    let children' = children
-      |. Belt.List.map coerce_doc_child
-      |. Belt.List.map (fun doc -> i, Flat, doc)
-    in
-    fits w (children' @ z)
-
-let rec format w k : (int * mode * nonterminal_doc_child) list -> sdoc
-  = function
-  | [] -> SNil
-  | (_, _, TerminalDoc (DocText s)) :: z -> SText (s, format w (k + String.length s) z)
-  | (i, m, TerminalDoc (DocNest (j, x))) :: z -> format w k ((i + j, m, TerminalDoc x) :: z)
-  | (_, Flat, TerminalDoc (DocBreak len)) :: z -> SText (String.make len ' ', format w (k + len) z)
-  | (i, Break, TerminalDoc (DocBreak _)) :: z -> SLine (i, format w i z)
-  | (i, m, NonterminalDoc (docs, _, _)) :: z -> docs (* XXX z *)
-    |. Belt.List.map (fun doc -> i, m, doc)
-    |> format w k
-  | (i, _, DocGroup group) :: z ->
-    let flat_group = group
-      |. Belt.List.map coerce_doc_child
-      |. Belt.List.map (fun doc -> i, Flat, doc)
-    in
-    if fits (w - k) (flat_group @ z)
-    then format w k (flat_group @ z)
-    else
-      let break_group = group
-        |. Belt.List.map coerce_doc_child
-        |. Belt.List.map (fun doc -> i, Break, doc)
-      in
-      format w k (break_group @ z)
-
-let rec sdoc_to_string : sdoc -> string
-  = function
-    | SNil -> ""
-    | SText (s, d) -> s ^ sdoc_to_string d
-    | SLine (i, d) -> let prefix = String.make i ' ' in "\n" ^ prefix ^ sdoc_to_string d
-
 type fit_info = Fits of int | DoesntFit
 
 let rec tree_fits : int -> int -> mode -> nonterminal_doc_child -> fit_info
@@ -394,7 +346,7 @@ and format_group max_width indentation mode children =
       let indentation'', child' =
         tree_format max_width indentation' mode child
       in
-      Js.Array2.push children' child';
+      let _ = Js.Array2.push children' child' in
       indentation''
     )
     indentation
@@ -404,7 +356,7 @@ and format_group max_width indentation mode children =
 
 (* Accumulate all leading trivia for each terminal. So, all whitespace leading
  * back to and including the first newline. *)
-let rec walk_forwards : pre_formatted_nonterminal -> string array
+let walk_forwards : pre_formatted_nonterminal -> string array
   = fun tree ->
 
     let accum = ref "" in
@@ -437,7 +389,7 @@ let rec walk_forwards : pre_formatted_nonterminal -> string array
 
 (* Accumulate all trailing trivia up to, but not including the next newline.
  *)
-let rec walk_reverse : pre_formatted_nonterminal -> string array
+let walk_reverse : pre_formatted_nonterminal -> string array
   = fun tree ->
 
     let accum = ref "" in
@@ -454,7 +406,7 @@ let rec walk_reverse : pre_formatted_nonterminal -> string array
         accum := ""
       | Space (SSpace n) -> accum := !accum ^ String.make n ' '
       (* Every time we hit a newline, clear the accumulator. *)
-      | Space (SLine n) -> accum := ""
+      | Space (SLine _) -> accum := ""
       | Group children' -> children'
         |. Belt.Array.reverse
         |. Belt.Array.forEach go_pft
@@ -468,7 +420,7 @@ let rec walk_reverse : pre_formatted_nonterminal -> string array
 
 (* Traverse the pre-formatted tree, normalizing spacing.
  *)
-let rec normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
+let normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
   = fun tree ->
 
     let forward_trivia = tree |. walk_forwards in
@@ -491,21 +443,12 @@ let rec normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
         | Nonterminal pfnt ->
           let _ = Js.Array2.push children' (NonterminalCapture (go_nt pfnt))
           in ()
+        | Group _ -> failwith "TODO"
       );
 
       { sort_name; node_type; children = children' }
 
     in go_nt tree
-
-let string_of_ast
-   : Types.language
-  -> ConcreteSyntaxDescription.t
-  -> Types.sort
-  -> int
-  -> Binding.Nominal.term
-  -> string
-  = fun lang desc sort width tm ->
-  sdoc_to_string @@ format width 0 [0, Flat, term_to_tree lang desc sort tm]
 
 let of_ast
    : Types.language

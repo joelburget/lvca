@@ -303,22 +303,6 @@ and capture_to_pat : formatted_capture -> Pattern.t = function
        (match children with
         | [| TerminalCapture { content } |] -> Primitive (prim_to_ast prim_ty content)
         | _ -> raise @@ ToAstError "Unexpected primitive capture in capture_to_pat"))
-
-    (*
-and scope_to_ast
-  :  language
-  -> ConcreteSyntaxDescription.t
-  -> string
-  (* ... *)
-  -> Nominal.scope
-  = fun lang rules sort valences ({ children } as tree) ->
-  match children |. BA.reverse |. Belt.List.fromArray with
-  | body :: binders ->
-    let body' = tree_to_ast lang rules sort { tree with children = [| body |] } in
-    let binders' = binders |. Belt.List.map capture_to_pat |. Belt.List.reverse in
-    Scope (binders', body')
-  | [] -> raise (ToAstError "scope_to_ast called on no children")
-*)
 ;;
 
 let to_ast

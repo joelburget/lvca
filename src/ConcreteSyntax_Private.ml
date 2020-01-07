@@ -47,11 +47,6 @@ and formatted_tree =
   ; children : formatted_capture array
   }
 
-type sdoc =
-  | SNil
-  | SText of string * sdoc
-  | SLine of int * sdoc
-
 type terminal_doc =
   | DocText of string
   | DocNest of int * terminal_doc
