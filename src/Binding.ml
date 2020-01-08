@@ -1,3 +1,4 @@
+open External (* modules BitArray, Cbor, Sha256, Uint8Array *)
 open Types
 module Result = Belt.Result
 module Option = Belt.Option

@@ -1,5 +1,6 @@
 open Jest
 open Expect
+open External (* modules BitArray, Cbor, Sha256, Uint8Array *)
 open Types
 open Binding
 
