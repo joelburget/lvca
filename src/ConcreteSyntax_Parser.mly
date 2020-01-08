@@ -81,10 +81,9 @@ fixity:
 operator_match:
   | nonempty_list(nonterminal_token)
     LEFT_BRACE operator_match_pattern RIGHT_BRACE option(fixity)
-  { let fixity = (match $5 with
+  { let fixity = match $5 with
     | None   -> Nofix
     | Some f -> f
-    )
     in OperatorMatch { tokens = $1; operator_match_pattern = $3; fixity } }
 
 (* TODO: should this id allow uppercase? *)
@@ -97,7 +96,7 @@ operator_match_pattern:
 
 term_scope_pattern:
   | separated_nonempty_list(DOT, capture_number)
-  { let (binds, body) = Util.unsnoc $1 in NumberedScopePattern (binds, body) }
+  { let binds, body = Util.unsnoc $1 in NumberedScopePattern (binds, body) }
 
 operator_match__test: operator_match EOF { $1 }
 

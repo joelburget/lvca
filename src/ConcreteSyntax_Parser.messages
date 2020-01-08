@@ -8,7 +8,7 @@ terminal_rule__test: TERMINAL_ID ASSIGN REGEX UNDERSCORE
 ## terminal_rule
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 1
+Expected EOF after terminal rule.
 
 terminal_rule__test: UNDERSCORE
 ##
@@ -20,7 +20,7 @@ terminal_rule__test: UNDERSCORE
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 2
+Expected terminal rule.
 
 sort_rule__test: NONTERMINAL_ID ASSIGN BAR STRING
 ##
@@ -32,7 +32,7 @@ sort_rule__test: NONTERMINAL_ID ASSIGN BAR STRING
 ## NONTERMINAL_ID ASSIGN option(BAR)
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 3
+Expected a set of operator matches.
 
 sort_rule__test: NONTERMINAL_ID ASSIGN STRING
 ##
@@ -44,7 +44,7 @@ sort_rule__test: NONTERMINAL_ID ASSIGN STRING
 ## NONTERMINAL_ID ASSIGN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 4
+Expected a set of operator matches.
 
 sort_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE BAR STRING
 ##
@@ -56,7 +56,7 @@ sort_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BR
 ## operator_match BAR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 5
+Expected a set of operator matches.
 
 sort_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE GREATER STRING
 ##
@@ -68,7 +68,7 @@ sort_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BR
 ## operator_match GREATER
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 6
+Expected a set of operator matches.
 
 sort_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE LEFT_FIXITY UNDERSCORE
 ##
@@ -82,7 +82,7 @@ sort_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BR
 ## operator_match
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 7
+Expected EOF or ('|' or '>'), then more operator matches.
 
 sort_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE NONTERMINAL_ID
 ##
@@ -103,7 +103,7 @@ sort_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BR
 ## In state 21, spurious reduction of production sort_rule -> NONTERMINAL_ID ASSIGN option(BAR) operator_match_list
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 8
+Expected EOF after sort rule.
 
 sort_rule__test: NONTERMINAL_ID UNDERSCORE
 ##
@@ -115,7 +115,7 @@ sort_rule__test: NONTERMINAL_ID UNDERSCORE
 ## NONTERMINAL_ID
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 9
+Expected ":=" after identifier in sort rule.
 
 sort_rule__test: UNDERSCORE
 ##
@@ -127,7 +127,7 @@ sort_rule__test: UNDERSCORE
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 10
+Expected sort rule.
 
 operator_match__test: STRING
 ##
@@ -139,7 +139,7 @@ operator_match__test: STRING
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 11
+Expected operator match.
 
 operator_match__test: UNDERSCORE EOF
 ##
@@ -159,7 +159,7 @@ operator_match__test: UNDERSCORE EOF
 ## In state 18, spurious reduction of production nonterminal_token -> UNDERSCORE option(NAT)
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 12
+Expected more nonterminal tokens or '{'.
 
 operator_match__test: UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE NONTERMINAL_ID
 ##
@@ -178,7 +178,7 @@ operator_match__test: UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE NONTERMINAL_I
 ## In state 47, spurious reduction of production operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE option(fixity)
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 13
+Expected EOF after operator match.
 
 operator_match__test: UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE UNDERSCORE
 ##
@@ -190,7 +190,7 @@ operator_match__test: UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE UNDERSCORE
 ## nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 14
+Expected optional fixity then EOF after operator match.
 
 operator_match__test: UNDERSCORE LEFT_BRACE DOLLAR NAT UNDERSCORE
 ##
@@ -202,7 +202,7 @@ operator_match__test: UNDERSCORE LEFT_BRACE DOLLAR NAT UNDERSCORE
 ## nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 15
+Expected '}' after operator match pattern.
 
 operator_match__test: UNDERSCORE LEFT_BRACE DOLLAR UNDERSCORE
 ##
@@ -214,7 +214,7 @@ operator_match__test: UNDERSCORE LEFT_BRACE DOLLAR UNDERSCORE
 ## DOLLAR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 16
+Expected token number, eg $1.
 
 operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN DOLLAR NAT DOT UNDERSCORE
 ##
@@ -226,7 +226,7 @@ operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN DOLLAR NAT
 ## capture_number DOT
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 17
+Expected capture number.
 
 operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN DOLLAR NAT SEMICOLON UNDERSCORE
 ##
@@ -238,7 +238,7 @@ operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN DOLLAR NAT
 ## term_scope_pattern SEMICOLON
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 18
+Expected a term scope pattern.
 
 operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN DOLLAR NAT UNDERSCORE
 ##
@@ -251,7 +251,7 @@ operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN DOLLAR NAT
 ## capture_number
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 19
+Expected a ';', ')', or '.' after a capture number.
 
 operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN UNDERSCORE
 ##
@@ -263,7 +263,7 @@ operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN UNDERSCORE
 ## NONTERMINAL_ID LEFT_PAREN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 20
+Expected a term scope pattern or ')' after '('.
 
 operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID UNDERSCORE
 ##
@@ -275,7 +275,7 @@ operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID UNDERSCORE
 ## NONTERMINAL_ID
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 21
+Expected '(' after operator name.
 
 operator_match__test: UNDERSCORE LEFT_BRACE UNDERSCORE
 ##
@@ -287,7 +287,7 @@ operator_match__test: UNDERSCORE LEFT_BRACE UNDERSCORE
 ## nonempty_list(nonterminal_token) LEFT_BRACE
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 22
+Expected operator match pattern after '{'.
 
 nonterminal_token__test: STRING
 ##
@@ -299,7 +299,7 @@ nonterminal_token__test: STRING
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 23
+Expected nonterminal token.
 
 nonterminal_token__test: UNDERSCORE STRING
 ##
@@ -311,7 +311,7 @@ nonterminal_token__test: UNDERSCORE STRING
 ## UNDERSCORE
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 24
+Expected nonterminal token.
 
 nonterminal_token__test: UNDERSCORE UNDERSCORE
 ##
@@ -330,7 +330,7 @@ nonterminal_token__test: UNDERSCORE UNDERSCORE
 ## In state 18, spurious reduction of production nonterminal_token -> UNDERSCORE option(NAT)
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 25
+Expected EOF after nonterminal token.
 
 language: TERMINAL_ID ASSIGN REGEX UNDERSCORE
 ##
@@ -343,7 +343,7 @@ language: TERMINAL_ID ASSIGN REGEX UNDERSCORE
 ## terminal_rule
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 26
+Expected more terminal rules or a nonterminal rule.
 
 language: TERMINAL_ID ASSIGN UNDERSCORE
 ##
@@ -356,7 +356,7 @@ language: TERMINAL_ID ASSIGN UNDERSCORE
 ## TERMINAL_ID ASSIGN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 27
+Expected a regex or string.
 
 language: TERMINAL_ID UNDERSCORE
 ##
@@ -369,7 +369,7 @@ language: TERMINAL_ID UNDERSCORE
 ## TERMINAL_ID
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 28
+Expected ":=" after terminal id.
 
 language: UNDERSCORE
 ##
@@ -381,7 +381,7 @@ language: UNDERSCORE
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 29
+Expected a language (starting with terminals).
 
 capture_number: DOLLAR UNDERSCORE
 ##
@@ -393,7 +393,7 @@ capture_number: DOLLAR UNDERSCORE
 ## DOLLAR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 30
+Expected a capture number, eg $1.
 
 capture_number: UNDERSCORE
 ##
@@ -405,5 +405,5 @@ capture_number: UNDERSCORE
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 31
+Expected a capture number, eg $1.
 
