@@ -203,7 +203,7 @@ module Tables = struct
 # 204 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         
-# 53 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
+# 54 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
   ( Arity (_2, _5) )
 # 209 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
@@ -246,7 +246,7 @@ module Tables = struct
       (Types.arity)
 # 248 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
-# 55 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
+# 56 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
   ( Arity ([], _2) )
 # 252 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
@@ -382,7 +382,7 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__6_ in
         let _v : 'tv_import = 
-# 70 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
+# 71 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
   ( { Types.imported_symbols = _3; location = _6 } )
 # 388 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
@@ -415,7 +415,7 @@ module Tables = struct
       (string * string)
 # 417 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
-# 64 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
+# 65 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
              ( (_1, _1) )
 # 421 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
@@ -466,7 +466,7 @@ module Tables = struct
       (string * string)
 # 468 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
-# 65 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
+# 66 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
              ( (_1, _3) )
 # 472 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
@@ -509,7 +509,7 @@ module Tables = struct
       (Types.abstract_syntax)
 # 511 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
-# 74 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
+# 75 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
   ( let language =
       Types.Language (Belt.Map.String.fromArray (Belt.List.toArray _2))
     in
@@ -869,7 +869,7 @@ module Tables = struct
       (Types.operatorDef)
 # 871 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
-# 57 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
+# 58 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
                        ( OperatorDef(_1, _2) )
 # 875 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
@@ -1402,7 +1402,7 @@ module Tables = struct
       (string * Types.sortDef)
 # 1404 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
-# 61 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
+# 62 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
   ( (_1, SortDef (_2, _5)) )
 # 1408 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
@@ -1519,7 +1519,7 @@ module Tables = struct
 # 1520 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in
         
-# 48 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
+# 49 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
                                                  ( _1 )
 # 1525 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in

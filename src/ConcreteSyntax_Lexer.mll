@@ -56,23 +56,25 @@ and read_string buf = parse (* use buf to build up result *)
   | '"'       { STRING (B.contents buf) } (* return *)
   | eof       { error lexbuf "end of input inside of a string" }
   | _         { error lexbuf
-                  "found '%s' - don't know how to handle" @@ L.lexeme lexbuf }
+                  "found '%s' in a string" @@ L.lexeme lexbuf }
 
 and read_regex buf = parse
   | [^ '/' '\n' '\\'] +
     { B.add_string buf @@ L.lexeme lexbuf
     ; read_regex buf lexbuf
     }
-  | '\\' '/'
-    { B.add_char buf '/'
+  | '\\' '\\'
+    { B.add_char buf '\\'
     ; read_regex buf lexbuf
     }
-  | '/'  { REGEX (B.contents buf) }
-  | '\\' { B.add_char buf '\\'
-         ; read_string buf lexbuf
-         }
+  | '\\' (_ as c)
+    { B.add_char buf '\\'
+    ; B.add_char buf c
+    ; read_regex buf lexbuf
+    }
+  | '/' { REGEX (B.contents buf) }
   | eof { error lexbuf "end of input inside of a regex" }
   | _   { error lexbuf
-          (Printf.sprintf "found '%s' - don't know how to handle"
+          (Printf.sprintf "found '%s' in a regex"
             (L.lexeme lexbuf))
         }

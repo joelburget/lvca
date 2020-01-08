@@ -1,5 +1,5 @@
 let abstractSyntax = {|
-import {integer, list, maybe, string} from "builtin"
+import {integer, list, maybe, string} from "builtins"
 
 json :=
   | null()
@@ -12,7 +12,7 @@ json :=
 number := number(
   integer;      // integer before the decimal point
   maybe string; // digits after decimal point
-  maybe string; // exponent
+  maybe string  // exponent
   )
 
 kv_pair := kv(string; json)
@@ -25,13 +25,13 @@ let concreteSyntax = {|
 TRUE     := "true"
 FALSE    := "false"
 NULL     := "null"
-STRING   := /"(\\"|[^\"])*"/
 LBRACE   := "{"
 RBRACE   := "}"
 LBRACKET := "["
 RBRACKET := "]"
 COLON    := ":"
 COMMA    := ","
+STRING   := /"([^"]+|\\")*"/
 NUMBER   := /-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/
 
 json :=
@@ -39,18 +39,18 @@ json :=
   | bool { bool($1) }
   | STRING { string($1) }
   | NUMBER { number($1) }
-  | LBRACE _0 kv_pairs _0 RBRACE { object($2) }
-  | LBRACKET _0 list _0 RBRACKET { list($2) }
+  | LBRACE _0 kv_pairs _0 RBRACE { object($3) }
+  | LBRACKET _0 list _0 RBRACKET { list($3) }
 
 kv := STRING _0 COLON _ json { kv($1; $3) }
 
-kv_pairs :=
-  | kv _0 COMMA _ kv_pairs { cons($1; $3)           }
-  | kv                    { cons($1; empty_list()) }
-
-list :=
-  | json _0 COMMA _ list { cons($1; $3)           }
-  | json                { cons($1; empty_list()) }
+// kv_pairs :=
+//   | kv _0 COMMA _ kv_pairs { cons($1; $3)           }
+//   | kv                     { cons($1; empty_list()) }
+//
+// list :=
+//   | json _0 COMMA _ list { cons($1; $3)           }
+//   | json                 { cons($1; empty_list()) }
 
 bool :=
   | TRUE  { true() }

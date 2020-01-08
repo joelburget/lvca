@@ -7,8 +7,8 @@ module B = Buffer
 }
 
 let chars = [^ '(' ')' '[' '|' '*' '+' '?' '.' '\\']+
-let char_class = '\\' ['w' 's' 'd' 'b']
-let escaped = '\\' [^ 'w' 's' 'd' 'b']
+let char_class = '\\' ['w' 's' 'd' 'b' 'W' 'S' 'D' 'B']
+let escaped = '\\' [^ 'w' 's' 'd' 'b' 'W' 'S' 'D' 'B']
 
 rule read = parse
   | chars { CHARS (L.lexeme lexbuf) }
