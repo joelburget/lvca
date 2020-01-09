@@ -2,7 +2,7 @@
 module Nominal = Binding.Nominal
 open Types
 open ConcreteSyntaxDescription
-open ConcreteSyntax_Private
+open! ConcreteSyntax_Private
 let find, get_option' = Util.(find, get_option')
 
 (** The current term and sort don't match *)
@@ -44,14 +44,14 @@ let rec pattern_to_tree : sort_name -> Pattern.t -> nonterminal_doc_child =
   -> NonterminalDoc ([TerminalDoc (DocText name)], sort_name, SingleCapture)
   | Operator (name, pats) -> NonterminalDoc
     ( Belt.List.map pats
-        (pattern_to_tree (failwith "TODO: pattern_to_tree error 1"))
+      (pattern_to_tree (failwith "TODO: pattern_to_tree error 1"))
     , sort_name
     , Operator name
     )
 
   | Sequence pats -> NonterminalDoc
     ( Belt.List.map pats
-        (pattern_to_tree (failwith "TODO: pattern_to_tree error 2"))
+      (pattern_to_tree (failwith "TODO: pattern_to_tree error 2"))
     , sort_name
     , Sequence
     )

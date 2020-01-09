@@ -57,3 +57,8 @@ type abstract_syntax =
   { imports: import list;
     language: language;
   }
+
+let sort_names : abstract_syntax -> Belt.Set.String.t
+  = fun { language = Language sorts } -> sorts
+  |. Belt.Map.String.keysToArray
+  |. Belt.Set.String.fromArray

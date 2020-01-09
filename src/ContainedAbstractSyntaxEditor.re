@@ -1,7 +1,7 @@
 [@react.component]
 let make = (~onContinue : Types.abstract_syntax => unit) => {
   let (asInput, setAsInput) =
-    React.useState(() => LanguageSimple.abstractSyntax);
+    React.useState(() => LanguageJson.abstractSyntax);
 
   module Parseable_abstract_syntax' =
     ParseStatus.Make(Parsing.Parseable_abstract_syntax);

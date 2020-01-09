@@ -153,13 +153,24 @@ let check_description_validity { terminal_rules; sort_rules } =
 ;;
 
 let rec to_string : formatted_tree -> string
-  = fun { children; node_type } -> children
+  = fun { children } -> children
   |> Array.map (function
     | TerminalCapture { leading_trivia; content; trailing_trivia } ->
       leading_trivia ^ content ^ trailing_trivia
     | NonterminalCapture nonterminal_capture -> to_string nonterminal_capture)
   |> Belt.List.fromArray
   |> String.concat ""
+;;
+
+let rec to_debug_string : formatted_tree -> string
+  = fun { children; sort_name } -> children
+  |> Array.map (function
+    | TerminalCapture { leading_trivia; content; trailing_trivia } ->
+      "t:" ^ leading_trivia ^ content ^ trailing_trivia
+    | NonterminalCapture nonterminal_capture -> "nt:" ^ to_debug_string nonterminal_capture)
+  |> Belt.List.fromArray
+  |> String.concat ""
+  |> Printf.sprintf "%s(%s)" sort_name
 ;;
 
 let rec remove_spaces : formatted_tree -> formatted_tree =
@@ -191,6 +202,7 @@ let rec tree_to_ast
   -> formatted_tree
   -> Nominal.term
   = fun (Language sorts as lang) ({ sort_rules } as rules) sort_name tree ->
+  Js.log2 "tree_to_ast" (to_debug_string tree);
   match tree.node_type, tree.children with
   | SingleCapture, [| TerminalCapture { content = name } |] -> Var name
   | Sequence, children ->
@@ -207,11 +219,11 @@ let rec tree_to_ast
     Primitive (prim_to_ast prim_ty content)
   (* TODO: check validity *)
   | Operator op_name, tree_children ->
-    let (SortRule { operator_rules }) = sort_rules
+    let SortRule { operator_rules } = sort_rules
       |. MS.get sort_name
       |> get_option' ("tree_to_ast: failed to get sort " ^ sort_name)
     in
-    let (OperatorMatch { operator_match_pattern }) =
+    let OperatorMatch { operator_match_pattern } =
       find_operator_match operator_rules op_name
     in
     let scope_patterns =
@@ -322,10 +334,11 @@ exception MixedFixities of bool * int
 (* Produce an augmented grammar *)
 let to_grammar
   :  ConcreteSyntaxDescription.t
+    -> string
     -> LrParsing.grammar
        * (nonterminal_token list * operator_match_pattern option) Belt.MutableMap.Int.t
   =
-  fun { terminal_rules; sort_rules } ->
+  fun { terminal_rules; sort_rules } start_nonterminal ->
   let terminal_key_arr = Belt.Array.map terminal_rules (fun (k, _) -> k) in
   let terminal_nums =
     Belt.Array.(
@@ -363,11 +376,12 @@ let to_grammar
   (* We're dealing with a non-augmented grammar here. Start counting from 0.
   *)
   let prod_num = ref 1 in
+  let start_nonterminal_num = ref 0 in
   let production_rule_map = Belt.MutableMap.Int.make () in
   let nonterminals =
     sort_rules
-    |. MS.valuesToArray
-    |. BA.mapWithIndex (fun i (SortRule { operator_rules }) ->
+    |. MS.toArray
+    |. BA.mapWithIndex (fun i (sort_name, SortRule { operator_rules }) ->
       let op_prods : LrParsing.symbol list list =
         operator_rules
         |. Belt.List.map (fun operator_level ->
@@ -382,10 +396,10 @@ let to_grammar
         (* TODO: temporary pending precedence parsing *)
         |. Belt.List.flatten
       in
+      if sort_name = start_nonterminal then start_nonterminal_num := i + 1;
       i + 1, { LrParsing.productions = op_prods })
     |. Belt.Map.Int.fromArray
-    (* TODO: we don't necessarily start with production 1 *)
-    |. Belt.Map.Int.set 0 { productions = [ [ Nonterminal 1 ] ] }
+    |. Belt.Map.Int.set 0 { productions = [ [ Nonterminal !start_nonterminal_num ] ] }
   in
   let nonterminal_nums = MS.toArray nonterminal_names_map in
   { nonterminals; terminal_nums; nonterminal_nums }, production_rule_map
@@ -414,6 +428,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
     -> formatted_tree
   =
   fun production_rule_map nonterminal_nums sort_rules root_name str root ->
+  Js.log2 "tree_of_parse_result" (LrParsing.parse_result_to_string root);
   let str_pos = ref 0 in
   let str_len = Js.String2.length str in
   let get_trivia : int -> int -> string * string =
@@ -443,6 +458,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
              (Lr0.string_of_terminal prod))
         | Right prod_num -> prod_num
       in
+      Js.log3 "go_nt" nt_name prod_num;
       let tokens, m_operator_match_pattern =
         match Belt.MutableMap.Int.get production_rule_map prod_num with
         | None -> failwith "TODO: error"
@@ -481,6 +497,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
     fun { start_pos; end_pos } ->
       let leading_trivia, trailing_trivia = get_trivia start_pos end_pos in
       let content = Js.String.slice str ~from:start_pos ~to_:end_pos in
+      Js.log2 "go_t" content;
       { leading_trivia; content; trailing_trivia }
   in
   go_nt root_name root
@@ -498,7 +515,7 @@ let lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer =
 
 let parse desc root_name str =
   try
-    let grammar, production_rule_map = to_grammar desc in
+    let grammar, production_rule_map = to_grammar desc root_name in
     (*
        production_rule_map
        |. Belt.MutableMap.Int.mapWithKey (fun i (tokens, m_operator_match_pattern) ->

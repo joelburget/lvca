@@ -343,32 +343,40 @@ module ConcreteSyntaxEditor = {
       debuggerContents : string,
       showDebugger : bool,
       syntaxDesc : option(ConcreteSyntaxDescription.t),
+      startSort : string,
     };
 
   type action =
     | DefinitionUpdate(string)
+    | SelectStartSort(string)
     | ToggleGrammarPane
     | ToggleDebugger
     ;
 
   [@react.component]
-  let make = (~onComplete : ConcreteSyntaxDescription.t => unit) => {
-    let ({ concreteInput, showGrammarPane, showDebugger }, dispatch) = React.useReducer(
-      ({concreteInput, showGrammarPane, debuggerContents, showDebugger, syntaxDesc}, action) => switch (action) {
+  let make = (~onComplete : ConcreteSyntaxDescription.t => unit, ~abstractSyntax : Types.abstract_syntax) => {
+    let sortNames = Types.sort_names(abstractSyntax) |. Belt.Set.String.toArray;
+
+    let (state, dispatch) = React.useReducer(
+      (startState, action) => switch (action) {
         | ToggleGrammarPane
-        => {concreteInput, showGrammarPane: !showGrammarPane, debuggerContents, showDebugger, syntaxDesc}
+        => {...startState, showGrammarPane: !startState.showGrammarPane}
         | ToggleDebugger
-        => {concreteInput, showGrammarPane, debuggerContents, showDebugger: !showDebugger, syntaxDesc}
-        | DefinitionUpdate(concreteInput')
-        => {concreteInput: concreteInput', showGrammarPane, debuggerContents, showDebugger, syntaxDesc}
+        => {...startState, showDebugger: !startState.showDebugger}
+        | DefinitionUpdate(concreteInput)
+        => {...startState, concreteInput}
+        | SelectStartSort(startSort)
+        => {...startState, startSort}
       },
-      { concreteInput: LanguageSimple.concrete,
+      { concreteInput: LanguageJson.concreteSyntax,
         showGrammarPane: false,
         debuggerContents: "",
         showDebugger: false,
+        startSort: sortNames[0],
         syntaxDesc: None,
       }
     );
+    let { concreteInput, showGrammarPane, showDebugger, startSort } = state;
 
     module Parseable_concrete =
       ParseStatus.Make(Parsing.Parseable_concrete_syntax);
@@ -391,7 +399,7 @@ module ConcreteSyntaxEditor = {
     );
 
     let getGrammarPaneAndDebugger = (concrete, showGrammarPane, showDebugger) => {
-      let (grammar, _) = ConcreteSyntax.to_grammar(concrete);
+      let (grammar, _) = ConcreteSyntax.to_grammar(concrete, startSort);
       let module Lalr = LalrParsing.Lalr1({ let grammar = grammar });
 
       let states = Lalr.states
@@ -455,6 +463,18 @@ module ConcreteSyntaxEditor = {
       | (_, _, Error(err)) => (React.string(err), ReasonReact.null)
     };
 
+    let sortOptions = ReactDOMRe.createDOMElementVariadic(
+      "select",
+      ~props=ReactDOMRe.domProps(
+        ~onChange=(evt =>
+          dispatch(SelectStartSort(ReactEvent.Form.target(evt)##value))),
+        ()
+      ),
+      sortNames |. Belt.Array.map (name =>
+        <option value=(name)> (React.string(name)) </option>
+      )
+    );
+
     <div>
       <h2 className="header2 header2-concrete">
         {React.string("Concrete Syntax ")}
@@ -466,6 +486,7 @@ module ConcreteSyntaxEditor = {
           onBeforeChange=((_, _, str) => dispatch(DefinitionUpdate(str)))
           options=CodeMirror.options(~mode="default", ())
         />
+        (sortOptions)
         <button onClick=(_ => dispatch(ToggleGrammarPane))>
           {React.string(showGrammarPane ?
                         "hide grammar tables" :
@@ -486,7 +507,7 @@ module DynamicsEditor = {
   [@react.component]
   let make = (~onComplete : Core.denotation_chart => unit) => {
     let (dynamicsInput, setDynamicsInput) =
-      React.useState(() => LanguageSimple.dynamics);
+      React.useState(() => LanguageJson.abstractSyntax);
 
     module Parseable_dynamics' = ParseStatus.Make(Parsing.Parseable_dynamics);
     let (dynamicsView, dynamics) = Parseable_dynamics'.parse(dynamicsInput);
@@ -666,6 +687,7 @@ module LvcaViewer = {
         <ConcreteSyntaxEditor
           onComplete=(syntax_desc =>
                       dispatch(CompleteConcreteSyntax(syntax_desc)))
+          abstractSyntax=details.abstract_syntax
         />
         | StaticsTab  => <StaticsEditor
           onComplete=(statics => dispatch(CompleteStatics(statics)))

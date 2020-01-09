@@ -93,6 +93,7 @@ val to_ast
 
 val to_grammar
   :  ConcreteSyntaxDescription.t
+  -> string
   -> LrParsing.grammar
      * (ConcreteSyntaxDescription.nonterminal_token list
         * ConcreteSyntaxDescription.operator_match_pattern option)

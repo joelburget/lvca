@@ -4,23 +4,29 @@ module Parseable_abstract_syntax' = ParseStatus.Make(Parsing.Parseable_abstract_
 module Parseable_concrete = ParseStatus.Make(Parsing.Parseable_concrete_syntax)
 module Parseable_term' = ParseStatus.Make(Parsing.Parseable_term)
 
-let can_parse_abstract language = (fun () ->
-  let _, language =
-    Parseable_abstract_syntax'.parse language
-  in
+let can_parse_abstract language = fun () ->
+  let _, language = Parseable_abstract_syntax'.parse language in
   match language with
     | Belt.Result.Ok _ -> pass
     | Error msg -> fail msg
-)
 
-let can_parse_concrete language = (fun () ->
-  let (_, concrete) =
-    Parseable_concrete.parse language
-  in
+let can_parse_concrete language = fun () ->
+  let _, concrete = Parseable_concrete.parse language in
   match concrete with
     | Belt.Result.Ok _ -> pass
     | Error msg -> fail msg
-)
+
+let parses_to abstract_lang concrete_lang root str expected_str = fun () ->
+  match ConcreteSyntax.parse concrete_lang root str with
+    | Error msg -> fail msg
+    | Ok tree ->
+      let ast_opt = ConcreteSyntax.to_ast abstract_lang concrete_lang root tree
+      in
+      match ast_opt with
+        | Error msg -> fail msg
+        | Ok ast -> match Parseable_term'.parse expected_str with
+          | _, Belt.Result.Error msg -> fail msg
+          | _, Ok expected_ast -> expect ast |> toEqual expected_ast
 
 let eval_str evaluator str =
   let _, tm = Parseable_term'.parse str in
@@ -32,8 +38,9 @@ let evaluates_to evaluator str expected =
   expect (eval_str evaluator str) |> toEqual (Belt.Result.Ok expected)
 
 let () = describe "Integer Language" (fun () ->
-  test "parse abstract syntax" (can_parse_abstract LanguageInteger.abstractSyntax);
-  test "parse concrete syntax" (can_parse_concrete LanguageInteger.concrete);
+  let abstractSyntax, concreteSyntax = LanguageInteger.(abstractSyntax, concreteSyntax) in
+  test "parse abstract syntax" (can_parse_abstract abstractSyntax);
+  test "parse concrete syntax" (can_parse_concrete concreteSyntax);
 
   let evaluates_to' str i = evaluates_to LanguageInteger.eval_tm str
     (Binding.Nominal.Primitive (PrimInteger (Bigint.of_int i)))
@@ -50,15 +57,49 @@ let () = describe "Integer Language" (fun () ->
     evaluates_to' "min(1; 2)" 1;
     evaluates_to' "max(1; 2)" 2;
   ] Util.id;
+
+  let abstract = match Parseable_abstract_syntax'.parse abstractSyntax with
+    | _, Belt.Result.Ok abstract -> abstract
+    | _, Error msg -> failwith msg
+  in
+  let terminal_rules, sort_rules = match Parseable_concrete.parse concreteSyntax with
+    | _, Belt.Result.Ok rules -> rules
+    | _, Error msg -> failwith msg
+  in
+  let concrete = ConcreteSyntax.make_concrete_description terminal_rules sort_rules in
+
+  test "parses to ..." (parses_to abstract.language concrete "tm" {|1|} {|lit(1))|});
+  (*
+  test "parses to ..." (parses_to abstract.language concrete "tm" {|-1|} {|neg(1))|});
+  test "parses to ..." (parses_to abstract.language concrete "tm" {||-1||} {|abs(neg(1)))|});
+  *)
 )
 
 let () = describe "JSON Language" (fun () ->
-  test "parse abstract syntax" (can_parse_abstract LanguageJson.abstractSyntax);
-  test "parse concrete syntax" (can_parse_concrete LanguageJson.concreteSyntax);
+  let abstractSyntax, concreteSyntax = LanguageJson.(abstractSyntax, concreteSyntax) in
+  test "parse abstract syntax" (can_parse_abstract abstractSyntax);
+  test "parse concrete syntax" (can_parse_concrete concreteSyntax);
+
+  (*
+  let abstract = match Parseable_abstract_syntax'.parse abstractSyntax with
+    | _, Belt.Result.Ok abstract -> abstract
+    | _, Error msg -> failwith msg
+  in
+  let terminal_rules, sort_rules = match Parseable_concrete.parse concreteSyntax with
+    | _, Belt.Result.Ok rules -> rules
+    | _, Error msg -> failwith msg
+  in
+  let concrete = ConcreteSyntax.make_concrete_description terminal_rules sort_rules in
+
+  test "parses to ..." (parses_to abstract.language concrete "json" {|null|} {|null())|});
+  test "parses to ..." (parses_to abstract.language concrete "json" {|true|} {|bool(true())|});
+  test "parses to ..." (parses_to abstract.language concrete "json" {|"foo"|} {|"foo"|});
+  *)
 )
 
 let () = describe "Document Language" (fun () ->
   test "parse abstract syntax" (can_parse_abstract LanguageDocument.abstractSyntax);
+  (* test "parse concrete syntax" (can_parse_concrete LanguageDocument.concreteSyntax); *)
 )
 
 let () = describe "Lambda Calculus Language" (fun () ->
