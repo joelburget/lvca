@@ -11,19 +11,6 @@ type nonterminal_token =
   | OpenBox
   | CloseBox
 
-(** A term pattern with numbered holes for binder names and subterms, eg
-    `$2. $4` (for tokens `FUN name ARR expr`) *)
-type numbered_scope_pattern =
-  | NumberedScopePattern of capture_number list * capture_number
-
-let string_of_numbered_scope_pattern : numbered_scope_pattern -> string =
-  fun (NumberedScopePattern (binders, body)) ->
-  Belt.List.toArray binders
-  |. Array.append [| body |]
-  |. Belt.Array.map (fun n -> "$" ^ string_of_int n)
-  |. Js.Array2.joinWith ". "
-;;
-
 (** An operator match pattern appears in the right-hand-side of a concrete
     syntax declaration, to show how to parse and pretty-print operators. They
     either match an operator, eg `{ add($1; $3) }` (for tokens `expr PLUS
@@ -34,16 +21,26 @@ type operator_match_pattern =
   | OperatorPattern of string * numbered_scope_pattern list
   | SingleCapturePattern of capture_number
 
-let string_of_operator_match_pattern : operator_match_pattern -> string =
-  let to_string = function
-    | OperatorPattern (name, scope_pats) ->
-      Printf.sprintf
-        "%s(%s)"
-        name
-        (Util.stringify_list string_of_numbered_scope_pattern "; " scope_pats)
-    | SingleCapturePattern num -> "$" ^ string_of_int num
-  in
-  fun pat -> "{ " ^ to_string pat ^ " }"
+(** A term pattern with numbered holes for binder names and subterms, eg
+    `$2. $4` (for tokens `FUN name ARR expr`) *)
+and numbered_scope_pattern =
+  | NumberedScopePattern of capture_number list * operator_match_pattern
+
+let rec string_of_operator_match_pattern : operator_match_pattern -> string
+  = function
+  | OperatorPattern (name, scope_pats) ->
+    Printf.sprintf
+      "%s(%s)"
+      name
+      (Util.stringify_list string_of_numbered_scope_pattern "; " scope_pats)
+  | SingleCapturePattern num -> "$" ^ string_of_int num
+
+and string_of_numbered_scope_pattern : numbered_scope_pattern -> string =
+  fun (NumberedScopePattern (binders, body)) ->
+  Belt.List.toArray binders
+  |. Belt.Array.map (fun n -> "$" ^ string_of_int n)
+  |. Array.append [| string_of_operator_match_pattern body |]
+  |. Js.Array2.joinWith ". "
 ;;
 
 type fixity =
@@ -68,7 +65,7 @@ type operator_match = OperatorMatch of operator_match'
 let string_of_token : nonterminal_token -> string = function
   | TerminalName str -> str
   | NonterminalName str -> str
-  | Underscore i -> "_" ^ string_of_int i
+  | Underscore i -> "_" ^ (if i = 1 then "" else string_of_int i)
   | OpenBox -> "["
   | CloseBox -> "]"
 
@@ -80,22 +77,6 @@ type variable_rule =
   { tokens : nonterminal_token list
   ; var_capture : capture_number
   }
-
-(* Extract a variable rule, if present. Currently we only recognize it on its
- * own precedence level, which seems like what you usually want, but still
- * arbitrary.
- *
- * By "variable rule", we mean a rule that matches exactly `var($n)`.
-*)
-let find_first_single_capture (matches : operator_match list list) : variable_rule option
-  =
-  Util.find_by matches
-  @@ function
-  | [ OperatorMatch { tokens; operator_match_pattern = SingleCapturePattern var_capture }
-    ] ->
-    Some { tokens; var_capture }
-  | _ -> None
-;;
 
 type sort_rule' =
   { sort_name : string

@@ -95,8 +95,10 @@ operator_match_pattern:
   { OperatorPattern ($1, $3) }
 
 term_scope_pattern:
-  | separated_nonempty_list(DOT, capture_number)
-  { let binds, body = Util.unsnoc $1 in NumberedScopePattern (binds, body) }
+  | separated_list(DOT, capture_number) DOT operator_match_pattern
+  { NumberedScopePattern ($1, $3) }
+  | operator_match_pattern
+  { NumberedScopePattern ([], $1) }
 
 operator_match__test: operator_match EOF { $1 }
 

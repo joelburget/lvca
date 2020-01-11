@@ -47,8 +47,8 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
             NonterminalName "baz";
           ];
         operator_match_pattern = OperatorPattern ("foo",
-          [ NumberedScopePattern ([], 1);
-            NumberedScopePattern ([], 2);
+          [ NumberedScopePattern ([], SingleCapturePattern 1);
+            NumberedScopePattern ([], SingleCapturePattern 2);
           ]);
         fixity = Nofix;
       }
@@ -73,8 +73,8 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
                     NonterminalName "arith";
                   ];
                 operator_match_pattern = OperatorPattern ("add",
-                  [ NumberedScopePattern ([], 1);
-                    NumberedScopePattern ([], 3);
+                  [ NumberedScopePattern ([], SingleCapturePattern 1);
+                    NumberedScopePattern ([], SingleCapturePattern 3);
                   ]);
                 fixity = Infixl;
               };
@@ -86,8 +86,8 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
                     NonterminalName "arith"
                   ];
                 operator_match_pattern = OperatorPattern ("sub",
-                  [ NumberedScopePattern ([], 1);
-                    NumberedScopePattern ([], 3);
+                  [ NumberedScopePattern ([], SingleCapturePattern 1);
+                    NumberedScopePattern ([], SingleCapturePattern 3);
                   ]);
                 fixity = Infixl;
               };

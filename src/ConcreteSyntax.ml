@@ -47,12 +47,15 @@ let rec token_usage : operator_match_pattern -> tokens_info = function
   | SingleCapturePattern cap_num ->
     { captured_tokens = SI.fromArray [| cap_num |]; repeated_tokens = SI.empty }
 
-and scope_token_usage (NumberedScopePattern (binder_captures, body_capture)) =
-  body_capture :: binder_captures
-  |. Belt.List.reduce empty_tokens_info (fun accum tok ->
-    accumulate_tokens
-      accum
-      { captured_tokens = SI.fromArray [| tok |]; repeated_tokens = SI.empty })
+and scope_token_usage : numbered_scope_pattern -> tokens_info
+  = fun (NumberedScopePattern (binder_captures, body_capture)) ->
+  let x = token_usage body_capture in
+  let y = binder_captures
+    |. Belt.List.reduce empty_tokens_info (fun accum tok ->
+      accumulate_tokens
+        accum
+        { captured_tokens = SI.fromArray [| tok |]; repeated_tokens = SI.empty })
+  in accumulate_tokens x y
 ;;
 
 let check_operator_match_validity
@@ -174,13 +177,13 @@ let rec to_debug_string : formatted_tree -> string
 ;;
 
 let rec remove_spaces : formatted_tree -> formatted_tree =
-  fun { sort_name; node_type; children } ->
+  fun { tree_info; children } ->
   let children' = Belt.Array.map children (function
     | TerminalCapture { content } ->
       TerminalCapture { content; leading_trivia = ""; trailing_trivia = "" }
     | NonterminalCapture ntc -> NonterminalCapture (remove_spaces ntc))
   in
-  { sort_name; node_type; children = children' }
+  { tree_info; children = children' }
 ;;
 
 exception ToAstError of string
@@ -211,6 +214,7 @@ let rec tree_to_ast
       |. Belt.Array.map (function
         | TerminalCapture _ ->
           raise @@ ToAstError "Unexpected terminal found in a sequence"
+        (* XXX update sort *)
         | NonterminalCapture child -> tree_to_ast lang rules sort_name child)
       |. Belt.List.fromArray
     in
@@ -219,6 +223,7 @@ let rec tree_to_ast
     Primitive (prim_to_ast prim_ty content)
   (* TODO: check validity *)
   | Operator op_name, tree_children ->
+
     let SortRule { operator_rules } = sort_rules
       |. MS.get sort_name
       |> get_option' ("tree_to_ast: failed to get sort " ^ sort_name)
@@ -226,49 +231,53 @@ let rec tree_to_ast
     let OperatorMatch { operator_match_pattern } =
       find_operator_match operator_rules op_name
     in
-    let scope_patterns =
-      match operator_match_pattern with
-      | SingleCapturePattern _ -> failwith "TODO: error 1"
-      | OperatorPattern (pat_op_name, scope_patterns) ->
-        assert (pat_op_name = op_name);
-        scope_patterns
-    in
+
     (* Note: have to be careful to re-index capture numbers from 1-based to
      * 0-based *)
-    let ast_children =
-      scope_patterns
-      |. Belt.List.map (fun (NumberedScopePattern (var_caps, body_cap)) ->
-        let binders =
-          var_caps
-          |. Belt.List.map (fun cap_num ->
-            match Belt.Array.get tree_children (cap_num - 1) with
-            | Some cap -> capture_to_pat cap
-            | None -> failwith "TODO: error 2")
-        in
-        let body =
-          match Belt.Array.get tree_children (body_cap - 1) with
-          | Some (NonterminalCapture tree) ->
-            tree_to_ast lang rules sort_name (* XXX sort name *) tree
-          | Some (TerminalCapture { content }) ->
-            failwith
-              (Printf.sprintf
-                 "Unexpected terminal capture (%s) in tree (%s), capture %n, match \
-                  pattern %s"
-                 content
-                 (to_string tree)
-                 body_cap
-                 (string_of_operator_match_pattern operator_match_pattern))
-          | None ->
-            failwith
-              (Printf.sprintf
-                 "Failed to find capture %n in tree (%s), match pattern %s"
-                 body_cap
-                 (to_string tree)
-                 (string_of_operator_match_pattern operator_match_pattern))
-        in
-        Nominal.Scope (binders, body))
+    let rec go_numbered_scope = fun (NumberedScopePattern (var_caps, body_pat)) ->
+      let binders = Belt.List.map var_caps (fun cap_num -> tree_children
+        |. Belt.Array.get (cap_num - 1)
+        |> get_option' (Printf.sprintf
+          "Failed to find capture %n in pattern for sort %s, operator %s"
+          (cap_num - 1) sort_name op_name
+        )
+        |> capture_to_pat
+      )
+      in
+
+      Nominal.Scope (binders, go_op_match_pat body_pat)
+
+    and go_op_match_pat = function
+      | SingleCapturePattern cap_num -> (
+        match Belt.Array.get tree_children (cap_num - 1) with
+        | Some (NonterminalCapture tree) ->
+          tree_to_ast lang rules sort_name (* XXX sort name *) tree
+        | Some (TerminalCapture { content }) ->
+          failwith
+            (Printf.sprintf
+               "Unexpected terminal capture (%s) in tree (%s), capture $%n, \
+                match pattern %s"
+               content
+               (to_string tree)
+               cap_num
+               (string_of_operator_match_pattern operator_match_pattern))
+        | None ->
+          failwith
+            (Printf.sprintf
+               "Failed to find capture %n in tree (%s), match pattern %s"
+               cap_num
+               (to_string tree)
+               (string_of_operator_match_pattern operator_match_pattern))
+      )
+
+      | OperatorPattern (op_name, op_children) -> Operator
+        ( op_name
+        , Belt.List.map op_children go_numbered_scope
+        )
+
     in
-    Operator (op_name, ast_children)
+    go_op_match_pat operator_match_pattern
+
   | SingleCapture, children ->
     let children' =
       children

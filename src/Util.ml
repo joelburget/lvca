@@ -105,6 +105,14 @@ let rec keep_some (lst : 'a option list) : 'a list =
   | None :: rest -> keep_some rest
 ;;
 
+let int_map_union m1 m2 =
+  Belt.Map.Int.merge m1 m2 (fun _k v1 v2 ->
+    match v1, v2 with
+    | _, Some v -> Some v
+    | Some v, None -> Some v
+    | None, None -> None)
+;;
+
 let map_union m1 m2 =
   Belt.Map.String.merge m1 m2 (fun _k v1 v2 ->
     match v1, v2 with
@@ -118,6 +126,8 @@ let rec fold_right (f : 'a -> 'b -> 'b) (lst : 'a list) (b : 'b) : 'b =
   | [] -> b
   | a :: as_ -> f a (fold_right f as_ b)
 ;;
+
+let int_map_unions maps = fold_right int_map_union maps Belt.Map.Int.empty
 
 let map_unions maps = fold_right map_union maps Belt.Map.String.empty
 

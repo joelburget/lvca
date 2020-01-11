@@ -5,11 +5,11 @@ type prim_ty =
   | Integer
   | String
 
-type node_type =
-  | SingleCapture
-  | Operator of string
+type tree_info =
+  | SortConstruction of sort_name * int
   | Sequence
   | Primitive of prim_ty
+  | NoInfo (* this is a continuation of a parent SortConstruction node *)
 
 (** Terminals capture text from the input buffer *)
 type formatted_terminal_capture =
@@ -42,8 +42,7 @@ and formatted_capture =
  * on the leftmost newline.
 *)
 and formatted_tree =
-  { sort_name : sort_name
-  ; node_type : node_type
+  { tree_info : tree_info
   ; children : formatted_capture array
   }
 
@@ -52,12 +51,11 @@ type terminal_doc =
   | DocNest of int * terminal_doc
   | DocBreak of int
 
-type nonterminal_doc = nonterminal_doc_child list * sort_name * node_type
+type nonterminal_doc = doc list * tree_info
 
 and doc_group = (terminal_doc, nonterminal_doc) Either.t list
 
-(* TODO: rename to doc? *)
-and nonterminal_doc_child =
+and doc =
   | TerminalDoc of terminal_doc
   | NonterminalDoc of nonterminal_doc
   | DocGroup of doc_group
@@ -65,8 +63,7 @@ and nonterminal_doc_child =
 (* tree equality mod trivia *)
 let rec equivalent : formatted_tree -> formatted_tree -> bool
   = fun t1 t2 ->
-  t1.sort_name = t2.sort_name
-  && t1.node_type = t2.node_type
+  t1.tree_info = t2.tree_info
   && Belt.Array.(every (zipBy t1.children t2.children equivalent')) (fun b -> b)
 
 and equivalent' child1 child2 =
@@ -74,17 +71,4 @@ and equivalent' child1 child2 =
   | TerminalCapture tc1, TerminalCapture tc2 -> tc1.content = tc2.content
   | NonterminalCapture ntc1, NonterminalCapture ntc2 -> equivalent ntc1 ntc2
   | _, _ -> false
-;;
-
-let find_operator_match
-  : operator_match list list -> string -> operator_match
-  = fun matches opname -> matches
-    |. Belt.List.flatten
-    |> Util.find
-      (* TODO now need to match *)
-      (fun (OperatorMatch { operator_match_pattern }) ->
-         match operator_match_pattern with
-         | OperatorPattern (opname', _) -> opname' = opname
-         | SingleCapturePattern _ -> false)
-    |> Util.get_option' ("failed to find a rule matching operator " ^ opname)
 ;;
