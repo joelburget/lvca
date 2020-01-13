@@ -17,10 +17,6 @@ exception CantEmitTokenRegex of string * Regex.t
 
 type mode = Flat | Break
 
-type subterm_result =
-  | CapturedTerm   of sort * Nominal.term
-  | CapturedBinder of sort * Pattern.t
-
 type box_type =
   | HBox
   | VBox
@@ -38,8 +34,43 @@ type box_break_info =
   ; breakpoints : (int * break_type) list
   }
 
-exception UserError of string
-exception NoMatch of string
+let rec instantiate : sort Belt.Map.String.t -> sort -> sort
+  = fun arg_mapping sort -> match sort with
+      | SortAp (name, [||]) -> (match Belt.Map.String.get arg_mapping name with
+        | None -> sort
+        | Some sort' -> sort')
+      | SortAp (name, args) ->
+        let args' = Belt.Array.map args (instantiate arg_mapping) in
+        SortAp (name, args')
+
+let subsorts : language_pointer -> string -> language_pointer list
+  = fun { sorts; current_sort } operator_name ->
+    let SortAp (sort_name, arg_values) = current_sort in
+    let SortDef (arg_names, operator_defs) = Belt.Map.String.get sorts sort_name
+      |> get_option' ("sorts must hold " ^ sort_name)
+    in
+    let OperatorDef (_, arity) = operator_defs
+      |. Belt.List.getBy (fun (OperatorDef (name, _)) -> name = operator_name)
+      |> get_option' (Printf.sprintf "operator %s must be present" operator_name)
+    in
+    let args = Belt.Array.zip (Belt.List.toArray arg_names) arg_values
+      |. Belt.Map.String.fromArray
+    in
+    let Arity (variable_names, valences) = arity in
+    valences
+      |. Belt.List.map (function
+        | VariableValence _
+        -> failwith "TODO: implement variable valence subsorts"
+        | FixedValence (sort_args, sort)
+        -> if Belt.List.length sort_args > 0
+           then failwith "TODO: implement fixed valence w/ sort args subsorts"
+           else
+             let current_sort = instantiate args sort in
+             { sorts; current_sort }
+      )
+
+  (* | Arity of string list * valence list *)
+  (* | SortDef of string list * operatorDef list *)
 
 (*
 let sort_of_index : int -> operatorDef -> sort
@@ -59,128 +90,19 @@ let get_operator : language -> sort_name -> string -> operatorDef
     |> get_option' ("get_operator: failed to get operator " ^ op_name)
 *)
 
-(**
- * Retrieve all the numbered subterms / binders for a term pattern template (eg
- * `foo($1. bar($2); $3)`). Given the term `foo(x. bar(baz()); y)`, this returns
- *
- * 1 -> x
- * 2 -> baz()
- * 3 -> y
- *
- * Invariants assumed:
- * - Scopes and numbered scope patterns mirror each other (are the same length).
- * - Each numbering in the pattern is unique
- * - The pattern is numbered contiguously from 1 to some n >= 1.
- *
- * raises: NoMatch, UserError
- *)
-let rec get_subterms
-  : operator_match_pattern -> Nominal.term -> subterm_result Belt.Map.Int.t
-= fun pat tm -> match pat, tm with
-  | SingleCapturePattern num, _
-  -> Belt.Map.Int.fromArray [| num, CapturedTerm (failwith "TODO: sort", tm) |]
-  | OperatorPattern (pat_op_name, body_pats), Operator (op_name, body_scopes)
-  -> if pat_op_name = op_name && Belt.List.(length body_pats = length body_scopes)
-     then body_pats
-       |. Belt.List.zipBy body_scopes get_scope_subterms
-       |> Util.int_map_unions
-     else raise (NoMatch
-       "pattern and operator don't match, either in operator name or subterms")
-
-(**
- * See get_subterms.
- *
- * raises: NoMatch, UserError *)
-and get_scope_subterms
-  : numbered_scope_pattern -> Nominal.scope -> subterm_result Belt.Map.Int.t
-  = fun (NumberedScopePattern (binder_nums, body_pat)) (Scope (binders, body)) ->
-    if Belt.List.(length binder_nums != length binders)
-    then raise
-      (NoMatch "numbered scope pattern and term scope are of different arity")
-    else
-      let results1 = binder_nums
-        (* TODO: should be patterns coming in on lhs *)
-        |. Belt.List.zipBy binders (fun num name -> num, CapturedBinder (failwith "TODO: sort", name))
-        |. Belt.List.toArray
-        |> Belt.Map.Int.fromArray
-      in
-      let results2 = get_subterms body_pat body in
-      Belt.Map.Int.merge results1 results2 (fun k v1 v2 -> match v1, v2 with
-        | Some _, Some _ -> raise
-          (UserError (Printf.sprintf "duplicate token capture: $%n" k))
-        | Some v, None
-        | None, Some v -> Some v
-        | None, None -> failwith
-          "invariant violation: no value on either side of a union"
-      )
-
-(**
- * Find a matching syntactical description for the given term. This traverses
- * the set of possible forms from top to bottom until it finds one that
- * matches.
- *
- * Invariants assumed:
- * - Each pattern is numbered contiguously from 1 to n, where n is the number
- * of nonterminal tokens associated with the pattern.
- *
- * Example:
- *
- * {[
- * foo :=
- *   | STRING ARROW foo { bar($1. $2) }
- *   | INTEGER { lit(integer($1)) }
- *   | TRUE { true() }
- * ]}
- *
- * The term `bar(x. true())` would match the first form, returning:
- * 1 -> [CapturedBinder ... ...]
- * 1 -> [CapturedBinder ... ...]
-*)
-let find_operator_match
-  : operator_match list list
-  -> Nominal.term
-  -> operator_match_pattern * nonterminal_token list * subterm_result Belt.Map.Int.t
-  = fun matches tm -> matches
-    |. Belt.List.flatten
-    |. Util.find_by (fun (OperatorMatch op_match) ->
-      let pat = op_match.operator_match_pattern in
-      try
-        Some (pat, op_match.tokens, get_subterms pat tm)
-      with
-        _ -> None
-    )
-    |> Util.get_option'
-      ("failed to find a rule matching term " ^ Nominal.pp_term' tm)
-    |> (fun (op_match, tokens, subterms) ->
-      let num_nonterminal_tokens = tokens
-        |. Belt.List.keep (function
-          | NonterminalName _ -> true
-          | _ -> false
-        )
-        |. Belt.List.length
-      in
-      for i = 0 to num_nonterminal_tokens do
-        if not (Belt.Map.Int.has subterms i)
-        then failwith (Printf.sprintf "error: key missing in pattern: $%n" i)
-      done;
-      op_match, tokens, subterms
-    )
-;;
-
-let rec pattern_to_tree : sort -> Pattern.t -> doc =
-  fun sort -> function
+let rec pattern_to_tree : language_pointer -> Pattern.t -> doc =
+  fun ({current_sort = sort} as language_pointer) -> function
   | Var name
-  -> NonterminalDoc ([TerminalDoc (DocText name)], NoInfo)
+  -> NonterminalDoc ([TerminalDoc (DocText name)], SortConstruction (sort, Var))
   | Operator (name, pats) -> NonterminalDoc
-    ( Belt.List.map pats
-      (pattern_to_tree (failwith "TODO: pattern_to_tree error 1"))
-    , NoInfo
+    ( Belt.List.zipBy (subsorts language_pointer name) pats pattern_to_tree
+    , SortConstruction (sort, Operator name)
     )
-
-  | Sequence pats -> NonterminalDoc
-    ( Belt.List.map pats
-      (pattern_to_tree (failwith "TODO: pattern_to_tree error 2"))
-    , NoInfo
+  | Sequence pats ->
+    let subsort = failwith "TODO" in
+    NonterminalDoc
+    ( Belt.List.map pats (pattern_to_tree subsort)
+    , Sequence
     )
   | Primitive p ->
     (* TODO: what about other integral types? *)
@@ -195,49 +117,50 @@ let rec pattern_to_tree : sort -> Pattern.t -> doc =
       | PrimInteger i -> Bigint.to_string i
     in
 
-    TerminalDoc (DocText str)
+    NonterminalDoc ([TerminalDoc (DocText str)], Primitive prim_ty)
 ;;
 
 (** Pretty-print an abstract term to a concrete syntax tree
  * raises: NoMatch, UserError, InvariantViolation, BadRules
  *)
 let rec term_to_tree
-   : Types.language
-  -> ConcreteSyntaxDescription.t
-  -> Types.sort
-  -> Nominal.term
-  -> doc
-  = fun lang rules (SortAp (sort_name, _) as current_sort) tm ->
+  : language_pointer -> ConcreteSyntaxDescription.t -> Nominal.term -> doc
+  = fun ({sorts; current_sort} as language_pointer) rules tm ->
   match current_sort, tm with
   | _, Operator (op_name, scopes)
-  -> NonterminalDoc (go_operator lang rules current_sort op_name scopes, NoInfo)
+  -> NonterminalDoc
+    ( go_operator language_pointer rules op_name scopes
+    , SortConstruction (current_sort, Operator op_name)
+    )
   | _, Var name
-  -> NonterminalDoc ([TerminalDoc (DocText name)], NoInfo)
+  -> NonterminalDoc
+    ( [TerminalDoc (DocText name)]
+    , SortConstruction (current_sort, Var)
+    )
   | SortAp ("sequence", [| sort |]), Sequence tms ->
-    let children = Belt.List.map tms (term_to_tree lang rules sort) in
+    let language_pointer' = { sorts; current_sort = sort } in
+    let children = Belt.List.map tms (term_to_tree language_pointer' rules) in
     NonterminalDoc (children, Sequence)
     (* XXX how to format sequences? *)
   | SortAp ("string", [||]), Primitive (PrimString str) ->
-    TerminalDoc (DocText str)
+    NonterminalDoc ([TerminalDoc (DocText str)], Primitive String)
   | SortAp ("integer", [||]), Primitive (PrimInteger i) ->
     let str = Bigint.to_string i in
-    TerminalDoc (DocText str)
+    NonterminalDoc ([TerminalDoc (DocText str)], Primitive Integer)
   | _, _ -> raise (BadSortTerm (current_sort, tm))
 
 (**
  * raises: NoMatch, UserError, InvariantViolation, BadRules
  *)
 and go_operator
-   : Types.language
+   : language_pointer
   -> ConcreteSyntaxDescription.t
-  -> Types.sort
   -> string
   -> Nominal.scope list
   -> doc list
   = fun
-  (Language sorts as lang)
+  ({ sorts; current_sort = SortAp (sort_name, _) } as language_pointer)
   ({ terminal_rules; sort_rules } as rules)
-  (SortAp (sort_name, _) as current_sort)
   op_name
   scopes ->
 
@@ -247,7 +170,7 @@ and go_operator
   in
 
   let operator_match_pattern, operator_match_tokens, subterms =
-    find_operator_match operator_rules (Operator (op_name, scopes))
+    find_operator_match language_pointer operator_rules (Operator (op_name, scopes))
   in
 
   let breakpoints : (int * int) list = operator_match_tokens
@@ -285,16 +208,29 @@ and go_operator
       | Some re_str -> TerminalDoc (DocText re_str)
       | None -> raise (CantEmitTokenRegex (name, terminal_rule))
       )
-    | Some (CapturedBinder (sort, pattern)), NonterminalName name ->
-      pattern_to_tree sort pattern
-    (* TODO: this clause seems redundant *)
+    | Some (CapturedBinder (current_sort, pattern)), NonterminalName _name ->
+      let language_pointer' = { sorts; current_sort } in
+      pattern_to_tree language_pointer' pattern
+
+    (* I'm leaving this here for the moment, in case I'm missing something and
+     * it was here for a good reason, but it seems subsumed by the above *)
+    (*
     | Some (CapturedBinder (sort, Var var_name)), TerminalName terminal_name ->
       TerminalDoc (DocText var_name)
+    *)
 
-    | Some (CapturedTerm (sort, tm)), NonterminalName new_sort ->
-      term_to_tree lang rules sort tm
-    | Some (CapturedTerm (sort, tm)), TerminalName name ->
-      term_to_tree lang rules sort tm
+    | Some (CapturedTerm (current_sort, tm)), NonterminalName _new_sort ->
+      let language_pointer' = { sorts; current_sort } in
+      term_to_tree language_pointer' rules tm
+
+    (* I'm leaving this here for the moment, in case I'm missing something and
+     * it was here for a good reason, but it seems subsumed by the above *)
+    (*
+    | Some (CapturedTerm (current_sort, tm)), TerminalName _name ->
+      let language_pointer' = { sorts; current_sort } in
+      term_to_tree language_pointer' rules tm
+      *)
+
     | Some (CapturedBinder (_, pattern)), TerminalName name -> raise
       (BadRules
          (Printf.sprintf
@@ -361,10 +297,6 @@ type space =
 type pre_formatted_nonterminal =
   { children : pre_formatted array
   ; tree_info : tree_info
-  (*
-  ; sort_name : sort_name
-  ; node_type : node_type
-  *)
   }
 
 and pre_formatted =
@@ -459,26 +391,23 @@ let walk_leading_trivia : pre_formatted_nonterminal -> string array
 let walk_trailing_trivia : pre_formatted_nonterminal -> string array
   = fun tree ->
 
+    let reverse, forEach = Belt.Array.(reverse, forEach) in
+
     let accum = ref "" in
     let result = [||] in
 
     (* Traverse all children in reverse *)
-    let rec go_nt = fun { children } -> children
-      |. Belt.Array.reverse
-      |. Belt.Array.forEach go_pft
+    let rec go_nt = fun { children } -> children |. reverse |. forEach go_pft
 
-    and go_pft = (function
+    and go_pft = function
       | Terminal _ ->
         let _ = Js.Array2.push result !accum in
         accum := ""
       | Space (SSpace n) -> accum := !accum ^ String.make n ' '
       (* Every time we hit a newline, clear the accumulator. *)
       | Space (SLine _) -> accum := ""
-      | Group children' -> children'
-        |. Belt.Array.reverse
-        |. Belt.Array.forEach go_pft
+      | Group children' -> children' |. reverse |. forEach go_pft
       | Nonterminal nt -> go_nt nt
-    )
     in
 
     go_nt tree;
@@ -490,33 +419,39 @@ let walk_trailing_trivia : pre_formatted_nonterminal -> string array
 let normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
   = fun tree ->
 
+    let reverse, forEach = Belt.Array.(reverse, forEach) in
+
     let forward_trivia = tree |. walk_leading_trivia in
-    let reverse_trivia = tree |. walk_trailing_trivia |. Belt.Array.reverse in
+    let reverse_trivia = tree |. walk_trailing_trivia |. reverse in
     let overall_ix = ref 0 in
 
-    let rec go_nt = fun { children; tree_info } ->
-
+    (* Note that for each nonterminal [go_nt] we create a flat list of children
+     * [formatted_tree_children]. Initially empty, it's modified by [go_pft].
+     *)
+    let rec go_nt
+      : pre_formatted_nonterminal -> formatted_tree
+      = fun { children; tree_info } ->
       let formatted_tree_children = [||] in
-
-      let rec go = fun children ->
-        Belt.Array.forEach children (function
-          | Terminal content ->
-            let leading_trivia = forward_trivia.(!overall_ix) in
-            let trailing_trivia = reverse_trivia.(!overall_ix) in
-            overall_ix := !overall_ix + 1;
-            let _ = Js.Array2.push formatted_tree_children
-              (TerminalCapture { content; leading_trivia; trailing_trivia })
-            in ()
-          | Space _ -> ()
-          | Nonterminal pfnt ->
-            let _ = Js.Array2.push formatted_tree_children
-              (NonterminalCapture (go_nt pfnt))
-            in ()
-          | Group group_children -> go group_children
-        );
-      in
-
+      forEach children (go_pft formatted_tree_children);
       { children = formatted_tree_children; tree_info }
+
+    and go_pft
+      : formatted_capture array -> pre_formatted -> unit
+      = fun formatted_tree_children -> function
+      | Terminal content ->
+        let leading_trivia = forward_trivia.(!overall_ix) in
+        let trailing_trivia = reverse_trivia.(!overall_ix) in
+        overall_ix := !overall_ix + 1;
+        let _ = Js.Array2.push formatted_tree_children
+          (TerminalCapture { content; leading_trivia; trailing_trivia })
+        in ()
+      | Space _ -> ()
+      | Nonterminal pfnt ->
+        let _ = Js.Array2.push formatted_tree_children
+          (NonterminalCapture (go_nt pfnt))
+        in ()
+      | Group group_children
+      -> forEach group_children (go_pft formatted_tree_children)
 
     in go_nt tree
 
@@ -527,8 +462,9 @@ let of_ast
   -> int
   -> Binding.Nominal.term
   -> formatted_tree
-  = fun lang desc sort width tm ->
-    let doc = term_to_tree lang desc sort tm in
+  = fun (Language sorts) desc current_sort width tm ->
+    let language_pointer = { sorts; current_sort } in
+    let doc = term_to_tree language_pointer desc tm in
     let _, pre_formatted = tree_format width 0 Flat doc in
     match pre_formatted with
       | Nonterminal pre_formatted_tree

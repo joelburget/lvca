@@ -14,7 +14,7 @@ tm :=
 |}
 ;;
 
-let concrete = {|
+let concreteSyntax = {|
 INT := [0-9]+
 BAR := "|"
 ADD := "+"

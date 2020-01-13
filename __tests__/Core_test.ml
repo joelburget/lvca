@@ -51,11 +51,11 @@ let _ = describe "Core" (fun () ->
     ]
   in
   let dynamics' = P_dyn.parse dynamics_str
-    |. Result.map produce_denotation_chart
+    |. Belt.Result.map produce_denotation_chart
   in
 
   test "dynamics as expected" (fun () ->
-    expect dynamics' |> toEqual (Result.Ok dynamics);
+    expect dynamics' |> toEqual (Belt.Result.Ok dynamics);
   );
 
   let lit_dynamics_str = {|
@@ -68,7 +68,7 @@ let _ = describe "Core" (fun () ->
   in
 
   let lit_dynamics = produce_denotation_chart @@
-    Result.getExn @@
+    Belt.Result.getExn @@
     P_dyn.parse lit_dynamics_str
   in
 
@@ -131,7 +131,7 @@ let _ = describe "Core" (fun () ->
     ]
     Util.id;
 
-  let open Result in
+  let open Belt.Result in
 
   testAll "term_denotation"
     [ expect (term_denotation dynamics [] true_tm)

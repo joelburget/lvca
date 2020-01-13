@@ -165,15 +165,35 @@ let rec to_string : formatted_tree -> string
   |> String.concat ""
 ;;
 
+let rec string_of_sort : sort -> string
+  = let rec go = fun needs_parens (SortAp (name, args)) ->
+      let args' = Belt.Array.map args (go true) in
+      match args' with
+        | [||] -> name
+        | _ ->
+          let pre_result = name ^ " " ^ Js.Array2.joinWith args' " " in
+          if needs_parens then "(" ^ pre_result ^ ")" else pre_result
+    in go false
+;;
+
+let string_of_tree_info : tree_info -> string
+  = function
+    | SortConstruction (sort, _) -> string_of_sort sort
+    | Sequence -> "sequence"
+    | Primitive Integer -> "integer"
+    | Primitive String -> "string"
+;;
+
 let rec to_debug_string : formatted_tree -> string
-  = fun { children; sort_name } -> children
+  = fun { children; tree_info } -> children
   |> Array.map (function
     | TerminalCapture { leading_trivia; content; trailing_trivia } ->
       "t:" ^ leading_trivia ^ content ^ trailing_trivia
-    | NonterminalCapture nonterminal_capture -> "nt:" ^ to_debug_string nonterminal_capture)
+    | NonterminalCapture nonterminal_capture
+    -> "nt:" ^ to_debug_string nonterminal_capture)
   |> Belt.List.fromArray
   |> String.concat ""
-  |> Printf.sprintf "%s(%s)" sort_name
+  |> Printf.sprintf "%s(%s)" (string_of_tree_info tree_info)
 ;;
 
 let rec remove_spaces : formatted_tree -> formatted_tree =
@@ -206,8 +226,7 @@ let rec tree_to_ast
   -> Nominal.term
   = fun (Language sorts as lang) ({ sort_rules } as rules) sort_name tree ->
   Js.log2 "tree_to_ast" (to_debug_string tree);
-  match tree.node_type, tree.children with
-  | SingleCapture, [| TerminalCapture { content = name } |] -> Var name
+  match tree.tree_info, tree.children with
   | Sequence, children ->
     let children' =
       children
@@ -221,15 +240,19 @@ let rec tree_to_ast
     Sequence children'
   | Primitive prim_ty, [| TerminalCapture { content } |] ->
     Primitive (prim_to_ast prim_ty content)
+  | SortConstruction (_, Var), [| TerminalCapture { content = name } |]
+  -> Var name
   (* TODO: check validity *)
-  | Operator op_name, tree_children ->
+  | SortConstruction (_, Operator op_name), tree_children ->
 
     let SortRule { operator_rules } = sort_rules
       |. MS.get sort_name
       |> get_option' ("tree_to_ast: failed to get sort " ^ sort_name)
     in
-    let OperatorMatch { operator_match_pattern } =
-      find_operator_match operator_rules op_name
+    let language_pointer = failwith "TODO" in
+    let tm = failwith "TODO" in
+    let operator_match_pattern, _, _ =
+      find_operator_match language_pointer operator_rules tm
     in
 
     (* Note: have to be careful to re-index capture numbers from 1-based to
@@ -278,18 +301,7 @@ let rec tree_to_ast
     in
     go_op_match_pat operator_match_pattern
 
-  | SingleCapture, children ->
-    let children' =
-      children
-      |. Belt.Array.keepMap (function
-        | NonterminalCapture child ->
-          Some (Nominal.Scope ([], tree_to_ast lang rules sort_name child))
-        | TerminalCapture _ -> None)
-    in
-    (match children' with
-     | [| Scope ([], child) |] -> child
-     | _ -> failwith "TODO: error 5")
-  | Primitive _, _ | SingleCapture, _ -> assert false
+  | Primitive _, _ -> assert false
 
 and capture_to_pat : formatted_capture -> Pattern.t = function
   | TerminalCapture { content } -> Var content
@@ -298,9 +310,9 @@ and capture_to_pat : formatted_capture -> Pattern.t = function
      "Unexpected bare terminal capture (%s) in capture_to_pat"
      content
   *)
-  | NonterminalCapture { node_type; children } ->
-    (match node_type with
-     | Operator op_name ->
+  | NonterminalCapture { tree_info; children } ->
+    (match tree_info with
+     | SortConstruction (_, Operator op_name) ->
        let children' =
          children
          |. Belt.Array.keepMap (fun cap ->
@@ -310,7 +322,7 @@ and capture_to_pat : formatted_capture -> Pattern.t = function
          |. Belt.List.fromArray
        in
        Operator (op_name, children')
-     | SingleCapture ->
+     | SortConstruction (_, Var) ->
        (match children with
         | [| TerminalCapture { content = name } |] -> Var name
         | _ ->
@@ -473,14 +485,15 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
         | None -> failwith "TODO: error"
         | Some result -> result
       in
-      let node_type =
+      let tree_info =
         match m_operator_match_pattern with
         | None -> failwith
           (Printf.sprintf
              "invariant violation: go_nt couldn't find production %n"
              prod_num)
-        | Some (SingleCapturePattern pat) -> SingleCapture
-        | Some (OperatorPattern (ctor_name, _)) -> Operator ctor_name
+        | Some (SingleCapturePattern pat) -> failwith "TODO"
+        | Some (OperatorPattern (ctor_name, _))
+        -> SortConstruction (failwith "TODO", Operator ctor_name)
       in
       let tokens_no_space =
         tokens
@@ -488,8 +501,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
           | Underscore _ -> false
           | _ -> true)
       in
-      { sort_name = nt_name
-      ; node_type
+      { tree_info
       ; children =
           children
           |. Belt.List.zip tokens_no_space

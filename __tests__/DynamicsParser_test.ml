@@ -7,8 +7,8 @@ let _ = describe "TermParser" (fun () ->
   let module P_dyn = Parsing.Incremental(Parsing.Parseable_dynamics) in
 
   let expectParse str tm = test ("'" ^ str ^ "'") (fun () ->
-    let parsed = P_dyn.parse str |. Result.map produce_denotation_chart in
-    expect parsed |> toEqual (Result.Ok tm)
+    let parsed = P_dyn.parse str |. Belt.Result.map produce_denotation_chart in
+    expect parsed |> toEqual (Belt.Result.Ok tm)
   ) in
   let pat_scope body : BindingAwarePattern.scope = Scope ([], body) in
 
@@ -58,7 +58,7 @@ let _ = describe "TermParser" (fun () ->
   expectParse dyn1 expected;
 
   let metavar_test = produce_denotation_chart @@
-    Result.getExn @@
+    Belt.Result.getExn @@
     P_dyn.parse "[[ lit(v) ]] = v"
   in
   let metavar_test_expected = DenotationChart

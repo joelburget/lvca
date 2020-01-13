@@ -14,11 +14,10 @@ let mk_terminal_capture content trailing_trivia =
     { ConcreteSyntax.leading_trivia = ""; content; trailing_trivia }
 
 let mk_tree
-  : sort_name
-  -> ConcreteSyntax.node_type
+  :  ConcreteSyntax.tree_info
   -> ConcreteSyntax.formatted_capture array
   -> ConcreteSyntax.formatted_tree
-  = fun sort_name node_type children -> { sort_name; node_type; children }
+  = fun tree_info children -> { tree_info; children }
 
 let _ = describe "ConcreteSyntax" (fun () ->
   let description = {|
@@ -69,41 +68,40 @@ let _ = describe "ConcreteSyntax" (fun () ->
       let concrete =
         ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
       in
-      let mk_tree' = mk_tree "arith" in
 
-      let tree1 = mk_tree' (Operator "add")
-        [| nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "x" " " |]);
+      let mk_op name = mk_tree (SortConstruction (arith, Operator name)) in
+      let mk_var = mk_tree (SortConstruction (arith, Var)) in
+
+      let tree1 = mk_op "add"
+        [| nt_capture (mk_var [| mk_terminal_capture "x" " " |]);
            mk_terminal_capture "+" " ";
-           nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "y" "" |]);
+           nt_capture (mk_var [| mk_terminal_capture "y" "" |]);
         |]
       in
 
-      let tree2 = mk_tree' (Operator "sub")
-        [| nt_capture (mk_tree' SingleCapture
-            [|
-              nt_capture (mk_tree' (Operator "add")
-                [| nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "x" " " |]);
-                   mk_terminal_capture "+" " ";
-                   nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "y" " " |]);
-                |]
-              );
+      let tree2 = mk_op "sub"
+        [|
+          nt_capture (mk_op "add"
+            [| nt_capture (mk_var [| mk_terminal_capture "x" " " |]);
+               mk_terminal_capture "+" " ";
+               nt_capture (mk_var [| mk_terminal_capture "y" " " |]);
             |]
-            );
-            mk_terminal_capture "-" " ";
-            nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "z" "" |]);
+          );
+          mk_terminal_capture "-" " ";
+          nt_capture (mk_var [| mk_terminal_capture "z" "" |]);
         |]
       in
 
-      let tree3 = mk_tree' (Operator "add")
-        [| nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "x" " " |]);
+      let tree3 = mk_op "add"
+        [| nt_capture (mk_var [| mk_terminal_capture "x" " " |]);
            mk_terminal_capture "+" " ";
-           nt_capture (mk_tree' SingleCapture
+           nt_capture (mk_var
              [|
                mk_terminal_capture "(" "";
-               nt_capture (mk_tree' (Operator "mul")
-                 [| nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "y" " " |]);
+               nt_capture (mk_op "mul"
+                 [| nt_capture (mk_var [| mk_terminal_capture "y" " " |]);
                     mk_terminal_capture "*" " ";
-                    nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "z" "" |]);
+                    nt_capture (mk_var [| mk_terminal_capture "z" "" |]);
                  |]
                );
                mk_terminal_capture ")" "";
@@ -112,11 +110,11 @@ let _ = describe "ConcreteSyntax" (fun () ->
         |]
       in
 
-      let tree4 = mk_tree' (Operator "fun")
-        (* [| nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "x" " " |]); *)
+      let tree4 = mk_op "fun"
+        (* [| nt_capture (mk_var [| mk_terminal_capture "x" " " |]); *)
         [| mk_terminal_capture "x" " ";
            mk_terminal_capture "->" " ";
-           nt_capture (mk_tree' SingleCapture [| mk_terminal_capture "x" "" |]);
+           nt_capture (mk_var [| mk_terminal_capture "x" "" |]);
         |]
       in
 

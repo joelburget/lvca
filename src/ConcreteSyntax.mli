@@ -19,9 +19,10 @@ type prim_ty =
   | Integer
   | String
 
-type node_type =
-  | SingleCapture
-  | Operator of string
+type construction_type = Operator of string | Var
+
+type tree_info =
+  | SortConstruction of sort * construction_type
   | Sequence
   | Primitive of prim_ty
 
@@ -56,8 +57,7 @@ and formatted_capture =
  * on the leftmost newline.
 *)
 and formatted_tree =
-  { sort_name : sort_name
-  ; node_type : node_type
+  { tree_info : tree_info
   ; children : formatted_capture array
   }
 
