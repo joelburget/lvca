@@ -81,7 +81,7 @@ val parse
   :  ConcreteSyntaxDescription.t
   -> string (* root name *)
   -> string (* string to parse *)
-  -> (formatted_tree, string) Result.t
+  -> (formatted_tree, string) Belt.Result.t
 
 (** Convert form a concrete to an abstract syntax tree *)
 val to_ast
@@ -89,7 +89,7 @@ val to_ast
   -> ConcreteSyntaxDescription.t
   -> string
   -> formatted_tree
-  -> (Nominal.term, string) Result.t
+  -> (Nominal.term, string) Belt.Result.t
 
 val to_grammar
   :  ConcreteSyntaxDescription.t
