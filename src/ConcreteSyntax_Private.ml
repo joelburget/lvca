@@ -1,16 +1,16 @@
 open Types
 open ConcreteSyntaxDescription
 
-type prim_ty =
-  | Integer
-  | String
+(* type construction_type = Operator of int | Var *)
 
-type construction_type = Operator of string | Var
-
-type tree_info =
-  | SortConstruction of sort * construction_type
-  | Sequence
-  | Primitive of prim_ty
+(** This type lives in [formatted_tree] (ie [formatted_nonterminal_capture]),
+ * and holds enough info to produce an AST.
+ *
+ * We use the nonterminal name and construction number. We use a construction
+ * number rather than an operator name, because there could be multiple
+ * constructions producing the same operator
+ *)
+type tree_info = string * int
 
 (** Terminals capture text from the input buffer *)
 type formatted_terminal_capture =
@@ -74,14 +74,39 @@ and equivalent' child1 child2 =
   | _, _ -> false
 ;;
 
-type language_pointer =
-  { sorts : sortDef Belt.Map.String.t
-  ; current_sort : sort
+(** Points to the current sort among the whole language.
+ *)
+type nonterminal_pointer =
+  { nonterminals : nonterminal_rules
+  ; current_nonterminal : string
+  ; bound_sorts : sort Belt.Map.String.t
   }
 
+let current_sort : nonterminal_pointer -> sort
+  = fun { nonterminals; current_nonterminal; bound_sorts } ->
+  match Belt.Map.String.get nonterminals current_nonterminal with
+    | None -> failwith "TODO: error"
+    | Some (NonterminalRule nonterminal_rule)
+    -> let NonterminalType (_, result) = nonterminal_rule.nonterminal_type in
+       instantiate_sort bound_sorts result
+
+let current_nonterminal : nonterminal_pointer -> nonterminal_rule
+  = fun { nonterminals; current_nonterminal } ->
+    match Belt.Map.String.get nonterminals current_nonterminal with
+      | None -> failwith "TODO: error"
+      | Some nt -> nt
+
+(* TODO: move with binding *)
+let move_to : nonterminal_pointer -> string -> nonterminal_pointer
+  = fun { nonterminals; current_nonterminal; bound_sorts } nt_name ->
+    { nonterminals
+    ; current_nonterminal = nt_name
+    ; bound_sorts = Belt.Map.String.empty
+    }
+
 type subterm_result =
-  | CapturedTerm   of sort * Binding.Nominal.term
-  | CapturedBinder of sort * Pattern.t
+  | CapturedTerm   of sort * nonterminal_pointer * Binding.Nominal.term
+  | CapturedBinder of sort * nonterminal_pointer * Pattern.t
 
 exception UserError of string
 exception NoMatch of string
@@ -102,31 +127,49 @@ exception NoMatch of string
  * raises: NoMatch, UserError
  *)
 let rec get_subterms
-  : language_pointer
+  :  nonterminal_token list
+  -> nonterminal_pointer
   -> operator_match_pattern
   -> Binding.Nominal.term
   -> subterm_result Belt.Map.Int.t
-= fun language_pointer pat tm -> match pat, tm with
+= fun tokens nonterminal_pointer pat tm -> match pat, tm with
   | SingleCapturePattern num, _
-  -> Belt.Map.Int.fromArray [| num, CapturedTerm (failwith "TODO: sort", tm) |]
+  -> let tok = tokens
+       |. Belt.List.get num
+       |> Util.get_option' "TODO"
+     in
+     let nt_name = match tok with
+       | NonterminalName nt_name -> nt_name
+       | _ -> failwith "TODO: error"
+     in
+     let nonterminal_pointer' = move_to nonterminal_pointer nt_name in
+     let capture = CapturedTerm
+       (current_sort nonterminal_pointer, nonterminal_pointer', tm)
+     in
+     Belt.Map.Int.fromArray [| num, capture |]
   | OperatorPattern (pat_op_name, body_pats), Operator (op_name, body_scopes)
   -> if pat_op_name = op_name && Belt.List.(length body_pats = length body_scopes)
      then body_pats
-       |. Belt.List.zipBy body_scopes (get_scope_subterms language_pointer)
+       |. Belt.List.zipBy body_scopes
+         (get_scope_subterms tokens nonterminal_pointer)
        |> Util.int_map_unions
      else raise (NoMatch
        "pattern and operator don't match, either in operator name or subterms")
+  | OperatorPattern _, _
+  -> raise (NoMatch "operator pattern and value don't match")
 
 (**
  * See get_subterms.
  *
  * raises: NoMatch, UserError *)
 and get_scope_subterms
-  : language_pointer
+  :  nonterminal_token list
+  -> nonterminal_pointer
   -> numbered_scope_pattern
   -> Binding.Nominal.scope
   -> subterm_result Belt.Map.Int.t
-  = fun language_pointer (NumberedScopePattern (binder_nums, body_pat)) (Scope (binders, body)) ->
+  = fun tokens nonterminal_pointer
+    (NumberedScopePattern (binder_nums, body_pat)) (Scope (binders, body)) ->
     if Belt.List.(length binder_nums != length binders)
     then raise
       (NoMatch "numbered scope pattern and term scope are of different arity")
@@ -134,12 +177,24 @@ and get_scope_subterms
       let results1 = binder_nums
         (* TODO: should be patterns coming in on lhs *)
         |. Belt.List.zipBy binders (fun num name ->
-          num, CapturedBinder (failwith "TODO: sort", name)
+          let tok = tokens
+            |. Belt.List.get num
+            |> Util.get_option' "TODO"
+          in
+          let nt_name = match tok with
+            | NonterminalName nt_name -> nt_name
+            | _ -> failwith "TODO: error"
+          in
+          let nonterminal_pointer' = move_to nonterminal_pointer nt_name in
+          let capture = CapturedBinder
+            (current_sort nonterminal_pointer, nonterminal_pointer', name)
+          in
+          num, capture
         )
         |. Belt.List.toArray
         |> Belt.Map.Int.fromArray
       in
-      let results2 = get_subterms language_pointer body_pat body in
+      let results2 = get_subterms tokens nonterminal_pointer body_pat body in
       Belt.Map.Int.merge results1 results2 (fun k v1 v2 -> match v1, v2 with
         | Some _, Some _ -> raise
           (UserError (Printf.sprintf "duplicate token capture: $%n" k))
@@ -172,22 +227,24 @@ and get_scope_subterms
  * 1 -> [CapturedBinder ... ...]
 *)
 let find_operator_match
-  : language_pointer
+  :  nonterminal_pointer
   -> operator_match list list
   -> Binding.Nominal.term
-  -> operator_match_pattern * nonterminal_token list * subterm_result Belt.Map.Int.t
-  = fun language_pointer matches tm -> matches
+  -> int * operator_match_pattern * nonterminal_token list * subterm_result Belt.Map.Int.t
+  = fun nonterminal_pointer matches tm -> matches
     |. Belt.List.flatten
-    |. Util.find_by (fun (OperatorMatch op_match) ->
+    |. Belt.List.mapWithIndex (fun i x -> i, x)
+    |. Util.find_by (fun (i, OperatorMatch op_match) ->
       let pat = op_match.operator_match_pattern in
+      let tokens = op_match.tokens in
       try
-        Some (pat, op_match.tokens, get_subterms language_pointer pat tm)
+        Some (i, pat, tokens, get_subterms tokens nonterminal_pointer pat tm)
       with
         _ -> None
     )
     |> Util.get_option'
       ("failed to find a rule matching term " ^ Binding.Nominal.pp_term' tm)
-    |> (fun (op_match, tokens, subterms) ->
+    |> (fun (i, op_match, tokens, subterms) ->
       let num_nonterminal_tokens = tokens
         |. Belt.List.keep (function
           | NonterminalName _ -> true
@@ -199,6 +256,6 @@ let find_operator_match
         if not (Belt.Map.Int.has subterms i)
         then failwith (Printf.sprintf "error: key missing in pattern: $%n" i)
       done;
-      op_match, tokens, subterms
+      i, op_match, tokens, subterms
     )
 ;;

@@ -34,168 +34,56 @@ type box_break_info =
   ; breakpoints : (int * break_type) list
   }
 
-let rec instantiate : sort Belt.Map.String.t -> sort -> sort
-  = fun arg_mapping sort -> match sort with
-      | SortAp (name, [||]) -> (match Belt.Map.String.get arg_mapping name with
-        | None -> sort
-        | Some sort' -> sort')
-      | SortAp (name, args) ->
-        let args' = Belt.Array.map args (instantiate arg_mapping) in
-        SortAp (name, args')
-
-let subsorts : language_pointer -> string -> language_pointer list
-  = fun { sorts; current_sort } operator_name ->
-    let SortAp (sort_name, arg_values) = current_sort in
-    let SortDef (arg_names, operator_defs) = Belt.Map.String.get sorts sort_name
-      |> get_option' ("sorts must hold " ^ sort_name)
-    in
-    let OperatorDef (_, arity) = operator_defs
-      |. Belt.List.getBy (fun (OperatorDef (name, _)) -> name = operator_name)
-      |> get_option' (Printf.sprintf "operator %s must be present" operator_name)
-    in
-    let args = Belt.Array.zip (Belt.List.toArray arg_names) arg_values
-      |. Belt.Map.String.fromArray
-    in
-    let Arity (variable_names, valences) = arity in
-    valences
-      |. Belt.List.map (function
-        | VariableValence _
-        -> failwith "TODO: implement variable valence subsorts"
-        | FixedValence (sort_args, sort)
-        -> if Belt.List.length sort_args > 0
-           then failwith "TODO: implement fixed valence w/ sort args subsorts"
-           else
-             let current_sort = instantiate args sort in
-             { sorts; current_sort }
-      )
-
-  (* | Arity of string list * valence list *)
-  (* | SortDef of string list * operatorDef list *)
-
-(*
-let sort_of_index : int -> operatorDef -> sort
-  = fun tm_ix (OperatorDef (_, Arity (_, valences))) -> valences
-    |. Belt.List.get tm_ix
-    |> get_option' ("sort_of_index: failed to get term " ^ string_of_int tm_ix)
-    |> (function
-      FixedValence (_, new_sort) | VariableValence (_, new_sort) -> new_sort
-    )
-
-let get_operator : language -> sort_name -> string -> operatorDef
-  = fun (Language sorts) sort_name op_name -> sorts
-    |. Belt.Map.String.get sort_name
-    |> get_option' ("get_operator: failed to get sort" ^ sort_name)
-    |> (fun (SortDef (_, operator_defs)) -> operator_defs)
-    |> find (fun (OperatorDef (op_name', _)) -> op_name' = op_name)
-    |> get_option' ("get_operator: failed to get operator " ^ op_name)
-*)
-
-let rec pattern_to_tree : language_pointer -> Pattern.t -> doc =
-  fun ({current_sort = sort} as language_pointer) -> function
-  | Var name
-  -> NonterminalDoc ([TerminalDoc (DocText name)], SortConstruction (sort, Var))
-  | Operator (name, pats) -> NonterminalDoc
-    ( Belt.List.zipBy (subsorts language_pointer name) pats pattern_to_tree
-    , SortConstruction (sort, Operator name)
-    )
-  | Sequence pats ->
-    let subsort = failwith "TODO" in
-    NonterminalDoc
-    ( Belt.List.map pats (pattern_to_tree subsort)
-    , Sequence
-    )
-  | Primitive p ->
-    (* TODO: what about other integral types? *)
-    let prim_ty = match sort with
-      | SortAp ("string", [||]) -> String
-      | SortAp ("integer", [||]) -> Integer
-      | SortAp (sort_name, _)
-      -> failwith ("unexpected primitive sort name: " ^ sort_name)
-    in
-    let str = match p with
-      | PrimString str -> str
-      | PrimInteger i -> Bigint.to_string i
-    in
-
-    NonterminalDoc ([TerminalDoc (DocText str)], Primitive prim_ty)
+let rec pattern_to_tree
+  : nonterminal_pointer -> ConcreteSyntaxDescription.t -> Pattern.t -> doc =
+  fun nonterminal_pointer rules ->
+  let sort = current_sort nonterminal_pointer in
+  failwith "TODO"
 ;;
 
 (** Pretty-print an abstract term to a concrete syntax tree
  * raises: NoMatch, UserError, InvariantViolation, BadRules
  *)
 let rec term_to_tree
-  : language_pointer -> ConcreteSyntaxDescription.t -> Nominal.term -> doc
-  = fun ({sorts; current_sort} as language_pointer) rules tm ->
-  match current_sort, tm with
-  | _, Operator (op_name, scopes)
-  -> NonterminalDoc
-    ( go_operator language_pointer rules op_name scopes
-    , SortConstruction (current_sort, Operator op_name)
-    )
-  | _, Var name
-  -> NonterminalDoc
-    ( [TerminalDoc (DocText name)]
-    , SortConstruction (current_sort, Var)
-    )
-  | SortAp ("sequence", [| sort |]), Sequence tms ->
-    let language_pointer' = { sorts; current_sort = sort } in
-    let children = Belt.List.map tms (term_to_tree language_pointer' rules) in
-    NonterminalDoc (children, Sequence)
-    (* XXX how to format sequences? *)
-  | SortAp ("string", [||]), Primitive (PrimString str) ->
-    NonterminalDoc ([TerminalDoc (DocText str)], Primitive String)
-  | SortAp ("integer", [||]), Primitive (PrimInteger i) ->
-    let str = Bigint.to_string i in
-    NonterminalDoc ([TerminalDoc (DocText str)], Primitive Integer)
-  | _, _ -> raise (BadSortTerm (current_sort, tm))
+  : nonterminal_pointer -> ConcreteSyntaxDescription.t -> Nominal.term -> doc
+  = fun nonterminal_pointer rules tm ->
 
-(**
- * raises: NoMatch, UserError, InvariantViolation, BadRules
- *)
-and go_operator
-   : language_pointer
-  -> ConcreteSyntaxDescription.t
-  -> string
-  -> Nominal.scope list
-  -> doc list
-  = fun
-  ({ sorts; current_sort = SortAp (sort_name, _) } as language_pointer)
-  ({ terminal_rules; sort_rules } as rules)
-  op_name
-  scopes ->
+    let { terminal_rules; nonterminal_rules } = rules in
 
-  let SortRule { operator_rules } = sort_rules
-    |. Belt.Map.String.get sort_name
-    |> get_option' ("term_to_tree: failed to get sort " ^ sort_name)
-  in
+    let NonterminalRule { operator_rules } =
+      current_nonterminal nonterminal_pointer
+    in
 
-  let operator_match_pattern, operator_match_tokens, subterms =
-    find_operator_match language_pointer operator_rules (Operator (op_name, scopes))
-  in
+    let form_no, operator_match_pattern, operator_match_tokens, subterms =
+      find_operator_match nonterminal_pointer operator_rules tm
+    in
 
-  let breakpoints : (int * int) list = operator_match_tokens
-    |. Belt.List.mapWithIndex (fun ix tok -> match tok with
-      | Underscore n -> Some (ix, n)
-      | _ -> None
-    )
-    |. Util.keep_some
-  in
+    let tree_info = nonterminal_pointer.current_nonterminal, form_no in
 
-  (* Map each token to a subtree. For each token:
-     - if it's a space or terminal, print it
-     - if it's a nonterminal, look up the subterm (by token number)
-  *)
-  operator_match_tokens
-    (* Go through every token giving it an index. Underscores are not indexed *)
-    |. Belt.List.reduce (1, [])
-      (fun (ix, indexed_toks) tok -> match tok with
-        | Underscore _ -> ix, (0, tok) :: indexed_toks
-        | _ -> ix + 1, (ix, tok) :: indexed_toks)
-    |> fun (_, lst) -> lst
-    |. Belt.List.reverse (* TODO: O(n^2) reverse *)
-    |. Belt.List.map (fun (token_ix, token) ->
+    let breakpoints : (int * int) list = operator_match_tokens
+      |. Belt.List.mapWithIndex (fun ix tok -> match tok with
+        | Underscore n -> Some (ix, n)
+        | _ -> None
+      )
+      |. Util.keep_some
+    in
 
-    match Belt.Map.Int.get subterms token_ix, token with
+    (* Map each token to a subtree. For each token:
+       - if it's a space or terminal, print it
+       - if it's a nonterminal, look up the subterm (by token number)
+    *)
+    operator_match_tokens
+      (* Go through every token giving it an index. Underscores are not indexed *)
+      |. Belt.List.reduce (1, [])
+        (fun (ix, indexed_toks) tok -> match tok with
+          | Underscore _ -> ix, (0, tok) :: indexed_toks
+          | _ -> ix + 1, (ix, tok) :: indexed_toks)
+      |> fun (_, lst) -> lst
+      |. Belt.List.reverse (* TODO: O(n^2) reverse *)
+      |. Belt.List.map (fun (token_ix, token) ->
+
+      match Belt.Map.Int.get subterms token_ix, token with
+
     (* if the current token is a terminal, and we didn't capture a binder
      * or term, we just emit the contents of the token *)
     | None, TerminalName name ->
@@ -208,51 +96,32 @@ and go_operator
       | Some re_str -> TerminalDoc (DocText re_str)
       | None -> raise (CantEmitTokenRegex (name, terminal_rule))
       )
-    | Some (CapturedBinder (current_sort, pattern)), NonterminalName _name ->
-      let language_pointer' = { sorts; current_sort } in
-      pattern_to_tree language_pointer' pattern
 
-    (* I'm leaving this here for the moment, in case I'm missing something and
-     * it was here for a good reason, but it seems subsumed by the above *)
-    (*
-    | Some (CapturedBinder (sort, Var var_name)), TerminalName terminal_name ->
-      TerminalDoc (DocText var_name)
-    *)
+    | Some (CapturedBinder (_current_sort, nonterminal_pointer', pat)),
+      NonterminalName _nt_name
+    -> pattern_to_tree nonterminal_pointer' rules pat
 
-    | Some (CapturedTerm (current_sort, tm)), NonterminalName _new_sort ->
-      let language_pointer' = { sorts; current_sort } in
-      term_to_tree language_pointer' rules tm
+    | Some (CapturedTerm (_current_sort, nonterminal_pointer', tm)),
+      NonterminalName _nt_name
+    -> term_to_tree nonterminal_pointer' rules tm
 
-    (* I'm leaving this here for the moment, in case I'm missing something and
-     * it was here for a good reason, but it seems subsumed by the above *)
-    (*
-    | Some (CapturedTerm (current_sort, tm)), TerminalName _name ->
-      let language_pointer' = { sorts; current_sort } in
-      term_to_tree language_pointer' rules tm
-      *)
-
-    | Some (CapturedBinder (_, pattern)), TerminalName name -> raise
-      (BadRules
-         (Printf.sprintf
-            "term_to_tree: binder (%s) found in match pattern %s, terminal \
-            name: %s"
-            (Pattern.string_of_pattern pattern)
-            (string_of_operator_match_pattern operator_match_pattern)
-            name))
     | _, Underscore n -> TerminalDoc (DocBreak n)
+
+    | None, NonterminalName nt_name -> failwith (Printf.sprintf
+      "term_to_tree: failed to find token $%n (%s)" token_ix nt_name
+    )
+
+    | Some (CapturedBinder _), TerminalName t_name
+    | Some (CapturedTerm _), TerminalName t_name -> failwith (Printf.sprintf
+      "term_to_tree: unexpectedly directly captured a terminal (%s)" t_name
+    )
+
     | _, OpenBox
     | _, CloseBox -> failwith
       "invariant violation: term_to_tree->go_operator: box hints are filtered \
       out in the previous `keep` stage"
-    | None, NonterminalName name -> raise
-      (BadRules
-         (Printf.sprintf
-            "term_to_tree: subterm %n not found in match pattern %s, \
-            nonterminal name: %s"
-            token_ix
-            (string_of_operator_match_pattern operator_match_pattern)
-            name))
-  )
+    )
+    |> fun toks -> NonterminalDoc (toks, tree_info)
 ;;
 
 let coerce_doc_child
@@ -458,13 +327,18 @@ let normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
 let of_ast
    : Types.language
   -> ConcreteSyntaxDescription.t
-  -> Types.sort
+  -> string
   -> int
   -> Binding.Nominal.term
   -> formatted_tree
-  = fun (Language sorts) desc current_sort width tm ->
-    let language_pointer = { sorts; current_sort } in
-    let doc = term_to_tree language_pointer desc tm in
+  = fun (Language sorts) desc start_nonterminal width tm ->
+    let nonterminal_pointer =
+      { nonterminals = desc.nonterminal_rules
+      ; current_nonterminal = start_nonterminal
+      ; bound_sorts = Belt.Map.String.empty
+      }
+    in
+    let doc = term_to_tree nonterminal_pointer desc tm in
     let _, pre_formatted = tree_format width 0 Flat doc in
     match pre_formatted with
       | Nonterminal pre_formatted_tree

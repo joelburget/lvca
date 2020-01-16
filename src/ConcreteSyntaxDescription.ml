@@ -78,21 +78,26 @@ type variable_rule =
   ; var_capture : capture_number
   }
 
-type sort_rule' =
-  { sort_name : string
+(** A nonterminal has 0 or more input sorts, mapping to a result sort.
+ *)
+type nonterminal_type = NonterminalType of Types.sort list * Types.sort
+
+type nonterminal_rule' =
+  { nonterminal_name : string
+  ; nonterminal_type : nonterminal_type
   ; operator_rules : operator_match list list
   }
 
-(** A sort rule shows how to parse / pretty-print a sort *)
-type sort_rule = SortRule of sort_rule'
+(** A nonterminal rule shows how to parse / pretty-print a nonterminal *)
+type nonterminal_rule = NonterminalRule of nonterminal_rule'
 
-(** Mapping from sort names to sort rules *)
-type sort_rules = sort_rule Belt.Map.String.t
+(** Mapping from nonterminal names to nonterminal rules *)
+type nonterminal_rules = nonterminal_rule Belt.Map.String.t
 
 (** A description of the concrete syntax for a language *)
 type t =
   { terminal_rules : terminal_rules
-  ; sort_rules : sort_rules
+  ; nonterminal_rules : nonterminal_rules
   }
 
-type pre_t = pre_terminal_rule list * sort_rule list
+type pre_t = pre_terminal_rule list * nonterminal_rule list

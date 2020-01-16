@@ -95,15 +95,15 @@ let check_operator_match_validity
  * * FOO bar BAZ { op($2; $2) } invalid (repeated token)
  * * FOO bar BAZ { op($2; $4) } invalid (non-existent token)
 *)
-let check_description_validity { terminal_rules; sort_rules } =
+let check_description_validity { terminal_rules; nonterminal_rules } =
   let terminal_rules' = Belt.Map.String.fromArray terminal_rules in
   let show_toks toks = toks
     |. BA.map (Printf.sprintf "$%n")
     |. Js.Array2.joinWith ", "
   in
   try
-    sort_rules
-    |. Belt.Map.String.forEach (fun _i (SortRule { operator_rules }) ->
+    nonterminal_rules
+    |. Belt.Map.String.forEach (fun _i (NonterminalRule { operator_rules }) ->
       let operator_maches = Belt.List.flatten operator_rules in
       Belt.List.forEach
         operator_maches
@@ -165,23 +165,8 @@ let rec to_string : formatted_tree -> string
   |> String.concat ""
 ;;
 
-let rec string_of_sort : sort -> string
-  = let rec go = fun needs_parens (SortAp (name, args)) ->
-      let args' = Belt.Array.map args (go true) in
-      match args' with
-        | [||] -> name
-        | _ ->
-          let pre_result = name ^ " " ^ Js.Array2.joinWith args' " " in
-          if needs_parens then "(" ^ pre_result ^ ")" else pre_result
-    in go false
-;;
-
 let string_of_tree_info : tree_info -> string
-  = function
-    | SortConstruction (sort, _) -> string_of_sort sort
-    | Sequence -> "sequence"
-    | Primitive Integer -> "integer"
-    | Primitive String -> "string"
+  = fun (name, i) -> Printf.sprintf "%s:%n" name i
 ;;
 
 let rec to_debug_string : formatted_tree -> string
@@ -208,6 +193,7 @@ let rec remove_spaces : formatted_tree -> formatted_tree =
 
 exception ToAstError of string
 
+(*
 let prim_to_ast : prim_ty -> string -> primitive =
   fun prim_ty str ->
   match prim_ty with
@@ -216,6 +202,7 @@ let prim_to_ast : prim_ty -> string -> primitive =
     (try PrimInteger (Bigint.of_string str) with
      | _ -> raise (ToAstError "failed to read integer literal"))
 ;;
+*)
 
 (* Convert a concrete tree to an AST. We ignore trivia. *)
 let rec tree_to_ast
@@ -224,8 +211,12 @@ let rec tree_to_ast
   -> string
   -> formatted_tree
   -> Nominal.term
-  = fun (Language sorts as lang) ({ sort_rules } as rules) sort_name tree ->
+  = fun (Language sorts as lang) ({ nonterminal_rules } as rules) nonterminal_name tree ->
   Js.log2 "tree_to_ast" (to_debug_string tree);
+  let op_match_pattern = failwith "TODO" in
+  failwith "TODO"
+
+  (*
   match tree.tree_info, tree.children with
   | Sequence, children ->
     let children' =
@@ -234,25 +225,26 @@ let rec tree_to_ast
         | TerminalCapture _ ->
           raise @@ ToAstError "Unexpected terminal found in a sequence"
         (* XXX update sort *)
-        | NonterminalCapture child -> tree_to_ast lang rules sort_name child)
+        | NonterminalCapture child -> tree_to_ast lang rules nonterminal_name child)
       |. Belt.List.fromArray
     in
     Sequence children'
   | Primitive prim_ty, [| TerminalCapture { content } |] ->
-    Primitive (prim_to_ast prim_ty content)
+    failwith "TODO"
+    (* Primitive (prim_to_ast prim_ty content) *)
   | SortConstruction (_, Var), [| TerminalCapture { content = name } |]
   -> Var name
   (* TODO: check validity *)
   | SortConstruction (_, Operator op_name), tree_children ->
 
-    let SortRule { operator_rules } = sort_rules
-      |. MS.get sort_name
-      |> get_option' ("tree_to_ast: failed to get sort " ^ sort_name)
+    let NonterminalRule { operator_rules } = nonterminal_rules
+      |. MS.get nonterminal_name
+      |> get_option' ("tree_to_ast: failed to get sort " ^ nonterminal_name)
     in
-    let language_pointer = failwith "TODO" in
+    let nonterminal_pointer = failwith "TODO" in
     let tm = failwith "TODO" in
     let operator_match_pattern, _, _ =
-      find_operator_match language_pointer operator_rules tm
+      find_operator_match nonterminal_pointer operator_rules tm
     in
 
     (* Note: have to be careful to re-index capture numbers from 1-based to
@@ -262,7 +254,7 @@ let rec tree_to_ast
         |. Belt.Array.get (cap_num - 1)
         |> get_option' (Printf.sprintf
           "Failed to find capture %n in pattern for sort %s, operator %s"
-          (cap_num - 1) sort_name op_name
+          (cap_num - 1) nonterminal_name op_name
         )
         |> capture_to_pat
       )
@@ -274,7 +266,7 @@ let rec tree_to_ast
       | SingleCapturePattern cap_num -> (
         match Belt.Array.get tree_children (cap_num - 1) with
         | Some (NonterminalCapture tree) ->
-          tree_to_ast lang rules sort_name (* XXX sort name *) tree
+          tree_to_ast lang rules nonterminal_name (* XXX sort name *) tree
         | Some (TerminalCapture { content }) ->
           failwith
             (Printf.sprintf
@@ -334,8 +326,9 @@ and capture_to_pat : formatted_capture -> Pattern.t = function
        Sequence children'
      | Primitive prim_ty ->
        (match children with
-        | [| TerminalCapture { content } |] -> Primitive (prim_to_ast prim_ty content)
+        (* | [| TerminalCapture { content } |] -> Primitive (prim_to_ast prim_ty content) *)
         | _ -> raise @@ ToAstError "Unexpected primitive capture in capture_to_pat"))
+  *)
 ;;
 
 let to_ast
@@ -359,7 +352,7 @@ let to_grammar
     -> LrParsing.grammar
        * (nonterminal_token list * operator_match_pattern option) Belt.MutableMap.Int.t
   =
-  fun { terminal_rules; sort_rules } start_nonterminal ->
+  fun { terminal_rules; nonterminal_rules } start_nonterminal ->
   let terminal_key_arr = Belt.Array.map terminal_rules (fun (k, _) -> k) in
   let terminal_nums =
     Belt.Array.(
@@ -370,7 +363,7 @@ let to_grammar
   in
   let nonterminal_names_map =
     Belt.Map.String.(
-      sort_rules
+      nonterminal_rules
       |. keysToArray
       (* start other nonterminals (besides root) at 1 *)
       |. Belt.Array.mapWithIndex (fun i name -> name, i + 1)
@@ -400,9 +393,9 @@ let to_grammar
   let start_nonterminal_num = ref 0 in
   let production_rule_map = Belt.MutableMap.Int.make () in
   let nonterminals =
-    sort_rules
+    nonterminal_rules
     |. MS.toArray
-    |. BA.mapWithIndex (fun i (sort_name, SortRule { operator_rules }) ->
+    |. BA.mapWithIndex (fun i (nonterminal_name, NonterminalRule { operator_rules }) ->
       let op_prods : LrParsing.symbol list list =
         operator_rules
         |. Belt.List.map (fun operator_level ->
@@ -417,7 +410,7 @@ let to_grammar
         (* TODO: temporary pending precedence parsing *)
         |. Belt.List.flatten
       in
-      if sort_name = start_nonterminal then start_nonterminal_num := i + 1;
+      if nonterminal_name = start_nonterminal then start_nonterminal_num := i + 1;
       i + 1, { LrParsing.productions = op_prods })
     |. Belt.Map.Int.fromArray
     |. Belt.Map.Int.set 0 { productions = [ [ Nonterminal !start_nonterminal_num ] ] }
@@ -426,6 +419,7 @@ let to_grammar
   { nonterminals; terminal_nums; nonterminal_nums }, production_rule_map
 ;;
 
+(*
 let production_sort_name
   :  LrParsing.nonterminal_num Belt.MutableMap.Int.t
     -> LrParsing.nonterminal_num Belt.Map.String.t -> LrParsing.production_num -> string
@@ -441,14 +435,15 @@ let production_sort_name
   | None -> failwith "production_sort_name: invariant violation: sort not found"
   | Some (name, _) -> name
 ;;
+*)
 
 let tree_of_parse_result (module Lr0 : LrParsing.LR0)
   :  (nonterminal_token list * operator_match_pattern option) Belt.MutableMap.Int.t
-    -> LrParsing.nonterminal_num MS.t -> ConcreteSyntaxDescription.sort_rules
+    -> LrParsing.nonterminal_num MS.t -> ConcreteSyntaxDescription.nonterminal_rules
     -> string (* root name *) -> string (* parsed string *) -> LrParsing.parse_result
     -> formatted_tree
   =
-  fun production_rule_map nonterminal_nums sort_rules root_name str root ->
+  fun production_rule_map nonterminal_nums nonterminal_rules root_name str root ->
   Js.log2 "tree_of_parse_result" (LrParsing.parse_result_to_string root);
   let str_pos = ref 0 in
   let str_len = Js.String2.length str in
@@ -493,7 +488,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
              prod_num)
         | Some (SingleCapturePattern pat) -> failwith "TODO"
         | Some (OperatorPattern (ctor_name, _))
-        -> SortConstruction (failwith "TODO", Operator ctor_name)
+        -> failwith "TODO"
       in
       let tokens_no_space =
         tokens
@@ -554,11 +549,15 @@ let parse desc root_name str =
     in
     let lexer = lexer_of_desc desc in
     (* TODO: come up with better idea where to do this *)
-    let augmented_sort_rules =
+    let augmented_nonterminal_rules =
       MS.set
-        desc.sort_rules
+        desc.nonterminal_rules
         "root"
-        (SortRule { sort_name = "root"; operator_rules = [ [] ] })
+        (NonterminalRule
+          { nonterminal_name = "root"
+          ; nonterminal_type = failwith "TODO"
+          ; operator_rules = [ [] ]
+          })
     in
     match Lalr.lex_and_parse lexer str with
     | Ok root ->
@@ -567,7 +566,7 @@ let parse desc root_name str =
            (module Lalr)
            production_rule_map
            (MS.fromArray grammar.nonterminal_nums)
-           augmented_sort_rules
+           augmented_nonterminal_rules
            root_name
            str
            root)
@@ -589,7 +588,7 @@ let parse desc root_name str =
 
 let make_concrete_description
       (terminal_rules : pre_terminal_rule list)
-      (sort_rules : sort_rule list)
+      (nonterminal_rules : nonterminal_rule list)
   =
   let module Parse_regex = Parsing.Incremental (Parsing.Parseable_regex) in
   { terminal_rules =
@@ -602,9 +601,10 @@ let make_concrete_description
            | Error msg -> failwith ("failed to parse regex: " ^ msg))
         | Right str -> name, Regex.ReString str)
       |. Belt.List.toArray
-  ; sort_rules =
-      sort_rules
-      |. Belt.List.map (fun (SortRule { sort_name } as rule) -> sort_name, rule)
+  ; nonterminal_rules =
+      nonterminal_rules
+      |. Belt.List.map (fun (NonterminalRule { nonterminal_name } as rule) ->
+        nonterminal_name, rule)
       |. Belt.List.toArray
       |. Belt.Map.String.fromArray
   }

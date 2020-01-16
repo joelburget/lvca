@@ -24,7 +24,7 @@
 %start capture_number
 %start nonterminal_token__test
 %start operator_match__test
-%start sort_rule__test
+%start nonterminal_rule__test
 %start language
 %type <ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule
 %type <ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule__test
@@ -34,13 +34,13 @@
 %type <ConcreteSyntaxDescription.operator_match> operator_match
 %type <ConcreteSyntaxDescription.operator_match> operator_match__test
 %type <ConcreteSyntaxDescription.operator_match list list> operator_match_list
-%type <ConcreteSyntaxDescription.sort_rule> sort_rule
-%type <ConcreteSyntaxDescription.sort_rule> sort_rule__test
+%type <ConcreteSyntaxDescription.nonterminal_rule> nonterminal_rule
+%type <ConcreteSyntaxDescription.nonterminal_rule> nonterminal_rule__test
 %type <ConcreteSyntaxDescription.operator_match_pattern> operator_match_pattern
-%type <ConcreteSyntaxDescription.pre_terminal_rule list * ConcreteSyntaxDescription.sort_rule list> language
+%type <ConcreteSyntaxDescription.pre_terminal_rule list * ConcreteSyntaxDescription.nonterminal_rule list> language
 %%
 
-language: terminal_rule+ sort_rule+ EOF { ($1, $2) }
+language: terminal_rule+ nonterminal_rule+ EOF { ($1, $2) }
 
 terminal_rule:
   | TERMINAL_ID ASSIGN REGEX
@@ -52,11 +52,16 @@ terminal_rule__test: terminal_rule EOF { $1 }
 
 capture_number: DOLLAR NAT { $2 }
 
-sort_rule__test: sort_rule EOF { $1 }
+nonterminal_rule__test: nonterminal_rule EOF { $1 }
 
-sort_rule:
+nonterminal_rule:
   | NONTERMINAL_ID ASSIGN BAR? operator_match_list
-  { SortRule { sort_name = $1; operator_rules = $4 }
+  { NonterminalRule
+    { nonterminal_name = $1
+    (* TODO: generalize nonterminals *)
+    ; nonterminal_type = NonterminalType ([], SortAp ($1, [||]))
+    ; operator_rules = $4
+    }
   }
 
 (* The list of operator matches making up a nonterminal. Each operator match is

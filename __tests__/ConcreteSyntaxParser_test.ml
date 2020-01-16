@@ -54,16 +54,17 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
       }
     );
 
-  expectParse ConcreteSyntax.Parser.sort_rule__test
+  expectParse ConcreteSyntax.Parser.nonterminal_rule__test
     {|
        arith :=
          | arith ADD arith { add($1; $3) } %left
          | arith SUB arith { sub($1; $3) } %left
          > NAME            { $1          }
     |}
-    (SortRule
-      { sort_name = "arith";
-        operator_rules =
+    (NonterminalRule
+      { nonterminal_name = "arith"
+      ; nonterminal_type = NonterminalType ([], SortAp ("arith", [||]))
+      ; operator_rules =
           [[
 
             OperatorMatch

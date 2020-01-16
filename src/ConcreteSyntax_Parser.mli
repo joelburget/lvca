@@ -30,13 +30,13 @@ exception Error
 
 val terminal_rule__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.pre_terminal_rule)
 
-val sort_rule__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.sort_rule)
-
 val operator_match__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.operator_match)
 
 val nonterminal_token__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.nonterminal_token)
 
-val language: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.pre_terminal_rule list * ConcreteSyntaxDescription.sort_rule list)
+val nonterminal_rule__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.nonterminal_rule)
+
+val language: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.pre_terminal_rule list * ConcreteSyntaxDescription.nonterminal_rule list)
 
 val capture_number: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.capture_number)
 
@@ -55,13 +55,13 @@ module Incremental : sig
   
   val terminal_rule__test: Lexing.position -> (ConcreteSyntaxDescription.pre_terminal_rule) MenhirInterpreter.checkpoint
   
-  val sort_rule__test: Lexing.position -> (ConcreteSyntaxDescription.sort_rule) MenhirInterpreter.checkpoint
-  
   val operator_match__test: Lexing.position -> (ConcreteSyntaxDescription.operator_match) MenhirInterpreter.checkpoint
   
   val nonterminal_token__test: Lexing.position -> (ConcreteSyntaxDescription.nonterminal_token) MenhirInterpreter.checkpoint
   
-  val language: Lexing.position -> (ConcreteSyntaxDescription.pre_terminal_rule list * ConcreteSyntaxDescription.sort_rule list) MenhirInterpreter.checkpoint
+  val nonterminal_rule__test: Lexing.position -> (ConcreteSyntaxDescription.nonterminal_rule) MenhirInterpreter.checkpoint
+  
+  val language: Lexing.position -> (ConcreteSyntaxDescription.pre_terminal_rule list * ConcreteSyntaxDescription.nonterminal_rule list) MenhirInterpreter.checkpoint
   
   val capture_number: Lexing.position -> (ConcreteSyntaxDescription.capture_number) MenhirInterpreter.checkpoint
   

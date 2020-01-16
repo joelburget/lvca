@@ -15,16 +15,7 @@ module Lexer = ConcreteSyntax_Lexer
 module Parser = ConcreteSyntax_Parser
 module ParseErrors = ConcreteSyntax_ParseErrors
 
-type prim_ty =
-  | Integer
-  | String
-
-type construction_type = Operator of string | Var
-
-type tree_info =
-  | SortConstruction of sort * construction_type
-  | Sequence
-  | Primitive of prim_ty
+type tree_info = string * int
 
 (** Terminals capture text from the input buffer *)
 type formatted_terminal_capture =
@@ -68,7 +59,7 @@ val equivalent : formatted_tree -> formatted_tree -> bool
 val of_ast
   : language
   -> ConcreteSyntaxDescription.t
-  -> sort
+  -> string
   -> int
   -> Nominal.term
   -> formatted_tree
@@ -115,5 +106,5 @@ val remove_spaces : formatted_tree -> formatted_tree
 *)
 val make_concrete_description
   :  ConcreteSyntaxDescription.pre_terminal_rule list
-  -> ConcreteSyntaxDescription.sort_rule list
+  -> ConcreteSyntaxDescription.nonterminal_rule list
   -> ConcreteSyntaxDescription.t

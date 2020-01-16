@@ -69,19 +69,23 @@ let _ = describe "ConcreteSyntax" (fun () ->
         ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
       in
 
-      let mk_op name = mk_tree (SortConstruction (arith, Operator name)) in
-      let mk_var = mk_tree (SortConstruction (arith, Var)) in
+      let add_no = 0 in
+      let sub_no = 1 in
+      let mul_no = 2 in
+      let fun_no = 5 in
+      let mk_op no = mk_tree ("arith", no) in
+      let mk_var = mk_tree ("arith", 7) in
 
-      let tree1 = mk_op "add"
+      let tree1 = mk_op add_no
         [| nt_capture (mk_var [| mk_terminal_capture "x" " " |]);
            mk_terminal_capture "+" " ";
            nt_capture (mk_var [| mk_terminal_capture "y" "" |]);
         |]
       in
 
-      let tree2 = mk_op "sub"
+      let tree2 = mk_op sub_no
         [|
-          nt_capture (mk_op "add"
+          nt_capture (mk_op add_no
             [| nt_capture (mk_var [| mk_terminal_capture "x" " " |]);
                mk_terminal_capture "+" " ";
                nt_capture (mk_var [| mk_terminal_capture "y" " " |]);
@@ -92,13 +96,13 @@ let _ = describe "ConcreteSyntax" (fun () ->
         |]
       in
 
-      let tree3 = mk_op "add"
+      let tree3 = mk_op add_no
         [| nt_capture (mk_var [| mk_terminal_capture "x" " " |]);
            mk_terminal_capture "+" " ";
            nt_capture (mk_var
              [|
                mk_terminal_capture "(" "";
-               nt_capture (mk_op "mul"
+               nt_capture (mk_op mul_no
                  [| nt_capture (mk_var [| mk_terminal_capture "y" " " |]);
                     mk_terminal_capture "*" " ";
                     nt_capture (mk_var [| mk_terminal_capture "z" "" |]);
@@ -110,7 +114,7 @@ let _ = describe "ConcreteSyntax" (fun () ->
         |]
       in
 
-      let tree4 = mk_op "fun"
+      let tree4 = mk_op fun_no
         (* [| nt_capture (mk_var [| mk_terminal_capture "x" " " |]); *)
         [| mk_terminal_capture "x" " ";
            mk_terminal_capture "->" " ";
@@ -148,9 +152,9 @@ let _ = describe "ConcreteSyntax" (fun () ->
 
       testAll "of_ast" [
         (* TODO: should have spaces *)
-        expect (of_ast language concrete arith 80 tree1_ast)
+        expect (of_ast language concrete "arith" 80 tree1_ast)
           |> toEqual tree1;
-        expect (of_ast language concrete arith 80 tree4_ast)
+        expect (of_ast language concrete "arith" 80 tree4_ast)
           |> toEqual tree4;
       ] Util.id;
 
@@ -198,13 +202,13 @@ let _ = describe "ConcreteSyntax" (fun () ->
 
       let expect_round_trip_tree tree = expect (tree
           |> to_ast language concrete "arith"
-          |. Belt.Result.map (of_ast language concrete arith 80)
+          |. Belt.Result.map (of_ast language concrete "arith" 80)
           |. Belt.Result.getExn
         ) |> toBeEquivalent to_string equivalent tree
       in
 
       let expect_round_trip_ast tm = expect (tm
-          |> of_ast language concrete arith 80
+          |> of_ast language concrete "arith" 80
           |> to_ast language concrete "arith"
         ) |> toEqual (Ok tm)
       in
