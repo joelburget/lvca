@@ -12,7 +12,7 @@ open Types
 open ConcreteSyntaxDescription
 include ConcreteSyntax_Private
 
-let find, get_option' = Util.(find, get_option')
+let get_option, get_option' = Util.(get_option, get_option')
 let of_ast = ConcreteSyntax_OfAst.of_ast
 
 type invalid_grammar = InvalidGrammar of string
@@ -87,6 +87,8 @@ let check_operator_match_validity
  * 3. No token is mentioned on the RHS that doesn't exist on the left
  * 4. No regex admits empty strings (these tokens could be arbitrarily inserted
  *    everywhere)
+ * 5. Boxes are matching: There are the same number of '[' and ']' tokens, each
+ *    box is opened before it's closed.
  *
  * Examples:
  * * FOO bar BAZ { op($1; $2; $3) } valid
@@ -96,11 +98,13 @@ let check_operator_match_validity
  * * FOO bar BAZ { op($2; $4) } invalid (non-existent token)
 *)
 let check_description_validity { terminal_rules; nonterminal_rules } =
+  let raise_invalid str = raise (CheckValidExn (InvalidGrammar str)) in
   let terminal_rules' = Belt.Map.String.fromArray terminal_rules in
   let show_toks toks = toks
     |. BA.map (Printf.sprintf "$%n")
     |. Js.Array2.joinWith ", "
   in
+  let open_depth = ref 0 in
   try
     nonterminal_rules
     |. Belt.Map.String.forEach (fun _i (NonterminalRule { operator_rules }) ->
@@ -114,71 +118,44 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
            if not (SI.isEmpty duplicate_captures)
            then (
              let tok_names = duplicate_captures |. SI.toArray |. show_toks in
-             raise
-               (CheckValidExn
-                  (InvalidGrammar ("tokens captured more than once: " ^ tok_names))));
+             raise_invalid
+               ("tokens captured more than once: " ^ tok_names));
            if not (MSI.isEmpty non_existent_tokens)
            then (
              let tok_names = non_existent_tokens |. MSI.toArray |. show_toks in
-             raise
-               (CheckValidExn
-                  (InvalidGrammar ("non-existent tokens mentioned: " ^ tok_names))));
+             raise_invalid ("non-existent tokens mentioned: " ^ tok_names));
            Belt.List.map uncaptured_tokens (fun (_i, tok) ->
              match tok with
              | NonterminalName name ->
-               raise
-                 (CheckValidExn
-                    (InvalidGrammar ("uncaptured nonterminal: " ^ name)))
+               raise_invalid ("uncaptured nonterminal: " ^ name)
              | TerminalName nt_name ->
                (match MS.get terminal_rules' nt_name with
                 | None ->
-                  raise
-                    (CheckValidExn
-                       (InvalidGrammar
-                          ("Named terminal " ^ nt_name ^ " does not exist")))
+                  raise_invalid ("Named terminal " ^ nt_name ^ " does not exist")
                 | Some regex ->
                   if Util.is_none (Regex.is_literal regex)
-                  then raise (CheckValidExn (InvalidGrammar
-                  ("Uncaptured regex which is not a string literal: " ^
-                  Regex.to_string regex)))
+                  then raise_invalid
+                    ("Uncaptured regex which is not a string literal: " ^
+                    Regex.to_string regex)
                   )
-             | Underscore _n -> ())));
+             | OpenBox _ -> open_depth := !open_depth + 1
+             | CloseBox -> (
+               if !open_depth <= 0
+               then raise_invalid "Invalid box structure (saw a close box \
+                 marker (']') before its opening marker ('['))!";
+               open_depth := !open_depth - 1;
+             )
+             | Underscore _ -> ())));
+    if !open_depth != 0
+    then raise_invalid "At least one group is not closed (there are more open \
+      box markers ('[') than close box markers (']'))";
     Belt.Map.String.forEach terminal_rules' (fun _i regex ->
       if Regex.accepts_empty regex
-      then
-        raise
-          (CheckValidExn
-             (InvalidGrammar ("Regex accepts empty strings: " ^ Regex.to_string regex)))
+      then raise_invalid ("Regex accepts empty strings: " ^ Regex.to_string regex)
     );
     None
   with
-  | CheckValidExn err -> Some err
-;;
-
-let rec to_string : formatted_tree -> string
-  = fun { children } -> children
-  |> Array.map (function
-    | TerminalCapture { leading_trivia; content; trailing_trivia } ->
-      leading_trivia ^ content ^ trailing_trivia
-    | NonterminalCapture nonterminal_capture -> to_string nonterminal_capture)
-  |> Belt.List.fromArray
-  |> String.concat ""
-;;
-
-let string_of_tree_info : tree_info -> string
-  = fun (name, i) -> Printf.sprintf "%s:%n" name i
-;;
-
-let rec to_debug_string : formatted_tree -> string
-  = fun { children; tree_info } -> children
-  |> Array.map (function
-    | TerminalCapture { leading_trivia; content; trailing_trivia } ->
-      "t:" ^ leading_trivia ^ content ^ trailing_trivia
-    | NonterminalCapture nonterminal_capture
-    -> "nt:" ^ to_debug_string nonterminal_capture)
-  |> Belt.List.fromArray
-  |> String.concat ""
-  |> Printf.sprintf "%s(%s)" (string_of_tree_info tree_info)
+    CheckValidExn err -> Some err
 ;;
 
 let rec remove_spaces : formatted_tree -> formatted_tree =
@@ -193,151 +170,154 @@ let rec remove_spaces : formatted_tree -> formatted_tree =
 
 exception ToAstError of string
 
-(*
-let prim_to_ast : prim_ty -> string -> primitive =
-  fun prim_ty str ->
-  match prim_ty with
-  | String -> PrimString str
-  | Integer ->
-    (try PrimInteger (Bigint.of_string str) with
-     | _ -> raise (ToAstError "failed to read integer literal"))
+let prim_to_ast
+  : string -> formatted_tree -> primitive
+  = fun prim_ty tree -> match tree.children with
+    | [| TerminalCapture { content } |] -> (match prim_ty with
+      | "string" -> PrimString content
+      | "integer" -> (
+        try
+          PrimInteger (Bigint.of_string content)
+        with
+           _ -> raise (ToAstError "failed to read integer literal")
+      )
+      | _ -> raise (Util.InvariantViolation (Printf.sprintf
+        "prim_to_ast can only be called with string or integer (called with %s)"
+        prim_ty
+      ))
+    )
+    | _ -> raise @@ ToAstError "TODO: message"
 ;;
-*)
+
+let get_operator_match
+  : ConcreteSyntaxDescription.t -> formatted_tree -> operator_match_pattern
+  = fun rules tree ->
+  let nt_name, nt_prod_no = tree.tree_info in
+  let OperatorMatch { operator_match_pattern } = rules.nonterminal_rules
+    |. Belt.Map.String.get nt_name
+    |> get_option (ToAstError "TODO: message")
+    |> fun (NonterminalRule { operator_rules }) -> operator_rules
+    |. Belt.List.flatten (* TODO: should we use 2d indexing? *)
+    |. Belt.List.get nt_prod_no
+    |> get_option' "TODO: message"
+  in operator_match_pattern
+;;
 
 (* Convert a concrete tree to an AST. We ignore trivia. *)
 let rec tree_to_ast
-  :  language
-  -> ConcreteSyntaxDescription.t
-  -> string
+  :  ConcreteSyntaxDescription.t
   -> formatted_tree
   -> Nominal.term
-  = fun (Language sorts as lang) ({ nonterminal_rules } as rules) nonterminal_name tree ->
-  Js.log2 "tree_to_ast" (to_debug_string tree);
-  let op_match_pattern = failwith "TODO" in
-  failwith "TODO"
+  = fun rules tree ->
+  (* Js.log2 "tree_to_ast" (to_debug_string tree); *)
+  let nt_name, _ = tree.tree_info in
+  match nt_name with
+    | "list" -> failwith "TODO"
+    | "string"
+    | "integer" -> Primitive (prim_to_ast nt_name tree)
+    | _ -> tree
+      |> get_operator_match rules
+      |> go_op_match_term rules tree.children
 
-  (*
-  match tree.tree_info, tree.children with
-  | Sequence, children ->
-    let children' =
-      children
-      |. Belt.Array.map (function
-        | TerminalCapture _ ->
-          raise @@ ToAstError "Unexpected terminal found in a sequence"
-        (* XXX update sort *)
-        | NonterminalCapture child -> tree_to_ast lang rules nonterminal_name child)
-      |. Belt.List.fromArray
-    in
-    Sequence children'
-  | Primitive prim_ty, [| TerminalCapture { content } |] ->
-    failwith "TODO"
-    (* Primitive (prim_to_ast prim_ty content) *)
-  | SortConstruction (_, Var), [| TerminalCapture { content = name } |]
-  -> Var name
-  (* TODO: check validity *)
-  | SortConstruction (_, Operator op_name), tree_children ->
-
-    let NonterminalRule { operator_rules } = nonterminal_rules
-      |. MS.get nonterminal_name
-      |> get_option' ("tree_to_ast: failed to get sort " ^ nonterminal_name)
-    in
-    let nonterminal_pointer = failwith "TODO" in
-    let tm = failwith "TODO" in
-    let operator_match_pattern, _, _ =
-      find_operator_match nonterminal_pointer operator_rules tm
-    in
-
-    (* Note: have to be careful to re-index capture numbers from 1-based to
-     * 0-based *)
-    let rec go_numbered_scope = fun (NumberedScopePattern (var_caps, body_pat)) ->
-      let binders = Belt.List.map var_caps (fun cap_num -> tree_children
-        |. Belt.Array.get (cap_num - 1)
-        |> get_option' (Printf.sprintf
-          "Failed to find capture %n in pattern for sort %s, operator %s"
-          (cap_num - 1) nonterminal_name op_name
-        )
-        |> capture_to_pat
+and go_op_match_term
+  :  ConcreteSyntaxDescription.t
+  -> formatted_capture array
+  -> operator_match_pattern
+  -> Nominal.term
+  = fun rules children op_match_pat -> match op_match_pat with
+    | OperatorPattern ("var", [NumberedScopePattern([], SingleCapturePattern n)])
+    -> (match children.(n - 1) with
+      | NonterminalCapture _ -> failwith "TODO: error"
+      | TerminalCapture { content } -> Var content
+    )
+    | OperatorPattern ("var", _) -> failwith "TODO: error"
+    | OperatorPattern (name, scope_pats)
+    -> Operator
+      ( name
+      , Belt.List.map scope_pats (go_numbered_scope_term rules children)
       )
-      in
-
-      Nominal.Scope (binders, go_op_match_pat body_pat)
-
-    and go_op_match_pat = function
-      | SingleCapturePattern cap_num -> (
-        match Belt.Array.get tree_children (cap_num - 1) with
-        | Some (NonterminalCapture tree) ->
-          tree_to_ast lang rules nonterminal_name (* XXX sort name *) tree
-        | Some (TerminalCapture { content }) ->
-          failwith
-            (Printf.sprintf
-               "Unexpected terminal capture (%s) in tree (%s), capture $%n, \
-                match pattern %s"
-               content
-               (to_string tree)
-               cap_num
-               (string_of_operator_match_pattern operator_match_pattern))
-        | None ->
-          failwith
-            (Printf.sprintf
-               "Failed to find capture %n in tree (%s), match pattern %s"
-               cap_num
-               (to_string tree)
-               (string_of_operator_match_pattern operator_match_pattern))
+    | SingleCapturePattern n
+    -> (match children.(n - 1) with
+      | NonterminalCapture tree -> tree_to_ast rules tree
+      | TerminalCapture { content } -> failwith (Printf.sprintf (* TODO: error *)
+        "go_op_match_term: Unexpectedly received a terminal when a nonterminal child was expected: %n -> %s" n content
       )
+    )
 
-      | OperatorPattern (op_name, op_children) -> Operator
-        ( op_name
-        , Belt.List.map op_children go_numbered_scope
-        )
+and go_numbered_scope_term
+  :  ConcreteSyntaxDescription.t
+  -> formatted_capture array
+  -> numbered_scope_pattern
+  -> Nominal.scope
+  = fun rules children (NumberedScopePattern (cap_nums, op_match_pat)) -> Scope
+    ( cap_nums
+      |. Belt.List.map (fun n -> match children.(n - 1) with
+        | NonterminalCapture tree -> tree_to_pattern rules tree
+        | TerminalCapture { content } -> failwith (Printf.sprintf (* TODO: error *)
+        "go_numbered_scope_term: Unexpectedly received a terminal when a nonterminal child was expected: %n -> %s" n content
+      )
+      )
+    , go_op_match_term rules children op_match_pat
+    )
 
-    in
-    go_op_match_pat operator_match_pattern
+and tree_to_pattern
+  :  ConcreteSyntaxDescription.t
+  -> formatted_tree
+  -> Pattern.t
+  = fun rules tree ->
+  let nt_name, _ = tree.tree_info in
+  match nt_name with
+    | "list" -> failwith "TODO"
+    | "string"
+    | "integer" -> Primitive (prim_to_ast nt_name tree)
+    | _ -> tree
+      |> get_operator_match rules
+      |> go_op_match_pattern rules tree.children
 
-  | Primitive _, _ -> assert false
+and go_op_match_pattern
+  :  ConcreteSyntaxDescription.t
+  -> formatted_capture array
+  -> operator_match_pattern
+  -> Pattern.t
+  = fun rules children op_match_pat -> match op_match_pat with
+    | OperatorPattern ("var", [NumberedScopePattern([], SingleCapturePattern n)])
+    -> (match children.(n - 1) with
+      | NonterminalCapture _ -> failwith "TODO: error"
+      | TerminalCapture { content } -> Var content
+    )
+    | OperatorPattern ("var", _) -> failwith "TODO: error"
+    | OperatorPattern (name, scope_pats)
+    -> Operator
+      ( name
+      , Belt.List.map scope_pats (go_numbered_scope_pattern rules children)
+      )
+    | SingleCapturePattern n
+    -> (match children.(n - 1) with
+      | NonterminalCapture tree -> tree_to_pattern rules tree
+      | TerminalCapture { content } -> failwith (Printf.sprintf (* TODO: error *)
+        "go_op_match_pattern: Unexpectedly received a terminal when a nonterminal child was expected: %n -> %s" n content
+      )
+    )
 
-and capture_to_pat : formatted_capture -> Pattern.t = function
-  | TerminalCapture { content } -> Var content
-  (*
-     raise @@ ToAstError (Printf.sprintf
-     "Unexpected bare terminal capture (%s) in capture_to_pat"
-     content
-  *)
-  | NonterminalCapture { tree_info; children } ->
-    (match tree_info with
-     | SortConstruction (_, Operator op_name) ->
-       let children' =
-         children
-         |. Belt.Array.keepMap (fun cap ->
-           match cap with
-           | TerminalCapture { content } -> None
-           | NonterminalCapture child -> Some (capture_to_pat cap))
-         |. Belt.List.fromArray
-       in
-       Operator (op_name, children')
-     | SortConstruction (_, Var) ->
-       (match children with
-        | [| TerminalCapture { content = name } |] -> Var name
-        | _ ->
-          raise
-          @@ ToAstError
-               "Unexpected children of a var capture (expected a single terminal capture)")
-     | Sequence ->
-       let children' = children |. Belt.Array.map capture_to_pat |. Belt.List.fromArray in
-       Sequence children'
-     | Primitive prim_ty ->
-       (match children with
-        (* | [| TerminalCapture { content } |] -> Primitive (prim_to_ast prim_ty content) *)
-        | _ -> raise @@ ToAstError "Unexpected primitive capture in capture_to_pat"))
-  *)
+and go_numbered_scope_pattern
+  :  ConcreteSyntaxDescription.t
+  -> formatted_capture array
+  -> numbered_scope_pattern
+  -> Pattern.t
+  = fun rules children (NumberedScopePattern (cap_nums, op_match_pat)) ->
+    if Belt.List.length cap_nums > 0 then raise @@ ToAstError "TODO: message";
+    go_op_match_pattern rules children op_match_pat
 ;;
 
 let to_ast
-  : language -> ConcreteSyntaxDescription.t -> string -> formatted_tree
-    -> (Nominal.term, string) Belt.Result.t
-  =
-  fun lang rules sort tree ->
-  try Ok (tree_to_ast lang rules sort tree) with
-  | ToAstError msg -> Error msg
+  :  ConcreteSyntaxDescription.t
+  -> formatted_tree
+  -> (Nominal.term, string) Belt.Result.t
+  = fun rules tree ->
+    try
+      Ok (tree_to_ast rules tree)
+    with
+      ToAstError msg -> Error msg
 ;;
 
 (* All infix operators of the same priority must have the same fixity.
@@ -348,9 +328,10 @@ exception MixedFixities of bool * int
 (* Produce an augmented grammar *)
 let to_grammar
   :  ConcreteSyntaxDescription.t
-    -> string
-    -> LrParsing.grammar
-       * (nonterminal_token list * operator_match_pattern option) Belt.MutableMap.Int.t
+  -> string
+  -> LrParsing.grammar
+    * (tree_info * nonterminal_token list * operator_match_pattern option)
+        Belt.MutableMap.Int.t
   =
   fun { terminal_rules; nonterminal_rules } start_nonterminal ->
   let terminal_key_arr = Belt.Array.map terminal_rules (fun (k, _) -> k) in
@@ -385,27 +366,31 @@ let to_grammar
            (nonterminal_names_map
             |. MS.get ntn
             |> get_option' ("to_grammar: failed to get nonterminal " ^ ntn)))
-    | Underscore _ -> None
+    | OpenBox _ | CloseBox | Underscore _ -> None
   in
   (* We're dealing with a non-augmented grammar here. Start counting from 0.
   *)
   let prod_num = ref 1 in
   let start_nonterminal_num = ref 0 in
   let production_rule_map = Belt.MutableMap.Int.make () in
-  let nonterminals =
-    nonterminal_rules
+  let nonterminals = nonterminal_rules
     |. MS.toArray
     |. BA.mapWithIndex (fun i (nonterminal_name, NonterminalRule { operator_rules }) ->
+      (* track the operator number within this nonterminal *)
+      let nt_operator_index = ref 0 in
       let op_prods : LrParsing.symbol list list =
         operator_rules
-        |. Belt.List.map (fun operator_level ->
-          operator_level
+        |. Belt.List.map (fun operator_level -> operator_level
           |. Belt.List.map (fun (OperatorMatch rule) ->
             Belt.MutableMap.Int.set
               production_rule_map
               !prod_num
-              (rule.tokens, Some rule.operator_match_pattern);
+              ( (nonterminal_name, !nt_operator_index)
+              , rule.tokens
+              , Some rule.operator_match_pattern
+              );
             prod_num := !prod_num + 1;
+            nt_operator_index := !nt_operator_index + 1;
             Belt.List.keepMap rule.tokens non_space_tokens))
         (* TODO: temporary pending precedence parsing *)
         |. Belt.List.flatten
@@ -438,13 +423,18 @@ let production_sort_name
 *)
 
 let tree_of_parse_result (module Lr0 : LrParsing.LR0)
-  :  (nonterminal_token list * operator_match_pattern option) Belt.MutableMap.Int.t
-    -> LrParsing.nonterminal_num MS.t -> ConcreteSyntaxDescription.nonterminal_rules
-    -> string (* root name *) -> string (* parsed string *) -> LrParsing.parse_result
-    -> formatted_tree
+  :  (tree_info * nonterminal_token list * operator_match_pattern option)
+       Belt.MutableMap.Int.t
+  -> LrParsing.nonterminal_num MS.t
+  -> ConcreteSyntaxDescription.nonterminal_rules
+  -> string (* root name *)
+  -> string (* parsed string *)
+  -> LrParsing.parse_result
+  -> formatted_tree
   =
   fun production_rule_map nonterminal_nums nonterminal_rules root_name str root ->
-  Js.log2 "tree_of_parse_result" (LrParsing.parse_result_to_string root);
+  (* Js.log2 "tree_of_parse_result" (LrParsing.parse_result_to_string root); *)
+
   let str_pos = ref 0 in
   let str_len = Js.String2.length str in
   let get_trivia : int -> int -> string * string =
@@ -463,10 +453,10 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
       let trailing_trivia = Js.String2.slice str ~from:end_pos ~to_:!str_pos in
       leading_trivia, trailing_trivia
   in
+
   let rec go_nt : string -> LrParsing.parse_result -> formatted_tree =
     fun nt_name { production; children } ->
-      let prod_num =
-        match production with
+      let prod_num = match production with
         | Left prod -> failwith
           (Printf.sprintf
              "invariant violation: go_nt (nt_name %s) received a terminal production: %s"
@@ -474,31 +464,17 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
              (Lr0.string_of_terminal prod))
         | Right prod_num -> prod_num
       in
-      Js.log3 "go_nt" nt_name prod_num;
-      let tokens, m_operator_match_pattern =
+      (* Js.log3 "go_nt" nt_name prod_num; *)
+      let tree_info, tokens, _ =
         match Belt.MutableMap.Int.get production_rule_map prod_num with
-        | None -> failwith "TODO: error"
+        | None -> failwith "TODO: error 10"
         | Some result -> result
       in
-      let tree_info =
-        match m_operator_match_pattern with
-        | None -> failwith
-          (Printf.sprintf
-             "invariant violation: go_nt couldn't find production %n"
-             prod_num)
-        | Some (SingleCapturePattern pat) -> failwith "TODO"
-        | Some (OperatorPattern (ctor_name, _))
-        -> failwith "TODO"
-      in
-      let tokens_no_space =
-        tokens
-        |. Belt.List.keep (function
-          | Underscore _ -> false
-          | _ -> true)
+      let tokens_no_space = tokens
+        |. Belt.List.keep (function Underscore _ -> false | _ -> true)
       in
       { tree_info
-      ; children =
-          children
+      ; children = children
           |. Belt.List.zip tokens_no_space
           |. Belt.List.toArray
           |> Util.array_map_keep (function parse_result, token ->
@@ -507,13 +483,14 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
              | NonterminalName ntn ->
                Some (NonterminalCapture (go_nt ntn parse_result))
              (* TODO: trivia *)
-             | Underscore _ -> None))
+             | OpenBox _ | CloseBox | Underscore _ -> None))
       }
+
   and go_t : LrParsing.parse_result -> formatted_terminal_capture =
     fun { start_pos; end_pos } ->
       let leading_trivia, trailing_trivia = get_trivia start_pos end_pos in
       let content = Js.String.slice str ~from:start_pos ~to_:end_pos in
-      Js.log2 "go_t" content;
+      (* Js.log2 "go_t" content; *)
       { leading_trivia; content; trailing_trivia }
   in
   go_nt root_name root
@@ -534,28 +511,29 @@ let parse desc root_name str =
     let grammar, production_rule_map = to_grammar desc root_name in
     (*
        production_rule_map
-       |. Belt.MutableMap.Int.mapWithKey (fun i (tokens, m_operator_match_pattern) ->
-       Printf.printf "production rule %n: %s %s\n"
-       i
-       (string_of_tokens tokens)
-       (match m_operator_match_pattern with
-       | Some x -> string_of_operator_match_pattern x
-       | None -> "(none)")
-       );
-    *)
+       |. Belt.MutableMap.Int.mapWithKey
+         (fun i (tree_info, tokens, m_operator_match_pattern) ->
+           Printf.printf "production rule %n: %s %s\n"
+           i
+           (string_of_tokens tokens)
+           (match m_operator_match_pattern with
+           | Some x -> string_of_operator_match_pattern x
+           | None -> "(none)")
+         );
+         *)
     let module Lalr = LalrParsing.Lalr1 (struct
                         let grammar = grammar
                       end)
     in
     let lexer = lexer_of_desc desc in
-    (* TODO: come up with better idea where to do this *)
+    (* TODO: come up with better idea where to do this augmentation *)
     let augmented_nonterminal_rules =
       MS.set
         desc.nonterminal_rules
         "root"
         (NonterminalRule
           { nonterminal_name = "root"
-          ; nonterminal_type = failwith "TODO"
+          ; nonterminal_type = NonterminalType ([], SortAp ("root", [||]))
           ; operator_rules = [ [] ]
           })
     in
@@ -581,7 +559,7 @@ let parse desc root_name str =
     | Error (Either.Right (char_no, message)) ->
       Error (Printf.sprintf "parser error at character %n:\n%s" char_no message)
   with
-  | MixedFixities (b, l) ->
+    MixedFixities (b, l) ->
     Error (Printf.sprintf
       "Found a mix of fixities -- all must be uniform: %b / %n" b l)
 ;;

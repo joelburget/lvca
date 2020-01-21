@@ -18,23 +18,30 @@ rule read = parse
   | white          { read lexbuf }
   | newline        { next_line lexbuf; read lexbuf }
   | nat            { NAT (int_of_string (L.lexeme lexbuf)) }
-  | terminal_id    { TERMINAL_ID (L.lexeme lexbuf) }
-  | nonterminal_id { NONTERMINAL_ID (L.lexeme lexbuf) }
   | '"'            { read_string (Buffer.create 17) lexbuf }
   | '('            { LEFT_PAREN }
   | ')'            { RIGHT_PAREN }
   | '/'            { read_regex (Buffer.create 17) lexbuf }
   | '{'            { LEFT_BRACE }
   | '}'            { RIGHT_BRACE }
+  | '['            { LEFT_BRACKET }
+  | ']'            { RIGHT_BRACKET }
+  | '<'            { LEFT_ANGLE }
+  | '>'            { RIGHT_ANGLE }
   | '.'            { DOT }
   | ":="           { ASSIGN }
+  | ':'            { COLON }
   | '$'            { DOLLAR }
   | '|'            { BAR }
   | ';'            { SEMICOLON }
-  | '>'            { GREATER }
+  | "->"           { ARROW }
   | '_'            { UNDERSCORE }
+  | ','            { COMMA }
   | "%left"        { LEFT_FIXITY }
   | "%right"       { RIGHT_FIXITY }
+  | "forall"       { FORALL }
+  | terminal_id    { TERMINAL_ID (L.lexeme lexbuf) }
+  | nonterminal_id { NONTERMINAL_ID (L.lexeme lexbuf) }
   | eof            { EOF }
   | _ { error lexbuf ("Unexpected char: " ^ L.lexeme lexbuf) }
 

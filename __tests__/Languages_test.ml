@@ -20,7 +20,7 @@ let parses_to abstract_lang concrete_lang root str expected_str = fun () ->
   match ConcreteSyntax.parse concrete_lang root str with
     | Error msg -> fail msg
     | Ok tree ->
-      let ast_opt = ConcreteSyntax.to_ast abstract_lang concrete_lang root tree
+      let ast_opt = ConcreteSyntax.to_ast concrete_lang tree
       in
       match ast_opt with
         | Error msg -> fail msg

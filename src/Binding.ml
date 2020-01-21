@@ -104,6 +104,7 @@ and Nominal : sig
   val serialize : Nominal.term -> Uint8Array.t
   val hash : Nominal.term -> string
   val term_to_pattern : Nominal.term -> Pattern.t
+  val pattern_to_term : Pattern.t -> Nominal.term
 end = struct
   type scope = Scope of Pattern.t list * term
 
@@ -213,4 +214,12 @@ end = struct
     | Scope ([], tm) -> term_to_pattern tm
     | scope -> failwith ("Parse error: invalid pattern: " ^ pp_scope' scope)
   ;;
+
+  let rec pattern_to_term : Pattern.t -> Nominal.term
+    = function
+    | Var name -> Var name
+    | Operator (name, pats) -> Operator
+      (name, Belt.List.map pats (fun pat -> Scope ([], pattern_to_term pat)))
+    | Sequence pats -> Sequence (Belt.List.map pats pattern_to_term)
+    | Primitive prim -> Primitive prim
 end

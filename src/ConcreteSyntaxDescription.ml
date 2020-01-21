@@ -4,11 +4,18 @@ type pre_terminal_rule = PreTerminalRule of terminal_id * (string, string) Eithe
 type terminal_rule = TerminalRule of terminal_id * Regex.t
 type terminal_rules = (string * Regex.t) array
 
+type box_type =
+  | HBox
+  | VBox
+  | HovBox
+  | BBox
+  | HvBox
+
 type nonterminal_token =
   | TerminalName of string
   | NonterminalName of string
   | Underscore of int
-  | OpenBox
+  | OpenBox of (box_type * int list) option
   | CloseBox
 
 (** An operator match pattern appears in the right-hand-side of a concrete
@@ -66,7 +73,17 @@ let string_of_token : nonterminal_token -> string = function
   | TerminalName str -> str
   | NonterminalName str -> str
   | Underscore i -> "_" ^ (if i = 1 then "" else string_of_int i)
-  | OpenBox -> "["
+  | OpenBox None -> "["
+  | OpenBox (Some (box_type, params)) ->
+      let box_type_str = match box_type with
+        | HBox -> "h"
+        | VBox -> "v"
+        | HovBox -> "hov"
+        | BBox -> "b"
+        | HvBox -> "hv"
+      in
+      let params_str = Util.stringify_list string_of_int "," params in
+      Printf.sprintf "[<%s %s>" box_type_str params_str
   | CloseBox -> "]"
 
 let string_of_tokens : nonterminal_token list -> string =

@@ -37,6 +37,10 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
     "_" (Underscore 1);
   expectParse ConcreteSyntax.Parser.nonterminal_token__test
     "_0" (Underscore 0);
+  expectParse ConcreteSyntax.Parser.nonterminal_token__test
+    "[<hov>" (OpenBox (Some (HovBox, [])));
+  expectParse ConcreteSyntax.Parser.nonterminal_token__test
+    "[<hv 0,1,2>" (OpenBox (Some (HvBox, [0; 1; 2])));
 
   expectParse ConcreteSyntax.Parser.operator_match__test
     "foo BAR baz { foo($1; $2) }"
@@ -101,4 +105,49 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
               };
           ]];
       });
+
+  expectParse ConcreteSyntax.Parser.nonterminal_type__test
+    "list int"
+    (NonterminalType ([], SortAp ("list", [| SortAp ("int", [||]) |])));
+
+  let list_int = Types.SortAp ("list", [| SortAp ("int", [||]) |]) in
+  expectParse ConcreteSyntax.Parser.nonterminal_type__test
+    "list int -> list int"
+    (NonterminalType ([list_int], list_int));
+
+  expectParse ConcreteSyntax.Parser.quantifiers__test
+    "forall a b."
+    (Belt.Set.String.fromArray [| "a"; "b" |]);
+
+  expectParse ConcreteSyntax.Parser.nonterminal_type__test
+    "forall a. list a"
+    (NonterminalType ([], SortAp ("list", [| SortVar "a" |])));
+
+  expectParse ConcreteSyntax.Parser.nonterminal_rule__test
+    {|
+       list
+         : forall a. a -> list a
+         := L_BRACKET [ inner_list ] R_BRACKET { $2 }
+    |}
+
+    (NonterminalRule
+      { nonterminal_name = "list"
+      ; nonterminal_type = NonterminalType
+        ([SortVar "a"], SortAp ("list", [| SortVar "a"|]))
+      ; operator_rules =
+        [[
+          OperatorMatch
+            { tokens =
+              [ TerminalName "L_BRACKET";
+                OpenBox None;
+                NonterminalName "inner_list";
+                CloseBox;
+                TerminalName "R_BRACKET";
+              ]
+            ; operator_match_pattern = SingleCapturePattern 2
+            ; fixity = Nofix;
+            };
+        ]]
+      }
+    );
 )

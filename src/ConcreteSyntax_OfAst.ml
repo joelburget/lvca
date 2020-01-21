@@ -10,19 +10,12 @@ exception BadSortTerm of sort * Nominal.term
 
 exception BadRules of string
 
-(** raised from of_ast when we need to emit a token but don't have a capture,
+(** raised from [of_ast] when we need to emit a token but don't have a capture,
  * and the terminal match is a regex, not a string literal. This could actually
- * be a form of BadRules *)
+ * be a form of [BadRules] *)
 exception CantEmitTokenRegex of string * Regex.t
 
 type mode = Flat | Break
-
-type box_type =
-  | HBox
-  | VBox
-  | HovBox
-  | BBox
-  | HvBox
 
 (** how many spaces to break
  * TODO other params from Oppen
@@ -34,27 +27,22 @@ type box_break_info =
   ; breakpoints : (int * break_type) list
   }
 
-let rec pattern_to_tree
-  : nonterminal_pointer -> ConcreteSyntaxDescription.t -> Pattern.t -> doc =
-  fun nonterminal_pointer rules ->
-  let sort = current_sort nonterminal_pointer in
-  failwith "TODO"
-;;
-
 (** Pretty-print an abstract term to a concrete syntax tree
- * raises: NoMatch, UserError, InvariantViolation, BadRules
+ * raises: [UserError], [InvariantViolation], [BadRules]
  *)
 let rec term_to_tree
   : nonterminal_pointer -> ConcreteSyntaxDescription.t -> Nominal.term -> doc
   = fun nonterminal_pointer rules tm ->
 
-    let { terminal_rules; nonterminal_rules } = rules in
+    (* Printf.printf "term_to_tree %s\n" (Nominal.pp_term' tm); *)
+
+    let { terminal_rules } = rules in
 
     let NonterminalRule { operator_rules } =
       current_nonterminal nonterminal_pointer
     in
 
-    let form_no, operator_match_pattern, operator_match_tokens, subterms =
+    let form_no, _operator_match_pattern, operator_match_tokens, subterms =
       find_operator_match nonterminal_pointer operator_rules tm
     in
 
@@ -73,12 +61,7 @@ let rec term_to_tree
        - if it's a nonterminal, look up the subterm (by token number)
     *)
     operator_match_tokens
-      (* Go through every token giving it an index. Underscores are not indexed *)
-      |. Belt.List.reduce (1, [])
-        (fun (ix, indexed_toks) tok -> match tok with
-          | Underscore _ -> ix, (0, tok) :: indexed_toks
-          | _ -> ix + 1, (ix, tok) :: indexed_toks)
-      |> fun (_, lst) -> lst
+      |> index_tokens
       |. Belt.List.reverse (* TODO: O(n^2) reverse *)
       |. Belt.List.map (fun (token_ix, token) ->
 
@@ -99,7 +82,7 @@ let rec term_to_tree
 
     | Some (CapturedBinder (_current_sort, nonterminal_pointer', pat)),
       NonterminalName _nt_name
-    -> pattern_to_tree nonterminal_pointer' rules pat
+    -> term_to_tree nonterminal_pointer' rules (Nominal.pattern_to_term pat)
 
     | Some (CapturedTerm (_current_sort, nonterminal_pointer', tm)),
       NonterminalName _nt_name
@@ -111,12 +94,16 @@ let rec term_to_tree
       "term_to_tree: failed to find token $%n (%s)" token_ix nt_name
     )
 
+    (* TODO: other primitives as well *)
+    | Some (CapturedTerm (_sort, _nt_ptr, Var v)), TerminalName _t_name
+    -> TerminalDoc (DocText v)
+
     | Some (CapturedBinder _), TerminalName t_name
     | Some (CapturedTerm _), TerminalName t_name -> failwith (Printf.sprintf
       "term_to_tree: unexpectedly directly captured a terminal (%s)" t_name
     )
 
-    | _, OpenBox
+    | _, OpenBox _
     | _, CloseBox -> failwith
       "invariant violation: term_to_tree->go_operator: box hints are filtered \
       out in the previous `keep` stage"
@@ -150,7 +137,7 @@ let rec tree_fits : int -> int -> mode -> doc -> fit_info
       |> group_fits max_width start_col Flat
 
 and group_fits max_width start_col mode children = Util.fold_right
-  (fun child rest_fits -> match rest_fits with
+  (fun child -> function
     | DoesntFit -> DoesntFit
     | Fits col -> tree_fits max_width col mode child
   )
@@ -324,6 +311,7 @@ let normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
 
     in go_nt tree
 
+(* raises: [UserError], [InvariantViolation], [BadRules] *)
 let of_ast
    : Types.language
   -> ConcreteSyntaxDescription.t

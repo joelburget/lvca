@@ -76,9 +76,7 @@ val parse
 
 (** Convert form a concrete to an abstract syntax tree *)
 val to_ast
-  :  language
-  -> ConcreteSyntaxDescription.t
-  -> string
+  :  ConcreteSyntaxDescription.t
   -> formatted_tree
   -> (Nominal.term, string) Belt.Result.t
 
@@ -86,7 +84,8 @@ val to_grammar
   :  ConcreteSyntaxDescription.t
   -> string
   -> LrParsing.grammar
-     * (ConcreteSyntaxDescription.nonterminal_token list
+     * (tree_info
+        * ConcreteSyntaxDescription.nonterminal_token list
         * ConcreteSyntaxDescription.operator_match_pattern option)
          Belt.MutableMap.Int.t
 

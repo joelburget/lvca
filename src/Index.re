@@ -28,7 +28,7 @@ let read_and_eval = (abstract_syntax, concrete, statics, dynamics, input)
 
     let (astResult, abtResult) = switch (ConcreteSyntax.parse(concrete, "tm", input)) {
     | Ok(tree)
-    => switch (ConcreteSyntax.to_ast(language, concrete, "tm", tree)) {
+    => switch (ConcreteSyntax.to_ast(concrete, tree)) {
       | Ok(ast)
       => (Result.Ok(ast), Binding.DeBruijn.from_nominal(ast))
       | Error(msg)

@@ -21,7 +21,15 @@ bool := true() | false()
 |}
 ;;
 
-let concreteSyntax = {|
+let concreteSyntax = {|FOO := "foo"
+
+list
+  : forall a. a -> list a
+  := L_BRACKET [ inner_list ] R_BRACKET { $2 }
+|}
+;;
+
+let concreteSyntax' = {|
 TRUE     := "true"
 FALSE    := "false"
 NULL     := "null"

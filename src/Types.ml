@@ -72,7 +72,7 @@ let sort_names : abstract_syntax -> Belt.Set.String.t
   |. Belt.Map.String.keysToArray
   |. Belt.Set.String.fromArray
 
-let rec string_of_sort : sort -> string
+let string_of_sort : sort -> string
   = let rec go = fun needs_parens -> function
       | SortAp (name, args) ->
         let args' = Belt.Array.map args (go true) in

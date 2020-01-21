@@ -1,6 +1,6 @@
 let abstractSyntax =
   {|
-import { integer } from "builtins";
+import { integer } from "builtins"
 
 tm :=
   | lit(integer)
@@ -15,7 +15,7 @@ tm :=
 ;;
 
 let concreteSyntax = {|
-INT := [0-9]+
+INT := /[0-9]+/
 BAR := "|"
 ADD := "+"
 SUB := "-"
@@ -47,6 +47,7 @@ let rec eval' : Bigint.t list -> Binding.DeBruijn.term -> Bigint.t option =
      | Some a' -> (match op with
        | "neg" -> Some (Bigint.neg a')
        | "abs" -> Some (Bigint.abs a')
+       | _ -> None
      )
      | _ -> None)
   | Operator (op, [ Scope ([], a); Scope ([], b) ]) ->
@@ -57,6 +58,7 @@ let rec eval' : Bigint.t list -> Binding.DeBruijn.term -> Bigint.t option =
        | "mul" -> Some (Bigint.mul a' b')
        | "max" -> Some (Bigint.max a' b')
        | "min" -> Some (Bigint.min a' b')
+       | _ -> None
      )
      | _, _ -> None)
   | Var (i, 0) -> Belt.List.get env i

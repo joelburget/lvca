@@ -64,7 +64,7 @@ module ArrayApplicative (A : Any) = struct
            | Ok a -> a
            | Error b -> raise (Traversal_exn b)))
     with
-    | Traversal_exn err -> Error err
+      Traversal_exn err -> Error err
   ;;
 
   let traverse_array_result (f : 'a -> ('b, A.t) Result.t)
@@ -78,7 +78,7 @@ module ArrayApplicative (A : Any) = struct
            | Ok b -> b
            | Error c -> raise (Traversal_exn c)))
     with
-    | Traversal_exn err -> Error err
+      Traversal_exn err -> Error err
   ;;
 end
 
@@ -218,10 +218,10 @@ let get_option : 'b -> 'a option -> 'a =
 
 exception InvariantViolation of string
 
-let invariant_violation str = InvariantViolation str
+let invariant_violation str = raise (InvariantViolation str)
 
 let get_option' : string -> 'a option -> 'a =
-  fun msg -> get_option @@ invariant_violation ("invariant violation: " ^ msg)
+  fun msg -> get_option (InvariantViolation ("invariant violation: " ^ msg))
 ;;
 
 let array_of_stack : 'a MutableStack.t -> 'a array =
