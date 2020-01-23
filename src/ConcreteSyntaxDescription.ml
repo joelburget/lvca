@@ -95,8 +95,7 @@ type variable_rule =
   ; var_capture : capture_number
   }
 
-(** A nonterminal has 0 or more input sorts, mapping to a result sort.
- *)
+(** A nonterminal has 0 or more input sorts, mapping to a result sort. *)
 type nonterminal_type = NonterminalType of Types.sort list * Types.sort
 
 type nonterminal_rule' =

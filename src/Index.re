@@ -295,7 +295,7 @@ module SyntaxDebugger = {
             <tr className=cls>
               <td>{React.string(LrParsing.string_of_stack(stack))}</td>
               <td>{React.string(Lalr.string_of_symbols(results))}</td>
-              <td>{React.string(LrParsing.string_of_tokens(input))}</td>
+              <td>{React.string(Lex.string_of_tokens(input))}</td>
               <td>{React.string(Lalr.string_of_action(action))}</td>
             </tr>
           });

@@ -79,21 +79,18 @@ module Tables = {
 
     assert(length(action_table) == length(goto_table));
 
-    /* TODO: don't do this */
-    let terminal_nums' = MS.fromArray(grammar.terminal_nums);
-    let nonterminal_nums' = MS.fromArray(grammar.nonterminal_nums);
-
     let lookup_terminal_name = i =>
-      switch (MS.findFirstBy(terminal_nums',
-                         ((_, num) => num == i))) {
+      switch (Belt.Array.getBy(grammar.terminal_nums,
+                         (((_, num)) => num == i))) {
         | Some((name, _)) => name
         | None => "T" ++ string_of_int(i)
       };
 
     let lookup_nonterminal_name = i =>
-      switch (MS.findFirstBy(nonterminal_nums',
-                         ((_, num) => num == i))) {
-        | Some((name, _)) => name
+      switch (Belt.Array.getBy(grammar.nonterminal_nums,
+                         (((_, _, num)) => num == i))) {
+        /* TODO: only print level if there are multiple */
+        | Some((name, level, _)) => Printf.sprintf("%s_%n", name, level)
         | None => "NT" ++ string_of_int(i)
       };
 

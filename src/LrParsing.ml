@@ -12,7 +12,7 @@ module MSI = Belt.MutableSet.Int
 module Result = Belt.Result
 module MStack = Belt.MutableStack
 module MQueue = Belt.MutableQueue
-let (get_option', invariant_violation) = Util.(get_option', invariant_violation)
+let get_option', invariant_violation = Util.(get_option', invariant_violation)
 
 (* by convention, we reserve 0 for the `$` terminal, and number the rest
  * contiguously from 1 *)
@@ -95,6 +95,8 @@ type nonterminal =
     productions: production list;
   }
 
+type prec_level = int
+
 (* By convention:
  * A non-augmented grammar has keys starting at 1 (start)
  * An augmented grammar has key 0 (augmented start)
@@ -102,7 +104,7 @@ type nonterminal =
 type grammar = {
   nonterminals : nonterminal Belt.Map.Int.t;
   terminal_nums : (string * terminal_num) array;
-  nonterminal_nums : (string * nonterminal_num) array;
+  nonterminal_nums : (string * prec_level * nonterminal_num) array;
 }
 
 type conflict_type = ShiftReduce | ReduceReduce
@@ -197,12 +199,6 @@ let string_of_stack : state array -> string
                   |. A.map string_of_int
                   |. Js.Array2.joinWith " "
 
-(* TODO: where to put this? *)
-let string_of_tokens : Lex.token array -> string
-  = fun toks -> toks
-                |. A.map (fun { name } -> name)
-                |. Js.Array2.joinWith " "
-
 (* TODO: remove exns *)
 module Lr0 (G : GRAMMAR) = struct
 
@@ -229,37 +225,49 @@ module Lr0 (G : GRAMMAR) = struct
 
   let terminal_names : string Belt.Map.Int.t
     = G.grammar.terminal_nums
-      |. A.map (fun (name, num) -> (num, name))
+      |. A.map (fun (name, num) -> num, name)
       |. M.fromArray
 
   let nonterminal_names : string Belt.Map.Int.t
     = G.grammar.nonterminal_nums
-      |. A.map (fun (name, num) -> (num, name))
+      |. A.map (fun (name, _, num) -> num, name)
       |. M.fromArray
 
   let terminal_nums : int Belt.Map.String.t
     = MS.fromArray G.grammar.terminal_nums
 
   let nonterminal_nums : int Belt.Map.String.t
-    = MS.fromArray G.grammar.nonterminal_nums
+    = G.grammar.nonterminal_nums
+      |. Belt.Array.map (fun (name, _, num) -> name, num)
+      |. MS.fromArray
 
   let rec nonterminal_first_set : SI.t -> MSI.t -> nonterminal_num -> unit
     = fun already_seen_nts result nt ->
       let productions : MSI.t = nonterminal_production_map
-                                |. MMI.get nt
-                                |> get_option' "TODO 1"
-                                   |. MSI.copy
+        |. MMI.get nt
+        |> get_option' (Printf.sprintf
+          "nonterminal_first_set->already_seen_nts: Couldn't find nonterminal \
+          %n in nonterminal_production_map"
+          nt
+        )
+        |. MSI.copy
       in
 
       while not (MSI.isEmpty productions) do
         let production_num = productions
-                             |. MSI.minimum
-                             |> get_option' "TODO 2"
+          |. MSI.minimum
+          |> get_option' ("nonterminal_first_set->already_seen_nts: minimum \
+            of productions must exist"
+          )
         in
         MSI.remove productions production_num;
         let production = production_map
-                         |. MMI.get production_num
-                         |> get_option' "TODO 3"
+          |. MMI.get production_num
+          |> get_option' (Printf.sprintf
+            "nonterminal_first_set->already_seen_nts: Couldn't find production \
+            %n in production_map"
+            production_num
+          )
         in
         first_set' already_seen_nts result production
       done;
@@ -405,7 +413,7 @@ module Lr0 (G : GRAMMAR) = struct
                 nonterminal_production_map |. MMI.set nt_num (MSI.make ());
                 L.forEach productions (fun production ->
                   let production_num = !production_cnt in
-                  production_cnt := production_num + 1;
+                  incr production_cnt;
                   production_map |. MMI.set production_num production;
                   production_nonterminal_map |. MMI.set production_num nt_num;
                   let prod_set = nonterminal_production_map
