@@ -27,7 +27,7 @@ LPAREN := "("
 RPAREN := ")"
 
 tm :=
-  | INT { lit($1) }
+  | INT { lit(integer($1)) }
   | SUB tm { neg($2) }
   | BAR tm BAR { abs($2) }
   | tm ADD tm { add($1; $3) }
