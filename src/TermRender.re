@@ -1,7 +1,7 @@
 module P_term = Parsing.Incremental(Parsing.Parseable_term)
 
 let startStr = {|document([
-  header(h2(); "foo");
+  header(h2(); "foo"),
   paragraph(inline([inlineAtom([]; "paragraph text")]))
 ])|};
 
