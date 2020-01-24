@@ -1,5 +1,11 @@
 open Belt
 
+let rec snoc lst a =
+  match lst with
+    | [] -> [a]
+    | x :: xs -> x :: snoc xs a
+;;
+
 let rec unsnoc lst =
   match lst with
   | [] -> failwith "unsnoc empty list"

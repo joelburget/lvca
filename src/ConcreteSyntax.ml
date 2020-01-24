@@ -422,6 +422,7 @@ let to_grammar
       if nonterminal_name = start_nonterminal
       then start_nonterminal_num := !nt_num;
 
+      (* How many distinct precedence levels does this nonterminal include *)
       let num_levels = Belt.List.length operator_rules in
 
       (* track the operator number within (all levels of) this nonterminal *)
@@ -441,11 +442,21 @@ let to_grammar
                 );
               incr prod_num;
               incr nt_operator_index;
-              (* XXX rewrite point nonterminals at correct level *)
+              (* XXX rewrite to point nonterminals at correct level *)
               Belt.List.keepMap rule.tokens non_space_tokens
             )
           in
-          let result = !nt_num, { LrParsing.productions = level_productions } in
+
+          (* If this is not the last level, then there is a lower-precedence
+           * level to fall back to. *)
+          let level_productions' =
+            if level_ix + 1 < num_levels
+            (* XXX need level info *)
+            then Util.snoc level_productions [ Nonterminal !nt_num ]
+            else level_productions
+          in
+
+          let result = !nt_num, { LrParsing.productions = level_productions' } in
           incr nt_num;
           result
         )

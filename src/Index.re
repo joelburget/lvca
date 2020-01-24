@@ -401,6 +401,7 @@ module ConcreteSyntaxEditor = {
     let getGrammarPaneAndDebugger = (concrete, showGrammarPane, showDebugger) => {
       let (grammar, _) = ConcreteSyntax.to_grammar(concrete, startSort);
       let module Lalr = LalrParsing.Lalr1({ let grammar = grammar });
+      let module LrTables' = LrTables(LrParsing.Lr0({ let grammar = grammar }));
 
       let states = Lalr.states
         |. Belt.Array.map(state => {
@@ -423,8 +424,7 @@ module ConcreteSyntaxEditor = {
             grammar=grammar
             states=states
           />
-          <LrTables
-            grammar=grammar
+          <LrTables'
             action_table=action_table
             goto_table=goto_table
           />
