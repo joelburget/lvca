@@ -1,32 +1,34 @@
 let abstractSyntax = {|
-import {integer, list, maybe, string} from "builtins"
-
-json :=
-  | null()
-  | bool(bool)
-  | string(string)
-  | number(number)
-  | object(list kv_pair)
-  | list(list json)
-
-number := number(
-  integer;      // integer before the decimal point
-  maybe string; // digits after decimal point
-  maybe string  // exponent
-  )
-
-kv_pair := kv(string; json)
-
-bool := true() | false()
+arith :=
+  | add(arith; arith)
+  | sub(arith; arith)
+  | mul(arith; arith)
+  | div(arith; arith)
+  | app(arith; arith)
+  | fun(arith. arith)
 |}
 ;;
 
-let concreteSyntax = {|FOO := "foo"
+let concreteSyntax = {|
+  ARR    := "->"
+  ADD    := "+"
+  SUB    := "-"
+  MUL    := "*"
+  DIV    := "/"
+  LPAREN := "("
+  RPAREN := ")"
+  NAME   := /[a-z][a-zA-Z0-9]*/
 
-list
-  : forall a. a -> list a
-  := L_BRACKET [ inner_list ] R_BRACKET { $2 }
-|}
+  arith :=
+    | arith _ ADD _ arith { add($1; $3) } %left
+    | arith _ SUB _ arith { sub($1; $3) } %left
+    | arith _ MUL _ arith { mul($1; $3) } %left
+    | arith _ DIV _ arith { div($1; $3) } %left
+    | arith _       arith { app($1; $2) } %right
+    | NAME  _ ARR _ arith { fun($1. $3) }
+    | NAME                { var($1)     }
+    > LPAREN arith RPAREN { $2          }
+  |}
 ;;
 
 let concreteSyntax' = {|

@@ -106,6 +106,7 @@ type prec_level = int
 type grammar = {
   nonterminals : nonterminal Belt.Map.Int.t;
   terminal_nums : (string * terminal_num) array;
+  (* TODO: better name: nonterminal_info? *)
   nonterminal_nums : (string * prec_level * nonterminal_num) array;
 }
 
@@ -231,10 +232,16 @@ module Lr0 (G : GRAMMAR) = struct
       |. A.map (fun (name, num) -> num, name)
       |. M.fromArray
 
+  let terminal_nums : int Belt.Map.String.t
+    = MS.fromArray G.grammar.terminal_nums
+
   let nonterminal_names : string Belt.Map.Int.t
     = G.grammar.nonterminal_nums
       |. A.map (fun (name, _level, nt_num) -> nt_num, name)
       |. M.fromArray
+
+  let _ = G.grammar.nonterminal_nums
+      |. A.map (fun (name, level, nt_num) -> Printf.printf "%n -> %s (%n)\n" nt_num name level)
 
   let prec_level_map : prec_level Belt.Map.Int.t
     = G.grammar.nonterminal_nums
@@ -262,9 +269,6 @@ module Lr0 (G : GRAMMAR) = struct
       if level = 0
       then nt_name
       else Printf.sprintf "%s_%n" nt_name level
-
-  let terminal_nums : int Belt.Map.String.t
-    = MS.fromArray G.grammar.terminal_nums
 
   let nonterminal_nums : nonterminal_num Belt.Map.String.t
     = G.grammar.nonterminal_nums
@@ -796,10 +800,10 @@ module Lr0 (G : GRAMMAR) = struct
   let states : state array =
     A.makeBy (M.size lr0_items) Util.id
   let terminals : terminal_num array =
-    (* Add one to include the `$` terminal *)
-    A.makeBy (number_of_terminals + 1) Util.id
+    A.makeBy number_of_terminals Util.id
   let nonterminals : nonterminal_num array =
-    A.makeBy (MS.size terminal_nums) Util.id
+    A.makeBy (MS.size nonterminal_nums) Util.id
+  let _ = nonterminals |. Belt.Array.map (fun num -> Printf.printf "nonterminal %n\n" num)
 
   let full_lr0_action_table : unit -> action array array
     = fun () -> states |. Belt.Array.map (fun state ->

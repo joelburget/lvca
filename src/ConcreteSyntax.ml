@@ -353,6 +353,75 @@ let to_ast
       ToAstError msg -> Error msg
 ;;
 
+let convert_token
+  :  LrParsing.terminal_num MS.t
+  -> int Belt.Map.String.t
+  -> nonterminal_token
+  -> LrParsing.symbol
+  = fun terminal_nums nonterminal_entry -> function
+  | TerminalName tn -> Terminal
+    (terminal_nums
+     |. MS.get tn
+     |> get_option' ("to_grammar: failed to get terminal " ^ tn))
+  | NonterminalName nt_name
+  -> Nonterminal (nonterminal_entry
+    |. Belt.Map.String.get nt_name
+    |> get_option' ("convert_token: couldn't find nonterminal " ^ nt_name)
+  )
+  | OpenBox _ | CloseBox | Underscore _
+  -> invariant_violation
+    "all formatting tokens should be filtered (see is_formatting_token)"
+
+(* Invariants assumed:
+ *   %left, %right can't occur at lowest precedence level
+ *   Anywhere %left, %right occur has same nonterminal on both sides, parent
+ *)
+let rewrite_tokens
+  :  LrParsing.terminal_num MS.t
+  -> int Belt.Map.String.t (* Mapping from nonterminal name to the nonterminal
+    number of its entry (highest precedence) *)
+  -> int (* current nonterminal number *)
+  -> fixity
+  -> nonterminal_token list
+  -> LrParsing.symbol list
+  = fun terminal_nums nonterminal_entry nt_num fixity tokens -> match tokens with
+    (* binary operator *)
+    | [ NonterminalName _; TerminalName _ as t; NonterminalName _ ]
+    -> (match fixity with
+      | Infixl
+      -> (* Lower the precedence of the left child by moving to the following
+          * (desugared) nonterminal, which corresponds to the next precedence
+          * level in the nonterminal we're currently transforming. *)
+         [ Nonterminal (nt_num + 1);
+           convert_token terminal_nums nonterminal_entry t;
+           Nonterminal nt_num;
+         ]
+
+      | Infixr
+      -> [ Nonterminal nt_num;
+           convert_token terminal_nums nonterminal_entry t;
+           Nonterminal (nt_num + 1);
+         ]
+
+      (* Don't adjust nofix *)
+      | Nofix
+      -> Belt.List.map tokens (convert_token terminal_nums nonterminal_entry)
+    )
+
+    (* juxtaposition *)
+    | [ NonterminalName nt1; NonterminalName nt2 ]
+    (* TODO: adjust! *)
+    -> Belt.List.map tokens (convert_token terminal_nums nonterminal_entry)
+
+    | _ -> Belt.List.map tokens (convert_token terminal_nums nonterminal_entry)
+
+(* The parser doesn't need formatting tokens *)
+let is_formatting_token
+  : nonterminal_token -> bool
+  = fun token -> match token with
+    | TerminalName _ | NonterminalName _ -> false
+    | _ -> true
+
 (* Produce an augmented grammar *)
 let to_grammar
   :  ConcreteSyntaxDescription.t
@@ -370,38 +439,34 @@ let to_grammar
       |. mapWithIndex (fun i name -> name, i + 2)
       |. concat [| "$", 0; "SPACE", 1 |])
   in
-  let nonterminal_names_map =
-    Belt.Map.String.(
-      nonterminal_rules
-      |. keysToArray
-      (* start other nonterminals (besides root) at 1 *)
-      |. Belt.Array.mapWithIndex (fun i name -> name, (0 (* XXX *), i + 1))
-      |. fromArray
-      |. set "root" (0, (* XXX *) 0))
-  in
-  (* Spaces are removed by the parsing step, so we need to remove them from
-   * our token list. *)
-  let non_space : nonterminal_token -> bool = function
-    | OpenBox _ | CloseBox | Underscore _ -> false
-    | _ -> true
+
+  (* mapping from terminal to its number *)
+  let terminal_num_map : int Belt.Map.String.t
+    = MS.fromArray terminal_nums
   in
 
-  let non_space_tokens : nonterminal_token -> LrParsing.symbol option = function
-    | TerminalName tn ->
-      Some
-        (LrParsing.Terminal
-           (terminal_nums
-            |. MS.fromArray
-            |. MS.get tn
-            |> get_option' ("to_grammar: failed to get terminal " ^ tn)))
-    | NonterminalName ntn ->
-      Some
-        (Nonterminal
-           (nonterminal_names_map
-            |. MS.get ntn
-            |> get_option' ("to_grammar: failed to get nonterminal " ^ ntn)
-            |> fun (prec, ntn) -> ntn))
-    | OpenBox _ | CloseBox | Underscore _ -> None
+  (* name, level, nonterminal num *)
+  let nonterminal_nums : (string * int * int) array
+    = [| ("root", 0, 0) |]
+  in
+  let nonterminal_num = ref 1 in
+
+  (* Simultaneously:
+   * - create [nonterminal_entry], a mapping from nonterminal name to the number
+   *   of its highest precedence desugared nonterminal
+   * - number every desugared nonterminal, insert in [nonterminal_nums]
+   *)
+  let nonterminal_entry : int Belt.Map.String.t
+    = nonterminal_rules
+    |. Belt.Map.String.mapWithKey
+      (fun name (NonterminalRule { operator_rules }) ->
+        let result = !nonterminal_num in
+        for i = Belt.List.length operator_rules - 1 downto 0 do
+          let _ = Js.Array2.push nonterminal_nums (name, i, !nonterminal_num) in
+          incr nonterminal_num;
+        done;
+        result
+      )
   in
 
   (* We're dealing with a non-augmented grammar here. [prod_num] starts
@@ -415,7 +480,7 @@ let to_grammar
   let start_nonterminal_num = ref 0 in
   let production_rule_map = Belt.MutableMap.Int.make () in
 
-  (* Translate a nonterminal into n -- one for eachof its precedence levels *)
+  (* Translate a nonterminal into n -- one for each of its precedence levels *)
   let nonterminals = nonterminal_rules
     |. MS.toArray
     |. BA.map (fun (nonterminal_name, NonterminalRule { operator_rules }) ->
@@ -442,8 +507,9 @@ let to_grammar
                 );
               incr prod_num;
               incr nt_operator_index;
-              (* XXX rewrite to point nonterminals at correct level *)
-              Belt.List.keepMap rule.tokens non_space_tokens
+              rule.tokens
+                |. Belt.List.keep (fun tok -> not (is_formatting_token tok))
+                |> rewrite_tokens terminal_num_map nonterminal_entry !nt_num rule.fixity
             )
           in
 
@@ -466,10 +532,6 @@ let to_grammar
     |. Belt.List.fromArray (* TODO: don't convert to list *)
     |. Util.int_map_unions
     |. Belt.Map.Int.set 0 { productions = [ [ Nonterminal !start_nonterminal_num ] ] }
-  in
-  let nonterminal_nums = nonterminal_names_map
-    |. MS.toArray
-    |. Belt.Array.map (fun (name, (prec, num)) -> name, prec, num)
   in
   { nonterminals; terminal_nums; nonterminal_nums }, production_rule_map
 ;;
