@@ -242,7 +242,6 @@ let rec tree_to_ast
   -> formatted_tree
   -> Nominal.term
   = fun rules tree ->
-  (* Js.log2 "tree_to_ast" (to_debug_string tree); *)
   let nt_name, _ = tree.tree_info in
   match nt_name with
     | "list" -> failwith "TODO"
@@ -506,7 +505,7 @@ let desugar_nonterminal
         |. Belt.List.toArray
         |. Belt.Map.String.fromArray
 
-(* Produce an augmented grammar *)
+(** Produce an augmented grammar *)
 let to_grammar
   :  ConcreteSyntaxDescription.t
   -> string
@@ -613,24 +612,6 @@ let to_grammar
   { nonterminals; terminal_nums; nonterminal_nums }, production_rule_map
 ;;
 
-(*
-let production_sort_name
-  :  LrParsing.nonterminal_num Belt.MutableMap.Int.t
-    -> LrParsing.nonterminal_num Belt.Map.String.t -> LrParsing.production_num -> string
-  =
-  fun nt_map nonterminal_nums prod_num ->
-  let nt_num =
-    nt_map
-    |. MMI.get prod_num
-    |> get_option' ("production_sort_name: failed to get " ^ string_of_int prod_num)
-  in
-  let f _ nt_num' = nt_num' = nt_num in
-  match Belt.Map.String.findFirstBy nonterminal_nums f with
-  | None -> failwith "production_sort_name: invariant violation: sort not found"
-  | Some (name, _) -> name
-;;
-*)
-
 let tree_of_parse_result (module Lr0 : LrParsing.LR0)
   :  (tree_info * nonterminal_token list * operator_match_pattern option)
        Belt.MutableMap.Int.t
@@ -642,7 +623,6 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
   -> formatted_tree
   =
   fun production_rule_map nonterminal_nums nonterminal_rules root_name str root ->
-  (* Js.log2 "tree_of_parse_result" (LrParsing.parse_result_to_string root); *)
 
   let str_pos = ref 0 in
   let str_len = Js.String2.length str in
@@ -672,7 +652,6 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
            (Lr0.string_of_terminal prod))
         | Right prod_num -> prod_num
       in
-      (* Js.log3 "go_nt" nt_name prod_num; *)
       let tree_info, tokens, _ =
         match Belt.MutableMap.Int.get production_rule_map prod_num with
         | None -> invariant_violation (Printf.sprintf
@@ -702,7 +681,6 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
     fun { start_pos; end_pos } ->
       let leading_trivia, trailing_trivia = get_trivia start_pos end_pos in
       let content = Js.String.slice str ~from:start_pos ~to_:end_pos in
-      (* Js.log2 "go_t" content; *)
       { leading_trivia; content; trailing_trivia }
   in
   go_nt root_name root
@@ -719,18 +697,6 @@ let lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer =
 
 let parse desc root_name str =
   let grammar, production_rule_map = to_grammar desc root_name in
-  (*
-     production_rule_map
-     |. Belt.MutableMap.Int.mapWithKey
-       (fun i (tree_info, tokens, m_operator_match_pattern) ->
-         Printf.printf "production rule %n: %s %s\n"
-         i
-         (string_of_tokens tokens)
-         (match m_operator_match_pattern with
-         | Some x -> string_of_operator_match_pattern x
-         | None -> "(none)")
-       );
-       *)
   let module Lalr = LalrParsing.Lalr1 (struct
                       let grammar = grammar
                     end)
