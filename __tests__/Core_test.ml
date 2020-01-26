@@ -77,7 +77,7 @@ meaning = \(tm : ty()) -> match tm with {
   let dynamics' = P_dyn.parse dynamics_str in
 
   test "dynamics as expected" (fun () ->
-    expect dynamics' |> toEqual (Result.Ok dynamics);
+    expect dynamics' |> toEqual (Belt.Result.Ok dynamics);
   );
 
   (*
@@ -161,7 +161,7 @@ meaning = \(tm : ty()) -> match tm with {
     ]
     Util.id;
 
-  let open Result in
+  let open Belt.Result in
 
   testAll "eval"
     [ expect (eval true_val)

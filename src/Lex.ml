@@ -14,10 +14,14 @@ type lexer = (regex * token_name) list
 (* TODO: a menhir token is not expected to carry location information *)
 type token =
   { name : token_name
-  ; start : int
-  ; (* inclusive *)
-    finish : int (* exclusive *)
+  ; start : int (* inclusive *)
+  ; finish : int (* exclusive *)
   }
+
+let string_of_tokens : token array -> string
+  = fun toks -> toks
+                |. A.map (fun { name } -> name)
+                |. Js.Array2.joinWith " "
 
 type position = int
 
@@ -54,8 +58,7 @@ let find_first_capture : string M.t -> 'a Js.nullable array -> string option =
 (* TODO: no exn *)
 
 let get_next_tok : string M.t -> Js.Re.t -> lexbuf -> token =
-  fun tok_names re { buf; pos } ->
-  re
+  fun tok_names re { buf; pos } -> re
   |. Js.Re.exec_ (buf |. Js.String2.sliceToEnd ~from:pos)
   |. function
     | Some result ->
@@ -101,6 +104,8 @@ let lex' : lexer -> string -> token array =
 
 let lex : lexer -> string -> (token array, lex_error) Result.t =
   fun lexer input ->
-  try Result.Ok (lex' lexer input) with
-  | LexError err -> Result.Error err
+  try
+    Ok (lex' lexer input)
+  with
+    LexError err -> Error err
 ;;

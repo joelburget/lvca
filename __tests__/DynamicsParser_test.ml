@@ -8,7 +8,7 @@ let _ = describe "TermParser" (fun () ->
 
   let expectParse str tm = test ("'" ^ str ^ "'") (fun () ->
     let parsed = P_dyn.parse str in
-    expect parsed |> toEqual (Result.Ok tm)
+    expect parsed |> toEqual (Belt.Result.Ok tm)
   ) in
   let pat_scope body : BindingAwarePattern.scope = Scope ([], body) in
   let dynamics x = CoreApp (Var "dynamics", [x]) in

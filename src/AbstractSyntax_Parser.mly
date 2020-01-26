@@ -45,6 +45,7 @@ valence:
   | separated_nonempty_list(DOT, sort)
   { let binds, result = Util.unsnoc $1 in Types.FixedValence (binds, result) }
 
+// TODO: allow trailing semicolon?
 valence_list: separated_list(SEMICOLON, valence) { $1 }
 
 arity:

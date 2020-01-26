@@ -44,10 +44,10 @@ module Grammar : GRAMMAR = struct
     |];
     nonterminal_nums =
     [|
-      "E'", 0;
-      "E", 1;
-      "T", 2;
-      "F", 3;
+      "E'", 0, 0;
+      "E",  0, 1;
+      "T",  0, 2;
+      "F",  0, 3;
     |];
   }
 end

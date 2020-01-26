@@ -4,23 +4,19 @@ type pre_terminal_rule = PreTerminalRule of terminal_id * (string, string) Eithe
 type terminal_rule = TerminalRule of terminal_id * Regex.t
 type terminal_rules = (string * Regex.t) array
 
+type box_type =
+  | HBox
+  | VBox
+  | HovBox
+  | BBox
+  | HvBox
+
 type nonterminal_token =
   | TerminalName of string
   | NonterminalName of string
   | Underscore of int
-
-(** A term pattern with numbered holes for binder names and subterms, eg
-    `$2. $4` (for tokens `FUN name ARR expr`) *)
-type numbered_scope_pattern =
-  | NumberedScopePattern of capture_number list * capture_number
-
-let string_of_numbered_scope_pattern : numbered_scope_pattern -> string =
-  fun (NumberedScopePattern (binders, body)) ->
-  Belt.List.toArray binders
-  |. Array.append [| body |]
-  |. Belt.Array.map (fun n -> "$" ^ string_of_int n)
-  |. Js.Array2.joinWith ". "
-;;
+  | OpenBox of (box_type * int list) option
+  | CloseBox
 
 (** An operator match pattern appears in the right-hand-side of a concrete
     syntax declaration, to show how to parse and pretty-print operators. They
@@ -32,16 +28,26 @@ type operator_match_pattern =
   | OperatorPattern of string * numbered_scope_pattern list
   | SingleCapturePattern of capture_number
 
-let string_of_operator_match_pattern : operator_match_pattern -> string =
-  let to_string = function
-    | OperatorPattern (name, scope_pats) ->
-      Printf.sprintf
-        "%s(%s)"
-        name
-        (Util.stringify_list string_of_numbered_scope_pattern "; " scope_pats)
-    | SingleCapturePattern num -> "$" ^ string_of_int num
-  in
-  fun pat -> "{ " ^ to_string pat ^ " }"
+(** A term pattern with numbered holes for binder names and subterms, eg
+    `$2. $4` (for tokens `FUN name ARR expr`) *)
+and numbered_scope_pattern =
+  | NumberedScopePattern of capture_number list * operator_match_pattern
+
+let rec string_of_operator_match_pattern : operator_match_pattern -> string
+  = function
+  | OperatorPattern (name, scope_pats) ->
+    Printf.sprintf
+      "%s(%s)"
+      name
+      (Util.stringify_list string_of_numbered_scope_pattern "; " scope_pats)
+  | SingleCapturePattern num -> "$" ^ string_of_int num
+
+and string_of_numbered_scope_pattern : numbered_scope_pattern -> string =
+  fun (NumberedScopePattern (binders, body)) ->
+  Belt.List.toArray binders
+  |. Belt.Array.map (fun n -> "$" ^ string_of_int n)
+  |. Array.append [| string_of_operator_match_pattern body |]
+  |. Js.Array2.joinWith ". "
 ;;
 
 type fixity =
@@ -63,13 +69,25 @@ type operator_match' =
 
 type operator_match = OperatorMatch of operator_match'
 
+let string_of_token : nonterminal_token -> string = function
+  | TerminalName str -> str
+  | NonterminalName str -> str
+  | Underscore i -> "_" ^ (if i = 1 then "" else string_of_int i)
+  | OpenBox None -> "["
+  | OpenBox (Some (box_type, params)) ->
+      let box_type_str = match box_type with
+        | HBox -> "h"
+        | VBox -> "v"
+        | HovBox -> "hov"
+        | BBox -> "b"
+        | HvBox -> "hv"
+      in
+      let params_str = Util.stringify_list string_of_int "," params in
+      Printf.sprintf "[<%s %s>" box_type_str params_str
+  | CloseBox -> "]"
+
 let string_of_tokens : nonterminal_token list -> string =
-  Util.stringify_list
-    (function
-      | TerminalName str -> str
-      | NonterminalName str -> str
-      | Underscore i -> "_" ^ string_of_int i)
-    " "
+  Util.stringify_list string_of_token " "
 ;;
 
 type variable_rule =
@@ -77,37 +95,25 @@ type variable_rule =
   ; var_capture : capture_number
   }
 
-(* Extract a variable rule, if present. Currently we only recognize it on its
- * own precedence level, which seems like what you usually want, but still
- * arbitrary.
- *
- * By "variable rule", we mean a rule that matches exactly `var($n)`.
-*)
-let find_first_single_capture (matches : operator_match list list) : variable_rule option
-  =
-  Util.find_by matches
-  @@ function
-  | [ OperatorMatch { tokens; operator_match_pattern = SingleCapturePattern var_capture }
-    ] ->
-    Some { tokens; var_capture }
-  | _ -> None
-;;
+(** A nonterminal has 0 or more input sorts, mapping to a result sort. *)
+type nonterminal_type = NonterminalType of Types.sort list * Types.sort
 
-type sort_rule' =
-  { sort_name : string
+type nonterminal_rule' =
+  { nonterminal_name : string
+  ; nonterminal_type : nonterminal_type
   ; operator_rules : operator_match list list
   }
 
-(** A sort rule shows how to parse / pretty-print a sort *)
-type sort_rule = SortRule of sort_rule'
+(** A nonterminal rule shows how to parse / pretty-print a nonterminal *)
+type nonterminal_rule = NonterminalRule of nonterminal_rule'
 
-(** Mapping from sort names to sort rules *)
-type sort_rules = sort_rule Belt.Map.String.t
+(** Mapping from nonterminal names to nonterminal rules *)
+type nonterminal_rules = nonterminal_rule Belt.Map.String.t
 
 (** A description of the concrete syntax for a language *)
 type t =
   { terminal_rules : terminal_rules
-  ; sort_rules : sort_rules
+  ; nonterminal_rules : nonterminal_rules
   }
 
-type pre_t = pre_terminal_rule list * sort_rule list
+type pre_t = pre_terminal_rule list * nonterminal_rule list

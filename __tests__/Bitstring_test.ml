@@ -11,8 +11,8 @@ let () = describe "Bitstring" (fun () ->
     expect (index 9) |> toEqual (1, 1);
     expect (index 15) |> toEqual (1, 7);
 
-    expect (bs |. getExn 0) |> toEqual false;
-    expect (bs |. setExn 0 true) |> toEqual ();
+    expect (bs |. get_exn 0) |> toEqual false;
+    expect (bs |. set_exn 0 true) |> toEqual ();
     expect (bs |. get 0) |> toEqual (Some true);
     expect (bs |. set 0 false) |> toEqual (Some ());
 

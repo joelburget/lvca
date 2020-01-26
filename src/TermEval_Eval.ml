@@ -156,7 +156,7 @@ type check_eval_result =
   (* | InferFailure of string *)
   | EvalResult of string * string
 
-let check_eval : Nominal.term -> (string * string, string) Result.t =
+let check_eval : Nominal.term -> (string * string, string) Belt.Result.t =
   fun tm ->
   match DeBruijn.from_nominal tm with
   | Error err -> Error err

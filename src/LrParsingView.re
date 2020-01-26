@@ -67,35 +67,15 @@ module Grammar = {
   }
 }
 
-module Tables = {
+module Tables = (Lr0 : LR0) => {
   [@react.component]
-  let make = (~grammar : grammar,
-              ~action_table : array(array(action)),
+  let make = (~action_table : array(array(action)),
               ~goto_table : array(array((symbol, option(state)))))
     => {
-    module MS = Belt.Map.String;
     let (concat, length, map, mapWithIndex, zip) =
       Belt.Array.(concat, length, map, mapWithIndex, zip);
 
     assert(length(action_table) == length(goto_table));
-
-    /* TODO: don't do this */
-    let terminal_nums' = MS.fromArray(grammar.terminal_nums);
-    let nonterminal_nums' = MS.fromArray(grammar.nonterminal_nums);
-
-    let lookup_terminal_name = i =>
-      switch (MS.findFirstBy(terminal_nums',
-                         ((_, num) => num == i))) {
-        | Some((name, _)) => name
-        | None => "T" ++ string_of_int(i)
-      };
-
-    let lookup_nonterminal_name = i =>
-      switch (MS.findFirstBy(nonterminal_nums',
-                         ((_, num) => num == i))) {
-        | Some((name, _)) => name
-        | None => "NT" ++ string_of_int(i)
-      };
 
     let shared_table = zip(action_table, goto_table);
     let action_span = length(action_table[0]);
@@ -103,14 +83,12 @@ module Tables = {
 
     let action_headers = action_table[0]
       |. mapWithIndex((i, _) => {
-        <th>{React.string(lookup_terminal_name(i))}</th>
+        <th>{React.string(Lr0.string_of_terminal(i))}</th>
       });
     let goto_headers = goto_table[0]
-      |. map(((symbol, _)) => switch (symbol) {
-        | Terminal(num) => lookup_terminal_name(num)
-        | Nonterminal(num) => lookup_nonterminal_name(num)
-      })
-      |. map(x => <th>{React.string(x)}</th>);
+      |. map(((symbol, _)) =>
+        <th>{React.string(Lr0.string_of_symbol(symbol))}</th>
+      );
 
     let headers_row = ReactDOMRe.createDOMElementVariadic(
       "tr",

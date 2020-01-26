@@ -1,5 +1,11 @@
 open Belt
 
+let rec snoc lst a =
+  match lst with
+    | [] -> [a]
+    | x :: xs -> x :: snoc xs a
+;;
+
 let rec unsnoc lst =
   match lst with
   | [] -> failwith "unsnoc empty list"
@@ -64,7 +70,7 @@ module ArrayApplicative (A : Any) = struct
            | Ok a -> a
            | Error b -> raise (Traversal_exn b)))
     with
-    | Traversal_exn err -> Error err
+      Traversal_exn err -> Error err
   ;;
 
   let traverse_array_result (f : 'a -> ('b, A.t) Result.t)
@@ -78,7 +84,7 @@ module ArrayApplicative (A : Any) = struct
            | Ok b -> b
            | Error c -> raise (Traversal_exn c)))
     with
-    | Traversal_exn err -> Error err
+      Traversal_exn err -> Error err
   ;;
 end
 
@@ -105,6 +111,14 @@ let rec keep_some (lst : 'a option list) : 'a list =
   | None :: rest -> keep_some rest
 ;;
 
+let int_map_union m1 m2 =
+  Belt.Map.Int.merge m1 m2 (fun _k v1 v2 ->
+    match v1, v2 with
+    | _, Some v -> Some v
+    | Some v, None -> Some v
+    | None, None -> None)
+;;
+
 let map_union m1 m2 =
   Belt.Map.String.merge m1 m2 (fun _k v1 v2 ->
     match v1, v2 with
@@ -113,18 +127,25 @@ let map_union m1 m2 =
     | None, None -> None)
 ;;
 
-let rec fold_right (f : 'a * 'b -> 'b) (lst : 'a list) (b : 'b) : 'b =
+let rec fold_right (f : 'a -> 'b -> 'b) (lst : 'a list) (b : 'b) : 'b =
   match lst with
   | [] -> b
-  | a :: as_ -> f (a, fold_right f as_ b)
+  | a :: as_ -> f a (fold_right f as_ b)
 ;;
 
-let map_unions maps = fold_right (fun (m1, m2) -> map_union m1 m2) maps Belt.Map.String.empty
+let int_map_unions maps = fold_right int_map_union maps Belt.Map.Int.empty
 
-let set_unions sets = fold_right
-  (fun (s1, s2) -> Belt.Set.String.union s1 s2)
-  sets
-  Belt.Set.String.empty
+let map_unions maps = fold_right map_union maps Belt.Map.String.empty
+
+let set_unions sets = Belt.Set.String.(fold_right union sets empty)
+
+let rec fold_left
+  : ('b -> 'a -> 'b) -> 'b -> 'a list -> 'b
+  = fun f b lst ->
+  match lst with
+  | [] -> b
+  | a :: as_ -> fold_left f (f b a) as_
+;;
 
 let map_error (result : ('a, 'b) Result.t) (f : 'b -> 'c) : ('a, 'c) Result.t =
   Result.(
@@ -203,10 +224,10 @@ let get_option : 'b -> 'a option -> 'a =
 
 exception InvariantViolation of string
 
-let invariant_violation str = InvariantViolation str
+let invariant_violation str = raise (InvariantViolation str)
 
 let get_option' : string -> 'a option -> 'a =
-  fun msg -> get_option @@ invariant_violation ("invariant violation: " ^ msg)
+  fun msg -> get_option (InvariantViolation ("invariant violation: " ^ msg))
 ;;
 
 let array_of_stack : 'a MutableStack.t -> 'a array =

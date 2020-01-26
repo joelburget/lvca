@@ -1,65 +1,91 @@
+(** Types and functions for dealing with concrete syntax.
+ *
+ * This module is all about this diagram:
+ *
+ *        ---parse--->                -to_ast->
+ * string              formatted_tree           Nominal.term
+ *        <-to_string-                <-of_ast-
+ *
+ * The other important functions are to_grammar, lexer_of_desc, and
+ * make_concrete_description
+ *)
 open Binding
 open Types
 module Lexer = ConcreteSyntax_Lexer
 module Parser = ConcreteSyntax_Parser
 module ParseErrors = ConcreteSyntax_ParseErrors
 
-type prim_ty =
-  | Integer
-  | String
+type tree_info = string * int
 
-type node_type =
-  | SingleCapture
-  | Operator of string
-  | Sequence
-  | Primitive of prim_ty
-
-type terminal_capture =
+(** Terminals capture text from the input buffer *)
+type formatted_terminal_capture =
   { content : string
   ; leading_trivia : string
   ; trailing_trivia : string
   }
 
-type nonterminal_capture = tree
+(** Nonterminals capture their children *)
+type formatted_nonterminal_capture = formatted_tree
 
-and capture =
-  | TerminalCapture of terminal_capture
-  | NonterminalCapture of nonterminal_capture
+(** Terminals and nonterminals both capture data about why they were
+    constructed
+*)
+and formatted_capture =
+  | TerminalCapture of formatted_terminal_capture
+  | NonterminalCapture of formatted_nonterminal_capture
 
-and tree =
-  { sort_name : sort_name
-  ; node_type : node_type
-  ; children : capture array
+(* Inspired by:
+ * - https://github.com/apple/swift/tree/master/lib/Syntax
+ * - https://github.com/dotnet/roslyn/wiki/Roslyn-Overview#syntax-trees
+ *
+ * Rules of trivia (same as for swift):
+ * - A token owns all of its trailing trivia up to, but not including, the
+ *   next newline character.
+ * - Looking backward in the text, a token owns all of the leading trivia up
+ *   to and including the first newline character.
+ *
+ * In other words, a contiguous stretch of trivia between two tokens is split
+ * on the leftmost newline.
+*)
+and formatted_tree =
+  { tree_info : tree_info
+  ; children : formatted_capture array
   }
 
 (** Are two trees equivalent, ignoring trivia *)
-val equivalent : tree -> tree -> bool
+val equivalent : formatted_tree -> formatted_tree -> bool
 
 (** Convert an abstract syntax tree to a concrete syntax tree *)
-val of_ast : language -> ConcreteSyntaxDescription.t -> sort -> Nominal.term -> tree
+val of_ast
+  : language
+  -> ConcreteSyntaxDescription.t
+  -> string
+  -> int
+  -> Nominal.term
+  -> formatted_tree
 
 (** Print a concrete syntax tree to a string *)
-val to_string : tree -> string
+val to_string : formatted_tree -> string
 
 (** Parse from a string to a concrete syntax tree *)
 val parse
   :  ConcreteSyntaxDescription.t
   -> string (* root name *)
   -> string (* string to parse *)
-  -> (tree, string) Result.t
+  -> (formatted_tree, string) Belt.Result.t
 
 (** Convert form a concrete to an abstract syntax tree *)
 val to_ast
-  :  language
-  -> ConcreteSyntaxDescription.t
-  -> string
-  -> tree
-  -> (Nominal.term, string) Result.t
+  :  ConcreteSyntaxDescription.t
+  -> formatted_tree
+  -> (Nominal.term, string) Belt.Result.t
 
 val to_grammar
   :  ConcreteSyntaxDescription.t
+  -> string
   -> LrParsing.grammar
-     * (ConcreteSyntaxDescription.nonterminal_token list
+     * (tree_info
+        * ConcreteSyntaxDescription.nonterminal_token list
         * ConcreteSyntaxDescription.operator_match_pattern option)
          Belt.MutableMap.Int.t
 
@@ -71,8 +97,7 @@ val check_description_validity : ConcreteSyntaxDescription.t -> invalid_grammar 
 val lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer
 
 (* exported for testing: *)
-val mk_tree : sort_name -> node_type -> capture array -> tree
-val remove_spaces : tree -> tree
+val remove_spaces : formatted_tree -> formatted_tree
 
 (** Make a concrete syntax description from its parsed rules. This morally
     belongs to the ConcreteSyntaxDescription module, but it's here to break a
@@ -80,5 +105,5 @@ val remove_spaces : tree -> tree
 *)
 val make_concrete_description
   :  ConcreteSyntaxDescription.pre_terminal_rule list
-  -> ConcreteSyntaxDescription.sort_rule list
+  -> ConcreteSyntaxDescription.nonterminal_rule list
   -> ConcreteSyntaxDescription.t

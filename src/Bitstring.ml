@@ -1,4 +1,5 @@
-type bitstring = Bitstring of int * bytes
+type t = Bitstring of int * bytes
+type bitstring = t
 
 (* internal *)
 let index : int -> int * int =
@@ -8,9 +9,9 @@ let index : int -> int * int =
   else i / 8, i mod 8
 ;;
 
-let getExn : bitstring -> int -> bool =
+let get_exn : bitstring -> int -> bool =
   fun (Bitstring (bs_len, bs)) i ->
-  if i >= bs_len then raise (Invalid_argument "Bitstring.getExn: index too large");
+  if i >= bs_len then raise (Invalid_argument "Bitstring.get_exn: index too large");
   let bytes_ix, char_ix = index i in
   let c = Bytes.get bs bytes_ix in
   let c_code = Char.code c in
@@ -20,13 +21,15 @@ let getExn : bitstring -> int -> bool =
 
 let get : bitstring -> int -> bool option =
   fun bs i ->
-  try Some (getExn bs i) with
-  | _ -> None
+  try
+    Some (get_exn bs i)
+  with
+    _ -> None
 ;;
 
-let setExn : bitstring -> int -> bool -> unit =
+let set_exn : bitstring -> int -> bool -> unit =
   fun (Bitstring (bs_len, bs)) i b ->
-  if i >= bs_len then raise (Invalid_argument "Bitstring.setExn: index too large");
+  if i >= bs_len then raise (Invalid_argument "Bitstring.set_exn: index too large");
   let bytes_ix, char_ix = index i in
   let c = Bytes.get bs bytes_ix in
   let c_code = Char.code c in
@@ -37,12 +40,15 @@ let setExn : bitstring -> int -> bool -> unit =
 
 let set : bitstring -> int -> bool -> unit option =
   fun bs i b ->
-  try Some (setExn bs i b) with
-  | _ -> None
+  try
+    Some (set_exn bs i b)
+  with
+    _ -> None
 ;;
 
 let alloc : int -> bool -> bitstring =
   fun len b ->
+  if len < 0 then raise (Invalid_argument "Bitstring.alloc: length must be non-negative");
   let one = if len mod 8 = 0 then 0 else 1 in
   Bitstring (len, Bytes.make ((len / 8) + one) @@ Char.chr @@ if b then 0xff else 0x00)
 ;;

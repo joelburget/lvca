@@ -1,72 +1,106 @@
 
-(* This file was auto-generated based on "ConcreteSyntax_Parser.messages". *)
+(* This file was auto-generated based on "src/ConcreteSyntax_Parser.messages". *)
 
 (* Please note that the function [message] can raise [Not_found]. *)
 
 let message =
   fun s ->
     match s with
-    | 0 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 31\n"
-    | 1 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 30\n"
-    | 4 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 29\n"
-    | 5 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 28\n"
-    | 6 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 27\n"
-    | 9 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 26\n"
-    | 59 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 25\n"
-    | 16 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 24\n"
-    | 57 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 23\n"
-    | 28 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 22\n"
-    | 29 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 21\n"
-    | 30 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 20\n"
-    | 37 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 19\n"
-    | 34 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 18\n"
-    | 38 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 17\n"
-    | 31 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 16\n"
-    | 43 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 15\n"
     | 44 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 14\n"
-    | 63 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 13\n"
-    | 25 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 12\n"
-    | 61 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 11\n"
-    | 65 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 10\n"
-    | 12 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 9\n"
-    | 67 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 8\n"
-    | 22 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 7\n"
-    | 23 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 6\n"
-    | 50 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 5\n"
-    | 13 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 4\n"
+        "<YOUR SYNTAX ERROR MESSAGE HERE 17>\n"
+    | 45 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE 16>\n"
+    | 46 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE 15>\n"
+    | 47 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE 14>\n"
+    | 48 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE 13>\n"
+    | 20 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE 12>\n"
+    | 14 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE 11>\n"
     | 15 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 3\n"
-    | 69 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 2\n"
+        "<YOUR SYNTAX ERROR MESSAGE HERE 10>\n"
+    | 35 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE 9>\n"
+    | 31 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE 8>\n"
+    | 24 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE 7>\n"
+    | 23 ->
+        "Malformed sort.\n"
+    | 37 ->
+        "Expected an operator matching rule: a list of tokens followed by the term or pattern it corresponds to.\n"
+    | 28 ->
+        "Malformed sort.\n"
+    | 30 ->
+        "Parsing type signature, expected either `->` and then another sort, or `:=` followed by operator declarations.\n"
+    | 21 ->
+        "After nonterminal name, expected either a type signature or `:=` followed by operator declarations.\n"
+    | 13 ->
+        "After ':', expected a type signature.\n"
+    | 0 ->
+        "Expected a capture number, eg $1.\n"
+    | 1 ->
+        "Expected a capture number, eg $1.\n"
+    | 4 ->
+        "Expected a language (starting with terminals).\n"
+    | 5 ->
+        "Expected \":=\" after terminal id.\n"
+    | 6 ->
+        "Expected a regex or string.\n"
+    | 9 ->
+        "Expected more terminal rules or a nonterminal rule.\n"
+    | 100 ->
+        "Expected EOF after nonterminal token.\n"
+    | 38 ->
+        "Expected nonterminal token.\n"
+    | 98 ->
+        "Expected nonterminal token.\n"
+    | 62 ->
+        "Expected operator match pattern after '{'.\n"
+    | 63 ->
+        "Expected '(' after operator name.\n"
+    | 64 ->
+        "Expected a term scope pattern or ')' after '('.\n"
     | 71 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 1\n"
+        "Expected a ';', ')', or '.' after a capture number.\n"
+    | 68 ->
+        "Expected a term scope pattern.\n"
+    | 72 ->
+        "Expected capture number.\n"
+    | 65 ->
+        "Expected token number, eg $1.\n"
+    | 78 ->
+        "Expected '}' after operator match pattern.\n"
+    | 79 ->
+        "Expected optional fixity then EOF after operator match.\n"
+    | 108 ->
+        "Expected EOF after operator match.\n"
+    | 59 ->
+        "Expected more nonterminal tokens or '{'.\n"
+    | 106 ->
+        "Expected operator match.\n"
+    | 94 ->
+        "Expected nonterminal rule.\n"
+    | 12 ->
+        "Expected \":=\" after identifier in nonterminal rule.\n"
+    | 96 ->
+        "Expected EOF after nonterminal rule.\n"
+    | 56 ->
+        "Expected EOF or ('|' or '>'), then more operator matches.\n"
+    | 57 ->
+        "Expected a set of operator matches.\n"
+    | 84 ->
+        "Expected a set of operator matches.\n"
+    | 86 ->
+        "Expected a set of operator matches.\n"
+    | 87 ->
+        "Expected a set of operator matches.\n"
+    | 114 ->
+        "Expected terminal rule.\n"
+    | 116 ->
+        "Expected EOF after terminal rule.\n"
     | _ ->
         raise Not_found

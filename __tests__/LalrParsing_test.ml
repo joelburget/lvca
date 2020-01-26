@@ -53,9 +53,9 @@ module Grammar1 : GRAMMAR = struct
     |];
     nonterminal_nums =
     [|
-      "S'", 0;
-      "S",  1;
-      "C",  2;
+      "S'", 0, 0;
+      "S",  0, 1;
+      "C",  0, 2;
     |];
   }
 end
@@ -92,10 +92,10 @@ module Grammar2 : GRAMMAR = struct
     |];
     nonterminal_nums =
     [|
-      "S'", 0;
-      "S",  1;
-      "L",  2;
-      "R",  3;
+      "S'", 0, 0;
+      "S",  0, 1;
+      "L",  0, 2;
+      "R",  0, 3;
     |];
   }
 end
@@ -124,8 +124,8 @@ module Grammar3 : GRAMMAR = struct
 
     nonterminal_nums =
     [|
-      "arith'", 0;
-      "arith", 1;
+      "arith'", 0, 0;
+      "arith",  0, 1;
     |];
   }
 end

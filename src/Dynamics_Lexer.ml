@@ -15,15 +15,15 @@ let __ocaml_lex_tables = {
     \005\000\007\000\013\000\118\000\255\255\001\000\120\002\240\255\
     \208\002\040\003\128\003\216\003\048\004\136\004\224\004\056\005\
     \144\005\232\005\089\006\250\255\251\255\002\000\254\255\090\006\
-    \253\255";
+    \252\255\253\255";
   Lexing.lex_backtrk =
    "\255\255\255\255\255\255\021\000\020\000\021\000\021\000\021\000\
     \021\000\021\000\255\255\255\255\255\255\255\255\255\255\255\255\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     \000\000\000\000\024\000\255\255\255\255\000\000\020\000\255\255\
     \021\000\016\000\017\000\021\000\021\000\021\000\018\000\021\000\
-    \021\000\019\000\255\255\255\255\255\255\003\000\255\255\000\000\
-    \255\255";
+    \021\000\019\000\255\255\255\255\255\255\006\000\255\255\000\000\
+    \255\255\255\255";
   Lexing.lex_default =
    "\001\000\000\000\000\000\255\255\255\255\255\255\255\255\255\255\
     \255\255\255\255\000\000\000\000\000\000\000\000\000\000\000\000\
@@ -31,20 +31,20 @@ let __ocaml_lex_tables = {
     \255\255\255\255\255\255\027\000\000\000\255\255\255\255\000\000\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     \255\255\255\255\047\000\000\000\000\000\255\255\000\000\047\000\
-    \000\000";
+    \000\000\000\000";
   Lexing.lex_trans =
    "\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
     \000\000\024\000\024\000\028\000\000\000\025\000\024\000\024\000\
     \024\000\024\000\024\000\000\000\024\000\000\000\000\000\000\000\
     \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
-    \024\000\000\000\017\000\003\000\048\000\024\000\000\000\024\000\
+    \024\000\000\000\017\000\003\000\049\000\024\000\000\000\024\000\
     \021\000\020\000\000\000\000\000\015\000\009\000\014\000\026\000\
     \004\000\004\000\004\000\004\000\004\000\004\000\004\000\004\000\
     \004\000\004\000\012\000\016\000\027\000\010\000\000\000\000\000\
     \000\000\003\000\003\000\003\000\003\000\003\000\003\000\003\000\
     \003\000\003\000\003\000\003\000\003\000\003\000\003\000\003\000\
     \003\000\003\000\003\000\003\000\003\000\003\000\003\000\003\000\
-    \003\000\003\000\003\000\023\000\013\000\022\000\000\000\003\000\
+    \003\000\003\000\003\000\023\000\013\000\022\000\048\000\003\000\
     \000\000\003\000\003\000\003\000\003\000\003\000\003\000\003\000\
     \003\000\007\000\003\000\003\000\008\000\006\000\003\000\003\000\
     \003\000\003\000\003\000\003\000\003\000\003\000\003\000\005\000\
@@ -281,7 +281,7 @@ let __ocaml_lex_tables = {
     \255\255\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
     \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
     \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
-    \000\000\000\000\000\000\000\000\000\000\000\000\255\255\000\000\
+    \000\000\000\000\000\000\000\000\000\000\000\000\045\000\000\000\
     \255\255\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
     \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
     \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
@@ -657,14 +657,14 @@ and read_string buf lexbuf =
 and __ocaml_lex_read_string_rec buf lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 45 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 44 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( B.add_string buf @@ L.lexeme lexbuf
               ; read_string buf lexbuf
               )
 # 665 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 1 ->
-# 48 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 47 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( B.add_string buf @@ L.lexeme lexbuf
               ; L.new_line lexbuf
               ; read_string buf lexbuf
@@ -672,31 +672,31 @@ and __ocaml_lex_read_string_rec buf lexbuf __ocaml_lex_state =
 # 673 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 2 ->
-# 52 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 51 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( B.add_char buf '"'
               ; read_string buf lexbuf
               )
 # 680 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 3 ->
-# 55 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 54 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( B.add_char buf '\\'
               ; read_string buf lexbuf
               )
 # 687 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 4 ->
-# 58 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 57 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( STRING (B.contents buf) )
 # 692 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 5 ->
-# 59 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 58 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( error lexbuf "end of input inside of a string" )
 # 697 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"
 
   | 6 ->
-# 60 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
+# 59 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.mll"
               ( error lexbuf
                   "found '%s' - don't know how to handle" @@ L.lexeme lexbuf )
 # 703 "/home/joel/code/lvca-bucklescript/src/Dynamics_Lexer.ml"

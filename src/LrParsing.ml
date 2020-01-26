@@ -12,7 +12,7 @@ module MSI = Belt.MutableSet.Int
 module Result = Belt.Result
 module MStack = Belt.MutableStack
 module MQueue = Belt.MutableQueue
-let (get_option', invariant_violation) = Util.(get_option', invariant_violation)
+let get_option', invariant_violation = Util.(get_option', invariant_violation)
 
 (* by convention, we reserve 0 for the `$` terminal, and number the rest
  * contiguously from 1 *)
@@ -43,25 +43,27 @@ type production_num = int
 
 (** A production with a dot at some position.
  *
- * We encode this as a single integer -- see `item`, `mk_item`, `mk_item'`, and
- * `view_item`.
+ * We encode this as a single integer -- see [item], [mk_item], [mk_item'], and
+ * [view_item].
+ *
+ * See also [level_view].
 *)
 type item_view =
   (** The number of one of the productions of the underlying grammar *)
-  { production_num: production_num;
+  { production_num: production_num
     (** The position of the dot *)
-    position: int;
+  ; position: int;
   }
 
-(* An LR(0) item encodes a pair of integers, namely the index of the
-   production and the index of the bullet in the production's
-   right-hand side. *)
-
-(* Both integers are packed into a single integer, using 8 bits for
-   the bullet position and the remaining 24 bits for the
-   production index. *)
-
-(* Note that this implies some maximums:
+(** An LR(0) item encodes a pair of integers, namely the index of the
+ * production and the index of the bullet in the production's
+ * right-hand side.
+ *
+ * Both integers are packed into a single integer, using 8 bits for
+ * the bullet position and the remaining 24 bits for the
+ * production index.
+ *
+ * Note that this implies some maximums:
  * The maximum length of a production is 255
  * The maximum number of different productions is 16777215
 *)
@@ -79,11 +81,11 @@ let mk_item' : int -> int -> item
 type item_set = SI.t
 
 let mk_item : item_view -> item
-  = fun { production_num; position } ->  mk_item' production_num position
+  = fun { production_num; position } -> mk_item' production_num position
 
 type configuration_set =
-  { kernel_items : item_set;    (* set of items *)
-    nonkernel_items : item_set; (* set of nonterminals *)
+  { kernel_items : item_set    (* set of items *)
+  ; nonkernel_items : item_set (* set of nonterminals *)
   }
 
 let simplify_config_set : configuration_set -> item_set
@@ -95,6 +97,8 @@ type nonterminal =
     productions: production list;
   }
 
+type prec_level = int
+
 (* By convention:
  * A non-augmented grammar has keys starting at 1 (start)
  * An augmented grammar has key 0 (augmented start)
@@ -102,7 +106,7 @@ type nonterminal =
 type grammar = {
   nonterminals : nonterminal Belt.Map.Int.t;
   terminal_nums : (string * terminal_num) array;
-  nonterminal_nums : (string * nonterminal_num) array;
+  nonterminal_nums : (string * prec_level * nonterminal_num) array;
 }
 
 type conflict_type = ShiftReduce | ReduceReduce
@@ -176,6 +180,7 @@ module type LR0 = sig
   (* TODO: fill in the rest of the signature *)
   val production_map : production MMI.t
   val production_nonterminal_map : nonterminal_num MMI.t
+  val string_of_symbol : symbol -> string
   val string_of_terminal : terminal_num -> string
   val string_of_production_num : production_num -> string
   val string_of_production : production -> string
@@ -196,12 +201,6 @@ let string_of_stack : state array -> string
   = fun states -> states
                   |. A.map string_of_int
                   |. Js.Array2.joinWith " "
-
-(* TODO: where to put this? *)
-let string_of_tokens : Lex.token array -> string
-  = fun toks -> toks
-                |. A.map (fun { name } -> name)
-                |. Js.Array2.joinWith " "
 
 (* TODO: remove exns *)
 module Lr0 (G : GRAMMAR) = struct
@@ -229,37 +228,76 @@ module Lr0 (G : GRAMMAR) = struct
 
   let terminal_names : string Belt.Map.Int.t
     = G.grammar.terminal_nums
-      |. A.map (fun (name, num) -> (num, name))
+      |. A.map (fun (name, num) -> num, name)
       |. M.fromArray
 
   let nonterminal_names : string Belt.Map.Int.t
     = G.grammar.nonterminal_nums
-      |. A.map (fun (name, num) -> (num, name))
+      |. A.map (fun (name, _level, nt_num) -> nt_num, name)
       |. M.fromArray
+
+  let prec_level_map : prec_level Belt.Map.Int.t
+    = G.grammar.nonterminal_nums
+      |. Belt.Array.map (fun (_name, level, nt_num) -> nt_num, level)
+      |. M.fromArray
+
+  let string_of_nonterminal_num : nonterminal_num -> string
+    = fun nt_num ->
+      let nt_name = nonterminal_names
+        |. M.get nt_num
+        |> get_option' (Printf.sprintf
+           "string_of_nonterminal_num: failed to get nonterminal %n from \
+           nonterminal_names"
+           nt_num
+        )
+      in
+      let level = prec_level_map
+        |. M.get nt_num
+        |> get_option' (Printf.sprintf
+          "string_of_nonterminal_num: failed tog get nonterminal %n from \
+          prec_level_map"
+          nt_num
+        )
+      in
+      if level = 0
+      then nt_name
+      else Printf.sprintf "%s_%n" nt_name level
 
   let terminal_nums : int Belt.Map.String.t
     = MS.fromArray G.grammar.terminal_nums
 
-  let nonterminal_nums : int Belt.Map.String.t
-    = MS.fromArray G.grammar.nonterminal_nums
+  let nonterminal_nums : nonterminal_num Belt.Map.String.t
+    = G.grammar.nonterminal_nums
+      |. Belt.Array.map (fun (name, _level, nt_num) -> name, nt_num)
+      |. MS.fromArray
 
   let rec nonterminal_first_set : SI.t -> MSI.t -> nonterminal_num -> unit
     = fun already_seen_nts result nt ->
       let productions : MSI.t = nonterminal_production_map
-                                |. MMI.get nt
-                                |> get_option' "TODO 1"
-                                   |. MSI.copy
+        |. MMI.get nt
+        |> get_option' (Printf.sprintf
+          "nonterminal_first_set->already_seen_nts: Couldn't find nonterminal \
+          %s in nonterminal_production_map"
+          (string_of_nonterminal_num nt)
+        )
+        |. MSI.copy
       in
 
       while not (MSI.isEmpty productions) do
         let production_num = productions
-                             |. MSI.minimum
-                             |> get_option' "TODO 2"
+          |. MSI.minimum
+          |> get_option' ("nonterminal_first_set->already_seen_nts: minimum \
+            of productions must exist"
+          )
         in
         MSI.remove productions production_num;
         let production = production_map
-                         |. MMI.get production_num
-                         |> get_option' "TODO 3"
+          |. MMI.get production_num
+          |> get_option' (Printf.sprintf
+            "nonterminal_first_set->already_seen_nts: Couldn't find production \
+            %n in production_map"
+            production_num
+          )
         in
         first_set' already_seen_nts result production
       done;
@@ -290,14 +328,6 @@ module Lr0 (G : GRAMMAR) = struct
                                      "string_of_symbol: failed to get terminal %n"
                                      t_num
                                   )
-
-  let string_of_nonterminal_num : nonterminal_num -> string
-    = fun nt_num -> nonterminal_names
-                    |. M.get nt_num
-                    |> get_option' (Printf.sprintf
-                                      "string_of_symbol: failed to get nonterminal %n"
-                                      nt_num
-                                   )
 
   let string_of_symbol : symbol -> string
     = function
@@ -405,7 +435,7 @@ module Lr0 (G : GRAMMAR) = struct
                 nonterminal_production_map |. MMI.set nt_num (MSI.make ());
                 L.forEach productions (fun production ->
                   let production_num = !production_cnt in
-                  production_cnt := production_num + 1;
+                  incr production_cnt;
                   production_map |. MMI.set production_num production;
                   production_nonterminal_map |. MMI.set production_num nt_num;
                   let prod_set = nonterminal_production_map
@@ -476,7 +506,7 @@ module Lr0 (G : GRAMMAR) = struct
                                              )
         in
         if not is_alrady_added then (
-          Bitstring.setExn added nonterminal_num true;
+          Bitstring.set_exn added nonterminal_num true;
           let production_num_set = nonterminal_production_map
                                    |. MMI.get nonterminal_num
                                    |> get_option' (Printf.sprintf

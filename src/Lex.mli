@@ -18,3 +18,4 @@ type lex_error =
   }
 
 val lex : lexer -> string -> (token array, lex_error) Belt.Result.t
+val string_of_tokens : token array -> string

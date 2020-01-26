@@ -1,6 +1,6 @@
 terminal_rule__test: TERMINAL_ID ASSIGN REGEX UNDERSCORE
 ##
-## Ends in an error in state: 71.
+## Ends in an error in state: 108.
 ##
 ## terminal_rule__test -> terminal_rule . EOF [ # ]
 ##
@@ -8,11 +8,11 @@ terminal_rule__test: TERMINAL_ID ASSIGN REGEX UNDERSCORE
 ## terminal_rule
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 1
+Expected EOF after terminal rule.
 
 terminal_rule__test: UNDERSCORE
 ##
-## Ends in an error in state: 69.
+## Ends in an error in state: 106.
 ##
 ## terminal_rule__test' -> . terminal_rule__test [ # ]
 ##
@@ -20,35 +20,35 @@ terminal_rule__test: UNDERSCORE
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 2
+Expected terminal rule.
 
-sort_rule__test: NONTERMINAL_ID ASSIGN BAR STRING
+nonterminal_rule__test: NONTERMINAL_ID ASSIGN BAR STRING
 ##
-## Ends in an error in state: 15.
+## Ends in an error in state: 87.
 ##
-## sort_rule -> NONTERMINAL_ID ASSIGN option(BAR) . operator_match_list [ NONTERMINAL_ID EOF ]
+## nonterminal_rule -> NONTERMINAL_ID ASSIGN option(BAR) . operator_match_list [ NONTERMINAL_ID EOF ]
 ##
 ## The known suffix of the stack is as follows:
 ## NONTERMINAL_ID ASSIGN option(BAR)
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 3
+Expected a set of operator matches.
 
-sort_rule__test: NONTERMINAL_ID ASSIGN STRING
+nonterminal_rule__test: NONTERMINAL_ID ASSIGN STRING
 ##
-## Ends in an error in state: 13.
+## Ends in an error in state: 86.
 ##
-## sort_rule -> NONTERMINAL_ID ASSIGN . option(BAR) operator_match_list [ NONTERMINAL_ID EOF ]
+## nonterminal_rule -> NONTERMINAL_ID ASSIGN . option(BAR) operator_match_list [ NONTERMINAL_ID EOF ]
 ##
 ## The known suffix of the stack is as follows:
 ## NONTERMINAL_ID ASSIGN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 4
+Expected a set of operator matches.
 
-sort_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE BAR STRING
+nonterminal_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE BAR STRING
 ##
-## Ends in an error in state: 50.
+## Ends in an error in state: 84.
 ##
 ## operator_match_list -> operator_match BAR . operator_match_list [ NONTERMINAL_ID EOF ]
 ##
@@ -56,82 +56,83 @@ sort_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BR
 ## operator_match BAR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 5
+Expected a set of operator matches.
 
-sort_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE GREATER STRING
+nonterminal_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE RIGHT_ANGLE STRING
 ##
-## Ends in an error in state: 23.
+## Ends in an error in state: 57.
 ##
-## operator_match_list -> operator_match GREATER . operator_match_list [ NONTERMINAL_ID EOF ]
+## operator_match_list -> operator_match RIGHT_ANGLE . operator_match_list [ NONTERMINAL_ID EOF ]
 ##
 ## The known suffix of the stack is as follows:
-## operator_match GREATER
+## operator_match RIGHT_ANGLE
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 6
+Expected a set of operator matches.
 
-sort_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE LEFT_FIXITY UNDERSCORE
+nonterminal_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE LEFT_FIXITY UNDERSCORE
 ##
-## Ends in an error in state: 22.
+## Ends in an error in state: 56.
 ##
 ## operator_match_list -> operator_match . [ NONTERMINAL_ID EOF ]
 ## operator_match_list -> operator_match . BAR operator_match_list [ NONTERMINAL_ID EOF ]
-## operator_match_list -> operator_match . GREATER operator_match_list [ NONTERMINAL_ID EOF ]
+## operator_match_list -> operator_match . RIGHT_ANGLE operator_match_list [ NONTERMINAL_ID EOF ]
 ##
 ## The known suffix of the stack is as follows:
 ## operator_match
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 7
+Expected EOF or ('|' or '>'), then more operator matches.
 
-sort_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE NONTERMINAL_ID
+nonterminal_rule__test: NONTERMINAL_ID ASSIGN UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE NONTERMINAL_ID
 ##
-## Ends in an error in state: 67.
+## Ends in an error in state: 96.
 ##
-## sort_rule__test -> sort_rule . EOF [ # ]
+## nonterminal_rule__test -> nonterminal_rule . EOF [ # ]
 ##
 ## The known suffix of the stack is as follows:
-## sort_rule
+## nonterminal_rule
 ##
 ## WARNING: This example involves spurious reductions.
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 44, spurious reduction of production option(fixity) ->
-## In state 47, spurious reduction of production operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE option(fixity)
-## In state 22, spurious reduction of production operator_match_list -> operator_match
-## In state 21, spurious reduction of production sort_rule -> NONTERMINAL_ID ASSIGN option(BAR) operator_match_list
+## In state 79, spurious reduction of production option(fixity) ->
+## In state 82, spurious reduction of production operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE option(fixity)
+## In state 56, spurious reduction of production operator_match_list -> operator_match
+## In state 88, spurious reduction of production nonterminal_rule -> NONTERMINAL_ID ASSIGN option(BAR) operator_match_list
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 8
+Expected EOF after nonterminal rule.
 
-sort_rule__test: NONTERMINAL_ID UNDERSCORE
+nonterminal_rule__test: NONTERMINAL_ID UNDERSCORE
 ##
 ## Ends in an error in state: 12.
 ##
-## sort_rule -> NONTERMINAL_ID . ASSIGN option(BAR) operator_match_list [ NONTERMINAL_ID EOF ]
+## nonterminal_rule -> NONTERMINAL_ID . ASSIGN option(BAR) operator_match_list [ NONTERMINAL_ID EOF ]
+## nonterminal_rule -> NONTERMINAL_ID . COLON nonterminal_type ASSIGN option(BAR) operator_match_list [ NONTERMINAL_ID EOF ]
 ##
 ## The known suffix of the stack is as follows:
 ## NONTERMINAL_ID
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 9
+Expected ":=" after identifier in nonterminal rule.
 
-sort_rule__test: UNDERSCORE
+nonterminal_rule__test: UNDERSCORE
 ##
-## Ends in an error in state: 65.
+## Ends in an error in state: 94.
 ##
-## sort_rule__test' -> . sort_rule__test [ # ]
+## nonterminal_rule__test' -> . nonterminal_rule__test [ # ]
 ##
 ## The known suffix of the stack is as follows:
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 10
+Expected nonterminal rule.
 
 operator_match__test: STRING
 ##
-## Ends in an error in state: 61.
+## Ends in an error in state: 102.
 ##
 ## operator_match__test' -> . operator_match__test [ # ]
 ##
@@ -139,11 +140,11 @@ operator_match__test: STRING
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 11
+Expected operator match.
 
 operator_match__test: UNDERSCORE EOF
 ##
-## Ends in an error in state: 25.
+## Ends in an error in state: 59.
 ##
 ## nonempty_list(nonterminal_token) -> nonterminal_token . [ LEFT_BRACE ]
 ## nonempty_list(nonterminal_token) -> nonterminal_token . nonempty_list(nonterminal_token) [ LEFT_BRACE ]
@@ -155,15 +156,15 @@ operator_match__test: UNDERSCORE EOF
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 16, spurious reduction of production option(NAT) ->
-## In state 18, spurious reduction of production nonterminal_token -> UNDERSCORE option(NAT)
+## In state 38, spurious reduction of production option(NAT) ->
+## In state 40, spurious reduction of production nonterminal_token -> UNDERSCORE option(NAT)
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 12
+Expected more nonterminal tokens or '{'.
 
 operator_match__test: UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE NONTERMINAL_ID
 ##
-## Ends in an error in state: 63.
+## Ends in an error in state: 104.
 ##
 ## operator_match__test -> operator_match . EOF [ # ]
 ##
@@ -174,39 +175,39 @@ operator_match__test: UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE NONTERMINAL_I
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 44, spurious reduction of production option(fixity) ->
-## In state 47, spurious reduction of production operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE option(fixity)
+## In state 79, spurious reduction of production option(fixity) ->
+## In state 82, spurious reduction of production operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE option(fixity)
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 13
+Expected EOF after operator match.
 
 operator_match__test: UNDERSCORE LEFT_BRACE DOLLAR NAT RIGHT_BRACE UNDERSCORE
 ##
-## Ends in an error in state: 44.
+## Ends in an error in state: 79.
 ##
-## operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE . option(fixity) [ NONTERMINAL_ID GREATER EOF BAR ]
+## operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE . option(fixity) [ RIGHT_ANGLE NONTERMINAL_ID EOF BAR ]
 ##
 ## The known suffix of the stack is as follows:
 ## nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 14
+Expected optional fixity then EOF after operator match.
 
 operator_match__test: UNDERSCORE LEFT_BRACE DOLLAR NAT UNDERSCORE
 ##
-## Ends in an error in state: 43.
+## Ends in an error in state: 78.
 ##
-## operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern . RIGHT_BRACE option(fixity) [ NONTERMINAL_ID GREATER EOF BAR ]
+## operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern . RIGHT_BRACE option(fixity) [ RIGHT_ANGLE NONTERMINAL_ID EOF BAR ]
 ##
 ## The known suffix of the stack is as follows:
 ## nonempty_list(nonterminal_token) LEFT_BRACE operator_match_pattern
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 15
+Expected '}' after operator match pattern.
 
 operator_match__test: UNDERSCORE LEFT_BRACE DOLLAR UNDERSCORE
 ##
-## Ends in an error in state: 31.
+## Ends in an error in state: 65.
 ##
 ## capture_number -> DOLLAR . NAT [ SEMICOLON RIGHT_PAREN RIGHT_BRACE DOT ]
 ##
@@ -214,23 +215,23 @@ operator_match__test: UNDERSCORE LEFT_BRACE DOLLAR UNDERSCORE
 ## DOLLAR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 16
+Expected token number, eg $1.
 
 operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN DOLLAR NAT DOT UNDERSCORE
 ##
-## Ends in an error in state: 38.
+## Ends in an error in state: 72.
 ##
-## separated_nonempty_list(DOT,capture_number) -> capture_number DOT . separated_nonempty_list(DOT,capture_number) [ SEMICOLON RIGHT_PAREN ]
+## separated_nonempty_list(DOT,operator_match_pattern) -> operator_match_pattern DOT . separated_nonempty_list(DOT,operator_match_pattern) [ SEMICOLON RIGHT_PAREN ]
 ##
 ## The known suffix of the stack is as follows:
-## capture_number DOT
+## operator_match_pattern DOT
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 17
+Expected capture number.
 
 operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN DOLLAR NAT SEMICOLON UNDERSCORE
 ##
-## Ends in an error in state: 34.
+## Ends in an error in state: 68.
 ##
 ## separated_nonempty_list(SEMICOLON,term_scope_pattern) -> term_scope_pattern SEMICOLON . separated_nonempty_list(SEMICOLON,term_scope_pattern) [ RIGHT_PAREN ]
 ##
@@ -238,60 +239,60 @@ operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN DOLLAR NAT
 ## term_scope_pattern SEMICOLON
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 18
+Expected a term scope pattern.
 
 operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN DOLLAR NAT UNDERSCORE
 ##
-## Ends in an error in state: 37.
+## Ends in an error in state: 71.
 ##
-## separated_nonempty_list(DOT,capture_number) -> capture_number . [ SEMICOLON RIGHT_PAREN ]
-## separated_nonempty_list(DOT,capture_number) -> capture_number . DOT separated_nonempty_list(DOT,capture_number) [ SEMICOLON RIGHT_PAREN ]
+## separated_nonempty_list(DOT,operator_match_pattern) -> operator_match_pattern . [ SEMICOLON RIGHT_PAREN ]
+## separated_nonempty_list(DOT,operator_match_pattern) -> operator_match_pattern . DOT separated_nonempty_list(DOT,operator_match_pattern) [ SEMICOLON RIGHT_PAREN ]
 ##
 ## The known suffix of the stack is as follows:
-## capture_number
+## operator_match_pattern
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 19
+Expected a ';', ')', or '.' after a capture number.
 
 operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID LEFT_PAREN UNDERSCORE
 ##
-## Ends in an error in state: 30.
+## Ends in an error in state: 64.
 ##
-## operator_match_pattern -> NONTERMINAL_ID LEFT_PAREN . loption(separated_nonempty_list(SEMICOLON,term_scope_pattern)) RIGHT_PAREN [ RIGHT_BRACE ]
+## operator_match_pattern -> NONTERMINAL_ID LEFT_PAREN . loption(separated_nonempty_list(SEMICOLON,term_scope_pattern)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_BRACE DOT ]
 ##
 ## The known suffix of the stack is as follows:
 ## NONTERMINAL_ID LEFT_PAREN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 20
+Expected a term scope pattern or ')' after '('.
 
 operator_match__test: UNDERSCORE LEFT_BRACE NONTERMINAL_ID UNDERSCORE
 ##
-## Ends in an error in state: 29.
+## Ends in an error in state: 63.
 ##
-## operator_match_pattern -> NONTERMINAL_ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,term_scope_pattern)) RIGHT_PAREN [ RIGHT_BRACE ]
+## operator_match_pattern -> NONTERMINAL_ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,term_scope_pattern)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_BRACE DOT ]
 ##
 ## The known suffix of the stack is as follows:
 ## NONTERMINAL_ID
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 21
+Expected '(' after operator name.
 
 operator_match__test: UNDERSCORE LEFT_BRACE UNDERSCORE
 ##
-## Ends in an error in state: 28.
+## Ends in an error in state: 62.
 ##
-## operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE . operator_match_pattern RIGHT_BRACE option(fixity) [ NONTERMINAL_ID GREATER EOF BAR ]
+## operator_match -> nonempty_list(nonterminal_token) LEFT_BRACE . operator_match_pattern RIGHT_BRACE option(fixity) [ RIGHT_ANGLE NONTERMINAL_ID EOF BAR ]
 ##
 ## The known suffix of the stack is as follows:
 ## nonempty_list(nonterminal_token) LEFT_BRACE
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 22
+Expected operator match pattern after '{'.
 
 nonterminal_token__test: STRING
 ##
-## Ends in an error in state: 57.
+## Ends in an error in state: 98.
 ##
 ## nonterminal_token__test' -> . nonterminal_token__test [ # ]
 ##
@@ -299,23 +300,23 @@ nonterminal_token__test: STRING
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 23
+Expected nonterminal token.
 
 nonterminal_token__test: UNDERSCORE STRING
 ##
-## Ends in an error in state: 16.
+## Ends in an error in state: 38.
 ##
-## nonterminal_token -> UNDERSCORE . option(NAT) [ UNDERSCORE TERMINAL_ID NONTERMINAL_ID LEFT_BRACE EOF ]
+## nonterminal_token -> UNDERSCORE . option(NAT) [ UNDERSCORE TERMINAL_ID RIGHT_BRACKET NONTERMINAL_ID LEFT_BRACKET LEFT_BRACE EOF ]
 ##
 ## The known suffix of the stack is as follows:
 ## UNDERSCORE
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 24
+Expected nonterminal token.
 
 nonterminal_token__test: UNDERSCORE UNDERSCORE
 ##
-## Ends in an error in state: 59.
+## Ends in an error in state: 100.
 ##
 ## nonterminal_token__test -> nonterminal_token . EOF [ # ]
 ##
@@ -326,11 +327,11 @@ nonterminal_token__test: UNDERSCORE UNDERSCORE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 16, spurious reduction of production option(NAT) ->
-## In state 18, spurious reduction of production nonterminal_token -> UNDERSCORE option(NAT)
+## In state 38, spurious reduction of production option(NAT) ->
+## In state 40, spurious reduction of production nonterminal_token -> UNDERSCORE option(NAT)
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 25
+Expected EOF after nonterminal token.
 
 language: TERMINAL_ID ASSIGN REGEX UNDERSCORE
 ##
@@ -343,7 +344,7 @@ language: TERMINAL_ID ASSIGN REGEX UNDERSCORE
 ## terminal_rule
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 26
+Expected more terminal rules or a nonterminal rule.
 
 language: TERMINAL_ID ASSIGN UNDERSCORE
 ##
@@ -356,7 +357,7 @@ language: TERMINAL_ID ASSIGN UNDERSCORE
 ## TERMINAL_ID ASSIGN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 27
+Expected a regex or string.
 
 language: TERMINAL_ID UNDERSCORE
 ##
@@ -369,7 +370,7 @@ language: TERMINAL_ID UNDERSCORE
 ## TERMINAL_ID
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 28
+Expected ":=" after terminal id.
 
 language: UNDERSCORE
 ##
@@ -381,7 +382,7 @@ language: UNDERSCORE
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 29
+Expected a language (starting with terminals).
 
 capture_number: DOLLAR UNDERSCORE
 ##
@@ -393,7 +394,7 @@ capture_number: DOLLAR UNDERSCORE
 ## DOLLAR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 30
+Expected a capture number, eg $1.
 
 capture_number: UNDERSCORE
 ##
@@ -405,5 +406,227 @@ capture_number: UNDERSCORE
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 31
+Expected a capture number, eg $1.
 
+nonterminal_rule__test: NONTERMINAL_ID COLON UNDERSCORE
+##
+## Ends in an error in state: 13.
+##
+## nonterminal_rule -> NONTERMINAL_ID COLON . nonterminal_type ASSIGN option(BAR) operator_match_list [ NONTERMINAL_ID EOF ]
+##
+## The known suffix of the stack is as follows:
+## NONTERMINAL_ID COLON
+##
+
+After ':', expected a type signature.
+
+nonterminal_rule__test: NONTERMINAL_ID COLON NONTERMINAL_ID UNDERSCORE
+##
+## Ends in an error in state: 21.
+##
+## atomic_sort -> NONTERMINAL_ID . [ RIGHT_PAREN ASSIGN ARROW ]
+## sort -> NONTERMINAL_ID . nonempty_list(atomic_sort) [ RIGHT_PAREN ASSIGN ARROW ]
+##
+## The known suffix of the stack is as follows:
+## NONTERMINAL_ID
+##
+
+After nonterminal name, expected either a type signature or `:=` followed by operator declarations.
+
+nonterminal_rule__test: NONTERMINAL_ID COLON NONTERMINAL_ID RIGHT_PAREN
+##
+## Ends in an error in state: 30.
+##
+## separated_nonempty_list(ARROW,sort) -> sort . [ ASSIGN ]
+## separated_nonempty_list(ARROW,sort) -> sort . ARROW separated_nonempty_list(ARROW,sort) [ ASSIGN ]
+##
+## The known suffix of the stack is as follows:
+## sort
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 21, spurious reduction of production atomic_sort -> NONTERMINAL_ID
+## In state 26, spurious reduction of production sort -> atomic_sort
+##
+
+Parsing type signature, expected either `->` and then another sort, or `:=` followed by operator declarations.
+
+nonterminal_rule__test: NONTERMINAL_ID COLON NONTERMINAL_ID NONTERMINAL_ID UNDERSCORE
+##
+## Ends in an error in state: 28.
+##
+## nonempty_list(atomic_sort) -> atomic_sort . [ RIGHT_PAREN ASSIGN ARROW ]
+## nonempty_list(atomic_sort) -> atomic_sort . nonempty_list(atomic_sort) [ RIGHT_PAREN ASSIGN ARROW ]
+##
+## The known suffix of the stack is as follows:
+## atomic_sort
+##
+
+Malformed sort.
+
+nonterminal_rule__test: NONTERMINAL_ID COLON NONTERMINAL_ID ASSIGN BAR STRING
+##
+## Ends in an error in state: 37.
+##
+## nonterminal_rule -> NONTERMINAL_ID COLON nonterminal_type ASSIGN option(BAR) . operator_match_list [ NONTERMINAL_ID EOF ]
+##
+## The known suffix of the stack is as follows:
+## NONTERMINAL_ID COLON nonterminal_type ASSIGN option(BAR)
+##
+
+Expected an operator matching rule: a list of tokens followed by the term or pattern it corresponds to.
+
+nonterminal_rule__test: NONTERMINAL_ID COLON LEFT_PAREN UNDERSCORE
+##
+## Ends in an error in state: 23.
+##
+## atomic_sort -> LEFT_PAREN . sort RIGHT_PAREN [ RIGHT_PAREN NONTERMINAL_ID LEFT_PAREN ASSIGN ARROW ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_PAREN
+##
+
+Malformed sort.
+
+nonterminal_rule__test: NONTERMINAL_ID COLON LEFT_PAREN NONTERMINAL_ID ASSIGN
+##
+## Ends in an error in state: 24.
+##
+## atomic_sort -> LEFT_PAREN sort . RIGHT_PAREN [ RIGHT_PAREN NONTERMINAL_ID LEFT_PAREN ASSIGN ARROW ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_PAREN sort
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 21, spurious reduction of production atomic_sort -> NONTERMINAL_ID
+## In state 26, spurious reduction of production sort -> atomic_sort
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE 7>
+
+nonterminal_rule__test: NONTERMINAL_ID COLON NONTERMINAL_ID ARROW UNDERSCORE
+##
+## Ends in an error in state: 31.
+##
+## separated_nonempty_list(ARROW,sort) -> sort ARROW . separated_nonempty_list(ARROW,sort) [ ASSIGN ]
+##
+## The known suffix of the stack is as follows:
+## sort ARROW
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE 8>
+
+nonterminal_rule__test: NONTERMINAL_ID COLON NONTERMINAL_ID ASSIGN STRING
+##
+## Ends in an error in state: 35.
+##
+## nonterminal_rule -> NONTERMINAL_ID COLON nonterminal_type ASSIGN . option(BAR) operator_match_list [ NONTERMINAL_ID EOF ]
+##
+## The known suffix of the stack is as follows:
+## NONTERMINAL_ID COLON nonterminal_type ASSIGN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE 9>
+
+nonterminal_rule__test: NONTERMINAL_ID COLON FORALL NONTERMINAL_ID UNDERSCORE
+##
+## Ends in an error in state: 15.
+##
+## nonempty_list(NONTERMINAL_ID) -> NONTERMINAL_ID . [ DOT ]
+## nonempty_list(NONTERMINAL_ID) -> NONTERMINAL_ID . nonempty_list(NONTERMINAL_ID) [ DOT ]
+##
+## The known suffix of the stack is as follows:
+## NONTERMINAL_ID
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE 10>
+
+nonterminal_rule__test: NONTERMINAL_ID COLON FORALL UNDERSCORE
+##
+## Ends in an error in state: 14.
+##
+## quantifiers -> FORALL . nonempty_list(NONTERMINAL_ID) DOT [ NONTERMINAL_ID LEFT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## FORALL
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE 11>
+
+nonterminal_rule__test: NONTERMINAL_ID COLON FORALL NONTERMINAL_ID DOT UNDERSCORE
+##
+## Ends in an error in state: 20.
+##
+## nonterminal_type -> option(quantifiers) . separated_nonempty_list(ARROW,sort) [ ASSIGN ]
+##
+## The known suffix of the stack is as follows:
+## option(quantifiers)
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE 12>
+
+nonterminal_token__test: LEFT_BRACKET LEFT_ANGLE TERMINAL_ID NAT COMMA UNDERSCORE
+##
+## Ends in an error in state: 48.
+##
+## separated_nonempty_list(COMMA,NAT) -> NAT COMMA . separated_nonempty_list(COMMA,NAT) [ RIGHT_ANGLE ]
+##
+## The known suffix of the stack is as follows:
+## NAT COMMA
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE 13>
+
+nonterminal_token__test: LEFT_BRACKET LEFT_ANGLE TERMINAL_ID NAT UNDERSCORE
+##
+## Ends in an error in state: 47.
+##
+## separated_nonempty_list(COMMA,NAT) -> NAT . [ RIGHT_ANGLE ]
+## separated_nonempty_list(COMMA,NAT) -> NAT . COMMA separated_nonempty_list(COMMA,NAT) [ RIGHT_ANGLE ]
+##
+## The known suffix of the stack is as follows:
+## NAT
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE 14>
+
+nonterminal_token__test: LEFT_BRACKET LEFT_ANGLE TERMINAL_ID UNDERSCORE
+##
+## Ends in an error in state: 46.
+##
+## box_formatting_options -> LEFT_ANGLE TERMINAL_ID . loption(separated_nonempty_list(COMMA,NAT)) RIGHT_ANGLE [ UNDERSCORE TERMINAL_ID RIGHT_BRACKET NONTERMINAL_ID LEFT_BRACKET LEFT_BRACE EOF ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_ANGLE TERMINAL_ID
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE 15>
+
+nonterminal_token__test: LEFT_BRACKET LEFT_ANGLE UNDERSCORE
+##
+## Ends in an error in state: 45.
+##
+## box_formatting_options -> LEFT_ANGLE . TERMINAL_ID loption(separated_nonempty_list(COMMA,NAT)) RIGHT_ANGLE [ UNDERSCORE TERMINAL_ID RIGHT_BRACKET NONTERMINAL_ID LEFT_BRACKET LEFT_BRACE EOF ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_ANGLE
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE 16>
+
+nonterminal_token__test: LEFT_BRACKET STRING
+##
+## Ends in an error in state: 44.
+##
+## nonterminal_token -> LEFT_BRACKET . option(box_formatting_options) [ UNDERSCORE TERMINAL_ID RIGHT_BRACKET NONTERMINAL_ID LEFT_BRACKET LEFT_BRACE EOF ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_BRACKET
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE 17>

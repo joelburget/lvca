@@ -2,10 +2,19 @@
 
 type sort_name = string
 
-(** Sorts divide ASTs into syntactic categories. *)
+(** Sorts divide ASTs into syntactic categories.
+ *
+ * Notes about our representation:
+ * - Concrete sorts are always represented by a [SortAp], even if not applied
+ *   to anything. For example, [integer] is represented as [SortAp ("integer",
+ *   [||])].
+ * - We don't allow higher-order sorts. In other words, no functions at the
+ *   sort level. In other words, the head of an application is always concrete.
+ *)
 type sort =
   (** A higher-kinded sort can be applied *)
   | SortAp of sort_name * sort array
+  | SortVar of string
 
 (** A valence represents the sort of an argument (to an operator), as well as
  * the number and sorts of the variables bound within it *)
@@ -39,15 +48,6 @@ type primitive =
   | PrimInteger of Bigint.t
   | PrimString  of string
 
-let string_of_primitive = function
-  | PrimInteger i  -> Bigint.to_string i
-  | PrimString str -> "\"" ^ String.escaped str ^ "\""
-
-let prim_eq p1 p2 = match (p1, p2) with
-  | (PrimInteger i1, PrimInteger i2) -> Bigint.(i1 = i2) [@warning "-44"]
-  | (PrimString  s1, PrimString  s2) -> s1 = s2
-  | _                                -> false
-
 type import =
   { imported_symbols: (string * string) list;
     location: string;
@@ -58,119 +58,37 @@ type abstract_syntax =
     language: language;
   }
 
-module Sjcl = struct
-  type sjcl
+let string_of_primitive = function
+  | PrimInteger i  -> Bigint.to_string i
+  | PrimString str -> "\"" ^ String.escaped str ^ "\""
 
-  external sjcl : sjcl = "sjcl" [@@bs.module]
-end
+let prim_eq p1 p2 = match (p1, p2) with
+  | PrimInteger i1, PrimInteger i2 -> Bigint.(i1 = i2) [@warning "-44"]
+  | PrimString  s1, PrimString  s2 -> s1 = s2
+  | _                              -> false
 
-module ArrayBuffer = struct
-  type t
+let sort_names : abstract_syntax -> Belt.Set.String.t
+  = fun { language = Language sorts } -> sorts
+  |. Belt.Map.String.keysToArray
+  |. Belt.Set.String.fromArray
 
-  let to_hex (buf : t) : string = ([%raw {|
-    function to_hex(buffer) {
-      return Array.prototype.map.call(
-        new Uint8Array(buffer),
-        x => ('00' + x.toString(16)).slice(-2)
-      ).join('');
-    }
-  |}] : t -> string) buf;
-end
+let string_of_sort : sort -> string
+  = let rec go = fun needs_parens -> function
+      | SortAp (name, args) ->
+        let args' = Belt.Array.map args (go true) in
+        (match args' with
+          | [||] -> name
+          | _ ->
+            let pre_result = name ^ " " ^ Js.Array2.joinWith args' " " in
+            if needs_parens then "(" ^ pre_result ^ ")" else pre_result)
+      | SortVar name -> name
+    in go false
+;;
 
-(* JavaScript built-in Uint8Array *)
-module rec Uint8Array : sig
-  type t
-
-  val from_b_array      : BitArray.t    -> t
-  val from_array_buffer : ArrayBuffer.t -> t
-  val to_array_buffer   : t -> ArrayBuffer.t
-end = struct
-  type t
-
-  (* from https://stackoverflow.com/q/26734033/383958 *)
-  let from_b_array (arr : BitArray.t) = ([%raw {|
-    function fromBitArrayCodec(sjcl, arr) {
-        var out = [], bl = sjcl.bitArray.bitLength(arr), i, tmp;
-        for (i=0; i<bl/8; i++) {
-            if ((i&3) === 0) {
-                tmp = arr[i/4];
-            }
-            out.push(tmp >>> 24);
-            tmp <<= 8;
-        }
-        return out;
-    }
-  |}]: Sjcl.sjcl -> BitArray.t -> t) Sjcl.sjcl arr
-
-  let from_array_buffer buf
-    = ([%raw "function(buf) { return new Uint8Array(buf); }"]
-       : ArrayBuffer.t -> t)
-        buf
-
-  let to_array_buffer buf
-    = ([%raw "function(arr) { return arr.buffer; }"] : t -> ArrayBuffer.t) buf
-end
-
-(* SJCL bitArray *)
-and BitArray : sig
-  type t
-
-  val from_u8_array : Uint8Array.t -> t
-end = struct
-  type t
-
-  (* from https://stackoverflow.com/q/26734033/383958 *)
-  let from_u8_array (arr : Uint8Array.t) = ([%raw {|
-    function toBitArrayCodec(sjcl, bytes) {
-        var out = [], i, tmp=0;
-        for (i=0; i<bytes.length; i++) {
-            tmp = tmp << 8 | bytes[i];
-            if ((i&3) === 3) {
-                out.push(tmp);
-                tmp = 0;
-            }
-        }
-        if (i&3) {
-            out.push(sjcl.bitArray.partial(8*(i&3), tmp));
-        }
-        return out;
-    }
-  |}] : Sjcl.sjcl -> Uint8Array.t -> t) Sjcl.sjcl arr
-end
-
-module Sha256 = struct
-  type t
-
-  let hash_str (str : string) : string = ([%raw {|
-    function(sjcl, str) {
-      var bitArray = sjcl.hash.sha256.hash(str);
-      return sjcl.codec.hex.fromBits(bitArray);
-    }
-  |}] : Sjcl.sjcl -> string -> string) Sjcl.sjcl str
-
-  let hash_ba (ba : BitArray.t) : string = ([%raw {|
-    function(sjcl, ba) {
-      var bitArray = sjcl.hash.sha256.hash(ba);
-      return sjcl.codec.hex.fromBits(bitArray);
-    }
-  |}] : Sjcl.sjcl -> BitArray.t -> string) Sjcl.sjcl ba
-end
-
-module Cbor = struct
-  type t
-
-  external cbor : t = "cbor" [@@bs.module]
-
-  let encode_ab (it : Js.Json.t) : ArrayBuffer.t
-    = ([%raw "function(cbor, it) { return cbor.encode(it); }"]
-       : t -> Js.Json.t -> ArrayBuffer.t)
-        cbor it
-
-  let decode_ab (it : ArrayBuffer.t) : Js.Json.t option
-    = let raw_decode : t -> ArrayBuffer.t -> Js.Json.t
-      = [%raw "function(cbor, it) { return cbor.decode(it); }"]
-    in try
-      Some (raw_decode cbor it)
-    with
-      _ -> None
-end
+let rec instantiate_sort : sort Belt.Map.String.t -> sort -> sort
+  = fun arg_mapping -> function
+    | SortVar name -> (match Belt.Map.String.get arg_mapping name with
+      | None -> failwith "TODO: error"
+      | Some sort' -> sort')
+    | SortAp (name, args) ->
+      SortAp (name, Belt.Array.map args (instantiate_sort arg_mapping))
