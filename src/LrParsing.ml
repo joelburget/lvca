@@ -243,32 +243,14 @@ module Lr0 (G : GRAMMAR) = struct
   let _ = G.grammar.nonterminal_nums
       |. A.map (fun (name, level, nt_num) -> Printf.printf "%n -> %s (%n)\n" nt_num name level)
 
-  let prec_level_map : prec_level Belt.Map.Int.t
-    = G.grammar.nonterminal_nums
-      |. Belt.Array.map (fun (_name, level, nt_num) -> nt_num, level)
-      |. M.fromArray
-
   let string_of_nonterminal_num : nonterminal_num -> string
-    = fun nt_num ->
-      let nt_name = nonterminal_names
-        |. M.get nt_num
-        |> get_option' (Printf.sprintf
-           "string_of_nonterminal_num: failed to get nonterminal %n from \
-           nonterminal_names"
-           nt_num
-        )
-      in
-      let level = prec_level_map
-        |. M.get nt_num
-        |> get_option' (Printf.sprintf
-          "string_of_nonterminal_num: failed tog get nonterminal %n from \
-          prec_level_map"
-          nt_num
-        )
-      in
-      if level = 0
-      then nt_name
-      else Printf.sprintf "%s_%n" nt_name level
+    = fun nt_num -> nonterminal_names
+      |. M.get nt_num
+      |> get_option' (Printf.sprintf
+         "string_of_nonterminal_num: failed to get nonterminal %n from \
+         nonterminal_names"
+         nt_num
+      )
 
   let nonterminal_nums : nonterminal_num Belt.Map.String.t
     = G.grammar.nonterminal_nums
