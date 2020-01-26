@@ -240,9 +240,6 @@ module Lr0 (G : GRAMMAR) = struct
       |. A.map (fun (name, _level, nt_num) -> nt_num, name)
       |. M.fromArray
 
-  let _ = G.grammar.nonterminal_nums
-      |. A.map (fun (name, level, nt_num) -> Printf.printf "%n -> %s (%n)\n" nt_num name level)
-
   let string_of_nonterminal_num : nonterminal_num -> string
     = fun nt_num -> nonterminal_names
       |. M.get nt_num
@@ -785,7 +782,6 @@ module Lr0 (G : GRAMMAR) = struct
     A.makeBy number_of_terminals Util.id
   let nonterminals : nonterminal_num array =
     A.makeBy (MS.size nonterminal_nums) Util.id
-  let _ = nonterminals |. Belt.Array.map (fun num -> Printf.printf "nonterminal %n\n" num)
 
   let full_lr0_action_table : unit -> action array array
     = fun () -> states |. Belt.Array.map (fun state ->
