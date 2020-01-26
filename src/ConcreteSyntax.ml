@@ -19,6 +19,13 @@ type invalid_grammar = InvalidGrammar of string
 
 exception CheckValidExn of invalid_grammar
 
+(* The parser doesn't need formatting tokens *)
+let is_formatting_token
+  : nonterminal_token -> bool
+  = fun token -> match token with
+    | TerminalName _ | NonterminalName _ -> false
+    | _ -> true
+
 (* Used to analyze token usage (see `token_usage`). We use this to check if
    there are any tokens not captured (a problem in some circumstances), or if
    there are tokens captured twice (always a problem). *)
@@ -145,10 +152,7 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
              raise_invalid ("non-existent tokens mentioned: " ^ tok_names));
 
            let tokens' = tokens
-             |. Belt.List.keep (function
-               | TerminalName _ | NonterminalName _ -> true
-               | _ -> false
-             )
+             |. Belt.List.keep (fun tok -> not (is_formatting_token tok))
            in
            (match tokens' with
              | [ NonterminalName _; TerminalName _; NonterminalName _ ] -> ()
@@ -378,18 +382,11 @@ let convert_token
   -> invariant_violation
     "all formatting tokens should be filtered (see is_formatting_token)"
 
-(* The parser doesn't need formatting tokens *)
-let is_formatting_token
-  : nonterminal_token -> bool
-  = fun token -> match token with
-    | TerminalName _ | NonterminalName _ -> false
-    | _ -> true
-
 (* Invariants assumed:
  *   %left, %right can't occur at lowest precedence level
  *   Anywhere %left, %right occur has same nonterminal on both sides, parent
  *)
-let rewrite_tokens'
+let rewrite_tokens
   : string -> int -> operator_match -> operator_match
   = fun
     nt_name
@@ -397,40 +394,43 @@ let rewrite_tokens'
     (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
 
     let lowered_nt_name = Printf.sprintf "%s_%n" nt_name (level - 1) in
+    let tokens' = Belt.List.keep tokens
+      (fun tok -> not (is_formatting_token tok))
+    in
 
-    let tokens' = match tokens with
+    let tokens'' = match tokens' with
       | [ NonterminalName name1; TerminalName _ as t; NonterminalName name2 ]
         when name1 = nt_name && name2 = nt_name
         -> (match fixity with
         | Infixl
-        -> (* Lower the precedence of the left child by moving to the following
+        -> (* Lower the precedence of the right child by moving to the following
             * (desugared) nonterminal, which corresponds to the next precedence
             * level in the nonterminal we're currently transforming. *)
-           [ NonterminalName lowered_nt_name;
-             t;
-             NonterminalName nt_name;
-           ]
-
-        | Infixr
-        -> [ NonterminalName nt_name;
+           [ NonterminalName nt_name;
              t;
              NonterminalName lowered_nt_name;
            ]
 
+        | Infixr
+        -> [ NonterminalName lowered_nt_name;
+             t;
+             NonterminalName nt_name;
+           ]
+
         (* Don't adjust nofix *)
-        | Nofix -> tokens
+        | Nofix -> tokens'
         )
 
       (* juxtaposition *)
       | [ NonterminalName name1; NonterminalName name2 ]
       when name1 = nt_name && name2 = nt_name
       (* TODO: adjust! *)
-      -> tokens
+      -> tokens'
 
-      | _ -> tokens
+      | _ -> tokens'
     in
 
-    (OperatorMatch { tokens = tokens'; operator_match_pattern; fixity = Nofix })
+    (OperatorMatch { tokens = tokens''; operator_match_pattern; fixity = Nofix })
 
 (** An operator match that just defers to a nonterminal / precedence *)
 let operator_match_nt_precedence : string -> int -> operator_match
@@ -457,9 +457,9 @@ let desugar_nonterminal
     else
       let NonterminalRule { nonterminal_type } = rule in
       let level_nts = Belt.List.mapWithIndex operator_rules (fun i level ->
-        (* Add one so the lowest precedence is 1 *)
-        let prec_num = num_levels - i + 1 in
-        let generated_name = Printf.sprintf "%s_%n" nonterminal_name (i + 1) in
+        (* precedences 1..num_levels *)
+        let prec_num = num_levels - i in
+        let generated_name = Printf.sprintf "%s_%n" nonterminal_name prec_num in
 
         (* Our renaming is not hygienic, so we need to prevent name collisions.
          * Also, this would be just confusing to the user. *)
@@ -469,13 +469,13 @@ let desugar_nonterminal
           nonterminal_name generated_name
         )));
 
-        let generated_rules = level
-          |. Belt.List.map (rewrite_tokens' nonterminal_name prec_num)
+        let generated_rules = Belt.List.map level
+          (rewrite_tokens nonterminal_name prec_num)
         in
 
-        (* If this is not the last level, then there is a lower-precedence
-         * level to fall back to. *)
-        let generated_rules' = if i = num_levels
+        (* If this is not the lowest-precedence level, then there is a
+         * lower-precedence level to fall back to. *)
+        let generated_rules' = if prec_num = 1
           then generated_rules
           else Util.snoc generated_rules
             (operator_match_nt_precedence nonterminal_name (prec_num - 1))
@@ -597,7 +597,6 @@ let to_grammar
           incr prod_num;
           incr nt_operator_index;
           rule.tokens
-            |. Belt.List.keep (fun tok -> not (is_formatting_token tok))
             |. Belt.List.map (convert_token terminal_num_map nonterminal_num_map)
         )
       in
@@ -613,6 +612,11 @@ let to_grammar
   { nonterminals; terminal_nums; nonterminal_nums }, production_rule_map
 ;;
 
+(* assumption: the language we're operating on is the derived language:
+ * 1. It's augmented with a root nonterminal, 0
+ * 2. Precedence / associativity has been desugared
+ * 3. All formatting tokens have been removed
+ *)
 let tree_of_parse_result (module Lr0 : LrParsing.LR0)
   :  (tree_info * nonterminal_token list * operator_match_pattern option)
        Belt.MutableMap.Int.t
@@ -661,21 +665,34 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
           prod_num
         )
       in
-      let tokens_no_space = tokens
-        |. Belt.List.keep (function Underscore _ -> false | _ -> true)
-      in
-      { tree_info
-      ; children = children
-        |. Belt.List.zip tokens_no_space
+
+      let children' = children
+        |. Belt.List.zip tokens
         |. Belt.List.toArray
-        |> Util.array_map_keep (function parse_result, token ->
-          (match token with
-           | TerminalName _ -> Some (TerminalCapture (go_t parse_result))
+        |. Belt.Array.map (function parse_result, token ->
+          match token with
+           | TerminalName _ -> TerminalCapture (go_t parse_result)
            | NonterminalName ntn ->
-             Some (NonterminalCapture (go_nt ntn parse_result))
+             NonterminalCapture (go_nt ntn parse_result)
            (* TODO: trivia *)
-           | OpenBox _ | CloseBox | Underscore _ -> None))
-      }
+           | OpenBox _ | CloseBox | Underscore _
+           -> invariant_violation "formatting tokens must be filtered beforehand"
+        )
+      in
+
+      if not (Belt.Map.String.has nonterminal_rules nt_name)
+      then
+        match children' with
+          | [| NonterminalCapture child |] -> child
+          | _ -> (* invariant_violation (Printf.sprintf "When translating a \
+          synthetic nonterminal (%s) parse result to a tree, expected one \
+          nonterminal child, but encountered %n children"
+          nt_name (Belt.Array.length children'))
+          *)
+          { tree_info ; children = children' }
+      else
+
+      { tree_info ; children = children' }
 
   and go_t : LrParsing.parse_result -> formatted_terminal_capture =
     fun { start_pos; end_pos } ->
@@ -708,7 +725,7 @@ let parse desc root_name str =
       desc.nonterminal_rules
       "root"
       (NonterminalRule
-        { nonterminal_name = "root"
+        { nonterminal_name = "root" (* TODO: root_name? *)
         ; nonterminal_type = NonterminalType ([], SortAp ("root", [||]))
         ; operator_rules = [ [] ]
         })

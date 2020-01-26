@@ -100,7 +100,6 @@ module Lalr1 (G : GRAMMAR) = struct
     string_of_symbols,
     string_of_symbol,
     string_of_action,
-    string_of_item_set,
     states,
     terminals,
     nonterminals
@@ -128,7 +127,6 @@ module Lalr1 (G : GRAMMAR) = struct
     string_of_symbols,
     string_of_symbol,
     string_of_action,
-    string_of_item_set,
     states,
     terminals,
     nonterminals

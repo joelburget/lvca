@@ -37,8 +37,8 @@ let _ = describe "ConcreteSyntax" (fun () ->
     | arith _ DIV _ arith { div($1; $3) } %left
     | arith _       arith { app($1; $2) } %right
     | NAME  _ ARR _ arith { fun($1. $3) }
-    | NAME                { var($1)     }
     > LPAREN arith RPAREN { $2          }
+    | NAME                { var($1)     }
   |}
   in
 

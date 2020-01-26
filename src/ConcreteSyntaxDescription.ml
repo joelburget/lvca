@@ -117,3 +117,58 @@ type t =
   }
 
 type pre_t = pre_terminal_rule list * nonterminal_rule list
+
+let string_of_terminal_rules : terminal_rules -> string
+  = fun terminal_rules -> terminal_rules
+    |. Belt.Array.map (fun (name, regex) -> Printf.sprintf "%s := %s"
+      name
+      (Regex.to_string regex)
+    )
+    |. Js.Array2.joinWith "\n"
+
+let string_of_nonterminal_type : nonterminal_type -> string
+  = fun (NonterminalType (args, result)) -> args
+    |. Util.snoc result
+    |> Util.stringify_list Types.string_of_sort " -> "
+
+let string_of_operator_match : operator_match -> string
+  = fun (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
+    Printf.sprintf "%s { %s }%s"
+    (string_of_tokens tokens)
+    (string_of_operator_match_pattern operator_match_pattern)
+    (match fixity with
+      | Nofix -> ""
+      | _ -> " %" ^ fixity_str fixity)
+
+let string_of_operator_rules : operator_match list list -> string
+  = fun rules ->
+    let arr = [||] in
+    Belt.List.forEachWithIndex rules (fun i level ->
+      Belt.List.forEachWithIndex level (fun j operator_match ->
+        Js.Array2.unshift arr (Printf.sprintf
+          "  %s %s"
+          (if i > 0 && j = 0 then ">" else "|")
+          (string_of_operator_match operator_match)
+        );
+      );
+    );
+    Js.Array2.joinWith arr "\n"
+
+let string_of_nonterminal_rule : nonterminal_rule -> string
+  = fun (NonterminalRule { nonterminal_name; nonterminal_type; operator_rules }) ->
+    Printf.sprintf "%s : %s :=\n%s"
+    nonterminal_name
+    (string_of_nonterminal_type nonterminal_type)
+    (string_of_operator_rules operator_rules)
+
+let string_of_nonterminal_rules : nonterminal_rules -> string
+  = fun nonterminal_rules -> nonterminal_rules
+    |. Belt.Map.String.valuesToArray
+    |. Belt.Array.map string_of_nonterminal_rule
+    |. Js.Array2.joinWith "\n\n"
+
+let string_of_t : t -> string
+  = fun { terminal_rules; nonterminal_rules } ->
+    string_of_terminal_rules terminal_rules ^
+    "\n\n" ^
+    string_of_nonterminal_rules nonterminal_rules
