@@ -107,7 +107,7 @@ type grammar = {
   nonterminals : nonterminal Belt.Map.Int.t;
   terminal_nums : (string * terminal_num) array;
   (* TODO: better name: nonterminal_info? *)
-  nonterminal_nums : (string * prec_level * nonterminal_num) array;
+  nonterminal_nums : (string * nonterminal_num) array;
 }
 
 type conflict_type = ShiftReduce | ReduceReduce
@@ -237,8 +237,12 @@ module Lr0 (G : GRAMMAR) = struct
 
   let nonterminal_names : string Belt.Map.Int.t
     = G.grammar.nonterminal_nums
-      |. A.map (fun (name, _level, nt_num) -> nt_num, name)
+      |. A.map (fun (name, nt_num) -> nt_num, name)
       |. M.fromArray
+
+  let nonterminal_nums : nonterminal_num Belt.Map.String.t
+    = G.grammar.nonterminal_nums
+      |. MS.fromArray
 
   let string_of_nonterminal_num : nonterminal_num -> string
     = fun nt_num -> nonterminal_names
@@ -248,11 +252,6 @@ module Lr0 (G : GRAMMAR) = struct
          nonterminal_names"
          nt_num
       )
-
-  let nonterminal_nums : nonterminal_num Belt.Map.String.t
-    = G.grammar.nonterminal_nums
-      |. Belt.Array.map (fun (name, _level, nt_num) -> name, nt_num)
-      |. MS.fromArray
 
   let rec nonterminal_first_set : SI.t -> MSI.t -> nonterminal_num -> unit
     = fun already_seen_nts result nt ->
