@@ -174,7 +174,7 @@ module Lalr1 (G : GRAMMAR) = struct
                    |. Belt.Array.map (fun (nonterminal_num, mut_lookahead_set) ->
                      let production_set = nonterminal_production_map
                                           |. MMI.get nonterminal_num
-                                          |> get_option' (Printf.sprintf
+                                          |> get_option' (fun () -> Printf.sprintf
                                                             "lr1_closure' convert: unable to find nonterminal %n in nonterminal_production_map (keys: %s)"
                                                             nonterminal_num
                                                             (nonterminal_production_map
@@ -232,7 +232,7 @@ module Lalr1 (G : GRAMMAR) = struct
 
         let production = production_map
                          |. MMI.get production_num
-                         |> get_option' (Printf.sprintf
+                         |> get_option' (fun () -> Printf.sprintf
                                            "lr1_closure': couldn't find production %n"
                                            production_num
                                         )
@@ -265,7 +265,7 @@ module Lalr1 (G : GRAMMAR) = struct
       *)
       while not (MStack.isEmpty stack) do
         let nonterminal_num, lookahead =
-          MStack.pop stack |> get_option' "the set is not empty!"
+          MStack.pop stack |> get_option' (fun () -> "the set is not empty!")
         in
 
         let is_added = MMI.has nonkernel_items nonterminal_num &&
@@ -276,7 +276,7 @@ module Lalr1 (G : GRAMMAR) = struct
           add_to nonkernel_items nonterminal_num lookahead;
 
           let { productions } = M.get G.grammar.nonterminals nonterminal_num
-                                |> get_option' (Printf.sprintf
+                                |> get_option' (fun () -> Printf.sprintf
                                                   "lr1_closure': unable to find nonterminal %n in G.grammar.nonterminals"
                                                   nonterminal_num
                                                )
@@ -313,6 +313,8 @@ module Lalr1 (G : GRAMMAR) = struct
    * spontaneously and (2) propagated from I.
    *
    * CPTT Algorithm 4.62.
+   *
+   * raises: [NoItemSet]
   *)
   let generate_lookaheads : item_set -> item -> lookahead_propagation
     = fun kernel item ->
@@ -331,7 +333,8 @@ module Lalr1 (G : GRAMMAR) = struct
         let production = production_map
                          |. MMI.get production_num
                          |> get_option'
-                              ("generate_lookaheads: failed to get production " ^
+                              (fun () ->
+                               "generate_lookaheads: failed to get production " ^
                                string_of_int production_num)
         in
 
@@ -342,7 +345,7 @@ module Lalr1 (G : GRAMMAR) = struct
 
           let x = production
                   |. Belt.List.get position
-                  |> get_option' (Printf.sprintf
+                  |> get_option' (fun () -> Printf.sprintf
                                     "failed to get position %n in production %s"
                                     position
                                     (string_of_production_num production_num)
@@ -389,6 +392,8 @@ module Lalr1 (G : GRAMMAR) = struct
      what items (in what state) does its lookahead propagate to?
 
      While we're finding propagation, also fill in spontaneous generation.
+
+     raises: [NoItemSet]
   *)
   let lookahead_propagation : (state * item) array M.t M.t
     = mutable_lalr1_items |. M.map (fun mutable_lookahead_item_set ->
@@ -419,7 +424,10 @@ module Lalr1 (G : GRAMMAR) = struct
            |. M.getExn (mk_item' 0 0)
            |. Belt.MutableSet.Int.add 0
 
-  (* Fill in LALR(1) item lookaheads. CPTT Algorithm 4.63 step 4 *)
+  (* Fill in LALR(1) item lookaheads. CPTT Algorithm 4.63 step 4
+   *
+   * raises: [NoItemSet]
+   *)
   let () =
     (* Set lookaheads that were generated spontaneously *)
 
@@ -435,11 +443,11 @@ module Lalr1 (G : GRAMMAR) = struct
           *)
           let propagation : (state * item) array = lookahead_propagation
                                                    |. M.get source_state
-                                                   |> get_option' (Printf.sprintf
+                                                   |> get_option' (fun () -> Printf.sprintf
                                                                      "step 4 lookahead_propagation: couldn't find state %n" source_state
                                                                   )
                                                       |. M.get source_item
-                                                   |> get_option' (Printf.sprintf
+                                                   |> get_option' (fun () -> Printf.sprintf
                                                                      "step 4 lookahead_propagation: couldn't find item %s in state %n"
                                                                      (string_of_item source_item)
                                                                      source_state
@@ -450,11 +458,11 @@ module Lalr1 (G : GRAMMAR) = struct
           Belt.Array.forEach propagation (fun (target_state, target_item) ->
             let target_lookahead : MSI.t = mutable_lalr1_items
                                            |. M.get target_state
-                                           |> get_option' (Printf.sprintf
+                                           |> get_option' (fun () -> Printf.sprintf
                                                              "step 4 mutable_lalr1_items: couldn't find state %n" target_state
                                                           )
                                               |. M.get target_item
-                                           |> get_option' (Printf.sprintf
+                                           |> get_option' (fun () -> Printf.sprintf
                                                              "step 4 mutable_lalr1_items: couldn't find item %s in state %n"
                                                              (string_of_item target_item)
                                                              target_state
@@ -489,8 +497,7 @@ module Lalr1 (G : GRAMMAR) = struct
       Some (item_set_to_state @@
             lr0_goto_kernel (state_to_item_set state) nt)
     with
-    (* TODO: this shouldn't catch all invariant violations *)
-      Util.InvariantViolation _ -> None
+      NoItemSet _ -> None
 
   let state_to_lookahead_item_set
     : state -> lookahead_item_set
@@ -513,7 +520,7 @@ module Lalr1 (G : GRAMMAR) = struct
         let { production_num; position } = view_item l_item.item in
         let symbols = production_map
                       |. MMI.get production_num
-                      |> get_option' (Printf.sprintf
+                      |> get_option' (fun () -> Printf.sprintf
                                         "Lalr1 shift_action: unable to find production %n in production_map"
                                         production_num
                                      )
@@ -534,14 +541,14 @@ module Lalr1 (G : GRAMMAR) = struct
         let { production_num; position } = view_item item in
         let nt_num = production_nonterminal_map
                      |. MMI.get production_num
-                     |> get_option' (Printf.sprintf
+                     |> get_option' (fun () -> Printf.sprintf
                                        "Lalr1 shift_action: unable to find production %n in production_nonterminal_map"
                                        production_num
                                     )
         in
         let production = production_map
                          |. MMI.get production_num
-                         |> get_option' (Printf.sprintf
+                         |> get_option' (fun () -> Printf.sprintf
                                            "Lalr1 shift_action: unable to find production %n in production_map"
                                            production_num
                                         )

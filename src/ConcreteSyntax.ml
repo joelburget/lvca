@@ -115,7 +115,8 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
         |. Belt.List.forEach (fun level ->
           let OperatorMatch { fixity } = level
             |. Belt.List.head
-            |> get_option' "each level is guaranteed to have at least one rule"
+            |> get_option' (fun () ->
+              "each level is guaranteed to have at least one rule")
           in
           let okay = Belt.List.every level
             (fun (OperatorMatch op_match) -> op_match.fixity = fixity)
@@ -232,7 +233,7 @@ let get_operator_match
     |> fun (NonterminalRule { operator_rules }) -> operator_rules
     |. Belt.List.flatten (* TODO: should we use 2d indexing? *)
     |. Belt.List.get nt_prod_no
-    |> get_option' "TODO: message"
+    |> get_option' (fun () -> "TODO: message")
   in operator_match_pattern
 ;;
 
@@ -361,11 +362,11 @@ let convert_token
   | TerminalName tn -> Terminal
     (terminal_nums
      |. MS.get tn
-     |> get_option' ("to_grammar: failed to get terminal " ^ tn))
+     |> get_option' (fun () -> "to_grammar: failed to get terminal " ^ tn))
   | NonterminalName nt_name
   -> Nonterminal (nonterminal_entry
     |. Belt.Map.String.get nt_name
-    |> get_option' (Printf.sprintf
+    |> get_option' (fun () -> Printf.sprintf
       "convert_token: couldn't find nonterminal %s in names: %s"
       nt_name
       (nonterminal_entry
@@ -652,14 +653,13 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
            (Lr0.string_of_terminal prod))
         | Right prod_num -> prod_num
       in
-      let tree_info, tokens, _ =
-        match Belt.MutableMap.Int.get production_rule_map prod_num with
-        | None -> invariant_violation (Printf.sprintf
+      let tree_info, tokens, _ = production_rule_map
+        |. Belt.MutableMap.Int.get prod_num
+        |> get_option' (fun () -> Printf.sprintf
           "tree_of_parse_result: couldn't find nonterminal %n in \
           production_rule_map"
           prod_num
         )
-        | Some result -> result
       in
       let tokens_no_space = tokens
         |. Belt.List.keep (function Underscore _ -> false | _ -> true)

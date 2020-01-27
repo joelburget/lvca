@@ -226,8 +226,10 @@ exception InvariantViolation of string
 
 let invariant_violation str = raise (InvariantViolation str)
 
-let get_option' : string -> 'a option -> 'a =
-  fun msg -> get_option (InvariantViolation ("invariant violation: " ^ msg))
+let get_option' : (unit -> string) -> 'a option -> 'a =
+  fun msg -> function
+    | None -> raise (InvariantViolation ("invariant violation: " ^ msg ()))
+    | Some a -> a
 ;;
 
 let array_of_stack : 'a MutableStack.t -> 'a array =

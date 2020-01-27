@@ -73,7 +73,7 @@ let rec term_to_tree
       let terminal_rule = terminal_rules
         |. Belt.Map.String.fromArray
         |. Belt.Map.String.get name
-        |> get_option' ("term_to_tree: failed to get terminal rule " ^ name)
+        |> get_option' (fun () -> "term_to_tree: failed to get terminal rule " ^ name)
       in
       (match Regex.is_literal terminal_rule with
       | Some re_str -> TerminalDoc (DocText re_str)
