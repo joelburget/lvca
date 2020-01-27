@@ -450,8 +450,8 @@ let find_operator_match
         with
           NoMatch _ -> None
       )
-      |> Util.get_option'
-        ("failed to find a rule matching term " ^ Binding.Nominal.pp_term' tm)
+      |> Util.get_option' (fun () ->
+        "failed to find a rule matching term " ^ Binding.Nominal.pp_term' tm)
       |> (fun ((_, _, tokens, subterms) as result) ->
         check_tokens subterms tokens;
         result
@@ -475,8 +475,8 @@ let find_pat_operator_match
       with
         NoMatch _ -> None
     )
-    |> Util.get_option'
-      ("failed to find a rule matching pattern " ^ Pattern.string_of_pattern pattern)
+    |> Util.get_option' (fun () ->
+      "failed to find a rule matching pattern " ^ Pattern.string_of_pattern pattern)
     |> (fun ((_, _, tokens, subterms) as result) ->
       check_tokens subterms tokens;
       result

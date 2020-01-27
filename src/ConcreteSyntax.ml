@@ -19,6 +19,13 @@ type invalid_grammar = InvalidGrammar of string
 
 exception CheckValidExn of invalid_grammar
 
+(* The parser doesn't need formatting tokens *)
+let is_formatting_token
+  : nonterminal_token -> bool
+  = fun token -> match token with
+    | TerminalName _ | NonterminalName _ -> false
+    | _ -> true
+
 (* Used to analyze token usage (see `token_usage`). We use this to check if
    there are any tokens not captured (a problem in some circumstances), or if
    there are tokens captured twice (always a problem). *)
@@ -115,7 +122,8 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
         |. Belt.List.forEach (fun level ->
           let OperatorMatch { fixity } = level
             |. Belt.List.head
-            |> get_option' "each level is guaranteed to have at least one rule"
+            |> get_option' (fun () ->
+              "each level is guaranteed to have at least one rule")
           in
           let okay = Belt.List.every level
             (fun (OperatorMatch op_match) -> op_match.fixity = fixity)
@@ -144,10 +152,7 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
              raise_invalid ("non-existent tokens mentioned: " ^ tok_names));
 
            let tokens' = tokens
-             |. Belt.List.keep (function
-               | TerminalName _ | NonterminalName _ -> true
-               | _ -> false
-             )
+             |. Belt.List.keep (fun tok -> not (is_formatting_token tok))
            in
            (match tokens' with
              | [ NonterminalName _; TerminalName _; NonterminalName _ ] -> ()
@@ -232,7 +237,7 @@ let get_operator_match
     |> fun (NonterminalRule { operator_rules }) -> operator_rules
     |. Belt.List.flatten (* TODO: should we use 2d indexing? *)
     |. Belt.List.get nt_prod_no
-    |> get_option' "TODO: message"
+    |> get_option' (fun () -> "TODO: message")
   in operator_match_pattern
 ;;
 
@@ -242,7 +247,6 @@ let rec tree_to_ast
   -> formatted_tree
   -> Nominal.term
   = fun rules tree ->
-  (* Js.log2 "tree_to_ast" (to_debug_string tree); *)
   let nt_name, _ = tree.tree_info in
   match nt_name with
     | "list" -> failwith "TODO"
@@ -353,7 +357,156 @@ let to_ast
       ToAstError msg -> Error msg
 ;;
 
-(* Produce an augmented grammar *)
+let convert_token
+  :  LrParsing.terminal_num MS.t
+  -> int Belt.Map.String.t
+  -> nonterminal_token
+  -> LrParsing.symbol
+  = fun terminal_nums nonterminal_entry -> function
+  | TerminalName tn -> Terminal
+    (terminal_nums
+     |. MS.get tn
+     |> get_option' (fun () -> "to_grammar: failed to get terminal " ^ tn))
+  | NonterminalName nt_name
+  -> Nonterminal (nonterminal_entry
+    |. Belt.Map.String.get nt_name
+    |> get_option' (fun () -> Printf.sprintf
+      "convert_token: couldn't find nonterminal %s in names: %s"
+      nt_name
+      (nonterminal_entry
+        |. Belt.Map.String.keysToArray
+        |. Js.Array2.joinWith ", ")
+    )
+  )
+  | OpenBox _ | CloseBox | Underscore _
+  -> invariant_violation
+    "all formatting tokens should be filtered (see is_formatting_token)"
+
+(* Invariants assumed:
+ *   %left, %right can't occur at lowest precedence level
+ *   Anywhere %left, %right occur has same nonterminal on both sides, parent
+ *)
+let rewrite_tokens
+  : string -> int -> operator_match -> operator_match
+  = fun
+    nt_name
+    level
+    (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
+
+    let lowered_nt_name = Printf.sprintf "%s_%n" nt_name (level - 1) in
+    let tokens' = Belt.List.keep tokens
+      (fun tok -> not (is_formatting_token tok))
+    in
+
+    let tokens'' = match tokens' with
+      | [ NonterminalName name1; TerminalName _ as t; NonterminalName name2 ]
+        when name1 = nt_name && name2 = nt_name
+        -> (match fixity with
+        | Infixl
+        -> (* Lower the precedence of the right child by moving to the following
+            * (desugared) nonterminal, which corresponds to the next precedence
+            * level in the nonterminal we're currently transforming. *)
+           [ NonterminalName nt_name;
+             t;
+             NonterminalName lowered_nt_name;
+           ]
+
+        | Infixr
+        -> [ NonterminalName lowered_nt_name;
+             t;
+             NonterminalName nt_name;
+           ]
+
+        (* Don't adjust nofix *)
+        | Nofix -> tokens'
+        )
+
+      (* juxtaposition *)
+      | [ NonterminalName name1; NonterminalName name2 ]
+      when name1 = nt_name && name2 = nt_name
+      (* TODO: adjust! *)
+      -> tokens'
+
+      | _ -> tokens'
+    in
+
+    (OperatorMatch { tokens = tokens''; operator_match_pattern; fixity = Nofix })
+
+(** An operator match that just defers to a nonterminal / precedence *)
+let operator_match_nt_precedence : string -> int -> operator_match
+  = fun nonterminal_name precedence -> OperatorMatch
+    { tokens = [ NonterminalName
+        (Printf.sprintf "%s_%n" nonterminal_name precedence)
+      ]
+    ; operator_match_pattern = SingleCapturePattern 1
+    ; fixity = Nofix
+    }
+
+(** Desugar a nonterminal into one nonterminal per precedence level.
+ *
+ * raises: [UserError]
+ *)
+let desugar_nonterminal
+  : Belt.Set.String.t -> nonterminal_rule -> nonterminal_rules
+  = fun
+      taken_names
+      (NonterminalRule { nonterminal_name; operator_rules } as rule) ->
+    let num_levels = Belt.List.length operator_rules in
+    if num_levels = 1
+    then Belt.Map.String.fromArray [| nonterminal_name, rule |]
+    else
+      let NonterminalRule { nonterminal_type } = rule in
+      let level_nts = Belt.List.mapWithIndex operator_rules (fun i level ->
+        (* precedences 1..num_levels *)
+        let prec_num = num_levels - i in
+        let generated_name = Printf.sprintf "%s_%n" nonterminal_name prec_num in
+
+        (* Our renaming is not hygienic, so we need to prevent name collisions.
+         * Also, this would be just confusing to the user. *)
+        (if Belt.Set.String.has taken_names generated_name
+        then raise (UserError (Printf.sprintf "Desugaring of nonterminal %s \
+          generated name %s, which conflicts with an existing nonterminal."
+          nonterminal_name generated_name
+        )));
+
+        let generated_rules = Belt.List.map level
+          (rewrite_tokens nonterminal_name prec_num)
+        in
+
+        (* If this is not the lowest-precedence level, then there is a
+         * lower-precedence level to fall back to. *)
+        let generated_rules' = if prec_num = 1
+          then generated_rules
+          else Util.snoc generated_rules
+            (operator_match_nt_precedence nonterminal_name (prec_num - 1))
+        in
+
+        generated_name,
+        NonterminalRule
+          { nonterminal_name = generated_name
+          ; nonterminal_type
+          ; operator_rules = [generated_rules']
+          }
+      )
+      in
+
+      (* A rule pointing from the original name to the rewritten highest
+       * precedence, so we don't have to redirect all rules already pointing to
+       * this nonterminal *)
+      let indirect_nt = NonterminalRule
+        { nonterminal_name
+        ; nonterminal_type
+        ; operator_rules =
+          [ [ operator_match_nt_precedence nonterminal_name num_levels ] ]
+        }
+      in
+
+      level_nts
+        |. Belt.List.add (nonterminal_name, indirect_nt)
+        |. Belt.List.toArray
+        |. Belt.Map.String.fromArray
+
+(** Produce an augmented grammar *)
 let to_grammar
   :  ConcreteSyntaxDescription.t
   -> string
@@ -362,47 +515,47 @@ let to_grammar
         Belt.MutableMap.Int.t
   =
   fun { terminal_rules; nonterminal_rules } start_nonterminal ->
-  let terminal_key_arr = Belt.Array.map terminal_rules (fun (k, _) -> k) in
   let terminal_nums =
     Belt.Array.(
-      terminal_key_arr
+      terminal_rules
       (* start other terminals (besides $ and SPACE) at 2 *)
-      |. mapWithIndex (fun i name -> name, i + 2)
+      |. mapWithIndex (fun i (name, _) -> name, i + 2)
       |. concat [| "$", 0; "SPACE", 1 |])
   in
-  let nonterminal_names_map =
-    Belt.Map.String.(
-      nonterminal_rules
-      |. keysToArray
-      (* start other nonterminals (besides root) at 1 *)
-      |. Belt.Array.mapWithIndex (fun i name -> name, (0 (* XXX *), i + 1))
-      |. fromArray
-      |. set "root" (0, (* XXX *) 0))
-  in
-  (* Spaces are removed by the parsing step, so we need to remove them from
-   * our token list. *)
-  let non_space : nonterminal_token -> bool = function
-    | OpenBox _ | CloseBox | Underscore _ -> false
-    | _ -> true
+
+  (* mapping from terminal to its number *)
+  let terminal_num_map : int Belt.Map.String.t
+    = MS.fromArray terminal_nums
   in
 
-  let non_space_tokens : nonterminal_token -> LrParsing.symbol option = function
-    | TerminalName tn ->
-      Some
-        (LrParsing.Terminal
-           (terminal_nums
-            |. MS.fromArray
-            |. MS.get tn
-            |> get_option' ("to_grammar: failed to get terminal " ^ tn)))
-    | NonterminalName ntn ->
-      Some
-        (Nonterminal
-           (nonterminal_names_map
-            |. MS.get ntn
-            |> get_option' ("to_grammar: failed to get nonterminal " ^ ntn)
-            |> fun (prec, ntn) -> ntn))
-    | OpenBox _ | CloseBox | Underscore _ -> None
+  let taken_names : Belt.Set.String.t
+    = nonterminal_rules
+      |. Belt.Map.String.keysToArray
+      |. Belt.Set.String.fromArray
   in
+
+  let desugared_nts : nonterminal_rule Belt.Map.String.t = nonterminal_rules
+    |. Belt.Map.String.valuesToArray
+    |. Belt.Array.map (desugar_nonterminal taken_names)
+    (* TODO: don't convert to list *)
+    |. Belt.List.fromArray
+    |. Util.map_unions
+  in
+
+  let nonterminal_num = ref 0 in
+
+  (* Number every desugared nonterminal *)
+  let nonterminal_num_map : int Belt.Map.String.t
+    = desugared_nts
+      |. Belt.Map.String.map (fun _ ->
+        incr nonterminal_num;
+        !nonterminal_num
+      )
+  in
+
+  (* [nonterminal_nums]: name, level, nonterminal num. mutated below. *)
+  let nonterminal_nums = nonterminal_num_map |. Belt.Map.String.toArray in
+  let _ = Js.Array2.unshift nonterminal_nums ("root", 0) in
 
   (* We're dealing with a non-augmented grammar here. [prod_num] starts
    * counting productions from 1. We'll add the starting production at 0 at the
@@ -415,83 +568,55 @@ let to_grammar
   let start_nonterminal_num = ref 0 in
   let production_rule_map = Belt.MutableMap.Int.make () in
 
-  (* Translate a nonterminal into n -- one for eachof its precedence levels *)
-  let nonterminals = nonterminal_rules
+  (* Translate a nonterminal into n -- one for each of its precedence levels *)
+  let nonterminals = desugared_nts
     |. MS.toArray
     |. BA.map (fun (nonterminal_name, NonterminalRule { operator_rules }) ->
+      let productions = match operator_rules with
+        | [ productions ] -> productions
+        | _ -> invariant_violation (Printf.sprintf
+          "to_grammar: Expected on set of productions, got %n"
+          (Belt.List.length operator_rules)
+        )
+      in
       if nonterminal_name = start_nonterminal
       then start_nonterminal_num := !nt_num;
 
-      (* How many distinct precedence levels does this nonterminal include *)
-      let num_levels = Belt.List.length operator_rules in
-
-      (* track the operator number within (all levels of) this nonterminal *)
+      (* track the operator number within this nonterminal *)
       let nt_operator_index = ref 0 in
 
-      (* We desugar each precedence level to its own nonterminal. *)
-      operator_rules
-        |. Belt.List.mapWithIndex (fun level_ix operator_level ->
-          let level_productions = operator_level
-            |. Belt.List.map (fun (OperatorMatch rule) ->
-              Belt.MutableMap.Int.set
-                production_rule_map
-                !prod_num
-                ( (nonterminal_name, !nt_operator_index)
-                , rule.tokens
-                , Some rule.operator_match_pattern
-                );
-              incr prod_num;
-              incr nt_operator_index;
-              (* XXX rewrite to point nonterminals at correct level *)
-              Belt.List.keepMap rule.tokens non_space_tokens
-            )
-          in
-
-          (* If this is not the last level, then there is a lower-precedence
-           * level to fall back to. *)
-          let level_productions' =
-            if level_ix + 1 < num_levels
-            (* XXX need level info *)
-            then Util.snoc level_productions [ Nonterminal !nt_num ]
-            else level_productions
-          in
-
-          let result = !nt_num, { LrParsing.productions = level_productions' } in
-          incr nt_num;
-          result
+      let productions' = productions
+        |. Belt.List.map (fun (OperatorMatch rule) ->
+          Belt.MutableMap.Int.set
+            production_rule_map
+            !prod_num
+            ( (nonterminal_name, !nt_operator_index)
+            , rule.tokens
+            , Some rule.operator_match_pattern
+            );
+          incr prod_num;
+          incr nt_operator_index;
+          rule.tokens
+            |. Belt.List.map (convert_token terminal_num_map nonterminal_num_map)
         )
-        |. Belt.List.toArray
-        |. Belt.Map.Int.fromArray
+      in
+
+      let result = !nt_num, { LrParsing.productions = productions' } in
+      incr nt_num;
+      result
     )
-    |. Belt.List.fromArray (* TODO: don't convert to list *)
-    |. Util.int_map_unions
-    |. Belt.Map.Int.set 0 { productions = [ [ Nonterminal !start_nonterminal_num ] ] }
-  in
-  let nonterminal_nums = nonterminal_names_map
-    |. MS.toArray
-    |. Belt.Array.map (fun (name, (prec, num)) -> name, prec, num)
+    |. Belt.Map.Int.fromArray
+    |. Belt.Map.Int.set 0
+      { productions = [ [ Nonterminal !start_nonterminal_num ] ] }
   in
   { nonterminals; terminal_nums; nonterminal_nums }, production_rule_map
 ;;
 
-(*
-let production_sort_name
-  :  LrParsing.nonterminal_num Belt.MutableMap.Int.t
-    -> LrParsing.nonterminal_num Belt.Map.String.t -> LrParsing.production_num -> string
-  =
-  fun nt_map nonterminal_nums prod_num ->
-  let nt_num =
-    nt_map
-    |. MMI.get prod_num
-    |> get_option' ("production_sort_name: failed to get " ^ string_of_int prod_num)
-  in
-  let f _ nt_num' = nt_num' = nt_num in
-  match Belt.Map.String.findFirstBy nonterminal_nums f with
-  | None -> failwith "production_sort_name: invariant violation: sort not found"
-  | Some (name, _) -> name
-;;
-*)
-
+(* assumption: the language we're operating on is the derived language:
+ * 1. It's augmented with a root nonterminal, 0
+ * 2. Precedence / associativity has been desugared
+ * 3. All formatting tokens have been removed
+ *)
 let tree_of_parse_result (module Lr0 : LrParsing.LR0)
   :  (tree_info * nonterminal_token list * operator_match_pattern option)
        Belt.MutableMap.Int.t
@@ -503,7 +628,6 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
   -> formatted_tree
   =
   fun production_rule_map nonterminal_nums nonterminal_rules root_name str root ->
-  (* Js.log2 "tree_of_parse_result" (LrParsing.parse_result_to_string root); *)
 
   let str_pos = ref 0 in
   let str_len = Js.String2.length str in
@@ -533,37 +657,47 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
            (Lr0.string_of_terminal prod))
         | Right prod_num -> prod_num
       in
-      (* Js.log3 "go_nt" nt_name prod_num; *)
-      let tree_info, tokens, _ =
-        match Belt.MutableMap.Int.get production_rule_map prod_num with
-        | None -> invariant_violation (Printf.sprintf
+      let tree_info, tokens, _ = production_rule_map
+        |. Belt.MutableMap.Int.get prod_num
+        |> get_option' (fun () -> Printf.sprintf
           "tree_of_parse_result: couldn't find nonterminal %n in \
           production_rule_map"
           prod_num
         )
-        | Some result -> result
       in
-      let tokens_no_space = tokens
-        |. Belt.List.keep (function Underscore _ -> false | _ -> true)
-      in
-      { tree_info
-      ; children = children
-        |. Belt.List.zip tokens_no_space
+
+      let children' = children
+        |. Belt.List.zip tokens
         |. Belt.List.toArray
-        |> Util.array_map_keep (function parse_result, token ->
-          (match token with
-           | TerminalName _ -> Some (TerminalCapture (go_t parse_result))
+        |. Belt.Array.map (function parse_result, token ->
+          match token with
+           | TerminalName _ -> TerminalCapture (go_t parse_result)
            | NonterminalName ntn ->
-             Some (NonterminalCapture (go_nt ntn parse_result))
+             NonterminalCapture (go_nt ntn parse_result)
            (* TODO: trivia *)
-           | OpenBox _ | CloseBox | Underscore _ -> None))
-      }
+           | OpenBox _ | CloseBox | Underscore _
+           -> invariant_violation "formatting tokens must be filtered beforehand"
+        )
+      in
+
+      if not (Belt.Map.String.has nonterminal_rules nt_name)
+      then
+        match children' with
+          | [| NonterminalCapture child |] -> child
+          | _ -> (* invariant_violation (Printf.sprintf "When translating a \
+          synthetic nonterminal (%s) parse result to a tree, expected one \
+          nonterminal child, but encountered %n children"
+          nt_name (Belt.Array.length children'))
+          *)
+          { tree_info ; children = children' }
+      else
+
+      { tree_info ; children = children' }
 
   and go_t : LrParsing.parse_result -> formatted_terminal_capture =
     fun { start_pos; end_pos } ->
       let leading_trivia, trailing_trivia = get_trivia start_pos end_pos in
       let content = Js.String.slice str ~from:start_pos ~to_:end_pos in
-      (* Js.log2 "go_t" content; *)
       { leading_trivia; content; trailing_trivia }
   in
   go_nt root_name root
@@ -580,18 +714,6 @@ let lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer =
 
 let parse desc root_name str =
   let grammar, production_rule_map = to_grammar desc root_name in
-  (*
-     production_rule_map
-     |. Belt.MutableMap.Int.mapWithKey
-       (fun i (tree_info, tokens, m_operator_match_pattern) ->
-         Printf.printf "production rule %n: %s %s\n"
-         i
-         (string_of_tokens tokens)
-         (match m_operator_match_pattern with
-         | Some x -> string_of_operator_match_pattern x
-         | None -> "(none)")
-       );
-       *)
   let module Lalr = LalrParsing.Lalr1 (struct
                       let grammar = grammar
                     end)
@@ -603,7 +725,7 @@ let parse desc root_name str =
       desc.nonterminal_rules
       "root"
       (NonterminalRule
-        { nonterminal_name = "root"
+        { nonterminal_name = "root" (* TODO: root_name? *)
         ; nonterminal_type = NonterminalType ([], SortAp ("root", [||]))
         ; operator_rules = [ [] ]
         })
@@ -614,10 +736,7 @@ let parse desc root_name str =
       (tree_of_parse_result
          (module Lalr)
          production_rule_map
-         (grammar.nonterminal_nums
-           |. Belt.Array.map (fun (name, prec, num) -> name, num)
-           |. MS.fromArray
-         )
+         (MS.fromArray grammar.nonterminal_nums)
          augmented_nonterminal_rules
          root_name
          str

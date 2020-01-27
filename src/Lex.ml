@@ -51,7 +51,7 @@ let find_first_capture : string M.t -> 'a Js.nullable array -> string option =
   with
   | FoundFirstCapture i -> Some (tok_names
     |. M.get i
-    |> Util.get_option' ("unable to find token name " ^ string_of_int i)
+    |> Util.get_option' (fun () -> "unable to find token name " ^ string_of_int i)
   )
 ;;
 
