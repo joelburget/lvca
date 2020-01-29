@@ -263,82 +263,83 @@ module SyntaxDebugger = {
       [|hoverSpan|]
     );
 
-    switch (Lex.lex(lexer, input)) {
+    let (tokens, message) = switch (Lex.lex(lexer, input)) {
       /* TODO: highlight affected area */
-      | Error({ message }) => React.string(message)
-      | Ok(tokens) => {
-        let tokens' = tokens
-          |. Belt.Array.keep (token => token.name != "SPACE");
-        let tokenElems = tokens'
-          |. Belt.Array.map
-          (({ name, start, finish }) =>
-             <span
-               className="token"
-               onMouseOver=(_ => { setHoverSpan(_ => Some((start, finish))) })
-               onMouseOut=(_ => { setHoverSpan(_ => None) })
-             >
-               {React.string(name)}
-             </span>
-          );
+      | Error({ message }) => ([||], React.string(message))
+      | Ok(tokens) => (tokens, ReasonReact.null)
+    };
 
-        let tokens'' = MQueue.fromArray(tokens');
-        let len = String.length(input);
-        /* TODO: name might not always be "$" */
-        MQueue.add(tokens'', { name: "$", start: len, finish: len });
+    let tokens' = tokens
+      |. Belt.Array.keep (token => token.name != "SPACE");
+    let tokenElems = tokens'
+      |. Belt.Array.map
+      (({ name, start, finish }) =>
+         <span
+           className="token"
+           onMouseOver=(_ => { setHoverSpan(_ => Some((start, finish))) })
+           onMouseOut=(_ => { setHoverSpan(_ => None) })
+         >
+           {React.string(name)}
+         </span>
+      );
 
-        /* TODO: avoid building this module twice */
-        let module Lalr = LalrParsing.Lalr1({ let grammar = grammar });
-        let (_parse_result, trace) =
-          Lalr.parse_trace(LrParsing.DoTrace, tokens'');
+    let tokens'' = MQueue.fromArray(tokens');
+    let len = String.length(input);
+    /* TODO: name might not always be "$" */
+    MQueue.add(tokens'', { name: "$", start: len, finish: len });
 
-        let traceElems = trace
-          |. Belt.Array.map(({action, stack, results, input}) => {
-            let cls = switch(action) {
-              | Accept   => "result-good"
-              | Error(_) => "result-bad"
-              | _        => ""
-            };
-            <tr className=cls>
-              <td>{React.string(LrParsing.string_of_stack(stack))}</td>
-              <td>{React.string(Lalr.string_of_symbols(results))}</td>
-              <td>{React.string(Lex.string_of_tokens(input))}</td>
-              <td>{React.string(Lalr.string_of_action(action))}</td>
-            </tr>
-          });
+    /* TODO: avoid building this module twice */
+    let module Lalr = LalrParsing.Lalr1({ let grammar = grammar });
+    let (_parse_result, trace) =
+      Lalr.parse_trace(LrParsing.DoTrace, tokens'');
 
-        <div className="syntax-debugger">
-          <div>
-            <label htmlFor="example-input">
-              {React.string("Example string: ")}
-            </label>
-            <input
-              autoFocus=true
-              id="example-input"
-              type_="text"
-              size=50
-              value=input
-              ref={ReactDOMRe.Ref.domRef(inputRef)}
-              onChange=(event => setInput(ReactEvent.Form.target(event)##value))
-            />
-          </div>
-          <div className="debugger-tokens">
-            <span>{React.string("Tokens: ")}</span>
-            {make_elem("span", tokenElems)}
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>{React.string("stack")}</th>
-                <th>{React.string("symbols")}</th>
-                <th>{React.string("input")}</th>
-                <th>{React.string("action")}</th>
-              </tr>
-            </thead>
-            {make_elem("tbody", traceElems)}
-          </table>
-        </div>
-      }
-    }
+    let traceElems = trace
+      |. Belt.Array.map(({action, stack, results, input}) => {
+        let cls = switch(action) {
+          | Accept   => "result-good"
+          | Error(_) => "result-bad"
+          | _        => ""
+        };
+        <tr className=cls>
+          <td>{React.string(LrParsing.string_of_stack(stack))}</td>
+          <td>{React.string(Lalr.string_of_symbols(results))}</td>
+          <td>{React.string(Lex.string_of_tokens(input))}</td>
+          <td>{React.string(Lalr.string_of_action(action))}</td>
+        </tr>
+      });
+
+    <div className="syntax-debugger">
+      <div>
+        <label htmlFor="example-input">
+          {React.string("Example string: ")}
+        </label>
+        <input
+          autoFocus=true
+          id="example-input"
+          type_="text"
+          size=50
+          value=input
+          ref={ReactDOMRe.Ref.domRef(inputRef)}
+          onChange=(event => setInput(ReactEvent.Form.target(event)##value))
+        />
+      </div>
+      {message}
+      <div className="debugger-tokens">
+        <span>{React.string("Tokens: ")}</span>
+        {make_elem("span", tokenElems)}
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>{React.string("stack")}</th>
+            <th>{React.string("symbols")}</th>
+            <th>{React.string("input")}</th>
+            <th>{React.string("action")}</th>
+          </tr>
+        </thead>
+        {make_elem("tbody", traceElems)}
+      </table>
+    </div>
   };
 };
 
