@@ -49,15 +49,14 @@ let find_first_capture : string M.t -> 'a Js.nullable array -> string option =
     done;
     None
   with
-  | FoundFirstCapture i -> Some (tok_names
+    FoundFirstCapture i -> Some (tok_names
     |. M.get i
-    |> Util.get_option' (fun () -> "unable to find token name " ^ string_of_int i)
+    |> Util.get_option' (fun () -> "unable to find token " ^ string_of_int i)
   )
 ;;
 
-(* TODO: no exn *)
-
-let get_next_tok : string M.t -> Js.Re.t -> lexbuf -> token =
+(** raises: [LexError] *)
+let get_next_tok_exn : string M.t -> Js.Re.t -> lexbuf -> token =
   fun tok_names re { buf; pos } -> re
   |. Js.Re.exec_ (buf |. Js.String2.sliceToEnd ~from:pos)
   |. function
@@ -77,7 +76,8 @@ let get_next_tok : string M.t -> Js.Re.t -> lexbuf -> token =
            })
 ;;
 
-let lex' : lexer -> string -> token array =
+(** raises: [LexError] *)
+let lex_exn : lexer -> string -> token array =
   fun lexer input ->
   let result = [||] in
   let lexbuf = { buf = input; pos = 0 } in
@@ -93,7 +93,7 @@ let lex' : lexer -> string -> token array =
   let tok_names = mut_tok_names |. MM.toArray |> M.fromArray in
   let re = Js.Re.fromString @@ re_str in
   while lexbuf.pos < Js.String2.length lexbuf.buf do
-    let tok = get_next_tok tok_names re lexbuf in
+    let tok = get_next_tok_exn tok_names re lexbuf in
     let { start; finish } = tok in
     assert (start = lexbuf.pos);
     lexbuf.pos <- finish;
@@ -105,7 +105,7 @@ let lex' : lexer -> string -> token array =
 let lex : lexer -> string -> (token array, lex_error) Result.t =
   fun lexer input ->
   try
-    Ok (lex' lexer input)
+    Ok (lex_exn lexer input)
   with
     LexError err -> Error err
 ;;
