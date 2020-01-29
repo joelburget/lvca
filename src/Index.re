@@ -405,7 +405,7 @@ module ConcreteSyntaxEditor = {
     );
 
     let getGrammarPaneAndDebugger = (concrete, showGrammarPane, showDebugger) => {
-      let (grammar, _) = ConcreteSyntax.to_grammar(concrete, startSort);
+      let (grammar, _, _) = ConcreteSyntax.to_grammar(concrete, startSort);
       let module Lalr = LalrParsing.Lalr1({ let grammar = grammar });
       let module LrTables' = LrTables(LrParsing.Lr0({ let grammar = grammar }));
 

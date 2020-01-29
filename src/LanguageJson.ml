@@ -20,14 +20,14 @@ let concreteSyntax = {|
   NAME   := /[a-z][a-zA-Z0-9]*/
 
   arith :=
-    | arith _ ADD _ arith { add($1; $3) } %left
-    | arith _ SUB _ arith { sub($1; $3) } %left
-    | arith _ MUL _ arith { mul($1; $3) } %left
-    | arith _ DIV _ arith { div($1; $3) } %left
-    | arith _       arith { app($1; $2) } %right
+    | arith _       arith { app($1; $2) } %left
     | NAME  _ ARR _ arith { fun($1. $3) }
+    > arith _ ADD _ arith { add($1; $3) } %left
+    | arith _ SUB _ arith { sub($1; $3) } %left
+    > arith _ MUL _ arith { mul($1; $3) } %left
+    | arith _ DIV _ arith { div($1; $3) } %left
+    // > LPAREN arith RPAREN { $2          }
     > NAME                { var($1)     }
-    | LPAREN arith RPAREN { $2          }
   |}
 ;;
 

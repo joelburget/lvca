@@ -436,7 +436,10 @@ let find_operator_match
   :  nonterminal_pointer
   -> operator_match list list
   -> Binding.Nominal.term
-  -> int * operator_match_pattern * nonterminal_token list * subterm_result Belt.Map.Int.t
+  -> int *
+     operator_match_pattern *
+     nonterminal_token list *
+     subterm_result Belt.Map.Int.t
   = fun nonterminal_pointer matches tm ->
 
     matches

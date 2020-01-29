@@ -88,6 +88,7 @@ val to_grammar
         * ConcreteSyntaxDescription.nonterminal_token list
         * ConcreteSyntaxDescription.operator_match_pattern option)
          Belt.MutableMap.Int.t
+     * string option Belt.Map.String.t
 
 type invalid_grammar
 
