@@ -13,16 +13,16 @@ module MenhirBasics = struct
     | RIGHT_PAREN
     | RIGHT_D_ARR
     | LINE of (
-# 18 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 18 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
        (string option)
-# 19 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 19 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
   )
     | LEFT_PAREN
     | LEFT_D_ARR
     | ID of (
-# 7 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 7 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
        (string)
-# 26 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 26 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
   )
     | EOF
     | DOT
@@ -38,7 +38,7 @@ include MenhirBasics
 let _eRR =
   MenhirBasics.Error
 
-# 21 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 21 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
   
 open Statics
 
@@ -56,7 +56,7 @@ and scope_to_pattern = function
   | Scope ([], body) -> term_to_pattern body
   | _ -> failwith "bad parse -- can't match binders in a pattern"
 
-# 60 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 60 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
 
 module Tables = struct
   
@@ -167,27 +167,27 @@ module Tables = struct
           };
         } = _menhir_stack in
         let _3 : (
-# 41 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 41 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.term)
-# 173 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 173 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 41 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 41 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.term)
-# 179 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 179 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__3_ in
         let _v : (
-# 45 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 45 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.checking_rule)
-# 187 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 187 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = 
-# 68 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 68 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
                                       ( {tm = _1; ty = _3} )
-# 191 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 191 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -210,9 +210,9 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : 'tv_context = 
-# 78 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 78 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
   ( M.empty )
-# 216 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 216 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -249,9 +249,9 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__3_ in
         let _v : 'tv_context = 
-# 80 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 80 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
   ( M.fromArray (Belt.List.toArray _3) )
-# 255 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 255 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -282,9 +282,9 @@ module Tables = struct
           };
         } = _menhir_stack in
         let clause : (
-# 46 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 46 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.typing_clause)
-# 288 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 288 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic clause in
         let _2 : unit = Obj.magic _2 in
         let _1 : 'tv_context = Obj.magic _1 in
@@ -292,13 +292,13 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos_clause_ in
         let _v : (
-# 47 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 47 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.hypothesis)
-# 298 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 298 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = 
-# 82 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 82 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
                                                          ( (M.empty, clause) )
-# 302 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 302 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -329,27 +329,27 @@ module Tables = struct
           };
         } = _menhir_stack in
         let _3 : (
-# 41 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 41 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.term)
-# 335 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 335 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 41 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 41 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.term)
-# 341 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 341 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__3_ in
         let _v : (
-# 44 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 44 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.inference_rule)
-# 349 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 349 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = 
-# 67 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 67 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
                                       ( {tm = _1; ty = _3} )
-# 353 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 353 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -367,7 +367,7 @@ module Tables = struct
         let _v : 'tv_list_hypothesis_ = 
 # 211 "<standard.mly>"
     ( [] )
-# 371 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 371 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -393,9 +393,9 @@ module Tables = struct
         } = _menhir_stack in
         let xs : 'tv_list_hypothesis_ = Obj.magic xs in
         let x : (
-# 47 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 47 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.hypothesis)
-# 399 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 399 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -403,7 +403,7 @@ module Tables = struct
         let _v : 'tv_list_hypothesis_ = 
 # 213 "<standard.mly>"
     ( x :: xs )
-# 407 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 407 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -421,7 +421,7 @@ module Tables = struct
         let _v : 'tv_list_rule_ = 
 # 211 "<standard.mly>"
     ( [] )
-# 425 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 425 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -447,9 +447,9 @@ module Tables = struct
         } = _menhir_stack in
         let xs : 'tv_list_rule_ = Obj.magic xs in
         let x : (
-# 48 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 48 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.rule)
-# 453 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 453 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -457,7 +457,7 @@ module Tables = struct
         let _v : 'tv_list_rule_ = 
 # 213 "<standard.mly>"
     ( x :: xs )
-# 461 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 461 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -475,7 +475,7 @@ module Tables = struct
         let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_scope__ = 
 # 142 "<standard.mly>"
     ( [] )
-# 479 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 479 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -500,7 +500,7 @@ module Tables = struct
         let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_scope__ = 
 # 144 "<standard.mly>"
     ( x )
-# 504 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 504 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -531,27 +531,27 @@ module Tables = struct
           };
         } = _menhir_stack in
         let conclusion : (
-# 47 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 47 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.hypothesis)
-# 537 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 537 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic conclusion in
         let _2 : (
-# 18 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 18 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
        (string option)
-# 542 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 542 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic _2 in
         let hypotheses : 'tv_list_hypothesis_ = Obj.magic hypotheses in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_hypotheses_ in
         let _endpos = _endpos_conclusion_ in
         let _v : (
-# 48 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 48 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.rule)
-# 551 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 551 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = 
-# 86 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 86 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
   ( { hypotheses; name = _2; conclusion } )
-# 555 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 555 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -581,13 +581,13 @@ module Tables = struct
         let _startpos = _startpos_rules_ in
         let _endpos = _endpos__2_ in
         let _v : (
-# 49 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 49 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.rule list)
-# 587 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 587 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = 
-# 88 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 88 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
                               ( rules )
-# 591 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 591 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -610,16 +610,16 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : (
-# 43 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 43 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.scope)
-# 616 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 616 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = 
-# 60 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 60 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
   ( let binders_tm, body = Util.unsnoc _1 in
     let binders_pat = Belt.List.map binders_tm term_to_pattern in
     Scope (binders_pat, body)
   )
-# 623 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 623 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -644,7 +644,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_COMMA_typed_term_ = 
 # 241 "<standard.mly>"
     ( [ x ] )
-# 648 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 648 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -683,7 +683,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_COMMA_typed_term_ = 
 # 243 "<standard.mly>"
     ( x :: xs )
-# 687 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 687 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -702,9 +702,9 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let x : (
-# 41 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 41 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.term)
-# 708 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 708 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -712,7 +712,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_DOT_term_ = 
 # 241 "<standard.mly>"
     ( [ x ] )
-# 716 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 716 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -745,9 +745,9 @@ module Tables = struct
         let xs : 'tv_separated_nonempty_list_DOT_term_ = Obj.magic xs in
         let _2 : unit = Obj.magic _2 in
         let x : (
-# 41 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 41 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.term)
-# 751 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 751 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -755,7 +755,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_DOT_term_ = 
 # 243 "<standard.mly>"
     ( x :: xs )
-# 759 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 759 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -774,9 +774,9 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let x : (
-# 43 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 43 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.scope)
-# 780 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 780 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -784,7 +784,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_SEMICOLON_scope_ = 
 # 241 "<standard.mly>"
     ( [ x ] )
-# 788 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 788 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -817,9 +817,9 @@ module Tables = struct
         let xs : 'tv_separated_nonempty_list_SEMICOLON_scope_ = Obj.magic xs in
         let _2 : unit = Obj.magic _2 in
         let x : (
-# 43 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 43 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.scope)
-# 823 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 823 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -827,7 +827,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_SEMICOLON_scope_ = 
 # 243 "<standard.mly>"
     ( x :: xs )
-# 831 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 831 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -867,26 +867,26 @@ module Tables = struct
         let xs : 'tv_loption_separated_nonempty_list_SEMICOLON_scope__ = Obj.magic xs in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 7 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 7 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
        (string)
-# 873 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 873 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__4_ in
         let _v : (
-# 41 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 41 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.term)
-# 881 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 881 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = let _3 = 
 # 232 "<standard.mly>"
     ( xs )
-# 885 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 885 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         
-# 54 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 54 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
   ( Operator (_1, _3) )
-# 890 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 890 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -905,21 +905,21 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let _1 : (
-# 7 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 7 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
        (string)
-# 911 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 911 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : (
-# 41 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 41 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.term)
-# 919 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 919 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = 
-# 56 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 56 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
   ( Free _1 )
-# 923 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 923 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -945,21 +945,21 @@ module Tables = struct
         } = _menhir_stack in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 41 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 41 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.term)
-# 951 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 951 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : (
-# 42 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 42 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.term)
-# 959 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 959 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = 
-# 65 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 65 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
                    ( _1 )
-# 963 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 963 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -990,23 +990,23 @@ module Tables = struct
           };
         } = _menhir_stack in
         let _3 : (
-# 41 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 41 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.term)
-# 996 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 996 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 7 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 7 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
        (string)
-# 1002 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 1002 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__3_ in
         let _v : 'tv_typed_term = 
-# 74 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 74 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
                           ( _1, _3 )
-# 1010 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 1010 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1025,21 +1025,21 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let _1 : (
-# 44 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 44 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.inference_rule)
-# 1031 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 1031 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : (
-# 46 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 46 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.typing_clause)
-# 1039 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 1039 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = 
-# 71 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 71 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
                    ( InferenceRule _1 )
-# 1043 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 1043 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1058,21 +1058,21 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let _1 : (
-# 45 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 45 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.checking_rule)
-# 1064 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 1064 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : (
-# 46 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 46 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.typing_clause)
-# 1072 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 1072 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
         ) = 
-# 72 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 72 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
                    ( CheckingRule  _1 )
-# 1076 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 1076 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1101,17 +1101,17 @@ end
 let term_top =
   fun lexer lexbuf ->
     (Obj.magic (MenhirInterpreter.entry 42 lexer lexbuf) : (
-# 42 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 42 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.term)
-# 1107 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 1107 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
     ))
 
 and rules =
   fun lexer lexbuf ->
     (Obj.magic (MenhirInterpreter.entry 0 lexer lexbuf) : (
-# 49 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 49 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.rule list)
-# 1115 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 1115 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
     ))
 
 module Incremental = struct
@@ -1119,17 +1119,17 @@ module Incremental = struct
   let term_top =
     fun initial_position ->
       (Obj.magic (MenhirInterpreter.start 42 initial_position) : (
-# 42 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 42 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.term)
-# 1125 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 1125 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
       ) MenhirInterpreter.checkpoint)
   
   and rules =
     fun initial_position ->
       (Obj.magic (MenhirInterpreter.start 0 initial_position) : (
-# 49 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
+# 49 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.mly"
       (Statics.rule list)
-# 1133 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 1133 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
       ) MenhirInterpreter.checkpoint)
   
 end
@@ -1137,4 +1137,4 @@ end
 # 269 "<standard.mly>"
   
 
-# 1141 "/home/joel/code/lvca-bucklescript/src/Statics_Parser.ml"
+# 1141 "/Users/joel/code/lvca-bucklescript/src/Statics_Parser.ml"

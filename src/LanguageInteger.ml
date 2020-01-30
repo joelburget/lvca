@@ -27,15 +27,15 @@ LPAREN := "("
 RPAREN := ")"
 
 tm :=
-  | INT { lit(integer($1)) }
-  | SUB tm { neg($2) }
-  | BAR tm BAR { abs($2) }
-  | tm ADD tm { add($1; $3) }
-  | tm SUB tm { sub($1; $3) }
-  | tm MUL tm { mul($1; $3) }
-  | MAX tm tm { max($2; $3) }
-  | MIN tm tm { min($2; $3) }
   | LPAREN tm RPAREN { $2 }
+  | BAR tm BAR { abs($2) }
+  | INT { lit(integer($1)) }
+  > MAX tm tm { max($2; $3) }
+  | MIN tm tm { min($2; $3) }
+  > tm MUL tm { mul($1; $3) } %left
+  > SUB tm { neg($2) }
+  | tm ADD tm { add($1; $3) } %left
+  | tm SUB tm { sub($1; $3) } %left
 |}
 
 (* TODO: lessen duplication *)

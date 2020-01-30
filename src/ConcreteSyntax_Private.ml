@@ -410,7 +410,7 @@ let check_tokens subterms tokens : unit = tokens
 
 (**
  * Find a matching syntactical description for the given term. This traverses
- * the set of possible forms from top to bottom until it finds one that
+ * the set of possible forms from bottom to top until it finds one that
  * matches.
  *
  * Invariants assumed:
@@ -445,6 +445,7 @@ let find_operator_match
     matches
       |. Belt.List.flatten
       |. Belt.List.mapWithIndex (fun match_ix x -> match_ix, x)
+      |. Belt.List.reverse (* TODO: O(n^2) reverse *)
       |. Util.find_by (fun (match_ix, OperatorMatch op_match) ->
         let { operator_match_pattern = pat; tokens } = op_match in
         try

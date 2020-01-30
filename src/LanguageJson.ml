@@ -1,35 +1,5 @@
-let abstractSyntax = {|
-arith :=
-  | add(arith; arith)
-  | sub(arith; arith)
-  | mul(arith; arith)
-  | div(arith; arith)
-  | app(arith; arith)
-  | fun(arith. arith)
-|}
-;;
-
-let concreteSyntax = {|
-  ARR    := "->"
-  ADD    := "+"
-  SUB    := "-"
-  MUL    := "*"
-  DIV    := "/"
-  LPAREN := "("
-  RPAREN := ")"
-  NAME   := /[a-z][a-zA-Z0-9]*/
-
-  arith :=
-    | arith _       arith { app($1; $2) } %left
-    | NAME  _ ARR _ arith { fun($1. $3) }
-    > arith _ ADD _ arith { add($1; $3) } %left
-    | arith _ SUB _ arith { sub($1; $3) } %left
-    > arith _ MUL _ arith { mul($1; $3) } %left
-    | arith _ DIV _ arith { div($1; $3) } %left
-    // > LPAREN arith RPAREN { $2          }
-    > NAME                { var($1)     }
-  |}
-;;
+let abstractSyntax = LanguageInteger.abstractSyntax;;
+let concreteSyntax = LanguageInteger.concreteSyntax;;
 
 let concreteSyntax' = {|
 TRUE     := "true"

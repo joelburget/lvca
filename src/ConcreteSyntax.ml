@@ -241,6 +241,16 @@ let get_operator_match
   in operator_match_pattern
 ;;
 
+let array_get : string -> 'a array -> int -> 'a
+  = fun msg arr i -> arr
+    |. Belt.Array.get i
+    |> get_option' (fun () -> Printf.sprintf
+      "failed array get in %s: index %n, length %n"
+      msg
+      i
+      (Belt.Array.length arr)
+    )
+
 (* Convert a concrete tree to an AST. We ignore trivia. *)
 let rec tree_to_ast
   :  ConcreteSyntaxDescription.t
@@ -261,23 +271,40 @@ and go_op_match_term
   -> formatted_capture array
   -> operator_match_pattern
   -> Nominal.term
-  = fun rules children op_match_pat -> match op_match_pat with
+  = fun rules children op_match_pat ->
+    match op_match_pat with
     | OperatorPattern ("var", [NumberedScopePattern([], SingleCapturePattern n)])
-    -> (match children.(n - 1) with
+    -> Printf.printf "go_op_match_term var(%n)\n" n;
+      (match array_get "go_op_match_term 1" children (n - 1) with
       | NonterminalCapture _ -> failwith "TODO: error"
       | TerminalCapture { content } -> Var content
     )
-    | OperatorPattern ("var", _) -> failwith "TODO: error"
+    | OperatorPattern ("integer", [NumberedScopePattern([], SingleCapturePattern n)])
+    -> (match array_get "go_op_match_term 2" children (n - 1) with
+      | NonterminalCapture _ -> failwith "TODO: error"
+      | TerminalCapture { content }
+      -> Primitive (PrimInteger (Bigint.of_string content))
+    )
+    | OperatorPattern ("var", _)
+    | OperatorPattern ("integer", _)
+    -> failwith "TODO: error"
     | OperatorPattern (name, scope_pats)
     -> Operator
       ( name
       , Belt.List.map scope_pats (go_numbered_scope_term rules children)
       )
     | SingleCapturePattern n
-    -> (match children.(n - 1) with
+    -> (match array_get "go_op_match_term 3" children (n - 1) with
       | NonterminalCapture tree -> tree_to_ast rules tree
-      | TerminalCapture { content } -> failwith (Printf.sprintf (* TODO: error *)
-        "go_op_match_term: Unexpectedly received a terminal when a nonterminal child was expected: %n -> %s" n content
+      | TerminalCapture { content } ->
+        Printf.printf "children: [%s]\n" (children
+          |. Belt.Array.map string_of_formatted_capture
+          |. Js.Array2.joinWith "; "
+        );
+        failwith (Printf.sprintf (* TODO: error *)
+        "go_op_match_term: Single capture pattern unexpectedly received a \
+        terminal when a nonterminal child was expected: child %n -> \"%s\""
+        n content
       )
     )
 
@@ -288,10 +315,12 @@ and go_numbered_scope_term
   -> Nominal.scope
   = fun rules children (NumberedScopePattern (cap_nums, op_match_pat)) -> Scope
     ( cap_nums
-      |. Belt.List.map (fun n -> match children.(n - 1) with
+      |. Belt.List.map (fun n ->
+        match array_get "go_numbered_scope_term" children (n - 1) with
         | NonterminalCapture tree -> tree_to_pattern rules tree
         | TerminalCapture { content } -> failwith (Printf.sprintf (* TODO: error *)
-        "go_numbered_scope_term: Unexpectedly received a terminal when a nonterminal child was expected: %n -> %s" n content
+        "go_numbered_scope_term: Unexpectedly received a terminal when a \
+        nonterminal child was expected: child %n -> \"%s\"" n content
       )
       )
     , go_op_match_term rules children op_match_pat
@@ -318,7 +347,7 @@ and go_op_match_pattern
   -> Pattern.t
   = fun rules children op_match_pat -> match op_match_pat with
     | OperatorPattern ("var", [NumberedScopePattern([], SingleCapturePattern n)])
-    -> (match children.(n - 1) with
+    -> (match array_get "go_op_match_pattern 1" children (n - 1) with
       | NonterminalCapture _ -> failwith "TODO: error"
       | TerminalCapture { content } -> Var content
     )
@@ -329,10 +358,11 @@ and go_op_match_pattern
       , Belt.List.map scope_pats (go_numbered_scope_pattern rules children)
       )
     | SingleCapturePattern n
-    -> (match children.(n - 1) with
+    -> (match array_get "go_op_match_pattern 2" children (n - 1) with
       | NonterminalCapture tree -> tree_to_pattern rules tree
       | TerminalCapture { content } -> failwith (Printf.sprintf (* TODO: error *)
-        "go_op_match_pattern: Unexpectedly received a terminal when a nonterminal child was expected: %n -> %s" n content
+        "go_op_match_pattern: Unexpectedly received a terminal when a \
+        nonterminal child was expected: child %n -> \"%s\"" n content
       )
     )
 
@@ -395,6 +425,7 @@ let rewrite_tokens
     (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
 
     let lowered_nt_name = Printf.sprintf "%s_%n" nt_name (level - 1) in
+    Printf.printf "lowered_nt_name: %s\n" lowered_nt_name;
     let tokens' = Belt.List.keep tokens
       (fun tok -> not (is_formatting_token tok))
     in
@@ -581,16 +612,11 @@ let to_grammar
   in
 
   let desugared_nts : nonterminal_operators
-    = nonterminal_rules_desugared
-    (* TODO: don't convert to list *)
-    |. Belt.List.fromArray
-    |. Util.map_unions
+    = Util.array_map_unions nonterminal_rules_desugared
   in
 
   let nonterminal_renamings : string option Belt.Map.String.t
-    = nonterminal_renamings
-      |. Belt.List.fromArray
-      |> Util.map_unions
+    = Util.array_map_unions nonterminal_renamings
   in
 
   Printf.printf "desugared:\n\n%s\n" (nonterminal_rules_desugared
@@ -749,9 +775,11 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
       match renaming with
         | None -> (match children' with
           | [| NonterminalCapture child |]
-          -> Printf.printf "tree_of_parse_result: unwrapping child %s\n" nt_name;
+          -> (*
+             Printf.printf "tree_of_parse_result: unwrapping child %s\n" nt_name;
              Printf.printf "child tree_info: %s, %n\n"
                (fst child.tree_info) (snd child.tree_info);
+               *)
             child
           | _ -> invariant_violation (Printf.sprintf "When translating a \
           synthetic nonterminal (%s) parse result to a tree, expected one \
@@ -759,8 +787,10 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
           nt_name (Belt.Array.length children'))
         )
         | Some nt_name' ->
-          let old_name, op_no = tree_info in
+          let _old_name, op_no = tree_info in
+            (*
           Printf.printf "renaming %s -> %s (%n)\n" old_name nt_name' op_no;
+          *)
           (match op_no, children' with
             | -1, [| NonterminalCapture child |] -> child
             | -1, _ -> failwith "TODO: error"

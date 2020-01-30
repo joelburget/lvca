@@ -7,31 +7,28 @@ module Parseable_term' = ParseStatus.Make(Parsing.Parseable_term)
 let can_parse_abstract language = fun () ->
   let _, language = Parseable_abstract_syntax'.parse language in
   match language with
-    | Belt.Result.Ok _ -> pass
+    | Ok _ -> pass
     | Error msg -> fail msg
 
 let can_parse_concrete language = fun () ->
   let _, concrete = Parseable_concrete.parse language in
   match concrete with
-    | Belt.Result.Ok _ -> pass
+    | Ok _ -> pass
     | Error msg -> fail msg
 
 let parses_to abstract_lang concrete_lang root str expected_str = fun () ->
   match ConcreteSyntax.parse concrete_lang root str with
     | Error msg -> fail msg
-    | Ok tree ->
-      let ast_opt = ConcreteSyntax.to_ast concrete_lang tree
-      in
-      match ast_opt with
-        | Error msg -> fail msg
-        | Ok ast -> match Parseable_term'.parse expected_str with
-          | _, Belt.Result.Error msg -> fail msg
-          | _, Ok expected_ast -> expect ast |> toEqual expected_ast
+    | Ok tree -> match ConcreteSyntax.to_ast concrete_lang tree with
+      | Error msg -> fail msg
+      | Ok ast -> match Parseable_term'.parse expected_str with
+        | _, Error msg -> fail msg
+        | _, Ok expected_ast -> expect ast |> toEqual expected_ast
 
 let eval_str evaluator str =
   let _, tm = Parseable_term'.parse str in
   match tm with
-    | Belt.Result.Ok tm' -> evaluator tm'
+    | Ok tm' -> evaluator tm'
     | Error err -> Belt.Result.Error err
 
 let evaluates_to evaluator str expected =
@@ -42,11 +39,13 @@ let () = describe "Integer Language" (fun () ->
   test "parse abstract syntax" (can_parse_abstract abstractSyntax);
   test "parse concrete syntax" (can_parse_concrete concreteSyntax);
 
-  let evaluates_to' str i = evaluates_to LanguageInteger.eval_tm str
-    (Binding.Nominal.Primitive (PrimInteger (Bigint.of_int i)))
+  let evaluates_to' str i = test str (fun () ->
+    evaluates_to LanguageInteger.eval_tm str
+      (Binding.Nominal.Primitive (PrimInteger (Bigint.of_int i)))
+  )
   in
 
-  testAll "evaluate" [
+  describe "evaluate" (fun () ->
     evaluates_to' "add(1; 2)" 3;
     evaluates_to' "add(1; 2)" 3;
     evaluates_to' "sub(1; 2)" (-1);
@@ -56,7 +55,7 @@ let () = describe "Integer Language" (fun () ->
     evaluates_to' "neg(-101)" 101;
     evaluates_to' "min(1; 2)" 1;
     evaluates_to' "max(1; 2)" 2;
-  ] Util.id;
+  );
 
   let abstract = match Parseable_abstract_syntax'.parse abstractSyntax with
     | _, Belt.Result.Ok abstract -> abstract
@@ -68,11 +67,18 @@ let () = describe "Integer Language" (fun () ->
   in
   let concrete = ConcreteSyntax.make_concrete_description terminal_rules sort_rules in
 
-  test "parses to ..." (parses_to abstract.language concrete "tm" {|1|} {|lit(1))|});
-  (*
-  test "parses to ..." (parses_to abstract.language concrete "tm" {|-1|} {|neg(1))|});
-  test "parses to ..." (parses_to abstract.language concrete "tm" {||-1||} {|abs(neg(1)))|});
-  *)
+  test "parses to ..." (parses_to abstract.language concrete "tm"
+    "1" {|lit(1)|});
+  test "parses to ..." (parses_to abstract.language concrete "tm"
+    "max 1 1" {|max(lit(1); lit(1))|});
+  test "parses to ..." (parses_to abstract.language concrete "tm"
+    "1 - 1" {|sub(lit(1); lit(1))|});
+  test "parses to ..." (parses_to abstract.language concrete "tm"
+    "|1|" {|abs(lit(1))|});
+  test "parses to ..." (parses_to abstract.language concrete "tm"
+    "-1" {|neg(lit(1))|});
+  test "parses to ..." (parses_to abstract.language concrete "tm"
+    "|-1|" {|abs(neg(lit(1)))|});
 )
 
 let () = describe "JSON Language" (fun () ->

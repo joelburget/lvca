@@ -139,6 +139,9 @@ let map_unions maps = fold_right map_union maps Belt.Map.String.empty
 
 let set_unions sets = Belt.Set.String.(fold_right union sets empty)
 
+let array_map_unions : 'a Belt.Map.String.t array -> 'a Belt.Map.String.t
+  = fun maps -> Belt.Array.reduce maps Belt.Map.String.empty map_union
+
 let rec fold_left
   : ('b -> 'a -> 'b) -> 'b -> 'a list -> 'b
   = fun f b lst ->

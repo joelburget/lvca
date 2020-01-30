@@ -109,6 +109,7 @@ let rec to_string' : int -> regex -> string
     | ReString str -> Js.String.(str
                                  |> replaceByRe [%re {|/\\/g|}] {|\\|}
                                  |> replaceByRe [%re {|/\//g|}] {|\/|}
+                                 |> replaceByRe [%re {|/\|/g|}] {|\||}
                                  |> replaceByRe [%re {|/\+/g|}] {|\+|}
                                  |> replaceByRe [%re {|/\*/g|}] {|\*|}
                                  |> replaceByRe [%re {|/\?/g|}] {|\?|}
