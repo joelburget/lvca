@@ -346,9 +346,10 @@ module SyntaxDebugger = {
 module ConcreteSyntaxEditor = {
   type state =
     { concreteInput : string,
-      showGrammarPane : bool,
       debuggerContents : string,
+      showGrammarPane : bool,
       showDebugger : bool,
+      showDerivedGrammar : bool,
       syntaxDesc : option(ConcreteSyntaxDescription.t),
       startSort : string,
     };
@@ -356,6 +357,7 @@ module ConcreteSyntaxEditor = {
   type action =
     | DefinitionUpdate(string)
     | SelectStartSort(string)
+    | ToggleDerivedGrammar
     | ToggleGrammarPane
     | ToggleDebugger
     ;
@@ -366,6 +368,8 @@ module ConcreteSyntaxEditor = {
 
     let (state, dispatch) = React.useReducer(
       (startState, action) => switch (action) {
+        | ToggleDerivedGrammar
+        => {...startState, showDerivedGrammar: !startState.showDerivedGrammar}
         | ToggleGrammarPane
         => {...startState, showGrammarPane: !startState.showGrammarPane}
         | ToggleDebugger
@@ -376,14 +380,16 @@ module ConcreteSyntaxEditor = {
         => {...startState, startSort}
       },
       { concreteInput: LanguageJson.concreteSyntax,
+        showDerivedGrammar: false,
         showGrammarPane: false,
-        debuggerContents: "",
         showDebugger: false,
+        debuggerContents: "",
         startSort: sortNames[0],
         syntaxDesc: None,
       }
     );
-    let { concreteInput, showGrammarPane, showDebugger, startSort } = state;
+    let { concreteInput, showDerivedGrammar, showGrammarPane, showDebugger,
+      startSort } = state;
 
     module Parseable_concrete =
       ParseStatus.Make(Parsing.Parseable_concrete_syntax);
@@ -405,13 +411,12 @@ module ConcreteSyntaxEditor = {
       [|concreteInput|]
     );
 
-    let getGrammarPaneAndDebugger = (concrete, showGrammarPane, showDebugger) => {
+    let getGrammarPaneAndDebugger = (concrete, showDerivedGrammar, showGrammarPane, showDebugger) => {
       let (grammar, _, _) = ConcreteSyntax.to_grammar(concrete, startSort);
       let module Lalr = LalrParsing.Lalr1({ let grammar = grammar });
       let module LrTables' = LrTables(LrParsing.Lr0({ let grammar = grammar }));
 
-      let states = Lalr.states
-        |. Belt.Array.map(state => {
+      let states = Lalr.states |. Belt.Array.map(state => {
           let kernel_items = Lalr.state_to_lookahead_item_set(state);
           let { LalrParsing.nonkernel_items }
             = Lalr.lr1_closure'(kernel_items);
@@ -420,8 +425,7 @@ module ConcreteSyntaxEditor = {
           let nonkernel_repr
             = Lalr.string_of_lookahead_item_set(nonkernel_items);
           (state, kernel_repr, nonkernel_repr)
-        })
-        ;
+        });
 
       let grammarPane = if (showGrammarPane) {
         let action_table = Lalr.full_lalr1_action_table(());
@@ -457,17 +461,28 @@ module ConcreteSyntaxEditor = {
       (grammarPane, debugger)
     };
 
-    let (grammarPane, debugger) = switch (showGrammarPane, showDebugger, concrete) {
-      | (false, false, _) => (ReasonReact.null, ReasonReact.null)
-      | (_, _, Ok(concrete)) => {
-        try (getGrammarPaneAndDebugger(concrete, showGrammarPane, showDebugger)) {
+    let (derivedGrammar, grammarPane, debugger) = switch (showDerivedGrammar, showGrammarPane, showDebugger, concrete) {
+      | (false, false, false, _) => (ReasonReact.null, ReasonReact.null, ReasonReact.null)
+      | (_, _, _, Ok(concrete)) => {
+
+        let derivedGrammar = if (showDerivedGrammar) {
+          let derivedRules = ConcreteSyntax.derived_nonterminal_rules(concrete.nonterminal_rules);
+          let str = ConcreteSyntax.string_of_derived_rules(derivedRules);
+          <pre> (React.string(str)) </pre>
+        } else {
+          ReasonReact.null;
+        }
+
+        let (x, y) = try (getGrammarPaneAndDebugger(concrete, showDerivedGrammar, showGrammarPane, showDebugger)) {
           | InvariantViolation(msg) =>
             (<div>{React.string(msg)}</div>, <div>{React.string(msg)}</div>)
         };
+
+        (derivedGrammar, x, y)
       }
 
-      /* Just show one error message, even if both are supposed to be shown */
-      | (_, _, Error(err)) => (React.string(err), ReasonReact.null)
+      /* Just show one error message, even if multiple are supposed to be shown */
+      | (_, _, _, Error(err)) => (React.string(err), ReasonReact.null, ReasonReact.null)
     };
 
     let sortOptions = ReactDOMRe.createDOMElementVariadic(
@@ -494,6 +509,11 @@ module ConcreteSyntaxEditor = {
           options=CodeMirror.options(~mode="default", ())
         />
         (sortOptions)
+        <button onClick=(_ => dispatch(ToggleDerivedGrammar))>
+          {React.string(showDerivedGrammar ?
+                        "hide derived grammar" :
+                        "show derived grammar")}
+        </button>
         <button onClick=(_ => dispatch(ToggleGrammarPane))>
           {React.string(showGrammarPane ?
                         "hide grammar tables" :
@@ -503,6 +523,7 @@ module ConcreteSyntaxEditor = {
           {React.string(showDebugger ?  "hide debugger" : "show debugger")}
         </button>
       </div>
+      {derivedGrammar}
       {debugger}
       {grammarPane}
     </div>

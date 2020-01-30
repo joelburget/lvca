@@ -108,3 +108,12 @@ val make_concrete_description
   :  ConcreteSyntaxDescription.pre_terminal_rule list
   -> ConcreteSyntaxDescription.nonterminal_rule list
   -> ConcreteSyntaxDescription.t
+
+type nonterminal_operators =
+  (int option * ConcreteSyntaxDescription.operator_match) list Belt.Map.String.t
+
+val derived_nonterminal_rules
+  : ConcreteSyntaxDescription.nonterminal_rules -> nonterminal_operators array
+
+val string_of_nonterminal_operators : nonterminal_operators -> string
+val string_of_derived_rules : nonterminal_operators array -> string

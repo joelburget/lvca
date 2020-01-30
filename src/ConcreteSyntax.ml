@@ -99,6 +99,9 @@ let check_operator_match_validity
  * 6. Only binary operators (`tm OP tm`) can have a left or right
  *    associativity.
  * 7. All operators of the same priority must have the same fixity.
+ * 8. TODO: There can be no fixity at the highest precedence. It's impossible
+ *    to raise the precedence of one side, we need some allowance for
+ *    parentheses.
  *
  * Examples:
  * * FOO bar BAZ { op($1; $2; $3) } valid
@@ -424,8 +427,9 @@ let rewrite_tokens
     level
     (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
 
-    let lowered_nt_name = Printf.sprintf "%s_%n" nt_name (level - 1) in
-    Printf.printf "lowered_nt_name: %s\n" lowered_nt_name;
+    let raised_nt_name = Printf.sprintf "%s_%n" nt_name (level + 1) in
+    let this_level_nt_name = Printf.sprintf "%s_%n" nt_name level in
+    Printf.printf "raised_nt_name: %s\n" raised_nt_name;
     let tokens' = Belt.List.keep tokens
       (fun tok -> not (is_formatting_token tok))
     in
@@ -435,18 +439,17 @@ let rewrite_tokens
         when name1 = nt_name && name2 = nt_name
         -> (match fixity with
         | Infixl
-        -> (* Lower the precedence of the right child by moving to the following
-            * (desugared) nonterminal, which corresponds to the next precedence
-            * level in the nonterminal we're currently transforming. *)
-           [ NonterminalName nt_name;
+        -> (* Require a higher precedence left child (operations at this level
+              should appear to the right) *)
+           [ NonterminalName raised_nt_name;
              t;
-             NonterminalName lowered_nt_name;
+             NonterminalName this_level_nt_name;
            ]
 
         | Infixr
-        -> [ NonterminalName lowered_nt_name;
+        -> [ NonterminalName this_level_nt_name;
              t;
-             NonterminalName nt_name;
+             NonterminalName raised_nt_name;
            ]
 
         (* Don't adjust nofix *)
@@ -462,7 +465,7 @@ let rewrite_tokens
       | _ -> tokens'
     in
 
-    (OperatorMatch { tokens = tokens''; operator_match_pattern; fixity = Nofix })
+    OperatorMatch { tokens = tokens''; operator_match_pattern; fixity = Nofix }
 
 (** An operator match that just defers to a nonterminal / precedence *)
 let operator_match_nt_precedence : string -> int -> operator_match
@@ -544,23 +547,23 @@ let desugar_nonterminal
         )
         in
 
-        (* If this is not the lowest-precedence level, then there is a
-         * lower-precedence level to fall back to. *)
-        let generated_rules' = if prec_num = 1
+        (* If this is not the highest-precedence level, then there is a
+         * higher-precedence level to fall back to. *)
+        let generated_rules' = if prec_num = num_levels
           then generated_rules
           else Util.snoc generated_rules
-            (None, operator_match_nt_precedence nonterminal_name (prec_num - 1))
+            (None, operator_match_nt_precedence nonterminal_name (prec_num + 1))
         in
 
         generated_name, generated_rules'
       )
       in
 
-      (* A rule pointing from the original name to the rewritten highest
+      (* A rule pointing from the original name to the rewritten lowest
        * precedence, so we don't have to redirect all rules already pointing to
        * this nonterminal *)
       let indirect_nt =
-        [ None, operator_match_nt_precedence nonterminal_name num_levels ]
+        [ None, operator_match_nt_precedence nonterminal_name 1 ]
       in
 
       level_nts
@@ -575,6 +578,25 @@ let desugar_nonterminal
         |. Belt.Array.map (fun (name, _rule) -> name, Some nonterminal_name)
         |. Belt.Map.String.fromArray
         |. Belt.Map.String.set nonterminal_name None
+
+(** raises: TODO *)
+let derived_nonterminal_rules : nonterminal_rules -> nonterminal_operators array
+  = fun nonterminal_rules ->
+  let taken_names : Belt.Set.String.t
+    = nonterminal_rules
+      |. Belt.Map.String.keysToArray
+      |. Belt.Set.String.fromArray
+  in
+  let nonterminal_rules_desugared, _nonterminal_renamings = nonterminal_rules
+    |. Belt.Map.String.valuesToArray
+    |. Belt.Array.map (desugar_nonterminal taken_names)
+    |. Belt.Array.unzip
+  in nonterminal_rules_desugared
+
+let string_of_derived_rules : nonterminal_operators array -> string
+  = fun nonterminal_operators -> nonterminal_operators
+    |. Belt.Array.map string_of_nonterminal_operators
+    |. Js.Array2.joinWith "\n\n"
 
 (** Produce an augmented grammar *)
 let to_grammar
@@ -619,10 +641,8 @@ let to_grammar
     = Util.array_map_unions nonterminal_renamings
   in
 
-  Printf.printf "desugared:\n\n%s\n" (nonterminal_rules_desugared
-    |. Belt.Array.map string_of_nonterminal_operators
-    |. Js.Array2.joinWith "\n\n"
-  );
+  Printf.printf "desugared:\n\n%s\n"
+    (string_of_derived_rules nonterminal_rules_desugared);
 
   let nonterminal_num = ref 0 in
 
