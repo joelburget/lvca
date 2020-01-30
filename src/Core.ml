@@ -1,8 +1,6 @@
 open Types
 open Binding
 
-let vars_of_pattern, vars_of_patterns = Pattern.(vars_of_pattern, vars_of_patterns)
-let empty_set, set_union = Belt.Set.String.(empty, union)
 let empty_map, fromArray = Belt.Map.String.(empty, fromArray)
 let every, length, map, toArray, zipBy =
   Belt.List.(every, length, map, toArray, zipBy)
@@ -25,11 +23,6 @@ and core_scope = Scope of Pattern.t list * core
 and core_case_scope = CaseScope of BindingAwarePattern.t list * core
 
 type denotation_chart = DenotationChart of (string * core) list
-
-(*
-type located_err = string * DeBruijn.term option
-type 'a translation_result = ('a, located_err) Belt.Result.t
-*)
 
 (** Raised by to_ast when the presence of lambda, let, app, or case make
     the value invalid
