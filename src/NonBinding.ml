@@ -69,3 +69,6 @@ let rec to_nominal tm : Nominal.term =
   | Sequence tms -> Sequence (tms |. BL.map to_nominal)
   | Primitive p -> Primitive p
 ;;
+
+let to_string tm : string
+  = tm |> to_nominal |> Nominal.pp_term'

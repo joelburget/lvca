@@ -112,3 +112,8 @@ let () = describe "Lambda Calculus Language" (fun () ->
   test "parse abstract syntax" (can_parse_abstract LanguageLambda.abstractSyntax);
   test "parse concrete syntax" (can_parse_concrete LanguageLambda.concreteSyntax);
 )
+
+let () = describe "SVG Language" (fun () ->
+  test "parse abstract syntax" (can_parse_abstract LanguageSvg.abstractSyntax);
+  (* test "parse concrete syntax" (can_parse_concrete LanguageSvg.concreteSyntax); *)
+)
