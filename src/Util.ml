@@ -248,3 +248,8 @@ let stringify_list : ('a -> string) -> string -> 'a list -> string =
   fun f sep elems ->
   elems |. Belt.List.toArray |. Belt.Array.map f |. Js.Array2.joinWith sep
 ;;
+
+let get_result : ('a, 'b) Belt.Result.t -> ('b -> 'a) -> 'a
+  = fun result f -> match result with
+    | Ok a -> a
+    | Error b -> f b
