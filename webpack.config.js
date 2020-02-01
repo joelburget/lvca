@@ -7,7 +7,8 @@ module.exports = {
     index: './lib/js/src/Index.bs.js',
     checkingDebugger: './lib/js/src/CheckingDebugger.bs.js',
     debugger: './lib/js/src/Debugger.bs.js',
-    termRender: './lib/js/src/TermRender.bs.js',
+    documentRender: './lib/js/src/DocumentRender.bs.js',
+    svgRender: './lib/js/src/SvgRender.bs.js',
   },
   mode: isProd ? 'production' : 'development',
   output: {
