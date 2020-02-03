@@ -188,6 +188,9 @@ let _ = describe "ConcreteSyntax" (fun () ->
           ]))
       in
 
+      Todo.test "of_ast";
+      Todo.test "to_ast";
+      Todo.test "to_string";
       (*
       testAll "of_ast" [
         (* TODO: should have spaces *)
@@ -260,6 +263,8 @@ let _ = describe "ConcreteSyntax" (fun () ->
 
         );
 
+      Todo.test "round trip tree -> ast -> tree";
+      Todo.test "round trip ast -> tree -> ast";
       (*
       let expect_round_trip_tree tree = expect (tree
           |> to_ast concrete
