@@ -317,13 +317,13 @@ let normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
 
 (* raises: [UserError], [InvariantViolation], [BadRules] *)
 let of_ast
-   : Types.language
+   : Types.sort_defs
   -> ConcreteSyntaxDescription.t
   -> string
   -> int
   -> Binding.Nominal.term
   -> formatted_tree
-  = fun (Language sorts) desc start_nonterminal width tm ->
+  = fun (SortDefs sorts) desc start_nonterminal width tm ->
     let nonterminal_pointer =
       { nonterminals = desc.nonterminal_rules
       ; current_nonterminal = start_nonterminal

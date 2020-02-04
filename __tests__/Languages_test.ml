@@ -16,7 +16,7 @@ let can_parse_concrete language = fun () ->
     | Ok _ -> pass
     | Error msg -> fail msg
 
-let parses_to abstract_lang concrete_lang root str expected_str = fun () ->
+let parses_to concrete_lang root str expected_str = fun () ->
   match ConcreteSyntax.parse concrete_lang root str with
     | Error msg -> fail msg
     | Ok tree -> match ConcreteSyntax.to_ast concrete_lang tree with
@@ -57,27 +57,23 @@ let () = describe "Integer Language" (fun () ->
     evaluates_to' "max(1; 2)" 2;
   );
 
-  let abstract = match Parseable_abstract_syntax'.parse abstractSyntax with
-    | _, Belt.Result.Ok abstract -> abstract
-    | _, Error msg -> failwith msg
-  in
   let terminal_rules, sort_rules = match Parseable_concrete.parse concreteSyntax with
     | _, Belt.Result.Ok rules -> rules
     | _, Error msg -> failwith msg
   in
   let concrete = ConcreteSyntax.make_concrete_description terminal_rules sort_rules in
 
-  test "parses to ..." (parses_to abstract.language concrete "tm"
+  test "parses to ..." (parses_to concrete "tm"
     "1" {|lit(1)|});
-  test "parses to ..." (parses_to abstract.language concrete "tm"
+  test "parses to ..." (parses_to concrete "tm"
     "max 1 1" {|max(lit(1); lit(1))|});
-  test "parses to ..." (parses_to abstract.language concrete "tm"
+  test "parses to ..." (parses_to concrete "tm"
     "1 - 1" {|sub(lit(1); lit(1))|});
-  test "parses to ..." (parses_to abstract.language concrete "tm"
+  test "parses to ..." (parses_to concrete "tm"
     "|1|" {|abs(lit(1))|});
-  test "parses to ..." (parses_to abstract.language concrete "tm"
+  test "parses to ..." (parses_to concrete "tm"
     "-1" {|neg(lit(1))|});
-  test "parses to ..." (parses_to abstract.language concrete "tm"
+  test "parses to ..." (parses_to concrete "tm"
     "|-1|" {|abs(neg(lit(1)))|});
 )
 
@@ -97,9 +93,9 @@ let () = describe "JSON Language" (fun () ->
   in
   let concrete = ConcreteSyntax.make_concrete_description terminal_rules sort_rules in
 
-  test "parses to ..." (parses_to abstract.language concrete "json" {|null|} {|null())|});
-  test "parses to ..." (parses_to abstract.language concrete "json" {|true|} {|bool(true())|});
-  test "parses to ..." (parses_to abstract.language concrete "json" {|"foo"|} {|"foo"|});
+  test "parses to ..." (parses_to concrete "json" {|null|} {|null())|});
+  test "parses to ..." (parses_to concrete "json" {|true|} {|bool(true())|});
+  test "parses to ..." (parses_to concrete "json" {|"foo"|} {|"foo"|});
   *)
 )
 

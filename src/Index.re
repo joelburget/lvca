@@ -27,7 +27,7 @@ let read_and_eval = (abstract_syntax, concrete, statics, dynamics, input)
   : (parse_result, eval_result) => {
     open Core;
 
-    let { Types.imports, language } = abstract_syntax;
+    let { Types.imports, sort_defs } = abstract_syntax;
 
     let (astResult, abtResult) = switch (ConcreteSyntax.parse(concrete, "tm", input)) {
     | Ok(tree)

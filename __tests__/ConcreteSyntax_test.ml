@@ -63,7 +63,7 @@ let _ = describe "ConcreteSyntax" (fun () ->
 
   let arith = Types.SortAp ("arith", [||]) in
   let arith' = Types.FixedValence ([], arith) in
-  let language = Types.(Language (Belt.Map.String.fromArray [|
+  let sort_defs = Types.(SortDefs (Belt.Map.String.fromArray [|
     "arith", SortDef ([], [
       OperatorDef ("mul", Arity ([], [ arith'; arith' ]));
       OperatorDef ("div", Arity ([], [ arith'; arith' ]));
@@ -194,10 +194,10 @@ let _ = describe "ConcreteSyntax" (fun () ->
       (*
       testAll "of_ast" [
         (* TODO: should have spaces *)
-        expect (of_ast language concrete "arith" 80 tree1_ast)
+        expect (of_ast sort_defs concrete "arith" 80 tree1_ast)
           |> toEqual tree1;
         (*
-        expect (of_ast language concrete "arith" 80 tree4_ast)
+        expect (of_ast sort_defs concrete "arith" 80 tree4_ast)
           |> toEqual tree4;
           *)
       ] Util.id;
@@ -268,13 +268,13 @@ let _ = describe "ConcreteSyntax" (fun () ->
       (*
       let expect_round_trip_tree tree = expect (tree
           |> to_ast concrete
-          |. Belt.Result.map (of_ast language concrete "arith" 80)
+          |. Belt.Result.map (of_ast sort_defs concrete "arith" 80)
           |. Belt.Result.getExn
         ) |> toBeEquivalent to_string equivalent tree
       in
 
       let expect_round_trip_ast tm = expect (tm
-          |> of_ast language concrete "arith" 80
+          |> of_ast sort_defs concrete "arith" 80
           |> to_ast concrete
         ) |> toEqual (Ok tm)
       in

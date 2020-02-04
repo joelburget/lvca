@@ -26,22 +26,18 @@ type valence =
       must be of the same sort. *)
 
 (** An arity specifies the arguments to an operator *)
-type arity =
-  | Arity of string list * valence list
+type arity = Arity of string list * valence list
   (** An arity is defined its arity indices and valences. Arity indices are
       variables bound in an arity rule specifying the length of variable-length
       slots. *)
 
-type operatorDef =
-  | OperatorDef of string * arity
+type operatorDef = OperatorDef of string * arity
   (** An operator is defined by its tag and arity *)
 
-type sortDef =
-  | SortDef of string list * operatorDef list
+type sortDef = SortDef of string list * operatorDef list
   (** A sort is defined by a set of variables and a set of operators *)
 
-type language =
-  | Language of sortDef Belt.Map.String.t
+type sort_defs = SortDefs of sortDef Belt.Map.String.t
   (** A language is defined by its sorts *)
 
 type primitive =
@@ -55,7 +51,7 @@ type import =
 
 type abstract_syntax =
   { imports: import list;
-    language: language;
+    sort_defs: sort_defs;
   }
 
 let string_of_primitive = function
@@ -68,7 +64,7 @@ let prim_eq p1 p2 = match (p1, p2) with
   | _                              -> false
 
 let sort_names : abstract_syntax -> Belt.Set.String.t
-  = fun { language = Language sorts } -> sorts
+  = fun { sort_defs = SortDefs sorts } -> sorts
   |. Belt.Map.String.keysToArray
   |. Belt.Set.String.fromArray
 

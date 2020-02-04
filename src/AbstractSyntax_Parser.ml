@@ -510,10 +510,10 @@ module Tables = struct
 # 511 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
         ) = 
 # 75 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.mly"
-  ( let language =
-      Types.Language (Belt.Map.String.fromArray (Belt.List.toArray _2))
+  ( let sort_defs =
+      Types.SortDefs (Belt.Map.String.fromArray (Belt.List.toArray _2))
     in
-    { imports = _1; language }
+    { imports = _1; sort_defs }
   )
 # 519 "/Users/joel/code/lvca-bucklescript/src/AbstractSyntax_Parser.ml"
          in

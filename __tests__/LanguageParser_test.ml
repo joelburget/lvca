@@ -15,7 +15,7 @@ let _ = describe "AbstractSyntax.Parser" (fun () ->
 
   expectParse "bool := true() | false()"
     { imports = [];
-      language = Language (M.fromArray [|
+      sort_defs = SortDefs (M.fromArray [|
         "bool", SortDef
         ([], [
           OperatorDef ("true", Arity ([], []));
@@ -39,7 +39,7 @@ let _ = describe "AbstractSyntax.Parser" (fun () ->
     | lam(tm. tm)
   |}
     { imports = [];
-      language = Language (M.fromArray [|
+      sort_defs = SortDefs (M.fromArray [|
         "ty", SortDef
         ([], [
           OperatorDef ("bool", Arity ([], []));

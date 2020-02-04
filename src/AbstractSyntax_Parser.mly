@@ -72,8 +72,8 @@ import:
 
 language_def:
   | list(import) nonempty_list(sort_def) EOF
-  { let language =
-      Types.Language (Belt.Map.String.fromArray (Belt.List.toArray $2))
+  { let sort_defs =
+      Types.SortDefs (Belt.Map.String.fromArray (Belt.List.toArray $2))
     in
-    { imports = $1; language }
+    { imports = $1; sort_defs }
   }
