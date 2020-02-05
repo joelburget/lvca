@@ -18,6 +18,12 @@ type nonterminal_token =
   | OpenBox of (box_type * int list) option
   | CloseBox
 
+(** A binder pattern can match either a variable `var($n)` (fixed valence) or a
+ * pattern `$n` (variable valence) *)
+type binder_capture =
+  | VarCapture of int
+  | PatternCapture of int
+
 (** An operator match pattern appears in the right-hand-side of a concrete
     syntax declaration, to show how to parse and pretty-print operators. They
     either match an operator, eg `{ add($1; $3) }` (for tokens `expr PLUS
@@ -28,10 +34,15 @@ type operator_match_pattern =
   | OperatorPattern of string * numbered_scope_pattern list
   | SingleCapturePattern of capture_number
 
-(** A term pattern with numbered holes for binder names and subterms, eg
+(** A term pattern with numbered holes in binder patterns and subterms, eg
     `$2. $4` (for tokens `FUN name ARR expr`) *)
 and numbered_scope_pattern =
-  | NumberedScopePattern of capture_number list * operator_match_pattern
+  NumberedScopePattern of binder_capture list * operator_match_pattern
+
+let string_of_binder_capture : binder_capture -> string
+  = function
+    | VarCapture n -> Printf.sprintf "var($%n)" n
+    | PatternCapture n -> Printf.sprintf "$%n" n
 
 let rec string_of_operator_match_pattern : operator_match_pattern -> string
   = function
@@ -43,9 +54,9 @@ let rec string_of_operator_match_pattern : operator_match_pattern -> string
   | SingleCapturePattern num -> "$" ^ string_of_int num
 
 and string_of_numbered_scope_pattern : numbered_scope_pattern -> string =
-  fun (NumberedScopePattern (binders, body)) ->
-  Belt.List.toArray binders
-  |. Belt.Array.map (fun n -> "$" ^ string_of_int n)
+  fun (NumberedScopePattern (patterns, body)) ->
+  Belt.List.toArray patterns
+  |. Belt.Array.map string_of_binder_capture
   |. Array.append [| string_of_operator_match_pattern body |]
   |. Js.Array2.joinWith ". "
 ;;

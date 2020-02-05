@@ -58,7 +58,11 @@ and scope_token_usage : numbered_scope_pattern -> tokens_info
   = fun (NumberedScopePattern (binder_captures, body_capture)) ->
   let x = token_usage body_capture in
   let y = binder_captures
-    |. Belt.List.reduce empty_tokens_info (fun accum tok ->
+    |. Belt.List.reduce empty_tokens_info (fun accum capture ->
+      let tok = match capture with
+        | VarCapture n -> n
+        | PatternCapture n -> n
+      in
       accumulate_tokens
         accum
         { captured_tokens = SI.fromArray [| tok |]; repeated_tokens = SI.empty })
@@ -318,7 +322,11 @@ and go_numbered_scope_term
   -> Nominal.scope
   = fun rules children (NumberedScopePattern (cap_nums, op_match_pat)) -> Scope
     ( cap_nums
-      |. Belt.List.map (fun n ->
+      |. Belt.List.map (fun capture ->
+        let n = match capture with
+          | VarCapture n -> n
+          | PatternCapture n -> n
+        in
         match array_get "go_numbered_scope_term" children (n - 1) with
         | NonterminalCapture tree -> tree_to_pattern rules tree
         | TerminalCapture { content } -> failwith (Printf.sprintf (* TODO: error *)

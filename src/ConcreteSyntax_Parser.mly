@@ -173,10 +173,15 @@ operator_match_pattern:
 term_scope_pattern:
   separated_nonempty_list(DOT, operator_match_pattern)
   { let capture_nums, body = Util.unsnoc $1 in
+
     let capture_nums' = capture_nums
       |. Belt.List.map (function
-        | SingleCapturePattern n -> n
-        | OperatorPattern _ -> failwith "TODO: message 1")
+        | SingleCapturePattern n -> PatternCapture n
+        | OperatorPattern
+          ("var", [NumberedScopePattern ([], SingleCapturePattern n)])
+        -> VarCapture n
+        | OperatorPattern _ -> failwith "TODO: message 1"
+      )
     in
 
     NumberedScopePattern (capture_nums', body)

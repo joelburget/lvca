@@ -191,6 +191,52 @@ let string_of_op_match_line'
     (string_of_tokens tokens)
     (string_of_numbered_scope_pattern op_match_pat)
 
+let rec get_subpatterns
+  :  nonterminal_token list
+  -> nonterminal_pointer
+  -> operator_match_pattern
+  -> Pattern.t
+  -> subpattern_result Belt.Map.Int.t
+  = fun tokens nonterminal_pointer op_match_pat pat -> match op_match_pat, pat with
+  | SingleCapturePattern num, _
+  -> let tok = tokens
+       |> map_index_tokens
+       |. Belt.Map.Int.get num
+       (* TODO: change to InvariantViolation if we validate this *)
+       |> Util.get_option (UserError (Printf.sprintf
+         "Couldn't find token $%n in tokens: %s"
+         num
+         (string_of_op_match_line tokens op_match_pat)
+       ))
+     in
+     let nt_name = match tok with
+       | NonterminalName nt_name -> nt_name
+       | TerminalName t_name -> raise (UserError (Printf.sprintf
+         "Token $%n captures a nonterminal (%s) directly, but only \
+          nonterminals can be captured and put in an AST: %s"
+         num t_name (string_of_op_match_line tokens op_match_pat)
+       ))
+       | Underscore _ | OpenBox _ | CloseBox
+       -> invariant_violation "boxes and underscores are not indexed"
+     in
+     let nonterminal_pointer' = move_to nonterminal_pointer nt_name in
+     let capture = CapturedPattern
+       (current_sort nonterminal_pointer, nonterminal_pointer', pat)
+     in
+     Belt.Map.Int.fromArray [| num, capture |]
+  | OperatorPattern (pat_op_name, body_pats), Operator (op_name, body_scopes)
+  -> if pat_op_name = op_name && Belt.List.(length body_pats = length body_scopes)
+     then body_pats
+       |. Belt.List.zipBy body_scopes
+         (fun (NumberedScopePattern (caps, body_pat)) ->
+           if Belt.List.length caps > 0 then failwith "TODO: error 6";
+           get_subpatterns tokens nonterminal_pointer body_pat)
+       |> Util.int_map_unions
+     else raise (NoMatch
+       "pattern and operator don't match, either in operator name or subterms")
+  | OperatorPattern _, _
+  -> raise (NoMatch "operator pattern and value don't match")
+
 (**
  * Retrieve all the numbered subterms / binders for a term pattern template (eg
  * `foo($1. bar($2); $3)`). Given the term `foo(x. bar(baz()); y)`, this returns
@@ -287,26 +333,30 @@ and get_scope_subterms
   -> Binding.Nominal.scope
   -> subterm_result Belt.Map.Int.t
   = fun tokens nonterminal_pointer
-    (NumberedScopePattern (binder_nums, body_pat) as ns_pat) (Scope (binders, body)) ->
+    (NumberedScopePattern (numbered_patterns, body_pat) as ns_pat)
+    (Scope (term_patterns, body)) ->
       (*
     Printf.printf "trying to match %n / %n binders\n"
-      (Belt.List.length binder_nums)
-      (Belt.List.length binders) ;
+      (Belt.List.length numbered_patterns)
+      (Belt.List.length term_patterns) ;
       *)
-    if Belt.List.(length binder_nums != length binders)
+    if Belt.List.(length numbered_patterns != length term_patterns)
     then raise
-      (NoMatch "numbered scope pattern and term scope are of different arity")
+      (NoMatch "numbered scope pattern and term scope have different arity")
     else
-      let results1 = binder_nums
-        (* TODO: should be patterns coming in on lhs *)
-        |. Belt.List.zipBy binders (fun num pat ->
+      let pattern_bindings = numbered_patterns
+        |. Belt.List.zipBy term_patterns (fun numbered_pat term_pat ->
+          let captured_token_num = match numbered_pat with
+            | VarCapture num
+            | PatternCapture num -> num
+          in
           let tok = tokens
             |> map_index_tokens
-            |. Belt.Map.Int.get num
+            |. Belt.Map.Int.get captured_token_num
             (* TODO: change to InvariantViolation if we validate this *)
             |> Util.get_option (UserError (Printf.sprintf
               "Couldn't find token $%n in tokens: %s"
-              num
+              captured_token_num
               (string_of_op_match_line' tokens ns_pat)
             ))
           in
@@ -315,24 +365,25 @@ and get_scope_subterms
             | TerminalName t_name -> raise (UserError (Printf.sprintf
               "Token $%n captures a nonterminal (%s) directly, but only \
                nonterminals can be captured and put in an AST: %s"
-              num t_name (string_of_op_match_line' tokens ns_pat)
+              captured_token_num t_name (string_of_op_match_line' tokens ns_pat)
             ))
             | Underscore _ | OpenBox _ | CloseBox
             -> invariant_violation "boxes and underscores are not indexed"
           in
           let nonterminal_pointer' = move_to nonterminal_pointer nt_name in
           let capture = CapturedBinder
-            (current_sort nonterminal_pointer, nonterminal_pointer', pat)
+            (current_sort nonterminal_pointer, nonterminal_pointer', term_pat)
           in
-          num, capture
+          captured_token_num, capture
         )
         |. Belt.List.toArray
         |> Belt.Map.Int.fromArray
       in
       (* Printf.printf "trying to match body\n"; *)
-      let results2 = get_subterms tokens nonterminal_pointer body_pat body in
+      let body_bindings = get_subterms tokens nonterminal_pointer body_pat body in
       (* Printf.printf "matched body\n"; *)
-      Belt.Map.Int.merge results1 results2 (fun k v1 v2 -> match v1, v2 with
+      Belt.Map.Int.merge pattern_bindings body_bindings (fun k v1 v2 ->
+        match v1, v2 with
         | Some _, Some _ -> raise
           (UserError (Printf.sprintf "duplicate token capture: $%n" k))
         | Some v, None
@@ -340,52 +391,6 @@ and get_scope_subterms
         | None, None -> failwith
           "invariant violation: no value on either side of a union"
       )
-
-let rec get_subpatterns
-  :  nonterminal_token list
-  -> nonterminal_pointer
-  -> operator_match_pattern
-  -> Pattern.t
-  -> subpattern_result Belt.Map.Int.t
-  = fun tokens nonterminal_pointer op_match_pat pat -> match op_match_pat, pat with
-  | SingleCapturePattern num, _
-  -> let tok = tokens
-       |> map_index_tokens
-       |. Belt.Map.Int.get num
-       (* TODO: change to InvariantViolation if we validate this *)
-       |> Util.get_option (UserError (Printf.sprintf
-         "Couldn't find token $%n in tokens: %s"
-         num
-         (string_of_op_match_line tokens op_match_pat)
-       ))
-     in
-     let nt_name = match tok with
-       | NonterminalName nt_name -> nt_name
-       | TerminalName t_name -> raise (UserError (Printf.sprintf
-         "Token $%n captures a nonterminal (%s) directly, but only \
-          nonterminals can be captured and put in an AST: %s"
-         num t_name (string_of_op_match_line tokens op_match_pat)
-       ))
-       | Underscore _ | OpenBox _ | CloseBox
-       -> invariant_violation "boxes and underscores are not indexed"
-     in
-     let nonterminal_pointer' = move_to nonterminal_pointer nt_name in
-     let capture = CapturedPattern
-       (current_sort nonterminal_pointer, nonterminal_pointer', pat)
-     in
-     Belt.Map.Int.fromArray [| num, capture |]
-  | OperatorPattern (pat_op_name, body_pats), Operator (op_name, body_scopes)
-  -> if pat_op_name = op_name && Belt.List.(length body_pats = length body_scopes)
-     then body_pats
-       |. Belt.List.zipBy body_scopes
-         (fun (NumberedScopePattern (caps, body_pat)) ->
-           if Belt.List.length caps > 0 then failwith "TODO: error 6";
-           get_subpatterns tokens nonterminal_pointer body_pat)
-       |> Util.int_map_unions
-     else raise (NoMatch
-       "pattern and operator don't match, either in operator name or subterms")
-  | OperatorPattern _, _
-  -> raise (NoMatch "operator pattern and value don't match")
 
 (** Check that nonterminal mentioned in tokens appears in the subterm mapping.
  *)
@@ -468,7 +473,9 @@ let find_pat_operator_match
   :  nonterminal_pointer
   -> operator_match list list
   -> Pattern.t
-  -> int * operator_match_pattern * nonterminal_token list * subpattern_result Belt.Map.Int.t
+  -> int
+   * operator_match_pattern * nonterminal_token list
+   * subpattern_result Belt.Map.Int.t
   = fun nonterminal_pointer matches pattern -> matches
     |. Belt.List.flatten
     |. Belt.List.mapWithIndex (fun match_ix x -> match_ix, x)
