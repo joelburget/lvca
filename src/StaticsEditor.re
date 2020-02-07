@@ -2,27 +2,25 @@ type state = (string, option(list(Statics.rule)));
 type action = string;
 
 [@react.component]
-let make = (~onComplete : list(Statics.rule) => unit) => {
-  let (staticsInput, setStaticsInput) =
-    React.useState(() => LanguageSimple.statics);
+let make = (
+  ~onUpdate : Belt.Result.t(list(Statics.rule), string) => unit,
+  ~initialInput : string
+  ) => {
+  let (staticsInput, setStaticsInput) = React.useState(() => initialInput);
 
   module Parseable_statics' = ParseStatus.Make(Parsing.Parseable_statics);
   let (staticsView, statics) = Parseable_statics'.parse(staticsInput);
 
   let continueView = switch (statics) {
-    | Error(_) => ReasonReact.null
-    | Ok(statics') =>
-    <button onClick=(_ => onComplete(statics')) >
+    | Error(_) => staticsView
+    | Ok(_) =>
+    <button onClick=(_ => onUpdate(statics)) >
       {React.string("continue")}
     </button>
   };
 
   <div>
     {continueView}
-    <h2 className="header2 header2-statics">
-      {React.string("Statics ")}
-      {staticsView}
-    </h2>
     <div className="statics-pane">
       <CodeMirror
         value=staticsInput

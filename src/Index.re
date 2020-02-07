@@ -627,7 +627,7 @@ module LvcaViewer = {
   type editing_details =
     { abstract_syntax: Types.abstract_syntax,
       concrete_syntax: option(ConcreteSyntaxDescription.t),
-      statics: option(list(Statics.rule)),
+      statics: Belt.Result.t(list(Statics.rule), string),
       dynamics: option(Core.denotation_chart),
     };
 
@@ -648,9 +648,9 @@ module LvcaViewer = {
 
   type action =
     | ChangeTab(details_tab)
-    | ASContinue(Types.abstract_syntax)
+    | AbstractUpdate(Belt.Result.t(Types.abstract_syntax, string))
     | CompleteConcreteSyntax(ConcreteSyntaxDescription.t)
-    | CompleteStatics(list(Statics.rule))
+    | StaticsUpdate(Belt.Result.t(list(Statics.rule), string))
     | CompleteDynamics(Core.denotation_chart)
     | DetailsContinue(details)
     | ReplBack
@@ -660,7 +660,7 @@ module LvcaViewer = {
   let mk_details = abstract_syntax => DetailsStage(
     { abstract_syntax,
       concrete_syntax: None,
-      statics: None,
+      statics: Error("no statics yet"),
       dynamics: None,
     },
     ConcreteTab
@@ -672,14 +672,14 @@ module LvcaViewer = {
   let make = () => {
     let (state, dispatch) = React.useReducer(
       (state, action) => switch (state, action) {
-        | (AbstractSyntaxStage, ASContinue(lang))
+        | (AbstractSyntaxStage, AbstractUpdate(Ok(lang)))
         => mk_details(lang)
         | (DetailsStage(details, _), ChangeTab(tab))
         => DetailsStage(details, tab)
         | (DetailsStage(details, tab), CompleteConcreteSyntax(concrete_syntax))
         => DetailsStage({...details, concrete_syntax: Some(concrete_syntax)}, tab)
-        | (DetailsStage(details, tab), CompleteStatics(statics))
-        => DetailsStage({...details, statics: Some(statics)}, tab)
+        | (DetailsStage(details, tab), StaticsUpdate(statics))
+        => DetailsStage({...details, statics}, tab)
         | (DetailsStage(details, tab), CompleteDynamics(dynamics))
         => DetailsStage({...details, dynamics: Some(dynamics)}, tab)
         | (DetailsStage(_, _), DetailsContinue(details))
@@ -690,7 +690,7 @@ module LvcaViewer = {
         => DetailsStage({
           abstract_syntax,
           concrete_syntax: Some(concrete_syntax),
-          statics: Some(statics),
+          statics: Ok(statics),
           dynamics: Some(dynamics),
         }, ConcreteTab)
         | (ReplStage(_), Evaluate) => failwith("TODO: evaluation")
@@ -709,7 +709,8 @@ module LvcaViewer = {
     let view = switch (state) {
       | AbstractSyntaxStage =>
         <ContainedAbstractSyntaxEditor
-          onContinue=(lang => dispatch(ASContinue(lang)))
+          onUpdate=(lang => dispatch(AbstractUpdate(lang)))
+          initialInput=LanguageJson.abstractSyntax
         />
       | DetailsStage(details, tab) => {
         let tab_contents = switch (tab) {
@@ -720,7 +721,8 @@ module LvcaViewer = {
           abstractSyntax=details.abstract_syntax
         />
         | StaticsTab  => <StaticsEditor
-          onComplete=(statics => dispatch(CompleteStatics(statics)))
+          onUpdate=(staticsResult => dispatch(StaticsUpdate(staticsResult)))
+          initialInput=""
         />
         | DynamicsTab => <DynamicsEditor
           onComplete=(dynamics => dispatch(CompleteDynamics(dynamics)))
@@ -729,7 +731,7 @@ module LvcaViewer = {
         let details' =
           (details.concrete_syntax, details.statics, details.dynamics);
         let continue_button = switch (details') {
-          | (Some(concrete_syntax), Some(statics), Some(dynamics)) => {
+          | (Some(concrete_syntax), Ok(statics), Some(dynamics)) => {
             let details =
               { abstract_syntax: details.abstract_syntax,
                 concrete_syntax, statics, dynamics
