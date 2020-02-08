@@ -52,6 +52,7 @@ h2.header2 checkbox {
   font-size: 20px;
 }
 div.concrete-pane,
+div.concrete-info-pane,
 div.abstract-syntax-pane,
 div.statics-pane,
 div.dynamics-pane,

@@ -513,9 +513,12 @@ module ConcreteSyntaxEditor = {
           {React.string(showDebugger ?  "hide debugger" : "show debugger")}
         </button>
       </div>
-      {derivedGrammar}
-      {debugger}
-      {grammarPane}
+
+      <div className="concrete-info-pane">
+        {derivedGrammar}
+        {debugger}
+        {grammarPane}
+      </div>
     </div>
 
   };
