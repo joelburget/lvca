@@ -72,6 +72,13 @@ let mutable_lookahead_item_set_to_item_set
              |. M.keysToArray
              |. SI.fromArray
 
+module type LALR = sig
+  include LR0
+  val state_to_lookahead_item_set : state -> lookahead_item_set
+  val lr1_closure' : lookahead_item_set -> lookahead_configuration_set
+  val string_of_lookahead_item_set : lookahead_item_set -> string
+end
+
 module Lalr1 (G : GRAMMAR) = struct
 
   module Lr0' = Lr0(G)

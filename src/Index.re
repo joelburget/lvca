@@ -398,31 +398,20 @@ module ConcreteSyntaxEditor = {
         ConcreteSyntax.make_concrete_description(pre_terminal_rules, sort_rules)
       );
 
-    let getGrammarPaneAndDebugger = (concrete, showDerivedGrammar,
-      showGrammarPane, showDebugger) => {
+    let getGrammarPaneAndDebugger =
+      (concrete, showGrammarPane, showDebugger) => {
       let (grammar, _, _) = ConcreteSyntax.to_grammar(concrete, startSort);
-      let module Lalr = LalrParsing.Lalr1({ let grammar = grammar });
-      let module LrTables' = LrTables(LrParsing.Lr0({ let grammar = grammar }));
-
-      let states = Lalr.states |. Belt.Array.map(state => {
-          let kernel_items = Lalr.state_to_lookahead_item_set(state);
-          let { LalrParsing.nonkernel_items }
-            = Lalr.lr1_closure'(kernel_items);
-          let kernel_repr
-            = Lalr.string_of_lookahead_item_set(kernel_items);
-          let nonkernel_repr
-            = Lalr.string_of_lookahead_item_set(nonkernel_items);
-          (state, kernel_repr, nonkernel_repr)
-        });
 
       let grammarPane = if (showGrammarPane) {
+        let module Lr0' = LrParsing.Lr0({ let grammar = grammar });
+        let module Lalr = LalrParsing.Lalr1({ let grammar = grammar });
+        let module Grammar' = Grammar({ let grammar = grammar }, Lalr);
+        let module LrTables' = LrTables(Lr0');
         let action_table = Lalr.full_lalr1_action_table(());
         let goto_table = Lalr.full_lalr1_goto_table(());
+
         <div>
-          <Grammar
-            grammar=grammar
-            states=states
-          />
+          <Grammar' />
           <LrTables'
             action_table=action_table
             goto_table=goto_table
@@ -439,12 +428,12 @@ module ConcreteSyntaxEditor = {
        * hover over any reduction to show the string included in the
        * production.
        */
-      let debugger = if (showDebugger) {
-        let lexer = ConcreteSyntax.lexer_of_desc(concrete);
-        <SyntaxDebugger grammar=grammar lexer=lexer />;
-      } else {
-        React.null
-      };
+      let debugger = showDebugger ?
+        <SyntaxDebugger
+          grammar=grammar
+          lexer=ConcreteSyntax.lexer_of_desc(concrete)
+        />
+        : React.null;
 
       (grammarPane, debugger)
     };
@@ -464,13 +453,14 @@ module ConcreteSyntaxEditor = {
           React.null;
         }
 
-        let (x, y) = try (getGrammarPaneAndDebugger(concrete,
-          showDerivedGrammar, showGrammarPane, showDebugger)) {
+        let (grammarPane, debugger) = try (getGrammarPaneAndDebugger(concrete,
+          showGrammarPane, showDebugger)) {
+          /* TODO: we shouldn't be throwing invariant violations, ever */
           | InvariantViolation(msg) =>
             (<div>{React.string(msg)}</div>, <div>{React.string(msg)}</div>)
         };
 
-        (derivedGrammar, x, y)
+        (derivedGrammar, grammarPane, debugger)
       }
 
       /* Just show one error message, even if there are multiple errors */

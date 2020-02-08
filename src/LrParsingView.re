@@ -1,8 +1,13 @@
 open LrParsing;
 
-module Grammar = {
+module Grammar = (G : GRAMMAR, Lalr : LalrParsing.LALR) => {
   [@react.component]
-  let make = (~grammar : grammar, ~states : array((int, string, string))) => {
+  let make = () => {
+    let grammar = G.grammar;
+
+    let (showNonkernel, setShowNonkernel) =
+      React.useState(() => Lalr.states |. Belt.Array.map(_ => false));
+
     /* TODO: make table, sort */
     let terminalElems = grammar.terminal_nums
       |. Belt.SortArray.stableSortBy
@@ -20,20 +25,41 @@ module Grammar = {
       terminalElems
     );
 
-    let stateElems = states
-      |. Belt.Array.map(((num, kernel_items, nonkernel_items)) =>
+    let stateElems = Lalr.states |. Belt.Array.mapWithIndex((ix, state) => {
+        let kernel_items = Lalr.state_to_lookahead_item_set(state);
+        let { LalrParsing.nonkernel_items }
+          = Lalr.lr1_closure'(kernel_items);
+
+        let button = if (!Belt.Set.isEmpty(nonkernel_items)) {
+          <button onClick=(_ => setShowNonkernel(_ => {
+            let showNonkernel' = Belt.Array.copy(showNonkernel);
+            Belt.Array.setExn(showNonkernel', ix, !showNonkernel[ix]);
+            showNonkernel'
+          }))>
+            (React.string(showNonkernel[ix] ? "hide nonkernel items" : "show nonkernel items"))
+          </button>
+        } else {
+          React.null
+        };
+
         <tr>
-          <td>{React.string(string_of_int(num))}</td>
+          <td>{React.string(string_of_int(state))}</td>
           <td>
             <pre className="kernel-items"><code>
-              {React.string(kernel_items)}
+              (React.string(Lalr.string_of_lookahead_item_set(kernel_items)))
+              (button)
             </code></pre>
-            <pre className="nonkernel-items"><code>
-              {React.string(nonkernel_items)}
-            </code></pre>
+            (if (showNonkernel[ix]) {
+              <pre className="nonkernel-items"><code>
+                {React.string(Lalr.string_of_lookahead_item_set(nonkernel_items))}
+              </code></pre>
+             } else {
+               React.null
+             }
+            )
           </td>
         </tr>
-      );
+      });
 
     let stateElemsView = ReactDOMRe.createDOMElementVariadic(
       "tbody",

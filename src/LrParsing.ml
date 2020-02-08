@@ -189,6 +189,7 @@ module type LR0 = sig
   val string_of_production_num : production_num -> string
   val string_of_production : production -> string
   val string_of_nonterminal : nonterminal -> string
+  val states : state array
 end
 
 (* Used for action table entries. Compare with string_of_action. *)
