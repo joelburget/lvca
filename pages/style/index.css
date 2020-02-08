@@ -132,7 +132,6 @@ tfoot {
   border: 2px solid #1e1e5d;
   padding: 20px;
   display: table-row;
-  cursor: pointer;
 }
 .section-box.disabled {
   color: gray;
@@ -140,6 +139,7 @@ tfoot {
 }
 .section-box h3 {
   padding: 10px;
+  cursor: pointer;
 }
 .section-box.disabled h3, .section-box.disabled a, button.disabled {
   color: gray;
