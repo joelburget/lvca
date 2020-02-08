@@ -398,16 +398,6 @@ module ConcreteSyntaxEditor = {
         ConcreteSyntax.make_concrete_description(pre_terminal_rules, sort_rules)
       );
 
-    React.useEffect1(() => switch (concrete) {
-      | Error(_) => None
-      | Ok(concrete') => {
-          onUpdate(concrete);
-          None
-        }
-      },
-      [|concreteInput|]
-    );
-
     let getGrammarPaneAndDebugger = (concrete, showDerivedGrammar, showGrammarPane, showDebugger) => {
       let (grammar, _, _) = ConcreteSyntax.to_grammar(concrete, startSort);
       let module Lalr = LalrParsing.Lalr1({ let grammar = grammar });
@@ -494,16 +484,23 @@ module ConcreteSyntaxEditor = {
       )
     );
 
+    let handleKey = (_editor, evt) => {
+      if (CodeMirror.metaKeyGet(evt) && CodeMirror.keyGet(evt) == "Enter") {
+        CodeMirror.preventDefault(evt);
+        onUpdate(concrete);
+      }
+    };
+
     <div>
       <h2 className="header2 header2-concrete">
-        {React.string("Concrete Syntax ")}
-        {concreteDidParseView}
+        (concreteDidParseView)
       </h2>
       <div className="concrete-pane">
         <CodeMirror
           value=concreteInput
           onBeforeChange=((_, _, str) => dispatch(DefinitionUpdate(str)))
           options=CodeMirror.options(~mode="default", ())
+          onKeyDown=handleKey
         />
         (sortOptions)
         <button onClick=(_ => dispatch(ToggleDerivedGrammar))>
