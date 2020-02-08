@@ -343,6 +343,7 @@ module ConcreteSyntaxEditor = {
       debuggerContents : string,
       showTerminals : bool,
       showStates : bool,
+      showActionGoto : bool,
       showDebugger : bool,
       showDerivedGrammar : bool,
       syntaxDesc : option(ConcreteSyntaxDescription.t),
@@ -355,6 +356,7 @@ module ConcreteSyntaxEditor = {
     | ToggleDerivedGrammar
     | ToggleTerminals
     | ToggleStates
+    | ToggleActionGoto
     | ToggleDebugger
     ;
 
@@ -371,6 +373,8 @@ module ConcreteSyntaxEditor = {
         => {...startState, showTerminals: !startState.showTerminals}
         | ToggleStates
         => {...startState, showStates: !startState.showStates}
+        | ToggleActionGoto
+        => {...startState, showActionGoto: !startState.showActionGoto}
         | ToggleDebugger
         => {...startState, showDebugger: !startState.showDebugger}
         | DefinitionUpdate(concreteInput)
@@ -382,6 +386,7 @@ module ConcreteSyntaxEditor = {
         showDerivedGrammar: false,
         showTerminals: false,
         showStates: false,
+        showActionGoto: false,
         showDebugger: false,
         debuggerContents: "",
         startSort: sortNames[0],
@@ -389,7 +394,7 @@ module ConcreteSyntaxEditor = {
       }
     );
     let { concreteInput, showDerivedGrammar, showTerminals, showStates,
-      showDebugger, startSort } = state;
+      showActionGoto, showDebugger, startSort } = state;
 
     module Parseable_concrete =
       ParseStatus.Make(Parsing.Parseable_concrete_syntax);
@@ -402,7 +407,7 @@ module ConcreteSyntaxEditor = {
       );
 
     let getTerminalsStatesAndDebugger =
-      (concrete, showTerminals, showStates, showDebugger) => {
+      (concrete, showTerminals, showStates, showActionGoto, showDebugger) => {
       let (grammar, _, _) = ConcreteSyntax.to_grammar(concrete, startSort);
       let module Lalr = LalrParsing.Lalr1({ let grammar = grammar });
 
@@ -415,22 +420,24 @@ module ConcreteSyntaxEditor = {
       }
 
       let states = if (showStates) {
-        let module Lr0 = LrParsing.Lr0({ let grammar = grammar });
-        let module Nonterminals = LrParsingView.Terminals({ let grammar = grammar }, Lalr);
         let module States = LrParsingView.States(Lalr);
+        <States />
+      } else {
+        React.null;
+      };
+
+      let actionGoto = if (showActionGoto) {
+        let module Lr0 = LrParsing.Lr0({ let grammar = grammar });
         let module LrTables = LrParsingView.Tables(Lr0);
         let action_table = Lalr.full_lalr1_action_table(());
         let goto_table = Lalr.full_lalr1_goto_table(());
 
-        <div>
-          <States />
-          <LrTables
-            action_table=action_table
-            goto_table=goto_table
-          />
-        </div>
+        <LrTables
+          action_table=action_table
+          goto_table=goto_table
+        />
       } else {
-        React.null;
+        React.null
       };
 
       /* The debugger first lexes and shows the sequence of tokens. You can
@@ -447,14 +454,15 @@ module ConcreteSyntaxEditor = {
         />
         : React.null;
 
-      (terminals, states, debugger)
+      (terminals, states, actionGoto, debugger)
     };
 
-    let (derivedGrammar, terminals, states, debugger) = switch
-      (showDerivedGrammar, showTerminals, showStates, showDebugger, concrete) {
-      | (false, false, false, false, _)
-      => (React.null, React.null, React.null, React.null)
-      | (_, _, _, _, Ok(concrete)) => {
+    let (derivedGrammar, terminals, states, actionGoto, debugger) = switch
+      (showDerivedGrammar, showTerminals, showStates, showActionGoto,
+       showDebugger, concrete) {
+      | (false, false, false, false, false, _)
+      => (React.null, React.null, React.null, React.null, React.null)
+      | (_, _, _, _, _, Ok(concrete)) => {
 
         let derivedGrammar = if (showDerivedGrammar) {
           let derivedRules = ConcreteSyntax.derived_nonterminal_rules(
@@ -465,20 +473,20 @@ module ConcreteSyntaxEditor = {
           React.null;
         }
 
-        let (terminals, states, debugger) = try
+        let (terminals, states, actionGoto, debugger) = try
           (getTerminalsStatesAndDebugger(concrete, showTerminals, showStates,
-            showDebugger)) {
+            showActionGoto, showDebugger)) {
           /* TODO: we shouldn't be throwing invariant violations, ever */
           | InvariantViolation(msg) =>
-            (<div>{React.string(msg)}</div>, React.null, React.null)
+            (<div>{React.string(msg)}</div>, React.null, React.null, React.null)
         };
 
-        (derivedGrammar, terminals, states, debugger)
+        (derivedGrammar, terminals, states, actionGoto, debugger)
       }
 
       /* Just show one error message, even if there are multiple errors */
-      | (_, _, _, _, Error(err))
-      => (React.string(err), React.null, React.null, React.null)
+      | (_, _, _, _, _, Error(err))
+      => (React.string(err), React.null, React.null, React.null, React.null)
     };
 
     let sortOptions = ReactDOMRe.createDOMElementVariadic(
@@ -518,13 +526,18 @@ module ConcreteSyntaxEditor = {
                         "show derived grammar")}
         </button>
         <button onClick=(_ => dispatch(ToggleTerminals))>
-          {React.string(showTerminals ?  "hide terminals" : "show terminals")}
+          {React.string(showTerminals ? "hide terminals" : "show terminals")}
         </button>
         <button onClick=(_ => dispatch(ToggleStates))>
-          {React.string(showStates ?  "hide states" : "show states")}
+          {React.string(showStates ? "hide states" : "show states")}
+        </button>
+        <button onClick=(_ => dispatch(ToggleActionGoto))>
+          {React.string(showActionGoto
+            ? "hide action / goto tables"
+            : "show action / goto tables")}
         </button>
         <button onClick=(_ => dispatch(ToggleDebugger))>
-          {React.string(showDebugger ?  "hide debugger" : "show debugger")}
+          {React.string(showDebugger ? "hide debugger" : "show debugger")}
         </button>
       </div>
 
@@ -533,6 +546,7 @@ module ConcreteSyntaxEditor = {
         {debugger}
         {terminals}
         {states}
+        {actionGoto}
       </div>
     </div>
 
