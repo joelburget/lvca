@@ -77,6 +77,8 @@ module type LALR = sig
   val state_to_lookahead_item_set : state -> lookahead_item_set
   val lr1_closure' : lookahead_item_set -> lookahead_configuration_set
   val string_of_lookahead_item_set : lookahead_item_set -> string
+  val full_lalr1_action_table : unit -> action array array
+  val full_lalr1_goto_table : unit -> (symbol * state option) array array
 end
 
 module Lalr1 (G : GRAMMAR) = struct

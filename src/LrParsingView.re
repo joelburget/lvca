@@ -87,13 +87,14 @@ module States = (Lalr : LalrParsing.LALR) => {
   }
 }
 
-module Tables = (Lr0 : LR0) => {
+module Tables = (Lalr : LalrParsing.LALR) => {
   [@react.component]
-  let make = (~action_table : array(array(action)),
-              ~goto_table : array(array((symbol, option(state)))))
-    => {
+  let make = () => {
     let (concat, length, map, mapWithIndex, zip) =
       Belt.Array.(concat, length, map, mapWithIndex, zip);
+
+    let action_table = Lalr.full_lalr1_action_table(());
+    let goto_table = Lalr.full_lalr1_goto_table(());
 
     assert(length(action_table) == length(goto_table));
 
@@ -103,11 +104,11 @@ module Tables = (Lr0 : LR0) => {
 
     let action_headers = action_table[0]
       |. mapWithIndex((i, _) => {
-        <th>{React.string(Lr0.string_of_terminal(i))}</th>
+        <th>{React.string(Lalr.string_of_terminal(i))}</th>
       });
     let goto_headers = goto_table[0]
       |. map(((symbol, _)) =>
-        <th>{React.string(Lr0.string_of_symbol(symbol))}</th>
+        <th>{React.string(Lalr.string_of_symbol(symbol))}</th>
       );
 
     let data = shared_table

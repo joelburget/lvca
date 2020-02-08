@@ -427,15 +427,8 @@ module ConcreteSyntaxEditor = {
       };
 
       let actionGoto = if (showActionGoto) {
-        let module Lr0 = LrParsing.Lr0({ let grammar = grammar });
-        let module LrTables = LrParsingView.Tables(Lr0);
-        let action_table = Lalr.full_lalr1_action_table(());
-        let goto_table = Lalr.full_lalr1_goto_table(());
-
-        <LrTables
-          action_table=action_table
-          goto_table=goto_table
-        />
+        let module LrTables = LrParsingView.Tables(Lalr);
+        <LrTables />
       } else {
         React.null
       };
