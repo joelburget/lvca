@@ -398,7 +398,8 @@ module ConcreteSyntaxEditor = {
         ConcreteSyntax.make_concrete_description(pre_terminal_rules, sort_rules)
       );
 
-    let getGrammarPaneAndDebugger = (concrete, showDerivedGrammar, showGrammarPane, showDebugger) => {
+    let getGrammarPaneAndDebugger = (concrete, showDerivedGrammar,
+      showGrammarPane, showDebugger) => {
       let (grammar, _, _) = ConcreteSyntax.to_grammar(concrete, startSort);
       let module Lalr = LalrParsing.Lalr1({ let grammar = grammar });
       let module LrTables' = LrTables(LrParsing.Lr0({ let grammar = grammar }));
@@ -448,19 +449,23 @@ module ConcreteSyntaxEditor = {
       (grammarPane, debugger)
     };
 
-    let (derivedGrammar, grammarPane, debugger) = switch (showDerivedGrammar, showGrammarPane, showDebugger, concrete) {
-      | (false, false, false, _) => (ReasonReact.null, ReasonReact.null, ReasonReact.null)
+    let (derivedGrammar, grammarPane, debugger) = switch (showDerivedGrammar,
+      showGrammarPane, showDebugger, concrete) {
+      | (false, false, false, _)
+      => (ReasonReact.null, ReasonReact.null, ReasonReact.null)
       | (_, _, _, Ok(concrete)) => {
 
         let derivedGrammar = if (showDerivedGrammar) {
-          let derivedRules = ConcreteSyntax.derived_nonterminal_rules(concrete.nonterminal_rules);
+          let derivedRules = ConcreteSyntax.derived_nonterminal_rules(
+            concrete.nonterminal_rules);
           let str = ConcreteSyntax.string_of_derived_rules(derivedRules);
           <pre> (React.string(str)) </pre>
         } else {
           ReasonReact.null;
         }
 
-        let (x, y) = try (getGrammarPaneAndDebugger(concrete, showDerivedGrammar, showGrammarPane, showDebugger)) {
+        let (x, y) = try (getGrammarPaneAndDebugger(concrete,
+          showDerivedGrammar, showGrammarPane, showDebugger)) {
           | InvariantViolation(msg) =>
             (<div>{React.string(msg)}</div>, <div>{React.string(msg)}</div>)
         };
@@ -468,8 +473,9 @@ module ConcreteSyntaxEditor = {
         (derivedGrammar, x, y)
       }
 
-      /* Just show one error message, even if multiple are supposed to be shown */
-      | (_, _, _, Error(err)) => (React.string(err), ReasonReact.null, ReasonReact.null)
+      /* Just show one error message, even if there are multiple errors */
+      | (_, _, _, Error(err))
+      => (React.string(err), ReasonReact.null, ReasonReact.null)
     };
 
     let sortOptions = ReactDOMRe.createDOMElementVariadic(
