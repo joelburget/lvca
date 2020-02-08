@@ -19,12 +19,6 @@ module Grammar = (G : GRAMMAR, Lalr : LalrParsing.LALR) => {
         </tr>
       );
 
-    let terminalsView = ReactDOMRe.createDOMElementVariadic(
-      "tbody",
-      ~props=ReactDOMRe.domProps(),
-      terminalElems
-    );
-
     let stateElems = Lalr.states |. Belt.Array.mapWithIndex((ix, state) => {
         let kernel_items = Lalr.state_to_lookahead_item_set(state);
         let { LalrParsing.nonkernel_items }
@@ -61,12 +55,6 @@ module Grammar = (G : GRAMMAR, Lalr : LalrParsing.LALR) => {
         </tr>
       });
 
-    let stateElemsView = ReactDOMRe.createDOMElementVariadic(
-      "tbody",
-      ~props=ReactDOMRe.domProps(),
-      stateElems
-    );
-
     <div>
       <h2>{React.string("terminals")}</h2>
       <table>
@@ -76,7 +64,7 @@ module Grammar = (G : GRAMMAR, Lalr : LalrParsing.LALR) => {
             <th>{React.string("symbol")}</th>
           </tr>
         </thead>
-        terminalsView
+        (ReactUtil.make_elem("tbody", terminalElems))
       </table>
 
       <h2>{React.string("states")}</h2>
@@ -87,7 +75,7 @@ module Grammar = (G : GRAMMAR, Lalr : LalrParsing.LALR) => {
             <th>{React.string("elements")}</th>
           </tr>
         </thead>
-        stateElemsView
+        (ReactUtil.make_elem("tbody", stateElems))
       </table>
     </div>
   }
@@ -116,12 +104,6 @@ module Tables = (Lr0 : LR0) => {
         <th>{React.string(Lr0.string_of_symbol(symbol))}</th>
       );
 
-    let headers_row = ReactDOMRe.createDOMElementVariadic(
-      "tr",
-      ~props=ReactDOMRe.domProps(),
-      concat(action_headers, goto_headers)
-    );
-
     let data = shared_table
       |. mapWithIndex((i, (action_row, goto_row)) => {
         let action_row_elems = action_row
@@ -136,21 +118,14 @@ module Tables = (Lr0 : LR0) => {
           })
           |. map(x => <td>{React.string(x)}</td>);
 
-        ReactDOMRe.createDOMElementVariadic(
+        ReactUtil.make_elem(
           "tr",
-          ~props=ReactDOMRe.domProps(),
           concat (
             [| <td>{React.string(string_of_int(i))}</td> |],
             concat(action_row_elems, goto_row_elems)
           )
         )
       });
-
-    let tbody = ReactDOMRe.createDOMElementVariadic(
-      "tbody",
-      ~props=ReactDOMRe.domProps(),
-      data
-    );
 
     <div>
       <h2>{React.string("action / goto tables")}</h2>
@@ -161,9 +136,9 @@ module Tables = (Lr0 : LR0) => {
             <th colSpan=action_span>{React.string("action")}</th>
             <th colSpan=goto_span>{React.string("goto")}</th>
           </tr>
-          headers_row
+          (ReactUtil.make_elem("tr", concat(action_headers, goto_headers)))
         </thead>
-        tbody
+        (ReactUtil.make_elem("tbody", data))
       </table>
     </div>
   }
