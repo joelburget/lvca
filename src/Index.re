@@ -262,7 +262,7 @@ module SyntaxDebugger = {
     let (tokens, message) = switch (Lex.lex(lexer, input)) {
       /* TODO: highlight affected area */
       | Error({ message }) => ([||], React.string(message))
-      | Ok(tokens) => (tokens, ReasonReact.null)
+      | Ok(tokens) => (tokens, React.null)
     };
 
     let tokens' = tokens
@@ -429,7 +429,7 @@ module ConcreteSyntaxEditor = {
           />
         </div>
       } else {
-        ReasonReact.null;
+        React.null;
       };
 
       /* The debugger first lexes and shows the sequence of tokens. You can
@@ -443,7 +443,7 @@ module ConcreteSyntaxEditor = {
         let lexer = ConcreteSyntax.lexer_of_desc(concrete);
         <SyntaxDebugger grammar=grammar lexer=lexer />;
       } else {
-        ReasonReact.null
+        React.null
       };
 
       (grammarPane, debugger)
@@ -452,7 +452,7 @@ module ConcreteSyntaxEditor = {
     let (derivedGrammar, grammarPane, debugger) = switch (showDerivedGrammar,
       showGrammarPane, showDebugger, concrete) {
       | (false, false, false, _)
-      => (ReasonReact.null, ReasonReact.null, ReasonReact.null)
+      => (React.null, React.null, React.null)
       | (_, _, _, Ok(concrete)) => {
 
         let derivedGrammar = if (showDerivedGrammar) {
@@ -461,7 +461,7 @@ module ConcreteSyntaxEditor = {
           let str = ConcreteSyntax.string_of_derived_rules(derivedRules);
           <pre> (React.string(str)) </pre>
         } else {
-          ReasonReact.null;
+          React.null;
         }
 
         let (x, y) = try (getGrammarPaneAndDebugger(concrete,
@@ -475,7 +475,7 @@ module ConcreteSyntaxEditor = {
 
       /* Just show one error message, even if there are multiple errors */
       | (_, _, _, Error(err))
-      => (React.string(err), ReasonReact.null, ReasonReact.null)
+      => (React.string(err), React.null, React.null)
     };
 
     let sortOptions = ReactDOMRe.createDOMElementVariadic(
