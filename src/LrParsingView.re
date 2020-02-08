@@ -1,23 +1,38 @@
 open LrParsing;
 
-module Grammar = (G : GRAMMAR, Lalr : LalrParsing.LALR) => {
+module Terminals = (G : GRAMMAR, Lalr : LalrParsing.LALR) => {
   [@react.component]
   let make = () => {
-    let grammar = G.grammar;
-
-    let (showNonkernel, setShowNonkernel) =
-      React.useState(() => Lalr.states |. Belt.Array.map(_ => false));
-
-    /* TODO: make table, sort */
-    let terminalElems = grammar.terminal_nums
+    let terminalElems = G.grammar.terminal_nums
       |. Belt.SortArray.stableSortBy
         (((_, num), (_', num')) => Pervasives.compare(num, num'))
       |. Belt.Array.map (((name, num)) =>
         <tr>
-          <td>{React.string(string_of_int(num))}</td>
-          <td>{React.string(name)}</td>
+          <td>(React.string(string_of_int(num)))</td>
+          <td>(React.string(name))</td>
         </tr>
       );
+
+    <div>
+      <h2>(React.string("terminals"))</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>(React.string("number"))</th>
+            <th>(React.string("symbol"))</th>
+          </tr>
+        </thead>
+        (ReactUtil.make_elem("tbody", terminalElems))
+      </table>
+    </div>
+  }
+};
+
+module States = (Lalr : LalrParsing.LALR) => {
+  [@react.component]
+  let make = () => {
+    let (showNonkernel, setShowNonkernel) =
+      React.useState(() => Lalr.states |. Belt.Array.map(_ => false));
 
     let stateElems = Lalr.states |. Belt.Array.mapWithIndex((ix, state) => {
         let kernel_items = Lalr.state_to_lookahead_item_set(state);
@@ -30,7 +45,9 @@ module Grammar = (G : GRAMMAR, Lalr : LalrParsing.LALR) => {
             Belt.Array.setExn(showNonkernel', ix, !showNonkernel[ix]);
             showNonkernel'
           }))>
-            (React.string(showNonkernel[ix] ? "hide nonkernel items" : "show nonkernel items"))
+            (React.string(showNonkernel[ix]
+              ? "hide nonkernel items"
+              : "show nonkernel items"))
           </button>
         } else {
           React.null
@@ -56,17 +73,6 @@ module Grammar = (G : GRAMMAR, Lalr : LalrParsing.LALR) => {
       });
 
     <div>
-      <h2>{React.string("terminals")}</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>{React.string("number")}</th>
-            <th>{React.string("symbol")}</th>
-          </tr>
-        </thead>
-        (ReactUtil.make_elem("tbody", terminalElems))
-      </table>
-
       <h2>{React.string("states")}</h2>
       <table>
         <thead>

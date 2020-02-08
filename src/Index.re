@@ -1,8 +1,6 @@
 open ReactUtil
 open Util
 module Result = Belt.Result
-module Grammar = LrParsingView.Grammar
-module LrTables = LrParsingView.Tables
 
 // TODO: duplicated in EvalView
 type located_err = (string, option(Binding.DeBruijn.term))
@@ -343,7 +341,8 @@ module ConcreteSyntaxEditor = {
   type state =
     { concreteInput : string,
       debuggerContents : string,
-      showGrammarPane : bool,
+      showTerminals : bool,
+      showStates : bool,
       showDebugger : bool,
       showDerivedGrammar : bool,
       syntaxDesc : option(ConcreteSyntaxDescription.t),
@@ -354,7 +353,8 @@ module ConcreteSyntaxEditor = {
     | DefinitionUpdate(string)
     | SelectStartSort(string)
     | ToggleDerivedGrammar
-    | ToggleGrammarPane
+    | ToggleTerminals
+    | ToggleStates
     | ToggleDebugger
     ;
 
@@ -367,8 +367,10 @@ module ConcreteSyntaxEditor = {
       (startState, action) => switch (action) {
         | ToggleDerivedGrammar
         => {...startState, showDerivedGrammar: !startState.showDerivedGrammar}
-        | ToggleGrammarPane
-        => {...startState, showGrammarPane: !startState.showGrammarPane}
+        | ToggleTerminals
+        => {...startState, showTerminals: !startState.showTerminals}
+        | ToggleStates
+        => {...startState, showStates: !startState.showStates}
         | ToggleDebugger
         => {...startState, showDebugger: !startState.showDebugger}
         | DefinitionUpdate(concreteInput)
@@ -378,15 +380,16 @@ module ConcreteSyntaxEditor = {
       },
       { concreteInput: LanguageJson.concreteSyntax,
         showDerivedGrammar: false,
-        showGrammarPane: false,
+        showTerminals: false,
+        showStates: false,
         showDebugger: false,
         debuggerContents: "",
         startSort: sortNames[0],
         syntaxDesc: None,
       }
     );
-    let { concreteInput, showDerivedGrammar, showGrammarPane, showDebugger,
-      startSort } = state;
+    let { concreteInput, showDerivedGrammar, showTerminals, showStates,
+      showDebugger, startSort } = state;
 
     module Parseable_concrete =
       ParseStatus.Make(Parsing.Parseable_concrete_syntax);
@@ -398,21 +401,30 @@ module ConcreteSyntaxEditor = {
         ConcreteSyntax.make_concrete_description(pre_terminal_rules, sort_rules)
       );
 
-    let getGrammarPaneAndDebugger =
-      (concrete, showGrammarPane, showDebugger) => {
+    let getTerminalsStatesAndDebugger =
+      (concrete, showTerminals, showStates, showDebugger) => {
       let (grammar, _, _) = ConcreteSyntax.to_grammar(concrete, startSort);
+      let module Lalr = LalrParsing.Lalr1({ let grammar = grammar });
 
-      let grammarPane = if (showGrammarPane) {
-        let module Lr0' = LrParsing.Lr0({ let grammar = grammar });
-        let module Lalr = LalrParsing.Lalr1({ let grammar = grammar });
-        let module Grammar' = Grammar({ let grammar = grammar }, Lalr);
-        let module LrTables' = LrTables(Lr0');
+      let terminals = if (showTerminals) {
+        let module Terminals =
+          LrParsingView.Terminals({ let grammar = grammar }, Lalr);
+        <Terminals />
+      } else {
+        React.null
+      }
+
+      let states = if (showStates) {
+        let module Lr0 = LrParsing.Lr0({ let grammar = grammar });
+        let module Nonterminals = LrParsingView.Terminals({ let grammar = grammar }, Lalr);
+        let module States = LrParsingView.States(Lalr);
+        let module LrTables = LrParsingView.Tables(Lr0);
         let action_table = Lalr.full_lalr1_action_table(());
         let goto_table = Lalr.full_lalr1_goto_table(());
 
         <div>
-          <Grammar' />
-          <LrTables'
+          <States />
+          <LrTables
             action_table=action_table
             goto_table=goto_table
           />
@@ -435,14 +447,14 @@ module ConcreteSyntaxEditor = {
         />
         : React.null;
 
-      (grammarPane, debugger)
+      (terminals, states, debugger)
     };
 
-    let (derivedGrammar, grammarPane, debugger) = switch (showDerivedGrammar,
-      showGrammarPane, showDebugger, concrete) {
-      | (false, false, false, _)
-      => (React.null, React.null, React.null)
-      | (_, _, _, Ok(concrete)) => {
+    let (derivedGrammar, terminals, states, debugger) = switch
+      (showDerivedGrammar, showTerminals, showStates, showDebugger, concrete) {
+      | (false, false, false, false, _)
+      => (React.null, React.null, React.null, React.null)
+      | (_, _, _, _, Ok(concrete)) => {
 
         let derivedGrammar = if (showDerivedGrammar) {
           let derivedRules = ConcreteSyntax.derived_nonterminal_rules(
@@ -453,19 +465,20 @@ module ConcreteSyntaxEditor = {
           React.null;
         }
 
-        let (grammarPane, debugger) = try (getGrammarPaneAndDebugger(concrete,
-          showGrammarPane, showDebugger)) {
+        let (terminals, states, debugger) = try
+          (getTerminalsStatesAndDebugger(concrete, showTerminals, showStates,
+            showDebugger)) {
           /* TODO: we shouldn't be throwing invariant violations, ever */
           | InvariantViolation(msg) =>
-            (<div>{React.string(msg)}</div>, <div>{React.string(msg)}</div>)
+            (<div>{React.string(msg)}</div>, React.null, React.null)
         };
 
-        (derivedGrammar, grammarPane, debugger)
+        (derivedGrammar, terminals, states, debugger)
       }
 
       /* Just show one error message, even if there are multiple errors */
-      | (_, _, _, Error(err))
-      => (React.string(err), React.null, React.null)
+      | (_, _, _, _, Error(err))
+      => (React.string(err), React.null, React.null, React.null)
     };
 
     let sortOptions = ReactDOMRe.createDOMElementVariadic(
@@ -504,10 +517,11 @@ module ConcreteSyntaxEditor = {
                         "hide derived grammar" :
                         "show derived grammar")}
         </button>
-        <button onClick=(_ => dispatch(ToggleGrammarPane))>
-          {React.string(showGrammarPane ?
-                        "hide grammar tables" :
-                        "show grammar tables")}
+        <button onClick=(_ => dispatch(ToggleTerminals))>
+          {React.string(showTerminals ?  "hide terminals" : "show terminals")}
+        </button>
+        <button onClick=(_ => dispatch(ToggleStates))>
+          {React.string(showStates ?  "hide states" : "show states")}
         </button>
         <button onClick=(_ => dispatch(ToggleDebugger))>
           {React.string(showDebugger ?  "hide debugger" : "show debugger")}
@@ -517,7 +531,8 @@ module ConcreteSyntaxEditor = {
       <div className="concrete-info-pane">
         {derivedGrammar}
         {debugger}
-        {grammarPane}
+        {terminals}
+        {states}
       </div>
     </div>
 
