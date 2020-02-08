@@ -187,73 +187,78 @@ module CheckingDebugger = {
       }
     );
 
-    let abstract = switch (state.abstractExpanded) {
-      | true
-      =>
-        <ContainedAbstractSyntaxEditor
-          onUpdate=(update => dispatch(AbstractUpdate(update)))
-          // XXX update initialInput
-          initialInput=LanguageSimple.abstractSyntax
-        />
-      | false
-      => React.null
+    let abstractValid = switch (state.abstract) {
+      | Some(Ok(_)) => true
+      | _ => false
     };
 
-    let statics = switch (state.staticsExpanded) {
-      | true
-      => {
-        <StaticsEditor
-          onUpdate=(statics => dispatch(StaticsUpdate(statics)))
-          initialInput=LanguageSimple.statics
-        />
-      }
-      | false
-      => React.null
+    let staticsValid = switch (state.statics) {
+      | Some(Ok(_)) => true
+      | _ => false
     };
 
-    let debuggerInput = switch (state.debuggerExpanded) {
-      | true
-      =>
+    let mkSection = (name, enabled, expanded, toggleEvt, contents) =>
+      <div className=("section-box " ++ (enabled ? "" : "disabled"))>
+        <h3>
+          <a href="#" onClick=(_ => dispatch(toggleEvt))>
+            (React.string(expanded ?  "- " ++ name : "+ " ++ name))
+          </a>
+        </h3>
+        (expanded ? contents() : React.null)
+      </div>;
+
+    let abstract = mkSection("Abstract", true, state.abstractExpanded,
+                             ToggleAbstract, () =>
+      <ContainedAbstractSyntaxEditor
+        onUpdate=(update => dispatch(AbstractUpdate(update)))
+        // XXX update initialInput
+        initialInput=LanguageSimple.abstractSyntax
+      />
+    );
+
+    let statics = mkSection("Statics", abstractValid, state.staticsExpanded,
+                            ToggleStatics, () =>
+      <StaticsEditor
+        onUpdate=(statics => dispatch(StaticsUpdate(statics)))
+        initialInput=LanguageSimple.statics
+      />
+    );
+
+    let debugger = mkSection("Debugger", abstractValid && staticsValid,
+                             state.debuggerExpanded, ToggleDebugger, () => {
+      let debuggerInput =
         <input
           type_="text"
           onKeyUp=(event => if (ReactEvent.Keyboard.key(event) == "Enter") {
             dispatch(Evaluate(ReactEvent.Keyboard.target(event)##value));
           })
-        />
-      | false
-      => React.null
-    };
+        />;
 
-    let debugger = switch (state.debuggerExpanded) {
-      | true
-      => switch (state.debugger) {
+      let debuggerResults = switch (state.debugger) {
         | None => React.null
-        | Some({ input, steps, currentStep })
-        => {
+        | Some({ input, steps, currentStep }) => {
           let step_count = Belt.Array.length(steps);
           let current_step = Belt.Array.getExn(steps, currentStep);
           let elem = elem_of_current_stack(current_step);
 
-          let backButton = switch(currentStep == 0) {
-            | true =>
-              <button className="disabled">
-                {React.string("previous step")}
-              </button>
-            | false =>
-              <button onClick=(_evt => dispatch(StepBackward))>
-                {React.string("previous step")}
-              </button>
+          let backButton = if (currentStep == 0) {
+            <button className="disabled">
+              {React.string("previous step")}
+            </button>
+          } else {
+            <button onClick=(_evt => dispatch(StepBackward))>
+              {React.string("previous step")}
+            </button>
           };
 
-          let forwardButton = switch(currentStep == step_count - 1) {
-            | true =>
-              <button className="disabled">
-                {React.string("next step")}
-              </button>
-            | false =>
-              <button onClick=(_evt => dispatch(StepForward))>
-                {React.string("next step")}
-              </button>
+          let forwardButton = if (currentStep == step_count - 1) {
+            <button className="disabled">
+              {React.string("next step")}
+            </button>
+          } else {
+            <button onClick=(_evt => dispatch(StepForward))>
+              {React.string("next step")}
+            </button>
           };
 
           <div>
@@ -273,39 +278,15 @@ module CheckingDebugger = {
               {elem}
             </table>
           </div>
-        }
-      }
-      | false
-      => React.null
-    };
+        };
+      };
+      <> (debuggerInput) (debuggerResults) </>
+    });
 
-    <div>
-      <div className="section-box">
-        <h3>
-          <a href="#" onClick=(_ => dispatch(ToggleAbstract))>
-            (React.string(state.abstractExpanded ?
-              "- Abstract Syntax" : "+ Abstract Syntax"))
-          </a>
-        </h3>
-        (abstract)
-      </div>
-      <div className="section-box">
-        <h3>
-          <a href="#" onClick=(_ => dispatch(ToggleStatics))>
-            (React.string(state.staticsExpanded ?  "- Statics" : "+ Statics"))
-          </a>
-        </h3>
-        (statics)
-      </div>
-      <div className="section-box">
-        <h3>
-          <a href="#" onClick=(_ => dispatch(ToggleDebugger))>
-            (React.string(state.debuggerExpanded ? "- Debugger" : "+ Debugger"))
-          </a>
-        </h3>
-        (debuggerInput)
-        (debugger)
-      </div>
+    <div className="lvca-viewer">
+      (abstract)
+      (statics)
+      (debugger)
     </div>
   }
 };

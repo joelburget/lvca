@@ -36,26 +36,14 @@ a {
 .error {
   color: #c12828;
 }
-/* XXX grid no longer valid */
 div.lvca-viewer {
-  display: grid;
-  grid-template-columns: 50% 50%;
-  grid-template-rows: 100px auto;
-  grid-template-areas:
-    "header1                 header1" /* LVCA */
-    "header2-abstract-syntax header2-repl"
-    "abstract-syntax-pane    repl-pane"
-    "header2-concrete        repl-pane"
-    "concrete-pane           repl-pane"
-    "header2-statics         repl-pane"
-    "statics-pane            repl-pane"
-    "header2-dynamics        repl-pane"
-    "dynamics-pane           repl-pane"
+  display: table;
+  border-collapse: collapse;
+  width: 800px;
 }
 h1.header {
   margin-left: 20px;
   margin-top: 30px;
-  grid-area: header1;
 }
 h2.header2 {
   padding: 15px 0 10px 20px;
@@ -63,12 +51,11 @@ h2.header2 {
 h2.header2 checkbox {
   font-size: 20px;
 }
-h2.header2-concrete, h2.header2-statics, h2.header2-dynamics, h2.header2-abstract-syntax, h2.header2-repl {
-  border: 2px solid #1e1e5d;
-}
-div.concrete-pane, div.abstract-syntax-pane, div.statics-pane, div.dynamics-pane, div.repl-pane {
-  grid-area: concrete-pane;
-  border: 2px solid #1e1e5d;
+div.concrete-pane,
+div.abstract-syntax-pane,
+div.statics-pane,
+div.dynamics-pane,
+div.repl-pane {
   padding: 20px;
 }
 div.term-input {
@@ -91,9 +78,6 @@ div.term-view {
 div.repl-pane .CodeMirror pre {
   padding: 0;
 }
-div.repl-pane.disabled {
-  background: #f5f5f5;
-}
 .result-bad {
   color: #c12828;
 }
@@ -102,6 +86,7 @@ div.repl-pane.disabled {
 }
 .CodeMirror {
   height: auto;
+  border: 2px solid #1e1e5d;
 }
 div.eval-result-row {
   display: flex;
@@ -146,8 +131,17 @@ tfoot {
 .section-box {
   border: 2px solid #1e1e5d;
   padding: 20px;
+  display: table-row;
+  cursor: pointer;
 }
-button.disabled {
+.section-box.disabled {
+  color: gray;
+  cursor: not-allowed;
+}
+.section-box h3 {
+  padding: 10px;
+}
+.section-box.disabled h3, .section-box.disabled a, button.disabled {
   color: gray;
   cursor: not-allowed;
 }

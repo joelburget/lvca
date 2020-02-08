@@ -139,10 +139,6 @@ let rec go_forward = (lang, concrete, statics, dyn, hist, i) => switch(i) {
 module Repl = {
   open Types;
 
-  // TODO: move event type somewhere better
-  let preventDefault : CodeMirror.event => unit
-    = [%bs.raw "evt => evt.preventDefault()"];
-
   [@react.component]
   let make = (
     ~history: history,
@@ -168,16 +164,16 @@ module Repl = {
 
     let handleKey = (_editor, evt) => {
       let key = CodeMirror.keyGet(evt);
-      let shift = CodeMirror.shiftKeyGet(evt);
+      let shift = CodeMirror.metaKeyGet(evt);
       if (shift) {
         if (key == "Enter") {
-          preventDefault(evt);
+          CodeMirror.preventDefault(evt);
           handleEnter();
         } else if (key == "ArrowUp") {
-          preventDefault(evt);
+          CodeMirror.preventDefault(evt);
           handleUp(1);
         } else if (key == "ArrowDown") {
-          preventDefault(evt);
+          CodeMirror.preventDefault(evt);
           handleDown(1);
         }
       }
@@ -363,7 +359,8 @@ module ConcreteSyntaxEditor = {
     ;
 
   [@react.component]
-  let make = (~onComplete : ConcreteSyntaxDescription.t => unit, ~abstractSyntax : Types.abstract_syntax) => {
+  let make = (~onUpdate : Belt.Result.t(ConcreteSyntaxDescription.t, string) => unit,
+              ~abstractSyntax : Types.abstract_syntax) => {
     let sortNames = Types.sort_names(abstractSyntax) |. Belt.Set.String.toArray;
 
     let (state, dispatch) = React.useReducer(
@@ -404,7 +401,7 @@ module ConcreteSyntaxEditor = {
     React.useEffect1(() => switch (concrete) {
       | Error(_) => None
       | Ok(concrete') => {
-          onComplete(concrete');
+          onUpdate(concrete);
           None
         }
       },
@@ -533,24 +530,19 @@ module ConcreteSyntaxEditor = {
 
 module DynamicsEditor = {
   [@react.component]
-  let make = (~onComplete : Core.denotation_chart => unit) => {
+  let make = (~onUpdate : Belt.Result.t(Core.denotation_chart, string) => unit) => {
     let (dynamicsInput, setDynamicsInput) =
       React.useState(() => LanguageJson.abstractSyntax);
 
     module Parseable_dynamics' = ParseStatus.Make(Parsing.Parseable_dynamics);
     let (dynamicsView, dynamics) = Parseable_dynamics'.parse(dynamicsInput);
 
-    React.useEffect1(() => switch (dynamics) {
-      | Error(_) => None
-      | Ok(dynamics') => {
-          /* XXX
-          onComplete(Core.produce_denotation_chart(dynamics'));
-          */
-          None
-        }
-      },
-      [|dynamicsInput|]
-    );
+    let handleKey = (_editor, evt) => {
+      if (CodeMirror.metaKeyGet(evt) && CodeMirror.keyGet(evt) == "Enter") {
+        CodeMirror.preventDefault(evt);
+        onUpdate(dynamics);
+      }
+    };
 
     <div>
       <h2 className="header2 header2-dynamics">
@@ -562,6 +554,7 @@ module DynamicsEditor = {
           value=dynamicsInput
           onBeforeChange=((_, _, str) => setDynamicsInput(_ => str))
           options=CodeMirror.options(~mode="default", ())
+          onKeyDown=handleKey
         />
       </div>
     </div>
@@ -624,156 +617,161 @@ module ReplPane = {
 
 module LvcaViewer = {
 
-  type editing_details =
-    { abstract_syntax: Types.abstract_syntax,
-      concrete_syntax: option(ConcreteSyntaxDescription.t),
-      statics: Belt.Result.t(list(Statics.rule), string),
-      dynamics: option(Core.denotation_chart),
-    };
-
-  type details =
-    { abstract_syntax: Types.abstract_syntax,
-      concrete_syntax: ConcreteSyntaxDescription.t,
-      statics: list(Statics.rule),
-      dynamics: Core.denotation_chart,
-    };
-
-  type details_tab = ConcreteTab | StaticsTab | DynamicsTab;
-
-  type stage =
-    | AbstractSyntaxStage
-    | DetailsStage(editing_details, details_tab)
-    | ReplStage(details)
-    ;
+  type state = {
+    abstractExpanded: bool,
+    abstract: option(Belt.Result.t(Types.abstract_syntax, string)),
+    concreteExpanded: bool,
+    concrete: option(Belt.Result.t(ConcreteSyntaxDescription.t, string)),
+    staticsExpanded: bool,
+    statics: option(Belt.Result.t(list(Statics.rule), string)),
+    dynamicsExpanded: bool,
+    dynamics: option(Belt.Result.t(Core.denotation_chart, string)),
+    replExpanded: bool,
+  };
 
   type action =
-    | ChangeTab(details_tab)
     | AbstractUpdate(Belt.Result.t(Types.abstract_syntax, string))
-    | CompleteConcreteSyntax(ConcreteSyntaxDescription.t)
+    | ConcreteUpdate(Belt.Result.t(ConcreteSyntaxDescription.t, string))
     | StaticsUpdate(Belt.Result.t(list(Statics.rule), string))
-    | CompleteDynamics(Core.denotation_chart)
-    | DetailsContinue(details)
-    | ReplBack
-    | Evaluate
-    ;
+    | DynamicsUpdate(Belt.Result.t(Core.denotation_chart, string))
 
-  let mk_details = abstract_syntax => DetailsStage(
-    { abstract_syntax,
-      concrete_syntax: None,
-      statics: Error("no statics yet"),
-      dynamics: None,
-    },
-    ConcreteTab
-  );
+    | ToggleAbstract
+    | ToggleConcrete
+    | ToggleStatics
+    | ToggleDynamics
+    | ToggleRepl
 
-  let change_tab = details => tab => DetailsStage(details, tab);
+  let initialState = {
+    abstractExpanded: true,
+    abstract: None,
+    concreteExpanded: false,
+    concrete: None,
+    staticsExpanded: false,
+    statics: None,
+    dynamicsExpanded: false,
+    dynamics: None,
+    replExpanded: false,
+  };
 
   [@react.component]
   let make = () => {
     let (state, dispatch) = React.useReducer(
-      (state, action) => switch (state, action) {
-        | (AbstractSyntaxStage, AbstractUpdate(Ok(lang)))
-        => mk_details(lang)
-        | (DetailsStage(details, _), ChangeTab(tab))
-        => DetailsStage(details, tab)
-        | (DetailsStage(details, tab), CompleteConcreteSyntax(concrete_syntax))
-        => DetailsStage({...details, concrete_syntax: Some(concrete_syntax)}, tab)
-        | (DetailsStage(details, tab), StaticsUpdate(statics))
-        => DetailsStage({...details, statics}, tab)
-        | (DetailsStage(details, tab), CompleteDynamics(dynamics))
-        => DetailsStage({...details, dynamics: Some(dynamics)}, tab)
-        | (DetailsStage(_, _), DetailsContinue(details))
-        => ReplStage(details)
+      (state, action) => switch (action) {
+        | ToggleAbstract
+        => { ...state, abstractExpanded: !state.abstractExpanded }
+        | ToggleConcrete
+        => { ...state, concreteExpanded: !state.concreteExpanded }
+        | ToggleStatics
+        => { ...state, staticsExpanded: !state.staticsExpanded }
+        | ToggleDynamics
+        => { ...state, dynamicsExpanded: !state.dynamicsExpanded }
+        | ToggleRepl
+        => { ...state, replExpanded: !state.replExpanded }
 
-        | (ReplStage({ abstract_syntax, concrete_syntax, statics, dynamics }),
-          ReplBack)
-        => DetailsStage({
-          abstract_syntax,
-          concrete_syntax: Some(concrete_syntax),
-          statics: Ok(statics),
-          dynamics: Some(dynamics),
-        }, ConcreteTab)
-        | (ReplStage(_), Evaluate) => failwith("TODO: evaluation")
-
-        | (AbstractSyntaxStage, _)
-        => failwith(
-          "invariant violation: unexpected action in AbstractSyntaxStage")
-        | (DetailsStage(_, _), _)
-        => failwith("invariant violation: unexpected action in DetailsStage")
-        | (ReplStage(_), _)
-        => failwith("invariant violation: unexpected action in ReplStage")
-        },
-      AbstractSyntaxStage
+        | AbstractUpdate(update)
+        => { ...state, abstract: Some(update) }
+        | ConcreteUpdate(update)
+        => { ...state, concrete: Some(update) }
+        | StaticsUpdate(update)
+        => { ...state, statics: Some(update) }
+        | DynamicsUpdate(update)
+        => { ...state, dynamics: Some(update) }
+      },
+      initialState
     );
 
-    let view = switch (state) {
-      | AbstractSyntaxStage =>
+    let mkSection = (name, enabled, expanded, toggleEvt, contents) =>
+      <div className=("section-box " ++ (enabled ? "" : "disabled"))>
+        <h3 onClick=(_ => dispatch(toggleEvt))>
+          <a href="#">
+            (React.string(expanded ?  "- " ++ name : "+ " ++ name))
+          </a>
+        </h3>
+        (expanded ? contents() : React.null)
+      </div>;
+
+    let abstractOkay = switch (state.abstract) {
+      | Some(Ok(_)) => true
+      | _ => false
+    };
+
+    let abstract = mkSection("Abstract Syntax", true, state.abstractExpanded,
+                             ToggleAbstract,
+      _ =>
         <ContainedAbstractSyntaxEditor
           onUpdate=(lang => dispatch(AbstractUpdate(lang)))
           initialInput=LanguageJson.abstractSyntax
         />
-      | DetailsStage(details, tab) => {
-        let tab_contents = switch (tab) {
-        | ConcreteTab =>
+    );
+
+    let concrete = switch (state.concreteExpanded, state.abstract) {
+      | (true, Some(Ok(abstractSyntax))) =>
         <ConcreteSyntaxEditor
-          onComplete=(syntax_desc =>
-                      dispatch(CompleteConcreteSyntax(syntax_desc)))
-          abstractSyntax=details.abstract_syntax
+          onUpdate=(update => dispatch(ConcreteUpdate(update)))
+          abstractSyntax=abstractSyntax
         />
-        | StaticsTab  => <StaticsEditor
-          onUpdate=(staticsResult => dispatch(StaticsUpdate(staticsResult)))
+      | _ => React.null
+    };
+
+    let statics = mkSection("Statics", abstractOkay, state.staticsExpanded,
+                            ToggleStatics,
+      _ =>
+        <StaticsEditor
+          onUpdate=(update => dispatch(StaticsUpdate(update)))
           initialInput=""
         />
-        | DynamicsTab => <DynamicsEditor
-          onComplete=(dynamics => dispatch(CompleteDynamics(dynamics)))
+    );
+
+    let dynamics = mkSection("Dynamics", abstractOkay, state.dynamicsExpanded,
+                             ToggleDynamics,
+      _ =>
+        <DynamicsEditor
+          onUpdate=(update => dispatch(DynamicsUpdate(update)))
         />
-        };
-        let details' =
-          (details.concrete_syntax, details.statics, details.dynamics);
-        let continue_button = switch (details') {
-          | (Some(concrete_syntax), Ok(statics), Some(dynamics)) => {
-            let details =
-              { abstract_syntax: details.abstract_syntax,
-                concrete_syntax, statics, dynamics
-              };
-            <button onClick=(_ => dispatch(DetailsContinue(details)))>
-              {React.string("Continue to REPL")}
-            </button>
-          }
-          | (_, _, _) => ReasonReact.null
-        };
+    );
+
+    let replEnabled = switch(
+                       state.abstract,
+                       state.concrete,
+                       state.statics,
+                       state.dynamics) {
+      | (Some(Ok(_)),
+         Some(Ok(_)),
+         Some(Ok(_)),
+         Some(Ok(_))) =>
+        true
+      | _ => false
+    };
+
+    let repl = switch (state.replExpanded,
+                       state.abstract,
+                       state.concrete,
+                       state.statics,
+                       state.dynamics) {
+      | (true,
+         Some(Ok(abstractSyntax)),
+         Some(Ok(concreteSyntax)),
+         Some(Ok(statics)),
+         Some(Ok(dynamics))) =>
         <div>
-          <button onClick=(_ => dispatch(ChangeTab(ConcreteTab)))>
-            {React.string("Concrete syntax")}
-          </button>
-          <button onClick=(_ => dispatch(ChangeTab(StaticsTab)))>
-            {React.string("Statics")}
-          </button>
-          <button onClick=(_ => dispatch(ChangeTab(DynamicsTab)))>
-            {React.string("Dynamics")}
-          </button>
-          {continue_button}
-          {tab_contents}
-        </div>
-      }
-      | ReplStage({ abstract_syntax, concrete_syntax, statics, dynamics })
-      =>
-        <div>
-          <button onClick=(_ => dispatch(ReplBack))>
-            {React.string("back")}
-          </button>
           <ReplPane
-            abstract_syntax=abstract_syntax
-            concrete=concrete_syntax
+            abstract_syntax=abstractSyntax
+            concrete=concreteSyntax
             statics=statics
             dynamics=dynamics
           />
         </div>
+      | _ => React.null
     };
 
     <div className="lvca-viewer">
       <h1 className="header">{React.string("LVCA")}</h1>
-      {view}
+      (abstract)
+      (mkSection("Concrete", abstractOkay, state.concreteExpanded,
+                 ToggleConcrete, _ => concrete))
+      (statics)
+      (dynamics)
+      (mkSection("Repl", replEnabled, state.replExpanded, ToggleRepl, _ => repl))
     </div>
   };
 };

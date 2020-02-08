@@ -5,25 +5,27 @@ let make = (
   ) => {
 
   let (asInput, setAsInput) = React.useState(() => initialInput);
+  let (hasSubmitted, setSubmitted) = React.useState(() => false);
 
   module Parseable_abstract_syntax' =
     ParseStatus.Make(Parsing.Parseable_abstract_syntax);
   let (languageView, language) = Parseable_abstract_syntax'.parse(asInput);
 
-  let continueView = switch (language) {
-    | Error(_) => languageView
-    | Ok(_) =>
-    <button onClick=(_ => onUpdate(language)) >
-      {React.string("continue")}
-    </button>
+  let handleKey = (_editor, evt) => {
+    if (CodeMirror.metaKeyGet(evt) && CodeMirror.keyGet(evt) == "Enter") {
+      CodeMirror.preventDefault(evt);
+      onUpdate(language);
+      setSubmitted(_ => true);
+    }
   };
 
   <div className="abstract-syntax-pane">
-    (continueView)
+    (hasSubmitted ? languageView : React.null)
     <CodeMirror
       value=asInput
       onBeforeChange=((_, _, str) => setAsInput(_ => str))
       options=CodeMirror.options(~mode="default", ())
+      onKeyDown=handleKey
     />
   </div>
 };

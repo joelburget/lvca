@@ -15,6 +15,7 @@ type editor = {.};
 type event = {
   key: string,
   shiftKey: bool,
+  metaKey: bool,
 };
 
 let focusEditor : editor => unit = [%raw "editor => editor.focus()" ];
@@ -28,3 +29,7 @@ external make:
    ~editorDidMount: (editor) => unit = ?)
   => React.element
   = "Controlled";
+
+// TODO: move event type somewhere better
+let preventDefault : event => unit
+  = [%bs.raw "evt => evt.preventDefault()"];
