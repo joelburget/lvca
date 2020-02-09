@@ -29,10 +29,10 @@ let eval_str evaluator str =
   let _, tm = Parseable_term'.parse str in
   match tm with
     | Ok tm' -> evaluator tm'
-    | Error err -> Belt.Result.Error err
+    | Error err -> Error err
 
 let evaluates_to evaluator str expected =
-  expect (eval_str evaluator str) |> toEqual (Belt.Result.Ok expected)
+  expect (eval_str evaluator str) |> toEqual (Ok expected)
 
 let () = describe "Integer Language" (fun () ->
   let abstractSyntax, concreteSyntax = LanguageInteger.(abstractSyntax, concreteSyntax) in
@@ -58,7 +58,7 @@ let () = describe "Integer Language" (fun () ->
   );
 
   let terminal_rules, sort_rules = match Parseable_concrete.parse concreteSyntax with
-    | _, Belt.Result.Ok rules -> rules
+    | _, Ok rules -> rules
     | _, Error msg -> failwith msg
   in
   let concrete = ConcreteSyntax.make_concrete_description terminal_rules sort_rules in
@@ -84,11 +84,11 @@ let () = describe "JSON Language" (fun () ->
 
   (*
   let abstract = match Parseable_abstract_syntax'.parse abstractSyntax with
-    | _, Belt.Result.Ok abstract -> abstract
+    | _, Ok abstract -> abstract
     | _, Error msg -> failwith msg
   in
   let terminal_rules, sort_rules = match Parseable_concrete.parse concreteSyntax with
-    | _, Belt.Result.Ok rules -> rules
+    | _, Ok rules -> rules
     | _, Error msg -> failwith msg
   in
   let concrete = ConcreteSyntax.make_concrete_description terminal_rules sort_rules in

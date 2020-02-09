@@ -72,13 +72,13 @@ val parse
   :  ConcreteSyntaxDescription.t
   -> string (* root name *)
   -> string (* string to parse *)
-  -> (formatted_tree, string) Belt.Result.t
+  -> (string, formatted_tree) Tablecloth.Result.t
 
 (** Convert form a concrete to an abstract syntax tree *)
 val to_ast
   :  ConcreteSyntaxDescription.t
   -> formatted_tree
-  -> (Nominal.term, string) Belt.Result.t
+  -> (string, Nominal.term) Tablecloth.Result.t
 
 val to_grammar
   :  ConcreteSyntaxDescription.t
@@ -88,7 +88,7 @@ val to_grammar
         * ConcreteSyntaxDescription.nonterminal_token list
         * ConcreteSyntaxDescription.operator_match_pattern option)
          Belt.MutableMap.Int.t
-     * string option Belt.Map.String.t
+     * string option Tablecloth.StrDict.t
 
 type invalid_grammar
 
@@ -110,7 +110,7 @@ val make_concrete_description
   -> ConcreteSyntaxDescription.t
 
 type nonterminal_operators =
-  (int option * ConcreteSyntaxDescription.operator_match) list Belt.Map.String.t
+  (int option * ConcreteSyntaxDescription.operator_match) list Tablecloth.StrDict.t
 
 val derived_nonterminal_rules
   : ConcreteSyntaxDescription.nonterminal_rules -> nonterminal_operators array

@@ -1,7 +1,6 @@
 open Jest
 open Expect
 open Lex
-open Belt.Result
 
 let _ = describe "Lex" (fun () ->
   let lexer1 =

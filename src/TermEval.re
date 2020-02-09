@@ -1,5 +1,3 @@
-open Belt.Result;
-
 [@react.component]
 let make = () => {
   let (termInput, setInput) = React.useState(() => "");

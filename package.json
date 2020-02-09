@@ -28,7 +28,8 @@
     "react-codemirror2": "^6.0.0",
     "react-dom": ">=16.8.6",
     "reason-react": "^0.7.0",
-    "sjcl": "^1.0.8"
+    "sjcl": "^1.0.8",
+    "tablecloth-bucklescript": "^0.0.6"
   },
   "resolutions": {
     "@jest/core": "24.9.0",

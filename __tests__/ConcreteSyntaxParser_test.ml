@@ -117,7 +117,7 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
 
   expectParse ConcreteSyntax.Parser.quantifiers__test
     "forall a b."
-    (Belt.Set.String.fromArray [| "a"; "b" |]);
+    (Tablecloth.StrSet.from_list [ "a"; "b" ]);
 
   expectParse ConcreteSyntax.Parser.nonterminal_type__test
     "forall a. list a"

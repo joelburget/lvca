@@ -9,7 +9,10 @@ exception InvalidSort
 let rec ast_to_sort' : NonBinding.term -> Types.sort
   = function
       | Operator (name, subtms)
-      -> SortAp (name, Belt.List.(subtms |. map ast_to_sort' |. toArray))
+      -> SortAp (name, subtms
+        |> Tablecloth.List.map ~f:ast_to_sort'
+        |> Tablecloth.Array.from_list
+      )
       | Sequence _ | Primitive _
       -> raise InvalidSort
 
@@ -20,8 +23,9 @@ let ast_to_sort : Binding.Nominal.term -> Types.sort
 let rec ast_to_core : Binding.Nominal.term -> core
   = function
   | Var v -> Var v
-  | Operator (name, subtms) -> Operator (name, Belt.List.map subtms ast_to_core_scope)
-  | Sequence subtms -> Sequence (Belt.List.map subtms ast_to_core)
+  | Operator (name, subtms)
+  -> Operator (name, Tablecloth.List.map subtms ~f:ast_to_core_scope)
+  | Sequence subtms -> Sequence (Tablecloth.List.map subtms ~f:ast_to_core)
   | Primitive p -> Primitive p
 
 and ast_to_core_scope : Binding.Nominal.scope -> core_scope

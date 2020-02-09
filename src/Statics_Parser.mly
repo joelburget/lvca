@@ -19,13 +19,14 @@
 %token COMMA
 
 %{
+open Tablecloth
 open Statics
 
 (* raises unnamed exception *)
 let rec term_to_pattern : Statics.term -> Pattern.t
   = function
     | Operator (name, args)
-    -> Operator (name, Belt.List.map args scope_to_pattern)
+    -> Operator (name, List.map args ~f:scope_to_pattern)
     | Free var -> Var var
     | _ -> failwith
       "bad parse -- can only match operators and variables in a pattern"
@@ -58,7 +59,7 @@ term:
 scope:
   separated_nonempty_list(DOT, term)
   { let binders_tm, body = Util.unsnoc $1 in
-    let binders_pat = Belt.List.map binders_tm term_to_pattern in
+    let binders_pat = List.map binders_tm ~f:term_to_pattern in
     Scope (binders_pat, body)
   }
 
@@ -75,11 +76,11 @@ typed_term: ID COLON term { $1, $3 }
 
 context:
   | CTX
-  { M.empty }
+  { StrDict.empty }
   | CTX COMMA separated_nonempty_list(COMMA, typed_term)
-  { M.fromArray (Belt.List.toArray $3) }
+  { StrDict.from_list $3 }
 
-hypothesis: context CTX_SEPARATOR clause = typing_clause { (M.empty, clause) }
+hypothesis: context CTX_SEPARATOR clause = typing_clause { (StrDict.empty, clause) }
 
 rule:
   | hypotheses = list(hypothesis) LINE conclusion = hypothesis

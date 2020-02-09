@@ -1,7 +1,9 @@
 open Types
 open Binding
+module StrDict = Tablecloth.StrDict
 
-let empty_map, fromArray = Belt.Map.String.(empty, fromArray)
+let fromArray = Belt.Map.String.fromArray
+let empty_map = StrDict.empty
 let every, length, map, toArray, zipBy =
   Belt.List.(every, length, map, toArray, zipBy)
 let get_first, map_union, map_unions = Util.(get_first, map_union, map_unions)
@@ -40,7 +42,7 @@ let rec to_ast : core -> Nominal.term = function
 and scope_to_ast (Scope (pats, body)) = Nominal.Scope (pats, to_ast body)
 
 let rec match_core_pattern
-  : core -> BindingAwarePattern.t -> core Belt.Map.String.t option
+  : core -> BindingAwarePattern.t -> core StrDict.t option
   = fun v pat ->
   let isSome, getExn = Belt.Option.(isSome, getExn) in
   match v, pat with
@@ -72,7 +74,7 @@ let rec match_core_pattern
 ;;
 
 let find_core_match
-  : core -> core_case_scope list -> (core * core Belt.Map.String.t) option
+  : core -> core_case_scope list -> (core * core StrDict.t) option
   = fun v branches -> branches
     |> get_first (function
       | CaseScope ([ pat ], rhs) -> (match match_core_pattern v pat with
@@ -85,13 +87,13 @@ let find_core_match
 exception EvalError of string
 
 let eval
-  : core -> (core, string) Belt.Result.t
+  : core -> (string, core) Tablecloth.Result.t
   = fun core ->
   let rec go
-    : core Belt.Map.String.t -> core -> core
+    : core StrDict.t -> core -> core
     = fun ctx tm -> match tm with
     | Var v ->
-      (match Belt.Map.String.get ctx v with
+      (match StrDict.get ctx ~key:v with
        | Some result -> result
        | None -> raise @@ EvalError ("Unbound variable " ^ v))
     | CoreApp (Lambda (_tys, Scope (arg_patterns, body)), args) ->
@@ -99,7 +101,7 @@ let eval
       then raise @@ EvalError "mismatched application lengths"
       else
         let arg_vals = map args (go ctx) in
-        let new_args : core Belt.Map.String.t =
+        let new_args : core StrDict.t =
           zipBy arg_patterns arg_vals
             (fun pat arg_val -> match pat with
             | Var name -> name, arg_val
@@ -129,7 +131,7 @@ let eval
     | _ -> raise @@ EvalError "Found a term we can't evaluate"
   in
   try
-    Belt.Result.Ok (go empty_map core)
+    Ok (go empty_map core)
   with
     EvalError msg -> Error msg
 ;;

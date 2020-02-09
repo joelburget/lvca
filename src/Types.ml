@@ -1,3 +1,5 @@
+open Tablecloth
+
 (** Types for representing languages *)
 
 type sort_name = string
@@ -37,7 +39,7 @@ type operatorDef = OperatorDef of string * arity
 type sortDef = SortDef of string list * operatorDef list
   (** A sort is defined by a set of variables and a set of operators *)
 
-type sort_defs = SortDefs of sortDef Belt.Map.String.t
+type sort_defs = SortDefs of sortDef StrDict.t
   (** A language is defined by its sorts *)
 
 type primitive =
@@ -56,22 +58,22 @@ type abstract_syntax =
 
 let string_of_primitive = function
   | PrimInteger i  -> Bigint.to_string i
-  | PrimString str -> "\"" ^ String.escaped str ^ "\""
+  | PrimString str -> "\"" ^ Caml.String.escaped str ^ "\""
 
 let prim_eq p1 p2 = match (p1, p2) with
   | PrimInteger i1, PrimInteger i2 -> Bigint.(i1 = i2) [@warning "-44"]
   | PrimString  s1, PrimString  s2 -> s1 = s2
   | _                              -> false
 
-let sort_names : abstract_syntax -> Belt.Set.String.t
+let sort_names : abstract_syntax -> StrSet.t
   = fun { sort_defs = SortDefs sorts } -> sorts
-  |. Belt.Map.String.keysToArray
-  |. Belt.Set.String.fromArray
+  |. StrDict.keys
+  |. StrSet.fromList
 
 let string_of_sort : sort -> string
   = let rec go = fun needs_parens -> function
       | SortAp (name, args) ->
-        let args' = Belt.Array.map args (go true) in
+        let args' = Array.map ~f:(go true) args in
         (match args' with
           | [||] -> name
           | _ ->
@@ -81,10 +83,10 @@ let string_of_sort : sort -> string
     in go false
 ;;
 
-let rec instantiate_sort : sort Belt.Map.String.t -> sort -> sort
+let rec instantiate_sort : sort StrDict.t -> sort -> sort
   = fun arg_mapping -> function
-    | SortVar name -> (match Belt.Map.String.get arg_mapping name with
+    | SortVar name -> (match StrDict.get arg_mapping ~key:name with
       | None -> failwith "TODO: error"
       | Some sort' -> sort')
     | SortAp (name, args) ->
-      SortAp (name, Belt.Array.map args (instantiate_sort arg_mapping))
+      SortAp (name, Array.map args ~f:(instantiate_sort arg_mapping))

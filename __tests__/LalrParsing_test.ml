@@ -3,11 +3,13 @@ open Expect
 open LrParsing
 open LalrParsing
 open TestUtil
-module M = Belt.Map.Int
+module M = (* Tablecloth.IntDict *) Belt.Map.Int
 module MS = Belt.Map.String
 module SI = Belt.Set.Int
 module MStack = Belt.MutableStack
 module MQueue = Belt.MutableQueue
+
+module TArray = Tablecloth.Array
 
 module MutableLookaheadItemSetCmp = Belt.Id.MakeComparable(struct
   type t = mutable_lookahead_item_set
@@ -188,7 +190,7 @@ let () = describe "LalrParsing" (fun () ->
   let show_lookahead_item_sets : lookahead_item_sets -> string
     = fun set -> set
     |. Belt.Set.toArray
-    |. Belt.Array.map Grammar1Lalr.string_of_lookahead_item_set
+    |> TArray.map ~f:Grammar1Lalr.string_of_lookahead_item_set
     |. Js.Array2.joinWith "\n\n"
   in
 
@@ -200,7 +202,7 @@ let () = describe "LalrParsing" (fun () ->
         |. lookahead_item_set_set
       ) |> toBeEquivalent show_lookahead_item_sets Belt.Set.eq
         (gram1_lr1_config_sets
-          |. Belt.Array.map (fun { LalrParsing.kernel_items } -> kernel_items)
+          |. TArray.map ~f:(fun { LalrParsing.kernel_items } -> kernel_items)
           |. lookahead_item_set_set
       )
     );
@@ -209,11 +211,11 @@ let () = describe "LalrParsing" (fun () ->
     test "closures" (fun () ->
       expect (Grammar1Lalr.lalr1_items
         |. Belt.Map.Int.valuesToArray
-        |. Belt.Array.map Grammar1Lalr.lr1_closure
+        |. TArray.map ~f:Grammar1Lalr.lr1_closure
         |. lookahead_item_set_set
       ) |> toBeEquivalent show_lookahead_item_sets Belt.Set.eq
         (gram1_lr1_config_sets
-          |. Belt.Array.map simplify_lookahead_config_set
+          |. TArray.map ~f:simplify_lookahead_config_set
           |. lookahead_item_set_set
       )
     );
@@ -248,9 +250,9 @@ let () = describe "LalrParsing" (fun () ->
   let actual_grammar2_lalr1_kernels : item_set_set
     = Grammar2Lalr.lalr1_items
       |. Belt.Map.Int.valuesToArray
-      |. Belt.Array.map (fun lookahead_item_set -> lookahead_item_set
+      |. TArray.map ~f:(fun lookahead_item_set -> lookahead_item_set
         |. Belt.Set.toArray
-        |. Belt.Array.map (fun lookahead_item -> lookahead_item.item)
+        |. TArray.map ~f:(fun lookahead_item -> lookahead_item.item)
         |. SI.fromArray
       )
       |. mk_set
@@ -259,14 +261,14 @@ let () = describe "LalrParsing" (fun () ->
   let show_item_set_set : LrParsing.item_set_set -> string
     = fun sets -> sets
     |. Belt.Set.toArray
-    |. Belt.Array.map Grammar2LR.string_of_item_set
+    |. TArray.map ~f:Grammar2LR.string_of_item_set
     |. Js.Array2.joinWith "\n"
   in
 
   testAll "grammar 2 lalr1 kernel items" [
     expect actual_grammar2_lalr1_kernels
       |> toBeEquivalent show_item_set_set Belt.Set.eq (mk_set
-        (Belt.Array.map expected_grammar2_lalr1_kernels (fun (_, k) -> k)))
+        (TArray.map expected_grammar2_lalr1_kernels ~f:(fun (_, k) -> k)))
   ] Util.id;
 
   let book_state_mapping = Belt.Map.Int.(expected_grammar2_lalr1_kernels
@@ -334,7 +336,7 @@ let () = describe "LalrParsing" (fun () ->
   in
 
   let string_of_propagation = fun propagation -> propagation
-    |. Belt.Array.map (fun (n, item) ->
+    |> TArray.map ~f:(fun (n, item) ->
       Printf.sprintf "%n -> %s" n (Grammar2LR.string_of_item item))
     |. Js.Array2.joinWith "\n"
   in
@@ -353,7 +355,7 @@ let () = describe "LalrParsing" (fun () ->
 
   let string_of_generation : (state * lookahead_item) array -> string
     = fun generation -> generation
-      |. Belt.Array.map (fun (state, lookahead_item) ->
+      |> TArray.map ~f:(fun (state, lookahead_item) ->
         Printf.sprintf "%n: %s" state (Grammar2Lalr.string_of_lookahead_item lookahead_item)
       )
       |. Js.Array2.joinWith "\n"
@@ -403,9 +405,9 @@ let () = describe "LalrParsing" (fun () ->
 
   let string_of_lalr1_items_set = fun lalr1_items_set -> lalr1_items_set
     |. Belt.Set.toArray
-    |. Belt.Array.map (fun mutable_lookahead_item_set -> mutable_lookahead_item_set
+    |> TArray.map ~f:(fun mutable_lookahead_item_set -> mutable_lookahead_item_set
       |. M.toArray
-      |. Belt.Array.map (fun (item, mutable_lookahead) ->
+      |> TArray.map ~f:(fun (item, mutable_lookahead) ->
         let lookahead_set = mutable_lookahead
           |. Belt.MutableSet.Int.toArray
           |. SI.fromArray
@@ -437,7 +439,7 @@ let () = describe "LalrParsing" (fun () ->
   in
 
   let state = gram1_lr1_config_sets
-    |. Belt.Array.map (fun { LalrParsing.kernel_items } ->
+    |> TArray.map ~f:(fun { LalrParsing.kernel_items } ->
       Grammar1LR.item_set_to_state @@
         lookahead_item_set_to_item_set kernel_items
     )

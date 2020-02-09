@@ -1,6 +1,6 @@
 [@react.component]
 let make = (
-  ~eval: (Binding.Nominal.term => Belt.Result.t(React.element, string)),
+  ~eval: (Binding.Nominal.term => Tablecloth.Result.t(string, React.element)),
   ~startStr: string
   ) => {
   module P_term = Parsing.Incremental(Parsing.Parseable_term);

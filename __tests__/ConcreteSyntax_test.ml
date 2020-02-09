@@ -2,7 +2,6 @@ open Jest
 open Expect
 let to_ast, to_string, of_ast, parse, equivalent, remove_spaces =
   ConcreteSyntax.(to_ast, to_string, of_ast, parse, equivalent, remove_spaces)
-open Belt.Result
 module Parse_concrete = Parsing.Incremental(Parsing.Parseable_concrete_syntax)
 open TestUtil
 type sort_name = Types.sort_name
@@ -23,8 +22,8 @@ let mk_tree
   (*
 (** lift [equivalent] to result *)
 let equivalent'
-  :  (formatted_tree, string) Belt.Result.t
-  -> (formatted_tree, string) Belt.Result.t
+  :  (formatted_tree, string) Result.t
+  -> (formatted_tree, string) Result.t
   -> bool
   = fun x y -> match x, y with
   | Ok x', Ok y' -> equivalent x' y'
@@ -32,7 +31,7 @@ let equivalent'
   | _ -> false
 
 (** lift [to_string] to result *)
-let to_string' : (formatted_tree, string) Belt.Result.t -> string
+let to_string' : (formatted_tree, string) Result.t -> string
   = function
     | Ok tree -> to_string tree
     | Error msg -> msg
@@ -63,7 +62,7 @@ let _ = describe "ConcreteSyntax" (fun () ->
 
   let arith = Types.SortAp ("arith", [||]) in
   let arith' = Types.FixedValence ([], arith) in
-  let sort_defs = Types.(SortDefs (Belt.Map.String.fromArray [|
+  let sort_defs = Types.(SortDefs (Tablecloth.StrDict.fromList [
     "arith", SortDef ([], [
       OperatorDef ("mul", Arity ([], [ arith'; arith' ]));
       OperatorDef ("div", Arity ([], [ arith'; arith' ]));
@@ -72,7 +71,7 @@ let _ = describe "ConcreteSyntax" (fun () ->
       OperatorDef ("app", Arity ([], [ arith'; arith' ]));
       OperatorDef ("fun", Arity ([], [ Types.FixedValence([arith], arith) ]));
     ])
-  |]))
+  ]))
   in
 
   test "language parses" (fun () ->
@@ -268,8 +267,8 @@ let _ = describe "ConcreteSyntax" (fun () ->
       (*
       let expect_round_trip_tree tree = expect (tree
           |> to_ast concrete
-          |. Belt.Result.map (of_ast sort_defs concrete "arith" 80)
-          |. Belt.Result.getExn
+          |. Result.map (of_ast sort_defs concrete "arith" 80)
+          |. Result.getExn
         ) |> toBeEquivalent to_string equivalent tree
       in
 

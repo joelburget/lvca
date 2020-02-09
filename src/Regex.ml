@@ -1,3 +1,5 @@
+open Tablecloth
+
 type re_class_base =
   | Word (* \w / \W *)
   | Whitespace (* \s / \S *)
@@ -59,8 +61,8 @@ let rec show : regex -> string
       -> Printf.sprintf "ReChoice (%s, %s)" (show re) (show re')
     | ReAny -> "ReAny"
     | ReConcat res -> Printf.sprintf "ReConcat [%s]" (res
-                                                      |. Belt.List.map show
-                                                      |> String.concat "; "
+                                                      |> List.map ~f:show
+                                                      |> Caml.String.concat "; "
                                                      )
 
 let rec accepts_empty : regex -> bool
@@ -69,7 +71,7 @@ let rec accepts_empty : regex -> bool
     | ReClass cls -> cls = PosClass Boundary || cls = NegClass Boundary
     | RePlus re -> accepts_empty re
     | ReChoice (a, b) -> accepts_empty a || accepts_empty b
-    | ReConcat pieces -> Belt.List.every pieces accepts_empty
+    | ReConcat pieces -> List.all pieces ~f:accepts_empty
     | ReStar _
     | ReOption _ -> true
     | ReSet _
@@ -129,8 +131,8 @@ let rec to_string' : int -> regex -> string
                               (to_string' 0 re ^ "|" ^ to_string' 0 re')
     | ReAny -> "."
     | ReConcat pieces -> pieces
-                         |> List.map (to_string' 2)
-                         |> String.concat ""
+                         |> List.map ~f:(to_string' 2)
+                         |> Caml.String.concat ""
                          |> parenthesize (precedence > 1)
 
 (** Convert a regex to a string which is parseable back to a regex. IE, for

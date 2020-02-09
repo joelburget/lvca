@@ -67,7 +67,8 @@
   "suffix": ".bs.js",
   "bs-dependencies": [
     "bs-zarith",
-    "reason-react"
+    "reason-react",
+    "tablecloth-bucklescript"
   ],
   "bs-dev-dependencies": ["@glennsl/bs-jest"],
   "warnings": {

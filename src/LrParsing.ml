@@ -1033,6 +1033,6 @@ module Lr0 (G : GRAMMAR) = struct
         in
         (* TODO: name might not always be "$" *)
         MQueue.add tokens' { name = "$"; start = len; finish = len };
-        parse tokens' |. Util.map_error (fun err -> Either.Right err)
+        Util.map_error (parse tokens') ~f:(fun err -> Either.Right err)
 
 end

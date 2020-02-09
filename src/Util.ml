@@ -1,4 +1,4 @@
-open Belt
+open Tablecloth
 
 let rec snoc lst a =
   match lst with
@@ -39,20 +39,22 @@ let rec get_first (f : 'a -> 'b option) (lst : 'a list) : 'b option =
 
 let rec traverse_list_result (f : 'a -> ('b, 'c) Result.t)
           (lst : 'a list)
-  : ('b list, 'c) Result.t
+  : ('b, 'c list) Result.t
   =
   match lst with
   | [] -> Ok []
   | a :: rest ->
     (match f a with
      | Error msg -> Error msg
-     | Ok b -> Result.flatMap (traverse_list_result f rest) (fun rest' -> Ok (b :: rest')))
+     | Ok b -> Result.and_then (traverse_list_result f rest)
+       ~f:(fun rest' -> Ok (b :: rest')))
 ;;
 
-let rec sequence_list_result (lst : ('a, 'b) Result.t list) : ('a list, 'b) Result.t =
+let rec sequence_list_result (lst : ('a, 'b) Result.t list)
+  : ('a, 'b list) Result.t =
   match lst with
   | [] -> Ok []
-  | Ok a :: rest -> Result.map (sequence_list_result rest) (fun rest' -> a :: rest')
+  | Ok a :: rest -> Result.map (fun rest' -> a :: rest') (sequence_list_result rest)
   | Error msg :: _ -> Error msg
 ;;
 
@@ -63,23 +65,25 @@ end
 module ArrayApplicative (A : Any) = struct
   exception Traversal_exn of A.t
 
-  let sequence_array_result (arr : ('a, A.t) Result.t array) : ('a array, A.t) Result.t =
+  let sequence_array_result (arr : (A.t, 'a) Result.t array)
+    : (A.t, 'a array) Result.t =
     try
       Ok
-        (Array.map arr (function
+        (Array.map ~f:(function
            | Ok a -> a
-           | Error b -> raise (Traversal_exn b)))
+           | Error b -> raise (Traversal_exn b))
+          arr)
     with
       Traversal_exn err -> Error err
   ;;
 
-  let traverse_array_result (f : 'a -> ('b, A.t) Result.t)
+  let traverse_array_result (f : 'a -> (A.t, 'b) Result.t)
         (arr : 'a array)
-    : ('b array, A.t) Result.t
+    : (A.t, 'b array) Result.t
     =
     try
       Ok
-        (Array.map arr (fun a ->
+        (Array.map arr ~f:(fun a ->
            match f a with
            | Ok b -> b
            | Error c -> raise (Traversal_exn c)))
@@ -93,14 +97,14 @@ let rec traverse_list_option (f : 'a -> 'b option)
   match lst with
   | [] -> Some []
   | a :: rest ->
-    Option.flatMap (f a) (fun b ->
-      Option.flatMap (traverse_list_option f rest) (fun rest' -> Some (b :: rest')))
+    Option.and_then (f a) ~f:(fun b ->
+      Option.and_then (traverse_list_option f rest) ~f:(fun rest' -> Some (b :: rest')))
 ;;
 
 let rec sequence_list_option (lst : 'a option list) : 'a list option =
   match lst with
   | [] -> Some []
-  | Some a :: rest -> Option.map (sequence_list_option rest) (fun rest' -> a :: rest')
+  | Some a :: rest -> Option.map (sequence_list_option rest) ~f:(fun rest' -> a :: rest')
   | None :: _ -> None
 ;;
 
@@ -112,7 +116,7 @@ let rec keep_some (lst : 'a option list) : 'a list =
 ;;
 
 let int_map_union m1 m2 =
-  Belt.Map.Int.merge m1 m2 (fun _k v1 v2 ->
+  IntDict.merge m1 m2 ~f:(fun _k v1 v2 ->
     match v1, v2 with
     | _, Some v -> Some v
     | Some v, None -> Some v
@@ -120,7 +124,7 @@ let int_map_union m1 m2 =
 ;;
 
 let map_union m1 m2 =
-  Belt.Map.String.merge m1 m2 (fun _k v1 v2 ->
+  StrDict.merge m1 m2 ~f:(fun _k v1 v2 ->
     match v1, v2 with
     | _, Some v -> Some v
     | Some v, None -> Some v
@@ -133,14 +137,14 @@ let rec fold_right (f : 'a -> 'b -> 'b) (lst : 'a list) (b : 'b) : 'b =
   | a :: as_ -> f a (fold_right f as_ b)
 ;;
 
-let int_map_unions maps = fold_right int_map_union maps Belt.Map.Int.empty
+let int_map_unions maps = fold_right int_map_union maps IntDict.empty
 
-let map_unions maps = fold_right map_union maps Belt.Map.String.empty
+let map_unions maps = fold_right map_union maps StrDict.empty
 
-let set_unions sets = Belt.Set.String.(fold_right union sets empty)
+let set_unions sets = StrSet.(fold_right union sets empty)
 
-let array_map_unions : 'a Belt.Map.String.t array -> 'a Belt.Map.String.t
-  = fun maps -> Belt.Array.reduce maps Belt.Map.String.empty map_union
+let array_map_unions : 'a StrDict.t array -> 'a StrDict.t
+  = fun maps -> Belt.Array.reduce maps StrDict.empty map_union
 
 let rec fold_left
   : ('b -> 'a -> 'b) -> 'b -> 'a list -> 'b
@@ -150,11 +154,11 @@ let rec fold_left
   | a :: as_ -> fold_left f (f b a) as_
 ;;
 
-let map_error (result : ('a, 'b) Result.t) (f : 'b -> 'c) : ('a, 'c) Result.t =
-  Result.(
-    match result with
+let map_error
+  : ('err_a, 'a) Result.t -> f:('err_a -> 'err_b) -> ('err_b, 'a) Result.t
+  = fun result ~f -> match result with
     | Ok x -> Ok x
-    | Error err -> Error (f err))
+    | Error err -> Error (f err)
 ;;
 
 let rec sum = function
@@ -182,7 +186,7 @@ let flip (f : 'a -> 'b -> 'c) : 'b -> 'a -> 'c = fun b a -> f a b
 let id a = a
 
 let list_flat_map : ('a -> 'b list) -> 'a list -> 'b list =
-  fun f lst -> List.(map lst f |> flatten)
+  fun f lst -> List.(map f lst |> flatten)
 ;;
 
 let is_none = function
@@ -235,10 +239,10 @@ let get_option' : (unit -> string) -> 'a option -> 'a =
     | Some a -> a
 ;;
 
-let array_of_stack : 'a MutableStack.t -> 'a array =
+let array_of_stack : 'a Belt.MutableStack.t -> 'a array =
   fun stack ->
   let result = [||] in
-  MutableStack.forEach stack (fun item ->
+  Belt.MutableStack.forEach stack (fun item ->
     let _ = Js.Array2.push result item in
     ());
   result

@@ -29,7 +29,7 @@
 /* TODO: duplicated (sort / atomic_sort) */
 sort:
   | ID nonempty_list(atomic_sort)
-  { Types.SortAp ($1, Belt.List.toArray $2) }
+  { Types.SortAp ($1, Tablecloth.Array.from_list $2) }
   | atomic_sort
   { $1 }
 
@@ -72,8 +72,6 @@ import:
 
 language_def:
   | list(import) nonempty_list(sort_def) EOF
-  { let sort_defs =
-      Types.SortDefs (Belt.Map.String.fromArray (Belt.List.toArray $2))
-    in
+  { let sort_defs = Types.SortDefs (Tablecloth.StrDict.from_list $2) in
     { imports = $1; sort_defs }
   }

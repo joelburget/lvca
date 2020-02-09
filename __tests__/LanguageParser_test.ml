@@ -10,18 +10,15 @@ let _ = describe "AbstractSyntax.Parser" (fun () ->
     ) |> toEqual lang
   ) in
 
-  let module M = Belt.Map.String in
-  let module BL = Belt.List in
-
   expectParse "bool := true() | false()"
     { imports = [];
-      sort_defs = SortDefs (M.fromArray [|
+      sort_defs = SortDefs (Tablecloth.StrDict.from_list [
         "bool", SortDef
         ([], [
           OperatorDef ("true", Arity ([], []));
           OperatorDef ("false", Arity ([], []));
         ])
-      |]);
+      ]);
     };
 
   let tm_sort = SortAp ("tm", [||]) in
@@ -39,7 +36,7 @@ let _ = describe "AbstractSyntax.Parser" (fun () ->
     | lam(tm. tm)
   |}
     { imports = [];
-      sort_defs = SortDefs (M.fromArray [|
+      sort_defs = SortDefs (Tablecloth.StrDict.from_list [
         "ty", SortDef
         ([], [
           OperatorDef ("bool", Arity ([], []));
@@ -51,6 +48,6 @@ let _ = describe "AbstractSyntax.Parser" (fun () ->
           OperatorDef ("app", Arity ([], [ tm_valence; tm_valence ]));
           OperatorDef ("lam", Arity ([], [ FixedValence ([tm_sort], tm_sort) ]));
         ]);
-      |]);
+      ]);
     }
 )
