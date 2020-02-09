@@ -1,3 +1,4 @@
+open Tablecloth
 open Types
 open ConcreteSyntaxDescription
 
@@ -82,12 +83,12 @@ and equivalent' child1 child2 =
 
 let rec to_string : formatted_tree -> string
   = fun { children } -> children
-  |> Array.map (function
+  |> Array.map ~f:(function
     | TerminalCapture { leading_trivia; content; trailing_trivia } ->
       leading_trivia ^ content ^ trailing_trivia
     | NonterminalCapture nonterminal_capture -> to_string nonterminal_capture)
-  |> Belt.List.fromArray
-  |> String.concat ""
+  |> Array.to_list
+  |> Caml.String.concat ""
 ;;
 
 let string_of_tree_info : tree_info -> string
@@ -96,7 +97,7 @@ let string_of_tree_info : tree_info -> string
 
 let rec to_debug_string : formatted_tree -> string
   = fun { children; tree_info } -> children
-  |> Array.map string_of_formatted_capture
+  |> Array.map ~f:string_of_formatted_capture
   |. Js.Array2.joinWith ""
   |> Printf.sprintf "%s(%s)" (string_of_tree_info tree_info)
 
@@ -112,7 +113,7 @@ and string_of_formatted_capture = function
 type nonterminal_pointer =
   { nonterminals : nonterminal_rules
   ; current_nonterminal : string
-  ; bound_sorts : sort Belt.Map.String.t
+  ; bound_sorts : sort StrDict.t
   }
 
 let current_sort : nonterminal_pointer -> sort
@@ -141,7 +142,7 @@ let move_to : nonterminal_pointer -> string -> nonterminal_pointer
   = fun { nonterminals; bound_sorts } nt_name ->
     { nonterminals
     ; current_nonterminal = nt_name
-    ; bound_sorts = Belt.Map.String.empty
+    ; bound_sorts = StrDict.empty
     }
 
 type subpattern_result =
@@ -172,10 +173,10 @@ let index_tokens : nonterminal_token list -> (int * nonterminal_token) list
 (** Go through every token giving it an index. Underscores and boxes are not
  * indexed *)
 let map_index_tokens
-  : nonterminal_token list -> nonterminal_token Belt.Map.Int.t
+  : nonterminal_token list -> nonterminal_token IntDict.t
   = fun tokens -> tokens
     |> index_tokens
-    |. Belt.List.toArray
+    |. Array.from_list
     |. Belt.Map.Int.fromArray
     |. Belt.Map.Int.remove 0
 
@@ -196,7 +197,7 @@ let rec get_subpatterns
   -> nonterminal_pointer
   -> operator_match_pattern
   -> Pattern.t
-  -> subpattern_result Belt.Map.Int.t
+  -> subpattern_result IntDict.t
   = fun tokens nonterminal_pointer op_match_pat pat -> match op_match_pat, pat with
   | SingleCapturePattern num, _
   -> let tok = tokens
@@ -225,11 +226,11 @@ let rec get_subpatterns
      in
      Belt.Map.Int.fromArray [| num, capture |]
   | OperatorPattern (pat_op_name, body_pats), Operator (op_name, body_scopes)
-  -> if pat_op_name = op_name && Belt.List.(length body_pats = length body_scopes)
+  -> if pat_op_name = op_name && List.(length body_pats = length body_scopes)
      then body_pats
        |. Belt.List.zipBy body_scopes
          (fun (NumberedScopePattern (caps, body_pat)) ->
-           if Belt.List.length caps > 0 then failwith "TODO: error 6";
+           if List.length caps > 0 then failwith "TODO: error 6";
            get_subpatterns tokens nonterminal_pointer body_pat)
        |> Util.int_map_unions
      else raise (NoMatch
@@ -257,7 +258,7 @@ let rec get_subterms
   -> nonterminal_pointer
   -> operator_match_pattern
   -> Binding.Nominal.term
-  -> subterm_result Belt.Map.Int.t
+  -> subterm_result IntDict.t
   = fun tokens nonterminal_pointer op_match_pat tm -> match op_match_pat, tm with
   | SingleCapturePattern num, _
   -> let tok = tokens
@@ -311,7 +312,7 @@ let rec get_subterms
      in
      Belt.Map.Int.fromArray [| num, capture |]
   | OperatorPattern (pat_op_name, body_pats), Operator (op_name, body_scopes)
-  -> if pat_op_name = op_name && Belt.List.(length body_pats = length body_scopes)
+  -> if pat_op_name = op_name && List.(length body_pats = length body_scopes)
      then (body_pats
        |. Belt.List.zipBy body_scopes
          (get_scope_subterms tokens nonterminal_pointer)
@@ -331,16 +332,16 @@ and get_scope_subterms
   -> nonterminal_pointer
   -> numbered_scope_pattern
   -> Binding.Nominal.scope
-  -> subterm_result Belt.Map.Int.t
+  -> subterm_result IntDict.t
   = fun tokens nonterminal_pointer
     (NumberedScopePattern (numbered_patterns, body_pat) as ns_pat)
     (Scope (term_patterns, body)) ->
       (*
     Printf.printf "trying to match %n / %n binders\n"
-      (Belt.List.length numbered_patterns)
-      (Belt.List.length term_patterns) ;
+      (List.length numbered_patterns)
+      (List.length term_patterns) ;
       *)
-    if Belt.List.(length numbered_patterns != length term_patterns)
+    if List.(length numbered_patterns != length term_patterns)
     then raise
       (NoMatch "numbered scope pattern and term scope have different arity")
     else
@@ -376,8 +377,7 @@ and get_scope_subterms
           in
           captured_token_num, capture
         )
-        |. Belt.List.toArray
-        |> Belt.Map.Int.fromArray
+        |> IntDict.from_list
       in
       (* Printf.printf "trying to match body\n"; *)
       let body_bindings = get_subterms tokens nonterminal_pointer body_pat body in
@@ -396,7 +396,7 @@ and get_scope_subterms
  *)
 let check_tokens subterms tokens : unit = tokens
   |> index_tokens
-  |. Belt.List.toArray
+  |> Array.from_list
   |. Belt.Array.forEach (fun (tok_ix, tok) ->
     match tok with
     | NonterminalName _ ->
@@ -444,13 +444,13 @@ let find_operator_match
   -> int *
      operator_match_pattern *
      nonterminal_token list *
-     subterm_result Belt.Map.Int.t
+     subterm_result IntDict.t
   = fun nonterminal_pointer matches tm ->
 
     matches
-      |. Belt.List.flatten
-      |. Belt.List.mapWithIndex (fun match_ix x -> match_ix, x)
-      |. Belt.List.reverse (* TODO: O(n^2) reverse *)
+      |> List.flatten
+      |> Util.map_with_index ~f:(fun match_ix x -> match_ix, x)
+      |> List.reverse (* TODO: O(n^2) reverse *)
       |. Util.find_by (fun (match_ix, OperatorMatch op_match) ->
         let { operator_match_pattern = pat; tokens } = op_match in
         try
@@ -475,10 +475,10 @@ let find_pat_operator_match
   -> Pattern.t
   -> int
    * operator_match_pattern * nonterminal_token list
-   * subpattern_result Belt.Map.Int.t
+   * subpattern_result IntDict.t
   = fun nonterminal_pointer matches pattern -> matches
-    |. Belt.List.flatten
-    |. Belt.List.mapWithIndex (fun match_ix x -> match_ix, x)
+    |. List.flatten
+    |. Util.map_with_index ~f:(fun match_ix x -> match_ix, x)
     |. Util.find_by (fun (match_ix, OperatorMatch op_match) ->
       let { operator_match_pattern = pat; tokens } = op_match in
       try

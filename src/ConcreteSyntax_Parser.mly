@@ -26,15 +26,16 @@
 %token FORALL
 
 %{ open ConcreteSyntaxDescription
+open Tablecloth
 
-let concretize_vars : Belt.Set.String.t -> Types.sort -> Types.sort
+let concretize_vars : StrSet.t -> Types.sort -> Types.sort
   = fun var_set ->
     let open Types in
     let rec go = function
       | SortAp (name, args)
-      -> SortAp (name, Belt.Array.map args go)
+      -> SortAp (name, Array.map args ~f:go)
       | SortVar name
-      -> if Belt.Set.String.has var_set name
+      -> if StrSet.member var_set ~value:name
          then SortVar name
          else SortAp (name, [||])
     in go
@@ -48,8 +49,8 @@ let concretize_vars : Belt.Set.String.t -> Types.sort -> Types.sort
 %start nonterminal_rule__test
 %start nonterminal_type__test
 %start language
-%type <Belt.Set.String.t> quantifiers
-%type <Belt.Set.String.t> quantifiers__test
+%type <Tablecloth.StrSet.t> quantifiers
+%type <Tablecloth.StrSet.t> quantifiers__test
 %type <ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule
 %type <ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule__test
 %type <ConcreteSyntaxDescription.capture_number> capture_number
@@ -82,10 +83,7 @@ nonterminal_rule__test: nonterminal_rule EOF { $1 }
 
 quantifiers:
   FORALL nonempty_list(NONTERMINAL_ID) DOT
-  { $2
-    |. Belt.List.toArray
-    |. Belt.Set.String.fromArray
-  }
+  { StrSet.from_list $2 }
 
 quantifiers__test: quantifiers EOF { $1 }
 
@@ -93,7 +91,7 @@ quantifiers__test: quantifiers EOF { $1 }
 sort:
   /* TODO: this is ugly -- should be called SORT_ID or ID */
   | NONTERMINAL_ID nonempty_list(atomic_sort)
-  { Types.SortAp ($1, Belt.List.toArray $2) }
+  { Types.SortAp ($1, Array.from_list $2) }
   | atomic_sort
   { $1 }
 
@@ -109,11 +107,11 @@ nonterminal_type__test: nonterminal_type EOF { $1 }
 nonterminal_type:
   | quantifiers? separated_nonempty_list(ARROW, sort)
   { let var_set = match $1 with
-      | None -> Belt.Set.String.empty
+      | None -> StrSet.empty
       | Some var_set -> var_set
     in
     let arg_sorts, result_sort = $2
-      |. Belt.List.map (concretize_vars var_set)
+      |. List.map ~f:(concretize_vars var_set)
       |. Util.unsnoc
     in
     NonterminalType (arg_sorts, result_sort)
@@ -175,7 +173,7 @@ term_scope_pattern:
   { let capture_nums, body = Util.unsnoc $1 in
 
     let capture_nums' = capture_nums
-      |. Belt.List.map (function
+      |> List.map ~f:(function
         | SingleCapturePattern n -> PatternCapture n
         | OperatorPattern
           ("var", [NumberedScopePattern ([], SingleCapturePattern n)])
@@ -210,6 +208,6 @@ nonterminal_token:
   | TERMINAL_ID     { TerminalName    $1 }
   | NONTERMINAL_ID  { NonterminalName $1 }
   (* remove? *)
-  | UNDERSCORE NAT? { Underscore (Belt.Option.getWithDefault $2 1) }
+  | UNDERSCORE NAT? { Underscore (Option.with_default $2 ~default:1) }
 
 nonterminal_token__test: nonterminal_token EOF { $1 }

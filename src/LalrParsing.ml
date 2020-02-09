@@ -1,3 +1,4 @@
+open Tablecloth
 open LrParsing
 
 type lookahead_item =
@@ -533,7 +534,7 @@ module Lalr1 (G : GRAMMAR) = struct
                                      )
         in
 
-        match L.get symbols position with
+        match List.get_at symbols ~index:position with
         | Some (Terminal t_num as next_symbol) ->
           if t_num = terminal_num
           then lalr1_goto_table state next_symbol
@@ -560,7 +561,7 @@ module Lalr1 (G : GRAMMAR) = struct
                                            production_num
                                         )
         in
-        if position = L.length production &&
+        if position = List.length production &&
            SI.has lookahead_set terminal_num &&
            (* Accept in this case (end marker on the augmented nonterminal) --
               don't reduce. *)
@@ -626,6 +627,6 @@ module Lalr1 (G : GRAMMAR) = struct
         in
         (* TODO: name might not always be "$" *)
         MQueue.add tokens' { name = "$"; start = len; finish = len };
-        parse tokens' |. Util.map_error (fun err -> Either.Right err)
+        parse tokens' |. Util.map_error ~f:(fun err -> Either.Right err)
 
 end

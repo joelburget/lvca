@@ -17,5 +17,5 @@ type lex_error =
   ; message : string
   }
 
-val lex : lexer -> string -> (token array, lex_error) Belt.Result.t
+val lex : lexer -> string -> (lex_error, token array) Tablecloth.Result.t
 val string_of_tokens : token array -> string

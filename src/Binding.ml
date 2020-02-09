@@ -1,3 +1,4 @@
+open Tablecloth
 open External (* modules BitArray, Cbor, Sha256, Uint8Array *)
 open Types
 
@@ -11,12 +12,12 @@ module rec DeBruijn : sig
     | Primitive of primitive
 
   val to_nominal : term -> Nominal.term option
-  val from_nominal : Nominal.term -> (term, string) Belt.Result.t
+  val from_nominal : Nominal.term -> (string, term) Result.t
 
   val from_nominal_with_bindings
-    :  (int * int) Belt.Map.String.t
+    :  (int * int) StrDict.t
     -> Nominal.term
-    -> (term, string) Belt.Result.t
+    -> (string, term) Result.t
 end = struct
   type scope = Scope of Pattern.t list * term
 
@@ -26,28 +27,26 @@ end = struct
     | Sequence of term list
     | Primitive of primitive
 
-  module L = Belt.List
-
   let rec to_nominal' ctx = function
-    | Var (ix1, ix2) ->
-      ctx
-      |. L.get ix1
-      |. Belt.Option.flatMap (fun x -> x |. L.get ix2)
-      |. Belt.Option.map (fun name -> Nominal.Var name)
-    | Operator (tag, subtms) ->
-      Belt.Option.map
-        (Util.sequence_list_option (L.map subtms (scope_to_nominal ctx)))
-        (fun subtms' -> Nominal.Operator (tag, subtms'))
-    | Sequence tms ->
-      Belt.Option.map
-        (Util.sequence_list_option (L.map tms (to_nominal' ctx)))
-        (fun tms' -> Nominal.Sequence tms')
+    | Var (ix1, ix2) -> ctx
+      |> List.get_at ~index:ix1
+      |> Option.and_then ~f:(List.get_at ~index:ix2)
+      |> Option.map ~f:(fun name -> Nominal.Var name)
+    | Operator (tag, subtms) -> subtms
+      |> List.map ~f:(scope_to_nominal ctx)
+      |> Util.sequence_list_option
+      |> Option.map ~f:(fun subtms' -> Nominal.Operator (tag, subtms'))
+    | Sequence tms -> tms
+      |> List.map ~f:(to_nominal' ctx)
+      |> Util.sequence_list_option
+      |> Option.map ~f:(fun tms' -> Nominal.Sequence tms')
     | Primitive prim -> Some (Nominal.Primitive prim)
 
-  and scope_to_nominal ctx (Scope (binders, body)) =
-    Belt.Option.map
-      (to_nominal' (L.concat (L.map binders Pattern.list_vars_of_pattern) ctx) body)
-      (fun body' -> Nominal.Scope (binders, body'))
+  and scope_to_nominal ctx (Scope (binders, body)) = binders
+    |> List.map ~f:Pattern.list_vars_of_pattern
+    |> List.append ctx
+    |> fun ctx' -> to_nominal' ctx' body
+    |> Option.map ~f:(fun body' -> Nominal.Scope (binders, body'))
   ;;
 
   let to_nominal = to_nominal' []
@@ -56,37 +55,38 @@ end = struct
 
   let rec from_nominal_with_bindings' env = function
     | Nominal.Operator (tag, subtms) ->
-      Operator (tag, subtms |. L.map (scope_from_nominal' env))
+      Operator (tag, List.map subtms ~f:(scope_from_nominal' env))
     | Var name ->
-      (match Belt.Map.String.get env name with
+      (match StrDict.get env ~key:name with
        | None -> raise (FailedFromNominal ("couldn't find variable " ^ name))
        | Some (i, j) -> Var (i, j))
-    | Sequence tms -> Sequence (tms |. L.map (from_nominal_with_bindings' env))
+    | Sequence tms -> Sequence (List.map tms ~f:(from_nominal_with_bindings' env))
     | Primitive prim -> Primitive prim
 
   and scope_from_nominal' env (Nominal.Scope (pats, body)) =
-    let n = L.length pats in
-    let varNums : (string * (int * int)) list =
-      L.(
-        zip pats (makeBy n (fun i -> i))
-        |. map (fun (pat, i) ->
+    let n = List.length pats in
+    let varNums : (string * (int * int)) list = pats
+      |> Util.map_with_index ~f:(fun i pat ->
           let vars = Pattern.list_vars_of_pattern pat in
-          zip vars (makeBy (length vars) (fun j -> i, j)))
-        |. flatten)
+          List.map2 vars (Util.generate_list (List.length vars) (fun j -> i, j))
+            ~f:(fun x y -> x, y))
+      |> List.flatten
     in
-    let env' : (int * int) Belt.Map.String.t = Util.map_union
-      (Belt.Map.String.map env (fun (i, j) -> i + n, j))
-      (Belt.Map.String.fromArray (L.toArray varNums))
+    let env' : (int * int) StrDict.t = Util.map_union
+      (StrDict.map env ~f:(fun (i, j) -> i + n, j))
+      (StrDict.from_list varNums)
     in
     Scope (pats, from_nominal_with_bindings' env' body)
   ;;
 
   let from_nominal_with_bindings bindings tm =
-    try Belt.Result.Ok (from_nominal_with_bindings' bindings tm) with
-    | FailedFromNominal msg -> Error msg
+    try
+      Ok (from_nominal_with_bindings' bindings tm)
+    with
+      FailedFromNominal msg -> Error msg
   ;;
 
-  let from_nominal = from_nominal_with_bindings Belt.Map.String.empty
+  let from_nominal = from_nominal_with_bindings StrDict.empty
 end
 
 and Nominal : sig
@@ -163,7 +163,10 @@ end = struct
 
   let pp_term' = asprintf "%a" pp_term
   let pp_scope' = asprintf "%a" pp_scope
-  let array_map f args = Js.Json.array Belt.List.(toArray (map args f))
+  let array_map f args = args
+    |> List.map ~f:f
+    |> Array.from_list
+    |> Js.Json.array
 
   let jsonify_prim =
     Js.Json.(
@@ -211,8 +214,8 @@ end = struct
   (* raises ToPatternScopeEncountered *)
   let rec to_pattern_exn : term -> Pattern.t = function
     | Var name -> Var name
-    | Operator (name, tms) -> Operator (name, tms |. Belt.List.map scope_to_pattern_exn)
-    | Sequence tms -> Sequence (Belt.List.map tms to_pattern_exn)
+    | Operator (name, tms) -> Operator (name, List.map tms ~f:scope_to_pattern_exn)
+    | Sequence tms -> Sequence (List.map tms ~f:to_pattern_exn)
     | Primitive prim -> Primitive prim
 
   (* raises ToPatternScopeEncountered *)
@@ -225,7 +228,7 @@ end = struct
     = function
     | Var name -> Var name
     | Operator (name, pats) -> Operator
-      (name, Belt.List.map pats (fun pat -> Scope ([], pattern_to_term pat)))
-    | Sequence pats -> Sequence (Belt.List.map pats pattern_to_term)
+      (name, List.map pats ~f:(fun pat -> Scope ([], pattern_to_term pat)))
+    | Sequence pats -> Sequence (List.map pats ~f:pattern_to_term)
     | Primitive prim -> Primitive prim
 end

@@ -144,7 +144,7 @@ let map_unions maps = fold_right map_union maps StrDict.empty
 let set_unions sets = StrSet.(fold_right union sets empty)
 
 let array_map_unions : 'a StrDict.t array -> 'a StrDict.t
-  = fun maps -> Belt.Array.reduce maps StrDict.empty map_union
+  = fun maps -> Array.fold_right ~initial:StrDict.empty ~f:map_union maps
 
 let rec fold_left
   : ('b -> 'a -> 'b) -> 'b -> 'a list -> 'b
@@ -214,7 +214,7 @@ let array_map_keep : ('a -> 'b option) -> 'a array -> 'b array =
   fun f arr ->
   let result = [||] in
   arr
-  |. Belt.Array.forEach (fun a ->
+  |. Array.for_each ~f:(fun a ->
     match f a with
     | None -> ()
     | Some b ->
@@ -249,11 +249,22 @@ let array_of_stack : 'a Belt.MutableStack.t -> 'a array =
 ;;
 
 let stringify_list : ('a -> string) -> string -> 'a list -> string =
-  fun f sep elems ->
-  elems |. Belt.List.toArray |. Belt.Array.map f |. Js.Array2.joinWith sep
+  fun f sep elems -> elems
+    |> Array.from_list
+    |> Array.map ~f:f
+    |. Js.Array2.joinWith sep
 ;;
 
-let get_result : ('a, 'b) Belt.Result.t -> ('b -> 'a) -> 'a
+let get_result : ('b, 'a) Result.t -> ('b -> 'a) -> 'a
   = fun result f -> match result with
     | Ok a -> a
     | Error b -> f b
+
+let generate_list : int -> (int -> 'a) -> 'a list
+  = Belt.List.makeBy
+
+let generate_array : int -> (int -> 'a) -> 'a array
+  = Belt.Array.makeBy
+
+let map_with_index : f:(int -> 'a -> 'b) -> 'a list -> 'b list
+  = fun ~f lst -> Belt.List.mapWithIndex lst f

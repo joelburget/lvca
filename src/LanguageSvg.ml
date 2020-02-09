@@ -1,3 +1,5 @@
+open Tablecloth
+
 (** Simplified model of SVG *)
 let abstractSyntax = {|
 import {integer, float, string} from "builtins";
@@ -101,9 +103,9 @@ let eval_element : NonBinding.term -> React.element
         op
         ~props:(ReactDOMRe.domProps
           ~points:(points
-            |. Belt.List.toArray
-            |. Belt.Array.map eval_point
-            |. Belt.Array.map (fun (x, y) -> Printf.sprintf "%s,%s"
+            |> Array.from_list
+            |> Array.map ~f:eval_point
+            |> Array.map ~f:(fun (x, y) -> Printf.sprintf "%s,%s"
               (Bigint.to_string x)
               (Bigint.to_string y)
             )
@@ -138,10 +140,10 @@ let eval : NonBinding.term -> React.element
       ~height:(Bigint.to_string (get_int height))
       ~viewBox:(eval_viewbox viewbox)
       ())
-      (children |. Belt.List.toArray |. Belt.Array.map eval_styled_element)
+      (children |> Array.from_list |. Array.map ~f:eval_styled_element)
     | tm -> expected "document" tm
 
-let eval_tm : Binding.Nominal.term -> (React.element, string) Belt.Result.t
+let eval_tm : Binding.Nominal.term -> (string, React.element) Result.t
   = fun tm ->
   match NonBinding.from_nominal tm with
   | None -> Error "failed to convert nominal term to nonbinding (svg)"

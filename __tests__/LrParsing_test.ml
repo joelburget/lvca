@@ -203,7 +203,7 @@ let () = describe "LrParsing" (fun () ->
 
   let normalize = fun items -> items
     |. Belt.MutableSet.toList
-    |. L.map SI.toList
+    |. Belt.List.map SI.toList
   in
 
   testAll "lr0_items" [

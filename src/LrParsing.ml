@@ -1,5 +1,4 @@
-module A = Belt.Array
-module L = Belt.List
+open Tablecloth
 module M = Belt.Map.Int
 module MS = Belt.Map.String
 module MM = Belt.MutableMap
@@ -107,7 +106,7 @@ type prec_level = int
  * An augmented grammar has key 0 (augmented start)
 *)
 type grammar = {
-  nonterminals : nonterminal Belt.Map.Int.t;
+  nonterminals : nonterminal IntDict.t;
   terminal_nums : (string * terminal_num) array;
   (* TODO: better name: nonterminal_info? *)
   nonterminal_nums : (string * nonterminal_num) array;
@@ -204,7 +203,7 @@ let action_abbrev : action -> string
 
 let string_of_stack : state array -> string
   = fun states -> states
-                  |. A.map string_of_int
+                  |> Array.map ~f:string_of_int
                   |. Js.Array2.joinWith " "
 
 (* TODO: remove exns *)
@@ -229,22 +228,22 @@ module Lr0 (G : GRAMMAR) = struct
     = M.size G.grammar.nonterminals
 
   let number_of_terminals : int
-    = A.length G.grammar.terminal_nums
+    = Array.length G.grammar.terminal_nums
 
-  let terminal_names : string Belt.Map.Int.t
+  let terminal_names : string IntDict.t
     = G.grammar.terminal_nums
-      |. A.map (fun (name, num) -> num, name)
+      |. Array.map ~f:(fun (name, num) -> num, name)
       |. M.fromArray
 
-  let terminal_nums : int Belt.Map.String.t
+  let terminal_nums : int StrDict.t
     = MS.fromArray G.grammar.terminal_nums
 
-  let nonterminal_names : string Belt.Map.Int.t
+  let nonterminal_names : string IntDict.t
     = G.grammar.nonterminal_nums
-      |. A.map (fun (name, nt_num) -> nt_num, name)
+      |. Array.map ~f:Tuple2.swap
       |. M.fromArray
 
-  let nonterminal_nums : nonterminal_num Belt.Map.String.t
+  let nonterminal_nums : nonterminal_num StrDict.t
     = G.grammar.nonterminal_nums
       |. MS.fromArray
 
@@ -332,12 +331,12 @@ module Lr0 (G : GRAMMAR) = struct
                                       )
       in
       let pieces = [||] in
-      L.forEachWithIndex production (fun i symbol ->
+      Belt.List.forEachWithIndex production (fun i symbol ->
         if position = i then (let _ = Js.Array2.push pieces "." in ());
         Js.Array2.push pieces (string_of_symbol symbol);
       );
 
-      if position = L.length production then
+      if position = List.length production then
         (let _ = Js.Array2.push pieces "." in ());
 
       let nt_num = production_nonterminal_map
@@ -363,14 +362,14 @@ module Lr0 (G : GRAMMAR) = struct
     = fun ?(sep=" ") item_set -> match SI.size item_set with
       | 0 -> "empty"
       | _ -> item_set
-             |. SI.toArray
-             |. A.map string_of_item
+             |> SI.toArray
+             |> Array.map ~f:string_of_item
              |. Js.Array2.joinWith sep
 
   let string_of_production : production -> string
     = fun production -> production
-                        |. L.map string_of_symbol
-                        |. L.toArray
+                        |> List.map ~f:string_of_symbol
+                        |> Array.from_list
                         |. Js.Array2.joinWith " "
 
   let string_of_production_num : production_num -> string
@@ -420,7 +419,7 @@ module Lr0 (G : GRAMMAR) = struct
   let () = M.forEach G.grammar.nonterminals
              (fun nt_num { productions } ->
                 nonterminal_production_map |. MMI.set nt_num (MSI.make ());
-                L.forEach productions (fun production ->
+                Belt.List.forEach productions (fun production ->
                   let production_num = !production_cnt in
                   incr production_cnt;
                   production_map |. MMI.set production_num production;
@@ -473,7 +472,7 @@ module Lr0 (G : GRAMMAR) = struct
                                         )
         in
         (* first symbol right of the dot. if it's a nonterminal, look at it *)
-        match L.get production position with
+        match List.get_at production ~index:position with
         | Some (Nonterminal nt) -> MSI.add nt_set nt
         | _                     -> ()
       );
@@ -511,7 +510,7 @@ module Lr0 (G : GRAMMAR) = struct
                                                   nonterminal_num
                                                )
           in
-          L.forEach productions (fun production ->
+          Belt.List.forEach productions (fun production ->
             match production with
             | Terminal _         :: _ -> ()
             | Nonterminal new_nt :: _ -> MSI.add nt_set new_nt
@@ -550,7 +549,7 @@ module Lr0 (G : GRAMMAR) = struct
                                            production_num
                                         )
         in
-        match L.get production position with
+        match List.get_at production ~index:position with
         | Some next_symbol ->
           if symbol = next_symbol then
             MSI.add result (mk_item' production_num (position + 1))
@@ -559,9 +558,9 @@ module Lr0 (G : GRAMMAR) = struct
       result |. MSI.toArray |. SI.fromArray
 
   (* A list of all grammar symbols (terminals and nonterminals) *)
-  let grammar_symbols = L.concat
-                          (L.makeBy number_of_terminals    (fun n -> Terminal n))
-                          (L.makeBy number_of_nonterminals (fun n -> Nonterminal n))
+  let grammar_symbols = List.append
+    (Util.generate_list number_of_terminals    (fun n -> Terminal n))
+    (Util.generate_list number_of_nonterminals (fun n -> Nonterminal n))
 
   (** Compute the canonical collection of sets of LR(0) items. CPTT fig 4.33. *)
   let mutable_lr0_items : mutable_lr0_item_set
@@ -727,7 +726,7 @@ module Lr0 (G : GRAMMAR) = struct
                                                          production_num
                                                       )
                          in
-                         match symbols |. L.get position with
+                         match List.get_at symbols ~index:position with
                          | Some (Terminal t_num as next_symbol) ->
                            if t_num = terminal_num
                            then lr0_goto_table state next_symbol
@@ -756,7 +755,7 @@ module Lr0 (G : GRAMMAR) = struct
                                                              production_num
                                                           )
                           in
-                          if position = L.length production &&
+                          if position = List.length production &&
                              follow_set nt_num |. SI.has terminal_num &&
                              (* Accept in this case (end marker on the augmented nonterminal) --
                                 don't reduce. *)
@@ -785,11 +784,11 @@ module Lr0 (G : GRAMMAR) = struct
 
   (* TODO: is this right? *)
   let states : state array =
-    A.makeBy (M.size lr0_items) Util.id
+    Util.generate_array (M.size lr0_items) Util.id
   let terminals : terminal_num array =
-    A.makeBy number_of_terminals Util.id
+    Util.generate_array number_of_terminals Util.id
   let nonterminals : nonterminal_num array =
-    A.makeBy (MS.size nonterminal_nums) Util.id
+    Util.generate_array (MS.size nonterminal_nums) Util.id
 
   let full_lr0_action_table : unit -> action array array
     = fun () -> states |. Belt.Array.map (fun state ->
@@ -922,7 +921,7 @@ module Lr0 (G : GRAMMAR) = struct
                                               "Lr0 parse_trace: unable to find production %n in production_map"
                                               production_num
                                            )
-                               |. L.length
+                            |> List.length
             in
             (* pop symbols off the stack *)
             let children : parse_result list ref = ref [] in

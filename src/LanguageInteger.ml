@@ -61,15 +61,16 @@ let rec eval' : Bigint.t list -> Binding.DeBruijn.term -> Bigint.t option =
        | _ -> None
      )
      | _, _ -> None)
-  | Var (i, 0) -> Belt.List.get env i
+  | Var (i, 0) -> Tablecloth.List.get_at env ~index:i
   | Primitive (PrimInteger i) -> Some i
   | Var _ | Operator _ | Sequence _ | Primitive (PrimString _) -> None
 ;;
 
 let eval : Binding.DeBruijn.term -> Bigint.t option = eval' []
 
-let eval_tm : Binding.Nominal.term -> (Binding.Nominal.term, string) Belt.Result.t =
-  fun tm ->
+let eval_tm
+  : Binding.Nominal.term -> (string, Binding.Nominal.term) Tablecloth.Result.t
+  = fun tm ->
   match Binding.DeBruijn.from_nominal tm with
   | Error msg -> Error msg
   | Ok db_tm ->

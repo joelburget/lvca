@@ -37,7 +37,7 @@ exception Error
 
 val terminal_rule__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.pre_terminal_rule)
 
-val quantifiers__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Belt.Set.String.t)
+val quantifiers__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Tablecloth.StrSet.t)
 
 val operator_match__test: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (ConcreteSyntaxDescription.operator_match)
 
@@ -66,7 +66,7 @@ module Incremental : sig
   
   val terminal_rule__test: Lexing.position -> (ConcreteSyntaxDescription.pre_terminal_rule) MenhirInterpreter.checkpoint
   
-  val quantifiers__test: Lexing.position -> (Belt.Set.String.t) MenhirInterpreter.checkpoint
+  val quantifiers__test: Lexing.position -> (Tablecloth.StrSet.t) MenhirInterpreter.checkpoint
   
   val operator_match__test: Lexing.position -> (ConcreteSyntaxDescription.operator_match) MenhirInterpreter.checkpoint
   

@@ -331,7 +331,7 @@ module Tables = struct
 # 36 "/Users/joel/code/lvca-bucklescript/src/Term_Parser.mly"
   ( let binders_tm, body = Util.unsnoc _1 in
     let binders_pat =
-      binders_tm |. Belt.List.map Binding.Nominal.to_pattern_exn
+      binders_tm |> Tablecloth.List.map ~f:Binding.Nominal.to_pattern_exn
     in
     Binding.Nominal.Scope (binders_pat, body)
   )

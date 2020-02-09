@@ -1,14 +1,11 @@
 open Statics
-module M = Belt.Map.String
-module BL = Belt.List
-module BO = Belt.Option
-module BR = Belt.Result
+open Tablecloth
 
 type env = {
   (** The (checking / inference) rules we can apply *)
   rules     : rule list;
   (** The types of all known free variables *)
-  var_types : term Belt.Map.String.t;
+  var_types : term StrDict.t;
 }
 
 let enscope (binders : Pattern.t list) (Scope (binders', body))
@@ -18,19 +15,19 @@ let enscope (binders : Pattern.t list) (Scope (binders', body))
 exception NoMatch
 
 let rec match_schema_vars' t1 t2 = match t1, t2 with
-  | Free v, tm -> M.fromArray [| v, Scope ([], tm) |]
+  | Free v, tm -> StrDict.from_list [ v, Scope ([], tm) ]
   | Operator (tag1, args1), Operator (tag2, args2)
-    -> if tag1 = tag2 && BL.(length args1 = length args2)
-    then Util.map_unions @@ BL.zipBy args1 args2 match_schema_vars_scope
+    -> if tag1 = tag2 && List.(length args1 = length args2)
+    then Util.map_unions @@ List.map2 args1 args2 ~f:match_schema_vars_scope
     else raise NoMatch
 
 and match_schema_vars_scope (Scope (names1, body1)) (Scope (names2, body2)) =
-  if BL.(length names1 = length names2)
+  if List.(length names1 = length names2)
   (* TODO: is it okay to use names1? what happens to names2? *)
-  then match_schema_vars' body1 body2 |. M.map (enscope names1)
+  then match_schema_vars' body1 body2 |> StrDict.map ~f:(enscope names1)
   else raise NoMatch
 
-let match_schema_vars : term -> term -> scope Belt.Map.String.t option
+let match_schema_vars : term -> term -> scope StrDict.t option
   = fun t1 t2 ->
     try
       Some (match_schema_vars' t1 t2)
@@ -39,72 +36,72 @@ let match_schema_vars : term -> term -> scope Belt.Map.String.t option
 
 (** Open a scope, instantiating all of its bound variables *)
 let open_scope (args : term list list) (Scope (names, body)) : term option
-  = if BL.(length args <> length names)
+  = if List.(length args <> length names)
   then None
   else
     let rec open' offset tm = match tm with
       | Operator (tag, subtms) -> subtms
-                                  |. BL.map (fun (Scope (binders, subtm)) ->
-                                    open' (offset + BL.length binders) subtm
-                                    |. BO.map (fun subtm' -> Scope (binders, subtm'))
+                                  |> List.map ~f:(fun (Scope (binders, subtm)) ->
+                                    open' (offset + List.length binders) subtm
+                                    |> Option.map ~f:(fun subtm' -> Scope (binders, subtm'))
                                   )
-                                  |. Util.sequence_list_option
-                                  |. BO.map (fun subtms' -> Operator (tag, subtms'))
+                                  |> Util.sequence_list_option
+                                  |> Option.map ~f:(fun subtms' -> Operator (tag, subtms'))
       | Bound (i, j) -> if i >= offset
-        then BL.get args (i - offset)
-             |. BO.flatMap (fun args' -> BL.get args' j)
+        then List.get_at args ~index:(i - offset)
+             |> Option.and_then ~f:(fun args' -> List.get_at args' ~index:j)
         else Some tm
       | Free _ -> Some tm
       | Sequence tms -> tms
-                        |. BL.map (open' offset)
-                        |. Util.sequence_list_option
-                        |. BO.map (fun tms' -> Sequence tms')
+                        |> List.map ~f:(open' offset)
+                        |> Util.sequence_list_option
+                        |> Option.map ~f:(fun tms' -> Sequence tms')
       | Primitive _ -> Some tm
     in open' 0 body
 
 (** Create free variables from a pattern *)
 let pat_to_free_vars : Pattern.t -> term list
   = fun pat -> Pattern.list_vars_of_pattern pat
-               |. BL.map (fun name -> Free name)
+               |> List.map ~f:(fun name -> Free name)
 
-let rec instantiate (env : scope Belt.Map.String.t) (tm : term)
-  : (term, string) BR.t
+let rec instantiate (env : scope StrDict.t) (tm : term)
+  : (string, term) Result.t
   = match tm with
   | Operator (tag, subtms) -> subtms
-                              |. BL.map (fun (Scope (binders, body)) ->
+                              |> List.map ~f:(fun (Scope (binders, body)) ->
                                 let new_var_names = binders
-                                                    |. BL.toArray
-                                                    |. Belt.Array.map
-                                                         (fun pat -> BL.toArray (Pattern.list_vars_of_pattern pat))
-                                                    |. Belt.Array.concatMany
+                                                    |. Array.from_list
+                                                    |. Array.map
+                                                         ~f:(fun pat -> Array.from_list (Pattern.list_vars_of_pattern pat))
+                                                    |. Array.concatenate
                                 in
-                                instantiate (M.removeMany env new_var_names) body
-                                |. BR.map (fun body' -> Scope (binders, body'))
+                                instantiate (Belt.Map.String.removeMany env new_var_names) body
+                                |> Result.map (fun body' -> Scope (binders, body'))
                               )
-                              |. Util.sequence_list_result
-                              |. BR.map (fun subtms' -> Operator (tag, subtms'))
+                              |> Util.sequence_list_result
+                              |> Result.map (fun subtms' -> Operator (tag, subtms'))
   | Bound _ -> Ok tm
-  | Free v -> (match M.get env v with
+  | Free v -> (match StrDict.get env ~key:v with
     | None -> Js.log3 env tm v; Error ("instantiate: couldn't find var " ^ v)
     | Some (Scope (pats, _) as sc)
 
       (* Open the scope, instantiating all variables it binds as free *)
-      -> (match open_scope (BL.map pats pat_to_free_vars) sc with
+      -> (match open_scope (List.map pats ~f:pat_to_free_vars) sc with
         | None -> Error "instantiate: failed to open scope"
         | Some tm -> Ok tm
       )
   )
   | Sequence tms -> tms
-                    |. BL.map (instantiate env)
-                    |. Util.sequence_list_result
-                    |. BR.map (fun tms' -> Sequence tms')
+                    |> List.map ~f:(instantiate env)
+                    |> Util.sequence_list_result
+                    |> Result.map (fun tms' -> Sequence tms')
   | Primitive _ -> Ok tm
 
 exception BadTermMerge of term * term
 exception BadScopeMerge of scope * scope
 
 (* TODO: remove? *)
-let safe_union m1 m2 : 'a Belt.Map.String.t = M.merge m1 m2 (fun _ mv1 mv2 ->
+let safe_union m1 m2 : 'a StrDict.t = StrDict.merge m1 m2 ~f:(fun _ mv1 mv2 ->
   match mv1, mv2 with
   | Some v, None
   | None, Some v
@@ -116,23 +113,24 @@ let safe_union m1 m2 : 'a Belt.Map.String.t = M.merge m1 m2 (fun _ mv1 mv2 ->
 
 exception CheckError of string
 
-let update_ctx (ctx_state : scope M.t ref) (learned_tys : scope M.t) =
-  let do_assignment = fun (k, v) -> match M.get !ctx_state k with
-    | None    -> ctx_state := M.set !ctx_state k v
+let update_ctx (ctx_state : scope StrDict.t ref) (learned_tys : scope StrDict.t) =
+  let do_assignment = fun (k, v) -> match StrDict.get !ctx_state ~key:k with
+    | None    -> ctx_state := StrDict.insert !ctx_state ~key:k ~value:v
     | Some v' -> if v <> v' then (Js.log3 "update_ctx" v v'; raise (BadScopeMerge(v, v')))
   in
-  List.iter do_assignment (learned_tys |. M.toList)
+  List.iter do_assignment (StrDict.to_list learned_tys)
 
 let get_or_raise msg = function
   | Some x -> x
   | None   -> raise (CheckError msg)
 
-let raise_if_not_ok outer_msg = function
-  | BR.Ok x   -> x
+let raise_if_not_ok outer_msg : ('err, 'a) Result.t -> 'a
+  = function
+  | Ok x -> x
   | Error msg -> raise (CheckError (outer_msg ^ ":\n" ^ msg))
 
-let ctx_infer (var_types : term M.t) : term -> term = function
-  | Free v -> (match M.get var_types v with
+let ctx_infer (var_types : term StrDict.t) : term -> term = function
+  | Free v -> (match StrDict.get var_types ~key:v with
     | None -> raise (CheckError ("ctx_infer: couldn't find variable " ^ v))
     | Some ty -> ty
   )
@@ -180,7 +178,7 @@ let rec check' trace_stack emit_trace ({ rules } as env) (Typing (tm, ty) as typ
      Here we initially learn tm1, tm2, and ty2, but only learn ty1 via
      checking of hypotheses.
   *)
-  let ctx_state : scope M.t ref = ref schema_assignments in
+  let ctx_state : scope StrDict.t ref = ref schema_assignments in
   let name' = match name with
     | None      -> "infer"
     | Some name -> "infer " ^ name
@@ -218,12 +216,12 @@ and infer' trace_stack emit_trace ({ rules; var_types } as env) tm
     (* XXX conclusion context *)
     | _, InferenceRule { tm = rule_tm; ty = rule_ty } ->
       match_schema_vars rule_tm tm
-      |. BO.map (fun schema_assignments ->
+      |> Option.map ~f:(fun schema_assignments ->
         (name, hypotheses, schema_assignments, rule_ty))
   in
   let ty = match Util.first_by rules match_rule with
     | Some (name, hypotheses, schema_assignments, rule_ty)
-      -> let ctx_state : scope M.t ref = ref schema_assignments in
+      -> let ctx_state : scope StrDict.t ref = ref schema_assignments in
       let name' = match name with
         | None      -> "infer'"
         | Some name -> "infer' " ^ name

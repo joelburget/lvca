@@ -4,7 +4,7 @@ type env = {
   (** The (checking / inference) rules we can apply *)
   rules     : rule list;
   (** The types of all known free variables *)
-  var_types : term Belt.Map.String.t;
+  var_types : term Tablecloth.StrDict.t;
 }
 
 (* TODO: add docs *)
