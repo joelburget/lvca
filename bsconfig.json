@@ -4,6 +4,9 @@
   "reason": { "react-jsx": 3 },
   "sources": [
     {
+      "dir" : "src-frontend"
+    },
+    {
       "dir" : "src",
       "subdirs" : true,
       "generators" : [
