@@ -66,7 +66,7 @@ end = struct
   and scope_from_nominal' env (Nominal.Scope (pats, body)) =
     let n = List.length pats in
     let varNums : (string * (int * int)) list = pats
-      |> Util.map_with_index ~f:(fun i pat ->
+      |> Placemat.List.map_with_index ~f:(fun i pat ->
           let vars = Pattern.list_vars_of_pattern pat in
           List.map2 vars (Util.generate_list (List.length vars) (fun j -> i, j))
             ~f:(fun x y -> x, y))

@@ -55,7 +55,7 @@ let parse_cvt str =
 
 let true_tm = parse_cvt "true()"
 let bool_ty = parse_cvt "bool()"
-let env = { rules = statics; var_types = Belt.Map.String.empty }
+let env = { rules = statics; var_types = Tablecloth.StrDict.empty }
 let ite = parse_cvt "ite(true(); false(); true())"
 let annot_ite = parse_cvt "annot(ite(true(); false(); true()); bool())"
 let lam_tm = parse_cvt "lam(x. true())"

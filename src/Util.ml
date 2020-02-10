@@ -239,10 +239,10 @@ let get_option' : (unit -> string) -> 'a option -> 'a =
     | Some a -> a
 ;;
 
-let array_of_stack : 'a Belt.MutableStack.t -> 'a array =
+let array_of_stack : 'a Placemat.MutableStack.t -> 'a array =
   fun stack ->
   let result = [||] in
-  Belt.MutableStack.forEach stack (fun item ->
+  Placemat.MutableStack.forEach stack (fun item ->
     let _ = Js.Array2.push result item in
     ());
   result
@@ -261,10 +261,7 @@ let get_result : ('b, 'a) Result.t -> ('b -> 'a) -> 'a
     | Error b -> f b
 
 let generate_list : int -> (int -> 'a) -> 'a list
-  = Belt.List.makeBy
+  = Placemat.List.makeBy
 
 let generate_array : int -> (int -> 'a) -> 'a array
-  = Belt.Array.makeBy
-
-let map_with_index : f:(int -> 'a -> 'b) -> 'a list -> 'b list
-  = fun ~f lst -> Belt.List.mapWithIndex lst f
+  = Placemat.Array.makeBy

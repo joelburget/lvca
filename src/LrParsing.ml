@@ -1,11 +1,6 @@
 open Tablecloth
-module M = Belt.Map.Int
-module MS = Belt.Map.String
 module MM = Belt.MutableMap
 module MMI = Belt.MutableMap.Int
-module S = Belt.Set
-module SI = Belt.Set.Int
-module SS = Belt.Set.String
 module MSet = Belt.MutableSet
 module MSI = Belt.MutableSet.Int
 module Result = Belt.Result
@@ -80,7 +75,7 @@ let view_item : item -> item_view
 let mk_item' : int -> int -> item
   = fun production_num position -> (position lsl 24) lor production_num
 
-type item_set = SI.t
+type item_set = IntSet.t
 
 let mk_item : item_view -> item
   = fun { production_num; position } -> mk_item' production_num position
@@ -92,7 +87,7 @@ type configuration_set =
 
 let simplify_config_set : configuration_set -> item_set
   = fun { kernel_items; nonkernel_items } ->
-    SI.union kernel_items nonkernel_items
+    IntSet.union kernel_items nonkernel_items
 
 type nonterminal =
   { (* nonterminal_num: nonterminal_num; *)
@@ -126,14 +121,14 @@ type lr0_action_table = state -> terminal_num -> action
 type lr0_goto_table = state -> symbol -> state option
 
 module ComparableIntSet = Belt.Id.MakeComparable(struct
-    type t = SI.t
-    let cmp = SI.cmp
+    type t = IntSet.t
+    let cmp = Placemat.IntSet.cmp
   end)
 
 (* A mutable set of int sets. This is used to represent the set of LR(0) items.
  * Each int set represents a set of encoded items.
 *)
-type mutable_lr0_item_set = (SI.t, ComparableIntSet.identity) MSet.t
+type mutable_lr0_item_set = (IntSet.t, ComparableIntSet.identity) MSet.t
 
 type item_set_set = (item_set, ComparableIntSet.identity) Belt.Set.t
 
@@ -225,7 +220,7 @@ module Lr0 (G : GRAMMAR) = struct
   (* number of nonterminals in the passed-in grammar (which ought to be
    * augmented) *)
   let number_of_nonterminals : int
-    = M.size G.grammar.nonterminals
+    = Placemat.IntDict.size G.grammar.nonterminals
 
   let number_of_terminals : int
     = Array.length G.grammar.terminal_nums
@@ -233,30 +228,30 @@ module Lr0 (G : GRAMMAR) = struct
   let terminal_names : string IntDict.t
     = G.grammar.terminal_nums
       |. Array.map ~f:(fun (name, num) -> num, name)
-      |. M.fromArray
+      |. Belt.Map.Int.fromArray
 
   let terminal_nums : int StrDict.t
-    = MS.fromArray G.grammar.terminal_nums
+    = Belt.Map.String.fromArray G.grammar.terminal_nums
 
   let nonterminal_names : string IntDict.t
     = G.grammar.nonterminal_nums
       |. Array.map ~f:Tuple2.swap
-      |. M.fromArray
+      |. Belt.Map.Int.fromArray
 
   let nonterminal_nums : nonterminal_num StrDict.t
     = G.grammar.nonterminal_nums
-      |. MS.fromArray
+      |. Belt.Map.String.fromArray
 
   let string_of_nonterminal_num : nonterminal_num -> string
     = fun nt_num -> nonterminal_names
-      |. M.get nt_num
+      |> IntDict.get ~key:nt_num
       |> get_option' (fun () -> Printf.sprintf
          "string_of_nonterminal_num: failed to get nonterminal %n from \
          nonterminal_names"
          nt_num
       )
 
-  let rec nonterminal_first_set : SI.t -> MSI.t -> nonterminal_num -> unit
+  let rec nonterminal_first_set : IntSet.t -> MSI.t -> nonterminal_num -> unit
     = fun already_seen_nts result nt ->
       let productions : MSI.t = nonterminal_production_map
         |. MMI.get nt
@@ -288,28 +283,28 @@ module Lr0 (G : GRAMMAR) = struct
         first_set' already_seen_nts result production
       done;
 
-  and first_set' : SI.t -> MSI.t -> production -> unit
+  and first_set' : IntSet.t -> MSI.t -> production -> unit
     = fun already_seen_nts result -> function
       | [] -> failwith
                 "invariant violation: first_set must be called with a non-empty list"
       | Terminal num :: _ -> MSI.add result num
       (* TODO: update when we allow empty productions *)
       | Nonterminal num :: _
-        -> if not (SI.has already_seen_nts num)
-        then nonterminal_first_set (SI.add already_seen_nts num) result num
+        -> if not (IntSet.has already_seen_nts ~value:num)
+        then nonterminal_first_set (IntSet.add already_seen_nts ~value:num) result num
 
-  let first_set : production -> SI.t
+  let first_set : production -> IntSet.t
     = function
-      | [] -> SI.fromArray [||]
+      | [] -> IntSet.empty
       | prod ->
         let result = MSI.make () in
-        let already_seen_nts = SI.fromArray [||] in
+        let already_seen_nts = IntSet.empty in
         first_set' already_seen_nts result prod;
-        result |. MSI.toArray |. SI.fromArray
+        result |> MSI.toList |> IntSet.from_list
 
   let string_of_terminal : terminal_num -> string
     = fun t_num -> terminal_names
-                   |. M.get t_num
+                   |> IntDict.get ~key:t_num
                    |> get_option' (fun () -> Printf.sprintf
                                      "string_of_symbol: failed to get terminal %n"
                                      t_num
@@ -331,7 +326,7 @@ module Lr0 (G : GRAMMAR) = struct
                                       )
       in
       let pieces = [||] in
-      Belt.List.forEachWithIndex production (fun i symbol ->
+      Placemat.List.forEachWithIndex production (fun i symbol ->
         if position = i then (let _ = Js.Array2.push pieces "." in ());
         Js.Array2.push pieces (string_of_symbol symbol);
       );
@@ -348,7 +343,7 @@ module Lr0 (G : GRAMMAR) = struct
       in
 
       let nt_name = nonterminal_names
-                    |. M.get nt_num
+                    |> IntDict.get ~key:nt_num
                     |> get_option' (fun () -> Printf.sprintf
                                       "Lr0 string_of_item: unable to find nonterminal %n in nonterminal_names"
                                       production_num
@@ -359,12 +354,11 @@ module Lr0 (G : GRAMMAR) = struct
       Printf.sprintf "%s -> %s" nt_name (Js.Array2.joinWith pieces " ")
 
   let string_of_item_set : ?sep:string -> item_set -> string
-    = fun ?(sep=" ") item_set -> match SI.size item_set with
+    = fun ?(sep=" ") item_set -> match Placemat.IntSet.size item_set with
       | 0 -> "empty"
       | _ -> item_set
-             |> SI.toArray
-             |> Array.map ~f:string_of_item
-             |. Js.Array2.joinWith sep
+        |> IntSet.to_list
+        |> Util.stringify_list string_of_item sep
 
   let string_of_production : production -> string
     = fun production -> production
@@ -392,7 +386,7 @@ module Lr0 (G : GRAMMAR) = struct
       in
 
       let nt_name = nonterminal_names
-                    |. M.get nt_num
+                    |> IntDict.get ~key:nt_num
                     |> get_option' (fun () -> Printf.sprintf
                                       "Lr0 string_of_production: unable to find nonterminal %n in nonterminal_names"
                                       production_num
@@ -416,10 +410,10 @@ module Lr0 (G : GRAMMAR) = struct
       | Error (Some ShiftReduce) -> "error (shift/reduce conflict)"
 
   let production_cnt = ref 0
-  let () = M.forEach G.grammar.nonterminals
+  let () = Placemat.IntDict.forEach G.grammar.nonterminals
              (fun nt_num { productions } ->
                 nonterminal_production_map |. MMI.set nt_num (MSI.make ());
-                Belt.List.forEach productions (fun production ->
+                Placemat.List.forEach productions (fun production ->
                   let production_num = !production_cnt in
                   incr production_cnt;
                   production_map |. MMI.set production_num production;
@@ -442,10 +436,10 @@ module Lr0 (G : GRAMMAR) = struct
                      string_of_int p_num)
 
   let get_nonterminal : production_num -> nonterminal
-    = fun pn -> get_option' (fun () ->
-                  "get_nonterminal: couldn't find production " ^ string_of_int pn) @@
-      M.get G.grammar.nonterminals @@
-      get_nonterminal_num pn
+    = fun pn -> G.grammar.nonterminals
+      |> IntDict.get ~key:(get_nonterminal_num pn)
+      |> get_option' (fun () ->
+                  "get_nonterminal: couldn't find production " ^ string_of_int pn)
 
   (** The closure of an item set. CPTT fig 4.32. *)
   let lr0_closure' : item_set -> configuration_set
@@ -457,7 +451,7 @@ module Lr0 (G : GRAMMAR) = struct
 
       (* Create the set (nt_set) of nonterminals to look at. Add each initial
        * item to the kernel or nonkernel set. *)
-      SI.forEach initial_items (fun item ->
+      Placemat.IntSet.forEach initial_items (fun item ->
         let { production_num; position } = view_item item in
 
         if production_num = 0 || position > 0
@@ -504,13 +498,13 @@ module Lr0 (G : GRAMMAR) = struct
           MSI.forEach production_num_set (fun production_num ->
             MSI.add nonkernel_items (mk_item' production_num 0)
           );
-          let { productions } = M.get G.grammar.nonterminals nonterminal_num
+          let { productions } = IntDict.get G.grammar.nonterminals ~key:nonterminal_num
                                 |> get_option' (fun () -> Printf.sprintf
                                                   "lr0_closure': unable to find nonterminal %n in G.grammar.nonterminals"
                                                   nonterminal_num
                                                )
           in
-          Belt.List.forEach productions (fun production ->
+          Placemat.List.forEach productions (fun production ->
             match production with
             | Terminal _         :: _ -> ()
             | Nonterminal new_nt :: _ -> MSI.add nt_set new_nt
@@ -519,8 +513,8 @@ module Lr0 (G : GRAMMAR) = struct
         )
       done;
 
-      { kernel_items = kernel_items |. MSI.toArray |. SI.fromArray;
-        nonkernel_items = nonkernel_items |. MSI.toArray |. SI.fromArray;
+      { kernel_items = kernel_items |> MSI.toList |> IntSet.from_list;
+        nonkernel_items = nonkernel_items |> MSI.toList |> IntSet.from_list;
       }
 
   (* closure returning an item set (rather than a configuration set) *)
@@ -540,7 +534,7 @@ module Lr0 (G : GRAMMAR) = struct
   let lr0_goto_kernel : item_set -> symbol -> item_set
     = fun item_set symbol ->
       let result = MSI.make () in
-      SI.forEach (lr0_closure item_set) (fun item ->
+      Placemat.IntSet.forEach (lr0_closure item_set) (fun item ->
         let { production_num; position } = view_item item in
         let production = production_map
                          |. MMI.get production_num
@@ -555,7 +549,7 @@ module Lr0 (G : GRAMMAR) = struct
             MSI.add result (mk_item' production_num (position + 1))
         | _ -> ()
       );
-      result |. MSI.toArray |. SI.fromArray
+      result |> MSI.toList |> IntSet.from_list
 
   (* A list of all grammar symbols (terminals and nonterminals) *)
   let grammar_symbols = List.append
@@ -564,8 +558,8 @@ module Lr0 (G : GRAMMAR) = struct
 
   (** Compute the canonical collection of sets of LR(0) items. CPTT fig 4.33. *)
   let mutable_lr0_items : mutable_lr0_item_set
-    = let augmented_start = SI.fromArray
-                              [| mk_item {production_num = 0; position = 0} |]
+    = let augmented_start = IntSet.from_list
+                              [ mk_item {production_num = 0; position = 0} ]
     in
     (* canonical collection of sets *)
     let c =
@@ -583,10 +577,10 @@ module Lr0 (G : GRAMMAR) = struct
       (* for each set of items in the active set: *)
       MSet.forEach !active_set (fun items ->
         (* for each grammar symbol: *)
-        Belt.List.forEach grammar_symbols (fun symbol ->
+        Placemat.List.forEach grammar_symbols (fun symbol ->
           let goto_result = lr0_goto_kernel items symbol in
           (* if GOTO(items, symbol) is not empty and not in c: *)
-          if not (SI.isEmpty goto_result) &&
+          if not (IntSet.isEmpty goto_result) &&
              not (MSet.has c goto_result)
           then (
             MSet.add c goto_result;
@@ -598,49 +592,50 @@ module Lr0 (G : GRAMMAR) = struct
     done;
     c
 
-  let lr0_items : item_set M.t
+  let lr0_items : item_set IntDict.t
     = mutable_lr0_items
       |. MSet.toArray
-      |. Belt.Array.mapWithIndex (fun i item_set -> i, item_set)
-      |. M.fromArray
+      |. Placemat.Array.map_with_index (fun i item_set -> i, item_set)
+      |. Belt.Map.Int.fromArray
 
   let state_to_item_set : state -> item_set
     = fun state -> lr0_items
-                   |. M.get state
+                   |> IntDict.get ~key:state
                    |> get_option' (fun () -> Printf.sprintf
                                      "state_to_item_set -- couldn't find state %n (%n item sets)"
                                      state
-                                     (M.size lr0_items)
+                                     (Placemat.IntDict.size lr0_items)
                                   )
 
   (** raises [NoItemSet] *)
   let item_set_to_state : item_set -> state
     = fun item_set ->
       let state, _ = lr0_items
-                     |. M.findFirstBy (fun _ item_set' -> item_set' = item_set)
+                     |. Placemat.IntDict.findFirstBy (fun _ item_set' -> item_set' = item_set)
                      |> get_option (NoItemSet
                        (fun () -> Printf.sprintf
                           "item_set_to_state -- couldn't find item_set (%s) (options: %s)"
                           (string_of_item_set item_set)
                           (lr0_items
-                            |. M.valuesToArray
-                            |. Belt.Array.map string_of_item_set
-                            |. Js.Array2.joinWith ", ")
+                            |> IntDict.to_list
+                            |> Util.stringify_list
+                              (fun (_, item_set) -> string_of_item_set item_set)
+                              ", ")
                           ))
       in state
 
   let augmented_state : state
-    = item_set_to_state @@ SI.fromArray [| mk_item' 0 0 |]
+    = item_set_to_state @@ IntSet.from_list [ mk_item' 0 0 ]
 
   let end_marker : terminal_num
     = 0
 
-  let rec follow' : SI.t -> nonterminal_num -> SI.t
+  let rec follow' : IntSet.t -> nonterminal_num -> IntSet.t
     = fun nts_visited nt_num -> if nt_num = 0
     (* Rule 1 from the CPTT algorithm for FOLLOW(A):
      * $ is in FOLLOW(S), where S is the start symbol.
     *)
-      then SI.fromArray [| end_marker |]
+      then IntSet.from_list [ end_marker ]
 
       (* For each production, accumulate the terminals it adds to the follow
        * set
@@ -648,7 +643,7 @@ module Lr0 (G : GRAMMAR) = struct
       else production_map
            |. MMI.toArray
            |. Belt.Array.reduce
-                SI.empty
+                IntSet.empty
                 (fun follow_set (prod_num, production) ->
                    (* Rule 2 from the CPTT algorithm for FOLLOW(A):
                     * If there is a production A -> aBb, then everything in FIRST(b),
@@ -671,32 +666,32 @@ module Lr0 (G : GRAMMAR) = struct
                    *)
                    let rule_3_follow_set = match Util.unsnoc production with
                      | _, Nonterminal nt_num'
-                       when nt_num' = nt_num && not (SI.has nts_visited nt_num)
-                       -> follow' (SI.add nts_visited nt_num) parent_nt
-                     | _ -> SI.empty
+                       when nt_num' = nt_num && not (IntSet.has nts_visited ~value:nt_num)
+                       -> follow' (IntSet.add nts_visited ~value:nt_num) parent_nt
+                     | _ -> IntSet.empty
                    in
 
                    follow_set
-                   |. SI.union rule_2_follow_set
-                   |. SI.union rule_3_follow_set
+                     |> IntSet.union rule_2_follow_set
+                     |> IntSet.union rule_3_follow_set
                 )
 
   (* Find all the terminals occuring in first sets directly after the
    * nonterminal *)
-  and first_after_nt : nonterminal_num -> production -> SI.t
+  and first_after_nt : nonterminal_num -> production -> IntSet.t
     = fun nt_num -> function
       | Nonterminal nt_num' :: rest
         when nt_num' = nt_num
-        -> SI.union (first_set rest) (first_after_nt nt_num rest)
+        -> IntSet.union (first_set rest) (first_after_nt nt_num rest)
       | _ :: rest
         -> first_after_nt nt_num rest
       | []
-        -> SI.empty
+        -> IntSet.empty
 
   (* Compute the set of terminals that can appear immediately to the right of
    * nt in some production *)
-  let follow_set : nonterminal_num -> SI.t
-    = follow' SI.empty
+  let follow_set : nonterminal_num -> IntSet.t
+    = follow' IntSet.empty
 
   (* This is the GOTO function operating on states. See `lr0_goto_kernel` for
    * the version operating on item set.
@@ -712,7 +707,7 @@ module Lr0 (G : GRAMMAR) = struct
   let lr0_action_table state terminal_num =
     let item_set = lr0_closure @@ state_to_item_set state in
 
-    let item_set_l = SI.toList item_set in
+    let item_set_l = IntSet.to_list item_set in
 
     (* If [A -> xs . a ys] is in I_i and GOTO(I_i, a) = I_j, set
      * ACTION[i, a] to `shift j` *)
@@ -756,7 +751,7 @@ module Lr0 (G : GRAMMAR) = struct
                                                           )
                           in
                           if position = List.length production &&
-                             follow_set nt_num |. SI.has terminal_num &&
+                             follow_set nt_num |> IntSet.has ~value:terminal_num &&
                              (* Accept in this case (end marker on the augmented nonterminal) --
                                 don't reduce. *)
                              nt_num != 0
@@ -767,7 +762,7 @@ module Lr0 (G : GRAMMAR) = struct
 
     (* If [S' -> S .] is in I_i, set ACTION[i, $] to `accept` *)
     let accept_action =
-      if terminal_num = end_marker && item_set |. SI.has (mk_item' 0 1)
+      if terminal_num = end_marker && item_set |> IntSet.has ~value:(mk_item' 0 1)
       then Some Accept
       else None
     in
@@ -784,22 +779,22 @@ module Lr0 (G : GRAMMAR) = struct
 
   (* TODO: is this right? *)
   let states : state array =
-    Util.generate_array (M.size lr0_items) Util.id
+    Util.generate_array (Placemat.IntDict.size lr0_items) Util.id
   let terminals : terminal_num array =
     Util.generate_array number_of_terminals Util.id
   let nonterminals : nonterminal_num array =
-    Util.generate_array (MS.size nonterminal_nums) Util.id
+    Util.generate_array (Placemat.StrDict.size nonterminal_nums) Util.id
 
   let full_lr0_action_table : unit -> action array array
-    = fun () -> states |. Belt.Array.map (fun state ->
-      terminals |. Belt.Array.map (lr0_action_table state)
+    = fun () -> states |> Array.map ~f:(fun state ->
+      terminals |> Array.map ~f:(lr0_action_table state)
     )
 
   let full_lr0_goto_table : unit -> (symbol * state option) array array
     = fun () -> states
-                |. Belt.Array.map (fun state ->
+                |> Array.map ~f:(fun state ->
                   nonterminals
-                  |. Belt.Array.map (fun nt ->
+                  |> Array.map ~f:(fun nt ->
                     let sym = Nonterminal nt in
                     sym, lr0_goto_table state sym
                   )
@@ -808,7 +803,7 @@ module Lr0 (G : GRAMMAR) = struct
   let token_to_terminal
     : Lex.token -> terminal_num
     = fun { name } -> terminal_nums
-                      |. MS.get name
+                      |> StrDict.get ~key:name
                       |> get_option' (fun () -> Printf.sprintf
                                         "Lr0 token_to_terminal: unable to find name %s in terminal_nums"
                                         name
@@ -817,8 +812,8 @@ module Lr0 (G : GRAMMAR) = struct
   let token_to_symbol
     : Lex.token -> symbol
     = fun { name } ->
-      let t_match = terminal_nums |. MS.get name in
-      let nt_match = nonterminal_nums |. MS.get name in
+      let t_match = terminal_nums |> StrDict.get ~key:name in
+      let nt_match = nonterminal_nums |> StrDict.get ~key:name in
       match t_match, nt_match with
       | Some t_num, None -> Terminal t_num
       | None, Some nt_num -> Nonterminal nt_num
@@ -830,9 +825,9 @@ module Lr0 (G : GRAMMAR) = struct
 
   let string_of_symbols : parse_result array -> string
     = fun parse_results -> parse_results
-                           |. Belt.Array.map (fun { production } -> match production with
+                           |. Array.map ~f:(fun { production } -> match production with
                              | Left terminal_num -> terminal_names
-                                                    |. M.get terminal_num
+                                                    |> IntDict.get ~key:terminal_num
                                                     |> get_option' (fun () -> Printf.sprintf
                                                                       "string_of_symbols: failed to get terminal %n"
                                                                       terminal_num
@@ -847,7 +842,7 @@ module Lr0 (G : GRAMMAR) = struct
                                in
 
                                let nt_name = nonterminal_names
-                                             |. M.get nt_num
+                                             |> IntDict.get ~key:nt_num
                                              |> get_option' (fun () -> Printf.sprintf
                                                                "Lr0 string_of_symbols: unable to find nonterminal %n in nonterminal_names"
                                                                production_num
@@ -861,7 +856,7 @@ module Lr0 (G : GRAMMAR) = struct
     Printf.sprintf "action: %s\nstack: %s\nresults: %s\ninput: %s\n\n"
       (string_of_action action)
       (stack
-       |. Belt.Array.map string_of_int
+       |. Array.map ~f:string_of_int
        |. Js.Array2.joinWith " ")
       (string_of_symbols results)
       (input

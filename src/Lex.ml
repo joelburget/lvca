@@ -1,11 +1,4 @@
-module A = Belt.Array
-module L = Belt.List
-module M = Belt.Map.Int
-module MM = Belt.MutableMap.Int
-module SI = Belt.Set.Int
-module SS = Belt.Set.String
-module MSI = Belt.MutableSet.Int
-module Result = Belt.Result
+module IntDict = Tablecloth.IntDict
 
 type token_name = string
 type regex = string
@@ -20,7 +13,7 @@ type token =
 
 let string_of_tokens : token array -> string
   = fun toks -> toks
-                |. A.map (fun { name } -> name)
+                |. Tablecloth.Array.map ~f:(fun { name } -> name)
                 |. Js.Array2.joinWith " "
 
 type position = int
@@ -39,7 +32,7 @@ type lexbuf =
 exception LexError of lex_error
 exception FoundFirstCapture of int
 
-let find_first_capture : string M.t -> 'a Js.nullable array -> string option =
+let find_first_capture : string IntDict.t -> 'a Js.nullable array -> string option =
   fun tok_names captures ->
   try
     for i = 1 to Js.Array2.length captures - 1 do
@@ -50,13 +43,13 @@ let find_first_capture : string M.t -> 'a Js.nullable array -> string option =
     None
   with
     FoundFirstCapture i -> Some (tok_names
-    |. M.get i
+    |> IntDict.get ~key:i
     |> Util.get_option' (fun () -> "unable to find token " ^ string_of_int i)
   )
 ;;
 
 (** raises: [LexError] *)
-let get_next_tok_exn : string M.t -> Js.Re.t -> lexbuf -> token =
+let get_next_tok_exn : string IntDict.t -> Js.Re.t -> lexbuf -> token =
   fun tok_names re { buf; pos } -> re
   |. Js.Re.exec_ (buf |. Js.String2.sliceToEnd ~from:pos)
   |. function
@@ -81,17 +74,20 @@ let lex_exn : lexer -> string -> token array =
   fun lexer input ->
   let result = [||] in
   let lexbuf = { buf = input; pos = 0 } in
-  let mut_tok_names = MM.make () in
+  let mut_tok_names = Belt.MutableMap.Int.make () in
   let re_str =
     lexer
-    |. L.toArray
-    |. A.mapWithIndex (fun i (re, tok_name) ->
-      MM.set mut_tok_names i tok_name;
+    |. Tablecloth.Array.from_list
+    |. Tablecloth.Array.mapWithIndex ~f:(fun i (re, tok_name) ->
+      Belt.MutableMap.Int.set mut_tok_names i tok_name;
       "(" ^ re ^ ")")
     |. Js.Array2.joinWith "|"
   in
-  let tok_names = mut_tok_names |. MM.toArray |> M.fromArray in
-  let re = Js.Re.fromString @@ re_str in
+  let tok_names = mut_tok_names
+    |> Belt.MutableMap.Int.toList
+    |> IntDict.from_list
+  in
+  let re = Js.Re.fromString re_str in
   while lexbuf.pos < Js.String2.length lexbuf.buf do
     let tok = get_next_tok_exn tok_names re lexbuf in
     let { start; finish } = tok in
@@ -102,7 +98,7 @@ let lex_exn : lexer -> string -> token array =
   result
 ;;
 
-let lex : lexer -> string -> (token array, lex_error) Result.t =
+let lex : lexer -> string -> (lex_error, token array) Tablecloth.Result.t =
   fun lexer input ->
   try
     Ok (lex_exn lexer input)

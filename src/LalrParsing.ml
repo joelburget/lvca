@@ -1,17 +1,21 @@
 open Tablecloth
 open LrParsing
 
+module M = Belt.Map.Int
+module S = Belt.Set
+module SI = Belt.Set.Int
+
 type lookahead_item =
   { item : item;
     (* the set of terminals that can follow this item *)
-    lookahead_set : SI.t;
+    lookahead_set : IntSet.t;
   }
 
 module LookaheadItemCmp = Belt.Id.MakeComparable(struct
     type t = lookahead_item
     let cmp { item = i1; lookahead_set = s1 } { item = i2; lookahead_set = s2 } =
       match Pervasives.compare i1 i2 with
-      | 0 -> SI.cmp s1 s2
+      | 0 -> Placemat.IntSet.cmp s1 s2
       | c -> c
   end)
 
@@ -54,7 +58,7 @@ type mutable_lookahead_item_sets =
   (lookahead_item_set, LookaheadItemSetCmp.identity) MSet.t
 
 (* Set of items with mutable lookahead *)
-type mutable_lookahead_item_set = Belt.MutableSet.Int.t M.t
+type mutable_lookahead_item_set = Belt.MutableSet.Int.t IntDict.t
 
 (* Same as the corresponding lr0 types *)
 type lalr1_action_table = state -> terminal_num -> action
@@ -64,7 +68,7 @@ let lookahead_item_set_to_item_set
   : lookahead_item_set -> item_set
   = fun x -> x
              |. S.toArray
-             |. Belt.Array.map (fun { item } -> item)
+             |. Array.map ~f:(fun { item } -> item)
              |. SI.fromArray
 
 let mutable_lookahead_item_set_to_item_set
@@ -144,8 +148,8 @@ module Lalr1 (G : GRAMMAR) = struct
 
   let string_of_lookahead_set = fun lookahead_set -> lookahead_set
                                                      |. SI.toArray
-                                                     |. Belt.Array.map
-                                                          (fun t_num -> Belt.Map.Int.getWithDefault terminal_names t_num "#")
+                                                     |. Array.map
+                                                          ~f:(fun t_num -> Belt.Map.Int.getWithDefault terminal_names t_num "#")
                                                      |. Js.Array2.joinWith "/"
 
   (* TODO: move to module *)
@@ -156,8 +160,8 @@ module Lalr1 (G : GRAMMAR) = struct
 
   let string_of_lookahead_item_set = fun lookahead_item_set ->
     lookahead_item_set
-    |. Belt.Set.toArray
-    |. Belt.Array.map string_of_lookahead_item
+    |> Belt.Set.toArray
+    |> Array.map ~f:string_of_lookahead_item
     |. Js.Array2.joinWith "\n"
 
   let add_to mutable_lookahead_item_set nonterminal_num lookahead =
@@ -178,23 +182,23 @@ module Lalr1 (G : GRAMMAR) = struct
   *)
   let convert : MSI.t MMI.t -> lookahead_item_set
     = fun items -> items
-                   |. MMI.toArray
-                   |. Belt.Array.map (fun (nonterminal_num, mut_lookahead_set) ->
+                   |> MMI.toArray
+                   |> Array.map ~f:(fun (nonterminal_num, mut_lookahead_set) ->
                      let production_set = nonterminal_production_map
                                           |. MMI.get nonterminal_num
                                           |> get_option' (fun () -> Printf.sprintf
                                                             "lr1_closure' convert: unable to find nonterminal %n in nonterminal_production_map (keys: %s)"
                                                             nonterminal_num
                                                             (nonterminal_production_map
-                                                             |. MMI.keysToArray
-                                                             |. Belt.Array.map string_of_int
+                                                             |> MMI.keysToArray
+                                                             |> Array.map ~f:string_of_int
                                                              |. Js.Array2.joinWith ", ")
                                                          )
                      in
 
                      production_set
-                     |. MSI.toArray
-                     |. Belt.Array.map (fun production_num ->
+                     |> MSI.toArray
+                     |> Array.map ~f:(fun production_num ->
                        let item = mk_item { production_num; position = 0 } in
                        let lookahead_set = mut_lookahead_set
                                            |. MSI.toArray
@@ -203,8 +207,8 @@ module Lalr1 (G : GRAMMAR) = struct
                        { item; lookahead_set }
                      )
                    )
-                   |. Belt.Array.concatMany
-                   |. lookahead_item_set_from_array
+                   |> Array.concatenate
+                   |> lookahead_item_set_from_array
 
   let lr1_closure' : lookahead_item_set -> lookahead_configuration_set
     = fun initial_items ->
@@ -246,20 +250,20 @@ module Lalr1 (G : GRAMMAR) = struct
                                         )
         in
 
-        lookahead_set |. SI.forEach (fun lookahead_terminal_num ->
+        lookahead_set |. Placemat.IntSet.forEach (fun lookahead_terminal_num ->
           (* first symbol right of the dot *)
-          match Belt.List.get production position with
+          match List.get_at production ~index:position with
           | Some (Nonterminal nt) -> (
               (* Look at first symbol right of nonterminal right of the dot, b.
                * Compute FIRST(ba) where a is the lookahead.
               *)
-              let first_set' = match Belt.List.get production (position + 1) with
+              let first_set' = match List.get_at production ~index:(position + 1) with
                 | None -> first_set [Terminal lookahead_terminal_num]
                 | Some symbol
                   -> first_set [symbol; Terminal lookahead_terminal_num]
               in
 
-              SI.forEach
+              Placemat.IntSet.forEach
                 first_set'
                 (fun new_lookahead -> MStack.push stack (nt, new_lookahead))
             )
@@ -283,7 +287,7 @@ module Lalr1 (G : GRAMMAR) = struct
         if not is_added then (
           add_to nonkernel_items nonterminal_num lookahead;
 
-          let { productions } = M.get G.grammar.nonterminals nonterminal_num
+          let { productions } = IntDict.get G.grammar.nonterminals ~key:nonterminal_num
                                 |> get_option' (fun () -> Printf.sprintf
                                                   "lr1_closure': unable to find nonterminal %n in G.grammar.nonterminals"
                                                   nonterminal_num
@@ -291,15 +295,14 @@ module Lalr1 (G : GRAMMAR) = struct
           in
 
           productions
-          |. Belt.List.toArray
-          |. Belt.Array.forEach (function
+          |. Placemat.List.forEach (function
             | Terminal _         :: _ -> ()
             | Nonterminal new_nt :: rest ->
               let first_set' = first_set (match rest with
                 | [] -> [Terminal lookahead]
                 | symbol :: _ -> [symbol; Terminal lookahead]
               ) in
-              SI.forEach first_set' (fun new_lookahead ->
+              Placemat.IntSet.forEach first_set' (fun new_lookahead ->
                 MStack.push stack (new_nt, new_lookahead)
               );
             | _ -> failwith "Empty production"
@@ -330,7 +333,7 @@ module Lalr1 (G : GRAMMAR) = struct
       let generated = [||] in
       let hash_terminal = number_of_terminals + 1 in
       let modified_item =
-        { item; lookahead_set = SI.fromArray [| hash_terminal |] }
+        { item; lookahead_set = IntSet.from_list [ hash_terminal ] }
       in
       let j = lr1_closure @@
         lookahead_item_set_from_array [| modified_item |]
@@ -346,13 +349,13 @@ module Lalr1 (G : GRAMMAR) = struct
                                string_of_int production_num)
         in
 
-        if position = Belt.List.length production
+        if position = List.length production
         then () (* Already at the end of the production *)
         else (
           let item = mk_item { production_num; position = position + 1 } in
 
           let x = production
-                  |. Belt.List.get position
+                  |> List.get_at ~index:position
                   |> get_option' (fun () -> Printf.sprintf
                                     "failed to get position %n in production %s"
                                     position
@@ -362,12 +365,12 @@ module Lalr1 (G : GRAMMAR) = struct
 
           let goto_kernel = lr0_goto_kernel kernel x in
 
-          if SI.size goto_kernel > 0 then (
+          if Placemat.IntSet.size goto_kernel > 0 then (
             let state = item_set_to_state @@ goto_kernel in
 
             (* Another terminal has been spontaneously generated *)
-            let lookahead_set' = SI.remove lookahead_set hash_terminal in
-            if not (SI.isEmpty lookahead_set')
+            let lookahead_set' = IntSet.remove lookahead_set ~value:hash_terminal in
+            if not (IntSet.isEmpty lookahead_set')
             then (
               let _ = Js.Array2.push generated
                         (state, { item; lookahead_set = lookahead_set' })
@@ -375,7 +378,7 @@ module Lalr1 (G : GRAMMAR) = struct
               ()
             );
 
-            if SI.has lookahead_set hash_terminal
+            if IntSet.has lookahead_set ~value:hash_terminal
             then let _ = Js.Array2.push propagation (state, item) in ();
           )
         )
@@ -386,11 +389,11 @@ module Lalr1 (G : GRAMMAR) = struct
   (* CPTT Algorithm 4.63 step 1.
    * Convert each item set into a set of items with (empty) mutable lookahead.
   *)
-  let mutable_lalr1_items : mutable_lookahead_item_set M.t
+  let mutable_lalr1_items : mutable_lookahead_item_set IntDict.t
     = lr0_items
       |. M.map (fun items -> items
                              |. SI.toArray
-                             |. Belt.Array.map (fun item -> item, Belt.MutableSet.Int.make ())
+                             |. Array.map ~f:(fun item -> item, Belt.MutableSet.Int.make ())
                              |. M.fromArray
                )
 
@@ -403,7 +406,7 @@ module Lalr1 (G : GRAMMAR) = struct
 
      raises: [NoItemSet]
   *)
-  let lookahead_propagation : (state * item) array M.t M.t
+  let lookahead_propagation : (state * item) array IntDict.t IntDict.t
     = mutable_lalr1_items |. M.map (fun mutable_lookahead_item_set ->
       let kernel : item_set =
         mutable_lookahead_item_set_to_item_set mutable_lookahead_item_set
@@ -414,8 +417,8 @@ module Lalr1 (G : GRAMMAR) = struct
           generate_lookaheads kernel item
         in
 
-        Belt.Array.forEach spontaneous_generation
-          (fun (state, { item; lookahead_set }) ->
+        Array.forEach spontaneous_generation
+          ~f:(fun (state, { item; lookahead_set }) ->
              mutable_lalr1_items
              |. M.getExn state
              |. M.getExn item
@@ -450,11 +453,11 @@ module Lalr1 (G : GRAMMAR) = struct
           (* lookaheads that propagate from the item we're currently looking at
           *)
           let propagation : (state * item) array = lookahead_propagation
-                                                   |. M.get source_state
+                                                   |> IntDict.get ~key:source_state
                                                    |> get_option' (fun () -> Printf.sprintf
                                                                      "step 4 lookahead_propagation: couldn't find state %n" source_state
                                                                   )
-                                                      |. M.get source_item
+                                                   |> IntDict.get ~key:source_item
                                                    |> get_option' (fun () -> Printf.sprintf
                                                                      "step 4 lookahead_propagation: couldn't find item %s in state %n"
                                                                      (string_of_item source_item)
@@ -463,13 +466,13 @@ module Lalr1 (G : GRAMMAR) = struct
           in
 
           (* See if we can propagate any lookaheads (and do it) *)
-          Belt.Array.forEach propagation (fun (target_state, target_item) ->
+          Array.forEach propagation ~f:(fun (target_state, target_item) ->
             let target_lookahead : MSI.t = mutable_lalr1_items
-                                           |. M.get target_state
+                                           |> IntDict.get ~key:target_state
                                            |> get_option' (fun () -> Printf.sprintf
                                                              "step 4 mutable_lalr1_items: couldn't find state %n" target_state
                                                           )
-                                              |. M.get target_item
+                                           |> IntDict.get ~key:target_item
                                            |> get_option' (fun () -> Printf.sprintf
                                                              "step 4 mutable_lalr1_items: couldn't find item %s in state %n"
                                                              (string_of_item target_item)
@@ -487,11 +490,11 @@ module Lalr1 (G : GRAMMAR) = struct
       );
     done
 
-  let lalr1_items : lookahead_item_set M.t
+  let lalr1_items : lookahead_item_set IntDict.t
     = mutable_lalr1_items
       |. M.map (fun mutable_lookahead_item_set -> mutable_lookahead_item_set
                                                   |. M.toArray
-                                                  |. Belt.Array.map (fun (item, mutable_lookahead) ->
+                                                  |. Array.map ~f:(fun (item, mutable_lookahead) ->
                                                     { item; lookahead_set = mutable_lookahead
                                                                             |. Belt.MutableSet.Int.toArray
                                                                             |. Belt.Set.Int.fromArray
@@ -509,17 +512,19 @@ module Lalr1 (G : GRAMMAR) = struct
 
   let state_to_lookahead_item_set
     : state -> lookahead_item_set
-    = Belt.Map.Int.getExn lalr1_items
+    = fun state -> lalr1_items
+      |> IntDict.get ~key:state
+      |> get_option' (fun () -> "state_to_lookahead_item_set: state not found")
 
   let lalr1_action_table : lalr1_action_table
     = fun state terminal_num ->
 
       let item_set_l : lookahead_item list
         = state
-          |. state_to_lookahead_item_set
-          |. lr1_closure
-          |. Belt.Set.toArray
-          |. Belt.List.fromArray
+          |> state_to_lookahead_item_set
+          |> lr1_closure
+          |> Belt.Set.toArray
+          |> Array.to_list
       in
 
       (* If [A -> xs . a ys, b] is in I_i and GOTO(I_i, a) = I_j, set
@@ -538,7 +543,7 @@ module Lalr1 (G : GRAMMAR) = struct
         | Some (Terminal t_num as next_symbol) ->
           if t_num = terminal_num
           then lalr1_goto_table state next_symbol
-               |. Belt.Option.map (fun x -> Shift x)
+            |> Option.map ~f:(fun x -> Shift x)
           else None
         | _ -> None
       in
@@ -562,7 +567,7 @@ module Lalr1 (G : GRAMMAR) = struct
                                         )
         in
         if position = List.length production &&
-           SI.has lookahead_set terminal_num &&
+           IntSet.has lookahead_set ~value:terminal_num &&
            (* Accept in this case (end marker on the augmented nonterminal) --
               don't reduce. *)
            nt_num != 0
@@ -588,15 +593,15 @@ module Lalr1 (G : GRAMMAR) = struct
       |        _,        _,        _ -> Error None
 
   let full_lalr1_action_table : unit -> action array array
-    = fun () -> states |. Belt.Array.map (fun state ->
-      terminals |. Belt.Array.map (lalr1_action_table state)
+    = fun () -> states |> Array.map ~f:(fun state ->
+      terminals |> Array.map ~f:(lalr1_action_table state)
     )
 
   let full_lalr1_goto_table : unit -> (symbol * state option) array array
     = fun () -> states
-                |. Belt.Array.map (fun state ->
+                |> Array.map ~f:(fun state ->
                   nonterminals
-                  |. Belt.Array.map (fun nt ->
+                  |> Array.map ~f:(fun nt ->
                     let sym = Nonterminal nt in
                     sym, lalr1_goto_table state sym
                   )

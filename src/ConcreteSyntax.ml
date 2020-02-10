@@ -124,7 +124,7 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
     nonterminal_rules
     |. Belt.Map.String.forEach (fun _i (NonterminalRule { operator_rules }) ->
       operator_rules
-        |. Belt.List.forEach (fun level ->
+        |. Placemat.List.forEach (fun level ->
           let OperatorMatch { fixity } = level
             |> List.head
             |> get_option' (fun () ->
@@ -139,7 +139,7 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
 
       operator_rules
         |. List.flatten
-        |. Belt.List.forEach
+        |. Placemat.List.forEach
         (fun _i (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
            let non_existent_tokens, duplicate_captures, uncaptured_tokens =
              check_operator_match_validity tokens operator_match_pattern
@@ -526,7 +526,7 @@ let desugar_nonterminal
         |> List.head
         |> get_option'
           (fun () -> "desugar_nonterminal: expected at least on operator")
-        |> Util.map_with_index ~f:(fun i op_match -> Some i, op_match)
+        |> Placemat.List.map_with_index ~f:(fun i op_match -> Some i, op_match)
       in
       StrDict.from_list [ nonterminal_name, operators ],
       StrDict.from_list [ nonterminal_name, Some nonterminal_name ]
@@ -535,7 +535,7 @@ let desugar_nonterminal
       (* Used to number each operator across all precedence levels *)
       let operator_index = ref 0 in
 
-      let level_nts = Util.map_with_index operator_rules ~f:(fun i level ->
+      let level_nts = Placemat.List.map_with_index operator_rules ~f:(fun i level ->
         (* precedences 1..num_levels *)
         let prec_num = num_levels - i in
         let generated_name = Printf.sprintf "%s_%n" nonterminal_name prec_num in
@@ -590,13 +590,13 @@ let derived_nonterminal_rules : nonterminal_rules -> nonterminal_operators array
   = fun nonterminal_rules ->
   let taken_names : StrSet.t
     = nonterminal_rules
-      |. Belt.Map.String.keysToArray
-      |. Belt.Set.String.fromArray
+      |> StrDict.keys
+      |> StrSet.from_list
   in
   let nonterminal_rules_desugared, _nonterminal_renamings = nonterminal_rules
     |. Belt.Map.String.valuesToArray
     |. Belt.Array.map (desugar_nonterminal taken_names)
-    |. Belt.Array.unzip
+    |. Placemat.Array.unzip
   in nonterminal_rules_desugared
 
 let string_of_derived_rules : nonterminal_operators array -> string
@@ -627,14 +627,14 @@ let to_grammar
 
   let taken_names : StrSet.t
     = nonterminal_rules
-      |. Belt.Map.String.keysToArray
-      |. Belt.Set.String.fromArray
+      |> StrDict.keys
+      |> StrSet.from_list
   in
 
   let nonterminal_rules_desugared, nonterminal_renamings = nonterminal_rules
     |. Belt.Map.String.valuesToArray
     |. Belt.Array.map (desugar_nonterminal taken_names)
-    |. Belt.Array.unzip
+    |. Placemat.Array.unzip
   in
 
   let desugared_nts : nonterminal_operators
@@ -680,8 +680,8 @@ let to_grammar
       if nonterminal_name = start_nonterminal
       then start_nonterminal_num := !nt_num;
 
-      let productions' = Belt.List.map productions
-        (fun (op_index_opt, OperatorMatch rule) ->
+      let productions' = List.map productions
+        ~f:(fun (op_index_opt, OperatorMatch rule) ->
           let op_index = match op_index_opt with
             | Some ix -> ix
             | None -> -1 (* TODO: is this okay? *)
@@ -696,8 +696,8 @@ let to_grammar
             );
           incr prod_num;
           rule.tokens
-            |. Belt.List.keep (fun tok -> not (is_formatting_token tok))
-            |. Belt.List.map (convert_token terminal_num_map nonterminal_num_map)
+            |. List.filter ~f:(fun tok -> not (is_formatting_token tok))
+            |. List.map ~f:(convert_token terminal_num_map nonterminal_num_map)
           )
       in
 

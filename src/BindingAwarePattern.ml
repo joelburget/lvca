@@ -1,7 +1,5 @@
-let (empty, fromArray, union, toList) =
-  Belt.Set.String.(empty, fromArray, union, toList)
-let (toArray, map, reduce) = Belt.List.(toArray, map, reduce)
-let (stringify_list, id) = Util.(stringify_list, id)
+open Tablecloth
+let stringify_list = Util.stringify_list
 
 (** Represents the LHS of a denotation rule. Why is this not just `Pattern.t`?
     Because patterns can't match binders. For example, we want to be able to match
@@ -26,29 +24,28 @@ and scope = Scope of string list * pattern
 type t = pattern
 
 let rec vars
-  : pattern -> Belt.Set.String.t
+  : pattern -> StrSet.t
   = function
   | Operator (_, pats) -> vars_of_scopes pats
-  | Var name -> fromArray [| name |]
+  | Var name -> StrSet.from_list [ name ]
   | Sequence pats -> vars_of_patterns pats
-  | Primitive _ -> empty
+  | Primitive _ -> StrSet.empty
 
 and vars_of_scope (Scope (bound_vars, pat)) = bound_vars
-  |. toArray
-  |. fromArray
-  |. union (vars pat)
+  |> StrSet.from_list
+  |> StrSet.union (vars pat)
 
 and vars_of_scopes scopes = scopes
-  |. map vars_of_scope
-  |. reduce empty union
+  |. List.map ~f:vars_of_scope
+  |. Placemat.List.fold_left ~initial:StrSet.empty ~f:StrSet.union
 
 and vars_of_patterns pats = pats
-  |. map vars
-  |. reduce empty union
+  |. List.map ~f:vars
+  |. Placemat.List.fold_left ~initial:StrSet.empty ~f:StrSet.union
 ;;
 
 let list_vars : pattern -> string list
-  = fun pat -> toList (vars pat)
+  = fun pat -> StrSet.to_list (vars pat)
 ;;
 
 let rec to_string : pattern -> string = function
@@ -63,7 +60,7 @@ and scope_to_string : scope -> string
   = fun (Scope (bound_vars, pat)) -> match bound_vars with
     | [] -> to_string pat
     | _ -> Printf.sprintf "%s. %s"
-      (stringify_list id ". " bound_vars)
+      (stringify_list Util.id ". " bound_vars)
       (to_string pat)
 ;;
 
@@ -72,16 +69,16 @@ exception BindingAwareScopePatternEncountered
 (* raises BindingAwareScopePatternEncountered *)
 let rec from_ast : Binding.Nominal.term -> pattern = function
   | Var name -> Var name
-  | Operator (name, tms) -> Operator (name, tms |. Belt.List.map from_ast_scope)
-  | Sequence tms -> Sequence (Belt.List.map tms from_ast)
+  | Operator (name, tms) -> Operator (name, tms |> List.map ~f:from_ast_scope)
+  | Sequence tms -> Sequence (List.map tms ~f:from_ast)
   | Primitive prim -> Primitive prim
 
 (* raises BindingAwareScopePatternEncountered *)
 and from_ast_scope : Binding.Nominal.scope -> scope
   = fun (Scope (binders, body))
   -> Scope
-    ( map binders (function
-      | Var v -> v
+    ( List.map binders ~f:(function
+      | Pattern.Var v -> v
       | _ -> raise BindingAwareScopePatternEncountered
       )
     , from_ast body

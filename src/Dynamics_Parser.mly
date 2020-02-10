@@ -84,7 +84,7 @@ atomic_core:
   ast_like_core { $1 }
   | BACKSLASH nonempty_list(typed_arg) ARROW core
   {
-    let sorts, args = Belt.List.unzip $2 in
+    let sorts, args = Placemat.List.unzip $2 in
     Lambda (sorts, Scope (args, $4))
   }
   | MATCH core WITH LEFT_BRACE option(BAR) separated_nonempty_list(BAR, case_line) RIGHT_BRACE

@@ -1,6 +1,4 @@
 module StrSet = Tablecloth.StrSet
-let fromArray, empty, union, toList =
-  Belt.Set.String.(fromArray, empty, union, toList)
 let stringify_list = Util.stringify_list
 
 type pattern =
@@ -13,19 +11,17 @@ type t = pattern
 
 let rec vars_of_pattern : pattern -> StrSet.t = function
   | Operator (_, pats) -> vars_of_patterns pats
-  | Var name -> fromArray [| name |]
+  | Var name -> StrSet.from_list [ name ]
   | Sequence pats -> vars_of_patterns pats
-  | Primitive _ -> empty
+  | Primitive _ -> StrSet.empty
 
-and vars_of_patterns pats = Tablecloth.List.(pats
-  |> map ~f:vars_of_pattern
-  |. Belt.List.reduce empty union
-  (* |> Tablecloth.List.fold_right ~initial:empty ~f:union *)
-)
+and vars_of_patterns pats = pats
+  |> Tablecloth.List.map ~f:vars_of_pattern
+  |> Placemat.List.fold_right ~initial:StrSet.empty ~f:StrSet.union
 ;;
 
 let list_vars_of_pattern : pattern -> string list
-  = fun pat -> toList (vars_of_pattern pat)
+  = fun pat -> StrSet.to_list (vars_of_pattern pat)
 ;;
 
 let rec string_of_pattern : pattern -> string = function
