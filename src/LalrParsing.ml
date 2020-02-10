@@ -232,7 +232,7 @@ module Lalr1 (G : GRAMMAR) = struct
        * Also add it to either kernel_items or nonkernel_items.
        * TODO: should this be a set of lookahead tokens instead of a single one?
       *)
-      Placemat.Set.for_each initial_items (fun lookahead_item ->
+      Placemat.Set.for_each initial_items ~f:(fun lookahead_item ->
         let { item; lookahead_set } = lookahead_item in
         let { production_num; position } = view_item item in
 
@@ -241,7 +241,7 @@ module Lalr1 (G : GRAMMAR) = struct
         in
 
         if production_num = 0 || position > 0
-        then Placemat.MutableSet.add kernel_items lookahead_item
+        then Placemat.MutableSet.add kernel_items ~value:lookahead_item
         else add_all_to nonkernel_items nonterminal_num lookahead_set;
 
         let production = production_map
@@ -252,7 +252,7 @@ module Lalr1 (G : GRAMMAR) = struct
                                         )
         in
 
-        lookahead_set |. Placemat.IntSet.forEach (fun lookahead_terminal_num ->
+        Placemat.IntSet.for_each lookahead_set ~f:(fun lookahead_terminal_num ->
           (* first symbol right of the dot *)
           match List.get_at production ~index:position with
           | Some (Nonterminal nt) -> (
@@ -265,9 +265,9 @@ module Lalr1 (G : GRAMMAR) = struct
                   -> first_set [symbol; Terminal lookahead_terminal_num]
               in
 
-              Placemat.IntSet.forEach
+              Placemat.IntSet.for_each
                 first_set'
-                (fun new_lookahead -> MStack.push stack (nt, new_lookahead))
+                ~f:(fun new_lookahead -> MStack.push stack (nt, new_lookahead))
             )
           | _ -> ()
         )
@@ -296,15 +296,15 @@ module Lalr1 (G : GRAMMAR) = struct
                                                )
           in
 
-          productions
-          |. Placemat.List.forEach (function
+
+          Placemat.List.for_each productions ~f:(function
             | Terminal _         :: _ -> ()
             | Nonterminal new_nt :: rest ->
               let first_set' = first_set (match rest with
                 | [] -> [Terminal lookahead]
                 | symbol :: _ -> [symbol; Terminal lookahead]
               ) in
-              Placemat.IntSet.forEach first_set' (fun new_lookahead ->
+              Placemat.IntSet.for_each first_set' ~f:(fun new_lookahead ->
                 MStack.push stack (new_nt, new_lookahead)
               );
             | _ -> failwith "Empty production"
@@ -341,7 +341,7 @@ module Lalr1 (G : GRAMMAR) = struct
         lookahead_item_set_from_array [| modified_item |]
       in
 
-      Placemat.Set.for_each j (fun { lookahead_set; item = pre_item } ->
+      Placemat.Set.for_each j ~f:(fun { lookahead_set; item = pre_item } ->
         let { production_num; position } = view_item pre_item in
         let production = production_map
                          |. MMI.get production_num
@@ -419,7 +419,7 @@ module Lalr1 (G : GRAMMAR) = struct
           generate_lookaheads kernel item
         in
 
-        Array.forEach spontaneous_generation
+        Array.for_each spontaneous_generation
           ~f:(fun (state, { item; lookahead_set }) ->
              mutable_lalr1_items
              |> IntDict.get ~key:state
@@ -457,10 +457,10 @@ module Lalr1 (G : GRAMMAR) = struct
     while !made_update do
       made_update := false;
 
-      Placemat.IntDict.forEach mutable_lalr1_items
-        (fun source_state mutable_lookahead_item_set ->
-        Placemat.IntDict.forEach mutable_lookahead_item_set
-          (fun source_item source_lookahead ->
+      Placemat.IntDict.for_each mutable_lalr1_items
+        ~f:(fun source_state mutable_lookahead_item_set ->
+        Placemat.IntDict.for_each mutable_lookahead_item_set
+          ~f:(fun source_item source_lookahead ->
 
           (* lookaheads that propagate from the item we're currently looking at
           *)
@@ -478,7 +478,7 @@ module Lalr1 (G : GRAMMAR) = struct
           in
 
           (* See if we can propagate any lookaheads (and do it) *)
-          Array.forEach propagation ~f:(fun (target_state, target_item) ->
+          Array.for_each propagation ~f:(fun (target_state, target_item) ->
             let target_lookahead : MSI.t = mutable_lalr1_items
                                            |> IntDict.get ~key:target_state
                                            |> get_option' (fun () -> Printf.sprintf

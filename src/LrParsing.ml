@@ -323,7 +323,7 @@ module Lr0 (G : GRAMMAR) = struct
                                       )
       in
       let pieces = [||] in
-      Placemat.List.forEachWithIndex production (fun i symbol ->
+      Placemat.List.for_each_with_index production ~f:(fun i symbol ->
         if position = i then (let _ = Js.Array2.push pieces "." in ());
         Js.Array2.push pieces (string_of_symbol symbol);
       );
@@ -407,10 +407,10 @@ module Lr0 (G : GRAMMAR) = struct
       | Error (Some ShiftReduce) -> "error (shift/reduce conflict)"
 
   let production_cnt = ref 0
-  let () = Placemat.IntDict.forEach G.grammar.nonterminals
-             (fun nt_num { productions } ->
+  let () = Placemat.IntDict.for_each G.grammar.nonterminals
+             ~f:(fun nt_num { productions } ->
                 nonterminal_production_map |. MMI.set nt_num (MSI.make ());
-                Placemat.List.forEach productions (fun production ->
+                Placemat.List.for_each productions ~f:(fun production ->
                   let production_num = !production_cnt in
                   incr production_cnt;
                   production_map |. MMI.set production_num production;
@@ -448,7 +448,7 @@ module Lr0 (G : GRAMMAR) = struct
 
       (* Create the set (nt_set) of nonterminals to look at. Add each initial
        * item to the kernel or nonkernel set. *)
-      Placemat.IntSet.forEach initial_items (fun item ->
+      Placemat.IntSet.for_each initial_items ~f:(fun item ->
         let { production_num; position } = view_item item in
 
         if production_num = 0 || position > 0
@@ -501,7 +501,7 @@ module Lr0 (G : GRAMMAR) = struct
                                                   nonterminal_num
                                                )
           in
-          Placemat.List.forEach productions (fun production ->
+          Placemat.List.for_each productions ~f:(fun production ->
             match production with
             | Terminal _         :: _ -> ()
             | Nonterminal new_nt :: _ -> MSI.add nt_set new_nt
@@ -531,7 +531,7 @@ module Lr0 (G : GRAMMAR) = struct
   let lr0_goto_kernel : item_set -> symbol -> item_set
     = fun item_set symbol ->
       let result = MSI.make () in
-      Placemat.IntSet.forEach (lr0_closure item_set) (fun item ->
+      Placemat.IntSet.for_each (lr0_closure item_set) ~f:(fun item ->
         let { production_num; position } = view_item item in
         let production = production_map
                          |. MMI.get production_num
@@ -550,8 +550,12 @@ module Lr0 (G : GRAMMAR) = struct
 
   (* A list of all grammar symbols (terminals and nonterminals) *)
   let grammar_symbols = List.append
-    (Util.generate_list number_of_terminals    (fun n -> Terminal n))
-    (Util.generate_list number_of_nonterminals (fun n -> Nonterminal n))
+    (Placemat.List.initialize
+      ~length:number_of_terminals
+      ~f:(fun n -> Terminal n))
+    (Placemat.List.initialize
+      ~length:number_of_nonterminals
+      ~f:(fun n -> Nonterminal n))
 
   (** Compute the canonical collection of sets of LR(0) items. CPTT fig 4.33. *)
   let mutable_lr0_items : mutable_lr0_item_set
@@ -572,16 +576,16 @@ module Lr0 (G : GRAMMAR) = struct
       let new_active_set = MSet.from_array [||] ~id:(module ComparableIntSet)
       in
       (* for each set of items in the active set: *)
-      MSet.for_each !active_set (fun items ->
+      MSet.for_each !active_set ~f:(fun items ->
         (* for each grammar symbol: *)
-        Placemat.List.forEach grammar_symbols (fun symbol ->
+        Placemat.List.for_each grammar_symbols ~f:(fun symbol ->
           let goto_result = lr0_goto_kernel items symbol in
           (* if GOTO(items, symbol) is not empty and not in c: *)
           if not (IntSet.isEmpty goto_result) &&
-             not (MSet.has c goto_result)
+             not (MSet.has c ~value:goto_result)
           then (
-            MSet.add c goto_result;
-            MSet.add new_active_set goto_result;
+            MSet.add c ~value:goto_result;
+            MSet.add new_active_set ~value:goto_result;
           )
         )
       );
@@ -592,7 +596,7 @@ module Lr0 (G : GRAMMAR) = struct
   let lr0_items : item_set IntDict.t
     = mutable_lr0_items
       |> MSet.to_array
-      |. Placemat.Array.map_with_index (fun i item_set -> i, item_set)
+      |> Placemat.Array.map_with_index ~f:(fun i item_set -> i, item_set)
       |> Placemat.IntDict.from_array
 
   let state_to_item_set : state -> item_set
@@ -608,7 +612,8 @@ module Lr0 (G : GRAMMAR) = struct
   let item_set_to_state : item_set -> state
     = fun item_set ->
       let state, _ = lr0_items
-                     |. Placemat.IntDict.findFirstBy (fun _ item_set' -> item_set' = item_set)
+                     |> Placemat.IntDict.find_first_by
+                       ~f:(fun _ item_set' -> item_set' = item_set)
                      |> get_option (NoItemSet
                        (fun () -> Printf.sprintf
                           "item_set_to_state -- couldn't find item_set (%s) (options: %s)"
@@ -775,12 +780,15 @@ module Lr0 (G : GRAMMAR) = struct
     |        _,        _,        _ -> Error None
 
   (* TODO: is this right? *)
-  let states : state array =
-    Util.generate_array (Placemat.IntDict.size lr0_items) Util.id
-  let terminals : terminal_num array =
-    Util.generate_array number_of_terminals Util.id
-  let nonterminals : nonterminal_num array =
-    Util.generate_array (Placemat.StrDict.size nonterminal_nums) Util.id
+  let states : state array = Tablecloth.Array.initialize
+    ~length:(Placemat.IntDict.size lr0_items)
+    ~f:Util.id
+  let terminals : terminal_num array = Tablecloth.Array.initialize
+    ~length:number_of_terminals
+    ~f:Util.id
+  let nonterminals : nonterminal_num array = Tablecloth.Array.initialize
+    ~length:(Placemat.StrDict.size nonterminal_nums)
+    ~f:Util.id
 
   let full_lr0_action_table : unit -> action array array
     = fun () -> states |> Array.map ~f:(fun state ->

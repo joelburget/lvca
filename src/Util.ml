@@ -259,9 +259,3 @@ let get_result : ('b, 'a) Result.t -> ('b -> 'a) -> 'a
   = fun result f -> match result with
     | Ok a -> a
     | Error b -> f b
-
-let generate_list : int -> (int -> 'a) -> 'a list
-  = Placemat.List.makeBy
-
-let generate_array : int -> (int -> 'a) -> 'a array
-  = Placemat.Array.makeBy

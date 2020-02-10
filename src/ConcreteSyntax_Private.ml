@@ -227,9 +227,9 @@ let rec get_subpatterns
      IntDict.from_list [ num, capture ]
   | OperatorPattern (pat_op_name, body_pats), Operator (op_name, body_scopes)
   -> if pat_op_name = op_name && List.(length body_pats = length body_scopes)
-     then body_pats
-       |. Placemat.List.zipBy body_scopes
-         (fun (NumberedScopePattern (caps, body_pat)) ->
+     then
+       Placemat.List.zip_by body_pats body_scopes
+         ~f:(fun (NumberedScopePattern (caps, body_pat)) ->
            if List.length caps > 0 then failwith "TODO: error 6";
            get_subpatterns tokens nonterminal_pointer body_pat)
        |> Util.int_map_unions
@@ -314,8 +314,8 @@ let rec get_subterms
   | OperatorPattern (pat_op_name, body_pats), Operator (op_name, body_scopes)
   -> if pat_op_name = op_name && List.(length body_pats = length body_scopes)
      then (body_pats
-       |. Placemat.List.zipBy body_scopes
-         (get_scope_subterms tokens nonterminal_pointer)
+       |. Placemat.List.zip_by body_scopes
+         ~f:(get_scope_subterms tokens nonterminal_pointer)
        |> Util.int_map_unions
      )
      else raise (NoMatch
@@ -346,7 +346,7 @@ and get_scope_subterms
       (NoMatch "numbered scope pattern and term scope have different arity")
     else
       let pattern_bindings = numbered_patterns
-        |. Placemat.List.zipBy term_patterns (fun numbered_pat term_pat ->
+        |. Placemat.List.zip_by term_patterns ~f:(fun numbered_pat term_pat ->
           let captured_token_num = match numbered_pat with
             | VarCapture num
             | PatternCapture num -> num

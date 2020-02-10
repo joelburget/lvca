@@ -68,8 +68,11 @@ end = struct
     let varNums : (string * (int * int)) list = pats
       |> Placemat.List.map_with_index ~f:(fun i pat ->
           let vars = Pattern.list_vars_of_pattern pat in
-          List.map2 vars (Util.generate_list (List.length vars) (fun j -> i, j))
-            ~f:(fun x y -> x, y))
+          List.map2 vars (Placemat.List.initialize
+            ~length:(List.length vars)
+            ~f:(fun j -> i, j)
+          )
+          ~f:(fun x y -> x, y))
       |> List.flatten
     in
     let env' : (int * int) StrDict.t = Util.map_union

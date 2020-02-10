@@ -517,8 +517,8 @@ let () = describe "LalrParsing" (fun () ->
     ]
   in
 
-  let action_table_tests' = fun () -> action_table_tests
-    |. Placemat.List.forEach (fun (init_state, terminal_num, action) ->
+  let action_table_tests' = fun () -> Placemat.List.for_each action_table_tests
+    ~f:(fun (init_state, terminal_num, action) ->
       test
         (Printf.sprintf "lalr1_action_table %n %s -> %s"
           init_state

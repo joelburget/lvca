@@ -156,8 +156,8 @@ let string_of_operator_match : operator_match -> string
 let string_of_operator_rules : operator_match list list -> string
   = fun rules ->
     let arr = [||] in
-    Placemat.List.forEachWithIndex rules (fun i level ->
-      Placemat.List.forEachWithIndex level (fun j operator_match ->
+    Placemat.List.for_each_with_index rules ~f:(fun i level ->
+      Placemat.List.for_each_with_index level ~f:(fun j operator_match ->
         Js.Array2.unshift arr (Printf.sprintf
           "  %s %s"
           (if i > 0 && j = 0 then ">" else "|")
@@ -176,9 +176,9 @@ let string_of_nonterminal_rule : nonterminal_rule -> string
 
 let string_of_nonterminal_rules : nonterminal_rules -> string
   = fun nonterminal_rules -> nonterminal_rules
-    |. StrDict.to_list
-    |. Array.from_list
-    |. Array.map ~f:(fun (_, rule) -> string_of_nonterminal_rule rule)
+    |> StrDict.to_list
+    |> Array.from_list
+    |> Array.map ~f:(fun (_, rule) -> string_of_nonterminal_rule rule)
     |. Js.Array2.joinWith "\n\n"
 
 let string_of_t : t -> string

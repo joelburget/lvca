@@ -85,7 +85,7 @@ let check_operator_match_validity
   in
   let { captured_tokens; repeated_tokens } = token_usage term_pat in
   let non_existent_tokens = MSI.make () in
-  Placemat.IntSet.forEach captured_tokens (fun tok_num ->
+  Placemat.IntSet.for_each captured_tokens ~f:(fun tok_num ->
     if MMI.has numbered_toks tok_num
     then MMI.remove numbered_toks tok_num
     else MSI.add non_existent_tokens tok_num);
@@ -127,9 +127,9 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
   let open_depth = ref 0 in
   try
     nonterminal_rules
-    |. Placemat.StrDict.forEach (fun _i (NonterminalRule { operator_rules }) ->
+    |> Placemat.StrDict.for_each ~f:(fun _i (NonterminalRule { operator_rules }) ->
       operator_rules
-        |. Placemat.List.forEach (fun level ->
+        |> Placemat.List.for_each ~f:(fun level ->
           let OperatorMatch { fixity } = level
             |> List.head
             |> get_option' (fun () ->
@@ -143,9 +143,9 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
         );
 
       operator_rules
-        |. List.flatten
-        |. Placemat.List.forEach
-        (fun _i (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
+        |> List.flatten
+        |> Placemat.List.for_each
+        ~f:(fun _i (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
            let non_existent_tokens, duplicate_captures, uncaptured_tokens =
              check_operator_match_validity tokens operator_match_pattern
            in
@@ -200,7 +200,7 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
     if !open_depth != 0
     then raise_invalid "At least one group is not closed (there are more open \
       box markers ('[') than close box markers (']'))";
-    Placemat.StrDict.forEach terminal_rules' (fun _i regex ->
+    Placemat.StrDict.for_each terminal_rules' ~f:(fun _i regex ->
       if Regex.accepts_empty regex
       then raise_invalid ("Regex accepts empty strings: " ^ Regex.to_string regex)
     );

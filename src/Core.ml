@@ -2,7 +2,6 @@ open Tablecloth
 open Types
 open Binding
 
-let zipBy = Placemat.List.zipBy
 let (all, length, map) = List.(all, length, map)
 let get_first, map_union, map_unions = Util.(get_first, map_union, map_unions)
 ;;
@@ -46,7 +45,8 @@ let rec match_core_pattern
   | Operator (tag1, vals), Operator (tag2, pats) ->
     if tag1 = tag2 && length vals = length pats
     then
-      let sub_results = zipBy vals pats (fun core_scope pat ->
+      let sub_results = Placemat.List.zip_by vals pats
+        ~f:(fun core_scope (pat : BindingAwarePattern.scope) ->
         match core_scope, pat with
           | Scope ([], body), Scope ([], pat') -> match_core_pattern body pat' (* XXX *)
           | _ -> None
@@ -61,7 +61,7 @@ let rec match_core_pattern
   | Sequence s1, Sequence s2 ->
     if length s1 = length s2
     then
-      let sub_results = zipBy s1 s2 match_core_pattern in
+      let sub_results = Placemat.List.zip_by s1 s2 ~f:match_core_pattern in
       if all sub_results ~f:Option.isSome
       then Some (sub_results
         |> map ~f:(Util.get_option' (fun () -> "we just check all isSome"))
@@ -103,8 +103,8 @@ let eval
       else
         let arg_vals = map args ~f:(go ctx) in
         let new_args : core StrDict.t =
-          zipBy arg_patterns arg_vals
-            (fun pat arg_val -> match pat with
+          Placemat.List.zip_by arg_patterns arg_vals
+            ~f:(fun (pat : Pattern.t) arg_val -> match pat with
             | Var name -> name, arg_val
             | _ -> raise @@ EvalError "Unsupported pattern in lambda (only vars allowed)"
             )

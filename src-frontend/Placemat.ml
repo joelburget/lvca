@@ -4,22 +4,20 @@ module List = struct
   let unzip : ('a * 'b) list -> 'a list * 'b list
     = Belt.List.unzip
 
-  let forEach : 'a list -> ('a -> 'b) -> unit
-    = Belt.List.forEach
+  let for_each : f:('a -> 'b) -> 'a list -> unit
+    = fun ~f lst -> Belt.List.forEach lst f
 
-  let forEachWithIndex : 'a list -> (int -> 'a -> 'b) -> unit
-    = Belt.List.forEachWithIndex
+  let for_each_with_index : f:(int -> 'a -> 'b) -> 'a list -> unit
+    = fun ~f lst -> Belt.List.forEachWithIndex lst f
 
-  let makeBy : int -> (int -> 'a) -> 'a list
-    = Belt.List.makeBy
+  let initialize : length:int -> f:(int -> 'a) -> 'a list
+    = fun ~length ~f -> Belt.List.makeBy length f
 
   let map_with_index : f:(int -> 'a -> 'b) -> 'a list -> 'b list
     = fun ~f lst -> Belt.List.mapWithIndex lst f
 
-  let mapWithIndex = map_with_index
-
-  let zipBy : 'a list -> 'b list -> ('a -> 'b -> 'c) -> 'c list
-    = Belt.List.zipBy
+  let zip_by : f:('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
+    = fun ~f lst_a lst_b -> Belt.List.zipBy lst_a lst_b f
 
   let fold_right : f:('a -> 'b -> 'b) -> initial:'b -> 'a list -> 'b
     = fun ~f ~initial ->
@@ -40,10 +38,8 @@ module Array = struct
   let unzip : ('a * 'b) array -> 'a array * 'b array
     = Belt.Array.unzip
 
-  let makeBy : int -> (int -> 'a) -> 'a array
-    = Belt.Array.makeBy
-
-  let map_with_index = Belt.Array.mapWithIndex
+  let map_with_index : f:(int -> 'a -> 'b) -> 'a array -> 'b array
+    = fun ~f arr -> Belt.Array.mapWithIndex arr f
 end
 
 module MutableMap = struct
@@ -56,15 +52,34 @@ module MutableSet = struct
   module String = Belt.MutableSet.String
 
   type ('a, 'b) t = ('a, 'b) Belt.MutableSet.t
-  let from_array = Belt.MutableSet.fromArray
-  let to_array = Belt.MutableSet.toArray
-  let to_list = Belt.MutableSet.toList
-  let copy = Belt.MutableSet.copy
-  let is_empty = Belt.MutableSet.isEmpty
-  let for_each = Belt.MutableSet.forEach
-  let has = Belt.MutableSet.has
-  let add = Belt.MutableSet.add
-  let make = Belt.MutableSet.make
+  type ('k, 'id) id = ('k, 'id) Belt_Id.comparable
+
+  let from_array : 'k array -> id:('k, 'id) id -> ('k, 'id) t
+    = Belt.MutableSet.fromArray
+
+  let to_array : ('value, 'id) t -> 'value array
+    = Belt.MutableSet.toArray
+
+  let to_list : ('value, 'id) t -> 'value list
+    = Belt.MutableSet.toList
+
+  let copy : ('value, 'id) t -> ('value, 'id) t
+    = Belt.MutableSet.copy
+
+  let is_empty : ('value, 'id) t -> bool
+    = Belt.MutableSet.isEmpty
+
+  let for_each : f:('value -> unit) -> ('value, 'id) t -> unit
+    = fun ~f set -> Belt.MutableSet.forEach set f
+
+  let has : value:'value -> ('value, 'a) t -> bool
+    = fun ~value set -> Belt.MutableSet.has set value
+
+  let add : value:'value -> ('value, 'id) t -> unit
+    = fun ~value set -> Belt.MutableSet.add set value
+
+  let make : id:('value, 'id) id -> ('value, 'id) t
+    = Belt.MutableSet.make
 end
 
 module MutableStack = Belt.MutableStack
@@ -78,8 +93,13 @@ module IntDict = struct
 
   let size = Belt.Map.Int.size
 
-  let forEach = Belt.Map.Int.forEach
-  let findFirstBy = Belt.Map.Int.findFirstBy
+  let for_each
+    : f:(int -> 'a -> unit) -> 'a Belt.Map.Int.t -> unit
+    = fun ~f int_map -> Belt.Map.Int.forEach int_map f
+
+  let find_first_by
+    : f:(int -> 'v -> bool) -> 'v Belt.Map.Int.t -> (int * 'v) option
+    = fun ~f int_map -> Belt.Map.Int.findFirstBy int_map f
 
   let from_array = Belt.Map.Int.fromArray
   let to_array = Belt.Map.Int.toArray
@@ -99,7 +119,10 @@ module StrDict = struct
   let has = Belt.Map.String.has
 
   let size = Belt.Map.String.size
-  let forEach = Belt.Map.String.forEach
+
+  let for_each : f:(string -> 'v -> unit) -> 'v Belt.Map.String.t -> unit
+    = fun ~f map -> Belt.Map.String.forEach map f
+
   let from_array = Belt.Map.String.fromArray
   let to_array = Belt.Map.String.toArray
 end
@@ -108,21 +131,27 @@ module IntSet = struct
   type t = Belt.Set.Int.t
   let eq = Belt.Set.Int.eq
   let size = Belt.Set.Int.size
-  let forEach = Belt.Set.Int.forEach
   let cmp = Belt.Set.Int.cmp
   let intersect = Belt.Set.Int.intersect
   let from_array = Belt.Set.Int.fromArray
   let to_array = Belt.Set.Int.toArray
+
+  let for_each
+    : f:(int -> unit) -> t -> unit
+    = fun ~f set -> Belt.Set.Int.forEach set f
 end
 
 module Set = struct
   type ('a, 'b) t = ('a, 'b) Belt.Set.t
-  let for_each = Belt.Set.forEach
   let to_array = Belt.Set.toArray
   let from_array = Belt.Set.fromArray
   let union = Belt.Set.union
   let cmp = Belt.Set.cmp
   let eq = Belt.Set.eq
+
+  let for_each
+    : f:('value -> unit) -> ('value, 'id) t -> unit
+    = fun ~f set -> Belt.Set.forEach set f
 end
 
 module Result = struct
