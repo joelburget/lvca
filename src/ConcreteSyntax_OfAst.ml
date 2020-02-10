@@ -78,8 +78,9 @@ let rec term_to_tree
      * or term, we just emit the contents of the token *)
     | None, TerminalName name -> Printf.printf "case 1\n";
       let terminal_rule = terminal_rules
-        |. Belt.Map.String.fromArray
-        |. StrDict.get ~key:name
+        |> Array.to_list
+        |> StrDict.from_list
+        |> StrDict.get ~key:name
         |> get_option' (fun () -> "term_to_tree: failed to get terminal rule " ^ name)
       in
       (match Regex.is_literal terminal_rule with

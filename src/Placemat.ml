@@ -67,18 +67,30 @@ module IntDict = struct
 
   let forEach = Belt.Map.Int.forEach
   let findFirstBy = Belt.Map.Int.findFirstBy
+
+  let from_array = Belt.Map.Int.fromArray
+  let to_array = Belt.Map.Int.toArray
+  let map_with_key = Belt.Map.Int.mapWithKey
 end
 
 module StrDict = struct
   let remove = Belt.Map.String.remove
 
+  let remove_many = Belt.Map.String.removeMany
+
   let has = Belt.Map.String.has
 
   let size = Belt.Map.String.size
+  let forEach = Belt.Map.String.forEach
+  let from_array = Belt.Map.String.fromArray
+  let to_array = Belt.Map.String.toArray
 end
 
 module IntSet = struct
   let size = Belt.Set.Int.size
   let forEach = Belt.Set.Int.forEach
   let cmp = Belt.Set.Int.cmp
+  let intersect = Belt.Set.Int.intersect
+  let from_array = Belt.Set.Int.fromArray
+  let to_array = Belt.Set.Int.toArray
 end

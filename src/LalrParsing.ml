@@ -1,9 +1,7 @@
 open Tablecloth
 open LrParsing
 
-module M = Belt.Map.Int
 module S = Belt.Set
-module SI = Belt.Set.Int
 
 type lookahead_item =
   { item : item;
@@ -67,15 +65,16 @@ type lalr1_goto_table = state -> symbol -> state option
 let lookahead_item_set_to_item_set
   : lookahead_item_set -> item_set
   = fun x -> x
-             |. S.toArray
-             |. Array.map ~f:(fun { item } -> item)
-             |. SI.fromArray
+             |> S.toArray
+             |> Array.map ~f:(fun { item } -> item)
+             |> Placemat.IntSet.from_array
 
 let mutable_lookahead_item_set_to_item_set
   : mutable_lookahead_item_set -> item_set
   = fun x -> x
-             |. M.keysToArray
-             |. SI.fromArray
+             |> Placemat.IntDict.to_array
+             |> Array.map ~f:(fun (k, _) -> k)
+             |> Placemat.IntSet.from_array
 
 module type LALR = sig
   include LR0
@@ -147,10 +146,13 @@ module Lalr1 (G : GRAMMAR) = struct
   )
 
   let string_of_lookahead_set = fun lookahead_set -> lookahead_set
-                                                     |. SI.toArray
-                                                     |. Array.map
-                                                          ~f:(fun t_num -> Belt.Map.Int.getWithDefault terminal_names t_num "#")
-                                                     |. Js.Array2.joinWith "/"
+    |> Placemat.IntSet.to_array
+    |> Array.map
+      ~f:(fun t_num -> terminal_names
+        |> IntDict.get ~key:t_num
+        |> Option.with_default ~default:"#"
+    )
+    |. Js.Array2.joinWith "/"
 
   (* TODO: move to module *)
   let string_of_lookahead_item = fun { item; lookahead_set } ->
@@ -171,7 +173,7 @@ module Lalr1 (G : GRAMMAR) = struct
     | Some old_set -> MSI.add old_set lookahead
 
   let add_all_to mutable_lookahead_item_set nonterminal_num lookaheads =
-    let lookaheads' = SI.toArray lookaheads in
+    let lookaheads' = Placemat.IntSet.to_array lookaheads in
     match MMI.get mutable_lookahead_item_set nonterminal_num with
     | None -> MMI.set mutable_lookahead_item_set nonterminal_num
                 (MSI.fromArray lookaheads')
@@ -201,8 +203,8 @@ module Lalr1 (G : GRAMMAR) = struct
                      |> Array.map ~f:(fun production_num ->
                        let item = mk_item { production_num; position = 0 } in
                        let lookahead_set = mut_lookahead_set
-                                           |. MSI.toArray
-                                           |. SI.fromArray
+                                           |> MSI.toArray
+                                           |> Placemat.IntSet.from_array
                        in
                        { item; lookahead_set }
                      )
@@ -391,10 +393,10 @@ module Lalr1 (G : GRAMMAR) = struct
   *)
   let mutable_lalr1_items : mutable_lookahead_item_set IntDict.t
     = lr0_items
-      |. M.map (fun items -> items
-                             |. SI.toArray
-                             |. Array.map ~f:(fun item -> item, Belt.MutableSet.Int.make ())
-                             |. M.fromArray
+      |> IntDict.map ~f:(fun items -> items
+                             |> Placemat.IntSet.to_array
+                             |> Array.map ~f:(fun item -> item, Placemat.MutableSet.Int.make ())
+                             |> Placemat.IntDict.from_array
                )
 
   (* CPTT Algorithm 4.63 steps 2 & 3 *)
@@ -407,12 +409,12 @@ module Lalr1 (G : GRAMMAR) = struct
      raises: [NoItemSet]
   *)
   let lookahead_propagation : (state * item) array IntDict.t IntDict.t
-    = mutable_lalr1_items |. M.map (fun mutable_lookahead_item_set ->
+    = mutable_lalr1_items |> IntDict.map ~f:(fun mutable_lookahead_item_set ->
       let kernel : item_set =
         mutable_lookahead_item_set_to_item_set mutable_lookahead_item_set
       in
 
-      M.mapWithKey mutable_lookahead_item_set (fun item _ ->
+      Placemat.IntDict.map_with_key mutable_lookahead_item_set (fun item _ ->
         let { spontaneous_generation; propagation } =
           generate_lookaheads kernel item
         in
@@ -420,9 +422,13 @@ module Lalr1 (G : GRAMMAR) = struct
         Array.forEach spontaneous_generation
           ~f:(fun (state, { item; lookahead_set }) ->
              mutable_lalr1_items
-             |. M.getExn state
-             |. M.getExn item
-             |. Belt.MutableSet.Int.mergeMany (SI.toArray lookahead_set);
+             |> IntDict.get ~key:state
+             |> get_option' (fun () ->
+               "lookahead_propagation: state not present in mutable_lalr1_items")
+             |> IntDict.get ~key:item
+             |> get_option' (fun () ->
+               "lookahead_propagation: item not present in mutable_lalr1_items")
+             |. Placemat.MutableSet.Int.mergeMany (Placemat.IntSet.to_array lookahead_set);
           );
 
         propagation
@@ -431,9 +437,13 @@ module Lalr1 (G : GRAMMAR) = struct
 
   (* Special-case augmented item `S' -> . S` with lookahead $. *)
   let () = mutable_lalr1_items
-           |. M.getExn 0
-           |. M.getExn (mk_item' 0 0)
-           |. Belt.MutableSet.Int.add 0
+           |> IntDict.get ~key:0
+           |> get_option' (fun () ->
+             "Lalr1: augmented state not present in mutable_lalr1_items")
+           |> IntDict.get ~key:(mk_item' 0 0)
+           |> get_option' (fun () ->
+             "Lalr1: augmented item not present in mutable_lalr1_items")
+           |. Placemat.MutableSet.Int.add 0
 
   (* Fill in LALR(1) item lookaheads. CPTT Algorithm 4.63 step 4
    *
@@ -447,8 +457,10 @@ module Lalr1 (G : GRAMMAR) = struct
     while !made_update do
       made_update := false;
 
-      M.forEach mutable_lalr1_items (fun source_state mutable_lookahead_item_set ->
-        M.forEach mutable_lookahead_item_set (fun source_item source_lookahead ->
+      Placemat.IntDict.forEach mutable_lalr1_items
+        (fun source_state mutable_lookahead_item_set ->
+        Placemat.IntDict.forEach mutable_lookahead_item_set
+          (fun source_item source_lookahead ->
 
           (* lookaheads that propagate from the item we're currently looking at
           *)
@@ -492,16 +504,16 @@ module Lalr1 (G : GRAMMAR) = struct
 
   let lalr1_items : lookahead_item_set IntDict.t
     = mutable_lalr1_items
-      |. M.map (fun mutable_lookahead_item_set -> mutable_lookahead_item_set
-                                                  |. M.toArray
-                                                  |. Array.map ~f:(fun (item, mutable_lookahead) ->
-                                                    { item; lookahead_set = mutable_lookahead
-                                                                            |. Belt.MutableSet.Int.toArray
-                                                                            |. Belt.Set.Int.fromArray
-                                                    }
-                                                  )
-                                                  |. lookahead_item_set_from_array
-               )
+      |> IntDict.map ~f:(fun mutable_lookahead_item_set -> mutable_lookahead_item_set
+        |> Placemat.IntDict.to_array
+        |> Array.map ~f:(fun (item, mutable_lookahead) ->
+          { item; lookahead_set = mutable_lookahead
+            |> Placemat.MutableSet.Int.toArray
+            |> Placemat.IntSet.from_array
+          }
+        )
+        |> lookahead_item_set_from_array
+      )
 
   let lalr1_goto_table : lalr1_goto_table = fun state nt ->
     try
@@ -611,24 +623,24 @@ module Lalr1 (G : GRAMMAR) = struct
   let parse_trace
     : do_trace (* trace or not *)
       -> Lex.token MQueue.t
-      -> (parse_result, parse_error) Result.t * trace_line array
+      -> (parse_error, parse_result) Result.t * trace_line array
 
     = parse_trace_tables lalr1_action_table lalr1_goto_table
 
-  let parse : Lex.token MQueue.t -> (parse_result, parse_error) Result.t
+  let parse : Lex.token MQueue.t -> (parse_error, parse_result) Result.t
     = fun toks ->
       let result, _ = parse_trace DoTrace toks in
       result
 
   let lex_and_parse : Lex.lexer -> string
-    -> (parse_result, (Lex.lex_error, parse_error) Either.t) Result.t
+    -> ((Lex.lex_error, parse_error) Either.t, parse_result) Result.t
     = fun lexer input -> match Lex.lex lexer input with
       | Error error -> Error (Left error)
       | Ok tokens ->
         let len = String.length input in
         let tokens' = tokens
-                      |. Belt.Array.keep (fun token -> token.name != "SPACE")
-                      |. MQueue.fromArray
+          |> Array.filter ~f:(fun (token: Lex.token) -> token.name != "SPACE")
+          |> MQueue.fromArray
         in
         (* TODO: name might not always be "$" *)
         MQueue.add tokens' { name = "$"; start = len; finish = len };

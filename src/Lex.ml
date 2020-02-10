@@ -74,17 +74,15 @@ let lex_exn : lexer -> string -> token array =
   fun lexer input ->
   let result = [||] in
   let lexbuf = { buf = input; pos = 0 } in
-  let mut_tok_names = Belt.MutableMap.Int.make () in
-  let re_str =
-    lexer
-    |. Tablecloth.Array.from_list
-    |. Tablecloth.Array.mapWithIndex ~f:(fun i (re, tok_name) ->
-      Belt.MutableMap.Int.set mut_tok_names i tok_name;
+  let mut_tok_names = Placemat.MutableMap.Int.make () in
+  let re_str = lexer
+    |> Placemat.List.map_with_index ~f:(fun i (re, tok_name) ->
+      Placemat.MutableMap.Int.set mut_tok_names i tok_name;
       "(" ^ re ^ ")")
-    |. Js.Array2.joinWith "|"
+    |> Util.stringify_list Util.id "|"
   in
   let tok_names = mut_tok_names
-    |> Belt.MutableMap.Int.toList
+    |> Placemat.MutableMap.Int.toList
     |> IntDict.from_list
   in
   let re = Js.Re.fromString re_str in

@@ -75,7 +75,7 @@ let rec instantiate (env : scope StrDict.t) (tm : term)
                                                          ~f:(fun pat -> Array.from_list (Pattern.list_vars_of_pattern pat))
                                                     |. Array.concatenate
                                 in
-                                instantiate (Belt.Map.String.removeMany env new_var_names) body
+                                instantiate (Placemat.StrDict.remove_many env new_var_names) body
                                 |> Result.map (fun body' -> Scope (binders, body'))
                               )
                               |> Util.sequence_list_result

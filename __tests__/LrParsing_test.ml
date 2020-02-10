@@ -7,6 +7,7 @@ module MS = Belt.Map.String
 module SI = Belt.Set.Int
 module MStack = Belt.MutableStack
 module MQueue = Belt.MutableQueue
+module Result = Belt.Result
 
 module Grammar : GRAMMAR = struct
   let grammar = {

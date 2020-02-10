@@ -1,3 +1,4 @@
+module Result = Tablecloth.Result
 open Jest
 open Expect
 open LrParsing
@@ -542,7 +543,7 @@ let () = describe "LalrParsing" (fun () ->
         mk_tok "$" 3 3;
       |]
       in
-      expect (Grammar1Lalr.parse (* "cdd" *) tokens1) |> toEqual (Result.Ok
+      expect (Grammar1Lalr.parse (* "cdd" *) tokens1) |> toEqual (Ok
         { production = Either.Right 1;
           children = [
             { production = Either.Right 2;
@@ -579,7 +580,7 @@ let () = describe "LalrParsing" (fun () ->
       |]
       in
 
-      expect (Grammar2Lalr.parse tokens2) |> toEqual (Result.Ok
+      expect (Grammar2Lalr.parse tokens2) |> toEqual (Ok
         { production = Either.Right 1;
           children = [
             { production = Either.Right 3;
@@ -648,7 +649,7 @@ let () = describe "LalrParsing" (fun () ->
       |]
       in
 
-      expect (Grammar3Lalr.parse tokens3) |> toEqual (Result.Ok
+      expect (Grammar3Lalr.parse tokens3) |> toEqual (Ok
         { production = Either.Right 2;
           children = [
             mk_terminal lparen_num 0 1;
@@ -683,7 +684,7 @@ let () = describe "LalrParsing" (fun () ->
         mk_tok "$"  11 11;
       |]
       in
-      expect (Grammar3Lalr.parse tokens4) |> toEqual (Result.Ok
+      expect (Grammar3Lalr.parse tokens4) |> toEqual (Ok
         { production = Either.Right 1;
           children = [
             mk_wrapper 3 @@ mk_terminal id_num 0 1;

@@ -1,9 +1,7 @@
 open Tablecloth
-module MM = Belt.MutableMap
-module MMI = Belt.MutableMap.Int
+module MMI = Placemat.MutableMap.Int
 module MSet = Belt.MutableSet
 module MSI = Belt.MutableSet.Int
-module Result = Belt.Result
 module MStack = Belt.MutableStack
 module MQueue = Belt.MutableQueue
 let get_option, get_option', invariant_violation =
@@ -205,16 +203,16 @@ let string_of_stack : state array -> string
 module Lr0 (G : GRAMMAR) = struct
 
   (* Map from production number to the actual production *)
-  let production_map : production Belt.MutableMap.Int.t
+  let production_map : production Placemat.MutableMap.Int.t
     = MMI.make ()
 
   (* Map from production number to the number of the nonterminal it belongs to
   *)
-  let production_nonterminal_map : nonterminal_num Belt.MutableMap.Int.t
+  let production_nonterminal_map : nonterminal_num Placemat.MutableMap.Int.t
     = MMI.make ()
 
   (* Map from a nonterminal num to the set of productions it holds *)
-  let nonterminal_production_map : MSI.t Belt.MutableMap.Int.t
+  let nonterminal_production_map : MSI.t Placemat.MutableMap.Int.t
     = MMI.make ()
 
   (* number of nonterminals in the passed-in grammar (which ought to be
@@ -227,20 +225,19 @@ module Lr0 (G : GRAMMAR) = struct
 
   let terminal_names : string IntDict.t
     = G.grammar.terminal_nums
-      |. Array.map ~f:(fun (name, num) -> num, name)
-      |. Belt.Map.Int.fromArray
+      |> Array.map ~f:(fun (name, num) -> num, name)
+      |> Placemat.IntDict.from_array
 
   let terminal_nums : int StrDict.t
-    = Belt.Map.String.fromArray G.grammar.terminal_nums
+    = Placemat.StrDict.from_array G.grammar.terminal_nums
 
   let nonterminal_names : string IntDict.t
     = G.grammar.nonterminal_nums
-      |. Array.map ~f:Tuple2.swap
-      |. Belt.Map.Int.fromArray
+      |> Array.map ~f:Tuple2.swap
+      |> Placemat.IntDict.from_array
 
   let nonterminal_nums : nonterminal_num StrDict.t
-    = G.grammar.nonterminal_nums
-      |. Belt.Map.String.fromArray
+    = Placemat.StrDict.from_array G.grammar.nonterminal_nums
 
   let string_of_nonterminal_num : nonterminal_num -> string
     = fun nt_num -> nonterminal_names
@@ -594,9 +591,9 @@ module Lr0 (G : GRAMMAR) = struct
 
   let lr0_items : item_set IntDict.t
     = mutable_lr0_items
-      |. MSet.toArray
+      |> MSet.toArray
       |. Placemat.Array.map_with_index (fun i item_set -> i, item_set)
-      |. Belt.Map.Int.fromArray
+      |> Placemat.IntDict.from_array
 
   let state_to_item_set : state -> item_set
     = fun state -> lr0_items
@@ -641,10 +638,10 @@ module Lr0 (G : GRAMMAR) = struct
        * set
       *)
       else production_map
-           |. MMI.toArray
-           |. Belt.Array.reduce
-                IntSet.empty
-                (fun follow_set (prod_num, production) ->
+           |> MMI.toArray
+           |> Array.fold_left
+                ~initial:IntSet.empty
+                ~f:(fun (prod_num, production) follow_set ->
                    (* Rule 2 from the CPTT algorithm for FOLLOW(A):
                     * If there is a production A -> aBb, then everything in FIRST(b),
                     * except e, is in FOLLOW(B).
@@ -725,7 +722,7 @@ module Lr0 (G : GRAMMAR) = struct
                          | Some (Terminal t_num as next_symbol) ->
                            if t_num = terminal_num
                            then lr0_goto_table state next_symbol
-                                |. Belt.Option.map (fun x -> Shift x)
+                             |> Option.map ~f:(fun x -> Shift x)
                            else None
                          | _ -> None
                        )
@@ -860,7 +857,7 @@ module Lr0 (G : GRAMMAR) = struct
        |. Js.Array2.joinWith " ")
       (string_of_symbols results)
       (input
-       |. Belt.Array.map (fun tok -> tok.name)
+       |> Array.map ~f:(fun (tok : Lex.token) -> tok.name)
        |. Js.Array2.joinWith " ")
 
   (* This is the main parsing function: CPTT Algorithm 4.44 / Figure 4.36. *)
@@ -869,7 +866,7 @@ module Lr0 (G : GRAMMAR) = struct
       -> lr0_goto_table
       -> do_trace (* trace or not *)
       -> Lex.token MQueue.t
-      -> (parse_result, parse_error) Result.t * trace_line array
+      -> (parse_error, parse_result) Result.t * trace_line array
     = fun lr0_action_table lr0_goto_table do_trace toks ->
       (* Re stack / results:
        * These are called `stack` and `symbols` in CPTT. Their structure
@@ -990,7 +987,7 @@ module Lr0 (G : GRAMMAR) = struct
       with
       | ParseFinished -> (match MStack.size results with
         | 1 -> (match MStack.top results with
-          | Some result -> Result.Ok result, MQueue.toArray trace
+          | Some result -> Ok result, MQueue.toArray trace
           | None -> failwith "invariant violation: no result"
         )
         | 0 -> failwith "invariant violation: no result"
@@ -1007,23 +1004,24 @@ module Lr0 (G : GRAMMAR) = struct
   let parse_trace
     : do_trace (* trace or not *)
       -> Lex.token MQueue.t
-      -> (parse_result, parse_error) Result.t * trace_line array
+      -> (parse_error, parse_result) Result.t * trace_line array
     = parse_trace_tables lr0_action_table lr0_goto_table
 
-  let parse : Lex.token MQueue.t -> (parse_result, parse_error) Result.t
+  let parse : Lex.token MQueue.t -> (parse_error, parse_result) Result.t
     = fun toks ->
       match parse_trace DontTrace toks with
         result, _ -> result
 
   let lex_and_parse : Lex.lexer -> string
-    -> (parse_result, (Lex.lex_error, parse_error) Either.t) Result.t
+    -> ((Lex.lex_error, parse_error) Either.t, parse_result) Result.t
     = fun lexer input -> match Lex.lex lexer input with
       | Error error -> Error (Left error)
       | Ok tokens ->
         let len = String.length input in
         let tokens' = tokens
-                      |. Belt.Array.keep (fun token -> token.name != "SPACE")
-                      |. MQueue.fromArray
+                      |> Array.filter
+                        ~f:(fun (token : Lex.token) -> token.name != "SPACE")
+                      |> MQueue.fromArray
         in
         (* TODO: name might not always be "$" *)
         MQueue.add tokens' { name = "$"; start = len; finish = len };
