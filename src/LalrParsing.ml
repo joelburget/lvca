@@ -1,15 +1,13 @@
 open Tablecloth
 open LrParsing
 
-module S = Belt.Set
-
 type lookahead_item =
   { item : item;
     (* the set of terminals that can follow this item *)
     lookahead_set : IntSet.t;
   }
 
-module LookaheadItemCmp = Belt.Id.MakeComparable(struct
+module LookaheadItemCmp = Placemat.Id.MakeComparable(struct
     type t = lookahead_item
     let cmp { item = i1; lookahead_set = s1 } { item = i2; lookahead_set = s2 } =
       match Pervasives.compare i1 i2 with
@@ -17,15 +15,16 @@ module LookaheadItemCmp = Belt.Id.MakeComparable(struct
       | c -> c
   end)
 
-module LookaheadClosureItemCmp = Belt.Id.MakeComparable(struct
+module LookaheadClosureItemCmp = Placemat.Id.MakeComparable(struct
     type t = nonterminal_num * terminal_num
     let cmp = Pervasives.compare
   end)
 
-type lookahead_item_set = (lookahead_item, LookaheadItemCmp.identity) S.t
+type lookahead_item_set =
+  (lookahead_item, LookaheadItemCmp.identity) Placemat.Set.t
 
 let lookahead_item_set_from_array : lookahead_item array -> lookahead_item_set
-  = S.fromArray ~id:(module LookaheadItemCmp)
+  = Placemat.Set.from_array ~id:(module LookaheadItemCmp)
 
 type lookahead_configuration_set =
   { kernel_items : lookahead_item_set;    (* set of items *)
@@ -35,7 +34,7 @@ type lookahead_configuration_set =
 let simplify_lookahead_config_set
   : lookahead_configuration_set -> lookahead_item_set
   = fun { kernel_items; nonkernel_items } ->
-    S.union kernel_items nonkernel_items
+    Placemat.Set.union kernel_items nonkernel_items
 
 type lookahead_propagation =
   { (** A set of items with lookahead that were generated *)
@@ -44,9 +43,9 @@ type lookahead_propagation =
     propagation : (state * item) array;
   }
 
-module LookaheadItemSetCmp = Belt.Id.MakeComparable(struct
+module LookaheadItemSetCmp = Placemat.Id.MakeComparable(struct
     type t = lookahead_item_set
-    let cmp = S.cmp
+    let cmp = Placemat.Set.cmp
   end)
 
 (* A mutable set of lookahead item sets. This is used to represent the set of
@@ -56,7 +55,7 @@ type mutable_lookahead_item_sets =
   (lookahead_item_set, LookaheadItemSetCmp.identity) MSet.t
 
 (* Set of items with mutable lookahead *)
-type mutable_lookahead_item_set = Belt.MutableSet.Int.t IntDict.t
+type mutable_lookahead_item_set = Placemat.MutableSet.Int.t IntDict.t
 
 (* Same as the corresponding lr0 types *)
 type lalr1_action_table = state -> terminal_num -> action
@@ -65,7 +64,7 @@ type lalr1_goto_table = state -> symbol -> state option
 let lookahead_item_set_to_item_set
   : lookahead_item_set -> item_set
   = fun x -> x
-             |> S.toArray
+             |> Placemat.Set.to_array
              |> Array.map ~f:(fun { item } -> item)
              |> Placemat.IntSet.from_array
 
@@ -162,7 +161,7 @@ module Lalr1 (G : GRAMMAR) = struct
 
   let string_of_lookahead_item_set = fun lookahead_item_set ->
     lookahead_item_set
-    |> Belt.Set.toArray
+    |> Placemat.Set.to_array
     |> Array.map ~f:string_of_lookahead_item
     |. Js.Array2.joinWith "\n"
 
@@ -219,7 +218,8 @@ module Lalr1 (G : GRAMMAR) = struct
        * lookahead set
       *)
       let nonkernel_items = MMI.make () in
-      let kernel_items = Belt.MutableSet.make ~id:(module LookaheadItemCmp) in
+      let kernel_items = Placemat.MutableSet.make ~id:(module LookaheadItemCmp)
+      in
 
       (* Set of (nonterminal, terminal that might be in its lookahead set) to
        * consider.
@@ -232,7 +232,7 @@ module Lalr1 (G : GRAMMAR) = struct
        * Also add it to either kernel_items or nonkernel_items.
        * TODO: should this be a set of lookahead tokens instead of a single one?
       *)
-      Belt.Set.forEach initial_items (fun lookahead_item ->
+      Placemat.Set.for_each initial_items (fun lookahead_item ->
         let { item; lookahead_set } = lookahead_item in
         let { production_num; position } = view_item item in
 
@@ -241,7 +241,7 @@ module Lalr1 (G : GRAMMAR) = struct
         in
 
         if production_num = 0 || position > 0
-        then Belt.MutableSet.add kernel_items lookahead_item
+        then Placemat.MutableSet.add kernel_items lookahead_item
         else add_all_to nonkernel_items nonterminal_num lookahead_set;
 
         let production = production_map
@@ -313,8 +313,8 @@ module Lalr1 (G : GRAMMAR) = struct
       done;
 
       { kernel_items = kernel_items
-                       |. Belt.MutableSet.toArray
-                       |. lookahead_item_set_from_array;
+                       |> Placemat.MutableSet.to_array
+                       |> lookahead_item_set_from_array;
         nonkernel_items = convert nonkernel_items;
       }
 
@@ -341,7 +341,7 @@ module Lalr1 (G : GRAMMAR) = struct
         lookahead_item_set_from_array [| modified_item |]
       in
 
-      Belt.Set.forEach j (fun { lookahead_set; item = pre_item } ->
+      Placemat.Set.for_each j (fun { lookahead_set; item = pre_item } ->
         let { production_num; position } = view_item pre_item in
         let production = production_map
                          |. MMI.get production_num
@@ -535,7 +535,7 @@ module Lalr1 (G : GRAMMAR) = struct
         = state
           |> state_to_lookahead_item_set
           |> lr1_closure
-          |> Belt.Set.toArray
+          |> Placemat.Set.to_array
           |> Array.to_list
       in
 

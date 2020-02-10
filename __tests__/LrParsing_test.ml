@@ -2,16 +2,14 @@ open Jest
 open Expect
 open LrParsing
 open TestUtil
-module M = Belt.Map.Int
-module MS = Belt.Map.String
-module SI = Belt.Set.Int
-module MStack = Belt.MutableStack
-module MQueue = Belt.MutableQueue
-module Result = Belt.Result
+module SI = Placemat.IntSet
+module MStack = Placemat.MutableStack
+module MQueue = Placemat.MutableQueue
+module Result = Tablecloth.Result
 
 module Grammar : GRAMMAR = struct
   let grammar = {
-    nonterminals = M.fromArray
+    nonterminals = Placemat.IntDict.from_array
     [|
        (* E' (note: the grammar we provide is already augmented) *)
        0, { productions = [[Nonterminal 1]] }; (* E' -> E *)
@@ -70,29 +68,29 @@ let () = describe "LrParsing" (fun () ->
 
   testAll "first_set" [
     expect (Lr0'.first_set [Nonterminal 1; Terminal 1; Nonterminal 2])
-      |> toEqual (SI.fromArray [|3;5|]);
+      |> toEqual (SI.from_array [|3;5|]);
     expect (Lr0'.first_set [Nonterminal 2])
-      |> toEqual (SI.fromArray [|3;5|]);
+      |> toEqual (SI.from_array [|3;5|]);
     expect (Lr0'.first_set [Nonterminal 2; Terminal 2; Nonterminal 3])
-      |> toEqual (SI.fromArray [|3;5|]);
+      |> toEqual (SI.from_array [|3;5|]);
     expect (Lr0'.first_set [Nonterminal 3])
-      |> toEqual (SI.fromArray [|3;5|]);
+      |> toEqual (SI.from_array [|3;5|]);
     expect (Lr0'.first_set [Terminal 3; Nonterminal 1; Terminal 4])
-      |> toEqual (SI.fromArray [|3|]);
+      |> toEqual (SI.from_array [|3|]);
     expect (Lr0'.first_set [Terminal 5])
-      |> toEqual (SI.fromArray [|5|]);
+      |> toEqual (SI.from_array [|5|]);
   ] Util.id;
 
   describe "follow_set" (fun () ->
     let show_follow_set = fun follow_set -> follow_set
-      |. SI.toArray
-      |. Belt.Array.map Lr0'.string_of_terminal
+      |> SI.to_array
+      |> Tablecloth.Array.map ~f:Lr0'.string_of_terminal
       |. Js.Array2.joinWith " "
     in
     let test_follow_set nt expected_set = test
       ("follow_set " ^ Lr0'.string_of_nonterminal_num nt)
       (fun () -> expect (Lr0'.follow_set nt)
-        |> toBeEquivalent show_follow_set SI.eq (SI.fromArray expected_set)
+        |> toBeEquivalent show_follow_set SI.eq (SI.from_array expected_set)
       )
     in
 
@@ -105,8 +103,8 @@ let () = describe "LrParsing" (fun () ->
   (* I0 *)
   let items0 = [| mk_item' 0 0 |] in
   let expected0 : configuration_set =
-    { kernel_items = SI.fromArray items0;
-      nonkernel_items = SI.fromArray
+    { kernel_items = SI.from_array items0;
+      nonkernel_items = SI.from_array
         [| mk_item' 1 0;
            mk_item' 2 0;
            mk_item' 3 0;
@@ -125,31 +123,31 @@ let () = describe "LrParsing" (fun () ->
   in
 
   let expected1 : configuration_set =
-    { kernel_items = SI.fromArray items1;
-      nonkernel_items = SI.fromArray [||];
+    { kernel_items = SI.from_array items1;
+      nonkernel_items = SI.from_array [||];
     }
   in
 
   (* I7 *)
   let items7 = [| mk_item' 3 2 |] in
   let expected7 : configuration_set =
-    { kernel_items = SI.fromArray items7;
-      nonkernel_items = SI.fromArray [| mk_item' 5 0; mk_item' 6 0 |];
+    { kernel_items = SI.from_array items7;
+      nonkernel_items = SI.from_array [| mk_item' 5 0; mk_item' 6 0 |];
     }
   in
 
   testAll "closure" [
-    expect (Lr0'.lr0_closure' @@ SI.fromArray items0)
+    expect (Lr0'.lr0_closure' @@ SI.from_array items0)
       |> toEqual expected0;
-    expect (Lr0'.lr0_closure' @@ SI.fromArray items1)
+    expect (Lr0'.lr0_closure' @@ SI.from_array items1)
       |> toEqual expected1;
-    expect (Lr0'.lr0_closure' @@ SI.fromArray items7)
+    expect (Lr0'.lr0_closure' @@ SI.from_array items7)
       |> toEqual expected7;
   ] Util.id;
 
-  let lr0_goto_kernel = SI.fromArray [| mk_item' 1 2 |] in
+  let lr0_goto_kernel = SI.from_array [| mk_item' 1 2 |] in
 
-  let goto_nonkernel = SI.fromArray [|
+  let goto_nonkernel = SI.from_array [|
     mk_item' 3 0;
     mk_item' 4 0;
     mk_item' 5 0;
@@ -158,65 +156,67 @@ let () = describe "LrParsing" (fun () ->
   in
 
   testAll "goto" [
-    expect (Lr0'.lr0_goto_kernel (SI.fromArray items1) (Terminal 1))
+    expect (Lr0'.lr0_goto_kernel (SI.from_array items1) (Terminal 1))
       |> toEqual lr0_goto_kernel;
     expect
       (Lr0'.lr0_closure' @@
-       Lr0'.lr0_goto_kernel (SI.fromArray items1) (Terminal 1))
+       Lr0'.lr0_goto_kernel (SI.from_array items1) (Terminal 1))
       |> toEqual
       ({ kernel_items = lr0_goto_kernel; nonkernel_items = goto_nonkernel }
         : configuration_set);
   ] Util.id;
 
   let lr0_item_sets = [|
-    SI.fromArray [| mk_item' 0 0 |]; (* 0 *)
-    SI.fromArray (* 1 *)
+    SI.from_array [| mk_item' 0 0 |]; (* 0 *)
+    SI.from_array (* 1 *)
       [| mk_item' 0 1;
          mk_item' 1 1;
       |];
-    SI.fromArray (* 2 *)
+    SI.from_array (* 2 *)
       [| mk_item' 2 1;
          mk_item' 3 1;
       |];
-    SI.fromArray [| mk_item' 4 1; |]; (* 3 *)
-    SI.fromArray [| mk_item' 5 1; |]; (* 4 *)
-    SI.fromArray [| mk_item' 6 1; |]; (* 5 *)
-    SI.fromArray [| mk_item' 1 2; |]; (* 6 *)
-    SI.fromArray [| mk_item' 3 2; |]; (* 7 *)
-    SI.fromArray (* 8 *)
+    SI.from_array [| mk_item' 4 1; |]; (* 3 *)
+    SI.from_array [| mk_item' 5 1; |]; (* 4 *)
+    SI.from_array [| mk_item' 6 1; |]; (* 5 *)
+    SI.from_array [| mk_item' 1 2; |]; (* 6 *)
+    SI.from_array [| mk_item' 3 2; |]; (* 7 *)
+    SI.from_array (* 8 *)
       [|
         mk_item' 1 1;
         mk_item' 5 2;
       |];
-    SI.fromArray (* 9 *)
+    SI.from_array (* 9 *)
       [|
         mk_item' 1 3;
         mk_item' 3 1;
       |];
-    SI.fromArray [| mk_item' 3 3 |]; (* 10 *)
-    SI.fromArray [| mk_item' 5 3 |]; (* 11 *)
+    SI.from_array [| mk_item' 3 3 |]; (* 10 *)
+    SI.from_array [| mk_item' 5 3 |]; (* 11 *)
   |]
   in
 
   let expected_lr0_item_sets =
-    Belt.MutableSet.fromArray lr0_item_sets ~id:(module ComparableIntSet)
+    Placemat.MutableSet.from_array lr0_item_sets ~id:(module ComparableIntSet)
   in
 
   let normalize = fun items -> items
-    |. Belt.MutableSet.toList
-    |. Belt.List.map SI.toList
+    |> Placemat.MutableSet.to_list
+    |> Tablecloth.List.map ~f:Tablecloth.IntSet.to_list
   in
 
   testAll "lr0_items" [
     expect (normalize Lr0'.mutable_lr0_items)
       |> toEqual (normalize expected_lr0_item_sets);
     (* TODO
-    expect (M.get Lr0'.items' 1 == Some (SI.fromArray items1)) |> toBe true;
-    expect (M.get Lr0'.items' 7 == Some (SI.fromArray items7)) |> toBe true;
+    expect (Tablecloth.IntDict.get Lr0'.items' ~key:1 == Some (SI.from_array items1))
+      |> toBe true;
+    expect (Tablecloth.IntDict.get Lr0'.items' ~key:7 == Some (SI.from_array items7))
+      |> toBe true;
     *)
   ] Util.id;
 
-  let state = lr0_item_sets |. Belt.Array.map Lr0'.item_set_to_state in
+  let state = lr0_item_sets |> Tablecloth.Array.map ~f:Lr0'.item_set_to_state in
   let plus_num : terminal_num = 1 in
   let times_num : terminal_num = 2 in
   let lparen_num : terminal_num = 3 in
@@ -335,7 +335,7 @@ let () = describe "LrParsing" (fun () ->
     ]
   in
   let action_table_tests' = action_table_tests
-    |. Belt.List.map (fun (init_state, terminal_num, action) ->
+    |. Tablecloth.List.map ~f:(fun (init_state, terminal_num, action) ->
       expect (Lr0'.lr0_action_table state.(init_state) terminal_num)
         |> toEqual action
     )
@@ -368,7 +368,7 @@ let () = describe "LrParsing" (fun () ->
         mk_tok "$"  9 9;
       |]
       in
-      expect (Lr0'.parse tokens1) |> toEqual (Result.Ok
+      expect (Lr0'.parse tokens1) |> toEqual (Ok
         (mk_wrapper 2
           { production = Either.Right 3;
             children = [
@@ -395,7 +395,7 @@ let () = describe "LrParsing" (fun () ->
         mk_tok "$"  15 15;
       |]
       in
-      expect (Lr0'.parse tokens2) |> toEqual (Result.Ok
+      expect (Lr0'.parse tokens2) |> toEqual (Ok
         { production = Either.Right 1;
           children =
             [ mk_wrapper 2
@@ -427,7 +427,8 @@ let () = describe "LrParsing" (fun () ->
       |]
       in
       expect (Lr0'.parse tokens3) |> toEqual
-        (Result.Error (4, "parsing invariant violation -- pop failed"))
+        (Error (4, "parsing invariant violation -- pop failed")
+          : (parse_error, parse_result) Tablecloth.Result.t)
     );
 
     test "foo + bar" (fun () ->
@@ -441,7 +442,7 @@ let () = describe "LrParsing" (fun () ->
         mk_tok "$"  9 9;
       |]
       in
-      expect (Lr0'.parse tokens4) |> toEqual (Result.Ok
+      expect (Lr0'.parse tokens4) |> toEqual (Ok
         { production = Either.Right 1;
           children = [
             mk_wrapper 2 @@ mk_wrapper 4 @@ mk_wrapper 6 @@ mk_terminal id_num 0 3;

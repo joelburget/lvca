@@ -1,9 +1,9 @@
 open Tablecloth
 module MMI = Placemat.MutableMap.Int
-module MSet = Belt.MutableSet
-module MSI = Belt.MutableSet.Int
-module MStack = Belt.MutableStack
-module MQueue = Belt.MutableQueue
+module MSet = Placemat.MutableSet
+module MSI = Placemat.MutableSet.Int
+module MStack = Placemat.MutableStack
+module MQueue = Placemat.MutableQueue
 let get_option, get_option', invariant_violation =
   Util.(get_option, get_option', invariant_violation)
 
@@ -21,7 +21,7 @@ type symbol =
   | Terminal    of terminal_num
   | Nonterminal of nonterminal_num
 
-module SymbolCmp = Belt.Id.MakeComparable(struct
+module SymbolCmp = Placemat.Id.MakeComparable(struct
     type t = terminal_num * symbol
     let cmp (a0, a1) (b0, b1) =
       match Pervasives.compare a0 b0 with
@@ -118,7 +118,7 @@ type action =
 type lr0_action_table = state -> terminal_num -> action
 type lr0_goto_table = state -> symbol -> state option
 
-module ComparableIntSet = Belt.Id.MakeComparable(struct
+module ComparableIntSet = Placemat.Id.MakeComparable(struct
     type t = IntSet.t
     let cmp = Placemat.IntSet.cmp
   end)
@@ -128,7 +128,7 @@ module ComparableIntSet = Belt.Id.MakeComparable(struct
 *)
 type mutable_lr0_item_set = (IntSet.t, ComparableIntSet.identity) MSet.t
 
-type item_set_set = (item_set, ComparableIntSet.identity) Belt.Set.t
+type item_set_set = (item_set, ComparableIntSet.identity) Placemat.Set.t
 
 type parse_error = int (* character number *) * string
 
@@ -560,7 +560,7 @@ module Lr0 (G : GRAMMAR) = struct
     in
     (* canonical collection of sets *)
     let c =
-      MSet.fromArray [| augmented_start |] ~id:(module ComparableIntSet)
+      MSet.from_array [| augmented_start |] ~id:(module ComparableIntSet)
     in
     (* set of item sets we've added to c but not yet explored *)
     let active_set = ref @@ MSet.copy c in
@@ -568,11 +568,11 @@ module Lr0 (G : GRAMMAR) = struct
     (* iterate through every set of items in the collection, compute the GOTO
      * kernel of each item set, and add any new sets. `continue` is set to
      * `true` if we find a new item set, indicating we need to loop again. *)
-    while not (MSet.isEmpty !active_set) do
-      let new_active_set = MSet.fromArray [||] ~id:(module ComparableIntSet)
+    while not (MSet.is_empty !active_set) do
+      let new_active_set = MSet.from_array [||] ~id:(module ComparableIntSet)
       in
       (* for each set of items in the active set: *)
-      MSet.forEach !active_set (fun items ->
+      MSet.for_each !active_set (fun items ->
         (* for each grammar symbol: *)
         Placemat.List.forEach grammar_symbols (fun symbol ->
           let goto_result = lr0_goto_kernel items symbol in
@@ -591,7 +591,7 @@ module Lr0 (G : GRAMMAR) = struct
 
   let lr0_items : item_set IntDict.t
     = mutable_lr0_items
-      |> MSet.toArray
+      |> MSet.to_array
       |. Placemat.Array.map_with_index (fun i item_set -> i, item_set)
       |> Placemat.IntDict.from_array
 

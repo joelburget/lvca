@@ -54,9 +54,22 @@ end
 module MutableSet = struct
   module Int = Belt.MutableSet.Int
   module String = Belt.MutableSet.String
+
+  type ('a, 'b) t = ('a, 'b) Belt.MutableSet.t
+  let from_array = Belt.MutableSet.fromArray
+  let to_array = Belt.MutableSet.toArray
+  let to_list = Belt.MutableSet.toList
+  let copy = Belt.MutableSet.copy
+  let is_empty = Belt.MutableSet.isEmpty
+  let for_each = Belt.MutableSet.forEach
+  let has = Belt.MutableSet.has
+  let add = Belt.MutableSet.add
+  let make = Belt.MutableSet.make
 end
 
 module MutableStack = Belt.MutableStack
+module MutableQueue = Belt.MutableQueue
+module Id = Belt.Id
 
 module IntDict = struct
   let remove = Belt.Map.Int.remove
@@ -71,6 +84,11 @@ module IntDict = struct
   let from_array = Belt.Map.Int.fromArray
   let to_array = Belt.Map.Int.toArray
   let map_with_key = Belt.Map.Int.mapWithKey
+  let cmp = Belt.Map.Int.cmp
+
+  let values_to_array dict = dict
+    |> to_array
+    |> Tablecloth.Array.map ~f:(fun (_, v) -> v)
 end
 
 module StrDict = struct
@@ -87,10 +105,26 @@ module StrDict = struct
 end
 
 module IntSet = struct
+  type t = Belt.Set.Int.t
+  let eq = Belt.Set.Int.eq
   let size = Belt.Set.Int.size
   let forEach = Belt.Set.Int.forEach
   let cmp = Belt.Set.Int.cmp
   let intersect = Belt.Set.Int.intersect
   let from_array = Belt.Set.Int.fromArray
   let to_array = Belt.Set.Int.toArray
+end
+
+module Set = struct
+  type ('a, 'b) t = ('a, 'b) Belt.Set.t
+  let for_each = Belt.Set.forEach
+  let to_array = Belt.Set.toArray
+  let from_array = Belt.Set.fromArray
+  let union = Belt.Set.union
+  let cmp = Belt.Set.cmp
+  let eq = Belt.Set.eq
+end
+
+module Result = struct
+  type ('err, 'ok) t = ('ok, 'err) Belt.Result.t
 end

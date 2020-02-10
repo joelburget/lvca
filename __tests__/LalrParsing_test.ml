@@ -4,27 +4,27 @@ open Expect
 open LrParsing
 open LalrParsing
 open TestUtil
-module M = (* Tablecloth.IntDict *) Belt.Map.Int
-module MS = Belt.Map.String
-module SI = Belt.Set.Int
-module MStack = Belt.MutableStack
-module MQueue = Belt.MutableQueue
+module M = (* Tablecloth.IntDict *) Placemat.IntDict
+module MS = Placemat.StrDict
+module SI = Placemat.IntSet
+module MStack = Placemat.MutableStack
+module MQueue = Placemat.MutableQueue
 
 module TArray = Tablecloth.Array
 
-module MutableLookaheadItemSetCmp = Belt.Id.MakeComparable(struct
+module MutableLookaheadItemSetCmp = Placemat.Id.MakeComparable(struct
   type t = mutable_lookahead_item_set
-  let cmp x y = M.cmp x y Belt.MutableSet.Int.cmp
+  let cmp x y = M.cmp x y Placemat.MutableSet.Int.cmp
 end)
 
-module PropagationCmp = Belt.Id.MakeComparable(struct
+module PropagationCmp = Placemat.Id.MakeComparable(struct
   type t = LrParsing.state * LrParsing.item
   let cmp (s1, i1) (s2, i2) = match Pervasives.compare s1 s2 with
     | 0 -> Pervasives.compare i1 i2
     | c -> c
 end)
 
-module GenerationCmp = Belt.Id.MakeComparable(struct
+module GenerationCmp = Placemat.Id.MakeComparable(struct
   type t = LrParsing.state * lookahead_item
   let cmp (s1, i1) (s2, i2) = match Pervasives.compare s1 s2 with
     | 0 -> Pervasives.compare i1 i2
@@ -34,7 +34,7 @@ end)
 (* CPTT Example 4.54 *)
 module Grammar1 : GRAMMAR = struct
   let grammar = {
-    nonterminals = M.fromArray
+    nonterminals = M.from_array
     [|
        (* S' (note: the grammar we provide is already augmented) *)
        0, { productions = [[Nonterminal 1]] }; (* S' -> S *)
@@ -66,7 +66,7 @@ end
 (* CPTT Example 4.61 *)
 module Grammar2 : GRAMMAR = struct
   let grammar = {
-    nonterminals = M.fromArray
+    nonterminals = M.from_array
     [|
        (* S' (note: the grammar we provide is already augmented) *)
        0, { productions = [[Nonterminal 1]] }; (* S' -> S *)
@@ -105,7 +105,7 @@ end
 
 module Grammar3 : GRAMMAR = struct
   let grammar = {
-    nonterminals = M.fromArray
+    nonterminals = M.from_array
     [|
        0, { productions = [[Nonterminal 1]] }; (* arith' -> arith *)
        1, { productions = [
@@ -134,7 +134,7 @@ module Grammar3 : GRAMMAR = struct
 end
 
 type lookahead_item_sets =
-  (lookahead_item_set, LookaheadItemSetCmp.identity) Belt.Set.t
+  (lookahead_item_set, LookaheadItemSetCmp.identity) Placemat.Set.t
 
 let () = describe "LalrParsing" (fun () ->
 
@@ -144,7 +144,8 @@ let () = describe "LalrParsing" (fun () ->
   let module Grammar2Lalr = Lalr1(Grammar2) in
   let module Grammar3Lalr = Lalr1(Grammar3) in
 
-  let mk_arr items = S.fromArray items ~id:(module LookaheadItemCmp) in
+  let mk_arr items = Placemat.Set.from_array items ~id:(module LookaheadItemCmp)
+  in
   let mk_config_set kernel_items nonkernel_items =
     { LalrParsing.kernel_items = mk_arr kernel_items;
       LalrParsing.nonkernel_items = mk_arr nonkernel_items;
@@ -153,44 +154,44 @@ let () = describe "LalrParsing" (fun () ->
 
   let lookahead_item_set_set
     : lookahead_item_set array -> lookahead_item_sets =
-    Belt.Set.fromArray ~id:(module LookaheadItemSetCmp)
+    Placemat.Set.from_array ~id:(module LookaheadItemSetCmp)
   in
 
   let gram1_lr1_config_sets : lookahead_configuration_set array = [|
     mk_config_set (* 0 *)
-      [| { item = mk_item' 0 0; lookahead_set = SI.fromArray [| 0 |] } |]
-      [| { item = mk_item' 1 0; lookahead_set = SI.fromArray [| 0 |] };
-         { item = mk_item' 2 0; lookahead_set = SI.fromArray [| 1; 2 |] };
-         { item = mk_item' 3 0; lookahead_set = SI.fromArray [| 1; 2 |] };
+      [| { item = mk_item' 0 0; lookahead_set = SI.from_array [| 0 |] } |]
+      [| { item = mk_item' 1 0; lookahead_set = SI.from_array [| 0 |] };
+         { item = mk_item' 2 0; lookahead_set = SI.from_array [| 1; 2 |] };
+         { item = mk_item' 3 0; lookahead_set = SI.from_array [| 1; 2 |] };
       |];
     mk_config_set (* 1 *)
-      [| { item = mk_item' 0 1; lookahead_set = SI.fromArray [| 0 |] } |]
+      [| { item = mk_item' 0 1; lookahead_set = SI.from_array [| 0 |] } |]
       [||];
     mk_config_set (* 2 *)
-      [| { item = mk_item' 1 1; lookahead_set = SI.fromArray [| 0 |] } |]
-      [| { item = mk_item' 2 0; lookahead_set = SI.fromArray [| 0 |] };
-         { item = mk_item' 3 0; lookahead_set = SI.fromArray [| 0 |] };
+      [| { item = mk_item' 1 1; lookahead_set = SI.from_array [| 0 |] } |]
+      [| { item = mk_item' 2 0; lookahead_set = SI.from_array [| 0 |] };
+         { item = mk_item' 3 0; lookahead_set = SI.from_array [| 0 |] };
       |];
     mk_config_set (* 3 *)
-      [| { item = mk_item' 2 1; lookahead_set = SI.fromArray [| 0; 1; 2 |] } |]
-      [| { item = mk_item' 2 0; lookahead_set = SI.fromArray [| 0; 1; 2 |] };
-         { item = mk_item' 3 0; lookahead_set = SI.fromArray [| 0; 1; 2 |] };
+      [| { item = mk_item' 2 1; lookahead_set = SI.from_array [| 0; 1; 2 |] } |]
+      [| { item = mk_item' 2 0; lookahead_set = SI.from_array [| 0; 1; 2 |] };
+         { item = mk_item' 3 0; lookahead_set = SI.from_array [| 0; 1; 2 |] };
       |];
     mk_config_set (* 4 *)
-      [| { item = mk_item' 3 1; lookahead_set = SI.fromArray [| 0; 1; 2 |] } |]
+      [| { item = mk_item' 3 1; lookahead_set = SI.from_array [| 0; 1; 2 |] } |]
       [||];
     mk_config_set (* 5 *)
-      [| { item = mk_item' 1 2; lookahead_set = SI.fromArray [| 0 |] } |]
+      [| { item = mk_item' 1 2; lookahead_set = SI.from_array [| 0 |] } |]
       [||];
     mk_config_set (* 6 *)
-      [| { item = mk_item' 2 2; lookahead_set = SI.fromArray [| 0; 1; 2 |] } |]
+      [| { item = mk_item' 2 2; lookahead_set = SI.from_array [| 0; 1; 2 |] } |]
       [||];
   |]
   in
 
   let show_lookahead_item_sets : lookahead_item_sets -> string
     = fun set -> set
-    |. Belt.Set.toArray
+    |> Placemat.Set.to_array
     |> TArray.map ~f:Grammar1Lalr.string_of_lookahead_item_set
     |. Js.Array2.joinWith "\n\n"
   in
@@ -199,9 +200,9 @@ let () = describe "LalrParsing" (fun () ->
     (* First check the kernels are as expected *)
     test "kernels" (fun () ->
       expect (Grammar1Lalr.lalr1_items
-        |. Belt.Map.Int.valuesToArray
+        |> Placemat.IntDict.values_to_array
         |. lookahead_item_set_set
-      ) |> toBeEquivalent show_lookahead_item_sets Belt.Set.eq
+      ) |> toBeEquivalent show_lookahead_item_sets Placemat.Set.eq
         (gram1_lr1_config_sets
           |. TArray.map ~f:(fun { LalrParsing.kernel_items } -> kernel_items)
           |. lookahead_item_set_set
@@ -211,10 +212,10 @@ let () = describe "LalrParsing" (fun () ->
     (* Then verify all closures are as expected *)
     test "closures" (fun () ->
       expect (Grammar1Lalr.lalr1_items
-        |. Belt.Map.Int.valuesToArray
-        |. TArray.map ~f:Grammar1Lalr.lr1_closure
-        |. lookahead_item_set_set
-      ) |> toBeEquivalent show_lookahead_item_sets Belt.Set.eq
+        |> Placemat.IntDict.values_to_array
+        |> TArray.map ~f:Grammar1Lalr.lr1_closure
+        |> lookahead_item_set_set
+      ) |> toBeEquivalent show_lookahead_item_sets Placemat.Set.eq
         (gram1_lr1_config_sets
           |. TArray.map ~f:simplify_lookahead_config_set
           |. lookahead_item_set_set
@@ -223,7 +224,7 @@ let () = describe "LalrParsing" (fun () ->
   );
 
   let mk_item_set pruduction_num position =
-    SI.fromArray [| mk_item' pruduction_num position |]
+    SI.from_array [| mk_item' pruduction_num position |]
   in
 
   (* CPTT Figure 4.44 *)
@@ -233,7 +234,7 @@ let () = describe "LalrParsing" (fun () ->
     (* S -> L . = R
      * R -> L .
      *)
-    2, SI.fromArray [| mk_item' 1 1; mk_item' 5 1 |];
+    2, SI.from_array [| mk_item' 1 1; mk_item' 5 1 |];
     3, mk_item_set 2 1; (* S -> R . *)
     4, mk_item_set 3 1; (* L -> * . R *)
     5, mk_item_set 4 1; (* L -> id . *)
@@ -245,49 +246,52 @@ let () = describe "LalrParsing" (fun () ->
   in
 
   let mk_set : item_set array -> item_set_set
-    = Belt.Set.fromArray ~id:(module LrParsing.ComparableIntSet)
+    = Placemat.Set.from_array ~id:(module LrParsing.ComparableIntSet)
   in
 
   let actual_grammar2_lalr1_kernels : item_set_set
     = Grammar2Lalr.lalr1_items
-      |. Belt.Map.Int.valuesToArray
-      |. TArray.map ~f:(fun lookahead_item_set -> lookahead_item_set
-        |. Belt.Set.toArray
-        |. TArray.map ~f:(fun lookahead_item -> lookahead_item.item)
-        |. SI.fromArray
+      |> Placemat.IntDict.values_to_array
+      |> TArray.map ~f:(fun lookahead_item_set -> lookahead_item_set
+        |> Placemat.Set.to_array
+        |> TArray.map ~f:(fun lookahead_item -> lookahead_item.item)
+        |> SI.from_array
       )
-      |. mk_set
+      |> mk_set
   in
 
   let show_item_set_set : LrParsing.item_set_set -> string
     = fun sets -> sets
-    |. Belt.Set.toArray
-    |. TArray.map ~f:Grammar2LR.string_of_item_set
+    |> Placemat.Set.to_array
+    |> TArray.map ~f:Grammar2LR.string_of_item_set
     |. Js.Array2.joinWith "\n"
   in
 
   testAll "grammar 2 lalr1 kernel items" [
     expect actual_grammar2_lalr1_kernels
-      |> toBeEquivalent show_item_set_set Belt.Set.eq (mk_set
+      |> toBeEquivalent show_item_set_set Placemat.Set.eq (mk_set
         (TArray.map expected_grammar2_lalr1_kernels ~f:(fun (_, k) -> k)))
   ] Util.id;
 
-  let book_state_mapping = Belt.Map.Int.(expected_grammar2_lalr1_kernels
-    |. fromArray
-    |. map Grammar2LR.item_set_to_state
-  )
+  let book_state_mapping = expected_grammar2_lalr1_kernels
+    |> Placemat.IntDict.from_array
+    |> Tablecloth.IntDict.map ~f:Grammar2LR.item_set_to_state
   in
 
   let book_state : int array
-    = Belt.Array.makeBy (M.size book_state_mapping)
-      (fun i -> book_state_mapping |. M.getExn i)
+    = Tablecloth.Array.initialize
+      ~length:(M.size book_state_mapping)
+      ~f:(fun i -> book_state_mapping
+        |> Tablecloth.IntDict.get ~key:i
+        |> get_option' (fun () -> "expected key in book states")
+      )
   in
 
   let no_terminal_num = 4 in (* # *)
 
   let lookahead_item_set = lookahead_item_set_from_array
     [|
-      { item = mk_item' 0 0; lookahead_set = SI.fromArray [| no_terminal_num |] }
+      { item = mk_item' 0 0; lookahead_set = SI.from_array [| no_terminal_num |] }
     |]
   in
 
@@ -296,26 +300,26 @@ let () = describe "LalrParsing" (fun () ->
     let expected_closure = lookahead_item_set_from_array
       [|
         (* S' -> . S, # *)
-        { item = mk_item' 0 0; lookahead_set = SI.fromArray [| no_terminal_num |] };
+        { item = mk_item' 0 0; lookahead_set = SI.from_array [| no_terminal_num |] };
         (* S -> . L = R, # *)
-        { item = mk_item' 1 0; lookahead_set = SI.fromArray [| no_terminal_num |] };
+        { item = mk_item' 1 0; lookahead_set = SI.from_array [| no_terminal_num |] };
         (* S -> . R, # *)
-        { item = mk_item' 2 0; lookahead_set = SI.fromArray [| no_terminal_num |] };
+        { item = mk_item' 2 0; lookahead_set = SI.from_array [| no_terminal_num |] };
         (* L -> . * R, #/= *)
-        { item = mk_item' 3 0; lookahead_set = SI.fromArray [| no_terminal_num; 1 |] };
+        { item = mk_item' 3 0; lookahead_set = SI.from_array [| no_terminal_num; 1 |] };
         (* L -> . id, #/= *)
-        { item = mk_item' 4 0; lookahead_set = SI.fromArray [| no_terminal_num; 1 |] };
+        { item = mk_item' 4 0; lookahead_set = SI.from_array [| no_terminal_num; 1 |] };
         (* R -> . L, # *)
-        { item = mk_item' 5 0; lookahead_set = SI.fromArray [| no_terminal_num |] };
+        { item = mk_item' 5 0; lookahead_set = SI.from_array [| no_terminal_num |] };
       |]
     in
     expect (Grammar2Lalr.lr1_closure lookahead_item_set)
-      |> toBeEquivalent (fun _ -> "TODO: show lr_closure") S.eq expected_closure;
+      |> toBeEquivalent (fun _ -> "TODO: show lr_closure") Placemat.Set.eq expected_closure;
   );
 
   let { spontaneous_generation; propagation } =
     Grammar2Lalr.generate_lookaheads
-      (SI.fromArray [| mk_item' 0 0 |])
+      (SI.from_array [| mk_item' 0 0 |])
       (mk_item' 0 0)
   in
   let expected_propagation =
@@ -330,9 +334,9 @@ let () = describe "LalrParsing" (fun () ->
 
   let expected_generation =
     [| (* L -> * . R, = *)
-       book_state.(4), { item = mk_item' 3 1; lookahead_set = SI.fromArray [| 1 |] };
+       book_state.(4), { item = mk_item' 3 1; lookahead_set = SI.from_array [| 1 |] };
        (* L -> id ., = *)
-       book_state.(5), { item = mk_item' 4 1; lookahead_set = SI.fromArray [| 1 |] };
+       book_state.(5), { item = mk_item' 4 1; lookahead_set = SI.from_array [| 1 |] };
     |]
   in
 
@@ -343,15 +347,15 @@ let () = describe "LalrParsing" (fun () ->
   in
 
   let equivalent_propagation : (state * item) array -> (state * item) array -> bool
-    = fun p1 p2 -> Belt.Set.eq
-      (Belt.Set.fromArray ~id:(module PropagationCmp) p1)
-      (Belt.Set.fromArray ~id:(module PropagationCmp) p2)
+    = fun p1 p2 -> Placemat.Set.eq
+      (Placemat.Set.from_array ~id:(module PropagationCmp) p1)
+      (Placemat.Set.from_array ~id:(module PropagationCmp) p2)
   in
 
   let equivalent_generation : (state * lookahead_item) array -> (state * lookahead_item) array -> bool
-    = fun g1 g2 -> Belt.Set.eq
-      (Belt.Set.fromArray ~id:(module GenerationCmp) g1)
-      (Belt.Set.fromArray ~id:(module GenerationCmp) g2)
+    = fun g1 g2 -> Placemat.Set.eq
+      (Placemat.Set.from_array ~id:(module GenerationCmp) g1)
+      (Placemat.Set.from_array ~id:(module GenerationCmp) g2)
   in
 
   let string_of_generation : (state * lookahead_item) array -> string
@@ -373,19 +377,19 @@ let () = describe "LalrParsing" (fun () ->
     );
   );
 
-  let mk = fun item lookahead -> M.fromArray
-    [| item, Belt.MutableSet.Int.fromArray lookahead |]
+  let mk = fun item lookahead -> M.from_array
+    [| item, Placemat.MutableSet.Int.fromArray lookahead |]
   in
 
   let expected_lalr1_items
-    : (mutable_lookahead_item_set, MutableLookaheadItemSetCmp.identity) Belt.Set.t
-    = Belt.Set.fromArray
+    : (mutable_lookahead_item_set, MutableLookaheadItemSetCmp.identity) Placemat.Set.t
+    = Placemat.Set.from_array
       ~id:(module MutableLookaheadItemSetCmp)
       [| mk (mk_item' 0 0) [| 0 |];
          mk (mk_item' 0 1) [| 0 |];
-         (M.fromArray
-           [| mk_item' 1 1, Belt.MutableSet.Int.fromArray [| 0 |];
-              mk_item' 5 1, Belt.MutableSet.Int.fromArray [| 0 |];
+         (M.from_array
+           [| mk_item' 1 1, Placemat.MutableSet.Int.fromArray [| 0 |];
+              mk_item' 5 1, Placemat.MutableSet.Int.fromArray [| 0 |];
            |]);
          mk (mk_item' 2 1) [| 0 |];
          mk (mk_item' 3 1) [| 0; 1 |];
@@ -398,20 +402,20 @@ let () = describe "LalrParsing" (fun () ->
   in
 
   let lalr1_items_set
-    : (mutable_lookahead_item_set, MutableLookaheadItemSetCmp.identity) Belt.Set.t
+    : (mutable_lookahead_item_set, MutableLookaheadItemSetCmp.identity) Placemat.Set.t
     = Grammar2Lalr.mutable_lalr1_items
-    |. Belt.Map.Int.valuesToArray
-    |. Belt.Set.fromArray ~id:(module MutableLookaheadItemSetCmp)
+    |> Placemat.IntDict.values_to_array
+    |> Placemat.Set.from_array ~id:(module MutableLookaheadItemSetCmp)
   in
 
   let string_of_lalr1_items_set = fun lalr1_items_set -> lalr1_items_set
-    |. Belt.Set.toArray
+    |. Placemat.Set.to_array
     |> TArray.map ~f:(fun mutable_lookahead_item_set -> mutable_lookahead_item_set
-      |. M.toArray
+      |> M.to_array
       |> TArray.map ~f:(fun (item, mutable_lookahead) ->
         let lookahead_set = mutable_lookahead
-          |. Belt.MutableSet.Int.toArray
-          |. SI.fromArray
+          |> Placemat.MutableSet.Int.toArray
+          |> SI.from_array
         in
         let lookahead_item = { item; lookahead_set } in
         Grammar2Lalr.string_of_lookahead_item lookahead_item
@@ -423,7 +427,7 @@ let () = describe "LalrParsing" (fun () ->
 
   testAll "mutable_lalr1_items" [
     expect lalr1_items_set
-      |> toBeEquivalent string_of_lalr1_items_set Belt.Set.eq
+      |> toBeEquivalent string_of_lalr1_items_set Placemat.Set.eq
         expected_lalr1_items
   ] Util.id;
 
@@ -514,7 +518,7 @@ let () = describe "LalrParsing" (fun () ->
   in
 
   let action_table_tests' = fun () -> action_table_tests
-    |. Belt.List.forEach (fun (init_state, terminal_num, action) ->
+    |. Placemat.List.forEach (fun (init_state, terminal_num, action) ->
       test
         (Printf.sprintf "lalr1_action_table %n %s -> %s"
           init_state
