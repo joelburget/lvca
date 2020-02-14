@@ -1,0 +1,11 @@
+opam-version: "2.0"
+version: "1.0"
+maintainer: "joelburget@gmail.com"
+authors: ["Joel Burget"]
+homepage: "https://github.com/joelburget/lvca"
+bug-reports: "https://github.com/joelburget/lvca/issues"
+dev-repo: "git+https://github.com/joelburget/lvca.git"
+license: "TODO"
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+]

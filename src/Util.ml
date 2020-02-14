@@ -242,7 +242,7 @@ let get_option' : (unit -> string) -> 'a option -> 'a =
 let array_of_stack : 'a Placemat.MutableStack.t -> 'a array =
   fun stack ->
   let result = [||] in
-  Placemat.MutableStack.forEach stack (fun item ->
+  Placemat.MutableStack.for_each stack (fun item ->
     let _ = Js.Array2.push result item in
     ());
   result

@@ -81,7 +81,7 @@ let check_operator_match_validity
     token_list
     |> Array.from_list
     |> Array.map_with_index ~f:(fun i tok -> i, tok)
-    |> MMI.fromArray
+    |> MMI.from_array
   in
   let { captured_tokens; repeated_tokens } = token_usage term_pat in
   let non_existent_tokens = MSI.make () in
@@ -89,7 +89,7 @@ let check_operator_match_validity
     if MMI.has numbered_toks tok_num
     then MMI.remove numbered_toks tok_num
     else MSI.add non_existent_tokens tok_num);
-  non_existent_tokens, repeated_tokens, MMI.toList numbered_toks
+  non_existent_tokens, repeated_tokens, MMI.to_list numbered_toks
 ;;
 
 (* Check invariants of concrete syntax descriptions:
@@ -159,9 +159,9 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
              raise_invalid
                ("tokens captured more than once: " ^ tok_names));
 
-           if not (MSI.isEmpty non_existent_tokens)
+           if not (MSI.is_empty non_existent_tokens)
            then (
-             let tok_names = non_existent_tokens |. MSI.toArray |. show_toks in
+             let tok_names = non_existent_tokens |> MSI.to_array |> show_toks in
              raise_invalid ("non-existent tokens mentioned: " ^ tok_names));
 
            let tokens' = tokens

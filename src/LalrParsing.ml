@@ -168,22 +168,22 @@ module Lalr1 (G : GRAMMAR) = struct
   let add_to mutable_lookahead_item_set nonterminal_num lookahead =
     match MMI.get mutable_lookahead_item_set nonterminal_num with
     | None -> MMI.set mutable_lookahead_item_set nonterminal_num
-                (MSI.fromArray [| lookahead |])
+                (MSI.from_array [| lookahead |])
     | Some old_set -> MSI.add old_set lookahead
 
   let add_all_to mutable_lookahead_item_set nonterminal_num lookaheads =
     let lookaheads' = Placemat.IntSet.to_array lookaheads in
     match MMI.get mutable_lookahead_item_set nonterminal_num with
     | None -> MMI.set mutable_lookahead_item_set nonterminal_num
-                (MSI.fromArray lookaheads')
-    | Some old_set -> MSI.mergeMany old_set lookaheads'
+                (MSI.from_array lookaheads')
+    | Some old_set -> MSI.merge_many old_set lookaheads'
 
   (* Convert a mutable set of items with mutable lookahead to an immutable set
    * of lookahead items.
   *)
   let convert : MSI.t MMI.t -> lookahead_item_set
     = fun items -> items
-                   |> MMI.toArray
+                   |> MMI.to_array
                    |> Array.map ~f:(fun (nonterminal_num, mut_lookahead_set) ->
                      let production_set = nonterminal_production_map
                                           |. MMI.get nonterminal_num
@@ -191,18 +191,18 @@ module Lalr1 (G : GRAMMAR) = struct
                                                             "lr1_closure' convert: unable to find nonterminal %n in nonterminal_production_map (keys: %s)"
                                                             nonterminal_num
                                                             (nonterminal_production_map
-                                                             |> MMI.keysToArray
+                                                             |> MMI.keys_to_array
                                                              |> Array.map ~f:string_of_int
                                                              |. Js.Array2.joinWith ", ")
                                                          )
                      in
 
                      production_set
-                     |> MSI.toArray
+                     |> MSI.to_array
                      |> Array.map ~f:(fun production_num ->
                        let item = mk_item { production_num; position = 0 } in
                        let lookahead_set = mut_lookahead_set
-                                           |> MSI.toArray
+                                           |> MSI.to_array
                                            |> Placemat.IntSet.from_array
                        in
                        { item; lookahead_set }
@@ -237,7 +237,7 @@ module Lalr1 (G : GRAMMAR) = struct
         let { production_num; position } = view_item item in
 
         let nonterminal_num = production_nonterminal_map
-                              |. MMI.getExn production_num
+                              |. MMI.get_exn production_num
         in
 
         if production_num = 0 || position > 0
@@ -277,13 +277,13 @@ module Lalr1 (G : GRAMMAR) = struct
        * the nonkernel_items set if appropriate, and adding new entries to the
        * stack if appropriate
       *)
-      while not (MStack.isEmpty stack) do
+      while not (MStack.is_empty stack) do
         let nonterminal_num, lookahead =
           MStack.pop stack |> get_option' (fun () -> "the set is not empty!")
         in
 
         let is_added = MMI.has nonkernel_items nonterminal_num &&
-                       nonkernel_items |. MMI.getExn nonterminal_num |. MSI.has lookahead
+                       nonkernel_items |. MMI.get_exn nonterminal_num |. MSI.has lookahead
         in
 
         if not is_added then (
@@ -428,7 +428,7 @@ module Lalr1 (G : GRAMMAR) = struct
              |> IntDict.get ~key:item
              |> get_option' (fun () ->
                "lookahead_propagation: item not present in mutable_lalr1_items")
-             |. Placemat.MutableSet.Int.mergeMany (Placemat.IntSet.to_array lookahead_set);
+             |. Placemat.MutableSet.Int.merge_many (Placemat.IntSet.to_array lookahead_set);
           );
 
         propagation
@@ -495,7 +495,7 @@ module Lalr1 (G : GRAMMAR) = struct
             if not (MSI.subset source_lookahead target_lookahead)
             then (
               made_update := true;
-              MSI.mergeMany target_lookahead (MSI.toArray source_lookahead);
+              MSI.merge_many target_lookahead (MSI.to_array source_lookahead);
             )
           );
         );
@@ -508,7 +508,7 @@ module Lalr1 (G : GRAMMAR) = struct
         |> Placemat.IntDict.to_array
         |> Array.map ~f:(fun (item, mutable_lookahead) ->
           { item; lookahead_set = mutable_lookahead
-            |> Placemat.MutableSet.Int.toArray
+            |> Placemat.MutableSet.Int.to_array
             |> Placemat.IntSet.from_array
           }
         )
@@ -640,10 +640,10 @@ module Lalr1 (G : GRAMMAR) = struct
         let len = String.length input in
         let tokens' = tokens
           |> Array.filter ~f:(fun (token: Lex.token) -> token.name != "SPACE")
-          |> MQueue.fromArray
+          |> MQueue.from_array
         in
         (* TODO: name might not always be "$" *)
-        MQueue.add tokens' { name = "$"; start = len; finish = len };
+        MQueue.enqueue tokens' { name = "$"; start = len; finish = len };
         parse tokens' |. Util.map_error ~f:(fun err -> Either.Right err)
 
 end

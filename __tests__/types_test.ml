@@ -1,6 +1,6 @@
 open Jest
 open Expect
-open External (* modules BitArray, Cbor, Sha256, Uint8Array *)
+open External (* modules BitArray, Cbor, Sha256, Bytes *)
 open Types
 open Binding
 
@@ -10,7 +10,7 @@ let _ = describe "Nominal.(jsonify, serialize, hash)" (fun () ->
   let open Nominal in
 
   let serialize tm = ArrayBuffer.to_hex
-    (Uint8Array.to_array_buffer
+    (Bytes.to_array_buffer
     (Nominal.serialize tm)) in
 
   let tm = Var "x" in

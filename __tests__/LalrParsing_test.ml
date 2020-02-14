@@ -378,7 +378,7 @@ let () = describe "LalrParsing" (fun () ->
   );
 
   let mk = fun item lookahead -> M.from_array
-    [| item, Placemat.MutableSet.Int.fromArray lookahead |]
+    [| item, Placemat.MutableSet.Int.from_array lookahead |]
   in
 
   let expected_lalr1_items
@@ -388,8 +388,8 @@ let () = describe "LalrParsing" (fun () ->
       [| mk (mk_item' 0 0) [| 0 |];
          mk (mk_item' 0 1) [| 0 |];
          (M.from_array
-           [| mk_item' 1 1, Placemat.MutableSet.Int.fromArray [| 0 |];
-              mk_item' 5 1, Placemat.MutableSet.Int.fromArray [| 0 |];
+           [| mk_item' 1 1, Placemat.MutableSet.Int.from_array [| 0 |];
+              mk_item' 5 1, Placemat.MutableSet.Int.from_array [| 0 |];
            |]);
          mk (mk_item' 2 1) [| 0 |];
          mk (mk_item' 3 1) [| 0; 1 |];
@@ -414,7 +414,7 @@ let () = describe "LalrParsing" (fun () ->
       |> M.to_array
       |> TArray.map ~f:(fun (item, mutable_lookahead) ->
         let lookahead_set = mutable_lookahead
-          |> Placemat.MutableSet.Int.toArray
+          |> Placemat.MutableSet.Int.to_array
           |> SI.from_array
         in
         let lookahead_item = { item; lookahead_set } in
@@ -540,7 +540,7 @@ let () = describe "LalrParsing" (fun () ->
       (* cdd
        * 0123
        *)
-      let tokens1 = MQueue.fromArray [|
+      let tokens1 = MQueue.from_array [|
         mk_tok "c" 0 1;
         mk_tok "d" 1 2;
         mk_tok "d" 2 3;
@@ -573,7 +573,7 @@ let () = describe "LalrParsing" (fun () ->
       (* **foo = *bar
        * 012345678901
        *)
-      let tokens2 = MQueue.fromArray [|
+      let tokens2 = MQueue.from_array [|
         mk_tok "*" 0 1;
         mk_tok "*" 1 2;
         mk_tok "id" 2 5;
@@ -643,7 +643,7 @@ let () = describe "LalrParsing" (fun () ->
       (* (x + y)
        * 0123456
        *)
-      let tokens3 = MQueue.fromArray [|
+      let tokens3 = MQueue.from_array [|
         mk_tok "("  0 1;
         mk_tok "id" 1 2;
         mk_tok "+"  3 4;
@@ -677,7 +677,7 @@ let () = describe "LalrParsing" (fun () ->
       (* x + (y + z)
        * 01234567890
        *)
-      let tokens4 = MQueue.fromArray [|
+      let tokens4 = MQueue.from_array [|
         mk_tok "id" 0  1;
         mk_tok "+"  2  3;
         mk_tok "("  4  5;

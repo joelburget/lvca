@@ -361,7 +361,7 @@ let () = describe "LrParsing" (fun () ->
       (* foo * bar
        * 0123456789
        *)
-      let tokens1 = MQueue.fromArray [|
+      let tokens1 = MQueue.from_array [|
         mk_tok "id" 0 3;
         mk_tok "*"  4 5;
         mk_tok "id" 6 9;
@@ -386,7 +386,7 @@ let () = describe "LrParsing" (fun () ->
       (* foo * bar + baz
        * 0123456789012345
        *)
-      let tokens2 = MQueue.fromArray [|
+      let tokens2 = MQueue.from_array [|
         mk_tok "id" 0 3;
         mk_tok "*"  4 5;
         mk_tok "id" 6 9;
@@ -421,7 +421,7 @@ let () = describe "LrParsing" (fun () ->
       (* foo * bar + baz
        * 0123456789012345
        *)
-      let tokens3 = MQueue.fromArray [|
+      let tokens3 = MQueue.from_array [|
         mk_tok "id" 0 3;
         mk_tok "*"  4 5;
       |]
@@ -435,7 +435,7 @@ let () = describe "LrParsing" (fun () ->
       (* foo + bar
        * 0123456789
        *)
-      let tokens4 = MQueue.fromArray [|
+      let tokens4 = MQueue.from_array [|
         mk_tok "id" 0 3;
         mk_tok "+"  4 5;
         mk_tok "id" 6 9;

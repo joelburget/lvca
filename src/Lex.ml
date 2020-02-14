@@ -82,7 +82,7 @@ let lex_exn : lexer -> string -> token array =
     |> Util.stringify_list Util.id "|"
   in
   let tok_names = mut_tok_names
-    |> Placemat.MutableMap.Int.toList
+    |> Placemat.MutableMap.Int.to_list
     |> IntDict.from_list
   in
   let re = Js.Re.fromString re_str in

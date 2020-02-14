@@ -18,7 +18,7 @@ module ArrayBuffer = struct
 end
 
 (* JavaScript built-in Uint8Array *)
-module rec Uint8Array : sig
+module rec Bytes : sig
   type t
 
   val from_b_array      : BitArray.t    -> t
@@ -55,12 +55,12 @@ end
 and BitArray : sig
   type t
 
-  val from_u8_array : Uint8Array.t -> t
+  val from_u8_array : Bytes.t -> t
 end = struct
   type t
 
   (* from https://stackoverflow.com/q/26734033/383958 *)
-  let from_u8_array (arr : Uint8Array.t) = ([%raw {|
+  let from_u8_array (arr : Bytes.t) = ([%raw {|
     function toBitArrayCodec(sjcl, bytes) {
         var out = [], i, tmp=0;
         for (i=0; i<bytes.length; i++) {
@@ -75,7 +75,7 @@ end = struct
         }
         return out;
     }
-  |}] : Sjcl.sjcl -> Uint8Array.t -> t) Sjcl.sjcl arr
+  |}] : Sjcl.sjcl -> Bytes.t -> t) Sjcl.sjcl arr
 end
 
 module Sha256 = struct

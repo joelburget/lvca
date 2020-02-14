@@ -163,7 +163,7 @@ type trace_line =
   }
 
 let pop_front_exn : int -> 'a MQueue.t -> 'a
-  = fun position arr -> match MQueue.pop arr with
+  = fun position arr -> match MQueue.dequeue arr with
     | None -> raise (PopFailed position)
     | Some a -> a
 
@@ -260,7 +260,7 @@ module Lr0 (G : GRAMMAR) = struct
         |. MSI.copy
       in
 
-      while not (MSI.isEmpty productions) do
+      while not (MSI.is_empty productions) do
         let production_num = productions
           |. MSI.minimum
           |> get_option' (fun () ->
@@ -297,7 +297,7 @@ module Lr0 (G : GRAMMAR) = struct
         let result = MSI.make () in
         let already_seen_nts = IntSet.empty in
         first_set' already_seen_nts result prod;
-        result |> MSI.toList |> IntSet.from_list
+        result |> MSI.to_list |> IntSet.from_list
 
   let string_of_terminal : terminal_num -> string
     = fun t_num -> terminal_names
@@ -470,7 +470,7 @@ module Lr0 (G : GRAMMAR) = struct
 
       (* Examine each accessible nonterminal, adding its initial items as
        * nonkernel items. *)
-      while not (MSI.isEmpty nt_set) do
+      while not (MSI.is_empty nt_set) do
         let nonterminal_num =
           get_option' (fun () -> "the set is not empty!") @@ MSI.minimum nt_set
         in
@@ -492,7 +492,7 @@ module Lr0 (G : GRAMMAR) = struct
                                                      nonterminal_num
                                                   )
           in
-          MSI.forEach production_num_set (fun production_num ->
+          MSI.for_each production_num_set (fun production_num ->
             MSI.add nonkernel_items (mk_item' production_num 0)
           );
           let { productions } = IntDict.get G.grammar.nonterminals ~key:nonterminal_num
@@ -510,8 +510,8 @@ module Lr0 (G : GRAMMAR) = struct
         )
       done;
 
-      { kernel_items = kernel_items |> MSI.toList |> IntSet.from_list;
-        nonkernel_items = nonkernel_items |> MSI.toList |> IntSet.from_list;
+      { kernel_items = kernel_items |> MSI.to_list |> IntSet.from_list;
+        nonkernel_items = nonkernel_items |> MSI.to_list |> IntSet.from_list;
       }
 
   (* closure returning an item set (rather than a configuration set) *)
@@ -546,7 +546,7 @@ module Lr0 (G : GRAMMAR) = struct
             MSI.add result (mk_item' production_num (position + 1))
         | _ -> ()
       );
-      result |> MSI.toList |> IntSet.from_list
+      result |> MSI.to_list |> IntSet.from_list
 
   (* A list of all grammar symbols (terminals and nonterminals) *)
   let grammar_symbols = List.append
@@ -643,7 +643,7 @@ module Lr0 (G : GRAMMAR) = struct
        * set
       *)
       else production_map
-           |> MMI.toArray
+           |> MMI.to_array
            |> Array.fold_left
                 ~initial:IntSet.empty
                 ~f:(fun (prod_num, production) follow_set ->
@@ -898,11 +898,11 @@ module Lr0 (G : GRAMMAR) = struct
           let terminal_num = token_to_terminal tok in
           let action = lr0_action_table s terminal_num in
           if do_trace = DoTrace then
-            MQueue.add trace
+            MQueue.enqueue trace
               { action;
                 stack = Util.array_of_stack stack;
                 results = Util.array_of_stack results;
-                input = MQueue.toArray toks;
+                input = MQueue.to_array toks;
               };
           match action with
           | Shift t ->
@@ -995,7 +995,7 @@ module Lr0 (G : GRAMMAR) = struct
       with
       | ParseFinished -> (match MStack.size results with
         | 1 -> (match MStack.top results with
-          | Some result -> Ok result, MQueue.toArray trace
+          | Some result -> Ok result, MQueue.to_array trace
           | None -> failwith "invariant violation: no result"
         )
         | 0 -> failwith "invariant violation: no result"
@@ -1004,10 +1004,10 @@ module Lr0 (G : GRAMMAR) = struct
                            n
                         )
       )
-      | ParseFailed parse_error -> (Error parse_error, MQueue.toArray trace)
+      | ParseFailed parse_error -> (Error parse_error, MQueue.to_array trace)
       | PopFailed pos
         -> (Error (pos, "parsing invariant violation -- pop failed"),
-            MQueue.toArray trace)
+            MQueue.to_array trace)
 
   let parse_trace
     : do_trace (* trace or not *)
@@ -1029,10 +1029,10 @@ module Lr0 (G : GRAMMAR) = struct
         let tokens' = tokens
                       |> Array.filter
                         ~f:(fun (token : Lex.token) -> token.name != "SPACE")
-                      |> MQueue.fromArray
+                      |> MQueue.from_array
         in
         (* TODO: name might not always be "$" *)
-        MQueue.add tokens' { name = "$"; start = len; finish = len };
+        MQueue.enqueue tokens' { name = "$"; start = len; finish = len };
         Util.map_error (parse tokens') ~f:(fun err -> Either.Right err)
 
 end

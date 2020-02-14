@@ -29,3 +29,4 @@ bundledOutputs
 yarn-error.log
 lib
 lvca-npm
+_build
