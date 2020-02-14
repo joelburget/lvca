@@ -67,7 +67,7 @@ let rec show : regex -> string
 
 let rec accepts_empty : regex -> bool
   = function
-    | ReString str -> Js.String2.length str = 0
+    | ReString str -> Tablecloth.String.length str = 0
     | ReClass cls -> cls = PosClass Boundary || cls = NegClass Boundary
     | RePlus re -> accepts_empty re
     | ReChoice (a, b) -> accepts_empty a || accepts_empty b

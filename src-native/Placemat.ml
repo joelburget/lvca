@@ -527,4 +527,8 @@ end
 module String = struct
   let concat_array : ?sep:string -> string array -> string
     = Core_kernel.String.concat_array
+
+  (** raises [Invalid_argument] *)
+  let get : string -> int -> char
+    = Core_kernel.String.get
 end

@@ -744,21 +744,25 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
     nonterminal_rules root_name str root ->
 
   let str_pos = ref 0 in
-  let str_len = Js.String2.length str in
+  let str_len = Tablecloth.String.length str in
   let get_trivia : int -> int -> string * string =
     fun start_pos end_pos ->
       (* look back consuming all whitespace to (and including) a newline *)
-      let leading_trivia = Js.String2.slice str ~from:!str_pos ~to_:start_pos in
+      let leading_trivia =
+        Tablecloth.String.slice str ~from:!str_pos ~to_:start_pos
+      in
       (* look forward consuming all whitespace up to a newline *)
       str_pos := end_pos;
       let continue = ref true in
       while !continue do
         (* TODO: need to be aware of other whitespace tokens *)
-        let got_space = Js.String2.charAt str !str_pos = " " in
+        let got_space = Placemat.String.get str !str_pos = ' ' in
         continue := !str_pos < str_len && got_space;
         if !continue then incr str_pos;
       done;
-      let trailing_trivia = Js.String2.slice str ~from:end_pos ~to_:!str_pos in
+      let trailing_trivia =
+        Tablecloth.String.slice str ~from:end_pos ~to_:!str_pos
+       in
       leading_trivia, trailing_trivia
   in
 
@@ -833,7 +837,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
   and go_t : LrParsing.parse_result -> formatted_terminal_capture =
     fun { start_pos; end_pos } ->
       let leading_trivia, trailing_trivia = get_trivia start_pos end_pos in
-      let content = Js.String.slice str ~from:start_pos ~to_:end_pos in
+      let content = Tablecloth.String.slice str ~from:start_pos ~to_:end_pos in
       { leading_trivia; content; trailing_trivia }
   in
   go_nt root_name root
@@ -884,7 +888,7 @@ let parse desc root_name str =
          "lexical error at characters %n - %n (%s):\n%s"
          start_pos
          end_pos
-         (Js.String2.slice str ~from:start_pos ~to_:end_pos)
+         (Tablecloth.String.slice str ~from:start_pos ~to_:end_pos)
          message)
   | Error (Either.Right (char_no, message)) ->
     Error (Printf.sprintf "parser error at character %n:\n%s" char_no message)

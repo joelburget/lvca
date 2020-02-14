@@ -354,4 +354,13 @@ end
 module String = struct
   let concat_array : ?sep:string -> string array -> string
     = fun ?sep:(sep="") arr -> Js.Array2.joinWith arr sep
+
+  (** raises [Invalid_argument] *)
+  let get : string -> int -> char
+    = fun str i -> str
+      |. Js.String2.charAt i
+      |> Tablecloth.Char.from_string
+      |> (function
+        | None -> raise (Invalid_argument "index out of bounds")
+        | Some c -> c)
 end
