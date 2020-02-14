@@ -85,7 +85,7 @@ let () = describe "LrParsing" (fun () ->
     let show_follow_set = fun follow_set -> follow_set
       |> SI.to_array
       |> Tablecloth.Array.map ~f:Lr0'.string_of_terminal
-      |. Js.Array2.joinWith " "
+      |> Placemat.String.concat_array ~sep:" "
     in
     let test_follow_set nt expected_set = test
       ("follow_set " ^ Lr0'.string_of_nonterminal_num nt)

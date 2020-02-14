@@ -109,7 +109,7 @@ let eval_element : NonBinding.term -> React.element
               (Bigint.to_string x)
               (Bigint.to_string y)
             )
-            |. Js.Array2.joinWith " "
+            |> Placemat.String.concat_array ~sep:" "
           )
           ())
         [||]

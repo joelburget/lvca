@@ -350,3 +350,8 @@ module Cbor = struct
       |> External.Bytes.to_array_buffer
       |> External.Cbor.decode_ab
 end
+
+module String = struct
+  let concat_array : ?sep:string -> string array -> string
+    = fun ?sep:(sep="") arr -> Js.Array2.joinWith arr sep
+end

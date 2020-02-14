@@ -58,9 +58,9 @@ let rec string_of_operator_match_pattern : operator_match_pattern -> string
 and string_of_numbered_scope_pattern : numbered_scope_pattern -> string =
   fun (NumberedScopePattern (patterns, body)) -> patterns
   |> Array.from_list
-  |. Array.map ~f:string_of_binder_capture
-  |. Array.append [| string_of_operator_match_pattern body |]
-  |. Js.Array2.joinWith ". "
+  |> Array.map ~f:string_of_binder_capture
+  |> Array.append [| string_of_operator_match_pattern body |]
+  |> Placemat.String.concat_array ~sep:". "
 ;;
 
 type fixity =
@@ -137,7 +137,7 @@ let string_of_terminal_rules : terminal_rules -> string
       name
       (Regex.to_string regex)
     )
-    |. Js.Array2.joinWith "\n"
+    |> Placemat.String.concat_array ~sep:"\n"
 
 let string_of_nonterminal_type : nonterminal_type -> string
   = fun (NonterminalType (args, result)) -> args
@@ -165,7 +165,7 @@ let string_of_operator_rules : operator_match list list -> string
         );
       );
     );
-    Js.Array2.joinWith arr "\n"
+    Placemat.String.concat_array arr ~sep:"\n"
 
 let string_of_nonterminal_rule : nonterminal_rule -> string
   = fun (NonterminalRule { nonterminal_name; nonterminal_type; operator_rules }) ->
@@ -179,7 +179,7 @@ let string_of_nonterminal_rules : nonterminal_rules -> string
     |> StrDict.to_list
     |> Array.from_list
     |> Array.map ~f:(fun (_, rule) -> string_of_nonterminal_rule rule)
-    |. Js.Array2.joinWith "\n\n"
+    |> Placemat.String.concat_array ~sep:"\n\n"
 
 let string_of_t : t -> string
   = fun { terminal_rules; nonterminal_rules } ->

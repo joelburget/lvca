@@ -251,8 +251,8 @@ let array_of_stack : 'a Placemat.MutableStack.t -> 'a array =
 let stringify_list : ('a -> string) -> string -> 'a list -> string =
   fun f sep elems -> elems
     |> Array.from_list
-    |> Array.map ~f:f
-    |. Js.Array2.joinWith sep
+    |> Array.map ~f
+    |> Placemat.String.concat_array ~sep
 ;;
 
 let get_result : ('b, 'a) Result.t -> ('b -> 'a) -> 'a

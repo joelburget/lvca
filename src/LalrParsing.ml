@@ -151,7 +151,7 @@ module Lalr1 (G : GRAMMAR) = struct
         |> IntDict.get ~key:t_num
         |> Option.with_default ~default:"#"
     )
-    |. Js.Array2.joinWith "/"
+    |> Placemat.String.concat_array ~sep:"/"
 
   (* TODO: move to module *)
   let string_of_lookahead_item = fun { item; lookahead_set } ->
@@ -163,7 +163,7 @@ module Lalr1 (G : GRAMMAR) = struct
     lookahead_item_set
     |> Placemat.Set.to_array
     |> Array.map ~f:string_of_lookahead_item
-    |. Js.Array2.joinWith "\n"
+    |> Placemat.String.concat_array ~sep:"\n"
 
   let add_to mutable_lookahead_item_set nonterminal_num lookahead =
     match MMI.get mutable_lookahead_item_set nonterminal_num with
@@ -186,15 +186,15 @@ module Lalr1 (G : GRAMMAR) = struct
                    |> MMI.to_array
                    |> Array.map ~f:(fun (nonterminal_num, mut_lookahead_set) ->
                      let production_set = nonterminal_production_map
-                                          |. MMI.get nonterminal_num
-                                          |> get_option' (fun () -> Printf.sprintf
-                                                            "lr1_closure' convert: unable to find nonterminal %n in nonterminal_production_map (keys: %s)"
-                                                            nonterminal_num
-                                                            (nonterminal_production_map
-                                                             |> MMI.keys_to_array
-                                                             |> Array.map ~f:string_of_int
-                                                             |. Js.Array2.joinWith ", ")
-                                                         )
+                       |. MMI.get nonterminal_num
+                       |> get_option' (fun () -> Printf.sprintf
+                         "lr1_closure' convert: unable to find nonterminal %n in nonterminal_production_map (keys: %s)"
+                         nonterminal_num
+                         (nonterminal_production_map
+                           |> MMI.keys_to_array
+                           |> Array.map ~f:string_of_int
+                           |> Placemat.String.concat_array ~sep:", ")
+                                      )
                      in
 
                      production_set

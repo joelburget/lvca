@@ -197,7 +197,7 @@ let action_abbrev : action -> string
 let string_of_stack : state array -> string
   = fun states -> states
                   |> Array.map ~f:string_of_int
-                  |. Js.Array2.joinWith " "
+                  |> Placemat.String.concat_array ~sep:" "
 
 (* TODO: remove exns *)
 module Lr0 (G : GRAMMAR) = struct
@@ -348,7 +348,8 @@ module Lr0 (G : GRAMMAR) = struct
       in
 
       (* output if trailing *)
-      Printf.sprintf "%s -> %s" nt_name (Js.Array2.joinWith pieces " ")
+      Printf.sprintf "%s -> %s" nt_name
+        (Placemat.String.concat_array pieces ~sep:" ")
 
   let string_of_item_set : ?sep:string -> item_set -> string
     = fun ?(sep=" ") item_set -> match Placemat.IntSet.size item_set with
@@ -361,7 +362,7 @@ module Lr0 (G : GRAMMAR) = struct
     = fun production -> production
                         |> List.map ~f:string_of_symbol
                         |> Array.from_list
-                        |. Js.Array2.joinWith " "
+                        |> Placemat.String.concat_array ~sep:" "
 
   let string_of_production_num : production_num -> string
     = fun production_num ->
@@ -855,18 +856,18 @@ module Lr0 (G : GRAMMAR) = struct
 
                                in nt_name
                            )
-                           |. Js.Array2.joinWith " "
+                           |> Placemat.String.concat_array ~sep:" "
 
   let string_of_trace_line = fun { action; stack; results; input } ->
     Printf.sprintf "action: %s\nstack: %s\nresults: %s\ninput: %s\n\n"
       (string_of_action action)
       (stack
-       |. Array.map ~f:string_of_int
-       |. Js.Array2.joinWith " ")
+       |> Array.map ~f:string_of_int
+       |> Placemat.String.concat_array ~sep:" ")
       (string_of_symbols results)
       (input
        |> Array.map ~f:(fun (tok : Lex.token) -> tok.name)
-       |. Js.Array2.joinWith " ")
+       |> Placemat.String.concat_array ~sep:" ")
 
   (* This is the main parsing function: CPTT Algorithm 4.44 / Figure 4.36. *)
   let parse_trace_tables

@@ -98,7 +98,7 @@ let string_of_tree_info : tree_info -> string
 let rec to_debug_string : formatted_tree -> string
   = fun { children; tree_info } -> children
   |> Array.map ~f:string_of_formatted_capture
-  |. Js.Array2.joinWith ""
+  |> Placemat.String.concat_array ~sep:""
   |> Printf.sprintf "%s(%s)" (string_of_tree_info tree_info)
 
 and string_of_formatted_capture = function

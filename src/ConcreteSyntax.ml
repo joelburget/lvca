@@ -122,7 +122,7 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
   let terminal_rules' = Placemat.StrDict.from_array terminal_rules in
   let show_toks toks = toks
     |> Array.map ~f:(Printf.sprintf "$%n")
-    |. Js.Array2.joinWith ", "
+    |> Placemat.String.concat_array ~sep:", "
   in
   let open_depth = ref 0 in
   try
@@ -312,7 +312,7 @@ and go_op_match_term
       | TerminalCapture { content } ->
         Printf.printf "children: [%s]\n" (children
           |> Array.map ~f:string_of_formatted_capture
-          |. Js.Array2.joinWith "; "
+          |> Placemat.String.concat_array ~sep:"; "
         );
         failwith (Printf.sprintf (* TODO: error *)
         "go_op_match_term: Single capture pattern unexpectedly received a \
@@ -510,11 +510,11 @@ let string_of_nonterminal_operators : nonterminal_operators -> string
             in
             Printf.sprintf "  %s -> %s" ix_str (string_of_operator_match op_match)
         )
-        |. Js.Array2.joinWith "\n"
+        |> Placemat.String.concat_array ~sep:"\n"
       in
       Printf.sprintf "%s:\n%s" name rhs
     )
-    |. Js.Array2.joinWith "\n"
+    |> Placemat.String.concat_array ~sep:"\n"
 
 (** Desugar a nonterminal into one nonterminal per precedence level.
  *
@@ -609,8 +609,8 @@ let derived_nonterminal_rules : nonterminal_rules -> nonterminal_operators array
 
 let string_of_derived_rules : nonterminal_operators array -> string
   = fun nonterminal_operators -> nonterminal_operators
-    |. Array.map ~f:string_of_nonterminal_operators
-    |. Js.Array2.joinWith "\n\n"
+    |> Array.map ~f:string_of_nonterminal_operators
+    |> Placemat.String.concat_array ~sep:"\n\n"
 
 (** Produce an augmented grammar *)
 let to_grammar

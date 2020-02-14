@@ -13,8 +13,8 @@ type token =
 
 let string_of_tokens : token array -> string
   = fun toks -> toks
-                |. Tablecloth.Array.map ~f:(fun { name } -> name)
-                |. Js.Array2.joinWith " "
+                |> Tablecloth.Array.map ~f:(fun { name } -> name)
+                |> Placemat.String.concat_array ~sep:" "
 
 type position = int
 

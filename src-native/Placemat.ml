@@ -523,3 +523,8 @@ module Cbor = struct
       |> CBOR.Simple.decode
       |> to_json
 end
+
+module String = struct
+  let concat_array : ?sep:string -> string array -> string
+    = Core_kernel.String.concat_array
+end

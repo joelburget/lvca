@@ -77,7 +77,9 @@ let string_of_sort : sort -> string
         (match args' with
           | [||] -> name
           | _ ->
-            let pre_result = name ^ " " ^ Js.Array2.joinWith args' " " in
+            let pre_result =
+              name ^ " " ^ Placemat.String.concat_array args' ~sep:" "
+            in
             if needs_parens then "(" ^ pre_result ^ ")" else pre_result)
       | SortVar name -> name
     in go false

@@ -193,7 +193,7 @@ let () = describe "LalrParsing" (fun () ->
     = fun set -> set
     |> Placemat.Set.to_array
     |> TArray.map ~f:Grammar1Lalr.string_of_lookahead_item_set
-    |. Js.Array2.joinWith "\n\n"
+    |> Placemat.String.concat_array ~sep:"\n\n"
   in
 
   describe "lalr1_items" (fun () ->
@@ -264,7 +264,7 @@ let () = describe "LalrParsing" (fun () ->
     = fun sets -> sets
     |> Placemat.Set.to_array
     |> TArray.map ~f:Grammar2LR.string_of_item_set
-    |. Js.Array2.joinWith "\n"
+    |> Placemat.String.concat_array ~sep:"\n"
   in
 
   testAll "grammar 2 lalr1 kernel items" [
@@ -343,7 +343,7 @@ let () = describe "LalrParsing" (fun () ->
   let string_of_propagation = fun propagation -> propagation
     |> TArray.map ~f:(fun (n, item) ->
       Printf.sprintf "%n -> %s" n (Grammar2LR.string_of_item item))
-    |. Js.Array2.joinWith "\n"
+    |> Placemat.String.concat_array ~sep:"\n"
   in
 
   let equivalent_propagation : (state * item) array -> (state * item) array -> bool
@@ -363,7 +363,7 @@ let () = describe "LalrParsing" (fun () ->
       |> TArray.map ~f:(fun (state, lookahead_item) ->
         Printf.sprintf "%n: %s" state (Grammar2Lalr.string_of_lookahead_item lookahead_item)
       )
-      |. Js.Array2.joinWith "\n"
+      |> Placemat.String.concat_array ~sep:"\n"
   in
 
   describe "generate_lookaheads" (fun () ->
@@ -420,9 +420,9 @@ let () = describe "LalrParsing" (fun () ->
         let lookahead_item = { item; lookahead_set } in
         Grammar2Lalr.string_of_lookahead_item lookahead_item
       )
-      |. Js.Array2.joinWith "\n"
+      |> Placemat.String.concat_array ~sep:"\n"
     )
-    |. Js.Array2.joinWith "\n\n"
+    |> Placemat.String.concat_array ~sep:"\n\n"
   in
 
   testAll "mutable_lalr1_items" [
