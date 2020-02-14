@@ -82,7 +82,7 @@ let rec instantiate (env : scope StrDict.t) (tm : term)
                               |> Result.map (fun subtms' -> Operator (tag, subtms'))
   | Bound _ -> Ok tm
   | Free v -> (match StrDict.get env ~key:v with
-    | None -> Js.log3 env tm v; Error ("instantiate: couldn't find var " ^ v)
+    | None -> Error ("instantiate: couldn't find var " ^ v)
     | Some (Scope (pats, _) as sc)
 
       (* Open the scope, instantiating all variables it binds as free *)
@@ -107,7 +107,7 @@ let safe_union m1 m2 : 'a StrDict.t = StrDict.merge m1 m2 ~f:(fun _ mv1 mv2 ->
   | None, Some v
     -> Some v
   | Some v1, Some v2
-    -> if v1 = v2 then Some v1 else (Js.log3 "safe_union" v1 v2; raise (BadTermMerge(v1, v2)))
+    -> if v1 = v2 then Some v1 else raise (BadTermMerge(v1, v2))
   | _ -> assert false
 )
 
@@ -116,7 +116,7 @@ exception CheckError of string
 let update_ctx (ctx_state : scope StrDict.t ref) (learned_tys : scope StrDict.t) =
   let do_assignment = fun (k, v) -> match StrDict.get !ctx_state ~key:k with
     | None    -> ctx_state := StrDict.insert !ctx_state ~key:k ~value:v
-    | Some v' -> if v <> v' then (Js.log3 "update_ctx" v v'; raise (BadScopeMerge(v, v')))
+    | Some v' -> if v <> v' then raise (BadScopeMerge(v, v'))
   in
   List.iter do_assignment (StrDict.to_list learned_tys)
 
