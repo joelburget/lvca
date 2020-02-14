@@ -35,11 +35,24 @@ module List = struct
 end
 
 module Array = struct
-  let unzip : ('a * 'b) array -> 'a array * 'b array
+  type 'a t = 'a array
+
+  let unzip : ('a * 'b) t -> 'a t * 'b t
     = Belt.Array.unzip
 
-  let map_with_index : f:(int -> 'a -> 'b) -> 'a array -> 'b array
+  let map_with_index : f:(int -> 'a -> 'b) -> 'a t -> 'b t
     = fun ~f arr -> Belt.Array.mapWithIndex arr f
+
+  let filter_map : 'a t -> f:('a -> 'b option) -> 'b t
+    = fun arr ~f ->
+    let result = [||] in
+    Tablecloth.Array.for_each arr ~f:(fun a ->
+      match f a with
+      | None -> ()
+      | Some b ->
+        let _ = Js.Array2.push result b in
+        ());
+    result
 end
 
 module MutableMap = struct

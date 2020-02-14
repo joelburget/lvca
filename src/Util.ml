@@ -210,19 +210,6 @@ let first_by (lst : 'a list) (f : 'a -> 'b option) : 'b option =
   first_by' lst
 ;;
 
-let array_map_keep : ('a -> 'b option) -> 'a array -> 'b array =
-  fun f arr ->
-  let result = [||] in
-  arr
-  |. Array.for_each ~f:(fun a ->
-    match f a with
-    | None -> ()
-    | Some b ->
-      let _ = Js.Array2.push result b in
-      ());
-  result
-;;
-
 let get_option : 'b -> 'a option -> 'a =
   fun err -> function
     | None -> raise err

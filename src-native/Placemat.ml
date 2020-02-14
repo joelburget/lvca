@@ -43,11 +43,16 @@ module List = struct
 end
 
 module Array = struct
-  let unzip : ('a * 'b) array -> 'a array * 'b array
+  type 'a t = 'a array
+
+  let unzip : ('a * 'b) t -> 'a t * 'b t
     = Base.Array.unzip
 
-  let map_with_index : f:(int -> 'a -> 'b) -> 'a array -> 'b array
+  let map_with_index : f:(int -> 'a -> 'b) -> 'a t -> 'b t
     = fun ~f arr -> Base.Array.mapi arr ~f
+
+  let filter_map : 'a t -> f:('a -> 'b option) -> 'b t
+    = Base.Array.filter_map
 end
 
 module MutableMap = struct
