@@ -35,3 +35,6 @@ src/Dynamics_ParseErrors.ml: src/Dynamics_Parser.mly src/Dynamics_Parser.message
 
 src/Regex_ParseErrors.ml: src/Regex_Parser.mly src/Regex_Parser.messages
 	menhir src/Regex_Parser.mly --compile-errors src/Regex_Parser.messages > src/Regex_ParseErrors.ml
+
+format:
+	@fd --extension ml --extension mli | xargs ocamlformat --enable-outside-detected-project --inplace
