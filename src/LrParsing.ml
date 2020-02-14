@@ -901,8 +901,8 @@ module Lr0 (G : GRAMMAR) = struct
           if do_trace = DoTrace then
             MQueue.enqueue trace
               { action;
-                stack = Util.array_of_stack stack;
-                results = Util.array_of_stack results;
+                stack = MStack.to_array stack;
+                results = MStack.to_array results;
                 input = MQueue.to_array toks;
               };
           match action with

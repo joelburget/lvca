@@ -179,6 +179,14 @@ module MutableStack = struct
 
   let is_empty : 'a t -> bool
     = Belt.MutableStack.isEmpty
+
+  let to_array : 'a t -> 'a array =
+   fun stack ->
+   let result = [||] in
+   for_each stack (fun item ->
+     let _ = Js.Array2.push result item in
+     ());
+   result
 end
 
 module MutableQueue = struct

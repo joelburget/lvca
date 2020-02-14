@@ -293,6 +293,17 @@ module MutableStack = struct
 
   let is_empty : 'a t -> bool
     = Core_kernel.Stack.is_empty
+
+  let to_array : 'a t -> 'a array
+    = Core_kernel.Stack.to_array
+
+  let%test _ = (
+    let stack = make () in
+    push stack 1;
+    push stack 2;
+    push stack 3;
+    to_array stack
+  ) = [| 3; 2; 1 |]
 end
 
 module MutableQueue = struct

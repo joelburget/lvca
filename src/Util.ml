@@ -239,15 +239,6 @@ let get_option' : (unit -> string) -> 'a option -> 'a =
     | Some a -> a
 ;;
 
-let array_of_stack : 'a Placemat.MutableStack.t -> 'a array =
-  fun stack ->
-  let result = [||] in
-  Placemat.MutableStack.for_each stack (fun item ->
-    let _ = Js.Array2.push result item in
-    ());
-  result
-;;
-
 let stringify_list : ('a -> string) -> string -> 'a list -> string =
   fun f sep elems -> elems
     |> Array.from_list
