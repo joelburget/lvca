@@ -667,9 +667,11 @@ let to_grammar
       )
   in
 
-  (* [nonterminal_nums]: name, level, nonterminal num. mutated below. *)
+  (* [nonterminal_nums]: name, level, nonterminal num. *)
   let nonterminal_nums = Placemat.StrDict.to_array nonterminal_num_map in
-  let _ = Js.Array2.unshift nonterminal_nums ("root", 0) in
+  let nonterminal_nums =
+    Tablecloth.Array.append [| "root", 0 |] nonterminal_nums
+  in
 
   (* We're dealing with a non-augmented grammar here. [prod_num] starts
    * counting productions from 1. We'll add the starting production at 0 at the

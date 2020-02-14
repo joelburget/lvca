@@ -32,20 +32,21 @@ type lexbuf =
 exception LexError of lex_error
 exception FoundFirstCapture of int
 
-let find_first_capture : string IntDict.t -> 'a Js.nullable array -> string option =
-  fun tok_names captures ->
-  try
-    for i = 1 to Js.Array2.length captures - 1 do
-      if Js.Nullable.isNullable captures.(i)
-      then () (* Captures offset by one due to entire match appearing first *)
-      else raise (FoundFirstCapture (i - 1))
-    done;
-    None
-  with
-    FoundFirstCapture i -> Some (tok_names
-    |> IntDict.get ~key:i
-    |> Util.get_option' (fun () -> "unable to find token " ^ string_of_int i)
-  )
+let find_first_capture
+  : string IntDict.t -> 'a Js.nullable array -> string option
+  = fun tok_names captures ->
+    try
+      for i = 1 to Tablecloth.Array.length captures - 1 do
+        if Js.Nullable.isNullable captures.(i)
+        then () (* Captures offset by one due to entire match appearing first *)
+        else raise (FoundFirstCapture (i - 1))
+      done;
+      None
+    with
+      FoundFirstCapture i -> Some (tok_names
+      |> IntDict.get ~key:i
+      |> Util.get_option' (fun () -> "unable to find token " ^ string_of_int i)
+      )
 ;;
 
 (** raises: [LexError] *)
@@ -73,7 +74,7 @@ let get_next_tok_exn : string IntDict.t -> Js.Re.t -> lexbuf -> token =
 (** raises: [LexError] *)
 let lex_exn : lexer -> string -> token array =
   fun lexer input ->
-  let result = [||] in
+  let result = Placemat.MutableQueue.make () in
   let lexbuf = { buf = input; pos = 0 } in
   let mut_tok_names = Placemat.MutableMap.Int.make () in
   let re_str = lexer
@@ -92,9 +93,9 @@ let lex_exn : lexer -> string -> token array =
     let { start; finish } = tok in
     assert (start = lexbuf.pos);
     lexbuf.pos <- finish;
-    ignore (Js.Array2.push result tok)
+    ignore (Placemat.MutableQueue.enqueue result tok)
   done;
-  result
+  Placemat.MutableQueue.to_array result
 ;;
 
 let lex : lexer -> string -> (lex_error, token array) Tablecloth.Result.t =

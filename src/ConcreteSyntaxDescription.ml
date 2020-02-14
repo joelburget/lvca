@@ -155,17 +155,19 @@ let string_of_operator_match : operator_match -> string
 
 let string_of_operator_rules : operator_match list list -> string
   = fun rules ->
-    let arr = [||] in
+    let arr = Placemat.MutableQueue.make () in
     Placemat.List.for_each_with_index rules ~f:(fun i level ->
       Placemat.List.for_each_with_index level ~f:(fun j operator_match ->
-        Js.Array2.unshift arr (Printf.sprintf
+        Placemat.MutableQueue.enqueue arr (Printf.sprintf
           "  %s %s"
           (if i > 0 && j = 0 then ">" else "|")
           (string_of_operator_match operator_match)
         );
       );
     );
-    Placemat.String.concat_array arr ~sep:"\n"
+    arr
+      |> Placemat.MutableQueue.to_array
+      |> Placemat.String.concat_array ~sep:"\n"
 
 let string_of_nonterminal_rule : nonterminal_rule -> string
   = fun (NonterminalRule { nonterminal_name; nonterminal_type; operator_rules }) ->

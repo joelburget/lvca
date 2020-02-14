@@ -331,8 +331,10 @@ module Lalr1 (G : GRAMMAR) = struct
   *)
   let generate_lookaheads : item_set -> item -> lookahead_propagation
     = fun kernel item ->
-      let propagation = [||] in
-      let generated = [||] in
+      let make, enqueue, to_array =
+        Placemat.MutableQueue.(make, enqueue, to_array) in
+      let propagation = make () in
+      let generated = make () in
       let hash_terminal = number_of_terminals + 1 in
       let modified_item =
         { item; lookahead_set = IntSet.from_list [ hash_terminal ] }
@@ -373,20 +375,18 @@ module Lalr1 (G : GRAMMAR) = struct
             (* Another terminal has been spontaneously generated *)
             let lookahead_set' = IntSet.remove lookahead_set ~value:hash_terminal in
             if not (IntSet.isEmpty lookahead_set')
-            then (
-              let _ = Js.Array2.push generated
-                        (state, { item; lookahead_set = lookahead_set' })
-              in
-              ()
-            );
+            then enqueue generated
+              (state, { item; lookahead_set = lookahead_set' });
 
             if IntSet.has lookahead_set ~value:hash_terminal
-            then let _ = Js.Array2.push propagation (state, item) in ();
+            then enqueue propagation (state, item);
           )
         )
       );
 
-      { propagation; spontaneous_generation = generated }
+      { propagation = to_array propagation
+      ; spontaneous_generation = to_array generated
+      }
 
   (* CPTT Algorithm 4.63 step 1.
    * Convert each item set into a set of items with (empty) mutable lookahead.

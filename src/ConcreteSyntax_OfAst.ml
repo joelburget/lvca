@@ -201,19 +201,19 @@ let rec tree_format
     indentation', Group group'
 
 and format_group max_width indentation mode children =
-  let children' = [||] in
+  let children' = Placemat.MutableQueue.make () in
   let indentation' = Util.fold_left
     (fun indentation' child ->
       let indentation'', child' =
         tree_format max_width indentation' mode child
       in
-      let _ = Js.Array2.push children' child' in
+      Placemat.MutableQueue.enqueue children' child';
       indentation''
     )
     indentation
     children
   in
-  indentation', children'
+  indentation', Placemat.MutableQueue.to_array children'
 
 (* Accumulate all leading trivia for each terminal. So, all whitespace leading
  * back to and including the first newline. *)
@@ -222,14 +222,14 @@ let walk_leading_trivia : pre_formatted_nonterminal -> string array
 
     let accum = ref "" in
     let accumulating = ref false in
-    let result = [||] in
+    let result = Placemat.MutableQueue.make () in
 
     let rec go_nt = fun { children } -> Tablecloth.Array.forEach children ~f:go_pft
 
     and go_pft = (function
       (* Stop accumulating when we hit a token, clear accumulator *)
       | Terminal _ ->
-        let _ = Js.Array2.push result !accum in
+        Placemat.MutableQueue.enqueue result !accum;
         accumulating := false;
         accum := ""
       | Space (SSpace n)
@@ -246,7 +246,7 @@ let walk_leading_trivia : pre_formatted_nonterminal -> string array
     in
 
     go_nt tree;
-    result
+    Placemat.MutableQueue.to_array result
 
 (* Accumulate all trailing trivia up to, but not including the next newline.
  *
@@ -258,7 +258,7 @@ let walk_trailing_trivia : pre_formatted_nonterminal -> string array
     let reverse, forEach = Tablecloth.Array.(reverse, forEach) in
 
     let accum = ref "" in
-    let result = [||] in
+    let result = Placemat.MutableQueue.make () in
 
     (* Traverse all children in reverse *)
     let rec go_nt = fun { children } -> children
@@ -267,7 +267,7 @@ let walk_trailing_trivia : pre_formatted_nonterminal -> string array
 
     and go_pft = function
       | Terminal _ ->
-        let _ = Js.Array2.push result !accum in
+        let _ = Placemat.MutableQueue.enqueue result !accum in
         accum := ""
       | Space (SSpace n) -> accum := !accum ^ Caml.String.make n ' '
       (* Every time we hit a newline, clear the accumulator. *)
@@ -278,7 +278,7 @@ let walk_trailing_trivia : pre_formatted_nonterminal -> string array
 
     go_nt tree;
 
-    result
+    Placemat.MutableQueue.to_array result
 
 (* Traverse the pre-formatted tree, normalizing spacing.
  *)
@@ -297,25 +297,25 @@ let normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
     let rec go_nt
       : pre_formatted_nonterminal -> formatted_tree
       = fun { children; tree_info } ->
-      let formatted_tree_children = [||] in
+      let formatted_tree_children = Placemat.MutableQueue.make () in
       forEach children ~f:(go_pft formatted_tree_children);
-      { children = formatted_tree_children; tree_info }
+      { children = Placemat.MutableQueue.to_array formatted_tree_children
+      ; tree_info
+      }
 
     and go_pft
-      : formatted_capture array -> pre_formatted -> unit
+      : formatted_capture Placemat.MutableQueue.t -> pre_formatted -> unit
       = fun formatted_tree_children -> function
       | Terminal content ->
         let leading_trivia = forward_trivia.(!overall_ix) in
         let trailing_trivia = reverse_trivia.(!overall_ix) in
         overall_ix := !overall_ix + 1;
-        let _ = Js.Array2.push formatted_tree_children
+        Placemat.MutableQueue.enqueue formatted_tree_children
           (TerminalCapture { content; leading_trivia; trailing_trivia })
-        in ()
       | Space _ -> ()
       | Nonterminal pfnt ->
-        let _ = Js.Array2.push formatted_tree_children
+        Placemat.MutableQueue.enqueue formatted_tree_children
           (NonterminalCapture (go_nt pfnt))
-        in ()
       | Group group_children
       -> forEach group_children ~f:(go_pft formatted_tree_children)
 

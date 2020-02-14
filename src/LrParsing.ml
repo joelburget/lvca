@@ -322,14 +322,14 @@ module Lr0 (G : GRAMMAR) = struct
                                          production_num
                                       )
       in
-      let pieces = [||] in
+      let pieces = MQueue.make () in
       Placemat.List.for_each_with_index production ~f:(fun i symbol ->
-        if position = i then (let _ = Js.Array2.push pieces "." in ());
-        Js.Array2.push pieces (string_of_symbol symbol);
+        if position = i then (let _ = MQueue.enqueue pieces "." in ());
+        MQueue.enqueue pieces (string_of_symbol symbol);
       );
 
       if position = List.length production then
-        (let _ = Js.Array2.push pieces "." in ());
+        (let _ = MQueue.enqueue pieces "." in ());
 
       let nt_num = production_nonterminal_map
                    |. MMI.get production_num
@@ -349,7 +349,7 @@ module Lr0 (G : GRAMMAR) = struct
 
       (* output if trailing *)
       Printf.sprintf "%s -> %s" nt_name
-        (Placemat.String.concat_array pieces ~sep:" ")
+        (Placemat.String.concat_array (MQueue.to_array pieces) ~sep:" ")
 
   let string_of_item_set : ?sep:string -> item_set -> string
     = fun ?(sep=" ") item_set -> match Placemat.IntSet.size item_set with
