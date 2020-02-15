@@ -233,7 +233,7 @@ module SyntaxDebugger = {
   module MQueue = Belt.MutableQueue
 
   [@react.component]
-  let make = (~grammar : LrParsing.grammar, ~lexer : Lex.lexer) => {
+  let make = (~grammar : LrParsing.grammar, ~lexer : Placemat.Lex.lexer) => {
     let (input, setInput) = React.useState(() => "");
     let (hoverSpan, setHoverSpan) = React.useState(() => None);
     let inputRef = React.useRef(Js.Nullable.null);
@@ -257,7 +257,7 @@ module SyntaxDebugger = {
       [|hoverSpan|]
     );
 
-    let (tokens, message) = switch (Lex.lex(lexer, input)) {
+    let (tokens, message) = switch (Placemat.Lex.lex(lexer, input)) {
       /* TODO: highlight affected area */
       | Error({ message }) => ([||], React.string(message))
       | Ok(tokens) => (tokens, React.null)
@@ -297,7 +297,7 @@ module SyntaxDebugger = {
         <tr className=cls>
           <td>{React.string(LrParsing.string_of_stack(stack))}</td>
           <td>{React.string(Lalr.string_of_symbols(results))}</td>
-          <td>{React.string(Lex.string_of_tokens(input))}</td>
+          <td>{React.string(Placemat.Lex.string_of_tokens(input))}</td>
           <td>{React.string(Lalr.string_of_action(action))}</td>
         </tr>
       });

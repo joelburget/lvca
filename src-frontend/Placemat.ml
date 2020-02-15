@@ -385,3 +385,151 @@ module String = struct
         | None -> raise (Invalid_argument "index out of bounds")
         | Some c -> c)
 end
+
+module Re = struct
+  type t = Js.Re.t
+
+  let of_string : string -> t
+    = Js.Re.fromString
+
+  let replace : re:t -> replacement:string -> string -> string
+    = fun ~re ~replacement str -> Js.String.replaceByRe re replacement str
+end
+
+module Lex : sig
+  type token =
+    { name : string
+    ; start : int (* inclusive *)
+    ; finish : int (* exclusive *)
+    }
+
+  type token_name = string
+  type regex = string
+  type lexer = (regex * token_name) list
+
+  type position = int
+
+  type lex_error =
+    { start_pos : position
+    ; end_pos : position
+    ; message : string
+    }
+
+  exception LexError of lex_error
+
+  val string_of_tokens : token array -> string
+  val lex : lexer -> string -> (lex_error, token array) Tablecloth.Result.t
+end = struct
+  open Caml
+
+  type token =
+    { name : string
+    ; start : int (* inclusive *)
+    ; finish : int (* exclusive *)
+    }
+
+  type token_name = string
+  type regex = string
+  type lexer = (regex * token_name) list
+
+  type position = int
+
+  type lex_error =
+    { start_pos : position
+    ; end_pos : position
+    ; message : string
+    }
+
+  type lexbuf =
+    { buf : string
+    ; mutable pos : position
+    }
+
+  exception LexError of lex_error
+  exception FoundFirstCapture of int
+
+  let string_of_tokens : token array -> string
+    = fun toks -> toks
+                  |> Tablecloth.Array.map ~f:(fun { name } -> name)
+                  |. Js.Array2.joinWith " "
+
+  let find_first_capture
+    : string IntDict.t -> 'a Js.nullable array -> string option
+    = fun tok_names captures ->
+      try
+        for i = 1 to Tablecloth.Array.length captures - 1 do
+          if Js.Nullable.isNullable captures.(i)
+          then () (* Captures offset by one due to entire match appearing first *)
+          else raise (FoundFirstCapture (i - 1))
+        done;
+        None
+      with
+        FoundFirstCapture i -> Some (tok_names
+        |> Tablecloth.IntDict.get ~key:i
+        |> fun (Some x) -> x
+        (* |> Util.get_option' (fun () -> "unable to find token " ^ string_of_int i) *)
+        )
+  ;;
+
+  (** raises: [LexError] *)
+  let get_next_tok_exn : string IntDict.t -> Js.Re.t -> lexbuf -> token =
+    fun tok_names re { buf; pos } -> re
+    |. Js.Re.exec_ (buf
+      |> Tablecloth.String.slice ~from:pos ~to_:(Tablecloth.String.length buf))
+    |. function
+      | Some result ->
+        let captures = Js.Re.captures result in
+        (match Js.Nullable.toOption captures.(0), find_first_capture tok_names captures with
+         | Some token_contents, Some name ->
+           { name; start = pos; finish = pos + Tablecloth.String.length token_contents }
+         | _, _ ->
+           raise (LexError { start_pos = pos; end_pos = pos (* TODO *); message = "TODO 1" }))
+      | None ->
+        raise
+          (LexError
+             { start_pos = pos
+             ; end_pos = pos (* TODO *)
+             ; message = "Failed lex, re: " ^ Js.Re.source re ^ "\nlexbuf: " ^ buf
+             })
+  ;;
+
+  (** raises: [LexError] *)
+  let tokenize : lexer -> string -> token array
+    = fun lexer input ->
+
+    let result = MutableQueue.make () in
+    let lexbuf = { buf = input; pos = 0 } in
+    let mut_tok_names = MutableMap.Int.make () in
+
+    let re_str = lexer
+      |> List.map_with_index ~f:(fun i (re_str, tok_name) ->
+        MutableMap.Int.set mut_tok_names i tok_name;
+        "(" ^ re_str ^ ")")
+      |> Tablecloth.String.join ~sep:"|"
+    in
+
+    let tok_names = mut_tok_names
+      |> MutableMap.Int.to_array
+      |> IntDict.from_array
+    in
+    let re = Re.of_string re_str in
+
+    while lexbuf.pos < Tablecloth.String.length lexbuf.buf do
+      let tok = get_next_tok_exn tok_names re lexbuf in
+      let { start; finish } = tok in
+      assert (start = lexbuf.pos);
+      lexbuf.pos <- finish;
+      ignore (MutableQueue.enqueue result tok)
+    done;
+
+    MutableQueue.to_array result
+
+  let lex : lexer -> string -> (lex_error, token array) Tablecloth.Result.t =
+    fun lexer input ->
+    try
+      Ok (tokenize lexer input)
+    with
+      LexError err -> Error err
+  ;;
+
+end

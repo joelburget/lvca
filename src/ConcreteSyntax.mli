@@ -95,7 +95,7 @@ type invalid_grammar
 val check_description_validity : ConcreteSyntaxDescription.t -> invalid_grammar option
 
 (* exported for debugger: *)
-val lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer
+val lexer_of_desc : ConcreteSyntaxDescription.t -> Placemat.Lex.lexer
 
 (* exported for testing: *)
 val remove_spaces : formatted_tree -> formatted_tree

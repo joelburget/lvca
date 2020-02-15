@@ -845,7 +845,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
   go_nt root_name root
 ;;
 
-let lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer =
+let lexer_of_desc : ConcreteSyntaxDescription.t -> Placemat.Lex.lexer =
   fun { terminal_rules } ->
   let lex_items = terminal_rules
     |. Array.map ~f:(fun (tok_name, re) -> Regex.to_string re, tok_name)

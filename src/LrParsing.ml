@@ -6,6 +6,7 @@ module MStack = Placemat.MutableStack
 module MQueue = Placemat.MutableQueue
 let get_option, get_option', invariant_violation =
   Util.(get_option, get_option', invariant_violation)
+module Lex = Placemat.Lex
 
 exception NoItemSet of (unit -> string)
 

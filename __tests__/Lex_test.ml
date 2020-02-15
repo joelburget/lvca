@@ -1,6 +1,6 @@
 open Jest
 open Expect
-open Lex
+open Placemat.Lex
 
 let _ = describe "Lex" (fun () ->
   let lexer1 =

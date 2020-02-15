@@ -678,3 +678,75 @@ module String = struct
   let get : string -> int -> char
     = Core_kernel.String.get
 end
+
+module Re = struct
+  type t = Re2.t
+
+  let of_string : string -> t
+    = Re2.of_string
+
+  (* XXX error behavior *)
+  let replace : re:t -> replacement:string -> string -> string
+    = fun ~re ~replacement str -> Re2.rewrite_exn re ~template:replacement str
+end
+
+module Lex : sig
+  type token =
+    { name : string
+    ; start : int (* inclusive *)
+    ; finish : int (* exclusive *)
+    }
+
+  type token_name = string
+  type regex = string
+  type lexer = (regex * token_name) list
+
+  type position = int
+
+  type lex_error =
+    { start_pos : position
+    ; end_pos : position
+    ; message : string
+    }
+
+  exception LexError of lex_error
+
+  val string_of_tokens : token array -> string
+  val lex : lexer -> string -> (lex_error, token array) Tablecloth.Result.t
+end = struct
+  type token =
+    { name : string
+    ; start : int (* inclusive *)
+    ; finish : int (* exclusive *)
+    }
+
+  type token_name = string
+  type regex = string
+  type lexer = (regex * token_name) list
+
+  type position = int
+
+  type lex_error =
+    { start_pos : position
+    ; end_pos : position
+    ; message : string
+    }
+
+  exception LexError of lex_error
+
+  let string_of_tokens : token array -> string
+    = fun toks -> toks
+                  |> Tablecloth.Array.map ~f:(fun { name; _ } -> name)
+                  |> Base.String.concat_array ~sep:" "
+
+  let tokenize : lexer -> string -> token array
+    = failwith "TODO"
+
+  let lex : lexer -> string -> (lex_error, token array) Tablecloth.Result.t
+    = fun lexer input ->
+      try
+        Ok (tokenize lexer input)
+      with
+        LexError err -> Error err
+
+end

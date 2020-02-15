@@ -1,5 +1,6 @@
 open Tablecloth
 open LrParsing
+module Lex = Placemat.Lex
 
 type lookahead_item =
   { item : item;

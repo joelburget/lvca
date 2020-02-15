@@ -1,4 +1,5 @@
 open Tablecloth
+module Re = Placemat.Re
 
 type re_class_base =
   | Word (* \w / \W *)
@@ -108,18 +109,18 @@ let parenthesize : bool -> string -> string
 let rec to_string' : int -> regex -> string
   = fun precedence re -> match re with
     (* We need to escape special characters in strings *)
-    | ReString str -> Js.String.(str
-                                 |> replaceByRe [%re {|/\\/g|}] {|\\|}
-                                 |> replaceByRe [%re {|/\//g|}] {|\/|}
-                                 |> replaceByRe [%re {|/\|/g|}] {|\||}
-                                 |> replaceByRe [%re {|/\+/g|}] {|\+|}
-                                 |> replaceByRe [%re {|/\*/g|}] {|\*|}
-                                 |> replaceByRe [%re {|/\?/g|}] {|\?|}
-                                 |> replaceByRe [%re {|/\-/g|}] {|\-|}
-                                 |> replaceByRe [%re {|/\(/g|}] {|\(|}
-                                 |> replaceByRe [%re {|/\)/g|}] {|\)|}
-                                 |> parenthesize (precedence > 1 && length str > 1)
-                                )
+    | ReString str -> Re.(str
+      |> replace ~re:(Re.of_string {|/\\/g|}) ~replacement:{|\\|}
+      |> replace ~re:(Re.of_string {|/\//g|}) ~replacement:{|\/|}
+      |> replace ~re:(Re.of_string {|/\|/g|}) ~replacement:{|\||}
+      |> replace ~re:(Re.of_string {|/\+/g|}) ~replacement:{|\+|}
+      |> replace ~re:(Re.of_string {|/\*/g|}) ~replacement:{|\*|}
+      |> replace ~re:(Re.of_string {|/\?/g|}) ~replacement:{|\?|}
+      |> replace ~re:(Re.of_string {|/\-/g|}) ~replacement:{|\-|}
+      |> replace ~re:(Re.of_string {|/\(/g|}) ~replacement:{|\(|}
+      |> replace ~re:(Re.of_string {|/\)/g|}) ~replacement:{|\)|}
+      |> parenthesize (precedence > 1 && String.length str > 1)
+      )
 
     | ReSet    str -> "[" ^ str ^ "]"
     | ReStar   re -> to_string' 2 re ^ "*"

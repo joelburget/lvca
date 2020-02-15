@@ -186,7 +186,7 @@ let flip (f : 'a -> 'b -> 'c) : 'b -> 'a -> 'c = fun b a -> f a b
 let id a = a
 
 let list_flat_map : ('a -> 'b list) -> 'a list -> 'b list =
-  fun f lst -> List.(map f lst |> flatten)
+  fun f lst -> List.(map ~f lst |> flatten)
 ;;
 
 let is_none = function
