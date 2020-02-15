@@ -191,6 +191,15 @@ module MutableMap = struct
         map.data <- new_tree;
         if !removed then map.size <- size - 1
 
+    let size : ('key, 'value, 'a) t -> int
+      = fun { size; _ } -> size
+
+    let minimum : ('key, 'value, 'a) t -> ('key * 'value) option
+      = fun { data; _ } -> Avltree.first data
+
+    let maximum : ('key, 'value, 'a) t -> ('key * 'value) option
+      = fun { data; _ } -> Avltree.last data
+
   end
 
   module Int = struct
@@ -228,6 +237,12 @@ module MutableMap = struct
     let keys_to_array : 'a t -> int array
       = Impl.keys_to_array
 
+    let minimum : 'a t -> (int * 'a) option
+      = Impl.minimum
+
+    let maximum : 'a t -> (int * 'a) option
+      = Impl.maximum
+
     let%test _ = ([| 0, 1; 1, 2; 0, 3 |]
       |> from_array
       |> get ~key:0) = Some 3
@@ -237,142 +252,139 @@ module MutableMap = struct
   include Impl
 end
 
+(** Note: Belt's MutableSet is implemented as an AVL tree. This is why we use
+ * MutableMap (of unit) rather than Base's HashSet. *)
 module MutableSet = struct
+
+  module Impl = struct
+    type ('value, 'id) t = ('value, unit, 'id) MutableMap.t
+
+    type ('k, 'cmp) comparator =
+      (module Base.Comparator.S with
+         type comparator_witness = 'cmp and
+         type t = 'k
+      )
+
+    let make : id:('value, 'identity) comparator -> ('value, 'identity) t
+      = MutableMap.make
+
+    let from_array
+      : 'value array -> id:('value, 'identity) comparator -> ('value, 'id) t
+      = fun arr ~id -> arr
+        |> Tablecloth.Array.map ~f:(fun k -> k, ())
+        |> MutableMap.from_array ~id
+
+    let to_array : ('value, 'id) t -> 'value array
+      = fun t -> t
+        |> MutableMap.to_array
+        |> Tablecloth.Array.map ~f:(fun (k, ()) -> k)
+
+    let to_list : ('value, 'id) t -> 'value list
+      = fun set -> set
+        |> MutableMap.to_array
+        |> Tablecloth.Array.map ~f:(fun (k, ()) -> k)
+        |> Base.Array.to_list
+
+    let copy : ('value, 'id) t -> ('value, 'id) t
+      = MutableMap.copy
+
+    let is_empty : ('value, 'id) t -> bool
+      = MutableMap.is_empty
+
+    let remove : ('value, 'id) t -> 'value -> unit
+      = fun set value -> MutableMap.remove set ~key:value
+
+    let for_each : ('value, 'id) t -> f:('value -> unit) -> unit
+      = fun set ~f -> set
+        |> MutableMap.for_each ~f:(fun k _ -> f k)
+
+    let has : ('value, 'a) t -> value:'value -> bool
+      = fun t ~value -> MutableMap.has t ~key:value
+
+    let add : ('value, 'id) t -> value:'value -> unit
+      = fun set ~value -> MutableMap.add set ~key:value ~value:()
+
+    let size : ('value, 'id) t -> int
+      = MutableMap.size
+
+    let minimum : ('value, 'id) t -> 'value option
+      = fun set -> set
+        |> MutableMap.minimum
+        |> Tablecloth.Option.map ~f:(fun (k, ()) -> k)
+
+    let maximum : ('value, 'id) t -> 'value option
+      = fun set -> set
+        |> MutableMap.maximum
+        |> Tablecloth.Option.map ~f:(fun (k, ()) -> k)
+  end
+
   module Int = struct
-    type t = int Core_kernel.Hash_set.t
+    type t = (int, Base.Int.comparator_witness) Impl.t
 
     let copy : t -> t
-      = Core_kernel.Hash_set.copy
+      = Impl.copy
 
     let is_empty : t -> bool
-      = Core_kernel.Hash_set.is_empty
+      = Impl.is_empty
 
     let minimum : t -> int option
-      = fun set -> Core_kernel.Hash_set.min_elt set ~compare:Base.Int.compare
+      = Impl.minimum
+
+    let maximum : t -> int option
+      = Impl.maximum
 
     let remove : t -> int -> unit
-      = Core_kernel.Hash_set.remove
+      = Impl.remove
 
-    let add : t -> int -> unit
-      = Core_kernel.Hash_set.add
+    let add : t -> value:int -> unit
+      = Impl.add
 
     let make : unit -> t
-      = fun () -> Core_kernel.Hash_set.create (module Base.Int)
+      = fun () -> Impl.make ~id:(module Base.Int)
 
     let to_list : t -> int list
-      = Core_kernel.Hash_set.to_list
+      = Impl.to_list
 
-    let for_each : t -> (int -> unit) -> unit
-      = fun set f ->
-        let _ = Core_kernel.Hash_set.for_all set ~f:(fun i -> f i; true) in ()
+    let for_each : t -> f:(int -> unit) -> unit
+      = Impl.for_each
 
     let from_array : int array -> t
-      = fun ints -> ints
-        |> Base.Array.to_list
-        |> Core_kernel.Hash_set.of_list (module Base.Int)
+      = Impl.from_array ~id:(module Base.Int)
 
+        (*
     let merge_many : t -> int array -> unit
       = fun set ints ->
         let _ = Base.Array.for_all ints
-          ~f:(fun i -> Core_kernel.Hash_set.add set i; true)
+          ~f:(fun i -> Impl.add set i; true)
         in ()
+        *)
 
     let to_array : t -> int array
-      = Core_kernel.Hash_set.to_array
+      = Impl.to_array
 
-    let has : t -> int -> bool
-      = Core_kernel.Hash_set.mem
+    let has : t -> value:int -> bool
+      = Impl.has
 
+    (*
     let subset : t -> t -> bool
-      = fun s1 s2 -> Core_kernel.Hash_set.(length (diff s1 s2) > 0)
+      = Impl.subset
+      *)
 
     let size : t -> int
-      = Core_kernel.Hash_set.length
+      = Impl.size
 
+    (*
     let cmp : t -> t -> int
+      = Impl.cmp
+      *)
+      (*
       = fun s1 s2 ->
         let len1, len2 = size s1, size s2 in
         if len1 = len2 then
           let arr1, arr2 = to_array s1, to_array s2 in
           Base.Array.compare (failwith "TODO") arr1 arr2
         else if len1 < len2 then -1 else 1
-  end
-
-  module Impl = struct
-    module Avltree = Base.Avltree
-
-    type ('value, 'id) t = {
-      cmp: ('value, 'id) Id.cmp;
-      size: int;
-      mutable data: ('value, unit) Avltree.t
-    }
-
-    type ('k, 'id) id = ('k, 'id) Id.comparable
-
-    let from_array (type value) (type identity)
-      : value array -> id:(value, identity) id -> (value, identity) t
-      = fun arr ~id ->
-        let module M = (val id) in
-        let tree = ref Avltree.empty in
-        let size = ref 0 in
-        Base.Array.iter arr ~f:(fun value ->
-          let added = ref false in
-          tree := Avltree.add !tree
-            ~compare:M.cmp ~added ~replace:true ~key:value ~data:();
-          if !added then incr size;
-        );
-        { cmp = M.cmp
-        ; size = Base.Array.length arr
-        ; data = !tree
-        }
-
-    let to_array : ('value, 'id) t -> 'value array
-      = fun { data; size; _ } ->
-        let q = Base.Queue.create ~capacity:size () in
-        Avltree.iter data
-          ~f:(fun ~key:value ~data:_ -> Base.Queue.enqueue q value);
-        Base.Queue.to_array q
-
-    let to_list : ('value, 'id) t -> 'value list
-      = fun set -> set |> to_array |> Base.Array.to_list
-
-    let copy : ('value, 'id) t -> ('value, 'id) t
-      = fun { cmp; size; data } ->
-        let new_table = ref Avltree.empty in
-        let added = ref false in
-        Avltree.iter data ~f:(fun ~key ~data ->
-          new_table := Avltree.add !new_table
-            ~compare:cmp ~added ~replace:false ~key ~data
-        );
-        { cmp; size; data = !new_table }
-
-    let is_empty : ('value, 'id) t -> bool
-      = fun { data; _ } -> Avltree.is_empty data
-
-    let for_each : f:('value -> unit) -> ('value, 'id) t -> unit
-      = fun ~f { data; _ }
-      -> Avltree.iter data ~f:(fun ~key ~data:_ -> f key)
-
-    let has : value:'value -> ('value, 'a) t -> bool
-      = fun ~value { cmp; data; _ }
-      -> Avltree.mem data ~compare:cmp value
-
-    let add : value:'value -> ('value, 'id) t -> unit
-      = fun ~value ({ cmp; data; _ } as set) ->
-        let added = ref false in
-        let new_table = Avltree.add data ~compare:cmp ~added ~replace:true
-          ~key:value ~data:()
-        in
-        set.data <- new_table
-
-    let make (type value) (type identity)
-      : id:(value, identity) id -> (value, identity) t
-      = fun ~id ->
-        let module M = (val id) in
-        { cmp = M.cmp
-        ; size = 0
-        ; data = Avltree.empty
-        }
+        *)
   end
 
   include Impl
