@@ -1,4 +1,4 @@
-# 1 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 1 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
  
 open ConcreteSyntax_Parser
 open LexerUtil
@@ -6,7 +6,7 @@ open LexerUtil
 module L = Lexing
 module B = Buffer
 
-# 10 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 10 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base =
    "\000\000\227\255\228\255\081\000\160\000\238\000\031\000\234\255\
@@ -313,149 +313,149 @@ let rec read lexbuf =
 and __ocaml_lex_read_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 18 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 18 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( read lexbuf )
-# 319 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 319 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 1 ->
-# 19 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 19 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( next_line lexbuf; read lexbuf )
-# 324 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 324 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 2 ->
-# 20 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 20 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( NAT (int_of_string (L.lexeme lexbuf)) )
-# 329 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 329 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 3 ->
-# 21 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 21 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( read_string (Buffer.create 17) lexbuf )
-# 334 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 334 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 4 ->
-# 22 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 22 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( LEFT_PAREN )
-# 339 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 339 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 5 ->
-# 23 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 23 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( RIGHT_PAREN )
-# 344 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 344 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 6 ->
-# 24 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 24 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( read_regex (Buffer.create 17) lexbuf )
-# 349 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 349 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 7 ->
-# 25 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 25 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( LEFT_BRACE )
-# 354 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 354 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 8 ->
-# 26 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 26 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( RIGHT_BRACE )
-# 359 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 359 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 9 ->
-# 27 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 27 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( LEFT_BRACKET )
-# 364 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 364 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 10 ->
-# 28 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 28 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( RIGHT_BRACKET )
-# 369 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 369 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 11 ->
-# 29 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 29 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( LEFT_ANGLE )
-# 374 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 374 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 12 ->
-# 30 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 30 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( RIGHT_ANGLE )
-# 379 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 379 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 13 ->
-# 31 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 31 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( DOT )
-# 384 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 384 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 14 ->
-# 32 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 32 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( ASSIGN )
-# 389 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 389 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 15 ->
-# 33 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 33 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( COLON )
-# 394 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 394 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 16 ->
-# 34 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 34 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( DOLLAR )
-# 399 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 399 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 17 ->
-# 35 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 35 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( BAR )
-# 404 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 404 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 18 ->
-# 36 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 36 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( SEMICOLON )
-# 409 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 409 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 19 ->
-# 37 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 37 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( ARROW )
-# 414 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 414 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 20 ->
-# 38 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 38 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( UNDERSCORE )
-# 419 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 419 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 21 ->
-# 39 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 39 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( COMMA )
-# 424 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 424 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 22 ->
-# 40 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 40 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( LEFT_FIXITY )
-# 429 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 429 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 23 ->
-# 41 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 41 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( RIGHT_FIXITY )
-# 434 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 434 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 24 ->
-# 42 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 42 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( FORALL )
-# 439 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 439 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 25 ->
-# 43 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 43 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( TERMINAL_ID (L.lexeme lexbuf) )
-# 444 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 444 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 26 ->
-# 44 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 44 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( NONTERMINAL_ID (L.lexeme lexbuf) )
-# 449 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 449 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 27 ->
-# 45 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 45 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                    ( EOF )
-# 454 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 454 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 28 ->
-# 46 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 46 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
       ( error lexbuf ("Unexpected char: " ^ L.lexeme lexbuf) )
-# 459 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 459 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_rec lexbuf __ocaml_lex_state
@@ -465,49 +465,49 @@ and read_string buf lexbuf =
 and __ocaml_lex_read_string_rec buf lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 50 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 50 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
               ( B.add_string buf @@ L.lexeme lexbuf
               ; read_string buf lexbuf
               )
-# 473 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 473 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 1 ->
-# 53 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 53 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
               ( B.add_string buf @@ L.lexeme lexbuf
               ; L.new_line lexbuf
               ; read_string buf lexbuf
               )
-# 481 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 481 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 2 ->
-# 57 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 57 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
               ( B.add_char buf '"'
               ; read_string buf lexbuf
               )
-# 488 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 488 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 3 ->
-# 60 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 60 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
               ( B.add_char buf '\\'
               ; read_string buf lexbuf
               )
-# 495 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 495 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 4 ->
-# 63 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 63 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
               ( STRING (B.contents buf) )
-# 500 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 500 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 5 ->
-# 64 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 64 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
               ( error lexbuf "end of input inside of a string" )
-# 505 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 505 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 6 ->
-# 65 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 65 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
               ( error lexbuf
                   "found '%s' in a string" @@ L.lexeme lexbuf )
-# 511 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 511 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_string_rec buf lexbuf __ocaml_lex_state
@@ -517,49 +517,49 @@ and read_regex buf lexbuf =
 and __ocaml_lex_read_regex_rec buf lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 70 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 70 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
     ( B.add_string buf @@ L.lexeme lexbuf
     ; read_regex buf lexbuf
     )
-# 525 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 525 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 1 ->
-# 74 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 74 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
     ( B.add_char buf '\\'
     ; read_regex buf lexbuf
     )
-# 532 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 532 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 2 ->
 let
-# 77 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 77 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
                c
-# 538 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 538 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 = Lexing.sub_lexeme_char lexbuf (lexbuf.Lexing.lex_start_pos + 1) in
-# 78 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 78 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
     ( B.add_char buf '\\'
     ; B.add_char buf c
     ; read_regex buf lexbuf
     )
-# 545 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 545 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 3 ->
-# 82 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 82 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
         ( REGEX (B.contents buf) )
-# 550 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 550 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 4 ->
-# 83 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 83 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
         ( error lexbuf "end of input inside of a regex" )
-# 555 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 555 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | 5 ->
-# 84 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.mll"
+# 84 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.mll"
         ( error lexbuf
           (Printf.sprintf "found '%s' in a regex"
             (L.lexeme lexbuf))
         )
-# 563 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Lexer.ml"
+# 563 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Lexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_regex_rec buf lexbuf __ocaml_lex_state

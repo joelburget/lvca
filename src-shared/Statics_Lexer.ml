@@ -1,9 +1,9 @@
-# 1 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 1 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
  
 open Statics_Parser
 open LexerUtil
 
-# 7 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 7 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base =
    "\000\000\239\255\241\255\078\000\160\000\244\255\245\255\246\255\
@@ -306,94 +306,94 @@ let rec read lexbuf =
 and __ocaml_lex_read_rec lexbuf __ocaml_lex_state =
   match Lexing.new_engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 15 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 15 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
               ( read lexbuf )
-# 312 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 312 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | 1 ->
 let
-# 9 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 9 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
                                                           name
-# 318 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 318 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_mem.(0) (lexbuf.Lexing.lex_curr_pos + -1) in
-# 16 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 16 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
                  ( LINE (Some name) )
-# 322 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 322 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | 2 ->
-# 17 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 17 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
                  ( LINE None )
-# 327 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 327 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | 3 ->
-# 18 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 18 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
               ( CTX_SEPARATOR )
-# 332 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 332 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | 4 ->
-# 19 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 19 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
               ( RIGHT_D_ARR )
-# 337 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 337 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | 5 ->
-# 20 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 20 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
               ( LEFT_D_ARR )
-# 342 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 342 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | 6 ->
-# 22 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 22 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
               ( LEFT_PAREN )
-# 347 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 347 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | 7 ->
-# 23 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 23 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
               ( RIGHT_PAREN )
-# 352 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 352 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | 8 ->
-# 24 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 24 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
               ( SEMICOLON )
-# 357 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 357 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | 9 ->
-# 25 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 25 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
               ( COLON )
-# 362 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 362 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | 10 ->
-# 26 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 26 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
               ( DOT )
-# 367 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 367 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | 11 ->
-# 27 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 27 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
               ( COMMA )
-# 372 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 372 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | 12 ->
-# 28 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 28 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
               ( CTX )
-# 377 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 377 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | 13 ->
-# 29 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 29 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
               ( ID (Lexing.lexeme lexbuf) )
-# 382 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 382 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | 14 ->
-# 30 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 30 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
               ( EOF )
-# 387 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 387 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | 15 ->
-# 31 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 31 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
               ( next_line lexbuf; read lexbuf )
-# 392 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 392 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | 16 ->
-# 32 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.mll"
+# 32 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.mll"
       ( error lexbuf ("Unexpected char: " ^ Lexing.lexeme lexbuf) )
-# 397 "/home/joel/code/lvca-bucklescript/src/Statics_Lexer.ml"
+# 397 "/Users/joel/code/lvca-bucklescript/src-shared/Statics_Lexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_rec lexbuf __ocaml_lex_state

@@ -1,4 +1,4 @@
-# 1 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 1 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
  
 open Term_Parser
 open LexerUtil
@@ -6,7 +6,7 @@ open LexerUtil
 module L = Lexing
 module B = Buffer
 
-# 10 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 10 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base =
    "\000\000\242\255\243\255\244\255\245\255\246\255\247\255\248\255\
@@ -162,74 +162,74 @@ let rec read lexbuf =
 and __ocaml_lex_read_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 19 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 19 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
              ( read lexbuf )
-# 168 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 168 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 1 ->
-# 20 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 20 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
              ( next_line lexbuf; read lexbuf )
-# 173 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 173 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 2 ->
-# 21 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 21 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
              ( INT (Bigint.of_string (L.lexeme lexbuf)) )
-# 178 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 178 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 3 ->
-# 22 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 22 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
              ( ID (L.lexeme lexbuf) )
-# 183 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 183 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 4 ->
-# 23 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 23 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
              ( read_string (Buffer.create 17) lexbuf )
-# 188 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 188 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 5 ->
-# 24 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 24 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
              ( LEFT_PAREN )
-# 193 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 193 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 6 ->
-# 25 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 25 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
              ( RIGHT_PAREN )
-# 198 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 198 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 7 ->
-# 26 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 26 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
              ( LEFT_BRACK )
-# 203 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 203 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 8 ->
-# 27 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 27 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
              ( RIGHT_BRACK )
-# 208 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 208 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 9 ->
-# 28 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 28 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
              ( SEMICOLON )
-# 213 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 213 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 10 ->
-# 29 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 29 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
              ( COMMA )
-# 218 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 218 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 11 ->
-# 30 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 30 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
              ( DOT )
-# 223 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 223 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 12 ->
-# 31 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 31 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
              ( EOF )
-# 228 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 228 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 13 ->
-# 32 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 32 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
              ( error lexbuf ("Unexpected char: " ^ L.lexeme lexbuf) )
-# 233 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 233 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_rec lexbuf __ocaml_lex_state
@@ -239,49 +239,49 @@ and read_string buf lexbuf =
 and __ocaml_lex_read_string_rec buf lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 36 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 36 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
               ( B.add_string buf @@ L.lexeme lexbuf
               ; read_string buf lexbuf
               )
-# 247 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 247 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 1 ->
-# 39 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 39 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
               ( B.add_string buf @@ L.lexeme lexbuf
               ; L.new_line lexbuf
               ; read_string buf lexbuf
               )
-# 255 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 255 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 2 ->
-# 43 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 43 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
               ( B.add_char buf '"'
               ; read_string buf lexbuf
               )
-# 262 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 262 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 3 ->
-# 46 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 46 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
               ( B.add_char buf '\\'
               ; read_string buf lexbuf
               )
-# 269 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 269 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 4 ->
-# 49 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 49 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
               ( STRING (B.contents buf) )
-# 274 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 274 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 5 ->
-# 50 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 50 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
               ( error lexbuf "end of input inside of a string" )
-# 279 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 279 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | 6 ->
-# 51 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.mll"
+# 51 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.mll"
               ( error lexbuf
                   "found '%s' - don't know how to handle" @@ L.lexeme lexbuf )
-# 285 "/home/joel/code/lvca-bucklescript/src/Term_Lexer.ml"
+# 285 "/Users/joel/code/lvca-bucklescript/src-shared/Term_Lexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_read_string_rec buf lexbuf __ocaml_lex_state

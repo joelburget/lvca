@@ -2,7 +2,7 @@
 (* This generated code requires the following version of MenhirLib: *)
 
 let () =
-  MenhirLib.StaticVersion.require_20190924
+  MenhirLib.StaticVersion.require_20200211
 
 module MenhirBasics = struct
   
@@ -11,14 +11,14 @@ module MenhirBasics = struct
   type token = 
     | UNDERSCORE
     | TERMINAL_ID of (
-# 3 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 3 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 17 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 17 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
   )
     | STRING of (
-# 5 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 5 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 22 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 22 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
   )
     | SEMICOLON
     | RIGHT_PAREN
@@ -27,19 +27,19 @@ module MenhirBasics = struct
     | RIGHT_BRACE
     | RIGHT_ANGLE
     | REGEX of (
-# 2 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 2 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 33 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 33 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
   )
     | NONTERMINAL_ID of (
-# 4 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 4 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 38 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 38 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
   )
     | NAT of (
-# 1 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 1 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (int)
-# 43 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 43 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
   )
     | LEFT_PAREN
     | LEFT_FIXITY
@@ -63,7 +63,7 @@ include MenhirBasics
 let _eRR =
   MenhirBasics.Error
 
-# 28 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 28 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
    open ConcreteSyntaxDescription
 open Tablecloth
 
@@ -79,7 +79,7 @@ let concretize_vars : StrSet.t -> Types.sort -> Types.sort
          else SortAp (name, [||])
     in go
 
-# 83 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 83 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
 
 module Tables = struct
   
@@ -248,9 +248,9 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__3_ in
         let _v : 'tv_atomic_sort = 
-# 100 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 100 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
   ( _2 )
-# 254 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 254 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -269,17 +269,17 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let _1 : (
-# 4 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 4 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 275 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 275 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : 'tv_atomic_sort = 
-# 103 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 103 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
   ( Types.SortVar _1 )
-# 283 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 283 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -318,9 +318,9 @@ module Tables = struct
         let _4 : unit = Obj.magic _4 in
         let xs : 'tv_loption_separated_nonempty_list_COMMA_NAT__ = Obj.magic xs in
         let _2 : (
-# 4 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 4 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 324 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 324 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _2 in
         let _1 : unit = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
@@ -329,10 +329,10 @@ module Tables = struct
         let _v : 'tv_box_formatting_options = let _3 = 
 # 232 "<standard.mly>"
     ( xs )
-# 333 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 333 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         
-# 193 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 193 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
   ( let box_type = match _2 with
       | "h" -> HBox
       | "v" -> VBox
@@ -343,7 +343,7 @@ module Tables = struct
     in
     box_type, _3
   )
-# 347 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 347 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -368,22 +368,22 @@ module Tables = struct
           };
         } = _menhir_stack in
         let _2 : (
-# 1 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 1 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (int)
-# 374 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 374 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _2 in
         let _1 : unit = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : (
-# 56 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 56 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.capture_number)
-# 383 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 383 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 80 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 80 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
                            ( _2 )
-# 387 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 387 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -406,9 +406,9 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : 'tv_fixity = 
-# 152 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 152 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
                  ( Infixl )
-# 412 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 412 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -431,9 +431,9 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : 'tv_fixity = 
-# 153 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 153 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
                  ( Infixr )
-# 437 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 437 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -470,13 +470,13 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__3_ in
         let _v : (
-# 67 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 67 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.pre_terminal_rule list * ConcreteSyntaxDescription.nonterminal_rule list)
-# 476 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 476 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 70 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 70 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
                                                ( (_1, _2) )
-# 480 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 480 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -494,7 +494,7 @@ module Tables = struct
         let _v : 'tv_loption_separated_nonempty_list_COMMA_NAT__ = 
 # 142 "<standard.mly>"
     ( [] )
-# 498 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 498 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -519,7 +519,7 @@ module Tables = struct
         let _v : 'tv_loption_separated_nonempty_list_COMMA_NAT__ = 
 # 144 "<standard.mly>"
     ( x )
-# 523 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 523 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -537,7 +537,7 @@ module Tables = struct
         let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_term_scope_pattern__ = 
 # 142 "<standard.mly>"
     ( [] )
-# 541 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 541 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -562,7 +562,7 @@ module Tables = struct
         let _v : 'tv_loption_separated_nonempty_list_SEMICOLON_term_scope_pattern__ = 
 # 144 "<standard.mly>"
     ( x )
-# 566 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 566 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -581,9 +581,9 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let x : (
-# 4 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 4 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 587 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 587 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -591,7 +591,7 @@ module Tables = struct
         let _v : 'tv_nonempty_list_NONTERMINAL_ID_ = 
 # 221 "<standard.mly>"
     ( [ x ] )
-# 595 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 595 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -617,9 +617,9 @@ module Tables = struct
         } = _menhir_stack in
         let xs : 'tv_nonempty_list_NONTERMINAL_ID_ = Obj.magic xs in
         let x : (
-# 4 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 4 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 623 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 623 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -627,7 +627,7 @@ module Tables = struct
         let _v : 'tv_nonempty_list_NONTERMINAL_ID_ = 
 # 223 "<standard.mly>"
     ( x :: xs )
-# 631 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 631 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -652,7 +652,7 @@ module Tables = struct
         let _v : 'tv_nonempty_list_atomic_sort_ = 
 # 221 "<standard.mly>"
     ( [ x ] )
-# 656 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 656 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -684,7 +684,7 @@ module Tables = struct
         let _v : 'tv_nonempty_list_atomic_sort_ = 
 # 223 "<standard.mly>"
     ( x :: xs )
-# 688 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 688 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -703,9 +703,9 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let x : (
-# 62 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 62 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_rule)
-# 709 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 709 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -713,7 +713,7 @@ module Tables = struct
         let _v : 'tv_nonempty_list_nonterminal_rule_ = 
 # 221 "<standard.mly>"
     ( [ x ] )
-# 717 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 717 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -739,9 +739,9 @@ module Tables = struct
         } = _menhir_stack in
         let xs : 'tv_nonempty_list_nonterminal_rule_ = Obj.magic xs in
         let x : (
-# 62 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 62 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_rule)
-# 745 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 745 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -749,7 +749,7 @@ module Tables = struct
         let _v : 'tv_nonempty_list_nonterminal_rule_ = 
 # 223 "<standard.mly>"
     ( x :: xs )
-# 753 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 753 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -768,9 +768,9 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let x : (
-# 57 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 57 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_token)
-# 774 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 774 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -778,7 +778,7 @@ module Tables = struct
         let _v : 'tv_nonempty_list_nonterminal_token_ = 
 # 221 "<standard.mly>"
     ( [ x ] )
-# 782 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 782 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -804,9 +804,9 @@ module Tables = struct
         } = _menhir_stack in
         let xs : 'tv_nonempty_list_nonterminal_token_ = Obj.magic xs in
         let x : (
-# 57 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 57 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_token)
-# 810 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 810 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -814,7 +814,7 @@ module Tables = struct
         let _v : 'tv_nonempty_list_nonterminal_token_ = 
 # 223 "<standard.mly>"
     ( x :: xs )
-# 818 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 818 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -833,9 +833,9 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let x : (
-# 54 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 54 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.pre_terminal_rule)
-# 839 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 839 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -843,7 +843,7 @@ module Tables = struct
         let _v : 'tv_nonempty_list_terminal_rule_ = 
 # 221 "<standard.mly>"
     ( [ x ] )
-# 847 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 847 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -869,9 +869,9 @@ module Tables = struct
         } = _menhir_stack in
         let xs : 'tv_nonempty_list_terminal_rule_ = Obj.magic xs in
         let x : (
-# 54 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 54 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.pre_terminal_rule)
-# 875 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 875 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -879,7 +879,7 @@ module Tables = struct
         let _v : 'tv_nonempty_list_terminal_rule_ = 
 # 223 "<standard.mly>"
     ( x :: xs )
-# 883 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 883 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -916,33 +916,33 @@ module Tables = struct
           };
         } = _menhir_stack in
         let _4 : (
-# 61 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 61 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match list list)
-# 922 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 922 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _4 in
         let _3 : 'tv_option_BAR_ = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 4 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 4 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 929 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 929 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__4_ in
         let _v : (
-# 62 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 62 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_rule)
-# 937 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 937 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 122 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 122 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
   ( NonterminalRule
     { nonterminal_name = _1
     ; nonterminal_type = NonterminalType ([], SortAp (_1, [||]))
     ; operator_rules = _4
     }
   )
-# 946 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 946 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -991,39 +991,39 @@ module Tables = struct
           };
         } = _menhir_stack in
         let _6 : (
-# 61 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 61 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match list list)
-# 997 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 997 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _6 in
         let _5 : 'tv_option_BAR_ = Obj.magic _5 in
         let _4 : unit = Obj.magic _4 in
         let _3 : (
-# 64 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 64 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_type)
-# 1004 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1004 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 4 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 4 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 1010 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1010 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__6_ in
         let _v : (
-# 62 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 62 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_rule)
-# 1018 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1018 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 129 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 129 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
   ( NonterminalRule
     { nonterminal_name = _1
     ; nonterminal_type = _3
     ; operator_rules = _6
     }
   )
-# 1027 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1027 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1049,21 +1049,21 @@ module Tables = struct
         } = _menhir_stack in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 62 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 62 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_rule)
-# 1055 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1055 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : (
-# 63 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 63 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_rule)
-# 1063 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1063 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 82 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 82 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
                                              ( _1 )
-# 1067 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1067 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1093,13 +1093,13 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : (
-# 57 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 57 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_token)
-# 1099 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1099 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 206 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 206 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
   ( OpenBox _2 )
-# 1103 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1103 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1122,13 +1122,13 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : (
-# 57 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 57 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_token)
-# 1128 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1128 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 207 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 207 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
                     ( CloseBox           )
-# 1132 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1132 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1147,21 +1147,21 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let _1 : (
-# 3 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 3 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 1153 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1153 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : (
-# 57 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 57 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_token)
-# 1161 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1161 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 208 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 208 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
                     ( TerminalName    _1 )
-# 1165 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1165 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1180,21 +1180,21 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let _1 : (
-# 4 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 4 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 1186 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1186 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : (
-# 57 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 57 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_token)
-# 1194 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1194 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 209 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 209 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
                     ( NonterminalName _1 )
-# 1198 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1198 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1224,13 +1224,13 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : (
-# 57 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 57 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_token)
-# 1230 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1230 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 211 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 211 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
                     ( Underscore (Option.with_default _2 ~default:1) )
-# 1234 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1234 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1256,21 +1256,21 @@ module Tables = struct
         } = _menhir_stack in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 57 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 57 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_token)
-# 1262 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1262 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : (
-# 58 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 58 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_token)
-# 1270 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1270 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 213 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 213 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
                                                ( _1 )
-# 1274 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1274 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1300,11 +1300,11 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : (
-# 64 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 64 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_type)
-# 1306 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1306 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 109 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 109 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
   ( let var_set = match _1 with
       | None -> StrSet.empty
       | Some var_set -> var_set
@@ -1315,7 +1315,7 @@ module Tables = struct
     in
     NonterminalType (arg_sorts, result_sort)
   )
-# 1319 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1319 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1341,21 +1341,21 @@ module Tables = struct
         } = _menhir_stack in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 64 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 64 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_type)
-# 1347 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1347 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : (
-# 65 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 65 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_type)
-# 1355 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1355 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 105 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 105 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
                                              ( _1 )
-# 1359 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1359 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1400,9 +1400,9 @@ module Tables = struct
         let _5 : 'tv_option_fixity_ = Obj.magic _5 in
         let _4 : unit = Obj.magic _4 in
         let _3 : (
-# 66 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 66 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match_pattern)
-# 1406 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1406 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
         let _1 : 'tv_nonempty_list_nonterminal_token_ = Obj.magic _1 in
@@ -1410,16 +1410,16 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__5_ in
         let _v : (
-# 59 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 59 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match)
-# 1416 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1416 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 158 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 158 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
   ( let fixity = match _5 with
     | None   -> Nofix
     | Some f -> f
     in OperatorMatch { tokens = _1; operator_match_pattern = _3; fixity } )
-# 1423 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1423 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1445,21 +1445,21 @@ module Tables = struct
         } = _menhir_stack in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 59 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 59 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match)
-# 1451 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1451 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : (
-# 60 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 60 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match)
-# 1459 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1459 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 188 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 188 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
                                          ( _1 )
-# 1463 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1463 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1478,21 +1478,21 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let _1 : (
-# 59 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 59 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match)
-# 1484 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1484 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : (
-# 61 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 61 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match list list)
-# 1492 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1492 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 142 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 142 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
     ( [[ _1 ]] )
-# 1496 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1496 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1523,30 +1523,30 @@ module Tables = struct
           };
         } = _menhir_stack in
         let _3 : (
-# 61 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 61 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match list list)
-# 1529 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1529 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 59 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 59 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match)
-# 1535 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1535 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__3_ in
         let _v : (
-# 61 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 61 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match list list)
-# 1543 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1543 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 144 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 144 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
     ( match _3 with
       | []      -> [[ _1 ]]
       | x :: xs -> (_1 :: x) :: xs
     )
-# 1550 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1550 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1577,27 +1577,27 @@ module Tables = struct
           };
         } = _menhir_stack in
         let _3 : (
-# 61 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 61 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match list list)
-# 1583 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1583 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 59 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 59 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match)
-# 1589 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1589 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__3_ in
         let _v : (
-# 61 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 61 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match list list)
-# 1597 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1597 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 149 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 149 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
     ( [ _1 ] :: _3 )
-# 1601 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1601 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1616,21 +1616,21 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let _1 : (
-# 56 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 56 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.capture_number)
-# 1622 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1622 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : (
-# 66 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 66 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match_pattern)
-# 1630 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1630 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 166 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 166 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
   ( SingleCapturePattern _1 )
-# 1634 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1634 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1670,26 +1670,26 @@ module Tables = struct
         let xs : 'tv_loption_separated_nonempty_list_SEMICOLON_term_scope_pattern__ = Obj.magic xs in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 4 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 4 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 1676 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1676 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__4_ in
         let _v : (
-# 66 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 66 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match_pattern)
-# 1684 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1684 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = let _3 = 
 # 232 "<standard.mly>"
     ( xs )
-# 1688 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1688 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         
-# 169 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 169 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
   ( OperatorPattern (_1, _3) )
-# 1693 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1693 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1707,7 +1707,7 @@ module Tables = struct
         let _v : 'tv_option_BAR_ = 
 # 114 "<standard.mly>"
     ( None )
-# 1711 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1711 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1732,7 +1732,7 @@ module Tables = struct
         let _v : 'tv_option_BAR_ = 
 # 116 "<standard.mly>"
     ( Some x )
-# 1736 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1736 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1750,7 +1750,7 @@ module Tables = struct
         let _v : 'tv_option_NAT_ = 
 # 114 "<standard.mly>"
     ( None )
-# 1754 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1754 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1769,9 +1769,9 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let x : (
-# 1 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 1 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (int)
-# 1775 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1775 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -1779,7 +1779,7 @@ module Tables = struct
         let _v : 'tv_option_NAT_ = 
 # 116 "<standard.mly>"
     ( Some x )
-# 1783 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1783 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1797,7 +1797,7 @@ module Tables = struct
         let _v : 'tv_option_box_formatting_options_ = 
 # 114 "<standard.mly>"
     ( None )
-# 1801 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1801 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1822,7 +1822,7 @@ module Tables = struct
         let _v : 'tv_option_box_formatting_options_ = 
 # 116 "<standard.mly>"
     ( Some x )
-# 1826 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1826 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1840,7 +1840,7 @@ module Tables = struct
         let _v : 'tv_option_fixity_ = 
 # 114 "<standard.mly>"
     ( None )
-# 1844 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1844 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1865,7 +1865,7 @@ module Tables = struct
         let _v : 'tv_option_fixity_ = 
 # 116 "<standard.mly>"
     ( Some x )
-# 1869 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1869 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1883,7 +1883,7 @@ module Tables = struct
         let _v : 'tv_option_quantifiers_ = 
 # 114 "<standard.mly>"
     ( None )
-# 1887 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1887 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1902,9 +1902,9 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let x : (
-# 52 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 52 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (Tablecloth.StrSet.t)
-# 1908 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1908 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -1912,7 +1912,7 @@ module Tables = struct
         let _v : 'tv_option_quantifiers_ = 
 # 116 "<standard.mly>"
     ( Some x )
-# 1916 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1916 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1949,13 +1949,13 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__3_ in
         let _v : (
-# 52 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 52 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (Tablecloth.StrSet.t)
-# 1955 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1955 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 86 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 86 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
   ( StrSet.from_list _2 )
-# 1959 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1959 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -1981,21 +1981,21 @@ module Tables = struct
         } = _menhir_stack in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 52 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 52 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (Tablecloth.StrSet.t)
-# 1987 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1987 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : (
-# 53 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 53 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (Tablecloth.StrSet.t)
-# 1995 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1995 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 88 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 88 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
                                    ( _1 )
-# 1999 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 1999 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -2020,7 +2020,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_ARROW_sort_ = 
 # 241 "<standard.mly>"
     ( [ x ] )
-# 2024 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2024 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -2059,7 +2059,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_ARROW_sort_ = 
 # 243 "<standard.mly>"
     ( x :: xs )
-# 2063 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2063 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -2078,9 +2078,9 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let x : (
-# 1 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 1 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (int)
-# 2084 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2084 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -2088,7 +2088,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_COMMA_NAT_ = 
 # 241 "<standard.mly>"
     ( [ x ] )
-# 2092 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2092 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -2121,9 +2121,9 @@ module Tables = struct
         let xs : 'tv_separated_nonempty_list_COMMA_NAT_ = Obj.magic xs in
         let _2 : unit = Obj.magic _2 in
         let x : (
-# 1 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 1 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (int)
-# 2127 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2127 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -2131,7 +2131,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_COMMA_NAT_ = 
 # 243 "<standard.mly>"
     ( x :: xs )
-# 2135 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2135 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -2150,9 +2150,9 @@ module Tables = struct
           MenhirLib.EngineTypes.next = _menhir_stack;
         } = _menhir_stack in
         let x : (
-# 66 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 66 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match_pattern)
-# 2156 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2156 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -2160,7 +2160,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_DOT_operator_match_pattern_ = 
 # 241 "<standard.mly>"
     ( [ x ] )
-# 2164 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2164 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -2193,9 +2193,9 @@ module Tables = struct
         let xs : 'tv_separated_nonempty_list_DOT_operator_match_pattern_ = Obj.magic xs in
         let _2 : unit = Obj.magic _2 in
         let x : (
-# 66 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 66 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match_pattern)
-# 2199 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2199 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic x in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos_x_ in
@@ -2203,7 +2203,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_DOT_operator_match_pattern_ = 
 # 243 "<standard.mly>"
     ( x :: xs )
-# 2207 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2207 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -2228,7 +2228,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_SEMICOLON_term_scope_pattern_ = 
 # 241 "<standard.mly>"
     ( [ x ] )
-# 2232 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2232 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -2267,7 +2267,7 @@ module Tables = struct
         let _v : 'tv_separated_nonempty_list_SEMICOLON_term_scope_pattern_ = 
 # 243 "<standard.mly>"
     ( x :: xs )
-# 2271 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2271 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -2293,17 +2293,17 @@ module Tables = struct
         } = _menhir_stack in
         let _2 : 'tv_nonempty_list_atomic_sort_ = Obj.magic _2 in
         let _1 : (
-# 4 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 4 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 2299 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2299 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : 'tv_sort = 
-# 94 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 94 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
   ( Types.SortAp (_1, Array.from_list _2) )
-# 2307 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2307 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -2326,9 +2326,9 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : 'tv_sort = 
-# 96 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 96 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
   ( _1 )
-# 2332 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2332 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -2351,7 +2351,7 @@ module Tables = struct
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__1_ in
         let _v : 'tv_term_scope_pattern = 
-# 173 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 173 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
   ( let capture_nums, body = Util.unsnoc _1 in
 
     let capture_nums' = capture_nums
@@ -2366,7 +2366,7 @@ module Tables = struct
 
     NumberedScopePattern (capture_nums', body)
   )
-# 2370 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2370 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -2397,27 +2397,27 @@ module Tables = struct
           };
         } = _menhir_stack in
         let _3 : (
-# 2 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 2 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 2403 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2403 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 3 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 3 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 2409 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2409 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__3_ in
         let _v : (
-# 54 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 54 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.pre_terminal_rule)
-# 2417 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2417 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 74 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 74 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
   ( PreTerminalRule (_1, Left _3) )
-# 2421 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2421 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -2448,27 +2448,27 @@ module Tables = struct
           };
         } = _menhir_stack in
         let _3 : (
-# 5 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 5 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 2454 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2454 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _3 in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 3 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 3 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
        (string)
-# 2460 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2460 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__3_ in
         let _v : (
-# 54 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 54 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.pre_terminal_rule)
-# 2468 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2468 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 76 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 76 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
   ( PreTerminalRule (_1, Right _3) )
-# 2472 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2472 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -2494,21 +2494,21 @@ module Tables = struct
         } = _menhir_stack in
         let _2 : unit = Obj.magic _2 in
         let _1 : (
-# 54 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 54 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.pre_terminal_rule)
-# 2500 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2500 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = Obj.magic _1 in
         let _endpos__0_ = _menhir_stack.MenhirLib.EngineTypes.endp in
         let _startpos = _startpos__1_ in
         let _endpos = _endpos__2_ in
         let _v : (
-# 55 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 55 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.pre_terminal_rule)
-# 2508 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2508 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
         ) = 
-# 78 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 78 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
                                        ( _1 )
-# 2512 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2512 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
          in
         {
           MenhirLib.EngineTypes.state = _menhir_s;
@@ -2537,65 +2537,65 @@ end
 let terminal_rule__test =
   fun lexer lexbuf ->
     (Obj.magic (MenhirInterpreter.entry 114 lexer lexbuf) : (
-# 55 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 55 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.pre_terminal_rule)
-# 2543 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2543 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
     ))
 
 and quantifiers__test =
   fun lexer lexbuf ->
     (Obj.magic (MenhirInterpreter.entry 110 lexer lexbuf) : (
-# 53 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 53 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (Tablecloth.StrSet.t)
-# 2551 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2551 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
     ))
 
 and operator_match__test =
   fun lexer lexbuf ->
     (Obj.magic (MenhirInterpreter.entry 106 lexer lexbuf) : (
-# 60 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 60 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match)
-# 2559 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2559 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
     ))
 
 and nonterminal_type__test =
   fun lexer lexbuf ->
     (Obj.magic (MenhirInterpreter.entry 102 lexer lexbuf) : (
-# 65 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 65 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_type)
-# 2567 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2567 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
     ))
 
 and nonterminal_token__test =
   fun lexer lexbuf ->
     (Obj.magic (MenhirInterpreter.entry 98 lexer lexbuf) : (
-# 58 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 58 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_token)
-# 2575 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2575 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
     ))
 
 and nonterminal_rule__test =
   fun lexer lexbuf ->
     (Obj.magic (MenhirInterpreter.entry 94 lexer lexbuf) : (
-# 63 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 63 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_rule)
-# 2583 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2583 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
     ))
 
 and language =
   fun lexer lexbuf ->
     (Obj.magic (MenhirInterpreter.entry 4 lexer lexbuf) : (
-# 67 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 67 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.pre_terminal_rule list * ConcreteSyntaxDescription.nonterminal_rule list)
-# 2591 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2591 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
     ))
 
 and capture_number =
   fun lexer lexbuf ->
     (Obj.magic (MenhirInterpreter.entry 0 lexer lexbuf) : (
-# 56 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 56 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.capture_number)
-# 2599 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2599 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
     ))
 
 module Incremental = struct
@@ -2603,65 +2603,65 @@ module Incremental = struct
   let terminal_rule__test =
     fun initial_position ->
       (Obj.magic (MenhirInterpreter.start 114 initial_position) : (
-# 55 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 55 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.pre_terminal_rule)
-# 2609 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2609 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
       ) MenhirInterpreter.checkpoint)
   
   and quantifiers__test =
     fun initial_position ->
       (Obj.magic (MenhirInterpreter.start 110 initial_position) : (
-# 53 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 53 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (Tablecloth.StrSet.t)
-# 2617 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2617 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
       ) MenhirInterpreter.checkpoint)
   
   and operator_match__test =
     fun initial_position ->
       (Obj.magic (MenhirInterpreter.start 106 initial_position) : (
-# 60 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 60 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.operator_match)
-# 2625 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2625 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
       ) MenhirInterpreter.checkpoint)
   
   and nonterminal_type__test =
     fun initial_position ->
       (Obj.magic (MenhirInterpreter.start 102 initial_position) : (
-# 65 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 65 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_type)
-# 2633 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2633 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
       ) MenhirInterpreter.checkpoint)
   
   and nonterminal_token__test =
     fun initial_position ->
       (Obj.magic (MenhirInterpreter.start 98 initial_position) : (
-# 58 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 58 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_token)
-# 2641 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2641 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
       ) MenhirInterpreter.checkpoint)
   
   and nonterminal_rule__test =
     fun initial_position ->
       (Obj.magic (MenhirInterpreter.start 94 initial_position) : (
-# 63 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 63 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.nonterminal_rule)
-# 2649 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2649 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
       ) MenhirInterpreter.checkpoint)
   
   and language =
     fun initial_position ->
       (Obj.magic (MenhirInterpreter.start 4 initial_position) : (
-# 67 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 67 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.pre_terminal_rule list * ConcreteSyntaxDescription.nonterminal_rule list)
-# 2657 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2657 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
       ) MenhirInterpreter.checkpoint)
   
   and capture_number =
     fun initial_position ->
       (Obj.magic (MenhirInterpreter.start 0 initial_position) : (
-# 56 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.mly"
+# 56 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.mly"
       (ConcreteSyntaxDescription.capture_number)
-# 2665 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2665 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
       ) MenhirInterpreter.checkpoint)
   
 end
@@ -2669,4 +2669,4 @@ end
 # 269 "<standard.mly>"
   
 
-# 2673 "/home/joel/code/lvca-bucklescript/src/ConcreteSyntax_Parser.ml"
+# 2673 "/Users/joel/code/lvca-bucklescript/src-shared/ConcreteSyntax_Parser.ml"
