@@ -222,6 +222,7 @@ module MutableMap = struct
     let has : 'a t -> key:int -> bool
       = Impl.has
 
+    (* XXX signature differs from other Placemat *)
     let set : 'a t -> key:int -> value:'a -> unit
       = Impl.add
 
@@ -709,6 +710,11 @@ module Lex : sig
     ; message : string
     }
 
+  type lexbuf =
+    { buf : string
+    ; mutable pos : position
+    }
+
   exception LexError of lex_error
 
   val string_of_tokens : token array -> string
@@ -732,6 +738,11 @@ end = struct
     ; message : string
     }
 
+  type lexbuf =
+    { buf : string
+    ; mutable pos : position
+    }
+
   exception LexError of lex_error
 
   let string_of_tokens : token array -> string
@@ -739,8 +750,77 @@ end = struct
                   |> Tablecloth.Array.map ~f:(fun { name; _ } -> name)
                   |> Base.String.concat_array ~sep:" "
 
+  (** raises: [LexError] *)
+  let get_next_tok_exn : string IntDict.t -> Str.regexp -> lexbuf -> token
+    = fun tok_names re { buf; pos } ->
+
+      let input = Tablecloth.String.slice buf
+        ~from:pos
+        ~to_:(Tablecloth.String.length buf)
+      in
+      let matches = Str.string_match re input pos in
+
+      if matches
+      then
+        let match_end = Str.match_end () in
+
+        let possible_match = IntDict.find_first_by tok_names
+          ~f:(fun i _re ->
+            try
+              let _ = Str.matched_group i input in true
+            with
+              Not_found -> false
+          )
+        in
+
+        match possible_match with
+          | Some (_match_num, name)
+          -> { name; start = pos; finish = match_end }
+          | None -> raise (LexError
+            { start_pos = pos
+            ; end_pos = match_end
+            ; message =
+              "Failed to find matching group even though a match was reported"
+            })
+      else
+        raise
+          (LexError
+             { start_pos = pos
+             ; end_pos = pos
+             ; message = "Failed lex, \nlexbuf: " ^ buf
+             })
+  ;;
+
+  (** raises: [LexError] *)
   let tokenize : lexer -> string -> token array
-    = failwith "TODO"
+    = fun lexer input ->
+
+      let result = MutableQueue.make () in
+      let lexbuf = { buf = input; pos = 0 } in
+      let mut_tok_names = MutableMap.Int.make () in
+
+      let re_str = lexer
+        |> List.map_with_index ~f:(fun i (re_str, tok_name) ->
+          MutableMap.Int.set mut_tok_names ~key:i ~value:tok_name;
+          "(" ^ re_str ^ ")")
+        |> Tablecloth.String.join ~sep:"|"
+      in
+
+      let tok_names = mut_tok_names
+        |> MutableMap.Int.to_array
+        |> IntDict.from_array
+      in
+      let re = Str.regexp re_str in
+
+      while lexbuf.pos < Tablecloth.String.length lexbuf.buf do
+        let tok = get_next_tok_exn tok_names re lexbuf in
+        let { start; finish; _ } = tok in
+        assert (start = lexbuf.pos);
+        lexbuf.pos <- finish;
+        ignore (MutableQueue.enqueue result tok)
+      done;
+
+      MutableQueue.to_array result
 
   let lex : lexer -> string -> (lex_error, token array) Tablecloth.Result.t
     = fun lexer input ->

@@ -472,8 +472,8 @@ end = struct
   ;;
 
   (** raises: [LexError] *)
-  let get_next_tok_exn : string IntDict.t -> Js.Re.t -> lexbuf -> token =
-    fun tok_names re { buf; pos } -> re
+  let get_next_tok_exn : string IntDict.t -> Js.Re.t -> lexbuf -> token
+    = fun tok_names re { buf; pos } -> re
     |. Js.Re.exec_ (buf
       |> Tablecloth.String.slice ~from:pos ~to_:(Tablecloth.String.length buf))
     |. function
@@ -488,7 +488,7 @@ end = struct
         raise
           (LexError
              { start_pos = pos
-             ; end_pos = pos (* TODO *)
+             ; end_pos = pos
              ; message = "Failed lex, re: " ^ Js.Re.source re ^ "\nlexbuf: " ^ buf
              })
   ;;
