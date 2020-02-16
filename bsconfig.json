@@ -7,7 +7,7 @@
       "dir" : "src-frontend"
     },
     {
-      "dir" : "src",
+      "dir" : "src-shared",
       "subdirs" : true,
       "generators" : [
         {
