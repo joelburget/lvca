@@ -21,11 +21,14 @@ let rec match_schema_vars' : term -> term -> scope String.Map.t
     -> if String.(tag1 = tag2) && List.(length args1 = length args2)
     then
       let matched_scopes = List.map2_exn args1 args2 ~f:match_schema_vars_scope
-      in
+      in Util.map_unions matched_scopes
+      (*
       (match Util.map_unions matched_scopes with
         | `Ok result -> result
         | `Duplicate_key str -> failwith ("TODO: error: duplicate key: " ^ str))
+        *)
     else raise NoMatch
+  | _ , _ -> raise NoMatch
 
 and match_schema_vars_scope (Scope (names1, body1)) (Scope (names2, body2)) =
   if List.(length names1 = length names2)
@@ -55,7 +58,7 @@ let open_scope (args : term list list) (Scope (names, body)) : term option
                                   |> Option.map ~f:(fun subtms' -> Operator (tag, subtms'))
       | Bound (i, j) -> if i >= offset
         then args
-          |> List.nth (i - offset)
+          |> Fn.flip List.nth (i - offset)
           |> Option.bind ~f:(fun args' -> List.nth args' j)
         else Some tm
       | Free _ -> Some tm
@@ -72,21 +75,21 @@ let pat_to_free_vars : Pattern.t -> term list
                |> List.map ~f:(fun name -> Free name)
 
 let rec instantiate (env : scope String.Map.t) (tm : term)
-  : (string, term) Result.t
+  : (term, string) Result.t
   = match tm with
   | Operator (tag, subtms) -> subtms
-                              |> List.map ~f:(fun (Scope (binders, body)) ->
-                                let new_var_names = binders
-                                                    |> Array.of_list
-                                                    |> Array.map
-                                                         ~f:(fun pat -> Array.of_list (Pattern.list_vars_of_pattern pat))
-                                                    |> Array.concat
-                                in
-                                instantiate (String.Map.remove_many env new_var_names) body
-                                |> Result.map (fun body' -> Scope (binders, body'))
-                              )
-                              |> Util.sequence_list_result
-                              |> Result.map (fun subtms' -> Operator (tag, subtms'))
+    |> List.map ~f:(fun (Scope (binders, body)) ->
+      let new_var_names : string array = binders
+        |> List.map
+          ~f:(fun pat -> Array.of_list (Pattern.list_vars_of_pattern pat))
+        |> Array.concat
+      in
+      body
+        |> instantiate (Util.String.Map.remove_many env new_var_names)
+        |> Result.map ~f:(fun body' -> Scope (binders, body'))
+    )
+    |> Util.sequence_list_result
+    |> Result.map ~f:(fun subtms' -> Operator (tag, subtms'))
   | Bound _ -> Ok tm
   | Free v -> (match String.Map.find env v with
     | None -> Error ("instantiate: couldn't find var " ^ v)
@@ -101,37 +104,39 @@ let rec instantiate (env : scope String.Map.t) (tm : term)
   | Sequence tms -> tms
                     |> List.map ~f:(instantiate env)
                     |> Util.sequence_list_result
-                    |> Result.map (fun tms' -> Sequence tms')
+                    |> Result.map ~f:(fun tms' -> Sequence tms')
   | Primitive _ -> Ok tm
 
 exception BadTermMerge of term * term
 exception BadScopeMerge of scope * scope
 
 (* TODO: remove? *)
-let safe_union m1 m2 : 'a String.Map.t = String.Map.merge m1 m2 ~f:(fun _ mv1 mv2 ->
-  match mv1, mv2 with
-  | Some v, None
-  | None, Some v
+(*
+let safe_union m1 m2 : 'a String.Map.t = String.Map.merge m1 m2
+  ~f:(fun ~key:_ -> function
+    | `Both (v1, v2)
+    -> if Caml.(v1 = v2) then Some v1 else raise (BadTermMerge (v1, v2))
+    | `Left v | `Right v
     -> Some v
-  | Some v1, Some v2
-    -> if v1 = v2 then Some v1 else raise (BadTermMerge(v1, v2))
-  | _ -> assert false
-)
+  )
+*)
 
 exception CheckError of string
 
 let update_ctx (ctx_state : scope String.Map.t ref) (learned_tys : scope String.Map.t) =
   let do_assignment = fun (k, v) -> match String.Map.find !ctx_state k with
-    | None    -> ctx_state := String.Map.add !ctx_state ~key:k ~data:v
-    | Some v' -> if v <> v' then raise (BadScopeMerge(v, v'))
+    | None    ->
+      let state' = String.Map.remove !ctx_state k in
+      ctx_state := String.Map.add_exn state' ~key:k ~data:v
+    | Some v' -> if Caml.(v <> v') then raise (BadScopeMerge(v, v'))
   in
-  List.iter do_assignment (String.Map.to_list learned_tys)
+  List.iter ~f:do_assignment (String.Map.to_alist learned_tys)
 
 let get_or_raise msg = function
   | Some x -> x
   | None   -> raise (CheckError msg)
 
-let raise_if_not_ok outer_msg : ('err, 'a) Result.t -> 'a
+let raise_if_not_ok outer_msg : ('a, 'err) Result.t -> 'a
   = function
   | Ok x -> x
   | Error msg -> raise (CheckError (outer_msg ^ ":\n" ^ msg))
@@ -141,7 +146,7 @@ let ctx_infer (var_types : term String.Map.t) : term -> term = function
     | None -> raise (CheckError ("ctx_infer: couldn't find variable " ^ v))
     | Some ty -> ty
   )
-  | tm -> raise (CheckError "ctx_infer: called with non-free-variable")
+  | _ -> raise (CheckError "ctx_infer: called with non-free-variable")
 
 type trace_entry =
   | CheckTrace of env * typing
@@ -152,12 +157,12 @@ type trace_entry =
 
 type trace_step = trace_entry list
 
-let rec check' trace_stack emit_trace ({ rules } as env) (Typing (tm, ty) as typing)
+let rec check' trace_stack emit_trace ({ rules; _ } as env) (Typing (tm, ty) as typing)
   = let trace_entry = CheckTrace (env, typing) in
   let trace_stack' = trace_entry :: trace_stack in
   emit_trace trace_stack';
   let match_rule = function
-    | { conclusion = _, InferenceRule _ } -> None
+    | { conclusion = _, InferenceRule _; _ } -> None
     (* XXX conclusion context *)
     | { name; hypotheses; conclusion = _, CheckingRule { tm = rule_tm; ty = rule_ty } } -> (
         let match1 = match_schema_vars rule_tm tm in
@@ -186,12 +191,14 @@ let rec check' trace_stack emit_trace ({ rules } as env) (Typing (tm, ty) as typ
      checking of hypotheses.
   *)
   let ctx_state : scope String.Map.t ref = ref schema_assignments in
+  (*
   let name' = match name with
     | None      -> "infer"
     | Some name -> "infer " ^ name
   in
+  *)
   try
-    List.iter (check_hyp trace_stack' emit_trace name ctx_state env) hypotheses;
+    List.iter ~f:(check_hyp trace_stack' emit_trace name ctx_state env) hypotheses;
     emit_trace (CheckSuccess :: trace_stack');
   with
   | (CheckError msg) as err ->
@@ -234,7 +241,7 @@ and infer' trace_stack emit_trace ({ rules; var_types } as env) tm
         | Some name -> "infer' " ^ name
       in
       List.iter
-        (check_hyp trace_stack' emit_trace name ctx_state env)
+        ~f:(check_hyp trace_stack' emit_trace name ctx_state env)
         hypotheses;
       instantiate !ctx_state rule_ty
       |> raise_if_not_ok name'
@@ -243,7 +250,7 @@ and infer' trace_stack emit_trace ({ rules; var_types } as env) tm
   emit_trace (Inferred ty :: trace_stack');
   ty
 
-and check_hyp = fun trace_stack emit_trace name ctx_state env (pattern_ctx, rule) ->
+and check_hyp = fun trace_stack emit_trace name ctx_state env (_pattern_ctx, rule) ->
   let name' = match name with
     | None      -> "check_hyp"
     | Some name -> "check_hyp " ^ name

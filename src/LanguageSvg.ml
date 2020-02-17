@@ -116,7 +116,7 @@ let eval_element : NonBinding.term -> Node.t
 
 let eval_styled_element : NonBinding.term -> Node.t
   = function
-    | Operator ("styled-element", [style; element]) -> eval_element element
+    | Operator ("styled-element", [_style; element]) -> eval_element element
     | tm -> expected "styled-element" tm
 
 let eval_viewbox : NonBinding.term -> string

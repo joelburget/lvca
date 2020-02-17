@@ -77,8 +77,9 @@ let _ = describe "Lex" (fun () ->
       "[a-zA-Z][a-zA-Z0-9_]*", "ID";
       " +", "SPACE";
     ]
-  in let result = lex lexer3 "if false then false else true" in
-                           (* 01234567890123456789012345678 *)
+  in
+  let result = lex lexer3 "if false then false else true" in
+                        (* 01234567890123456789012345678 *)
 
   test "lex 3" (fun () ->
     expect result |> toEqual (Ok

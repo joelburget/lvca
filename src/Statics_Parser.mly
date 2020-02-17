@@ -78,7 +78,11 @@ context:
   | CTX
   { String.Map.empty }
   | CTX COMMA separated_nonempty_list(COMMA, typed_term)
-  { String.Map.of_alist $3 }
+  { match String.Map.of_alist $3 with
+    | `Ok context -> context
+    | `Duplicate_key str
+    -> failwith (Printf.sprintf "duplicate name in context: %s" str)
+  }
 
 hypothesis: context CTX_SEPARATOR clause = typing_clause { (String.Map.empty, clause) }
 

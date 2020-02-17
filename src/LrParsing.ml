@@ -235,19 +235,42 @@ module Lr0 (G : GRAMMAR) = struct
       )
 
   let terminal_nums : int String.Map.t
-    = String.Map.from_array G.grammar.terminal_nums
+    = G.grammar.terminal_nums
+      |> Array.to_list
+      |> String.Map.of_alist
+      |> (function
+        | `Ok map -> map
+        | `Duplicate_key name -> Util.invariant_violation (Printf.sprintf
+          "terminal_nums: duplicate terminal name: %s" name
+        )
+      )
 
   let nonterminal_names : string Int.Map.t
     = G.grammar.nonterminal_nums
       |> Array.map ~f:Tuple2.swap
-      |> Int.Map.from_array
+      |> Array.to_list
+      |> Int.Map.of_alist
+      |> (function
+        | `Ok map -> map
+        | `Duplicate_key num -> Util.invariant_violation (Printf.sprintf
+          "nonterminal_names: duplicate terminal number: %n" num
+        )
+      )
 
   let nonterminal_nums : nonterminal_num String.Map.t
-    = String.Map.from_array G.grammar.nonterminal_nums
+    = G.grammar.nonterminal_nums
+      |> Array.to_list
+      |> String.Map.of_alist
+      |> (function
+        | `Ok map -> map
+        | `Duplicate_key name -> Util.invariant_violation (Printf.sprintf
+          "nonterminal_nums: duplicate terminal name: %s" name
+        )
+      )
 
   let string_of_nonterminal_num : nonterminal_num -> string
     = fun nt_num -> nonterminal_names
-      |> Int.Map.find nt_num
+      |> Fn.flip Int.Map.find nt_num
       |> get_option' (fun () -> Printf.sprintf
          "string_of_nonterminal_num: failed to get nonterminal %n from \
          nonterminal_names"
@@ -257,7 +280,7 @@ module Lr0 (G : GRAMMAR) = struct
   let rec nonterminal_first_set : Int.Set.t -> MSI.t -> nonterminal_num -> unit
     = fun already_seen_nts result nt ->
       let productions : MSI.t = nonterminal_production_map
-        |> MMI.find nt
+        |> Fn.flip MMI.find nt
         |> get_option' (fun () -> Printf.sprintf
           "nonterminal_first_set->already_seen_nts: Couldn't find nonterminal \
           %s in nonterminal_production_map"
@@ -276,7 +299,7 @@ module Lr0 (G : GRAMMAR) = struct
         in
         MSI.remove productions production_num;
         let production = production_map
-          |> MMI.find production_num
+          |> Fn.flip MMI.find production_num
           |> get_option' (fun () -> Printf.sprintf
             "nonterminal_first_set->already_seen_nts: Couldn't find production \
             %n in production_map"
@@ -307,7 +330,7 @@ module Lr0 (G : GRAMMAR) = struct
 
   let string_of_terminal : terminal_num -> string
     = fun t_num -> terminal_names
-                   |> Int.Map.find t_num
+                   |> Fn.flip Int.Map.find t_num
                    |> get_option' (fun () -> Printf.sprintf
                                      "string_of_symbol: failed to get terminal %n"
                                      t_num
@@ -322,7 +345,7 @@ module Lr0 (G : GRAMMAR) = struct
     = fun item ->
       let { production_num; position } = view_item item in
       let production = production_map
-                       |> MMI.find production_num
+                       |> Fn.flip MMI.find production_num
                        |> get_option' (fun () -> Printf.sprintf
                                          "Lr0 string_of_item: unable to find production %n in production_map"
                                          production_num
@@ -338,7 +361,7 @@ module Lr0 (G : GRAMMAR) = struct
         MQueue.enqueue pieces ".";
 
       let nt_num = production_nonterminal_map
-                   |> MMI.find production_num
+                   |> Fn.flip MMI.find production_num
                    |> get_option' (fun () -> Printf.sprintf
                                      "Lr0 string_of_item: unable to find production %n in production_nonterminal_map"
                                      production_num
@@ -346,7 +369,7 @@ module Lr0 (G : GRAMMAR) = struct
       in
 
       let nt_name = nonterminal_names
-                    |> Int.Map.find nt_num
+                    |> Fn.flip Int.Map.find nt_num
                     |> get_option' (fun () -> Printf.sprintf
                                       "Lr0 string_of_item: unable to find nonterminal %n in nonterminal_names"
                                       production_num
@@ -374,7 +397,7 @@ module Lr0 (G : GRAMMAR) = struct
     = fun production_num ->
 
       let nt_num = production_nonterminal_map
-                   |> MMI.find production_num
+                   |> Fn.flip MMI.find production_num
                    |> get_option' (fun () -> Printf.sprintf
                                      "Lr0 string_of_production: unable to find production %n in production_nonterminal_map"
                                      production_num
@@ -382,7 +405,7 @@ module Lr0 (G : GRAMMAR) = struct
       in
 
       let production = production_map
-                       |> MMI.find production_num
+                       |> Fn.flip MMI.find production_num
                        |> get_option' (fun () -> Printf.sprintf
                                          "Lr0 string_of_production_num: unable to find production %n in production_map"
                                          production_num
@@ -390,7 +413,7 @@ module Lr0 (G : GRAMMAR) = struct
       in
 
       let nt_name = nonterminal_names
-                    |> Int.Map.find nt_num
+                    |> Fn.flip Int.Map.find nt_num
                     |> get_option' (fun () -> Printf.sprintf
                                       "Lr0 string_of_production: unable to find nonterminal %n in nonterminal_names"
                                       production_num
@@ -426,7 +449,7 @@ module Lr0 (G : GRAMMAR) = struct
                   production_nonterminal_map
                     |> MMI.add ~key:production_num ~data:nt_num;
                   let prod_set = nonterminal_production_map
-                                 |> MMI.find nt_num
+                                 |> Fn.flip MMI.find nt_num
                                  |> get_option' (fun () ->
                                       "Lr0 preprocessing -- unable to find nonterminal " ^
                                        string_of_int nt_num)
@@ -437,14 +460,14 @@ module Lr0 (G : GRAMMAR) = struct
 
   let get_nonterminal_num : production_num -> nonterminal_num
     = fun p_num -> production_nonterminal_map
-                   |> MMI.find p_num
+                   |> Fn.flip MMI.find p_num
                    |> get_option' (fun () ->
                      "get_nonterminal_num: couldn't find production " ^
                      string_of_int p_num)
 
   let get_nonterminal : production_num -> nonterminal
     = fun pn -> G.grammar.nonterminals
-      |> Int.Map.find (get_nonterminal_num pn)
+      |> Fn.flip Int.Map.find (get_nonterminal_num pn)
       |> get_option' (fun () ->
                   "get_nonterminal: couldn't find production " ^ string_of_int pn)
 
@@ -466,7 +489,7 @@ module Lr0 (G : GRAMMAR) = struct
         else MSI.add nonkernel_items item;
 
         let production = production_map
-                         |> MMI.find production_num
+                         |> Fn.flip MMI.find production_num
                          |> get_option' (fun () -> Printf.sprintf
                                            "lr0_closure': couldn't find production %n"
                                            production_num
@@ -496,7 +519,7 @@ module Lr0 (G : GRAMMAR) = struct
         if not is_alrady_added then (
           Bitstring.set_exn added nonterminal_num true;
           let production_num_set = nonterminal_production_map
-                                   |> MMI.find nonterminal_num
+                                   |> Fn.flip MMI.find nonterminal_num
                                    |> get_option' (fun () -> Printf.sprintf
                                                      "lr0_closure': unable to find nonterminal %n nonterminal_production_map"
                                                      nonterminal_num
@@ -544,7 +567,7 @@ module Lr0 (G : GRAMMAR) = struct
       Int.Set.for_each (lr0_closure item_set) ~f:(fun item ->
         let { production_num; position } = view_item item in
         let production = production_map
-                         |> MMI.find production_num
+                         |> Fn.flip MMI.find production_num
                          |> get_option' (fun () -> Printf.sprintf
                                            "lr0_goto_kernel: unable to find production %n in production_map"
                                            production_num
@@ -607,7 +630,7 @@ module Lr0 (G : GRAMMAR) = struct
 
   let state_to_item_set : state -> item_set
     = fun state -> lr0_items
-                   |> Int.Map.find state
+                   |> Fn.flip Int.Map.find state
                    |> get_option' (fun () -> Printf.sprintf
                                      "state_to_item_set -- couldn't find state %n (%n item sets)"
                                      state
@@ -660,7 +683,7 @@ module Lr0 (G : GRAMMAR) = struct
                    let rule_2_follow_set = first_after_nt nt_num production in
 
                    let parent_nt = production_nonterminal_map
-                                   |> MMI.find prod_num
+                                   |> Fn.flip MMI.find prod_num
                                    |> get_option' (fun () -> Printf.sprintf
                                                      "Lr0 follow': unable to find nonterminal %n in production_nonterminal_map"
                                                      prod_num
@@ -723,7 +746,7 @@ module Lr0 (G : GRAMMAR) = struct
                        |> List.find_map ~f:(fun item ->
                          let { production_num; position } = view_item item in
                          let symbols = production_map
-                                       |> MMI.find production_num
+                                       |> Fn.flip MMI.find production_num
                                        |> get_option' (fun () -> Printf.sprintf
                                                          "Lr0 shift_action: unable to find production %n in production_map"
                                                          production_num
@@ -745,14 +768,14 @@ module Lr0 (G : GRAMMAR) = struct
                         |> List.find_map ~f:(fun item ->
                           let { production_num; position } = view_item item in
                           let nt_num = production_nonterminal_map
-                                       |> MMI.find production_num
+                                       |> Fn.flip MMI.find production_num
                                        |> get_option' (fun () -> Printf.sprintf
                                                          "Lr0 shift_action: unable to find production %n in production_nonterminal_map"
                                                          production_num
                                                       )
                           in
                           let production = production_map
-                                           |> MMI.find production_num
+                                           |> Fn.flip MMI.find production_num
                                            |> get_option' (fun () -> Printf.sprintf
                                                              "Lr0 shift_action: unable to find production %n in production_map"
                                                              production_num
@@ -814,7 +837,7 @@ module Lr0 (G : GRAMMAR) = struct
   let token_to_terminal
     : Lex.token -> terminal_num
     = fun { name } -> terminal_nums
-                      |> String.Map.find name
+                      |> Fn.flip String.Map.find name
                       |> get_option' (fun () -> Printf.sprintf
                                         "Lr0 token_to_terminal: unable to find name %s in terminal_nums"
                                         name
@@ -823,8 +846,8 @@ module Lr0 (G : GRAMMAR) = struct
   let token_to_symbol
     : Lex.token -> symbol
     = fun { name } ->
-      let t_match = terminal_nums |> String.Map.find name in
-      let nt_match = nonterminal_nums |> String.Map.find name in
+      let t_match = String.Map.find terminal_nums name in
+      let nt_match = String.Map.find nonterminal_nums name in
       match t_match, nt_match with
       | Some t_num, None -> Terminal t_num
       | None, Some nt_num -> Nonterminal nt_num
@@ -838,14 +861,14 @@ module Lr0 (G : GRAMMAR) = struct
     = fun parse_results -> parse_results
                            |> Array.map ~f:(fun { production } -> match production with
                              | First terminal_num -> terminal_names
-                                                    |> Int.Map.find terminal_num
+                                                    |> Fn.flip Int.Map.find terminal_num
                                                     |> get_option' (fun () -> Printf.sprintf
                                                                       "string_of_symbols: failed to get terminal %n"
                                                                       terminal_num
                                                                    )
                              | Second production_num ->
                                let nt_num = production_nonterminal_map
-                                            |> MMI.find production_num
+                                            |> Fn.flip MMI.find production_num
                                             |> get_option' (fun () -> Printf.sprintf
                                                               "Lr0 string_of_symbols: unable to find production %n in production_nonterminal_map"
                                                               production_num
@@ -853,7 +876,7 @@ module Lr0 (G : GRAMMAR) = struct
                                in
 
                                let nt_name = nonterminal_names
-                                             |> Int.Map.find nt_num
+                                             |> Fn.flip Int.Map.find nt_num
                                              |> get_option' (fun () -> Printf.sprintf
                                                                "Lr0 string_of_symbols: unable to find nonterminal %n in nonterminal_names"
                                                                production_num
@@ -922,7 +945,7 @@ module Lr0 (G : GRAMMAR) = struct
             a := pop_front_exn tok.start toks;
           | Reduce production_num ->
             let pop_count = production_map
-                            |> MMI.find production_num
+                            |> Fn.flip MMI.find production_num
                             |> get_option' (fun () -> Printf.sprintf
                                               "Lr0 parse_trace: unable to find production %n in production_map"
                                               production_num
@@ -947,7 +970,7 @@ module Lr0 (G : GRAMMAR) = struct
             done;
 
             let nt_num = production_nonterminal_map
-                         |> MMI.find production_num
+                         |> Fn.flip MMI.find production_num
                          |> get_option' (fun () -> Printf.sprintf
                                            "Lr0 parse_trace: unable to find production %n in production_nonterminal_map"
                                            production_num

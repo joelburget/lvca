@@ -211,3 +211,13 @@ module Array = struct
       Core_kernel.Array.rev_inplace result;
       result
 end
+
+module String = struct
+  module Map = struct
+    type 'a t = 'a String.Map.t
+
+    let remove_many : 'a t -> string array -> 'a t
+      = fun map keys -> Core_kernel.Array.fold keys
+        ~init:map ~f:Core_kernel.String.Map.remove
+  end
+end
