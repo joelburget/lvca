@@ -1,4 +1,7 @@
 open Core_kernel
+open Virtual_dom
+module Node = Vdom.Node
+module Attr = Vdom.Attr
 
 (** Simplified model of SVG *)
 let abstractSyntax = {|
@@ -76,28 +79,28 @@ let eval_point : NonBinding.term -> Bigint.t * Bigint.t
     | Operator ("point", [ x; y ]) -> get_int x, get_int y
     | tm -> expected "point" tm
 
-let eval_element : NonBinding.term -> Vdom.Node.t
+let eval_element : NonBinding.term -> Node.t
   = function
-    | Operator ("rect", [ x; y; width; height; rx; ry ])
-    -> Vdom.create_svg "rect" Attr.(
+    | Operator ("rect", [ x; y; width; height; _rx; _ry ])
+    -> Node.create_svg "rect" Attr.(
         [ create "x" (Bigint.to_string (get_int x));
           create "y" (Bigint.to_string (get_int y));
           create "width" (Bigint.to_string (get_int width));
           create "height" (Bigint.to_string (get_int height));
-          create "rx" (get_option (fun x -> x |> get_int |> Bigint.to_string) rx);
-          create "ry" (get_option (fun x -> x |> get_int |> Bigint.to_string) ry);
+          (* create "rx" (get_option (fun x -> x |> get_int |> Bigint.to_string) rx); *)
+          (* create "ry" (get_option (fun x -> x |> get_int |> Bigint.to_string) ry); *)
         ])
         []
     | Operator ("circle", [ cx; cy; r ])
-    -> Vdom.create_svg "circle" Attr.(
+    -> Node.create_svg "circle" Attr.(
         [ create "cx" (Bigint.to_string (get_int cx));
           create "cy" (Bigint.to_string (get_int cy));
           create "r" (Bigint.to_string (get_int r));
         ])
         []
     | Operator (op, [ Sequence points ])
-    when op = "polyline" || op = "polygon"
-    -> Vdom.create_svg op
+    when Caml.(op = "polyline" || op = "polygon")
+    -> Node.create_svg op
          [ Attr.create "points" (points
             |> Array.of_list
             |> Array.map ~f:eval_point
@@ -111,7 +114,7 @@ let eval_element : NonBinding.term -> Vdom.Node.t
          []
     | tm -> expected "element" tm
 
-let eval_styled_element : NonBinding.term -> Vdom.Node.t
+let eval_styled_element : NonBinding.term -> Node.t
   = function
     | Operator ("styled-element", [style; element]) -> eval_element element
     | tm -> expected "styled-element" tm
@@ -126,19 +129,19 @@ let eval_viewbox : NonBinding.term -> string
       (Bigint.to_string (get_int height))
     | tm -> expected "viewbox" tm
 
-let eval : NonBinding.term -> Vdom.Node.t
+let eval : NonBinding.term -> Node.t
   = function
     | Operator ("document", [viewbox; width; height; Sequence children])
-    -> Vdom.create "svg" Attr.(
+    -> Node.create "svg" Attr.(
       [ (* create "props" (ReactDOMRe.domProps *)
-        create "width" (Bigint.to_string (get_int width))
-        create "height" (Bigint.to_string (get_int height))
-        create "viewBox" (eval_viewbox viewbox)
+        create "width" (Bigint.to_string (get_int width));
+        create "height" (Bigint.to_string (get_int height));
+        create "viewBox" (eval_viewbox viewbox);
       ])
       (children |> List.map ~f:eval_styled_element)
     | tm -> expected "document" tm
 
-let eval_tm : Binding.Nominal.term -> (string, Vdom.Node.t) Result.t
+let eval_tm : Binding.Nominal.term -> (Node.t, string) Result.t
   = fun tm ->
   match NonBinding.from_nominal tm with
   | None -> Error "failed to convert nominal term to nonbinding (svg)"
