@@ -14,11 +14,17 @@ let enscope (binders : Pattern.t list) (Scope (binders', body))
 (** Only used internally to match_schema_vars  *)
 exception NoMatch
 
-let rec match_schema_vars' t1 t2 = match t1, t2 with
-  | Free v, tm -> String.Map.of_alist [ v, Scope ([], tm) ]
+let rec match_schema_vars' : term -> term -> scope String.Map.t
+  = fun t1 t2 -> match t1, t2 with
+  | Free v, tm -> String.Map.of_alist_exn [ v, Scope ([], tm) ]
   | Operator (tag1, args1), Operator (tag2, args2)
-    -> if tag1 = tag2 && List.(length args1 = length args2)
-    then Util.map_unions @@ List.map2 args1 args2 ~f:match_schema_vars_scope
+    -> if String.(tag1 = tag2) && List.(length args1 = length args2)
+    then
+      let matched_scopes = List.map2_exn args1 args2 ~f:match_schema_vars_scope
+      in
+      (match Util.map_unions matched_scopes with
+        | `Ok result -> result
+        | `Duplicate_key str -> failwith ("TODO: error: duplicate key: " ^ str))
     else raise NoMatch
 
 and match_schema_vars_scope (Scope (names1, body1)) (Scope (names2, body2)) =
@@ -71,10 +77,10 @@ let rec instantiate (env : scope String.Map.t) (tm : term)
   | Operator (tag, subtms) -> subtms
                               |> List.map ~f:(fun (Scope (binders, body)) ->
                                 let new_var_names = binders
-                                                    |. Array.of_list
-                                                    |. Array.map
+                                                    |> Array.of_list
+                                                    |> Array.map
                                                          ~f:(fun pat -> Array.of_list (Pattern.list_vars_of_pattern pat))
-                                                    |. Array.concatenate
+                                                    |> Array.concat
                                 in
                                 instantiate (String.Map.remove_many env new_var_names) body
                                 |> Result.map (fun body' -> Scope (binders, body'))

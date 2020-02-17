@@ -2,7 +2,7 @@ open Core_kernel
 open Types
 open Binding
 
-let (all, length, map) = List.(all, length, map)
+let (length, map) = List.(length, map)
 let get_first, map_union, map_unions = Util.(get_first, map_union, map_unions)
 ;;
 
@@ -43,34 +43,34 @@ let rec match_core_pattern
   = fun v pat ->
   match v, pat with
   | Operator (tag1, vals), Operator (tag2, pats) ->
-    if tag1 = tag2 && length vals = length pats
+    if String.(tag1 = tag2) && length vals = length pats
     then
-      let sub_results = List.zip_by vals pats
+      let sub_results = List.map2_exn vals pats
         ~f:(fun core_scope (pat : BindingAwarePattern.scope) ->
         match core_scope, pat with
           | Scope ([], body), Scope ([], pat') -> match_core_pattern body pat' (* XXX *)
           | _ -> None
       )
       in
-      if all sub_results ~f:Option.isSome
+      if List.for_all sub_results ~f:Option.is_some
       then Some (sub_results
-        |> map ~f:(Util.get_option' (fun () -> "we just check all isSome"))
+        |> map ~f:(Util.get_option' (fun () -> "we just check all is_some"))
         |> map_unions)
       else None
     else None
   | Sequence s1, Sequence s2 ->
     if length s1 = length s2
     then
-      let sub_results = List.zip_by s1 s2 ~f:match_core_pattern in
-      if all sub_results ~f:Option.isSome
+      let sub_results = List.map2_exn s1 s2 ~f:match_core_pattern in
+      if List.for_all sub_results ~f:Option.is_some
       then Some (sub_results
-        |> map ~f:(Util.get_option' (fun () -> "we just check all isSome"))
+        |> map ~f:(Util.get_option' (fun () -> "we just check all is_some"))
         |> map_unions)
       else None
     else None
   | Primitive l1, Primitive l2 -> if prim_eq l1 l2 then Some String.Map.empty else None
   | _, Var "_" -> Some String.Map.empty
-  | tm, Var v -> Some (String.Map.of_alist [ v, tm ])
+  | tm, Var v -> Some (String.Map.of_alist_exn [ v, tm ])
   | _ -> None
 ;;
 
@@ -98,17 +98,21 @@ let eval
        | Some result -> result
        | None -> raise @@ EvalError ("Unbound variable " ^ v))
     | CoreApp (Lambda (_tys, Scope (arg_patterns, body)), args) ->
-      if length arg_patterns != length args
+      if length arg_patterns <> length args
       then raise @@ EvalError "mismatched application lengths"
       else
         let arg_vals = map args ~f:(go ctx) in
         let new_args : core String.Map.t =
-          List.zip_by arg_patterns arg_vals
+          List.map2_exn arg_patterns arg_vals
             ~f:(fun (pat : Pattern.t) arg_val -> match pat with
             | Var name -> name, arg_val
             | _ -> raise @@ EvalError "Unsupported pattern in lambda (only vars allowed)"
             )
           |> String.Map.of_alist
+          |> (function
+            | `Duplicate_key str
+            -> raise @@ EvalError ("Duplicate variable name binding: " ^ str)
+            | `Ok result -> result)
         in
         go (map_union ctx new_args) body
     | Case (tm, branches) ->
@@ -119,12 +123,12 @@ let eval
     | Operator ("#add", [ Scope ([], a); Scope ([], b) ]) ->
       (match go ctx a, go ctx b with
        | Primitive (PrimInteger a'), Primitive (PrimInteger b') ->
-         Primitive (PrimInteger (Bigint.add a' b'))
+         Primitive (PrimInteger (Bigint.(a' + b')))
        | _ -> raise @@ EvalError "TODO")
     | Operator ("#sub", [ Scope ([], a); Scope ([], b) ]) ->
       (match go ctx a, go ctx b with
        | Primitive (PrimInteger a'), Primitive (PrimInteger b') ->
-         Primitive (PrimInteger (Bigint.sub a' b'))
+         Primitive (PrimInteger (Bigint.(a' - b')))
        | _ -> raise @@ EvalError "TODO")
     | Operator _ | Sequence _ | Primitive _ -> tm
     (* TODO: include the term in error *)

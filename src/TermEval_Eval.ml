@@ -57,8 +57,7 @@ let rec check : ty list -> ty -> DeBruijn.term -> bool =
   fun env ty tm ->
   match tm with
   | Var (ix, 0) ->
-    let ty' = env
-      |> List.nth ix
+    let ty' = List.nth env ix
       |> Util.get_option
            (InvariantViolation
               (Printf.sprintf
@@ -87,8 +86,7 @@ and infer : ty list -> DeBruijn.term -> ty option =
   match tm with
   | Var (ix, 0) ->
     Some
-      (env
-       |> List.nth ix
+      (List.nth env ix
        |> Util.get_option
             (InvariantViolation
                (Printf.sprintf
@@ -130,8 +128,7 @@ let is_true = function
 let rec eval' : DeBruijn.term list -> DeBruijn.term -> DeBruijn.term =
   fun env tm ->
   match tm with
-  | Var (ix, 0) -> env
-    |> List.nth ix
+  | Var (ix, 0) -> List.nth env ix
     |> Util.get_option
          (InvariantViolation
             (Printf.sprintf

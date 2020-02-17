@@ -56,9 +56,9 @@ type rule =
 type typing = Typing of term * term
 
 let rec of_de_bruijn : Binding.DeBruijn.term -> term = function
-  | Operator (tag, scopes) -> Operator (tag, scopes |. List.map ~f:scope_of_de_bruijn)
+  | Operator (tag, scopes) -> Operator (tag, List.map scopes ~f:scope_of_de_bruijn)
   | Var (i, j) -> Bound (i, j)
-  | Sequence tms -> Sequence (tms |. List.map ~f:of_de_bruijn)
+  | Sequence tms -> Sequence (List.map tms ~f:of_de_bruijn)
   | Primitive p -> Primitive p
 
 and scope_of_de_bruijn : Binding.DeBruijn.scope -> scope =

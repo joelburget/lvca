@@ -9,3 +9,15 @@ license: "TODO"
 build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
+depends: [
+  "ocaml" {>= "4.08.0"}
+  "core_kernel"
+  "ppx_jane"
+  "ppx_inline_test"
+  "virtual_dom"
+  "sha"
+  "cbor"
+  "bonsai"
+  "bignum"
+  "dune"             {>= "2.0.0"}
+]

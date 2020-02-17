@@ -52,12 +52,12 @@ let rec eval' : Bigint.t list -> Binding.DeBruijn.term -> Bigint.t option =
      | _ -> None)
   | Operator (op, [ Scope ([], a); Scope ([], b) ]) ->
     (match eval' env a, eval' env b with
-     | Some a', Some b' -> (match op with
-       | "add" -> Some (Bigint.add a' b')
-       | "sub" -> Some (Bigint.sub a' b')
-       | "mul" -> Some (Bigint.mul a' b')
-       | "max" -> Some (Bigint.max a' b')
-       | "min" -> Some (Bigint.min a' b')
+     | Some a', Some b' -> Bigint.(match op with
+       | "add" -> Some (a' + b')
+       | "sub" -> Some (a' - b')
+       | "mul" -> Some (a' * b')
+       | "max" -> Some (max a' b')
+       | "min" -> Some (min a' b')
        | _ -> None
      )
      | _, _ -> None)

@@ -11,12 +11,12 @@ module rec DeBruijn : sig
     | Primitive of primitive
 
   val to_nominal : term -> Nominal.term option
-  val from_nominal : Nominal.term -> (string, term) Result.t
+  val from_nominal : Nominal.term -> (term, string) Result.t
 
   val from_nominal_with_bindings
     :  (int * int) String.Map.t
     -> Nominal.term
-    -> (string, term) Result.t
+    -> (term, string) Result.t
 end = struct
   type scope = Scope of Pattern.t list * term
 
@@ -63,18 +63,22 @@ end = struct
 
   and scope_from_nominal' env (Nominal.Scope (pats, body)) =
     let n = List.length pats in
-    let varNums : (string * (int * int)) list = pats
+    let var_nums : (string * (int * int)) list = pats
       |> List.mapi ~f:(fun i pat ->
           let vars = Pattern.list_vars_of_pattern pat in
-          List.map2 vars (List.init (List.length vars) ~f:(fun j -> i, j))
-          ~f:(fun x y -> x, y))
-      |> List.bind
+          let twod_indexes = List.init (List.length vars) ~f:(fun j -> i, j) in
+          List.zip_exn vars twod_indexes
+         )
+      |> List.join
     in
-    let env' : (int * int) String.Map.t = Util.map_union
-      (String.Map.map env ~f:(fun (i, j) -> i + n, j))
-      (String.Map.of_alist varNums)
-    in
-    Scope (pats, from_nominal_with_bindings' env' body)
+    match String.Map.of_alist var_nums with
+      | `Ok var_map ->
+        let env' : (int * int) String.Map.t = Util.map_union
+          (String.Map.map env ~f:(fun (i, j) -> i + n, j))
+          var_map
+        in
+        Scope (pats, from_nominal_with_bindings' env' body)
+      | `Duplicate_key _key -> failwith "TODO: raise error"
   ;;
 
   let from_nominal_with_bindings bindings tm =

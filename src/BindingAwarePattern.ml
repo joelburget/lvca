@@ -60,7 +60,7 @@ and scope_to_string : scope -> string
   = fun (Scope (bound_vars, pat)) -> match bound_vars with
     | [] -> to_string pat
     | _ -> Printf.sprintf "%s. %s"
-      (stringify_list Util.id ". " bound_vars)
+      (stringify_list Fn.id ". " bound_vars)
       (to_string pat)
 ;;
 

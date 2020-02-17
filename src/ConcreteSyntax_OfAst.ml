@@ -3,9 +3,7 @@ module Nominal = Binding.Nominal
 open Types
 open ConcreteSyntaxDescription
 open! ConcreteSyntax_Private
-let find, get_option' = Util.(find, get_option')
-module List = Base.List
-module String = Core_kernel.String
+open Core_kernel
 
 (** The current term and sort don't match *)
 exception BadSortTerm of sort * Nominal.term
@@ -38,9 +36,9 @@ let rec term_to_tree
 
     Printf.printf "term_to_tree %s\n" (Nominal.pp_term' tm);
 
-    let { terminal_rules } = rules in
+    let { terminal_rules; _ } = rules in
 
-    let NonterminalRule { operator_rules } =
+    let NonterminalRule { operator_rules; _ } =
       current_nonterminal nonterminal_pointer
     in
 
@@ -52,6 +50,7 @@ let rec term_to_tree
 
     let tree_info = nonterminal_pointer.current_nonterminal, form_no in
 
+    (*
     let breakpoints : (int * int) list = operator_match_tokens
       |> List.mapi ~f:(fun ix tok -> match tok with
         | Underscore n -> Some (ix, n)
@@ -59,6 +58,7 @@ let rec term_to_tree
       )
       |> Util.keep_some
     in
+    *)
 
     (* Map each token to a subtree. For each token:
        - if it's a space or terminal, print it
@@ -66,8 +66,8 @@ let rec term_to_tree
     *)
     operator_match_tokens
       |> index_tokens
-      |. List.reverse (* TODO: O(n^2) reverse *)
-      |. List.map ~f:(fun (token_ix, token) ->
+      |> List.rev (* TODO: O(n^2) reverse *)
+      |> List.map ~f:(fun (token_ix, token) ->
 
       Printf.printf "token: %s\n" (string_of_token token);
 
@@ -78,9 +78,10 @@ let rec term_to_tree
     | None, TerminalName name -> Printf.printf "case 1\n";
       let terminal_rule = terminal_rules
         |> Array.to_list
-        |> String.Map.of_alist
-        |> String.Map.find name
-        |> get_option' (fun () -> "term_to_tree: failed to get terminal rule " ^ name)
+        |> String.Map.of_alist_exn
+        |> Fn.flip String.Map.find name
+        |> Util.get_option' (fun () ->
+            "term_to_tree: failed to get terminal rule " ^ name)
       in
       (match Regex.is_literal terminal_rule with
       | Some re_str -> TerminalDoc (DocText re_str)
@@ -133,7 +134,7 @@ let rec tree_fits : int -> int -> mode -> doc -> fit_info
       let len = String.length str in
       if start_col + len < max_width then Fits (start_col + len) else DoesntFit
     | TerminalDoc (DocNest (n, doc)) -> tree_fits max_width n mode (TerminalDoc doc)
-    | TerminalDoc (DocBreak size) when mode = Flat
+    | TerminalDoc (DocBreak size) when Caml.(mode = Flat)
     -> if size < max_width then Fits size else DoesntFit
     | TerminalDoc (DocBreak _)
     -> failwith "impossible"
@@ -176,7 +177,7 @@ let rec tree_format
   -> indentation + String.length str, Terminal str
   | TerminalDoc (DocNest (len, doc))
   -> tree_format max_width (indentation + len) mode (TerminalDoc doc)
-  | TerminalDoc (DocBreak len) when mode = Flat
+  | TerminalDoc (DocBreak len) when Caml.(mode = Flat)
   -> indentation + len, Space (SSpace len)
   | TerminalDoc (DocBreak _) (* when mode = Break *)
   -> indentation, Space (SLine indentation)
@@ -223,7 +224,7 @@ let walk_leading_trivia : pre_formatted_nonterminal -> string array
     let accumulating = ref false in
     let result = Core_kernel.Queue.create () in
 
-    let rec go_nt = fun { children } -> Base.Array.forEach children ~f:go_pft
+    let rec go_nt = fun { children; _ } -> Base.Array.iter children ~f:go_pft
 
     and go_pft = (function
       (* Stop accumulating when we hit a token, clear accumulator *)
@@ -239,7 +240,7 @@ let walk_leading_trivia : pre_formatted_nonterminal -> string array
       | Space (SLine n) ->
         accumulating := true;
         accum := !accum ^ "\n" ^ Caml.String.make n ' '
-      | Group children' -> Base.Array.forEach children' ~f:go_pft
+      | Group children' -> Base.Array.iter children' ~f:go_pft
       | Nonterminal nt -> go_nt nt
     )
     in
@@ -254,15 +255,13 @@ let walk_leading_trivia : pre_formatted_nonterminal -> string array
 let walk_trailing_trivia : pre_formatted_nonterminal -> string array
   = fun tree ->
 
-    let reverse, forEach = Base.Array.(reverse, forEach) in
+    let reverse_iter = Util.Array.reverse_iter in
 
     let accum = ref "" in
     let result = Core_kernel.Queue.create () in
 
     (* Traverse all children in reverse *)
-    let rec go_nt = fun { children } -> children
-      |> reverse
-      |> forEach ~f:go_pft
+    let rec go_nt = fun { children; _ } -> reverse_iter children ~f:go_pft
 
     and go_pft = function
       | Terminal _ ->
@@ -271,7 +270,7 @@ let walk_trailing_trivia : pre_formatted_nonterminal -> string array
       | Space (SSpace n) -> accum := !accum ^ Caml.String.make n ' '
       (* Every time we hit a newline, clear the accumulator. *)
       | Space (SLine _) -> accum := ""
-      | Group children' -> children' |> reverse |> forEach ~f:go_pft
+      | Group children' -> reverse_iter children' ~f:go_pft
       | Nonterminal nt -> go_nt nt
     in
 
@@ -284,7 +283,8 @@ let walk_trailing_trivia : pre_formatted_nonterminal -> string array
 let normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
   = fun tree ->
 
-    let reverse, forEach = Base.Array.(reverse, forEach) in
+    let reverse = Util.Array.reverse in
+    let iter = Base.Array.iter in
 
     let forward_trivia = tree |> walk_leading_trivia in
     let reverse_trivia = tree |> walk_trailing_trivia |> reverse in
@@ -297,7 +297,7 @@ let normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
       : pre_formatted_nonterminal -> formatted_tree
       = fun { children; tree_info } ->
       let formatted_tree_children = Core_kernel.Queue.create () in
-      forEach children ~f:(go_pft formatted_tree_children);
+      iter children ~f:(go_pft formatted_tree_children);
       { children = Core_kernel.Queue.to_array formatted_tree_children
       ; tree_info
       }
@@ -316,19 +316,18 @@ let normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
         Core_kernel.Queue.enqueue formatted_tree_children
           (NonterminalCapture (go_nt pfnt))
       | Group group_children
-      -> forEach group_children ~f:(go_pft formatted_tree_children)
+      -> iter group_children ~f:(go_pft formatted_tree_children)
 
     in go_nt tree
 
 (* raises: [UserError], [InvariantViolation], [BadRules] *)
 let of_ast
-   : Types.sort_defs
-  -> ConcreteSyntaxDescription.t
+  :  ConcreteSyntaxDescription.t
   -> string
   -> int
   -> Binding.Nominal.term
   -> formatted_tree
-  = fun (SortDefs sorts) desc start_nonterminal width tm ->
+  = fun desc start_nonterminal width tm ->
     let nonterminal_pointer =
       { nonterminals = desc.nonterminal_rules
       ; current_nonterminal = start_nonterminal

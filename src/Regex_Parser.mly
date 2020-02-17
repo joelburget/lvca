@@ -55,7 +55,7 @@ prec2_re:
   | prec2_re PLUS { RePlus $1 }
   | prec2_re QUESTION { ReOption $1 }
   | prec3_re { $1 }
-  | DOT { ReAny }
+  | DOT { Regex.ReAny }
 
 prec3_re: LEFT_PAREN prec0_re RIGHT_PAREN { $2 }
 

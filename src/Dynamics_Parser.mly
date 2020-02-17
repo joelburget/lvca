@@ -68,6 +68,7 @@ and ast_to_core_scope : Binding.Nominal.scope -> core_scope
 %type <Binding.Nominal.scope> ast_like_scope
 %type <string * Core.core> definition
 %type <Core.denotation_chart> dynamics
+%type <Types.sort * Pattern.t> typed_arg
 %%
 
 (* raises BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
@@ -84,7 +85,7 @@ atomic_core:
   ast_like_core { $1 }
   | BACKSLASH nonempty_list(typed_arg) ARROW core
   {
-    let sorts, args = List.unzip $2 in
+    let sorts, args = Core_kernel.List.unzip $2 in
     Lambda (sorts, Scope (args, $4))
   }
   | MATCH core WITH LEFT_BRACE option(BAR) separated_nonempty_list(BAR, case_line) RIGHT_BRACE

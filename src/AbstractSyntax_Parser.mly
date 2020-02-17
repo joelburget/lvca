@@ -72,6 +72,7 @@ import:
 
 language_def:
   | list(import) nonempty_list(sort_def) EOF
-  { let sort_defs = Types.SortDefs (Core_kernel.String.Map.of_alist $2) in
-    { imports = $1; sort_defs }
+  { match Core_kernel.String.Map.of_alist $2 with
+    | `Ok sort_def_map -> { imports = $1; sort_defs = Types.SortDefs sort_def_map }
+    | `Duplicate_key _key -> failwith "TODO: raise error"
   }

@@ -16,12 +16,6 @@ let rec unsnoc lst =
     x :: front, last
 ;;
 
-let rec intersperse list el =
-  match list with
-  | [] | [ _ ] -> list
-  | x :: y :: tl -> x :: el :: intersperse (y :: tl) el
-;;
-
 let rec intersperse_after list el =
   match list with
   | [] -> []
@@ -151,39 +145,13 @@ let rec fold_left
   | a :: as_ -> fold_left f (f b a) as_
 ;;
 
-let map_error
-  : ('err_a, 'a) Result.t -> f:('err_a -> 'err_b) -> ('err_b, 'a) Result.t
-  = fun result ~f -> match result with
-    | Ok x -> Ok x
-    | Error err -> Error (f err)
-;;
-
 let rec sum = function
   | [] -> 0
   | x :: xs -> x + sum xs
 ;;
 
-(* TODO: remove (getBy) *)
-let rec find (f : 'a -> bool) (lst : 'a list) : 'a option =
-  match lst with
-  | [] -> None
-  | x :: xs -> if f x then Some x else find f xs
-;;
-
-let id a = a
-
 let list_flat_map : ('a -> 'b list) -> 'a list -> 'b list =
   fun f lst -> List.(map ~f lst |> join)
-;;
-
-let is_none = function
-  | None -> true
-  | Some _ -> false
-;;
-
-let is_some = function
-  | None -> false
-  | Some _ -> true
 ;;
 
 let first_by (lst : 'a list) (f : 'a -> 'b option) : 'b option =
@@ -224,3 +192,22 @@ let get_result : ('b, 'a) Result.t -> ('b -> 'a) -> 'a
   = fun result f -> match result with
     | Ok a -> a
     | Error b -> f b
+
+module Array = struct
+  type 'a t = 'a array
+
+  let reverse_iteri : 'a t -> f:(int -> 'a -> unit) -> unit
+    = fun arr ~f ->
+      for i = (Array.length arr) - 1 downto 0 do
+        f i arr.(i)
+      done
+
+  let reverse_iter : 'a t -> f:('a -> unit) -> unit
+    = fun arr ~f -> reverse_iteri arr ~f:(fun _ a -> f a)
+
+  let reverse : 'a t -> 'a t
+    = fun arr ->
+      let result = Core_kernel.Array.copy arr in
+      Core_kernel.Array.rev_inplace result;
+      result
+end

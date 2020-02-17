@@ -18,7 +18,7 @@ exception ScopeEncountered
 (* raises ScopeEncountered *)
 let rec from_de_bruijn' = function
   | DeBruijn.Operator (tag, scopes) ->
-    Operator (tag, scopes |. List.map ~f:from_de_bruijn_scope)
+    Operator (tag, List.map scopes ~f:from_de_bruijn_scope)
   | Var _ -> raise ScopeEncountered
   | Sequence tms -> Sequence (tms |> List.map ~f:from_de_bruijn')
   | Primitive p -> Primitive p

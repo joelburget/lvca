@@ -64,6 +64,7 @@ let get_option : (NonBinding.term -> 'a) -> NonBinding.term -> 'a option
   = fun f -> function
     | Operator ("nothing", []) -> None
     | Operator ("just", [tm]) -> Some (f tm)
+    | tm -> expected "option" tm
 
 let get_int : NonBinding.term -> Bigint.t
   = function
@@ -73,36 +74,31 @@ let get_int : NonBinding.term -> Bigint.t
 let eval_point : NonBinding.term -> Bigint.t * Bigint.t
   = function
     | Operator ("point", [ x; y ]) -> get_int x, get_int y
+    | tm -> expected "point" tm
 
-let eval_element : NonBinding.term -> React.element
+let eval_element : NonBinding.term -> Vdom.Node.t
   = function
     | Operator ("rect", [ x; y; width; height; rx; ry ])
-    -> ReactDOMRe.createDOMElementVariadic
-        "rect"
-        ~props:(ReactDOMRe.domProps
-          ~x:(Bigint.to_string (get_int x))
-          ~y:(Bigint.to_string (get_int y))
-          ~width:(Bigint.to_string (get_int width))
-          ~height:(Bigint.to_string (get_int height))
-          ?rx:(get_option (fun x -> x |> get_int |> Bigint.to_string) rx)
-          ?ry:(get_option (fun x -> x |> get_int |> Bigint.to_string) ry)
-          ())
-        [||]
+    -> Vdom.create_svg "rect" Attr.(
+        [ create "x" (Bigint.to_string (get_int x));
+          create "y" (Bigint.to_string (get_int y));
+          create "width" (Bigint.to_string (get_int width));
+          create "height" (Bigint.to_string (get_int height));
+          create "rx" (get_option (fun x -> x |> get_int |> Bigint.to_string) rx);
+          create "ry" (get_option (fun x -> x |> get_int |> Bigint.to_string) ry);
+        ])
+        []
     | Operator ("circle", [ cx; cy; r ])
-    -> ReactDOMRe.createDOMElementVariadic
-        "circle"
-        ~props:(ReactDOMRe.domProps
-          ~cx:(Bigint.to_string (get_int cx))
-          ~cy:(Bigint.to_string (get_int cy))
-          ~r:(Bigint.to_string (get_int r))
-          ())
-        [||]
+    -> Vdom.create_svg "circle" Attr.(
+        [ create "cx" (Bigint.to_string (get_int cx));
+          create "cy" (Bigint.to_string (get_int cy));
+          create "r" (Bigint.to_string (get_int r));
+        ])
+        []
     | Operator (op, [ Sequence points ])
     when op = "polyline" || op = "polygon"
-    -> ReactDOMRe.createDOMElementVariadic
-        op
-        ~props:(ReactDOMRe.domProps
-          ~points:(points
+    -> Vdom.create_svg op
+         [ Attr.create "points" (points
             |> Array.of_list
             |> Array.map ~f:eval_point
             |> Array.map ~f:(fun (x, y) -> Printf.sprintf "%s,%s"
@@ -111,11 +107,11 @@ let eval_element : NonBinding.term -> React.element
             )
             |> String.concat_array ~sep:" "
           )
-          ())
-        [||]
+         ]
+         []
     | tm -> expected "element" tm
 
-let eval_styled_element : NonBinding.term -> React.element
+let eval_styled_element : NonBinding.term -> Vdom.Node.t
   = function
     | Operator ("styled-element", [style; element]) -> eval_element element
     | tm -> expected "styled-element" tm
@@ -130,20 +126,19 @@ let eval_viewbox : NonBinding.term -> string
       (Bigint.to_string (get_int height))
     | tm -> expected "viewbox" tm
 
-let eval : NonBinding.term -> React.element
+let eval : NonBinding.term -> Vdom.Node.t
   = function
     | Operator ("document", [viewbox; width; height; Sequence children])
-    -> ReactDOMRe.createDOMElementVariadic
-      "svg"
-      ~props:(ReactDOMRe.domProps
-      ~width:(Bigint.to_string (get_int width))
-      ~height:(Bigint.to_string (get_int height))
-      ~viewBox:(eval_viewbox viewbox)
-      ())
-      (children |> Array.of_list |. Array.map ~f:eval_styled_element)
+    -> Vdom.create "svg" Attr.(
+      [ (* create "props" (ReactDOMRe.domProps *)
+        create "width" (Bigint.to_string (get_int width))
+        create "height" (Bigint.to_string (get_int height))
+        create "viewBox" (eval_viewbox viewbox)
+      ])
+      (children |> List.map ~f:eval_styled_element)
     | tm -> expected "document" tm
 
-let eval_tm : Binding.Nominal.term -> (string, React.element) Result.t
+let eval_tm : Binding.Nominal.term -> (string, Vdom.Node.t) Result.t
   = fun tm ->
   match NonBinding.from_nominal tm with
   | None -> Error "failed to convert nominal term to nonbinding (svg)"

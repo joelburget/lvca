@@ -36,7 +36,7 @@ let accumulate_tokens
       { captured_tokens = seen_toks; repeated_tokens = repeated_toks }
       { captured_tokens = seen_toks'; repeated_tokens = repeated_toks' }
   =
-  let isect = Placemat.Int.Set.intersect seen_toks seen_toks' in
+  let isect = Int.Set.inter seen_toks seen_toks' in
   { captured_tokens = Int.Set.diff (Int.Set.union seen_toks seen_toks') isect
   ; repeated_tokens = Int.Set.union isect (Int.Set.union repeated_toks repeated_toks')
   }
@@ -85,7 +85,7 @@ let check_operator_match_validity
   in
   let { captured_tokens; repeated_tokens } = token_usage term_pat in
   let non_existent_tokens = MSI.make () in
-  Placemat.Int.Set.for_each captured_tokens ~f:(fun tok_num ->
+  Int.Set.iter captured_tokens ~f:(fun tok_num ->
     if MMI.has numbered_toks tok_num
     then MMI.remove numbered_toks tok_num
     else MSI.add non_existent_tokens tok_num);
@@ -143,7 +143,7 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
         );
 
       operator_rules
-        |> List.bind
+        |> List.join
         |> List.for_each
         ~f:(fun _i (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
            let non_existent_tokens, duplicate_captures, uncaptured_tokens =
@@ -153,7 +153,7 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
            if not (Int.Set.is_empty duplicate_captures)
            then (
              let tok_names = duplicate_captures
-               |> Placemat.Int.Set.to_array
+               |> Int.Set.to_array
                |> show_toks
              in
              raise_invalid
@@ -165,7 +165,7 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
              raise_invalid ("non-existent tokens mentioned: " ^ tok_names));
 
            let tokens' = tokens
-             |. List.filter ~f:(fun tok -> not (is_formatting_token tok))
+             |> List.filter ~f:(fun tok -> not (is_formatting_token tok))
            in
            (match tokens' with
              | [ NonterminalName _; TerminalName _; NonterminalName _ ] -> ()
@@ -183,7 +183,7 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
                 | None ->
                   raise_invalid ("Named terminal " ^ nt_name ^ " does not exist")
                 | Some regex ->
-                  if Util.is_none (Regex.is_literal regex)
+                  if is_none (Regex.is_literal regex)
                   then raise_invalid
                     ("Uncaptured regex which is not a string literal: " ^
                     Regex.to_string regex)
@@ -248,7 +248,7 @@ let get_operator_match
     |> String.Map.find nt_name
     |> get_option (ToAstError "TODO: message")
     |> fun (NonterminalRule { operator_rules }) -> operator_rules
-    |> List.bind (* TODO: should we use 2d indexing? *)
+    |> List.join (* TODO: should we use 2d indexing? *)
     |> List.nth nt_prod_no
     |> get_option' (fun () -> "TODO: message")
   in operator_match_pattern
@@ -423,7 +423,7 @@ let convert_token
       nt_name
       (nonterminal_entry
         |> String.Map.keys
-        |> Util.stringify_list Util.id ", ")
+        |> Util.stringify_list Fn.id ", ")
     )
   )
   | OpenBox _ | CloseBox | Underscore _
@@ -502,8 +502,8 @@ let string_of_nonterminal_operators : nonterminal_operators -> string
     |> String.Map.to_array
     |> Array.map ~f:(fun (name, matches) ->
       let rhs = matches
-        |. Array.of_list
-        |. Array.map ~f:(fun (ix_opt, op_match) ->
+        |> Array.of_list
+        |> Array.map ~f:(fun (ix_opt, op_match) ->
             let ix_str = match ix_opt with
               | None -> "_"
               | Some ix -> string_of_int ix
@@ -550,7 +550,7 @@ let desugar_nonterminal
 
         (* Our renaming is not hygienic, so we need to prevent name collisions.
          * Also, this would be just confusing to the user. *)
-        (if String.Set.mem taken_names ~data:generated_name
+        (if String.Set.mem taken_names generated_name
         then raise (UserError (Printf.sprintf "Desugaring of nonterminal %s \
           generated name %s, which conflicts with an existing nonterminal."
           nonterminal_name generated_name
@@ -604,7 +604,7 @@ let derived_nonterminal_rules : nonterminal_rules -> nonterminal_operators array
   let nonterminal_rules_desugared, _nonterminal_renamings = nonterminal_rules
     |> String.Map.to_array
     |> Array.map ~f:(fun (_, rule) -> desugar_nonterminal taken_names rule)
-    |> Placemat.Array.unzip
+    |> Array.unzip
   in nonterminal_rules_desugared
 
 let string_of_derived_rules : nonterminal_operators array -> string
@@ -643,7 +643,7 @@ let to_grammar
   let nonterminal_rules_desugared, nonterminal_renamings = nonterminal_rules
     |> String.Map.to_array
     |> Array.map ~f:(fun (_, rule) -> desugar_nonterminal taken_names rule)
-    |> Placemat.Array.unzip
+    |> Array.unzip
   in
 
   let desugared_nts : nonterminal_operators
@@ -707,8 +707,8 @@ let to_grammar
             );
           incr prod_num;
           rule.tokens
-            |. List.filter ~f:(fun tok -> not (is_formatting_token tok))
-            |. List.map ~f:(convert_token terminal_num_map nonterminal_num_map)
+            |> List.filter ~f:(fun tok -> not (is_formatting_token tok))
+            |> List.map ~f:(convert_token terminal_num_map nonterminal_num_map)
           )
       in
 
@@ -716,7 +716,7 @@ let to_grammar
       incr nt_num;
       result
     )
-    |> Placemat.Int.Map.from_array
+    |> Int.Map.from_array_exn
     |> Int.Map.add
       ~key:0
       ~data:{ LrParsing.productions = [ [ Nonterminal !start_nonterminal_num ] ] }
@@ -779,7 +779,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
       in
 
       let tree_info, tokens, _ = production_rule_map
-        |. Core_kernel.Int.Table.get prod_num
+        |> Int.Table.find prod_num
         |> get_option' (fun () -> Printf.sprintf
           "tree_of_parse_result: couldn't find nonterminal %n in \
           production_rule_map"
@@ -848,8 +848,8 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
 let lexer_of_desc : ConcreteSyntaxDescription.t -> Placemat.Lex.lexer =
   fun { terminal_rules } ->
   let lex_items = terminal_rules
-    |. Array.map ~f:(fun (tok_name, re) -> Regex.to_string re, tok_name)
-    |. Array.to_list
+    |> Array.map ~f:(fun (tok_name, re) -> Regex.to_string re, tok_name)
+    |> Array.to_list
   in
   ({|[ \n\r\t]+|}, "SPACE") :: lex_items
 ;;
@@ -903,14 +903,14 @@ let make_concrete_description
   let module Parse_regex = Parsing.Incremental (Parsing.Parseable_regex) in
   { terminal_rules =
       terminal_rules
-      |. List.map ~f:(fun (PreTerminalRule (name, str_or_re_str)) ->
+      |> List.map ~f:(fun (PreTerminalRule (name, str_or_re_str)) ->
         match str_or_re_str with
         | First re_str ->
           (match Parse_regex.parse re_str with
            | Ok re -> name, re
            | Error msg -> failwith ("failed to parse regex: " ^ msg))
         | Second str -> name, Regex.ReString str)
-      |. Array.of_list
+      |> Array.of_list
   ; nonterminal_rules =
       nonterminal_rules
       |> List.map ~f:(fun (NonterminalRule { nonterminal_name } as rule) ->

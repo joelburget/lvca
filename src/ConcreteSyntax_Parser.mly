@@ -35,7 +35,7 @@ let concretize_vars : String.Set.t -> Types.sort -> Types.sort
       | SortAp (name, args)
       -> SortAp (name, Array.map args ~f:go)
       | SortVar name
-      -> if String.Set.mem var_set ~data:name
+      -> if String.Set.mem var_set name
          then SortVar name
          else SortAp (name, [||])
     in go
@@ -208,6 +208,6 @@ nonterminal_token:
   | TERMINAL_ID     { TerminalName    $1 }
   | NONTERMINAL_ID  { NonterminalName $1 }
   (* remove? *)
-  | UNDERSCORE NAT? { Underscore (Option.with_default $2 ~default:1) }
+  | UNDERSCORE NAT? { Underscore (Option.value $2 ~default:1) }
 
 nonterminal_token__test: nonterminal_token EOF { $1 }
