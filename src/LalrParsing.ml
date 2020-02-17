@@ -277,7 +277,9 @@ module Lalr1 (G : GRAMMAR) = struct
         in
 
         let is_added = MMI.has nonkernel_items nonterminal_num &&
-                       nonkernel_items |> MMI.get_exn nonterminal_num |. MSI.has lookahead
+                       nonkernel_items
+          |> MMI.get_exn nonterminal_num
+          |> MSI.has lookahead
         in
 
         if not is_added then (
@@ -291,7 +293,7 @@ module Lalr1 (G : GRAMMAR) = struct
           in
 
 
-          List.for_each productions ~f:(function
+          List.iter productions ~f:(function
             | Terminal _         :: _ -> ()
             | Nonterminal new_nt :: rest ->
               let first_set' = first_set (match rest with
@@ -413,7 +415,7 @@ module Lalr1 (G : GRAMMAR) = struct
           generate_lookaheads kernel item
         in
 
-        Array.for_each spontaneous_generation
+        Array.iter spontaneous_generation
           ~f:(fun (state, { item; lookahead_set }) ->
              mutable_lalr1_items
              |> Int.Map.find state
@@ -472,7 +474,7 @@ module Lalr1 (G : GRAMMAR) = struct
           in
 
           (* See if we can propagate any lookaheads (and do it) *)
-          Array.for_each propagation ~f:(fun (target_state, target_item) ->
+          Array.iter propagation ~f:(fun (target_state, target_item) ->
             let target_lookahead : MSI.t = mutable_lalr1_items
                                            |> Int.Map.find target_state
                                            |> get_option' (fun () -> Printf.sprintf

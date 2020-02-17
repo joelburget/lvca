@@ -1,7 +1,7 @@
 open Core_kernel
 module MMI = Core_kernel.Int.Table
 module MSet = Hash_set
-module MSI = Int.Hash_set
+module MSI = Util.MutableSet.Int
 module MStack = Core_kernel.Stack
 module MQueue = Core_kernel.Queue
 let get_option, get_option', invariant_violation =
@@ -286,18 +286,18 @@ module Lr0 (G : GRAMMAR) = struct
           %s in nonterminal_production_map"
           (string_of_nonterminal_num nt)
         )
-        |> MSI.copy
+        |> Hash_set.copy
       in
 
-      while not (MSI.is_empty productions) do
+      while not (Hash_set.is_empty productions) do
         let production_num = productions
-          |. MSI.minimum
+          |> Hash_set.min_elt ~compare:Int.compare
           |> get_option' (fun () ->
             "nonterminal_first_set->already_seen_nts: minimum of productions \
             must exist"
           )
         in
-        MSI.remove productions production_num;
+        Hash_set.remove productions production_num;
         let production = production_map
           |> Fn.flip MMI.find production_num
           |> get_option' (fun () -> Printf.sprintf
@@ -313,20 +313,20 @@ module Lr0 (G : GRAMMAR) = struct
     = fun already_seen_nts result -> function
       | [] -> failwith
                 "invariant violation: first_set must be called with a non-empty list"
-      | Terminal num :: _ -> MSI.add result num
+      | Terminal num :: _ -> Hash_set.add result num
       (* TODO: update when we allow empty productions *)
       | Nonterminal num :: _
-        -> if not (Int.Set.has already_seen_nts ~data:num)
-        then nonterminal_first_set (Int.Set.add already_seen_nts ~data:num) result num
+        -> if not (Int.Set.mem already_seen_nts num)
+        then nonterminal_first_set (Int.Set.add already_seen_nts num) result num
 
   let first_set : production -> Int.Set.t
     = function
       | [] -> Int.Set.empty
       | prod ->
-        let result = MSI.make () in
+        let result = Hash_set.create (module Int) in
         let already_seen_nts = Int.Set.empty in
         first_set' already_seen_nts result prod;
-        result |> MSI.to_list |> Int.Set.of_list
+        result |> Hash_set.to_list |> Int.Set.of_list
 
   let string_of_terminal : terminal_num -> string
     = fun t_num -> terminal_names
@@ -437,26 +437,26 @@ module Lr0 (G : GRAMMAR) = struct
       | Error (Some ShiftReduce) -> "error (shift/reduce conflict)"
 
   let production_cnt = ref 0
-  let () = Int.Map.for_each G.grammar.nonterminals
-             ~f:(fun nt_num { productions } ->
-                nonterminal_production_map
-                  |> MMI.add ~key:nt_num ~data:(MSI.make ());
-                List.for_each productions ~f:(fun production ->
-                  let production_num = !production_cnt in
-                  incr production_cnt;
-                  production_map
-                    |> MMI.add ~key:production_num ~data:production;
-                  production_nonterminal_map
-                    |> MMI.add ~key:production_num ~data:nt_num;
-                  let prod_set = nonterminal_production_map
-                                 |> Fn.flip MMI.find nt_num
-                                 |> get_option' (fun () ->
-                                      "Lr0 preprocessing -- unable to find nonterminal " ^
-                                       string_of_int nt_num)
-                  in
-                  prod_set |. MSI.add production_num
-                )
-             )
+  let () = Int.Map.iteri G.grammar.nonterminals
+    ~f:(fun ~key:nt_num ~data:{ productions } ->
+       nonterminal_production_map
+         |> MMI.set ~key:nt_num ~data:(Hash_set.create (module Int));
+       List.iter productions ~f:(fun production ->
+         let production_num = !production_cnt in
+         incr production_cnt;
+         production_map
+           |> MMI.set ~key:production_num ~data:production;
+         production_nonterminal_map
+           |> MMI.set ~key:production_num ~data:nt_num;
+         let prod_set = nonterminal_production_map
+                        |> Fn.flip MMI.find nt_num
+                        |> get_option' (fun () ->
+                             "Lr0 preprocessing -- unable to find nonterminal " ^
+                              string_of_int nt_num)
+         in
+         Hash_set.add prod_set production_num
+       )
+    )
 
   let get_nonterminal_num : production_num -> nonterminal_num
     = fun p_num -> production_nonterminal_map
@@ -475,18 +475,18 @@ module Lr0 (G : GRAMMAR) = struct
   let lr0_closure' : item_set -> configuration_set
     = fun initial_items ->
       let added = Bitstring.alloc number_of_nonterminals false in
-      let kernel_items = MSI.make () in
-      let nonkernel_items = MSI.make () in
-      let nt_set = MSI.make () in
+      let kernel_items = Hash_set.create (module Int) in
+      let nonkernel_items = Hash_set.create (module Int) in
+      let nt_set = Hash_set.create (module Int) in
 
       (* Create the set (nt_set) of nonterminals to look at. Add each initial
        * item to the kernel or nonkernel set. *)
-      Int.Set.for_each initial_items ~f:(fun item ->
+      Int.Set.iter initial_items ~f:(fun item ->
         let { production_num; position } = view_item item in
 
         if production_num = 0 || position > 0
-        then MSI.add kernel_items item
-        else MSI.add nonkernel_items item;
+        then Hash_set.add kernel_items item
+        else Hash_set.add nonkernel_items item;
 
         let production = production_map
                          |> Fn.flip MMI.find production_num
@@ -497,19 +497,20 @@ module Lr0 (G : GRAMMAR) = struct
         in
         (* first symbol right of the dot. if it's a nonterminal, look at it *)
         match List.nth production position with
-        | Some (Nonterminal nt) -> MSI.add nt_set nt
+        | Some (Nonterminal nt) -> Hash_set.add nt_set nt
         | _                     -> ()
       );
 
       (* Examine each accessible nonterminal, adding its initial items as
        * nonkernel items. *)
-      while not (MSI.is_empty nt_set) do
-        let nonterminal_num =
-          get_option' (fun () -> "the set is not empty!") @@ MSI.minimum nt_set
+      while not (Hash_set.is_empty nt_set) do
+        let nonterminal_num = nt_set
+          |> Hash_set.min_elt ~compare:Int.compare
+          |> get_option' (fun () -> "the set is not empty!")
         in
-        MSI.remove nt_set nonterminal_num;
+        Hash_set.remove nt_set nonterminal_num;
         let is_alrady_added = added
-                              |. Bitstring.get nonterminal_num
+                              |> Fn.flip Bitstring.get nonterminal_num
                               |> get_option' (fun () -> Printf.sprintf
                                                 "lr0_closure': couldn't find nonterminal %n in added (nonterminal count %n)"
                                                 nonterminal_num
@@ -525,8 +526,8 @@ module Lr0 (G : GRAMMAR) = struct
                                                      nonterminal_num
                                                   )
           in
-          MSI.for_each production_num_set (fun production_num ->
-            MSI.add nonkernel_items (mk_item' production_num 0)
+          Hash_set.iter production_num_set ~f:(fun production_num ->
+            Hash_set.add nonkernel_items (mk_item' production_num 0)
           );
           let { productions } = Int.Map.find G.grammar.nonterminals nonterminal_num
                                 |> get_option' (fun () -> Printf.sprintf
@@ -534,17 +535,17 @@ module Lr0 (G : GRAMMAR) = struct
                                                   nonterminal_num
                                                )
           in
-          List.for_each productions ~f:(fun production ->
+          List.iter productions ~f:(fun production ->
             match production with
             | Terminal _         :: _ -> ()
-            | Nonterminal new_nt :: _ -> MSI.add nt_set new_nt
+            | Nonterminal new_nt :: _ -> Hash_set.add nt_set new_nt
             | _                       -> failwith "Empty production"
           )
         )
       done;
 
-      { kernel_items = kernel_items |> MSI.to_list |> Int.Set.of_list;
-        nonkernel_items = nonkernel_items |> MSI.to_list |> Int.Set.of_list;
+      { kernel_items = kernel_items |> Hash_set.to_list |> Int.Set.of_list;
+        nonkernel_items = nonkernel_items |> Hash_set.to_list |> Int.Set.of_list;
       }
 
   (* closure returning an item set (rather than a configuration set) *)
@@ -563,8 +564,8 @@ module Lr0 (G : GRAMMAR) = struct
   *)
   let lr0_goto_kernel : item_set -> symbol -> item_set
     = fun item_set symbol ->
-      let result = MSI.make () in
-      Int.Set.for_each (lr0_closure item_set) ~f:(fun item ->
+      let result = Hash_set.create (module Int) in
+      Int.Set.iter (lr0_closure item_set) ~f:(fun item ->
         let { production_num; position } = view_item item in
         let production = production_map
                          |> Fn.flip MMI.find production_num
@@ -575,11 +576,11 @@ module Lr0 (G : GRAMMAR) = struct
         in
         match List.nth production position with
         | Some next_symbol ->
-          if symbol = next_symbol then
-            MSI.add result (mk_item' production_num (position + 1))
+          if Caml.(symbol = next_symbol) then
+            Hash_set.add result (mk_item' production_num (position + 1))
         | _ -> ()
       );
-      result |> MSI.to_list |> Int.Set.of_list
+      result |> Hash_set.to_list |> Int.Set.of_list
 
   (* A list of all grammar symbols (terminals and nonterminals) *)
   let grammar_symbols = List.append
@@ -593,7 +594,7 @@ module Lr0 (G : GRAMMAR) = struct
     in
     (* canonical collection of sets *)
     let c =
-      MSet.from_array [| augmented_start |] ~id:(module ComparableIntSet)
+      MSet.of_list (module ComparableIntSet) [ augmented_start ]
     in
     (* set of item sets we've added to c but not yet explored *)
     let active_set = ref @@ MSet.copy c in
@@ -602,16 +603,16 @@ module Lr0 (G : GRAMMAR) = struct
      * kernel of each item set, and add any new sets. `continue` is set to
      * `true` if we find a new item set, indicating we need to loop again. *)
     while not (MSet.is_empty !active_set) do
-      let new_active_set = MSet.from_array [||] ~id:(module ComparableIntSet)
+      let new_active_set = MSet.of_list (module ComparableIntSet) []
       in
       (* for each set of items in the active set: *)
-      MSet.for_each !active_set ~f:(fun items ->
+      MSet.iter !active_set ~f:(fun items ->
         (* for each grammar symbol: *)
-        List.for_each grammar_symbols ~f:(fun symbol ->
+        List.iter grammar_symbols ~f:(fun symbol ->
           let goto_result = lr0_goto_kernel items symbol in
           (* if GOTO(items, symbol) is not empty and not in c: *)
           if not (Int.Set.isEmpty goto_result) &&
-             not (MSet.has c ~data:goto_result)
+             not (MSet.mem c goto_result)
           then (
             MSet.add c ~data:goto_result;
             MSet.add new_active_set ~data:goto_result;
@@ -624,9 +625,9 @@ module Lr0 (G : GRAMMAR) = struct
 
   let lr0_items : item_set Int.Map.t
     = mutable_lr0_items
-      |> MSet.to_array
-      |> Array.mapi ~f:(fun i item_set -> i, item_set)
-      |> Int.Map.from_array
+      |> MSet.to_list
+      |> List.mapi ~f:(fun i item_set -> i, item_set)
+      |> Int.Map.of_list
 
   let state_to_item_set : state -> item_set
     = fun state -> lr0_items
@@ -697,7 +698,7 @@ module Lr0 (G : GRAMMAR) = struct
                    *)
                    let rule_3_follow_set = match Util.unsnoc production with
                      | _, Nonterminal nt_num'
-                       when nt_num' = nt_num && not (Int.Set.has nts_visited ~data:nt_num)
+                       when nt_num' = nt_num && not (Int.Set.mem nts_visited nt_num)
                        -> follow' (Int.Set.add nts_visited ~data:nt_num) parent_nt
                      | _ -> Int.Set.empty
                    in
@@ -782,7 +783,7 @@ module Lr0 (G : GRAMMAR) = struct
                                                           )
                           in
                           if position = List.length production &&
-                             follow_set nt_num |> Int.Set.has ~data:terminal_num &&
+                             follow_set nt_num |> Int.Set.mem terminal_num &&
                              (* Accept in this case (end marker on the augmented nonterminal) --
                                 don't reduce. *)
                              nt_num <> 0
@@ -793,7 +794,7 @@ module Lr0 (G : GRAMMAR) = struct
 
     (* If [S' -> S .] is in I_i, set ACTION[i, $] to `accept` *)
     let accept_action =
-      if terminal_num = end_marker && item_set |> Int.Set.has ~data:(mk_item' 0 1)
+      if terminal_num = end_marker && item_set |> Int.Set.mem (mk_item' 0 1)
       then Some Accept
       else None
     in
@@ -1056,9 +1057,9 @@ module Lr0 (G : GRAMMAR) = struct
       | Ok tokens ->
         let len = String.length input in
         let tokens' = tokens
-                      |> Array.filter
-                        ~f:(fun (token : Lex.token) -> token.name <> "SPACE")
-                      |> MQueue.from_array
+          |> Array.filter
+            ~f:(fun (token : Lex.token) -> token.name <> "SPACE")
+          |> MQueue.of_array
         in
         (* TODO: name might not always be "$" *)
         MQueue.enqueue tokens' { name = "$"; start = len; finish = len };

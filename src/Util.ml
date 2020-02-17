@@ -221,3 +221,9 @@ module String = struct
         ~init:map ~f:Core_kernel.String.Map.remove
   end
 end
+
+module MutableSet = struct
+  module Int = struct
+    type t = int Core_kernel.Hash_set.t
+  end
+end
