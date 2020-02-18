@@ -4,7 +4,7 @@ type capture_number = int
 type terminal_id = string
 type pre_terminal_rule = PreTerminalRule of terminal_id * (string, string) Either.t
 type terminal_rule = TerminalRule of terminal_id * Regex.t
-type terminal_rules = (string * Regex.t) array
+type terminal_rules = (string * Regex.t) list
 
 type box_type =
   | HBox
@@ -133,11 +133,11 @@ type pre_t = pre_terminal_rule list * nonterminal_rule list
 
 let string_of_terminal_rules : terminal_rules -> string
   = fun terminal_rules -> terminal_rules
-    |> Array.map ~f:(fun (name, regex) -> Printf.sprintf "%s := %s"
+    |> List.map ~f:(fun (name, regex) -> Printf.sprintf "%s := %s"
       name
       (Regex.to_string regex)
     )
-    |> String.concat_array ~sep:"\n"
+    |> String.concat ~sep:"\n"
 
 let string_of_nonterminal_type : nonterminal_type -> string
   = fun (NonterminalType (args, result)) -> args

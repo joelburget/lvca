@@ -26,16 +26,15 @@
 %token FORALL
 
 %{ open ConcreteSyntaxDescription
-open Core_kernel
 
-let concretize_vars : String.Set.t -> Types.sort -> Types.sort
+let concretize_vars : Core_kernel.String.Set.t -> Types.sort -> Types.sort
   = fun var_set ->
     let open Types in
     let rec go = function
       | SortAp (name, args)
-      -> SortAp (name, Array.map args ~f:go)
+      -> SortAp (name, Core_kernel.Array.map args ~f:go)
       | SortVar name
-      -> if String.Set.mem var_set name
+      -> if Core_kernel.String.Set.mem var_set name
          then SortVar name
          else SortAp (name, [||])
     in go
@@ -83,7 +82,7 @@ nonterminal_rule__test: nonterminal_rule EOF { $1 }
 
 quantifiers:
   FORALL nonempty_list(NONTERMINAL_ID) DOT
-  { String.Set.of_list $2 }
+  { Core_kernel.String.Set.of_list $2 }
 
 quantifiers__test: quantifiers EOF { $1 }
 
@@ -91,7 +90,7 @@ quantifiers__test: quantifiers EOF { $1 }
 sort:
   /* TODO: this is ugly -- should be called SORT_ID or ID */
   | NONTERMINAL_ID nonempty_list(atomic_sort)
-  { Types.SortAp ($1, Array.of_list $2) }
+  { Types.SortAp ($1, Core_kernel.Array.of_list $2) }
   | atomic_sort
   { $1 }
 
@@ -107,11 +106,11 @@ nonterminal_type__test: nonterminal_type EOF { $1 }
 nonterminal_type:
   | quantifiers? separated_nonempty_list(ARROW, sort)
   { let var_set = match $1 with
-      | None -> String.Set.empty
+      | None -> Core_kernel.String.Set.empty
       | Some var_set -> var_set
     in
     let arg_sorts, result_sort = $2
-      |> List.map ~f:(concretize_vars var_set)
+      |> Core_kernel.List.map ~f:(concretize_vars var_set)
       |> Util.unsnoc
     in
     NonterminalType (arg_sorts, result_sort)
@@ -173,7 +172,7 @@ term_scope_pattern:
   { let capture_nums, body = Util.unsnoc $1 in
 
     let capture_nums' = capture_nums
-      |> List.map ~f:(function
+      |> Core_kernel.List.map ~f:(function
         | SingleCapturePattern n -> PatternCapture n
         | OperatorPattern
           ("var", [NumberedScopePattern ([], SingleCapturePattern n)])
@@ -208,6 +207,6 @@ nonterminal_token:
   | TERMINAL_ID     { TerminalName    $1 }
   | NONTERMINAL_ID  { NonterminalName $1 }
   (* remove? *)
-  | UNDERSCORE NAT? { Underscore (Option.value $2 ~default:1) }
+  | UNDERSCORE NAT? { Underscore (Core_kernel.Option.value $2 ~default:1) }
 
 nonterminal_token__test: nonterminal_token EOF { $1 }

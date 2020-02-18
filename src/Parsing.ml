@@ -21,12 +21,12 @@ end
 module type INCREMENTAL = sig
   type t
 
-  val parse : string -> (string, t) Result.t
+  val parse : string -> (t, string) Result.t
 end
 
 module Incremental (M : Parseable) = struct
   type t = M.t
-  type parse_result = (string, M.t) Result.t
+  type parse_result = (M.t, string) Result.t
 
   module I = M.MenhirInterpreter
 
@@ -53,8 +53,10 @@ module Incremental (M : Parseable) = struct
 
   let loop (lexbuf : Lexing.lexbuf) (result : M.t I.checkpoint) =
     let supplier = I.lexer_lexbuf_to_supplier M.Lexer.read lexbuf in
-    try I.loop_handle (fun v -> Ok v) (fail lexbuf) supplier result with
-    | LexerUtil.SyntaxError msg -> Error msg
+    try
+      I.loop_handle (fun v -> Ok v) (fail lexbuf) supplier result
+    with
+      LexerUtil.SyntaxError msg -> Error msg
   ;;
 
   let parse (str : string) : parse_result =

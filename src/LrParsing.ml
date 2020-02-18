@@ -287,18 +287,18 @@ module Lr0 (G : GRAMMAR) = struct
           %s in nonterminal_production_map"
           (string_of_nonterminal_num nt)
         )
-        |> Hash_set.copy
+        |> MutableSet.copy
       in
 
-      while not (Hash_set.is_empty productions) do
+      while not (MutableSet.is_empty productions) do
         let production_num = productions
-          |> Hash_set.min_elt ~compare:Int.compare
+          |> MutableSet.min_elt
           |> get_option' (fun () ->
             "nonterminal_first_set->already_seen_nts: minimum of productions \
             must exist"
           )
         in
-        Hash_set.remove productions production_num;
+        MutableSet.remove productions production_num;
         let production = production_map
           |> Fn.flip MMI.find production_num
           |> get_option' (fun () -> Printf.sprintf
@@ -314,7 +314,7 @@ module Lr0 (G : GRAMMAR) = struct
     = fun already_seen_nts result -> function
       | [] -> failwith
                 "invariant violation: first_set must be called with a non-empty list"
-      | Terminal num :: _ -> Hash_set.add result num
+      | Terminal num :: _ -> MutableSet.add result num
       (* TODO: update when we allow empty productions *)
       | Nonterminal num :: _
         -> if not (Int.Set.mem already_seen_nts num)
@@ -324,10 +324,10 @@ module Lr0 (G : GRAMMAR) = struct
     = function
       | [] -> Int.Set.empty
       | prod ->
-        let result = Hash_set.create (module Int) in
+        let result = MutableSet.create (module Int) in
         let already_seen_nts = Int.Set.empty in
         first_set' already_seen_nts result prod;
-        result |> Hash_set.to_list |> Int.Set.of_list
+        MutableSet.snapshot result
 
   let string_of_terminal : terminal_num -> string
     = fun t_num -> terminal_names
@@ -441,7 +441,7 @@ module Lr0 (G : GRAMMAR) = struct
   let () = Int.Map.iteri G.grammar.nonterminals
     ~f:(fun ~key:nt_num ~data:{ productions } ->
        nonterminal_production_map
-         |> MMI.set ~key:nt_num ~data:(Hash_set.create (module Int));
+         |> MMI.set ~key:nt_num ~data:(MutableSet.create (module Int));
        List.iter productions ~f:(fun production ->
          let production_num = !production_cnt in
          incr production_cnt;
@@ -455,7 +455,7 @@ module Lr0 (G : GRAMMAR) = struct
                              "Lr0 preprocessing -- unable to find nonterminal " ^
                               string_of_int nt_num)
          in
-         Hash_set.add prod_set production_num
+         MutableSet.add prod_set production_num
        )
     )
 
@@ -478,7 +478,7 @@ module Lr0 (G : GRAMMAR) = struct
       let added = Bitstring.alloc number_of_nonterminals false in
       let kernel_items = Hash_set.create (module Int) in
       let nonkernel_items = Hash_set.create (module Int) in
-      let nt_set = Hash_set.create (module Int) in
+      let nt_set = MutableSet.create (module Int) in
 
       (* Create the set (nt_set) of nonterminals to look at. Add each initial
        * item to the kernel or nonkernel set. *)
@@ -498,18 +498,18 @@ module Lr0 (G : GRAMMAR) = struct
         in
         (* first symbol right of the dot. if it's a nonterminal, look at it *)
         match List.nth production position with
-        | Some (Nonterminal nt) -> Hash_set.add nt_set nt
+        | Some (Nonterminal nt) -> MutableSet.add nt_set nt
         | _                     -> ()
       );
 
       (* Examine each accessible nonterminal, adding its initial items as
        * nonkernel items. *)
-      while not (Hash_set.is_empty nt_set) do
+      while not (MutableSet.is_empty nt_set) do
         let nonterminal_num = nt_set
-          |> Hash_set.min_elt ~compare:Int.compare
+          |> MutableSet.min_elt
           |> get_option' (fun () -> "the set is not empty!")
         in
-        Hash_set.remove nt_set nonterminal_num;
+        MutableSet.remove nt_set nonterminal_num;
         let is_alrady_added = added
                               |> Fn.flip Bitstring.get nonterminal_num
                               |> get_option' (fun () -> Printf.sprintf
@@ -527,7 +527,7 @@ module Lr0 (G : GRAMMAR) = struct
                                                      nonterminal_num
                                                   )
           in
-          Hash_set.iter production_num_set ~f:(fun production_num ->
+          MutableSet.iter production_num_set ~f:(fun production_num ->
             Hash_set.add nonkernel_items (mk_item' production_num 0)
           );
           let { productions } = Int.Map.find G.grammar.nonterminals nonterminal_num
@@ -539,7 +539,7 @@ module Lr0 (G : GRAMMAR) = struct
           List.iter productions ~f:(fun production ->
             match production with
             | Terminal _         :: _ -> ()
-            | Nonterminal new_nt :: _ -> Hash_set.add nt_set new_nt
+            | Nonterminal new_nt :: _ -> MutableSet.add nt_set new_nt
             | _                       -> failwith "Empty production"
           )
         )

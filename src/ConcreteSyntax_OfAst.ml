@@ -36,8 +36,6 @@ let rec term_to_tree
 
     Printf.printf "term_to_tree %s\n" (Nominal.pp_term' tm);
 
-    let { terminal_rules; _ } = rules in
-
     let NonterminalRule { operator_rules; _ } =
       current_nonterminal nonterminal_pointer
     in
@@ -76,8 +74,7 @@ let rec term_to_tree
     (* if the current token is a terminal, and we didn't capture a binder
      * or term, we just emit the contents of the token *)
     | None, TerminalName name -> Printf.printf "case 1\n";
-      let terminal_rule = terminal_rules
-        |> Array.to_list
+      let terminal_rule = rules.terminal_rules
         |> String.Map.of_alist_exn
         |> Fn.flip String.Map.find name
         |> Util.get_option' (fun () ->

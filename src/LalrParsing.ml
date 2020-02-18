@@ -59,7 +59,8 @@ type lookahead_propagation =
 *)
 type mutable_lookahead_item_sets = LookaheadItemSet.t Hash_set.t
 
-(* Set of items with mutable lookahead *)
+(* Set of items with mutable lookahead (map from item number to it mutable
+ * lookahead set) *)
 type mutable_lookahead_item_set = Int.Hash_set.t Int.Map.t
 
 (* Same as the corresponding lr0 types *)
@@ -422,21 +423,22 @@ module Lalr1 (G : GRAMMAR) = struct
         mutable_lookahead_item_set_to_item_set mutable_lookahead_item_set
       in
 
-      Int.Map.iteri mutable_lookahead_item_set ~f:(fun ~key:item ~data:_ ->
+      Map.mapi mutable_lookahead_item_set ~f:(fun ~key:item ~data:_ ->
         let { spontaneous_generation; propagation } =
           generate_lookaheads kernel item
         in
 
         Array.iter spontaneous_generation
           ~f:(fun (state, { item; lookahead_set }) ->
-             mutable_lalr1_items
+            let mutable_generation = mutable_lalr1_items
              |> Fn.flip Int.Map.find state
              |> get_option' (fun () ->
                "lookahead_propagation: state not present in mutable_lalr1_items")
              |> Fn.flip Int.Map.find item
              |> get_option' (fun () ->
                "lookahead_propagation: item not present in mutable_lalr1_items")
-             |> Int.Hash_set.merge_many (Int.Set.to_array lookahead_set);
+            in
+            Int.Set.iter lookahead_set ~f:(Hash_set.add mutable_generation);
           );
 
         propagation
@@ -451,7 +453,7 @@ module Lalr1 (G : GRAMMAR) = struct
            |> Fn.flip Int.Map.find (mk_item' 0 0)
            |> get_option' (fun () ->
              "Lalr1: augmented item not present in mutable_lalr1_items")
-           |> Int.Hash_set.add 0
+           |> Fn.flip Hash_set.add 0
 
   (* Fill in LALR(1) item lookaheads. CPTT Algorithm 4.63 step 4
    *
@@ -465,10 +467,10 @@ module Lalr1 (G : GRAMMAR) = struct
     while !made_update do
       made_update := false;
 
-      Int.Map.iter mutable_lalr1_items
-        ~f:(fun source_state mutable_lookahead_item_set ->
-        Int.Map.iter mutable_lookahead_item_set
-          ~f:(fun source_item source_lookahead ->
+      Int.Map.iteri mutable_lalr1_items
+        ~f:(fun ~key:source_state ~data:mutable_lookahead_item_set ->
+        Int.Map.iteri mutable_lookahead_item_set
+          ~f:(fun ~key:source_item ~data:source_lookahead ->
 
           (* lookaheads that propagate from the item we're currently looking at
           *)
@@ -487,23 +489,23 @@ module Lalr1 (G : GRAMMAR) = struct
 
           (* See if we can propagate any lookaheads (and do it) *)
           Array.iter propagation ~f:(fun (target_state, target_item) ->
-            let target_lookahead : MSI.t = mutable_lalr1_items
-                                           |> Fn.flip Int.Map.find target_state
-                                           |> get_option' (fun () -> Printf.sprintf
-                                                             "step 4 mutable_lalr1_items: couldn't find state %n" target_state
-                                                          )
-                                           |> Fn.flip Int.Map.find target_item
-                                           |> get_option' (fun () -> Printf.sprintf
-                                                             "step 4 mutable_lalr1_items: couldn't find item %s in state %n"
-                                                             (string_of_item target_item)
-                                                             target_state
-                                                          )
+            let target_lookahead : Int.Hash_set.t = mutable_lalr1_items
+              |> Fn.flip Int.Map.find target_state
+              |> get_option' (fun () -> Printf.sprintf
+                "step 4 mutable_lalr1_items: couldn't find state %n" target_state
+              )
+              |> Fn.flip Int.Map.find target_item
+              |> get_option' (fun () -> Printf.sprintf
+                "step 4 mutable_lalr1_items: couldn't find item %s in state %n"
+                (string_of_item target_item)
+                target_state
+              )
             in
 
-            if not (MSI.subset source_lookahead target_lookahead)
+            if not (Util.Hash_set.is_subset source_lookahead ~of_:target_lookahead)
             then (
               made_update := true;
-              MSI.merge_many target_lookahead (MSI.to_array source_lookahead);
+              Hash_set.iter source_lookahead ~f:(Hash_set.add target_lookahead)
             )
           );
         );
@@ -512,13 +514,14 @@ module Lalr1 (G : GRAMMAR) = struct
 
   let lalr1_items : LookaheadItemSet.t Int.Map.t
     = mutable_lalr1_items
-      |> Int.Map.map ~f:(fun mutable_lookahead_item_set -> mutable_lookahead_item_set
-        |> Int.Map.to_array
+      |> Map.map ~f:(fun mutable_lookahead_item_set -> mutable_lookahead_item_set
+        |> Map.to_alist
+        |> Array.of_list
         |> Array.map ~f:(fun (item, mutable_lookahead) ->
-          { item; lookahead_set = mutable_lookahead
-            |> Int.Hash_set.to_array
+          ({ item; lookahead_set = mutable_lookahead
+            |> Hash_set.to_array
             |> Int.Set.of_array
-          }
+          } : LookaheadItem.t)
         )
         |> lookahead_item_set_from_array
       )
@@ -571,7 +574,7 @@ module Lalr1 (G : GRAMMAR) = struct
 
       (* If [A -> xs ., a] is in I_i, set ACTION[i, a] to `Reduce A -> xs` *)
       let reduce_action = List.find_map item_set_l ~f:(fun l_item ->
-        let { item; lookahead_set } = l_item in
+        let ({ item; lookahead_set } : LookaheadItem.t) = l_item in
         let { production_num; position } = view_item item in
         let nt_num = production_nonterminal_map
                      |> Fn.flip MMI.find production_num
@@ -634,27 +637,28 @@ module Lalr1 (G : GRAMMAR) = struct
   let parse_trace
     : do_trace (* trace or not *)
       -> Lex.token MQueue.t
-      -> (parse_error, parse_result) Result.t * trace_line array
+      -> (parse_result, parse_error) Result.t * trace_line array
 
     = parse_trace_tables lalr1_action_table lalr1_goto_table
 
-  let parse : Lex.token MQueue.t -> (parse_error, parse_result) Result.t
+  let parse : Lex.token MQueue.t -> (parse_result, parse_error) Result.t
     = fun toks ->
       let result, _ = parse_trace DoTrace toks in
       result
 
   let lex_and_parse : Lex.lexer -> string
-    -> ((Lex.lex_error, parse_error) Either.t, parse_result) Result.t
+    -> (parse_result, (Lex.lex_error, parse_error) Either.t) Result.t
     = fun lexer input -> match Lex.lex lexer input with
       | Error error -> Error (First error)
       | Ok tokens ->
         let len = String.length input in
         let tokens' = tokens
-          |> Array.filter ~f:(fun (token: Lex.token) -> token.name <> "SPACE")
+          |> Array.filter ~f:(fun (token: Lex.token) ->
+              String.(token.name <> "SPACE"))
           |> MQueue.of_array
         in
         (* TODO: name might not always be "$" *)
         MQueue.enqueue tokens' { name = "$"; start = len; finish = len };
-        parse tokens' |> Reshlt.map_error ~f:(fun err -> Either.Second err)
+        parse tokens' |> Result.map_error ~f:(fun err -> Either.Second err)
 
 end

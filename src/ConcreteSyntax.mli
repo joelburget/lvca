@@ -10,7 +10,6 @@
  * make_concrete_description
  *)
 open Binding
-open Types
 module Lexer = ConcreteSyntax_Lexer
 module Parser = ConcreteSyntax_Parser
 module ParseErrors = ConcreteSyntax_ParseErrors
@@ -115,4 +114,4 @@ val derived_nonterminal_rules
   : ConcreteSyntaxDescription.nonterminal_rules -> nonterminal_operators array
 
 val string_of_nonterminal_operators : nonterminal_operators -> string
-val string_of_derived_rules : nonterminal_operators array -> string
+val string_of_derived_rules : nonterminal_operators list -> string

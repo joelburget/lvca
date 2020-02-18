@@ -14,8 +14,8 @@ type sort_name = string
  *   sort level. In other words, the head of an application is always concrete.
  *)
 type sort =
-  (** A higher-kinded sort can be applied *)
   | SortAp of sort_name * sort array
+  (** A higher-kinded sort can be applied *)
   | SortVar of string
 
 (** A valence represents the sort of an argument (to an operator), as well as

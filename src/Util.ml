@@ -137,6 +137,9 @@ let map_unions maps = fold_right map_union maps String.Map.empty
 let array_map_unions : 'a String.Map.t array -> 'a String.Map.t
   = fun maps -> Array.fold_right ~init:String.Map.empty ~f:map_union maps
 
+let list_map_unions : 'a String.Map.t list -> 'a String.Map.t
+  = fun maps -> List.fold_right ~init:String.Map.empty ~f:map_union maps
+
 let rec fold_left
   : ('b -> 'a -> 'b) -> 'b -> 'a list -> 'b
   = fun f b lst ->
@@ -223,61 +226,79 @@ module String = struct
 end
 
 module MutableSet = struct
-  module Int = struct
-    type t = int Hash_set.t
+  module Impl = struct
+    type ('elt, 'cmp) t = ('elt, 'cmp) Set.t ref
 
-    let of_list = Hash_set.of_list (module Int)
+    type ('k, 'cmp) comparator = (module Comparator.S with type comparator_witness = 'cmp and type t = 'k)
 
-    let to_list = Hash_set.to_list
+    let of_list : ('a, 'cmp) comparator -> 'a list -> ('a, 'cmp) t
+      = fun comparator lst -> ref (Set.of_list comparator lst)
 
-    let to_array = Hash_set.to_array
+    let create : ('a, 'cmp) comparator -> ('a, 'cmp) t
+      = fun comparator -> of_list comparator []
 
-    let add = Hash_set.add
+    let of_array : ('a, 'cmp) comparator -> 'a array -> ('a, 'cmp) t
+      = fun comparator lst -> ref (Set.of_array comparator lst)
 
-    let merge_many : t -> int list -> unit
-      = fun t ints ->
-        List.iter ints ~f:(fun i -> add t i)
+    let to_list : ('a, _) t -> 'a list
+      = fun t -> Set.to_list !t
 
-    let mem = Hash_set.mem
+    let to_array : ('a, _) t -> 'a array
+      = fun t -> Set.to_array !t
+
+    let copy : ('a, 'cmp) t -> ('a, 'cmp) t
+      = fun t -> ref !t
+
+    let is_empty : ('a, _) t -> bool
+      = fun t -> Set.is_empty !t
+
+    let iter : ('a, _) t -> f:('a -> unit) -> unit
+      = fun t ~f -> Set.iter !t ~f
+
+    let mem : ('a, _) t -> 'a -> bool
+      = fun t a -> Set.mem !t a
+
+    let add : ('a, 'cmp) t -> 'a -> unit
+      = fun t a -> t := Set.add !t a
+
+    let remove : ('a, 'cmp) t -> 'a -> unit
+      = fun t a -> t := Set.remove !t a
+
+    let union : ('a, 'cmp) t -> ('a, 'cmp) t -> ('a, 'cmp) t
+      = fun a b -> ref (Set.union !a !b)
+
+    let is_subset : ('a, 'cmp) t -> of_:('a, 'cmp) t -> bool
+      = fun t1 ~of_:t2 -> Set.is_subset !t1 ~of_:!t2
+
+    let min_elt : ('a, _) t -> 'a option
+      = fun t -> Set.min_elt !t
+
+    let snapshot : ('a, 'cmp) t -> ('a, 'cmp) Set.t
+      = fun t -> !t
   end
 
-  type ('elt, 'cmp) t = ('elt, 'cmp) Set.t ref
+  module Int = struct
+    type t = (int, Core_kernel.Int.comparator_witness) Impl.t
+    let of_list = Impl.of_list (module Int)
+    let to_list = Impl.to_list
+    let to_array = Impl.to_array
+    let add = Impl.add
+    let mem = Impl.mem
+    let snapshot = Impl.snapshot
+    let is_empty = Impl.is_empty
 
-  type ('k, 'cmp) comparator = (module Comparator.S with type comparator_witness = 'cmp and type t = 'k)
+    let create = fun () -> Impl.create (module Int)
 
-  let of_list : ('a, 'cmp) comparator -> 'a list -> ('a, 'cmp) t
-    = fun comparator lst -> ref (Set.of_list comparator lst)
+    let merge_many : t -> int list -> unit
+      = fun t ints -> List.iter ints ~f:(fun i -> add t i)
+  end
 
-  let create : ('a, 'cmp) comparator -> ('a, 'cmp) t
-    = fun comparator -> of_list comparator []
+  include Impl
 
-  let of_array : ('a, 'cmp) comparator -> 'a array -> ('a, 'cmp) t
-    = fun comparator lst -> ref (Set.of_array comparator lst)
+end
 
-  let to_list : ('a, _) t -> 'a list
-    = fun t -> Set.to_list !t
-
-  let to_array : ('a, _) t -> 'a array
-    = fun t -> Set.to_array !t
-
-  let copy : ('a, 'cmp) t -> ('a, 'cmp) t
-    = fun t -> ref !t
-
-  let is_empty : ('a, _) t -> bool
-    = fun t -> Set.is_empty !t
-
-  let iter : ('a, _) t -> f:('a -> unit) -> unit
-    = fun t ~f -> Set.iter !t ~f
-
-  let mem : ('a, _) t -> 'a -> bool
-    = fun t a -> Set.mem !t a
-
-  let add : ('a, 'cmp) t -> 'a -> unit
-    = fun t a -> t := Set.add !t a
-
-  let remove : ('a, 'cmp) t -> 'a -> unit
-    = fun t a -> t := Set.remove !t a
-
-  let union : ('a, 'cmp) t -> ('a, 'cmp) t -> ('a, 'cmp) t
-    = fun a b -> ref (Set.union !a !b)
+module Hash_set = struct
+  let is_subset
+    : 'a Core_kernel.Hash_set.t -> of_:('a Core_kernel.Hash_set.t) -> bool
+    = fun s1 ~of_:s2 -> Core_kernel.Hash_set.(for_all s1 ~f:(mem s2))
 end

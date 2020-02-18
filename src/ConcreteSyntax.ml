@@ -1,7 +1,7 @@
 open Core_kernel
 module Nominal = Binding.Nominal
 module MMI = Core_kernel.Int.Table
-module MSI = Placemat.MutableSet.Int
+module MSI = Util.MutableSet.Int
 module Lexer = ConcreteSyntax_Lexer
 module Parser = ConcreteSyntax_Parser
 module ParseErrors = ConcreteSyntax_ParseErrors
@@ -79,17 +79,16 @@ let check_operator_match_validity
   fun token_list term_pat ->
   let numbered_toks =
     token_list
-    |> Array.of_list
-    |> Array.mapi ~f:(fun i tok -> i, tok)
-    |> MMI.from_array
+    |> List.mapi ~f:(fun i tok -> i, tok)
+    |> MMI.of_alist_exn
   in
   let { captured_tokens; repeated_tokens } = token_usage term_pat in
-  let non_existent_tokens = MSI.make () in
+  let non_existent_tokens = MSI.create () in
   Int.Set.iter captured_tokens ~f:(fun tok_num ->
-    if MMI.has numbered_toks tok_num
+    if MMI.mem numbered_toks tok_num
     then MMI.remove numbered_toks tok_num
     else MSI.add non_existent_tokens tok_num);
-  non_existent_tokens, repeated_tokens, MMI.to_list numbered_toks
+  non_existent_tokens, repeated_tokens, MMI.to_alist numbered_toks
 ;;
 
 (* Check invariants of concrete syntax descriptions:
@@ -119,7 +118,7 @@ let check_operator_match_validity
 *)
 let check_description_validity { terminal_rules; nonterminal_rules } =
   let raise_invalid str = raise (CheckValidExn (InvalidGrammar str)) in
-  let terminal_rules' = String.Map.from_array terminal_rules in
+  let terminal_rules' = String.Map.of_alist_exn terminal_rules in
   let show_toks toks = toks
     |> Array.map ~f:(Printf.sprintf "$%n")
     |> String.concat_array ~sep:", "
@@ -127,16 +126,16 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
   let open_depth = ref 0 in
   try
     nonterminal_rules
-    |> String.Map.for_each ~f:(fun _i (NonterminalRule { operator_rules }) ->
+    |> String.Map.iter ~f:(fun (NonterminalRule { operator_rules; _ }) ->
       operator_rules
-        |> List.for_each ~f:(fun level ->
-          let OperatorMatch { fixity } = level
-            |> List.head
+        |> List.iter ~f:(fun level ->
+          let OperatorMatch { fixity; _ } = level
+            |> List.hd
             |> get_option' (fun () ->
               "each level is guaranteed to have at least one rule")
           in
-          let okay = List.all level
-            ~f:(fun (OperatorMatch op_match) -> op_match.fixity = fixity)
+          let okay = List.for_all level
+            ~f:(fun (OperatorMatch op_match) -> Caml.(op_match.fixity = fixity))
           in
           if not okay then raise_invalid "Every operator in a precedence level \
             must have the same fixity"
@@ -144,8 +143,8 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
 
       operator_rules
         |> List.join
-        |> List.for_each
-        ~f:(fun _i (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
+        |> List.iter
+        ~f:(fun (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
            let non_existent_tokens, duplicate_captures, uncaptured_tokens =
              check_operator_match_validity tokens operator_match_pattern
            in
@@ -170,11 +169,11 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
            (match tokens' with
              | [ NonterminalName _; TerminalName _; NonterminalName _ ] -> ()
              | _
-             -> if fixity == Infixl || fixity == Infixr
+             -> if Caml.(fixity <> Infixl || fixity <> Infixr)
                 then raise_invalid "left or right fixity can only be applied \
                   to a binary operator (eg `tm OP tm`)");
 
-           List.map uncaptured_tokens ~f:(fun (_i, tok) ->
+           List.iter uncaptured_tokens ~f:(fun (_i, tok) ->
              match tok with
              | NonterminalName name ->
                raise_invalid ("uncaptured nonterminal: " ^ name)
@@ -197,10 +196,10 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
              )
              | Underscore _ -> ())
         ));
-    if !open_depth != 0
+    if !open_depth <> 0
     then raise_invalid "At least one group is not closed (there are more open \
       box markers ('[') than close box markers (']'))";
-    String.Map.for_each terminal_rules' ~f:(fun _i regex ->
+    String.Map.iter terminal_rules' ~f:(fun regex ->
       if Regex.accepts_empty regex
       then raise_invalid ("Regex accepts empty strings: " ^ Regex.to_string regex)
     );
@@ -212,7 +211,7 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
 let rec remove_spaces : formatted_tree -> formatted_tree =
   fun { tree_info; children } ->
   let children' = Array.map children ~f:(function
-    | TerminalCapture { content } ->
+   | TerminalCapture { content; _ } ->
       TerminalCapture { content; leading_trivia = ""; trailing_trivia = "" }
     | NonterminalCapture ntc -> NonterminalCapture (remove_spaces ntc))
   in
@@ -224,7 +223,7 @@ exception ToAstError of string
 let prim_to_ast
   : string -> formatted_tree -> primitive
   = fun prim_ty tree -> match tree.children with
-    | [| TerminalCapture { content } |] -> (match prim_ty with
+    | [| TerminalCapture { content; _ } |] -> (match prim_ty with
       | "string" -> PrimString content
       | "integer" -> (
         try
@@ -244,25 +243,26 @@ let get_operator_match
   : ConcreteSyntaxDescription.t -> formatted_tree -> operator_match_pattern
   = fun rules tree ->
   let nt_name, nt_prod_no = tree.tree_info in
-  let OperatorMatch { operator_match_pattern } = rules.nonterminal_rules
-    |> String.Map.find nt_name
+  let OperatorMatch { operator_match_pattern; _ } = rules.nonterminal_rules
+    |> Fn.flip String.Map.find nt_name
     |> get_option (ToAstError "TODO: message")
-    |> fun (NonterminalRule { operator_rules }) -> operator_rules
+    |> fun (NonterminalRule { operator_rules; _ }) -> operator_rules
     |> List.join (* TODO: should we use 2d indexing? *)
-    |> List.nth nt_prod_no
+    |> Fn.flip List.nth nt_prod_no
     |> get_option' (fun () -> "TODO: message")
   in operator_match_pattern
 ;;
 
 let array_get : string -> 'a array -> int -> 'a
-  = fun msg arr i -> arr
-    |> Array.get ~index:i
+  = fun _msg arr i -> Array.get arr i
+    (*
     |> get_option' (fun () -> Printf.sprintf
       "failed array get in %s: index %n, length %n"
       msg
       i
       (Array.length arr)
     )
+   *)
 
 (* Convert a concrete tree to an AST. We ignore trivia. *)
 let rec tree_to_ast
@@ -290,12 +290,12 @@ and go_op_match_term
     -> Printf.printf "go_op_match_term var(%n)\n" n;
       (match array_get "go_op_match_term 1" children (n - 1) with
       | NonterminalCapture _ -> failwith "TODO: error"
-      | TerminalCapture { content } -> Var content
+      | TerminalCapture { content; _ } -> Var content
     )
     | OperatorPattern ("integer", [NumberedScopePattern([], SingleCapturePattern n)])
     -> (match array_get "go_op_match_term 2" children (n - 1) with
       | NonterminalCapture _ -> failwith "TODO: error"
-      | TerminalCapture { content }
+      | TerminalCapture { content; _ }
       -> Primitive (PrimInteger (Bigint.of_string content))
     )
     | OperatorPattern ("var", _)
@@ -309,7 +309,7 @@ and go_op_match_term
     | SingleCapturePattern n
     -> (match array_get "go_op_match_term 3" children (n - 1) with
       | NonterminalCapture tree -> tree_to_ast rules tree
-      | TerminalCapture { content } ->
+      | TerminalCapture { content; _ } ->
         Printf.printf "children: [%s]\n" (children
           |> Array.map ~f:string_of_formatted_capture
           |> String.concat_array ~sep:"; "
@@ -335,7 +335,7 @@ and go_numbered_scope_term
         in
         match array_get "go_numbered_scope_term" children (n - 1) with
         | NonterminalCapture tree -> tree_to_pattern rules tree
-        | TerminalCapture { content } -> failwith (Printf.sprintf (* TODO: error *)
+        | TerminalCapture { content; _ } -> failwith (Printf.sprintf (* TODO: error *)
         "go_numbered_scope_term: Unexpectedly received a terminal when a \
         nonterminal child was expected: child %n -> \"%s\"" n content
       )
@@ -366,7 +366,7 @@ and go_op_match_pattern
     | OperatorPattern ("var", [NumberedScopePattern([], SingleCapturePattern n)])
     -> (match array_get "go_op_match_pattern 1" children (n - 1) with
       | NonterminalCapture _ -> failwith "TODO: error"
-      | TerminalCapture { content } -> Var content
+      | TerminalCapture { content; _ } -> Var content
     )
     | OperatorPattern ("var", _) -> failwith "TODO: error"
     | OperatorPattern (name, scope_pats)
@@ -377,7 +377,7 @@ and go_op_match_pattern
     | SingleCapturePattern n
     -> (match array_get "go_op_match_pattern 2" children (n - 1) with
       | NonterminalCapture tree -> tree_to_pattern rules tree
-      | TerminalCapture { content } -> failwith (Printf.sprintf (* TODO: error *)
+      | TerminalCapture { content; _ } -> failwith (Printf.sprintf (* TODO: error *)
         "go_op_match_pattern: Unexpectedly received a terminal when a \
         nonterminal child was expected: child %n -> \"%s\"" n content
       )
@@ -396,7 +396,7 @@ and go_numbered_scope_pattern
 let to_ast
   :  ConcreteSyntaxDescription.t
   -> formatted_tree
-  -> (string, Nominal.term) Result.t
+  -> (Nominal.term, string) Result.t
   = fun rules tree ->
     try
       Ok (tree_to_ast rules tree)
@@ -413,11 +413,11 @@ let convert_token
   = fun terminal_nums nonterminal_entry -> function
   | TerminalName tn -> Terminal
     (terminal_nums
-     |> String.Map.find tn
+     |> Fn.flip String.Map.find tn
      |> get_option' (fun () -> "to_grammar: failed to get terminal " ^ tn))
   | NonterminalName nt_name
   -> Nonterminal (nonterminal_entry
-    |> String.Map.find nt_name
+    |> Fn.flip String.Map.find nt_name
     |> get_option' (fun () -> Printf.sprintf
       "convert_token: couldn't find nonterminal %s in names: %s"
       nt_name
@@ -450,7 +450,7 @@ let rewrite_tokens
 
     let tokens'' = match tokens' with
       | [ NonterminalName name1; TerminalName _ as t; NonterminalName name2 ]
-        when name1 = nt_name && name2 = nt_name
+        when String.(name1 = nt_name && name2 = nt_name)
         -> (match fixity with
         | Infixl
         -> (* Require a higher precedence left child (operations at this level
@@ -472,7 +472,7 @@ let rewrite_tokens
 
       (* juxtaposition *)
       | [ NonterminalName name1; NonterminalName name2 ]
-      when name1 = nt_name && name2 = nt_name
+      when String.(name1 = nt_name && name2 = nt_name)
       (* TODO: adjust! *)
       -> tokens'
 
@@ -499,8 +499,8 @@ type nonterminal_operators = (int option * operator_match) list String.Map.t
 
 let string_of_nonterminal_operators : nonterminal_operators -> string
   = fun nonterminal_operators -> nonterminal_operators
-    |> String.Map.to_array
-    |> Array.map ~f:(fun (name, matches) ->
+    |> String.Map.to_alist
+    |> List.map ~f:(fun (name, matches) ->
       let rhs = matches
         |> Array.of_list
         |> Array.map ~f:(fun (ix_opt, op_match) ->
@@ -514,7 +514,7 @@ let string_of_nonterminal_operators : nonterminal_operators -> string
       in
       Printf.sprintf "%s:\n%s" name rhs
     )
-    |> String.concat_array ~sep:"\n"
+    |> String.concat ~sep:"\n"
 
 (** Desugar a nonterminal into one nonterminal per precedence level.
  *
@@ -526,18 +526,18 @@ let desugar_nonterminal
   -> nonterminal_operators * string option String.Map.t
   = fun
       taken_names
-      (NonterminalRule { nonterminal_name; operator_rules }) ->
+      (NonterminalRule { nonterminal_name; operator_rules; _ }) ->
     let num_levels = List.length operator_rules in
     if num_levels = 1
     then
       let operators = operator_rules
-        |> List.head
+        |> List.hd
         |> get_option'
           (fun () -> "desugar_nonterminal: expected at least on operator")
         |> List.mapi ~f:(fun i op_match -> Some i, op_match)
       in
-      String.Map.of_alist [ nonterminal_name, operators ],
-      String.Map.of_alist [ nonterminal_name, Some nonterminal_name ]
+      String.Map.of_alist_exn [ nonterminal_name, operators ],
+      String.Map.of_alist_exn [ nonterminal_name, Some nonterminal_name ]
     else
 
       (* Used to number each operator across all precedence levels *)
@@ -584,14 +584,14 @@ let desugar_nonterminal
 
       level_nts
         |> List.cons (nonterminal_name, indirect_nt)
-        |> String.Map.of_alist,
+        |> String.Map.of_alist_exn,
 
       (* Point from every generated name to the original nonterminal name,
        * mark the original name as an indirection to be removed. *)
       level_nts
         |> List.map ~f:(fun (name, _rule) -> name, Some nonterminal_name)
-        |> String.Map.of_alist
-        |> String.Map.add ~key:nonterminal_name ~data:None
+        |> String.Map.of_alist_exn
+        |> String.Map.set ~key:nonterminal_name ~data:None
 
 (** raises: TODO *)
 let derived_nonterminal_rules : nonterminal_rules -> nonterminal_operators array
@@ -599,18 +599,19 @@ let derived_nonterminal_rules : nonterminal_rules -> nonterminal_operators array
   let taken_names : String.Set.t
     = nonterminal_rules
       |> String.Map.keys
-      |> String.Set.of_alist
+      |> String.Set.of_list
   in
   let nonterminal_rules_desugared, _nonterminal_renamings = nonterminal_rules
-    |> String.Map.to_array
-    |> Array.map ~f:(fun (_, rule) -> desugar_nonterminal taken_names rule)
+    |> String.Map.data
+    |> Array.of_list
+    |> Array.map ~f:(desugar_nonterminal taken_names)
     |> Array.unzip
   in nonterminal_rules_desugared
 
-let string_of_derived_rules : nonterminal_operators array -> string
+let string_of_derived_rules : nonterminal_operators list -> string
   = fun nonterminal_operators -> nonterminal_operators
-    |> Array.map ~f:string_of_nonterminal_operators
-    |> String.concat_array ~sep:"\n\n"
+    |> List.map ~f:string_of_nonterminal_operators
+    |> String.concat ~sep:"\n\n"
 
 (** Produce an augmented grammar *)
 let to_grammar
@@ -624,34 +625,34 @@ let to_grammar
   fun { terminal_rules; nonterminal_rules } start_nonterminal ->
   let terminal_nums = terminal_rules
       (* start other terminals (besides $ and SPACE) at 2 *)
-      |> Array.mapi ~f:(fun i (name, _) -> name, i + 2)
-      |> Array.append [| "$", 0; "SPACE", 1 |]
+      |> List.mapi ~f:(fun i (name, _) -> name, i + 2)
+      |> List.append [ "$", 0; "SPACE", 1 ]
   in
 
   (* mapping from terminal to its number *)
   let terminal_num_map : int String.Map.t
-    = String.Map.from_array terminal_nums
+    = String.Map.of_alist_exn terminal_nums
   in
 
   let taken_names : String.Set.t
     = nonterminal_rules
       |> String.Map.keys
-      |> String.Set.of_alist
+      |> String.Set.of_list
   in
 
   (* TODO: remove duplication above *)
   let nonterminal_rules_desugared, nonterminal_renamings = nonterminal_rules
-    |> String.Map.to_array
-    |> Array.map ~f:(fun (_, rule) -> desugar_nonterminal taken_names rule)
-    |> Array.unzip
+    |> String.Map.data
+    |> List.map ~f:(fun rule -> desugar_nonterminal taken_names rule)
+    |> List.unzip
   in
 
   let desugared_nts : nonterminal_operators
-    = Util.array_map_unions nonterminal_rules_desugared
+    = Util.list_map_unions nonterminal_rules_desugared
   in
 
   let nonterminal_renamings : string option String.Map.t
-    = Util.array_map_unions nonterminal_renamings
+    = Util.list_map_unions nonterminal_renamings
   in
 
   Printf.printf "desugared:\n\n%s\n"
@@ -668,10 +669,8 @@ let to_grammar
   in
 
   (* [nonterminal_nums]: name, level, nonterminal num. *)
-  let nonterminal_nums = String.Map.to_array nonterminal_num_map in
-  let nonterminal_nums =
-    Base.Array.append [| "root", 0 |] nonterminal_nums
-  in
+  let nonterminal_nums = String.Map.to_alist nonterminal_num_map in
+  let nonterminal_nums = ("root", 0) :: nonterminal_nums in
 
   (* We're dealing with a non-augmented grammar here. [prod_num] starts
    * counting productions from 1. We'll add the starting production at 0 at the
@@ -682,13 +681,13 @@ let to_grammar
   (* [start_nonterminal_num] will be set to the number of the start nonterminal
    * when we find it. *)
   let start_nonterminal_num = ref 0 in
-  let production_rule_map = Core_kernel.Int.Table.make () in
+  let production_rule_map = Int.Table.create () in
 
   (* Translate a nonterminal into n -- one for each of its precedence levels *)
   let nonterminals = desugared_nts
-    |> String.Map.to_array
-    |> Array.map ~f:(fun (nonterminal_name, productions) ->
-      if nonterminal_name = start_nonterminal
+    |> String.Map.to_alist
+    |> List.map ~f:(fun (nonterminal_name, productions) ->
+      if String.(nonterminal_name = start_nonterminal)
       then start_nonterminal_num := !nt_num;
 
       let productions' = List.map productions
@@ -700,11 +699,11 @@ let to_grammar
 
           Core_kernel.Int.Table.set
             production_rule_map
-            !prod_num
-            ( (nonterminal_name, op_index)
-            , rule.tokens
-            , Some rule.operator_match_pattern
-            );
+            ~key:!prod_num
+            ~data:( (nonterminal_name, op_index)
+                  , rule.tokens
+                  , Some rule.operator_match_pattern
+                  );
           incr prod_num;
           rule.tokens
             |> List.filter ~f:(fun tok -> not (is_formatting_token tok))
@@ -716,12 +715,15 @@ let to_grammar
       incr nt_num;
       result
     )
-    |> Int.Map.from_array_exn
-    |> Int.Map.add
+    |> Int.Map.of_alist_exn
+    |> Int.Map.set
       ~key:0
       ~data:{ LrParsing.productions = [ [ Nonterminal !start_nonterminal_num ] ] }
   in
-  { nonterminals; terminal_nums; nonterminal_nums },
+  { nonterminals
+  ; terminal_nums = Array.of_list terminal_nums
+  ; nonterminal_nums = Array.of_list nonterminal_nums
+  },
   production_rule_map,
   nonterminal_renamings
 ;;
@@ -742,34 +744,30 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
   -> LrParsing.parse_result
   -> formatted_tree
   =
-  fun production_rule_map nonterminal_renamings nonterminal_nums
-    nonterminal_rules root_name str root ->
+  fun production_rule_map nonterminal_renamings _nonterminal_nums
+    _nonterminal_rules root_name str root ->
 
   let str_pos = ref 0 in
-  let str_len = Base.String.length str in
+  let str_len = String.length str in
   let get_trivia : int -> int -> string * string =
     fun start_pos end_pos ->
       (* look back consuming all whitespace to (and including) a newline *)
-      let leading_trivia =
-        Base.String.slice str ~from:!str_pos ~to_:start_pos
-      in
+      let leading_trivia = String.slice str !str_pos start_pos in
       (* look forward consuming all whitespace up to a newline *)
       str_pos := end_pos;
       let continue = ref true in
       while !continue do
         (* TODO: need to be aware of other whitespace tokens *)
-        let got_space = String.get str !str_pos = ' ' in
+        let got_space = Char.(String.get str !str_pos = ' ') in
         continue := !str_pos < str_len && got_space;
         if !continue then incr str_pos;
       done;
-      let trailing_trivia =
-        Base.String.slice str ~from:end_pos ~to_:!str_pos
-       in
+      let trailing_trivia = String.slice str end_pos !str_pos in
       leading_trivia, trailing_trivia
   in
 
   let rec go_nt : string -> LrParsing.parse_result -> formatted_tree =
-    fun nt_name { production; children } ->
+    fun nt_name { production; children; _ } ->
       let prod_num = match production with
         | First prod -> invariant_violation (Printf.sprintf
            "go_nt (nt_name %s) received a terminal production: %s"
@@ -779,7 +777,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
       in
 
       let tree_info, tokens, _ = production_rule_map
-        |> Int.Table.find prod_num
+        |> Fn.flip Int.Table.find prod_num
         |> get_option' (fun () -> Printf.sprintf
           "tree_of_parse_result: couldn't find nonterminal %n in \
           production_rule_map"
@@ -791,8 +789,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
         ~f:(fun tok -> not (is_formatting_token tok))
       in
 
-      let children' = children
-        |> List.map2 tokens' ~f:(fun x y -> x, y)
+      let children' = List.map2_exn children tokens' ~f:(fun x y -> x, y)
         |> Array.of_list
         |> Array.map ~f:(function parse_result, token ->
           match token with
@@ -806,7 +803,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
       in
 
       let renaming = nonterminal_renamings
-        |> String.Map.find nt_name
+        |> Fn.flip String.Map.find nt_name
         |> get_option' (fun () -> Printf.sprintf
          "tree_of_parse_result: unable to find renaming for %s" nt_name
         )
@@ -837,19 +834,18 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
             | _, _ -> { tree_info = nt_name', op_no; children = children' })
 
   and go_t : LrParsing.parse_result -> formatted_terminal_capture =
-    fun { start_pos; end_pos } ->
+    fun { start_pos; end_pos; _ } ->
       let leading_trivia, trailing_trivia = get_trivia start_pos end_pos in
-      let content = Base.String.slice str ~from:start_pos ~to_:end_pos in
+      let content = String.slice str start_pos end_pos in
       { leading_trivia; content; trailing_trivia }
   in
   go_nt root_name root
 ;;
 
 let lexer_of_desc : ConcreteSyntaxDescription.t -> Placemat.Lex.lexer =
-  fun { terminal_rules } ->
+  fun { terminal_rules; _ } ->
   let lex_items = terminal_rules
-    |> Array.map ~f:(fun (tok_name, re) -> Regex.to_string re, tok_name)
-    |> Array.to_list
+    |> List.map ~f:(fun (tok_name, re) -> Regex.to_string re, tok_name)
   in
   ({|[ \n\r\t]+|}, "SPACE") :: lex_items
 ;;
@@ -863,7 +859,7 @@ let parse desc root_name str =
   let lexer = lexer_of_desc desc in
   (* TODO: come up with better idea where to do this augmentation *)
   let augmented_nonterminal_rules =
-    String.Map.add
+    String.Map.set
       desc.nonterminal_rules
       ~key:"root"
       ~data:(NonterminalRule
@@ -879,7 +875,7 @@ let parse desc root_name str =
        (module Lalr)
        production_rule_map
        nonterminal_renamings
-       (String.Map.from_array grammar.nonterminal_nums)
+       (grammar.nonterminal_nums |> Array.to_list |> String.Map.of_alist_exn)
        augmented_nonterminal_rules
        root_name
        str
@@ -890,7 +886,7 @@ let parse desc root_name str =
          "lexical error at characters %n - %n (%s):\n%s"
          start_pos
          end_pos
-         (Base.String.slice str ~from:start_pos ~to_:end_pos)
+         (String.slice str start_pos end_pos)
          message)
   | Error (Either.Second (char_no, message)) ->
     Error (Printf.sprintf "parser error at character %n:\n%s" char_no message)
@@ -910,11 +906,10 @@ let make_concrete_description
            | Ok re -> name, re
            | Error msg -> failwith ("failed to parse regex: " ^ msg))
         | Second str -> name, Regex.ReString str)
-      |> Array.of_list
   ; nonterminal_rules =
       nonterminal_rules
-      |> List.map ~f:(fun (NonterminalRule { nonterminal_name } as rule) ->
+      |> List.map ~f:(fun (NonterminalRule { nonterminal_name; _ } as rule) ->
         nonterminal_name, rule)
-      |> String.Map.of_list
+      |> String.Map.of_alist_exn
   }
 ;;

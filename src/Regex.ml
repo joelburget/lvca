@@ -14,27 +14,27 @@ type re_class = PosClass of re_class_base | NegClass of re_class_base
 
 (** A regular expression used for lexical analysis. *)
 type regex =
-  (** Just a string of characters, eg `foo` *)
   | ReString of string
+  (** Just a string of characters, eg `foo` *)
+  | ReClass  of re_class
   (** A character class, eg `\w` or `\d`. Syntactically, these are all
       started by a backslash. We just use javascript character classes.
   *)
   (* Question: do we support octal escapes (\40)? The lex manual points out
    * this is non-portable. But don't we presuppose unicode? We accept unicode
    * categories, right? `\cc`, `\cf`, etc. *)
-  | ReClass  of re_class
-  (** A character set, eg `[a-z]` or `[^abc]` *)
   | ReSet    of string
-  (** Zero-or-more repetition, eg `(ab)*` *)
+  (** A character set, eg `[a-z]` or `[^abc]` *)
   | ReStar   of regex
-  (** One-or-more repetition, eg `(ab)+` *)
+  (** Zero-or-more repetition, eg `(ab)*` *)
   | RePlus   of regex
-  (** Option, eg `(ab)?` *)
+  (** One-or-more repetition, eg `(ab)+` *)
   | ReOption of regex
-  (** Choice, eg `a|b` *)
+  (** Option, eg `(ab)?` *)
   | ReChoice of regex * regex
-  (** Any character *)
+  (** Choice, eg `a|b` *)
   | ReAny
+  (** Any character *)
   | ReConcat of regex list
 
 type t = regex
