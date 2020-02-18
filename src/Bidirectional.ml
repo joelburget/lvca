@@ -127,7 +127,7 @@ let update_ctx (ctx_state : scope String.Map.t ref) (learned_tys : scope String.
   let do_assignment = fun (k, v) -> match String.Map.find !ctx_state k with
     | None    ->
       let state' = String.Map.remove !ctx_state k in
-      ctx_state := String.Map.add_exn state' ~key:k ~data:v
+      ctx_state := String.Map.set state' ~key:k ~data:v
     | Some v' -> if Caml.(v <> v') then raise (BadScopeMerge(v, v'))
   in
   List.iter ~f:do_assignment (String.Map.to_alist learned_tys)
