@@ -1,12 +1,12 @@
 open Core_kernel
 module MMI = Core_kernel.Int.Table
-module MSet = Hash_set
 module MSI = Util.MutableSet.Int
 module MStack = Core_kernel.Stack
 module MQueue = Core_kernel.Queue
 let get_option, get_option', invariant_violation =
   Util.(get_option, get_option', invariant_violation)
 module Lex = Placemat.Lex
+module MutableSet = Util.MutableSet
 
 exception NoItemSet of (unit -> string)
 
@@ -24,10 +24,6 @@ type symbol =
   | Terminal    of terminal_num
   | Nonterminal of nonterminal_num
   [@@deriving sexp, compare]
-
-module SymbolCmp = Comparable.Make(struct
-  type t = terminal_num * symbol [@@deriving sexp, compare]
-end)
 
 (** A state number *)
 type state = int
@@ -63,6 +59,7 @@ type item_view =
  * The maximum number of different productions is 16777215
 *)
 type item = int
+  [@@deriving sexp, compare]
 
 let view_item : item -> item_view
   = fun item ->
@@ -118,16 +115,20 @@ type action =
 type lr0_action_table = state -> terminal_num -> action
 type lr0_goto_table = state -> symbol -> state option
 
-module ComparableIntSet = Comparable.Make(struct
-  type t = Int.Set.t [@@deriving sexp, compare]
-end)
+module IntSet = struct
+  module T = struct
+    type t = Int.Set.t [@@deriving sexp, compare]
+  end
+  include T
+  include Comparable.Make(T)
+end
 
 (* A mutable set of int sets. This is used to represent the set of LR(0) items.
  * Each int set represents a set of encoded items.
 *)
-type mutable_lr0_item_set = Int.Set.t MSet.t
+type mutable_lr0_item_set = (IntSet.t, IntSet.comparator_witness) MutableSet.t
 
-type item_set_set = (item_set, ComparableIntSet.comparator_witness) Set.t
+type item_set_set = (item_set, IntSet.comparator_witness) Set.t
 
 type parse_error = int (* character number *) * string
 
@@ -594,28 +595,27 @@ module Lr0 (G : GRAMMAR) = struct
     in
     (* canonical collection of sets *)
     let c =
-      MSet.of_list (module ComparableIntSet) [ augmented_start ]
+      MutableSet.of_list (module IntSet) [ augmented_start ]
     in
     (* set of item sets we've added to c but not yet explored *)
-    let active_set = ref @@ MSet.copy c in
+    let active_set = ref @@ MutableSet.copy c in
 
     (* iterate through every set of items in the collection, compute the GOTO
      * kernel of each item set, and add any new sets. `continue` is set to
      * `true` if we find a new item set, indicating we need to loop again. *)
-    while not (MSet.is_empty !active_set) do
-      let new_active_set = MSet.of_list (module ComparableIntSet) []
-      in
+    while not (MutableSet.is_empty !active_set) do
+      let new_active_set = MutableSet.of_list (module IntSet) [] in
       (* for each set of items in the active set: *)
-      MSet.iter !active_set ~f:(fun items ->
+      MutableSet.iter !active_set ~f:(fun items ->
         (* for each grammar symbol: *)
         List.iter grammar_symbols ~f:(fun symbol ->
           let goto_result = lr0_goto_kernel items symbol in
           (* if GOTO(items, symbol) is not empty and not in c: *)
-          if not (Int.Set.isEmpty goto_result) &&
-             not (MSet.mem c goto_result)
+          if not (Int.Set.is_empty goto_result) &&
+             not (MutableSet.mem c goto_result)
           then (
-            MSet.add c ~data:goto_result;
-            MSet.add new_active_set ~data:goto_result;
+            MutableSet.add c goto_result;
+            MutableSet.add new_active_set goto_result;
           )
         )
       );
@@ -625,9 +625,9 @@ module Lr0 (G : GRAMMAR) = struct
 
   let lr0_items : item_set Int.Map.t
     = mutable_lr0_items
-      |> MSet.to_list
+      |> MutableSet.to_list
       |> List.mapi ~f:(fun i item_set -> i, item_set)
-      |> Int.Map.of_list
+      |> Int.Map.of_alist_exn
 
   let state_to_item_set : state -> item_set
     = fun state -> lr0_items
@@ -642,14 +642,15 @@ module Lr0 (G : GRAMMAR) = struct
   let item_set_to_state : item_set -> state
     = fun item_set ->
       let state, _ = lr0_items
-                     |> Int.Map.find_first_by
-                       ~f:(fun _ item_set' -> item_set' = item_set)
+                     |> Int.Map.to_sequence
+                     |> Sequence.find
+                       ~f:(fun (_, item_set') -> Caml.(item_set' = item_set))
                      |> get_option (NoItemSet
                        (fun () -> Printf.sprintf
                           "item_set_to_state -- couldn't find item_set (%s) (options: %s)"
                           (string_of_item_set item_set)
                           (lr0_items
-                            |> Int.Map.to_list
+                            |> Int.Map.to_alist
                             |> Util.stringify_list
                               (fun (_, item_set) -> string_of_item_set item_set)
                               ", ")
@@ -673,10 +674,10 @@ module Lr0 (G : GRAMMAR) = struct
        * set
       *)
       else production_map
-           |> MMI.to_array
-           |> Array.fold_left
+           |> MMI.to_alist
+           |> List.fold
                 ~init:Int.Set.empty
-                ~f:(fun (prod_num, production) follow_set ->
+                ~f:(fun follow_set (prod_num, production) ->
                    (* Rule 2 from the CPTT algorithm for FOLLOW(A):
                     * If there is a production A -> aBb, then everything in FIRST(b),
                     * except e, is in FOLLOW(B).
@@ -699,7 +700,7 @@ module Lr0 (G : GRAMMAR) = struct
                    let rule_3_follow_set = match Util.unsnoc production with
                      | _, Nonterminal nt_num'
                        when nt_num' = nt_num && not (Int.Set.mem nts_visited nt_num)
-                       -> follow' (Int.Set.add nts_visited ~data:nt_num) parent_nt
+                       -> follow' (Int.Set.add nts_visited nt_num) parent_nt
                      | _ -> Int.Set.empty
                    in
 
@@ -783,7 +784,7 @@ module Lr0 (G : GRAMMAR) = struct
                                                           )
                           in
                           if position = List.length production &&
-                             follow_set nt_num |> Int.Set.mem terminal_num &&
+                             Int.Set.mem (follow_set nt_num) terminal_num &&
                              (* Accept in this case (end marker on the augmented nonterminal) --
                                 don't reduce. *)
                              nt_num <> 0
@@ -794,7 +795,7 @@ module Lr0 (G : GRAMMAR) = struct
 
     (* If [S' -> S .] is in I_i, set ACTION[i, $] to `accept` *)
     let accept_action =
-      if terminal_num = end_marker && item_set |> Int.Set.mem (mk_item' 0 1)
+      if terminal_num = end_marker && Int.Set.mem item_set (mk_item' 0 1)
       then Some Accept
       else None
     in
@@ -810,14 +811,14 @@ module Lr0 (G : GRAMMAR) = struct
     |        _,        _,        _ -> Error None
 
   (* TODO: is this right? *)
-  let states : state array = Base.Array.initialize
-    ~length:(Int.Map.length lr0_items)
+  let states : state array = Base.Array.init
+    (Int.Map.length lr0_items)
     ~f:Fn.id
-  let terminals : terminal_num array = Base.Array.initialize
-    ~length:number_of_terminals
+  let terminals : terminal_num array = Base.Array.init
+    number_of_terminals
     ~f:Fn.id
-  let nonterminals : nonterminal_num array = Base.Array.initialize
-    ~length:(String.Map.length nonterminal_nums)
+  let nonterminals : nonterminal_num array = Base.Array.init
+    (String.Map.length nonterminal_nums)
     ~f:Fn.id
 
   let full_lr0_action_table : unit -> action array array
@@ -837,7 +838,7 @@ module Lr0 (G : GRAMMAR) = struct
 
   let token_to_terminal
     : Lex.token -> terminal_num
-    = fun { name } -> terminal_nums
+    = fun { name; _ } -> terminal_nums
                       |> Fn.flip String.Map.find name
                       |> get_option' (fun () -> Printf.sprintf
                                         "Lr0 token_to_terminal: unable to find name %s in terminal_nums"
@@ -846,7 +847,7 @@ module Lr0 (G : GRAMMAR) = struct
 
   let token_to_symbol
     : Lex.token -> symbol
-    = fun { name } ->
+    = fun { name; _ } ->
       let t_match = String.Map.find terminal_nums name in
       let nt_match = String.Map.find nonterminal_nums name in
       match t_match, nt_match with
@@ -860,7 +861,7 @@ module Lr0 (G : GRAMMAR) = struct
 
   let string_of_symbols : parse_result array -> string
     = fun parse_results -> parse_results
-                           |> Array.map ~f:(fun { production } -> match production with
+                           |> Array.map ~f:(fun { production; _ } -> match production with
                              | First terminal_num -> terminal_names
                                                     |> Fn.flip Int.Map.find terminal_num
                                                     |> get_option' (fun () -> Printf.sprintf
@@ -904,7 +905,7 @@ module Lr0 (G : GRAMMAR) = struct
       -> lr0_goto_table
       -> do_trace (* trace or not *)
       -> Lex.token MQueue.t
-      -> (parse_error, parse_result) Result.t * trace_line array
+      -> (parse_result, parse_error) Result.t * trace_line array
     = fun lr0_action_table lr0_goto_table do_trace toks ->
       (* Re stack / results:
        * These are called `stack` and `symbols` in CPTT. Their structure
@@ -927,7 +928,7 @@ module Lr0 (G : GRAMMAR) = struct
           let tok = !a in
           let terminal_num = token_to_terminal tok in
           let action = lr0_action_table s terminal_num in
-          if do_trace = DoTrace then
+          if Caml.(do_trace = DoTrace) then
             MQueue.enqueue trace
               { action;
                 stack = MStack.to_array stack;
@@ -958,7 +959,7 @@ module Lr0 (G : GRAMMAR) = struct
             let start_pos : int ref = ref 0 in
             let end_pos : int ref = ref 0 in
             for i = 1 to pop_count do
-              ignore (MStack.pop stack : state);
+              ignore (MStack.pop stack : state option);
               match MStack.pop results with
               | Some child -> (
                   children := child :: !children;
@@ -1042,23 +1043,23 @@ module Lr0 (G : GRAMMAR) = struct
   let parse_trace
     : do_trace (* trace or not *)
       -> Lex.token MQueue.t
-      -> (parse_error, parse_result) Result.t * trace_line array
+      -> (parse_result, parse_error) Result.t * trace_line array
     = parse_trace_tables lr0_action_table lr0_goto_table
 
-  let parse : Lex.token MQueue.t -> (parse_error, parse_result) Result.t
+  let parse : Lex.token MQueue.t -> (parse_result, parse_error) Result.t
     = fun toks ->
       match parse_trace DontTrace toks with
         result, _ -> result
 
   let lex_and_parse : Lex.lexer -> string
-    -> ((Lex.lex_error, parse_error) Either.t, parse_result) Result.t
+    -> (parse_result, (Lex.lex_error, parse_error) Either.t) Result.t
     = fun lexer input -> match Lex.lex lexer input with
       | Error error -> Error (First error)
       | Ok tokens ->
         let len = String.length input in
         let tokens' = tokens
           |> Array.filter
-            ~f:(fun (token : Lex.token) -> token.name <> "SPACE")
+            ~f:(fun (token : Lex.token) -> String.(token.name <> "SPACE"))
           |> MQueue.of_array
         in
         (* TODO: name might not always be "$" *)

@@ -224,6 +224,60 @@ end
 
 module MutableSet = struct
   module Int = struct
-    type t = int Core_kernel.Hash_set.t
+    type t = int Hash_set.t
+
+    let of_list = Hash_set.of_list (module Int)
+
+    let to_list = Hash_set.to_list
+
+    let to_array = Hash_set.to_array
+
+    let add = Hash_set.add
+
+    let merge_many : t -> int list -> unit
+      = fun t ints ->
+        List.iter ints ~f:(fun i -> add t i)
+
+    let mem = Hash_set.mem
   end
+
+  type ('elt, 'cmp) t = ('elt, 'cmp) Set.t ref
+
+  type ('k, 'cmp) comparator = (module Comparator.S with type comparator_witness = 'cmp and type t = 'k)
+
+  let of_list : ('a, 'cmp) comparator -> 'a list -> ('a, 'cmp) t
+    = fun comparator lst -> ref (Set.of_list comparator lst)
+
+  let create : ('a, 'cmp) comparator -> ('a, 'cmp) t
+    = fun comparator -> of_list comparator []
+
+  let of_array : ('a, 'cmp) comparator -> 'a array -> ('a, 'cmp) t
+    = fun comparator lst -> ref (Set.of_array comparator lst)
+
+  let to_list : ('a, _) t -> 'a list
+    = fun t -> Set.to_list !t
+
+  let to_array : ('a, _) t -> 'a array
+    = fun t -> Set.to_array !t
+
+  let copy : ('a, 'cmp) t -> ('a, 'cmp) t
+    = fun t -> ref !t
+
+  let is_empty : ('a, _) t -> bool
+    = fun t -> Set.is_empty !t
+
+  let iter : ('a, _) t -> f:('a -> unit) -> unit
+    = fun t ~f -> Set.iter !t ~f
+
+  let mem : ('a, _) t -> 'a -> bool
+    = fun t a -> Set.mem !t a
+
+  let add : ('a, 'cmp) t -> 'a -> unit
+    = fun t a -> t := Set.add !t a
+
+  let remove : ('a, 'cmp) t -> 'a -> unit
+    = fun t a -> t := Set.remove !t a
+
+  let union : ('a, 'cmp) t -> ('a, 'cmp) t -> ('a, 'cmp) t
+    = fun a b -> ref (Set.union !a !b)
 end
