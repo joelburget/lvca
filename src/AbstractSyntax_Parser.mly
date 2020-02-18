@@ -29,7 +29,7 @@
 /* TODO: duplicated (sort / atomic_sort) */
 sort:
   | ID nonempty_list(atomic_sort)
-  { Types.SortAp ($1, Base.Array.of_list $2) }
+  { Types.SortAp ($1, Core_kernel.Array.of_list $2) }
   | atomic_sort
   { $1 }
 

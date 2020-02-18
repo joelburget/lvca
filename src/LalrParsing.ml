@@ -24,11 +24,11 @@ end
 
 module LookaheadItemSet = struct
   module T = struct
-    type t = (LookaheadItem.t, LookaheadItem.comparator_witness) Core_kernel.Set.t
+    type t = (LookaheadItem.t, LookaheadItem.comparator_witness) Set.t
 
-    let sexp_of_t = Core_kernel.Set.sexp_of_m__t (module LookaheadItem)
-    let t_of_sexp = Core_kernel.Set.m__t_of_sexp (module LookaheadItem)
-    let compare = Core_kernel.Set.compare_m__t (module LookaheadItem)
+    let sexp_of_t = Set.sexp_of_m__t (module LookaheadItem)
+    let t_of_sexp = Set.m__t_of_sexp (module LookaheadItem)
+    let compare = Set.compare_m__t (module LookaheadItem)
   end
   include T
   include Comparable.Make(T)
@@ -340,8 +340,7 @@ module Lalr1 (G : GRAMMAR) = struct
   *)
   let generate_lookaheads : item_set -> item -> lookahead_propagation
     = fun kernel item ->
-      let create, enqueue, to_array =
-        Core_kernel.Queue.(create, enqueue, to_array) in
+      let create, enqueue, to_array = Queue.(create, enqueue, to_array) in
       let propagation = create () in
       let generated = create () in
       let hash_terminal = number_of_terminals + 1 in

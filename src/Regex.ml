@@ -1,4 +1,4 @@
-(* open Core_kernel *)
+open Core_kernel
 module Re = Placemat.Re
 
 type re_class_base =
@@ -62,17 +62,17 @@ let rec show : regex -> string
       -> Printf.sprintf "ReChoice (%s, %s)" (show re) (show re')
     | ReAny -> "ReAny"
     | ReConcat res -> Printf.sprintf "ReConcat [%s]" (res
-                                                      |> Core_kernel.List.map ~f:show
+                                                      |> List.map ~f:show
                                                       |> Caml.String.concat "; "
                                                      )
 
 let rec accepts_empty : regex -> bool
   = function
-    | ReString str -> Base.String.length str = 0
-    | ReClass cls -> cls = PosClass Boundary || cls = NegClass Boundary
+    | ReString str -> String.length str = 0
+    | ReClass cls -> Caml.(cls = PosClass Boundary || cls = NegClass Boundary)
     | RePlus re -> accepts_empty re
     | ReChoice (a, b) -> accepts_empty a || accepts_empty b
-    | ReConcat pieces -> Core_kernel.List.for_all pieces ~f:accepts_empty
+    | ReConcat pieces -> List.for_all pieces ~f:accepts_empty
     | ReStar _
     | ReOption _ -> true
     | ReSet _
@@ -132,7 +132,7 @@ let rec to_string' : int -> regex -> string
                               (to_string' 0 re ^ "|" ^ to_string' 0 re')
     | ReAny -> "."
     | ReConcat pieces -> pieces
-                         |> Core_kernel.List.map ~f:(to_string' 2)
+                         |> List.map ~f:(to_string' 2)
                          |> Caml.String.concat ""
                          |> parenthesize (precedence > 1)
 

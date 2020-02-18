@@ -25,7 +25,7 @@ open Statics
 let rec term_to_pattern : Statics.term -> Pattern.t
   = function
     | Operator (name, args)
-    -> Operator (name, List.map args ~f:scope_to_pattern)
+    -> Operator (name, Core_kernel.List.map args ~f:scope_to_pattern)
     | Free var -> Var var
     | _ -> failwith
       "bad parse -- can only match operators and variables in a pattern"

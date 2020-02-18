@@ -24,7 +24,7 @@ and core_case_scope = CaseScope of BindingAwarePattern.t list * core
 
 type denotation_chart = DenotationChart of (string * core) list
 
-val eval : core -> (core, string) Base.Result.t
+val eval : core -> (core, string) Core_kernel.Result.t
 
 (** Convert a core term to a nominal term, ensuring that it contains no core
     operators. *)

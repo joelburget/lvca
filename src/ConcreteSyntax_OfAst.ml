@@ -69,7 +69,7 @@ let rec term_to_tree
 
       Printf.printf "token: %s\n" (string_of_token token);
 
-      match Core_kernel.Int.Map.find subterms token_ix, token with
+      match Int.Map.find subterms token_ix, token with
 
     (* if the current token is a terminal, and we didn't capture a binder
      * or term, we just emit the contents of the token *)
@@ -198,19 +198,19 @@ let rec tree_format
     indentation', Group group'
 
 and format_group max_width indentation mode children =
-  let children' = Core_kernel.Queue.create () in
+  let children' = Queue.create () in
   let indentation' = Util.fold_left
     (fun indentation' child ->
       let indentation'', child' =
         tree_format max_width indentation' mode child
       in
-      Core_kernel.Queue.enqueue children' child';
+      Queue.enqueue children' child';
       indentation''
     )
     indentation
     children
   in
-  indentation', Core_kernel.Queue.to_array children'
+  indentation', Queue.to_array children'
 
 (* Accumulate all leading trivia for each terminal. So, all whitespace leading
  * back to and including the first newline. *)
@@ -219,14 +219,14 @@ let walk_leading_trivia : pre_formatted_nonterminal -> string array
 
     let accum = ref "" in
     let accumulating = ref false in
-    let result = Core_kernel.Queue.create () in
+    let result = Queue.create () in
 
-    let rec go_nt = fun { children; _ } -> Base.Array.iter children ~f:go_pft
+    let rec go_nt = fun { children; _ } -> Array.iter children ~f:go_pft
 
     and go_pft = (function
       (* Stop accumulating when we hit a token, clear accumulator *)
       | Terminal _ ->
-        Core_kernel.Queue.enqueue result !accum;
+        Queue.enqueue result !accum;
         accumulating := false;
         accum := ""
       | Space (SSpace n)
@@ -237,13 +237,13 @@ let walk_leading_trivia : pre_formatted_nonterminal -> string array
       | Space (SLine n) ->
         accumulating := true;
         accum := !accum ^ "\n" ^ Caml.String.make n ' '
-      | Group children' -> Base.Array.iter children' ~f:go_pft
+      | Group children' -> Array.iter children' ~f:go_pft
       | Nonterminal nt -> go_nt nt
     )
     in
 
     go_nt tree;
-    Core_kernel.Queue.to_array result
+    Queue.to_array result
 
 (* Accumulate all trailing trivia up to, but not including the next newline.
  *
@@ -255,14 +255,14 @@ let walk_trailing_trivia : pre_formatted_nonterminal -> string array
     let reverse_iter = Util.Array.reverse_iter in
 
     let accum = ref "" in
-    let result = Core_kernel.Queue.create () in
+    let result = Queue.create () in
 
     (* Traverse all children in reverse *)
     let rec go_nt = fun { children; _ } -> reverse_iter children ~f:go_pft
 
     and go_pft = function
       | Terminal _ ->
-        ignore (Core_kernel.Queue.enqueue result !accum : unit);
+        ignore (Queue.enqueue result !accum : unit);
         accum := ""
       | Space (SSpace n) -> accum := !accum ^ Caml.String.make n ' '
       (* Every time we hit a newline, clear the accumulator. *)
@@ -273,7 +273,7 @@ let walk_trailing_trivia : pre_formatted_nonterminal -> string array
 
     go_nt tree;
 
-    Core_kernel.Queue.to_array result
+    Queue.to_array result
 
 (* Traverse the pre-formatted tree, normalizing spacing.
  *)
@@ -281,7 +281,6 @@ let normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
   = fun tree ->
 
     let reverse = Util.Array.reverse in
-    let iter = Base.Array.iter in
 
     let forward_trivia = tree |> walk_leading_trivia in
     let reverse_trivia = tree |> walk_trailing_trivia |> reverse in
@@ -293,27 +292,27 @@ let normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
     let rec go_nt
       : pre_formatted_nonterminal -> formatted_tree
       = fun { children; tree_info } ->
-      let formatted_tree_children = Core_kernel.Queue.create () in
-      iter children ~f:(go_pft formatted_tree_children);
-      { children = Core_kernel.Queue.to_array formatted_tree_children
+      let formatted_tree_children = Queue.create () in
+      Array.iter children ~f:(go_pft formatted_tree_children);
+      { children = Queue.to_array formatted_tree_children
       ; tree_info
       }
 
     and go_pft
-      : formatted_capture Core_kernel.Queue.t -> pre_formatted -> unit
+      : formatted_capture Queue.t -> pre_formatted -> unit
       = fun formatted_tree_children -> function
       | Terminal content ->
         let leading_trivia = forward_trivia.(!overall_ix) in
         let trailing_trivia = reverse_trivia.(!overall_ix) in
         overall_ix := !overall_ix + 1;
-        Core_kernel.Queue.enqueue formatted_tree_children
+        Queue.enqueue formatted_tree_children
           (TerminalCapture { content; leading_trivia; trailing_trivia })
       | Space _ -> ()
       | Nonterminal pfnt ->
-        Core_kernel.Queue.enqueue formatted_tree_children
+        Queue.enqueue formatted_tree_children
           (NonterminalCapture (go_nt pfnt))
       | Group group_children
-      -> iter group_children ~f:(go_pft formatted_tree_children)
+      -> Array.iter group_children ~f:(go_pft formatted_tree_children)
 
     in go_nt tree
 

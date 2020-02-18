@@ -10,8 +10,8 @@ let rec ast_to_sort' : NonBinding.term -> Types.sort
   = function
       | Operator (name, subtms)
       -> SortAp (name, subtms
-        |> Base.List.map ~f:ast_to_sort'
-        |> Base.Array.of_list
+        |> Core_kernel.List.map ~f:ast_to_sort'
+        |> Core_kernel.Array.of_list
       )
       | Sequence _ | Primitive _
       -> raise InvalidSort
@@ -24,8 +24,8 @@ let rec ast_to_core : Binding.Nominal.term -> core
   = function
   | Var v -> Var v
   | Operator (name, subtms)
-  -> Operator (name, Base.List.map subtms ~f:ast_to_core_scope)
-  | Sequence subtms -> Sequence (Base.List.map subtms ~f:ast_to_core)
+  -> Operator (name, Core_kernel.List.map subtms ~f:ast_to_core_scope)
+  | Sequence subtms -> Sequence (Core_kernel.List.map subtms ~f:ast_to_core)
   | Primitive p -> Primitive p
 
 and ast_to_core_scope : Binding.Nominal.scope -> core_scope

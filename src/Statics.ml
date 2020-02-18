@@ -1,5 +1,5 @@
+open Core_kernel
 open Types
-module List = Base.List
 
 (* TODO: untangle Statics_Lexer -> Statics_Parser -> Statics *)
 (* module Lexer = Statics_Lexer *)
@@ -42,7 +42,7 @@ type typing_clause =
   | InferenceRule of inference_rule
   | CheckingRule of checking_rule
 
-type hypothesis = term Core_kernel.String.Map.t * typing_clause
+type hypothesis = term String.Map.t * typing_clause
 
 (* TODO: the conclusion type differs from LVCA *)
 (* type rule = Rule of hypothesis list * string option * hypothesis *)

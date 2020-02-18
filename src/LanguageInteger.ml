@@ -1,3 +1,5 @@
+open Core_kernel
+
 let abstractSyntax =
   {|
 import { integer } from "builtins"
@@ -61,7 +63,7 @@ let rec eval' : Bigint.t list -> Binding.DeBruijn.term -> Bigint.t option =
        | _ -> None
      )
      | _, _ -> None)
-  | Var (i, 0) -> Base.List.nth env i
+  | Var (i, 0) -> List.nth env i
   | Primitive (PrimInteger i) -> Some i
   | Var _ | Operator _ | Sequence _ | Primitive (PrimString _) -> None
 ;;
@@ -69,7 +71,7 @@ let rec eval' : Bigint.t list -> Binding.DeBruijn.term -> Bigint.t option =
 let eval : Binding.DeBruijn.term -> Bigint.t option = eval' []
 
 let eval_tm
-  : Binding.Nominal.term -> (Binding.Nominal.term, string) Base.Result.t
+  : Binding.Nominal.term -> (Binding.Nominal.term, string) Result.t
   = fun tm ->
   match Binding.DeBruijn.from_nominal tm with
   | Error msg -> Error msg

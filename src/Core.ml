@@ -88,7 +88,7 @@ let find_core_match
 exception EvalError of string
 
 let eval
-  : core -> (core, string) Base.Result.t
+  : core -> (core, string) Result.t
   = fun core ->
   let rec go
     : core String.Map.t -> core -> core

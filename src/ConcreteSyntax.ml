@@ -1,6 +1,6 @@
 open Core_kernel
 module Nominal = Binding.Nominal
-module MMI = Core_kernel.Int.Table
+module MMI = Int.Table
 module MSI = Util.MutableSet.Int
 module Lexer = ConcreteSyntax_Lexer
 module Parser = ConcreteSyntax_Parser
@@ -619,7 +619,7 @@ let to_grammar
   -> string
   -> LrParsing.grammar
     * (tree_info * nonterminal_token list * operator_match_pattern option)
-        Core_kernel.Int.Table.t
+        Int.Table.t
     * string option String.Map.t
   =
   fun { terminal_rules; nonterminal_rules } start_nonterminal ->
@@ -697,7 +697,7 @@ let to_grammar
             | None -> -1 (* TODO: is this okay? *)
           in
 
-          Core_kernel.Int.Table.set
+          Int.Table.set
             production_rule_map
             ~key:!prod_num
             ~data:( (nonterminal_name, op_index)
@@ -735,7 +735,7 @@ let to_grammar
  *)
 let tree_of_parse_result (module Lr0 : LrParsing.LR0)
   :  (tree_info * nonterminal_token list * operator_match_pattern option)
-       Core_kernel.Int.Table.t
+       Int.Table.t
   -> string option String.Map.t
   -> LrParsing.nonterminal_num String.Map.t
   -> ConcreteSyntaxDescription.nonterminal_rules

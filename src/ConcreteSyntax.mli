@@ -70,13 +70,13 @@ val parse
   :  ConcreteSyntaxDescription.t
   -> string (* root name *)
   -> string (* string to parse *)
-  -> (formatted_tree, string) Base.Result.t
+  -> (formatted_tree, string) Core_kernel.Result.t
 
 (** Convert form a concrete to an abstract syntax tree *)
 val to_ast
   :  ConcreteSyntaxDescription.t
   -> formatted_tree
-  -> (Nominal.term, string) Base.Result.t
+  -> (Nominal.term, string) Core_kernel.Result.t
 
 val to_grammar
   :  ConcreteSyntaxDescription.t

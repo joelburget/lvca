@@ -1,5 +1,4 @@
 open Binding
-module List = Base.List
 
 (* TODO:
    - clean up error handling
@@ -58,12 +57,14 @@ let rec check : ty list -> ty -> DeBruijn.term -> bool =
   match tm with
   | Var (ix, 0) ->
     let ty' = List.nth env ix
+      (*
       |> Util.get_option
            (InvariantViolation
               (Printf.sprintf
                  "bad environment index %n, environment size %n"
                  ix
                  (List.length env)))
+                 *)
     in
     ty' = ty
   | Var _ -> raise (InvariantViolation "unexpected non-variable binding")
@@ -85,14 +86,15 @@ and infer : ty list -> DeBruijn.term -> ty option =
   fun env tm ->
   match tm with
   | Var (ix, 0) ->
-    Some
-      (List.nth env ix
+    Some (List.nth env ix)
+    (*
        |> Util.get_option
             (InvariantViolation
                (Printf.sprintf
                   "bad environment index %n, environment size %n"
                   ix
                   (List.length env))))
+                  *)
   | Operator ("true", []) | Operator ("false", []) -> Some Bool
   | Operator ("ite", [ Scope ([], cond); Scope ([], b1); Scope ([], b2) ]) ->
     check_assert (check env Bool cond);
@@ -129,12 +131,14 @@ let rec eval' : DeBruijn.term list -> DeBruijn.term -> DeBruijn.term =
   fun env tm ->
   match tm with
   | Var (ix, 0) -> List.nth env ix
+    (*
     |> Util.get_option
          (InvariantViolation
             (Printf.sprintf
                "bad environment index %n, environment size %n"
                ix
                (List.length env)))
+               *)
   | Var _ -> raise (InvariantViolation "unexpected non-variable binding")
   | Operator ("true", []) | Operator ("false", []) -> tm
   | Operator ("ite", [ Scope ([], cond); Scope ([], b1); Scope ([], b2) ]) ->
@@ -155,9 +159,9 @@ type check_eval_result =
   (* | InferFailure of string *)
   | EvalResult of string * string
 
-let check_eval : Nominal.term -> (string * string, string) Base.Result.t =
-  fun tm ->
-  match DeBruijn.from_nominal tm with
+let check_eval
+  : Nominal.term -> (string * string, string) Result.t
+  = fun tm -> match DeBruijn.from_nominal tm with
   | Error err -> Error err
   | Ok tm' ->
     (match infer [] tm' with

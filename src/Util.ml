@@ -1,5 +1,4 @@
 open Core_kernel
-open Result
 
 let rec snoc lst a =
   match lst with
@@ -39,7 +38,7 @@ let rec traverse_list_result (f : 'a -> ('b, 'c) Result.t)
   match lst with
   | [] -> Ok []
   | a :: rest ->
-    (match f a with
+    Result.(match f a with
      | Error msg -> Error msg
      | Ok b -> traverse_list_result f rest >>=
        fun rest' -> Ok (b :: rest'))
@@ -196,6 +195,16 @@ let get_result : ('b, 'a) Result.t -> ('b -> 'a) -> 'a
     | Ok a -> a
     | Error b -> f b
 
+module String = struct
+  module Map = struct
+    type 'a t = 'a String.Map.t
+
+    let remove_many : 'a t -> string array -> 'a t
+      = fun map keys -> Array.fold keys
+        ~init:map ~f:String.Map.remove
+  end
+end
+
 module Array = struct
   type 'a t = 'a array
 
@@ -210,19 +219,9 @@ module Array = struct
 
   let reverse : 'a t -> 'a t
     = fun arr ->
-      let result = Core_kernel.Array.copy arr in
-      Core_kernel.Array.rev_inplace result;
+      let result = Array.copy arr in
+      Array.rev_inplace result;
       result
-end
-
-module String = struct
-  module Map = struct
-    type 'a t = 'a String.Map.t
-
-    let remove_many : 'a t -> string array -> 'a t
-      = fun map keys -> Core_kernel.Array.fold keys
-        ~init:map ~f:Core_kernel.String.Map.remove
-  end
 end
 
 module MutableSet = struct
@@ -278,7 +277,7 @@ module MutableSet = struct
   end
 
   module Int = struct
-    type t = (int, Core_kernel.Int.comparator_witness) Impl.t
+    type t = (int, Int.comparator_witness) Impl.t
     let of_list = Impl.of_list (module Int)
     let to_list = Impl.to_list
     let to_array = Impl.to_array
@@ -299,6 +298,6 @@ end
 
 module Hash_set = struct
   let is_subset
-    : 'a Core_kernel.Hash_set.t -> of_:('a Core_kernel.Hash_set.t) -> bool
-    = fun s1 ~of_:s2 -> Core_kernel.Hash_set.(for_all s1 ~f:(mem s2))
+    : 'a Hash_set.t -> of_:('a Hash_set.t) -> bool
+    = fun s1 ~of_:s2 -> Hash_set.(for_all s1 ~f:(mem s2))
 end

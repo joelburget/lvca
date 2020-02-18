@@ -155,10 +155,10 @@ let string_of_operator_match : operator_match -> string
 
 let string_of_operator_rules : operator_match list list -> string
   = fun rules ->
-    let arr = Core_kernel.Queue.create () in
+    let arr = Queue.create () in
     List.iteri rules ~f:(fun i level ->
       List.iteri level ~f:(fun j operator_match ->
-        Core_kernel.Queue.enqueue arr (Printf.sprintf
+        Queue.enqueue arr (Printf.sprintf
           "  %s %s"
           (if i > 0 && j = 0 then ">" else "|")
           (string_of_operator_match operator_match)
@@ -166,7 +166,7 @@ let string_of_operator_rules : operator_match list list -> string
       );
     );
     arr
-      |> Core_kernel.Queue.to_array
+      |> Queue.to_array
       |> String.concat_array ~sep:"\n"
 
 let string_of_nonterminal_rule : nonterminal_rule -> string

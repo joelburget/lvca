@@ -1,8 +1,8 @@
 open Core_kernel
-module MMI = Core_kernel.Int.Table
+module MMI = Int.Table
 module MSI = Util.MutableSet.Int
-module MStack = Core_kernel.Stack
-module MQueue = Core_kernel.Queue
+module MStack = Stack
+module MQueue = Queue
 let get_option, get_option', invariant_violation =
   Util.(get_option, get_option', invariant_violation)
 module Lex = Placemat.Lex
@@ -811,13 +811,13 @@ module Lr0 (G : GRAMMAR) = struct
     |        _,        _,        _ -> Error None
 
   (* TODO: is this right? *)
-  let states : state array = Base.Array.init
+  let states : state array = Array.init
     (Int.Map.length lr0_items)
     ~f:Fn.id
-  let terminals : terminal_num array = Base.Array.init
+  let terminals : terminal_num array = Array.init
     number_of_terminals
     ~f:Fn.id
-  let nonterminals : nonterminal_num array = Base.Array.init
+  let nonterminals : nonterminal_num array = Array.init
     (String.Map.length nonterminal_nums)
     ~f:Fn.id
 
