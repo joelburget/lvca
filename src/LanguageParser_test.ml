@@ -1,32 +1,32 @@
-open Jest
-open Expect
+open Core_kernel
 open Types
 
-let _ = describe "AbstractSyntax.Parser" (fun () ->
-  let expectParse str lang = test ("'" ^ str ^ "'") (fun () ->
-    expect (AbstractSyntax.Parser.language_def
-      AbstractSyntax.Lexer.read
-      (Lexing.from_string str)
-    ) |> toEqual lang
-  ) in
+let expect_parse str lang = Caml.(
+  AbstractSyntax.Parser.language_def
+    AbstractSyntax.Lexer.read
+    (Lexing.from_string str)
+  = lang)
 
-  expectParse "bool := true() | false()"
+let tm_sort = SortAp ("tm", [||])
+let tm_valence = FixedValence ([], tm_sort)
+let ty_sort = SortAp ("ty", [||])
+let ty_valence = FixedValence ([], ty_sort)
+
+
+let%test_module "AbstractSyntax.Parser" = (module struct
+ (* TODO: test
+  let%test "" = expect_parse "bool := true() | false()"
     { imports = [];
-      sort_defs = SortDefs (Tablecloth.StrDict.from_list [
+      sort_defs = SortDefs (String.Map.of_alist_exn [
         "bool", SortDef
         ([], [
           OperatorDef ("true", Arity ([], []));
           OperatorDef ("false", Arity ([], []));
         ])
       ]);
-    };
+    }
 
-  let tm_sort = SortAp ("tm", [||]) in
-  let tm_valence = FixedValence ([], tm_sort) in
-  let ty_sort = SortAp ("ty", [||]) in
-  let ty_valence = FixedValence ([], ty_sort) in
-
-  expectParse {|
+  let%test "" = expect_parse {|
   ty :=
     | bool()
     | arr(ty; ty)
@@ -36,7 +36,7 @@ let _ = describe "AbstractSyntax.Parser" (fun () ->
     | lam(tm. tm)
   |}
     { imports = [];
-      sort_defs = SortDefs (Tablecloth.StrDict.from_list [
+      sort_defs = SortDefs (String.Map.of_alist_exn [
         "ty", SortDef
         ([], [
           OperatorDef ("bool", Arity ([], []));
@@ -50,4 +50,5 @@ let _ = describe "AbstractSyntax.Parser" (fun () ->
         ]);
       ]);
     }
-)
+    *)
+end)

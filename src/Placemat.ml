@@ -1,5 +1,3 @@
-(** Sits on top of the tablecloth, but still below everything else *)
-
 open Core_kernel
 
 module Json = struct
@@ -15,11 +13,11 @@ module Json = struct
 end
 
 module Sha256 = struct
-  let hash_str : string -> Sha256.t
-    = Sha256.string
+  let hash_str : string -> Digestif.SHA256.t
+    = Digestif.SHA256.digest_string
 
-  let to_hex : Sha256.t -> string
-    = Sha256.to_hex
+  let to_hex : Digestif.SHA256.t -> string
+    = Digestif.SHA256.to_hex
 
   let hash : Bytes.t -> string
     = fun bytes -> bytes
@@ -68,18 +66,14 @@ module String = struct
   let get : string -> int -> char
     = String.get
 end
-*)
 
 module Re = struct
-  type t = Str.regexp
+  type t = Re.re
 
-  let of_string : string -> t
-    = Str.regexp
-
-  (* XXX error behavior *)
   let replace : re:t -> replacement:string -> string -> string
-    = fun ~re ~replacement str -> Str.global_replace re replacement str
+    = fun ~re ~replacement str -> Re.replace re ~f:(fun _ -> replacement) str
 end
+*)
 
 module Lex : sig
   type token =
@@ -89,8 +83,12 @@ module Lex : sig
     }
 
   type token_name = string
-  type regex = string
-  type lexer = (regex * token_name) list
+  (* type regex = string *)
+  type regex = Re.t
+  type lexer =
+   { token_descs: (token_name * string) list
+   ; token_res: (token_name * regex) list
+   }
 
   type position = int
 
@@ -117,8 +115,16 @@ end = struct
     }
 
   type token_name = string
-  type regex = string
-  type lexer = (regex * token_name) list
+  (* type regex = string *)
+  type regex = Re.t
+  type lexer =
+   { token_descs: (token_name * string) list
+   ; token_res: (token_name * regex) list
+   }
+
+  let string_of_lexer = fun { token_descs; _ } -> token_descs
+    |> List.map ~f:(fun (name, re) -> Printf.sprintf "%s := /%s/" name re)
+    |> String.concat ~sep:"\n"
 
   type position = int
 
@@ -141,46 +147,41 @@ end = struct
                   |> String.concat_array ~sep:" "
 
   (** raises: [LexError] *)
-  let get_next_tok_exn : string Int.Map.t -> Str.regexp -> lexbuf -> token
-    = fun tok_names re { buf; pos } ->
+  let get_next_tok_exn : lexer -> string Int.Map.t -> Re.re -> lexbuf -> token
+    = fun lexer tok_names re { buf; pos } ->
 
-      let input = String.slice buf
-        pos
-        (String.length buf)
-      in
-      let matches = Str.string_match re input pos in
-
-      if matches
-      then
-        let match_end = Str.match_end () in
-
-        let possible_match = tok_names
-          |> Int.Map.to_sequence
-          |> Sequence.find
-            ~f:(fun (i, _re) ->
-              try
-                let _ : string = Str.matched_group i input in true
-              with
-                Caml.Not_found -> false
-            )
-        in
-
-        match possible_match with
-          | Some (_match_num, name)
-          -> { name; start = pos; finish = match_end }
-          | None -> raise (LexError
-            { start_pos = pos
-            ; end_pos = match_end
-            ; message =
-              "Failed to find matching group even though a match was reported"
-            })
-      else
-        raise
+      match Re.exec_opt ~pos re buf with
+        | None -> raise
           (LexError
              { start_pos = pos
              ; end_pos = pos
-             ; message = "Failed lex, \nlexbuf: " ^ buf
+             ; message = Printf.sprintf
+               "No match found.\n\nLexbuf:\n%s\n\nLexer:\n%s"
+               buf
+               (string_of_lexer lexer)
              })
+        | Some groups ->
+          let group_nums = Map.keys tok_names in
+          let match_num, match_end = List.fold_until group_nums
+            ~init:()
+            ~f:(fun () group_num ->
+              if Re.Group.test groups group_num
+              then
+                Stop (group_num, Re.Group.stop groups group_num)
+              else
+                Continue ())
+            ~finish:(fun () -> raise (LexError
+              { start_pos = pos
+              ; end_pos = pos
+              ; message = Printf.sprintf
+                "Invariant violation: no match found.\n\nLexbuf:\n%s\n\nLexer:\n%s"
+                buf
+                (string_of_lexer lexer)
+              }))
+          in
+
+          let name = Map.find_exn tok_names match_num in
+          { name; start = pos; finish = match_end }
   ;;
 
   (** raises: [LexError] *)
@@ -189,26 +190,20 @@ end = struct
 
       let result = Queue.create () in
       let lexbuf = { buf = input; pos = 0 } in
-      let mut_tok_names = Int.Table.create () in
 
-      let re_str = lexer
-        |> List.mapi ~f:(fun i (re_str, tok_name) ->
-          Int.Table.set mut_tok_names ~key:i ~data:tok_name;
-          "(" ^ re_str ^ ")")
-        |> String.concat ~sep:"|"
+      let re : Re.re = lexer.token_res
+        |> List.map ~f:(fun (_, re) -> Re.group re)
+        |> Re.alt
+        |> Re.compile
       in
 
-      let tok_names = failwith "TODO"
-      (*
-      mut_tok_names
-        |> Int.Table.to_array
-        |> Int.Map.from_array
-        *)
+      let tok_names = lexer.token_res
+        |> List.mapi ~f:(fun i (name, _re) -> i + 1, name)
+        |> Int.Map.of_alist_exn
       in
-      let re = Str.regexp re_str in
 
       while lexbuf.pos < String.length lexbuf.buf do
-        let tok = get_next_tok_exn tok_names re lexbuf in
+        let tok = get_next_tok_exn lexer tok_names re lexbuf in
         let { start; finish; _ } = tok in
         assert (start = lexbuf.pos);
         lexbuf.pos <- finish;
@@ -217,11 +212,119 @@ end = struct
 
       Queue.to_array result
 
-  let lex : lexer -> string -> (token array, lex_error) Result.t
+  let lex
+    : lexer -> string -> (token array, lex_error) Result.t
     = fun lexer input ->
       try
         Ok (tokenize lexer input)
       with
         LexError err -> Error err
+
+  let test_print_result = function
+    | Ok toks -> Array.iter toks ~f:(fun { name; start; finish }
+    -> printf "%s %n %n\n" name start finish)
+    | Error { message; start_pos; end_pos; _ } -> printf
+      "Lexing error at characters %n - %n: %s\n"
+      start_pos end_pos message
+
+  let%expect_test "lex 1" =
+    let lexer1 = Re.(
+      [ "IF", str "if";
+        "THEN", str "then";
+        "ELSE", str "else";
+        "OP", alt [ str "<"; str ">"; str "<="; str ">="; str "=="; str "!="];
+        "ID",
+        seq [
+          alt [rg 'a' 'z'; rg 'A' 'Z'];
+          rep (alt [rg 'a' 'z'; rg 'A' 'Z'; rg '0' '9'; char '_' ]);
+        ];
+        "NUM", rep1 (rg '0' '9');
+        "WHITE", rep1 (char ' ');
+      ])
+    in
+
+    let result = lex { token_descs = []; token_res = lexer1 }
+      "if a > b then 90 else 91" in
+    (* 012345678901234567890123 *)
+
+    test_print_result result;
+
+    [%expect{|
+      IF 0 2
+      WHITE 2 3
+      ID 3 4
+      WHITE 4 5
+      OP 5 6
+      WHITE 6 7
+      ID 7 8
+      WHITE 8 9
+      THEN 9 13
+      WHITE 13 14
+      NUM 14 16
+      WHITE 16 17
+      ELSE 17 21
+      WHITE 21 22
+      NUM 22 24 |}]
+
+   let%expect_test "lex 2" =
+    let lexer2 = Re.(
+      [ "+", char '+'/
+        "*", char '*'/
+        "(", char '('/
+        ")", char ')'/
+        "id", rep1 (rg 'a' 'z');
+        "WHITE", rep1 (char ' ');
+      ])
+    in
+
+    let result = lex { token_descs = []; token_res = lexer2 }
+      "foo + bar" in
+    (* 012345678 *)
+
+    test_print_result result;
+    [%expect{|
+      id 0 3
+      WHITE 3 4
+      + 4 5
+      WHITE 5 6
+      id 6 9 |}]
+
+  let%expect_test "lex 3" =
+    let lexer3 = Re.(
+      [ char ':', "COLON";
+        str "if", "IF";
+        str "then", "THEN";
+        str "else", "ELSE";
+        str "fun", "FUN";
+        str "->", "ARROW";
+        str "true", "TRUE";
+        str "false", "FALSE";
+        str "bool", "BOOL";
+        seq [
+          alt [rg 'a' 'z'; rg 'A' 'Z'];
+          rep (alt [rg 'a' 'z'; rg 'A' 'Z'; rg '0' '9'; char '_' ]);
+        ],
+        "ID";
+        rep1 (char ' '), "SPACE";
+      ])
+    in
+
+    let result = lex { token_descs = []; token_res = lexer3 }
+      "if false then false else true" in
+    (* 01234567890123456789012345678 *)
+    test_print_result result;
+
+    [%expect{|
+      IF 0 2
+      SPACE 2 3
+      FALSE 3 8
+      SPACE 8 9
+      THEN 9 13
+      SPACE 13 14
+      FALSE 14 19
+      SPACE 19 20
+      ELSE 20 24
+      SPACE 24 25
+      TRUE 25 29 |}]
 
 end

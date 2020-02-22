@@ -59,9 +59,15 @@ type lookahead_propagation =
 *)
 type mutable_lookahead_item_sets = LookaheadItemSet.t Hash_set.t
 
-(* Set of items with mutable lookahead (map from item number to it mutable
+(* Set of items with mutable lookahead (map from item number to its mutable
  * lookahead set) *)
-type mutable_lookahead_item_set = Int.Hash_set.t Int.Map.t
+module MutableLookaheadItemSet = struct
+  module T = struct
+    type t = Int.Hash_set.t Int.Map.t [@@deriving sexp]
+  end
+  include T
+  (* include Comparable.Make(T) *)
+end
 
 (* Same as the corresponding lr0 types *)
 type lalr1_action_table = state -> terminal_num -> action
@@ -75,7 +81,7 @@ let lookahead_item_set_to_item_set
              |> Int.Set.of_array
 
 let mutable_lookahead_item_set_to_item_set
-  : mutable_lookahead_item_set -> item_set
+  : MutableLookaheadItemSet.t -> item_set
   = fun x -> x
              |> Int.Map.to_alist
              |> List.map ~f:(fun (k, _) -> k)
@@ -399,7 +405,7 @@ module Lalr1 (G : GRAMMAR) = struct
   (* CPTT Algorithm 4.63 step 1.
    * Convert each item set into a set of items with (empty) mutable lookahead.
   *)
-  let mutable_lalr1_items : mutable_lookahead_item_set Int.Map.t
+  let mutable_lalr1_items : MutableLookaheadItemSet.t Int.Map.t
     = lr0_items
       |> Int.Map.map ~f:(fun items -> items
                              |> Int.Set.to_list
@@ -645,9 +651,9 @@ module Lalr1 (G : GRAMMAR) = struct
       let result, _ = parse_trace DoTrace toks in
       result
 
-  let lex_and_parse : Lex.lexer -> string
+  let lex_and_parse : string -> Lex.lexer -> string
     -> (parse_result, (Lex.lex_error, parse_error) Either.t) Result.t
-    = fun lexer input -> match Lex.lex lexer input with
+    = fun lexer_str lexer input -> match Lex.lex lexer_str lexer input with
       | Error error -> Error (First error)
       | Ok tokens ->
         let len = String.length input in

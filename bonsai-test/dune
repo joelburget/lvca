@@ -1,0 +1,4 @@
+(executables
+  (names main)
+  (libraries bonsai.web lvca)
+  (preprocess (pps ppx_jane)))

@@ -54,3 +54,23 @@ let alloc : int -> bool -> bitstring =
 ;;
 
 let length : bitstring -> int = fun (Bitstring (bs_len, _)) -> bs_len
+
+
+let%test_module "bitstring tests" = (module struct
+  let bs = alloc 10 false
+
+  let%test "index" = index 0 = (0, 0)
+  let%test "index" = index 7 = (0, 7)
+  let%test "index" = index 8 = (1, 0)
+  let%test "index" = index 9 = (1, 1)
+  let%test "index" = index 15 = (1, 7)
+
+  let%test "get_exn" = get_exn bs 0 = false
+  let%test "set_exn" = set_exn bs 0 true = ()
+  let%test "get" = get bs 0 = Some true
+  let%test "set" = set bs 0 false = Some ()
+
+  let%test "get" = get bs 9 = Some false
+  let%test "get" = get bs 10 = None
+
+end)

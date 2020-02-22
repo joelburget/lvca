@@ -27,6 +27,7 @@ type symbol =
 
 (** A state number *)
 type state = int
+  [@@deriving sexp, compare]
 
 type production = symbol list
 
@@ -71,14 +72,21 @@ let mk_item' : int -> int -> item
   = fun production_num position -> (position lsl 24) lor production_num
 
 type item_set = Int.Set.t
+  [@@deriving equal]
 
 let mk_item : item_view -> item
   = fun { production_num; position } -> mk_item' production_num position
 
-type configuration_set =
-  { kernel_items : item_set    (* set of items *)
-  ; nonkernel_items : item_set (* set of nonterminals *)
-  }
+module ConfigurationSet = struct
+  module T = struct
+    type t =
+      { kernel_items : item_set    (* set of items *)
+      ; nonkernel_items : item_set (* set of nonterminals *)
+      } [@@deriving equal]
+  end
+  include T
+end
+type configuration_set = ConfigurationSet.t
 
 let simplify_config_set : configuration_set -> item_set
   = fun { kernel_items; nonkernel_items } ->
@@ -644,7 +652,7 @@ module Lr0 (G : GRAMMAR) = struct
       let state, _ = lr0_items
                      |> Int.Map.to_sequence
                      |> Sequence.find
-                       ~f:(fun (_, item_set') -> Caml.(item_set' = item_set))
+                       ~f:(fun (_, item_set') -> Set.equal item_set' item_set)
                      |> get_option (NoItemSet
                        (fun () -> Printf.sprintf
                           "item_set_to_state -- couldn't find item_set (%s) (options: %s)"
@@ -1051,9 +1059,9 @@ module Lr0 (G : GRAMMAR) = struct
       match parse_trace DontTrace toks with
         result, _ -> result
 
-  let lex_and_parse : Lex.lexer -> string
+  let lex_and_parse : string -> Lex.lexer -> string
     -> (parse_result, (Lex.lex_error, parse_error) Either.t) Result.t
-    = fun lexer input -> match Lex.lex lexer input with
+    = fun lexer_str lexer input -> match Lex.lex lexer_str lexer input with
       | Error error -> Error (First error)
       | Ok tokens ->
         let len = String.length input in

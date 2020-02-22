@@ -443,7 +443,7 @@ let rewrite_tokens
 
     let raised_nt_name = Printf.sprintf "%s_%n" nt_name (level + 1) in
     let this_level_nt_name = Printf.sprintf "%s_%n" nt_name level in
-    Printf.printf "raised_nt_name: %s\n" raised_nt_name;
+    (* Printf.printf "raised_nt_name: %s\n" raised_nt_name; *)
     let tokens' = List.filter tokens
       ~f:(fun tok -> not (is_formatting_token tok))
     in
@@ -655,8 +655,10 @@ let to_grammar
     = Util.list_map_unions nonterminal_renamings
   in
 
+  (*
   Printf.printf "desugared:\n\n%s\n"
     (string_of_derived_rules nonterminal_rules_desugared);
+    *)
 
   let nonterminal_num = ref 0 in
 
@@ -845,9 +847,9 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
 let lexer_of_desc : ConcreteSyntaxDescription.t -> Placemat.Lex.lexer =
   fun { terminal_rules; _ } ->
   let lex_items = terminal_rules
-    |> List.map ~f:(fun (tok_name, re) -> Regex.to_string re, tok_name)
+    |> List.map ~f:(fun (tok_name, re) -> Regex.to_re re, tok_name)
   in
-  ({|[ \n\r\t]+|}, "SPACE") :: lex_items
+  (Re.rep1 Re.space, "SPACE") :: lex_items
 ;;
 
 let parse desc root_name str =

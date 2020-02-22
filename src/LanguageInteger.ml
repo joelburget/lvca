@@ -1,7 +1,6 @@
 open Core_kernel
 
-let abstractSyntax =
-  {|
+let abstractSyntax = {|
 import { integer } from "builtins"
 
 tm :=

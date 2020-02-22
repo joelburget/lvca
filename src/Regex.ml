@@ -1,5 +1,4 @@
 open Core_kernel
-module Re = Placemat.Re
 
 type re_class_base =
   | Word (* \w / \W *)
@@ -8,6 +7,14 @@ type re_class_base =
   | Boundary (* \b / \B *)
 (* TODO: other javascript classes *)
 (* TODO: unicode categories *)
+
+let class_to_re : re_class_base -> Re.t
+  = Re.(function
+  | Word -> wordc
+  | Whitespace -> space
+  | Digit -> digit
+  | Boundary -> failwith "TODO: boundary"
+  )
 
 (** Accept the positive or negative version of a class *)
 type re_class = PosClass of re_class_base | NegClass of re_class_base
@@ -38,6 +45,20 @@ type regex =
   | ReConcat of regex list
 
 type t = regex
+
+let rec to_re : regex -> Re.t
+  = Re.(function
+  | ReString s -> str s
+  | ReClass (PosClass cls) -> class_to_re cls
+  | ReClass (NegClass _cls) -> failwith "TODO: class negation"
+  | ReSet str -> set str
+  | ReStar re -> rep (to_re re)
+  | RePlus re -> rep1 (to_re re)
+  | ReOption re -> opt (to_re re)
+  | ReChoice (re1, re2) -> alt [to_re re1; to_re re2]
+  | ReAny -> any
+  | ReConcat res -> seq (List.map res ~f:to_re)
+  )
 
 let show_class = function
   | PosClass Word -> {|\w|}
@@ -107,9 +128,11 @@ let parenthesize : bool -> string -> string
     if condition then "(" ^ str ^ ")" else str
 
 let rec to_string' : int -> regex -> string
-  = fun precedence re -> match re with
+  = fun precedence -> function
     (* We need to escape special characters in strings *)
-    | ReString str -> Re.(str
+    | ReString str -> str
+      (*
+      Re.(str
       |> replace ~re:(Re.of_string {|/\\/g|}) ~replacement:{|\\|}
       |> replace ~re:(Re.of_string {|/\//g|}) ~replacement:{|\/|}
       |> replace ~re:(Re.of_string {|/\|/g|}) ~replacement:{|\||}
@@ -121,6 +144,7 @@ let rec to_string' : int -> regex -> string
       |> replace ~re:(Re.of_string {|/\)/g|}) ~replacement:{|\)|}
       |> parenthesize (precedence > 1 && String.length str > 1)
       )
+      *)
 
     | ReSet    str -> "[" ^ str ^ "]"
     | ReStar   re -> to_string' 2 re ^ "*"
@@ -145,3 +169,55 @@ let rec to_string' : int -> regex -> string
 *)
 let to_string : regex -> string
   = to_string' 0
+
+
+let%test_module "regex tests" = (module struct
+  let (=) = Caml.(=)
+  let%test_module "accepts_empty" = (module struct
+    let%test "" = accepts_empty (ReString "foo") = false
+    let%test "" =
+     (accepts_empty (ReConcat
+          [ReStar (ReString "foo"); ReOption (ReString "bar")]
+        ))
+     = true
+    let%test "" =
+        (accepts_empty (ReConcat
+          [ReStar (ReString "foo"); RePlus (ReString "bar")]
+        ))
+      = false
+
+    let%test "" = accepts_empty (ReClass (PosClass Boundary))
+    let%test "" = accepts_empty (ReClass (NegClass Boundary))
+    let%test "" = not (accepts_empty (ReClass (PosClass Digit)))
+    let%test "" = not (accepts_empty (ReClass (NegClass Digit)))
+    let%test "" = not (accepts_empty (ReSet "a-z"))
+    let%test "" = accepts_empty (RePlus (ReString ""))
+  end)
+
+  let%test_module "to_string" = (module struct
+    let print_re re = printf "%s" (to_string re)
+    let%expect_test _ =
+      print_re (ReConcat [ReString "foo"; ReString "bar"]);
+      [%expect]
+    let%expect_test _ =
+      print_re (ReConcat [ReString "foo"; ReString "bar"]);
+      [%expect{|(foo)(bar)|}]
+    let%expect_test _ = print_re (ReSet "a-z");
+      [%expect{|[a-z]|}]
+    let%expect_test _ = print_re
+        (ReConcat [ReClass (PosClass Boundary); ReClass (NegClass Boundary)]);
+      [%expect{|\b\B|}]
+    let%expect_test _ =
+      printf "%s" (to_string (ReConcat
+        [ ReStar (ReString "foo");
+          RePlus (ReString "foo");
+          ReOption (ReString "foo");
+        ]));
+      [%expect]
+      (* = "(foo)*(foo)+(foo)?" *)
+    let%expect_test _ = printf "%s" (to_string (ReString "+")); [%expect] (* = {|\+|} *)
+    let%expect_test _ = printf "%s" (to_string (ReString "*")); [%expect] (* = {|\*|} *)
+    let%expect_test _ = printf "%s" (to_string (ReString "?")); [%expect] (* = {|\?|} *)
+    let%expect_test _ = printf "%s" (to_string (ReString "-")); [%expect] (* = {|\-|} *)
+  end)
+end)

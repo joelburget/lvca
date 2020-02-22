@@ -103,7 +103,7 @@ and Nominal : sig
   val pp_term : Format.formatter -> Nominal.term -> unit
   val pp_term' : Nominal.term -> string
   val jsonify : Nominal.term -> Placemat.Json.t
-  val serialize : Nominal.term -> Core_kernel.Bytes.t
+  val serialize : Nominal.term -> Bytes.t
   val hash : Nominal.term -> string
 
   exception ToPatternScopeEncountered
@@ -200,14 +200,14 @@ end = struct
   ;;
 
   (* serialize by converting to JSON then cboring *)
-  let serialize : term -> Core_kernel.Bytes.t
+  let serialize : term -> Bytes.t
     = fun tm -> tm
       |> jsonify
       |> Placemat.Cbor.encode
   ;;
 
   (*
-     let deserialize : Core_kernel.Bytes.t -> term option
+     let deserialize : Bytes.t -> term option
        = fun buf -> buf
          |> Placemat.Cbor.decode
          |> dejsonify
@@ -238,3 +238,77 @@ end = struct
     | Sequence pats -> Sequence (List.map pats ~f:pattern_to_term)
     | Primitive prim -> Primitive prim
 end
+
+let%test_module "Nominal" = (module struct
+  open Nominal
+
+  let serialize tm =  Nominal.serialize tm
+  let print_serialize tm =
+    let bytes = serialize tm in
+    bytes
+      |> Bytes.to_array
+      |> Array.iter ~f:(fun char -> printf "%02x" (int_of_char char))
+  let print_hash tm = printf "%s" (hash tm)
+
+  let (=) = Caml.(=)
+
+  let tm = Var "x"
+  let%test "" = jsonify tm = Placemat.Json.(Array [| String "v"; String "x" |])
+  let%expect_test _ = print_serialize tm;
+    [%expect{| 8261766178 |}]
+  let%expect_test _ = print_hash tm;
+    [%expect{| bbc37ed1e26f8481398dc797bd0b3ec2e3ae954e1c3f69b461a487d8703ec3d6 |}]
+
+  let tm = Operator ("Z", [])
+  let%test "" = jsonify tm =
+    Placemat.Json.(Array [| String "o"; String "Z"; Array [||] |])
+  let%expect_test _ = print_serialize tm;
+    [%expect{| 83616f615a80 |}]
+  let%expect_test _ = print_hash tm;
+    [%expect{| 2380ed848a0c5ce3d0ad7420e841578e4068f394b37b9b11bd3c34cea391436c |}]
+
+  let tm = Operator ("S", [Scope ([Var "x"], Var "x")])
+  let%test "" = jsonify tm = Placemat.Json.(Array
+    [| String "o";
+       String "S";
+       Array [|
+         Array [|
+           Array [|
+             Array [| String "v"; String "x" |]
+           |];
+           Array [| String "v"; String "x" |]
+         |]
+       |]
+    |])
+  let%expect_test _ = print_serialize tm;
+    [%expect{| 83616f615381828182617661788261766178 |}]
+  let%expect_test _ = print_hash tm;
+    [%expect{| 391e4a6e3dc6964d60c642c52416d18b102dca357a3e4953834dfefc0e02dfbc |}]
+
+  let tm = Primitive (PrimInteger (Bigint.of_string "12345"))
+  let%test "" = jsonify tm = Placemat.Json.(Array
+    [| String "p";
+       Array [| String "i"; String "12345" |]
+    |])
+  let%expect_test _ = print_serialize tm;
+    [%expect {| 826170826169653132333435 |}]
+  let%expect_test _ = print_hash tm;
+    [%expect{| e69505a495d739f89cf515c31cf3a2cca4e29a1a4fede9a331b45207a6fb33e5 |}]
+
+  let tm = Sequence []
+  let%test "" = jsonify tm = Placemat.Json.(Array [| String "s"; Array [||] |])
+  let%expect_test _ = print_serialize tm;
+    [%expect{| 82617380 |}]
+  let%expect_test _ = print_hash tm;
+    [%expect{| 8afbfb879b5a95214c4c483c401313235040663bbdc08220992a5841801a421e |}]
+
+  let tm = Sequence [Var "x"]
+  let%test "" = jsonify tm = Placemat.Json.(Array
+    [| String "s";
+       Array [| Array [| String "v"; String "x" |] |]
+    |])
+  let%expect_test _ = print_serialize tm;
+    [%expect{| 826173818261766178 |}]
+  let%expect_test _ = print_hash tm;
+    [%expect{| 28b6e8f2124dd5931d69e1a5350f5c44ebdec7e0f6be9f98d2c717fcf09fa3d8 |}]
+end)

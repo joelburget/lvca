@@ -190,7 +190,7 @@ let stringify_list : ('a -> string) -> string -> 'a list -> string =
     |> String.concat_array ~sep
 ;;
 
-let get_result : ('b, 'a) Result.t -> ('b -> 'a) -> 'a
+let get_result : ('a, 'b) Result.t -> ('b -> 'a) -> 'a
   = fun result f -> match result with
     | Ok a -> a
     | Error b -> f b

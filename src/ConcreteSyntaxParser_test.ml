@@ -1,48 +1,45 @@
-open Jest
-open Expect
 open ConcreteSyntaxDescription
+module P = ConcreteSyntax.Parser
 
-let _ = describe "ConcreteSyntax_Parser" (fun () ->
-  let expectParse parser str tm = test ("parse '" ^ str ^ "'") (fun () ->
-    match parser ConcreteSyntax_Lexer.read (Lexing.from_string str) with
-    | tm' -> expect tm' |> toEqual tm
-    (* | exception ConcreteSyntax_Parser.Error -> fail ("'" ^ str ^ "' triggered an exception") *)
-  ) in
+let expect_parse parser str tm =
+  assert (parser ConcreteSyntax_Lexer.read (Lexing.from_string str) = tm)
 
-  expectParse ConcreteSyntax.Parser.terminal_rule__test
+let%test_module "ConcreteSyntax_Parser" = (module struct
+
+  let%test_unit "" = expect_parse P.terminal_rule__test
     {|TERMINAL := /foo/|}
-    (PreTerminalRule ("TERMINAL", Left "foo"));
+    (PreTerminalRule ("TERMINAL", First "foo"))
 
-(*   expectParse ConcreteSyntax.Parser.terminal_rule__test *)
+(*   expect_parse P.terminal_rule__test *)
 (*     {|TERMINAL := "\\"|} *)
-(*     (PreTerminalRule ("TERMINAL", [ReString "\\"])); *)
+(*     (PreTerminalRule ("TERMINAL", [ReString "\\"])) *)
 
-  expectParse ConcreteSyntax.Parser.terminal_rule__test
+  let%test_unit "" = expect_parse P.terminal_rule__test
     {|TERMINAL := "->"|}
-    (PreTerminalRule ("TERMINAL", Right "->"));
+    (PreTerminalRule ("TERMINAL", Second "->"))
 
-  expectParse ConcreteSyntax.Parser.terminal_rule__test
+  let%test_unit "" = expect_parse P.terminal_rule__test
     {|ID := /[a-zA-Z][a-zA-Z0-9_]*/|}
-    (PreTerminalRule ("ID", Left "[a-zA-Z][a-zA-Z0-9_]*"));
-  expectParse ConcreteSyntax.Parser.terminal_rule__test
+    (PreTerminalRule ("ID", First "[a-zA-Z][a-zA-Z0-9_]*"))
+  let%test_unit "" = expect_parse P.terminal_rule__test
     {|SPACE := / +/|}
-    (PreTerminalRule ("SPACE", Left " +"));
+    (PreTerminalRule ("SPACE", First " +"))
 
-  expectParse ConcreteSyntax.Parser.capture_number "$2" 2;
-  expectParse ConcreteSyntax.Parser.nonterminal_token__test
-    "foo" (NonterminalName "foo");
-  expectParse ConcreteSyntax.Parser.nonterminal_token__test
-    "BAR" (TerminalName "BAR");
-  expectParse ConcreteSyntax.Parser.nonterminal_token__test
-    "_" (Underscore 1);
-  expectParse ConcreteSyntax.Parser.nonterminal_token__test
-    "_0" (Underscore 0);
-  expectParse ConcreteSyntax.Parser.nonterminal_token__test
-    "[<hov>" (OpenBox (Some (HovBox, [])));
-  expectParse ConcreteSyntax.Parser.nonterminal_token__test
-    "[<hv 0,1,2>" (OpenBox (Some (HvBox, [0; 1; 2])));
+  let%test_unit "" = expect_parse P.capture_number "$2" 2
+  let%test_unit "" = expect_parse P.nonterminal_token__test
+    "foo" (NonterminalName "foo")
+  let%test_unit "" = expect_parse P.nonterminal_token__test
+    "BAR" (TerminalName "BAR")
+  let%test_unit "" = expect_parse P.nonterminal_token__test
+    "_" (Underscore 1)
+  let%test_unit "" = expect_parse P.nonterminal_token__test
+    "_0" (Underscore 0)
+  let%test_unit "" = expect_parse P.nonterminal_token__test
+    "[<hov>" (OpenBox (Some (HovBox, [])))
+  let%test_unit "" = expect_parse P.nonterminal_token__test
+    "[<hv 0,1,2>" (OpenBox (Some (HvBox, [0; 1; 2])))
 
-  expectParse ConcreteSyntax.Parser.operator_match__test
+  let%test_unit "" = expect_parse P.operator_match__test
     "foo BAR baz { foo($1; $2) }"
     (OperatorMatch
       { tokens =
@@ -56,9 +53,9 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
           ]);
         fixity = Nofix;
       }
-    );
+    )
 
-  expectParse ConcreteSyntax.Parser.nonterminal_rule__test
+  let%test_unit "" = expect_parse P.nonterminal_rule__test
     {|
        arith :=
          | arith ADD arith { add($1; $3) } %left
@@ -104,26 +101,30 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
                 fixity = Nofix;
               };
           ]];
-      });
+      })
 
-  expectParse ConcreteSyntax.Parser.nonterminal_type__test
+  let%test_unit "" = expect_parse P.nonterminal_type__test
     "list int"
-    (NonterminalType ([], SortAp ("list", [| SortAp ("int", [||]) |])));
+    (NonterminalType ([], SortAp ("list", [| SortAp ("int", [||]) |])))
 
-  let list_int = Types.SortAp ("list", [| SortAp ("int", [||]) |]) in
-  expectParse ConcreteSyntax.Parser.nonterminal_type__test
-    "list int -> list int"
-    (NonterminalType ([list_int], list_int));
+  let%test_unit "" =
+    let list_int = Types.SortAp ("list", [| SortAp ("int", [||]) |]) in
+    expect_parse P.nonterminal_type__test
+      "list int -> list int"
+      (NonterminalType ([list_int], list_int))
 
-  expectParse ConcreteSyntax.Parser.quantifiers__test
-    "forall a b."
-    (Tablecloth.StrSet.from_list [ "a"; "b" ]);
+      (* TODO: test
+  let%test_unit "" = assert
+    (P.quantifiers__test ConcreteSyntax_Lexer.read
+      (Lexing.from_string "forall a b.") =
+    (Core_kernel.String.Set.of_list [ "a"; "b" ]))
+*)
 
-  expectParse ConcreteSyntax.Parser.nonterminal_type__test
+  let%test_unit "" = expect_parse P.nonterminal_type__test
     "forall a. list a"
-    (NonterminalType ([], SortAp ("list", [| SortVar "a" |])));
+    (NonterminalType ([], SortAp ("list", [| SortVar "a" |])))
 
-  expectParse ConcreteSyntax.Parser.nonterminal_rule__test
+  let%test_unit "" = expect_parse P.nonterminal_rule__test
     {|
        list
          : forall a. a -> list a
@@ -149,5 +150,6 @@ let _ = describe "ConcreteSyntax_Parser" (fun () ->
             };
         ]]
       }
-    );
-)
+    )
+
+end)
