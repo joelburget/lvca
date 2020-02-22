@@ -38,7 +38,7 @@ type regex =
   (** One-or-more repetition, eg `(ab)+` *)
   | ReOption of regex
   (** Option, eg `(ab)?` *)
-  | ReChoice of regex * regex
+  | ReChoice of regex list
   (** Choice, eg `a|b` *)
   | ReAny
   (** Any character *)
@@ -55,7 +55,7 @@ let rec to_re : regex -> Re.t
   | ReStar re -> rep (to_re re)
   | RePlus re -> rep1 (to_re re)
   | ReOption re -> opt (to_re re)
-  | ReChoice (re1, re2) -> alt [to_re re1; to_re re2]
+  | ReChoice res -> alt (List.map res ~f:to_re)
   | ReAny -> any
   | ReConcat res -> seq (List.map res ~f:to_re)
   )
@@ -79,8 +79,8 @@ let rec show : regex -> string
     | ReStar re -> "ReStar " ^ show re
     | RePlus re -> "RePlus " ^ show re
     | ReOption re -> "ReOption " ^ show re
-    | ReChoice (re, re')
-      -> Printf.sprintf "ReChoice (%s, %s)" (show re) (show re')
+    | ReChoice res
+    -> Printf.sprintf "ReChoice [%s]" (res |> List.map ~f:show |> String.concat ~sep:"; ")
     | ReAny -> "ReAny"
     | ReConcat res -> Printf.sprintf "ReConcat [%s]" (res
                                                       |> List.map ~f:show
@@ -92,7 +92,7 @@ let rec accepts_empty : regex -> bool
     | ReString str -> String.length str = 0
     | ReClass cls -> Caml.(cls = PosClass Boundary || cls = NegClass Boundary)
     | RePlus re -> accepts_empty re
-    | ReChoice (a, b) -> accepts_empty a || accepts_empty b
+    | ReChoice res -> List.exists res ~f:accepts_empty
     | ReConcat pieces -> List.for_all pieces ~f:accepts_empty
     | ReStar _
     | ReOption _ -> true
@@ -151,9 +151,10 @@ let rec to_string' : int -> regex -> string
     | RePlus   re -> to_string' 2 re ^ "+"
     | ReOption re -> to_string' 2 re ^ "?"
     | ReClass  cls -> class_to_string cls
-    | ReChoice (re, re') -> parenthesize
-                              (precedence > 0)
-                              (to_string' 0 re ^ "|" ^ to_string' 0 re')
+    | ReChoice res -> res
+      |> List.map ~f:(to_string' 0)
+      |> String.concat ~sep:""
+      |> parenthesize (precedence > 0)
     | ReAny -> "."
     | ReConcat pieces -> pieces
                          |> List.map ~f:(to_string' 2)

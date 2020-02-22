@@ -651,9 +651,9 @@ module Lalr1 (G : GRAMMAR) = struct
       let result, _ = parse_trace DoTrace toks in
       result
 
-  let lex_and_parse : string -> Lex.lexer -> string
+  let lex_and_parse : Lex.lexer -> string
     -> (parse_result, (Lex.lex_error, parse_error) Either.t) Result.t
-    = fun lexer_str lexer input -> match Lex.lex lexer_str lexer input with
+    = fun lexer input -> match Lex.lex lexer input with
       | Error error -> Error (First error)
       | Ok tokens ->
         let len = String.length input in

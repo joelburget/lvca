@@ -438,17 +438,18 @@ let%test_module "parse" = (module struct
       })
 
   let%test_unit "lex-parse" =
-    let lexer = Re.(
-      [ char '+', "+";
-        char '*', "*";
-        char '(', "(";
-        char ')', ")";
-        rep1 (rg 'a' 'z'), "id";
+    let lexer = Regex.(
+      [ "+", ReString "+";
+        "*", ReString "*";
+        "(", ReString "(";
+        ")", ReString ")";
+        "id", ReSet "a-z";
       ])
     in
+
     (* let input = "if 1 < 2 then foo else \"str\"" in *)
     let input = "foo+bar" in
-    match Lr0'.lex_and_parse {|(\+)|(\*)|(\())|(\))|([a-z])|} lexer input with
+    match Lr0'.lex_and_parse lexer input with
       | Error _err -> failwith "lex_and_parse error"
       | Ok _ -> ()
 end)

@@ -83,12 +83,7 @@ module Lex : sig
     }
 
   type token_name = string
-  (* type regex = string *)
-  type regex = Re.t
-  type lexer =
-   { token_descs: (token_name * string) list
-   ; token_res: (token_name * regex) list
-   }
+  type lexer = (token_name * Regex.t) list
 
   type position = int
 
@@ -115,16 +110,7 @@ end = struct
     }
 
   type token_name = string
-  (* type regex = string *)
-  type regex = Re.t
-  type lexer =
-   { token_descs: (token_name * string) list
-   ; token_res: (token_name * regex) list
-   }
-
-  let string_of_lexer = fun { token_descs; _ } -> token_descs
-    |> List.map ~f:(fun (name, re) -> Printf.sprintf "%s := /%s/" name re)
-    |> String.concat ~sep:"\n"
+  type lexer = (token_name * Regex.t) list
 
   type position = int
 
@@ -140,6 +126,11 @@ end = struct
     }
 
   exception LexError of lex_error
+
+  let string_of_lexer = fun token_row -> token_row
+    |> List.map ~f:(fun (name, re) ->
+       Printf.sprintf "%s := /%s/" name (Regex.to_string re))
+    |> String.concat ~sep:"\n"
 
   let string_of_tokens : token array -> string
     = fun toks -> toks
@@ -191,13 +182,13 @@ end = struct
       let result = Queue.create () in
       let lexbuf = { buf = input; pos = 0 } in
 
-      let re : Re.re = lexer.token_res
-        |> List.map ~f:(fun (_, re) -> Re.group re)
+      let re : Re.re = lexer
+        |> List.map ~f:(fun (_, re) -> Regex.to_re re)
         |> Re.alt
         |> Re.compile
       in
 
-      let tok_names = lexer.token_res
+      let tok_names = lexer
         |> List.mapi ~f:(fun i (name, _re) -> i + 1, name)
         |> Int.Map.of_alist_exn
       in
@@ -228,24 +219,29 @@ end = struct
       start_pos end_pos message
 
   let%expect_test "lex 1" =
-    let lexer1 = Re.(
-      [ "IF", str "if";
-        "THEN", str "then";
-        "ELSE", str "else";
-        "OP", alt [ str "<"; str ">"; str "<="; str ">="; str "=="; str "!="];
-        "ID",
-        seq [
-          alt [rg 'a' 'z'; rg 'A' 'Z'];
-          rep (alt [rg 'a' 'z'; rg 'A' 'Z'; rg '0' '9'; char '_' ]);
+    let lexer1 = Regex.(
+      [ "IF", ReString "if";
+        "THEN", ReString "then";
+        "ELSE", ReString "else";
+        "OP", ReChoice [
+          ReString "<";
+          ReString ">";
+          ReString "<=";
+          ReString ">=";
+          ReString "==";
+          ReString "!=";
         ];
-        "NUM", rep1 (rg '0' '9');
-        "WHITE", rep1 (char ' ');
+        "ID", ReConcat [
+          ReClass (PosClass Word);
+          ReSet "a-zA-Z0-9_";
+        ];
+        "NUM", ReClass (PosClass Digit);
+        "WHITE", ReClass (PosClass Whitespace);
       ])
     in
 
-    let result = lex { token_descs = []; token_res = lexer1 }
-      "if a > b then 90 else 91" in
-    (* 012345678901234567890123 *)
+    let result = lex lexer1 "if a > b then 90 else 91" in
+                          (* 012345678901234567890123 *)
 
     test_print_result result;
 
@@ -267,19 +263,18 @@ end = struct
       NUM 22 24 |}]
 
    let%expect_test "lex 2" =
-    let lexer2 = Re.(
-      [ "+", char '+'/
-        "*", char '*'/
-        "(", char '('/
-        ")", char ')'/
-        "id", rep1 (rg 'a' 'z');
-        "WHITE", rep1 (char ' ');
+    let lexer2 = Regex.(
+      [ "+", ReString "+";
+        "*", ReString "*";
+        "(", ReString "(";
+        ")", ReString ")";
+        "id", ReClass (PosClass Word);
+        "WHITE", ReClass (PosClass Whitespace);
       ])
     in
 
-    let result = lex { token_descs = []; token_res = lexer2 }
-      "foo + bar" in
-    (* 012345678 *)
+    let result = lex lexer2 "foo + bar" in
+                          (* 012345678 *)
 
     test_print_result result;
     [%expect{|
@@ -290,28 +285,27 @@ end = struct
       id 6 9 |}]
 
   let%expect_test "lex 3" =
-    let lexer3 = Re.(
-      [ char ':', "COLON";
-        str "if", "IF";
-        str "then", "THEN";
-        str "else", "ELSE";
-        str "fun", "FUN";
-        str "->", "ARROW";
-        str "true", "TRUE";
-        str "false", "FALSE";
-        str "bool", "BOOL";
-        seq [
-          alt [rg 'a' 'z'; rg 'A' 'Z'];
-          rep (alt [rg 'a' 'z'; rg 'A' 'Z'; rg '0' '9'; char '_' ]);
-        ],
-        "ID";
-        rep1 (char ' '), "SPACE";
+    let lexer3 = Regex.(
+      [ "COLON", ReString ":";
+        "IF", ReString "if";
+        "THEN", ReString "then";
+        "ELSE", ReString "else";
+        "FUN", ReString "fun";
+        "ARROW", ReString "->";
+        "TRUE", ReString "true";
+        "FALSE", ReString "false";
+        "BOOL", ReString "bool";
+        "ID",
+        ReConcat [
+          ReClass (PosClass Word);
+          ReSet "a-zA-Z0-9_";
+        ];
+        "SPACE", ReClass (PosClass Whitespace);
       ])
     in
 
-    let result = lex { token_descs = []; token_res = lexer3 }
-      "if false then false else true" in
-    (* 01234567890123456789012345678 *)
+    let result = lex lexer3 "if false then false else true" in
+                          (* 01234567890123456789012345678 *)
     test_print_result result;
 
     [%expect{|

@@ -846,10 +846,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
 
 let lexer_of_desc : ConcreteSyntaxDescription.t -> Placemat.Lex.lexer =
   fun { terminal_rules; _ } ->
-  let lex_items = terminal_rules
-    |> List.map ~f:(fun (tok_name, re) -> Regex.to_re re, tok_name)
-  in
-  (Re.rep1 Re.space, "SPACE") :: lex_items
+  ("SPACE", Regex.ReClass (PosClass Whitespace)) :: terminal_rules
 ;;
 
 let parse desc root_name str =

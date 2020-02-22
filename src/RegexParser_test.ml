@@ -15,7 +15,7 @@ let%test_module "Regex_Parser" = (module struct
   (* let%test_unit "" = expect_parse_and_rt "(foo)?" *)
   (*   (ReOption (ReString "foo")) *)
   let%test_unit "" = expect_parse_and_rt "foo|bar"
-    (ReChoice (ReString "foo", ReString "bar"))
+    (ReChoice [ReString "foo"; ReString "bar"])
   let%test_unit "" = expect_parse_and_rt "." ReAny
 
   let%test_unit "" = expect_parse_and_rt "[a-z][a-zA-Z0-9]*"
