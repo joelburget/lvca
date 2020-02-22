@@ -54,10 +54,13 @@ let%test_module "Integer Language" = (module struct
     | Error msg -> failwith msg
   let concrete = ConcreteSyntax.make_concrete_description terminal_rules sort_rules
 
+  (*
   let%test "parses to ..." = parses_to concrete "tm"
     "1" {|lit(1)|}
+    *)
   let%test "parses to ..." = parses_to concrete "tm"
     "max 1 1" {|max(lit(1); lit(1))|}
+    (*
   let%test "parses to ..." = parses_to concrete "tm"
     "1 - 1" {|sub(lit(1); lit(1))|}
   let%test "parses to ..." = parses_to concrete "tm"
@@ -66,6 +69,7 @@ let%test_module "Integer Language" = (module struct
     "-1" {|neg(lit(1))|}
   let%test "parses to ..." = parses_to concrete "tm"
     "|-1|" {|abs(neg(lit(1)))|}
+    *)
 end)
 
 let%test_module "JSON Language" = (module struct

@@ -93,7 +93,7 @@ let rec to_string : formatted_tree -> string
       leading_trivia ^ content ^ trailing_trivia
     | NonterminalCapture nonterminal_capture -> to_string nonterminal_capture)
   |> Array.to_list
-  |> Caml.String.concat ""
+  |> String.concat ~sep:""
 ;;
 
 let string_of_tree_info : tree_info -> string

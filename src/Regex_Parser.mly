@@ -29,7 +29,11 @@ re_class: CHARACTER_CLASS { match $1 with
   | _ -> failwith "unexpected character class"
   }
 
-prec0_re: separated_nonempty_list(BAR, prec1_re) { ReChoice $1 }
+prec0_re: separated_nonempty_list(BAR, prec1_re)
+  { match $1 with
+    | [ re ] -> re
+    | res -> Regex.ReChoice res
+  }
 
 prec1_re:
   | nonempty_list(prec2_re) { match $1 with

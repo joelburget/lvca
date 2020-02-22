@@ -80,11 +80,14 @@ let rec show : regex -> string
     | RePlus re -> "RePlus " ^ show re
     | ReOption re -> "ReOption " ^ show re
     | ReChoice res
-    -> Printf.sprintf "ReChoice [%s]" (res |> List.map ~f:show |> String.concat ~sep:"; ")
+    -> Printf.sprintf "ReChoice [%s]" (res
+      |> List.map ~f:show
+      |> String.concat ~sep:"; "
+    )
     | ReAny -> "ReAny"
     | ReConcat res -> Printf.sprintf "ReConcat [%s]" (res
                                                       |> List.map ~f:show
-                                                      |> Caml.String.concat "; "
+                                                      |> String.concat ~sep:"; "
                                                      )
 
 let rec accepts_empty : regex -> bool
@@ -115,7 +118,7 @@ let class_char : re_class -> char
     | NegClass Boundary -> 'B'
 
 let class_to_string : re_class -> string
-  = fun cls -> Printf.sprintf "\\%c" (class_char cls)
+  = fun cls -> Printf.sprintf {|\%c|} (class_char cls)
 
 (* precedence:
  * 2: * + ?
@@ -130,21 +133,18 @@ let parenthesize : bool -> string -> string
 let rec to_string' : int -> regex -> string
   = fun precedence -> function
     (* We need to escape special characters in strings *)
-    | ReString str -> str
-      (*
-      Re.(str
-      |> replace ~re:(Re.of_string {|/\\/g|}) ~replacement:{|\\|}
-      |> replace ~re:(Re.of_string {|/\//g|}) ~replacement:{|\/|}
-      |> replace ~re:(Re.of_string {|/\|/g|}) ~replacement:{|\||}
-      |> replace ~re:(Re.of_string {|/\+/g|}) ~replacement:{|\+|}
-      |> replace ~re:(Re.of_string {|/\*/g|}) ~replacement:{|\*|}
-      |> replace ~re:(Re.of_string {|/\?/g|}) ~replacement:{|\?|}
-      |> replace ~re:(Re.of_string {|/\-/g|}) ~replacement:{|\-|}
-      |> replace ~re:(Re.of_string {|/\(/g|}) ~replacement:{|\(|}
-      |> replace ~re:(Re.of_string {|/\)/g|}) ~replacement:{|\)|}
-      |> parenthesize (precedence > 1 && String.length str > 1)
+    | ReString str -> String.(str
+      |> substr_replace_all ~pattern:{|\|} ~with_:{|\\|}
+      |> substr_replace_all ~pattern:{|/|} ~with_:{|\/|}
+      |> substr_replace_all ~pattern:{|||} ~with_:{|\||}
+      |> substr_replace_all ~pattern:{|+|} ~with_:{|\+|}
+      |> substr_replace_all ~pattern:{|*|} ~with_:{|\*|}
+      |> substr_replace_all ~pattern:{|?|} ~with_:{|\?|}
+      |> substr_replace_all ~pattern:{|-|} ~with_:{|\-|}
+      |> substr_replace_all ~pattern:{|(|} ~with_:{|\(|}
+      |> substr_replace_all ~pattern:{|)|} ~with_:{|\)|}
+      |> parenthesize Int.(precedence > 1 && String.length str > 1)
       )
-      *)
 
     | ReSet    str -> "[" ^ str ^ "]"
     | ReStar   re -> to_string' 2 re ^ "*"
@@ -153,12 +153,12 @@ let rec to_string' : int -> regex -> string
     | ReClass  cls -> class_to_string cls
     | ReChoice res -> res
       |> List.map ~f:(to_string' 0)
-      |> String.concat ~sep:""
+      |> String.concat ~sep:"|"
       |> parenthesize (precedence > 0)
     | ReAny -> "."
     | ReConcat pieces -> pieces
                          |> List.map ~f:(to_string' 2)
-                         |> Caml.String.concat ""
+                         |> String.concat ~sep:""
                          |> parenthesize (precedence > 1)
 
 (** Convert a regex to a string which is parseable back to a regex. IE, for

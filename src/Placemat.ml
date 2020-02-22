@@ -179,11 +179,13 @@ end = struct
   let tokenize : lexer -> string -> token array
     = fun lexer input ->
 
+      Printf.printf "tokenize \"%s\"\n" input;
+
       let result = Queue.create () in
       let lexbuf = { buf = input; pos = 0 } in
 
       let re : Re.re = lexer
-        |> List.map ~f:(fun (_, re) -> Regex.to_re re)
+        |> List.map ~f:(fun (_, re) -> Re.group (Regex.to_re re))
         |> Re.alt
         |> Re.compile
       in
@@ -195,7 +197,8 @@ end = struct
 
       while lexbuf.pos < String.length lexbuf.buf do
         let tok = get_next_tok_exn lexer tok_names re lexbuf in
-        let { start; finish; _ } = tok in
+        let { start; finish; name } = tok in
+        Printf.printf "name: %s, start: %n, finish: %n\n" name start finish;
         assert (start = lexbuf.pos);
         lexbuf.pos <- finish;
         ignore (Queue.enqueue result tok : unit)
