@@ -75,7 +75,6 @@ prec2_re:
   | LEFT_BRACKET character_set RIGHT_BRACKET { ReSet $2 }
   | string { ReString $1 }
   | re_class { ReClass $1 }
-  (* Remove the escape character, leaving only the unescaped content *)
   | prec2_re STAR { ReStar $1 }
   | prec2_re PLUS { RePlus $1 }
   | prec2_re QUESTION { ReOption $1 }
