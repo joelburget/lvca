@@ -196,10 +196,6 @@ let%test_module "lr0_items" = (module struct
     =
     normalize expected_lr0_item_sets
   )
-  (* TODO
-  let%test "" = Int.Map.get Lr0'.items' ~key:1 = Some (SI.of_list items1)
-  let%test "" = Int.Map.get Lr0'.items' ~key:7 = Some (SI.of_list items7)
-  *)
 end)
 
 let state = lr0_item_sets
