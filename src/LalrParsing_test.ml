@@ -450,40 +450,62 @@ let d_num : terminal_num = 2
 let%test_module "lalr1_action_table" = (module struct
 
   let action_table_tests =
-    [ 0, c_num, Shift state.(3);
-      0, d_num, Shift state.(4);
-      0, 0,     Error None;
-      1, c_num, Error None;
-      1, c_num, Error None;
-      1, 0,     Accept;
-      2, c_num, Shift state.(3);
-      2, d_num, Shift state.(4);
-      2, 0,     Error None;
-      3, c_num, Shift state.(3);
-      3, d_num, Shift state.(4);
-      3, 0,     Error None;
-      4, c_num, Reduce state.(3);
-      4, d_num, Reduce state.(3);
-      4, 0,     Reduce state.(3);
-      5, c_num, Error None;
-      5, d_num, Error None;
-      5, 0,     Reduce state.(1);
-      6, c_num, Reduce state.(2);
-      6, d_num, Reduce state.(2);
-      6, 0,     Reduce state.(2);
+    [ 0, c_num;
+      0, d_num;
+      0, 0;
+      1, c_num;
+      1, c_num;
+      1, 0;
+      2, c_num;
+      2, d_num;
+      2, 0;
+      3, c_num;
+      3, d_num;
+      3, 0;
+      4, c_num;
+      4, d_num;
+      4, 0;
+      5, c_num;
+      5, d_num;
+      5, 0;
+      6, c_num;
+      6, d_num;
+      6, 0;
     ]
 
   let action_table_tests' = fun () -> List.iter action_table_tests
-    ~f:(fun (init_state, terminal_num, action) ->
+    ~f:(fun (init_state, terminal_num) ->
       (Printf.printf "%n %s -> %s\n"
         init_state
         (Grammar1LR.string_of_terminal terminal_num)
-        (Grammar1LR.string_of_action action)
+        (Grammar1LR.string_of_action
+          (Grammar1Lalr.lalr1_action_table state.(init_state) terminal_num))
       )
-      (* Grammar1Lalr.lalr1_action_table state.(init_state) terminal_num action *)
     )
 
-  let%expect_test _ = action_table_tests' (); [%expect]
+  let%expect_test _ = action_table_tests' (); [%expect{|
+    0 c -> shift to 3
+    0 d -> shift to 4
+    0 $ -> error
+    1 c -> error
+    1 c -> error
+    1 $ -> accept
+    2 c -> shift to 3
+    2 d -> shift to 4
+    2 $ -> error
+    3 c -> shift to 3
+    3 d -> shift to 4
+    3 $ -> error
+    4 c -> reduce by C -> d
+    4 d -> reduce by C -> d
+    4 $ -> reduce by C -> d
+    5 c -> error
+    5 d -> error
+    5 $ -> reduce by S -> C C
+    6 c -> reduce by C -> c C
+    6 d -> reduce by C -> c C
+    6 $ -> reduce by C -> c C |}]
+
 end)
 
 let%test_module "parse" = (module struct
