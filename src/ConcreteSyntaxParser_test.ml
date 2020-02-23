@@ -10,9 +10,9 @@ let%test_module "ConcreteSyntax_Parser" = (module struct
     {|TERMINAL := /foo/|}
     (PreTerminalRule ("TERMINAL", First "foo"))
 
-(*   expect_parse P.terminal_rule__test *)
-(*     {|TERMINAL := "\\"|} *)
-(*     (PreTerminalRule ("TERMINAL", [ReString "\\"])) *)
+  let%test_unit "" = expect_parse P.terminal_rule__test
+    {|TERMINAL := "\\"|}
+    (PreTerminalRule ("TERMINAL", Second "\\"))
 
   let%test_unit "" = expect_parse P.terminal_rule__test
     {|TERMINAL := "->"|}
@@ -113,12 +113,10 @@ let%test_module "ConcreteSyntax_Parser" = (module struct
       "list int -> list int"
       (NonterminalType ([list_int], list_int))
 
-      (* TODO: test
-  let%test_unit "" = assert
+  let%test "" = Core_kernel.Set.equal
     (P.quantifiers__test ConcreteSyntax_Lexer.read
-      (Lexing.from_string "forall a b.") =
-    (Core_kernel.String.Set.of_list [ "a"; "b" ]))
-*)
+      (Lexing.from_string "forall a b."))
+    (Core_kernel.String.Set.of_list [ "a"; "b" ])
 
   let%test_unit "" = expect_parse P.nonterminal_type__test
     "forall a. list a"
