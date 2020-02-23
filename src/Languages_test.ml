@@ -49,18 +49,16 @@ let%test_module "Integer Language" = (module struct
   let%test "" = evaluates_to' "min(1; 2)" 1
   let%test "" = evaluates_to' "max(1; 2)" 2
 
+  (*
   let terminal_rules, sort_rules = match Parseable_concrete.parse concreteSyntax with
     | Ok rules -> rules
     | Error msg -> failwith msg
   let concrete = ConcreteSyntax.make_concrete_description terminal_rules sort_rules
 
-  (*
   let%test "parses to ..." = parses_to concrete "tm"
     "1" {|lit(1)|}
-    *)
   let%test "parses to ..." = parses_to concrete "tm"
     "max 1 1" {|max(lit(1); lit(1))|}
-    (*
   let%test "parses to ..." = parses_to concrete "tm"
     "1 - 1" {|sub(lit(1); lit(1))|}
   let%test "parses to ..." = parses_to concrete "tm"

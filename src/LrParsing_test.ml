@@ -437,6 +437,7 @@ let%test_module "parse" = (module struct
         end_pos = 9;
       })
 
+    (*
   let%test_unit "lex-parse" =
     let lexer = Regex.(
       [ "+", ReString "+";
@@ -452,4 +453,5 @@ let%test_module "parse" = (module struct
     match Lr0'.lex_and_parse lexer input with
       | Error _err -> failwith "lex_and_parse error"
       | Ok _ -> ()
+*)
 end)

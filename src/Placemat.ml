@@ -138,7 +138,7 @@ end = struct
                   |> String.concat_array ~sep:" "
 
   (** raises: [LexError] *)
-  let get_next_tok_exn : lexer -> string Int.Map.t -> Re.re -> lexbuf -> token
+  let get_next_tok_exn : lexer -> (int * string) list -> Re.re -> lexbuf -> token
     = fun lexer tok_names re { buf; pos } ->
 
       match Re.exec_opt ~pos re buf with
@@ -152,13 +152,12 @@ end = struct
                (string_of_lexer lexer)
              })
         | Some groups ->
-          let group_nums = Map.keys tok_names in
-          let match_num, match_end = List.fold_until group_nums
+          let name, match_end = List.fold_until tok_names
             ~init:()
-            ~f:(fun () group_num ->
+            ~f:(fun () (group_num, tok_name) ->
               if Re.Group.test groups group_num
               then
-                Stop (group_num, Re.Group.stop groups group_num)
+                Stop (tok_name, Re.Group.stop groups group_num)
               else
                 Continue ())
             ~finish:(fun () -> raise (LexError
@@ -171,15 +170,14 @@ end = struct
               }))
           in
 
-          let name = Map.find_exn tok_names match_num in
           { name; start = pos; finish = match_end }
   ;;
 
   (** raises: [LexError] *)
-  let tokenize : lexer -> string -> token array
+  let tokenize_exn : lexer -> string -> token array
     = fun lexer input ->
 
-      Printf.printf "tokenize \"%s\"\n" input;
+      (* Printf.printf "tokenize \"%s\"\n" input; *)
 
       let result = Queue.create () in
       let lexbuf = { buf = input; pos = 0 } in
@@ -190,15 +188,12 @@ end = struct
         |> Re.compile
       in
 
-      let tok_names = lexer
-        |> List.mapi ~f:(fun i (name, _re) -> i + 1, name)
-        |> Int.Map.of_alist_exn
-      in
+      let tok_names = List.mapi lexer ~f:(fun i (name, _re) -> i + 1, name) in
 
       while lexbuf.pos < String.length lexbuf.buf do
         let tok = get_next_tok_exn lexer tok_names re lexbuf in
-        let { start; finish; name } = tok in
-        Printf.printf "name: %s, start: %n, finish: %n\n" name start finish;
+        let { start; finish; _ } = tok in
+        (* Printf.printf "name: %s, start: %n, finish: %n\n" name start finish; *)
         assert (start = lexbuf.pos);
         lexbuf.pos <- finish;
         ignore (Queue.enqueue result tok : unit)
@@ -210,7 +205,7 @@ end = struct
     : lexer -> string -> (token array, lex_error) Result.t
     = fun lexer input ->
       try
-        Ok (tokenize lexer input)
+        Ok (tokenize_exn lexer input)
       with
         LexError err -> Error err
 
@@ -235,11 +230,16 @@ end = struct
           ReString "!=";
         ];
         "ID", ReConcat [
-          ReClass (PosClass Word);
-          ReSet "a-zA-Z0-9_";
+          (* ReClass (PosClass Word); *)
+          Classes.alpha;
+          ReStar Classes.underscore_words;
         ];
-        "NUM", ReClass (PosClass Digit);
-        "WHITE", ReClass (PosClass Whitespace);
+        "NUM",
+          (* RePlus (ReSet [Range ('0', '9')]); *)
+          RePlus (ReClass (PosClass Digit));
+        "WHITE",
+          (* RePlus (ReString " "); *)
+          RePlus (ReClass (PosClass Whitespace));
       ])
     in
 
@@ -271,8 +271,14 @@ end = struct
         "*", ReString "*";
         "(", ReString "(";
         ")", ReString ")";
-        "id", ReClass (PosClass Word);
-        "WHITE", ReClass (PosClass Whitespace);
+        "id", ReConcat [
+          Classes.alpha;
+          ReStar Classes.underscore_words;
+        ];
+        (* ReClass (PosClass Word); *)
+        "WHITE",
+          RePlus (ReString " ");
+          (* ReClass (PosClass Whitespace); *)
       ])
     in
 
@@ -300,10 +306,14 @@ end = struct
         "BOOL", ReString "bool";
         "ID",
         ReConcat [
-          ReClass (PosClass Word);
-          ReSet "a-zA-Z0-9_";
+          Classes.alpha;
+          Classes.underscore_words;
+          (* ReSet "a-zA-Z"; *)
+          (* ReSet "a-zA-Z0-9_"; *)
         ];
-        "SPACE", ReClass (PosClass Whitespace);
+        "SPACE",
+          RePlus (ReString " ");
+          (* ReClass (PosClass Whitespace); *)
       ])
     in
 

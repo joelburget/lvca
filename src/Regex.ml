@@ -19,6 +19,12 @@ let class_to_re : re_class_base -> Re.t
 (** Accept the positive or negative version of a class *)
 type re_class = PosClass of re_class_base | NegClass of re_class_base
 
+type set_member =
+  | SingleCharacter of char
+  | Range of char * char
+
+type re_set = set_member list
+
 (** A regular expression used for lexical analysis. *)
 type regex =
   | ReString of string
@@ -30,7 +36,7 @@ type regex =
   (* Question: do we support octal escapes (\40)? The lex manual points out
    * this is non-portable. But don't we presuppose unicode? We accept unicode
    * categories, right? `\cc`, `\cf`, etc. *)
-  | ReSet    of string
+  | ReSet    of re_set
   (** A character set, eg `[a-z]` or `[^abc]` *)
   | ReStar   of regex
   (** Zero-or-more repetition, eg `(ab)*` *)
@@ -46,12 +52,21 @@ type regex =
 
 type t = regex
 
+let set_to_re : re_set -> Re.t
+  = fun set_members -> Re.(set_members
+  |> List.map ~f:(function
+    | SingleCharacter c -> char c
+    | Range (c1, c2) -> rg c1 c2
+  )
+  |> alt
+  )
+
 let rec to_re : regex -> Re.t
   = Re.(function
   | ReString s -> str s
   | ReClass (PosClass cls) -> class_to_re cls
   | ReClass (NegClass _cls) -> failwith "TODO: class negation"
-  | ReSet str -> set str
+  | ReSet set -> set_to_re set
   | ReStar re -> rep (to_re re)
   | RePlus re -> rep1 (to_re re)
   | ReOption re -> opt (to_re re)
@@ -70,12 +85,23 @@ let show_class = function
   | NegClass Digit -> {|\D|}
   | NegClass Boundary -> {|\B|}
 
+let show_set : re_set -> string
+  = fun re_set ->
+  let set_elems = re_set
+    |> List.map ~f:(function
+      | SingleCharacter c -> Printf.sprintf "SingleCharacter '%c'" c
+      | Range (r1, r2) -> Printf.sprintf "Range ('%c', '%c')" r1 r2
+    )
+    |> String.concat ~sep:"; "
+  in
+  Printf.sprintf "[%s]" set_elems
+
 (* TODO: add parens (not a big deal; just used for debugging) *)
 let rec show : regex -> string
   = function
     | ReString str -> "ReString " ^ str
     | ReClass cls -> "ReClass " ^ show_class cls
-    | ReSet str -> "ReSet " ^ str
+    | ReSet set -> "ReSet " ^ show_set set
     | ReStar re -> "ReStar " ^ show re
     | RePlus re -> "RePlus " ^ show re
     | ReOption re -> "ReOption " ^ show re
@@ -130,6 +156,14 @@ let parenthesize : bool -> string -> string
   = fun condition str ->
     if condition then "(" ^ str ^ ")" else str
 
+let set_to_string : re_set -> string
+  = fun re_set -> re_set
+    |> List.map ~f:(function
+      | SingleCharacter c -> String.of_char c
+      | Range (r1, r2) -> Printf.sprintf "%c-%c" r1 r2
+    )
+    |> String.concat ~sep:""
+
 let rec to_string' : int -> regex -> string
   = fun precedence -> function
     (* We need to escape special characters in strings *)
@@ -146,7 +180,7 @@ let rec to_string' : int -> regex -> string
       |> parenthesize Int.(precedence > 1 && String.length str > 1)
       )
 
-    | ReSet    str -> "[" ^ str ^ "]"
+    | ReSet    set -> "[" ^ set_to_string set ^ "]"
     | ReStar   re -> to_string' 2 re ^ "*"
     | RePlus   re -> to_string' 2 re ^ "+"
     | ReOption re -> to_string' 2 re ^ "?"
@@ -172,6 +206,17 @@ let to_string : regex -> string
   = to_string' 0
 
 
+module Classes = struct
+  let az = Range ('a', 'z')
+  let az_cap = Range ('A', 'Z')
+  let o_nine = Range ('0', '9')
+
+  let lower_alpha = ReSet [az]
+  let alpha = ReSet [az; az_cap]
+  let words = ReSet [az; az_cap; o_nine]
+  let underscore_words = ReSet [az; az_cap; o_nine; SingleCharacter '_']
+end
+
 let%test_module "regex tests" = (module struct
   let (=) = Caml.(=)
   let%test_module "accepts_empty" = (module struct
@@ -191,7 +236,7 @@ let%test_module "regex tests" = (module struct
     let%test "" = accepts_empty (ReClass (NegClass Boundary))
     let%test "" = not (accepts_empty (ReClass (PosClass Digit)))
     let%test "" = not (accepts_empty (ReClass (NegClass Digit)))
-    let%test "" = not (accepts_empty (ReSet "a-z"))
+    let%test "" = not (accepts_empty (ReSet [Range ('a', 'z')]))
     let%test "" = accepts_empty (RePlus (ReString ""))
   end)
 
@@ -199,11 +244,11 @@ let%test_module "regex tests" = (module struct
     let print_re re = printf "%s" (to_string re)
     let%expect_test _ =
       print_re (ReConcat [ReString "foo"; ReString "bar"]);
-      [%expect]
+      [%expect{| (foo)(bar) |}]
     let%expect_test _ =
       print_re (ReConcat [ReString "foo"; ReString "bar"]);
       [%expect{|(foo)(bar)|}]
-    let%expect_test _ = print_re (ReSet "a-z");
+    let%expect_test _ = print_re (ReSet [Range ('a', 'z')]);
       [%expect{|[a-z]|}]
     let%expect_test _ = print_re
         (ReConcat [ReClass (PosClass Boundary); ReClass (NegClass Boundary)]);
@@ -214,11 +259,10 @@ let%test_module "regex tests" = (module struct
           RePlus (ReString "foo");
           ReOption (ReString "foo");
         ]));
-      [%expect]
-      (* = "(foo)*(foo)+(foo)?" *)
-    let%expect_test _ = printf "%s" (to_string (ReString "+")); [%expect] (* = {|\+|} *)
-    let%expect_test _ = printf "%s" (to_string (ReString "*")); [%expect] (* = {|\*|} *)
-    let%expect_test _ = printf "%s" (to_string (ReString "?")); [%expect] (* = {|\?|} *)
-    let%expect_test _ = printf "%s" (to_string (ReString "-")); [%expect] (* = {|\-|} *)
+      [%expect{| (foo)*(foo)+(foo)? |}]
+    let%expect_test _ = printf "%s" (to_string (ReString "+")); [%expect{| \+ |}]
+    let%expect_test _ = printf "%s" (to_string (ReString "*")); [%expect{| \* |}]
+    let%expect_test _ = printf "%s" (to_string (ReString "?")); [%expect{| \? |}]
+    let%expect_test _ = printf "%s" (to_string (ReString "-")); [%expect{| \- |}]
   end)
 end)
