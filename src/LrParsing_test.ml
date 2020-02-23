@@ -437,21 +437,22 @@ let%test_module "parse" = (module struct
         end_pos = 9;
       })
 
-    (*
   let%test_unit "lex-parse" =
     let lexer = Regex.(
       [ "+", ReString "+";
         "*", ReString "*";
         "(", ReString "(";
         ")", ReString ")";
-        "id", ReSet "a-z";
+        "id", RePlus Classes.lower_alpha;
       ])
     in
 
-    (* let input = "if 1 < 2 then foo else \"str\"" in *)
     let input = "foo+bar" in
     match Lr0'.lex_and_parse lexer input with
-      | Error _err -> failwith "lex_and_parse error"
+      | Error (First { start_pos; end_pos; message }) -> failwith
+        (Printf.sprintf "lexer error at chars %n-%n: %s"
+          start_pos end_pos message)
+      | Error (Second (char_no, msg)) -> failwith
+        (Printf.sprintf "parse error at char %n: %s" char_no msg)
       | Ok _ -> ()
-*)
 end)
