@@ -3,7 +3,7 @@ open LrParsing
 module SI = Int.Set
 
 module Grammar : GRAMMAR = struct
-  let grammar = {
+  let grammar = AugmentedGrammar {
     nonterminals = Int.Map.of_alist_exn
     [
        (* E' (note: the grammar we provide is already augmented) *)

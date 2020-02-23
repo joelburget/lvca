@@ -23,7 +23,7 @@ end
 
 (* CPTT Example 4.54 *)
 module Grammar1 : GRAMMAR = struct
-  let grammar = {
+  let grammar = AugmentedGrammar {
     nonterminals = M.of_alist_exn
     [
        (* S' (note: the grammar we provide is already augmented) *)
@@ -55,7 +55,7 @@ end
 
 (* CPTT Example 4.61 *)
 module Grammar2 : GRAMMAR = struct
-  let grammar = {
+  let grammar = AugmentedGrammar {
     nonterminals = M.of_alist_exn
     [
        (* S' (note: the grammar we provide is already augmented) *)
@@ -94,7 +94,7 @@ module Grammar2 : GRAMMAR = struct
 end
 
 module Grammar3 : GRAMMAR = struct
-  let grammar = {
+  let grammar = AugmentedGrammar {
     nonterminals = M.of_alist_exn
     [
        0, { productions = [[Nonterminal 1]] }; (* arith' -> arith *)

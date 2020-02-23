@@ -70,6 +70,61 @@ let%test_module "derived nonterminals" = (module struct
         _ -> arith_2 { $1 }
       arith_2:
         0 -> NAME { var($1) } |}]
+
+  let LrParsing.AugmentedGrammar grammar as ag, _, _ = to_grammar concrete "arith"
+  module Lr0 = LrParsing.Lr0(struct let grammar = ag end)
+  module Lalr = LalrParsing.Lalr1(struct let grammar = ag end)
+
+  let%expect_test _ =
+    print_string (Lr0.string_of_grammar grammar);
+    [%expect{|
+      0: root
+      1: arith_1
+      2: arith_2 ADD arith_1
+      arith_2 SUB arith_1
+      arith_2
+      3: NAME
+
+      $ <-> 0
+      SPACE <-> 1
+      ARR <-> 2
+      ADD <-> 3
+      SUB <-> 4
+      MUL <-> 5
+      DIV <-> 6
+      LPAREN <-> 7
+      RPAREN <-> 8
+      NAME <-> 9
+
+      root <-> 0
+      arith <-> 1
+      arith_1 <-> 2
+      arith_2 <-> 3 |}]
+
+  let%expect_test _ =
+    let module Lex = Placemat.Lex in
+    let lexer = lexer_of_desc concrete in
+    (match Lex.lex lexer "x + y" with
+      | Error { message; _ } -> print_string message
+      | Ok tokens ->
+          print_string (Lex.string_of_tokens tokens));
+    [%expect{| NAME SPACE ADD SPACE NAME |}]
+
+  (* x + y
+   * 012345
+   *)
+  let%expect_test _ =
+    let tokens = Queue.of_list Placemat.Lex.(
+      [ { name  = "NAME"; start = 0; finish = 1};
+        { name  = "ADD"; start = 2; finish = 3};
+        { name  = "NAME"; start = 4; finish = 5};
+        { name  = "$"; start = 5; finish = 5};
+      ])
+    in
+    (match Lalr.parse tokens with
+      | Ok _ -> print_string "ok"
+      | Error (_, msg) -> print_string msg);
+    [%expect{| ok |}]
 end)
 
 let add_no = 6
@@ -189,7 +244,7 @@ let%test_module "ConcreteSyntax" = (module struct
     parse concrete "arith" "x + y" = Ok tree1
     *)
   let%expect_test {|parse "x + y"|} =
-    (match parse concrete "arith" "x + y" with
+    (match parse concrete "root" "x + y" with
     | Ok tree -> print_string (to_string tree)
     | Error msg -> print_string msg);
     [%expect]

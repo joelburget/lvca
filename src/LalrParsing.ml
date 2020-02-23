@@ -101,6 +101,7 @@ module Lalr1 (G : GRAMMAR) = struct
   module Lr0' = Lr0(G)
 
   let (
+    augmented_grammar,
     string_of_item,
     string_of_nonterminal,
     string_of_production,
@@ -128,6 +129,7 @@ module Lalr1 (G : GRAMMAR) = struct
     terminals,
     nonterminals
   ) = Lr0'.(
+    augmented_grammar,
     string_of_item,
     string_of_nonterminal,
     string_of_production,
@@ -304,11 +306,12 @@ module Lalr1 (G : GRAMMAR) = struct
         if not is_added then (
           add_to nonkernel_items nonterminal_num lookahead;
 
-          let { productions } = Int.Map.find G.grammar.nonterminals nonterminal_num
-                                |> get_option' (fun () -> Printf.sprintf
-                                                  "lr1_closure': unable to find nonterminal %n in G.grammar.nonterminals"
-                                                  nonterminal_num
-                                               )
+          let { productions } =
+            Int.Map.find augmented_grammar.nonterminals nonterminal_num
+              |> get_option' (fun () -> Printf.sprintf
+                "lr1_closure': unable to find nonterminal %n in G.grammar.nonterminals"
+                nonterminal_num
+              )
           in
 
 

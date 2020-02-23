@@ -110,6 +110,9 @@ type grammar = {
   nonterminal_nums : (string * nonterminal_num) array;
 }
 
+type augmented_grammar = AugmentedGrammar of grammar
+type nonaugmented_grammar = NonAugmentedGrammar of grammar
+
 type conflict_type = ShiftReduce | ReduceReduce
 
 type action =
@@ -177,7 +180,7 @@ let pop_front_exn : int -> 'a MQueue.t -> 'a
 
 module type GRAMMAR = sig
   (* An *augmented* grammar, or else this won't work right *)
-  val grammar : grammar
+  val grammar : augmented_grammar
 end
 
 module type LR0 = sig
@@ -210,6 +213,8 @@ let string_of_stack : state array -> string
 (* TODO: remove exns *)
 module Lr0 (G : GRAMMAR) = struct
 
+  let AugmentedGrammar augmented_grammar = G.grammar
+
   (* Map from production number to the actual production *)
   let production_map : production Core_kernel.Int.Table.t
     = MMI.create ()
@@ -226,13 +231,13 @@ module Lr0 (G : GRAMMAR) = struct
   (* number of nonterminals in the passed-in grammar (which ought to be
    * augmented) *)
   let number_of_nonterminals : int
-    = Int.Map.length G.grammar.nonterminals
+    = Int.Map.length augmented_grammar.nonterminals
 
   let number_of_terminals : int
-    = Array.length G.grammar.terminal_nums
+    = Array.length augmented_grammar.terminal_nums
 
   let terminal_names : string Int.Map.t
-    = G.grammar.terminal_nums
+    = augmented_grammar.terminal_nums
       |> Array.map ~f:(fun (name, num) -> num, name)
       |> Array.to_list
       |> Int.Map.of_alist
@@ -244,7 +249,7 @@ module Lr0 (G : GRAMMAR) = struct
       )
 
   let terminal_nums : int String.Map.t
-    = G.grammar.terminal_nums
+    = augmented_grammar.terminal_nums
       |> Array.to_list
       |> String.Map.of_alist
       |> (function
@@ -255,7 +260,7 @@ module Lr0 (G : GRAMMAR) = struct
       )
 
   let nonterminal_names : string Int.Map.t
-    = G.grammar.nonterminal_nums
+    = augmented_grammar.nonterminal_nums
       |> Array.map ~f:Tuple2.swap
       |> Array.to_list
       |> Int.Map.of_alist
@@ -267,7 +272,7 @@ module Lr0 (G : GRAMMAR) = struct
       )
 
   let nonterminal_nums : nonterminal_num String.Map.t
-    = G.grammar.nonterminal_nums
+    = augmented_grammar.nonterminal_nums
       |> Array.to_list
       |> String.Map.of_alist
       |> (function
@@ -435,6 +440,25 @@ module Lr0 (G : GRAMMAR) = struct
     = fun { productions } ->
       Util.stringify_list string_of_production "\n" productions
 
+let string_of_grammar : grammar -> string
+  = fun { nonterminals; terminal_nums; nonterminal_nums } ->
+    let str1 = nonterminals
+      |> Map.to_alist
+      |> List.map ~f:(fun (num, nt) ->
+        Printf.sprintf "%n: %s" num (string_of_nonterminal nt)
+      )
+      |> String.concat ~sep:"\n"
+    in
+    let str2 = terminal_nums
+      |> Array.map ~f:(fun (name, num) -> Printf.sprintf "%s <-> %n" name num)
+      |> String.concat_array ~sep:"\n"
+    in
+    let str3 = nonterminal_nums
+      |> Array.map ~f:(fun (name, num) -> Printf.sprintf "%s <-> %n" name num)
+      |> String.concat_array ~sep:"\n"
+    in
+    Printf.sprintf "%s\n\n%s\n\n%s" str1 str2 str3
+
   (* Used for logging actions. Compare with action_abbrev. *)
   let string_of_action : action -> string
     = function
@@ -446,7 +470,7 @@ module Lr0 (G : GRAMMAR) = struct
       | Error (Some ShiftReduce) -> "error (shift/reduce conflict)"
 
   let production_cnt = ref 0
-  let () = Int.Map.iteri G.grammar.nonterminals
+  let () = Int.Map.iteri augmented_grammar.nonterminals
     ~f:(fun ~key:nt_num ~data:{ productions } ->
        nonterminal_production_map
          |> MMI.set ~key:nt_num ~data:(MutableSet.create (module Int));
@@ -475,7 +499,7 @@ module Lr0 (G : GRAMMAR) = struct
                      string_of_int p_num)
 
   let get_nonterminal : production_num -> nonterminal
-    = fun pn -> G.grammar.nonterminals
+    = fun pn -> augmented_grammar.nonterminals
       |> Fn.flip Int.Map.find (get_nonterminal_num pn)
       |> get_option' (fun () ->
                   "get_nonterminal: couldn't find production " ^ string_of_int pn)
@@ -538,9 +562,9 @@ module Lr0 (G : GRAMMAR) = struct
           MutableSet.iter production_num_set ~f:(fun production_num ->
             Hash_set.add nonkernel_items (mk_item' production_num 0)
           );
-          let { productions } = Int.Map.find G.grammar.nonterminals nonterminal_num
+          let { productions } = Int.Map.find augmented_grammar.nonterminals nonterminal_num
                                 |> get_option' (fun () -> Printf.sprintf
-                                                  "lr0_closure': unable to find nonterminal %n in G.grammar.nonterminals"
+                                                  "lr0_closure': unable to find nonterminal %n in augmented_grammar.nonterminals"
                                                   nonterminal_num
                                                )
           in

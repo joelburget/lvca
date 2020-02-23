@@ -760,12 +760,13 @@ let string_of_derived_rules : nonterminal_operators list -> string
 let to_grammar
   :  ConcreteSyntaxDescription.t
   -> string
-  -> LrParsing.grammar
+  -> LrParsing.augmented_grammar
     * (tree_info * nonterminal_token list * operator_match_pattern option)
         Int.Table.t
     * string option String.Map.t
   =
   fun { terminal_rules; nonterminal_rules } start_nonterminal ->
+
   let terminal_nums = terminal_rules
       (* start other terminals (besides $ and SPACE) at 2 *)
       |> List.mapi ~f:(fun i (name, _) -> name, i + 2)
@@ -779,13 +780,13 @@ let to_grammar
 
   let taken_names : String.Set.t
     = nonterminal_rules
-      |> String.Map.keys
+      |> Map.keys
       |> String.Set.of_list
   in
 
   (* TODO: remove duplication above *)
   let nonterminal_rules_desugared, nonterminal_renamings = nonterminal_rules
-    |> String.Map.data
+    |> Map.data
     |> List.map ~f:(desugar_nonterminal taken_names)
     |> List.unzip
   in
@@ -865,10 +866,11 @@ let to_grammar
       ~key:0
       ~data:{ LrParsing.productions = [ [ Nonterminal !start_nonterminal_num ] ] }
   in
-  { nonterminals
-  ; terminal_nums = Array.of_list terminal_nums
-  ; nonterminal_nums = Array.of_list nonterminal_nums
-  },
+  AugmentedGrammar
+    { nonterminals
+    ; terminal_nums = Array.of_list terminal_nums
+    ; nonterminal_nums = Array.of_list nonterminal_nums
+    },
   production_rule_map,
   nonterminal_renamings
 ;;
@@ -993,9 +995,11 @@ let lexer_of_desc : ConcreteSyntaxDescription.t -> Placemat.Lex.lexer =
 ;;
 
 let parse desc root_name str =
-  let grammar, production_rule_map, nonterminal_renamings = to_grammar desc root_name in
+  let AugmentedGrammar grammar as ag, production_rule_map, nonterminal_renamings =
+    to_grammar desc root_name
+  in
   let module Lalr = LalrParsing.Lalr1 (struct
-                      let grammar = grammar
+                      let grammar = ag
                     end)
   in
   let lexer = lexer_of_desc desc in
