@@ -1,8 +1,6 @@
-let to_ast, to_string, of_ast, parse, equivalent, remove_spaces =
-  ConcreteSyntax.(to_ast, to_string, of_ast, parse, equivalent, remove_spaces)
+open Core_kernel
+open ConcreteSyntax
 module Parse_concrete = Parsing.Incremental(Parsing.Parseable_concrete_syntax)
-type sort_name = Types.sort_name
-type formatted_tree = ConcreteSyntax.formatted_tree
 
 let nt_capture capture = ConcreteSyntax.NonterminalCapture capture
 
@@ -16,24 +14,6 @@ let mk_tree
   -> ConcreteSyntax.formatted_tree
   = fun tree_info children -> { tree_info; children }
 
-  (*
-(** lift [equivalent] to result *)
-let equivalent'
-  :  (formatted_tree, string) Result.t
-  -> (formatted_tree, string) Result.t
-  -> bool
-  = fun x y -> match x, y with
-  | Ok x', Ok y' -> equivalent x' y'
-  | Error x', Error y' -> x' = y'
-  | _ -> false
-
-(** lift [to_string] to result *)
-let to_string' : (formatted_tree, string) Result.t -> string
-  = function
-    | Ok tree -> to_string tree
-    | Error msg -> msg
-    *)
-
 let description = {|
 ARR    := "->"
 ADD    := "+"
@@ -45,12 +25,12 @@ RPAREN := ")"
 NAME   := /[a-z][a-zA-Z0-9]*/
 
 arith :=
-  | LPAREN arith RPAREN { $2          }
+  // | LPAREN arith RPAREN { $2          }
   | NAME                { var($1)     }
-  > arith _       arith { app($1; $2) } %left
-  > arith _ MUL _ arith { mul($1; $3) } %left
-  | arith _ DIV _ arith { div($1; $3) } %left
-  > NAME  _ ARR _ arith { fun($1. $3) }
+  // > arith _       arith { app($1; $2) } %left
+  // > arith _ MUL _ arith { mul($1; $3) } %left
+  // | arith _ DIV _ arith { div($1; $3) } %left
+  // > NAME  _ ARR _ arith { fun($1. $3) }
   > arith _ ADD _ arith { add($1; $3) } %left
   | arith _ SUB _ arith { sub($1; $3) } %left
 |}
@@ -74,6 +54,23 @@ let pre_terminal_rules, sort_rules = match Parse_concrete.parse description with
 
 let concrete =
   ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
+
+let%test_module "derived nonterminals" = (module struct
+  let%expect_test _ =
+    Array.iter (derived_nonterminal_rules concrete.nonterminal_rules)
+      ~f:(fun nt_operators ->
+        print_string (string_of_nonterminal_operators nt_operators)
+      );
+    [%expect{|
+      arith:
+        _ -> arith_1 { $1 }
+      arith_1:
+        1 -> arith_2 ADD arith_1 { add($1; $3) }
+        2 -> arith_2 SUB arith_1 { sub($1; $3) }
+        _ -> arith_2 { $1 }
+      arith_2:
+        0 -> NAME { var($1) } |}]
+end)
 
 let add_no = 6
 let sub_no = 7
@@ -166,107 +163,89 @@ let tree4_ast =
     ]))
 
 let%test_module "ConcreteSyntax" = (module struct
+  (* let (=) = Caml.(=) *)
 
   let%test_unit "language parses" =
     match Parse_concrete.parse description with
       | Ok _concrete -> ()
       | Error msg    -> failwith msg
 
+  (* TODO: should have spaces *)
+  (*
+  let%test "of_ast tree1" = of_ast concrete "arith" 80 tree1_ast = tree1
+  let%test "of_ast tree4" = of_ast concrete "arith" 80 tree4_ast = tree4
 
-      (*
-      testAll "of_ast" [
-        (* TODO: should have spaces *)
-        expect (of_ast sort_defs concrete "arith" 80 tree1_ast)
-          |> toEqual tree1;
-        (*
-        expect (of_ast sort_defs concrete "arith" 80 tree4_ast)
-          |> toEqual tree4;
-          *)
-      ] Util.id;
+  let%test "to_ast tree1" = to_ast concrete tree1 = (Ok tree1_ast)
+  let%test "to_ast tree4" = to_ast concrete tree4 = (Ok tree4_ast)
+*)
 
-      testAll "to_ast" [
-        expect (to_ast concrete tree1)
-          |> toEqual (Ok tree1_ast);
-        expect (to_ast concrete tree4)
-          |> toEqual (Ok tree4_ast);
-      ] Util.id;
+  let%expect_test "to_string tree1" = print_string (to_string tree1);
+    [%expect{|x + y|}]
+  let%expect_test "to_string tree4" = print_string (to_string tree4);
+    [%expect{|x -> x|}]
 
-      testAll "to_string" [
-        expect (to_string tree1) |> toEqual "x + y";
-        expect (to_string tree4) |> toEqual "x -> x";
-      ] Util.id;
-      *)
+    (*
+  let%test {|parse "x + y"|} =
+    parse concrete "arith" "x + y" = Ok tree1
+    *)
+  let%expect_test {|parse "x + y"|} =
+    (match parse concrete "arith" "x + y" with
+    | Ok tree -> print_string (to_string tree)
+    | Error msg -> print_string msg);
+    [%expect]
 
-      (*
-      Js.log (Js.Json.stringifyAny (Ok tree3));
-      Js.log (Js.Json.stringifyAny (parse concrete "arith" "x + y * z"));
-      *)
+    (*
+  let%test {|parse "x+y"|} =
+    parse concrete "arith" "x+y" = Ok (remove_spaces tree1)
+  let%expect_test {|parse "x+y"|} = parse concrete "arith" "x+y"
+    |> to_string
+    |> print_string;
+    [%expect]
+*)
 
-      (* TODO: test
-      let%test "parse x + y" = parse concrete "arith" "x + y" = Ok tree1
-      *)
-        (*
-        test "x+y" (fun () ->
-          expect (parse concrete "arith" "x+y")
-            |> toEqual (Ok (remove_spaces tree1));
-        );
+  (*
+  let%test {|parse "x+y-z"|} =
+    parse concrete "arith" "x+y-z" = Ok (remove_spaces tree2)
+  let%test {|parse "x + y - z"|} =
+    parse concrete "arith" "x + y - z" = Ok tree2
 
-        test "x+y-z" (fun () ->
-          expect (parse concrete "arith" "x+y-z")
-            |> toEqual (Ok (remove_spaces tree2));
-        );
-        (*
-        test "x + y - z" (fun () ->
-          expect (parse concrete "arith" "x + y - z")
-            |> toEqual (Ok tree2);
-        );
-        *)
+  let%test {|parse "x + y * z"|} =
+    parse concrete "arith" "x + y * z" = Ok tree3
+  let%test {|parse "x + (y * z)"|} =
+    parse concrete "arith" "x + (y * z)" = Ok tree3
+  let%test {|parse "x+(y*z)"|} =
+    parse concrete "arith" "x+(y*z)" = Ok (remove_spaces tree3)
 
-        test "x + y * z" (fun () ->
-          expect (parse concrete "arith" "x + y * z") |> toEqual (Ok tree3);
-        );
-        *)
-
-          (*
-          expect (parse concrete "arith" "x + (y * z)")
-            |> toEqual (Ok tree3);
-          expect (parse concrete "arith" "x+(y*z)")
-            |> toEqual (Ok (remove_spaces tree3));
-            *)
-
-          (*
-          expect (parse concrete "arith" "x -> x")
-            |> toEqual (Ok tree4);
-          expect (parse concrete "arith" "x->x")
-            |> toEqual (Ok (remove_spaces tree4));
-            *)
-
-      (*
-      let expect_round_trip_tree tree = expect (tree
-          |> to_ast concrete
-          |. Result.map (of_ast sort_defs concrete "arith" 80)
-          |. Result.getExn
-        ) |> toBeEquivalent to_string equivalent tree
-      in
-
-      let expect_round_trip_ast tm = expect (tm
-          |> of_ast sort_defs concrete "arith" 80
-          |> to_ast concrete
-        ) |> toEqual (Ok tm)
-      in
-
-      testAll "round trip tree -> ast -> tree"
-        [ expect_round_trip_tree tree1;
-          expect_round_trip_tree tree2;
-          (* expect_round_trip_tree tree3; *)
-          (* expect_round_trip_tree tree4; *)
-        ] Util.id;
-
-      testAll "round trip ast -> tree -> ast"
-        [ expect_round_trip_ast tree1_ast;
-          expect_round_trip_ast tree2_ast;
-          (* expect_round_trip_ast tree3_ast; *)
-          (* expect_round_trip_ast tree4_ast; *)
-        ] Util.id;
-        *)
+  let%test {|parse "x -> x"|} =
+    parse concrete "arith" "x -> x" = Ok tree4
+  let%test {|parse "x->x"|} =
+    parse concrete "arith" "x->x" = Ok (remove_spaces tree4)
+*)
 end)
+
+(*
+let expect_round_trip_tree tree = equivalent (tree
+    |> to_ast concrete
+    |> Result.map ~f:(of_ast concrete "arith" 80)
+    |> Result.ok_or_failwith
+  ) tree
+
+let expect_round_trip_ast tm = Caml.((tm
+    |> of_ast concrete "arith" 80
+    |> to_ast concrete
+  ) = Ok tm)
+
+let%test_module "round trip tree -> ast -> tree" = (module struct
+  let%test "tree1" = expect_round_trip_tree tree1
+  let%test "tree2" = expect_round_trip_tree tree2
+  let%test "tree3" = expect_round_trip_tree tree3
+  let%test "tree4" = expect_round_trip_tree tree4
+end)
+
+let%test_module "round trip ast -> tree -> ast" = (module struct
+  let%test "tree1" = expect_round_trip_ast tree1_ast
+  let%test "tree2" = expect_round_trip_ast tree2_ast
+  let%test "tree3" = expect_round_trip_ast tree3_ast
+  let%test "tree4" = expect_round_trip_ast tree4_ast
+end)
+*)
