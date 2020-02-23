@@ -340,55 +340,50 @@ let%test_module "generate_lookaheads" = (module struct
     equivalent_generation spontaneous_generation expected_generation
 end)
 
-(*
-let expected_lalr1_items
-  : (MutableLookaheadItemSet.t, MutableLookaheadItemSet.comparator_witness)
-    Set.t
-  = let mk = fun item lookahead -> M.of_list
-      [ item, Int.Table.of_alist_exn lookahead ]
-    in
-    Set.of_list
-    (module MutableLookaheadItemSet)
-    [ mk (mk_item' 0 0) [ 0 ];
-       mk (mk_item' 0 1) [ 0 ];
-       (M.of_alist_exn
-         [ mk_item' 1 1, Int.Hash_set.of_list [ 0 ];
-           mk_item' 5 1, Int.Hash_set.of_list [ 0 ];
-         ]);
-       mk (mk_item' 2 1) [ 0 ];
-       mk (mk_item' 3 1) [ 0; 1 ];
-       mk (mk_item' 4 1) [ 0; 1 ];
-       mk (mk_item' 1 2) [ 0 ];
-       mk (mk_item' 3 2) [ 0; 1 ];
-       mk (mk_item' 5 1) [ 0; 1 ];
-       mk (mk_item' 1 3) [ 0 ];
-    ]
+let%expect_test "mutable_lalr1_items" =
+  let lalr1_items_set : MutableLookaheadItemSet.t list
+    = Int.Map.data Grammar2Lalr.mutable_lalr1_items
+  in
 
-let lalr1_items_set
-  : (MutableLookaheadItemSet.t, MutableLookaheadItemSet.comparator_witness)
-    Set.t
-  = Grammar2Lalr.mutable_lalr1_items
-  |> Int.Map.data
-  |> Set.of_array (module MutableLookaheadItemSet)
-*)
-
-let string_of_lalr1_items_set = fun lalr1_items_set -> lalr1_items_set
-  |> Set.to_array
-  |> Array.map ~f:(fun mutable_lookahead_item_set -> mutable_lookahead_item_set
-    |> M.to_alist
-    |> List.map ~f:(fun (item, mutable_lookahead) ->
-      let lookahead_set = mutable_lookahead
-        |> Hash_set.to_list
-        |> SI.of_list
-      in
-      let lookahead_item = { LookaheadItem.item; lookahead_set } in
-      Grammar2Lalr.string_of_lookahead_item lookahead_item
+  let string_of_lalr1_items_set = fun lalr1_items_set -> lalr1_items_set
+    |> List.map ~f:(fun mutable_lookahead_item_set -> mutable_lookahead_item_set
+      |> M.to_alist
+      |> List.map ~f:(fun (item, mutable_lookahead) ->
+        let lookahead_set = mutable_lookahead
+          |> Hash_set.to_list
+          |> SI.of_list
+        in
+        let lookahead_item = { LookaheadItem.item; lookahead_set } in
+        Grammar2Lalr.string_of_lookahead_item lookahead_item
+      )
+      |> String.concat ~sep:"\n"
     )
-    |> String.concat ~sep:"\n"
-  )
-  |> String.concat_array ~sep:"\n\n"
+    |> String.concat ~sep:"\n\n"
+  in
 
-(* let%test "mutable_lalr1_items" = Set.equal lalr1_items_set expected_lalr1_items *)
+  print_string (string_of_lalr1_items_set lalr1_items_set);
+
+  [%expect{|
+    [S' -> . S, $]
+
+    [S' -> S ., $]
+
+    [S -> L . = R, $]
+    [R -> L ., $]
+
+    [S -> R ., $]
+
+    [L -> * . R, $/=]
+
+    [L -> id ., $/=]
+
+    [R -> L ., $/=]
+
+    [S -> L = . R, $]
+
+    [L -> * R ., $/=]
+
+    [S -> L = R ., $] |}]
 
 let mk_tok name start finish : Lex.token = { name; start; finish }
 let mk_terminal num start_pos end_pos =
