@@ -35,6 +35,20 @@ arith :=
   | arith _ SUB _ arith { sub($1; $3) } %left
 |}
 
+let simplified_description = {|
+ADD    := "+"
+SUB    := "-"
+NAME   := /[a-z][a-zA-Z0-9]*/
+
+arith := arith1 { $1 }
+arith1 :=
+  | arith2 ADD arith1 { add($1; $3) }
+  | arith2 SUB arith1 { add($1; $3) }
+  | arith2 { $1 }
+
+arith2 := NAME { var($1) }
+|}
+
 let arith = Types.SortAp ("arith", [||])
 let arith' = Types.FixedValence ([], arith)
 let sort_defs = Types.(SortDefs (Core_kernel.String.Map.of_alist_exn [
@@ -48,11 +62,19 @@ let sort_defs = Types.(SortDefs (Core_kernel.String.Map.of_alist_exn [
   ])
 ]))
 
-let pre_terminal_rules, sort_rules = match Parse_concrete.parse description with
-  | Error msg -> failwith msg
-  | Ok desc -> desc
-
 let concrete =
+  let pre_terminal_rules, sort_rules = match Parse_concrete.parse description with
+    | Error msg -> failwith msg
+    | Ok desc -> desc
+  in
+  ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
+
+let simplified_concrete =
+  let pre_terminal_rules, sort_rules =
+    match Parse_concrete.parse simplified_description with
+      | Error msg -> failwith msg
+      | Ok desc -> desc
+  in
   ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
 
 let%test_module "derived nonterminals" = (module struct
@@ -119,6 +141,33 @@ let%test_module "derived nonterminals" = (module struct
         { name  = "ADD"; start = 2; finish = 3};
         { name  = "NAME"; start = 4; finish = 5};
         { name  = "$"; start = 5; finish = 5};
+      ])
+    in
+    (match Lalr.parse tokens with
+      | Ok _ -> print_string "ok"
+      | Error (_, msg) -> print_string msg);
+    [%expect{| ok |}]
+end)
+
+let%test_module "simplified_concrete" = (module struct
+  let LrParsing.AugmentedGrammar grammar as ag, _, _ =
+    to_grammar simplified_concrete "arith"
+  module Lr0 = LrParsing.Lr0(struct let grammar = ag end)
+  module Lalr = LalrParsing.Lalr1(struct let grammar = ag end)
+
+  let%expect_test _ =
+    print_string (Lr0.string_of_grammar grammar);
+    [%expect]
+
+  (* x + y
+   * 012345
+   *)
+  let%expect_test _ =
+    let tokens = Queue.of_list Placemat.Lex.(
+      [ { name  = "NAME"; start = 0; finish = 1};
+        { name  = "ADD";  start = 2; finish = 3};
+        { name  = "NAME"; start = 4; finish = 5};
+        { name  = "$";    start = 5; finish = 5};
       ])
     in
     (match Lalr.parse tokens with

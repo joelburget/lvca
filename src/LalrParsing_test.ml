@@ -129,22 +129,23 @@ module Grammar4 : GRAMMAR = struct
       [
         0, { productions = [[Nonterminal 1]] }; (* arith -> arith1 (0) *)
         1, { productions = [
-          [Nonterminal 2; Terminal 1; Nonterminal 1]; (* arith2 + arith1 (1) *)
-          [Nonterminal 2; Terminal 2; Nonterminal 1]; (* arith2 - arith1 (2) *)
+          [Nonterminal 2; Terminal 2; Nonterminal 1]; (* arith2 + arith1 (1) *)
+          [Nonterminal 2; Terminal 3; Nonterminal 1]; (* arith2 - arith1 (2) *)
           [Nonterminal 2]; (* arith2 (3) *)
           ]
         };
         2, { productions = [
-          [Terminal 3]; (* id (4) *)
+          [Terminal 4]; (* id (4) *)
           ]
         };
       ];
 
     terminal_nums =
       [| "$", 0;
-         "ADD", 1;
-         "SUB", 2;
-         "NAME", 3;
+         "SPACE", 1;
+         "ADD", 2;
+         "SUB", 3;
+         "NAME", 4;
       |];
 
     nonterminal_nums =
@@ -726,13 +727,20 @@ let%test_module "parse" = (module struct
       mk_tok "$"    5 5;
     ]
     in
-    let name_num = 3 in
+    let add_num = 2 in
+    let name_num = 4 in
 
-    Grammar4Lalr.parse tokens3 = Ok
+    let result = Grammar4Lalr.parse tokens3 in
+    (match result with
+      | Ok result' -> print_string (parse_result_to_string result')
+      | Error (_, msg) -> print_string msg);
+
+    (* Grammar4Lalr.parse tokens3 = Ok *)
+    result = Ok
       { production = Either.Second 1;
         children = [
           mk_wrapper 4 @@ mk_terminal name_num 0 1;
-          mk_terminal plus_num 2 3;
+          mk_terminal add_num 2 3;
           mk_wrapper 3 @@ mk_wrapper 4 @@ mk_terminal name_num 4 5;
         ];
         start_pos = 0;
