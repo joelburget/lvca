@@ -123,6 +123,38 @@ module Grammar3 : GRAMMAR = struct
   }
 end
 
+module Grammar4 : GRAMMAR = struct
+  let grammar = AugmentedGrammar {
+    nonterminals = M.of_alist_exn
+      [
+        0, { productions = [[Nonterminal 1]] }; (* arith -> arith1 (0) *)
+        1, { productions = [
+          [Nonterminal 2; Terminal 1; Nonterminal 1]; (* arith2 + arith1 (1) *)
+          [Nonterminal 2; Terminal 2; Nonterminal 1]; (* arith2 - arith1 (2) *)
+          [Nonterminal 2]; (* arith2 (3) *)
+          ]
+        };
+        2, { productions = [
+          [Terminal 3]; (* id (4) *)
+          ]
+        };
+      ];
+
+    terminal_nums =
+      [| "$", 0;
+         "ADD", 1;
+         "SUB", 2;
+         "NAME", 3;
+      |];
+
+    nonterminal_nums =
+      [| "arith", 0;
+         "arith1", 1;
+         "arith2", 2;
+      |];
+  }
+end
+
 type lookahead_item_sets =
   (LookaheadItemSet.t, LookaheadItemSet.comparator_witness) Set.t
 
@@ -131,6 +163,7 @@ module Grammar2LR = Lr0(Grammar2)
 module Grammar1Lalr = Lalr1(Grammar1)
 module Grammar2Lalr = Lalr1(Grammar2)
 module Grammar3Lalr = Lalr1(Grammar3)
+module Grammar4Lalr = Lalr1(Grammar4)
 
 let mk_arr items = Set.of_list (module LookaheadItem) items
 let mk_config_set kernel_items nonkernel_items =
@@ -680,5 +713,30 @@ let%test_module "parse" = (module struct
         start_pos = 0;
         end_pos = 11;
       })
+
+  let%test "x + y" =
+
+    (* x + y
+     * 01234
+     *)
+    let tokens3 = Queue.of_list [
+      mk_tok "NAME" 0 1;
+      mk_tok "ADD"  2 3;
+      mk_tok "NAME" 4 5;
+      mk_tok "$"    5 5;
+    ]
+    in
+    let name_num = 3 in
+
+    Grammar4Lalr.parse tokens3 = Ok
+      { production = Either.Second 1;
+        children = [
+          mk_wrapper 4 @@ mk_terminal name_num 0 1;
+          mk_terminal plus_num 2 3;
+          mk_wrapper 3 @@ mk_wrapper 4 @@ mk_terminal name_num 4 5;
+        ];
+        start_pos = 0;
+        end_pos = 5;
+      }
 
 end)
