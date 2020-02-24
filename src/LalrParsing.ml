@@ -161,8 +161,7 @@ module Lalr1 (G : GRAMMAR) = struct
   let string_of_lookahead_set = fun lookahead_set -> lookahead_set
     |> Int.Set.to_array
     |> Array.map
-      ~f:(fun t_num -> terminal_names
-        |> Fn.flip Int.Map.find t_num
+      ~f:(fun t_num -> Int.Map.find terminal_names t_num
         |> Option.value ~default:"#"
     )
     |> String.concat_array ~sep:"/"
@@ -201,8 +200,7 @@ module Lalr1 (G : GRAMMAR) = struct
     = fun items -> items
                    |> MMI.to_alist
                    |> List.map ~f:(fun (nonterminal_num, mut_lookahead_set) ->
-                     let production_set = nonterminal_production_map
-                       |> Fn.flip MMI.find nonterminal_num
+                     let production_set = MMI.find nonterminal_production_map nonterminal_num
                        |> get_option' (fun () -> Printf.sprintf
                          "lr1_closure' convert: unable to find nonterminal %n in nonterminal_production_map (keys: %s)"
                          nonterminal_num
@@ -260,8 +258,7 @@ module Lalr1 (G : GRAMMAR) = struct
         then MutableSet.add kernel_items lookahead_item
         else add_all_to nonkernel_items nonterminal_num lookahead_set;
 
-        let production = production_map
-                         |> Fn.flip MMI.find production_num
+        let production = MMI.find production_map production_num
                          |> get_option' (fun () -> Printf.sprintf
                                            "lr1_closure': couldn't find production %n"
                                            production_num
@@ -362,8 +359,7 @@ module Lalr1 (G : GRAMMAR) = struct
 
       Set.iter j ~f:(fun { lookahead_set; item = pre_item } ->
         let { production_num; position } = view_item pre_item in
-        let production = production_map
-                         |> Fn.flip MMI.find production_num
+        let production = MMI.find production_map production_num
                          |> get_option'
                               (fun () ->
                                "generate_lookaheads: failed to get production " ^
@@ -375,8 +371,7 @@ module Lalr1 (G : GRAMMAR) = struct
         else (
           let item = mk_item { production_num; position = position + 1 } in
 
-          let x = production
-                  |> Fn.flip List.nth position
+          let x = List.nth production position
                   |> get_option' (fun () -> Printf.sprintf
                                     "failed to get position %n in production %s"
                                     position
@@ -438,8 +433,7 @@ module Lalr1 (G : GRAMMAR) = struct
 
         Array.iter spontaneous_generation
           ~f:(fun (state, { item; lookahead_set }) ->
-            let mutable_generation = mutable_lalr1_items
-             |> Fn.flip Int.Map.find state
+            let mutable_generation = Int.Map.find mutable_lalr1_items state
              |> get_option' (fun () ->
                "lookahead_propagation: state not present in mutable_lalr1_items")
              |> Fn.flip Int.Map.find item
@@ -454,8 +448,7 @@ module Lalr1 (G : GRAMMAR) = struct
     )
 
   (* Special-case augmented item `S' -> . S` with lookahead $. *)
-  let () = mutable_lalr1_items
-           |> Fn.flip Int.Map.find 0
+  let () = Int.Map.find mutable_lalr1_items 0
            |> get_option' (fun () ->
              "Lalr1: augmented state not present in mutable_lalr1_items")
            |> Fn.flip Int.Map.find (mk_item' 0 0)
@@ -482,8 +475,7 @@ module Lalr1 (G : GRAMMAR) = struct
 
           (* lookaheads that propagate from the item we're currently looking at
           *)
-          let propagation : (state * item) array = lookahead_propagation
-                                                   |> Fn.flip Int.Map.find source_state
+          let propagation : (state * item) array = Int.Map.find lookahead_propagation source_state
                                                    |> get_option' (fun () -> Printf.sprintf
                                                                      "step 4 lookahead_propagation: couldn't find state %n" source_state
                                                                   )
@@ -497,8 +489,7 @@ module Lalr1 (G : GRAMMAR) = struct
 
           (* See if we can propagate any lookaheads (and do it) *)
           Array.iter propagation ~f:(fun (target_state, target_item) ->
-            let target_lookahead : Int.Hash_set.t = mutable_lalr1_items
-              |> Fn.flip Int.Map.find target_state
+            let target_lookahead : Int.Hash_set.t = Int.Map.find mutable_lalr1_items target_state
               |> get_option' (fun () -> Printf.sprintf
                 "step 4 mutable_lalr1_items: couldn't find state %n" target_state
               )
@@ -543,8 +534,7 @@ module Lalr1 (G : GRAMMAR) = struct
 
   let state_to_lookahead_item_set
     : state -> LookaheadItemSet.t
-    = fun state -> lalr1_items
-      |> Fn.flip Int.Map.find state
+    = fun state -> Int.Map.find lalr1_items state
       |> get_option' (fun () -> "state_to_lookahead_item_set: state not found")
 
   let lalr1_action_table : lalr1_action_table
@@ -562,8 +552,7 @@ module Lalr1 (G : GRAMMAR) = struct
        * ACTION[i, a] to `shift j` *)
       let shift_action = List.find_map item_set_l ~f:(fun l_item ->
         let { production_num; position } = view_item l_item.item in
-        let symbols = production_map
-                      |> Fn.flip MMI.find production_num
+        let symbols = MMI.find production_map production_num
                       |> get_option' (fun () -> Printf.sprintf
                                         "Lalr1 shift_action: unable to find production %n in production_map"
                                         production_num
@@ -584,15 +573,13 @@ module Lalr1 (G : GRAMMAR) = struct
       let reduce_action = List.find_map item_set_l ~f:(fun l_item ->
         let ({ item; lookahead_set } : LookaheadItem.t) = l_item in
         let { production_num; position } = view_item item in
-        let nt_num = production_nonterminal_map
-                     |> Fn.flip MMI.find production_num
+        let nt_num = MMI.find production_nonterminal_map production_num
                      |> get_option' (fun () -> Printf.sprintf
                                        "Lalr1 shift_action: unable to find production %n in production_nonterminal_map"
                                        production_num
                                     )
         in
-        let production = production_map
-                         |> Fn.flip MMI.find production_num
+        let production = MMI.find production_map production_num
                          |> get_option' (fun () -> Printf.sprintf
                                            "Lalr1 shift_action: unable to find production %n in production_map"
                                            production_num
