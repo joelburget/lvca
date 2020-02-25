@@ -93,7 +93,7 @@ let rec to_string : formatted_tree -> string
       leading_trivia ^ content ^ trailing_trivia
     | NonterminalCapture nonterminal_capture -> to_string nonterminal_capture)
   |> Array.to_list
-  |> String.concat ~sep:""
+  |> String.concat
 ;;
 
 let string_of_tree_info : tree_info -> string
@@ -103,7 +103,7 @@ let string_of_tree_info : tree_info -> string
 let rec to_debug_string : formatted_tree -> string
   = fun { children; tree_info } -> children
   |> Array.map ~f:string_of_formatted_capture
-  |> String.concat_array ~sep:""
+  |> String.concat_array
   |> Printf.sprintf "%s(%s)" (string_of_tree_info tree_info)
 
 and string_of_formatted_capture = function

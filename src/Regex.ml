@@ -162,7 +162,7 @@ let set_to_string : re_set -> string
       | SingleCharacter c -> String.of_char c
       | Range (r1, r2) -> Printf.sprintf "%c-%c" r1 r2
     )
-    |> String.concat ~sep:""
+    |> String.concat
 
 let rec to_string' : int -> regex -> string
   = fun precedence -> function
@@ -192,7 +192,7 @@ let rec to_string' : int -> regex -> string
     | ReAny -> "."
     | ReConcat pieces -> pieces
                          |> List.map ~f:(to_string' 2)
-                         |> String.concat ~sep:""
+                         |> String.concat
                          |> parenthesize (precedence > 1)
 
 (** Convert a regex to a string which is parseable back to a regex. IE, for
