@@ -230,13 +230,13 @@ let walk_leading_trivia : pre_formatted_nonterminal -> string array
         accumulating := false;
         accum := ""
       | Space (SSpace n)
-      -> if !accumulating then accum := !accum ^ Caml.String.make n ' '
+      -> if !accumulating then accum := !accum ^ String.make n ' '
       (* Start accumulating when we hit a newline.
        * Invariant relied upon: accum = "" if not accumulating
        *)
       | Space (SLine n) ->
         accumulating := true;
-        accum := !accum ^ "\n" ^ Caml.String.make n ' '
+        accum := !accum ^ "\n" ^ String.make n ' '
       | Group children' -> Array.iter children' ~f:go_pft
       | Nonterminal nt -> go_nt nt
     )
@@ -264,7 +264,7 @@ let walk_trailing_trivia : pre_formatted_nonterminal -> string array
       | Terminal _ ->
         ignore (Queue.enqueue result !accum : unit);
         accum := ""
-      | Space (SSpace n) -> accum := !accum ^ Caml.String.make n ' '
+      | Space (SSpace n) -> accum := !accum ^ String.make n ' '
       (* Every time we hit a newline, clear the accumulator. *)
       | Space (SLine _) -> accum := ""
       | Group children' -> reverse_iter children' ~f:go_pft
