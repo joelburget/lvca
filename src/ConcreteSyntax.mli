@@ -115,3 +115,4 @@ val derived_nonterminal_rules
 
 val string_of_nonterminal_operators : nonterminal_operators -> string
 val string_of_derived_rules : nonterminal_operators list -> string
+val to_debug_string : formatted_tree -> string
