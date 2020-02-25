@@ -17,6 +17,8 @@ type invalid_grammar = InvalidGrammar of string
 
 exception CheckValidExn of invalid_grammar
 
+let root_name = "_root"
+
 (* The parser doesn't need formatting tokens *)
 let is_formatting_token
   : nonterminal_token -> bool
@@ -611,7 +613,6 @@ let desugar_nonterminal
       taken_names
       (NonterminalRule { nonterminal_name; operator_rules; _ }) ->
     let num_levels = List.length operator_rules in
-    (*
     if num_levels = 1
     then
       let operators = operator_rules
@@ -623,7 +624,6 @@ let desugar_nonterminal
       String.Map.of_alist_exn [ nonterminal_name, operators ],
       String.Map.of_alist_exn [ nonterminal_name, Some nonterminal_name ]
     else
-      *)
 
       (* Used to number each operator across all precedence levels *)
       let operator_index = ref 0 in
@@ -797,6 +797,7 @@ let to_grammar
 
   let nonterminal_renamings : string option String.Map.t
     = Util.list_map_unions nonterminal_renamings
+    |> Map.set ~key:root_name ~data:None
   in
 
   (*
@@ -813,10 +814,6 @@ let to_grammar
         !nonterminal_num
       )
   in
-
-  (* [nonterminal_nums]: name, level, nonterminal num. *)
-  let nonterminal_nums = String.Map.to_alist nonterminal_num_map in
-  let nonterminal_nums = ("root", 0) :: nonterminal_nums in
 
   (* We're dealing with a non-augmented grammar here. [prod_num] starts
    * counting productions from 1. We'll add the starting production at 0 at the
@@ -857,19 +854,22 @@ let to_grammar
           )
       in
 
-      let result = !nt_num, { LrParsing.productions = productions' } in
+      let result =
+        nonterminal_name, !nt_num, { LrParsing.productions = productions' }
+      in
       incr nt_num;
       result
     )
-    |> Int.Map.of_alist_exn
-    |> Int.Map.set
-      ~key:0
-      ~data:{ LrParsing.productions = [ [ Nonterminal !start_nonterminal_num ] ] }
+    |> List.cons
+      (root_name, 0, {
+        LrParsing.productions = [ [ Nonterminal !start_nonterminal_num ] ]
+      })
+    |> Array.of_list
   in
+
   AugmentedGrammar
     { nonterminals
     ; terminal_nums = Array.of_list terminal_nums
-    ; nonterminal_nums = Array.of_list nonterminal_nums
     },
   production_rule_map,
   nonterminal_renamings
@@ -886,23 +886,26 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
   -> string option String.Map.t
   -> LrParsing.nonterminal_num String.Map.t
   -> ConcreteSyntaxDescription.nonterminal_rules
-  -> string (* root name *)
   -> string (* parsed string *)
   -> LrParsing.parse_result
   -> formatted_tree
   =
   fun production_rule_map nonterminal_renamings _nonterminal_nums
-    _nonterminal_rules root_name str root ->
+    _nonterminal_rules str root ->
 
   let str_pos = ref 0 in
   let str_len = String.length str in
   let get_trivia : int -> int -> string * string =
     fun start_pos end_pos ->
       (* look back consuming all whitespace to (and including) a newline *)
-      let leading_trivia = String.slice str !str_pos start_pos in
+      let leading_trivia =
+        if !str_pos < start_pos
+        then String.slice str !str_pos start_pos
+        else ""
+      in
       (* look forward consuming all whitespace up to a newline *)
       str_pos := end_pos;
-      let continue = ref true in
+      let continue = ref (end_pos < str_len) in
       while !continue do
         (* TODO: need to be aware of other whitespace tokens *)
         let got_space = Char.(String.get str !str_pos = ' ') in
@@ -923,8 +926,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
         | Second prod_num -> prod_num
       in
 
-      let tree_info, tokens, _ = production_rule_map
-        |> Fn.flip Int.Table.find prod_num
+      let tree_info, tokens, _ = Int.Table.find production_rule_map prod_num
         |> get_option' (fun () -> Printf.sprintf
           "tree_of_parse_result: couldn't find nonterminal %n in \
           production_rule_map"
@@ -949,8 +951,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
         )
       in
 
-      let renaming = nonterminal_renamings
-        |> Fn.flip String.Map.find nt_name
+      let renaming = String.Map.find nonterminal_renamings nt_name
         |> get_option' (fun () -> Printf.sprintf
          "tree_of_parse_result: unable to find renaming for %s" nt_name
         )
@@ -994,38 +995,42 @@ let lexer_of_desc : ConcreteSyntaxDescription.t -> Placemat.Lex.lexer =
   ("SPACE", Regex.ReClass (PosClass Whitespace)) :: terminal_rules
 ;;
 
-let parse desc root_name str =
+let parse desc start_nonterminal str =
   let AugmentedGrammar grammar as ag, production_rule_map, nonterminal_renamings =
-    to_grammar desc root_name
+    to_grammar desc start_nonterminal
   in
   let module Lalr = LalrParsing.Lalr1 (struct
                       let grammar = ag
                     end)
   in
   let lexer = lexer_of_desc desc in
+
   (* TODO: come up with better idea where to do this augmentation *)
+  (* XXX this is also wrong (but not used) *)
   let augmented_nonterminal_rules =
     String.Map.set
       desc.nonterminal_rules
-      ~key:"root"
+      ~key:root_name
       ~data:(NonterminalRule
-        { nonterminal_name = "root" (* TODO: root_name? *)
-        ; nonterminal_type = NonterminalType ([], SortAp ("root", [||]))
+        { nonterminal_name = root_name
+        ; nonterminal_type = NonterminalType ([], SortAp (root_name, [||]))
         ; operator_rules = [ [] ]
         })
   in
 
   match Lalr.lex_and_parse lexer str with
-  | Ok root -> Ok
+  | Ok tree_root -> Ok
     (tree_of_parse_result
        (module Lalr)
        production_rule_map
        nonterminal_renamings
-       (grammar.nonterminal_nums |> Array.to_list |> String.Map.of_alist_exn)
+       (grammar.nonterminals
+         |> Array.map ~f:(fun (name, num, _nt) -> name, num)
+         |> Array.to_list
+         |> String.Map.of_alist_exn)
        augmented_nonterminal_rules
-       root_name
        str
-       root)
+       tree_root)
   | Error (Either.First { start_pos; end_pos; message }) ->
     Error
       (Printf.sprintf

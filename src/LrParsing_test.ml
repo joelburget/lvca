@@ -4,29 +4,30 @@ module SI = Int.Set
 
 module Grammar : GRAMMAR = struct
   let grammar = AugmentedGrammar {
-    nonterminals = Int.Map.of_alist_exn
-    [
-       (* E' (note: the grammar we provide is already augmented) *)
-       0, { productions = [[Nonterminal 1]] }; (* E' -> E *)
-       (* E *)
-       1, { productions = [
+    nonterminals =
+    [|
+       (* note: the grammar we provide is already augmented *)
+       "E'", 0, { productions = [[Nonterminal 1]] }; (* E' -> E *)
+
+       "E", 1, { productions = [
          [Nonterminal 1; Terminal 1; Nonterminal 2]; (* E -> E + T *)
          [Nonterminal 2];                            (* E -> T *)
          ]
        };
-       (* T *)
-       2, { productions = [
+
+       "T", 2, { productions = [
          [Nonterminal 2; Terminal 2; Nonterminal 3]; (* T -> T * F *)
          [Nonterminal 3]                             (* T -> F *)
          ]
        };
-       (* F *)
-       3, { productions = [
+
+       "F", 3, { productions = [
          [Terminal 3; Nonterminal 1; Terminal 4]; (* F -> (E) *)
          [Terminal 5];                            (* F -> id *)
          ]
        };
-    ];
+    |];
+
     terminal_nums =
     [|
       "$", 0;
@@ -35,13 +36,6 @@ module Grammar : GRAMMAR = struct
       "(", 3;
       ")", 4;
       "id", 5;
-    |];
-    nonterminal_nums =
-    [|
-      "E'", 0;
-      "E",  1;
-      "T",  2;
-      "F",  3;
     |];
   }
 end

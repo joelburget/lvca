@@ -40,13 +40,13 @@ ADD    := "+"
 SUB    := "-"
 NAME   := /[a-z][a-zA-Z0-9]*/
 
-arith := arith1 { $1 }
-arith1 :=
-  | arith2 ADD arith1 { add($1; $3) }
-  | arith2 SUB arith1 { add($1; $3) }
-  | arith2 { $1 }
+arith := arith_1 { $1 }
+arith_1 :=
+  | arith_2 ADD arith_1 { add($1; $3) }
+  | arith_2 SUB arith_1 { add($1; $3) }
+  | arith_2 { $1 }
 
-arith2 := NAME { var($1) }
+arith_2 := NAME { var($1) }
 |}
 
 let arith = Types.SortAp ("arith", [||])
@@ -100,12 +100,12 @@ let%test_module "derived nonterminals" = (module struct
   let%expect_test _ =
     print_string (Lr0.string_of_grammar grammar);
     [%expect{|
-      0: root
-      1: arith_1
-      2: arith_2 ADD arith_1
+      _root (0): arith
+      arith (1): arith_1
+      arith_1 (2): arith_2 ADD arith_1
       arith_2 SUB arith_1
       arith_2
-      3: NAME
+      arith_2 (3): NAME
 
       $ <-> 0
       SPACE <-> 1
@@ -116,12 +116,7 @@ let%test_module "derived nonterminals" = (module struct
       DIV <-> 6
       LPAREN <-> 7
       RPAREN <-> 8
-      NAME <-> 9
-
-      root <-> 0
-      arith <-> 1
-      arith_1 <-> 2
-      arith_2 <-> 3 |}]
+      NAME <-> 9 |}]
 
   let%expect_test _ =
     let module Lex = Placemat.Lex in
@@ -157,7 +152,19 @@ let%test_module "simplified_concrete" = (module struct
 
   let%expect_test _ =
     print_string (Lr0.string_of_grammar grammar);
-    [%expect]
+    [%expect{|
+      _root (0): arith
+      arith (1): arith_1
+      arith_1 (2): arith_2 ADD arith_1
+      arith_2 SUB arith_1
+      arith_2
+      arith_2 (3): NAME
+
+      $ <-> 0
+      SPACE <-> 1
+      ADD <-> 2
+      SUB <-> 3
+      NAME <-> 4 |}]
 
   (* x + y
    * 012345
@@ -293,10 +300,10 @@ let%test_module "ConcreteSyntax" = (module struct
     parse concrete "arith" "x + y" = Ok tree1
     *)
   let%expect_test {|parse "x + y"|} =
-    (match parse concrete "root" "x + y" with
+    (match parse concrete "arith" "x + y" with
     | Ok tree -> print_string (to_string tree)
     | Error msg -> print_string msg);
-    [%expect]
+    [%expect{| x + y |}]
 
     (*
   let%test {|parse "x+y"|} =

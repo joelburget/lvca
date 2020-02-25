@@ -127,7 +127,8 @@ module Lalr1 (G : GRAMMAR) = struct
     string_of_action,
     states,
     terminals,
-    nonterminals
+    nonterminal_nums_arr,
+    nonterminal_map
   ) = Lr0'.(
     augmented_grammar,
     string_of_item,
@@ -155,7 +156,8 @@ module Lalr1 (G : GRAMMAR) = struct
     string_of_action,
     states,
     terminals,
-    nonterminals
+    nonterminal_nums_arr,
+    nonterminal_map
   )
 
   let string_of_lookahead_set = fun lookahead_set -> lookahead_set
@@ -304,9 +306,9 @@ module Lalr1 (G : GRAMMAR) = struct
           add_to nonkernel_items nonterminal_num lookahead;
 
           let { productions } =
-            Int.Map.find augmented_grammar.nonterminals nonterminal_num
+            Int.Map.find nonterminal_map nonterminal_num
               |> get_option' (fun () -> Printf.sprintf
-                "lr1_closure': unable to find nonterminal %n in G.grammar.nonterminals"
+                "lr1_closure': unable to find nonterminal %n in nonterminal_map"
                 nonterminal_num
               )
           in
@@ -620,8 +622,7 @@ module Lalr1 (G : GRAMMAR) = struct
 
   let full_lalr1_goto_table : unit -> (symbol * state option) array array
     = fun () -> states
-                |> Array.map ~f:(fun state ->
-                  nonterminals
+                |> Array.map ~f:(fun state -> nonterminal_nums_arr
                   |> Array.map ~f:(fun nt ->
                     let sym = Nonterminal nt in
                     sym, lalr1_goto_table state sym

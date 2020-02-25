@@ -24,19 +24,19 @@ end
 (* CPTT Example 4.54 *)
 module Grammar1 : GRAMMAR = struct
   let grammar = AugmentedGrammar {
-    nonterminals = M.of_alist_exn
-    [
-       (* S' (note: the grammar we provide is already augmented) *)
-       0, { productions = [[Nonterminal 1]] }; (* S' -> S *)
-       (* S *)
-       1, { productions = [[Nonterminal 2; Nonterminal 2]] }; (* S -> C C *)
-       (* C *)
-       2, { productions = [
+    nonterminals =
+    [|
+       (* note: the grammar we provide is already augmented *)
+       "S'", 0, { productions = [[Nonterminal 1]] }; (* S' -> S *)
+
+       "S", 1, { productions = [[Nonterminal 2; Nonterminal 2]] }; (* S -> C C *)
+
+       "C", 2, { productions = [
          [Terminal 1; Nonterminal 2]; (* C -> c C *)
          [Terminal 2]                 (* C -> d *)
          ]
        };
-    ];
+       |];
 
     terminal_nums =
     [|
@@ -44,37 +44,31 @@ module Grammar1 : GRAMMAR = struct
       "c", 1;
       "d", 2;
     |];
-    nonterminal_nums =
-    [|
-      "S'", 0;
-      "S",  1;
-      "C",  2;
-    |];
   }
 end
 
 (* CPTT Example 4.61 *)
 module Grammar2 : GRAMMAR = struct
   let grammar = AugmentedGrammar {
-    nonterminals = M.of_alist_exn
-    [
-       (* S' (note: the grammar we provide is already augmented) *)
-       0, { productions = [[Nonterminal 1]] }; (* S' -> S *)
-       (* S *)
-       1, { productions = [
+    nonterminals =
+    [|
+       (* note: the grammar we provide is already augmented *)
+       "S'", 0, { productions = [[Nonterminal 1]] }; (* S' -> S *)
+
+       "S", 1, { productions = [
          [Nonterminal 2; Terminal 1; Nonterminal 3]; (* L = R *)
          [Nonterminal 3]; (* R *)
          ]
        };
-       (* L *)
-       2, { productions = [
+
+       "L", 2, { productions = [
          [Terminal 2; Nonterminal 3]; (* * R *)
          [Terminal 3]                 (* id *)
          ]
        };
-       (* R *)
-       3, { productions = [[Nonterminal 2]] }; (* L *)
-    ];
+
+       "R", 3, { productions = [[Nonterminal 2]] }; (* L *)
+    |];
 
     terminal_nums =
     [|
@@ -83,28 +77,21 @@ module Grammar2 : GRAMMAR = struct
       "*", 2;
       "id", 3;
     |];
-    nonterminal_nums =
-    [|
-      "S'", 0;
-      "S",  1;
-      "L",  2;
-      "R",  3;
-    |];
   }
 end
 
 module Grammar3 : GRAMMAR = struct
   let grammar = AugmentedGrammar {
-    nonterminals = M.of_alist_exn
-    [
-       0, { productions = [[Nonterminal 1]] }; (* arith' -> arith *)
-       1, { productions = [
+    nonterminals =
+    [|
+       "arith'", 0, { productions = [[Nonterminal 1]] }; (* arith' -> arith *)
+       "arith", 1, { productions = [
          [Nonterminal 1; Terminal 1; Nonterminal 1]; (* arith + arith *)
          [Terminal 2; Nonterminal 1; Terminal 3]; (* (arith) *)
          [Terminal 4]; (* id *)
          ]
        };
-    ];
+    |];
 
     terminal_nums =
     [|
@@ -114,31 +101,25 @@ module Grammar3 : GRAMMAR = struct
       ")", 3;
       "id", 4;
     |];
-
-    nonterminal_nums =
-    [|
-      "arith'", 0;
-      "arith",  1;
-    |];
   }
 end
 
 module Grammar4 : GRAMMAR = struct
   let grammar = AugmentedGrammar {
-    nonterminals = M.of_alist_exn
-      [
-        0, { productions = [[Nonterminal 1]] }; (* arith -> arith1 (0) *)
-        1, { productions = [
+    nonterminals =
+      [|
+        "arith", 0, { productions = [[Nonterminal 1]] }; (* arith -> arith1 (0) *)
+        "arith1", 1, { productions = [
           [Nonterminal 2; Terminal 2; Nonterminal 1]; (* arith2 + arith1 (1) *)
           [Nonterminal 2; Terminal 3; Nonterminal 1]; (* arith2 - arith1 (2) *)
           [Nonterminal 2]; (* arith2 (3) *)
           ]
         };
-        2, { productions = [
+        "arith2", 2, { productions = [
           [Terminal 4]; (* id (4) *)
           ]
         };
-      ];
+      |];
 
     terminal_nums =
       [| "$", 0;
@@ -146,12 +127,6 @@ module Grammar4 : GRAMMAR = struct
          "ADD", 2;
          "SUB", 3;
          "NAME", 4;
-      |];
-
-    nonterminal_nums =
-      [| "arith", 0;
-         "arith1", 1;
-         "arith2", 2;
       |];
   }
 end
