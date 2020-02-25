@@ -705,13 +705,7 @@ let%test_module "parse" = (module struct
     let add_num = 2 in
     let name_num = 4 in
 
-    let result = Grammar4Lalr.parse tokens3 in
-    (match result with
-      | Ok result' -> print_string (parse_result_to_string result')
-      | Error (_, msg) -> print_string msg);
-
-    (* Grammar4Lalr.parse tokens3 = Ok *)
-    result = Ok
+    Grammar4Lalr.parse tokens3 = Ok
       { production = Either.Second 1;
         children = [
           mk_wrapper 4 @@ mk_terminal name_num 0 1;
