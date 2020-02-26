@@ -216,7 +216,7 @@ let mul_no = 2
 let fun_no = 6
 let mk_op no = mk_tree ("arith", no)
 let mk_var = mk_tree ("arith", 1)
-let mk_parens = mk_tree ("arith", 7)
+let mk_parens = mk_tree ("arith", 0)
 
 let tree1 = mk_op add_no
   [| nt_capture (mk_var [| mk_terminal_capture "x" " " |]);
@@ -355,12 +355,14 @@ let%test_module "ConcreteSyntax" = (module struct
   let%expect_test {|parse "x + (y * z)"|} =
     parse_print "x + (y * z)";
     [%expect{| x + (y * z) |}]
-  (* let%test {|parse "x + (y * z)"|} *)
-  (*   parse concrete "arith" "x + (y * z)" = Ok tree3 *)
+
+  let%test {|parse "x + (y * z)"|} =
+    parse concrete "arith" "x + (y * z)" = Ok tree3_parens
   let%expect_test {|parse "x+(y*z)"|} =
     parse_print "x+(y*z)";
     [%expect{| x+(y*z) |}]
-    (* parse concrete "arith" "x+(y*z)" = Ok (remove_spaces tree3) *)
+  let%test {|parse "x+(y*z)"|} =
+    parse concrete "arith" "x+(y*z)" = Ok (remove_spaces tree3_parens)
 
     (*
   let%expect_test {|parse "fun x -> x"|} =
