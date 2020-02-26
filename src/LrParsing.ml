@@ -449,7 +449,7 @@ let string_of_grammar : grammar -> string
   = fun { nonterminals; terminal_nums } ->
     let nt_str = nonterminals
       |> Array.map ~f:(fun (name, num, nt) ->
-        Printf.sprintf "%s (%n): %s" name num (string_of_nonterminal nt)
+        Printf.sprintf "%s (%n):\n%s" name num (string_of_nonterminal nt)
       )
       |> String.concat_array ~sep:"\n"
     in
