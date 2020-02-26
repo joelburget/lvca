@@ -218,7 +218,7 @@ let rec get_subpatterns
      let nt_name = match tok with
        | NonterminalName nt_name -> nt_name
        | TerminalName t_name -> raise (UserError (Printf.sprintf
-         "Token $%n captures a nonterminal (%s) directly, but only \
+         "Token $%n captures a terminal (%s) directly, but only \
           nonterminals can be captured and put in an AST: %s"
          num t_name (string_of_op_match_line tokens op_match_pat)
        ))
@@ -280,7 +280,7 @@ let rec get_subterms
      let nt_name = match tok with
        | NonterminalName nt_name -> nt_name
        | TerminalName t_name -> raise (UserError (Printf.sprintf
-         "Token $%n captures a nonterminal (%s) directly, but only \
+         "Token $%n captures a terminal (%s) directly, but only \
           nonterminals can be captured and put in an AST: %s"
          num t_name (string_of_op_match_line tokens op_match_pat)
        ))
@@ -373,7 +373,7 @@ and get_scope_subterms
           let nt_name = match tok with
             | NonterminalName nt_name -> nt_name
             | TerminalName t_name -> raise (UserError (Printf.sprintf
-              "Token $%n captures a nonterminal (%s) directly, but only \
+              "Token $%n captures a terminal (%s) directly, but only \
                nonterminals can be captured and put in an AST: %s"
               captured_token_num t_name (string_of_op_match_line' tokens ns_pat)
             ))
