@@ -22,17 +22,18 @@ MUL    := "*"
 DIV    := "/"
 LPAREN := "("
 RPAREN := ")"
+FUN    := "fun"
 NAME   := /[a-z][a-zA-Z0-9]*/
 
 arith :=
-  // | LPAREN arith RPAREN { $2          }
+  | LPAREN arith RPAREN { $2          }
   | NAME                { var($1)     }
   // > arith _       arith { app($1; $2) } %left
-  // > arith _ MUL _ arith { mul($1; $3) } %left
-  // | arith _ DIV _ arith { div($1; $3) } %left
-  // > NAME  _ ARR _ arith { fun($1. $3) }
+  > arith _ MUL _ arith { mul($1; $3) } %left
+  | arith _ DIV _ arith { div($1; $3) } %left
   > arith _ ADD _ arith { add($1; $3) } %left
   | arith _ SUB _ arith { sub($1; $3) } %left
+  > FUN NAME _ ARR _ arith { fun($1. $3) }
 |}
 
 let simplified_description = {|
@@ -87,11 +88,19 @@ let%test_module "derived nonterminals" = (module struct
       arith:
         _ -> arith_1 { $1 }
       arith_1:
-        1 -> arith_2 ADD arith_1 { add($1; $3) }
-        2 -> arith_2 SUB arith_1 { sub($1; $3) }
+        6 -> FUN NAME ARR arith { fun($3. $1) }
         _ -> arith_2 { $1 }
       arith_2:
-        0 -> NAME { var($1) } |}]
+        4 -> arith_3 ADD arith_2 { add($1; $3) }
+        5 -> arith_3 SUB arith_2 { sub($1; $3) }
+        _ -> arith_3 { $1 }
+      arith_3:
+        2 -> arith_4 MUL arith_3 { mul($1; $3) }
+        3 -> arith_4 DIV arith_3 { div($1; $3) }
+        _ -> arith_4 { $1 }
+      arith_4:
+        0 -> LPAREN arith RPAREN { $2 }
+        1 -> NAME { var($1) } |}]
 
   let LrParsing.AugmentedGrammar grammar as ag, _, _ = to_grammar concrete "arith"
   module Lr0 = LrParsing.Lr0(struct let grammar = ag end)
@@ -100,12 +109,24 @@ let%test_module "derived nonterminals" = (module struct
   let%expect_test _ =
     print_string (Lr0.string_of_grammar grammar);
     [%expect{|
-      _root (0): arith
-      arith (1): arith_1
-      arith_1 (2): arith_2 ADD arith_1
-      arith_2 SUB arith_1
+      _root (0):
+      arith
+      arith (1):
+      arith_1
+      arith_1 (2):
+      FUN NAME ARR arith
       arith_2
-      arith_2 (3): NAME
+      arith_2 (3):
+      arith_3 ADD arith_2
+      arith_3 SUB arith_2
+      arith_3
+      arith_3 (4):
+      arith_4 MUL arith_3
+      arith_4 DIV arith_3
+      arith_4
+      arith_4 (5):
+      LPAREN arith RPAREN
+      NAME
 
       $ <-> 0
       SPACE <-> 1
@@ -116,7 +137,8 @@ let%test_module "derived nonterminals" = (module struct
       DIV <-> 6
       LPAREN <-> 7
       RPAREN <-> 8
-      NAME <-> 9 |}]
+      FUN <-> 9
+      NAME <-> 10 |}]
 
   let%expect_test _ =
     let module Lex = Placemat.Lex in
@@ -153,12 +175,16 @@ let%test_module "simplified_concrete" = (module struct
   let%expect_test _ =
     print_string (Lr0.string_of_grammar grammar);
     [%expect{|
-      _root (0): arith
-      arith (1): arith_1
-      arith_1 (2): arith_2 ADD arith_1
+      _root (0):
+      arith
+      arith (1):
+      arith_1
+      arith_1 (2):
+      arith_2 ADD arith_1
       arith_2 SUB arith_1
       arith_2
-      arith_2 (3): NAME
+      arith_2 (3):
+      NAME
 
       $ <-> 0
       SPACE <-> 1
@@ -183,12 +209,12 @@ let%test_module "simplified_concrete" = (module struct
     [%expect{| ok |}]
 end)
 
-let add_no = 6
-let sub_no = 7
-let mul_no = 3
-let fun_no = 5
+let add_no = 4
+let sub_no = 5
+let mul_no = 2
+let fun_no = 6
 let mk_op no = mk_tree ("arith", no)
-let mk_var = mk_tree ("arith", 6)
+let mk_var = mk_tree ("arith", 1)
 let mk_parens = mk_tree ("arith", 7)
 
 let tree1 = mk_op add_no
@@ -274,67 +300,86 @@ let tree4_ast =
     ]))
 
 let%test_module "ConcreteSyntax" = (module struct
-  (* let (=) = Caml.(=) *)
+  let (=) = Caml.(=)
 
-  let%test_unit "language parses" =
-    match Parse_concrete.parse description with
-      | Ok _concrete -> ()
-      | Error msg    -> failwith msg
+  let parse_print str = match parse concrete "arith" str with
+    | Ok tree -> print_string (to_string tree)
+    | Error msg -> print_string msg
 
-  (* TODO: should have spaces *)
-  (*
-  let%test "of_ast tree1" = of_ast concrete "arith" 80 tree1_ast = tree1
-  let%test "of_ast tree4" = of_ast concrete "arith" 80 tree4_ast = tree4
+  let%test_unit "language parses" = match Parse_concrete.parse description with
+    | Ok _concrete -> ()
+    | Error msg    -> failwith msg
+
+  let%test "of_ast tree1" =
+    of_ast concrete "arith" 80 tree1_ast = tree1
+  (* let%test "of_ast tree4" = of_ast concrete "arith" 80 tree4_ast = tree4 *)
 
   let%test "to_ast tree1" = to_ast concrete tree1 = (Ok tree1_ast)
-  let%test "to_ast tree4" = to_ast concrete tree4 = (Ok tree4_ast)
-*)
+  (* let%test "to_ast tree4" = to_ast concrete tree4 = (Ok tree4_ast) *)
 
-  let%expect_test "to_string tree1" = print_string (to_string tree1);
+  let%expect_test "to_string tree1" =
+    print_string (to_string tree1);
     [%expect{|x + y|}]
-  let%expect_test "to_string tree4" = print_string (to_string tree4);
+  let%expect_test "to_string tree4" =
+    print_string (to_string tree4);
     [%expect{|x -> x|}]
 
-    (*
-  let%test {|parse "x + y"|} =
-    parse concrete "arith" "x + y" = Ok tree1
-    *)
   let%expect_test {|parse "x + y"|} =
-    (match parse concrete "arith" "x + y" with
-    | Ok tree -> print_string (to_string tree)
-    | Error msg -> print_string msg);
+    parse_print "x + y";
     [%expect{| x + y |}]
 
-    (*
   let%test {|parse "x+y"|} =
     parse concrete "arith" "x+y" = Ok (remove_spaces tree1)
-  let%expect_test {|parse "x+y"|} = parse concrete "arith" "x+y"
-    |> to_string
-    |> print_string;
-    [%expect]
-*)
 
-  (*
-  let%test {|parse "x+y-z"|} =
-    parse concrete "arith" "x+y-z" = Ok (remove_spaces tree2)
-  let%test {|parse "x + y - z"|} =
-    parse concrete "arith" "x + y - z" = Ok tree2
+  let%expect_test {|parse "x+y"|} =
+    parse_print "x+y";
+    [%expect{| x+y |}]
 
-  let%test {|parse "x + y * z"|} =
-    parse concrete "arith" "x + y * z" = Ok tree3
-  let%test {|parse "x + (y * z)"|} =
-    parse concrete "arith" "x + (y * z)" = Ok tree3
-  let%test {|parse "x+(y*z)"|} =
-    parse concrete "arith" "x+(y*z)" = Ok (remove_spaces tree3)
+  let%expect_test {|parse "x+y-z"|} =
+    parse_print "x+y-z";
+    [%expect{| x+y-z |}]
+  (* let%test {|parse "x+y-z"|} = *)
+  (*   parse concrete "arith" "x+y-z" = Ok (remove_spaces tree2) *)
+    (*
+  let%test {|parse "x+y-z"|} = match parse concrete "arith" "x+y-z" with
+    | Ok tree ->
+      print_string "here\n";
+      print_string (to_debug_string tree ^ "\n");
+      print_string (to_debug_string (remove_spaces tree2) ^ "\n");
+      Caml.(parse concrete "arith" "x+y-z" = Ok (remove_spaces tree2))
+    | Error _ -> false
+    *)
+  let%expect_test {|parse "x + y - z"|} =
+    parse_print "x + y - z";
+    [%expect{| x + y - z |}]
+  (* let%test {|parse "x + y - z"|} = *)
+  (*   parse concrete "arith" "x + y - z" = Ok tree2 *)
 
-  let%test {|parse "x -> x"|} =
-    parse concrete "arith" "x -> x" = Ok tree4
-  let%test {|parse "x->x"|} =
-    parse concrete "arith" "x->x" = Ok (remove_spaces tree4)
-*)
+  let%expect_test {|parse "x + y * z"|} =
+    parse_print "x + y * z";
+    [%expect{| x + y * z |}]
+    (* parse concrete "arith" "x + y * z" = Ok tree3 *)
+  let%expect_test {|parse "x + (y * z)"|} =
+    parse_print "x + (y * z)";
+    [%expect{| x + (y * z) |}]
+    (* parse concrete "arith" "x + (y * z)" = Ok tree3 *)
+  let%expect_test {|parse "x+(y*z)"|} =
+    parse_print "x+(y*z)";
+    [%expect{| x+(y*z) |}]
+    (* parse concrete "arith" "x+(y*z)" = Ok (remove_spaces tree3) *)
+
+    (*
+  let%expect_test {|parse "fun x -> x"|} =
+    parse_print "x -> x";
+    [%expect{| x -> x |}]
+    (* parse concrete "arith" "x -> x" = Ok tree4 *)
+  let%expect_test {|parse "fun x->x"|} =
+    parse_print "x->x";
+    [%expect{| x->x |}]
+    (* parse concrete "arith" "x->x" = Ok (remove_spaces tree4) *)
+    *)
 end)
 
-(*
 let expect_round_trip_tree tree = equivalent (tree
     |> to_ast concrete
     |> Result.map ~f:(of_ast concrete "arith" 80)
@@ -350,13 +395,16 @@ let%test_module "round trip tree -> ast -> tree" = (module struct
   let%test "tree1" = expect_round_trip_tree tree1
   let%test "tree2" = expect_round_trip_tree tree2
   let%test "tree3" = expect_round_trip_tree tree3
+  (*
   let%test "tree4" = expect_round_trip_tree tree4
+  *)
 end)
 
 let%test_module "round trip ast -> tree -> ast" = (module struct
   let%test "tree1" = expect_round_trip_ast tree1_ast
   let%test "tree2" = expect_round_trip_ast tree2_ast
   let%test "tree3" = expect_round_trip_ast tree3_ast
+  (*
   let%test "tree4" = expect_round_trip_ast tree4_ast
+  *)
 end)
-*)
