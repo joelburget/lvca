@@ -298,27 +298,7 @@ let rec get_subterms
      Int.Map.of_alist_exn [ num, capture ]
   | OperatorPattern ("var", [NumberedScopePattern([], SingleCapturePattern num)])
   , Var name
-  ->
-     (* XXX unused code
-     let tok = Int.Map.find tokens_map num
-       (* TODO: change to InvariantViolation if we validate this *)
-       |> Util.get_option (UserError (Printf.sprintf
-         "Couldn't find token $%n in tokens: %s"
-         num
-         (string_of_op_match_line tokens op_match_pat)
-       ))
-     in
-     let t_name = match tok with
-       | TerminalName t_name -> t_name
-       | NonterminalName nt_name -> raise (UserError (Printf.sprintf
-         "var must capture a terminal, found nonterminal %s: %s"
-         nt_name (string_of_op_match_line tokens op_match_pat)
-       ))
-       | Underscore _ | OpenBox _ | CloseBox
-       -> invariant_violation "boxes and underscores are not indexed"
-     in
-     *)
-     let capture = CapturedTerm
+  -> let capture = CapturedTerm
        (current_sort nonterminal_pointer, nonterminal_pointer, Var name)
      in
      Int.Map.of_alist_exn [ num, capture ]
