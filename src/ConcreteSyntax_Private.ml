@@ -199,15 +199,15 @@ let string_of_op_match_line'
 
 let rec get_subpatterns
   :  nonterminal_token list
+  -> nonterminal_token Int.Map.t
   -> nonterminal_pointer
   -> operator_match_pattern
   -> Pattern.t
   -> subpattern_result Int.Map.t
-  = fun tokens nonterminal_pointer op_match_pat pat -> match op_match_pat, pat with
+  = fun tokens tokens_map nonterminal_pointer op_match_pat pat ->
+    match op_match_pat, pat with
   | SingleCapturePattern num, _
-  -> let tok = tokens
-       |> map_index_tokens
-       |> Fn.flip Int.Map.find num
+  -> let tok = Int.Map.find tokens_map num
        (* TODO: change to InvariantViolation if we validate this *)
        |> Util.get_option (UserError (Printf.sprintf
          "Couldn't find token $%n in tokens: %s"
@@ -237,7 +237,7 @@ let rec get_subpatterns
        List.map2_exn body_pats body_scopes
          ~f:(fun (NumberedScopePattern (caps, body_pat)) ->
            if List.length caps > 0 then failwith "TODO: error 6";
-           get_subpatterns tokens nonterminal_pointer body_pat)
+           get_subpatterns tokens tokens_map nonterminal_pointer body_pat)
        |> Util.int_map_unions
      else raise (NoMatch
        "pattern and operator don't match, either in operator name or subterms")
@@ -261,15 +261,15 @@ let rec get_subpatterns
  *)
 let rec get_subterms
   :  nonterminal_token list
+  -> nonterminal_token Int.Map.t
   -> nonterminal_pointer
   -> operator_match_pattern
   -> Binding.Nominal.term
   -> subterm_result Int.Map.t
-  = fun tokens nonterminal_pointer op_match_pat tm -> match op_match_pat, tm with
+  = fun tokens tokens_map nonterminal_pointer op_match_pat tm ->
+    match op_match_pat, tm with
   | SingleCapturePattern num, _
-  -> let tok = tokens
-       |> map_index_tokens
-       |> Fn.flip Int.Map.find num
+  -> let tok = Int.Map.find tokens_map num
        (* TODO: change to InvariantViolation if we validate this *)
        |> Util.get_option (UserError (Printf.sprintf
          "Couldn't find token $%n in tokens: %s"
@@ -296,9 +296,7 @@ let rec get_subterms
   , Var name
   ->
      (* XXX unused code
-     let tok = tokens
-       |> map_index_tokens
-       |> Fn.flip Int.Map.find num
+     let tok = Int.Map.find tokens_map num
        (* TODO: change to InvariantViolation if we validate this *)
        |> Util.get_option (UserError (Printf.sprintf
          "Couldn't find token $%n in tokens: %s"
@@ -324,7 +322,7 @@ let rec get_subterms
   -> if Caml.(pat_op_name = op_name) &&
         List.(length body_pats = length body_scopes)
      then (List.map2_exn body_pats body_scopes
-         ~f:(get_scope_subterms tokens nonterminal_pointer)
+         ~f:(get_scope_subterms tokens tokens_map nonterminal_pointer)
        |> Util.int_map_unions
      )
      else raise (NoMatch
@@ -338,11 +336,12 @@ let rec get_subterms
  * raises: [NoMatch], [UserError], [InvariantViolation] *)
 and get_scope_subterms
   :  nonterminal_token list
+  -> nonterminal_token Int.Map.t
   -> nonterminal_pointer
   -> numbered_scope_pattern
   -> Binding.Nominal.scope
   -> subterm_result Int.Map.t
-  = fun tokens nonterminal_pointer
+  = fun tokens tokens_map nonterminal_pointer
     (NumberedScopePattern (numbered_patterns, body_pat) as ns_pat)
     (Scope (term_patterns, body)) ->
       (*
@@ -360,9 +359,7 @@ and get_scope_subterms
             | VarCapture num
             | PatternCapture num -> num
           in
-          let tok = tokens
-            |> map_index_tokens
-            |> Fn.flip Int.Map.find captured_token_num
+          let tok = Int.Map.find tokens_map captured_token_num
             (* TODO: change to InvariantViolation if we validate this *)
             |> Util.get_option (UserError (Printf.sprintf
               "Couldn't find token $%n in tokens: %s"
@@ -389,7 +386,9 @@ and get_scope_subterms
         |> Int.Map.of_alist_exn
       in
       (* Printf.printf "trying to match body\n"; *)
-      let body_bindings = get_subterms tokens nonterminal_pointer body_pat body in
+      let body_bindings =
+        get_subterms tokens tokens_map nonterminal_pointer body_pat body
+      in
       (* Printf.printf "matched body\n"; *)
       Int.Map.merge pattern_bindings body_bindings ~f:(fun ~key -> function
         | `Both _ -> raise
@@ -458,8 +457,13 @@ let find_operator_match
       |> List.find_map ~f:(fun (match_ix, OperatorMatch op_match) ->
         let { operator_match_pattern = pat; tokens; _ } = op_match in
         try
-          (* TODO: preprocess tokens so we don't have to create a map each time *)
-          Some (match_ix, pat, tokens, get_subterms tokens nonterminal_pointer pat tm)
+          let tokens_map = map_index_tokens tokens in
+          Some (
+            match_ix,
+            pat,
+            tokens,
+            get_subterms tokens tokens_map nonterminal_pointer pat tm
+          )
         with
           NoMatch _ -> None
       )
@@ -485,8 +489,14 @@ let find_pat_operator_match
     |> List.mapi ~f:(fun match_ix x -> match_ix, x)
     |> List.find_map ~f:(fun (match_ix, OperatorMatch op_match) ->
       let { operator_match_pattern = pat; tokens; _ } = op_match in
+      let tokens_map = map_index_tokens tokens in
       try
-        Some (match_ix, pat, tokens, get_subpatterns tokens nonterminal_pointer pat pattern)
+        Some (
+          match_ix,
+          pat,
+          tokens,
+          get_subpatterns tokens tokens_map nonterminal_pointer pat pattern
+        )
       with
         NoMatch _ -> None
     )
