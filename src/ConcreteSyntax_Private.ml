@@ -403,28 +403,32 @@ let check_tokens subterms tokens : unit = tokens
   )
 
 (**
- * Find a matching syntactical description for the given term. This traverses
- * the set of possible forms from bottom to top until it finds one that
- * matches.
- *
- * Invariants assumed:
- * - Each pattern is numbered contiguously from 1 to n, where n is the number
- * of nonterminal tokens associated with the pattern.
- *
- * Example:
- *
- * {[
- * foo :=
- *   | STRING ARROW foo { bar($1. $2) }
- *   | INTEGER { lit(integer($1)) }
- *   | TRUE { true() }
- * ]}
- *
- * The term `bar(x. true())` would match the first form, returning:
- * 1 -> [CapturedBinder ...]
- * 2 -> [CapturedTerm ...]
- *
- * raises: [InvariantViolation], [UserError]
+ Find a matching syntactical description for the given term. This traverses
+ the set of possible forms from bottom to top until it finds one that
+ matches.
+
+ Invariants assumed:
+ - Each pattern is numbered contiguously from 1 to n, where n is the number
+ of nonterminal tokens associated with the pattern.
+
+ Example:
+
+ {[
+ foo :=
+   | STRING ARROW foo { bar($1. $2) }
+   | INTEGER { lit(integer($1)) }
+   | TRUE { true() }
+ ]}
+
+ The term [bar(x. true())] would match the first form, returning:
+
+ {[
+ 1 -> [CapturedBinder ...]
+ 2 -> [CapturedTerm ...]
+ ]}
+
+ @raise [InvariantViolation]
+ @raise [UserError]
 *)
 let find_operator_match
   :  nonterminal_pointer

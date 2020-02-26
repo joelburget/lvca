@@ -27,9 +27,12 @@ type box_break_info =
   ; breakpoints : (int * break_type) list
   }
 
-(** Pretty-print an abstract term to a concrete syntax tree
- * raises: [UserError], [InvariantViolation], [BadRules]
- *)
+(** Pretty-print an abstract term to a concrete syntax tree.
+
+ @raise [UserError]
+ @raise [InvariantViolation]
+ @raise [BadRules]
+*)
 let rec term_to_tree
   : nonterminal_pointer -> ConcreteSyntaxDescription.t -> Nominal.term -> doc
   = fun nonterminal_pointer rules tm ->
@@ -318,7 +321,11 @@ let normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
 
     in go_nt tree
 
-(* raises: [UserError], [InvariantViolation], [BadRules] *)
+(**
+ @raise [UserError]
+ @raise [InvariantViolation]
+ @raise [BadRules]
+*)
 let of_ast
   :  ConcreteSyntaxDescription.t
   -> string
