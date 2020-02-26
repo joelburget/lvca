@@ -34,17 +34,17 @@ let rec term_to_tree
   : nonterminal_pointer -> ConcreteSyntaxDescription.t -> Nominal.term -> doc
   = fun nonterminal_pointer rules tm ->
 
-    Printf.printf "term_to_tree %s\n" (Nominal.pp_term' tm);
+    (* Printf.printf "term_to_tree %s\n" (Nominal.pp_term' tm); *)
 
     let NonterminalRule { operator_rules; _ } =
       current_nonterminal nonterminal_pointer
     in
 
-    let form_no, operator_match_pattern, operator_match_tokens, subterms =
+    let form_no, _operator_match_pattern, operator_match_tokens, subterms =
       find_operator_match nonterminal_pointer operator_rules tm
     in
 
-    Printf.printf "%s\n" (string_of_operator_match_pattern operator_match_pattern);
+    (* Printf.printf "%s\n" (string_of_operator_match_pattern operator_match_pattern); *)
 
     let tree_info = nonterminal_pointer.current_nonterminal, form_no in
 
@@ -67,13 +67,13 @@ let rec term_to_tree
       |> List.rev (* TODO: O(n^2) reverse *)
       |> List.map ~f:(fun (token_ix, token) ->
 
-      Printf.printf "token: %s\n" (string_of_token token);
+      (* Printf.printf "token: %s\n" (string_of_token token); *)
 
       match Int.Map.find subterms token_ix, token with
 
     (* if the current token is a terminal, and we didn't capture a binder
      * or term, we just emit the contents of the token *)
-    | None, TerminalName name -> Printf.printf "case 1\n";
+    | None, TerminalName name -> (* Printf.printf "case 1\n"; *)
       let terminal_rule = rules.terminal_rules
         |> String.Map.of_alist_exn
         |> Fn.flip String.Map.find name
@@ -87,11 +87,13 @@ let rec term_to_tree
 
     | Some (CapturedBinder (_current_sort, nonterminal_pointer', pat)),
       NonterminalName _nt_name
-    -> Printf.printf "case 2\n"; term_to_tree nonterminal_pointer' rules (Nominal.pattern_to_term pat)
+    -> (* Printf.printf "case 2\n"; *)
+      term_to_tree nonterminal_pointer' rules (Nominal.pattern_to_term pat)
 
     | Some (CapturedTerm (_current_sort, nonterminal_pointer', tm')),
       NonterminalName _nt_name
-    -> Printf.printf "case 3\n"; term_to_tree nonterminal_pointer' rules tm'
+    -> (* Printf.printf "case 3\n"; *)
+      term_to_tree nonterminal_pointer' rules tm'
 
     | _, Underscore n -> TerminalDoc (DocBreak n)
 

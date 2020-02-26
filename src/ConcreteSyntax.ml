@@ -289,7 +289,7 @@ and go_op_match_term
   = fun rules children op_match_pat ->
     match op_match_pat with
     | OperatorPattern ("var", [NumberedScopePattern([], SingleCapturePattern n)])
-    -> Printf.printf "go_op_match_term var(%n)\n" n;
+    -> (* Printf.printf "go_op_match_term var(%n)\n" n; *)
       (match array_get "go_op_match_term 1" children (n - 1) with
       | NonterminalCapture _ -> failwith "TODO: error"
       | TerminalCapture { content; _ } -> Var content
