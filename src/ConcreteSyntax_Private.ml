@@ -245,19 +245,23 @@ let rec get_subpatterns
   -> raise (NoMatch "operator pattern and value don't match")
 
 (**
- * Retrieve all the numbered subterms / binders for a term pattern template (eg
- * `foo($1. bar($2); $3)`). Given the term `foo(x. bar(baz()); y)`, this returns
- *
- * 1 -> x
- * 2 -> baz()
- * 3 -> y
- *
- * Invariants assumed:
- * - Scopes and numbered scope patterns mirror each other (are the same length).
- * - Each numbering in the pattern is unique
- * - The pattern is numbered contiguously from 1 to some n >= 1.
- *
- * raises: [NoMatch], [UserError], [InvariantViolation]
+ Retrieve all the numbered subterms / binders for a term pattern template (eg
+ [foo($1. bar($2); $3)]). Given the term [foo(x. bar(baz()); y)], this returns
+
+ {[
+ 1 -> x
+ 2 -> baz()
+ 3 -> y
+ ]}
+
+ Invariants assumed:
+ - Scopes and numbered scope patterns mirror each other (are the same length).
+ - Each numbering in the pattern is unique
+ - The pattern is numbered contiguously from 1 to some n >= 1.
+
+ @raise [NoMatch]
+ @raise [UserError]
+ @raise [InvariantViolation]
  *)
 let rec get_subterms
   :  nonterminal_token list
@@ -330,10 +334,12 @@ let rec get_subterms
   | OperatorPattern _, _
   -> raise (NoMatch "operator pattern and value don't match")
 
-(**
- * See get_subterms.
- *
- * raises: [NoMatch], [UserError], [InvariantViolation] *)
+(** See [get_subterms].
+
+ @raise [NoMatch]
+ @raise [UserError]
+ @raise [InvariantViolation]
+*)
 and get_scope_subterms
   :  nonterminal_token list
   -> nonterminal_token Int.Map.t
@@ -474,9 +480,11 @@ let find_operator_match
         result
       )
 
-(** See [find_operator_match]
- * raises: [InvariantViolation], [UserError]
- *)
+(** See [find_operator_match].
+
+ @raise [InvariantViolation]
+ @raise [UserError]
+*)
 let find_pat_operator_match
   :  nonterminal_pointer
   -> operator_match list list
