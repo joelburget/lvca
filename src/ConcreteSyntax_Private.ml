@@ -182,8 +182,8 @@ let map_index_tokens
   : nonterminal_token list -> nonterminal_token Int.Map.t
   = fun tokens -> tokens
     |> index_tokens
+    |> List.filter ~f:(fun (i, _) -> i <> 0)
     |> Int.Map.of_alist_exn
-    |> Fn.flip Int.Map.remove 0
 
 let string_of_op_match_line
   : nonterminal_token list -> operator_match_pattern -> string
