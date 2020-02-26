@@ -91,12 +91,12 @@ let%test_module "derived nonterminals" = (module struct
         6 -> FUN NAME ARR arith { fun($3. $1) }
         _ -> arith_2 { $1 }
       arith_2:
-        4 -> arith_3 ADD arith_2 { add($1; $3) }
-        5 -> arith_3 SUB arith_2 { sub($1; $3) }
+        4 -> arith_2 ADD arith_3 { add($1; $3) }
+        5 -> arith_2 SUB arith_3 { sub($1; $3) }
         _ -> arith_3 { $1 }
       arith_3:
-        2 -> arith_4 MUL arith_3 { mul($1; $3) }
-        3 -> arith_4 DIV arith_3 { div($1; $3) }
+        2 -> arith_3 MUL arith_4 { mul($1; $3) }
+        3 -> arith_3 DIV arith_4 { div($1; $3) }
         _ -> arith_4 { $1 }
       arith_4:
         0 -> LPAREN arith RPAREN { $2 }
@@ -117,12 +117,12 @@ let%test_module "derived nonterminals" = (module struct
       FUN NAME ARR arith
       arith_2
       arith_2 (3):
-      arith_3 ADD arith_2
-      arith_3 SUB arith_2
+      arith_2 ADD arith_3
+      arith_2 SUB arith_3
       arith_3
       arith_3 (4):
-      arith_4 MUL arith_3
-      arith_4 DIV arith_3
+      arith_3 MUL arith_4
+      arith_3 DIV arith_4
       arith_4
       arith_4 (5):
       LPAREN arith RPAREN
@@ -212,6 +212,7 @@ end)
 let add_no = 4
 let sub_no = 5
 let mul_no = 2
+(* let div_no = 3 *)
 let fun_no = 6
 let mk_op no = mk_tree ("arith", no)
 let mk_var = mk_tree ("arith", 1)
@@ -338,31 +339,24 @@ let%test_module "ConcreteSyntax" = (module struct
   let%expect_test {|parse "x+y-z"|} =
     parse_print "x+y-z";
     [%expect{| x+y-z |}]
-    (*
   let%test {|parse "x+y-z"|} =
     parse concrete "arith" "x+y-z" = Ok (remove_spaces tree2)
-  let%test {|parse "x+y-z"|} = match parse concrete "arith" "x+y-z" with
-    | Ok tree ->
-      print_string "here\n";
-      print_string (to_debug_string tree ^ "\n");
-      print_string (to_debug_string (remove_spaces tree2) ^ "\n");
-      Caml.(parse concrete "arith" "x+y-z" = Ok (remove_spaces tree2))
-    | Error _ -> false
-    *)
   let%expect_test {|parse "x + y - z"|} =
     parse_print "x + y - z";
     [%expect{| x + y - z |}]
-  (* let%test {|parse "x + y - z"|} = *)
-  (*   parse concrete "arith" "x + y - z" = Ok tree2 *)
+  let%test {|parse "x + y - z"|} =
+    parse concrete "arith" "x + y - z" = Ok tree2
 
   let%expect_test {|parse "x + y * z"|} =
     parse_print "x + y * z";
     [%expect{| x + y * z |}]
-    (* parse concrete "arith" "x + y * z" = Ok tree3 *)
+  let%test {|parse "x + y * z"|} =
+    parse concrete "arith" "x + y * z" = Ok tree3
   let%expect_test {|parse "x + (y * z)"|} =
     parse_print "x + (y * z)";
     [%expect{| x + (y * z) |}]
-    (* parse concrete "arith" "x + (y * z)" = Ok tree3 *)
+  (* let%test {|parse "x + (y * z)"|} *)
+  (*   parse concrete "arith" "x + (y * z)" = Ok tree3 *)
   let%expect_test {|parse "x+(y*z)"|} =
     parse_print "x+(y*z)";
     [%expect{| x+(y*z) |}]

@@ -528,17 +528,17 @@ let rewrite_tokens
         when String.(name1 = nt_name && name2 = nt_name)
         -> (match fixity with
         | Infixl
-        -> (* Require a higher precedence left child (operations at this level
-              should appear to the right) *)
-           [ NonterminalName raised_nt_name;
+        -> (* Require a higher precedence right child (operations at this level
+              should appear to the left) *)
+           [ NonterminalName this_level_nt_name;
              t;
-             NonterminalName this_level_nt_name;
+             NonterminalName raised_nt_name;
            ]
 
         | Infixr
-        -> [ NonterminalName this_level_nt_name;
+        -> [ NonterminalName raised_nt_name;
              t;
-             NonterminalName raised_nt_name;
+             NonterminalName this_level_nt_name;
            ]
 
         (* Don't adjust nofix *)
@@ -558,10 +558,10 @@ let rewrite_tokens
 
 let%test_module "rewrite_tokens" = (module struct
   open TestOperators
-  let%expect_test "" =
+  let%expect_test "rewrite 1" =
     let op_match = rewrite_tokens "expr" 1 add in
     print_string (string_of_operator_match op_match);
-    [%expect{| expr_2 ADD expr_1 { add($1; $3) } |}]
+    [%expect{| expr_1 ADD expr_2 { add($1; $3) } |}]
 end)
 
 (** An operator match that just defers to a nonterminal / precedence *)
@@ -700,8 +700,8 @@ let%test_module "desugar_nonterminal" = (module struct
       expr:
         _ -> expr_1 { $1 }
       expr_1:
-        1 -> expr_2 ADD expr_1 { add($1; $3) }
-        2 -> expr_2 SUB expr_1 { sub($1; $3) }
+        1 -> expr_1 ADD expr_2 { add($1; $3) }
+        2 -> expr_1 SUB expr_2 { sub($1; $3) }
         _ -> expr_2 { $1 }
       expr_2:
         0 -> LPAREN expr RPAREN { $2 } |}]
@@ -725,12 +725,12 @@ let%test_module "desugar_nonterminal" = (module struct
         5 -> ID { $1 }
         _ -> expr_2 { $1 }
       expr_2:
-        3 -> expr_3 ADD expr_2 { add($1; $3) }
-        4 -> expr_3 SUB expr_2 { sub($1; $3) }
+        3 -> expr_2 ADD expr_3 { add($1; $3) }
+        4 -> expr_2 SUB expr_3 { sub($1; $3) }
         _ -> expr_3 { $1 }
       expr_3:
-        1 -> expr_4 MUL expr_3 { mul($1; $3) }
-        2 -> expr_4 DIV expr_3 { div($1; $3) }
+        1 -> expr_3 MUL expr_4 { mul($1; $3) }
+        2 -> expr_3 DIV expr_4 { div($1; $3) }
         _ -> expr_4 { $1 }
       expr_4:
         0 -> LPAREN expr RPAREN { $2 } |}]
