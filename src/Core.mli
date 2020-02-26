@@ -1,9 +1,9 @@
 (** Tools for dealing with the core language in LVCA.
-    - denotation_chart is the data type for declaring a mapping from some language to core
-    - core and core_scope (and BindingAwarePattern.t) define the core language
-    - term_denotation is used to map some language to core
-    - eval is then used to evaluate the core term
-    - finally, to_ast is used to give the resulting term
+    - [denotation_chart] is the data type for declaring a mapping from some language to [core]
+    - [core] and [core_scope] (and [BindingAwarePattern.t]) define the core language
+    - [term_denotation] is used to map some language to [core]
+    - [eval] is then used to evaluate the core term
+    - finally, [to_ast] is used to give the resulting term
 *)
 
 open Types

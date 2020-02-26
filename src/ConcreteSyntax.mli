@@ -1,14 +1,20 @@
 (** Types and functions for dealing with concrete syntax.
- *
- * This module is all about this diagram:
- *
- *        ---parse--->                -to_ast->
- * string              formatted_tree           Nominal.term
- *        <-to_string-                <-of_ast-
- *
- * The other important functions are to_grammar, lexer_of_desc, and
- * make_concrete_description
+
+ This module is all about this diagram:
+
+ {[
+
+        ---parse--->                -to_ast->
+ string              formatted_tree           Nominal.term
+        <-to_string-                <-of_ast-
+
+ ]}
+
+ The other important functions are [to_grammar], [lexer_of_desc], and
+ [make_concrete_description].
+
  *)
+
 open Binding
 module Lexer = ConcreteSyntax_Lexer
 module Parser = ConcreteSyntax_Parser
@@ -33,18 +39,18 @@ and formatted_capture =
   | TerminalCapture of formatted_terminal_capture
   | NonterminalCapture of formatted_nonterminal_capture
 
-(* Inspired by:
- * - https://github.com/apple/swift/tree/master/lib/Syntax
- * - https://github.com/dotnet/roslyn/wiki/Roslyn-Overview#syntax-trees
- *
- * Rules of trivia (same as for swift):
- * - A token owns all of its trailing trivia up to, but not including, the
- *   next newline character.
- * - Looking backward in the text, a token owns all of the leading trivia up
- *   to and including the first newline character.
- *
- * In other words, a contiguous stretch of trivia between two tokens is split
- * on the leftmost newline.
+(** Inspired by:
+ - https://github.com/apple/swift/tree/master/lib/Syntax
+ - https://github.com/dotnet/roslyn/wiki/Roslyn-Overview#syntax-trees
+
+ Rules of trivia (same as for swift):
+ - A token owns all of its trailing trivia up to, but not including, the
+   next newline character.
+ - Looking backward in the text, a token owns all of the leading trivia up
+   to and including the first newline character.
+
+ In other words, a contiguous stretch of trivia between two tokens is split
+ on the leftmost newline.
 *)
 and formatted_tree =
   { tree_info : tree_info
@@ -99,8 +105,8 @@ val lexer_of_desc : ConcreteSyntaxDescription.t -> Placemat.Lex.lexer
 val remove_spaces : formatted_tree -> formatted_tree
 
 (** Make a concrete syntax description from its parsed rules. This morally
-    belongs to the ConcreteSyntaxDescription module, but it's here to break a
-    dependency cycle with Parsing -> ConcreteSyntaxDescription.
+    belongs to the [ConcreteSyntaxDescription] module, but it's here to break a
+    dependency cycle with [Parsing] -> [ConcreteSyntaxDescription].
 *)
 val make_concrete_description
   :  ConcreteSyntaxDescription.pre_terminal_rule list
