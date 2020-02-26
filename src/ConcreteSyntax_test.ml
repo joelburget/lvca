@@ -338,9 +338,9 @@ let%test_module "ConcreteSyntax" = (module struct
   let%expect_test {|parse "x+y-z"|} =
     parse_print "x+y-z";
     [%expect{| x+y-z |}]
-  (* let%test {|parse "x+y-z"|} = *)
-  (*   parse concrete "arith" "x+y-z" = Ok (remove_spaces tree2) *)
     (*
+  let%test {|parse "x+y-z"|} =
+    parse concrete "arith" "x+y-z" = Ok (remove_spaces tree2)
   let%test {|parse "x+y-z"|} = match parse concrete "arith" "x+y-z" with
     | Ok tree ->
       print_string "here\n";
