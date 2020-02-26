@@ -59,7 +59,7 @@ and string_of_numbered_scope_pattern : numbered_scope_pattern -> string =
   fun (NumberedScopePattern (patterns, body)) -> patterns
   |> Array.of_list
   |> Array.map ~f:string_of_binder_capture
-  |> Array.append [| string_of_operator_match_pattern body |]
+  |> Fn.flip Array.append [| string_of_operator_match_pattern body |]
   |> String.concat_array ~sep:". "
 ;;
 
