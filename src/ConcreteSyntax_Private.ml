@@ -355,8 +355,8 @@ and get_scope_subterms
       (NoMatch "numbered scope pattern and term scope have different arity")
     else
       let pattern_bindings = List.map2_exn numbered_patterns term_patterns
-        ~f:(fun numbered_pat term_pat ->
-          let captured_token_num = match numbered_pat with
+        ~f:(fun binder_capture term_pat ->
+          let captured_token_num = match binder_capture with
             | VarCapture num
             | PatternCapture num -> num
           in
@@ -436,8 +436,8 @@ let check_tokens subterms tokens : unit = tokens
  * ]}
  *
  * The term `bar(x. true())` would match the first form, returning:
- * 1 -> [CapturedBinder ... ...]
- * 1 -> [CapturedBinder ... ...]
+ * 1 -> [CapturedBinder ...]
+ * 2 -> [CapturedTerm ...]
  *
  * raises: [InvariantViolation], [UserError]
 *)
