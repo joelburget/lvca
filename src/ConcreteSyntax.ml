@@ -256,15 +256,15 @@ let get_operator_match
 ;;
 
 let array_get : string -> 'a array -> int -> 'a
-  = fun _msg arr i -> Array.get arr i
-    (*
-    |> get_option' (fun () -> Printf.sprintf
+  = fun msg arr i ->
+    if i >= 0 && i < Array.length arr
+    then Array.get arr i
+    else Util.invariant_violation (Printf.sprintf
       "failed array get in %s: index %n, length %n"
       msg
       i
       (Array.length arr)
     )
-   *)
 
 (* Convert a concrete tree to an AST. We ignore trivia. *)
 let rec tree_to_ast
