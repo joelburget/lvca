@@ -33,7 +33,7 @@ arith :=
   | arith _ DIV _ arith { div($1; $3) } %left
   > arith _ ADD _ arith { add($1; $3) } %left
   | arith _ SUB _ arith { sub($1; $3) } %left
-  > FUN NAME _ ARR _ arith { fun($1. $3) }
+  > FUN NAME _ ARR _ arith { fun(var($2). $4) }
 |}
 
 let simplified_description = {|
@@ -88,7 +88,7 @@ let%test_module "derived nonterminals" = (module struct
       arith:
         _ -> arith_1 { $1 }
       arith_1:
-        6 -> FUN NAME ARR arith { fun($3. $1) }
+        6 -> FUN NAME ARR arith { fun(var($2). $4) }
         _ -> arith_2 { $1 }
       arith_2:
         4 -> arith_2 ADD arith_3 { add($1; $3) }
@@ -265,7 +265,8 @@ let tree3_parens = mk_op add_no
   |]
 
 let tree4 = mk_op fun_no
-  [| nt_capture (mk_var [| mk_terminal_capture "x" " " |]);
+  [| mk_terminal_capture "fun" " ";
+     nt_capture (mk_var [| mk_terminal_capture "x" " " |]);
      mk_terminal_capture "->" " ";
      nt_capture (mk_var [| mk_terminal_capture "x" "" |]);
   |]
@@ -323,7 +324,7 @@ let%test_module "ConcreteSyntax" = (module struct
     [%expect{|x + y|}]
   let%expect_test "to_string tree4" =
     print_string (to_string tree4);
-    [%expect{|x -> x|}]
+    [%expect{|fun x -> x|}]
 
   let%expect_test {|parse "x + y"|} =
     parse_print "x + y";
@@ -364,16 +365,14 @@ let%test_module "ConcreteSyntax" = (module struct
   let%test {|parse "x+(y*z)"|} =
     parse concrete "arith" "x+(y*z)" = Ok (remove_spaces tree3_parens)
 
-    (*
   let%expect_test {|parse "fun x -> x"|} =
-    parse_print "x -> x";
-    [%expect{| x -> x |}]
-    (* parse concrete "arith" "x -> x" = Ok tree4 *)
+    parse_print "fun x -> x";
+    [%expect{| fun x -> x |}]
+    (* parse concrete "arith" "fun x -> x" = Ok tree4 *)
   let%expect_test {|parse "fun x->x"|} =
-    parse_print "x->x";
-    [%expect{| x->x |}]
-    (* parse concrete "arith" "x->x" = Ok (remove_spaces tree4) *)
-    *)
+    parse_print "fun x->x";
+    [%expect{| fun x->x |}]
+    (* parse concrete "arith" "fun x->x" = Ok (remove_spaces tree4) *)
 end)
 
 let expect_round_trip_tree tree = equivalent (tree
