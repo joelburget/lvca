@@ -113,9 +113,11 @@ typechecks and evaluates expressions.
 
 # Build
 
-LVCA is written in OCaml and built with [dune](https://dune.build/).
+LVCA is written in OCaml and built with [dune](https://dune.build/). So first
+you need `opam` and `dune` installed, then:
 
 ```
+opam install base bignum cbor core_kernel digestif ppx_jane re
 dune build
 ```
 
