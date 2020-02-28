@@ -112,12 +112,14 @@ typechecks and evaluates expressions.
 3. I pronounce it "Luca".
 
 # Build
+
+LVCA is written in OCaml and built with [dune](https://dune.build/).
+
 ```
-yarn run bsb -make-world -clean-world
-yarn run webpack
+dune build
 ```
 
 # Test
 ```
-yarn test
+dune runtest
 ```
