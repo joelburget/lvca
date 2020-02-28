@@ -1,3 +1,2 @@
-(lang dune 1.11)
-(name lvca)
-(using menhir 2.0)
+(lang dune 2.2)
+(using menhir 2.1)
