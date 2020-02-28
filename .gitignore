@@ -18,15 +18,8 @@
 *.annot
 *.cmj
 *.bak
-lib/bs
 *.mlast
 *.mliast
 .vscode
 .merlin
-.bsb.lock
-node_modules
-bundledOutputs
-yarn-error.log
-lib
-lvca-npm
 _build
