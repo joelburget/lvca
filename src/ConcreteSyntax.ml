@@ -330,17 +330,25 @@ and go_numbered_scope_term
   -> Nominal.scope
   = fun rules children (NumberedScopePattern (cap_nums, op_match_pat)) -> Scope
     ( cap_nums
-      |> List.map ~f:(fun capture ->
-        let n = match capture with
-          | VarCapture n -> n
-          | PatternCapture n -> n
-        in
-        match array_get "go_numbered_scope_term" children (n - 1) with
-        | NonterminalCapture tree -> tree_to_pattern rules tree
-        | TerminalCapture { content; _ } -> failwith (Printf.sprintf (* TODO: error *)
-        "go_numbered_scope_term: Unexpectedly received a terminal when a \
-        nonterminal child was expected: child %n -> \"%s\"" n content
-      )
+      |> List.map ~f:(function
+        | VarCapture n
+        -> (match array_get "go_numbered_scope_term" children (n - 1) with
+          | TerminalCapture { content; _ }
+          -> Pattern.Var content
+          | NonterminalCapture tree
+          -> failwith (Printf.sprintf (* TODO: error *)
+            "go_numbered_scope_term: Unexpectedly received a nonterminal when \
+            a terminal child was expected (matching a var): child %n -> %s"
+            n (to_string tree)))
+        | PatternCapture n
+        -> (match array_get "go_numbered_scope_term" children (n - 1) with
+          | NonterminalCapture tree
+          -> tree_to_pattern rules tree
+          | TerminalCapture { content; _ }
+          -> failwith (Printf.sprintf (* TODO: error *)
+            "go_numbered_scope_term: Unexpectedly received a terminal when a \
+            nonterminal child was expected (matching a pattern): child %n -> \
+            \"%s\"" n content))
       )
     , go_op_match_term rules children op_match_pat
     )
@@ -990,8 +998,8 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
   go_nt root_name root
 ;;
 
-let lexer_of_desc : ConcreteSyntaxDescription.t -> Placemat.Lex.lexer =
-  fun { terminal_rules; _ } ->
+let lexer_of_desc : ConcreteSyntaxDescription.t -> Placemat.Lex.lexer
+  = fun { terminal_rules; _ } ->
   ("SPACE", Regex.ReClass (PosClass Whitespace)) :: terminal_rules
 ;;
 

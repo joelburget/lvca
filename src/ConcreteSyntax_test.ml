@@ -33,7 +33,7 @@ arith :=
   | arith _ DIV _ arith { div($1; $3) } %left
   > arith _ ADD _ arith { add($1; $3) } %left
   | arith _ SUB _ arith { sub($1; $3) } %left
-  > FUN NAME _ ARR _ arith { fun(var($2). $4) }
+  > FUN _ NAME _ ARR _ arith { fun(var($2). $4) }
 |}
 
 let simplified_description = {|
@@ -266,15 +266,16 @@ let tree3_parens = mk_op add_no
 
 let tree4 = mk_op fun_no
   [| mk_terminal_capture "fun" " ";
-     nt_capture (mk_var [| mk_terminal_capture "x" " " |]);
+     mk_terminal_capture "x" " ";
      mk_terminal_capture "->" " ";
      nt_capture (mk_var [| mk_terminal_capture "x" "" |]);
   |]
 
 let tree4' = mk_op fun_no
-  [| mk_terminal_capture "x" " ";
-     mk_terminal_capture "->" " ";
+  [| mk_terminal_capture "fun" " ";
      mk_terminal_capture "x" "";
+     mk_terminal_capture "->" "";
+     nt_capture (mk_var [| mk_terminal_capture "x" "" |]);
   |]
 
 let tree1_ast =
@@ -314,10 +315,11 @@ let%test_module "ConcreteSyntax" = (module struct
 
   let%test "of_ast tree1" =
     of_ast concrete "arith" 80 tree1_ast = tree1
-  (* let%test "of_ast tree4" = of_ast concrete "arith" 80 tree4_ast = tree4 *)
+  let%test "of_ast tree4" =
+    of_ast concrete "arith" 80 tree4_ast = tree4
 
-  let%test "to_ast tree1" = to_ast concrete tree1 = (Ok tree1_ast)
-  (* let%test "to_ast tree4" = to_ast concrete tree4 = (Ok tree4_ast) *)
+  let%test "to_ast tree1" = to_ast concrete tree1 = Ok tree1_ast
+  let%test "to_ast tree4" = to_ast concrete tree4 = Ok tree4_ast
 
   let%expect_test "to_string tree1" =
     print_string (to_string tree1);
@@ -368,11 +370,13 @@ let%test_module "ConcreteSyntax" = (module struct
   let%expect_test {|parse "fun x -> x"|} =
     parse_print "fun x -> x";
     [%expect{| fun x -> x |}]
-    (* parse concrete "arith" "fun x -> x" = Ok tree4 *)
+  let%test {|parse "fun x -> x"|} =
+    parse concrete "arith" "fun x -> x" = Ok tree4
   let%expect_test {|parse "fun x->x"|} =
     parse_print "fun x->x";
     [%expect{| fun x->x |}]
-    (* parse concrete "arith" "fun x->x" = Ok (remove_spaces tree4) *)
+  let%test {|parse "fun x->x"|} =
+    parse concrete "arith" "fun x->x" = Ok tree4'
 end)
 
 let expect_round_trip_tree tree = equivalent (tree
@@ -390,16 +394,12 @@ let%test_module "round trip tree -> ast -> tree" = (module struct
   let%test "tree1" = expect_round_trip_tree tree1
   let%test "tree2" = expect_round_trip_tree tree2
   let%test "tree3" = expect_round_trip_tree tree3
-  (*
   let%test "tree4" = expect_round_trip_tree tree4
-  *)
 end)
 
 let%test_module "round trip ast -> tree -> ast" = (module struct
-  let%test "tree1" = expect_round_trip_ast tree1_ast
-  let%test "tree2" = expect_round_trip_ast tree2_ast
-  let%test "tree3" = expect_round_trip_ast tree3_ast
-  (*
-  let%test "tree4" = expect_round_trip_ast tree4_ast
-  *)
+  let%test "tree1_ast" = expect_round_trip_ast tree1_ast
+  let%test "tree2_ast" = expect_round_trip_ast tree2_ast
+  let%test "tree3_ast" = expect_round_trip_ast tree3_ast
+  let%test "tree4_ast" = expect_round_trip_ast tree4_ast
 end)

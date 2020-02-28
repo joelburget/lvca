@@ -432,10 +432,27 @@ let check_tokens subterms tokens : unit = tokens
     | _ -> ()
   )
 
+(** The result of a call to [find_operator_match]. *)
+type found_operator_match =
+  { match_number: int
+  (** The productions in a nonterminal are numbered from 0. This is the number
+   of the first production that matched this term *)
+
+  ; pattern: operator_match_pattern
+  (** The pattern that matched this term *)
+
+  ; tokens: nonterminal_token list
+  (** The tokens associated with the matching operator *)
+
+  ; subterms: subterm_result Int.Map.t
+  (** A match against pattern [foo($1. $2; $3)] will produce a map of subterms
+   with entries for 1, 2, and 3 *)
+  }
+
 (**
  Find a matching syntactical description for the given term. This traverses
- the set of possible forms from bottom to top until it finds one that
- matches.
+ the set of possible forms from low precedence to high (bottom to top) until it
+ finds one that matches.
 
  Invariants assumed:
  - Each pattern is numbered contiguously from 1 to n, where n is the number
@@ -464,33 +481,32 @@ let find_operator_match
   :  nonterminal_pointer
   -> operator_match list list
   -> Binding.Nominal.term
-  -> int *
-     operator_match_pattern *
-     nonterminal_token list *
-     subterm_result Int.Map.t
+  -> found_operator_match
   = fun nonterminal_pointer matches tm ->
 
     matches
       |> List.join
       |> List.mapi ~f:(fun match_ix x -> match_ix, x)
+      (* Reverse because we want to match bottom to top *)
       |> List.rev (* TODO: O(n^2) reverse *)
       |> List.find_map ~f:(fun (match_ix, OperatorMatch op_match) ->
-        let { operator_match_pattern = pat; tokens; _ } = op_match in
+        let { operator_match_pattern = pattern; tokens; _ } = op_match in
         try
           let tokens_map = map_index_tokens tokens in
-          Some (
-            match_ix,
-            pat,
-            tokens,
-            get_subterms tokens tokens_map nonterminal_pointer pat tm
-          )
+          Some
+            { match_number = match_ix
+            ; pattern
+            ; tokens
+            ; subterms =
+              get_subterms tokens tokens_map nonterminal_pointer pattern tm
+            }
         with
           NoMatch _ -> None
       )
       |> Util.get_option' (fun () ->
         "failed to find a rule matching term " ^ Binding.Nominal.pp_term' tm)
-      |> (fun ((_, _, tokens, subterms) as result) ->
-        check_tokens subterms tokens;
+      |> (fun result ->
+        check_tokens result.subterms result.tokens;
         result
       )
 
@@ -600,12 +616,12 @@ let%test_module "find_operator_match" = (module struct
       }
     in
 
-    let match_ix, pat, tokens, subterms =
+    let { match_number; pattern; tokens; subterms } =
       find_operator_match nonterminal_pointer operator_rules tm
     in
     Printf.printf "%n\n%s\n%s\n"
-      match_ix
-      (string_of_operator_match_pattern pat)
+      match_number
+      (string_of_operator_match_pattern pattern)
       (string_of_tokens tokens);
 
     subterms

@@ -43,13 +43,13 @@ let rec term_to_tree
       current_nonterminal nonterminal_pointer
     in
 
-    let form_no, _operator_match_pattern, operator_match_tokens, subterms =
+    let { match_number; tokens = operator_match_tokens; subterms; _ } =
       find_operator_match nonterminal_pointer operator_rules tm
     in
 
     (* Printf.printf "%s\n" (string_of_operator_match_pattern operator_match_pattern); *)
 
-    let tree_info = nonterminal_pointer.current_nonterminal, form_no in
+    let tree_info = nonterminal_pointer.current_nonterminal, match_number in
 
     (*
     let breakpoints : (int * int) list = operator_match_tokens
@@ -108,8 +108,12 @@ let rec term_to_tree
     | Some (CapturedTerm (_sort, _nt_ptr, Var v)), TerminalName _t_name
     -> TerminalDoc (DocText v)
 
+    | Some (CapturedBinder (_, _, Var name)), TerminalName _
+    -> TerminalDoc (DocText name)
+
     | Some (CapturedBinder _), TerminalName t_name
-    | Some (CapturedTerm _), TerminalName t_name -> failwith (Printf.sprintf
+    | Some (CapturedTerm _), TerminalName t_name
+    -> failwith (Printf.sprintf
       "term_to_tree: unexpectedly directly captured a terminal (%s)" t_name
     )
 
@@ -194,10 +198,7 @@ let rec tree_format
       | Fits _ -> Flat
     in
     let indentation', group' = group
-      |> List.map ~f:(function
-        | Either.First t_doc -> TerminalDoc t_doc
-        | Second nt_doc -> NonterminalDoc nt_doc
-      )
+      |> List.map ~f:coerce_doc_child
       |> format_group max_width indentation mode'
     in
     indentation', Group group'
