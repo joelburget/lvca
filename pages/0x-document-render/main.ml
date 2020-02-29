@@ -3,7 +3,6 @@ open Core_kernel
 open Js_of_ocaml
 open Lvca
 open Lvca_web.Render_term
-(* open Virtual_dom *)
 
 module Term_render_component = struct
   let name = "Term Render"
@@ -28,25 +27,20 @@ module Term_render_component = struct
     | Action.UpdateInput str -> str, tm_opt
     | Action.Evaluate str    -> str, Some (P_term.parse input)
 
-  let compute : inject:(Action.t -> Vdom.Event.t) -> Input.t -> Model.t -> Result.t
+  let compute
+    : inject:(Action.t -> Vdom.Event.t) -> Input.t -> Model.t -> Result.t
     = fun ~inject eval (input_str, tm_opt) ->
-
-    let tm_to_dom
-      : (Binding.Nominal.term, string) Core_kernel.Result.t
-      -> (Vdom.Node.t, string) Core_kernel.Result.t
-      = Core_kernel.Result.bind ~f:eval
-    in
 
     let is_key_ret key =
       let is_enter = String.equal "Enter"
         (key##.code
-         |> Js_of_ocaml.Js.Optdef.to_option
+         |> Js.Optdef.to_option
          |> Option.value_exn
-         |> Js_of_ocaml.Js.to_string)
+         |> Js.to_string)
       in
-      let is_meta = Js_of_ocaml.Js.to_bool key##.metaKey in
-      let is_shift = Js_of_ocaml.Js.to_bool key##.shiftKey in
-      let is_ctrl = Js_of_ocaml.Js.to_bool key##.ctrlKey in
+      let is_meta = Js.to_bool key##.metaKey in
+      let is_shift = Js.to_bool key##.shiftKey in
+      let is_ctrl = Js.to_bool key##.ctrlKey in
       is_enter && (is_meta || is_shift || is_ctrl)
     in
 
@@ -83,7 +77,7 @@ module Term_render_component = struct
            [ match tm_opt with
                | None -> text "(press (ctrl/shift/meta)-enter to evaluate)"
                | Some tm_result
-               -> (match tm_to_dom tm_result with
+               -> (match Core_kernel.Result.bind tm_result ~f:eval with
                  | Error msg -> text msg
                  | Ok node -> node)
            ];
