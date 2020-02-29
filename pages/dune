@@ -1,4 +1,6 @@
-(library (name lvca_web)
+(library
+ (name lvca_web)
  (libraries bonsai.web lvca)
- (preprocess (pps ppx_jane js_of_ocaml-ppx))
+ (preprocess
+  (pps ppx_jane js_of_ocaml-ppx))
  (public_name lvca.web))

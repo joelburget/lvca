@@ -1,24 +1,15 @@
 (library
-  (public_name lvca)
-  (inline_tests)
-  (libraries digestif.ocaml base core_kernel cbor bignum re)
-  (preprocess (pps ppx_jane)))
+ (public_name lvca)
+ (inline_tests)
+ (libraries digestif.ocaml base core_kernel cbor bignum re)
+ (preprocess
+  (pps ppx_jane)))
 
 (ocamllex
-  (modules
-    AbstractSyntax_Lexer
-    ConcreteSyntax_Lexer
-    Dynamics_Lexer
-    Regex_Lexer
-    Statics_Lexer
-    Term_Lexer))
+ (modules AbstractSyntax_Lexer ConcreteSyntax_Lexer Dynamics_Lexer
+   Regex_Lexer Statics_Lexer Term_Lexer))
 
 (menhir
-  (modules
-    AbstractSyntax_Parser
-    ConcreteSyntax_Parser
-    Dynamics_Parser
-    Regex_Parser
-    Statics_Parser
-    Term_Parser)
-  (flags :standard --table))
+ (modules AbstractSyntax_Parser ConcreteSyntax_Parser Dynamics_Parser
+   Regex_Parser Statics_Parser Term_Parser)
+ (flags :standard --table))
