@@ -2,7 +2,6 @@ open Bonsai_web
 open Core_kernel
 open Js_of_ocaml
 open Lvca
-open Lvca_web.Render_term
 
 module Term_render_component = struct
   let name = "Term Render"
@@ -94,7 +93,7 @@ let initial_input = {|document([
 
 let (_ : _ Start.Handle.t) =
   Start.start_standalone
-    ~initial_input:render_term
+    ~initial_input:Lvca_web.Render_doc_term.render
     ~initial_model:(initial_input, None)
     ~bind_to_element_with_id:"app"
     component

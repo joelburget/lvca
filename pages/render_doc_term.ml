@@ -51,7 +51,7 @@ let render_doc : NonBinding.term -> Vdom.Node.t
   -> raise @@ FailedRender ("render_doc: unexpected term: " ^ str_of_tm tm)
 ;;
 
-let render_term : Binding.Nominal.term -> (Vdom.Node.t, string) Result.t
+let render : Binding.Nominal.term -> (Vdom.Node.t, string) Result.t
   = fun tm -> match NonBinding.from_nominal tm with
   | None -> Error "Failed to convert term"
   | Some db_tm ->
