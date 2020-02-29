@@ -1,0 +1,5 @@
+(executables
+  (names main)
+  (modes js)
+  (libraries bonsai.web lvca lvca_web)
+  (preprocess (pps ppx_jane js_of_ocaml-ppx)))
