@@ -134,7 +134,7 @@ end = struct
   and pp_scope_list ppf = function
     | [] -> ()
     | [ x ] -> fprintf ppf "%a" pp_scope x
-    | x :: xs -> fprintf ppf "%a, %a" pp_scope x pp_scope_list xs
+    | x :: xs -> fprintf ppf "%a; %a" pp_scope x pp_scope_list xs
 
   and pp_scope ppf (Scope (bindings, body)) =
     match bindings with
