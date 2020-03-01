@@ -17,7 +17,7 @@ let is_key_ret key =
   is_enter && (is_meta || is_shift || is_ctrl)
 
 module Term_render_component = struct
-  let name = "Term Render"
+  let name = "Term and Concrete"
   type side = Left | Right [@@deriving sexp]
 
   module Input = Unit
