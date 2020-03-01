@@ -32,11 +32,11 @@ end = struct
       |> Option.map ~f:(fun name -> Nominal.Var name)
     | Operator (tag, subtms) -> subtms
       |> List.map ~f:(scope_to_nominal ctx)
-      |> Util.sequence_list_option
+      |> Option.all
       |> Option.map ~f:(fun subtms' -> Nominal.Operator (tag, subtms'))
     | Sequence tms -> tms
       |> List.map ~f:(to_nominal' ctx)
-      |> Util.sequence_list_option
+      |> Option.all
       |> Option.map ~f:(fun tms' -> Nominal.Sequence tms')
     | Primitive prim -> Some (Nominal.Primitive prim)
 

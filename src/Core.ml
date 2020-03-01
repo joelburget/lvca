@@ -3,7 +3,7 @@ open Types
 open Binding
 
 let (length, map) = List.(length, map)
-let get_first, map_union, map_unions = Util.(get_first, map_union, map_unions)
+let map_union, map_unions = Util.(map_union, string_map_unions)
 ;;
 
 type core =
@@ -77,7 +77,7 @@ let rec match_core_pattern
 let find_core_match
   : core -> core_case_scope list -> (core * core String.Map.t) option
   = fun v branches -> branches
-    |> get_first (function
+    |> List.find_map ~f:(function
       | CaseScope ([ pat ], rhs) -> (match match_core_pattern v pat with
         | None -> None
         | Some bindings -> Some (rhs, bindings))

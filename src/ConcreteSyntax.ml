@@ -800,11 +800,11 @@ let to_grammar
   in
 
   let desugared_nts : nonterminal_operators
-    = Util.list_map_unions nonterminal_rules_desugared
+    = Util.string_map_unions nonterminal_rules_desugared
   in
 
   let nonterminal_renamings : string option String.Map.t
-    = Util.list_map_unions nonterminal_renamings
+    = Util.string_map_unions nonterminal_renamings
     |> Map.set ~key:root_name ~data:None
   in
 

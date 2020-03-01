@@ -21,9 +21,9 @@ let rec match_schema_vars' : term -> term -> scope String.Map.t
     -> if String.(tag1 = tag2) && List.(length args1 = length args2)
     then
       let matched_scopes = List.map2_exn args1 args2 ~f:match_schema_vars_scope
-      in Util.map_unions matched_scopes
+      in Util.string_map_unions matched_scopes
       (*
-      (match Util.map_unions matched_scopes with
+      (match Util.string_map_unions matched_scopes with
         | `Ok result -> result
         | `Duplicate_key str -> failwith ("TODO: error: duplicate key: " ^ str))
         *)
@@ -54,7 +54,7 @@ let open_scope (args : term list list) (Scope (names, body)) : term option
                                     open' (offset + List.length binders) subtm
                                     |> Option.map ~f:(fun subtm' -> Scope (binders, subtm'))
                                   )
-                                  |> Util.sequence_list_option
+                                  |> Option.all
                                   |> Option.map ~f:(fun subtms' -> Operator (tag, subtms'))
       | Bound (i, j) -> if i >= offset
         then args
@@ -64,7 +64,7 @@ let open_scope (args : term list list) (Scope (names, body)) : term option
       | Free _ -> Some tm
       | Sequence tms -> tms
                         |> List.map ~f:(open' offset)
-                        |> Util.sequence_list_option
+                        |> Option.all
                         |> Option.map ~f:(fun tms' -> Sequence tms')
       | Primitive _ -> Some tm
     in open' 0 body
@@ -88,7 +88,7 @@ let rec instantiate (env : scope String.Map.t) (tm : term)
         |> instantiate (Util.String.Map.remove_many env new_var_names)
         |> Result.map ~f:(fun body' -> Scope (binders, body'))
     )
-    |> Util.sequence_list_result
+    |> Result.all
     |> Result.map ~f:(fun subtms' -> Operator (tag, subtms'))
   | Bound _ -> Ok tm
   | Free v -> (match String.Map.find env v with
@@ -103,7 +103,7 @@ let rec instantiate (env : scope String.Map.t) (tm : term)
   )
   | Sequence tms -> tms
                     |> List.map ~f:(instantiate env)
-                    |> Util.sequence_list_result
+                    |> Result.all
                     |> Result.map ~f:(fun tms' -> Sequence tms')
   | Primitive _ -> Ok tm
 
@@ -174,7 +174,9 @@ let rec check' trace_stack emit_trace ({ rules; _ } as env) (Typing (tm, ty) as 
           -> None
       )
   in let (name, hypotheses, tm_assignments, ty_assignments) =
-       get_or_raise "check': no matching rule found" (Util.first_by rules match_rule) in
+       get_or_raise "check': no matching rule found"
+         (List.find_map rules ~f:match_rule)
+  in
   (* TODO: check term / type assignments disjoint *)
   let schema_assignments = Util.map_union tm_assignments ty_assignments in
   (* ctx_state is a mapping of schema variables we've learned:
@@ -233,7 +235,7 @@ and infer' trace_stack emit_trace ({ rules; var_types } as env) tm
       |> Option.map ~f:(fun schema_assignments ->
         (name, hypotheses, schema_assignments, rule_ty))
   in
-  let ty = match Util.first_by rules match_rule with
+  let ty = match List.find_map rules ~f:match_rule with
     | Some (name, hypotheses, schema_assignments, rule_ty)
       -> let ctx_state : scope String.Map.t ref = ref schema_assignments in
       let name' = match name with

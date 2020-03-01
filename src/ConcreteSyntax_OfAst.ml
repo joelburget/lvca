@@ -57,7 +57,7 @@ let rec term_to_tree
         | Underscore n -> Some (ix, n)
         | _ -> None
       )
-      |> Util.keep_some
+      |> List.filter_opt
     in
     *)
 
@@ -150,13 +150,13 @@ let rec tree_fits : int -> int -> mode -> doc -> fit_info
       |> List.map ~f:coerce_doc_child
       |> group_fits max_width start_col Flat
 
-and group_fits max_width start_col mode children = Util.fold_right
-  (fun child -> function
+and group_fits max_width start_col mode children = List.fold_right
+  ~f:(fun child -> function
     | DoesntFit -> DoesntFit
     | Fits col -> tree_fits max_width col mode child
   )
+  ~init:(Fits start_col)
   children
-  (Fits start_col)
 
 type indentation = int
 
@@ -205,15 +205,15 @@ let rec tree_format
 
 and format_group max_width indentation mode children =
   let children' = Queue.create () in
-  let indentation' = Util.fold_left
-    (fun indentation' child ->
+  let indentation' = List.fold_left
+    ~f:(fun indentation' child ->
       let indentation'', child' =
         tree_format max_width indentation' mode child
       in
       Queue.enqueue children' child';
       indentation''
     )
-    indentation
+    ~init:indentation
     children
   in
   indentation', Queue.to_array children'
