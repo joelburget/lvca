@@ -1,4 +1,5 @@
-let abstract_syntax = {|
+let abstract_syntax =
+  {|
 import {string} from "builtins";
 
 rowType := rowType(list atomicType)
@@ -10,3 +11,4 @@ row := row(list atomicValue)
 
 table := table(rowType; list row)
 |}
+;;

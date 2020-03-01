@@ -3,9 +3,9 @@ term :=
   | lam(term. term)
   | app(term; term)
 |}
-;;
 
-let concreteSyntax = {|
+let concreteSyntax =
+  {|
 LAMBDA := "\\"
 ARROW  := "->"
 LPAREN := "("

@@ -62,5 +62,5 @@ let rec of_de_bruijn : Binding.DeBruijn.term -> term = function
   | Primitive p -> Primitive p
 
 and scope_of_de_bruijn : Binding.DeBruijn.scope -> scope =
-  fun (Scope (pats, body)) -> Scope (pats, of_de_bruijn body)
+ fun (Scope (pats, body)) -> Scope (pats, of_de_bruijn body)
 ;;

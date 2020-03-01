@@ -20,34 +20,31 @@ type nonterminal_token =
   | OpenBox of (box_type * int list) option
   | CloseBox
 
-(** A binder pattern can match either a variable `var($n)` (fixed valence) or a
- * pattern `$n` (variable valence) *)
+(** A binder pattern can match either a variable `var($n)` (fixed valence) or a * pattern
+    `$n` (variable valence) *)
 type binder_capture =
   | VarCapture of int
   | PatternCapture of int
 
-(** An operator match pattern appears in the right-hand-side of a concrete
-    syntax declaration, to show how to parse and pretty-print operators. They
-    either match an operator, eg `{ add($1; $3) }` (for tokens `expr PLUS
-    expr`) or are "single capture", eg `{ $2 }` (for tokens `LPAREN expr
-    RPAREN`).
-*)
+(** An operator match pattern appears in the right-hand-side of a concrete syntax
+    declaration, to show how to parse and pretty-print operators. They either match an
+    operator, eg `{ add($1; $3) }` (for tokens `expr PLUS expr`) or are "single capture",
+    eg `{ $2 }` (for tokens `LPAREN expr RPAREN`). *)
 type operator_match_pattern =
   | OperatorPattern of string * numbered_scope_pattern list
   | SingleCapturePattern of capture_number
 
-(** A term pattern with numbered holes in binder patterns and subterms, eg
-    `$2. $4` (for tokens `FUN name ARR expr`) *)
+(** A term pattern with numbered holes in binder patterns and subterms, eg `$2. $4` (for
+    tokens `FUN name ARR expr`) *)
 and numbered_scope_pattern =
-  NumberedScopePattern of binder_capture list * operator_match_pattern
+  | NumberedScopePattern of binder_capture list * operator_match_pattern
 
-let string_of_binder_capture : binder_capture -> string
-  = function
-    | VarCapture n -> Printf.sprintf "var($%n)" n
-    | PatternCapture n -> Printf.sprintf "$%n" n
+let string_of_binder_capture : binder_capture -> string = function
+  | VarCapture n -> Printf.sprintf "var($%n)" n
+  | PatternCapture n -> Printf.sprintf "$%n" n
+;;
 
-let rec string_of_operator_match_pattern : operator_match_pattern -> string
-  = function
+let rec string_of_operator_match_pattern : operator_match_pattern -> string = function
   | OperatorPattern (name, scope_pats) ->
     Printf.sprintf
       "%s(%s)"
@@ -56,7 +53,8 @@ let rec string_of_operator_match_pattern : operator_match_pattern -> string
   | SingleCapturePattern num -> "$" ^ string_of_int num
 
 and string_of_numbered_scope_pattern : numbered_scope_pattern -> string =
-  fun (NumberedScopePattern (patterns, body)) -> patterns
+ fun (NumberedScopePattern (patterns, body)) ->
+  patterns
   |> Array.of_list
   |> Array.map ~f:string_of_binder_capture
   |> Fn.flip Array.append [| string_of_operator_match_pattern body |]
@@ -68,11 +66,7 @@ type fixity =
   | Infixr
   | Nofix
 
-let fixity_str = function
-  | Infixl -> "left"
-  | Infixr -> "right"
-  | Nofix -> "nonassoc"
-;;
+let fixity_str = function Infixl -> "left" | Infixr -> "right" | Nofix -> "nonassoc"
 
 type operator_match' =
   { tokens : nonterminal_token list
@@ -85,19 +79,21 @@ type operator_match = OperatorMatch of operator_match'
 let string_of_token : nonterminal_token -> string = function
   | TerminalName str -> str
   | NonterminalName str -> str
-  | Underscore i -> "_" ^ (if i = 1 then "" else string_of_int i)
+  | Underscore i -> "_" ^ if i = 1 then "" else string_of_int i
   | OpenBox None -> "["
   | OpenBox (Some (box_type, params)) ->
-      let box_type_str = match box_type with
-        | HBox -> "h"
-        | VBox -> "v"
-        | HovBox -> "hov"
-        | BBox -> "b"
-        | HvBox -> "hv"
-      in
-      let params_str = Util.stringify_list string_of_int "," params in
-      Printf.sprintf "[<%s %s>" box_type_str params_str
+    let box_type_str =
+      match box_type with
+      | HBox -> "h"
+      | VBox -> "v"
+      | HovBox -> "hov"
+      | BBox -> "b"
+      | HvBox -> "hv"
+    in
+    let params_str = Util.stringify_list string_of_int "," params in
+    Printf.sprintf "[<%s %s>" box_type_str params_str
   | CloseBox -> "]"
+;;
 
 let string_of_tokens : nonterminal_token list -> string =
   Util.stringify_list string_of_token " "
@@ -131,60 +127,63 @@ type t =
 
 type pre_t = pre_terminal_rule list * nonterminal_rule list
 
-let string_of_terminal_rules : terminal_rules -> string
-  = fun terminal_rules -> terminal_rules
-    |> List.map ~f:(fun (name, regex) -> Printf.sprintf "%s := %s"
-      name
-      (Regex.to_string regex)
-    )
-    |> String.concat ~sep:"\n"
+let string_of_terminal_rules : terminal_rules -> string =
+ fun terminal_rules ->
+  terminal_rules
+  |> List.map ~f:(fun (name, regex) ->
+         Printf.sprintf "%s := %s" name (Regex.to_string regex))
+  |> String.concat ~sep:"\n"
+;;
 
-let string_of_nonterminal_type : nonterminal_type -> string
-  = fun (NonterminalType (args, result)) -> args
-    |> Fn.flip Util.snoc result
-    |> Util.stringify_list Types.string_of_sort " -> "
+let string_of_nonterminal_type : nonterminal_type -> string =
+ fun (NonterminalType (args, result)) ->
+  args |> Fn.flip Util.snoc result |> Util.stringify_list Types.string_of_sort " -> "
+;;
 
-let string_of_operator_match : operator_match -> string
-  = fun (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
-    Printf.sprintf "%s { %s }%s"
+let string_of_operator_match : operator_match -> string =
+ fun (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
+  Printf.sprintf
+    "%s { %s }%s"
     (string_of_tokens tokens)
     (string_of_operator_match_pattern operator_match_pattern)
-    (match fixity with
-      | Nofix -> ""
-      | _ -> " %" ^ fixity_str fixity)
+    (match fixity with Nofix -> "" | _ -> " %" ^ fixity_str fixity)
+;;
 
-let string_of_operator_rules : operator_match list list -> string
-  = fun rules ->
-    let arr = Queue.create () in
-    List.iteri rules ~f:(fun i level ->
+let string_of_operator_rules : operator_match list list -> string =
+ fun rules ->
+  let arr = Queue.create () in
+  List.iteri rules ~f:(fun i level ->
       List.iteri level ~f:(fun j operator_match ->
-        Queue.enqueue arr (Printf.sprintf
-          "  %s %s"
-          (if i > 0 && j = 0 then ">" else "|")
-          (string_of_operator_match operator_match)
-        );
-      );
-    );
-    arr
-      |> Queue.to_array
-      |> String.concat_array ~sep:"\n"
+          Queue.enqueue
+            arr
+            (Printf.sprintf
+               "  %s %s"
+               (if i > 0 && j = 0 then ">" else "|")
+               (string_of_operator_match operator_match))));
+  arr |> Queue.to_array |> String.concat_array ~sep:"\n"
+;;
 
-let string_of_nonterminal_rule : nonterminal_rule -> string
-  = fun (NonterminalRule { nonterminal_name; nonterminal_type; operator_rules }) ->
-    Printf.sprintf "%s : %s :=\n%s"
+let string_of_nonterminal_rule : nonterminal_rule -> string =
+ fun (NonterminalRule { nonterminal_name; nonterminal_type; operator_rules }) ->
+  Printf.sprintf
+    "%s : %s :=\n%s"
     nonterminal_name
     (string_of_nonterminal_type nonterminal_type)
     (string_of_operator_rules operator_rules)
+;;
 
-let string_of_nonterminal_rules : nonterminal_rules -> string
-  = fun nonterminal_rules -> nonterminal_rules
-    |> String.Map.to_alist
-    |> Array.of_list
-    |> Array.map ~f:(fun (_, rule) -> string_of_nonterminal_rule rule)
-    |> String.concat_array ~sep:"\n\n"
+let string_of_nonterminal_rules : nonterminal_rules -> string =
+ fun nonterminal_rules ->
+  nonterminal_rules
+  |> String.Map.to_alist
+  |> Array.of_list
+  |> Array.map ~f:(fun (_, rule) -> string_of_nonterminal_rule rule)
+  |> String.concat_array ~sep:"\n\n"
+;;
 
-let string_of_t : t -> string
-  = fun { terminal_rules; nonterminal_rules } ->
-    string_of_terminal_rules terminal_rules ^
-    "\n\n" ^
-    string_of_nonterminal_rules nonterminal_rules
+let string_of_t : t -> string =
+ fun { terminal_rules; nonterminal_rules } ->
+  string_of_terminal_rules terminal_rules
+  ^ "\n\n"
+  ^ string_of_nonterminal_rules nonterminal_rules
+;;

@@ -1,4 +1,5 @@
-let abstractSyntax = {|
+let abstractSyntax =
+  {|
 // An edit in some language is either:
 edit lang :=
   // A simple, atomic edit
@@ -8,3 +9,4 @@ edit lang :=
   // Or a sequence of edits.
   | sequence(list edit)
 |}
+;;

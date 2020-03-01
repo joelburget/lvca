@@ -3,7 +3,8 @@
  * Questions: What should be primitive? How do we define a standard library?
  *)
 
-let abstract_syntax = {|
+let abstract_syntax =
+  {|
 // rational?
 import {float} from "builtins";
 
@@ -22,8 +23,10 @@ shape :=
   | circle
   | line
 |}
+;;
 
-let standard_library = {|
+let standard_library =
+  {|
 unitX : vector
   = 1, 0
 
@@ -36,3 +39,4 @@ unitY : vector
 (|||) : diagram -> diagram -> diagram
   = beside unitX
 |}
+;;

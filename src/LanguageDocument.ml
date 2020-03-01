@@ -1,4 +1,5 @@
-let abstractSyntax = {|
+let abstractSyntax =
+  {|
 import {list, string} from "builtin"
 
 document := document(list block)
@@ -24,7 +25,8 @@ attribute :=
 |}
 ;;
 
-let concreteSyntax = {|
+let concreteSyntax =
+  {|
 H1 := "#"
 H2 := "##"
 H3 := "###"
@@ -46,3 +48,4 @@ inline :=
   | UNDERSCORE TEXT UNDERSCORE { inlineAtom([italic()]; $2) }
   | TEXT                       { inlineAtom([]; ($1))       }
 |}
+;;

@@ -1,7 +1,8 @@
-let abstractSyntax = LanguageInteger.abstractSyntax;;
-let concreteSyntax = LanguageInteger.concreteSyntax;;
+let abstractSyntax = LanguageInteger.abstractSyntax
+let concreteSyntax = LanguageInteger.concreteSyntax
 
-let concreteSyntax' = {|
+let concreteSyntax' =
+  {|
 TRUE     := "true"
 FALSE    := "false"
 NULL     := "null"

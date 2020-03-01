@@ -1,19 +1,15 @@
 (** Types and functions for dealing with concrete syntax.
 
- This module is all about this diagram:
+    This module is all about this diagram:
 
- {[
+    {[
+             ---parse--->                -to_ast->
+      string              formatted_tree           Nominal.term
+             <-to_string-                <-of_ast-
+    ]}
 
-        ---parse--->                -to_ast->
- string              formatted_tree           Nominal.term
-        <-to_string-                <-of_ast-
-
- ]}
-
- The other important functions are [to_grammar], [lexer_of_desc], and
- [make_concrete_description].
-
- *)
+    The other important functions are [to_grammar], [lexer_of_desc], and
+    [make_concrete_description]. *)
 
 open Binding
 module Lexer = ConcreteSyntax_Lexer
@@ -32,26 +28,25 @@ type formatted_terminal_capture =
 (** Nonterminals capture their children *)
 type formatted_nonterminal_capture = formatted_tree
 
-(** Terminals and nonterminals both capture data about why they were
-    constructed
-*)
+(** Terminals and nonterminals both capture data about why they were constructed *)
 and formatted_capture =
   | TerminalCapture of formatted_terminal_capture
   | NonterminalCapture of formatted_nonterminal_capture
 
 (** Inspired by:
- - https://github.com/apple/swift/tree/master/lib/Syntax
- - https://github.com/dotnet/roslyn/wiki/Roslyn-Overview#syntax-trees
 
- Rules of trivia (same as for swift):
- - A token owns all of its trailing trivia up to, but not including, the
-   next newline character.
- - Looking backward in the text, a token owns all of the leading trivia up
-   to and including the first newline character.
+    - https://github.com/apple/swift/tree/master/lib/Syntax
+    - https://github.com/dotnet/roslyn/wiki/Roslyn-Overview#syntax-trees
 
- In other words, a contiguous stretch of trivia between two tokens is split
- on the leftmost newline.
-*)
+    Rules of trivia (same as for swift):
+
+    - A token owns all of its trailing trivia up to, but not including, the next newline
+      character.
+    - Looking backward in the text, a token owns all of the leading trivia up to and
+      including the first newline character.
+
+    In other words, a contiguous stretch of trivia between two tokens is split on the
+    leftmost newline. *)
 and formatted_tree =
   { tree_info : tree_info
   ; children : formatted_capture array
@@ -89,9 +84,9 @@ val to_grammar
   -> string
   -> LrParsing.augmented_grammar
      * (tree_info
-        * ConcreteSyntaxDescription.nonterminal_token list
-        * ConcreteSyntaxDescription.operator_match_pattern option)
-         Core_kernel.Int.Table.t
+       * ConcreteSyntaxDescription.nonterminal_token list
+       * ConcreteSyntaxDescription.operator_match_pattern option)
+       Core_kernel.Int.Table.t
      * string option Core_kernel.String.Map.t
 
 type invalid_grammar
@@ -104,10 +99,9 @@ val lexer_of_desc : ConcreteSyntaxDescription.t -> Placemat.Lex.lexer
 (* exported for testing: *)
 val remove_spaces : formatted_tree -> formatted_tree
 
-(** Make a concrete syntax description from its parsed rules. This morally
-    belongs to the [ConcreteSyntaxDescription] module, but it's here to break a
-    dependency cycle with [Parsing] -> [ConcreteSyntaxDescription].
-*)
+(** Make a concrete syntax description from its parsed rules. This morally belongs to the
+    [ConcreteSyntaxDescription] module, but it's here to break a dependency cycle with
+    [Parsing] -> [ConcreteSyntaxDescription]. *)
 val make_concrete_description
   :  ConcreteSyntaxDescription.pre_terminal_rule list
   -> ConcreteSyntaxDescription.nonterminal_rule list
@@ -117,7 +111,8 @@ type nonterminal_operators =
   (int option * ConcreteSyntaxDescription.operator_match) list Core_kernel.String.Map.t
 
 val derived_nonterminal_rules
-  : ConcreteSyntaxDescription.nonterminal_rules -> nonterminal_operators array
+  :  ConcreteSyntaxDescription.nonterminal_rules
+  -> nonterminal_operators array
 
 val string_of_nonterminal_operators : nonterminal_operators -> string
 val string_of_derived_rules : nonterminal_operators list -> string
