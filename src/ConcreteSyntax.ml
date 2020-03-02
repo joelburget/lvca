@@ -1,6 +1,5 @@
 open Core_kernel
 module Nominal = Binding.Nominal
-module MMI = Int.Table
 module MSI = Util.MutableSet.Int
 module Lexer = ConcreteSyntax_Lexer
 module Parser = ConcreteSyntax_Parser
@@ -72,15 +71,15 @@ let check_operator_match_validity
   =
  fun token_list term_pat ->
   let numbered_toks =
-    token_list |> List.mapi ~f:(fun i tok -> i, tok) |> MMI.of_alist_exn
+    token_list |> List.mapi ~f:(fun i tok -> i, tok) |> Int.Table.of_alist_exn
   in
   let { captured_tokens; repeated_tokens } = token_usage term_pat in
   let non_existent_tokens = MSI.create () in
   Int.Set.iter captured_tokens ~f:(fun tok_num ->
-      if MMI.mem numbered_toks tok_num
-      then MMI.remove numbered_toks tok_num
+      if Hashtbl.mem numbered_toks tok_num
+      then Hashtbl.remove numbered_toks tok_num
       else MSI.add non_existent_tokens tok_num);
-  non_existent_tokens, repeated_tokens, MMI.to_alist numbered_toks
+  non_existent_tokens, repeated_tokens, Hashtbl.to_alist numbered_toks
 ;;
 
 (* Check invariants of concrete syntax descriptions:

@@ -185,53 +185,53 @@ module Lalr1 (G : GRAMMAR) = struct
   ;;
 
   let add_to mutable_lookahead_item_set nonterminal_num lookahead =
-    match MMI.find mutable_lookahead_item_set nonterminal_num with
+    match Hashtbl.find mutable_lookahead_item_set nonterminal_num with
     | None ->
-      MMI.set
+      Hashtbl.set
         mutable_lookahead_item_set
         ~key:nonterminal_num
-        ~data:(MSI.of_list [ lookahead ])
-    | Some old_set -> MSI.add old_set lookahead
+        ~data:(MutableSet.Int.of_list [ lookahead ])
+    | Some old_set -> MutableSet.add old_set lookahead
   ;;
 
   let add_all_to mutable_lookahead_item_set nonterminal_num lookaheads =
     let lookaheads' = Int.Set.to_list lookaheads in
-    match MMI.find mutable_lookahead_item_set nonterminal_num with
+    match Hashtbl.find mutable_lookahead_item_set nonterminal_num with
     | None ->
-      MMI.set
+      Hashtbl.set
         mutable_lookahead_item_set
         ~key:nonterminal_num
-        ~data:(MSI.of_list lookaheads')
-    | Some old_set -> MSI.merge_many old_set lookaheads'
+        ~data:(MutableSet.Int.of_list lookaheads')
+    | Some old_set -> MutableSet.Int.merge_many old_set lookaheads'
   ;;
 
   (* Convert a mutable set of items with mutable lookahead to an immutable set
    * of lookahead items.
    *)
-  let convert : MSI.t MMI.t -> LookaheadItemSet.t =
+  let convert : MutableSet.Int.t Int.Table.t -> LookaheadItemSet.t =
    fun items ->
     items
-    |> MMI.to_alist
+    |> Hashtbl.to_alist
     |> List.map ~f:(fun (nonterminal_num, mut_lookahead_set) ->
            let production_set =
-             MMI.find nonterminal_production_map nonterminal_num
+             Hashtbl.find nonterminal_production_map nonterminal_num
              |> get_option' (fun () ->
                     Printf.sprintf
                       "lr1_closure' convert: unable to find nonterminal %n in \
                        nonterminal_production_map (keys: %s)"
                       nonterminal_num
                       (nonterminal_production_map
-                      |> MMI.keys
+                      |> Hashtbl.keys
                       |> List.to_array
                       |> Array.map ~f:string_of_int
                       |> String.concat_array ~sep:", "))
            in
            production_set
-           |> MSI.to_array
+           |> MutableSet.to_array
            |> Array.map ~f:(fun production_num ->
                   let item = mk_item { production_num; position = 0 } in
                   let lookahead_set =
-                    mut_lookahead_set |> MSI.to_array |> Int.Set.of_array
+                    mut_lookahead_set |> MutableSet.to_array |> Int.Set.of_array
                   in
                   ({ item; lookahead_set } : LookaheadItem.t)))
     |> Array.concat
@@ -243,12 +243,12 @@ module Lalr1 (G : GRAMMAR) = struct
     (* Map from nonterminal number to a (mutable) set of tokens in the
      * lookahead set
      *)
-    let nonkernel_items = MMI.create () in
+    let nonkernel_items = Int.Table.create () in
     let kernel_items = MutableSet.create (module LookaheadItem) in
     (* Set of (nonterminal, terminal that might be in its lookahead set) to
      * consider.
      *)
-    let stack = MStack.create () in
+    let stack = Stack.create () in
     (* For each initial item, add an entry to the stack containing a
      * nonterminal and lookahead set to consider.
      *
@@ -258,12 +258,12 @@ module Lalr1 (G : GRAMMAR) = struct
     Set.iter initial_items ~f:(fun lookahead_item ->
         let ({ item; lookahead_set } : LookaheadItem.t) = lookahead_item in
         let { production_num; position } = view_item item in
-        let nonterminal_num = MMI.find_exn production_nonterminal_map production_num in
+        let nonterminal_num = Hashtbl.find_exn production_nonterminal_map production_num in
         if production_num = 0 || position > 0
         then MutableSet.add kernel_items lookahead_item
         else add_all_to nonkernel_items nonterminal_num lookahead_set;
         let production =
-          MMI.find production_map production_num
+          Hashtbl.find production_map production_num
           |> get_option' (fun () ->
                  Printf.sprintf "lr1_closure': couldn't find production %n" production_num)
         in
@@ -280,21 +280,21 @@ module Lalr1 (G : GRAMMAR) = struct
                 | Some symbol -> first_set [ symbol; Terminal lookahead_terminal_num ]
               in
               Int.Set.iter first_set' ~f:(fun new_lookahead ->
-                  MStack.push stack (nt, new_lookahead))
+                  Stack.push stack (nt, new_lookahead))
             | _ -> ()));
     (* Consider every (nonterminal, lookahead terminal pair), adding it to
      * the nonkernel_items set if appropriate, and adding new entries to the
      * stack if appropriate
      *)
-    while not (MStack.is_empty stack) do
+    while not (Stack.is_empty stack) do
       let nonterminal_num, lookahead =
-        MStack.pop stack |> get_option' (fun () -> "the set is not empty!")
+        Stack.pop stack |> get_option' (fun () -> "the set is not empty!")
       in
       let is_added =
-        MMI.mem nonkernel_items nonterminal_num
+        Hashtbl.mem nonkernel_items nonterminal_num
         && nonkernel_items
-           |> Fn.flip MMI.find_exn nonterminal_num
-           |> Fn.flip MSI.mem lookahead
+           |> Fn.flip Hashtbl.find_exn nonterminal_num
+           |> Fn.flip MutableSet.mem lookahead
       in
       if not is_added
       then (
@@ -316,7 +316,7 @@ module Lalr1 (G : GRAMMAR) = struct
                   | symbol :: _ -> [ symbol; Terminal lookahead ])
               in
               Int.Set.iter first_set' ~f:(fun new_lookahead ->
-                  MStack.push stack (new_nt, new_lookahead))
+                  Stack.push stack (new_nt, new_lookahead))
             | _ -> failwith "Empty production"))
     done;
     { kernel_items = kernel_items |> MutableSet.to_array |> lookahead_item_set_from_array
@@ -344,7 +344,7 @@ module Lalr1 (G : GRAMMAR) = struct
     Set.iter j ~f:(fun { lookahead_set; item = pre_item } ->
         let { production_num; position } = view_item pre_item in
         let production =
-          MMI.find production_map production_num
+          Hashtbl.find production_map production_num
           |> get_option' (fun () ->
                  "generate_lookaheads: failed to get production "
                  ^ string_of_int production_num)
@@ -524,7 +524,7 @@ module Lalr1 (G : GRAMMAR) = struct
       List.find_map item_set_l ~f:(fun l_item ->
           let { production_num; position } = view_item l_item.item in
           let symbols =
-            MMI.find production_map production_num
+            Hashtbl.find production_map production_num
             |> get_option' (fun () ->
                    Printf.sprintf
                      "Lalr1 shift_action: unable to find production %n in production_map"
@@ -543,7 +543,7 @@ module Lalr1 (G : GRAMMAR) = struct
           let ({ item; lookahead_set } : LookaheadItem.t) = l_item in
           let { production_num; position } = view_item item in
           let nt_num =
-            MMI.find production_nonterminal_map production_num
+            Hashtbl.find production_nonterminal_map production_num
             |> get_option' (fun () ->
                    Printf.sprintf
                      "Lalr1 shift_action: unable to find production %n in \
@@ -551,7 +551,7 @@ module Lalr1 (G : GRAMMAR) = struct
                      production_num)
           in
           let production =
-            MMI.find production_map production_num
+            Hashtbl.find production_map production_num
             |> get_option' (fun () ->
                    Printf.sprintf
                      "Lalr1 shift_action: unable to find production %n in production_map"
@@ -599,13 +599,13 @@ module Lalr1 (G : GRAMMAR) = struct
 
   (* This is the main parsing function: CPTT Algorithm 4.44 / Figure 4.36. *)
   let parse_trace
-      :  do_trace (* trace or not *) -> Lex.token MQueue.t
+      :  do_trace (* trace or not *) -> Lex.token Queue.t
       -> (parse_result, parse_error) Result.t * trace_line array
     =
     parse_trace_tables lalr1_action_table lalr1_goto_table
   ;;
 
-  let parse : Lex.token MQueue.t -> (parse_result, parse_error) Result.t =
+  let parse : Lex.token Queue.t -> (parse_result, parse_error) Result.t =
    fun toks ->
     let result, _ = parse_trace DoTrace toks in
     result
@@ -623,10 +623,10 @@ module Lalr1 (G : GRAMMAR) = struct
       let tokens' =
         tokens
         |> Array.filter ~f:(fun (token : Lex.token) -> String.(token.name <> "SPACE"))
-        |> MQueue.of_array
+        |> Queue.of_array
       in
       (* TODO: name might not always be "$" *)
-      MQueue.enqueue tokens' { name = "$"; start = len; finish = len };
+      Queue.enqueue tokens' { name = "$"; start = len; finish = len };
       parse tokens' |> Result.map_error ~f:(fun err -> Either.Second err)
  ;;
 end
