@@ -1,5 +1,7 @@
 open Core_kernel
 open Types
+module Json = Util.Json
+module Cbor = Util.Cbor
 
 module rec DeBruijn : sig
   type scope = Scope of Pattern.t list * term
@@ -103,7 +105,7 @@ and Nominal : sig
 
   val pp_term : Format.formatter -> Nominal.term -> unit
   val pp_term' : Nominal.term -> string
-  val jsonify : Nominal.term -> Placemat.Json.t
+  val jsonify : Nominal.term -> Json.t
   val serialize : Nominal.term -> Bytes.t
   val hash : Nominal.term -> string
 
@@ -167,17 +169,17 @@ end = struct
 
   let pp_term' = asprintf "%a" pp_term
   let pp_scope' = asprintf "%a" pp_scope
-  let array_map f args = args |> List.map ~f |> Array.of_list |> Placemat.Json.array
+  let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
 
   let jsonify_prim =
-    Placemat.Json.(
+    Json.(
       function
       | PrimInteger i -> array [| string "i"; string (Bigint.to_string i) |]
       | PrimString s -> array [| string "s"; string s |])
   ;;
 
-  let rec jsonify (tm : term) : Placemat.Json.t =
-    Placemat.Json.(
+  let rec jsonify (tm : term) : Json.t =
+    Json.(
       match tm with
       | Operator (tag, tms) ->
         array [| string "o"; string tag; array_map jsonify_scope tms |]
@@ -185,8 +187,8 @@ end = struct
       | Sequence tms -> array [| string "s"; array_map jsonify tms |]
       | Primitive p -> array [| string "p"; jsonify_prim p |])
 
-  and jsonify_pat (pat : Pattern.t) : Placemat.Json.t =
-    Placemat.Json.(
+  and jsonify_pat (pat : Pattern.t) : Json.t =
+    Json.(
       match pat with
       | Operator (tag, tms) ->
         array [| string "o"; string tag; array_map jsonify_pat tms |]
@@ -194,17 +196,17 @@ end = struct
       | Sequence tms -> array [| string "s"; array_map jsonify_pat tms |]
       | Primitive p -> array [| string "p"; jsonify_prim p |])
 
-  and jsonify_scope (Scope (pats, body)) : Placemat.Json.t =
-    Placemat.Json.(array [| array_map jsonify_pat pats; jsonify body |])
+  and jsonify_scope (Scope (pats, body)) : Json.t =
+    Json.(array [| array_map jsonify_pat pats; jsonify body |])
   ;;
 
   (* serialize by converting to JSON then cboring *)
-  let serialize : term -> Bytes.t = fun tm -> tm |> jsonify |> Placemat.Cbor.encode
+  let serialize : term -> Bytes.t = fun tm -> tm |> jsonify |> Cbor.encode
 
-  (* let deserialize : Bytes.t -> term option = fun buf -> buf |> Placemat.Cbor.decode |>
+  (* let deserialize : Bytes.t -> term option = fun buf -> buf |> Cbor.decode |>
      dejsonify *)
 
-  let hash tm = Placemat.Sha256.hash (serialize tm)
+  let hash tm = Util.Sha256.hash (serialize tm)
 
   exception ToPatternScopeEncountered
 
@@ -247,7 +249,7 @@ let%test_module "Nominal" =
     let ( = ) = Caml.( = )
     let tm = Var "x"
 
-    let%test "" = jsonify tm = Placemat.Json.(Array [| String "v"; String "x" |])
+    let%test "" = jsonify tm = Json.(Array [| String "v"; String "x" |])
 
     let%expect_test _ =
       print_serialize tm;
@@ -262,7 +264,7 @@ let%test_module "Nominal" =
     let tm = Operator ("Z", [])
 
     let%test "" =
-      jsonify tm = Placemat.Json.(Array [| String "o"; String "Z"; Array [||] |])
+      jsonify tm = Json.(Array [| String "o"; String "Z"; Array [||] |])
     ;;
 
     let%expect_test _ =
@@ -279,7 +281,7 @@ let%test_module "Nominal" =
 
     let%test "" =
       jsonify tm
-      = Placemat.Json.(
+      = Json.(
           Array
             [| String "o"
              ; String "S"
@@ -306,7 +308,7 @@ let%test_module "Nominal" =
 
     let%test "" =
       jsonify tm
-      = Placemat.Json.(Array [| String "p"; Array [| String "i"; String "12345" |] |])
+      = Json.(Array [| String "p"; Array [| String "i"; String "12345" |] |])
     ;;
 
     let%expect_test _ =
@@ -321,7 +323,7 @@ let%test_module "Nominal" =
 
     let tm = Sequence []
 
-    let%test "" = jsonify tm = Placemat.Json.(Array [| String "s"; Array [||] |])
+    let%test "" = jsonify tm = Json.(Array [| String "s"; Array [||] |])
 
     let%expect_test _ =
       print_serialize tm;
@@ -337,7 +339,7 @@ let%test_module "Nominal" =
 
     let%test "" =
       jsonify tm
-      = Placemat.Json.(
+      = Json.(
           Array [| String "s"; Array [| Array [| String "v"; String "x" |] |] |])
     ;;
 
