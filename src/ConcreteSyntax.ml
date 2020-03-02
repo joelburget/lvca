@@ -902,7 +902,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
   go_nt root_name root
 ;;
 
-let lexer_of_desc : ConcreteSyntaxDescription.t -> Placemat.Lex.lexer =
+let lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer =
  fun { terminal_rules; _ } ->
   ("SPACE", Regex.ReClass (PosClass Whitespace)) :: terminal_rules
 ;;

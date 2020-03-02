@@ -3,13 +3,11 @@ module MMI = Int.Table
 module MSI = Util.MutableSet.Int
 module MStack = Stack
 module MQueue = Queue
+module MutableSet = Util.MutableSet
 
 let get_option, get_option', invariant_violation =
   Util.(get_option, get_option', invariant_violation)
 ;;
-
-module Lex = Placemat.Lex
-module MutableSet = Util.MutableSet
 
 exception NoItemSet of (unit -> string)
 

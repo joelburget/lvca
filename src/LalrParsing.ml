@@ -1,6 +1,5 @@
 open Core_kernel
 open LrParsing
-module Lex = Placemat.Lex
 
 module LookaheadItem = struct
   module T = struct

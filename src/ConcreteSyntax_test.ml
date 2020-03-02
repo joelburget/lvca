@@ -169,7 +169,6 @@ let%test_module "derived nonterminals" =
     ;;
 
     let%expect_test _ =
-      let module Lex = Placemat.Lex in
       let lexer = lexer_of_desc concrete in
       (match Lex.lex lexer "x + y" with
       | Error { message; _ } -> print_string message
@@ -183,7 +182,7 @@ let%test_module "derived nonterminals" =
     let%expect_test _ =
       let tokens =
         Queue.of_list
-          Placemat.Lex.
+          Lex.
             [ { name = "NAME"; start = 0; finish = 1 }
             ; { name = "ADD"; start = 2; finish = 3 }
             ; { name = "NAME"; start = 4; finish = 5 }
@@ -240,7 +239,7 @@ let%test_module "simplified_concrete" =
     let%expect_test _ =
       let tokens =
         Queue.of_list
-          Placemat.Lex.
+          Lex.
             [ { name = "NAME"; start = 0; finish = 1 }
             ; { name = "ADD"; start = 2; finish = 3 }
             ; { name = "NAME"; start = 4; finish = 5 }
