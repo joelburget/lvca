@@ -286,10 +286,8 @@ let walk_trailing_trivia : pre_formatted_nonterminal -> string array
 let normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
   = fun tree ->
 
-    let reverse = Util.Array.reverse in
-
     let forward_trivia = tree |> walk_leading_trivia in
-    let reverse_trivia = tree |> walk_trailing_trivia |> reverse in
+    let reverse_trivia = tree |> walk_trailing_trivia |> Util.Array.reverse in
     let overall_ix = ref 0 in
 
     (* Note that for each nonterminal [go_nt] we create a flat list of children
