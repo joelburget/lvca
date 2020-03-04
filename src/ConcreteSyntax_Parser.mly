@@ -193,9 +193,8 @@ box_formatting_options:
       | "h" -> HBox
       | "v" -> VBox
       | "hov" -> HovBox
-      | "b" -> BBox
       | "hv" -> HvBox
-      | _ -> failwith "TODO: error"
+      | name -> failwith ("Unknown box type: " ^ name)
     in
     box_type, $3
   }

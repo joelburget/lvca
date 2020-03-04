@@ -11,21 +11,27 @@ exception BadSortTerm of sort * Nominal.term
 exception BadRules of string
 
 (** raised from [of_ast] when we need to emit a token but don't have a capture,
- * and the terminal match is a regex, not a string literal. This could actually
- * be a form of [BadRules] *)
+ and the terminal match is a regex, not a string literal. This could actually
+ be a form of [BadRules] *)
 exception CantEmitTokenRegex of string * Regex.t
 
 type mode = Flat | Break
 
 (** how many spaces to break
  * TODO other params from Oppen
+ * TODO unused
  *)
 type break_type = int
 
-type box_break_info =
-  { box_type : box_type
-  ; breakpoints : (int * break_type) list
+type box_open_info =
+  { box_info : box_info
+  ; tokens : doc Queue.t
   }
+
+let mk_box_info' : (box_type * int list) option -> (box_info, string) Result.t
+  = function
+    | None -> mk_box_info HovBox []
+    | Some (box_type, args) -> mk_box_info box_type args
 
 (** Pretty-print an abstract term to a concrete syntax tree.
 
@@ -37,8 +43,6 @@ let rec term_to_tree
   : nonterminal_pointer -> ConcreteSyntaxDescription.t -> Nominal.term -> doc
   = fun nonterminal_pointer rules tm ->
 
-    (* Printf.printf "term_to_tree %s\n" (Nominal.pp_term' tm); *)
-
     let NonterminalRule { operator_rules; _ } =
       current_nonterminal nonterminal_pointer
     in
@@ -47,19 +51,25 @@ let rec term_to_tree
       find_operator_match nonterminal_pointer operator_rules tm
     in
 
-    (* Printf.printf "%s\n" (string_of_operator_match_pattern operator_match_pattern); *)
-
     let tree_info = nonterminal_pointer.current_nonterminal, match_number in
 
-    (*
-    let breakpoints : (int * int) list = operator_match_tokens
-      |> List.mapi ~f:(fun ix tok -> match tok with
-        | Underscore n -> Some (ix, n)
-        | _ -> None
-      )
-      |> List.filter_opt
+    let terminal_rules_map = String.Map.of_alist_exn rules.terminal_rules in
+
+    (* Use a stack of queues of tokens. The stack represents group structure
+       ('[' and ']), while the queues represent tokens within those groups:
+       - '[': push on the stack
+       - ']': pop from the stack, enqueue at the new current level
+       - any other token: enqueue at the current level
+     *)
+    let token_stack = Stack.singleton
+      { box_info = mk_box_info' None |> Result.ok_or_failwith
+      ; tokens = Queue.create ()
+      }
     in
-    *)
+    let emit tok =
+      let { tokens; _ } = Stack.top_exn token_stack in
+      Queue.enqueue tokens tok;
+    in
 
     (* Map each token to a subtree. For each token:
        - if it's a space or terminal, print it
@@ -67,88 +77,124 @@ let rec term_to_tree
     *)
     operator_match_tokens
       |> index_tokens
-      |> List.rev (* TODO: O(n^2) reverse *)
-      |> List.map ~f:(fun (token_ix, token) ->
-
-      (* Printf.printf "token: %s\n" (string_of_token token); *)
+      |> Fqueue.iter ~f:(fun (token_ix, token) ->
 
       match Int.Map.find subterms token_ix, token with
 
     (* if the current token is a terminal, and we didn't capture a binder
      * or term, we just emit the contents of the token *)
-    | None, TerminalName name -> (* Printf.printf "case 1\n"; *)
-      let terminal_rule = rules.terminal_rules
-        |> String.Map.of_alist_exn
-        |> Fn.flip String.Map.find name
+    | None, TerminalName name ->
+      let terminal_rule = String.Map.find terminal_rules_map name
         |> Util.get_option' (fun () ->
             "term_to_tree: failed to get terminal rule " ^ name)
       in
       (match Regex.is_literal terminal_rule with
-      | Some re_str -> TerminalDoc (DocText re_str)
+      | Some re_str -> emit (TerminalDoc (DocText re_str))
       | None -> raise (CantEmitTokenRegex (name, terminal_rule))
       )
 
     | Some (CapturedBinder (_current_sort, nonterminal_pointer', pat)),
       NonterminalName _nt_name
-    -> (* Printf.printf "case 2\n"; *)
-      term_to_tree nonterminal_pointer' rules (Nominal.pattern_to_term pat)
+    -> emit
+      (term_to_tree nonterminal_pointer' rules (Nominal.pattern_to_term pat))
 
     | Some (CapturedTerm (_current_sort, nonterminal_pointer', tm')),
       NonterminalName _nt_name
-    -> (* Printf.printf "case 3\n"; *)
-      term_to_tree nonterminal_pointer' rules tm'
+    -> emit (term_to_tree nonterminal_pointer' rules tm')
 
-    | _, Underscore n -> TerminalDoc (DocBreak n)
+    | _, Underscore n -> emit (TerminalDoc (DocBreak n))
 
-    | None, NonterminalName nt_name -> failwith (Printf.sprintf
+    | None, NonterminalName nt_name -> invariant_violation (Printf.sprintf
       "term_to_tree: failed to find token $%n (%s)" token_ix nt_name
     )
 
-    (* TODO: other primitives as well *)
     | Some (CapturedTerm (_sort, _nt_ptr, Var v)), TerminalName _t_name
-    -> TerminalDoc (DocText v)
+    -> emit (TerminalDoc (DocText v))
+    | Some (CapturedTerm (_sort, _nt_ptr, Primitive p)), TerminalName _t_name
+    -> emit (TerminalDoc (DocText (match p with
+      | PrimString str -> str
+      | PrimInteger i -> Bigint.to_string i)))
 
     | Some (CapturedBinder (_, _, Var name)), TerminalName _
-    -> TerminalDoc (DocText name)
+    -> emit (TerminalDoc (DocText name))
 
     | Some (CapturedBinder _), TerminalName t_name
     | Some (CapturedTerm _), TerminalName t_name
-    -> failwith (Printf.sprintf
+    -> invariant_violation (Printf.sprintf
       "term_to_tree: unexpectedly directly captured a terminal (%s)" t_name
     )
 
-    | _, OpenBox _
-    | _, CloseBox -> failwith
-      "invariant violation: term_to_tree->go_operator: box hints are filtered \
-      out in the previous `keep` stage"
-    )
-    |> fun toks -> NonterminalDoc (toks, tree_info)
-;;
+    | _, OpenBox pre_box_info -> Stack.push token_stack
+      (match mk_box_info' pre_box_info with
+        | Ok box_info ->
+          { box_info
+          ; tokens = Queue.create ()
+          }
+          (* TODO: user error *)
+        | Error msg -> failwith msg)
+    | _, CloseBox ->
+      let { box_info; tokens } = Stack.pop token_stack
+        |> Util.get_option' (fun () -> "term_to_tree: Encountered an empty \
+          stack on a close box -- this means there were more close boxes than \
+          opens")
+      in
+      emit (DocGroup (Queue.to_list tokens, box_info))
+    );
 
-let coerce_doc_child
-  : (terminal_doc, nonterminal_doc) Either.t -> doc
-  = function
-  | First doc -> TerminalDoc doc
-  | Second doc -> NonterminalDoc doc
+    (match Stack.to_list token_stack with
+      (* Ignore box_info -- it's always None for the top level *)
+      | [ { tokens; _ } ]
+      -> NonterminalDoc (Queue.to_list tokens, tree_info)
+      | _
+      -> failwith "invariant violation: term_to_tree non-matching opening and \
+        closing boxes")
+;;
 
 type fit_info = Fits of int | DoesntFit
 
+type indentation = int
+
+type space =
+  | SSpace of int
+  | SLine of int
+
+(** A pre-formatted tree. It's been formatted (converted from [doc] but not yet
+ normalized to a [formatted_tree] (see [normalize_nonterminal]
+ *)
+type pre_formatted =
+  | Terminal of string
+  | Nonterminal of pre_formatted_nonterminal
+  | Space of space
+  | Group of pre_formatted array
+
+and pre_formatted_nonterminal =
+  { children : pre_formatted array
+  ; tree_info : tree_info
+  }
+
+(** [tree_fits w i m] checks whether a flat document fits completely into [w]
+   characters.
+
+   @param max_width The maximum printed column width.
+   @param start_col The column printing starts at (indendation)
+   @param mode The mode of the current group
+   @return [Fits n]: The tree fits in the current width, ending at indentation
+     level [n], [DoesntFit]: the tree doesn't fit in the current width
+ *)
 let rec tree_fits : int -> int -> mode -> doc -> fit_info
   = fun max_width start_col mode -> function
     | _ when start_col >= max_width -> DoesntFit
     | TerminalDoc (DocText str) ->
       let len = String.length str in
-      if start_col + len < max_width then Fits (start_col + len) else DoesntFit
-    | TerminalDoc (DocNest (n, doc)) -> tree_fits max_width n mode (TerminalDoc doc)
+      let end_col = start_col + len in
+      if end_col < max_width then Fits end_col else DoesntFit
     | TerminalDoc (DocBreak size) when Caml.(mode = Flat)
-    -> if size < max_width then Fits size else DoesntFit
+    -> if size < max_width then Fits start_col else DoesntFit
     | TerminalDoc (DocBreak _)
-    -> failwith "impossible"
+    -> failwith "impossible" (* TODO: raise InvariantViolation *)
     | NonterminalDoc (children, _)
     -> group_fits max_width start_col mode children
-    | DocGroup group -> group
-      |> List.map ~f:coerce_doc_child
-      |> group_fits max_width start_col Flat
+    | DocGroup (group, _box_info) -> group_fits max_width start_col Flat group
 
 and group_fits max_width start_col mode children = List.fold_right
   ~f:(fun child -> function
@@ -158,52 +204,31 @@ and group_fits max_width start_col mode children = List.fold_right
   ~init:(Fits start_col)
   children
 
-type indentation = int
-
-type space =
-  | SSpace of int
-  | SLine of int
-
-type pre_formatted_nonterminal =
-  { children : pre_formatted array
-  ; tree_info : tree_info
-  }
-
-and pre_formatted =
-  | Terminal of string
-  | Nonterminal of pre_formatted_nonterminal
-  | Space of space
-  | Group of pre_formatted array
-
 let rec tree_format
   (* takes the starting column, returns the ending column *)
   : int -> indentation -> mode -> doc -> indentation * pre_formatted
   = fun max_width indentation mode -> function
   | TerminalDoc (DocText str)
   -> indentation + String.length str, Terminal str
-  | TerminalDoc (DocNest (len, doc))
-  -> tree_format max_width (indentation + len) mode (TerminalDoc doc)
   | TerminalDoc (DocBreak len) when Caml.(mode = Flat)
   -> indentation + len, Space (SSpace len)
   | TerminalDoc (DocBreak _) (* when mode = Break *)
   -> indentation, Space (SLine indentation)
   | NonterminalDoc (children, tree_info) ->
     let indentation', children' =
-      format_group max_width indentation mode children
+      group_format max_width indentation mode children
     in
     indentation', Nonterminal { children = children'; tree_info }
-  | DocGroup group as doc ->
+    (* XXX need to add indentation *)
+  | DocGroup (group, _box_info) as doc ->
     let mode' = match tree_fits max_width indentation Flat doc with
       | DoesntFit -> Break
       | Fits _ -> Flat
     in
-    let indentation', group' = group
-      |> List.map ~f:coerce_doc_child
-      |> format_group max_width indentation mode'
-    in
+    let indentation', group' = group_format max_width indentation mode' group in
     indentation', Group group'
 
-and format_group max_width indentation mode children =
+and group_format max_width indentation mode children =
   let children' = Queue.create () in
   let indentation' = List.fold_left
     ~f:(fun indentation' child ->
@@ -224,7 +249,7 @@ let walk_leading_trivia : pre_formatted_nonterminal -> string array
   = fun tree ->
 
     let accum = ref "" in
-    let accumulating = ref false in
+    let accumulating = ref true in
     let result = Queue.create () in
 
     let rec go_nt = fun { children; _ } -> Array.iter children ~f:go_pft
@@ -320,6 +345,51 @@ let normalize_nonterminal : pre_formatted_nonterminal -> formatted_tree
 
     in go_nt tree
 
+let%test_module "normalize_nonterminal" =
+  (module struct
+    let (=) = Caml.(=)
+
+    let terminal_capture leading_trivia content trailing_trivia =
+      TerminalCapture { content; leading_trivia; trailing_trivia }
+
+    let%test _ =
+      let formatted_tree = normalize_nonterminal
+        { children = [| Group [|
+          Space (SSpace 1);
+          Terminal "\\";
+          Terminal "x";
+          Space (SSpace 1);
+          Terminal "->";
+          Space (SSpace 1);
+          Group [|
+            Nonterminal
+              { children = [| Terminal "x" ; Space (SSpace 1) |]
+              ; tree_info = "tm", 0
+              };
+            Space (SSpace 1);
+          |];
+          Space (SSpace 1);
+        |] |]
+        ; tree_info = "tm", 1
+        }
+      in
+      let expected : formatted_tree =
+        { children = [|
+          terminal_capture " " "\\" "";
+          terminal_capture "" "x" " ";
+          terminal_capture "" "->" " ";
+          NonterminalCapture
+            { children = [| terminal_capture "" "x" "   " |]
+            ; tree_info = "tm", 0
+            }
+        |]
+        ; tree_info = "tm", 1
+        }
+      in
+
+      formatted_tree = expected
+  end)
+
 (**
  @raise [UserError]
  @raise [InvariantViolation]
@@ -341,6 +411,64 @@ let of_ast
     let doc = term_to_tree nonterminal_pointer desc tm in
     let _, pre_formatted = tree_format width 0 Flat doc in
     match pre_formatted with
-      | Nonterminal pre_formatted_tree
-      -> normalize_nonterminal pre_formatted_tree
+      | Nonterminal pre_formatted_nonterminal
+      -> normalize_nonterminal pre_formatted_nonterminal
       | _ -> failwith "invariant violation"
+
+let%test_module "tree_format" =
+  (module struct
+    let hovbox = HovBox (1, 2, 0)
+    let (^|) x y = [x; TerminalDoc (DocBreak 1); y]
+    let binop left op right = DocGroup
+      ( [ DocGroup
+          ( [ TerminalDoc (DocText left);
+              TerminalDoc (DocBreak 1);
+              TerminalDoc (DocText op)
+            ]
+          , hovbox
+          );
+          TerminalDoc (DocBreak 1);
+          TerminalDoc (DocText right);
+        ]
+      , hovbox
+      )
+    let cond = binop "a" "==" "b"
+    let expr1 = binop "a" "<<" "2"
+    let expr2 = binop "a" "+" "b"
+    let ifthen c e1 e2 = NonterminalDoc
+      ( [ DocGroup
+          ( [ DocGroup (TerminalDoc (DocText "if") ^| c, hovbox);
+              TerminalDoc (DocBreak 1);
+              DocGroup (TerminalDoc (DocText "then") ^| e1, hovbox);
+              TerminalDoc (DocBreak 1);
+              DocGroup (TerminalDoc (DocText "else") ^| e2, hovbox);
+            ]
+          , hovbox
+          )
+        ]
+      , ("expr", 1)
+      )
+    let doc = ifthen cond expr1 expr2
+
+    let run width =
+      let _, pre_formatted = tree_format width 0 Flat doc in
+      match pre_formatted with
+        | Nonterminal pre_formatted_nonterminal
+        -> print_string (to_string (normalize_nonterminal pre_formatted_nonterminal))
+      | _ -> failwith "invariant violation"
+
+    (* Test we can replicate the results from "strictly pretty" *)
+    let%expect_test "width 32" =
+      run 32;
+      [%expect{| if a == b then a << 2 else a + b |}]
+
+    let%expect_test "width 15" =
+      run 15;
+      [%expect]
+
+    let%expect_test "width 10" =
+      run 10;
+      [%expect]
+
+    (* TODO: 8, 7, 6 *)
+  end)

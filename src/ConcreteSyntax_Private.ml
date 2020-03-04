@@ -54,19 +54,85 @@ and formatted_tree =
  *)
 type terminal_doc =
   | DocText of string
-  | DocNest of int * terminal_doc
   | DocBreak of int
+
+type box_info =
+  | HBox of int
+  (** A horizontal printing box.
+
+   [HBox h] means the objects of the box are positioned on the same line
+   separated by [h] spaces.
+   *)
+  | VBox of int * int
+  (** A vertical printing box.
+
+   [VBox i v] means each object is placed on a separate line, separated by [v]
+   blank lines, and the second and later objects are indented by [i]
+   characters.
+   *)
+  | HovBox of int * int * int
+  (** A horizontal-or-vertical printing box.
+
+   [Hovbox h i v] means either all objects should go on one line, or they
+   should all be formatted vertically.
+   *)
+  | HvBox of int * int * int
+  (** A horizontal/vertical printing box.
+
+   [HvBox h i v] means as many objects as possible should be placed on the same
+   line, and a new line begun when there is no more space, with indentation
+   [i].
+   *)
+
+let mk_box_info : box_type -> int list -> (box_info, string) Result.t
+  = fun ty args ->
+  let args_str = args
+    |> List.map ~f:string_of_int
+    |> String.concat ~sep:", "
+  in
+
+  match ty with
+  | HBox -> (match args with
+    | [] -> Ok (HBox 1)
+    | [h] -> Ok (HBox h)
+    | _ -> Error (Printf.sprintf
+      "Unexpected number of args to hbox (expected 0 or 1): %s"
+      args_str))
+  | VBox -> (match args with
+    | [] -> Ok (VBox (2, 0))
+    | [i] -> Ok (VBox (i, 0))
+    | [i; v] -> Ok (VBox (i, v))
+    | _ -> Error (Printf.sprintf
+      "Unexpected number of args to hbox (expected 0-2): %s"
+      args_str))
+  | HovBox -> (match args with
+    | [] -> Ok (HovBox (1, 2, 0))
+    | [h] -> Ok (HovBox (h, 2, 0))
+    | [h; i] -> Ok (HovBox (h, i, 0))
+    | [h; i; v] -> Ok (HovBox (h, i, v))
+    | _ -> Error (Printf.sprintf
+      "Unexpected number of args to hovbox (expected 0-3): %s"
+      args_str))
+  | HvBox -> (match args with
+    | [] -> Ok (HvBox (1, 2, 0))
+    | [h] -> Ok (HvBox (h, 2, 0))
+    | [h; i] -> Ok (HvBox (h, i, 0))
+    | [h; i; v] -> Ok (HvBox (h, i, v))
+    | _ -> Error (Printf.sprintf
+      "Unexpected number of args to hvbox (expected 0-3): %s"
+      args_str))
 
 type nonterminal_doc = doc list * tree_info
 
-and doc_group = (terminal_doc, nonterminal_doc) Either.t list
+(* and doc_group = (terminal_doc, nonterminal_doc) Either.t list *)
+and doc_group = doc list
 
 (** Pretty-printing declarations with children.
  *)
 and doc =
   | TerminalDoc of terminal_doc
   | NonterminalDoc of nonterminal_doc
-  | DocGroup of doc_group
+  | DocGroup of doc_group * box_info
 
 (** tree equality mod trivia *)
 let rec equivalent : formatted_tree -> formatted_tree -> bool
@@ -174,20 +240,20 @@ exception UserError of string
 exception NoMatch of string
 
 (** Go through every token giving it an index. Underscores and boxes are all
- * indexed 0, terminals and nonterminals are indexed from 1.
+ indexed 0, terminals and nonterminals are indexed from 1.
  *)
-let index_tokens : nonterminal_token list -> (int * nonterminal_token) list
+let index_tokens : nonterminal_token list -> (int * nonterminal_token) Fqueue.t
   = fun tokens -> tokens
     |> List.fold_left
-      ~init:(1, [])
+      ~init:(1, Fqueue.empty)
       ~f:(fun (ix, indexed_toks) tok -> match tok with
         | Underscore _
         | OpenBox _
         | CloseBox
-        -> ix, (0, tok) :: indexed_toks
+        -> ix, Fqueue.enqueue indexed_toks (0, tok)
         | _
-        -> ix + 1, (ix, tok) :: indexed_toks)
-    |> fun (_, lst) -> lst
+        -> ix + 1, Fqueue.enqueue indexed_toks (ix, tok))
+    |> snd
 
 (** Go through every token giving it an index. Underscores and boxes are not
  * indexed *)
@@ -195,6 +261,7 @@ let map_index_tokens
   : nonterminal_token list -> nonterminal_token Int.Map.t
   = fun tokens -> tokens
     |> index_tokens
+    |> Fqueue.to_list
     |> List.filter ~f:(fun (i, _) -> i <> 0)
     |> Int.Map.of_alist_exn
 
@@ -416,8 +483,7 @@ and get_scope_subterms
  *)
 let check_tokens subterms tokens : unit = tokens
   |> index_tokens
-  |> Array.of_list
-  |> Array.iter ~f:(fun (tok_ix, tok) -> match tok with
+  |> Fqueue.iter ~f:(fun (tok_ix, tok) -> match tok with
     | NonterminalName _ ->
       if not (Int.Map.mem subterms tok_ix)
       then (
@@ -675,7 +741,7 @@ let%test_module "find_operator_match" = (module struct
       match_line($1. $3)
       expr ARROW expr
       1 -> CapturedBinder (expr, { current_nonterminal = expr; _ }, add(x; y))
-      3 -> CapturedTerm (expr, { current_nonterminal = expr; _ }, add(x, y)) |}]
+      3 -> CapturedTerm (expr, { current_nonterminal = expr; _ }, add(x; y)) |}]
 
   let%expect_test "find_operator_match num(5)" =
     print_match_result (Operator ("num", [

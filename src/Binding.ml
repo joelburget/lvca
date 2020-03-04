@@ -145,17 +145,24 @@ end = struct
     | [] -> pp_term ppf body
     | _ -> fprintf ppf "%a %a" pp_bindings bindings pp_term body
 
-  and pp_pattern_list ppf = function
-    | [] -> ()
-    | [ pat ] -> pp_pattern ppf pat
-    | pat :: pats -> fprintf ppf "%a, %a" pp_pattern pat pp_pattern_list pats
+  and pp_pattern_list sep ppf = function
+    | []
+    -> ()
+    | [ pat ]
+    -> pp_pattern ppf pat
+    | pat :: pats
+    -> fprintf ppf "%a%s %a" pp_pattern pat sep (pp_pattern_list sep) pats
 
   and pp_pattern ppf (pat : Pattern.t) =
     match pat with
-    | Var name -> fprintf ppf "%s" name
-    | Operator (name, pats) -> fprintf ppf "%s(%a)" name pp_pattern_list pats
-    | Sequence pats -> fprintf ppf "[%a]" pp_pattern_list pats
-    | Primitive prim -> pp_prim ppf prim
+    | Var name
+    -> fprintf ppf "%s" name
+    | Operator (name, pats)
+    -> fprintf ppf "%s(%a)" name (pp_pattern_list ";") pats
+    | Sequence pats
+    -> fprintf ppf "[%a]" (pp_pattern_list ",") pats
+    | Primitive prim
+    -> pp_prim ppf prim
 
   and pp_bindings ppf = function
     | [] -> ()

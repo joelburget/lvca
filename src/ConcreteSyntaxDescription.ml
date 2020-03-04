@@ -10,7 +10,6 @@ type box_type =
   | HBox
   | VBox
   | HovBox
-  | BBox
   | HvBox
 
 type nonterminal_token =
@@ -87,7 +86,6 @@ let string_of_token : nonterminal_token -> string = function
       | HBox -> "h"
       | VBox -> "v"
       | HovBox -> "hov"
-      | BBox -> "b"
       | HvBox -> "hv"
     in
     let params_str = Util.stringify_list string_of_int "," params in
