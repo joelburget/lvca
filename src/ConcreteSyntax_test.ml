@@ -32,10 +32,10 @@ arith :=
   | LPAREN arith RPAREN { $2          }
   | NAME                { var($1)     }
   // > arith _       arith { app($1; $2) } %left
-  > arith _ MUL _ arith { mul($1; $3) } %left
-  | arith _ DIV _ arith { div($1; $3) } %left
-  > arith _ ADD _ arith { add($1; $3) } %left
-  | arith _ SUB _ arith { sub($1; $3) } %left
+  > [ arith _ MUL _ arith ] { mul($1; $3) } %left
+  | [ arith _ DIV _ arith ] { div($1; $3) } %left
+  > [ arith _ ADD _ arith ] { add($1; $3) } %left
+  | [ arith _ SUB _ arith ] { sub($1; $3) } %left
   > FUN _ NAME _ ARR _ arith { fun(var($2). $4) }
 |}
 ;;
@@ -488,5 +488,27 @@ let%test_module "round trip ast -> tree -> ast" =
     let%test "tree2_ast" = expect_round_trip_ast tree2_ast
     let%test "tree3_ast" = expect_round_trip_ast tree3_ast
     let%test "tree4_ast" = expect_round_trip_ast tree4_ast
+  end)
+;;
+
+let%test_module "pretty-printing" =
+  (module struct
+    let%expect_test "tree3_ast 5" =
+      print_string (to_string (of_ast concrete "arith" 5 tree3_ast));
+      [%expect{|
+        x
+          +
+          y
+            *
+            z |}]
+    let%expect_test "tree3_ast 7" =
+      print_string (to_string (of_ast concrete "arith" 7 tree3_ast));
+      [%expect{|
+        x
+          +
+          y * z |}]
+    let%expect_test "tree3_ast 9" =
+      print_string (to_string (of_ast concrete "arith" 9 tree3_ast));
+      [%expect{| x + y * z |}]
   end)
 ;;
