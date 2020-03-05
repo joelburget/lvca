@@ -84,6 +84,14 @@ type box_info =
    [i].
    *)
 
+(** How much does this box cause new lines to indent? *)
+let box_indentation : box_info -> int
+  = function
+    | HBox _ -> 0
+    | VBox (i, _)
+    | HovBox (_, i, _)
+    | HvBox (_, i, _) -> i
+
 let mk_box_info : box_type -> int list -> (box_info, string) Result.t
   = fun ty args ->
   let args_str = args

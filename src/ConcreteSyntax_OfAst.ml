@@ -153,6 +153,7 @@ let rec term_to_tree
 type fit_info = Fits of int | DoesntFit
 
 type indentation = int
+type column = int
 
 type space =
   | SSpace of int
@@ -181,67 +182,70 @@ and pre_formatted_nonterminal =
    @return [Fits n]: The tree fits in the current width, ending at indentation
      level [n], [DoesntFit]: the tree doesn't fit in the current width
  *)
-let rec tree_fits : int -> int -> mode -> doc -> fit_info
-  = fun max_width start_col mode -> function
+let rec tree_fits : int -> int -> doc -> fit_info
+  = fun max_width start_col -> function
     | _ when start_col >= max_width -> DoesntFit
     | TerminalDoc (DocText str) ->
       let len = String.length str in
       let end_col = start_col + len in
-      if end_col < max_width then Fits end_col else DoesntFit
-    | TerminalDoc (DocBreak size) when Caml.(mode = Flat)
-    -> if size < max_width then Fits start_col else DoesntFit
-    | TerminalDoc (DocBreak _)
-    -> failwith "impossible" (* TODO: raise InvariantViolation *)
+      if end_col <= max_width then Fits end_col else DoesntFit
+    | TerminalDoc (DocBreak size)
+    -> if size <= max_width then Fits (start_col + size) else DoesntFit
     | NonterminalDoc (children, _)
-    -> group_fits max_width start_col mode children
-    | DocGroup (group, _box_info) -> group_fits max_width start_col Flat group
+    | DocGroup (children, _)
+    -> group_fits max_width start_col children
 
-and group_fits max_width start_col mode children = List.fold_right
-  ~f:(fun child -> function
+and group_fits max_width start_col children = List.fold_left
+  ~f:(fun fits child -> match fits with
     | DoesntFit -> DoesntFit
-    | Fits col -> tree_fits max_width col mode child
+    | Fits col -> tree_fits max_width col child
   )
   ~init:(Fits start_col)
   children
 
 let rec tree_format
   (* takes the starting column, returns the ending column *)
-  : int -> indentation -> mode -> doc -> indentation * pre_formatted
-  = fun max_width indentation mode -> function
+  : int -> column -> indentation -> mode -> doc -> column * pre_formatted
+  = fun max_width current_col indentation mode -> function
   | TerminalDoc (DocText str)
-  -> indentation + String.length str, Terminal str
-  | TerminalDoc (DocBreak len) when Caml.(mode = Flat)
-  -> indentation + len, Space (SSpace len)
-  | TerminalDoc (DocBreak _) (* when mode = Break *)
-  -> indentation, Space (SLine indentation)
+  -> current_col + String.length str, Terminal str
+  | TerminalDoc (DocBreak len)
+  -> if Caml.(mode = Flat)
+     then current_col + len, Space (SSpace len)
+     else indentation, Space (SLine indentation)
   | NonterminalDoc (children, tree_info) ->
-    let indentation', children' =
-      group_format max_width indentation mode children
+    let new_col, children' =
+      group_format max_width current_col indentation mode children
     in
-    indentation', Nonterminal { children = children'; tree_info }
-    (* XXX need to add indentation *)
-  | DocGroup (group, _box_info) as doc ->
-    let mode' = match tree_fits max_width indentation Flat doc with
+    new_col, Nonterminal { children = children'; tree_info }
+  | DocGroup (group, box_info) as doc ->
+    let group_mode = match tree_fits max_width current_col doc with
       | DoesntFit -> Break
       | Fits _ -> Flat
     in
-    let indentation', group' = group_format max_width indentation mode' group in
-    indentation', Group group'
+    let indentation' = indentation + box_indentation box_info in
+    let new_col, group' =
+      group_format max_width current_col indentation' group_mode group
+    in
+    new_col, Group group'
 
-and group_format max_width indentation mode children =
+and group_format
+  : int -> column -> indentation -> mode -> doc list
+  -> column * pre_formatted array
+  = fun max_width current_col indentation mode children ->
   let children' = Queue.create () in
-  let indentation' = List.fold_left
-    ~f:(fun indentation' child ->
-      let indentation'', child' =
-        tree_format max_width indentation' mode child
+  let final_col = List.fold_left
+    ~f:(fun current_col' child ->
+      let current_col'', child' =
+        tree_format max_width current_col' indentation mode child
       in
       Queue.enqueue children' child';
-      indentation''
+      current_col''
     )
-    ~init:indentation
+    ~init:current_col
     children
   in
-  indentation', Queue.to_array children'
+  final_col, Queue.to_array children'
 
 (* Accumulate all leading trivia for each terminal. So, all whitespace leading
  * back to and including the first newline. *)
@@ -409,7 +413,7 @@ let of_ast
       }
     in
     let doc = term_to_tree nonterminal_pointer desc tm in
-    let _, pre_formatted = tree_format width 0 Flat doc in
+    let _, pre_formatted = tree_format width 0 0 Flat doc in
     match pre_formatted with
       | Nonterminal pre_formatted_nonterminal
       -> normalize_nonterminal pre_formatted_nonterminal
@@ -417,41 +421,41 @@ let of_ast
 
 let%test_module "tree_format" =
   (module struct
-    let hovbox = HovBox (1, 2, 0)
-    let (^|) x y = [x; TerminalDoc (DocBreak 1); y]
-    let binop left op right = DocGroup
-      ( [ DocGroup
-          ( [ TerminalDoc (DocText left);
-              TerminalDoc (DocBreak 1);
-              TerminalDoc (DocText op)
-            ]
-          , hovbox
-          );
-          TerminalDoc (DocBreak 1);
-          TerminalDoc (DocText right);
-        ]
-      , hovbox
-      )
+    let (=) = Caml.(=)
+
+    let hovbox n children = DocGroup (children, HovBox (1, n, 0))
+    let group = hovbox 0
+    let text str = TerminalDoc (DocText str)
+    let space = TerminalDoc (DocBreak 1)
+    let (^|) x y = [x; space; y]
+    let binop left op right = hovbox 2
+      [ group (text left ^| text op);
+        space;
+        text right;
+      ]
     let cond = binop "a" "==" "b"
     let expr1 = binop "a" "<<" "2"
     let expr2 = binop "a" "+" "b"
     let ifthen c e1 e2 = NonterminalDoc
-      ( [ DocGroup
-          ( [ DocGroup (TerminalDoc (DocText "if") ^| c, hovbox);
-              TerminalDoc (DocBreak 1);
-              DocGroup (TerminalDoc (DocText "then") ^| e1, hovbox);
-              TerminalDoc (DocBreak 1);
-              DocGroup (TerminalDoc (DocText "else") ^| e2, hovbox);
-            ]
-          , hovbox
-          )
+      ( [ group
+          [ hovbox 2 (text "if" ^| c);
+            space;
+            hovbox 2 (text "then" ^| e1);
+            space;
+            hovbox 2 (text "else" ^| e2);
+          ]
         ]
       , ("expr", 1)
       )
     let doc = ifthen cond expr1 expr2
 
+    let%test _ = tree_fits 32 0 cond = Fits 6
+    let%test _ = tree_fits 32 0 expr1 = Fits 6
+    let%test _ = tree_fits 32 0 expr2 = Fits 5
+    let%test _ = tree_fits 32 0 doc = Fits 32
+
     let run width =
-      let _, pre_formatted = tree_format width 0 Flat doc in
+      let _, pre_formatted = tree_format width 0 0 Flat doc in
       match pre_formatted with
         | Nonterminal pre_formatted_nonterminal
         -> print_string (to_string (normalize_nonterminal pre_formatted_nonterminal))
@@ -464,11 +468,51 @@ let%test_module "tree_format" =
 
     let%expect_test "width 15" =
       run 15;
-      [%expect]
+      [%expect{|
+        if a == b
+        then a << 2
+        else a + b |}]
 
     let%expect_test "width 10" =
       run 10;
-      [%expect]
+      [%expect{|
+        if a == b
+        then
+          a << 2
+        else a + b |}]
 
-    (* TODO: 8, 7, 6 *)
+    let%expect_test "width 8" =
+      run 8;
+      [%expect{|
+        if
+          a == b
+        then
+          a << 2
+        else
+          a + b |}]
+
+    let%expect_test "width 7" =
+      run 7;
+      [%expect{|
+        if
+          a ==
+            b
+        then
+          a <<
+            2
+        else
+          a + b |}]
+
+    let%expect_test "width 6" =
+      run 6;
+      [%expect{|
+        if
+          a ==
+            b
+        then
+          a <<
+            2
+        else
+          a +
+            b |}]
   end)
