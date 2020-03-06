@@ -162,12 +162,15 @@ and equivalent' child1 child2 =
 
 let rec to_string : formatted_tree -> string
   = fun { children; _ } -> children
-  |> Array.map ~f:(function
-    | TerminalCapture { leading_trivia; content; trailing_trivia } ->
-      leading_trivia ^ content ^ trailing_trivia
-    | NonterminalCapture nonterminal_capture -> to_string nonterminal_capture)
+  |> Array.map ~f:formatted_capture_to_string
   |> Array.to_list
   |> String.concat
+
+and formatted_capture_to_string : formatted_capture -> string
+  = function
+    | TerminalCapture { leading_trivia; content; trailing_trivia } ->
+      leading_trivia ^ content ^ trailing_trivia
+    | NonterminalCapture nonterminal_capture -> to_string nonterminal_capture
 ;;
 
 let string_of_tree_info : tree_info -> string

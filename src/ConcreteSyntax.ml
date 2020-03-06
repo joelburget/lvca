@@ -273,7 +273,6 @@ and go_op_match_term
  fun rules children op_match_pat ->
   match op_match_pat with
   | OperatorPattern ("var", [ NumberedScopePattern ([], SingleCapturePattern n) ]) ->
-    (* Printf.printf "go_op_match_term var(%n)\n" n; *)
     (match array_get "go_op_match_term 1" children (n - 1) with
     | NonterminalCapture _ -> failwith "TODO: error"
     | TerminalCapture { content; _ } -> Var content)
@@ -288,11 +287,6 @@ and go_op_match_term
     (match array_get "go_op_match_term 3" children (n - 1) with
     | NonterminalCapture tree -> tree_to_ast rules tree
     | TerminalCapture { content; _ } ->
-      Printf.printf
-        "children: [%s]\n"
-        (children
-        |> Array.map ~f:string_of_formatted_capture
-        |> String.concat_array ~sep:"; ");
       failwith
         (Printf.sprintf (* TODO: error *)
            "go_op_match_term: Single capture pattern unexpectedly received a terminal \
@@ -480,7 +474,6 @@ let rewrite_tokens : string -> int -> operator_match -> operator_match =
  fun nt_name level (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
   let raised_nt_name = Printf.sprintf "%s_%n" nt_name (level + 1) in
   let this_level_nt_name = Printf.sprintf "%s_%n" nt_name level in
-  (* Printf.printf "raised_nt_name: %s\n" raised_nt_name; *)
   let tokens' = List.filter tokens ~f:(fun tok -> not (is_formatting_token tok)) in
   let tokens'' =
     match tokens' with
@@ -533,21 +526,19 @@ let operator_match_nt_precedence : string -> int -> operator_match =
 type nonterminal_operators = (int option * operator_match) list String.Map.t
 
 let string_of_nonterminal_operators : nonterminal_operators -> string =
- fun nonterminal_operators ->
-  nonterminal_operators
+ fun nonterminal_operators -> nonterminal_operators
   |> String.Map.to_alist
   |> List.map ~f:(fun (name, matches) ->
-         let rhs =
-           matches
-           |> Array.of_list
-           |> Array.map ~f:(fun (ix_opt, op_match) ->
-                  let ix_str =
-                    match ix_opt with None -> "_" | Some ix -> string_of_int ix
-                  in
-                  Printf.sprintf "  %s -> %s" ix_str (string_of_operator_match op_match))
-           |> String.concat_array ~sep:"\n"
-         in
-         Printf.sprintf "%s:\n%s" name rhs)
+     let rhs = matches
+       |> Array.of_list
+       |> Array.map ~f:(fun (ix_opt, op_match) ->
+          let ix_str =
+            match ix_opt with None -> "_" | Some ix -> string_of_int ix
+          in
+          Printf.sprintf "  %s -> %s" ix_str (string_of_operator_match op_match))
+       |> String.concat_array ~sep:"\n"
+     in
+     Printf.sprintf "%s:\n%s" name rhs)
   |> String.concat ~sep:"\n"
 ;;
 
@@ -707,7 +698,9 @@ let string_of_derived_rules : nonterminal_operators list -> string =
   |> String.concat ~sep:"\n\n"
 ;;
 
-(** Produce an augmented grammar *)
+(** Produce an augmented grammar
+ @raise UserError
+ *)
 let to_grammar
     :  ConcreteSyntaxDescription.t -> string
     -> LrParsing.augmented_grammar
@@ -737,8 +730,6 @@ let to_grammar
   let nonterminal_renamings : string option String.Map.t =
     Util.string_map_unions nonterminal_renamings |> Map.set ~key:root_name ~data:None
   in
-  (* Printf.printf "desugared:\n\n%s\n" (string_of_derived_rules
-     nonterminal_rules_desugared); *)
   let nonterminal_num = ref 0 in
   (* Number every desugared nonterminal *)
   let nonterminal_num_map : int String.Map.t =
@@ -754,7 +745,7 @@ let to_grammar
   let nt_num = ref 1 in
   (* [start_nonterminal_num] will be set to the number of the start nonterminal
    * when we find it. *)
-  let start_nonterminal_num = ref 0 in
+  let start_nonterminal_num = ref (-1) in
   let production_rule_map = Int.Table.create () in
   (* Translate a nonterminal into n -- one for each of its precedence levels *)
   let nonterminals =
@@ -792,15 +783,26 @@ let to_grammar
          , { LrParsing.productions = [ [ Nonterminal !start_nonterminal_num ] ] } )
     |> Array.of_list
   in
+
+  if !start_nonterminal_num = -1
+  then raise (UserError
+    (Printf.sprintf "Couldn't find starting nonterminal %s" start_nonterminal));
+
   ( AugmentedGrammar { nonterminals; terminal_nums = Array.of_list terminal_nums }
   , production_rule_map
   , nonterminal_renamings )
 ;;
 
-(* assumption: the language we're operating on is the derived language:
- * 1. It's augmented with a root nonterminal, 0
- * 2. Precedence / associativity has been desugared
- * 3. All formatting tokens have been removed
+(* Convert an LR parse result to a [formatted_tree].
+
+ assumption: the language we're operating on is the derived language:
+ 1. It's augmented with a root nonterminal, 0
+ 2. Precedence / associativity has been desugared
+ 3. All formatting tokens have been removed
+
+ @param nonterminal_renamings: A map pointing from every generated name to the
+ original nonterminal name (or [None] to mark it as an indirection to be
+ removed).
  *)
 let tree_of_parse_result (module Lr0 : LrParsing.LR0)
     :  (tree_info * nonterminal_token list * operator_match_pattern option) Int.Table.t
@@ -834,6 +836,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
     let trailing_trivia = String.slice str end_pos !str_pos in
     leading_trivia, trailing_trivia
   in
+
   let rec go_nt : string -> LrParsing.parse_result -> formatted_tree =
    fun nt_name { production; children; _ } ->
     let prod_num =
@@ -868,36 +871,33 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
     let renaming =
       String.Map.find nonterminal_renamings nt_name
       |> get_option' (fun () ->
-             Printf.sprintf "tree_of_parse_result: unable to find renaming for %s" nt_name)
+        Printf.sprintf "tree_of_parse_result: unable to find renaming for %s" nt_name)
     in
     match renaming with
     | None ->
       (match children' with
-      | [| NonterminalCapture child |] ->
-        (* Printf.printf "tree_of_parse_result: unwrapping child %s\n" nt_name;
-           Printf.printf "child tree_info: %s, %n\n" (fst child.tree_info) (snd
-           child.tree_info); *)
-        child
+      | [| NonterminalCapture child |] -> child
       | _ ->
         invariant_violation
-          (Printf.sprintf
-             "When translating a synthetic nonterminal (%s) parse result to a tree, \
-              expected one nonterminal child, but encountered %n children"
-             nt_name
-             (Array.length children')))
+        (Printf.sprintf
+           "When translating a synthetic nonterminal (%s) parse result to a \
+            tree, expected one nonterminal child, but encountered %n children"
+           nt_name
+           (Array.length children')))
     | Some nt_name' ->
       let _old_name, op_no = tree_info in
-      (* Printf.printf "renaming %s -> %s (%n)\n" old_name nt_name' op_no; *)
       (match op_no, children' with
       | -1, [| NonterminalCapture child |] -> child
       | -1, _ -> failwith "TODO: error"
       | _, _ -> { tree_info = nt_name', op_no; children = children' })
+
   and go_t : LrParsing.parse_result -> formatted_terminal_capture =
    fun { start_pos; end_pos; _ } ->
     let leading_trivia, trailing_trivia = get_trivia start_pos end_pos in
     let content = String.slice str start_pos end_pos in
     { leading_trivia; content; trailing_trivia }
   in
+
   go_nt root_name root
 ;;
 

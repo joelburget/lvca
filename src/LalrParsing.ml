@@ -102,7 +102,6 @@ module Lalr1 (G : GRAMMAR) = struct
 
   let ( augmented_grammar
       , string_of_item
-      , string_of_nonterminal
       , string_of_production
       , string_of_terminal
       , production_map
@@ -132,7 +131,6 @@ module Lalr1 (G : GRAMMAR) = struct
     Lr0'.(
       ( augmented_grammar
       , string_of_item
-      , string_of_nonterminal
       , string_of_production
       , string_of_terminal
       , production_map

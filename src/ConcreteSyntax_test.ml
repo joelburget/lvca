@@ -56,6 +56,28 @@ arith_2 := NAME { var($1) }
 |}
 ;;
 
+let boxes_description =
+  {|
+HBOX := "hbox"
+VBOX := "vbox"
+HOVBOX := "hovbox"
+HVBOX := "hvbox"
+LPAREN := "("
+RPAREN := ")"
+NUMBER := /[0-9]+/
+
+numbers :=
+  | NUMBER { cons(integer($1); nil()) }
+  | NUMBER numbers { cons($1; $2) }
+
+tm :=
+  | HBOX   LPAREN [<h>   numbers] RPAREN { hbox($3) }
+  | VBOX   LPAREN [<v>   numbers] RPAREN { vbox($3) }
+  | HOVBOX LPAREN [<hov> numbers] RPAREN { hovbox($3) }
+  | HVBOX  LPAREN [<hv>  numbers] RPAREN { hvbox($3) }
+  |}
+;;
+
 let arith = Types.SortAp ("arith", [||])
 let arith' = Types.FixedValence ([], arith)
 
@@ -95,13 +117,25 @@ let simplified_concrete =
   ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
 ;;
 
+let boxes_concrete =
+  let pre_terminal_rules, sort_rules =
+    match Parse_concrete.parse boxes_description with
+    | Error msg -> failwith msg
+    | Ok desc -> desc
+  in
+  ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
+;;
+
 let%test_module "derived nonterminals" =
   (module struct
-    let%expect_test _ =
+    let print (concrete : ConcreteSyntaxDescription.t) =
       Array.iter
         (derived_nonterminal_rules concrete.nonterminal_rules)
         ~f:(fun nt_operators ->
-          print_string (string_of_nonterminal_operators nt_operators));
+          Printf.printf "%s\n" (string_of_nonterminal_operators nt_operators))
+    ;;
+
+    let%expect_test _ = print concrete;
       [%expect
         {|
       arith:
@@ -122,6 +156,17 @@ let%test_module "derived nonterminals" =
         1 -> NAME { var($1) } |}]
     ;;
 
+    let%expect_test _ = print boxes_concrete;
+      [%expect{|
+        numbers:
+          0 -> NUMBER { cons(integer($1); nil()) }
+          1 -> NUMBER numbers { cons($1; $2) }
+        tm:
+          0 -> HBOX LPAREN [<h> numbers ] RPAREN { hbox($3) }
+          1 -> VBOX LPAREN [<v> numbers ] RPAREN { vbox($3) }
+          2 -> HOVBOX LPAREN [<hov> numbers ] RPAREN { hovbox($3) }
+          3 -> HVBOX LPAREN [<hv> numbers ] RPAREN { hvbox($3) } |}]
+
     let (LrParsing.AugmentedGrammar grammar as ag), _, _ = to_grammar concrete "arith"
 
     module Lr0 = LrParsing.Lr0 (struct
@@ -137,23 +182,23 @@ let%test_module "derived nonterminals" =
       [%expect
         {|
       _root (0):
-      arith
+        0: arith
       arith (1):
-      arith_1
+        1: arith_1
       arith_1 (2):
-      FUN NAME ARR arith
-      arith_2
+        2: FUN NAME ARR arith
+        3: arith_2
       arith_2 (3):
-      arith_2 ADD arith_3
-      arith_2 SUB arith_3
-      arith_3
+        4: arith_2 ADD arith_3
+        5: arith_2 SUB arith_3
+        6: arith_3
       arith_3 (4):
-      arith_3 MUL arith_4
-      arith_3 DIV arith_4
-      arith_4
+        7: arith_3 MUL arith_4
+        8: arith_3 DIV arith_4
+        9: arith_4
       arith_4 (5):
-      LPAREN arith RPAREN
-      NAME
+        10: LPAREN arith RPAREN
+        11: NAME
 
       $ <-> 0
       SPACE <-> 1
@@ -166,6 +211,37 @@ let%test_module "derived nonterminals" =
       RPAREN <-> 8
       FUN <-> 9
       NAME <-> 10 |}]
+    ;;
+
+    let (LrParsing.AugmentedGrammar boxes_grammar as ag), _, _ = to_grammar boxes_concrete "tm"
+
+    module BoxesLr0 = LrParsing.Lr0 (struct
+      let grammar = ag
+    end)
+
+    let%expect_test _ =
+      print_string (BoxesLr0.string_of_grammar boxes_grammar);
+      [%expect{|
+        _root (0):
+          0: tm
+        numbers (1):
+          1: NUMBER
+          2: NUMBER numbers
+        tm (2):
+          3: HBOX LPAREN numbers RPAREN
+          4: VBOX LPAREN numbers RPAREN
+          5: HOVBOX LPAREN numbers RPAREN
+          6: HVBOX LPAREN numbers RPAREN
+
+        $ <-> 0
+        SPACE <-> 1
+        HBOX <-> 2
+        VBOX <-> 3
+        HOVBOX <-> 4
+        HVBOX <-> 5
+        LPAREN <-> 6
+        RPAREN <-> 7
+        NUMBER <-> 8 |}]
     ;;
 
     let%expect_test _ =
@@ -190,9 +266,9 @@ let%test_module "derived nonterminals" =
             ]
       in
       (match Lalr.parse tokens with
-      | Ok _ -> print_string "ok"
+      | Ok result -> print_string (LrParsing.parse_result_to_string result) (* print_string "ok" *)
       | Error (_, msg) -> print_string msg);
-      [%expect {| ok |}]
+      [%expect {| n1[n3[n4[n6[n9[n11[t10[]]]], t3[], n9[n11[t10[]]]]]] |}]
     ;;
   end)
 ;;
@@ -216,15 +292,15 @@ let%test_module "simplified_concrete" =
       [%expect
         {|
       _root (0):
-      arith
+        0: arith
       arith (1):
-      arith_1
+        1: arith_1
       arith_1 (2):
-      arith_2 ADD arith_1
-      arith_2 SUB arith_1
-      arith_2
+        2: arith_2 ADD arith_1
+        3: arith_2 SUB arith_1
+        4: arith_2
       arith_2 (3):
-      NAME
+        5: NAME
 
       $ <-> 0
       SPACE <-> 1
@@ -512,3 +588,17 @@ let%test_module "pretty-printing" =
       [%expect{| x + y * z |}]
   end)
 ;;
+
+let%test_module "box test" =
+  (module struct
+    let parse_print str =
+      match parse boxes_concrete "tm" str with
+      | Ok tree -> print_string (to_string tree)
+      | Error msg -> print_string msg
+    ;;
+
+    let%expect_test "hbox(1 2 3 4 5)" =
+      parse_print "hbox(1 2 3 4 5)";
+      [%expect]
+
+  end)

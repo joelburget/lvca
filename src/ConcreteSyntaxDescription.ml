@@ -88,13 +88,21 @@ let string_of_token : nonterminal_token -> string = function
       | HovBox -> "hov"
       | HvBox -> "hv"
     in
-    let params_str = Util.stringify_list string_of_int "," params in
-    Printf.sprintf "[<%s %s>" box_type_str params_str
+    (match params with
+      | [] -> Printf.sprintf "[<%s>" box_type_str
+      | _ ->
+        let params_str = params
+          |> List.map ~f:string_of_int
+          |> String.concat ~sep:","
+        in
+        Printf.sprintf "[<%s %s>" box_type_str params_str)
   | CloseBox -> "]"
 ;;
 
 let string_of_tokens : nonterminal_token list -> string =
-  Util.stringify_list string_of_token " "
+  fun tokens -> tokens
+    |> List.map ~f:string_of_token
+    |> String.concat ~sep:" "
 ;;
 
 type variable_rule =

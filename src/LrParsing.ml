@@ -175,7 +175,6 @@ module type LR0 = sig
   val string_of_terminal : terminal_num -> string
   val string_of_production_num : production_num -> string
   val string_of_production : production -> string
-  val string_of_nonterminal : nonterminal -> string
   val states : state array
 end
 
@@ -422,16 +421,22 @@ module Lr0 (G : GRAMMAR) = struct
     Printf.sprintf "%s -> %s" nt_name (string_of_production production)
  ;;
 
-  let string_of_nonterminal : nonterminal -> string =
-   fun { productions } -> Util.stringify_list string_of_production "\n" productions
+  let string_of_nonterminal : int ref -> nonterminal -> string =
+   fun prod_num_counter { productions } -> productions
+     |> List.map ~f:(fun prod ->
+       let n = !prod_num_counter in
+       incr prod_num_counter;
+       Printf.sprintf "  %n: %s" n (string_of_production prod))
+     |> String.concat ~sep:"\n"
  ;;
 
   let string_of_grammar : grammar -> string =
    fun { nonterminals; terminal_nums } ->
+    let prod_num_counter = ref 0 in
     let nt_str =
       nonterminals
-      |> Array.map ~f:(fun (name, num, nt) ->
-             Printf.sprintf "%s (%n):\n%s" name num (string_of_nonterminal nt))
+      |> Array.map ~f:(fun (name, num, nt) -> Printf.sprintf "%s (%n):\n%s"
+        name num (string_of_nonterminal prod_num_counter nt))
       |> String.concat_array ~sep:"\n"
     in
     let t_str =
