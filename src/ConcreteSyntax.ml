@@ -232,8 +232,7 @@ let get_operator_match
  fun rules tree ->
   let nt_name, nt_prod_no = tree.tree_info in
   let (OperatorMatch { operator_match_pattern; _ }) =
-    rules.nonterminal_rules
-    |> Fn.flip String.Map.find nt_name
+    String.Map.find rules.nonterminal_rules nt_name
     |> get_option (ToAstError "TODO: message")
     |> fun (NonterminalRule { operator_rules; _ }) ->
     operator_rules
