@@ -95,10 +95,6 @@ let check_operator_match_validity
  *    box is opened before it's closed.
  * 6. Only binary operators (`tm OP tm`) can have a left or right
  *    associativity.
- * 7. All operators of the same priority must have the same fixity.
- * 8. TODO: There can be no fixity at the highest precedence. It's impossible
- *    to raise the precedence of one side, we need some allowance for
- *    parentheses.
  *
  * Examples:
  * * FOO bar BAZ { op($1; $2; $3) } valid
@@ -118,25 +114,8 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
     nonterminal_rules
     |> String.Map.iter ~f:(fun (NonterminalRule { operator_rules; _ }) ->
            operator_rules
-           |> List.iter ~f:(fun level ->
-                  let (OperatorMatch { fixity; _ }) =
-                    level
-                    |> List.hd
-                    |> get_option' (fun () ->
-                           "each level is guaranteed to have at least one rule")
-                  in
-                  let okay =
-                    List.for_all level ~f:(fun (OperatorMatch op_match) ->
-                        Caml.(op_match.fixity = fixity))
-                  in
-                  if not okay
-                  then
-                    raise_invalid
-                      "Every operator in a precedence level must have the same fixity");
-           operator_rules
-           |> List.join
            |> List.iter
-                ~f:(fun (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
+                ~f:(fun (OperatorMatch { tokens; operator_match_pattern }) ->
                   let non_existent_tokens, duplicate_captures, uncaptured_tokens =
                     check_operator_match_validity tokens operator_match_pattern
                   in
@@ -148,17 +127,6 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
                   then (
                     let tok_names = non_existent_tokens |> MSI.to_array |> show_toks in
                     raise_invalid ("non-existent tokens mentioned: " ^ tok_names));
-                  let tokens' =
-                    tokens |> List.filter ~f:(fun tok -> not (is_formatting_token tok))
-                  in
-                  (match tokens' with
-                  | [ NonterminalName _; TerminalName _; NonterminalName _ ] -> ()
-                  | _ ->
-                    if Caml.(fixity <> Infixl || fixity <> Infixr)
-                    then
-                      raise_invalid
-                        "left or right fixity can only be applied to a binary operator \
-                         (eg `tm OP tm`)");
                   List.iter uncaptured_tokens ~f:(fun (_i, tok) ->
                       match tok with
                       | NonterminalName name ->
@@ -235,10 +203,14 @@ let get_operator_match
     String.Map.find rules.nonterminal_rules nt_name
     |> get_option (ToAstError "TODO: message")
     |> fun (NonterminalRule { operator_rules; _ }) ->
-    operator_rules
-    |> List.join (* TODO: should we use 2d indexing? *)
-    |> Fn.flip List.nth nt_prod_no
-    |> get_option' (fun () -> "TODO: message")
+    List.nth operator_rules nt_prod_no
+    |> get_option' (fun () -> Printf.sprintf
+      "Couldn't find nonterminal production %n in operator rules:\n%s\n"
+      nt_prod_no
+      (operator_rules
+        |> List.map ~f:string_of_operator_match
+        |> String.concat ~sep:"\n")
+    )
   in
   operator_match_pattern
 ;;
@@ -371,6 +343,7 @@ let to_ast
  fun rules tree -> try Ok (tree_to_ast rules tree) with ToAstError msg -> Error msg
 ;;
 
+(*
 module TestOperators = struct
   let mul =
     OperatorMatch
@@ -381,7 +354,6 @@ module TestOperators = struct
             , [ NumberedScopePattern ([], SingleCapturePattern 1)
               ; NumberedScopePattern ([], SingleCapturePattern 3)
               ] )
-      ; fixity = Infixl
       }
   ;;
 
@@ -394,7 +366,6 @@ module TestOperators = struct
             , [ NumberedScopePattern ([], SingleCapturePattern 1)
               ; NumberedScopePattern ([], SingleCapturePattern 3)
               ] )
-      ; fixity = Infixl
       }
   ;;
 
@@ -407,7 +378,6 @@ module TestOperators = struct
             , [ NumberedScopePattern ([], SingleCapturePattern 1)
               ; NumberedScopePattern ([], SingleCapturePattern 3)
               ] )
-      ; fixity = Infixl
       }
   ;;
 
@@ -420,7 +390,6 @@ module TestOperators = struct
             , [ NumberedScopePattern ([], SingleCapturePattern 1)
               ; NumberedScopePattern ([], SingleCapturePattern 3)
               ] )
-      ; fixity = Infixl
       }
   ;;
 
@@ -428,7 +397,6 @@ module TestOperators = struct
     OperatorMatch
       { tokens = [ TerminalName "ID" ]
       ; operator_match_pattern = SingleCapturePattern 1
-      ; fixity = Nofix
       }
   ;;
 
@@ -436,10 +404,10 @@ module TestOperators = struct
     OperatorMatch
       { tokens = [ TerminalName "LPAREN"; NonterminalName "expr"; TerminalName "RPAREN" ]
       ; operator_match_pattern = SingleCapturePattern 2
-      ; fixity = Nofix
       }
   ;;
 end
+*)
 
 (** raises: [InvariantViolation] *)
 let convert_token
@@ -453,8 +421,7 @@ let convert_token
       |> get_option' (fun () -> "to_grammar: failed to get terminal " ^ tn))
   | NonterminalName nt_name ->
     Nonterminal
-      (nonterminal_entry
-      |> Fn.flip String.Map.find nt_name
+      (String.Map.find nonterminal_entry nt_name
       |> get_option' (fun () ->
              Printf.sprintf
                "convert_token: couldn't find nonterminal %s in names: %s"
@@ -463,59 +430,6 @@ let convert_token
   | OpenBox _ | CloseBox | Underscore _ ->
     invariant_violation
       "all formatting tokens should be filtered (see is_formatting_token)"
-;;
-
-(** Rewrite the tokens in an operator match to refer to lower precedence levels * if
-    there's a fixity / associativity attached. * * Invariants assumed: * %left, %right
-    can't occur at lowest precedence level * Anywhere %left, %right occur has same
-    nonterminal on both sides, parent *)
-let rewrite_tokens : string -> int -> operator_match -> operator_match =
- fun nt_name level (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
-  let raised_nt_name = Printf.sprintf "%s_%n" nt_name (level + 1) in
-  let this_level_nt_name = Printf.sprintf "%s_%n" nt_name level in
-  let tokens' = List.filter tokens ~f:(fun tok -> not (is_formatting_token tok)) in
-  let tokens'' =
-    match tokens' with
-    | [ NonterminalName name1; (TerminalName _ as t); NonterminalName name2 ]
-      when String.(name1 = nt_name && name2 = nt_name) ->
-      (match fixity with
-      | Infixl ->
-        (* Require a higher precedence right child (operations at this level should appear
-           to the left) *)
-        [ NonterminalName this_level_nt_name; t; NonterminalName raised_nt_name ]
-      | Infixr ->
-        [ NonterminalName raised_nt_name; t; NonterminalName this_level_nt_name ]
-      (* Don't adjust nofix *)
-      | Nofix -> tokens')
-    (* juxtaposition *)
-    | [ NonterminalName name1; NonterminalName name2 ]
-      when String.(name1 = nt_name && name2 = nt_name) (* TODO: adjust! *) ->
-      tokens'
-    | _ -> tokens'
-  in
-  OperatorMatch { tokens = tokens''; operator_match_pattern; fixity = Nofix }
-;;
-
-let%test_module "rewrite_tokens" =
-  (module struct
-    open TestOperators
-
-    let%expect_test "rewrite 1" =
-      let op_match = rewrite_tokens "expr" 1 add in
-      print_string (string_of_operator_match op_match);
-      [%expect {| expr_1 ADD expr_2 { add($1; $3) } |}]
-    ;;
-  end)
-;;
-
-(** An operator match that just defers to a nonterminal / precedence *)
-let operator_match_nt_precedence : string -> int -> operator_match =
- fun nonterminal_name precedence ->
-  OperatorMatch
-    { tokens = [ NonterminalName (Printf.sprintf "%s_%n" nonterminal_name precedence) ]
-    ; operator_match_pattern = SingleCapturePattern 1
-    ; fixity = Nofix
-    }
 ;;
 
 (** Slimmed-down version of [nonterminal_rules], without the name and type * information
@@ -541,170 +455,16 @@ let string_of_nonterminal_operators : nonterminal_operators -> string =
   |> String.concat ~sep:"\n"
 ;;
 
-(** Desugar a nonterminal into one nonterminal per precedence level. * * raises:
-    [UserError] *)
-let desugar_nonterminal
-    :  String.Set.t -> nonterminal_rule
-    -> nonterminal_operators * string option String.Map.t
-  =
- fun taken_names (NonterminalRule { nonterminal_name; operator_rules; _ }) ->
-  let num_levels = List.length operator_rules in
-  if num_levels = 1
-  then (
-    let operators =
-      operator_rules
-      |> List.hd
-      |> get_option' (fun () -> "desugar_nonterminal: expected at least one operator")
-      |> List.mapi ~f:(fun i op_match -> Some i, op_match)
-    in
-    ( String.Map.of_alist_exn [ nonterminal_name, operators ]
-    , String.Map.of_alist_exn [ nonterminal_name, Some nonterminal_name ] ))
-  else (
-    (* Used to number each operator across all precedence levels *)
-    let operator_index = ref 0 in
-    let level_nts =
-      List.mapi operator_rules ~f:(fun i level ->
-          (* start at precedence [num_levels], down to 1 *)
-          let prec_num = num_levels - i in
-          (* create a new nonterminal from just this precedence level of the
-           * orginal nonterminal *)
-          let generated_name = Printf.sprintf "%s_%n" nonterminal_name prec_num in
-          (* Our renaming is not hygienic, so we need to prevent name collisions.
-           * Also, this would be just confusing to the user. *)
-          if String.Set.mem taken_names generated_name
-          then
-            raise
-              (UserError
-                 (Printf.sprintf
-                    "Desugaring of nonterminal %s generated name %s, which conflicts \
-                     with an existing nonterminal."
-                    nonterminal_name
-                    generated_name));
-          let generated_rules =
-            List.map level ~f:(fun op_match ->
-                let ix = !operator_index in
-                incr operator_index;
-                Some ix, rewrite_tokens nonterminal_name prec_num op_match)
-          in
-          (* If this is not the highest-precedence level, then there is a
-           * higher-precedence level to fall through to. *)
-          let generated_rules' =
-            if prec_num = num_levels
-            then generated_rules
-            else
-              Util.snoc
-                generated_rules
-                (None, operator_match_nt_precedence nonterminal_name (prec_num + 1))
-          in
-          generated_name, generated_rules')
-    in
-    (* A rule pointing from the original name to the rewritten lowest
-     * precedence, so we don't have to redirect all rules already pointing to
-     * this nonterminal *)
-    let indirect_nt = [ None, operator_match_nt_precedence nonterminal_name 1 ] in
-    ( level_nts |> List.cons (nonterminal_name, indirect_nt) |> String.Map.of_alist_exn
-    , (* Point from every generated name to the original nonterminal name,
-       * mark the original name as an indirection to be removed. *)
-      level_nts
-      |> List.map ~f:(fun (name, _rule) -> name, Some nonterminal_name)
-      |> String.Map.of_alist_exn
-      |> String.Map.set ~key:nonterminal_name ~data:None ))
-;;
-
-let%test_module "desugar_nonterminal" =
-  (module struct
-    open TestOperators
-
-    let%expect_test "[parens] [add; sub]" =
-      let taken_names = String.Set.empty in
-      let nonterminal_rule =
-        NonterminalRule
-          { nonterminal_name = "expr"
-          ; nonterminal_type = NonterminalType ([], SortAp ("expr", [||]))
-          ; operator_rules = [ [ parens ]; [ add; sub ] ]
-          }
-      in
-      let nonterminal_operators, _name_map =
-        desugar_nonterminal taken_names nonterminal_rule
-      in
-      print_string (string_of_nonterminal_operators nonterminal_operators);
-      [%expect
-        {|
-      expr:
-        _ -> expr_1 { $1 }
-      expr_1:
-        1 -> expr_1 ADD expr_2 { add($1; $3) }
-        2 -> expr_1 SUB expr_2 { sub($1; $3) }
-        _ -> expr_2 { $1 }
-      expr_2:
-        0 -> LPAREN expr RPAREN { $2 } |}]
-    ;;
-
-    let%expect_test "[parens]; [mul; div]; [add; sub]; [var]" =
-      let taken_names = String.Set.empty in
-      let nonterminal_rule =
-        NonterminalRule
-          { nonterminal_name = "expr"
-          ; nonterminal_type = NonterminalType ([], SortAp ("expr", [||]))
-          ; operator_rules = [ [ parens ]; [ mul; div ]; [ add; sub ]; [ var ] ]
-          }
-      in
-      let nonterminal_operators, _name_map =
-        desugar_nonterminal taken_names nonterminal_rule
-      in
-      print_string (string_of_nonterminal_operators nonterminal_operators);
-      [%expect
-        {|
-      expr:
-        _ -> expr_1 { $1 }
-      expr_1:
-        5 -> ID { $1 }
-        _ -> expr_2 { $1 }
-      expr_2:
-        3 -> expr_2 ADD expr_3 { add($1; $3) }
-        4 -> expr_2 SUB expr_3 { sub($1; $3) }
-        _ -> expr_3 { $1 }
-      expr_3:
-        1 -> expr_3 MUL expr_4 { mul($1; $3) }
-        2 -> expr_3 DIV expr_4 { div($1; $3) }
-        _ -> expr_4 { $1 }
-      expr_4:
-        0 -> LPAREN expr RPAREN { $2 } |}]
-    ;;
-  end)
-;;
-
-(** raises: TODO *)
-let derived_nonterminal_rules : nonterminal_rules -> nonterminal_operators array =
- fun nonterminal_rules ->
-  let taken_names : String.Set.t =
-    nonterminal_rules |> String.Map.keys |> String.Set.of_list
-  in
-  let nonterminal_rules_desugared, _nonterminal_renamings =
-    nonterminal_rules
-    |> String.Map.data
-    |> Array.of_list
-    |> Array.map ~f:(desugar_nonterminal taken_names)
-    |> Array.unzip
-  in
-  nonterminal_rules_desugared
-;;
-
-let string_of_derived_rules : nonterminal_operators list -> string =
- fun nonterminal_operators ->
-  nonterminal_operators
-  |> List.map ~f:string_of_nonterminal_operators
-  |> String.concat ~sep:"\n\n"
-;;
-
 (** Produce an augmented grammar
  @raise UserError
  *)
 let to_grammar
     :  ConcreteSyntaxDescription.t -> string
     -> LrParsing.augmented_grammar
-       * (tree_info * nonterminal_token list * operator_match_pattern option) Int.Table.t
-       * string option String.Map.t
+       * (tree_info
+         * nonterminal_token list
+         * operator_match_pattern option)
+         Int.Table.t
   =
  fun { terminal_rules; nonterminal_rules } start_nonterminal ->
   let terminal_nums =
@@ -715,67 +475,51 @@ let to_grammar
   in
   (* mapping from terminal to its number *)
   let terminal_num_map : int String.Map.t = String.Map.of_alist_exn terminal_nums in
-  let taken_names : String.Set.t = nonterminal_rules |> Map.keys |> String.Set.of_list in
-  (* TODO: remove duplication above *)
-  let nonterminal_rules_desugared, nonterminal_renamings =
-    nonterminal_rules
-    |> Map.data
-    |> List.map ~f:(desugar_nonterminal taken_names)
-    |> List.unzip
-  in
-  let desugared_nts : nonterminal_operators =
-    Util.string_map_unions nonterminal_rules_desugared
-  in
-  let nonterminal_renamings : string option String.Map.t =
-    Util.string_map_unions nonterminal_renamings |> Map.set ~key:root_name ~data:None
-  in
+
   let nonterminal_num = ref 0 in
   (* Number every desugared nonterminal *)
   let nonterminal_num_map : int String.Map.t =
-    String.Map.map desugared_nts ~f:(fun _ ->
+    String.Map.map nonterminal_rules ~f:(fun _ ->
         incr nonterminal_num;
         !nonterminal_num)
   in
+
   (* We're dealing with a non-augmented grammar here. [prod_num] starts
    * counting productions from 1. We'll add the starting production at 0 at the
    * end. *)
   let prod_num = ref 1 in
-  (* [nt_num] tracks the number of the nonterminal we're currently on *)
-  let nt_num = ref 1 in
   (* [start_nonterminal_num] will be set to the number of the start nonterminal
    * when we find it. *)
   let start_nonterminal_num = ref (-1) in
   let production_rule_map = Int.Table.create () in
+
   (* Translate a nonterminal into n -- one for each of its precedence levels *)
   let nonterminals =
-    desugared_nts
-    |> String.Map.to_alist
-    |> List.map ~f:(fun (nonterminal_name, productions) ->
-           if String.(nonterminal_name = start_nonterminal)
-           then start_nonterminal_num := !nt_num;
-           let productions' =
-             List.map productions ~f:(fun (op_index_opt, OperatorMatch rule) ->
-                 let op_index =
-                   match op_index_opt with Some ix -> ix | None -> -1
-                   (* TODO: is this okay? *)
-                 in
-                 Int.Table.set
-                   production_rule_map
-                   ~key:!prod_num
-                   ~data:
-                     ( (nonterminal_name, op_index)
-                     , rule.tokens
-                     , Some rule.operator_match_pattern );
-                 incr prod_num;
-                 rule.tokens
-                 |> List.filter ~f:(fun tok -> not (is_formatting_token tok))
-                 |> List.map ~f:(convert_token terminal_num_map nonterminal_num_map))
-           in
-           let result =
-             nonterminal_name, !nt_num, { LrParsing.productions = productions' }
-           in
-           incr nt_num;
-           result)
+    nonterminal_rules
+    |> String.Map.data
+    |> List.mapi ~f:(fun
+      i (NonterminalRule { nonterminal_name; operator_rules; _ }) ->
+         (* Index starting from 1 *)
+         let nt_num = i + 1 in
+         if String.(nonterminal_name = start_nonterminal)
+         then start_nonterminal_num := nt_num;
+         let productions = List.mapi operator_rules ~f:(fun op_index (OperatorMatch rule) ->
+           Int.Table.set
+             production_rule_map
+             ~key:!prod_num
+             ~data:
+               ( (nonterminal_name, op_index)
+               , rule.tokens
+               , Some rule.operator_match_pattern );
+           incr prod_num;
+           rule.tokens
+           |> List.filter ~f:(fun tok -> not (is_formatting_token tok))
+           |> List.map ~f:(convert_token terminal_num_map nonterminal_num_map))
+         in
+         let result =
+           nonterminal_name, nt_num, { LrParsing.productions }
+         in
+         result)
     |> List.cons
          ( root_name
          , 0
@@ -788,29 +532,22 @@ let to_grammar
     (Printf.sprintf "Couldn't find starting nonterminal %s" start_nonterminal));
 
   ( AugmentedGrammar { nonterminals; terminal_nums = Array.of_list terminal_nums }
-  , production_rule_map
-  , nonterminal_renamings )
+  , production_rule_map )
 ;;
 
 (* Convert an LR parse result to a [formatted_tree].
 
  assumption: the language we're operating on is the derived language:
  1. It's augmented with a root nonterminal, 0
- 2. Precedence / associativity has been desugared
- 3. All formatting tokens have been removed
-
- @param nonterminal_renamings: A map pointing from every generated name to the
- original nonterminal name (or [None] to mark it as an indirection to be
- removed).
+ 2. All formatting tokens have been removed
  *)
 let tree_of_parse_result (module Lr0 : LrParsing.LR0)
     :  (tree_info * nonterminal_token list * operator_match_pattern option) Int.Table.t
-    -> string option String.Map.t -> LrParsing.nonterminal_num String.Map.t
+    -> LrParsing.nonterminal_num String.Map.t
     -> ConcreteSyntaxDescription.nonterminal_rules -> string (* parsed string *)
     -> LrParsing.parse_result -> formatted_tree
   =
  fun production_rule_map
-     nonterminal_renamings
      _nonterminal_nums
      _nonterminal_rules
      str
@@ -836,15 +573,14 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
     leading_trivia, trailing_trivia
   in
 
-  let rec go_nt : string -> LrParsing.parse_result -> formatted_tree =
-   fun nt_name { production; children; _ } ->
+  let rec go_nt : LrParsing.parse_result -> formatted_tree =
+   fun { production; children; _ } ->
     let prod_num =
       match production with
       | First prod ->
         invariant_violation
           (Printf.sprintf
-             "go_nt (nt_name %s) received a terminal production: %s"
-             nt_name
+             "go_nt received a terminal production: %s"
              (Lr0.string_of_terminal prod))
       | Second prod_num -> prod_num
     in
@@ -862,33 +598,13 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
       |> Array.map ~f:(function parse_result, token ->
              (match token with
              | TerminalName _ -> TerminalCapture (go_t parse_result)
-             | NonterminalName ntn -> NonterminalCapture (go_nt ntn parse_result)
+             | NonterminalName _ -> NonterminalCapture (go_nt parse_result)
              (* TODO: trivia *)
              | OpenBox _ | CloseBox | Underscore _ ->
                invariant_violation "formatting tokens must be filtered beforehand"))
     in
-    let renaming =
-      String.Map.find nonterminal_renamings nt_name
-      |> get_option' (fun () ->
-        Printf.sprintf "tree_of_parse_result: unable to find renaming for %s" nt_name)
-    in
-    match renaming with
-    | None ->
-      (match children' with
-      | [| NonterminalCapture child |] -> child
-      | _ ->
-        invariant_violation
-        (Printf.sprintf
-           "When translating a synthetic nonterminal (%s) parse result to a \
-            tree, expected one nonterminal child, but encountered %n children"
-           nt_name
-           (Array.length children')))
-    | Some nt_name' ->
-      let _old_name, op_no = tree_info in
-      (match op_no, children' with
-      | -1, [| NonterminalCapture child |] -> child
-      | -1, _ -> failwith "TODO: error"
-      | _, _ -> { tree_info = nt_name', op_no; children = children' })
+
+    { tree_info; children = children' }
 
   and go_t : LrParsing.parse_result -> formatted_terminal_capture =
    fun { start_pos; end_pos; _ } ->
@@ -897,7 +613,7 @@ let tree_of_parse_result (module Lr0 : LrParsing.LR0)
     { leading_trivia; content; trailing_trivia }
   in
 
-  go_nt root_name root
+  go_nt root
 ;;
 
 let lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer =
@@ -906,7 +622,7 @@ let lexer_of_desc : ConcreteSyntaxDescription.t -> Lex.lexer =
 ;;
 
 let parse desc start_nonterminal str =
-  let (AugmentedGrammar grammar as ag), production_rule_map, nonterminal_renamings =
+  let (AugmentedGrammar grammar as ag), production_rule_map =
     to_grammar desc start_nonterminal
   in
   let module Lalr =
@@ -915,31 +631,18 @@ let parse desc start_nonterminal str =
     end)
   in
   let lexer = lexer_of_desc desc in
-  (* TODO: come up with better idea where to do this augmentation *)
-  (* XXX this is also wrong (but not used) *)
-  let augmented_nonterminal_rules =
-    String.Map.set
-      desc.nonterminal_rules
-      ~key:root_name
-      ~data:
-        (NonterminalRule
-           { nonterminal_name = root_name
-           ; nonterminal_type = NonterminalType ([], SortAp (root_name, [||]))
-           ; operator_rules = [ [] ]
-           })
-  in
+
   match Lalr.lex_and_parse lexer str with
   | Ok tree_root ->
     Ok
       (tree_of_parse_result
          (module Lalr)
          production_rule_map
-         nonterminal_renamings
          (grammar.nonterminals
          |> Array.map ~f:(fun (name, num, _nt) -> name, num)
          |> Array.to_list
          |> String.Map.of_alist_exn)
-         augmented_nonterminal_rules
+         desc.nonterminal_rules
          str
          tree_root)
   | Error (Either.First { start_pos; end_pos; message }) ->

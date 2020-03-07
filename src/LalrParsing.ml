@@ -104,6 +104,7 @@ module Lalr1 (G : GRAMMAR) = struct
       , string_of_item
       , string_of_production
       , string_of_terminal
+      , string_of_grammar
       , production_map
       , first_set
       , nonterminal_production_map
@@ -133,6 +134,7 @@ module Lalr1 (G : GRAMMAR) = struct
       , string_of_item
       , string_of_production
       , string_of_terminal
+      , string_of_grammar
       , production_map
       , first_set
       , nonterminal_production_map
@@ -605,7 +607,7 @@ module Lalr1 (G : GRAMMAR) = struct
 
   let parse : Lex.token Queue.t -> (parse_result, parse_error) Result.t =
    fun toks ->
-    let result, _ = parse_trace DoTrace toks in
+    let result, _ = parse_trace DontTrace toks in
     result
  ;;
 

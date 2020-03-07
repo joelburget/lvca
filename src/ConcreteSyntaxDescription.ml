@@ -1,4 +1,5 @@
 open Core_kernel
+open Types
 
 type capture_number = int
 type terminal_id = string
@@ -60,17 +61,9 @@ and string_of_numbered_scope_pattern : numbered_scope_pattern -> string =
   |> String.concat_array ~sep:". "
 ;;
 
-type fixity =
-  | Infixl
-  | Infixr
-  | Nofix
-
-let fixity_str = function Infixl -> "left" | Infixr -> "right" | Nofix -> "nonassoc"
-
 type operator_match' =
   { tokens : nonterminal_token list
   ; operator_match_pattern : operator_match_pattern
-  ; fixity : fixity
   }
 
 type operator_match = OperatorMatch of operator_match'
@@ -110,13 +103,11 @@ type variable_rule =
   ; var_capture : capture_number
   }
 
-(** A nonterminal has 0 or more input sorts, mapping to a result sort. *)
-type nonterminal_type = NonterminalType of Types.sort list * Types.sort
-
 type nonterminal_rule' =
   { nonterminal_name : string
-  ; nonterminal_type : nonterminal_type
-  ; operator_rules : operator_match list list
+  ; args : (string * sort) list
+  ; result_type : sort option
+  ; operator_rules : operator_match list
   }
 
 (** A nonterminal rule shows how to parse / pretty-print a nonterminal *)
@@ -141,40 +132,38 @@ let string_of_terminal_rules : terminal_rules -> string =
   |> String.concat ~sep:"\n"
 ;;
 
-let string_of_nonterminal_type : nonterminal_type -> string =
- fun (NonterminalType (args, result)) ->
-  args |> Fn.flip Util.snoc result |> Util.stringify_list Types.string_of_sort " -> "
-;;
-
 let string_of_operator_match : operator_match -> string =
- fun (OperatorMatch { tokens; operator_match_pattern; fixity }) ->
+ fun (OperatorMatch { tokens; operator_match_pattern }) ->
   Printf.sprintf
-    "%s { %s }%s"
+    "%s { %s }"
     (string_of_tokens tokens)
     (string_of_operator_match_pattern operator_match_pattern)
-    (match fixity with Nofix -> "" | _ -> " %" ^ fixity_str fixity)
 ;;
 
-let string_of_operator_rules : operator_match list list -> string =
+let string_of_operator_rules : operator_match list -> string =
  fun rules ->
-  let arr = Queue.create () in
-  List.iteri rules ~f:(fun i level ->
-      List.iteri level ~f:(fun j operator_match ->
-          Queue.enqueue
-            arr
-            (Printf.sprintf
-               "  %s %s"
-               (if i > 0 && j = 0 then ">" else "|")
-               (string_of_operator_match operator_match))));
-  arr |> Queue.to_array |> String.concat_array ~sep:"\n"
+  rules
+    |> List.map ~f:(fun operator_match ->
+      Printf.sprintf "  | %s" (string_of_operator_match operator_match))
+    |> String.concat ~sep:"\n"
 ;;
+
+let string_of_arg : string * sort -> string
+  = fun (name, sort) -> Printf.sprintf "(%s : %s)" name (string_of_sort sort)
 
 let string_of_nonterminal_rule : nonterminal_rule -> string =
- fun (NonterminalRule { nonterminal_name; nonterminal_type; operator_rules }) ->
+fun (NonterminalRule { nonterminal_name; args; result_type; operator_rules }) ->
+  let args_str = args |> List.map ~f:string_of_arg |> String.concat ~sep:" " in
+  let args_str' = if String.(args_str = "") then args_str else " " ^ args_str in
+  let sort_str = match result_type with
+    | None -> ""
+    | Some ty -> " " ^ string_of_sort ty
+  in
   Printf.sprintf
-    "%s : %s :=\n%s"
+    "%s%s%s :=\n%s"
     nonterminal_name
-    (string_of_nonterminal_type nonterminal_type)
+    args_str'
+    sort_str
     (string_of_operator_rules operator_rules)
 ;;
 

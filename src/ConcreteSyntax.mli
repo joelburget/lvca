@@ -87,7 +87,6 @@ val to_grammar
        * ConcreteSyntaxDescription.nonterminal_token list
        * ConcreteSyntaxDescription.operator_match_pattern option)
        Core_kernel.Int.Table.t
-     * string option Core_kernel.String.Map.t
 
 type invalid_grammar
 
@@ -110,10 +109,5 @@ val make_concrete_description
 type nonterminal_operators =
   (int option * ConcreteSyntaxDescription.operator_match) list Core_kernel.String.Map.t
 
-val derived_nonterminal_rules
-  :  ConcreteSyntaxDescription.nonterminal_rules
-  -> nonterminal_operators array
-
 val string_of_nonterminal_operators : nonterminal_operators -> string
-val string_of_derived_rules : nonterminal_operators list -> string
 val to_debug_string : formatted_tree -> string

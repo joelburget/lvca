@@ -17,16 +17,13 @@
 %token COLON
 %token DOLLAR
 %token BAR
-%token ARROW
 %token SEMICOLON
-%token LEFT_FIXITY
-%token RIGHT_FIXITY
 %token UNDERSCORE
 %token COMMA
-%token FORALL
 
-%{ open ConcreteSyntaxDescription
+%{open ConcreteSyntaxDescription
 
+  (*
 let concretize_vars : Core_kernel.String.Set.t -> Types.sort -> Types.sort
   = fun var_set ->
     let open Types in
@@ -38,18 +35,16 @@ let concretize_vars : Core_kernel.String.Set.t -> Types.sort -> Types.sort
          then SortVar name
          else SortAp (name, [||])
     in go
+    *)
 %}
 
-%start quantifiers__test
 %start terminal_rule__test
 %start capture_number
 %start nonterminal_token__test
 %start operator_match__test
 %start nonterminal_rule__test
-%start nonterminal_type__test
 %start language
-%type <Core_kernel.String.Set.t> quantifiers
-%type <Core_kernel.String.Set.t> quantifiers__test
+%type <(string * Types.sort) list * Types.sort> args
 %type <ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule
 %type <ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule__test
 %type <ConcreteSyntaxDescription.capture_number> capture_number
@@ -57,11 +52,8 @@ let concretize_vars : Core_kernel.String.Set.t -> Types.sort -> Types.sort
 %type <ConcreteSyntaxDescription.nonterminal_token> nonterminal_token__test
 %type <ConcreteSyntaxDescription.operator_match> operator_match
 %type <ConcreteSyntaxDescription.operator_match> operator_match__test
-%type <ConcreteSyntaxDescription.operator_match list list> operator_match_list
 %type <ConcreteSyntaxDescription.nonterminal_rule> nonterminal_rule
 %type <ConcreteSyntaxDescription.nonterminal_rule> nonterminal_rule__test
-%type <ConcreteSyntaxDescription.nonterminal_type> nonterminal_type
-%type <ConcreteSyntaxDescription.nonterminal_type> nonterminal_type__test
 %type <ConcreteSyntaxDescription.operator_match_pattern> operator_match_pattern
 %type <ConcreteSyntaxDescription.pre_terminal_rule list * ConcreteSyntaxDescription.nonterminal_rule list> language
 %%
@@ -80,12 +72,6 @@ capture_number: DOLLAR NAT { $2 }
 
 nonterminal_rule__test: nonterminal_rule EOF { $1 }
 
-quantifiers:
-  FORALL nonempty_list(NONTERMINAL_ID) DOT
-  { Core_kernel.String.Set.of_list $2 }
-
-quantifiers__test: quantifiers EOF { $1 }
-
 /* TODO: duplicated (sort / atomic_sort) */
 sort:
   /* TODO: this is ugly -- should be called SORT_ID or ID */
@@ -101,63 +87,29 @@ atomic_sort:
   /* TODO: this is ugly -- should be called SORT_ID or ID */
   { Types.SortVar $1 }
 
-nonterminal_type__test: nonterminal_type EOF { $1 }
+arg: LEFT_PAREN NONTERMINAL_ID COLON sort RIGHT_PAREN { $2, $4 }
 
-nonterminal_type:
-  | quantifiers? separated_nonempty_list(ARROW, sort)
-  { let var_set = match $1 with
-      | None -> Core_kernel.String.Set.empty
-      | Some var_set -> var_set
-    in
-    let arg_sorts, result_sort = $2
-      |> Core_kernel.List.map ~f:(concretize_vars var_set)
-      |> Util.unsnoc
-    in
-    NonterminalType (arg_sorts, result_sort)
-  }
+args: list(arg) COLON sort { $1, $3 }
 
 nonterminal_rule:
-  | NONTERMINAL_ID ASSIGN BAR? operator_match_list
-  { NonterminalRule
+  | NONTERMINAL_ID args? ASSIGN BAR? separated_nonempty_list(BAR, operator_match)
+  (* XXX must concretize vars *)
+  { let args, result_type = match $2 with
+      | None -> [], None
+      | Some (args_ty, result_ty) -> args_ty, Some result_ty
+    in
+    NonterminalRule
     { nonterminal_name = $1
-    ; nonterminal_type = NonterminalType ([], SortAp ($1, [||]))
-    ; operator_rules = $4
+    ; args
+    ; result_type
+    ; operator_rules = $5
     }
   }
-  | NONTERMINAL_ID COLON nonterminal_type ASSIGN BAR? operator_match_list
-  { NonterminalRule
-    { nonterminal_name = $1
-    ; nonterminal_type = $3
-    ; operator_rules = $6
-    }
-  }
-
-(* The list of operator matches making up a nonterminal. Each operator match is
- * separated by '|' to indicate the same precedence level, or '>' to indicate
- * different precedence levels.
- *)
-operator_match_list:
-  | operator_match
-    { [[ $1 ]] }
-  | operator_match BAR     operator_match_list
-    { match $3 with
-      | []      -> [[ $1 ]]
-      | x :: xs -> ($1 :: x) :: xs
-    }
-  | operator_match RIGHT_ANGLE operator_match_list
-    { [ $1 ] :: $3 }
-
-fixity:
-  | LEFT_FIXITY  { Infixl }
-  | RIGHT_FIXITY { Infixr }
 
 operator_match:
   | nonempty_list(nonterminal_token)
-    LEFT_BRACE operator_match_pattern RIGHT_BRACE option(fixity)
-  { let fixity = match $5 with
-    | None   -> Nofix
-    | Some f -> f
-    in OperatorMatch { tokens = $1; operator_match_pattern = $3; fixity } }
+    LEFT_BRACE operator_match_pattern RIGHT_BRACE
+  { OperatorMatch { tokens = $1; operator_match_pattern = $3 } }
 
 (* TODO: should this id allow uppercase? *)
 operator_match_pattern:

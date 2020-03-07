@@ -29,16 +29,27 @@ MIN := "min"
 LPAREN := "("
 RPAREN := ")"
 
-tm :=
-  | LPAREN tm RPAREN { $2 }
-  | BAR tm BAR { abs($2) }
+tm := tm_1 { $1 }
+
+tm_1 :=
+  | SUB tm_2 { neg($2) }
+  | tm_1 ADD tm_2 { add($1; $3) }
+  | tm_1 SUB tm_2 { sub($1; $3) }
+  | tm_2 { $1 }
+
+tm_2 :=
+  | tm_2 MUL tm_3 { mul($1; $3) }
+  | tm_3 { $1 }
+
+tm_3 :=
+  | MAX tm_4 tm_4 { max($2; $3) }
+  | MIN tm_4 tm_4 { min($2; $3) }
+  | tm_4 { $1 }
+
+tm_4 :=
+  | LPAREN tm_1 RPAREN { $2 }
+  | BAR tm_1 BAR { abs($2) }
   | INT { lit(integer($1)) }
-  > MAX tm tm { max($2; $3) }
-  | MIN tm tm { min($2; $3) }
-  > tm MUL tm { mul($1; $3) } %left
-  > SUB tm { neg($2) }
-  | tm ADD tm { add($1; $3) } %left
-  | tm SUB tm { sub($1; $3) } %left
 |}
 ;;
 

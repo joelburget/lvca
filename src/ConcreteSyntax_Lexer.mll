@@ -34,12 +34,8 @@ rule read = parse
   | '$'            { DOLLAR }
   | '|'            { BAR }
   | ';'            { SEMICOLON }
-  | "->"           { ARROW }
   | '_'            { UNDERSCORE }
   | ','            { COMMA }
-  | "%left"        { LEFT_FIXITY }
-  | "%right"       { RIGHT_FIXITY }
-  | "forall"       { FORALL }
   | terminal_id    { TERMINAL_ID (L.lexeme lexbuf) }
   | nonterminal_id { NONTERMINAL_ID (L.lexeme lexbuf) }
   | eof            { EOF }

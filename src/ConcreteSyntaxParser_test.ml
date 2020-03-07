@@ -75,88 +75,55 @@ let%test_module "ConcreteSyntax_Parser" =
                  , [ NumberedScopePattern ([], SingleCapturePattern 1)
                    ; NumberedScopePattern ([], SingleCapturePattern 2)
                    ] )
-           ; fixity = Nofix
            })
     ;;
 
-    let%test_unit "" =
+    let%test_unit _ =
       expect_parse
         P.nonterminal_rule__test
         {|
        arith :=
-         | arith ADD arith { add($1; $3) } %left
-         | arith SUB arith { sub($1; $3) } %left
-         > NAME            { $1          }
+         | arith ADD arith { add($1; $3) }
+         | arith SUB arith { sub($1; $3) }
+         | NAME            { $1          }
     |}
         (NonterminalRule
            { nonterminal_name = "arith"
-           ; nonterminal_type = NonterminalType ([], SortAp ("arith", [||]))
+           ; args = []
+           ; result_type = None
            ; operator_rules =
-               [ [ OperatorMatch
-                     { tokens =
-                         [ NonterminalName "arith"
-                         ; TerminalName "ADD"
-                         ; NonterminalName "arith"
-                         ]
-                     ; operator_match_pattern =
-                         OperatorPattern
-                           ( "add"
-                           , [ NumberedScopePattern ([], SingleCapturePattern 1)
-                             ; NumberedScopePattern ([], SingleCapturePattern 3)
-                             ] )
-                     ; fixity = Infixl
-                     }
-                 ; OperatorMatch
-                     { tokens =
-                         [ NonterminalName "arith"
-                         ; TerminalName "SUB"
-                         ; NonterminalName "arith"
-                         ]
-                     ; operator_match_pattern =
-                         OperatorPattern
-                           ( "sub"
-                           , [ NumberedScopePattern ([], SingleCapturePattern 1)
-                             ; NumberedScopePattern ([], SingleCapturePattern 3)
-                             ] )
-                     ; fixity = Infixl
-                     }
-                 ]
-               ; [ OperatorMatch
-                     { tokens = [ TerminalName "NAME" ]
-                     ; operator_match_pattern = SingleCapturePattern 1
-                     ; fixity = Nofix
-                     }
-                 ]
+               [ OperatorMatch
+                   { tokens =
+                       [ NonterminalName "arith"
+                       ; TerminalName "ADD"
+                       ; NonterminalName "arith"
+                       ]
+                   ; operator_match_pattern =
+                       OperatorPattern
+                         ( "add"
+                         , [ NumberedScopePattern ([], SingleCapturePattern 1)
+                           ; NumberedScopePattern ([], SingleCapturePattern 3)
+                           ] )
+                   }
+               ; OperatorMatch
+                   { tokens =
+                       [ NonterminalName "arith"
+                       ; TerminalName "SUB"
+                       ; NonterminalName "arith"
+                       ]
+                   ; operator_match_pattern =
+                       OperatorPattern
+                         ( "sub"
+                         , [ NumberedScopePattern ([], SingleCapturePattern 1)
+                           ; NumberedScopePattern ([], SingleCapturePattern 3)
+                           ] )
+                   }
+               ; OperatorMatch
+                   { tokens = [ TerminalName "NAME" ]
+                   ; operator_match_pattern = SingleCapturePattern 1
+                   }
                ]
            })
-    ;;
-
-    let%test_unit "" =
-      expect_parse
-        P.nonterminal_type__test
-        "list int"
-        (NonterminalType ([], SortAp ("list", [| SortAp ("int", [||]) |])))
-    ;;
-
-    let%test_unit "" =
-      let list_int = Types.SortAp ("list", [| SortAp ("int", [||]) |]) in
-      expect_parse
-        P.nonterminal_type__test
-        "list int -> list int"
-        (NonterminalType ([ list_int ], list_int))
-    ;;
-
-    let%test "" =
-      Core_kernel.Set.equal
-        (P.quantifiers__test ConcreteSyntax_Lexer.read (Lexing.from_string "forall a b."))
-        (Core_kernel.String.Set.of_list [ "a"; "b" ])
-    ;;
-
-    let%test_unit "" =
-      expect_parse
-        P.nonterminal_type__test
-        "forall a. list a"
-        (NonterminalType ([], SortAp ("list", [| SortVar "a" |])))
     ;;
 
     let%test_unit "" =
@@ -164,26 +131,23 @@ let%test_module "ConcreteSyntax_Parser" =
         P.nonterminal_rule__test
         {|
        list
-         : forall a. a -> list a
          := L_BRACKET [ inner_list ] R_BRACKET { $2 }
     |}
         (NonterminalRule
            { nonterminal_name = "list"
-           ; nonterminal_type =
-               NonterminalType ([ SortVar "a" ], SortAp ("list", [| SortVar "a" |]))
+           ; args = []
+           ; result_type = None
            ; operator_rules =
-               [ [ OperatorMatch
-                     { tokens =
-                         [ TerminalName "L_BRACKET"
-                         ; OpenBox None
-                         ; NonterminalName "inner_list"
-                         ; CloseBox
-                         ; TerminalName "R_BRACKET"
-                         ]
-                     ; operator_match_pattern = SingleCapturePattern 2
-                     ; fixity = Nofix
-                     }
-                 ]
+               [ OperatorMatch
+                   { tokens =
+                       [ TerminalName "L_BRACKET"
+                       ; OpenBox None
+                       ; NonterminalName "inner_list"
+                       ; CloseBox
+                       ; TerminalName "R_BRACKET"
+                       ]
+                   ; operator_match_pattern = SingleCapturePattern 2
+                   }
                ]
            })
     ;;

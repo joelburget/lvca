@@ -43,7 +43,7 @@ let rec term_to_tree
   : nonterminal_pointer -> ConcreteSyntaxDescription.t -> Nominal.term -> doc
   = fun nonterminal_pointer rules tm ->
 
-    let NonterminalRule { operator_rules; _ } =
+    let NonterminalRule { (* nonterminal_name; *) operator_rules; _ } =
       current_nonterminal nonterminal_pointer
     in
 
@@ -100,7 +100,13 @@ let rec term_to_tree
 
     | Some (CapturedTerm (_current_sort, nonterminal_pointer', tm')),
       NonterminalName _nt_name
-    -> emit (term_to_tree nonterminal_pointer' rules tm')
+    ->
+      (*
+      Printf.printf "nonterminal_name = %s, tokens = %s, (child) nt_name = %s, tm = %s\n"
+       nonterminal_name (string_of_tokens operator_match_tokens)
+       nt_name (Nominal.pp_term' tm');
+      *)
+      emit (term_to_tree nonterminal_pointer' rules tm')
 
     | _, Underscore n -> emit (TerminalDoc (DocBreak n))
 

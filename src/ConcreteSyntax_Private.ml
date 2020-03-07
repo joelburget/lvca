@@ -206,8 +206,11 @@ let current_sort : nonterminal_pointer -> sort
       current_nonterminal
     )
     | Some (NonterminalRule nonterminal_rule)
-    -> let NonterminalType (_, result) = nonterminal_rule.nonterminal_type in
-       instantiate_sort bound_sorts result
+    ->
+      let ty = match nonterminal_rule.result_type with
+         | Some ty -> ty
+         | None -> SortAp (nonterminal_rule.nonterminal_name, [||])
+      in instantiate_sort bound_sorts ty
 
 let current_nonterminal : nonterminal_pointer -> nonterminal_rule
   = fun { nonterminals; current_nonterminal; _ } ->
@@ -556,16 +559,13 @@ type found_operator_match =
 *)
 let find_operator_match
   :  nonterminal_pointer
-  -> operator_match list list
+  -> operator_match list
   -> Binding.Nominal.term
   -> found_operator_match
   = fun nonterminal_pointer matches tm ->
 
     matches
-      |> List.join
       |> List.mapi ~f:(fun match_ix x -> match_ix, x)
-      (* Reverse because we want to match bottom to top *)
-      |> List.rev (* TODO: O(n^2) reverse *)
       |> List.find_map ~f:(fun (match_ix, OperatorMatch op_match) ->
         let { operator_match_pattern = pattern; tokens; _ } = op_match in
         try
@@ -593,7 +593,6 @@ let%test_module "find_operator_match" = (module struct
   let unit_op_match = OperatorMatch
     { tokens = [ TerminalName "UNIT" ]
     ; operator_match_pattern = OperatorPattern ("unit", [])
-    ; fixity = Nofix
     }
 
   let num_op_match = OperatorMatch
@@ -605,7 +604,6 @@ let%test_module "find_operator_match" = (module struct
           ])
         )
       ])
-    ; fixity = Nofix
     }
 
   let str_op_match = OperatorMatch
@@ -617,7 +615,6 @@ let%test_module "find_operator_match" = (module struct
           ])
         )
       ])
-    ; fixity = Nofix
     }
 
   let add_op_match = OperatorMatch
@@ -630,7 +627,6 @@ let%test_module "find_operator_match" = (module struct
         NumberedScopePattern ([], SingleCapturePattern 1);
         NumberedScopePattern ([], SingleCapturePattern 3);
       ])
-    ; fixity = Infixl
     }
 
   let paren_op_match = OperatorMatch
@@ -640,7 +636,6 @@ let%test_module "find_operator_match" = (module struct
         TerminalName "RPAREN";
       ]
     ; operator_match_pattern = SingleCapturePattern 2
-    ; fixity = Nofix
     }
 
   let lam_op_match = OperatorMatch
@@ -653,7 +648,6 @@ let%test_module "find_operator_match" = (module struct
     ; operator_match_pattern = OperatorPattern ("lam", [
       NumberedScopePattern ([VarCapture 2], SingleCapturePattern 4)
       ])
-    ; fixity = Nofix
     }
 
   let match_line_match = OperatorMatch
@@ -665,21 +659,23 @@ let%test_module "find_operator_match" = (module struct
     ; operator_match_pattern = OperatorPattern ("match_line", [
       NumberedScopePattern ([PatternCapture 1], SingleCapturePattern 3)
       ])
-    ; fixity = Nofix
     }
 
   let operator_rules = [
-    [ paren_op_match ];
-    [ lam_op_match ];
-    [ unit_op_match; num_op_match; str_op_match ];
-    [ add_op_match ];
-    [ match_line_match ];
+    lam_op_match;
+    unit_op_match;
+    num_op_match;
+    str_op_match;
+    add_op_match;
+    match_line_match;
+    paren_op_match;
   ]
 
   let nonterminals = String.Map.of_alist_exn
     [ "expr", NonterminalRule
       { nonterminal_name = "expr"
-      ; nonterminal_type = NonterminalType ([], SortAp ("expr", [||]))
+      ; args = []
+      ; result_type = None
       ; operator_rules
       }
     ]
@@ -710,7 +706,7 @@ let%test_module "find_operator_match" = (module struct
     print_match_result (Operator ("unit", []));
 
     [%expect{|
-      2
+      1
       unit()
       UNIT |}]
 
@@ -721,7 +717,7 @@ let%test_module "find_operator_match" = (module struct
     ]));
 
     [%expect{|
-      5
+      4
       add($1; $3)
       expr ADD expr
       1 -> CapturedTerm (expr, { current_nonterminal = expr; _ }, x)
@@ -733,7 +729,7 @@ let%test_module "find_operator_match" = (module struct
     ]));
 
     [%expect{|
-      1
+      0
       lam(var($2). $4)
       FUN NAME ARROW expr
       2 -> CapturedBinder (expr, { current_nonterminal = expr; _ }, x)
@@ -748,7 +744,7 @@ let%test_module "find_operator_match" = (module struct
     ]));
 
     [%expect{|
-      6
+      5
       match_line($1. $3)
       expr ARROW expr
       1 -> CapturedBinder (expr, { current_nonterminal = expr; _ }, add(x; y))
@@ -760,7 +756,7 @@ let%test_module "find_operator_match" = (module struct
     ]));
 
     [%expect{|
-      3
+      2
       num(integer($1))
       NUM
       1 -> CapturedTerm (expr, { current_nonterminal = expr; _ }, 5) |}]
@@ -771,7 +767,7 @@ let%test_module "find_operator_match" = (module struct
     ]));
 
     [%expect{|
-      4
+      3
       str(string($1))
       STR
       1 -> CapturedTerm (expr, { current_nonterminal = expr; _ }, "foo") |}]
@@ -785,13 +781,12 @@ end)
 *)
 let find_pat_operator_match
   :  nonterminal_pointer
-  -> operator_match list list
+  -> operator_match list
   -> Pattern.t
   -> int
    * operator_match_pattern * nonterminal_token list
    * subpattern_result Int.Map.t
   = fun nonterminal_pointer matches pattern -> matches
-    |> List.join
     |> List.mapi ~f:(fun match_ix x -> match_ix, x)
     |> List.find_map ~f:(fun (match_ix, OperatorMatch op_match) ->
       let { operator_match_pattern = pat; tokens; _ } = op_match in
