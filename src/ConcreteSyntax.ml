@@ -95,6 +95,7 @@ let check_operator_match_validity
  *    box is opened before it's closed.
  * 6. Only binary operators (`tm OP tm`) can have a left or right
  *    associativity.
+ * 7. TODO: check only string, integer, var capture bare terminals
  *
  * Examples:
  * * FOO bar BAZ { op($1; $2; $3) } valid
@@ -251,7 +252,8 @@ and go_op_match_term
     (match array_get "go_op_match_term 2" children (n - 1) with
     | NonterminalCapture _ -> failwith "TODO: error"
     | TerminalCapture { content; _ } -> Primitive (PrimInteger (Bigint.of_string content)))
-  | OperatorPattern ("var", _) | OperatorPattern ("integer", _) -> failwith "TODO: error"
+  | OperatorPattern ("var", _)
+  -> failwith "TODO: go_op_match_term var"
   | OperatorPattern (name, scope_pats) ->
     Operator (name, List.map scope_pats ~f:(go_numbered_scope_term rules children))
   | SingleCapturePattern n ->

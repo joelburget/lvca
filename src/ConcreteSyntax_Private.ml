@@ -111,7 +111,7 @@ let mk_box_info : box_type -> int list -> (box_info, string) Result.t
     | [i] -> Ok (VBox (i, 0))
     | [i; v] -> Ok (VBox (i, v))
     | _ -> Error (Printf.sprintf
-      "Unexpected number of args to hbox (expected 0-2): %s"
+      "Unexpected number of args to vbox (expected 0-2): %s"
       args_str))
   | HovBox -> (match args with
     | [] -> Ok (HovBox (1, 2, 0))

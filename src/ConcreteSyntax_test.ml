@@ -82,7 +82,7 @@ NUMBER := /[0-9]+/
 
 numbers :=
   | NUMBER { cons(integer($1); nil()) }
-  | NUMBER numbers { cons($1; $2) }
+  | NUMBER _ numbers { cons(integer($1); $2) }
 
 tm :=
   | HBOX   LPAREN [<h>   numbers] RPAREN { hbox($3) }
@@ -466,14 +466,72 @@ let%test_module "pretty-printing" =
 
 let%test_module "box test" =
   (module struct
+    open Result.Let_syntax
+
+    let parse_print size str =
+      let result =
+        let%bind tree = parse boxes_concrete "tm" str in
+        let%map ast = to_ast boxes_concrete tree in
+        print_string @@ to_string @@ of_ast boxes_concrete "tm" size ast
+      in
+      match result with
+        | Ok () -> ()
+        | Error msg -> print_string msg
+    ;;
+
+    let%expect_test "hbox(1 2 3 4 5)" =
+      parse_print 10 "hbox(1 2 3 4 5)";
+      [%expect]
+
+    let%expect_test "hbox(1 2 3 4 5)" =
+      parse_print 80 "hbox(1 2 3 4 5)";
+      [%expect{| hbox(1 2 3 4 5) |}]
+
+    let%expect_test "vbox(1 2 3 4 5)" =
+      parse_print 10 "vbox(1 2 3 4 5)";
+      [%expect]
+
+    let%expect_test "hovbox(1 2 3 4 5)" =
+      parse_print 10 "hovbox(1 2 3 4 5)";
+      [%expect]
+
+    let%expect_test "hvbox(1 2 3 4 5)" =
+      parse_print 10 "hvbox(1 2 3 4 5)";
+      [%expect]
+
+  end)
+
+  (*
+let%test_module "pattern test" =
+  (module struct
     let parse_print str =
-      match parse boxes_concrete "tm" str with
+      match parse pattern_concrete "tm" str with
       | Ok tree -> print_string (to_string tree)
       | Error msg -> print_string msg
     ;;
 
-    let%expect_test "hbox(1 2 3 4 5)" =
-      parse_print "hbox(1 2 3 4 5)";
-      [%expect{| hbox(1 2 3 4 5) |}]
+    let test_str = {|
+      match tm with
+        | Concat("foo", "bar") -> "foobar"
+        | Concat(a, b) -> "not foobar"
+        | Add(1, 2) -> "3"
+        | Add(a, b) -> "not 3"
+        | Append([1], [2]) -> "1, 2"
+        | Append([x], [y]) -> "not 1, 2"
+        | Append(x, y) -> "really not 1, 2"
+        | _ -> "no clue"
+      |}
 
+    let%expect_test = parse_print test_str; [%expect]
+    let%expect _ =
+
+    let maybe_ast = test_str
+      |> parse pattern_concrete "tm"
+      |> Result.map (to_ast pattern_concrete)
+    in
+
+    let expected_ast = ...
+
+    maybe_ast = Ok expected_ast
   end)
+  *)
