@@ -34,9 +34,9 @@ let accumulate_tokens
     { captured_tokens = seen_toks; repeated_tokens = repeated_toks }
     { captured_tokens = seen_toks'; repeated_tokens = repeated_toks' }
   =
-  let isect = Int.Set.inter seen_toks seen_toks' in
-  { captured_tokens = Int.Set.diff (Int.Set.union seen_toks seen_toks') isect
-  ; repeated_tokens = Int.Set.union isect (Int.Set.union repeated_toks repeated_toks')
+  let isect = Set.inter seen_toks seen_toks' in
+  { captured_tokens = Set.diff (Set.union seen_toks seen_toks') isect
+  ; repeated_tokens = Set.union isect (Set.union repeated_toks repeated_toks')
   }
 ;;
 
@@ -82,27 +82,28 @@ let check_operator_match_validity
   non_existent_tokens, repeated_tokens, Hashtbl.to_alist numbered_toks
 ;;
 
-(* Check invariants of concrete syntax descriptions:
- * 1. For all tokens on the LHS (token list),
- *    if the token is not captured on the RHS (term pattern):
- *   a. If the token refers to a nonterminal, this is an error.
- *   b. If the token refers to a terminal, it must be a string literal.
- * 2. No token is used twice on the RHS.
- * 3. No token is mentioned on the RHS that doesn't exist on the left
- * 4. No regex admits empty strings (these tokens could be arbitrarily inserted
- *    everywhere)
- * 5. Boxes are matching: There are the same number of '[' and ']' tokens, each
- *    box is opened before it's closed.
- * 6. Only binary operators (`tm OP tm`) can have a left or right
- *    associativity.
- * 7. TODO: check only string, integer, var capture bare terminals
- *
- * Examples:
- * * FOO bar BAZ { op($1; $2; $3) } valid
- * * FOO bar BAZ { op($1; $3) } invalid (uncaptured nonterminal)
- * * FOO bar BAZ { op($1; $2) } possibly invalid (if BAZ isn't a string literal)
- * * FOO bar BAZ { op($2; $2) } invalid (repeated token)
- * * FOO bar BAZ { op($2; $4) } invalid (non-existent token)
+(** Check invariants of concrete syntax descriptions:
+ + For all tokens on the LHS (token list),
+    if the token is not captured on the RHS (term pattern):
+   {ol
+     {- If the token refers to a nonterminal, this is an error. }
+     {- If the token refers to a terminal, it must be a string literal. }}
+ + No token is used twice on the RHS.
+ + No token is mentioned on the RHS that doesn't exist on the left
+ + No regex admits empty strings (these tokens could be arbitrarily inserted
+    everywhere)
+ + Boxes are matching: There are the same number of '[' and ']' tokens, each
+    box is opened before it's closed.
+ + Only binary operators ([tm OP tm]) can have a left or right
+    associativity.
+ + TODO: check only string, integer, var capture bare terminals
+
+ Examples:
+ - [FOO bar BAZ { op($1; $2; $3) }] valid
+ - [FOO bar BAZ { op($1; $3) }] invalid (uncaptured nonterminal)
+ - [FOO bar BAZ { op($1; $2) }] possibly invalid (if BAZ isn't a string literal)
+ - [FOO bar BAZ { op($2; $2) }] invalid (repeated token)
+ - [FOO bar BAZ { op($2; $4) }] invalid (non-existent token)
  *)
 let check_description_validity { terminal_rules; nonterminal_rules } =
   let raise_invalid str = raise (CheckValidExn (InvalidGrammar str)) in
