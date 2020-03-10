@@ -28,8 +28,8 @@ type binder_capture =
 
 (** An operator match pattern appears in the right-hand-side of a concrete syntax
     declaration, to show how to parse and pretty-print operators. They either match an
-    operator, eg `{ add($1; $3) }` (for tokens `expr PLUS expr`) or are "single capture",
-    eg `{ $2 }` (for tokens `LPAREN expr RPAREN`). *)
+    operator, eg [ add($1; $3) ] (for tokens [expr PLUS expr]) or are "single capture",
+    eg [{ $2 }] (for tokens [LPAREN expr RPAREN]). *)
 type operator_match_pattern =
   | OperatorPattern of string * numbered_scope_pattern list
   | SingleCapturePattern of capture_number
