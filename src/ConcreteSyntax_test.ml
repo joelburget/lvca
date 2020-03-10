@@ -76,8 +76,7 @@ HBOX := "hbox"
 VBOX := "vbox"
 HOVBOX := "hovbox"
 HVBOX := "hvbox"
-LPAREN := "("
-RPAREN := ")"
+COLON := ":"
 NUMBER := /[0-9]+/
 
 numbers :=
@@ -85,10 +84,10 @@ numbers :=
   | NUMBER _ numbers { cons(integer($1); $2) }
 
 tm :=
-  | HBOX   LPAREN [<h>   numbers] RPAREN { hbox($3) }
-  | VBOX   LPAREN [<v>   numbers] RPAREN { vbox($3) }
-  | HOVBOX LPAREN [<hov> numbers] RPAREN { hovbox($3) }
-  | HVBOX  LPAREN [<hv>  numbers] RPAREN { hvbox($3) }
+  | [<v> HBOX   COLON _ [<h>   numbers] ] { hbox($3) }
+  | [<v> VBOX   COLON _ [<v>   numbers] ] { vbox($3) }
+  | [<v> HOVBOX COLON _ [<hov> numbers] ] { hovbox($3) }
+  | [<v> HVBOX  COLON _ [<hv>  numbers] ] { hvbox($3) }
   |}
 ;;
 
@@ -464,6 +463,7 @@ let%test_module "pretty-printing" =
   end)
 ;;
 
+(* Temporarily disabled until I decide pretty-printing next steps
 let%test_module "box test" =
   (module struct
     open Result.Let_syntax
@@ -479,27 +479,40 @@ let%test_module "box test" =
         | Error msg -> print_string msg
     ;;
 
-    let%expect_test "hbox(1 2 3 4 5)" =
-      parse_print 10 "hbox(1 2 3 4 5)";
-      [%expect]
+    let%expect_test "hbox: 1 2 3 4 5" =
+      parse_print 14 "hbox: 1 2 3 4 5";
+      [%expect{|
+        hbox:
+          1 2 3 4 5 |}]
 
-    let%expect_test "hbox(1 2 3 4 5)" =
-      parse_print 80 "hbox(1 2 3 4 5)";
-      [%expect{| hbox(1 2 3 4 5) |}]
+    let%expect_test "vbox: 1 2 3 4 5" =
+      parse_print 14 "vbox: 1 2 3 4 5";
+      [%expect{|
+        vbox:
+          1
+          2
+          3
+          4
+          5 |}]
 
-    let%expect_test "vbox(1 2 3 4 5)" =
-      parse_print 10 "vbox(1 2 3 4 5)";
-      [%expect]
+    let%expect_test "hovbox: 1 2 3 4 5" =
+      parse_print 16 "hovbox: 1 2 3 4 5";
+      [%expect{|
+        hovbox: 1 2 3 4
+                5 |}]
 
-    let%expect_test "hovbox(1 2 3 4 5)" =
-      parse_print 10 "hovbox(1 2 3 4 5)";
-      [%expect]
-
-    let%expect_test "hvbox(1 2 3 4 5)" =
-      parse_print 10 "hvbox(1 2 3 4 5)";
-      [%expect]
+    let%expect_test "hvbox: 1 2 3 4 5" =
+      parse_print 15 "hvbox: 1 2 3 4 5";
+      [%expect{|
+        hvbox:
+          1
+          2
+          3
+          4
+          5 |}]
 
   end)
+  *)
 
   (*
 let%test_module "pattern test" =
