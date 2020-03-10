@@ -2,7 +2,8 @@
 
 %{
 open Core
-open Core_kernel
+module Array = Core_kernel.Array
+module List = Core_kernel.List
 
 exception InvalidSort
 
