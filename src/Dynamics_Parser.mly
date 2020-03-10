@@ -2,6 +2,7 @@
 
 %{
 open Core
+open Core_kernel
 
 exception InvalidSort
 
@@ -10,8 +11,8 @@ let rec ast_to_sort' : NonBinding.term -> Types.sort
   = function
       | Operator (name, subtms)
       -> SortAp (name, subtms
-        |> Core_kernel.List.map ~f:ast_to_sort'
-        |> Core_kernel.Array.of_list
+        |> List.map ~f:ast_to_sort'
+        |> Array.of_list
       )
       | Sequence _ | Primitive _
       -> raise InvalidSort
@@ -24,8 +25,8 @@ let rec ast_to_core : Binding.Nominal.term -> core
   = function
   | Var v -> Var v
   | Operator (name, subtms)
-  -> Operator (name, Core_kernel.List.map subtms ~f:ast_to_core_scope)
-  | Sequence subtms -> Sequence (Core_kernel.List.map subtms ~f:ast_to_core)
+  -> Operator (name, List.map subtms ~f:ast_to_core_scope)
+  | Sequence subtms -> Sequence (List.map subtms ~f:ast_to_core)
   | Primitive p -> Primitive p
 
 and ast_to_core_scope : Binding.Nominal.scope -> core_scope
@@ -85,7 +86,7 @@ atomic_core:
   ast_like_core { $1 }
   | BACKSLASH nonempty_list(typed_arg) ARROW core
   {
-    let sorts, args = Core_kernel.List.unzip $2 in
+    let sorts, args = List.unzip $2 in
     Lambda (sorts, Scope (args, $4))
   }
   | MATCH core WITH LEFT_BRACE option(BAR) separated_nonempty_list(BAR, case_line) RIGHT_BRACE
