@@ -75,7 +75,7 @@ let check_operator_match_validity
   in
   let { captured_tokens; repeated_tokens } = token_usage term_pat in
   let non_existent_tokens = MSI.create () in
-  Int.Set.iter captured_tokens ~f:(fun tok_num ->
+  Set.iter captured_tokens ~f:(fun tok_num ->
       if Hashtbl.mem numbered_toks tok_num
       then Hashtbl.remove numbered_toks tok_num
       else MSI.add non_existent_tokens tok_num);
@@ -113,16 +113,16 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
   let open_depth = ref 0 in
   try
     nonterminal_rules
-    |> String.Map.iter ~f:(fun (NonterminalRule { operator_rules; _ }) ->
+    |> Map.iter ~f:(fun (NonterminalRule { operator_rules; _ }) ->
            operator_rules
            |> List.iter
                 ~f:(fun (OperatorMatch { tokens; operator_match_pattern }) ->
                   let non_existent_tokens, duplicate_captures, uncaptured_tokens =
                     check_operator_match_validity tokens operator_match_pattern
                   in
-                  if not (Int.Set.is_empty duplicate_captures)
+                  if not (Set.is_empty duplicate_captures)
                   then (
-                    let tok_names = duplicate_captures |> Int.Set.to_array |> show_toks in
+                    let tok_names = duplicate_captures |> Set.to_array |> show_toks in
                     raise_invalid ("tokens captured more than once: " ^ tok_names));
                   if not (MSI.is_empty non_existent_tokens)
                   then (
@@ -133,7 +133,7 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
                       | NonterminalName name ->
                         raise_invalid ("uncaptured nonterminal: " ^ name)
                       | TerminalName nt_name ->
-                        (match String.Map.find terminal_rules' nt_name with
+                        (match Map.find terminal_rules' nt_name with
                         | None ->
                           raise_invalid ("Named terminal " ^ nt_name ^ " does not exist")
                         | Some regex ->
@@ -156,7 +156,7 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
       raise_invalid
         "At least one group is not closed (there are more open box markers ('[') than \
          close box markers (']'))";
-    String.Map.iter terminal_rules' ~f:(fun regex ->
+    Map.iter terminal_rules' ~f:(fun regex ->
         if Regex.accepts_empty regex
         then raise_invalid ("Regex accepts empty strings: " ^ Regex.to_string regex));
     None
