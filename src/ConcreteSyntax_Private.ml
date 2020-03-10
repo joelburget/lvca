@@ -132,15 +132,12 @@ let mk_box_info : box_type -> int list -> (box_info, string) Result.t
 
 type nonterminal_doc = doc list * tree_info
 
-(* and doc_group = (terminal_doc, nonterminal_doc) Either.t list *)
-and doc_group = doc list
-
 (** Pretty-printing declarations with children.
  *)
 and doc =
   | TerminalDoc of terminal_doc
   | NonterminalDoc of nonterminal_doc
-  | DocGroup of doc_group * box_info
+  | DocGroup of doc list * box_info
 
 (** tree equality mod trivia *)
 let rec equivalent : formatted_tree -> formatted_tree -> bool
