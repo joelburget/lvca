@@ -552,14 +552,8 @@ let%test_module "pattern test" =
 let%test_module "validation test" =
   (module struct
     let print_check desc_str =
-      let desc_str' = {|
-          FOO := /foo/
-          BAR := /bar/
-          BAZ := /baz/
-      |} ^ desc_str
-      in
       let pre_terminal_rules, sort_rules =
-        match Parse_concrete.parse desc_str' with
+        match Parse_concrete.parse desc_str with
         | Error msg -> failwith msg
         | Ok desc -> desc
       in
@@ -571,44 +565,80 @@ let%test_module "validation test" =
         | Some (InvalidGrammar msg) -> msg)
       ;;
 
+    let prelude_print_check desc_str =
+      let desc_str' = {|
+          FOO := "foo"
+          BAR := "bar"
+          BAZ := "baz"
+          VAR := /[a-z][a-zA-Z0-9_]*/
+      |} ^ desc_str
+      in print_check desc_str'
+
     let%expect_test _ =
-      print_check "tm := FOO bar BAZ { op() }";
+      print_check {|
+        FOO := ""
+        FOO := ""
+        tm := FOO { op() }
+        |};
+      [%expect{| Duplicate terminal definition: FOO |}]
+
+    let%expect_test _ =
+      print_check {|
+        FOO := ""
+        tm := FOO { op() }
+        |};
+      [%expect{| Regex accepts empty strings: |}]
+
+    let%expect_test _ =
+      print_check {|
+        FOO := /x?/
+        tm := FOO { op() }
+        |};
+      [%expect{| Uncaptured regex which is not a string literal: /x?/ |}]
+
+    let%expect_test _ =
+      prelude_print_check "tm := FOO VAR { op() }";
+      [%expect{| Uncaptured regex which is not a string literal: /[a-z][a-zA-Z0-9_]*/ |}]
+
+    let%expect_test _ =
+      prelude_print_check "tm := FOO bar BAZ { op() }";
       [%expect{| uncaptured nonterminal: bar |}]
 
     let%expect_test _ =
-      print_check "tm := FOO bar BAZ { op($2) }";
+      prelude_print_check "tm := FOO bar BAZ { op($2) }";
       [%expect{| |}]
 
     let%expect_test _ =
-      print_check "tm := [ FOO bar BAZ { op($2) }";
+      prelude_print_check "tm := [ FOO bar BAZ { op($2) }";
       [%expect{| At least one group is not closed (there are more open box markers ('[') than close box markers (']')) |}]
 
     let%expect_test _ =
-      print_check "tm := FOO bar BAZ ] { op($2) }";
+      prelude_print_check "tm := FOO bar BAZ ] { op($2) }";
       [%expect{| Invalid box structure (saw a close box marker (']') before its opening marker ('['))! |}]
 
     let%expect_test _ =
-      print_check "tm := FOO BAZ { op() }";
+      prelude_print_check "tm := FOO BAZ { op() }";
       [%expect{| |}]
 
     let%expect_test _ =
-      print_check "tm := FOO QUUX { op() }";
+      prelude_print_check "tm := FOO QUUX { op() }";
       [%expect{| Named terminal QUUX does not exist |}]
 
     let%expect_test _ =
-      print_check "tm := FOO bar BAZ { op($2; $2) }";
+      prelude_print_check "tm := FOO bar BAZ { op($2; $2) }";
       [%expect{| tokens captured more than once: $2 |}]
 
     let%expect_test _ =
-      print_check "tm := FOO bar BAZ QUUX { op(string($1); $2; var($3). integer($4)) }";
+      prelude_print_check
+        "tm := FOO bar BAZ QUUX { op(string($1); $2; var($3). integer($4)) }";
       [%expect{| |}]
 
     let%expect_test _ =
-      print_check "tm := FOO bar BAZ { op($1; $2) }";
+      prelude_print_check "tm := FOO bar BAZ { op($1; $2) }";
       [%expect{| Terminals can only be captured by `var`, `integer`, and `string`: $1 (FOO) |}]
 
     let%expect_test _ =
-      print_check "tm := FOO bar BAZ { op($2; $4) }";
+      prelude_print_check "tm := FOO bar BAZ { op($2; $4) }";
       [%expect{| Couldn't find captured token $4 |}]
 
   end)

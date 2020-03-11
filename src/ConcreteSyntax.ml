@@ -78,8 +78,8 @@ let get_terminal_name : nonterminal_token Int.Table.t -> int -> int_string_set
     | Some (NonterminalName _)
     -> Set.empty (module IntStringTuple)
     | Some tok
-    -> raise_invalid (Printf.sprintf
-      "Structural token %s captured. This is not allowed."
+    -> invariant_violation (Printf.sprintf
+      "get_terminal_name: structural token %s captured."
       (string_of_token tok))
     | None
     -> raise_invalid
@@ -121,8 +121,8 @@ let rec token_usage
 and scope_token_usage
   : nonterminal_token Int.Table.t -> numbered_scope_pattern -> tokens_info =
  fun numbered_toks (NumberedScopePattern (binder_captures, body_capture)) ->
-  let x = token_usage body_capture numbered_toks in
-  let y =
+  let body_info = token_usage body_capture numbered_toks in
+  let scope_info =
     List.fold_left binder_captures ~init:empty_tokens_info ~f:(fun accum capture ->
         let tok = match capture with VarCapture n -> n | PatternCapture n -> n in
         accumulate_tokens
@@ -131,7 +131,7 @@ and scope_token_usage
             captured_tokens = Int.Set.of_list [ tok ]
           })
   in
-  accumulate_tokens x y
+  accumulate_tokens body_info scope_info
 ;;
 
 let check_operator_match_validity
@@ -149,8 +149,6 @@ let check_operator_match_validity
   in
   let non_existent_tokens = MSI.create () in
 
-  (* term_pat *)
-
   Set.iter captured_tokens ~f:(fun tok_num ->
       if Hashtbl.mem numbered_toks tok_num
       then Hashtbl.remove numbered_toks tok_num
@@ -163,19 +161,19 @@ let check_operator_match_validity
 
 (** Check invariants of concrete syntax descriptions:
  + For all tokens on the LHS (token list),
-    if the token is not captured on the RHS (term pattern): (TODO test)
+    if the token is not captured on the RHS (term pattern):
    {ol
      {- If the token refers to a nonterminal, this is an error. }
      {- If the token refers to a terminal, it must be a string literal. }}
  + No token is used twice on the RHS.
  + No token is mentioned on the RHS that doesn't exist on the left
  + No regex admits empty strings (these tokens could be arbitrarily inserted
-    everywhere) (TODO test)
+    everywhere)
+ + All non-literal terminals (regexes) must be captured
  + Boxes are matching: There are the same number of '[' and ']' tokens, each
     box is opened before it's closed.
  + Only string, integer, var capture bare terminals
- + Only terminals / nonterminals are captured (no structural tokens) (TODO: how
-   would this be possible -- we don't number structural tokens)
+ + There are no duplicate terminal or nonterminal names
 
  Examples:
  - [FOO bar BAZ { op($2) }] valid
@@ -185,12 +183,28 @@ let check_operator_match_validity
  - [FOO bar BAZ { op($2; $4) }] invalid (non-existent token)
  *)
 let check_description_validity { terminal_rules; nonterminal_rules } =
-  let terminal_rules' = String.Map.of_alist_exn terminal_rules in
-  let show_toks toks =
-    toks |> List.map ~f:(Printf.sprintf "$%n") |> String.concat ~sep:", "
+  let terminal_names = terminal_rules
+    |> List.map ~f:(fun (name, _) -> name)
   in
-  let open_depth = ref 0 in
+  let nonterminal_names = nonterminal_rules
+    |> Map.to_alist
+    |> List.map ~f:(fun (name, _) -> name)
+  in
+
   try
+    (match List.find_a_dup ~compare:String.compare terminal_names with
+      | None -> ()
+      | Some dup -> raise_invalid ("Duplicate terminal definition: " ^ dup));
+
+    (match List.find_a_dup ~compare:String.compare nonterminal_names with
+      | None -> ()
+      | Some dup -> raise_invalid ("Duplicate nonterminal definition: " ^ dup));
+
+    let terminal_rules' = String.Map.of_alist_exn terminal_rules in
+    let show_toks toks =
+      toks |> List.map ~f:(Printf.sprintf "$%n") |> String.concat ~sep:", "
+    in
+    let open_depth = ref 0 in
     nonterminal_rules
     |> Map.iter ~f:(fun (NonterminalRule { operator_rules; _ }) ->
            operator_rules
@@ -231,8 +245,9 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
                           if is_none (Regex.is_literal regex)
                           then
                             raise_invalid
-                              ("Uncaptured regex which is not a string literal: "
-                              ^ Regex.to_string regex))
+                              (Printf.sprintf
+                              "Uncaptured regex which is not a string literal: /%s/"
+                              (Regex.to_string regex)))
                       | OpenBox _ -> incr open_depth
                       | CloseBox ->
                         if !open_depth <= 0
