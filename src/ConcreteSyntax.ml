@@ -14,6 +14,7 @@ let of_ast = ConcreteSyntax_OfAst.of_ast
 type invalid_grammar = InvalidGrammar of string
 
 exception CheckValidExn of invalid_grammar
+let raise_invalid str = raise (CheckValidExn (InvalidGrammar str))
 
 let root_name = "_root"
 
@@ -22,64 +23,139 @@ let is_formatting_token : nonterminal_token -> bool =
  fun token -> match token with TerminalName _ | NonterminalName _ -> false | _ -> true
 ;;
 
+module IntStringTuple = struct
+  include Tuple.Make       (Int) (String)
+  include Tuple.Comparable (Int) (String)
+end
+
+type int_string_set = (int * string, IntStringTuple.comparator_witness) Set.t
+
 (* Used to analyze token usage (see `token_usage`). We use this to check if there are any
    tokens not captured (a problem in some circumstances), or if there are tokens captured
    twice (always a problem). *)
 type tokens_info =
   { captured_tokens : Int.Set.t
   ; repeated_tokens : Int.Set.t
+  ; invalid_captured_terminals : int_string_set
   }
 
 let accumulate_tokens
-    { captured_tokens = seen_toks; repeated_tokens = repeated_toks }
-    { captured_tokens = seen_toks'; repeated_tokens = repeated_toks' }
+    { captured_tokens = seen_toks
+    ; repeated_tokens = repeated_toks
+    ; invalid_captured_terminals
+    }
+    { captured_tokens = seen_toks'
+    ; repeated_tokens = repeated_toks'
+    ; invalid_captured_terminals = invalid_captured_terminals'
+    }
   =
   let isect = Set.inter seen_toks seen_toks' in
   { captured_tokens = Set.diff (Set.union seen_toks seen_toks') isect
+
+  (* Tokens that already occurred repeatedly on either side, plus any tokens
+   * they both reported seeing *)
   ; repeated_tokens = Set.union isect (Set.union repeated_toks repeated_toks')
+  ; invalid_captured_terminals = Set.union invalid_captured_terminals invalid_captured_terminals'
   }
 ;;
 
 let empty_tokens_info =
-  { captured_tokens = Int.Set.empty; repeated_tokens = Int.Set.empty }
+  { captured_tokens = Int.Set.empty
+  ; repeated_tokens = Int.Set.empty
+  ; invalid_captured_terminals = Set.empty (module IntStringTuple)
+  }
 ;;
 
-let rec token_usage : operator_match_pattern -> tokens_info = function
-  | OperatorPattern (_, scope_patterns) ->
-    scope_patterns
-    |> List.fold_left ~init:empty_tokens_info ~f:(fun accum scope_pat ->
-           accumulate_tokens accum (scope_token_usage scope_pat))
-  | SingleCapturePattern cap_num ->
-    { captured_tokens = Int.Set.of_list [ cap_num ]; repeated_tokens = Int.Set.empty }
+let special_patterns = String.Set.of_list ["var"; "integer"; "string"]
+;;
 
-and scope_token_usage : numbered_scope_pattern -> tokens_info =
- fun (NumberedScopePattern (binder_captures, body_capture)) ->
-  let x = token_usage body_capture in
+(** @raise InvalidGrammar *)
+let get_terminal_name : nonterminal_token Int.Table.t -> int -> int_string_set
+  = fun token_table token_num -> match Hashtbl.find token_table token_num with
+    | Some (TerminalName name)
+    -> Set.of_list (module IntStringTuple) [ token_num, name ]
+    | Some (NonterminalName _)
+    -> Set.empty (module IntStringTuple)
+    | Some tok
+    -> raise_invalid (Printf.sprintf
+      "Structural token %s captured. This is not allowed."
+      (string_of_token tok))
+    | None
+    -> raise_invalid
+      (Printf.sprintf "Couldn't find captured token $%n" token_num)
+
+let rec token_usage
+  : operator_match_pattern -> nonterminal_token Int.Table.t -> tokens_info
+  = fun pat numbered_toks -> match pat with
+  | OperatorPattern (pat_name, scope_patterns)
+  -> (match scope_patterns with
+     | [ NumberedScopePattern ([], SingleCapturePattern cap_num) ]
+     (* We still want to run this for the side-effect of checking for invalid
+      * tokens. *)
+     -> let captured_terminals = get_terminal_name numbered_toks cap_num in
+        (* If we didn't capture a terminal then it's fine.
+         * If the enclosing pattern is [var], [integer], or [string], then it's fine. *)
+        if Set.is_empty captured_terminals || not (Set.mem special_patterns pat_name)
+        then { empty_tokens_info with
+          captured_tokens = Int.Set.singleton cap_num }
+        (* ... otherwise, there's an invalid capture *)
+        else { captured_tokens = Int.Set.singleton cap_num
+             ; repeated_tokens = Int.Set.empty
+             ; invalid_captured_terminals = captured_terminals
+             }
+     | _
+     -> scope_patterns
+      |> List.fold_left ~init:empty_tokens_info ~f:(fun accum scope_pat ->
+             accumulate_tokens accum (scope_token_usage numbered_toks scope_pat))
+  )
+
+  | SingleCapturePattern cap_num
+  ->
+    let invalid_captured_terminals = get_terminal_name numbered_toks cap_num in
+    { captured_tokens = Int.Set.of_list [ cap_num ]
+    ; repeated_tokens = Int.Set.empty
+    ; invalid_captured_terminals
+    }
+
+and scope_token_usage
+  : nonterminal_token Int.Table.t -> numbered_scope_pattern -> tokens_info =
+ fun numbered_toks (NumberedScopePattern (binder_captures, body_capture)) ->
+  let x = token_usage body_capture numbered_toks in
   let y =
     List.fold_left binder_captures ~init:empty_tokens_info ~f:(fun accum capture ->
         let tok = match capture with VarCapture n -> n | PatternCapture n -> n in
         accumulate_tokens
           accum
-          { captured_tokens = Int.Set.of_list [ tok ]; repeated_tokens = Int.Set.empty })
+          { empty_tokens_info with
+            captured_tokens = Int.Set.of_list [ tok ]
+          })
   in
   accumulate_tokens x y
 ;;
 
 let check_operator_match_validity
     :  nonterminal_token list -> operator_match_pattern
-    -> MSI.t * Int.Set.t * (int * nonterminal_token) list
+    -> MSI.t * Int.Set.t * (int * nonterminal_token) list * int_string_set
   =
  fun token_list term_pat ->
   let numbered_toks =
     token_list |> List.mapi ~f:(fun i tok -> i, tok) |> Int.Table.of_alist_exn
   in
-  let { captured_tokens; repeated_tokens } = token_usage term_pat in
+  let { captured_tokens; repeated_tokens; invalid_captured_terminals }
+    = token_usage term_pat numbered_toks
+  in
   let non_existent_tokens = MSI.create () in
+
+  (* term_pat *)
+
   Set.iter captured_tokens ~f:(fun tok_num ->
       if Hashtbl.mem numbered_toks tok_num
       then Hashtbl.remove numbered_toks tok_num
       else MSI.add non_existent_tokens tok_num);
-  non_existent_tokens, repeated_tokens, Hashtbl.to_alist numbered_toks
+  non_existent_tokens,
+    repeated_tokens,
+    Hashtbl.to_alist numbered_toks,
+    invalid_captured_terminals
 ;;
 
 (** Check invariants of concrete syntax descriptions:
@@ -97,6 +173,7 @@ let check_operator_match_validity
  + Only binary operators ([tm OP tm]) can have a left or right
     associativity.
  + TODO: check only string, integer, var capture bare terminals
+ + Only terminals / nonterminals are captured (no structural tokens)
 
  Examples:
  - [FOO bar BAZ { op($1; $2; $3) }] valid
@@ -106,10 +183,9 @@ let check_operator_match_validity
  - [FOO bar BAZ { op($2; $4) }] invalid (non-existent token)
  *)
 let check_description_validity { terminal_rules; nonterminal_rules } =
-  let raise_invalid str = raise (CheckValidExn (InvalidGrammar str)) in
   let terminal_rules' = String.Map.of_alist_exn terminal_rules in
   let show_toks toks =
-    toks |> Array.map ~f:(Printf.sprintf "$%n") |> String.concat_array ~sep:", "
+    toks |> List.map ~f:(Printf.sprintf "$%n") |> String.concat ~sep:", "
   in
   let open_depth = ref 0 in
   try
@@ -118,17 +194,28 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
            operator_rules
            |> List.iter
                 ~f:(fun (OperatorMatch { tokens; operator_match_pattern }) ->
-                  let non_existent_tokens, duplicate_captures, uncaptured_tokens =
+                  let non_existent_tokens, duplicate_captures, uncaptured_tokens, invalid_captured_terminals =
                     check_operator_match_validity tokens operator_match_pattern
                   in
                   if not (Set.is_empty duplicate_captures)
                   then (
-                    let tok_names = duplicate_captures |> Set.to_array |> show_toks in
+                    let tok_names = duplicate_captures |> Set.to_list |> show_toks in
                     raise_invalid ("tokens captured more than once: " ^ tok_names));
                   if not (MSI.is_empty non_existent_tokens)
                   then (
-                    let tok_names = non_existent_tokens |> MSI.to_array |> show_toks in
+                    let tok_names = non_existent_tokens |> MSI.to_list |> show_toks in
                     raise_invalid ("non-existent tokens mentioned: " ^ tok_names));
+                  if not (Set.is_empty invalid_captured_terminals)
+                  then (
+                    let tok_names = invalid_captured_terminals
+                      |> Set.to_list
+                      |> List.map ~f:(fun (num, tok) -> Printf.sprintf
+                        "$%n (%s)" num tok
+                      )
+                      |> String.concat ~sep:", "
+                    in
+                    raise_invalid ("Terminals can only be captured by `var`, \
+                      `integer`, and `string`: " ^ tok_names));
                   List.iter uncaptured_tokens ~f:(fun (_i, tok) ->
                       match tok with
                       | NonterminalName name ->

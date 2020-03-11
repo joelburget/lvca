@@ -127,9 +127,8 @@ type parse_error = int (* character number *) * string
 type parse_result =
   { production : (terminal_num, production_num) Either.t
   ; children : parse_result list
-  ; start_pos : int
-  ; (* inclusive *)
-    end_pos : int (* exclusive *)
+  ; start_pos : int (* inclusive *)
+  ; end_pos : int (* exclusive *)
   }
 
 let rec parse_result_to_string : parse_result -> string =
