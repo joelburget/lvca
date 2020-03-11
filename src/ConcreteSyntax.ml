@@ -55,7 +55,8 @@ let accumulate_tokens
   (* Tokens that already occurred repeatedly on either side, plus any tokens
    * they both reported seeing *)
   ; repeated_tokens = Set.union isect (Set.union repeated_toks repeated_toks')
-  ; invalid_captured_terminals = Set.union invalid_captured_terminals invalid_captured_terminals'
+  ; invalid_captured_terminals =
+      Set.union invalid_captured_terminals invalid_captured_terminals'
   }
 ;;
 
@@ -95,7 +96,7 @@ let rec token_usage
      -> let captured_terminals = get_terminal_name numbered_toks cap_num in
         (* If we didn't capture a terminal then it's fine.
          * If the enclosing pattern is [var], [integer], or [string], then it's fine. *)
-        if Set.is_empty captured_terminals || not (Set.mem special_patterns pat_name)
+        if Set.is_empty captured_terminals || Set.mem special_patterns pat_name
         then { empty_tokens_info with
           captured_tokens = Int.Set.singleton cap_num }
         (* ... otherwise, there's an invalid capture *)
@@ -138,8 +139,10 @@ let check_operator_match_validity
     -> MSI.t * Int.Set.t * (int * nonterminal_token) list * int_string_set
   =
  fun token_list term_pat ->
-  let numbered_toks =
-    token_list |> List.mapi ~f:(fun i tok -> i, tok) |> Int.Table.of_alist_exn
+  let numbered_toks = token_list
+    |> index_tokens
+    |> Fqueue.to_list
+    |> Int.Table.of_alist_exn
   in
   let { captured_tokens; repeated_tokens; invalid_captured_terminals }
     = token_usage term_pat numbered_toks
@@ -160,23 +163,22 @@ let check_operator_match_validity
 
 (** Check invariants of concrete syntax descriptions:
  + For all tokens on the LHS (token list),
-    if the token is not captured on the RHS (term pattern):
+    if the token is not captured on the RHS (term pattern): (TODO test)
    {ol
      {- If the token refers to a nonterminal, this is an error. }
      {- If the token refers to a terminal, it must be a string literal. }}
  + No token is used twice on the RHS.
  + No token is mentioned on the RHS that doesn't exist on the left
  + No regex admits empty strings (these tokens could be arbitrarily inserted
-    everywhere)
+    everywhere) (TODO test)
  + Boxes are matching: There are the same number of '[' and ']' tokens, each
     box is opened before it's closed.
- + Only binary operators ([tm OP tm]) can have a left or right
-    associativity.
- + TODO: check only string, integer, var capture bare terminals
- + Only terminals / nonterminals are captured (no structural tokens)
+ + Only string, integer, var capture bare terminals
+ + Only terminals / nonterminals are captured (no structural tokens) (TODO: how
+   would this be possible -- we don't number structural tokens)
 
  Examples:
- - [FOO bar BAZ { op($1; $2; $3) }] valid
+ - [FOO bar BAZ { op($2) }] valid
  - [FOO bar BAZ { op($1; $3) }] invalid (uncaptured nonterminal)
  - [FOO bar BAZ { op($1; $2) }] possibly invalid (if BAZ isn't a string literal)
  - [FOO bar BAZ { op($2; $2) }] invalid (repeated token)
@@ -194,7 +196,8 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
            operator_rules
            |> List.iter
                 ~f:(fun (OperatorMatch { tokens; operator_match_pattern }) ->
-                  let non_existent_tokens, duplicate_captures, uncaptured_tokens, invalid_captured_terminals =
+                  let non_existent_tokens, duplicate_captures, uncaptured_tokens,
+                      invalid_captured_terminals =
                     check_operator_match_validity tokens operator_match_pattern
                   in
                   if not (Set.is_empty duplicate_captures)

@@ -548,3 +548,67 @@ let%test_module "pattern test" =
     maybe_ast = Ok expected_ast
   end)
   *)
+
+let%test_module "validation test" =
+  (module struct
+    let print_check desc_str =
+      let desc_str' = {|
+          FOO := /foo/
+          BAR := /bar/
+          BAZ := /baz/
+      |} ^ desc_str
+      in
+      let pre_terminal_rules, sort_rules =
+        match Parse_concrete.parse desc_str' with
+        | Error msg -> failwith msg
+        | Ok desc -> desc
+      in
+      let concrete_desc =
+        ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
+      in
+      print_string (match check_description_validity concrete_desc with
+        | None -> ""
+        | Some (InvalidGrammar msg) -> msg)
+      ;;
+
+    let%expect_test _ =
+      print_check "tm := FOO bar BAZ { op() }";
+      [%expect{| uncaptured nonterminal: bar |}]
+
+    let%expect_test _ =
+      print_check "tm := FOO bar BAZ { op($2) }";
+      [%expect{| |}]
+
+    let%expect_test _ =
+      print_check "tm := [ FOO bar BAZ { op($2) }";
+      [%expect{| At least one group is not closed (there are more open box markers ('[') than close box markers (']')) |}]
+
+    let%expect_test _ =
+      print_check "tm := FOO bar BAZ ] { op($2) }";
+      [%expect{| Invalid box structure (saw a close box marker (']') before its opening marker ('['))! |}]
+
+    let%expect_test _ =
+      print_check "tm := FOO BAZ { op() }";
+      [%expect{| |}]
+
+    let%expect_test _ =
+      print_check "tm := FOO QUUX { op() }";
+      [%expect{| Named terminal QUUX does not exist |}]
+
+    let%expect_test _ =
+      print_check "tm := FOO bar BAZ { op($2; $2) }";
+      [%expect{| tokens captured more than once: $2 |}]
+
+    let%expect_test _ =
+      print_check "tm := FOO bar BAZ QUUX { op(string($1); $2; var($3). integer($4)) }";
+      [%expect{| |}]
+
+    let%expect_test _ =
+      print_check "tm := FOO bar BAZ { op($1; $2) }";
+      [%expect{| Terminals can only be captured by `var`, `integer`, and `string`: $1 (FOO) |}]
+
+    let%expect_test _ =
+      print_check "tm := FOO bar BAZ { op($2; $4) }";
+      [%expect{| Couldn't find captured token $4 |}]
+
+  end)

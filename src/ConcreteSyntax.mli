@@ -88,7 +88,7 @@ val to_grammar
        * ConcreteSyntaxDescription.operator_match_pattern option)
        Core_kernel.Int.Table.t
 
-type invalid_grammar
+type invalid_grammar = InvalidGrammar of string
 
 val check_description_validity : ConcreteSyntaxDescription.t -> invalid_grammar option
 
