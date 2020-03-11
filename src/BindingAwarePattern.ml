@@ -6,7 +6,7 @@ let stringify_list = Util.stringify_list
     patterns can't match binders. For example, we want to be able to match this pattern on
     the LHS of a denotation rule:
 
-    | lam(x. x) -> ...
+    [ | lam(x. x) -> ... ]
 
     This is not allowed by regular patterns. *)
 type pattern =
@@ -14,6 +14,7 @@ type pattern =
   | Var of string
   | Sequence of pattern list
   | Primitive of Types.primitive
+  (* TODO: should this include ignores? *)
 
 (** A scope within the LHS of a denotation rule. Note that it's not currently allowed to
     match on specific patterns -- you can only match on an entire slot at once. *)

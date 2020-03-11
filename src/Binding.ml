@@ -155,14 +155,16 @@ end = struct
 
   and pp_pattern ppf (pat : Pattern.t) =
     match pat with
-    | Var name
-    -> fprintf ppf "%s" name
     | Operator (name, pats)
     -> fprintf ppf "%s(%a)" name (pp_pattern_list ";") pats
     | Sequence pats
     -> fprintf ppf "[%a]" (pp_pattern_list ",") pats
     | Primitive prim
     -> pp_prim ppf prim
+    | Var name
+    -> fprintf ppf "%s" name
+    | Ignored name
+    -> fprintf ppf "_%s" name
 
   and pp_bindings ppf = function
     | [] -> ()
@@ -199,9 +201,10 @@ end = struct
       match pat with
       | Operator (tag, tms) ->
         array [| string "o"; string tag; array_map jsonify_pat tms |]
-      | Var name -> array [| string "v"; string name |]
       | Sequence tms -> array [| string "s"; array_map jsonify_pat tms |]
-      | Primitive p -> array [| string "p"; jsonify_prim p |])
+      | Primitive p -> array [| string "p"; jsonify_prim p |]
+      | Var name -> array [| string "v"; string name |]
+      | Ignored name -> array [| string "_"; string name |])
 
   and jsonify_scope (Scope (pats, body)) : Json.t =
     Json.(array [| array_map jsonify_pat pats; jsonify body |])
@@ -219,7 +222,9 @@ end = struct
 
   (* raises ToPatternScopeEncountered *)
   let rec to_pattern_exn : term -> Pattern.t = function
-    | Var name -> Var name
+    | Var name -> if String.is_substring_at name ~pos:0 ~substring:"_"
+      then Ignored (String.slice name 1 0)
+      else Var name
     | Operator (name, tms) -> Operator (name, List.map tms ~f:scope_to_pattern_exn)
     | Sequence tms -> Sequence (List.map tms ~f:to_pattern_exn)
     | Primitive prim -> Primitive prim
@@ -231,11 +236,12 @@ end = struct
   ;;
 
   let rec pattern_to_term : Pattern.t -> Nominal.term = function
-    | Var name -> Var name
     | Operator (name, pats) ->
       Operator (name, List.map pats ~f:(fun pat -> Scope ([], pattern_to_term pat)))
     | Sequence pats -> Sequence (List.map pats ~f:pattern_to_term)
     | Primitive prim -> Primitive prim
+    | Var name -> Var name
+    | Ignored name -> Var ("_" ^ name)
   ;;
 end
 
@@ -359,5 +365,11 @@ let%test_module "Nominal" =
       print_hash tm;
       [%expect {| 28b6e8f2124dd5931d69e1a5350f5c44ebdec7e0f6be9f98d2c717fcf09fa3d8 |}]
     ;;
+
+    let%test _ = to_pattern_exn (Var "abc") = Var "abc"
+    let%test _ = to_pattern_exn (Var "_abc") = Ignored "abc"
+    let%test _ = to_pattern_exn (Var "_") = Ignored ""
+    let%test _ = pattern_to_term (Ignored "abc") = Var "_abc"
+    let%test _ = pattern_to_term (Ignored "") = Var "_"
   end)
 ;;
