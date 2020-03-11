@@ -16,10 +16,10 @@
 %type <Types.primitive> primitive
 %%
 
-(* raises ToPatternScopeEncountered *)
+(** @raise ToPatternScopeEncountered *)
 top_term: term EOF { $1 }
 
-(* raises ToPatternScopeEncountered *)
+(** @raise ToPatternScopeEncountered *)
 term:
   | ID LEFT_PAREN separated_list(SEMICOLON, scope) RIGHT_PAREN
   { Operator ($1, $3) }
@@ -30,7 +30,7 @@ term:
   | primitive
   { Primitive $1 }
 
-(* raises ToPatternScopeEncountered *)
+(** @raise ToPatternScopeEncountered *)
 scope:
   separated_nonempty_list(DOT, term)
   { let binders_tm, body = Util.unsnoc $1 in
