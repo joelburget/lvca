@@ -337,7 +337,8 @@ let rec get_subpatterns
 
 (**
  Retrieve all the numbered subterms / binders for a term pattern template (eg
- [foo($1. bar($2); $3)]). Given the term [foo(x. bar(baz()); y)], this returns
+ [foo(var($1). bar($2); $3)]). Given the term [foo(x. bar(baz()); y)], this
+ returns
 
  {[
  1 -> x
@@ -447,7 +448,15 @@ and get_scope_subterms
               , nonterminal_pointer
               , Var var_name
               )
-          | VarCapture _, _ -> raise (UserError (Printf.sprintf
+          | VarCapture num, Ignored name ->
+            num,
+            CapturedBinder
+              ( current_sort nonterminal_pointer
+              , nonterminal_pointer
+              , Ignored name
+              )
+          | VarCapture _, _
+          -> raise (UserError (Printf.sprintf
             "get_scope_subterms: trying to capture a variable, but found \
              a pattern"
           ))
@@ -730,6 +739,30 @@ let%test_module "find_operator_match" = (module struct
       lam(var($2). $4)
       FUN NAME ARROW expr
       2 -> CapturedBinder (expr, { current_nonterminal = expr; _ }, x)
+      4 -> CapturedTerm (expr, { current_nonterminal = expr; _ }, x) |}]
+
+  let%expect_test "find_operator_match lam(_. x)" =
+    print_match_result (Operator ("lam", [
+      Scope ([Ignored ""], Var "x")
+    ]));
+
+    [%expect{|
+      0
+      lam(var($2). $4)
+      FUN NAME ARROW expr
+      2 -> CapturedBinder (expr, { current_nonterminal = expr; _ }, _)
+      4 -> CapturedTerm (expr, { current_nonterminal = expr; _ }, x) |}]
+
+  let%expect_test "find_operator_match lam(_x. x)" =
+    print_match_result (Operator ("lam", [
+      Scope ([Ignored "x"], Var "x")
+    ]));
+
+    [%expect{|
+      0
+      lam(var($2). $4)
+      FUN NAME ARROW expr
+      2 -> CapturedBinder (expr, { current_nonterminal = expr; _ }, _x)
       4 -> CapturedTerm (expr, { current_nonterminal = expr; _ }, x) |}]
 
   let%expect_test "find_operator_match match_line(add(x; y). add(x; y))" =

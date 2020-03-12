@@ -374,7 +374,9 @@ and go_op_match_term
            content))
 
 and go_numbered_scope_term
-    :  ConcreteSyntaxDescription.t -> formatted_capture array -> numbered_scope_pattern
+    :  ConcreteSyntaxDescription.t
+    -> formatted_capture array
+    -> numbered_scope_pattern
     -> Nominal.scope
   =
  fun rules children (NumberedScopePattern (cap_nums, op_match_pat)) ->

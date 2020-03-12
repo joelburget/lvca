@@ -20,8 +20,8 @@ type nonterminal_token =
   | OpenBox of (box_type * int list) option
   | CloseBox
 
-(** A binder pattern can match either a variable `var($n)` (fixed valence) or a * pattern
-    `$n` (variable valence) *)
+(** A binder pattern can match either a variable `var($n)` (fixed valence) or a
+ pattern `$n` (variable valence) *)
 type binder_capture =
   | VarCapture of int
   | PatternCapture of int
