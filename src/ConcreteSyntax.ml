@@ -519,7 +519,7 @@ module TestOperators = struct
 end
 *)
 
-(** raises: [InvariantViolation] *)
+(** @raise [InvariantViolation] *)
 let convert_token
     :  LrParsing.terminal_num String.Map.t -> int String.Map.t -> nonterminal_token
     -> LrParsing.symbol

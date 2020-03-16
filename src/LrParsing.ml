@@ -651,7 +651,7 @@ module Lr0 (G : GRAMMAR) = struct
              (Int.Map.length lr0_items))
  ;;
 
-  (** raises [NoItemSet] *)
+  (** @raise [NoItemSet] *)
   let item_set_to_state : item_set -> state =
    fun item_set ->
     let state, _ =

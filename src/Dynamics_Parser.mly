@@ -7,7 +7,7 @@ module List = Core_kernel.List
 
 exception InvalidSort
 
-(* raises InvalidSort *)
+(** @raise InvalidSort *)
 let rec ast_to_sort' : NonBinding.term -> Types.sort
   = function
       | Operator (name, subtms)
@@ -18,7 +18,7 @@ let rec ast_to_sort' : NonBinding.term -> Types.sort
       | Sequence _ | Primitive _
       -> raise InvalidSort
 
-(* raises ScopeEncountered, InvalidSort *)
+(** @raise ScopeEncountered, InvalidSort *)
 let ast_to_sort : Binding.Nominal.term -> Types.sort
   = fun term -> term |> NonBinding.from_nominal' |> ast_to_sort'
 
@@ -73,7 +73,7 @@ and ast_to_core_scope : Binding.Nominal.scope -> core_scope
 %type <Types.sort * Pattern.t> typed_arg
 %%
 
-(* raises BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
+(** @raise BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
 core:
   nonempty_list(atomic_core)
   { match $1 with
@@ -82,7 +82,7 @@ core:
       | f :: args -> CoreApp (f, args)
   }
 
-(* raises BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
+(** @raise BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
 atomic_core:
   ast_like_core { $1 }
   | BACKSLASH nonempty_list(typed_arg) ARROW core
@@ -97,21 +97,21 @@ atomic_core:
   | LEFT_PAREN core RIGHT_PAREN
   { $2 }
 
-(* raises ScopeEncountered, InvalidSort *)
+(** @raise ScopeEncountered, InvalidSort *)
 typed_arg: LEFT_PAREN ID COLON sort RIGHT_PAREN { ($4, Var $2) }
 
-(* raises BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
+(** @raise BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
 case_line: binding_aware_pattern ARROW core { CaseScope ([$1], $3) }
 
-(* raises ScopeEncountered, InvalidSort *)
+(** @raise ScopeEncountered, InvalidSort *)
 sort:                  ast_like { ast_to_sort       $1 }
 ast_like_core:         ast_like { ast_to_core $1 }
-(* raises ToPatternScopeEncountered *)
+(** @raise ToPatternScopeEncountered *)
 pattern:               ast_like { Binding.Nominal.to_pattern_exn $1 }
-(* raises BindingAwareScopePatternEncountered *)
+(** @raise BindingAwareScopePatternEncountered *)
 binding_aware_pattern: ast_like { BindingAwarePattern.from_ast $1 }
 
-(* raises ToPatternScopeEncountered *)
+(** @raise ToPatternScopeEncountered *)
 ast_like:
   | ID LEFT_PAREN separated_list(SEMICOLON, ast_like_scope) RIGHT_PAREN
   { Operator ($1, $3) }
@@ -120,7 +120,7 @@ ast_like:
   { Sequence $2 }
   | primitive { Primitive $1 }
 
-(* raises ToPatternScopeEncountered *)
+(** @raise ToPatternScopeEncountered *)
 ast_like_scope:
   | separated_list(DOT, pattern) DOT ast_like
   { Scope ($1, $3) }
@@ -131,8 +131,8 @@ primitive:
   | INT    { PrimInteger $1 }
   | STRING { PrimString  $1 }
 
-(* raises BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
+(** @raise BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
 definition: ID EQ core { ($1, $3) }
 
-(* raises BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
+(** @raise BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
 dynamics: list(definition) EOF { DenotationChart $1 }

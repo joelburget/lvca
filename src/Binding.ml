@@ -220,7 +220,7 @@ end = struct
 
   exception ToPatternScopeEncountered
 
-  (* raises ToPatternScopeEncountered *)
+  (** @raise ToPatternScopeEncountered *)
   let rec to_pattern_exn : term -> Pattern.t = function
     | Var name -> if String.is_substring_at name ~pos:0 ~substring:"_"
       then Ignored (String.slice name 1 0)
@@ -229,7 +229,7 @@ end = struct
     | Sequence tms -> Sequence (List.map tms ~f:to_pattern_exn)
     | Primitive prim -> Primitive prim
 
-  (* raises ToPatternScopeEncountered *)
+  (** @raise ToPatternScopeEncountered *)
   and scope_to_pattern_exn : scope -> Pattern.t = function
     | Scope ([], tm) -> to_pattern_exn tm
     | scope -> failwith ("Parse error: invalid pattern: " ^ pp_scope' scope)

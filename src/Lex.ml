@@ -35,7 +35,7 @@ let string_of_tokens : token array -> string =
   toks |> Array.map ~f:(fun { name; _ } -> name) |> String.concat_array ~sep:" "
 ;;
 
-(** raises: [LexError] *)
+(** @raise [LexError] *)
 let get_next_tok_exn : lexer -> (int * string) list -> Re.re -> lexbuf -> token =
  fun lexer tok_names re { buf; pos } ->
   match Re.exec_opt ~pos re buf with
@@ -74,7 +74,7 @@ let get_next_tok_exn : lexer -> (int * string) list -> Re.re -> lexbuf -> token 
     { name; start = pos; finish = match_end }
 ;;
 
-(** raises: [LexError] *)
+(** @raise [LexError] *)
 let tokenize_exn : lexer -> string -> token array =
  fun lexer input ->
   (* Printf.printf "tokenize \"%s\"\n" input; *)

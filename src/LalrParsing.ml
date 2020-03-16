@@ -328,9 +328,13 @@ module Lalr1 (G : GRAMMAR) = struct
    fun items -> simplify_lookahead_config_set @@ lr1_closure' items
  ;;
 
-  (** Given the kernel (K) of a set of LR(0) items (I) and a grammar symbol * (X), return
-      the set of lookaheads in GOTO(I, X) (1) generated * spontaneously and (2) propagated
-      from I. * * CPTT Algorithm 4.62. * * raises: [NoItemSet] *)
+  (** Given the kernel (K) of a set of LR(0) items (I) and a grammar symbol
+   (X), return the set of lookaheads in GOTO(I, X) (1) generated spontaneously
+   and (2) propagated from I.
+
+   CPTT Algorithm 4.62.
+   raises: [NoItemSet]
+  *)
   let generate_lookaheads : item_set -> item -> lookahead_propagation =
    fun kernel item ->
     let create, enqueue, to_array = Queue.(create, enqueue, to_array) in
@@ -433,8 +437,8 @@ module Lalr1 (G : GRAMMAR) = struct
   ;;
 
   (* Fill in LALR(1) item lookaheads. CPTT Algorithm 4.63 step 4
-   *
-   * raises: [NoItemSet]
+
+     raises: [NoItemSet]
    *)
   let () =
     (* Set lookaheads that were generated spontaneously *)

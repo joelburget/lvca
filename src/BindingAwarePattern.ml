@@ -58,14 +58,14 @@ and scope_to_string : scope -> string =
 
 exception BindingAwareScopePatternEncountered
 
-(* raises BindingAwareScopePatternEncountered *)
+(** @raise BindingAwareScopePatternEncountered *)
 let rec from_ast : Binding.Nominal.term -> pattern = function
   | Var name -> Var name
   | Operator (name, tms) -> Operator (name, tms |> List.map ~f:from_ast_scope)
   | Sequence tms -> Sequence (List.map tms ~f:from_ast)
   | Primitive prim -> Primitive prim
 
-(* raises BindingAwareScopePatternEncountered *)
+(** @raise BindingAwareScopePatternEncountered *)
 and from_ast_scope : Binding.Nominal.scope -> scope =
  fun (Scope (binders, body)) ->
   Scope
