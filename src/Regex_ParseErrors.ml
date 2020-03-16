@@ -1,5 +1,5 @@
 
-(* This file was auto-generated based on "src/Regex_Parser.messages". *)
+(* This file was auto-generated based on "Regex_Parser.messages". *)
 
 (* Please note that the function [message] can raise [Not_found]. *)
 
@@ -7,20 +7,28 @@ let message =
   fun s ->
     match s with
     | 0 ->
-        "Unexpected token. Expected regex.\n"
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
     | 1 ->
-        "Unexpected token. Expected regex.\n"
-    | 15 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE TODO 2>\n"
-    | 12 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE TODO>\n"
-    | 21 ->
-        "Unexpected token after regex.\n"
-    | 17 ->
-        "Unexpected token after \"|\".\n"
-    | 22 ->
-        "Unexpected token. Expected regex.\n"
-    | 26 ->
-        "Unexpected token after regex.\n"
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 39 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 2 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 18 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 19 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 16 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 4 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 42 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 29 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 36 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+    | 24 ->
+        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
     | _ ->
         raise Not_found

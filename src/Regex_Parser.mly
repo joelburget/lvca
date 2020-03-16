@@ -32,7 +32,9 @@ re_class: BACKSLASH CHAR { match $2 with
   | 'S' -> NegClass Whitespace
   | 'D' -> NegClass Digit
   | 'B' -> NegClass Boundary
-  | c -> failwith (Printf.sprintf "unexpected character class %c" c)
+  (* XXX don't use LexerUtil here *)
+  | c -> raise (LexerUtil.SyntaxError
+    (Printf.sprintf "unexpected character class %c" c))
   }
 
 character_set_elem:
@@ -69,11 +71,11 @@ char:
   | BACKSLASH PLUS { '+' }
   | BACKSLASH QUESTION { '?' }
 
-string: nonempty_list(char) { Core_kernel.String.of_char_list $1 }
+(* string: nonempty_list(char) { Core_kernel.String.of_char_list $1 } *)
 
 prec2_re:
   | LEFT_BRACKET character_set RIGHT_BRACKET { ReSet $2 }
-  | string { ReString $1 }
+  | char { ReChar $1 }
   | re_class { ReClass $1 }
   | prec2_re STAR { ReStar $1 }
   | prec2_re PLUS { RePlus $1 }

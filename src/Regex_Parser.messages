@@ -1,88 +1,149 @@
-regex__test: ESCAPED RIGHT_PAREN
+regex: BACKSLASH EOF
 ##
-## Ends in an error in state: 26.
+## Ends in an error in state: 24.
 ##
-## prec0_re -> prec0_re . BAR prec0_re [ EOF BAR ]
-## regex -> prec0_re . [ EOF ]
-##
-## The known suffix of the stack is as follows:
-## prec0_re
-##
-## WARNING: This example involves spurious reductions.
-## This implies that, although the LR(1) items shown above provide an
-## accurate view of the past (what has been recognized so far), they
-## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 12, spurious reduction of production nonempty_list(prec2_re) -> prec2_re
-## In state 19, spurious reduction of production prec1_re -> nonempty_list(prec2_re)
-## In state 14, spurious reduction of production prec0_re -> prec1_re
-##
-
-Unexpected token after regex.
-
-regex__test: STAR
-##
-## Ends in an error in state: 22.
-##
-## regex__test' -> . regex__test [ # ]
+## char -> BACKSLASH . LEFT_BRACKET [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
+## char -> BACKSLASH . RIGHT_BRACKET [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
+## char -> BACKSLASH . LEFT_PAREN [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
+## char -> BACKSLASH . RIGHT_PAREN [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
+## char -> BACKSLASH . BACKSLASH [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
+## char -> BACKSLASH . DOT [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
+## char -> BACKSLASH . BAR [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
+## char -> BACKSLASH . STAR [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
+## char -> BACKSLASH . PLUS [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
+## char -> BACKSLASH . QUESTION [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
+## re_class -> BACKSLASH . CHAR [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
 ##
 ## The known suffix of the stack is as follows:
-##
+## BACKSLASH
 ##
 
-Unexpected token. Expected regex.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
-regex: ESCAPED BAR STAR
+regex: DOT BAR STAR
 ##
-## Ends in an error in state: 17.
+## Ends in an error in state: 36.
 ##
-## prec0_re -> prec0_re BAR . prec0_re [ RIGHT_PAREN EOF BAR # ]
+## separated_nonempty_list(BAR,prec1_re) -> prec1_re BAR . separated_nonempty_list(BAR,prec1_re) [ RIGHT_PAREN EOF ]
 ##
 ## The known suffix of the stack is as follows:
-## prec0_re BAR
+## prec1_re BAR
 ##
 
-Unexpected token after "|".
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
-regex: ESCAPED RIGHT_PAREN
+regex: DOT RIGHT_BRACKET
 ##
-## Ends in an error in state: 21.
+## Ends in an error in state: 29.
 ##
-## prec0_re -> prec0_re . BAR prec0_re [ BAR # ]
-## regex -> prec0_re . [ # ]
-##
-## The known suffix of the stack is as follows:
-## prec0_re
-##
-## WARNING: This example involves spurious reductions.
-## This implies that, although the LR(1) items shown above provide an
-## accurate view of the past (what has been recognized so far), they
-## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 12, spurious reduction of production nonempty_list(prec2_re) -> prec2_re
-## In state 19, spurious reduction of production prec1_re -> nonempty_list(prec2_re)
-## In state 14, spurious reduction of production prec0_re -> prec1_re
-##
-
-Unexpected token after regex.
-
-regex: ESCAPED STAR
-##
-## Ends in an error in state: 12.
-##
-## nonempty_list(prec2_re) -> prec2_re . [ RIGHT_PAREN EOF BAR # ]
-## nonempty_list(prec2_re) -> prec2_re . nonempty_list(prec2_re) [ RIGHT_PAREN EOF BAR # ]
+## nonempty_list(prec2_re) -> prec2_re . [ RIGHT_PAREN EOF BAR ]
+## nonempty_list(prec2_re) -> prec2_re . nonempty_list(prec2_re) [ RIGHT_PAREN EOF BAR ]
+## prec2_re -> prec2_re . STAR [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
+## prec2_re -> prec2_re . PLUS [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
+## prec2_re -> prec2_re . QUESTION [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
 ##
 ## The known suffix of the stack is as follows:
 ## prec2_re
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE TODO>
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
-regex: LEFT_PAREN ESCAPED EOF
+regex: DOT RIGHT_PAREN
 ##
-## Ends in an error in state: 15.
+## Ends in an error in state: 42.
 ##
-## prec0_re -> prec0_re . BAR prec0_re [ RIGHT_PAREN BAR ]
-## prec3_re -> LEFT_PAREN prec0_re . RIGHT_PAREN [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN ESCAPED EOF DOT CHARS CHARACTER_SET CHARACTER_CLASS BAR # ]
+## regex -> prec0_re . EOF [ # ]
+##
+## The known suffix of the stack is as follows:
+## prec0_re
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 29, spurious reduction of production nonempty_list(prec2_re) -> prec2_re 
+## In state 38, spurious reduction of production prec1_re -> nonempty_list(prec2_re) 
+## In state 35, spurious reduction of production separated_nonempty_list(BAR,prec1_re) -> prec1_re 
+## In state 26, spurious reduction of production prec0_re -> separated_nonempty_list(BAR,prec1_re) 
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+regex: LEFT_BRACKET BACKSLASH EOF
+##
+## Ends in an error in state: 4.
+##
+## char -> BACKSLASH . LEFT_BRACKET [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
+## char -> BACKSLASH . RIGHT_BRACKET [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
+## char -> BACKSLASH . LEFT_PAREN [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
+## char -> BACKSLASH . RIGHT_PAREN [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
+## char -> BACKSLASH . BACKSLASH [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
+## char -> BACKSLASH . DOT [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
+## char -> BACKSLASH . BAR [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
+## char -> BACKSLASH . STAR [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
+## char -> BACKSLASH . PLUS [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
+## char -> BACKSLASH . QUESTION [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
+##
+## The known suffix of the stack is as follows:
+## BACKSLASH
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+regex: LEFT_BRACKET CHAR DASH CHAR STAR
+##
+## Ends in an error in state: 16.
+##
+## list(character_set_elem) -> character_set_elem . list(character_set_elem) [ RIGHT_BRACKET ]
+##
+## The known suffix of the stack is as follows:
+## character_set_elem
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+regex: LEFT_BRACKET CHAR DASH STAR
+##
+## Ends in an error in state: 19.
+##
+## character_set_elem -> char DASH . char [ RIGHT_BRACKET CHAR BACKSLASH ]
+##
+## The known suffix of the stack is as follows:
+## char DASH
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+regex: LEFT_BRACKET CHAR STAR
+##
+## Ends in an error in state: 18.
+##
+## character_set_elem -> char . [ RIGHT_BRACKET CHAR BACKSLASH ]
+## character_set_elem -> char . DASH char [ RIGHT_BRACKET CHAR BACKSLASH ]
+##
+## The known suffix of the stack is as follows:
+## char
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+regex: LEFT_BRACKET STAR
+##
+## Ends in an error in state: 2.
+##
+## prec2_re -> LEFT_BRACKET . character_set RIGHT_BRACKET [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_BRACKET
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+regex: LEFT_PAREN DOT EOF
+##
+## Ends in an error in state: 39.
+##
+## prec3_re -> LEFT_PAREN prec0_re . RIGHT_PAREN [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
 ##
 ## The known suffix of the stack is as follows:
 ## LEFT_PAREN prec0_re
@@ -91,24 +152,25 @@ regex: LEFT_PAREN ESCAPED EOF
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 12, spurious reduction of production nonempty_list(prec2_re) -> prec2_re
-## In state 19, spurious reduction of production prec1_re -> nonempty_list(prec2_re)
-## In state 14, spurious reduction of production prec0_re -> prec1_re
+## In state 29, spurious reduction of production nonempty_list(prec2_re) -> prec2_re 
+## In state 38, spurious reduction of production prec1_re -> nonempty_list(prec2_re) 
+## In state 35, spurious reduction of production separated_nonempty_list(BAR,prec1_re) -> prec1_re 
+## In state 26, spurious reduction of production prec0_re -> separated_nonempty_list(BAR,prec1_re) 
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE TODO 2>
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 regex: LEFT_PAREN STAR
 ##
 ## Ends in an error in state: 1.
 ##
-## prec3_re -> LEFT_PAREN . prec0_re RIGHT_PAREN [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN ESCAPED EOF DOT CHARS CHARACTER_SET CHARACTER_CLASS BAR # ]
+## prec3_re -> LEFT_PAREN . prec0_re RIGHT_PAREN [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
 ##
 ## The known suffix of the stack is as follows:
 ## LEFT_PAREN
 ##
 
-Unexpected token. Expected regex.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
 regex: STAR
 ##
@@ -120,5 +182,5 @@ regex: STAR
 ##
 ##
 
-Unexpected token. Expected regex.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 

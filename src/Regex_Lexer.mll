@@ -1,12 +1,9 @@
 {
 open Regex_Parser
-open LexerUtil
-
-module L = Lexing
-module B = Buffer
 }
 
-let other_char = [^ '[' ']' '(' ')' '\\' '.' '|' '*' '+' '?' '-']
+(* let other_char = [^ '[' ']' '(' ')' '\\' '.' '|' '*' '+' '?' '-'] *)
+let other_char = ['a' - 'z' 'A' - 'Z' '0' - '9' '_']
 
 rule read = parse
   | '[' { LEFT_BRACKET }
@@ -21,5 +18,5 @@ rule read = parse
   | '?' { QUESTION }
   | '-' { DASH }
   | eof { EOF }
-  | other_char { CHAR (Core_kernel.String.get (L.lexeme lexbuf) 0) }
-  | _   { error lexbuf ("Unexpected char: " ^ L.lexeme lexbuf) }
+  | other_char { CHAR (Core_kernel.String.get (Lexing.lexeme lexbuf) 0) }
+  | _   { LexerUtil.error lexbuf ("Unexpected char: " ^ Lexing.lexeme lexbuf) }

@@ -780,7 +780,7 @@ let make_concrete_description
                (match Parse_regex.parse re_str with
                | Ok re -> name, re
                | Error msg -> failwith ("failed to parse regex: " ^ msg))
-             | Second str -> name, Regex.ReString str)
+             | Second str -> name, Regex.re_str str)
   ; nonterminal_rules =
       nonterminal_rules
       |> List.map ~f:(fun (NonterminalRule { nonterminal_name; _ } as rule) ->

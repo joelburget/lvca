@@ -113,17 +113,17 @@ let test_print_result = function
 let%expect_test "lex 1" =
   let lexer1 =
     Regex.
-      [ "IF", ReString "if"
-      ; "THEN", ReString "then"
-      ; "ELSE", ReString "else"
+      [ "IF", re_str "if"
+      ; "THEN", re_str "then"
+      ; "ELSE", re_str "else"
       ; ( "OP"
         , ReChoice
-            [ ReString "<"
-            ; ReString ">"
-            ; ReString "<="
-            ; ReString ">="
-            ; ReString "=="
-            ; ReString "!="
+            [ ReChar '<'
+            ; ReChar '>'
+            ; re_str "<="
+            ; re_str ">="
+            ; re_str "=="
+            ; re_str "!="
             ] )
       ; ( "ID"
         , ReConcat
@@ -133,7 +133,7 @@ let%expect_test "lex 1" =
             ] )
       ; "NUM", (* RePlus (ReSet [Range ('0', '9')]); *)
                RePlus (ReClass (PosClass Digit))
-      ; "WHITE", (* RePlus (ReString " "); *)
+      ; "WHITE", (* RePlus (ReChar " "); *)
                  RePlus (ReClass (PosClass Whitespace))
       ]
   in
@@ -162,13 +162,13 @@ let%expect_test "lex 1" =
 let%expect_test "lex 2" =
   let lexer2 =
     Regex.
-      [ "+", ReString "+"
-      ; "*", ReString "*"
-      ; "(", ReString "("
-      ; ")", ReString ")"
+      [ "+", ReChar '+'
+      ; "*", ReChar '*'
+      ; "(", ReChar '('
+      ; ")", ReChar ')'
       ; "id", ReConcat [ Classes.alpha; ReStar Classes.underscore_words ]
       ; (* ReClass (PosClass Word); *)
-        "WHITE", RePlus (ReString " ")
+        "WHITE", RePlus (ReChar ' ')
         (* ReClass (PosClass Whitespace); *)
       ]
   in
@@ -186,15 +186,15 @@ let%expect_test "lex 2" =
 let%expect_test "lex 3" =
   let lexer3 =
     Regex.
-      [ "COLON", ReString ":"
-      ; "IF", ReString "if"
-      ; "THEN", ReString "then"
-      ; "ELSE", ReString "else"
-      ; "FUN", ReString "fun"
-      ; "ARROW", ReString "->"
-      ; "TRUE", ReString "true"
-      ; "FALSE", ReString "false"
-      ; "BOOL", ReString "bool"
+      [ "COLON", ReChar ':'
+      ; "IF", re_str "if"
+      ; "THEN", re_str "then"
+      ; "ELSE", re_str "else"
+      ; "FUN", re_str "fun"
+      ; "ARROW", re_str "->"
+      ; "TRUE", re_str "true"
+      ; "FALSE", re_str "false"
+      ; "BOOL", re_str "bool"
       ; ( "ID"
         , ReConcat
             [ Classes.alpha
@@ -202,7 +202,7 @@ let%expect_test "lex 3" =
               (* ReSet "a-zA-Z"; *)
               (* ReSet "a-zA-Z0-9_"; *)
             ] )
-      ; "SPACE", RePlus (ReString " ")
+      ; "SPACE", RePlus (ReChar ' ')
         (* ReClass (PosClass Whitespace); *)
       ]
   in

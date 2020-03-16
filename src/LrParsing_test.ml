@@ -426,10 +426,10 @@ let%test_module "parse" =
     let%test_unit "lex-parse" =
       let lexer =
         Regex.
-          [ "+", ReString "+"
-          ; "*", ReString "*"
-          ; "(", ReString "("
-          ; ")", ReString ")"
+          [ "+", ReChar '+'
+          ; "*", ReChar '*'
+          ; "(", ReChar '('
+          ; ")", ReChar ')'
           ; "id", RePlus Classes.lower_alpha
           ]
       in

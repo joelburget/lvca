@@ -4,9 +4,7 @@ type re_class_base =
   | Word (* \w / \W *)
   | Whitespace (* \s / \S *)
   | Digit (* \d / \D *)
-  | Boundary
-
-(* \b / \B *)
+  | Boundary (* \b / \B *)
 
 (* TODO: other javascript classes *)
 (* TODO: unicode categories *)
@@ -17,7 +15,7 @@ let class_to_re : re_class_base -> Re.t =
     | Word -> wordc
     | Whitespace -> space
     | Digit -> digit
-    | Boundary -> failwith "TODO: boundary")
+    | Boundary -> alt [start; stop; bow; eow; bol; eol; bow; eos])
 ;;
 
 (** Accept the positive or negative version of a class *)
@@ -33,7 +31,7 @@ type re_set = set_member list
 
 (** A regular expression used for lexical analysis. *)
 type regex =
-  | ReString of string (** Just a string of characters, eg `foo` *)
+  | ReChar of char (** Just a character, eg 'a' *)
   | ReClass of re_class
       (** A character class, eg `\w` or `\d`. Syntactically, these are all started by a
           backslash. We just use javascript character classes. *)
@@ -50,6 +48,11 @@ type regex =
 
 type t = regex
 
+let re_str str = ReConcat (str
+  |> String.to_list
+  |> List.map ~f:(fun c -> ReChar c)
+)
+
 let set_to_re : re_set -> Re.t =
  fun set_members ->
   Re.(
@@ -61,9 +64,9 @@ let set_to_re : re_set -> Re.t =
 let rec to_re : regex -> Re.t =
   Re.(
     function
-    | ReString s -> str s
+    | ReChar s -> char s
     | ReClass (PosClass cls) -> class_to_re cls
-    | ReClass (NegClass _cls) -> failwith "TODO: class negation"
+    | ReClass (NegClass cls) -> compl [class_to_re cls]
     | ReSet set -> set_to_re set
     | ReStar re -> rep (to_re re)
     | RePlus re -> rep1 (to_re re)
@@ -98,7 +101,7 @@ let show_set : re_set -> string =
 
 (* TODO: add parens (not a big deal; just used for debugging) *)
 let rec show : regex -> string = function
-  | ReString str -> "ReString " ^ str
+  | ReChar c -> Printf.sprintf "ReChar %c" c
   | ReClass cls -> "ReClass " ^ show_class cls
   | ReSet set -> "ReSet " ^ show_set set
   | ReStar re -> "ReStar " ^ show re
@@ -112,16 +115,26 @@ let rec show : regex -> string = function
 ;;
 
 let rec accepts_empty : regex -> bool = function
-  | ReString str -> String.length str = 0
   | ReClass cls -> Caml.(cls = PosClass Boundary || cls = NegClass Boundary)
   | RePlus re -> accepts_empty re
   | ReChoice res -> List.exists res ~f:accepts_empty
   | ReConcat pieces -> List.for_all pieces ~f:accepts_empty
   | ReStar _ | ReOption _ -> true
-  | ReSet _ | ReAny -> false
+  | ReChar _ | ReSet _ | ReAny -> false
 ;;
 
-let is_literal : regex -> string option = function ReString str -> Some str | _ -> None
+let rec is_literal : regex -> string option
+  = function
+  | ReChar c -> Some (String.of_char c)
+  (* surely there's a smarter way to do this: *)
+  | ReConcat res -> List.fold_right res
+     ~f:(fun re -> function
+      | None -> None
+      | Some str -> (match is_literal re with
+        | None -> None
+        | Some str' -> Some (str' ^ str)))
+     ~init:(Some "")
+  | _ -> None
 
 let class_char : re_class -> char = function
   | PosClass Word -> 'w'
@@ -160,19 +173,24 @@ let set_to_string : re_set -> string =
 let rec to_string' : int -> regex -> string =
  fun precedence -> function
   (* We need to escape special characters in strings *)
-  | ReString str ->
-    String.(
-      str
-      |> substr_replace_all ~pattern:{|\|} ~with_:{|\\|}
-      |> substr_replace_all ~pattern:{|/|} ~with_:{|\/|}
-      |> substr_replace_all ~pattern:{|||} ~with_:{|\||}
-      |> substr_replace_all ~pattern:{|+|} ~with_:{|\+|}
-      |> substr_replace_all ~pattern:{|*|} ~with_:{|\*|}
-      |> substr_replace_all ~pattern:{|?|} ~with_:{|\?|}
-      |> substr_replace_all ~pattern:{|-|} ~with_:{|\-|}
-      |> substr_replace_all ~pattern:{|(|} ~with_:{|\(|}
-      |> substr_replace_all ~pattern:{|)|} ~with_:{|\)|}
-      |> parenthesize Int.(precedence > 1 && String.length str > 1))
+  | ReChar c -> (match c with
+    | '[' -> {|\[|}
+    | ']' -> {|\]|}
+    | '(' -> {|\(|}
+    | ')' -> {|\)|}
+    | '\\' -> {|\\|}
+    | '.' -> {|\.|}
+    | '|' -> {|\||}
+    | '*' -> {|\*|}
+    | '+' -> {|\+|}
+    | '?' -> {|\?|}
+
+    (* XXX no match in parser *)
+    | '-' -> {|\-|}
+    | '/' -> {|\/|}
+
+    | _ -> String.of_char c
+  )
   | ReSet set -> "[" ^ set_to_string set ^ "]"
   | ReStar re -> to_string' 2 re ^ "*"
   | RePlus re -> to_string' 2 re ^ "+"
@@ -212,15 +230,15 @@ let%test_module "regex tests" =
 
     let%test_module "accepts_empty" =
       (module struct
-        let%test "" = accepts_empty (ReString "foo") = false
+        let%test "" = accepts_empty (re_str "foo") = false
 
         let%test "" =
-          accepts_empty (ReConcat [ ReStar (ReString "foo"); ReOption (ReString "bar") ])
+          accepts_empty (ReConcat [ ReStar (re_str "foo"); ReOption (re_str "bar") ])
           = true
         ;;
 
         let%test "" =
-          accepts_empty (ReConcat [ ReStar (ReString "foo"); RePlus (ReString "bar") ])
+          accepts_empty (ReConcat [ ReStar (re_str "foo"); RePlus (re_str "bar") ])
           = false
         ;;
 
@@ -229,7 +247,7 @@ let%test_module "regex tests" =
         let%test "" = not (accepts_empty (ReClass (PosClass Digit)))
         let%test "" = not (accepts_empty (ReClass (NegClass Digit)))
         let%test "" = not (accepts_empty (ReSet [ Range ('a', 'z') ]))
-        let%test "" = accepts_empty (RePlus (ReString ""))
+        let%test "" = accepts_empty (RePlus (re_str ""))
       end)
     ;;
 
@@ -238,12 +256,12 @@ let%test_module "regex tests" =
         let print_re re = printf "%s" (to_string re)
 
         let%expect_test _ =
-          print_re (ReConcat [ ReString "foo"; ReString "bar" ]);
+          print_re (ReConcat [ re_str "foo"; re_str "bar" ]);
           [%expect {| (foo)(bar) |}]
         ;;
 
         let%expect_test _ =
-          print_re (ReConcat [ ReString "foo"; ReString "bar" ]);
+          print_re (ReConcat [ re_str "foo"; re_str "bar" ]);
           [%expect {|(foo)(bar)|}]
         ;;
 
@@ -258,36 +276,73 @@ let%test_module "regex tests" =
         ;;
 
         let%expect_test _ =
-          printf
-            "%s"
-            (to_string
-               (ReConcat
-                  [ ReStar (ReString "foo")
-                  ; RePlus (ReString "foo")
-                  ; ReOption (ReString "foo")
-                  ]));
+          print_re
+            (ReConcat
+               [ ReStar (re_str "foo")
+               ; RePlus (re_str "foo")
+               ; ReOption (re_str "foo")
+               ]);
           [%expect {| (foo)*(foo)+(foo)? |}]
         ;;
 
         let%expect_test _ =
-          printf "%s" (to_string (ReString "+"));
+          print_re (ReChar '+');
           [%expect {| \+ |}]
         ;;
 
         let%expect_test _ =
-          printf "%s" (to_string (ReString "*"));
+          print_re (ReChar '*');
           [%expect {| \* |}]
         ;;
 
         let%expect_test _ =
-          printf "%s" (to_string (ReString "?"));
+          print_re (ReChar '?');
           [%expect {| \? |}]
         ;;
 
         let%expect_test _ =
-          printf "%s" (to_string (ReString "-"));
+          print_re (ReChar '-');
           [%expect {| \- |}]
         ;;
+      end)
+    ;;
+
+    let%test_module "matching" =
+     (module struct
+      let print_matches regex str =
+
+        let re = Re.compile (to_re regex) in
+        let group = Re.exec re str in
+        Re.Group.pp Format.std_formatter group
+
+      let%expect_test _ =
+        print_matches (ReConcat
+          [ RePlus (ReClass (PosClass Word))
+          ; ReClass (PosClass Boundary)
+          ; RePlus (ReClass (PosClass Whitespace))
+          ; ReClass (PosClass Boundary)
+          ; RePlus (ReClass (PosClass Word))
+          ])
+        "hello world";
+        [%expect{| (Group (hello world (0 11))) |}]
+
+      let%expect_test _ =
+        print_matches (ReClass (NegClass Word))
+        "hello world";
+        [%expect{| (Group (  (5 6))) |}]
+
+      let%expect_test _ =
+        print_matches (RePlus (ReClass (NegClass Whitespace)))
+        "hello world";
+        [%expect{| (Group (hello (0 5))) |}]
+
+        (* TODO
+      let%expect_test _ =
+        print_matches (ReClass (NegClass Boundary))
+        "hello world";
+        [%expect{| (Group (h (0 1))) |}]
+        *)
+
       end)
     ;;
   end)
