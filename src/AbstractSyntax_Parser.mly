@@ -18,13 +18,13 @@
 %token EOF
 
 %start language_def
-%type <Types.abstract_syntax>  language_def
-%type <Types.sort>             sort
-%type <string * Types.sortDef> sort_def
-%type <Types.operatorDef>      operator_def
-%type <Types.arity>            arity
-%type <Types.valence>          valence
-%type <string * string>        import_symbol
+%type <Types.abstract_syntax>   language_def
+%type <Types.sort>              sort
+%type <string * Types.sort_def> sort_def
+%type <Types.operator_def>      operator_def
+%type <Types.arity>             arity
+%type <Types.valence>           valence
+%type <string * string>         import_symbol
 %%
 
 /* TODO: duplicated in concrete syntax parser */

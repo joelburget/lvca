@@ -26,13 +26,13 @@ type arity = Arity of string list * valence list
   (** An arity is defined its arity indices and valences. Arity indices are variables
       bound in an arity rule specifying the length of variable-length slots. *)
 
-type operatorDef = OperatorDef of string * arity
+type operator_def = OperatorDef of string * arity
   (** An operator is defined by its tag and arity *)
 
-type sortDef = SortDef of string list * operatorDef list
+type sort_def = SortDef of string list * operator_def list
   (** A sort is defined by a set of variables and a set of operators *)
 
-type sort_defs = SortDefs of sortDef String.Map.t
+type sort_defs = SortDefs of sort_def String.Map.t
   (** A language is defined by its sorts *)
 
 type primitive =
