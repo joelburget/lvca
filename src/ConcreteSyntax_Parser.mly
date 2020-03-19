@@ -22,20 +22,6 @@
 %token COMMA
 
 %{open ConcreteSyntaxDescription
-
-  (*
-let concretize_vars : Core_kernel.String.Set.t -> Types.sort -> Types.sort
-  = fun var_set ->
-    let open Types in
-    let rec go = function
-      | SortAp (name, args)
-      -> SortAp (name, Core_kernel.Array.map args ~f:go)
-      | SortVar name
-      -> if Core_kernel.String.Set.mem var_set name
-         then SortVar name
-         else SortAp (name, [||])
-    in go
-    *)
 %}
 
 %start terminal_rule__test
@@ -44,7 +30,6 @@ let concretize_vars : Core_kernel.String.Set.t -> Types.sort -> Types.sort
 %start operator_match__test
 %start nonterminal_rule__test
 %start language
-%type <(string * Types.sort) list * Types.sort> args
 %type <ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule
 %type <ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule__test
 %type <ConcreteSyntaxDescription.capture_number> capture_number
@@ -72,36 +57,20 @@ capture_number: DOLLAR NAT { $2 }
 
 nonterminal_rule__test: nonterminal_rule EOF { $1 }
 
-/* TODO: duplicated (sort / atomic_sort) */
+/* TODO: duplicated in abstract syntax parser */
 sort:
-  /* TODO: this is ugly -- should be called SORT_ID or ID */
-  | NONTERMINAL_ID nonempty_list(atomic_sort)
-  { Types.SortAp ($1, Core_kernel.Array.of_list $2) }
-  | atomic_sort
-  { $1 }
-
-atomic_sort:
-  | LEFT_PAREN sort RIGHT_PAREN
-  { $2 }
+  | NONTERMINAL_ID LEFT_PAREN separated_list(SEMICOLON, sort) RIGHT_PAREN
+  { Types.SortAp ($1, Core_kernel.Array.of_list $3) }
   | NONTERMINAL_ID
-  /* TODO: this is ugly -- should be called SORT_ID or ID */
   { Types.SortVar $1 }
 
-arg: LEFT_PAREN NONTERMINAL_ID COLON sort RIGHT_PAREN { $2, $4 }
-
-args: list(arg) COLON sort { $1, $3 }
+signature: COLON sort { $2 }
 
 nonterminal_rule:
-  | NONTERMINAL_ID args? ASSIGN BAR? separated_nonempty_list(BAR, operator_match)
-  (* XXX must concretize vars *)
-  { let args, result_type = match $2 with
-      | None -> [], None
-      | Some (args_ty, result_ty) -> args_ty, Some result_ty
-    in
-    NonterminalRule
+  NONTERMINAL_ID signature? ASSIGN BAR? separated_nonempty_list(BAR, operator_match)
+  { NonterminalRule
     { nonterminal_name = $1
-    ; args
-    ; result_type
+    ; result_sort = $2
     ; operator_rules = $5
     }
   }

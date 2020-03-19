@@ -7,63 +7,63 @@ let expect_parse parser str tm =
 
 let%test_module "ConcreteSyntax_Parser" =
   (module struct
-    let%test_unit "" =
+    let%test_unit _ =
       expect_parse
         P.terminal_rule__test
         {|TERMINAL := /foo/|}
         (PreTerminalRule ("TERMINAL", First "foo"))
     ;;
 
-    let%test_unit "" =
+    let%test_unit _ =
       expect_parse
         P.terminal_rule__test
         {|TERMINAL := "\\"|}
         (PreTerminalRule ("TERMINAL", Second "\\"))
     ;;
 
-    let%test_unit "" =
+    let%test_unit _ =
       expect_parse
         P.terminal_rule__test
         {|TERMINAL := "->"|}
         (PreTerminalRule ("TERMINAL", Second "->"))
     ;;
 
-    let%test_unit "" =
+    let%test_unit _ =
       expect_parse
         P.terminal_rule__test
         {|ID := /[a-zA-Z][a-zA-Z0-9_]*/|}
         (PreTerminalRule ("ID", First "[a-zA-Z][a-zA-Z0-9_]*"))
     ;;
 
-    let%test_unit "" =
+    let%test_unit _ =
       expect_parse
         P.terminal_rule__test
         {|SPACE := / +/|}
         (PreTerminalRule ("SPACE", First " +"))
     ;;
 
-    let%test_unit "" = expect_parse P.capture_number "$2" 2
+    let%test_unit _ = expect_parse P.capture_number "$2" 2
 
-    let%test_unit "" =
+    let%test_unit _ =
       expect_parse P.nonterminal_token__test "foo" (NonterminalName "foo")
     ;;
 
-    let%test_unit "" = expect_parse P.nonterminal_token__test "BAR" (TerminalName "BAR")
-    let%test_unit "" = expect_parse P.nonterminal_token__test "_" (Underscore 1)
-    let%test_unit "" = expect_parse P.nonterminal_token__test "_0" (Underscore 0)
+    let%test_unit _ = expect_parse P.nonterminal_token__test "BAR" (TerminalName "BAR")
+    let%test_unit _ = expect_parse P.nonterminal_token__test "_" (Underscore 1)
+    let%test_unit _ = expect_parse P.nonterminal_token__test "_0" (Underscore 0)
 
-    let%test_unit "" =
+    let%test_unit _ =
       expect_parse P.nonterminal_token__test "[<hov>" (OpenBox (Some (HovBox, [])))
     ;;
 
-    let%test_unit "" =
+    let%test_unit _ =
       expect_parse
         P.nonterminal_token__test
         "[<hv 0,1,2>"
         (OpenBox (Some (HvBox, [ 0; 1; 2 ])))
     ;;
 
-    let%test_unit "" =
+    let%test_unit _ =
       expect_parse
         P.operator_match__test
         "foo BAR baz { foo($1; $2) }"
@@ -89,8 +89,7 @@ let%test_module "ConcreteSyntax_Parser" =
     |}
         (NonterminalRule
            { nonterminal_name = "arith"
-           ; args = []
-           ; result_type = None
+           ; result_sort = None
            ; operator_rules =
                [ OperatorMatch
                    { tokens =
@@ -126,17 +125,16 @@ let%test_module "ConcreteSyntax_Parser" =
            })
     ;;
 
-    let%test_unit "" =
+    let%test_unit _ =
       expect_parse
         P.nonterminal_rule__test
         {|
-       list
-         := L_BRACKET [ inner_list ] R_BRACKET { $2 }
-    |}
+          list : list(int())
+            := L_BRACKET [ inner_list ] R_BRACKET { $2 }
+        |}
         (NonterminalRule
            { nonterminal_name = "list"
-           ; args = []
-           ; result_type = None
+           ; result_sort = Some (SortAp ("list", [| SortAp ("int", [||]) |]))
            ; operator_rules =
                [ OperatorMatch
                    { tokens =
@@ -151,5 +149,6 @@ let%test_module "ConcreteSyntax_Parser" =
                ]
            })
     ;;
+
   end)
 ;;

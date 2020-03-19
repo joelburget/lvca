@@ -2,7 +2,7 @@ let abstractSyntax =
   {|
 import {list, string} from "builtin"
 
-document := document(list block)
+document := document(list(block))
 
 block :=
   | header(headerLevel; string)
@@ -13,11 +13,11 @@ headerLevel :=
   | h2()
   | h3()
 
-inline := inline(list inlineAtom)
+inline := inline(list(inlineAtom))
 
 inlineAtom :=
   // ideally a set of attributes but sets are harder to model
-  | inlineAtom(list attribute; string)
+  | inlineAtom(list(attribute); string)
 
 attribute :=
   | bold()

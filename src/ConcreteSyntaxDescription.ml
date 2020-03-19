@@ -44,7 +44,8 @@ let string_of_binder_capture : binder_capture -> string = function
   | PatternCapture n -> Printf.sprintf "$%n" n
 ;;
 
-let rec string_of_operator_match_pattern : operator_match_pattern -> string = function
+let rec string_of_operator_match_pattern : operator_match_pattern -> string
+  = function
   | OperatorPattern (name, scope_pats) ->
     Printf.sprintf
       "%s(%s)"
@@ -53,7 +54,7 @@ let rec string_of_operator_match_pattern : operator_match_pattern -> string = fu
   | SingleCapturePattern num -> "$" ^ string_of_int num
 
 and string_of_numbered_scope_pattern : numbered_scope_pattern -> string =
- fun (NumberedScopePattern (patterns, body)) ->
+  fun (NumberedScopePattern (patterns, body)) ->
   patterns
   |> Array.of_list
   |> Array.map ~f:string_of_binder_capture
@@ -105,13 +106,18 @@ type variable_rule =
 
 type nonterminal_rule' =
   { nonterminal_name : string
-  ; args : (string * sort) list
-  ; result_type : sort option
+  ; result_sort : sort option
   ; operator_rules : operator_match list
   }
 
 (** A nonterminal rule shows how to parse / pretty-print a nonterminal *)
 type nonterminal_rule = NonterminalRule of nonterminal_rule'
+
+let get_result_sort : nonterminal_rule -> sort
+  = fun (NonterminalRule { nonterminal_name; result_sort; _ }) ->
+    match result_sort with
+    | Some sort -> sort
+    | None -> SortAp (nonterminal_name, [||])
 
 (** Mapping from nonterminal names to nonterminal rules *)
 type nonterminal_rules = nonterminal_rule String.Map.t
@@ -152,18 +158,14 @@ let string_of_arg : string * sort -> string
   = fun (name, sort) -> Printf.sprintf "(%s : %s)" name (string_of_sort sort)
 
 let string_of_nonterminal_rule : nonterminal_rule -> string =
-fun (NonterminalRule { nonterminal_name; args; result_type; operator_rules }) ->
-  let args_str = args |> List.map ~f:string_of_arg |> String.concat ~sep:" " in
-  let args_str' = if String.(args_str = "") then args_str else " " ^ args_str in
-  let sort_str = match result_type with
-    | None -> ""
-    | Some ty -> " " ^ string_of_sort ty
-  in
+  fun (NonterminalRule { nonterminal_name; result_sort; operator_rules }) ->
   Printf.sprintf
-    "%s%s%s :=\n%s"
+    "%s%s :=\n%s"
     nonterminal_name
-    args_str'
-    sort_str
+    (match result_sort with
+      | None -> ""
+      | Some sort -> " " ^ string_of_sort sort
+    )
     (string_of_operator_rules operator_rules)
 ;;
 

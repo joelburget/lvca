@@ -26,6 +26,7 @@ rule read = parse
   | ','      { COMMA }
   | '.'      { DOT }
   | '|'      { BAR }
+  | '*'      { STAR }
   | '"'      { read_string (Buffer.create 17) lexbuf }
   | eof      { EOF }
   | newline { next_line lexbuf; read lexbuf }

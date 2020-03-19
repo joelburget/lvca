@@ -14,6 +14,7 @@
 %token SEMICOLON
 %token COMMA
 %token BAR
+%token STAR
 %token EOF
 
 %start language_def
@@ -26,22 +27,16 @@
 %type <string * string>        import_symbol
 %%
 
-/* TODO: duplicated (sort / atomic_sort) */
+/* TODO: duplicated in concrete syntax parser */
 sort:
-  | ID nonempty_list(atomic_sort)
-  { Types.SortAp ($1, Core_kernel.Array.of_list $2) }
-  | atomic_sort
-  { $1 }
-
-atomic_sort:
-  | LEFT_PAREN sort RIGHT_PAREN
-  { $2 }
+  | ID LEFT_PAREN separated_list(SEMICOLON, sort) RIGHT_PAREN
+  { Types.SortAp ($1, Core_kernel.Array.of_list $3) }
   | ID
-  { Types.SortAp ($1, [||]) }
+  { Types.SortVar $1 }
 
 valence:
-  | ID LEFT_BRACK sort RIGHT_BRACK
-  { VariableValence ($1, $3) }
+  | sort STAR DOT sort
+  { VariableValence ($1, $4) }
   | separated_nonempty_list(DOT, sort)
   { let binds, result = Util.unsnoc $1 in Types.FixedValence (binds, result) }
 

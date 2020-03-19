@@ -17,25 +17,23 @@ type sort =
     and sorts of the variables bound within it *)
 type valence =
   | FixedValence of sort list * sort (** A fixed valence is known a priori *)
-  | VariableValence of string * sort
+  | VariableValence of sort * sort
       (** A variable valence binds a number of variables not known a priori. All must be
           of the same sort. *)
 
 (** An arity specifies the arguments to an operator *)
-type arity =
-  | Arity of string list * valence list
-      (** An arity is defined its arity indices and valences. Arity indices are variables
-          bound in an arity rule specifying the length of variable-length slots. *)
+type arity = Arity of string list * valence list
+  (** An arity is defined its arity indices and valences. Arity indices are variables
+      bound in an arity rule specifying the length of variable-length slots. *)
 
-type operatorDef =
-  | OperatorDef of string * arity (** An operator is defined by its tag and arity *)
+type operatorDef = OperatorDef of string * arity
+  (** An operator is defined by its tag and arity *)
 
-type sortDef =
-  | SortDef of string list * operatorDef list
-      (** A sort is defined by a set of variables and a set of operators *)
+type sortDef = SortDef of string list * operatorDef list
+  (** A sort is defined by a set of variables and a set of operators *)
 
-type sort_defs =
-  | SortDefs of sortDef String.Map.t (** A language is defined by its sorts *)
+type sort_defs = SortDefs of sortDef String.Map.t
+  (** A language is defined by its sorts *)
 
 type primitive =
   | PrimInteger of Bigint.t
@@ -67,18 +65,12 @@ let sort_names : abstract_syntax -> String.Set.t =
  fun { sort_defs = SortDefs sorts; _ } -> sorts |> String.Map.keys |> String.Set.of_list
 ;;
 
-let string_of_sort : sort -> string =
-  let rec go needs_parens = function
-    | SortAp (name, args) ->
-      let args' = Array.map ~f:(go true) args in
-      (match args' with
-      | [||] -> name
-      | _ ->
-        let pre_result = name ^ " " ^ String.concat_array args' ~sep:" " in
-        if needs_parens then "(" ^ pre_result ^ ")" else pre_result)
+let rec string_of_sort : sort -> string
+  = function
+    | SortAp (name, args) -> Printf.sprintf "%s(%s)"
+      name
+      (args |> Array.map ~f:string_of_sort |> String.concat_array)
     | SortVar name -> name
-  in
-  go false
 ;;
 
 let rec instantiate_sort : sort String.Map.t -> sort -> sort =

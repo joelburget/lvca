@@ -1,8 +1,9 @@
 open Core_kernel
 open Types
 open ConcreteSyntaxDescription
+module Parse_abstract = Parsing.Incremental (Parsing.Parseable_abstract_syntax)
 
-let invariant_violation = Util.invariant_violation
+let get_option', invariant_violation = Util.(get_option', invariant_violation)
 
 (** This type lives in [formatted_tree] (ie [formatted_nonterminal_capture]),
  * and holds enough info to produce an AST.
@@ -187,64 +188,19 @@ and string_of_formatted_capture = function
   -> to_debug_string nonterminal_capture
 ;;
 
-(** Points to the current sort among the whole language.
- *)
-type nonterminal_pointer =
-  { nonterminals : nonterminal_rules
-  ; current_nonterminal : string
-  ; bound_sorts : sort String.Map.t
-  }
-
-let current_sort : nonterminal_pointer -> sort
-  = fun { nonterminals; current_nonterminal; bound_sorts } ->
-  match String.Map.find nonterminals current_nonterminal with
-    | None -> invariant_violation (Printf.sprintf
-      "current_sort: didn't find current nonterminal %s in set of nonterminals"
-      current_nonterminal
-    )
-    | Some (NonterminalRule nonterminal_rule)
-    ->
-      let ty = match nonterminal_rule.result_type with
-         | Some ty -> ty
-         | None -> SortAp (nonterminal_rule.nonterminal_name, [||])
-      in instantiate_sort bound_sorts ty
-
-let current_nonterminal : nonterminal_pointer -> nonterminal_rule
-  = fun { nonterminals; current_nonterminal; _ } ->
-    match String.Map.find nonterminals current_nonterminal with
-      | None -> invariant_violation (Printf.sprintf
-        "current_nonterminal: didn't find current nonterminal %s in set of \
-         nonterminals"
-        current_nonterminal
-      )
-      | Some nt -> nt
-
-(* TODO: move with binding *)
-let move_to : nonterminal_pointer -> string -> nonterminal_pointer
-  = fun { nonterminals; _ } nt_name ->
-    { nonterminals
-    ; current_nonterminal = nt_name
-    ; bound_sorts = String.Map.empty
-    }
-
-type subpattern_result =
-  CapturedPattern of sort * nonterminal_pointer * Pattern.t
-
 type subterm_result =
-  | CapturedTerm   of sort * nonterminal_pointer * Binding.Nominal.term
-  | CapturedBinder of sort * nonterminal_pointer * Pattern.t
+  | CapturedTerm   of sort * Binding.Nominal.term
+  | CapturedBinder of sort * Pattern.t
 
 let string_of_subterm_result : subterm_result -> string
   = function
-    | CapturedTerm (sort, { current_nonterminal; _ }, tm) ->
-      Printf.sprintf "CapturedTerm (%s, { current_nonterminal = %s; _ }, %s)"
+    | CapturedTerm (sort, tm) ->
+      Printf.sprintf "CapturedTerm (%s, %s)"
       (string_of_sort sort)
-      current_nonterminal
       (Binding.Nominal.pp_term' tm)
-    | CapturedBinder (sort, { current_nonterminal; _ }, pat) ->
-      Printf.sprintf "CapturedBinder (%s, { current_nonterminal = %s; _ }, %s)"
+    | CapturedBinder (sort, pat) ->
+      Printf.sprintf "CapturedBinder (%s, %s)"
       (string_of_sort sort)
-      current_nonterminal
       (Pattern.string_of_pattern pat)
 
 exception UserError of string
@@ -288,47 +244,92 @@ let string_of_op_match_line'
     (string_of_tokens tokens)
     (string_of_numbered_scope_pattern op_match_pat)
 
+let rec concretize_sort : sort String.Map.t -> sort -> sort
+  = fun env -> function
+    | SortAp (name, sub_sorts) -> SortAp
+      ( name
+      , Array.map sub_sorts ~f:(concretize_sort env)
+      )
+    | SortVar name
+    -> Map.find env name
+      |> get_option' (fun () -> "concretize_sort: unknown variable " ^ name)
+
+let concretize_valence : sort String.Map.t -> valence -> valence
+  = fun env -> function
+    | FixedValence (binding_sorts, body_sort) -> FixedValence
+      ( List.map binding_sorts ~f:(concretize_sort env)
+      , concretize_sort env body_sort
+      )
+    | VariableValence (bound_sort, body_sort)
+    -> VariableValence
+      (concretize_sort env bound_sort, concretize_sort env body_sort)
+
+let concretize_arity : sort String.Map.t -> arity -> arity
+  = fun env (Arity (indices, valences)) -> Arity
+    ( indices
+    , List.map valences ~f:(concretize_valence env)
+    )
+
+let get_valences : sort_defs -> string * string -> string list * arity
+  = fun (SortDefs def_map) (sort_name, op_name) ->
+
+  let SortDef (var_names, op_defs) = Map.find def_map sort_name
+    |> get_option'
+      (fun () -> "get_valences: unable to find child sort " ^ sort_name)
+  in
+
+  let OperatorDef (_, arity) = op_defs
+    |> List.find ~f:(fun (OperatorDef (name, _)) -> String.(name = op_name))
+    |> get_option' (fun () -> Printf.sprintf
+      "get_valences: unable to find operator %s in sort %s"
+      op_name
+      sort_name)
+  in
+
+  var_names, arity
+
 let rec get_subpatterns
-  :  nonterminal_token list
-  -> nonterminal_token Int.Map.t
-  -> nonterminal_pointer
+  :  sort_defs
+  -> sort
   -> operator_match_pattern
   -> Pattern.t
-  -> subpattern_result Int.Map.t
-  = fun tokens tokens_map nonterminal_pointer op_match_pat pat ->
+  -> subterm_result Int.Map.t
+  = fun sort_defs current_sort op_match_pat pat ->
     match op_match_pat, pat with
   | SingleCapturePattern num, _
-  -> let tok = Int.Map.find tokens_map num
-       (* TODO: change to InvariantViolation if we validate this *)
-       |> Util.get_option (UserError (Printf.sprintf
-         "Couldn't find token $%n in tokens: %s"
-         num
-         (string_of_op_match_line tokens op_match_pat)
-       ))
-     in
-     let nt_name = match tok with
-       | NonterminalName nt_name -> nt_name
-       | TerminalName t_name -> raise (UserError (Printf.sprintf
-         "Token $%n captures a terminal (%s) directly, but only \
-          nonterminals can be captured and put in an AST: %s"
-         num t_name (string_of_op_match_line tokens op_match_pat)
-       ))
-       | Underscore _ | OpenBox _ | CloseBox
-       -> invariant_violation "boxes and underscores are not indexed"
-     in
-     let nonterminal_pointer' = move_to nonterminal_pointer nt_name in
-     let capture = CapturedPattern
-       (current_sort nonterminal_pointer, nonterminal_pointer', pat)
-     in
-     Int.Map.of_alist_exn [ num, capture ]
-  | OperatorPattern (pat_op_name, body_pats), Operator (op_name, body_scopes)
-  -> if Caml.(pat_op_name = op_name) &&
-        List.(length body_pats = length body_scopes)
+  | OperatorPattern ("var", [NumberedScopePattern([], SingleCapturePattern num)])
+  , Var _
+  | OperatorPattern ("integer", [NumberedScopePattern([], SingleCapturePattern num)])
+  , Primitive (PrimInteger _)
+  | OperatorPattern ("string", [NumberedScopePattern([], SingleCapturePattern num)])
+  , Primitive (PrimString _)
+  -> Int.Map.of_alist_exn [ num, CapturedBinder (current_sort, pat) ]
+  | OperatorPattern (l_op_name, l_body_pats), Operator (r_op_name, r_body_pats)
+  -> if String.(l_op_name = r_op_name) &&
+        List.(length l_body_pats = length r_body_pats)
+        (* TODO check valences length? *)
      then
-       List.map2_exn body_pats body_scopes
-         ~f:(fun (NumberedScopePattern (caps, body_pat)) ->
-           if List.length caps > 0 then failwith "TODO: error 6";
-           get_subpatterns tokens tokens_map nonterminal_pointer body_pat)
+       let sort_name, sort_args = match current_sort with
+         | SortAp (sort_name, args) -> sort_name, Array.to_list args
+         | _ -> invariant_violation "get_subterms: passed non-concrete sort"
+       in
+       let op_sort_vars, arity = get_valences sort_defs (sort_name, l_op_name) in
+       (* TODO check right amount of args *)
+
+       let sort_arg_map = List.zip_exn op_sort_vars sort_args
+         |> String.Map.of_alist_exn
+       in
+
+       let arity' = concretize_arity sort_arg_map arity in
+       let Arity (_, valences) = arity' in
+
+       List.map3_exn l_body_pats r_body_pats valences
+         ~f:(fun (NumberedScopePattern (caps, l_body_pat)) r_body_pat valence ->
+           if List.length caps > 0 then failwith "TODO: get_subpatterns error";
+           match valence with
+             | FixedValence ([], body_sort)
+             -> get_subpatterns sort_defs body_sort l_body_pat r_body_pat
+             | _ -> failwith "TODO: error")
        |> Util.int_map_unions
      else raise (NoMatch
        "pattern and operator don't match, either in operator name or subterms")
@@ -356,63 +357,62 @@ let rec get_subpatterns
  @raise [InvariantViolation]
  *)
 let rec get_subterms
-  :  nonterminal_token list
-  -> nonterminal_token Int.Map.t
-  -> nonterminal_pointer
+  :  sort_defs
+  -> sort
   -> operator_match_pattern
   -> Binding.Nominal.term
   -> subterm_result Int.Map.t
-  = fun tokens tokens_map nonterminal_pointer op_match_pat tm ->
+  = fun sort_defs current_sort op_match_pat tm ->
     match op_match_pat, tm with
   | SingleCapturePattern num, _
-  -> let tok = Int.Map.find tokens_map num
-       (* TODO: change to InvariantViolation if we validate this *)
-       |> Util.get_option (UserError (Printf.sprintf
-         "Couldn't find token $%n in tokens: %s"
-         num
-         (string_of_op_match_line tokens op_match_pat)
-       ))
-     in
-     let nt_name = match tok with
-       | NonterminalName nt_name -> nt_name
-       | TerminalName t_name -> raise (UserError (Printf.sprintf
-         "Token $%n captures a terminal (%s) directly, but only \
-          nonterminals can be captured and put in an AST: %s"
-         num t_name (string_of_op_match_line tokens op_match_pat)
-       ))
-       | Underscore _ | OpenBox _ | CloseBox
-       -> invariant_violation "boxes and underscores are not indexed"
-     in
-     let nonterminal_pointer' = move_to nonterminal_pointer nt_name in
-     let capture = CapturedTerm
-       (current_sort nonterminal_pointer, nonterminal_pointer', tm)
-     in
-     Int.Map.of_alist_exn [ num, capture ]
   | OperatorPattern ("var", [NumberedScopePattern([], SingleCapturePattern num)])
-  , Var name
-  -> let capture = CapturedTerm
-       (current_sort nonterminal_pointer, nonterminal_pointer, Var name)
-     in
-     Int.Map.of_alist_exn [ num, capture ]
+  , Var _
   | OperatorPattern ("integer", [NumberedScopePattern([], SingleCapturePattern num)])
   , Primitive (PrimInteger _)
   | OperatorPattern ("string", [NumberedScopePattern([], SingleCapturePattern num)])
   , Primitive (PrimString _)
-  -> let capture = CapturedTerm
-       (current_sort nonterminal_pointer, nonterminal_pointer, tm)
-     in
-     Int.Map.of_alist_exn [ num, capture ]
+  -> Int.Map.of_alist_exn [ num, CapturedTerm (current_sort, tm) ]
   | OperatorPattern (pat_op_name, body_pats), Operator (op_name, body_scopes)
-  -> if Caml.(pat_op_name = op_name) &&
+  -> if String.(pat_op_name = op_name) &&
         List.(length body_pats = length body_scopes)
-     then (List.map2_exn body_pats body_scopes
-         ~f:(get_scope_subterms tokens tokens_map nonterminal_pointer)
+        (* TODO: check valences length? *)
+     then
+       let sort_name, sort_args = match current_sort with
+         | SortAp (sort_name, args) -> sort_name, Array.to_list args
+         | _ -> invariant_violation "get_subterms: passed non-concrete sort"
+       in
+       let op_sort_vars, arity = get_valences sort_defs (sort_name, op_name) in
+
+       (if List.(length op_sort_vars <> length sort_args)
+       then invariant_violation (Printf.sprintf
+         "get_subterms zipping different lengths: [%s] / [%s]"
+         (String.concat op_sort_vars ~sep:", ")
+         (sort_args
+           |> List.map ~f:string_of_sort
+           |> String.concat ~sep:", ")));
+
+       let sort_arg_map = List.zip_exn op_sort_vars sort_args
+         |> String.Map.of_alist_exn
+       in
+
+       let arity' = concretize_arity sort_arg_map arity in
+       let Arity (_, valences) = arity' in
+       (List.map3_exn body_pats body_scopes valences
+         ~f:(get_scope_subterms sort_defs)
        |> Util.int_map_unions
      )
-     else raise (NoMatch
-       "pattern and operator don't match, either in operator name or subterms")
+     else raise (NoMatch (Printf.sprintf
+       "pattern %s and operator %s don't match, in either operator name or \
+       subterms"
+       (string_of_operator_match_pattern op_match_pat)
+       (Binding.Nominal.pp_term' tm)
+       ))
   | OperatorPattern _, _
-  -> raise (NoMatch "operator pattern and value don't match")
+  -> raise (NoMatch (Printf.sprintf
+    "operator pattern %s and value %s don't match"
+    (string_of_operator_match_pattern op_match_pat)
+    (Binding.Nominal.pp_term' tm)
+    ))
 
 (** See [get_subterms].
 
@@ -421,83 +421,66 @@ let rec get_subterms
  @raise [InvariantViolation]
 *)
 and get_scope_subterms
-  :  nonterminal_token list
-  -> nonterminal_token Int.Map.t
-  -> nonterminal_pointer
+  :  sort_defs
   -> numbered_scope_pattern
   -> Binding.Nominal.scope
+  -> valence
   -> subterm_result Int.Map.t
-  = fun tokens tokens_map nonterminal_pointer
-    (NumberedScopePattern (numbered_patterns, body_pat) as ns_pat)
-    (Scope (term_patterns, body)) ->
-      (*
-    Printf.printf "trying to match %n / %n binders\n"
-      (List.length numbered_patterns)
-      (List.length term_patterns) ;
-      *)
+  = fun
+    sort_defs
+    (NumberedScopePattern (numbered_patterns, body_pat))
+    (Scope (term_patterns, body))
+    valence ->
+
     if List.(length numbered_patterns <> length term_patterns)
     then raise
-      (NoMatch "numbered scope pattern and term scope have different arity")
-    else
-      let pattern_bindings = List.map2_exn numbered_patterns term_patterns
-        ~f:(fun binder_capture term_pat -> match binder_capture, term_pat with
-          | VarCapture num, Var var_name ->
-            num,
-            CapturedBinder
-              ( current_sort nonterminal_pointer
-              , nonterminal_pointer
-              , Var var_name
-              )
-          | VarCapture num, Ignored name ->
-            num,
-            CapturedBinder
-              ( current_sort nonterminal_pointer
-              , nonterminal_pointer
-              , Ignored name
-              )
-          | VarCapture _, _
-          -> raise (UserError (Printf.sprintf
-            "get_scope_subterms: trying to capture a variable, but found \
-             a pattern"
-          ))
-          | PatternCapture captured_token_num, _ ->
-            let tok = Int.Map.find tokens_map captured_token_num
-              (* TODO: change to InvariantViolation if we validate this *)
-              |> Util.get_option (UserError (Printf.sprintf
-                "Couldn't find token $%n in tokens: %s"
-                captured_token_num
-                (string_of_op_match_line' tokens ns_pat)
-              ))
-            in
-            let nt_name = match tok with
-              | NonterminalName nt_name -> nt_name
-              | TerminalName t_name -> raise (UserError (Printf.sprintf
-                "Matching pattern, token $%n captures a terminal (%s) \
-                 directly, but only nonterminals can be captured and put in \
-                 an AST: %s"
-                captured_token_num t_name (string_of_op_match_line' tokens ns_pat)
-              ))
-              | Underscore _ | OpenBox _ | CloseBox
-              -> invariant_violation "boxes and underscores are not indexed"
-            in
-            let nonterminal_pointer' = move_to nonterminal_pointer nt_name in
-            let capture = CapturedBinder
-              (current_sort nonterminal_pointer, nonterminal_pointer', term_pat)
-            in
-            captured_token_num, capture
-        )
-        |> Int.Map.of_alist_exn
-      in
-      (* Printf.printf "trying to match body\n"; *)
-      let body_bindings =
-        get_subterms tokens tokens_map nonterminal_pointer body_pat body
-      in
-      (* Printf.printf "matched body\n"; *)
-      Int.Map.merge pattern_bindings body_bindings ~f:(fun ~key -> function
-        | `Both _ -> raise
-          (UserError (Printf.sprintf "duplicate token capture: $%n" key))
-        | `Left v | `Right v -> Some v
-      )
+      (NoMatch "numbered scope pattern and term scope have different arity");
+
+    let pattern_bindings, body_bindings = match valence with
+      | VariableValence (bound_sort, body_sort)
+      -> let op_match_pat = match numbered_patterns with
+           | [PatternCapture cap_num] -> SingleCapturePattern cap_num
+           | _ -> failwith "TODO: error"
+         in
+         let pat = match term_patterns with
+           | [pat] -> pat
+           | _ -> failwith "TODO: error"
+         in
+         let pattern_bindings = get_subpatterns sort_defs bound_sort
+           op_match_pat pat
+         in
+         let body_bindings = get_subterms sort_defs body_sort body_pat body in
+         pattern_bindings, body_bindings
+
+      | FixedValence (scope_sorts, body_sort) ->
+        let pattern_bindings = List.map3_exn numbered_patterns term_patterns scope_sorts
+          ~f:(fun binder_capture term_pat binder_sort ->
+            let capture = CapturedBinder (binder_sort, term_pat) in
+            match binder_capture, term_pat with
+            | VarCapture num, Var _
+            | VarCapture num, Ignored _
+            -> num, capture
+            | VarCapture _, _
+            -> raise (UserError (Printf.sprintf
+              "get_scope_subterms: trying to capture a variable, but found \
+               a pattern"
+            ))
+            (* TODO: should this be allowed here? this implies variable valence, no? *)
+            | PatternCapture captured_token_num, _ ->
+              captured_token_num, capture
+          )
+          |> Int.Map.of_alist_exn
+        in
+
+        let body_bindings = get_subterms sort_defs body_sort body_pat body in
+        pattern_bindings, body_bindings
+    in
+
+    Int.Map.merge pattern_bindings body_bindings ~f:(fun ~key -> function
+      | `Both _ -> raise
+        (UserError (Printf.sprintf "duplicate token capture: $%n" key))
+      | `Left v | `Right v -> Some v
+    )
 
 (** Check that nonterminal mentioned in tokens appears in the subterm mapping.
  *)
@@ -505,10 +488,10 @@ let check_tokens subterms tokens : unit = tokens
   |> index_tokens
   |> Fqueue.iter ~f:(fun (tok_ix, tok) -> match tok with
     | NonterminalName _ ->
-      if not (Int.Map.mem subterms tok_ix)
+      if not (Map.mem subterms tok_ix)
       then (
         let available_keys = subterms
-          |> Int.Map.keys
+          |> Map.keys
           |> Util.stringify_list string_of_int ", "
         in
         failwith (Printf.sprintf
@@ -564,28 +547,29 @@ type found_operator_match =
  @raise [UserError]
 *)
 let find_operator_match
-  :  nonterminal_pointer
-  -> operator_match list
+  :  sort_defs
+  -> sort
+  -> nonterminal_rule
   -> Binding.Nominal.term
   -> found_operator_match
-  = fun nonterminal_pointer matches tm ->
+  = fun
+      sort_defs
+      current_sort
+      (NonterminalRule { operator_rules; _ })
+      tm ->
 
-    matches
-      |> List.mapi ~f:(fun match_ix x -> match_ix, x)
-      |> List.find_map ~f:(fun (match_ix, OperatorMatch op_match) ->
+    operator_rules
+      |> List.find_mapi ~f:(fun match_ix (OperatorMatch op_match) ->
         let { operator_match_pattern = pattern; tokens; _ } = op_match in
         try
-          let tokens_map = map_index_tokens tokens in
           Some
             { match_number = match_ix
             ; pattern
             ; tokens
-            ; subterms =
-              get_subterms tokens tokens_map nonterminal_pointer pattern tm
+            ; subterms = get_subterms sort_defs current_sort pattern tm
             }
         with
-          NoMatch _ -> None
-      )
+          NoMatch _ -> None)
       |> Util.get_option' (fun () ->
         "failed to find a rule matching term " ^ Binding.Nominal.pp_term' tm)
       |> (fun result ->
@@ -667,7 +651,7 @@ let%test_module "find_operator_match" = (module struct
       ])
     }
 
-  let operator_rules = [
+  let expr_operator_rules = [
     lam_op_match;
     unit_op_match;
     num_op_match;
@@ -677,39 +661,105 @@ let%test_module "find_operator_match" = (module struct
     paren_op_match;
   ]
 
-  let nonterminals = String.Map.of_alist_exn
-    [ "expr", NonterminalRule
-      { nonterminal_name = "expr"
-      ; args = []
-      ; result_type = None
-      ; operator_rules
+  let list_operator_rules = [
+    OperatorMatch
+      { tokens = [
+          TerminalName "NIL";
+        ]
+      ; operator_match_pattern = OperatorPattern ("nil", [])
+      };
+
+    OperatorMatch
+      { tokens = [
+          NonterminalName "nonempty_list"
+        ]
+      ; operator_match_pattern = SingleCapturePattern 1
       }
-    ]
+  ]
 
-
-  let print_match_result = fun tm ->
-    let nonterminal_pointer =
-      { nonterminals
-      ; current_nonterminal = "expr"
-      ; bound_sorts = String.Map.empty
+  let nonempty_list_operator_rules = [
+    OperatorMatch
+      { tokens = [
+          NonterminalName "integer";
+          TerminalName "::";
+          NonterminalName "list";
+        ]
+      ; operator_match_pattern = OperatorPattern ("cons", [
+          NumberedScopePattern([], SingleCapturePattern 1);
+          NumberedScopePattern([], SingleCapturePattern 3);
+        ])
       }
-    in
+  ]
 
+  let expr = SortAp ("expr", [||])
+  let integer = SortAp ("integer", [||])
+  let list = SortAp ("list", [| integer |])
+  let nonempty_list = SortAp ("nonempty_list", [| integer |])
+
+  let abstract_description =
+    {|
+    expr :=
+      | lam(expr(). expr())
+      | unit()
+      | num(integer())
+      | str(string())
+      | add(expr(); expr())
+      | match_line(expr()*. expr())
+
+    list a :=
+      | nil()
+      | nonempty_list(a)
+
+    nonempty_list b := cons(b; list(b))
+    |}
+  ;;
+
+  let { Types.sort_defs; _ } = match Parse_abstract.parse abstract_description with
+    | Error msg -> failwith msg
+    | Ok lang -> lang
+  ;;
+
+  let expr_nonterminal_rule = NonterminalRule
+    { nonterminal_name = "expr"
+    ; result_sort = None
+    ; operator_rules = expr_operator_rules
+    }
+
+  let list_nonterminal_rule = NonterminalRule
+    { nonterminal_name = "list"
+    ; result_sort = Some (SortAp ("list", [| integer |]))
+    ; operator_rules = list_operator_rules
+    }
+
+  let nonempty_list_nonterminal_rule = NonterminalRule
+    { nonterminal_name = "nonempty_list"
+    ; result_sort = Some (SortAp ("nonempty_list", [| integer |]))
+    ; operator_rules = nonempty_list_operator_rules
+    }
+
+  let print_subterms = Map.iteri
+    ~f:(fun ~key ~data -> Printf.printf "%n -> %s\n"
+      key (string_of_subterm_result data)
+    )
+
+  let print_match_result = fun sort nonterminal_rule tm ->
     let { match_number; pattern; tokens; subterms } =
-      find_operator_match nonterminal_pointer operator_rules tm
+      find_operator_match sort_defs sort nonterminal_rule tm
     in
     Printf.printf "%n\n%s\n%s\n"
       match_number
       (string_of_operator_match_pattern pattern)
       (string_of_tokens tokens);
+    print_subterms subterms
 
-    subterms
-      |> Map.iteri ~f:(fun ~key ~data -> Printf.printf "%n -> %s\n"
-        key (string_of_subterm_result data)
-      )
+  let print_get_subterms = fun (OperatorMatch { operator_match_pattern; _ }) tm ->
+    try
+      print_subterms @@ get_subterms sort_defs expr operator_match_pattern tm
+    with
+      NoMatch msg -> print_string msg
 
   let%expect_test "find_operator_match unit()" =
-    print_match_result (Operator ("unit", []));
+    print_match_result expr expr_nonterminal_rule (Operator ("unit", []));
 
     [%expect{|
       1
@@ -717,7 +767,7 @@ let%test_module "find_operator_match" = (module struct
       UNIT |}]
 
   let%expect_test "find_operator_match add(x; y)" =
-    print_match_result (Operator ("add", [
+    print_match_result expr expr_nonterminal_rule (Operator ("add", [
       Scope ([], Var "x");
       Scope ([], Var "y");
     ]));
@@ -726,11 +776,11 @@ let%test_module "find_operator_match" = (module struct
       4
       add($1; $3)
       expr ADD expr
-      1 -> CapturedTerm (expr, { current_nonterminal = expr; _ }, x)
-      3 -> CapturedTerm (expr, { current_nonterminal = expr; _ }, y) |}]
+      1 -> CapturedTerm (expr(), x)
+      3 -> CapturedTerm (expr(), y) |}]
 
   let%expect_test "find_operator_match lam(x. x)" =
-    print_match_result (Operator ("lam", [
+    print_match_result expr expr_nonterminal_rule (Operator ("lam", [
       Scope ([Pattern.Var "x"], Var "x")
     ]));
 
@@ -738,11 +788,11 @@ let%test_module "find_operator_match" = (module struct
       0
       lam(var($2). $4)
       FUN NAME ARROW expr
-      2 -> CapturedBinder (expr, { current_nonterminal = expr; _ }, x)
-      4 -> CapturedTerm (expr, { current_nonterminal = expr; _ }, x) |}]
+      2 -> CapturedBinder (expr(), x)
+      4 -> CapturedTerm (expr(), x) |}]
 
   let%expect_test "find_operator_match lam(_. x)" =
-    print_match_result (Operator ("lam", [
+    print_match_result expr expr_nonterminal_rule (Operator ("lam", [
       Scope ([Ignored ""], Var "x")
     ]));
 
@@ -750,11 +800,11 @@ let%test_module "find_operator_match" = (module struct
       0
       lam(var($2). $4)
       FUN NAME ARROW expr
-      2 -> CapturedBinder (expr, { current_nonterminal = expr; _ }, _)
-      4 -> CapturedTerm (expr, { current_nonterminal = expr; _ }, x) |}]
+      2 -> CapturedBinder (expr(), _)
+      4 -> CapturedTerm (expr(), x) |}]
 
   let%expect_test "find_operator_match lam(_x. x)" =
-    print_match_result (Operator ("lam", [
+    print_match_result expr expr_nonterminal_rule (Operator ("lam", [
       Scope ([Ignored "x"], Var "x")
     ]));
 
@@ -762,11 +812,11 @@ let%test_module "find_operator_match" = (module struct
       0
       lam(var($2). $4)
       FUN NAME ARROW expr
-      2 -> CapturedBinder (expr, { current_nonterminal = expr; _ }, _x)
-      4 -> CapturedTerm (expr, { current_nonterminal = expr; _ }, x) |}]
+      2 -> CapturedBinder (expr(), _x)
+      4 -> CapturedTerm (expr(), x) |}]
 
   let%expect_test "find_operator_match match_line(add(x; y). add(x; y))" =
-    print_match_result (Operator ("match_line", [
+    print_match_result expr expr_nonterminal_rule (Operator ("match_line", [
       Scope
         ( [Pattern.Operator ("add", [Var "x"; Var "y"])]
         , Operator ("add", [Scope ([], Var "x"); Scope ([], Var "y")])
@@ -777,22 +827,36 @@ let%test_module "find_operator_match" = (module struct
       5
       match_line($1. $3)
       expr ARROW expr
-      1 -> CapturedBinder (expr, { current_nonterminal = expr; _ }, add(x; y))
-      3 -> CapturedTerm (expr, { current_nonterminal = expr; _ }, add(x; y)) |}]
+      1 -> CapturedBinder (expr(), add(x; y))
+      3 -> CapturedTerm (expr(), add(x; y)) |}]
+
+  let num_tm = (Operator ("num", [
+      Scope ([], Primitive (PrimInteger (Bigint.of_int 5)))
+    ]))
 
   let%expect_test "find_operator_match num(5)" =
-    print_match_result (Operator ("num", [
-      Scope ([], Primitive (PrimInteger (Bigint.of_int 5)))
-    ]));
+    print_match_result expr expr_nonterminal_rule num_tm;
 
     [%expect{|
       2
       num(integer($1))
       NUM
-      1 -> CapturedTerm (expr, { current_nonterminal = expr; _ }, 5) |}]
+      1 -> CapturedTerm (integer(), 5) |}]
+
+  let%expect_test "get_subterms num(5)" =
+    print_get_subterms lam_op_match num_tm;
+    [%expect{| pattern lam(var($2). $4) and operator num(5) don't match, in either operator name or subterms |}]
+
+  let%expect_test "get_subterms num(5)" =
+    print_get_subterms num_op_match num_tm;
+    [%expect{| 1 -> CapturedTerm (integer(), 5) |}]
+
+  let%expect_test "get_subterms num(5)" =
+    print_get_subterms paren_op_match num_tm;
+    [%expect{| 2 -> CapturedTerm (expr(), num(5)) |}]
 
   let%expect_test {|find_operator_match str("foo")|} =
-    print_match_result (Operator ("str", [
+    print_match_result expr expr_nonterminal_rule (Operator ("str", [
       Scope ([], Primitive (PrimString "foo"))
     ]));
 
@@ -800,41 +864,28 @@ let%test_module "find_operator_match" = (module struct
       3
       str(string($1))
       STR
-      1 -> CapturedTerm (expr, { current_nonterminal = expr; _ }, "foo") |}]
+      1 -> CapturedTerm (string(), "foo") |}]
+
+  let nil = (Operator ("nil", []))
+
+  let%expect_test {|find_operator_match nil()|} =
+    print_match_result list list_nonterminal_rule nil;
+    [%expect{|
+      0
+      nil()
+      NIL |}]
+
+  let%expect_test {|find_operator_match cons(integer(5); nil())|} =
+    print_match_result nonempty_list nonempty_list_nonterminal_rule
+      (Operator ("cons", [
+        Scope ([], Primitive (PrimInteger (Bigint.of_int 5)));
+        Scope ([], nil);
+      ]));
+    [%expect{|
+      0
+      cons($1; $3)
+      integer :: list
+      1 -> CapturedTerm (integer(), 5)
+      3 -> CapturedTerm (list(integer()), nil()) |}]
 
 end)
-
-(** See [find_operator_match].
-
- @raise [InvariantViolation]
- @raise [UserError]
-*)
-let find_pat_operator_match
-  :  nonterminal_pointer
-  -> operator_match list
-  -> Pattern.t
-  -> int
-   * operator_match_pattern * nonterminal_token list
-   * subpattern_result Int.Map.t
-  = fun nonterminal_pointer matches pattern -> matches
-    |> List.mapi ~f:(fun match_ix x -> match_ix, x)
-    |> List.find_map ~f:(fun (match_ix, OperatorMatch op_match) ->
-      let { operator_match_pattern = pat; tokens; _ } = op_match in
-      let tokens_map = map_index_tokens tokens in
-      try
-        Some (
-          match_ix,
-          pat,
-          tokens,
-          get_subpatterns tokens tokens_map nonterminal_pointer pat pattern
-        )
-      with
-        NoMatch _ -> None
-    )
-    |> Util.get_option' (fun () ->
-      "failed to find a rule matching pattern " ^ Pattern.string_of_pattern pattern)
-    |> (fun ((_, _, tokens, subterms) as result) ->
-      check_tokens subterms tokens;
-      result
-    )
-;;

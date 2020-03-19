@@ -1,5 +1,6 @@
 open Core_kernel
 open ConcreteSyntax
+module Parse_abstract = Parsing.Incremental (Parsing.Parseable_abstract_syntax)
 module Parse_concrete = Parsing.Incremental (Parsing.Parseable_concrete_syntax)
 
 let nt_capture capture = ConcreteSyntax.NonterminalCapture capture
@@ -14,6 +15,18 @@ let mk_tree
     -> ConcreteSyntax.formatted_tree
   =
  fun tree_info children -> { tree_info; children }
+;;
+
+let abstract_description =
+  {|
+arith :=
+  | fun(arith(). arith())
+  | add(arith(); arith())
+  | sub(arith(); arith())
+  | mul(arith(); arith())
+  | div(arith(); arith())
+  | app(arith(); arith())
+  |}
 ;;
 
 let description =
@@ -91,25 +104,21 @@ tm :=
   |}
 ;;
 
+let int_list_desc =
+  {|
+INT := /[0-9]+/
+
+list :=
+  | INT int_list
+  |}
+;;
+
 let arith = Types.SortAp ("arith", [||])
 let arith' = Types.FixedValence ([], arith)
 
-let sort_defs =
-  Types.(
-    SortDefs
-      (Core_kernel.String.Map.of_alist_exn
-         [ ( "arith"
-           , SortDef
-               ( []
-               , [ OperatorDef ("mul", Arity ([], [ arith'; arith' ]))
-                 ; OperatorDef ("div", Arity ([], [ arith'; arith' ]))
-                 ; OperatorDef ("add", Arity ([], [ arith'; arith' ]))
-                 ; OperatorDef ("sub", Arity ([], [ arith'; arith' ]))
-                 ; OperatorDef ("app", Arity ([], [ arith'; arith' ]))
-                 ; OperatorDef
-                     ("fun", Arity ([], [ Types.FixedValence ([ arith ], arith) ]))
-                 ] ) )
-         ]))
+let { Types.sort_defs; _ } = match Parse_abstract.parse abstract_description with
+  | Error msg -> failwith msg
+  | Ok lang -> lang
 ;;
 
 let concrete =
@@ -196,8 +205,6 @@ let%test_module "simplified_concrete" =
   end)
 ;;
 
-let arith : formatted_capture array -> formatted_tree
-  = mk_tree ("arith", 0)
 let arith_1 n = mk_tree ("arith_1", n)
 let arith_2 n = mk_tree ("arith_2", n)
 let arith_3 n = mk_tree ("arith_3", n)
@@ -307,6 +314,8 @@ let tree3_ast =
 
 let tree4_ast = Binding.Nominal.(Operator ("fun", [ Scope ([ Var "x" ], Var "x") ]))
 
+let of_ast' = of_ast sort_defs concrete arith "arith"
+
 let%test_module "ConcreteSyntax" =
   (module struct
     let ( = ) = Caml.( = )
@@ -323,9 +332,9 @@ let%test_module "ConcreteSyntax" =
       | Error msg -> failwith msg
     ;;
 
-    let%test "of_ast tree1" = of_ast concrete "arith" 80 tree1_ast = tree1
+    let%test "of_ast tree1" = of_ast' 80 tree1_ast = tree1
     let%test "of_ast tree4" =
-      let x = of_ast concrete "arith" 80 tree4_ast in
+      let x = of_ast' 80 tree4_ast in
       (* Printf.printf "%s\n" (to_debug_string x); *)
       (* Printf.printf "%s\n" (to_debug_string tree4); *)
       x = tree4
@@ -414,13 +423,13 @@ let expect_round_trip_tree tree =
   equivalent
     (tree
     |> to_ast concrete
-    |> Result.map ~f:(of_ast concrete "arith" 80)
+    |> Result.map ~f:(of_ast' 80)
     |> Result.ok_or_failwith)
     tree
 ;;
 
 let expect_round_trip_ast tm =
-  Caml.(tm |> of_ast concrete "arith" 80 |> to_ast concrete = Ok tm)
+  Caml.(tm |> of_ast' 80 |> to_ast concrete = Ok tm)
 ;;
 
 let%test_module "round trip tree -> ast -> tree" =
@@ -444,7 +453,7 @@ let%test_module "round trip ast -> tree -> ast" =
 let%test_module "pretty-printing" =
   (module struct
     let%expect_test "tree3_ast 5" =
-      print_string (to_string (of_ast concrete "arith" 5 tree3_ast));
+      print_string (to_string (of_ast' 5 tree3_ast));
       [%expect{|
         x
           +
@@ -452,13 +461,13 @@ let%test_module "pretty-printing" =
             *
             z |}]
     let%expect_test "tree3_ast 7" =
-      print_string (to_string (of_ast concrete "arith" 7 tree3_ast));
+      print_string (to_string (of_ast' 7 tree3_ast));
       [%expect{|
         x
           +
           y * z |}]
     let%expect_test "tree3_ast 9" =
-      print_string (to_string (of_ast concrete "arith" 9 tree3_ast));
+      print_string (to_string (of_ast' 9 tree3_ast));
       [%expect{| x + y * z |}]
   end)
 ;;

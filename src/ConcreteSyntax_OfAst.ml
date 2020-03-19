@@ -40,20 +40,25 @@ let mk_box_info' : (box_type * int list) option -> (box_info, string) Result.t
  @raise [BadRules]
 *)
 let rec term_to_tree
-  : nonterminal_pointer -> ConcreteSyntaxDescription.t -> Nominal.term -> doc
-  = fun nonterminal_pointer rules tm ->
+  :  sort_defs
+  -> sort
+  -> string
+  -> ConcreteSyntaxDescription.t
+  -> Nominal.term
+  -> doc
+  = fun sort_defs current_sort current_nonterminal_name desc tm ->
 
-    let NonterminalRule { (* nonterminal_name; *) operator_rules; _ } =
-      current_nonterminal nonterminal_pointer
+    let current_nonterminal =
+      Map.find_exn desc.nonterminal_rules current_nonterminal_name
     in
 
     let { match_number; tokens = operator_match_tokens; subterms; _ } =
-      find_operator_match nonterminal_pointer operator_rules tm
+      find_operator_match sort_defs current_sort current_nonterminal tm
     in
 
-    let tree_info = nonterminal_pointer.current_nonterminal, match_number in
+    let tree_info = current_nonterminal_name, match_number in
 
-    let terminal_rules_map = String.Map.of_alist_exn rules.terminal_rules in
+    let terminal_rules_map = String.Map.of_alist_exn desc.terminal_rules in
 
     (* Use a stack of queues of tokens. The stack represents group structure
        ('[' and ']), while the queues represent tokens within those groups:
@@ -93,20 +98,20 @@ let rec term_to_tree
       | None -> raise (CantEmitTokenRegex (name, terminal_rule))
       )
 
-    | Some (CapturedBinder (_current_sort, nonterminal_pointer', pat)),
-      NonterminalName _nt_name
+    | Some (CapturedBinder (_current_sort, pat)),
+      NonterminalName nt_name
     -> emit
-      (term_to_tree nonterminal_pointer' rules (Nominal.pattern_to_term pat))
+      (term_to_tree sort_defs current_sort nt_name desc (Nominal.pattern_to_term pat))
 
-    | Some (CapturedTerm (_current_sort, nonterminal_pointer', tm')),
-      NonterminalName _nt_name
+    | Some (CapturedTerm (_current_sort, tm')),
+      NonterminalName nt_name
     ->
       (*
       Printf.printf "nonterminal_name = %s, tokens = %s, (child) nt_name = %s, tm = %s\n"
        nonterminal_name (string_of_tokens operator_match_tokens)
        nt_name (Nominal.pp_term' tm');
       *)
-      emit (term_to_tree nonterminal_pointer' rules tm')
+      emit (term_to_tree sort_defs current_sort nt_name desc tm')
 
     | _, Underscore n -> emit (TerminalDoc (DocBreak n))
 
@@ -114,14 +119,14 @@ let rec term_to_tree
       "term_to_tree: failed to find token $%n (%s)" token_ix nt_name
     )
 
-    | Some (CapturedTerm (_sort, _nt_ptr, Var v)), TerminalName _t_name
+    | Some (CapturedTerm (_sort, Var v)), TerminalName _t_name
     -> emit (TerminalDoc (DocText v))
-    | Some (CapturedTerm (_sort, _nt_ptr, Primitive p)), TerminalName _t_name
+    | Some (CapturedTerm (_sort, Primitive p)), TerminalName _t_name
     -> emit (TerminalDoc (DocText (match p with
       | PrimString str -> str
       | PrimInteger i -> Bigint.to_string i)))
 
-    | Some (CapturedBinder (_, _, Var name)), TerminalName _
+    | Some (CapturedBinder (_, Var name)), TerminalName _
     -> emit (TerminalDoc (DocText name))
 
     | Some (CapturedBinder _), TerminalName t_name
@@ -406,19 +411,15 @@ let%test_module "normalize_nonterminal" =
  @raise [BadRules]
 *)
 let of_ast
-  :  ConcreteSyntaxDescription.t
+  :  sort_defs
+  -> ConcreteSyntaxDescription.t
+  -> sort
   -> string
   -> int
   -> Binding.Nominal.term
   -> formatted_tree
-  = fun desc start_nonterminal width tm ->
-    let nonterminal_pointer =
-      { nonterminals = desc.nonterminal_rules
-      ; current_nonterminal = start_nonterminal
-      ; bound_sorts = String.Map.empty
-      }
-    in
-    let doc = term_to_tree nonterminal_pointer desc tm in
+  = fun sort_defs desc current_sort start_nonterminal width tm ->
+    let doc = term_to_tree sort_defs current_sort start_nonterminal desc tm in
     let _, pre_formatted = tree_format width 0 0 Flat doc in
     match pre_formatted with
       | Nonterminal pre_formatted_nonterminal
