@@ -79,6 +79,19 @@ let rec string_of_sort : sort -> string
     | SortVar name -> name
 ;;
 
+let string_of_valence : valence -> string
+  = function
+    | FixedValence (binders, result) -> (match binders with
+      | [] -> string_of_sort result
+      | _ -> Printf.sprintf "%s. %s"
+        (binders
+          |> List.map ~f:string_of_sort
+          |> String.concat ~sep:". ")
+        (string_of_sort result))
+      | VariableValence (binder, result) -> Printf.sprintf "%s*. %s"
+        (string_of_sort binder)
+        (string_of_sort result)
+
 let rec instantiate_sort : sort String.Map.t -> sort -> sort =
  fun arg_mapping -> function
   | SortVar name ->

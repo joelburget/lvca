@@ -324,12 +324,18 @@ let rec get_subpatterns
        let Arity (_, valences) = arity' in
 
        List.map3_exn l_body_pats r_body_pats valences
-         ~f:(fun (NumberedScopePattern (caps, l_body_pat)) r_body_pat valence ->
-           if List.length caps > 0 then failwith "TODO: get_subpatterns error";
+         ~f:(fun (NumberedScopePattern (caps, l_body_pat) as npat)
+                 r_body_pat valence ->
+           if List.length caps > 0
+           then invariant_violation (Printf.sprintf
+             "get_subpatterns: found numbered pattern (%s) matching binders"
+             (string_of_numbered_scope_pattern npat));
            match valence with
              | FixedValence ([], body_sort)
              -> get_subpatterns sort_defs body_sort l_body_pat r_body_pat
-             | _ -> failwith "TODO: error")
+             | _ -> invariant_violation (Printf.sprintf
+               "get_subpatterns: binding valence found: %s"
+               (string_of_valence valence)))
        |> Util.int_map_unions
      else raise (NoMatch
        "pattern and operator don't match, either in operator name or subterms")
@@ -428,7 +434,7 @@ and get_scope_subterms
   -> subterm_result Int.Map.t
   = fun
     sort_defs
-    (NumberedScopePattern (numbered_patterns, body_pat))
+    (NumberedScopePattern (numbered_patterns, body_pat) as numbered_pat)
     (Scope (term_patterns, body))
     valence ->
 
@@ -440,11 +446,21 @@ and get_scope_subterms
       | VariableValence (bound_sort, body_sort)
       -> let op_match_pat = match numbered_patterns with
            | [PatternCapture cap_num] -> SingleCapturePattern cap_num
-           | _ -> failwith "TODO: error"
+           | _ -> invariant_violation (Printf.sprintf
+           "get_scope_subterms: multiple numbered binder patterns (%s) for \
+           variable valence %s"
+           (string_of_numbered_scope_pattern numbered_pat)
+           (string_of_valence valence))
          in
          let pat = match term_patterns with
            | [pat] -> pat
-           | _ -> failwith "TODO: error"
+           | _ -> invariant_violation (Printf.sprintf
+             "get_scope_subterms: multiple term patterns ([%s]) for \
+             variable valence %s"
+             (term_patterns
+               |> List.map ~f:Pattern.string_of_pattern
+               |> String.concat ~sep:", ")
+             (string_of_valence valence))
          in
          let pattern_bindings = get_subpatterns sort_defs bound_sort
            op_match_pat pat
