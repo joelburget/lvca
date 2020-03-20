@@ -1,14 +1,14 @@
 let abstract_syntax =
   {|
-import {string} from "builtins";
+import {sequence, string} from "builtins";
 
-rowType := rowType(list atomicType)
+rowType := rowType(sequence(atomicType()))
 
 atomicType := string() ???
 atomicValue := string(string) ???
 
-row := row(list atomicValue)
+row := row(sequence(atomicValue))
 
-table := table(rowType; list row)
+table := table(rowType; sequence(row))
 |}
 ;;

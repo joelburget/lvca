@@ -1,12 +1,18 @@
 let abstractSyntax =
   {|
+import { sequence } from "builtins";
+
+maybe(a) :=
+  | nothing()
+  | some(a)
+
 // An edit in some language is either:
-edit lang :=
+edit(lang) :=
   // A simple, atomic edit
-  | atomic(core lang (maybe lang))
+  | atomic(core(lang; maybe(lang)))
   // Or an edit with a message attached
-  | labeled(edit; string)
+  | labeled(edit(); string())
   // Or a sequence of edits.
-  | sequence(list edit)
+  | sequence(sequence(edit))
 |}
 ;;

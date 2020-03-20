@@ -53,8 +53,11 @@ arity:
 operator_def: ID arity { OperatorDef($1, $2) }
 
 sort_def:
-  ID list(ID) ASSIGN BAR? separated_nonempty_list(BAR, operator_def)
-  { ($1, SortDef ($2, $5)) }
+  | ID ASSIGN BAR? separated_nonempty_list(BAR, operator_def)
+  { ($1, SortDef ([], $4)) }
+  | ID LEFT_PAREN separated_list(SEMICOLON, ID) RIGHT_PAREN ASSIGN
+    BAR? separated_nonempty_list(BAR, operator_def)
+  { ($1, SortDef ($3, $7)) }
 
 import_symbol:
   | ID       { ($1, $1) }

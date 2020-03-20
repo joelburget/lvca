@@ -2,10 +2,10 @@ open Binding
 
 (* TODO: - clean up error handling - clean up typechecking *)
 
-(* hardcoded for this language: tm := | true() | false() | ite(tm; tm; tm) | annot(tm; ty)
-   | app(tm; tm) | fun(tm. tm)
+(* hardcoded for this language: tm() := | true() | false() | ite(tm(); tm(); tm()) | annot(tm(); ty())
+   | app(tm(); tm()) | fun(tm(). tm())
 
-   ty := | bool() | arr(ty; ty) *)
+   ty := | bool() | arr(ty(); ty()) *)
 
 type ty =
   | Bool

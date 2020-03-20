@@ -706,11 +706,11 @@ let%test_module "find_operator_match" = (module struct
       | add(expr(); expr())
       | match_line(expr()*. expr())
 
-    list a :=
+    list(a) :=
       | nil()
       | nonempty_list(a)
 
-    nonempty_list b := cons(b; list(b))
+    nonempty_list(b) := cons(b; list(b))
     |}
   ;;
 

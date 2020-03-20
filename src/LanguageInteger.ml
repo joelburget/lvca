@@ -5,14 +5,14 @@ let abstractSyntax =
 import { integer } from "builtins"
 
 tm :=
-  | lit(integer)
-  | neg(tm)
-  | abs(tm)
-  | add(tm; tm)
-  | sub(tm; tm)
-  | mul(tm; tm)
-  | max(tm; tm)
-  | min(tm; tm)
+  | lit(integer())
+  | neg(tm())
+  | abs(tm())
+  | add(tm(); tm())
+  | sub(tm(); tm())
+  | mul(tm(); tm())
+  | max(tm(); tm())
+  | min(tm(); tm())
 |}
 ;;
 

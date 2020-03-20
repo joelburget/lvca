@@ -49,6 +49,12 @@ type abstract_syntax =
   ; sort_defs : sort_defs
   }
 
+let sort_defs_eq (SortDefs x) (SortDefs y) = String.Map.equal Caml.(=) x y
+
+let eq : abstract_syntax -> abstract_syntax -> bool
+  = fun x y -> Caml.(x.imports = y.imports) &&
+    sort_defs_eq x.sort_defs y.sort_defs
+
 let string_of_primitive = function
   | PrimInteger i -> Bigint.to_string i
   | PrimString str -> "\"" ^ Caml.String.escaped str ^ "\""
