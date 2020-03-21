@@ -26,19 +26,19 @@ type state = int [@@deriving sexp, compare]
 type production = symbol list
 type production_num = int
 
-(** A production with a dot at some position. * * We encode this as a single integer --
-    see [item], [mk_item], [mk_item'], and * [view_item]. * * See also [level_view]. *)
+(** A production with a dot at some position. We encode this as a single integer --
+    see [item], [mk_item], [mk_item'], and [view_item]. See also [level_view]. *)
 type item_view =
   { production_num : production_num
         (** The number of one of the productions of the underlying grammar *)
   ; position : int (** The position of the dot *)
   }
 
-(** An LR(0) item encodes a pair of integers, namely the index of the * production and the
-    index of the bullet in the production's * right-hand side. * * Both integers are
-    packed into a single integer, using 8 bits for * the bullet position and the remaining
-    24 bits for the * production index. * * Note that this implies some maximums: * The
-    maximum length of a production is 255 * The maximum number of different productions is
+(** An LR(0) item encodes a pair of integers, namely the index of the production and the
+    index of the bullet in the production's right-hand side. Both integers are
+    packed into a single integer, using 8 bits for the bullet position and the remaining
+    24 bits for the production index. Note that this implies some maximums: The
+    maximum length of a production is 255 The maximum number of different productions is
     16777215 *)
 type item = int [@@deriving sexp, compare]
 
@@ -193,7 +193,7 @@ let string_of_stack : state array -> string =
 
 (* TODO: remove exns *)
 module Lr0 (G : GRAMMAR) = struct
-  let (AugmentedGrammar augmented_grammar) = G.grammar
+  let AugmentedGrammar augmented_grammar = G.grammar
 
   let nonterminal_map : nonterminal Int.Map.t =
     augmented_grammar.nonterminals
