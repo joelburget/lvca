@@ -84,7 +84,7 @@ let lookahead_item_set_to_item_set : LookaheadItemSet.t -> item_set =
 ;;
 
 let mutable_lookahead_item_set_to_item_set : MutableLookaheadItemSet.t -> item_set =
- fun x -> x |> Int.Map.to_alist |> List.map ~f:(fun (k, _) -> k) |> Int.Set.of_list
+ fun x -> x |> Map.to_alist |> List.map ~f:(fun (k, _) -> k) |> Int.Set.of_list
 ;;
 
 module type LALR = sig
@@ -162,9 +162,9 @@ module Lalr1 (G : GRAMMAR) = struct
 
   let string_of_lookahead_set lookahead_set =
     lookahead_set
-    |> Int.Set.to_array
+    |> Set.to_array
     |> Array.map ~f:(fun t_num ->
-           Int.Map.find terminal_names t_num |> Option.value ~default:"#")
+           Map.find terminal_names t_num |> Option.value ~default:"#")
     |> String.concat_array ~sep:"/"
   ;;
 
@@ -195,7 +195,7 @@ module Lalr1 (G : GRAMMAR) = struct
   ;;
 
   let add_all_to mutable_lookahead_item_set nonterminal_num lookaheads =
-    let lookaheads' = Int.Set.to_list lookaheads in
+    let lookaheads' = Set.to_list lookaheads in
     match Hashtbl.find mutable_lookahead_item_set nonterminal_num with
     | None ->
       Hashtbl.set
@@ -267,7 +267,7 @@ module Lalr1 (G : GRAMMAR) = struct
           |> get_option' (fun () ->
                  Printf.sprintf "lr1_closure': couldn't find production %n" production_num)
         in
-        Int.Set.iter lookahead_set ~f:(fun lookahead_terminal_num ->
+        Set.iter lookahead_set ~f:(fun lookahead_terminal_num ->
             (* first symbol right of the dot *)
             match List.nth production position with
             | Some (Nonterminal nt) ->
@@ -279,7 +279,7 @@ module Lalr1 (G : GRAMMAR) = struct
                 | None -> first_set [ Terminal lookahead_terminal_num ]
                 | Some symbol -> first_set [ symbol; Terminal lookahead_terminal_num ]
               in
-              Int.Set.iter first_set' ~f:(fun new_lookahead ->
+              Set.iter first_set' ~f:(fun new_lookahead ->
                   Stack.push stack (nt, new_lookahead))
             | _ -> ()));
     (* Consider every (nonterminal, lookahead terminal pair), adding it to
@@ -300,7 +300,7 @@ module Lalr1 (G : GRAMMAR) = struct
       then (
         add_to nonkernel_items nonterminal_num lookahead;
         let { productions } =
-          Int.Map.find nonterminal_map nonterminal_num
+          Map.find nonterminal_map nonterminal_num
           |> get_option' (fun () ->
                  Printf.sprintf
                    "lr1_closure': unable to find nonterminal %n in nonterminal_map"
@@ -315,7 +315,7 @@ module Lalr1 (G : GRAMMAR) = struct
                   | [] -> [ Terminal lookahead ]
                   | symbol :: _ -> [ symbol; Terminal lookahead ])
               in
-              Int.Set.iter first_set' ~f:(fun new_lookahead ->
+              Set.iter first_set' ~f:(fun new_lookahead ->
                   Stack.push stack (new_nt, new_lookahead))
             | _ -> failwith "Empty production"))
     done;
@@ -366,17 +366,17 @@ module Lalr1 (G : GRAMMAR) = struct
                      (string_of_production_num production_num))
           in
           let goto_kernel = lr0_goto_kernel kernel x in
-          if Int.Set.length goto_kernel > 0
+          if Set.length goto_kernel > 0
           then (
             let state = item_set_to_state @@ goto_kernel in
             (* Another terminal has been spontaneously generated *)
-            let lookahead_set' = Int.Set.remove lookahead_set hash_terminal in
-            if not (Int.Set.is_empty lookahead_set')
+            let lookahead_set' = Set.remove lookahead_set hash_terminal in
+            if not (Set.is_empty lookahead_set')
             then
               enqueue
                 generated
                 (state, ({ item; lookahead_set = lookahead_set' } : LookaheadItem.t));
-            if Int.Set.mem lookahead_set hash_terminal
+            if Set.mem lookahead_set hash_terminal
             then enqueue propagation (state, item))));
     { propagation = to_array propagation; spontaneous_generation = to_array generated }
  ;;
@@ -386,9 +386,9 @@ module Lalr1 (G : GRAMMAR) = struct
    *)
   let mutable_lalr1_items : MutableLookaheadItemSet.t Int.Map.t =
     lr0_items
-    |> Int.Map.map ~f:(fun items ->
+    |> Map.map ~f:(fun items ->
            items
-           |> Int.Set.to_list
+           |> Set.to_list
            |> List.map ~f:(fun item -> item, Int.Hash_set.create ())
            |> Int.Map.of_alist_exn)
   ;;
@@ -402,7 +402,7 @@ module Lalr1 (G : GRAMMAR) = struct
      raises: [NoItemSet] *)
   let lookahead_propagation : (state * item) array Int.Map.t Int.Map.t =
     mutable_lalr1_items
-    |> Int.Map.map ~f:(fun mutable_lookahead_item_set ->
+    |> Map.map ~f:(fun mutable_lookahead_item_set ->
            let kernel : item_set =
              mutable_lookahead_item_set_to_item_set mutable_lookahead_item_set
            in
@@ -414,24 +414,24 @@ module Lalr1 (G : GRAMMAR) = struct
                  spontaneous_generation
                  ~f:(fun (state, { item; lookahead_set }) ->
                    let mutable_generation =
-                     Int.Map.find mutable_lalr1_items state
+                     Map.find mutable_lalr1_items state
                      |> get_option' (fun () ->
                             "lookahead_propagation: state not present in \
                              mutable_lalr1_items")
-                     |> Fn.flip Int.Map.find item
+                     |> Fn.flip Map.find item
                      |> get_option' (fun () ->
                             "lookahead_propagation: item not present in \
                              mutable_lalr1_items")
                    in
-                   Int.Set.iter lookahead_set ~f:(Hash_set.add mutable_generation));
+                   Set.iter lookahead_set ~f:(Hash_set.add mutable_generation));
                propagation))
   ;;
 
   (* Special-case augmented item `S' -> . S` with lookahead $. *)
   let () =
-    Int.Map.find mutable_lalr1_items 0
+    Map.find mutable_lalr1_items 0
     |> get_option' (fun () -> "Lalr1: augmented state not present in mutable_lalr1_items")
-    |> Fn.flip Int.Map.find (mk_item' 0 0)
+    |> Fn.flip Map.find (mk_item' 0 0)
     |> get_option' (fun () -> "Lalr1: augmented item not present in mutable_lalr1_items")
     |> Fn.flip Hash_set.add 0
   ;;
@@ -447,20 +447,20 @@ module Lalr1 (G : GRAMMAR) = struct
     let made_update = ref true in
     while !made_update do
       made_update := false;
-      Int.Map.iteri
+      Map.iteri
         mutable_lalr1_items
         ~f:(fun ~key:source_state ~data:mutable_lookahead_item_set ->
-          Int.Map.iteri
+          Map.iteri
             mutable_lookahead_item_set
             ~f:(fun ~key:source_item ~data:source_lookahead ->
               (* lookaheads that propagate from the item we're currently looking at *)
               let propagation : (state * item) array =
-                Int.Map.find lookahead_propagation source_state
+                Map.find lookahead_propagation source_state
                 |> get_option' (fun () ->
                        Printf.sprintf
                          "step 4 lookahead_propagation: couldn't find state %n"
                          source_state)
-                |> Fn.flip Int.Map.find source_item
+                |> Fn.flip Map.find source_item
                 |> get_option' (fun () ->
                        Printf.sprintf
                          "step 4 lookahead_propagation: couldn't find item %s in state %n"
@@ -470,12 +470,12 @@ module Lalr1 (G : GRAMMAR) = struct
               (* See if we can propagate any lookaheads (and do it) *)
               Array.iter propagation ~f:(fun (target_state, target_item) ->
                   let target_lookahead : Int.Hash_set.t =
-                    Int.Map.find mutable_lalr1_items target_state
+                    Map.find mutable_lalr1_items target_state
                     |> get_option' (fun () ->
                            Printf.sprintf
                              "step 4 mutable_lalr1_items: couldn't find state %n"
                              target_state)
-                    |> Fn.flip Int.Map.find target_item
+                    |> Fn.flip Map.find target_item
                     |> get_option' (fun () ->
                            Printf.sprintf
                              "step 4 mutable_lalr1_items: couldn't find item %s in state \
@@ -513,7 +513,7 @@ module Lalr1 (G : GRAMMAR) = struct
 
   let state_to_lookahead_item_set : state -> LookaheadItemSet.t =
    fun state ->
-    Int.Map.find lalr1_items state
+    Map.find lalr1_items state
     |> get_option' (fun () -> "state_to_lookahead_item_set: state not found")
  ;;
 
@@ -562,7 +562,7 @@ module Lalr1 (G : GRAMMAR) = struct
                      production_num)
           in
           if position = List.length production
-             && Int.Set.mem lookahead_set terminal_num
+             && Set.mem lookahead_set terminal_num
              && (* Accept in this case (end marker on the augmented nonterminal) -- don't
                    reduce. *)
              nt_num <> 0

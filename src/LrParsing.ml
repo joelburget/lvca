@@ -72,7 +72,7 @@ end
 type configuration_set = ConfigurationSet.t
 
 let simplify_config_set : configuration_set -> item_set =
- fun { kernel_items; nonkernel_items } -> Int.Set.union kernel_items nonkernel_items
+ fun { kernel_items; nonkernel_items } -> Set.union kernel_items nonkernel_items
 ;;
 
 type nonterminal =
@@ -265,8 +265,7 @@ module Lr0 (G : GRAMMAR) = struct
 
   let string_of_nonterminal_num : nonterminal_num -> string =
    fun nt_num ->
-    nonterminal_names
-    |> Fn.flip Int.Map.find nt_num
+    Map.find nonterminal_names nt_num
     |> get_option' (fun () ->
            Printf.sprintf
              "string_of_nonterminal_num: failed to get nonterminal %n from \
@@ -311,8 +310,8 @@ module Lr0 (G : GRAMMAR) = struct
     | Terminal num :: _ -> MutableSet.add result num
     (* TODO: update when we allow empty productions *)
     | Nonterminal num :: _ ->
-      if not (Int.Set.mem already_seen_nts num)
-      then nonterminal_first_set (Int.Set.add already_seen_nts num) result num
+      if not (Set.mem already_seen_nts num)
+      then nonterminal_first_set (Set.add already_seen_nts num) result num
  ;;
 
   let first_set : production -> Int.Set.t = function
@@ -326,8 +325,7 @@ module Lr0 (G : GRAMMAR) = struct
 
   let string_of_terminal : terminal_num -> string =
    fun t_num ->
-    terminal_names
-    |> Fn.flip Int.Map.find t_num
+    Map.find terminal_names t_num
     |> get_option' (fun () ->
            Printf.sprintf "string_of_symbol: failed to get terminal %n" t_num)
  ;;
@@ -361,8 +359,7 @@ module Lr0 (G : GRAMMAR) = struct
                production_num)
     in
     let nt_name =
-      nonterminal_names
-      |> Fn.flip Int.Map.find nt_num
+      Map.find nonterminal_names nt_num
       |> get_option' (fun () ->
              Printf.sprintf
                "Lr0 string_of_item: unable to find nonterminal %n in nonterminal_names"
@@ -377,9 +374,9 @@ module Lr0 (G : GRAMMAR) = struct
 
   let string_of_item_set : ?sep:string -> item_set -> string =
    fun ?(sep = " ") item_set ->
-    match Int.Set.length item_set with
+    match Set.length item_set with
     | 0 -> "empty"
-    | _ -> item_set |> Int.Set.to_list |> Util.stringify_list string_of_item sep
+    | _ -> item_set |> Set.to_list |> Util.stringify_list string_of_item sep
  ;;
 
   let string_of_production : production -> string =
@@ -409,8 +406,7 @@ module Lr0 (G : GRAMMAR) = struct
                production_num)
     in
     let nt_name =
-      nonterminal_names
-      |> Fn.flip Int.Map.find nt_num
+      Map.find nonterminal_names nt_num
       |> get_option' (fun () ->
              Printf.sprintf
                "Lr0 string_of_production: unable to find nonterminal %n in \
@@ -485,7 +481,7 @@ module Lr0 (G : GRAMMAR) = struct
 
   let get_nonterminal : production_num -> nonterminal =
    fun pn ->
-    Int.Map.find nonterminal_map (get_nonterminal_num pn)
+    Map.find nonterminal_map (get_nonterminal_num pn)
     |> get_option' (fun () ->
            "get_nonterminal: couldn't find production " ^ string_of_int pn)
  ;;
@@ -499,7 +495,7 @@ module Lr0 (G : GRAMMAR) = struct
     let nt_set = MutableSet.create (module Int) in
     (* Create the set (nt_set) of nonterminals to look at. Add each initial
      * item to the kernel or nonkernel set. *)
-    Int.Set.iter initial_items ~f:(fun item ->
+    Set.iter initial_items ~f:(fun item ->
         let { production_num; position } = view_item item in
         if production_num = 0 || position > 0
         then Hash_set.add kernel_items item
@@ -544,7 +540,7 @@ module Lr0 (G : GRAMMAR) = struct
         MutableSet.iter production_num_set ~f:(fun production_num ->
             Hash_set.add nonkernel_items (mk_item' production_num 0));
         let { productions } =
-          Int.Map.find nonterminal_map nonterminal_num
+          Map.find nonterminal_map nonterminal_num
           |> get_option' (fun () ->
                  Printf.sprintf
                    "lr0_closure': unable to find nonterminal %n in nonterminal_map"
@@ -579,7 +575,7 @@ module Lr0 (G : GRAMMAR) = struct
   let lr0_goto_kernel : item_set -> symbol -> item_set =
    fun item_set symbol ->
     let result = Hash_set.create (module Int) in
-    Int.Set.iter (lr0_closure item_set) ~f:(fun item ->
+    Set.iter (lr0_closure item_set) ~f:(fun item ->
         let { production_num; position } = view_item item in
         let production =
           Hashtbl.find production_map production_num
@@ -623,7 +619,7 @@ module Lr0 (G : GRAMMAR) = struct
           List.iter grammar_symbols ~f:(fun symbol ->
               let goto_result = lr0_goto_kernel items symbol in
               (* if GOTO(items, symbol) is not empty and not in c: *)
-              if (not (Int.Set.is_empty goto_result))
+              if (not (Set.is_empty goto_result))
                  && not (MutableSet.mem c goto_result)
               then (
                 MutableSet.add c goto_result;
@@ -643,12 +639,12 @@ module Lr0 (G : GRAMMAR) = struct
   let state_to_item_set : state -> item_set =
    fun state ->
     lr0_items
-    |> Fn.flip Int.Map.find state
+    |> Fn.flip Map.find state
     |> get_option' (fun () ->
            Printf.sprintf
              "state_to_item_set -- couldn't find state %n (%n item sets)"
              state
-             (Int.Map.length lr0_items))
+             (Map.length lr0_items))
  ;;
 
   (** @raise [NoItemSet] *)
@@ -656,7 +652,7 @@ module Lr0 (G : GRAMMAR) = struct
    fun item_set ->
     let state, _ =
       lr0_items
-      |> Int.Map.to_sequence
+      |> Map.to_sequence
       |> Sequence.find ~f:(fun (_, item_set') -> Set.equal item_set' item_set)
       |> get_option
            (NoItemSet
@@ -665,7 +661,7 @@ module Lr0 (G : GRAMMAR) = struct
                   "item_set_to_state -- couldn't find item_set (%s) (options: %s)"
                   (string_of_item_set item_set)
                   (lr0_items
-                  |> Int.Map.to_alist
+                  |> Map.to_alist
                   |> Util.stringify_list
                        (fun (_, item_set) -> string_of_item_set item_set)
                        ", ")))
@@ -712,20 +708,20 @@ module Lr0 (G : GRAMMAR) = struct
              let rule_3_follow_set =
                match Util.unsnoc production with
                | _, Nonterminal nt_num'
-                 when nt_num' = nt_num && not (Int.Set.mem nts_visited nt_num) ->
-                 follow' (Int.Set.add nts_visited nt_num) parent_nt
+                 when nt_num' = nt_num && not (Set.mem nts_visited nt_num) ->
+                 follow' (Set.add nts_visited nt_num) parent_nt
                | _ -> Int.Set.empty
              in
              follow_set
-             |> Int.Set.union rule_2_follow_set
-             |> Int.Set.union rule_3_follow_set)
+             |> Set.union rule_2_follow_set
+             |> Set.union rule_3_follow_set)
 
   (* Find all the terminals occuring in first sets directly after the
    * nonterminal *)
   and first_after_nt : nonterminal_num -> production -> Int.Set.t =
    fun nt_num -> function
     | Nonterminal nt_num' :: rest when nt_num' = nt_num ->
-      Int.Set.union (first_set rest) (first_after_nt nt_num rest)
+      Set.union (first_set rest) (first_after_nt nt_num rest)
     | _ :: rest -> first_after_nt nt_num rest
     | [] -> Int.Set.empty
  ;;
@@ -746,7 +742,7 @@ module Lr0 (G : GRAMMAR) = struct
 
   let lr0_action_table state terminal_num =
     let item_set = lr0_closure @@ state_to_item_set state in
-    let item_set_l = Int.Set.to_list item_set in
+    let item_set_l = Set.to_list item_set in
     (* If [A -> xs . a ys] is in I_i and GOTO(I_i, a) = I_j, set
      * ACTION[i, a] to `shift j` *)
     let shift_action =
@@ -789,7 +785,7 @@ module Lr0 (G : GRAMMAR) = struct
                         production_num)
              in
              if position = List.length production
-                && Int.Set.mem (follow_set nt_num) terminal_num
+                && Set.mem (follow_set nt_num) terminal_num
                 && (* Accept in this case (end marker on the augmented nonterminal) --
                       don't reduce. *)
                 nt_num <> 0
@@ -798,7 +794,7 @@ module Lr0 (G : GRAMMAR) = struct
     in
     (* If [S' -> S .] is in I_i, set ACTION[i, $] to `accept` *)
     let accept_action =
-      if terminal_num = end_marker && Int.Set.mem item_set (mk_item' 0 1)
+      if terminal_num = end_marker && Set.mem item_set (mk_item' 0 1)
       then Some Accept
       else None
     in
@@ -812,11 +808,11 @@ module Lr0 (G : GRAMMAR) = struct
   ;;
 
   (* TODO: is this right? *)
-  let states : state array = Array.init (Int.Map.length lr0_items) ~f:Fn.id
+  let states : state array = Array.init (Map.length lr0_items) ~f:Fn.id
   let terminals : terminal_num array = Array.init number_of_terminals ~f:Fn.id
 
   let nonterminal_nums_arr : nonterminal_num array =
-    Array.init (String.Map.length nonterminal_nums) ~f:Fn.id
+    Array.init (Map.length nonterminal_nums) ~f:Fn.id
   ;;
 
   let full_lr0_action_table : unit -> action array array =
@@ -837,8 +833,7 @@ module Lr0 (G : GRAMMAR) = struct
 
   let token_to_terminal : Lex.token -> terminal_num =
    fun { name; _ } ->
-    terminal_nums
-    |> Fn.flip String.Map.find name
+    Map.find terminal_nums name
     |> get_option' (fun () ->
            Printf.sprintf
              "Lr0 token_to_terminal: unable to find name %s in terminal_nums"
@@ -847,8 +842,8 @@ module Lr0 (G : GRAMMAR) = struct
 
   let token_to_symbol : Lex.token -> symbol =
    fun { name; _ } ->
-    let t_match = String.Map.find terminal_nums name in
-    let nt_match = String.Map.find nonterminal_nums name in
+    let t_match = Map.find terminal_nums name in
+    let nt_match = Map.find nonterminal_nums name in
     match t_match, nt_match with
     | Some t_num, None -> Terminal t_num
     | None, Some nt_num -> Nonterminal nt_num
@@ -866,8 +861,7 @@ module Lr0 (G : GRAMMAR) = struct
     |> Array.map ~f:(fun { production; _ } ->
            match production with
            | First terminal_num ->
-             terminal_names
-             |> Fn.flip Int.Map.find terminal_num
+             Map.find terminal_names terminal_num
              |> get_option' (fun () ->
                     Printf.sprintf
                       "string_of_symbols: failed to get terminal %n"
@@ -882,8 +876,7 @@ module Lr0 (G : GRAMMAR) = struct
                         production_num)
              in
              let nt_name =
-               nonterminal_names
-               |> Fn.flip Int.Map.find nt_num
+               Map.find nonterminal_names nt_num
                |> get_option' (fun () ->
                       Printf.sprintf
                         "Lr0 string_of_symbols: unable to find nonterminal %n in \
