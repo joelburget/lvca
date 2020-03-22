@@ -750,52 +750,6 @@ module Lr0 (G : GRAMMAR) = struct
         in
         go parent_nt production)
       |> Int.Set.union_list
-
-      (*
-      let rec rule_3 parent_nt = function
-        | [] -> Int.Set.empty
-        | Nonterminal nt_num' :: remaining_production
-          when nt_num' = nt_num && not (Set.mem nts_visited nt_num)
-        -> (match remaining_production with
-          | [] -> follow' (Set.add nts_visited nt_num) parent_nt
-          | _ ->
-            if Set.mem (first_set remaining_production) empty_terminal_num
-            then Set.union
-              (follow' (Set.add nts_visited nt_num) parent_nt)
-              (rule_3 parent_nt remaining_production)
-            else Int.Set.empty)
-        | _ -> Int.Set.empty
-      in
-
-      (* For each production, accumulate the terminals it adds to the follow
-         set
-       *)
-      production_map
-      |> Hashtbl.to_alist
-      |> List.fold ~init:Int.Set.empty ~f:(fun follow_set (prod_num, production) ->
-             let rule_2_follow_set = first_after_nt nt_num production in
-             let parent_nt =
-               Hashtbl.find production_nonterminal_map prod_num
-               |> get_option' (fun () ->
-                      Printf.sprintf
-                        "Lr0 follow': unable to find nonterminal %n in \
-                         production_nonterminal_map"
-                        prod_num)
-             in
-
-             follow_set
-             |> Set.union rule_2_follow_set
-             |> Set.union (rule_3 parent_nt production))
-
-  (* Find all the terminals occuring in first sets directly after the
-   * nonterminal. From CPTT section 4.4.2. *)
-  and first_after_nt : nonterminal_num -> production -> Int.Set.t =
-   fun nt_num -> function
-    | Nonterminal nt_num' :: rest when nt_num' = nt_num ->
-      Set.union (first_set rest) (first_after_nt nt_num rest)
-    | _ :: rest -> first_after_nt nt_num rest
-    | [] -> Int.Set.empty
-             *)
  ;;
 
   (* Compute the set of terminals that can appear immediately to the right of
