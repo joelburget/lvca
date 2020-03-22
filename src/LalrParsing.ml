@@ -307,7 +307,9 @@ module Lalr1 (G : GRAMMAR) = struct
                    nonterminal_num)
         in
         List.iter productions ~f:(function
-            | Terminal _ :: _ -> ()
+            | Terminal _ :: _
+            | []
+            -> ()
             | Nonterminal new_nt :: rest ->
               let first_set' =
                 first_set
@@ -316,8 +318,7 @@ module Lalr1 (G : GRAMMAR) = struct
                   | symbol :: _ -> [ symbol; Terminal lookahead ])
               in
               Set.iter first_set' ~f:(fun new_lookahead ->
-                  Stack.push stack (new_nt, new_lookahead))
-            | _ -> failwith "Empty production"))
+                  Stack.push stack (new_nt, new_lookahead))))
     done;
     { kernel_items = kernel_items |> MutableSet.to_array |> lookahead_item_set_from_array
     ; nonkernel_items = convert nonkernel_items
