@@ -104,13 +104,32 @@ tm :=
   |}
 ;;
 
+let int_list_lang =
+  let desc =
+  {|
+list(a) :=
+  | nil()
+  | cons(a; list(a))
+  |}
+  in
+  match Parse_abstract.parse desc with
+    | Error msg -> failwith msg
+    | Ok lang -> lang
+
 let int_list_desc =
+  let str_desc =
   {|
 INT := /[0-9]+/
 
-list :=
-  | INT int_list
+list : list(integer) :=
+  | INT list { cons($1; $2) }
+  |          { nil()        }
   |}
+  in
+  match Parse_concrete.parse str_desc with
+    | Error msg -> failwith msg
+    | Ok (pre_terminal_rules, sort_rules)
+    -> ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
 ;;
 
 let arith = Types.SortAp ("arith", [||])
@@ -417,6 +436,19 @@ let%test_module "ConcreteSyntax" =
     ;;
 
     let%test {|parse "fun x->x"|} = parse concrete "arith" "fun x->x" = Ok tree4'
+
+    let parse_print_lst str =
+      match parse int_list_desc "list" str with
+      | Ok tree -> print_string (to_string tree)
+      | Error msg -> print_string msg
+    ;;
+
+    let%expect_test {|parse "0 1 2 3"|} =
+      parse_print_lst "0 1 2 3";
+      [%expect{| 0 1 2 3 |}]
+
+    let%test {|parse ""|} =
+      parse int_list_desc "list" "" = Ok (mk_tree ("list", 1) [||])
   end)
 ;;
 
