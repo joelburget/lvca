@@ -1,8 +1,6 @@
 open Core_kernel
 open LrParsing
 open LalrParsing
-module M = Int.Map
-module MS = String.Map
 module SI = Int.Set
 
 module Propagation = struct
@@ -27,22 +25,21 @@ end
 module Grammar1 : GRAMMAR = struct
   let grammar =
     AugmentedGrammar
-      { nonterminals =
-          [| (* note: the grammar we provide is already augmented *)
+      { nonterminals = (* note: the grammar we provide is already augmented *)
+          [| (* S' -> S *)
              "S'", 0, { productions = [ [ Nonterminal 1 ] ] }
-           ; (* S' -> S *)
-             "S", 1, { productions = [ [ Nonterminal 2; Nonterminal 2 ] ] }
            ; (* S -> C C *)
-             ( "C"
+             "S", 1, { productions = [ [ Nonterminal 2; Nonterminal 2 ] ] }
+           ; ( "C"
              , 2
              , { productions =
-                   [ [ Terminal 1; Nonterminal 2 ]
+                   [ [ Terminal 3; Nonterminal 2 ]
                    ; (* C -> c C *)
-                     [ Terminal 2 ] (* C -> d *)
+                     [ Terminal 4 ] (* C -> d *)
                    ]
                } )
           |]
-      ; terminal_nums = [| "$", 0; "c", 1; "d", 2 |]
+          ; terminal_nums = [| "$", 0; "SPACE", 1; "EMPTY", 2; "c", 3; "d", 4 |]
       }
   ;;
 end
@@ -58,7 +55,7 @@ module Grammar2 : GRAMMAR = struct
              ( "S"
              , 1
              , { productions =
-                   [ [ Nonterminal 2; Terminal 1; Nonterminal 3 ]
+                   [ [ Nonterminal 2; Terminal 3; Nonterminal 3 ]
                    ; (* L = R *)
                      [ Nonterminal 3 ]
                      (* R *)
@@ -67,11 +64,18 @@ module Grammar2 : GRAMMAR = struct
            ; ( "L"
              , 2
              , { productions =
-                   [ [ Terminal 2; Nonterminal 3 ]; (* * R *) [ Terminal 3 ] (* id *) ]
+                   [ [ Terminal 4; Nonterminal 3 ]; (* * R *) [ Terminal 5 ] (* id *) ]
                } )
            ; "R", 3, { productions = [ [ Nonterminal 2 ] ] } (* L *)
           |]
-      ; terminal_nums = [| "$", 0; "=", 1; "*", 2; "id", 3 |]
+        ; terminal_nums = [|
+          "$", 0;
+          "SPACE", 1;
+          "EMPTY", 2;
+          "=", 3;
+          "*", 4;
+          "id", 5
+        |]
       }
   ;;
 end
@@ -85,16 +89,24 @@ module Grammar3 : GRAMMAR = struct
              ( "arith"
              , 1
              , { productions =
-                   [ [ Nonterminal 1; Terminal 1; Nonterminal 1 ]
+                   [ [ Nonterminal 1; Terminal 3; Nonterminal 1 ]
                    ; (* arith + arith *)
-                     [ Terminal 2; Nonterminal 1; Terminal 3 ]
+                     [ Terminal 4; Nonterminal 1; Terminal 5 ]
                    ; (* (arith) *)
-                     [ Terminal 4 ]
+                     [ Terminal 6 ]
                      (* id *)
                    ]
                } )
           |]
-      ; terminal_nums = [| "$", 0; "+", 1; "(", 2; ")", 3; "id", 4 |]
+        ; terminal_nums = [|
+          "$", 0;
+          "SPACE", 1;
+          "EMPTY", 2;
+          "+", 3;
+          "(", 4;
+          ")", 5;
+          "id", 6
+        |]
       }
   ;;
 end
@@ -108,17 +120,24 @@ module Grammar4 : GRAMMAR = struct
              ( "arith1"
              , 1
              , { productions =
-                   [ [ Nonterminal 2; Terminal 2; Nonterminal 1 ]
+                   [ [ Nonterminal 2; Terminal 3; Nonterminal 1 ]
                    ; (* arith2 + arith1 (1) *)
-                     [ Nonterminal 2; Terminal 3; Nonterminal 1 ]
+                     [ Nonterminal 2; Terminal 4; Nonterminal 1 ]
                    ; (* arith2 - arith1 (2) *)
                      [ Nonterminal 2 ]
                      (* arith2 (3) *)
                    ]
                } )
-           ; "arith2", 2, { productions = [ [ Terminal 4 ] (* id (4) *) ] }
+           ; "arith2", 2, { productions = [ [ Terminal 5 ] (* id (4) *) ] }
           |]
-      ; terminal_nums = [| "$", 0; "SPACE", 1; "ADD", 2; "SUB", 3; "NAME", 4 |]
+        ; terminal_nums = [|
+          "$", 0;
+          "SPACE", 1;
+          "EMPTY", 2;
+          "ADD", 3;
+          "SUB", 4;
+          "NAME", 5
+        |]
       }
   ;;
 end
@@ -187,26 +206,57 @@ let show_lookahead_item_sets : lookahead_item_sets -> string =
 let%test_module "lalr1_items" =
   (module struct
     (* First check the kernels are as expected *)
-    let%test "kernels" =
-      Set.equal
-        (Grammar1Lalr.lalr1_items |> Int.Map.data |> lookahead_item_set_set)
-        (gram1_lr1_config_sets
-        |> Array.to_list
-        |> List.map ~f:(fun { LalrParsing.kernel_items; _ } -> kernel_items)
-        |> lookahead_item_set_set)
+    let%expect_test "kernels" =
+      print_string (Grammar1Lalr.lalr1_items
+        |> Map.data
+        |> lookahead_item_set_set
+        |> show_lookahead_item_sets);
+      [%expect{|
+        [S' -> . S, $]
+
+        [S' -> S ., $]
+
+        [S -> C . C, $]
+
+        [C -> c . C, $/c/d]
+
+        [C -> d ., $/c/d]
+
+        [S -> C C ., $]
+
+        [C -> c C ., $/c/d] |}]
     ;;
 
     (* Then verify all closures are as expected *)
-    let%test "closures" =
-      Set.equal
+    let%expect_test _ =
+      print_string
         (Grammar1Lalr.lalr1_items
-        |> Int.Map.data
+        |> Map.data
         |> List.map ~f:Grammar1Lalr.lr1_closure
-        |> lookahead_item_set_set)
-        (gram1_lr1_config_sets
-        |> Array.to_list
-        |> List.map ~f:simplify_lookahead_config_set
-        |> lookahead_item_set_set)
+        |> lookahead_item_set_set
+        |> show_lookahead_item_sets);
+      [%expect{|
+        [S' -> . S, $]
+        [S -> . C C, $]
+        [C -> . c C, c/d]
+        [C -> . d, c/d]
+
+        [C -> . c C, $]
+        [C -> . d, $]
+        [S -> C . C, $]
+
+        [C -> . c C, $/c/d]
+        [C -> . d, $/c/d]
+        [C -> c . C, $/c/d]
+
+        [S' -> S ., $]
+
+        [C -> d ., $/c/d]
+
+        [S -> C C ., $]
+
+        [C -> c C ., $/c/d]
+      |}]
     ;;
   end)
 ;;
@@ -244,7 +294,7 @@ let mk_set : item_set list -> item_set_set = Set.of_list (module LrParsing.IntSe
 
 let actual_grammar2_lalr1_kernels : item_set_set =
   Grammar2Lalr.lalr1_items
-  |> Int.Map.data
+  |> Map.data
   |> List.map ~f:(fun lookahead_item_set ->
          lookahead_item_set
          |> Set.to_list
@@ -270,70 +320,37 @@ let%test "grammar 2 lalr1 kernel items" =
 let book_state_mapping =
   expected_grammar2_lalr1_kernels
   |> Int.Map.of_alist_exn
-  |> Int.Map.map ~f:Grammar2LR.item_set_to_state
+  |> Map.map ~f:Grammar2LR.item_set_to_state
 ;;
 
 let book_state : int array =
-  Array.init (M.length book_state_mapping) ~f:(fun i ->
-      book_state_mapping
-      |> Fn.flip Int.Map.find i
+  Array.init (Map.length book_state_mapping) ~f:(fun i ->
+      Map.find book_state_mapping i
       |> get_option' (fun () -> "expected key in book states"))
 ;;
 
-let no_terminal_num = 4 (* # *)
+let no_terminal_num = 6 (* # *)
 
 let lookahead_item_set =
   lookahead_item_set_from_array
     [| { item = mk_item' 0 0; lookahead_set = SI.of_list [ no_terminal_num ] } |]
 ;;
 
-let%test "grammar 2 closure" =
+let%expect_test "grammar 2 closure" =
   (* CPTT Example 4.64 *)
-  let expected_closure =
-    lookahead_item_set_from_array
-      [| (* S' -> . S, # *)
-         { item = mk_item' 0 0; lookahead_set = SI.of_list [ no_terminal_num ] }
-       ; (* S -> . L = R, # *)
-         { item = mk_item' 1 0; lookahead_set = SI.of_list [ no_terminal_num ] }
-       ; (* S -> . R, # *)
-         { item = mk_item' 2 0; lookahead_set = SI.of_list [ no_terminal_num ] }
-       ; (* L -> . * R, #/= *)
-         { item = mk_item' 3 0; lookahead_set = SI.of_list [ no_terminal_num; 1 ] }
-       ; (* L -> . id, #/= *)
-         { item = mk_item' 4 0; lookahead_set = SI.of_list [ no_terminal_num; 1 ] }
-       ; (* R -> . L, # *)
-         { item = mk_item' 5 0; lookahead_set = SI.of_list [ no_terminal_num ] }
-      |]
-  in
-  Set.equal (Grammar2Lalr.lr1_closure lookahead_item_set) expected_closure
+  print_string Grammar2Lalr.(
+    string_of_lookahead_item_set (lr1_closure lookahead_item_set));
+  [%expect{|
+    [S' -> . S, #]
+    [S -> . L = R, #]
+    [S -> . R, #]
+    [L -> . * R, =/#]
+    [L -> . id, =/#]
+    [R -> . L, #] |}]
 ;;
 
 let { spontaneous_generation; propagation } =
   Grammar2Lalr.generate_lookaheads (SI.of_list [ mk_item' 0 0 ]) (mk_item' 0 0)
-;;
-
-let expected_propagation =
-  [| book_state.(1), mk_item' 0 1
-   ; (* S' -> S . *)
-     book_state.(2), mk_item' 1 1
-   ; (* S -> L . = R *)
-     book_state.(3), mk_item' 2 1
-   ; (* S -> R . *)
-     book_state.(4), mk_item' 3 1
-   ; (* L -> * . R *)
-     book_state.(5), mk_item' 4 1
-   ; (* L -> id . *)
-     book_state.(2), mk_item' 5 1 (* R -> L . *)
-  |]
-;;
-
-let expected_generation =
-  LookaheadItem.
-    [| (* L -> * . R, = *)
-       book_state.(4), { item = mk_item' 3 1; lookahead_set = SI.of_list [ 1 ] }
-     ; (* L -> id ., = *)
-       book_state.(5), { item = mk_item' 4 1; lookahead_set = SI.of_list [ 1 ] }
-    |]
 ;;
 
 let string_of_propagation propagation =
@@ -368,23 +385,33 @@ let string_of_generation : (state * LookaheadItem.t) array -> string =
 
 let%test_module "generate_lookaheads" =
   (module struct
-    let%test "propagation" = equivalent_propagation propagation expected_propagation
+    let%expect_test "propagation" =
+      print_string (string_of_propagation propagation);
+      [%expect{|
+        1 -> S' -> S .
+        2 -> S -> L . = R
+        3 -> S -> R .
+        4 -> L -> * . R
+        5 -> L -> id .
+        2 -> R -> L . |}]
 
-    let%test "spontaneous_generation" =
-      equivalent_generation spontaneous_generation expected_generation
-    ;;
+    let%expect_test "spontaneous_generation" =
+      print_string (string_of_generation spontaneous_generation);
+      [%expect{|
+        4: [L -> * . R, =]
+        5: [L -> id ., =] |}]
   end)
 ;;
 
 let%expect_test "mutable_lalr1_items" =
   let lalr1_items_set : MutableLookaheadItemSet.t list =
-    Int.Map.data Grammar2Lalr.mutable_lalr1_items
+    Map.data Grammar2Lalr.mutable_lalr1_items
   in
   let string_of_lalr1_items_set lalr1_items_set =
     lalr1_items_set
     |> List.map ~f:(fun mutable_lookahead_item_set ->
            mutable_lookahead_item_set
-           |> M.to_alist
+           |> Map.to_alist
            |> List.map ~f:(fun (item, mutable_lookahead) ->
                   let lookahead_set =
                     mutable_lookahead |> Hash_set.to_list |> SI.of_list
@@ -453,33 +480,33 @@ let c_num : nonterminal_num = 2
 let%test_module "lalr1_goto_table" =
   (module struct
     (* first, four gotos that are actually valid *)
-    let%test "" = expect_goto 0 s_num 1
-    let%test "" = expect_goto 0 c_num 2
-    let%test "" = expect_goto 2 c_num 5
-    let%test "" = expect_goto 3 c_num 6
+    let%test _ = expect_goto 0 s_num 1
+    let%test _ = expect_goto 0 c_num 2
+    let%test _ = expect_goto 2 c_num 5
+    let%test _ = expect_goto 3 c_num 6
     (* the rest of the table is empty *)
-    let%test "" = expect_no_goto 0 s'_num
-    let%test "" = expect_no_goto 1 s'_num
-    let%test "" = expect_no_goto 2 s'_num
-    let%test "" = expect_no_goto 3 s'_num
-    let%test "" = expect_no_goto 4 s'_num
-    let%test "" = expect_no_goto 5 s'_num
-    let%test "" = expect_no_goto 6 s'_num
-    let%test "" = expect_no_goto 1 s_num
-    let%test "" = expect_no_goto 2 s_num
-    let%test "" = expect_no_goto 3 s_num
-    let%test "" = expect_no_goto 4 s_num
-    let%test "" = expect_no_goto 5 s_num
-    let%test "" = expect_no_goto 6 s_num
-    let%test "" = expect_no_goto 1 c_num
-    let%test "" = expect_no_goto 4 c_num
-    let%test "" = expect_no_goto 5 c_num
-    let%test "" = expect_no_goto 6 c_num
+    let%test _ = expect_no_goto 0 s'_num
+    let%test _ = expect_no_goto 1 s'_num
+    let%test _ = expect_no_goto 2 s'_num
+    let%test _ = expect_no_goto 3 s'_num
+    let%test _ = expect_no_goto 4 s'_num
+    let%test _ = expect_no_goto 5 s'_num
+    let%test _ = expect_no_goto 6 s'_num
+    let%test _ = expect_no_goto 1 s_num
+    let%test _ = expect_no_goto 2 s_num
+    let%test _ = expect_no_goto 3 s_num
+    let%test _ = expect_no_goto 4 s_num
+    let%test _ = expect_no_goto 5 s_num
+    let%test _ = expect_no_goto 6 s_num
+    let%test _ = expect_no_goto 1 c_num
+    let%test _ = expect_no_goto 4 c_num
+    let%test _ = expect_no_goto 5 c_num
+    let%test _ = expect_no_goto 6 c_num
   end)
 ;;
 
-let c_num : terminal_num = 1
-let d_num : terminal_num = 2
+let c_num : terminal_num = 3
+let d_num : terminal_num = 4
 
 let%test_module "lalr1_action_table" =
   (module struct
@@ -574,9 +601,9 @@ let%test_module "parse" =
     ;;
 
     let%test "**foo = *bar" =
-      let eq_num = 1 in
-      let star_num = 2 in
-      let id_num = 3 in
+      let eq_num = 3 in
+      let star_num = 4 in
+      let id_num = 5 in
       (* **foo = *bar
        * 012345678901
        *)
@@ -638,10 +665,10 @@ let%test_module "parse" =
           }
     ;;
 
-    let plus_num = 1
-    let lparen_num = 2
-    let rparen_num = 3
-    let id_num = 4
+    let plus_num = 3
+    let lparen_num = 4
+    let rparen_num = 5
+    let id_num = 6
 
     let%test "(x + y)" =
       (* (x + y)
@@ -731,8 +758,8 @@ let%test_module "parse" =
         Queue.of_list
           [ mk_tok "NAME" 0 1; mk_tok "ADD" 2 3; mk_tok "NAME" 4 5; mk_tok "$" 5 5 ]
       in
-      let add_num = 2 in
-      let name_num = 4 in
+      let add_num = 3 in
+      let name_num = 5 in
       Grammar4Lalr.parse tokens3
       = Ok
           { production = Either.Second 1

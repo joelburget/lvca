@@ -111,6 +111,7 @@ module MutableSet = struct
    ;;
 
     let min_elt : ('a, _) t -> 'a option = fun t -> Set.min_elt !t
+    let min_elt_exn : ('a, _) t -> 'a = fun t -> Set.min_elt_exn !t
     let snapshot : ('a, 'cmp) t -> ('a, 'cmp) Set.t = fun t -> !t
   end
 

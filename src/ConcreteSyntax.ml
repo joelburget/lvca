@@ -579,9 +579,9 @@ let to_grammar
  fun { terminal_rules; nonterminal_rules } start_nonterminal ->
   let terminal_nums =
     terminal_rules
-    (* start other terminals (besides $ and SPACE) at 2 *)
-    |> List.mapi ~f:(fun i (name, _) -> name, i + 2)
-    |> List.append [ "$", 0; "SPACE", 1 ]
+    (* start other terminals (besides $, SPACE, and EMPTY) at 3 *)
+    |> List.mapi ~f:(fun i (name, _) -> name, i + 3)
+    |> List.append [ "$", 0; "SPACE", 1; "EMPTY", 2 ]
   in
   (* mapping from terminal to its number *)
   let terminal_num_map : int String.Map.t = String.Map.of_alist_exn terminal_nums in

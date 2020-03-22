@@ -7,9 +7,15 @@ let get_option, get_option', invariant_violation =
 
 exception NoItemSet of (unit -> string)
 
-(* by convention, we reserve 0 for the `$` terminal, and number the rest
- * contiguously from 1 *)
+(* By convention, we reserve:
+  - 0 for the [$] terminal
+  - 1 for [SPACE]
+  - 2 for the empty terminal
+  - and number the rest contiguously from 3
+ *)
 type terminal_num = int [@@deriving sexp, compare]
+
+let empty_terminal_num = 2
 
 (* by convention, we reserve 0 for the root nonterminal, and number the rest
  * contiguously from 1 *)
@@ -82,8 +88,8 @@ type nonterminal =
 type prec_level = int
 
 (* By convention:
- * A non-augmented grammar has keys starting at 1 (start)
- * An augmented grammar has key 0 (augmented start)
+ - A non-augmented grammar has keys starting at 1 (start)
+ - An augmented grammar has key 0 (augmented start)
  *)
 type grammar =
   { terminal_nums : (string * terminal_num) array
@@ -203,13 +209,13 @@ module Lr0 (G : GRAMMAR) = struct
   ;;
 
   (* Map from production number to the actual production *)
-  let production_map : production Core_kernel.Int.Table.t = Int.Table.create ()
+  let production_map : production Int.Table.t = Int.Table.create ()
 
   (* Map from production number to the number of the nonterminal it belongs to *)
-  let production_nonterminal_map : nonterminal_num Core_kernel.Int.Table.t = Int.Table.create ()
+  let production_nonterminal_map : nonterminal_num Int.Table.t = Int.Table.create ()
 
   (* Map from a nonterminal num to the set of productions it holds *)
-  let nonterminal_production_map : MutableSet.Int.t Core_kernel.Int.Table.t = Int.Table.create ()
+  let nonterminal_production_map : MutableSet.Int.t Int.Table.t = Int.Table.create ()
 
   (* number of nonterminals in the passed-in grammar (which ought to be
    * augmented) *)
@@ -264,8 +270,7 @@ module Lr0 (G : GRAMMAR) = struct
   ;;
 
   let string_of_nonterminal_num : nonterminal_num -> string =
-   fun nt_num ->
-    Map.find nonterminal_names nt_num
+   fun nt_num -> Map.find nonterminal_names nt_num
     |> get_option' (fun () ->
            Printf.sprintf
              "string_of_nonterminal_num: failed to get nonterminal %n from \
@@ -273,61 +278,10 @@ module Lr0 (G : GRAMMAR) = struct
              nt_num)
  ;;
 
-  let rec nonterminal_first_set : Int.Set.t -> MutableSet.Int.t -> nonterminal_num -> unit =
-   fun already_seen_nts result nt ->
-    let productions : MutableSet.Int.t =
-      Hashtbl.find nonterminal_production_map nt
-      |> get_option' (fun () ->
-             Printf.sprintf
-               "nonterminal_first_set->already_seen_nts: Couldn't find nonterminal %s in \
-                nonterminal_production_map"
-               (string_of_nonterminal_num nt))
-      |> MutableSet.copy
-    in
-    while not (MutableSet.is_empty productions) do
-      let production_num =
-        productions
-        |> MutableSet.min_elt
-        |> get_option' (fun () ->
-               "nonterminal_first_set->already_seen_nts: minimum of productions must \
-                exist")
-      in
-      MutableSet.remove productions production_num;
-      let production =
-        Hashtbl.find production_map production_num
-        |> get_option' (fun () ->
-               Printf.sprintf
-                 "nonterminal_first_set->already_seen_nts: Couldn't find production %n \
-                  in production_map"
-                 production_num)
-      in
-      first_set' already_seen_nts result production
-    done
-
-  and first_set' : Int.Set.t -> MutableSet.Int.t -> production -> unit =
-   fun already_seen_nts result -> function
-    | [] -> failwith "invariant violation: first_set must be called with a non-empty list"
-    | Terminal num :: _ -> MutableSet.add result num
-    (* TODO: update when we allow empty productions *)
-    | Nonterminal num :: _ ->
-      if not (Set.mem already_seen_nts num)
-      then nonterminal_first_set (Set.add already_seen_nts num) result num
- ;;
-
-  let first_set : production -> Int.Set.t = function
-    | [] -> Int.Set.empty
-    | prod ->
-      let result = MutableSet.create (module Int) in
-      let already_seen_nts = Int.Set.empty in
-      first_set' already_seen_nts result prod;
-      MutableSet.snapshot result
-  ;;
-
   let string_of_terminal : terminal_num -> string =
-   fun t_num ->
-    Map.find terminal_names t_num
+   fun t_num -> Map.find terminal_names t_num
     |> get_option' (fun () ->
-           Printf.sprintf "string_of_symbol: failed to get terminal %n" t_num)
+           Printf.sprintf "string_of_terminal: failed to get terminal %n" t_num)
  ;;
 
   let string_of_symbol : symbol -> string = function
@@ -452,12 +406,72 @@ module Lr0 (G : GRAMMAR) = struct
     | Error (Some ShiftReduce) -> "error (shift/reduce conflict)"
   ;;
 
+  (* From CPTT section 4.4.2 *)
+  let rec nonterminal_first_set : Int.Set.t -> nonterminal_num -> Int.Set.t =
+   fun parent_nts nt ->
+    let productions : MutableSet.Int.t =
+      Hashtbl.find nonterminal_production_map nt
+      |> get_option' (fun () ->
+             Printf.sprintf
+               "nonterminal_first_set: Couldn't find nonterminal %n in \
+                nonterminal_production_map (keys [%s])"
+               nt
+               (Hashtbl.keys nonterminal_production_map
+                 |> List.map ~f:string_of_int
+                 |> String.concat ~sep:", ")
+        )
+      |> MutableSet.copy
+    in
+
+    let result = MutableSet.Int.create () in
+    while not (MutableSet.is_empty productions) do
+      let production_num = MutableSet.min_elt_exn productions in
+      MutableSet.remove productions production_num;
+      let production = Hashtbl.find production_map production_num
+        |> get_option' (fun () -> Printf.sprintf
+          "nonterminal_first_set: Couldn't find production %n in production_map"
+          production_num)
+      in
+      Set.iter (first_set' parent_nts production) ~f:(MutableSet.add result)
+    done;
+
+    MutableSet.snapshot result
+
+  (* From CPTT section 4.4.2 *)
+  and first_set' : Int.Set.t -> production -> Int.Set.t =
+    fun parent_nts -> function
+    | []
+    -> Int.Set.singleton empty_terminal_num
+    | Terminal num :: _
+    -> Int.Set.singleton num
+    | Nonterminal num :: tail_production ->
+      (* Guard against recurring back into the same nonterminal *)
+      if Set.mem parent_nts num
+      then Int.Set.empty
+      else
+        let nt_first_set =
+          nonterminal_first_set (Set.add parent_nts num) num
+        in
+
+        (* If this nonterminal accepts empty productions, add the first set of
+          the rest of the production *)
+        if Set.mem nt_first_set empty_terminal_num
+        then Set.union nt_first_set (first_set' parent_nts tail_production)
+        else nt_first_set
+  ;;
+
+  (* The set of terminals that begin strings defived from this production. From
+   CPTT section 4.4.2 *)
+  let first_set : production -> Int.Set.t
+    = first_set' Int.Set.empty
+  ;;
+
   let production_cnt = ref 0
 
   let () =
     Array.iter augmented_grammar.nonterminals ~f:(fun (_, nt_num, { productions }) ->
         nonterminal_production_map
-        |> Hashtbl.set ~key:nt_num ~data:(MutableSet.create (module Int));
+        |> Hashtbl.set ~key:nt_num ~data:(MutableSet.Int.create ());
         List.iter productions ~f:(fun production ->
             let production_num = !production_cnt in
             incr production_cnt;
@@ -490,9 +504,9 @@ module Lr0 (G : GRAMMAR) = struct
   let lr0_closure' : item_set -> configuration_set =
    fun initial_items ->
     let added = Bitstring.alloc number_of_nonterminals false in
-    let kernel_items = Hash_set.create (module Int) in
-    let nonkernel_items = Hash_set.create (module Int) in
-    let nt_set = MutableSet.create (module Int) in
+    let kernel_items = Int.Hash_set.create () in
+    let nonkernel_items = Int.Hash_set.create () in
+    let nt_set = MutableSet.Int.create () in
     (* Create the set (nt_set) of nonterminals to look at. Add each initial
      * item to the kernel or nonkernel set. *)
     Set.iter initial_items ~f:(fun item ->
@@ -516,9 +530,7 @@ module Lr0 (G : GRAMMAR) = struct
         nt_set |> MutableSet.min_elt |> get_option' (fun () -> "the set is not empty!")
       in
       MutableSet.remove nt_set nonterminal_num;
-      let is_alrady_added =
-        added
-        |> Fn.flip Bitstring.get nonterminal_num
+      let is_alrady_added = Bitstring.get added nonterminal_num
         |> get_option' (fun () ->
                Printf.sprintf
                  "lr0_closure': couldn't find nonterminal %n in added (nonterminal count \
@@ -546,11 +558,11 @@ module Lr0 (G : GRAMMAR) = struct
                    "lr0_closure': unable to find nonterminal %n in nonterminal_map"
                    nonterminal_num)
         in
-        List.iter productions ~f:(fun production ->
-            match production with
-            | Terminal _ :: _ -> ()
-            | Nonterminal new_nt :: _ -> MutableSet.add nt_set new_nt
-            | _ -> failwith "Empty production"))
+        List.iter productions ~f:(function
+          | Terminal _ :: _
+          | []
+          -> ()
+          | Nonterminal new_nt :: _ -> MutableSet.add nt_set new_nt))
     done;
     { kernel_items = kernel_items |> Hash_set.to_list |> Int.Set.of_list
     ; nonkernel_items = nonkernel_items |> Hash_set.to_list |> Int.Set.of_list
@@ -672,25 +684,95 @@ module Lr0 (G : GRAMMAR) = struct
   let augmented_state : state = item_set_to_state @@ Int.Set.of_list [ mk_item' 0 0 ]
   let end_marker : terminal_num = 0
 
+  (* From CPTT section 4.4.2 *)
   let rec follow' : Int.Set.t -> nonterminal_num -> Int.Set.t =
    fun nts_visited nt_num ->
-    if nt_num = 0
-       (* Rule 1 from the CPTT algorithm for FOLLOW(A):
-        * $ is in FOLLOW(S), where S is the start symbol.
-        *)
-    then
-      Int.Set.of_list [ end_marker ]
-      (* For each production, accumulate the terminals it adds to the follow
-       * set
+      (* Rule 2 from the CPTT algorithm for FOLLOW(A):
+         If there is a production A -> aBb, then everything in FIRST(b),
+         except e, is in FOLLOW(B).
+
+         Rule 3 from the CPTT algorithm for FOLLOW(A):
+         If there is a production A -> aB, or a production A -> aBb,
+         where FIRST(b) contains e, then everything in FOLLOW(A) is in
+         FOLLOW(B)
        *)
-    else
+      let rec go parent_nt = function
+        | [] ->
+          (* Rule 1 from the CPTT algorithm for FOLLOW(A):
+             $ is in FOLLOW(S), where S is the start symbol.
+           *)
+          if nt_num = 0
+          then Int.Set.of_list [end_marker]
+          else Int.Set.empty
+        | Nonterminal nt_num' :: remaining_production
+          when nt_num' = nt_num && not (Set.mem nts_visited nt_num)
+        -> (match remaining_production with
+          (* aB: everything in FOLLOW(A) is in FOLLOW(B) *)
+          | [] -> follow' (Set.add nts_visited nt_num) parent_nt
+
+          (* aBb *)
+          | _ ->
+            let b_first_set = first_set remaining_production in
+
+            (* everything in FIRST(b), except e, is in FOLLOW(B) *)
+            let rule_2_follow_set =
+              Set.remove b_first_set empty_terminal_num
+            in
+
+            let rule_3_follow_set =
+              (* if FIRST(b) contains e: *)
+              if Set.mem b_first_set empty_terminal_num
+              (* everything in FOLLOW(A) is in FOLLOW(B) *)
+              then follow' (Set.add nts_visited nt_num) parent_nt
+              else Int.Set.empty
+            in
+
+            go parent_nt remaining_production
+              |> Set.union rule_2_follow_set
+              |> Set.union rule_3_follow_set)
+        | _ :: remaining_production
+        -> go parent_nt remaining_production
+      in
+
+      (* For each production, accumulate the terminals it adds to the follow
+         set
+       *)
+      production_map
+      |> Hashtbl.to_alist
+      |> List.map ~f:(fun (prod_num, production) ->
+        let parent_nt =
+          Hashtbl.find production_nonterminal_map prod_num
+          |> get_option' (fun () ->
+                 Printf.sprintf
+                   "Lr0 follow': unable to find nonterminal %n in \
+                    production_nonterminal_map"
+                   prod_num)
+        in
+        go parent_nt production)
+      |> Int.Set.union_list
+
+      (*
+      let rec rule_3 parent_nt = function
+        | [] -> Int.Set.empty
+        | Nonterminal nt_num' :: remaining_production
+          when nt_num' = nt_num && not (Set.mem nts_visited nt_num)
+        -> (match remaining_production with
+          | [] -> follow' (Set.add nts_visited nt_num) parent_nt
+          | _ ->
+            if Set.mem (first_set remaining_production) empty_terminal_num
+            then Set.union
+              (follow' (Set.add nts_visited nt_num) parent_nt)
+              (rule_3 parent_nt remaining_production)
+            else Int.Set.empty)
+        | _ -> Int.Set.empty
+      in
+
+      (* For each production, accumulate the terminals it adds to the follow
+         set
+       *)
       production_map
       |> Hashtbl.to_alist
       |> List.fold ~init:Int.Set.empty ~f:(fun follow_set (prod_num, production) ->
-             (* Rule 2 from the CPTT algorithm for FOLLOW(A):
-              * If there is a production A -> aBb, then everything in FIRST(b),
-              * except e, is in FOLLOW(B).
-              *)
              let rule_2_follow_set = first_after_nt nt_num production in
              let parent_nt =
                Hashtbl.find production_nonterminal_map prod_num
@@ -700,35 +782,26 @@ module Lr0 (G : GRAMMAR) = struct
                          production_nonterminal_map"
                         prod_num)
              in
-             (* Rule 3 from the CPTT algorithm for FOLLOW(A):
-              * If there is a production A -> aB, or a production A -> aBb,
-              * where FIRST(b) contains e, then everything in FOLLOW(A) is in
-              * FOLLOW(B)
-              *)
-             let rule_3_follow_set =
-               match Util.unsnoc production with
-               | _, Nonterminal nt_num'
-                 when nt_num' = nt_num && not (Set.mem nts_visited nt_num) ->
-                 follow' (Set.add nts_visited nt_num) parent_nt
-               | _ -> Int.Set.empty
-             in
+
              follow_set
              |> Set.union rule_2_follow_set
-             |> Set.union rule_3_follow_set)
+             |> Set.union (rule_3 parent_nt production))
 
   (* Find all the terminals occuring in first sets directly after the
-   * nonterminal *)
+   * nonterminal. From CPTT section 4.4.2. *)
   and first_after_nt : nonterminal_num -> production -> Int.Set.t =
    fun nt_num -> function
     | Nonterminal nt_num' :: rest when nt_num' = nt_num ->
       Set.union (first_set rest) (first_after_nt nt_num rest)
     | _ :: rest -> first_after_nt nt_num rest
     | [] -> Int.Set.empty
+             *)
  ;;
 
   (* Compute the set of terminals that can appear immediately to the right of
-   * nt in some production *)
-  let follow_set : nonterminal_num -> Int.Set.t = follow' Int.Set.empty
+   * nt in some production. From CPTT section 4.4.2. *)
+  let follow_set : nonterminal_num -> Int.Set.t
+    = follow' Int.Set.empty
 
   (* This is the GOTO function operating on states. See `lr0_goto_kernel` for
    * the version operating on item set.
@@ -1058,7 +1131,6 @@ module Lr0 (G : GRAMMAR) = struct
         |> Array.filter ~f:(fun (token : Lex.token) -> String.(token.name <> "SPACE"))
         |> Queue.of_array
       in
-      (* TODO: name might not always be "$" *)
       Queue.enqueue tokens' { name = "$"; start = len; finish = len };
       Result.map_error (parse tokens') ~f:(fun err -> Either.Second err)
  ;;

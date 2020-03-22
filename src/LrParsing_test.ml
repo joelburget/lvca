@@ -1,8 +1,24 @@
 open Core_kernel
 open LrParsing
-module SI = Int.Set
 
-module Grammar : GRAMMAR = struct
+let plus_num : terminal_num = 3
+let times_num : terminal_num = 4
+let lparen_num : terminal_num = 5
+let rparen_num : terminal_num = 6
+let id_num : terminal_num = 7
+
+let terminal_nums = [|
+  "$", 0;
+  "SPACE", 1;
+  "EMPTY", 2;
+  "+", plus_num;
+  "*", times_num;
+  "(", lparen_num;
+  ")", rparen_num;
+  "id", id_num
+|]
+
+module Grammar1 : GRAMMAR = struct
   let grammar =
     AugmentedGrammar
       { nonterminals =
@@ -12,7 +28,7 @@ module Grammar : GRAMMAR = struct
              ( "E"
              , 1
              , { productions =
-                   [ [ Nonterminal 1; Terminal 1; Nonterminal 2 ]
+                   [ [ Nonterminal 1; Terminal 3; Nonterminal 2 ]
                    ; (* E -> E + T *)
                      [ Nonterminal 2 ]
                      (* E -> T *)
@@ -21,7 +37,7 @@ module Grammar : GRAMMAR = struct
            ; ( "T"
              , 2
              , { productions =
-                   [ [ Nonterminal 2; Terminal 2; Nonterminal 3 ]
+                   [ [ Nonterminal 2; Terminal 4; Nonterminal 3 ]
                    ; (* T -> T * F *)
                      [ Nonterminal 3 ] (* T -> F *)
                    ]
@@ -29,68 +45,176 @@ module Grammar : GRAMMAR = struct
            ; ( "F"
              , 3
              , { productions =
-                   [ [ Terminal 3; Nonterminal 1; Terminal 4 ]
+                   [ [ Terminal 5; Nonterminal 1; Terminal 6 ]
                    ; (* F -> (E) *)
-                     [ Terminal 5 ]
+                     [ Terminal 7 ]
                      (* F -> id *)
                    ]
                } )
           |]
-      ; terminal_nums = [| "$", 0; "+", 1; "*", 2; "(", 3; ")", 4; "id", 5 |]
+      ; terminal_nums
       }
   ;;
 end
 
-module Lr0' = Lr0 (Grammar)
+(* CPTT Example 4.27 *)
+module Grammar2 : GRAMMAR = struct
+  let grammar =
+    AugmentedGrammar
+      { nonterminals =
+          [|
+           (* E -> T E' *)
+           "E", 0, { productions = [ [ Nonterminal 2; Nonterminal 1 ] ] }
+           ;
+             ( "E'"
+             , 1
+             , { productions =
+                   [ (* E' -> + T E' *)
+                     [ Terminal 3; Nonterminal 2; Nonterminal 1 ]
+                   ; (* E -> *)
+                     []
+                   ]
+               } )
+           ; ( "T"
+             , 2
+             , { productions =
+                   [ (* T -> F T' *)
+                     [ Nonterminal 4; Nonterminal 3 ]
+                   ]
+               } )
+           ; ( "T'"
+             , 3
+             , { productions =
+                 [ (* T' -> * F T' *)
+                   [ Terminal 4; Nonterminal 4; Nonterminal 3 ]
+                 ; (* T' -> *)
+                   []
+                 ]
+               } )
+           ; ( "F"
+             , 4
+             , { productions =
+                   [ [ Terminal 5; Nonterminal 0; Terminal 6 ]
+                   ; (* F -> (E) *)
+                     [ Terminal 7 ]
+                     (* F -> id *)
+                   ]
+               } )
+          |]
+      ; terminal_nums
+      }
+  ;;
+end
 
-let%test_module "LrParsing mk_item / view_item" =
+module Lr01 = Lr0 (Grammar1)
+module Lr02 = Lr0 (Grammar2)
+
+let%test_module "mk_item / view_item" =
   (module struct
     let ( = ) = Caml.( = )
 
-    let%test "" = view_item (mk_item' 0 0) = { production_num = 0; position = 0 }
-    let%test "" = view_item (mk_item' 0 1) = { production_num = 0; position = 1 }
-    let%test "" = view_item (mk_item' 1 0) = { production_num = 1; position = 0 }
-    let%test "" = view_item (mk_item' 1 1) = { production_num = 1; position = 1 }
+    let%test _ = view_item (mk_item' 0 0) = { production_num = 0; position = 0 }
+    let%test _ = view_item (mk_item' 0 1) = { production_num = 0; position = 1 }
+    let%test _ = view_item (mk_item' 1 0) = { production_num = 1; position = 0 }
+    let%test _ = view_item (mk_item' 1 1) = { production_num = 1; position = 1 }
   end)
 ;;
 
-let%test_module "LrParsing first_set" =
+let%test_module "Grammar 1 / Grammar 2 first_set" =
   (module struct
-    let ( = ) = Set.equal
 
-    let%test "" =
-      Lr0'.first_set [ Nonterminal 1; Terminal 1; Nonterminal 2 ] = SI.of_list [ 3; 5 ]
-    ;;
+    let print_first_set set = set
+      |> Set.to_list
+      (* Warning: this only works because the two grammars have the same
+         terminals *)
+      |> List.map ~f:Lr01.string_of_terminal
+      |> String.concat ~sep:" "
+      |> print_string
 
-    let%test "" = Lr0'.first_set [ Nonterminal 2 ] = SI.of_list [ 3; 5 ]
+    let%expect_test _ =
+      print_first_set (Lr01.first_set [ Nonterminal 1; Terminal 3; Nonterminal 2 ]);
+      [%expect{| ( id |}]
 
-    let%test "" =
-      Lr0'.first_set [ Nonterminal 2; Terminal 2; Nonterminal 3 ] = SI.of_list [ 3; 5 ]
-    ;;
+    let%expect_test _ =
+      print_first_set (Lr01.first_set [ Nonterminal 2 ]);
+      [%expect{| ( id |}]
 
-    let%test "" = Lr0'.first_set [ Nonterminal 3 ] = SI.of_list [ 3; 5 ]
+    let%expect_test _ =
+      print_first_set (Lr01.first_set [ Nonterminal 2; Terminal 4; Nonterminal 3 ]);
+      [%expect{| ( id |}]
 
-    let%test "" =
-      Lr0'.first_set [ Terminal 3; Nonterminal 1; Terminal 4 ] = SI.of_list [ 3 ]
-    ;;
+    let%expect_test _ =
+      print_first_set (Lr01.first_set [ Nonterminal 3 ]);
+      [%expect{| ( id |}]
 
-    let%test "" = Lr0'.first_set [ Terminal 5 ] = SI.of_list [ 5 ]
+    let%expect_test _ =
+      print_first_set (Lr01.first_set [ Terminal 5; Nonterminal 1; Terminal 6 ]);
+      [%expect{| ( |}]
+
+    let%expect_test _ =
+      print_first_set (Lr01.first_set [ Terminal 7 ]);
+      [%expect{| id |}]
+
+    (* CPTT Example 4.30: *)
+
+    let%expect_test _ =
+      print_first_set (Lr02.first_set [ Nonterminal 0 ]);
+      [%expect{| ( id |}]
+
+    let%expect_test _ =
+      print_first_set (Lr02.first_set [ Nonterminal 2 ]);
+      [%expect{| ( id |}]
+
+    let%expect_test _ =
+      print_first_set (Lr02.first_set [ Nonterminal 4 ]);
+      [%expect{| ( id |}]
+
+    let%expect_test _ =
+      print_first_set (Lr02.first_set [ Nonterminal 1 ]);
+      [%expect{| EMPTY + |}]
+
+    let%expect_test _ =
+      print_first_set (Lr02.nonterminal_first_set Int.Set.empty 1);
+      [%expect{| EMPTY + |}]
+
+    let%expect_test _ =
+      print_first_set (Lr02.first_set [ Nonterminal 3 ]);
+      [%expect{| EMPTY * |}]
+
+    let%expect_test _ =
+      print_first_set (Lr02.nonterminal_first_set Int.Set.empty 3);
+      [%expect{| EMPTY * |}]
+
   end)
 ;;
 
-let%test_module "follow_set" =
+let%test_module "Grammar 1 follow_set" =
   (module struct
-    (* let show_follow_set = fun follow_set -> follow_set |> SI.to_array |> Array.map
-       ~f:Lr0'.string_of_terminal |> String.concat_array ~sep:" " *)
+    let show_follow_set = fun follow_set -> follow_set |> Set.to_array |> Array.map
+       ~f:Lr01.string_of_terminal |> String.concat_array ~sep:" "
 
-    let test_follow_set nt expected_set =
-      Set.equal (Lr0'.follow_set nt) (SI.of_list expected_set)
-    ;;
+    let print_follow_set nt = print_string (show_follow_set (Lr01.follow_set nt))
 
-    let%test "" = test_follow_set 0 [ 0 ]
-    let%test "" = test_follow_set 1 [ 0; 1; 4 ]
-    let%test "" = test_follow_set 2 [ 0; 1; 2; 4 ]
-    let%test "" = test_follow_set 3 [ 0; 1; 2; 4 ]
+    let%expect_test _ = print_follow_set 0; [%expect{| $ |}]
+    let%expect_test _ = print_follow_set 1; [%expect{| $ + ) |}]
+    let%expect_test _ = print_follow_set 2; [%expect{| $ + * ) |}]
+    let%expect_test _ = print_follow_set 3; [%expect{| $ + * ) |}]
+  end)
+;;
+
+let%test_module "Grammar 2 follow_set" =
+  (module struct
+    let show_follow_set = fun follow_set -> follow_set |> Set.to_array |> Array.map
+       ~f:Lr02.string_of_terminal |> String.concat_array ~sep:" "
+
+    let print_follow_set nt = print_string (show_follow_set (Lr02.follow_set nt))
+
+    (* CPTT Example 4.30: *)
+    let%expect_test _ = print_follow_set 0; [%expect{| $ ) |}]
+    let%expect_test _ = print_follow_set 1; [%expect{| $ ) |}]
+    let%expect_test _ = print_follow_set 2; [%expect{| $ + ) |}]
+    let%expect_test _ = print_follow_set 3; [%expect{| $ + ) |}]
+    let%expect_test _ = print_follow_set 4; [%expect{| $ + * ) |}]
   end)
 ;;
 
@@ -106,9 +230,9 @@ let items7 = [ mk_item' 3 2 ]
 let%test_module "closure" =
   (module struct
     let expected0 : configuration_set =
-      { kernel_items = SI.of_list items0
+      { kernel_items = Int.Set.of_list items0
       ; nonkernel_items =
-          SI.of_list
+          Int.Set.of_list
             [ mk_item' 1 0
             ; mk_item' 2 0
             ; mk_item' 3 0
@@ -120,38 +244,38 @@ let%test_module "closure" =
     ;;
 
     let expected1 : configuration_set =
-      { kernel_items = SI.of_list items1; nonkernel_items = SI.of_list [] }
+      { kernel_items = Int.Set.of_list items1; nonkernel_items = Int.Set.of_list [] }
     ;;
 
     let expected7 : configuration_set =
-      { kernel_items = SI.of_list items7
-      ; nonkernel_items = SI.of_list [ mk_item' 5 0; mk_item' 6 0 ]
+      { kernel_items = Int.Set.of_list items7
+      ; nonkernel_items = Int.Set.of_list [ mk_item' 5 0; mk_item' 6 0 ]
       }
     ;;
 
     let ( = ) = ConfigurationSet.equal
 
-    let%test "" = Lr0'.lr0_closure' (SI.of_list items0) = expected0
-    let%test "" = Lr0'.lr0_closure' (SI.of_list items1) = expected1
-    let%test "" = Lr0'.lr0_closure' (SI.of_list items7) = expected7
+    let%test _ = Lr01.lr0_closure' (Int.Set.of_list items0) = expected0
+    let%test _ = Lr01.lr0_closure' (Int.Set.of_list items1) = expected1
+    let%test _ = Lr01.lr0_closure' (Int.Set.of_list items7) = expected7
   end)
 ;;
 
 let%test_module "goto" =
   (module struct
-    let lr0_goto_kernel = SI.of_list [ mk_item' 1 2 ]
+    let lr0_goto_kernel = Int.Set.of_list [ mk_item' 1 2 ]
 
     let goto_nonkernel =
-      SI.of_list [ mk_item' 3 0; mk_item' 4 0; mk_item' 5 0; mk_item' 6 0 ]
+      Int.Set.of_list [ mk_item' 3 0; mk_item' 4 0; mk_item' 5 0; mk_item' 6 0 ]
     ;;
 
-    let%test "" =
-      Set.equal (Lr0'.lr0_goto_kernel (SI.of_list items1) (Terminal 1)) lr0_goto_kernel
+    let%test _ =
+      Set.equal (Lr01.lr0_goto_kernel (Int.Set.of_list items1) (Terminal 3)) lr0_goto_kernel
     ;;
 
-    let%test "" =
+    let%test _ =
       ConfigurationSet.equal
-        (Lr0'.lr0_closure' @@ Lr0'.lr0_goto_kernel (SI.of_list items1) (Terminal 1))
+        (Lr01.lr0_closure' @@ Lr01.lr0_goto_kernel (Int.Set.of_list items1) (Terminal 3))
         ({ kernel_items = lr0_goto_kernel; nonkernel_items = goto_nonkernel }
           : configuration_set)
     ;;
@@ -159,25 +283,25 @@ let%test_module "goto" =
 ;;
 
 let lr0_item_sets =
-  [ SI.of_list [ mk_item' 0 0 ]
+  [ Int.Set.of_list [ mk_item' 0 0 ]
   ; (* 0 *)
-    SI.of_list (* 1 *) [ mk_item' 0 1; mk_item' 1 1 ]
-  ; SI.of_list (* 2 *) [ mk_item' 2 1; mk_item' 3 1 ]
-  ; SI.of_list [ mk_item' 4 1 ]
+    Int.Set.of_list (* 1 *) [ mk_item' 0 1; mk_item' 1 1 ]
+  ; Int.Set.of_list (* 2 *) [ mk_item' 2 1; mk_item' 3 1 ]
+  ; Int.Set.of_list [ mk_item' 4 1 ]
   ; (* 3 *)
-    SI.of_list [ mk_item' 5 1 ]
+    Int.Set.of_list [ mk_item' 5 1 ]
   ; (* 4 *)
-    SI.of_list [ mk_item' 6 1 ]
+    Int.Set.of_list [ mk_item' 6 1 ]
   ; (* 5 *)
-    SI.of_list [ mk_item' 1 2 ]
+    Int.Set.of_list [ mk_item' 1 2 ]
   ; (* 6 *)
-    SI.of_list [ mk_item' 3 2 ]
+    Int.Set.of_list [ mk_item' 3 2 ]
   ; (* 7 *)
-    SI.of_list (* 8 *) [ mk_item' 1 1; mk_item' 5 2 ]
-  ; SI.of_list (* 9 *) [ mk_item' 1 3; mk_item' 3 1 ]
-  ; SI.of_list [ mk_item' 3 3 ]
+    Int.Set.of_list (* 8 *) [ mk_item' 1 1; mk_item' 5 2 ]
+  ; Int.Set.of_list (* 9 *) [ mk_item' 1 3; mk_item' 3 1 ]
+  ; Int.Set.of_list [ mk_item' 3 3 ]
   ; (* 10 *)
-    SI.of_list [ mk_item' 5 3 ]
+    Int.Set.of_list [ mk_item' 5 3 ]
     (* 11 *)
   ]
 ;;
@@ -188,19 +312,14 @@ let%test_module "lr0_items" =
     let normalize items = items |> Util.MutableSet.to_list |> List.map ~f:Int.Set.to_list
 
     let%test "" =
-      Caml.(normalize Lr0'.mutable_lr0_items = normalize expected_lr0_item_sets)
+      Caml.(normalize Lr01.mutable_lr0_items = normalize expected_lr0_item_sets)
     ;;
   end)
 ;;
 
-let state = lr0_item_sets |> List.map ~f:Lr0'.item_set_to_state |> Array.of_list
-let plus_num : terminal_num = 1
-let times_num : terminal_num = 2
-let lparen_num : terminal_num = 3
-let rparen_num : terminal_num = 4
+let state =
+  lr0_item_sets |> List.map ~f:Lr01.item_set_to_state |> Array.of_list
 
-(* TODO: use these up above *)
-let id_num : terminal_num = 5
 let e_num : nonterminal_num = 1
 let t_num : nonterminal_num = 2
 let f_num : nonterminal_num = 3
@@ -212,20 +331,20 @@ let%test_module "lr0 goto table" =
     (* Question: since these are all Nonterminals, what's the correct type of
      * goto? *)
     (* Test for a match with CPTT Figure 4.37 *)
-    let%test "" = Lr0'.lr0_goto_table state.(0) (Nonterminal e_num) = Some state.(1)
-    let%test "" = Lr0'.lr0_goto_table state.(0) (Nonterminal t_num) = Some state.(2)
-    let%test "" = Lr0'.lr0_goto_table state.(0) (Nonterminal f_num) = Some state.(3)
-    let%test "" = Lr0'.lr0_goto_table state.(4) (Nonterminal e_num) = Some state.(8)
-    let%test "" = Lr0'.lr0_goto_table state.(4) (Nonterminal t_num) = Some state.(2)
-    let%test "" = Lr0'.lr0_goto_table state.(4) (Nonterminal f_num) = Some state.(3)
+    let%test _ = Lr01.lr0_goto_table state.(0) (Nonterminal e_num) = Some state.(1)
+    let%test _ = Lr01.lr0_goto_table state.(0) (Nonterminal t_num) = Some state.(2)
+    let%test _ = Lr01.lr0_goto_table state.(0) (Nonterminal f_num) = Some state.(3)
+    let%test _ = Lr01.lr0_goto_table state.(4) (Nonterminal e_num) = Some state.(8)
+    let%test _ = Lr01.lr0_goto_table state.(4) (Nonterminal t_num) = Some state.(2)
+    let%test _ = Lr01.lr0_goto_table state.(4) (Nonterminal f_num) = Some state.(3)
     (* TODO: test other invalid GOTOs *)
     (* TODO: should this throw? *)
-    let%test "" = Lr0'.lr0_goto_table state.(6) (Nonterminal e_num) = None
-    let%test "" = Lr0'.lr0_goto_table state.(6) (Nonterminal t_num) = Some state.(9)
-    let%test "" = Lr0'.lr0_goto_table state.(6) (Nonterminal f_num) = Some state.(3)
-    let%test "" = Lr0'.lr0_goto_table state.(7) (Nonterminal e_num) = None
-    let%test "" = Lr0'.lr0_goto_table state.(7) (Nonterminal t_num) = None
-    let%test "" = Lr0'.lr0_goto_table state.(7) (Nonterminal f_num) = Some state.(10)
+    let%test _ = Lr01.lr0_goto_table state.(6) (Nonterminal e_num) = None
+    let%test _ = Lr01.lr0_goto_table state.(6) (Nonterminal t_num) = Some state.(9)
+    let%test _ = Lr01.lr0_goto_table state.(6) (Nonterminal f_num) = Some state.(3)
+    let%test _ = Lr01.lr0_goto_table state.(7) (Nonterminal e_num) = None
+    let%test _ = Lr01.lr0_goto_table state.(7) (Nonterminal t_num) = None
+    let%test _ = Lr01.lr0_goto_table state.(7) (Nonterminal f_num) = Some state.(10)
   end)
 ;;
 
@@ -311,7 +430,7 @@ let%test_module "lr0 action table" =
     let%test "action_table_tests" =
       action_table_tests
       |> List.for_all ~f:(fun (init_state, terminal_num, action) ->
-             Caml.(Lr0'.lr0_action_table state.(init_state) terminal_num = action))
+          Caml.(Lr01.lr0_action_table state.(init_state) terminal_num = action))
     ;;
   end)
 ;;
@@ -338,7 +457,7 @@ let%test_module "parse" =
         Queue.of_array
           [| mk_tok "id" 0 3; mk_tok "*" 4 5; mk_tok "id" 6 9; mk_tok "$" 9 9 |]
       in
-      Lr0'.parse tokens1
+      Lr01.parse tokens1
       = Ok
           (mk_wrapper
              2
@@ -368,7 +487,7 @@ let%test_module "parse" =
            ; mk_tok "$" 15 15
           |]
       in
-      Lr0'.parse tokens2
+      Lr01.parse tokens2
       = Ok
           { production = Either.Second 1
           ; children =
@@ -397,7 +516,7 @@ let%test_module "parse" =
        * 0123456789012345
        *)
       let tokens3 = Queue.of_array [| mk_tok "id" 0 3; mk_tok "*" 4 5 |] in
-      Lr0'.parse tokens3
+      Lr01.parse tokens3
       = (Error (4, "parsing invariant violation -- pop failed")
           : (parse_result, parse_error) Result.t)
     ;;
@@ -410,7 +529,7 @@ let%test_module "parse" =
         Queue.of_array
           [| mk_tok "id" 0 3; mk_tok "+" 4 5; mk_tok "id" 6 9; mk_tok "$" 9 9 |]
       in
-      Lr0'.parse tokens4
+      Lr01.parse tokens4
       = Ok
           { production = Either.Second 1
           ; children =
@@ -434,7 +553,7 @@ let%test_module "parse" =
           ]
       in
       let input = "foo+bar" in
-      match Lr0'.lex_and_parse lexer input with
+      match Lr01.lex_and_parse lexer input with
       | Error (First { start_pos; end_pos; message }) ->
         failwith
           (Printf.sprintf "lexer error at chars %n-%n: %s" start_pos end_pos message)

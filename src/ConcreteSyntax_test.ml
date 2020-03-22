@@ -179,9 +179,10 @@ let%test_module "simplified_concrete" =
 
       $ <-> 0
       SPACE <-> 1
-      ADD <-> 2
-      SUB <-> 3
-      NAME <-> 4 |}]
+      EMPTY <-> 2
+      ADD <-> 3
+      SUB <-> 4
+      NAME <-> 5 |}]
     ;;
 
     (* x + y

@@ -76,8 +76,7 @@ nonterminal_rule:
   }
 
 operator_match:
-  | nonempty_list(nonterminal_token)
-    LEFT_BRACE operator_match_pattern RIGHT_BRACE
+  list(nonterminal_token) LEFT_BRACE operator_match_pattern RIGHT_BRACE
   { OperatorMatch { tokens = $1; operator_match_pattern = $3 } }
 
 (* TODO: should this id allow uppercase? *)
