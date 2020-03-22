@@ -93,7 +93,7 @@ COLON := ":"
 NUMBER := /[0-9]+/
 
 numbers :=
-  | NUMBER { cons(integer($1); nil()) }
+  | { nil() }
   | NUMBER _ numbers { cons(integer($1); $2) }
 
 tm :=

@@ -1,5 +1,4 @@
-let abstractSyntax = LanguageInteger.abstractSyntax
-let concreteSyntax = LanguageInteger.concreteSyntax
+let abstractSyntax, concreteSyntax = LanguageInteger.(abstractSyntax, concreteSyntax)
 
 let concreteSyntax' =
   {|
@@ -26,12 +25,12 @@ json :=
 // kv := STRING _0 COLON _ json { kv($1; $3) }
 
 // kv_pairs :=
-//   | kv _0 COMMA _ kv_pairs { cons($1; $3)           }
-//   | kv                     { cons($1; empty_list()) }
+//   | kv _0 COMMA _ kv_pairs { cons($1; $3) }
+//   |                        { empty_list() }
 //
 // list :=
-//   | json _0 COMMA _ list { cons($1; $3)           }
-//   | json                 { cons($1; empty_list()) }
+//   | json _0 COMMA _ list { cons($1; $3) }
+//   |                      { empty_list() }
 
 bool :=
   | TRUE  { true()  }
