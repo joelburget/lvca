@@ -1900,7 +1900,7 @@ let link_reference_definition st =
     | ' ' | '\t' | '\010'..'\013' -> ws st
     | _ -> raise Fail
   in
-  ignore (sp3 st);
+  ignore (sp3 st : int);
   let label = link_label false st in
   if next st <> ':' then raise Fail;
   ws st;

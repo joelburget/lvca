@@ -1,0 +1,6 @@
+(executable
+ (name main)
+ (modes js)
+ (libraries lvca lvca.web2 bonsai.web bigarray uchar)
+ (preprocess
+  (pps ppx_jane js_of_ocaml-ppx ppx_blob)))

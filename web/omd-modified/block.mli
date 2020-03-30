@@ -17,18 +17,20 @@ WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
-include Ast
+open Ast
 
-type t = inline block list
+val same_list_kind: Block_list.kind -> Block_list.kind -> bool
 
-let parse_inlines md =
-  let parse_inline defs s = Parser.inline defs (Parser.P.of_string s) in
-  let defs = Ast.defs md in
-  let defs =
-    List.map (fun (def: string Link_def.t) -> {def with label = Parser.normalize def.label}) defs
-  in
-  List.map (Ast.map (parse_inline defs)) md
+type 'a t = 'a block
 
-let of_string s =
-  let md = Block.Pre.of_string s in
-  parse_inlines md
+module Pre : sig
+  type block
+  type t
+
+  val empty: t
+  val process: t -> string -> t
+  val finish: t -> block list
+
+  val of_channel: in_channel -> block list
+  val of_string: string -> block list
+end with type block := string t
