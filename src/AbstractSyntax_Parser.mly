@@ -24,7 +24,7 @@
 %type <AbstractSyntax_Types.operator_def>      operator_def
 %type <AbstractSyntax_Types.arity>             arity
 %type <AbstractSyntax_Types.valence>           valence
-%type <string * string>         import_symbol
+%type <string * string>                        import_symbol
 %%
 
 /* TODO: duplicated in concrete syntax parser */
