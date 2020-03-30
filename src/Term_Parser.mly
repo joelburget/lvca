@@ -13,7 +13,7 @@
 %start top_term
 %type <Binding.Nominal.term> top_term
 %type <Binding.Nominal.term> term
-%type <Types.primitive> primitive
+%type <Primitive.t> primitive
 %%
 
 (** @raise ToPatternScopeEncountered *)

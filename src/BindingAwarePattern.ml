@@ -13,7 +13,7 @@ type pattern =
   | Operator of string * scope list
   | Var of string
   | Sequence of pattern list
-  | Primitive of Types.primitive
+  | Primitive of Primitive.t
   (* TODO: should this include ignores? *)
 
 (** A scope within the LHS of a denotation rule. Note that it's not currently allowed to
@@ -47,7 +47,7 @@ let rec to_string : pattern -> string = function
     Printf.sprintf "%s(%s)" name (stringify_list scope_to_string "; " pats)
   | Var name -> name
   | Sequence pats -> Printf.sprintf "[%s]" (stringify_list to_string ", " pats)
-  | Primitive prim -> Types.string_of_primitive prim
+  | Primitive prim -> Primitive.to_string prim
 
 and scope_to_string : scope -> string =
  fun (Scope (bound_vars, pat)) ->

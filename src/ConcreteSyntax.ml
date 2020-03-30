@@ -4,9 +4,9 @@ module MSI = Util.MutableSet.Int
 module Lexer = ConcreteSyntax_Lexer
 module Parser = ConcreteSyntax_Parser
 module ParseErrors = ConcreteSyntax_ParseErrors
-open Types
 open ConcreteSyntaxDescription
 include ConcreteSyntax_Private
+module Parse_regex = Parsing.Incremental (Parsing.Parseable_regex)
 
 let get_option, get_option' = Util.(get_option, get_option')
 let of_ast = ConcreteSyntax_OfAst.of_ast
@@ -283,7 +283,7 @@ let rec remove_spaces : formatted_tree -> formatted_tree =
 
 exception ToAstError of string
 
-let prim_to_ast : string -> formatted_tree -> primitive =
+let prim_to_ast : string -> formatted_tree -> Primitive.t =
  fun prim_ty tree ->
   match tree.children with
   | [| TerminalCapture { content; _ } |] ->
@@ -347,29 +347,33 @@ let rec tree_to_ast : ConcreteSyntaxDescription.t -> formatted_tree -> Nominal.t
 and go_op_match_term
     :  ConcreteSyntaxDescription.t -> formatted_capture array -> operator_match_pattern
     -> Nominal.term
-  =
- fun rules children op_match_pat ->
+  = fun rules children op_match_pat ->
   match op_match_pat with
   | OperatorPattern ("var", [ NumberedScopePattern ([], SingleCapturePattern n) ]) ->
     (match array_get "go_op_match_term 1" children (n - 1) with
-    | NonterminalCapture _ -> failwith "TODO: error"
+    | NonterminalCapture _
+    -> invariant_violation "go_op_match_term: var captured a nonterminal"
     | TerminalCapture { content; _ } -> Var content)
   | OperatorPattern ("integer", [ NumberedScopePattern ([], SingleCapturePattern n) ]) ->
     (match array_get "go_op_match_term 2" children (n - 1) with
-    | NonterminalCapture _ -> failwith "TODO: error"
+    | NonterminalCapture _
+    -> invariant_violation "go_op_match_term: integer captured a nonterminal"
     | TerminalCapture { content; _ } -> Primitive (PrimInteger (Bigint.of_string content)))
-  | OperatorPattern ("var", _)
-  -> failwith "TODO: go_op_match_term var"
+  | OperatorPattern ("string", [ NumberedScopePattern ([], SingleCapturePattern n) ]) ->
+    (match array_get "go_op_match_term 2" children (n - 1) with
+    | NonterminalCapture _
+    -> invariant_violation "go_op_match_term: integer captured a nonterminal"
+    | TerminalCapture { content; _ } -> Primitive (PrimString content))
   | OperatorPattern (name, scope_pats) ->
     Operator (name, List.map scope_pats ~f:(go_numbered_scope_term rules children))
   | SingleCapturePattern n ->
     (match array_get "go_op_match_term 3" children (n - 1) with
     | NonterminalCapture tree -> tree_to_ast rules tree
     | TerminalCapture { content; _ } ->
-      failwith
-        (Printf.sprintf (* TODO: error *)
+      invariant_violation
+        (Printf.sprintf
            "go_op_match_term: Single capture pattern unexpectedly received a terminal \
-            when a nonterminal child was expected: child %n -> \"%s\""
+            when a nonterminal child was expected: $%n -> \"%s\""
            n
            content))
 
@@ -771,7 +775,6 @@ let make_concrete_description
     (terminal_rules : pre_terminal_rule list)
     (nonterminal_rules : nonterminal_rule list)
   =
-  let module Parse_regex = Parsing.Incremental (Parsing.Parseable_regex) in
   { terminal_rules =
       terminal_rules
       |> List.map ~f:(fun (PreTerminalRule (name, str_or_re_str)) ->
@@ -779,7 +782,10 @@ let make_concrete_description
              | First re_str ->
                (match Parse_regex.parse re_str with
                | Ok re -> name, re
-               | Error msg -> failwith ("failed to parse regex: " ^ msg))
+               | Error msg -> failwith (Printf.sprintf
+                 "failed to parse regex %s: %s"
+                 re_str
+                 msg))
              | Second str -> name, Regex.re_str str)
   ; nonterminal_rules =
       nonterminal_rules

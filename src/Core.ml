@@ -1,5 +1,5 @@
 open Core_kernel
-open Types
+open AbstractSyntax
 open Binding
 
 let length, map = List.(length, map)
@@ -10,7 +10,7 @@ type core =
   | Operator of string * core_scope list
   | Var of string
   | Sequence of core list
-  | Primitive of primitive
+  | Primitive of Primitive.t
   (* plus, core-specific ctors *)
   | Lambda of sort list * core_scope
   | CoreApp of core * core list
@@ -68,7 +68,8 @@ let rec match_core_pattern : core -> BindingAwarePattern.t -> core String.Map.t 
           |> map_unions)
       else None)
     else None
-  | Primitive l1, Primitive l2 -> if prim_eq l1 l2 then Some String.Map.empty else None
+  | Primitive l1, Primitive l2
+  -> if Primitive.(l1 = l2) then Some String.Map.empty else None
   | _, Var "_" -> Some String.Map.empty
   | tm, Var v -> Some (String.Map.of_alist_exn [ v, tm ])
   | _ -> None

@@ -1,28 +1,135 @@
-regex: BACKSLASH EOF
+regex: BACKSLASH NUMBER_CHAR
 ##
-## Ends in an error in state: 24.
+## Ends in an error in state: 27.
 ##
-## char -> BACKSLASH . LEFT_BRACKET [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
-## char -> BACKSLASH . RIGHT_BRACKET [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
-## char -> BACKSLASH . LEFT_PAREN [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
-## char -> BACKSLASH . RIGHT_PAREN [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
-## char -> BACKSLASH . BACKSLASH [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
-## char -> BACKSLASH . DOT [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
-## char -> BACKSLASH . BAR [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
-## char -> BACKSLASH . STAR [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
-## char -> BACKSLASH . PLUS [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
-## char -> BACKSLASH . QUESTION [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
-## re_class -> BACKSLASH . CHAR [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
+## char -> BACKSLASH . LEFT_BRACKET [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+## char -> BACKSLASH . RIGHT_BRACKET [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+## char -> BACKSLASH . LEFT_BRACE [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+## char -> BACKSLASH . RIGHT_BRACE [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+## char -> BACKSLASH . LEFT_PAREN [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+## char -> BACKSLASH . RIGHT_PAREN [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+## char -> BACKSLASH . BACKSLASH [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+## char -> BACKSLASH . DOT [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+## char -> BACKSLASH . BAR [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+## char -> BACKSLASH . STAR [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+## char -> BACKSLASH . PLUS [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+## char -> BACKSLASH . QUESTION [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+## re_class -> BACKSLASH . OTHER_CHAR [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
 ##
 ## The known suffix of the stack is as follows:
 ## BACKSLASH
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected character after `\`.
 
-regex: DOT BAR STAR
+regex: LEFT_BRACKET BACKSLASH OTHER_CHAR
 ##
-## Ends in an error in state: 36.
+## Ends in an error in state: 5.
+##
+## char -> BACKSLASH . LEFT_BRACKET [ RIGHT_BRACKET OTHER_CHAR NUMBER_CHAR DASH BACKSLASH ]
+## char -> BACKSLASH . RIGHT_BRACKET [ RIGHT_BRACKET OTHER_CHAR NUMBER_CHAR DASH BACKSLASH ]
+## char -> BACKSLASH . LEFT_BRACE [ RIGHT_BRACKET OTHER_CHAR NUMBER_CHAR DASH BACKSLASH ]
+## char -> BACKSLASH . RIGHT_BRACE [ RIGHT_BRACKET OTHER_CHAR NUMBER_CHAR DASH BACKSLASH ]
+## char -> BACKSLASH . LEFT_PAREN [ RIGHT_BRACKET OTHER_CHAR NUMBER_CHAR DASH BACKSLASH ]
+## char -> BACKSLASH . RIGHT_PAREN [ RIGHT_BRACKET OTHER_CHAR NUMBER_CHAR DASH BACKSLASH ]
+## char -> BACKSLASH . BACKSLASH [ RIGHT_BRACKET OTHER_CHAR NUMBER_CHAR DASH BACKSLASH ]
+## char -> BACKSLASH . DOT [ RIGHT_BRACKET OTHER_CHAR NUMBER_CHAR DASH BACKSLASH ]
+## char -> BACKSLASH . BAR [ RIGHT_BRACKET OTHER_CHAR NUMBER_CHAR DASH BACKSLASH ]
+## char -> BACKSLASH . STAR [ RIGHT_BRACKET OTHER_CHAR NUMBER_CHAR DASH BACKSLASH ]
+## char -> BACKSLASH . PLUS [ RIGHT_BRACKET OTHER_CHAR NUMBER_CHAR DASH BACKSLASH ]
+## char -> BACKSLASH . QUESTION [ RIGHT_BRACKET OTHER_CHAR NUMBER_CHAR DASH BACKSLASH ]
+##
+## The known suffix of the stack is as follows:
+## BACKSLASH
+##
+
+Unexpected character after `\`.
+
+regex: LEFT_BRACKET OTHER_CHAR DASH NUMBER_CHAR STAR
+##
+## Ends in an error in state: 19.
+##
+## list(character_set_elem) -> character_set_elem . list(character_set_elem) [ RIGHT_BRACKET ]
+##
+## The known suffix of the stack is as follows:
+## character_set_elem
+##
+
+Invalid character set element.
+
+regex: LEFT_BRACKET OTHER_CHAR DASH STAR
+##
+## Ends in an error in state: 22.
+##
+## character_set_elem -> char DASH . char [ RIGHT_BRACKET OTHER_CHAR NUMBER_CHAR BACKSLASH ]
+##
+## The known suffix of the stack is as follows:
+## char DASH
+##
+
+Unexpected character after `-`.
+
+regex: LEFT_BRACKET OTHER_CHAR STAR
+##
+## Ends in an error in state: 21.
+##
+## character_set_elem -> char . [ RIGHT_BRACKET OTHER_CHAR NUMBER_CHAR BACKSLASH ]
+## character_set_elem -> char . DASH char [ RIGHT_BRACKET OTHER_CHAR NUMBER_CHAR BACKSLASH ]
+##
+## The known suffix of the stack is as follows:
+## char
+##
+
+Unexpected character set.
+
+regex: LEFT_BRACKET STAR
+##
+## Ends in an error in state: 4.
+##
+## prec2_re -> LEFT_BRACKET . character_set RIGHT_BRACKET [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_BRACKET
+##
+
+Invalid character set element.
+
+regex: LEFT_PAREN OTHER_CHAR EOF
+##
+## Ends in an error in state: 47.
+##
+## prec3_re -> LEFT_PAREN prec0_re . RIGHT_PAREN [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_PAREN prec0_re
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 32, spurious reduction of production nonempty_list(prec2_re) -> prec2_re
+## In state 46, spurious reduction of production prec1_re -> nonempty_list(prec2_re)
+## In state 43, spurious reduction of production separated_nonempty_list(BAR,prec1_re) -> prec1_re
+## In state 29, spurious reduction of production prec0_re -> separated_nonempty_list(BAR,prec1_re)
+##
+
+Expected a `)` after regex.
+
+regex: LEFT_PAREN STAR
+##
+## Ends in an error in state: 3.
+##
+## prec3_re -> LEFT_PAREN . prec0_re RIGHT_PAREN [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+##
+## The known suffix of the stack is as follows:
+## LEFT_PAREN
+##
+
+Expected a valid regex after `(`.
+
+regex: OTHER_CHAR BAR STAR
+##
+## Ends in an error in state: 44.
 ##
 ## separated_nonempty_list(BAR,prec1_re) -> prec1_re BAR . separated_nonempty_list(BAR,prec1_re) [ RIGHT_PAREN EOF ]
 ##
@@ -30,27 +137,52 @@ regex: DOT BAR STAR
 ## prec1_re BAR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected a valid regex after `|`.
 
-regex: DOT RIGHT_BRACKET
+regex: OTHER_CHAR LEFT_BRACE NUMBER_CHAR STAR
 ##
-## Ends in an error in state: 29.
+## Ends in an error in state: 37.
+##
+## list(NUMBER_CHAR) -> NUMBER_CHAR . list(NUMBER_CHAR) [ RIGHT_BRACE ]
+##
+## The known suffix of the stack is as follows:
+## NUMBER_CHAR
+##
+
+Expected `}` after count.
+
+regex: OTHER_CHAR LEFT_BRACE STAR
+##
+## Ends in an error in state: 36.
+##
+## prec2_re -> prec2_re LEFT_BRACE . list(NUMBER_CHAR) RIGHT_BRACE [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+##
+## The known suffix of the stack is as follows:
+## prec2_re LEFT_BRACE
+##
+
+Expected count after `{`.
+
+regex: OTHER_CHAR RIGHT_BRACKET
+##
+## Ends in an error in state: 32.
 ##
 ## nonempty_list(prec2_re) -> prec2_re . [ RIGHT_PAREN EOF BAR ]
 ## nonempty_list(prec2_re) -> prec2_re . nonempty_list(prec2_re) [ RIGHT_PAREN EOF BAR ]
-## prec2_re -> prec2_re . STAR [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
-## prec2_re -> prec2_re . PLUS [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
-## prec2_re -> prec2_re . QUESTION [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
+## prec2_re -> prec2_re . STAR [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+## prec2_re -> prec2_re . PLUS [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+## prec2_re -> prec2_re . LEFT_BRACE list(NUMBER_CHAR) RIGHT_BRACE [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
+## prec2_re -> prec2_re . QUESTION [ STAR RIGHT_PAREN QUESTION PLUS OTHER_CHAR NUMBER_CHAR LEFT_PAREN LEFT_BRACKET LEFT_BRACE EOF DOT BAR BACKSLASH ]
 ##
 ## The known suffix of the stack is as follows:
 ## prec2_re
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected character after regex.
 
-regex: DOT RIGHT_PAREN
+regex: OTHER_CHAR RIGHT_PAREN
 ##
-## Ends in an error in state: 42.
+## Ends in an error in state: 50.
 ##
 ## regex -> prec0_re . EOF [ # ]
 ##
@@ -61,116 +193,13 @@ regex: DOT RIGHT_PAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 29, spurious reduction of production nonempty_list(prec2_re) -> prec2_re 
-## In state 38, spurious reduction of production prec1_re -> nonempty_list(prec2_re) 
-## In state 35, spurious reduction of production separated_nonempty_list(BAR,prec1_re) -> prec1_re 
-## In state 26, spurious reduction of production prec0_re -> separated_nonempty_list(BAR,prec1_re) 
+## In state 32, spurious reduction of production nonempty_list(prec2_re) -> prec2_re
+## In state 46, spurious reduction of production prec1_re -> nonempty_list(prec2_re)
+## In state 43, spurious reduction of production separated_nonempty_list(BAR,prec1_re) -> prec1_re
+## In state 29, spurious reduction of production prec0_re -> separated_nonempty_list(BAR,prec1_re)
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-regex: LEFT_BRACKET BACKSLASH EOF
-##
-## Ends in an error in state: 4.
-##
-## char -> BACKSLASH . LEFT_BRACKET [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
-## char -> BACKSLASH . RIGHT_BRACKET [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
-## char -> BACKSLASH . LEFT_PAREN [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
-## char -> BACKSLASH . RIGHT_PAREN [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
-## char -> BACKSLASH . BACKSLASH [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
-## char -> BACKSLASH . DOT [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
-## char -> BACKSLASH . BAR [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
-## char -> BACKSLASH . STAR [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
-## char -> BACKSLASH . PLUS [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
-## char -> BACKSLASH . QUESTION [ RIGHT_BRACKET DASH CHAR BACKSLASH ]
-##
-## The known suffix of the stack is as follows:
-## BACKSLASH
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-regex: LEFT_BRACKET CHAR DASH CHAR STAR
-##
-## Ends in an error in state: 16.
-##
-## list(character_set_elem) -> character_set_elem . list(character_set_elem) [ RIGHT_BRACKET ]
-##
-## The known suffix of the stack is as follows:
-## character_set_elem
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-regex: LEFT_BRACKET CHAR DASH STAR
-##
-## Ends in an error in state: 19.
-##
-## character_set_elem -> char DASH . char [ RIGHT_BRACKET CHAR BACKSLASH ]
-##
-## The known suffix of the stack is as follows:
-## char DASH
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-regex: LEFT_BRACKET CHAR STAR
-##
-## Ends in an error in state: 18.
-##
-## character_set_elem -> char . [ RIGHT_BRACKET CHAR BACKSLASH ]
-## character_set_elem -> char . DASH char [ RIGHT_BRACKET CHAR BACKSLASH ]
-##
-## The known suffix of the stack is as follows:
-## char
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-regex: LEFT_BRACKET STAR
-##
-## Ends in an error in state: 2.
-##
-## prec2_re -> LEFT_BRACKET . character_set RIGHT_BRACKET [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
-##
-## The known suffix of the stack is as follows:
-## LEFT_BRACKET
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-regex: LEFT_PAREN DOT EOF
-##
-## Ends in an error in state: 39.
-##
-## prec3_re -> LEFT_PAREN prec0_re . RIGHT_PAREN [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
-##
-## The known suffix of the stack is as follows:
-## LEFT_PAREN prec0_re
-##
-## WARNING: This example involves spurious reductions.
-## This implies that, although the LR(1) items shown above provide an
-## accurate view of the past (what has been recognized so far), they
-## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 29, spurious reduction of production nonempty_list(prec2_re) -> prec2_re 
-## In state 38, spurious reduction of production prec1_re -> nonempty_list(prec2_re) 
-## In state 35, spurious reduction of production separated_nonempty_list(BAR,prec1_re) -> prec1_re 
-## In state 26, spurious reduction of production prec0_re -> separated_nonempty_list(BAR,prec1_re) 
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-regex: LEFT_PAREN STAR
-##
-## Ends in an error in state: 1.
-##
-## prec3_re -> LEFT_PAREN . prec0_re RIGHT_PAREN [ STAR RIGHT_PAREN QUESTION PLUS LEFT_PAREN LEFT_BRACKET EOF DOT CHAR BAR BACKSLASH ]
-##
-## The known suffix of the stack is as follows:
-## LEFT_PAREN
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Unexpected character after regex.
 
 regex: STAR
 ##
@@ -182,5 +211,5 @@ regex: STAR
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Invalid regex.
 

@@ -1,6 +1,5 @@
 open AbstractSyntax
 open Core_kernel
-open Types
 
 let parse str = Parser.language_def Lexer.read (Lexing.from_string str)
 ;;
@@ -12,7 +11,7 @@ let ty_valence = FixedValence ([], ty_sort)
 
 let%test_module "AbstractSyntax.Parser" =
   (module struct
-    let%test _ = Types.eq (parse "bool := true() | false()")
+    let%test _ = AbstractSyntax.eq (parse "bool := true() | false()")
       { imports = []
       ; sort_defs = SortDefs (String.Map.of_alist_exn [
         "bool", SortDef ([],
@@ -22,7 +21,7 @@ let%test_module "AbstractSyntax.Parser" =
       ])
       }
 
-    let%test _ = Types.eq
+    let%test _ = AbstractSyntax.eq
       (parse {|
       ty :=
         | bool()

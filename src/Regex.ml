@@ -41,6 +41,7 @@ type regex =
   | ReSet of re_set (** A character set, eg `[a-z]` or `[^abc]` *)
   | ReStar of regex (** Zero-or-more repetition, eg `(ab)*` *)
   | RePlus of regex (** One-or-more repetition, eg `(ab)+` *)
+  | ReCount of regex * int (** A specific number of repetitions, eg `(ab){5}`. Must be greater than 0. *)
   | ReOption of regex (** Option, eg `(ab)?` *)
   | ReChoice of regex list (** Choice, eg `a|b` *)
   | ReAny (** Any character *)
@@ -70,6 +71,7 @@ let rec to_re : regex -> Re.t =
     | ReSet set -> set_to_re set
     | ReStar re -> rep (to_re re)
     | RePlus re -> rep1 (to_re re)
+    | ReCount (re, n) -> repn (to_re re) n None
     | ReOption re -> opt (to_re re)
     | ReChoice res -> alt (List.map res ~f:to_re)
     | ReAny -> any
@@ -106,6 +108,7 @@ let rec show : regex -> string = function
   | ReSet set -> "ReSet " ^ show_set set
   | ReStar re -> "ReStar " ^ show re
   | RePlus re -> "RePlus " ^ show re
+  | ReCount (re, n) -> Printf.sprintf "ReCount (%s, %n)" (show re) n
   | ReOption re -> "ReOption " ^ show re
   | ReChoice res ->
     Printf.sprintf "ReChoice [%s]" (res |> List.map ~f:show |> String.concat ~sep:"; ")
@@ -116,7 +119,8 @@ let rec show : regex -> string = function
 
 let rec accepts_empty : regex -> bool = function
   | ReClass cls -> Caml.(cls = PosClass Boundary || cls = NegClass Boundary)
-  | RePlus re -> accepts_empty re
+  | ReCount (re, _) | RePlus re
+  -> accepts_empty re
   | ReChoice res -> List.exists res ~f:accepts_empty
   | ReConcat pieces -> List.for_all pieces ~f:accepts_empty
   | ReStar _ | ReOption _ -> true
@@ -194,6 +198,7 @@ let rec to_string' : int -> regex -> string =
   | ReSet set -> "[" ^ set_to_string set ^ "]"
   | ReStar re -> to_string' 2 re ^ "*"
   | RePlus re -> to_string' 2 re ^ "+"
+  | ReCount (re, n) -> Printf.sprintf "%s{%n}" (to_string' 2 re) n
   | ReOption re -> to_string' 2 re ^ "?"
   | ReClass cls -> class_to_string cls
   | ReChoice res ->
@@ -214,6 +219,10 @@ let rec to_string' : int -> regex -> string =
     This has no delimiters, ie it returns "abc", not "/abc/". *)
 let to_string : regex -> string = to_string' 0
 
+(* TODO: is this okay? *)
+let to_term : t -> NonBinding.term
+  = fun re -> Operator ("regex", [Primitive (PrimString (to_string re))])
+
 module Classes = struct
   let az = Range ('a', 'z')
   let az_cap = Range ('A', 'Z')
@@ -230,24 +239,26 @@ let%test_module "regex tests" =
 
     let%test_module "accepts_empty" =
       (module struct
-        let%test "" = accepts_empty (re_str "foo") = false
+        let%test _ = accepts_empty (re_str "foo") = false
 
-        let%test "" =
+        let%test _ =
           accepts_empty (ReConcat [ ReStar (re_str "foo"); ReOption (re_str "bar") ])
           = true
         ;;
 
-        let%test "" =
+        let%test _ =
           accepts_empty (ReConcat [ ReStar (re_str "foo"); RePlus (re_str "bar") ])
           = false
         ;;
 
-        let%test "" = accepts_empty (ReClass (PosClass Boundary))
-        let%test "" = accepts_empty (ReClass (NegClass Boundary))
-        let%test "" = not (accepts_empty (ReClass (PosClass Digit)))
-        let%test "" = not (accepts_empty (ReClass (NegClass Digit)))
-        let%test "" = not (accepts_empty (ReSet [ Range ('a', 'z') ]))
-        let%test "" = accepts_empty (RePlus (re_str ""))
+        let%test _ = accepts_empty (ReClass (PosClass Boundary))
+        let%test _ = accepts_empty (ReClass (NegClass Boundary))
+        let%test _ = not (accepts_empty (ReClass (PosClass Digit)))
+        let%test _ = not (accepts_empty (ReClass (NegClass Digit)))
+        let%test _ = not (accepts_empty (ReSet [ Range ('a', 'z') ]))
+        let%test _ = accepts_empty (RePlus (re_str ""))
+        let%test _ = accepts_empty (ReCount (re_str "", 5))
+        let%test _ = not (accepts_empty (ReCount (ReChar 'a', 5)))
       end)
     ;;
 
@@ -281,8 +292,9 @@ let%test_module "regex tests" =
                [ ReStar (re_str "foo")
                ; RePlus (re_str "foo")
                ; ReOption (re_str "foo")
+               ; ReCount (re_str "foo", 5)
                ]);
-          [%expect {| (foo)*(foo)+(foo)? |}]
+          [%expect {| (foo)*(foo)+(foo)?(foo){5} |}]
         ;;
 
         let%expect_test _ =

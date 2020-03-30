@@ -57,9 +57,9 @@ val equivalent : formatted_tree -> formatted_tree -> bool
 
 (** Convert an abstract syntax tree to a concrete syntax tree *)
 val of_ast
-  :  Types.sort_defs
+  :  AbstractSyntax.sort_defs
   -> ConcreteSyntaxDescription.t
-  -> Types.sort
+  -> AbstractSyntax.sort
   -> string
   -> int
   -> Nominal.term

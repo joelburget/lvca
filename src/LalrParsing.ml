@@ -624,6 +624,13 @@ module Lalr1 (G : GRAMMAR) = struct
     match Lex.lex lexer input with
     | Error error -> Error (First error)
     | Ok tokens ->
+        (*
+      Printf.printf "%s\n" (tokens
+        |> Array.map ~f:(fun { name; start; finish } -> Printf.sprintf
+          "(%s: %n-%n)" name start finish)
+        |> Array.to_list
+        |> String.concat ~sep:" ");
+        *)
       let len = String.length input in
       let tokens' =
         tokens

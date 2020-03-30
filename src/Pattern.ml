@@ -3,7 +3,7 @@ open Core_kernel
 type pattern =
   | Operator of string * pattern list
   | Sequence of pattern list
-  | Primitive of Types.primitive
+  | Primitive of Primitive.t
   | Var of string
   | Ignored of string
 
@@ -31,7 +31,7 @@ let rec string_of_pattern : pattern -> string = function
     Printf.sprintf "%s(%s)" name (Util.stringify_list string_of_pattern "; " pats)
   | Sequence pats ->
     Printf.sprintf "[%s]" (Util.stringify_list string_of_pattern ", " pats)
-  | Primitive prim -> Types.string_of_primitive prim
+  | Primitive prim -> Primitive.to_string prim
   | Var name -> name
   | Ignored name -> "_" ^ name
 ;;

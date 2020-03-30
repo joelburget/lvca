@@ -1,6 +1,6 @@
 open Binding
 open Core
-open Types
+open AbstractSyntax
 module P_dyn = Parsing.Incremental (Parsing.Parseable_dynamics)
 
 let one = Bigint.of_int 1

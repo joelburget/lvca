@@ -1,6 +1,6 @@
 (* Heavily borrowing from "Strictly Pretty" *)
 module Nominal = Binding.Nominal
-open Types
+open AbstractSyntax
 open ConcreteSyntaxDescription
 open! ConcreteSyntax_Private
 open Core_kernel

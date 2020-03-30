@@ -1,5 +1,5 @@
 open Core_kernel
-open Types
+open AbstractSyntax
 open ConcreteSyntaxDescription
 module Parse_abstract = Parsing.Incremental (Parsing.Parseable_abstract_syntax)
 
@@ -534,6 +534,16 @@ type found_operator_match =
    with entries for 1, 2, and 3 *)
   }
 
+let get_operator : sort_defs -> string -> string -> operator_def
+  = fun (SortDefs sort_defs) sort_name operator_name ->
+    Map.find sort_defs sort_name
+    |> get_option' (fun () -> "get_operator: failed to find sort " ^ sort_name)
+    |> fun (SortDef (_vars, operators)) -> operators
+    |> List.find ~f:(fun (OperatorDef (name, _arity)) -> String.(name = operator_name))
+    |> get_option' (fun () -> Printf.sprintf
+      "get_operator: failed to find operator %s in sort %s"
+      operator_name sort_name)
+
 (**
  Find a matching syntactical description for the given term. This traverses
  the set of possible forms from low precedence to high (bottom to top) until it
@@ -730,7 +740,7 @@ let%test_module "find_operator_match" = (module struct
     |}
   ;;
 
-  let { Types.sort_defs; _ } = match Parse_abstract.parse abstract_description with
+  let { AbstractSyntax.sort_defs; _ } = match Parse_abstract.parse abstract_description with
     | Error msg -> failwith msg
     | Ok lang -> lang
   ;;

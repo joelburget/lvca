@@ -1,5 +1,5 @@
 open Core_kernel
-open Types
+open AbstractSyntax
 
 type capture_number = int
 type terminal_id = string
@@ -184,3 +184,72 @@ let string_of_t : t -> string =
   ^ "\n\n"
   ^ string_of_nonterminal_rules nonterminal_rules
 ;;
+
+let terminal_rules_to_term : terminal_rules -> NonBinding.term
+  = fun rules -> Sequence (rules
+    |> List.map ~f:(fun (name, re) -> NonBinding.Operator ("pair",
+      [ Primitive (PrimString name)
+      ; Regex.to_term re
+      ]))
+  )
+
+let term_of_nonterminal_token : nonterminal_token -> NonBinding.term
+  = function
+    | TerminalName name -> Operator ("terminal_name", [Primitive (PrimString name)])
+    | NonterminalName name -> Operator ("nonterminal_name", [Primitive (PrimString name)])
+    | _ -> failwith "TODO" (* TODO: should these even be included in the core language? *)
+
+let term_of_binder_capture : binder_capture -> NonBinding.term
+  = function
+    | VarCapture i -> Operator ("var_capture", [Primitive (PrimInteger (Bigint.of_int i))])
+    | PatternCapture i -> Operator ("pattern_capture", [Primitive (PrimInteger
+    (Bigint.of_int i))])
+
+let rec term_of_operator_match_pattern : operator_match_pattern -> NonBinding.term
+  = function
+    | OperatorPattern (name, numbered_scope_patterns) -> Operator ("operator_pattern",
+      [ Primitive (PrimString name)
+      ; Sequence (numbered_scope_patterns |> List.map ~f:term_of_numbered_scope_pattern)
+      ])
+    | SingleCapturePattern num -> Operator ("single_capture_pattern",
+      [ Primitive (PrimInteger (Bigint.of_int num))])
+
+and term_of_numbered_scope_pattern : numbered_scope_pattern -> NonBinding.term
+  = fun (NumberedScopePattern (binder_caps, op_match_pat)) -> Operator
+    ( "numbered_scope_pattern"
+    , [ Sequence (binder_caps |> List.map ~f:term_of_binder_capture)
+      ; term_of_operator_match_pattern op_match_pat
+      ])
+
+let term_of_operator_match : operator_match -> NonBinding.term
+  = fun (OperatorMatch { tokens; operator_match_pattern }) -> Operator ("operator_match",
+    [ Sequence (tokens |> List.map ~f:term_of_nonterminal_token)
+    ; term_of_operator_match_pattern operator_match_pattern
+    ])
+
+let term_of_option : ('a -> NonBinding.term) -> 'a option -> NonBinding.term
+  = fun f -> function
+    | None -> Operator ("none", [])
+    | Some a -> Operator ("some", [f a])
+
+let nonterminal_rule_to_term : nonterminal_rule -> NonBinding.term
+  = fun (NonterminalRule { nonterminal_name; result_sort; operator_rules }) ->
+    Operator ("nonterminal_rule",
+      [ Primitive (PrimString nonterminal_name)
+      ; term_of_option term_of_sort result_sort
+      ; Sequence (operator_rules |> List.map ~f:term_of_operator_match)
+      ])
+
+let nonterminal_rules_to_term : nonterminal_rules -> NonBinding.term
+  = fun rules -> Sequence (rules
+    |> Map.to_alist
+    |> List.map ~f:(fun (name, nonterminal_rule) -> NonBinding.Operator ("pair",
+      [ Primitive (PrimString name)
+      ; nonterminal_rule_to_term nonterminal_rule
+      ])))
+
+let to_term : t -> NonBinding.term
+  = function { terminal_rules; nonterminal_rules } -> Operator ("concrete_syntax",
+    [ terminal_rules_to_term terminal_rules
+    ; nonterminal_rules_to_term nonterminal_rules
+    ])

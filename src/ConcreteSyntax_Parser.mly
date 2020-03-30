@@ -60,9 +60,9 @@ nonterminal_rule__test: nonterminal_rule EOF { $1 }
 /* TODO: duplicated in abstract syntax parser */
 sort:
   | NONTERMINAL_ID LEFT_PAREN separated_list(SEMICOLON, sort) RIGHT_PAREN
-  { Types.SortAp ($1, Core_kernel.Array.of_list $3) }
+  { AbstractSyntax.SortAp ($1, Core_kernel.Array.of_list $3) }
   | NONTERMINAL_ID
-  { Types.SortVar $1 }
+  { AbstractSyntax.SortVar $1 }
 
 signature: COLON sort { $2 }
 

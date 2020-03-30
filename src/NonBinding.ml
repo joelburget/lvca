@@ -3,13 +3,12 @@
     and allows conversion to / from binding types. *)
 open Core_kernel
 
-open Types
 open Binding
 
 type term =
   | Operator of string * term list
   | Sequence of term list
-  | Primitive of primitive
+  | Primitive of Primitive.t
 
 exception ScopeEncountered
 

@@ -93,6 +93,7 @@ let%test_module "JSON Language" =
   end)
 ;;
 
+(*
 let%test_module "Document Language" =
   (module struct
     let%test_unit "parse abstract syntax" =
@@ -103,6 +104,7 @@ let%test_module "Document Language" =
        LanguageDocument.concreteSyntax); *)
   end)
 ;;
+*)
 
 let%test_module "Lambda Calculus Language" =
   (module struct

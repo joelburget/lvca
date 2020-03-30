@@ -7,14 +7,14 @@
     - [eval] is then used to evaluate the core term
     - finally, [to_ast] is used to give the resulting term *)
 
-open Types
+open AbstractSyntax
 open Binding
 
 type core =
   | Operator of string * core_scope list
   | Var of string
   | Sequence of core list
-  | Primitive of primitive
+  | Primitive of Primitive.t
   | Lambda of sort list * core_scope
   | CoreApp of core * core list
   | Case of core * core_case_scope list

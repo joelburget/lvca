@@ -1,5 +1,4 @@
 open Core_kernel
-open Types
 
 (* TODO: untangle Statics_Lexer -> Statics_Parser -> Statics *)
 (* module Lexer = Statics_Lexer *)
@@ -13,7 +12,7 @@ and term =
   | Bound of int * int
   | Free of string
   | Sequence of term list
-  | Primitive of primitive
+  | Primitive of Primitive.t
 
 let rec string_of_term = function
   | Operator (name, scopes) ->
@@ -21,7 +20,7 @@ let rec string_of_term = function
   | Bound (i, j) -> Printf.sprintf "%d, %d" i j
   | Free str -> str
   | Sequence tms -> "[" ^ Util.stringify_list string_of_term ", " tms ^ "]"
-  | Primitive prim -> string_of_primitive prim
+  | Primitive prim -> Primitive.to_string prim
 
 and string_of_scope (Scope (pats, tm)) =
   match pats with

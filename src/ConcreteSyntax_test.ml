@@ -132,10 +132,10 @@ list : list(integer) :=
     -> ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
 ;;
 
-let arith = Types.SortAp ("arith", [||])
-let arith' = Types.FixedValence ([], arith)
+let arith = AbstractSyntax.SortAp ("arith", [||])
+let arith' = AbstractSyntax.FixedValence ([], arith)
 
-let { Types.sort_defs; _ } = match Parse_abstract.parse abstract_description with
+let { AbstractSyntax.sort_defs; _ } = match Parse_abstract.parse abstract_description with
   | Error msg -> failwith msg
   | Ok lang -> lang
 ;;

@@ -8,7 +8,7 @@ module List = Core_kernel.List
 exception InvalidSort
 
 (** @raise InvalidSort *)
-let rec ast_to_sort' : NonBinding.term -> Types.sort
+let rec ast_to_sort' : NonBinding.term -> AbstractSyntax.sort
   = function
       | Operator (name, subtms)
       -> SortAp (name, subtms
@@ -19,7 +19,7 @@ let rec ast_to_sort' : NonBinding.term -> Types.sort
       -> raise InvalidSort
 
 (** @raise ScopeEncountered, InvalidSort *)
-let ast_to_sort : Binding.Nominal.term -> Types.sort
+let ast_to_sort : Binding.Nominal.term -> AbstractSyntax.sort
   = fun term -> term |> NonBinding.from_nominal' |> ast_to_sort'
 
 let rec ast_to_core : Binding.Nominal.term -> core
@@ -63,14 +63,14 @@ and ast_to_core_scope : Binding.Nominal.scope -> core_scope
 %start dynamics
 %type <Core.core> core
 %type <Core.core> ast_like_core
-%type <Types.primitive> primitive
-%type <Types.sort> sort
+%type <Primitive.t> primitive
+%type <AbstractSyntax.sort> sort
 %type <Pattern.t> pattern
 %type <Binding.Nominal.term> ast_like
 %type <Binding.Nominal.scope> ast_like_scope
 %type <string * Core.core> definition
 %type <Core.denotation_chart> dynamics
-%type <Types.sort * Pattern.t> typed_arg
+%type <AbstractSyntax.sort * Pattern.t> typed_arg
 %%
 
 (** @raise BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)

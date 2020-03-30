@@ -18,27 +18,29 @@
 %token EOF
 
 %start language_def
-%type <Types.abstract_syntax>   language_def
-%type <Types.sort>              sort
-%type <string * Types.sort_def> sort_def
-%type <Types.operator_def>      operator_def
-%type <Types.arity>             arity
-%type <Types.valence>           valence
+%type <AbstractSyntax_Types.abstract_syntax>   language_def
+%type <AbstractSyntax_Types.sort>              sort
+%type <string * AbstractSyntax_Types.sort_def> sort_def
+%type <AbstractSyntax_Types.operator_def>      operator_def
+%type <AbstractSyntax_Types.arity>             arity
+%type <AbstractSyntax_Types.valence>           valence
 %type <string * string>         import_symbol
 %%
 
 /* TODO: duplicated in concrete syntax parser */
 sort:
   | ID LEFT_PAREN separated_list(SEMICOLON, sort) RIGHT_PAREN
-  { Types.SortAp ($1, Core_kernel.Array.of_list $3) }
+  { AbstractSyntax_Types.SortAp ($1, Core_kernel.Array.of_list $3) }
   | ID
-  { Types.SortVar $1 }
+  { AbstractSyntax_Types.SortVar $1 }
 
 valence:
   | sort STAR DOT sort
   { VariableValence ($1, $4) }
   | separated_nonempty_list(DOT, sort)
-  { let binds, result = Util.unsnoc $1 in Types.FixedValence (binds, result) }
+  { let binds, result = Util.unsnoc $1 in
+    AbstractSyntax_Types.FixedValence (binds, result)
+  }
 
 // TODO: allow trailing semicolon?
 valence_list: separated_list(SEMICOLON, valence) { $1 }
@@ -66,11 +68,14 @@ import_symbol:
 import:
   IMPORT LEFT_BRACE separated_nonempty_list(COMMA, import_symbol) RIGHT_BRACE
   FROM STRING
-  { { Types.imported_symbols = $3; location = $6 } }
+  { { AbstractSyntax_Types.imported_symbols = $3; location = $6 } }
 
 language_def:
   | list(import) nonempty_list(sort_def) EOF
   { match Core_kernel.String.Map.of_alist $2 with
-    | `Ok sort_def_map -> { imports = $1; sort_defs = Types.SortDefs sort_def_map }
+    | `Ok sort_def_map ->
+      { imports = $1
+      ; sort_defs = AbstractSyntax_Types.SortDefs sort_def_map
+      }
     | `Duplicate_key _key -> failwith "TODO: raise error"
   }

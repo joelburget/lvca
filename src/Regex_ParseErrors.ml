@@ -7,28 +7,32 @@ let message =
   fun s ->
     match s with
     | 0 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
-    | 1 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
-    | 39 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
-    | 2 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
-    | 18 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
-    | 19 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
-    | 16 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
-    | 4 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
-    | 42 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
-    | 29 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+        "Invalid regex.\n"
+    | 50 ->
+        "Unexpected character after regex.\n"
+    | 32 ->
+        "Unexpected character after regex.\n"
     | 36 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
-    | 24 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE>\n"
+        "Expected count after `{`.\n"
+    | 37 ->
+        "Expected `}` after count.\n"
+    | 44 ->
+        "Expected a valid regex after `|`.\n"
+    | 3 ->
+        "Expected a valid regex after `(`.\n"
+    | 47 ->
+        "Expected a `)` after regex.\n"
+    | 4 ->
+        "Invalid character set element.\n"
+    | 21 ->
+        "Unexpected character set.\n"
+    | 22 ->
+        "Unexpected character after `-`.\n"
+    | 19 ->
+        "Invalid character set element.\n"
+    | 5 ->
+        "Unexpected character after `\\`.\n"
+    | 27 ->
+        "Unexpected character after `\\`.\n"
     | _ ->
         raise Not_found

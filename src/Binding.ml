@@ -1,5 +1,4 @@
 open Core_kernel
-open Types
 module Json = Util.Json
 module Cbor = Util.Cbor
 
@@ -10,7 +9,7 @@ module rec DeBruijn : sig
     | Operator of string * scope list
     | Var of int * int
     | Sequence of term list
-    | Primitive of primitive
+    | Primitive of Primitive.t
 
   val to_nominal : term -> Nominal.term option
   val from_nominal : Nominal.term -> (term, string) Result.t
@@ -26,7 +25,7 @@ end = struct
     | Operator of string * scope list
     | Var of int * int
     | Sequence of term list
-    | Primitive of primitive
+    | Primitive of Primitive.t
 
   let rec to_nominal' ctx = function
     | Var (ix1, ix2) ->
@@ -101,7 +100,7 @@ and Nominal : sig
     | Operator of string * scope list
     | Var of string
     | Sequence of term list
-    | Primitive of primitive
+    | Primitive of Primitive.t
 
   val pp_term : Format.formatter -> Nominal.term -> unit
   val pp_term' : Nominal.term -> string
@@ -120,7 +119,7 @@ end = struct
     | Operator of string * scope list
     | Var of string
     | Sequence of term list
-    | Primitive of primitive
+    | Primitive of Primitive.t
 
   open Format
 
@@ -181,10 +180,10 @@ end = struct
   let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
 
   let jsonify_prim =
-    Json.(
+    Json.(Primitive.(
       function
       | PrimInteger i -> array [| string "i"; string (Bigint.to_string i) |]
-      | PrimString s -> array [| string "s"; string s |])
+      | PrimString s -> array [| string "s"; string s |]))
   ;;
 
   let rec jsonify (tm : term) : Json.t =
