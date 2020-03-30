@@ -1,5 +1,5 @@
 
-(* This file was auto-generated based on "src/AbstractSyntax_Parser.messages". *)
+(* This file was auto-generated based on "AbstractSyntax_Parser.messages". *)
 
 (* Please note that the function [message] can raise [Not_found]. *)
 
@@ -16,7 +16,7 @@ let message =
         "Comma-separated list of import symbols (followed by a \"}\") expected.\n"
     | 7 ->
         "Malformed import -- expected \"from\".\n"
-    | 67 ->
+    | 73 ->
         "Malformed import list -- expected another import or the first sort declaration.\n"
     | 8 ->
         "Malformed import -- expected a string after \"from\".\n"
@@ -28,51 +28,61 @@ let message =
         "Expected a comma-separated list of symbols to import.\n"
     | 14 ->
         "Expected a sort declaration.\n"
-    | 15 ->
-        "Expected a sort declaration.\n"
-    | 18 ->
+    | 65 ->
         "Expected a \"|\"-separated list of operator definitions.\n"
-    | 21 ->
+    | 25 ->
         "Malformed operator definition. Expected an arity.\n"
-    | 22 ->
+    | 26 ->
         "Malformed arity. Expected a list of valences.\n"
-    | 59 ->
+    | 62 ->
         "Malformed list of operator definitions. Expected an identifier, \"|\", or EOF.\n"
-    | 60 ->
+    | 63 ->
         "Malformed list of operator definitions. Expected an operator definition.\n"
-    | 23 ->
-        "Malformed sort.\n"
-    | 24 ->
-        "Unexpected \"[\" when parsing a sort.\n"
-    | 29 ->
-        "Malformed sort. Expected \")\".\n"
-    | 32 ->
-        "Unexpected \"]\".\n"
-    | 39 ->
-        "Malformed valence list. Expected a valence or list terminator.\n"
-    | 33 ->
-        "Malformed variable valence. Expected a sort.\n"
-    | 34 ->
-        "Malformed variable valence. Expected \"]\".\n"
-    | 38 ->
-        "Unexpected \"]\" when parsing a list of valences. Expected \")\" or \";\".\n"
     | 27 ->
-        "Unexpected \"[\" when parsing a list of sorts. Expected \";\" or a sort.\n"
+        "Unexpected \"]\".\n"
+    | 15 ->
+        "Unexpected token in sort definition variable list.\n"
+    | 21 ->
+        "Unexpected token in sort definition. Expected `:=`.\n"
+    | 22 ->
+        "Unexpected token in sort definition. Expected an operator definition.\n"
+    | 24 ->
+        "Unexpected token in sort definition. Expected an operator definition.\n"
+    | 16 ->
+        "Unexpected token in `;`-separated identifier list.\n"
+    | 17 ->
+        "Unexpected token in `;`-separated identifier list.\n"
     | 40 ->
-        "Unexpected \"[\" when parsing a list of sorts.\n"
+        "Parsing a valence, after `*`, expected `.`.\n"
     | 41 ->
+        "Parsing a valence, after `*.`, expected a sort`.\n"
+    | 37 ->
+        "As part of a valence list, expected `(` or `;`.\n"
+    | 38 ->
+        "Malformed valence list. Expected a valence or list terminator.\n"
+    | 28 ->
+        "After `(`, expected a (possibly empty) list of sorts.\n"
+    | 39 ->
+        "As part of a list of sorts, expected `;` or `.`.\n"
+    | 29 ->
+        "As part of a list of sorts, expected `(` or `;`.\n"
+    | 30 ->
+        "Expected a `;`-separated list of sorts.\n"
+    | 44 ->
+        "Expected a `.` or `;` separating sorts.\n"
+    | 43 ->
         "Malformed list of sorts.\n"
-    | 47 ->
+    | 50 ->
         "Identifier expected or \"]\" expected.\n"
-    | 53 ->
+    | 56 ->
         "Expected a paren-enclosed list of valences when parsing an arity.\n"
-    | 54 ->
+    | 57 ->
         "Expected a valence when parsing an arity.\n"
-    | 48 ->
+    | 51 ->
         "Expected a comma-separated list of ids, followed by \"]\".\n"
-    | 49 ->
+    | 52 ->
         "Expected a comma-separated list of ids.\n"
-    | 20 ->
+    | 66 ->
         "Malformed sort declaration -- expected an operator, eg `add(arith; arith)`\n"
     | _ ->
         raise Not_found

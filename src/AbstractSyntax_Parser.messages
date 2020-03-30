@@ -1,18 +1,18 @@
 language_def: ID ASSIGN BAR STRING
 ##
-## Ends in an error in state: 20.
+## Ends in an error in state: 66.
 ##
-## sort_def -> ID list(ID) ASSIGN option(BAR) . separated_nonempty_list(BAR,operator_def) [ ID EOF ]
+## sort_def -> ID ASSIGN option(BAR) . separated_nonempty_list(BAR,operator_def) [ ID EOF ]
 ##
 ## The known suffix of the stack is as follows:
-## ID list(ID) ASSIGN option(BAR)
+## ID ASSIGN option(BAR)
 ##
 
 Malformed sort declaration -- expected an operator, eg `add(arith; arith)`
 
 language_def: ID ASSIGN ID LEFT_BRACK ID COMMA STRING
 ##
-## Ends in an error in state: 49.
+## Ends in an error in state: 52.
 ##
 ## separated_nonempty_list(COMMA,ID) -> ID COMMA . separated_nonempty_list(COMMA,ID) [ RIGHT_BRACK ]
 ##
@@ -24,7 +24,7 @@ Expected a comma-separated list of ids.
 
 language_def: ID ASSIGN ID LEFT_BRACK ID STRING
 ##
-## Ends in an error in state: 48.
+## Ends in an error in state: 51.
 ##
 ## separated_nonempty_list(COMMA,ID) -> ID . [ RIGHT_BRACK ]
 ## separated_nonempty_list(COMMA,ID) -> ID . COMMA separated_nonempty_list(COMMA,ID) [ RIGHT_BRACK ]
@@ -37,7 +37,7 @@ Expected a comma-separated list of ids, followed by "]".
 
 language_def: ID ASSIGN ID LEFT_BRACK RIGHT_BRACK LEFT_PAREN STRING
 ##
-## Ends in an error in state: 54.
+## Ends in an error in state: 57.
 ##
 ## arity -> LEFT_BRACK loption(separated_nonempty_list(COMMA,ID)) RIGHT_BRACK LEFT_PAREN . valence_list RIGHT_PAREN [ ID EOF BAR ]
 ##
@@ -49,7 +49,7 @@ Expected a valence when parsing an arity.
 
 language_def: ID ASSIGN ID LEFT_BRACK RIGHT_BRACK STRING
 ##
-## Ends in an error in state: 53.
+## Ends in an error in state: 56.
 ##
 ## arity -> LEFT_BRACK loption(separated_nonempty_list(COMMA,ID)) RIGHT_BRACK . LEFT_PAREN valence_list RIGHT_PAREN [ ID EOF BAR ]
 ##
@@ -61,7 +61,7 @@ Expected a paren-enclosed list of valences when parsing an arity.
 
 language_def: ID ASSIGN ID LEFT_BRACK STRING
 ##
-## Ends in an error in state: 47.
+## Ends in an error in state: 50.
 ##
 ## arity -> LEFT_BRACK . loption(separated_nonempty_list(COMMA,ID)) RIGHT_BRACK LEFT_PAREN valence_list RIGHT_PAREN [ ID EOF BAR ]
 ##
@@ -73,7 +73,7 @@ Identifier expected or "]" expected.
 
 language_def: ID ASSIGN ID LEFT_PAREN ID DOT STRING
 ##
-## Ends in an error in state: 41.
+## Ends in an error in state: 43.
 ##
 ## separated_nonempty_list(DOT,sort) -> sort DOT . separated_nonempty_list(DOT,sort) [ SEMICOLON RIGHT_PAREN ]
 ##
@@ -83,9 +83,9 @@ language_def: ID ASSIGN ID LEFT_PAREN ID DOT STRING
 
 Malformed list of sorts.
 
-language_def: ID ASSIGN ID LEFT_PAREN ID ID RIGHT_BRACK
+language_def: ID ASSIGN ID LEFT_PAREN ID DOT ID STAR
 ##
-## Ends in an error in state: 40.
+## Ends in an error in state: 44.
 ##
 ## separated_nonempty_list(DOT,sort) -> sort . [ SEMICOLON RIGHT_PAREN ]
 ## separated_nonempty_list(DOT,sort) -> sort . DOT separated_nonempty_list(DOT,sort) [ SEMICOLON RIGHT_PAREN ]
@@ -97,72 +97,71 @@ language_def: ID ASSIGN ID LEFT_PAREN ID ID RIGHT_BRACK
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 27, spurious reduction of production nonempty_list(atomic_sort) -> atomic_sort
-## In state 26, spurious reduction of production sort -> ID nonempty_list(atomic_sort)
+## In state 27, spurious reduction of production sort -> ID
 ##
 
-Unexpected "[" when parsing a list of sorts.
+Expected a `.` or `;` separating sorts.
 
-language_def: ID ASSIGN ID LEFT_PAREN ID ID STRING
+language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN ID SEMICOLON STRING
 ##
-## Ends in an error in state: 27.
+## Ends in an error in state: 30.
 ##
-## nonempty_list(atomic_sort) -> atomic_sort . [ SEMICOLON RIGHT_PAREN RIGHT_BRACK DOT ]
-## nonempty_list(atomic_sort) -> atomic_sort . nonempty_list(atomic_sort) [ SEMICOLON RIGHT_PAREN RIGHT_BRACK DOT ]
+## separated_nonempty_list(SEMICOLON,sort) -> sort SEMICOLON . separated_nonempty_list(SEMICOLON,sort) [ RIGHT_PAREN ]
 ##
 ## The known suffix of the stack is as follows:
-## atomic_sort
+## sort SEMICOLON
 ##
 
-Unexpected "[" when parsing a list of sorts. Expected ";" or a sort.
+Expected a `;`-separated list of sorts.
 
-language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_BRACK ID RIGHT_BRACK STRING
+language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN ID STAR
 ##
-## Ends in an error in state: 38.
+## Ends in an error in state: 29.
 ##
-## separated_nonempty_list(SEMICOLON,valence) -> valence . [ RIGHT_PAREN ]
-## separated_nonempty_list(SEMICOLON,valence) -> valence . SEMICOLON separated_nonempty_list(SEMICOLON,valence) [ RIGHT_PAREN ]
+## separated_nonempty_list(SEMICOLON,sort) -> sort . [ RIGHT_PAREN ]
+## separated_nonempty_list(SEMICOLON,sort) -> sort . SEMICOLON separated_nonempty_list(SEMICOLON,sort) [ RIGHT_PAREN ]
 ##
 ## The known suffix of the stack is as follows:
-## valence
-##
-
-Unexpected "]" when parsing a list of valences. Expected ")" or ";".
-
-language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_BRACK ID SEMICOLON
-##
-## Ends in an error in state: 34.
-##
-## valence -> ID LEFT_BRACK sort . RIGHT_BRACK [ SEMICOLON RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## ID LEFT_BRACK sort
+## sort
 ##
 ## WARNING: This example involves spurious reductions.
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 24, spurious reduction of production atomic_sort -> ID
-## In state 31, spurious reduction of production sort -> atomic_sort
+## In state 27, spurious reduction of production sort -> ID
 ##
 
-Malformed variable valence. Expected "]".
+As part of a list of sorts, expected `(` or `;`.
 
-language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_BRACK STRING
+language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN RIGHT_PAREN STRING
 ##
-## Ends in an error in state: 33.
+## Ends in an error in state: 39.
 ##
-## valence -> ID LEFT_BRACK . sort RIGHT_BRACK [ SEMICOLON RIGHT_PAREN ]
+## separated_nonempty_list(DOT,sort) -> sort . [ SEMICOLON RIGHT_PAREN ]
+## separated_nonempty_list(DOT,sort) -> sort . DOT separated_nonempty_list(DOT,sort) [ SEMICOLON RIGHT_PAREN ]
+## valence -> sort . STAR DOT sort [ SEMICOLON RIGHT_PAREN ]
 ##
 ## The known suffix of the stack is as follows:
-## ID LEFT_BRACK
+## sort
 ##
 
-Malformed variable valence. Expected a sort.
+As part of a list of sorts, expected `;` or `.`.
+
+language_def: ID ASSIGN ID LEFT_PAREN ID LEFT_PAREN STRING
+##
+## Ends in an error in state: 28.
+##
+## sort -> ID LEFT_PAREN . loption(separated_nonempty_list(SEMICOLON,sort)) RIGHT_PAREN [ STAR SEMICOLON RIGHT_PAREN DOT ]
+##
+## The known suffix of the stack is as follows:
+## ID LEFT_PAREN
+##
+
+After `(`, expected a (possibly empty) list of sorts.
 
 language_def: ID ASSIGN ID LEFT_PAREN ID SEMICOLON STRING
 ##
-## Ends in an error in state: 39.
+## Ends in an error in state: 38.
 ##
 ## separated_nonempty_list(SEMICOLON,valence) -> valence SEMICOLON . separated_nonempty_list(SEMICOLON,valence) [ RIGHT_PAREN ]
 ##
@@ -172,13 +171,129 @@ language_def: ID ASSIGN ID LEFT_PAREN ID SEMICOLON STRING
 
 Malformed valence list. Expected a valence or list terminator.
 
+language_def: ID ASSIGN ID LEFT_PAREN ID STAR DOT ID STAR
+##
+## Ends in an error in state: 37.
+##
+## separated_nonempty_list(SEMICOLON,valence) -> valence . [ RIGHT_PAREN ]
+## separated_nonempty_list(SEMICOLON,valence) -> valence . SEMICOLON separated_nonempty_list(SEMICOLON,valence) [ RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## valence
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 27, spurious reduction of production sort -> ID
+## In state 42, spurious reduction of production valence -> sort STAR DOT sort
+##
+
+As part of a valence list, expected `(` or `;`.
+
+language_def: ID ASSIGN ID LEFT_PAREN ID STAR DOT STRING
+##
+## Ends in an error in state: 41.
+##
+## valence -> sort STAR DOT . sort [ SEMICOLON RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## sort STAR DOT
+##
+
+Parsing a valence, after `*.`, expected a sort`.
+
+language_def: ID ASSIGN ID LEFT_PAREN ID STAR STRING
+##
+## Ends in an error in state: 40.
+##
+## valence -> sort STAR . DOT sort [ SEMICOLON RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## sort STAR
+##
+
+Parsing a valence, after `*`, expected `.`.
+
+language_def: ID LEFT_PAREN ID SEMICOLON STRING
+##
+## Ends in an error in state: 17.
+##
+## separated_nonempty_list(SEMICOLON,ID) -> ID SEMICOLON . separated_nonempty_list(SEMICOLON,ID) [ RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## ID SEMICOLON
+##
+
+Unexpected token in `;`-separated identifier list.
+
+language_def: ID LEFT_PAREN ID STRING
+##
+## Ends in an error in state: 16.
+##
+## separated_nonempty_list(SEMICOLON,ID) -> ID . [ RIGHT_PAREN ]
+## separated_nonempty_list(SEMICOLON,ID) -> ID . SEMICOLON separated_nonempty_list(SEMICOLON,ID) [ RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## ID
+##
+
+Unexpected token in `;`-separated identifier list.
+
+language_def: ID LEFT_PAREN RIGHT_PAREN ASSIGN BAR STRING
+##
+## Ends in an error in state: 24.
+##
+## sort_def -> ID LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,ID)) RIGHT_PAREN ASSIGN option(BAR) . separated_nonempty_list(BAR,operator_def) [ ID EOF ]
+##
+## The known suffix of the stack is as follows:
+## ID LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,ID)) RIGHT_PAREN ASSIGN option(BAR)
+##
+
+Unexpected token in sort definition. Expected an operator definition.
+
+language_def: ID LEFT_PAREN RIGHT_PAREN ASSIGN STRING
+##
+## Ends in an error in state: 22.
+##
+## sort_def -> ID LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,ID)) RIGHT_PAREN ASSIGN . option(BAR) separated_nonempty_list(BAR,operator_def) [ ID EOF ]
+##
+## The known suffix of the stack is as follows:
+## ID LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,ID)) RIGHT_PAREN ASSIGN
+##
+
+Unexpected token in sort definition. Expected an operator definition.
+
+language_def: ID LEFT_PAREN RIGHT_PAREN STRING
+##
+## Ends in an error in state: 21.
+##
+## sort_def -> ID LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,ID)) RIGHT_PAREN . ASSIGN option(BAR) separated_nonempty_list(BAR,operator_def) [ ID EOF ]
+##
+## The known suffix of the stack is as follows:
+## ID LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,ID)) RIGHT_PAREN
+##
+
+Unexpected token in sort definition. Expected `:=`.
+
+language_def: ID LEFT_PAREN STRING
+##
+## Ends in an error in state: 15.
+##
+## sort_def -> ID LEFT_PAREN . loption(separated_nonempty_list(SEMICOLON,ID)) RIGHT_PAREN ASSIGN option(BAR) separated_nonempty_list(BAR,operator_def) [ ID EOF ]
+##
+## The known suffix of the stack is as follows:
+## ID LEFT_PAREN
+##
+
+Unexpected token in sort definition variable list.
+
 language_def: ID ASSIGN ID LEFT_PAREN ID STRING
 ##
-## Ends in an error in state: 32.
+## Ends in an error in state: 27.
 ##
-## atomic_sort -> ID . [ SEMICOLON RIGHT_PAREN DOT ]
-## sort -> ID . nonempty_list(atomic_sort) [ SEMICOLON RIGHT_PAREN DOT ]
-## valence -> ID . LEFT_BRACK sort RIGHT_BRACK [ SEMICOLON RIGHT_PAREN ]
+## sort -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,sort)) RIGHT_PAREN [ STAR SEMICOLON RIGHT_PAREN DOT ]
+## sort -> ID . [ STAR SEMICOLON RIGHT_PAREN DOT ]
 ##
 ## The known suffix of the stack is as follows:
 ## ID
@@ -186,53 +301,9 @@ language_def: ID ASSIGN ID LEFT_PAREN ID STRING
 
 Unexpected "]".
 
-language_def: ID ASSIGN ID LEFT_PAREN LEFT_PAREN ID SEMICOLON
-##
-## Ends in an error in state: 29.
-##
-## atomic_sort -> LEFT_PAREN sort . RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_BRACK LEFT_PAREN ID DOT ]
-##
-## The known suffix of the stack is as follows:
-## LEFT_PAREN sort
-##
-## WARNING: This example involves spurious reductions.
-## This implies that, although the LR(1) items shown above provide an
-## accurate view of the past (what has been recognized so far), they
-## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 24, spurious reduction of production atomic_sort -> ID
-## In state 31, spurious reduction of production sort -> atomic_sort
-##
-
-Malformed sort. Expected ")".
-
-language_def: ID ASSIGN ID LEFT_PAREN LEFT_PAREN ID STRING
-##
-## Ends in an error in state: 24.
-##
-## atomic_sort -> ID . [ SEMICOLON RIGHT_PAREN RIGHT_BRACK DOT ]
-## sort -> ID . nonempty_list(atomic_sort) [ SEMICOLON RIGHT_PAREN RIGHT_BRACK DOT ]
-##
-## The known suffix of the stack is as follows:
-## ID
-##
-
-Unexpected "[" when parsing a sort.
-
-language_def: ID ASSIGN ID LEFT_PAREN LEFT_PAREN STRING
-##
-## Ends in an error in state: 23.
-##
-## atomic_sort -> LEFT_PAREN . sort RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_BRACK LEFT_PAREN ID DOT ]
-##
-## The known suffix of the stack is as follows:
-## LEFT_PAREN
-##
-
-Malformed sort.
-
 language_def: ID ASSIGN ID LEFT_PAREN RIGHT_PAREN BAR STRING
 ##
-## Ends in an error in state: 60.
+## Ends in an error in state: 63.
 ##
 ## separated_nonempty_list(BAR,operator_def) -> operator_def BAR . separated_nonempty_list(BAR,operator_def) [ ID EOF ]
 ##
@@ -244,7 +315,7 @@ Malformed list of operator definitions. Expected an operator definition.
 
 language_def: ID ASSIGN ID LEFT_PAREN RIGHT_PAREN STRING
 ##
-## Ends in an error in state: 59.
+## Ends in an error in state: 62.
 ##
 ## separated_nonempty_list(BAR,operator_def) -> operator_def . [ ID EOF ]
 ## separated_nonempty_list(BAR,operator_def) -> operator_def . BAR separated_nonempty_list(BAR,operator_def) [ ID EOF ]
@@ -257,7 +328,7 @@ Malformed list of operator definitions. Expected an identifier, "|", or EOF.
 
 language_def: ID ASSIGN ID LEFT_PAREN STRING
 ##
-## Ends in an error in state: 22.
+## Ends in an error in state: 26.
 ##
 ## arity -> LEFT_PAREN . valence_list RIGHT_PAREN [ ID EOF BAR ]
 ##
@@ -269,7 +340,7 @@ Malformed arity. Expected a list of valences.
 
 language_def: ID ASSIGN ID STRING
 ##
-## Ends in an error in state: 21.
+## Ends in an error in state: 25.
 ##
 ## operator_def -> ID . arity [ ID EOF BAR ]
 ##
@@ -281,33 +352,22 @@ Malformed operator definition. Expected an arity.
 
 language_def: ID ASSIGN STRING
 ##
-## Ends in an error in state: 18.
+## Ends in an error in state: 65.
 ##
-## sort_def -> ID list(ID) ASSIGN . option(BAR) separated_nonempty_list(BAR,operator_def) [ ID EOF ]
+## sort_def -> ID ASSIGN . option(BAR) separated_nonempty_list(BAR,operator_def) [ ID EOF ]
 ##
 ## The known suffix of the stack is as follows:
-## ID list(ID) ASSIGN
+## ID ASSIGN
 ##
 
 Expected a "|"-separated list of operator definitions.
-
-language_def: ID ID STRING
-##
-## Ends in an error in state: 15.
-##
-## list(ID) -> ID . list(ID) [ ASSIGN ]
-##
-## The known suffix of the stack is as follows:
-## ID
-##
-
-Expected a sort declaration.
 
 language_def: ID STRING
 ##
 ## Ends in an error in state: 14.
 ##
-## sort_def -> ID . list(ID) ASSIGN option(BAR) separated_nonempty_list(BAR,operator_def) [ ID EOF ]
+## sort_def -> ID . ASSIGN option(BAR) separated_nonempty_list(BAR,operator_def) [ ID EOF ]
+## sort_def -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,ID)) RIGHT_PAREN ASSIGN option(BAR) separated_nonempty_list(BAR,operator_def) [ ID EOF ]
 ##
 ## The known suffix of the stack is as follows:
 ## ID
@@ -366,7 +426,7 @@ Malformed import -- expected a string after "from".
 
 language_def: IMPORT LEFT_BRACE ID RIGHT_BRACE FROM STRING STRING
 ##
-## Ends in an error in state: 67.
+## Ends in an error in state: 73.
 ##
 ## list(import) -> import . list(import) [ ID ]
 ##
