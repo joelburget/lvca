@@ -18,12 +18,14 @@ sha_or_name := sha(string()) | name(string())
 command :=
   | define(
     maybe(string()); // name
-    sha_or_name(); //language
+    sha_or_name(); // language
+    maybe(sha_or_name()); // concrete syntax
     string() // term
   )
   | lookup(string()) // name or sha
   | eval(
     sha_or_name(); // language
+    maybe(sha_or_name()); // concrete syntax
     string() // term
   )
   |}
@@ -37,6 +39,8 @@ LOOKUP := "lookup"
 EVAL := "eval"
 ASSIGN := ":="
 COLON := ":"
+LANGLE := "<"
+RANGLE := ">"
 SHA := /[0-9a-f]{64}/
 IDENT := /[0-9a-zA-Z_]+/
 STRING := /\{\{.*\}\}/
@@ -45,11 +49,16 @@ sha_or_name :=
   | SHA { sha(string($1)) }
   | IDENT { name(string($1)) }
 
+concrete :=
+  | sha_or_name { just($1) }
+  | { nothing() }
+
 command :=
-  | DEFINE IDENT COLON sha_or_name ASSIGN STRING
-  { define(just(string($2)); $4; string($6)) }
-  | DEFINE COLON sha_or_name STRING
-  { define(nothing(); $3; string($4)) }
+  | DEFINE IDENT COLON sha_or_name LANGLE concrete RANGLE ASSIGN STRING
+  { define(just(string($2)); $4; $6; string($9)) }
+
+  // | DEFINE COLON sha_or_name concrete STRING
+  // { define(nothing(); $3; $4; string($5)) }
   | LOOKUP IDENT
   { lookup(string($2)) }
   | EVAL sha_or_name STRING
@@ -79,15 +88,30 @@ let parse_command : string -> (NonBinding.term, string) Result.t
       | Some tm -> Ok tm
 
 let lookup_lang
-  : store -> NonBinding.term -> parseable
+  : store -> NonBinding.term -> store_value
   = fun { term_store; name_store } ->
     function
     | Operator ("sha", [Primitive (PrimString sha_str)])
     -> lookup_sha term_store sha_str
     | Operator ("name", [Primitive (PrimString name)])
-    -> lookup_sha term_store @@ Hashtbl.find_exn name_store name
-    | _
-    -> failwith "TODO: lookup_lang error"
+    -> Hashtbl.find_exn name_store name |> lookup_sha term_store
+    | tm
+    -> failwith ("Failed to look up language term " ^
+      (tm |> NonBinding.to_nominal |> Binding.Nominal.pp_term'))
+
+let term_of_maybe : NonBinding.term -> NonBinding.term option
+  = function
+    | Operator ("just", [a]) -> Some a
+    | Operator ("nothing", []) -> None
+    | _ -> failwith "term_of_maybe: unexpected term"
+
+let lookup_maybe_concrete
+  : store -> NonBinding.term -> store_value
+  = fun store tm ->
+    let tm' = term_of_maybe tm in
+    match tm' with
+      | None -> GenesisTermConcrete
+      | Some tm'' -> lookup_lang store tm''
 
 type parsed =
   | ParsedTerm of Binding.Nominal.term
@@ -109,17 +133,17 @@ let term_of_parsed : parsed -> Binding.Nominal.term
       |> ConcreteSyntaxDescription.to_term
       |> NonBinding.to_nominal
 
-let parse_parseable : parseable -> string -> parsed
-  = fun parseable str ->
+let parse_store_value : store_value -> store_value -> string -> parsed
+  = fun _abstract_syntax_val concrete_syntax_val str ->
   let str' = String.slice str 2 (-2) in
   let lex = Lexing.from_string str' in
   Printf.printf "Parsing {|%s|}\n" str';
-  match parseable with
-  | ParseableTerm
+  match concrete_syntax_val with
+  | GenesisTermConcrete
   -> ParsedTerm (Term.Parser.top_term Term.Lexer.read lex)
-  | ParseableAbstractSyntax
+  | GenesisAbstractSyntaxConcrete
   -> ParsedAbstract (AbstractSyntax.Parser.language_def AbstractSyntax.Lexer.read lex)
-  | ParseableConcreteSyntax
+  | GenesisConcreteSyntaxConcrete
   ->
     Printf.printf "language:\n%s\n" str';
     let pre_terminal_rules, sort_rules =
@@ -127,6 +151,20 @@ let parse_parseable : parseable -> string -> parsed
     in
     ParsedConcrete
       (ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules)
+  | Term concrete_syntax_tm
+  ->
+    (match NonBinding.from_nominal concrete_syntax_tm with
+      | None -> failwith "TODO"
+      | Some concrete_syntax_tm' ->
+        let concrete_syntax = ConcreteSyntaxDescription.of_term concrete_syntax_tm' in
+        let ast =
+          let%bind tree = ConcreteSyntax.parse concrete_syntax "tm" (* XXX root name*) str' in
+          ConcreteSyntax.to_ast concrete_syntax tree
+        in
+        match ast with
+          | Ok ast -> ParsedTerm ast
+          | Error msg -> failwith msg)
+
   | _ -> failwith "TODO"
 
   (*
@@ -136,13 +174,6 @@ let parse_parseable : parseable -> string -> parsed
     -> Term.Parser.top_term Term.Lexer.read lex
     | Some concrete_syntax'
     ->
-       let ast =
-         let%bind tree = ConcreteSyntax.parse concrete_syntax' "TODO: root name" str' in
-         ConcreteSyntax.to_ast concrete_syntax' tree
-       in
-       match ast with
-         | Ok ast -> ast
-         | Error msg -> failwith msg
   )
   | _ -> failwith "TODO"
   *)
@@ -150,18 +181,23 @@ let parse_parseable : parseable -> string -> parsed
 (* TODO: we end up double-wrapping the results of this call in eval_inline_block *)
 let eval_command : store -> NonBinding.term -> Vdom.Node.t
   = fun ({ term_store; name_store } as store) -> function
-    | Operator ("define", [maybe_ident; lang_tm; Primitive (PrimString defn_str)])
+    | Operator ("define", [maybe_ident; lang_tm; concrete_tm; Primitive (PrimString defn_str)])
     ->
-       let lang = lookup_lang store lang_tm in
-       let parsed_defn = parse_parseable lang defn_str in
+       let lang_val = lookup_lang store lang_tm in
+       let concrete_val = lookup_maybe_concrete store concrete_tm in
+       let parsed_defn = parse_store_value lang_val concrete_val defn_str in
        let defn_tm = term_of_parsed parsed_defn in
        let key = Binding.Nominal.hash defn_tm in
        Hashtbl.set term_store ~key ~data:defn_tm;
        (match maybe_ident with
          | Operator ("just", [Primitive (PrimString ident)])
-         -> Hashtbl.set name_store ~key:ident ~data:key
+         ->
+           Printf.printf "setting name store %s -> %s\n" ident key;
+           Hashtbl.set name_store ~key:ident ~data:key
          | _
-         -> ());
+         ->
+           Printf.printf "not setting name store (%s)\n" key;
+           ());
        (* TODO: structured *)
        Vdom.Node.(pre [] [code [] [text @@ Binding.Nominal.pp_term' defn_tm]])
     | Operator("lookup", [_ident])
@@ -336,8 +372,10 @@ let eval_inline_block
     -> let body = match code with
          | None -> []
          | Some code' -> [match parse_command code' with
-           | Ok cmd -> eval_command store cmd
-           | Error msg -> text msg]
+           | Ok cmd ->
+               Printf.printf "parsed command, evaluating\n";
+               eval_command store cmd
+           | Error msg -> Printf.printf "failed to parse command:\n%s\n" msg; text msg]
        in
        Vdom.Node.pre [] [Vdom.Node.code [(* TODO: attributes *)] body]
     | Thematic_break -> hr []
