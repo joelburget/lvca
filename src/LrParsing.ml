@@ -1037,13 +1037,28 @@ module Lr0 (G : GRAMMAR) = struct
                    tok.name
                    s ))
         | Error None ->
+          let valid_token_msg = Array.get (full_lr0_action_table ()) s
+            |> Array.filter ~f:(function
+              | Error _ -> false
+              | _ -> true
+            )
+            |> Array.to_list
+            |> List.mapi ~f:(fun t_num action ->
+                Printf.sprintf "%s: %s" (string_of_terminal t_num) (string_of_action
+                action))
+            |> String.concat ~sep:"\n"
+          in
           raise
             (ParseFailed
                ( tok.start (* TODO: give a decent error message *)
                , Printf.sprintf
-                   "parse failed -- no valid transition on this token (%s) from state %n"
+                   "parse failed -- no valid transition on this token (%s) from state \
+                   %n.\n\
+                   valid tokens at this point:\n\
+                   %s"
                    tok.name
-                   s ))
+                   s
+                   valid_token_msg))
       done;
       failwith "invariant violation: can't make it here"
     with
