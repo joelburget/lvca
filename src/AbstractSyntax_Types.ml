@@ -160,3 +160,14 @@ let to_term : abstract_syntax -> NonBinding.term
       [ Sequence (List.map imports ~f:term_of_import)
       ; term_of_sort_defs sort_defs
       ]))
+
+(* _of_term: *)
+
+exception OfTermFailure of string * NonBinding.term
+
+let rec sort_of_term : NonBinding.term -> sort
+  = function
+    | Operator ("sort_ap", [ Primitive (PrimString name) ; Sequence tms ])
+    -> SortAp (name, tms |> List.map ~f:sort_of_term |> Array.of_list)
+    | Operator ("sort_var", [Primitive (PrimString name)]) -> SortVar name
+    | tm -> raise (OfTermFailure ("sort_of_term", tm))

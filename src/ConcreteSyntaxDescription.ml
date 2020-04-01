@@ -185,6 +185,8 @@ let string_of_t : t -> string =
   ^ string_of_nonterminal_rules nonterminal_rules
 ;;
 
+(* conversion to term *)
+
 let terminal_rules_to_term : terminal_rules -> NonBinding.term
   = fun rules -> Sequence (rules
     |> List.map ~f:(fun (name, re) -> NonBinding.Operator ("pair",
@@ -253,3 +255,118 @@ let to_term : t -> NonBinding.term
     [ terminal_rules_to_term terminal_rules
     ; nonterminal_rules_to_term nonterminal_rules
     ])
+
+(* conversion from term *)
+
+let bigint_to_int : Bigint.t -> int
+  = fun i -> match Bigint.to_int i with
+    | Some i' -> i'
+    | None -> raise (OfTermFailure ("bigint_to_int", Primitive (PrimInteger i)))
+
+(* TODO: is this okay? *)
+let regex_of_term : NonBinding.term -> Regex.t
+  = function
+    | Operator ("regex", [Primitive (PrimString re_str)])
+    (* TODO: does this throw? *)
+    -> Regex_Parser.regex Regex_Lexer.read (Lexing.from_string re_str)
+    | tm -> raise (OfTermFailure ("regex_of_term", tm))
+
+let terminal_rules_of_term : NonBinding.term -> terminal_rules
+  = function
+    | Sequence rules -> rules
+      |> List.map ~f:(function
+      | Operator ("pair", [ Primitive (PrimString name); re_term ])
+      -> (name, regex_of_term re_term)
+      | tm -> raise (OfTermFailure ("term_of_terminal_rules (inner)", tm))
+      )
+    | tm -> raise (OfTermFailure ("term_of_terminal_rules (outer)", tm))
+
+let nonterminal_token_of_term : NonBinding.term -> nonterminal_token
+  = function
+  | Operator ("terminal_name", [Primitive (PrimString name)]) -> TerminalName name
+  | Operator ("nonterminal_name", [Primitive (PrimString name)]) -> NonterminalName name
+  | tm -> raise (OfTermFailure ("nonterminal_token_of_term", tm))
+
+let binder_capture_of_term : NonBinding.term -> binder_capture
+  = function
+    | Operator ("var_capture", [Primitive (PrimInteger i)])
+    -> VarCapture (bigint_to_int i)
+    | Operator ("pattern_capture", [Primitive (PrimInteger i)])
+    -> PatternCapture (bigint_to_int i)
+    | tm -> raise (OfTermFailure ("binder_capture_of_term", tm))
+
+let rec operator_match_pattern_of_term : NonBinding.term -> operator_match_pattern
+  = function
+    | Operator ("operator_pattern",
+      [ Primitive (PrimString name)
+      ; Sequence pats
+      ])
+      -> OperatorPattern (name, pats |> List.map ~f:numbered_scope_pattern_of_term)
+    | Operator ("single_capture_pattern", [ Primitive (PrimInteger i)])
+    -> SingleCapturePattern (bigint_to_int i)
+    | tm -> raise (OfTermFailure ("operator_match_pattern_of_term", tm))
+
+and numbered_scope_pattern_of_term : NonBinding.term -> numbered_scope_pattern
+  = function
+    | Operator
+      ( "numbered_scope_pattern"
+      , [ Sequence binders
+        ; op_match_term
+        ])
+    -> NumberedScopePattern
+      ( binders |> List.map ~f:binder_capture_of_term, operator_match_pattern_of_term
+      op_match_term)
+    | tm -> raise (OfTermFailure ("numbered_scope_pattern_of_term", tm))
+
+let operator_match_of_term : NonBinding.term -> operator_match
+  = function
+    | Operator ("operator_match", [ Sequence tms ; tm ])
+    -> OperatorMatch
+      { tokens = List.map tms ~f:nonterminal_token_of_term
+      ; operator_match_pattern = operator_match_pattern_of_term tm
+      }
+    | tm -> raise (OfTermFailure ("operator_match_of_term", tm))
+
+let option_of_term : (NonBinding.term -> 'a) -> NonBinding.term -> 'a option
+  = fun f -> function
+    | Operator ("none", []) -> None
+    | Operator ("some", [tm]) -> Some (f tm)
+    | tm -> raise (OfTermFailure ("option_of_term", tm))
+
+let nonterminal_rule_of_term : NonBinding.term -> nonterminal_rule
+  = function
+    Operator ("nonterminal_rule",
+      [ Primitive (PrimString nonterminal_name)
+      ; sort_tm
+      ; Sequence rules_tm
+      ])
+  -> NonterminalRule
+    { nonterminal_name
+    ; result_sort = option_of_term sort_of_term sort_tm
+    ; operator_rules = rules_tm |> List.map ~f:operator_match_of_term
+    }
+    | tm -> raise (OfTermFailure ("nonterminal_rule_of_term", tm))
+
+let nonterminal_rules_of_term : NonBinding.term -> nonterminal_rules
+  = fun tm ->
+    let f = function
+      | NonBinding.Operator ("pair", [ Primitive (PrimString name) ; tm ])
+      -> (name, nonterminal_rule_of_term tm)
+      | tm -> raise (OfTermFailure ("nonterminal_rules_of_term (inner)", tm))
+    in
+    match tm with
+    | Sequence rules
+    -> (match rules |> List.map ~f |> String.Map.of_alist with
+      | `Duplicate_key name -> raise
+          (OfTermFailure ("nonterminal_rules_of_term (duplicate key: " ^ name ^ ")", tm))
+      | `Ok result -> result)
+    | _ -> raise (OfTermFailure ("nonterminal_rules_of_term (outer)", tm))
+
+let of_term : NonBinding.term -> t
+  = function
+    | Operator ("concrete_syntax", [ terminal_tms; nonterminal_tms ])
+    ->
+      { terminal_rules = terminal_rules_of_term terminal_tms
+      ; nonterminal_rules = nonterminal_rules_of_term nonterminal_tms
+      }
+    | tm -> raise (OfTermFailure ("of_term", tm))
