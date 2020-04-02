@@ -1,7 +1,5 @@
 open Core_kernel
 
-let stringify_list = Util.stringify_list
-
 (** Represents the LHS of a denotation rule. Why is this not just `Pattern.t`? Because
     patterns can't match binders. For example, we want to be able to match this pattern on
     the LHS of a denotation rule:
@@ -44,16 +42,18 @@ let list_vars : pattern -> string list = fun pat -> String.Set.to_list (vars pat
 
 let rec to_string : pattern -> string = function
   | Operator (name, pats) ->
-    Printf.sprintf "%s(%s)" name (stringify_list scope_to_string "; " pats)
+    Printf.sprintf "%s(%s)" name (Util.stringify_list scope_to_string "; " pats)
   | Var name -> name
-  | Sequence pats -> Printf.sprintf "[%s]" (stringify_list to_string ", " pats)
+  | Sequence pats -> Printf.sprintf "[%s]" (Util.stringify_list to_string ", " pats)
   | Primitive prim -> Primitive.to_string prim
 
 and scope_to_string : scope -> string =
  fun (Scope (bound_vars, pat)) ->
   match bound_vars with
   | [] -> to_string pat
-  | _ -> Printf.sprintf "%s. %s" (stringify_list Fn.id ". " bound_vars) (to_string pat)
+  | _ -> Printf.sprintf "%s. %s"
+    (Util.stringify_list Fn.id ". " bound_vars)
+    (to_string pat)
 ;;
 
 exception BindingAwareScopePatternEncountered
