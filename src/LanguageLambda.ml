@@ -12,8 +12,8 @@ LPAREN := "("
 RPAREN := ")"
 
 term :=
-  | term _ term                   { app($1; $3) }
-  | LAMBDA _0 term _ ARROW _ term { lam($2; $6) }
-  | LPAREN _0 term _0 RPAREN      { $2 }
+  | t1 = term _ t2 = term                      { app(t1; t2) }
+  | LAMBDA _0 pat = term _ ARROW _ body = term { lam(pat; body) }
+  | LPAREN _0 term _0 RPAREN                   { term }
 |}
 ;;

@@ -41,29 +41,29 @@ RPAREN := ")"
 FUN    := "fun"
 NAME   := /[a-z][a-zA-Z0-9]*/
 
-arith := arith_1 { $1 }
+arith := tm = arith_1 { tm }
 
 arith_1 :=
-  | [ FUN _ NAME _ ARR _ arith_1 ] { fun(var($2). $4) }
-  | arith_2 { $1 }
+  | [ FUN _ name = NAME _ ARR _ body = arith_1 ] { fun(var(name). body) }
+  | tm = arith_2 { tm }
 
 arith_2 :=
-  | [ arith_2 _ ADD _ arith_3 ] { add($1; $3) }
-  | [ arith_2 _ SUB _ arith_3 ] { sub($1; $3) }
-  | arith_3 { $1 }
+  | [ a = arith_2 _ ADD _ b = arith_3 ] { add(a; b) }
+  | [ a = arith_2 _ SUB _ b = arith_3 ] { sub(a; b) }
+  | tm = arith_3 { tm }
 
 arith_3 :=
-  | [ arith_3 _ MUL _ arith_4 ] { mul($1; $3) }
-  | [ arith_3 _ DIV _ arith_4 ] { div($1; $3) }
-  | arith_4 { $1 }
+  | [ a = arith_3 _ MUL _ b = arith_4 ] { mul(a; b) }
+  | [ a = arith_3 _ DIV _ b = arith_4 ] { div(a; b) }
+  | tm = arith_4 { tm }
 
 arith_4 :=
-  | [ arith_4 _ arith_5 ] { app($1; $2) }
-  | arith_5 { $1 }
+  | [ a = arith_4 _ b = arith_5 ] { app(a; b) }
+  | tm = arith_5 { tm }
 
 arith_5 :=
-  | NAME                      { var($1) }
-  | [ LPAREN arith_1 RPAREN ] { $2      }
+  | name = NAME                    { var(name) }
+  | [ LPAREN tm = arith_1 RPAREN ] { tm        }
 |}
 ;;
 
@@ -73,13 +73,13 @@ ADD    := "+"
 SUB    := "-"
 NAME   := /[a-z][a-zA-Z0-9]*/
 
-arith := arith_1 { $1 }
+arith := arith_1 { arith_1 }
 arith_1 :=
-  | arith_2 ADD arith_1 { add($1; $3) }
-  | arith_2 SUB arith_1 { add($1; $3) }
-  | arith_2 { $1 }
+  | a = arith_2 ADD b = arith_1 { add(a; b) }
+  | a = arith_2 SUB b = arith_1 { add(a; b) }
+  | tm = arith_2 { tm }
 
-arith_2 := NAME { var($1) }
+arith_2 := name = NAME { var(name) }
 |}
 ;;
 
@@ -94,13 +94,13 @@ NUMBER := /[0-9]+/
 
 numbers :=
   | { nil() }
-  | NUMBER _ numbers { cons(integer($1); $2) }
+  | n = NUMBER _ ns = numbers { cons(integer(n); ns) }
 
 tm :=
-  | [<v> HBOX   COLON _ [<h>   numbers] ] { hbox($3) }
-  | [<v> VBOX   COLON _ [<v>   numbers] ] { vbox($3) }
-  | [<v> HOVBOX COLON _ [<hov> numbers] ] { hovbox($3) }
-  | [<v> HVBOX  COLON _ [<hv>  numbers] ] { hvbox($3) }
+  | [<v> HBOX   COLON _ [<h>   ns = numbers] ] { hbox(ns) }
+  | [<v> VBOX   COLON _ [<v>   ns = numbers] ] { vbox(ns) }
+  | [<v> HOVBOX COLON _ [<hov> ns = numbers] ] { hovbox(ns) }
+  | [<v> HVBOX  COLON _ [<hv>  ns = numbers] ] { hvbox(ns) }
   |}
 ;;
 
@@ -122,8 +122,8 @@ let int_list_desc =
 INT := /[0-9]+/
 
 list : list(integer) :=
-  | INT list { cons($1; $2) }
-  |          { nil()        }
+  | i = INT is = list { cons(i; is) }
+  |                   { nil()       }
   |}
   in
   match Parse_concrete.parse str_desc with
@@ -629,7 +629,7 @@ let%test_module "validation test" =
         FOO := ""
         tm := FOO { op() }
         |};
-      [%expect{| Regex accepts empty strings: |}]
+      [%expect{| Regex accepts empty strings: //|}]
 
     let%expect_test _ =
       print_check {|
@@ -643,19 +643,19 @@ let%test_module "validation test" =
       [%expect{| Uncaptured regex which is not a string literal: /[a-z][a-zA-Z0-9_]*/ |}]
 
     let%expect_test _ =
-      prelude_print_check "tm := FOO bar BAZ { op() }";
+      prelude_print_check "tm := FOO bar = bar BAZ { op() }";
       [%expect{| uncaptured nonterminal: bar |}]
 
     let%expect_test _ =
-      prelude_print_check "tm := FOO bar BAZ { op($2) }";
+      prelude_print_check "tm := FOO bar = bar BAZ { op(bar) }";
       [%expect{| |}]
 
     let%expect_test _ =
-      prelude_print_check "tm := [ FOO bar BAZ { op($2) }";
+      prelude_print_check "tm := [ FOO bar = bar BAZ { op(bar) }";
       [%expect{| At least one group is not closed (there are more open box markers ('[') than close box markers (']')) |}]
 
     let%expect_test _ =
-      prelude_print_check "tm := FOO bar BAZ ] { op($2) }";
+      prelude_print_check "tm := FOO bar = bar BAZ ] { op(bar) }";
       [%expect{| Invalid box structure (saw a close box marker (']') before its opening marker ('['))! |}]
 
     let%expect_test _ =
@@ -667,20 +667,26 @@ let%test_module "validation test" =
       [%expect{| Named terminal QUUX does not exist |}]
 
     let%expect_test _ =
-      prelude_print_check "tm := FOO bar BAZ { op($2; $2) }";
-      [%expect{| tokens captured more than once: $2 |}]
+      prelude_print_check "tm := FOO bar = bar BAZ { op(bar; bar) }";
+      [%expect{| tokens captured more than once: bar |}]
 
     let%expect_test _ =
-      prelude_print_check
-        "tm := FOO bar BAZ QUUX { op(string($1); $2; var($3). integer($4)) }";
+      prelude_print_check {|
+        tm := foo = FOO bar = bar baz = BAZ quux = QUUX
+        { op(string(foo); bar; var(baz). integer(quux)) }
+      |};
       [%expect{| |}]
 
     let%expect_test _ =
-      prelude_print_check "tm := FOO bar BAZ { op($1; $2) }";
-      [%expect{| Terminals can only be captured by `var`, `integer`, and `string`: $1 (FOO) |}]
+      prelude_print_check "tm := foo = FOO bar = bar BAZ { op(foo; bar) }";
+      [%expect{| Terminals can only be captured by `var`, `integer`, and `string`: foo (FOO) |}]
 
     let%expect_test _ =
-      prelude_print_check "tm := FOO bar BAZ { op($2; $4) }";
-      [%expect{| Couldn't find captured token $4 |}]
+      prelude_print_check "tm := FOO bar = bar BAZ { op(bar; baz) }";
+      [%expect{| Couldn't find captured token baz |}]
+
+    let%expect_test _ =
+      prelude_print_check "tm := foo = foo foo = foo { op(foo) }";
+      [%expect{| Duplicate token name: foo |}]
 
   end)

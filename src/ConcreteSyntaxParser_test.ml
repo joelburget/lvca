@@ -42,13 +42,14 @@ let%test_module "ConcreteSyntax_Parser" =
         (PreTerminalRule ("SPACE", First " +"))
     ;;
 
-    let%test_unit _ = expect_parse P.capture_number "$2" 2
-
     let%test_unit _ =
-      expect_parse P.nonterminal_token__test "foo" (NonterminalName "foo")
+      expect_parse P.nonterminal_token__test "foo = bar"
+      (nonterminal_name (Some "foo") "bar")
     ;;
 
-    let%test_unit _ = expect_parse P.nonterminal_token__test "BAR" (TerminalName "BAR")
+    let%test_unit _ =
+      expect_parse P.nonterminal_token__test "foo = BAR"
+      (terminal_name (Some "foo") "BAR")
     let%test_unit _ = expect_parse P.nonterminal_token__test "_" (Underscore 1)
     let%test_unit _ = expect_parse P.nonterminal_token__test "_0" (Underscore 0)
 
@@ -66,14 +67,18 @@ let%test_module "ConcreteSyntax_Parser" =
     let%test_unit _ =
       expect_parse
         P.operator_match__test
-        "foo BAR baz { foo($1; $2) }"
+        "foo = foo bar = BAR baz = baz { quux(foo; bar) }"
         (OperatorMatch
-           { tokens = [ NonterminalName "foo"; TerminalName "BAR"; NonterminalName "baz" ]
+           { tokens =
+             [ nonterminal_name (Some "foo") "foo"
+             ; terminal_name (Some "bar") "BAR"
+             ; nonterminal_name (Some "baz") "baz"
+             ]
            ; operator_match_pattern =
                OperatorPattern
-                 ( "foo"
-                 , [ NumberedScopePattern ([], SingleCapturePattern 1)
-                   ; NumberedScopePattern ([], SingleCapturePattern 2)
+                 ( "quux"
+                 , [ NamedScopePattern ([], SingleCapturePattern "foo")
+                   ; NamedScopePattern ([], SingleCapturePattern "bar")
                    ] )
            })
     ;;
@@ -83,9 +88,9 @@ let%test_module "ConcreteSyntax_Parser" =
         P.nonterminal_rule__test
         {|
        arith :=
-         | arith ADD arith { add($1; $3) }
-         | arith SUB arith { sub($1; $3) }
-         | NAME            { $1          }
+         | a = arith ADD b = arith { add(a; b) }
+         | a = arith SUB b = arith { sub(a; b) }
+         | name = NAME             { var(name) }
     |}
         (NonterminalRule
            { nonterminal_name = "arith"
@@ -93,33 +98,36 @@ let%test_module "ConcreteSyntax_Parser" =
            ; operator_rules =
                [ OperatorMatch
                    { tokens =
-                       [ NonterminalName "arith"
-                       ; TerminalName "ADD"
-                       ; NonterminalName "arith"
+                       [ nonterminal_name (Some "a") "arith"
+                       ; terminal_name None "ADD"
+                       ; nonterminal_name (Some "b") "arith"
                        ]
                    ; operator_match_pattern =
                        OperatorPattern
                          ( "add"
-                         , [ NumberedScopePattern ([], SingleCapturePattern 1)
-                           ; NumberedScopePattern ([], SingleCapturePattern 3)
+                         , [ NamedScopePattern ([], SingleCapturePattern "a")
+                           ; NamedScopePattern ([], SingleCapturePattern "b")
                            ] )
                    }
                ; OperatorMatch
                    { tokens =
-                       [ NonterminalName "arith"
-                       ; TerminalName "SUB"
-                       ; NonterminalName "arith"
+                       [ nonterminal_name (Some "a") "arith"
+                       ; terminal_name None "SUB"
+                       ; nonterminal_name (Some "b") "arith"
                        ]
                    ; operator_match_pattern =
                        OperatorPattern
                          ( "sub"
-                         , [ NumberedScopePattern ([], SingleCapturePattern 1)
-                           ; NumberedScopePattern ([], SingleCapturePattern 3)
+                         , [ NamedScopePattern ([], SingleCapturePattern "a")
+                           ; NamedScopePattern ([], SingleCapturePattern "b")
                            ] )
                    }
                ; OperatorMatch
-                   { tokens = [ TerminalName "NAME" ]
-                   ; operator_match_pattern = SingleCapturePattern 1
+                   { tokens = [ terminal_name (Some "name") "NAME" ]
+                   ; operator_match_pattern = OperatorPattern
+                     ( "var"
+                     , [ NamedScopePattern ([], SingleCapturePattern "name") ]
+                     )
                    }
                ]
            })
@@ -130,7 +138,7 @@ let%test_module "ConcreteSyntax_Parser" =
         P.nonterminal_rule__test
         {|
           list : list(int())
-            := L_BRACKET [ inner_list ] R_BRACKET { $2 }
+            := L_BRACKET [ inner_list = inner_list ] R_BRACKET { inner_list }
         |}
         (NonterminalRule
            { nonterminal_name = "list"
@@ -138,13 +146,13 @@ let%test_module "ConcreteSyntax_Parser" =
            ; operator_rules =
                [ OperatorMatch
                    { tokens =
-                       [ TerminalName "L_BRACKET"
+                       [ terminal_name None "L_BRACKET"
                        ; OpenBox None
-                       ; NonterminalName "inner_list"
+                       ; nonterminal_name (Some "inner_list") "inner_list"
                        ; CloseBox
-                       ; TerminalName "R_BRACKET"
+                       ; terminal_name None "R_BRACKET"
                        ]
-                   ; operator_match_pattern = SingleCapturePattern 2
+                   ; operator_match_pattern = SingleCapturePattern "inner_list"
                    }
                ]
            })

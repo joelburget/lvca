@@ -30,8 +30,8 @@ rule read = parse
   | '>'            { RIGHT_ANGLE }
   | '.'            { DOT }
   | ":="           { ASSIGN }
+  | "="            { EQUALS }
   | ':'            { COLON }
-  | '$'            { DOLLAR }
   | '|'            { BAR }
   | ';'            { SEMICOLON }
   | '_'            { UNDERSCORE }

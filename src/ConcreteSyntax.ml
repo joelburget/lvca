@@ -1,6 +1,6 @@
 open Core_kernel
 module Nominal = Binding.Nominal
-module MSI = Util.MutableSet.Int
+module MSS = Util.MutableSet.String
 module Lexer = ConcreteSyntax_Lexer
 module Parser = ConcreteSyntax_Parser
 module ParseErrors = ConcreteSyntax_ParseErrors
@@ -23,22 +23,23 @@ let is_formatting_token : nonterminal_token -> bool =
  fun token -> match token with TerminalName _ | NonterminalName _ -> false | _ -> true
 ;;
 
-module IntStringTuple = struct
-  include Tuple.Make       (Int) (String)
-  include Tuple.Comparable (Int) (String)
+module StringStringTuple = struct
+  include Tuple.Make       (String) (String)
+  include Tuple.Comparable (String) (String)
 end
 
-type int_string_set = (int * string, IntStringTuple.comparator_witness) Set.t
+type string_string_set = (string * string, StringStringTuple.comparator_witness) Set.t
 
 (* Used to analyze token usage (see `token_usage`). We use this to check if there are any
    tokens not captured (a problem in some circumstances), or if there are tokens captured
    twice (always a problem). *)
 type tokens_info =
-  { captured_tokens : Int.Set.t
-  ; repeated_tokens : Int.Set.t
-  ; invalid_captured_terminals : int_string_set
+  { captured_tokens : String.Set.t
+  ; repeated_tokens : String.Set.t
+  ; invalid_captured_terminals : string_string_set
   }
 
+(** Concatenation for [tokens_info]. Reflexive and associative. *)
 let accumulate_tokens
     { captured_tokens = seen_toks
     ; repeated_tokens = repeated_toks
@@ -61,102 +62,158 @@ let accumulate_tokens
 ;;
 
 let empty_tokens_info =
-  { captured_tokens = Int.Set.empty
-  ; repeated_tokens = Int.Set.empty
-  ; invalid_captured_terminals = Set.empty (module IntStringTuple)
+  { captured_tokens = String.Set.empty
+  ; repeated_tokens = String.Set.empty
+  ; invalid_captured_terminals = Set.empty (module StringStringTuple)
   }
 ;;
 
 let special_patterns = String.Set.of_list ["var"; "integer"; "string"]
 ;;
 
-(** @raise InvalidGrammar *)
-let get_terminal_name : nonterminal_token Int.Table.t -> int -> int_string_set
-  = fun token_table token_num -> match Hashtbl.find token_table token_num with
-    | Some (TerminalName name)
-    -> Set.of_list (module IntStringTuple) [ token_num, name ]
+(** Get the named terminal name of the named terminal or None.
+
+ Example:
+
+ For the tokens [foo bar = BAR baz], [get_terminal_name tokens_table "bar"] returns
+ [Some "BAR"].
+
+ @raise InvalidGrammar *)
+let get_terminal_name : nonterminal_token String.Table.t -> string -> string option
+  = fun token_table binding_name -> match Hashtbl.find token_table binding_name with
+    | Some (TerminalName { token_name; _ })
+    -> Some token_name
     | Some (NonterminalName _)
-    -> Set.empty (module IntStringTuple)
+    -> None
     | Some tok
     -> invariant_violation (Printf.sprintf
       "get_terminal_name: structural token %s captured."
       (string_of_token tok))
     | None
     -> raise_invalid
-      (Printf.sprintf "Couldn't find captured token $%n" token_num)
+      (Printf.sprintf "Couldn't find captured token %s" binding_name)
 
+(** Get a singleton set of the named terminal name of the named terminal or an empty set.
+
+ This is a convenience wrapper around [get_terminal_name].
+
+ @raise InvalidGrammar *)
+let get_terminal_name_set
+  : nonterminal_token String.Table.t -> string -> string_string_set
+  = fun token_table binding_name -> match get_terminal_name token_table binding_name with
+  | None
+  -> Set.empty (module StringStringTuple)
+  | Some token_name
+  -> Set.of_list (module StringStringTuple) [ binding_name, token_name ]
+
+(** Get the token usage in an operator matching pattern.
+ *)
 let rec token_usage
-  : operator_match_pattern -> nonterminal_token Int.Table.t -> tokens_info
-  = fun pat numbered_toks -> match pat with
+  : nonterminal_token String.Table.t -> operator_match_pattern -> tokens_info
+  = fun lhs_named_toks pat -> match pat with
   | OperatorPattern (pat_name, scope_patterns)
   -> (match scope_patterns with
-     | [ NumberedScopePattern ([], SingleCapturePattern cap_num) ]
+     | [ NamedScopePattern ([], SingleCapturePattern cap_name) ]
      (* We still want to run this for the side-effect of checking for invalid
       * tokens. *)
-     -> let captured_terminals = get_terminal_name numbered_toks cap_num in
+     -> let captured_terminals = get_terminal_name_set lhs_named_toks cap_name in
         (* If we didn't capture a terminal then it's fine.
          * If the enclosing pattern is [var], [integer], or [string], then it's fine. *)
         if Set.is_empty captured_terminals || Set.mem special_patterns pat_name
         then { empty_tokens_info with
-          captured_tokens = Int.Set.singleton cap_num }
+          captured_tokens = String.Set.singleton cap_name }
         (* ... otherwise, there's an invalid capture *)
-        else { captured_tokens = Int.Set.singleton cap_num
-             ; repeated_tokens = Int.Set.empty
+        else { captured_tokens = String.Set.singleton cap_name
+             ; repeated_tokens = String.Set.empty
              ; invalid_captured_terminals = captured_terminals
              }
      | _
      -> scope_patterns
       |> List.fold_left ~init:empty_tokens_info ~f:(fun accum scope_pat ->
-             accumulate_tokens accum (scope_token_usage numbered_toks scope_pat))
+             accumulate_tokens accum (scope_token_usage lhs_named_toks scope_pat))
   )
 
-  | SingleCapturePattern cap_num
+  | SingleCapturePattern cap_name
   ->
-    let invalid_captured_terminals = get_terminal_name numbered_toks cap_num in
-    { captured_tokens = Int.Set.of_list [ cap_num ]
-    ; repeated_tokens = Int.Set.empty
+    (* Any captured terminals in a single capture pattern are invalid *)
+    let invalid_captured_terminals = get_terminal_name_set lhs_named_toks cap_name in
+    { captured_tokens = String.Set.of_list [ cap_name ]
+    ; repeated_tokens = String.Set.empty
     ; invalid_captured_terminals
     }
 
 and scope_token_usage
-  : nonterminal_token Int.Table.t -> numbered_scope_pattern -> tokens_info =
- fun numbered_toks (NumberedScopePattern (binder_captures, body_capture)) ->
-  let body_info = token_usage body_capture numbered_toks in
+  : nonterminal_token String.Table.t -> scope_pattern -> tokens_info
+  = fun lhs_named_toks (NamedScopePattern (binder_captures, body_capture)) ->
+  let body_info = token_usage lhs_named_toks body_capture in
   let scope_info =
     List.fold_left binder_captures ~init:empty_tokens_info ~f:(fun accum capture ->
         let tok = match capture with VarCapture n -> n | PatternCapture n -> n in
         accumulate_tokens
           accum
           { empty_tokens_info with
-            captured_tokens = Int.Set.of_list [ tok ]
+            captured_tokens = String.Set.of_list [ tok ]
           })
   in
   accumulate_tokens body_info scope_info
 ;;
 
-let check_operator_match_validity
-    :  nonterminal_token list -> operator_match_pattern
-    -> MSI.t * Int.Set.t * (int * nonterminal_token) list * int_string_set
-  =
- fun token_list term_pat ->
-  let numbered_toks = token_list
-    |> index_tokens
-    |> Fqueue.to_list
-    |> Int.Table.of_alist_exn
-  in
-  let { captured_tokens; repeated_tokens; invalid_captured_terminals }
-    = token_usage term_pat numbered_toks
-  in
-  let non_existent_tokens = MSI.create () in
+type operator_match_validity =
+  { non_existent_tokens : MSS.t
+  ; duplicate_captures : String.Set.t
+  ; uncaptured_tokens : nonterminal_token list
+  ; invalid_captured_terminals : string_string_set
+  }
 
-  Set.iter captured_tokens ~f:(fun tok_num ->
-      if Hashtbl.mem numbered_toks tok_num
-      then Hashtbl.remove numbered_toks tok_num
-      else MSI.add non_existent_tokens tok_num);
-  non_existent_tokens,
-    repeated_tokens,
-    Hashtbl.to_alist numbered_toks,
-    invalid_captured_terminals
+(** Check the validity of this operator match pattern
+ @raise [CheckValidExn]
+ *)
+let check_operator_match_validity
+  : nonterminal_token list -> operator_match_pattern -> operator_match_validity
+  = fun token_list term_pat ->
+
+  let indexed_tokens = token_list |> index_tokens |> Fqueue.to_list in
+
+  let unnamed_toks = List.filter_map indexed_tokens ~f:(function
+    | Some _name, _tok -> None
+    | None, tok -> Some tok)
+  in
+
+  (* Note we mutate this map by removing from it to turn it into the set of tokens
+   * mentioned on the lhs but not the rhs *)
+  let lhs_named_toks_or_not = indexed_tokens
+    |> List.filter_map ~f:(function
+      | Some name, tok -> Some (name, tok)
+      | None, _tok -> None)
+    |> String.Table.of_alist
+  in
+
+  let lhs_named_toks = match lhs_named_toks_or_not with
+    | `Ok map -> map
+    | `Duplicate_key key -> raise_invalid
+      (Printf.sprintf "Duplicate token name: %s" key)
+  in
+
+  let { captured_tokens; repeated_tokens; invalid_captured_terminals }
+    = token_usage lhs_named_toks term_pat
+  in
+
+  (* Tokens mentioned on rhs but not lhs *)
+  let non_existent_tokens = MSS.create () in
+
+  (* Look at all tokens mentioned on rhs *)
+  Set.iter captured_tokens ~f:(fun tok_name ->
+      if Hashtbl.mem lhs_named_toks tok_name
+      then Hashtbl.remove lhs_named_toks tok_name
+      else MSS.add non_existent_tokens tok_name);
+
+  let uncaptured_tokens = unnamed_toks @ Hashtbl.data lhs_named_toks in
+
+  { non_existent_tokens
+  ; duplicate_captures = repeated_tokens
+  ; uncaptured_tokens
+  ; invalid_captured_terminals
+  }
 ;;
 
 (** Check invariants of concrete syntax descriptions:
@@ -176,11 +233,11 @@ let check_operator_match_validity
  + There are no duplicate terminal or nonterminal names
 
  Examples:
- - [FOO bar BAZ { op($2) }] valid
- - [FOO bar BAZ { op($1; $3) }] invalid (uncaptured nonterminal)
- - [FOO bar BAZ { op($1; $2) }] possibly invalid (if BAZ isn't a string literal)
- - [FOO bar BAZ { op($2; $2) }] invalid (repeated token)
- - [FOO bar BAZ { op($2; $4) }] invalid (non-existent token)
+ - [FOO bar BAZ { op(bar) }] valid
+ - [FOO bar BAZ { op(FOO; BAZ) }] invalid (uncaptured nonterminal)
+ - [FOO bar BAZ { op(FOO; bar) }] invalid (FOO captured directly)
+ - [FOO bar BAZ { op(bar; bar) }] invalid (repeated token)
+ - [FOO bar BAZ { op(bar; quux) }] invalid (non-existent token)
  *)
 let check_description_validity { terminal_rules; nonterminal_rules } =
   let terminal_names = terminal_rules
@@ -202,7 +259,7 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
 
     let terminal_rules' = String.Map.of_alist_exn terminal_rules in
     let show_toks toks =
-      toks |> List.map ~f:(Printf.sprintf "$%n") |> String.concat ~sep:", "
+      toks |> List.map ~f:(Printf.sprintf "%s") |> String.concat ~sep:", "
     in
     let open_depth = ref 0 in
     nonterminal_rules
@@ -210,53 +267,54 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
            operator_rules
            |> List.iter
                 ~f:(fun (OperatorMatch { tokens; operator_match_pattern }) ->
-                  let non_existent_tokens, duplicate_captures, uncaptured_tokens,
-                      invalid_captured_terminals =
+                  let { non_existent_tokens
+                      ; duplicate_captures
+                      ; uncaptured_tokens
+                      ; invalid_captured_terminals } =
                     check_operator_match_validity tokens operator_match_pattern
                   in
                   if not (Set.is_empty duplicate_captures)
                   then (
                     let tok_names = duplicate_captures |> Set.to_list |> show_toks in
                     raise_invalid ("tokens captured more than once: " ^ tok_names));
-                  if not (MSI.is_empty non_existent_tokens)
+                  if not (MSS.is_empty non_existent_tokens)
                   then (
-                    let tok_names = non_existent_tokens |> MSI.to_list |> show_toks in
+                    let tok_names = non_existent_tokens |> MSS.to_list |> show_toks in
                     raise_invalid ("non-existent tokens mentioned: " ^ tok_names));
                   if not (Set.is_empty invalid_captured_terminals)
                   then (
                     let tok_names = invalid_captured_terminals
                       |> Set.to_list
-                      |> List.map ~f:(fun (num, tok) -> Printf.sprintf
-                        "$%n (%s)" num tok
+                      |> List.map ~f:(fun (name, tok) -> Printf.sprintf
+                        "%s (%s)" name tok
                       )
                       |> String.concat ~sep:", "
                     in
                     raise_invalid ("Terminals can only be captured by `var`, \
                       `integer`, and `string`: " ^ tok_names));
-                  List.iter uncaptured_tokens ~f:(fun (_i, tok) ->
-                      match tok with
-                      | NonterminalName name ->
-                        raise_invalid ("uncaptured nonterminal: " ^ name)
-                      | TerminalName nt_name ->
-                        (match Map.find terminal_rules' nt_name with
-                        | None ->
-                          raise_invalid ("Named terminal " ^ nt_name ^ " does not exist")
-                        | Some regex ->
-                          if is_none (Regex.is_literal regex)
-                          then
-                            raise_invalid
-                              (Printf.sprintf
-                              "Uncaptured regex which is not a string literal: /%s/"
-                              (Regex.to_string regex)))
-                      | OpenBox _ -> incr open_depth
-                      | CloseBox ->
-                        if !open_depth <= 0
+                  List.iter uncaptured_tokens ~f:(function
+                    | NonterminalName { token_name; _ } ->
+                      raise_invalid ("uncaptured nonterminal: " ^ token_name)
+                    | TerminalName { token_name; _ } ->
+                      (match Map.find terminal_rules' token_name with
+                      | None -> raise_invalid
+                        ("Named terminal " ^ token_name ^ " does not exist")
+                      | Some regex ->
+                        if is_none (Regex.is_literal regex)
                         then
                           raise_invalid
-                            "Invalid box structure (saw a close box marker (']') before \
-                             its opening marker ('['))!";
-                        decr open_depth
-                      | Underscore _ -> ())));
+                            (Printf.sprintf
+                            "Uncaptured regex which is not a string literal: /%s/"
+                            (Regex.to_string regex)))
+                    | OpenBox _ -> incr open_depth
+                    | CloseBox ->
+                      if !open_depth <= 0
+                      then
+                        raise_invalid
+                          "Invalid box structure (saw a close box marker (']') before \
+                           its opening marker ('['))!";
+                      decr open_depth
+                    | Underscore _ -> ())));
     if !open_depth <> 0
     then
       raise_invalid
@@ -264,7 +322,8 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
          close box markers (']'))";
     Map.iter terminal_rules' ~f:(fun regex ->
         if Regex.accepts_empty regex
-        then raise_invalid ("Regex accepts empty strings: " ^ Regex.to_string regex));
+        then raise_invalid
+          (Printf.sprintf "Regex accepts empty strings: /%s/" (Regex.to_string regex)));
     None
   with
   | CheckValidExn err -> Some err
@@ -301,12 +360,11 @@ let prim_to_ast : string -> formatted_tree -> Primitive.t =
   | _ -> raise @@ ToAstError "TODO: message"
 ;;
 
-let get_operator_match
-    : ConcreteSyntaxDescription.t -> formatted_tree -> operator_match_pattern
+let get_operator_match : ConcreteSyntaxDescription.t -> formatted_tree -> operator_match'
   =
  fun rules tree ->
   let nt_name, nt_prod_no = tree.tree_info in
-  let (OperatorMatch { operator_match_pattern; _ }) =
+  let OperatorMatch operator_match =
     String.Map.find rules.nonterminal_rules nt_name
     |> get_option (ToAstError "TODO: message")
     |> fun (NonterminalRule { operator_rules; _ }) ->
@@ -319,142 +377,195 @@ let get_operator_match
         |> String.concat ~sep:"\n")
     )
   in
-  operator_match_pattern
+  operator_match
 ;;
 
-let array_get : string -> 'a array -> int -> 'a =
- fun msg arr i ->
-  if i >= 0 && i < Array.length arr
-  then arr.(i)
-  else
-    Util.invariant_violation
-      (Printf.sprintf
-         "failed array get in %s: index %n, length %n"
-         msg
-         i
-         (Array.length arr))
+(** Get a named token from the array of children tokens.
+ @raise InvariantViolation
+ *)
+let array_get : string -> int String.Map.t -> 'a array -> string -> 'a =
+ fun msg token_nums arr name -> match Map.find token_nums name with
+   | None ->
+       Util.invariant_violation
+         (Printf.sprintf
+            "failed array get in %s: name %s, known names %s"
+            msg
+            name
+            (token_nums |> Map.keys |> String.concat ~sep:", "))
+   | Some i ->
+     if i >= 0 && i < Array.length arr
+     then arr.(i)
+     else
+       Util.invariant_violation
+         (Printf.sprintf
+            "failed array get in %s: index %n, length %n"
+            msg
+            i
+            (Array.length arr))
 ;;
+
+(** Get a mapping from token name to its index *)
+let nums_of_operator_match : nonterminal_token list -> int String.Map.t
+  = fun toks ->
+   let m = toks
+     |> List.filter ~f:(function
+       | NonterminalName _ | TerminalName _ -> true
+       | _ -> false)
+     |> List.filter_mapi ~f:(fun i tok -> match tok with
+       | NonterminalName { binding_name = Some binding_name; _ }
+       | TerminalName { binding_name = Some binding_name; _ }
+       -> Some (binding_name, i)
+       | _ -> None)
+     |> String.Map.of_alist
+   in
+   match m with
+     | `Duplicate_key k -> invariant_violation
+       ("nums_of_operator_match: duplicate token binding name: " ^ k)
+     | `Ok m' -> m'
 
 (* Convert a concrete tree to an AST. We ignore trivia. *)
-let rec tree_to_ast : ConcreteSyntaxDescription.t -> formatted_tree -> Nominal.term =
+let rec tree_to_ast
+  :  ConcreteSyntaxDescription.t
+  -> formatted_tree
+  -> Nominal.term =
  fun rules tree ->
   let nt_name, _ = tree.tree_info in
   match nt_name with
   | "list" -> failwith "TODO"
   | "string" | "integer" -> Primitive (prim_to_ast nt_name tree)
-  | _ -> tree |> get_operator_match rules |> go_op_match_term rules tree.children
+  | _ ->
+    let { operator_match_pattern; tokens } = get_operator_match rules tree in
+    let token_nums = nums_of_operator_match tokens in
+    go_op_match_term rules token_nums tree.children operator_match_pattern
 
 and go_op_match_term
-    :  ConcreteSyntaxDescription.t -> formatted_capture array -> operator_match_pattern
+    :  ConcreteSyntaxDescription.t
+    -> int String.Map.t
+    -> formatted_capture array
+    -> operator_match_pattern
     -> Nominal.term
-  = fun rules children op_match_pat ->
+  = fun rules token_nums children op_match_pat ->
   match op_match_pat with
-  | OperatorPattern ("var", [ NumberedScopePattern ([], SingleCapturePattern n) ]) ->
-    (match array_get "go_op_match_term 1" children (n - 1) with
+  | OperatorPattern ("var", [ NamedScopePattern ([], SingleCapturePattern name) ]) ->
+    (match array_get "go_op_match_term 1" token_nums children name with
     | NonterminalCapture _
     -> invariant_violation "go_op_match_term: var captured a nonterminal"
     | TerminalCapture { content; _ } -> Var content)
-  | OperatorPattern ("integer", [ NumberedScopePattern ([], SingleCapturePattern n) ]) ->
-    (match array_get "go_op_match_term 2" children (n - 1) with
+  | OperatorPattern ("integer", [ NamedScopePattern ([], SingleCapturePattern name) ]) ->
+    (match array_get "go_op_match_term 2" token_nums children name with
     | NonterminalCapture _
     -> invariant_violation "go_op_match_term: integer captured a nonterminal"
     | TerminalCapture { content; _ } -> Primitive (PrimInteger (Bigint.of_string content)))
-  | OperatorPattern ("string", [ NumberedScopePattern ([], SingleCapturePattern n) ]) ->
-    (match array_get "go_op_match_term 2" children (n - 1) with
+  | OperatorPattern ("string", [ NamedScopePattern ([], SingleCapturePattern name) ]) ->
+    (match array_get "go_op_match_term 2" token_nums children name with
     | NonterminalCapture _
     -> invariant_violation "go_op_match_term: integer captured a nonterminal"
     | TerminalCapture { content; _ } -> Primitive (PrimString content))
   | OperatorPattern (name, scope_pats) ->
-    Operator (name, List.map scope_pats ~f:(go_numbered_scope_term rules children))
-  | SingleCapturePattern n ->
-    (match array_get "go_op_match_term 3" children (n - 1) with
+    Operator (name, List.map scope_pats ~f:(go_named_scope_term rules token_nums children))
+  | SingleCapturePattern name ->
+    (match array_get "go_op_match_term 3" token_nums children name with
     | NonterminalCapture tree -> tree_to_ast rules tree
     | TerminalCapture { content; _ } ->
       invariant_violation
         (Printf.sprintf
            "go_op_match_term: Single capture pattern unexpectedly received a terminal \
-            when a nonterminal child was expected: $%n -> \"%s\""
-           n
+            when a nonterminal child was expected: %s -> \"%s\""
+           name
            content))
 
-and go_numbered_scope_term
+and go_named_scope_term
     :  ConcreteSyntaxDescription.t
+    -> int String.Map.t
     -> formatted_capture array
-    -> numbered_scope_pattern
+    -> scope_pattern
     -> Nominal.scope
   =
- fun rules children (NumberedScopePattern (cap_nums, op_match_pat)) ->
+ fun rules token_nums children (NamedScopePattern (cap_names, op_match_pat)) ->
   Scope
-    ( cap_nums
+    ( cap_names
       |> List.map ~f:(function
-             | VarCapture n ->
-               (match array_get "go_numbered_scope_term" children (n - 1) with
+             | VarCapture name ->
+               (match array_get "go_named_scope_term" token_nums children name with
                | TerminalCapture { content; _ } -> Pattern.Var content
                | NonterminalCapture tree ->
                  failwith
                    (Printf.sprintf (* TODO: error *)
-                      "go_numbered_scope_term: Unexpectedly received a nonterminal when \
-                       a terminal child was expected (matching a var): child %n -> %s"
-                      n
+                      "go_named_scope_term: Unexpectedly received a nonterminal when \
+                       a terminal child was expected (matching a var): child %s -> %s"
+                      name
                       (to_string tree)))
-             | PatternCapture n ->
-               (match array_get "go_numbered_scope_term" children (n - 1) with
-               | NonterminalCapture tree -> tree_to_pattern rules tree
+             | PatternCapture name ->
+               (match array_get "go_named_scope_term" token_nums children name with
+               | NonterminalCapture tree -> tree_to_pattern rules token_nums tree
                | TerminalCapture { content; _ } ->
                  failwith
                    (Printf.sprintf (* TODO: error *)
-                      "go_numbered_scope_term: Unexpectedly received a terminal when a \
-                       nonterminal child was expected (matching a pattern): child %n -> \
+                      "go_named_scope_term: Unexpectedly received a terminal when a \
+                       nonterminal child was expected (matching a pattern): child %s -> \
                        \"%s\""
-                      n
+                      name
                       content)))
-    , go_op_match_term rules children op_match_pat )
+    , go_op_match_term rules token_nums children op_match_pat)
 
-and tree_to_pattern : ConcreteSyntaxDescription.t -> formatted_tree -> Pattern.t =
- fun rules tree ->
+and tree_to_pattern
+  :  ConcreteSyntaxDescription.t
+  -> int String.Map.t
+  -> formatted_tree
+  -> Pattern.t =
+ fun rules token_nums tree ->
   let nt_name, _ = tree.tree_info in
   match nt_name with
   | "list" -> failwith "TODO"
   | "string" | "integer" -> Primitive (prim_to_ast nt_name tree)
-  | _ -> tree |> get_operator_match rules |> go_op_match_pattern rules tree.children
+  | _ ->
+    let { operator_match_pattern; _ } = get_operator_match rules tree in
+    go_op_match_pattern rules token_nums tree.children operator_match_pattern
 
 and go_op_match_pattern
-    :  ConcreteSyntaxDescription.t -> formatted_capture array -> operator_match_pattern
+    :  ConcreteSyntaxDescription.t
+    -> int String.Map.t
+    -> formatted_capture array
+    -> operator_match_pattern
     -> Pattern.t
   =
- fun rules children op_match_pat ->
+ fun rules token_nums children op_match_pat ->
   match op_match_pat with
-  | OperatorPattern ("var", [ NumberedScopePattern ([], SingleCapturePattern n) ]) ->
-    (match array_get "go_op_match_pattern 1" children (n - 1) with
+  | OperatorPattern ("var", [ NamedScopePattern ([], SingleCapturePattern name) ]) ->
+    (match array_get "go_op_match_pattern 1" token_nums children name with
     | NonterminalCapture _ -> failwith "TODO: error"
     | TerminalCapture { content; _ } -> Var content)
   | OperatorPattern ("var", _) -> failwith "TODO: error"
   | OperatorPattern (name, scope_pats) ->
-    Operator (name, List.map scope_pats ~f:(go_numbered_scope_pattern rules children))
-  | SingleCapturePattern n ->
-    (match array_get "go_op_match_pattern 2" children (n - 1) with
-    | NonterminalCapture tree -> tree_to_pattern rules tree
+    Operator (name, List.map scope_pats ~f:(go_scope_pattern rules token_nums children))
+  | SingleCapturePattern name ->
+    (match array_get "go_op_match_pattern 2" token_nums children name with
+    | NonterminalCapture tree -> tree_to_pattern rules token_nums tree
     | TerminalCapture { content; _ } ->
       failwith
         (Printf.sprintf (* TODO: error *)
            "go_op_match_pattern: Unexpectedly received a terminal when a nonterminal \
-            child was expected: child %n -> \"%s\""
-           n
+            child was expected: child %s -> \"%s\""
+           name
            content))
 
-and go_numbered_scope_pattern
-    :  ConcreteSyntaxDescription.t -> formatted_capture array -> numbered_scope_pattern
+and go_scope_pattern
+    :  ConcreteSyntaxDescription.t
+    -> int String.Map.t
+    -> formatted_capture array
+    -> scope_pattern
     -> Pattern.t
   =
- fun rules children (NumberedScopePattern (cap_nums, op_match_pat)) ->
-  if List.length cap_nums > 0 then raise @@ ToAstError "TODO: message";
-  go_op_match_pattern rules children op_match_pat
+ fun rules token_nums children (NamedScopePattern (cap_names, op_match_pat)) ->
+  if List.length cap_names > 0 then raise @@ ToAstError "TODO: message";
+  go_op_match_pattern rules token_nums children op_match_pat
 ;;
 
 let to_ast
     : ConcreteSyntaxDescription.t -> formatted_tree -> (Nominal.term, string) Result.t
   =
- fun rules tree -> try Ok (tree_to_ast rules tree) with ToAstError msg -> Error msg
+ fun rules tree ->
+   try Ok (tree_to_ast rules tree) with ToAstError msg -> Error msg
 ;;
 
 (*
@@ -465,8 +576,8 @@ module TestOperators = struct
       ; operator_match_pattern =
           OperatorPattern
             ( "mul"
-            , [ NumberedScopePattern ([], SingleCapturePattern 1)
-              ; NumberedScopePattern ([], SingleCapturePattern 3)
+            , [ NamedScopePattern ([], SingleCapturePattern 1)
+              ; NamedScopePattern ([], SingleCapturePattern 3)
               ] )
       }
   ;;
@@ -477,8 +588,8 @@ module TestOperators = struct
       ; operator_match_pattern =
           OperatorPattern
             ( "div"
-            , [ NumberedScopePattern ([], SingleCapturePattern 1)
-              ; NumberedScopePattern ([], SingleCapturePattern 3)
+            , [ NamedScopePattern ([], SingleCapturePattern 1)
+              ; NamedScopePattern ([], SingleCapturePattern 3)
               ] )
       }
   ;;
@@ -489,8 +600,8 @@ module TestOperators = struct
       ; operator_match_pattern =
           OperatorPattern
             ( "add"
-            , [ NumberedScopePattern ([], SingleCapturePattern 1)
-              ; NumberedScopePattern ([], SingleCapturePattern 3)
+            , [ NamedScopePattern ([], SingleCapturePattern 1)
+              ; NamedScopePattern ([], SingleCapturePattern 3)
               ] )
       }
   ;;
@@ -501,8 +612,8 @@ module TestOperators = struct
       ; operator_match_pattern =
           OperatorPattern
             ( "sub"
-            , [ NumberedScopePattern ([], SingleCapturePattern 1)
-              ; NumberedScopePattern ([], SingleCapturePattern 3)
+            , [ NamedScopePattern ([], SingleCapturePattern 1)
+              ; NamedScopePattern ([], SingleCapturePattern 3)
               ] )
       }
   ;;
@@ -523,23 +634,25 @@ module TestOperators = struct
 end
 *)
 
-(** @raise [InvariantViolation] *)
+(** Convert a [nonterminal_token] to a [symbol].
+
+ @raise [InvariantViolation]
+ *)
 let convert_token
     :  LrParsing.terminal_num String.Map.t -> int String.Map.t -> nonterminal_token
     -> LrParsing.symbol
-  =
- fun terminal_nums nonterminal_entry -> function
-  | TerminalName tn ->
+  = fun terminal_nums nonterminal_entry -> function
+  | TerminalName { token_name; _ } ->
     Terminal
-      (String.Map.find terminal_nums tn
-      |> get_option' (fun () -> "to_grammar: failed to get terminal " ^ tn))
-  | NonterminalName nt_name ->
+      (String.Map.find terminal_nums token_name
+      |> get_option' (fun () -> "to_grammar: failed to get terminal " ^ token_name))
+  | NonterminalName { token_name; _ } ->
     Nonterminal
-      (String.Map.find nonterminal_entry nt_name
+      (String.Map.find nonterminal_entry token_name
       |> get_option' (fun () ->
              Printf.sprintf
                "convert_token: couldn't find nonterminal %s in names: %s"
-               nt_name
+               token_name
                (nonterminal_entry |> String.Map.keys |> Util.stringify_list Fn.id ", ")))
   | OpenBox _ | CloseBox | Underscore _ ->
     invariant_violation

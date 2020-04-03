@@ -206,31 +206,16 @@ let string_of_subterm_result : subterm_result -> string
 exception UserError of string
 exception NoMatch of string
 
-(** Go through every token giving it an index. Underscores and boxes are all
- indexed 0, terminals and nonterminals are indexed from 1.
- *)
-let index_tokens : nonterminal_token list -> (int * nonterminal_token) Fqueue.t
-  = fun tokens -> tokens
-    |> List.fold_left
-      ~init:(1, Fqueue.empty)
-      ~f:(fun (ix, indexed_toks) tok -> match tok with
-        | Underscore _
-        | OpenBox _
-        | CloseBox
-        -> ix, Fqueue.enqueue indexed_toks (0, tok)
-        | _
-        -> ix + 1, Fqueue.enqueue indexed_toks (ix, tok))
-    |> snd
-
-(** Go through every token giving it an index. Underscores and boxes are not
- * indexed *)
-let map_index_tokens
-  : nonterminal_token list -> nonterminal_token Int.Map.t
-  = fun tokens -> tokens
-    |> index_tokens
-    |> Fqueue.to_list
-    |> List.filter ~f:(fun (i, _) -> i <> 0)
-    |> Int.Map.of_alist_exn
+(** Go through every named token, collecting the naming mapping. *)
+let index_tokens : nonterminal_token list -> (string option * nonterminal_token) Fqueue.t
+  = fun tokens -> List.fold_left tokens
+    ~init:Fqueue.empty
+    ~f:(fun indexed_toks tok -> match tok with
+      | TerminalName { binding_name; _ }
+      | NonterminalName { binding_name; _ }
+      -> Fqueue.enqueue indexed_toks (binding_name, tok)
+      | _
+      -> Fqueue.enqueue indexed_toks (None, tok))
 
 let string_of_op_match_line
   : nonterminal_token list -> operator_match_pattern -> string
@@ -239,10 +224,10 @@ let string_of_op_match_line
     (string_of_operator_match_pattern op_match_pat)
 
 let string_of_op_match_line'
-  : nonterminal_token list -> numbered_scope_pattern -> string
+  : nonterminal_token list -> scope_pattern -> string
   = fun tokens op_match_pat -> Printf.sprintf "%s { ... %s ... }"
     (string_of_tokens tokens)
-    (string_of_numbered_scope_pattern op_match_pat)
+    (string_of_scope_pattern op_match_pat)
 
 let rec concretize_sort : sort String.Map.t -> sort -> sort
   = fun env -> function
@@ -293,17 +278,17 @@ let rec get_subpatterns
   -> sort
   -> operator_match_pattern
   -> Pattern.t
-  -> subterm_result Int.Map.t
+  -> subterm_result String.Map.t
   = fun sort_defs current_sort op_match_pat pat ->
     match op_match_pat, pat with
-  | SingleCapturePattern num, _
-  | OperatorPattern ("var", [NumberedScopePattern([], SingleCapturePattern num)])
+  | SingleCapturePattern name, _
+  | OperatorPattern ("var", [NamedScopePattern([], SingleCapturePattern name)])
   , Var _
-  | OperatorPattern ("integer", [NumberedScopePattern([], SingleCapturePattern num)])
+  | OperatorPattern ("integer", [NamedScopePattern([], SingleCapturePattern name)])
   , Primitive (PrimInteger _)
-  | OperatorPattern ("string", [NumberedScopePattern([], SingleCapturePattern num)])
+  | OperatorPattern ("string", [NamedScopePattern([], SingleCapturePattern name)])
   , Primitive (PrimString _)
-  -> Int.Map.of_alist_exn [ num, CapturedBinder (current_sort, pat) ]
+  -> String.Map.singleton name (CapturedBinder (current_sort, pat))
   | OperatorPattern (l_op_name, l_body_pats), Operator (r_op_name, r_body_pats)
   -> if String.(l_op_name = r_op_name) &&
         List.(length l_body_pats = length r_body_pats)
@@ -324,19 +309,19 @@ let rec get_subpatterns
        let Arity (_, valences) = arity' in
 
        List.map3_exn l_body_pats r_body_pats valences
-         ~f:(fun (NumberedScopePattern (caps, l_body_pat) as npat)
+         ~f:(fun (NamedScopePattern (caps, l_body_pat) as npat)
                  r_body_pat valence ->
            if List.length caps > 0
            then invariant_violation (Printf.sprintf
              "get_subpatterns: found numbered pattern (%s) matching binders"
-             (string_of_numbered_scope_pattern npat));
+             (string_of_scope_pattern npat));
            match valence with
              | FixedValence ([], body_sort)
              -> get_subpatterns sort_defs body_sort l_body_pat r_body_pat
              | _ -> invariant_violation (Printf.sprintf
                "get_subpatterns: binding valence found: %s"
                (string_of_valence valence)))
-       |> Util.int_map_unions
+       |> Util.string_map_unions
      else raise (NoMatch
        "pattern and operator don't match, either in operator name or subterms")
   | OperatorPattern _, _
@@ -367,17 +352,17 @@ let rec get_subterms
   -> sort
   -> operator_match_pattern
   -> Binding.Nominal.term
-  -> subterm_result Int.Map.t
+  -> subterm_result String.Map.t
   = fun sort_defs current_sort op_match_pat tm ->
     match op_match_pat, tm with
-  | SingleCapturePattern num, _
-  | OperatorPattern ("var", [NumberedScopePattern([], SingleCapturePattern num)])
+  | SingleCapturePattern name, _
+  | OperatorPattern ("var", [NamedScopePattern([], SingleCapturePattern name)])
   , Var _
-  | OperatorPattern ("integer", [NumberedScopePattern([], SingleCapturePattern num)])
+  | OperatorPattern ("integer", [NamedScopePattern([], SingleCapturePattern name)])
   , Primitive (PrimInteger _)
-  | OperatorPattern ("string", [NumberedScopePattern([], SingleCapturePattern num)])
+  | OperatorPattern ("string", [NamedScopePattern([], SingleCapturePattern name)])
   , Primitive (PrimString _)
-  -> Int.Map.of_alist_exn [ num, CapturedTerm (current_sort, tm) ]
+  -> String.Map.singleton name (CapturedTerm (current_sort, tm))
   | OperatorPattern (pat_op_name, body_pats), Operator (op_name, body_scopes)
   -> if String.(pat_op_name = op_name) &&
         List.(length body_pats = length body_scopes)
@@ -405,7 +390,7 @@ let rec get_subterms
        let Arity (_, valences) = arity' in
        (List.map3_exn body_pats body_scopes valences
          ~f:(get_scope_subterms sort_defs)
-       |> Util.int_map_unions
+       |> Util.string_map_unions
      )
      else raise (NoMatch (Printf.sprintf
        "pattern %s and operator %s don't match, in either operator name or \
@@ -428,13 +413,13 @@ let rec get_subterms
 *)
 and get_scope_subterms
   :  sort_defs
-  -> numbered_scope_pattern
+  -> scope_pattern
   -> Binding.Nominal.scope
   -> valence
-  -> subterm_result Int.Map.t
+  -> subterm_result String.Map.t
   = fun
     sort_defs
-    (NumberedScopePattern (numbered_patterns, body_pat) as numbered_pat)
+    (NamedScopePattern (numbered_patterns, body_pat) as numbered_pat)
     (Scope (term_patterns, body))
     valence ->
 
@@ -449,7 +434,7 @@ and get_scope_subterms
            | _ -> invariant_violation (Printf.sprintf
            "get_scope_subterms: multiple numbered binder patterns (%s) for \
            variable valence %s"
-           (string_of_numbered_scope_pattern numbered_pat)
+           (string_of_scope_pattern numbered_pat)
            (string_of_valence valence))
          in
          let pat = match term_patterns with
@@ -485,34 +470,32 @@ and get_scope_subterms
             | PatternCapture captured_token_num, _ ->
               captured_token_num, capture
           )
-          |> Int.Map.of_alist_exn
+          |> String.Map.of_alist_exn
         in
 
         let body_bindings = get_subterms sort_defs body_sort body_pat body in
         pattern_bindings, body_bindings
     in
 
-    Int.Map.merge pattern_bindings body_bindings ~f:(fun ~key -> function
+    String.Map.merge pattern_bindings body_bindings ~f:(fun ~key -> function
       | `Both _ -> raise
-        (UserError (Printf.sprintf "duplicate token capture: $%n" key))
+        (UserError (Printf.sprintf "duplicate token capture: %s" key))
       | `Left v | `Right v -> Some v
     )
 
-(** Check that nonterminal mentioned in tokens appears in the subterm mapping.
+(** Check that each token mentioned in tokens appears in the subterm mapping.
  *)
-let check_tokens subterms tokens : unit = tokens
-  |> index_tokens
-  |> Fqueue.iter ~f:(fun (tok_ix, tok) -> match tok with
-    | NonterminalName _ ->
-      if not (Map.mem subterms tok_ix)
+let check_tokens
+  : subterm_result String.Map.t -> nonterminal_token list -> unit
+  = fun subterms tokens -> List.iter tokens ~f:(function
+    | NonterminalName { binding_name = Some binding_name; _ }
+    | TerminalName { binding_name = Some binding_name; _ } ->
+      if not (Map.mem subterms binding_name)
       then (
-        let available_keys = subterms
-          |> Map.keys
-          |> Util.stringify_list string_of_int ", "
-        in
+        let available_keys = subterms |> Map.keys |> String.concat ~sep:", " in
         failwith (Printf.sprintf
-          "error: key missing in pattern: $%n. available keys: %s"
-          tok_ix available_keys)
+          "error: key missing in pattern: %s. available keys: %s"
+          binding_name available_keys)
       )
     | _ -> ()
   )
@@ -529,9 +512,9 @@ type found_operator_match =
   ; tokens: nonterminal_token list
   (** The tokens associated with the matching operator *)
 
-  ; subterms: subterm_result Int.Map.t
-  (** A match against pattern [foo($1. $2; $3)] will produce a map of subterms
-   with entries for 1, 2, and 3 *)
+  ; subterms: subterm_result String.Map.t
+  (** A match against pattern [foo(a. b; c)] will produce a map of subterms
+   with entries for a, b, and c *)
   }
 
 let get_operator : sort_defs -> string -> string -> operator_def
@@ -607,27 +590,27 @@ let%test_module "find_operator_match" = (module struct
   open Binding.Nominal
 
   let unit_op_match = OperatorMatch
-    { tokens = [ TerminalName "UNIT" ]
+    { tokens = [ terminal_name None "UNIT" ]
     ; operator_match_pattern = OperatorPattern ("unit", [])
     }
 
   let num_op_match = OperatorMatch
-    { tokens = [ TerminalName "NUM" ]
+    { tokens = [ terminal_name (Some "n") "NUM" ]
     ; operator_match_pattern = OperatorPattern ("num", [
-        NumberedScopePattern ([],
+        NamedScopePattern ([],
           OperatorPattern ("integer", [
-            NumberedScopePattern ([], SingleCapturePattern 1)
+            NamedScopePattern ([], SingleCapturePattern "n")
           ])
         )
       ])
     }
 
   let str_op_match = OperatorMatch
-    { tokens = [ TerminalName "STR" ]
+    { tokens = [ terminal_name (Some "str") "STR" ]
     ; operator_match_pattern = OperatorPattern ("str", [
-        NumberedScopePattern ([],
+        NamedScopePattern ([],
           OperatorPattern ("string", [
-            NumberedScopePattern ([], SingleCapturePattern 1)
+            NamedScopePattern ([], SingleCapturePattern "str")
           ])
         )
       ])
@@ -635,45 +618,45 @@ let%test_module "find_operator_match" = (module struct
 
   let add_op_match = OperatorMatch
     { tokens = [
-        NonterminalName "expr";
-        TerminalName "ADD";
-        NonterminalName "expr";
+        nonterminal_name (Some "a") "expr";
+        terminal_name None "ADD";
+        nonterminal_name (Some "b") "expr";
       ]
     ; operator_match_pattern = OperatorPattern ("add", [
-        NumberedScopePattern ([], SingleCapturePattern 1);
-        NumberedScopePattern ([], SingleCapturePattern 3);
+        NamedScopePattern ([], SingleCapturePattern "a");
+        NamedScopePattern ([], SingleCapturePattern "b");
       ])
     }
 
   let paren_op_match = OperatorMatch
     { tokens = [
-        TerminalName "LPAREN";
-        NonterminalName "expr";
-        TerminalName "RPAREN";
+        terminal_name None "LPAREN";
+        nonterminal_name (Some "expr") "expr";
+        terminal_name None "RPAREN";
       ]
-    ; operator_match_pattern = SingleCapturePattern 2
+    ; operator_match_pattern = SingleCapturePattern "expr"
     }
 
   let lam_op_match = OperatorMatch
     { tokens = [
-        TerminalName "FUN";
-        TerminalName "NAME";
-        TerminalName "ARROW";
-        NonterminalName "expr";
+        terminal_name None "FUN";
+        terminal_name (Some "name") "NAME";
+        terminal_name None "ARROW";
+        nonterminal_name (Some "expr") "expr";
       ]
     ; operator_match_pattern = OperatorPattern ("lam", [
-      NumberedScopePattern ([VarCapture 2], SingleCapturePattern 4)
+      NamedScopePattern ([VarCapture "name"], SingleCapturePattern "expr")
       ])
     }
 
   let match_line_match = OperatorMatch
     { tokens = [
-        NonterminalName "expr";
-        TerminalName "ARROW";
-        NonterminalName "expr";
+        nonterminal_name (Some "pat") "expr";
+        terminal_name None "ARROW";
+        nonterminal_name (Some "tm") "expr";
       ]
     ; operator_match_pattern = OperatorPattern ("match_line", [
-      NumberedScopePattern ([PatternCapture 1], SingleCapturePattern 3)
+      NamedScopePattern ([PatternCapture "pat"], SingleCapturePattern "tm")
       ])
     }
 
@@ -690,29 +673,29 @@ let%test_module "find_operator_match" = (module struct
   let list_operator_rules = [
     OperatorMatch
       { tokens = [
-          TerminalName "NIL";
+          terminal_name None "NIL";
         ]
       ; operator_match_pattern = OperatorPattern ("nil", [])
       };
 
     OperatorMatch
       { tokens = [
-          NonterminalName "nonempty_list"
+          nonterminal_name (Some "nonempty_list") "nonempty_list"
         ]
-      ; operator_match_pattern = SingleCapturePattern 1
+      ; operator_match_pattern = SingleCapturePattern "nonempty_list"
       }
   ]
 
   let nonempty_list_operator_rules = [
     OperatorMatch
       { tokens = [
-          NonterminalName "integer";
-          TerminalName "::";
-          NonterminalName "list";
+          nonterminal_name (Some "i") "integer";
+          terminal_name None "::";
+          nonterminal_name (Some "list") "list";
         ]
       ; operator_match_pattern = OperatorPattern ("cons", [
-          NumberedScopePattern([], SingleCapturePattern 1);
-          NumberedScopePattern([], SingleCapturePattern 3);
+          NamedScopePattern([], SingleCapturePattern "i");
+          NamedScopePattern([], SingleCapturePattern "list");
         ])
       }
   ]
@@ -764,7 +747,7 @@ let%test_module "find_operator_match" = (module struct
     }
 
   let print_subterms = Map.iteri
-    ~f:(fun ~key ~data -> Printf.printf "%n -> %s\n"
+    ~f:(fun ~key ~data -> Printf.printf "%s -> %s\n"
       key (string_of_subterm_result data)
     )
 
@@ -800,10 +783,10 @@ let%test_module "find_operator_match" = (module struct
 
     [%expect{|
       4
-      add($1; $3)
-      expr ADD expr
-      1 -> CapturedTerm (expr(), x)
-      3 -> CapturedTerm (expr(), y) |}]
+      add(a; b)
+      a = expr ADD b = expr
+      a -> CapturedTerm (expr(), x)
+      b -> CapturedTerm (expr(), y) |}]
 
   let%expect_test "find_operator_match lam(x. x)" =
     print_match_result expr expr_nonterminal_rule (Operator ("lam", [
@@ -812,10 +795,10 @@ let%test_module "find_operator_match" = (module struct
 
     [%expect{|
       0
-      lam(var($2). $4)
-      FUN NAME ARROW expr
-      2 -> CapturedBinder (expr(), x)
-      4 -> CapturedTerm (expr(), x) |}]
+      lam(var(name). expr)
+      FUN name = NAME ARROW expr = expr
+      expr -> CapturedTerm (expr(), x)
+      name -> CapturedBinder (expr(), x) |}]
 
   let%expect_test "find_operator_match lam(_. x)" =
     print_match_result expr expr_nonterminal_rule (Operator ("lam", [
@@ -824,10 +807,10 @@ let%test_module "find_operator_match" = (module struct
 
     [%expect{|
       0
-      lam(var($2). $4)
-      FUN NAME ARROW expr
-      2 -> CapturedBinder (expr(), _)
-      4 -> CapturedTerm (expr(), x) |}]
+      lam(var(name). expr)
+      FUN name = NAME ARROW expr = expr
+      expr -> CapturedTerm (expr(), x)
+      name -> CapturedBinder (expr(), _) |}]
 
   let%expect_test "find_operator_match lam(_x. x)" =
     print_match_result expr expr_nonterminal_rule (Operator ("lam", [
@@ -836,10 +819,10 @@ let%test_module "find_operator_match" = (module struct
 
     [%expect{|
       0
-      lam(var($2). $4)
-      FUN NAME ARROW expr
-      2 -> CapturedBinder (expr(), _x)
-      4 -> CapturedTerm (expr(), x) |}]
+      lam(var(name). expr)
+      FUN name = NAME ARROW expr = expr
+      expr -> CapturedTerm (expr(), x)
+      name -> CapturedBinder (expr(), _x) |}]
 
   let%expect_test "find_operator_match match_line(add(x; y). add(x; y))" =
     print_match_result expr expr_nonterminal_rule (Operator ("match_line", [
@@ -851,10 +834,10 @@ let%test_module "find_operator_match" = (module struct
 
     [%expect{|
       5
-      match_line($1. $3)
-      expr ARROW expr
-      1 -> CapturedBinder (expr(), add(x; y))
-      3 -> CapturedTerm (expr(), add(x; y)) |}]
+      match_line(pat. tm)
+      pat = expr ARROW tm = expr
+      pat -> CapturedBinder (expr(), add(x; y))
+      tm -> CapturedTerm (expr(), add(x; y)) |}]
 
   let num_tm = (Operator ("num", [
       Scope ([], Primitive (PrimInteger (Bigint.of_int 5)))
@@ -865,21 +848,21 @@ let%test_module "find_operator_match" = (module struct
 
     [%expect{|
       2
-      num(integer($1))
-      NUM
-      1 -> CapturedTerm (integer(), 5) |}]
+      num(integer(n))
+      n = NUM
+      n -> CapturedTerm (integer(), 5) |}]
 
   let%expect_test "get_subterms num(5)" =
     print_get_subterms lam_op_match num_tm;
-    [%expect{| pattern lam(var($2). $4) and operator num(5) don't match, in either operator name or subterms |}]
+    [%expect{| pattern lam(var(name). expr) and operator num(5) don't match, in either operator name or subterms |}]
 
   let%expect_test "get_subterms num(5)" =
     print_get_subterms num_op_match num_tm;
-    [%expect{| 1 -> CapturedTerm (integer(), 5) |}]
+    [%expect{| n -> CapturedTerm (integer(), 5) |}]
 
   let%expect_test "get_subterms num(5)" =
     print_get_subterms paren_op_match num_tm;
-    [%expect{| 2 -> CapturedTerm (expr(), num(5)) |}]
+    [%expect{| expr -> CapturedTerm (expr(), num(5)) |}]
 
   let%expect_test {|find_operator_match str("foo")|} =
     print_match_result expr expr_nonterminal_rule (Operator ("str", [
@@ -888,9 +871,9 @@ let%test_module "find_operator_match" = (module struct
 
     [%expect{|
       3
-      str(string($1))
-      STR
-      1 -> CapturedTerm (string(), "foo") |}]
+      str(string(str))
+      str = STR
+      str -> CapturedTerm (string(), "foo") |}]
 
   let nil = (Operator ("nil", []))
 
@@ -909,9 +892,9 @@ let%test_module "find_operator_match" = (module struct
       ]));
     [%expect{|
       0
-      cons($1; $3)
-      integer :: list
-      1 -> CapturedTerm (integer(), 5)
-      3 -> CapturedTerm (list(integer()), nil()) |}]
+      cons(i; list)
+      i = integer :: list = list
+      i -> CapturedTerm (integer(), 5)
+      list -> CapturedTerm (list(integer()), nil()) |}]
 
 end)

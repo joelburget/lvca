@@ -42,38 +42,6 @@ let stringify_list : ('a -> string) -> string -> 'a list -> string =
  fun f sep elems -> elems |> Array.of_list |> Array.map ~f |> String.concat_array ~sep
 ;;
 
-module String = struct
-  module Map = struct
-    type 'a t = 'a String.Map.t
-
-    let remove_many : 'a t -> string array -> 'a t =
-     fun map keys -> Array.fold keys ~init:map ~f:String.Map.remove
-   ;;
-  end
-end
-
-module Array = struct
-  type 'a t = 'a array
-
-  let reverse_iteri : 'a t -> f:(int -> 'a -> unit) -> unit =
-   fun arr ~f ->
-    for i = Array.length arr - 1 downto 0 do
-      f i arr.(i)
-    done
- ;;
-
-  let reverse_iter : 'a t -> f:('a -> unit) -> unit =
-   fun arr ~f -> reverse_iteri arr ~f:(fun _ a -> f a)
- ;;
-
-  let reverse : 'a t -> 'a t =
-   fun arr ->
-    let result = Array.copy arr in
-    Array.rev_inplace result;
-    result
- ;;
-end
-
 module MutableSet = struct
   module Impl = struct
     type ('elt, 'cmp) t = ('elt, 'cmp) Set.t ref
@@ -128,11 +96,60 @@ module MutableSet = struct
     let create () = Impl.create (module Int)
 
     let merge_many : t -> int list -> unit =
-     fun t ints -> List.iter ints ~f:(fun i -> add t i)
+     fun t ints -> List.iter ints ~f:(add t)
+   ;;
+  end
+
+  module String = struct
+    type t = (string, String.comparator_witness) Impl.t
+
+    let of_list = Impl.of_list (module String)
+    let to_list = Impl.to_list
+    let to_array = Impl.to_array
+    let add = Impl.add
+    let mem = Impl.mem
+    let snapshot = Impl.snapshot
+    let is_empty = Impl.is_empty
+    let create () = Impl.create (module String)
+
+    let merge_many : t -> string list -> unit =
+     fun t strings -> List.iter strings ~f:(add t)
    ;;
   end
 
   include Impl
+end
+
+module String = struct
+  module Map = struct
+    type 'a t = 'a String.Map.t
+
+    let remove_many : 'a t -> string array -> 'a t =
+     fun map keys -> Array.fold keys ~init:map ~f:String.Map.remove
+   ;;
+  end
+end
+
+module Array = struct
+  type 'a t = 'a array
+
+  let reverse_iteri : 'a t -> f:(int -> 'a -> unit) -> unit =
+   fun arr ~f ->
+    for i = Array.length arr - 1 downto 0 do
+      f i arr.(i)
+    done
+ ;;
+
+  let reverse_iter : 'a t -> f:('a -> unit) -> unit =
+   fun arr ~f -> reverse_iteri arr ~f:(fun _ a -> f a)
+ ;;
+
+  let reverse : 'a t -> 'a t =
+   fun arr ->
+    let result = Array.copy arr in
+    Array.rev_inplace result;
+    result
+ ;;
 end
 
 module Hash_set = struct

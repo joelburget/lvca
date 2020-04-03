@@ -15,7 +15,7 @@
 %token EOF
 %token ASSIGN
 %token COLON
-%token DOLLAR
+%token EQUALS
 %token BAR
 %token SEMICOLON
 %token UNDERSCORE
@@ -25,14 +25,12 @@
 %}
 
 %start terminal_rule__test
-%start capture_number
 %start nonterminal_token__test
 %start operator_match__test
 %start nonterminal_rule__test
 %start language
 %type <ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule
 %type <ConcreteSyntaxDescription.pre_terminal_rule> terminal_rule__test
-%type <ConcreteSyntaxDescription.capture_number> capture_number
 %type <ConcreteSyntaxDescription.nonterminal_token> nonterminal_token
 %type <ConcreteSyntaxDescription.nonterminal_token> nonterminal_token__test
 %type <ConcreteSyntaxDescription.operator_match> operator_match
@@ -52,8 +50,6 @@ terminal_rule:
   { PreTerminalRule ($1, Second $3) }
 
 terminal_rule__test: terminal_rule EOF { $1 }
-
-capture_number: DOLLAR NAT { $2 }
 
 nonterminal_rule__test: nonterminal_rule EOF { $1 }
 
@@ -81,7 +77,9 @@ operator_match:
 
 (* TODO: should this id allow uppercase? *)
 operator_match_pattern:
-  | capture_number
+  | TERMINAL_ID
+  { SingleCapturePattern $1 }
+  | NONTERMINAL_ID
   { SingleCapturePattern $1 }
   | NONTERMINAL_ID
     LEFT_PAREN separated_list(SEMICOLON, term_scope_pattern) RIGHT_PAREN
@@ -95,13 +93,13 @@ term_scope_pattern:
       |> Core_kernel.List.map ~f:(function
         | SingleCapturePattern n -> PatternCapture n
         | OperatorPattern
-          ("var", [NumberedScopePattern ([], SingleCapturePattern n)])
+          ("var", [NamedScopePattern ([], SingleCapturePattern n)])
         -> VarCapture n
         | OperatorPattern _ -> failwith "TODO: message 1"
       )
     in
 
-    NumberedScopePattern (capture_nums', body)
+    NamedScopePattern (capture_nums', body)
   }
 
 operator_match__test: operator_match EOF { $1 }
@@ -122,10 +120,18 @@ box_formatting_options:
 nonterminal_token:
   | LEFT_BRACKET box_formatting_options?
   { OpenBox $2 }
-  | RIGHT_BRACKET   { CloseBox           }
-  | TERMINAL_ID     { TerminalName    $1 }
-  | NONTERMINAL_ID  { NonterminalName $1 }
+  | RIGHT_BRACKET
+  { CloseBox }
+  | NONTERMINAL_ID EQUALS TERMINAL_ID
+  { TerminalName { binding_name = Some $1; token_name = $3 } }
+  | TERMINAL_ID
+  { TerminalName { binding_name = None; token_name = $1 } }
+  | NONTERMINAL_ID EQUALS NONTERMINAL_ID
+  { NonterminalName { binding_name = Some $1; token_name = $3 } }
+  | NONTERMINAL_ID
+  { NonterminalName { binding_name = None; token_name = $1 } }
   (* remove? *)
-  | UNDERSCORE NAT? { Underscore (Core_kernel.Option.value $2 ~default:1) }
+  | UNDERSCORE NAT?
+  { Underscore (Core_kernel.Option.value $2 ~default:1) }
 
 nonterminal_token__test: nonterminal_token EOF { $1 }

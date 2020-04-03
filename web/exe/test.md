@@ -20,8 +20,8 @@ PLUS := "+"
 NUM := /[0-9]+/
 
 tm :=
-  | tm PLUS tm { add($1; $3) }
-  | NUM { lit(integer($1)) }
+  | a = tm PLUS b = tm { add(a; b) }
+  | n = NUM { lit(integer(n)) }
 }}
 ```
 

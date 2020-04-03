@@ -15,17 +15,19 @@ maybe(a) := nothing() | just(a)
 
 sha_or_name := sha(string()) | name(string())
 
+// A pair of abstract syntax and optionally concrete syntax
+language := language(sha_or_name(); maybe(sha_or_name()))
+
 command :=
   | define(
     maybe(string()); // name
-    sha_or_name(); // language
-    maybe(sha_or_name()); // concrete syntax
+    language();
     string() // term
   )
   | lookup(string()) // name or sha
   | eval(
-    sha_or_name(); // language
-    maybe(sha_or_name()); // concrete syntax
+    sha_or_name(); // dynamics
+    language(); // target language
     string() // term
   )
   |}
@@ -46,23 +48,26 @@ IDENT := /[0-9a-zA-Z_]+/
 STRING := /\{\{.*\}\}/
 
 sha_or_name :=
-  | SHA { sha(string($1)) }
-  | IDENT { name(string($1)) }
+  | sha = SHA { sha(string(sha)) }
+  | ident = IDENT { name(string(ident)) }
 
 concrete :=
-  | sha_or_name { just($1) }
+  | sha_or_name = sha_or_name { just(sha_or_name) }
   | { nothing() }
 
-command :=
-  | DEFINE IDENT COLON sha_or_name LANGLE concrete RANGLE ASSIGN STRING
-  { define(just(string($2)); $4; $6; string($9)) }
+language :=
+  | abstract = sha_or_name LANGLE concrete = concrete RANGLE
+  { language(abstract; just(concrete)) }
+  | abstract = sha_or_name
+  { language(abstract; nothing()) }
 
-  // | DEFINE COLON sha_or_name concrete STRING
-  // { define(nothing(); $3; $4; string($5)) }
-  | LOOKUP IDENT
-  { lookup(string($2)) }
-  | EVAL sha_or_name STRING
-  { eval($2; string($3)) }
+command :=
+  | DEFINE ident = IDENT COLON lang = language ASSIGN str = STRING
+  { define(just(string(ident)); lang; string(str)) }
+  | LOOKUP ident = IDENT
+  { lookup(string(ident)) }
+  | EVAL sha_or_name = sha_or_name lang = language str = STRING
+  { eval(sha_or_name; lang; string(str)) }
   |}
   in
   match Parse_concrete.parse str with

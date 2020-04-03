@@ -1,7 +1,6 @@
 open Core_kernel
 open AbstractSyntax
 
-type capture_number = int
 type terminal_id = string
 type pre_terminal_rule = PreTerminalRule of terminal_id * (string, string) Either.t
 type terminal_rule = TerminalRule of terminal_id * Regex.t
@@ -13,35 +12,45 @@ type box_type =
   | HovBox
   | HvBox
 
+type bindable_token =
+  { binding_name : string option
+  ; token_name : string
+  }
+
 type nonterminal_token =
-  | TerminalName of string
-  | NonterminalName of string
+  | TerminalName of bindable_token
+  | NonterminalName of bindable_token
   | Underscore of int
   | OpenBox of (box_type * int list) option
   | CloseBox
 
-(** A binder pattern can match either a variable `var($n)` (fixed valence) or a
- pattern `$n` (variable valence) *)
+let nonterminal_name : string option -> string -> nonterminal_token
+  = fun binding_name token_name -> NonterminalName { binding_name; token_name }
+
+let terminal_name : string option -> string -> nonterminal_token
+  = fun binding_name token_name -> TerminalName { binding_name; token_name }
+
+(** A binder pattern can match either a variable `var(name)` (fixed valence) or a
+ pattern `name` (variable valence) *)
 type binder_capture =
-  | VarCapture of int
-  | PatternCapture of int
+  | VarCapture of string
+  | PatternCapture of string
 
 (** An operator match pattern appears in the right-hand-side of a concrete syntax
     declaration, to show how to parse and pretty-print operators. They either match an
     operator, eg [ add($1; $3) ] (for tokens [expr PLUS expr]) or are "single capture",
     eg [{ $2 }] (for tokens [LPAREN expr RPAREN]). *)
 type operator_match_pattern =
-  | OperatorPattern of string * numbered_scope_pattern list
-  | SingleCapturePattern of capture_number
+  | OperatorPattern of string * scope_pattern list
+  | SingleCapturePattern of string
 
 (** A term pattern with numbered holes in binder patterns and subterms, eg `$2. $4` (for
     tokens `FUN name ARR expr`) *)
-and numbered_scope_pattern =
-  | NumberedScopePattern of binder_capture list * operator_match_pattern
+and scope_pattern = NamedScopePattern of binder_capture list * operator_match_pattern
 
 let string_of_binder_capture : binder_capture -> string = function
-  | VarCapture n -> Printf.sprintf "var($%n)" n
-  | PatternCapture n -> Printf.sprintf "$%n" n
+  | VarCapture name -> Printf.sprintf "var(%s)" name
+  | PatternCapture name -> Printf.sprintf "%s" name
 ;;
 
 let rec string_of_operator_match_pattern : operator_match_pattern -> string
@@ -50,11 +59,11 @@ let rec string_of_operator_match_pattern : operator_match_pattern -> string
     Printf.sprintf
       "%s(%s)"
       name
-      (Util.stringify_list string_of_numbered_scope_pattern "; " scope_pats)
-  | SingleCapturePattern num -> "$" ^ string_of_int num
+      (Util.stringify_list string_of_scope_pattern "; " scope_pats)
+  | SingleCapturePattern name -> name
 
-and string_of_numbered_scope_pattern : numbered_scope_pattern -> string =
-  fun (NumberedScopePattern (patterns, body)) ->
+and string_of_scope_pattern : scope_pattern -> string =
+  fun (NamedScopePattern (patterns, body)) ->
   patterns
   |> Array.of_list
   |> Array.map ~f:string_of_binder_capture
@@ -70,8 +79,12 @@ type operator_match' =
 type operator_match = OperatorMatch of operator_match'
 
 let string_of_token : nonterminal_token -> string = function
-  | TerminalName str -> str
-  | NonterminalName str -> str
+  | TerminalName bindable_token
+  | NonterminalName bindable_token
+  -> let { binding_name; token_name } = bindable_token in
+     (match binding_name with
+       | None -> token_name
+       | Some b_name -> b_name ^ " = " ^ token_name)
   | Underscore i -> "_" ^ if i = 1 then "" else string_of_int i
   | OpenBox None -> "["
   | OpenBox (Some (box_type, params)) ->
@@ -101,7 +114,7 @@ let string_of_tokens : nonterminal_token list -> string =
 
 type variable_rule =
   { tokens : nonterminal_token list
-  ; var_capture : capture_number
+  ; var_capture : string
   }
 
 type nonterminal_rule' =
@@ -187,6 +200,11 @@ let string_of_t : t -> string =
 
 (* conversion to term *)
 
+let term_of_option : ('a -> NonBinding.term) -> 'a option -> NonBinding.term
+  = fun f -> function
+    | None -> Operator ("none", [])
+    | Some a -> Operator ("some", [f a])
+
 let terminal_rules_to_term : terminal_rules -> NonBinding.term
   = fun rules -> Sequence (rules
     |> List.map ~f:(fun (name, re) -> NonBinding.Operator ("pair",
@@ -197,28 +215,37 @@ let terminal_rules_to_term : terminal_rules -> NonBinding.term
 
 let term_of_nonterminal_token : nonterminal_token -> NonBinding.term
   = function
-    | TerminalName name -> Operator ("terminal_name", [Primitive (PrimString name)])
-    | NonterminalName name -> Operator ("nonterminal_name", [Primitive (PrimString name)])
+    | TerminalName { binding_name; token_name }
+    -> Operator ("terminal_name",
+      [ term_of_option (fun binding_name' -> Primitive (PrimString binding_name'))
+        binding_name
+      ; Primitive (PrimString token_name)
+      ])
+    | NonterminalName { binding_name; token_name }
+    -> Operator ("nonterminal_name",
+      [ term_of_option (fun binding_name' -> Primitive (PrimString binding_name'))
+        binding_name
+      ; Primitive (PrimString token_name)
+      ])
     | _ -> failwith "TODO" (* TODO: should these even be included in the core language? *)
 
 let term_of_binder_capture : binder_capture -> NonBinding.term
   = function
-    | VarCapture i -> Operator ("var_capture", [Primitive (PrimInteger (Bigint.of_int i))])
-    | PatternCapture i -> Operator ("pattern_capture", [Primitive (PrimInteger
-    (Bigint.of_int i))])
+    | VarCapture name -> Operator ("var_capture", [Primitive (PrimString name)])
+    | PatternCapture name -> Operator ("pattern_capture", [Primitive (PrimString name)])
 
 let rec term_of_operator_match_pattern : operator_match_pattern -> NonBinding.term
   = function
-    | OperatorPattern (name, numbered_scope_patterns) -> Operator ("operator_pattern",
+    | OperatorPattern (name, scope_patterns) -> Operator ("operator_pattern",
       [ Primitive (PrimString name)
-      ; Sequence (numbered_scope_patterns |> List.map ~f:term_of_numbered_scope_pattern)
+      ; Sequence (scope_patterns |> List.map ~f:term_of_scope_pattern)
       ])
-    | SingleCapturePattern num -> Operator ("single_capture_pattern",
-      [ Primitive (PrimInteger (Bigint.of_int num))])
+    | SingleCapturePattern name
+    -> Operator ("single_capture_pattern", [ Primitive (PrimString name)])
 
-and term_of_numbered_scope_pattern : numbered_scope_pattern -> NonBinding.term
-  = fun (NumberedScopePattern (binder_caps, op_match_pat)) -> Operator
-    ( "numbered_scope_pattern"
+and term_of_scope_pattern : scope_pattern -> NonBinding.term
+  = fun (NamedScopePattern (binder_caps, op_match_pat)) -> Operator
+    ( "scope_pattern"
     , [ Sequence (binder_caps |> List.map ~f:term_of_binder_capture)
       ; term_of_operator_match_pattern op_match_pat
       ])
@@ -228,11 +255,6 @@ let term_of_operator_match : operator_match -> NonBinding.term
     [ Sequence (tokens |> List.map ~f:term_of_nonterminal_token)
     ; term_of_operator_match_pattern operator_match_pattern
     ])
-
-let term_of_option : ('a -> NonBinding.term) -> 'a option -> NonBinding.term
-  = fun f -> function
-    | None -> Operator ("none", [])
-    | Some a -> Operator ("some", [f a])
 
 let nonterminal_rule_to_term : nonterminal_rule -> NonBinding.term
   = fun (NonterminalRule { nonterminal_name; result_sort; operator_rules }) ->
@@ -258,10 +280,11 @@ let to_term : t -> NonBinding.term
 
 (* conversion from term *)
 
-let bigint_to_int : Bigint.t -> int
-  = fun i -> match Bigint.to_int i with
-    | Some i' -> i'
-    | None -> raise (OfTermFailure ("bigint_to_int", Primitive (PrimInteger i)))
+let option_of_term : (NonBinding.term -> 'a) -> NonBinding.term -> 'a option
+  = fun f -> function
+    | Operator ("none", []) -> None
+    | Operator ("some", [tm]) -> Some (f tm)
+    | tm -> raise (OfTermFailure ("option_of_term", tm))
 
 (* TODO: is this okay? *)
 let regex_of_term : NonBinding.term -> Regex.t
@@ -283,16 +306,36 @@ let terminal_rules_of_term : NonBinding.term -> terminal_rules
 
 let nonterminal_token_of_term : NonBinding.term -> nonterminal_token
   = function
-  | Operator ("terminal_name", [Primitive (PrimString name)]) -> TerminalName name
-  | Operator ("nonterminal_name", [Primitive (PrimString name)]) -> NonterminalName name
-  | tm -> raise (OfTermFailure ("nonterminal_token_of_term", tm))
+  | Operator ("terminal_name",
+      [ maybe_binding_name
+      ; Primitive (PrimString token_name)
+      ])
+  -> TerminalName
+    { binding_name = option_of_term (function
+      | Primitive (PrimString binding_name) -> binding_name
+      | tm -> raise (OfTermFailure ("nonterminal_token_of_term (inner)", tm)))
+      maybe_binding_name
+    ; token_name
+    }
+  | Operator ("nonterminal_name",
+      [ maybe_binding_name
+      ; Primitive (PrimString token_name)
+      ])
+  -> NonterminalName
+    { binding_name = option_of_term (function
+      | Primitive (PrimString binding_name) -> binding_name
+      | tm -> raise (OfTermFailure ("nonterminal_token_of_term (inner)", tm)))
+      maybe_binding_name
+    ; token_name
+    }
+  | tm -> raise (OfTermFailure ("nonterminal_token_of_term (outer)", tm))
 
 let binder_capture_of_term : NonBinding.term -> binder_capture
   = function
-    | Operator ("var_capture", [Primitive (PrimInteger i)])
-    -> VarCapture (bigint_to_int i)
-    | Operator ("pattern_capture", [Primitive (PrimInteger i)])
-    -> PatternCapture (bigint_to_int i)
+    | Operator ("var_capture", [Primitive (PrimString name)])
+    -> VarCapture name
+    | Operator ("pattern_capture", [Primitive (PrimString name)])
+    -> PatternCapture name
     | tm -> raise (OfTermFailure ("binder_capture_of_term", tm))
 
 let rec operator_match_pattern_of_term : NonBinding.term -> operator_match_pattern
@@ -301,22 +344,22 @@ let rec operator_match_pattern_of_term : NonBinding.term -> operator_match_patte
       [ Primitive (PrimString name)
       ; Sequence pats
       ])
-      -> OperatorPattern (name, pats |> List.map ~f:numbered_scope_pattern_of_term)
-    | Operator ("single_capture_pattern", [ Primitive (PrimInteger i)])
-    -> SingleCapturePattern (bigint_to_int i)
+      -> OperatorPattern (name, pats |> List.map ~f:scope_pattern_of_term)
+    | Operator ("single_capture_pattern", [ Primitive (PrimString name) ])
+    -> SingleCapturePattern name
     | tm -> raise (OfTermFailure ("operator_match_pattern_of_term", tm))
 
-and numbered_scope_pattern_of_term : NonBinding.term -> numbered_scope_pattern
+and scope_pattern_of_term : NonBinding.term -> scope_pattern
   = function
     | Operator
-      ( "numbered_scope_pattern"
+      ( "scope_pattern"
       , [ Sequence binders
         ; op_match_term
         ])
-    -> NumberedScopePattern
+    -> NamedScopePattern
       ( binders |> List.map ~f:binder_capture_of_term, operator_match_pattern_of_term
       op_match_term)
-    | tm -> raise (OfTermFailure ("numbered_scope_pattern_of_term", tm))
+    | tm -> raise (OfTermFailure ("scope_pattern_of_term", tm))
 
 let operator_match_of_term : NonBinding.term -> operator_match
   = function
@@ -326,12 +369,6 @@ let operator_match_of_term : NonBinding.term -> operator_match
       ; operator_match_pattern = operator_match_pattern_of_term tm
       }
     | tm -> raise (OfTermFailure ("operator_match_of_term", tm))
-
-let option_of_term : (NonBinding.term -> 'a) -> NonBinding.term -> 'a option
-  = fun f -> function
-    | Operator ("none", []) -> None
-    | Operator ("some", [tm]) -> Some (f tm)
-    | tm -> raise (OfTermFailure ("option_of_term", tm))
 
 let nonterminal_rule_of_term : NonBinding.term -> nonterminal_rule
   = function

@@ -81,47 +81,53 @@ let rec term_to_tree
        - if it's a nonterminal, look up the subterm (by token number)
     *)
     operator_match_tokens
-      |> index_tokens
-      |> Fqueue.iter ~f:(fun (token_ix, token) ->
+      |> List.iter ~f:(fun token ->
 
-      match Int.Map.find subterms token_ix, token with
+      let token_name = match token with
+        | TerminalName { binding_name = Some binding_name; _ }
+        | NonterminalName { binding_name = Some binding_name; _ }
+        -> String.Map.find subterms binding_name
+        | _
+        -> None
+      in
+
+      match token_name, token with
 
     (* if the current token is a terminal, and we didn't capture a binder
      * or term, we just emit the contents of the token *)
-    | None, TerminalName name ->
-      let terminal_rule = String.Map.find terminal_rules_map name
+    | None, TerminalName { token_name; _ } ->
+      let terminal_rule = String.Map.find terminal_rules_map token_name
         |> Util.get_option' (fun () ->
-            "term_to_tree: failed to get terminal rule " ^ name)
+            "term_to_tree: failed to get terminal rule " ^ token_name)
       in
       (match Regex.is_literal terminal_rule with
       | Some re_str -> emit (TerminalDoc (DocText re_str))
-      | None -> raise (CantEmitTokenRegex (name, terminal_rule))
+      | None -> raise (CantEmitTokenRegex (token_name, terminal_rule))
       )
 
     | Some (CapturedBinder (_current_sort, pat)),
-      NonterminalName nt_name
+      NonterminalName { token_name = nt_name; _ }
     -> emit
       (term_to_tree sort_defs current_sort nt_name desc (Nominal.pattern_to_term pat))
 
     | Some (CapturedTerm (_current_sort, tm')),
-      NonterminalName nt_name
-    ->
-      (*
-      Printf.printf "nonterminal_name = %s, tokens = %s, (child) nt_name = %s, tm = %s\n"
-       nonterminal_name (string_of_tokens operator_match_tokens)
-       nt_name (Nominal.pp_term' tm');
-      *)
-      emit (term_to_tree sort_defs current_sort nt_name desc tm')
+      NonterminalName { token_name = nt_name; _ }
+    -> emit (term_to_tree sort_defs current_sort nt_name desc tm')
 
     | _, Underscore n -> emit (TerminalDoc (DocBreak n))
 
-    | None, NonterminalName nt_name -> invariant_violation (Printf.sprintf
-      "term_to_tree: failed to find token $%n (%s)" token_ix nt_name
+    | None, NonterminalName { binding_name; token_name }
+    -> invariant_violation (Printf.sprintf
+      "term_to_tree: failed to find token %s (%s)"
+      (match binding_name with
+        | None -> "(not bound)"
+        | Some binding_name' -> binding_name')
+      token_name
     )
 
-    | Some (CapturedTerm (_sort, Var v)), TerminalName _t_name
+    | Some (CapturedTerm (_sort, Var v)), TerminalName _
     -> emit (TerminalDoc (DocText v))
-    | Some (CapturedTerm (_sort, Primitive p)), TerminalName _t_name
+    | Some (CapturedTerm (_sort, Primitive p)), TerminalName _
     -> emit (TerminalDoc (DocText (match p with
       | PrimString str -> str
       | PrimInteger i -> Bigint.to_string i)))
@@ -129,10 +135,10 @@ let rec term_to_tree
     | Some (CapturedBinder (_, Var name)), TerminalName _
     -> emit (TerminalDoc (DocText name))
 
-    | Some (CapturedBinder _), TerminalName t_name
-    | Some (CapturedTerm _), TerminalName t_name
+    | Some (CapturedBinder _), TerminalName { token_name; _ }
+    | Some (CapturedTerm _), TerminalName { token_name; _ }
     -> invariant_violation (Printf.sprintf
-      "term_to_tree: unexpectedly directly captured a terminal (%s)" t_name
+      "term_to_tree: unexpectedly directly captured a terminal (%s)" token_name
     )
 
     | _, OpenBox pre_box_info -> Stack.push token_stack

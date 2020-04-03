@@ -51,15 +51,15 @@ let%test_module "Integer Language" =
         (Binding.Nominal.Primitive (PrimInteger (Bigint.of_int i)))
     ;;
 
-    let%test "" = evaluates_to' "add(1; 2)" 3
-    let%test "" = evaluates_to' "add(1; 2)" 3
-    let%test "" = evaluates_to' "sub(1; 2)" (-1)
-    let%test "" = evaluates_to' "abs(101)" 101
-    let%test "" = evaluates_to' "abs(-101)" 101
-    let%test "" = evaluates_to' "neg(101)" (-101)
-    let%test "" = evaluates_to' "neg(-101)" 101
-    let%test "" = evaluates_to' "min(1; 2)" 1
-    let%test "" = evaluates_to' "max(1; 2)" 2
+    let%test _ = evaluates_to' "add(1; 2)" 3
+    let%test _ = evaluates_to' "add(1; 2)" 3
+    let%test _ = evaluates_to' "sub(1; 2)" (-1)
+    let%test _ = evaluates_to' "abs(101)" 101
+    let%test _ = evaluates_to' "abs(-101)" 101
+    let%test _ = evaluates_to' "neg(101)" (-101)
+    let%test _ = evaluates_to' "neg(-101)" 101
+    let%test _ = evaluates_to' "min(1; 2)" 1
+    let%test _ = evaluates_to' "max(1; 2)" 2
 
     (* let terminal_rules, sort_rules = match Parseable_concrete.parse concreteSyntax with
        | Ok rules -> rules | Error msg -> failwith msg let concrete =
