@@ -51,12 +51,8 @@ sha_or_name :=
   | sha = SHA { sha(string(sha)) }
   | ident = IDENT { name(string(ident)) }
 
-concrete :=
-  | sha_or_name = sha_or_name { just(sha_or_name) }
-  | { nothing() }
-
 language :=
-  | abstract = sha_or_name LANGLE concrete = concrete RANGLE
+  | abstract = sha_or_name LANGLE concrete = sha_or_name RANGLE
   { language(abstract; just(concrete)) }
   | abstract = sha_or_name
   { language(abstract; nothing()) }
@@ -113,10 +109,15 @@ let term_of_maybe : NonBinding.term -> NonBinding.term option
 let lookup_maybe_concrete
   : store -> NonBinding.term -> store_value
   = fun store tm ->
+    Printf.printf "lookup_maybe_concrete tm: %s\n"
+      (tm |> NonBinding.to_nominal |> Binding.Nominal.pp_term');
     let tm' = term_of_maybe tm in
     match tm' with
       | None -> GenesisTermConcrete
-      | Some tm'' -> lookup_lang store tm''
+      | Some tm'' ->
+          Printf.printf "lookup_maybe_concrete tm'': %s\n"
+            (tm'' |> NonBinding.to_nominal |> Binding.Nominal.pp_term');
+          lookup_lang store tm''
 
 type parsed =
   | ParsedTerm of Binding.Nominal.term
@@ -186,9 +187,13 @@ let parse_store_value : store_value -> store_value -> string -> parsed
 (* TODO: we end up double-wrapping the results of this call in eval_inline_block *)
 let eval_command : store -> NonBinding.term -> Vdom.Node.t
   = fun ({ term_store; name_store } as store) -> function
-    | Operator ("define", [maybe_ident; lang_tm; concrete_tm; Primitive (PrimString defn_str)])
+    | Operator ("define",
+      [ maybe_ident
+      ; Operator("language", [ abstract_tm; concrete_tm ])
+      ; Primitive (PrimString defn_str)
+      ])
     ->
-       let lang_val = lookup_lang store lang_tm in
+       let lang_val = lookup_lang store abstract_tm in
        let concrete_val = lookup_maybe_concrete store concrete_tm in
        let parsed_defn = parse_store_value lang_val concrete_val defn_str in
        let defn_tm = term_of_parsed parsed_defn in
@@ -206,11 +211,11 @@ let eval_command : store -> NonBinding.term -> Vdom.Node.t
        (* TODO: structured *)
        Vdom.Node.(pre [] [code [] [text @@ Binding.Nominal.pp_term' defn_tm]])
     | Operator("lookup", [_ident])
-    -> failwith "TODO"
+    -> failwith "TODO lookup"
     | Operator("eval", [_ident; _tm_str])
-    -> failwith "TODO"
+    -> failwith "TODO eval"
     | _
-    -> failwith "TODO"
+    -> failwith "TODO unknown command"
 
 let abstractSyntax =
   {|
