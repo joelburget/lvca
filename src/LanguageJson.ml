@@ -16,21 +16,21 @@ NUMBER   := /-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/
 
 json :=
   | NULL { null() }
-  | bool { bool($1) }
-  | STRING { string($1) }
-  | NUMBER { number($1) }
-//   | LBRACE _0 kv_pairs _0 RBRACE { object($3) }
-//   | LBRACKET _0 list _0 RBRACKET { list($3) }
+  | x = bool { bool(x) }
+  | x = STRING { string(x) }
+  | x = NUMBER { number(x) }
+//   | LBRACE _0 x = kv_pairs _0 RBRACE { object(x) }
+//   | LBRACKET _0 x = list _0 RBRACKET { list(x) }
 
-// kv := STRING _0 COLON _ json { kv($1; $3) }
+// kv := k = STRING _0 COLON _ v = json { kv(k; v) }
 
 // kv_pairs :=
-//   | kv _0 COMMA _ kv_pairs { cons($1; $3) }
-//   |                        { empty_list() }
+//   | kv = kv _0 COMMA _ kvs = kv_pairs { cons(kv; kvs) }
+//   |                                   { empty_list() }
 //
 // list :=
-//   | json _0 COMMA _ list { cons($1; $3) }
-//   |                      { empty_list() }
+//   | x = json _0 COMMA _ xs = list { cons(x; xs)  }
+//   |                               { empty_list() }
 
 bool :=
   | TRUE  { true()  }
