@@ -21,19 +21,23 @@
 %{
 open Statics_Types
 
-(* raises unnamed exception *)
+exception StaticsParseError of string
+
+(** @raise [StaticsParseError] *)
 let rec term_to_pattern : Statics_Types.term -> Pattern.t
   = function
     | Operator (name, args)
     -> Operator (name, Core_kernel.List.map args ~f:scope_to_pattern)
     | Free var -> Var var
-    | _ -> failwith
-      "bad parse -- can only match operators and variables in a pattern"
+    | tm -> raise (StaticsParseError (Printf.sprintf
+      "Can only match operators and variables in a pattern. Found %s."
+      (string_of_term tm)))
 
-(* raises unnamed exception *)
+(** @raise [StaticsParseError] *)
 and scope_to_pattern = function
   | Scope ([], body) -> term_to_pattern body
-  | _ -> failwith "bad parse -- can't match binders in a pattern"
+  | scope -> raise (StaticsParseError (Printf.sprintf
+    "Can't match binders in a pattern. Found %s." (string_of_scope scope)))
 %}
 
 %start rules
@@ -49,12 +53,14 @@ and scope_to_pattern = function
 %type <Statics_Types.rule list>      rules
 %%
 
+(** @raise [StaticsParseError] *)
 term:
   | name = ID LEFT_PAREN scopes = separated_list(SEMICOLON, scope) RIGHT_PAREN
   { Operator (name, scopes) }
   | name = ID
   { Free name }
 
+(** @raise [StaticsParseError] *)
 scope:
   tms = separated_nonempty_list(DOT, term)
   { let binders_tm, body = Util.unsnoc tms in
@@ -62,17 +68,23 @@ scope:
     Scope (binders_pat, body)
   }
 
+(** @raise [StaticsParseError] *)
 term_top: tm = term EOF { tm }
 
+(** @raise [StaticsParseError] *)
 inference_rule: tm = term RIGHT_D_ARR ty = term { {tm; ty} }
+(** @raise [StaticsParseError] *)
 checking_rule:  tm = term LEFT_D_ARR  ty = term { {tm; ty} }
 
+(** @raise [StaticsParseError] *)
 typing_clause:
   | rule = inference_rule { InferenceRule rule }
   | rule = checking_rule  { CheckingRule  rule }
 
+(** @raise [StaticsParseError] *)
 typed_term: name = ID COLON tm = term { name, tm }
 
+(** @raise [StaticsParseError] *)
 context:
   | CTX
   { Core_kernel.String.Map.empty }
@@ -80,15 +92,18 @@ context:
   { match Core_kernel.String.Map.of_alist ctx_entries with
     | `Ok context -> context
     | `Duplicate_key str
-    -> failwith (Printf.sprintf "duplicate name in context: %s" str)
+    -> raise (StaticsParseError (Printf.sprintf "duplicate name in context: %s" str))
   }
 
+(** @raise [StaticsParseError] *)
 hypothesis:
   | context CTX_SEPARATOR clause = typing_clause
   { (Core_kernel.String.Map.empty, clause) }
 
+(** @raise [StaticsParseError] *)
 rule:
   hypotheses = list(hypothesis) name = LINE conclusion = hypothesis
   { { hypotheses; name; conclusion } }
 
+(** @raise [StaticsParseError] *)
 rules: rules = list(rule) EOF { rules }
