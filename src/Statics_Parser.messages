@@ -2,87 +2,45 @@ term_top: ID ID
 ##
 ## Ends in an error in state: 5.
 ##
-## term -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,scope)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_D_ARR LINE LEFT_D_ARR EOF CTX_SEPARATOR CTX COMMA ]
-## term -> ID . [ SEMICOLON RIGHT_PAREN RIGHT_D_ARR LINE LEFT_D_ARR EOF CTX_SEPARATOR CTX COMMA ]
+## term -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,scope)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_D_ARR LINE LEFT_D_ARR EOF DOT CTX_SEPARATOR CTX COMMA ]
+## term -> ID . [ SEMICOLON RIGHT_PAREN RIGHT_D_ARR LINE LEFT_D_ARR EOF DOT CTX_SEPARATOR CTX COMMA ]
 ##
 ## The known suffix of the stack is as follows:
 ## ID
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 1
+Invalid term. Terms look like `tm(...)` and variables like `x`.
 
-term_top: ID LEFT_PAREN DOT ID RIGHT_D_ARR
+term_top: ID LEFT_PAREN ID DOT SEMICOLON
 ##
-## Ends in an error in state: 12.
+## Ends in an error in state: 8.
 ##
-## separated_nonempty_list(SEMICOLON,scope) -> scope . [ RIGHT_PAREN ]
-## separated_nonempty_list(SEMICOLON,scope) -> scope . SEMICOLON separated_nonempty_list(SEMICOLON,scope) [ RIGHT_PAREN ]
+## separated_nonempty_list(DOT,term) -> term DOT . separated_nonempty_list(DOT,term) [ SEMICOLON RIGHT_PAREN ]
 ##
 ## The known suffix of the stack is as follows:
-## scope
+## term DOT
+##
+
+Invalid term after `.`.
+
+term_top: ID LEFT_PAREN ID RIGHT_D_ARR
+##
+## Ends in an error in state: 7.
+##
+## separated_nonempty_list(DOT,term) -> term . [ SEMICOLON RIGHT_PAREN ]
+## separated_nonempty_list(DOT,term) -> term . DOT separated_nonempty_list(DOT,term) [ SEMICOLON RIGHT_PAREN ]
+##
+## The known suffix of the stack is as follows:
+## term
 ##
 ## WARNING: This example involves spurious reductions.
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 5, spurious reduction of production term -> ID
-## In state 9, spurious reduction of production scope -> DOT term
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 2
-
-term_top: ID LEFT_PAREN DOT SEMICOLON
-##
-## Ends in an error in state: 8.
-##
-## scope -> DOT . term [ SEMICOLON RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## DOT
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE> 3
-
-term_top: ID LEFT_PAREN ID DOT ID RIGHT_D_ARR
-##
-## Ends in an error in state: 17.
-##
-## reverse_separated_nonempty_llist(DOT,ID) -> reverse_separated_nonempty_llist(DOT,ID) DOT ID . [ DOT ]
-## term -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,scope)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN ]
-## term -> ID . [ SEMICOLON RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## reverse_separated_nonempty_llist(DOT,ID) DOT ID
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE> 4
-
-term_top: ID LEFT_PAREN ID DOT SEMICOLON
-##
-## Ends in an error in state: 16.
-##
-## reverse_separated_nonempty_llist(DOT,ID) -> reverse_separated_nonempty_llist(DOT,ID) DOT . ID [ DOT ]
-## scope -> reverse_separated_nonempty_llist(DOT,ID) DOT . term [ SEMICOLON RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## reverse_separated_nonempty_llist(DOT,ID) DOT
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE> 5
-
-term_top: ID LEFT_PAREN ID RIGHT_D_ARR
-##
-## Ends in an error in state: 7.
-##
-## reverse_separated_nonempty_llist(DOT,ID) -> ID . [ DOT ]
-## term -> ID . LEFT_PAREN loption(separated_nonempty_list(SEMICOLON,scope)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN ]
-## term -> ID . [ SEMICOLON RIGHT_PAREN ]
-##
-## The known suffix of the stack is as follows:
-## ID
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE> 6
+Invalid token after term.
 
 term_top: ID LEFT_PAREN ID SEMICOLON SEMICOLON
 ##
@@ -94,23 +52,23 @@ term_top: ID LEFT_PAREN ID SEMICOLON SEMICOLON
 ## scope SEMICOLON
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 7
+Invalid token after term. Expected a scope.
 
 term_top: ID LEFT_PAREN SEMICOLON
 ##
 ## Ends in an error in state: 6.
 ##
-## term -> ID LEFT_PAREN . loption(separated_nonempty_list(SEMICOLON,scope)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_D_ARR LINE LEFT_D_ARR EOF CTX_SEPARATOR CTX COMMA ]
+## term -> ID LEFT_PAREN . loption(separated_nonempty_list(SEMICOLON,scope)) RIGHT_PAREN [ SEMICOLON RIGHT_PAREN RIGHT_D_ARR LINE LEFT_D_ARR EOF DOT CTX_SEPARATOR CTX COMMA ]
 ##
 ## The known suffix of the stack is as follows:
 ## ID LEFT_PAREN
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 8
+Invalid token after `(`. Expected subterms followed by `)`..
 
 term_top: ID SEMICOLON
 ##
-## Ends in an error in state: 48.
+## Ends in an error in state: 44.
 ##
 ## term_top -> term . EOF [ # ]
 ##
@@ -124,11 +82,11 @@ term_top: ID SEMICOLON
 ## In state 5, spurious reduction of production term -> ID
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 9
+Invalid token after term.
 
 term_top: SEMICOLON
 ##
-## Ends in an error in state: 46.
+## Ends in an error in state: 42.
 ##
 ## term_top' -> . term_top [ # ]
 ##
@@ -136,11 +94,11 @@ term_top: SEMICOLON
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 10
+Invalid token, expected a term.
 
 rules: CTX COMMA ID COLON ID COMMA SEMICOLON
 ##
-## Ends in an error in state: 23.
+## Ends in an error in state: 19.
 ##
 ## separated_nonempty_list(COMMA,typed_term) -> typed_term COMMA . separated_nonempty_list(COMMA,typed_term) [ CTX_SEPARATOR ]
 ##
@@ -148,11 +106,11 @@ rules: CTX COMMA ID COLON ID COMMA SEMICOLON
 ## typed_term COMMA
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 11
+Invalid token after `,` in context. Expected a typed term.
 
 rules: CTX COMMA ID COLON ID SEMICOLON
 ##
-## Ends in an error in state: 22.
+## Ends in an error in state: 18.
 ##
 ## separated_nonempty_list(COMMA,typed_term) -> typed_term . [ CTX_SEPARATOR ]
 ## separated_nonempty_list(COMMA,typed_term) -> typed_term . COMMA separated_nonempty_list(COMMA,typed_term) [ CTX_SEPARATOR ]
@@ -165,10 +123,10 @@ rules: CTX COMMA ID COLON ID SEMICOLON
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 5, spurious reduction of production term -> ID
-## In state 21, spurious reduction of production typed_term -> ID COLON term
+## In state 17, spurious reduction of production typed_term -> ID COLON term
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 12
+Invalid token after term typing in context.
 
 rules: CTX COMMA ID COLON SEMICOLON
 ##
@@ -180,7 +138,7 @@ rules: CTX COMMA ID COLON SEMICOLON
 ## ID COLON
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 13
+Invalid token after `:`. Expected a type (term).
 
 rules: CTX COMMA ID SEMICOLON
 ##
@@ -192,7 +150,7 @@ rules: CTX COMMA ID SEMICOLON
 ## ID
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 14
+Invalid token after ID. Expected a `:`.
 
 rules: CTX COMMA SEMICOLON
 ##
@@ -204,11 +162,11 @@ rules: CTX COMMA SEMICOLON
 ## CTX COMMA
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 15
+Invalid token after `,`. Expected a list of typed terms.
 
 rules: CTX CTX_SEPARATOR ID LEFT_D_ARR ID SEMICOLON
 ##
-## Ends in an error in state: 42.
+## Ends in an error in state: 38.
 ##
 ## list(hypothesis) -> hypothesis . list(hypothesis) [ LINE ]
 ##
@@ -220,16 +178,16 @@ rules: CTX CTX_SEPARATOR ID LEFT_D_ARR ID SEMICOLON
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 5, spurious reduction of production term -> ID
-## In state 39, spurious reduction of production checking_rule -> term LEFT_D_ARR term
-## In state 41, spurious reduction of production typing_clause -> checking_rule
-## In state 34, spurious reduction of production hypothesis -> context CTX_SEPARATOR typing_clause
+## In state 35, spurious reduction of production checking_rule -> term LEFT_D_ARR term
+## In state 37, spurious reduction of production typing_clause -> checking_rule
+## In state 30, spurious reduction of production hypothesis -> context CTX_SEPARATOR typing_clause
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 16
+Invalid token after hypothesis. Expected either another hypothesis or line separator.
 
 rules: CTX CTX_SEPARATOR ID LEFT_D_ARR SEMICOLON
 ##
-## Ends in an error in state: 38.
+## Ends in an error in state: 34.
 ##
 ## checking_rule -> term LEFT_D_ARR . term [ LINE EOF CTX ]
 ##
@@ -237,11 +195,11 @@ rules: CTX CTX_SEPARATOR ID LEFT_D_ARR SEMICOLON
 ## term LEFT_D_ARR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 17
+Invalid token after `<=`. Expected a term.
 
 rules: CTX CTX_SEPARATOR ID RIGHT_D_ARR SEMICOLON
 ##
-## Ends in an error in state: 36.
+## Ends in an error in state: 32.
 ##
 ## inference_rule -> term RIGHT_D_ARR . term [ LINE EOF CTX ]
 ##
@@ -249,11 +207,11 @@ rules: CTX CTX_SEPARATOR ID RIGHT_D_ARR SEMICOLON
 ## term RIGHT_D_ARR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 18
+Invalid token after `=>`. Expected a term.
 
 rules: CTX CTX_SEPARATOR ID SEMICOLON
 ##
-## Ends in an error in state: 35.
+## Ends in an error in state: 31.
 ##
 ## checking_rule -> term . LEFT_D_ARR term [ LINE EOF CTX ]
 ## inference_rule -> term . RIGHT_D_ARR term [ LINE EOF CTX ]
@@ -268,11 +226,11 @@ rules: CTX CTX_SEPARATOR ID SEMICOLON
 ## In state 5, spurious reduction of production term -> ID
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 19
+Invalid token after term. Expected `<=` or `=>`.
 
 rules: CTX CTX_SEPARATOR SEMICOLON
 ##
-## Ends in an error in state: 33.
+## Ends in an error in state: 29.
 ##
 ## hypothesis -> context CTX_SEPARATOR . typing_clause [ LINE EOF CTX ]
 ##
@@ -280,7 +238,7 @@ rules: CTX CTX_SEPARATOR SEMICOLON
 ## context CTX_SEPARATOR
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 20
+Invalid token after `>>`. Expected either an inference or checking rule.
 
 rules: CTX SEMICOLON
 ##
@@ -293,11 +251,11 @@ rules: CTX SEMICOLON
 ## CTX
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 21
+Invalid token after `ctx`. Expected `,` or `>>`.
 
 rules: LINE CTX CTX_SEPARATOR ID LEFT_D_ARR ID SEMICOLON
 ##
-## Ends in an error in state: 27.
+## Ends in an error in state: 23.
 ##
 ## list(rule) -> rule . list(rule) [ EOF ]
 ##
@@ -309,17 +267,17 @@ rules: LINE CTX CTX_SEPARATOR ID LEFT_D_ARR ID SEMICOLON
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 5, spurious reduction of production term -> ID
-## In state 39, spurious reduction of production checking_rule -> term LEFT_D_ARR term
-## In state 41, spurious reduction of production typing_clause -> checking_rule
-## In state 34, spurious reduction of production hypothesis -> context CTX_SEPARATOR typing_clause
-## In state 31, spurious reduction of production rule -> list(hypothesis) LINE hypothesis
+## In state 35, spurious reduction of production checking_rule -> term LEFT_D_ARR term
+## In state 37, spurious reduction of production typing_clause -> checking_rule
+## In state 30, spurious reduction of production hypothesis -> context CTX_SEPARATOR typing_clause
+## In state 27, spurious reduction of production rule -> list(hypothesis) LINE hypothesis
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 22
+Invalid token after rule. Expected another rule or EOF.
 
 rules: LINE SEMICOLON
 ##
-## Ends in an error in state: 30.
+## Ends in an error in state: 26.
 ##
 ## rule -> list(hypothesis) LINE . hypothesis [ LINE EOF CTX ]
 ##
@@ -327,7 +285,7 @@ rules: LINE SEMICOLON
 ## list(hypothesis) LINE
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 23
+Invalid token after line separator. Expected a conclusion.
 
 rules: SEMICOLON
 ##
@@ -339,5 +297,5 @@ rules: SEMICOLON
 ##
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE> 24
+Invalid token. Expected a list of rules.
 
