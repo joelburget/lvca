@@ -19,10 +19,10 @@
 %token COMMA
 
 %{
-open Statics
+open Statics_Types
 
 (* raises unnamed exception *)
-let rec term_to_pattern : Statics.term -> Pattern.t
+let rec term_to_pattern : Statics_Types.term -> Pattern.t
   = function
     | Operator (name, args)
     -> Operator (name, Core_kernel.List.map args ~f:scope_to_pattern)
@@ -38,15 +38,15 @@ and scope_to_pattern = function
 
 %start rules
 %start term_top
-%type <Statics.term>           term
-%type <Statics.term>           term_top
-%type <Statics.scope>          scope
-%type <Statics.inference_rule> inference_rule
-%type <Statics.checking_rule>  checking_rule
-%type <Statics.typing_clause>  typing_clause
-%type <Statics.hypothesis>     hypothesis
-%type <Statics.rule>           rule
-%type <Statics.rule list>      rules
+%type <Statics_Types.term>           term
+%type <Statics_Types.term>           term_top
+%type <Statics_Types.scope>          scope
+%type <Statics_Types.inference_rule> inference_rule
+%type <Statics_Types.checking_rule>  checking_rule
+%type <Statics_Types.typing_clause>  typing_clause
+%type <Statics_Types.hypothesis>     hypothesis
+%type <Statics_Types.rule>           rule
+%type <Statics_Types.rule list>      rules
 %%
 
 term:
