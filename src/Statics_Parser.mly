@@ -50,34 +50,34 @@ and scope_to_pattern = function
 %%
 
 term:
-  | ID LEFT_PAREN separated_list(SEMICOLON, scope) RIGHT_PAREN
-  { Operator ($1, $3) }
-  | ID
-  { Free $1 }
+  | name = ID LEFT_PAREN scopes = separated_list(SEMICOLON, scope) RIGHT_PAREN
+  { Operator (name, scopes) }
+  | name = ID
+  { Free name }
 
 scope:
-  separated_nonempty_list(DOT, term)
-  { let binders_tm, body = Util.unsnoc $1 in
+  tms = separated_nonempty_list(DOT, term)
+  { let binders_tm, body = Util.unsnoc tms in
     let binders_pat = Core_kernel.List.map binders_tm ~f:term_to_pattern in
     Scope (binders_pat, body)
   }
 
-term_top: term EOF { $1 }
+term_top: tm = term EOF { tm }
 
-inference_rule: term RIGHT_D_ARR term { {tm = $1; ty = $3} }
-checking_rule:  term LEFT_D_ARR  term { {tm = $1; ty = $3} }
+inference_rule: tm = term RIGHT_D_ARR ty = term { {tm; ty} }
+checking_rule:  tm = term LEFT_D_ARR  ty = term { {tm; ty} }
 
 typing_clause:
-  | inference_rule { InferenceRule $1 }
-  | checking_rule  { CheckingRule  $1 }
+  | rule = inference_rule { InferenceRule rule }
+  | rule = checking_rule  { CheckingRule  rule }
 
-typed_term: ID COLON term { $1, $3 }
+typed_term: name = ID COLON tm = term { name, tm }
 
 context:
   | CTX
   { Core_kernel.String.Map.empty }
-  | CTX COMMA separated_nonempty_list(COMMA, typed_term)
-  { match Core_kernel.String.Map.of_alist $3 with
+  | CTX COMMA ctx_entries = separated_nonempty_list(COMMA, typed_term)
+  { match Core_kernel.String.Map.of_alist ctx_entries with
     | `Ok context -> context
     | `Duplicate_key str
     -> failwith (Printf.sprintf "duplicate name in context: %s" str)
@@ -88,7 +88,7 @@ hypothesis:
   { (Core_kernel.String.Map.empty, clause) }
 
 rule:
-  | hypotheses = list(hypothesis) LINE conclusion = hypothesis
-  { { hypotheses; name = $2; conclusion } }
+  hypotheses = list(hypothesis) name = LINE conclusion = hypothesis
+  { { hypotheses; name; conclusion } }
 
 rules: rules = list(rule) EOF { rules }
