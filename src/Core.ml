@@ -2,9 +2,6 @@ open Core_kernel
 open AbstractSyntax
 open Binding
 
-let length, map = List.(length, map)
-let map_union, map_unions = Util.(map_union, string_map_unions)
-
 type core =
   (* first four constructors correspond to regular term constructors *)
   | Operator of string * core_scope list
@@ -28,19 +25,18 @@ exception ToAstConversionErr of core
 
 let rec to_ast : core -> Nominal.term = function
   | Var name -> Var name
-  | Operator (tag, vals) -> Operator (tag, map vals ~f:scope_to_ast)
+  | Operator (tag, vals) -> Operator (tag, List.map vals ~f:scope_to_ast)
   | Primitive prim -> Primitive prim
-  | Sequence tms -> Sequence (map tms ~f:to_ast)
+  | Sequence tms -> Sequence (List.map tms ~f:to_ast)
   | (Lambda _ | Let _ | CoreApp _ | Case _) as core_only_term ->
     raise @@ ToAstConversionErr core_only_term
 
 and scope_to_ast (Scope (pats, body)) = Nominal.Scope (pats, to_ast body)
 
 let rec match_core_pattern : core -> BindingAwarePattern.t -> core String.Map.t option =
- fun v pat ->
-  match v, pat with
+  fun v pat -> match v, pat with
   | Operator (tag1, vals), Operator (tag2, pats) ->
-    if String.(tag1 = tag2) && length vals = length pats
+    if String.(tag1 = tag2) && List.(length vals = length pats)
     then (
       let sub_results =
         List.map2_exn vals pats ~f:(fun core_scope (pat : BindingAwarePattern.scope) ->
@@ -52,20 +48,20 @@ let rec match_core_pattern : core -> BindingAwarePattern.t -> core String.Map.t 
       then
         Some
           (sub_results
-          |> map ~f:(Util.get_option' (fun () -> "we just check all is_some"))
-          |> map_unions)
+          |> List.map ~f:(Util.get_option' (fun () -> "we just check all is_some"))
+          |> Util.string_map_unions)
       else None)
     else None
   | Sequence s1, Sequence s2 ->
-    if length s1 = length s2
+    if List.(length s1 = length s2)
     then (
       let sub_results = List.map2_exn s1 s2 ~f:match_core_pattern in
       if List.for_all sub_results ~f:Option.is_some
       then
         Some
           (sub_results
-          |> map ~f:(Util.get_option' (fun () -> "we just check all is_some"))
-          |> map_unions)
+          |> List.map ~f:(Util.get_option' (fun () -> "we just check all is_some"))
+          |> Util.string_map_unions)
       else None)
     else None
   | Primitive l1, Primitive l2
@@ -94,14 +90,14 @@ let eval : core -> (core, string) Result.t =
    fun ctx tm ->
     match tm with
     | Var v ->
-      (match String.Map.find ctx v with
+      (match Map.find ctx v with
       | Some result -> result
       | None -> raise @@ EvalError ("Unbound variable " ^ v))
     | CoreApp (Lambda (_tys, Scope (arg_patterns, body)), args) ->
-      if length arg_patterns <> length args
+      if List.(length arg_patterns <> length args)
       then raise @@ EvalError "mismatched application lengths"
       else (
-        let arg_vals = map args ~f:(go ctx) in
+        let arg_vals = List.map args ~f:(go ctx) in
         let new_args : core String.Map.t =
           List.map2_exn arg_patterns arg_vals ~f:(fun (pat : Pattern.t) arg_val ->
               match pat with
@@ -114,11 +110,11 @@ let eval : core -> (core, string) Result.t =
             raise @@ EvalError ("Duplicate variable name binding: " ^ str)
           | `Ok result -> result
         in
-        go (map_union ctx new_args) body)
+        go (Util.map_union ctx new_args) body)
     | Case (tm, branches) ->
       (match find_core_match (go ctx tm) branches with
       | None -> raise @@ EvalError "no match found in case"
-      | Some (branch, bindings) -> go (map_union ctx bindings) branch)
+      | Some (branch, bindings) -> go (Util.map_union ctx bindings) branch)
     (* TODO: or should this be an app? *)
     | Operator ("#add", [ Scope ([], a); Scope ([], b) ]) ->
       (match go ctx a, go ctx b with
