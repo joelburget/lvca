@@ -1,13 +1,12 @@
 open Binding
-open Core
+open Dynamics.Core
 open AbstractSyntax
 module P_dyn = Parsing.Incremental (Parsing.Parseable_dynamics)
 
 let one = Bigint.of_int 1
 let sort = SortAp ("bool", [||])
 let pat_scope body : BindingAwarePattern.scope = Scope ([], body)
-let core_scope body = Scope ([], body)
-let scope body = Core.Scope ([], body)
+let scope body = Scope ([], body)
 
 let dynamics_str =
   {|
@@ -101,7 +100,7 @@ let binary_int_op op a b =
       ] )
 ;;
 
-let%test_module "Core" =
+let%test_module "Dynamics.Core" =
   (module struct
     let%test "dynamics as expected" = dynamics' = Ok dynamics
 
@@ -110,7 +109,7 @@ let%test_module "Core" =
     ;;
 
     let%test "to_ast 2" =
-      to_ast (Operator ("foo", [ core_scope @@ Primitive (PrimInteger one) ]))
+      to_ast (Operator ("foo", [ scope @@ Primitive (PrimInteger one) ]))
       = Nominal.Operator ("foo", [ Scope ([], Primitive (PrimInteger one)) ])
     ;;
 

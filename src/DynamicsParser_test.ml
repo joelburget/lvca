@@ -1,4 +1,4 @@
-open Core
+open Dynamics.Core
 module P_dyn = Parsing.Incremental (Parsing.Parseable_dynamics)
 
 let expect_parse str tm = P_dyn.parse str = Ok tm

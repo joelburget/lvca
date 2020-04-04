@@ -1,7 +1,7 @@
 /* This is a parser for core terms with embedded ASTs */
 
 %{
-open Core
+open Dynamics_Core
 module Array = Core_kernel.Array
 module List = Core_kernel.List
 
@@ -61,15 +61,15 @@ and ast_to_core_scope : Binding.Nominal.scope -> core_scope
 %token IN
 
 %start dynamics
-%type <Core.core> core
-%type <Core.core> ast_like_core
+%type <Dynamics_Core.core> core
+%type <Dynamics_Core.core> ast_like_core
 %type <Primitive.t> primitive
 %type <AbstractSyntax.sort> sort
 %type <Pattern.t> pattern
 %type <Binding.Nominal.term> ast_like
 %type <Binding.Nominal.scope> ast_like_scope
-%type <string * Core.core> definition
-%type <Core.denotation_chart> dynamics
+%type <string * Dynamics_Core.core> definition
+%type <Dynamics_Core.denotation_chart> dynamics
 %type <AbstractSyntax.sort * Pattern.t> typed_arg
 %%
 
