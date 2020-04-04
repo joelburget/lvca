@@ -1,4 +1,5 @@
 open Core_kernel
+open Binding
 
 let abstractSyntax =
   {|
@@ -54,7 +55,7 @@ tm_4 :=
 ;;
 
 (* TODO: lessen duplication *)
-let rec eval' : Bigint.t list -> Binding.DeBruijn.term -> Bigint.t option =
+let rec eval' : Bigint.t list -> DeBruijn.term -> Bigint.t option =
  fun env tm ->
   match tm with
   | Operator (op, [ Scope ([], a) ]) ->
@@ -82,14 +83,14 @@ let rec eval' : Bigint.t list -> Binding.DeBruijn.term -> Bigint.t option =
   | Var _ | Operator _ | Sequence _ | Primitive (PrimString _) -> None
 ;;
 
-let eval : Binding.DeBruijn.term -> Bigint.t option = eval' []
+let eval : DeBruijn.term -> Bigint.t option = eval' []
 
-let eval_tm : Binding.Nominal.term -> (Binding.Nominal.term, string) Result.t =
+let eval_tm : Nominal.term -> (Nominal.term, string) Result.t =
  fun tm ->
-  match Binding.DeBruijn.from_nominal tm with
+  match DeBruijn.from_nominal tm with
   | Error msg -> Error msg
   | Ok db_tm ->
     (match eval db_tm with
     | None -> Error "failed to evaluate"
-    | Some result -> Ok (Binding.Nominal.Primitive (PrimInteger result)))
+    | Some result -> Ok (Nominal.Primitive (PrimInteger result)))
 ;;
