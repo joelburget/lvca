@@ -1,7 +1,8 @@
 open Core_kernel
 
 module Parse_statics = Parsing.Incremental (Parsing.Parseable_statics)
-(* open Statics *)
+
+(* See the Bidirectional module for more tests *)
 
 let print_parse desc =
   print_string (match Parse_statics.parse desc with

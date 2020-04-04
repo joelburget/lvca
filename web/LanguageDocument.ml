@@ -123,9 +123,9 @@ type parsed =
   | ParsedTerm of Binding.Nominal.term
   | ParsedAbstract of AbstractSyntax.abstract_syntax
   | ParsedConcrete of ConcreteSyntaxDescription.t
+  | ParsedStatics of Statics.rule list
   (*
   | ParsedDynamics
-  | ParsedStatics
   | ParsedParseable of parseable'
   *)
 
@@ -138,6 +138,7 @@ let term_of_parsed : parsed -> Binding.Nominal.term
     | ParsedConcrete concrete_syntax -> concrete_syntax
       |> ConcreteSyntaxDescription.to_term
       |> NonBinding.to_nominal
+    | ParsedStatics rules -> Statics.to_term rules
 
 let parse_store_value : store_value -> store_value -> string -> parsed
   = fun _abstract_syntax_val concrete_syntax_val str ->
@@ -157,10 +158,12 @@ let parse_store_value : store_value -> store_value -> string -> parsed
     in
     ParsedConcrete
       (ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules)
+  | GenesisStaticsConcrete
+  -> ParsedStatics (Statics.Parser.rules Statics.Lexer.read lex)
   | Term concrete_syntax_tm
   ->
     (match NonBinding.from_nominal concrete_syntax_tm with
-      | None -> failwith "TODO"
+      | None -> failwith "TODO 1"
       | Some concrete_syntax_tm' ->
         let concrete_syntax = ConcreteSyntaxDescription.of_term concrete_syntax_tm' in
         let ast =
@@ -171,7 +174,7 @@ let parse_store_value : store_value -> store_value -> string -> parsed
           | Ok ast -> ParsedTerm ast
           | Error msg -> failwith msg)
 
-  | _ -> failwith "TODO"
+  | _ -> failwith "TODO 2"
 
   (*
   | Parseable { abstract_syntax = _; concrete_syntax }

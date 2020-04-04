@@ -54,6 +54,7 @@ and scope_to_pattern = function
 %%
 
 (** @raise [StaticsParseError] *)
+(* TODO: sequence, primitive? *)
 term:
   | name = ID LEFT_PAREN scopes = separated_list(SEMICOLON, scope) RIGHT_PAREN
   { Operator (name, scopes) }
