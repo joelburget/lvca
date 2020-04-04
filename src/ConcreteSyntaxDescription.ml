@@ -38,14 +38,15 @@ type binder_capture =
 
 (** An operator match pattern appears in the right-hand-side of a concrete syntax
     declaration, to show how to parse and pretty-print operators. They either match an
-    operator, eg [ add($1; $3) ] (for tokens [expr PLUS expr]) or are "single capture",
-    eg [{ $2 }] (for tokens [LPAREN expr RPAREN]). *)
+    operator, eg [ add(a; b) ] (for tokens [a = expr PLUS b = expr]) or are "single
+    capture", eg [{ expr }] (for tokens [LPAREN expr = expr RPAREN]). *)
 type operator_match_pattern =
   | OperatorPattern of string * scope_pattern list
   | SingleCapturePattern of string
 
-(** A term pattern with numbered holes in binder patterns and subterms, eg `$2. $4` (for
-    tokens `FUN name ARR expr`) *)
+(** A term pattern with numbered holes in binder patterns and subterms, eg [name. expr]
+   (for tokens [FUN name = name ARR expr = expr])
+  *)
 and scope_pattern = NamedScopePattern of binder_capture list * operator_match_pattern
 
 let string_of_binder_capture : binder_capture -> string = function
