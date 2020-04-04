@@ -29,26 +29,26 @@ MIN := "min"
 LPAREN := "("
 RPAREN := ")"
 
-tm := tm_1 { tm_1 }
+tm := tm = tm_1 { tm }
 
 tm_1 :=
-  | SUB tm_2 { neg(tm_2) }
-  | tm_1 ADD tm_2 { add(tm_1; tm_2) }
-  | tm_1 SUB tm_2 { sub(tm_1; tm_2) }
-  | tm_2 { tm_2 }
+  | SUB x = tm_2 { neg(x) }
+  | x = tm_1 ADD y = tm_2 { add(x; y) }
+  | x = tm_1 SUB y = tm_2 { sub(x; y) }
+  | tm = tm_2 { tm }
 
 tm_2 :=
-  | tm_2 MUL tm_3 { mul(tm_2; tm_3) }
-  | tm_3 { tm_3 }
+  | x = tm_2 MUL y = tm_3 { mul(x; y) }
+  | tm = tm_3 { tm }
 
 tm_3 :=
   | MAX x = tm_4 y = tm_4 { max(x; y) }
   | MIN x = tm_4 y = tm_4 { min(x; y) }
-  | tm_4 { tm_4 }
+  | tm = tm_4 { tm }
 
 tm_4 :=
-  | LPAREN tm_1 RPAREN { tm_1 }
-  | BAR tm_1 BAR { abs(tm_1) }
+  | LPAREN tm = tm_1 RPAREN { tm }
+  | BAR tm = tm_1 BAR { abs(tm) }
   | i = INT { lit(integer(i)) }
 |}
 ;;
