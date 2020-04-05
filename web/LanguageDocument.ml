@@ -21,14 +21,11 @@ language := language(sha_or_name(); maybe(sha_or_name()))
 command :=
   | define(
     maybe(string()); // name
-    language();
-    string() // term
+    language()
   )
-  | lookup(string()) // name or sha
   | eval(
     sha_or_name(); // dynamics
-    language(); // target language
-    string() // term
+    language() // target language
   )
   |}
 ;;
@@ -37,9 +34,7 @@ let commands_concrete_syntax =
   let str =
   {|
 DEFINE := "define"
-LOOKUP := "lookup"
 EVAL := "eval"
-ASSIGN := ":="
 COLON := ":"
 LANGLE := "<"
 RANGLE := ">"
@@ -58,12 +53,10 @@ language :=
   { language(abstract; nothing()) }
 
 command :=
-  | DEFINE ident = IDENT COLON lang = language ASSIGN str = STRING
-  { define(just(string(ident)); lang; string(str)) }
-  | LOOKUP ident = IDENT
-  { lookup(string(ident)) }
-  | EVAL sha_or_name = sha_or_name lang = language str = STRING
-  { eval(sha_or_name; lang; string(str)) }
+  | DEFINE ident = IDENT COLON lang = language
+  { define(just(string(ident)); lang) }
+  | EVAL sha_or_name = sha_or_name lang = language
+  { eval(sha_or_name; lang) }
   |}
   in
   match Parse_concrete.parse str with
@@ -213,8 +206,6 @@ let eval_command : store -> NonBinding.term -> Vdom.Node.t
            ());
        (* TODO: structured *)
        Vdom.Node.(pre [] [code [] [text @@ Binding.Nominal.pp_term' defn_tm]])
-    | Operator("lookup", [_ident])
-    -> failwith "TODO lookup"
     | Operator("eval", [_ident; _tm_str])
     -> failwith "TODO eval"
     | _
@@ -381,7 +372,7 @@ let eval_inline_block
         | _ -> h6 (* TODO: error *)
       in
       node_creator [(* TODO: attributes *)] (vdom_of_inline text)
-    | Code_block { kind = _; label = _; other = _; code; attributes = _ }
+    | Code_block { kind = _; label; other = _; code; attributes = _ }
     -> let body = match code with
          | None -> []
          | Some code' -> [match parse_command code' with

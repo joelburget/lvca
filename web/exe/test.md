@@ -1,32 +1,30 @@
-# test definitions page
+# Hutton's Razor
 
-This page executes from top to bottom.
+Hutton's Razor is a minimal language with exactly two types of expressions:
+integer literals and addition.
 
----
-
-```lvca
-define arith : abstract_syntax<abstract_syntax_concrete> := {{
+```{define arith : abstract_syntax<abstract_syntax_concrete>}
 import {integer} from "builtins"
 
 tm :=
   | add(tm(); tm())
   | lit(integer())
-}}
 ```
 
-```
-define arith_concrete : concrete_syntax<concrete_syntax_concrete> := {{
+```{define arith_concrete : concrete_syntax<concrete_syntax_concrete>}
 PLUS := "+"
 NUM := /[0-9]+/
 
 tm :=
   | a = tm PLUS b = tm { add(a; b) }
   | n = NUM { lit(integer(n)) }
-}}
 ```
 
-```lvca
-define test : arith<arith_concrete> := {{
+```{define arith_statics : statics<statics_concrete>}
+--- (infer int)
+ctx >> tm => int()
+```
+
+```{define test : arith<arith_concrete>}
 1 + 1
-}}
 ```
