@@ -27,18 +27,18 @@ let rec vars : pattern -> String.Set.t = function
   | Primitive _ -> String.Set.empty
 
 and vars_of_scope (Scope (bound_vars, pat)) =
-  bound_vars |> String.Set.of_list |> String.Set.union (vars pat)
+  bound_vars |> String.Set.of_list |> Set.union (vars pat)
 
 and vars_of_scopes scopes =
   scopes
   |> List.map ~f:vars_of_scope
-  |> List.fold_left ~init:String.Set.empty ~f:String.Set.union
+  |> List.fold_left ~init:String.Set.empty ~f:Set.union
 
 and vars_of_patterns pats =
-  pats |> List.map ~f:vars |> List.fold_left ~init:String.Set.empty ~f:String.Set.union
+  pats |> List.map ~f:vars |> List.fold_left ~init:String.Set.empty ~f:Set.union
 ;;
 
-let list_vars : pattern -> string list = fun pat -> String.Set.to_list (vars pat)
+let list_vars : pattern -> string list = fun pat -> Set.to_list (vars pat)
 
 let rec to_string : pattern -> string = function
   | Operator (name, pats) ->
