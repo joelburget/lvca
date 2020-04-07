@@ -30,3 +30,6 @@ val eval : core -> (core, string) Core_kernel.Result.t
 
 (** Convert a core term to a nominal term, ensuring that it contains no core operators. *)
 val to_ast : core -> Nominal.term
+
+(** Convert a denotation chart to a nominal term, for storage. *)
+val to_term : denotation_chart -> Nominal.term

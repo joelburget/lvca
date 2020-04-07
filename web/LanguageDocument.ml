@@ -74,8 +74,9 @@ command :=
 
 let parse_command : string -> (NonBinding.term, string) Result.t
   = fun str ->
-    Printf.printf "parsing command: %s\n" str;
-    let%bind tree = ConcreteSyntax.parse commands_concrete_syntax "command" str in
+    Printf.printf "parsing command: '%s'\n" str;
+    let str' = String.slice str 1 (-1) in
+    let%bind tree = ConcreteSyntax.parse commands_concrete_syntax "command" str' in
     let%bind ast = ConcreteSyntax.to_ast commands_concrete_syntax tree in
     match NonBinding.from_nominal ast with
       | None -> Error "Failed to convert ast to non-binding"
@@ -117,8 +118,8 @@ type parsed =
   | ParsedAbstract of AbstractSyntax.abstract_syntax
   | ParsedConcrete of ConcreteSyntaxDescription.t
   | ParsedStatics of Statics.rule list
+  | ParsedDynamics of Dynamics.Core.denotation_chart
   (*
-  | ParsedDynamics
   | ParsedParseable of parseable'
   *)
 
@@ -132,12 +133,12 @@ let term_of_parsed : parsed -> Binding.Nominal.term
       |> ConcreteSyntaxDescription.to_term
       |> NonBinding.to_nominal
     | ParsedStatics rules -> Statics.to_term rules
+    | ParsedDynamics dynamics -> Dynamics.Core.to_term dynamics
 
 let parse_store_value : store_value -> store_value -> string -> parsed
   = fun _abstract_syntax_val concrete_syntax_val str ->
-  let str' = String.slice str 2 (-2) in
-  let lex = Lexing.from_string str' in
-  Printf.printf "Parsing {|%s|}\n" str';
+  let lex = Lexing.from_string str in
+  Printf.printf "Parsing {|%s|}\n" str;
   match concrete_syntax_val with
   | GenesisTermConcrete
   -> ParsedTerm (Term.Parser.top_term Term.Lexer.read lex)
@@ -145,7 +146,7 @@ let parse_store_value : store_value -> store_value -> string -> parsed
   -> ParsedAbstract (AbstractSyntax.Parser.language_def AbstractSyntax.Lexer.read lex)
   | GenesisConcreteSyntaxConcrete
   ->
-    Printf.printf "language:\n%s\n" str';
+    Printf.printf "language:\n%s\n" str;
     let pre_terminal_rules, sort_rules =
       ConcreteSyntax.Parser.language ConcreteSyntax.Lexer.read lex
     in
@@ -153,6 +154,8 @@ let parse_store_value : store_value -> store_value -> string -> parsed
       (ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules)
   | GenesisStaticsConcrete
   -> ParsedStatics (Statics.Parser.rules Statics.Lexer.read lex)
+  | GenesisDynamicsConcrete
+  -> ParsedDynamics (Dynamics.Parser.dynamics Dynamics.Lexer.read lex)
   | Term concrete_syntax_tm
   ->
     (match NonBinding.from_nominal concrete_syntax_tm with
@@ -160,7 +163,7 @@ let parse_store_value : store_value -> store_value -> string -> parsed
       | Some concrete_syntax_tm' ->
         let concrete_syntax = ConcreteSyntaxDescription.of_term concrete_syntax_tm' in
         let ast =
-          let%bind tree = ConcreteSyntax.parse concrete_syntax "tm" (* XXX root name*) str' in
+          let%bind tree = ConcreteSyntax.parse concrete_syntax "tm" (* XXX root name*) str in
           ConcreteSyntax.to_ast concrete_syntax tree
         in
         match ast with
@@ -181,17 +184,16 @@ let parse_store_value : store_value -> store_value -> string -> parsed
   *)
 
 (* TODO: we end up double-wrapping the results of this call in eval_inline_block *)
-let eval_command : store -> NonBinding.term -> Vdom.Node.t
-  = fun ({ term_store; name_store } as store) -> function
+let eval_command : store -> NonBinding.term -> string -> Vdom.Node.t
+  = fun ({ term_store; name_store } as store) cmd body -> match cmd with
     | Operator ("define",
       [ maybe_ident
       ; Operator("language", [ abstract_tm; concrete_tm ])
-      ; Primitive (PrimString defn_str)
       ])
     ->
        let lang_val = lookup_lang store abstract_tm in
        let concrete_val = lookup_maybe_concrete store concrete_tm in
-       let parsed_defn = parse_store_value lang_val concrete_val defn_str in
+       let parsed_defn = parse_store_value lang_val concrete_val body in
        let defn_tm = term_of_parsed parsed_defn in
        let key = Binding.Nominal.hash defn_tm in
        Hashtbl.set term_store ~key ~data:defn_tm;
@@ -206,7 +208,7 @@ let eval_command : store -> NonBinding.term -> Vdom.Node.t
            ());
        (* TODO: structured *)
        Vdom.Node.(pre [] [code [] [text @@ Binding.Nominal.pp_term' defn_tm]])
-    | Operator("eval", [_ident; _tm_str])
+    | Operator("eval", [_ident])
     -> failwith "TODO eval"
     | _
     -> failwith "TODO unknown command"
@@ -355,6 +357,8 @@ let rec vdom_of_inline : Omd.inline -> Vdom.Node.t list
     -> [ text "tag not supported" ]
     )
 
+let error_block msg = Vdom.Node.(div [] [text msg])
+
 let eval_inline_block
   : store -> Omd.inline Omd.block -> Vdom.Node.t
   = fun store -> Vdom.Node.(function
@@ -372,16 +376,40 @@ let eval_inline_block
         | _ -> h6 (* TODO: error *)
       in
       node_creator [(* TODO: attributes *)] (vdom_of_inline text)
-    | Code_block { kind = _; label; other = _; code; attributes = _ }
-    -> let body = match code with
-         | None -> []
-         | Some code' -> [match parse_command code' with
-           | Ok cmd ->
-               Printf.printf "parsed command, evaluating\n";
-               eval_command store cmd
-           | Error msg -> Printf.printf "failed to parse command:\n%s\n" msg; text msg]
-       in
-       Vdom.Node.pre [] [Vdom.Node.code [(* TODO: attributes *)] body]
+    | Code_block { kind = _; label = _; other = _; code; attributes = _ }
+    ->
+      (*
+      Printf.printf "label: '%s'\n" (match label with
+        | None -> "none"
+        | Some l -> l);
+      Printf.printf "other: '%s'\n" (match other with
+        | None -> "none"
+        | Some l -> l);
+      Printf.printf "code: '%s'\n" (match code with
+        | None -> "none"
+        | Some l -> l);
+
+      Printf.printf "attributes:\n- id: %s\n- classes: [%s]\n- attributes: [%s]\n"
+        (match attributes.id with
+          | None -> "none"
+          | Some str -> str)
+        (attributes.classes |> String.concat ~sep:"; ")
+        (attributes.attributes
+          |> List.map ~f:(fun (x, y) -> Printf.sprintf {|"%s", "%s"|} x y)
+          |> String.concat ~sep:"; ");
+          *)
+
+      (match code with
+         | None -> error_block "No code found in code block"
+         | Some headered_code -> (match String.lsplit2 headered_code ~on:'\n' with
+           | Some (cmd_str, code_str) -> (match parse_command cmd_str with
+             | Ok cmd ->
+                 Printf.printf "code_str:\n%s\n" code_str;
+                 eval_command store cmd code_str
+             | Error msg -> text msg)
+           | None -> error_block (Printf.sprintf
+             "Single line code block found -- must include a header: %s"
+             headered_code)))
     | Thematic_break -> hr []
     | Html_block _ -> text "html blocks not supported"
     | Link_def _ (* string Link_def.t *)

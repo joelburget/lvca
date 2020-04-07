@@ -132,3 +132,51 @@ let eval : core -> (core, string) Result.t =
   in
   try Ok (go String.Map.empty core) with EvalError msg -> Error msg
 ;;
+
+(* to_term *)
+
+let rec term_of_core : core -> Nominal.term
+  = function
+  | Operator (name, scopes) -> Operator ("operator",
+    [ Scope ([], Primitive (PrimString name))
+    ])
+  | Var name -> Var name
+  | Sequence cores -> Sequence (List.map cores ~f:term_of_core)
+  | Primitive p -> Primitive p
+  (* plus, core-specific ctors *)
+  | Lambda (sorts, scope) -> Operator ("lambda",
+    [ Scope ([], Operator ("sorts",
+      [ Scope ([], Sequence (sorts
+        |> List.map ~f:(fun sort -> sort
+          |> AbstractSyntax.term_of_sort
+          |> NonBinding.to_nominal)
+      ))
+      ]))
+    ; scope_of_core_scope scope
+    ])
+  | CoreApp (f, args) -> Operator ("core_app",
+    [ Scope ([], term_of_core f)
+    ; Scope ([], Sequence (List.map args ~f:term_of_core))
+    ])
+  | Case (tm, branches) -> Operator ("case",
+    [ Scope ([], term_of_core tm)
+    (* TODO *)
+    (* ; Scope ([], Sequence (List.map branches ~f:scope_of_core_case_scope)) *)
+    ])
+  | Let (tm, body) -> Operator ("let",
+    [ Scope ([], term_of_core tm)
+    ; scope_of_core_scope body
+    ])
+
+and scope_of_core_scope : core_scope -> Nominal.scope
+  = fun (Scope (pats, body)) -> Scope (pats, term_of_core body)
+
+and scope_of_core_case_scope : core_case_scope -> Nominal.scope
+  = fun (CaseScope (baw_pat, body)) -> failwith "TODO"
+
+let to_term : denotation_chart -> Nominal.term
+  = fun (DenotationChart lines) -> Sequence (List.map lines
+    ~f:(fun (name, core) -> Nominal.Operator ("pair",
+      [ Scope ([], Primitive (PrimString name))
+      ; Scope ([], term_of_core core)
+      ])))
