@@ -11,23 +11,17 @@ let scope body = Scope ([], body)
 let dynamics_str =
   {|
 meaning = \(tm : ty()) -> match tm with {
-| true() -> true()
-| false() -> false()
-| ite(t1; t2; t3) -> match meaning t1 with {
-  | true()  -> meaning t2
-  | false() -> meaning t3
-}
-| ap(f; arg) -> (meaning f) (meaning arg)
-| fun(scope) -> lambda([]; scope) // TODO: add type
+  | true() -> true()
+  | false() -> false()
+  | ite(t1; t2; t3) -> match meaning t1 with {
+    | true()  -> meaning t2
+    | false() -> meaning t3
+  }
+  | ap(f; arg) -> (meaning f) (meaning arg)
+  | fun(scope) -> lambda([]; scope) // TODO: add type
 }
 |}
 ;;
-
-(* let lit_dynamics_str = {| meaning = \(tm : ty()) -> match tm with { | lit(b) -> b |
-   ite(t; l; r) -> case(meaning t; [ branch(true(); meaning l), branch(false(); meaning
-   r), ]) } |} in
-
-   let lit_dynamics = P_dyn.parse lit_dynamics_str in *)
 
 let meaning x = CoreApp (Var "meaning", [ x ])
 
@@ -69,9 +63,6 @@ let dynamics =
 ;;
 
 let dynamics' = P_dyn.parse dynamics_str
-
-(* let true_tm = DeBruijn.Operator ("true", []) let false_tm = DeBruijn.Operator ("false",
-   []) *)
 
 let true_val = Operator ("true", [])
 let false_val = Operator ("false", [])
