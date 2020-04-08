@@ -1,6 +1,7 @@
 module Lexer = AbstractSyntax_Lexer
 module Parser = AbstractSyntax_Parser
 module ParseErrors = AbstractSyntax_ParseErrors
+module Types = AbstractSyntax_Types
 include AbstractSyntax_Types
 
 let%test_module "AbstractSyntax_Parser" = (module struct
