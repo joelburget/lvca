@@ -2,6 +2,7 @@ open Bonsai_web
 open Core_kernel
 open Js_of_ocaml
 open Lvca
+open Lvca_web
 
 module Term_render_component = struct
   let name = "Term Render"
@@ -32,17 +33,6 @@ module Term_render_component = struct
 
   let compute : inject:(Action.t -> Vdom.Event.t) -> Input.t -> Model.t -> Result.t =
    fun ~inject eval (input_str, tm_opt) ->
-    let is_key_ret key =
-      let is_enter =
-        String.equal
-          "Enter"
-          (key##.code |> Js.Optdef.to_option |> Option.value_exn |> Js.to_string)
-      in
-      let is_meta = Js.to_bool key##.metaKey in
-      let is_shift = Js.to_bool key##.shiftKey in
-      let is_ctrl = Js.to_bool key##.ctrlKey in
-      is_enter && (is_meta || is_shift || is_ctrl)
-    in
     let handle_keydown =
       Vdom.Attr.on_keydown (fun evt ->
           (let open Option.Let_syntax in
@@ -50,7 +40,7 @@ module Term_render_component = struct
           let%map inp = Js.Opt.to_option (Dom_html.CoerceTo.textarea target) in
           let str = Js.to_string inp##.value in
           let update =
-            if is_key_ret evt
+            if Web_util.is_special_enter evt
             then (
               Dom.preventDefault evt;
               (* prevent inserting a newline *)
