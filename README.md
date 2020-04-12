@@ -117,8 +117,15 @@ LVCA is written in OCaml and built with [dune](https://dune.build/). So first
 you need `opam` and `dune` installed, then:
 
 ```
-opam install base bignum cbor core_kernel digestif ppx_jane re
+make install-deps
 dune build
+```
+
+To produce JS files small enough to put online, run in release mode. Optionally, also compress with [terser](https://terser.org/):
+
+```
+dune build --profile=release
+terser -c toplevel,sequences=false,drop_console=true --mangle -- _build/default/pages/0x-huttons-razor/main.bc.js > out.js
 ```
 
 # Test
