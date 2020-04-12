@@ -83,7 +83,7 @@ let rec term_to_tree
     operator_match_tokens
       |> List.iter ~f:(fun token ->
 
-      let token_name = match token with
+      let subterm_result = match token with
         | TerminalName { binding_name = Some binding_name; _ }
         | NonterminalName { binding_name = Some binding_name; _ }
         -> String.Map.find subterms binding_name
@@ -91,7 +91,7 @@ let rec term_to_tree
         -> None
       in
 
-      match token_name, token with
+      match subterm_result, token with
 
     (* if the current token is a terminal, and we didn't capture a binder
      * or term, we just emit the contents of the token *)

@@ -1,4 +1,3 @@
-open Lvca
 module Parse_abstract = Parsing.Incremental (Parsing.Parseable_abstract_syntax)
 module Parse_concrete = Parsing.Incremental (Parsing.Parseable_concrete_syntax)
 
@@ -56,6 +55,8 @@ let concrete =
   ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
 ;;
 
+(* TODO: write a functor to do this stuff for any language? *)
+
 let parse_concrete = ConcreteSyntax.parse concrete "expr"
 ;;
 
@@ -66,3 +67,11 @@ let expr_sort = AbstractSyntax.Types.SortAp ("expr", [||])
 
 let of_ast = ConcreteSyntax.of_ast abstract.sort_defs concrete expr_sort "expr" 80
 ;;
+
+let%expect_test {|pretty lit(1)|} =
+  let tm = Binding.Nominal.(Operator ("lit",
+    [ Scope ([], Primitive (PrimInteger (Bigint.of_int 1)))
+    ]))
+  in
+  print_string (ConcreteSyntax.to_string (of_ast tm));
+  [%expect]
