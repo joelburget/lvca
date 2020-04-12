@@ -231,6 +231,7 @@ let check_operator_match_validity
     box is opened before it's closed.
  + Only string, integer, var capture bare terminals
  + There are no duplicate terminal or nonterminal names
+ + Single capture patterns are only allwed as the last construction in a nonterminal
 
  Examples:
  - [FOO bar BAZ { op(bar) }] valid
@@ -264,57 +265,65 @@ let check_description_validity { terminal_rules; nonterminal_rules } =
     let open_depth = ref 0 in
     nonterminal_rules
     |> Map.iter ~f:(fun (NonterminalRule { operator_rules; _ }) ->
-           operator_rules
-           |> List.iter
-                ~f:(fun (OperatorMatch { tokens; operator_match_pattern }) ->
-                  let { non_existent_tokens
-                      ; duplicate_captures
-                      ; uncaptured_tokens
-                      ; invalid_captured_terminals } =
-                    check_operator_match_validity tokens operator_match_pattern
-                  in
-                  if not (Set.is_empty duplicate_captures)
-                  then (
-                    let tok_names = duplicate_captures |> Set.to_list |> show_toks in
-                    raise_invalid ("tokens captured more than once: " ^ tok_names));
-                  if not (MSS.is_empty non_existent_tokens)
-                  then (
-                    let tok_names = non_existent_tokens |> MSS.to_list |> show_toks in
-                    raise_invalid ("non-existent tokens mentioned: " ^ tok_names));
-                  if not (Set.is_empty invalid_captured_terminals)
-                  then (
-                    let tok_names = invalid_captured_terminals
-                      |> Set.to_list
-                      |> List.map ~f:(fun (name, tok) -> Printf.sprintf
-                        "%s (%s)" name tok
-                      )
-                      |> String.concat ~sep:", "
-                    in
-                    raise_invalid ("Terminals can only be captured by `var`, \
-                      `integer`, and `string`: " ^ tok_names));
-                  List.iter uncaptured_tokens ~f:(function
-                    | NonterminalName { token_name; _ } ->
-                      raise_invalid ("uncaptured nonterminal: " ^ token_name)
-                    | TerminalName { token_name; _ } ->
-                      (match Map.find terminal_rules' token_name with
-                      | None -> raise_invalid
-                        ("Named terminal " ^ token_name ^ " does not exist")
-                      | Some regex ->
-                        if is_none (Regex.is_literal regex)
-                        then
-                          raise_invalid
-                            (Printf.sprintf
-                            "Uncaptured regex which is not a string literal: /%s/"
-                            (Regex.to_string regex)))
-                    | OpenBox _ -> incr open_depth
-                    | CloseBox ->
-                      if !open_depth <= 0
-                      then
-                        raise_invalid
-                          "Invalid box structure (saw a close box marker (']') before \
-                           its opening marker ('['))!";
-                      decr open_depth
-                    | Underscore _ -> ())));
+           List.iter operator_rules
+             ~f:(fun (OperatorMatch { tokens; operator_match_pattern }) ->
+               let { non_existent_tokens
+                   ; duplicate_captures
+                   ; uncaptured_tokens
+                   ; invalid_captured_terminals } =
+                 check_operator_match_validity tokens operator_match_pattern
+               in
+               if not (Set.is_empty duplicate_captures)
+               then (
+                 let tok_names = duplicate_captures |> Set.to_list |> show_toks in
+                 raise_invalid ("tokens captured more than once: " ^ tok_names));
+               if not (MSS.is_empty non_existent_tokens)
+               then (
+                 let tok_names = non_existent_tokens |> MSS.to_list |> show_toks in
+                 raise_invalid ("non-existent tokens mentioned: " ^ tok_names));
+               if not (Set.is_empty invalid_captured_terminals)
+               then (
+                 let tok_names = invalid_captured_terminals
+                   |> Set.to_list
+                   |> List.map ~f:(fun (name, tok) -> Printf.sprintf
+                     "%s (%s)" name tok
+                   )
+                   |> String.concat ~sep:", "
+                 in
+                 raise_invalid ("Terminals can only be captured by `var`, \
+                   `integer`, and `string`: " ^ tok_names));
+               List.iter uncaptured_tokens ~f:(function
+                 | NonterminalName { token_name; _ } ->
+                   raise_invalid ("uncaptured nonterminal: " ^ token_name)
+                 | TerminalName { token_name; _ } ->
+                   (match Map.find terminal_rules' token_name with
+                   | None -> raise_invalid
+                     ("Named terminal " ^ token_name ^ " does not exist")
+                   | Some regex ->
+                     if is_none (Regex.is_literal regex)
+                     then
+                       raise_invalid
+                         (Printf.sprintf
+                         "Uncaptured regex which is not a string literal: /%s/"
+                         (Regex.to_string regex)))
+                 | OpenBox _ -> incr open_depth
+                 | CloseBox ->
+                   if !open_depth <= 0
+                   then
+                     raise_invalid
+                       "Invalid box structure (saw a close box marker (']') before \
+                        its opening marker ('['))!";
+                   decr open_depth
+                 | Underscore _ -> ()));
+
+          let operator_rules', _ = Util.unsnoc operator_rules in
+          List.iter operator_rules' ~f:(fun (OperatorMatch { operator_match_pattern; _ }) ->
+            match operator_match_pattern with
+              | SingleCapturePattern _ -> raise_invalid
+                "Single capture patterns are only allowed as the last construction \
+                 in a nonterminal"
+              | _ -> ());
+          );
     if !open_depth <> 0
     then
       raise_invalid

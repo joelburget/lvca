@@ -689,4 +689,12 @@ let%test_module "validation test" =
       prelude_print_check "tm := foo = foo foo = foo { op(foo) }";
       [%expect{| Duplicate token name: foo |}]
 
+    let%expect_test _ =
+      prelude_print_check {|
+        tm :=
+          | tm = tm { tm }
+          | FOO { foo() }
+      |};
+      [%expect{| Single capture patterns are only allowed as the last construction in a nonterminal |}]
+
   end)

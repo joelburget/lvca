@@ -6,8 +6,8 @@ let abstract_syntax_str =
 import {integer} from "builtin:integer"
 
 expr :=
-  | lit(integer)    // an expression can be a literal integer
-  | add(expr; expr) // or the addition of two expressions
+  | lit(integer())    // an expression can be a literal integer
+  | add(expr(); expr()) // or the addition of two expressions
 
 type := int() // there's only one type in the language
   |}
@@ -39,8 +39,8 @@ expr_1 :=
 
 // expressions at precedence level 2
 expr_2 :=
-  | LPAREN x = expr_1 RPAREN { x               }
   | x = INTEGER              { lit(integer(x)) }
+  | LPAREN x = expr_1 RPAREN { x               }
 
 type := INT { int() }
   |}
@@ -74,4 +74,4 @@ let%expect_test {|pretty lit(1)|} =
     ]))
   in
   print_string (ConcreteSyntax.to_string (of_ast tm));
-  [%expect]
+  [%expect{| 1 |}]
