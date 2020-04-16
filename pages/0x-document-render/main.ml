@@ -4,6 +4,8 @@ open Js_of_ocaml
 open Lvca
 open Lvca_web
 
+module P_term = Parsing.Incremental (Parsing.Parseable_term)
+
 module Term_render_component = struct
   let name = "Term Render"
 
@@ -14,7 +16,7 @@ module Term_render_component = struct
   module Result = Vdom.Node
 
   module Model = struct
-    type t = string * (Binding.Nominal.term, string) Core_kernel.Result.t option
+    type t = string * (Binding.Nominal.term, ParseError.t) Core_kernel.Result.t option
   end
 
   module Action = struct
@@ -23,8 +25,6 @@ module Term_render_component = struct
       | Evaluate of string
     [@@deriving sexp]
   end
-
-  module P_term = Parsing.Incremental (Parsing.Parseable_term)
 
   let apply_action ~inject:_ ~schedule_event:_ _input (input, tm_opt) = function
     | Action.UpdateInput str -> str, tm_opt
@@ -59,12 +59,15 @@ module Term_render_component = struct
             [ text input_str ]
         ; div
             []
-            [ (match tm_opt with
+            [ match tm_opt with
               | None -> text "(press (ctrl/shift/meta)-enter to evaluate)"
-              | Some tm_result ->
-                (match Core_kernel.Result.bind tm_result ~f:eval with
-                | Error msg -> text msg
-                | Ok node -> node))
+              | Some tm_result -> (match tm_result with
+                | Ok tm -> (match eval tm with
+                  | Ok node -> node
+                  | Error msg -> text msg
+                )
+                | Error err -> text (ParseError.to_string err)
+              )
             ]
         ])
  ;;

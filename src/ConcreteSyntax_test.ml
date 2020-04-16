@@ -113,7 +113,7 @@ list(a) :=
   |}
   in
   match Parse_abstract.parse desc with
-    | Error msg -> failwith msg
+    | Error err -> failwith (ParseError.to_string err)
     | Ok lang -> lang
 
 let int_list_desc =
@@ -127,7 +127,7 @@ list : list(integer) :=
   |}
   in
   match Parse_concrete.parse str_desc with
-    | Error msg -> failwith msg
+    | Error err -> failwith (ParseError.to_string err)
     | Ok (pre_terminal_rules, sort_rules)
     -> ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
 ;;
@@ -136,14 +136,14 @@ let arith = AbstractSyntax.SortAp ("arith", [||])
 let arith' = AbstractSyntax.FixedValence ([], arith)
 
 let { AbstractSyntax.sort_defs; _ } = match Parse_abstract.parse abstract_description with
-  | Error msg -> failwith msg
+  | Error err -> failwith (ParseError.to_string err)
   | Ok lang -> lang
 ;;
 
 let concrete =
   let pre_terminal_rules, sort_rules =
     match Parse_concrete.parse description with
-    | Error msg -> failwith msg
+    | Error err -> failwith (ParseError.to_string err)
     | Ok desc -> desc
   in
   ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
@@ -152,7 +152,7 @@ let concrete =
 let simplified_concrete =
   let pre_terminal_rules, sort_rules =
     match Parse_concrete.parse simplified_description with
-    | Error msg -> failwith msg
+    | Error err -> failwith (ParseError.to_string err)
     | Ok desc -> desc
   in
   ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
@@ -161,7 +161,7 @@ let simplified_concrete =
 let boxes_concrete =
   let pre_terminal_rules, sort_rules =
     match Parse_concrete.parse boxes_description with
-    | Error msg -> failwith msg
+    | Error err -> failwith (ParseError.to_string err)
     | Ok desc -> desc
   in
   ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
@@ -340,16 +340,24 @@ let%test_module "ConcreteSyntax" =
   (module struct
     let ( = ) = Caml.( = )
 
+    let err_to_string = function
+      | Either.First LexerUtil.{ position; message } -> Printf.sprintf
+        "lex error: %s: %s" (Position.to_string position) message
+      | Either.Second (pos, message) -> Printf.sprintf
+        "parse error: %n: %s" pos message
+    ;;
+
     let parse_print str =
-      match parse concrete "arith" str with
-      | Ok tree -> print_string (to_string tree)
-      | Error msg -> print_string msg
+      print_string (match parse concrete "arith" str with
+      | Ok tree -> to_string tree
+      | Error err -> err_to_string err
+      )
     ;;
 
     let%test_unit "language parses" =
       match Parse_concrete.parse description with
       | Ok _concrete -> ()
-      | Error msg -> failwith msg
+      | Error err -> failwith (ParseError.to_string err)
     ;;
 
     let%test "of_ast tree1" = of_ast' 80 tree1_ast = tree1
@@ -440,7 +448,8 @@ let%test_module "ConcreteSyntax" =
     let parse_print_lst str =
       match parse int_list_desc "list" str with
       | Ok tree -> print_string (to_string tree)
-      | Error msg -> print_string msg
+      (* | Error err -> print_string (ParseError.to_string err) *)
+      | Error err -> print_string (err_to_string err)
     ;;
 
     let%expect_test {|parse "0 1 2 3"|} =
@@ -596,7 +605,7 @@ let%test_module "validation test" =
     let print_check desc_str =
       let pre_terminal_rules, sort_rules =
         match Parse_concrete.parse desc_str with
-        | Error msg -> failwith msg
+        | Error err -> failwith (ParseError.to_string err)
         | Ok desc -> desc
       in
       let concrete_desc =

@@ -3,7 +3,6 @@ open Core_kernel
 open Lvca
 open Lvca_omd
 open Store
-open Result.Let_syntax
 
 module Parse_concrete = Parsing.Incremental (Parsing.Parseable_concrete_syntax)
 
@@ -60,7 +59,7 @@ command :=
   |}
   in
   match Parse_concrete.parse str with
-    | Error msg -> failwith msg
+    | Error err -> failwith (ParseError.to_string err)
     | Ok (pre_terminal_rules, sort_rules)
     ->
       let desc = ConcreteSyntax.make_concrete_description
@@ -76,11 +75,13 @@ let parse_command : string -> (NonBinding.term, string) Result.t
   = fun str ->
     Printf.printf "parsing command: '%s'\n" str;
     let str' = String.slice str 1 (-1) in
-    let%bind tree = ConcreteSyntax.parse commands_concrete_syntax "command" str' in
-    let%bind ast = ConcreteSyntax.to_ast commands_concrete_syntax tree in
-    match NonBinding.from_nominal ast with
-      | None -> Error "Failed to convert ast to non-binding"
-      | Some tm -> Ok tm
+    match ConcreteSyntax.parse commands_concrete_syntax "command" str' with
+      | Error _err -> Error (* (ParseError.to_string err) *) "parse error"
+      | Ok tree -> match ConcreteSyntax.to_ast commands_concrete_syntax tree with
+        | Error msg -> Error msg
+        | Ok ast -> match NonBinding.from_nominal ast with
+          | None -> Error "Failed to convert ast to non-binding"
+          | Some tm -> Ok tm
 
 let lookup_lang
   : store -> NonBinding.term -> store_value
@@ -162,9 +163,9 @@ let parse_store_value : store_value -> store_value -> string -> parsed
       | None -> failwith "TODO 1"
       | Some concrete_syntax_tm' ->
         let concrete_syntax = ConcreteSyntaxDescription.of_term concrete_syntax_tm' in
-        let ast =
-          let%bind tree = ConcreteSyntax.parse concrete_syntax "tm" (* XXX root name*) str in
-          ConcreteSyntax.to_ast concrete_syntax tree
+        let ast = match ConcreteSyntax.parse concrete_syntax "tm" (* XXX root name*) str with
+          | Error _err -> Error (* (ParseError.to_string err) *) "parse error"
+          | Ok tree -> ConcreteSyntax.to_ast concrete_syntax tree
         in
         match ast with
           | Ok ast -> ParsedTerm ast

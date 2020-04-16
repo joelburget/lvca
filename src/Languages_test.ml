@@ -4,18 +4,20 @@ module Parseable_abstract_syntax = Parsing.Incremental (Parsing.Parseable_abstra
 let can_parse_abstract language =
   match Parseable_abstract_syntax.parse language with
   | Ok _ -> ()
-  | Error msg -> failwith msg
+  | Error err -> failwith (ParseError.to_string err)
 ;;
 
 let can_parse_concrete language =
-  match Parseable_concrete.parse language with Ok _ -> () | Error msg -> failwith msg
+  match Parseable_concrete.parse language with
+    | Ok _ -> ()
+    | Error err -> failwith (ParseError.to_string err)
 ;;
 
 let parses_to concrete_lang root str expected_str =
   let module Parseable_term = Parsing.Incremental (Parsing.Parseable_term) in
   match ConcreteSyntax.parse concrete_lang root str with
-  | Error msg ->
-    Printf.printf "%s\n" msg;
+  | Error _parse_error ->
+    (* Printf.printf "%s\n" (ParseError.to_string parse_error); *)
     false
   | Ok tree ->
     (match ConcreteSyntax.to_ast concrete_lang tree with
@@ -24,18 +26,18 @@ let parses_to concrete_lang root str expected_str =
       false
     | Ok ast ->
       (match Parseable_term.parse expected_str with
-      | Error msg ->
-        Printf.printf "%s\n" msg;
+      | Error err ->
+        Printf.printf "%s\n" (ParseError.to_string err);
         false
       | Ok expected_ast -> ast = expected_ast))
 ;;
 
 let eval_str evaluator str =
   let module Parse = Parsing.Incremental (Parsing.Parseable_term) in
-  match Parse.parse str with Ok tm -> evaluator tm | Error err -> Error err
+  match Parse.parse str with
+    | Ok tm -> evaluator tm
+    | Error err -> Error (ParseError.to_string err)
 ;;
-
-let evaluates_to evaluator str expected = eval_str evaluator str = Ok expected
 
 let%test_module "Integer Language" =
   (module struct
@@ -45,10 +47,9 @@ let%test_module "Integer Language" =
     let%test_unit "parse concrete syntax" = can_parse_concrete concreteSyntax
 
     let evaluates_to' str i =
-      evaluates_to
-        LanguageInteger.eval_tm
-        str
-        (Binding.Nominal.Primitive (PrimInteger (Bigint.of_int i)))
+      eval_str LanguageInteger.eval_tm str
+      =
+      Ok (Binding.Nominal.Primitive (PrimInteger (Bigint.of_int i)))
     ;;
 
     let%test _ = evaluates_to' "add(1; 2)" 3

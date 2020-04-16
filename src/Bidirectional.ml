@@ -292,11 +292,14 @@ let%test_module "bidirectional tests" =
     let statics =
       match P_statics.parse statics_str with
       | Ok statics -> statics
-      | Error msg -> failwith msg
+      | Error err -> failwith (ParseError.to_string err)
     ;;
 
     let parse_cvt str =
-      let tm = match P_term.parse str with Ok tm -> tm | Error msg -> failwith msg in
+      let tm = match P_term.parse str with
+        | Ok tm -> tm
+        | Error err -> failwith (ParseError.to_string err)
+      in
       let tm' =
         match Binding.DeBruijn.from_nominal tm with
         | Ok tm -> tm

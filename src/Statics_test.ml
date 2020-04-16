@@ -6,7 +6,7 @@ module Parse_statics = Parsing.Incremental (Parsing.Parseable_statics)
 
 let print_parse desc =
   print_string (match Parse_statics.parse desc with
-    | Error msg -> msg
+    | Error err -> ParseError.to_string err
     | Ok _lang -> "parsed")
 
 let%expect_test _ =

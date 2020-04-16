@@ -137,7 +137,7 @@ let eval : core -> (core, string) Result.t =
 
 let rec term_of_core : core -> Nominal.term
   = function
-  | Operator (name, scopes) -> Operator ("operator",
+  | Operator (name, _scopes) -> Operator ("operator",
     [ Scope ([], Primitive (PrimString name))
     ])
   | Var name -> Var name
@@ -158,7 +158,7 @@ let rec term_of_core : core -> Nominal.term
     [ Scope ([], term_of_core f)
     ; Scope ([], Sequence (List.map args ~f:term_of_core))
     ])
-  | Case (tm, branches) -> Operator ("case",
+  | Case (tm, _branches) -> Operator ("case",
     [ Scope ([], term_of_core tm)
     (* TODO *)
     (* ; Scope ([], Sequence (List.map branches ~f:scope_of_core_case_scope)) *)
@@ -171,8 +171,10 @@ let rec term_of_core : core -> Nominal.term
 and scope_of_core_scope : core_scope -> Nominal.scope
   = fun (Scope (pats, body)) -> Scope (pats, term_of_core body)
 
+  (*
 and scope_of_core_case_scope : core_case_scope -> Nominal.scope
   = fun (CaseScope (baw_pat, body)) -> failwith "TODO"
+  *)
 
 let to_term : denotation_chart -> Nominal.term
   = fun (DenotationChart lines) -> Sequence (List.map lines

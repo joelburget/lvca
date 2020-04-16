@@ -1,5 +1,9 @@
+open Core_kernel
+
 module Parse_abstract = Parsing.Incremental (Parsing.Parseable_abstract_syntax)
 module Parse_concrete = Parsing.Incremental (Parsing.Parseable_concrete_syntax)
+module Parse_statics = Parsing.Incremental (Parsing.Parseable_statics)
+module Parse_dynamics = Parsing.Incremental (Parsing.Parseable_dynamics)
 
 let abstract_syntax_str =
   {|
@@ -15,8 +19,8 @@ type := int() // there's only one type in the language
 
 let abstract : AbstractSyntax.t =
   match Parse_abstract.parse abstract_syntax_str with
-    | Error msg -> failwith msg
-    | Ok desc -> desc
+    | Ok tm -> tm
+    | Error err -> failwith (ParseError.to_string err)
 ;;
 
 let concrete_syntax_str =
@@ -49,11 +53,66 @@ type := INT { int() }
 let concrete =
   let pre_terminal_rules, sort_rules =
     match Parse_concrete.parse concrete_syntax_str with
-    | Error msg -> failwith msg
-    | Ok desc -> desc
+      | Ok tm -> tm
+      | Error err -> failwith (ParseError.to_string err)
   in
   ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
 ;;
+
+let statics_str =
+  {|
+--------------------------
+ctx >> lit(_) => int()
+
+-----------------------------
+ctx >> add(_; _) => int()
+  |}
+;;
+
+let statics = match Parse_statics.parse statics_str with
+  | Ok statics -> statics
+  | Error err -> failwith (ParseError.to_string err)
+;;
+
+let bidirectional_env = Bidirectional.
+  { rules = statics
+  ; var_types = String.Map.empty
+  }
+
+let check : Statics.typing -> unit
+  = Bidirectional.check bidirectional_env
+;;
+
+exception InferenceError
+
+(**
+ @raise [FreeVar]
+ @raise [InferenceError]
+ *)
+let infer : Binding.Nominal.term -> Binding.Nominal.term
+  = fun tm -> tm
+    |> Binding.DeBruijn.from_nominal
+    |> Result.ok_or_failwith
+    |> Statics.Types.of_de_bruijn
+    |> Bidirectional.infer bidirectional_env
+    |> Statics.Types.to_de_bruijn_exn
+    |> Binding.DeBruijn.to_nominal
+    |> Util.get_option InferenceError
+;;
+
+(*
+let dynamics_str =
+  {|
+dynamics = \(expr : expr()) -> match expr with {
+  | add(a; b) -> #add(dynamics a; dynamics b)
+  | lit(i) -> i
+}
+  |}
+;;
+
+let dynamics = Parse_dynamics.parse dynamics_str |> Result.ok_or_failwith
+;;
+*)
 
 (* TODO: write a functor to do this stuff for any language? *)
 

@@ -618,7 +618,7 @@ module Lalr1 (G : GRAMMAR) = struct
 
   let lex_and_parse
       :  Lex.lexer -> string
-      -> (parse_result, (Lex.lex_error, parse_error) Either.t) Result.t
+      -> (parse_result, (LexerUtil.lex_error, parse_error) Either.t) Result.t
     =
    fun lexer input ->
     match Lex.lex lexer input with

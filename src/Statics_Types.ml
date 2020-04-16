@@ -49,6 +49,7 @@ type rule =
 
 type typing = Typing of term * term
 
+(** Convert a de Bruijn term to a [term]. See also [to_de_bruijn_exn]. *)
 let rec of_de_bruijn : Binding.DeBruijn.term -> term = function
   | Operator (tag, scopes) -> Operator (tag, List.map scopes ~f:scope_of_de_bruijn)
   | Var (i, j) -> Bound (i, j)
@@ -58,6 +59,21 @@ let rec of_de_bruijn : Binding.DeBruijn.term -> term = function
 and scope_of_de_bruijn : Binding.DeBruijn.scope -> scope =
   fun (Scope (pats, body)) -> Scope (pats, of_de_bruijn body)
 ;;
+
+exception FreeVar of string
+
+(** Convert a [term] to a de Bruijn representation. See also [of_de_bruijn].
+ @raise [FreeVar] *)
+let rec to_de_bruijn_exn : term -> Binding.DeBruijn.term
+  = function
+    | Operator (name, scopes) -> Operator (name, List.map scopes ~f:to_scope)
+    | Bound (i, j) -> Var (i, j)
+    | Free name -> raise (FreeVar name)
+    | Sequence tms -> Sequence (List.map tms ~f:to_de_bruijn_exn)
+    | Primitive prim -> Primitive prim
+
+and to_scope : scope -> Binding.DeBruijn.scope
+  = fun (Scope (pats, tm)) -> Scope (pats, to_de_bruijn_exn tm)
 
 (* to_term: *)
 

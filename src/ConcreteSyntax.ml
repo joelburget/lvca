@@ -881,16 +881,7 @@ let parse desc start_nonterminal str =
          desc.nonterminal_rules
          str
          tree_root)
-  | Error (Either.First { start_pos; end_pos; message }) ->
-    Error
-      (Printf.sprintf
-         "lexical error at characters %n - %n (%s):\n%s"
-         start_pos
-         end_pos
-         (String.slice str start_pos end_pos)
-         message)
-  | Error (Either.Second (char_no, message)) ->
-    Error (Printf.sprintf "parser error at character %n:\n%s" char_no message)
+  | Error err -> Error err
 ;;
 
 let make_concrete_description
@@ -904,10 +895,10 @@ let make_concrete_description
              | First re_str ->
                (match Parse_regex.parse re_str with
                | Ok re -> name, re
-               | Error msg -> failwith (Printf.sprintf
+               | Error err -> failwith (Printf.sprintf
                  "failed to parse regex %s: %s"
                  re_str
-                 msg))
+                 (ParseError.to_string err)))
              | Second str -> name, Regex.re_str str)
   ; nonterminal_rules =
       nonterminal_rules

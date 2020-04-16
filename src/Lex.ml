@@ -8,48 +8,43 @@ type token =
 
 type token_name = string
 type lexer = (token_name * Regex.t) list
-type position = int
-
-type lex_error =
-  { start_pos : position
-  ; end_pos : position
-  ; message : string
-  }
 
 type lexbuf =
   { buf : string
-  ; mutable pos : position
+  ; mutable lnum : int
+  (** The current line number (= number of newlines we've crossed) *)
+  ; mutable bol_pos : int
+  (** The character number of the beginning of the current line *)
+  ; mutable abs_pos : int
+  (** The absolute position in the buffer of the current position *)
   }
 
-exception LexError of lex_error
-
+  (*
 let string_of_lexer token_row =
   token_row
   |> List.map ~f:(fun (name, re) ->
          Printf.sprintf "%s := /%s/" name (Regex.to_string re))
   |> String.concat ~sep:"\n"
 ;;
+*)
 
 let string_of_tokens : token array -> string =
  fun toks ->
   toks |> Array.map ~f:(fun { name; _ } -> name) |> String.concat_array ~sep:" "
 ;;
 
-(** @raise [LexError] *)
-let get_next_tok_exn : lexer -> (int * string) list -> Re.re -> lexbuf -> token =
- fun lexer tok_names re { buf; pos } ->
-  match Re.exec_opt ~pos re buf with
+(** @raise [LexicalError] *)
+let get_next_tok_exn : (int * string) list -> Re.re -> lexbuf -> token =
+  fun tok_names re { buf; lnum; bol_pos; abs_pos } ->
+  let position = Position.
+    { pos_lnum = lnum
+    ; pos_bol = bol_pos
+    ; pos_cnum = abs_pos
+    }
+  in
+  match Re.exec_opt ~pos:abs_pos re buf with
   | None ->
-    raise
-      (LexError
-         { start_pos = pos
-         ; end_pos = pos
-         ; message =
-             Printf.sprintf
-               "No match found.\n\nLexbuf:\n%s\n\nLexer:\n%s"
-               buf
-               (string_of_lexer lexer)
-         })
+    raise (LexerUtil.LexicalError { position ; message = "No match found" })
   | Some groups ->
     let name, match_end =
       List.fold_until
@@ -61,25 +56,20 @@ let get_next_tok_exn : lexer -> (int * string) list -> Re.re -> lexbuf -> token 
           else Continue ())
         ~finish:(fun () ->
           raise
-            (LexError
-               { start_pos = pos
-               ; end_pos = pos
-               ; message =
-                   Printf.sprintf
-                     "Invariant violation: no match found.\n\nLexbuf:\n%s\n\nLexer:\n%s"
-                     buf
-                     (string_of_lexer lexer)
+            (LexerUtil.LexicalError
+               { position
+               ; message = "Invariant violation: no match found."
                }))
     in
-    { name; start = pos; finish = match_end }
+    { name; start = abs_pos; finish = match_end }
 ;;
 
-(** @raise [LexError] *)
+(** @raise [LexicalError] *)
 let tokenize_exn : lexer -> string -> token array =
  fun lexer input ->
   (* Printf.printf "tokenize \"%s\"\n" input; *)
   let result = Queue.create () in
-  let lexbuf = { buf = input; pos = 0 } in
+  let lexbuf = { buf = input; lnum = 0; bol_pos = 0; abs_pos = 0 } in
   let re : Re.re =
     lexer
     |> List.map ~f:(fun (_, re) -> Re.group (Regex.to_re re))
@@ -87,27 +77,39 @@ let tokenize_exn : lexer -> string -> token array =
     |> Re.compile
   in
   let tok_names = List.mapi lexer ~f:(fun i (name, _re) -> i + 1, name) in
-  while lexbuf.pos < String.length lexbuf.buf do
-    let tok = get_next_tok_exn lexer tok_names re lexbuf in
+  while lexbuf.abs_pos < String.length lexbuf.buf do
+    let tok = get_next_tok_exn tok_names re lexbuf in
     let { start; finish; _ } = tok in
     (* Printf.printf "name: %s, start: %n, finish: %n\n" name start finish; *)
-    assert (start = lexbuf.pos);
-    lexbuf.pos <- finish;
+    assert (start = lexbuf.abs_pos);
+    let substr = String.slice input start finish in
+    let newline_count = String.count substr ~f:(fun c -> Char.(c = '\n')) in
+    if newline_count > 0 then (
+      lexbuf.lnum <- lexbuf.lnum + newline_count;
+      lexbuf.bol_pos <-
+        String.rfindi ~pos:(finish - 1) input ~f:(fun _i c -> Char.(c = '\n'))
+        |> Util.get_option' (fun () -> "There must be a newline in this string");
+    );
+    lexbuf.abs_pos <- finish;
     ignore (Queue.enqueue result tok : unit)
   done;
   Queue.to_array result
 ;;
 
-let lex : lexer -> string -> (token array, lex_error) Result.t =
- fun lexer input -> try Ok (tokenize_exn lexer input) with LexError err -> Error err
+let lex : lexer -> string -> (token array, LexerUtil.lex_error) Result.t =
+ fun lexer input ->
+   try
+     Ok (tokenize_exn lexer input)
+   with
+     LexerUtil.LexicalError err -> Error err
 ;;
 
 let test_print_result = function
   | Ok toks ->
     Array.iter toks ~f:(fun { name; start; finish } ->
         printf "%s %n %n\n" name start finish)
-  | Error { message; start_pos; end_pos; _ } ->
-    printf "Lexing error at characters %n - %n: %s\n" start_pos end_pos message
+  | Error (LexerUtil.{ message; position }) ->
+    printf "Lexing error at %s: %s\n" (Position.to_string position) message
 ;;
 
 let%expect_test "lex 1" =

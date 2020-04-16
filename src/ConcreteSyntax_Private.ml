@@ -724,7 +724,7 @@ let%test_module "find_operator_match" = (module struct
   ;;
 
   let { AbstractSyntax.sort_defs; _ } = match Parse_abstract.parse abstract_description with
-    | Error msg -> failwith msg
+    | Error err -> failwith (ParseError.to_string err)
     | Ok lang -> lang
   ;;
 

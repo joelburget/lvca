@@ -73,7 +73,9 @@ val parse
   :  ConcreteSyntaxDescription.t
   -> string (* root name *)
   -> string (* string to parse *)
-  -> (formatted_tree, string) Core_kernel.Result.t
+  -> ( formatted_tree
+     , (LexerUtil.lex_error, LrParsing.parse_error) Core_kernel.Either.t
+     ) Core_kernel.Result.t
 
 (** Convert form a concrete to an abstract syntax tree *)
 val to_ast

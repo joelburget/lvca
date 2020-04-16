@@ -5,6 +5,8 @@ open Lvca
 open Lvca_web
 open Vdom
 
+module P_term = Parsing.Incremental (Parsing.Parseable_term)
+
 module Term_render_component = struct
   let name = "Term and Concrete"
 
@@ -19,7 +21,7 @@ module Term_render_component = struct
   module Model = struct
     type t =
       | NoInput
-      | Produced of side * string * (Binding.Nominal.term, string) Core_kernel.Result.t
+      | Produced of side * string * (Binding.Nominal.term, ParseError.t) Core_kernel.Result.t option
   end
 
   module Action = struct
@@ -29,12 +31,10 @@ module Term_render_component = struct
     [@@deriving sexp]
   end
 
-  module P_term = Parsing.Incremental (Parsing.Parseable_term)
-
   let apply_action ~inject:_ ~schedule_event:_ () _model action =
     match action with
-    | Action.UpdateInput (side, str) -> Model.Produced (side, str, Error "...")
-    | Evaluate (side, str) -> Produced (side, str, P_term.parse str)
+    | Action.UpdateInput (side, str) -> Model.Produced (side, str, None)
+    | Evaluate (side, str) -> Produced (side, str, Some (P_term.parse str))
   ;;
 
   let compute : inject:(Action.t -> Event.t) -> Input.t -> Model.t -> Result.t =
@@ -69,11 +69,14 @@ module Term_render_component = struct
     let left_pane, right_pane =
       match model with
       | NoInput -> mk_textarea Left "type a term", mk_textarea Right "type a term"
-      | Produced (side, input_str, result) ->
-        let other_side =
-          match result with
-          | Error msg -> Node.(div [] [ text msg ])
-          | Ok tm -> Node.(div [] [ text (Binding.Nominal.pp_term' tm) ])
+      | Produced (side, input_str, maybe_result) ->
+        let other_side = Node.(div [] [ match maybe_result with
+          | None -> text "(press (ctrl/shift/meta)-enter to evaluate)"
+          | Some result -> (match result with
+            | Error err -> ParseError.to_string err |> text
+            | Ok tm -> Binding.Nominal.pp_term' tm |> text
+          )
+        ])
         in
         (match side with
         | Left -> mk_textarea Left input_str, other_side

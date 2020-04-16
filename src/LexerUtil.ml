@@ -1,6 +1,15 @@
-open Lexing
+open Caml.Lexing
 
-exception SyntaxError of string
+type lex_error =
+  { position : Position.t
+  ; message : string
+  }
+
+let error_to_string : lex_error -> string
+  = fun { position; message }
+  -> Printf.sprintf "position %s: %s" (Position.to_string position) message
+
+exception LexicalError of lex_error
 
 let next_line lexbuf =
   let pos = lexbuf.lex_curr_p in
@@ -8,9 +17,5 @@ let next_line lexbuf =
     <- { pos with pos_bol = lexbuf.lex_curr_pos; pos_lnum = pos.pos_lnum + 1 }
 ;;
 
-let position lexbuf =
-  let p = lexbuf.lex_curr_p in
-  Printf.sprintf "%s:%d:%d" p.pos_fname p.pos_lnum (p.pos_cnum - p.pos_bol)
-;;
-
-let error lexbuf msg = raise (SyntaxError (position lexbuf ^ " " ^ msg))
+let error lexbuf message = raise (LexicalError
+  { position = Position.of_lexbuf lexbuf; message })

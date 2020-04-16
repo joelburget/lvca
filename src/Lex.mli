@@ -6,20 +6,16 @@ type token =
 
 type token_name = string
 type lexer = (token_name * Regex.t) list
-type position = int
-
-type lex_error =
-  { start_pos : position
-  ; end_pos : position
-  ; message : string
-  }
 
 type lexbuf =
   { buf : string
-  ; mutable pos : position
+  ; mutable lnum : int
+  (** The current line number (= number of newlines we've crossed) *)
+  ; mutable bol_pos : int
+  (** The character number of the beginning of the current line *)
+  ; mutable abs_pos : int
+  (** The absolute position in the buffer of the current position *)
   }
 
-exception LexError of lex_error
-
 val string_of_tokens : token array -> string
-val lex : lexer -> string -> (token array, lex_error) Result.t
+val lex : lexer -> string -> (token array, LexerUtil.lex_error) Result.t

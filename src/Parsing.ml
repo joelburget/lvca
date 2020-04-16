@@ -26,7 +26,7 @@ end
 
 module Incremental (M : Parseable) = struct
   type t = M.t
-  type parse_result = (M.t, string) Result.t
+  type parse_result = (M.t, ParseError.t) Result.t
 
   module I = M.MenhirInterpreter
 
@@ -42,17 +42,18 @@ module Incremental (M : Parseable) = struct
 
   let fail (lexbuf : Lexing.lexbuf) (c : M.t I.checkpoint) : parse_result =
     let s : int = state c in
-    Error
-      (Printf.sprintf
-         "Syntax error at offset %d:\n%s\n"
-         (Lexing.lexeme_start lexbuf)
-         (M.ParseErrors.message s))
+    let position = Position.of_lexbuf lexbuf in
+    Error { start_pos = position; end_pos = position; message =  M.ParseErrors.message s }
   ;;
 
   let loop (lexbuf : Lexing.lexbuf) (result : M.t I.checkpoint) =
     let supplier = I.lexer_lexbuf_to_supplier M.Lexer.read lexbuf in
-    try I.loop_handle (fun v -> Ok v) (fail lexbuf) supplier result with
-    | LexerUtil.SyntaxError msg -> Error msg
+    try
+      I.loop_handle (fun v -> Ok v) (fail lexbuf) supplier result
+    with
+      | ParseError.SyntaxError err -> Error err
+      | LexerUtil.LexicalError { position; message }
+      -> Error { start_pos = position; end_pos = position; message }
   ;;
 
   let parse (str : string) : parse_result =

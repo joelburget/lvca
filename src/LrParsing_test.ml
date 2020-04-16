@@ -554,9 +554,9 @@ let%test_module "parse" =
       in
       let input = "foo+bar" in
       match Lr01.lex_and_parse lexer input with
-      | Error (First { start_pos; end_pos; message }) ->
+      | Error (First { position; message }) ->
         failwith
-          (Printf.sprintf "lexer error at chars %n-%n: %s" start_pos end_pos message)
+          (Printf.sprintf "lexer error at %s: %s" (Position.to_string position) message)
       | Error (Second (char_no, msg)) ->
         failwith (Printf.sprintf "parse error at char %n: %s" char_no msg)
       | Ok _ -> ()

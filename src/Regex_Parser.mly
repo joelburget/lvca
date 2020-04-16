@@ -24,6 +24,11 @@
 %type <Regex.t> prec1_re
 %type <Regex.t> prec2_re
 %type <Regex.t> prec3_re
+
+%{
+exception RegexParseError of string
+%}
+
 %%
 
 re_class: BACKSLASH OTHER_CHAR { match $2 with
@@ -35,8 +40,7 @@ re_class: BACKSLASH OTHER_CHAR { match $2 with
   | 'S' -> NegClass Whitespace
   | 'D' -> NegClass Digit
   | 'B' -> NegClass Boundary
-  (* XXX don't use LexerUtil here *)
-  | c -> raise (LexerUtil.SyntaxError
+  | c -> raise (RegexParseError
     (Printf.sprintf "unexpected character class %c" c))
   }
 

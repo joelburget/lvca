@@ -130,6 +130,9 @@ type mutable_lr0_item_set = (IntSet.t, IntSet.comparator_witness) MutableSet.t
 type item_set_set = (item_set, IntSet.comparator_witness) Set.t
 type parse_error = int (* character number *) * string
 
+let error_to_string : parse_error -> string
+  = fun (c, msg) -> Printf.sprintf "character %n: %s" c msg
+
 type parse_result =
   { production : (terminal_num, production_num) Either.t
   ; children : parse_result list
@@ -1088,7 +1091,7 @@ module Lr0 (G : GRAMMAR) = struct
 
   let lex_and_parse
       :  Lex.lexer -> string
-      -> (parse_result, (Lex.lex_error, parse_error) Either.t) Result.t
+      -> (parse_result, (LexerUtil.lex_error, parse_error) Either.t) Result.t
     =
    fun lexer input ->
     match Lex.lex lexer input with
