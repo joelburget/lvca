@@ -1,7 +1,6 @@
 open Dynamics.Core
-module P_dyn = Parsing.Incremental (Parsing.Parseable_dynamics)
 
-let expect_parse str tm = P_dyn.parse str = Ok tm
+let expect_parse str tm = Parsing.Dynamics.parse str = Ok tm
 let pat_scope body : BindingAwarePattern.scope = Scope ([], body)
 let dynamics x = CoreApp (Var "dynamics", [ x ])
 let scope x = Scope ([], x)

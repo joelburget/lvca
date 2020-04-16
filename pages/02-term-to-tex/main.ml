@@ -1,7 +1,6 @@
 open Bonsai_web
 open Core_kernel
 open Js_of_ocaml
-open Lvca
 open Lvca_web
 open Vdom
 
@@ -38,8 +37,6 @@ module Term_render_component = struct
   module Action = struct
     type t = Evaluate of string [@@deriving sexp]
   end
-
-  module P_term = Parsing.Incremental (Parsing.Parseable_term)
 
   let apply_action ~inject:_ ~schedule_event:_ () _model (Action.Evaluate str) = str
 

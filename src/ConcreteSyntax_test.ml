@@ -1,7 +1,5 @@
 open Core_kernel
 open ConcreteSyntax
-module Parse_abstract = Parsing.Incremental (Parsing.Parseable_abstract_syntax)
-module Parse_concrete = Parsing.Incremental (Parsing.Parseable_concrete_syntax)
 
 let nt_capture capture = ConcreteSyntax.NonterminalCapture capture
 
@@ -112,7 +110,7 @@ list(a) :=
   | cons(a; list(a))
   |}
   in
-  match Parse_abstract.parse desc with
+  match Parsing.AbstractSyntax.parse desc with
     | Error err -> failwith (ParseError.to_string err)
     | Ok lang -> lang
 
@@ -126,7 +124,7 @@ list : list(integer) :=
   |                   { nil()       }
   |}
   in
-  match Parse_concrete.parse str_desc with
+  match Parsing.ConcreteSyntax.parse str_desc with
     | Error err -> failwith (ParseError.to_string err)
     | Ok (pre_terminal_rules, sort_rules)
     -> ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
@@ -135,14 +133,15 @@ list : list(integer) :=
 let arith = AbstractSyntax.SortAp ("arith", [||])
 let arith' = AbstractSyntax.FixedValence ([], arith)
 
-let { AbstractSyntax.sort_defs; _ } = match Parse_abstract.parse abstract_description with
+let { AbstractSyntax.sort_defs; _ } =
+  match Parsing.AbstractSyntax.parse abstract_description with
   | Error err -> failwith (ParseError.to_string err)
   | Ok lang -> lang
 ;;
 
 let concrete =
   let pre_terminal_rules, sort_rules =
-    match Parse_concrete.parse description with
+    match Parsing.ConcreteSyntax.parse description with
     | Error err -> failwith (ParseError.to_string err)
     | Ok desc -> desc
   in
@@ -151,7 +150,7 @@ let concrete =
 
 let simplified_concrete =
   let pre_terminal_rules, sort_rules =
-    match Parse_concrete.parse simplified_description with
+    match Parsing.ConcreteSyntax.parse simplified_description with
     | Error err -> failwith (ParseError.to_string err)
     | Ok desc -> desc
   in
@@ -160,7 +159,7 @@ let simplified_concrete =
 
 let boxes_concrete =
   let pre_terminal_rules, sort_rules =
-    match Parse_concrete.parse boxes_description with
+    match Parsing.ConcreteSyntax.parse boxes_description with
     | Error err -> failwith (ParseError.to_string err)
     | Ok desc -> desc
   in
@@ -355,7 +354,7 @@ let%test_module "ConcreteSyntax" =
     ;;
 
     let%test_unit "language parses" =
-      match Parse_concrete.parse description with
+      match Parsing.ConcreteSyntax.parse description with
       | Ok _concrete -> ()
       | Error err -> failwith (ParseError.to_string err)
     ;;
@@ -604,7 +603,7 @@ let%test_module "validation test" =
   (module struct
     let print_check desc_str =
       let pre_terminal_rules, sort_rules =
-        match Parse_concrete.parse desc_str with
+        match Parsing.ConcreteSyntax.parse desc_str with
         | Error err -> failwith (ParseError.to_string err)
         | Ok desc -> desc
       in

@@ -4,8 +4,6 @@ open Js_of_ocaml
 open Lvca
 open Lvca_web
 
-module P_term = Parsing.Incremental (Parsing.Parseable_term)
-
 module Term_render_component = struct
   let name = "Term Render"
 
@@ -28,7 +26,7 @@ module Term_render_component = struct
 
   let apply_action ~inject:_ ~schedule_event:_ _input (input, tm_opt) = function
     | Action.UpdateInput str -> str, tm_opt
-    | Action.Evaluate str -> str, Some (P_term.parse input)
+    | Action.Evaluate str -> str, Some (Parsing.Term.parse input)
   ;;
 
   let compute : inject:(Action.t -> Vdom.Event.t) -> Input.t -> Model.t -> Result.t =

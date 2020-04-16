@@ -1,7 +1,6 @@
 open Core_kernel
 open AbstractSyntax
 open ConcreteSyntaxDescription
-module Parse_abstract = Parsing.Incremental (Parsing.Parseable_abstract_syntax)
 
 let get_option', invariant_violation = Util.(get_option', invariant_violation)
 
@@ -723,7 +722,8 @@ let%test_module "find_operator_match" = (module struct
     |}
   ;;
 
-  let { AbstractSyntax.sort_defs; _ } = match Parse_abstract.parse abstract_description with
+  let { AbstractSyntax.sort_defs; _ } =
+    match Parsing.AbstractSyntax.parse abstract_description with
     | Error err -> failwith (ParseError.to_string err)
     | Ok lang -> lang
   ;;

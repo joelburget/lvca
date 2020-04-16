@@ -1,7 +1,6 @@
 open Binding
 open Dynamics.Core
 open AbstractSyntax
-module P_dyn = Parsing.Incremental (Parsing.Parseable_dynamics)
 
 let one = Bigint.of_int 1
 let sort = SortAp ("bool", [||])
@@ -62,7 +61,7 @@ let dynamics =
     ]
 ;;
 
-let dynamics' = P_dyn.parse dynamics_str
+let dynamics' = Parsing.Dynamics.parse dynamics_str
 
 let true_val = Operator ("true", [])
 let false_val = Operator ("false", [])

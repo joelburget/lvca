@@ -6,7 +6,6 @@ module Parser = ConcreteSyntax_Parser
 module ParseErrors = ConcreteSyntax_ParseErrors
 open ConcreteSyntaxDescription
 include ConcreteSyntax_Private
-module Parse_regex = Parsing.Incremental (Parsing.Parseable_regex)
 
 let get_option, get_option' = Util.(get_option, get_option')
 let of_ast = ConcreteSyntax_OfAst.of_ast
@@ -893,7 +892,7 @@ let make_concrete_description
       |> List.map ~f:(fun (PreTerminalRule (name, str_or_re_str)) ->
              match str_or_re_str with
              | First re_str ->
-               (match Parse_regex.parse re_str with
+               (match Parsing.Regex.parse re_str with
                | Ok re -> name, re
                | Error err -> failwith (Printf.sprintf
                  "failed to parse regex %s: %s"

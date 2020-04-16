@@ -255,8 +255,6 @@ let infer = infer_trace (fun _ -> ())
 
 let%test_module "bidirectional tests" =
   (module struct
-    module P_statics = Parsing.Incremental (Parsing.Parseable_statics)
-    module P_term = Parsing.Incremental (Parsing.Parseable_term)
 
     let statics_str =
       {|
@@ -290,13 +288,13 @@ let%test_module "bidirectional tests" =
     ;;
 
     let statics =
-      match P_statics.parse statics_str with
+      match Parsing.Statics.parse statics_str with
       | Ok statics -> statics
       | Error err -> failwith (ParseError.to_string err)
     ;;
 
     let parse_cvt str =
-      let tm = match P_term.parse str with
+      let tm = match Parsing.Term.parse str with
         | Ok tm -> tm
         | Error err -> failwith (ParseError.to_string err)
       in

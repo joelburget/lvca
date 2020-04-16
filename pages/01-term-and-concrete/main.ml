@@ -5,8 +5,6 @@ open Lvca
 open Lvca_web
 open Vdom
 
-module P_term = Parsing.Incremental (Parsing.Parseable_term)
-
 module Term_render_component = struct
   let name = "Term and Concrete"
 
@@ -34,7 +32,7 @@ module Term_render_component = struct
   let apply_action ~inject:_ ~schedule_event:_ () _model action =
     match action with
     | Action.UpdateInput (side, str) -> Model.Produced (side, str, None)
-    | Evaluate (side, str) -> Produced (side, str, Some (P_term.parse str))
+    | Evaluate (side, str) -> Produced (side, str, Some (Parsing.Term.parse str))
   ;;
 
   let compute : inject:(Action.t -> Event.t) -> Input.t -> Model.t -> Result.t =

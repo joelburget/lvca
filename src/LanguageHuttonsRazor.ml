@@ -1,10 +1,5 @@
 open Core_kernel
 
-module Parse_abstract = Parsing.Incremental (Parsing.Parseable_abstract_syntax)
-module Parse_concrete = Parsing.Incremental (Parsing.Parseable_concrete_syntax)
-module Parse_statics = Parsing.Incremental (Parsing.Parseable_statics)
-module Parse_dynamics = Parsing.Incremental (Parsing.Parseable_dynamics)
-
 let abstract_syntax_str =
   {|
 import {integer} from "builtin:integer"
@@ -18,7 +13,7 @@ type := int() // there's only one type in the language
 ;;
 
 let abstract : AbstractSyntax.t =
-  match Parse_abstract.parse abstract_syntax_str with
+  match Parsing.AbstractSyntax.parse abstract_syntax_str with
     | Ok tm -> tm
     | Error err -> failwith (ParseError.to_string err)
 ;;
@@ -52,7 +47,7 @@ type := INT { int() }
 
 let concrete =
   let pre_terminal_rules, sort_rules =
-    match Parse_concrete.parse concrete_syntax_str with
+    match Parsing.ConcreteSyntax.parse concrete_syntax_str with
       | Ok tm -> tm
       | Error err -> failwith (ParseError.to_string err)
   in
@@ -69,7 +64,7 @@ ctx >> add(_; _) => int()
   |}
 ;;
 
-let statics = match Parse_statics.parse statics_str with
+let statics = match Parsing.Statics.parse statics_str with
   | Ok statics -> statics
   | Error err -> failwith (ParseError.to_string err)
 ;;
@@ -110,7 +105,7 @@ dynamics = \(expr : expr()) -> match expr with {
   |}
 ;;
 
-let dynamics = Parse_dynamics.parse dynamics_str |> Result.ok_or_failwith
+let dynamics = Parsing.Dynamics.parse dynamics_str |> Result.ok_or_failwith
 ;;
 *)
 

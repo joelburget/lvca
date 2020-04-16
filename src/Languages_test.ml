@@ -1,14 +1,11 @@
-module Parseable_concrete = Parsing.Incremental (Parsing.Parseable_concrete_syntax)
-module Parseable_abstract_syntax = Parsing.Incremental (Parsing.Parseable_abstract_syntax)
-
 let can_parse_abstract language =
-  match Parseable_abstract_syntax.parse language with
+  match Parsing.AbstractSyntax.parse language with
   | Ok _ -> ()
   | Error err -> failwith (ParseError.to_string err)
 ;;
 
 let can_parse_concrete language =
-  match Parseable_concrete.parse language with
+  match Parsing.ConcreteSyntax.parse language with
     | Ok _ -> ()
     | Error err -> failwith (ParseError.to_string err)
 ;;
@@ -62,7 +59,7 @@ let%test_module "Integer Language" =
     let%test _ = evaluates_to' "min(1; 2)" 1
     let%test _ = evaluates_to' "max(1; 2)" 2
 
-    (* let terminal_rules, sort_rules = match Parseable_concrete.parse concreteSyntax with
+    (* let terminal_rules, sort_rules = match Parsing.ConcreteSyntax.parse concreteSyntax with
        | Ok rules -> rules | Error msg -> failwith msg let concrete =
        ConcreteSyntax.make_concrete_description terminal_rules sort_rules
 
@@ -82,9 +79,9 @@ let%test_module "JSON Language" =
     let%test_unit "parse abstract syntax" = can_parse_abstract abstractSyntax
     let%test_unit "parse concrete syntax" = can_parse_concrete concreteSyntax
 
-    (* let abstract = match Parseable_abstract_syntax.parse abstractSyntax with | _, Ok
+    (* let abstract = match Parsing.AbstractSyntax.parse abstractSyntax with | _, Ok
        abstract -> abstract | _, Error msg -> failwith msg in let terminal_rules,
-       sort_rules = match Parseable_concrete.parse concreteSyntax with | _, Ok rules ->
+       sort_rules = match Parsing.ConcreteSyntax.parse concreteSyntax with | _, Ok rules ->
        rules | _, Error msg -> failwith msg in let concrete =
        ConcreteSyntax.make_concrete_description terminal_rules sort_rules in
 

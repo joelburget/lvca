@@ -134,3 +134,10 @@ module Parseable_regex : Parseable with type t = Regex.t = struct
     let parse = Regex_Parser.Incremental.regex
   end
 end
+
+module Term = Incremental (Parseable_term)
+module AbstractSyntax = Incremental (Parseable_abstract_syntax)
+module Statics = Incremental (Parseable_statics)
+module Dynamics = Incremental (Parseable_dynamics)
+module ConcreteSyntax = Incremental (Parseable_concrete_syntax)
+module Regex = Incremental (Parseable_regex)

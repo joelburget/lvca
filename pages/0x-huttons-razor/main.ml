@@ -4,8 +4,6 @@ open Core_kernel
 open Lvca
 open Lvca_web
 
-module Parse_term = Parsing.Incremental (Parsing.Parseable_term)
-
 let no_highlight str = Some str, None
 
 module Parse_component = struct
@@ -58,7 +56,7 @@ module Pretty_component = struct
 
   let apply_action ~inject:_ ~schedule_event:_ _input (input, parsed_opt) = function
     | Action.UpdateInput str -> str, parsed_opt
-    | Action.Evaluate str -> str, Some (Parse_term.parse input)
+    | Action.Evaluate str -> str, Some (Parsing.Term.parse input)
   ;;
 
   let compute : inject:(Action.t -> Vdom.Event.t) -> Input.t -> Model.t -> Result.t =

@@ -1,11 +1,9 @@
 open Core_kernel
 
-module Parse_statics = Parsing.Incremental (Parsing.Parseable_statics)
-
 (* See the Bidirectional module for more tests *)
 
 let print_parse desc =
-  print_string (match Parse_statics.parse desc with
+  print_string (match Parsing.Statics.parse desc with
     | Error err -> ParseError.to_string err
     | Ok _lang -> "parsed")
 
