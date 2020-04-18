@@ -3,6 +3,7 @@ open Core_kernel
 type t =
   | PrimInteger of Bigint.t
   | PrimString of string
+  [@@deriving sexp]
 
 let to_string = function
   | PrimInteger i -> Bigint.to_string i

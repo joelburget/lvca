@@ -6,8 +6,10 @@ type pattern =
   | Primitive of Primitive.t
   | Var of string
   | Ignored of string
+  [@@deriving sexp]
 
 type t = pattern
+  [@@deriving sexp]
 
 let rec vars_of_pattern : pattern -> String.Set.t = function
   | Operator (_, pats) -> vars_of_patterns pats

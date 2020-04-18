@@ -1,6 +1,7 @@
 open Core_kernel
 
 type scope = Scope of Pattern.t list * term
+  [@@deriving sexp]
 
 and term =
   | Operator of string * scope list
@@ -10,6 +11,7 @@ and term =
   (** Free vars are used during typechecking. *)
   | Sequence of term list
   | Primitive of Primitive.t
+  [@@deriving sexp]
 
 let rec string_of_term = function
   | Operator (name, scopes) ->
@@ -30,22 +32,26 @@ and string_of_scope (Scope (pats, tm)) =
 type typing_rule =
   { tm : term
   ; ty : term
-  }
+  } [@@deriving sexp]
 
 type inference_rule = typing_rule
+  [@@deriving sexp]
 type checking_rule = typing_rule
+  [@@deriving sexp]
 
 type typing_clause =
   | InferenceRule of inference_rule
   | CheckingRule of checking_rule
+  [@@deriving sexp]
 
 type hypothesis = term String.Map.t * typing_clause
+  [@@deriving sexp]
 
 type rule =
   { hypotheses : hypothesis list
   ; name : string option
   ; conclusion : hypothesis
-  }
+  } [@@deriving sexp]
 
 type typing = Typing of term * term
 

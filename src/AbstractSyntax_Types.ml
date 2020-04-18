@@ -3,6 +3,7 @@
 open Core_kernel
 
 type sort_name = string
+  [@@deriving sexp]
 
 (** Sorts divide ASTs into syntactic categories. * * Notes about our representation: * -
     Concrete sorts are always represented by a [SortAp], even if not applied * to
@@ -12,6 +13,7 @@ type sort_name = string
 type sort =
   | SortAp of sort_name * sort array (** A higher-kinded sort can be applied *)
   | SortVar of string
+  [@@deriving sexp]
 
 (** A valence represents the sort of an argument (to an operator), as well as * the number
     and sorts of the variables bound within it *)
@@ -20,33 +22,39 @@ type valence =
   | VariableValence of sort * sort
       (** A variable valence binds a number of variables not known a priori. All must be
           of the same sort. *)
+  [@@deriving sexp]
 
 (** An arity specifies the arguments to an operator *)
 type arity = Arity of string list * valence list
   (** An arity is defined its arity indices and valences. Arity indices are variables
       bound in an arity rule specifying the length of variable-length slots. *)
+  [@@deriving sexp]
 
 type operator_def = OperatorDef of string * arity
   (** An operator is defined by its tag and arity *)
+  [@@deriving sexp]
 
 type sort_def = SortDef of string list * operator_def list
   (** A sort is defined by a set of variables and a set of operators *)
+  [@@deriving sexp]
 
 (* TODO: should this be a list so the ordering is fixed / deterministic? *)
 type sort_defs = SortDefs of sort_def String.Map.t
   (** A language is defined by its sorts *)
+  [@@deriving sexp]
 
 type import =
   { imported_symbols : (string * string) list
   ; location : string
-  }
+  } [@@deriving sexp]
 
 type abstract_syntax =
   { imports : import list
   ; sort_defs : sort_defs
-  }
+  } [@@deriving sexp]
 
 type t = abstract_syntax
+  [@@deriving sexp]
 
 (* functions: *)
 

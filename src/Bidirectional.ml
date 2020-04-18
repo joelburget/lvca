@@ -293,7 +293,9 @@ let%test_module "bidirectional tests" =
       | Error err -> failwith (ParseError.to_string err)
     ;;
 
-    let parse_cvt str =
+    let parse_cvt
+      : string -> term
+      = fun str ->
       let tm = match Parsing.Term.parse str with
         | Ok tm -> tm
         | Error err -> failwith (ParseError.to_string err)
