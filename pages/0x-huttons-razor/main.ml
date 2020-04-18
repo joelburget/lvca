@@ -129,50 +129,26 @@ let parse_component = Bonsai.of_module (module Parse_component)
 let pretty_component = Bonsai.of_module (module Pretty_component)
 let typecheck_component = Bonsai.of_module (module Typecheck_component)
 
-module Model = struct
-  type t =
-    { parse_model : Parse_component.Model.t
-    ; pretty_model : Pretty_component.Model.t
-    ; typecheck_model : Typecheck_component.Model.t
-    } [@@deriving fields]
-end
-
-let component : (unit, Model.t, Vdom.Node.t) Bonsai.t
-  = let open Bonsai.Infix in
-    let parse_component' : (unit, Model.t, Vdom.Node.t) Bonsai.t
-      = parse_component |> Bonsai.Project.Model.field Model.Fields.parse_model
-    in
-    let pretty_component' : (unit, Model.t, Vdom.Node.t) Bonsai.t
-      = pretty_component |> Bonsai.Project.Model.field Model.Fields.pretty_model
-    in
-    let typecheck_component' : (unit, Model.t, Vdom.Node.t) Bonsai.t
-      = typecheck_component |> Bonsai.Project.Model.field Model.Fields.typecheck_model
-    in
-    let composed = Bonsai.Let_syntax.Let_syntax.(
-      both parse_component' (both pretty_component' typecheck_component')
-    )
-    in
-    let layout_both (c1, (c2, c3)) = Vdom.Node.(div []
-      [ h2 [] [text "concrete syntax -> abstract"]
-      ; c1
-      ; h2 [] [text "abstract syntax -> concrete"]
-      ; c2
-      ; h2 [] [text "typechecking"]
-      ; c3
-      ])
-    in
-    composed >>| layout_both
-
-let initial_model = Model.(
-  { parse_model = "1 + (2 + 3) + 4", None
-  ; pretty_model = "add(lit(1); add(add(lit(2); lit(3)); lit(4)))", None
-  ; typecheck_model = "1 + 2", None
-  })
+let (_ : _ Start.Handle.t) =
+  Start.start_standalone
+    ~initial_input:()
+    ~initial_model:("1 + (2 + 3) + 4", None)
+    ~bind_to_element_with_id:"parse-app"
+    parse_component
+;;
 
 let (_ : _ Start.Handle.t) =
   Start.start_standalone
     ~initial_input:()
-    ~initial_model
-    ~bind_to_element_with_id:"app"
-    component
+    ~initial_model:("add(lit(1); add(add(lit(2); lit(3)); lit(4)))", None)
+    ~bind_to_element_with_id:"pretty-app"
+    pretty_component
+;;
+
+let (_ : _ Start.Handle.t) =
+  Start.start_standalone
+    ~initial_input:()
+    ~initial_model:("1 + 2", None)
+    ~bind_to_element_with_id:"typecheck-app"
+    typecheck_component
 ;;
