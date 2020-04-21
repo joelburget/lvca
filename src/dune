@@ -1,7 +1,7 @@
 (library
  (public_name lvca)
  (inline_tests)
- (libraries digestif.ocaml base core_kernel cbor bignum re)
+ (libraries digestif.ocaml base core_kernel cbor bignum re fmt)
  (preprocess
   (pps ppx_jane)))
 

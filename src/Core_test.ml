@@ -60,6 +60,14 @@ let%test_module "Dynamics.Core" =
         | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
         | Ok result -> pp_core_str result))
 
+    let pretty width str = print_string (match Parsing.Core.parse str with
+      | Error err -> ParseError.to_string err
+      | Ok core ->
+          let fmt = Format.str_formatter in
+          Format.pp_set_margin fmt width;
+          pp_core fmt core;
+          Format.flush_str_formatter ())
+
     let%test "dynamics as expected" = Parsing.Dynamics.parse dynamics_str = Ok dynamics
 
     let%test "to_ast 1" =
@@ -88,5 +96,35 @@ let%test_module "Dynamics.Core" =
     let%expect_test _ = eval_str "#add(1; 2)"; [%expect{| 3 |}]
     let%expect_test _ = eval_str "#sub(1; 2)"; [%expect{| -1 |}]
     (* let%expect_test _ = eval_str "#sub 1 2"; [%expect{| -1 |}] *)
+
+    let%expect_test _ =
+      pretty 20 "match true() with { true() -> false() | false() -> true() }";
+      [%expect{|
+        match true() with {
+          | true()
+            -> false()
+          | false()
+            -> true()
+        } |}]
+
+    let%expect_test _ =
+      pretty 25 "match x with { _ -> 1 }";
+      [%expect{| match x with { _ -> 1 } |}]
+
+    let%expect_test _ =
+      pretty 20 "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]";
+      [%expect{|
+        [1, 2, 3, 4, 5, 6,
+         7, 8, 9, 10] |}]
+
+    let%expect_test _ =
+      pretty 20 "f a b c d e f g h i j k l";
+      [%expect]
+
+    let%expect_test _ =
+      pretty 20 "let x = true() in not x";
+      [%expect{|
+        let x = true() in
+        not x |}]
   end)
 ;;

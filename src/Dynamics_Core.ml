@@ -19,64 +19,58 @@ and core_scope = Scope of Pattern.t list * core
 and core_case_scope = CaseScope of Pattern.t * core
 
 module PP = struct
-  open Format
+  let brackets, list, string, box, sp, any, semi, comma, pf =
+    Fmt.(brackets, list, string, box, sp, any, semi, comma, pf)
 
   (* TODO: add parse <-> pretty tests *)
 
+  (** @raise InvariantViolation *)
   let rec pp_core
     = fun ppf -> function
-      | Operator (tag, subtms) -> fprintf ppf "@[%s(%a)@]" tag pp_core_scope_list subtms
-      | Var v -> fprintf ppf "%s" v
-      | Sequence tms -> fprintf ppf "@[[%a]@]" pp_core_list tms
-      | Primitive p -> Primitive.pp ppf p
+      | Operator (tag, subtms)
+      -> pf ppf "@[%s(%a)@]" tag
+        (list ~sep:semi pp_core_scope) subtms
+      | Var v
+      -> string ppf v
+      | Sequence tms
+      -> brackets
+         (list ~sep:comma pp_core)
+         ppf tms
+      | Primitive p
+      -> Primitive.pp ppf p
       | Lambda (sorts, Scope(pats, body)) ->
-        fprintf ppf "\\%a -> %a"
-        pp_lambda_args (List.zip_exn pats sorts)
+        pf ppf "\\%a ->@ %a"
+        (list ~sep:sp pp_lambda_arg) (List.zip_exn pats sorts)
         pp_core body
-      (* TODO: parens*)
-      | CoreApp (f, args) -> fprintf ppf "%a %a" pp_core f pp_core_list args
-      (* XXX newines *)
-      | Case (arg, case_scopes) -> fprintf ppf "match %a with { %a }"
-        pp_core arg pp_case_scopes case_scopes
-      | Let (tm, Scope([pat], body)) -> fprintf ppf "let %a = %a in %a"
-        Pattern.pp pat pp_core tm pp_core body
-      | _ -> failwith "TODO"
+      (* TODO: parens if necessary *)
+      | CoreApp (f, args)
+      -> pf ppf "%a@ %a"
+         pp_core f
+         (box ~indent:2 (list ~sep:sp pp_core)) args
+      | Case (arg, case_scopes)
+      -> pf ppf
+        "match %a with {@[<hv 2>%t%a@]@ }"
+        pp_core arg
+        (Format.pp_print_custom_break ~fits:("", 0, "") ~breaks:("", 0, "| "))
+        (list ~sep:(any "@ | ") pp_core_case_scope) case_scopes
+      | Let (tm, Scope([pat], body))
+      -> pf ppf "@[let %a =@ %a in@ @[%a@]@]"
+         Pattern.pp pat pp_core tm pp_core body
+      | Let (_, Scope(_, _))
+      -> Util.invariant_violation "invalid let binding multiple args"
 
-  and pp_lambda_args ppf = function
-    | [] -> ()
-    | [ pat, ty ] -> fprintf ppf "(%a : %a)" Pattern.pp pat pp_sort ty
-    | (pat, ty) :: args -> fprintf ppf "(%a : %a) %a"
-      Pattern.pp pat pp_sort ty pp_lambda_args args
-
-  and pp_core_list ppf = function
-    | [] -> ()
-    | [ x ] -> fprintf ppf "%a" pp_core x
-    | x :: xs -> fprintf ppf "%a, %a" pp_core x pp_core_list xs
-
-  and pp_core_scope_list ppf = function
-    | [] -> ()
-    | [ x ] -> fprintf ppf "%a" pp_core_scope x
-    | x :: xs -> fprintf ppf "%a; %a" pp_core_scope x pp_core_scope_list xs
+  and pp_lambda_arg ppf = fun (pat, ty) ->
+    pf ppf "(%a : %a)" Pattern.pp pat pp_sort ty
 
   and pp_core_scope ppf = fun (Scope (bindings, body)) -> match bindings with
     | [] -> pp_core ppf body
-    | _ -> fprintf ppf "%a %a" pp_bindings bindings pp_core body
-
-  and pp_case_scopes ppf = function
-    | [] -> ()
-    | [ x ] -> fprintf ppf "%a" pp_core_case_scope x
-    (* XXX newlines *)
-    | x :: xs -> fprintf ppf "%a | %a" pp_core_case_scope x pp_case_scopes xs
+    | _ -> pf ppf "%a.@ %a"
+      (list ~sep:(any ".@ ") Pattern.pp) bindings
+      pp_core body
 
   and pp_core_case_scope : Format.formatter -> core_case_scope -> unit
     = fun ppf (CaseScope (pat, body))
-    -> fprintf ppf "%a -> %a" Pattern.pp pat pp_core body
-
-  (* TODO: remove duplication *)
-  and pp_bindings ppf = function
-    | [] -> ()
-    | [ x ] -> fprintf ppf "%a." Pattern.pp x
-    | x :: xs -> fprintf ppf "%a. %a" Pattern.pp x pp_bindings xs
+    -> pf ppf "@[%a@ -> %a@]" Pattern.pp pat pp_core body
 end
 
 let pp_core : Format.formatter -> core -> unit
