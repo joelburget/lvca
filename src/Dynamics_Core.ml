@@ -29,14 +29,10 @@ module PP = struct
       | Var v -> fprintf ppf "%s" v
       | Sequence tms -> fprintf ppf "@[[%a]@]" pp_core_list tms
       | Primitive p -> Primitive.pp ppf p
-      | Lambda (_sorts, Scope(_pats, body)) ->
-        fprintf ppf "\\%s -> %a"
-        "TODO"
+      | Lambda (sorts, Scope(pats, body)) ->
+        fprintf ppf "\\%a -> %a"
+        pp_lambda_args (List.zip_exn pats sorts)
         pp_core body
-        (*
-        (List.zip_exn pats sorts
-          |> List.map ~f:
-            *)
       (* TODO: parens*)
       | CoreApp (f, args) -> fprintf ppf "%a %a" pp_core f pp_core_list args
       (* XXX newines *)
@@ -45,6 +41,12 @@ module PP = struct
       | Let (tm, Scope([pat], body)) -> fprintf ppf "let %a = %a in %a"
         Pattern.pp pat pp_core tm pp_core body
       | _ -> failwith "TODO"
+
+  and pp_lambda_args ppf = function
+    | [] -> ()
+    | [ pat, ty ] -> fprintf ppf "(%a : %a)" Pattern.pp pat pp_sort ty
+    | (pat, ty) :: args -> fprintf ppf "(%a : %a) %a"
+      Pattern.pp pat pp_sort ty pp_lambda_args args
 
   and pp_core_list ppf = function
     | [] -> ()

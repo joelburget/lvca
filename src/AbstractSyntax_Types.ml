@@ -68,6 +68,19 @@ let sort_names : abstract_syntax -> String.Set.t =
  fun { sort_defs = SortDefs sorts; _ } -> sorts |> String.Map.keys |> String.Set.of_list
 ;;
 
+let rec pp_sort : Format.formatter -> sort -> unit
+  = fun ppf -> Format.(function
+    | SortAp (name, args) -> fprintf ppf "%s(@[%a@])"
+      name
+      pp_sort_args (Array.to_list args)
+    | SortVar name -> fprintf ppf "%s" name)
+
+and pp_sort_args ppf = function
+  | [] -> ()
+  | [ x ] -> Format.fprintf ppf "%a" pp_sort x
+  | x :: xs -> Format.fprintf ppf "%a; %a" pp_sort x pp_sort_args xs
+;;
+
 let rec string_of_sort : sort -> string
   = function
     | SortAp (name, args) -> Printf.sprintf "%s(%s)"
