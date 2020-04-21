@@ -16,7 +16,7 @@ type core =
 
 and core_scope = Scope of Pattern.t list * core
 
-and core_case_scope = CaseScope of BindingAwarePattern.t list * core
+and core_case_scope = CaseScope of Pattern.t list * core
 
 type denotation_chart = DenotationChart of (string * core) list
 
@@ -33,15 +33,15 @@ let rec to_ast : core -> Nominal.term = function
 
 and scope_to_ast (Scope (pats, body)) = Nominal.Scope (pats, to_ast body)
 
-let rec match_core_pattern : core -> BindingAwarePattern.t -> core String.Map.t option =
+let rec match_core_pattern : core -> Pattern.t -> core String.Map.t option =
   fun v pat -> match v, pat with
   | Operator (tag1, vals), Operator (tag2, pats) ->
     if String.(tag1 = tag2) && List.(length vals = length pats)
     then (
       let sub_results =
-        List.map2_exn vals pats ~f:(fun core_scope (pat : BindingAwarePattern.scope) ->
+        List.map2_exn vals pats ~f:(fun core_scope (pat : Pattern.t) ->
             match core_scope, pat with
-            | Scope ([], body), Scope ([], pat') -> match_core_pattern body pat' (* XXX *)
+            | Scope ([], body), pat' -> match_core_pattern body pat'
             | _ -> None)
       in
       if List.for_all sub_results ~f:Option.is_some

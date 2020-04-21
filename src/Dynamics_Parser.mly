@@ -73,7 +73,7 @@ and ast_to_core_scope : Binding.Nominal.scope -> core_scope
 %type <AbstractSyntax.sort * Pattern.t> typed_arg
 %%
 
-(** @raise BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
+(** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
 core:
   nonempty_list(atomic_core)
   { match $1 with
@@ -82,7 +82,7 @@ core:
       | f :: args -> CoreApp (f, args)
   }
 
-(** @raise BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
+(** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
 atomic_core:
   ast_like_core { $1 }
   | BACKSLASH nonempty_list(typed_arg) ARROW core
@@ -92,6 +92,7 @@ atomic_core:
   }
   | MATCH core WITH LEFT_BRACE option(BAR) separated_nonempty_list(BAR, case_line) RIGHT_BRACE
   { Case ($2, $6) }
+  (* XXX only bind var? *)
   | LET pattern EQ core IN core
   { Let ($4, Scope([$2], $6)) }
   | LEFT_PAREN core RIGHT_PAREN
@@ -100,16 +101,14 @@ atomic_core:
 (** @raise ScopeEncountered, InvalidSort *)
 typed_arg: LEFT_PAREN ID COLON sort RIGHT_PAREN { ($4, Var $2) }
 
-(** @raise BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
-case_line: binding_aware_pattern ARROW core { CaseScope ([$1], $3) }
+(** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
+case_line: pattern ARROW core { CaseScope ([$1], $3) }
 
 (** @raise ScopeEncountered, InvalidSort *)
-sort:                  ast_like { ast_to_sort       $1 }
-ast_like_core:         ast_like { ast_to_core $1 }
+sort:          ast_like { ast_to_sort       $1 }
+ast_like_core: ast_like { ast_to_core $1 }
 (** @raise ToPatternScopeEncountered *)
-pattern:               ast_like { Binding.Nominal.to_pattern_exn $1 }
-(** @raise BindingAwareScopePatternEncountered *)
-binding_aware_pattern: ast_like { BindingAwarePattern.from_ast $1 }
+pattern:       ast_like { Binding.Nominal.to_pattern_exn $1 }
 
 (** @raise ToPatternScopeEncountered *)
 ast_like:
@@ -131,8 +130,8 @@ primitive:
   | INT    { PrimInteger $1 }
   | STRING { PrimString  $1 }
 
-(** @raise BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
+(** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
 definition: ID EQ core { ($1, $3) }
 
-(** @raise BindingAwareScopePatternEncountered, ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
+(** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
 dynamics: list(definition) EOF { DenotationChart $1 }

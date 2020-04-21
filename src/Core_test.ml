@@ -4,7 +4,6 @@ open AbstractSyntax
 
 let one = Bigint.of_int 1
 let sort = SortAp ("bool", [||])
-let pat_scope body : BindingAwarePattern.scope = Scope ([], body)
 let scope body = Scope ([], body)
 
 let dynamics_str =
@@ -38,9 +37,9 @@ let dynamics =
                     ; CaseScope
                         ( [ Operator
                               ( "ite"
-                              , [ pat_scope @@ Var "t1"
-                                ; pat_scope @@ Var "t2"
-                                ; pat_scope @@ Var "t3"
+                              , [ Var "t1"
+                                ; Var "t2"
+                                ; Var "t3"
                                 ] )
                           ]
                         , Case
@@ -50,11 +49,11 @@ let dynamics =
                               ] ) )
                     ; CaseScope
                         ( [ Operator
-                              ("ap", [ pat_scope @@ Var "f"; pat_scope @@ Var "arg" ])
+                              ("ap", [ Var "f"; Var "arg" ])
                           ]
                         , CoreApp (meaning @@ Var "f", [ meaning @@ Var "arg" ]) )
                     ; CaseScope
-                        ( [ Operator ("fun", [ pat_scope @@ Var "scope" ]) ]
+                        ( [ Operator ("fun", [ Var "scope" ]) ]
                         , Operator
                             ("lambda", [ scope @@ Sequence []; scope @@ Var "scope" ]) )
                     ] ) ) ) )

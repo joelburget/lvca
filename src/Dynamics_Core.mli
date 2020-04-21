@@ -2,7 +2,7 @@
 
     - [denotation_chart] is the data type for declaring a mapping from some language to
       [core]
-    - [core] and [core_scope] (and [BindingAwarePattern.t]) define the core language
+    - [core] and [core_scope] (and [Pattern.t]) define the core language
     - [term_denotation] is used to map some language to [core]
     - [eval] is then used to evaluate the core term
     - finally, [to_ast] is used to give the resulting term *)
@@ -22,7 +22,7 @@ type core =
 
 and core_scope = Scope of Pattern.t list * core
 
-and core_case_scope = CaseScope of BindingAwarePattern.t list * core
+and core_case_scope = CaseScope of Pattern.t list * core
 
 type denotation_chart = DenotationChart of (string * core) list
 
