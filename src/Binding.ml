@@ -127,7 +127,7 @@ end = struct
     | Operator (tag, subtms) -> fprintf ppf "@[%s(%a)@]" tag pp_scope_list subtms
     | Var v -> fprintf ppf "%s" v
     | Sequence tms -> fprintf ppf "@[[%a]@]" pp_inner_list tms
-    | Primitive p -> pp_prim ppf p
+    | Primitive p -> Primitive.pp ppf p
 
   and pp_inner_list ppf = function
     | [] -> ()
@@ -144,35 +144,10 @@ end = struct
     | [] -> pp_term ppf body
     | _ -> fprintf ppf "%a %a" pp_bindings bindings pp_term body
 
-  and pp_pattern_list sep ppf = function
-    | []
-    -> ()
-    | [ pat ]
-    -> pp_pattern ppf pat
-    | pat :: pats
-    -> fprintf ppf "%a%s %a" pp_pattern pat sep (pp_pattern_list sep) pats
-
-  and pp_pattern ppf (pat : Pattern.t) =
-    match pat with
-    | Operator (name, pats)
-    -> fprintf ppf "%s(%a)" name (pp_pattern_list ";") pats
-    | Sequence pats
-    -> fprintf ppf "[%a]" (pp_pattern_list ",") pats
-    | Primitive prim
-    -> pp_prim ppf prim
-    | Var name
-    -> fprintf ppf "%s" name
-    | Ignored name
-    -> fprintf ppf "_%s" name
-
   and pp_bindings ppf = function
     | [] -> ()
-    | [ x ] -> fprintf ppf "%a." pp_pattern x
-    | x :: xs -> fprintf ppf "%a. %a" pp_pattern x pp_bindings xs
-
-  and pp_prim ppf = function
-    | PrimInteger i -> fprintf ppf "%s" (Bigint.to_string i)
-    | PrimString s -> fprintf ppf "\"%s\"" s
+    | [ x ] -> fprintf ppf "%a." Pattern.pp x
+    | x :: xs -> fprintf ppf "%a. %a" Pattern.pp x pp_bindings xs
   ;;
 
   let pp_term' = asprintf "%a" pp_term

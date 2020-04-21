@@ -32,66 +32,35 @@ let dynamics =
               ( [ Var "tm" ]
               , Case
                   ( Var "tm"
-                  , [ CaseScope ([ Operator ("true", []) ], Operator ("true", []))
-                    ; CaseScope ([ Operator ("false", []) ], Operator ("false", []))
+                  , [ CaseScope (Operator ("true", []), Operator ("true", []))
+                    ; CaseScope (Operator ("false", []), Operator ("false", []))
                     ; CaseScope
-                        ( [ Operator
-                              ( "ite"
-                              , [ Var "t1"
-                                ; Var "t2"
-                                ; Var "t3"
-                                ] )
-                          ]
+                        ( Operator ("ite" , [ Var "t1" ; Var "t2" ; Var "t3" ])
                         , Case
                             ( CoreApp (Var "meaning", [ Var "t1" ])
-                            , [ CaseScope ([ Operator ("true", []) ], meaning (Var "t2"))
-                              ; CaseScope ([ Operator ("false", []) ], meaning (Var "t3"))
+                            , [ CaseScope (Operator ("true", []), meaning (Var "t2"))
+                              ; CaseScope (Operator ("false", []), meaning (Var "t3"))
                               ] ) )
                     ; CaseScope
-                        ( [ Operator
-                              ("ap", [ Var "f"; Var "arg" ])
-                          ]
+                        ( Operator ("ap", [ Var "f"; Var "arg" ])
                         , CoreApp (meaning @@ Var "f", [ meaning @@ Var "arg" ]) )
                     ; CaseScope
-                        ( [ Operator ("fun", [ Var "scope" ]) ]
+                        ( Operator ("fun", [ Var "scope" ])
                         , Operator
                             ("lambda", [ scope @@ Sequence []; scope @@ Var "scope" ]) )
                     ] ) ) ) )
     ]
 ;;
 
-let dynamics' = Parsing.Dynamics.parse dynamics_str
-
-let true_val = Operator ("true", [])
-let false_val = Operator ("false", [])
-
-(* let ite_tm = DeBruijn.Operator ("ite", [ scope true_tm; scope false_tm; scope true_tm;
-   ]) *)
-
-let ite_val =
-  Case
-    ( true_val
-    , [ CaseScope ([ Operator ("true", []) ], false_val)
-      ; CaseScope ([ Operator ("false", []) ], true_val)
-      ] )
-;;
-
-(* let fun_tm = DeBruijn.Operator ("ap", [ scope @@ Operator ("fun", [ Scope ([Var "x"],
-   Var (0, 0)) ]); scope true_tm; ]) *)
-
-let fun_val = CoreApp (Lambda ([ sort ], Scope ([ Var "x" ], Var "x")), [ true_val ])
-
-let binary_int_op op a b =
-  Operator
-    ( op
-    , [ Scope ([], Primitive (PrimInteger (Bigint.of_int a)))
-      ; Scope ([], Primitive (PrimInteger (Bigint.of_int b)))
-      ] )
-;;
-
 let%test_module "Dynamics.Core" =
   (module struct
-    let%test "dynamics as expected" = dynamics' = Ok dynamics
+    let eval_str = fun str -> print_string (match Parsing.Core.parse str with
+      | Error err -> ParseError.to_string err
+      | Ok core -> (match eval core with
+        | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
+        | Ok result -> pp_core_str result))
+
+    let%test "dynamics as expected" = Parsing.Dynamics.parse dynamics_str = Ok dynamics
 
     let%test "to_ast 1" =
       to_ast (Primitive (PrimInteger one)) = Nominal.Primitive (PrimInteger one)
@@ -102,17 +71,22 @@ let%test_module "Dynamics.Core" =
       = Nominal.Operator ("foo", [ Scope ([], Primitive (PrimInteger one)) ])
     ;;
 
-    let%test "eval 1" = eval true_val = Ok true_val
-    let%test "eval 2" = eval false_val = Ok false_val
-    let%test "eval 3" = eval ite_val = Ok false_val
-    let%test "eval 4" = eval fun_val = Ok true_val
-
-    let%test "eval 5" =
-      eval (binary_int_op "#add" 1 2) = Ok (Primitive (PrimInteger (Bigint.of_int 3)))
-    ;;
-
-    let%test "eval 6" =
-      eval (binary_int_op "#sub" 1 2) = Ok (Primitive (PrimInteger (Bigint.of_int (-1))))
-    ;;
+    let%expect_test _ = eval_str "1"; [%expect{| 1 |}]
+    let%expect_test _ = eval_str "foo(1)"; [%expect{| foo(1) |}]
+    let%expect_test _ = eval_str "true()"; [%expect{| true() |}]
+    let%expect_test _ = eval_str "false()"; [%expect{| false() |}]
+    let%expect_test _ = eval_str
+      {| match true() with {
+           | true() -> false()
+           | false() -> true()
+         }
+      |};
+      [%expect{| false() |}]
+    let%expect_test _ =
+      eval_str {|(\(x: bool()) -> x) true()|};
+      [%expect{| true() |}]
+    let%expect_test _ = eval_str "#add(1; 2)"; [%expect{| 3 |}]
+    let%expect_test _ = eval_str "#sub(1; 2)"; [%expect{| -1 |}]
+    (* let%expect_test _ = eval_str "#sub 1 2"; [%expect{| -1 |}] *)
   end)
 ;;

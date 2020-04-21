@@ -39,3 +39,25 @@ let rec string_of_pattern : pattern -> string = function
   | Var name -> name
   | Ignored name -> "_" ^ name
 ;;
+
+let rec pp : Format.formatter -> pattern -> unit
+  = fun ppf -> Format.(function
+  | Operator (name, pats)
+  -> fprintf ppf "%s(%a)" name (pp_pattern_list ";") pats
+  | Sequence pats
+  -> fprintf ppf "[%a]" (pp_pattern_list ",") pats
+  | Primitive prim
+  -> Primitive.pp ppf prim
+  | Var name
+  -> fprintf ppf "%s" name
+  | Ignored name
+  -> fprintf ppf "_%s" name
+  )
+
+and pp_pattern_list sep ppf = function
+  | []
+  -> ()
+  | [ pat ]
+  -> pp ppf pat
+  | pat :: pats
+  -> Format.fprintf ppf "%a%s %a" pp pat sep (pp_pattern_list sep) pats

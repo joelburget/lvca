@@ -22,7 +22,10 @@ type core =
 
 and core_scope = Scope of Pattern.t list * core
 
-and core_case_scope = CaseScope of Pattern.t list * core
+and core_case_scope = CaseScope of Pattern.t * core
+
+val pp_core : Format.formatter -> core -> unit
+val pp_core_str : core -> string
 
 type denotation_chart = DenotationChart of (string * core) list
 

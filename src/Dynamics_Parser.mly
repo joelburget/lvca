@@ -61,6 +61,7 @@ and ast_to_core_scope : Binding.Nominal.scope -> core_scope
 %token IN
 
 %start dynamics
+%start core
 %type <Dynamics_Core.core> core
 %type <Dynamics_Core.core> ast_like_core
 %type <Primitive.t> primitive
@@ -102,7 +103,7 @@ atomic_core:
 typed_arg: LEFT_PAREN ID COLON sort RIGHT_PAREN { ($4, Var $2) }
 
 (** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
-case_line: pattern ARROW core { CaseScope ([$1], $3) }
+case_line: pattern ARROW core { CaseScope ($1, $3) }
 
 (** @raise ScopeEncountered, InvalidSort *)
 sort:          ast_like { ast_to_sort       $1 }

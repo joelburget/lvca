@@ -16,7 +16,72 @@ type core =
 
 and core_scope = Scope of Pattern.t list * core
 
-and core_case_scope = CaseScope of Pattern.t list * core
+and core_case_scope = CaseScope of Pattern.t * core
+
+module PP = struct
+  open Format
+
+  (* TODO: add parse <-> pretty tests *)
+
+  let rec pp_core
+    = fun ppf -> function
+      | Operator (tag, subtms) -> fprintf ppf "@[%s(%a)@]" tag pp_core_scope_list subtms
+      | Var v -> fprintf ppf "%s" v
+      | Sequence tms -> fprintf ppf "@[[%a]@]" pp_core_list tms
+      | Primitive p -> Primitive.pp ppf p
+      | Lambda (_sorts, Scope(_pats, body)) ->
+        fprintf ppf "\\%s -> %a"
+        "TODO"
+        pp_core body
+        (*
+        (List.zip_exn pats sorts
+          |> List.map ~f:
+            *)
+      (* TODO: parens*)
+      | CoreApp (f, args) -> fprintf ppf "%a %a" pp_core f pp_core_list args
+      (* XXX newines *)
+      | Case (arg, case_scopes) -> fprintf ppf "match %a with { %a }"
+        pp_core arg pp_case_scopes case_scopes
+      | Let (tm, Scope([pat], body)) -> fprintf ppf "let %a = %a in %a"
+        Pattern.pp pat pp_core tm pp_core body
+      | _ -> failwith "TODO"
+
+  and pp_core_list ppf = function
+    | [] -> ()
+    | [ x ] -> fprintf ppf "%a" pp_core x
+    | x :: xs -> fprintf ppf "%a, %a" pp_core x pp_core_list xs
+
+  and pp_core_scope_list ppf = function
+    | [] -> ()
+    | [ x ] -> fprintf ppf "%a" pp_core_scope x
+    | x :: xs -> fprintf ppf "%a; %a" pp_core_scope x pp_core_scope_list xs
+
+  and pp_core_scope ppf = fun (Scope (bindings, body)) -> match bindings with
+    | [] -> pp_core ppf body
+    | _ -> fprintf ppf "%a %a" pp_bindings bindings pp_core body
+
+  and pp_case_scopes ppf = function
+    | [] -> ()
+    | [ x ] -> fprintf ppf "%a" pp_core_case_scope x
+    (* XXX newlines *)
+    | x :: xs -> fprintf ppf "%a | %a" pp_core_case_scope x pp_case_scopes xs
+
+  and pp_core_case_scope : Format.formatter -> core_case_scope -> unit
+    = fun ppf (CaseScope (pat, body))
+    -> fprintf ppf "%a -> %a" Pattern.pp pat pp_core body
+
+  (* TODO: remove duplication *)
+  and pp_bindings ppf = function
+    | [] -> ()
+    | [ x ] -> fprintf ppf "%a." Pattern.pp x
+    | x :: xs -> fprintf ppf "%a. %a" Pattern.pp x pp_bindings xs
+end
+
+let pp_core : Format.formatter -> core -> unit
+  = PP.pp_core
+
+let pp_core_str : core -> string
+  = Format.asprintf "%a" pp_core
 
 type denotation_chart = DenotationChart of (string * core) list
 
@@ -75,11 +140,10 @@ let find_core_match : core -> core_case_scope list -> (core * core String.Map.t)
  fun v branches ->
   branches
   |> List.find_map ~f:(function
-         | CaseScope ([ pat ], rhs) ->
+         | CaseScope (pat, rhs) ->
            (match match_core_pattern v pat with
            | None -> None
-           | Some bindings -> Some (rhs, bindings))
-         | _ -> failwith "invariant violation: match binding more than one pattern")
+           | Some bindings -> Some (rhs, bindings)))
 ;;
 
 type eval_error = string * core

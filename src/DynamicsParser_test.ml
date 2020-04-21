@@ -30,37 +30,27 @@ let expected =
               ( [ Var "tm" ]
               , Case
                   ( Var "tm"
-                  , [ CaseScope ([ Operator ("true", []) ], Operator ("true", []))
-                    ; CaseScope ([ Operator ("false", []) ], Operator ("false", []))
-                    ; CaseScope ([ Operator ("val", [ Var "v" ]) ], Var "v")
+                  , [ CaseScope (Operator ("true", []), Operator ("true", []))
+                    ; CaseScope (Operator ("false", []), Operator ("false", []))
+                    ; CaseScope (Operator ("val", [ Var "v" ]), Var "v")
                     ; CaseScope
-                        ( [ Operator
-                              ("annot", [ Var "tm"; Var "ty" ])
-                          ]
+                        ( Operator ("annot", [ Var "tm"; Var "ty" ])
                         , dynamics @@ Var "tm" )
                     ; CaseScope
-                        ( [ Operator
-                              ("app", [ Var "fun"; Var "arg" ])
-                          ]
+                        ( Operator ("app", [ Var "fun"; Var "arg" ])
                         , CoreApp (dynamics @@ Var "fun", [ dynamics @@ Var "arg" ]) )
                     ; CaseScope
-                        ( [ Operator ("lam", [ Var "scope" ]) ]
+                        ( Operator ("lam", [ Var "scope" ])
                         , (* XXX should we have binding aware patterns? *)
                           Operator
                             ("lambda", [ scope @@ Sequence []; scope @@ Var "scope" ]) )
                     ; CaseScope
-                        ( [ Operator
-                              ( "ite"
-                              , [ Var "t1"
-                                ; Var "t2"
-                                ; Var "t3"
-                                ] )
-                          ]
+                        ( Operator ("ite" , [ Var "t1" ; Var "t2" ; Var "t3" ])
                         , Case
                             ( dynamics @@ Var "t1"
-                            , [ CaseScope ([ Operator ("true", []) ], dynamics @@ Var "t2")
+                            , [ CaseScope (Operator ("true", []), dynamics @@ Var "t2")
                               ; CaseScope
-                                  ([ Operator ("false", []) ], dynamics @@ Var "t3")
+                                  (Operator ("false", []), dynamics @@ Var "t3")
                               ] ) )
                     ] ) ) ) )
     ]

@@ -110,6 +110,18 @@ module Parseable_dynamics : Parseable with type t = Dynamics.Core.denotation_cha
   end
 end
 
+module Parseable_core : Parseable with type t = Dynamics.Core.core = struct
+  type t = Dynamics.Core.core
+
+  module MenhirInterpreter = Dynamics.Parser.MenhirInterpreter
+  module ParseErrors = Dynamics.ParseErrors
+  module Lexer = Dynamics.Lexer
+
+  module Parser = struct
+    let parse = Dynamics.Parser.Incremental.core
+  end
+end
+
 module Parseable_concrete_syntax :
   Parseable with type t = ConcreteSyntaxDescription.pre_t = struct
   type t = ConcreteSyntaxDescription.pre_t
@@ -139,5 +151,6 @@ module Term = Incremental (Parseable_term)
 module AbstractSyntax = Incremental (Parseable_abstract_syntax)
 module Statics = Incremental (Parseable_statics)
 module Dynamics = Incremental (Parseable_dynamics)
+module Core = Incremental (Parseable_core)
 module ConcreteSyntax = Incremental (Parseable_concrete_syntax)
 module Regex = Incremental (Parseable_regex)

@@ -16,3 +16,9 @@ let (=) p1 p2 =
   | PrimString s1, PrimString s2 -> String.(s1 = s2)
   | _ -> false
 ;;
+
+let pp : Format.formatter -> t -> unit
+  = fun ppf -> function
+  | PrimInteger i -> Format.fprintf ppf "%s" (Bigint.to_string i)
+  | PrimString s -> Format.fprintf ppf "\"%s\"" s
+;;
