@@ -82,9 +82,11 @@ let find_core_match : core -> core_case_scope list -> (core * core String.Map.t)
          | _ -> failwith "invariant violation: match binding more than one pattern")
 ;;
 
-exception EvalError of string
+type eval_error = string * core
 
-let eval : core -> (core, string) Result.t =
+exception EvalExn of string * core
+
+let eval : core -> (core, eval_error) Result.t =
  fun core ->
   let rec go : core String.Map.t -> core -> core =
    fun ctx tm ->
@@ -92,10 +94,10 @@ let eval : core -> (core, string) Result.t =
     | Var v ->
       (match Map.find ctx v with
       | Some result -> result
-      | None -> raise @@ EvalError ("Unbound variable " ^ v))
+      | None -> raise @@ EvalExn ("Unbound variable " ^ v, tm))
     | CoreApp (Lambda (_tys, Scope (arg_patterns, body)), args) ->
       if List.(length arg_patterns <> length args)
-      then raise @@ EvalError "mismatched application lengths"
+      then raise @@ EvalExn ("mismatched application lengths", tm)
       else (
         let arg_vals = List.map args ~f:(go ctx) in
         let new_args : core String.Map.t =
@@ -103,34 +105,36 @@ let eval : core -> (core, string) Result.t =
               match pat with
               | Var name -> name, arg_val
               | _ ->
-                raise @@ EvalError "Unsupported pattern in lambda (only vars allowed)")
+                raise @@ EvalExn ("Unsupported pattern in lambda (only vars allowed)", tm))
           |> String.Map.of_alist
           |> function
           | `Duplicate_key str ->
-            raise @@ EvalError ("Duplicate variable name binding: " ^ str)
+            raise @@ EvalExn ("Duplicate variable name binding: " ^ str, tm)
           | `Ok result -> result
         in
         go (Util.map_union ctx new_args) body)
     | Case (tm, branches) ->
       (match find_core_match (go ctx tm) branches with
-      | None -> raise @@ EvalError "no match found in case"
+      | None -> raise @@ EvalExn ("no match found in case", tm)
       | Some (branch, bindings) -> go (Util.map_union ctx bindings) branch)
+
+    (* primitives *)
     (* TODO: or should this be an app? *)
     | Operator ("#add", [ Scope ([], a); Scope ([], b) ]) ->
       (match go ctx a, go ctx b with
       | Primitive (PrimInteger a'), Primitive (PrimInteger b') ->
         Primitive (PrimInteger Bigint.(a' + b'))
-      | _ -> raise @@ EvalError "TODO")
+      | _ -> raise @@ EvalExn ("Invalid arguments to #add", tm))
     | Operator ("#sub", [ Scope ([], a); Scope ([], b) ]) ->
       (match go ctx a, go ctx b with
       | Primitive (PrimInteger a'), Primitive (PrimInteger b') ->
         Primitive (PrimInteger Bigint.(a' - b'))
-      | _ -> raise @@ EvalError "TODO")
+      | _ -> raise @@ EvalExn ("Invalid arguments to #sub", tm))
+
     | Operator _ | Sequence _ | Primitive _ -> tm
-    (* TODO: include the term in error *)
-    | _ -> raise @@ EvalError "Found a term we can't evaluate"
+    | _ -> raise @@ EvalExn ("Found a term we can't evaluate", tm)
   in
-  try Ok (go String.Map.empty core) with EvalError msg -> Error msg
+  try Ok (go String.Map.empty core) with EvalExn (msg, tm) -> Error (msg, tm)
 ;;
 
 (* to_term *)

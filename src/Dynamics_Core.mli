@@ -26,7 +26,9 @@ and core_case_scope = CaseScope of Pattern.t list * core
 
 type denotation_chart = DenotationChart of (string * core) list
 
-val eval : core -> (core, string) Core_kernel.Result.t
+type eval_error = string * core
+
+val eval : core -> (core, eval_error) Core_kernel.Result.t
 
 (** Convert a core term to a nominal term, ensuring that it contains no core operators. *)
 val to_ast : core -> Nominal.term
