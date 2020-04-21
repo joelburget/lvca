@@ -1,8 +1,10 @@
+open Sexplib.Std
+
 type t =
   { start_pos : Position.t
   ; end_pos : Position.t
   ; message : string
-  }
+  } [@@deriving sexp]
 
 let to_string : t -> string
   = fun { start_pos; end_pos; message }

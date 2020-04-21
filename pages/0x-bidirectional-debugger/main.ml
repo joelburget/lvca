@@ -8,6 +8,21 @@ open Bidirectional
 open Statics
 (* open Lvca_web *)
 
+module AbstractEditor = ContainedEditor.ContainedEditorComponent(struct
+  type t = AbstractSyntax.t
+  let parse = Parsing.AbstractSyntax.parse
+end)
+
+let abstract_editor_component = Bonsai.of_module (module AbstractEditor)
+
+module ConcreteEditor = ContainedEditor.ContainedEditorComponent(struct
+  type t = ConcreteSyntaxDescription.pre_terminal_rule list *
+           ConcreteSyntaxDescription.nonterminal_rule list
+  let parse = Parsing.ConcreteSyntax.parse
+end)
+
+let concrete_editor_component = Bonsai.of_module (module AbstractEditor)
+
 (* TODO: this is hacky -- don't use it *)
 let parse_cvt : string -> term
   = fun str ->
@@ -140,9 +155,9 @@ module Term_render_component = struct
 
     type t =
       { abstract_expanded: bool
-      ; abstract: (AbstractSyntax.t, string) Core_kernel.Result.t option
+      ; abstract: (AbstractSyntax.t, ParseError.t) Core_kernel.Result.t option
       ; statics_expanded: bool
-      ; statics: (Statics.rule list, string) Core_kernel.Result.t option
+      ; statics: (Statics.rule list, ParseError.t) Core_kernel.Result.t option
       ; debugger_expanded: bool
       ; debugger: debugger_state option
       }
@@ -150,8 +165,8 @@ module Term_render_component = struct
 
   module Action = struct
     type t =
-      | AbstractUpdate of (AbstractSyntax.t, string) Core_kernel.Result.t
-      | StaticsUpdate of (Statics.rule list, string) Core_kernel.Result.t
+      | AbstractUpdate of (AbstractSyntax.t, ParseError.t) Core_kernel.Result.t
+      | StaticsUpdate of (Statics.rule list, ParseError.t) Core_kernel.Result.t
       | Evaluate of string
       | StepForward
       | StepBackward
@@ -203,13 +218,13 @@ module Term_render_component = struct
   ;;
 
   let compute : inject:(Action.t -> Vdom.Event.t) -> Input.t -> Model.t -> Result.t =
-   fun ~inject _eval state ->
+   fun ~inject _input state ->
 
-     let a, button, input, none, table, text, th, thead = Vdom.Node.
-       (a, button, input, none, table, text, th, thead)
+     let a, button, input, none, table, text, textarea, th, thead = Vdom.Node.
+       (a, button, input, none, table, text, textarea, th, thead)
      in
-     let class_, classes, href, on_click, on_keyup, type_ = Vdom.Attr.
-       (class_, classes, href, on_click, on_keyup, type_)
+     let class_, classes, href, on_change, on_click, on_keyup, type_ = Vdom.Attr.
+       (class_, classes, href, on_change, on_click, on_keyup, type_)
      in
 
      let abstract_valid = match state.abstract with
@@ -233,12 +248,29 @@ module Term_render_component = struct
          ]
      in
 
+     (*
+     (* XXX don't parse here *)
+     let handle_abstract_change = fun _ str ->
+       inject (AbstractUpdate (Parsing.AbstractSyntax.parse str))
+     in
+
      let abstract = mk_section "Abstract" true state.abstract_expanded ToggleAbstract
-       (text "TODO")
+       (textarea [ on_change handle_abstract_change ] [])
+       (* Codemirror.codemirror *)
+     in
+     *)
+
+     let abstract = mk_section "Abstract" true state.abstract_expanded ToggleAbstract
+       abstract_editor_component
+     in
+
+     (* XXX don't parse here *)
+     let handle_statics_change = fun _ str ->
+       inject (StaticsUpdate (Parsing.Statics.parse str))
      in
 
      let statics = mk_section "Statics" abstract_valid state.statics_expanded
-       ToggleStatics (text "TODO")
+       ToggleStatics (textarea [ on_change handle_statics_change ] [])
      in
 
      let debugger = mk_section "Debugger" (abstract_valid && statics_valid)
