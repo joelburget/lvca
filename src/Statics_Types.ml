@@ -15,17 +15,20 @@ and term =
 
 let rec string_of_term = function
   | Operator (name, scopes) ->
-    Printf.sprintf "%s(%s)" name (Util.stringify_list string_of_scope "; " scopes)
+    Printf.sprintf "%s(%s)" name
+    (scopes |> List.map ~f:string_of_scope |> String.concat ~sep:"; ")
   | Bound (i, j) -> Printf.sprintf "%d, %d" i j
   | Free str -> str
-  | Sequence tms -> "[" ^ Util.stringify_list string_of_term ", " tms ^ "]"
+  | Sequence tms ->
+    let tms' = tms |> List.map ~f:string_of_term |> String.concat ~sep:", " in
+    "[" ^ tms' ^ "]"
   | Primitive prim -> Primitive.to_string prim
 
 and string_of_scope (Scope (pats, tm)) =
   match pats with
   | [] -> string_of_term tm
   | _ ->
-    let pats' = Util.stringify_list Pattern.string_of_pattern ". " pats in
+    let pats' = pats |> List.map ~f:Pattern.string_of_pattern |> String.concat ~sep:". " in
     Printf.sprintf "%s. %s" pats' (string_of_term tm)
 ;;
 

@@ -147,7 +147,7 @@ let rec parse_result_to_string : parse_result -> string =
     (match production with
     | First n -> "t" ^ string_of_int n
     | Second n -> "n" ^ string_of_int n)
-    (Util.stringify_list parse_result_to_string ", " children)
+    (children |> List.map ~f:parse_result_to_string |> String.concat ~sep:", ")
 ;;
 
 exception ParseFinished
@@ -333,7 +333,7 @@ module Lr0 (G : GRAMMAR) = struct
    fun ?(sep = " ") item_set ->
     match Set.length item_set with
     | 0 -> "empty"
-    | _ -> item_set |> Set.to_list |> Util.stringify_list string_of_item sep
+    | _ -> item_set |> Set.to_list |> List.map ~f:string_of_item |> String.concat ~sep
  ;;
 
   let string_of_production : production -> string =
@@ -677,9 +677,8 @@ module Lr0 (G : GRAMMAR) = struct
                   (string_of_item_set item_set)
                   (lr0_items
                   |> Map.to_alist
-                  |> Util.stringify_list
-                       (fun (_, item_set) -> string_of_item_set item_set)
-                       ", ")))
+                  |> List.map ~f:(fun (_, item_set) -> string_of_item_set item_set)
+                  |> String.concat ~sep:", ")))
     in
     state
  ;;

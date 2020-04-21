@@ -30,9 +30,11 @@ let list_vars_of_pattern : pattern -> string list =
 
 let rec string_of_pattern : pattern -> string = function
   | Operator (name, pats) ->
-    Printf.sprintf "%s(%s)" name (Util.stringify_list string_of_pattern "; " pats)
+    Printf.sprintf "%s(%s)" name
+    (pats |> List.map ~f:string_of_pattern |> String.concat ~sep:"; ")
   | Sequence pats ->
-    Printf.sprintf "[%s]" (Util.stringify_list string_of_pattern ", " pats)
+    Printf.sprintf "[%s]"
+    (pats |> List.map ~f:string_of_pattern |> String.concat ~sep:", ")
   | Primitive prim -> Primitive.to_string prim
   | Var name -> name
   | Ignored name -> "_" ^ name

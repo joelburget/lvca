@@ -38,10 +38,6 @@ let get_option' : (unit -> string) -> 'a option -> 'a =
   | Some a -> a
 ;;
 
-let stringify_list : ('a -> string) -> string -> 'a list -> string =
- fun f sep elems -> elems |> Array.of_list |> Array.map ~f |> String.concat_array ~sep
-;;
-
 module MutableSet = struct
   module Impl = struct
     type ('elt, 'cmp) t = ('elt, 'cmp) Set.t ref

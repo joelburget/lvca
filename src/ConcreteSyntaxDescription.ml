@@ -60,7 +60,7 @@ let rec string_of_operator_match_pattern : operator_match_pattern -> string
     Printf.sprintf
       "%s(%s)"
       name
-      (Util.stringify_list string_of_scope_pattern "; " scope_pats)
+      (scope_pats |> List.map ~f:string_of_scope_pattern |> String.concat ~sep:"; ")
   | SingleCapturePattern name -> name
 
 and string_of_scope_pattern : scope_pattern -> string =

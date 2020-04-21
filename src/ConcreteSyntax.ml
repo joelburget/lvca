@@ -661,7 +661,7 @@ let convert_token
              Printf.sprintf
                "convert_token: couldn't find nonterminal %s in names: %s"
                token_name
-               (nonterminal_entry |> String.Map.keys |> Util.stringify_list Fn.id ", ")))
+               (nonterminal_entry |> String.Map.keys |> String.concat ~sep:", ")))
   | OpenBox _ | CloseBox | Underscore _ ->
     invariant_violation
       "all formatting tokens should be filtered (see is_formatting_token)"
