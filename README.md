@@ -60,37 +60,37 @@ I'd like to add support for unification in the future.
 ```
 
 ----------------------- (bool intro 1)
-ctx |- true() => bool()
+ctx >> true() => bool()
 
 ------------------------ (bool intro 2)
-ctx |- false() => bool()
+ctx >> false() => bool()
 
-      ctx |- tm <= ty
+      ctx >> tm <= ty
 -------------------------- (annot)
-ctx |- annot(tm; ty) => ty
+ctx >> annot(tm; ty) => ty
 
-ctx |- t1 <= bool()  ctx |- t2 <= ty  ctx |- t3 <= ty
+ctx >> t1 <= bool()  ctx >> t2 <= ty  ctx >> t3 <= ty
 ----------------------------------------------------- (bool elim)
-           ctx |- ite(t1; t2; t3) <= ty
+           ctx >> ite(t1; t2; t3) <= ty
 
-    ctx, x : ty1 |- tm <= ty2
+    ctx, x : ty1 >> tm <= ty2
 ---------------------------------- (lam intro)
-ctx |- lam(x. tm) <= arr(ty1; ty2)
+ctx >> lam(x. tm) <= arr(ty1; ty2)
 
-ctx |- tm1 => arr(ty1; ty2)  ctx |- tm2 <= ty1
+ctx >> tm1 => arr(ty1; ty2)  ctx >> tm2 <= ty1
 ---------------------------------------------- (lam elim)
-        ctx |- app(tm1; tm2) => ty2
+        ctx >> app(tm1; tm2) => ty2
 
 // important: this rule must go last or else it will subsume all others
-ctx |- tm => ty
+ctx >> tm => ty
 --------------- (switch)
-ctx |- tm <= ty
+ctx >> tm <= ty
 ```
 
 Lastly, we define the denotational semantics of the language.
 
 ```
-meaning = \(tm : tm) -> match tm with {
+meaning = \(tm : ty()) -> match tm with {
   | true()          -> true()
   | false()         -> false()
   | annot(tm; ty)   -> meaning tm
