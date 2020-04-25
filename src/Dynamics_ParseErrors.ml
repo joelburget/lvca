@@ -7,80 +7,80 @@ let message =
   fun s ->
     match s with
     | 0 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 38\n"
-    | 1 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 37\n"
-    | 2 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 36\n"
-    | 50 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 35\n"
-    | 4 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 34\n"
-    | 60 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 33\n"
-    | 61 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 32\n"
-    | 69 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 31\n"
-    | 70 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 30\n"
-    | 66 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 29\n"
-    | 67 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 28\n"
-    | 63 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 27\n"
-    | 59 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 26\n"
-    | 5 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 25\n"
-    | 34 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 24\n"
-    | 35 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 23\n"
-    | 56 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 22\n"
-    | 57 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 21\n"
-    | 6 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 20\n"
-    | 31 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 19\n"
-    | 32 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 18\n"
-    | 29 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 17\n"
-    | 77 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 16\n"
-    | 9 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 15\n"
-    | 25 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 14\n"
-    | 23 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 13\n"
-    | 14 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 12\n"
-    | 13 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 11\n"
-    | 20 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 10\n"
-    | 22 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 9\n"
-    | 8 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 8\n"
-    | 37 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 7\n"
-    | 38 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 6\n"
-    | 39 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 5\n"
-    | 40 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 4\n"
+        "Unexpected token. Expected a term.\n"
+    | 65 ->
+        "Unexpected token after term. Expected end of file.\n"
     | 41 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 3\n"
-    | 44 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 2\n"
+        "Unexpected token after term.\n"
+    | 3 ->
+        "Unexpected token after operator id. Expected a list of subterms, followed by `)`.\n"
+    | 20 ->
+        "Unexpected token. Expected `.` or `;`.\n"
+    | 18 ->
+        "Unexpected token after `;`. Expected another term.\n"
+    | 21 ->
+        "Unexpected token after `.`.\n"
+    | 23 ->
+        "Unexpected token after `match`. Expected a term.\n"
+    | 51 ->
+        "Unexpected token after `with`. Expected `{`.\n"
+    | 52 ->
+        "Unexpected token after `{`. Expected a list of pattern matches.\n"
+    | 57 ->
+        "Unexpected token after pattenr. Expected `->`.\n"
+    | 58 ->
+        "Unexpected token after `->`. Expected a term.\n"
+    | 60 ->
+        "Unexpected token. Expected `|` (beginning another line) or `}` (ending the match).\n"
+    | 61 ->
+        "Unexpected token after `|`. Expected a pattern.\n"
+    | 54 ->
+        "Unexpected token in match. Expected a list of cases, each starting with `|`.\n"
+    | 50 ->
+        "Unexpected token after term. Expected `with`.\n"
+    | 24 ->
+        "Unexpected token after `let`. Expected variable declaration.\n"
+    | 25 ->
+        "Unexpected token after variable. Expected `=`.\n"
+    | 26 ->
+        "Unexpected token after `=`. Expected term.\n"
     | 47 ->
-        "<YOUR SYNTAX ERROR MESSAGE HERE> 1\n"
+        "Unexpected token after term. Expected `in`.\n"
+    | 48 ->
+        "Unexpected token after `in`. Expected term.\n"
+    | 27 ->
+        "Unexpected token after `(`. Expected term.\n"
+    | 45 ->
+        "Unexpected token after term. Expected `)`.\n"
+    | 4 ->
+        "Unexpected token after `[`.\n"
+    | 10 ->
+        "Unexpected token in list. Expected `[` or `,`.\n"
+    | 11 ->
+        "Unexpected token after `,`.\n"
+    | 28 ->
+        "Unexpected token after `\\`. Expected an argument list.\n"
+    | 29 ->
+        "Unexpected token after `(`. Expected variable declaration.\n"
+    | 30 ->
+        "Unexpected token after variable declaration. Expected `:`.\n"
+    | 31 ->
+        "Unexpected token after `:`. Expected sort.\n"
+    | 32 ->
+        "Unexpected token after sort. Expected `)`.\n"
+    | 35 ->
+        "Unexpected token after argument. Expected another argument or `->`.\n"
+    | 38 ->
+        "Unexpected token after `->`. Expected a term.\n"
+    | 67 ->
+        "Unexpected token. Expected definition.\n"
+    | 68 ->
+        "Unexpected token after variable name.\n"
+    | 69 ->
+        "Unexpected token after `=`. Expected definition.\n"
+    | 70 ->
+        "Unexpected token after definition (expected `;`).\n"
+    | 75 ->
+        "Unexpected token after definition.\n"
     | _ ->
         raise Not_found

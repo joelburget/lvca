@@ -118,7 +118,7 @@ module Parseable_core : Parseable with type t = Dynamics.Core.core = struct
   module Lexer = Dynamics.Lexer
 
   module Parser = struct
-    let parse = Dynamics.Parser.Incremental.core
+    let parse = Dynamics.Parser.Incremental.core_top
   end
 end
 

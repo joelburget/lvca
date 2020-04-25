@@ -1,6 +1,9 @@
 open Dynamics.Core
 
-let expect_parse str tm = Parsing.Dynamics.parse str = Ok tm
+let expect_parse str tm = match Parsing.Dynamics.parse str with
+  | Error err -> print_string (ParseError.to_string err); false
+  | dyn -> dyn = Ok tm
+
 let dynamics x = CoreApp (Var "dynamics", [ x ])
 let scope x = Scope ([], x)
 
@@ -17,7 +20,7 @@ dynamics = \(tm : ty()) -> match tm with {
   | true()  -> dynamics t2
   | false() -> dynamics t3
 }
-}
+};
 |}
 ;;
 

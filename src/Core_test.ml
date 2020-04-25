@@ -17,7 +17,7 @@ let%test_module "Dynamics.Core parsing" = (module struct
     }
     | ap(f; arg) -> (meaning f) (meaning arg)
     | fun(scope) -> lambda([]; scope) // TODO: add type
-  }
+  };
   |}
   ;;
 
@@ -51,7 +51,9 @@ let%test_module "Dynamics.Core parsing" = (module struct
                       ] ) ) ) )
       ]
 
-  let%test "dynamics as expected" = Parsing.Dynamics.parse dynamics_str = Ok dynamics
+  let%test "dynamics as expected" = match Parsing.Dynamics.parse dynamics_str with
+    | Error err -> print_string (ParseError.to_string err); false
+    | dyn -> dyn = Ok dynamics
 
   let%test "to_ast 1" =
     to_ast (Primitive (PrimInteger one)) = Nominal.Primitive (PrimInteger one)

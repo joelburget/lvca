@@ -34,8 +34,12 @@ rule read = parse
   | "match"   { MATCH }
   | "with"    { WITH }
   | int       { INT (Bigint.of_string (L.lexeme lexbuf)) }
-  | id        { ID (Lexing.lexeme lexbuf) }
-  | eof       { EOF }
+
+  (* Note: distinguishing between TODO *)
+  | id '('    { OPERATOR_ID (Core_kernel.String.slice (Lexing.lexeme lexbuf) 0 (-1)) }
+  | id        { VAR (Lexing.lexeme lexbuf) }
+
+  | eof       { END }
   | newline   { next_line lexbuf; read lexbuf }
   | _ { error lexbuf ("Unexpected char: " ^ Lexing.lexeme lexbuf) }
 
