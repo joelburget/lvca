@@ -155,3 +155,46 @@ let%test_module "Dynamics.Core pretty" =
         not x |}]
   end)
 ;;
+
+let%test_module "Dynamics.Core eval in dynamics" =
+  (module struct
+    let eval_in = fun dynamics_str str ->
+      print_string (match Parsing.Dynamics.parse dynamics_str with
+      | Error err -> ParseError.to_string err
+      | Ok dynamics -> (match dynamics with
+        | DenotationChart [ _name, fn ] -> (match Parsing.Core.parse str with
+          | Error err -> ParseError.to_string err
+          | Ok core -> (match eval (CoreApp (fn, [core])) with
+            | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
+            | Ok result -> pp_core_str result))
+        | _ -> "dynamics must consist of a single definition"))
+
+    let dynamics_str =
+      {|
+meaning = \(tm : ty()) -> match tm with {
+  | true() -> true()
+  | false() -> false()
+  | ite(t1; t2; t3) -> match meaning t1 with {
+    | true()  -> meaning t2
+    | false() -> meaning t3
+  }
+  | ap(f; arg) -> (meaning f) (meaning arg)
+  | fun(scope) -> lambda([]; scope) // TODO: add type
+};
+      |}
+
+    let%expect_test _ =
+      eval_in dynamics_str "true()";
+      [%expect{| true() |}]
+
+    let id_dynamics = {|meaning = \(tm : ty()) -> tm;|}
+
+    let%expect_test _ =
+      eval_in id_dynamics "true()";
+      [%expect{| true() |}]
+
+    let%expect_test _ =
+      eval_in id_dynamics "lambda(tm. tm; [ty()])";
+      [%expect{| lambda(tm. tm; [ty()]) |}]
+  end)
+;;
