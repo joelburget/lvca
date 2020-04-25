@@ -13,14 +13,15 @@ type core =
   | CoreApp of core * core list
   | Case of core * core_case_scope list
   | Let of core * core_scope
+  (** Lets bind only a single variable *)
 
 and core_scope = Scope of Pattern.t list * core
 
 and core_case_scope = CaseScope of Pattern.t * core
 
 module PP = struct
-  let brackets, list, string, box, sp, any, semi, comma, pf =
-    Fmt.(brackets, list, string, box, sp, any, semi, comma, pf)
+  let brackets, list, string, sp, any, semi, comma, pf =
+    Fmt.(brackets, list, string, sp, any, semi, comma, pf)
 
   (* TODO: add parse <-> pretty tests *)
 
@@ -44,12 +45,12 @@ module PP = struct
         pp_core body
       (* TODO: parens if necessary *)
       | CoreApp (f, args)
-      -> pf ppf "%a@ %a"
+      -> pf ppf "%a@[<hov 2>@ %a@]"
          pp_core f
-         (box ~indent:2 (list ~sep:sp pp_core)) args
+         (list ~sep:sp pp_core) args
       | Case (arg, case_scopes)
       -> pf ppf
-        "match %a with {@[<hv 2>%t%a@]@ }"
+        "match %a with {@[@ %t%a@ @]}"
         pp_core arg
         (Format.pp_print_custom_break ~fits:("", 0, "") ~breaks:("", 0, "| "))
         (list ~sep:(any "@ | ") pp_core_case_scope) case_scopes

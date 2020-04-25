@@ -100,7 +100,7 @@ let%test_module "Dynamics.Core pretty" =
       | Error err -> ParseError.to_string err
       | Ok core ->
           let fmt = Format.str_formatter in
-          Format.pp_set_margin fmt width;
+          Format.pp_set_geometry fmt ~max_indent:width ~margin:(width + 1);
           pp_core fmt core;
           Format.flush_str_formatter ())
 
@@ -113,6 +113,18 @@ let%test_module "Dynamics.Core pretty" =
           | false()
             -> true()
         } |}]
+      (* instead (note empty line):
+
+                            |
+                            true()
+                            ->
+                            false()
+                            |
+                            false()
+                            ->
+                            true()
+                            } *)
+
 
     let%expect_test _ =
       pretty 25 "match x with { _ -> 1 }";
@@ -125,8 +137,16 @@ let%test_module "Dynamics.Core pretty" =
          7, 8, 9, 10] |}]
 
     let%expect_test _ =
+      pretty 20 "foo a b c d e f g h i j k l";
+      [%expect{|
+        foo a b c d e f g h
+            i j k l |}]
+
+    let%expect_test _ =
       pretty 20 "f a b c d e f g h i j k l";
-      [%expect]
+      [%expect{|
+        f a b c d e f g h i
+          j k l |}]
 
     let%expect_test _ =
       pretty 20 "let x = true() in not x";
