@@ -13,7 +13,8 @@ let zero_pos : t
     }
 
 let of_lexing_position : Lexing.position -> t
-  = fun { pos_lnum; pos_bol; pos_cnum; _ } -> { pos_lnum; pos_bol; pos_cnum }
+  = fun { pos_lnum; pos_bol; pos_cnum; pos_fname = _ } ->
+    { pos_lnum; pos_bol; pos_cnum }
 
 let of_lexbuf : Lexing.lexbuf -> t
   = fun lexbuf -> of_lexing_position lexbuf.lex_curr_p
