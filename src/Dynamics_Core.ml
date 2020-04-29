@@ -45,15 +45,16 @@ module PP = struct
         pp_core body
       (* TODO: parens if necessary *)
       | CoreApp (f, args)
-      -> pf ppf "%a@[<hov 2>@ %a@]"
+      -> pf ppf "@[<h>%a@ @[<hov>%a@]@]"
          pp_core f
          (list ~sep:sp pp_core) args
       | Case (arg, case_scopes)
       -> pf ppf
-        "match %a with {@[@ %t%a@ @]}"
+        "@[<hv>match %a with {%t%a@ }@]"
         pp_core arg
-        (Format.pp_print_custom_break ~fits:("", 0, "") ~breaks:("", 0, "| "))
-        (list ~sep:(any "@ | ") pp_core_case_scope) case_scopes
+        (* Before `|`, emit a single space if on the same line, or two when broken *)
+        (Format.pp_print_custom_break ~fits:("", 1, "") ~breaks:("", 2, "| "))
+        (list ~sep:(any "@;<1 2>| ") pp_core_case_scope) case_scopes
       | Let (tm, Scope([pat], body))
       -> pf ppf "@[let %a =@ %a in@ @[%a@]@]"
          Pattern.pp pat pp_core tm pp_core body

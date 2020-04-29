@@ -113,22 +113,25 @@ let%test_module "Dynamics.Core pretty" =
           | false()
             -> true()
         } |}]
-      (* instead (note empty line):
-
-                            |
-                            true()
-                            ->
-                            false()
-                            |
-                            false()
-                            ->
-                            true()
-                            } *)
-
 
     let%expect_test _ =
-      pretty 25 "match x with { _ -> 1 }";
+      pretty 21 "match true() with { true() -> false() | false() -> true() }";
+      [%expect{|
+        match true() with {
+          | true() -> false()
+          | false() -> true()
+        } |}]
+
+    let%expect_test _ =
+      pretty 23 "match x with { _ -> 1 }";
       [%expect{| match x with { _ -> 1 } |}]
+
+    let%expect_test _ =
+      pretty 22 "match x with { _ -> 1 }";
+      [%expect{|
+        match x with {
+          | _ -> 1
+        } |}]
 
     let%expect_test _ =
       pretty 20 "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]";
