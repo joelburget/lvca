@@ -57,6 +57,25 @@ end
 
 open Language.Make(Description)
 
+(*
+let dynamics_str =
+  {|
+dynamics = \(expr : expr()) -> match expr with {
+  | add(a; b) ->
+      let a' = dynamics a in
+      let b' = dynamics b in
+      #add(a'; b')
+  | lit(i) -> i
+};
+  |}
+;;
+
+let dynamics = match Parsing.Dynamics.parse dynamics_str with
+  | Error err -> failwith (ParseError.to_string err)
+  | Ok dynamics -> dynamics
+;;
+*)
+
 let%expect_test {|pretty lit(1)|} =
   let tm = Binding.Nominal.(Operator ("lit",
     [ Scope ([], Primitive (PrimInteger (Bigint.of_int 1)))
@@ -64,4 +83,3 @@ let%expect_test {|pretty lit(1)|} =
   in
   print_string (ConcreteSyntax.to_string (of_ast tm));
   [%expect{| 1 |}]
-
