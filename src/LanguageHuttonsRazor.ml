@@ -76,10 +76,13 @@ let dynamics = match Parsing.Dynamics.parse dynamics_str with
 ;;
 *)
 
-let%expect_test {|pretty lit(1)|} =
-  let tm = Binding.Nominal.(Operator ("lit",
-    [ Scope ([], Primitive (PrimInteger (Bigint.of_int 1)))
-    ]))
-  in
-  print_string (ConcreteSyntax.to_string (of_ast tm));
-  [%expect{| 1 |}]
+let%test_module "Hutton's Razor" = (module struct
+  let%expect_test {|pretty lit(1)|} =
+    let tm = Binding.Nominal.(Operator ("lit",
+      [ Scope ([], Primitive (PrimInteger (Bigint.of_int 1)))
+      ]))
+    in
+    print_string (ConcreteSyntax.to_string (of_ast tm));
+    [%expect{| 1 |}]
+end)
+;;
