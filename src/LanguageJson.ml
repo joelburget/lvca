@@ -1,6 +1,6 @@
-let abstractSyntax, concreteSyntax = LanguageInteger.(abstractSyntax, concreteSyntax)
+let abstract_syntax, concrete_syntax = LanguageInteger.(abstract_syntax, concrete_syntax)
 
-let concreteSyntax' =
+let concrete_syntax' =
   {|
 TRUE     := "true"
 FALSE    := "false"

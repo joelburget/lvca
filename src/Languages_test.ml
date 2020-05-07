@@ -38,10 +38,11 @@ let eval_str evaluator str =
 
 let%test_module "Integer Language" =
   (module struct
-    let abstractSyntax, concreteSyntax = LanguageInteger.(abstractSyntax, concreteSyntax)
+    let abstract_syntax, concrete_syntax =
+      LanguageInteger.(abstract_syntax, concrete_syntax)
 
-    let%test_unit "parse abstract syntax" = can_parse_abstract abstractSyntax
-    let%test_unit "parse concrete syntax" = can_parse_concrete concreteSyntax
+    let%test_unit "parse abstract syntax" = can_parse_abstract abstract_syntax
+    let%test_unit "parse concrete syntax" = can_parse_concrete concrete_syntax
 
     let evaluates_to' str i =
       eval_str LanguageInteger.eval_tm str
@@ -59,7 +60,7 @@ let%test_module "Integer Language" =
     let%test _ = evaluates_to' "min(1; 2)" 1
     let%test _ = evaluates_to' "max(1; 2)" 2
 
-    (* let terminal_rules, sort_rules = match Parsing.ConcreteSyntax.parse concreteSyntax with
+    (* let terminal_rules, sort_rules = match Parsing.ConcreteSyntax.parse concrete_syntax with
        | Ok rules -> rules | Error msg -> failwith msg let concrete =
        ConcreteSyntax.make_concrete_description terminal_rules sort_rules
 
@@ -74,14 +75,14 @@ let%test_module "Integer Language" =
 
 let%test_module "JSON Language" =
   (module struct
-    let abstractSyntax, concreteSyntax = LanguageJson.(abstractSyntax, concreteSyntax)
+    let abstract_syntax, concrete_syntax = LanguageJson.(abstract_syntax, concrete_syntax)
 
-    let%test_unit "parse abstract syntax" = can_parse_abstract abstractSyntax
-    let%test_unit "parse concrete syntax" = can_parse_concrete concreteSyntax
+    let%test_unit "parse abstract syntax" = can_parse_abstract abstract_syntax
+    let%test_unit "parse concrete syntax" = can_parse_concrete concrete_syntax
 
-    (* let abstract = match Parsing.AbstractSyntax.parse abstractSyntax with | _, Ok
+    (* let abstract = match Parsing.AbstractSyntax.parse abstract_syntax with | _, Ok
        abstract -> abstract | _, Error msg -> failwith msg in let terminal_rules,
-       sort_rules = match Parsing.ConcreteSyntax.parse concreteSyntax with | _, Ok rules ->
+       sort_rules = match Parsing.ConcreteSyntax.parse concrete_syntax with | _, Ok rules ->
        rules | _, Error msg -> failwith msg in let concrete =
        ConcreteSyntax.make_concrete_description terminal_rules sort_rules in
 
@@ -95,11 +96,11 @@ let%test_module "JSON Language" =
 let%test_module "Document Language" =
   (module struct
     let%test_unit "parse abstract syntax" =
-      can_parse_abstract LanguageDocument.abstractSyntax
+      can_parse_abstract LanguageDocument.abstract_syntax
     ;;
 
     (* let%test_unit "parse concrete syntax" (can_parse_concrete
-       LanguageDocument.concreteSyntax); *)
+       LanguageDocument.concrete_syntax); *)
   end)
 ;;
 *)
@@ -107,15 +108,15 @@ let%test_module "Document Language" =
 let%test_module "Lambda Calculus Language" =
   (module struct
     let%test_unit "parse abstract syntax" =
-      can_parse_abstract LanguageLambda.abstractSyntax
+      can_parse_abstract LanguageLambda.abstract_syntax
     ;;
 
     let%test_unit "parse concrete syntax" =
-      can_parse_concrete LanguageLambda.concreteSyntax
+      can_parse_concrete LanguageLambda.concrete_syntax
     ;;
   end)
 ;;
 
 (* let%test_module "SVG Language" = (module struct let%test_unit "parse abstract syntax" =
-   can_parse_abstract LanguageSvg.abstractSyntax let%test_unit "parse concrete syntax" =
-   can_parse_concrete LanguageSvg.concreteSyntax end) *)
+   can_parse_abstract LanguageSvg.abstract_syntax let%test_unit "parse concrete syntax" =
+   can_parse_concrete LanguageSvg.concrete_syntax end) *)

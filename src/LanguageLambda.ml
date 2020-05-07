@@ -1,10 +1,10 @@
-let abstractSyntax = {|
+let abstract_syntax = {|
 term :=
   | lam(term. term)
   | app(term; term)
 |}
 
-let concreteSyntax =
+let concrete_syntax =
   {|
 LAMBDA := "\\"
 ARROW  := "->"

@@ -1,7 +1,7 @@
 open Core_kernel
 open Binding
 
-let abstractSyntax =
+let abstract_syntax =
   {|
 import { integer } from "builtins"
 
@@ -17,7 +17,7 @@ tm :=
 |}
 ;;
 
-let concreteSyntax =
+let concrete_syntax =
   {|
 INT := /[0-9]+/
 BAR := "|"

@@ -1,4 +1,4 @@
-let abstractSyntax =
+let abstract_syntax =
   {|
 import { sequence } from "builtins";
 
