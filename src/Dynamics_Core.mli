@@ -10,6 +10,12 @@
 open AbstractSyntax
 open Binding
 
+(* Questions:
+  - give declarations types?
+ *)
+
+type is_rec = Rec | NoRec
+
 type core =
   | Operator of string * core_scope list
   | Var of string
@@ -18,7 +24,7 @@ type core =
   | Lambda of sort list * core_scope
   | CoreApp of core * core list
   | Case of core * core_case_scope list
-  | Let of core * core_scope
+  | Let of is_rec * core * core_scope
 
 and core_scope = Scope of Pattern.t list * core
 

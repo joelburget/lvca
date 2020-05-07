@@ -58,6 +58,7 @@ and ast_to_core_scope : Binding.Nominal.scope -> core_scope
 %token ARROW
 
 %token LET
+%token REC
 %token EQ
 %token IN
 
@@ -92,8 +93,13 @@ core:
     let sorts, args = List.unzip $2 in
     Lambda (sorts, Scope (args, $4))
   }
-  | LET VAR EQ core IN core
-  { Let ($4, Scope([Var $2], $6)) }
+  | LET REC? var_name = VAR EQ lhs = core IN body = core
+  { let is_rec = match $2 with
+      | None -> NoRec
+      | Some () -> Rec
+    in
+    Let (is_rec, lhs, Scope([Var var_name], body))
+  }
 
 (** A core term with an unambiguous beginning and end.
 

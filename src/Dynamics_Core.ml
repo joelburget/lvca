@@ -2,6 +2,8 @@ open Core_kernel
 open AbstractSyntax
 open Binding
 
+type is_rec = Rec | NoRec
+
 type core =
   (* first four constructors correspond to regular term constructors *)
   | Operator of string * core_scope list
@@ -12,7 +14,7 @@ type core =
   | Lambda of sort list * core_scope
   | CoreApp of core * core list
   | Case of core * core_case_scope list
-  | Let of core * core_scope
+  | Let of is_rec * core * core_scope
   (** Lets bind only a single variable *)
 
 and core_scope = Scope of Pattern.t list * core
@@ -55,10 +57,11 @@ module PP = struct
         (* Before `|`, emit a single space if on the same line, or two when broken *)
         (Format.pp_print_custom_break ~fits:("", 1, "") ~breaks:("", 2, "| "))
         (list ~sep:(any "@;<1 2>| ") pp_core_case_scope) case_scopes
-      | Let (tm, Scope([pat], body))
-      -> pf ppf "@[let %a =@ %a in@ @[%a@]@]"
+      | Let (is_rec, tm, Scope([pat], body))
+      -> pf ppf "@[let %s%a =@ %a in@ @[%a@]@]"
+         (match is_rec with Rec -> "rec " | NoRec -> "")
          Pattern.pp pat pp_core tm pp_core body
-      | Let (_, Scope(_, _))
+      | Let (_, _, Scope(_, _))
       -> Util.invariant_violation "invalid let binding multiple args"
 
   and pp_lambda_arg ppf = fun (pat, ty) ->
@@ -229,8 +232,11 @@ let rec term_of_core : core -> Nominal.term
     (* TODO *)
     (* ; Scope ([], Sequence (List.map branches ~f:scope_of_core_case_scope)) *)
     ])
-  | Let (tm, body) -> Operator ("let",
-    [ Scope ([], term_of_core tm)
+  | Let (is_rec, tm, body) ->
+     let rec_tm = match is_rec with Rec -> "rec" | NoRec -> "norec" in
+     Operator ("let",
+    [ Scope ([], Operator (rec_tm, []))
+    ; Scope ([], term_of_core tm)
     ; scope_of_core_scope body
     ])
 
