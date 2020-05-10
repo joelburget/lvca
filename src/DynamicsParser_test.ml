@@ -4,7 +4,7 @@ let expect_parse str tm = match Parsing.Dynamics.parse str with
   | Error err -> print_string (ParseError.to_string err); false
   | dyn -> dyn = Ok tm
 
-let dynamics x = CoreApp (Var "dynamics", [ x ])
+let dynamics x = CoreApp (Var "dynamics", x)
 let scope : Binding.Nominal.term -> Binding.Nominal.scope
   = fun x -> Scope ([], x)
 
@@ -29,9 +29,9 @@ let expected =
   DenotationChart
     [ ( "dynamics"
       , Lambda
-          ( [ SortAp ("ty", [||]) ]
+          ( SortAp ("ty", [||])
           , Scope
-              ( [ "tm" ]
+              ( "tm"
               , Case
                   ( Var "tm"
                   , [ CaseScope (Operator ("true", []), Term (Operator ("true", [])))
@@ -42,7 +42,7 @@ let expected =
                         , dynamics @@ Var "tm" )
                     ; CaseScope
                         ( Operator ("app", [ Var "fun"; Var "arg" ])
-                        , CoreApp (dynamics @@ Var "fun", [ dynamics @@ Var "arg" ]) )
+                        , CoreApp (dynamics @@ Var "fun", dynamics @@ Var "arg") )
                     ; CaseScope
                         ( Operator ("lam", [ Var "scope" ])
                         , (* XXX should we have binding aware patterns? *)

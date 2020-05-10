@@ -23,8 +23,13 @@ let rec ast_to_sort' : NonBinding.term -> AbstractSyntax.sort
 let ast_to_sort : Binding.Nominal.term -> AbstractSyntax.sort
   = fun term -> term |> NonBinding.from_nominal' |> ast_to_sort'
 
-let ast_to_core : Binding.Nominal.term -> core
-  = fun tm -> Term tm
+let make_apps : core list -> core
+  = function
+    | [] -> Util.invariant_violation "make_apps: must be a nonempty list"
+    | [x] -> x
+    | f :: args -> List.fold_left args
+      ~init:f
+      ~f:(fun f_app arg -> CoreApp (f_app, arg))
 %}
 
 %token <Bigint.t> INT
@@ -76,22 +81,18 @@ let ast_to_core : Binding.Nominal.term -> core
  *)
 core:
   nonempty_list(atomic_core)
-  { match $1 with
-      | [] -> Util.invariant_violation "must be a nonempty list"
-      | [x] -> x
-      | f :: args -> CoreApp (f, args)
-  }
-  | BACKSLASH nonempty_list(typed_arg) ARROW core
+  { make_apps $1 }
+  | BACKSLASH arg = typed_arg ARROW body = core
   {
-    let args, sorts = List.unzip $2 in
-    Lambda (sorts, Scope (args, $4))
+    let name, sort = arg in
+    Lambda (sort, Scope (name, body))
   }
   | LET REC? var_name = VAR EQ lhs = core IN body = core
   { let is_rec = match $2 with
       | None -> NoRec
       | Some () -> Rec
     in
-    Let (is_rec, lhs, Scope([var_name], body))
+    Let (is_rec, lhs, Scope (var_name, body))
   }
 
 (** A core term with an unambiguous beginning and end.
@@ -118,7 +119,7 @@ case_line: pattern ARROW core { CaseScope ($1, $3) }
 
 (** @raise ScopeEncountered, InvalidSort *)
 sort:          ast_like { ast_to_sort $1 }
-ast_like_core: ast_like { ast_to_core $1 }
+ast_like_core: ast_like { Term $1 }
 (** @raise ToPatternScopeEncountered *)
 pattern:       ast_like { Binding.Nominal.to_pattern_exn $1 }
 

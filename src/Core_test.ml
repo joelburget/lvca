@@ -22,15 +22,15 @@ let%test_module "Dynamics.Core parsing" = (module struct
   |}
   ;;
 
-  let meaning x = CoreApp (Var "meaning", [ x ])
+  let meaning x = CoreApp (Var "meaning", x)
 
   let dynamics =
     DenotationChart
       [ ( "meaning"
         , Lambda
-            ( [ SortAp ("ty", [||]) ]
+            ( SortAp ("ty", [||])
             , Scope
-                ( [ "tm" ]
+                ( "tm"
                 , Case
                     ( Var "tm"
                     , [ CaseScope (Operator ("true", []),
@@ -40,13 +40,13 @@ let%test_module "Dynamics.Core parsing" = (module struct
                       ; CaseScope
                           ( Operator ("ite" , [ Var "t1" ; Var "t2" ; Var "t3" ])
                           , Case
-                              ( CoreApp (Var "meaning", [ Var "t1" ])
+                              ( CoreApp (Var "meaning", Var "t1")
                               , [ CaseScope (Operator ("true", []), meaning (Var "t2"))
                                 ; CaseScope (Operator ("false", []), meaning (Var "t3"))
                                 ] ) )
                       ; CaseScope
                           ( Operator ("ap", [ Var "f"; Var "arg" ])
-                          , CoreApp (meaning @@ Var "f", [ meaning @@ Var "arg" ]) )
+                          , CoreApp (meaning @@ Var "f", meaning @@ Var "arg") )
                       ; CaseScope
                           ( Operator ("fun", [ Var "scope" ])
                           , Term (Operator
@@ -170,7 +170,7 @@ let%test_module "Dynamics.Core eval in dynamics" =
       | Ok dynamics -> (match dynamics with
         | DenotationChart [ _name, fn ] -> (match Parsing.Core.parse str with
           | Error err -> ParseError.to_string err
-          | Ok core -> (match eval (CoreApp (fn, [core])) with
+          | Ok core -> (match eval (CoreApp (fn, core)) with
             | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
             | Ok result -> Nominal.pp_term' result))
         | _ -> "dynamics must consist of a single definition"))

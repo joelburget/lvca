@@ -8,18 +8,18 @@ type core =
   | Term of Nominal.term
   (* plus, core-specific ctors *)
   | Var of string
-  | Lambda of sort list * core_scope
-  | CoreApp of core * core list
+  | CoreApp of core * core
   | Case of core * core_case_scope list
+  | Lambda of sort * core_scope
   | Let of is_rec * core * core_scope
   (** Lets bind only a single variable *)
 
-and core_scope = Scope of string list * core
+and core_scope = Scope of string * core
 
 and core_case_scope = CaseScope of Pattern.t * core
 
 module PP = struct
-  let list, string, sp, any, pf = Fmt.(list, string, sp, any, pf)
+  let list, string, any, pf = Fmt.(list, string, any, pf)
 
   (* TODO: add parse <-> pretty tests *)
 
@@ -28,15 +28,16 @@ module PP = struct
     = fun ppf -> function
       | Term tm -> Nominal.pp_term ppf tm
       | Var v -> string ppf v
-      | Lambda (sorts, Scope (pats, body)) ->
-        pf ppf "\\%a ->@ %a"
-        (list ~sep:sp pp_lambda_arg) (List.zip_exn pats sorts)
+      | Lambda (sort, Scope (name, body)) ->
+        pf ppf "\\(%s : %a) ->@ %a"
+        name
+        pp_sort sort
         pp_core body
       (* TODO: parens if necessary *)
-      | CoreApp (f, args)
+      | CoreApp (f, arg)
       -> pf ppf "@[<h>%a@ @[<hov>%a@]@]"
          pp_core f
-         (list ~sep:sp pp_core) args
+         pp_core arg
       | Case (arg, case_scopes)
       -> pf ppf
         "@[<hv>match %a with {%t%a@ }@]"
@@ -44,15 +45,10 @@ module PP = struct
         (* Before `|`, emit a single space if on the same line, or two when broken *)
         (Format.pp_print_custom_break ~fits:("", 1, "") ~breaks:("", 2, "| "))
         (list ~sep:(any "@;<1 2>| ") pp_core_case_scope) case_scopes
-      | Let (is_rec, tm, Scope([name], body))
+      | Let (is_rec, tm, Scope (name, body))
       -> pf ppf "@[let %s%s =@ %a in@ @[%a@]@]"
          (match is_rec with Rec -> "rec " | NoRec -> "")
          name pp_core tm pp_core body
-      | Let (_, _, Scope(_, _))
-      -> Util.invariant_violation "invalid let binding multiple args"
-
-  and pp_lambda_arg ppf = fun (name, ty) ->
-    pf ppf "(%s : %a)" name pp_sort ty
 
   and pp_core_case_scope : Format.formatter -> core_case_scope -> unit
     = fun ppf (CaseScope (pat, body))
@@ -136,20 +132,9 @@ let eval : core -> (Nominal.term, eval_error) Result.t =
     | Var v -> (match Map.find ctx v with
       | Some result -> result
       | None -> raise @@ EvalExn ("Unbound variable " ^ v, tm))
-    | CoreApp (Lambda (_tys, Scope (arg_names, body)), args) ->
-      if List.(length arg_names <> length args)
-      then raise @@ EvalExn ("mismatched application lengths", tm)
-      else (
-        let arg_vals = List.map args ~f:(go ctx) in
-        let new_args : Nominal.term String.Map.t =
-          List.map2_exn arg_names arg_vals ~f:Tuple2.create
-          |> String.Map.of_alist
-          |> function
-          | `Duplicate_key str ->
-            raise @@ EvalExn ("Duplicate variable name binding: " ^ str, tm)
-          | `Ok result -> result
-        in
-        go (Util.map_union ctx new_args) body)
+    | CoreApp (Lambda (_ty, Scope (name, body)), arg) ->
+      let arg_val = go ctx arg in
+      go (String.Map.set ctx ~key:name ~data:arg_val) body
     | Case (tm, branches) ->
       (match find_core_match (go ctx tm) branches with
       | None -> raise @@ EvalExn ("no match found in case", tm)
@@ -186,19 +171,15 @@ let rec term_of_core : core -> Nominal.term
   = function
   | Term tm -> Operator ("term", [Scope ([], tm)])
   | Var v -> Operator ("var", [Scope ([], Primitive (PrimString v))])
-  | Lambda (sorts, scope) -> Operator ("lambda",
-    [ Scope ([], Operator ("sorts",
-      [ Scope ([], Sequence (sorts
-        |> List.map ~f:(fun sort -> sort
-          |> AbstractSyntax.term_of_sort
-          |> NonBinding.to_nominal)
-      ))
-      ]))
+  | Lambda (sort, scope) -> Operator ("lambda",
+    [ Scope ([], sort
+        |> AbstractSyntax.term_of_sort
+        |> NonBinding.to_nominal)
     ; scope_of_core_scope scope
     ])
-  | CoreApp (f, args) -> Operator ("core_app",
+  | CoreApp (f, arg) -> Operator ("core_app",
     [ Scope ([], term_of_core f)
-    ; Scope ([], Sequence (List.map args ~f:term_of_core))
+    ; Scope ([], term_of_core arg)
     ])
   | Case (tm, _branches) -> Operator ("case",
     [ Scope ([], term_of_core tm)
@@ -214,8 +195,7 @@ let rec term_of_core : core -> Nominal.term
     ])
 
 and scope_of_core_scope : core_scope -> Nominal.scope
-  = fun (Scope (names, body)) -> Scope
-  (names |> List.map ~f:(fun name -> Pattern.Var name), term_of_core body)
+  = fun (Scope (name, body)) -> Scope ([Pattern.Var name], term_of_core body)
 
   (*
 and scope_of_core_case_scope : core_case_scope -> Nominal.scope

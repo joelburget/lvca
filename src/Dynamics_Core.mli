@@ -17,17 +17,17 @@ open Binding
 type is_rec = Rec | NoRec
 
 type core =
-  | Term of Binding.Nominal.term
+  | Term of Nominal.term
   | Var of string
-  | Lambda of sort list * core_scope
-  (** Lambdas bind variables. Patterns not allowed. *)
-  | CoreApp of core * core list
+  | CoreApp of core * core
   | Case of core * core_case_scope list
   (** Cases match patterns *)
+  | Lambda of sort * core_scope
+  (** Lambdas bind variables. Patterns not allowed. *)
   | Let of is_rec * core * core_scope
   (** Lets bind variables. Patterns not allowed. *)
 
-and core_scope = Scope of string list * core
+and core_scope = Scope of string * core
 
 and core_case_scope = CaseScope of Pattern.t * core
 
