@@ -4,7 +4,8 @@ open AbstractSyntax
 
 let%test_module "Dynamics.Core parsing" = (module struct
   let one = Bigint.of_int 1
-  let scope body = Scope ([], body)
+  let scope : Nominal.term -> Nominal.scope
+    = fun body -> Scope ([], body)
 
   let dynamics_str =
     {|
@@ -32,8 +33,10 @@ let%test_module "Dynamics.Core parsing" = (module struct
                 ( [ "tm" ]
                 , Case
                     ( Var "tm"
-                    , [ CaseScope (Operator ("true", []), Operator ("true", []))
-                      ; CaseScope (Operator ("false", []), Operator ("false", []))
+                    , [ CaseScope (Operator ("true", []),
+                        Term (Operator ("true", [])))
+                      ; CaseScope (Operator ("false", []),
+                        Term (Operator ("false", [])))
                       ; CaseScope
                           ( Operator ("ite" , [ Var "t1" ; Var "t2" ; Var "t3" ])
                           , Case
@@ -46,8 +49,8 @@ let%test_module "Dynamics.Core parsing" = (module struct
                           , CoreApp (meaning @@ Var "f", [ meaning @@ Var "arg" ]) )
                       ; CaseScope
                           ( Operator ("fun", [ Var "scope" ])
-                          , Operator
-                              ("lambda", [ scope @@ Sequence []; scope @@ Var "scope" ]) )
+                          , Term (Operator
+                              ("lambda", [ scope @@ Sequence []; scope @@ Var "scope" ])) )
                       ] ) ) ) )
       ]
 
@@ -56,11 +59,11 @@ let%test_module "Dynamics.Core parsing" = (module struct
     | dyn -> dyn = Ok dynamics
 
   let%test "to_ast 1" =
-    to_ast (Primitive (PrimInteger one)) = Nominal.Primitive (PrimInteger one)
+    to_ast (Term (Primitive (PrimInteger one))) = Nominal.Primitive (PrimInteger one)
   ;;
 
   let%test "to_ast 2" =
-    to_ast (Operator ("foo", [ scope @@ Primitive (PrimInteger one) ]))
+    to_ast (Term (Operator ("foo", [ scope @@ Primitive (PrimInteger one) ])))
     = Nominal.Operator ("foo", [ Scope ([], Primitive (PrimInteger one)) ])
   ;;
 end)
@@ -72,7 +75,7 @@ let%test_module "Dynamics.Core eval" =
       | Error err -> ParseError.to_string err
       | Ok core -> (match eval core with
         | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
-        | Ok result -> pp_core_str result))
+        | Ok result -> Nominal.pp_term' result))
 
     let%expect_test _ = eval_str "1"; [%expect{| 1 |}]
     let%expect_test _ = eval_str "foo(1)"; [%expect{| foo(1) |}]
@@ -169,7 +172,7 @@ let%test_module "Dynamics.Core eval in dynamics" =
           | Error err -> ParseError.to_string err
           | Ok core -> (match eval (CoreApp (fn, [core])) with
             | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
-            | Ok result -> pp_core_str result))
+            | Ok result -> Nominal.pp_term' result))
         | _ -> "dynamics must consist of a single definition"))
 
     let dynamics_str =

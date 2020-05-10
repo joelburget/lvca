@@ -5,12 +5,9 @@ open Binding
 type is_rec = Rec | NoRec
 
 type core =
-  (* first four constructors correspond to regular term constructors *)
-  | Operator of string * core_scope list
-  | Var of string
-  | Sequence of core list
-  | Primitive of Primitive.t
+  | Term of Nominal.term
   (* plus, core-specific ctors *)
+  | Var of string
   | Lambda of sort list * core_scope
   | CoreApp of core * core list
   | Case of core * core_case_scope list
@@ -22,26 +19,16 @@ and core_scope = Scope of string list * core
 and core_case_scope = CaseScope of Pattern.t * core
 
 module PP = struct
-  let brackets, list, string, sp, any, semi, comma, pf =
-    Fmt.(brackets, list, string, sp, any, semi, comma, pf)
+  let list, string, sp, any, pf = Fmt.(list, string, sp, any, pf)
 
   (* TODO: add parse <-> pretty tests *)
 
   (** @raise InvariantViolation *)
   let rec pp_core
     = fun ppf -> function
-      | Operator (tag, subtms)
-      -> pf ppf "@[%s(%a)@]" tag
-        (list ~sep:semi pp_core_scope) subtms
-      | Var v
-      -> string ppf v
-      | Sequence tms
-      -> brackets
-         (list ~sep:comma pp_core)
-         ppf tms
-      | Primitive p
-      -> Primitive.pp ppf p
-      | Lambda (sorts, Scope(pats, body)) ->
+      | Term tm -> Nominal.pp_term ppf tm
+      | Var v -> string ppf v
+      | Lambda (sorts, Scope (pats, body)) ->
         pf ppf "\\%a ->@ %a"
         (list ~sep:sp pp_lambda_arg) (List.zip_exn pats sorts)
         pp_core body
@@ -67,12 +54,6 @@ module PP = struct
   and pp_lambda_arg ppf = fun (name, ty) ->
     pf ppf "(%s : %a)" name pp_sort ty
 
-  and pp_core_scope ppf = fun (Scope (bindings, body)) -> match bindings with
-    | [] -> pp_core ppf body
-    | _ -> pf ppf "%a.@ %a"
-      (list ~sep:(any ".@ ") string) bindings
-      pp_core body
-
   and pp_core_case_scope : Format.formatter -> core_case_scope -> unit
     = fun ppf (CaseScope (pat, body))
     -> pf ppf "@[%a@ -> %a@]" Pattern.pp pat pp_core body
@@ -89,26 +70,21 @@ type denotation_chart = DenotationChart of (string * core) list
 (** Raised by to_ast when the presence of lambda, let, app, or case make the value invalid *)
 exception ToAstConversionErr of core
 
-let rec to_ast : core -> Nominal.term = function
-  | Var name -> Var name
-  | Operator (tag, vals) -> Operator (tag, List.map vals ~f:scope_to_ast)
-  | Primitive prim -> Primitive prim
-  | Sequence tms -> Sequence (List.map tms ~f:to_ast)
-  | (Lambda _ | Let _ | CoreApp _ | Case _) as core_only_term ->
+let to_ast : core -> Nominal.term = function
+  | Term tm -> tm
+  | (Var _ | Lambda _ | Let _ | CoreApp _ | Case _) as core_only_term ->
     raise @@ ToAstConversionErr core_only_term
 
-and scope_to_ast (Scope (names, body)) = Nominal.Scope
-  (names |> List.map ~f:(fun name -> Pattern.Var name), to_ast body)
-
-let rec match_core_pattern : core -> Pattern.t -> core String.Map.t option =
-  fun v pat -> match v, pat with
+let rec match_pattern
+  : Nominal.term -> Pattern.t -> Nominal.term String.Map.t option
+  = fun v pat -> match v, pat with
   | Operator (tag1, vals), Operator (tag2, pats) ->
     if String.(tag1 = tag2) && List.(length vals = length pats)
     then (
       let sub_results =
         List.map2_exn vals pats ~f:(fun core_scope (pat : Pattern.t) ->
             match core_scope, pat with
-            | Scope ([], body), pat' -> match_core_pattern body pat'
+            | Scope ([], body), pat' -> match_pattern body pat'
             | _ -> None)
       in
       if List.for_all sub_results ~f:Option.is_some
@@ -122,7 +98,7 @@ let rec match_core_pattern : core -> Pattern.t -> core String.Map.t option =
   | Sequence s1, Sequence s2 ->
     if List.(length s1 = length s2)
     then (
-      let sub_results = List.map2_exn s1 s2 ~f:match_core_pattern in
+      let sub_results = List.map2_exn s1 s2 ~f:match_pattern in
       if List.for_all sub_results ~f:Option.is_some
       then
         Some
@@ -138,12 +114,13 @@ let rec match_core_pattern : core -> Pattern.t -> core String.Map.t option =
   | _ -> None
 ;;
 
-let find_core_match : core -> core_case_scope list -> (core * core String.Map.t) option =
- fun v branches ->
+let find_core_match
+  : Nominal.term -> core_case_scope list -> (core * Nominal.term String.Map.t) option
+  = fun v branches ->
   branches
   |> List.find_map ~f:(function
          | CaseScope (pat, rhs) ->
-           (match match_core_pattern v pat with
+           (match match_pattern v pat with
            | None -> None
            | Some bindings -> Some (rhs, bindings)))
 ;;
@@ -152,13 +129,11 @@ type eval_error = string * core
 
 exception EvalExn of string * core
 
-let eval : core -> (core, eval_error) Result.t =
+let eval : core -> (Nominal.term, eval_error) Result.t =
  fun core ->
-  let rec go : core String.Map.t -> core -> core =
-   fun ctx tm ->
-    match tm with
-    | Var v ->
-      (match Map.find ctx v with
+  let rec go : Nominal.term String.Map.t -> core -> Nominal.term =
+   fun ctx tm -> match tm with
+    | Var v -> (match Map.find ctx v with
       | Some result -> result
       | None -> raise @@ EvalExn ("Unbound variable " ^ v, tm))
     | CoreApp (Lambda (_tys, Scope (arg_names, body)), args) ->
@@ -166,7 +141,7 @@ let eval : core -> (core, eval_error) Result.t =
       then raise @@ EvalExn ("mismatched application lengths", tm)
       else (
         let arg_vals = List.map args ~f:(go ctx) in
-        let new_args : core String.Map.t =
+        let new_args : Nominal.term String.Map.t =
           List.map2_exn arg_names arg_vals ~f:Tuple2.create
           |> String.Map.of_alist
           |> function
@@ -182,19 +157,25 @@ let eval : core -> (core, eval_error) Result.t =
 
     (* primitives *)
     (* TODO: or should this be an app? *)
-    | Operator ("#add", [ Scope ([], a); Scope ([], b) ]) ->
-      (match go ctx a, go ctx b with
+    | Term (Operator ("#add", [ Scope ([], a); Scope ([], b) ])) ->
+      (match go' ctx a, go' ctx b with
       | Primitive (PrimInteger a'), Primitive (PrimInteger b') ->
         Primitive (PrimInteger Bigint.(a' + b'))
       | _ -> raise @@ EvalExn ("Invalid arguments to #add", tm))
-    | Operator ("#sub", [ Scope ([], a); Scope ([], b) ]) ->
-      (match go ctx a, go ctx b with
+    | Term (Operator ("#sub", [ Scope ([], a); Scope ([], b) ])) ->
+      (match go' ctx a, go' ctx b with
       | Primitive (PrimInteger a'), Primitive (PrimInteger b') ->
         Primitive (PrimInteger Bigint.(a' - b'))
       | _ -> raise @@ EvalExn ("Invalid arguments to #sub", tm))
 
-    | Operator _ | Sequence _ | Primitive _ -> tm
+    | Term tm -> tm
     | _ -> raise @@ EvalExn ("Found a term we can't evaluate", tm)
+  and go' : Nominal.term String.Map.t -> Nominal.term -> Nominal.term
+    = fun ctx tm -> match tm with
+      | Var v -> (match Map.find ctx v with
+        | Some result -> result
+        | None -> raise @@ EvalExn ("Unbound variable " ^ v, Term tm))
+      | _ -> tm
   in
   try Ok (go String.Map.empty core) with EvalExn (msg, tm) -> Error (msg, tm)
 ;;
@@ -203,13 +184,8 @@ let eval : core -> (core, eval_error) Result.t =
 
 let rec term_of_core : core -> Nominal.term
   = function
-  | Operator (name, _scopes) -> Operator ("operator",
-    [ Scope ([], Primitive (PrimString name))
-    ])
-  | Var name -> Var name
-  | Sequence cores -> Sequence (List.map cores ~f:term_of_core)
-  | Primitive p -> Primitive p
-  (* plus, core-specific ctors *)
+  | Term tm -> Operator ("term", [Scope ([], tm)])
+  | Var v -> Operator ("var", [Scope ([], Primitive (PrimString v))])
   | Lambda (sorts, scope) -> Operator ("lambda",
     [ Scope ([], Operator ("sorts",
       [ Scope ([], Sequence (sorts

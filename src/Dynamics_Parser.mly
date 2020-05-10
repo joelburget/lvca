@@ -8,9 +8,6 @@ module List = Core_kernel.List
 (** Raised when a sequence or primitive is used in a sort. *)
 exception InvalidSort
 
-(** Raised when a non-variable is bound in a core let or lambda. *)
-exception ScopeBindingNonVar of Pattern.t
-
 (** @raise InvalidSort *)
 let rec ast_to_sort' : NonBinding.term -> AbstractSyntax.sort
   = function
@@ -26,23 +23,8 @@ let rec ast_to_sort' : NonBinding.term -> AbstractSyntax.sort
 let ast_to_sort : Binding.Nominal.term -> AbstractSyntax.sort
   = fun term -> term |> NonBinding.from_nominal' |> ast_to_sort'
 
-(** @raise ScopeBindingNonVar *)
-let rec ast_to_core : Binding.Nominal.term -> core
-  = function
-  | Var v -> Var v
-  | Operator (name, subtms)
-  -> Operator (name, List.map subtms ~f:ast_to_core_scope)
-  | Sequence subtms -> Sequence (List.map subtms ~f:ast_to_core)
-  | Primitive p -> Primitive p
-
-(** @raise ScopeBindingNonVar *)
-and ast_to_core_scope : Binding.Nominal.scope -> core_scope
-  = fun (Scope (binders, body)) ->
-    let names = List.map binders ~f:(function
-      | Var name -> name
-      | pat -> raise (ScopeBindingNonVar pat))
-    in
-    Scope (names, ast_to_core body)
+let ast_to_core : Binding.Nominal.term -> core
+  = fun tm -> Term tm
 %}
 
 %token <Bigint.t> INT
@@ -90,7 +72,7 @@ and ast_to_core_scope : Binding.Nominal.scope -> core_scope
 
 (** A core term. See [atomic_core].
 
- @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort, ScopeBindingNonVar
+ @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort
  *)
 core:
   nonempty_list(atomic_core)
@@ -118,7 +100,7 @@ core:
  terms need to be surrounded by parens to be parseable. atomic terms are those
  that don't need to be surrounded by parens.
 
- @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort, ScopeBindingNonVar
+ @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort
  *)
 atomic_core:
   | ast_like_core
@@ -134,7 +116,7 @@ typed_arg: LEFT_PAREN var = VAR COLON sort = sort RIGHT_PAREN { (var, sort) }
 (** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
 case_line: pattern ARROW core { CaseScope ($1, $3) }
 
-(** @raise ScopeEncountered, InvalidSort, ScopeBindingNonVar *)
+(** @raise ScopeEncountered, InvalidSort *)
 sort:          ast_like { ast_to_sort $1 }
 ast_like_core: ast_like { ast_to_core $1 }
 (** @raise ToPatternScopeEncountered *)

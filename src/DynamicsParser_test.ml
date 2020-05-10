@@ -5,7 +5,8 @@ let expect_parse str tm = match Parsing.Dynamics.parse str with
   | dyn -> dyn = Ok tm
 
 let dynamics x = CoreApp (Var "dynamics", [ x ])
-let scope x = Scope ([], x)
+let scope : Binding.Nominal.term -> Binding.Nominal.scope
+  = fun x -> Scope ([], x)
 
 let dyn1 =
   {|
@@ -33,8 +34,8 @@ let expected =
               ( [ "tm" ]
               , Case
                   ( Var "tm"
-                  , [ CaseScope (Operator ("true", []), Operator ("true", []))
-                    ; CaseScope (Operator ("false", []), Operator ("false", []))
+                  , [ CaseScope (Operator ("true", []), Term (Operator ("true", [])))
+                    ; CaseScope (Operator ("false", []), Term (Operator ("false", [])))
                     ; CaseScope (Operator ("val", [ Var "v" ]), Var "v")
                     ; CaseScope
                         ( Operator ("annot", [ Var "tm"; Var "ty" ])
@@ -45,8 +46,8 @@ let expected =
                     ; CaseScope
                         ( Operator ("lam", [ Var "scope" ])
                         , (* XXX should we have binding aware patterns? *)
-                          Operator
-                            ("lambda", [ scope @@ Sequence []; scope @@ Var "scope" ]) )
+                          Term (Operator
+                            ("lambda", [ scope @@ Sequence []; scope @@ Var "scope" ]) ))
                     ; CaseScope
                         ( Operator ("ite" , [ Var "t1" ; Var "t2" ; Var "t3" ])
                         , Case

@@ -17,10 +17,8 @@ open Binding
 type is_rec = Rec | NoRec
 
 type core =
-  | Operator of string * core_scope list
+  | Term of Binding.Nominal.term
   | Var of string
-  | Sequence of core list
-  | Primitive of Primitive.t
   | Lambda of sort list * core_scope
   (** Lambdas bind variables. Patterns not allowed. *)
   | CoreApp of core * core list
@@ -40,7 +38,7 @@ type denotation_chart = DenotationChart of (string * core) list
 
 type eval_error = string * core
 
-val eval : core -> (core, eval_error) Core_kernel.Result.t
+val eval : core -> (Nominal.term, eval_error) Core_kernel.Result.t
 
 (** Convert a core term to a nominal term, ensuring that it contains no core operators. *)
 val to_ast : core -> Nominal.term
