@@ -30,7 +30,7 @@ let expected =
       , Lambda
           ( [ SortAp ("ty", [||]) ]
           , Scope
-              ( [ Var "tm" ]
+              ( [ "tm" ]
               , Case
                   ( Var "tm"
                   , [ CaseScope (Operator ("true", []), Operator ("true", []))

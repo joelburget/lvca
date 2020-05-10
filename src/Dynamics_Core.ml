@@ -17,7 +17,7 @@ type core =
   | Let of is_rec * core * core_scope
   (** Lets bind only a single variable *)
 
-and core_scope = Scope of Pattern.t list * core
+and core_scope = Scope of string list * core
 
 and core_case_scope = CaseScope of Pattern.t * core
 
@@ -57,20 +57,20 @@ module PP = struct
         (* Before `|`, emit a single space if on the same line, or two when broken *)
         (Format.pp_print_custom_break ~fits:("", 1, "") ~breaks:("", 2, "| "))
         (list ~sep:(any "@;<1 2>| ") pp_core_case_scope) case_scopes
-      | Let (is_rec, tm, Scope([pat], body))
-      -> pf ppf "@[let %s%a =@ %a in@ @[%a@]@]"
+      | Let (is_rec, tm, Scope([name], body))
+      -> pf ppf "@[let %s%s =@ %a in@ @[%a@]@]"
          (match is_rec with Rec -> "rec " | NoRec -> "")
-         Pattern.pp pat pp_core tm pp_core body
+         name pp_core tm pp_core body
       | Let (_, _, Scope(_, _))
       -> Util.invariant_violation "invalid let binding multiple args"
 
-  and pp_lambda_arg ppf = fun (pat, ty) ->
-    pf ppf "(%a : %a)" Pattern.pp pat pp_sort ty
+  and pp_lambda_arg ppf = fun (name, ty) ->
+    pf ppf "(%s : %a)" name pp_sort ty
 
   and pp_core_scope ppf = fun (Scope (bindings, body)) -> match bindings with
     | [] -> pp_core ppf body
     | _ -> pf ppf "%a.@ %a"
-      (list ~sep:(any ".@ ") Pattern.pp) bindings
+      (list ~sep:(any ".@ ") string) bindings
       pp_core body
 
   and pp_core_case_scope : Format.formatter -> core_case_scope -> unit
@@ -97,7 +97,8 @@ let rec to_ast : core -> Nominal.term = function
   | (Lambda _ | Let _ | CoreApp _ | Case _) as core_only_term ->
     raise @@ ToAstConversionErr core_only_term
 
-and scope_to_ast (Scope (pats, body)) = Nominal.Scope (pats, to_ast body)
+and scope_to_ast (Scope (names, body)) = Nominal.Scope
+  (names |> List.map ~f:(fun name -> Pattern.Var name), to_ast body)
 
 let rec match_core_pattern : core -> Pattern.t -> core String.Map.t option =
   fun v pat -> match v, pat with
@@ -160,17 +161,13 @@ let eval : core -> (core, eval_error) Result.t =
       (match Map.find ctx v with
       | Some result -> result
       | None -> raise @@ EvalExn ("Unbound variable " ^ v, tm))
-    | CoreApp (Lambda (_tys, Scope (arg_patterns, body)), args) ->
-      if List.(length arg_patterns <> length args)
+    | CoreApp (Lambda (_tys, Scope (arg_names, body)), args) ->
+      if List.(length arg_names <> length args)
       then raise @@ EvalExn ("mismatched application lengths", tm)
       else (
         let arg_vals = List.map args ~f:(go ctx) in
         let new_args : core String.Map.t =
-          List.map2_exn arg_patterns arg_vals ~f:(fun (pat : Pattern.t) arg_val ->
-              match pat with
-              | Var name -> name, arg_val
-              | _ ->
-                raise @@ EvalExn ("Unsupported pattern in lambda (only vars allowed)", tm))
+          List.map2_exn arg_names arg_vals ~f:Tuple2.create
           |> String.Map.of_alist
           |> function
           | `Duplicate_key str ->
@@ -241,7 +238,8 @@ let rec term_of_core : core -> Nominal.term
     ])
 
 and scope_of_core_scope : core_scope -> Nominal.scope
-  = fun (Scope (pats, body)) -> Scope (pats, term_of_core body)
+  = fun (Scope (names, body)) -> Scope
+  (names |> List.map ~f:(fun name -> Pattern.Var name), term_of_core body)
 
   (*
 and scope_of_core_case_scope : core_case_scope -> Nominal.scope

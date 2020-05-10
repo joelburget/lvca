@@ -29,7 +29,7 @@ let%test_module "Dynamics.Core parsing" = (module struct
         , Lambda
             ( [ SortAp ("ty", [||]) ]
             , Scope
-                ( [ Var "tm" ]
+                ( [ "tm" ]
                 , Case
                     ( Var "tm"
                     , [ CaseScope (Operator ("true", []), Operator ("true", []))

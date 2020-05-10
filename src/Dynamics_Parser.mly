@@ -1,11 +1,15 @@
-/* This is a parser for core terms with embedded ASTs */
+(* This is a parser for core terms with embedded ASTs *)
 
 %{
 open Dynamics_Core
 module Array = Core_kernel.Array
 module List = Core_kernel.List
 
+(** Raised when a sequence or primitive is used in a sort. *)
 exception InvalidSort
+
+(** Raised when a non-variable is bound in a core let or lambda. *)
+exception ScopeBindingNonVar of Pattern.t
 
 (** @raise InvalidSort *)
 let rec ast_to_sort' : NonBinding.term -> AbstractSyntax.sort
@@ -22,6 +26,7 @@ let rec ast_to_sort' : NonBinding.term -> AbstractSyntax.sort
 let ast_to_sort : Binding.Nominal.term -> AbstractSyntax.sort
   = fun term -> term |> NonBinding.from_nominal' |> ast_to_sort'
 
+(** @raise ScopeBindingNonVar *)
 let rec ast_to_core : Binding.Nominal.term -> core
   = function
   | Var v -> Var v
@@ -30,8 +35,14 @@ let rec ast_to_core : Binding.Nominal.term -> core
   | Sequence subtms -> Sequence (List.map subtms ~f:ast_to_core)
   | Primitive p -> Primitive p
 
+(** @raise ScopeBindingNonVar *)
 and ast_to_core_scope : Binding.Nominal.scope -> core_scope
-  = fun (Scope (binders, body)) -> Scope (binders, ast_to_core body)
+  = fun (Scope (binders, body)) ->
+    let names = List.map binders ~f:(function
+      | Var name -> name
+      | pat -> raise (ScopeBindingNonVar pat))
+    in
+    Scope (names, ast_to_core body)
 %}
 
 %token <Bigint.t> INT
@@ -74,12 +85,12 @@ and ast_to_core_scope : Binding.Nominal.scope -> core_scope
 %type <Binding.Nominal.scope> ast_like_scope
 %type <string * Dynamics_Core.core> definition
 %type <Dynamics_Core.denotation_chart> dynamics
-%type <AbstractSyntax.sort * Pattern.t> typed_arg
+%type <string * AbstractSyntax.sort> typed_arg
 %%
 
 (** A core term. See [atomic_core].
 
- @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort
+ @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort, ScopeBindingNonVar
  *)
 core:
   nonempty_list(atomic_core)
@@ -90,7 +101,7 @@ core:
   }
   | BACKSLASH nonempty_list(typed_arg) ARROW core
   {
-    let sorts, args = List.unzip $2 in
+    let args, sorts = List.unzip $2 in
     Lambda (sorts, Scope (args, $4))
   }
   | LET REC? var_name = VAR EQ lhs = core IN body = core
@@ -98,7 +109,7 @@ core:
       | None -> NoRec
       | Some () -> Rec
     in
-    Let (is_rec, lhs, Scope([Var var_name], body))
+    Let (is_rec, lhs, Scope([var_name], body))
   }
 
 (** A core term with an unambiguous beginning and end.
@@ -107,7 +118,7 @@ core:
  terms need to be surrounded by parens to be parseable. atomic terms are those
  that don't need to be surrounded by parens.
 
- @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort
+ @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort, ScopeBindingNonVar
  *)
 atomic_core:
   | ast_like_core
@@ -118,12 +129,12 @@ atomic_core:
   { $2 }
 
 (** @raise ScopeEncountered, InvalidSort *)
-typed_arg: LEFT_PAREN VAR COLON sort RIGHT_PAREN { ($4, Var $2) }
+typed_arg: LEFT_PAREN var = VAR COLON sort = sort RIGHT_PAREN { (var, sort) }
 
 (** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
 case_line: pattern ARROW core { CaseScope ($1, $3) }
 
-(** @raise ScopeEncountered, InvalidSort *)
+(** @raise ScopeEncountered, InvalidSort, ScopeBindingNonVar *)
 sort:          ast_like { ast_to_sort $1 }
 ast_like_core: ast_like { ast_to_core $1 }
 (** @raise ToPatternScopeEncountered *)

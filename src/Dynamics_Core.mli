@@ -22,11 +22,14 @@ type core =
   | Sequence of core list
   | Primitive of Primitive.t
   | Lambda of sort list * core_scope
+  (** Lambdas bind variables. Patterns not allowed. *)
   | CoreApp of core * core list
   | Case of core * core_case_scope list
+  (** Cases match patterns *)
   | Let of is_rec * core * core_scope
+  (** Lets bind variables. Patterns not allowed. *)
 
-and core_scope = Scope of Pattern.t list * core
+and core_scope = Scope of string list * core
 
 and core_case_scope = CaseScope of Pattern.t * core
 
