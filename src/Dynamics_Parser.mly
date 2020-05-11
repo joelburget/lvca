@@ -125,6 +125,7 @@ pattern:       ast_like { Binding.Nominal.to_pattern_exn $1 }
 
 (** @raise ToPatternScopeEncountered *)
 ast_like:
+  (* Note: OPERATOR_ID consumes left paren *)
   | name = OPERATOR_ID scopes = separated_list(SEMICOLON, ast_like_scope) RIGHT_PAREN
   { Operator (name, scopes) }
   | VAR
