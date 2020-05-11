@@ -121,37 +121,32 @@ end = struct
     | Sequence of term list
     | Primitive of Primitive.t
 
-  open Format
+  let any, brackets, list, str, string, semi, comma, pf =
+    Fmt.(any, brackets, list, str, string, semi, comma, pf)
 
   let rec pp_term ppf = function
-    | Operator (tag, subtms) -> fprintf ppf "@[%s(%a)@]" tag pp_scope_list subtms
-    | Var v -> fprintf ppf "%s" v
-    | Sequence tms -> fprintf ppf "@[[%a]@]" pp_inner_list tms
-    | Primitive p -> Primitive.pp ppf p
+    | Operator (tag, subtms)
+    -> pf ppf "@[%s(%a)@]"
+      tag
+      (list ~sep:semi pp_scope) subtms
+    | Var v
+    -> string ppf v
+    | Sequence tms
+    -> brackets
+      (list ~sep:comma pp_term)
+      ppf tms
+    | Primitive p
+    -> Primitive.pp ppf p
 
-  and pp_inner_list ppf = function
-    | [] -> ()
-    | [ x ] -> fprintf ppf "%a" pp_term x
-    | x :: xs -> fprintf ppf "%a, %a" pp_term x pp_inner_list xs
-
-  and pp_scope_list ppf = function
-    | [] -> ()
-    | [ x ] -> fprintf ppf "%a" pp_scope x
-    | x :: xs -> fprintf ppf "%a; %a" pp_scope x pp_scope_list xs
-
-  and pp_scope ppf (Scope (bindings, body)) =
-    match bindings with
+  and pp_scope ppf (Scope (bindings, body)) = match bindings with
     | [] -> pp_term ppf body
-    | _ -> fprintf ppf "%a %a" pp_bindings bindings pp_term body
-
-  and pp_bindings ppf = function
-    | [] -> ()
-    | [ x ] -> fprintf ppf "%a." Pattern.pp x
-    | x :: xs -> fprintf ppf "%a. %a" Pattern.pp x pp_bindings xs
+    | _ -> pf ppf "%a.@ %a" (* pp_bindings bindings pp_term body *)
+      (list ~sep:(any ".@ ") Pattern.pp) bindings
+      pp_term body
   ;;
 
-  let pp_term' = asprintf "%a" pp_term
-  let pp_scope' = asprintf "%a" pp_scope
+  let pp_term' = str "%a" pp_term
+  let pp_scope' = str "%a" pp_scope
   let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
 
   let jsonify_prim =
