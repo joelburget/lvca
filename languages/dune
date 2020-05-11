@@ -1,0 +1,7 @@
+(library
+ (name lvca_languages)
+ (public_name lvca.languages)
+ (inline_tests)
+ (libraries lvca)
+ (preprocess
+  (pps ppx_jane)))

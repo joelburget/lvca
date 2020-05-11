@@ -1,5 +1,5 @@
 open Core_kernel
-open Binding
+open Lvca.Binding
 
 let abstract_syntax =
   {|

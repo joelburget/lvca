@@ -53,7 +53,7 @@ module Description = struct
 
 end
 
-open Language.Make(Description)
+open Lvca.Language.Make(Description)
 
 (*
 let dynamics_str =
