@@ -11,10 +11,11 @@ exception InferenceError
 
 module type S = sig
   val abstract_syntax : AbstractSyntax.t
-  val concrete_syntax : ConcreteSyntaxDescription.t
+  (* val concrete_syntax : ConcreteSyntaxDescription.t *)
   val statics : Statics.rule list
   val check : Statics.typing -> unit
   val infer : Binding.Nominal.term -> Binding.Nominal.term
+  (*
   val parse_concrete : string
     -> ( ConcreteSyntax.formatted_tree
        , (LexerUtil.lex_error, LrParsing.parse_error) Core_kernel.Either.t
@@ -23,6 +24,7 @@ module type S = sig
     :  ConcreteSyntax.formatted_tree
     -> (Binding.Nominal.term, string) Core_kernel.Result.t
   val of_ast : Binding.Nominal.term -> ConcreteSyntax.formatted_tree
+  *)
 end
 
 module Make(X : Description) : S = struct
@@ -32,6 +34,7 @@ module Make(X : Description) : S = struct
       | Error err -> failwith (ParseError.to_string err)
   ;;
 
+  (*
   let concrete_syntax =
     let pre_terminal_rules, sort_rules =
       match Parsing.ConcreteSyntax.parse X.concrete_syntax with
@@ -40,6 +43,7 @@ module Make(X : Description) : S = struct
     in
     ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules
   ;;
+  *)
 
   let statics = match Parsing.Statics.parse X.statics with
     | Ok statics -> statics
@@ -70,6 +74,7 @@ module Make(X : Description) : S = struct
       |> Util.get_option InferenceError
   ;;
 
+  (*
   let parse_concrete = ConcreteSyntax.parse concrete_syntax X.expr_name
   ;;
 
@@ -81,4 +86,5 @@ module Make(X : Description) : S = struct
   let of_ast = ConcreteSyntax.of_ast abstract_syntax.sort_defs
     concrete_syntax expr_sort X.expr_name 80
   ;;
+  *)
 end

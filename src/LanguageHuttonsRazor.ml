@@ -1,5 +1,3 @@
-open Core_kernel
-
 module Description = struct
 
   let abstract_syntax =
@@ -74,7 +72,6 @@ let dynamics = match Parsing.Dynamics.parse dynamics_str with
   | Error err -> failwith (ParseError.to_string err)
   | Ok dynamics -> dynamics
 ;;
-*)
 
 let%test_module "Hutton's Razor" = (module struct
   let%expect_test {|pretty lit(1)|} =
@@ -86,3 +83,4 @@ let%test_module "Hutton's Razor" = (module struct
     [%expect{| 1 |}]
 end)
 ;;
+*)
