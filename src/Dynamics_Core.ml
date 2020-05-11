@@ -63,6 +63,13 @@ let pp_core_str : core -> string
 
 type denotation_chart = DenotationChart of (string * core) list
 
+let pp_chart : Format.formatter -> denotation_chart -> unit
+  = fun ppf (DenotationChart definitions) -> List.iter definitions
+    ~f:(fun (name, defn) -> Fmt.pf ppf "@[<hv>%s@ =@ %a@]" name pp_core defn)
+
+let pp_chart_str : denotation_chart -> string
+  = Format.asprintf "%a" pp_chart
+
 (** Raised by to_ast when the presence of lambda, let, app, or case make the value invalid *)
 exception ToAstConversionErr of core
 

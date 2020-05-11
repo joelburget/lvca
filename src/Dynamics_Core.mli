@@ -36,6 +36,9 @@ val pp_core_str : core -> string
 
 type denotation_chart = DenotationChart of (string * core) list
 
+val pp_chart : Format.formatter -> denotation_chart -> unit
+val pp_chart_str : denotation_chart -> string
+
 type eval_error = string * core
 
 val eval : core -> (Nominal.term, eval_error) Core_kernel.Result.t
