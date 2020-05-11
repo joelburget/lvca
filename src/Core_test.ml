@@ -7,6 +7,10 @@ let%test_module "Dynamics.Core parsing" = (module struct
   let scope : Nominal.term -> Nominal.scope
     = fun body -> Scope ([], body)
 
+  let to_ast : term -> Nominal.term = function
+    | Term tm -> tm
+    | (Lambda _ | Let _ | CoreApp _ | Case _) -> failwith "to_ast: not a term!"
+
   let dynamics_str =
     {|
   meaning = \(tm : ty()) -> match tm with {
@@ -26,7 +30,7 @@ let%test_module "Dynamics.Core parsing" = (module struct
   let meaning x = CoreApp (var "meaning", x)
 
   let dynamics =
-    DenotationChart
+    CoreModule
       [ ( "meaning"
         , Lambda
             ( SortAp ("ty", [||])
@@ -169,7 +173,7 @@ let%test_module "Dynamics.Core eval in dynamics" =
       print_string (match Parsing.Dynamics.parse dynamics_str with
       | Error err -> ParseError.to_string err
       | Ok dynamics -> (match dynamics with
-        | DenotationChart [ _name, fn ] -> (match Parsing.Core.parse str with
+        | CoreModule [ _name, fn ] -> (match Parsing.Core.parse str with
           | Error err -> ParseError.to_string err
           | Ok core -> (match eval (CoreApp (fn, core)) with
             | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm

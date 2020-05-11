@@ -71,7 +71,7 @@ let make_apps : term list -> term
 %type <Binding.Nominal.term> ast_like
 %type <Binding.Nominal.scope> ast_like_scope
 %type <string * Dynamics_Core.term> definition
-%type <Dynamics_Core.denotation_chart> dynamics
+%type <Dynamics_Core.core_module> dynamics
 %type <string * AbstractSyntax.sort> typed_arg
 %%
 
@@ -151,7 +151,7 @@ primitive:
 definition: VAR EQ core SEMICOLON { ($1, $3) }
 
 (** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
-dynamics: nonempty_list(definition) END { DenotationChart $1 }
+dynamics: nonempty_list(definition) END { CoreModule $1 }
 
 (** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
 core_top: core END { $1 }

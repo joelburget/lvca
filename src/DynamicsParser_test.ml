@@ -6,9 +6,9 @@ let expect_parse str tm = match Parsing.Dynamics.parse str with
     if dyn = tm
     then true
     else (
-      pp_chart Format.std_formatter dyn;
+      pp_module Format.std_formatter dyn;
       Format.print_newline ();
-      pp_chart Format.std_formatter tm;
+      pp_module Format.std_formatter tm;
       Format.print_newline ();
       false)
 
@@ -35,7 +35,7 @@ dynamics = \(tm : ty()) -> match tm with {
 ;;
 
 let expected =
-  DenotationChart
+  CoreModule
     [ ( "dynamics"
       , Lambda
           ( SortAp ("ty", [||])

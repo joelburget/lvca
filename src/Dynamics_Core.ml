@@ -69,22 +69,14 @@ let pp_core : Format.formatter -> term -> unit
 let pp_core_str : term -> string
   = Format.asprintf "%a" pp_core
 
-type denotation_chart = DenotationChart of (string * term) list
+type core_module = CoreModule of (string * term) list
 
-let pp_chart : Format.formatter -> denotation_chart -> unit
-  = fun ppf (DenotationChart definitions) -> List.iter definitions
+let pp_module : Format.formatter -> core_module -> unit
+  = fun ppf (CoreModule definitions) -> List.iter definitions
     ~f:(fun (name, defn) -> Fmt.pf ppf "@[<hv>%s@ =@ %a@]" name pp_core defn)
 
-let pp_chart_str : denotation_chart -> string
-  = Format.asprintf "%a" pp_chart
-
-(** Raised by to_ast when the presence of lambda, let, app, or case make the value invalid *)
-exception ToAstConversionErr of term
-
-let to_ast : term -> Nominal.term = function
-  | Term tm -> tm
-  | (Lambda _ | Let _ | CoreApp _ | Case _) as core_only_term ->
-    raise @@ ToAstConversionErr core_only_term
+let pp_module_str : core_module -> string
+  = Format.asprintf "%a" pp_module
 
 let rec match_pattern
   : Nominal.term -> Pattern.t -> Nominal.term String.Map.t option
@@ -180,7 +172,7 @@ let eval : term -> (Nominal.term, eval_error) Result.t =
   try Ok (go String.Map.empty core) with EvalExn (msg, tm) -> Error (msg, tm)
 ;;
 
-(* to_term *)
+(* module_to_term *)
 
 let rec term_of_core : term -> Nominal.term
   = function
@@ -216,8 +208,8 @@ and scope_of_core_case_scope : core_case_scope -> Nominal.scope
   = fun (CaseScope (baw_pat, body)) -> failwith "TODO"
   *)
 
-let to_term : denotation_chart -> Nominal.term
-  = fun (DenotationChart lines) -> Sequence (List.map lines
+let module_to_term : core_module -> Nominal.term
+  = fun (CoreModule lines) -> Sequence (List.map lines
     ~f:(fun (name, core) -> Nominal.Operator ("pair",
       [ Scope ([], Primitive (PrimString name))
       ; Scope ([], term_of_core core)
