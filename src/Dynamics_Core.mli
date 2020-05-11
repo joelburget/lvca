@@ -40,6 +40,8 @@ val pp_module_str : core_module -> string
 
 type eval_error = string * term
 
+(** @raise [eval_error] *)
+val eval_exn : term -> Nominal.term
 val eval : term -> (Nominal.term, eval_error) Core_kernel.Result.t
 
 (** Convert a module to a nominal term, for storage. *)
