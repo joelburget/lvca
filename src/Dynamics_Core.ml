@@ -18,7 +18,7 @@ and core_scope = Scope of string * core
 and core_case_scope = CaseScope of Pattern.t * core
 
 module PP = struct
-  let list, any, pf = Fmt.(list, any, pf)
+  let list, any, pf, sp = Fmt.(list, any, pf, sp)
 
   (* TODO: add parse <-> pretty tests *)
 
@@ -32,10 +32,7 @@ module PP = struct
         pp_sort sort
         pp_core body
       (* TODO: parens if necessary *)
-      | CoreApp (f, arg)
-      -> pf ppf "@[<h>%a@ @[<hov>%a@]@]"
-         pp_core f
-         pp_core arg
+      | (CoreApp _ as app) -> pp_app ppf app
       | Case (arg, case_scopes)
       -> pf ppf
         "@[<hv>match %a with {%t%a@ }@]"
@@ -51,6 +48,19 @@ module PP = struct
   and pp_core_case_scope : Format.formatter -> core_case_scope -> unit
     = fun ppf (CaseScope (pat, body))
     -> pf ppf "@[%a@ -> %a@]" Pattern.pp pat pp_core body
+
+  (* Flatten all arguments into one box *)
+  and pp_app = fun ppf app ->
+    let rec go = function
+      | CoreApp (f_args, final_arg) -> go f_args @ [final_arg]
+      | tm -> [tm]
+    in
+    match go app with
+      | [] -> Util.invariant_violation "pp_app: must be at least one argument"
+      | f :: args ->
+        pf ppf "@[<h>%a@ @[<hov>%a@]@]"
+        pp_core f
+        (list ~sep:sp pp_core) args
 end
 
 let pp_core : Format.formatter -> core -> unit
