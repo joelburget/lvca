@@ -7,7 +7,6 @@ type is_rec = Rec | NoRec
 type core =
   | Term of Nominal.term
   (* plus, core-specific ctors *)
-  | Var of string
   | CoreApp of core * core
   | Case of core * core_case_scope list
   | Lambda of sort * core_scope
@@ -19,7 +18,7 @@ and core_scope = Scope of string * core
 and core_case_scope = CaseScope of Pattern.t * core
 
 module PP = struct
-  let list, string, any, pf = Fmt.(list, string, any, pf)
+  let list, any, pf = Fmt.(list, any, pf)
 
   (* TODO: add parse <-> pretty tests *)
 
@@ -27,7 +26,6 @@ module PP = struct
   let rec pp_core
     = fun ppf -> function
       | Term tm -> Nominal.pp_term ppf tm
-      | Var v -> string ppf v
       | Lambda (sort, Scope (name, body)) ->
         pf ppf "\\(%s : %a) ->@ %a"
         name
@@ -75,7 +73,7 @@ exception ToAstConversionErr of core
 
 let to_ast : core -> Nominal.term = function
   | Term tm -> tm
-  | (Var _ | Lambda _ | Let _ | CoreApp _ | Case _) as core_only_term ->
+  | (Lambda _ | Let _ | CoreApp _ | Case _) as core_only_term ->
     raise @@ ToAstConversionErr core_only_term
 
 let rec match_pattern
@@ -136,7 +134,7 @@ let eval : core -> (Nominal.term, eval_error) Result.t =
  fun core ->
   let rec go : Nominal.term String.Map.t -> core -> Nominal.term =
    fun ctx tm -> match tm with
-    | Var v -> (match Map.find ctx v with
+    | Term (Var v) -> (match Map.find ctx v with
       | Some result -> result
       | None -> raise @@ EvalExn ("Unbound variable " ^ v, tm))
     | CoreApp (Lambda (_ty, Scope (name, body)), arg) ->
@@ -177,7 +175,6 @@ let eval : core -> (Nominal.term, eval_error) Result.t =
 let rec term_of_core : core -> Nominal.term
   = function
   | Term tm -> Operator ("term", [Scope ([], tm)])
-  | Var v -> Operator ("var", [Scope ([], Primitive (PrimString v))])
   | Lambda (sort, scope) -> Operator ("lambda",
     [ Scope ([], sort
         |> AbstractSyntax.term_of_sort

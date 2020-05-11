@@ -22,7 +22,8 @@ let%test_module "Dynamics.Core parsing" = (module struct
   |}
   ;;
 
-  let meaning x = CoreApp (Var "meaning", x)
+  let var name = Term (Var name)
+  let meaning x = CoreApp (var "meaning", x)
 
   let dynamics =
     DenotationChart
@@ -32,7 +33,7 @@ let%test_module "Dynamics.Core parsing" = (module struct
             , Scope
                 ( "tm"
                 , Case
-                    ( Var "tm"
+                    ( var "tm"
                     , [ CaseScope (Operator ("true", []),
                         Term (Operator ("true", [])))
                       ; CaseScope (Operator ("false", []),
@@ -40,13 +41,13 @@ let%test_module "Dynamics.Core parsing" = (module struct
                       ; CaseScope
                           ( Operator ("ite" , [ Var "t1" ; Var "t2" ; Var "t3" ])
                           , Case
-                              ( CoreApp (Var "meaning", Var "t1")
-                              , [ CaseScope (Operator ("true", []), meaning (Var "t2"))
-                                ; CaseScope (Operator ("false", []), meaning (Var "t3"))
+                              ( CoreApp (var "meaning", var "t1")
+                              , [ CaseScope (Operator ("true", []), meaning (var "t2"))
+                                ; CaseScope (Operator ("false", []), meaning (var "t3"))
                                 ] ) )
                       ; CaseScope
                           ( Operator ("ap", [ Var "f"; Var "arg" ])
-                          , CoreApp (meaning @@ Var "f", meaning @@ Var "arg") )
+                          , CoreApp (meaning @@ var "f", meaning @@ var "arg") )
                       ; CaseScope
                           ( Operator ("fun", [ Var "scope" ])
                           , Term (Operator
@@ -56,7 +57,7 @@ let%test_module "Dynamics.Core parsing" = (module struct
 
   let%test "dynamics as expected" = match Parsing.Dynamics.parse dynamics_str with
     | Error err -> print_string (ParseError.to_string err); false
-    | dyn -> dyn = Ok dynamics
+    | Ok dyn -> dyn = dynamics
 
   let%test "to_ast 1" =
     to_ast (Term (Primitive (PrimInteger one))) = Nominal.Primitive (PrimInteger one)

@@ -138,9 +138,7 @@ ast_like:
 ast_like_scope:
   | separated_nonempty_list(DOT, ast_like)
   { let binders_tm, body = Util.unsnoc $1 in
-    let binders_pat = binders_tm
-      |> Core_kernel.List.map ~f:Binding.Nominal.to_pattern_exn
-    in
+    let binders_pat = List.map binders_tm ~f:Binding.Nominal.to_pattern_exn in
     Scope (binders_pat, body)
   }
 

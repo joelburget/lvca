@@ -18,7 +18,6 @@ type is_rec = Rec | NoRec
 
 type core =
   | Term of Nominal.term
-  | Var of string
   | CoreApp of core * core
   | Case of core * core_case_scope list
   (** Cases match patterns *)
