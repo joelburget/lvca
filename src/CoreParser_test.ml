@@ -1,6 +1,6 @@
-open Dynamics.Core
+open Core.Term
 
-let expect_parse str tm = match Parsing.Dynamics.parse str with
+let expect_parse str tm = match Parsing.CoreModule.parse str with
   | Error err -> print_string (ParseError.to_string err); false
   | Ok dyn ->
     if dyn = tm

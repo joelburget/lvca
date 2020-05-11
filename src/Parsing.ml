@@ -98,32 +98,32 @@ module Parseable_statics : Parseable with type t = Statics.rule list = struct
   end
 end
 
-module Parseable_dynamics : Parseable with type t = Dynamics.Core.core_module = struct
-  type t = Dynamics.Core.core_module
+module Parseable_core_module : Parseable with type t = Core.Term.core_module = struct
+  type t = Core.Term.core_module
 
-  module MenhirInterpreter = Dynamics.Parser.MenhirInterpreter
-  module ParseErrors = Dynamics.ParseErrors
-  module Lexer = Dynamics.Lexer
+  module MenhirInterpreter = Core.Parser.MenhirInterpreter
+  module ParseErrors = Core.ParseErrors
+  module Lexer = Core.Lexer
 
   module Parser = struct
-    let parse = Dynamics.Parser.Incremental.dynamics
+    let parse = Core.Parser.Incremental.core_module
   end
 end
 
-module Parseable_core : Parseable with type t = Dynamics.Core.term = struct
-  type t = Dynamics.Core.term
+module Parseable_core_term : Parseable with type t = Core.Term.term = struct
+  type t = Core.Term.term
 
-  module MenhirInterpreter = Dynamics.Parser.MenhirInterpreter
-  module ParseErrors = Dynamics.ParseErrors
-  module Lexer = Dynamics.Lexer
+  module MenhirInterpreter = Core.Parser.MenhirInterpreter
+  module ParseErrors = Core.ParseErrors
+  module Lexer = Core.Lexer
 
   module Parser = struct
-    let parse = Dynamics.Parser.Incremental.core_top
+    let parse = Core.Parser.Incremental.term_top
   end
 end
 
 module Term = Incremental (Parseable_term)
 module AbstractSyntax = Incremental (Parseable_abstract_syntax)
 module Statics = Incremental (Parseable_statics)
-module Dynamics = Incremental (Parseable_dynamics)
-module Core = Incremental (Parseable_core)
+module CoreModule = Incremental (Parseable_core_module)
+module CoreTerm = Incremental (Parseable_core_term)

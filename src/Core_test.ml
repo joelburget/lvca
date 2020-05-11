@@ -1,8 +1,8 @@
 open Binding
-open Dynamics.Core
+open Core.Term
 open AbstractSyntax
 
-let%test_module "Dynamics.Core parsing" = (module struct
+let%test_module "Core.Term parsing" = (module struct
   let one = Bigint.of_int 1
   let scope : Nominal.term -> Nominal.scope
     = fun body -> Scope ([], body)
@@ -59,7 +59,7 @@ let%test_module "Dynamics.Core parsing" = (module struct
                       ] ) ) ) )
       ]
 
-  let%test "dynamics as expected" = match Parsing.Dynamics.parse dynamics_str with
+  let%test "dynamics as expected" = match Parsing.CoreModule.parse dynamics_str with
     | Error err -> print_string (ParseError.to_string err); false
     | Ok dyn -> dyn = dynamics
 
@@ -74,9 +74,9 @@ let%test_module "Dynamics.Core parsing" = (module struct
 end)
 ;;
 
-let%test_module "Dynamics.Core eval" =
+let%test_module "Core.Term eval" =
   (module struct
-    let eval_str = fun str -> print_string (match Parsing.Core.parse str with
+    let eval_str = fun str -> print_string (match Parsing.CoreTerm.parse str with
       | Error err -> ParseError.to_string err
       | Ok core -> (match eval core with
         | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
@@ -102,9 +102,9 @@ let%test_module "Dynamics.Core eval" =
   end)
 ;;
 
-let%test_module "Dynamics.Core pretty" =
+let%test_module "Core.Term pretty" =
   (module struct
-    let pretty width str = print_string (match Parsing.Core.parse str with
+    let pretty width str = print_string (match Parsing.CoreTerm.parse str with
       | Error err -> ParseError.to_string err
       | Ok core ->
           let fmt = Format.str_formatter in
@@ -167,13 +167,13 @@ let%test_module "Dynamics.Core pretty" =
   end)
 ;;
 
-let%test_module "Dynamics.Core eval in dynamics" =
+let%test_module "Core.Term eval in dynamics" =
   (module struct
     let eval_in = fun dynamics_str str ->
-      print_string (match Parsing.Dynamics.parse dynamics_str with
+      print_string (match Parsing.CoreModule.parse dynamics_str with
       | Error err -> ParseError.to_string err
       | Ok dynamics -> (match dynamics with
-        | CoreModule [ _name, fn ] -> (match Parsing.Core.parse str with
+        | CoreModule [ _name, fn ] -> (match Parsing.CoreTerm.parse str with
           | Error err -> ParseError.to_string err
           | Ok core -> (match eval (CoreApp (fn, core)) with
             | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm

@@ -1,7 +1,7 @@
 (* This is a parser for core terms with embedded ASTs *)
 
 %{
-open Dynamics_Core
+open Core_Term
 module Array = Core_kernel.Array
 module List = Core_kernel.List
 
@@ -60,18 +60,18 @@ let make_apps : term list -> term
 %token EQ
 %token IN
 
-%start dynamics
-%start core_top
-%type <Dynamics_Core.term> core
-%type <Dynamics_Core.term> core_top
-%type <Dynamics_Core.term> ast_like_core
+%start core_module
+%start term_top
+%type <Core_Term.term> term
+%type <Core_Term.term> term_top
+%type <Core_Term.term> ast_like_core
 %type <Primitive.t> primitive
 %type <AbstractSyntax.sort> sort
 %type <Pattern.t> pattern
 %type <Binding.Nominal.term> ast_like
 %type <Binding.Nominal.scope> ast_like_scope
-%type <string * Dynamics_Core.term> definition
-%type <Dynamics_Core.core_module> dynamics
+%type <string * Core_Term.term> definition
+%type <Core_Term.core_module> core_module
 %type <string * AbstractSyntax.sort> typed_arg
 %%
 
@@ -79,15 +79,15 @@ let make_apps : term list -> term
 
  @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort
  *)
-core:
+term:
   nonempty_list(atomic_core)
   { make_apps $1 }
-  | BACKSLASH arg = typed_arg ARROW body = core
+  | BACKSLASH arg = typed_arg ARROW body = term
   {
     let name, sort = arg in
     Lambda (sort, Scope (name, body))
   }
-  | LET REC? var_name = VAR EQ lhs = core IN body = core
+  | LET REC? var_name = VAR EQ lhs = term IN body = term
   { let is_rec = match $2 with
       | None -> NoRec
       | Some () -> Rec
@@ -106,16 +106,17 @@ core:
 atomic_core:
   | ast_like_core
   { $1 }
-  | MATCH core WITH LEFT_BRACE option(BAR) separated_nonempty_list(BAR, case_line) RIGHT_BRACE
-  { Case ($2, $6) }
-  | LEFT_PAREN core RIGHT_PAREN
-  { $2 }
+  (* TODO: should we allow empty pattern matches? (do we allow empty sorts?) *)
+  | MATCH tm = term WITH LEFT_BRACE option(BAR) lines = separated_nonempty_list(BAR, case_line) RIGHT_BRACE
+  { Case (tm, lines) }
+  | LEFT_PAREN tm = term RIGHT_PAREN
+  { tm }
 
 (** @raise ScopeEncountered, InvalidSort *)
 typed_arg: LEFT_PAREN var = VAR COLON sort = sort RIGHT_PAREN { (var, sort) }
 
 (** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
-case_line: pattern ARROW core { CaseScope ($1, $3) }
+case_line: pattern ARROW term { CaseScope ($1, $3) }
 
 (** @raise ScopeEncountered, InvalidSort *)
 sort:          ast_like { ast_to_sort $1 }
@@ -148,10 +149,10 @@ primitive:
   | STRING { PrimString  $1 }
 
 (** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
-definition: VAR EQ core SEMICOLON { ($1, $3) }
+definition: VAR EQ term SEMICOLON { ($1, $3) }
 
 (** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
-dynamics: nonempty_list(definition) END { CoreModule $1 }
+core_module: nonempty_list(definition) END { CoreModule $1 }
 
 (** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
-core_top: core END { $1 }
+term_top: term END { $1 }
