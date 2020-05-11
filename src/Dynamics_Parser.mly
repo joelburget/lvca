@@ -23,7 +23,7 @@ let rec ast_to_sort' : NonBinding.term -> AbstractSyntax.sort
 let ast_to_sort : Binding.Nominal.term -> AbstractSyntax.sort
   = fun term -> term |> NonBinding.from_nominal' |> ast_to_sort'
 
-let make_apps : core list -> core
+let make_apps : term list -> term
   = function
     | [] -> Util.invariant_violation "make_apps: must be a nonempty list"
     | [x] -> x
@@ -62,15 +62,15 @@ let make_apps : core list -> core
 
 %start dynamics
 %start core_top
-%type <Dynamics_Core.core> core
-%type <Dynamics_Core.core> core_top
-%type <Dynamics_Core.core> ast_like_core
+%type <Dynamics_Core.term> core
+%type <Dynamics_Core.term> core_top
+%type <Dynamics_Core.term> ast_like_core
 %type <Primitive.t> primitive
 %type <AbstractSyntax.sort> sort
 %type <Pattern.t> pattern
 %type <Binding.Nominal.term> ast_like
 %type <Binding.Nominal.scope> ast_like_scope
-%type <string * Dynamics_Core.core> definition
+%type <string * Dynamics_Core.term> definition
 %type <Dynamics_Core.denotation_chart> dynamics
 %type <string * AbstractSyntax.sort> typed_arg
 %%

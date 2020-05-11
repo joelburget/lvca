@@ -110,8 +110,8 @@ module Parseable_dynamics : Parseable with type t = Dynamics.Core.denotation_cha
   end
 end
 
-module Parseable_core : Parseable with type t = Dynamics.Core.core = struct
-  type t = Dynamics.Core.core
+module Parseable_core : Parseable with type t = Dynamics.Core.term = struct
+  type t = Dynamics.Core.term
 
   module MenhirInterpreter = Dynamics.Parser.MenhirInterpreter
   module ParseErrors = Dynamics.ParseErrors

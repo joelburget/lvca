@@ -4,18 +4,18 @@ open Binding
 
 type is_rec = Rec | NoRec
 
-type core =
+type term =
   | Term of Nominal.term
   (* plus, core-specific ctors *)
-  | CoreApp of core * core
-  | Case of core * core_case_scope list
+  | CoreApp of term * term
+  | Case of term * core_case_scope list
   | Lambda of sort * core_scope
-  | Let of is_rec * core * core_scope
+  | Let of is_rec * term * core_scope
   (** Lets bind only a single variable *)
 
-and core_scope = Scope of string * core
+and core_scope = Scope of string * term
 
-and core_case_scope = CaseScope of Pattern.t * core
+and core_case_scope = CaseScope of Pattern.t * term
 
 module PP = struct
   let list, any, pf, sp = Fmt.(list, any, pf, sp)
@@ -63,13 +63,13 @@ module PP = struct
         (list ~sep:sp pp_core) args
 end
 
-let pp_core : Format.formatter -> core -> unit
+let pp_core : Format.formatter -> term -> unit
   = PP.pp_core
 
-let pp_core_str : core -> string
+let pp_core_str : term -> string
   = Format.asprintf "%a" pp_core
 
-type denotation_chart = DenotationChart of (string * core) list
+type denotation_chart = DenotationChart of (string * term) list
 
 let pp_chart : Format.formatter -> denotation_chart -> unit
   = fun ppf (DenotationChart definitions) -> List.iter definitions
@@ -79,9 +79,9 @@ let pp_chart_str : denotation_chart -> string
   = Format.asprintf "%a" pp_chart
 
 (** Raised by to_ast when the presence of lambda, let, app, or case make the value invalid *)
-exception ToAstConversionErr of core
+exception ToAstConversionErr of term
 
-let to_ast : core -> Nominal.term = function
+let to_ast : term -> Nominal.term = function
   | Term tm -> tm
   | (Lambda _ | Let _ | CoreApp _ | Case _) as core_only_term ->
     raise @@ ToAstConversionErr core_only_term
@@ -126,7 +126,7 @@ let rec match_pattern
 ;;
 
 let find_core_match
-  : Nominal.term -> core_case_scope list -> (core * Nominal.term String.Map.t) option
+  : Nominal.term -> core_case_scope list -> (term * Nominal.term String.Map.t) option
   = fun v branches ->
   branches
   |> List.find_map ~f:(function
@@ -136,13 +136,13 @@ let find_core_match
            | Some bindings -> Some (rhs, bindings)))
 ;;
 
-type eval_error = string * core
+type eval_error = string * term
 
-exception EvalExn of string * core
+exception EvalExn of string * term
 
-let eval : core -> (Nominal.term, eval_error) Result.t =
+let eval : term -> (Nominal.term, eval_error) Result.t =
  fun core ->
-  let rec go : Nominal.term String.Map.t -> core -> Nominal.term =
+  let rec go : Nominal.term String.Map.t -> term -> Nominal.term =
    fun ctx tm -> match tm with
     | Term (Var v) -> (match Map.find ctx v with
       | Some result -> result
@@ -182,7 +182,7 @@ let eval : core -> (Nominal.term, eval_error) Result.t =
 
 (* to_term *)
 
-let rec term_of_core : core -> Nominal.term
+let rec term_of_core : term -> Nominal.term
   = function
   | Term tm -> Operator ("term", [Scope ([], tm)])
   | Lambda (sort, scope) -> Operator ("lambda",
