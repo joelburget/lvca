@@ -10,10 +10,6 @@
 open AbstractSyntax
 open Binding
 
-(* Questions:
-  - give declarations types?
- *)
-
 type is_rec = Rec | NoRec
 
 type term =
@@ -33,7 +29,13 @@ and core_case_scope = CaseScope of Pattern.t * term
 val pp_core : Format.formatter -> term -> unit
 val pp_core_str : term -> string
 
-type core_module = CoreModule of (string * term) list
+type core_defn =
+  { name : string
+  ; ty : sort
+  ; defn : term
+  }
+
+type core_module = CoreModule of core_defn list
 
 val pp_module : Format.formatter -> core_module -> unit
 val pp_module_str : core_module -> string

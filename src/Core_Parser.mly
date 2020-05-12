@@ -70,7 +70,7 @@ let make_apps : term list -> term
 %type <Pattern.t> pattern
 %type <Binding.Nominal.term> ast_like
 %type <Binding.Nominal.scope> ast_like_scope
-%type <string * Core_Term.term> definition
+%type <Core_Term.core_defn> definition
 %type <Core_Term.core_module> core_module
 %type <string * AbstractSyntax.sort> typed_arg
 %%
@@ -149,7 +149,7 @@ primitive:
   | STRING { PrimString  $1 }
 
 (** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
-definition: VAR EQ term SEMICOLON { ($1, $3) }
+definition: name = VAR COLON ty = sort EQ defn = term SEMICOLON { { name; ty; defn } }
 
 (** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
 core_module: nonempty_list(definition) END { CoreModule $1 }

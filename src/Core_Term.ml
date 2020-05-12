@@ -69,11 +69,18 @@ let pp_core : Format.formatter -> term -> unit
 let pp_core_str : term -> string
   = Format.asprintf "%a" pp_core
 
-type core_module = CoreModule of (string * term) list
+type core_defn =
+  { name : string
+  ; ty : sort
+  ; defn : term
+  }
+
+type core_module = CoreModule of core_defn list
 
 let pp_module : Format.formatter -> core_module -> unit
   = fun ppf (CoreModule definitions) -> List.iter definitions
-    ~f:(fun (name, defn) -> Fmt.pf ppf "@[<hv>%s@ =@ %a@]" name pp_core defn)
+    ~f:(fun { name; ty; defn } ->
+      Fmt.pf ppf "@[<hv>%s@ : %a =@ %a@]" name pp_sort ty pp_core defn)
 
 let pp_module_str : core_module -> string
   = Format.asprintf "%a" pp_module
@@ -182,7 +189,7 @@ let rec term_of_core : term -> Nominal.term
   | Term tm -> Operator ("term", [Scope ([], tm)])
   | Lambda (sort, scope) -> Operator ("lambda",
     [ Scope ([], sort
-        |> AbstractSyntax.term_of_sort
+        |> term_of_sort
         |> NonBinding.to_nominal)
     ; scope_of_core_scope scope
     ])
@@ -212,8 +219,9 @@ and scope_of_core_case_scope : core_case_scope -> Nominal.scope
   *)
 
 let module_to_term : core_module -> Nominal.term
-  = fun (CoreModule lines) -> Sequence (List.map lines
-    ~f:(fun (name, core) -> Nominal.Operator ("pair",
+  = fun (CoreModule defns) -> Sequence (List.map defns
+    ~f:(fun { name; ty; defn } -> Nominal.Operator ("core_defn",
       [ Scope ([], Primitive (PrimString name))
-      ; Scope ([], term_of_core core)
+      ; Scope ([], ty |> term_of_sort |> NonBinding.to_nominal)
+      ; Scope ([], term_of_core defn)
       ])))

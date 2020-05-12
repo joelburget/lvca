@@ -1,52 +1,8 @@
-dynamics: VAR EQ INT SEMICOLON WITH
+core_module: VAR WITH
 ##
-## Ends in an error in state: 75.
+## Ends in an error in state: 1.
 ##
-## nonempty_list(definition) -> definition . [ END ]
-## nonempty_list(definition) -> definition . nonempty_list(definition) [ END ]
-##
-## The known suffix of the stack is as follows:
-## definition
-##
-
-Unexpected token after definition.
-
-dynamics: VAR EQ INT WITH
-##
-## Ends in an error in state: 70.
-##
-## definition -> VAR EQ core . SEMICOLON [ VAR END ]
-##
-## The known suffix of the stack is as follows:
-## VAR EQ core
-##
-## WARNING: This example involves spurious reductions.
-## This implies that, although the LR(1) items shown above provide an
-## accurate view of the past (what has been recognized so far), they
-## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 41, spurious reduction of production nonempty_list(atomic_core) -> atomic_core 
-## In state 39, spurious reduction of production core -> nonempty_list(atomic_core) 
-##
-
-Unexpected token after definition (expected `;`).
-
-dynamics: VAR EQ WITH
-##
-## Ends in an error in state: 69.
-##
-## definition -> VAR EQ . core SEMICOLON [ VAR END ]
-##
-## The known suffix of the stack is as follows:
-## VAR EQ
-##
-
-Unexpected token after `=`. Expected definition.
-
-dynamics: VAR WITH
-##
-## Ends in an error in state: 68.
-##
-## definition -> VAR . EQ core SEMICOLON [ VAR END ]
+## definition -> VAR . COLON sort EQ term SEMICOLON [ VAR END ]
 ##
 ## The known suffix of the stack is as follows:
 ## VAR
@@ -54,11 +10,11 @@ dynamics: VAR WITH
 
 Unexpected token after variable name.
 
-dynamics: WITH
+core_module: WITH
 ##
-## Ends in an error in state: 67.
+## Ends in an error in state: 0.
 ##
-## dynamics' -> . dynamics [ # ]
+## core_module' -> . core_module [ # ]
 ##
 ## The known suffix of the stack is as follows:
 ##
@@ -66,36 +22,35 @@ dynamics: WITH
 
 Unexpected token. Expected definition.
 
-core_top: BACKSLASH LEFT_PAREN VAR COLON INT RIGHT_PAREN ARROW WITH
+term_top: BACKSLASH LEFT_PAREN VAR COLON INT RIGHT_PAREN ARROW WITH
 ##
-## Ends in an error in state: 38.
+## Ends in an error in state: 42.
 ##
-## core -> BACKSLASH nonempty_list(typed_arg) ARROW . core [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
+## term -> BACKSLASH typed_arg ARROW . term [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
 ##
 ## The known suffix of the stack is as follows:
-## BACKSLASH nonempty_list(typed_arg) ARROW
+## BACKSLASH typed_arg ARROW
 ##
 
 Unexpected token after `->`. Expected a term.
 
-core_top: BACKSLASH LEFT_PAREN VAR COLON INT RIGHT_PAREN WITH
+term_top: BACKSLASH LEFT_PAREN VAR COLON INT RIGHT_PAREN WITH
 ##
-## Ends in an error in state: 35.
+## Ends in an error in state: 41.
 ##
-## nonempty_list(typed_arg) -> typed_arg . [ ARROW ]
-## nonempty_list(typed_arg) -> typed_arg . nonempty_list(typed_arg) [ ARROW ]
+## term -> BACKSLASH typed_arg . ARROW term [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
 ##
 ## The known suffix of the stack is as follows:
-## typed_arg
+## BACKSLASH typed_arg
 ##
 
 Unexpected token after argument. Expected another argument or `->`.
 
-core_top: BACKSLASH LEFT_PAREN VAR COLON VAR WITH
+term_top: BACKSLASH LEFT_PAREN VAR COLON VAR WITH
 ##
-## Ends in an error in state: 32.
+## Ends in an error in state: 38.
 ##
-## typed_arg -> LEFT_PAREN VAR COLON sort . RIGHT_PAREN [ LEFT_PAREN ARROW ]
+## typed_arg -> LEFT_PAREN VAR COLON sort . RIGHT_PAREN [ ARROW ]
 ##
 ## The known suffix of the stack is as follows:
 ## LEFT_PAREN VAR COLON sort
@@ -103,11 +58,11 @@ core_top: BACKSLASH LEFT_PAREN VAR COLON VAR WITH
 
 Unexpected token after sort. Expected `)`.
 
-core_top: BACKSLASH LEFT_PAREN VAR COLON WITH
+term_top: BACKSLASH LEFT_PAREN VAR COLON WITH
 ##
-## Ends in an error in state: 31.
+## Ends in an error in state: 37.
 ##
-## typed_arg -> LEFT_PAREN VAR COLON . sort RIGHT_PAREN [ LEFT_PAREN ARROW ]
+## typed_arg -> LEFT_PAREN VAR COLON . sort RIGHT_PAREN [ ARROW ]
 ##
 ## The known suffix of the stack is as follows:
 ## LEFT_PAREN VAR COLON
@@ -115,11 +70,11 @@ core_top: BACKSLASH LEFT_PAREN VAR COLON WITH
 
 Unexpected token after `:`. Expected sort.
 
-core_top: BACKSLASH LEFT_PAREN VAR WITH
+term_top: BACKSLASH LEFT_PAREN VAR WITH
 ##
-## Ends in an error in state: 30.
+## Ends in an error in state: 36.
 ##
-## typed_arg -> LEFT_PAREN VAR . COLON sort RIGHT_PAREN [ LEFT_PAREN ARROW ]
+## typed_arg -> LEFT_PAREN VAR . COLON sort RIGHT_PAREN [ ARROW ]
 ##
 ## The known suffix of the stack is as follows:
 ## LEFT_PAREN VAR
@@ -127,11 +82,11 @@ core_top: BACKSLASH LEFT_PAREN VAR WITH
 
 Unexpected token after variable declaration. Expected `:`.
 
-core_top: BACKSLASH LEFT_PAREN WITH
+term_top: BACKSLASH LEFT_PAREN WITH
 ##
-## Ends in an error in state: 29.
+## Ends in an error in state: 35.
 ##
-## typed_arg -> LEFT_PAREN . VAR COLON sort RIGHT_PAREN [ LEFT_PAREN ARROW ]
+## typed_arg -> LEFT_PAREN . VAR COLON sort RIGHT_PAREN [ ARROW ]
 ##
 ## The known suffix of the stack is as follows:
 ## LEFT_PAREN
@@ -139,11 +94,11 @@ core_top: BACKSLASH LEFT_PAREN WITH
 
 Unexpected token after `(`. Expected variable declaration.
 
-core_top: BACKSLASH WITH
+term_top: BACKSLASH WITH
 ##
-## Ends in an error in state: 28.
+## Ends in an error in state: 34.
 ##
-## core -> BACKSLASH . nonempty_list(typed_arg) ARROW core [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
+## term -> BACKSLASH . typed_arg ARROW term [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
 ##
 ## The known suffix of the stack is as follows:
 ## BACKSLASH
@@ -151,9 +106,9 @@ core_top: BACKSLASH WITH
 
 Unexpected token after `\`. Expected an argument list.
 
-core_top: LEFT_BRACKET VAR COMMA WITH
+term_top: LEFT_BRACKET VAR COMMA WITH
 ##
-## Ends in an error in state: 11.
+## Ends in an error in state: 13.
 ##
 ## separated_nonempty_list(COMMA,ast_like) -> ast_like COMMA . separated_nonempty_list(COMMA,ast_like) [ RIGHT_BRACKET ]
 ##
@@ -163,9 +118,9 @@ core_top: LEFT_BRACKET VAR COMMA WITH
 
 Unexpected token after `,`.
 
-core_top: LEFT_BRACKET VAR WITH
+term_top: LEFT_BRACKET VAR WITH
 ##
-## Ends in an error in state: 10.
+## Ends in an error in state: 12.
 ##
 ## separated_nonempty_list(COMMA,ast_like) -> ast_like . [ RIGHT_BRACKET ]
 ## separated_nonempty_list(COMMA,ast_like) -> ast_like . COMMA separated_nonempty_list(COMMA,ast_like) [ RIGHT_BRACKET ]
@@ -176,11 +131,11 @@ core_top: LEFT_BRACKET VAR WITH
 
 Unexpected token in list. Expected `[` or `,`.
 
-core_top: LEFT_BRACKET WITH
+term_top: LEFT_BRACKET WITH
 ##
-## Ends in an error in state: 4.
+## Ends in an error in state: 6.
 ##
-## ast_like -> LEFT_BRACKET . loption(separated_nonempty_list(COMMA,ast_like)) RIGHT_BRACKET [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACKET RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN END DOT COMMA BAR ARROW ]
+## ast_like -> LEFT_BRACKET . loption(separated_nonempty_list(COMMA,ast_like)) RIGHT_BRACKET [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACKET RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN EQ END DOT COMMA BAR ARROW ]
 ##
 ## The known suffix of the stack is as follows:
 ## LEFT_BRACKET
@@ -188,30 +143,30 @@ core_top: LEFT_BRACKET WITH
 
 Unexpected token after `[`.
 
-core_top: LEFT_PAREN VAR WITH
+term_top: LEFT_PAREN VAR WITH
 ##
-## Ends in an error in state: 45.
+## Ends in an error in state: 49.
 ##
-## atomic_core -> LEFT_PAREN core . RIGHT_PAREN [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN END BAR ]
+## atomic_core -> LEFT_PAREN term . RIGHT_PAREN [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN END BAR ]
 ##
 ## The known suffix of the stack is as follows:
-## LEFT_PAREN core
+## LEFT_PAREN term
 ##
 ## WARNING: This example involves spurious reductions.
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 41, spurious reduction of production nonempty_list(atomic_core) -> atomic_core 
-## In state 39, spurious reduction of production core -> nonempty_list(atomic_core) 
+## In state 45, spurious reduction of production nonempty_list(atomic_core) -> atomic_core 
+## In state 44, spurious reduction of production term -> nonempty_list(atomic_core) 
 ##
 
 Unexpected token after term. Expected `)`.
 
-core_top: LEFT_PAREN WITH
+term_top: LEFT_PAREN WITH
 ##
-## Ends in an error in state: 27.
+## Ends in an error in state: 33.
 ##
-## atomic_core -> LEFT_PAREN . core RIGHT_PAREN [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN END BAR ]
+## atomic_core -> LEFT_PAREN . term RIGHT_PAREN [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN END BAR ]
 ##
 ## The known suffix of the stack is as follows:
 ## LEFT_PAREN
@@ -219,66 +174,66 @@ core_top: LEFT_PAREN WITH
 
 Unexpected token after `(`. Expected term.
 
-core_top: LET VAR EQ VAR IN WITH
+term_top: LET VAR EQ VAR IN WITH
 ##
-## Ends in an error in state: 48.
+## Ends in an error in state: 52.
 ##
-## core -> LET VAR EQ core IN . core [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
+## term -> LET option(REC) VAR EQ term IN . term [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
 ##
 ## The known suffix of the stack is as follows:
-## LET VAR EQ core IN
+## LET option(REC) VAR EQ term IN
 ##
 
 Unexpected token after `in`. Expected term.
 
-core_top: LET VAR EQ VAR WITH
+term_top: LET VAR EQ VAR WITH
 ##
-## Ends in an error in state: 47.
+## Ends in an error in state: 51.
 ##
-## core -> LET VAR EQ core . IN core [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
+## term -> LET option(REC) VAR EQ term . IN term [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
 ##
 ## The known suffix of the stack is as follows:
-## LET VAR EQ core
+## LET option(REC) VAR EQ term
 ##
 ## WARNING: This example involves spurious reductions.
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 41, spurious reduction of production nonempty_list(atomic_core) -> atomic_core 
-## In state 39, spurious reduction of production core -> nonempty_list(atomic_core) 
+## In state 45, spurious reduction of production nonempty_list(atomic_core) -> atomic_core 
+## In state 44, spurious reduction of production term -> nonempty_list(atomic_core) 
 ##
 
 Unexpected token after term. Expected `in`.
 
-core_top: LET VAR EQ WITH
+term_top: LET VAR EQ WITH
 ##
-## Ends in an error in state: 26.
+## Ends in an error in state: 32.
 ##
-## core -> LET VAR EQ . core IN core [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
+## term -> LET option(REC) VAR EQ . term IN term [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
 ##
 ## The known suffix of the stack is as follows:
-## LET VAR EQ
+## LET option(REC) VAR EQ
 ##
 
 Unexpected token after `=`. Expected term.
 
-core_top: LET VAR WITH
+term_top: LET VAR WITH
 ##
-## Ends in an error in state: 25.
+## Ends in an error in state: 31.
 ##
-## core -> LET VAR . EQ core IN core [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
+## term -> LET option(REC) VAR . EQ term IN term [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
 ##
 ## The known suffix of the stack is as follows:
-## LET VAR
+## LET option(REC) VAR
 ##
 
 Unexpected token after variable. Expected `=`.
 
-core_top: LET WITH
+term_top: LET WITH
 ##
-## Ends in an error in state: 24.
+## Ends in an error in state: 28.
 ##
-## core -> LET . VAR EQ core IN core [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
+## term -> LET . option(REC) VAR EQ term IN term [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
 ##
 ## The known suffix of the stack is as follows:
 ## LET
@@ -286,40 +241,40 @@ core_top: LET WITH
 
 Unexpected token after `let`. Expected variable declaration.
 
-core_top: MATCH VAR SEMICOLON
+term_top: MATCH VAR SEMICOLON
 ##
-## Ends in an error in state: 50.
+## Ends in an error in state: 54.
 ##
-## atomic_core -> MATCH core . WITH LEFT_BRACE option(BAR) separated_nonempty_list(BAR,case_line) RIGHT_BRACE [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN END BAR ]
+## atomic_core -> MATCH term . WITH LEFT_BRACE option(BAR) separated_nonempty_list(BAR,case_line) RIGHT_BRACE [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN END BAR ]
 ##
 ## The known suffix of the stack is as follows:
-## MATCH core
+## MATCH term
 ##
 ## WARNING: This example involves spurious reductions.
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 41, spurious reduction of production nonempty_list(atomic_core) -> atomic_core 
-## In state 39, spurious reduction of production core -> nonempty_list(atomic_core) 
+## In state 45, spurious reduction of production nonempty_list(atomic_core) -> atomic_core 
+## In state 44, spurious reduction of production term -> nonempty_list(atomic_core) 
 ##
 
 Unexpected token after term. Expected `with`.
 
-core_top: MATCH VAR WITH LEFT_BRACE BAR WITH
+term_top: MATCH VAR WITH LEFT_BRACE BAR WITH
 ##
-## Ends in an error in state: 54.
+## Ends in an error in state: 58.
 ##
-## atomic_core -> MATCH core WITH LEFT_BRACE option(BAR) . separated_nonempty_list(BAR,case_line) RIGHT_BRACE [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN END BAR ]
+## atomic_core -> MATCH term WITH LEFT_BRACE option(BAR) . separated_nonempty_list(BAR,case_line) RIGHT_BRACE [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN END BAR ]
 ##
 ## The known suffix of the stack is as follows:
-## MATCH core WITH LEFT_BRACE option(BAR)
+## MATCH term WITH LEFT_BRACE option(BAR)
 ##
 
 Unexpected token in match. Expected a list of cases, each starting with `|`.
 
-core_top: MATCH VAR WITH LEFT_BRACE VAR ARROW INT BAR WITH
+term_top: MATCH VAR WITH LEFT_BRACE VAR ARROW INT BAR WITH
 ##
-## Ends in an error in state: 61.
+## Ends in an error in state: 65.
 ##
 ## separated_nonempty_list(BAR,case_line) -> case_line BAR . separated_nonempty_list(BAR,case_line) [ RIGHT_BRACE ]
 ##
@@ -329,9 +284,9 @@ core_top: MATCH VAR WITH LEFT_BRACE VAR ARROW INT BAR WITH
 
 Unexpected token after `|`. Expected a pattern.
 
-core_top: MATCH VAR WITH LEFT_BRACE VAR ARROW INT WITH
+term_top: MATCH VAR WITH LEFT_BRACE VAR ARROW INT WITH
 ##
-## Ends in an error in state: 60.
+## Ends in an error in state: 64.
 ##
 ## separated_nonempty_list(BAR,case_line) -> case_line . [ RIGHT_BRACE ]
 ## separated_nonempty_list(BAR,case_line) -> case_line . BAR separated_nonempty_list(BAR,case_line) [ RIGHT_BRACE ]
@@ -343,18 +298,18 @@ core_top: MATCH VAR WITH LEFT_BRACE VAR ARROW INT WITH
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 41, spurious reduction of production nonempty_list(atomic_core) -> atomic_core 
-## In state 39, spurious reduction of production core -> nonempty_list(atomic_core) 
-## In state 59, spurious reduction of production case_line -> pattern ARROW core 
+## In state 45, spurious reduction of production nonempty_list(atomic_core) -> atomic_core 
+## In state 44, spurious reduction of production term -> nonempty_list(atomic_core) 
+## In state 63, spurious reduction of production case_line -> pattern ARROW term 
 ##
 
 Unexpected token. Expected `|` (beginning another line) or `}` (ending the match).
 
-core_top: MATCH VAR WITH LEFT_BRACE VAR ARROW WITH
+term_top: MATCH VAR WITH LEFT_BRACE VAR ARROW WITH
 ##
-## Ends in an error in state: 58.
+## Ends in an error in state: 62.
 ##
-## case_line -> pattern ARROW . core [ RIGHT_BRACE BAR ]
+## case_line -> pattern ARROW . term [ RIGHT_BRACE BAR ]
 ##
 ## The known suffix of the stack is as follows:
 ## pattern ARROW
@@ -362,11 +317,11 @@ core_top: MATCH VAR WITH LEFT_BRACE VAR ARROW WITH
 
 Unexpected token after `->`. Expected a term.
 
-core_top: MATCH VAR WITH LEFT_BRACE VAR WITH
+term_top: MATCH VAR WITH LEFT_BRACE VAR WITH
 ##
-## Ends in an error in state: 57.
+## Ends in an error in state: 61.
 ##
-## case_line -> pattern . ARROW core [ RIGHT_BRACE BAR ]
+## case_line -> pattern . ARROW term [ RIGHT_BRACE BAR ]
 ##
 ## The known suffix of the stack is as follows:
 ## pattern
@@ -374,35 +329,35 @@ core_top: MATCH VAR WITH LEFT_BRACE VAR WITH
 
 Unexpected token after pattenr. Expected `->`.
 
-core_top: MATCH VAR WITH LEFT_BRACE WITH
+term_top: MATCH VAR WITH LEFT_BRACE WITH
 ##
-## Ends in an error in state: 52.
+## Ends in an error in state: 56.
 ##
-## atomic_core -> MATCH core WITH LEFT_BRACE . option(BAR) separated_nonempty_list(BAR,case_line) RIGHT_BRACE [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN END BAR ]
+## atomic_core -> MATCH term WITH LEFT_BRACE . option(BAR) separated_nonempty_list(BAR,case_line) RIGHT_BRACE [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN END BAR ]
 ##
 ## The known suffix of the stack is as follows:
-## MATCH core WITH LEFT_BRACE
+## MATCH term WITH LEFT_BRACE
 ##
 
 Unexpected token after `{`. Expected a list of pattern matches.
 
-core_top: MATCH VAR WITH WITH
+term_top: MATCH VAR WITH WITH
 ##
-## Ends in an error in state: 51.
+## Ends in an error in state: 55.
 ##
-## atomic_core -> MATCH core WITH . LEFT_BRACE option(BAR) separated_nonempty_list(BAR,case_line) RIGHT_BRACE [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN END BAR ]
+## atomic_core -> MATCH term WITH . LEFT_BRACE option(BAR) separated_nonempty_list(BAR,case_line) RIGHT_BRACE [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN END BAR ]
 ##
 ## The known suffix of the stack is as follows:
-## MATCH core WITH
+## MATCH term WITH
 ##
 
 Unexpected token after `with`. Expected `{`.
 
-core_top: MATCH WITH
+term_top: MATCH WITH
 ##
-## Ends in an error in state: 23.
+## Ends in an error in state: 27.
 ##
-## atomic_core -> MATCH . core WITH LEFT_BRACE option(BAR) separated_nonempty_list(BAR,case_line) RIGHT_BRACE [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN END BAR ]
+## atomic_core -> MATCH . term WITH LEFT_BRACE option(BAR) separated_nonempty_list(BAR,case_line) RIGHT_BRACE [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN END BAR ]
 ##
 ## The known suffix of the stack is as follows:
 ## MATCH
@@ -410,9 +365,9 @@ core_top: MATCH WITH
 
 Unexpected token after `match`. Expected a term.
 
-core_top: OPERATOR_ID VAR DOT WITH
+term_top: OPERATOR_ID VAR DOT WITH
 ##
-## Ends in an error in state: 21.
+## Ends in an error in state: 23.
 ##
 ## separated_nonempty_list(DOT,ast_like) -> ast_like DOT . separated_nonempty_list(DOT,ast_like) [ SEMICOLON RIGHT_PAREN ]
 ##
@@ -422,9 +377,9 @@ core_top: OPERATOR_ID VAR DOT WITH
 
 Unexpected token after `.`.
 
-core_top: OPERATOR_ID VAR SEMICOLON WITH
+term_top: OPERATOR_ID VAR SEMICOLON WITH
 ##
-## Ends in an error in state: 18.
+## Ends in an error in state: 20.
 ##
 ## separated_nonempty_list(SEMICOLON,ast_like_scope) -> ast_like_scope SEMICOLON . separated_nonempty_list(SEMICOLON,ast_like_scope) [ RIGHT_PAREN ]
 ##
@@ -434,9 +389,9 @@ core_top: OPERATOR_ID VAR SEMICOLON WITH
 
 Unexpected token after `;`. Expected another term.
 
-core_top: OPERATOR_ID VAR WITH
+term_top: OPERATOR_ID VAR WITH
 ##
-## Ends in an error in state: 20.
+## Ends in an error in state: 22.
 ##
 ## separated_nonempty_list(DOT,ast_like) -> ast_like . [ SEMICOLON RIGHT_PAREN ]
 ## separated_nonempty_list(DOT,ast_like) -> ast_like . DOT separated_nonempty_list(DOT,ast_like) [ SEMICOLON RIGHT_PAREN ]
@@ -447,11 +402,11 @@ core_top: OPERATOR_ID VAR WITH
 
 Unexpected token. Expected `.` or `;`.
 
-core_top: OPERATOR_ID WITH
+term_top: OPERATOR_ID WITH
 ##
-## Ends in an error in state: 3.
+## Ends in an error in state: 5.
 ##
-## ast_like -> OPERATOR_ID . loption(separated_nonempty_list(SEMICOLON,ast_like_scope)) RIGHT_PAREN [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACKET RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN END DOT COMMA BAR ARROW ]
+## ast_like -> OPERATOR_ID . loption(separated_nonempty_list(SEMICOLON,ast_like_scope)) RIGHT_PAREN [ WITH VAR STRING SEMICOLON RIGHT_PAREN RIGHT_BRACKET RIGHT_BRACE OPERATOR_ID MATCH LEFT_PAREN LEFT_BRACKET INT IN EQ END DOT COMMA BAR ARROW ]
 ##
 ## The known suffix of the stack is as follows:
 ## OPERATOR_ID
@@ -459,9 +414,9 @@ core_top: OPERATOR_ID WITH
 
 Unexpected token after operator id. Expected a list of subterms, followed by `)`.
 
-core_top: VAR RIGHT_BRACKET
+term_top: VAR RIGHT_BRACKET
 ##
-## Ends in an error in state: 41.
+## Ends in an error in state: 45.
 ##
 ## nonempty_list(atomic_core) -> atomic_core . [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
 ## nonempty_list(atomic_core) -> atomic_core . nonempty_list(atomic_core) [ WITH SEMICOLON RIGHT_PAREN RIGHT_BRACE IN END BAR ]
@@ -472,30 +427,30 @@ core_top: VAR RIGHT_BRACKET
 
 Unexpected token after term.
 
-core_top: VAR WITH
+term_top: VAR WITH
 ##
-## Ends in an error in state: 65.
+## Ends in an error in state: 77.
 ##
-## core_top -> core . END [ # ]
+## term_top -> term . END [ # ]
 ##
 ## The known suffix of the stack is as follows:
-## core
+## term
 ##
 ## WARNING: This example involves spurious reductions.
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 41, spurious reduction of production nonempty_list(atomic_core) -> atomic_core 
-## In state 39, spurious reduction of production core -> nonempty_list(atomic_core) 
+## In state 45, spurious reduction of production nonempty_list(atomic_core) -> atomic_core 
+## In state 44, spurious reduction of production term -> nonempty_list(atomic_core) 
 ##
 
 Unexpected token after term. Expected end of file.
 
-core_top: WITH
+term_top: WITH
 ##
-## Ends in an error in state: 0.
+## Ends in an error in state: 75.
 ##
-## core_top' -> . core_top [ # ]
+## term_top' -> . term_top [ # ]
 ##
 ## The known suffix of the stack is as follows:
 ##

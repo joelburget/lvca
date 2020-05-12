@@ -13,7 +13,7 @@ let%test_module "Core.Term parsing" = (module struct
 
   let dynamics_str =
     {|
-  meaning = \(tm : ty()) -> match tm with {
+  meaning : arrow(ty(); val()) = \(tm : ty()) -> match tm with {
     | true() -> true()
     | false() -> false()
     | ite(t1; t2; t3) -> match meaning t1 with {
@@ -29,11 +29,14 @@ let%test_module "Core.Term parsing" = (module struct
   let var name = Term (Var name)
   let meaning x = CoreApp (var "meaning", x)
 
+  let ty = SortAp ("ty", [||])
+
   let dynamics =
     CoreModule
-      [ ( "meaning"
-        , Lambda
-            ( SortAp ("ty", [||])
+      [ { name = "meaning"
+        ; ty = SortAp ("arrow", [| ty; SortAp ("val", [||]) |])
+        ; defn = Lambda
+            ( ty
             , Scope
                 ( "tm"
                 , Case
@@ -56,7 +59,8 @@ let%test_module "Core.Term parsing" = (module struct
                           ( Operator ("fun", [ Var "scope" ])
                           , Term (Operator
                               ("lambda", [ scope @@ Sequence []; scope @@ Var "scope" ])) )
-                      ] ) ) ) )
+                      ] ) ) )
+        }
       ]
 
   let%test "dynamics as expected" = match Parsing.CoreModule.parse dynamics_str with
@@ -173,16 +177,17 @@ let%test_module "Core.Term eval in dynamics" =
       print_string (match Parsing.CoreModule.parse dynamics_str with
       | Error err -> ParseError.to_string err
       | Ok dynamics -> (match dynamics with
-        | CoreModule [ _name, fn ] -> (match Parsing.CoreTerm.parse str with
-          | Error err -> ParseError.to_string err
-          | Ok core -> (match eval (CoreApp (fn, core)) with
-            | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
-            | Ok result -> Nominal.pp_term' result))
+        | CoreModule [ { name = _; ty = _; defn } ] ->
+          (match Parsing.CoreTerm.parse str with
+            | Error err -> ParseError.to_string err
+            | Ok core -> (match eval (CoreApp (defn, core)) with
+              | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
+              | Ok result -> Nominal.pp_term' result))
         | _ -> "dynamics must consist of a single definition"))
 
     let dynamics_str =
       {|
-meaning = \(tm : ty()) -> match tm with {
+meaning : arrow(ty(); val()) = \(tm : ty()) -> match tm with {
   | true() -> true()
   | false() -> false()
   | ite(t1; t2; t3) -> match meaning t1 with {
@@ -198,7 +203,7 @@ meaning = \(tm : ty()) -> match tm with {
       eval_in dynamics_str "true()";
       [%expect{| true() |}]
 
-    let id_dynamics = {|meaning = \(tm : ty()) -> tm;|}
+    let id_dynamics = {|meaning : arrow(ty(); val()) = \(tm : ty()) -> tm;|}
 
     let%expect_test _ =
       eval_in id_dynamics "true()";
