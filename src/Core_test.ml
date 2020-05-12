@@ -33,35 +33,37 @@ let%test_module "Core.Types parsing" = (module struct
 
   let dynamics =
     CoreModule
-      [ { name = "meaning"
-        ; ty = SortAp ("arrow", [| ty; SortAp ("val", [||]) |])
-        ; defn = Lambda
-            ( ty
-            , Scope
-                ( "tm"
-                , Case
-                    ( var "tm"
-                    , [ CaseScope (Operator ("true", []),
-                        Term (Operator ("true", [])))
-                      ; CaseScope (Operator ("false", []),
-                        Term (Operator ("false", [])))
-                      ; CaseScope
-                          ( Operator ("ite" , [ Var "t1" ; Var "t2" ; Var "t3" ])
-                          , Case
-                              ( CoreApp (var "meaning", var "t1")
-                              , [ CaseScope (Operator ("true", []), meaning (var "t2"))
-                                ; CaseScope (Operator ("false", []), meaning (var "t3"))
-                                ] ) )
-                      ; CaseScope
-                          ( Operator ("ap", [ Var "f"; Var "arg" ])
-                          , CoreApp (meaning @@ var "f", meaning @@ var "arg") )
-                      ; CaseScope
-                          ( Operator ("fun", [ Var "scope" ])
-                          , Term (Operator
-                              ("lambda", [ scope @@ Sequence []; scope @@ Var "scope" ])) )
-                      ] ) ) )
-        }
-      ]
+      ( []
+      , [ { name = "meaning"
+          ; ty = SortAp ("arrow", [| ty; SortAp ("val", [||]) |])
+          ; defn = Lambda
+              ( ty
+              , Scope
+                  ( "tm"
+                  , Case
+                      ( var "tm"
+                      , [ CaseScope (Operator ("true", []),
+                          Term (Operator ("true", [])))
+                        ; CaseScope (Operator ("false", []),
+                          Term (Operator ("false", [])))
+                        ; CaseScope
+                            ( Operator ("ite" , [ Var "t1" ; Var "t2" ; Var "t3" ])
+                            , Case
+                                ( CoreApp (var "meaning", var "t1")
+                                , [ CaseScope (Operator ("true", []), meaning (var "t2"))
+                                  ; CaseScope (Operator ("false", []), meaning (var "t3"))
+                                  ] ) )
+                        ; CaseScope
+                            ( Operator ("ap", [ Var "f"; Var "arg" ])
+                            , CoreApp (meaning @@ var "f", meaning @@ var "arg") )
+                        ; CaseScope
+                            ( Operator ("fun", [ Var "scope" ])
+                            , Term (Operator
+                                ("lambda", [ scope @@ Sequence []; scope @@ Var "scope" ])) )
+                        ] ) ) )
+          }
+        ]
+      )
 
   let%test "dynamics as expected" = match Parsing.CoreModule.parse dynamics_str with
     | Error err -> print_string (ParseError.to_string err); false
@@ -177,7 +179,7 @@ let%test_module "Core.Types eval in dynamics" =
       print_string (match Parsing.CoreModule.parse dynamics_str with
       | Error err -> ParseError.to_string err
       | Ok dynamics -> (match dynamics with
-        | CoreModule [ { name = _; ty = _; defn } ] ->
+        | CoreModule (_imports, [ { name = _; ty = _; defn } ]) ->
           (match Parsing.CoreTerm.parse str with
             | Error err -> ParseError.to_string err
             | Ok core -> (match eval (CoreApp (defn, core)) with

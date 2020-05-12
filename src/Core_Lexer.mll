@@ -33,6 +33,9 @@ rule read = parse
   | "in"      { IN }
   | "match"   { MATCH }
   | "with"    { WITH }
+  | "import"  { IMPORT }
+  | "as"      { AS }
+  | "from"    { FROM }
   | int       { INT (Bigint.of_string (L.lexeme lexbuf)) }
 
   (* Note: distinguishing between TODO *)

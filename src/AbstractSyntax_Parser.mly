@@ -24,7 +24,7 @@
 %type <AbstractSyntax_Types.operator_def>      operator_def
 %type <AbstractSyntax_Types.arity>             arity
 %type <AbstractSyntax_Types.valence>           valence
-%type <string * string>                        import_symbol
+%type <string * string option>                 import_symbol
 %%
 
 /* TODO: duplicated in concrete syntax parser */
@@ -62,8 +62,8 @@ sort_def:
   { ($1, SortDef ($3, $7)) }
 
 import_symbol:
-  | ID       { ($1, $1) }
-  | ID AS ID { ($1, $3) }
+  | name1 = ID               { (name1, None) }
+  | name1 = ID AS name2 = ID { (name1, Some name2) }
 
 import:
   IMPORT LEFT_BRACE separated_nonempty_list(COMMA, import_symbol) RIGHT_BRACE

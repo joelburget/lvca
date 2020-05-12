@@ -75,12 +75,21 @@ type core_defn =
   ; defn : term
   }
 
-type core_module = CoreModule of core_defn list
+type import = AbstractSyntax.Types.import
+
+type core_module = CoreModule of import list * core_defn list
 
 let pp_module : Format.formatter -> core_module -> unit
-  = fun ppf (CoreModule definitions) -> List.iter definitions
-    ~f:(fun { name; ty; defn } ->
-      Fmt.pf ppf "@[<hv>%s@ : %a =@ %a@]" name pp_sort ty pp_core defn)
+  = fun ppf (CoreModule (imports, definitions)) ->
+    List.iter imports ~f:(fun import ->
+      AbstractSyntax.pp_import ppf import;
+      Format.pp_force_newline ppf ()
+    );
+    List.iter definitions
+    ~f:(fun { name; ty; defn } -> Fmt.pf ppf "@[<hv>%s@ : %a =@ %a@]"
+      name
+      pp_sort ty
+      pp_core defn)
 
 let pp_module_str : core_module -> string
   = Format.asprintf "%a" pp_module
@@ -219,9 +228,15 @@ and scope_of_core_case_scope : core_case_scope -> Nominal.scope
   *)
 
 let module_to_term : core_module -> Nominal.term
-  = fun (CoreModule defns) -> Sequence (List.map defns
-    ~f:(fun { name; ty; defn } -> Nominal.Operator ("core_defn",
-      [ Scope ([], Primitive (PrimString name))
-      ; Scope ([], ty |> term_of_sort |> NonBinding.to_nominal)
-      ; Scope ([], term_of_core defn)
-      ])))
+  = fun (CoreModule (imports, defns)) -> Operator ("core_module",
+    [ Scope ([], Sequence (imports
+        |> List.map ~f:AbstractSyntax.term_of_import
+        |> List.map ~f:NonBinding.to_nominal
+      ))
+    ; Scope ([], Sequence (List.map defns
+      ~f:(fun { name; ty; defn } -> Nominal.Operator ("core_defn",
+        [ Scope ([], Primitive (PrimString name))
+        ; Scope ([], ty |> term_of_sort |> NonBinding.to_nominal)
+        ; Scope ([], term_of_core defn)
+        ]))))
+    ])

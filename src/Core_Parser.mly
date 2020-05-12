@@ -48,6 +48,10 @@ let make_apps : term list -> term
 %token BACKSLASH
 %token COLON
 
+%token IMPORT
+%token AS
+%token FROM
+
 %token MATCH
 %token WITH
 %token LEFT_BRACE
@@ -144,6 +148,15 @@ ast_like_scope:
     Scope (binders_pat, body)
   }
 
+import_symbol:
+  | name1 = VAR                { (name1, None) }
+  | name1 = VAR AS name2 = VAR { (name1, Some name2) }
+
+import:
+  IMPORT LEFT_BRACE separated_nonempty_list(COMMA, import_symbol) RIGHT_BRACE
+  FROM STRING
+  { { AbstractSyntax_Types.imported_symbols = $3; location = $6 } }
+
 primitive:
   | INT    { PrimInteger $1 }
   | STRING { PrimString  $1 }
@@ -152,7 +165,9 @@ primitive:
 definition: name = VAR COLON ty = sort EQ defn = term SEMICOLON { { name; ty; defn } }
 
 (** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
-core_module: nonempty_list(definition) END { CoreModule $1 }
+core_module:
+  imports = list(import) defns = nonempty_list(definition) END
+  { CoreModule (imports, defns) }
 
 (** @raise ToPatternScopeEncountered, ScopeEncountered, InvalidSort *)
 term_top: term END { $1 }

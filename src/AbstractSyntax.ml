@@ -27,7 +27,7 @@ tm :=
   | lit(integer())
       |}
       { imports =
-        [ { imported_symbols = [ "integer", "integer" ]
+        [ { imported_symbols = [ "integer", None ]
           ; location = "builtins"
           }
         ]

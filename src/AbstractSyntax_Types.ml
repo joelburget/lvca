@@ -44,7 +44,7 @@ type sort_defs = SortDefs of sort_def String.Map.t
   [@@deriving sexp]
 
 type import =
-  { imported_symbols : (string * string) list
+  { imported_symbols : (string * string option) list
   ; location : string
   } [@@deriving sexp]
 
@@ -67,6 +67,17 @@ let eq : abstract_syntax -> abstract_syntax -> bool
 let sort_names : abstract_syntax -> String.Set.t =
  fun { sort_defs = SortDefs sorts; _ } -> sorts |> String.Map.keys |> String.Set.of_list
 ;;
+
+let pp_import_symbol : Format.formatter -> string * string option -> unit
+  = fun ppf (name1, name2) -> match name2 with
+      | None -> Fmt.string ppf name1
+      | Some name2' -> Fmt.pf ppf "%s as %s" name1 name2'
+
+let pp_import : Format.formatter -> import -> unit
+  = fun ppf { imported_symbols; location }
+    -> Fmt.pf ppf "import { %a } from \"%s\""
+       (Fmt.list ~sep:(Fmt.any ", ") pp_import_symbol) imported_symbols
+       location
 
 let rec pp_sort : Format.formatter -> sort -> unit
   = fun ppf -> Format.(function
@@ -165,13 +176,20 @@ let term_of_sort_defs : sort_defs -> NonBinding.term
       ])
     ))
 
+let term_of_option : ('a -> NonBinding.term) -> 'a option -> NonBinding.term
+  = fun f -> function
+    | None -> Operator ("none", [])
+    | Some a -> Operator ("some", [f a])
+
 let term_of_import : import -> NonBinding.term
   = fun { imported_symbols; location } -> NonBinding.Operator ("import",
     [
       Sequence (imported_symbols
       |> List.map ~f:(fun (original_name, binding_name) -> NonBinding.Sequence
         [ Primitive (PrimString original_name)
-        ; Primitive (PrimString binding_name)
+        ; term_of_option
+          (fun binding_name -> Primitive (PrimString binding_name))
+          binding_name
         ]))
     ; Primitive (PrimString location)
     ])
