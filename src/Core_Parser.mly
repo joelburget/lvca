@@ -1,7 +1,7 @@
 (* This is a parser for core terms with embedded ASTs *)
 
 %{
-open Core_Term
+open Core_Types
 module Array = Core_kernel.Array
 module List = Core_kernel.List
 
@@ -62,16 +62,16 @@ let make_apps : term list -> term
 
 %start core_module
 %start term_top
-%type <Core_Term.term> term
-%type <Core_Term.term> term_top
-%type <Core_Term.term> ast_like_core
+%type <Core_Types.term> term
+%type <Core_Types.term> term_top
+%type <Core_Types.term> ast_like_core
 %type <Primitive.t> primitive
 %type <AbstractSyntax.sort> sort
 %type <Pattern.t> pattern
 %type <Binding.Nominal.term> ast_like
 %type <Binding.Nominal.scope> ast_like_scope
-%type <Core_Term.core_defn> definition
-%type <Core_Term.core_module> core_module
+%type <Core_Types.core_defn> definition
+%type <Core_Types.core_module> core_module
 %type <string * AbstractSyntax.sort> typed_arg
 %%
 

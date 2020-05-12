@@ -1,8 +1,8 @@
 open Binding
-open Core.Term
+open Core.Types
 open AbstractSyntax
 
-let%test_module "Core.Term parsing" = (module struct
+let%test_module "Core.Types parsing" = (module struct
   let one = Bigint.of_int 1
   let scope : Nominal.term -> Nominal.scope
     = fun body -> Scope ([], body)
@@ -78,7 +78,7 @@ let%test_module "Core.Term parsing" = (module struct
 end)
 ;;
 
-let%test_module "Core.Term eval" =
+let%test_module "Core.Types eval" =
   (module struct
     let eval_str = fun str -> print_string (match Parsing.CoreTerm.parse str with
       | Error err -> ParseError.to_string err
@@ -106,7 +106,7 @@ let%test_module "Core.Term eval" =
   end)
 ;;
 
-let%test_module "Core.Term pretty" =
+let%test_module "Core.Types pretty" =
   (module struct
     let pretty width str = print_string (match Parsing.CoreTerm.parse str with
       | Error err -> ParseError.to_string err
@@ -171,7 +171,7 @@ let%test_module "Core.Term pretty" =
   end)
 ;;
 
-let%test_module "Core.Term eval in dynamics" =
+let%test_module "Core.Types eval in dynamics" =
   (module struct
     let eval_in = fun dynamics_str str ->
       print_string (match Parsing.CoreModule.parse dynamics_str with

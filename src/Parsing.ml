@@ -98,8 +98,8 @@ module Parseable_statics : Parseable with type t = Statics.rule list = struct
   end
 end
 
-module Parseable_core_module : Parseable with type t = Core.Term.core_module = struct
-  type t = Core.Term.core_module
+module Parseable_core_module : Parseable with type t = Core.Types.core_module = struct
+  type t = Core.Types.core_module
 
   module MenhirInterpreter = Core.Parser.MenhirInterpreter
   module ParseErrors = Core.ParseErrors
@@ -110,8 +110,8 @@ module Parseable_core_module : Parseable with type t = Core.Term.core_module = s
   end
 end
 
-module Parseable_core_term : Parseable with type t = Core.Term.term = struct
-  type t = Core.Term.term
+module Parseable_core_term : Parseable with type t = Core.Types.term = struct
+  type t = Core.Types.term
 
   module MenhirInterpreter = Core.Parser.MenhirInterpreter
   module ParseErrors = Core.ParseErrors

@@ -16,7 +16,7 @@ let map_union m1 m2 =
     function `Both (_, v) -> Some v | `Left v | `Right v -> Some v)
 ;;
 
-(* Used by Core.Term, Bidirectional *)
+(* Used by Core.Types, Bidirectional *)
 let string_map_unions : 'a String.Map.t list -> 'a String.Map.t =
   List.fold_right ~f:map_union ~init:String.Map.empty
 ;;
