@@ -25,9 +25,12 @@ type valence =
   [@@deriving sexp]
 
 (** An arity specifies the arguments to an operator *)
-type arity = Arity of string list * valence list
-  (** An arity is defined its arity indices and valences. Arity indices are variables
-      bound in an arity rule specifying the length of variable-length slots. *)
+type arity =
+  | FixedArity of valence list
+  (** A fixed arity operator always has the same number of children *)
+  | VariableArity of sort
+  (** A variable arity operator has a variable number of children (all of the same
+      sort (non-binding valence)) *)
   [@@deriving sexp]
 
 type operator_def = OperatorDef of string * arity
@@ -146,10 +149,11 @@ let term_of_valence : valence -> NonBinding.term
     ])
 
 let term_of_arity : arity -> NonBinding.term
-  = fun (Arity (args, valences)) -> Operator ("arity",
-    [ Sequence (args |> List.map ~f:(fun name -> NonBinding.Primitive (PrimString name)))
-    ; Sequence (valences |> List.map ~f:term_of_valence)
-    ])
+  = function
+    | FixedArity valences -> Operator ("fixed_arity",
+      [ Sequence (List.map valences ~f:term_of_valence)
+      ])
+    | VariableArity sort -> Operator ("variable_arity", [ term_of_sort sort ])
 
 let term_of_operator_def : operator_def -> NonBinding.term
   = fun (OperatorDef (op_name, arity)) -> Operator ("operator_def",

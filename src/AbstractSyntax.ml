@@ -34,8 +34,8 @@ tm :=
       ; sort_defs = SortDefs (String.Map.of_alist_exn
         [ "tm", SortDef
           ( []
-          , [ OperatorDef ("add", Arity ([], [tm_v; tm_v]))
-            ; OperatorDef ("lit", Arity ([], [integer_v]))
+          , [ OperatorDef ("add", FixedArity [tm_v; tm_v])
+            ; OperatorDef ("lit", FixedArity [integer_v])
             ]
           )
         ])

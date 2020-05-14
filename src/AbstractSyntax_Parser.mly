@@ -9,8 +9,6 @@
 %token RIGHT_PAREN
 %token LEFT_BRACE
 %token RIGHT_BRACE
-%token LEFT_BRACK
-%token RIGHT_BRACK
 %token SEMICOLON
 %token COMMA
 %token BAR
@@ -46,11 +44,10 @@ valence:
 valence_list: separated_list(SEMICOLON, valence) { $1 }
 
 arity:
-  | LEFT_BRACK separated_list(COMMA, ID) RIGHT_BRACK
-    LEFT_PAREN valence_list RIGHT_PAREN
-  { Arity ($2, $5) }
-  | LEFT_PAREN valence_list RIGHT_PAREN
-  { Arity ([], $2) }
+  | LEFT_PAREN sort = sort STAR RIGHT_PAREN
+  { VariableArity sort }
+  | LEFT_PAREN valences = valence_list RIGHT_PAREN
+  { FixedArity valences }
 
 operator_def: ID arity { OperatorDef($1, $2) }
 
