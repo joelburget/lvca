@@ -4,9 +4,9 @@ open Core_kernel
 let parse str = Parser.language_def Lexer.read (Lexing.from_string str)
 ;;
 
-let tm_sort = SortAp ("tm", [||])
+let tm_sort = SortAp ("tm", [])
 let tm_valence = FixedValence ([], tm_sort)
-let ty_sort = SortAp ("ty", [||])
+let ty_sort = SortAp ("ty", [])
 let ty_valence = FixedValence ([], ty_sort)
 
 let%test_module "AbstractSyntax.Parser" =

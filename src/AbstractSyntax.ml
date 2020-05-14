@@ -13,9 +13,9 @@ let%test_module "AbstractSyntax_Parser" = (module struct
 
 
   let%test_unit _ =
-    let tm = SortAp ("tm", [||]) in
+    let tm = SortAp ("tm", []) in
     let tm_v = FixedValence ([], tm) in
-    let integer = SortAp ("integer", [||]) in
+    let integer = SortAp ("integer", []) in
     let integer_v = FixedValence ([], integer) in
     expect_parse
       Parser.language_def

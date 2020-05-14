@@ -11,7 +11,7 @@ type sort_name = string
     \- We don't allow higher-order sorts. In other words, no functions at the * sort
     level. In other words, the head of an application is always concrete. *)
 type sort =
-  | SortAp of sort_name * sort array (** A higher-kinded sort can be applied *)
+  | SortAp of sort_name * sort list (** A higher-kinded sort can be applied *)
   | SortVar of string
   [@@deriving sexp]
 
@@ -83,7 +83,7 @@ let rec pp_sort : Format.formatter -> sort -> unit
   = fun ppf -> Format.(function
     | SortAp (name, args) -> fprintf ppf "%s(@[%a@])"
       name
-      pp_sort_args (Array.to_list args)
+      pp_sort_args args
     | SortVar name -> fprintf ppf "%s" name)
 
 and pp_sort_args ppf = function
@@ -96,7 +96,7 @@ let rec string_of_sort : sort -> string
   = function
     | SortAp (name, args) -> Printf.sprintf "%s(%s)"
       name
-      (args |> Array.map ~f:string_of_sort |> String.concat_array)
+      (args |> List.map ~f:string_of_sort |> String.concat)
     | SortVar name -> name
 ;;
 
@@ -119,7 +119,7 @@ let rec instantiate_sort : sort String.Map.t -> sort -> sort =
     (match String.Map.find arg_mapping name with
     | None -> failwith "TODO: error"
     | Some sort' -> sort')
-  | SortAp (name, args) -> SortAp (name, Array.map args ~f:(instantiate_sort arg_mapping))
+  | SortAp (name, args) -> SortAp (name, List.map args ~f:(instantiate_sort arg_mapping))
 ;;
 
 (* term_of_: *)
@@ -128,9 +128,7 @@ let rec term_of_sort : sort -> NonBinding.term
   = function
     | SortAp (name, sorts) -> Operator ("sort_ap",
       [ Primitive (PrimString name)
-      ; Sequence (sorts
-        |> Array.to_list
-        |> List.map ~f:term_of_sort)
+      ; Sequence (List.map sorts ~f:term_of_sort)
       ])
     | SortVar name -> Operator ("sort_var", [Primitive (PrimString name)])
 
@@ -207,6 +205,6 @@ exception OfTermFailure of string * NonBinding.term
 let rec sort_of_term : NonBinding.term -> sort
   = function
     | Operator ("sort_ap", [ Primitive (PrimString name) ; Sequence tms ])
-    -> SortAp (name, tms |> List.map ~f:sort_of_term |> Array.of_list)
+    -> SortAp (name, List.map tms ~f:sort_of_term)
     | Operator ("sort_var", [Primitive (PrimString name)]) -> SortVar name
     | tm -> raise (OfTermFailure ("sort_of_term", tm))

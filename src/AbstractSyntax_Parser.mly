@@ -30,7 +30,7 @@
 /* TODO: duplicated in concrete syntax parser */
 sort:
   | ID LEFT_PAREN separated_list(SEMICOLON, sort) RIGHT_PAREN
-  { AbstractSyntax_Types.SortAp ($1, Core_kernel.Array.of_list $3) }
+  { AbstractSyntax_Types.SortAp ($1, $3) }
   | ID
   { AbstractSyntax_Types.SortVar $1 }
 

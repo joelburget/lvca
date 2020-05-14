@@ -29,13 +29,13 @@ let%test_module "Core.Types parsing" = (module struct
   let var name = Term (Var name)
   let meaning x = CoreApp (var "meaning", x)
 
-  let ty = SortAp ("ty", [||])
+  let ty = SortAp ("ty", [])
 
   let dynamics =
     CoreModule
       ( []
       , [ { name = "meaning"
-          ; ty = SortAp ("arrow", [| ty; SortAp ("val", [||]) |])
+          ; ty = SortAp ("arrow", [ ty; SortAp ("val", []) ])
           ; defn = Lambda
               ( ty
               , Scope

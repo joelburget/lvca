@@ -12,10 +12,7 @@ exception InvalidSort
 let rec ast_to_sort' : NonBinding.term -> AbstractSyntax.sort
   = function
       | Operator (name, subtms)
-      -> SortAp (name, subtms
-        |> List.map ~f:ast_to_sort'
-        |> Array.of_list
-      )
+      -> SortAp (name, List.map subtms ~f:ast_to_sort')
       | Sequence _ | Primitive _
       -> raise InvalidSort
 
