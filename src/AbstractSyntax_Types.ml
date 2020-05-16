@@ -5,17 +5,20 @@ open Core_kernel
 type sort_name = string
   [@@deriving sexp]
 
-(** Sorts divide ASTs into syntactic categories. * * Notes about our representation: * -
-    Concrete sorts are always represented by a [SortAp], even if not applied * to
-    anything. For example, [integer] is represented as [SortAp ("integer", * \[||\])]. *
-    \- We don't allow higher-order sorts. In other words, no functions at the * sort
-    level. In other words, the head of an application is always concrete. *)
+(** Sorts divide ASTs into syntactic categories.
+
+ Notes about our representation:
+   - Concrete sorts are always represented by a [SortAp], even if not applied to
+     anything. For example, [integer] is represented as [SortAp ("integer", * \[\])].
+   - We don't allow higher-order sorts. In other words, no functions at the sort
+     level. In other words, the head of an application is always concrete.
+*)
 type sort =
   | SortAp of sort_name * sort list (** A higher-kinded sort can be applied *)
   | SortVar of string
   [@@deriving sexp]
 
-(** A valence represents the sort of an argument (to an operator), as well as * the number
+(** A valence represents the sort of an argument (to an operator), as well as the number
     and sorts of the variables bound within it *)
 type valence =
   | FixedValence of sort list * sort (** A fixed valence is known a priori *)
