@@ -4,8 +4,6 @@ open Lvca
 open Lvca_omd
 open Store
 
-module Parse_concrete = Parsing.Incremental (Parsing.Parseable_concrete_syntax)
-
 let commands_abstract_syntax =
   {|
 import {string} from "builtin"
@@ -29,6 +27,7 @@ command :=
   |}
 ;;
 
+(*
 let commands_concrete_syntax =
   let str =
   {|
@@ -70,6 +69,7 @@ command :=
         | Some (InvalidGrammar msg) -> failwith msg
         | None -> desc)
 ;;
+*)
 
 let parse_command : string -> (NonBinding.term, string) Result.t
   = fun str ->
