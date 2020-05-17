@@ -21,7 +21,7 @@ let%test_module "Core.Types parsing" = (module struct
       | false() -> meaning t3
     }
     | ap(f; arg) -> (meaning f) (meaning arg)
-    | fun(scope) -> lambda([]; scope) // TODO: add type
+    | fun(scope) -> lambda(list(); scope) // TODO: add type
   };
   |}
   ;;
@@ -59,7 +59,10 @@ let%test_module "Core.Types parsing" = (module struct
                         ; CaseScope
                             ( Operator ("fun", [ Var "scope" ])
                             , Term (Operator
-                                ("lambda", [ scope @@ Sequence []; scope @@ Var "scope" ])) )
+                                ("lambda",
+                                  [ scope @@ Operator("list", [])
+                                  ; scope @@ Var "scope"
+                                  ])) )
                         ] ) ) )
           }
         ]
@@ -148,12 +151,6 @@ let%test_module "Core.Types pretty" =
         } |}]
 
     let%expect_test _ =
-      pretty 20 "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]";
-      [%expect{|
-        [1, 2, 3, 4, 5, 6,
-         7, 8, 9, 10] |}]
-
-    let%expect_test _ =
       pretty 20 "foo a b c d e f g h i j k l";
       [%expect{|
         foo a b c d e f g h
@@ -197,7 +194,7 @@ meaning : arrow(ty(); val()) = \(tm : ty()) -> match tm with {
     | false() -> meaning t3
   }
   | ap(f; arg) -> (meaning f) (meaning arg)
-  | fun(scope) -> lambda([]; scope) // TODO: add type
+  | fun(scope) -> lambda(list(); scope) // TODO: add type
 };
       |}
 
@@ -212,7 +209,7 @@ meaning : arrow(ty(); val()) = \(tm : ty()) -> match tm with {
       [%expect{| true() |}]
 
     let%expect_test _ =
-      eval_in id_dynamics "lambda(tm. tm; [ty()])";
-      [%expect{| lambda(tm. tm; [ty()]) |}]
+      eval_in id_dynamics "lambda(tm. tm; list(ty()))";
+      [%expect{| lambda(tm. tm; list(ty())) |}]
   end)
 ;;

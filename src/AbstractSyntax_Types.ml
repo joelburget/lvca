@@ -137,6 +137,7 @@ let rec instantiate_sort : sort String.Map.t -> sort -> sort =
 
 (* term_of_: *)
 
+(*
 let rec term_of_sort : sort -> NonBinding.term
   = function
     | SortAp (name, sorts) -> Operator ("sort_ap",
@@ -211,6 +212,7 @@ let to_term : abstract_syntax -> NonBinding.term
       [ Sequence (List.map imports ~f:term_of_import)
       ; term_of_sort_defs sort_defs
       ]))
+*)
 
 (* _of_term: *)
 

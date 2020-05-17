@@ -100,11 +100,12 @@ let check_pattern
       | Var name -> Ok (String.Map.singleton name (FixedValence ([], sort)))
       | Ignored _ -> Ok String.Map.empty
       | Primitive prim -> go_primitive sort prim
-      | Sequence _ -> failwith "TODO: sequence sort 1"
       | Operator (op_name, subpats) -> match sort with
         | SortVar _ -> Util.invariant_violation "check_pattern: non-concrete sort"
         | SortAp (sort_name, sort_args) -> (match lookup_operator' sort_name op_name with
-          | None -> failwith "TODO: error"
+          | None -> failwith (Printf.sprintf
+            "check_pattern: failed to find operator %s in sort %s"
+            op_name sort_name)
           | Some (sort_vars, OperatorDef (_, arity)) ->
             let sort_env = String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in
             go_arity_pat (concretize_arity sort_env arity) subpats
@@ -140,7 +141,6 @@ let check_pattern
                 | _, FixedValence ([], sort) -> go_pattern sort pat
 
                 (* Anything else is an error *)
-                | Sequence _, _
                 | Primitive _, _
                 | Operator _, _ -> Error
                   { stack = []
@@ -184,10 +184,6 @@ let check_term
       -> Nominal.term
       -> abstract_syntax_check_failure option
       = fun var_valences sort tm -> match tm with
-        | Sequence _ ->
-            Printf.printf "%s\n" (string_of_sort sort);
-            Printf.printf "%s\n" (Binding.Nominal.pp_term' tm);
-            failwith "TODO: sequence sort 2"
         | Var v -> (match Map.find var_valences v with
           | None -> failwith "TODO"
           | Some sort' -> if Caml.(sort' = FixedValence ([], sort))
@@ -197,15 +193,16 @@ let check_term
         | Primitive p -> (match p, sort with
           | PrimInteger _, SortAp ("integer", []) -> None
           | PrimString _, SortAp ("string", []) -> None
-          | _, _ -> Some (failwith "TODO: error"))
+          | _, _ -> Some (failwith "TODO: error 2"))
 
         | Operator (operator_name, op_scopes) -> (match sort with
           | SortVar _ -> invariant_violation "check_term (go): non-concrete sort"
           | SortAp (sort_name, sort_args)
           -> (match lookup_operator' sort_name operator_name with
-            | None -> failwith "TODO: error"
+            | None -> failwith (Printf.sprintf
+              "check_term: failed to find operator %s in sort %s"
+              operator_name sort_name)
             | Some (vars, OperatorDef (_, arity)) ->
-              Printf.printf "go operator child arity: %s\n" (string_of_arity arity);
               let sort_env = String.Map.of_alist_exn (List.zip_exn vars sort_args) in
               let concrete_arity = concretize_arity sort_env arity in
               go_arity var_valences concrete_arity op_scopes
@@ -227,7 +224,7 @@ let check_term
       -> Nominal.scope list
       -> abstract_syntax_check_failure option
       = fun var_valences valences scopes -> match List.zip scopes valences with
-        | Unequal_lengths -> failwith "TODO: error"
+        | Unequal_lengths -> failwith "TODO: error 4"
         | Ok scope_valences -> List.find_map scope_valences (* TODO: go_fixed_arity *)
           ~f:(fun (scope, valence) -> go_scope var_valences valence scope)
 
@@ -236,10 +233,11 @@ let check_term
       -> sort
       -> Nominal.scope list
       -> abstract_syntax_check_failure option
-      = fun var_valences sort subterms -> subterms
+      = fun var_valences sort subterms ->
+        subterms
         |> List.map ~f:(function
           | Scope ([], body) -> go var_valences sort body
-          | _ -> failwith "TODO: error"
+          | _ -> failwith "TODO: error 5"
         )
         |> List.find_map ~f:Fn.id
 
@@ -264,11 +262,12 @@ let check_term
         match valence with
         | FixedValence (binder_sorts, body_sort) ->
           (match List.zip binder_sorts binders with
-            | Unequal_lengths -> failwith "TODO: error"
+            | Unequal_lengths -> failwith "TODO: error 6"
             | Ok binders' -> binders'
               |> List.map ~f:(fun (sort, pat) -> check_pattern' sort pat)
               |> go_body body_sort)
-        | VariableValence (binder_sort, body_sort) -> binders
+        | VariableValence (binder_sort, body_sort) ->
+            binders
               |> List.map ~f:(check_pattern' binder_sort)
               |> go_body body_sort
     in
@@ -368,14 +367,15 @@ term :=
     check_term' "term()" "lambda(a. value(a))";
     [%expect]
 
-  (* XXX how do variable-arity matches work? *)
-
   let%expect_test _ =
     check_term' "term()"
-    {|match([
-        match-line(cons(a; nil()). cons(a; cons(a; nil()))),
-        match-line(_. nil())
-      ])
+    {|match(
+        match-line(
+          list(cons(a; nil())).
+          value(list(cons(a; cons(a; nil()))))
+        );
+        match-line(_. value(list(nil())))
+      )
     |};
     [%expect]
 

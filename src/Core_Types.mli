@@ -49,4 +49,4 @@ val eval_exn : term -> Nominal.term
 val eval : term -> (Nominal.term, eval_error) Core_kernel.Result.t
 
 (** Convert a module to a nominal term, for storage. *)
-val module_to_term : core_module -> Nominal.term
+(* val module_to_term : core_module -> Nominal.term *)

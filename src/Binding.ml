@@ -8,7 +8,6 @@ module rec DeBruijn : sig
   and term =
     | Operator of string * scope list
     | Var of int * int
-    | Sequence of term list
     | Primitive of Primitive.t
 
   val to_nominal : term -> Nominal.term option
@@ -24,7 +23,6 @@ end = struct
   and term =
     | Operator of string * scope list
     | Var of int * int
-    | Sequence of term list
     | Primitive of Primitive.t
 
   let rec to_nominal' ctx = function
@@ -37,11 +35,6 @@ end = struct
       |> List.map ~f:(scope_to_nominal ctx)
       |> Option.all
       |> Option.map ~f:(fun subtms' -> Nominal.Operator (tag, subtms'))
-    | Sequence tms ->
-      tms
-      |> List.map ~f:(to_nominal' ctx)
-      |> Option.all
-      |> Option.map ~f:(fun tms' -> Nominal.Sequence tms')
     | Primitive prim -> Some (Nominal.Primitive prim)
 
   and scope_to_nominal ctx (Scope (binders, body)) =
@@ -63,7 +56,6 @@ end = struct
       (match String.Map.find env name with
       | None -> raise (FailedFromNominal ("couldn't find variable " ^ name))
       | Some (i, j) -> Var (i, j))
-    | Sequence tms -> Sequence (List.map tms ~f:(from_nominal_with_bindings' env))
     | Primitive prim -> Primitive prim
 
   and scope_from_nominal' env (Nominal.Scope (pats, body)) =
@@ -99,7 +91,6 @@ and Nominal : sig
   and term =
     | Operator of string * scope list
     | Var of string
-    | Sequence of term list
     | Primitive of Primitive.t
 
   val pp_term : Format.formatter -> Nominal.term -> unit
@@ -118,11 +109,9 @@ end = struct
   and term =
     | Operator of string * scope list
     | Var of string
-    | Sequence of term list
     | Primitive of Primitive.t
 
-  let any, brackets, list, str, string, semi, comma, pf =
-    Fmt.(any, brackets, list, str, string, semi, comma, pf)
+  let any, list, str, string, semi, pf = Fmt.(any, list, str, string, semi, pf)
 
   let rec pp_term ppf = function
     | Operator (tag, subtms)
@@ -131,10 +120,6 @@ end = struct
       (list ~sep:semi pp_scope) subtms
     | Var v
     -> string ppf v
-    | Sequence tms
-    -> brackets
-      (list ~sep:comma pp_term)
-      ppf tms
     | Primitive p
     -> Primitive.pp ppf p
 
@@ -162,7 +147,6 @@ end = struct
       | Operator (tag, tms) ->
         array [| string "o"; string tag; array_map jsonify_scope tms |]
       | Var name -> array [| string "v"; string name |]
-      | Sequence tms -> array [| string "s"; array_map jsonify tms |]
       | Primitive p -> array [| string "p"; jsonify_prim p |])
 
   and jsonify_pat (pat : Pattern.t) : Json.t =
@@ -170,7 +154,6 @@ end = struct
       match pat with
       | Operator (tag, tms) ->
         array [| string "o"; string tag; array_map jsonify_pat tms |]
-      | Sequence tms -> array [| string "s"; array_map jsonify_pat tms |]
       | Primitive p -> array [| string "p"; jsonify_prim p |]
       | Var name -> array [| string "v"; string name |]
       | Ignored name -> array [| string "_"; string name |])
@@ -195,7 +178,6 @@ end = struct
       then Ignored (String.slice name 1 0)
       else Var name
     | Operator (name, tms) -> Operator (name, List.map tms ~f:scope_to_pattern_exn)
-    | Sequence tms -> Sequence (List.map tms ~f:to_pattern_exn)
     | Primitive prim -> Primitive prim
 
   (** @raise ToPatternScopeEncountered *)
@@ -207,7 +189,6 @@ end = struct
   let rec pattern_to_term : Pattern.t -> Nominal.term = function
     | Operator (name, pats) ->
       Operator (name, List.map pats ~f:(fun pat -> Scope ([], pattern_to_term pat)))
-    | Sequence pats -> Sequence (List.map pats ~f:pattern_to_term)
     | Primitive prim -> Primitive prim
     | Var name -> Var name
     | Ignored name -> Var ("_" ^ name)
@@ -303,36 +284,14 @@ let%test_module "Nominal" =
       [%expect {| e69505a495d739f89cf515c31cf3a2cca4e29a1a4fede9a331b45207a6fb33e5 |}]
     ;;
 
-    let tm = Sequence []
-
-    let%test "" = jsonify tm = Json.(Array [| String "s"; Array [||] |])
-
     let%expect_test _ =
       print_serialize tm;
-      [%expect {| 82617380 |}]
+      [%expect {| 826170826169653132333435 |}]
     ;;
 
     let%expect_test _ =
       print_hash tm;
-      [%expect {| 8afbfb879b5a95214c4c483c401313235040663bbdc08220992a5841801a421e |}]
-    ;;
-
-    let tm = Sequence [ Var "x" ]
-
-    let%test "" =
-      jsonify tm
-      = Json.(
-          Array [| String "s"; Array [| Array [| String "v"; String "x" |] |] |])
-    ;;
-
-    let%expect_test _ =
-      print_serialize tm;
-      [%expect {| 826173818261766178 |}]
-    ;;
-
-    let%expect_test _ =
-      print_hash tm;
-      [%expect {| 28b6e8f2124dd5931d69e1a5350f5c44ebdec7e0f6be9f98d2c717fcf09fa3d8 |}]
+      [%expect {| e69505a495d739f89cf515c31cf3a2cca4e29a1a4fede9a331b45207a6fb33e5 |}]
     ;;
 
     let%test _ = to_pattern_exn (Var "abc") = Var "abc"

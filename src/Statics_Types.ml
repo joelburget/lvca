@@ -9,7 +9,6 @@ and term =
   (** Bound vars come via conversion of de Bruijn terms. *)
   | Free of string
   (** Free vars are used during typechecking. *)
-  | Sequence of term list
   | Primitive of Primitive.t
   [@@deriving sexp]
 
@@ -19,9 +18,6 @@ let rec string_of_term = function
     (scopes |> List.map ~f:string_of_scope |> String.concat ~sep:"; ")
   | Bound (i, j) -> Printf.sprintf "%d, %d" i j
   | Free str -> str
-  | Sequence tms ->
-    let tms' = tms |> List.map ~f:string_of_term |> String.concat ~sep:", " in
-    "[" ^ tms' ^ "]"
   | Primitive prim -> Primitive.to_string prim
 
 and string_of_scope (Scope (pats, tm)) =
@@ -62,7 +58,6 @@ type typing = Typing of term * term
 let rec of_de_bruijn : Binding.DeBruijn.term -> term = function
   | Operator (tag, scopes) -> Operator (tag, List.map scopes ~f:scope_of_de_bruijn)
   | Var (i, j) -> Bound (i, j)
-  | Sequence tms -> Sequence (List.map tms ~f:of_de_bruijn)
   | Primitive p -> Primitive p
 
 and scope_of_de_bruijn : Binding.DeBruijn.scope -> scope =
@@ -78,7 +73,6 @@ let rec to_de_bruijn_exn : term -> Binding.DeBruijn.term
     | Operator (name, scopes) -> Operator (name, List.map scopes ~f:to_scope)
     | Bound (i, j) -> Var (i, j)
     | Free name -> raise (FreeVar name)
-    | Sequence tms -> Sequence (List.map tms ~f:to_de_bruijn_exn)
     | Primitive prim -> Primitive prim
 
 and to_scope : scope -> Binding.DeBruijn.scope
@@ -99,7 +93,6 @@ let rec term_to_term : term -> Nominal.term
       (string_of_term tm)
       )
     | Free name -> Var name
-    | Sequence tms -> Sequence (List.map tms ~f:term_to_term)
     | Primitive p -> Primitive p
 
 and scope_to_term : scope -> Nominal.scope
@@ -118,6 +111,7 @@ let typing_clause_to_term : typing_clause -> Nominal.term
     | CheckingRule rule
     -> Operator ("checking_rule", [Scope ([], typing_rule_to_term rule)])
 
+    (*
 let hypothesis_to_term : hypothesis -> Nominal.term
   = fun (ctx, typing_clause) -> Operator ("hypothesis",
     [ Scope ([], Sequence (ctx
@@ -145,3 +139,4 @@ let rule_to_term : rule -> Nominal.term
 
 let to_term : rule list -> Nominal.term
   = fun rules -> Sequence (List.map rules ~f:rule_to_term)
+  *)

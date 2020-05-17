@@ -4,10 +4,7 @@
 %token DOT
 %token LEFT_PAREN
 %token RIGHT_PAREN
-%token LEFT_BRACK
-%token RIGHT_BRACK
 %token SEMICOLON
-%token COMMA
 %token EOF
 
 %start top_term
@@ -25,8 +22,6 @@ term:
   { Operator ($1, $3) }
   | ID;
   { Var $1       }
-  | LEFT_BRACK separated_list(COMMA, term) COMMA? RIGHT_BRACK
-  { Sequence $2  }
   | primitive
   { Primitive $1 }
 

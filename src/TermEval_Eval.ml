@@ -112,7 +112,7 @@ let rec eval' : DeBruijn.term list -> DeBruijn.term -> DeBruijn.term =
     (match eval' env f with
     | Operator ("fun", [ Scope ([ _var ], body) ]) -> eval' (arg :: env) body
     | other -> raise (InvariantViolation ("unexpected " ^ to_string other)))
-  | Primitive _ | Sequence _ -> raise (InvariantViolation "eval' Primitive or Sequence")
+  | Primitive _ -> raise (InvariantViolation "eval' Primitive")
   | op -> op
 ;;
 

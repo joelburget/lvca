@@ -14,8 +14,6 @@ let newline = '\r' | '\n' | "\r\n"
 rule read = parse
   | "//" [^ '\r' '\n']* newline
   | white     { read lexbuf }
-  | "["       { LEFT_BRACKET }
-  | "]"       { RIGHT_BRACKET }
   | '('       { LEFT_PAREN }
   | ')'       { RIGHT_PAREN }
   | '{'       { LEFT_BRACE }

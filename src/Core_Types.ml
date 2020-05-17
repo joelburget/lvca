@@ -114,18 +114,6 @@ let rec match_pattern
           |> Util.string_map_unions)
       else None)
     else None
-  | Sequence s1, Sequence s2 ->
-    if List.(length s1 = length s2)
-    then (
-      let sub_results = List.map2_exn s1 s2 ~f:match_pattern in
-      if List.for_all sub_results ~f:Option.is_some
-      then
-        Some
-          (sub_results
-          |> List.map ~f:(Util.get_option' (fun () -> "we just check all is_some"))
-          |> Util.string_map_unions)
-      else None)
-    else None
   | Primitive l1, Primitive l2
   -> if Primitive.(l1 = l2) then Some String.Map.empty else None
   | _, Var "_" -> Some String.Map.empty
@@ -193,6 +181,7 @@ let eval : term -> (Nominal.term, eval_error) Result.t =
 
 (* module_to_term *)
 
+(*
 let rec term_of_core : term -> Nominal.term
   = function
   | Term tm -> Operator ("term", [Scope ([], tm)])
@@ -240,3 +229,4 @@ let module_to_term : core_module -> Nominal.term
         ; Scope ([], term_of_core defn)
         ]))))
     ])
+    *)

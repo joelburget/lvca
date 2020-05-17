@@ -60,11 +60,6 @@ let open_scope (args : term list list) (Scope (names, body)) : term option =
           |> Option.bind ~f:(fun args' -> List.nth args' j)
         else Some tm
       | Free _ -> Some tm
-      | Sequence tms ->
-        tms
-        |> List.map ~f:(open' offset)
-        |> Option.all
-        |> Option.map ~f:(fun tms' -> Sequence tms')
       | Primitive _ -> Some tm
     in
     open' 0 body)
@@ -99,11 +94,6 @@ let rec instantiate (env : scope String.Map.t) (tm : term) : (term, string) Resu
       (match open_scope (List.map pats ~f:pat_to_free_vars) sc with
       | None -> Error "instantiate: failed to open scope"
       | Some tm -> Ok tm))
-  | Sequence tms ->
-    tms
-    |> List.map ~f:(instantiate env)
-    |> Result.all
-    |> Result.map ~f:(fun tms' -> Sequence tms')
   | Primitive _ -> Ok tm
 ;;
 

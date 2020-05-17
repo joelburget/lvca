@@ -7,7 +7,6 @@ open Binding
 
 type term =
   | Operator of string * term list
-  | Sequence of term list
   | Primitive of Primitive.t
 
 exception ScopeEncountered
@@ -18,7 +17,6 @@ let rec from_de_bruijn' = function
   | DeBruijn.Operator (tag, scopes) ->
     Operator (tag, List.map scopes ~f:from_de_bruijn_scope)
   | Var _ -> raise ScopeEncountered
-  | Sequence tms -> Sequence (tms |> List.map ~f:from_de_bruijn')
   | Primitive p -> Primitive p
 
 (** @raise ScopeEncountered *)
@@ -36,7 +34,6 @@ let rec to_de_bruijn tm : DeBruijn.term =
   | Operator (tag, tms) ->
     DeBruijn.Operator
       (tag, tms |> List.map ~f:(fun tm -> DeBruijn.Scope ([], to_de_bruijn tm)))
-  | Sequence tms -> Sequence (tms |> List.map ~f:to_de_bruijn)
   | Primitive p -> Primitive p
 ;;
 
@@ -46,7 +43,6 @@ let rec from_nominal' = function
   | Nominal.Operator (tag, scopes) ->
     Operator (tag, scopes |> List.map ~f:from_nominal_scope)
   | Var _ -> raise ScopeEncountered
-  | Sequence tms -> Sequence (tms |> List.map ~f:from_nominal')
   | Primitive p -> Primitive p
 
 (** @raise ScopeEncountered *)
@@ -64,7 +60,6 @@ let rec to_nominal tm : Nominal.term =
   | Operator (tag, tms) ->
     Nominal.Operator
       (tag, tms |> List.map ~f:(fun tm -> Nominal.Scope ([], to_nominal tm)))
-  | Sequence tms -> Sequence (tms |> List.map ~f:to_nominal)
   | Primitive p -> Primitive p
 ;;
 

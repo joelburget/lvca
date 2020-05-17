@@ -5,7 +5,7 @@ open Core_Types
 module Array = Core_kernel.Array
 module List = Core_kernel.List
 
-(** Raised when a sequence or primitive is used in a sort. *)
+(** Raised when a primitive is used in a sort. *)
 exception InvalidSort
 
 (** @raise InvalidSort *)
@@ -13,7 +13,7 @@ let rec ast_to_sort' : NonBinding.term -> AbstractSyntax.sort
   = function
       | Operator (name, subtms)
       -> SortAp (name, List.map subtms ~f:ast_to_sort')
-      | Sequence _ | Primitive _
+      | Primitive _
       -> raise InvalidSort
 
 (** @raise ScopeEncountered, InvalidSort *)
@@ -33,8 +33,6 @@ let make_apps : term list -> term
 %token <string>   STRING
 %token <string>   OPERATOR_ID
 %token <string>   VAR
-%token LEFT_BRACKET
-%token RIGHT_BRACKET
 %token LEFT_PAREN
 %token RIGHT_PAREN
 %token SEMICOLON
@@ -132,8 +130,6 @@ ast_like:
   { Operator (name, scopes) }
   | VAR
   { Var $1 }
-  | LEFT_BRACKET separated_list(COMMA, ast_like) RIGHT_BRACKET
-  { Sequence $2 }
   | primitive
   { Primitive $1 }
 

@@ -23,10 +23,7 @@ rule read = parse
   | '"'      { read_string (Buffer.create 17) lexbuf }
   | '('      { LEFT_PAREN }
   | ')'      { RIGHT_PAREN }
-  | '['      { LEFT_BRACK }
-  | ']'      { RIGHT_BRACK }
   | ';'      { SEMICOLON }
-  | ','      { COMMA }
   | '.'      { DOT }
   | eof      { EOF }
   | _        { error lexbuf ("Unexpected char: " ^ L.lexeme lexbuf) }
