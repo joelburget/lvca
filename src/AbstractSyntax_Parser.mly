@@ -69,7 +69,7 @@ import:
 
 language_def:
   | list(import) nonempty_list(sort_def) EOF
-  { match Core_kernel.String.Map.of_alist $2 with
+  { match Util.String.Map.of_alist $2 with
     | `Ok sort_def_map ->
       { imports = $1
       ; sort_defs = AbstractSyntax_Types.SortDefs sort_def_map

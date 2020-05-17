@@ -1,4 +1,5 @@
-open Core_kernel
+open Base
+module Format = Caml.Format
 
 open AbstractSyntax_Types
 module Types = AbstractSyntax_Types
@@ -48,7 +49,7 @@ let concretize_valence : sort String.Map.t -> valence -> valence
     -> VariableValence
       (concretize_sort env bound_sort, concretize_sort env body_sort)
 
-let concretize_arity : sort Core_kernel.String.Map.t -> arity -> arity
+let concretize_arity : sort String.Map.t -> arity -> arity
   = fun env -> function
     | FixedArity valences
     -> FixedArity (List.map valences ~f:(concretize_valence env))

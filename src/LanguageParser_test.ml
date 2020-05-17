@@ -1,5 +1,5 @@
 open AbstractSyntax
-open Core_kernel
+module String = Util.String
 
 let parse str = Parser.language_def Lexer.read (Lexing.from_string str)
 ;;

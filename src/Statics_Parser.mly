@@ -27,7 +27,7 @@ exception StaticsParseError of string
 let rec term_to_pattern : Statics_Types.term -> Pattern.t
   = function
     | Operator (name, args)
-    -> Operator (name, Core_kernel.List.map args ~f:scope_to_pattern)
+    -> Operator (name, Base.List.map args ~f:scope_to_pattern)
     | Free var -> Var var
     | tm -> raise (StaticsParseError (Printf.sprintf
       "Can only match operators and variables in a pattern. Found %s."
@@ -65,7 +65,7 @@ term:
 scope:
   tms = separated_nonempty_list(DOT, term)
   { let binders_tm, body = Util.unsnoc tms in
-    let binders_pat = Core_kernel.List.map binders_tm ~f:term_to_pattern in
+    let binders_pat = Base.List.map binders_tm ~f:term_to_pattern in
     Scope (binders_pat, body)
   }
 
@@ -88,9 +88,9 @@ typed_term: name = ID COLON tm = term { name, tm }
 (** @raise [StaticsParseError] *)
 context:
   | CTX
-  { Core_kernel.String.Map.empty }
+  { Util.String.Map.empty }
   | CTX COMMA ctx_entries = separated_nonempty_list(COMMA, typed_term)
-  { match Core_kernel.String.Map.of_alist ctx_entries with
+  { match Util.String.Map.of_alist ctx_entries with
     | `Ok context -> context
     | `Duplicate_key str
     -> raise (StaticsParseError (Printf.sprintf "duplicate name in context: %s" str))
@@ -99,7 +99,7 @@ context:
 (** @raise [StaticsParseError] *)
 hypothesis:
   | context CTX_SEPARATOR clause = typing_clause
-  { (Core_kernel.String.Map.empty, clause) }
+  { (Util.String.Map.empty, clause) }
 
 (** @raise [StaticsParseError] *)
 rule:

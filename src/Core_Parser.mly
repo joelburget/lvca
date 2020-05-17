@@ -2,8 +2,8 @@
 
 %{
 open Core_Types
-module Array = Core_kernel.Array
-module List = Core_kernel.List
+module Array = Base.Array
+module List = Base.List
 
 (** Raised when a primitive is used in a sort. *)
 exception InvalidSort

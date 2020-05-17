@@ -1,5 +1,3 @@
-open Core_kernel
-
 module type Parseable = sig
   type t
 

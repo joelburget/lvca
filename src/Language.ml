@@ -1,4 +1,5 @@
-open Core_kernel
+module Result = Base.Result
+module String = Util.String
 
 module type Description = sig
   val abstract_syntax : string
@@ -18,11 +19,11 @@ module type S = sig
   (*
   val parse_concrete : string
     -> ( ConcreteSyntax.formatted_tree
-       , (LexerUtil.lex_error, LrParsing.parse_error) Core_kernel.Either.t
-       ) Core_kernel.Result.t
+       , (LexerUtil.lex_error, LrParsing.parse_error) Base.Either.t
+       ) Base.Result.t
   val to_ast
     :  ConcreteSyntax.formatted_tree
-    -> (Binding.Nominal.term, string) Core_kernel.Result.t
+    -> (Binding.Nominal.term, string) Base.Result.t
   val of_ast : Binding.Nominal.term -> ConcreteSyntax.formatted_tree
   *)
 end

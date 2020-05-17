@@ -1,5 +1,3 @@
-open Core_kernel
-
 (* See the Bidirectional module for more tests *)
 
 let print_parse desc =

@@ -18,7 +18,7 @@ let%test_module "TermParser" =
       let match_line a b = Operator ("match_line", [ Scope ([a], b) ]) in
       let match_lines subtms = Operator
         ( "match_lines"
-        , Core_kernel.List.map subtms ~f:(fun tm -> Scope ([], tm))
+        , Base.List.map subtms ~f:(fun tm -> Scope ([], tm))
         )
       in
 

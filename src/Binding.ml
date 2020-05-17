@@ -1,6 +1,11 @@
-open Core_kernel
-module Json = Util.Json
+module Array = Base.Array
+module Bytes = Base.Bytes
 module Cbor = Util.Cbor
+module Fn = Base.Fn
+module Json = Util.Json
+module List = Base.List
+module Option = Base.Option
+module String = Util.String
 
 module rec DeBruijn : sig
   type scope = Scope of Pattern.t list * term
@@ -205,10 +210,10 @@ let%test_module "Nominal" =
       let bytes = serialize tm in
       bytes
       |> Bytes.to_array
-      |> Array.iter ~f:(fun char -> printf "%02x" (int_of_char char))
+      |> Array.iter ~f:(fun char -> Printf.printf "%02x" (int_of_char char))
     ;;
 
-    let print_hash tm = printf "%s" (hash tm)
+    let print_hash tm = Printf.printf "%s" (hash tm)
     let ( = ) = Caml.( = )
     let tm = Var "x"
 

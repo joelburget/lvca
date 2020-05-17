@@ -5,12 +5,9 @@ module Types = AbstractSyntax_Types
 include AbstractSyntax_Types
 
 let%test_module "AbstractSyntax_Parser" = (module struct
-  open Core_kernel
-
   let expect_parse parser str lang =
     assert (eq (parser Lexer.read (Lexing.from_string str)) lang)
   ;;
-
 
   let%test_unit _ =
     let tm = SortAp ("tm", []) in
@@ -31,7 +28,7 @@ tm :=
           ; location = "builtins"
           }
         ]
-      ; sort_defs = SortDefs (String.Map.of_alist_exn
+      ; sort_defs = SortDefs (Util.String.Map.of_alist_exn
         [ "tm", SortDef
           ( []
           , [ OperatorDef ("add", FixedArity [tm_v; tm_v])

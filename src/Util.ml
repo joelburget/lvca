@@ -1,4 +1,14 @@
-open Core_kernel
+open Base
+module String = Core_kernel.String
+
+(* Used by bidirectional *)
+module Map = struct
+  include Base.Map
+
+  let remove_many : ('k, 'v, 'cmp) t -> string array -> ('k, 'v, 'cmp) t =
+   fun map keys -> Array.fold keys ~init:map ~f:Map.remove
+ ;;
+end
 
 let rec snoc lst a = match lst with [] -> [ a ] | x :: xs -> x :: snoc xs a
 
@@ -35,17 +45,6 @@ let get_option' : (unit -> string) -> 'a option -> 'a =
   | Some a -> a
 ;;
 
-(* Used by bidirectional *)
-module String = struct
-  module Map = struct
-    type 'a t = 'a String.Map.t
-
-    let remove_many : 'a t -> string array -> 'a t =
-     fun map keys -> Array.fold keys ~init:map ~f:String.Map.remove
-   ;;
-  end
-end
-
 module Json = struct
   type t =
     | String of string
@@ -65,8 +64,6 @@ module Sha256 = struct
 end
 
 module Cbor = struct
-  open Core_kernel
-
   let rec of_json : Json.t -> CBOR.Simple.t = function
     | String str -> `Text str
     | Array arr -> `Array (arr |> Array.map ~f:of_json |> Array.to_list)

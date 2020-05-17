@@ -37,7 +37,7 @@ rule read = parse
   | int       { INT (Bigint.of_string (L.lexeme lexbuf)) }
 
   (* Note: distinguishing between TODO *)
-  | id '('    { OPERATOR_ID (Core_kernel.String.slice (Lexing.lexeme lexbuf) 0 (-1)) }
+  | id '('    { OPERATOR_ID (Util.String.slice (Lexing.lexeme lexbuf) 0 (-1)) }
   | id        { VAR (Lexing.lexeme lexbuf) }
 
   | eof       { END }

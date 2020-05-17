@@ -1,5 +1,9 @@
 open Statics
-open Core_kernel
+module Fn = Base.Fn
+module List = Base.List
+module Option = Base.Option
+module Result = Base.Result
+module String = Util.String
 
 type env =
   { rules : rule list (** The (checking / inference) rules we can apply *)
@@ -81,7 +85,7 @@ let rec instantiate (env : scope String.Map.t) (tm : term) : (term, string) Resu
              |> Array.concat
            in
            body
-           |> instantiate (Util.String.Map.remove_many env new_var_names)
+           |> instantiate (Util.Map.remove_many env new_var_names)
            |> Result.map ~f:(fun body' -> Scope (binders, body')))
     |> Result.all
     |> Result.map ~f:(fun subtms' -> Operator (tag, subtms'))
@@ -299,7 +303,7 @@ let%test_module "bidirectional tests" =
 
     let true_tm = parse_cvt "true()"
     let bool_ty = parse_cvt "bool()"
-    let env = { rules = statics; var_types = Core_kernel.String.Map.empty }
+    let env = { rules = statics; var_types = Util.String.Map.empty }
     let ite = parse_cvt "ite(true(); false(); true())"
     let annot_ite = parse_cvt "annot(ite(true(); false(); true()); bool())"
     let lam_tm = parse_cvt "lam(x. true())"

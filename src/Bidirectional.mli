@@ -2,7 +2,7 @@ open Statics
 
 type env =
   { rules : rule list (** The (checking / inference) rules we can apply *)
-  ; var_types : term Core_kernel.String.Map.t (** The types of all known free variables *)
+  ; var_types : term Util.String.Map.t (** The types of all known free variables *)
   }
 
 (* TODO: add docs *)

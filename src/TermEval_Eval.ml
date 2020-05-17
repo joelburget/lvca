@@ -41,10 +41,9 @@ let rec check : ty list -> ty -> DeBruijn.term -> bool =
  fun env ty tm ->
   match tm with
   | Var (ix, 0) ->
-    let ty' =
-      List.nth env ix
-      (* |> Util.get_option (InvariantViolation (Printf.sprintf "bad environment index %n,
-         environment size %n" ix (List.length env))) *)
+    let ty' = List.nth env ix
+      |> Util.get_option' (fun () -> (Printf.sprintf
+        "bad environment index %n, environment size %n" ix (List.length env)))
     in
     ty' = ty
   | Var _ -> raise (InvariantViolation "unexpected non-variable binding")
@@ -65,9 +64,7 @@ let rec check : ty list -> ty -> DeBruijn.term -> bool =
 and infer : ty list -> DeBruijn.term -> ty option =
  fun env tm ->
   match tm with
-  | Var (ix, 0) -> Some (List.nth env ix)
-  (* |> Util.get_option (InvariantViolation (Printf.sprintf "bad environment index %n,
-     environment size %n" ix (List.length env)))) *)
+  | Var (ix, 0) -> List.nth env ix
   | Operator ("true", []) | Operator ("false", []) -> Some Bool
   | Operator ("ite", [ Scope ([], cond); Scope ([], b1); Scope ([], b2) ]) ->
     check_assert (check env Bool cond);
@@ -101,8 +98,8 @@ let rec eval' : DeBruijn.term list -> DeBruijn.term -> DeBruijn.term =
  fun env tm ->
   match tm with
   | Var (ix, 0) -> List.nth env ix
-  (* |> Util.get_option (InvariantViolation (Printf.sprintf "bad environment index %n,
-     environment size %n" ix (List.length env))) *)
+    |> Util.get_option' (fun () -> (Printf.sprintf
+      "bad environment index %n, environment size %n" ix (List.length env)))
   | Var _ -> raise (InvariantViolation "unexpected non-variable binding")
   | Operator ("true", []) | Operator ("false", []) -> tm
   | Operator ("ite", [ Scope ([], cond); Scope ([], b1); Scope ([], b2) ]) ->
