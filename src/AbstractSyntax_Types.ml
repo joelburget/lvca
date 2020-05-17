@@ -119,6 +119,13 @@ let string_of_valence : valence -> string
         (string_of_sort binder)
         (string_of_sort result)
 
+let string_of_arity : arity -> string
+  = function
+  | FixedArity valences -> valences
+    |> List.map ~f:string_of_valence
+    |> String.concat ~sep:"; "
+  | VariableArity sort -> string_of_sort sort ^ "*"
+
 let rec instantiate_sort : sort String.Map.t -> sort -> sort =
  fun arg_mapping -> function
   | SortVar name ->
@@ -207,11 +214,14 @@ let to_term : abstract_syntax -> NonBinding.term
 
 (* _of_term: *)
 
-exception OfTermFailure of string * NonBinding.term
+exception OfTermFailure of string * Binding.Nominal.term
 
-let rec sort_of_term : NonBinding.term -> sort
-  = function
-    | Operator ("sort_ap", [ Primitive (PrimString name) ; Sequence tms ])
-    -> SortAp (name, List.map tms ~f:sort_of_term)
-    | Operator ("sort_var", [Primitive (PrimString name)]) -> SortVar name
-    | tm -> raise (OfTermFailure ("sort_of_term", tm))
+(** @raise [OfTermFailure] *)
+let rec sort_of_term_exn : Binding.Nominal.term -> sort
+  = fun tm -> match tm with
+    | Var name -> SortVar name
+    | Operator (name, args)
+    -> SortAp (name, List.map args ~f:(function
+      | Scope ([], arg) -> sort_of_term_exn arg
+      | _ -> raise (OfTermFailure ("sort_of_term", tm))))
+    | _ -> raise (OfTermFailure ("sort_of_term", tm))
