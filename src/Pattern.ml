@@ -28,13 +28,13 @@ let list_vars_of_pattern : pattern -> string list =
  fun pat -> String.Set.to_list (vars_of_pattern pat)
 ;;
 
-let rec string_of_pattern : pattern -> string = function
+let rec to_string : pattern -> string = function
   | Operator (name, pats) ->
     Printf.sprintf "%s(%s)" name
-    (pats |> List.map ~f:string_of_pattern |> String.concat ~sep:"; ")
+    (pats |> List.map ~f:to_string |> String.concat ~sep:"; ")
   | Sequence pats ->
     Printf.sprintf "[%s]"
-    (pats |> List.map ~f:string_of_pattern |> String.concat ~sep:", ")
+    (pats |> List.map ~f:to_string |> String.concat ~sep:", ")
   | Primitive prim -> Primitive.to_string prim
   | Var name -> name
   | Ignored name -> "_" ^ name

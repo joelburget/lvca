@@ -28,7 +28,7 @@ and string_of_scope (Scope (pats, tm)) =
   match pats with
   | [] -> string_of_term tm
   | _ ->
-    let pats' = pats |> List.map ~f:Pattern.string_of_pattern |> String.concat ~sep:". " in
+    let pats' = pats |> List.map ~f:Pattern.to_string |> String.concat ~sep:". " in
     Printf.sprintf "%s. %s" pats' (string_of_term tm)
 ;;
 
