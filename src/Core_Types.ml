@@ -1,4 +1,4 @@
-open Core_kernel
+module Map = Base.Map
 open AbstractSyntax
 open Binding
 

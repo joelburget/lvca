@@ -1,10 +1,8 @@
-open Sexplib.Std
-
 type t =
   { pos_lnum : int
   ; pos_bol : int
   ; pos_cnum : int
-  } [@@deriving sexp]
+  }
 
 let zero_pos : t
   = { pos_lnum = 0
