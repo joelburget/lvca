@@ -13,7 +13,7 @@ let render_inline_atom : NonBinding.term -> Vdom.Node.t = function
 ;;
 
 let render_paragraph : NonBinding.term -> Vdom.Node.t = function
-  | NonBinding.Operator ("inline", [ Sequence inline_atoms ]) ->
+  | NonBinding.Operator ("inline", inline_atoms) ->
     let inline_atoms' = List.map inline_atoms ~f:render_inline_atom in
     Vdom.Node.div [] inline_atoms'
   | tm -> raise @@ FailedRender ("render_paragraph: unexpected term: " ^ str_of_tm tm)
@@ -32,7 +32,7 @@ let render_block : NonBinding.term -> Vdom.Node.t = function
 ;;
 
 let render_doc : NonBinding.term -> Vdom.Node.t = function
-  | Operator ("document", [ Sequence blocks ]) ->
+  | Operator ("document", blocks) ->
     let blocks' = List.map ~f:render_block blocks in
     Vdom.Node.div [] blocks'
   | tm -> raise @@ FailedRender ("render_doc: unexpected term: " ^ str_of_tm tm)

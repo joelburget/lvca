@@ -69,7 +69,6 @@ command :=
         | Some (InvalidGrammar msg) -> failwith msg
         | None -> desc)
 ;;
-*)
 
 let parse_command : string -> (NonBinding.term, string) Result.t
   = fun str ->
@@ -82,6 +81,7 @@ let parse_command : string -> (NonBinding.term, string) Result.t
         | Ok ast -> match NonBinding.from_nominal ast with
           | None -> Error "Failed to convert ast to non-binding"
           | Some tm -> Ok tm
+*)
 
 let lookup_lang
   : store -> NonBinding.term -> store_value
@@ -117,9 +117,8 @@ let lookup_maybe_concrete
 type parsed =
   | ParsedTerm of Binding.Nominal.term
   | ParsedAbstract of AbstractSyntax.abstract_syntax
-  | ParsedConcrete of ConcreteSyntaxDescription.t
   | ParsedStatics of Statics.rule list
-  | ParsedDynamics of Dynamics.Core.denotation_chart
+  | ParsedDynamics of Core.Types.term
   (*
   | ParsedParseable of parseable'
   *)
@@ -129,9 +128,6 @@ let term_of_parsed : parsed -> Binding.Nominal.term
     | ParsedTerm tm -> tm
     | ParsedAbstract abstract_syntax -> abstract_syntax
       |> AbstractSyntax.to_term
-      |> NonBinding.to_nominal
-    | ParsedConcrete concrete_syntax -> concrete_syntax
-      |> ConcreteSyntaxDescription.to_term
       |> NonBinding.to_nominal
     | ParsedStatics rules -> Statics.to_term rules
     | ParsedDynamics dynamics -> Dynamics.Core.to_term dynamics
@@ -145,14 +141,6 @@ let parse_store_value : store_value -> store_value -> string -> parsed
   -> ParsedTerm (Term.Parser.top_term Term.Lexer.read lex)
   | GenesisAbstractSyntaxConcrete
   -> ParsedAbstract (AbstractSyntax.Parser.language_def AbstractSyntax.Lexer.read lex)
-  | GenesisConcreteSyntaxConcrete
-  ->
-    Printf.printf "language:\n%s\n" str;
-    let pre_terminal_rules, sort_rules =
-      ConcreteSyntax.Parser.language ConcreteSyntax.Lexer.read lex
-    in
-    ParsedConcrete
-      (ConcreteSyntax.make_concrete_description pre_terminal_rules sort_rules)
   | GenesisStaticsConcrete
   -> ParsedStatics (Statics.Parser.rules Statics.Lexer.read lex)
   | GenesisDynamicsConcrete
@@ -377,8 +365,8 @@ let eval_inline_block
         | _ -> h6 (* TODO: error *)
       in
       node_creator [(* TODO: attributes *)] (vdom_of_inline text)
-    | Code_block { kind = _; label = _; other = _; code; attributes = _ }
-    ->
+    | Code_block _ (* { kind = _; label = _; other = _; code; attributes = _ } *)
+    -> failwith "TODO"
       (*
       Printf.printf "label: '%s'\n" (match label with
         | None -> "none"
@@ -398,7 +386,6 @@ let eval_inline_block
         (attributes.attributes
           |> List.map ~f:(fun (x, y) -> Printf.sprintf {|"%s", "%s"|} x y)
           |> String.concat ~sep:"; ");
-          *)
 
       (match code with
          | None -> error_block "No code found in code block"
@@ -411,6 +398,7 @@ let eval_inline_block
            | None -> error_block (Printf.sprintf
              "Single line code block found -- must include a header: %s"
              headered_code)))
+          *)
     | Thematic_break -> hr []
     | Html_block _ -> text "html blocks not supported"
     | Link_def _ (* string Link_def.t *)
