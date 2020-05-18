@@ -2,6 +2,7 @@
 
 module String = Util.String
 module List = Base.List
+module Map = Base.Map
 
 type sort_name = string
 
@@ -57,14 +58,14 @@ type t = abstract_syntax
 
 (* functions: *)
 
-let sort_defs_eq (SortDefs x) (SortDefs y) = String.Map.equal Caml.(=) x y
+let sort_defs_eq (SortDefs x) (SortDefs y) = Map.equal Caml.(=) x y
 
 let eq : abstract_syntax -> abstract_syntax -> bool
   = fun x y -> Caml.(x.imports = y.imports) &&
     sort_defs_eq x.sort_defs y.sort_defs
 
 let sort_names : abstract_syntax -> String.Set.t =
- fun { sort_defs = SortDefs sorts; _ } -> sorts |> String.Map.keys |> String.Set.of_list
+ fun { sort_defs = SortDefs sorts; _ } -> sorts |> Map.keys |> String.Set.of_list
 ;;
 
 let pp_import_symbol : Format.formatter -> string * string option -> unit
@@ -122,7 +123,7 @@ let string_of_arity : arity -> string
 let rec instantiate_sort : sort String.Map.t -> sort -> sort =
  fun arg_mapping -> function
   | SortVar name ->
-    (match String.Map.find arg_mapping name with
+    (match Map.find arg_mapping name with
     | None -> failwith "TODO: error"
     | Some sort' -> sort')
   | SortAp (name, args) -> SortAp (name, List.map args ~f:(instantiate_sort arg_mapping))

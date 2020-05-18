@@ -1,5 +1,19 @@
 open Base
 
+(* Used by bidirectional *)
+module Map = struct
+  include Base.Map
+
+  let remove_many : ('k, 'v, 'cmp) t -> string array -> ('k, 'v, 'cmp) t =
+   fun map keys -> Array.fold keys ~init:map ~f:Map.remove
+ ;;
+
+  let union m1 m2 =
+    Map.merge m1 m2 ~f:(fun ~key:_k ->
+      function `Both (_, v) -> Some v | `Left v | `Right v -> Some v)
+  ;;
+end
+
 module String = struct
   include Base.String
 
@@ -10,21 +24,16 @@ module String = struct
     let singleton k v = Base.Map.singleton (module Base.String) k v
     let of_alist lst = Base.Map.of_alist (module Base.String) lst
     let of_alist_exn lst = Base.Map.of_alist_exn (module Base.String) lst
-    let find = Base.Map.find
-    let map = Base.Map.map
-    let equal f m1 m2 = Base.Map.equal f m1 m2
-    let keys = Base.Map.keys
-    let set = Base.Map.set
-    let remove = Base.Map.remove
-    let to_alist = Base.Map.to_alist
+
+    (* Used by Core.Types, Bidirectional *)
+    let unions : 'a t list -> 'a t =
+      List.fold_right ~f:Map.union ~init:empty
   end
 
   module Set = struct
     type t = (string, Base.String.comparator_witness) Base.Set.t
     let empty = Base.Set.empty (module Base.String)
     let of_list = Base.Set.of_list (module Base.String)
-    let union = Base.Set.union
-    let to_list = Base.Set.to_list
   end
 
   let slice : string -> int -> int -> string
@@ -36,15 +45,6 @@ module String = struct
       sub t ~pos ~len
 end
 
-(* Used by bidirectional *)
-module Map = struct
-  include Base.Map
-
-  let remove_many : ('k, 'v, 'cmp) t -> string array -> ('k, 'v, 'cmp) t =
-   fun map keys -> Array.fold keys ~init:map ~f:Map.remove
- ;;
-end
-
 let rec snoc lst a = match lst with [] -> [ a ] | x :: xs -> x :: snoc xs a
 
 let rec unsnoc lst =
@@ -54,16 +54,6 @@ let rec unsnoc lst =
   | x :: lst' ->
     let front, last = unsnoc lst' in
     x :: front, last
-;;
-
-let map_union m1 m2 =
-  Map.merge m1 m2 ~f:(fun ~key:_k ->
-    function `Both (_, v) -> Some v | `Left v | `Right v -> Some v)
-;;
-
-(* Used by Core.Types, Bidirectional *)
-let string_map_unions : 'a String.Map.t list -> 'a String.Map.t =
-  List.fold_right ~f:map_union ~init:String.Map.empty
 ;;
 
 let get_option : 'b -> 'a option -> 'a =

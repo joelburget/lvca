@@ -4,6 +4,7 @@ module Cbor = Util.Cbor
 module Fn = Base.Fn
 module Json = Util.Json
 module List = Base.List
+module Map = Base.Map
 module Option = Base.Option
 module String = Util.String
 
@@ -58,7 +59,7 @@ end = struct
     | Nominal.Operator (tag, subtms) ->
       Operator (tag, List.map subtms ~f:(scope_from_nominal' env))
     | Var name ->
-      (match String.Map.find env name with
+      (match Map.find env name with
       | None -> raise (FailedFromNominal ("couldn't find variable " ^ name))
       | Some (i, j) -> Var (i, j))
     | Primitive prim -> Primitive prim
@@ -76,7 +77,7 @@ end = struct
     match String.Map.of_alist var_nums with
     | `Ok var_map ->
       let env' : (int * int) String.Map.t =
-        Util.map_union (String.Map.map env ~f:(fun (i, j) -> i + n, j)) var_map
+        Util.Map.union (Map.map env ~f:(fun (i, j) -> i + n, j)) var_map
       in
       Scope (pats, from_nominal_with_bindings' env' body)
     | `Duplicate_key _key -> failwith "TODO: raise error"

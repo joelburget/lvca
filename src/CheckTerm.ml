@@ -149,7 +149,7 @@ let check_pattern
                   }
               )
             |> Result.all
-            |> Result.map ~f:Util.string_map_unions
+            |> Result.map ~f:Util.String.Map.unions
 
     and go_variable_arity_pat
       :  sort
@@ -255,9 +255,9 @@ let check_term
           = match Result.all binders_env with
           | Error err -> Some err
           | Ok binders_env' ->
-            let binders_env'' = Util.string_map_unions binders_env' in
+            let binders_env'' = Util.String.Map.unions binders_env' in
             (* TODO: are we shadowing in right direction? *)
-            go (Util.map_union var_valences binders_env'') body_sort body
+            go (Util.Map.union var_valences binders_env'') body_sort body
         in
 
         match valence with

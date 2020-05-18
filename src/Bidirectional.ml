@@ -1,6 +1,7 @@
 open Statics
 module Fn = Base.Fn
 module List = Base.List
+module Map = Base.Map
 module Option = Base.Option
 module Result = Base.Result
 module String = Util.String
@@ -25,8 +26,8 @@ let rec match_schema_vars' : term -> term -> scope String.Map.t =
     if String.(tag1 = tag2) && List.(length args1 = length args2)
     then (
       let matched_scopes = List.map2_exn args1 args2 ~f:match_schema_vars_scope in
-      Util.string_map_unions matched_scopes
-      (* (match Util.string_map_unions matched_scopes with | `Ok result -> result |
+      Util.String.Map.unions matched_scopes
+      (* (match Util.String.Map.unions matched_scopes with | `Ok result -> result |
          `Duplicate_key str -> failwith ("TODO: error: duplicate key: " ^ str)) *))
     else raise NoMatch
   | _, _ -> raise NoMatch
@@ -34,7 +35,7 @@ let rec match_schema_vars' : term -> term -> scope String.Map.t =
 and match_schema_vars_scope (Scope (names1, body1)) (Scope (names2, body2)) =
   if List.(length names1 = length names2)
      (* TODO: is it okay to use names1? what happens to names2? *)
-  then match_schema_vars' body1 body2 |> String.Map.map ~f:(enscope names1)
+  then match_schema_vars' body1 body2 |> Map.map ~f:(enscope names1)
   else raise NoMatch
 ;;
 
@@ -91,7 +92,7 @@ let rec instantiate (env : scope String.Map.t) (tm : term) : (term, string) Resu
     |> Result.map ~f:(fun subtms' -> Operator (tag, subtms'))
   | Bound _ -> Ok tm
   | Free v ->
-    (match String.Map.find env v with
+    (match Map.find env v with
     | None -> Error ("instantiate: couldn't find var " ^ v)
     | Some (Scope (pats, _) as sc)
     (* Open the scope, instantiating all variables it binds as free *) ->
@@ -113,13 +114,13 @@ exception CheckError of string
 
 let update_ctx (ctx_state : scope String.Map.t ref) (learned_tys : scope String.Map.t) =
   let do_assignment (k, v) =
-    match String.Map.find !ctx_state k with
+    match Map.find !ctx_state k with
     | None ->
-      let state' = String.Map.remove !ctx_state k in
-      ctx_state := String.Map.set state' ~key:k ~data:v
+      let state' = Map.remove !ctx_state k in
+      ctx_state := Map.set state' ~key:k ~data:v
     | Some v' -> if Caml.(v <> v') then raise (BadScopeMerge (v, v'))
   in
-  List.iter ~f:do_assignment (String.Map.to_alist learned_tys)
+  List.iter ~f:do_assignment (Map.to_alist learned_tys)
 ;;
 
 let get_or_raise msg = function Some x -> x | None -> raise (CheckError msg)
@@ -131,7 +132,7 @@ let raise_if_not_ok outer_msg : ('a, 'err) Result.t -> 'a = function
 
 let ctx_infer (var_types : term String.Map.t) : term -> term = function
   | Free v ->
-    (match String.Map.find var_types v with
+    (match Map.find var_types v with
     | None -> raise (CheckError ("ctx_infer: couldn't find variable " ^ v))
     | Some ty -> ty)
   | _ -> raise (CheckError "ctx_infer: called with non-free-variable")
@@ -165,7 +166,7 @@ let rec check' trace_stack emit_trace ({ rules; _ } as env) (Typing (tm, ty) as 
     get_or_raise "check': no matching rule found" (List.find_map rules ~f:match_rule)
   in
   (* TODO: check term / type assignments disjoint *)
-  let schema_assignments = Util.map_union tm_assignments ty_assignments in
+  let schema_assignments = Util.Map.union tm_assignments ty_assignments in
   (* ctx_state is a mapping of schema variables we've learned:
    * We fill this in initially with `schema_assignments` from matching the
      conclusion.
@@ -303,7 +304,7 @@ let%test_module "bidirectional tests" =
 
     let true_tm = parse_cvt "true()"
     let bool_ty = parse_cvt "bool()"
-    let env = { rules = statics; var_types = Util.String.Map.empty }
+    let env = { rules = statics; var_types = String.Map.empty }
     let ite = parse_cvt "ite(true(); false(); true())"
     let annot_ite = parse_cvt "annot(ite(true(); false(); true()); bool())"
     let lam_tm = parse_cvt "lam(x. true())"

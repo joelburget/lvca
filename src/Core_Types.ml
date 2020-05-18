@@ -111,7 +111,7 @@ let rec match_pattern
         Some
           (sub_results
           |> List.map ~f:(Util.get_option' (fun () -> "we just check all is_some"))
-          |> Util.string_map_unions)
+          |> Util.String.Map.unions)
       else None)
     else None
   | Primitive l1, Primitive l2
@@ -145,11 +145,11 @@ let eval_exn : term -> Nominal.term
         | None -> raise @@ EvalExn ("Unbound variable " ^ v, tm))
       | CoreApp (Lambda (_ty, Scope (name, body)), arg) ->
         let arg_val = go ctx arg in
-        go (String.Map.set ctx ~key:name ~data:arg_val) body
+        go (Map.set ctx ~key:name ~data:arg_val) body
       | Case (tm, branches) ->
         (match find_core_match (go ctx tm) branches with
         | None -> raise @@ EvalExn ("no match found in case", tm)
-        | Some (branch, bindings) -> go (Util.map_union ctx bindings) branch)
+        | Some (branch, bindings) -> go (Util.Map.union ctx bindings) branch)
 
       (* primitives *)
       (* TODO: or should this be an app? *)

@@ -1,5 +1,6 @@
 module String = Util.String
 module List = Base.List
+module Set = Base.Set
 
 type pattern =
   | Operator of string * pattern list
@@ -18,11 +19,11 @@ let rec vars_of_pattern : pattern -> String.Set.t = function
 and vars_of_patterns pats =
   pats
   |> List.map ~f:vars_of_pattern
-  |> List.fold_right ~init:String.Set.empty ~f:String.Set.union
+  |> List.fold_right ~init:String.Set.empty ~f:Set.union
 ;;
 
 let list_vars_of_pattern : pattern -> string list =
- fun pat -> String.Set.to_list (vars_of_pattern pat)
+ fun pat -> Set.to_list (vars_of_pattern pat)
 ;;
 
 let rec to_string : pattern -> string = function
