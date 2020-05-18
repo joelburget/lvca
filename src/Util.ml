@@ -1,5 +1,40 @@
 open Base
-module String = Core_kernel.String
+
+module String = struct
+  include Base.String
+
+  module Map = struct
+    type 'a t = (string, 'a, Base.String.comparator_witness) Base.Map.t
+    type key = string
+    let empty = Base.Map.empty (module Base.String)
+    let singleton k v = Base.Map.singleton (module Base.String) k v
+    let of_alist lst = Base.Map.of_alist (module Base.String) lst
+    let of_alist_exn lst = Base.Map.of_alist_exn (module Base.String) lst
+    let find = Base.Map.find
+    let map = Base.Map.map
+    let equal f m1 m2 = Base.Map.equal f m1 m2
+    let keys = Base.Map.keys
+    let set = Base.Map.set
+    let remove = Base.Map.remove
+    let to_alist = Base.Map.to_alist
+  end
+
+  module Set = struct
+    type t = (string, Base.String.comparator_witness) Base.Set.t
+    let empty = Base.Set.empty (module Base.String)
+    let of_list = Base.Set.of_list (module Base.String)
+    let union = Base.Set.union
+    let to_list = Base.Set.to_list
+  end
+
+  let slice : string -> int -> int -> string
+    = fun t start stop ->
+      let normalize t' i = if Int.(i < 0) then i + length t' else i in
+      let stop = if Int.(stop = 0) then length t else stop in
+      let pos = normalize t start in
+      let len = normalize t stop - pos in
+      sub t ~pos ~len
+end
 
 (* Used by bidirectional *)
 module Map = struct
