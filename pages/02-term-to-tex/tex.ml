@@ -1,6 +1,6 @@
 (* open Core_kernel *)
 open Lvca
-open ConcreteSyntax
+(* open ConcreteSyntax *)
 
 let abstract_syntax_desc =
   {|
@@ -72,6 +72,7 @@ command :=
   |}
 ;;
 
+(*
 let concrete =
   let pre_terminal_rules, sort_rules =
     match Parsing.ConcreteSyntax.parse concrete_syntax_desc with
@@ -86,7 +87,6 @@ let render_abstract : NonBinding.term -> string
     let tm' = NonBinding.to_nominal tm in
     to_string (of_ast (failwith "TODO") concrete (failwith "TODO") "command" 80 tm')
 
-    (*
 let%test_module "tex" = (module struct
 
   let parse_print str =
