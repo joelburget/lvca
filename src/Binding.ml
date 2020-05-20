@@ -76,8 +76,9 @@ end = struct
     in
     match String.Map.of_alist var_nums with
     | `Ok var_map ->
-      let env' : (int * int) String.Map.t =
-        Util.Map.union (Map.map env ~f:(fun (i, j) -> i + n, j)) var_map
+      let env' : (int * int) String.Map.t = env
+        |> Map.map ~f:(fun (i, j) -> i + n, j)
+        |> Util.Map.union_right_biased var_map
       in
       Scope (pats, from_nominal_with_bindings' env' body)
     | `Duplicate_key _key -> failwith "TODO: raise error"

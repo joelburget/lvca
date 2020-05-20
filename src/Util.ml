@@ -6,9 +6,14 @@ module Map = struct
 
   let remove_many : ('k, 'v, 'cmp) t -> string array -> ('k, 'v, 'cmp) t =
    fun map keys -> Array.fold keys ~init:map ~f:Map.remove
- ;;
+  ;;
 
-  let union m1 m2 =
+  let union_left_biased m1 m2 =
+    Map.merge m1 m2 ~f:(fun ~key:_k ->
+      function `Both (v, _) -> Some v | `Left v | `Right v -> Some v)
+  ;;
+
+  let union_right_biased m1 m2 =
     Map.merge m1 m2 ~f:(fun ~key:_k ->
       function `Both (_, v) -> Some v | `Left v | `Right v -> Some v)
   ;;
@@ -26,8 +31,37 @@ module String = struct
     let of_alist_exn lst = Base.Map.of_alist_exn (module Base.String) lst
 
     (* Used by Core.Types, Bidirectional *)
-    let unions : 'a t list -> 'a t =
-      List.fold_right ~f:Map.union ~init:empty
+    let unions_left_biased : 'a t list -> 'a t
+      = List.fold_left ~init:empty
+          ~f:(Map.merge_skewed ~combine:(fun ~key:_k v1 _v2 -> v1))
+
+    let unions_right_biased : 'a t list -> 'a t
+      = List.fold_left ~init:empty
+          ~f:(Map.merge_skewed ~combine:(fun ~key:_k _v1 v2 -> v2))
+
+    exception DuplicateKey of string
+
+    let strict_union
+      : 'a t -> 'a t -> [ `Ok of 'a t | `Duplicate_key of string ]
+    = fun m1 m2 -> try
+        `Ok (Map.merge m1 m2 ~f:(fun ~key -> function
+          | `Both _ -> raise (DuplicateKey key)
+          | `Left v | `Right v -> Some v))
+      with
+        DuplicateKey k -> `Duplicate_key k
+    ;;
+
+    let strict_unions
+      : 'a t list -> [ `Ok of 'a t | `Duplicate_key of string ]
+      = fun lst -> try
+          `Ok (List.fold_left lst
+            ~init:empty
+            ~f:(fun accum m -> match strict_union accum m with
+              | `Ok m' -> m'
+              | `Duplicate_key key -> raise (DuplicateKey key))
+          )
+        with
+          DuplicateKey k -> `Duplicate_key k
   end
 
   module Set = struct

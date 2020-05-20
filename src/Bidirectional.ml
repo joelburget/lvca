@@ -24,11 +24,11 @@ let rec match_schema_vars' : term -> term -> scope String.Map.t =
   | Free v, tm -> String.Map.of_alist_exn [ v, Scope ([], tm) ]
   | Operator (tag1, args1), Operator (tag2, args2) ->
     if String.(tag1 = tag2) && List.(length args1 = length args2)
-    then (
+    then
       let matched_scopes = List.map2_exn args1 args2 ~f:match_schema_vars_scope in
-      Util.String.Map.unions matched_scopes
-      (* (match Util.String.Map.unions matched_scopes with | `Ok result -> result |
-         `Duplicate_key str -> failwith ("TODO: error: duplicate key: " ^ str)) *))
+      match String.Map.strict_unions matched_scopes with
+        | `Ok result -> result
+        | `Duplicate_key str -> failwith ("TODO: error: duplicate key: " ^ str)
     else raise NoMatch
   | _, _ -> raise NoMatch
 
@@ -166,7 +166,11 @@ let rec check' trace_stack emit_trace ({ rules; _ } as env) (Typing (tm, ty) as 
     get_or_raise "check': no matching rule found" (List.find_map rules ~f:match_rule)
   in
   (* TODO: check term / type assignments disjoint *)
-  let schema_assignments = Util.Map.union tm_assignments ty_assignments in
+  let schema_assignments =
+    match String.Map.strict_union tm_assignments ty_assignments with
+    | `Ok assignments -> assignments
+    | `Duplicate_key k -> failwith ("TODO: check' error for duplicate key: " ^ k)
+  in
   (* ctx_state is a mapping of schema variables we've learned:
    * We fill this in initially with `schema_assignments` from matching the
      conclusion.

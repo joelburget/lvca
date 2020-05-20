@@ -110,8 +110,15 @@ let rec match_pattern
       then
         Some
           (sub_results
-          |> List.map ~f:(Util.get_option' (fun () -> "we just check all is_some"))
-          |> Util.String.Map.unions)
+          |> List.map ~f:(Util.get_option' (fun () -> "we just checked all is_some"))
+          |> String.Map.strict_unions
+          |> function
+            | `Duplicate_key k -> Util.invariant_violation (Printf.sprintf
+                "multiple variables with the same name (%s) in one pattern"
+                k
+            )
+            | `Ok m -> m
+          )
       else None)
     else None
   | Primitive l1, Primitive l2
@@ -149,7 +156,7 @@ let eval_exn : term -> Nominal.term
       | Case (tm, branches) ->
         (match find_core_match (go ctx tm) branches with
         | None -> raise @@ EvalExn ("no match found in case", tm)
-        | Some (branch, bindings) -> go (Util.Map.union ctx bindings) branch)
+        | Some (branch, bindings) -> go (Util.Map.union_right_biased ctx bindings) branch)
 
       (* primitives *)
       (* TODO: or should this be an app? *)
