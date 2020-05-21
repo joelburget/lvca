@@ -62,3 +62,10 @@ type abstract_syntax = Types.abstract_syntax =
 type t = abstract_syntax
 
 val (=) : abstract_syntax -> abstract_syntax -> bool
+
+val pp_import : Format.formatter -> import -> unit
+val pp_sort : Format.formatter -> sort -> unit
+val string_of_sort : sort -> string
+val string_of_valence : valence -> string
+val string_of_arity : arity -> string
+val instantiate_sort : sort Util.String.Map.t -> sort -> sort

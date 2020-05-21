@@ -6,7 +6,7 @@ include AbstractSyntax_Types
 
 let%test_module "AbstractSyntax_Parser" = (module struct
   let expect_parse parser str lang =
-    assert (eq (parser Lexer.read (Lexing.from_string str)) lang)
+    assert (parser Lexer.read (Lexing.from_string str) = lang)
   ;;
 
   let%test_unit _ =

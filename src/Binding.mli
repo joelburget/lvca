@@ -37,6 +37,9 @@ and Nominal : sig
   val pp_term : Format.formatter -> Nominal.term -> unit
   val pp_term_str : Nominal.term -> string
 
+  val pp_scope : Format.formatter -> Nominal.scope -> unit
+  val pp_scope_str : Nominal.scope -> string
+
   val jsonify : Nominal.term -> Util.Json.t
 
   (** Encode (using {{:https://cbor.io} CBOR}) as bytes. *)

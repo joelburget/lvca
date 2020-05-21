@@ -1,6 +1,7 @@
-module Map = Base.Map
+open Base
 open AbstractSyntax
 open Binding
+module Format = Caml.Format
 
 type is_rec = Rec | NoRec
 
@@ -95,10 +96,10 @@ let pp_module_str : core_module -> string
   = Format.asprintf "%a" pp_module
 
 let rec match_pattern
-  : Nominal.term -> Pattern.t -> Nominal.term String.Map.t option
+  : Nominal.term -> Pattern.t -> Nominal.term Util.String.Map.t option
   = fun v pat -> match v, pat with
   | Operator (tag1, vals), Operator (tag2, pats) ->
-    if String.(tag1 = tag2) && List.(length vals = length pats)
+    if String.(tag1 = tag2) && List.(Int.(length vals = length pats))
     then (
       let sub_results =
         List.map2_exn vals pats ~f:(fun core_scope (pat : Pattern.t) ->
@@ -110,8 +111,9 @@ let rec match_pattern
       then
         Some
           (sub_results
-          |> List.map ~f:(Util.get_option' (fun () -> "we just checked all is_some"))
-          |> String.Map.strict_unions
+          |> List.map ~f:(Util.Option.get_invariant
+            (fun () -> "we just checked all is_some"))
+          |> Util.String.Map.strict_unions
           |> function
             | `Duplicate_key k -> Util.invariant_violation (Printf.sprintf
                 "multiple variables with the same name (%s) in one pattern"
@@ -122,14 +124,14 @@ let rec match_pattern
       else None)
     else None
   | Primitive l1, Primitive l2
-  -> if Primitive.(l1 = l2) then Some String.Map.empty else None
-  | _, Var "_" -> Some String.Map.empty
-  | tm, Var v -> Some (String.Map.of_alist_exn [ v, tm ])
+  -> if Primitive.(l1 = l2) then Some Util.String.Map.empty else None
+  | _, Var "_" -> Some Util.String.Map.empty
+  | tm, Var v -> Some (Util.String.Map.of_alist_exn [ v, tm ])
   | _ -> None
 ;;
 
 let find_core_match
-  : Nominal.term -> core_case_scope list -> (term * Nominal.term String.Map.t) option
+  : Nominal.term -> core_case_scope list -> (term * Nominal.term Util.String.Map.t) option
   = fun v branches ->
   branches
   |> List.find_map ~f:(function
@@ -145,7 +147,7 @@ exception EvalExn of string * term
 
 let eval_exn : term -> Nominal.term
   = fun core ->
-    let rec go : Nominal.term String.Map.t -> term -> Nominal.term =
+    let rec go : Nominal.term Util.String.Map.t -> term -> Nominal.term =
      fun ctx tm -> match tm with
       | Term (Var v) -> (match Map.find ctx v with
         | Some result -> result
@@ -173,14 +175,14 @@ let eval_exn : term -> Nominal.term
 
       | Term tm -> tm
       | _ -> raise @@ EvalExn ("Found a term we can't evaluate", tm)
-    and go' : Nominal.term String.Map.t -> Nominal.term -> Nominal.term
+    and go' : Nominal.term Util.String.Map.t -> Nominal.term -> Nominal.term
       = fun ctx tm -> match tm with
         | Var v -> (match Map.find ctx v with
           | Some result -> result
           | None -> raise @@ EvalExn ("Unbound variable " ^ v, Term tm))
         | _ -> tm
 
-    in go String.Map.empty core
+    in go Util.String.Map.empty core
 
 let eval : term -> (Nominal.term, eval_error) Result.t =
   fun core -> try Ok (eval_exn core) with EvalExn (msg, tm) -> Error (msg, tm)

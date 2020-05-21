@@ -19,6 +19,7 @@ type term = Types.term =
 and scope = Types.scope = Scope of Pattern.t list * term
 
 val string_of_term : term -> string
+val string_of_scope : scope -> string
 
 (** Both typing and inference rules share this shape.
 
@@ -51,6 +52,8 @@ type rule = Types.rule =
   }
 
 type typing = Types.typing = Typing of term * term
+
+val of_de_bruijn : Binding.DeBruijn.term -> term
 
 (** Raised by [to_de_bruijn_exn] when it encounters a free variable. *)
 exception FreeVar of string

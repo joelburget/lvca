@@ -102,6 +102,10 @@ and Nominal : sig
 
   val pp_term : Format.formatter -> Nominal.term -> unit
   val pp_term_str : Nominal.term -> string
+
+  val pp_scope : Format.formatter -> Nominal.scope -> unit
+  val pp_scope_str : Nominal.scope -> string
+
   val jsonify : Nominal.term -> Json.t
   val serialize : Nominal.term -> Bytes.t
   val hash : Nominal.term -> string

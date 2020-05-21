@@ -43,7 +43,7 @@ let rec concretize_sort : sort String.Map.t -> sort -> sort
       )
     | SortVar name
     -> Map.find env name
-      |> Util.get_option' (fun () -> "concretize_sort: unknown variable " ^ name)
+      |> Util.Option.get_invariant (fun () -> "concretize_sort: unknown variable " ^ name)
 
 let concretize_valence : sort String.Map.t -> valence -> valence
   = fun env -> function
