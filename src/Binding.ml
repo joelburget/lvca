@@ -1,11 +1,8 @@
-module Array = Base.Array
-module Bytes = Base.Bytes
+open Base
+module Format = Caml.Format
+module Printf = Caml.Printf
 module Cbor = Util.Cbor
-module Fn = Base.Fn
 module Json = Util.Json
-module List = Base.List
-module Map = Base.Map
-module Option = Base.Option
 module String = Util.String
 
 module rec DeBruijn : sig
@@ -224,7 +221,7 @@ let%test_module "Nominal" =
       let bytes = serialize tm in
       bytes
       |> Bytes.to_array
-      |> Array.iter ~f:(fun char -> Printf.printf "%02x" (int_of_char char))
+      |> Array.iter ~f:(fun char -> Printf.printf "%02x" (Char.to_int char))
     ;;
 
     let print_hash tm = Printf.printf "%s" (hash tm)
