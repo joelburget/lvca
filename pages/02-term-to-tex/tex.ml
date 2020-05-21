@@ -30,6 +30,7 @@ atom :=
 let abstract = Parsing.AbstractSyntax.parse abstract_syntax_desc
 ;;
 
+(*
 let concrete_syntax_desc =
   {|
 BACKSLASH := "\\"
@@ -72,7 +73,6 @@ command :=
   |}
 ;;
 
-(*
 let concrete =
   let pre_terminal_rules, sort_rules =
     match Parsing.ConcreteSyntax.parse concrete_syntax_desc with

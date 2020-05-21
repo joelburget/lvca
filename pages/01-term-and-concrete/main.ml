@@ -72,7 +72,7 @@ module Term_render_component = struct
           | None -> text "(press (ctrl/shift/meta)-enter to evaluate)"
           | Some result -> (match result with
             | Error err -> ParseError.to_string err |> text
-            | Ok tm -> Binding.Nominal.pp_term' tm |> text
+            | Ok tm -> Binding.Nominal.pp_term_str tm |> text
           )
         ])
         in
