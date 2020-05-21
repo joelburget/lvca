@@ -4,7 +4,7 @@ open Lvca
 
 exception FailedRender of string
 
-let str_of_tm tm = tm |> NonBinding.to_nominal |> Binding.Nominal.pp_term'
+let str_of_tm tm = tm |> NonBinding.to_nominal |> Binding.Nominal.pp_term_str
 
 let render_inline_atom : NonBinding.term -> Vdom.Node.t = function
   | NonBinding.Operator ("inlineAtom", [ _attrs; Primitive (PrimString str) ]) ->

@@ -72,7 +72,7 @@ module Make(X : Description) : S = struct
       |> Bidirectional.infer bidirectional_env
       |> Statics.Types.to_de_bruijn_exn
       |> Binding.DeBruijn.to_nominal
-      |> Util.get_option InferenceError
+      |> Util.Option.get_or_raise InferenceError
   ;;
 
   (*

@@ -1,10 +1,9 @@
-module Types = AbstractSyntax.Types
-module Nominal = Binding.Nominal
+(** Check that a term is valid in some language. *)
 
 type abstract_syntax_check_failure_frame =
-  { term : (Pattern.t, Nominal.term) Base.Either.t
+  { term : (Pattern.t, Binding.Nominal.term) Base.Either.t
   (** Term that failed to check *)
-  ; sort : Types.sort
+  ; sort : AbstractSyntax.Types.sort
   (** Sort it failed to check against *)
   }
 
@@ -14,8 +13,11 @@ type abstract_syntax_check_failure_frame =
 type abstract_syntax_check_failure =
   { message : string
   ; stack : abstract_syntax_check_failure_frame list
+  (** The stack of terms leading from the outermost start point to the innermost point
+   where the problem was discovered *)
   }
 
+(** Failure pretty-printer. *)
 val pp_failure : Format.formatter -> abstract_syntax_check_failure -> unit
 
 (** Check that this pattern is valid and return the valence for each variable it binds.
@@ -25,15 +27,17 @@ val pp_failure : Format.formatter -> abstract_syntax_check_failure -> unit
    XXX what if they're aliased?
  + All used operators are found (in the sort corresponding to the pattern type).
  + All operators have the correct number of subterms for their arity.
-   - Fixed arity patterns must have the exact number of subterms.
-   - Variable arity patterns may have any number.
+   {ul
+     {- Fixed arity patterns must have the exact number of subterms.}
+     {- Variable arity patterns may have any number.}}
  + Patterns can't see valence: they can only bind subterms with some given valence.
  *)
 val check_pattern
-  :  Types.t
-  -> Types.sort
+  :  AbstractSyntax.Types.t (** Abstract syntax *)
+  -> AbstractSyntax.Types.sort (** Sort to check pattern against *)
   -> Pattern.t
-  -> (Types.valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
+  -> (AbstractSyntax.Types.valence Util.String.Map.t, abstract_syntax_check_failure)
+    Result.t
 
 (** Check that the given term matches the given sort.
 
@@ -50,7 +54,7 @@ val check_pattern
    + Variable-valence terms must have one binder, a pattern.
  *)
 val check_term
-  :  Types.t (** Abstract syntax *)
-  -> Types.sort (** Sort to check term against *)
-  -> Nominal.term
+  :  AbstractSyntax.Types.t (** Abstract syntax *)
+  -> AbstractSyntax.Types.sort (** Sort to check term against *)
+  -> Binding.Nominal.term
   -> abstract_syntax_check_failure option

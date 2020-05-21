@@ -1,3 +1,4 @@
+open Base
 open Binding
 
 (* TODO: - clean up error handling - clean up typechecking *)
@@ -21,7 +22,7 @@ let check_assert : bool -> unit = function true -> () | false -> raise CheckFail
 let to_string : DeBruijn.term -> string =
  fun tm ->
   match DeBruijn.to_nominal tm with
-  | Some tm' -> Nominal.pp_term' tm'
+  | Some tm' -> Nominal.pp_term_str tm'
   | None -> raise (InvariantViolation "to_string")
 ;;
 
@@ -42,12 +43,12 @@ let rec check : ty list -> ty -> DeBruijn.term -> bool =
   match tm with
   | Var (ix, 0) ->
     let ty' = List.nth env ix
-      |> Util.get_option' (fun () -> (Printf.sprintf
+      |> Util.Option.get_invariant (fun () -> (Printf.sprintf
         "bad environment index %n, environment size %n" ix (List.length env)))
     in
-    ty' = ty
+    Caml.(ty' = ty)
   | Var _ -> raise (InvariantViolation "unexpected non-variable binding")
-  | Operator ("true", []) | Operator ("false", []) -> ty = Bool
+  | Operator ("true", []) | Operator ("false", []) -> Caml.(ty = Bool)
   | Operator ("ite", [ Scope ([], cond); Scope ([], b1); Scope ([], b2) ]) ->
     check env Bool cond && check env Bool b1 && check env Bool b2
   | Operator ("annot", [ Scope ([], tm); Scope ([], ty) ]) -> check env (ty_of ty) tm
@@ -98,7 +99,7 @@ let rec eval' : DeBruijn.term list -> DeBruijn.term -> DeBruijn.term =
  fun env tm ->
   match tm with
   | Var (ix, 0) -> List.nth env ix
-    |> Util.get_option' (fun () -> (Printf.sprintf
+    |> Util.Option.get_invariant (fun () -> (Printf.sprintf
       "bad environment index %n, environment size %n" ix (List.length env)))
   | Var _ -> raise (InvariantViolation "unexpected non-variable binding")
   | Operator ("true", []) | Operator ("false", []) -> tm

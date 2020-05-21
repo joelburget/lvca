@@ -79,30 +79,32 @@ module String = struct
       sub t ~pos ~len
 end
 
-let rec snoc lst a = match lst with [] -> [ a ] | x :: xs -> x :: snoc xs a
-
-let rec unsnoc lst =
-  match lst with
-  | [] -> failwith "unsnoc empty list"
-  | [ x ] -> [], x
-  | x :: lst' ->
-    let front, last = unsnoc lst' in
-    x :: front, last
-;;
-
-let get_option : 'b -> 'a option -> 'a =
- fun err -> function None -> raise err | Some a -> a
-;;
+module List = struct
+  let rec unsnoc lst =
+    match lst with
+    | [] -> failwith "unsnoc empty list"
+    | [ x ] -> [], x
+    | x :: lst' ->
+      let front, last = unsnoc lst' in
+      x :: front, last
+  ;;
+end
 
 exception InvariantViolation of string
 
 let invariant_violation str = raise (InvariantViolation str)
 
-let get_option' : (unit -> string) -> 'a option -> 'a =
- fun msg -> function
-  | None -> raise (InvariantViolation ("invariant violation: " ^ msg ()))
-  | Some a -> a
-;;
+module Option = struct
+  let get_or_raise : 'b -> 'a option -> 'a =
+   fun err -> function None -> raise err | Some a -> a
+  ;;
+
+  let get_invariant : (unit -> string) -> 'a option -> 'a =
+   fun msg -> function
+    | None -> raise (InvariantViolation ("invariant violation: " ^ msg ()))
+    | Some a -> a
+  ;;
+end
 
 module Json = struct
   type t =
@@ -132,9 +134,9 @@ module Cbor = struct
     | `Text str -> Some (String str)
     | `Array arr ->
       arr
-      |> List.map ~f:to_json
-      |> Option.all
-      |> Option.map ~f:(fun lst -> Json.Array (Array.of_list lst))
+      |> Base.List.map ~f:to_json
+      |> Base.Option.all
+      |> Base.Option.map ~f:(fun lst -> Json.Array (Array.of_list lst))
     | _ -> None
   ;;
 

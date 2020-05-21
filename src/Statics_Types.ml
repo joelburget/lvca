@@ -1,15 +1,15 @@
 module List = Base.List
 module String = Util.String
 
-type scope = Scope of Pattern.t list * term
-
-and term =
+type term =
   | Operator of string * scope list
   | Bound of int * int
   (** Bound vars come via conversion of de Bruijn terms. *)
   | Free of string
   (** Free vars are used during typechecking. *)
   | Primitive of Primitive.t
+
+and scope = Scope of Pattern.t list * term
 
 let rec string_of_term = function
   | Operator (name, scopes) ->
@@ -62,7 +62,7 @@ and scope_of_de_bruijn : Binding.DeBruijn.scope -> scope =
 exception FreeVar of string
 
 (** Convert a [term] to a de Bruijn representation. See also [of_de_bruijn].
- @raise [FreeVar] *)
+ @raise FreeVar *)
 let rec to_de_bruijn_exn : term -> Binding.DeBruijn.term
   = function
     | Operator (name, scopes) -> Operator (name, List.map scopes ~f:to_scope)

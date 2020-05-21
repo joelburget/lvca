@@ -60,7 +60,7 @@ type t = abstract_syntax
 
 let sort_defs_eq (SortDefs x) (SortDefs y) = Map.equal Caml.(=) x y
 
-let eq : abstract_syntax -> abstract_syntax -> bool
+let (=) : abstract_syntax -> abstract_syntax -> bool
   = fun x y -> Caml.(x.imports = y.imports) &&
     sort_defs_eq x.sort_defs y.sort_defs
 

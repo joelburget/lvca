@@ -1,3 +1,5 @@
+(** A small "core" language. *)
+
 module Types = Core_Types
 module Lexer = Core_Lexer
 module Parser = Core_Parser

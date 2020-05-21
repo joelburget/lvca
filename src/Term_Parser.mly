@@ -28,7 +28,7 @@ term:
 (** @raise ToPatternScopeEncountered *)
 scope:
   separated_nonempty_list(DOT, term)
-  { let binders_tm, body = Util.unsnoc $1 in
+  { let binders_tm, body = Util.List.unsnoc $1 in
     let binders_pat = binders_tm
       |> Base.List.map ~f:Binding.Nominal.to_pattern_exn
     in

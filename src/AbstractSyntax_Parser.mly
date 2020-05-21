@@ -36,7 +36,7 @@ valence:
   | sort STAR DOT sort
   { VariableValence ($1, $4) }
   | separated_nonempty_list(DOT, sort)
-  { let binds, result = Util.unsnoc $1 in
+  { let binds, result = Util.List.unsnoc $1 in
     AbstractSyntax_Types.FixedValence (binds, result)
   }
 

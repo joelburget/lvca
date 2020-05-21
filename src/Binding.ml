@@ -101,14 +101,15 @@ and Nominal : sig
     | Primitive of Primitive.t
 
   val pp_term : Format.formatter -> Nominal.term -> unit
-  val pp_term' : Nominal.term -> string
+  val pp_term_str : Nominal.term -> string
   val jsonify : Nominal.term -> Json.t
   val serialize : Nominal.term -> Bytes.t
   val hash : Nominal.term -> string
 
-  exception ToPatternScopeEncountered
+  exception ToPatternScopeEncountered of scope
 
   val to_pattern_exn : Nominal.term -> Pattern.t
+  val to_pattern : Nominal.term -> (Pattern.t, scope) Result.t
   val pattern_to_term : Pattern.t -> Nominal.term
 end = struct
   type scope = Scope of Pattern.t list * term
@@ -137,8 +138,8 @@ end = struct
       pp_term body
   ;;
 
-  let pp_term' = str "%a" pp_term
-  let pp_scope' = str "%a" pp_scope
+  let pp_term_str = str "%a" pp_term
+  let pp_scope_str = str "%a" pp_scope
   let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
 
   let jsonify_prim =
@@ -177,7 +178,7 @@ end = struct
 
   let hash tm = Util.Sha256.hash (serialize tm)
 
-  exception ToPatternScopeEncountered
+  exception ToPatternScopeEncountered of scope
 
   (** @raise ToPatternScopeEncountered *)
   let rec to_pattern_exn : term -> Pattern.t = function
@@ -190,8 +191,15 @@ end = struct
   (** @raise ToPatternScopeEncountered *)
   and scope_to_pattern_exn : scope -> Pattern.t = function
     | Scope ([], tm) -> to_pattern_exn tm
-    | scope -> failwith ("Parse error: invalid pattern: " ^ pp_scope' scope)
+    | scope -> raise (ToPatternScopeEncountered scope)
   ;;
+
+  let to_pattern : term -> (Pattern.t, scope) Result.t
+    = fun tm ->
+      try
+        Ok (to_pattern_exn tm)
+      with
+        ToPatternScopeEncountered scope -> Error scope
 
   let rec pattern_to_term : Pattern.t -> Nominal.term = function
     | Operator (name, pats) ->

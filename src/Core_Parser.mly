@@ -18,7 +18,7 @@ let rec ast_to_sort' : NonBinding.term -> AbstractSyntax.sort
 
 (** @raise ScopeEncountered, InvalidSort *)
 let ast_to_sort : Binding.Nominal.term -> AbstractSyntax.sort
-  = fun term -> term |> NonBinding.from_nominal' |> ast_to_sort'
+  = fun term -> term |> NonBinding.from_nominal_exn |> ast_to_sort'
 
 let make_apps : term list -> term
   = function
@@ -136,7 +136,7 @@ ast_like:
 (** @raise ToPatternScopeEncountered *)
 ast_like_scope:
   | separated_nonempty_list(DOT, ast_like)
-  { let binders_tm, body = Util.unsnoc $1 in
+  { let binders_tm, body = Util.List.unsnoc $1 in
     let binders_pat = List.map binders_tm ~f:Binding.Nominal.to_pattern_exn in
     Scope (binders_pat, body)
   }

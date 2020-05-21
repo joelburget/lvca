@@ -68,6 +68,8 @@ let%test_module "Core.Types parsing" = (module struct
         ]
       )
 
+  let (=) = Caml.(=)
+
   let%test "dynamics as expected" = match Parsing.CoreModule.parse dynamics_str with
     | Error err -> print_string (ParseError.to_string err); false
     | Ok dyn -> dyn = dynamics
@@ -89,7 +91,7 @@ let%test_module "Core.Types eval" =
       | Error err -> ParseError.to_string err
       | Ok core -> (match eval core with
         | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
-        | Ok result -> Nominal.pp_term' result))
+        | Ok result -> Nominal.pp_term_str result))
 
     let%expect_test _ = eval_str "1"; [%expect{| 1 |}]
     let%expect_test _ = eval_str "foo(1)"; [%expect{| foo(1) |}]
@@ -181,7 +183,7 @@ let%test_module "Core.Types eval in dynamics" =
             | Error err -> ParseError.to_string err
             | Ok core -> (match eval (CoreApp (defn, core)) with
               | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
-              | Ok result -> Nominal.pp_term' result))
+              | Ok result -> Nominal.pp_term_str result))
         | _ -> "dynamics must consist of a single definition"))
 
     let dynamics_str =

@@ -64,7 +64,7 @@ term:
 (** @raise [StaticsParseError] *)
 scope:
   tms = separated_nonempty_list(DOT, term)
-  { let binders_tm, body = Util.unsnoc tms in
+  { let binders_tm, body = Util.List.unsnoc tms in
     let binders_pat = Base.List.map binders_tm ~f:term_to_pattern in
     Scope (binders_pat, body)
   }

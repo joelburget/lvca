@@ -1,3 +1,5 @@
+(** A primitive is either a string or an integer. *)
+
 type t =
   | PrimInteger of Bigint.t
   | PrimString of string
@@ -14,6 +16,7 @@ let (=) p1 p2 =
   | _ -> false
 ;;
 
+(** Primitive pretty-printer. *)
 let pp : Format.formatter -> t -> unit
   = fun ppf -> function
   | PrimInteger i -> Format.fprintf ppf "%s" (Bigint.to_string i)

@@ -11,7 +11,7 @@ let ty_valence = FixedValence ([], ty_sort)
 
 let%test_module "AbstractSyntax.Parser" =
   (module struct
-    let%test _ = AbstractSyntax.eq (parse "bool := true() | false()")
+    let%test _ = AbstractSyntax.(parse "bool := true() | false()" =
       { imports = []
       ; sort_defs = SortDefs (String.Map.of_alist_exn [
         "bool", SortDef ([],
@@ -19,10 +19,10 @@ let%test_module "AbstractSyntax.Parser" =
         ; OperatorDef ("false", FixedArity [])
         ])
       ])
-      }
+      })
 
-    let%test _ = AbstractSyntax.eq
-      (parse {|
+    let%test _ = AbstractSyntax.(
+      parse {|
       ty :=
         | bool()
         | arr(ty(); ty())
@@ -30,7 +30,8 @@ let%test_module "AbstractSyntax.Parser" =
       tm :=
         | app(tm(); tm())
         | lam(tm(). tm())
-      |})
+      |}
+      =
       { imports = []
       ; sort_defs = SortDefs (String.Map.of_alist_exn [
         "ty", SortDef ([],
@@ -43,7 +44,7 @@ let%test_module "AbstractSyntax.Parser" =
           ; OperatorDef ("lam", FixedArity [ FixedValence ([tm_sort], tm_sort) ])
           ]);
         ]);
-      }
+      })
 
   end)
 ;;

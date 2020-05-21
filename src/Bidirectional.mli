@@ -1,3 +1,5 @@
+(** An implementation of bidirectional typechecking. *)
+
 open Statics
 
 type env =

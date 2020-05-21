@@ -1,3 +1,18 @@
+(** A position in a buffer / source file. Includes line number and column number.
+
+ This representation borrows heavily from Ocaml's built in module Lexing.
+
+ - [pos_lnum] is the line number.
+ - [pos_bol] is the offset of the beginning of the line (number of characters between the
+   beginning of the lexbuf and the beginning of the line).
+ - [pos_cnum] is the offset of the position (number of characters between the beginning of
+   the lexbuf and the position).
+
+ The difference between [pos_cnum] and [pos_bol] is the character offset within the line (i.e. the column number, assuming each character is one column wide).
+
+ Note that this doesn't include [pos_fname] from Lexing.
+ *)
+
 type t =
   { pos_lnum : int
   ; pos_bol : int

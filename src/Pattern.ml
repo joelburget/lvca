@@ -23,7 +23,7 @@ and vars_of_patterns pats =
 ;;
 
 let list_vars_of_pattern : pattern -> string list =
- fun pat -> Set.to_list (vars_of_pattern pat)
+ fun pat -> Base.Set.to_list (vars_of_pattern pat)
 ;;
 
 let rec to_string : pattern -> string = function
