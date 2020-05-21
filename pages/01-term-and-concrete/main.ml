@@ -68,14 +68,14 @@ module Term_render_component = struct
       match model with
       | NoInput -> mk_textarea Left "type a term", mk_textarea Right "type a term"
       | Produced (side, input_str, maybe_result) ->
-        let other_side = Node.(div [] [ match maybe_result with
-          | None -> text "(press (ctrl/shift/meta)-enter to evaluate)"
+        let msg = match maybe_result with
+          | None -> "(press (ctrl/shift/meta)-enter to evaluate)"
           | Some result -> (match result with
-            | Error err -> ParseError.to_string err |> text
-            | Ok tm -> Binding.Nominal.pp_term_str tm |> text
+            | Error err -> ParseError.to_string err
+            | Ok tm -> Binding.Nominal.pp_term_str tm
           )
-        ])
         in
+        let other_side = Node.(div [] [ text msg ]) in
         (match side with
         | Left -> mk_textarea Left input_str, other_side
         | Right -> other_side, mk_textarea Right input_str)
