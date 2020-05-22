@@ -20,6 +20,8 @@ module rec DeBruijn : sig
     :  (int * int) String.Map.t
     -> Nominal.term
     -> (term, string) Result.t
+
+  val alpha_equivalent : term -> term -> bool
 end = struct
   type scope = Scope of Pattern.t list * term
 
@@ -87,6 +89,21 @@ end = struct
   ;;
 
   let from_nominal = from_nominal_with_bindings String.Map.empty
+
+  let rec alpha_equivalent = fun t1 t2 ->
+    match t1, t2 with
+      | Operator (h1, subtms1), Operator (h2, subtms2)
+      -> String.(h1 = h2) && (match List.zip subtms1 subtms2 with
+        | Ok zipped -> List.for_all zipped ~f:(fun (Scope (_, body1), Scope (_, body2)) ->
+            alpha_equivalent body1 body2)
+        | Unequal_lengths -> false
+      )
+      | Var (i1, j1), Var (i2, j2)
+      -> i1 = i2 && j1 = j2
+      | Primitive p1, Primitive p2
+      -> Primitive.(p1 = p2)
+      | _, _
+      -> false
 end
 
 and Nominal : sig

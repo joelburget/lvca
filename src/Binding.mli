@@ -23,6 +23,9 @@ module rec DeBruijn : sig
     :  (int * int) Util.String.Map.t
     -> Nominal.term
     -> (term, string) Result.t
+
+  (** Are the two terms equivalent up to variable renaming? *)
+  val alpha_equivalent : term -> term -> bool
 end
 and Nominal : sig
   (** Representation of terms that simply uses variable names to represent scope. *)
