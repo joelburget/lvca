@@ -246,6 +246,20 @@ end = struct
   ;;
 end
 
+module Properties = struct
+  open Nominal
+
+  let round_trip1 : term -> bool
+    = fun t -> match t |> jsonify |> unjsonify with
+      | None -> false
+      | Some t' -> Caml.(t = t')
+
+  let round_trip2 : Util.Json.t -> bool
+    = fun json -> match json |> unjsonify with
+      | None -> false
+      | Some t -> Util.Json.(jsonify t = json)
+end
+
 let%test_module "Nominal" =
   (module struct
     open Nominal

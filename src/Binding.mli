@@ -76,3 +76,8 @@ and Nominal : sig
    *)
   val pattern_to_term : Pattern.t -> Nominal.term
 end
+
+module Properties : sig
+  val round_trip1 : Nominal.term -> bool
+  val round_trip2 : Util.Json.t -> bool
+end

@@ -83,3 +83,15 @@ let rec unjsonify =
   -> Some (Ignored name)
   | _ -> None
   )
+
+module Properties = struct
+  let round_trip1 : t -> bool
+    = fun t -> match t |> jsonify |> unjsonify with
+      | None -> false
+      | Some t' -> t = t'
+
+  let round_trip2 : Util.Json.t -> bool
+    = fun json -> match json |> unjsonify with
+      | None -> false
+      | Some t -> Util.Json.(jsonify t = json)
+end

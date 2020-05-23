@@ -113,6 +113,14 @@ module Json = struct
 
   let array : t array -> t = fun arr -> Array arr
   let string : string -> t = fun str -> String str
+
+  let rec (=) : t -> t -> bool
+    = fun t1 t2 -> match t1, t2 with
+      | String s1, String s2 -> String.(s1 = s2)
+      | Array arr1, Array arr2 -> (match Array.zip arr1 arr2 with
+        | None -> false
+        | Some arr -> Array.for_all arr ~f:(fun (t1, t2) -> t1 = t2))
+      | _, _ -> false
 end
 
 module Sha256 = struct
