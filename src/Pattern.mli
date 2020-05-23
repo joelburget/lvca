@@ -12,3 +12,5 @@ val vars_of_pattern : t -> Util.String.Set.t
 val list_vars_of_pattern : t -> string list
 val to_string : t -> string
 val pp : Format.formatter -> t -> unit
+val jsonify : t -> Util.Json.t
+val unjsonify : Util.Json.t -> t option

@@ -44,9 +44,13 @@ and Nominal : sig
   val pp_scope_str : Nominal.scope -> string
 
   val jsonify : Nominal.term -> Util.Json.t
+  val unjsonify : Util.Json.t -> Nominal.term option
 
   (** Encode (using {{:https://cbor.io} CBOR}) as bytes. *)
   val serialize : Nominal.term -> Bytes.t
+
+  (** Decode from {{:https://cbor.io} CBOR}). *)
+  val deserialize : Bytes.t -> term option
 
   (** The SHA-256 hash of the serialized term. This is useful for content-identifying
    terms. *)

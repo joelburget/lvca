@@ -1,6 +1,7 @@
-module String = Util.String
 module List = Base.List
+module Option = Base.Option
 module Set = Base.Set
+module String = Util.String
 
 type pattern =
   | Operator of string * pattern list
@@ -54,3 +55,31 @@ and pp_pattern_list sep ppf = function
   -> pp ppf pat
   | pat :: pats
   -> Format.fprintf ppf "%a%s %a" pp pat sep (pp_pattern_list sep) pats
+
+let rec jsonify pat =
+  Util.Json.(
+    match pat with
+    | Operator (tag, tms) -> array [|
+      string "o";
+      string tag;
+      tms |> List.map ~f:jsonify |> Array.of_list |> array
+    |]
+    | Primitive p -> array [| string "p"; Primitive.jsonify p |]
+    | Var name -> array [| string "v"; string name |]
+    | Ignored name -> array [| string "_"; string name |])
+
+let rec unjsonify =
+  let open Option.Let_syntax in
+  Util.Json.(function
+  | Array [| String "o"; String tag; Array subtms |] ->
+    let%map subtms' = subtms |> Array.to_list |> List.map ~f:unjsonify |> Option.all in
+    Operator (tag, subtms')
+  | Array [| String "p"; prim |] ->
+    let%map prim' = Primitive.unjsonify prim in
+    Primitive prim'
+  | Array [| String "v"; String name |]
+  -> Some (Var name)
+  | Array [| String "_"; String name |]
+  -> Some (Ignored name)
+  | _ -> None
+  )

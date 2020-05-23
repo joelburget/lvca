@@ -120,8 +120,12 @@ and Nominal : sig
   val pp_scope : Format.formatter -> Nominal.scope -> unit
   val pp_scope_str : Nominal.scope -> string
 
-  val jsonify : Nominal.term -> Json.t
   val serialize : Nominal.term -> Bytes.t
+  val deserialize : Bytes.t -> term option
+
+  val jsonify : Nominal.term -> Json.t
+  val unjsonify : Json.t -> Nominal.term option
+
   val hash : Nominal.term -> string
 
   exception ToPatternScopeEncountered of scope
@@ -160,41 +164,56 @@ end = struct
   let pp_scope_str = str "%a" pp_scope
   let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
 
-  let jsonify_prim =
-    Json.(Primitive.(
-      function
-      | PrimInteger i -> array [| string "i"; string (Bigint.to_string i) |]
-      | PrimString s -> array [| string "s"; string s |]))
-  ;;
-
   let rec jsonify (tm : term) : Json.t =
     Json.(
       match tm with
       | Operator (tag, tms) ->
         array [| string "o"; string tag; array_map jsonify_scope tms |]
       | Var name -> array [| string "v"; string name |]
-      | Primitive p -> array [| string "p"; jsonify_prim p |])
-
-  and jsonify_pat (pat : Pattern.t) : Json.t =
-    Json.(
-      match pat with
-      | Operator (tag, tms) ->
-        array [| string "o"; string tag; array_map jsonify_pat tms |]
-      | Primitive p -> array [| string "p"; jsonify_prim p |]
-      | Var name -> array [| string "v"; string name |]
-      | Ignored name -> array [| string "_"; string name |])
+      | Primitive p -> array [| string "p"; Primitive.jsonify p |])
 
   and jsonify_scope (Scope (pats, body)) : Json.t =
-    Json.(array [| array_map jsonify_pat pats; jsonify body |])
+    Json.(array [| array_map Pattern.jsonify pats; jsonify body |])
   ;;
 
-  (* serialize by converting to JSON then cboring *)
-  let serialize : term -> Bytes.t = fun tm -> tm |> jsonify |> Cbor.encode
+  let rec unjsonify =
+    let open Option.Let_syntax in
+    Json.(function
+    | Array [| String "o"; String tag; Array scopes |]
+    -> let%map scopes' = scopes
+         |> Array.to_list
+         |> List.map ~f:unjsonify_scope
+         |> Option.all
+      in
+      Operator (tag, scopes')
+    | Array [| String "v"; String name |]
+    -> Some (Var name)
+    | Array [| String "p"; prim |]
+    -> let%map prim' = Primitive.unjsonify prim in
+       Primitive prim'
+    | _ -> None)
 
-  (* let deserialize : Bytes.t -> term option = fun buf -> buf |> Cbor.decode |>
-     dejsonify *)
+  and unjsonify_scope = Json.(function
+    | Array [||]
+    -> None
+    | Array arr
+    -> let open Option.Let_syntax in
+       let binders, body = arr |> Array.to_list |> Util.List.unsnoc in
+       let%bind binders' = binders
+         |> List.map ~f:Pattern.unjsonify
+         |> Option.all
+       in
+       let%bind body' = unjsonify body in
+       Some (Scope (binders', body'))
+    | _ -> None
+  )
+  ;;
 
-  let hash tm = Util.Sha256.hash (serialize tm)
+  let serialize = fun tm -> tm |> jsonify |> Cbor.encode
+
+  let deserialize = fun buf -> buf |> Cbor.decode |> Option.bind ~f:unjsonify
+
+  let hash = fun tm -> tm |> serialize |> Util.Sha256.hash
 
   exception ToPatternScopeEncountered of scope
 

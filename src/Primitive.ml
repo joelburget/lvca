@@ -22,3 +22,21 @@ let pp : Format.formatter -> t -> unit
   | PrimInteger i -> Format.fprintf ppf "%s" (Bigint.to_string i)
   | PrimString s -> Format.fprintf ppf "\"%s\"" s
 ;;
+
+let jsonify =
+  Util.Json.(
+    function
+    | PrimInteger i -> array [| string "i"; string (Bigint.to_string i) |]
+    | PrimString s -> array [| string "s"; string s |])
+;;
+
+let unjsonify = Util.Json.(function
+  | Array [| String "i"; String i |]
+  -> (try
+       Some (PrimInteger (Bigint.of_string i))
+      with
+        Failure _ -> None)
+  | Array [| String "s"; String str |]
+  -> Some (PrimString str)
+  | _
+  -> None)
