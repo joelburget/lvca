@@ -15,5 +15,4 @@ module Statics = Statics
 module Term = Term
 
 (* TODO: remove? *)
-module Language = Language
 module Parsing = Parsing
