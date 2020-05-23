@@ -67,10 +67,9 @@ end = struct
     let n = List.length pats in
     let var_nums : (string * (int * int)) list =
       pats
-      |> List.mapi ~f:(fun i pat ->
-             let vars = Pattern.list_vars_of_pattern pat in
-             let twod_indexes = List.init (List.length vars) ~f:(fun j -> i, j) in
-             List.zip_exn vars twod_indexes)
+      |> List.mapi ~f:(fun i pat -> pat
+        |> Pattern.list_vars_of_pattern
+        |> List.mapi ~f:(fun j var -> var, (i, j)))
       |> List.join
     in
     match String.Map.of_alist var_nums with
