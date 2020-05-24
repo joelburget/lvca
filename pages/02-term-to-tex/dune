@@ -1,7 +1,7 @@
 (executables
  (names main)
  (modes js)
- (libraries bonsai.web lvca lvca_web)
+ (libraries lvca lvca_web react js_of_ocaml-tyxml js_of_ocaml-lwt)
  (js_of_ocaml
   (javascript_files "./katex.js"))
  (preprocess

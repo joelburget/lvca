@@ -1,4 +1,3 @@
-open Bonsai_web
 open Core_kernel
 open Js_of_ocaml
 
@@ -44,6 +43,7 @@ type color =
   | Green
   *)
 
+(*
 let textarea
   : contents:string
   -> inject:(TextareaAction.t -> Vdom.Event.t)
@@ -166,3 +166,4 @@ let input
       ; div [ highlight_style ] []
       ; div [ style (Css_gen.font_family ["monospace"]) ] [ result' ]
       ]
+      *)

@@ -7,8 +7,9 @@ open Store
 let commands_abstract_syntax =
   {|
 import {string} from "builtin"
+import {maybe} from "maybe"
 
-maybe(a) := nothing() | just(a)
+// maybe(a) := nothing() | just(a)
 
 sha_or_name := sha(string()) | name(string())
 

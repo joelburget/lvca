@@ -1,9 +1,13 @@
 (** This module contains two equivalent representations for terms: de Bruijn and Nominal.
 
- The two representations each have their strong points. de Bruijn indices are...
+ The two representations each have their strong points.
+
+ de Bruijn indices are especially convenient for deciding alpha-equivalence and renaming
+ variables.
+
+ Nominal terms are simpler both for parsing and pretty printing.
 
  TODO: justify citing a Head-to-Head comparison
-
  *)
 
 module rec DeBruijn : sig
@@ -26,6 +30,9 @@ module rec DeBruijn : sig
 
   (** Are the two terms equivalent up to variable renaming? *)
   val alpha_equivalent : term -> term -> bool
+
+  (** Open a scope, substituting a term for each variable bound by this scope. *)
+  (* val open_scope : scope -> term list -> (term, string) Result.t *)
 end
 and Nominal : sig
   (** Representation of terms that simply uses variable names to represent scope. *)

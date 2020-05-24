@@ -1,6 +1,6 @@
 (library
  (name lvca_web)
- (libraries bonsai.web lvca)
+ (libraries lvca js_of_ocaml-tyxml)
  (js_of_ocaml
   (javascript_files "./codemirror.js"))
  (preprocess

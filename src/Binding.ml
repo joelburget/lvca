@@ -6,12 +6,12 @@ module Json = Util.Json
 module String = Util.String
 
 module rec DeBruijn : sig
-  type scope = Scope of Pattern.t list * term
-
-  and term =
+  type term =
     | Operator of string * scope list
     | Var of int * int
     | Primitive of Primitive.t
+
+  and scope = Scope of Pattern.t list * term
 
   val to_nominal : term -> Nominal.term option
   val from_nominal : Nominal.term -> (term, string) Result.t
@@ -22,13 +22,15 @@ module rec DeBruijn : sig
     -> (term, string) Result.t
 
   val alpha_equivalent : term -> term -> bool
-end = struct
-  type scope = Scope of Pattern.t list * term
 
-  and term =
+  (* val open_scope : scope -> term list -> (term, string) Result.t *)
+end = struct
+  type term =
     | Operator of string * scope list
     | Var of int * int
     | Primitive of Primitive.t
+
+  and scope = Scope of Pattern.t list * term
 
   let rec to_nominal' ctx = function
     | Var (ix1, ix2) ->
@@ -103,6 +105,41 @@ end = struct
       -> Primitive.(p1 = p2)
       | _, _
       -> false
+
+  (*
+  let open_scope = fun (Scope (binders, body)) args ->
+    let binder_vars = binders
+      |> List.mapi
+
+
+    let rec go target_index tm = match tm with
+      | Var (index, offset)
+      -> if index = target_index
+         then match List.nth args offset with
+           | None -> Util.invariant_violation (Printf.sprintf
+             "Invalid variable offset %n (only %n args supplied)"
+             offset
+             (List.length args)
+           )
+           | Some arg -> arg
+         else tm
+      | Primitive _
+      -> tm
+      (* XXX need to do something special for patterns *)
+      | Operator (name, scopes) ->
+        let scopes' = List.map scopes
+          ~f:(fun (Scope (binders', body')) -> Scope (binders', go (target_index + 1)
+          body'))
+        in Operator (name, scopes')
+    in
+
+    if List.(length binders <> length args)
+    then Error (Printf.sprintf "Invalid scope opening: %n args supplied, %n expected"
+      (List.length args)
+      (List.length binders)
+    )
+    else Ok (go 0 body)
+    *)
 end
 
 and Nominal : sig
