@@ -19,7 +19,7 @@ end
 module type INCREMENTAL = sig
   type t
 
-  val parse : string -> (t, string) Result.t
+  val parse : string -> (t, ParseError.t) Result.t
 end
 
 module Incremental (M : Parseable) = struct
@@ -72,6 +72,22 @@ module Parseable_term : Parseable with type t = Binding.Nominal.term = struct
   end
 end
 
+module NonBindingTerm : INCREMENTAL with type t = NonBinding.term = struct
+  module TermP = Incremental (Parseable_term)
+  type t = NonBinding.term
+
+  let parse str =
+      let open Base.Result.Let_syntax in
+      let%bind tm = TermP.parse str in
+      match NonBinding.from_nominal tm with
+        | None -> Error (ParseError.{
+          start_pos = Position.zero_pos;
+          end_pos = Position.zero_pos;
+          message = "This term was expected to be non-binding but contains binders";
+        }) (* TODO: pos *)
+        | Some nbtm -> Ok nbtm
+end
+
 module Parseable_abstract_syntax : Parseable with type t = AbstractSyntax.t = struct
   type t = AbstractSyntax.t
 
@@ -120,8 +136,8 @@ module Parseable_core_term : Parseable with type t = Core.Types.term = struct
   end
 end
 
-module Term = Incremental (Parseable_term)
 module AbstractSyntax = Incremental (Parseable_abstract_syntax)
+module Term = Incremental (Parseable_term)
 module Statics = Incremental (Parseable_statics)
 module CoreModule = Incremental (Parseable_core_module)
 module CoreTerm = Incremental (Parseable_core_term)
