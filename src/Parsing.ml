@@ -18,6 +18,7 @@ end
 
 module type INCREMENTAL = sig
   type t
+  type parse_result = (t, ParseError.t) Result.t
 
   val parse : string -> (t, ParseError.t) Result.t
 end
@@ -75,6 +76,7 @@ end
 module NonBindingTerm : INCREMENTAL with type t = NonBinding.term = struct
   module TermP = Incremental (Parseable_term)
   type t = NonBinding.term
+  type parse_result = (t, ParseError.t) Result.t
 
   let parse str =
       let open Base.Result.Let_syntax in
