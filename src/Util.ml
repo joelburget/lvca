@@ -110,9 +110,11 @@ module Json = struct
   type t =
     | String of string
     | Array of t array
+    | Float of float
 
   let array : t array -> t = fun arr -> Array arr
   let string : string -> t = fun str -> String str
+  let float : float -> t = fun f -> Float f
 
   let rec (=) : t -> t -> bool
     = fun t1 t2 -> match t1, t2 with
@@ -120,6 +122,7 @@ module Json = struct
       | Array arr1, Array arr2 -> (match Array.zip arr1 arr2 with
         | None -> false
         | Some arr -> Array.for_all arr ~f:(fun (t1, t2) -> t1 = t2))
+      | Float f1, Float f2 -> Float.(f1 = f2)
       | _, _ -> false
 end
 
@@ -136,6 +139,7 @@ module Cbor = struct
   let rec of_json : Json.t -> CBOR.Simple.t = function
     | String str -> `Text str
     | Array arr -> `Array (arr |> Array.map ~f:of_json |> Array.to_list)
+    | Float f -> `Float f
   ;;
 
   let rec to_json : CBOR.Simple.t -> Json.t option = function
@@ -145,6 +149,7 @@ module Cbor = struct
       |> Base.List.map ~f:to_json
       |> Base.Option.all
       |> Base.Option.map ~f:(fun lst -> Json.Array (Array.of_list lst))
+    | `Float f -> Some (Float f)
     | _ -> None
   ;;
 

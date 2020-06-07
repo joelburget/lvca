@@ -3,16 +3,19 @@
 type t =
   | PrimInteger of Bigint.t
   | PrimString of string
+  | PrimFloat of float
 
 let to_string = function
   | PrimInteger i -> Bigint.to_string i
   | PrimString str -> "\"" ^ Caml.String.escaped str ^ "\""
+  | PrimFloat f -> Float.to_string f
 ;;
 
 let (=) p1 p2 =
   match p1, p2 with
   | PrimInteger i1, PrimInteger i2 -> Bigint.(i1 = i2) [@warning "-44"]
   | PrimString s1, PrimString s2 -> s1 = s2
+  | PrimFloat f1, PrimFloat f2 -> f1 = f2
   | _ -> false
 ;;
 
@@ -21,13 +24,15 @@ let pp : Format.formatter -> t -> unit
   = fun ppf -> function
   | PrimInteger i -> Format.fprintf ppf "%s" (Bigint.to_string i)
   | PrimString s -> Format.fprintf ppf "\"%s\"" s
+  | PrimFloat f -> Format.fprintf ppf "%f" f
 ;;
 
 let jsonify =
   Util.Json.(
     function
     | PrimInteger i -> array [| string "i"; string (Bigint.to_string i) |]
-    | PrimString s -> array [| string "s"; string s |])
+    | PrimString s -> array [| string "s"; string s |]
+    | PrimFloat f -> array [| string "f"; float f |])
 ;;
 
 let unjsonify = Util.Json.(function
