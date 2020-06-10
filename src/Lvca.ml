@@ -12,7 +12,5 @@ module ParseError = ParseError
 module Primitive = Primitive
 module Statics = Statics
 
-module Term = Term
-
 (* TODO: remove? *)
 module Parsing = Parsing

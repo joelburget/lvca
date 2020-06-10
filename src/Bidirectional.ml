@@ -294,9 +294,9 @@ let%test_module "bidirectional tests" =
 
     let parse_cvt : string -> term
       = fun str ->
-      let tm = match Parsing.Term.parse str with
+      let tm = match Angstrom.parse_string ~consume:All Binding.Nominal.parse str with
         | Ok tm -> tm
-        | Error err -> failwith (ParseError.to_string err)
+        | Error err -> failwith err
       in
       let tm' =
         match Binding.DeBruijn.from_nominal tm with

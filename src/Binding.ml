@@ -169,6 +169,8 @@ and Nominal : sig
   val to_pattern_exn : Nominal.term -> Pattern.t
   val to_pattern : Nominal.term -> (Pattern.t, scope) Result.t
   val pattern_to_term : Pattern.t -> Nominal.term
+
+  val parse : Nominal.term Angstrom.t
 end = struct
   type scope = Scope of Pattern.t list * term
 
@@ -281,20 +283,50 @@ end = struct
     | Var name -> Var name
     | Ignored name -> Var ("_" ^ name)
   ;;
+
+  let parse : Nominal.term Angstrom.t
+    = let char', identifier, parens = Util.Angstrom.(char', identifier, parens) in
+      let open Angstrom in
+      fix (fun term ->
+        let scope = sep_by1 (char' '.') term >>| fun scope_tms ->
+          let binders_tms, body = Util.List.unsnoc scope_tms in
+          let binders_pats = Base.List.map binders_tms ~f:to_pattern_exn in
+          Scope (binders_pats, body)
+        in
+        choice
+          [ Primitive.parse >>| (fun prim -> Primitive prim)
+          ; identifier >>= fun ident -> choice
+            [ (* ;-separated scopes, with an optional trailing ; *)
+              parens (sep_by (char' ';') scope <* option ';' (char' ';'))
+                >>| (fun scopes -> Operator (ident, scopes))
+            ; return (Var ident)
+            ]
+          ]
+      ) <?> "term"
 end
 
 module Properties = struct
   open Nominal
 
-  let round_trip1 : term -> bool
+  let json_round_trip1 : term -> bool
     = fun t -> match t |> jsonify |> unjsonify with
       | None -> false
       | Some t' -> Caml.(t = t')
 
-  let round_trip2 : Util.Json.t -> bool
+  let json_round_trip2 : Util.Json.t -> bool
     = fun json -> match json |> unjsonify with
       | None -> false
       | Some t -> Util.Json.(jsonify t = json)
+
+  let string_round_trip1 : term -> bool
+    = fun t -> match t |> pp_term_str |> Angstrom.parse_string ~consume:All parse with
+      | Ok prim -> Caml.(prim = t)
+      | Error _ -> false
+
+  let string_round_trip2 : string -> bool
+    = fun str -> match Angstrom.parse_string ~consume:All parse str with
+      | Ok prim -> let str' = pp_term_str prim in Base.String.(str' = str)
+      | Error _ -> true (* malformed input *)
 end
 
 let%test_module "Nominal" =
@@ -403,3 +435,52 @@ let%test_module "Nominal" =
     let%test _ = pattern_to_term (Ignored "") = Var "_"
   end)
 ;;
+
+let%test_module "TermParser" = (module struct
+  let (=) = Caml.(=)
+  open Nominal
+  let parse = Angstrom.(parse_string ~consume:All
+    (Util.Angstrom.whitespace *> Nominal.parse))
+
+  let%test _ = parse "x" = Ok (Var "x")
+  let%test _ = parse "123" = Ok (Primitive (PrimInteger (Bigint.of_int 123)))
+  let%test _ = parse "\"abc\"" = Ok (Primitive (PrimString "abc"))
+
+  let x = Var "x"
+  let t = Operator ("true", [])
+
+  let%test _ =
+    parse "lam(x. x)" = Ok (Operator ("lam", [ Scope ([ Var "x" ], x) ]))
+
+  let match_line a b = Operator ("match_line", [ Scope ([a], b) ])
+  let match_lines subtms = Operator
+    ( "match_lines"
+    , Base.List.map subtms ~f:(fun tm -> Scope ([], tm))
+    )
+
+  let%test _ = parse {| match() |} = Ok (Operator ("match", []))
+  let%test _ = parse {| match(x; x) |} =
+    Ok (Operator ("match", [ Scope ([], x); Scope ([], x) ]))
+  let%test _ = parse {| match(true(); true()) |} =
+    Ok (Operator ("match", [ Scope ([], t); Scope ([], t) ]))
+
+  let%test _ = parse {| match(x;) |} = Ok (Operator ("match", [ Scope ([], x) ]))
+
+  let%test _ =
+    parse {|
+    match(x; match_lines(
+      match_line(foo(). true());
+      match_line(bar(_; _x; y). y)
+    )) |}
+    =
+    Ok (Operator ("match", [
+      Scope ([], x);
+      Scope ([], match_lines [
+        match_line (Pattern.Operator ("foo", [])) (Operator ("true", []));
+        match_line
+          (Pattern.Operator ("bar", [Ignored ""; Ignored "x"; Var "y"]))
+          (Var "y");
+      ]);
+    ]))
+
+end);;

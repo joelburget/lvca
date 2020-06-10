@@ -82,9 +82,13 @@ and Nominal : sig
     For example [add(lit(1)); a)] (as a pattern) can be converted to a term.
    *)
   val pattern_to_term : Pattern.t -> Nominal.term
+
+  val parse : Nominal.term Angstrom.t
 end
 
 module Properties : sig
-  val round_trip1 : Nominal.term -> bool
-  val round_trip2 : Util.Json.t -> bool
+  val json_round_trip1 : Nominal.term -> bool
+  val json_round_trip2 : Util.Json.t -> bool
+  val string_round_trip1 : Nominal.term -> bool
+  val string_round_trip2 : string -> bool
 end

@@ -349,11 +349,13 @@ let%test_module "CheckTerm" = (module struct
   let as_parser = AbstractSyntax.Parser.language_def
   let as_lexer = AbstractSyntax.Lexer.read
 
-  let term_parser = Term_Parser.top_term
-  let term_lexer = Term_Lexer.read
-
   let parse_lang lang_str = as_parser as_lexer (Lexing.from_string lang_str)
-  let parse_term term_str = term_parser term_lexer (Lexing.from_string term_str)
+  let parse_term term_str =
+    match
+      Angstrom.parse_string ~consume:All Binding.Nominal.parse term_str
+    with
+      | Ok tm -> tm
+      | Error msg -> failwith msg
 
   let lang_desc =
       {|
@@ -361,21 +363,21 @@ import {integer} from "builtins"
 
 value :=
   | unit()
-  | lit-int(integer())
-  | lit-str(string())
+  | lit_int(integer())
+  | lit_str(string())
   | list(list(value()))
 
 list(a) :=
   | nil()
   | cons(a; list(a))
 
-match-line :=
-  | match-line(value()*. term())
+match_line :=
+  | match_line(value()*. term())
 
 term :=
   | lambda(value(). term())
-  | alt-lambda(term(). term())
-  | match(match-line()*)
+  | alt_lambda(term(). term())
+  | match(match_line()*)
   | value(value())
 
 test := foo(term()*. term())
@@ -401,11 +403,11 @@ test := foo(term()*. term())
     [%expect]
 
   let%expect_test _ =
-    check_pattern' "value()" "lit-int(1)";
+    check_pattern' "value()" "lit_int(1)";
     [%expect]
 
   let%expect_test _ =
-    check_pattern' "value()" {|lit-str("str")|};
+    check_pattern' "value()" {|lit_str("str")|};
     [%expect]
 
   let%expect_test _ =
@@ -438,7 +440,7 @@ test := foo(term()*. term())
     [%expect]
 
   let%expect_test _ =
-    check_pattern' "match-line()" "match-line(a)";
+    check_pattern' "match_line()" "match_line(a)";
     [%expect]
 
   let%expect_test _ =
@@ -489,11 +491,11 @@ test := foo(term()*. term())
   let%expect_test _ =
     check_term' "term()"
     {|match(
-        match-line(
+        match_line(
           list(cons(a; nil())).
           value(list(cons(a; cons(a; nil()))))
         );
-        match-line(_. value(list(nil())))
+        match_line(_. value(list(nil())))
       )
     |};
     [%expect]
@@ -514,28 +516,28 @@ test := foo(term()*. term())
         term: b, sort: term() |}]
 
   let%expect_test _ =
-    check_term' "term()" "lambda(val. alt-lambda(tm. val))";
+    check_term' "term()" "lambda(val. alt_lambda(tm. val))";
     [%expect {|
       Variable val has unexpected valence (saw: value()) (expected: term())
       stack:
-        term: lambda(val. alt-lambda(tm. val)), sort: term()
-        term: alt-lambda(tm. val), sort: term()
+        term: lambda(val. alt_lambda(tm. val)), sort: term()
+        term: alt_lambda(tm. val), sort: term()
         term: val, sort: term() |}]
 
   let%expect_test _ =
-    check_term' "value()" {|lit-int("foo")|};
+    check_term' "value()" {|lit_int("foo")|};
     [%expect {|
       Unexpected primitive sort
       stack:
-        term: lit-int("foo"), sort: value()
+        term: lit_int("foo"), sort: value()
         term: "foo", sort: integer() |}]
 
   let%expect_test _ =
-    check_term' "value()" "lit-str(123)";
+    check_term' "value()" "lit_str(123)";
     [%expect {|
       Unexpected primitive sort
       stack:
-        term: lit-str(123), sort: value()
+        term: lit_str(123), sort: value()
         term: 123, sort: string() |}]
 
   let%expect_test _ =
@@ -546,25 +548,25 @@ test := foo(term()*. term())
         term: lambda(a; b), sort: term() |}]
 
   let%expect_test _ =
-    check_term' "value()" "lit-int(1; 2)";
+    check_term' "value()" "lit_int(1; 2)";
     [%expect {|
       Wrong number of subterms (2) for this arity (integer())
       stack:
-        term: lit-int(1; 2), sort: value() |}]
+        term: lit_int(1; 2), sort: value() |}]
 
   let%expect_test _ =
-    check_term' "match-line()" "match-line(a. b. value(a))";
+    check_term' "match_line()" "match_line(a. b. value(a))";
     [%expect {|
       Expected exactly one binder for a variable valence (value()*. term()) term (multiple variables are bound in the pattern), saw 2
       stack:
-        term: match-line(a. b. value(a)), sort: match-line() |}]
+        term: match_line(a. b. value(a)), sort: match_line() |}]
 
   let%expect_test _ =
-    check_term' "match-line()" "match-line(a. a)";
+    check_term' "match_line()" "match_line(a. a)";
     [%expect{|
       Variable a has unexpected valence (saw: value()) (expected: term())
       stack:
-        term: match-line(a. a), sort: match-line()
+        term: match_line(a. a), sort: match_line()
         term: a, sort: term() |}]
 
   let%expect_test _ =
@@ -584,7 +586,7 @@ test := foo(term()*. term())
   let%expect_test _ =
     check_term' "term()" "match(a. a)";
     [%expect {|
-      Unexpectedly found a binder where terms were expected (variable arity: match-line()*)
+      Unexpectedly found a binder where terms were expected (variable arity: match_line()*)
       stack:
         term: match(a. a), sort: term() |}]
 

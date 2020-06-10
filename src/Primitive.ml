@@ -19,6 +19,18 @@ let (=) p1 p2 =
   | _ -> false
 ;;
 
+let parse : t Angstrom.t
+  = let open Angstrom in
+    let integer_or_float_lit, string_lit =
+      Util.Angstrom.(integer_or_float_lit, string_lit)
+    in
+    choice
+      [ integer_or_float_lit >>| (function
+          | First i -> PrimInteger (Bigint.of_string i)
+          | Second f -> PrimFloat f)
+      ; string_lit >>| (fun s -> PrimString s)
+      ] <?> "primitive"
+
 (** Primitive pretty-printer. *)
 let pp : Format.formatter -> t -> unit
   = fun ppf -> function
@@ -47,13 +59,32 @@ let unjsonify = Util.Json.(function
   -> None)
 
 module Properties = struct
-  let round_trip1 : t -> bool
+  let json_round_trip1 : t -> bool
     = fun t -> match t |> jsonify |> unjsonify with
       | None -> false
       | Some t' -> t = t'
 
-  let round_trip2 : Util.Json.t -> bool
+  let json_round_trip2 : Util.Json.t -> bool
     = fun json -> match json |> unjsonify with
-      | None -> false
+      | None -> true (* malformed input *)
       | Some t -> Util.Json.(jsonify t = json)
+
+  let string_round_trip1 : t -> bool
+    = fun t -> match t |> to_string |> Angstrom.parse_string ~consume:All parse with
+      | Ok prim -> prim = t
+      | Error _ -> false
+
+  let string_round_trip2 : string -> bool
+    = fun str -> match Angstrom.parse_string ~consume:All parse str with
+      | Ok prim -> let str' = to_string prim in Base.String.(str' = str)
+      | Error _ -> true (* malformed input *)
 end
+
+let%test_module "Parsing" = (module struct
+  let (=) = Caml.(=)
+  let parse' = Angstrom.parse_string ~consume:All parse
+
+  let%test _ = parse' "123" = Ok (PrimInteger (Bigint.of_int 123))
+  let%test _ = parse' {|"abc"|} = Ok (PrimString "abc")
+  let%test _ = parse' "1.1" = Ok (PrimFloat 1.1)
+end);;
