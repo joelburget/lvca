@@ -258,26 +258,26 @@ let%test_module "bidirectional tests" =
     let statics_str =
       {|
 
-  ----------------------- (infer true)
+  ----------------------- (infer_true)
   ctx >> true() => bool()
 
-  ------------------------ (infer false)
+  ------------------------ (infer_false)
   ctx >> false() => bool()
 
   ctx >> tm1 => arr(ty1; ty2)   ctx >> tm2 <= ty1
-  ----------------------------------------------- (infer app)
+  ----------------------------------------------- (infer_app)
             ctx >> app(tm1; tm2) => ty2
 
       ctx, x : ty1 >> body <= ty2
-  ------------------------------------ (check lam)
+  ------------------------------------ (check_lam)
   ctx >> lam(x. body) <= arr(ty1; ty2)
 
        ctx >> tm <= ty
-  -------------------------- (infer annot)
+  -------------------------- (infer_annot)
   ctx >> annot(tm; ty) => ty
 
   ctx >> t1 <= bool()  ctx >> t2 => ty  ctx >> t3 => ty
-  ----------------------------------------------------- (infer ite)
+  ----------------------------------------------------- (infer_ite)
              ctx >> ite(t1; t2; t3) => ty
 
   ctx >> tm => ty
@@ -286,10 +286,18 @@ let%test_module "bidirectional tests" =
   |}
     ;;
 
+    module Parse = Statics.Parse(struct
+      let comment = Angstrom.fail "no comment"
+    end);;
+
     let statics =
-      match Parsing.Statics.parse statics_str with
-      | Ok statics -> statics
-      | Error err -> failwith (ParseError.to_string err)
+      match
+        Angstrom.parse_string ~consume:All
+          Angstrom.(Util.Angstrom.whitespace *> Parse.t)
+          statics_str
+      with
+        | Ok statics -> statics
+        | Error err -> failwith err
     ;;
 
     let parse_cvt : string -> term
