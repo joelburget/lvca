@@ -3,7 +3,7 @@
 type abstract_syntax_check_failure_frame =
   { term : (Pattern.t, Binding.Nominal.term) Base.Either.t
   (** Term that failed to check *)
-  ; sort : AbstractSyntax.Types.sort
+  ; sort : AbstractSyntax.sort
   (** Sort it failed to check against *)
   }
 
@@ -33,10 +33,10 @@ val pp_failure : Format.formatter -> abstract_syntax_check_failure -> unit
  + Patterns can't see valence: they can only bind subterms with some given valence.
  *)
 val check_pattern
-  :  AbstractSyntax.Types.t (** Abstract syntax *)
-  -> AbstractSyntax.Types.sort (** Sort to check pattern against *)
+  :  AbstractSyntax.t (** Abstract syntax *)
+  -> AbstractSyntax.sort (** Sort to check pattern against *)
   -> Pattern.t
-  -> (AbstractSyntax.Types.valence Util.String.Map.t, abstract_syntax_check_failure)
+  -> (AbstractSyntax.valence Util.String.Map.t, abstract_syntax_check_failure)
     Result.t
 
 (** Check that the given term matches the given sort.
@@ -54,7 +54,7 @@ val check_pattern
    + Variable-valence terms must have one binder, a pattern.
  *)
 val check_term
-  :  AbstractSyntax.Types.t (** Abstract syntax *)
-  -> AbstractSyntax.Types.sort (** Sort to check term against *)
+  :  AbstractSyntax.t (** Abstract syntax *)
+  -> AbstractSyntax.sort (** Sort to check term against *)
   -> Binding.Nominal.term
   -> abstract_syntax_check_failure option

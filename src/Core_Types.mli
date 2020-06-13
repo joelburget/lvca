@@ -35,7 +35,7 @@ type core_defn =
   ; defn : term
   }
 
-type import = AbstractSyntax.Types.import
+type import = AbstractSyntax.import
 
 type core_module = CoreModule of import list * core_defn list
 

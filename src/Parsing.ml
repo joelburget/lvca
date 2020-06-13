@@ -61,18 +61,6 @@ module Incremental (M : Parseable) = struct
   ;;
 end
 
-module Parseable_abstract_syntax : Parseable with type t = AbstractSyntax.t = struct
-  type t = AbstractSyntax.t
-
-  module MenhirInterpreter = AbstractSyntax.Parser.MenhirInterpreter
-  module ParseErrors = AbstractSyntax.ParseErrors
-  module Lexer = AbstractSyntax.Lexer
-
-  module Parser = struct
-    let parse = AbstractSyntax.Parser.Incremental.language_def
-  end
-end
-
 module Parseable_statics : Parseable with type t = Statics.rule list = struct
   type t = Statics.rule list
 
@@ -109,7 +97,6 @@ module Parseable_core_term : Parseable with type t = Core.Types.term = struct
   end
 end
 
-module AbstractSyntax = Incremental (Parseable_abstract_syntax)
 module Statics = Incremental (Parseable_statics)
 module CoreModule = Incremental (Parseable_core_module)
 module CoreTerm = Incremental (Parseable_core_term)

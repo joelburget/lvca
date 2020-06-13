@@ -1,8 +1,7 @@
 open Base
 module Format = Caml.Format
 
-open AbstractSyntax_Types
-module Types = AbstractSyntax_Types
+open AbstractSyntax
 module Nominal = Binding.Nominal
 
 type abstract_syntax_check_failure_frame =
@@ -35,7 +34,7 @@ let pp_failure : Format.formatter -> abstract_syntax_check_failure -> unit
       )
     )
 
-let rec concretize_sort : sort String.Map.t -> sort -> sort
+let rec concretize_sort : sort Util.String.Map.t -> sort -> sort
   = fun env -> function
     | SortAp (name, sub_sorts) -> SortAp
       ( name
@@ -45,7 +44,7 @@ let rec concretize_sort : sort String.Map.t -> sort -> sort
     -> Map.find env name
       |> Util.Option.get_invariant (fun () -> "concretize_sort: unknown variable " ^ name)
 
-let concretize_valence : sort String.Map.t -> valence -> valence
+let concretize_valence : sort Util.String.Map.t -> valence -> valence
   = fun env -> function
     | FixedValence (binding_sorts, body_sort) -> FixedValence
       ( List.map binding_sorts ~f:(concretize_sort env)
@@ -55,7 +54,7 @@ let concretize_valence : sort String.Map.t -> valence -> valence
     -> VariableValence
       (concretize_sort env bound_sort, concretize_sort env body_sort)
 
-let concretize_arity : sort String.Map.t -> arity -> arity
+let concretize_arity : sort Util.String.Map.t -> arity -> arity
   = fun env -> function
     | FixedArity valences
     -> FixedArity (List.map valences ~f:(concretize_valence env))
@@ -63,7 +62,7 @@ let concretize_arity : sort String.Map.t -> arity -> arity
     -> VariableArity (concretize_sort env sort)
 
 let lookup_operator
-  :  Types.t
+  :  AbstractSyntax.t
   -> sort_name
   -> string (* operator_name *)
   -> (string list * operator_def) option
@@ -77,20 +76,20 @@ let lookup_operator
 
 (* Check that this pattern is valid and return the valence for each variable it binds *)
 let check_pattern
-  :  Types.t
+  :  AbstractSyntax.t
   -> sort
   -> Pattern.t
-  -> (valence String.Map.t, abstract_syntax_check_failure) Result.t
+  -> (valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
   = fun lang ->
     let lookup_operator' = lookup_operator lang in
 
     let go_primitive
       : sort
       -> Primitive.t
-      -> (valence String.Map.t, abstract_syntax_check_failure) Result.t
+      -> (valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
       = fun sort prim -> match prim, sort with
         | PrimString _, SortAp ("string", [])
-        | PrimInteger _, SortAp ("integer", []) -> Ok String.Map.empty
+        | PrimInteger _, SortAp ("integer", []) -> Ok Util.String.Map.empty
         | _, _ -> Error (err (Printf.sprintf
           "Unexpected sort (%s) for a primitive (%s)"
           (string_of_sort sort) (Primitive.to_string prim)
@@ -100,11 +99,11 @@ let check_pattern
     let rec go_pattern
       :  sort
       -> Pattern.t
-      -> (valence String.Map.t, abstract_syntax_check_failure) Result.t
+      -> (valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
       = fun sort pat ->
         let result = match pat with
-          | Var name -> Ok (String.Map.singleton name (FixedValence ([], sort)))
-          | Ignored _ -> Ok String.Map.empty
+          | Var name -> Ok (Util.String.Map.singleton name (FixedValence ([], sort)))
+          | Ignored _ -> Ok Util.String.Map.empty
           | Primitive prim -> go_primitive sort prim
           | Operator (op_name, subpats) -> match sort with
             | SortVar _ -> Util.invariant_violation "check_pattern: non-concrete sort"
@@ -114,7 +113,7 @@ let check_pattern
                 op_name sort_name
               ))
               | Some (sort_vars, OperatorDef (_, arity)) ->
-                let sort_env = String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in
+                let sort_env = Util.String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in
                 go_arity_pat (concretize_arity sort_env arity) subpats
             )
         in
@@ -126,7 +125,7 @@ let check_pattern
     and go_arity_pat
       :  arity
       -> Pattern.t list
-      -> (valence String.Map.t, abstract_syntax_check_failure) Result.t
+      -> (valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
       = fun arity pats -> match arity with
         | FixedArity valences -> go_fixed_arity_pat valences pats
         | VariableArity sort -> go_variable_arity_pat sort pats
@@ -134,7 +133,7 @@ let check_pattern
     and go_fixed_arity_pat
       :  valence list
       -> Pattern.t list
-      -> (valence String.Map.t, abstract_syntax_check_failure) Result.t
+      -> (valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
       = fun valences pats -> match List.zip pats valences with
         | Unequal_lengths
         -> Error (err (Printf.sprintf
@@ -148,8 +147,8 @@ let check_pattern
             |> List.map
               ~f:(fun (pat, valence) -> match pat, valence with
                 (* The only thing that can match with a non-sort valence is a var *)
-                | Var name, _ -> Ok (String.Map.singleton name valence)
-                | Ignored _, _ -> Ok String.Map.empty
+                | Var name, _ -> Ok (Util.String.Map.singleton name valence)
+                | Ignored _, _ -> Ok Util.String.Map.empty
 
                 (* For anything else matching a sort we defer to go_pattern *)
                 | _, FixedValence ([], sort) -> go_pattern sort pat
@@ -175,7 +174,7 @@ let check_pattern
     and go_variable_arity_pat
       :  sort
       -> Pattern.t list
-      -> (valence String.Map.t, abstract_syntax_check_failure) Result.t
+      -> (valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
       = fun sort subterms ->
         let open Result.Let_syntax in
         let%bind result = subterms
@@ -198,7 +197,7 @@ let check_pattern
  This recursively checks subterms and patterns.
  *)
 let check_term
-  :  Types.t (** Abstract syntax *)
+  :  AbstractSyntax.t (** Abstract syntax *)
   -> sort (** Sort to check term against *)
   -> Nominal.term
   -> abstract_syntax_check_failure option
@@ -208,7 +207,7 @@ let check_term
     let check_pattern' = check_pattern lang in
 
     let rec go
-      :  valence String.Map.t (* mapping from variable name to its sort *)
+      :  valence Util.String.Map.t (* mapping from variable name to its sort *)
       -> sort
       -> Nominal.term
       -> abstract_syntax_check_failure option
@@ -247,7 +246,7 @@ let check_term
                 operator_name sort_name
             ))
             | Some (vars, OperatorDef (_, arity)) ->
-              let sort_env = String.Map.of_alist_exn (List.zip_exn vars sort_args) in
+              let sort_env = Util.String.Map.of_alist_exn (List.zip_exn vars sort_args) in
               let concrete_arity = concretize_arity sort_env arity in
               go_arity var_valences concrete_arity op_scopes
           )
@@ -259,7 +258,7 @@ let check_term
           })
 
     and go_arity
-      :  valence String.Map.t
+      :  valence Util.String.Map.t
       -> arity
       -> Nominal.scope list
       -> abstract_syntax_check_failure option
@@ -268,7 +267,7 @@ let check_term
         | VariableArity sort -> go_variable_arity var_valences sort scopes
 
     and go_fixed_arity
-      :  valence String.Map.t
+      :  valence Util.String.Map.t
       -> valence list
       -> Nominal.scope list
       -> abstract_syntax_check_failure option
@@ -282,7 +281,7 @@ let check_term
           ~f:(fun (scope, valence) -> go_scope var_valences valence scope)
 
     and go_variable_arity
-      :  valence String.Map.t
+      :  valence Util.String.Map.t
       -> sort
       -> Nominal.scope list
       -> abstract_syntax_check_failure option
@@ -297,7 +296,7 @@ let check_term
         )
 
     and go_scope
-      :  valence String.Map.t
+      :  valence Util.String.Map.t
       -> valence
       -> Nominal.scope
       -> abstract_syntax_check_failure option
@@ -305,7 +304,7 @@ let check_term
 
         (* Check the body with the new binders environment *)
         let go_body body_sort
-          (binders_env : ((valence String.Map.t, abstract_syntax_check_failure) Result.t) list)
+          (binders_env : ((valence Util.String.Map.t, abstract_syntax_check_failure) Result.t) list)
           = match Result.all binders_env with
           | Error err -> Some err
           | Ok binders_env' -> match Util.String.Map.strict_unions binders_env' with
@@ -343,16 +342,29 @@ let check_term
           ))
     in
 
-    go String.Map.empty
+    go Util.String.Map.empty
 
 let%test_module "CheckTerm" = (module struct
-  let as_parser = AbstractSyntax.Parser.language_def
-  let as_lexer = AbstractSyntax.Lexer.read
+  module AbstractSyntaxParse = AbstractSyntax.Parse(struct
+    let comment = Angstrom.fail "no comment"
+  end)
 
-  let parse_lang lang_str = as_parser as_lexer (Lexing.from_string lang_str)
+  let parse_lang lang_str =
+    match
+      Angstrom.parse_string ~consume:All
+        Angstrom.(Util.Angstrom.whitespace *> AbstractSyntaxParse.t)
+        lang_str
+    with
+      | Ok tm -> tm
+      | Error msg -> failwith msg
+
+  module NominalParse = Binding.Nominal.Parse(struct
+    let comment = Angstrom.fail "no comment"
+  end)
+
   let parse_term term_str =
     match
-      Angstrom.parse_string ~consume:All Binding.Nominal.parse term_str
+      Angstrom.parse_string ~consume:All NominalParse.t term_str
     with
       | Ok tm -> tm
       | Error msg -> failwith msg

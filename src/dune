@@ -6,8 +6,8 @@
   (pps ppx_jane)))
 
 (ocamllex
- (modules AbstractSyntax_Lexer Core_Lexer Statics_Lexer))
+ (modules Core_Lexer Statics_Lexer))
 
 (menhir
- (modules AbstractSyntax_Parser Core_Parser Statics_Parser)
+ (modules Core_Parser Statics_Parser)
  (flags :standard --table))

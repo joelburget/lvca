@@ -19,17 +19,20 @@ let (=) p1 p2 =
   | _ -> false
 ;;
 
-let parse : t Angstrom.t
-  = let open Angstrom in
-    let integer_or_float_lit, string_lit =
-      Util.Angstrom.(integer_or_float_lit, string_lit)
-    in
-    choice
-      [ integer_or_float_lit >>| (function
-          | First i -> PrimInteger (Bigint.of_string i)
-          | Second f -> PrimFloat f)
-      ; string_lit >>| (fun s -> PrimString s)
-      ] <?> "primitive"
+module Parse (C : Util.Angstrom.Comment_int) = struct
+  module Parsers = Util.Angstrom.Mk(C)
+
+  let t : t Angstrom.t
+    = let open Angstrom in
+      let integer_or_float_lit, string_lit = Parsers.(integer_or_float_lit, string_lit)
+      in
+      choice
+        [ integer_or_float_lit >>| (function
+            | First i -> PrimInteger (Bigint.of_string i)
+            | Second f -> PrimFloat f)
+        ; string_lit >>| (fun s -> PrimString s)
+        ] <?> "primitive"
+end
 
 (** Primitive pretty-printer. *)
 let pp : Format.formatter -> t -> unit
@@ -69,20 +72,24 @@ module Properties = struct
       | None -> true (* malformed input *)
       | Some t -> Util.Json.(jsonify t = json)
 
+  module Parse' = Parse(struct
+    let comment = Angstrom.fail "no comment"
+  end)
+
   let string_round_trip1 : t -> bool
-    = fun t -> match t |> to_string |> Angstrom.parse_string ~consume:All parse with
+    = fun t -> match t |> to_string |> Angstrom.parse_string ~consume:All Parse'.t with
       | Ok prim -> prim = t
       | Error _ -> false
 
   let string_round_trip2 : string -> bool
-    = fun str -> match Angstrom.parse_string ~consume:All parse str with
+    = fun str -> match Angstrom.parse_string ~consume:All Parse'.t str with
       | Ok prim -> let str' = to_string prim in Base.String.(str' = str)
       | Error _ -> true (* malformed input *)
 end
 
 let%test_module "Parsing" = (module struct
   let (=) = Caml.(=)
-  let parse' = Angstrom.parse_string ~consume:All parse
+  let parse' = Angstrom.parse_string ~consume:All Properties.Parse'.t
 
   let%test _ = parse' "123" = Ok (PrimInteger (Bigint.of_int 123))
   let%test _ = parse' {|"abc"|} = Ok (PrimString "abc")

@@ -14,7 +14,10 @@ val to_string : t -> string
 val pp : Format.formatter -> t -> unit
 val jsonify : t -> Util.Json.t
 val unjsonify : Util.Json.t -> t option
-val parse : t Angstrom.t
+
+module Parse (Comment : Util.Angstrom.Comment_int) : sig
+  val t : t Angstrom.t
+end
 
 module Properties : sig
   val json_round_trip1 : t -> bool

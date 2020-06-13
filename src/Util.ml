@@ -163,9 +163,9 @@ module Cbor = struct
 end
 
 module Angstrom = struct
-  open Angstrom
-
   module S = struct
+    open Angstrom
+
     (*
      Copyright (c) 2016, Inhabited Type LLC
 
@@ -312,54 +312,73 @@ module Angstrom = struct
           Buffer.clear buf; state := `Unescaped; fail "unterminated string"
   end
 
-  let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
-  let is_digit = function '0'..'9' -> true | _ -> false
+  module Internal = struct
+    open Angstrom
 
-  let integer_lit = take_while1 is_digit
+    let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
+    let is_digit = function '0'..'9' -> true | _ -> false
 
-  let is_whitespace = function
-    | '\x20' | '\x0a' | '\x0d' | '\x09' -> true
-    | _ -> false
+    let integer_lit = take_while1 is_digit
 
-  let whitespace = take_while is_whitespace
+    let is_whitespace = function
+      | '\x20' | '\x0a' | '\x0d' | '\x09' -> true
+      | _ -> false
 
-  let sign =
-    peek_char
-    >>= function
-      | Some '-' -> advance 1 >>| fun () -> "-"
-      | Some '+' -> advance 1 >>| fun () -> "+"
-      | Some c  when (is_digit c) -> return ""
-      | _ -> fail "Sign or digit expected"
+    let sign =
+      peek_char
+      >>= function
+        | Some '-' -> advance 1 >>| fun () -> "-"
+        | Some '+' -> advance 1 >>| fun () -> "+"
+        | Some c  when (is_digit c) -> return ""
+        | _ -> fail "Sign or digit expected"
 
-  let integer_or_float_lit : (string, float) Either.t Angstrom.t
-    = sign >>= fun sign ->
-      integer_lit >>= fun whole ->
-      choice
-        [ begin
-            char '.' >>= fun _ ->
-            option "" integer_lit >>= fun part ->
-            return (Either.Second (Float.of_string (sign ^ whole ^ "." ^ part)))
-              <* whitespace
-          end
-        ; return (Either.First (sign ^ whole))
-        ]
+    let integer_or_float_lit : (string, float) Either.t Angstrom.t
+      = sign >>= fun sign ->
+        integer_lit >>= fun whole ->
+        choice
+          [ begin
+              char '.' >>= fun _ ->
+              option "" integer_lit >>= fun part ->
+              return (Either.Second (Float.of_string (sign ^ whole ^ "." ^ part)))
+            end
+          ; return (Either.First (sign ^ whole))
+          ]
 
-  let string_lit = char '"' *> S.str (Buffer.create 0x100) <* whitespace
+    let string_lit = char '"' *> S.str (Buffer.create 0x100)
 
-  let identifier =
-    satisfy Char.(fun c -> is_alpha c || c = '_') >>= fun c ->
-    take_while Char.(fun c -> is_alpha c || is_digit c || c = '_') >>| fun cs ->
-    String.(of_char c ^ cs)
+    let identifier =
+      satisfy Char.(fun c -> is_alpha c || c = '_') >>= fun c ->
+      take_while Char.(fun c -> is_alpha c || is_digit c || c = '_') >>| fun cs ->
+      String.(of_char c ^ cs)
+  end
 
-  let char' c = char c <* whitespace
-  let parens p = char' '(' *> p <* char ')' <* whitespace
-  let string' str = string str <* whitespace
+  let whitespace = Angstrom.(take_while Internal.is_whitespace *> return ())
+  let whitespace1 = Angstrom.(take_while1 Internal.is_whitespace *> return ())
+
+  module type Comment_int = sig
+    val comment : unit Angstrom.t
+  end
+
+  module Mk (C : Comment_int) = struct
+    let many, (<|>), (<*), ( *> ) =
+      Angstrom.(many, (<|>), (<*), ( *> ))
+
+    let junk = many (whitespace1 <|> C.comment)
+
+    let identifier = Internal.identifier <* junk
+    let char c = Angstrom.char c <* junk
+    let parens p = char '(' *> p <* Angstrom.char ')' <* junk
+    let string str = Angstrom.string str <* junk
+    let integer_or_float_lit = Internal.integer_or_float_lit <* junk
+    let string_lit = Internal.string_lit <* junk
+  end
 
   (* Parse one or more occurences of e, separated by op. Returns a value obtained by a
    * left-associative application of all functions returned by op to the values returned
    * by p. *)
   let chainl1 : 'a Angstrom.t -> ('a -> 'a -> 'a) Angstrom.t -> 'a Angstrom.t
     = fun e op ->
+    let open Angstrom in
     let rec go acc =
       (lift2 (fun f x -> f acc x) op e >>= go) <|> return acc in
     e >>= go
@@ -367,16 +386,19 @@ module Angstrom = struct
   let%test_module "Parsing" = (module struct
     let (=) = Caml.(=)
     let parse' parser = Angstrom.parse_string ~consume:All parser
+    module Parse = Mk(struct
+      let comment = Angstrom.fail "no comment"
+    end)
 
-    let%test _ = parse' string_lit {|"abc"|} = Ok "abc"
-    let%test _ = parse' string_lit {|"\""|} = Ok {|"|}
-    let%test _ = parse' string_lit {|"\\"|} = Ok {|\|}
-    let%test _ = parse' integer_or_float_lit "123" = Ok (First "123")
-    let%test _ = parse' integer_or_float_lit "-123" = Ok (First "-123")
-    let%test _ = parse' integer_or_float_lit "+123" = Ok (First "+123")
-    let%test _ = parse' integer_or_float_lit "1.1" = Ok (Second 1.1)
-    let%test _ = parse' integer_or_float_lit "-1.1" = Ok (Second (-1.1))
-    let%test _ = parse' integer_or_float_lit "+1.1" = Ok (Second 1.1)
-    let%test _ = parse' integer_or_float_lit "1." = Ok (Second 1.)
+    let%test _ = parse' Parse.string_lit {|"abc"|} = Ok "abc"
+    let%test _ = parse' Parse.string_lit {|"\""|} = Ok {|"|}
+    let%test _ = parse' Parse.string_lit {|"\\"|} = Ok {|\|}
+    let%test _ = parse' Parse.integer_or_float_lit "123" = Ok (First "123")
+    let%test _ = parse' Parse.integer_or_float_lit "-123" = Ok (First "-123")
+    let%test _ = parse' Parse.integer_or_float_lit "+123" = Ok (First "+123")
+    let%test _ = parse' Parse.integer_or_float_lit "1.1" = Ok (Second 1.1)
+    let%test _ = parse' Parse.integer_or_float_lit "-1.1" = Ok (Second (-1.1))
+    let%test _ = parse' Parse.integer_or_float_lit "+1.1" = Ok (Second 1.1)
+    let%test _ = parse' Parse.integer_or_float_lit "1." = Ok (Second 1.)
   end);;
 end

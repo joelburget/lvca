@@ -84,23 +84,28 @@ let rec unjsonify =
   | _ -> None
   )
 
-let parse : t Angstrom.t
-  = let open Angstrom in
-    let char', identifier, parens = Util.Angstrom.(char', identifier, parens) in
+module Parse (Comment : Util.Angstrom.Comment_int) = struct
+  module Parsers = Util.Angstrom.Mk(Comment)
+  module Primitive = Primitive.Parse(Comment)
 
-    fix (fun pat -> choice
-      [ (identifier >>= fun ident ->
-        if String.get ident 0 = '_'
-        then return (Ignored (String.subo ~pos:1 ident))
-        else
-          choice
-          [ parens (sep_by (char' ';') pat) >>|
-            (fun subpats -> Operator (ident, subpats))
-          ; return (Var ident)
-          ])
-      ; Primitive.parse >>| fun prim -> Primitive prim
-      ]
-    ) <?> "pattern"
+  let t : t Angstrom.t
+    = let open Angstrom in
+      let char, identifier, parens = Parsers.(char, identifier, parens) in
+
+      fix (fun pat -> choice
+        [ (identifier >>= fun ident ->
+          if String.get ident 0 = '_'
+          then return (Ignored (String.subo ~pos:1 ident))
+          else
+            choice
+            [ parens (sep_by (char ';') pat) >>|
+              (fun subpats -> Operator (ident, subpats))
+            ; return (Var ident)
+            ])
+        ; Primitive.t >>| fun prim -> Primitive prim
+        ]
+      ) <?> "pattern"
+end
 
 module Properties = struct
   let json_round_trip1 : t -> bool
@@ -113,13 +118,17 @@ module Properties = struct
       | None -> true (* malformed input *)
       | Some t -> Util.Json.(jsonify t = json)
 
+  module Parse' = Parse(struct
+    let comment = Angstrom.fail "no comment"
+  end)
+
   let string_round_trip1 : t -> bool
-    = fun t -> match t |> to_string |> Angstrom.parse_string ~consume:All parse with
+    = fun t -> match t |> to_string |> Angstrom.parse_string ~consume:All Parse'.t with
       | Ok prim -> prim = t
       | Error _ -> false
 
   let string_round_trip2 : string -> bool
-    = fun str -> match Angstrom.parse_string ~consume:All parse str with
+    = fun str -> match Angstrom.parse_string ~consume:All Parse'.t str with
       | Ok prim -> let str' = to_string prim in Base.String.(str' = str)
       | Error _ -> true (* malformed input *)
 end

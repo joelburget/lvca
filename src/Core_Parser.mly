@@ -148,7 +148,7 @@ import_symbol:
 import:
   IMPORT LEFT_BRACE separated_nonempty_list(COMMA, import_symbol) RIGHT_BRACE
   FROM STRING
-  { { AbstractSyntax_Types.imported_symbols = $3; location = $6 } }
+  { { AbstractSyntax.imported_symbols = $3; location = $6 } }
 
 primitive:
   | INT    { PrimInteger $1 }
