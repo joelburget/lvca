@@ -226,8 +226,6 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
   let braces, char, identifier, parens, string, string_lit =
     Parsers.(braces, char, identifier, parens, string, string_lit)
 
-  (* TODO: define specialized identifier disallowing reserved words *)
-
   let sort : sort Angstrom.t
     = fix (fun sort ->
         identifier >>= fun ident ->
