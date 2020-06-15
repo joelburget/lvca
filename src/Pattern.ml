@@ -120,7 +120,6 @@ module Properties = struct
 
   module Parse' = Parse(struct
     let comment = Angstrom.fail "no comment"
-    let reserved = Util.String.Set.empty
   end)
 
   let string_round_trip1 : t -> bool

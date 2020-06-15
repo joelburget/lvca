@@ -357,7 +357,6 @@ module Angstrom = struct
 
   module type Lexical_int = sig
     val comment : unit Angstrom.t
-    val reserved : String.Set.t
   end
 
   module Mk (Lex : Lexical_int) = struct
@@ -365,12 +364,7 @@ module Angstrom = struct
       Angstrom.(many, (>>=), (<|>), (<*), ( *> ), fail, return)
 
     let junk = many (whitespace1 <|> Lex.comment)
-
-    let identifier = (Internal.identifier <* junk) >>= fun ident ->
-      if Set.mem Lex.reserved ident
-      then fail "reserved word"
-      else return ident
-
+    let identifier = Internal.identifier <* junk
     let char c = Angstrom.char c <* junk
     let parens p = char '(' *> p <* Angstrom.char ')' <* junk
     let braces p = char '{' *> p <* Angstrom.char '}' <* junk
@@ -394,7 +388,6 @@ module Angstrom = struct
     let parse' parser = Angstrom.parse_string ~consume:All parser
     module Parse = Mk(struct
       let comment = Angstrom.fail "no comment"
-      let reserved = String.Set.empty
     end)
 
     let%test _ = parse' Parse.string_lit {|"abc"|} = Ok "abc"

@@ -199,6 +199,13 @@ module Parse (Lex : Util.Angstrom.Lexical_int) = struct
   let braces, identifier, char, parens, string =
     Parsers.(braces, identifier, char, parens, string)
 
+  let reserved = Util.String.Set.of_list ["rec"; "in"; "match"; "with"; "let"]
+
+  let identifier = identifier >>= fun ident ->
+    if Set.mem reserved ident
+    then fail "reserved word"
+    else return ident
+
   (** Raised when a primitive is used in a sort. *)
   exception InvalidSort
 
@@ -277,7 +284,6 @@ end
 let%test_module "Parsing" = (module struct
   module Parse = Parse(struct
     let comment = Angstrom.fail "no comment"
-    let reserved = Util.String.Set.of_list ["rec"; "in"; "match"; "with"; "let"]
   end)
 
   let parse str =

@@ -327,7 +327,6 @@ module Properties = struct
 
   module Parse = Parse(struct
     let comment = Angstrom.fail "no comment"
-    let reserved = Util.String.Set.empty
   end)
 
   let string_round_trip1 : term -> bool
@@ -453,7 +452,6 @@ let%test_module "TermParser" = (module struct
   open Nominal
   module Parse = Nominal.Parse(struct
     let comment = Angstrom.fail "no comment"
-    let reserved = Util.String.Set.empty
   end)
 
   let parse = Angstrom.(parse_string ~consume:All

@@ -323,7 +323,6 @@ end
 let%test_module "AbstractSyntax_Parser" = (module struct
   module Parse = Parse(struct
     let comment = Angstrom.fail "no comment"
-    let reserved = Util.String.Set.empty
   end)
 
   let parse_with : 'a Angstrom.t -> string -> 'a

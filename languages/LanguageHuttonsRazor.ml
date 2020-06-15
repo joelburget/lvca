@@ -8,7 +8,6 @@ module Description = struct
       string "//" >>= fun _ ->
       many (satisfy Char.(fun x -> x <> '\n')) >>| fun _ ->
       ()
-    let reserved = Util.String.Set.empty
   end)
 
   let abstract_syntax : AbstractSyntax.t =

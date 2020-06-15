@@ -347,7 +347,6 @@ let check_term
 let%test_module "CheckTerm" = (module struct
   module AbstractSyntaxParse = AbstractSyntax.Parse(struct
     let comment = Angstrom.fail "no comment"
-    let reserved = Util.String.Set.empty
   end)
 
   let parse_lang lang_str =
@@ -361,7 +360,6 @@ let%test_module "CheckTerm" = (module struct
 
   module NominalParse = Binding.Nominal.Parse(struct
     let comment = Angstrom.fail "no comment"
-    let reserved = Util.String.Set.empty
   end)
 
   let parse_term term_str =

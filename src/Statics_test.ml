@@ -3,7 +3,6 @@
 let print_parse desc =
   let module Parse = Statics.Parse(struct
     let comment = Angstrom.fail "no comment"
-    let reserved = Util.String.Set.empty
   end) in
   print_string (
     match

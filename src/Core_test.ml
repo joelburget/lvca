@@ -3,7 +3,6 @@ open Core
 
 module ParseCore = Core.Parse(struct
   let comment = Angstrom.fail "no comment"
-  let reserved = Util.String.Set.of_list ["rec"; "in"; "match"; "with"; "let"]
 end)
 
 (*

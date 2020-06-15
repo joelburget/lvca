@@ -9,7 +9,6 @@ let%test_module "AbstractSyntax.Parser" =
         string "//" >>= fun _ ->
         many (satisfy (fun x -> x <> '\n')) >>| fun _ ->
         ()
-      let reserved = Util.String.Set.empty
     end)
 
     let parse str =
