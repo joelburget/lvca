@@ -1,17 +1,17 @@
 (* See the Bidirectional module for more tests *)
+module Parse = Statics.Parse(Util.Angstrom.NoComment)
 
 let print_parse desc =
-  let module Parse = Statics.Parse(struct
-    let comment = Angstrom.fail "no comment"
-  end) in
-  print_string (
+  let str =
     match
       Angstrom.parse_string ~consume:All
         Angstrom.(Util.Angstrom.whitespace *> Parse.t)
         desc
     with
       | Error err -> err
-      | Ok _lang -> "parsed")
+      | Ok _lang -> "parsed"
+  in
+  print_string str
 
 let%expect_test _ =
   print_parse {|

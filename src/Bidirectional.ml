@@ -286,9 +286,8 @@ let%test_module "bidirectional tests" =
   |}
     ;;
 
-    module Parse = Statics.Parse(struct
-      let comment = Angstrom.fail "no comment"
-    end);;
+    module Parse = Statics.Parse(Util.Angstrom.NoComment);;
+    module NominalParse = Binding.Nominal.Parse(Util.Angstrom.NoComment)
 
     let statics =
       match
@@ -302,9 +301,6 @@ let%test_module "bidirectional tests" =
 
     let parse_cvt : string -> term
       = fun str ->
-      let module NominalParse = Binding.Nominal.Parse(struct
-        let comment = Angstrom.fail "no comment"
-      end) in
       let tm = match Angstrom.parse_string ~consume:All NominalParse.t str with
         | Ok tm -> tm
         | Error err -> failwith err

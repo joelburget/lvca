@@ -42,7 +42,7 @@ type eval_error = string * term
 val eval_exn : term -> Nominal.term
 val eval : term -> (Nominal.term, eval_error) Base.Result.t
 
-module Parse (Lex : Util.Angstrom.Lexical_int) : sig
+module Parse (Comment : Util.Angstrom.Comment_int) : sig
   val term : term Angstrom.t
   val core_defn : core_defn Angstrom.t
 end

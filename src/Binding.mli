@@ -83,7 +83,7 @@ and Nominal : sig
    *)
   val pattern_to_term : Pattern.t -> Nominal.term
 
-  module Parse (Lex : Util.Angstrom.Lexical_int) : sig
+  module Parse (Comment : Util.Angstrom.Comment_int) : sig
     val t : term Angstrom.t
   end
 end

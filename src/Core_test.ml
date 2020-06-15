@@ -1,13 +1,7 @@
 open Binding
 open Core
 
-module ParseCore = Core.Parse(struct
-  open Angstrom
-  let comment =
-    string "//" >>= fun _ ->
-    many (satisfy (fun x -> x <> '\n')) >>| fun _ ->
-    ()
-end)
+module ParseCore = Core.Parse(Util.Angstrom.CComment)
 
 let parse_defn str =
   match

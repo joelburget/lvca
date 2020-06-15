@@ -15,7 +15,7 @@ val pp : Format.formatter -> t -> unit
 val jsonify : t -> Util.Json.t
 val unjsonify : Util.Json.t -> t option
 
-module Parse (Lex : Util.Angstrom.Lexical_int) : sig
+module Parse (Comment : Util.Angstrom.Comment_int) : sig
   val t : t Angstrom.t
 end
 

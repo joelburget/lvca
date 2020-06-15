@@ -3,13 +3,7 @@ open AbstractSyntax
 let%test_module "AbstractSyntax.Parser" =
   (module struct
 
-    module AbstractSyntaxParse = AbstractSyntax.Parse(struct
-      open Angstrom
-      let comment =
-        string "//" >>= fun _ ->
-        many (satisfy (fun x -> x <> '\n')) >>| fun _ ->
-        ()
-    end)
+    module AbstractSyntaxParse = AbstractSyntax.Parse(Util.Angstrom.CComment)
 
     let parse str =
       match

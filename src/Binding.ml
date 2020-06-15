@@ -170,7 +170,7 @@ and Nominal : sig
   val to_pattern : Nominal.term -> (Pattern.t, scope) Result.t
   val pattern_to_term : Pattern.t -> Nominal.term
 
-  module Parse (Lex : Util.Angstrom.Lexical_int) : sig
+  module Parse (Comment : Util.Angstrom.Comment_int) : sig
     val t : term Angstrom.t
   end
 end = struct
@@ -286,10 +286,10 @@ end = struct
     | Ignored name -> Var ("_" ^ name)
   ;;
 
-  module Parse (Lex : Util.Angstrom.Lexical_int) = struct
+  module Parse (Comment : Util.Angstrom.Comment_int) = struct
     open Angstrom
-    module Parsers = Util.Angstrom.Mk(Lex)
-    module Primitive = Primitive.Parse(Lex)
+    module Parsers = Util.Angstrom.Mk(Comment)
+    module Primitive = Primitive.Parse(Comment)
 
     let t : Nominal.term Angstrom.t
       = let char, identifier, parens = Parsers.(char, identifier, parens) in
@@ -325,9 +325,7 @@ module Properties = struct
       | None -> false
       | Some t -> Util.Json.(jsonify t = json)
 
-  module Parse = Parse(struct
-    let comment = Angstrom.fail "no comment"
-  end)
+  module Parse = Parse(Util.Angstrom.NoComment)
 
   let string_round_trip1 : term -> bool
     = fun t -> match t |> pp_term_str |> Angstrom.parse_string ~consume:All Parse.t with
@@ -450,9 +448,7 @@ let%test_module "Nominal" =
 let%test_module "TermParser" = (module struct
   let (=) = Caml.(=)
   open Nominal
-  module Parse = Nominal.Parse(struct
-    let comment = Angstrom.fail "no comment"
-  end)
+  module Parse = Nominal.Parse(Util.Angstrom.NoComment)
 
   let parse = Angstrom.(parse_string ~consume:All
     (Util.Angstrom.whitespace *> Parse.t))

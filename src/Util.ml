@@ -355,15 +355,27 @@ module Angstrom = struct
   let whitespace = Angstrom.(take_while Internal.is_whitespace *> return ())
   let whitespace1 = Angstrom.(take_while1 Internal.is_whitespace *> return ())
 
-  module type Lexical_int = sig
+  module type Comment_int = sig
     val comment : unit Angstrom.t
   end
 
-  module Mk (Lex : Lexical_int) = struct
+  module NoComment : Comment_int = struct
+    let comment = Angstrom.fail "no comment"
+  end
+
+  module CComment : Comment_int = struct
+    open Angstrom
+    let comment =
+      string "//" >>= fun _ ->
+      many (satisfy Char.(fun x -> x <> '\n')) >>| fun _ ->
+      ()
+  end
+
+  module Mk (Comment : Comment_int) = struct
     let many, (>>=), (<|>), (<*), ( *> ), fail, return =
       Angstrom.(many, (>>=), (<|>), (<*), ( *> ), fail, return)
 
-    let junk = many (whitespace1 <|> Lex.comment)
+    let junk = many (whitespace1 <|> Comment.comment)
     let identifier = Internal.identifier <* junk
     let char c = Angstrom.char c <* junk
     let parens p = char '(' *> p <* Angstrom.char ')' <* junk
@@ -386,9 +398,7 @@ module Angstrom = struct
   let%test_module "Parsing" = (module struct
     let (=) = Caml.(=)
     let parse' parser = Angstrom.parse_string ~consume:All parser
-    module Parse = Mk(struct
-      let comment = Angstrom.fail "no comment"
-    end)
+    module Parse = Mk(NoComment)
 
     let%test _ = parse' Parse.string_lit {|"abc"|} = Ok "abc"
     let%test _ = parse' Parse.string_lit {|"\""|} = Ok {|"|}

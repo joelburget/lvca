@@ -2,13 +2,7 @@ open Base
 open Lvca
 
 module Description = struct
-  module ParseAbstract = AbstractSyntax.Parse(struct
-    open Angstrom
-    let comment =
-      string "//" >>= fun _ ->
-      many (satisfy Char.(fun x -> x <> '\n')) >>| fun _ ->
-      ()
-  end)
+  module ParseAbstract = AbstractSyntax.Parse(Util.Angstrom.CComment)
 
   let abstract_syntax : AbstractSyntax.t =
     Angstrom.parse_string ~consume:All ParseAbstract.t

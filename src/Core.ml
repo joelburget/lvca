@@ -181,12 +181,12 @@ let eval : term -> (Nominal.term, eval_error) Result.t =
   fun core -> try Ok (eval_exn core) with EvalExn (msg, tm) -> Error (msg, tm)
 ;;
 
-module Parse (Lex : Util.Angstrom.Lexical_int) = struct
+module Parse (Comment : Util.Angstrom.Comment_int) = struct
   open Angstrom
-  module Parsers = Util.Angstrom.Mk(Lex)
-  module Term = Binding.Nominal.Parse(Lex)
-  module Primitive = Primitive.Parse(Lex)
-  module Abstract = AbstractSyntax.Parse(Lex)
+  module Parsers = Util.Angstrom.Mk(Comment)
+  module Term = Binding.Nominal.Parse(Comment)
+  module Primitive = Primitive.Parse(Comment)
+  module Abstract = AbstractSyntax.Parse(Comment)
   let braces, identifier, char, parens, string =
     Parsers.(braces, identifier, char, parens, string)
 
@@ -263,9 +263,7 @@ module Parse (Lex : Util.Angstrom.Lexical_int) = struct
 end
 
 let%test_module "Parsing" = (module struct
-  module Parse = Parse(struct
-    let comment = Angstrom.fail "no comment"
-  end)
+  module Parse = Parse(Util.Angstrom.NoComment)
 
   let parse str =
     match

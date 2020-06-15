@@ -84,9 +84,9 @@ let rec unjsonify =
   | _ -> None
   )
 
-module Parse (Lex : Util.Angstrom.Lexical_int) = struct
-  module Parsers = Util.Angstrom.Mk(Lex)
-  module Primitive = Primitive.Parse(Lex)
+module Parse (Comment : Util.Angstrom.Comment_int) = struct
+  module Parsers = Util.Angstrom.Mk(Comment)
+  module Primitive = Primitive.Parse(Comment)
 
   let t : t Angstrom.t
     = let open Angstrom in
@@ -118,9 +118,7 @@ module Properties = struct
       | None -> true (* malformed input *)
       | Some t -> Util.Json.(jsonify t = json)
 
-  module Parse' = Parse(struct
-    let comment = Angstrom.fail "no comment"
-  end)
+  module Parse' = Parse(Util.Angstrom.NoComment)
 
   let string_round_trip1 : t -> bool
     = fun t -> match t |> to_string |> Angstrom.parse_string ~consume:All Parse'.t with

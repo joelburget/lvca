@@ -218,10 +218,10 @@ let rec sort_of_term_exn : Binding.Nominal.term -> sort
       | _ -> raise (OfTermFailure ("sort_of_term", tm))))
     | _ -> raise (OfTermFailure ("sort_of_term", tm))
 
-module Parse (Lex : Util.Angstrom.Lexical_int) = struct
+module Parse (Comment : Util.Angstrom.Comment_int) = struct
   open Angstrom
   open Base
-  module Parsers = Util.Angstrom.Mk(Lex)
+  module Parsers = Util.Angstrom.Mk(Comment)
 
   let char, identifier, parens, string, string_lit =
     Parsers.(char, identifier, parens, string, string_lit)
@@ -321,9 +321,7 @@ module Parse (Lex : Util.Angstrom.Lexical_int) = struct
 end
 
 let%test_module "AbstractSyntax_Parser" = (module struct
-  module Parse = Parse(struct
-    let comment = Angstrom.fail "no comment"
-  end)
+  module Parse = Parse(Util.Angstrom.NoComment)
 
   let parse_with : 'a Angstrom.t -> string -> 'a
     = fun p str ->
