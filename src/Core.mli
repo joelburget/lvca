@@ -2,7 +2,7 @@
 
     - [term] defines expressions in the core language. It uses [core_scope],
       [core_case_scope], (and [Pattern.t]).
-    - [core_module] contains imports and a sequence of declarations.
+    - [core_defn] contains imports and a declaration.
     - [eval] is used to evaluate a core term
 
 *)
@@ -29,18 +29,12 @@ and core_case_scope = CaseScope of Pattern.t * term
 val pp_core : Format.formatter -> term -> unit
 val pp_core_str : term -> string
 
-type core_defn =
-  { name : string
-  ; ty : sort
-  ; defn : term
-  }
-
 type import = AbstractSyntax.import
 
-type core_module = CoreModule of import list * core_defn list
+type core_defn = CoreDefn of import list * term
 
-val pp_module : Format.formatter -> core_module -> unit
-val pp_module_str : core_module -> string
+val pp_defn : Format.formatter -> core_defn -> unit
+val pp_defn_str : core_defn -> string
 
 type eval_error = string * term
 
@@ -50,7 +44,8 @@ val eval : term -> (Nominal.term, eval_error) Base.Result.t
 
 module Parse (Lex : Util.Angstrom.Lexical_int) : sig
   val term : term Angstrom.t
+  val core_defn : core_defn Angstrom.t
 end
 
 (** Convert a module to a nominal term, for storage. *)
-(* val module_to_term : core_module -> Nominal.term *)
+(* val module_to_term : core_defn -> Nominal.term *)

@@ -73,30 +73,20 @@ let pp_core : Format.formatter -> term -> unit
 let pp_core_str : term -> string
   = Format.asprintf "%a" pp_core
 
-type core_defn =
-  { name : string
-  ; ty : sort
-  ; defn : term
-  }
-
 type import = AbstractSyntax.import
 
-type core_module = CoreModule of import list * core_defn list
+type core_defn = CoreDefn of import list * term
 
-let pp_module : Format.formatter -> core_module -> unit
-  = fun ppf (CoreModule (imports, definitions)) ->
+let pp_defn : Format.formatter -> core_defn -> unit
+  = fun ppf (CoreDefn (imports, defn)) ->
     List.iter imports ~f:(fun import ->
       AbstractSyntax.pp_import ppf import;
       Format.pp_force_newline ppf ()
     );
-    List.iter definitions
-    ~f:(fun { name; ty; defn } -> Fmt.pf ppf "@[<hv>%s@ : %a =@ %a@]"
-      name
-      pp_sort ty
-      pp_core defn)
+    pp_core ppf defn
 
-let pp_module_str : core_module -> string
-  = Format.asprintf "%a" pp_module
+let pp_defn_str : core_defn -> string
+  = Format.asprintf "%a" pp_defn
 
 let rec match_pattern
   : Nominal.term -> Pattern.t -> Nominal.term Util.String.Map.t option
@@ -196,6 +186,7 @@ module Parse (Lex : Util.Angstrom.Lexical_int) = struct
   module Parsers = Util.Angstrom.Mk(Lex)
   module Term = Binding.Nominal.Parse(Lex)
   module Primitive = Primitive.Parse(Lex)
+  module Abstract = AbstractSyntax.Parse(Lex)
   let braces, identifier, char, parens, string =
     Parsers.(braces, identifier, char, parens, string)
 
@@ -205,21 +196,6 @@ module Parse (Lex : Util.Angstrom.Lexical_int) = struct
     if Set.mem reserved ident
     then fail "reserved word"
     else return ident
-
-  (** Raised when a primitive is used in a sort. *)
-  exception InvalidSort
-
-  (** @raise InvalidSort *)
-  let rec ast_to_sort' : NonBinding.term -> AbstractSyntax.sort
-    = function
-        | Operator (name, subtms)
-        -> SortAp (name, List.map subtms ~f:ast_to_sort')
-        | Primitive _
-        -> raise InvalidSort
-
-  (** @raise ScopeEncountered, InvalidSort *)
-  let ast_to_sort : Binding.Nominal.term -> AbstractSyntax.sort
-    = fun term -> term |> NonBinding.from_nominal_exn |> ast_to_sort'
 
   let make_apps : term list -> term
     = function
@@ -252,10 +228,10 @@ module Parse (Lex : Util.Angstrom.Lexical_int) = struct
       [ lift4 (fun _ (name, sort) _ body -> Lambda (sort, Scope (name, body)))
         (char '\\')
         (parens (
-          lift3 (fun ident _ tm -> ident, ast_to_sort tm)
+          lift3 (fun ident _ sort -> ident, sort)
           identifier
           (char ':')
-          Term.t
+          Abstract.sort
         ))
         (string "->")
         term
@@ -279,6 +255,11 @@ module Parse (Lex : Util.Angstrom.Lexical_int) = struct
 
       ; many1 atomic_term >>| make_apps
       ])
+
+  let core_defn : core_defn Angstrom.t
+    = lift2 (fun imports tm -> CoreDefn (imports, tm))
+      (many Abstract.import)
+      term
 end
 
 let%test_module "Parsing" = (module struct
@@ -365,8 +346,8 @@ and scope_of_core_case_scope : core_case_scope -> Nominal.scope
   = fun (CaseScope (baw_pat, body)) -> failwith "TODO"
   *)
 
-let module_to_term : core_module -> Nominal.term
-  = fun (CoreModule (imports, defns)) -> Operator ("core_module",
+let module_to_term : core_defn -> Nominal.term
+  = fun (CoreDefn (imports, defns)) -> Operator ("core_defn",
     [ Scope ([], Sequence (imports
         |> List.map ~f:AbstractSyntax.term_of_import
         |> List.map ~f:NonBinding.to_nominal

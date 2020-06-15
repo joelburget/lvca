@@ -66,6 +66,8 @@ val string_of_arity : arity -> string
 val instantiate_sort : sort Util.String.Map.t -> sort -> sort
 
 module Parse (Lex : Util.Angstrom.Lexical_int) : sig
+  val sort : sort Angstrom.t
+  val import : import Angstrom.t
   val t : t Angstrom.t
 end
 

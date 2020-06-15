@@ -2,27 +2,44 @@ open Binding
 open Core
 
 module ParseCore = Core.Parse(struct
-  let comment = Angstrom.fail "no comment"
+  open Angstrom
+  let comment =
+    string "//" >>= fun _ ->
+    many (satisfy (fun x -> x <> '\n')) >>| fun _ ->
+    ()
 end)
 
-(*
+let parse_defn str =
+  match
+    Angstrom.parse_string ~consume:All ParseCore.core_defn str
+  with
+    | Error err -> failwith err
+    | Ok dyn -> dyn
+
+let parse_term str =
+  match
+    Angstrom.parse_string ~consume:All ParseCore.term str
+  with
+    | Error err -> failwith err
+    | Ok dyn -> dyn
+
 let%test_module "Core parsing" = (module struct
-  let one = Bigint.of_int 1
+  open AbstractSyntax
+
   let scope : Nominal.term -> Nominal.scope
     = fun body -> Scope ([], body)
 
   let dynamics_str =
-    {|
-  meaning : arrow(ty(); val()) = \(tm : ty()) -> match tm with {
-    | true() -> true()
-    | false() -> false()
+    {|\(tm : ty()) -> match tm with {
+    | true() -> {true()}
+    | false() -> {false()}
     | ite(t1; t2; t3) -> match meaning t1 with {
       | true()  -> meaning t2
       | false() -> meaning t3
     }
     | ap(f; arg) -> (meaning f) (meaning arg)
-    | fun(scope) -> lambda(list(); scope) // TODO: add type
-  };
+    | fun(scope) -> {lambda(list(); scope)} // TODO: add type
+  }
   |}
   ;;
 
@@ -32,60 +49,51 @@ let%test_module "Core parsing" = (module struct
   let ty = SortAp ("ty", [])
 
   let dynamics =
-    CoreModule
+    CoreDefn
       ( []
-      , [ { name = "meaning"
-          ; ty = SortAp ("arrow", [ ty; SortAp ("val", []) ])
-          ; defn = Lambda
-              ( ty
-              , Scope
-                  ( "tm"
-                  , Case
-                      ( var "tm"
-                      , [ CaseScope (Operator ("true", []),
-                          Term (Operator ("true", [])))
-                        ; CaseScope (Operator ("false", []),
-                          Term (Operator ("false", [])))
-                        ; CaseScope
-                            ( Operator ("ite" , [ Var "t1" ; Var "t2" ; Var "t3" ])
-                            , Case
-                                ( CoreApp (var "meaning", var "t1")
-                                , [ CaseScope (Operator ("true", []), meaning (var "t2"))
-                                  ; CaseScope (Operator ("false", []), meaning (var "t3"))
-                                  ] ) )
-                        ; CaseScope
-                            ( Operator ("ap", [ Var "f"; Var "arg" ])
-                            , CoreApp (meaning @@ var "f", meaning @@ var "arg") )
-                        ; CaseScope
-                            ( Operator ("fun", [ Var "scope" ])
-                            , Term (Operator
-                                ("lambda",
-                                  [ scope @@ Operator("list", [])
-                                  ; scope @@ Var "scope"
-                                  ])) )
-                        ] ) ) )
-          }
-        ]
+      , Lambda
+        ( ty
+        , Scope
+            ( "tm"
+            , Case
+                ( var "tm"
+                , [ CaseScope (Operator ("true", []),
+                    Term (Operator ("true", [])))
+                  ; CaseScope (Operator ("false", []),
+                    Term (Operator ("false", [])))
+                  ; CaseScope
+                      ( Operator ("ite" , [ Var "t1" ; Var "t2" ; Var "t3" ])
+                      , Case
+                          ( CoreApp (var "meaning", var "t1")
+                          , [ CaseScope (Operator ("true", []), meaning (var "t2"))
+                            ; CaseScope (Operator ("false", []), meaning (var "t3"))
+                            ] ) )
+                  ; CaseScope
+                      ( Operator ("ap", [ Var "f"; Var "arg" ])
+                      , CoreApp (meaning @@ var "f", meaning @@ var "arg") )
+                  ; CaseScope
+                      ( Operator ("fun", [ Var "scope" ])
+                      , Term (Operator
+                          ("lambda",
+                            [ scope @@ Operator("list", [])
+                            ; scope @@ Var "scope"
+                            ])) )
+                  ] ) ) )
       )
 
-  let (=) = Caml.(=)
-
-  let%test "dynamics as expected" = match Parsing.CoreModule.parse dynamics_str with
-    | Error err -> print_string (ParseError.to_string err); false
-    | Ok dyn -> dyn = dynamics
+  let%test "dynamics as expected" = Caml.(parse_defn dynamics_str = dynamics)
 end)
 ;;
-    *)
 
 let%test_module "Core eval" =
   (module struct
-    let eval_str = fun str -> print_string (match
-      Angstrom.parse_string ~consume:All ParseCore.term str
-    with
-      | Error err -> err
-      | Ok core -> (match eval core with
+    let eval_str = fun str ->
+      let core = parse_term str in
+      let result = match eval core with
         | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
-        | Ok result -> Nominal.pp_term_str result))
+        | Ok result -> Nominal.pp_term_str result
+      in
+      print_string result
 
     let%expect_test _ = eval_str "{1}"; [%expect{| 1 |}]
     let%expect_test _ = eval_str "{foo(1)}"; [%expect{| foo(1) |}]
@@ -170,50 +178,40 @@ let%test_module "Core pretty" =
   end)
 ;;
 
-(*
 let%test_module "Core eval in dynamics" =
   (module struct
     let eval_in = fun dynamics_str str ->
-      print_string (match Parsing.CoreModule.parse dynamics_str with
-      | Error err -> ParseError.to_string err
-      | Ok dynamics -> (match dynamics with
-        | CoreModule (_imports, [ { name = _; ty = _; defn } ]) ->
-          (match
-            Angstrom.parse_string ~consume:All ParseCore.term str
-           with
-            | Error err -> err
-            | Ok core -> (match eval (CoreApp (defn, core)) with
-              | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
-              | Ok result -> Nominal.pp_term_str result))
-        | _ -> "dynamics must consist of a single definition"))
+      let CoreDefn (_imports, defn) = parse_defn dynamics_str in
+      let core = parse_term str in
+      match eval (CoreApp (defn, core)) with
+        | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
+        | Ok result -> Nominal.pp_term_str result
 
     let dynamics_str =
-      {|
-meaning : arrow(ty(); val()) = \(tm : ty()) -> match tm with {
-  | true() -> true()
-  | false() -> false()
+      {|\(tm : ty()) -> match tm with {
+  | true() -> {true()}
+  | false() -> {false()}
   | ite(t1; t2; t3) -> match meaning t1 with {
     | true()  -> meaning t2
     | false() -> meaning t3
   }
   | ap(f; arg) -> (meaning f) (meaning arg)
-  | fun(scope) -> lambda(list(); scope) // TODO: add type
-};
+  | fun(scope) -> {lambda(list(); scope)} // TODO: add type
+}
       |}
 
     let%expect_test _ =
-      eval_in dynamics_str "true()";
+      print_string @@ eval_in dynamics_str "{true()}";
       [%expect{| true() |}]
 
-    let id_dynamics = {|meaning : arrow(ty(); val()) = \(tm : ty()) -> tm;|}
+    let id_dynamics = {|\(tm : ty()) -> tm|}
 
     let%expect_test _ =
-      eval_in id_dynamics "true()";
+      print_string @@ eval_in id_dynamics "{true()}";
       [%expect{| true() |}]
 
     let%expect_test _ =
-      eval_in id_dynamics "lambda(tm. tm; list(ty()))";
+      print_string @@ eval_in id_dynamics "{lambda(tm. tm; list(ty()))}";
       [%expect{| lambda(tm. tm; list(ty())) |}]
   end)
 ;;
-*)
