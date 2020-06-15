@@ -80,7 +80,7 @@ let rec eval' : Bigint.t list -> DeBruijn.term -> Bigint.t option =
     | _, _ -> None)
   | Var (i, 0) -> List.nth env i
   | Primitive (PrimInteger i) -> Some i
-  | Var _ | Operator _ | Primitive (PrimString _) -> None
+  | Var _ | Operator _ | Primitive _ -> None
 ;;
 
 let eval : DeBruijn.term -> Bigint.t option = eval' []
