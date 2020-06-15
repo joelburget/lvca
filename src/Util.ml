@@ -355,19 +355,25 @@ module Angstrom = struct
   let whitespace = Angstrom.(take_while Internal.is_whitespace *> return ())
   let whitespace1 = Angstrom.(take_while1 Internal.is_whitespace *> return ())
 
-  module type Comment_int = sig
+  module type Lexical_int = sig
     val comment : unit Angstrom.t
+    val reserved : String.Set.t
   end
 
-  module Mk (C : Comment_int) = struct
-    let many, (<|>), (<*), ( *> ) =
-      Angstrom.(many, (<|>), (<*), ( *> ))
+  module Mk (Lex : Lexical_int) = struct
+    let many, (>>=), (<|>), (<*), ( *> ), fail, return =
+      Angstrom.(many, (>>=), (<|>), (<*), ( *> ), fail, return)
 
-    let junk = many (whitespace1 <|> C.comment)
+    let junk = many (whitespace1 <|> Lex.comment)
 
-    let identifier = Internal.identifier <* junk
+    let identifier = (Internal.identifier <* junk) >>= fun ident ->
+      if Set.mem Lex.reserved ident
+      then fail "reserved word"
+      else return ident
+
     let char c = Angstrom.char c <* junk
     let parens p = char '(' *> p <* Angstrom.char ')' <* junk
+    let braces p = char '{' *> p <* Angstrom.char '}' <* junk
     let string str = Angstrom.string str <* junk
     let integer_or_float_lit = Internal.integer_or_float_lit <* junk
     let string_lit = Internal.string_lit <* junk
@@ -388,6 +394,7 @@ module Angstrom = struct
     let parse' parser = Angstrom.parse_string ~consume:All parser
     module Parse = Mk(struct
       let comment = Angstrom.fail "no comment"
+      let reserved = String.Set.empty
     end)
 
     let%test _ = parse' Parse.string_lit {|"abc"|} = Ok "abc"

@@ -4,10 +4,3 @@
  (libraries digestif.ocaml base cbor bignum fmt re angstrom)
  (preprocess
   (pps ppx_jane)))
-
-(ocamllex
- (modules Core_Lexer))
-
-(menhir
- (modules Core_Parser)
- (flags :standard --table))

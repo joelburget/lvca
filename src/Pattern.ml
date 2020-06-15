@@ -84,9 +84,9 @@ let rec unjsonify =
   | _ -> None
   )
 
-module Parse (Comment : Util.Angstrom.Comment_int) = struct
-  module Parsers = Util.Angstrom.Mk(Comment)
-  module Primitive = Primitive.Parse(Comment)
+module Parse (Lex : Util.Angstrom.Lexical_int) = struct
+  module Parsers = Util.Angstrom.Mk(Lex)
+  module Primitive = Primitive.Parse(Lex)
 
   let t : t Angstrom.t
     = let open Angstrom in
@@ -120,6 +120,7 @@ module Properties = struct
 
   module Parse' = Parse(struct
     let comment = Angstrom.fail "no comment"
+    let reserved = Util.String.Set.empty
   end)
 
   let string_round_trip1 : t -> bool

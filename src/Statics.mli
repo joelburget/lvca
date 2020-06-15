@@ -59,7 +59,7 @@ exception FreeVar of string
  @raise FreeVar *)
 val to_de_bruijn_exn : term -> Binding.DeBruijn.term
 
-module Parse (Comment : Util.Angstrom.Comment_int) : sig
+module Parse (Lex : Util.Angstrom.Lexical_int) : sig
   exception StaticsParseError of string
 
   val term : term Angstrom.t

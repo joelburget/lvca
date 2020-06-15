@@ -170,7 +170,7 @@ and Nominal : sig
   val to_pattern : Nominal.term -> (Pattern.t, scope) Result.t
   val pattern_to_term : Pattern.t -> Nominal.term
 
-  module Parse (Comment : Util.Angstrom.Comment_int) : sig
+  module Parse (Lex : Util.Angstrom.Lexical_int) : sig
     val t : term Angstrom.t
   end
 end = struct
@@ -286,10 +286,10 @@ end = struct
     | Ignored name -> Var ("_" ^ name)
   ;;
 
-  module Parse (Comment : Util.Angstrom.Comment_int) = struct
+  module Parse (Lex : Util.Angstrom.Lexical_int) = struct
     open Angstrom
-    module Parsers = Util.Angstrom.Mk(Comment)
-    module Primitive = Primitive.Parse(Comment)
+    module Parsers = Util.Angstrom.Mk(Lex)
+    module Primitive = Primitive.Parse(Lex)
 
     let t : Nominal.term Angstrom.t
       = let char, identifier, parens = Parsers.(char, identifier, parens) in
@@ -327,6 +327,7 @@ module Properties = struct
 
   module Parse = Parse(struct
     let comment = Angstrom.fail "no comment"
+    let reserved = Util.String.Set.empty
   end)
 
   let string_round_trip1 : term -> bool
@@ -452,6 +453,7 @@ let%test_module "TermParser" = (module struct
   open Nominal
   module Parse = Nominal.Parse(struct
     let comment = Angstrom.fail "no comment"
+    let reserved = Util.String.Set.empty
   end)
 
   let parse = Angstrom.(parse_string ~consume:All

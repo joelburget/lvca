@@ -65,7 +65,7 @@ val string_of_valence : valence -> string
 val string_of_arity : arity -> string
 val instantiate_sort : sort Util.String.Map.t -> sort -> sort
 
-module Parse (Comment : Util.Angstrom.Comment_int) : sig
+module Parse (Lex : Util.Angstrom.Lexical_int) : sig
   val t : t Angstrom.t
 end
 

@@ -74,10 +74,10 @@ let rec to_de_bruijn_exn : term -> Binding.DeBruijn.term
 and to_scope : scope -> Binding.DeBruijn.scope
   = fun (Scope (pats, tm)) -> Scope (pats, to_de_bruijn_exn tm)
 
-module Parse (Comment : Util.Angstrom.Comment_int) = struct
+module Parse (Lex : Util.Angstrom.Lexical_int) = struct
   open Angstrom
-  module Parsers = Util.Angstrom.Mk(Comment)
-  module Term = Binding.Nominal.Parse(Comment)
+  module Parsers = Util.Angstrom.Mk(Lex)
+  module Term = Binding.Nominal.Parse(Lex)
   let identifier, char, parens, string = Parsers.(identifier, char, parens, string)
 
   exception StaticsParseError of string
@@ -155,6 +155,7 @@ end
 let%test_module "Parsing" = (module struct
   module Parse = Parse(struct
     let comment = Angstrom.fail "no comment"
+    let reserved = Util.String.Set.empty
   end);;
 
   let parse_with parser = Angstrom.parse_string ~consume:All parser

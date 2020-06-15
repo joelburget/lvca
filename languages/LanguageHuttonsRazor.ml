@@ -1,8 +1,19 @@
-module Description = struct
+open Base
+open Lvca
 
-  let abstract_syntax =
-    {|
-  import {integer} from "builtin"
+module Description = struct
+  module ParseAbstract = AbstractSyntax.Parse(struct
+    open Angstrom
+    let comment =
+      string "//" >>= fun _ ->
+      many (satisfy Char.(fun x -> x <> '\n')) >>| fun _ ->
+      ()
+    let reserved = Util.String.Set.empty
+  end)
+
+  let abstract_syntax : AbstractSyntax.t =
+    Angstrom.parse_string ~consume:All ParseAbstract.t
+    {|import {integer} from "builtin"
 
   expr :=
     | lit(integer())    // an expression can be a literal integer
@@ -10,33 +21,7 @@ module Description = struct
 
   type := int() // there's only one type in the language
     |}
-  ;;
-
-  let concrete_syntax =
-    {|
-  // terminals:
-  ADD := "+"
-  LPAREN := "("
-  RPAREN := ")"
-  INTEGER := /\d+/
-  INT := "int"
-
-  // nonterminals:
-
-  expr := x = expr_1 { x }
-
-  // expressions at precedence level 1
-  expr_1 :=
-    | x = expr_2 ADD y = expr_1 { add(x; y) }
-    | x = expr_2                { x         }
-
-  // expressions at precedence level 2
-  expr_2 :=
-    | x = INTEGER              { lit(integer(x)) }
-    | LPAREN x = expr_1 RPAREN { x               }
-
-  type := INT { int() }
-    |}
+    |> Result.ok_or_failwith
   ;;
 
   let statics =
@@ -52,8 +37,6 @@ module Description = struct
   let expr_name = "expr";;
 
 end
-
-open Lvca.Language.Make(Description)
 
 (*
 let dynamics_str =

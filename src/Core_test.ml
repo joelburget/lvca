@@ -1,15 +1,16 @@
 open Binding
-open Core.Types
-open AbstractSyntax
+open Core
 
-let%test_module "Core.Types parsing" = (module struct
+module ParseCore = Core.Parse(struct
+  let comment = Angstrom.fail "no comment"
+  let reserved = Util.String.Set.of_list ["rec"; "in"; "match"; "with"; "let"]
+end)
+
+(*
+let%test_module "Core parsing" = (module struct
   let one = Bigint.of_int 1
   let scope : Nominal.term -> Nominal.scope
     = fun body -> Scope ([], body)
-
-  let to_ast : term -> Nominal.term = function
-    | Term tm -> tm
-    | (Lambda _ | Let _ | CoreApp _ | Case _) -> failwith "to_ast: not a term!"
 
   let dynamics_str =
     {|
@@ -73,50 +74,48 @@ let%test_module "Core.Types parsing" = (module struct
   let%test "dynamics as expected" = match Parsing.CoreModule.parse dynamics_str with
     | Error err -> print_string (ParseError.to_string err); false
     | Ok dyn -> dyn = dynamics
-
-  let%test "to_ast 1" =
-    to_ast (Term (Primitive (PrimInteger one))) = Nominal.Primitive (PrimInteger one)
-  ;;
-
-  let%test "to_ast 2" =
-    to_ast (Term (Operator ("foo", [ scope @@ Primitive (PrimInteger one) ])))
-    = Nominal.Operator ("foo", [ Scope ([], Primitive (PrimInteger one)) ])
-  ;;
 end)
 ;;
+    *)
 
-let%test_module "Core.Types eval" =
+let%test_module "Core eval" =
   (module struct
-    let eval_str = fun str -> print_string (match Parsing.CoreTerm.parse str with
-      | Error err -> ParseError.to_string err
+    let eval_str = fun str -> print_string (match
+      Angstrom.parse_string ~consume:All ParseCore.term str
+    with
+      | Error err -> err
       | Ok core -> (match eval core with
         | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
         | Ok result -> Nominal.pp_term_str result))
 
-    let%expect_test _ = eval_str "1"; [%expect{| 1 |}]
-    let%expect_test _ = eval_str "foo(1)"; [%expect{| foo(1) |}]
-    let%expect_test _ = eval_str "true()"; [%expect{| true() |}]
-    let%expect_test _ = eval_str "false()"; [%expect{| false() |}]
+    let%expect_test _ = eval_str "{1}"; [%expect{| 1 |}]
+    let%expect_test _ = eval_str "{foo(1)}"; [%expect{| foo(1) |}]
+    let%expect_test _ = eval_str "{true()}"; [%expect{| true() |}]
+    let%expect_test _ = eval_str "{false()}"; [%expect{| false() |}]
     let%expect_test _ = eval_str
-      {| match true() with {
-           | true() -> false()
-           | false() -> true()
-         }
+      {|match {true()} with {
+          | true() -> {false()}
+          | false() -> {true()}
+        }
       |};
       [%expect{| false() |}]
     let%expect_test _ =
-      eval_str {|(\(x: bool()) -> x) true()|};
+      eval_str {|(\(x: bool()) -> x) {true()}|};
       [%expect{| true() |}]
-    let%expect_test _ = eval_str "#add(1; 2)"; [%expect{| 3 |}]
-    let%expect_test _ = eval_str "#sub(1; 2)"; [%expect{| -1 |}]
-    (* let%expect_test _ = eval_str "#sub 1 2"; [%expect{| -1 |}] *)
+    let%expect_test _ = eval_str "{add(1; 2)}"; [%expect{| 3 |}]
+    let%expect_test _ = eval_str "{sub(1; 2)}"; [%expect{| -1 |}]
+    (* let%expect_test _ = eval_str "sub 1 2"; [%expect{| -1 |}] *)
   end)
 ;;
 
-let%test_module "Core.Types pretty" =
+let%test_module "Core pretty" =
   (module struct
-    let pretty width str = print_string (match Parsing.CoreTerm.parse str with
-      | Error err -> ParseError.to_string err
+    let pretty width str = print_string (match
+        Angstrom.parse_string ~consume:All
+          Angstrom.(Util.Angstrom.whitespace *> ParseCore.term)
+          str
+      with
+      | Error err -> err
       | Ok core ->
           let fmt = Format.str_formatter in
           Format.pp_set_geometry fmt ~max_indent:width ~margin:(width + 1);
@@ -124,32 +123,32 @@ let%test_module "Core.Types pretty" =
           Format.flush_str_formatter ())
 
     let%expect_test _ =
-      pretty 20 "match true() with { true() -> false() | false() -> true() }";
+      pretty 22 "match {true()} with { true() -> {false()} | false() -> {true()} }";
       [%expect{|
-        match true() with {
+        match {true()} with {
           | true()
-            -> false()
+            -> {false()}
           | false()
-            -> true()
+            -> {true()}
         } |}]
 
     let%expect_test _ =
-      pretty 21 "match true() with { true() -> false() | false() -> true() }";
+      pretty 23 "match {true()} with { true() -> {false()} | false() -> {true()} }";
       [%expect{|
-        match true() with {
-          | true() -> false()
-          | false() -> true()
+        match {true()} with {
+          | true() -> {false()}
+          | false() -> {true()}
         } |}]
 
     let%expect_test _ =
-      pretty 23 "match x with { _ -> 1 }";
-      [%expect{| match x with { _ -> 1 } |}]
+      pretty 25 "match x with { _ -> {1} }";
+      [%expect{| match x with { _ -> {1} } |}]
 
     let%expect_test _ =
-      pretty 22 "match x with { _ -> 1 }";
+      pretty 24 "match x with { _ -> {1} }";
       [%expect{|
         match x with {
-          | _ -> 1
+          | _ -> {1}
         } |}]
 
     let%expect_test _ =
@@ -165,22 +164,25 @@ let%test_module "Core.Types pretty" =
           j k l |}]
 
     let%expect_test _ =
-      pretty 20 "let x = true() in not x";
+      pretty 20 "let x = {true()} in not x";
       [%expect{|
-        let x = true() in
+        let x = {true()} in
         not x |}]
   end)
 ;;
 
-let%test_module "Core.Types eval in dynamics" =
+(*
+let%test_module "Core eval in dynamics" =
   (module struct
     let eval_in = fun dynamics_str str ->
       print_string (match Parsing.CoreModule.parse dynamics_str with
       | Error err -> ParseError.to_string err
       | Ok dynamics -> (match dynamics with
         | CoreModule (_imports, [ { name = _; ty = _; defn } ]) ->
-          (match Parsing.CoreTerm.parse str with
-            | Error err -> ParseError.to_string err
+          (match
+            Angstrom.parse_string ~consume:All ParseCore.term str
+           with
+            | Error err -> err
             | Ok core -> (match eval (CoreApp (defn, core)) with
               | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
               | Ok result -> Nominal.pp_term_str result))
@@ -215,3 +217,4 @@ meaning : arrow(ty(); val()) = \(tm : ty()) -> match tm with {
       [%expect{| lambda(tm. tm; list(ty())) |}]
   end)
 ;;
+*)

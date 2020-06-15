@@ -1,16 +1,16 @@
 module AbstractSyntax = AbstractSyntax
-module Binding = Binding
-module NonBinding = NonBinding
-
 module Bidirectional = Bidirectional
+module Binding = Binding
 module CheckTerm = CheckTerm
 module Core = Core
-
+module NonBinding = NonBinding
 module Pattern = Pattern
-module Position = Position
-module ParseError = ParseError
 module Primitive = Primitive
 module Statics = Statics
 
 (* TODO: remove? *)
-module Parsing = Parsing
+module Util = Util
+
+(* TODO: re-enable? *)
+(* module Position = Position *)
+(* module ParseError = ParseError *)

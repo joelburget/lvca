@@ -48,5 +48,9 @@ type eval_error = string * term
 val eval_exn : term -> Nominal.term
 val eval : term -> (Nominal.term, eval_error) Base.Result.t
 
+module Parse (Lex : Util.Angstrom.Lexical_int) : sig
+  val term : term Angstrom.t
+end
+
 (** Convert a module to a nominal term, for storage. *)
 (* val module_to_term : core_module -> Nominal.term *)

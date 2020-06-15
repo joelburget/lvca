@@ -19,8 +19,8 @@ let (=) p1 p2 =
   | _ -> false
 ;;
 
-module Parse (C : Util.Angstrom.Comment_int) = struct
-  module Parsers = Util.Angstrom.Mk(C)
+module Parse (Lex : Util.Angstrom.Lexical_int) = struct
+  module Parsers = Util.Angstrom.Mk(Lex)
 
   let t : t Angstrom.t
     = let open Angstrom in
@@ -74,6 +74,7 @@ module Properties = struct
 
   module Parse' = Parse(struct
     let comment = Angstrom.fail "no comment"
+    let reserved = Util.String.Set.empty
   end)
 
   let string_round_trip1 : t -> bool
