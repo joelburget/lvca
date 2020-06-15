@@ -212,16 +212,20 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
         [ parens term
         ; identifier >>| (fun ident -> Term (Var ident))
         ; braces Term.t >>| (fun tm -> Term tm)
+          <?> "quoted term"
         ]
       in
 
-      let pattern = Nominal.to_pattern_exn <$> Term.t in
+      let pattern = Nominal.to_pattern_exn <$> Term.t
+        <?> "pattern"
+      in
 
       let case_line = lift3
         (fun pat _ tm -> CaseScope (pat, tm))
         pattern
         (string "->")
         term
+        <?> "case line"
       in
 
       choice
@@ -235,6 +239,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
         ))
         (string "->")
         term
+        <?> "lambda"
 
       ; lift4
         (fun _let is_rec name _eq tm _in body -> Let (is_rec, tm, Scope (name, body)))
@@ -245,6 +250,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
         <*> term
         <*> string "in"
         <*> term
+        <?> "let"
 
       ; lift4
         (fun _match tm _with lines -> Case (tm, lines))
@@ -252,14 +258,17 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
         term
         (string "with")
         (braces (option '|' (char '|') *> sep_by1 (char '|') case_line))
+        <?> "match"
 
       ; many1 atomic_term >>| make_apps
-      ])
+        <?> "application"
+      ]) <?> "core term"
 
   let core_defn : core_defn Angstrom.t
     = lift2 (fun imports tm -> CoreDefn (imports, tm))
       (many Abstract.import)
       term
+      <?> "core definition"
 end
 
 let%test_module "Parsing" = (module struct

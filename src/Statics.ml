@@ -97,6 +97,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
 
   let term : term Angstrom.t
     = cvt_tm <$> Term.t
+      <?> "term"
 
   let typing_clause : typing_clause Angstrom.t
     = lift3
@@ -109,6 +110,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
         ; string "=>" >>| (fun _ -> RightArr)
         ])
       term
+      <?> "typing clause"
 
   let typed_term : (string * term) Angstrom.t
     = lift3
@@ -116,9 +118,10 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
       identifier
       (char ':')
       term
+      <?> "typed term"
 
   let context : term Util.String.Map.t Angstrom.t
-    = string "ctx" >>= fun _ ->
+    = (string "ctx" *>
       choice
         [ (char ',' >>= fun _ ->
           sep_by1 (char ',') typed_term >>= fun ctx_entries ->
@@ -128,25 +131,28 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
             -> raise (StaticsParseError (Printf.sprintf "duplicate name in context: %s"
             str))))
         ; return Util.String.Map.empty
-        ]
+        ]) <?> "context"
 
   let hypothesis : hypothesis Angstrom.t
     = lift3 (fun ctx _ clause -> ctx, clause)
       context
       (string ">>")
       typing_clause
+      <?> "hypothesis"
 
   let line : string option Angstrom.t
     = lift3 (fun _ _ ident -> ident)
       (Angstrom.string "--") (* use Angstrom.string to prevent spaces here *)
       (many (char '-'))
       (option None ((fun ident -> Some ident) <$> parens identifier))
+      <?> "line"
 
   let rule : rule Angstrom.t
     = lift3 (fun hypotheses name conclusion -> { hypotheses; name; conclusion })
       (many hypothesis)
       line
       hypothesis
+      <?> "typing rule"
 
   let t : rule list Angstrom.t
     = many rule
