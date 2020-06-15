@@ -223,12 +223,14 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
   open Base
   module Parsers = Util.Angstrom.Mk(Comment)
 
-  let char, identifier, parens, string, string_lit =
-    Parsers.(char, identifier, parens, string, string_lit)
+  let braces, char, identifier, parens, string, string_lit =
+    Parsers.(braces, char, identifier, parens, string, string_lit)
+
+  (* TODO: define specialized identifier disallowing reserved words *)
 
   let sort : sort Angstrom.t
     = fix (fun sort ->
-        identifier >>= fun ident -> (* TODO: identifier'? *)
+        identifier >>= fun ident ->
         choice
           [ parens (sep_by (char ';') sort) >>| (fun sorts -> SortAp (ident, sorts))
           ; return (SortVar ident)
@@ -274,41 +276,40 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
     = parens (many (choice
         [ (char ';' >>| fun _ -> Either.First ';')
         ; (char '.' >>| fun _ -> Either.First '.')
-        ; (sort >>= fun sort ->
-           option Unstarred (char '*' >>| fun _ -> Starred) >>| fun starred ->
-           Either.Second (sort, starred))
+        ; lift2 (fun sort starred -> Either.Second (sort, starred))
+          sort
+          (option Unstarred (char '*' >>| fun _ -> Starred))
         ])
         >>| build_arity)
 
   let operator_def : operator_def Angstrom.t
-    (* TODO: identifier'? *)
     = lift2 (fun ident arity -> OperatorDef (ident, arity)) identifier arity
 
   let assign = string ":="
 
   let sort_def : (string * sort_def) Angstrom.t
-    = identifier >>= fun ident ->
-      option [] (parens (sep_by (char ';') identifier)) >>= fun bound_names ->
-      assign >>= fun _ ->
-      option '|' (char '|') >>= fun _ ->
-      (* TODO: allow empty sorts? *)
-      sep_by1 (char '|') operator_def >>| fun op_defs ->
-      ident, SortDef (bound_names, op_defs)
+    = lift4
+        (fun ident bound_names _assign op_defs -> ident, SortDef (bound_names, op_defs))
+        identifier
+        (option [] (parens (sep_by (char ';') identifier)))
+        assign
+        (* TODO: allow empty sorts? *)
+        (option '|' (char '|') *> sep_by1 (char '|') operator_def)
 
   let import_symbol : (string * string option) Angstrom.t
-    = identifier >>= fun ident ->
-      option None ((fun x -> Some x) <$> string "as" *> identifier) >>| fun as_ident ->
-      ident, as_ident
+    = lift2 (fun ident as_ident -> ident, as_ident)
+      identifier
+      (option None ((fun x -> Some x) <$> string "as" *> identifier))
 
   let import : import Angstrom.t
-    = string "import" >>= fun _ ->
-      char '{' >>= fun _ ->
-      sep_by1 (char ',') import_symbol >>= fun imported_symbols ->
-      char '}' >>= fun _ ->
-      string "from" >>= fun _ ->
-      string_lit >>| fun location ->
-      (* TODO: Do we want semicolons? *)
-      { imported_symbols; location }
+    = lift4
+        (fun _import imported_symbols _from location -> { imported_symbols; location })
+        (string "import")
+        (braces (sep_by1 (char ',') import_symbol))
+        (string "from")
+        string_lit
+        (* TODO: Do we want semicolons? *)
+
 
   let t : abstract_syntax Angstrom.t
     = lift2 (fun imports sort_defs ->
