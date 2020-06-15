@@ -223,90 +223,139 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
   open Base
   module Parsers = Util.Angstrom.Mk(Comment)
 
+  exception BuildArityError of string
+
   let braces, char, identifier, parens, string, string_lit =
     Parsers.(braces, char, identifier, parens, string, string_lit)
+
+  (* punctuation *)
+  let assign = string ":="
+  let bar = char '|'
+  let comma = char ','
+  let dot = char '.'
+  let semi = char ';'
+  let star = char '*'
 
   let sort : sort Angstrom.t
     = fix (fun sort ->
         identifier >>= fun ident ->
         choice
-          [ parens (sep_by (char ';') sort) >>| (fun sorts -> SortAp (ident, sorts))
+          [ parens (sep_by semi sort) >>| (fun sorts -> SortAp (ident, sorts))
           ; return (SortVar ident)
           ])
 
   type starred = Starred | Unstarred
+  type sort_sequence_entry =
+    | Sort of sort * starred
+    | Dot
+    | Semi
+  type sort_sequence = sort_sequence_entry list
 
-  type sort_sequence = (char, sort * starred) Either.t list
+  let str_of_entry = function
+    | Sort (sort, Starred) -> string_of_sort sort ^ "*"
+    | Sort (sort, Unstarred) -> string_of_sort sort
+    | Dot -> "."
+    | Semi -> ";"
 
-  (* Accumulate *)
+  (* Fold a sequence of sorts, '.'s, and ';'s to an arity. *)
   let build_arity : sort_sequence -> arity
     = fun sort_sequence ->
 
-      let rec go : sort list -> sort_sequence -> valence list
-        = fun binding_sorts sorts -> match binding_sorts, sorts with
+      let binding_sorts : sort Queue.t = Queue.create () in
 
-        | [], [] -> []
+      let rec go : sort_sequence -> valence list
+        = fun sorts -> match Queue.length binding_sorts, sorts with
+
+        | 0, [] -> []
 
         (* First, handle variable valences: [sort*. sort] *)
-        | [], Second (sort1, Starred) ::
-              First '.' ::
-              Second (sort2, Unstarred) ::
-              First ';' ::
-              sorts'
-        -> VariableValence (sort1, sort2) :: go [] sorts'
-        | [], [Second (sort1, Starred); First '.'; Second (sort2, Unstarred)]
+        | 0, Sort (sort1, Starred) :: Dot :: Sort (sort2, Unstarred) :: Semi :: sorts'
+        -> VariableValence (sort1, sort2) :: go sorts'
+        | 0, [Sort (sort1, Starred); Dot; Sort (sort2, Unstarred)]
         -> [VariableValence (sort1, sort2)]
 
-        | _, Second (sort, Unstarred) :: First '.' :: sorts'
-        -> go (binding_sorts @ [sort]) sorts'
-        | _, [Second (sort, Unstarred)]
-        -> [FixedValence (binding_sorts, sort)]
-        | _, Second (sort, Unstarred) :: First ';' :: sorts'
-        -> FixedValence (binding_sorts, sort) :: go [] sorts'
-        | _ -> failwith "TODO"
+        (* Second, handle fixed valences, eg [sort1. sort2; sort3] *)
+        | _, [Sort (sort, Unstarred)]
+        -> [FixedValence (Queue.to_list binding_sorts, sort)]
+        | _, Sort (sort, Unstarred) :: Dot :: sorts'
+        -> Queue.enqueue binding_sorts sort;
+           go  sorts'
+        | _, Sort (sort, Unstarred) :: Semi :: sorts'
+        -> let binding_sorts_lst = Queue.to_list binding_sorts in
+           Queue.clear binding_sorts;
+           FixedValence (binding_sorts_lst, sort) :: go sorts'
+
+        | _ ->
+          let entries_str = sorts
+            |> List.map ~f:str_of_entry
+            |> String.concat ~sep:" "
+          in
+
+          let binding_sorts_lst = Queue.to_list binding_sorts in
+
+          let sorts_str = binding_sorts_lst
+            |> List.map ~f:string_of_sort
+            |> String.concat ~sep:". "
+          in
+
+          let msg = match binding_sorts_lst with
+            | [] -> entries_str
+            | _ -> entries_str ^ " " ^ sorts_str
+          in
+
+          raise (BuildArityError (Printf.sprintf
+            "Unexpected sequence of sorts: %s"
+            msg
+          ))
       in
 
       match sort_sequence with
-        | [Second (sort, Starred)] -> VariableArity sort
-        | _ -> FixedArity (go [] sort_sequence)
+        | [Sort (sort, Starred)] -> VariableArity sort
+        | _ -> FixedArity (go sort_sequence)
 
   let arity : arity Angstrom.t
     = parens (many (choice
-        [ (char ';' >>| fun _ -> Either.First ';')
-        ; (char '.' >>| fun _ -> Either.First '.')
-        ; lift2 (fun sort starred -> Either.Second (sort, starred))
+        [ semi >>| Fn.const Semi
+        ; dot >>| Fn.const Dot
+        ; lift2 (fun sort starred -> Sort (sort, starred))
           sort
-          (option Unstarred (char '*' >>| fun _ -> Starred))
+          (option Unstarred (star >>| Fn.const Starred))
         ])
-        >>| build_arity)
+        >>= fun sort_sequence ->
+          try
+            return (build_arity sort_sequence)
+          with
+            BuildArityError msg -> fail msg
+      ) <?> "arity"
 
   let operator_def : operator_def Angstrom.t
     = lift2 (fun ident arity -> OperatorDef (ident, arity)) identifier arity
-
-  let assign = string ":="
 
   let sort_def : (string * sort_def) Angstrom.t
     = lift4
         (fun ident bound_names _assign op_defs -> ident, SortDef (bound_names, op_defs))
         identifier
-        (option [] (parens (sep_by (char ';') identifier)))
+        (option [] (parens (sep_by semi identifier)))
         assign
         (* TODO: allow empty sorts? *)
-        (option '|' (char '|') *> sep_by1 (char '|') operator_def)
+        (option '|' bar *> sep_by1 bar operator_def)
+        <?> "sort definition"
 
   let import_symbol : (string * string option) Angstrom.t
     = lift2 (fun ident as_ident -> ident, as_ident)
       identifier
       (option None ((fun x -> Some x) <$> string "as" *> identifier))
+      <?> "import symbol"
 
   let import : import Angstrom.t
     = lift4
         (fun _import imported_symbols _from location -> { imported_symbols; location })
         (string "import")
-        (braces (sep_by1 (char ',') import_symbol))
+        (braces (sep_by1 comma import_symbol))
         (string "from")
         string_lit
         (* TODO: Do we want semicolons? *)
+        <?> "import"
 
 
   let t : abstract_syntax Angstrom.t
@@ -317,6 +366,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
         })
       (many import)
       (many1 sort_def)
+      <?> "abstract syntax"
 end
 
 let%test_module "AbstractSyntax_Parser" = (module struct
@@ -354,6 +404,14 @@ let%test_module "AbstractSyntax_Parser" = (module struct
   let%test_unit _ =
     assert Caml.(parse_with Parse.arity "(tm()*. tm())" =
       FixedArity [VariableValence (tm, tm)])
+
+  let%expect_test _ =
+    (match
+      Angstrom.parse_string ~consume:All Parse.arity "(tm()*. tm()*. tm())"
+    with
+      | Ok _ -> print_string "fail"
+      | Error msg -> print_string msg);
+    [%expect{| arity: Unexpected sequence of sorts: tm()* . tm()* . tm() |}]
 
   let%test_unit _ = assert Caml.(parse_with Parse.arity "()" = FixedArity [])
 
