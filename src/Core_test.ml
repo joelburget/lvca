@@ -84,7 +84,7 @@ let%test_module "Core eval" =
     let eval_str = fun str ->
       let core = parse_term str in
       let result = match eval core with
-        | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
+        | Error (msg, tm) -> msg ^ ": " ^ to_string tm
         | Ok result -> Nominal.pp_term_str result
       in
       print_string result
@@ -120,7 +120,7 @@ let%test_module "Core pretty" =
       | Ok core ->
           let fmt = Format.str_formatter in
           Format.pp_set_geometry fmt ~max_indent:width ~margin:(width + 1);
-          pp_core fmt core;
+          pp fmt core;
           Format.flush_str_formatter ())
 
     let%expect_test _ =
@@ -178,7 +178,7 @@ let%test_module "Core eval in dynamics" =
       let CoreDefn (_imports, defn) = parse_defn dynamics_str in
       let core = parse_term str in
       match eval (CoreApp (defn, core)) with
-        | Error (msg, tm) -> msg ^ ": " ^ pp_core_str tm
+        | Error (msg, tm) -> msg ^ ": " ^ to_string tm
         | Ok result -> Nominal.pp_term_str result
 
     let dynamics_str =

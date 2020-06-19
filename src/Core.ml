@@ -26,7 +26,7 @@ module PP = struct
   (* TODO: add parse <-> pretty tests *)
 
   (** @raise InvariantViolation *)
-  let rec pp_core
+  let rec pp
     = fun ppf -> function
       | Term (Var v) -> pf ppf "%s" v (* XXX *)
       | Term tm -> pf ppf "{%a}" Nominal.pp_term tm
@@ -34,24 +34,24 @@ module PP = struct
         pf ppf "\\(%s : %a) ->@ %a"
         name
         pp_sort sort
-        pp_core body
+        pp body
       (* TODO: parens if necessary *)
       | (CoreApp _ as app) -> pp_app ppf app
       | Case (arg, case_scopes)
       -> pf ppf
         "@[<hv>match %a with {%t%a@ }@]"
-        pp_core arg
+        pp arg
         (* Before `|`, emit a single space if on the same line, or two when broken *)
         (Format.pp_print_custom_break ~fits:("", 1, "") ~breaks:("", 2, "| "))
         (list ~sep:(any "@;<1 2>| ") pp_core_case_scope) case_scopes
       | Let (is_rec, tm, Scope (name, body))
       -> pf ppf "@[let %s%s =@ %a in@ @[%a@]@]"
          (match is_rec with Rec -> "rec " | NoRec -> "")
-         name pp_core tm pp_core body
+         name pp tm pp body
 
   and pp_core_case_scope : Format.formatter -> core_case_scope -> unit
     = fun ppf (CaseScope (pat, body))
-    -> pf ppf "@[%a@ -> %a@]" Pattern.pp pat pp_core body
+    -> pf ppf "@[%a@ -> %a@]" Pattern.pp pat pp body
 
   (* Flatten all arguments into one box *)
   and pp_app = fun ppf app ->
@@ -63,15 +63,15 @@ module PP = struct
       | [] -> Util.invariant_violation "pp_app: must be at least one argument"
       | f :: args ->
         pf ppf "@[<h>%a@ @[<hov>%a@]@]"
-        pp_core f
-        (list ~sep:sp pp_core) args
+        pp f
+        (list ~sep:sp pp) args
 end
 
-let pp_core : Format.formatter -> term -> unit
-  = PP.pp_core
+let pp : Format.formatter -> term -> unit
+  = PP.pp
 
-let pp_core_str : term -> string
-  = Format.asprintf "%a" pp_core
+let to_string : term -> string
+  = Format.asprintf "%a" pp
 
 type import = AbstractSyntax.import
 
@@ -83,7 +83,7 @@ let pp_defn : Format.formatter -> core_defn -> unit
       AbstractSyntax.pp_import ppf import;
       Format.pp_force_newline ppf ()
     );
-    pp_core ppf defn
+    pp ppf defn
 
 let pp_defn_str : core_defn -> string
   = Format.asprintf "%a" pp_defn

@@ -26,8 +26,8 @@ and core_scope = Scope of string * term
 
 and core_case_scope = CaseScope of Pattern.t * term
 
-val pp_core : Format.formatter -> term -> unit
-val pp_core_str : term -> string
+val pp : Format.formatter -> term -> unit
+val to_string : term -> string
 
 type import = AbstractSyntax.import
 
