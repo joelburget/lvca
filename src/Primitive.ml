@@ -4,11 +4,13 @@ type t =
   | PrimInteger of Bigint.t
   | PrimString of string
   | PrimFloat of float
+  | PrimChar of char
 
 let to_string = function
   | PrimInteger i -> Bigint.to_string i
   | PrimString str -> "\"" ^ Caml.String.escaped str ^ "\""
   | PrimFloat f -> Float.to_string f
+  | PrimChar c -> "\'" ^ Base.Char.to_string c ^ "\'"
 ;;
 
 let (=) p1 p2 =
@@ -24,13 +26,15 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
 
   let t : t Angstrom.t
     = let open Angstrom in
-      let integer_or_float_lit, string_lit = Parsers.(integer_or_float_lit, string_lit)
+      let char_lit, integer_or_float_lit, string_lit =
+        Parsers.(char_lit, integer_or_float_lit, string_lit)
       in
       choice
         [ integer_or_float_lit >>| (function
             | First i -> PrimInteger (Bigint.of_string i)
             | Second f -> PrimFloat f)
         ; string_lit >>| (fun s -> PrimString s)
+        ; char_lit >>| (fun c -> PrimChar c)
         ] <?> "primitive"
 end
 
@@ -40,6 +44,7 @@ let pp : Format.formatter -> t -> unit
   | PrimInteger i -> Format.fprintf ppf "%s" (Bigint.to_string i)
   | PrimString s -> Format.fprintf ppf "\"%s\"" s
   | PrimFloat f -> Format.fprintf ppf "%f" f
+  | PrimChar c -> Format.fprintf ppf "%c" c
 ;;
 
 let jsonify =
@@ -47,7 +52,8 @@ let jsonify =
     function
     | PrimInteger i -> array [| string "i"; string (Bigint.to_string i) |]
     | PrimString s -> array [| string "s"; string s |]
-    | PrimFloat f -> array [| string "f"; float f |])
+    | PrimFloat f -> array [| string "f"; float f |]
+    | PrimChar c -> array [| string "c"; string (Base.Char.to_string c) |])
 ;;
 
 let unjsonify = Util.Json.(function
@@ -92,4 +98,5 @@ let%test_module "Parsing" = (module struct
   let%test _ = parse' "123" = Ok (PrimInteger (Bigint.of_int 123))
   let%test _ = parse' {|"abc"|} = Ok (PrimString "abc")
   let%test _ = parse' "1.1" = Ok (PrimFloat 1.1)
+  let%test _ = parse' {|'c'|} = Ok (PrimChar 'c')
 end);;

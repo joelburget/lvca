@@ -345,6 +345,7 @@ module Angstrom = struct
           ]
 
     let string_lit = char '"' *> S.str (Buffer.create 0x100)
+    let char_lit = char '\'' *> any_char <* char '\''
 
     let identifier =
       satisfy Char.(fun c -> is_alpha c || c = '_') >>= fun c ->
@@ -383,6 +384,7 @@ module Angstrom = struct
     let string str = Angstrom.string str <* junk
     let integer_or_float_lit = Internal.integer_or_float_lit <* junk
     let string_lit = Internal.string_lit <* junk
+    let char_lit = Internal.char_lit <* junk
   end
 
   (* Parse one or more occurences of e, separated by op. Returns a value obtained by a
