@@ -75,17 +75,17 @@ let to_string : term -> string
 
 type import = AbstractSyntax.import
 
-type core_defn = CoreDefn of import list * term
+type defn = Defn of import list * term
 
-let pp_defn : Format.formatter -> core_defn -> unit
-  = fun ppf (CoreDefn (imports, defn)) ->
+let pp_defn : Format.formatter -> defn -> unit
+  = fun ppf (Defn (imports, defn)) ->
     List.iter imports ~f:(fun import ->
       AbstractSyntax.pp_import ppf import;
       Format.pp_force_newline ppf ()
     );
     pp ppf defn
 
-let pp_defn_str : core_defn -> string
+let pp_defn_str : defn -> string
   = Format.asprintf "%a" pp_defn
 
 let rec match_pattern
@@ -264,8 +264,8 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
         <?> "application"
       ]) <?> "core term"
 
-  let core_defn : core_defn Angstrom.t
-    = lift2 (fun imports tm -> CoreDefn (imports, tm))
+  let defn : defn Angstrom.t
+    = lift2 (fun imports tm -> Defn (imports, tm))
       (many Abstract.import)
       term
       <?> "core definition"
@@ -353,14 +353,14 @@ and scope_of_core_case_scope : core_case_scope -> Nominal.scope
   = fun (CaseScope (baw_pat, body)) -> failwith "TODO"
   *)
 
-let module_to_term : core_defn -> Nominal.term
-  = fun (CoreDefn (imports, defns)) -> Operator ("core_defn",
+let module_to_term : defn -> Nominal.term
+  = fun (Defn (imports, defns)) -> Operator ("defn",
     [ Scope ([], Sequence (imports
         |> List.map ~f:AbstractSyntax.term_of_import
         |> List.map ~f:NonBinding.to_nominal
       ))
     ; Scope ([], Sequence (List.map defns
-      ~f:(fun { name; ty; defn } -> Nominal.Operator ("core_defn",
+      ~f:(fun { name; ty; defn } -> Nominal.Operator ("defn",
         [ Scope ([], Primitive (PrimString name))
         ; Scope ([], ty |> term_of_sort |> NonBinding.to_nominal)
         ; Scope ([], term_of_core defn)

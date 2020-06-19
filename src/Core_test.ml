@@ -5,7 +5,7 @@ module ParseCore = Core.Parse(Util.Angstrom.CComment)
 
 let parse_defn str =
   match
-    Angstrom.parse_string ~consume:All ParseCore.core_defn str
+    Angstrom.parse_string ~consume:All ParseCore.defn str
   with
     | Error err -> failwith err
     | Ok dyn -> dyn
@@ -43,7 +43,7 @@ let%test_module "Core parsing" = (module struct
   let ty = SortAp ("ty", [])
 
   let dynamics =
-    CoreDefn
+    Defn
       ( []
       , Lambda
         ( ty
@@ -175,7 +175,7 @@ let%test_module "Core pretty" =
 let%test_module "Core eval in dynamics" =
   (module struct
     let eval_in = fun dynamics_str str ->
-      let CoreDefn (_imports, defn) = parse_defn dynamics_str in
+      let Defn (_imports, defn) = parse_defn dynamics_str in
       let core = parse_term str in
       match eval (CoreApp (defn, core)) with
         | Error (msg, tm) -> msg ^ ": " ^ to_string tm
