@@ -118,7 +118,7 @@ let rec match_pattern
     else None
   | Primitive l1, Primitive l2
   -> if Primitive.(l1 = l2) then Some Util.String.Map.empty else None
-  | _, Var "_" -> Some Util.String.Map.empty
+  | _, Ignored _ -> Some Util.String.Map.empty
   | tm, Var v -> Some (Util.String.Map.of_alist_exn [ v, tm ])
   | _ -> None
 ;;
