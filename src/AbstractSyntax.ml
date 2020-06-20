@@ -354,7 +354,6 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
         (braces (sep_by1 comma import_symbol))
         (string "from")
         string_lit
-        (* TODO: Do we want semicolons? *)
         <?> "import"
 
 
