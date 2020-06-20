@@ -5,7 +5,7 @@ authors: ["Joel Burget"]
 homepage: "https://github.com/joelburget/lvca"
 bug-reports: "https://github.com/joelburget/lvca/issues"
 dev-repo: "git+https://github.com/joelburget/lvca.git"
-license: "TODO"
+license: "MIT"
 build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
