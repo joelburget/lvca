@@ -11,13 +11,13 @@ build: [
 ]
 depends: [
   "ocaml" {>= "4.08.0"}
-  "core_kernel"
+  "base"
+  "bignum"
+  "cbor"
+  "digestif"
+  "js_of_ocaml"
   "ppx_jane"
   "ppx_inline_test"
-  "virtual_dom"
   "sha"
-  "cbor"
-  "bonsai"
-  "bignum"
   "dune"             {>= "2.0.0"}
 ]

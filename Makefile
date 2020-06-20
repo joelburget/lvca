@@ -5,6 +5,6 @@ doc:
 	@dune build @doc
 
 install-deps:
-	@opam install base bignum bonsai cbor core_kernel digestif js_of_ocaml ppx_jane re
+	@opam install base bignum cbor digestif js_of_ocaml ppx_jane ppx_inline_test sha dune
 
 .PHONY: format doc install-deps
