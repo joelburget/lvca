@@ -76,7 +76,6 @@ let rec pp : t Fmt.t (* Format.formatter -> t -> unit *)
   = fun ppf ->
     let term = Core.pp in
     let pf = Fmt.pf in
-    let list = Fmt.(list ~sep:comma pp) in
     function
     | Char tm -> pf ppf "char %a" term tm
     | String tm -> pf ppf "string %a" term tm
@@ -95,7 +94,7 @@ let rec pp : t Fmt.t (* Format.formatter -> t -> unit *)
     | LiftN (names, p, ps) -> pf ppf "lift (\\%a. %a) [%a]"
       Fmt.(list ~sep:(any ".@ ") string) names
       term p
-      list ps
+      Fmt.(list ~sep:comma pp) ps
 
 module Parse(Comment : Util.Angstrom.Comment_int) = struct
   module Parsers = Util.Angstrom.Mk(Comment)
