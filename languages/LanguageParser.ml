@@ -19,23 +19,17 @@ parser :=
 
   // combinators
   | option(parser())
-  | list(parser()*)
   | count(c_term(); parsers())
   | many(parser())
   | many1(parser())
-  | sep_by(parser(); parser())
-  | sep_by1(parser(); parser())
   | fix(parser(). parser())
 
   // alternative
   | alt(parser(); parser())
-  | choice(parser()*)
 
   // monad
   | return(c_term())
-  | bind(parser(); n_term(). parser())
 
-  | map(n_term(). c_term(); parser())
   | left(parser(); parser())
   | right(parser(); parser())
   // is sequence a better name?
@@ -62,23 +56,17 @@ type t =
 
   (* combinators *)
   | Option of t
-  | List of t list
   | Count of c_term * t
   | Many of t
   | Many1 of t
-  | SepBy of t * t
-  | SepBy1 of t * t
   | Fix of string * t
 
   (* alternative *)
   | Alt of t * t
-  | Choice of t list
 
   | Return of c_term
-  | Bind of t * string * t
 
   (* There's no need for ap (<*>), since lift_n fills the role of sequencing effects *)
-  | Map of string * c_term * t
   | Left of t * t
   | Right of t * t
 
@@ -96,18 +84,12 @@ let rec pp : t Fmt.t (* Format.formatter -> t -> unit *)
     | Named (tm, t) -> pf ppf "named %a %a" term tm pp t
     | Fail tm -> pf ppf "fail %a" term tm
     | Option t -> pf ppf "option %a" pp t
-    | List ps -> pf ppf "list [%a]" list ps
     | Count (t, p) -> pf ppf "count %a %a" term t pp p
     | Many t -> pf ppf "many %a" pp t
     | Many1 t -> pf ppf "many1 %a" pp t
-    | SepBy (t1, t2) -> pf ppf "sep_by %a %a" pp t1 pp t2
-    | SepBy1 (t1, t2) -> pf ppf "sep_by1 %a %a" pp t1 pp t2
     | Fix (name, t) -> pf ppf "fix (%s -> %a)" name pp t
     | Alt (t1, t2) -> pf ppf "alt %a %a" pp t1 pp t2
-    | Choice ps -> pf ppf "choice [%a]" list ps
     | Return tm -> pf ppf "return %a" term tm
-    | Bind (t1, name, t2) -> pf ppf "%a >>= %s -> %a" pp t1 name pp t2
-    | Map (name, tm, p) -> pf ppf "map (\\%s. %a) %a" name term tm pp p
     | Left (t1, t2) -> pf ppf "%a <* %a" pp t1 pp t2
     | Right (t1, t2) -> pf ppf "%a *> %a" pp t1 pp t2
     | LiftN (names, p, ps) -> pf ppf "lift (\\%a. %a) [%a]"
@@ -122,11 +104,11 @@ module Parse(Comment : Util.Angstrom.Comment_int) = struct
   let choice, fix, lift3, many1, return, ( *> ), (<$>), (<?>), (>>=) =
     Angstrom.(choice, fix, lift3, many1, return, ( *> ), (<$>), (<?>), (>>=))
 
-  (* Note: "many1" must occur before "many", likewise for "sep_by1" and "sep_by", etc.
+  (* Note: "many1" must occur before "many", etc.
    * Eventually I would like to move to a representation without this limitation.
    *)
   let keywords : string list =
-    [ "char"; "string"; "satisfy"; "option"; "many1"; "many"; "sep_by1"; "sep_by"; "alt";
+    [ "char"; "string"; "satisfy"; "option"; "many1"; "many"; "alt";
       "named"; "fail"; "return" ]
 
   let keyword : string Angstrom.t
@@ -174,16 +156,13 @@ module Parse(Comment : Util.Angstrom.Comment_int) = struct
         | [ Keyword "named"; Term tm; Parser p ] -> return (Named (tm, p))
         | [ Keyword "fail"; Term tm ] -> return (Fail tm)
         | [ Keyword "option"; Parser p ] -> return (Option p)
-        (* TODO: list, count *)
+        (* TODO: count *)
         | [ Keyword "many"; Parser p ] -> return (Many p)
         | [ Keyword "many1"; Parser p ] -> return (Many1 p)
-        | [ Keyword "sep_by"; Parser p1; Parser p2 ] -> return (SepBy (p1, p2))
-        | [ Keyword "sep_by1"; Parser p1; Parser p2 ] -> return (SepBy1 (p1, p2))
-        (* TODO: | Fix *)
+        (* TODO: fix *)
         | [ Keyword "alt"; Parser p1; Parser p2 ] -> return (Alt (p1, p2))
         (* TODO: choice *)
         | [ Keyword "return"; Term tm ] -> return (Return tm)
-        (* TODO: | Bind, map *)
         | [ Parser p1; Operator "<*"; Parser p2 ] -> return (Left (p1, p2))
         | [ Parser p1; Operator "*>"; Parser p2 ] -> return (Right (p1, p2))
         (* TODO: liftn *)
@@ -238,7 +217,6 @@ let translate : t -> n_term Angstrom.t
     | Option p -> option None ((fun tm -> Some tm) <$> translate' ctx p) >>| (function
       | Some tm -> mk_some tm
       | None -> Operator ("none", []))
-    | List ps -> list (ps |> List.map ~f:(translate' ctx)) >>| mk_list
     | Count (n_tm, p) ->
       let n = match Core.eval_ctx_exn ctx n_tm with
         | Primitive (PrimInteger i) -> (match Bigint.to_int i with
@@ -252,25 +230,14 @@ let translate : t -> n_term Angstrom.t
       <?> "many"
     | Many1 t -> many1 (translate' ctx t) >>| mk_list
       <?> "many1"
-    | SepBy (p1, p2) -> sep_by (translate' ctx p1) (translate' ctx p2) >>| mk_list
-      <?> "sep_by"
-    | SepBy1 (p1, p2) -> sep_by1 (translate' ctx p1) (translate' ctx p2) >>| mk_list
-      <?> "sep_by1"
     (* TODO: do we even want explicit fix? or should this be done implicitly? *)
     (* | Fix (name, p) -> fix (fun p' -> translate' (Map.set ctx ~key:name ~data:p') p) *)
     | Fix _ -> failwith "TODO"
     | Alt (p1, p2) -> translate' ctx p1 <|> translate' ctx p2
       <?> "alt"
-    | Choice ps -> choice (ps |> List.map ~f:(translate' ctx))
     | Return tm -> (match tm with
       | Term tm -> return tm
       | _ -> mk_err ())
-    | Bind (p1, name, p2) ->
-        translate' ctx p1 >>= fun v ->
-        translate' (Map.set ctx ~key:name ~data:v) p2
-    (* | Map (name, body, p) -> translate' ctx p >>| fun tm -> Core.eval_ctx_exn body *)
-    | Map _ -> failwith "TODO"
-      (* XXX bind (name -> tm) *)
     | Left (p1, p2) -> translate' ctx p1 <* translate' ctx p2
     | Right (p1, p2) -> translate' ctx p1 *> translate' ctx p2
     | LiftN (_names, _p, _ps) -> failwith "TODO"
@@ -306,11 +273,6 @@ let%test_module "Parsing" = (module struct
 
   let%expect_test _ =
     parse' {|many1 (string {"str"})|} "strstrstr";
-    [%expect{| list("str"; "str"; "str") |}]
-
-  let%expect_test _ =
-    (* parse' {|sep_by (char ' ') (string "str")|} "str str str"; *)
-    parse' {|sep_by (string {" "}) (string {"str"})|} "str str str";
     [%expect{| list("str"; "str"; "str") |}]
 
   let%expect_test _ =
