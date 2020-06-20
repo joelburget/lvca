@@ -138,44 +138,43 @@ type eval_error = string * term
 
 exception EvalExn of string * term
 
+let rec eval_ctx_exn : Nominal.term Util.String.Map.t -> term -> Nominal.term =
+ fun ctx tm -> match tm with
+  | Term (Var v) -> (match Map.find ctx v with
+    | Some result -> result
+    | None -> raise @@ EvalExn ("Unbound variable " ^ v, tm))
+  | CoreApp (Lambda (_ty, Scope (name, body)), arg) ->
+    let arg_val = eval_ctx_exn ctx arg in
+    eval_ctx_exn (Map.set ctx ~key:name ~data:arg_val) body
+  | Case (tm, branches) ->
+    (match find_core_match (eval_ctx_exn ctx tm) branches with
+    | None -> raise @@ EvalExn ("no match found in case", tm)
+    | Some (branch, bindings) -> eval_ctx_exn (Util.Map.union_right_biased ctx bindings) branch)
+
+  (* primitives *)
+  (* TODO: or should this be an app? *)
+  | Term (Operator ("add", [ Scope ([], a); Scope ([], b) ])) ->
+    (match eval_ctx_exn' ctx a, eval_ctx_exn' ctx b with
+    | Primitive (PrimInteger a'), Primitive (PrimInteger b') ->
+      Primitive (PrimInteger Bigint.(a' + b'))
+    | _ -> raise @@ EvalExn ("Invalid arguments to add", tm))
+  | Term (Operator ("sub", [ Scope ([], a); Scope ([], b) ])) ->
+    (match eval_ctx_exn' ctx a, eval_ctx_exn' ctx b with
+    | Primitive (PrimInteger a'), Primitive (PrimInteger b') ->
+      Primitive (PrimInteger Bigint.(a' - b'))
+    | _ -> raise @@ EvalExn ("Invalid arguments to sub", tm))
+
+  | Term tm -> tm
+  | _ -> raise @@ EvalExn ("Found a term we can't evaluate", tm)
+and eval_ctx_exn' : Nominal.term Util.String.Map.t -> Nominal.term -> Nominal.term
+  = fun ctx tm -> match tm with
+    | Var v -> (match Map.find ctx v with
+      | Some result -> result
+      | None -> raise @@ EvalExn ("Unbound variable " ^ v, Term tm))
+    | _ -> tm
+
 let eval_exn : term -> Nominal.term
-  = fun core ->
-    let rec go : Nominal.term Util.String.Map.t -> term -> Nominal.term =
-     fun ctx tm -> match tm with
-      | Term (Var v) -> (match Map.find ctx v with
-        | Some result -> result
-        | None -> raise @@ EvalExn ("Unbound variable " ^ v, tm))
-      | CoreApp (Lambda (_ty, Scope (name, body)), arg) ->
-        let arg_val = go ctx arg in
-        go (Map.set ctx ~key:name ~data:arg_val) body
-      | Case (tm, branches) ->
-        (match find_core_match (go ctx tm) branches with
-        | None -> raise @@ EvalExn ("no match found in case", tm)
-        | Some (branch, bindings) -> go (Util.Map.union_right_biased ctx bindings) branch)
-
-      (* primitives *)
-      (* TODO: or should this be an app? *)
-      | Term (Operator ("add", [ Scope ([], a); Scope ([], b) ])) ->
-        (match go' ctx a, go' ctx b with
-        | Primitive (PrimInteger a'), Primitive (PrimInteger b') ->
-          Primitive (PrimInteger Bigint.(a' + b'))
-        | _ -> raise @@ EvalExn ("Invalid arguments to add", tm))
-      | Term (Operator ("sub", [ Scope ([], a); Scope ([], b) ])) ->
-        (match go' ctx a, go' ctx b with
-        | Primitive (PrimInteger a'), Primitive (PrimInteger b') ->
-          Primitive (PrimInteger Bigint.(a' - b'))
-        | _ -> raise @@ EvalExn ("Invalid arguments to sub", tm))
-
-      | Term tm -> tm
-      | _ -> raise @@ EvalExn ("Found a term we can't evaluate", tm)
-    and go' : Nominal.term Util.String.Map.t -> Nominal.term -> Nominal.term
-      = fun ctx tm -> match tm with
-        | Var v -> (match Map.find ctx v with
-          | Some result -> result
-          | None -> raise @@ EvalExn ("Unbound variable " ^ v, Term tm))
-        | _ -> tm
-
-    in go Util.String.Map.empty core
+  = fun core -> eval_ctx_exn Util.String.Map.empty core
 
 let eval : term -> (Nominal.term, eval_error) Result.t =
   fun core -> try Ok (eval_exn core) with EvalExn (msg, tm) -> Error (msg, tm)

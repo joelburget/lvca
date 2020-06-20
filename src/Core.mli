@@ -38,8 +38,12 @@ val defn_to_string : defn -> string
 
 type eval_error = string * term
 
-(** @raise [eval_error] *)
+(** @raise eval_error *)
+val eval_ctx_exn : Nominal.term Util.String.Map.t -> term -> Nominal.term
+
+(** @raise eval_error *)
 val eval_exn : term -> Nominal.term
+
 val eval : term -> (Nominal.term, eval_error) Base.Result.t
 
 module Parse (Comment : Util.Angstrom.Comment_int) : sig
