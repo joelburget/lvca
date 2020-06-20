@@ -190,7 +190,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
   let braces, identifier, char, parens, string =
     Parsers.(braces, identifier, char, parens, string)
 
-  let reserved = Util.String.Set.of_list ["rec"; "in"; "match"; "with"; "let"]
+  let reserved = Util.String.Set.of_list ["let"; "rec"; "in"; "match"; "with"]
 
   let identifier = identifier >>= fun ident ->
     if Set.mem reserved ident
