@@ -283,6 +283,9 @@ let%test_module "Parsing" = (module struct
 
   let (=) = Caml.(=)
 
+  let one = Binding.Nominal.Primitive (PrimInteger (Bigint.of_int 1))
+
+  let%test _ = parse "{1}" = Term one
   let%test _ = parse "{true()}" = Term (Operator ("true", []))
   let%test _ = parse "not x" = CoreApp (Term (Var "not"), Term (Var "x"))
 
@@ -291,12 +294,12 @@ let%test_module "Parsing" = (module struct
 
   let%test _ = parse {|match x with { _ -> {1} }|} = Case
     ( Term (Var "x")
-    , [ CaseScope (Ignored "", Term (Primitive (PrimInteger (Bigint.of_int 1)))) ]
+    , [ CaseScope (Ignored "", Term one) ]
     )
 
   let%test _ = parse {|match x with { | _ -> {1} }|} = Case
     ( Term (Var "x")
-    , [ CaseScope (Ignored "", Term (Primitive (PrimInteger (Bigint.of_int 1)))) ]
+    , [ CaseScope (Ignored "", Term one) ]
     )
 
   let%test _ = parse {|match x with { true() -> {false()} | false() -> {true()} }|} = Case
