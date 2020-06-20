@@ -1,4 +1,4 @@
-open Core_kernel
+open Base
 open Lvca.Binding
 
 let abstract_syntax =
