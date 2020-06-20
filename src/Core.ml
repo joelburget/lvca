@@ -85,7 +85,7 @@ let pp_defn : Format.formatter -> defn -> unit
     );
     pp ppf defn
 
-let pp_defn_str : defn -> string
+let defn_to_string : defn -> string
   = Format.asprintf "%a" pp_defn
 
 let rec match_pattern

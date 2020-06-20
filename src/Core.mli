@@ -34,7 +34,7 @@ type import = AbstractSyntax.import
 type defn = Defn of import list * term
 
 val pp_defn : Format.formatter -> defn -> unit
-val pp_defn_str : defn -> string
+val defn_to_string : defn -> string
 
 type eval_error = string * term
 
