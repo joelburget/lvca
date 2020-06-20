@@ -367,7 +367,7 @@ let%test_module "CheckTerm" = (module struct
 
   let lang_desc =
       {|
-import {integer} from "builtins"
+import {integer} from "lvca/builtin"
 
 value :=
   | unit()

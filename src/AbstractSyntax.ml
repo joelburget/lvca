@@ -416,11 +416,11 @@ let%test_module "AbstractSyntax_Parser" = (module struct
 
   let integer_import =
     { imported_symbols = [ "integer", None ]
-    ; location = "builtins"
+    ; location = "lvca/builtin"
     }
 
   let%test_unit _ = assert Caml.(
-    parse_with Parse.import {|import {integer} from "builtins"|} = integer_import)
+    parse_with Parse.import {|import {integer} from "lvca/builtin"|} = integer_import)
 
   let%test_unit _ = assert Caml.(
     parse_with Parse.operator_def "foo()" = OperatorDef ("foo", FixedArity []))
@@ -453,7 +453,7 @@ let%test_module "AbstractSyntax_Parser" = (module struct
   let%test_unit _ = assert (
     parse_with Angstrom.(Util.Angstrom.whitespace *> Parse.t)
       {|
-import {integer} from "builtins"
+import {integer} from "lvca/builtin"
 
 tm :=
   | add(tm(); tm())

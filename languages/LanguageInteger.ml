@@ -3,7 +3,7 @@ open Lvca.Binding
 
 let abstract_syntax =
   {|
-import { integer } from "builtins"
+import { integer } from "lvca/builtin"
 
 tm :=
   | lit(integer())

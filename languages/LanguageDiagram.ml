@@ -6,7 +6,7 @@
 let abstract_syntax =
   {|
 // rational?
-import {float} from "builtins";
+import {float} from "lvca/builtin";
 
 diagram :=
   | atop(diagram; diagram)

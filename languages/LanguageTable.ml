@@ -1,14 +1,14 @@
 let abstract_syntax =
   {|
-import {sequence, string} from "builtins";
+import {list, string} from "lvca/builtin";
 
-rowType := rowType(sequence(atomicType()))
+rowType := rowType(list(atomicType()))
 
 atomicType := string() ???
 atomicValue := string(string) ???
 
-row := row(sequence(atomicValue))
+row := row(list(atomicValue))
 
-table := table(rowType; sequence(row))
+table := table(rowType; list(row))
 |}
 ;;

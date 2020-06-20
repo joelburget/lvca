@@ -5,7 +5,7 @@ integer literals and addition.
 
 ```
 {define arith : abstract_syntax<abstract_syntax_concrete>}
-import {integer} from "builtins"
+import {integer} from "lvca/builtin"
 
 tm :=
   | add(tm(); tm())

@@ -3,7 +3,8 @@ open Lvca
 
 let abstract_syntax_str =
   {|
-import { list } from "builtins"
+import { list } from "lvca/builtin"
+// TODO import { maybe } from "lvca/maybe"
 
 maybe(a) :=
   | nothing()
