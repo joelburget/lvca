@@ -18,6 +18,7 @@ let (=) p1 p2 =
   | PrimInteger i1, PrimInteger i2 -> Bigint.(i1 = i2) [@warning "-44"]
   | PrimString s1, PrimString s2 -> s1 = s2
   | PrimFloat f1, PrimFloat f2 -> f1 = f2
+  | PrimChar c1, PrimChar c2 -> c1 = c2
   | _ -> false
 ;;
 
@@ -44,7 +45,7 @@ let pp : Format.formatter -> t -> unit
   | PrimInteger i -> Format.fprintf ppf "%s" (Bigint.to_string i)
   | PrimString s -> Format.fprintf ppf "\"%s\"" s
   | PrimFloat f -> Format.fprintf ppf "%f" f
-  | PrimChar c -> Format.fprintf ppf "%c" c
+  | PrimChar c -> Format.fprintf ppf "'%c'" c
 ;;
 
 let jsonify =
