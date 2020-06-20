@@ -19,7 +19,7 @@ parser :=
 
   // combinators
   | option(parser())
-  | count(c_term(); parsers())
+  | count(c_term(); parser())
   | many(parser())
   | many1(parser())
   | fix(parser(). parser())
