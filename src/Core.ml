@@ -21,7 +21,7 @@ and core_scope = Scope of string * term
 and core_case_scope = CaseScope of Pattern.t * term
 
 module PP = struct
-  let list, any, pf, sp = Fmt.(list, any, pf, sp)
+  let braces, list, any, pf, sp = Fmt.(braces, list, any, pf, sp)
 
   (* TODO: add parse <-> pretty tests *)
 
@@ -29,7 +29,7 @@ module PP = struct
   let rec pp
     = fun ppf -> function
       | Term (Var v) -> pf ppf "%s" v (* XXX *)
-      | Term tm -> pf ppf "{%a}" Nominal.pp_term tm
+      | Term tm -> pf ppf "%a" (braces Nominal.pp_term) tm
       | Lambda (sort, Scope (name, body)) ->
         pf ppf "\\(%s : %a) ->@ %a"
         name
