@@ -31,8 +31,6 @@ parser :=
   // monad
   | return(c_term())
 
-  | left(parser(); parser())
-  | right(parser(); parser())
   // is sequence a better name?
   | lift_n(n_term()*. c_term(); parsers())
 |};;
@@ -68,11 +66,9 @@ type t =
 
   | Return of c_term
 
-  (* There's no need for ap (<*>), since lift_n fills the role of sequencing effects *)
-  | Left of t * t
-  | Right of t * t
-
   | LiftN of string list * c_term * t list
+
+  | Identifier of string
 
 let rec pp : t Fmt.t (* Format.formatter -> t -> unit *)
   = fun ppf ->
@@ -91,27 +87,23 @@ let rec pp : t Fmt.t (* Format.formatter -> t -> unit *)
     | Fix (name, t) -> pf ppf "fix (%s -> %a)" name pp t
     | Alt (t1, t2) -> pf ppf "alt %a %a" pp t1 pp t2
     | Return tm -> pf ppf "return %a" core tm
-    | Left (t1, t2) -> pf ppf "%a <* %a" pp t1 pp t2
-    | Right (t1, t2) -> pf ppf "%a *> %a" pp t1 pp t2
     | LiftN (names, p, ps) -> pf ppf "lift (\\%a. %a) [%a]"
       Fmt.(list ~sep:(any ".@ ") string) names
       core p
       Fmt.(list ~sep:comma pp) ps
+    | Identifier name -> pf ppf "%s" name
 
 module Parse(Comment : Util.Angstrom.Comment_int) = struct
   module Parsers = Util.Angstrom.Mk(Comment)
 
   let char, char_lit, string_lit, parens, string =
     Parsers.(char, char_lit, string_lit, parens, string)
-  let choice, fix, lift2, lift3, many1, return, ( <* ), ( *> ), (<$>), (<?>), (>>=), (>>|) =
-    Angstrom.(choice, fix, lift2, lift3, many1, return, ( <* ), ( *> ), (<$>), (<?>), (>>=), (>>|))
+  let choice, fail, fix, lift2, lift3, many1, option, return, ( <* ), ( *> ), (<$>),
+    (<?>), (>>=), (>>|) =
+    Angstrom.(choice, fail, fix, lift2, lift3, many1, option, return, ( <* ), ( *> ),
+      (<$>), (<?>), (>>=), (>>|))
 
-  (* Note: "many1" must occur before "many", etc.
-   * Eventually I would like to move to a representation without this limitation.
-   *)
-  let keywords : string list =
-    [ "satisfy"; (* "option"; "many1"; "many"; "alt"; *)
-      "let"; "in"; "fail"; (* "return" *) ]
+  let keywords : string list = [ "satisfy"; "let"; "in"; "fail" ]
 
   let keyword : string Angstrom.t
     = keywords |> List.map ~f:string |> choice
@@ -121,56 +113,48 @@ module Parse(Comment : Util.Angstrom.Comment_int) = struct
   let operator : string Angstrom.t
     = operators |> List.map ~f:string |> choice
 
-  (*
-  type atom =
-    | CharLit of char
-    | StringLit of string
+  let t : c_term Angstrom.t -> t Angstrom.t
+    = fun term -> fix (fun parser ->
+      let parse_token = choice
+        [ (fun c -> Char c) <$> char_lit
+        ; (fun s -> String s) <$> string_lit
+        ; parens parser
+        ; (fun name -> Identifier name) <$> Parsers.identifier
+        ]
+      in
 
-    | Keyword of string
-    | Name of string
-    | Operator of string
-    | Parser of t
-    | Term of c_term
-
-  let pp_atom : atom Fmt.t (* = Format.formatter -> atom -> unit*)
-    = fun ppf ->
-      let pf = Fmt.pf in
-      function
-        | CharLit c -> pf ppf "'%c'" c
-        | StringLit s -> pf ppf {|"%s"|} s
-        | Keyword str -> pf ppf "%s" str
-        | Name str -> pf ppf "%s" str
-        | Operator str -> pf ppf "%s" str
-        | Parser p -> pf ppf "(%a)" pp p
-        | Term tm -> Core.pp ppf tm
-        *)
-
-  let parse_in_precedence : int -> c_term Angstrom.t -> t Angstrom.t
-    = fun _prec term -> fix (fun parser -> choice
-      [ (fun c -> Char c) <$> char_lit
-      ; (fun s -> String s) <$> string_lit
-      ; string "satisfy" *>
-        (parens
+      choice
+        [ string "let" *> (lift3
+          (fun name bound body -> Let (name, bound, body))
+          Parsers.identifier
+          (string "=" *> parser)
+          (string "in" *> parser))
+        ; string "satisfy" *>
+          (parens
+            (lift3
+              (fun name _arr tm -> Satisfy (name, tm))
+              Parsers.identifier
+              (string "->")
+              term))
+        ; string "fail" *> term >>| (fun tm -> Fail tm)
+        ; string "fix" *> (parens
           (lift3
-            (fun name _arr tm -> Satisfy (name, tm))
+            (fun name _arr tm -> Fix (name, tm))
             Parsers.identifier
             (string "->")
-            term))
-      ; lift3
-        (fun name bound body -> Let (name, bound, body))
-        (string "let" *> Parsers.identifier)
-        (string "=" *> parser)
-        (string "in" *> parser)
-      (* XXX: add identifiers *)
-      ; string "fail" *> term >>| (fun tm -> Fail tm)
-      ; parser <* char '?' >>| (fun p -> Option p)
-      ; parser <* char '*' >>| (fun p -> Many p)
-      ; parser <* char '+' >>| (fun p -> Many1 p)
-      ]
-    ) <?> "parser"
+            parser)
+          )
+        (* TODO: sequence *)
+        (* ; string "sequence" *)
+        ; parse_token >>= fun tok -> option tok (choice
+          [ char '?' >>| (fun _ -> Option tok)
+          ; char '*' >>| (fun _ -> Many tok)
+          ; char '+' >>| (fun _ -> Many1 tok)
+          ; char '|' *> (parser >>| fun rhs -> Alt (tok, rhs))
+          ])
+        ]
 
-  let t : c_term Angstrom.t -> t Angstrom.t
-    = parse_in_precedence 0
+    ) <?> "parser"
 end;;
 
 let scope_list : n_term list -> Binding.Nominal.scope list
@@ -243,9 +227,12 @@ let translate : t -> n_term Angstrom.t
     | Return tm -> (match tm with
       | Term tm -> return tm
       | _ -> mk_err ())
-    | Left (p1, p2) -> translate' ctx p1 <* translate' ctx p2
-    | Right (p1, p2) -> translate' ctx p1 *> translate' ctx p2
     | LiftN (_names, _p, _ps) -> failwith "TODO"
+    | Identifier name -> (match Map.find ctx name with
+      | Some (BoundParser p) -> translate' ctx p <?> name
+      | None
+      | Some (BoundChar _) -> mk_err ()
+      )
     in
 
     translate' Util.String.Map.empty
@@ -284,19 +271,14 @@ let%test_module "Parsing" = (module struct
     parse' {|"str"+|} "strstrstr";
     [%expect{| list("str"; "str"; "str") |}]
 
-    (*
   let%expect_test _ =
-    (* TODO: proper precedence: remove parens *)
-    parse' {|"str" *> "foo")|} "strfoo";
+    parse' {|"str" | "foo"|} "str";
+    [%expect{| "str" |}]
+
+  let%expect_test _ =
+    parse' {|"str" | "foo"|} "foo";
     [%expect{| "foo" |}]
 
-  let%expect_test _ =
-    (* TODO: proper precedence: remove parens *)
-    parse' {|"str" <* "foo"|} "strfoo";
-    [%expect{| "str" |}]
-    *)
-
-    (* TODO: proper syntax for binding *)
   let sat_parser = {|satisfy (x -> match x with {
       | 'c' -> {true()}
       | _ -> {false()}
@@ -306,11 +288,9 @@ let%test_module "Parsing" = (module struct
   let%expect_test _ = parse' sat_parser "c"; [%expect{| 'c' |}]
   let%expect_test _ = parse' sat_parser "d"; [%expect{| failed to parse: : satisfy: 'd' |}]
 
-  (*
   let%expect_test _ =
     parse' {|let x = "str" in x|} "str";
     [%expect{| "str" |}]
-    *)
 
   let%expect_test _ =
     parse' {|fail {"reason"}|} "str";
