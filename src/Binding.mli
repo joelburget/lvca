@@ -6,8 +6,6 @@
  variables.
 
  Nominal terms are simpler both for parsing and pretty printing.
-
- TODO: justify citing a Head-to-Head comparison
  *)
 
 module rec DeBruijn : sig
