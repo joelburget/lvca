@@ -44,22 +44,18 @@ let rec concretize_sort : sort Util.String.Map.t -> sort -> sort
     -> Map.find env name
       |> Util.Option.get_invariant (fun () -> "concretize_sort: unknown variable " ^ name)
 
+let concretize_sort_slot : sort Util.String.Map.t -> sort_slot -> sort_slot
+  = fun env (sort, starred) -> (concretize_sort env sort, starred)
+
 let concretize_valence : sort Util.String.Map.t -> valence -> valence
   = fun env -> function
-    | FixedValence (binding_sorts, body_sort) -> FixedValence
-      ( List.map binding_sorts ~f:(concretize_sort env)
-      , concretize_sort env body_sort
+    | Valence (binding_sort_slots, body_sort_slot) -> Valence
+      ( List.map binding_sort_slots ~f:(concretize_sort_slot env)
+      , concretize_sort_slot env body_sort_slot
       )
-    | VariableValence (bound_sort, body_sort)
-    -> VariableValence
-      (concretize_sort env bound_sort, concretize_sort env body_sort)
 
 let concretize_arity : sort Util.String.Map.t -> arity -> arity
-  = fun env -> function
-    | FixedArity valences
-    -> FixedArity (List.map valences ~f:(concretize_valence env))
-    | VariableArity sort
-    -> VariableArity (concretize_sort env sort)
+  = fun env -> List.map ~f:(concretize_valence env)
 
 let lookup_operator
   :  AbstractSyntax.t
@@ -102,7 +98,8 @@ let check_pattern
       -> (valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
       = fun sort pat ->
         let result = match pat with
-          | Var name -> Ok (Util.String.Map.singleton name (FixedValence ([], sort)))
+          | Var name -> Ok
+            (Util.String.Map.singleton name (Valence ([], (sort, Unstarred)))) (* XXX *)
           | Ignored _ -> Ok Util.String.Map.empty
           | Primitive prim -> go_primitive sort prim
           | Operator (op_name, subpats) -> match sort with
@@ -126,14 +123,6 @@ let check_pattern
       :  arity
       -> Pattern.t list
       -> (valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
-      = fun arity pats -> match arity with
-        | FixedArity valences -> go_fixed_arity_pat valences pats
-        | VariableArity sort -> go_variable_arity_pat sort pats
-
-    and go_fixed_arity_pat
-      :  valence list
-      -> Pattern.t list
-      -> (valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
       = fun valences pats -> match List.zip pats valences with
         | Unequal_lengths
         -> Error (err (Printf.sprintf
@@ -151,7 +140,9 @@ let check_pattern
                 | Ignored _, _ -> Ok Util.String.Map.empty
 
                 (* For anything else matching a sort we defer to go_pattern *)
-                | _, FixedValence ([], sort) -> go_pattern sort pat
+                | _, Valence ([], (sort, Unstarred)) -> go_pattern sort pat
+
+                | _, Valence ([], (_sort, Starred)) -> failwith "XXX starred sort"
 
                 (* Anything else is an error *)
                 | Primitive _, _
@@ -171,6 +162,7 @@ let check_pattern
                 k
             ))
 
+            (*
     and go_variable_arity_pat
       :  sort
       -> Pattern.t list
@@ -188,6 +180,7 @@ let check_pattern
               That's not allowed!"
               k
           ))
+    *)
     in
 
     go_pattern
@@ -223,7 +216,7 @@ let check_term
 
            *)
           | Some valence -> (match valence with
-            | FixedValence ([], sort') ->
+            | Valence ([], (sort', Unstarred)) ->
               if Caml.(sort' = sort)
               then None
               else Some (err (Printf.sprintf
@@ -263,8 +256,8 @@ let check_term
       -> Nominal.scope list
       -> abstract_syntax_check_failure option
       = fun var_valences arity scopes -> match arity with
-        | FixedArity valences -> go_fixed_arity var_valences valences scopes
-        | VariableArity sort -> go_variable_arity var_valences sort scopes
+        | valences -> go_fixed_arity var_valences valences scopes
+        (* | VariableArity sort -> go_variable_arity var_valences sort scopes *)
 
     and go_fixed_arity
       :  valence Util.String.Map.t
@@ -280,21 +273,6 @@ let check_term
         | Ok scope_valences -> List.find_map scope_valences (* TODO: go_fixed_arity *)
           ~f:(fun (scope, valence) -> go_scope var_valences valence scope)
 
-    and go_variable_arity
-      :  valence Util.String.Map.t
-      -> sort
-      -> Nominal.scope list
-      -> abstract_syntax_check_failure option
-      = fun var_valences sort subterms -> subterms
-        |> List.find_map ~f:(function
-          | Scope ([], body) -> go var_valences sort body
-          | _ -> Some (err (Printf.sprintf
-              "Unexpectedly found a binder where terms were expected (variable arity\
-              : %s*)"
-              (string_of_sort sort)
-          ))
-        )
-
     and go_scope
       :  valence Util.String.Map.t
       -> valence
@@ -303,13 +281,22 @@ let check_term
       = fun var_valences valence (Scope (binders, body)) ->
 
         (* Check the body with the new binders environment *)
-        let go_body body_sort
+        let go_body (body_sort, starred)
           (binders_env : ((valence Util.String.Map.t, abstract_syntax_check_failure) Result.t) list)
-          = match Result.all binders_env with
+          =
+          (* XXX: is *, 0-or-more repetition (does this make sense?)? or is it 1-or-more?
+           * Does + exist?
+           *)
+          if Caml.(starred = Unstarred) && List.length body <> 1
+          then Some (err "Expected a single term, but found a list")
+          else
+            match Result.all binders_env with
           | Error err -> Some err
           | Ok binders_env' -> match Util.String.Map.strict_unions binders_env' with
-            | `Ok binders_env'' ->
-              go (Util.Map.union_right_biased var_valences binders_env'') body_sort body
+            | `Ok binders_env''
+            (* check every term in body for an error *)
+            -> List.find_map body
+              ~f:(go (Util.Map.union_right_biased var_valences binders_env'') body_sort)
             | `Duplicate_key k -> Some (err (Printf.sprintf
               "Did you mean to bind the same variable (%s) twice in the same set of \
               patterns? That's not allowed!"
@@ -317,29 +304,22 @@ let check_term
             ))
         in
 
-        match valence with
-        | FixedValence (binder_sorts, body_sort) ->
-          (match List.zip binder_sorts binders with
-            (* TODO: do we allow binding valence? *)
-            | Unequal_lengths -> Some (err (Printf.sprintf
-                "Wrong number of binders (%n) for this valence (%s)"
-                (List.length binders)
-                (string_of_valence valence)
-            ))
-            | Ok binders' -> binders'
-              |> List.map ~f:(fun (sort, pat) -> match pat with
-                | Var _v -> check_pattern' sort pat
-                | _ -> Error (err "Fixed-valence binders must all be vars (no patterns)")
-              )
-              |> go_body body_sort)
-        | VariableValence (binder_sort, body_sort) -> match binders with
-          | [binder] -> go_body body_sort [check_pattern' binder_sort binder]
-          | _ -> Some (err (Printf.sprintf
-            "Expected exactly one binder for a variable valence (%s) term (multiple \
-            variables are bound in the pattern), saw %n"
-            (string_of_valence valence)
+        let Valence (binder_sorts, body_sort_slot) = valence in
+
+        match List.zip binder_sorts binders with
+        (* TODO: do we allow binding valence? *)
+        | Unequal_lengths -> Some (err (Printf.sprintf
+            "Wrong number of binders (%n) for this valence (%s) (expected %n)"
             (List.length binders)
-          ))
+            (string_of_valence valence)
+            (List.length binder_sorts)
+        ))
+        | Ok binders' -> binders'
+          |> List.map ~f:(fun ((sort, _starred (* XXX *)), pat) -> match pat with
+            | Var _v -> check_pattern' sort pat
+            | _ -> Error (err "Fixed-valence binders must all be vars (no patterns)")
+          )
+          |> go_body body_sort_slot
     in
 
     go Util.String.Map.empty
@@ -481,7 +461,10 @@ test := foo(term()*. term())
 
   let%expect_test _ =
     check_pattern' "term()" "match(a; b)";
-    [%expect{||}]
+    [%expect{|
+      Wrong number of subterms (2) for this arity (match_line()*)
+      stack:
+        pattern: match(a; b), sort: term() |}]
 
   let check_term' sort_str tm_str =
     let sort = sort_str
@@ -502,7 +485,7 @@ test := foo(term()*. term())
         match_line(
           list(cons(a; nil())).
           value(list(cons(a; cons(a; nil()))))
-        );
+        ),
         match_line(_. value(list(nil())))
       )
     |};
@@ -565,7 +548,7 @@ test := foo(term()*. term())
   let%expect_test _ =
     check_term' "match_line()" "match_line(a. b. value(a))";
     [%expect {|
-      Expected exactly one binder for a variable valence (value()*. term()) term (multiple variables are bound in the pattern), saw 2
+      Wrong number of binders (2) for this valence (value()*. term()) (expected 1)
       stack:
         term: match_line(a. b. value(a)), sort: match_line() |}]
 
@@ -580,7 +563,7 @@ test := foo(term()*. term())
   let%expect_test _ =
     check_term' "term()" "lambda(a. b. a)";
     [%expect {|
-      Wrong number of binders (2) for this valence (value(). term())
+      Wrong number of binders (2) for this valence (value(). term()) (expected 1)
       stack:
         term: lambda(a. b. a), sort: term() |}]
 
@@ -594,7 +577,7 @@ test := foo(term()*. term())
   let%expect_test _ =
     check_term' "term()" "match(a. a)";
     [%expect {|
-      Unexpectedly found a binder where terms were expected (variable arity: match_line()*)
+      Wrong number of binders (1) for this valence (match_line()*) (expected 0)
       stack:
         term: match(a. a), sort: term() |}]
 

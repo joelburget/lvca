@@ -97,7 +97,8 @@ let rec match_pattern
       let sub_results =
         List.map2_exn vals pats ~f:(fun core_scope (pat : Pattern.t) ->
             match core_scope, pat with
-            | Scope ([], body), pat' -> match_pattern body pat'
+            (* XXX *)
+            | Scope ([], [body]), pat' -> match_pattern body pat'
             | _ -> None)
       in
       if List.for_all sub_results ~f:Option.is_some
