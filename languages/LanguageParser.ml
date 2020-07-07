@@ -7,8 +7,6 @@ import { char, string } from "lvca/builtin"
 import { term as n_term } from "lvca/term"
 import { term as c_term } from "lvca/core"
 
-parsers := parsers(parser()*)
-
 parser :=
   // primitive parsers
   | char(char())
@@ -32,7 +30,7 @@ parser :=
   | return(c_term())
 
   // is sequence a better name?
-  | lift_n(n_term()*. c_term(); parsers())
+  | lift_n(n_term()*. c_term(); parser()*)
 |};;
 
 module ParseAbstract = AbstractSyntax.Parse(Util.Angstrom.CComment)
@@ -157,14 +155,14 @@ module Parse(Comment : Util.Angstrom.Comment_int) = struct
     ) <?> "parser"
 end;;
 
-let scope_list : n_term list -> Binding.Nominal.scope list
-  = List.map ~f:(fun tm -> Binding.Nominal.Scope ([], tm))
-
 let mk_list : n_term list -> n_term
-  = fun lst -> Binding.Nominal.Operator ("list", scope_list lst)
+  = fun lst -> Binding.Nominal.Operator
+    ( "list"
+    , [Binding.Nominal.Scope ([], lst)]
+    )
 
 let mk_some : n_term -> n_term
-  = fun tm -> Binding.Nominal.Operator ("some", [Scope ([], tm)])
+  = fun tm -> Binding.Nominal.Operator ("some", [Scope ([], [tm])])
 
 type ctx_entry =
   | BoundChar of char
@@ -265,11 +263,11 @@ let%test_module "Parsing" = (module struct
 
   let%expect_test _ =
     parse' {|"str"*|} "strstrstr";
-    [%expect{| list("str"; "str"; "str") |}]
+    [%expect{| list("str", "str", "str") |}]
 
   let%expect_test _ =
     parse' {|"str"+|} "strstrstr";
-    [%expect{| list("str"; "str"; "str") |}]
+    [%expect{| list("str", "str", "str") |}]
 
   let%expect_test _ =
     parse' {|"str" | "foo"|} "str";

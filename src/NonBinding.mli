@@ -3,7 +3,7 @@
     and allows conversion to / from binding types. *)
 
 type term =
-  | Operator of string * term list
+  | Operator of string * term list list
   | Primitive of Primitive.t
 
 (** Raised by [from_de_bruijn_exn] or [from_nominal_exn] when they encounter a scope.

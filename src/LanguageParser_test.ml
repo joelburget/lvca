@@ -15,17 +15,17 @@ let%test_module "AbstractSyntax.Parser" =
         | Error msg -> failwith msg
 
     let tm_sort = SortAp ("tm", [])
-    let tm_valence = FixedValence ([], tm_sort)
+    let tm_valence = Valence ([], (tm_sort, Unstarred))
     let ty_sort = SortAp ("ty", [])
-    let ty_valence = FixedValence ([], ty_sort)
+    let ty_valence = Valence ([], (ty_sort, Unstarred))
     let x_sort = SortVar "x"
 
     let%test _ = parse "bool := true() | false()" =
       { imports = []
       ; sort_defs = SortDefs (Util.String.Map.of_alist_exn [
         "bool", SortDef ([],
-        [ OperatorDef ("true", FixedArity [])
-        ; OperatorDef ("false", FixedArity [])
+        [ OperatorDef ("true", [])
+        ; OperatorDef ("false", [])
         ])
       ])
       }
@@ -48,21 +48,21 @@ let%test_module "AbstractSyntax.Parser" =
       { imports = []
       ; sort_defs = SortDefs (Util.String.Map.of_alist_exn [
         "ty", SortDef ([],
-          [ OperatorDef ("bool", FixedArity [])
-          ; OperatorDef ("arr", FixedArity [ ty_valence; ty_valence ])
+          [ OperatorDef ("bool", [])
+          ; OperatorDef ("arr", [ ty_valence; ty_valence ])
           ]);
 
         "tm", SortDef ([],
-          [ OperatorDef ("app", FixedArity [ tm_valence; tm_valence ])
-          ; OperatorDef ("lam", FixedArity [ FixedValence ([tm_sort], tm_sort) ])
+          [ OperatorDef ("app", [ tm_valence; tm_valence ])
+          ; OperatorDef ("lam", [ Valence ([tm_sort, Unstarred], (tm_sort, Unstarred)) ])
           ]);
 
         "foo", SortDef (["x"],
-          [ OperatorDef ("foo", FixedArity
-            [ VariableValence (x_sort, x_sort)
-            ; FixedValence ([x_sort], x_sort)
+          [ OperatorDef ("foo",
+            [ Valence ([x_sort, Starred], (x_sort, Unstarred))
+            ; Valence ([x_sort, Unstarred], (x_sort, Unstarred))
             ])
-          ; OperatorDef ("bar", VariableArity x_sort)
+          ; OperatorDef ("bar", [Valence ([], (x_sort, Starred))])
           ]);
         ]);
       }

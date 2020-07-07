@@ -18,21 +18,15 @@ type sort =
   | SortAp of sort_name * sort list (** A higher-kinded sort can be applied *)
   | SortVar of string
 
+type starred = Starred | Unstarred
+
+type sort_slot = sort * starred
+
 (** A valence represents the sort of an argument (to an operator), as well as the number
     and sorts of the variables bound within it *)
-type valence =
-  | FixedValence of sort list * sort (** A fixed valence is known a priori *)
-  | VariableValence of sort * sort
-      (** A variable valence binds a number of variables not known a priori. All must be
-          of the same sort. *)
+type valence = Valence of sort_slot list * sort_slot
 
-(** An arity specifies the arguments to an operator *)
-type arity =
-  | FixedArity of valence list
-  (** A fixed arity operator always has the same number of children *)
-  | VariableArity of sort
-  (** A variable arity operator has a variable number of children (all of the same
-      sort (non-binding valence)) *)
+type arity = valence list
 
 type operator_def = OperatorDef of string * arity
   (** An operator is defined by its tag and arity *)
@@ -96,25 +90,25 @@ let rec string_of_sort : sort -> string
     | SortVar name -> name
 ;;
 
+let string_of_sort_slot : sort_slot -> string
+  = fun (sort, starred) -> Printf.sprintf "%s%s"
+    (string_of_sort sort)
+    (match starred with Starred -> "*" | Unstarred -> "")
+
 let string_of_valence : valence -> string
   = function
-    | FixedValence (binders, result) -> (match binders with
-      | [] -> string_of_sort result
+    | Valence (binders, result) -> (match binders with
+      | [] -> string_of_sort_slot result
       | _ -> Printf.sprintf "%s. %s"
         (binders
-          |> List.map ~f:string_of_sort
+          |> List.map ~f:string_of_sort_slot
           |> String.concat ~sep:". ")
-        (string_of_sort result))
-      | VariableValence (binder, result) -> Printf.sprintf "%s*. %s"
-        (string_of_sort binder)
-        (string_of_sort result)
+        (string_of_sort_slot result))
 
 let string_of_arity : arity -> string
-  = function
-  | FixedArity valences -> valences
+  = fun valences -> valences
     |> List.map ~f:string_of_valence
     |> String.concat ~sep:"; "
-  | VariableArity sort -> string_of_sort sort ^ "*"
 
 let rec instantiate_sort : sort String.Map.t -> sort -> sort =
  fun arg_mapping -> function
@@ -214,7 +208,7 @@ let rec sort_of_term_exn : Binding.Nominal.term -> sort
     | Var name -> SortVar name
     | Operator (name, args)
     -> SortAp (name, List.map args ~f:(function
-      | Scope ([], arg) -> sort_of_term_exn arg
+      | Scope ([], [arg]) -> sort_of_term_exn arg
       | _ -> raise (OfTermFailure ("sort_of_term", tm))))
     | _ -> raise (OfTermFailure ("sort_of_term", tm))
 
@@ -244,7 +238,6 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
           ; return (SortVar ident)
           ])
 
-  type starred = Starred | Unstarred
   type sort_sequence_entry =
     | Sort of sort * starred
     | Dot
@@ -380,29 +373,29 @@ let%test_module "AbstractSyntax_Parser" = (module struct
       | Error msg -> failwith msg
 
   let tm = SortAp ("tm", [])
-  let tm_v = FixedValence ([], tm)
+  let tm_s = tm, Starred
+  let tm_u = tm, Unstarred
+  let tm_v = Valence ([], tm_u)
   let integer = SortAp ("integer", [])
-  let integer_v = FixedValence ([], integer)
+  let integer_v = Valence ([], (integer, Unstarred))
 
   let%test_unit _ =
     assert Caml.(parse_with Parse.sort "tm()" = tm)
 
   let%test_unit _ =
-    assert Caml.(parse_with Parse.arity "(integer())" = FixedArity [integer_v])
+    assert Caml.(parse_with Parse.arity "(integer())" = [integer_v])
 
   let%test_unit _ =
-    assert Caml.(parse_with Parse.arity "(tm(); tm())" = FixedArity [tm_v; tm_v])
+    assert Caml.(parse_with Parse.arity "(tm(); tm())" = [tm_v; tm_v])
 
   let%test_unit _ =
-    assert Caml.(parse_with Parse.arity "(tm(). tm())" =
-      FixedArity [FixedValence ([tm], tm)])
+    assert Caml.(parse_with Parse.arity "(tm(). tm())" = [Valence ([tm_u], tm_u)])
 
   let%test_unit _ =
-    assert Caml.(parse_with Parse.arity "(tm()*)" = VariableArity tm)
+    assert Caml.(parse_with Parse.arity "(tm()*)" = [Valence ([], tm_s)])
 
   let%test_unit _ =
-    assert Caml.(parse_with Parse.arity "(tm()*. tm())" =
-      FixedArity [VariableValence (tm, tm)])
+    assert Caml.(parse_with Parse.arity "(tm()*. tm())" = [Valence ([tm_s], tm_u)])
 
   let%expect_test _ =
     (match
@@ -412,7 +405,7 @@ let%test_module "AbstractSyntax_Parser" = (module struct
       | Error msg -> print_string msg);
     [%expect{| arity: Unexpected sequence of sorts: tm()* . tm()* . tm() |}]
 
-  let%test_unit _ = assert Caml.(parse_with Parse.arity "()" = FixedArity [])
+  let%test_unit _ = assert Caml.(parse_with Parse.arity "()" = [])
 
   let integer_import =
     { imported_symbols = [ "integer", None ]
@@ -423,22 +416,22 @@ let%test_module "AbstractSyntax_Parser" = (module struct
     parse_with Parse.import {|import {integer} from "lvca/builtin"|} = integer_import)
 
   let%test_unit _ = assert Caml.(
-    parse_with Parse.operator_def "foo()" = OperatorDef ("foo", FixedArity []))
+    parse_with Parse.operator_def "foo()" = OperatorDef ("foo", []))
 
   let%test_unit _ = assert Caml.(
     parse_with Parse.sort_def {|foo := foo()|}
     =
-    ("foo", SortDef ([], [OperatorDef ("foo", FixedArity [])])))
+    ("foo", SortDef ([], [OperatorDef ("foo", [])])))
 
   let%test_unit _ = assert Caml.(
     parse_with Parse.sort_def {|foo(x) := foo()|}
     =
-    ("foo", SortDef (["x"], [OperatorDef ("foo", FixedArity [])])))
+    ("foo", SortDef (["x"], [OperatorDef ("foo", [])])))
 
   let tm_def = ("tm", SortDef
     ( []
-    , [ OperatorDef ("add", FixedArity [tm_v; tm_v])
-      ; OperatorDef ("lit", FixedArity [integer_v])
+    , [ OperatorDef ("add", [tm_v; tm_v])
+      ; OperatorDef ("lit", [integer_v])
       ]
     ))
 

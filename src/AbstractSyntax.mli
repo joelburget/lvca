@@ -14,21 +14,18 @@ type sort =
   | SortAp of sort_name * sort list (** A higher-kinded sort can be applied *)
   | SortVar of string
 
+(** A sort can be starred to indicate it's repeated, or not. *)
+type starred = Starred | Unstarred
+
+(** Represents a place where a sort can go in a valence. *)
+type sort_slot = sort * starred
+
 (** A valence represents the sort of an argument (to an operator), as well as the number
     and sorts of the variables bound within it *)
-type valence =
-  | FixedValence of sort list * sort (** A fixed valence is known a priori *)
-  | VariableValence of sort * sort
-      (** A variable valence binds a number of variables not known a priori. All must be
-          of the same sort. *)
+type valence = Valence of sort_slot list * sort_slot
 
 (** An arity specifies the arguments to an operator *)
-type arity =
-  | FixedArity of valence list
-  (** A fixed arity operator always has the same number of children *)
-  | VariableArity of sort
-  (** A variable arity operator has a variable number of children (all of the same
-      sort (non-binding valence)) *)
+type arity = valence list
 
 type operator_def = OperatorDef of string * arity
   (** An operator is defined by its tag and arity *)

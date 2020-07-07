@@ -16,7 +16,7 @@ module rec DeBruijn : sig
     | Var of int * int
     | Primitive of Primitive.t
 
-  and scope = Scope of Pattern.t list * term
+  and scope = Scope of Pattern.t list * term list
 
   val to_nominal : term -> Nominal.term option
   val from_nominal : Nominal.term -> (term, string) Result.t
@@ -40,7 +40,7 @@ and Nominal : sig
     | Var of string
     | Primitive of Primitive.t
 
-  and scope = Scope of Pattern.t list * term
+  and scope = Scope of Pattern.t list * term list
 
   val pp_term : Format.formatter -> Nominal.term -> unit
   val pp_term_str : Nominal.term -> string
@@ -63,7 +63,7 @@ and Nominal : sig
 
   (** Indicates that this scope was encountered when attempting to convert to a pattern.
    *)
-  exception ToPatternScopeEncountered of scope
+  exception ToPatternFailure of scope
 
   (** Attempt to convert a non-binding term to a pattern.
 

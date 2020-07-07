@@ -11,7 +11,7 @@ type term =
   (** Free vars are used during typechecking. *)
   | Primitive of Primitive.t
 
-and scope = Scope of Pattern.t list * term
+and scope = Scope of Pattern.t list * term list
 
 val string_of_term : term -> string
 val string_of_scope : scope -> string

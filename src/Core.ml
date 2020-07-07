@@ -153,12 +153,12 @@ let rec eval_ctx_exn : Nominal.term Util.String.Map.t -> term -> Nominal.term =
 
   (* primitives *)
   (* TODO: or should this be an app? *)
-  | Term (Operator ("add", [ Scope ([], a); Scope ([], b) ])) ->
+  | Term (Operator ("add", [ Scope ([], [a]); Scope ([], [b]) ])) ->
     (match eval_ctx_exn' ctx a, eval_ctx_exn' ctx b with
     | Primitive (PrimInteger a'), Primitive (PrimInteger b') ->
       Primitive (PrimInteger Bigint.(a' + b'))
     | _ -> raise @@ EvalExn ("Invalid arguments to add", tm))
-  | Term (Operator ("sub", [ Scope ([], a); Scope ([], b) ])) ->
+  | Term (Operator ("sub", [ Scope ([], [a]); Scope ([], [b]) ])) ->
     (match eval_ctx_exn' ctx a, eval_ctx_exn' ctx b with
     | Primitive (PrimInteger a'), Primitive (PrimInteger b') ->
       Primitive (PrimInteger Bigint.(a' - b'))

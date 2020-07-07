@@ -58,7 +58,7 @@ tm_4 :=
 let rec eval' : Bigint.t list -> DeBruijn.term -> Bigint.t option =
  fun env tm ->
   match tm with
-  | Operator (op, [ Scope ([], a) ]) ->
+  | Operator (op, [ Scope ([], [a]) ]) ->
     (match eval' env a with
     | Some a' ->
       (match op with
@@ -66,7 +66,7 @@ let rec eval' : Bigint.t list -> DeBruijn.term -> Bigint.t option =
       | "abs" -> Some (Bigint.abs a')
       | _ -> None)
     | _ -> None)
-  | Operator (op, [ Scope ([], a); Scope ([], b) ]) ->
+  | Operator (op, [ Scope ([], [a]); Scope ([], [b]) ]) ->
     (match eval' env a, eval' env b with
     | Some a', Some b' ->
       Bigint.(

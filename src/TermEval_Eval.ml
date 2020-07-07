@@ -34,7 +34,7 @@ let rec ty_to_string : ty -> string = function
 
 let rec ty_of : DeBruijn.term -> ty = function
   | Operator ("bool", []) -> Bool
-  | Operator ("arr", [ Scope ([], t1); Scope ([], t2) ]) -> Arr (ty_of t1, ty_of t2)
+  | Operator ("arr", [ Scope ([], [t1]); Scope ([], [t2]) ]) -> Arr (ty_of t1, ty_of t2)
   | other -> raise (Unknown other)
 ;;
 
@@ -49,14 +49,15 @@ let rec check : ty list -> ty -> DeBruijn.term -> bool =
     Caml.(ty' = ty)
   | Var _ -> raise (InvariantViolation "unexpected non-variable binding")
   | Operator ("true", []) | Operator ("false", []) -> Caml.(ty = Bool)
-  | Operator ("ite", [ Scope ([], cond); Scope ([], b1); Scope ([], b2) ]) ->
-    check env Bool cond && check env Bool b1 && check env Bool b2
-  | Operator ("annot", [ Scope ([], tm); Scope ([], ty) ]) -> check env (ty_of ty) tm
-  | Operator ("app", [ Scope ([], f); Scope ([], arg) ]) ->
+  | Operator ("ite", [ Scope ([], [cond]); Scope ([], [b1]); Scope ([], [b2]) ])
+  -> check env Bool cond && check env Bool b1 && check env Bool b2
+  | Operator ("annot", [ Scope ([], [tm]); Scope ([], [ty]) ])
+  -> check env (ty_of ty) tm
+  | Operator ("app", [ Scope ([], [f]); Scope ([], [arg]) ]) ->
     (match infer env f with
     | Some (Arr (t1, t2)) -> check (t1 :: env) t2 f && check env t1 arg
     | _ -> false)
-  | Operator ("fun", [ Scope ([ _var ], body) ]) ->
+  | Operator ("fun", [ Scope ([ _var ], [body]) ]) ->
     (match ty with
     | Arr (t1, t2) -> check (t1 :: env) t2 body
     | ty -> raise (InvariantViolation ("check fun with " ^ ty_to_string ty)))
@@ -67,7 +68,7 @@ and infer : ty list -> DeBruijn.term -> ty option =
   match tm with
   | Var (ix, 0) -> List.nth env ix
   | Operator ("true", []) | Operator ("false", []) -> Some Bool
-  | Operator ("ite", [ Scope ([], cond); Scope ([], b1); Scope ([], b2) ]) ->
+  | Operator ("ite", [ Scope ([], [cond]); Scope ([], [b1]); Scope ([], [b2]) ]) ->
     check_assert (check env Bool cond);
     (match infer env b1 with
     | Some t1 ->
@@ -79,14 +80,14 @@ and infer : ty list -> DeBruijn.term -> ty option =
         check_assert (check env t2 b1);
         Some t2
       | None -> None))
-  | Operator ("app", [ Scope ([], f); Scope ([], arg) ]) ->
+  | Operator ("app", [ Scope ([], [f]); Scope ([], [arg]) ]) ->
     (match infer env f with
     | Some (Arr (t1, t2)) ->
       check_assert (check (t1 :: env) t2 f);
       check_assert (check env t1 arg);
       Some t2
     | _ -> None)
-  | Operator ("annot", [ Scope ([], tm); Scope ([], ty) ]) ->
+  | Operator ("annot", [ Scope ([], [tm]); Scope ([], [ty]) ]) ->
     let ty' = ty_of ty in
     check_assert (check env ty' tm);
     Some ty'
@@ -103,12 +104,12 @@ let rec eval' : DeBruijn.term list -> DeBruijn.term -> DeBruijn.term =
       "bad environment index %n, environment size %n" ix (List.length env)))
   | Var _ -> raise (InvariantViolation "unexpected non-variable binding")
   | Operator ("true", []) | Operator ("false", []) -> tm
-  | Operator ("ite", [ Scope ([], cond); Scope ([], b1); Scope ([], b2) ]) ->
+  | Operator ("ite", [ Scope ([], [cond]); Scope ([], [b1]); Scope ([], [b2]) ]) ->
     if is_true (eval' env cond) then eval' env b1 else eval' env b2
-  | Operator ("annot", [ Scope ([], tm'); _ ]) -> eval' env tm'
-  | Operator ("app", [ Scope ([], f); Scope ([], arg) ]) ->
+  | Operator ("annot", [ Scope ([], [tm']); _ ]) -> eval' env tm'
+  | Operator ("app", [ Scope ([], [f]); Scope ([], [arg]) ]) ->
     (match eval' env f with
-    | Operator ("fun", [ Scope ([ _var ], body) ]) -> eval' (arg :: env) body
+    | Operator ("fun", [ Scope ([ _var ], [body]) ]) -> eval' (arg :: env) body
     | other -> raise (InvariantViolation ("unexpected " ^ to_string other)))
   | Primitive _ -> raise (InvariantViolation "eval' Primitive")
   | op -> op

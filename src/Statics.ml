@@ -8,7 +8,7 @@ type term =
   (** Free vars are used during typechecking. *)
   | Primitive of Primitive.t
 
-and scope = Scope of Pattern.t list * term
+and scope = Scope of Pattern.t list * term list
 
 let rec string_of_term = function
   | Operator (name, scopes) ->
@@ -18,12 +18,16 @@ let rec string_of_term = function
   | Free str -> str
   | Primitive prim -> Primitive.to_string prim
 
-and string_of_scope (Scope (pats, tm)) =
+and string_of_scope (Scope (pats, tms)) =
+  let string_of_terms tms = tms
+    |> List.map ~f:string_of_term
+    |> String.concat ~sep:", "
+  in
   match pats with
-  | [] -> string_of_term tm
+  | [] -> string_of_terms tms
   | _ ->
     let pats' = pats |> List.map ~f:Pattern.to_string |> String.concat ~sep:". " in
-    Printf.sprintf "%s. %s" pats' (string_of_term tm)
+    Printf.sprintf "%s. %s" pats' (string_of_terms tms)
 ;;
 
 type typing_rule =
@@ -57,7 +61,7 @@ let rec of_de_bruijn : Binding.DeBruijn.term -> term = function
   | Primitive p -> Primitive p
 
 and scope_of_de_bruijn : Binding.DeBruijn.scope -> scope =
-  fun (Scope (pats, body)) -> Scope (pats, of_de_bruijn body)
+  fun (Scope (pats, body)) -> Scope (pats, List.map body ~f:of_de_bruijn)
 ;;
 
 exception FreeVar of string
@@ -72,7 +76,7 @@ let rec to_de_bruijn_exn : term -> Binding.DeBruijn.term
     | Primitive prim -> Primitive prim
 
 and to_scope : scope -> Binding.DeBruijn.scope
-  = fun (Scope (pats, tm)) -> Scope (pats, to_de_bruijn_exn tm)
+  = fun (Scope (pats, tms)) -> Scope (pats, List.map tms ~f:to_de_bruijn_exn)
 
 module Parse (Comment : Util.Angstrom.Comment_int) = struct
   open Angstrom
@@ -93,7 +97,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
       | Primitive p -> Primitive p
 
   and cvt_scope : Binding.Nominal.scope -> scope
-    = fun (Scope (pats, tm)) -> Scope (pats, cvt_tm tm)
+    = fun (Scope (pats, tms)) -> Scope (pats, List.map tms ~f:cvt_tm)
 
   let term : term Angstrom.t
     = cvt_tm <$> Term.t
