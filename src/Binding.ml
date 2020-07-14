@@ -159,7 +159,7 @@ end = struct
 
   let rec pp_term ppf = function
     | Operator (tag, subtms)
-    -> pf ppf "@[%s(%a)@]"
+    -> pf ppf "@[<2>%s(%a)@]"
       tag
       (list ~sep:semi pp_scope) subtms
     | Var v
@@ -249,12 +249,13 @@ end = struct
     | Var name -> if String.is_substring_at name ~pos:0 ~substring:"_"
       then Ignored (String.slice name 1 0)
       else Var name
-    | Operator (name, tms) -> Operator (name, List.map tms ~f:scope_to_pattern_exn)
+    | Operator (name, tms)
+    -> Operator (name, List.map tms ~f:(scope_to_patterns_exn))
     | Primitive prim -> Primitive prim
 
   (** @raise ToPatternFailure *)
-  and scope_to_pattern_exn : scope -> Pattern.t = function
-    | Scope ([], [tm]) -> to_pattern_exn tm
+  and scope_to_patterns_exn : scope -> Pattern.t list = function
+    | Scope ([], tms) -> List.map tms ~f:to_pattern_exn
     | scope -> raise (ToPatternFailure scope)
   ;;
 
@@ -266,8 +267,11 @@ end = struct
         ToPatternFailure scope -> Error scope
 
   let rec pattern_to_term : Pattern.t -> Nominal.term = function
-    | Operator (name, pats) ->
-      Operator (name, List.map pats ~f:(fun pat -> Scope ([], [pattern_to_term pat])))
+    | Operator (name, pats)
+    -> Operator
+      ( name
+      , List.map pats ~f:(fun pats' -> Scope ([], List.map pats' ~f:pattern_to_term))
+      )
     | Primitive prim -> Primitive prim
     | Var name -> Var name
     | Ignored name -> Var ("_" ^ name)
@@ -349,6 +353,7 @@ end = struct
             ]
         ) <?> "term"
   end
+
 end
 
 module Properties = struct
@@ -491,6 +496,11 @@ let%test_module "TermParser" = (module struct
   let parse = Angstrom.(parse_string ~consume:All
     (Util.Angstrom.whitespace *> Parse.t))
 
+  let print_parse = fun str -> match parse str with
+    | Error msg -> Caml.print_string ("failed: " ^ msg)
+    | Ok tm -> Nominal.pp_term Caml.Format.std_formatter tm
+  ;;
+
   let%test _ = parse "x" = Ok (Var "x")
   let%test _ = parse "123" = Ok (Primitive (PrimInteger (Bigint.of_int 123)))
   let%test _ = parse "\"abc\"" = Ok (Primitive (PrimString "abc"))
@@ -527,9 +537,28 @@ let%test_module "TermParser" = (module struct
       Scope ([], [match_lines [
         match_line (Pattern.Operator ("foo", [])) (Operator ("true", []));
         match_line
-          (Pattern.Operator ("bar", [Ignored ""; Ignored "x"; Var "y"]))
+          (Pattern.Operator ("bar", [[Ignored ""]; [Ignored "x"]; [Var "y"]]))
           (Var "y");
       ]]);
     ]))
+
+  let%expect_test _ =
+    print_parse {|"str"|};
+    [%expect{| "str" |}]
+  let%expect_test _ =
+    print_parse {|a()|};
+    [%expect{| a() |}]
+  let%expect_test _ =
+    print_parse {|a(b)|};
+    [%expect{| a(b) |}]
+  let%expect_test _ =
+    print_parse {|a(b,c)|};
+    [%expect{| a(b, c) |}]
+  let%expect_test _ =
+    print_parse {|a(b,c;d,e;)|};
+    [%expect{| a(b, c; d, e) |}]
+  let%expect_test _ =
+    print_parse {|a(b.c;d,e;)|};
+    [%expect{| a(b. c; d, e) |}]
 
 end);;

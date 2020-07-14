@@ -56,17 +56,17 @@ let%test_module "Core parsing" = (module struct
                   ; CaseScope (Operator ("false", []),
                     Term (Operator ("false", [])))
                   ; CaseScope
-                      ( Operator ("ite" , [ Var "t1" ; Var "t2" ; Var "t3" ])
+                      ( Operator ("ite" , [ [Var "t1"] ; [Var "t2"] ; [Var "t3"] ])
                       , Case
                           ( CoreApp (var "meaning", var "t1")
                           , [ CaseScope (Operator ("true", []), meaning (var "t2"))
                             ; CaseScope (Operator ("false", []), meaning (var "t3"))
                             ] ) )
                   ; CaseScope
-                      ( Operator ("ap", [ Var "f"; Var "arg" ])
+                      ( Operator ("ap", [ [Var "f"]; [Var "arg"] ])
                       , CoreApp (meaning @@ var "f", meaning @@ var "arg") )
                   ; CaseScope
-                      ( Operator ("fun", [ Var "scope" ])
+                      ( Operator ("fun", [ [Var "scope"] ])
                       , Term (Operator
                           ("lambda",
                             [ scope @@ Operator("list", [])

@@ -88,34 +88,43 @@ let pp_defn : Format.formatter -> defn -> unit
 let defn_to_string : defn -> string
   = Format.asprintf "%a" pp_defn
 
+let merge_results
+  : Nominal.term Util.String.Map.t option list -> Nominal.term Util.String.Map.t option
+  = fun results ->
+    if List.for_all results ~f:Option.is_some
+    then
+      Some
+        (results
+        |> List.map ~f:(Util.Option.get_invariant
+          (fun () -> "we just checked all is_some"))
+        |> Util.String.Map.strict_unions
+        |> function
+          | `Duplicate_key k -> Util.invariant_violation (Printf.sprintf
+              "multiple variables with the same name (%s) in one pattern"
+              k
+          )
+          | `Ok m -> m
+        )
+    else None
+
 let rec match_pattern
   : Nominal.term -> Pattern.t -> Nominal.term Util.String.Map.t option
   = fun v pat -> match v, pat with
   | Operator (tag1, vals), Operator (tag2, pats) ->
-    if String.(tag1 = tag2) && List.(Int.(length vals = length pats))
-    then (
-      let sub_results =
-        List.map2_exn vals pats ~f:(fun core_scope (pat : Pattern.t) ->
-            match core_scope, pat with
-            (* XXX *)
-            | Scope ([], [body]), pat' -> match_pattern body pat'
-            | _ -> None)
-      in
-      if List.for_all sub_results ~f:Option.is_some
-      then
-        Some
-          (sub_results
-          |> List.map ~f:(Util.Option.get_invariant
-            (fun () -> "we just checked all is_some"))
-          |> Util.String.Map.strict_unions
-          |> function
-            | `Duplicate_key k -> Util.invariant_violation (Printf.sprintf
-                "multiple variables with the same name (%s) in one pattern"
-                k
-            )
-            | `Ok m -> m
-          )
-      else None)
+    if String.(tag1 = tag2)
+    then
+      match
+        List.map2 pats vals ~f:(fun pats -> function
+          | Scope ([], body_tms) ->
+            begin
+              match List.map2 body_tms pats ~f:match_pattern with
+                | Ok results -> merge_results results
+                | Unequal_lengths -> None
+            end
+          | _ -> None)
+      with
+        | Ok results -> merge_results results
+        | Unequal_lengths -> None
     else None
   | Primitive l1, Primitive l2
   -> if Primitive.(l1 = l2) then Some Util.String.Map.empty else None

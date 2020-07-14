@@ -1,8 +1,7 @@
 open Base
-module Format = Caml.Format
 
 open AbstractSyntax
-module Nominal = Binding.Nominal
+open Binding
 
 type abstract_syntax_check_failure_frame =
   { term : (Pattern.t, Nominal.term) Either.t (** Term that failed to check *)
@@ -17,20 +16,21 @@ type abstract_syntax_check_failure =
 let err : string -> abstract_syntax_check_failure
   = fun message -> { message; stack = [] }
 
-let pp_failure : Format.formatter -> abstract_syntax_check_failure -> unit
+let pp_failure : Caml.Format.formatter -> abstract_syntax_check_failure -> unit
   = fun ppf { message; stack } ->
     Fmt.string ppf message;
 
     if (List.length stack > 0)
     then (
-      Fmt.pf ppf "@\nstack:";
+      Caml.Format.pp_force_newline ppf ();
+      Fmt.pf ppf "stack:";
       List.iter stack ~f:(fun { term; sort } ->
-        Format.pp_force_newline ppf ();
+        Caml.Format.pp_force_newline ppf ();
         match term with
           | First pat ->
-            Fmt.pf ppf "  pattern: %a, sort: %a" Pattern.pp pat pp_sort sort
+            Fmt.pf ppf "- @[pattern: %a,@ sort: %a@]" Pattern.pp pat pp_sort sort
           | Second tm ->
-            Fmt.pf ppf "  term: %a, sort: %a" Nominal.pp_term tm pp_sort sort
+            Fmt.pf ppf "- @[term: %a,@ sort: %a@]" Nominal.pp_term tm pp_sort sort
       )
     )
 
@@ -65,10 +65,10 @@ let lookup_operator
   = fun { sort_defs = SortDefs sort_defs; _ } sort_name op_name ->
     let open Option.Let_syntax in
     let%bind (SortDef (vars, operator_defs)) = Map.find sort_defs sort_name in
-    let%bind it = List.find operator_defs
+    let%bind result = List.find operator_defs
       ~f:(fun (OperatorDef (op_def_name, _)) -> String.(op_def_name = op_name))
     in
-    Some (vars, it)
+    Some (vars, result)
 
 (* Check that this pattern is valid and return the valence for each variable it binds *)
 let check_pattern
@@ -84,12 +84,24 @@ let check_pattern
       -> Primitive.t
       -> (valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
       = fun sort prim -> match prim, sort with
+        (* TODO: Figure out a real solution (that handles aliasing) *)
         | PrimString _, SortAp ("string", [])
+        | PrimFloat _, SortAp ("float", [])
+        | PrimChar _, SortAp ("char", [])
         | PrimInteger _, SortAp ("integer", []) -> Ok Util.String.Map.empty
         | _, _ -> Error (err (Printf.sprintf
           "Unexpected sort (%s) for a primitive (%s)"
           (string_of_sort sort) (Primitive.to_string prim)
         ))
+    in
+
+    let handle_dup_error = function
+      | `Ok result -> Ok result
+      | `Duplicate_key k -> Error (err (Printf.sprintf
+          "Did you mean to bind the same variable (%s) twice in the same pattern? \
+          That's not allowed!"
+          k
+      ))
     in
 
     let rec go_pattern
@@ -99,7 +111,7 @@ let check_pattern
       = fun sort pat ->
         let result = match pat with
           | Var name -> Ok
-            (Util.String.Map.singleton name (Valence ([], (sort, Unstarred)))) (* XXX *)
+            (Util.String.Map.singleton name (Valence ([], (sort, Unstarred))))
           | Ignored _ -> Ok Util.String.Map.empty
           | Primitive prim -> go_primitive sort prim
           | Operator (op_name, subpats) -> match sort with
@@ -121,7 +133,7 @@ let check_pattern
 
     and go_arity_pat
       :  arity
-      -> Pattern.t list
+      -> Pattern.t list list
       -> (valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
       = fun valences pats -> match List.zip pats valences with
         | Unequal_lengths
@@ -134,53 +146,41 @@ let check_pattern
           let open Result.Let_syntax in
           let%bind result = pat_valences
             |> List.map
-              ~f:(fun (pat, valence) -> match pat, valence with
-                (* The only thing that can match with a non-sort valence is a var *)
-                | Var name, _ -> Ok (Util.String.Map.singleton name valence)
-                | Ignored _, _ -> Ok Util.String.Map.empty
-
-                (* For anything else matching a sort we defer to go_pattern *)
-                | _, Valence ([], (sort, Unstarred)) -> go_pattern sort pat
-
-                | _, Valence ([], (_sort, Starred)) -> failwith "XXX starred sort"
-
-                (* Anything else is an error *)
-                | Primitive _, _
-                | Operator _, _ -> Error (err (Printf.sprintf
-                    "Invalid variable-valence (%s) pattern. Only a variable is valid."
-                    (string_of_valence valence)
-                ))
-              )
+              ~f:(fun (pats, valence) -> match valence with
+                | Valence ([], (sort, Unstarred)) ->
+                  begin
+                    match pats with
+                      | [pat] -> go_pattern sort pat
+                      | _ -> Error (err (Printf.sprintf
+                        "A list pattern (%s) was found matching a non-repeated \
+                        sort (%s)"
+                        (pats |> List.map ~f:Pattern.to_string |> String.concat ~sep:", ")
+                        (string_of_sort sort)
+                      ))
+                  end
+                | Valence ([], (sort, Starred)) -> pats
+                  |> List.map ~f:(go_pattern sort)
+                  |> Result.all
+                  |> Result.map ~f:Util.String.Map.strict_unions
+                  |> Result.bind ~f:handle_dup_error
+                | _ ->
+                  begin
+                    match pats with
+                    (* The only thing that can match with a non-sort valence is a var *)
+                    | [Ignored _] -> Ok Util.String.Map.empty
+                    | [Var name] -> Ok (Util.String.Map.singleton name valence)
+                    | _ -> Error (err (Printf.sprintf
+                      "Invalid variable-valence (%s) pattern (%s). Only a variable is \
+                      valid."
+                      (string_of_valence valence)
+                      (pats |> List.map ~f:Pattern.to_string |> String.concat ~sep:", ")
+                    ))
+                  end
+                  )
             |> Result.all
             |> Result.map ~f:Util.String.Map.strict_unions
           in
-          match result with
-            | `Ok result -> Ok result
-            | `Duplicate_key k -> Error (err (Printf.sprintf
-                "Did you mean to bind the same variable (%s) twice in the same pattern? \
-                That's not allowed!"
-                k
-            ))
-
-            (*
-    and go_variable_arity_pat
-      :  sort
-      -> Pattern.t list
-      -> (valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
-      = fun sort subterms ->
-        let open Result.Let_syntax in
-        let%bind result = subterms
-          |> List.map ~f:(go_pattern sort)
-          |> Result.all
-        in
-        match Util.String.Map.strict_unions result with
-          | `Ok result -> Ok result
-          | `Duplicate_key k -> Error (err (Printf.sprintf
-              "Did you mean to bind the same variable (%s) twice in the same pattern? \
-              That's not allowed!"
-              k
-          ))
-    *)
+          handle_dup_error result
     in
 
     go_pattern
@@ -195,43 +195,50 @@ let check_term
   -> Nominal.term
   -> abstract_syntax_check_failure option
   = fun lang ->
-    let invariant_violation = Util.invariant_violation in
     let lookup_operator' = lookup_operator lang in
     let check_pattern' = check_pattern lang in
 
     let rec go
-      :  valence Util.String.Map.t (* mapping from variable name to its sort *)
+      :  valence Util.String.Map.t (* mapping from variable name to its valence *)
       -> sort
       -> Nominal.term
       -> abstract_syntax_check_failure option
       = fun var_valences sort tm ->
 
         let result = match tm with
-        | Var v -> (match Map.find var_valences v with
-          | None -> Some (err (Printf.sprintf "Unknown variable %s (is it bound?)" v))
+        | Var v ->
+          begin
+            match Map.find var_valences v with
+              | None -> Some (err (Printf.sprintf "Unknown variable %s (is it bound?)" v))
 
-          (* Note: We allow patterns to bind scopes, eg we allow the pattern [lambda(x)]
-             because this is useful in defining semantics where you would open the scope.
-             However, it's not... TODO: clarify
+              (* Note: We allow patterns to bind scopes, eg we allow the pattern
+                 [lambda(x)] because this is useful in defining semantics where you would
+                 open the scope.  However, it's not... TODO: clarify
 
-           *)
-          | Some valence -> (match valence with
-            | Valence ([], (sort', Unstarred)) ->
-              if Caml.(sort' = sort)
-              then None
-              else Some (err (Printf.sprintf
-                  "Variable %s has unexpected valence (saw: %s) (expected: %s)"
-                  v (string_of_valence valence) (string_of_sort sort)
-              ))
-            | _ -> failwith "TODO")
-        )
+               *)
+              | Some valence ->
+                begin
+                  match valence with
+                    | Valence ([], (sort', Unstarred)) ->
+                      if Caml.(sort' = sort)
+                      then None
+                      else Some (err (Printf.sprintf
+                          "Variable %s has unexpected valence (saw: %s) (expected: %s)"
+                          v (string_of_valence valence) (string_of_sort sort)
+                      ))
+                    | _ -> failwith "TODO"
+                end
+          end
         | Primitive p -> (match p, sort with
-          | PrimInteger _, SortAp ("integer", []) -> None
-          | PrimString _, SortAp ("string", []) -> None
+          (* TODO: Figure out a real solution (that handles aliasing) *)
+          | PrimInteger _, SortAp ("integer", [])
+          | PrimString _, SortAp ("string", [])
+          | PrimFloat _, SortAp ("float", [])
+          | PrimChar _, SortAp ("char", []) -> None
           | _, _ -> Some (err "Unexpected primitive sort"))
 
         | Operator (operator_name, op_scopes) -> (match sort with
-          | SortVar _ -> invariant_violation "check_term (go): non-concrete sort"
+          | SortVar _ -> Util.invariant_violation "check_term (go): non-concrete sort"
           | SortAp (sort_name, sort_args)
           -> (match lookup_operator' sort_name operator_name with
             | None -> Some (err (Printf.sprintf
@@ -255,22 +262,13 @@ let check_term
       -> arity
       -> Nominal.scope list
       -> abstract_syntax_check_failure option
-      = fun var_valences arity scopes -> match arity with
-        | valences -> go_fixed_arity var_valences valences scopes
-        (* | VariableArity sort -> go_variable_arity var_valences sort scopes *)
-
-    and go_fixed_arity
-      :  valence Util.String.Map.t
-      -> valence list
-      -> Nominal.scope list
-      -> abstract_syntax_check_failure option
       = fun var_valences valences scopes -> match List.zip scopes valences with
         | Unequal_lengths -> Some (err (Printf.sprintf
             "Wrong number of subterms (%n) for this arity (%s)"
             (List.length scopes)
             (valences |> List.map ~f:string_of_valence |> String.concat ~sep:", ")
         ))
-        | Ok scope_valences -> List.find_map scope_valences (* TODO: go_fixed_arity *)
+        | Ok scope_valences -> List.find_map scope_valences (* TODO: go_arity *)
           ~f:(fun (scope, valence) -> go_scope var_valences valence scope)
 
     and go_scope
@@ -315,9 +313,11 @@ let check_term
             (List.length binder_sorts)
         ))
         | Ok binders' -> binders'
-          |> List.map ~f:(fun ((sort, _starred (* XXX *)), pat) -> match pat with
-            | Var _v -> check_pattern' sort pat
-            | _ -> Error (err "Fixed-valence binders must all be vars (no patterns)")
+          |> List.map ~f:(fun ((sort, starred), pat) -> match starred, pat with
+            | Unstarred, Var _v -> check_pattern' sort pat
+            | Unstarred, _ -> Error
+              (err "Fixed-valence binders must all be vars (no patterns)")
+            | Starred, _ -> check_pattern' sort pat
           )
           |> go_body body_sort_slot
     in
@@ -347,7 +347,7 @@ let%test_module "CheckTerm" = (module struct
 
   let lang_desc =
       {|
-import {integer} from "lvca/builtin"
+import {integer, string} from "lvca/builtin"
 
 value :=
   | unit()
@@ -373,7 +373,7 @@ test := foo(term()*. term())
 
   let language = parse_lang lang_desc
 
-  let check_pattern' sort_str pat_str =
+  let print_check_pattern sort_str pat_str =
     let sort = sort_str
       |> parse_term
       |> sort_of_term_exn
@@ -387,84 +387,84 @@ test := foo(term()*. term())
     | Ok _ -> ()
 
   let%expect_test _ =
-    check_pattern' "value()" "unit()";
+    print_check_pattern "value()" "unit()";
     [%expect]
 
   let%expect_test _ =
-    check_pattern' "value()" "lit_int(1)";
+    print_check_pattern "value()" "lit_int(1)";
     [%expect]
 
   let%expect_test _ =
-    check_pattern' "value()" {|lit_str("str")|};
+    print_check_pattern "value()" {|lit_str("str")|};
     [%expect]
 
   let%expect_test _ =
-    check_pattern' "list(value())" {|nil()|};
+    print_check_pattern "list(value())" {|nil()|};
     [%expect]
 
   let%expect_test _ =
-    check_pattern' "list(value())" {|cons(unit(); nil())|};
+    print_check_pattern "list(value())" {|cons(unit(); nil())|};
     [%expect]
 
   let%expect_test _ =
-    check_pattern' "term()" {|value(list(cons(unit(); nil())))|};
+    print_check_pattern "term()" {|value(list(cons(unit(); nil())))|};
     [%expect]
 
   let%expect_test _ =
-    check_pattern' "term()" {|value(list(cons(a; nil())))|};
+    print_check_pattern "term()" {|value(list(cons(a; nil())))|};
     [%expect]
 
   let%expect_test _ =
-    check_pattern' "term()" {|value(list(cons(a; a)))|};
+    print_check_pattern "term()" {|value(list(cons(a; a)))|};
     [%expect{|
       Did you mean to bind the same variable (a) twice in the same pattern? That's not allowed!
       stack:
-        pattern: value(list(cons(a; a))), sort: term()
-        pattern: list(cons(a; a)), sort: value()
-        pattern: cons(a; a), sort: list(value()) |}]
+      - pattern: value(list(cons(a; a))), sort: term()
+      - pattern: list(cons(a; a)), sort: value()
+      - pattern: cons(a; a), sort: list(value()) |}]
 
   let%expect_test _ =
-    check_pattern' "term()" "lambda(a)";
+    print_check_pattern "term()" "lambda(a)";
     [%expect]
 
   let%expect_test _ =
-    check_pattern' "match_line()" "match_line(a)";
+    print_check_pattern "match_line()" "match_line(a)";
     [%expect]
 
   let%expect_test _ =
-    check_pattern' "integer()" {|"foo"|};
+    print_check_pattern "integer()" {|"foo"|};
     [%expect {|
       Unexpected sort (integer()) for a primitive ("foo")
       stack:
-        pattern: "foo", sort: integer() |}]
+      - pattern: "foo", sort: integer() |}]
 
   let%expect_test _ =
-    check_pattern' "value()" "foo()";
+    print_check_pattern "value()" "foo()";
     [%expect{|
       check_pattern: failed to find operator foo in sort value
       stack:
-        pattern: foo(), sort: value() |}]
+      - pattern: foo(), sort: value() |}]
 
   let%expect_test _ =
-    check_pattern' "value()" "unit(1)";
+    print_check_pattern "value()" "unit(1)";
     [%expect{|
       Wrong number of subterms (1) for this arity ()
       stack:
-        pattern: unit(1), sort: value() |}]
+      - pattern: unit(1), sort: value() |}]
 
   let%expect_test _ =
-    check_pattern' "term()" "lambda(1)";
+    print_check_pattern "term()" "lambda(1)";
     [%expect{|
-      Invalid variable-valence (value(). term()) pattern. Only a variable is valid.
+      Invalid variable-valence (value(). term()) pattern (1). Only a variable is valid.
       stack:
-        pattern: lambda(1), sort: term() |}]
+      - pattern: lambda(1), sort: term() |}]
 
   let%expect_test _ =
-    check_pattern' "term()" "match(a; b)";
+    print_check_pattern "term()" "match(a; b)";
     [%expect{|
       Wrong number of subterms (2) for this arity (match_line()*)
       stack:
-        pattern: match(a; b), sort: term() |}]
+      - pattern: match(a; b), sort: term() |}]
 
   let check_term' sort_str tm_str =
     let sort = sort_str
@@ -496,90 +496,110 @@ test := foo(term()*. term())
     [%expect {|
       check_term: failed to find operator unit in sort term
       stack:
-        term: unit(), sort: term() |}]
+      - term: unit(), sort: term() |}]
 
   let%expect_test _ =
     check_term' "term()" "lambda(a. b)";
     [%expect {|
       Unknown variable b (is it bound?)
       stack:
-        term: lambda(a. b), sort: term()
-        term: b, sort: term() |}]
+      - term: lambda(a. b), sort: term()
+      - term: b, sort: term() |}]
 
   let%expect_test _ =
     check_term' "term()" "lambda(val. alt_lambda(tm. val))";
     [%expect {|
       Variable val has unexpected valence (saw: value()) (expected: term())
       stack:
-        term: lambda(val. alt_lambda(tm. val)), sort: term()
-        term: alt_lambda(tm. val), sort: term()
-        term: val, sort: term() |}]
+      - term: lambda(val. alt_lambda(tm. val)), sort: term()
+      - term: alt_lambda(tm. val), sort: term()
+      - term: val, sort: term() |}]
 
   let%expect_test _ =
     check_term' "value()" {|lit_int("foo")|};
     [%expect {|
       Unexpected primitive sort
       stack:
-        term: lit_int("foo"), sort: value()
-        term: "foo", sort: integer() |}]
+      - term: lit_int("foo"), sort: value()
+      - term: "foo", sort: integer() |}]
 
   let%expect_test _ =
     check_term' "value()" "lit_str(123)";
     [%expect {|
       Unexpected primitive sort
       stack:
-        term: lit_str(123), sort: value()
-        term: 123, sort: string() |}]
+      - term: lit_str(123), sort: value()
+      - term: 123, sort: string() |}]
 
   let%expect_test _ =
     check_term' "term()" "lambda(a; b)";
     [%expect {|
       Wrong number of subterms (2) for this arity (value(). term())
       stack:
-        term: lambda(a; b), sort: term() |}]
+      - term: lambda(a; b), sort: term() |}]
 
   let%expect_test _ =
     check_term' "value()" "lit_int(1; 2)";
     [%expect {|
       Wrong number of subterms (2) for this arity (integer())
       stack:
-        term: lit_int(1; 2), sort: value() |}]
+      - term: lit_int(1; 2), sort: value() |}]
 
   let%expect_test _ =
     check_term' "match_line()" "match_line(a. b. value(a))";
     [%expect {|
       Wrong number of binders (2) for this valence (value()*. term()) (expected 1)
       stack:
-        term: match_line(a. b. value(a)), sort: match_line() |}]
+      - term: match_line(a. b. value(a)), sort: match_line() |}]
 
   let%expect_test _ =
     check_term' "match_line()" "match_line(a. a)";
     [%expect{|
       Variable a has unexpected valence (saw: value()) (expected: term())
       stack:
-        term: match_line(a. a), sort: match_line()
-        term: a, sort: term() |}]
+      - term: match_line(a. a), sort: match_line()
+      - term: a, sort: term() |}]
 
   let%expect_test _ =
     check_term' "term()" "lambda(a. b. a)";
     [%expect {|
       Wrong number of binders (2) for this valence (value(). term()) (expected 1)
       stack:
-        term: lambda(a. b. a), sort: term() |}]
+      - term: lambda(a. b. a), sort: term() |}]
 
   let%expect_test _ =
     check_term' "term()" "lambda(list(cons(a; cons(b; nil))). value(a))";
     [%expect {|
       Fixed-valence binders must all be vars (no patterns)
       stack:
-        term: lambda(list(cons(a; cons(b; nil))). value(a)), sort: term() |}]
+      - term: lambda(list(cons(a; cons(b; nil))). value(a)), sort: term() |}]
 
   let%expect_test _ =
     check_term' "term()" "match(a. a)";
     [%expect {|
       Wrong number of binders (1) for this valence (match_line()*) (expected 0)
       stack:
-        term: match(a. a), sort: term() |}]
+      - term: match(a. a), sort: term() |}]
+
+  let%expect_test _ =
+    check_term' "integer()" "1";
+    print_check_pattern "integer()" "1";
+    [%expect]
+
+  let%expect_test _ =
+    check_term' "float()" "1.";
+    print_check_pattern "float()" "1.";
+    [%expect]
+
+  let%expect_test _ =
+    check_term' "char()" "'a'";
+    print_check_pattern "char()" "'a'";
+    [%expect]
+
+  let%expect_test _ =
+    check_term' "string()" {|"str"|};
+    print_check_pattern "string()" {|"str"|};
+    [%expect]
 
   (* TODO: clarify stance on binding scopes
   let%expect_test _ =

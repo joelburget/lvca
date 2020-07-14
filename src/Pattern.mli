@@ -1,7 +1,7 @@
 (** Patterns match terms and bind variables. *)
 
 type pattern =
-  | Operator of string * pattern list
+  | Operator of string * pattern list list
   | Primitive of Primitive.t
   | Var of string
   | Ignored of string
