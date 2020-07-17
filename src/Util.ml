@@ -383,6 +383,7 @@ module Angstrom = struct
     let braces p = char '{' *> p <* Angstrom.char '}' <* junk
     let brackets p = char '[' *> p <* Angstrom.char ']' <* junk
     let string str = Angstrom.string str <* junk
+    let integer_lit = Internal.integer_lit <* junk
     let integer_or_float_lit = Internal.integer_or_float_lit <* junk
     let string_lit = Internal.string_lit <* junk
     let char_lit = Internal.char_lit <* junk
