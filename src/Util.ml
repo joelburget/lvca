@@ -349,8 +349,8 @@ module Angstrom = struct
 
     let identifier =
       satisfy Char.(fun c -> is_alpha c || c = '_') >>= fun c ->
-      take_while Char.(fun c -> is_alpha c || is_digit c || c = '_') >>| fun cs ->
-      String.(of_char c ^ cs)
+      take_while Char.(fun c -> is_alpha c || is_digit c || c = '_' || c = '\'') >>|
+      fun cs -> String.(of_char c ^ cs)
   end
 
   let whitespace = Angstrom.(take_while Internal.is_whitespace *> return ())
