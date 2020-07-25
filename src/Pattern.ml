@@ -4,20 +4,20 @@ module Queue = Base.Queue
 module Set = Base.Set
 module String = Util.String
 
-type pattern =
-  | Operator of string * pattern list list
-  | Primitive of Primitive.t
-  | Var of string
-  | Ignored of string
+type 'a pattern =
+  | Operator of 'a * string * 'a pattern list list
+  | Primitive of 'a * Primitive.t
+  | Var of 'a * string
+  | Ignored of 'a * string
 
-type t = pattern
+type 'a t = 'a pattern
 
-let rec vars_of_pattern : pattern -> String.Set.t = function
-  | Operator (_, pats) -> pats
+let rec vars_of_pattern : 'a pattern -> String.Set.t = function
+  | Operator (_, _, pats) -> pats
     |> List.map ~f:vars_of_patterns
     |> Set.union_list (module String)
   | Primitive _ -> String.Set.empty
-  | Var name -> String.Set.of_list [ name ]
+  | Var (_, name) -> String.Set.of_list [ name ]
   | Ignored _ -> String.Set.empty
 
 and vars_of_patterns pats =
@@ -26,42 +26,42 @@ and vars_of_patterns pats =
   |> List.fold_right ~init:String.Set.empty ~f:Set.union
 ;;
 
-let list_vars_of_pattern : pattern -> string list =
+let list_vars_of_pattern : 'a pattern -> string list =
  fun pat -> Base.Set.to_list (vars_of_pattern pat)
 ;;
 
-let rec to_string : pattern -> string = function
-  | Operator (name, pats) ->
+let rec to_string : 'a pattern -> string = function
+  | Operator (_, name, pats) ->
     Printf.sprintf "%s(%s)" name
     (pats
       |> List.map ~f:(fun pats' -> pats'
         |> List.map ~f:to_string
         |> String.concat ~sep:", ")
       |> String.concat ~sep:"; ")
-  | Primitive prim -> Primitive.to_string prim
-  | Var name -> name
-  | Ignored name -> "_" ^ name
+  | Primitive (_, prim) -> Primitive.to_string prim
+  | Var (_, name) -> name
+  | Ignored (_, name) -> "_" ^ name
 ;;
 
-let rec pp : Format.formatter -> pattern -> unit
+let rec pp : Format.formatter -> 'a pattern -> unit
   = fun ppf ->
   let comma, list, pf, semi = Fmt.(comma, list, pf, semi) in
   function
-    | Operator (name, pats)
+    | Operator (_, name, pats)
     -> pf ppf "@[<2>%s(%a)@]"
       name
       (list ~sep:semi (list ~sep:comma pp)) pats
-    | Primitive prim
+    | Primitive (_, prim)
     -> Primitive.pp ppf prim
-    | Var name
+    | Var (_, name)
     -> pf ppf "%s" name
-    | Ignored name
+    | Ignored (_, name)
     -> pf ppf "_%s" name
 
 let rec jsonify pat =
   Util.Json.(
     match pat with
-    | Operator (tag, tms) -> array [|
+    | Operator (_, tag, tms) -> array [|
       string "o";
       string tag;
       tms
@@ -72,9 +72,9 @@ let rec jsonify pat =
         |> Array.of_list
         |> array
     |]
-    | Primitive p -> array [| string "p"; Primitive.jsonify p |]
-    | Var name -> array [| string "v"; string name |]
-    | Ignored name -> array [| string "_"; string name |])
+    | Primitive (_, p) -> array [| string "p"; Primitive.jsonify p |]
+    | Var (_, name) -> array [| string "v"; string name |]
+    | Ignored (_, name) -> array [| string "_"; string name |])
 
 let rec unjsonify =
   let open Option.Let_syntax in
@@ -90,26 +90,40 @@ let rec unjsonify =
         | _ -> None)
       |> Option.all
     in
-    Operator (tag, subtms')
+    Operator ((), tag, subtms')
   | Array [| String "p"; prim |] ->
     let%map prim' = Primitive.unjsonify prim in
-    Primitive prim'
+    Primitive ((), prim')
   | Array [| String "v"; String name |]
-  -> Some (Var name)
+  -> Some (Var ((), name))
   | Array [| String "_"; String name |]
-  -> Some (Ignored name)
+  -> Some (Ignored ((), name))
   | _ -> None
   )
+
+let rec erase = function
+  | Operator (_, tag, subpats)
+  -> Operator ((), tag, subpats |> List.map ~f:(List.map ~f:erase))
+  | Primitive (_, prim) -> Primitive ((), prim)
+  | Var (_, name) -> Var ((), name)
+  | Ignored (_, name) -> Ignored ((), name)
+
+let location = function
+  | Operator (loc, _, _)
+  | Primitive (loc, _)
+  | Var (loc, _)
+  | Ignored (loc, _)
+  -> loc
 
 module Parse (Comment : Util.Angstrom.Comment_int) = struct
   module Parsers = Util.Angstrom.Mk(Comment)
   module Primitive = Primitive.Parse(Comment)
 
   type pat_or_sep =
-    | Pat of pattern
+    | Pat of Position.t pattern
     | Sep of char
 
-  let t : t Angstrom.t
+  let t : Position.t t Angstrom.t
     = let open Angstrom in
       let char, identifier, parens = Parsers.(char, identifier, parens) in
 
@@ -121,12 +135,12 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
           ]
         in
 
-        let accumulate : string -> pat_or_sep list -> pattern Angstrom.t
+        let accumulate : string -> pat_or_sep list -> Position.t pattern Angstrom.t
           = fun tag tokens ->
             (* patterns encountered between ','s, before hitting ';' *)
-            let list_queue : pattern Queue.t = Queue.create () in
+            let list_queue : Position.t pattern Queue.t = Queue.create () in
             (* patterns encountered between ';'s *)
-            let slot_queue : pattern list Queue.t = Queue.create () in
+            let slot_queue : Position.t pattern list Queue.t = Queue.create () in
 
             (* Move the current list to the slot queue *)
             let list_to_slot () =
@@ -141,7 +155,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
             let rec go = function
               | []
               -> list_to_slot ();
-                 return (Operator (tag, Queue.to_list slot_queue))
+                 return (Operator (Position.zero_pos (* TODO *), tag, Queue.to_list slot_queue))
               | Pat pat :: Sep ',' :: Sep ';' :: rest
               | Pat pat :: Sep ',' :: rest (* Note: allow trailing ',' *)
               -> Queue.enqueue list_queue pat;
@@ -159,14 +173,14 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
         in
 
         choice
-          [ Primitive.t >>| (fun prim -> Primitive prim)
+          [ Primitive.t >>| (fun prim -> Primitive (Position.zero_pos (* TODO *), prim))
           ; identifier >>= fun ident ->
             if String.get ident 0 = '_'
-            then return (Ignored (String.subo ~pos:1 ident))
+            then return (Ignored (Position.zero_pos (* TODO *), String.subo ~pos:1 ident))
             else
               choice
               [ parens (many t_or_sep) >>= accumulate ident
-              ; return (Var ident)
+              ; return (Var (Position.zero_pos (* TODO *), ident))
               ] <?> "pattern body"
           ]
       ) <?> "pattern"
@@ -207,7 +221,7 @@ let%test_module "Parsing" = (module struct
 end);;
 
 module Properties = struct
-  let json_round_trip1 : t -> bool
+  let json_round_trip1 : unit t -> bool
     = fun t -> match t |> jsonify |> unjsonify with
       | None -> false
       | Some t' -> t = t'
@@ -219,9 +233,9 @@ module Properties = struct
 
   module Parse' = Parse(Util.Angstrom.NoComment)
 
-  let string_round_trip1 : t -> bool
+  let string_round_trip1 : unit t -> bool
     = fun t -> match t |> to_string |> Angstrom.parse_string ~consume:All Parse'.t with
-      | Ok prim -> prim = t
+      | Ok prim -> erase prim = t
       | Error _ -> false
 
   let string_round_trip2 : string -> bool

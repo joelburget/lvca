@@ -68,7 +68,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) : sig
   val t : t Angstrom.t
 end
 
-exception OfTermFailure of string * Binding.Nominal.term
+exception OfTermFailure of string * unit Binding.Nominal.term
 
 (** @raise [OfTermFailure] *)
-val sort_of_term_exn : Binding.Nominal.term -> sort
+val sort_of_term_exn : 'a Binding.Nominal.term -> sort

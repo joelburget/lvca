@@ -50,14 +50,14 @@ type typing = Typing of term * term
 
 type t = rule list
 
-val of_de_bruijn : Binding.DeBruijn.term -> term
+val of_de_bruijn : 'a Binding.DeBruijn.term -> term
 
 (** Raised by [to_de_bruijn_exn] when it encounters a free variable. *)
 exception FreeVar of string
 
 (** Convert a [term] to a de Bruijn representation. See also [of_de_bruijn].
  @raise FreeVar *)
-val to_de_bruijn_exn : term -> Binding.DeBruijn.term
+val to_de_bruijn_exn : term -> unit Binding.DeBruijn.term
 
 module Parse (Comment : Util.Angstrom.Comment_int) : sig
   exception StaticsParseError of string

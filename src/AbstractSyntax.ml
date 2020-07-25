@@ -200,17 +200,18 @@ let to_term : abstract_syntax -> NonBinding.term
 
 (* _of_term: *)
 
-exception OfTermFailure of string * Binding.Nominal.term
+exception OfTermFailure of string * unit Binding.Nominal.term
 
 (** @raise [OfTermFailure] *)
-let rec sort_of_term_exn : Binding.Nominal.term -> sort
-  = fun tm -> match tm with
-    | Var name -> SortVar name
-    | Operator (name, args)
+let rec sort_of_term_exn : 'a Binding.Nominal.term -> sort
+  = let erase = Binding.Nominal.erase in
+    fun tm -> match tm with
+    | Var (_, name) -> SortVar name
+    | Operator (_, name, args)
     -> SortAp (name, List.map args ~f:(function
-      | Scope ([], [arg]) -> sort_of_term_exn arg
-      | _ -> raise (OfTermFailure ("sort_of_term", tm))))
-    | _ -> raise (OfTermFailure ("sort_of_term", tm))
+      | Scope (_, [], [arg]) -> sort_of_term_exn arg
+      | _ -> raise (OfTermFailure ("sort_of_term", erase tm))))
+    | _ -> raise (OfTermFailure ("sort_of_term", erase tm))
 
 module Parse (Comment : Util.Angstrom.Comment_int) = struct
   open Angstrom

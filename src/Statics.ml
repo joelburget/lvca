@@ -55,28 +55,29 @@ type typing = Typing of term * term
 type t = rule list
 
 (** Convert a de Bruijn term to a [term]. See also [to_de_bruijn_exn]. *)
-let rec of_de_bruijn : Binding.DeBruijn.term -> term = function
-  | Operator (tag, scopes) -> Operator (tag, List.map scopes ~f:scope_of_de_bruijn)
-  | Var (i, j) -> Bound (i, j)
-  | Primitive p -> Primitive p
+let rec of_de_bruijn : 'a Binding.DeBruijn.term -> term = function
+  | Operator (_, tag, scopes)
+  -> Operator (tag, List.map scopes ~f:scope_of_de_bruijn)
+  | Var (_, i, j) -> Bound (i, j)
+  | Primitive (_, p) -> Primitive p
 
-and scope_of_de_bruijn : Binding.DeBruijn.scope -> scope =
-  fun (Scope (pats, body)) -> Scope (pats, List.map body ~f:of_de_bruijn)
+and scope_of_de_bruijn : 'a Binding.DeBruijn.scope -> scope =
+  fun (Scope (_, pats, body)) -> Scope (pats, List.map body ~f:of_de_bruijn)
 ;;
 
 exception FreeVar of string
 
 (** Convert a [term] to a de Bruijn representation. See also [of_de_bruijn].
  @raise FreeVar *)
-let rec to_de_bruijn_exn : term -> Binding.DeBruijn.term
+let rec to_de_bruijn_exn : term -> unit Binding.DeBruijn.term
   = function
-    | Operator (name, scopes) -> Operator (name, List.map scopes ~f:to_scope)
-    | Bound (i, j) -> Var (i, j)
+    | Operator (name, scopes) -> Operator ((), name, List.map scopes ~f:to_scope)
+    | Bound (i, j) -> Var ((), i, j)
     | Free name -> raise (FreeVar name)
-    | Primitive prim -> Primitive prim
+    | Primitive prim -> Primitive ((), prim)
 
-and to_scope : scope -> Binding.DeBruijn.scope
-  = fun (Scope (pats, tms)) -> Scope (pats, List.map tms ~f:to_de_bruijn_exn)
+and to_scope : scope -> unit Binding.DeBruijn.scope
+  = fun (Scope (pats, tms)) -> Scope ((), pats, List.map tms ~f:to_de_bruijn_exn)
 
 module Parse (Comment : Util.Angstrom.Comment_int) = struct
   open Angstrom
@@ -90,14 +91,14 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
 
   (* TODO: I don't think this is right -- we never produce bound variables. I'm keeping it
    this way temporarily since it's how menhir parsing worked. *)
-  let rec cvt_tm : Binding.Nominal.term -> term
+  let rec cvt_tm : 'a Binding.Nominal.term -> term
     = function
-      | Operator (name, scopes) -> Operator (name, List.map scopes ~f:cvt_scope)
-      | Var name -> Free name
-      | Primitive p -> Primitive p
+      | Operator (_, name, scopes) -> Operator (name, List.map scopes ~f:cvt_scope)
+      | Var (_, name) -> Free name
+      | Primitive (_, p) -> Primitive p
 
-  and cvt_scope : Binding.Nominal.scope -> scope
-    = fun (Scope (pats, tms)) -> Scope (pats, List.map tms ~f:cvt_tm)
+  and cvt_scope : 'a Binding.Nominal.scope -> scope
+    = fun (Scope (_, pats, tms)) -> Scope (pats, List.map tms ~f:cvt_tm)
 
   let term : term Angstrom.t
     = cvt_tm <$> Term.t

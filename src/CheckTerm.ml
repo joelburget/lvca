@@ -3,20 +3,20 @@ open Base
 open AbstractSyntax
 open Binding
 
-type abstract_syntax_check_failure_frame =
-  { term : (Pattern.t, Nominal.term) Either.t (** Term that failed to check *)
+type 'a abstract_syntax_check_failure_frame =
+  { term : ('a Pattern.t, 'a Nominal.term) Either.t (** Term that failed to check *)
   ; sort : sort (** Sort it failed to check against *)
   }
 
-type abstract_syntax_check_failure =
+type 'a abstract_syntax_check_failure =
   { message : string
-  ; stack : abstract_syntax_check_failure_frame list
+  ; stack : 'a abstract_syntax_check_failure_frame list
   }
 
-let err : string -> abstract_syntax_check_failure
+let err : string -> 'a abstract_syntax_check_failure
   = fun message -> { message; stack = [] }
 
-let pp_failure : Caml.Format.formatter -> abstract_syntax_check_failure -> unit
+let pp_failure : Caml.Format.formatter -> 'a abstract_syntax_check_failure -> unit
   = fun ppf { message; stack } ->
     Fmt.string ppf message;
 
@@ -74,15 +74,15 @@ let lookup_operator
 let check_pattern
   :  AbstractSyntax.t
   -> sort
-  -> Pattern.t
-  -> (valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
+  -> 'a Pattern.t
+  -> (valence Util.String.Map.t, 'a abstract_syntax_check_failure) Result.t
   = fun lang ->
     let lookup_operator' = lookup_operator lang in
 
     let go_primitive
       : sort
       -> Primitive.t
-      -> (valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
+      -> (valence Util.String.Map.t, 'a abstract_syntax_check_failure) Result.t
       = fun sort prim -> match prim, sort with
         (* TODO: Figure out a real solution (that handles aliasing) *)
         | PrimString _, SortAp ("string", [])
@@ -106,15 +106,15 @@ let check_pattern
 
     let rec go_pattern
       :  sort
-      -> Pattern.t
-      -> (valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
+      -> 'a Pattern.t
+      -> (valence Util.String.Map.t, 'a abstract_syntax_check_failure) Result.t
       = fun sort pat ->
         let result = match pat with
-          | Var name -> Ok
+          | Var (_, name) -> Ok
             (Util.String.Map.singleton name (Valence ([], (sort, Unstarred))))
           | Ignored _ -> Ok Util.String.Map.empty
-          | Primitive prim -> go_primitive sort prim
-          | Operator (op_name, subpats) -> match sort with
+          | Primitive (_, prim) -> go_primitive sort prim
+          | Operator (_, op_name, subpats) -> match sort with
             | SortVar _ -> Util.invariant_violation "check_pattern: non-concrete sort"
             | SortAp (sort_name, sort_args) -> (match lookup_operator' sort_name op_name with
               | None -> Error (err (Printf.sprintf
@@ -133,8 +133,8 @@ let check_pattern
 
     and go_arity_pat
       :  arity
-      -> Pattern.t list list
-      -> (valence Util.String.Map.t, abstract_syntax_check_failure) Result.t
+      -> 'a Pattern.t list list
+      -> (valence Util.String.Map.t, 'a abstract_syntax_check_failure) Result.t
       = fun valences pats -> match List.zip pats valences with
         | Unequal_lengths
         -> Error (err (Printf.sprintf
@@ -168,7 +168,7 @@ let check_pattern
                     match pats with
                     (* The only thing that can match with a non-sort valence is a var *)
                     | [Ignored _] -> Ok Util.String.Map.empty
-                    | [Var name] -> Ok (Util.String.Map.singleton name valence)
+                    | [Var (_, name)] -> Ok (Util.String.Map.singleton name valence)
                     | _ -> Error (err (Printf.sprintf
                       "Invalid variable-valence (%s) pattern (%s). Only a variable is \
                       valid."
@@ -192,8 +192,8 @@ let check_pattern
 let check_term
   :  AbstractSyntax.t (** Abstract syntax *)
   -> sort (** Sort to check term against *)
-  -> Nominal.term
-  -> abstract_syntax_check_failure option
+  -> 'a Nominal.term
+  -> 'a abstract_syntax_check_failure option
   = fun lang ->
     let lookup_operator' = lookup_operator lang in
     let check_pattern' = check_pattern lang in
@@ -201,12 +201,12 @@ let check_term
     let rec go
       :  valence Util.String.Map.t (* mapping from variable name to its valence *)
       -> sort
-      -> Nominal.term
-      -> abstract_syntax_check_failure option
+      -> 'a Nominal.term
+      -> 'a abstract_syntax_check_failure option
       = fun var_valences sort tm ->
 
         let result = match tm with
-        | Var v ->
+        | Var (_, v) ->
           begin
             match Map.find var_valences v with
               | None -> Some (err (Printf.sprintf "Unknown variable %s (is it bound?)" v))
@@ -229,7 +229,7 @@ let check_term
                     | _ -> failwith "TODO"
                 end
           end
-        | Primitive p -> (match p, sort with
+        | Primitive (_, p) -> (match p, sort with
           (* TODO: Figure out a real solution (that handles aliasing) *)
           | PrimInteger _, SortAp ("integer", [])
           | PrimString _, SortAp ("string", [])
@@ -237,7 +237,7 @@ let check_term
           | PrimChar _, SortAp ("char", []) -> None
           | _, _ -> Some (err "Unexpected primitive sort"))
 
-        | Operator (operator_name, op_scopes) -> (match sort with
+        | Operator (_, operator_name, op_scopes) -> (match sort with
           | SortVar _ -> Util.invariant_violation "check_term (go): non-concrete sort"
           | SortAp (sort_name, sort_args)
           -> (match lookup_operator' sort_name operator_name with
@@ -260,8 +260,8 @@ let check_term
     and go_arity
       :  valence Util.String.Map.t
       -> arity
-      -> Nominal.scope list
-      -> abstract_syntax_check_failure option
+      -> 'a Nominal.scope list
+      -> 'a abstract_syntax_check_failure option
       = fun var_valences valences scopes -> match List.zip scopes valences with
         | Unequal_lengths -> Some (err (Printf.sprintf
             "Wrong number of subterms (%n) for this arity (%s)"
@@ -274,13 +274,13 @@ let check_term
     and go_scope
       :  valence Util.String.Map.t
       -> valence
-      -> Nominal.scope
-      -> abstract_syntax_check_failure option
-      = fun var_valences valence (Scope (binders, body)) ->
+      -> 'a Nominal.scope
+      -> 'a abstract_syntax_check_failure option
+      = fun var_valences valence (Scope (_, binders, body)) ->
 
         (* Check the body with the new binders environment *)
         let go_body (body_sort, starred)
-          (binders_env : ((valence Util.String.Map.t, abstract_syntax_check_failure) Result.t) list)
+          (binders_env : ((valence Util.String.Map.t, 'a abstract_syntax_check_failure) Result.t) list)
           =
           (* XXX: is *, 0-or-more repetition (does this make sense?)? or is it 1-or-more?
            * Does + exist?
@@ -314,7 +314,7 @@ let check_term
         ))
         | Ok binders' -> binders'
           |> List.map ~f:(fun ((sort, starred), pat) -> match starred, pat with
-            | Unstarred, Var _v -> check_pattern' sort pat
+            | Unstarred, Var (_, _v) -> check_pattern' sort pat
             | Unstarred, _ -> Error
               (err "Fixed-valence binders must all be vars (no patterns)")
             | Starred, _ -> check_pattern' sort pat
@@ -471,7 +471,7 @@ test := foo(term()*. term())
       |> parse_term
       |> sort_of_term_exn
     in
-    match check_term language sort (parse_term tm_str) with
+    match tm_str |> parse_term |> Binding.Nominal.erase |> check_term language sort with
     | Some failure -> Fmt.epr "%a" pp_failure failure
     | None -> ()
 

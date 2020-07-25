@@ -6,45 +6,45 @@ module Json = Util.Json
 module String = Util.String
 
 module rec DeBruijn : sig
-  type term =
-    | Operator of string * scope list
-    | Var of int * int
-    | Primitive of Primitive.t
+  type 'a term =
+    | Operator of 'a * string * 'a scope list
+    | Var of 'a * int * int
+    | Primitive of 'a * Primitive.t
 
-  and scope = Scope of Pattern.t list * term list
+  and 'a scope = Scope of 'a * 'a Pattern.t list * 'a term list
 
-  val to_nominal : term -> Nominal.term option
-  val from_nominal : Nominal.term -> (term, string) Result.t
+  val to_nominal : 'a term -> 'a Nominal.term option
+  val from_nominal : 'a Nominal.term -> ('a term, string) Result.t
 
   val from_nominal_with_bindings
     :  (int * int) String.Map.t
-    -> Nominal.term
-    -> (term, string) Result.t
+    -> 'a Nominal.term
+    -> ('a term, string) Result.t
 
-  val alpha_equivalent : term -> term -> bool
+  val alpha_equivalent : 'a term -> 'b term -> bool
 
   (* val open_scope : scope -> term list -> (term, string) Result.t *)
 end = struct
-  type term =
-    | Operator of string * scope list
-    | Var of int * int
-    | Primitive of Primitive.t
+  type 'a term =
+    | Operator of 'a * string * 'a scope list
+    | Var of 'a * int * int
+    | Primitive of 'a * Primitive.t
 
-  and scope = Scope of Pattern.t list * term list
+  and 'a scope = Scope of 'a * 'a Pattern.t list * 'a term list
 
   let rec to_nominal' ctx = function
-    | Var (ix1, ix2) ->
+    | Var (a, ix1, ix2) ->
       List.nth ctx ix1
       |> Option.bind ~f:(Fn.flip List.nth ix2)
-      |> Option.map ~f:(fun name -> Nominal.Var name)
-    | Operator (tag, subtms) ->
+      |> Option.map ~f:(fun name -> Nominal.Var (a, name))
+    | Operator (a, tag, subtms) ->
       subtms
       |> List.map ~f:(scope_to_nominal ctx)
       |> Option.all
-      |> Option.map ~f:(fun subtms' -> Nominal.Operator (tag, subtms'))
-    | Primitive prim -> Some (Nominal.Primitive prim)
+      |> Option.map ~f:(fun subtms' -> Nominal.Operator (a, tag, subtms'))
+    | Primitive (a, prim) -> Some (Nominal.Primitive (a, prim))
 
-  and scope_to_nominal ctx (Scope (binders, body)) =
+  and scope_to_nominal ctx (Scope (a, binders, body)) =
     let ctx' = binders
       |> List.map ~f:Pattern.list_vars_of_pattern
       |> List.append ctx
@@ -52,23 +52,23 @@ end = struct
     body
       |> List.map ~f:(to_nominal' ctx')
       |> Option.all
-      |> Option.map ~f:(fun body' -> Nominal.Scope (binders, body'))
+      |> Option.map ~f:(fun body' -> Nominal.Scope (a, binders, body'))
   ;;
 
-  let to_nominal = to_nominal' []
+  let to_nominal tm = to_nominal' [] tm
 
   exception FailedFromNominal of string
 
   let rec from_nominal_with_bindings' env = function
-    | Nominal.Operator (tag, subtms) ->
-      Operator (tag, List.map subtms ~f:(scope_from_nominal' env))
-    | Var name ->
+    | Nominal.Operator (a, tag, subtms) ->
+      Operator (a, tag, List.map subtms ~f:(scope_from_nominal' env))
+    | Var (a, name) ->
       (match Map.find env name with
       | None -> raise (FailedFromNominal ("couldn't find variable " ^ name))
-      | Some (i, j) -> Var (i, j))
-    | Primitive prim -> Primitive prim
+      | Some (i, j) -> Var (a, i, j))
+    | Primitive (a, prim) -> Primitive (a, prim)
 
-  and scope_from_nominal' env (Nominal.Scope (pats, body)) =
+  and scope_from_nominal' env (Nominal.Scope (a, pats, body)) =
     let n = List.length pats in
     let var_nums : (string * (int * int)) list =
       pats
@@ -84,7 +84,7 @@ end = struct
         |> Util.Map.union_right_biased var_map
       in
       let body' = List.map body ~f:(from_nominal_with_bindings' env') in
-      Scope (pats, body')
+      Scope (a, pats, body')
     | `Duplicate_key _key -> failwith "TODO: raise error"
   ;;
 
@@ -93,13 +93,13 @@ end = struct
     | FailedFromNominal msg -> Error msg
   ;;
 
-  let from_nominal = from_nominal_with_bindings String.Map.empty
+  let from_nominal tm = from_nominal_with_bindings String.Map.empty tm
 
   let rec alpha_equivalent = fun t1 t2 ->
     match t1, t2 with
-      | Operator (h1, subtms1), Operator (h2, subtms2)
+      | Operator (_, h1, subtms1), Operator (_, h2, subtms2)
       -> String.(h1 = h2) && (match List.zip subtms1 subtms2 with
-        | Ok zipped -> List.for_all zipped ~f:(fun (Scope (_, body1), Scope (_, body2)) ->
+        | Ok zipped -> List.for_all zipped ~f:(fun (Scope (_, _, body1), Scope (_, _, body2)) ->
             match List.zip body1 body2 with
               | Ok bodies -> List.for_all
                 ~f:(fun (b1, b2) -> alpha_equivalent b1 b2)
@@ -107,67 +107,69 @@ end = struct
               | _ -> false)
         | Unequal_lengths -> false
       )
-      | Var (i1, j1), Var (i2, j2)
+      | Var (_, i1, j1), Var (_, i2, j2)
       -> i1 = i2 && j1 = j2
-      | Primitive p1, Primitive p2
+      | Primitive (_, p1), Primitive (_, p2)
       -> Primitive.(p1 = p2)
       | _, _
       -> false
 end
 
 and Nominal : sig
-  type scope = Scope of Pattern.t list * term list
+  type 'a scope = Scope of 'a * 'a Pattern.t list * 'a term list
 
-  and term =
-    | Operator of string * scope list
-    | Var of string
-    | Primitive of Primitive.t
+  and 'a term =
+    | Operator of 'a * string * 'a scope list
+    | Var of 'a * string
+    | Primitive of 'a * Primitive.t
 
-  val pp_term : Format.formatter -> Nominal.term -> unit
-  val pp_term_str : Nominal.term -> string
+  val pp_term : Format.formatter -> 'a Nominal.term -> unit
+  val pp_term_str : 'a Nominal.term -> string
 
-  val pp_scope : Format.formatter -> Nominal.scope -> unit
-  val pp_scope_str : Nominal.scope -> string
+  val pp_scope : Format.formatter -> 'a Nominal.scope -> unit
+  val pp_scope_str : 'a Nominal.scope -> string
 
-  val serialize : Nominal.term -> Bytes.t
-  val deserialize : Bytes.t -> term option
+  val serialize : unit Nominal.term -> Bytes.t
+  val deserialize : Bytes.t -> unit term option
 
-  val jsonify : Nominal.term -> Json.t
-  val unjsonify : Json.t -> Nominal.term option
+  val jsonify : unit Nominal.term -> Json.t
+  val unjsonify : Json.t -> unit Nominal.term option
 
-  val hash : Nominal.term -> string
+  val hash : unit Nominal.term -> string
+  val erase : 'a term -> unit term
+  val erase_scope : 'a scope -> unit scope
 
-  exception ToPatternFailure of scope
+  exception ToPatternFailure of unit scope
 
-  val to_pattern_exn : Nominal.term -> Pattern.t
-  val to_pattern : Nominal.term -> (Pattern.t, scope) Result.t
-  val pattern_to_term : Pattern.t -> Nominal.term
+  val to_pattern_exn : 'a Nominal.term -> 'a Pattern.t
+  val to_pattern : 'a Nominal.term -> ('a Pattern.t, unit scope) Result.t
+  val pattern_to_term : 'a Pattern.t -> 'a Nominal.term
 
   module Parse (Comment : Util.Angstrom.Comment_int) : sig
-    val t : term Angstrom.t
+    val t : Position.t term Angstrom.t
   end
 end = struct
-  type scope = Scope of Pattern.t list * term list
+  type 'a scope = Scope of 'a * 'a Pattern.t list * 'a term list
 
-  and term =
-    | Operator of string * scope list
-    | Var of string
-    | Primitive of Primitive.t
+  and 'a term =
+    | Operator of 'a * string * 'a scope list
+    | Var of 'a * string
+    | Primitive of 'a * Primitive.t
 
   let any, comma, list, str, string, semi, pf =
     Fmt.(any, comma, list, str, string, semi, pf)
 
   let rec pp_term ppf = function
-    | Operator (tag, subtms)
+    | Operator (_, tag, subtms)
     -> pf ppf "@[<2>%s(%a)@]"
       tag
       (list ~sep:semi pp_scope) subtms
-    | Var v
+    | Var (_, v)
     -> string ppf v
-    | Primitive p
+    | Primitive (_, p)
     -> Primitive.pp ppf p
 
-  and pp_scope ppf (Scope (bindings, body)) =
+  and pp_scope ppf (Scope (_, bindings, body)) =
     let pp_body = list ~sep:comma pp_term in
     match bindings with
     | [] -> pp_body ppf body
@@ -176,19 +178,19 @@ end = struct
       pp_body body
   ;;
 
-  let pp_term_str = str "%a" pp_term
-  let pp_scope_str = str "%a" pp_scope
+  let pp_term_str tm = str "%a" pp_term tm
+  let pp_scope_str scope = str "%a" pp_scope scope
   let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
 
-  let rec jsonify (tm : term) : Json.t =
+  let rec jsonify (tm : unit term) : Json.t =
     Json.(
       match tm with
-      | Operator (tag, tms) ->
+      | Operator (_, tag, tms) ->
         array [| string "o"; string tag; array_map jsonify_scope tms |]
-      | Var name -> array [| string "v"; string name |]
-      | Primitive p -> array [| string "p"; Primitive.jsonify p |])
+      | Var (_, name) -> array [| string "v"; string name |]
+      | Primitive (_, p) -> array [| string "p"; Primitive.jsonify p |])
 
-  and jsonify_scope (Scope (pats, body)) : Json.t =
+  and jsonify_scope (Scope (_, pats, body)) : Json.t =
     let body' = body
       |> List.map ~f:jsonify
       |> List.to_array
@@ -206,12 +208,12 @@ end = struct
          |> List.map ~f:unjsonify_scope
          |> Option.all
       in
-      Operator (tag, scopes')
+      Operator ((), tag, scopes')
     | Array [| String "v"; String name |]
-    -> Some (Var name)
+    -> Some (Var ((), name))
     | Array [| String "p"; prim |]
     -> let%map prim' = Primitive.unjsonify prim in
-       Primitive prim'
+       Primitive ((), prim')
     | _ -> None)
 
   and unjsonify_scope = Json.(function
@@ -231,7 +233,7 @@ end = struct
            |> Option.all
          | _ -> None
        in
-       Some (Scope (binders', body'))
+       Some (Scope ((), binders', body'))
     | _ -> None
   )
   ;;
@@ -242,39 +244,56 @@ end = struct
 
   let hash = fun tm -> tm |> serialize |> Util.Sha256.hash
 
-  exception ToPatternFailure of scope
+  let rec erase : 'a term -> unit term
+    = function
+      | Operator (_, name, scopes)
+      -> Operator ((), name, List.map scopes ~f:erase_scope)
+      | Var (_, name) -> Var ((), name)
+      | Primitive (_, p) -> Primitive ((), p)
 
-  (** @raise ToPatternFailure *)
-  let rec to_pattern_exn : term -> Pattern.t = function
-    | Var name -> if String.is_substring_at name ~pos:0 ~substring:"_"
-      then Ignored (String.slice name 1 0)
-      else Var name
-    | Operator (name, tms)
-    -> Operator (name, List.map tms ~f:(scope_to_patterns_exn))
-    | Primitive prim -> Primitive prim
-
-  (** @raise ToPatternFailure *)
-  and scope_to_patterns_exn : scope -> Pattern.t list = function
-    | Scope ([], tms) -> List.map tms ~f:to_pattern_exn
-    | scope -> raise (ToPatternFailure scope)
+  and erase_scope : 'a scope -> unit scope
+    = fun (Scope (_, pats, tms)) ->
+      Scope ((), List.map pats ~f:Pattern.erase, List.map tms ~f:erase)
   ;;
 
-  let to_pattern : term -> (Pattern.t, scope) Result.t
+  exception ToPatternFailure of unit scope
+
+  (** @raise ToPatternFailure *)
+  let rec to_pattern_exn : 'a term -> 'a Pattern.t = function
+    | Var (a, name) -> if String.is_substring_at name ~pos:0 ~substring:"_"
+      then Ignored (a, String.slice name 1 0)
+      else Var (a, name)
+    | Operator (a, name, tms)
+    -> Operator (a, name, List.map tms ~f:scope_to_patterns_exn)
+    | Primitive (a, prim) -> Primitive (a, prim)
+
+  (** @raise ToPatternFailure *)
+  and scope_to_patterns_exn : 'a scope -> 'a Pattern.t list = function
+    | Scope (_, [], tms) -> List.map tms ~f:to_pattern_exn
+    | Scope (_, binders, tms) ->
+        let binders' = List.map binders ~f:Pattern.erase in
+        let tms' = List.map tms ~f:erase in
+        raise (ToPatternFailure (Scope ((), binders', tms')))
+  ;;
+
+  let to_pattern : 'a term -> ('a Pattern.t, unit scope) Result.t
     = fun tm ->
       try
         Ok (to_pattern_exn tm)
       with
         ToPatternFailure scope -> Error scope
 
-  let rec pattern_to_term : Pattern.t -> Nominal.term = function
-    | Operator (name, pats)
+  let rec pattern_to_term : 'a Pattern.t -> 'a Nominal.term = function
+    | Operator (a, name, pats)
     -> Operator
-      ( name
-      , List.map pats ~f:(fun pats' -> Scope ([], List.map pats' ~f:pattern_to_term))
+      ( a
+      , name
+      (* TODO: should the scope really inherit the 'a? *)
+      , List.map pats ~f:(fun pats' -> Scope (a, [], List.map pats' ~f:pattern_to_term))
       )
-    | Primitive prim -> Primitive prim
-    | Var name -> Var name
-    | Ignored name -> Var ("_" ^ name)
+    | Primitive (a, prim) -> Primitive (a, prim)
+    | Var (a, name) -> Var (a, name)
+    | Ignored (a, name) -> Var (a, "_" ^ name)
   ;;
 
   module Parse (Comment : Util.Angstrom.Comment_int) = struct
@@ -283,14 +302,14 @@ end = struct
     module Primitive = Primitive.Parse(Comment)
 
     type tm_or_sep =
-      | Tm of Nominal.term
+      | Tm of Position.t Nominal.term
       | Sep of char
 
     type parse_state =
       | PossiblyBinding
       | DefinitelyTerm
 
-    let t : Nominal.term Angstrom.t
+    let t : Position.t Nominal.term Angstrom.t
       = let char, identifier, parens = Parsers.(char, identifier, parens) in
         fix (fun term ->
 
@@ -302,18 +321,18 @@ end = struct
           in
 
           (* (b11. ... b1n. t11, ... t1n; b21. ... b2n. t21, ... t2n) *)
-          let accumulate : string -> tm_or_sep list -> Nominal.term Angstrom.t
+          let accumulate : string -> tm_or_sep list -> Position.t Nominal.term Angstrom.t
             = fun tag tokens ->
 
               (* terms encountered between '.'s, before hitting ',' / ';' *)
-              let binding_queue : Nominal.term Queue.t = Queue.create () in
+              let binding_queue : Position.t Nominal.term Queue.t = Queue.create () in
               (* terms encountered between ','s, before hitting ';' *)
-              let list_queue : Nominal.term Queue.t = Queue.create () in
+              let list_queue : Position.t Nominal.term Queue.t = Queue.create () in
               (* scopes encountered *)
-              let scope_queue : Nominal.scope Queue.t = Queue.create () in
+              let scope_queue : Position.t Nominal.scope Queue.t = Queue.create () in
 
               let rec go parse_state = function
-                | [] -> return (Operator (tag, Queue.to_list scope_queue))
+                | [] -> return (Operator (Position.zero_pos (* TODO *), tag, Queue.to_list scope_queue))
                 | Tm tm :: Sep '.' :: rest
                 -> if Caml.(parse_state = DefinitelyTerm)
                    then fail "Unexpected '.' when parsing a list"
@@ -335,7 +354,8 @@ end = struct
                    Queue.enqueue list_queue tm;
                    let tms = Queue.to_list list_queue in
                    Queue.clear list_queue;
-                   Queue.enqueue scope_queue (Scope (binders, tms));
+                   let pos : Position.t = Position.zero_pos (* TODO *) in
+                   Queue.enqueue scope_queue (Scope (pos, binders, tms));
                    go PossiblyBinding rest
 
                 | _ -> fail "Malformed term"
@@ -345,10 +365,10 @@ end = struct
           in
 
           choice
-            [ Primitive.t >>| (fun prim -> Primitive prim)
+            [ Primitive.t >>| (fun prim -> Primitive (Position.zero_pos (* TODO *), prim))
             ; identifier >>= fun ident -> choice
               [ parens (many t_or_sep) >>= accumulate ident
-              ; return (Var ident)
+              ; return (Var (Position.zero_pos (* TODO *), ident))
               ]
             ]
         ) <?> "term"
@@ -359,7 +379,7 @@ end
 module Properties = struct
   open Nominal
 
-  let json_round_trip1 : term -> bool
+  let json_round_trip1 : unit term -> bool
     = fun t -> match t |> jsonify |> unjsonify with
       | None -> false
       | Some t' -> Caml.(t = t')
@@ -371,9 +391,9 @@ module Properties = struct
 
   module Parse = Parse(Util.Angstrom.NoComment)
 
-  let string_round_trip1 : term -> bool
+  let string_round_trip1 : unit term -> bool
     = fun t -> match t |> pp_term_str |> Angstrom.parse_string ~consume:All Parse.t with
-      | Ok prim -> Caml.(prim = t)
+      | Ok prim -> Caml.(erase prim = t)
       | Error _ -> false
 
   let string_round_trip2 : string -> bool
@@ -395,7 +415,7 @@ let%test_module "Nominal" =
 
     let print_hash tm = Printf.printf "%s" (hash tm)
     let ( = ) = Caml.( = )
-    let tm = Var "x"
+    let tm = Var ((), "x")
     let j_tm = Json.(Array [| String "v"; String "x" |])
 
     let%test _ = jsonify tm = j_tm
@@ -410,7 +430,7 @@ let%test_module "Nominal" =
       [%expect {| bbc37ed1e26f8481398dc797bd0b3ec2e3ae954e1c3f69b461a487d8703ec3d6 |}]
     ;;
 
-    let tm = Operator ("Z", [])
+    let tm = Operator ((), "Z", [])
 
     let%test _ =
       jsonify tm = Json.(Array [| String "o"; String "Z"; Array [||] |])
@@ -426,7 +446,7 @@ let%test_module "Nominal" =
       [%expect {| 2380ed848a0c5ce3d0ad7420e841578e4068f394b37b9b11bd3c34cea391436c |}]
     ;;
 
-    let tm = Operator ("S", [ Scope ([ Var "x" ], [Var "x"]) ])
+    let tm = Operator ((), "S", [ Scope ((), [ Var ((), "x")  ], [Var ((), "x") ]) ])
 
     let%test _ =
       jsonify tm
@@ -453,7 +473,7 @@ let%test_module "Nominal" =
       [%expect {| 5898e2f5a6af65e5d43539edd0fa5c539fa4dce2869b4a70e793c5f796658192 |}]
     ;;
 
-    let tm = Primitive (PrimInteger (Bigint.of_string "12345"))
+    let tm = Primitive ((), PrimInteger (Bigint.of_string "12345"))
 
     let%test _ =
       jsonify tm
@@ -480,11 +500,11 @@ let%test_module "Nominal" =
       [%expect {| e69505a495d739f89cf515c31cf3a2cca4e29a1a4fede9a331b45207a6fb33e5 |}]
     ;;
 
-    let%test _ = to_pattern_exn (Var "abc") = Var "abc"
-    let%test _ = to_pattern_exn (Var "_abc") = Ignored "abc"
-    let%test _ = to_pattern_exn (Var "_") = Ignored ""
-    let%test _ = pattern_to_term (Ignored "abc") = Var "_abc"
-    let%test _ = pattern_to_term (Ignored "") = Var "_"
+    let%test _ = to_pattern_exn (Var (1, "abc")) = Var (1, "abc")
+    let%test _ = to_pattern_exn (Var (2, "_abc")) = Ignored (2, "abc")
+    let%test _ = to_pattern_exn (Var (3, "_")) = Ignored (3, "")
+    let%test _ = pattern_to_term (Ignored (4, "abc")) = Var (4, "_abc")
+    let%test _ = pattern_to_term (Ignored (5, "")) = Var (5, "_")
   end)
 ;;
 
@@ -501,29 +521,39 @@ let%test_module "TermParser" = (module struct
     | Ok tm -> Nominal.pp_term Caml.Format.std_formatter tm
   ;;
 
-  let%test _ = parse "x" = Ok (Var "x")
-  let%test _ = parse "123" = Ok (Primitive (PrimInteger (Bigint.of_int 123)))
-  let%test _ = parse "\"abc\"" = Ok (Primitive (PrimString "abc"))
+  let%test _ =
+    parse "x" |> Result.map ~f:erase =
+    Ok (Var ((), "x"))
+  let%test _ =
+    parse "123" |> Result.map ~f:erase =
+    Ok (Primitive ((), PrimInteger (Bigint.of_int 123)))
+  let%test _ =
+    parse "\"abc\"" |> Result.map ~f:erase =
+    Ok (Primitive ((), PrimString "abc"))
 
-  let x = Var "x"
-  let t = Operator ("true", [])
+  let x = Var ((), "x")
+  let t = Operator ((), "true", [])
 
   let%test _ =
-    parse "lam(x. x)" = Ok (Operator ("lam", [ Scope ([ Var "x" ], [x]) ]))
+    parse "lam(x. x)" |> Result.map ~f:erase =
+    Ok (Operator ((), "lam", [ Scope ((), [ Var ((), "x") ], [x]) ]))
 
-  let match_line a b = Operator ("match_line", [ Scope ([a], [b]) ])
+  let match_line a b = Operator ((), "match_line", [ Scope ((), [a], [b]) ])
   let match_lines subtms = Operator
-    ( "match_lines"
-    , Base.List.map subtms ~f:(fun tm -> Scope ([], [tm]))
+    ( ()
+    , "match_lines"
+    , Base.List.map subtms ~f:(fun tm -> Scope ((), [], [tm]))
     )
 
-  let%test _ = parse {| match() |} = Ok (Operator ("match", []))
-  let%test _ = parse {| match(x; x) |} =
-    Ok (Operator ("match", [ Scope ([], [x]); Scope ([], [x]) ]))
-  let%test _ = parse {| match(true(); true()) |} =
-    Ok (Operator ("match", [ Scope ([], [t]); Scope ([], [t]) ]))
+  let%test _ = parse {| match() |} |> Result.map ~f:erase =
+    Ok (Operator ((), "match", []))
+  let%test _ = parse {| match(x; x) |} |> Result.map ~f:erase =
+    Ok (Operator ((), "match", [ Scope ((), [], [x]); Scope ((), [], [x]) ]))
+  let%test _ = parse {| match(true(); true()) |} |> Result.map ~f:erase =
+    Ok (Operator ((), "match", [ Scope ((), [], [t]); Scope ((), [], [t]) ]))
 
-  let%test _ = parse {| match(x;) |} = Ok (Operator ("match", [ Scope ([], [x]) ]))
+  let%test _ = parse {| match(x;) |} |> Result.map ~f:erase =
+    Ok (Operator ((), "match", [ Scope ((), [], [x]) ]))
 
   let%test _ =
     parse {|
@@ -531,14 +561,19 @@ let%test_module "TermParser" = (module struct
       match_line(foo(). true());
       match_line(bar(_; _x; y). y)
     )) |}
+    |> Result.map ~f:erase
     =
-    Ok (Operator ("match", [
-      Scope ([], [x]);
-      Scope ([], [match_lines [
-        match_line (Pattern.Operator ("foo", [])) (Operator ("true", []));
+    Ok (Operator ((), "match", [
+      Scope ((), [], [x]);
+      Scope ((), [], [match_lines [
+        match_line (Pattern.Operator ((), "foo", [])) (Operator ((), "true", []));
         match_line
-          (Pattern.Operator ("bar", [[Ignored ""]; [Ignored "x"]; [Var "y"]]))
-          (Var "y");
+          (Pattern.Operator
+            ( ()
+            , "bar"
+            , [[Ignored ((), "")]; [Ignored ((), "x")]; [Var ((), "y")]]
+            ))
+          (Var ((), "y"));
       ]]);
     ]))
 

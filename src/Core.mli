@@ -12,43 +12,45 @@ open Binding
 
 type is_rec = Rec | NoRec
 
-type term =
-  | Term of Nominal.term
-  | CoreApp of term * term
-  | Case of term * core_case_scope list
+type 'a term =
+  | Term of 'a Nominal.term
+  | CoreApp of 'a term * 'a term
+  | Case of 'a term * 'a core_case_scope list
   (** Cases match patterns *)
-  | Lambda of sort * core_scope
+  | Lambda of sort * 'a core_scope
   (** Lambdas bind variables. Patterns not allowed. *)
-  | Let of is_rec * term * core_scope
+  | Let of is_rec * 'a term * 'a core_scope
   (** Lets bind variables. Patterns not allowed. *)
 
-and core_scope = Scope of string * term
+and 'a core_scope = Scope of string * 'a term
 
-and core_case_scope = CaseScope of Pattern.t * term
+and 'a core_case_scope = CaseScope of 'a Pattern.t * 'a term
 
-val pp : Format.formatter -> term -> unit
-val to_string : term -> string
+val erase : 'a term -> unit term
+
+val pp : Format.formatter -> 'a term -> unit
+val to_string : 'a term -> string
 
 type import = AbstractSyntax.import
 
-type defn = Defn of import list * term
+type 'a defn = Defn of import list * 'a term
 
-val pp_defn : Format.formatter -> defn -> unit
-val defn_to_string : defn -> string
+val pp_defn : Format.formatter -> 'a defn -> unit
+val defn_to_string : 'a defn -> string
 
-type eval_error = string * term
-
-(** @raise eval_error *)
-val eval_ctx_exn : Nominal.term Util.String.Map.t -> term -> Nominal.term
+type eval_error = string * unit (* TODO: 'a *) term
 
 (** @raise eval_error *)
-val eval_exn : term -> Nominal.term
+val eval_ctx_exn : 'a Nominal.term Util.String.Map.t -> 'a term -> 'a Nominal.term
 
-val eval : term -> (Nominal.term, eval_error) Base.Result.t
+(** @raise eval_error *)
+val eval_exn : 'a term -> 'a Nominal.term
+
+val eval : 'a term -> ('a Nominal.term, eval_error) Base.Result.t
 
 module Parse (Comment : Util.Angstrom.Comment_int) : sig
-  val term : term Angstrom.t
-  val defn : defn Angstrom.t
+  val term : 'a term Angstrom.t
+  val defn : 'a defn Angstrom.t
 end
 
 (** Convert a module to a nominal term, for storage. *)

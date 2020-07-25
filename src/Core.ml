@@ -7,18 +7,18 @@ module Format = Caml.Format
 
 type is_rec = Rec | NoRec
 
-type term =
-  | Term of Nominal.term
+type 'a term =
+  | Term of 'a Nominal.term
   (* plus, core-specific ctors *)
-  | CoreApp of term * term
-  | Case of term * core_case_scope list
-  | Lambda of sort * core_scope
-  | Let of is_rec * term * core_scope
+  | CoreApp of 'a term * 'a term
+  | Case of 'a term * 'a core_case_scope list
+  | Lambda of sort * 'a core_scope
+  | Let of is_rec * 'a term * 'a core_scope
   (** Lets bind only a single variable *)
 
-and core_scope = Scope of string * term
+and 'a core_scope = Scope of string * 'a term
 
-and core_case_scope = CaseScope of Pattern.t * term
+and 'a core_case_scope = CaseScope of 'a Pattern.t * 'a term
 
 module PP = struct
   let braces, list, any, pf, sp = Fmt.(braces, list, any, pf, sp)
@@ -28,7 +28,7 @@ module PP = struct
   (** @raise InvariantViolation *)
   let rec pp
     = fun ppf -> function
-      | Term (Var v) -> pf ppf "%s" v (* XXX *)
+      | Term (Var (_, v)) -> pf ppf "%s" v (* XXX *)
       | Term tm -> pf ppf "%a" (braces Nominal.pp_term) tm
       | Lambda (sort, Scope (name, body)) ->
         pf ppf "\\(%s : %a) ->@ %a"
@@ -49,7 +49,7 @@ module PP = struct
          (match is_rec with Rec -> "rec " | NoRec -> "")
          name pp tm pp body
 
-  and pp_core_case_scope : Format.formatter -> core_case_scope -> unit
+  and pp_core_case_scope : Format.formatter -> 'a core_case_scope -> unit
     = fun ppf (CaseScope (pat, body))
     -> pf ppf "@[%a@ -> %a@]" Pattern.pp pat pp body
 
@@ -67,17 +67,17 @@ module PP = struct
         (list ~sep:sp pp) args
 end
 
-let pp : Format.formatter -> term -> unit
+let pp : Format.formatter -> 'a term -> unit
   = PP.pp
 
-let to_string : term -> string
+let to_string : 'a term -> string
   = Format.asprintf "%a" pp
 
 type import = AbstractSyntax.import
 
-type defn = Defn of import list * term
+type 'a defn = Defn of import list * 'a term
 
-let pp_defn : Format.formatter -> defn -> unit
+let pp_defn : Format.formatter -> 'a defn -> unit
   = fun ppf (Defn (imports, defn)) ->
     List.iter imports ~f:(fun import ->
       AbstractSyntax.pp_import ppf import;
@@ -85,11 +85,12 @@ let pp_defn : Format.formatter -> defn -> unit
     );
     pp ppf defn
 
-let defn_to_string : defn -> string
+let defn_to_string : 'a defn -> string
   = Format.asprintf "%a" pp_defn
 
 let merge_results
-  : Nominal.term Util.String.Map.t option list -> Nominal.term Util.String.Map.t option
+  :  'a Nominal.term Util.String.Map.t option list
+  -> 'a Nominal.term Util.String.Map.t option
   = fun results ->
     if List.for_all results ~f:Option.is_some
     then
@@ -108,14 +109,14 @@ let merge_results
     else None
 
 let rec match_pattern
-  : Nominal.term -> Pattern.t -> Nominal.term Util.String.Map.t option
+  : 'a Nominal.term -> 'b Pattern.t -> 'a Nominal.term Util.String.Map.t option
   = fun v pat -> match v, pat with
-  | Operator (tag1, vals), Operator (tag2, pats) ->
+  | Operator (_, tag1, vals), Operator (_, tag2, pats) ->
     if String.(tag1 = tag2)
     then
       match
         List.map2 pats vals ~f:(fun pats -> function
-          | Scope ([], body_tms) ->
+          | Scope (_, [], body_tms) ->
             begin
               match List.map2 body_tms pats ~f:match_pattern with
                 | Ok results -> merge_results results
@@ -126,29 +127,28 @@ let rec match_pattern
         | Ok results -> merge_results results
         | Unequal_lengths -> None
     else None
-  | Primitive l1, Primitive l2
+  | Primitive (_, l1), Primitive (_, l2)
   -> if Primitive.(l1 = l2) then Some Util.String.Map.empty else None
   | _, Ignored _ -> Some Util.String.Map.empty
-  | tm, Var v -> Some (Util.String.Map.of_alist_exn [ v, tm ])
+  | tm, Var (_, v) -> Some (Util.String.Map.of_alist_exn [ v, tm ])
   | _ -> None
 ;;
 
 let find_core_match
-  : Nominal.term -> core_case_scope list -> (term * Nominal.term Util.String.Map.t) option
-  = fun v branches ->
-  branches
-  |> List.find_map ~f:(function
-         | CaseScope (pat, rhs) ->
-           (match match_pattern v pat with
-           | None -> None
-           | Some bindings -> Some (rhs, bindings)))
+  :  'a Nominal.term
+  -> core_case_scope list
+  -> (term * Nominal.term Util.String.Map.t) option
+  = fun v branches -> branches
+  |> List.find_map ~f:(fun CaseScope (pat, rhs) -> match match_pattern v pat with
+     | None -> None
+     | Some bindings -> Some (rhs, bindings))
 ;;
 
-type eval_error = string * term
+type eval_error = string * unit term
 
-exception EvalExn of string * term
+exception EvalExn of string * unit term
 
-let rec eval_ctx_exn : Nominal.term Util.String.Map.t -> term -> Nominal.term =
+let rec eval_ctx_exn : 'a Nominal.term Util.String.Map.t -> 'a term -> 'a Nominal.term =
  fun ctx tm -> match tm with
   | Term (Var v) ->
     begin
@@ -197,10 +197,10 @@ and eval_ctx_exn' : Nominal.term Util.String.Map.t -> Nominal.term -> Nominal.te
       end
     | _ -> tm
 
-let eval_exn : term -> Nominal.term
+let eval_exn : 'a term -> 'a Nominal.term
   = fun core -> eval_ctx_exn Util.String.Map.empty core
 
-let eval : term -> (Nominal.term, eval_error) Result.t =
+let eval : 'a term -> ('a Nominal.term, eval_error) Result.t =
   fun core -> try Ok (eval_exn core) with EvalExn (msg, tm) -> Error (msg, tm)
 ;;
 
@@ -220,7 +220,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
     then fail "reserved word"
     else return ident
 
-  let make_apps : term list -> term
+  let make_apps : Position.t term list -> Position.t term
     = function
       | [] -> Util.invariant_violation "make_apps: must be a nonempty list"
       | [x] -> x
@@ -228,12 +228,12 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
         ~init:f
         ~f:(fun f_app arg -> CoreApp (f_app, arg))
 
-  let term : term Angstrom.t
+  let term : Position.t term Angstrom.t
     = fix (fun term ->
 
       let atomic_term = choice
         [ parens term
-        ; identifier >>| (fun ident -> Term (Var ident))
+        ; identifier >>| (fun ident -> Term (Var (Position.zero_pos (* TODO *), ident)))
         ; braces Term.t >>| (fun tm -> Term tm)
           <?> "quoted term"
         ]
@@ -287,7 +287,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
         <?> "application"
       ]) <?> "core term"
 
-  let defn : defn Angstrom.t
+  let defn : Position.t defn Angstrom.t
     = lift2 (fun imports tm -> Defn (imports, tm))
       (many Abstract.import)
       term
@@ -306,7 +306,7 @@ let%test_module "Parsing" = (module struct
 
   let (=) = Caml.(=)
 
-  let one = Binding.Nominal.Primitive (PrimInteger (Bigint.of_int 1))
+  let one = Binding.Nominal.Primitive ((), PrimInteger (Bigint.of_int 1))
 
   let%test _ = parse "{1}" = Term one
   let%test _ = parse "{true()}" = Term (Operator ("true", []))

@@ -1,7 +1,7 @@
 (** Check that a term is valid in some language. *)
 
-type abstract_syntax_check_failure_frame =
-  { term : (Pattern.t, Binding.Nominal.term) Base.Either.t
+type 'a abstract_syntax_check_failure_frame =
+  { term : ('a Pattern.t, 'a Binding.Nominal.term) Base.Either.t
   (** Term that failed to check *)
   ; sort : AbstractSyntax.sort
   (** Sort it failed to check against *)
@@ -10,15 +10,15 @@ type abstract_syntax_check_failure_frame =
 (** A check failure includes both an error message and the stack of terms / patterns
   leading to the problematic term / pattern.
   *)
-type abstract_syntax_check_failure =
+type 'a abstract_syntax_check_failure =
   { message : string
-  ; stack : abstract_syntax_check_failure_frame list
+  ; stack : 'a abstract_syntax_check_failure_frame list
   (** The stack of terms leading from the outermost start point to the innermost point
    where the problem was discovered *)
   }
 
 (** Failure pretty-printer. *)
-val pp_failure : Format.formatter -> abstract_syntax_check_failure -> unit
+val pp_failure : Format.formatter -> 'a abstract_syntax_check_failure -> unit
 
 (** Check that this pattern is valid and return the valence for each variable it binds.
 
@@ -35,8 +35,8 @@ val pp_failure : Format.formatter -> abstract_syntax_check_failure -> unit
 val check_pattern
   :  AbstractSyntax.t (** Abstract syntax *)
   -> AbstractSyntax.sort (** Sort to check pattern against *)
-  -> Pattern.t
-  -> (AbstractSyntax.valence Util.String.Map.t, abstract_syntax_check_failure)
+  -> 'a Pattern.t
+  -> (AbstractSyntax.valence Util.String.Map.t, 'a abstract_syntax_check_failure)
     Result.t
 
 (** Check that the given term matches the given sort.
@@ -56,5 +56,5 @@ val check_pattern
 val check_term
   :  AbstractSyntax.t (** Abstract syntax *)
   -> AbstractSyntax.sort (** Sort to check term against *)
-  -> Binding.Nominal.term
-  -> abstract_syntax_check_failure option
+  -> 'a Binding.Nominal.term
+  -> 'a abstract_syntax_check_failure option
