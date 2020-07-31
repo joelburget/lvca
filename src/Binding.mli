@@ -85,7 +85,7 @@ and Nominal : sig
   val pattern_to_term : 'a Pattern.t -> 'a Nominal.term
 
   module Parse (Comment : Util.Angstrom.Comment_int) : sig
-    val t : Position.t term Angstrom.t
+    val t : Range.t term Angstrom.t
   end
 end
 

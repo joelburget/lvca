@@ -20,8 +20,8 @@ let parse_term str =
 let%test_module "Core parsing" = (module struct
   open AbstractSyntax
 
-  let scope : Nominal.term -> Nominal.scope
-    = fun body -> Scope ([], [body])
+  let scope : unit Nominal.term -> unit Nominal.scope
+    = fun body -> Scope ((), [], [body])
 
   let dynamics_str =
     {|\(tm : ty()) -> match tm with {
@@ -37,8 +37,11 @@ let%test_module "Core parsing" = (module struct
   |}
   ;;
 
-  let var name = Term (Var name)
-  let meaning x = CoreApp (var "meaning", x)
+  let p_var name = Pattern.Var ((), name)
+  let t_var name = Term (Var ((), name))
+  let p_operator tag children = Pattern.Operator ((), tag, children)
+  let t_operator tag children = Nominal.Operator ((), tag, children)
+  let meaning x = CoreApp (t_var "meaning", x)
 
   let ty = SortAp ("ty", [])
 
@@ -50,32 +53,34 @@ let%test_module "Core parsing" = (module struct
         , Scope
             ( "tm"
             , Case
-                ( var "tm"
-                , [ CaseScope (Operator ("true", []),
-                    Term (Operator ("true", [])))
-                  ; CaseScope (Operator ("false", []),
-                    Term (Operator ("false", [])))
+                ( t_var "tm"
+                , [ CaseScope (p_operator "true" [],
+                    Term (t_operator "true" []))
+                  ; CaseScope (p_operator "false" [],
+                    Term (t_operator "false" []))
                   ; CaseScope
-                      ( Operator ("ite" , [ [Var "t1"] ; [Var "t2"] ; [Var "t3"] ])
+                      ( p_operator "ite" [ [p_var "t1"] ; [p_var "t2"] ; [p_var "t3"] ]
                       , Case
-                          ( CoreApp (var "meaning", var "t1")
-                          , [ CaseScope (Operator ("true", []), meaning (var "t2"))
-                            ; CaseScope (Operator ("false", []), meaning (var "t3"))
+                          ( CoreApp (t_var "meaning", t_var "t1")
+                          , [ CaseScope (p_operator "true" [], meaning (t_var "t2"))
+                            ; CaseScope (p_operator "false" [], meaning (t_var "t3"))
                             ] ) )
                   ; CaseScope
-                      ( Operator ("ap", [ [Var "f"]; [Var "arg"] ])
-                      , CoreApp (meaning @@ var "f", meaning @@ var "arg") )
+                      ( p_operator "ap" [ [p_var "f"]; [p_var "arg"] ]
+                      , CoreApp (meaning @@ t_var "f", meaning @@ t_var "arg") )
                   ; CaseScope
-                      ( Operator ("fun", [ [Var "scope"] ])
-                      , Term (Operator
-                          ("lambda",
-                            [ scope @@ Operator("list", [])
-                            ; scope @@ Var "scope"
-                            ])) )
+                      ( p_operator "fun" [ [p_var "scope"] ]
+                      , Term (t_operator
+                          "lambda"
+                          [ scope @@ t_operator "list" []
+                          ; scope @@ Var ((), "scope")
+                          ])
+                      )
                   ] ) ) )
       )
 
-  let%test "dynamics as expected" = Caml.(parse_defn dynamics_str = dynamics)
+  let%test "dynamics as expected" =
+    Caml.(parse_defn dynamics_str |> erase_defn = dynamics)
 end)
 ;;
 

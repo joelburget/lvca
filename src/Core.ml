@@ -20,6 +20,20 @@ and 'a core_scope = Scope of string * 'a term
 
 and 'a core_case_scope = CaseScope of 'a Pattern.t * 'a term
 
+let rec erase : 'a term -> unit term
+  = function
+  | Term tm -> Term (Nominal.erase tm)
+  | CoreApp (t1, t2) -> CoreApp (erase t1, erase t2)
+  | Case (tm, scopes) -> Case (erase tm, List.map scopes ~f:erase_case_scope)
+  | Lambda (sort, core_scope) -> Lambda (sort, erase_core_scope core_scope)
+  | Let (is_rec, tm, core_scope) -> Let (is_rec, erase tm, erase_core_scope core_scope)
+
+and erase_core_scope : 'a core_scope -> unit core_scope
+  = fun (Scope (name, tm)) -> Scope (name, erase tm)
+
+and erase_case_scope : 'a core_case_scope -> unit core_case_scope
+ =  fun (CaseScope (pat, tm)) -> CaseScope (Pattern.erase pat, erase tm)
+
 module PP = struct
   let braces, list, any, pf, sp = Fmt.(braces, list, any, pf, sp)
 
@@ -71,7 +85,7 @@ let pp : Format.formatter -> 'a term -> unit
   = PP.pp
 
 let to_string : 'a term -> string
-  = Format.asprintf "%a" pp
+  = fun tm -> Format.asprintf "%a" pp tm
 
 type import = AbstractSyntax.import
 
@@ -86,7 +100,9 @@ let pp_defn : Format.formatter -> 'a defn -> unit
     pp ppf defn
 
 let defn_to_string : 'a defn -> string
-  = Format.asprintf "%a" pp_defn
+  = fun defn -> Format.asprintf "%a" pp_defn defn
+
+let erase_defn = fun (Defn (imports, tm)) -> Defn (imports, erase tm)
 
 let merge_results
   :  'a Nominal.term Util.String.Map.t option list
@@ -136,10 +152,10 @@ let rec match_pattern
 
 let find_core_match
   :  'a Nominal.term
-  -> core_case_scope list
-  -> (term * Nominal.term Util.String.Map.t) option
+  -> 'b core_case_scope list
+  -> ('b term * 'a Nominal.term Util.String.Map.t) option
   = fun v branches -> branches
-  |> List.find_map ~f:(fun CaseScope (pat, rhs) -> match match_pattern v pat with
+  |> List.find_map ~f:(fun (CaseScope (pat, rhs)) -> match match_pattern v pat with
      | None -> None
      | Some bindings -> Some (rhs, bindings))
 ;;
@@ -150,11 +166,11 @@ exception EvalExn of string * unit term
 
 let rec eval_ctx_exn : 'a Nominal.term Util.String.Map.t -> 'a term -> 'a Nominal.term =
  fun ctx tm -> match tm with
-  | Term (Var v) ->
+  | Term (Var (_, v)) ->
     begin
       match Map.find ctx v with
       | Some result -> result
-      | None -> raise @@ EvalExn ("Unbound variable " ^ v, tm)
+      | None -> raise @@ EvalExn ("Unbound variable " ^ v, erase tm)
     end
   | CoreApp (Lambda (_ty, Scope (name, body)), arg) ->
     let arg_val = eval_ctx_exn ctx arg in
@@ -163,37 +179,39 @@ let rec eval_ctx_exn : 'a Nominal.term Util.String.Map.t -> 'a term -> 'a Nomina
     let tm_val = eval_ctx_exn ctx tm in
     begin
       match find_core_match tm_val branches with
-      | None -> raise @@ EvalExn ("no match found in case", Term tm_val)
+      | None -> raise @@ EvalExn ("no match found in case", erase @@ Term tm_val)
       | Some (branch, bindings) -> eval_ctx_exn (Util.Map.union_right_biased ctx bindings) branch
     end
 
   (* primitives *)
   (* TODO: or should this be an app? *)
-  | Term (Operator ("add", [ Scope ([], [a]); Scope ([], [b]) ])) ->
+  | Term (Operator (_, "add", [ Scope (_, [], [a]); Scope (_, [], [b]) ])) ->
     begin
       match eval_ctx_exn' ctx a, eval_ctx_exn' ctx b with
-      | Primitive (PrimInteger a'), Primitive (PrimInteger b') ->
-        Primitive (PrimInteger Bigint.(a' + b'))
-      | _ -> raise @@ EvalExn ("Invalid arguments to add", tm)
+      | Primitive (loc, PrimInteger a'), Primitive (_, PrimInteger b') ->
+        (* XXX can't reuse loc *)
+        Primitive (loc, PrimInteger Bigint.(a' + b'))
+      | _ -> raise @@ EvalExn ("Invalid arguments to add", erase tm)
     end
-  | Term (Operator ("sub", [ Scope ([], [a]); Scope ([], [b]) ])) ->
+  | Term (Operator (_, "sub", [ Scope (_, [], [a]); Scope (_, [], [b]) ])) ->
     begin
       match eval_ctx_exn' ctx a, eval_ctx_exn' ctx b with
-      | Primitive (PrimInteger a'), Primitive (PrimInteger b') ->
-        Primitive (PrimInteger Bigint.(a' - b'))
-      | _ -> raise @@ EvalExn ("Invalid arguments to sub", tm)
+      | Primitive (loc, PrimInteger a'), Primitive (_, PrimInteger b') ->
+        Primitive (loc, PrimInteger Bigint.(a' - b'))
+      | _ -> raise @@ EvalExn ("Invalid arguments to sub", erase tm)
     end
 
   | Term tm -> tm
-  | _ -> raise @@ EvalExn ("Found a term we can't evaluate", tm)
+  | _ -> raise @@ EvalExn ("Found a term we can't evaluate", erase tm)
 
-and eval_ctx_exn' : Nominal.term Util.String.Map.t -> Nominal.term -> Nominal.term
+and eval_ctx_exn'
+  : 'a Nominal.term Util.String.Map.t -> 'a Nominal.term -> 'a Nominal.term
   = fun ctx tm -> match tm with
-    | Var v ->
+    | Var (_, v) ->
       begin
         match Map.find ctx v with
         | Some result -> result
-        | None -> raise @@ EvalExn ("Unbound variable " ^ v, Term tm)
+        | None -> raise @@ EvalExn ("Unbound variable " ^ v, erase @@ Term tm)
       end
     | _ -> tm
 
@@ -308,37 +326,44 @@ let%test_module "Parsing" = (module struct
 
   let one = Binding.Nominal.Primitive ((), PrimInteger (Bigint.of_int 1))
 
-  let%test _ = parse "{1}" = Term one
-  let%test _ = parse "{true()}" = Term (Operator ("true", []))
-  let%test _ = parse "not x" = CoreApp (Term (Var "not"), Term (Var "x"))
+  let var name = Binding.Nominal.Var ((), name)
+  let ignored name = Pattern.Ignored ((), name)
 
-  let%test _ = parse {|\(x : bool()) -> x|} =
-    Lambda (SortAp ("bool", []), Scope ("x", Term (Var "x")))
+  let operator tag children = Binding.Nominal.Operator ((), tag, children)
 
-  let%test _ = parse {|match x with { _ -> {1} }|} = Case
-    ( Term (Var "x")
-    , [ CaseScope (Ignored "", Term one) ]
+  let%test _ = parse "{1}" |> erase = Term one
+  let%test _ = parse "{true()}" |> erase = Term (operator "true" [])
+  let%test _ = parse "not x" |> erase = CoreApp (Term (var "not"), Term (var "x"))
+
+  let%test _ = parse {|\(x : bool()) -> x|} |> erase =
+    Lambda (SortAp ("bool", []), Scope ("x", Term (var "x")))
+
+  let%test _ = parse {|match x with { _ -> {1} }|} |> erase = Case
+    ( Term (var "x")
+    , [ CaseScope (ignored "", Term one) ]
     )
 
-  let%test _ = parse {|match x with { | _ -> {1} }|} = Case
-    ( Term (Var "x")
-    , [ CaseScope (Ignored "", Term one) ]
+  let%test _ = parse {|match x with { | _ -> {1} }|} |> erase = Case
+    ( Term (var "x")
+    , [ CaseScope (ignored "", Term one) ]
     )
 
-  let%test _ = parse {|match x with { true() -> {false()} | false() -> {true()} }|} = Case
-    ( Term (Var "x")
-    , [ CaseScope (Operator ("true", []), Term (Operator ("false", [])))
-      ; CaseScope (Operator ("false", []), Term (Operator ("true", [])))
+  let%test _ = parse {|match x with { true() -> {false()} | false() -> {true()} }|}
+    |> erase
+    = Case
+    ( Term (var "x")
+    , [ CaseScope (Operator ((), "true", []), Term (operator "false" []))
+      ; CaseScope (Operator ((), "false", []), Term (operator "true" []))
       ]
     )
 
   let%test _ =
-    parse "let x = {true()} in not x"
+    parse "let x = {true()} in not x" |> erase
     =
     Let
       ( NoRec
-      , Term (Operator ("true", []))
-      , Scope ("x", CoreApp (Term (Var "not"), Term (Var "x")))
+      , Term (operator "true" [])
+      , Scope ("x", CoreApp (Term (var "not"), Term (var "x")))
       )
 end);;
 

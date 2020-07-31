@@ -1,24 +1,24 @@
 open Base
 
-type term =
-  | Operator of string * scope list
-  | Bound of int * int
+type 'a term =
+  | Operator of 'a * string * 'a scope list
+  | Bound of 'a * int * int
   (** Bound vars come via conversion of de Bruijn terms. *)
-  | Free of string
+  | Free of 'a * string
   (** Free vars are used during typechecking. *)
-  | Primitive of Primitive.t
+  | Primitive of 'a * Primitive.t
 
-and scope = Scope of Pattern.t list * term list
+and 'a scope = Scope of 'a * 'a Pattern.t list * 'a term list
 
 let rec string_of_term = function
-  | Operator (name, scopes) ->
+  | Operator (_, name, scopes) ->
     Printf.sprintf "%s(%s)" name
     (scopes |> List.map ~f:string_of_scope |> String.concat ~sep:"; ")
-  | Bound (i, j) -> Printf.sprintf "%d, %d" i j
-  | Free str -> str
-  | Primitive prim -> Primitive.to_string prim
+  | Bound (_, i, j) -> Printf.sprintf "%d, %d" i j
+  | Free (_, str) -> str
+  | Primitive (_, prim) -> Primitive.to_string prim
 
-and string_of_scope (Scope (pats, tms)) =
+and string_of_scope (Scope (_, pats, tms)) =
   let string_of_terms tms = tms
     |> List.map ~f:string_of_term
     |> String.concat ~sep:", "
@@ -30,54 +30,93 @@ and string_of_scope (Scope (pats, tms)) =
     Printf.sprintf "%s. %s" pats' (string_of_terms tms)
 ;;
 
-type typing_rule =
-  { tm : term
-  ; ty : term
+let location = function
+  | Operator (loc, _, _)
+  | Bound (loc, _, _)
+  | Free (loc, _)
+  | Primitive (loc, _)
+  -> loc
+
+type 'a typing_rule =
+  { tm : 'a term
+  ; ty : 'a term
   }
 
-type inference_rule = typing_rule
-type checking_rule = typing_rule
+type 'a inference_rule = 'a typing_rule
+type 'a checking_rule = 'a typing_rule
 
-type typing_clause =
-  | InferenceRule of inference_rule
-  | CheckingRule of checking_rule
+type 'a typing_clause =
+  | InferenceRule of 'a inference_rule
+  | CheckingRule of 'a checking_rule
 
-type hypothesis = term Util.String.Map.t * typing_clause
+type 'a hypothesis = 'a term Util.String.Map.t * 'a typing_clause
 
-type rule =
-  { hypotheses : hypothesis list
+type 'a rule =
+  { hypotheses : 'a hypothesis list
   ; name : string option
-  ; conclusion : hypothesis
+  ; conclusion : 'a hypothesis
   }
 
-type typing = Typing of term * term
+type 'a typing = Typing of 'a term * 'a term
 
-type t = rule list
+type 'a t = 'a rule list
+
+let rec erase_term
+  = function
+    | Operator (_, tag, scopes) -> Operator ((), tag, List.map scopes ~f:erase_scope)
+    | Bound (_, i, j) -> Bound ((), i, j)
+    | Free (_, name) -> Free ((), name)
+    | Primitive (_, prim) -> Primitive ((), prim)
+
+and erase_scope = fun (Scope (_, pats, tms)) ->
+  Scope ((), List.map pats ~f:Pattern.erase, List.map tms ~f:erase_term)
+
+let erase_typing_rule = fun { tm; ty } ->
+  { tm = erase_term tm
+  ; ty = erase_term ty
+  }
+
+let erase_typing_clause = function
+  | InferenceRule rule -> InferenceRule (erase_typing_rule rule)
+  | CheckingRule rule -> CheckingRule (erase_typing_rule rule)
+
+let erase_hypothesis = fun (env, clause) ->
+  Map.map env ~f:erase_term, erase_typing_clause clause
+
+let erase_rule = fun { hypotheses; name; conclusion } ->
+  { hypotheses = List.map hypotheses ~f:erase_hypothesis
+  ; name
+  ; conclusion = erase_hypothesis conclusion
+  }
+
+let erase_typing = fun (Typing (t1, t2)) -> Typing (erase_term t1, erase_term t2)
+
+let erase = List.map ~f:erase_rule
 
 (** Convert a de Bruijn term to a [term]. See also [to_de_bruijn_exn]. *)
-let rec of_de_bruijn : 'a Binding.DeBruijn.term -> term = function
-  | Operator (_, tag, scopes)
-  -> Operator (tag, List.map scopes ~f:scope_of_de_bruijn)
-  | Var (_, i, j) -> Bound (i, j)
-  | Primitive (_, p) -> Primitive p
+let rec of_de_bruijn : 'a Binding.DeBruijn.term -> 'a term = function
+  | Operator (loc, tag, scopes)
+  -> Operator (loc, tag, List.map scopes ~f:scope_of_de_bruijn)
+  | Var (loc, i, j) -> Bound (loc, i, j)
+  | Primitive (loc, p) -> Primitive (loc, p)
 
-and scope_of_de_bruijn : 'a Binding.DeBruijn.scope -> scope =
-  fun (Scope (_, pats, body)) -> Scope (pats, List.map body ~f:of_de_bruijn)
+and scope_of_de_bruijn : 'a Binding.DeBruijn.scope -> 'a scope =
+  fun (Scope (loc, pats, body)) -> Scope (loc, pats, List.map body ~f:of_de_bruijn)
 ;;
 
 exception FreeVar of string
 
 (** Convert a [term] to a de Bruijn representation. See also [of_de_bruijn].
  @raise FreeVar *)
-let rec to_de_bruijn_exn : term -> unit Binding.DeBruijn.term
+let rec to_de_bruijn_exn : 'a term -> 'a Binding.DeBruijn.term
   = function
-    | Operator (name, scopes) -> Operator ((), name, List.map scopes ~f:to_scope)
-    | Bound (i, j) -> Var ((), i, j)
-    | Free name -> raise (FreeVar name)
-    | Primitive prim -> Primitive ((), prim)
+    | Operator (loc, name, scopes) -> Operator (loc, name, List.map scopes ~f:to_scope)
+    | Bound (loc, i, j) -> Var (loc, i, j)
+    | Free (_, name) -> raise (FreeVar name)
+    | Primitive (loc, prim) -> Primitive (loc, prim)
 
-and to_scope : scope -> unit Binding.DeBruijn.scope
-  = fun (Scope (pats, tms)) -> Scope ((), pats, List.map tms ~f:to_de_bruijn_exn)
+and to_scope : 'a scope -> 'a Binding.DeBruijn.scope
+  = fun (Scope (loc, pats, tms)) -> Scope (loc, pats, List.map tms ~f:to_de_bruijn_exn)
 
 module Parse (Comment : Util.Angstrom.Comment_int) = struct
   open Angstrom
@@ -91,20 +130,20 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
 
   (* TODO: I don't think this is right -- we never produce bound variables. I'm keeping it
    this way temporarily since it's how menhir parsing worked. *)
-  let rec cvt_tm : 'a Binding.Nominal.term -> term
+  let rec cvt_tm : 'a Binding.Nominal.term -> 'a term
     = function
-      | Operator (_, name, scopes) -> Operator (name, List.map scopes ~f:cvt_scope)
-      | Var (_, name) -> Free name
-      | Primitive (_, p) -> Primitive p
+      | Operator (loc, name, scopes) -> Operator (loc, name, List.map scopes ~f:cvt_scope)
+      | Var (loc, name) -> Free (loc, name)
+      | Primitive (loc, p) -> Primitive (loc, p)
 
-  and cvt_scope : 'a Binding.Nominal.scope -> scope
-    = fun (Scope (_, pats, tms)) -> Scope (pats, List.map tms ~f:cvt_tm)
+  and cvt_scope : 'a Binding.Nominal.scope -> 'a scope
+    = fun (Scope (loc, pats, tms)) -> Scope (loc, pats, List.map tms ~f:cvt_tm)
 
-  let term : term Angstrom.t
+  let term : Position.t term Angstrom.t
     = cvt_tm <$> Term.t
       <?> "term"
 
-  let typing_clause : typing_clause Angstrom.t
+  let typing_clause : Position.t typing_clause Angstrom.t
     = lift3
       (fun tm dir ty -> match dir with
         | LeftArr -> CheckingRule { tm; ty }
@@ -117,7 +156,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
       term
       <?> "typing clause"
 
-  let typed_term : (string * term) Angstrom.t
+  let typed_term : (string * Position.t term) Angstrom.t
     = lift3
       (fun ident _ tm -> ident, tm)
       identifier
@@ -125,7 +164,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
       term
       <?> "typed term"
 
-  let context : term Util.String.Map.t Angstrom.t
+  let context : Position.t term Util.String.Map.t Angstrom.t
     = (string "ctx" *>
       choice
         [ (char ',' >>= fun _ ->
@@ -138,7 +177,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
         ; return Util.String.Map.empty
         ]) <?> "context"
 
-  let hypothesis : hypothesis Angstrom.t
+  let hypothesis : Position.t hypothesis Angstrom.t
     = lift3 (fun ctx _ clause -> ctx, clause)
       context
       (string ">>")
@@ -152,14 +191,14 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
       (option None ((fun ident -> Some ident) <$> parens identifier))
       <?> "line"
 
-  let rule : rule Angstrom.t
+  let rule : Position.t rule Angstrom.t
     = lift3 (fun hypotheses name conclusion -> { hypotheses; name; conclusion })
       (many hypothesis)
       line
       hypothesis
       <?> "typing rule"
 
-  let t : rule list Angstrom.t
+  let t : Position.t rule list Angstrom.t
     = many rule
 end
 
@@ -170,8 +209,9 @@ let%test_module "Parsing" = (module struct
 
   let (=) = Caml.(=)
 
-  let%test _ = parse_with Parse.typing_clause "tm => ty" =
-    Ok (InferenceRule { tm = Free "tm" ; ty = Free "ty" })
+  let%test _ = parse_with Parse.typing_clause "tm => ty"
+    |> Result.map ~f:erase_typing_clause
+    = Ok (InferenceRule { tm = Free ((), "tm") ; ty = Free ((), "ty") })
 
   let%test _ =
     match
@@ -180,7 +220,8 @@ let%test_module "Parsing" = (module struct
       | Error _ -> false
       | Ok (m, rule)
       -> Map.is_empty m &&
-         rule = CheckingRule { tm = Free "t1"; ty = Operator ("bool", []) }
+         erase_typing_clause rule =
+           CheckingRule { tm = Free ((), "t1"); ty = Operator ((), "bool", []) }
 end)
 
 (* to_term: *)

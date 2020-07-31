@@ -2,28 +2,28 @@
 
 open Statics
 
-type env =
-  { rules : rule list (** The (checking / inference) rules we can apply *)
-  ; var_types : term Util.String.Map.t (** The types of all known free variables *)
+type 'a env =
+  { rules : 'a rule list (** The (checking / inference) rules we can apply *)
+  ; var_types : 'a term Util.String.Map.t (** The types of all known free variables *)
   }
 
 (* TODO: add docs *)
-exception BadTermMerge of term * term
-exception BadScopeMerge of scope * scope
+exception BadTermMerge of unit term * unit term
+exception BadScopeMerge of unit scope * unit scope
 
 (* TODO: remove from public interface? *)
 
 (** Raised by check *)
 exception CheckError of string
 
-type trace_entry =
-  | CheckTrace of env * typing
+type 'a trace_entry =
+  | CheckTrace of 'a env * 'a typing
   | CheckSuccess
   | CheckFailure of string
-  | InferTrace of env * term
-  | Inferred of term
+  | InferTrace of 'a env * 'a term
+  | Inferred of 'a term
 
-type trace_step = trace_entry list
+type 'a trace_step = 'a trace_entry list
 
 (* module type CHECKINFER = sig val check : env -> typing -> unit val infer : env -> term
    -> term end
@@ -33,7 +33,7 @@ type trace_step = trace_entry list
    module CheckInfer (Tracer : TRACER) = struct val check : env -> typing -> unit val
    infer : env -> term -> term end *)
 
-val check_trace : (trace_step -> unit) -> env -> typing -> unit
-val infer_trace : (trace_step -> unit) -> env -> term -> term
-val check : env -> typing -> unit
-val infer : env -> term -> term
+val check_trace : ('a trace_step -> unit) -> 'a env -> 'a typing -> unit
+val infer_trace : ('a trace_step -> unit) -> 'a env -> 'a term -> 'a term
+val check : 'a env -> 'a typing -> unit
+val infer : 'a env -> 'a term -> 'a term

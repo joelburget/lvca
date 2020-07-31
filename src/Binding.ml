@@ -146,7 +146,7 @@ and Nominal : sig
   val pattern_to_term : 'a Pattern.t -> 'a Nominal.term
 
   module Parse (Comment : Util.Angstrom.Comment_int) : sig
-    val t : Position.t term Angstrom.t
+    val t : Range.t term Angstrom.t
   end
 end = struct
   type 'a scope = Scope of 'a * 'a Pattern.t list * 'a term list
@@ -302,14 +302,14 @@ end = struct
     module Primitive = Primitive.Parse(Comment)
 
     type tm_or_sep =
-      | Tm of Position.t Nominal.term
+      | Tm of Range.t Nominal.term
       | Sep of char
 
     type parse_state =
       | PossiblyBinding
       | DefinitelyTerm
 
-    let t : Position.t Nominal.term Angstrom.t
+    let t : Range.t Nominal.term Angstrom.t
       = let char, identifier, parens = Parsers.(char, identifier, parens) in
         fix (fun term ->
 
@@ -321,15 +321,15 @@ end = struct
           in
 
           (* (b11. ... b1n. t11, ... t1n; b21. ... b2n. t21, ... t2n) *)
-          let accumulate : string -> tm_or_sep list -> Position.t Nominal.term Angstrom.t
+          let accumulate : string -> tm_or_sep list -> Range.t Nominal.term Angstrom.t
             = fun tag tokens ->
 
               (* terms encountered between '.'s, before hitting ',' / ';' *)
-              let binding_queue : Position.t Nominal.term Queue.t = Queue.create () in
+              let binding_queue : Range.t Nominal.term Queue.t = Queue.create () in
               (* terms encountered between ','s, before hitting ';' *)
-              let list_queue : Position.t Nominal.term Queue.t = Queue.create () in
+              let list_queue : Range.t Nominal.term Queue.t = Queue.create () in
               (* scopes encountered *)
-              let scope_queue : Position.t Nominal.scope Queue.t = Queue.create () in
+              let scope_queue : Range.t Nominal.scope Queue.t = Queue.create () in
 
               let rec go parse_state = function
                 | [] -> return (Operator (Position.zero_pos (* TODO *), tag, Queue.to_list scope_queue))
@@ -354,7 +354,7 @@ end = struct
                    Queue.enqueue list_queue tm;
                    let tms = Queue.to_list list_queue in
                    Queue.clear list_queue;
-                   let pos : Position.t = Position.zero_pos (* TODO *) in
+                   let pos : Range.t = Position.zero_pos (* TODO *) in
                    Queue.enqueue scope_queue (Scope (pos, binders, tms));
                    go PossiblyBinding rest
 

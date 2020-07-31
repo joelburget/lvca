@@ -26,8 +26,18 @@ and vars_of_patterns pats =
   |> List.fold_right ~init:String.Set.empty ~f:Set.union
 ;;
 
-let list_vars_of_pattern : 'a pattern -> string list =
- fun pat -> Base.Set.to_list (vars_of_pattern pat)
+let rec list_vars_of_pattern = function
+  | Operator (_, _, pats) -> pats
+    (* simpler, morally equivalent:
+      List.concat_map ~f:(List.concat_map ~f:list_vars_of_pattern)
+    *)
+    |> List.map ~f:(fun pats' -> pats'
+      |> List.map ~f:list_vars_of_pattern
+      |> List.concat_no_order)
+    |> List.concat_no_order
+  | Primitive _ -> []
+  | Var (loc, name) -> [ loc, name ]
+  | Ignored _ -> []
 ;;
 
 let rec to_string : 'a pattern -> string = function
@@ -120,10 +130,10 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
   module Primitive = Primitive.Parse(Comment)
 
   type pat_or_sep =
-    | Pat of Position.t pattern
+    | Pat of Range.t pattern
     | Sep of char
 
-  let t : Position.t t Angstrom.t
+  let t : Range.t t Angstrom.t
     = let open Angstrom in
       let char, identifier, parens = Parsers.(char, identifier, parens) in
 
@@ -135,12 +145,12 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
           ]
         in
 
-        let accumulate : string -> pat_or_sep list -> Position.t pattern Angstrom.t
+        let accumulate : string -> pat_or_sep list -> Range.t pattern Angstrom.t
           = fun tag tokens ->
             (* patterns encountered between ','s, before hitting ';' *)
-            let list_queue : Position.t pattern Queue.t = Queue.create () in
+            let list_queue : Range.t pattern Queue.t = Queue.create () in
             (* patterns encountered between ';'s *)
-            let slot_queue : Position.t pattern list Queue.t = Queue.create () in
+            let slot_queue : Range.t pattern list Queue.t = Queue.create () in
 
             (* Move the current list to the slot queue *)
             let list_to_slot () =

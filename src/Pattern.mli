@@ -9,7 +9,7 @@ type 'a pattern =
 type 'a t = 'a pattern
 
 val vars_of_pattern : 'a t -> Util.String.Set.t
-val list_vars_of_pattern : 'a t -> string list
+val list_vars_of_pattern : 'a t -> ('a * string) list
 val to_string : 'a t -> string
 val pp : Format.formatter -> 'a t -> unit
 val jsonify : 'a t -> Util.Json.t
@@ -18,7 +18,7 @@ val erase : 'a pattern -> unit pattern
 val location : 'a pattern -> 'a
 
 module Parse (Comment : Util.Angstrom.Comment_int) : sig
-  val t : Position.t t Angstrom.t
+  val t : Range.t t Angstrom.t
 end
 
 module Properties : sig

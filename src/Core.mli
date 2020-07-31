@@ -37,6 +37,7 @@ type 'a defn = Defn of import list * 'a term
 
 val pp_defn : Format.formatter -> 'a defn -> unit
 val defn_to_string : 'a defn -> string
+val erase_defn : 'a defn -> unit defn
 
 type eval_error = string * unit (* TODO: 'a *) term
 
@@ -49,8 +50,8 @@ val eval_exn : 'a term -> 'a Nominal.term
 val eval : 'a term -> ('a Nominal.term, eval_error) Base.Result.t
 
 module Parse (Comment : Util.Angstrom.Comment_int) : sig
-  val term : 'a term Angstrom.t
-  val defn : 'a defn Angstrom.t
+  val term : Position.t term Angstrom.t
+  val defn : Position.t defn Angstrom.t
 end
 
 (** Convert a module to a nominal term, for storage. *)

@@ -3,18 +3,20 @@
  *)
 
 (** A term is the same as Binding.DeBruijn.term, but allows for free variables. *)
-type term =
-  | Operator of string * scope list
-  | Bound of int * int
+type 'a term =
+  | Operator of 'a * string * 'a scope list
+  | Bound of 'a * int * int
   (** Bound vars come via conversion of de Bruijn terms. *)
-  | Free of string
+  | Free of 'a * string
   (** Free vars are used during typechecking. *)
-  | Primitive of Primitive.t
+  | Primitive of 'a * Primitive.t
 
-and scope = Scope of Pattern.t list * term list
+and 'a scope = Scope of 'a * 'a Pattern.t list * 'a term list
 
-val string_of_term : term -> string
-val string_of_scope : scope -> string
+val location : 'a term -> 'a
+
+val string_of_term : 'a term -> string
+val string_of_scope : 'a scope -> string
 
 (** Both typing and inference rules share this shape.
 
@@ -22,61 +24,70 @@ val string_of_scope : scope -> string
  Inference rules assert that some type can be synthesized from the given term. Checking
  rules assert that given both a term and a type we can check if the term is of that type.
  *)
-type typing_rule =
-  { tm : term
-  ; ty : term
+type 'a typing_rule =
+  { tm : 'a term
+  ; ty : 'a term
   }
 
-type inference_rule = typing_rule
-type checking_rule = typing_rule
+type 'a inference_rule = 'a typing_rule
+type 'a checking_rule = 'a typing_rule
 
-type typing_clause =
-  | InferenceRule of inference_rule
-  | CheckingRule of checking_rule
+type 'a typing_clause =
+  | InferenceRule of 'a inference_rule
+  | CheckingRule of 'a checking_rule
 
 (** A hypothesis contains a set of variables (and their types) that must appear in the
   context, as well as an inference or checking clause.
  *)
-type hypothesis = term Util.String.Map.t * typing_clause
+type 'a hypothesis = 'a term Util.String.Map.t * 'a typing_clause
 
 (** A rule contains a set of hypotheses, an optional name, and a conclusion *)
-type rule =
-  { hypotheses : hypothesis list
+type 'a rule =
+  { hypotheses : 'a hypothesis list
   ; name : string option
-  ; conclusion : hypothesis
+  ; conclusion : 'a hypothesis
   }
 
-type typing = Typing of term * term
+type 'a typing = Typing of 'a term * 'a term
 
-type t = rule list
+type 'a t = 'a rule list
 
-val of_de_bruijn : 'a Binding.DeBruijn.term -> term
+val erase_term : 'a term -> unit term
+val erase_scope : 'a scope -> unit scope
+val erase_typing_rule : 'a typing_rule -> unit typing_rule
+val erase_typing_clause : 'a typing_clause -> unit typing_clause
+val erase_hypothesis : 'a hypothesis -> unit hypothesis
+val erase_rule : 'a rule -> unit rule
+val erase_typing : 'a typing -> unit typing
+val erase : 'a t -> unit t
+
+val of_de_bruijn : 'a Binding.DeBruijn.term -> 'a term
 
 (** Raised by [to_de_bruijn_exn] when it encounters a free variable. *)
 exception FreeVar of string
 
 (** Convert a [term] to a de Bruijn representation. See also [of_de_bruijn].
  @raise FreeVar *)
-val to_de_bruijn_exn : term -> unit Binding.DeBruijn.term
+val to_de_bruijn_exn : 'a term -> 'a Binding.DeBruijn.term
 
 module Parse (Comment : Util.Angstrom.Comment_int) : sig
   exception StaticsParseError of string
 
-  val term : term Angstrom.t
-  val typing_clause : typing_clause Angstrom.t
-  val typed_term : (string * term) Angstrom.t
+  val term : Position.t term Angstrom.t
+  val typing_clause : Position.t typing_clause Angstrom.t
+  val typed_term : (string * Position.t term) Angstrom.t
 
   (** @raise StaticsParseError *)
-  val context : term Util.String.Map.t Angstrom.t
+  val context : Position.t term Util.String.Map.t Angstrom.t
 
   (** @raise StaticsParseError *)
-  val hypothesis : hypothesis Angstrom.t
+  val hypothesis : Position.t hypothesis Angstrom.t
 
   val line : string option Angstrom.t
 
   (** @raise StaticsParseError *)
-  val rule : rule Angstrom.t
+  val rule : Position.t rule Angstrom.t
 
   (** @raise StaticsParseError *)
-  val t : t Angstrom.t
+  val t : Position.t t Angstrom.t
 end

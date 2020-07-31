@@ -6,23 +6,23 @@ module Option = Base.Option
 module Result = Base.Result
 module String = Util.String
 
-type env =
-  { rules : rule list (** The (checking / inference) rules we can apply *)
-  ; var_types : term String.Map.t (** The types of all known free variables *)
+type 'a env =
+  { rules : 'a rule list (** The (checking / inference) rules we can apply *)
+  ; var_types : 'a term String.Map.t (** The types of all known free variables *)
   }
 
-let enscope (binders : Pattern.t list) (Scope (binders', body)) =
-  Scope (binders' @ binders, body)
+let enscope (binders : 'a Pattern.t list) (Scope (loc, binders', body)) =
+  Scope (loc, binders' @ binders, body)
 ;;
 
 (** Only used internally to match_schema_vars *)
 exception NoMatch
 
-let rec match_schema_vars' : term -> term -> scope String.Map.t =
+let rec match_schema_vars' : 'a term -> 'a term -> 'a scope String.Map.t =
  fun t1 t2 ->
   match t1, t2 with
-  | Free v, tm -> String.Map.of_alist_exn [ v, Scope ([], [tm]) ]
-  | Operator (tag1, args1), Operator (tag2, args2) ->
+  | Free (_, v), tm -> String.Map.of_alist_exn [ v, Scope (location tm, [], [tm]) ]
+  | Operator (_, tag1, args1), Operator (_, tag2, args2) ->
     if String.(tag1 = tag2) && List.(length args1 = length args2)
     then
       let matched_scopes = List.map2_exn args1 args2 ~f:match_schema_vars_scope in
@@ -32,7 +32,7 @@ let rec match_schema_vars' : term -> term -> scope String.Map.t =
     else raise NoMatch
   | _, _ -> raise NoMatch
 
-and match_schema_vars_scope (Scope (names1, body1)) (Scope (names2, body2)) =
+and match_schema_vars_scope (Scope (_, names1, body1)) (Scope (_, names2, body2)) =
   if List.(length names1 = length names2)
      (* TODO: is it okay to use names1? what happens to names2? *)
   then
@@ -47,26 +47,28 @@ and match_schema_vars_scope (Scope (names1, body1)) (Scope (names2, body2)) =
   else raise NoMatch
 ;;
 
-let match_schema_vars : term -> term -> scope String.Map.t option =
+let match_schema_vars : 'a term -> 'a term -> 'a scope String.Map.t option =
  fun t1 t2 -> try Some (match_schema_vars' t1 t2) with NoMatch -> None
 ;;
 
 (** Open a scope, instantiating all of its bound variables *)
-let open_scope (args : term list list) (Scope (names, body)) : term list option =
+let open_scope (args : 'a term list list) (Scope (_, names, body))
+  : 'a term list option
+  =
   if List.(length args <> length names)
   then None
   else (
     let rec open' offset tm =
       match tm with
-      | Operator (tag, subtms) ->
+      | Operator (loc, tag, subtms) ->
         subtms
-        |> List.map ~f:(fun (Scope (binders, subtms)) -> subtms
+        |> List.map ~f:(fun (Scope (scope_loc, binders, subtms)) -> subtms
           |> List.map ~f:(open' (offset + List.length binders))
           |> Option.all
-          |> Option.map ~f:(fun subtms' -> Scope (binders, subtms')))
+          |> Option.map ~f:(fun subtms' -> Scope (scope_loc, binders, subtms')))
         |> Option.all
-        |> Option.map ~f:(fun subtms' -> Operator (tag, subtms'))
-      | Bound (i, j) ->
+        |> Option.map ~f:(fun subtms' -> Operator (loc, tag, subtms'))
+      | Bound (_, i, j) ->
         if i >= offset
         then
           args
@@ -82,31 +84,37 @@ let open_scope (args : term list list) (Scope (names, body)) : term list option 
 ;;
 
 (** Create free variables from a pattern *)
-let pat_to_free_vars : Pattern.t -> term list =
- fun pat -> Pattern.list_vars_of_pattern pat |> List.map ~f:(fun name -> Free name)
+let pat_to_free_vars
+  = fun pat -> pat
+    |> Pattern.list_vars_of_pattern
+    |> List.map ~f:(fun (loc, name) -> Free (loc, name))
 ;;
 
-let rec instantiate (env : scope String.Map.t) (tm : term) : (term, string) Result.t =
-  match tm with
-  | Operator (tag, subtms) ->
+let rec instantiate (env : 'a scope String.Map.t) (tm : 'a term)
+  : ('a term, string) Result.t
+  = match tm with
+  | Operator (loc, tag, subtms) ->
     subtms
-    |> List.map ~f:(fun (Scope (binders, body)) ->
+    |> List.map ~f:(fun (Scope (scope_loc, binders, body)) ->
       let new_var_names : string array =
         binders
-        |> List.map ~f:(fun pat -> Array.of_list (Pattern.list_vars_of_pattern pat))
+        |> List.map ~f:(fun pat -> pat
+          |> Pattern.list_vars_of_pattern
+          |> List.map ~f:(fun (_loc, name) -> name)
+          |> Array.of_list)
         |> Array.concat
       in
       body
         |> List.map ~f:(instantiate (Util.Map.remove_many env new_var_names))
         |> Result.all
-        |> Result.map ~f:(fun body' -> Scope (binders, body')))
+        |> Result.map ~f:(fun body' -> Scope (scope_loc, binders, body')))
     |> Result.all
-    |> Result.map ~f:(fun subtms' -> Operator (tag, subtms'))
+    |> Result.map ~f:(fun subtms' -> Operator (loc, tag, subtms'))
   | Bound _ -> Ok tm
-  | Free v ->
+  | Free (_, v) ->
     (match Map.find env v with
     | None -> Error ("instantiate: couldn't find var " ^ v)
-    | Some (Scope (pats, _) as sc)
+    | Some (Scope (_, pats, _) as sc)
     (* Open the scope, instantiating all variables it binds as free *) ->
       (match open_scope (List.map pats ~f:pat_to_free_vars) sc with
       | None -> Error "instantiate: failed to open scope"
@@ -115,8 +123,8 @@ let rec instantiate (env : scope String.Map.t) (tm : term) : (term, string) Resu
   | Primitive _ -> Ok tm
 ;;
 
-exception BadTermMerge of term * term
-exception BadScopeMerge of scope * scope
+exception BadTermMerge of unit term * term
+exception BadScopeMerge of unit scope * scope
 
 (* TODO: remove? *)
 (* let safe_union m1 m2 : 'a String.Map.t = String.Map.merge m1 m2 ~f:(fun ~key:_ ->
