@@ -46,7 +46,7 @@ let pp : Format.formatter -> t -> unit
   = fun ppf -> function
   | PrimInteger i -> Format.fprintf ppf "%s" (Bigint.to_string i)
   | PrimString s -> Format.fprintf ppf "\"%s\"" s
-  | PrimFloat f -> Format.fprintf ppf "%f" f
+  | PrimFloat f -> Format.fprintf ppf "%g" f
   | PrimChar c -> Format.fprintf ppf "'%c'" c
 ;;
 
@@ -95,11 +95,13 @@ module Properties = struct
 end
 
 let%test_module "Parsing" = (module struct
-  let (=) = Caml.(=)
-  let parse' = Angstrom.parse_string ~consume:All Properties.Parse'.t
+  let print_parse str =
+    match Angstrom.parse_string ~consume:All Properties.Parse'.t str with
+      | Ok prim -> Fmt.pr "%a" pp prim
+      | Error msg -> print_string msg
 
-  let%test _ = parse' "123" = Ok (PrimInteger (Bigint.of_int 123))
-  let%test _ = parse' {|"abc"|} = Ok (PrimString "abc")
-  let%test _ = parse' "1.1" = Ok (PrimFloat 1.1)
-  let%test _ = parse' {|'c'|} = Ok (PrimChar 'c')
+  let%expect_test _ = print_parse "123"; [%expect{| 123 |}]
+  let%expect_test _ = print_parse {|"abc"|}; [%expect{| "abc" |}]
+  let%expect_test _ = print_parse "1.1"; [%expect{| 1.1 |}]
+  let%expect_test _ = print_parse {|'c'|}; [%expect{| 'c' |}]
 end);;
