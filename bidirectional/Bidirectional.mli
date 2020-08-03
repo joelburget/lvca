@@ -4,7 +4,7 @@ open Statics
 
 type 'a env =
   { rules : 'a rule list (** The (checking / inference) rules we can apply *)
-  ; var_types : 'a term Util.String.Map.t (** The types of all known free variables *)
+  ; var_types : 'a term Lvca_util.String.Map.t (** The types of all known free variables *)
   }
 
 (* TODO: add docs *)

@@ -2,6 +2,8 @@
  This implementation is for expressing bidirectional typing rules.
  *)
 
+open Lvca_syntax
+
 (** A term is the same as Binding.DeBruijn.term, but allows for free variables. *)
 type 'a term =
   | Operator of 'a * string * 'a scope list
@@ -39,7 +41,7 @@ type 'a typing_clause =
 (** A hypothesis contains a set of variables (and their types) that must appear in the
   context, as well as an inference or checking clause.
  *)
-type 'a hypothesis = 'a term Util.String.Map.t * 'a typing_clause
+type 'a hypothesis = 'a term Lvca_util.String.Map.t * 'a typing_clause
 
 (** A rule contains a set of hypotheses, an optional name, and a conclusion *)
 type 'a rule =
@@ -70,7 +72,7 @@ exception FreeVar of string
  @raise FreeVar *)
 val to_de_bruijn_exn : 'a term -> 'a Binding.DeBruijn.term
 
-module Parse (Comment : Util.Angstrom.Comment_int) : sig
+module Parse (Comment : Lvca_util.Angstrom.Comment_int) : sig
   exception StaticsParseError of string
 
   val term : Position.t term Angstrom.t
@@ -78,7 +80,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) : sig
   val typed_term : (string * Position.t term) Angstrom.t
 
   (** @raise StaticsParseError *)
-  val context : Position.t term Util.String.Map.t Angstrom.t
+  val context : Position.t term Lvca_util.String.Map.t Angstrom.t
 
   (** @raise StaticsParseError *)
   val hypothesis : Position.t hypothesis Angstrom.t

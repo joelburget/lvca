@@ -1,4 +1,5 @@
 open Base
+open Lvca_syntax
 
 type 'a term =
   | Operator of 'a * string * 'a scope list

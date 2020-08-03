@@ -1,10 +1,11 @@
+open Lvca_syntax
 open Statics
 module Fn = Base.Fn
 module List = Base.List
 module Map = Base.Map
 module Option = Base.Option
 module Result = Base.Result
-module String = Util.String
+module String = Lvca_util.String
 
 type 'a env =
   { rules : 'a rule list (** The (checking / inference) rules we can apply *)
@@ -105,7 +106,7 @@ let rec instantiate (env : 'a scope String.Map.t) (tm : 'a term)
         |> Array.concat
       in
       body
-        |> List.map ~f:(instantiate (Util.Map.remove_many env new_var_names))
+        |> List.map ~f:(instantiate (Lvca_util.Map.remove_many env new_var_names))
         |> Result.all
         |> Result.map ~f:(fun body' -> Scope (scope_loc, binders, body')))
     |> Result.all
@@ -123,8 +124,9 @@ let rec instantiate (env : 'a scope String.Map.t) (tm : 'a term)
   | Primitive _ -> Ok tm
 ;;
 
-exception BadTermMerge of unit term * term
-exception BadScopeMerge of unit scope * scope
+(* TODO: remove exceptions, unit -> 'a *)
+exception BadTermMerge of unit term * unit term
+exception BadScopeMerge of unit scope * unit scope
 
 (* TODO: remove? *)
 (* let safe_union m1 m2 : 'a String.Map.t = String.Map.merge m1 m2 ~f:(fun ~key:_ ->
@@ -307,13 +309,13 @@ let%test_module "bidirectional tests" =
   |}
     ;;
 
-    module Parse = Statics.Parse(Util.Angstrom.NoComment);;
-    module NominalParse = Binding.Nominal.Parse(Util.Angstrom.NoComment)
+    module Parse = Statics.Parse(Lvca_util.Angstrom.NoComment);;
+    module NominalParse = Binding.Nominal.Parse(Lvca_util.Angstrom.NoComment)
 
     let statics =
       match
         Angstrom.parse_string ~consume:All
-          Angstrom.(Util.Angstrom.whitespace *> Parse.t)
+          Angstrom.(Lvca_util.Angstrom.whitespace *> Parse.t)
           statics_str
       with
         | Ok statics -> statics
