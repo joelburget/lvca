@@ -54,6 +54,20 @@ let rec to_string : 'a pattern -> string = function
   | Ignored (_, name) -> "_" ^ name
 ;;
 
+let rec to_string_range : Range.t pattern -> string = function
+  | Operator ({ start; finish }, name, pats) ->
+    Printf.sprintf "%s{%n,%n}(%s)" name start finish
+    (pats
+      |> List.map ~f:(fun pats' -> pats'
+        |> List.map ~f:to_string_range
+        |> String.concat ~sep:", ")
+      |> String.concat ~sep:"; ")
+  | Primitive ({ start; finish }, prim) ->
+    Printf.sprintf "%s{%n,%n}" (Primitive.to_string prim) start finish
+  | Var ({ start; finish }, name) -> Printf.sprintf "%s{%n,%n}" name start finish
+  | Ignored ({ start; finish }, name) -> Printf.sprintf "_%s{%n,%n}" name start finish
+;;
+
 let rec pp : Format.formatter -> 'a pattern -> unit
   = fun ppf ->
   let comma, list, pf, semi = Fmt.(comma, list, pf, semi) in
@@ -146,8 +160,9 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
           ]
         in
 
-        let accumulate : string -> pat_or_sep list -> Range.t pattern Angstrom.t
-          = fun tag tokens ->
+        let accumulate
+          : Range.t -> string -> pat_or_sep list -> Range.t pattern Angstrom.t
+          = fun range tag tokens ->
             (* patterns encountered between ','s, before hitting ';' *)
             let list_queue : Range.t pattern Queue.t = Queue.create () in
             (* patterns encountered between ';'s *)
@@ -166,7 +181,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
             let rec go = function
               | []
               -> list_to_slot ();
-                 return (Operator (Range.mk 0 0 (* TODO *), tag, Queue.to_list slot_queue))
+                 return (Operator (range, tag, Queue.to_list slot_queue))
               | Pat pat :: Sep ',' :: Sep ';' :: rest
               | Pat pat :: Sep ',' :: rest (* Note: allow trailing ',' *)
               -> Queue.enqueue list_queue pat;
@@ -183,15 +198,24 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
             go tokens
         in
 
+        pos >>= fun p1 ->
         choice
-          [ Primitive.t >>| (fun prim -> Primitive (Range.mk 0 0 (* TODO *), prim))
+          (* TODO: should primitives hold pos? *)
+          [ lift2 (fun prim p2 -> Primitive (Range.mk p1 p2, prim))
+              Primitive.t
+              pos
           ; identifier >>= fun ident ->
+            pos >>= fun p2 ->
             if String.get ident 0 = '_'
-            then return (Ignored (Range.mk 0 0 (* TODO *), String.subo ~pos:1 ident))
+            then return (Ignored (Range.mk p1 p2, String.subo ~pos:1 ident))
             else
               choice
-              [ parens (many t_or_sep) >>= accumulate ident
-              ; return (Var (Range.mk 0 0 (* TODO *), ident))
+              [ begin
+                  parens (many t_or_sep) >>= fun tokens ->
+                  pos >>= fun p2 ->
+                  accumulate (Range.mk p1 p2) ident tokens
+                end
+              ; return (Var (Range.mk p1 p2, ident))
               ] <?> "pattern body"
           ]
       ) <?> "pattern"
@@ -200,35 +224,60 @@ end
 let%test_module "Parsing" = (module struct
   module Parser = Parse(Util.Angstrom.NoComment)
 
-  let print_parse = fun str -> match Angstrom.parse_string ~consume:All Parser.t str with
+  let print_parse tm =
+    match Angstrom.parse_string ~consume:All Parser.t tm with
     | Error msg -> Caml.print_string ("failed: " ^ msg)
-    | Ok pat -> Caml.print_string (to_string pat)
-  ;;
+    | Ok pat ->
+      Caml.print_string (to_string pat);
+      Caml.print_string "\n";
+      Caml.print_string (to_string_range pat)
 
   let%expect_test _ =
     print_parse {|"str"|};
-    [%expect{| "str" |}]
+    [%expect{|
+      "str"
+      "str"{0,5}
+    |}]
+
   let%expect_test _ =
     print_parse {|a()|};
-    [%expect{| a() |}]
+    [%expect{|
+      a()
+      a{0,3}()
+    |}]
   let%expect_test _ =
     print_parse {|a(b)|};
-    [%expect{| a(b) |}]
+    [%expect{|
+      a(b)
+      a{0,4}(b{2,3})
+    |}]
   let%expect_test _ =
     print_parse {|a(b,c)|};
-    [%expect{| a(b, c) |}]
+    [%expect{|
+      a(b, c)
+      a{0,6}(b{2,3}, c{4,5})
+    |}]
   let%expect_test _ =
     print_parse {|a(b,c,)|};
-    [%expect{| a(b, c) |}]
+    [%expect{|
+      a(b, c)
+      a{0,7}(b{2,3}, c{4,5})
+    |}]
   let%expect_test _ =
     print_parse {|a(b,c;d,e;)|};
-    [%expect{| a(b, c; d, e) |}]
+    [%expect{|
+      a(b, c; d, e)
+      a{0,11}(b{2,3}, c{4,5}; d{6,7}, e{8,9})
+    |}]
   let%expect_test _ =
     print_parse {|a(b,,c)|};
     [%expect{| failed: : end_of_input |}]
   let%expect_test _ =
     print_parse {|a(b,;c)|};
-    [%expect{| a(b, c) |}]
+    [%expect{|
+      a(b, c)
+      a{0,7}(b{2,3}, c{5,6})
+    |}]
 end);;
 
 module Properties = struct
