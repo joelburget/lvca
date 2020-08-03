@@ -41,33 +41,6 @@ let rec list_vars_of_pattern = function
   | Ignored _ -> []
 ;;
 
-let rec to_string : 'a pattern -> string = function
-  | Operator (_, name, pats) ->
-    Printf.sprintf "%s(%s)" name
-    (pats
-      |> List.map ~f:(fun pats' -> pats'
-        |> List.map ~f:to_string
-        |> String.concat ~sep:", ")
-      |> String.concat ~sep:"; ")
-  | Primitive (_, prim) -> Primitive.to_string prim
-  | Var (_, name) -> name
-  | Ignored (_, name) -> "_" ^ name
-;;
-
-let rec to_string_range : Range.t pattern -> string = function
-  | Operator ({ start; finish }, name, pats) ->
-    Printf.sprintf "%s{%n,%n}(%s)" name start finish
-    (pats
-      |> List.map ~f:(fun pats' -> pats'
-        |> List.map ~f:to_string_range
-        |> String.concat ~sep:", ")
-      |> String.concat ~sep:"; ")
-  | Primitive ({ start; finish }, prim) ->
-    Printf.sprintf "%s{%n,%n}" (Primitive.to_string prim) start finish
-  | Var ({ start; finish }, name) -> Printf.sprintf "%s{%n,%n}" name start finish
-  | Ignored ({ start; finish }, name) -> Printf.sprintf "_%s{%n,%n}" name start finish
-;;
-
 let rec pp : Format.formatter -> 'a pattern -> unit
   = fun ppf ->
   let comma, list, pf, semi = Fmt.(comma, list, pf, semi) in
@@ -82,6 +55,24 @@ let rec pp : Format.formatter -> 'a pattern -> unit
     -> pf ppf "%s" name
     | Ignored (_, name)
     -> pf ppf "_%s" name
+
+let rec pp_range : Format.formatter -> 'a pattern -> unit
+  = fun ppf ->
+  let comma, list, pf, semi = Fmt.(comma, list, pf, semi) in
+  let open Range in
+  function
+    | Operator ({ start; finish }, name, pats)
+    -> pf ppf "@[<2>%s{%u,%u}(%a)@]"
+      name start finish
+      (list ~sep:semi (list ~sep:comma pp_range)) pats
+    | Primitive ({ start; finish }, prim)
+    -> pf ppf "%a{%u,%u}" Primitive.pp prim start finish
+    | Var ({ start; finish }, name)
+    -> pf ppf "%s{%u,%u}" name start finish
+    | Ignored ({ start; finish }, name)
+    -> pf ppf "_%s{%u,%u}" name start finish
+
+let to_string = fun pat -> Fmt.str "%a" pp pat
 
 let rec jsonify pat =
   Util.Json.(
@@ -227,10 +218,7 @@ let%test_module "Parsing" = (module struct
   let print_parse tm =
     match Angstrom.parse_string ~consume:All Parser.t tm with
     | Error msg -> Caml.print_string ("failed: " ^ msg)
-    | Ok pat ->
-      Caml.print_string (to_string pat);
-      Caml.print_string "\n";
-      Caml.print_string (to_string_range pat)
+    | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range pat
 
   let%expect_test _ =
     print_parse {|"str"|};
