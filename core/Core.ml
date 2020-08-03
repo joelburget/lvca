@@ -1,6 +1,7 @@
 (** A small "core" language. *)
 
 open Base
+open Lvca_syntax
 open AbstractSyntax
 open Binding
 module Format = Caml.Format
@@ -74,7 +75,7 @@ module PP = struct
       | tm -> [tm]
     in
     match go app with
-      | [] -> Util.invariant_violation "pp_app: must be at least one argument"
+      | [] -> Lvca_util.invariant_violation "pp_app: must be at least one argument"
       | f :: args ->
         pf ppf "@[<h>%a@ @[<hov>%a@]@]"
         pp f
@@ -105,18 +106,18 @@ let defn_to_string : 'a defn -> string
 let erase_defn = fun (Defn (imports, tm)) -> Defn (imports, erase tm)
 
 let merge_results
-  :  'a Nominal.term Util.String.Map.t option list
-  -> 'a Nominal.term Util.String.Map.t option
+  :  'a Nominal.term Lvca_util.String.Map.t option list
+  -> 'a Nominal.term Lvca_util.String.Map.t option
   = fun results ->
     if List.for_all results ~f:Option.is_some
     then
       Some
         (results
-        |> List.map ~f:(Util.Option.get_invariant
+        |> List.map ~f:(Lvca_util.Option.get_invariant
           (fun () -> "we just checked all is_some"))
-        |> Util.String.Map.strict_unions
+        |> Lvca_util.String.Map.strict_unions
         |> function
-          | `Duplicate_key k -> Util.invariant_violation (Printf.sprintf
+          | `Duplicate_key k -> Lvca_util.invariant_violation (Printf.sprintf
               "multiple variables with the same name (%s) in one pattern"
               k
           )
@@ -125,7 +126,7 @@ let merge_results
     else None
 
 let rec match_pattern
-  : 'a Nominal.term -> 'b Pattern.t -> 'a Nominal.term Util.String.Map.t option
+  : 'a Nominal.term -> 'b Pattern.t -> 'a Nominal.term Lvca_util.String.Map.t option
   = fun v pat -> match v, pat with
   | Operator (_, tag1, vals), Operator (_, tag2, pats) ->
     if String.(tag1 = tag2)
@@ -144,16 +145,16 @@ let rec match_pattern
         | Unequal_lengths -> None
     else None
   | Primitive (_, l1), Primitive (_, l2)
-  -> if Primitive.(l1 = l2) then Some Util.String.Map.empty else None
-  | _, Ignored _ -> Some Util.String.Map.empty
-  | tm, Var (_, v) -> Some (Util.String.Map.of_alist_exn [ v, tm ])
+  -> if Primitive.(l1 = l2) then Some Lvca_util.String.Map.empty else None
+  | _, Ignored _ -> Some Lvca_util.String.Map.empty
+  | tm, Var (_, v) -> Some (Lvca_util.String.Map.of_alist_exn [ v, tm ])
   | _ -> None
 ;;
 
 let find_core_match
   :  'a Nominal.term
   -> 'b core_case_scope list
-  -> ('b term * 'a Nominal.term Util.String.Map.t) option
+  -> ('b term * 'a Nominal.term Lvca_util.String.Map.t) option
   = fun v branches -> branches
   |> List.find_map ~f:(fun (CaseScope (pat, rhs)) -> match match_pattern v pat with
      | None -> None
@@ -164,7 +165,7 @@ type eval_error = string * unit term
 
 exception EvalExn of string * unit term
 
-let rec eval_ctx_exn : 'a Nominal.term Util.String.Map.t -> 'a term -> 'a Nominal.term =
+let rec eval_ctx_exn : 'a Nominal.term Lvca_util.String.Map.t -> 'a term -> 'a Nominal.term =
  fun ctx tm -> match tm with
   | Term (Var (_, v)) ->
     begin
@@ -180,7 +181,7 @@ let rec eval_ctx_exn : 'a Nominal.term Util.String.Map.t -> 'a term -> 'a Nomina
     begin
       match find_core_match tm_val branches with
       | None -> raise @@ EvalExn ("no match found in case", erase @@ Term tm_val)
-      | Some (branch, bindings) -> eval_ctx_exn (Util.Map.union_right_biased ctx bindings) branch
+      | Some (branch, bindings) -> eval_ctx_exn (Lvca_util.Map.union_right_biased ctx bindings) branch
     end
 
   (* primitives *)
@@ -205,7 +206,7 @@ let rec eval_ctx_exn : 'a Nominal.term Util.String.Map.t -> 'a term -> 'a Nomina
   | _ -> raise @@ EvalExn ("Found a term we can't evaluate", erase tm)
 
 and eval_ctx_exn'
-  : 'a Nominal.term Util.String.Map.t -> 'a Nominal.term -> 'a Nominal.term
+  : 'a Nominal.term Lvca_util.String.Map.t -> 'a Nominal.term -> 'a Nominal.term
   = fun ctx tm -> match tm with
     | Var (_, v) ->
       begin
@@ -216,42 +217,42 @@ and eval_ctx_exn'
     | _ -> tm
 
 let eval_exn : 'a term -> 'a Nominal.term
-  = fun core -> eval_ctx_exn Util.String.Map.empty core
+  = fun core -> eval_ctx_exn Lvca_util.String.Map.empty core
 
 let eval : 'a term -> ('a Nominal.term, eval_error) Result.t =
   fun core -> try Ok (eval_exn core) with EvalExn (msg, tm) -> Error (msg, tm)
 ;;
 
-module Parse (Comment : Util.Angstrom.Comment_int) = struct
+module Parse (Comment : Lvca_util.Angstrom.Comment_int) = struct
   open Angstrom
-  module Parsers = Util.Angstrom.Mk(Comment)
+  module Parsers = Lvca_util.Angstrom.Mk(Comment)
   module Term = Binding.Nominal.Parse(Comment)
   module Primitive = Primitive.Parse(Comment)
   module Abstract = AbstractSyntax.Parse(Comment)
   let braces, identifier, char, parens, string =
     Parsers.(braces, identifier, char, parens, string)
 
-  let reserved = Util.String.Set.of_list ["let"; "rec"; "in"; "match"; "with"]
+  let reserved = Lvca_util.String.Set.of_list ["let"; "rec"; "in"; "match"; "with"]
 
   let identifier = identifier >>= fun ident ->
     if Set.mem reserved ident
     then fail "reserved word"
     else return ident
 
-  let make_apps : Position.t term list -> Position.t term
+  let make_apps : Range.t term list -> Range.t term
     = function
-      | [] -> Util.invariant_violation "make_apps: must be a nonempty list"
+      | [] -> Lvca_util.invariant_violation "make_apps: must be a nonempty list"
       | [x] -> x
       | f :: args -> List.fold_left args
         ~init:f
         ~f:(fun f_app arg -> CoreApp (f_app, arg))
 
-  let term : Position.t term Angstrom.t
+  let term : Range.t term Angstrom.t
     = fix (fun term ->
 
       let atomic_term = choice
         [ parens term
-        ; identifier >>| (fun ident -> Term (Var (Position.zero_pos (* TODO *), ident)))
+        ; identifier >>| (fun ident -> Term (Var (Range.mk 0 0 (* TODO *), ident)))
         ; braces Term.t >>| (fun tm -> Term tm)
           <?> "quoted term"
         ]
@@ -305,7 +306,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
         <?> "application"
       ]) <?> "core term"
 
-  let defn : Position.t defn Angstrom.t
+  let defn : Range.t defn Angstrom.t
     = lift2 (fun imports tm -> Defn (imports, tm))
       (many Abstract.import)
       term
@@ -313,7 +314,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
 end
 
 let%test_module "Parsing" = (module struct
-  module Parse = Parse(Util.Angstrom.NoComment)
+  module Parse = Parse(Lvca_util.Angstrom.NoComment)
 
   let parse str =
     match

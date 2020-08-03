@@ -1,7 +1,8 @@
+open Lvca_syntax
 open Binding
 open Core
 
-module ParseCore = Core.Parse(Util.Angstrom.CComment)
+module ParseCore = Core.Parse(Lvca_util.Angstrom.CComment)
 
 let parse_defn str =
   match
@@ -118,7 +119,7 @@ let%test_module "Core pretty" =
   (module struct
     let pretty width str = print_string (match
         Angstrom.parse_string ~consume:All
-          Angstrom.(Util.Angstrom.whitespace *> ParseCore.term)
+          Angstrom.(Lvca_util.Angstrom.whitespace *> ParseCore.term)
           str
       with
       | Error err -> err

@@ -7,6 +7,7 @@
 
 *)
 
+open Lvca_syntax
 open AbstractSyntax
 open Binding
 
@@ -42,16 +43,16 @@ val erase_defn : 'a defn -> unit defn
 type eval_error = string * unit (* TODO: 'a *) term
 
 (** @raise eval_error *)
-val eval_ctx_exn : 'a Nominal.term Util.String.Map.t -> 'a term -> 'a Nominal.term
+val eval_ctx_exn : 'a Nominal.term Lvca_util.String.Map.t -> 'a term -> 'a Nominal.term
 
 (** @raise eval_error *)
 val eval_exn : 'a term -> 'a Nominal.term
 
 val eval : 'a term -> ('a Nominal.term, eval_error) Base.Result.t
 
-module Parse (Comment : Util.Angstrom.Comment_int) : sig
-  val term : Position.t term Angstrom.t
-  val defn : Position.t defn Angstrom.t
+module Parse (Comment : Lvca_util.Angstrom.Comment_int) : sig
+  val term : Range.t term Angstrom.t
+  val defn : Range.t defn Angstrom.t
 end
 
 (** Convert a module to a nominal term, for storage. *)
