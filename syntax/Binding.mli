@@ -43,9 +43,11 @@ and Nominal : sig
   and 'a scope = Scope of 'a * 'a Pattern.t list * 'a term list
 
   val pp_term : Format.formatter -> 'a Nominal.term -> unit
+  val pp_term_range : Format.formatter -> Range.t Nominal.term -> unit
   val pp_term_str : 'a Nominal.term -> string
 
   val pp_scope : Format.formatter -> 'a Nominal.scope -> unit
+  val pp_scope_range : Format.formatter -> Range.t Nominal.scope -> unit
   val pp_scope_str : 'a Nominal.scope -> string
 
   val jsonify : unit Nominal.term -> Lvca_util.Json.t

@@ -127,9 +127,11 @@ and Nominal : sig
     | Primitive of 'a * Primitive.t
 
   val pp_term : Format.formatter -> 'a Nominal.term -> unit
+  val pp_term_range : Format.formatter -> Range.t Nominal.term -> unit
   val pp_term_str : 'a Nominal.term -> string
 
   val pp_scope : Format.formatter -> 'a Nominal.scope -> unit
+  val pp_scope_range : Format.formatter -> Range.t Nominal.scope -> unit
   val pp_scope_str : 'a Nominal.scope -> string
 
   val serialize : unit Nominal.term -> Bytes.t
@@ -176,8 +178,29 @@ end = struct
     let pp_body = list ~sep:comma pp_term in
     match bindings with
     | [] -> pp_body ppf body
-    | _ -> pf ppf "%a.@ %a" (* pp_bindings bindings pp_term body *)
+    | _ -> pf ppf "%a.@ %a"
       (list ~sep:(any ".@ ") Pattern.pp) bindings
+      pp_body body
+  ;;
+
+  let rec pp_term_range ppf =
+    let open Range in
+    function
+    | Operator ({ start; finish }, tag, subtms)
+    -> pf ppf "@[<2>%s{%u,%u}(%a)@]"
+      tag start finish
+      (list ~sep:semi pp_scope_range) subtms
+    | Var ({ start; finish }, v)
+    -> pf ppf "%a{%u,%u}" string v start finish
+    | Primitive ({ start; finish }, p)
+    -> pf ppf "%a{%u,%u}" Primitive.pp p start finish
+
+  and pp_scope_range ppf (Scope (_, bindings, body)) =
+    let pp_body = list ~sep:comma pp_term_range in
+    match bindings with
+    | [] -> pp_body ppf body
+    | _ -> pf ppf "%a.@ %a"
+      (list ~sep:(any ".@ ") Pattern.pp_range) bindings
       pp_body body
   ;;
 
@@ -324,8 +347,9 @@ end = struct
           in
 
           (* (b11. ... b1n. t11, ... t1n; b21. ... b2n. t21, ... t2n) *)
-          let accumulate : string -> tm_or_sep list -> Range.t Nominal.term Angstrom.t
-            = fun tag tokens ->
+          let accumulate
+            : Range.t -> string -> tm_or_sep list -> Range.t Nominal.term Angstrom.t
+            = fun range tag tokens ->
 
               (* terms encountered between '.'s, before hitting ',' / ';' *)
               let binding_queue : Range.t Nominal.term Queue.t = Queue.create () in
@@ -335,7 +359,7 @@ end = struct
               let scope_queue : Range.t Nominal.scope Queue.t = Queue.create () in
 
               let rec go parse_state = function
-                | [] -> return (Operator (Range.mk 0 0 (* TODO *), tag, Queue.to_list scope_queue))
+                | [] -> return (Operator (range, tag, Queue.to_list scope_queue))
                 | Tm tm :: Sep '.' :: rest
                 -> if Caml.(parse_state = DefinitelyTerm)
                    then fail "Unexpected '.' when parsing a list"
@@ -357,8 +381,8 @@ end = struct
                    Queue.enqueue list_queue tm;
                    let tms = Queue.to_list list_queue in
                    Queue.clear list_queue;
-                   let pos : Range.t = Range.mk 0 0 (* TODO *) in
-                   Queue.enqueue scope_queue (Scope (pos, binders, tms));
+                   let scope_range : Range.t = Range.mk 0 0 (* TODO *) in
+                   Queue.enqueue scope_queue (Scope (scope_range, binders, tms));
                    go PossiblyBinding rest
 
                 | _ -> fail "Malformed term"
@@ -367,11 +391,18 @@ end = struct
               go PossiblyBinding tokens
           in
 
+          pos >>= fun p1 ->
           choice
-            [ Primitive.t >>| (fun prim -> Primitive (Range.mk 0 0 (* TODO *), prim))
+            [ lift2 (fun prim p2 -> Primitive (Range.mk p1 p2, prim))
+                Primitive.t
+                pos
             ; identifier >>= fun ident -> choice
-              [ parens (many t_or_sep) >>= accumulate ident
-              ; return (Var (Range.mk 0 0 (* TODO *), ident))
+              [ begin
+                  parens (many t_or_sep) >>= fun tokens ->
+                  pos >>= fun p2 ->
+                  accumulate (Range.mk p1 p2) ident tokens
+                end
+              ; pos >>| fun p2 -> (Var (Range.mk p1 p2, ident))
               ]
             ]
         ) <?> "term"
@@ -521,7 +552,10 @@ let%test_module "TermParser" = (module struct
 
   let print_parse = fun str -> match parse str with
     | Error msg -> Caml.print_string ("failed: " ^ msg)
-    | Ok tm -> Nominal.pp_term Caml.Format.std_formatter tm
+    | Ok tm ->
+      Nominal.pp_term Caml.Format.std_formatter tm;
+      Fmt.pr "\n";
+      Nominal.pp_term_range Caml.Format.std_formatter tm
   ;;
 
   let%test _ =
@@ -582,21 +616,39 @@ let%test_module "TermParser" = (module struct
 
   let%expect_test _ =
     print_parse {|"str"|};
-    [%expect{| "str" |}]
+    [%expect{|
+      "str"
+      "str"{0,5}
+    |}]
   let%expect_test _ =
     print_parse {|a()|};
-    [%expect{| a() |}]
+    [%expect{|
+      a()
+      a{0,3}()
+    |}]
   let%expect_test _ =
     print_parse {|a(b)|};
-    [%expect{| a(b) |}]
+    [%expect{|
+      a(b)
+      a{0,4}(b{2,3})
+    |}]
   let%expect_test _ =
     print_parse {|a(b,c)|};
-    [%expect{| a(b, c) |}]
+    [%expect{|
+      a(b, c)
+      a{0,6}(b{2,3}, c{4,5})
+    |}]
   let%expect_test _ =
     print_parse {|a(b,c;d,e;)|};
-    [%expect{| a(b, c; d, e) |}]
+    [%expect{|
+      a(b, c; d, e)
+      a{0,11}(b{2,3}, c{4,5}; d{6,7}, e{8,9})
+    |}]
   let%expect_test _ =
     print_parse {|a(b.c;d,e;)|};
-    [%expect{| a(b. c; d, e) |}]
+    [%expect{|
+      a(b. c; d, e)
+      a{0,11}(b{2,3}. c{4,5}; d{6,7}, e{8,9})
+    |}]
 
 end);;
