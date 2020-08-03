@@ -1,5 +1,6 @@
 (** Types for representing languages *)
 
+module Util = Lvca_util
 module String = Util.String
 module List = Base.List
 module Map = Base.Map

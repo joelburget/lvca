@@ -2,6 +2,7 @@ open Base
 
 open AbstractSyntax
 open Binding
+module Util = Lvca_util
 
 type 'a abstract_syntax_check_failure_frame =
   { term : ('a Pattern.t, 'a Nominal.term) Either.t (** Term that failed to check *)

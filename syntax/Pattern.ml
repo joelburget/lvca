@@ -2,6 +2,7 @@ module List = Base.List
 module Option = Base.Option
 module Queue = Base.Queue
 module Set = Base.Set
+module Util = Lvca_util
 module String = Util.String
 
 type 'a pattern =
@@ -165,7 +166,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
             let rec go = function
               | []
               -> list_to_slot ();
-                 return (Operator (Position.zero_pos (* TODO *), tag, Queue.to_list slot_queue))
+                 return (Operator (Range.mk 0 0 (* TODO *), tag, Queue.to_list slot_queue))
               | Pat pat :: Sep ',' :: Sep ';' :: rest
               | Pat pat :: Sep ',' :: rest (* Note: allow trailing ',' *)
               -> Queue.enqueue list_queue pat;
@@ -183,14 +184,14 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
         in
 
         choice
-          [ Primitive.t >>| (fun prim -> Primitive (Position.zero_pos (* TODO *), prim))
+          [ Primitive.t >>| (fun prim -> Primitive (Range.mk 0 0 (* TODO *), prim))
           ; identifier >>= fun ident ->
             if String.get ident 0 = '_'
-            then return (Ignored (Position.zero_pos (* TODO *), String.subo ~pos:1 ident))
+            then return (Ignored (Range.mk 0 0 (* TODO *), String.subo ~pos:1 ident))
             else
               choice
               [ parens (many t_or_sep) >>= accumulate ident
-              ; return (Var (Position.zero_pos (* TODO *), ident))
+              ; return (Var (Range.mk 0 0 (* TODO *), ident))
               ] <?> "pattern body"
           ]
       ) <?> "pattern"

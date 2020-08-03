@@ -1,5 +1,7 @@
 (** A primitive is either a string or an integer. *)
 
+module Util = Lvca_util
+
 type t =
   | PrimInteger of Bigint.t
   | PrimString of string

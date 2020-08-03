@@ -1,6 +1,7 @@
 open Base
 module Format = Caml.Format
 module Printf = Caml.Printf
+module Util = Lvca_util
 module Cbor = Util.Cbor
 module Json = Util.Json
 module String = Util.String
@@ -46,7 +47,9 @@ end = struct
 
   and scope_to_nominal ctx (Scope (a, binders, body)) =
     let ctx' = binders
-      |> List.map ~f:Pattern.list_vars_of_pattern
+      |> List.map ~f:(fun pat -> pat
+        |> Pattern.list_vars_of_pattern
+        |> List.map ~f:snd)
       |> List.append ctx
     in
     body
@@ -74,7 +77,7 @@ end = struct
       pats
       |> List.mapi ~f:(fun i pat -> pat
         |> Pattern.list_vars_of_pattern
-        |> List.mapi ~f:(fun j var -> var, (i, j)))
+        |> List.mapi ~f:(fun j (_, var) -> var, (i, j)))
       |> List.join
     in
     match String.Map.of_alist var_nums with
@@ -332,7 +335,7 @@ end = struct
               let scope_queue : Range.t Nominal.scope Queue.t = Queue.create () in
 
               let rec go parse_state = function
-                | [] -> return (Operator (Position.zero_pos (* TODO *), tag, Queue.to_list scope_queue))
+                | [] -> return (Operator (Range.mk 0 0 (* TODO *), tag, Queue.to_list scope_queue))
                 | Tm tm :: Sep '.' :: rest
                 -> if Caml.(parse_state = DefinitelyTerm)
                    then fail "Unexpected '.' when parsing a list"
@@ -354,7 +357,7 @@ end = struct
                    Queue.enqueue list_queue tm;
                    let tms = Queue.to_list list_queue in
                    Queue.clear list_queue;
-                   let pos : Range.t = Position.zero_pos (* TODO *) in
+                   let pos : Range.t = Range.mk 0 0 (* TODO *) in
                    Queue.enqueue scope_queue (Scope (pos, binders, tms));
                    go PossiblyBinding rest
 
@@ -365,10 +368,10 @@ end = struct
           in
 
           choice
-            [ Primitive.t >>| (fun prim -> Primitive (Position.zero_pos (* TODO *), prim))
+            [ Primitive.t >>| (fun prim -> Primitive (Range.mk 0 0 (* TODO *), prim))
             ; identifier >>= fun ident -> choice
               [ parens (many t_or_sep) >>= accumulate ident
-              ; return (Var (Position.zero_pos (* TODO *), ident))
+              ; return (Var (Range.mk 0 0 (* TODO *), ident))
               ]
             ]
         ) <?> "term"

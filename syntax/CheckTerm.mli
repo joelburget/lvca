@@ -36,7 +36,7 @@ val check_pattern
   :  AbstractSyntax.t (** Abstract syntax *)
   -> AbstractSyntax.sort (** Sort to check pattern against *)
   -> 'a Pattern.t
-  -> (AbstractSyntax.valence Util.String.Map.t, 'a abstract_syntax_check_failure)
+  -> (AbstractSyntax.valence Lvca_util.String.Map.t, 'a abstract_syntax_check_failure)
     Result.t
 
 (** Check that the given term matches the given sort.

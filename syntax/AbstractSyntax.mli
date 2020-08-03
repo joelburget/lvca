@@ -34,7 +34,7 @@ type sort_def = SortDef of string list * operator_def list
   (** A sort is defined by a set of variables and a set of operators *)
 
 (* TODO: should this be a list so the ordering is fixed / deterministic? *)
-type sort_defs = SortDefs of sort_def Util.String.Map.t
+type sort_defs = SortDefs of sort_def Lvca_util.String.Map.t
   (** A language is defined by its sorts *)
 
 (** An import includes sorts from another language. It's possible to rename sorts from
@@ -60,9 +60,9 @@ val pp_sort : Format.formatter -> sort -> unit
 val string_of_sort : sort -> string
 val string_of_valence : valence -> string
 val string_of_arity : arity -> string
-val instantiate_sort : sort Util.String.Map.t -> sort -> sort
+val instantiate_sort : sort Lvca_util.String.Map.t -> sort -> sort
 
-module Parse (Comment : Util.Angstrom.Comment_int) : sig
+module Parse (Comment : Lvca_util.Angstrom.Comment_int) : sig
   val sort : sort Angstrom.t
   val import : import Angstrom.t
   val t : t Angstrom.t

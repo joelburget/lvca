@@ -22,7 +22,7 @@ module rec DeBruijn : sig
   val from_nominal : 'a Nominal.term -> ('a term, string) Result.t
 
   val from_nominal_with_bindings
-    :  (int * int) Util.String.Map.t
+    :  (int * int) Lvca_util.String.Map.t
     -> 'a Nominal.term
     -> ('a term, string) Result.t
 
@@ -48,8 +48,8 @@ and Nominal : sig
   val pp_scope : Format.formatter -> 'a Nominal.scope -> unit
   val pp_scope_str : 'a Nominal.scope -> string
 
-  val jsonify : unit Nominal.term -> Util.Json.t
-  val unjsonify : Util.Json.t -> unit Nominal.term option
+  val jsonify : unit Nominal.term -> Lvca_util.Json.t
+  val unjsonify : Lvca_util.Json.t -> unit Nominal.term option
 
   (** Encode (using {{:https://cbor.io} CBOR}) as bytes. *)
   val serialize : unit Nominal.term -> Bytes.t
@@ -84,14 +84,14 @@ and Nominal : sig
    *)
   val pattern_to_term : 'a Pattern.t -> 'a Nominal.term
 
-  module Parse (Comment : Util.Angstrom.Comment_int) : sig
+  module Parse (Comment : Lvca_util.Angstrom.Comment_int) : sig
     val t : Range.t term Angstrom.t
   end
 end
 
 module Properties : sig
   val json_round_trip1 : unit Nominal.term -> bool
-  val json_round_trip2 : Util.Json.t -> bool
+  val json_round_trip2 : Lvca_util.Json.t -> bool
   val string_round_trip1 : unit Nominal.term -> bool
   val string_round_trip2 : string -> bool
 end
