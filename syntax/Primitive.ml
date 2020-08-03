@@ -61,10 +61,13 @@ let jsonify =
 
 let unjsonify = Util.Json.(function
   | Array [| String "i"; String i |]
-  -> (try
+  ->
+    begin
+      try
        Some (PrimInteger (Bigint.of_string i))
       with
-        Failure _ -> None)
+        Failure _ -> None
+    end
   | Array [| String "s"; String str |]
   -> Some (PrimString str)
   | _
