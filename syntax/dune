@@ -1,6 +1,6 @@
 (library
  (name lvca_syntax)
  (inline_tests)
- (libraries digestif.ocaml base cbor bignum fmt re angstrom lvca_util)
+ (libraries angstrom base fmt lvca_util)
  (preprocess
   (pps ppx_jane)))
