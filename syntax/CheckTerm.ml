@@ -139,7 +139,7 @@ let check_pattern
       = fun valences pats -> match List.zip pats valences with
         | Unequal_lengths
         -> Error (err (Printf.sprintf
-            "Wrong number of subterms (%n) for this arity (%s)"
+            "Wrong number of subterms (%u) for this arity (%s)"
             (List.length pats)
             (valences |> List.map ~f:string_of_valence |> String.concat ~sep:", ")
         ))
@@ -265,7 +265,7 @@ let check_term
       -> 'a abstract_syntax_check_failure option
       = fun var_valences valences scopes -> match List.zip scopes valences with
         | Unequal_lengths -> Some (err (Printf.sprintf
-            "Wrong number of subterms (%n) for this arity (%s)"
+            "Wrong number of subterms (%u) for this arity (%s)"
             (List.length scopes)
             (valences |> List.map ~f:string_of_valence |> String.concat ~sep:", ")
         ))
@@ -308,7 +308,7 @@ let check_term
         match List.zip binder_sorts binders with
         (* TODO: do we allow binding valence? *)
         | Unequal_lengths -> Some (err (Printf.sprintf
-            "Wrong number of binders (%n) for this valence (%s) (expected %n)"
+            "Wrong number of binders (%u) for this valence (%s) (expected %u)"
             (List.length binders)
             (string_of_valence valence)
             (List.length binder_sorts)
