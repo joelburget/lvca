@@ -7,43 +7,43 @@ module Json = Util.Json
 module String = Util.String
 
 module rec DeBruijn : sig
-  type 'a term =
-    | Operator of 'a * string * 'a scope list
-    | Var of 'a * int * int
-    | Primitive of 'a * Primitive.t
+  type 'loc term =
+    | Operator of 'loc * string * 'loc scope list
+    | Var of 'loc * int * int
+    | Primitive of 'loc * Primitive.t
 
-  and 'a scope = Scope of 'a Pattern.t list * 'a term list
+  and 'loc scope = Scope of 'loc Pattern.t list * 'loc term list
 
-  val to_nominal : 'a term -> 'a Nominal.term option
-  val from_nominal : 'a Nominal.term -> ('a term, string) Result.t
+  val to_nominal : 'loc term -> 'loc Nominal.term option
+  val from_nominal : 'loc Nominal.term -> ('loc term, string) Result.t
 
   val from_nominal_with_bindings
     :  (int * int) String.Map.t
-    -> 'a Nominal.term
-    -> ('a term, string) Result.t
+    -> 'loc Nominal.term
+    -> ('loc term, string) Result.t
 
-  val alpha_equivalent : 'a term -> 'b term -> bool
+  val alpha_equivalent : 'loc term -> 'b term -> bool
 
   (* val open_scope : scope -> term list -> (term, string) Result.t *)
 end = struct
-  type 'a term =
-    | Operator of 'a * string * 'a scope list
-    | Var of 'a * int * int
-    | Primitive of 'a * Primitive.t
+  type 'loc term =
+    | Operator of 'loc * string * 'loc scope list
+    | Var of 'loc * int * int
+    | Primitive of 'loc * Primitive.t
 
-  and 'a scope = Scope of 'a Pattern.t list * 'a term list
+  and 'loc scope = Scope of 'loc Pattern.t list * 'loc term list
 
   let rec to_nominal' ctx = function
-    | Var (a, ix1, ix2) ->
+    | Var (loc, ix1, ix2) ->
       List.nth ctx ix1
       |> Option.bind ~f:(Fn.flip List.nth ix2)
-      |> Option.map ~f:(fun name -> Nominal.Var (a, name))
-    | Operator (a, tag, subtms) ->
+      |> Option.map ~f:(fun name -> Nominal.Var (loc, name))
+    | Operator (loc, tag, subtms) ->
       subtms
       |> List.map ~f:(scope_to_nominal ctx)
       |> Option.all
-      |> Option.map ~f:(fun subtms' -> Nominal.Operator (a, tag, subtms'))
-    | Primitive (a, prim) -> Some (Nominal.Primitive (a, prim))
+      |> Option.map ~f:(fun subtms' -> Nominal.Operator (loc, tag, subtms'))
+    | Primitive (loc, prim) -> Some (Nominal.Primitive (loc, prim))
 
   and scope_to_nominal ctx (Scope (binders, body)) =
     let ctx' = binders
@@ -63,13 +63,13 @@ end = struct
   exception FailedFromNominal of string
 
   let rec from_nominal_with_bindings' env = function
-    | Nominal.Operator (a, tag, subtms) ->
-      Operator (a, tag, List.map subtms ~f:(scope_from_nominal' env))
-    | Var (a, name) ->
+    | Nominal.Operator (loc, tag, subtms) ->
+      Operator (loc, tag, List.map subtms ~f:(scope_from_nominal' env))
+    | Var (loc, name) ->
       (match Map.find env name with
       | None -> raise (FailedFromNominal ("couldn't find variable " ^ name))
-      | Some (i, j) -> Var (a, i, j))
-    | Primitive (a, prim) -> Primitive (a, prim)
+      | Some (i, j) -> Var (loc, i, j))
+    | Primitive (loc, prim) -> Primitive (loc, prim)
 
   and scope_from_nominal' env (Nominal.Scope (pats, body)) =
     let n = List.length pats in
@@ -119,20 +119,20 @@ end = struct
 end
 
 and Nominal : sig
-  type 'a scope = Scope of 'a Pattern.t list * 'a term list
+  type 'loc scope = Scope of 'loc Pattern.t list * 'loc term list
 
-  and 'a term =
-    | Operator of 'a * string * 'a scope list
-    | Var of 'a * string
-    | Primitive of 'a * Primitive.t
+  and 'loc term =
+    | Operator of 'loc * string * 'loc scope list
+    | Var of 'loc * string
+    | Primitive of 'loc * Primitive.t
 
-  val pp_term : Format.formatter -> 'a Nominal.term -> unit
+  val pp_term : Format.formatter -> 'loc Nominal.term -> unit
   val pp_term_range : Format.formatter -> Range.t Nominal.term -> unit
-  val pp_term_str : 'a Nominal.term -> string
+  val pp_term_str : 'loc Nominal.term -> string
 
-  val pp_scope : Format.formatter -> 'a Nominal.scope -> unit
+  val pp_scope : Format.formatter -> 'loc Nominal.scope -> unit
   val pp_scope_range : Format.formatter -> Range.t Nominal.scope -> unit
-  val pp_scope_str : 'a Nominal.scope -> string
+  val pp_scope_str : 'loc Nominal.scope -> string
 
   val serialize : unit Nominal.term -> Bytes.t
   val deserialize : Bytes.t -> unit term option
@@ -141,25 +141,25 @@ and Nominal : sig
   val unjsonify : Json.t -> unit Nominal.term option
 
   val hash : unit Nominal.term -> string
-  val erase : 'a term -> unit term
-  val erase_scope : 'a scope -> unit scope
+  val erase : 'loc term -> unit term
+  val erase_scope : 'loc scope -> unit scope
 
   exception ToPatternFailure of unit scope
 
-  val to_pattern_exn : 'a Nominal.term -> 'a Pattern.t
-  val to_pattern : 'a Nominal.term -> ('a Pattern.t, unit scope) Result.t
-  val pattern_to_term : 'a Pattern.t -> 'a Nominal.term
+  val to_pattern_exn : 'loc Nominal.term -> 'loc Pattern.t
+  val to_pattern : 'loc Nominal.term -> ('loc Pattern.t, unit scope) Result.t
+  val pattern_to_term : 'loc Pattern.t -> 'loc Nominal.term
 
   module Parse (Comment : Util.Angstrom.Comment_int) : sig
     val t : Range.t term Angstrom.t
   end
 end = struct
-  type 'a scope = Scope of 'a Pattern.t list * 'a term list
+  type 'loc scope = Scope of 'loc Pattern.t list * 'loc term list
 
-  and 'a term =
-    | Operator of 'a * string * 'a scope list
-    | Var of 'a * string
-    | Primitive of 'a * Primitive.t
+  and 'loc term =
+    | Operator of 'loc * string * 'loc scope list
+    | Var of 'loc * string
+    | Primitive of 'loc * Primitive.t
 
   let any, comma, list, str, string, semi, pf =
     Fmt.(any, comma, list, str, string, semi, pf)
@@ -270,14 +270,14 @@ end = struct
 
   let hash = fun tm -> tm |> serialize |> Util.Sha256.hash
 
-  let rec erase : 'a term -> unit term
+  let rec erase : 'loc term -> unit term
     = function
       | Operator (_, name, scopes)
       -> Operator ((), name, List.map scopes ~f:erase_scope)
       | Var (_, name) -> Var ((), name)
       | Primitive (_, p) -> Primitive ((), p)
 
-  and erase_scope : 'a scope -> unit scope
+  and erase_scope : 'loc scope -> unit scope
     = fun (Scope (pats, tms)) ->
       Scope (List.map pats ~f:Pattern.erase, List.map tms ~f:erase)
   ;;
@@ -285,16 +285,16 @@ end = struct
   exception ToPatternFailure of unit scope
 
   (** @raise ToPatternFailure *)
-  let rec to_pattern_exn : 'a term -> 'a Pattern.t = function
-    | Var (a, name) -> if String.is_substring_at name ~pos:0 ~substring:"_"
-      then Ignored (a, String.slice name 1 0)
-      else Var (a, name)
-    | Operator (a, name, tms)
-    -> Operator (a, name, List.map tms ~f:scope_to_patterns_exn)
-    | Primitive (a, prim) -> Primitive (a, prim)
+  let rec to_pattern_exn : 'loc term -> 'loc Pattern.t = function
+    | Var (loc, name) -> if String.is_substring_at name ~pos:0 ~substring:"_"
+      then Ignored (loc, String.slice name 1 0)
+      else Var (loc, name)
+    | Operator (loc, name, tms)
+    -> Operator (loc, name, List.map tms ~f:scope_to_patterns_exn)
+    | Primitive (loc, prim) -> Primitive (loc, prim)
 
   (** @raise ToPatternFailure *)
-  and scope_to_patterns_exn : 'a scope -> 'a Pattern.t list = function
+  and scope_to_patterns_exn : 'loc scope -> 'loc Pattern.t list = function
     | Scope ([], tms) -> List.map tms ~f:to_pattern_exn
     | Scope (binders, tms) ->
         let binders' = List.map binders ~f:Pattern.erase in
@@ -302,24 +302,24 @@ end = struct
         raise (ToPatternFailure (Scope (binders', tms')))
   ;;
 
-  let to_pattern : 'a term -> ('a Pattern.t, unit scope) Result.t
+  let to_pattern : 'loc term -> ('loc Pattern.t, unit scope) Result.t
     = fun tm ->
       try
         Ok (to_pattern_exn tm)
       with
         ToPatternFailure scope -> Error scope
 
-  let rec pattern_to_term : 'a Pattern.t -> 'a Nominal.term = function
-    | Operator (a, name, pats)
+  let rec pattern_to_term : 'loc Pattern.t -> 'loc Nominal.term = function
+    | Operator (loc, name, pats)
     -> Operator
-      ( a
+      ( loc
       , name
-      (* TODO: should the scope really inherit the 'a? *)
+      (* TODO: should the scope really inherit the 'loc? *)
       , List.map pats ~f:(fun pats' -> Scope ([], List.map pats' ~f:pattern_to_term))
       )
-    | Primitive (a, prim) -> Primitive (a, prim)
-    | Var (a, name) -> Var (a, name)
-    | Ignored (a, name) -> Var (a, "_" ^ name)
+    | Primitive (loc, prim) -> Primitive (loc, prim)
+    | Var (loc, name) -> Var (loc, name)
+    | Ignored (loc, name) -> Var (loc, "_" ^ name)
   ;;
 
   module Parse (Comment : Util.Angstrom.Comment_int) = struct
