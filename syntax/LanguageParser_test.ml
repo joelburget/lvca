@@ -3,12 +3,12 @@ open AbstractSyntax
 let%test_module "AbstractSyntax.Parser" =
   (module struct
 
-    module AbstractSyntaxParse = AbstractSyntax.Parse(Util.Angstrom.CComment)
+    module AbstractSyntaxParse = AbstractSyntax.Parse(Lvca_util.Angstrom.CComment)
 
     let parse str =
       match
         Angstrom.parse_string ~consume:All
-          Angstrom.(Util.Angstrom.whitespace *> AbstractSyntaxParse.t)
+          Angstrom.(Lvca_util.Angstrom.whitespace *> AbstractSyntaxParse.t)
           str
       with
         | Ok t -> t
@@ -22,7 +22,7 @@ let%test_module "AbstractSyntax.Parser" =
 
     let%test _ = parse "bool := true() | false()" =
       { imports = []
-      ; sort_defs = SortDefs (Util.String.Map.of_alist_exn [
+      ; sort_defs = SortDefs (Lvca_util.String.Map.of_alist_exn [
         "bool", SortDef ([],
         [ OperatorDef ("true", [])
         ; OperatorDef ("false", [])
@@ -46,7 +46,7 @@ let%test_module "AbstractSyntax.Parser" =
       |}
       =
       { imports = []
-      ; sort_defs = SortDefs (Util.String.Map.of_alist_exn [
+      ; sort_defs = SortDefs (Lvca_util.String.Map.of_alist_exn [
         "ty", SortDef ([],
           [ OperatorDef ("bool", [])
           ; OperatorDef ("arr", [ ty_valence; ty_valence ])

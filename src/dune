@@ -1,6 +1,0 @@
-(library
- (public_name lvca)
- (inline_tests)
- (libraries digestif.ocaml base cbor bignum fmt re angstrom)
- (preprocess
-  (pps ppx_jane)))
