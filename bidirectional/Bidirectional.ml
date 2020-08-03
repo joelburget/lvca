@@ -12,8 +12,8 @@ type 'a env =
   ; var_types : 'a term String.Map.t (** The types of all known free variables *)
   }
 
-let enscope (binders : 'a Pattern.t list) (Scope (loc, binders', body)) =
-  Scope (loc, binders' @ binders, body)
+let enscope (binders : 'a Pattern.t list) (Scope (binders', body)) =
+  Scope (binders' @ binders, body)
 ;;
 
 (** Only used internally to match_schema_vars *)
@@ -22,7 +22,7 @@ exception NoMatch
 let rec match_schema_vars' : 'a term -> 'a term -> 'a scope String.Map.t =
  fun t1 t2 ->
   match t1, t2 with
-  | Free (_, v), tm -> String.Map.of_alist_exn [ v, Scope (location tm, [], [tm]) ]
+  | Free (_, v), tm -> String.Map.of_alist_exn [ v, Scope ([], [tm]) ]
   | Operator (_, tag1, args1), Operator (_, tag2, args2) ->
     if String.(tag1 = tag2) && List.(length args1 = length args2)
     then
@@ -33,7 +33,7 @@ let rec match_schema_vars' : 'a term -> 'a term -> 'a scope String.Map.t =
     else raise NoMatch
   | _, _ -> raise NoMatch
 
-and match_schema_vars_scope (Scope (_, names1, body1)) (Scope (_, names2, body2)) =
+and match_schema_vars_scope (Scope (names1, body1)) (Scope (names2, body2)) =
   if List.(length names1 = length names2)
      (* TODO: is it okay to use names1? what happens to names2? *)
   then
@@ -53,7 +53,7 @@ let match_schema_vars : 'a term -> 'a term -> 'a scope String.Map.t option =
 ;;
 
 (** Open a scope, instantiating all of its bound variables *)
-let open_scope (args : 'a term list list) (Scope (_, names, body))
+let open_scope (args : 'a term list list) (Scope (names, body))
   : 'a term list option
   =
   if List.(length args <> length names)
@@ -63,10 +63,10 @@ let open_scope (args : 'a term list list) (Scope (_, names, body))
       match tm with
       | Operator (loc, tag, subtms) ->
         subtms
-        |> List.map ~f:(fun (Scope (scope_loc, binders, subtms)) -> subtms
+        |> List.map ~f:(fun (Scope (binders, subtms)) -> subtms
           |> List.map ~f:(open' (offset + List.length binders))
           |> Option.all
-          |> Option.map ~f:(fun subtms' -> Scope (scope_loc, binders, subtms')))
+          |> Option.map ~f:(fun subtms' -> Scope (binders, subtms')))
         |> Option.all
         |> Option.map ~f:(fun subtms' -> Operator (loc, tag, subtms'))
       | Bound (_, i, j) ->
@@ -96,7 +96,7 @@ let rec instantiate (env : 'a scope String.Map.t) (tm : 'a term)
   = match tm with
   | Operator (loc, tag, subtms) ->
     subtms
-    |> List.map ~f:(fun (Scope (scope_loc, binders, body)) ->
+    |> List.map ~f:(fun (Scope (binders, body)) ->
       let new_var_names : string array =
         binders
         |> List.map ~f:(fun pat -> pat
@@ -108,14 +108,14 @@ let rec instantiate (env : 'a scope String.Map.t) (tm : 'a term)
       body
         |> List.map ~f:(instantiate (Lvca_util.Map.remove_many env new_var_names))
         |> Result.all
-        |> Result.map ~f:(fun body' -> Scope (scope_loc, binders, body')))
+        |> Result.map ~f:(fun body' -> Scope (binders, body')))
     |> Result.all
     |> Result.map ~f:(fun subtms' -> Operator (loc, tag, subtms'))
   | Bound _ -> Ok tm
   | Free (_, v) ->
     (match Map.find env v with
     | None -> Error ("instantiate: couldn't find var " ^ v)
-    | Some (Scope (_, pats, _) as sc)
+    | Some (Scope (pats, _) as sc)
     (* Open the scope, instantiating all variables it binds as free *) ->
       (match open_scope (List.map pats ~f:pat_to_free_vars) sc with
       | None -> Error "instantiate: failed to open scope"

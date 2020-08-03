@@ -17,7 +17,7 @@ let rec from_de_bruijn_exn = function
 
 (** @raise ScopeEncountered *)
 and from_de_bruijn_scope = function
-  | DeBruijn.Scope (_, [], tms) -> List.map ~f:from_de_bruijn_exn tms
+  | DeBruijn.Scope ([], tms) -> List.map ~f:from_de_bruijn_exn tms
   | _ -> raise ScopeEncountered
 ;;
 
@@ -32,7 +32,7 @@ let rec to_de_bruijn tm : unit DeBruijn.term =
       ( ()
       , tag
       , List.map tms ~f:(fun tms' ->
-        DeBruijn.Scope ((), [], List.map tms' ~f:to_de_bruijn))
+        DeBruijn.Scope ([], List.map tms' ~f:to_de_bruijn))
       )
   | Primitive (_, p) -> Primitive ((), p)
 ;;
@@ -45,7 +45,7 @@ let rec from_nominal_exn = function
 
 (** @raise ScopeEncountered *)
 and from_nominal_scope = function
-  | Nominal.Scope (_, [], tms) -> List.map tms ~f:from_nominal_exn
+  | Nominal.Scope ([], tms) -> List.map tms ~f:from_nominal_exn
   | _ -> raise ScopeEncountered
 ;;
 
@@ -60,7 +60,7 @@ let rec to_nominal tm : unit Nominal.term =
       ( ()
       , tag
       , List.map tms ~f:(fun tms' ->
-          Nominal.Scope ((), [], List.map tms' ~f:to_nominal)))
+          Nominal.Scope ([], List.map tms' ~f:to_nominal)))
   | Primitive (_, p) -> Primitive ((), p)
 ;;
 

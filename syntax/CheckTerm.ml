@@ -277,7 +277,7 @@ let check_term
       -> valence
       -> 'a Nominal.scope
       -> 'a abstract_syntax_check_failure option
-      = fun var_valences valence (Scope (_, binders, body)) ->
+      = fun var_valences valence (Scope (binders, body)) ->
 
         (* Check the body with the new binders environment *)
         let go_body (body_sort, starred)

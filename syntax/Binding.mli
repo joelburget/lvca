@@ -16,7 +16,7 @@ module rec DeBruijn : sig
     | Var of 'a * int * int
     | Primitive of 'a * Primitive.t
 
-  and 'a scope = Scope of 'a * 'a Pattern.t list * 'a term list
+  and 'a scope = Scope of 'a Pattern.t list * 'a term list
 
   val to_nominal : 'a term -> 'a Nominal.term option
   val from_nominal : 'a Nominal.term -> ('a term, string) Result.t
@@ -40,7 +40,7 @@ and Nominal : sig
     | Var of 'a * string
     | Primitive of 'a * Primitive.t
 
-  and 'a scope = Scope of 'a * 'a Pattern.t list * 'a term list
+  and 'a scope = Scope of 'a Pattern.t list * 'a term list
 
   val pp_term : Format.formatter -> 'a Nominal.term -> unit
   val pp_term_range : Format.formatter -> Range.t Nominal.term -> unit

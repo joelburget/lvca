@@ -12,7 +12,7 @@ module rec DeBruijn : sig
     | Var of 'a * int * int
     | Primitive of 'a * Primitive.t
 
-  and 'a scope = Scope of 'a * 'a Pattern.t list * 'a term list
+  and 'a scope = Scope of 'a Pattern.t list * 'a term list
 
   val to_nominal : 'a term -> 'a Nominal.term option
   val from_nominal : 'a Nominal.term -> ('a term, string) Result.t
@@ -31,7 +31,7 @@ end = struct
     | Var of 'a * int * int
     | Primitive of 'a * Primitive.t
 
-  and 'a scope = Scope of 'a * 'a Pattern.t list * 'a term list
+  and 'a scope = Scope of 'a Pattern.t list * 'a term list
 
   let rec to_nominal' ctx = function
     | Var (a, ix1, ix2) ->
@@ -45,7 +45,7 @@ end = struct
       |> Option.map ~f:(fun subtms' -> Nominal.Operator (a, tag, subtms'))
     | Primitive (a, prim) -> Some (Nominal.Primitive (a, prim))
 
-  and scope_to_nominal ctx (Scope (a, binders, body)) =
+  and scope_to_nominal ctx (Scope (binders, body)) =
     let ctx' = binders
       |> List.map ~f:(fun pat -> pat
         |> Pattern.list_vars_of_pattern
@@ -55,7 +55,7 @@ end = struct
     body
       |> List.map ~f:(to_nominal' ctx')
       |> Option.all
-      |> Option.map ~f:(fun body' -> Nominal.Scope (a, binders, body'))
+      |> Option.map ~f:(fun body' -> Nominal.Scope (binders, body'))
   ;;
 
   let to_nominal tm = to_nominal' [] tm
@@ -71,7 +71,7 @@ end = struct
       | Some (i, j) -> Var (a, i, j))
     | Primitive (a, prim) -> Primitive (a, prim)
 
-  and scope_from_nominal' env (Nominal.Scope (a, pats, body)) =
+  and scope_from_nominal' env (Nominal.Scope (pats, body)) =
     let n = List.length pats in
     let var_nums : (string * (int * int)) list =
       pats
@@ -87,7 +87,7 @@ end = struct
         |> Util.Map.union_right_biased var_map
       in
       let body' = List.map body ~f:(from_nominal_with_bindings' env') in
-      Scope (a, pats, body')
+      Scope (pats, body')
     | `Duplicate_key _key -> failwith "TODO: raise error"
   ;;
 
@@ -102,7 +102,7 @@ end = struct
     match t1, t2 with
       | Operator (_, h1, subtms1), Operator (_, h2, subtms2)
       -> String.(h1 = h2) && (match List.zip subtms1 subtms2 with
-        | Ok zipped -> List.for_all zipped ~f:(fun (Scope (_, _, body1), Scope (_, _, body2)) ->
+        | Ok zipped -> List.for_all zipped ~f:(fun (Scope (_, body1), Scope (_, body2)) ->
             match List.zip body1 body2 with
               | Ok bodies -> List.for_all
                 ~f:(fun (b1, b2) -> alpha_equivalent b1 b2)
@@ -119,7 +119,7 @@ end = struct
 end
 
 and Nominal : sig
-  type 'a scope = Scope of 'a * 'a Pattern.t list * 'a term list
+  type 'a scope = Scope of 'a Pattern.t list * 'a term list
 
   and 'a term =
     | Operator of 'a * string * 'a scope list
@@ -154,7 +154,7 @@ and Nominal : sig
     val t : Range.t term Angstrom.t
   end
 end = struct
-  type 'a scope = Scope of 'a * 'a Pattern.t list * 'a term list
+  type 'a scope = Scope of 'a Pattern.t list * 'a term list
 
   and 'a term =
     | Operator of 'a * string * 'a scope list
@@ -174,7 +174,7 @@ end = struct
     | Primitive (_, p)
     -> Primitive.pp ppf p
 
-  and pp_scope ppf (Scope (_, bindings, body)) =
+  and pp_scope ppf (Scope (bindings, body)) =
     let pp_body = list ~sep:comma pp_term in
     match bindings with
     | [] -> pp_body ppf body
@@ -195,7 +195,7 @@ end = struct
     | Primitive ({ start; finish }, p)
     -> pf ppf "%a{%u,%u}" Primitive.pp p start finish
 
-  and pp_scope_range ppf (Scope (_, bindings, body)) =
+  and pp_scope_range ppf (Scope (bindings, body)) =
     let pp_body = list ~sep:comma pp_term_range in
     match bindings with
     | [] -> pp_body ppf body
@@ -216,7 +216,7 @@ end = struct
       | Var (_, name) -> array [| string "v"; string name |]
       | Primitive (_, p) -> array [| string "p"; Primitive.jsonify p |])
 
-  and jsonify_scope (Scope (_, pats, body)) : Json.t =
+  and jsonify_scope (Scope (pats, body)) : Json.t =
     let body' = body
       |> List.map ~f:jsonify
       |> List.to_array
@@ -259,7 +259,7 @@ end = struct
            |> Option.all
          | _ -> None
        in
-       Some (Scope ((), binders', body'))
+       Some (Scope (binders', body'))
     | _ -> None
   )
   ;;
@@ -278,8 +278,8 @@ end = struct
       | Primitive (_, p) -> Primitive ((), p)
 
   and erase_scope : 'a scope -> unit scope
-    = fun (Scope (_, pats, tms)) ->
-      Scope ((), List.map pats ~f:Pattern.erase, List.map tms ~f:erase)
+    = fun (Scope (pats, tms)) ->
+      Scope (List.map pats ~f:Pattern.erase, List.map tms ~f:erase)
   ;;
 
   exception ToPatternFailure of unit scope
@@ -295,11 +295,11 @@ end = struct
 
   (** @raise ToPatternFailure *)
   and scope_to_patterns_exn : 'a scope -> 'a Pattern.t list = function
-    | Scope (_, [], tms) -> List.map tms ~f:to_pattern_exn
-    | Scope (_, binders, tms) ->
+    | Scope ([], tms) -> List.map tms ~f:to_pattern_exn
+    | Scope (binders, tms) ->
         let binders' = List.map binders ~f:Pattern.erase in
         let tms' = List.map tms ~f:erase in
-        raise (ToPatternFailure (Scope ((), binders', tms')))
+        raise (ToPatternFailure (Scope (binders', tms')))
   ;;
 
   let to_pattern : 'a term -> ('a Pattern.t, unit scope) Result.t
@@ -315,7 +315,7 @@ end = struct
       ( a
       , name
       (* TODO: should the scope really inherit the 'a? *)
-      , List.map pats ~f:(fun pats' -> Scope (a, [], List.map pats' ~f:pattern_to_term))
+      , List.map pats ~f:(fun pats' -> Scope ([], List.map pats' ~f:pattern_to_term))
       )
     | Primitive (a, prim) -> Primitive (a, prim)
     | Var (a, name) -> Var (a, name)
@@ -381,8 +381,7 @@ end = struct
                    Queue.enqueue list_queue tm;
                    let tms = Queue.to_list list_queue in
                    Queue.clear list_queue;
-                   let scope_range : Range.t = Range.mk 0 0 (* TODO *) in
-                   Queue.enqueue scope_queue (Scope (scope_range, binders, tms));
+                   Queue.enqueue scope_queue (Scope (binders, tms));
                    go PossiblyBinding rest
 
                 | _ -> fail "Malformed term"
@@ -480,7 +479,7 @@ let%test_module "Nominal" =
       [%expect {| 2380ed848a0c5ce3d0ad7420e841578e4068f394b37b9b11bd3c34cea391436c |}]
     ;;
 
-    let tm = Operator ((), "S", [ Scope ((), [ Var ((), "x")  ], [Var ((), "x") ]) ])
+    let tm = Operator ((), "S", [ Scope ([ Var ((), "x")  ], [Var ((), "x") ]) ])
 
     let%test _ =
       jsonify tm
@@ -573,24 +572,24 @@ let%test_module "TermParser" = (module struct
 
   let%test _ =
     parse "lam(x. x)" |> Result.map ~f:erase =
-    Ok (Operator ((), "lam", [ Scope ((), [ Var ((), "x") ], [x]) ]))
+    Ok (Operator ((), "lam", [ Scope ([ Var ((), "x") ], [x]) ]))
 
-  let match_line a b = Operator ((), "match_line", [ Scope ((), [a], [b]) ])
+  let match_line a b = Operator ((), "match_line", [ Scope ([a], [b]) ])
   let match_lines subtms = Operator
     ( ()
     , "match_lines"
-    , Base.List.map subtms ~f:(fun tm -> Scope ((), [], [tm]))
+    , Base.List.map subtms ~f:(fun tm -> Scope ([], [tm]))
     )
 
   let%test _ = parse {| match() |} |> Result.map ~f:erase =
     Ok (Operator ((), "match", []))
   let%test _ = parse {| match(x; x) |} |> Result.map ~f:erase =
-    Ok (Operator ((), "match", [ Scope ((), [], [x]); Scope ((), [], [x]) ]))
+    Ok (Operator ((), "match", [ Scope ([], [x]); Scope ([], [x]) ]))
   let%test _ = parse {| match(true(); true()) |} |> Result.map ~f:erase =
-    Ok (Operator ((), "match", [ Scope ((), [], [t]); Scope ((), [], [t]) ]))
+    Ok (Operator ((), "match", [ Scope ([], [t]); Scope ([], [t]) ]))
 
   let%test _ = parse {| match(x;) |} |> Result.map ~f:erase =
-    Ok (Operator ((), "match", [ Scope ((), [], [x]) ]))
+    Ok (Operator ((), "match", [ Scope ([], [x]) ]))
 
   let%test _ =
     parse {|
@@ -601,8 +600,8 @@ let%test_module "TermParser" = (module struct
     |> Result.map ~f:erase
     =
     Ok (Operator ((), "match", [
-      Scope ((), [], [x]);
-      Scope ((), [], [match_lines [
+      Scope ([], [x]);
+      Scope ([], [match_lines [
         match_line (Pattern.Operator ((), "foo", [])) (Operator ((), "true", []));
         match_line
           (Pattern.Operator

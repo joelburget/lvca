@@ -9,7 +9,7 @@ type 'a term =
   (** Free vars are used during typechecking. *)
   | Primitive of 'a * Primitive.t
 
-and 'a scope = Scope of 'a * 'a Pattern.t list * 'a term list
+and 'a scope = Scope of 'a Pattern.t list * 'a term list
 
 let rec string_of_term = function
   | Operator (_, name, scopes) ->
@@ -19,7 +19,7 @@ let rec string_of_term = function
   | Free (_, str) -> str
   | Primitive (_, prim) -> Primitive.to_string prim
 
-and string_of_scope (Scope (_, pats, tms)) =
+and string_of_scope (Scope (pats, tms)) =
   let string_of_terms tms = tms
     |> List.map ~f:string_of_term
     |> String.concat ~sep:", "
@@ -50,7 +50,7 @@ type 'a typing_clause =
   | InferenceRule of 'a inference_rule
   | CheckingRule of 'a checking_rule
 
-type 'a hypothesis = 'a term Util.String.Map.t * 'a typing_clause
+type 'a hypothesis = 'a term Lvca_util.String.Map.t * 'a typing_clause
 
 type 'a rule =
   { hypotheses : 'a hypothesis list
@@ -69,8 +69,8 @@ let rec erase_term
     | Free (_, name) -> Free ((), name)
     | Primitive (_, prim) -> Primitive ((), prim)
 
-and erase_scope = fun (Scope (_, pats, tms)) ->
-  Scope ((), List.map pats ~f:Pattern.erase, List.map tms ~f:erase_term)
+and erase_scope = fun (Scope (pats, tms)) ->
+  Scope (List.map pats ~f:Pattern.erase, List.map tms ~f:erase_term)
 
 let erase_typing_rule = fun { tm; ty } ->
   { tm = erase_term tm
@@ -102,7 +102,7 @@ let rec of_de_bruijn : 'a Binding.DeBruijn.term -> 'a term = function
   | Primitive (loc, p) -> Primitive (loc, p)
 
 and scope_of_de_bruijn : 'a Binding.DeBruijn.scope -> 'a scope =
-  fun (Scope (loc, pats, body)) -> Scope (loc, pats, List.map body ~f:of_de_bruijn)
+  fun (Scope (pats, body)) -> Scope (pats, List.map body ~f:of_de_bruijn)
 ;;
 
 exception FreeVar of string
@@ -117,11 +117,11 @@ let rec to_de_bruijn_exn : 'a term -> 'a Binding.DeBruijn.term
     | Primitive (loc, prim) -> Primitive (loc, prim)
 
 and to_scope : 'a scope -> 'a Binding.DeBruijn.scope
-  = fun (Scope (loc, pats, tms)) -> Scope (loc, pats, List.map tms ~f:to_de_bruijn_exn)
+  = fun (Scope (pats, tms)) -> Scope (pats, List.map tms ~f:to_de_bruijn_exn)
 
-module Parse (Comment : Util.Angstrom.Comment_int) = struct
+module Parse (Comment : Lvca_util.Angstrom.Comment_int) = struct
   open Angstrom
-  module Parsers = Util.Angstrom.Mk(Comment)
+  module Parsers = Lvca_util.Angstrom.Mk(Comment)
   module Term = Binding.Nominal.Parse(Comment)
   let identifier, char, parens, string = Parsers.(identifier, char, parens, string)
 
@@ -138,13 +138,13 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
       | Primitive (loc, p) -> Primitive (loc, p)
 
   and cvt_scope : 'a Binding.Nominal.scope -> 'a scope
-    = fun (Scope (loc, pats, tms)) -> Scope (loc, pats, List.map tms ~f:cvt_tm)
+    = fun (Scope (pats, tms)) -> Scope (pats, List.map tms ~f:cvt_tm)
 
-  let term : Position.t term Angstrom.t
+  let term : Range.t term Angstrom.t
     = cvt_tm <$> Term.t
       <?> "term"
 
-  let typing_clause : Position.t typing_clause Angstrom.t
+  let typing_clause : Range.t typing_clause Angstrom.t
     = lift3
       (fun tm dir ty -> match dir with
         | LeftArr -> CheckingRule { tm; ty }
@@ -157,7 +157,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
       term
       <?> "typing clause"
 
-  let typed_term : (string * Position.t term) Angstrom.t
+  let typed_term : (string * Range.t term) Angstrom.t
     = lift3
       (fun ident _ tm -> ident, tm)
       identifier
@@ -165,20 +165,20 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
       term
       <?> "typed term"
 
-  let context : Position.t term Util.String.Map.t Angstrom.t
+  let context : Range.t term Lvca_util.String.Map.t Angstrom.t
     = (string "ctx" *>
       choice
         [ (char ',' >>= fun _ ->
           sep_by1 (char ',') typed_term >>= fun ctx_entries ->
-          (match Util.String.Map.of_alist ctx_entries with
+          (match Lvca_util.String.Map.of_alist ctx_entries with
             | `Ok context -> return context
             | `Duplicate_key str
             -> raise (StaticsParseError (Printf.sprintf "duplicate name in context: %s"
             str))))
-        ; return Util.String.Map.empty
+        ; return Lvca_util.String.Map.empty
         ]) <?> "context"
 
-  let hypothesis : Position.t hypothesis Angstrom.t
+  let hypothesis : Range.t hypothesis Angstrom.t
     = lift3 (fun ctx _ clause -> ctx, clause)
       context
       (string ">>")
@@ -192,19 +192,19 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
       (option None ((fun ident -> Some ident) <$> parens identifier))
       <?> "line"
 
-  let rule : Position.t rule Angstrom.t
+  let rule : Range.t rule Angstrom.t
     = lift3 (fun hypotheses name conclusion -> { hypotheses; name; conclusion })
       (many hypothesis)
       line
       hypothesis
       <?> "typing rule"
 
-  let t : Position.t rule list Angstrom.t
+  let t : Range.t rule list Angstrom.t
     = many rule
 end
 
 let%test_module "Parsing" = (module struct
-  module Parse = Parse(Util.Angstrom.NoComment)
+  module Parse = Parse(Lvca_util.Angstrom.NoComment)
 
   let parse_with parser = Angstrom.parse_string ~consume:All parser
 
@@ -236,7 +236,7 @@ let rec term_to_term : term -> Nominal.term
     (* We can't translate directly to [Operator (name, ...)] because we need to
        use [Operator] for free and bound vars. *)
     -> Operator (name, List.map subtms ~f:scope_to_term)
-    | Bound _ -> Util.invariant_violation (Printf.sprintf
+    | Bound _ -> Lvca_util.invariant_violation (Printf.sprintf
       "term_to_term: Bound variables are not allowed in typing rules: %s"
       (string_of_term tm)
       )

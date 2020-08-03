@@ -210,7 +210,7 @@ let rec sort_of_term_exn : 'a Binding.Nominal.term -> sort
     | Var (_, name) -> SortVar name
     | Operator (_, name, args)
     -> SortAp (name, List.map args ~f:(function
-      | Scope (_, [], [arg]) -> sort_of_term_exn arg
+      | Scope ([], [arg]) -> sort_of_term_exn arg
       | _ -> raise (OfTermFailure ("sort_of_term", erase tm))))
     | _ -> raise (OfTermFailure ("sort_of_term", erase tm))
 

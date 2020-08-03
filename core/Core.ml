@@ -133,7 +133,7 @@ let rec match_pattern
     then
       match
         List.map2 pats vals ~f:(fun pats -> function
-          | Scope (_, [], body_tms) ->
+          | Scope ([], body_tms) ->
             begin
               match List.map2 body_tms pats ~f:match_pattern with
                 | Ok results -> merge_results results
@@ -186,7 +186,7 @@ let rec eval_ctx_exn : 'a Nominal.term Lvca_util.String.Map.t -> 'a term -> 'a N
 
   (* primitives *)
   (* TODO: or should this be an app? *)
-  | Term (Operator (_, "add", [ Scope (_, [], [a]); Scope (_, [], [b]) ])) ->
+  | Term (Operator (_, "add", [ Scope ([], [a]); Scope ([], [b]) ])) ->
     begin
       match eval_ctx_exn' ctx a, eval_ctx_exn' ctx b with
       | Primitive (loc, PrimInteger a'), Primitive (_, PrimInteger b') ->
@@ -194,7 +194,7 @@ let rec eval_ctx_exn : 'a Nominal.term Lvca_util.String.Map.t -> 'a term -> 'a N
         Primitive (loc, PrimInteger Bigint.(a' + b'))
       | _ -> raise @@ EvalExn ("Invalid arguments to add", erase tm)
     end
-  | Term (Operator (_, "sub", [ Scope (_, [], [a]); Scope (_, [], [b]) ])) ->
+  | Term (Operator (_, "sub", [ Scope ([], [a]); Scope ([], [b]) ])) ->
     begin
       match eval_ctx_exn' ctx a, eval_ctx_exn' ctx b with
       | Primitive (loc, PrimInteger a'), Primitive (_, PrimInteger b') ->

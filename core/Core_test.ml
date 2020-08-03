@@ -22,7 +22,7 @@ let%test_module "Core parsing" = (module struct
   open AbstractSyntax
 
   let scope : unit Nominal.term -> unit Nominal.scope
-    = fun body -> Scope ((), [], [body])
+    = fun body -> Scope ([], [body])
 
   let dynamics_str =
     {|\(tm : ty()) -> match tm with {

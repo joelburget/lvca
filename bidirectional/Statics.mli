@@ -13,7 +13,7 @@ type 'a term =
   (** Free vars are used during typechecking. *)
   | Primitive of 'a * Primitive.t
 
-and 'a scope = Scope of 'a * 'a Pattern.t list * 'a term list
+and 'a scope = Scope of 'a Pattern.t list * 'a term list
 
 val location : 'a term -> 'a
 
@@ -75,21 +75,21 @@ val to_de_bruijn_exn : 'a term -> 'a Binding.DeBruijn.term
 module Parse (Comment : Lvca_util.Angstrom.Comment_int) : sig
   exception StaticsParseError of string
 
-  val term : Position.t term Angstrom.t
-  val typing_clause : Position.t typing_clause Angstrom.t
-  val typed_term : (string * Position.t term) Angstrom.t
+  val term : Range.t term Angstrom.t
+  val typing_clause : Range.t typing_clause Angstrom.t
+  val typed_term : (string * Range.t term) Angstrom.t
 
   (** @raise StaticsParseError *)
-  val context : Position.t term Lvca_util.String.Map.t Angstrom.t
+  val context : Range.t term Lvca_util.String.Map.t Angstrom.t
 
   (** @raise StaticsParseError *)
-  val hypothesis : Position.t hypothesis Angstrom.t
+  val hypothesis : Range.t hypothesis Angstrom.t
 
   val line : string option Angstrom.t
 
   (** @raise StaticsParseError *)
-  val rule : Position.t rule Angstrom.t
+  val rule : Range.t rule Angstrom.t
 
   (** @raise StaticsParseError *)
-  val t : Position.t t Angstrom.t
+  val t : Range.t t Angstrom.t
 end
