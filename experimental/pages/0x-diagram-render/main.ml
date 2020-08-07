@@ -60,53 +60,7 @@ end
 
 module Parser = struct
   open Angstrom
-
-  let is_digit = function '0'..'9' -> true | _ -> false
-
-  let integer = take_while1 is_digit
-
-  let is_whitespace = function
-    | '\x20' | '\x0a' | '\x0d' | '\x09' -> true
-    | _ -> false
-
-  let whitespace = take_while is_whitespace
-
-  let sign =
-    peek_char
-    >>= function
-      | Some '-' -> advance 1 >>| fun () -> "-"
-      | Some '+' -> advance 1 >>| fun () -> "+"
-      | Some c  when (is_digit c) -> return "+"
-      | _ -> fail "Sign or digit expected"
-
-  let dot : bool Angstrom.t =
-    peek_char
-    >>= function
-    | Some '.' -> advance 1 >>| fun () -> true
-    | _ -> return false
-
-  let float_lit : float Angstrom.t =
-    sign >>= fun sign ->
-    take_while1 is_digit >>= fun whole ->
-    dot >>= function
-    | false ->
-       return (Float.of_string (sign ^ whole)) <* whitespace
-    | true ->
-       take_while1 is_digit >>= fun part ->
-       return (Float.of_string (sign ^ whole ^ "." ^ part)) <* whitespace
-
-  let parens p = char '(' *> p <* char ')' <* whitespace
-  let string' str = string str <* whitespace
-  let char' c = char c <* whitespace
-
-  (* Parse one or more occurences of e, separated by op. Returns a value obtained by a
-   * left-associative application of all functions returned by op to the values returned
-   * by p. *)
-  let chainl1 : 'a Angstrom.t -> ('a -> 'a -> 'a) Angstrom.t -> 'a Angstrom.t
-    = fun e op ->
-    let rec go acc =
-      (lift2 (fun f x -> f acc x) op e >>= go) <|> return acc in
-    e >>= go
+  open Util.Angstrom
 
   let op0 name = NonBinding.Operator (name, [])
   let op1 name a = NonBinding.Operator (name, [a])
@@ -194,10 +148,7 @@ module Parser = struct
         ] <?> "path"
       in
 
-      sep_by1 semi term >>| fun terms -> List.fold_right terms
-        ~f:(fun (name, args) acc ->
-          NonBinding.Operator (name, args @ [acc]))
-        ~init:(op0 "empty")
+      sep_by1 semi term >>| fun terms -> NonBinding.Operator ("path", terms)
 
   let color : NonBinding.term Angstrom.t
     = choice
@@ -289,6 +240,11 @@ module Render = struct
 
   let rec path_ : NonBinding.term -> (Vg.path, string) Result.t
     = function
+      | Operator ("path", components)
+      -> failwith "TODO"
+
+  let path_component : Vg.path -> NonBinding.term -> (Vg.path, string) Result.t
+    = fun path -> function
       | Operator ("circle", [p2; float; path]) ->
         let%bind p2' = p2_ p2 in
         let%bind float' = float_ float in
