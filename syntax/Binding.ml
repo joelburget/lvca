@@ -126,6 +126,8 @@ and Nominal : sig
     | Var of 'loc * string
     | Primitive of 'loc * Primitive.t
 
+  val location : 'loc term -> 'loc
+
   val pp_term : Format.formatter -> 'loc Nominal.term -> unit
   val pp_term_range : Format.formatter -> Range.t Nominal.term -> unit
   val pp_term_str : 'loc Nominal.term -> string
@@ -163,6 +165,12 @@ end = struct
 
   let any, comma, list, str, string, semi, pf =
     Fmt.(any, comma, list, str, string, semi, pf)
+
+  let location = function
+    | Operator (loc, _, _)
+    | Var (loc, _)
+    | Primitive (loc, _)
+    -> loc
 
   let rec pp_term ppf = function
     | Operator (_, tag, subtms)

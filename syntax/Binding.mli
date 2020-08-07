@@ -42,6 +42,8 @@ and Nominal : sig
 
   and 'loc scope = Scope of 'loc Pattern.t list * 'loc term list
 
+  val location : 'loc term -> 'loc
+
   val pp_term : Format.formatter -> 'loc Nominal.term -> unit
   val pp_term_range : Format.formatter -> Range.t Nominal.term -> unit
   val pp_term_str : 'loc Nominal.term -> string
