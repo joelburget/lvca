@@ -6,6 +6,11 @@ type 'a term =
   | Operator of 'a * string * 'a term list list
   | Primitive of 'a * Primitive.t
 
+let location = function
+  | Operator (loc, _, _)
+  | Primitive (loc, _)
+  -> loc
+
 exception ScopeEncountered
 
 (** @raise ScopeEncountered *)
@@ -53,16 +58,25 @@ let from_nominal (tm : 'a Nominal.term) : 'a term option =
   try Some (from_nominal_exn tm) with ScopeEncountered -> None
 ;;
 
-let rec to_nominal tm : unit Nominal.term =
+let rec to_nominal tm =
   match tm with
-  | Operator (_, tag, tms) ->
+  | Operator (loc, tag, tms) ->
     Nominal.Operator
-      ( ()
+      ( loc
       , tag
       , List.map tms ~f:(fun tms' ->
           Nominal.Scope ([], List.map tms' ~f:to_nominal)))
-  | Primitive (_, p) -> Primitive ((), p)
+  | Primitive (loc, p) -> Primitive (loc, p)
 ;;
 
 let pp ppf tm = tm |> to_nominal |> Nominal.pp_term ppf
+let pp_range ppf tm = tm |> to_nominal |> Nominal.pp_term_range ppf
 let to_string tm = tm |> to_nominal |> Nominal.pp_term_str
+
+let hash tm = tm |> to_nominal |> Nominal.hash
+
+let rec erase = function
+  | Operator (_, tag, subtms)
+  -> Operator ((), tag, subtms |> List.map ~f:(List.map ~f:erase))
+  | Primitive (_, prim)
+  -> Primitive ((), prim)
