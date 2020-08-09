@@ -52,18 +52,18 @@ and Nominal : sig
   val pp_scope_range : Format.formatter -> Range.t Nominal.scope -> unit
   val pp_scope_str : 'loc Nominal.scope -> string
 
-  val jsonify : unit Nominal.term -> Lvca_util.Json.t
+  val jsonify : _ Nominal.term -> Lvca_util.Json.t
   val unjsonify : Lvca_util.Json.t -> unit Nominal.term option
 
   (** Encode (using {{:https://cbor.io} CBOR}) as bytes. *)
-  val serialize : unit Nominal.term -> Bytes.t
+  val serialize : _ Nominal.term -> Bytes.t
 
   (** Decode from {{:https://cbor.io} CBOR}). *)
   val deserialize : Bytes.t -> unit term option
 
   (** The SHA-256 hash of the serialized term. This is useful for content-identifying
    terms. *)
-  val hash : unit Nominal.term -> string
+  val hash : _ Nominal.term -> string
 
   val erase : 'loc term -> unit term
   val erase_scope : 'loc scope -> unit scope

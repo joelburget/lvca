@@ -136,13 +136,13 @@ and Nominal : sig
   val pp_scope_range : Format.formatter -> Range.t Nominal.scope -> unit
   val pp_scope_str : 'loc Nominal.scope -> string
 
-  val serialize : unit Nominal.term -> Bytes.t
+  val serialize : _ Nominal.term -> Bytes.t
   val deserialize : Bytes.t -> unit term option
 
-  val jsonify : unit Nominal.term -> Json.t
+  val jsonify : _ Nominal.term -> Json.t
   val unjsonify : Json.t -> unit Nominal.term option
 
-  val hash : unit Nominal.term -> string
+  val hash : _ Nominal.term -> string
   val erase : 'loc term -> unit term
   val erase_scope : 'loc scope -> unit scope
 
@@ -216,13 +216,13 @@ end = struct
   let pp_scope_str scope = str "%a" pp_scope scope
   let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
 
-  let rec jsonify (tm : unit term) : Json.t =
-    Json.(
-      match tm with
+  let rec jsonify tm =
+    let array, string = Json.(array, string) in
+    match tm with
       | Operator (_, tag, tms) ->
         array [| string "o"; string tag; array_map jsonify_scope tms |]
       | Var (_, name) -> array [| string "v"; string name |]
-      | Primitive (_, p) -> array [| string "p"; Primitive.jsonify p |])
+      | Primitive (_, p) -> array [| string "p"; Primitive.jsonify p |]
 
   and jsonify_scope (Scope (pats, body)) : Json.t =
     let body' = body
@@ -230,7 +230,7 @@ end = struct
       |> List.to_array
       |> Json.array
     in
-    Json.(array [| array_map Pattern.jsonify pats; body' |])
+    Json.array [| array_map Pattern.jsonify pats; body' |]
   ;;
 
   let rec unjsonify =
