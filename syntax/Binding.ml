@@ -152,7 +152,7 @@ and Nominal : sig
   val to_pattern : 'loc Nominal.term -> ('loc Pattern.t, unit scope) Result.t
   val pattern_to_term : 'loc Pattern.t -> 'loc Nominal.term
 
-  module Parse (Comment : Util.Angstrom.Comment_int) : sig
+  module Parse (Comment : ParseUtil.Angstrom.Comment_int) : sig
     val t : Range.t term Angstrom.t
   end
 end = struct
@@ -330,9 +330,9 @@ end = struct
     | Ignored (loc, name) -> Var (loc, "_" ^ name)
   ;;
 
-  module Parse (Comment : Util.Angstrom.Comment_int) = struct
+  module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
     open Angstrom
-    module Parsers = Util.Angstrom.Mk(Comment)
+    module Parsers = ParseUtil.Angstrom.Mk(Comment)
     module Primitive = Primitive.Parse(Comment)
 
     type tm_or_sep =
@@ -400,10 +400,9 @@ end = struct
 
           pos >>= fun p1 ->
           choice
-            [ lift2 (fun prim p2 -> Primitive (Range.mk p1 p2, prim))
-                Primitive.t
-                pos
-            ; identifier >>= fun ident -> choice
+            [ Primitive.t >>|
+              (fun (prim, { finish; _ }) -> Primitive (Range.mk p1 finish, prim))
+            ; identifier >>= fun (ident, _) -> choice
               [ begin
                   parens (many t_or_sep) >>= fun tokens ->
                   pos >>= fun p2 ->
@@ -430,7 +429,7 @@ module Properties = struct
       | None -> false
       | Some t -> Util.Json.(jsonify t = json)
 
-  module Parse = Parse(Util.Angstrom.NoComment)
+  module Parse = Parse(ParseUtil.Angstrom.NoComment)
 
   let string_round_trip1 : unit term -> bool
     = fun t -> match t |> pp_term_str |> Angstrom.parse_string ~consume:All Parse.t with
@@ -552,10 +551,10 @@ let%test_module "Nominal" =
 let%test_module "TermParser" = (module struct
   let (=) = Caml.(=)
   open Nominal
-  module Parse = Nominal.Parse(Util.Angstrom.NoComment)
+  module Parse = Nominal.Parse(ParseUtil.Angstrom.NoComment)
 
   let parse = Angstrom.(parse_string ~consume:All
-    (Util.Angstrom.whitespace *> Parse.t))
+    (ParseUtil.Angstrom.whitespace *> Parse.t))
 
   let print_parse = fun str -> match parse str with
     | Error msg -> Caml.print_string ("failed: " ^ msg)

@@ -214,10 +214,10 @@ let rec sort_of_term_exn : 'a Binding.Nominal.term -> sort
       | _ -> raise (OfTermFailure ("sort_of_term", erase tm))))
     | _ -> raise (OfTermFailure ("sort_of_term", erase tm))
 
-module Parse (Comment : Util.Angstrom.Comment_int) = struct
+module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
   open Angstrom
   open Base
-  module Parsers = Util.Angstrom.Mk(Comment)
+  module Parsers = ParseUtil.Angstrom.Mk(Comment)
 
   exception BuildArityError of string
 
@@ -234,7 +234,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
 
   let sort : sort Angstrom.t
     = fix (fun sort ->
-        identifier >>= fun ident ->
+        identifier >>= fun (ident, _) ->
         choice
           [ parens (sep_by semi sort) >>| (fun sorts -> SortAp (ident, sorts))
           ; return (SortVar ident)
@@ -316,11 +316,13 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
       ) <?> "arity"
 
   let operator_def : operator_def Angstrom.t
-    = lift2 (fun ident arity -> OperatorDef (ident, arity)) identifier arity
+    = lift2 (fun (ident, _) arity -> OperatorDef (ident, arity)) identifier arity
 
   let sort_def : (string * sort_def) Angstrom.t
     = lift4
-        (fun ident bound_names _assign op_defs -> ident, SortDef (bound_names, op_defs))
+        (fun (ident, _) bound_names _assign op_defs ->
+          let bound_names' = List.map bound_names ~f:fst in
+          ident, SortDef (bound_names', op_defs))
         identifier
         (option [] (parens (sep_by semi identifier)))
         assign
@@ -329,14 +331,15 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
         <?> "sort definition"
 
   let import_symbol : (string * string option) Angstrom.t
-    = lift2 (fun ident as_ident -> ident, as_ident)
+    = lift2 (fun (ident, _) as_ident -> ident, as_ident)
       identifier
-      (option None ((fun x -> Some x) <$> string "as" *> identifier))
+      (option None ((fun (x, _) -> Some x) <$> string "as" *> identifier))
       <?> "import symbol"
 
   let import : import Angstrom.t
     = lift4
-        (fun _import imported_symbols _from location -> { imported_symbols; location })
+        (fun _import imported_symbols _from (location, _) ->
+          { imported_symbols; location })
         (string "import")
         (braces (sep_by1 comma import_symbol))
         (string "from")
@@ -356,7 +359,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
 end
 
 let%test_module "AbstractSyntax_Parser" = (module struct
-  module Parse = Parse(Util.Angstrom.NoComment)
+  module Parse = Parse(ParseUtil.Angstrom.NoComment)
 
   let parse_with : 'a Angstrom.t -> string -> 'a
     = fun p str ->
@@ -440,7 +443,7 @@ let%test_module "AbstractSyntax_Parser" = (module struct
     = tm_def)
 
   let%test_unit _ = assert (
-    parse_with Angstrom.(Util.Angstrom.whitespace *> Parse.t)
+    parse_with Angstrom.(ParseUtil.Angstrom.whitespace *> Parse.t)
       {|
 import {integer} from "lvca/builtin"
 

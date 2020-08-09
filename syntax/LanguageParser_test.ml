@@ -3,12 +3,12 @@ open AbstractSyntax
 let%test_module "AbstractSyntax.Parser" =
   (module struct
 
-    module AbstractSyntaxParse = AbstractSyntax.Parse(Lvca_util.Angstrom.CComment)
+    module AbstractSyntaxParse = AbstractSyntax.Parse(ParseUtil.Angstrom.CComment)
 
     let parse str =
       match
         Angstrom.parse_string ~consume:All
-          Angstrom.(Lvca_util.Angstrom.whitespace *> AbstractSyntaxParse.t)
+          Angstrom.(ParseUtil.Angstrom.whitespace *> AbstractSyntaxParse.t)
           str
       with
         | Ok t -> t

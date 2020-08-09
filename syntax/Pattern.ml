@@ -131,8 +131,8 @@ let location = function
   | Ignored (loc, _)
   -> loc
 
-module Parse (Comment : Util.Angstrom.Comment_int) = struct
-  module Parsers = Util.Angstrom.Mk(Comment)
+module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
+  module Parsers = ParseUtil.Angstrom.Mk(Comment)
   module Primitive = Primitive.Parse(Comment)
 
   type pat_or_sep =
@@ -191,11 +191,9 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
 
         pos >>= fun p1 ->
         choice
-          (* TODO: should primitives hold pos? *)
-          [ lift2 (fun prim p2 -> Primitive (Range.mk p1 p2, prim))
-              Primitive.t
-              pos
-          ; identifier >>= fun ident ->
+          [ Primitive.t >>|
+            (fun (prim, { finish; _ }) -> Primitive (Range.mk p1 finish, prim))
+          ; identifier >>= fun (ident, _) ->
             pos >>= fun p2 ->
             if String.get ident 0 = '_'
             then return (Ignored (Range.mk p1 p2, String.subo ~pos:1 ident))
@@ -213,7 +211,7 @@ module Parse (Comment : Util.Angstrom.Comment_int) = struct
 end
 
 let%test_module "Parsing" = (module struct
-  module Parser = Parse(Util.Angstrom.NoComment)
+  module Parser = Parse(ParseUtil.Angstrom.NoComment)
 
   let print_parse tm =
     match Angstrom.parse_string ~consume:All Parser.t tm with
@@ -279,7 +277,7 @@ module Properties = struct
       | None -> true (* malformed input *)
       | Some t -> Util.Json.(jsonify t = json)
 
-  module Parse' = Parse(Util.Angstrom.NoComment)
+  module Parse' = Parse(ParseUtil.Angstrom.NoComment)
 
   let string_round_trip1 : unit t -> bool
     = fun t -> match t |> to_string |> Angstrom.parse_string ~consume:All Parse'.t with

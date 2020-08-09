@@ -62,7 +62,7 @@ val string_of_valence : valence -> string
 val string_of_arity : arity -> string
 val instantiate_sort : sort Lvca_util.String.Map.t -> sort -> sort
 
-module Parse (Comment : Lvca_util.Angstrom.Comment_int) : sig
+module Parse (Comment : ParseUtil.Angstrom.Comment_int) : sig
   val sort : sort Angstrom.t
   val import : import Angstrom.t
   val t : t Angstrom.t
