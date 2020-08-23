@@ -60,16 +60,13 @@ module Controller = struct
           | Lambda -> Term
           | Term -> Lambda
         in
-        let result', input' = match result with
-          | Error _ -> Error "no input", ""
-          | Ok tm ->
-            begin
-              match input_lang with
-                | Lambda -> Ok tm, Fmt.str "%a" term_pretty tm
-                | Term -> Ok tm, Fmt.str "%a" lambda_pretty tm
-            end
+        let input' = match result with
+          | Error _ -> ""
+          | Ok tm -> match input_lang with
+            | Lambda -> Fmt.str "%a" term_pretty tm
+            | Term -> Fmt.str "%a" lambda_pretty tm
         in
-        { input = input'; input_lang = input_lang'; selected = None; result = result' }
+        { input = input'; input_lang = input_lang'; selected = None; result }
     in
     signal_update new_model
 end
@@ -186,7 +183,7 @@ module View = struct
           a_rows (React.S.const 25);
           a_cols (React.S.const 60);
           a_autofocus ();
-          a_style (React.S.const "display: block; border: 2px solid; margin: 20px; padding: 2em;");
+          a_class (React.S.const ["input"]);
         ]
         (React.S.const (txt value)))
     in
@@ -224,15 +221,15 @@ module View = struct
   let mk_output model_s =
     let range_s : Range.t React.signal = model_s
       |> React.S.map (fun Model.{ selected; _ } -> match selected with
-        | Some r -> Caml.Printf.printf "selected: %s\n" (Range.to_string r); r
+        | Some r -> r
         | None -> Range.mk 0 0)
     in
 
     let code_s : [> `Code ] Html5.elt React.signal = model_s
-      |> React.S.map (fun m ->
+      |> React.S.map (fun Model.{ result; input_lang; _ } ->
         let elt, formatter = mk_range_formatter range_s in
         begin
-          match m.Model.result, m.Model.input_lang with
+          match result, input_lang with
             | Ok tm, Lambda -> Fmt.pf formatter "%a" term_pretty tm
             | Ok tm, Term -> Fmt.pf formatter "%a" lambda_pretty tm
             | Error msg, Lambda
@@ -243,11 +240,8 @@ module View = struct
         )
     in
 
-    Caml.Printf.printf "mk_output call\n";
     R.Html5.div
-      ~a:[
-        R.Html5.a_style (React.S.const "margin: 20px; padding: 1em; background-color: hsl(0 0% 95% / 1);");
-      ]
+      ~a:[ R.Html5.a_class (React.S.const ["output"]) ]
       (RList.singleton_s code_s)
 
   let info model_s =
@@ -261,7 +255,7 @@ module View = struct
 
   let view model_s signal_update = Html5.(div
     [ h2 [ txt "Term / concrete" ]
-    ; div ~a:[a_style "display: flex; flex-direction: row; max-width: 1200px;"]
+    ; div ~a:[ a_class ["container"] ]
       [ div ~a:[a_class ["side"]]
         [ h3 [ txt "input" ]
         ; button
