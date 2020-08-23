@@ -1,17 +1,6 @@
 open Core_kernel
 open Js_of_ocaml
 
-let is_enter key =
-  String.equal
-    "Enter"
-    (key##.code |> Js.Optdef.to_option |> Option.value_exn |> Js.to_string)
-let is_meta key = Js.to_bool key##.metaKey
-let is_shift key = Js.to_bool key##.shiftKey
-let is_ctrl key = Js.to_bool key##.ctrlKey
-
-(** Is this an enter keypress plus meta, shift, or ctrl *)
-let is_special_enter key = is_enter key && (is_meta key || is_shift key || is_ctrl key)
-
 let str_of_textarea_evt : Dom_html.keyboardEvent Js.t -> string option
   = fun evt ->
   let open Option.Let_syntax in
