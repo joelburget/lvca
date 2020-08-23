@@ -1,5 +1,6 @@
 open Base
 open Lvca_syntax
+module Format = Caml.Format
 
 type 'a term = 'a Binding.Nominal.term
 
@@ -53,33 +54,31 @@ end
 
 module ParseNoComment = AngstromParse(ParseUtil.Angstrom.NoComment)
 
-let pp : _ term Fmt.t =
-  let open_stag ppf tm =
-    Caml.Format.pp_open_stag ppf (Caml.Format.String_tag (Binding.Nominal.hash tm))
-  in
-  let close_stag ppf = Caml.Format.pp_close_stag ppf in
+let pp : Range.t term Fmt.t =
 
-  let rec pp' prec ppf tm = match tm with
-
-    | Binding.Nominal.Operator (_, "app", [Scope ([], [a]); Scope ([], [b])]) ->
-      open_stag ppf tm;
-      begin
-        if prec > 1
-        then Fmt.pf ppf "(%a %a)" (pp' 1) a (pp' 2) b
-        else Fmt.pf ppf "%a %a" (pp' 1) a (pp' 2) b
-      end;
-      close_stag ppf ()
-    | Var (_, name) -> Fmt.pf ppf "%s" name
-    | Operator (_, "lam", [Scope ([Pattern.Var (_range, name)], [body])]) ->
-      open_stag ppf tm;
-      begin
-        if prec > 0
-        then Fmt.pf ppf {|(\%s -> %a)|} name (pp' 0) body
-        else Fmt.pf ppf {|\%s -> %a|} name (pp' 0) body
-      end;
-      close_stag ppf ()
-    | tm ->
-      Fmt.failwith "Invalid Lambda term %a" Binding.Nominal.pp_term tm
+  let rec pp' prec ppf tm =
+    Format.pp_open_stag ppf (Format.String_tag (Binding.Nominal.hash tm));
+    Format.pp_open_stag ppf (Range.Stag (Binding.Nominal.location tm));
+    begin
+      match tm with
+        | Binding.Nominal.Operator (_, "app", [Scope ([], [a]); Scope ([], [b])]) ->
+          begin
+            if prec > 1
+            then Fmt.pf ppf "(%a %a)" (pp' 1) a (pp' 2) b
+            else Fmt.pf ppf "%a %a" (pp' 1) a (pp' 2) b
+          end;
+        | Var (_, name) -> Fmt.pf ppf "%s" name
+        | Operator (_, "lam", [Scope ([Pattern.Var (_range, name)], [body])]) ->
+          begin
+            if prec > 0
+            then Fmt.pf ppf {|(\%s -> %a)|} name (pp' 0) body
+            else Fmt.pf ppf {|\%s -> %a|} name (pp' 0) body
+          end;
+        | tm ->
+          Fmt.failwith "Invalid Lambda term %a" Binding.Nominal.pp_term tm
+    end;
+    Format.pp_close_stag ppf (); (* range tag *)
+    Format.pp_close_stag ppf (); (* hash tag *)
 
   in pp' 0
 
