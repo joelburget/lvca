@@ -4,7 +4,7 @@ open Lvca_syntax
 open ReactiveData
 
 type term = Range.t Binding.Nominal.term
-type side = Left | Right
+type lang = Lambda | Term
 
 module TermParse = Binding.Nominal.Parse(ParseUtil.Angstrom.NoComment)
 module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse(ParseUtil.Angstrom.NoComment)
@@ -14,79 +14,64 @@ let lambda_pretty = Lvca_languages.LambdaCalculus.pp (* XXX why used twice? *)
 
 module Model = struct
   type t =
-    { left_input : string
-    ; right_input : string (* XXX: do we want to maintain two inputs? easier to just
-    maintain one. *)
+    { input : string
+    ; input_lang : lang
     ; result : (term, string) Result.t
-    ; side : side
     ; selected : Range.t option
     }
 
   let initial_model : t =
-    let left_input = {|\f -> \g -> \x -> f (g x)|} in
-    let result = parse LambdaParse.t left_input in
-    let right_input = match result with
-      | Error _ -> ""
-      | Ok tm -> Fmt.str "%a" term_pretty tm
-    in
-    { left_input; right_input; result; side = Left; selected = None }
+    let input = {|\f -> \g -> \x -> f (g x)|} in
+    let result = parse LambdaParse.t input in
+    { input; result; input_lang = Lambda; selected = None }
 end
 
 type signal = Model.t React.signal
 type update_fun = ?step:React.step -> Model.t -> unit
-type react_pair = signal * update_fun
 
 module Action = struct
   type t =
-    (* | Update of side * string *)
     | Evaluate of string
     | Select of int * int
-    | SwitchSides
+    | SwitchInputLang
 end
 
 module Controller = struct
-  let update (action : Action.t) ((r, f) : react_pair) =
+  let update (action : Action.t) model_s signal_update =
     let open Model in
 
-    let { left_input; right_input; result; side; selected = _ } = React.S.value r in
+    let { input; result; input_lang; selected = _ } = React.S.value model_s in
     let new_model = match action with
-      (*
-      | Action.Update (side, str) ->
-        begin
-          match side with
-            | Left -> { left_input = str; result; right_input }
-            | Right -> { left_input; result; right_input = str }
-        end
-      *)
       | Action.Evaluate str ->
         begin
-          let parser = match side with
-            | Left -> LambdaParse.t
-            | Right -> TermParse.t
+          let parser = match input_lang with
+            | Lambda -> LambdaParse.t
+            | Term -> TermParse.t
           in
           let result = parse parser str in
-          let other_side_str = match result, side with
-            | Ok tm, Left -> Fmt.str "%a" term_pretty tm
-            | Ok tm, Right -> Fmt.str "%a" lambda_pretty tm
-            | Error _, Left -> right_input
-            | Error _, Right -> left_input
-          in
           let selected = None in
-          match side with
-            | Left -> { left_input = str; right_input = other_side_str; result; side; selected }
-            | Right -> { left_input = other_side_str; right_input = str; result; side; selected }
+          { input; result; input_lang; selected }
         end
       | Select (start, finish) ->
         let selected = Some Range.{ start; finish } in
-        { left_input; right_input; result; side; selected }
-      | SwitchSides ->
-        let side', result' = match side with
-          | Left -> Right, parse TermParse.t right_input
-          | Right -> Left, parse LambdaParse.t left_input
+        { input; result; input_lang; selected }
+      | SwitchInputLang ->
+        let input_lang' = match input_lang with
+          | Lambda -> Term
+          | Term -> Lambda
         in
-        { left_input; right_input; side = side'; selected = None; result = result' }
+        let result', input' = match result with
+          | Error _ -> Error "no input", ""
+          | Ok tm ->
+            begin
+              match input_lang with
+                | Lambda -> Ok tm, Fmt.str "%a" term_pretty tm
+                | Term -> Ok tm, Fmt.str "%a" lambda_pretty tm
+            end
+        in
+        { input = input'; input_lang = input_lang'; selected = None; result = result' }
     in
-    f new_model
+    signal_update new_model
 end
 
 let mk_range_formatter
@@ -193,11 +178,9 @@ module View = struct
     let handler evt _ = handler evt in
     Ev.async @@ (fun () -> ev elem handler)
 
-  let mk_input side ((r, _f) as react_pair : react_pair) =
-    let input = r
-      |> React.S.map (fun m -> match side with
-        | Left -> m.Model.left_input
-        | Right -> m.Model.right_input)
+  let mk_input model_s signal_update =
+    let input = model_s
+      |> React.S.map (fun m -> m.Model.input)
       |> fun (value : string React.signal) -> R.Html5.(textarea
         ~a:[
           a_rows (React.S.const 25);
@@ -214,7 +197,8 @@ module View = struct
       Lwt.return (match key with
         (* TODO: require special key *)
         | Some "Enter"
-        -> Controller.update (Evaluate (Js.to_string input_dom##.value)) react_pair
+        -> Controller.update (Evaluate (Js.to_string input_dom##.value))
+          model_s signal_update
         | _ -> ())
       );
 
@@ -229,7 +213,7 @@ module View = struct
       let start = textarea##.selectionStart in
       let finish = textarea##.selectionEnd in
       let str = textarea##.value##substring start finish in
-      Controller.update (Select (start, finish)) react_pair;
+      Controller.update (Select (start, finish)) model_s signal_update;
       (* Used for debugging only -- can be removed: *)
       Caml.Printf.printf "Selected %u-%u '%s'\n" start finish (Js.to_string str);
       Lwt.return ()
@@ -237,79 +221,60 @@ module View = struct
 
     input
 
-  let mk_output _side ((r, _f) : react_pair) =
-    let range_signal : Range.t React.signal = r
+  let mk_output model_s =
+    let range_s : Range.t React.signal = model_s
       |> React.S.map (fun Model.{ selected; _ } -> match selected with
-        | Some r -> r
+        | Some r -> Caml.Printf.printf "selected: %s\n" (Range.to_string r); r
         | None -> Range.mk 0 0)
     in
-    let code : [> `Code ] Html5.elt React.signal = r
-    |> React.S.map (fun m ->
-        let elt, formatter = mk_range_formatter range_signal in
+
+    let code_s : [> `Code ] Html5.elt React.signal = model_s
+      |> React.S.map (fun m ->
+        let elt, formatter = mk_range_formatter range_s in
         begin
-          match m.Model.result, m.Model.side with
-            | Ok tm, Left -> Fmt.pf formatter "%a" term_pretty tm
-            | Ok tm, Right -> Fmt.pf formatter "%a" lambda_pretty tm
-            | Error msg, Left
-            | Error msg, Right -> Fmt.pf formatter "%s" msg
+          match m.Model.result, m.Model.input_lang with
+            | Ok tm, Lambda -> Fmt.pf formatter "%a" term_pretty tm
+            | Ok tm, Term -> Fmt.pf formatter "%a" lambda_pretty tm
+            | Error msg, Lambda
+            | Error msg, Term -> Fmt.pf formatter "%s" msg
         end;
         Fmt.flush formatter ();
         elt
         )
     in
 
+    Caml.Printf.printf "mk_output call\n";
     R.Html5.div
       ~a:[
         R.Html5.a_style (React.S.const "margin: 20px; padding: 1em; background-color: hsl(0 0% 95% / 1);");
       ]
-      (RList.singleton_s code)
+      (RList.singleton_s code_s)
 
-  let info ((r, _f) : react_pair) = r
-    |> React.S.map (fun m -> match m.Model.result with
-      | Ok _tm -> "(parsed)"
-      | Error err -> err
-    )
-    |> fun (msg : string React.signal) -> Html5.div [ R.Html5.txt msg ]
-
-  let mk_side side (react_pair : react_pair) =
-    (* TODO: remove duplication *)
-    let h3_label_s = react_pair
-      |> fst
-      |> React.S.map
-        (fun m -> if Caml.(side = m.Model.side) then "input" else "output")
+  let info model_s =
+    let msg_s = model_s
+      |> React.S.map (function
+        | Ok _tm -> "(parsed)"
+        | Error err -> err
+      )
     in
-    let contents_s = react_pair
-      |> fst
-      |> React.S.map (fun m ->
-        if Caml.(side = m.Model.side)
-        then mk_input side react_pair
-        else mk_output side react_pair)
-    in
-    Html5.(div
-      ~a:[a_style "width: 50%"]
-      [ h3 ~a:[a_style "margin: 20px"] [ R.Html5.txt h3_label_s ]
-      ; react_pair
-        |> fst
-        |> React.S.map (fun m ->
-          if Caml.(side = m.Model.side)
-          then txt ""
-          else button
-            ~a:[a_onclick (fun _evt -> Controller.update SwitchSides react_pair; false)]
-            [ txt "switch to this side" ])
-        |> RList.singleton_s
-        |> R.Html5.div
-      ; R.Html5.div (RList.singleton_s contents_s)
-      ])
+    Html5.div [ R.Html5.txt msg_s ]
 
-  (* let mk_header side *)
-
-  let view (react_pair : react_pair) = Html5.(div
+  let view model_s signal_update = Html5.(div
     [ h2 [ txt "Term / concrete" ]
     ; div ~a:[a_style "display: flex; flex-direction: row; max-width: 1200px;"]
-      [ mk_side Left react_pair
-      ; mk_side Right react_pair
+      [ div ~a:[a_class ["side"]]
+        [ h3 [ txt "input" ]
+        ; button
+          ~a:[a_onclick (fun _evt -> Controller.update SwitchInputLang model_s signal_update; false)]
+          [ txt "switch input languages" ]
+        ; mk_input model_s signal_update
+        ]
+      ; div ~a:[a_class ["side"]]
+        [ h3 [ txt "output" ]
+        ; mk_output model_s
+        ]
       ]
-    ; info react_pair
+    ; info (model_s |> React.S.map (fun m -> m.Model.result))
     ])
 end
 
@@ -320,9 +285,9 @@ let main _ =
       (fun () -> assert false)
   in
   let m = Model.initial_model in
-  let react_pair = React.S.create m in
+  let model_s, signal_update = React.S.create m in
   Dom.appendChild parent
-    (Js_of_ocaml_tyxml.Tyxml_js.To_dom.of_div (View.view react_pair));
+    (Js_of_ocaml_tyxml.Tyxml_js.To_dom.of_div (View.view model_s signal_update));
   Lwt.return ()
 
 let (_ : unit Lwt.t) = Lwt.Infix.(Js_of_ocaml_lwt.Lwt_js_events.onload () >>= main)
