@@ -41,7 +41,14 @@ let rec list_vars_of_pattern = function
   | Ignored _ -> []
 ;;
 
-let rec pp : Format.formatter -> 'a pattern -> unit
+let location = function
+  | Operator (loc, _, _)
+  | Primitive (loc, _)
+  | Var (loc, _)
+  | Ignored (loc, _)
+  -> loc
+
+let rec pp
   = fun ppf ->
   let comma, list, pf, semi = Fmt.(comma, list, pf, semi) in
   function
@@ -56,21 +63,25 @@ let rec pp : Format.formatter -> 'a pattern -> unit
     | Ignored (_, name)
     -> pf ppf "_%s" name
 
-let rec pp_range : Format.formatter -> 'a pattern -> unit
-  = fun ppf ->
+let rec pp_range
+  = fun ppf pat ->
   let comma, list, pf, semi = Fmt.(comma, list, pf, semi) in
-  let open Range in
-  function
-    | Operator ({ start; finish }, name, pats)
-    -> pf ppf "@[<2>%s{%u,%u}(%a)@]"
-      name start finish
-      (list ~sep:semi (list ~sep:comma pp_range)) pats
-    | Primitive ({ start; finish }, prim)
-    -> pf ppf "%a{%u,%u}" Primitive.pp prim start finish
-    | Var ({ start; finish }, name)
-    -> pf ppf "%s{%u,%u}" name start finish
-    | Ignored ({ start; finish }, name)
-    -> pf ppf "_%s{%u,%u}" name start finish
+
+  Format.pp_open_stag ppf (Range.Stag (location pat));
+  begin
+    match pat with
+      | Operator (_, name, pats)
+      -> pf ppf "@[<2>@{<test>%s@}(%a)@]"
+        name
+        (list ~sep:semi (list ~sep:comma pp_range)) pats
+      | Primitive (_, prim)
+      -> pf ppf "%a" Primitive.pp prim
+      | Var (_, name)
+      -> pf ppf "%s" name
+      | Ignored (_, name)
+      -> pf ppf "_%s" name
+  end;
+  Format.pp_close_stag ppf ()
 
 let to_string = fun pat -> Fmt.str "%a" pp pat
 
@@ -123,13 +134,6 @@ let rec erase = function
   | Primitive (_, prim) -> Primitive ((), prim)
   | Var (_, name) -> Var ((), name)
   | Ignored (_, name) -> Ignored ((), name)
-
-let location = function
-  | Operator (loc, _, _)
-  | Primitive (loc, _)
-  | Var (loc, _)
-  | Ignored (loc, _)
-  -> loc
 
 module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
   module Parsers = ParseUtil.Angstrom.Mk(Comment)
@@ -211,7 +215,13 @@ module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
 end
 
 let%test_module "Parsing" = (module struct
+  module Fn = Base.Fn
   module Parser = Parse(ParseUtil.Angstrom.NoComment)
+
+  let () =
+    Format.set_formatter_stag_functions Range.stag_functions;
+    Format.set_tags true;
+    Format.set_mark_tags true
 
   let print_parse tm =
     match Angstrom.parse_string ~consume:All Parser.t tm with
@@ -222,47 +232,51 @@ let%test_module "Parsing" = (module struct
     print_parse {|"str"|};
     [%expect{|
       "str"
-      "str"{0,5}
+      <0-5>"str"</0-5>
     |}]
 
   let%expect_test _ =
     print_parse {|a()|};
     [%expect{|
       a()
-      a{0,3}()
+      <0-3>a()</0-3>
     |}]
   let%expect_test _ =
     print_parse {|a(b)|};
     [%expect{|
       a(b)
-      a{0,4}(b{2,3})
+      <0-4>a(<2-3>b</2-3>)</0-4>
     |}]
   let%expect_test _ =
     print_parse {|a(b,c)|};
+                (*0123456*)
     [%expect{|
       a(b, c)
-      a{0,6}(b{2,3}, c{4,5})
+      <0-6>a(<2-3>b</2-3>, <4-5>c</4-5>)</0-6>
     |}]
   let%expect_test _ =
     print_parse {|a(b,c,)|};
+                (*01234567*)
     [%expect{|
       a(b, c)
-      a{0,7}(b{2,3}, c{4,5})
+      <0-7>a(<2-3>b</2-3>, <4-5>c</4-5>)</0-7>
     |}]
   let%expect_test _ =
     print_parse {|a(b,c;d,e;)|};
+                (*012345678901*)
     [%expect{|
       a(b, c; d, e)
-      a{0,11}(b{2,3}, c{4,5}; d{6,7}, e{8,9})
+      <0-11>a(<2-3>b</2-3>, <4-5>c</4-5>; <6-7>d</6-7>, <8-9>e</8-9>)</0-11>
     |}]
   let%expect_test _ =
     print_parse {|a(b,,c)|};
     [%expect{| failed: : end_of_input |}]
   let%expect_test _ =
     print_parse {|a(b,;c)|};
+                (*01234567*)
     [%expect{|
       a(b, c)
-      a{0,7}(b{2,3}, c{5,6})
+      <0-7>a(<2-3>b</2-3>, <5-6>c</5-6>)</0-7>
     |}]
 end);;
 

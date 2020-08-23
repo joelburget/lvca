@@ -175,8 +175,8 @@ end = struct
   let rec pp_term ppf = function
     | Operator (_, tag, subtms)
     -> pf ppf "@[<2>%s(%a)@]"
-      tag
-      (list ~sep:semi pp_scope) subtms
+       tag
+       (list ~sep:semi pp_scope) subtms
     | Var (_, v)
     -> string ppf v
     | Primitive (_, p)
@@ -191,17 +191,18 @@ end = struct
       pp_body body
   ;;
 
-  let rec pp_term_range ppf =
-    let open Range in
-    function
-    | Operator ({ start; finish }, tag, subtms)
-    -> pf ppf "@[<2>%s{%u,%u}(%a)@]"
-      tag start finish
-      (list ~sep:semi pp_scope_range) subtms
-    | Var ({ start; finish }, v)
-    -> pf ppf "%a{%u,%u}" string v start finish
-    | Primitive ({ start; finish }, p)
-    -> pf ppf "%a{%u,%u}" Primitive.pp p start finish
+  let rec pp_term_range ppf tm =
+    Format.pp_open_stag ppf (Range.Stag (location tm));
+    begin
+      match tm with
+      | Operator (_, tag, subtms)
+      -> pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi pp_scope_range) subtms
+      | Var (_, v)
+      -> pf ppf "%a" string v
+      | Primitive (_, p)
+      -> pf ppf "%a" Primitive.pp p ;
+    end;
+    Format.pp_close_stag ppf ()
 
   and pp_scope_range ppf (Scope (bindings, body)) =
     let pp_body = list ~sep:comma pp_term_range in
@@ -559,9 +560,8 @@ let%test_module "TermParser" = (module struct
   let print_parse = fun str -> match parse str with
     | Error msg -> Caml.print_string ("failed: " ^ msg)
     | Ok tm ->
-      Nominal.pp_term Caml.Format.std_formatter tm;
-      Fmt.pr "\n";
-      Nominal.pp_term_range Caml.Format.std_formatter tm
+      Fmt.pr "%a\n" Nominal.pp_term tm;
+      Fmt.pr "%a" Nominal.pp_term_range tm
   ;;
 
   let%test _ =
@@ -622,39 +622,54 @@ let%test_module "TermParser" = (module struct
 
   let%expect_test _ =
     print_parse {|"str"|};
+                (*012345*)
     [%expect{|
       "str"
-      "str"{0,5}
+      <0-5>"str"</0-5>
     |}]
   let%expect_test _ =
     print_parse {|a()|};
+                (*0123*)
     [%expect{|
       a()
-      a{0,3}()
+      <0-3>a()</0-3>
     |}]
   let%expect_test _ =
     print_parse {|a(b)|};
+                (*01234*)
     [%expect{|
       a(b)
-      a{0,4}(b{2,3})
+      <0-4>a(<2-3>b</2-3>)</0-4>
     |}]
   let%expect_test _ =
     print_parse {|a(b,c)|};
+                (*0123456*)
     [%expect{|
       a(b, c)
-      a{0,6}(b{2,3}, c{4,5})
+      <0-6>a(<2-3>b</2-3>, <4-5>c</4-5>)</0-6>
     |}]
   let%expect_test _ =
     print_parse {|a(b,c;d,e;)|};
+                (*012345678901*)
     [%expect{|
       a(b, c; d, e)
-      a{0,11}(b{2,3}, c{4,5}; d{6,7}, e{8,9})
+      <0-11>a(<2-3>b</2-3>, <4-5>c</4-5>; <6-7>d</6-7>, <8-9>e</8-9>)</0-11>
     |}]
+
   let%expect_test _ =
     print_parse {|a(b.c;d,e;)|};
+                (*012345678901*)
     [%expect{|
       a(b. c; d, e)
-      a{0,11}(b{2,3}. c{4,5}; d{6,7}, e{8,9})
+      <0-11>a(<2-3>b</2-3>. <4-5>c</4-5>; <6-7>d</6-7>, <8-9>e</8-9>)</0-11>
+    |}]
+
+  let%expect_test _ =
+    print_parse {|a(b.c;d,e;f,g)|};
+                (*012345678901234*)
+    [%expect{|
+      a(b. c; d, e; f, g)
+      <0-14>a(<2-3>b</2-3>. <4-5>c</4-5>; <6-7>d</6-7>, <8-9>e</8-9>; <10-11>f</10-11>, <12-13>g</12-13>)</0-14>
     |}]
 
 end);;
