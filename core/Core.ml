@@ -223,9 +223,9 @@ let eval : 'a term -> ('a Nominal.term, eval_error) Result.t =
   fun core -> try Ok (eval_exn core) with EvalExn (msg, tm) -> Error (msg, tm)
 ;;
 
-module Parse (Comment : Lvca_util.Angstrom.Comment_int) = struct
+module Parse (Comment : ParseUtil.Comment_int) = struct
   open Angstrom
-  module Parsers = Lvca_util.Angstrom.Mk(Comment)
+  module Parsers = ParseUtil.Mk(Comment)
   module Term = Binding.Nominal.Parse(Comment)
   module Primitive = Primitive.Parse(Comment)
   module Abstract = AbstractSyntax.Parse(Comment)

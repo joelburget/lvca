@@ -326,24 +326,22 @@ let check_term
     go Util.String.Map.empty
 
 let%test_module "CheckTerm" = (module struct
-  module AbstractSyntaxParse = AbstractSyntax.Parse(ParseUtil.Angstrom.NoComment)
+  module AbstractSyntaxParse = AbstractSyntax.Parse(ParseUtil.NoComment)
 
   let parse_lang lang_str =
     match
-      Angstrom.parse_string ~consume:All
-        Angstrom.(ParseUtil.Angstrom.whitespace *> AbstractSyntaxParse.t)
-        lang_str
+      Angstrom.parse_string ~consume:All AbstractSyntaxParse.whitespace_t lang_str
     with
-      | Ok tm -> tm
+      | Ok (tm, _pos) -> tm
       | Error msg -> failwith msg
 
-  module NominalParse = Binding.Nominal.Parse(ParseUtil.Angstrom.NoComment)
+  module NominalParse = Binding.Nominal.Parse(ParseUtil.NoComment)
 
   let parse_term term_str =
     match
       Angstrom.parse_string ~consume:All NominalParse.t term_str
     with
-      | Ok tm -> tm
+      | Ok (tm, _rng) -> tm
       | Error msg -> failwith msg
 
   let lang_desc =

@@ -3,15 +3,13 @@ open AbstractSyntax
 let%test_module "AbstractSyntax.Parser" =
   (module struct
 
-    module AbstractSyntaxParse = AbstractSyntax.Parse(ParseUtil.Angstrom.CComment)
+    module AbstractSyntaxParse = AbstractSyntax.Parse(ParseUtil.CComment)
 
     let parse str =
       match
-        Angstrom.parse_string ~consume:All
-          Angstrom.(ParseUtil.Angstrom.whitespace *> AbstractSyntaxParse.t)
-          str
+        Angstrom.parse_string ~consume:All AbstractSyntaxParse.whitespace_t str
       with
-        | Ok t -> t
+        | Ok (t, _pos) -> t
         | Error msg -> failwith msg
 
     let tm_sort = SortAp ("tm", [])

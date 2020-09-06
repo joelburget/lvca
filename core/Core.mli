@@ -50,7 +50,7 @@ val eval_exn : 'a term -> 'a Nominal.term
 
 val eval : 'a term -> ('a Nominal.term, eval_error) Base.Result.t
 
-module Parse (Comment : Lvca_util.Angstrom.Comment_int) : sig
+module Parse (Comment : ParseUtil.Comment_int) : sig
   val term : Range.t term Angstrom.t
   val defn : Range.t defn Angstrom.t
 end

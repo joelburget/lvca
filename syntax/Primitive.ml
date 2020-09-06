@@ -24,20 +24,17 @@ let (=) p1 p2 =
   | _ -> false
 ;;
 
-module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
-  module Parsers = ParseUtil.Angstrom.Mk(Comment)
+module Parse (Comment : ParseUtil.Comment_int) = struct
+  module Parsers = ParseUtil.Mk(Comment)
 
-  let t : (t * Range.t) Angstrom.t
-    = let open Angstrom in
-      let char_lit, integer_or_float_lit, string_lit =
-        Parsers.(char_lit, integer_or_float_lit, string_lit)
-      in
+  let t : t Parsers.t
+    = let open Parsers in
       choice
-        [ integer_or_float_lit >>| (fun (i_or_f, range) -> match i_or_f with
-            | First i -> PrimInteger (Bigint.of_string i), range
-            | Second f -> PrimFloat f, range)
-        ; string_lit >>| (fun (s, range) -> (PrimString s, range))
-        ; char_lit >>| (fun (c, range) -> (PrimChar c, range))
+        [ integer_or_float_lit >>| (fun i_or_f -> match i_or_f with
+            | First i -> PrimInteger (Bigint.of_string i)
+            | Second f -> PrimFloat f)
+        ; string_lit >>| (fun s -> PrimString s)
+        ; char_lit >>| (fun c -> PrimChar c)
         ] <?> "primitive"
 end
 
@@ -84,7 +81,7 @@ module Properties = struct
       | None -> true (* malformed input *)
       | Some t -> Lvca_util.Json.(jsonify t = json)
 
-  module Parse' = Parse(ParseUtil.Angstrom.NoComment)
+  module Parse' = Parse(ParseUtil.NoComment)
 
   let string_round_trip1 : t -> bool
     = fun t -> match t |> to_string |> Angstrom.parse_string ~consume:All Parse'.t with

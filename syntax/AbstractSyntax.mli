@@ -62,10 +62,11 @@ val string_of_valence : valence -> string
 val string_of_arity : arity -> string
 val instantiate_sort : sort Lvca_util.String.Map.t -> sort -> sort
 
-module Parse (Comment : ParseUtil.Angstrom.Comment_int) : sig
-  val sort : sort Angstrom.t
-  val import : import Angstrom.t
-  val t : t Angstrom.t
+module Parse (Comment : ParseUtil.Comment_int) : sig
+  val sort : sort ParseUtil.t
+  val import : import ParseUtil.t
+  val t : t ParseUtil.t
+  val whitespace_t : t ParseUtil.t
 end
 
 exception OfTermFailure of string * unit Binding.Nominal.term

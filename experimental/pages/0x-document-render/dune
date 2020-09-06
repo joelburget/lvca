@@ -1,6 +1,0 @@
-(executables
- (names main)
- (modes js)
- (libraries lvca lvca_web js_of_ocaml-lwt)
- (preprocess
-  (pps ppx_jane js_of_ocaml-ppx)))

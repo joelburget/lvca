@@ -18,8 +18,8 @@ val unjsonify : Lvca_util.Json.t -> unit t option
 val erase : 'a pattern -> unit pattern
 val location : 'a pattern -> 'a
 
-module Parse (Comment : ParseUtil.Angstrom.Comment_int) : sig
-  val t : Range.t t Angstrom.t
+module Parse (Comment : ParseUtil.Comment_int) : sig
+  val t : Range.t t ParseUtil.t
 end
 
 module Properties : sig

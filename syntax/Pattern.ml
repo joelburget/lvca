@@ -135,20 +135,19 @@ let rec erase = function
   | Var (_, name) -> Var ((), name)
   | Ignored (_, name) -> Ignored ((), name)
 
-module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
-  module Parsers = ParseUtil.Angstrom.Mk(Comment)
+module Parse (Comment : ParseUtil.Comment_int) = struct
+  module Parsers = ParseUtil.Mk(Comment)
   module Primitive = Primitive.Parse(Comment)
 
   type pat_or_sep =
     | Pat of Range.t pattern
     | Sep of char
 
-  let t : Range.t t Angstrom.t
-    = let open Angstrom in
-      let char, identifier, parens = Parsers.(char, identifier, parens) in
+  let t : Range.t t ParseUtil.t
+    = let open Parsers in
 
       fix (fun pat ->
-        let t_or_sep : pat_or_sep Angstrom.t
+        let t_or_sep : pat_or_sep Parsers.t
           = choice
           [ (fun c -> Sep c) <$> (choice [char ','; char ';'])
           ; (fun pat -> Pat pat) <$> pat
@@ -156,7 +155,7 @@ module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
         in
 
         let accumulate
-          : Range.t -> string -> pat_or_sep list -> Range.t pattern Angstrom.t
+          : Range.t -> string -> pat_or_sep list -> Range.t pattern Parsers.t
           = fun range tag tokens ->
             (* patterns encountered between ','s, before hitting ';' *)
             let list_queue : Range.t pattern Queue.t = Queue.create () in
@@ -176,7 +175,7 @@ module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
             let rec go = function
               | []
               -> list_to_slot ();
-                 return (Operator (range, tag, Queue.to_list slot_queue))
+                 return ~pos:range (Operator (range, tag, Queue.to_list slot_queue))
               | Pat pat :: Sep ',' :: Sep ';' :: rest
               | Pat pat :: Sep ',' :: rest (* Note: allow trailing ',' *)
               -> Queue.enqueue list_queue pat;
@@ -193,30 +192,27 @@ module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
             go tokens
         in
 
-        pos >>= fun p1 ->
         choice
-          [ Primitive.t >>|
-            (fun (prim, { finish; _ }) -> Primitive (Range.mk p1 finish, prim))
-          ; identifier >>= fun (ident, _) ->
-            pos >>= fun p2 ->
+          [ Primitive.t >>||
+            (fun ~pos prim -> Primitive (pos, prim), pos)
+          ; identifier >>== fun ~pos:rng ident ->
             if String.get ident 0 = '_'
-            then return (Ignored (Range.mk p1 p2, String.subo ~pos:1 ident))
+            then return ~pos:rng (Ignored (rng, String.subo ~pos:1 ident))
             else
               choice
               [ begin
                   parens (many t_or_sep) >>= fun tokens ->
-                  pos >>= fun p2 ->
-                  accumulate (Range.mk p1 p2) ident tokens
+                  pos >>= fun finish ->
+                  accumulate Range.{ start = rng.start; finish } ident tokens
                 end
-              ; return (Var (Range.mk p1 p2, ident))
+              ; return ~pos:rng (Var (rng, ident))
               ] <?> "pattern body"
           ]
       ) <?> "pattern"
 end
 
 let%test_module "Parsing" = (module struct
-  module Fn = Base.Fn
-  module Parser = Parse(ParseUtil.Angstrom.NoComment)
+  module Parser = Parse(ParseUtil.NoComment)
 
   let () =
     Format.set_formatter_stag_functions Range.stag_functions;
@@ -226,7 +222,7 @@ let%test_module "Parsing" = (module struct
   let print_parse tm =
     match Angstrom.parse_string ~consume:All Parser.t tm with
     | Error msg -> Caml.print_string ("failed: " ^ msg)
-    | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range pat
+    | Ok (pat, _rng) -> Fmt.pr "%a\n%a" pp pat pp_range pat
 
   let%expect_test _ =
     print_parse {|"str"|};
@@ -291,15 +287,15 @@ module Properties = struct
       | None -> true (* malformed input *)
       | Some t -> Util.Json.(jsonify t = json)
 
-  module Parse' = Parse(ParseUtil.Angstrom.NoComment)
+  module Parse' = Parse(ParseUtil.NoComment)
 
   let string_round_trip1 : unit t -> bool
     = fun t -> match t |> to_string |> Angstrom.parse_string ~consume:All Parse'.t with
-      | Ok prim -> erase prim = t
+      | Ok (prim, _rng) -> erase prim = t
       | Error _ -> false
 
   let string_round_trip2 : string -> bool
     = fun str -> match Angstrom.parse_string ~consume:All Parse'.t str with
-      | Ok prim -> let str' = to_string prim in Base.String.(str' = str)
+      | Ok (prim, _rng) -> let str' = to_string prim in Base.String.(str' = str)
       | Error _ -> true (* malformed input *)
 end

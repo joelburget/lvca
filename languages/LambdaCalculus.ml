@@ -1,62 +1,75 @@
 open Base
 open Lvca_syntax
-module Format = Caml.Format
 
 type 'a term = 'a Binding.Nominal.term
 
-module AngstromParse(Comment : ParseUtil.Angstrom.Comment_int) = struct
-  module Parsers = ParseUtil.Angstrom.Mk(Comment)
-  let chainl1, whitespace = ParseUtil.Angstrom.(chainl1, whitespace)
-  let char, string, integer_lit, parens = Parsers.(char, string, integer_lit, parens)
-  let choice, fix, lift3, lift4, pos, return, (>>=), (>>|), (<|>), ( *> ) =
-    Angstrom.(choice, fix, lift3, lift4, pos, return, (>>=), (>>|), (<|>), ( *> ))
+module AngstromParse(Comment : ParseUtil.Comment_int) = struct
+  module Parsers = ParseUtil.Mk(Comment)
+  open Parsers
 
   let location = Binding.Nominal.location
 
-  let var : Range.t term Angstrom.t
-    = Parsers.identifier >>| (fun (name, range) -> Binding.Nominal.Var (range, name))
+  let t_var : Range.t term Parsers.t
+    = Parsers.identifier >>||
+      (fun ~pos name -> Binding.Nominal.Var (pos, name), pos)
+
+  let p_var : Range.t Pattern.t Parsers.t
+    = Parsers.identifier >>|| (fun ~pos name -> Pattern.Var (pos, name), pos)
 
   (* Precedence
      0: lam (right-associative)
      1: app (left-associative)
    *)
 
-  let t : Range.t term Angstrom.t
+  let t : Range.t term Parsers.t
     = fix (fun t ->
-      let atom = var <|> parens t in
+      let atom = t_var <|> parens t in
 
-      let lam : Range.t term Angstrom.t
+      let lam : Range.t term Parsers.t
         = pos >>= fun start ->
-          lift4 (fun _lam (name, name_range) _arr body -> Binding.Nominal.Operator
-          ( (let Range.{ finish; _ } = location body in Range.{ start; finish })
-          , "lam"
-          , [ Scope ([Pattern.Var (name_range, name)], [body]) ]
-          ))
-          (char '\\')
-          Parsers.identifier
-          (string "->")
-          t
+          lift4
+            (fun _lam var _arr body ->
+              let Range.{ finish; _ } = location body in
+              let range = Range.{ start; finish } in
+              let tm = Binding.Nominal.Operator
+                ( range
+                , "lam"
+                , [ Scope ([var], [body]) ]
+                )
+              in tm)
+            (char '\\')
+            p_var
+            (string "->")
+            t
       in
 
-      let app = return
-        (fun x y -> Binding.Nominal.Operator
-          ( Range.(location x <> location y)
+      let f (x, rng1) (y, rng2) =
+        let range = Range.(rng1 <> rng2) in
+        let tm = Binding.Nominal.Operator
+          ( range
           , "app"
           , [Scope ([], [x]); Scope ([], [y])]
-          ))
+          )
+        in
+        tm, range
       in
 
-      chainl1 (atom <|> lam) app)
+      let atom_or_lam = attach_pos (atom <|> lam) in
+      atom_or_lam >>= fun init ->
+      many atom_or_lam >>| fun atoms ->
+      List.fold atoms ~init ~f |> fst
+    )
 
-  let whitespace_t = whitespace *> t
+  let whitespace_t = junk *> t
 end
 ;;
 
-module ParseNoComment = AngstromParse(ParseUtil.Angstrom.NoComment)
+module ParseNoComment = AngstromParse(ParseUtil.NoComment)
 
 let pp : Range.t term Fmt.t =
 
   let rec pp' prec ppf tm =
+    let module Format = Caml.Format in
     Format.pp_open_stag ppf (Format.String_tag (Binding.Nominal.hash tm));
     Format.pp_open_stag ppf (Range.Stag (Binding.Nominal.location tm));
     begin
@@ -83,10 +96,11 @@ let pp : Range.t term Fmt.t =
   in pp' 0
 
 let%test_module "Lambda Calculus" = (module struct
+  let () = Caml.Format.set_tags false
   let parse str = Angstrom.parse_string ~consume:All ParseNoComment.whitespace_t str
   let pretty_parse str = match parse str with
     | Error str -> Caml.print_string str
-    | Ok tm -> Fmt.pr "%a" pp tm
+    | Ok (tm, _rng) -> Fmt.pr "%a" pp tm
 
   let%expect_test _ = pretty_parse "a"; [%expect{| a |}]
   let%expect_test _ = pretty_parse {|\a -> a|}; [%expect{| \a -> a |}]

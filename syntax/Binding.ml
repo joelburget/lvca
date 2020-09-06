@@ -152,8 +152,8 @@ and Nominal : sig
   val to_pattern : 'loc Nominal.term -> ('loc Pattern.t, unit scope) Result.t
   val pattern_to_term : 'loc Pattern.t -> 'loc Nominal.term
 
-  module Parse (Comment : ParseUtil.Angstrom.Comment_int) : sig
-    val t : Range.t term Angstrom.t
+  module Parse (Comment : ParseUtil.Comment_int) : sig
+    val t : Range.t term ParseUtil.t
   end
 end = struct
   type 'loc scope = Scope of 'loc Pattern.t list * 'loc term list
@@ -331,9 +331,8 @@ end = struct
     | Ignored (loc, name) -> Var (loc, "_" ^ name)
   ;;
 
-  module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
-    open Angstrom
-    module Parsers = ParseUtil.Angstrom.Mk(Comment)
+  module Parse (Comment : ParseUtil.Comment_int) = struct
+    module Parsers = ParseUtil.Mk(Comment)
     module Primitive = Primitive.Parse(Comment)
 
     type tm_or_sep =
@@ -344,20 +343,20 @@ end = struct
       | PossiblyBinding
       | DefinitelyTerm
 
-    let t : Range.t Nominal.term Angstrom.t
-      = let char, identifier, parens = Parsers.(char, identifier, parens) in
+    let t : Range.t Nominal.term ParseUtil.t
+      = let open Parsers in
         fix (fun term ->
 
-          let t_or_sep : tm_or_sep Angstrom.t
+          let t_or_sep : tm_or_sep ParseUtil.t
             = choice
-            [ (fun c -> Sep c) <$> (choice [char '.'; char ','; char ';'])
+            [ (fun c -> Sep c) <$> choice [char '.'; char ','; char ';']
             ; (fun tm -> Tm tm) <$> term
             ]
           in
 
           (* (b11. ... b1n. t11, ... t1n; b21. ... b2n. t21, ... t2n) *)
           let accumulate
-            : Range.t -> string -> tm_or_sep list -> Range.t Nominal.term Angstrom.t
+            : Range.t -> string -> tm_or_sep list -> Range.t Nominal.term ParseUtil.t
             = fun range tag tokens ->
 
               (* terms encountered between '.'s, before hitting ',' / ';' *)
@@ -368,7 +367,8 @@ end = struct
               let scope_queue : Range.t Nominal.scope Queue.t = Queue.create () in
 
               let rec go parse_state = function
-                | [] -> return (Operator (range, tag, Queue.to_list scope_queue))
+                | []
+                -> return ~pos:range (Operator (range, tag, Queue.to_list scope_queue))
                 | Tm tm :: Sep '.' :: rest
                 -> if Caml.(parse_state = DefinitelyTerm)
                    then fail "Unexpected '.' when parsing a list"
@@ -401,9 +401,9 @@ end = struct
 
           pos >>= fun p1 ->
           choice
-            [ Primitive.t >>|
-              (fun (prim, { finish; _ }) -> Primitive (Range.mk p1 finish, prim))
-            ; identifier >>= fun (ident, _) -> choice
+            [ Primitive.t >>||
+              (fun ~pos prim -> Primitive (Range.mk p1 pos.finish, prim), pos)
+            ; identifier >>= fun ident -> choice
               [ begin
                   parens (many t_or_sep) >>= fun tokens ->
                   pos >>= fun p2 ->
@@ -430,16 +430,16 @@ module Properties = struct
       | None -> false
       | Some t -> Util.Json.(jsonify t = json)
 
-  module Parse = Parse(ParseUtil.Angstrom.NoComment)
+  module Parse = Parse(ParseUtil.NoComment)
 
   let string_round_trip1 : unit term -> bool
     = fun t -> match t |> pp_term_str |> Angstrom.parse_string ~consume:All Parse.t with
-      | Ok prim -> Caml.(erase prim = t)
+      | Ok (prim, _rng) -> Caml.(erase prim = t)
       | Error _ -> false
 
   let string_round_trip2 : string -> bool
     = fun str -> match Angstrom.parse_string ~consume:All Parse.t str with
-      | Ok prim -> let str' = pp_term_str prim in Base.String.(str' = str)
+      | Ok (prim, _rng) -> let str' = pp_term_str prim in Base.String.(str' = str)
       | Error _ -> true (* malformed input *)
 end
 
@@ -552,10 +552,12 @@ let%test_module "Nominal" =
 let%test_module "TermParser" = (module struct
   let (=) = Caml.(=)
   open Nominal
-  module Parse = Nominal.Parse(ParseUtil.Angstrom.NoComment)
+  module Parse = Nominal.Parse(ParseUtil.NoComment)
 
-  let parse = Angstrom.(parse_string ~consume:All
-    (ParseUtil.Angstrom.whitespace *> Parse.t))
+  let parse str =
+    let parse_string, ( *> ) = Angstrom.(parse_string, ( *> )) in
+    parse_string ~consume:All (ParseUtil.whitespace *> Parse.t) str
+      |> Result.map ~f:fst
 
   let print_parse = fun str -> match parse str with
     | Error msg -> Caml.print_string ("failed: " ^ msg)

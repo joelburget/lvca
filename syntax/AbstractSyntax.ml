@@ -214,15 +214,12 @@ let rec sort_of_term_exn : 'a Binding.Nominal.term -> sort
       | _ -> raise (OfTermFailure ("sort_of_term", erase tm))))
     | _ -> raise (OfTermFailure ("sort_of_term", erase tm))
 
-module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
-  open Angstrom
+module Parse (Comment : ParseUtil.Comment_int) = struct
   open Base
-  module Parsers = ParseUtil.Angstrom.Mk(Comment)
+  module Parsers = ParseUtil.Mk(Comment)
+  open Parsers
 
   exception BuildArityError of string
-
-  let braces, char, identifier, parens, string, string_lit =
-    Parsers.(braces, char, identifier, parens, string, string_lit)
 
   (* punctuation *)
   let assign = string ":="
@@ -232,12 +229,12 @@ module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
   let semi = char ';'
   let star = char '*'
 
-  let sort : sort Angstrom.t
+  let sort : sort Parsers.t
     = fix (fun sort ->
-        identifier >>= fun (ident, _) ->
+        identifier >>== fun ~pos ident ->
         choice
           [ parens (sep_by semi sort) >>| (fun sorts -> SortAp (ident, sorts))
-          ; return (SortVar ident)
+          ; return ~pos (SortVar ident)
           ])
 
   type sort_sequence_entry =
@@ -300,29 +297,33 @@ module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
 
       go sort_sequence
 
-  let arity : arity Angstrom.t
+  let arity : arity Parsers.t
     = parens (many (choice
         [ semi >>| Fn.const Semi
         ; dot >>| Fn.const Dot
-        ; lift2 (fun sort starred -> Sort (sort, starred))
-          sort
-          (option Unstarred (star >>| Fn.const Starred))
+        ; sort >>== fun ~pos:p1 sort' ->
+          choice
+            [ begin
+                star >>== fun ~pos:p2 _ ->
+                let pos = Range.(p1 <> p2) in
+                return ~pos (Sort (sort', Starred))
+              end
+            ; return ~pos:p1 (Sort (sort', Unstarred))
+            ]
         ])
-        >>= fun sort_sequence ->
+        >>== fun ~pos sort_sequence ->
           try
-            return (build_arity sort_sequence)
+            return ~pos (build_arity sort_sequence)
           with
             BuildArityError msg -> fail msg
       ) <?> "arity"
 
-  let operator_def : operator_def Angstrom.t
-    = lift2 (fun (ident, _) arity -> OperatorDef (ident, arity)) identifier arity
+  let operator_def : operator_def Parsers.t
+    = lift2 (fun ident arity -> OperatorDef (ident, arity)) identifier arity
 
-  let sort_def : (string * sort_def) Angstrom.t
+  let sort_def : (string * sort_def) Parsers.t
     = lift4
-        (fun (ident, _) bound_names _assign op_defs ->
-          let bound_names' = List.map bound_names ~f:fst in
-          ident, SortDef (bound_names', op_defs))
+        (fun ident bound_names _assign op_defs -> ident, SortDef (bound_names, op_defs))
         identifier
         (option [] (parens (sep_by semi identifier)))
         assign
@@ -330,16 +331,15 @@ module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
         (option '|' bar *> sep_by1 bar operator_def)
         <?> "sort definition"
 
-  let import_symbol : (string * string option) Angstrom.t
-    = lift2 (fun (ident, _) as_ident -> ident, as_ident)
-      identifier
-      (option None ((fun (x, _) -> Some x) <$> string "as" *> identifier))
-      <?> "import symbol"
+  let import_symbol : (string * string option) Parsers.t
+    = lift2 (fun ident as_ident -> ident, as_ident)
+        identifier
+        (option None ((fun x -> Some x) <$> string "as" *> identifier))
+        <?> "import symbol"
 
-  let import : import Angstrom.t
+  let import : import Parsers.t
     = lift4
-        (fun _import imported_symbols _from (location, _) ->
-          { imported_symbols; location })
+        (fun _import imported_symbols _from location -> { imported_symbols; location })
         (string "import")
         (braces (sep_by1 comma import_symbol))
         (string "from")
@@ -347,7 +347,7 @@ module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
         <?> "import"
 
 
-  let t : abstract_syntax Angstrom.t
+  let t : abstract_syntax Parsers.t
     = lift2 (fun imports sort_defs ->
         { imports
         (* XXX remove exn *)
@@ -356,17 +356,19 @@ module Parse (Comment : ParseUtil.Angstrom.Comment_int) = struct
       (many import)
       (many1 sort_def)
       <?> "abstract syntax"
+
+  let whitespace_t = junk *> t
 end
 
 let%test_module "AbstractSyntax_Parser" = (module struct
-  module Parse = Parse(ParseUtil.Angstrom.NoComment)
+  module Parse = Parse(ParseUtil.NoComment)
 
-  let parse_with : 'a Angstrom.t -> string -> 'a
+  let parse_with : 'a ParseUtil.t -> string -> 'a
     = fun p str ->
     match
       Angstrom.parse_string ~consume:All p str
     with
-      | Ok t -> t
+      | Ok (t, _pos) -> t
       | Error msg -> failwith msg
 
   let tm = SortAp ("tm", [])
@@ -443,7 +445,7 @@ let%test_module "AbstractSyntax_Parser" = (module struct
     = tm_def)
 
   let%test_unit _ = assert (
-    parse_with Angstrom.(ParseUtil.Angstrom.whitespace *> Parse.t)
+    parse_with Parse.whitespace_t
       {|
 import {integer} from "lvca/builtin"
 

@@ -119,9 +119,9 @@ let rec to_de_bruijn_exn : 'a term -> 'a Binding.DeBruijn.term
 and to_scope : 'a scope -> 'a Binding.DeBruijn.scope
   = fun (Scope (pats, tms)) -> Scope (pats, List.map tms ~f:to_de_bruijn_exn)
 
-module Parse (Comment : Lvca_util.Angstrom.Comment_int) = struct
+module Parse (Comment : ParseUtil.Comment_int) = struct
   open Angstrom
-  module Parsers = Lvca_util.Angstrom.Mk(Comment)
+  module Parsers = ParseUtil.Mk(Comment)
   module Term = Binding.Nominal.Parse(Comment)
   let identifier, char, parens, string = Parsers.(identifier, char, parens, string)
 

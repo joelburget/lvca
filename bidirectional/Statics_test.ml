@@ -1,11 +1,13 @@
+open Lvca_syntax
+
 (* See the Bidirectional module for more tests *)
-module Parse = Statics.Parse(Lvca_util.Angstrom.NoComment)
+module Parse = Statics.Parse(ParseUtil.NoComment)
 
 let print_parse desc =
   let str =
     match
       Angstrom.parse_string ~consume:All
-        Angstrom.(Lvca_util.Angstrom.whitespace *> Parse.t)
+        Angstrom.(ParseUtil.whitespace *> Parse.t)
         desc
     with
       | Error err -> err

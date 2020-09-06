@@ -6,8 +6,8 @@ open ReactiveData
 type term = Range.t Binding.Nominal.term
 type lang = Lambda | Term
 
-module TermParse = Binding.Nominal.Parse(ParseUtil.Angstrom.NoComment)
-module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse(ParseUtil.Angstrom.NoComment)
+module TermParse = Binding.Nominal.Parse(ParseUtil.NoComment)
+module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse(ParseUtil.NoComment)
 let parse = Angstrom.parse_string ~consume:All
 let term_pretty = Binding.Nominal.pp_term_range (* XXX why used twice? *)
 let lambda_pretty = Lvca_languages.LambdaCalculus.pp (* XXX why used twice? *)
@@ -22,8 +22,27 @@ module Model = struct
 
   let initial_model : t =
     let input = {|\f -> \g -> \x -> f (g x)|} in
-    let result = parse LambdaParse.t input in
+    let result = parse LambdaParse.t input
+      |> Result.map ~f:fst
+    in
     { input; result; input_lang = Lambda; selected = None }
+
+  let print { input; input_lang; result; selected } =
+    let input_lang_str = match input_lang with
+      | Lambda -> "Lambda"
+      | Term -> "Term"
+    in
+    Fmt.pr "{ input = %s; input_lang = %s; result = %a; selected = %a }\n"
+      input
+      input_lang_str
+      (fun ppf tm_result -> match tm_result with
+        | Error msg -> Fmt.pf ppf "%s" msg
+        | Ok tm -> Binding.Nominal.pp_term ppf tm)
+      result
+      (fun ppf rng_opt -> match rng_opt with
+        | None -> Fmt.pf ppf "None"
+        | Some rng -> Range.pp ppf rng)
+      selected
 end
 
 type signal = Model.t React.signal
@@ -47,8 +66,9 @@ module Controller = struct
 
     let { input; result; input_lang; selected } = React.S.value model_s in
     let new_model = match action with
-      | Action.Evaluate str ->
-        { input; input_lang; result = parse (parser_of input_lang) str; selected }
+      | Evaluate str ->
+        let result = parse (parser_of input_lang) str |> Result.map ~f:fst in
+        { input; input_lang; result; selected }
       | Unselect -> { input; result; input_lang; selected = None }
       | Select (start, finish) ->
         { input; result; input_lang; selected = Some Range.{ start; finish } }
@@ -62,13 +82,18 @@ module Controller = struct
           | Ok tm ->
             (* TODO: clean up / explain *)
             let result'_str = Fmt.str "%a" formatter tm in
-            result'_str, parse (parser_of input_lang') result'_str
+            Fmt.pr "result'_str: %s\n" result'_str;
+            result'_str, parse (parser_of input_lang') result'_str |> Result.map ~f:fst
         in
         { input = input'; input_lang = input_lang'; selected = None; result = result' }
     in
     signal_update new_model
 end
 
+(** The incoming signal holds the currently selected range. We return both a
+    Dom element (<code>) to be inserted in the Dom and the formatter which is used to
+    write formatted text to this element. Note that the returned Dom element is empty
+    until the formatter is used and flushed. *)
 let mk_range_formatter
   : Range.t React.signal
   -> [> `Code ] Js_of_ocaml_tyxml.Tyxml_js.Html5.elt * Caml.Format.formatter
@@ -126,36 +151,22 @@ let mk_range_formatter
   Caml.Format.pp_set_tags fmt true;
 
   Caml.Format.pp_set_formatter_stag_functions fmt
-    { mark_open_stag = (fun stag ->
-      begin
-        match stag with
-          | Range.Stag rng -> Stack.push stack (rng, Queue.create ())
-          | Caml.Format.String_tag _str -> ()
-          | _ -> ()
-      end;
-      ""
+    (* We open a new span for every range tag we encounter. All children until we
+       encounter the matching close tag will be nested under it (by enqueuing). *)
+    { mark_open_stag = (function
+      | Range.Stag rng -> Stack.push stack (rng, Queue.create ()); ""
+      | _ -> ""
     )
-    ; mark_close_stag = (fun stag ->
+    (* Closing a range; create the span holding all of the enqueued children. *)
+    ; mark_close_stag = (fun _ ->
       begin
       match Stack.pop stack with
-        | None ->
-            begin
-              match stag with
-                | Caml.Format.String_tag _str -> ()
-                | _ -> ()
-            end;
-        | Some (_, q) ->
-          let elem = span (Queue.to_list q) in
-          add_at_current_level elem
+        | None -> ()
+        | Some (_, q) -> q
+          |> Queue.to_list
+          |> span
+          |> add_at_current_level
       end;
-      (* clearer?
-      stack
-        |> Stack.pop_exn
-        |> snd
-        |> Queue.to_list
-        |> span
-        |> add_at_current_level;
-      *)
       ""
     )
     ; print_open_stag = Fn.const ()
@@ -190,12 +201,16 @@ module View = struct
   let mk_input model_s signal_update =
     let input = Html5.(textarea
       ~a:[
-        a_rows 15;
+        a_rows 2;
         a_cols 60;
         a_autofocus ();
         a_class ["input"];
       ])
-      (model_s |> React.S.map (fun m -> m.Model.input) |> R.Html5.txt)
+      (model_s
+        |> React.S.map (fun m ->
+          (* Caml.Printf.printf "Updating input (209): %s\n" m.Model.input; *)
+          m.Model.input)
+        |> R.Html5.txt)
     in
     let input_dom = To_dom.of_textarea input in
 
@@ -221,10 +236,10 @@ module View = struct
 
       let start = textarea##.selectionStart in
       let finish = textarea##.selectionEnd in
-      let str = textarea##.value##substring start finish in
       Controller.update (Select (start, finish)) model_s signal_update;
       (* Used for debugging only -- can be removed: *)
-      Caml.Printf.printf "Selected %u-%u '%s'\n" start finish (Js.to_string str);
+      (* let str = textarea##.value##substring start finish in *)
+      (* Caml.Printf.printf "Selected %u-%u '%s'\n" start finish (Js.to_string str); *)
       Lwt.return ()
       );
 
@@ -232,6 +247,17 @@ module View = struct
       Controller.update Unselect model_s signal_update;
       Lwt.return ()
       );
+
+    (* XXX why doesn't the textarea automatically update? *)
+    let _ : unit React.event = model_s
+      (* Create an event when the input has changed *)
+      |> React.S.map ~eq:(fun m1 m2 -> Caml.(m1.Model.input = m2.Model.input)) Fn.id
+      |> React.S.changes
+      |> React.E.map (fun Model.{ input; _ } ->
+        (* Caml.Printf.printf "Updating input (254): %s\n" input; *)
+        input_dom##.value := Js.string input
+      )
+    in
 
     input
 
@@ -261,33 +287,48 @@ module View = struct
       ~a:[ R.Html5.a_class (React.S.const ["output"]) ]
       (RList.singleton_s formatted_s)
 
-  let info model_s =
-    let msg_s = model_s
-      |> React.S.map (function
-        | Ok _tm -> "(parsed)"
-        | Error err -> err
-      )
-    in
-    Html5.div [ R.Html5.txt msg_s ]
+  let make_descriptions model_s = model_s
+    |> React.S.map (fun Model.{ input_lang; _ } -> match input_lang with
+      | Lambda -> "input (concrete)", "output (abstract)"
+      | Term -> "input (abstract)", "output (concrete)")
 
-  let view model_s signal_update = Html5.(div
-    [ h2 [ txt "Term / concrete" ]
+  let view model_s signal_update =
+    let descriptions_s = make_descriptions model_s in
+    let input_desc, output_desc = React.S.Pair.(fst descriptions_s, snd descriptions_s) in
+    Html5.(div
+    [ h2 [ txt "Concrete / Abstract" ]
     ; div ~a:[ a_class ["container"] ]
-      [ div ~a:[a_class ["side"]]
-        [ h3 [ txt "input" ]
-        ; button
-          ~a:[a_onclick (fun _evt -> Controller.update SwitchInputLang model_s signal_update; false)]
-          [ txt "switch input languages" ]
+      [ div ~a:[ a_class ["side"] ]
+        [ h3 [ R.Html5.txt input_desc ]
         ; mk_input model_s signal_update
         ]
-      ; div ~a:[a_class ["side"]]
-        [ h3 [ txt "output" ]
+      ; div ~a:[ a_class ["switch-languages"] ]
+        [ button
+          ~a:[
+            a_onclick (fun _evt ->
+              Controller.update SwitchInputLang model_s signal_update;
+              false)
+          ]
+          [ txt "switch input languages" ]
+        ]
+      ; div ~a:[ a_class ["side"] ]
+        [ h3 [ R.Html5.txt output_desc ]
         ; mk_output model_s
         ]
       ]
-    ; info (model_s |> React.S.map (fun m -> m.Model.result))
     ])
 end
+
+let insert_demo elem =
+  let model_s, signal_update = React.S.create Model.initial_model in
+  Dom.appendChild elem
+    (Js_of_ocaml_tyxml.Tyxml_js.To_dom.of_div (View.view model_s signal_update));
+  Lwt.return ()
+
+let (_ : unit) = Js.export "TermAndConcrete"
+  (object%js
+     method run = insert_demo
+   end)
 
 let main _ =
   let doc = Dom_html.document in
@@ -295,9 +336,6 @@ let main _ =
     Js.Opt.get (doc##getElementById (Js.string "app"))
       (fun () -> assert false)
   in
-  let model_s, signal_update = React.S.create Model.initial_model in
-  Dom.appendChild parent
-    (Js_of_ocaml_tyxml.Tyxml_js.To_dom.of_div (View.view model_s signal_update));
-  Lwt.return ()
+  insert_demo parent
 
 let (_ : unit Lwt.t) = Lwt.Infix.(Js_of_ocaml_lwt.Lwt_js_events.onload () >>= main)

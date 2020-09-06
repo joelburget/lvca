@@ -88,8 +88,8 @@ and Nominal : sig
    *)
   val pattern_to_term : 'loc Pattern.t -> 'loc Nominal.term
 
-  module Parse (Comment : ParseUtil.Angstrom.Comment_int) : sig
-    val t : Range.t term Angstrom.t
+  module Parse (Comment : ParseUtil.Comment_int) : sig
+    val t : Range.t term ParseUtil.t
   end
 end
 
