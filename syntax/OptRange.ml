@@ -1,7 +1,5 @@
 type t = Range.t option
 
-type Caml.Format.stag += Stag of t
-
 let mk start finish = Some (Range.mk start finish)
 
 let to_string = function
@@ -37,3 +35,11 @@ let intersect a b = match a, b with
 let pp = fun ppf rng_opt -> match rng_opt with
   | Some rng -> Fmt.pf ppf "%a" Range.pp rng
   | None -> Fmt.pf ppf "_"
+
+let open_stag ppf = function
+  | Some rng -> Format.pp_open_stag ppf (Range.Stag rng)
+  | None -> ()
+
+let close_stag ppf = function
+  | Some _rng -> Format.pp_close_stag ppf ()
+  | None -> ()

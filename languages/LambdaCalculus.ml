@@ -70,7 +70,7 @@ let pp : OptRange.t term Fmt.t =
   let rec pp' prec ppf tm =
     let module Format = Caml.Format in
     Format.pp_open_stag ppf (Format.String_tag (Binding.Nominal.hash tm));
-    Format.pp_open_stag ppf (OptRange.Stag (Binding.Nominal.location tm));
+    OptRange.open_stag ppf (Binding.Nominal.location tm );
     begin
       match tm with
         | Binding.Nominal.Operator (_, "app", [Scope ([], [a]); Scope ([], [b])]) ->
@@ -89,7 +89,7 @@ let pp : OptRange.t term Fmt.t =
         | tm ->
           Fmt.failwith "Invalid Lambda term %a" Binding.Nominal.pp_term tm
     end;
-    Format.pp_close_stag ppf (); (* range tag *)
+    OptRange.close_stag ppf (Binding.Nominal.location tm ); (* range tag *)
     Format.pp_close_stag ppf (); (* hash tag *)
 
   in pp' 0

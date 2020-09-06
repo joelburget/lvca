@@ -192,7 +192,7 @@ end = struct
   ;;
 
   let rec pp_term_range ppf tm =
-    Format.pp_open_stag ppf (OptRange.Stag (location tm));
+    OptRange.open_stag ppf (location tm);
     begin
       match tm with
       | Operator (_, tag, subtms)
@@ -202,7 +202,7 @@ end = struct
       | Primitive (_, p)
       -> pf ppf "%a" Primitive.pp p ;
     end;
-    Format.pp_close_stag ppf ()
+    OptRange.close_stag ppf (location tm)
 
   and pp_scope_range ppf (Scope (bindings, body)) =
     let pp_body = list ~sep:comma pp_term_range in

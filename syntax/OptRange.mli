@@ -1,7 +1,5 @@
 type t = Range.t option
 
-type Caml.Format.stag += Stag of t
-
 val mk : int -> int -> t
 val to_string : t -> string
 
@@ -27,3 +25,6 @@ val intersect : t -> t -> t
 
 val pp : t Fmt.t
 (** Pretty-print this range. *)
+
+val open_stag : Format.formatter -> t -> unit
+val close_stag : Format.formatter -> t -> unit

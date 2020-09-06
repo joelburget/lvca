@@ -67,7 +67,7 @@ let rec pp_range
   = fun ppf pat ->
   let comma, list, pf, semi = Fmt.(comma, list, pf, semi) in
 
-  Format.pp_open_stag ppf (OptRange.Stag (location pat));
+  OptRange.open_stag ppf (location pat);
   begin
     match pat with
       | Operator (_, name, pats)
@@ -81,7 +81,7 @@ let rec pp_range
       | Ignored (_, name)
       -> pf ppf "_%s" name
   end;
-  Format.pp_close_stag ppf ()
+  OptRange.close_stag ppf (location pat)
 
 let to_string = fun pat -> Fmt.str "%a" pp pat
 
@@ -220,9 +220,9 @@ let%test_module "Parsing" = (module struct
     Format.set_tags true;
     Format.set_mark_tags true
 
-  let print_parse tm =
-    let pat = ParseUtil.parse_string Parser.t tm |> Base.Result.ok_or_failwith in
-    Fmt.pr "%a\n%a" pp pat pp_range pat
+  let print_parse tm = match ParseUtil.parse_string Parser.t tm with
+    | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range pat
+    | Error msg -> Fmt.pr "failed: %s\n" msg
 
   let%expect_test _ =
     print_parse {|"str"|};
