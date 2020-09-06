@@ -33,6 +33,8 @@ module type Parsers = sig
   val (>>||) : 'a t -> (pos:OptRange.t  -> 'a -> 'b * OptRange.t ) -> 'b t
   val (<$>) : ('a -> 'b) -> 'a t -> 'b t
 
+  val (<*>) : ('a -> 'b) t -> 'a t -> 'b t
+
   val lift : ('a -> 'b) -> 'a t -> 'b t
   val lift2 : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
   val lift3 : ('a -> 'b -> 'c -> 'd) -> 'a t -> 'b t -> 'c t -> 'd t
@@ -313,6 +315,8 @@ module Mk (Comment : Comment_int) : Parsers = struct
   let (>>||) a f = Angstrom.(a >>| (fun (a, pos) -> f ~pos a))
   let (>>|) a f = a >>|| (fun ~pos a -> f a, pos)
   let (<$>) f a = a >>| f
+
+  let (<*>) f a = f >>= fun f' -> a >>| f'
 
   let junk = Angstrom.(many (whitespace1 <|> Comment.comment) >>|
     fun _ -> (), None)
