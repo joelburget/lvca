@@ -1,0 +1,6 @@
+(library
+ (name lvca_core)
+ (inline_tests)
+ (libraries lvca_syntax)
+ (preprocess
+  (pps ppx_jane)))

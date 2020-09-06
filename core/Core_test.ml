@@ -81,14 +81,14 @@ let%test_module "Core parsing" = (module struct
       )
 
   let%test "dynamics as expected" =
-    Caml.(parse_defn dynamics_str |> erase_defn = dynamics)
+    Caml.(parse_defn dynamics_str |> fst |> erase_defn = dynamics)
 end)
 ;;
 
 let%test_module "Core eval" =
   (module struct
     let eval_str = fun str ->
-      let core = parse_term str in
+      let core = parse_term str |> fst in
       let result = match eval core with
         | Error (msg, tm) -> msg ^ ": " ^ to_string tm
         | Ok result -> Nominal.pp_term_str result
@@ -123,7 +123,7 @@ let%test_module "Core pretty" =
           str
       with
       | Error err -> err
-      | Ok core ->
+      | Ok (core, _rng) ->
           let fmt = Format.str_formatter in
           Format.pp_set_geometry fmt ~max_indent:width ~margin:(width + 1);
           pp fmt core;
@@ -181,8 +181,8 @@ let%test_module "Core pretty" =
 let%test_module "Core eval in dynamics" =
   (module struct
     let eval_in = fun dynamics_str str ->
-      let Defn (_imports, defn) = parse_defn dynamics_str in
-      let core = parse_term str in
+      let Defn (_imports, defn), _rng = parse_defn dynamics_str in
+      let core, _rng = parse_term str in
       match eval (CoreApp (defn, core)) with
         | Error (msg, tm) -> msg ^ ": " ^ to_string tm
         | Ok result -> Nominal.pp_term_str result

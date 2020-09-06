@@ -51,8 +51,8 @@ val eval_exn : 'a term -> 'a Nominal.term
 val eval : 'a term -> ('a Nominal.term, eval_error) Base.Result.t
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
-  val term : Range.t term Angstrom.t
-  val defn : Range.t defn Angstrom.t
+  val term : OptRange.t term ParseUtil.t
+  val defn : OptRange.t defn ParseUtil.t
 end
 
 (** Convert a module to a nominal term, for storage. *)

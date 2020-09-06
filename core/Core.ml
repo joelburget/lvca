@@ -224,13 +224,11 @@ let eval : 'a term -> ('a Nominal.term, eval_error) Result.t =
 ;;
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
-  open Angstrom
   module Parsers = ParseUtil.Mk(Comment)
   module Term = Binding.Nominal.Parse(Comment)
   module Primitive = Primitive.Parse(Comment)
   module Abstract = AbstractSyntax.Parse(Comment)
-  let braces, identifier, char, parens, string =
-    Parsers.(braces, identifier, char, parens, string)
+  open Parsers
 
   let reserved = Lvca_util.String.Set.of_list ["let"; "rec"; "in"; "match"; "with"]
 
@@ -239,7 +237,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     then fail "reserved word"
     else return ident
 
-  let make_apps : Range.t term list -> Range.t term
+  let make_apps : 'a term list -> 'a term
     = function
       | [] -> Lvca_util.invariant_violation "make_apps: must be a nonempty list"
       | [x] -> x
@@ -247,12 +245,12 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         ~init:f
         ~f:(fun f_app arg -> CoreApp (f_app, arg))
 
-  let term : Range.t term Angstrom.t
+  let term : OptRange.t term Parsers.t
     = fix (fun term ->
 
       let atomic_term = choice
         [ parens term
-        ; identifier >>| (fun ident -> Term (Var (Range.mk 0 0 (* TODO *), ident)))
+        ; identifier >>|| (fun ~pos ident -> Term (Var (pos, ident)), pos)
         ; braces Term.t >>| (fun tm -> Term tm)
           <?> "quoted term"
         ]
@@ -306,7 +304,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         <?> "application"
       ]) <?> "core term"
 
-  let defn : Range.t defn Angstrom.t
+  let defn : OptRange.t defn Parsers.t
     = lift2 (fun imports tm -> Defn (imports, tm))
       (many Abstract.import)
       term
@@ -314,13 +312,13 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
 end
 
 let%test_module "Parsing" = (module struct
-  module Parse = Parse(Lvca_util.Angstrom.NoComment)
+  module Parse = Parse(ParseUtil.NoComment)
 
   let parse str =
     match
       Angstrom.parse_string ~consume:All Parse.term str
     with
-      | Ok tm -> tm
+      | Ok tm -> tm |> fst |> erase
       | Error msg -> failwith msg
 
   let (=) = Caml.(=)
@@ -332,25 +330,24 @@ let%test_module "Parsing" = (module struct
 
   let operator tag children = Binding.Nominal.Operator ((), tag, children)
 
-  let%test _ = parse "{1}" |> erase = Term one
-  let%test _ = parse "{true()}" |> erase = Term (operator "true" [])
-  let%test _ = parse "not x" |> erase = CoreApp (Term (var "not"), Term (var "x"))
+  let%test _ = parse "{1}" = Term one
+  let%test _ = parse "{true()}" = Term (operator "true" [])
+  let%test _ = parse "not x" = CoreApp (Term (var "not"), Term (var "x"))
 
-  let%test _ = parse {|\(x : bool()) -> x|} |> erase =
+  let%test _ = parse {|\(x : bool()) -> x|} =
     Lambda (SortAp ("bool", []), Scope ("x", Term (var "x")))
 
-  let%test _ = parse {|match x with { _ -> {1} }|} |> erase = Case
+  let%test _ = parse {|match x with { _ -> {1} }|} = Case
     ( Term (var "x")
     , [ CaseScope (ignored "", Term one) ]
     )
 
-  let%test _ = parse {|match x with { | _ -> {1} }|} |> erase = Case
+  let%test _ = parse {|match x with { | _ -> {1} }|} = Case
     ( Term (var "x")
     , [ CaseScope (ignored "", Term one) ]
     )
 
   let%test _ = parse {|match x with { true() -> {false()} | false() -> {true()} }|}
-    |> erase
     = Case
     ( Term (var "x")
     , [ CaseScope (Operator ((), "true", []), Term (operator "false" []))
@@ -359,7 +356,7 @@ let%test_module "Parsing" = (module struct
     )
 
   let%test _ =
-    parse "let x = {true()} in not x" |> erase
+    parse "let x = {true()} in not x"
     =
     Let
       ( NoRec
@@ -367,55 +364,3 @@ let%test_module "Parsing" = (module struct
       , Scope ("x", CoreApp (Term (var "not"), Term (var "x")))
       )
 end);;
-
-(* module_to_term *)
-
-(*
-let rec term_of_core : term -> Nominal.term
-  = function
-  | Term tm -> Operator ("term", [Scope ([], tm)])
-  | Lambda (sort, scope) -> Operator ("lambda",
-    [ Scope ([], sort
-        |> term_of_sort
-        |> NonBinding.to_nominal)
-    ; scope_of_core_scope scope
-    ])
-  | CoreApp (f, arg) -> Operator ("core_app",
-    [ Scope ([], term_of_core f)
-    ; Scope ([], term_of_core arg)
-    ])
-  | Case (tm, _branches) -> Operator ("case",
-    [ Scope ([], term_of_core tm)
-    (* TODO *)
-    (* ; Scope ([], Sequence (List.map branches ~f:scope_of_core_case_scope)) *)
-    ])
-  | Let (is_rec, tm, body) ->
-     let rec_tm = match is_rec with Rec -> "rec" | NoRec -> "norec" in
-     Operator ("let",
-    [ Scope ([], Operator (rec_tm, []))
-    ; Scope ([], term_of_core tm)
-    ; scope_of_core_scope body
-    ])
-
-and scope_of_core_scope : core_scope -> Nominal.scope
-  = fun (Scope (name, body)) -> Scope ([Pattern.Var name], term_of_core body)
-
-  (*
-and scope_of_core_case_scope : core_case_scope -> Nominal.scope
-  = fun (CaseScope (baw_pat, body)) -> failwith "TODO"
-  *)
-
-let module_to_term : defn -> Nominal.term
-  = fun (Defn (imports, defns)) -> Operator ("defn",
-    [ Scope ([], Sequence (imports
-        |> List.map ~f:AbstractSyntax.term_of_import
-        |> List.map ~f:NonBinding.to_nominal
-      ))
-    ; Scope ([], Sequence (List.map defns
-      ~f:(fun { name; ty; defn } -> Nominal.Operator ("defn",
-        [ Scope ([], Primitive (PrimString name))
-        ; Scope ([], ty |> term_of_sort |> NonBinding.to_nominal)
-        ; Scope ([], term_of_core defn)
-        ]))))
-    ])
-    *)
