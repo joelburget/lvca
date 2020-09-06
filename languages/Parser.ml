@@ -187,10 +187,10 @@ let translate : t -> n_term ParseUtil.t
     let rec translate' ctx = function
     | Char c ->
       char c >>| (fun c -> Binding.Nominal.Primitive (todo_pos, PrimChar c))
-        <?> (Printf.sprintf {|char '%s'|} (String.make 1 c))
+        <?> Printf.sprintf {|char '%s'|} (String.make 1 c)
     | String str ->
       string str >>| (fun str -> Binding.Nominal.Primitive (todo_pos, PrimString str))
-        <?> (Printf.sprintf {|string "%s"|} str)
+        <?> Printf.sprintf {|string "%s"|} str
     | Satisfy (name, tm) ->
       let f c =
         let ctx' = Map.set ctx ~key:name ~data:(BoundChar c) in
