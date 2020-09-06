@@ -1,11 +1,15 @@
 open Base
-open Lvca
+open Lvca_syntax
+open Lvca_core
 module Format = Caml.Format
 
+(*
 let abstract_syntax_str = {|
-import { char, string } from "lvca/builtin"
-import { term as n_term } from "lvca/term"
-import { term as c_term } from "lvca/core"
+{ char, string, n_term, c_term }
+
+// import { char, string } from "lvca/builtin"
+// import { term as n_term } from "lvca/term"
+// import { term as c_term } from "lvca/core"
 
 parser :=
   // primitive parsers
@@ -33,15 +37,15 @@ parser :=
   | lift_n(n_term()*. c_term(); parser()*)
 |};;
 
-module ParseAbstract = AbstractSyntax.Parse(Util.Angstrom.CComment)
+module ParseAbstract = AbstractSyntax.Parse(ParseUtil.CComment)
 
 let abstract_syntax : AbstractSyntax.t = abstract_syntax_str
-  |> Angstrom.parse_string ~consume:All
-    Angstrom.(Util.Angstrom.whitespace *> ParseAbstract.t)
+  |> ParseUtil.parse_string ParseAbstract.whitespace_t
   |> Result.ok_or_failwith
+  *)
 
-type c_term = Core.term
-type n_term = Binding.Nominal.term
+type c_term = OptRange.t Core.term
+type n_term = OptRange.t Binding.Nominal.term
 
 type t =
   (* primitive parsers *)
@@ -91,27 +95,22 @@ let rec pp : t Fmt.t (* Format.formatter -> t -> unit *)
       Fmt.(list ~sep:comma pp) ps
     | Identifier name -> pf ppf "%s" name
 
-module Parse(Comment : Util.Angstrom.Comment_int) = struct
-  module Parsers = Util.Angstrom.Mk(Comment)
-
-  let char, char_lit, string_lit, parens, string =
-    Parsers.(char, char_lit, string_lit, parens, string)
-  let choice, fail, fix, lift2, lift3, many1, option, return, ( <* ), ( *> ), (<$>),
-    (<?>), (>>=), (>>|) =
-    Angstrom.(choice, fail, fix, lift2, lift3, many1, option, return, ( <* ), ( *> ),
-      (<$>), (<?>), (>>=), (>>|))
+module Parse(Comment : ParseUtil.Comment_int) = struct
+  type term = t
+  module Parsers = ParseUtil.Mk(Comment)
+  open Parsers
 
   let keywords : string list = [ "satisfy"; "let"; "in"; "fail" ]
 
-  let keyword : string Angstrom.t
+  let keyword : string Parsers.t
     = keywords |> List.map ~f:string |> choice
 
   let operators : string list = [ "?"; "*"; "+"; "|"; "=" ]
 
-  let operator : string Angstrom.t
+  let operator : string Parsers.t
     = operators |> List.map ~f:string |> choice
 
-  let t : c_term Angstrom.t -> t Angstrom.t
+  let t : c_term Parsers.t -> term Parsers.t
     = fun term -> fix (fun parser ->
       let parse_token = choice
         [ (fun c -> Char c) <$> char_lit
@@ -155,67 +154,72 @@ module Parse(Comment : Util.Angstrom.Comment_int) = struct
     ) <?> "parser"
 end;;
 
-let mk_list : n_term list -> n_term
-  = fun lst -> Binding.Nominal.Operator
-    ( "list"
+let mk_list : OptRange.t -> n_term list -> n_term
+  = fun pos lst -> Binding.Nominal.Operator
+    ( pos
+    , "list"
     , [Binding.Nominal.Scope ([], lst)]
     )
 
-let mk_some : n_term -> n_term
-  = fun tm -> Binding.Nominal.Operator ("some", [Scope ([], [tm])])
+let mk_some : OptRange.t -> n_term -> n_term
+  = fun pos tm -> Binding.Nominal.Operator (pos, "some", [Scope ([], [tm])])
 
 type ctx_entry =
   | BoundChar of char
   | BoundParser of t
 
+let todo_pos = None
+
 (* TODO: this is hacky *)
-let thin_ctx : ctx_entry Util.String.Map.t -> n_term Util.String.Map.t
+let thin_ctx : ctx_entry Lvca_util.String.Map.t -> n_term Lvca_util.String.Map.t
   = Map.filter_map ~f:(function
-    | BoundChar c -> Some (Binding.Nominal.Primitive (PrimChar c))
+    | BoundChar c -> Some (Binding.Nominal.Primitive (todo_pos, PrimChar c))
     | BoundParser _ -> None
   )
 
 (* Translate our parser type into an angstrom parser *)
-let translate : t -> n_term Angstrom.t
-  = let open Angstrom in
+let translate : t -> n_term ParseUtil.t
+  = (* let open Angstrom in *)
+    let module Parsers = ParseUtil.Mk(ParseUtil.CComment) in
+    let open Parsers in
     let mk_err () = failwith "TODO: error" in
 
     let rec translate' ctx = function
     | Char c ->
-      char c >>| (fun c -> Binding.Nominal.Primitive (PrimChar c))
+      char c >>| (fun c -> Binding.Nominal.Primitive (todo_pos, PrimChar c))
         <?> (Printf.sprintf {|char '%s'|} (String.make 1 c))
     | String str ->
-      string str >>| (fun str -> Binding.Nominal.Primitive (PrimString str))
+      string str >>| (fun str -> Binding.Nominal.Primitive (todo_pos, PrimString str))
         <?> (Printf.sprintf {|string "%s"|} str)
     | Satisfy (name, tm) ->
       let f c =
         let ctx' = Map.set ctx ~key:name ~data:(BoundChar c) in
         match Core.eval_ctx_exn (thin_ctx ctx') tm with
-          | Operator ("true", []) -> true
+          | Operator (_, "true", []) -> true
           | _ -> false
       in
-      satisfy f >>| fun c -> Binding.Nominal.Primitive (PrimChar c)
+      satisfy f >>| fun c -> Binding.Nominal.Primitive (todo_pos, PrimChar c)
     | Let (name, named, body) ->
       let ctx' = Map.set ctx ~key:name ~data:(BoundParser named) in
       translate' ctx' body <?> name
     | Fail tm -> (match Core.eval_ctx_exn (thin_ctx ctx) tm with
-      | Primitive (PrimString msg) -> fail msg
+      | Primitive (_, PrimString msg) -> fail msg
       | _ -> mk_err ())
     | Option p -> option None ((fun tm -> Some tm) <$> translate' ctx p) >>| (function
-      | Some tm -> mk_some tm
-      | None -> Operator ("none", []))
+      | Some tm -> mk_some todo_pos tm
+      | None -> Operator (todo_pos, "none", []))
     | Count (p, n_tm) ->
       let n = match Core.eval_ctx_exn (thin_ctx ctx) n_tm with
-        | Primitive (PrimInteger i) -> (match Bigint.to_int i with
+        | Primitive (_, PrimInteger i) -> (match Bigint.to_int i with
           | Some n -> n
           | None -> mk_err ()
         )
         | _ -> mk_err ()
       in
-      count n (translate' ctx p) >>| mk_list
-    | Many t -> many (translate' ctx t) >>| mk_list
+      count n (translate' ctx p) >>| mk_list todo_pos
+    | Many t -> many (translate' ctx t) >>| mk_list todo_pos
       <?> "many"
-    | Many1 t -> many1 (translate' ctx t) >>| mk_list
+    | Many1 t -> many1 (translate' ctx t) >>| mk_list todo_pos
       <?> "many1"
     (* TODO: do we even want explicit fix? or should this be done implicitly? *)
     (* | Fix (name, p) -> fix (fun p' -> translate' (Map.set ctx ~key:name ~data:p') p) *)
@@ -233,20 +237,20 @@ let translate : t -> n_term Angstrom.t
       )
     in
 
-    translate' Util.String.Map.empty
+    translate' Lvca_util.String.Map.empty
 
 let parse : t -> string -> (n_term, string) Result.t
-  = fun parser -> Angstrom.parse_string ~consume:All (translate parser)
+  = fun parser -> ParseUtil.parse_string (translate parser)
 
 let%test_module "Parsing" = (module struct
   (* module ParseTerm = Binding.Nominal.Parse(Util.Angstrom.CComment) *)
-  module ParseCore = Core.Parse(Util.Angstrom.CComment)
-  module ParseParser = Parse(Util.Angstrom.CComment)
+  module ParseCore = Core.Parse(ParseUtil.CComment)
+  module ParseParser = Parse(ParseUtil.CComment)
 
   let parse' : string -> string -> unit
     = fun parser_str str ->
       match
-        Angstrom.parse_string ~consume:All (ParseParser.t ParseCore.term) parser_str
+        ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str
       with
         | Error msg -> Caml.print_string ("failed to parse parser desc: " ^ msg)
         | Ok parser -> (match parse parser str with
