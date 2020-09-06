@@ -29,7 +29,7 @@ val to_nominal : 'a term -> 'a Binding.Nominal.term
 (** {1 Printing} *)
 
 val pp : Format.formatter -> 'a term -> unit
-val pp_range : Format.formatter -> Range.t term -> unit
+val pp_range : Format.formatter -> OptRange.t term -> unit
 val to_string : 'a term -> string
 
 val hash : 'a term -> string

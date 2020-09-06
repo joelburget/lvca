@@ -3,7 +3,7 @@ open Js_of_ocaml
 open Lvca_syntax
 open ReactiveData
 
-type term = Range.t Binding.Nominal.term
+type term = OptRange.t Binding.Nominal.term
 type lang = Lambda | Term
 
 module TermParse = Binding.Nominal.Parse(ParseUtil.NoComment)
@@ -17,7 +17,7 @@ module Model = struct
     { input : string
     ; input_lang : lang
     ; result : (term, string) Result.t
-    ; selected : Range.t option
+    ; selected : OptRange.t
     }
 
   let initial_model : t =
@@ -39,9 +39,7 @@ module Model = struct
         | Error msg -> Fmt.pf ppf "%s" msg
         | Ok tm -> Binding.Nominal.pp_term ppf tm)
       result
-      (fun ppf rng_opt -> match rng_opt with
-        | None -> Fmt.pf ppf "None"
-        | Some rng -> Range.pp ppf rng)
+      (fun ppf rng_opt -> OptRange.pp ppf rng_opt)
       selected
 end
 
@@ -95,7 +93,7 @@ end
     write formatted text to this element. Note that the returned Dom element is empty
     until the formatter is used and flushed. *)
 let mk_range_formatter
-  : Range.t React.signal
+  : OptRange.t React.signal
   -> [> `Code ] Js_of_ocaml_tyxml.Tyxml_js.Html5.elt * Caml.Format.formatter
   = fun rng_signal ->
   let open Js_of_ocaml_tyxml.Tyxml_js in
@@ -109,7 +107,7 @@ let mk_range_formatter
      - The range is the extent of this element, used to update the style when text is
        selected
    *)
-  let stack : (Range.t * [> `Span ] Html5.elt Queue.t) Stack.t
+  let stack : (OptRange.t * [> `Span ] Html5.elt Queue.t) Stack.t
     = Stack.create ()
   in
 
@@ -124,14 +122,14 @@ let mk_range_formatter
         let style = rng_signal
           |> React.S.map (fun selected_rng ->
             (* Highlight if this is a subset of the selected range *)
-            if Range.(rng < selected_rng)
+            if OptRange.(rng < selected_rng)
             then "background-color: rgba(33 150 243 / 50%);"
             else ""
           )
         in
         (* The data-range attribute is currently used just for debugging, it can be
            removed. *)
-        [R.Html5.a_style style; Html5.a_user_data "range" (Range.to_string rng)]
+        [R.Html5.a_style style; Html5.a_user_data "range" (OptRange.to_string rng)]
   in
 
   let add_text str = add_at_current_level (span ~a:(get_attrs ()) [txt str]) in
@@ -154,7 +152,7 @@ let mk_range_formatter
     (* We open a new span for every range tag we encounter. All children until we
        encounter the matching close tag will be nested under it (by enqueuing). *)
     { mark_open_stag = (function
-      | Range.Stag rng -> Stack.push stack (rng, Queue.create ()); ""
+      | OptRange.Stag rng -> Stack.push stack (rng, Queue.create ()); ""
       | _ -> ""
     )
     (* Closing a range; create the span holding all of the enqueued children. *)
@@ -262,10 +260,8 @@ module View = struct
     input
 
   let mk_output model_s =
-    let range_s : Range.t React.signal = model_s
-      |> React.S.map (fun Model.{ selected; _ } -> match selected with
-        | Some r -> r
-        | None -> Range.mk 0 0)
+    let range_s : OptRange.t React.signal = model_s
+      |> React.S.map (fun Model.{ selected; _ } -> selected)
     in
 
     let formatted_s : [> `Code ] Html5.elt React.signal = model_s

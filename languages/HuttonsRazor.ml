@@ -73,7 +73,7 @@ module Parse(Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk(Comment)
   open Parsers
 
-  let lit : Range.t NonBinding.term Parsers.t
+  let lit : OptRange.t NonBinding.term Parsers.t
     = integer_lit >>|| fun ~pos str ->
         let tm = NonBinding.(Operator
           ( pos
@@ -83,13 +83,13 @@ module Parse(Comment : ParseUtil.Comment_int) = struct
         in
         tm, pos
 
-  let t : Range.t NonBinding.term Parsers.t
+  let t : OptRange.t NonBinding.term Parsers.t
     = fix (fun t ->
       let atom = attach_pos (lit <|> parens t) in
       let plus = char '+' in
 
       let f (l, rng1) (r, rng2) =
-        let rng = Range.(rng1 <> rng2) in
+        let rng = OptRange.(rng1 <> rng2) in
         NonBinding.Operator (rng , "add" , [[l]; [r]]), rng
       in
 

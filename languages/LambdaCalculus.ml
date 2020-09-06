@@ -9,11 +9,11 @@ module AngstromParse(Comment : ParseUtil.Comment_int) = struct
 
   let location = Binding.Nominal.location
 
-  let t_var : Range.t term Parsers.t
+  let t_var : OptRange.t term Parsers.t
     = Parsers.identifier >>||
       (fun ~pos name -> Binding.Nominal.Var (pos, name), pos)
 
-  let p_var : Range.t Pattern.t Parsers.t
+  let p_var : OptRange.t Pattern.t Parsers.t
     = Parsers.identifier >>|| (fun ~pos name -> Pattern.Var (pos, name), pos)
 
   (* Precedence
@@ -21,16 +21,15 @@ module AngstromParse(Comment : ParseUtil.Comment_int) = struct
      1: app (left-associative)
    *)
 
-  let t : Range.t term Parsers.t
+  let t : OptRange.t term Parsers.t
     = fix (fun t ->
       let atom = t_var <|> parens t in
 
-      let lam : Range.t term Parsers.t
+      let lam : OptRange.t term Parsers.t
         = pos >>= fun start ->
           lift4
             (fun _lam var _arr body ->
-              let Range.{ finish; _ } = location body in
-              let range = Range.{ start; finish } in
+              let range = OptRange.extend_to (location body) start in
               let tm = Binding.Nominal.Operator
                 ( range
                 , "lam"
@@ -44,7 +43,7 @@ module AngstromParse(Comment : ParseUtil.Comment_int) = struct
       in
 
       let f (x, rng1) (y, rng2) =
-        let range = Range.(rng1 <> rng2) in
+        let range = OptRange.(rng1 <> rng2) in
         let tm = Binding.Nominal.Operator
           ( range
           , "app"
@@ -66,12 +65,12 @@ end
 
 module ParseNoComment = AngstromParse(ParseUtil.NoComment)
 
-let pp : Range.t term Fmt.t =
+let pp : OptRange.t term Fmt.t =
 
   let rec pp' prec ppf tm =
     let module Format = Caml.Format in
     Format.pp_open_stag ppf (Format.String_tag (Binding.Nominal.hash tm));
-    Format.pp_open_stag ppf (Range.Stag (Binding.Nominal.location tm));
+    Format.pp_open_stag ppf (OptRange.Stag (Binding.Nominal.location tm));
     begin
       match tm with
         | Binding.Nominal.Operator (_, "app", [Scope ([], [a]); Scope ([], [b])]) ->

@@ -97,7 +97,7 @@ end
 let%test_module "Parsing" = (module struct
   let print_parse str =
     match Angstrom.parse_string ~consume:All Properties.Parse'.t str with
-      | Ok (prim, range) -> Fmt.pr "%a %a" pp prim Range.pp range
+      | Ok (prim, range) -> Fmt.pr "%a %a" pp prim OptRange.pp range
       | Error msg -> Fmt.pr "%s" msg
 
   let%expect_test _ = print_parse "123"; [%expect{| 123 {0,3} |}]

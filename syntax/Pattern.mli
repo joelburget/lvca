@@ -12,14 +12,14 @@ val vars_of_pattern : 'a t -> Lvca_util.String.Set.t
 val list_vars_of_pattern : 'a t -> ('a * string) list
 val to_string : 'a t -> string
 val pp : Format.formatter -> 'a t -> unit
-val pp_range : Format.formatter -> Range.t t -> unit
+val pp_range : Format.formatter -> OptRange.t t -> unit
 val jsonify : 'a t -> Lvca_util.Json.t
 val unjsonify : Lvca_util.Json.t -> unit t option
 val erase : 'a pattern -> unit pattern
 val location : 'a pattern -> 'a
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
-  val t : Range.t t ParseUtil.t
+  val t : OptRange.t t ParseUtil.t
 end
 
 module Properties : sig

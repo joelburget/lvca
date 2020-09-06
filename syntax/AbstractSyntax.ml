@@ -305,7 +305,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
           choice
             [ begin
                 star >>== fun ~pos:p2 _ ->
-                let pos = Range.(p1 <> p2) in
+                let pos = OptRange.(p1 <> p2) in
                 return ~pos (Sort (sort', Starred))
               end
             ; return ~pos:p1 (Sort (sort', Unstarred))

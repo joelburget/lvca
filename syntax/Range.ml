@@ -9,6 +9,9 @@ let mk start finish = { start; finish }
 
 let to_string = fun { start; finish } -> Printf.sprintf "%i-%i" start finish
 
+let extend_to = fun { start; finish } pos ->
+  { start = min start pos; finish = max finish pos }
+
 let (<>) r1 r2 = { start = min r1.start r2.start; finish = max r1.finish r2.finish }
 
 let list_range

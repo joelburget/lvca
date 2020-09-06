@@ -67,7 +67,7 @@ let rec pp_range
   = fun ppf pat ->
   let comma, list, pf, semi = Fmt.(comma, list, pf, semi) in
 
-  Format.pp_open_stag ppf (Range.Stag (location pat));
+  Format.pp_open_stag ppf (OptRange.Stag (location pat));
   begin
     match pat with
       | Operator (_, name, pats)
@@ -140,10 +140,10 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   module Primitive = Primitive.Parse(Comment)
 
   type pat_or_sep =
-    | Pat of Range.t pattern
+    | Pat of OptRange.t pattern
     | Sep of char
 
-  let t : Range.t t ParseUtil.t
+  let t : OptRange.t t ParseUtil.t
     = let open Parsers in
 
       fix (fun pat ->
@@ -155,12 +155,12 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         in
 
         let accumulate
-          : Range.t -> string -> pat_or_sep list -> Range.t pattern Parsers.t
+          : OptRange.t -> string -> pat_or_sep list -> OptRange.t pattern Parsers.t
           = fun range tag tokens ->
             (* patterns encountered between ','s, before hitting ';' *)
-            let list_queue : Range.t pattern Queue.t = Queue.create () in
+            let list_queue : OptRange.t pattern Queue.t = Queue.create () in
             (* patterns encountered between ';'s *)
-            let slot_queue : Range.t pattern list Queue.t = Queue.create () in
+            let slot_queue : OptRange.t pattern list Queue.t = Queue.create () in
 
             (* Move the current list to the slot queue *)
             let list_to_slot () =
@@ -175,7 +175,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
             let rec go = function
               | []
               -> list_to_slot ();
-                 return ~pos:range (Operator (range, tag, Queue.to_list slot_queue))
+                 return ~pos:range
+                   (Operator (range, tag, Queue.to_list slot_queue))
               | Pat pat :: Sep ',' :: Sep ';' :: rest
               | Pat pat :: Sep ',' :: rest (* Note: allow trailing ',' *)
               -> Queue.enqueue list_queue pat;
@@ -203,7 +204,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
               [ begin
                   parens (many t_or_sep) >>= fun tokens ->
                   pos >>= fun finish ->
-                  accumulate Range.{ start = rng.start; finish } ident tokens
+                  accumulate (OptRange.extend_to rng finish) ident tokens
                 end
               ; return ~pos:rng (Var (rng, ident))
               ] <?> "pattern body"

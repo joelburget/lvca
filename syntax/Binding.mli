@@ -45,11 +45,11 @@ and Nominal : sig
   val location : 'loc term -> 'loc
 
   val pp_term : Format.formatter -> 'loc Nominal.term -> unit
-  val pp_term_range : Format.formatter -> Range.t Nominal.term -> unit
+  val pp_term_range : Format.formatter -> OptRange.t Nominal.term -> unit
   val pp_term_str : 'loc Nominal.term -> string
 
   val pp_scope : Format.formatter -> 'loc Nominal.scope -> unit
-  val pp_scope_range : Format.formatter -> Range.t Nominal.scope -> unit
+  val pp_scope_range : Format.formatter -> OptRange.t Nominal.scope -> unit
   val pp_scope_str : 'loc Nominal.scope -> string
 
   val jsonify : _ Nominal.term -> Lvca_util.Json.t
@@ -89,7 +89,7 @@ and Nominal : sig
   val pattern_to_term : 'loc Pattern.t -> 'loc Nominal.term
 
   module Parse (Comment : ParseUtil.Comment_int) : sig
-    val t : Range.t term ParseUtil.t
+    val t : OptRange.t term ParseUtil.t
   end
 end
 

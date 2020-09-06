@@ -129,11 +129,11 @@ and Nominal : sig
   val location : 'loc term -> 'loc
 
   val pp_term : Format.formatter -> 'loc Nominal.term -> unit
-  val pp_term_range : Format.formatter -> Range.t Nominal.term -> unit
+  val pp_term_range : Format.formatter -> OptRange.t Nominal.term -> unit
   val pp_term_str : 'loc Nominal.term -> string
 
   val pp_scope : Format.formatter -> 'loc Nominal.scope -> unit
-  val pp_scope_range : Format.formatter -> Range.t Nominal.scope -> unit
+  val pp_scope_range : Format.formatter -> OptRange.t Nominal.scope -> unit
   val pp_scope_str : 'loc Nominal.scope -> string
 
   val serialize : _ Nominal.term -> Bytes.t
@@ -153,7 +153,7 @@ and Nominal : sig
   val pattern_to_term : 'loc Pattern.t -> 'loc Nominal.term
 
   module Parse (Comment : ParseUtil.Comment_int) : sig
-    val t : Range.t term ParseUtil.t
+    val t : OptRange.t term ParseUtil.t
   end
 end = struct
   type 'loc scope = Scope of 'loc Pattern.t list * 'loc term list
@@ -192,7 +192,7 @@ end = struct
   ;;
 
   let rec pp_term_range ppf tm =
-    Format.pp_open_stag ppf (Range.Stag (location tm));
+    Format.pp_open_stag ppf (OptRange.Stag (location tm));
     begin
       match tm with
       | Operator (_, tag, subtms)
@@ -336,14 +336,14 @@ end = struct
     module Primitive = Primitive.Parse(Comment)
 
     type tm_or_sep =
-      | Tm of Range.t Nominal.term
+      | Tm of OptRange.t Nominal.term
       | Sep of char
 
     type parse_state =
       | PossiblyBinding
       | DefinitelyTerm
 
-    let t : Range.t Nominal.term ParseUtil.t
+    let t : OptRange.t Nominal.term ParseUtil.t
       = let open Parsers in
         fix (fun term ->
 
@@ -356,15 +356,15 @@ end = struct
 
           (* (b11. ... b1n. t11, ... t1n; b21. ... b2n. t21, ... t2n) *)
           let accumulate
-            : Range.t -> string -> tm_or_sep list -> Range.t Nominal.term ParseUtil.t
+            : OptRange.t -> string -> tm_or_sep list -> OptRange.t Nominal.term ParseUtil.t
             = fun range tag tokens ->
 
               (* terms encountered between '.'s, before hitting ',' / ';' *)
-              let binding_queue : Range.t Nominal.term Queue.t = Queue.create () in
+              let binding_queue : OptRange.t Nominal.term Queue.t = Queue.create () in
               (* terms encountered between ','s, before hitting ';' *)
-              let list_queue : Range.t Nominal.term Queue.t = Queue.create () in
+              let list_queue : OptRange.t Nominal.term Queue.t = Queue.create () in
               (* scopes encountered *)
-              let scope_queue : Range.t Nominal.scope Queue.t = Queue.create () in
+              let scope_queue : OptRange.t Nominal.scope Queue.t = Queue.create () in
 
               let rec go parse_state = function
                 | []
@@ -402,14 +402,14 @@ end = struct
           pos >>= fun p1 ->
           choice
             [ Primitive.t >>||
-              (fun ~pos prim -> Primitive (Range.mk p1 pos.finish, prim), pos)
+              (fun ~pos prim -> Primitive (OptRange.extend_to pos p1, prim), pos)
             ; identifier >>= fun ident -> choice
               [ begin
                   parens (many t_or_sep) >>= fun tokens ->
                   pos >>= fun p2 ->
-                  accumulate (Range.mk p1 p2) ident tokens
+                  accumulate (OptRange.mk p1 p2) ident tokens
                 end
-              ; pos >>| fun p2 -> (Var (Range.mk p1 p2, ident))
+              ; pos >>| fun p2 -> (Var (OptRange.mk p1 p2, ident))
               ]
             ]
         ) <?> "term"
