@@ -54,6 +54,8 @@ module type Parsers = sig
   val pos : int t
 
   val attach_pos : 'a t -> ('a * OptRange.t) t
+  val satisfy : (char -> bool) -> char t
+  val count : int -> 'a t -> 'a list t
 end
 
 module type Internal = sig
@@ -397,6 +399,15 @@ module Mk (Comment : Comment_int) : Parsers = struct
   let choice = Angstrom.choice
 
   let attach_pos = fun p -> p >>|| fun ~pos t -> (t, pos), pos
+  let satisfy f = Angstrom.(
+    pos >>= fun p -> satisfy f >>| fun c -> c, OptRange.mk p (p + 1)
+  )
+  let count n p = Angstrom.(
+    pos >>= fun p1 ->
+    count n p >>= fun result ->
+    pos >>= fun p2 ->
+    return (result |> List.map ~f:fst, OptRange.mk p1 p2)
+  )
 end
 
 let%test_module "Parsing" = (module struct
