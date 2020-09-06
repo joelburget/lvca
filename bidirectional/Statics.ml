@@ -120,7 +120,6 @@ and to_scope : 'a scope -> 'a Binding.DeBruijn.scope
   = fun (Scope (pats, tms)) -> Scope (pats, List.map tms ~f:to_de_bruijn_exn)
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
-  open Angstrom
   module Parsers = ParseUtil.Mk(Comment)
   module Term = Binding.Nominal.Parse(Comment)
   let identifier, char, parens, string = Parsers.(identifier, char, parens, string)
@@ -140,11 +139,11 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   and cvt_scope : 'a Binding.Nominal.scope -> 'a scope
     = fun (Scope (pats, tms)) -> Scope (pats, List.map tms ~f:cvt_tm)
 
-  let term : Range.t term Angstrom.t
+  let term : Range.t term Parsers.t
     = cvt_tm <$> Term.t
       <?> "term"
 
-  let typing_clause : Range.t typing_clause Angstrom.t
+  let typing_clause : Range.t typing_clause Parsers.t
     = lift3
       (fun tm dir ty -> match dir with
         | LeftArr -> CheckingRule { tm; ty }
@@ -157,7 +156,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
       term
       <?> "typing clause"
 
-  let typed_term : (string * Range.t term) Angstrom.t
+  let typed_term : (string * Range.t term) Parsers.t
     = lift3
       (fun ident _ tm -> ident, tm)
       identifier
@@ -165,7 +164,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
       term
       <?> "typed term"
 
-  let context : Range.t term Lvca_util.String.Map.t Angstrom.t
+  let context : Range.t term Lvca_util.String.Map.t Parsers.t
     = (string "ctx" *>
       choice
         [ (char ',' >>= fun _ ->
@@ -178,45 +177,47 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         ; return Lvca_util.String.Map.empty
         ]) <?> "context"
 
-  let hypothesis : Range.t hypothesis Angstrom.t
+  let hypothesis : Range.t hypothesis Parsers.t
     = lift3 (fun ctx _ clause -> ctx, clause)
       context
       (string ">>")
       typing_clause
       <?> "hypothesis"
 
-  let line : string option Angstrom.t
+  let line : string option Parsers.t
     = lift3 (fun _ _ ident -> ident)
       (Angstrom.string "--") (* use Angstrom.string to prevent spaces here *)
       (many (char '-'))
       (option None ((fun ident -> Some ident) <$> parens identifier))
       <?> "line"
 
-  let rule : Range.t rule Angstrom.t
+  let rule : Range.t rule Parsers.t
     = lift3 (fun hypotheses name conclusion -> { hypotheses; name; conclusion })
       (many hypothesis)
       line
       hypothesis
       <?> "typing rule"
 
-  let t : Range.t rule list Angstrom.t
+  let t : Range.t rule list Parsers.t
     = many rule
+
+  let whitespace_t = whitespace *> t
 end
 
 let%test_module "Parsing" = (module struct
-  module Parse = Parse(Lvca_util.Angstrom.NoComment)
+  module Parse = Parse(ParseUtil.NoComment)
 
-  let parse_with parser = Angstrom.parse_string ~consume:All parser
+  let parse_with parser = ParseUtil.parse_string parser
 
   let (=) = Caml.(=)
 
-  let%test _ = parse_with Parse.typing_clause "tm => ty"
+  let%test _ = ParseUtil.parse_string Parse.typing_clause "tm => ty"
     |> Result.map ~f:erase_typing_clause
     = Ok (InferenceRule { tm = Free ((), "tm") ; ty = Free ((), "ty") })
 
   let%test _ =
     match
-      parse_with Parse.hypothesis "ctx >> t1 <= bool()"
+      ParseUtil.parse_string Parse.hypothesis "ctx >> t1 <= bool()"
     with
       | Error _ -> false
       | Ok (m, rule)

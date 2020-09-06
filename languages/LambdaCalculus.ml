@@ -96,10 +96,10 @@ let pp : OptRange.t term Fmt.t =
 
 let%test_module "Lambda Calculus" = (module struct
   let () = Caml.Format.set_tags false
-  let parse str = Angstrom.parse_string ~consume:All ParseNoComment.whitespace_t str
-  let pretty_parse str = match parse str with
-    | Error str -> Caml.print_string str
-    | Ok (tm, _rng) -> Fmt.pr "%a" pp tm
+  let parse str = ParseUtil.parse_string ParseNoComment.whitespace_t str
+  let pretty_parse str = parse str
+    |> Result.ok_or_failwith
+    |> Fmt.pr "%a" pp
 
   let%expect_test _ = pretty_parse "a"; [%expect{| a |}]
   let%expect_test _ = pretty_parse {|\a -> a|}; [%expect{| \a -> a |}]

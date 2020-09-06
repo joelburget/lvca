@@ -297,7 +297,7 @@ module Controller = struct
       | Action.UpdateInput str -> { input = str; result }
       | Action.Evaluate str ->
         { input = str
-        ; result = Some (Angstrom.parse_string ~consume:All Parser.image str)
+        ; result = Some (ParseUtil.parse_string Parser.image str)
         }
     in
     f new_model

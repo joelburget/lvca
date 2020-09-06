@@ -4,14 +4,9 @@ open Lvca_syntax
 module Parse = Statics.Parse(ParseUtil.NoComment)
 
 let print_parse desc =
-  let str =
-    match
-      Angstrom.parse_string ~consume:All
-        Angstrom.(ParseUtil.whitespace *> Parse.t)
-        desc
-    with
-      | Error err -> err
-      | Ok _lang -> "parsed"
+  let str = ParseUtil.parse_string Parse.whitespace_t desc
+    |> Base.Result.ok_or_failwith
+    |> Fn.const "parsed"
   in
   print_string str
 

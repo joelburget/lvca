@@ -2,6 +2,9 @@ open Base
 
 type 'a t = ('a * OptRange.t) Angstrom.t
 
+let parse_string_pos p str = Angstrom.parse_string ~consume:All p str
+let parse_string p str = parse_string_pos p str |> Result.map ~f:fst
+
 module type Comment_int = sig
   val comment : unit Angstrom.t
 end
@@ -394,25 +397,24 @@ end
 
 let%test_module "Parsing" = (module struct
   let (=) = Caml.(=)
-  let parse' parser = Angstrom.parse_string ~consume:All parser
   module Parse = Mk(NoComment)
 
   let mk a b = Some (Range.mk a b)
-  let%test _ = parse' Parse.string_lit {|"abc"|} = Ok ("abc", mk 0 5)
-  let%test _ = parse' Parse.string_lit {|"\""|} = Ok ({|"|}, mk 0 4)
-  let%test _ = parse' Parse.string_lit {|"\\"|} = Ok ({|\|}, mk 0 4)
+  let%test _ = parse_string_pos Parse.string_lit {|"abc"|} = Ok ("abc", mk 0 5)
+  let%test _ = parse_string_pos Parse.string_lit {|"\""|} = Ok ({|"|}, mk 0 4)
+  let%test _ = parse_string_pos Parse.string_lit {|"\\"|} = Ok ({|\|}, mk 0 4)
   let%test _ =
-    parse' Parse.integer_or_float_lit "123" = Ok (First "123", mk 0 3)
+    parse_string_pos Parse.integer_or_float_lit "123" = Ok (First "123", mk 0 3)
   let%test _ =
-    parse' Parse.integer_or_float_lit "-123" = Ok (First "-123", mk 0 4)
+    parse_string_pos Parse.integer_or_float_lit "-123" = Ok (First "-123", mk 0 4)
   let%test _ =
-    parse' Parse.integer_or_float_lit "+123" = Ok (First "+123", mk 0 4)
+    parse_string_pos Parse.integer_or_float_lit "+123" = Ok (First "+123", mk 0 4)
   let%test _ =
-    parse' Parse.integer_or_float_lit "1.1" = Ok (Second 1.1, mk 0 3)
+    parse_string_pos Parse.integer_or_float_lit "1.1" = Ok (Second 1.1, mk 0 3)
   let%test _ =
-    parse' Parse.integer_or_float_lit "-1.1" = Ok (Second (-1.1), mk 0 4)
+    parse_string_pos Parse.integer_or_float_lit "-1.1" = Ok (Second (-1.1), mk 0 4)
   let%test _ =
-    parse' Parse.integer_or_float_lit "+1.1" = Ok (Second 1.1, mk 0 4)
+    parse_string_pos Parse.integer_or_float_lit "+1.1" = Ok (Second 1.1, mk 0 4)
   let%test _ =
-    parse' Parse.integer_or_float_lit "1." = Ok (Second 1., mk 0 2)
+    parse_string_pos Parse.integer_or_float_lit "1." = Ok (Second 1., mk 0 2)
 end);;

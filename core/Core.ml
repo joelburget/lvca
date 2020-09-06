@@ -314,12 +314,9 @@ end
 let%test_module "Parsing" = (module struct
   module Parse = Parse(ParseUtil.NoComment)
 
-  let parse str =
-    match
-      Angstrom.parse_string ~consume:All Parse.term str
-    with
-      | Ok tm -> tm |> fst |> erase
-      | Error msg -> failwith msg
+  let parse str = ParseUtil.parse_string Parse.term str
+    |> Result.ok_or_failwith
+    |> erase
 
   let (=) = Caml.(=)
 

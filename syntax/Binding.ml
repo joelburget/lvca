@@ -433,13 +433,13 @@ module Properties = struct
   module Parse = Parse(ParseUtil.NoComment)
 
   let string_round_trip1 : unit term -> bool
-    = fun t -> match t |> pp_term_str |> Angstrom.parse_string ~consume:All Parse.t with
-      | Ok (prim, _rng) -> Caml.(erase prim = t)
+    = fun t -> match t |> pp_term_str |> ParseUtil.parse_string Parse.t with
+      | Ok prim -> Caml.(erase prim = t)
       | Error _ -> false
 
   let string_round_trip2 : string -> bool
-    = fun str -> match Angstrom.parse_string ~consume:All Parse.t str with
-      | Ok (prim, _rng) -> let str' = pp_term_str prim in Base.String.(str' = str)
+    = fun str -> match ParseUtil.parse_string Parse.t str with
+      | Ok prim -> let str' = pp_term_str prim in Base.String.(str' = str)
       | Error _ -> true (* malformed input *)
 end
 

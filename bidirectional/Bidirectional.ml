@@ -312,19 +312,13 @@ let%test_module "bidirectional tests" =
     module Parse = Statics.Parse(Lvca_util.Angstrom.NoComment);;
     module NominalParse = Binding.Nominal.Parse(Lvca_util.Angstrom.NoComment)
 
-    let statics =
-      match
-        Angstrom.parse_string ~consume:All
-          Angstrom.(Lvca_util.Angstrom.whitespace *> Parse.t)
-          statics_str
-      with
-        | Ok statics -> statics
-        | Error err -> failwith err
+    let statics = ParseUtil.parse_string Parse.whitespace_t statics_str
+      |> Result.ok_or_failwith
     ;;
 
     let parse_cvt : string -> term
       = fun str ->
-      let tm = match Angstrom.parse_string ~consume:All NominalParse.t str with
+      let tm = match ParseUtil.parse_string NominalParse.t str with
         | Ok tm -> tm
         | Error err -> failwith err
       in

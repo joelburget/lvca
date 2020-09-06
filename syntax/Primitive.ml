@@ -84,19 +84,19 @@ module Properties = struct
   module Parse' = Parse(ParseUtil.NoComment)
 
   let string_round_trip1 : t -> bool
-    = fun t -> match t |> to_string |> Angstrom.parse_string ~consume:All Parse'.t with
-      | Ok (prim, _) -> prim = t
+    = fun t -> match t |> to_string |> ParseUtil.parse_string Parse'.t with
+      | Ok prim -> prim = t
       | Error _ -> false
 
   let string_round_trip2 : string -> bool
-    = fun str -> match Angstrom.parse_string ~consume:All Parse'.t str with
-      | Ok (prim, _) -> let str' = to_string prim in Base.String.(str' = str)
+    = fun str -> match ParseUtil.parse_string Parse'.t str with
+      | Ok prim -> let str' = to_string prim in Base.String.(str' = str)
       | Error _ -> true (* malformed input *)
 end
 
 let%test_module "Parsing" = (module struct
   let print_parse str =
-    match Angstrom.parse_string ~consume:All Properties.Parse'.t str with
+    match ParseUtil.parse_string_pos Properties.Parse'.t str with
       | Ok (prim, range) -> Fmt.pr "%a %a" pp prim OptRange.pp range
       | Error msg -> Fmt.pr "%s" msg
 

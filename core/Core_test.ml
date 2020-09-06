@@ -4,19 +4,11 @@ open Core
 
 module ParseCore = Core.Parse(ParseUtil.CComment)
 
-let parse_defn str =
-  match
-    Angstrom.parse_string ~consume:All ParseCore.defn str
-  with
-    | Error err -> failwith err
-    | Ok dyn -> dyn
+let parse_defn str = ParseUtil.parse_string ParseCore.defn str
+  |> Base.Result.ok_or_failwith
 
-let parse_term str =
-  match
-    Angstrom.parse_string ~consume:All ParseCore.term str
-  with
-    | Error err -> failwith err
-    | Ok dyn -> dyn
+let parse_term str = ParseUtil.parse_string ParseCore.term str
+  |> Base.Result.ok_or_failwith
 
 let%test_module "Core parsing" = (module struct
   open AbstractSyntax
@@ -81,14 +73,14 @@ let%test_module "Core parsing" = (module struct
       )
 
   let%test "dynamics as expected" =
-    Caml.(parse_defn dynamics_str |> fst |> erase_defn = dynamics)
+    Caml.(parse_defn dynamics_str |> erase_defn = dynamics)
 end)
 ;;
 
 let%test_module "Core eval" =
   (module struct
     let eval_str = fun str ->
-      let core = parse_term str |> fst in
+      let core = parse_term str in
       let result = match eval core with
         | Error (msg, tm) -> msg ^ ": " ^ to_string tm
         | Ok result -> Nominal.pp_term_str result
@@ -117,17 +109,21 @@ let%test_module "Core eval" =
 
 let%test_module "Core pretty" =
   (module struct
-    let pretty width str = print_string (match
-        Angstrom.parse_string ~consume:All
-          Angstrom.(ParseUtil.whitespace *> ParseCore.term)
-          str
-      with
-      | Error err -> err
-      | Ok (core, _rng) ->
-          let fmt = Format.str_formatter in
-          Format.pp_set_geometry fmt ~max_indent:width ~margin:(width + 1);
-          pp fmt core;
-          Format.flush_str_formatter ())
+    let pretty width str =
+      let str =
+        match
+          ParseUtil.parse_string
+            Angstrom.(ParseUtil.whitespace *> ParseCore.term)
+            str
+        with
+          | Error err -> err
+          | Ok core ->
+              let fmt = Format.str_formatter in
+              Format.pp_set_geometry fmt ~max_indent:width ~margin:(width + 1);
+              pp fmt core;
+              Format.flush_str_formatter ()
+      in
+      print_string str
 
     let%expect_test _ =
       pretty 22 "match {true()} with { true() -> {false()} | false() -> {true()} }";
@@ -181,8 +177,8 @@ let%test_module "Core pretty" =
 let%test_module "Core eval in dynamics" =
   (module struct
     let eval_in = fun dynamics_str str ->
-      let Defn (_imports, defn), _rng = parse_defn dynamics_str in
-      let core, _rng = parse_term str in
+      let Defn (_imports, defn) = parse_defn dynamics_str in
+      let core = parse_term str in
       match eval (CoreApp (defn, core)) with
         | Error (msg, tm) -> msg ^ ": " ^ to_string tm
         | Ok result -> Nominal.pp_term_str result

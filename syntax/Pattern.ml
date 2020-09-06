@@ -221,9 +221,8 @@ let%test_module "Parsing" = (module struct
     Format.set_mark_tags true
 
   let print_parse tm =
-    match Angstrom.parse_string ~consume:All Parser.t tm with
-    | Error msg -> Caml.print_string ("failed: " ^ msg)
-    | Ok (pat, _rng) -> Fmt.pr "%a\n%a" pp pat pp_range pat
+    let pat = ParseUtil.parse_string Parser.t tm |> Base.Result.ok_or_failwith in
+    Fmt.pr "%a\n%a" pp pat pp_range pat
 
   let%expect_test _ =
     print_parse {|"str"|};
@@ -291,12 +290,12 @@ module Properties = struct
   module Parse' = Parse(ParseUtil.NoComment)
 
   let string_round_trip1 : unit t -> bool
-    = fun t -> match t |> to_string |> Angstrom.parse_string ~consume:All Parse'.t with
-      | Ok (prim, _rng) -> erase prim = t
+    = fun t -> match t |> to_string |> ParseUtil.parse_string Parse'.t with
+      | Ok prim -> erase prim = t
       | Error _ -> false
 
   let string_round_trip2 : string -> bool
-    = fun str -> match Angstrom.parse_string ~consume:All Parse'.t str with
-      | Ok (prim, _rng) -> let str' = to_string prim in Base.String.(str' = str)
+    = fun str -> match ParseUtil.parse_string Parse'.t str with
+      | Ok prim -> let str' = to_string prim in Base.String.(str' = str)
       | Error _ -> true (* malformed input *)
 end

@@ -5,12 +5,8 @@ let%test_module "AbstractSyntax.Parser" =
 
     module AbstractSyntaxParse = AbstractSyntax.Parse(ParseUtil.CComment)
 
-    let parse str =
-      match
-        Angstrom.parse_string ~consume:All AbstractSyntaxParse.whitespace_t str
-      with
-        | Ok (t, _pos) -> t
-        | Error msg -> failwith msg
+    let parse str = ParseUtil.parse_string AbstractSyntaxParse.whitespace_t str
+      |> Base.Result.ok_or_failwith
 
     let tm_sort = SortAp ("tm", [])
     let tm_valence = Valence ([], (tm_sort, Unstarred))

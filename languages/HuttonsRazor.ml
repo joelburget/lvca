@@ -15,7 +15,6 @@ module Description = struct
   type := int() // there's only one type in the language
     |}
     |> Result.ok_or_failwith
-    |> fst
   ;;
 
   let parser_str =
@@ -61,8 +60,7 @@ module Description = struct
   |}
 
   let dynamics : Core.term
-    = Angstrom.parse_string ~consume:All
-      Angstrom.(ParseUtil.whitespace *> ParseDynamics.term) dynamics_str
+    = ParseUtil.parse_string ParseDynamics.whitespace_term dynamics_str
     |> Result.ok_or_failwith
   ;;
   *)
@@ -144,15 +142,15 @@ let rec eval_tm : _ NonBinding.term -> (Bigint.t, string) Result.t
 let eval_str : string -> (Bigint.t, string) Result.t
   = let module Parse = Parse(ParseUtil.NoComment) in
     fun str ->
-    match Angstrom.parse_string ~consume:All Parse.whitespace_t str with
+    match ParseUtil.parse_string Parse.whitespace_t str with
       | Error str -> Error str
-      | Ok (tm, _rng) -> eval_tm tm
+      | Ok tm -> eval_tm tm
 
       (*
 let eval_2 : string -> (Bigint.t, string) Result.t
   = let module Parse = AngstromParse(ParseUtil.NoComment) in
     fun str ->
-    match Angstrom.parse_string ~consume:All Parse.whitespace_t str with
+    match ParseUtil.parse_string Parse.whitespace_t str with
       | Error str -> Error str
       | Ok tm ->
         begin
@@ -185,7 +183,7 @@ let ident_stag_funs = Caml.Format.
 
 let%test_module "Hutton's Razor" = (module struct
   module Parse = Parse(ParseUtil.NoComment)
-  let parse str = Angstrom.parse_string ~consume:All Parse.whitespace_t str
+  let parse str = ParseUtil.parse_string Parse.whitespace_t str
 
   let () =
     let open Caml.Format in
@@ -196,7 +194,7 @@ let%test_module "Hutton's Razor" = (module struct
 
   let print_representations str = match parse str with
     | Error str -> Caml.print_string str
-    | Ok (tm, _rng) ->
+    | Ok tm ->
       Fmt.pr "%a\n" NonBinding.pp tm;
       Fmt.pr "%a\n" NonBinding.pp_range tm;
       Fmt.pr "%a" pp tm

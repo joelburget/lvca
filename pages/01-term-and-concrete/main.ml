@@ -8,7 +8,6 @@ type lang = Lambda | Term
 
 module TermParse = Binding.Nominal.Parse(ParseUtil.NoComment)
 module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse(ParseUtil.NoComment)
-let parse = Angstrom.parse_string ~consume:All
 let term_pretty = Binding.Nominal.pp_term_range (* XXX why used twice? *)
 let lambda_pretty = Lvca_languages.LambdaCalculus.pp (* XXX why used twice? *)
 
@@ -22,9 +21,7 @@ module Model = struct
 
   let initial_model : t =
     let input = {|\f -> \g -> \x -> f (g x)|} in
-    let result = parse LambdaParse.t input
-      |> Result.map ~f:fst
-    in
+    let result = ParseUtil.parse_string LambdaParse.t input in
     { input; result; input_lang = Lambda; selected = None }
 
   let print { input; input_lang; result; selected } =
@@ -65,7 +62,7 @@ module Controller = struct
     let { input; result; input_lang; selected } = React.S.value model_s in
     let new_model = match action with
       | Evaluate str ->
-        let result = parse (parser_of input_lang) str |> Result.map ~f:fst in
+        let result = ParseUtil.parse_string (parser_of input_lang) str in
         { input; input_lang; result; selected }
       | Unselect -> { input; result; input_lang; selected = None }
       | Select (start, finish) ->
@@ -81,7 +78,7 @@ module Controller = struct
             (* TODO: clean up / explain *)
             let result'_str = Fmt.str "%a" formatter tm in
             Fmt.pr "result'_str: %s\n" result'_str;
-            result'_str, parse (parser_of input_lang') result'_str |> Result.map ~f:fst
+            result'_str, ParseUtil.parse_string (parser_of input_lang') result'_str
         in
         { input = input'; input_lang = input_lang'; selected = None; result = result' }
     in
