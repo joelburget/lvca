@@ -4,9 +4,11 @@ open Lvca_syntax
 module Description = struct
   module ParseAbstract = AbstractSyntax.Parse(ParseUtil.CComment)
 
+  (*
   let abstract_syntax : AbstractSyntax.t =
-    Angstrom.parse_string ~consume:All ParseAbstract.t
-    {|import {integer} from "lvca/builtin"
+    ParseUtil.parse_string ParseAbstract.t
+    {|
+  { integer }
 
   expr :=
     | lit(integer())    // an expression can be a literal integer
@@ -16,6 +18,7 @@ module Description = struct
     |}
     |> Result.ok_or_failwith
   ;;
+  *)
 
   let parser_str =
     {|

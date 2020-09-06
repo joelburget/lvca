@@ -1,10 +1,9 @@
 open Base
-open Lvca
+open Lvca_syntax
 
 let abstract_syntax_str =
   {|
-import { list } from "lvca/builtin"
-// TODO import { maybe } from "lvca/maybe"
+{ list }
 
 maybe(a) :=
   | nothing()

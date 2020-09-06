@@ -6,7 +6,7 @@ module Language = struct
   module PT = Parsing.NonBindingTerm
 
   let language = {|
-  import {float as float_lit} from "builtin";
+  { float_lit }
 
   float :=
     | lit(float_lit())

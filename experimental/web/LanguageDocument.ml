@@ -6,8 +6,7 @@ open Store
 
 let commands_abstract_syntax =
   {|
-import {string} from "builtin"
-import {maybe} from "maybe"
+{ string, maybe }
 
 // maybe(a) := nothing() | just(a)
 

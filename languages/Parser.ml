@@ -3,7 +3,6 @@ open Lvca_syntax
 open Lvca_core
 module Format = Caml.Format
 
-(*
 let abstract_syntax_str = {|
 { char, string, n_term, c_term }
 
@@ -37,6 +36,7 @@ parser :=
   | lift_n(n_term()*. c_term(); parser()*)
 |};;
 
+(*
 module ParseAbstract = AbstractSyntax.Parse(ParseUtil.CComment)
 
 let abstract_syntax : AbstractSyntax.t = abstract_syntax_str

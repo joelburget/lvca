@@ -1,6 +1,6 @@
 let abstract_syntax =
   {|
-import {list, string} from "lvca/builtin";
+{ list, string }
 
 rowType := rowType(list(atomicType()))
 
