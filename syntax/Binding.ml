@@ -6,156 +6,7 @@ module Cbor = Util.Cbor
 module Json = Util.Json
 module String = Util.String
 
-module rec DeBruijn : sig
-  type 'loc term =
-    | Operator of 'loc * string * 'loc scope list
-    | Var of 'loc * int * int
-    | Primitive of 'loc * Primitive.t
-
-  and 'loc scope = Scope of 'loc Pattern.t list * 'loc term list
-
-  val to_nominal : 'loc term -> 'loc Nominal.term option
-  val from_nominal : 'loc Nominal.term -> ('loc term, string) Result.t
-
-  val from_nominal_with_bindings
-    :  (int * int) String.Map.t
-    -> 'loc Nominal.term
-    -> ('loc term, string) Result.t
-
-  val alpha_equivalent : 'loc term -> 'b term -> bool
-
-  (* val open_scope : scope -> term list -> (term, string) Result.t *)
-end = struct
-  type 'loc term =
-    | Operator of 'loc * string * 'loc scope list
-    | Var of 'loc * int * int
-    | Primitive of 'loc * Primitive.t
-
-  and 'loc scope = Scope of 'loc Pattern.t list * 'loc term list
-
-  let rec to_nominal' ctx = function
-    | Var (loc, ix1, ix2) ->
-      List.nth ctx ix1
-      |> Option.bind ~f:(Fn.flip List.nth ix2)
-      |> Option.map ~f:(fun name -> Nominal.Var (loc, name))
-    | Operator (loc, tag, subtms) ->
-      subtms
-      |> List.map ~f:(scope_to_nominal ctx)
-      |> Option.all
-      |> Option.map ~f:(fun subtms' -> Nominal.Operator (loc, tag, subtms'))
-    | Primitive (loc, prim) -> Some (Nominal.Primitive (loc, prim))
-
-  and scope_to_nominal ctx (Scope (binders, body)) =
-    let ctx' = binders
-      |> List.map ~f:(fun pat -> pat
-        |> Pattern.list_vars_of_pattern
-        |> List.map ~f:snd)
-      |> List.append ctx
-    in
-    body
-      |> List.map ~f:(to_nominal' ctx')
-      |> Option.all
-      |> Option.map ~f:(fun body' -> Nominal.Scope (binders, body'))
-  ;;
-
-  let to_nominal tm = to_nominal' [] tm
-
-  exception FailedFromNominal of string
-
-  let rec from_nominal_with_bindings' env = function
-    | Nominal.Operator (loc, tag, subtms) ->
-      Operator (loc, tag, List.map subtms ~f:(scope_from_nominal' env))
-    | Var (loc, name) ->
-      (match Map.find env name with
-      | None -> raise (FailedFromNominal ("couldn't find variable " ^ name))
-      | Some (i, j) -> Var (loc, i, j))
-    | Primitive (loc, prim) -> Primitive (loc, prim)
-
-  and scope_from_nominal' env (Nominal.Scope (pats, body)) =
-    let n = List.length pats in
-    let var_nums : (string * (int * int)) list =
-      pats
-      |> List.mapi ~f:(fun i pat -> pat
-        |> Pattern.list_vars_of_pattern
-        |> List.mapi ~f:(fun j (_, var) -> var, (i, j)))
-      |> List.join
-    in
-    match String.Map.of_alist var_nums with
-    | `Ok var_map ->
-      let env' : (int * int) String.Map.t = env
-        |> Map.map ~f:(fun (i, j) -> i + n, j)
-        |> Util.Map.union_right_biased var_map
-      in
-      let body' = List.map body ~f:(from_nominal_with_bindings' env') in
-      Scope (pats, body')
-    | `Duplicate_key _key -> failwith "TODO: raise error"
-  ;;
-
-  let from_nominal_with_bindings bindings tm =
-    try Ok (from_nominal_with_bindings' bindings tm) with
-    | FailedFromNominal msg -> Error msg
-  ;;
-
-  let from_nominal tm = from_nominal_with_bindings String.Map.empty tm
-
-  let rec alpha_equivalent = fun t1 t2 ->
-    match t1, t2 with
-      | Operator (_, h1, subtms1), Operator (_, h2, subtms2)
-      -> String.(h1 = h2) && (match List.zip subtms1 subtms2 with
-        | Ok zipped -> List.for_all zipped ~f:(fun (Scope (_, body1), Scope (_, body2)) ->
-            match List.zip body1 body2 with
-              | Ok bodies -> List.for_all
-                ~f:(fun (b1, b2) -> alpha_equivalent b1 b2)
-                bodies
-              | _ -> false)
-        | Unequal_lengths -> false
-      )
-      | Var (_, i1, j1), Var (_, i2, j2)
-      -> i1 = i2 && j1 = j2
-      | Primitive (_, p1), Primitive (_, p2)
-      -> Primitive.(p1 = p2)
-      | _, _
-      -> false
-end
-
-and Nominal : sig
-  type 'loc scope = Scope of 'loc Pattern.t list * 'loc term list
-
-  and 'loc term =
-    | Operator of 'loc * string * 'loc scope list
-    | Var of 'loc * string
-    | Primitive of 'loc * Primitive.t
-
-  val location : 'loc term -> 'loc
-
-  val pp_term : Format.formatter -> 'loc Nominal.term -> unit
-  val pp_term_range : Format.formatter -> OptRange.t Nominal.term -> unit
-  val pp_term_str : 'loc Nominal.term -> string
-
-  val pp_scope : Format.formatter -> 'loc Nominal.scope -> unit
-  val pp_scope_range : Format.formatter -> OptRange.t Nominal.scope -> unit
-  val pp_scope_str : 'loc Nominal.scope -> string
-
-  val serialize : _ Nominal.term -> Bytes.t
-  val deserialize : Bytes.t -> unit term option
-
-  val jsonify : _ Nominal.term -> Json.t
-  val unjsonify : Json.t -> unit Nominal.term option
-
-  val hash : _ Nominal.term -> string
-  val erase : 'loc term -> unit term
-  val erase_scope : 'loc scope -> unit scope
-
-  exception ToPatternFailure of unit scope
-
-  val to_pattern_exn : 'loc Nominal.term -> 'loc Pattern.t
-  val to_pattern : 'loc Nominal.term -> ('loc Pattern.t, unit scope) Result.t
-  val pattern_to_term : 'loc Pattern.t -> 'loc Nominal.term
-
-  module Parse (Comment : ParseUtil.Comment_int) : sig
-    val t : OptRange.t term ParseUtil.t
-  end
-end = struct
+module Nominal = struct
   type 'loc scope = Scope of 'loc Pattern.t list * 'loc term list
 
   and 'loc term =
@@ -318,7 +169,7 @@ end = struct
       with
         ToPatternFailure scope -> Error scope
 
-  let rec pattern_to_term : 'loc Pattern.t -> 'loc Nominal.term = function
+  let rec pattern_to_term : 'loc Pattern.t -> 'loc term = function
     | Operator (loc, name, pats)
     -> Operator
       ( loc
@@ -336,14 +187,14 @@ end = struct
     module Primitive = Primitive.Parse(Comment)
 
     type tm_or_sep =
-      | Tm of OptRange.t Nominal.term
+      | Tm of OptRange.t term
       | Sep of char
 
     type parse_state =
       | PossiblyBinding
       | DefinitelyTerm
 
-    let t : OptRange.t Nominal.term ParseUtil.t
+    let t : OptRange.t term ParseUtil.t
       = let open Parsers in
         fix (fun term ->
 
@@ -356,15 +207,15 @@ end = struct
 
           (* (b11. ... b1n. t11, ... t1n; b21. ... b2n. t21, ... t2n) *)
           let accumulate
-            : OptRange.t -> string -> tm_or_sep list -> OptRange.t Nominal.term ParseUtil.t
+            : OptRange.t -> string -> tm_or_sep list -> OptRange.t term ParseUtil.t
             = fun range tag tokens ->
 
               (* terms encountered between '.'s, before hitting ',' / ';' *)
-              let binding_queue : OptRange.t Nominal.term Queue.t = Queue.create () in
+              let binding_queue : OptRange.t term Queue.t = Queue.create () in
               (* terms encountered between ','s, before hitting ';' *)
-              let list_queue : OptRange.t Nominal.term Queue.t = Queue.create () in
+              let list_queue : OptRange.t term Queue.t = Queue.create () in
               (* scopes encountered *)
-              let scope_queue : OptRange.t Nominal.scope Queue.t = Queue.create () in
+              let scope_queue : OptRange.t scope Queue.t = Queue.create () in
 
               let rec go parse_state = function
                 | []
@@ -414,7 +265,99 @@ end = struct
             ]
         ) <?> "term"
   end
+end
 
+module DeBruijn = struct
+  type 'loc term =
+    | Operator of 'loc * string * 'loc scope list
+    | Var of 'loc * int * int
+    | Primitive of 'loc * Primitive.t
+
+  and 'loc scope = Scope of 'loc Pattern.t list * 'loc term list
+
+  let rec to_nominal' ctx = function
+    | Var (loc, ix1, ix2) ->
+      List.nth ctx ix1
+      |> Option.bind ~f:(Fn.flip List.nth ix2)
+      |> Option.map ~f:(fun name -> Nominal.Var (loc, name))
+    | Operator (loc, tag, subtms) ->
+      subtms
+      |> List.map ~f:(scope_to_nominal ctx)
+      |> Option.all
+      |> Option.map ~f:(fun subtms' -> Nominal.Operator (loc, tag, subtms'))
+    | Primitive (loc, prim) -> Some (Nominal.Primitive (loc, prim))
+
+  and scope_to_nominal ctx (Scope (binders, body)) =
+    let ctx' = binders
+      |> List.map ~f:(fun pat -> pat
+        |> Pattern.list_vars_of_pattern
+        |> List.map ~f:snd)
+      |> List.append ctx
+    in
+    body
+      |> List.map ~f:(to_nominal' ctx')
+      |> Option.all
+      |> Option.map ~f:(fun body' -> Nominal.Scope (binders, body'))
+  ;;
+
+  let to_nominal tm = to_nominal' [] tm
+
+  exception FailedFromNominal of string
+
+  let rec from_nominal_with_bindings' env = function
+    | Nominal.Operator (loc, tag, subtms) ->
+      Operator (loc, tag, List.map subtms ~f:(scope_from_nominal' env))
+    | Var (loc, name) ->
+      (match Map.find env name with
+      | None -> raise (FailedFromNominal ("couldn't find variable " ^ name))
+      | Some (i, j) -> Var (loc, i, j))
+    | Primitive (loc, prim) -> Primitive (loc, prim)
+
+  and scope_from_nominal' env (Nominal.Scope (pats, body)) =
+    let n = List.length pats in
+    let var_nums : (string * (int * int)) list =
+      pats
+      |> List.mapi ~f:(fun i pat -> pat
+        |> Pattern.list_vars_of_pattern
+        |> List.mapi ~f:(fun j (_, var) -> var, (i, j)))
+      |> List.join
+    in
+    match String.Map.of_alist var_nums with
+    | `Ok var_map ->
+      let env' : (int * int) String.Map.t = env
+        |> Map.map ~f:(fun (i, j) -> i + n, j)
+        |> Util.Map.union_right_biased var_map
+      in
+      let body' = List.map body ~f:(from_nominal_with_bindings' env') in
+      Scope (pats, body')
+    | `Duplicate_key _key -> failwith "TODO: raise error"
+  ;;
+
+  let from_nominal_with_bindings bindings tm =
+    try Ok (from_nominal_with_bindings' bindings tm) with
+    | FailedFromNominal msg -> Error msg
+  ;;
+
+  let of_nominal tm = from_nominal_with_bindings String.Map.empty tm
+
+  let rec alpha_equivalent = fun t1 t2 ->
+    match t1, t2 with
+      | Operator (_, h1, subtms1), Operator (_, h2, subtms2)
+      -> String.(h1 = h2) && (match List.zip subtms1 subtms2 with
+        | Ok zipped -> List.for_all zipped ~f:(fun (Scope (_, body1), Scope (_, body2)) ->
+            match List.zip body1 body2 with
+              | Ok bodies -> List.for_all
+                ~f:(fun (b1, b2) -> alpha_equivalent b1 b2)
+                bodies
+              | _ -> false)
+        | Unequal_lengths -> false
+      )
+      | Var (_, i1, j1), Var (_, i2, j2)
+      -> i1 = i2 && j1 = j2
+      | Primitive (_, p1), Primitive (_, p2)
+      -> Primitive.(p1 = p2)
+      | _, _
+      -> false
 end
 
 module Properties = struct
