@@ -15,16 +15,16 @@ exception ScopeEncountered
 (** {1 de Bruijn conversion} *)
 
 (** @raise ScopeEncountered *)
-val from_de_bruijn_exn : 'a Binding.DeBruijn.term -> 'a term
-val from_de_bruijn : 'a Binding.DeBruijn.term -> 'a term option
-val to_de_bruijn : 'a term -> unit Binding.DeBruijn.term
+val from_de_bruijn_exn : 'a DeBruijn.term -> 'a term
+val from_de_bruijn : 'a DeBruijn.term -> 'a term option
+val to_de_bruijn : 'a term -> unit DeBruijn.term
 
 (** {1 Nominal conversion} *)
 
 (** @raise ScopeEncountered *)
-val of_nominal_exn : 'a Binding.Nominal.term -> 'a term
-val of_nominal : 'a Binding.Nominal.term -> 'a term option
-val to_nominal : 'a term -> 'a Binding.Nominal.term
+val of_nominal_exn : 'a Nominal.term -> 'a term
+val of_nominal : 'a Nominal.term -> 'a term option
+val to_nominal : 'a term -> 'a Nominal.term
 
 (** {1 Printing} *)
 

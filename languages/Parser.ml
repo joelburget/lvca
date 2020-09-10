@@ -45,7 +45,7 @@ let abstract_syntax : AbstractSyntax.t = abstract_syntax_str
   *)
 
 type c_term = OptRange.t Core.term
-type n_term = OptRange.t Binding.Nominal.term
+type n_term = OptRange.t Nominal.term
 
 type t =
   (* primitive parsers *)
@@ -155,14 +155,14 @@ module Parse(Comment : ParseUtil.Comment_int) = struct
 end;;
 
 let mk_list : OptRange.t -> n_term list -> n_term
-  = fun pos lst -> Binding.Nominal.Operator
+  = fun pos lst -> Nominal.Operator
     ( pos
     , "list"
-    , [Binding.Nominal.Scope ([], lst)]
+    , [Nominal.Scope ([], lst)]
     )
 
 let mk_some : OptRange.t -> n_term -> n_term
-  = fun pos tm -> Binding.Nominal.Operator (pos, "some", [Scope ([], [tm])])
+  = fun pos tm -> Nominal.Operator (pos, "some", [Scope ([], [tm])])
 
 type ctx_entry =
   | BoundChar of char
@@ -173,7 +173,7 @@ let todo_pos = None
 (* TODO: this is hacky *)
 let thin_ctx : ctx_entry Lvca_util.String.Map.t -> n_term Lvca_util.String.Map.t
   = Map.filter_map ~f:(function
-    | BoundChar c -> Some (Binding.Nominal.Primitive (todo_pos, PrimChar c))
+    | BoundChar c -> Some (Nominal.Primitive (todo_pos, PrimChar c))
     | BoundParser _ -> None
   )
 
@@ -186,10 +186,10 @@ let translate : t -> n_term ParseUtil.t
 
     let rec translate' ctx = function
     | Char c ->
-      char c >>| (fun c -> Binding.Nominal.Primitive (todo_pos, PrimChar c))
+      char c >>| (fun c -> Nominal.Primitive (todo_pos, PrimChar c))
         <?> Printf.sprintf {|char '%s'|} (String.make 1 c)
     | String str ->
-      string str >>| (fun str -> Binding.Nominal.Primitive (todo_pos, PrimString str))
+      string str >>| (fun str -> Nominal.Primitive (todo_pos, PrimString str))
         <?> Printf.sprintf {|string "%s"|} str
     | Satisfy (name, tm) ->
       let f c =
@@ -198,7 +198,7 @@ let translate : t -> n_term ParseUtil.t
           | Operator (_, "true", []) -> true
           | _ -> false
       in
-      satisfy f >>| fun c -> Binding.Nominal.Primitive (todo_pos, PrimChar c)
+      satisfy f >>| fun c -> Nominal.Primitive (todo_pos, PrimChar c)
     | Let (name, named, body) ->
       let ctx' = Map.set ctx ~key:name ~data:(BoundParser named) in
       translate' ctx' body <?> name
@@ -243,7 +243,7 @@ let parse : t -> string -> (n_term, string) Result.t
   = fun parser -> ParseUtil.parse_string (translate parser)
 
 let%test_module "Parsing" = (module struct
-  (* module ParseTerm = Binding.Nominal.Parse(Util.Angstrom.CComment) *)
+  (* module ParseTerm = Nominal.Parse(Util.Angstrom.CComment) *)
   module ParseCore = Core.Parse(ParseUtil.CComment)
   module ParseParser = Parse(ParseUtil.CComment)
 
@@ -255,7 +255,7 @@ let%test_module "Parsing" = (module struct
         | Error msg -> Caml.print_string ("failed to parse parser desc: " ^ msg)
         | Ok parser -> (match parse parser str with
           | Error msg -> Caml.print_string ("failed to parse: " ^ msg)
-          | Ok tm -> Binding.Nominal.pp_term Caml.Format.std_formatter tm)
+          | Ok tm -> Nominal.pp_term Caml.Format.std_formatter tm)
 
   let%expect_test _ =
     parse' {|"str"|} "str";

@@ -1,5 +1,4 @@
 open Lvca_syntax
-open Binding
 open Core
 
 module ParseCore = Core.Parse(ParseUtil.CComment)

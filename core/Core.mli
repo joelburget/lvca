@@ -9,7 +9,6 @@
 
 open Lvca_syntax
 open AbstractSyntax
-open Binding
 
 type is_rec = Rec | NoRec
 

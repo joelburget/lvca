@@ -1,7 +1,6 @@
 open Base
 
 open AbstractSyntax
-open Binding
 module Util = Lvca_util
 
 type 'a abstract_syntax_check_failure_frame =
@@ -332,7 +331,7 @@ let%test_module "CheckTerm" = (module struct
     = ParseUtil.parse_string AbstractSyntaxParse.whitespace_t lang_str
       |> Result.ok_or_failwith
 
-  module NominalParse = Binding.Nominal.Parse(ParseUtil.NoComment)
+  module NominalParse = Nominal.Parse(ParseUtil.NoComment)
 
   let parse_term term_str = ParseUtil.parse_string NominalParse.t term_str
     |> Result.ok_or_failwith
@@ -463,7 +462,7 @@ test := foo(term()*. term())
       |> parse_term
       |> sort_of_term_exn
     in
-    match tm_str |> parse_term |> Binding.Nominal.erase |> check_term language sort with
+    match tm_str |> parse_term |> Nominal.erase |> check_term language sort with
     | Some failure -> Fmt.epr "%a" pp_failure failure
     | None -> ()
 

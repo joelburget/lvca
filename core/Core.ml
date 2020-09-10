@@ -3,7 +3,6 @@
 open Base
 open Lvca_syntax
 open AbstractSyntax
-open Binding
 module Format = Caml.Format
 
 type is_rec = Rec | NoRec
@@ -225,7 +224,7 @@ let eval : 'a term -> ('a Nominal.term, eval_error) Result.t =
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk(Comment)
-  module Term = Binding.Nominal.Parse(Comment)
+  module Term = Nominal.Parse(Comment)
   module Primitive = Primitive.Parse(Comment)
   module Abstract = AbstractSyntax.Parse(Comment)
   open Parsers
@@ -320,12 +319,12 @@ let%test_module "Parsing" = (module struct
 
   let (=) = Caml.(=)
 
-  let one = Binding.Nominal.Primitive ((), PrimInteger (Bigint.of_int 1))
+  let one = Nominal.Primitive ((), PrimInteger (Bigint.of_int 1))
 
-  let var name = Binding.Nominal.Var ((), name)
+  let var name = Nominal.Var ((), name)
   let ignored name = Pattern.Ignored ((), name)
 
-  let operator tag children = Binding.Nominal.Operator ((), tag, children)
+  let operator tag children = Nominal.Operator ((), tag, children)
 
   let%test _ = parse "{1}" = Term one
   let%test _ = parse "{true()}" = Term (operator "true" [])

@@ -1,7 +1,7 @@
 (** Check that a term is valid in some language. *)
 
 type 'a abstract_syntax_check_failure_frame =
-  { term : ('a Pattern.t, 'a Binding.Nominal.term) Base.Either.t
+  { term : ('a Pattern.t, 'a Nominal.term) Base.Either.t
   (** Term that failed to check *)
   ; sort : AbstractSyntax.sort
   (** Sort it failed to check against *)
@@ -56,5 +56,5 @@ val check_pattern
 val check_term
   :  AbstractSyntax.t (** Abstract syntax *)
   -> AbstractSyntax.sort (** Sort to check term against *)
-  -> 'a Binding.Nominal.term
+  -> 'a Nominal.term
   -> 'a abstract_syntax_check_failure option

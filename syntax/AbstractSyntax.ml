@@ -201,11 +201,11 @@ let to_term : abstract_syntax -> NonBinding.term
 
 (* _of_term: *)
 
-exception OfTermFailure of string * unit Binding.Nominal.term
+exception OfTermFailure of string * unit Nominal.term
 
 (** @raise [OfTermFailure] *)
-let rec sort_of_term_exn : 'a Binding.Nominal.term -> sort
-  = let erase = Binding.Nominal.erase in
+let rec sort_of_term_exn : 'a Nominal.term -> sort
+  = let erase = Nominal.erase in
     fun tm -> match tm with
     | Var (_, name) -> SortVar name
     | Operator (_, name, args)

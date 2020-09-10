@@ -1,7 +1,5 @@
 open Base
 
-open Binding
-
 type 'a term =
   | Operator of 'a * string * 'a term list list
   | Primitive of 'a * Primitive.t
