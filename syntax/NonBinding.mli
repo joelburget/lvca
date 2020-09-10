@@ -8,7 +8,7 @@ type 'a term =
 
 val location : 'a term -> 'a
 
-(** Raised by [from_de_bruijn_exn] or [from_nominal_exn] when they encounter a scope.
+(** Raised by [from_de_bruijn_exn] or [of_nominal_exn] when they encounter a scope.
  *)
 exception ScopeEncountered
 
@@ -22,8 +22,8 @@ val to_de_bruijn : 'a term -> unit Binding.DeBruijn.term
 (** {1 Nominal conversion} *)
 
 (** @raise ScopeEncountered *)
-val from_nominal_exn : 'a Binding.Nominal.term -> 'a term
-val from_nominal : 'a Binding.Nominal.term -> 'a term option
+val of_nominal_exn : 'a Binding.Nominal.term -> 'a term
+val of_nominal : 'a Binding.Nominal.term -> 'a term option
 val to_nominal : 'a term -> 'a Binding.Nominal.term
 
 (** {1 Printing} *)

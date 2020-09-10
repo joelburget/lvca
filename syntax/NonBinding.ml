@@ -17,13 +17,15 @@ exception ScopeEncountered
 let rec from_de_bruijn_exn = function
   | DeBruijn.Operator (a, tag, scopes) ->
     Operator (a, tag, List.map scopes ~f:from_de_bruijn_scope)
-  | Var _ -> raise ScopeEncountered
+  | BoundVar _
+  | FreeVar _
+  -> raise ScopeEncountered
   | Primitive (a, p) -> Primitive (a, p)
 
 (** @raise ScopeEncountered *)
 and from_de_bruijn_scope = function
-  | DeBruijn.Scope ([], tms) -> List.map ~f:from_de_bruijn_exn tms
-  | _ -> raise ScopeEncountered
+  | First _scopt -> raise ScopeEncountered
+  | Second tms -> List.map tms ~f:from_de_bruijn_exn
 ;;
 
 let from_de_bruijn (tm : 'a DeBruijn.term) : 'a term option =
@@ -36,26 +38,25 @@ let rec to_de_bruijn tm : unit DeBruijn.term =
     DeBruijn.Operator
       ( ()
       , tag
-      , List.map tms ~f:(fun tms' ->
-        DeBruijn.Scope ([], List.map tms' ~f:to_de_bruijn))
+      , List.map tms ~f:(fun tms -> Either.Second (tms |> List.map ~f:to_de_bruijn))
       )
   | Primitive (_, p) -> Primitive ((), p)
 ;;
 
-let rec from_nominal_exn = function
+let rec of_nominal_exn = function
   | Nominal.Operator (a, tag, scopes) ->
-    Operator (a, tag, List.map scopes ~f:from_nominal_scope)
+    Operator (a, tag, List.map scopes ~f:of_nominal_scope)
   | Var _ -> raise ScopeEncountered
   | Primitive (a, p) -> Primitive (a, p)
 
 (** @raise ScopeEncountered *)
-and from_nominal_scope = function
-  | Nominal.Scope ([], tms) -> List.map tms ~f:from_nominal_exn
+and of_nominal_scope = function
+  | Nominal.Scope ([], tms) -> List.map tms ~f:of_nominal_exn
   | _ -> raise ScopeEncountered
 ;;
 
-let from_nominal (tm : 'a Nominal.term) : 'a term option =
-  try Some (from_nominal_exn tm) with ScopeEncountered -> None
+let of_nominal (tm : 'a Nominal.term) : 'a term option =
+  try Some (of_nominal_exn tm) with ScopeEncountered -> None
 ;;
 
 let rec to_nominal tm =
