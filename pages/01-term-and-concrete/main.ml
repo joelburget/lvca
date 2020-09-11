@@ -3,12 +3,12 @@ open Js_of_ocaml
 open Lvca_syntax
 open ReactiveData
 
-type term = OptRange.t Binding.Nominal.term
+type term = OptRange.t Nominal.term
 type lang = Lambda | Term
 
-module TermParse = Binding.Nominal.Parse(ParseUtil.NoComment)
+module TermParse = Nominal.Parse(ParseUtil.NoComment)
 module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse(ParseUtil.NoComment)
-let term_pretty = Binding.Nominal.pp_term_range (* XXX why used twice? *)
+let term_pretty = Nominal.pp_term_range (* XXX why used twice? *)
 let lambda_pretty = Lvca_languages.LambdaCalculus.pp (* XXX why used twice? *)
 
 module Model = struct
@@ -34,7 +34,7 @@ module Model = struct
       input_lang_str
       (fun ppf tm_result -> match tm_result with
         | Error msg -> Fmt.pf ppf "%s" msg
-        | Ok tm -> Binding.Nominal.pp_term ppf tm)
+        | Ok tm -> Nominal.pp_term ppf tm)
       result
       (fun ppf rng_opt -> OptRange.pp ppf rng_opt)
       selected
@@ -149,7 +149,7 @@ let mk_range_formatter
     (* We open a new span for every range tag we encounter. All children until we
        encounter the matching close tag will be nested under it (by enqueuing). *)
     { mark_open_stag = (function
-      | OptRange.Stag rng -> Stack.push stack (rng, Queue.create ()); ""
+      | Range.Stag rng -> Stack.push stack (Some rng, Queue.create ()); ""
       | _ -> ""
     )
     (* Closing a range; create the span holding all of the enqueued children. *)
