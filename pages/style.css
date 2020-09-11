@@ -1,0 +1,18 @@
+.side {
+  padding: 20px;
+}
+.input {
+  margin-top: 20px;
+  display: block;
+  border: 2px solid;
+  padding: 2em;
+}
+.output {
+  padding: 1em;
+  background-color: hsl(0 0% 95% / 1);
+}
+.container {
+  display: flex;
+  flex-direction: row;
+  max-width: 1200px;
+}

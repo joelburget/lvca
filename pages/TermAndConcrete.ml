@@ -10,9 +10,6 @@ module TermParse = Nominal.Parse(ParseUtil.NoComment)
 module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse(ParseUtil.NoComment)
 let term_pretty = Nominal.pp_term_range (* XXX why used twice? *)
 let lambda_pretty = Lvca_languages.LambdaCalculus.pp (* XXX why used twice? *)
-let eval = Lvca_languages.LambdaCalculus.eval
-
-open Result.Let_syntax
 
 module Model = struct
   type t =
@@ -24,10 +21,7 @@ module Model = struct
 
   let initial_model : t =
     let input = {|\f -> \g -> \x -> f (g x)|} in
-    let result =
-      let%bind parsed = ParseUtil.parse_string LambdaParse.t input in
-      eval parsed
-    in
+    let result = ParseUtil.parse_string LambdaParse.t input in
     { input; result; input_lang = Lambda; selected = None }
 
   let print { input; input_lang; result; selected } =
@@ -68,10 +62,7 @@ module Controller = struct
     let { input; result; input_lang; selected } = React.S.value model_s in
     let new_model = match action with
       | Evaluate str ->
-        let result =
-          let%bind parsed = ParseUtil.parse_string (parser_of input_lang) str in
-          eval parsed
-        in
+        let result = ParseUtil.parse_string (parser_of input_lang) str in
         { input; input_lang; result; selected }
       | Unselect -> { input; result; input_lang; selected = None }
       | Select (start, finish) ->
@@ -89,7 +80,6 @@ module Controller = struct
             Fmt.pr "result'_str: %s\n" result'_str;
             result'_str, ParseUtil.parse_string (parser_of input_lang') result'_str
         in
-        (* TODO: update not with result but input *)
         { input = input'; input_lang = input_lang'; selected = None; result = result' }
     in
     signal_update new_model
@@ -322,25 +312,19 @@ module View = struct
     ])
 end
 
+let stateless_view =
+  let model_s, signal_update = React.S.create Model.initial_model in
+  View.view model_s signal_update
+
+  (*
 let insert_demo elem =
   let model_s, signal_update = React.S.create Model.initial_model in
   Dom.appendChild elem
     (Js_of_ocaml_tyxml.Tyxml_js.To_dom.of_div (View.view model_s signal_update));
   Lwt.return ()
 
-  (*
 let (_ : unit) = Js.export "TermAndConcrete"
   (object%js
      method run = insert_demo
    end)
-*)
-
-let main _ =
-  let doc = Dom_html.document in
-  let parent =
-    Js.Opt.get (doc##getElementById (Js.string "app"))
-      (fun () -> assert false)
-  in
-  insert_demo parent
-
-let (_ : unit Lwt.t) = Lwt.Infix.(Js_of_ocaml_lwt.Lwt_js_events.onload () >>= main)
+   *)
