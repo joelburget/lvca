@@ -9,13 +9,29 @@ type 'loc term =
 
 and 'loc scope = Scope of 'loc * string * 'loc term list
 
+let rec open_term target_ix subst_tm tm = match tm with
+  | Operator (loc, tag, subtms)
+  ->
+     let subtms' = subtms
+       |> List.map ~f:(Either.map
+         ~first:(fun (Scope (loc, name, tms)) ->
+           Scope (loc, name, List.map tms ~f:(open_term (target_ix + 1) subst_tm)))
+         ~second:(List.map ~f:(open_term target_ix subst_tm))
+       )
+     in
+     Operator (loc, tag, subtms')
+  | BoundVar (_, i) -> if i = target_ix then subst_tm else tm
+  | FreeVar _ | Primitive _ -> tm
+
+let open_scope subst_tm (Scope (_, _, tms)) = tms
+  |> List.map ~f:(open_term 0 subst_tm)
+
 let rec to_nominal' ctx = function
   | BoundVar (loc, ix) -> ix
     |> List.nth ctx
     |> Option.map ~f:(fun name -> Nominal.Var (loc, name))
   | FreeVar (loc, name) -> Some (Var (loc, name))
-  | Operator (loc, tag, subtms) ->
-    subtms
+  | Operator (loc, tag, subtms) -> subtms
     |> List.map ~f:(scope_or_term_to_nominal ctx)
     |> Option.all
     |> Option.map ~f:(fun subtms' -> Nominal.Operator (loc, tag, subtms'))
