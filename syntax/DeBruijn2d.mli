@@ -19,4 +19,5 @@ val of_nominal_with_bindings
 val alpha_equivalent : 'loc term -> 'b term -> bool
 
 (** Open a scope, substituting a term for each variable bound by this scope. *)
+
 (* val open_scope : scope -> term list -> (term, string) Result.t *)

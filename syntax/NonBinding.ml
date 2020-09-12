@@ -4,10 +4,7 @@ type 'a term =
   | Operator of 'a * string * 'a term list list
   | Primitive of 'a * Primitive.t
 
-let location = function
-  | Operator (loc, _, _)
-  | Primitive (loc, _)
-  -> loc
+let location = function Operator (loc, _, _) | Primitive (loc, _) -> loc
 
 exception ScopeEncountered
 
@@ -15,9 +12,7 @@ exception ScopeEncountered
 let rec from_de_bruijn_exn = function
   | DeBruijn.Operator (a, tag, scopes) ->
     Operator (a, tag, List.map scopes ~f:from_de_bruijn_scope)
-  | BoundVar _
-  | FreeVar _
-  -> raise ScopeEncountered
+  | BoundVar _ | FreeVar _ -> raise ScopeEncountered
   | Primitive (a, p) -> Primitive (a, p)
 
 (** @raise ScopeEncountered *)
@@ -36,8 +31,7 @@ let rec to_de_bruijn tm : unit DeBruijn.term =
     DeBruijn.Operator
       ( ()
       , tag
-      , List.map tms ~f:(fun tms -> Either.Second (tms |> List.map ~f:to_de_bruijn))
-      )
+      , List.map tms ~f:(fun tms -> Either.Second (tms |> List.map ~f:to_de_bruijn)) )
   | Primitive (_, p) -> Primitive ((), p)
 ;;
 
@@ -63,19 +57,17 @@ let rec to_nominal tm =
     Nominal.Operator
       ( loc
       , tag
-      , List.map tms ~f:(fun tms' ->
-          Nominal.Scope ([], List.map tms' ~f:to_nominal)))
+      , List.map tms ~f:(fun tms' -> Nominal.Scope ([], List.map tms' ~f:to_nominal)) )
   | Primitive (loc, p) -> Primitive (loc, p)
 ;;
 
 let pp ppf tm = tm |> to_nominal |> Nominal.pp_term ppf
 let pp_range ppf tm = tm |> to_nominal |> Nominal.pp_term_range ppf
 let to_string tm = tm |> to_nominal |> Nominal.pp_term_str
-
 let hash tm = tm |> to_nominal |> Nominal.hash
 
 let rec erase = function
-  | Operator (_, tag, subtms)
-  -> Operator ((), tag, subtms |> List.map ~f:(List.map ~f:erase))
-  | Primitive (_, prim)
-  -> Primitive ((), prim)
+  | Operator (_, tag, subtms) ->
+    Operator ((), tag, subtms |> List.map ~f:(List.map ~f:erase))
+  | Primitive (_, prim) -> Primitive ((), prim)
+;;

@@ -22,29 +22,29 @@ exception NoMatch
 let rec match_schema_vars' : 'a term -> 'a term -> 'a scope String.Map.t =
  fun t1 t2 ->
   match t1, t2 with
-  | Free (_, v), tm -> String.Map.of_alist_exn [ v, Scope ([], [tm]) ]
+  | Free (_, v), tm -> String.Map.of_alist_exn [ v, Scope ([], [ tm ]) ]
   | Operator (_, tag1, args1), Operator (_, tag2, args2) ->
     if String.(tag1 = tag2) && List.(length args1 = length args2)
-    then
+    then (
       let matched_scopes = List.map2_exn args1 args2 ~f:match_schema_vars_scope in
       match String.Map.strict_unions matched_scopes with
-        | `Ok result -> result
-        | `Duplicate_key str -> failwith ("TODO: error: duplicate key: " ^ str)
+      | `Ok result -> result
+      | `Duplicate_key str -> failwith ("TODO: error: duplicate key: " ^ str))
     else raise NoMatch
   | _, _ -> raise NoMatch
 
 and match_schema_vars_scope (Scope (names1, body1)) (Scope (names2, body2)) =
   if List.(length names1 = length names2)
      (* TODO: is it okay to use names1? what happens to names2? *)
-  then
+  then (
     match
       List.zip_exn body1 body2
-        |> List.map ~f:(fun (tm1, tm2) -> match_schema_vars' tm1 tm2
-          |> Map.map ~f:(enscope names1))
-        |> String.Map.strict_unions
+      |> List.map ~f:(fun (tm1, tm2) ->
+             match_schema_vars' tm1 tm2 |> Map.map ~f:(enscope names1))
+      |> String.Map.strict_unions
     with
-      | `Ok map -> map
-      | `Duplicate_key name -> failwith ("TODO error: duplicate key: " ^ name)
+    | `Ok map -> map
+    | `Duplicate_key name -> failwith ("TODO error: duplicate key: " ^ name))
   else raise NoMatch
 ;;
 
@@ -53,9 +53,7 @@ let match_schema_vars : 'a term -> 'a term -> 'a scope String.Map.t option =
 ;;
 
 (** Open a scope, instantiating all of its bound variables *)
-let open_scope (args : 'a term list list) (Scope (names, body))
-  : 'a term list option
-  =
+let open_scope (args : 'a term list list) (Scope (names, body)) : 'a term list option =
   if List.(length args <> length names)
   then None
   else (
@@ -63,10 +61,11 @@ let open_scope (args : 'a term list list) (Scope (names, body))
       match tm with
       | Operator (loc, tag, subtms) ->
         subtms
-        |> List.map ~f:(fun (Scope (binders, subtms)) -> subtms
-          |> List.map ~f:(open' (offset + List.length binders))
-          |> Option.all
-          |> Option.map ~f:(fun subtms' -> Scope (binders, subtms')))
+        |> List.map ~f:(fun (Scope (binders, subtms)) ->
+               subtms
+               |> List.map ~f:(open' (offset + List.length binders))
+               |> Option.all
+               |> Option.map ~f:(fun subtms' -> Scope (binders, subtms')))
         |> Option.all
         |> Option.map ~f:(fun subtms' -> Operator (loc, tag, subtms'))
       | Bound (_, i, j) ->
@@ -79,36 +78,34 @@ let open_scope (args : 'a term list list) (Scope (names, body))
       | Free _ -> Some tm
       | Primitive _ -> Some tm
     in
-    body
-      |> List.map ~f:(open' 0)
-      |> Option.all)
+    body |> List.map ~f:(open' 0) |> Option.all)
 ;;
 
 (** Create free variables from a pattern *)
-let pat_to_free_vars
-  = fun pat -> pat
-    |> Pattern.list_vars_of_pattern
-    |> List.map ~f:(fun (loc, name) -> Free (loc, name))
+let pat_to_free_vars pat =
+  pat |> Pattern.list_vars_of_pattern |> List.map ~f:(fun (loc, name) -> Free (loc, name))
 ;;
 
 let rec instantiate (env : 'a scope String.Map.t) (tm : 'a term)
-  : ('a term, string) Result.t
-  = match tm with
+    : ('a term, string) Result.t
+  =
+  match tm with
   | Operator (loc, tag, subtms) ->
     subtms
     |> List.map ~f:(fun (Scope (binders, body)) ->
-      let new_var_names : string array =
-        binders
-        |> List.map ~f:(fun pat -> pat
-          |> Pattern.list_vars_of_pattern
-          |> List.map ~f:(fun (_loc, name) -> name)
-          |> Array.of_list)
-        |> Array.concat
-      in
-      body
-        |> List.map ~f:(instantiate (Lvca_util.Map.remove_many env new_var_names))
-        |> Result.all
-        |> Result.map ~f:(fun body' -> Scope (binders, body')))
+           let new_var_names : string array =
+             binders
+             |> List.map ~f:(fun pat ->
+                    pat
+                    |> Pattern.list_vars_of_pattern
+                    |> List.map ~f:(fun (_loc, name) -> name)
+                    |> Array.of_list)
+             |> Array.concat
+           in
+           body
+           |> List.map ~f:(instantiate (Lvca_util.Map.remove_many env new_var_names))
+           |> Result.all
+           |> Result.map ~f:(fun body' -> Scope (binders, body')))
     |> Result.all
     |> Result.map ~f:(fun subtms' -> Operator (loc, tag, subtms'))
   | Bound _ -> Ok tm
@@ -119,7 +116,7 @@ let rec instantiate (env : 'a scope String.Map.t) (tm : 'a term)
     (* Open the scope, instantiating all variables it binds as free *) ->
       (match open_scope (List.map pats ~f:pat_to_free_vars) sc with
       | None -> Error "instantiate: failed to open scope"
-      | Some [tm] -> Ok tm (* XXX *)
+      | Some [ tm ] -> Ok tm (* XXX *)
       | Some _ -> Error "XXX"))
   | Primitive _ -> Ok tm
 ;;
@@ -277,7 +274,6 @@ let infer = infer_trace (fun _ -> ())
 
 let%test_module "bidirectional tests" =
   (module struct
-
     let statics_str =
       {|
 
@@ -309,16 +305,17 @@ let%test_module "bidirectional tests" =
   |}
     ;;
 
-    module Parse = Statics.Parse(Lvca_util.Angstrom.NoComment);;
-    module NominalParse = Binding.Nominal.Parse(Lvca_util.Angstrom.NoComment)
+    module Parse = Statics.Parse (Lvca_util.Angstrom.NoComment)
+    module NominalParse = Binding.Nominal.Parse (Lvca_util.Angstrom.NoComment)
 
-    let statics = ParseUtil.parse_string Parse.whitespace_t statics_str
-      |> Result.ok_or_failwith
+    let statics =
+      ParseUtil.parse_string Parse.whitespace_t statics_str |> Result.ok_or_failwith
     ;;
 
-    let parse_cvt : string -> term
-      = fun str ->
-      let tm = match ParseUtil.parse_string NominalParse.t str with
+    let parse_cvt : string -> term =
+     fun str ->
+      let tm =
+        match ParseUtil.parse_string NominalParse.t str with
         | Ok tm -> tm
         | Error err -> failwith err
       in
@@ -328,7 +325,7 @@ let%test_module "bidirectional tests" =
         | Error msg -> failwith msg
       in
       Statics.of_de_bruijn tm'
-    ;;
+   ;;
 
     let true_tm = parse_cvt "true()"
     let bool_ty = parse_cvt "bool()"
@@ -340,7 +337,7 @@ let%test_module "bidirectional tests" =
     let annot_lam = parse_cvt "annot(lam(x. true()); arr(bool(); bool()))"
 
     let app_annot =
-      Statics.(Operator ("app", [ Scope ([], [annot_lam]); Scope ([], [true_tm]) ]))
+      Statics.(Operator ("app", [ Scope ([], [ annot_lam ]); Scope ([], [ true_tm ]) ]))
     ;;
 
     let ( = ) = Caml.( = )

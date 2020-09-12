@@ -9,7 +9,7 @@ let str_of_tm tm = tm |> NonBinding.to_nominal |> Binding.Nominal.pp_term_str
 open Html5
 
 let render_inline_atom
-  : NonBinding.term -> [< Html_types.div_content_fun > `Textarea ] To_dom.elt
+    : NonBinding.term -> [< Html_types.div_content_fun > `Textarea ] To_dom.elt
   = function
   | NonBinding.Operator ("inlineAtom", [ _attrs; Primitive (PrimString str) ]) ->
     span [ txt str ]
@@ -17,7 +17,7 @@ let render_inline_atom
 ;;
 
 let render_paragraph
-  : NonBinding.term -> [< Html_types.div_content_fun > `Div ] To_dom.elt
+    : NonBinding.term -> [< Html_types.div_content_fun > `Div ] To_dom.elt
   = function
   | NonBinding.Operator ("inline", inline_atoms) ->
     let inline_atoms' = List.map inline_atoms ~f:render_inline_atom in
@@ -26,7 +26,7 @@ let render_paragraph
 ;;
 
 let render_block
-  (* : NonBinding.term -> [< Html_types.div_content_fun > `Div ] To_dom.elt *)
+    (* : NonBinding.term -> [< Html_types.div_content_fun > `Div ] To_dom.elt *)
   = function
   | NonBinding.Operator ("header", [ level; Primitive (PrimString str) ]) ->
     (match level with
@@ -39,8 +39,7 @@ let render_block
     raise @@ FailedRender ("render_block paragraph: unexpected term: " ^ str_of_tm tm)
 ;;
 
-let render_doc
-  : NonBinding.term -> [< Html_types.div_content_fun > `Div ] To_dom.elt
+let render_doc : NonBinding.term -> [< Html_types.div_content_fun > `Div ] To_dom.elt
   = function
   | Operator ("document", blocks) ->
     let blocks' = List.map ~f:render_block blocks in
@@ -49,8 +48,10 @@ let render_doc
 ;;
 
 let render
-  : Binding.Nominal.term -> ([< Html_types.div_content_fun > `Div ] To_dom.elt, string) Result.t
-  = fun tm ->
+    :  Binding.Nominal.term
+    -> ([< Html_types.div_content_fun > `Div ] To_dom.elt, string) Result.t
+  =
+ fun tm ->
   match NonBinding.from_nominal tm with
   | None -> Error "Failed to convert term"
   | Some db_tm -> (try Ok (render_doc db_tm) with FailedRender msg -> Error msg)

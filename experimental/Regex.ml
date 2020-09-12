@@ -4,7 +4,9 @@ type re_class_base =
   | Word (* \w / \W *)
   | Whitespace (* \s / \S *)
   | Digit (* \d / \D *)
-  | Boundary (* \b / \B *)
+  | Boundary
+
+(* \b / \B *)
 
 (* TODO: other javascript classes *)
 (* TODO: unicode categories *)
@@ -15,7 +17,7 @@ let class_to_re : re_class_base -> Re.t =
     | Word -> wordc
     | Whitespace -> space
     | Digit -> digit
-    | Boundary -> alt [start; stop; bow; eow; bol; eol; bow; eos])
+    | Boundary -> alt [ start; stop; bow; eow; bol; eol; bow; eos ])
 ;;
 
 (** Accept the positive or negative version of a class *)
@@ -41,7 +43,8 @@ type regex =
   | ReSet of re_set (** A character set, eg `[a-z]` or `[^abc]` *)
   | ReStar of regex (** Zero-or-more repetition, eg `(ab)*` *)
   | RePlus of regex (** One-or-more repetition, eg `(ab)+` *)
-  | ReCount of regex * int (** A specific number of repetitions, eg `(ab){5}`. Must be greater than 0. *)
+  | ReCount of regex * int
+      (** A specific number of repetitions, eg `(ab){5}`. Must be greater than 0. *)
   | ReOption of regex (** Option, eg `(ab)?` *)
   | ReChoice of regex list (** Choice, eg `a|b` *)
   | ReAny (** Any character *)
@@ -49,10 +52,7 @@ type regex =
 
 type t = regex
 
-let re_str str = ReConcat (str
-  |> String.to_list
-  |> List.map ~f:(fun c -> ReChar c)
-)
+let re_str str = ReConcat (str |> String.to_list |> List.map ~f:(fun c -> ReChar c))
 
 let set_to_re : re_set -> Re.t =
  fun set_members ->
@@ -67,7 +67,7 @@ let rec to_re : regex -> Re.t =
     function
     | ReChar s -> char s
     | ReClass (PosClass cls) -> class_to_re cls
-    | ReClass (NegClass cls) -> compl [class_to_re cls]
+    | ReClass (NegClass cls) -> compl [ class_to_re cls ]
     | ReSet set -> set_to_re set
     | ReStar re -> rep (to_re re)
     | RePlus re -> rep1 (to_re re)
@@ -119,26 +119,25 @@ let rec show : regex -> string = function
 
 let rec accepts_empty : regex -> bool = function
   | ReClass cls -> Caml.(cls = PosClass Boundary || cls = NegClass Boundary)
-  | ReCount (re, _) | RePlus re
-  -> accepts_empty re
+  | ReCount (re, _) | RePlus re -> accepts_empty re
   | ReChoice res -> List.exists res ~f:accepts_empty
   | ReConcat pieces -> List.for_all pieces ~f:accepts_empty
   | ReStar _ | ReOption _ -> true
   | ReChar _ | ReSet _ | ReAny -> false
 ;;
 
-let rec is_literal : regex -> string option
-  = function
+let rec is_literal : regex -> string option = function
   | ReChar c -> Some (String.of_char c)
   (* surely there's a smarter way to do this: *)
-  | ReConcat res -> List.fold_right res
-     ~f:(fun re -> function
-      | None -> None
-      | Some str -> (match is_literal re with
-        | None -> None
-        | Some str' -> Some (str' ^ str)))
-     ~init:(Some "")
+  | ReConcat res ->
+    List.fold_right
+      res
+      ~f:(fun re -> function None -> None
+        | Some str ->
+          (match is_literal re with None -> None | Some str' -> Some (str' ^ str)))
+      ~init:(Some "")
   | _ -> None
+;;
 
 let class_char : re_class -> char = function
   | PosClass Word -> 'w'
@@ -177,7 +176,8 @@ let set_to_string : re_set -> string =
 let rec to_string' : int -> regex -> string =
  fun precedence -> function
   (* We need to escape special characters in strings *)
-  | ReChar c -> (match c with
+  | ReChar c ->
+    (match c with
     | '[' -> {|\[|}
     | ']' -> {|\]|}
     | '(' -> {|\(|}
@@ -188,13 +188,10 @@ let rec to_string' : int -> regex -> string =
     | '*' -> {|\*|}
     | '+' -> {|\+|}
     | '?' -> {|\?|}
-
     (* XXX no match in parser *)
     | '-' -> {|\-|}
     | '/' -> {|\/|}
-
-    | _ -> String.of_char c
-  )
+    | _ -> String.of_char c)
   | ReSet set -> "[" ^ set_to_string set ^ "]"
   | ReStar re -> to_string' 2 re ^ "*"
   | RePlus re -> to_string' 2 re ^ "+"
@@ -220,8 +217,9 @@ let rec to_string' : int -> regex -> string =
 let to_string : regex -> string = to_string' 0
 
 (* TODO: is this okay? *)
-let to_term : t -> NonBinding.term
-  = fun re -> Operator ("regex", [Primitive (PrimString (to_string re))])
+let to_term : t -> NonBinding.term =
+ fun re -> Operator ("regex", [ Primitive (PrimString (to_string re)) ])
+;;
 
 module Classes = struct
   let az = Range ('a', 'z')
@@ -320,41 +318,38 @@ let%test_module "regex tests" =
     ;;
 
     let%test_module "matching" =
-     (module struct
-      let print_matches regex str =
+      (module struct
+        let print_matches regex str =
+          let re = Re.compile (to_re regex) in
+          let group = Re.exec re str in
+          Re.Group.pp Format.std_formatter group
+        ;;
 
-        let re = Re.compile (to_re regex) in
-        let group = Re.exec re str in
-        Re.Group.pp Format.std_formatter group
+        let%expect_test _ =
+          print_matches
+            (ReConcat
+               [ RePlus (ReClass (PosClass Word))
+               ; ReClass (PosClass Boundary)
+               ; RePlus (ReClass (PosClass Whitespace))
+               ; ReClass (PosClass Boundary)
+               ; RePlus (ReClass (PosClass Word))
+               ])
+            "hello world";
+          [%expect {| (Group (hello world (0 11))) |}]
+        ;;
 
-      let%expect_test _ =
-        print_matches (ReConcat
-          [ RePlus (ReClass (PosClass Word))
-          ; ReClass (PosClass Boundary)
-          ; RePlus (ReClass (PosClass Whitespace))
-          ; ReClass (PosClass Boundary)
-          ; RePlus (ReClass (PosClass Word))
-          ])
-        "hello world";
-        [%expect{| (Group (hello world (0 11))) |}]
+        let%expect_test _ =
+          print_matches (ReClass (NegClass Word)) "hello world";
+          [%expect {| (Group (  (5 6))) |}]
+        ;;
 
-      let%expect_test _ =
-        print_matches (ReClass (NegClass Word))
-        "hello world";
-        [%expect{| (Group (  (5 6))) |}]
+        let%expect_test _ =
+          print_matches (RePlus (ReClass (NegClass Whitespace))) "hello world";
+          [%expect {| (Group (hello (0 5))) |}]
+        ;;
 
-      let%expect_test _ =
-        print_matches (RePlus (ReClass (NegClass Whitespace)))
-        "hello world";
-        [%expect{| (Group (hello (0 5))) |}]
-
-        (* TODO
-      let%expect_test _ =
-        print_matches (ReClass (NegClass Boundary))
-        "hello world";
-        [%expect{| (Group (h (0 1))) |}]
-        *)
-
+        (* TODO let%expect_test _ = print_matches (ReClass (NegClass Boundary)) "hello
+           world"; [%expect{| (Group (h (0 1))) |}] *)
       end)
     ;;
   end)

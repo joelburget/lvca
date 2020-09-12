@@ -21,16 +21,15 @@ let rec to_nominal' ctx = function
   | Primitive (loc, prim) -> Some (Nominal.Primitive (loc, prim))
 
 and scope_to_nominal ctx (Scope (binders, body)) =
-  let ctx' = binders
-    |> List.map ~f:(fun pat -> pat
-      |> Pattern.list_vars_of_pattern
-      |> List.map ~f:snd)
+  let ctx' =
+    binders
+    |> List.map ~f:(fun pat -> pat |> Pattern.list_vars_of_pattern |> List.map ~f:snd)
     |> List.append ctx
   in
   body
-    |> List.map ~f:(to_nominal' ctx')
-    |> Option.all
-    |> Option.map ~f:(fun body' -> Nominal.Scope (binders, body'))
+  |> List.map ~f:(to_nominal' ctx')
+  |> Option.all
+  |> Option.map ~f:(fun body' -> Nominal.Scope (binders, body'))
 ;;
 
 let to_nominal tm = to_nominal' [] tm
@@ -50,14 +49,16 @@ and scope_of_nominal' env (Nominal.Scope (pats, body)) =
   let n = List.length pats in
   let var_nums : (string * (int * int)) list =
     pats
-    |> List.mapi ~f:(fun i pat -> pat
-      |> Pattern.list_vars_of_pattern
-      |> List.mapi ~f:(fun j (_, var) -> var, (i, j)))
+    |> List.mapi ~f:(fun i pat ->
+           pat
+           |> Pattern.list_vars_of_pattern
+           |> List.mapi ~f:(fun j (_, var) -> var, (i, j)))
     |> List.join
   in
   match String.Map.of_alist var_nums with
   | `Ok var_map ->
-    let env' : (int * int) String.Map.t = env
+    let env' : (int * int) String.Map.t =
+      env
       |> Map.map ~f:(fun (i, j) -> i + n, j)
       |> Lvca_util.Map.union_right_biased var_map
     in
@@ -73,21 +74,19 @@ let of_nominal_with_bindings bindings tm =
 
 let of_nominal tm = of_nominal_with_bindings String.Map.empty tm
 
-let rec alpha_equivalent = fun t1 t2 ->
+let rec alpha_equivalent t1 t2 =
   match t1, t2 with
-    | Operator (_, h1, subtms1), Operator (_, h2, subtms2)
-    -> String.(h1 = h2) && (match List.zip subtms1 subtms2 with
-      | Ok zipped -> List.for_all zipped ~f:(fun (Scope (_, body1), Scope (_, body2)) ->
+  | Operator (_, h1, subtms1), Operator (_, h2, subtms2) ->
+    String.(h1 = h2)
+    &&
+    (match List.zip subtms1 subtms2 with
+    | Ok zipped ->
+      List.for_all zipped ~f:(fun (Scope (_, body1), Scope (_, body2)) ->
           match List.zip body1 body2 with
-            | Ok bodies -> List.for_all
-              ~f:(fun (b1, b2) -> alpha_equivalent b1 b2)
-              bodies
-            | _ -> false)
-      | Unequal_lengths -> false
-    )
-    | Var (_, i1, j1), Var (_, i2, j2)
-    -> i1 = i2 && j1 = j2
-    | Primitive (_, p1), Primitive (_, p2)
-    -> Primitive.(p1 = p2)
-    | _, _
-    -> false
+          | Ok bodies -> List.for_all ~f:(fun (b1, b2) -> alpha_equivalent b1 b2) bodies
+          | _ -> false)
+    | Unequal_lengths -> false)
+  | Var (_, i1, j1), Var (_, i2, j2) -> i1 = i2 && j1 = j2
+  | Primitive (_, p1), Primitive (_, p2) -> Primitive.(p1 = p2)
+  | _, _ -> false
+;;

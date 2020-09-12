@@ -8,14 +8,14 @@ type 'a term =
 
 val location : 'a term -> 'a
 
-(** Raised by [from_de_bruijn_exn] or [of_nominal_exn] when they encounter a scope.
- *)
+(** Raised by [from_de_bruijn_exn] or [of_nominal_exn] when they encounter a scope. *)
 exception ScopeEncountered
 
 (** {1 de Bruijn conversion} *)
 
 (** @raise ScopeEncountered *)
 val from_de_bruijn_exn : 'a DeBruijn.term -> 'a term
+
 val from_de_bruijn : 'a DeBruijn.term -> 'a term option
 val to_de_bruijn : 'a term -> unit DeBruijn.term
 
@@ -23,6 +23,7 @@ val to_de_bruijn : 'a term -> unit DeBruijn.term
 
 (** @raise ScopeEncountered *)
 val of_nominal_exn : 'a Nominal.term -> 'a term
+
 val of_nominal : 'a Nominal.term -> 'a term option
 val to_nominal : 'a term -> 'a Nominal.term
 
@@ -31,6 +32,5 @@ val to_nominal : 'a term -> 'a Nominal.term
 val pp : Format.formatter -> 'a term -> unit
 val pp_range : Format.formatter -> OptRange.t term -> unit
 val to_string : 'a term -> string
-
 val hash : 'a term -> string
 val erase : 'loc term -> unit term

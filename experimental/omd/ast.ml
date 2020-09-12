@@ -1,23 +1,19 @@
-module Attributes =
-struct
+module Attributes = struct
   type t =
-    {
-      id: string option;
-      classes: string list;
-      attributes: (string * string) list;
+    { id : string option
+    ; classes : string list
+    ; attributes : (string * string) list
     }
 
-  let empty = {id=None; classes=[]; attributes=[]}
+  let empty = { id = None; classes = []; attributes = [] }
 end
 
-module Link_def =
-struct
+module Link_def = struct
   type 'a t =
-    {
-      label: 'a;
-      destination: string;
-      title: string option;
-      attributes: Attributes.t;
+    { label : 'a
+    ; destination : string
+    ; title : string option
+    ; attributes : Attributes.t
     }
 end
 
@@ -31,11 +27,10 @@ module Block_list = struct
     | Tight
 
   type 'block t =
-  {
-    kind: kind;
-    style: style;
-    blocks: 'block list list;
-  }
+    { kind : kind
+    ; style : style
+    ; blocks : 'block list list
+    }
 end
 
 module Code_block = struct
@@ -44,39 +39,37 @@ module Code_block = struct
     | Backtick
 
   type t =
-    {
-      kind: kind option;
-      label: string option;
-      other: string option;
-      code: string option;
-      attributes: Attributes.t;
+    { kind : kind option
+    ; label : string option
+    ; other : string option
+    ; code : string option
+    ; attributes : Attributes.t
     }
 end
 
 module Heading = struct
   type 'block t =
-    {
-      level: int;
-      text: 'block;
-      attributes: Attributes.t;
+    { level : int
+    ; text : 'block
+    ; attributes : Attributes.t
     }
 end
 
 module Def_list = struct
-  type 'a elt = { term : 'a; defs : 'a list }
-  type 'a t =
-  {
-    content: 'a elt list
-  }
+  type 'a elt =
+    { term : 'a
+    ; defs : 'a list
+    }
+
+  type 'a t = { content : 'a elt list }
 end
 
 module Tag_block = struct
   type 'block t =
-  {
-    tag: string;
-    content: 'block list;
-    attributes: Attributes.t
-  }
+    { tag : string
+    ; content : 'block list
+    ; attributes : Attributes.t
+    }
 end
 
 type 'a block =
@@ -101,20 +94,18 @@ module Emph = struct
     | Underscore
 
   type 'inline t =
-  {
-    style: style;
-    kind: kind;
-    content: 'inline;
-  }
+    { style : style
+    ; kind : kind
+    ; content : 'inline
+    }
 end
 
 module Code = struct
   type t =
-  {
-    level: int;
-    content: string;
-    attributes: Attributes.t;
-  }
+    { level : int
+    ; content : string
+    ; attributes : Attributes.t
+    }
 end
 
 type link_kind =
@@ -125,30 +116,27 @@ module Link = struct
   type kind = link_kind
 
   type 'inline t =
-  {
-    kind: kind;
-    def: 'inline Link_def.t;
-  }
+    { kind : kind
+    ; def : 'inline Link_def.t
+    }
 end
 
 module Ref = struct
   type kind = link_kind
 
   type 'inline t =
-  {
-    kind: kind;
-    label: 'inline;
-    def: string Link_def.t;
-  }
+    { kind : kind
+    ; label : 'inline
+    ; def : string Link_def.t
+    }
 end
 
 module Tag = struct
   type 'inline t =
-  {
-    tag: string;
-    content: 'inline;
-    attributes: Attributes.t
-  }
+    { tag : string
+    ; content : 'inline
+    ; attributes : Attributes.t
+    }
 end
 
 type inline =
@@ -165,20 +153,30 @@ type inline =
 
 let rec map f = function
   | Paragraph x -> Paragraph (f x)
-  | List l -> List  {l with blocks = List.map (List.map (map f)) l.blocks}
+  | List l -> List { l with blocks = List.map (List.map (map f)) l.blocks }
   | Blockquote xs -> Blockquote (List.map (map f) xs)
   | Thematic_break -> Thematic_break
-  | Heading h -> Heading {h with text = f h.text}
-  | Def_list l -> Def_list {content = List.map (fun elt -> {Def_list.term = f elt.Def_list.term; defs = List.map f elt.defs}) l.content}
-  | Tag_block t -> Tag_block {t with content = List.map (map f) t.content}
-  | Code_block _ | Html_block _ | Link_def _ as x -> x
+  | Heading h -> Heading { h with text = f h.text }
+  | Def_list l ->
+    Def_list
+      { content =
+          List.map
+            (fun elt ->
+              { Def_list.term = f elt.Def_list.term; defs = List.map f elt.defs })
+            l.content
+      }
+  | Tag_block t -> Tag_block { t with content = List.map (map f) t.content }
+  | (Code_block _ | Html_block _ | Link_def _) as x -> x
+;;
 
 let defs ast =
   let rec loop acc = function
     | List l -> List.fold_left (List.fold_left loop) acc l.blocks
-    | Blockquote l | Tag_block {content = l; _} -> List.fold_left loop acc l
-    | Paragraph _ | Thematic_break | Heading _
-    | Def_list _ | Code_block _ | Html_block _ -> acc
+    | Blockquote l | Tag_block { content = l; _ } -> List.fold_left loop acc l
+    | Paragraph _ | Thematic_break | Heading _ | Def_list _ | Code_block _ | Html_block _
+      ->
+      acc
     | Link_def def -> def :: acc
   in
   List.rev (List.fold_left loop [] ast)
+;;
