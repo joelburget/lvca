@@ -73,7 +73,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         let atom = attach_pos (lit <|> parens t) in
         let plus = char '+' in
         let f (l, rng1) (r, rng2) =
-          let rng = OptRange.(rng1 <> rng2) in
+          let rng = OptRange.union rng1 rng2 in
           NonBinding.Operator (rng, "add", [ [ l ]; [ r ] ]), rng
         in
         atom

@@ -65,7 +65,7 @@ module AngstromParse (Comment : ParseUtil.Comment_int) = struct
             t
         in
         let f (x, rng1) (y, rng2) =
-          let range = OptRange.(rng1 <> rng2) in
+          let range = OptRange.union rng1 rng2 in
           let tm =
             Nominal.Operator (range, "app", [ Scope ([], [ x ]); Scope ([], [ y ]) ])
           in
