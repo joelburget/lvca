@@ -36,7 +36,7 @@ let mk
         let style = rng_signal
           |> React.S.map (fun selected_rng ->
             (* Highlight if this is a subset of the selected range *)
-            if OptRange.(rng < selected_rng)
+            if OptRange.is_subset rng selected_rng
             then "background-color: rgba(33 150 243 / 50%);"
             else ""
           )

@@ -12,7 +12,7 @@ let to_string = fun { start; finish } -> Printf.sprintf "%i-%i" start finish
 let extend_to = fun { start; finish } pos ->
   { start = min start pos; finish = max finish pos }
 
-let (<>) r1 r2 = { start = min r1.start r2.start; finish = max r1.finish r2.finish }
+let union r1 r2 = { start = min r1.start r2.start; finish = max r1.finish r2.finish }
 
 let list_range
   = let open Base in
@@ -44,7 +44,9 @@ let intersect r1 r2 =
   then None
   else Some { start; finish }
 
-let (<) x y = x.start >= y.start && x.finish <= y.finish
+let is_before x y = x.finish <= y.start
+
+let is_subset x y = x.start >= y.start && x.finish <= y.finish
 
 let (=) x y = x.start = y.start && x.finish = y.finish
 
@@ -83,27 +85,27 @@ let%test_module "Range" = (module struct
     [%expect{| {1,2} |}]
 
   let%expect_test _ =
-    Fmt.pr "%b" (mk 0 1 < mk 2 3);
+    Fmt.pr "%b" (is_subset (mk 0 1) (mk 2 3));
     [%expect{| false |}]
 
   let%expect_test _ =
-    Fmt.pr "%b" (mk 0 4 < mk 2 3);
+    Fmt.pr "%b" (is_subset (mk 0 4) (mk 2 3));
     [%expect{| false |}]
 
   let%expect_test _ =
-    Fmt.pr "%b" (mk 2 3 < mk 0 4);
+    Fmt.pr "%b" (is_subset (mk 2 3) (mk 0 4));
     [%expect{| true |}]
 
   let%expect_test _ =
-    Fmt.pr "%b" (mk 2 3 < mk 2 3);
+    Fmt.pr "%b" (is_subset (mk 2 3) (mk 2 3));
     [%expect{| true |}]
 
   let%expect_test _ =
-    Fmt.pr "%b" (mk 0 2 < mk 1 3);
+    Fmt.pr "%b" (is_subset (mk 0 2) (mk 1 3));
     [%expect{| false |}]
 
   let%expect_test _ =
-    Fmt.pr "%b" (mk 18 19 < mk 21 24);
+    Fmt.pr "%b" (is_subset (mk 18 19) (mk 21 24));
     [%expect{| false |}]
 
 end);;

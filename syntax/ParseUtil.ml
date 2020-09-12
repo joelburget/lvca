@@ -347,7 +347,7 @@ module Mk (Comment : Comment_int) : Parsers = struct
 
   let mk_bracket_parser : char -> char -> 'a t -> 'a t
     = fun open_c close_c p -> Angstrom.lift4
-    (fun (_, rng1) (v, _) (_, rng2) _junk -> v, OptRange.(rng1 <> rng2))
+    (fun (_, rng1) (v, _) (_, rng2) _junk -> v, OptRange.union rng1 rng2)
     (char open_c)
     p
     (char close_c)

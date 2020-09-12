@@ -10,13 +10,13 @@ let extend_to opt_rng pos = match opt_rng with
   | None -> None
   | Some rng -> Some (Range.extend_to rng pos)
 
-let (<>) a b = match a, b with
-  | Some a', Some b' -> Some Range.(a' <> b')
+let union a b = match a, b with
+  | Some a', Some b' -> Some (Range.union a' b')
   | Some a, None
   | None, Some a -> Some a
   | None, None -> None
 
-let list_range = Base.List.fold ~init:None ~f:(<>)
+let list_range = Base.List.fold ~init:None ~f:union
 
 let (=) a b = match a, b with
   | Some a', Some b' -> Range.(a' = b')
@@ -24,8 +24,12 @@ let (=) a b = match a, b with
   | None, Some _ -> false
   | None, None -> true
 
-let (<) a b = match a, b with
-  | Some a', Some b' -> Range.(a' < b')
+let is_before a b = match a, b with
+  | Some a', Some b' -> Range.is_before a' b'
+  | _, _ -> false
+
+let is_subset a b = match a, b with
+  | Some a', Some b' -> Range.is_subset a' b'
   | _, _ -> false
 
 let intersect a b = match a, b with

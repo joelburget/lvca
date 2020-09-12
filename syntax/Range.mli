@@ -11,7 +11,7 @@ val to_string : t -> string
 val extend_to : t -> int -> t
 (** Extend this range to include the given position *)
 
-val (<>) : t -> t -> t
+val union : t -> t -> t
 (** Append two ranges. This creates a new range spanning from the earlier start to the
     later finish. *)
 
@@ -29,7 +29,10 @@ val list_range_nonempty : t list -> t
 val (=) : t -> t -> bool
 (** Are the two ranges equal *)
 
-val (<) : t -> t -> bool
+val is_before : t -> t -> bool
+(** Does one range occur entirely before the other *)
+
+val is_subset : t -> t -> bool
 (** Is the first entirely contained in the second? *)
 
 val intersect : t -> t -> t option

@@ -42,7 +42,7 @@ module Model = struct
         | Error msg -> Fmt.pf ppf "%s" msg
         | Ok tm -> Nominal.pp_term ppf tm)
       result
-      (fun ppf rng_opt -> OptRange.pp ppf rng_opt)
+      OptRange.pp
       selected
 end
 
