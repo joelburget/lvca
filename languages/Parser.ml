@@ -156,19 +156,13 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
  ;;
 end
 
-(*
-let mk_list : OptRange.t -> n_term list -> n_term =
- fun pos lst -> Nominal.Operator (pos, "list", [ Nominal.Scope ([], lst) ])
+(* let mk_list : OptRange.t -> n_term list -> n_term = fun pos lst -> Nominal.Operator
+   (pos, "list", [ Nominal.Scope ([], lst) ]) ;; *)
+let mk_list : pos:OptRange.t -> n_term list -> n_term * OptRange.t =
+ fun ~pos lst ->
+  let tm = Nominal.Operator (pos, "list", [ Nominal.Scope ([], lst) ]) in
+  tm, pos
 ;;
-*)
-let mk_list : pos:OptRange.t -> n_term list -> n_term * OptRange.t
-  = fun ~pos lst ->
-    let tm = Nominal.Operator
-      ( pos
-      , "list"
-      , [Nominal.Scope ([], lst)]
-      )
-    in tm, pos
 
 let mk_some : OptRange.t -> n_term -> n_term =
  fun pos tm -> Nominal.Operator (pos, "some", [ Scope ([], [ tm ]) ])
@@ -210,8 +204,9 @@ let translate : t -> n_term ParseUtil.t =
         | Operator (_, "true", []) -> true
         | _ -> false
       in
-      satisfy f >>|| (fun ~pos c -> Nominal.Primitive (pos, PrimChar c), pos)
-        <?> Printf.sprintf {|satisfy(\%s. ...)|} name
+      satisfy f
+      >>|| (fun ~pos c -> Nominal.Primitive (pos, PrimChar c), pos)
+      <?> Printf.sprintf {|satisfy(\%s. ...)|} name
     | Let (name, named, body) ->
       let ctx' = Map.set ctx ~key:name ~data:(BoundParser named) in
       translate' ctx' body <?> name
@@ -222,11 +217,12 @@ let translate : t -> n_term ParseUtil.t =
     | Option p ->
       option None ((fun tm -> Some tm) <$> translate' ctx p)
       >>|| (fun ~pos opt_tm ->
-        let result = match opt_tm with
-          | Some tm -> mk_some pos tm
-          | None -> Operator (pos, "none", [])
-        in
-        result, pos)
+             let result =
+               match opt_tm with
+               | Some tm -> mk_some pos tm
+               | None -> Operator (pos, "none", [])
+             in
+             result, pos)
       <?> "option"
     | Count (p, n_tm) ->
       let n =
@@ -235,8 +231,7 @@ let translate : t -> n_term ParseUtil.t =
           (match Bigint.to_int i with Some n -> n | None -> mk_err ())
         | _ -> mk_err ()
       in
-      count n (translate' ctx p) >>|| mk_list
-      <?> "count"
+      count n (translate' ctx p) >>|| mk_list <?> "count"
     | Many t -> many (translate' ctx t) >>|| mk_list <?> "many"
     | Many1 t -> many1 (translate' ctx t) >>|| mk_list <?> "many1"
     (* TODO: do we even want explicit fix? or should this be done implicitly? *)
@@ -266,6 +261,7 @@ let%test_module "Parsing" =
       Format.set_formatter_stag_functions Range.stag_functions;
       Format.set_tags true;
       Format.set_mark_tags true
+    ;;
 
     let parse_print : string -> string -> unit =
      fun parser_str str ->
@@ -289,12 +285,14 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print {|"str"*|} "strstrstr";
-      [%expect {| <0-9>list(<0-3>"str"</0-3>, <3-6>"str"</3-6>, <6-9>"str"</6-9>)</0-9> |}]
+      [%expect
+        {| <0-9>list(<0-3>"str"</0-3>, <3-6>"str"</3-6>, <6-9>"str"</6-9>)</0-9> |}]
     ;;
 
     let%expect_test _ =
       parse_print {|"str"+|} "strstrstr";
-      [%expect {| <0-9>list(<0-3>"str"</0-3>, <3-6>"str"</3-6>, <6-9>"str"</6-9>)</0-9> |}]
+      [%expect
+        {| <0-9>list(<0-3>"str"</0-3>, <3-6>"str"</3-6>, <6-9>"str"</6-9>)</0-9> |}]
     ;;
 
     let%expect_test _ =
