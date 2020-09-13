@@ -28,21 +28,22 @@ edit(lang) :=
 
 type core = OptRange.t Core.term
 
-type t =
-  | Atomic of core
-  | Labeled of t * string (* TODO? string -> core *)
-  | List of t list
+type 'lang t =
+  | Atomic of 'lang
+  | Labeled of 'lang t * string (* TODO? string -> core *)
+  | List of 'lang t list
 
-let rec pp : t Fmt.t =
- fun ppf -> function
-  | Atomic core -> Fmt.pf ppf "%a" (Fmt.braces Core.pp) core
-  | Labeled (edit, name) -> Fmt.pf ppf "%s:%a" name pp edit
-  | List edits -> Fmt.pf ppf "%a" Fmt.(brackets (list ~sep:comma pp)) edits
+let rec pp : 'lang Fmt.t -> 'lang t Fmt.t =
+ fun lang_fmt ppf ->
+  let pp' = pp lang_fmt in
+  function
+  | Atomic core -> Fmt.pf ppf "%a" lang_fmt (* (Fmt.braces Core.pp) *) core
+  | Labeled (edit, name) -> Fmt.pf ppf "%s:%a" name pp' edit
+  | List edits -> Fmt.pf ppf "%a" Fmt.(brackets (list ~sep:comma pp')) edits
 ;;
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
-  module ParseCore = Core.Parse (ParseUtil.CComment)
 
   let ( junk
       , sep_by
@@ -50,7 +51,6 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
       , brackets
       , choice
       , fix
-      , braces
       , lift3
       , ( >>| )
       , ( <?> )
@@ -64,7 +64,6 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
       , brackets
       , choice
       , fix
-      , braces
       , lift3
       , ( >>| )
       , ( <?> )
@@ -72,53 +71,56 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
       , char ))
   ;;
 
-  let t : t Parsers.t =
+  let t : 'lang Parsers.t -> 'lang t Parsers.t =
+   fun lang_p ->
     fix (fun t ->
         choice
-          [ braces ParseCore.term >>| (fun core -> Atomic core) <?> "core term"
+          [ lang_p >>| (fun core -> Atomic core) <?> "core term"
           ; brackets (sep_by (char ',') t) >>| (fun ts -> List ts) <?> "list"
           ; lift3 (fun name _colon edit -> Labeled (edit, name)) identifier (char ':') t
             <?> "labeled"
           ])
     <?> "edit"
-  ;;
+ ;;
 
-  let whitespace_t = junk *> t
+  let whitespace_t lang_p = junk *> t lang_p
 end
 
 type term = OptRange.t Nominal.term
 
-let run_atom : term -> core -> (term, Core.eval_error) Result.t =
- fun tm core -> Core.(eval (CoreApp (core, Term tm)))
-;;
-
-(* TODO: don't throw away this information, switch from strings *)
-let run_atom' : term -> core -> (term, string) Result.t =
- fun tm core -> Result.map_error (run_atom tm core) ~f:(fun (msg, _tm) -> msg)
-;;
-
-let rec run : term -> t -> (term, string) Result.t =
- fun tm edit ->
-  match edit with
-  | Atomic core -> run_atom' tm core
-  | Labeled (edit', _) -> run tm edit'
-  | List edits -> List.fold_result edits ~init:tm ~f:run
-;;
-
 let%test_module "Parsing" =
   (module struct
+    module Parsers = ParseUtil.Mk (ParseUtil.CComment)
     module ParseEdit = Parse (ParseUtil.CComment)
     module ParseTerm = Nominal.Parse (ParseUtil.CComment)
+    module ParseCore = Core.Parse (ParseUtil.CComment)
 
-    let parse : string -> (t, string) Result.t =
-      ParseUtil.parse_string ParseEdit.whitespace_t
+    let parse : string -> (core t, string) Result.t =
+      ParseUtil.parse_string (ParseEdit.whitespace_t (Parsers.braces ParseCore.term))
     ;;
 
     let parse_and_print : string -> unit =
      fun str ->
       match parse str with
-      | Ok edit -> pp Caml.Format.std_formatter edit
+      | Ok edit -> pp (Fmt.braces Core.pp) Caml.Format.std_formatter edit
       | Error msg -> Caml.print_string msg
+   ;;
+
+    let run_atom : term -> core -> (term, Core.eval_error) Result.t =
+     fun tm core -> Core.(eval (CoreApp (core, Term tm)))
+   ;;
+
+    (* TODO: don't throw away this information, switch from strings *)
+    let run_atom' : term -> core -> (term, string) Result.t =
+     fun tm core -> Result.map_error (run_atom tm core) ~f:(fun (msg, _tm) -> msg)
+   ;;
+
+    let rec run : term -> core t -> (term, string) Result.t =
+     fun tm edit ->
+      match edit with
+      | Atomic core -> run_atom' tm core
+      | Labeled (edit', _) -> run tm edit'
+      | List edits -> List.fold_result edits ~init:tm ~f:run
    ;;
 
     let eval_and_print : string -> string -> unit =
@@ -200,6 +202,36 @@ let%test_module "Parsing" =
       eval_and_print "bar()" replace_bar;
       [%expect {| baz() |}]
     ;;
+
+    (* rename a lambda calculus term. needs: cond, eq *)
+
+    (* let rename x y = Printf.sprintf {|{ let rec rename = \(target : string()) ->
+       \(new_name : string()) -> \(tm : lam()) -> match tm with { | var(v) -> cond(eq(v;
+       target); var(new_name); tm) | lam(var(v). body) -> cond(eq(v; target); tm;
+       lam(var(v). rename(body; target; new_name)) ) | app(tm1; tm2) -> app(rename(tm1;
+       target; new_name); rename(tm1; target; new_name)) } in rename "%s" "%s" }|} x y *)
+
+    (* let rename x y = Printf.sprintf {|{ let rec rename target new_name tm = match tm
+       with { | var(v) -> if v == target then new_name else tm | lam(var(v). body) -> if v
+       == target then tm else lam(var(v). rename body target new_name) ) | app(tm1; tm2)
+       -> app(rename tm1 target new_name; rename tm1 target new_name) } in rename "%s"
+       "%s" }|} x y *)
+
+    (* XXX / lol -- rename should be built in. *is* built in *)
+
+    (* let%expect_test _ = eval_and_print "lam(x. x)" (rename "x" "y"); [%expect{| lam(x.
+       x) |}]
+
+       let%expect_test _ = eval_and_print "x" (rename "x" "y"); [%expect{| y |}]
+
+       let%expect_test _ = eval_and_print "lam(z. z)" (rename "x" "y"); [%expect{| lam(z.
+       z) |}]
+
+       let%expect_test _ = eval_and_print "lam(z. z) x" (rename "x" "y"); [%expect{|
+       lam(z. z) x |}]
+
+       let%expect_test _ = eval_and_print "lam(z. x) y" (rename "x" "y"); [%expect{|
+       lam(z. y) y |}] *)
 
     let%expect_test _ =
       parse_and_print
