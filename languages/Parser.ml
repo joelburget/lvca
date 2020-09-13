@@ -5,11 +5,7 @@ module Format = Caml.Format
 
 let abstract_syntax_str =
   {|
-{ char, string, n_term, c_term }
-
-// import { char, string } from "lvca/builtin"
-// import { term as n_term } from "lvca/term"
-// import { term as c_term } from "lvca/core"
+// global: { char, string, n_term, c_term }
 
 parser :=
   // primitive parsers
