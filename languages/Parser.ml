@@ -241,11 +241,10 @@ let parse : t -> string -> (n_term, string) Result.t =
 
 let%test_module "Parsing" =
   (module struct
-    (* module ParseTerm = Nominal.Parse(Util.Angstrom.CComment) *)
     module ParseCore = Core.Parse (ParseUtil.CComment)
     module ParseParser = Parse (ParseUtil.CComment)
 
-    let parse' : string -> string -> unit =
+    let parse_print : string -> string -> unit =
      fun parser_str str ->
       match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
       | Error msg -> Caml.print_string ("failed to parse parser desc: " ^ msg)
@@ -256,32 +255,32 @@ let%test_module "Parsing" =
    ;;
 
     let%expect_test _ =
-      parse' {|"str"|} "str";
+      parse_print {|"str"|} "str";
       [%expect {| "str" |}]
     ;;
 
     let%expect_test _ =
-      parse' {|"str"|} "foo";
+      parse_print {|"str"|} "foo";
       [%expect {| failed to parse: string "str": string |}]
     ;;
 
     let%expect_test _ =
-      parse' {|"str"*|} "strstrstr";
+      parse_print {|"str"*|} "strstrstr";
       [%expect {| list("str", "str", "str") |}]
     ;;
 
     let%expect_test _ =
-      parse' {|"str"+|} "strstrstr";
+      parse_print {|"str"+|} "strstrstr";
       [%expect {| list("str", "str", "str") |}]
     ;;
 
     let%expect_test _ =
-      parse' {|"str" | "foo"|} "str";
+      parse_print {|"str" | "foo"|} "str";
       [%expect {| "str" |}]
     ;;
 
     let%expect_test _ =
-      parse' {|"str" | "foo"|} "foo";
+      parse_print {|"str" | "foo"|} "foo";
       [%expect {| "foo" |}]
     ;;
 
@@ -294,22 +293,22 @@ let%test_module "Parsing" =
     ;;
 
     let%expect_test _ =
-      parse' sat_parser "c";
+      parse_print sat_parser "c";
       [%expect {| 'c' |}]
     ;;
 
     let%expect_test _ =
-      parse' sat_parser "d";
+      parse_print sat_parser "d";
       [%expect {| failed to parse: : satisfy: 'd' |}]
     ;;
 
     let%expect_test _ =
-      parse' {|let x = "str" in x|} "str";
+      parse_print {|let x = "str" in x|} "str";
       [%expect {| "str" |}]
     ;;
 
     let%expect_test _ =
-      parse' {|fail {"reason"}|} "str";
+      parse_print {|fail {"reason"}|} "str";
       (* TODO: nicer formatting *)
       [%expect {| failed to parse: : reason |}]
     ;;
