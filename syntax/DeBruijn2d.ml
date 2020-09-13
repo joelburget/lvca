@@ -6,7 +6,7 @@ type 'loc term =
   | Var of 'loc * int * int
   | Primitive of 'loc * Primitive.t
 
-and 'loc scope = Scope of 'loc Pattern.t list * 'loc term list
+and 'loc scope = Scope of ('loc, Primitive.t) Pattern.t list * 'loc term list
 
 let rec to_nominal' ctx = function
   | Var (loc, ix1, ix2) ->

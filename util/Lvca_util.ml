@@ -115,6 +115,9 @@ module Json = struct
     | Array of t array
     | Float of float
 
+  type -'a serializer = 'a -> t
+  type +'a deserializer = t -> 'a option
+
   let array : t array -> t = fun arr -> Array arr
   let string : string -> t = fun str -> String str
   let float : float -> t = fun f -> Float f

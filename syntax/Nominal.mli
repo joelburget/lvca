@@ -5,7 +5,7 @@ type 'loc term =
   | Var of 'loc * string
   | Primitive of 'loc * Primitive.t
 
-and 'loc scope = Scope of 'loc Pattern.t list * 'loc term list
+and 'loc scope = Scope of ('loc, Primitive.t) Pattern.t list * 'loc term list
 
 val location : 'loc term -> 'loc
 val pp_term : Format.formatter -> 'loc term -> unit
@@ -38,14 +38,14 @@ exception ToPatternFailure of unit scope
     is not.
 
     @raise ToPatternScopeEncountered *)
-val to_pattern_exn : 'loc term -> 'loc Pattern.t
+val to_pattern_exn : 'loc term -> ('loc, Primitive.t) Pattern.t
 
-val to_pattern : 'loc term -> ('loc Pattern.t, unit scope) Result.t
+val to_pattern : 'loc term -> (('loc, Primitive.t) Pattern.t, unit scope) Result.t
 
 (** Convert from a pattern to the corresponding term. This always succeeds.
 
     For example [add(lit(1)); a)] (as a pattern) can be converted to a term. *)
-val pattern_to_term : 'loc Pattern.t -> 'loc term
+val pattern_to_term : ('loc, Primitive.t) Pattern.t -> 'loc term
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : OptRange.t term ParseUtil.t

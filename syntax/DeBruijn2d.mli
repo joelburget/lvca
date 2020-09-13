@@ -5,7 +5,7 @@ type 'loc term =
   | Var of 'loc * int * int
   | Primitive of 'loc * Primitive.t
 
-and 'loc scope = Scope of 'loc Pattern.t list * 'loc term list
+and 'loc scope = Scope of ('loc, Primitive.t) Pattern.t list * 'loc term list
 
 val to_nominal : 'loc term -> 'loc Nominal.term option
 val of_nominal : 'loc Nominal.term -> ('loc term, string) Result.t

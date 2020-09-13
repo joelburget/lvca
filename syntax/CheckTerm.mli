@@ -1,7 +1,8 @@
 (** Check that a term is valid in some language. *)
 
 type 'a abstract_syntax_check_failure_frame =
-  { term : ('a Pattern.t, 'a Nominal.term) Base.Either.t (** Term that failed to check *)
+  { term : (('a, Primitive.t) Pattern.t, 'a Nominal.term) Base.Either.t
+        (** Term that failed to check *)
   ; sort : AbstractSyntax.sort (** Sort it failed to check against *)
   }
 
@@ -61,7 +62,7 @@ val pp_failure : Format.formatter -> 'a abstract_syntax_check_failure -> unit
 val check_pattern
   :  AbstractSyntax.t (** Abstract syntax *)
   -> AbstractSyntax.sort (** Sort to check pattern against *)
-  -> 'a Pattern.t
+  -> ('a, Primitive.t) Pattern.t
   -> ( AbstractSyntax.valence Lvca_util.String.Map.t
      , 'a abstract_syntax_check_failure )
      Result.t

@@ -5,15 +5,15 @@ module Set = Base.Set
 module Util = Lvca_util
 module String = Util.String
 
-type 'a pattern =
-  | Operator of 'a * string * 'a pattern list list
-  | Primitive of 'a * Primitive.t
-  | Var of 'a * string
-  | Ignored of 'a * string
+type ('info, 'prim) pattern =
+  | Operator of 'info * string * ('info, 'prim) pattern list list
+  | Primitive of 'info * 'prim
+  | Var of 'info * string
+  | Ignored of 'info * string
 
-type 'a t = 'a pattern
+type ('info, 'prim) t = ('info, 'prim) pattern
 
-let rec vars_of_pattern : 'a pattern -> String.Set.t = function
+let rec vars_of_pattern = function
   | Operator (_, _, pats) ->
     pats |> List.map ~f:vars_of_patterns |> Set.union_list (module String)
   | Primitive _ -> String.Set.empty
@@ -43,31 +43,36 @@ let location = function
   | Operator (loc, _, _) | Primitive (loc, _) | Var (loc, _) | Ignored (loc, _) -> loc
 ;;
 
-let rec pp ppf =
+let rec pp pp_prim ppf =
   let comma, list, pf, semi = Fmt.(comma, list, pf, semi) in
   function
   | Operator (_, name, pats) ->
-    pf ppf "@[<2>%s(%a)@]" name (list ~sep:semi (list ~sep:comma pp)) pats
-  | Primitive (_, prim) -> Primitive.pp ppf prim
+    pf ppf "@[<2>%s(%a)@]" name (list ~sep:semi (list ~sep:comma (pp pp_prim))) pats
+  | Primitive (_, prim) -> pp_prim ppf prim
   | Var (_, name) -> pf ppf "%s" name
   | Ignored (_, name) -> pf ppf "_%s" name
 ;;
 
-let rec pp_range ppf pat =
+let rec pp_range pp_prim ppf pat =
   let comma, list, pf, semi = Fmt.(comma, list, pf, semi) in
   OptRange.open_stag ppf (location pat);
   (match pat with
   | Operator (_, name, pats) ->
-    pf ppf "@[<2>@{<test>%s@}(%a)@]" name (list ~sep:semi (list ~sep:comma pp_range)) pats
-  | Primitive (_, prim) -> pf ppf "%a" Primitive.pp prim
+    pf
+      ppf
+      "@[<2>@{<test>%s@}(%a)@]"
+      name
+      (list ~sep:semi (list ~sep:comma (pp_range pp_prim)))
+      pats
+  | Primitive (_, prim) -> pf ppf "%a" pp_prim prim
   | Var (_, name) -> pf ppf "%s" name
   | Ignored (_, name) -> pf ppf "_%s" name);
   OptRange.close_stag ppf (location pat)
 ;;
 
-let to_string pat = Fmt.str "%a" pp pat
+let to_string pp_prim pat = Fmt.str "%a" (pp pp_prim) pat
 
-let rec jsonify pat =
+let rec jsonify prim_jsonify pat =
   Util.Json.(
     match pat with
     | Operator (_, tag, tms) ->
@@ -76,16 +81,16 @@ let rec jsonify pat =
          ; string tag
          ; tms
            |> List.map ~f:(fun tms' ->
-                  tms' |> List.map ~f:jsonify |> Array.of_list |> array)
+                  tms' |> List.map ~f:(jsonify prim_jsonify) |> Array.of_list |> array)
            |> Array.of_list
            |> array
         |]
-    | Primitive (_, p) -> array [| string "p"; Primitive.jsonify p |]
+    | Primitive (_, p) -> array [| string "p"; prim_jsonify p |]
     | Var (_, name) -> array [| string "v"; string name |]
     | Ignored (_, name) -> array [| string "_"; string name |])
 ;;
 
-let rec unjsonify =
+let rec unjsonify prim_unjsonify =
   let open Option.Let_syntax in
   Util.Json.(
     function
@@ -95,13 +100,16 @@ let rec unjsonify =
         |> Array.to_list
         |> List.map ~f:(function
                | Array subtms' ->
-                 subtms' |> Array.to_list |> List.map ~f:unjsonify |> Option.all
+                 subtms'
+                 |> Array.to_list
+                 |> List.map ~f:(unjsonify prim_unjsonify)
+                 |> Option.all
                | _ -> None)
         |> Option.all
       in
       Operator ((), tag, subtms')
     | Array [| String "p"; prim |] ->
-      let%map prim' = Primitive.unjsonify prim in
+      let%map prim' = prim_unjsonify prim in
       Primitive ((), prim')
     | Array [| String "v"; String name |] -> Some (Var ((), name))
     | Array [| String "_"; String name |] -> Some (Ignored ((), name))
@@ -120,27 +128,29 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   module Primitive = Primitive.Parse (Comment)
 
-  type pat_or_sep =
-    | Pat of OptRange.t pattern
+  type 'prim pat_or_sep =
+    | Pat of (OptRange.t, 'prim) pattern
     | Sep of char
 
-  let t : OptRange.t t ParseUtil.t =
+  let t : 'prim ParseUtil.t -> (OptRange.t, 'prim) t ParseUtil.t =
+   fun parse_prim ->
     let open Parsers in
     fix (fun pat ->
-        let t_or_sep : pat_or_sep Parsers.t =
+        let t_or_sep : 'prim pat_or_sep Parsers.t =
           choice
             [ (fun c -> Sep c) <$> choice [ char ','; char ';' ]
             ; (fun pat -> Pat pat) <$> pat
             ]
         in
         let accumulate
-            : OptRange.t -> string -> pat_or_sep list -> OptRange.t pattern Parsers.t
+            :  OptRange.t -> string -> 'prim pat_or_sep list
+            -> (OptRange.t, 'prim) pattern Parsers.t
           =
          fun range tag tokens ->
           (* patterns encountered between ','s, before hitting ';' *)
-          let list_queue : OptRange.t pattern Queue.t = Queue.create () in
+          let list_queue : (OptRange.t, 'prim) pattern Queue.t = Queue.create () in
           (* patterns encountered between ';'s *)
-          let slot_queue : OptRange.t pattern list Queue.t = Queue.create () in
+          let slot_queue : (OptRange.t, 'prim) pattern list Queue.t = Queue.create () in
           (* Move the current list to the slot queue *)
           let list_to_slot () =
             if not (Queue.is_empty list_queue)
@@ -165,7 +175,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
           go tokens
         in
         choice
-          [ (Primitive.t >>|| fun ~pos prim -> Primitive (pos, prim), pos)
+          [ (parse_prim >>|| fun ~pos prim -> Primitive (pos, prim), pos)
           ; (identifier
             >>== fun ~pos:rng ident ->
             if ident.[0] = '_'
@@ -182,12 +192,13 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
               <?> "pattern body")
           ])
     <?> "pattern"
-  ;;
+ ;;
 end
 
 let%test_module "Parsing" =
   (module struct
     module Parser = Parse (ParseUtil.NoComment)
+    module PrimParser = Primitive.Parse (ParseUtil.NoComment)
 
     let () =
       Format.set_formatter_stag_functions Range.stag_functions;
@@ -196,8 +207,8 @@ let%test_module "Parsing" =
     ;;
 
     let print_parse tm =
-      match ParseUtil.parse_string Parser.t tm with
-      | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range pat
+      match ParseUtil.parse_string (Parser.t PrimParser.t) tm with
+      | Ok pat -> Fmt.pr "%a\n%a" (pp Primitive.pp) pat (pp_range Primitive.pp) pat
       | Error msg -> Fmt.pr "failed: %s\n" msg
     ;;
 
@@ -270,31 +281,37 @@ let%test_module "Parsing" =
 ;;
 
 module Properties = struct
-  let json_round_trip1 : unit t -> bool =
-   fun t -> match t |> jsonify |> unjsonify with None -> false | Some t' -> t = t'
+  let json_round_trip1 : (unit, Primitive.t) t -> bool =
+   fun t ->
+    match t |> jsonify Primitive.jsonify |> unjsonify Primitive.unjsonify with
+    | None -> false
+    | Some t' -> t = t'
  ;;
 
   let json_round_trip2 : Util.Json.t -> bool =
    fun json ->
-    match json |> unjsonify with
+    match json |> unjsonify Primitive.unjsonify with
     | None -> true (* malformed input *)
-    | Some t -> Util.Json.(jsonify t = json)
+    | Some t -> Util.Json.(jsonify Primitive.jsonify t = json)
  ;;
 
   module Parse' = Parse (ParseUtil.NoComment)
+  module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
 
-  let string_round_trip1 : unit t -> bool =
+  let string_round_trip1 : (unit, Primitive.t) t -> bool =
    fun t ->
-    match t |> to_string |> ParseUtil.parse_string Parse'.t with
+    match
+      t |> to_string Primitive.pp |> ParseUtil.parse_string (Parse'.t ParsePrimitive.t)
+    with
     | Ok prim -> erase prim = t
     | Error _ -> false
  ;;
 
   let string_round_trip2 : string -> bool =
    fun str ->
-    match ParseUtil.parse_string Parse'.t str with
+    match ParseUtil.parse_string (Parse'.t ParsePrimitive.t) str with
     | Ok prim ->
-      let str' = to_string prim in
+      let str' = to_string Primitive.pp prim in
       Base.String.(str' = str)
     | Error _ -> true
  ;;

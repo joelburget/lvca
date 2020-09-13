@@ -19,7 +19,7 @@ type 'a term =
 
 and 'a core_scope = Scope of string * 'a term
 
-and 'a core_case_scope = CaseScope of 'a Pattern.t * 'a term
+and 'a core_case_scope = CaseScope of ('a, Primitive.t) Pattern.t * 'a term
 
 let rec erase : 'a term -> unit term = function
   | Term tm -> Term (Nominal.erase tm)
@@ -70,7 +70,8 @@ module PP = struct
         body
 
   and pp_core_case_scope : Format.formatter -> 'a core_case_scope -> unit =
-   fun ppf (CaseScope (pat, body)) -> pf ppf "@[%a@ -> %a@]" Pattern.pp pat pp body
+   fun ppf (CaseScope (pat, body)) ->
+    pf ppf "@[%a@ -> %a@]" (Pattern.pp Primitive.pp) pat pp body
 
   (* Flatten all arguments into one box *)
   and pp_app ppf app =
@@ -143,7 +144,8 @@ let merge_results
 ;;
 
 let rec match_pattern
-    : 'a Nominal.term -> 'b Pattern.t -> 'a Nominal.term Lvca_util.String.Map.t option
+    :  'a Nominal.term -> ('b, Primitive.t) Pattern.t
+    -> 'a Nominal.term Lvca_util.String.Map.t option
   =
  fun v pat ->
   match v, pat with

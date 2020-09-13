@@ -9,7 +9,7 @@ type 'loc term =
   | Var of 'loc * string
   | Primitive of 'loc * Primitive.t
 
-and 'loc scope = Scope of 'loc Pattern.t list * 'loc term list
+and 'loc scope = Scope of ('loc, Primitive.t) Pattern.t list * 'loc term list
 
 let location = function Operator (loc, _, _) | Var (loc, _) | Primitive (loc, _) -> loc
 
@@ -27,7 +27,14 @@ and pp_scope ppf (Scope (bindings, body)) =
   let pp_body = list ~sep:comma pp_term in
   match bindings with
   | [] -> pp_body ppf body
-  | _ -> pf ppf "%a.@ %a" (list ~sep:(any ".@ ") Pattern.pp) bindings pp_body body
+  | _ ->
+    pf
+      ppf
+      "%a.@ %a"
+      (list ~sep:(any ".@ ") (Pattern.pp Primitive.pp))
+      bindings
+      pp_body
+      body
 ;;
 
 let rec pp_term_range ppf tm =
@@ -43,7 +50,14 @@ and pp_scope_range ppf (Scope (bindings, body)) =
   let pp_body = list ~sep:comma pp_term_range in
   match bindings with
   | [] -> pp_body ppf body
-  | _ -> pf ppf "%a.@ %a" (list ~sep:(any ".@ ") Pattern.pp_range) bindings pp_body body
+  | _ ->
+    pf
+      ppf
+      "%a.@ %a"
+      (list ~sep:(any ".@ ") (Pattern.pp_range Primitive.pp))
+      bindings
+      pp_body
+      body
 ;;
 
 let pp_term_str tm = str "%a" pp_term tm
@@ -60,7 +74,7 @@ let rec jsonify tm =
 
 and jsonify_scope (Scope (pats, body)) : Json.t =
   let body' = body |> List.map ~f:jsonify |> List.to_array |> Json.array in
-  Json.array [| array_map Pattern.jsonify pats; body' |]
+  Json.array [| array_map (Pattern.jsonify Primitive.jsonify) pats; body' |]
 ;;
 
 let rec unjsonify =
@@ -85,7 +99,9 @@ and unjsonify_scope =
     | Array arr ->
       let open Option.Let_syntax in
       let binders, body = arr |> Array.to_list |> Lvca_util.List.unsnoc in
-      let%bind binders' = binders |> List.map ~f:Pattern.unjsonify |> Option.all in
+      let%bind binders' =
+        binders |> List.map ~f:(Pattern.unjsonify Primitive.unjsonify) |> Option.all
+      in
       let%bind body' =
         match body with
         | Array bodies -> bodies |> Array.to_list |> List.map ~f:unjsonify |> Option.all
@@ -111,7 +127,7 @@ and erase_scope : 'loc scope -> unit scope =
 exception ToPatternFailure of unit scope
 
 (** @raise ToPatternFailure *)
-let rec to_pattern_exn : 'loc term -> 'loc Pattern.t = function
+let rec to_pattern_exn : 'loc term -> ('loc, Primitive.t) Pattern.t = function
   | Var (loc, name) ->
     if String.is_substring_at name ~pos:0 ~substring:"_"
     then Ignored (loc, String.slice name 1 0)
@@ -121,7 +137,7 @@ let rec to_pattern_exn : 'loc term -> 'loc Pattern.t = function
   | Primitive (loc, prim) -> Primitive (loc, prim)
 
 (** @raise ToPatternFailure *)
-and scope_to_patterns_exn : 'loc scope -> 'loc Pattern.t list = function
+and scope_to_patterns_exn : 'loc scope -> ('loc, Primitive.t) Pattern.t list = function
   | Scope ([], tms) -> List.map tms ~f:to_pattern_exn
   | Scope (binders, tms) ->
     let binders' = List.map binders ~f:Pattern.erase in
@@ -129,11 +145,11 @@ and scope_to_patterns_exn : 'loc scope -> 'loc Pattern.t list = function
     raise (ToPatternFailure (Scope (binders', tms')))
 ;;
 
-let to_pattern : 'loc term -> ('loc Pattern.t, unit scope) Result.t =
+let to_pattern : 'loc term -> (('loc, Primitive.t) Pattern.t, unit scope) Result.t =
  fun tm -> try Ok (to_pattern_exn tm) with ToPatternFailure scope -> Error scope
 ;;
 
-let rec pattern_to_term : 'loc Pattern.t -> 'loc term = function
+let rec pattern_to_term : ('loc, Primitive.t) Pattern.t -> 'loc term = function
   | Operator (loc, name, pats) ->
     Operator
       ( loc

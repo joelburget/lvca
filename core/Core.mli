@@ -22,7 +22,7 @@ type 'a term =
 
 and 'a core_scope = Scope of string * 'a term
 
-and 'a core_case_scope = CaseScope of 'a Pattern.t * 'a term
+and 'a core_case_scope = CaseScope of ('a, Primitive.t) Pattern.t * 'a term
 
 val erase : 'a term -> unit term
 val pp : Format.formatter -> 'a term -> unit

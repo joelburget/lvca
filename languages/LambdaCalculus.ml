@@ -42,7 +42,7 @@ module AngstromParse (Comment : ParseUtil.Comment_int) = struct
     Parsers.identifier >>|| fun ~pos name -> Nominal.Var (pos, name), pos
   ;;
 
-  let p_var : OptRange.t Pattern.t Parsers.t =
+  let p_var : (OptRange.t, Primitive.t) Pattern.t Parsers.t =
     Parsers.identifier >>|| fun ~pos name -> Pattern.Var (pos, name), pos
   ;;
 

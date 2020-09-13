@@ -3,7 +3,8 @@ open AbstractSyntax
 module Util = Lvca_util
 
 type 'a abstract_syntax_check_failure_frame =
-  { term : ('a Pattern.t, 'a Nominal.term) Either.t (** Term that failed to check *)
+  { term : (('a, Primitive.t) Pattern.t, 'a Nominal.term) Either.t
+        (** Term that failed to check *)
   ; sort : sort (** Sort it failed to check against *)
   }
 
@@ -27,7 +28,13 @@ let pp_failure : Caml.Format.formatter -> 'a abstract_syntax_check_failure -> un
         Caml.Format.pp_force_newline ppf ();
         match term with
         | First pat ->
-          Fmt.pf ppf "- @[pattern: %a,@ sort: %a@]" Pattern.pp pat pp_sort sort
+          Fmt.pf
+            ppf
+            "- @[pattern: %a,@ sort: %a@]"
+            (Pattern.pp Primitive.pp)
+            pat
+            pp_sort
+            sort
         | Second tm ->
           Fmt.pf ppf "- @[term: %a,@ sort: %a@]" Nominal.pp_term tm pp_sort sort))
 ;;
@@ -72,7 +79,7 @@ let lookup_operator
 
 (* Check that this pattern is valid and return the valence for each variable it binds *)
 let check_pattern
-    :  AbstractSyntax.t -> sort -> 'a Pattern.t
+    :  AbstractSyntax.t -> sort -> ('a, Primitive.t) Pattern.t
     -> (valence Util.String.Map.t, 'a abstract_syntax_check_failure) Result.t
   =
  fun lang ->
@@ -108,7 +115,7 @@ let check_pattern
               k))
   in
   let rec go_pattern
-      :  sort -> 'a Pattern.t
+      :  sort -> ('a, Primitive.t) Pattern.t
       -> (valence Util.String.Map.t, 'a abstract_syntax_check_failure) Result.t
     =
    fun sort pat ->
@@ -139,7 +146,7 @@ let check_pattern
     Result.map_error result ~f:(fun { message; stack } ->
         { message; stack = { term = First pat; sort } :: stack })
   and go_arity_pat
-      :  arity -> 'a Pattern.t list list
+      :  arity -> ('a, Primitive.t) Pattern.t list list
       -> (valence Util.String.Map.t, 'a abstract_syntax_check_failure) Result.t
     =
    fun valences pats ->
@@ -167,7 +174,7 @@ let check_pattern
                            "A list pattern (%s) was found matching a non-repeated sort \
                             (%s)"
                            (pats
-                           |> List.map ~f:Pattern.to_string
+                           |> List.map ~f:(Pattern.to_string Primitive.pp)
                            |> String.concat ~sep:", ")
                            (string_of_sort sort))))
                | Valence ([], (sort, Starred)) ->
@@ -189,7 +196,7 @@ let check_pattern
                             is valid."
                            (string_of_valence valence)
                            (pats
-                           |> List.map ~f:Pattern.to_string
+                           |> List.map ~f:(Pattern.to_string Primitive.pp)
                            |> String.concat ~sep:", ")))))
         |> Result.all
         |> Result.map ~f:Util.String.Map.strict_unions
