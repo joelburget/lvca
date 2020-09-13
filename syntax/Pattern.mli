@@ -11,8 +11,8 @@ type 'a t = 'a pattern
 val vars_of_pattern : 'a t -> Lvca_util.String.Set.t
 val list_vars_of_pattern : 'a t -> ('a * string) list
 val to_string : 'a t -> string
-val pp : Format.formatter -> 'a t -> unit
-val pp_range : Format.formatter -> OptRange.t t -> unit
+val pp : 'a t Fmt.t
+val pp_range : OptRange.t t Fmt.t
 val jsonify : 'a t -> Lvca_util.Json.t
 val unjsonify : Lvca_util.Json.t -> unit t option
 val erase : 'a pattern -> unit pattern
