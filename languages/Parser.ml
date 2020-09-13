@@ -156,9 +156,19 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
  ;;
 end
 
+(*
 let mk_list : OptRange.t -> n_term list -> n_term =
  fun pos lst -> Nominal.Operator (pos, "list", [ Nominal.Scope ([], lst) ])
 ;;
+*)
+let mk_list : pos:OptRange.t -> n_term list -> n_term * OptRange.t
+  = fun ~pos lst ->
+    let tm = Nominal.Operator
+      ( pos
+      , "list"
+      , [Nominal.Scope ([], lst)]
+      )
+    in tm, pos
 
 let mk_some : OptRange.t -> n_term -> n_term =
  fun pos tm -> Nominal.Operator (pos, "some", [ Scope ([], [ tm ]) ])
@@ -168,6 +178,7 @@ type ctx_entry =
   | BoundChar of char
   | BoundParser of t
 
+(* TODO: remove *)
 let todo_pos = None
 
 (* TODO: this is hacky *)
@@ -186,11 +197,11 @@ let translate : t -> n_term ParseUtil.t =
   let rec translate' ctx = function
     | Char c ->
       char c
-      >>| (fun c -> Nominal.Primitive (todo_pos, PrimChar c))
+      >>|| (fun ~pos c -> Nominal.Primitive (pos, PrimChar c), pos)
       <?> Printf.sprintf {|char '%s'|} (String.make 1 c)
     | String str ->
       string str
-      >>| (fun str -> Nominal.Primitive (todo_pos, PrimString str))
+      >>|| (fun ~pos str -> Nominal.Primitive (pos, PrimString str), pos)
       <?> Printf.sprintf {|string "%s"|} str
     | Satisfy (name, tm) ->
       let f c =
@@ -199,7 +210,8 @@ let translate : t -> n_term ParseUtil.t =
         | Operator (_, "true", []) -> true
         | _ -> false
       in
-      satisfy f >>| fun c -> Nominal.Primitive (todo_pos, PrimChar c)
+      satisfy f >>|| (fun ~pos c -> Nominal.Primitive (pos, PrimChar c), pos)
+        <?> Printf.sprintf {|satisfy(\%s. ...)|} name
     | Let (name, named, body) ->
       let ctx' = Map.set ctx ~key:name ~data:(BoundParser named) in
       translate' ctx' body <?> name
@@ -209,8 +221,13 @@ let translate : t -> n_term ParseUtil.t =
       | _ -> mk_err ())
     | Option p ->
       option None ((fun tm -> Some tm) <$> translate' ctx p)
-      >>| (function
-      | Some tm -> mk_some todo_pos tm | None -> Operator (todo_pos, "none", []))
+      >>|| (fun ~pos opt_tm ->
+        let result = match opt_tm with
+          | Some tm -> mk_some pos tm
+          | None -> Operator (pos, "none", [])
+        in
+        result, pos)
+      <?> "option"
     | Count (p, n_tm) ->
       let n =
         match Core.eval_ctx_exn (thin_ctx ctx) n_tm with
@@ -218,9 +235,10 @@ let translate : t -> n_term ParseUtil.t =
           (match Bigint.to_int i with Some n -> n | None -> mk_err ())
         | _ -> mk_err ()
       in
-      count n (translate' ctx p) >>| mk_list todo_pos
-    | Many t -> many (translate' ctx t) >>| mk_list todo_pos <?> "many"
-    | Many1 t -> many1 (translate' ctx t) >>| mk_list todo_pos <?> "many1"
+      count n (translate' ctx p) >>|| mk_list
+      <?> "count"
+    | Many t -> many (translate' ctx t) >>|| mk_list <?> "many"
+    | Many1 t -> many1 (translate' ctx t) >>|| mk_list <?> "many1"
     (* TODO: do we even want explicit fix? or should this be done implicitly? *)
     (* | Fix (name, p) -> fix (fun p' -> translate' (Map.set ctx ~key:name ~data:p') p) *)
     | Fix _ -> failwith "TODO"
@@ -244,6 +262,11 @@ let%test_module "Parsing" =
     module ParseCore = Core.Parse (ParseUtil.CComment)
     module ParseParser = Parse (ParseUtil.CComment)
 
+    let () =
+      Format.set_formatter_stag_functions Range.stag_functions;
+      Format.set_tags true;
+      Format.set_mark_tags true
+
     let parse_print : string -> string -> unit =
      fun parser_str str ->
       match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
@@ -251,12 +274,12 @@ let%test_module "Parsing" =
       | Ok parser ->
         (match parse parser str with
         | Error msg -> Caml.print_string ("failed to parse: " ^ msg)
-        | Ok tm -> Nominal.pp_term Caml.Format.std_formatter tm)
+        | Ok tm -> Fmt.pr "%a\n" Nominal.pp_term_range tm)
    ;;
 
     let%expect_test _ =
       parse_print {|"str"|} "str";
-      [%expect {| "str" |}]
+      [%expect {| <0-3>"str"</0-3> |}]
     ;;
 
     let%expect_test _ =
@@ -266,22 +289,22 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print {|"str"*|} "strstrstr";
-      [%expect {| list("str", "str", "str") |}]
+      [%expect {| <0-9>list(<0-3>"str"</0-3>, <3-6>"str"</3-6>, <6-9>"str"</6-9>)</0-9> |}]
     ;;
 
     let%expect_test _ =
       parse_print {|"str"+|} "strstrstr";
-      [%expect {| list("str", "str", "str") |}]
+      [%expect {| <0-9>list(<0-3>"str"</0-3>, <3-6>"str"</3-6>, <6-9>"str"</6-9>)</0-9> |}]
     ;;
 
     let%expect_test _ =
       parse_print {|"str" | "foo"|} "str";
-      [%expect {| "str" |}]
+      [%expect {| <0-3>"str"</0-3> |}]
     ;;
 
     let%expect_test _ =
       parse_print {|"str" | "foo"|} "foo";
-      [%expect {| "foo" |}]
+      [%expect {| <0-3>"foo"</0-3> |}]
     ;;
 
     let sat_parser =
@@ -294,17 +317,17 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print sat_parser "c";
-      [%expect {| 'c' |}]
+      [%expect {| <0-1>'c'</0-1> |}]
     ;;
 
     let%expect_test _ =
       parse_print sat_parser "d";
-      [%expect {| failed to parse: : satisfy: 'd' |}]
+      [%expect {| failed to parse: satisfy(\x. ...): satisfy: 'd' |}]
     ;;
 
     let%expect_test _ =
       parse_print {|let x = "str" in x|} "str";
-      [%expect {| "str" |}]
+      [%expect {| <0-3>"str"</0-3> |}]
     ;;
 
     let%expect_test _ =
