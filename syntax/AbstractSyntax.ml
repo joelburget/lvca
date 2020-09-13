@@ -42,16 +42,7 @@ type sort_def =
 type sort_defs =
   | SortDefs of sort_def String.Map.t (** A language is defined by its sorts *)
 
-type import =
-  { imported_symbols : (string * string option) list
-  ; location : string
-  }
-
-type abstract_syntax =
-  { imports : import list
-  ; sort_defs : sort_defs
-  }
-
+type abstract_syntax = { sort_defs : sort_defs }
 type t = abstract_syntax
 
 (* functions: *)
@@ -59,24 +50,7 @@ type t = abstract_syntax
 let sort_defs_eq (SortDefs x) (SortDefs y) = Map.equal Caml.( = ) x y
 
 let ( = ) : abstract_syntax -> abstract_syntax -> bool =
- fun x y -> Caml.(x.imports = y.imports) && sort_defs_eq x.sort_defs y.sort_defs
-;;
-
-let pp_import_symbol : Format.formatter -> string * string option -> unit =
- fun ppf (name1, name2) ->
-  match name2 with
-  | None -> Fmt.string ppf name1
-  | Some name2' -> Fmt.pf ppf "%s as %s" name1 name2'
-;;
-
-let pp_import : Format.formatter -> import -> unit =
- fun ppf { imported_symbols; location } ->
-  Fmt.pf
-    ppf
-    "import { %a } from \"%s\""
-    (Fmt.list ~sep:(Fmt.any ", ") pp_import_symbol)
-    imported_symbols
-    location
+ fun x y -> sort_defs_eq x.sort_defs y.sort_defs
 ;;
 
 let rec pp_sort : Format.formatter -> sort -> unit =
@@ -160,17 +134,7 @@ let rec instantiate_sort : sort String.Map.t -> sort -> sort =
    sort_def ]) ))
 
    let term_of_option : ('a -> NonBinding.term) -> 'a option -> NonBinding.term = fun f ->
-   function | None -> Operator ("none", []) | Some a -> Operator ("some", [f a])
-
-   let term_of_import : import -> NonBinding.term = fun { imported_symbols; location } ->
-   NonBinding.Operator ("import", [ Sequence (imported_symbols |> List.map ~f:(fun
-   (original_name, binding_name) -> NonBinding.Sequence [ Primitive (PrimString
-   original_name) ; term_of_option (fun binding_name -> Primitive (PrimString
-   binding_name)) binding_name ])) ; Primitive (PrimString location) ])
-
-   let to_term : abstract_syntax -> NonBinding.term = fun { imports; sort_defs } ->
-   (Operator ("abstract_syntax", [ Sequence (List.map imports ~f:term_of_import) ;
-   term_of_sort_defs sort_defs ])) *)
+   function | None -> Operator ("none", []) | Some a -> Operator ("some", [f a]) *)
 
 (* _of_term: *)
 
@@ -201,7 +165,6 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   (* punctuation *)
   let assign = string ":="
   let bar = char '|'
-  let comma = char ','
   let dot = char '.'
   let semi = char ';'
   let star = char '*'
@@ -295,31 +258,11 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     <?> "sort definition"
   ;;
 
-  let import_symbol : (string * string option) Parsers.t =
-    lift2
-      (fun ident as_ident -> ident, as_ident)
-      identifier
-      (option None ((fun x -> Some x) <$> string "as" *> identifier))
-    <?> "import symbol"
-  ;;
-
-  let import : import Parsers.t =
-    lift4
-      (fun _import imported_symbols _from location -> { imported_symbols; location })
-      (string "import")
-      (braces (sep_by1 comma import_symbol))
-      (string "from")
-      string_lit
-    <?> "import"
-  ;;
-
   let t : abstract_syntax Parsers.t =
-    lift2
-      (fun imports sort_defs ->
-        { imports (* XXX remove exn *)
-        ; sort_defs = SortDefs (Util.String.Map.of_alist_exn sort_defs)
-        })
-      (many import)
+    lift
+      (fun sort_defs ->
+        (* XXX remove exn *)
+        { sort_defs = SortDefs (Util.String.Map.of_alist_exn sort_defs) })
       (many1 sort_def)
     <?> "abstract syntax"
   ;;
@@ -382,17 +325,6 @@ let%test_module "AbstractSyntax_Parser" =
 
     let%test_unit _ = assert (Caml.(parse_with Parse.arity "()" = []))
 
-    let integer_import =
-      { imported_symbols = [ "integer", None ]; location = "lvca/builtin" }
-    ;;
-
-    let%test_unit _ =
-      assert (
-        Caml.(
-          parse_with Parse.import {|import {integer} from "lvca/builtin"|}
-          = integer_import))
-    ;;
-
     let%test_unit _ =
       assert (Caml.(parse_with Parse.operator_def "foo()" = OperatorDef ("foo", [])))
     ;;
@@ -435,15 +367,11 @@ let%test_module "AbstractSyntax_Parser" =
         parse_with
           Parse.whitespace_t
           {|
-import {integer} from "lvca/builtin"
-
 tm :=
   | add(tm(); tm())
   | lit(integer())
       |}
-        = { imports = [ integer_import ]
-          ; sort_defs = SortDefs (Util.String.Map.of_alist_exn [ tm_def ])
-          })
+        = { sort_defs = SortDefs (Util.String.Map.of_alist_exn [ tm_def ]) })
     ;;
   end)
 ;;

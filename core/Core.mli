@@ -28,7 +28,12 @@ val erase : 'a term -> unit term
 val pp : Format.formatter -> 'a term -> unit
 val to_string : 'a term -> string
 
-type import = AbstractSyntax.import
+(* TODO: do we want to remove imports? *)
+type import =
+  { imported_symbols : (string * string option) list
+  ; location : string
+  }
+
 type 'a defn = Defn of import list * 'a term
 
 val pp_defn : Format.formatter -> 'a defn -> unit

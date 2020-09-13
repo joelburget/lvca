@@ -157,7 +157,7 @@ let eval_command : store -> NonBinding.term -> string -> Vdom.Node.t =
 
 let abstractSyntax =
   {|
-import {list, string} from "builtin"
+// global: list, string
 
 option(a) := some(a) | none()
 

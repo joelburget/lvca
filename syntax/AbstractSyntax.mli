@@ -40,24 +40,13 @@ type sort_def =
 type sort_defs =
   | SortDefs of sort_def Lvca_util.String.Map.t (** A language is defined by its sorts *)
 
-(** An import includes sorts from another language. It's possible to rename sorts from
-    other languages so they don't collide with sorts defined in this language. *)
-type import =
-  { imported_symbols : (string * string option) list
-  ; location : string
-  }
-
 (** The abstract syntax of a language is represented by all of the external dependencies
     of the language plus the sorts it defines. *)
-type abstract_syntax =
-  { imports : import list
-  ; sort_defs : sort_defs
-  }
+type abstract_syntax = { sort_defs : sort_defs }
 
 type t = abstract_syntax
 
 val ( = ) : abstract_syntax -> abstract_syntax -> bool
-val pp_import : Format.formatter -> import -> unit
 val pp_sort : Format.formatter -> sort -> unit
 val string_of_sort : sort -> string
 val string_of_valence : valence -> string
@@ -66,7 +55,6 @@ val instantiate_sort : sort Lvca_util.String.Map.t -> sort -> sort
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val sort : sort ParseUtil.t
-  val import : import ParseUtil.t
   val t : t ParseUtil.t
   val whitespace_t : t ParseUtil.t
 end

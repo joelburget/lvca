@@ -87,13 +87,34 @@ end
 let pp : Format.formatter -> 'a term -> unit = PP.pp
 let to_string : 'a term -> string = fun tm -> Format.asprintf "%a" pp tm
 
-type import = AbstractSyntax.import
+type import =
+  { imported_symbols : (string * string option) list
+  ; location : string
+  }
+
 type 'a defn = Defn of import list * 'a term
+
+let pp_import_symbol : Format.formatter -> string * string option -> unit =
+ fun ppf (name1, name2) ->
+  match name2 with
+  | None -> Fmt.string ppf name1
+  | Some name2' -> Fmt.pf ppf "%s as %s" name1 name2'
+;;
+
+let pp_import : Format.formatter -> import -> unit =
+ fun ppf { imported_symbols; location } ->
+  Fmt.pf
+    ppf
+    "import { %a } from \"%s\""
+    (Fmt.list ~sep:(Fmt.any ", ") pp_import_symbol)
+    imported_symbols
+    location
+;;
 
 let pp_defn : Format.formatter -> 'a defn -> unit =
  fun ppf (Defn (imports, defn)) ->
   List.iter imports ~f:(fun import ->
-      AbstractSyntax.pp_import ppf import;
+      pp_import ppf import;
       Format.pp_force_newline ppf ());
   pp ppf defn
 ;;
@@ -287,9 +308,26 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     <?> "core term"
   ;;
 
+  let import_symbol : (string * string option) Parsers.t =
+    lift2
+      (fun ident as_ident -> ident, as_ident)
+      identifier
+      (option None ((fun x -> Some x) <$> string "as" *> identifier))
+    <?> "import symbol"
+  ;;
+
+  let import : import Parsers.t =
+    lift4
+      (fun _import imported_symbols _from location -> { imported_symbols; location })
+      (string "import")
+      (braces (sep_by1 (char ',') import_symbol))
+      (string "from")
+      string_lit
+    <?> "import"
+  ;;
+
   let defn : OptRange.t defn Parsers.t =
-    lift2 (fun imports tm -> Defn (imports, tm)) (many Abstract.import) term
-    <?> "core definition"
+    lift2 (fun imports tm -> Defn (imports, tm)) (many import) term <?> "core definition"
   ;;
 end
 

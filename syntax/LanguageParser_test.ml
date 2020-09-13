@@ -17,8 +17,7 @@ let%test_module "AbstractSyntax.Parser" =
 
     let%test _ =
       parse "bool := true() | false()"
-      = { imports = []
-        ; sort_defs =
+      = { sort_defs =
             SortDefs
               (Lvca_util.String.Map.of_alist_exn
                  [ ( "bool"
@@ -43,8 +42,7 @@ let%test_module "AbstractSyntax.Parser" =
         | foo(x*. x; x. x) // fixed arity, (variable valence, fixed valence)
         | bar(x*)          // variable arity
       |}
-      = { imports = []
-        ; sort_defs =
+      = { sort_defs =
             SortDefs
               (Lvca_util.String.Map.of_alist_exn
                  [ ( "ty"

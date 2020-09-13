@@ -354,8 +354,6 @@ let%test_module "CheckTerm" =
 
     let lang_desc =
       {|
-import {integer, string} from "lvca/builtin"
-
 value :=
   | unit()
   | lit_int(integer())
