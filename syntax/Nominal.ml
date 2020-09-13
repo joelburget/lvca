@@ -218,6 +218,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
           ])
     <?> "term"
   ;;
+
+  let whitespace_t = Parsers.(junk *> t)
 end
 
 module Properties = struct
@@ -366,11 +368,7 @@ let%test_module "TermParser" =
 
     module Parse' = Parse (ParseUtil.NoComment)
 
-    let parse str =
-      let parse_string, ( *> ) = Angstrom.(parse_string, ( *> )) in
-      parse_string ~consume:All (ParseUtil.whitespace *> Parse'.t) str
-      |> Result.map ~f:fst
-    ;;
+    let parse = ParseUtil.parse_string Parse'.whitespace_t
 
     let print_parse str =
       match parse str with

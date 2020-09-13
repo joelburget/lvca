@@ -49,6 +49,7 @@ val pattern_to_term : 'loc Pattern.t -> 'loc term
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : OptRange.t term ParseUtil.t
+  val whitespace_t : OptRange.t term ParseUtil.t
 end
 
 module Properties : sig
