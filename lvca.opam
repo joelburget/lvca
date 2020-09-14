@@ -12,13 +12,14 @@ build: [
 ]
 depends: [
   "ocaml" {>= "4.08.0"}
+  "angstrom"
   "base"
   "bignum"
   "cbor"
   "digestif"
+  "fmt"
   "js_of_ocaml"
   "ppx_jane"
   "ppx_inline_test"
-  "sha"
   "dune"             {>= "2.0.0"}
 ]
