@@ -1,38 +1,38 @@
 open Base
 
-type 'a term =
-  | Operator of 'a * string * 'a term list list
-  | Primitive of 'a * Primitive.t
+type ('loc, 'prim) term =
+  | Operator of 'loc * string * ('loc, 'prim) term list list
+  | Primitive of 'loc * 'prim
 
 let location = function Operator (loc, _, _) | Primitive (loc, _) -> loc
 
 exception ScopeEncountered
 
 (** @raise ScopeEncountered *)
-let rec from_de_bruijn_exn = function
+let rec of_de_bruijn_exn = function
   | DeBruijn.Operator (a, tag, scopes) ->
-    Operator (a, tag, List.map scopes ~f:from_de_bruijn_scope)
+    Operator (a, tag, List.map scopes ~f:of_de_bruijn_scope)
   | BoundVar _ | FreeVar _ -> raise ScopeEncountered
   | Primitive (a, p) -> Primitive (a, p)
 
 (** @raise ScopeEncountered *)
-and from_de_bruijn_scope = function
+and of_de_bruijn_scope = function
   | First _scopt -> raise ScopeEncountered
-  | Second tms -> List.map tms ~f:from_de_bruijn_exn
+  | Second tms -> List.map tms ~f:of_de_bruijn_exn
 ;;
 
-let from_de_bruijn (tm : 'a DeBruijn.term) : 'a term option =
-  try Some (from_de_bruijn_exn tm) with ScopeEncountered -> None
+let of_de_bruijn tm (* (tm : 'a DeBruijn.term) : 'a term option *) =
+  try Some (of_de_bruijn_exn tm) with ScopeEncountered -> None
 ;;
 
-let rec to_de_bruijn tm : unit DeBruijn.term =
+let rec to_de_bruijn tm (* : unit DeBruijn.term *) =
   match tm with
-  | Operator (_, tag, tms) ->
+  | Operator (loc, tag, tms) ->
     DeBruijn.Operator
-      ( ()
+      ( loc
       , tag
       , List.map tms ~f:(fun tms -> Either.Second (tms |> List.map ~f:to_de_bruijn)) )
-  | Primitive (_, p) -> Primitive ((), p)
+  | Primitive (loc, p) -> Primitive (loc, p)
 ;;
 
 let rec of_nominal_exn = function
@@ -47,7 +47,7 @@ and of_nominal_scope = function
   | _ -> raise ScopeEncountered
 ;;
 
-let of_nominal (tm : ('a, Primitive.t) Nominal.term) : 'a term option =
+let of_nominal (* (tm : ('a, Primitive.t) Nominal.term) : 'a term option *) tm =
   try Some (of_nominal_exn tm) with ScopeEncountered -> None
 ;;
 
@@ -61,10 +61,10 @@ let rec to_nominal tm =
   | Primitive (loc, p) -> Primitive (loc, p)
 ;;
 
-let pp ppf tm = tm |> to_nominal |> Nominal.pp_term Primitive.pp ppf
-let pp_range ppf tm = tm |> to_nominal |> Nominal.pp_term_range Primitive.pp ppf
-let to_string tm = tm |> to_nominal |> Nominal.pp_term_str Primitive.pp
-let hash tm = tm |> to_nominal |> Nominal.hash Primitive.jsonify
+let pp pp_prim ppf tm = tm |> to_nominal |> Nominal.pp_term pp_prim ppf
+let pp_range pp_prim ppf tm = tm |> to_nominal |> Nominal.pp_term_range pp_prim ppf
+let to_string pp_prim tm = tm |> to_nominal |> Nominal.pp_term_str pp_prim
+let hash jsonify_prim tm = tm |> to_nominal |> Nominal.hash jsonify_prim
 
 let rec erase = function
   | Operator (_, tag, subtms) ->
