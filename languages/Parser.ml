@@ -34,10 +34,13 @@ parser :=
 |}
 ;;
 
-(* module ParseAbstract = AbstractSyntax.Parse(ParseUtil.CComment)
+module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
 
-   let abstract_syntax : AbstractSyntax.t = abstract_syntax_str |> ParseUtil.parse_string
-   ParseAbstract.whitespace_t |> Result.ok_or_failwith *)
+let abstract_syntax : AbstractSyntax.t =
+  abstract_syntax_str
+  |> ParseUtil.parse_string ParseAbstract.whitespace_t
+  |> Result.ok_or_failwith
+;;
 
 type c_term = OptRange.t Core.term
 type n_term = (OptRange.t, Primitive.t) Nominal.term
@@ -152,8 +155,6 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
  ;;
 end
 
-(* let mk_list : OptRange.t -> n_term list -> n_term = fun pos lst -> Nominal.Operator
-   (pos, "list", [ Nominal.Scope ([], lst) ]) ;; *)
 let mk_list : pos:OptRange.t -> n_term list -> n_term * OptRange.t =
  fun ~pos lst ->
   let tm = Nominal.Operator (pos, "list", [ Nominal.Scope ([], lst) ]) in
@@ -177,7 +178,6 @@ let thin_ctx : ctx_entry Lvca_util.String.Map.t -> n_term Lvca_util.String.Map.t
 
 (* Translate our parser type into an angstrom parser *)
 let translate : t -> n_term ParseUtil.t =
-  (* let open Angstrom in *)
   let module Parsers = ParseUtil.Mk (ParseUtil.CComment) in
   let open Parsers in
   let mk_err () = failwith "TODO: error" in
