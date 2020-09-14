@@ -1,15 +1,17 @@
 open Base
 module String = Lvca_util.String
 
-type 'loc term =
-  | Operator of 'loc * string * 'loc scope list
-  | Var of 'loc * int * int
-  | Primitive of 'loc * Primitive.t
+type ('loc, 'prim) term =
+  | Operator of 'loc * string * ('loc, 'prim) scope list
+  | BoundVar of 'loc * int * int
+  | FreeVar of 'loc * string
+  | Primitive of 'loc * 'prim
 
-and 'loc scope = Scope of ('loc, Primitive.t) Pattern.t list * 'loc term list
+and ('loc, 'prim) scope =
+  | Scope of ('loc, 'prim) Pattern.t list * ('loc, 'prim) term list
 
 let rec to_nominal' ctx = function
-  | Var (loc, ix1, ix2) ->
+  | BoundVar (loc, ix1, ix2) ->
     List.nth ctx ix1
     |> Option.bind ~f:(Fn.flip List.nth ix2)
     |> Option.map ~f:(fun name -> Nominal.Var (loc, name))
@@ -18,6 +20,7 @@ let rec to_nominal' ctx = function
     |> List.map ~f:(scope_to_nominal ctx)
     |> Option.all
     |> Option.map ~f:(fun subtms' -> Nominal.Operator (loc, tag, subtms'))
+  | FreeVar (loc, name) -> Some (Var (loc, name))
   | Primitive (loc, prim) -> Some (Nominal.Primitive (loc, prim))
 
 and scope_to_nominal ctx (Scope (binders, body)) =
@@ -34,18 +37,20 @@ and scope_to_nominal ctx (Scope (binders, body)) =
 
 let to_nominal tm = to_nominal' [] tm
 
-exception FailedFromNominal of string
-
-let rec of_nominal_with_bindings_exn env = function
+let rec of_nominal_with_bindings env = function
   | Nominal.Operator (loc, tag, subtms) ->
-    Operator (loc, tag, List.map subtms ~f:(scope_of_nominal' env))
+    let open Result.Let_syntax in
+    let%map subtms' = subtms |> List.map ~f:(scope_of_nominal env) |> Result.all in
+    Operator (loc, tag, subtms')
   | Var (loc, name) ->
-    (match Map.find env name with
-    | None -> raise (FailedFromNominal ("couldn't find variable " ^ name))
-    | Some (i, j) -> Var (loc, i, j))
-  | Primitive (loc, prim) -> Primitive (loc, prim)
+    Ok
+      (match Map.find env name with
+      | None -> FreeVar (loc, name)
+      | Some (i, j) -> BoundVar (loc, i, j))
+  | Primitive (loc, prim) -> Ok (Primitive (loc, prim))
 
-and scope_of_nominal' env (Nominal.Scope (pats, body)) =
+and scope_of_nominal env (Nominal.Scope (pats, body) as scope) =
+  let open Result.Let_syntax in
   let n = List.length pats in
   let var_nums : (string * (int * int)) list =
     pats
@@ -62,19 +67,14 @@ and scope_of_nominal' env (Nominal.Scope (pats, body)) =
       |> Map.map ~f:(fun (i, j) -> i + n, j)
       |> Lvca_util.Map.union_right_biased var_map
     in
-    let body' = List.map body ~f:(of_nominal_with_bindings_exn env') in
+    let%map body' = body |> List.map ~f:(of_nominal_with_bindings env') |> Result.all in
     Scope (pats, body')
-  | `Duplicate_key _key -> failwith "TODO: raise error"
-;;
-
-let of_nominal_with_bindings bindings tm =
-  try Ok (of_nominal_with_bindings_exn bindings tm) with
-  | FailedFromNominal msg -> Error msg
+  | `Duplicate_key _key -> Error scope
 ;;
 
 let of_nominal tm = of_nominal_with_bindings String.Map.empty tm
 
-let rec alpha_equivalent t1 t2 =
+let rec alpha_equivalent prim_equivalent t1 t2 =
   match t1, t2 with
   | Operator (_, h1, subtms1), Operator (_, h2, subtms2) ->
     String.(h1 = h2)
@@ -83,10 +83,14 @@ let rec alpha_equivalent t1 t2 =
     | Ok zipped ->
       List.for_all zipped ~f:(fun (Scope (_, body1), Scope (_, body2)) ->
           match List.zip body1 body2 with
-          | Ok bodies -> List.for_all ~f:(fun (b1, b2) -> alpha_equivalent b1 b2) bodies
+          | Ok bodies ->
+            List.for_all
+              ~f:(fun (b1, b2) -> alpha_equivalent prim_equivalent b1 b2)
+              bodies
           | _ -> false)
     | Unequal_lengths -> false)
-  | Var (_, i1, j1), Var (_, i2, j2) -> i1 = i2 && j1 = j2
-  | Primitive (_, p1), Primitive (_, p2) -> Primitive.(p1 = p2)
+  | BoundVar (_, i1, j1), BoundVar (_, i2, j2) -> i1 = i2 && j1 = j2
+  | FreeVar (_, name1), FreeVar (_, name2) -> String.(name1 = name2)
+  | Primitive (_, p1), Primitive (_, p2) -> prim_equivalent p1 p2
   | _, _ -> false
 ;;
