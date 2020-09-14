@@ -221,14 +221,3 @@ let stateless_view =
   let model_s, signal_update = React.S.create Model.initial_model in
   View.view model_s signal_update
 ;;
-
-(* let insert_demo elem = let model_s, signal_update = React.S.create Model.initial_model
-   in Dom.appendChild elem (Js_of_ocaml_tyxml.Tyxml_js.To_dom.of_div (View.view model_s
-   signal_update)); Lwt.return ()
-
-   let (_ : unit) = Js.export "TermAndConcrete" (object%js method run = insert_demo end)
-
-   let main _ = let doc = Dom_html.document in let parent = Js.Opt.get
-   (doc##getElementById (Js.string "app")) (fun () -> assert false) in insert_demo parent
-
-   let (_ : unit Lwt.t) = Lwt.Infix.(Js_of_ocaml_lwt.Lwt_js_events.onload () >>= main) *)

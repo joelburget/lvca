@@ -35,8 +35,6 @@ module View = struct
     | EvalWithProvenancePage -> "0x: evaluation with provenance"
   ;;
 
-  (* let insert_demo = function | TermAndConcretePage -> TermAndConcrete.insert_demo |
-     EvalWithProvenancePage -> EvalWithProvenance.insert_demo *)
   let stateless_view = function
     | TermAndConcretePage -> TermAndConcrete.stateless_view
     | EvalWithProvenancePage -> EvalWithProvenance.stateless_view
@@ -57,8 +55,6 @@ module View = struct
       match List.nth all_pages i with None -> failwith "TODO: error" | Some page -> page
     in
     signal_update Model.{ page };
-    (* wrapper_dom##.innerHTML := Js.string ""; Dom.appendChild wrapper_dom (page |>
-       stateless_view |> Js_of_ocaml_tyxml.Tyxml_js.To_dom.of_div); *)
     false
   ;;
 
