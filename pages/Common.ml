@@ -20,8 +20,8 @@ module Action = struct
 end
 
 let parser_of = function Lambda -> LambdaParse.t | Term -> TermParse.t PrimitiveParse.t
-
 let term_pretty = Nominal.pp_term_range Primitive.pp (* XXX why used twice? *)
+
 let lambda_pretty = Lvca_languages.LambdaCalculus.pp (* XXX why used twice? *)
 
 let bind_event ev elem handler =

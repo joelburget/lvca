@@ -2,7 +2,6 @@ open Base
 open Js_of_ocaml
 open Lvca_syntax
 open ReactiveData
-
 open Common
 
 module Model = struct

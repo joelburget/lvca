@@ -3,7 +3,6 @@ open Js_of_ocaml
 open Lvca_syntax
 open ReactiveData
 open Result.Let_syntax
-
 open Common
 
 let eval = Lvca_languages.LambdaCalculus.eval
@@ -64,18 +63,42 @@ module Controller = struct
   ;;
 end
 
+let demo_template handler input_elem output_elem =
+  let open Js_of_ocaml_tyxml.Tyxml_js in
+  [%html{|
+    <div>
+      <h2>Eval with Provenance</h2>
+      <div class="container">
+        <div class="side">
+          <h3>input</h3>
+          |}[ input_elem ]{|
+        </div>
+        <div class="switch-languages">
+          <button onclick=|}handler{|>
+            switch input languages
+          </button>
+        </div>
+        <div class="side">
+          <h3>output</h3>
+          |}[ output_elem ]{|
+        </div>
+      </div>
+    </div>
+  |}] [@@@ocamlformat "disable"]
+
 module View = struct
   open Js_of_ocaml_tyxml.Tyxml_js
   module Ev = Js_of_ocaml_lwt.Lwt_js_events
 
   let mk_input model_s signal_update =
+    let input_val = model_s
+      |> React.S.map (fun m -> m.Model.input)
+      |> R.Html5.txt
+    in
     let input =
-      Html5.(textarea ~a:[ a_rows 2; a_cols 60; a_autofocus (); a_class [ "input" ] ])
-        (model_s
-        |> React.S.map (fun m ->
-               (* Caml.Printf.printf "Updating input: %s\n" m.Model.input; *)
-               m.Model.input)
-        |> R.Html5.txt)
+      [%html{|
+        <textarea rows=2 cols=60 autofocus class="input">|}input_val{|</textarea>
+      |}]
     in
     let input_dom = To_dom.of_textarea input in
     bind_event Ev.keydowns input_dom (fun evt ->
@@ -136,29 +159,11 @@ module View = struct
   ;;
 
   let view model_s signal_update =
-    Html5.(
-      div
-        [ h2 [ txt "Eval with Provenance" ]
-        ; div
-            ~a:[ a_class [ "container" ] ]
-            [ div
-                ~a:[ a_class [ "side" ] ]
-                [ h3 [ Html5.txt "input" ]; mk_input model_s signal_update ]
-            ; div
-                ~a:[ a_class [ "switch-languages" ] ]
-                [ button
-                    ~a:
-                      [ a_onclick (fun _evt ->
-                            Controller.update SwitchInputLang model_s signal_update;
-                            false)
-                      ]
-                    [ txt "switch input languages" ]
-                ]
-            ; div
-                ~a:[ a_class [ "side" ] ]
-                [ h3 [ Html5.txt "output" ]; mk_output model_s ]
-            ]
-        ])
+    let handler _evt =
+      Controller.update SwitchInputLang model_s signal_update;
+      false
+    in
+    demo_template handler (mk_input model_s signal_update) (mk_output model_s )
   ;;
 end
 
@@ -171,7 +176,6 @@ let stateless_view =
     in
     { input; result; selected = None }
   in
-
   let model_s, signal_update = React.S.create initial_model in
   View.view model_s signal_update
 ;;
