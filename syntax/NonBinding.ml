@@ -47,7 +47,7 @@ and of_nominal_scope = function
   | _ -> raise ScopeEncountered
 ;;
 
-let of_nominal (tm : 'a Nominal.term) : 'a term option =
+let of_nominal (tm : ('a, Primitive.t) Nominal.term) : 'a term option =
   try Some (of_nominal_exn tm) with ScopeEncountered -> None
 ;;
 
@@ -61,10 +61,10 @@ let rec to_nominal tm =
   | Primitive (loc, p) -> Primitive (loc, p)
 ;;
 
-let pp ppf tm = tm |> to_nominal |> Nominal.pp_term ppf
-let pp_range ppf tm = tm |> to_nominal |> Nominal.pp_term_range ppf
-let to_string tm = tm |> to_nominal |> Nominal.pp_term_str
-let hash tm = tm |> to_nominal |> Nominal.hash
+let pp ppf tm = tm |> to_nominal |> Nominal.pp_term Primitive.pp ppf
+let pp_range ppf tm = tm |> to_nominal |> Nominal.pp_term_range Primitive.pp ppf
+let to_string tm = tm |> to_nominal |> Nominal.pp_term_str Primitive.pp
+let hash tm = tm |> to_nominal |> Nominal.hash Primitive.jsonify
 
 let rec erase = function
   | Operator (_, tag, subtms) ->

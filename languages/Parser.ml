@@ -40,7 +40,7 @@ parser :=
    ParseAbstract.whitespace_t |> Result.ok_or_failwith *)
 
 type c_term = OptRange.t Core.term
-type n_term = OptRange.t Nominal.term
+type n_term = (OptRange.t, Primitive.t) Nominal.term
 
 type t =
   (* primitive parsers *)
@@ -174,7 +174,7 @@ let todo_pos = None
 (* TODO: this is hacky *)
 let thin_ctx : ctx_entry Lvca_util.String.Map.t -> n_term Lvca_util.String.Map.t =
   Map.filter_map ~f:(function
-      | BoundChar c -> Some (Nominal.Primitive (todo_pos, PrimChar c))
+      | BoundChar c -> Some (Nominal.Primitive (todo_pos, Primitive.PrimChar c))
       | BoundParser _ -> None)
 ;;
 
@@ -187,11 +187,11 @@ let translate : t -> n_term ParseUtil.t =
   let rec translate' ctx = function
     | Char c ->
       char c
-      >>|| (fun ~pos c -> Nominal.Primitive (pos, PrimChar c), pos)
+      >>|| (fun ~pos c -> Nominal.Primitive (pos, Primitive.PrimChar c), pos)
       <?> Printf.sprintf {|char '%s'|} (String.make 1 c)
     | String str ->
       string str
-      >>|| (fun ~pos str -> Nominal.Primitive (pos, PrimString str), pos)
+      >>|| (fun ~pos str -> Nominal.Primitive (pos, Primitive.PrimString str), pos)
       <?> Printf.sprintf {|string "%s"|} str
     | Satisfy (name, tm) ->
       let f c =
@@ -201,7 +201,7 @@ let translate : t -> n_term ParseUtil.t =
         | _ -> false
       in
       satisfy f
-      >>|| (fun ~pos c -> Nominal.Primitive (pos, PrimChar c), pos)
+      >>|| (fun ~pos c -> Nominal.Primitive (pos, Primitive.PrimChar c), pos)
       <?> Printf.sprintf {|satisfy(\%s. ...)|} name
     | Let (name, named, body) ->
       let ctx' = Map.set ctx ~key:name ~data:(BoundParser named) in
@@ -266,7 +266,7 @@ let%test_module "Parsing" =
       | Ok parser ->
         (match parse parser str with
         | Error msg -> Caml.print_string ("failed to parse: " ^ msg)
-        | Ok tm -> Fmt.pr "%a\n" Nominal.pp_term_range tm)
+        | Ok tm -> Fmt.pr "%a\n" (Nominal.pp_term_range Primitive.pp) tm)
    ;;
 
     let%expect_test _ =

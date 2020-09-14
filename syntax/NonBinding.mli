@@ -22,10 +22,10 @@ val to_de_bruijn : 'a term -> unit DeBruijn.term
 (** {1 Nominal conversion} *)
 
 (** @raise ScopeEncountered *)
-val of_nominal_exn : 'a Nominal.term -> 'a term
+val of_nominal_exn : ('loc, Primitive.t) Nominal.term -> 'loc term
 
-val of_nominal : 'a Nominal.term -> 'a term option
-val to_nominal : 'a term -> 'a Nominal.term
+val of_nominal : ('loc, Primitive.t) Nominal.term -> 'loc term option
+val to_nominal : 'loc term -> ('loc, Primitive.t) Nominal.term
 
 (** {1 Printing} *)
 

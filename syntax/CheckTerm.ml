@@ -3,7 +3,7 @@ open AbstractSyntax
 module Util = Lvca_util
 
 type 'a abstract_syntax_check_failure_frame =
-  { term : (('a, Primitive.t) Pattern.t, 'a Nominal.term) Either.t
+  { term : (('a, Primitive.t) Pattern.t, ('a, Primitive.t) Nominal.term) Either.t
         (** Term that failed to check *)
   ; sort : sort (** Sort it failed to check against *)
   }
@@ -36,7 +36,13 @@ let pp_failure : Caml.Format.formatter -> 'a abstract_syntax_check_failure -> un
             pp_sort
             sort
         | Second tm ->
-          Fmt.pf ppf "- @[term: %a,@ sort: %a@]" Nominal.pp_term tm pp_sort sort))
+          Fmt.pf
+            ppf
+            "- @[term: %a,@ sort: %a@]"
+            (Nominal.pp_term Primitive.pp)
+            tm
+            pp_sort
+            sort))
 ;;
 
 let rec concretize_sort : sort Util.String.Map.t -> sort -> sort =
@@ -211,14 +217,14 @@ let check_pattern
    This recursively checks subterms and patterns. *)
 let check_term
     :  AbstractSyntax.t (** Abstract syntax *) -> sort (** Sort to check term against *)
-    -> 'a Nominal.term -> 'a abstract_syntax_check_failure option
+    -> ('a, Primitive.t) Nominal.term -> 'a abstract_syntax_check_failure option
   =
  fun lang ->
   let lookup_operator' = lookup_operator lang in
   let check_pattern' = check_pattern lang in
   let rec go
       :  valence Util.String.Map.t (* mapping from variable name to its valence *) -> sort
-      -> 'a Nominal.term -> 'a abstract_syntax_check_failure option
+      -> ('a, Primitive.t) Nominal.term -> 'a abstract_syntax_check_failure option
     =
    fun var_valences sort tm ->
     let result =
@@ -272,7 +278,7 @@ let check_term
     Option.map result ~f:(fun { message; stack } ->
         { message; stack = { term = Second tm; sort } :: stack })
   and go_arity
-      :  valence Util.String.Map.t -> arity -> 'a Nominal.scope list
+      :  valence Util.String.Map.t -> arity -> ('a, Primitive.t) Nominal.scope list
       -> 'a abstract_syntax_check_failure option
     =
    fun var_valences valences scopes ->
@@ -288,7 +294,7 @@ let check_term
       List.find_map scope_valences (* TODO: go_arity *) ~f:(fun (scope, valence) ->
           go_scope var_valences valence scope)
   and go_scope
-      :  valence Util.String.Map.t -> valence -> 'a Nominal.scope
+      :  valence Util.String.Map.t -> valence -> ('a, Primitive.t) Nominal.scope
       -> 'a abstract_syntax_check_failure option
     =
    fun var_valences valence (Scope (binders, body)) ->
@@ -354,9 +360,11 @@ let%test_module "CheckTerm" =
     ;;
 
     module NominalParse = Nominal.Parse (ParseUtil.NoComment)
+    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
 
     let parse_term term_str =
-      ParseUtil.parse_string NominalParse.t term_str |> Result.ok_or_failwith
+      ParseUtil.parse_string (NominalParse.t ParsePrimitive.t) term_str
+      |> Result.ok_or_failwith
     ;;
 
     let lang_desc =
@@ -388,7 +396,15 @@ test := foo(term()*. term())
 
     let print_check_pattern sort_str pat_str =
       let sort = sort_str |> parse_term |> sort_of_term_exn in
-      let pat = pat_str |> parse_term |> Nominal.to_pattern_exn in
+      let pat =
+        match pat_str |> parse_term |> Nominal.to_pattern with
+        | Ok pat -> pat
+        | Error scope ->
+          failwith
+            (Printf.sprintf
+               "Failed to convert term to pattern (found a scope: %s)"
+               (Nominal.pp_scope_str Primitive.pp scope))
+      in
       match check_pattern language sort pat with
       | Error failure -> Fmt.epr "%a" pp_failure failure
       | Ok _ -> ()

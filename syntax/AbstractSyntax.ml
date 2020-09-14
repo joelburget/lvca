@@ -138,10 +138,10 @@ let rec instantiate_sort : sort String.Map.t -> sort -> sort =
 
 (* _of_term: *)
 
-exception OfTermFailure of string * unit Nominal.term
+exception OfTermFailure of string * (unit, Primitive.t) Nominal.term
 
 (** @raise [OfTermFailure] *)
-let rec sort_of_term_exn : 'a Nominal.term -> sort =
+let rec sort_of_term_exn : ('a, Primitive.t) Nominal.term -> sort =
   let erase = Nominal.erase in
   fun tm ->
     match tm with

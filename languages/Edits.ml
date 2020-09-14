@@ -86,7 +86,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   let whitespace_t lang_p = junk *> t lang_p
 end
 
-type term = OptRange.t Nominal.term
+type term = (OptRange.t, Primitive.t) Nominal.term
 
 let%test_module "Parsing" =
   (module struct
@@ -94,6 +94,7 @@ let%test_module "Parsing" =
     module ParseEdit = Parse (ParseUtil.CComment)
     module ParseTerm = Nominal.Parse (ParseUtil.CComment)
     module ParseCore = Core.Parse (ParseUtil.CComment)
+    module ParsePrimitive = Primitive.Parse (ParseUtil.CComment)
 
     let parse : string -> (core t, string) Result.t =
       ParseUtil.parse_string (ParseEdit.whitespace_t (Parsers.braces ParseCore.term))
@@ -128,9 +129,9 @@ let%test_module "Parsing" =
       let open Result.Let_syntax in
       match
         let%bind edit = parse edit in
-        let%bind tm = ParseUtil.parse_string ParseTerm.t tm in
+        let%bind tm = ParseUtil.parse_string (ParseTerm.t ParsePrimitive.t) tm in
         let%map tm = run tm edit in
-        Nominal.pp_term Caml.Format.std_formatter tm
+        Nominal.pp_term Primitive.pp Caml.Format.std_formatter tm
       with
       | Error msg -> Caml.print_string msg
       | Ok () -> ()

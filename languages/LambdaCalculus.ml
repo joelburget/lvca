@@ -3,7 +3,9 @@ open Lvca_syntax
 
 let eval tm =
   let open Result.Let_syntax in
-  let tm_str tm = tm |> DeBruijn.to_nominal |> Option.value_exn |> Nominal.pp_term_str in
+  let tm_str tm =
+    tm |> DeBruijn.to_nominal |> Option.value_exn |> Nominal.pp_term_str Primitive.pp
+  in
   let rec eval' tm =
     match tm with
     | DeBruijn.Operator (_, "app", [ Second [ t1 ]; Second [ t2 ] ]) ->
@@ -38,7 +40,7 @@ module AngstromParse (Comment : ParseUtil.Comment_int) = struct
 
   let location = Nominal.location
 
-  let t_var : OptRange.t Nominal.term Parsers.t =
+  let t_var : (OptRange.t, Primitive.t) Nominal.term Parsers.t =
     Parsers.identifier >>|| fun ~pos name -> Nominal.Var (pos, name), pos
   ;;
 
@@ -48,10 +50,10 @@ module AngstromParse (Comment : ParseUtil.Comment_int) = struct
 
   (* Precedence 0: lam (right-associative) 1: app (left-associative) *)
 
-  let t : OptRange.t Nominal.term Parsers.t =
+  let t : (OptRange.t, Primitive.t) Nominal.term Parsers.t =
     fix (fun t ->
         let atom = t_var <|> parens t in
-        let lam : OptRange.t Nominal.term Parsers.t =
+        let lam : (OptRange.t, Primitive.t) Nominal.term Parsers.t =
           pos
           >>= fun start ->
           lift4
@@ -81,10 +83,10 @@ end
 
 module ParseNoComment = AngstromParse (ParseUtil.NoComment)
 
-let pp : OptRange.t Nominal.term Fmt.t =
+let pp : (OptRange.t, Primitive.t) Nominal.term Fmt.t =
   let rec pp' prec ppf tm =
     let module Format = Caml.Format in
-    Format.pp_open_stag ppf (Format.String_tag (Nominal.hash tm));
+    Format.pp_open_stag ppf (Format.String_tag (Nominal.hash Primitive.jsonify tm));
     OptRange.open_stag ppf (Nominal.location tm);
     (match tm with
     | Nominal.Operator (_, "app", [ Scope ([], [ a ]); Scope ([], [ b ]) ]) ->
@@ -96,7 +98,7 @@ let pp : OptRange.t Nominal.term Fmt.t =
       if prec > 0
       then Fmt.pf ppf {|(\%s -> %a)|} name (pp' 0) body
       else Fmt.pf ppf {|\%s -> %a|} name (pp' 0) body
-    | tm -> Fmt.failwith "Invalid Lambda term %a" Nominal.pp_term tm);
+    | tm -> Fmt.failwith "Invalid Lambda term %a" (Nominal.pp_term Primitive.pp) tm);
     OptRange.close_stag ppf (Nominal.location tm);
     (* range tag *)
     Format.pp_close_stag ppf ()

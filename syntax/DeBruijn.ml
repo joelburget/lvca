@@ -84,7 +84,7 @@ and scope_of_nominal' env (Scope (pats, body) as scope) =
       (FailedFromNominal
          (Printf.sprintf
             "Expected zero-or-one variable binding, found %s"
-            (Nominal.pp_scope_str scope)))
+            (Nominal.pp_scope_str Primitive.pp scope)))
 ;;
 
 let of_nominal_with_bindings bindings tm =

@@ -7,12 +7,12 @@ type 'loc term =
 
 and 'loc scope = Scope of ('loc, Primitive.t) Pattern.t list * 'loc term list
 
-val to_nominal : 'loc term -> 'loc Nominal.term option
-val of_nominal : 'loc Nominal.term -> ('loc term, string) Result.t
+val to_nominal : 'loc term -> ('loc, Primitive.t) Nominal.term option
+val of_nominal : ('loc, Primitive.t) Nominal.term -> ('loc term, string) Result.t
 
 val of_nominal_with_bindings
   :  (int * int) Lvca_util.String.Map.t
-  -> 'loc Nominal.term
+  -> ('loc, Primitive.t) Nominal.term
   -> ('loc term, string) Result.t
 
 (** Are the two terms equivalent up to variable renaming? *)

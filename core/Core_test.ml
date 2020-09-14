@@ -14,7 +14,9 @@ let%test_module "Core parsing" =
   (module struct
     open AbstractSyntax
 
-    let scope : unit Nominal.term -> unit Nominal.scope = fun body -> Scope ([], [ body ])
+    let scope : (unit, Primitive.t) Nominal.term -> (unit, Primitive.t) Nominal.scope =
+     fun body -> Scope ([], [ body ])
+   ;;
 
     let dynamics_str =
       {|\(tm : ty()) -> match tm with {
@@ -84,7 +86,7 @@ let%test_module "Core eval" =
       let result =
         match eval core with
         | Error (msg, tm) -> msg ^ ": " ^ to_string tm
-        | Ok result -> Nominal.pp_term_str result
+        | Ok result -> Nominal.pp_term_str Primitive.pp result
       in
       print_string result
     ;;
@@ -220,7 +222,7 @@ let%test_module "Core eval in dynamics" =
       let core = parse_term str in
       match eval (CoreApp (defn, core)) with
       | Error (msg, tm) -> msg ^ ": " ^ to_string tm
-      | Ok result -> Nominal.pp_term_str result
+      | Ok result -> Nominal.pp_term_str Primitive.pp result
     ;;
 
     let dynamics_str =

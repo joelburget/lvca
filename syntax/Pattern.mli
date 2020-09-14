@@ -15,7 +15,11 @@ val to_string : 'prim Fmt.t -> ('info, 'prim) t -> string (* TODO: remove? *)
 val pp : 'prim Fmt.t -> ('info, 'prim) t Fmt.t
 val pp_range : 'prim Fmt.t -> (OptRange.t, 'prim) t Fmt.t
 val jsonify : 'prim Lvca_util.Json.serializer -> ('loc, 'prim) t Lvca_util.Json.serializer
-val unjsonify : 'prim Lvca_util.Json.deserializer -> (unit, 'prim) t Lvca_util.Json.deserializer
+
+val unjsonify
+  :  'prim Lvca_util.Json.deserializer
+  -> (unit, 'prim) t Lvca_util.Json.deserializer
+
 val erase : (_, 'prim) pattern -> (unit, 'prim) pattern
 val location : ('info, _) pattern -> 'info
 

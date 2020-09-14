@@ -10,7 +10,7 @@ type is_rec =
   | NoRec
 
 type 'a term =
-  | Term of 'a Nominal.term
+  | Term of ('a, Primitive.t) Nominal.term
   (* plus, core-specific ctors *)
   | CoreApp of 'a term * 'a term
   | Case of 'a term * 'a core_case_scope list
@@ -43,7 +43,7 @@ module PP = struct
   (** @raise InvariantViolation *)
   let rec pp ppf = function
     | Term (Var (_, v)) -> pf ppf "%s" v (* XXX *)
-    | Term tm -> pf ppf "%a" (braces Nominal.pp_term) tm
+    | Term tm -> pf ppf "%a" (braces (Nominal.pp_term Primitive.pp)) tm
     | Lambda (sort, Scope (name, body)) ->
       pf ppf "\\(%s : %a) ->@ %a" name pp_sort sort pp body
     (* TODO: parens if necessary *)
@@ -124,8 +124,8 @@ let defn_to_string : 'a defn -> string = fun defn -> Format.asprintf "%a" pp_def
 let erase_defn (Defn (imports, tm)) = Defn (imports, erase tm)
 
 let merge_results
-    :  'a Nominal.term Lvca_util.String.Map.t option list
-    -> 'a Nominal.term Lvca_util.String.Map.t option
+    :  ('a, Primitive.t) Nominal.term Lvca_util.String.Map.t option list
+    -> ('a, Primitive.t) Nominal.term Lvca_util.String.Map.t option
   =
  fun results ->
   if List.for_all results ~f:Option.is_some
@@ -144,8 +144,8 @@ let merge_results
 ;;
 
 let rec match_pattern
-    :  'a Nominal.term -> ('b, Primitive.t) Pattern.t
-    -> 'a Nominal.term Lvca_util.String.Map.t option
+    :  ('a, Primitive.t) Nominal.term -> ('b, Primitive.t) Pattern.t
+    -> ('a, Primitive.t) Nominal.term Lvca_util.String.Map.t option
   =
  fun v pat ->
   match v, pat with
@@ -171,8 +171,8 @@ let rec match_pattern
 ;;
 
 let find_core_match
-    :  'a Nominal.term -> 'b core_case_scope list
-    -> ('b term * 'a Nominal.term Lvca_util.String.Map.t) option
+    :  ('a, Primitive.t) Nominal.term -> 'b core_case_scope list
+    -> ('b term * ('a, Primitive.t) Nominal.term Lvca_util.String.Map.t) option
   =
  fun v branches ->
   branches
@@ -187,7 +187,8 @@ type eval_error = string * unit term
 exception EvalExn of string * unit term
 
 let rec eval_ctx_exn
-    : 'a Nominal.term Lvca_util.String.Map.t -> 'a term -> 'a Nominal.term
+    :  ('a, Primitive.t) Nominal.term Lvca_util.String.Map.t -> 'a term
+    -> ('a, Primitive.t) Nominal.term
   =
  fun ctx tm ->
   match tm with
@@ -221,7 +222,8 @@ let rec eval_ctx_exn
   | _ -> raise @@ EvalExn ("Found a term we can't evaluate", erase tm)
 
 and eval_ctx_exn'
-    : 'a Nominal.term Lvca_util.String.Map.t -> 'a Nominal.term -> 'a Nominal.term
+    :  ('a, Primitive.t) Nominal.term Lvca_util.String.Map.t
+    -> ('a, Primitive.t) Nominal.term -> ('a, Primitive.t) Nominal.term
   =
  fun ctx tm ->
   match tm with
@@ -232,18 +234,18 @@ and eval_ctx_exn'
   | _ -> tm
 ;;
 
-let eval_exn : 'a term -> 'a Nominal.term =
+let eval_exn : 'a term -> ('a, Primitive.t) Nominal.term =
  fun core -> eval_ctx_exn Lvca_util.String.Map.empty core
 ;;
 
-let eval : 'a term -> ('a Nominal.term, eval_error) Result.t =
+let eval : 'a term -> (('a, Primitive.t) Nominal.term, eval_error) Result.t =
  fun core -> try Ok (eval_exn core) with EvalExn (msg, tm) -> Error (msg, tm)
 ;;
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   module Term = Nominal.Parse (Comment)
-  module Primitive = Primitive.Parse (Comment)
+  module ParsePrimitive = Primitive.Parse (Comment)
   module Abstract = AbstractSyntax.Parse (Comment)
   open Parsers
 
@@ -266,10 +268,18 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
           choice
             [ parens term
             ; (identifier >>|| fun ~pos ident -> Term (Var (pos, ident)), pos)
-            ; braces Term.t >>| (fun tm -> Term tm) <?> "quoted term"
+            ; braces (Term.t ParsePrimitive.t) >>| (fun tm -> Term tm) <?> "quoted term"
             ]
         in
-        let pattern = Nominal.to_pattern_exn <$> Term.t <?> "pattern" in
+        let pattern' =
+          Term.t ParsePrimitive.t
+          >>= fun tm ->
+          match Nominal.to_pattern tm with
+          | Ok pat -> return pat
+          | Error scope ->
+            fail ("Unexpected scope: " ^ Nominal.pp_scope_str Primitive.pp scope)
+        in
+        let pattern = pattern' <?> "pattern" in
         let case_line =
           lift3 (fun pat _ tm -> CaseScope (pat, tm)) pattern (string "->") term
           <?> "case line"
@@ -342,7 +352,7 @@ let%test_module "Parsing" =
     ;;
 
     let ( = ) = Caml.( = )
-    let one = Nominal.Primitive ((), PrimInteger (Bigint.of_int 1))
+    let one = Nominal.Primitive ((), Primitive.PrimInteger (Bigint.of_int 1))
     let var name = Nominal.Var ((), name)
     let ignored name = Pattern.Ignored ((), name)
     let operator tag children = Nominal.Operator ((), tag, children)

@@ -4,12 +4,13 @@ module Cbor = Lvca_util.Cbor
 module Json = Lvca_util.Json
 module String = Lvca_util.String
 
-type 'loc term =
-  | Operator of 'loc * string * 'loc scope list
+type ('loc, 'prim) term =
+  | Operator of 'loc * string * ('loc, 'prim) scope list
   | Var of 'loc * string
-  | Primitive of 'loc * Primitive.t
+  | Primitive of 'loc * 'prim
 
-and 'loc scope = Scope of ('loc, Primitive.t) Pattern.t list * 'loc term list
+and ('loc, 'prim) scope =
+  | Scope of ('loc, 'prim) Pattern.t list * ('loc, 'prim) term list
 
 let location = function Operator (loc, _, _) | Var (loc, _) | Primitive (loc, _) -> loc
 
@@ -17,82 +18,79 @@ let any, comma, list, str, string, semi, pf =
   Fmt.(any, comma, list, str, string, semi, pf)
 ;;
 
-let rec pp_term ppf = function
+let rec pp_term pp_prim ppf = function
   | Operator (_, tag, subtms) ->
-    pf ppf "@[<2>%s(%a)@]" tag (list ~sep:semi pp_scope) subtms
+    pf ppf "@[<2>%s(%a)@]" tag (list ~sep:semi (pp_scope pp_prim)) subtms
   | Var (_, v) -> string ppf v
-  | Primitive (_, p) -> Primitive.pp ppf p
+  | Primitive (_, p) -> pp_prim ppf p
 
-and pp_scope ppf (Scope (bindings, body)) =
-  let pp_body = list ~sep:comma pp_term in
+and pp_scope pp_prim ppf (Scope (bindings, body)) =
+  let pp_body = list ~sep:comma (pp_term pp_prim) in
   match bindings with
   | [] -> pp_body ppf body
   | _ ->
-    pf
-      ppf
-      "%a.@ %a"
-      (list ~sep:(any ".@ ") (Pattern.pp Primitive.pp))
-      bindings
-      pp_body
-      body
+    pf ppf "%a.@ %a" (list ~sep:(any ".@ ") (Pattern.pp pp_prim)) bindings pp_body body
 ;;
 
-let rec pp_term_range ppf tm =
+let rec pp_term_range pp_prim ppf tm =
   OptRange.open_stag ppf (location tm);
   (match tm with
   | Operator (_, tag, subtms) ->
-    pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi pp_scope_range) subtms
+    pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi (pp_scope_range pp_prim)) subtms
   | Var (_, v) -> pf ppf "%a" string v
-  | Primitive (_, p) -> pf ppf "%a" Primitive.pp p);
+  | Primitive (_, p) -> pf ppf "%a" pp_prim p);
   OptRange.close_stag ppf (location tm)
 
-and pp_scope_range ppf (Scope (bindings, body)) =
-  let pp_body = list ~sep:comma pp_term_range in
+and pp_scope_range pp_prim ppf (Scope (bindings, body)) =
+  let pp_body = list ~sep:comma (pp_term_range pp_prim) in
   match bindings with
   | [] -> pp_body ppf body
   | _ ->
     pf
       ppf
       "%a.@ %a"
-      (list ~sep:(any ".@ ") (Pattern.pp_range Primitive.pp))
+      (list ~sep:(any ".@ ") (Pattern.pp_range pp_prim))
       bindings
       pp_body
       body
 ;;
 
-let pp_term_str tm = str "%a" pp_term tm
-let pp_scope_str scope = str "%a" pp_scope scope
+let pp_term_str pp_prim tm = str "%a" (pp_term pp_prim) tm
+let pp_scope_str pp_prim scope = str "%a" (pp_scope pp_prim) scope
 let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
 
-let rec jsonify tm =
+let rec jsonify jsonify_prim tm =
   let array, string = Json.(array, string) in
   match tm with
   | Operator (_, tag, tms) ->
-    array [| string "o"; string tag; array_map jsonify_scope tms |]
+    array [| string "o"; string tag; array_map (jsonify_scope jsonify_prim) tms |]
   | Var (_, name) -> array [| string "v"; string name |]
-  | Primitive (_, p) -> array [| string "p"; Primitive.jsonify p |]
+  | Primitive (_, p) -> array [| string "p"; jsonify_prim p |]
 
-and jsonify_scope (Scope (pats, body)) : Json.t =
-  let body' = body |> List.map ~f:jsonify |> List.to_array |> Json.array in
-  Json.array [| array_map (Pattern.jsonify Primitive.jsonify) pats; body' |]
+and jsonify_scope jsonify_prim (Scope (pats, body)) : Json.t =
+  let body' = body |> List.map ~f:(jsonify jsonify_prim) |> List.to_array |> Json.array in
+  Json.array [| array_map (Pattern.jsonify jsonify_prim) pats; body' |]
 ;;
 
-let rec unjsonify =
+let rec unjsonify prim_unjsonify =
   let open Option.Let_syntax in
   Json.(
     function
     | Array [| String "o"; String tag; Array scopes |] ->
       let%map scopes' =
-        scopes |> Array.to_list |> List.map ~f:unjsonify_scope |> Option.all
+        scopes
+        |> Array.to_list
+        |> List.map ~f:(unjsonify_scope prim_unjsonify)
+        |> Option.all
       in
       Operator ((), tag, scopes')
     | Array [| String "v"; String name |] -> Some (Var ((), name))
     | Array [| String "p"; prim |] ->
-      let%map prim' = Primitive.unjsonify prim in
+      let%map prim' = prim_unjsonify prim in
       Primitive ((), prim')
     | _ -> None)
 
-and unjsonify_scope =
+and unjsonify_scope prim_unjsonify =
   Json.(
     function
     | Array [||] -> None
@@ -100,56 +98,58 @@ and unjsonify_scope =
       let open Option.Let_syntax in
       let binders, body = arr |> Array.to_list |> Lvca_util.List.unsnoc in
       let%bind binders' =
-        binders |> List.map ~f:(Pattern.unjsonify Primitive.unjsonify) |> Option.all
+        binders |> List.map ~f:(Pattern.unjsonify prim_unjsonify) |> Option.all
       in
       let%bind body' =
         match body with
-        | Array bodies -> bodies |> Array.to_list |> List.map ~f:unjsonify |> Option.all
+        | Array bodies ->
+          bodies |> Array.to_list |> List.map ~f:(unjsonify prim_unjsonify) |> Option.all
         | _ -> None
       in
       Some (Scope (binders', body'))
     | _ -> None)
 ;;
 
-let serialize tm = tm |> jsonify |> Cbor.encode
-let deserialize buf = buf |> Cbor.decode |> Option.bind ~f:unjsonify
-let hash tm = tm |> serialize |> Lvca_util.Sha256.hash
+let serialize serialize_prim tm = tm |> jsonify serialize_prim |> Cbor.encode
 
-let rec erase : 'loc term -> unit term = function
+let deserialize unjsonify_prim buf =
+  buf |> Cbor.decode |> Option.bind ~f:(unjsonify unjsonify_prim)
+;;
+
+let hash serialize_prim tm = tm |> serialize serialize_prim |> Lvca_util.Sha256.hash
+
+let rec erase = function
   | Operator (_, name, scopes) -> Operator ((), name, List.map scopes ~f:erase_scope)
   | Var (_, name) -> Var ((), name)
   | Primitive (_, p) -> Primitive ((), p)
 
-and erase_scope : 'loc scope -> unit scope =
- fun (Scope (pats, tms)) -> Scope (List.map pats ~f:Pattern.erase, List.map tms ~f:erase)
+and erase_scope (Scope (pats, tms)) =
+  Scope (List.map pats ~f:Pattern.erase, List.map tms ~f:erase)
 ;;
 
-exception ToPatternFailure of unit scope
-
-(** @raise ToPatternFailure *)
-let rec to_pattern_exn : 'loc term -> ('loc, Primitive.t) Pattern.t = function
+let rec to_pattern = function
   | Var (loc, name) ->
-    if String.is_substring_at name ~pos:0 ~substring:"_"
-    then Ignored (loc, String.slice name 1 0)
-    else Var (loc, name)
+    let v =
+      if String.is_substring_at name ~pos:0 ~substring:"_"
+      then Pattern.Ignored (loc, String.slice name 1 0)
+      else Var (loc, name)
+    in
+    Ok v
   | Operator (loc, name, tms) ->
-    Operator (loc, name, List.map tms ~f:scope_to_patterns_exn)
-  | Primitive (loc, prim) -> Primitive (loc, prim)
+    let open Result.Let_syntax in
+    let%map subtms = tms |> List.map ~f:scope_to_patterns |> Result.all in
+    Pattern.Operator (loc, name, subtms)
+  | Primitive (loc, prim) -> Ok (Primitive (loc, prim))
 
-(** @raise ToPatternFailure *)
-and scope_to_patterns_exn : 'loc scope -> ('loc, Primitive.t) Pattern.t list = function
-  | Scope ([], tms) -> List.map tms ~f:to_pattern_exn
+and scope_to_patterns = function
+  | Scope ([], tms) -> tms |> List.map ~f:to_pattern |> Result.all
   | Scope (binders, tms) ->
     let binders' = List.map binders ~f:Pattern.erase in
     let tms' = List.map tms ~f:erase in
-    raise (ToPatternFailure (Scope (binders', tms')))
+    Error (Scope (binders', tms'))
 ;;
 
-let to_pattern : 'loc term -> (('loc, Primitive.t) Pattern.t, unit scope) Result.t =
- fun tm -> try Ok (to_pattern_exn tm) with ToPatternFailure scope -> Error scope
-;;
-
-let rec pattern_to_term : ('loc, Primitive.t) Pattern.t -> 'loc term = function
+let rec pattern_to_term : ('loc, 'prim) Pattern.t -> ('loc, 'prim) term = function
   | Operator (loc, name, pats) ->
     Operator
       ( loc
@@ -164,18 +164,19 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   module Primitive = Primitive.Parse (Comment)
 
-  type tm_or_sep =
-    | Tm of OptRange.t term
+  type 'prim tm_or_sep =
+    | Tm of (OptRange.t, 'prim) term
     | Sep of char
 
   type parse_state =
     | PossiblyBinding
     | DefinitelyTerm
 
-  let t : OptRange.t term ParseUtil.t =
+  let t : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t =
+   fun parse_prim ->
     let open Parsers in
     fix (fun term ->
-        let t_or_sep : tm_or_sep ParseUtil.t =
+        let t_or_sep : 'prim tm_or_sep ParseUtil.t =
           choice
             [ (fun c -> Sep c) <$> choice [ char '.'; char ','; char ';' ]
             ; (fun tm -> Tm tm) <$> term
@@ -183,15 +184,16 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         in
         (* (b11. ... b1n. t11, ... t1n; b21. ... b2n. t21, ... t2n) *)
         let accumulate
-            : OptRange.t -> string -> tm_or_sep list -> OptRange.t term ParseUtil.t
+            :  OptRange.t -> string -> 'prim tm_or_sep list
+            -> (OptRange.t, 'prim) term ParseUtil.t
           =
          fun range tag tokens ->
           (* terms encountered between '.'s, before hitting ',' / ';' *)
-          let binding_queue : OptRange.t term Queue.t = Queue.create () in
+          let binding_queue : (OptRange.t, 'prim) term Queue.t = Queue.create () in
           (* terms encountered between ','s, before hitting ';' *)
-          let list_queue : OptRange.t term Queue.t = Queue.create () in
+          let list_queue : (OptRange.t, 'prim) term Queue.t = Queue.create () in
           (* scopes encountered *)
-          let scope_queue : OptRange.t scope Queue.t = Queue.create () in
+          let scope_queue : (OptRange.t, 'prim) scope Queue.t = Queue.create () in
           let rec go parse_state = function
             | [] -> return ~pos:range (Operator (range, tag, Queue.to_list scope_queue))
             | Tm tm :: Sep '.' :: rest ->
@@ -205,15 +207,18 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
               go DefinitelyTerm rest
             | Tm tm :: Sep ';' :: rest (* Note: allow trailing ';' *)
             | Tm tm :: ([] as rest) ->
-              let binders =
-                binding_queue |> Queue.to_list |> List.map ~f:to_pattern_exn
-              in
-              Queue.clear binding_queue;
-              Queue.enqueue list_queue tm;
-              let tms = Queue.to_list list_queue in
-              Queue.clear list_queue;
-              Queue.enqueue scope_queue (Scope (binders, tms));
-              go PossiblyBinding rest
+              (match
+                 binding_queue |> Queue.to_list |> List.map ~f:to_pattern |> Result.all
+               with
+              | Error _ ->
+                fail "Unexpectedly found a variable binding in pattern position"
+              | Ok binders ->
+                Queue.clear binding_queue;
+                Queue.enqueue list_queue tm;
+                let tms = Queue.to_list list_queue in
+                Queue.clear list_queue;
+                Queue.enqueue scope_queue (Scope (binders, tms));
+                go PossiblyBinding rest)
             | _ -> fail "Malformed term"
           in
           go PossiblyBinding tokens
@@ -221,7 +226,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         pos
         >>= fun p1 ->
         choice
-          [ (Primitive.t
+          [ (parse_prim
             >>|| fun ~pos prim -> Primitive (OptRange.extend_to pos p1, prim), pos)
           ; (identifier
             >>= fun ident ->
@@ -233,38 +238,43 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
               ])
           ])
     <?> "term"
-  ;;
+ ;;
 
-  let whitespace_t = Parsers.(junk *> t)
+  let whitespace_t parse_prim = Parsers.(junk *> t parse_prim)
 end
 
 module Properties = struct
-  let json_round_trip1 : unit term -> bool =
+  let json_round_trip1 : (unit, Primitive.t) term -> bool =
    fun t ->
-    match t |> jsonify |> unjsonify with None -> false | Some t' -> Caml.(t = t')
+    match t |> jsonify Primitive.jsonify |> unjsonify Primitive.unjsonify with
+    | None -> false
+    | Some t' -> Caml.(t = t')
  ;;
 
   let json_round_trip2 : Lvca_util.Json.t -> bool =
    fun json ->
-    match json |> unjsonify with
+    match json |> unjsonify Primitive.unjsonify with
     | None -> false
-    | Some t -> Lvca_util.Json.(jsonify t = json)
+    | Some t -> Lvca_util.Json.(jsonify Primitive.jsonify t = json)
  ;;
 
   module Parse = Parse (ParseUtil.NoComment)
+  module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
 
-  let string_round_trip1 : unit term -> bool =
+  let string_round_trip1 : (unit, Primitive.t) term -> bool =
    fun t ->
-    match t |> pp_term_str |> ParseUtil.parse_string Parse.t with
+    match
+      t |> pp_term_str Primitive.pp |> ParseUtil.parse_string (Parse.t ParsePrimitive.t)
+    with
     | Ok prim -> Caml.(erase prim = t)
     | Error _ -> false
  ;;
 
   let string_round_trip2 : string -> bool =
    fun str ->
-    match ParseUtil.parse_string Parse.t str with
+    match ParseUtil.parse_string (Parse.t ParsePrimitive.t) str with
     | Ok prim ->
-      let str' = pp_term_str prim in
+      let str' = pp_term_str Primitive.pp prim in
       Base.String.(str' = str)
     | Error _ -> true
  ;;
@@ -277,18 +287,18 @@ end
 let%test_module "Nominal" =
   (module struct
     let print_serialize tm =
-      let bytes = serialize tm in
+      let bytes = serialize Primitive.jsonify tm in
       bytes
       |> Bytes.to_array
       |> Array.iter ~f:(fun char -> Printf.printf "%02x" (Char.to_int char))
     ;;
 
-    let print_hash tm = Printf.printf "%s" (hash tm)
+    let print_hash tm = Printf.printf "%s" (hash Primitive.jsonify tm)
     let ( = ) = Caml.( = )
     let tm = Var ((), "x")
     let j_tm = Json.(Array [| String "v"; String "x" |])
 
-    let%test _ = jsonify tm = j_tm
+    let%test _ = jsonify Primitive.jsonify tm = j_tm
 
     let%expect_test _ =
       print_serialize tm;
@@ -302,7 +312,9 @@ let%test_module "Nominal" =
 
     let tm = Operator ((), "Z", [])
 
-    let%test _ = jsonify tm = Json.(Array [| String "o"; String "Z"; Array [||] |])
+    let%test _ =
+      jsonify Primitive.jsonify tm = Json.(Array [| String "o"; String "Z"; Array [||] |])
+    ;;
 
     let%expect_test _ =
       print_serialize tm;
@@ -317,7 +329,7 @@ let%test_module "Nominal" =
     let tm = Operator ((), "S", [ Scope ([ Var ((), "x") ], [ Var ((), "x") ]) ])
 
     let%test _ =
-      jsonify tm
+      jsonify Primitive.jsonify tm
       = Json.(
           Array
             [| String "o"
@@ -344,10 +356,11 @@ let%test_module "Nominal" =
       [%expect {| 5898e2f5a6af65e5d43539edd0fa5c539fa4dce2869b4a70e793c5f796658192 |}]
     ;;
 
-    let tm = Primitive ((), PrimInteger (Bigint.of_string "12345"))
+    let tm = Primitive ((), Primitive.PrimInteger (Bigint.of_string "12345"))
 
     let%test _ =
-      jsonify tm = Json.(Array [| String "p"; Array [| String "i"; String "12345" |] |])
+      jsonify Primitive.jsonify tm
+      = Json.(Array [| String "p"; Array [| String "i"; String "12345" |] |])
     ;;
 
     let%expect_test _ =
@@ -368,6 +381,12 @@ let%test_module "Nominal" =
     let%expect_test _ =
       print_hash tm;
       [%expect {| e69505a495d739f89cf515c31cf3a2cca4e29a1a4fede9a331b45207a6fb33e5 |}]
+    ;;
+
+    let to_pattern_exn tm =
+      match to_pattern tm with
+      | Ok pat -> pat
+      | Error _ -> failwith "failed to convert term to pattern"
     ;;
 
     let%test _ = to_pattern_exn (Var (1, "abc")) = Var (1, "abc")
@@ -383,15 +402,16 @@ let%test_module "TermParser" =
     let ( = ) = Caml.( = )
 
     module Parse' = Parse (ParseUtil.NoComment)
+    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
 
-    let parse = ParseUtil.parse_string Parse'.whitespace_t
+    let parse = ParseUtil.parse_string (Parse'.whitespace_t ParsePrimitive.t)
 
     let print_parse str =
       match parse str with
       | Error msg -> Caml.print_string ("failed: " ^ msg)
       | Ok tm ->
-        Fmt.pr "%a\n" pp_term tm;
-        Fmt.pr "%a" pp_term_range tm
+        Fmt.pr "%a\n" (pp_term Primitive.pp) tm;
+        Fmt.pr "%a" (pp_term_range Primitive.pp) tm
     ;;
 
     let%test _ = parse "x" |> Result.map ~f:erase = Ok (Var ((), "x"))

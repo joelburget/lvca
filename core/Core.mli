@@ -13,7 +13,7 @@ type is_rec =
   | NoRec
 
 type 'a term =
-  | Term of 'a Nominal.term
+  | Term of ('a, Primitive.t) Nominal.term
   | CoreApp of 'a term * 'a term
   | Case of 'a term * 'a core_case_scope list (** Cases match patterns *)
   | Lambda of sort * 'a core_scope (** Lambdas bind variables. Patterns not allowed. *)
@@ -43,12 +43,15 @@ val erase_defn : 'a defn -> unit defn
 type eval_error = string * unit (* TODO: 'a *) term
 
 (** @raise eval_error *)
-val eval_ctx_exn : 'a Nominal.term Lvca_util.String.Map.t -> 'a term -> 'a Nominal.term
+val eval_ctx_exn
+  :  ('a, Primitive.t) Nominal.term Lvca_util.String.Map.t
+  -> 'a term
+  -> ('a, Primitive.t) Nominal.term
 
 (** @raise eval_error *)
-val eval_exn : 'a term -> 'a Nominal.term
+val eval_exn : 'a term -> ('a, Primitive.t) Nominal.term
 
-val eval : 'a term -> ('a Nominal.term, eval_error) Base.Result.t
+val eval : 'a term -> (('a, Primitive.t) Nominal.term, eval_error) Base.Result.t
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val term : OptRange.t term ParseUtil.t
