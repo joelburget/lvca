@@ -168,13 +168,10 @@ type ctx_entry =
   | BoundChar of char
   | BoundParser of t
 
-(* TODO: remove *)
-let todo_pos = None
-
 (* TODO: this is hacky *)
 let thin_ctx : ctx_entry Lvca_util.String.Map.t -> n_term Lvca_util.String.Map.t =
   Map.filter_map ~f:(function
-      | BoundChar c -> Some (Nominal.Primitive (todo_pos, Primitive.PrimChar c))
+      | BoundChar c -> Some (Nominal.Primitive (None, Primitive.PrimChar c))
       | BoundParser _ -> None)
 ;;
 
