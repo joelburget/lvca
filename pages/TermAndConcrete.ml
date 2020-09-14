@@ -3,16 +3,17 @@ open Js_of_ocaml
 open Lvca_syntax
 open ReactiveData
 
-type term = OptRange.t Nominal.term
+type term = (OptRange.t, Primitive.t) Nominal.term
 
 type lang =
   | Lambda
   | Term
 
+module PrimitiveParse = Primitive.Parse (ParseUtil.NoComment)
 module TermParse = Nominal.Parse (ParseUtil.NoComment)
 module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse (ParseUtil.NoComment)
 
-let term_pretty = Nominal.pp_term_range (* XXX why used twice? *)
+let term_pretty = Nominal.pp_term_range Primitive.pp (* XXX why used twice? *)
 
 let lambda_pretty = Lvca_languages.LambdaCalculus.pp (* XXX why used twice? *)
 
@@ -39,7 +40,7 @@ module Model = struct
       (fun ppf tm_result ->
         match tm_result with
         | Error msg -> Fmt.pf ppf "%s" msg
-        | Ok tm -> Nominal.pp_term ppf tm)
+        | Ok tm -> Nominal.pp_term Primitive.pp ppf tm)
       result
       OptRange.pp
       selected
@@ -57,7 +58,7 @@ module Action = struct
     | SwitchInputLang
 end
 
-let parser_of = function Lambda -> LambdaParse.t | Term -> TermParse.t
+let parser_of = function Lambda -> LambdaParse.t | Term -> TermParse.t PrimitiveParse.t
 
 module Controller = struct
   let update (action : Action.t) model_s signal_update =
