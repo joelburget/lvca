@@ -9,7 +9,7 @@ module Model = struct
 
   type t = { page : page }
 
-  let initial_model = { page = TermAndConcretePage }
+  let initial_model = { page = EvalWithProvenancePage }
 end
 
 type signal = Model.t React.signal

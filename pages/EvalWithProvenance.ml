@@ -30,7 +30,7 @@ module Model = struct
     }
 
   let initial_model : t =
-    let input = {|\f -> \g -> \x -> f (g x)|} in
+    let input = {|(\x -> \y -> x) z w|} in
     let result =
       let%bind parsed = ParseUtil.parse_string LambdaParse.t input in
       eval parsed
