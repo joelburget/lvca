@@ -3,19 +3,7 @@ open Js_of_ocaml
 open Lvca_syntax
 open ReactiveData
 
-type term = (OptRange.t, Primitive.t) Nominal.term
-
-type lang =
-  | Lambda
-  | Term
-
-module PrimitiveParse = Primitive.Parse (ParseUtil.NoComment)
-module TermParse = Nominal.Parse (ParseUtil.NoComment)
-module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse (ParseUtil.NoComment)
-
-let term_pretty = Nominal.pp_term_range Primitive.pp (* XXX why used twice? *)
-
-let lambda_pretty = Lvca_languages.LambdaCalculus.pp (* XXX why used twice? *)
+open Common
 
 module Model = struct
   type t =
@@ -24,12 +12,6 @@ module Model = struct
     ; result : (term, string) Result.t
     ; selected : OptRange.t
     }
-
-  let initial_model : t =
-    let input = {|\f -> \g -> \x -> f (g x)|} in
-    let result = ParseUtil.parse_string LambdaParse.t input in
-    { input; result; input_lang = Lambda; selected = None }
-  ;;
 
   let print { input; input_lang; result; selected } =
     let input_lang_str = match input_lang with Lambda -> "Lambda" | Term -> "Term" in
@@ -49,16 +31,6 @@ end
 
 type signal = Model.t React.signal
 type update_fun = ?step:React.step -> Model.t -> unit
-
-module Action = struct
-  type t =
-    | Evaluate of string
-    | Unselect
-    | Select of int * int
-    | SwitchInputLang
-end
-
-let parser_of = function Lambda -> LambdaParse.t | Term -> TermParse.t PrimitiveParse.t
 
 module Controller = struct
   let update (action : Action.t) model_s signal_update =
@@ -97,17 +69,12 @@ module View = struct
   open Js_of_ocaml_tyxml.Tyxml_js
   module Ev = Js_of_ocaml_lwt.Lwt_js_events
 
-  let bind_event ev elem handler =
-    let handler evt _ = handler evt in
-    Ev.async @@ fun () -> ev elem handler
-  ;;
-
   let mk_input model_s signal_update =
     let input =
       Html5.(textarea ~a:[ a_rows 2; a_cols 60; a_autofocus (); a_class [ "input" ] ])
         (model_s
         |> React.S.map (fun m ->
-               (* Caml.Printf.printf "Updating input (209): %s\n" m.Model.input; *)
+               (* Caml.Printf.printf "Updating input: %s\n" m.Model.input; *)
                m.Model.input)
         |> R.Html5.txt)
     in
@@ -144,7 +111,7 @@ module View = struct
       |> React.S.map ~eq:(fun m1 m2 -> Caml.(m1.Model.input = m2.Model.input)) Fn.id
       |> React.S.changes
       |> React.E.map (fun Model.{ input; _ } ->
-             (* Caml.Printf.printf "Updating input (254): %s\n" input; *)
+             (* Caml.Printf.printf "Updating input: %s\n" input; *)
              input_dom##.value := Js.string input)
     in
     input
@@ -208,7 +175,12 @@ module View = struct
 end
 
 let stateless_view =
-  let model_s, signal_update = React.S.create Model.initial_model in
+  let initial_model : Model.t =
+    let input = {|\f -> \g -> \x -> f (g x)|} in
+    let result = ParseUtil.parse_string LambdaParse.t input in
+    { input; result; input_lang = Lambda; selected = None }
+  in
+  let model_s, signal_update = React.S.create initial_model in
   View.view model_s signal_update
 ;;
 
