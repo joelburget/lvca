@@ -1,13 +1,14 @@
 open Base
 module String = Lvca_util.String
 
-type 'loc term =
-  | Operator of 'loc * string * ('loc scope, 'loc term list) Either.t list
+type ('loc, 'prim) term =
+  | Operator of
+      'loc * string * (('loc, 'prim) scope, ('loc, 'prim) term list) Base.Either.t list
   | BoundVar of 'loc * int
   | FreeVar of 'loc * string
-  | Primitive of 'loc * Primitive.t
+  | Primitive of 'loc * 'prim
 
-and 'loc scope = Scope of 'loc * string * 'loc term list
+and ('loc, 'prim) scope = Scope of 'loc * string * ('loc, 'prim) term list
 
 let rec open_term target_ix subst_tm tm =
   match tm with
@@ -57,44 +58,39 @@ and scope_or_term_to_nominal ctx = function
 
 let to_nominal tm = to_nominal' [] tm
 
-exception FailedFromNominal of string
-
-let rec of_nominal_with_bindings_exn env = function
+let rec of_nominal_with_bindings env = function
   | Nominal.Operator (loc, tag, subtms) ->
-    Operator (loc, tag, List.map subtms ~f:(scope_of_nominal' env))
+    let open Result.Let_syntax in
+    let%map subtms' = subtms |> List.map ~f:(scope_of_nominal env) |> Result.all in
+    Operator (loc, tag, subtms')
   | Var (loc, name) ->
-    (match Map.find env name with
-    | None -> FreeVar (loc, name)
-    | Some i -> BoundVar (loc, i))
-  | Primitive (loc, prim) -> Primitive (loc, prim)
+    Ok
+      (match Map.find env name with
+      | None -> FreeVar (loc, name)
+      | Some i -> BoundVar (loc, i))
+  | Primitive (loc, prim) -> Ok (Primitive (loc, prim))
 
-and scope_of_nominal' env (Scope (pats, body) as scope) =
+and scope_of_nominal env (Scope (pats, body) as scope) =
+  let open Result.Let_syntax in
   match pats with
   | [] ->
-    let body' = List.map body ~f:(of_nominal_with_bindings_exn env) in
-    Second body'
+    let%map body' = body |> List.map ~f:(of_nominal_with_bindings env) |> Result.all in
+    Either.Second body'
   | [ Var (pos, name) ] ->
     let env' : int String.Map.t =
       env |> Map.map ~f:(fun i -> i + 1) |> Map.set ~key:name ~data:0
     in
-    let body' = List.map body ~f:(of_nominal_with_bindings_exn env') in
-    First (Scope (pos, name, body'))
-  | _ ->
-    raise
-      (FailedFromNominal
-         (Printf.sprintf
-            "Expected zero-or-one variable binding, found %s"
-            (Nominal.pp_scope_str Primitive.pp scope)))
+    let%map body' = body |> List.map ~f:(of_nominal_with_bindings env') |> Result.all in
+    Either.First (Scope (pos, name, body'))
+  | _ -> Error scope
 ;;
 
-let of_nominal_with_bindings bindings tm =
-  try Ok (of_nominal_with_bindings_exn bindings tm) with
-  | FailedFromNominal msg -> Error msg
-;;
+(* (Printf.sprintf "Expected zero-or-one variable binding, found %s" (Nominal.pp_scope_str
+   Primitive.pp scope))) *)
 
 let of_nominal tm = of_nominal_with_bindings String.Map.empty tm
 
-let rec alpha_equivalent t1 t2 =
+let rec alpha_equivalent prim_equivalent t1 t2 =
   match t1, t2 with
   | Operator (_, h1, subtms1), Operator (_, h2, subtms2) ->
     String.(h1 = h2)
@@ -103,7 +99,8 @@ let rec alpha_equivalent t1 t2 =
     | Ok zipped ->
       let match_bodies body1 body2 =
         match List.zip body1 body2 with
-        | Ok bodies -> List.for_all bodies ~f:(fun (b1, b2) -> alpha_equivalent b1 b2)
+        | Ok bodies ->
+          List.for_all bodies ~f:(fun (b1, b2) -> alpha_equivalent prim_equivalent b1 b2)
         | _ -> false
       in
       let f = function
@@ -116,6 +113,6 @@ let rec alpha_equivalent t1 t2 =
     | Unequal_lengths -> false)
   | BoundVar (_, i1), BoundVar (_, i2) -> i1 = i2
   | FreeVar (_, name1), FreeVar (_, name2) -> String.(name1 = name2)
-  | Primitive (_, p1), Primitive (_, p2) -> Primitive.(p1 = p2)
+  | Primitive (_, p1), Primitive (_, p2) -> prim_equivalent p1 p2
   | _, _ -> false
 ;;

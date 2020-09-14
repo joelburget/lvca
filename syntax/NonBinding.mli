@@ -14,10 +14,10 @@ exception ScopeEncountered
 (** {1 de Bruijn conversion} *)
 
 (** @raise ScopeEncountered *)
-val of_de_bruijn_exn : 'loc DeBruijn.term -> ('loc, Primitive.t) term
+val of_de_bruijn_exn : ('loc, 'prim) DeBruijn.term -> ('loc, 'prim) term
 
-val of_de_bruijn : 'loc DeBruijn.term -> ('loc, Primitive.t) term option
-val to_de_bruijn : ('loc, Primitive.t) term -> 'loc DeBruijn.term
+val of_de_bruijn : ('loc, 'prim) DeBruijn.term -> ('loc, 'prim) term option
+val to_de_bruijn : ('loc, 'prim) term -> ('loc, 'prim) DeBruijn.term
 
 (** {1 Nominal conversion} *)
 

@@ -27,7 +27,9 @@ let eval tm =
     | FreeVar _ -> Ok tm
     | _ -> Error (Printf.sprintf "Unexpected term (2) %s" (tm_str tm))
   in
-  let%bind db_tm = DeBruijn.of_nominal tm in
+  let%bind db_tm =
+    tm |> DeBruijn.of_nominal |> Result.map_error ~f:(Nominal.pp_scope_str Primitive.pp)
+  in
   let%bind db_tm' = eval' db_tm in
   match DeBruijn.to_nominal db_tm' with
   | None -> Error "Failed to convert result back to nominal representation."
