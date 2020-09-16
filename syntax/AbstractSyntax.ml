@@ -4,6 +4,7 @@ module Util = Lvca_util
 module String = Util.String
 module List = Base.List
 module Map = Base.Map
+module Result = Base.Result
 
 type sort_name = string
 
@@ -138,21 +139,18 @@ let rec instantiate_sort : sort String.Map.t -> sort -> sort =
 
 (* _of_term: *)
 
-exception OfTermFailure of string * (unit, Primitive.t) Nominal.term
-
-(** @raise [OfTermFailure] *)
-let rec sort_of_term_exn : ('a, Primitive.t) Nominal.term -> sort =
-  let erase = Nominal.erase in
-  fun tm ->
-    match tm with
-    | Var (_, name) -> SortVar name
-    | Operator (_, name, args) ->
-      SortAp
-        ( name
-        , List.map args ~f:(function
-              | Scope ([], [ arg ]) -> sort_of_term_exn arg
-              | _ -> raise (OfTermFailure ("sort_of_term", erase tm))) )
-    | _ -> raise (OfTermFailure ("sort_of_term", erase tm))
+let rec sort_of_term tm =
+  match tm with
+  | Nominal.Var (_, name) -> Ok (SortVar name)
+  | Operator (_, name, args) ->
+    let open Result.Let_syntax in
+    let%map args' =
+      args
+      |> List.map ~f:(function Scope ([], [ arg ]) -> sort_of_term arg | _ -> Error tm)
+      |> Result.all
+    in
+    SortAp (name, args')
+  | _ -> Error tm
 ;;
 
 module Parse (Comment : ParseUtil.Comment_int) = struct

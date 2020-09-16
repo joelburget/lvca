@@ -395,19 +395,21 @@ test := foo(term()*. term())
     let language = parse_lang lang_desc
 
     let print_check_pattern sort_str pat_str =
-      let sort = sort_str |> parse_term |> sort_of_term_exn in
-      let pat =
-        match pat_str |> parse_term |> Nominal.to_pattern with
-        | Ok pat -> pat
-        | Error scope ->
-          failwith
-            (Printf.sprintf
-               "Failed to convert term to pattern (found a scope: %s)"
-               (Nominal.pp_scope_str Primitive.pp scope))
-      in
-      match check_pattern language sort pat with
-      | Error failure -> Fmt.epr "%a" pp_failure failure
-      | Ok _ -> ()
+      match sort_str |> parse_term |> sort_of_term with
+      | Error bad_tm -> Fmt.epr "%a" (Nominal.pp_term Primitive.pp) bad_tm
+      | Ok sort ->
+        let pat =
+          match pat_str |> parse_term |> Nominal.to_pattern with
+          | Ok pat -> pat
+          | Error scope ->
+            failwith
+              (Printf.sprintf
+                 "Failed to convert term to pattern (found a scope: %s)"
+                 (Nominal.pp_scope_str Primitive.pp scope))
+        in
+        (match check_pattern language sort pat with
+        | Error failure -> Fmt.epr "%a" pp_failure failure
+        | Ok _ -> ())
     ;;
 
     let%expect_test _ =
@@ -512,10 +514,12 @@ test := foo(term()*. term())
     ;;
 
     let check_term' sort_str tm_str =
-      let sort = sort_str |> parse_term |> sort_of_term_exn in
-      match tm_str |> parse_term |> Nominal.erase |> check_term language sort with
-      | Some failure -> Fmt.epr "%a" pp_failure failure
-      | None -> ()
+      match sort_str |> parse_term |> sort_of_term with
+      | Error bad_tm -> Fmt.epr "%a" (Nominal.pp_term Primitive.pp) bad_tm
+      | Ok sort ->
+        (match tm_str |> parse_term |> Nominal.erase |> check_term language sort with
+        | Some failure -> Fmt.epr "%a" pp_failure failure
+        | None -> ())
     ;;
 
     let%expect_test _ =

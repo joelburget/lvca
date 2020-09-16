@@ -6,23 +6,23 @@ type ('loc, 'prim) term =
 
 let location = function Operator (loc, _, _) | Primitive (loc, _) -> loc
 
-exception ScopeEncountered
+open Result.Let_syntax
 
-(** @raise ScopeEncountered *)
-let rec of_de_bruijn_exn = function
+type ('loc, 'prim) de_bruijn_conversion_error =
+  | ScopeEncountered of ('loc, 'prim) DeBruijn.scope
+  | VarEncountered of ('loc, 'prim) DeBruijn.term
+
+let rec of_de_bruijn tm =
+  match tm with
   | DeBruijn.Operator (a, tag, scopes) ->
-    Operator (a, tag, List.map scopes ~f:of_de_bruijn_scope)
-  | BoundVar _ | FreeVar _ -> raise ScopeEncountered
-  | Primitive (a, p) -> Primitive (a, p)
+    let%map scopes' = scopes |> List.map ~f:of_de_bruijn_scope |> Result.all in
+    Operator (a, tag, scopes')
+  | BoundVar _ | FreeVar _ -> Error (VarEncountered tm)
+  | Primitive (a, p) -> Ok (Primitive (a, p))
 
-(** @raise ScopeEncountered *)
 and of_de_bruijn_scope = function
-  | First _scopt -> raise ScopeEncountered
-  | Second tms -> List.map tms ~f:of_de_bruijn_exn
-;;
-
-let of_de_bruijn tm (* (tm : 'a DeBruijn.term) : 'a term option *) =
-  try Some (of_de_bruijn_exn tm) with ScopeEncountered -> None
+  | First scope -> Error (ScopeEncountered scope)
+  | Second tms -> tms |> List.map ~f:of_de_bruijn |> Result.all
 ;;
 
 let rec to_de_bruijn tm (* : unit DeBruijn.term *) =
@@ -35,20 +35,21 @@ let rec to_de_bruijn tm (* : unit DeBruijn.term *) =
   | Primitive (loc, p) -> Primitive (loc, p)
 ;;
 
-let rec of_nominal_exn = function
+type ('loc, 'prim) nominal_conversion_error =
+  | ScopeEncountered of ('loc, 'prim) Nominal.scope
+  | VarEncountered of ('loc, 'prim) Nominal.term
+
+let rec of_nominal tm =
+  match tm with
   | Nominal.Operator (a, tag, scopes) ->
-    Operator (a, tag, List.map scopes ~f:of_nominal_scope)
-  | Var _ -> raise ScopeEncountered
-  | Primitive (a, p) -> Primitive (a, p)
+    let%map scopes' = scopes |> List.map ~f:of_nominal_scope |> Result.all in
+    Operator (a, tag, scopes')
+  | Var _ -> Error (VarEncountered tm)
+  | Primitive (a, p) -> Ok (Primitive (a, p))
 
-(** @raise ScopeEncountered *)
 and of_nominal_scope = function
-  | Nominal.Scope ([], tms) -> List.map tms ~f:of_nominal_exn
-  | _ -> raise ScopeEncountered
-;;
-
-let of_nominal (* (tm : ('a, Primitive.t) Nominal.term) : 'a term option *) tm =
-  try Some (of_nominal_exn tm) with ScopeEncountered -> None
+  | Nominal.Scope ([], tms) -> tms |> List.map ~f:of_nominal |> Result.all
+  | scope -> Error (ScopeEncountered scope)
 ;;
 
 let rec to_nominal tm =

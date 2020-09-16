@@ -8,23 +8,28 @@ type ('loc, 'prim) term =
 
 val location : ('loc, _) term -> 'loc
 
-(** Raised by [of_de_bruijn_exn] or [of_nominal_exn] when they encounter a scope. *)
-exception ScopeEncountered
-
 (** {1 de Bruijn conversion} *)
 
-(** @raise ScopeEncountered *)
-val of_de_bruijn_exn : ('loc, 'prim) DeBruijn.term -> ('loc, 'prim) term
+type ('loc, 'prim) de_bruijn_conversion_error =
+  | ScopeEncountered of ('loc, 'prim) DeBruijn.scope
+  | VarEncountered of ('loc, 'prim) DeBruijn.term
 
-val of_de_bruijn : ('loc, 'prim) DeBruijn.term -> ('loc, 'prim) term option
+val of_de_bruijn
+  :  ('loc, 'prim) DeBruijn.term
+  -> (('loc, 'prim) term, ('loc, 'prim) de_bruijn_conversion_error) Result.t
+
 val to_de_bruijn : ('loc, 'prim) term -> ('loc, 'prim) DeBruijn.term
 
 (** {1 Nominal conversion} *)
 
-(** @raise ScopeEncountered *)
-val of_nominal_exn : ('loc, 'prim) Nominal.term -> ('loc, 'prim) term
+type ('loc, 'prim) nominal_conversion_error =
+  | ScopeEncountered of ('loc, 'prim) Nominal.scope
+  | VarEncountered of ('loc, 'prim) Nominal.term
 
-val of_nominal : ('loc, 'prim) Nominal.term -> ('loc, 'prim) term option
+val of_nominal
+  :  ('loc, 'prim) Nominal.term
+  -> (('loc, 'prim) term, ('loc, 'prim) nominal_conversion_error) Result.t
+
 val to_nominal : ('loc, 'prim) term -> ('loc, 'prim) Nominal.term
 
 (** {1 Printing} *)

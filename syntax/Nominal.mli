@@ -38,8 +38,6 @@ val erase_scope : (_, 'prim) scope -> (unit, 'prim) scope
 
 (** Indicates that this scope was encountered when attempting to convert to a pattern. *)
 
-(* exception ToPatternFailure of unit scope *)
-
 (** Attempt to convert a non-binding term to a pattern.
 
     For example, the term [add(lit(1); a)] is convertible to a pattern, but [lambda(a. a)]

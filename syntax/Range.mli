@@ -23,7 +23,9 @@ val list_range : t list -> t option
 exception Empty_list
 
 (** Combine a list of ranges. This creates a new range spanning from the earliest start to
-    the latest finish. *)
+    the latest finish.
+
+    @raise Empty_list *)
 val list_range_nonempty : t list -> t
 
 (** Are the two ranges equal *)
