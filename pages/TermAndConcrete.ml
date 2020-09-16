@@ -69,13 +69,14 @@ module View = struct
   module Ev = Js_of_ocaml_lwt.Lwt_js_events
 
   let mk_input model_s signal_update =
+    let input_val = model_s
+      |> React.S.map (fun m -> m.Model.input)
+      |> R.Html.txt
+    in
     let input =
-      Html.(textarea ~a:[ a_rows 2; a_cols 60; a_autofocus (); a_class [ "input" ] ])
-        (model_s
-        |> React.S.map (fun m ->
-               (* Caml.Printf.printf "Updating input: %s\n" m.Model.input; *)
-               m.Model.input)
-        |> R.Html.txt)
+      [%html{|
+        <textarea rows=2 cols=60 autofocus class="input">|}input_val{|</textarea>
+      |}]
     in
     let input_dom = To_dom.of_textarea input in
     bind_event Ev.keydowns input_dom (fun evt ->
@@ -147,29 +148,13 @@ module View = struct
   let view model_s signal_update =
     let descriptions_s = make_descriptions model_s in
     let input_desc, output_desc = React.S.Pair.(fst descriptions_s, snd descriptions_s) in
-    Html.(
-      div
-        [ h2 [ txt "Concrete / Abstract" ]
-        ; div
-            ~a:[ a_class [ "container" ] ]
-            [ div
-                ~a:[ a_class [ "side" ] ]
-                [ h3 [ R.Html.txt input_desc ]; mk_input model_s signal_update ]
-            ; div
-                ~a:[ a_class [ "switch-languages" ] ]
-                [ button
-                    ~a:
-                      [ a_onclick (fun _evt ->
+    let handler _evt =
                             Controller.update SwitchInputLang model_s signal_update;
-                            false)
-                      ]
-                    [ txt "switch input languages" ]
-                ]
-            ; div
-                ~a:[ a_class [ "side" ] ]
-                [ h3 [ R.Html.txt output_desc ]; mk_output model_s ]
-            ]
-        ])
+                            false
+    in
+    demo_template handler
+      (R.Html.txt input_desc) (mk_input model_s signal_update)
+      (R.Html.txt output_desc) (mk_output model_s)
   ;;
 end
 

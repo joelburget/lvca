@@ -63,29 +63,6 @@ module Controller = struct
   ;;
 end
 
-let demo_template handler input_elem output_elem =
-  let open Js_of_ocaml_tyxml.Tyxml_js in
-  [%html{|
-    <div>
-      <h2>Eval with Provenance</h2>
-      <div class="container">
-        <div class="side">
-          <h3>input</h3>
-          |}[ input_elem ]{|
-        </div>
-        <div class="switch-languages">
-          <button onclick=|}handler{|>
-            switch input languages
-          </button>
-        </div>
-        <div class="side">
-          <h3>output</h3>
-          |}[ output_elem ]{|
-        </div>
-      </div>
-    </div>
-  |}] [@@@ocamlformat "disable"]
-
 module View = struct
   open Js_of_ocaml_tyxml.Tyxml_js
   module Ev = Js_of_ocaml_lwt.Lwt_js_events
@@ -163,7 +140,9 @@ module View = struct
       Controller.update SwitchInputLang model_s signal_update;
       false
     in
-    demo_template handler (mk_input model_s signal_update) (mk_output model_s )
+    demo_template handler
+      (Html.txt "input") (mk_input model_s signal_update)
+      (Html.txt "output") (mk_output model_s )
   ;;
 end
 
