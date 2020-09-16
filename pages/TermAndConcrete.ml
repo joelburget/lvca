@@ -70,12 +70,12 @@ module View = struct
 
   let mk_input model_s signal_update =
     let input =
-      Html5.(textarea ~a:[ a_rows 2; a_cols 60; a_autofocus (); a_class [ "input" ] ])
+      Html.(textarea ~a:[ a_rows 2; a_cols 60; a_autofocus (); a_class [ "input" ] ])
         (model_s
         |> React.S.map (fun m ->
                (* Caml.Printf.printf "Updating input: %s\n" m.Model.input; *)
                m.Model.input)
-        |> R.Html5.txt)
+        |> R.Html.txt)
     in
     let input_dom = To_dom.of_textarea input in
     bind_event Ev.keydowns input_dom (fun evt ->
@@ -120,7 +120,7 @@ module View = struct
     let range_s : OptRange.t React.signal =
       model_s |> React.S.map (fun Model.{ selected; _ } -> selected)
     in
-    let formatted_s : [> `Code ] Html5.elt React.signal =
+    let formatted_s : [> `Code ] Html.elt React.signal =
       model_s
       |> React.S.map (fun Model.{ result; input_lang; _ } ->
              let elt, formatter = RangeFormatter.mk range_s in
@@ -131,8 +131,8 @@ module View = struct
              Fmt.flush formatter ();
              elt)
     in
-    R.Html5.div
-      ~a:[ R.Html5.a_class (React.S.const [ "output" ]) ]
+    R.Html.div
+      ~a:[ R.Html.a_class (React.S.const [ "output" ]) ]
       (RList.singleton_s formatted_s)
   ;;
 
@@ -147,14 +147,14 @@ module View = struct
   let view model_s signal_update =
     let descriptions_s = make_descriptions model_s in
     let input_desc, output_desc = React.S.Pair.(fst descriptions_s, snd descriptions_s) in
-    Html5.(
+    Html.(
       div
         [ h2 [ txt "Concrete / Abstract" ]
         ; div
             ~a:[ a_class [ "container" ] ]
             [ div
                 ~a:[ a_class [ "side" ] ]
-                [ h3 [ R.Html5.txt input_desc ]; mk_input model_s signal_update ]
+                [ h3 [ R.Html.txt input_desc ]; mk_input model_s signal_update ]
             ; div
                 ~a:[ a_class [ "switch-languages" ] ]
                 [ button
@@ -167,7 +167,7 @@ module View = struct
                 ]
             ; div
                 ~a:[ a_class [ "side" ] ]
-                [ h3 [ R.Html5.txt output_desc ]; mk_output model_s ]
+                [ h3 [ R.Html.txt output_desc ]; mk_output model_s ]
             ]
         ])
   ;;

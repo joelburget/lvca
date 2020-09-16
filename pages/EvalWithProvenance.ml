@@ -93,7 +93,7 @@ module View = struct
   let mk_input model_s signal_update =
     let input_val = model_s
       |> React.S.map (fun m -> m.Model.input)
-      |> R.Html5.txt
+      |> R.Html.txt
     in
     let input =
       [%html{|
@@ -143,7 +143,7 @@ module View = struct
     let range_s : OptRange.t React.signal =
       model_s |> React.S.map (fun Model.{ selected; _ } -> selected)
     in
-    let formatted_s : [> `Code ] Html5.elt React.signal =
+    let formatted_s : [> `Code ] Html.elt React.signal =
       model_s
       |> React.S.map (fun Model.{ result; _ } ->
              let elt, formatter = RangeFormatter.mk range_s in
@@ -153,8 +153,8 @@ module View = struct
              Fmt.flush formatter ();
              elt)
     in
-    R.Html5.div
-      ~a:[ R.Html5.a_class (React.S.const [ "output" ]) ]
+    R.Html.div
+      ~a:[ R.Html.a_class (React.S.const [ "output" ]) ]
       (RList.singleton_s formatted_s)
   ;;
 
