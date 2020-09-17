@@ -1,5 +1,4 @@
 open Base
-open Js_of_ocaml
 open Lvca_syntax
 open ReactiveData
 open Result.Let_syntax
@@ -67,55 +66,6 @@ module View = struct
   open Js_of_ocaml_tyxml.Tyxml_js
   module Ev = Js_of_ocaml_lwt.Lwt_js_events
 
-  let mk_input model_s signal_update =
-    let input_val = model_s
-      |> React.S.map (fun m -> m.Model.input)
-      |> R.Html.txt
-    in
-    let input =
-      [%html{|
-        <textarea rows=2 cols=60 autofocus class="input">|}input_val{|</textarea>
-      |}]
-    in
-    let input_dom = To_dom.of_textarea input in
-    bind_event Ev.keydowns input_dom (fun evt ->
-        Lwt.return
-          (if WebUtil.is_special_enter evt
-          then (
-            Dom.preventDefault evt;
-            Controller.update
-              (Evaluate (Js.to_string input_dom##.value))
-              model_s
-              signal_update)
-          else ()));
-    bind_event Ev.selects input_dom (fun evt ->
-        let elem = evt##.target |> Js.Opt.to_option |> Option.value_exn in
-        let textarea =
-          elem |> Dom_html.CoerceTo.textarea |> Js.Opt.to_option |> Option.value_exn
-        in
-        let start = textarea##.selectionStart in
-        let finish = textarea##.selectionEnd in
-        Controller.update (Select (start, finish)) model_s signal_update;
-        (* Used for debugging only -- can be removed: *)
-        (* let str = textarea##.value##substring start finish in *)
-        (* Caml.Printf.printf "Selected %u-%u '%s'\n" start finish (Js.to_string str); *)
-        Lwt.return ());
-    bind_event Ev.clicks input_dom (fun _evt ->
-        Controller.update Unselect model_s signal_update;
-        Lwt.return ());
-    (* XXX why doesn't the textarea automatically update? *)
-    let (_ : unit React.event) =
-      model_s
-      (* Create an event when the input has changed *)
-      |> React.S.map ~eq:(fun m1 m2 -> Caml.(m1.Model.input = m2.Model.input)) Fn.id
-      |> React.S.changes
-      |> React.E.map (fun Model.{ input; _ } ->
-             (* Caml.Printf.printf "Updating input: %s\n" input; *)
-             input_dom##.value := Js.string input)
-    in
-    input
-  ;;
-
   let mk_output model_s =
     let range_s : OptRange.t React.signal =
       model_s |> React.S.map (fun Model.{ selected; _ } -> selected)
@@ -140,8 +90,23 @@ module View = struct
       Controller.update SwitchInputLang model_s signal_update;
       false
     in
+
+    let input, input_event = Common.mk_input
+      (model_s |> React.S.map (fun model -> model.Model.input))
+    in
+
+    let _ : unit React.event = input_event |> React.E.map (fun evt ->
+      let evt' = match evt with
+      | InputUpdate str -> Action.Evaluate str
+      | InputSelect (start, finish) -> Select (start, finish)
+      | InputUnselect -> Unselect
+      in
+      Controller.update evt' model_s signal_update
+    )
+    in
+
     demo_template handler
-      (Html.txt "input") (mk_input model_s signal_update)
+      (Html.txt "input") input
       (Html.txt "output") (mk_output model_s )
   ;;
 end
