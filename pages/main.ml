@@ -6,10 +6,13 @@ module Model = struct
   type page =
     | TermAndConcretePage
     | EvalWithProvenancePage
+    | TermToTexPage
+    (* | TermToDocument *)
 
   type t = { page : page }
 
-  let initial_model = { page = EvalWithProvenancePage }
+  let initial_model = { page = TermToTexPage }
+  let all_pages = [ TermAndConcretePage; EvalWithProvenancePage; TermToTexPage ]
 end
 
 type signal = Model.t React.signal
@@ -33,14 +36,15 @@ module View = struct
   let page_description = function
     | TermAndConcretePage -> "01: term and concrete"
     | EvalWithProvenancePage -> "0x: evaluation with provenance"
+    | TermToTexPage -> "0x: term to tex"
   ;;
 
   let stateless_view = function
     | TermAndConcretePage -> TermAndConcrete.stateless_view
     | EvalWithProvenancePage -> EvalWithProvenance.stateless_view
+    | TermToTexPage -> TermToTex.stateless_view
   ;;
 
-  let all_pages = [ TermAndConcretePage; EvalWithProvenancePage ]
   let wrapper_div = Html5.div []
   let wrapper_dom = To_dom.of_div wrapper_div
 
@@ -52,30 +56,37 @@ module View = struct
     let i = select_elem##.value |> Js.to_string |> Int.of_string in
     Caml.Printf.printf "%i\n" i;
     let page =
-      match List.nth all_pages i with None -> failwith "TODO: error" | Some page -> page
+      match List.nth Model.all_pages i with None -> failwith "TODO: error" | Some page -> page
     in
     signal_update Model.{ page };
     false
   ;;
 
   let view model_s signal_update =
-    Html5.(
-      div
-        [ h2 [ txt "LVCA demos" ]
-        ; div
-            [ select
-                ~a:[ a_onchange (handler signal_update) ]
-                (all_pages
-                |> List.mapi ~f:(fun i page ->
-                       option
-                         ~a:[ a_value (Int.to_string i) ]
-                         (page |> page_description |> txt)))
-            ; R.Html5.div
-                (model_s
-                |> React.S.map (fun { page } -> stateless_view page)
-                |> RList.singleton_s)
-            ]
-        ])
+
+    let page_selector = Model.all_pages
+      |> List.mapi ~f:(fun i page -> Html.option
+               ~a:[ Html.a_value (Int.to_string i) ]
+               (page |> page_description |> Html.txt))
+    in
+
+    let page_view = R.Html5.div
+      (model_s
+      |> React.S.map (fun { page } -> stateless_view page)
+      |> RList.singleton_s)
+    in
+
+    [%html{|
+      <div>
+        <h2>LVCA demos</h2>
+        <div>
+          <select onchange=|} (handler signal_update) {|>
+            |} (page_selector) {|
+          </select>
+          |}[ page_view ]{|
+        </div>
+      </div>
+    |}]
   ;;
 end
 

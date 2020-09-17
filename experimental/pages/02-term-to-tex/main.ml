@@ -9,7 +9,7 @@ end
 module Model = struct
   type t = string
 
-  let initial_value = {|\overbrace{a+b+c}^{\text{note}}|}
+  let initial_value =
 end
 
 type signal = Model.t React.signal
