@@ -1,5 +1,6 @@
 open Base
 open Lvca_syntax
+open ReactiveData
 
 type term = (OptRange.t, Primitive.t) Nominal.term
 
@@ -106,3 +107,10 @@ let mk_input input_s =
   in
   input, input_event
 ;;
+
+let mk_output
+  (elt_s : [ `Code ] Js_of_ocaml_tyxml.Tyxml_js.To_dom.elt React.signal) =
+  let open Js_of_ocaml_tyxml.Tyxml_js in
+  R.Html.div
+    ~a:[ R.Html.a_class (React.S.const [ "output" ]) ]
+    (RList.singleton_s elt_s)

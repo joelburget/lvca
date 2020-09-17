@@ -1,6 +1,5 @@
 open Base
 open Lvca_syntax
-open ReactiveData
 open Common
 
 module Model = struct
@@ -67,12 +66,11 @@ module View = struct
   open Js_of_ocaml_tyxml.Tyxml_js
   module Ev = Js_of_ocaml_lwt.Lwt_js_events
 
-  let mk_output model_s =
+  let mk_output' model_s =
     let range_s : OptRange.t React.signal =
       model_s |> React.S.map (fun Model.{ selected; _ } -> selected)
     in
-    let formatted_s : [> `Code ] Html.elt React.signal =
-      model_s
+    let formatted_s = model_s
       |> React.S.map (fun Model.{ result; input_lang; _ } ->
              let elt, formatter = RangeFormatter.mk range_s in
              (match result, input_lang with
@@ -82,10 +80,7 @@ module View = struct
              Fmt.flush formatter ();
              elt)
     in
-    R.Html.div
-      ~a:[ R.Html.a_class (React.S.const [ "output" ]) ]
-      (RList.singleton_s formatted_s)
-  ;;
+    mk_output formatted_s
 
   let make_descriptions model_s =
     model_s
@@ -119,7 +114,7 @@ module View = struct
 
     demo_template handler
       (R.Html.txt input_desc) input
-      (R.Html.txt output_desc) (mk_output model_s)
+      (R.Html.txt output_desc) (mk_output' model_s)
   ;;
 end
 
