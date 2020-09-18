@@ -90,6 +90,7 @@ module Properties = struct
     | Error _ -> false
  ;;
 
+  (* XXX this is invalid: +1 -> 1 *)
   let string_round_trip2 : string -> bool =
    fun str ->
     match ParseUtil.parse_string Parse'.t str with
