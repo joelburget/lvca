@@ -295,13 +295,13 @@ module Properties = struct
     | Some t -> Util.Json.(jsonify Primitive.jsonify t = json)
  ;;
 
-  module Parse' = Parse (ParseUtil.NoComment)
+  module ParsePattern = Parse (ParseUtil.NoComment)
   module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
 
   let string_round_trip1 : (unit, Primitive.t) t -> bool =
    fun t ->
     match
-      t |> to_string Primitive.pp |> ParseUtil.parse_string (Parse'.t ParsePrimitive.t)
+      t |> to_string Primitive.pp |> ParseUtil.parse_string (ParsePattern.t ParsePrimitive.t)
     with
     | Ok prim -> erase prim = t
     | Error _ -> false
@@ -309,7 +309,7 @@ module Properties = struct
 
   let string_round_trip2 : string -> bool =
    fun str ->
-    match ParseUtil.parse_string (Parse'.t ParsePrimitive.t) str with
+    match ParseUtil.parse_string (ParsePattern.t ParsePrimitive.t) str with
     | Ok prim ->
       let str' = to_string Primitive.pp prim in
       Base.String.(str' = str)

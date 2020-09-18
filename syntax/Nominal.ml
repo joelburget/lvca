@@ -401,10 +401,10 @@ let%test_module "TermParser" =
   (module struct
     let ( = ) = Caml.( = )
 
-    module Parse' = Parse (ParseUtil.NoComment)
+    module ParseNominal = Parse (ParseUtil.NoComment)
     module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
 
-    let parse = ParseUtil.parse_string (Parse'.whitespace_t ParsePrimitive.t)
+    let parse = ParseUtil.parse_string (ParseNominal.whitespace_t ParsePrimitive.t)
 
     let print_parse str =
       match parse str with

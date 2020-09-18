@@ -81,11 +81,11 @@ module Properties = struct
     | Some t -> Lvca_util.Json.(jsonify t = json)
  ;;
 
-  module Parse' = Parse (ParseUtil.NoComment)
+  module ParsePrimitive = Parse (ParseUtil.NoComment)
 
   let string_round_trip1 : t -> bool =
    fun t ->
-    match t |> to_string |> ParseUtil.parse_string Parse'.t with
+    match t |> to_string |> ParseUtil.parse_string ParsePrimitive.t with
     | Ok prim -> prim = t
     | Error _ -> false
  ;;
@@ -93,7 +93,7 @@ module Properties = struct
   (* XXX this is invalid: +1 -> 1 *)
   let string_round_trip2 : string -> bool =
    fun str ->
-    match ParseUtil.parse_string Parse'.t str with
+    match ParseUtil.parse_string ParsePrimitive.t str with
     | Ok prim ->
       let str' = to_string prim in
       Base.String.(str' = str)
@@ -106,7 +106,7 @@ end
 let%test_module "Parsing" =
   (module struct
     let print_parse str =
-      match ParseUtil.parse_string_pos Properties.Parse'.t str with
+      match ParseUtil.parse_string_pos Properties.ParsePrimitive.t str with
       | Ok (prim, range) -> Fmt.pr "%a %a" pp prim OptRange.pp range
       | Error msg -> Fmt.pr "%s" msg
     ;;
