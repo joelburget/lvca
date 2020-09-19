@@ -1,5 +1,4 @@
 open Lvca_syntax
-open Core_kernel
 
 (* The range vars are allowed to span. This is a list of de bruijn indices and
  * the number of vars bound at each index. *)
@@ -42,10 +41,62 @@ let term_str_conf tm_str =
          Crowbar.check_eq tm_str tm_str'
          *)
 
+let prim_gen : Primitive.t Crowbar.gen
+  = let open Crowbar in
+    let open Primitive in
+  let options =
+    [ map [int] (fun i -> PrimInteger (Bigint.of_int i))
+    (* TODO: string and float parsing has a couple issues *)
+    (* ; map [bytes] (fun str -> PrimString str) *)
+    (* ; map [float] (fun f -> PrimFloat f) *)
+    ; map [char] (fun c -> PrimChar c)
+    ]
+  in
+  choose options
+
+let rec json_gen =
+  lazy Crowbar.(Lvca_util.(choose
+    [ const (Json.array [||])
+    ; map [float] Json.float
+    ; map [bytes] Json.string
+    ; map [list (unlazy json_gen)] (fun ts -> ts |> Array.of_list |> Json.array)
+    ]))
+let lazy json_gen = json_gen
+
+let add_test ~name ~gen ~f = Crowbar.add_test ~name [ gen ]
+  (fun a -> match f a with
+    | PropertyResult.Ok -> ()
+    | Failed msg -> Crowbar.fail msg
+    | Uninteresting -> Crowbar.bad_test ())
+;;
+
 let () =
   (* let _term_body = In_channel.read_all "term.lvca" in *)
   (* Crowbar.(add_test ~name:"Nominal round trip" [ bytes ] term_str_conf); *)
-  Crowbar.(add_test ~name:"Primitive string_round_trip1" [ bytes ]
-    (fun str -> str |> Primitive.Properties.string_round_trip2 |> check));
+
+  (* 0 *)
+  add_test
+    ~name:"Primitive json_round_trip1"
+    ~gen:prim_gen
+    ~f:Primitive.Properties.json_round_trip1;
+
+  (* 1 *)
+  add_test
+    ~name:"Primitive json_round_trip2"
+    ~gen:json_gen
+    ~f:Primitive.Properties.json_round_trip2;
+
+  (* 2 *)
+  add_test
+    ~name:"Primitive string_round_trip1"
+    ~gen:prim_gen
+    ~f:Primitive.Properties.string_round_trip1;
+
+  (* 3 *)
+  add_test
+    ~name:"Primitive string_round_trip2"
+    ~gen:Crowbar.bytes
+    ~f:Primitive.Properties.string_round_trip2;
+
   ()
 ;;
