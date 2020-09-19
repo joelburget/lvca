@@ -62,6 +62,17 @@ and de_bruijn_scope_gen = fun binding_var_count -> lazy Crowbar.(
 let lazy de_bruijn_gen = de_bruijn_gen 0
 *)
 
+(* pattern *)
+
+let pattern_gen = Crowbar.(Pattern.(fix (fun pattern_gen ->
+  choose
+    [ map [prim_gen] (fun p -> Primitive ((), p))
+    ; map [bytes; list (list pattern_gen)]
+      (fun name subpats -> Operator ((), name, subpats))
+    ; map [bytes] (fun name -> Var ((), name))
+    ; map [bytes] (fun name -> Ignored ((), name))
+    ])))
+
 (* nominal *)
 
 let rec nominal_gen = lazy Crowbar.(Nominal.(
@@ -73,10 +84,8 @@ let rec nominal_gen = lazy Crowbar.(Nominal.(
     ]))
 
 and nominal_scope_gen = lazy Crowbar.(
-  dynamic_bind bytes (fun name ->
-    map [list (force nominal_gen)]
-    (* TODO: generalize patterns *)
-      (fun tms -> Nominal.Scope ([Pattern.Var ((), name)], tms)))
+    map [list pattern_gen; list (force nominal_gen)]
+      (fun pats tms -> Nominal.Scope (pats, tms))
 )
 
 let lazy nominal_gen = nominal_gen
@@ -141,6 +150,31 @@ let () =
     ~name:"Nominal string_round_trip2"
     ~gen:Crowbar.bytes
     ~f:Nominal.Properties.string_round_trip2;
+
+  (* 8 *)
+  add_test
+    ~name:"Pattern json_round_trip1"
+    ~gen:pattern_gen
+    ~f:Pattern.Properties.json_round_trip1;
+
+  (* 9 *)
+  add_test
+    ~name:"Pattern json_round_trip2"
+    ~gen:json_gen
+    ~f:Pattern.Properties.json_round_trip2;
+
+  (* TODO: failing *)
+  (* 10 *)
+  add_test
+    ~name:"Pattern string_round_trip1"
+    ~gen:pattern_gen
+    ~f:Pattern.Properties.string_round_trip1;
+
+  (* 11 *)
+  add_test
+    ~name:"Pattern string_round_trip2"
+    ~gen:Crowbar.bytes
+    ~f:Pattern.Properties.string_round_trip2;
 
   ()
 ;;
