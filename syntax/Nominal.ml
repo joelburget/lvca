@@ -244,44 +244,52 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
 end
 
 module Properties = struct
-  let json_round_trip1 : (unit, Primitive.t) term -> bool =
-   fun t ->
-    match t |> jsonify Primitive.jsonify |> unjsonify Primitive.unjsonify with
-    | None -> false
-    | Some t' -> Caml.(t = t')
- ;;
-
-  let json_round_trip2 : Lvca_util.Json.t -> bool =
-   fun json ->
-    match json |> unjsonify Primitive.unjsonify with
-    | None -> false
-    | Some t -> Lvca_util.Json.(jsonify Primitive.jsonify t = json)
- ;;
-
   module Parse = Parse (ParseUtil.NoComment)
   module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
+  open PropertyResult
 
-  let string_round_trip1 : (unit, Primitive.t) term -> bool =
-   fun t ->
-    match
-      t |> pp_term_str Primitive.pp |> ParseUtil.parse_string (Parse.t ParsePrimitive.t)
-    with
-    | Ok prim -> Caml.(erase prim = t)
-    | Error _ -> false
+  let pp = pp_term Primitive.pp
+  let parse = ParseUtil.parse_string (Parse.t ParsePrimitive.t)
+
+  let json_round_trip1 = fun t ->
+    match t |> jsonify Primitive.jsonify |> unjsonify Primitive.unjsonify with
+    | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
+    | Some t' -> PropertyResult.check Caml.(t = t') (Fmt.str "%a <> %a" pp t' pp t)
  ;;
 
-  let string_round_trip2 : string -> bool =
-   fun str ->
-    match ParseUtil.parse_string (Parse.t ParsePrimitive.t) str with
-    | Ok prim ->
-      let str' = pp_term_str Primitive.pp prim in
-      Base.String.(str' = str)
-    | Error _ -> true
+  let json_round_trip2 = fun json ->
+    match json |> unjsonify Primitive.unjsonify with
+    | None -> Uninteresting
+    | Some t -> PropertyResult.check
+      Lvca_util.Json.(jsonify Primitive.jsonify t = json)
+      "jsonify t <> json (TODO: print)"
+ ;;
+
+  let string_round_trip1 = fun t ->
+    match t |> pp_term_str Primitive.pp |> parse with
+    | Ok t' ->
+      let t'' = erase t' in
+      PropertyResult.check Caml.(t'' = t) (Fmt.str "%a <> %a" pp t'' pp t)
+    | Error msg
+    -> Failed (Fmt.str {|parse_string "%s": %s|} (pp_term_str Primitive.pp t) msg)
+ ;;
+
+  let string_round_trip2 = fun str ->
+    match parse str with
+    | Error _ -> Uninteresting
+    | Ok t ->
+      let str' = pp_term_str Primitive.pp t in
+      if Base.String.(str' = str)
+      then Ok
+      else match parse str with
+        | Error msg -> Failed msg
+        | Ok t' ->
+        let str'' = pp_term_str Primitive.pp t' in
+        PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str')
  ;;
 
   (* malformed input *)
 
-  (* XXX add de bruijn properties *)
 end
 
 let%test_module "Nominal" =
