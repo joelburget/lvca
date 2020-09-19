@@ -47,7 +47,7 @@ let rec pp pp_prim ppf =
   let comma, list, pf, semi = Fmt.(comma, list, pf, semi) in
   function
   | Operator (_, name, pats) ->
-    pf ppf "@[<2>%s(%a)@]" name (list ~sep:semi (list ~sep:comma (pp pp_prim))) pats
+    pf ppf "@[<2>%s(%a)@]" name (pp pp_prim |> list ~sep:comma |> list ~sep:semi) pats
   | Primitive (_, prim) -> pp_prim ppf prim
   | Var (_, name) -> pf ppf "%s" name
   | Ignored (_, name) -> pf ppf "_%s" name
@@ -62,7 +62,7 @@ let rec pp_range pp_prim ppf pat =
       ppf
       "@[<2>@{<test>%s@}(%a)@]"
       name
-      (list ~sep:semi (list ~sep:comma (pp_range pp_prim)))
+      (pp_range pp_prim |> list ~sep:comma |> list ~sep:semi)
       pats
   | Primitive (_, prim) -> pf ppf "%a" pp_prim prim
   | Var (_, name) -> pf ppf "%s" name

@@ -8,10 +8,10 @@ type t =
 
 let to_string = function
   | PrimInteger i -> Bigint.to_string i
-  | PrimString str -> "\"" ^ Caml.String.escaped str ^ "\""
+  | PrimString str -> {|"|} ^ Caml.String.escaped str ^ {|"|}
   (* | PrimFloat f -> Float.to_string f *)
   | PrimFloat f -> Caml.Printf.sprintf "%f" f
-  | PrimChar c -> "\'" ^ Base.Char.to_string c ^ "\'"
+  | PrimChar c -> {|'|} ^ Base.Char.to_string c ^ {|'|}
 ;;
 
 let ( = ) p1 p2 =
@@ -45,7 +45,7 @@ end
 let pp : t Fmt.t =
  fun ppf -> function
   | PrimInteger i -> Fmt.pf ppf "%s" (Bigint.to_string i)
-  | PrimString s -> Fmt.pf ppf "\"%s\"" s
+  | PrimString s -> Fmt.pf ppf {|"%s"|} s
   | PrimFloat f -> Fmt.pf ppf "%f" f
   (* | PrimFloat f -> Fmt.pf ppf "%s" (Float.to_string f) *)
   | PrimChar c -> Fmt.pf ppf "'%c'" c
