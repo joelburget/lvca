@@ -29,8 +29,7 @@ parser :=
   // monad
   | return(c_term())
 
-  // is sequence a better name?
-  | lift_n(n_term()*. c_term(); parser()*)
+  | sequence(n_term()*. c_term(); parser()*)
 |}
 ;;
 
@@ -61,7 +60,7 @@ type t =
   (* alternative *)
   | Alt of t * t
   | Return of c_term
-  | LiftN of string list * c_term * t list
+  | Sequence of string list * c_term * t list
   | Identifier of string
 
 let rec pp (* Format.formatter -> t -> unit *) : t Fmt.t =
@@ -81,10 +80,10 @@ let rec pp (* Format.formatter -> t -> unit *) : t Fmt.t =
   | Fix (name, t) -> pf ppf "fix (%s -> %a)" name pp t
   | Alt (t1, t2) -> pf ppf "alt %a %a" pp t1 pp t2
   | Return tm -> pf ppf "return %a" core tm
-  | LiftN (names, p, ps) ->
+  | Sequence (names, p, ps) ->
     pf
       ppf
-      "lift (\\%a. %a) [%a]"
+      "sequence (\\%a. %a) [%a]"
       Fmt.(list ~sep:(any ".@ ") string)
       names
       core
@@ -138,8 +137,15 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
                     Parsers.identifier
                     (string "->")
                     parser)
-            (* TODO: sequence *)
-            (* ; string "sequence" *)
+          ; string "sequence"
+            *> lift2
+            (fun (names, body) components -> Sequence (names, body, components))
+            (parens (lift3
+              (fun _lam names body -> names, body)
+              (char '\\')
+              (many1 (Parsers.identifier <* char '.'))
+              term))
+            (brackets (sep_by1 (char ',') parser))
           ; (parse_token
             >>= fun tok ->
             option
@@ -167,17 +173,18 @@ let mk_some : OptRange.t -> n_term -> n_term =
 
 type ctx_entry =
   | BoundChar of char
-  | BoundParser of t
+  | BoundParser of (OptRange.t, Primitive.t) Nominal.term ParseUtil.t
 
 (* TODO: this is hacky *)
-let thin_ctx : ctx_entry Lvca_util.String.Map.t -> n_term Lvca_util.String.Map.t =
-  Map.filter_map ~f:(function
+let thin_term_only_ctx
+  : ctx_entry Lvca_util.String.Map.t -> n_term Lvca_util.String.Map.t
+  = Map.filter_map ~f:(function
       | BoundChar c -> Some (Nominal.Primitive (None, Primitive.PrimChar c))
       | BoundParser _ -> None)
 ;;
 
 (* Translate our parser type into an angstrom parser *)
-let translate : t -> n_term ParseUtil.t =
+let rec translate : t -> n_term ParseUtil.t = fun tm ->
   let module Parsers = ParseUtil.Mk (ParseUtil.CComment) in
   let open Parsers in
   let mk_err () = failwith "TODO: error" in
@@ -193,7 +200,7 @@ let translate : t -> n_term ParseUtil.t =
     | Satisfy (name, tm) ->
       let f c =
         let ctx' = Map.set ctx ~key:name ~data:(BoundChar c) in
-        match Core.eval_ctx_exn (thin_ctx ctx') tm with
+        match Core.eval_ctx_exn (thin_term_only_ctx ctx') tm with
         | Operator (_, "true", []) -> true
         | _ -> false
       in
@@ -201,10 +208,10 @@ let translate : t -> n_term ParseUtil.t =
       >>|| (fun ~pos c -> Nominal.Primitive (pos, Primitive.PrimChar c), pos)
       <?> Printf.sprintf {|satisfy(\%s. ...)|} name
     | Let (name, named, body) ->
-      let ctx' = Map.set ctx ~key:name ~data:(BoundParser named) in
+      let ctx' = Map.set ctx ~key:name ~data:(BoundParser (translate named)) in
       translate' ctx' body <?> name
     | Fail tm ->
-      (match Core.eval_ctx_exn (thin_ctx ctx) tm with
+      (match Core.eval_ctx_exn (thin_term_only_ctx ctx) tm with
       | Primitive (_, PrimString msg) -> fail msg
       | _ -> mk_err ())
     | Option p ->
@@ -219,7 +226,7 @@ let translate : t -> n_term ParseUtil.t =
       <?> "option"
     | Count (p, n_tm) ->
       let n =
-        match Core.eval_ctx_exn (thin_ctx ctx) n_tm with
+        match Core.eval_ctx_exn (thin_term_only_ctx ctx) n_tm with
         | Primitive (_, PrimInteger i) ->
           (match Bigint.to_int i with Some n -> n | None -> mk_err ())
         | _ -> mk_err ()
@@ -228,17 +235,26 @@ let translate : t -> n_term ParseUtil.t =
     | Many t -> many (translate' ctx t) >>|| mk_list <?> "many"
     | Many1 t -> many1 (translate' ctx t) >>|| mk_list <?> "many1"
     (* TODO: do we even want explicit fix? or should this be done implicitly? *)
-    (* | Fix (name, p) -> fix (fun p' -> translate' (Map.set ctx ~key:name ~data:p') p) *)
-    | Fix _ -> failwith "TODO"
+    | Fix (name, p)
+    -> fix (fun p' -> translate' (Map.set ctx ~key:name ~data:(BoundParser p')) p)
     | Alt (p1, p2) -> translate' ctx p1 <|> translate' ctx p2 <?> "alt"
     | Return tm -> (match tm with Term tm -> return tm | _ -> mk_err ())
-    | LiftN (_names, _p, _ps) -> failwith "TODO"
+    | Sequence (names, p, ps) -> (match List.zip names ps with
+      | Unequal_lengths -> mk_err ()
+      | Ok named_parsers ->
+        let rec go ctx = function
+          | [] -> return @@ Core.eval_ctx_exn (thin_term_only_ctx ctx) p
+          | (key, parser) :: named_parsers'
+          -> go (Map.set ctx ~key ~data:(BoundParser (translate parser))) named_parsers'
+        in
+        go ctx named_parsers
+    )
     | Identifier name ->
       (match Map.find ctx name with
-      | Some (BoundParser p) -> translate' ctx p <?> name
+      | Some (BoundParser p) -> p <?> name
       | None | Some (BoundChar _) -> mk_err ())
   in
-  translate' Lvca_util.String.Map.empty
+  translate' Lvca_util.String.Map.empty tm
 ;;
 
 let parse : t -> string -> (n_term, string) Result.t =
@@ -326,5 +342,9 @@ let%test_module "Parsing" =
       (* TODO: nicer formatting *)
       [%expect {| failed to parse: : reason |}]
     ;;
+
+    let%expect_test _ =
+      parse_print {|fix (x -> sequence (\a. x. -> pair(a, x)) ["a", x] | "b")|} "aaab";
+      [%expect]
   end)
 ;;
