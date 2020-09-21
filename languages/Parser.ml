@@ -70,7 +70,7 @@ let rec pp (* Format.formatter -> t -> unit *) : t Fmt.t =
   function
   | Char char -> pf ppf "'%c'" char
   | String str -> pf ppf {|"%s"|} str
-  | Satisfy (name, tm) -> pf ppf "satisfy (\\%s. %a)" name core tm
+  | Satisfy (name, tm) -> pf ppf "satisfy (%s -> %a)" name core tm
   | Let (name, named, body) -> pf ppf "let %s = %a in %a" name pp named pp body
   | Fail tm -> pf ppf "fail %a" core tm
   | Option t -> pf ppf "%a?" pp t
@@ -83,7 +83,8 @@ let rec pp (* Format.formatter -> t -> unit *) : t Fmt.t =
   | Sequence (names, p, ps) ->
     pf
       ppf
-      "sequence (\\%a. %a) [%a]"
+      (* TODO: consistent style between sequence, fix, and satisfy *)
+      "sequence (%a. %a) [%a]"
       Fmt.(list ~sep:(any ".@ ") string)
       names
       core
@@ -99,7 +100,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   open Parsers
 
-  let keywords : string list = [ "satisfy"; "let"; "in"; "fail" ]
+  let keywords : string list = [ "satisfy"; "let"; "in"; "fail"; "sequence"; "fix" ]
   let keyword : string Parsers.t = keywords |> List.map ~f:string |> choice
   let operators : string list = [ "?"; "*"; "+"; "|"; "=" ]
   let operator : string Parsers.t = operators |> List.map ~f:string |> choice
@@ -116,45 +117,44 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
             ]
         in
         choice
-          [ string "let"
+          [ (string "let"
             *> lift3
                  (fun name bound body -> Let (name, bound, body))
                  Parsers.identifier
                  (string "=" *> parser)
-                 (string "in" *> parser)
-          ; string "satisfy"
+                 (string "in" *> parser)) <?> "let"
+          ; (string "satisfy"
             *> parens
                  (lift3
                     (fun name _arr tm -> Satisfy (name, tm))
                     Parsers.identifier
                     (string "->")
-                    term)
-          ; (string "fail" *> term >>| fun tm -> Fail tm)
-          ; string "fix"
+                    term) <?> "satisfy")
+          ; (string "fail" *> term >>| fun tm -> Fail tm) <?> "fail"
+          ; (string "fix"
             *> parens
                  (lift3
                     (fun name _arr tm -> Fix (name, tm))
                     Parsers.identifier
                     (string "->")
-                    parser)
-          ; string "sequence"
+                    parser)) <?> "fix"
+          ; (string "sequence"
             *> lift2
             (fun (names, body) components -> Sequence (names, body, components))
-            (parens (lift3
-              (fun _lam names body -> names, body)
-              (char '\\')
+            (parens (lift2
+              (fun names body -> names, body)
               (many1 (Parsers.identifier <* char '.'))
               term))
-            (brackets (sep_by1 (char ',') parser))
+            (brackets (sep_by1 (char ',') parser)) <?> "sequence")
           ; (parse_token
             >>= fun tok ->
             option
               tok
               (choice
-                 [ (char '?' >>| fun _ -> Option tok)
-                 ; (char '*' >>| fun _ -> Many tok)
-                 ; (char '+' >>| fun _ -> Many1 tok)
-                 ; char '|' *> (parser >>| fun rhs -> Alt (tok, rhs))
+                 [ (char '?' >>| fun _ -> Option tok) <?> "?"
+                 ; (char '*' >>| fun _ -> Many tok) <?> "*"
+                 ; (char '+' >>| fun _ -> Many1 tok) <?> "+"
+                 ; char '|' *> (parser >>| fun rhs -> Alt (tok, rhs)) <?> "|"
                  ]))
           ])
     <?> "parser"
@@ -245,7 +245,9 @@ let rec translate : t -> n_term ParseUtil.t = fun tm ->
         let rec go ctx = function
           | [] -> return @@ Core.eval_ctx_exn (thin_term_only_ctx ctx) p
           | (key, parser) :: named_parsers'
-          -> go (Map.set ctx ~key ~data:(BoundParser (translate parser))) named_parsers'
+          -> translate parser >>= fun data ->
+             (* XXX data is wrong *)
+             go (Map.set ctx ~key ~data:(BoundParser (return data))) named_parsers'
         in
         go ctx named_parsers
     )
@@ -344,7 +346,23 @@ let%test_module "Parsing" =
     ;;
 
     let%expect_test _ =
-      parse_print {|fix (x -> sequence (\a. x. -> pair(a, x)) ["a", x] | "b")|} "aaab";
+      parse_print {|fix (x -> "a" | "b")|} "a";
+      [%expect{| <0-1>"a"</0-1> |}]
+
+    let%expect_test _ =
+      parse_print {|sequence(a. {"a"})["a"]|} "a";
+      [%expect]
+
+    let%expect_test _ =
+      parse_print {|sequence(a. a'. b. {triple(a; a'; b)})["a", "a", "b"]|} "aab";
+      [%expect]
+
+    let%expect_test _ =
+      parse_print {|sequence(a. a'. b. {triple(a; a'; b)})['a', 'a', 'b']|} "aab";
+      [%expect]
+
+    let%expect_test _ =
+      parse_print {|fix (x -> sequence(a. x. {pair(a; x)}) ["a", x] | "b")|} "a";
       [%expect]
   end)
 ;;
