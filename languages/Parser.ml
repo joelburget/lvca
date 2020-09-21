@@ -64,6 +64,66 @@ type t =
   | LiftN of string list * c_term * t list
   | Identifier of string
 
+let mk_some : OptRange.t -> n_term -> n_term =
+ fun pos tm -> Nominal.Operator (pos, "some", [ Scope ([], [ tm ]) ])
+;;
+
+let none pos = Nominal.Operator (pos, "none", [])
+
+module Direct = struct
+  type direct = { run : string -> string * (n_term, string) Result.t }
+
+  let todo_range = None
+  let todo_error = Error "TODO"
+
+  let mk_char range c = Ok (Nominal.Primitive (range, Primitive.PrimChar c))
+
+  let char c = { run = fun str ->
+      if String.length str > 0 && Char.(String.get str 0 = c)
+      then String.subo ~pos:1 str, mk_char todo_range c
+      else str, todo_error
+    }
+
+  let string prefix = { run = fun str -> match String.chop_prefix str ~prefix with
+      | None -> str, todo_error
+      | Some str' -> str', Ok (Nominal.Primitive (todo_range, PrimString prefix))
+    }
+
+  let satisfy _name _core_term = { run = fun str ->
+    if String.length str = 0
+    then str, todo_error
+    else
+      let c = String.get str 0 in
+      let tm = failwith "TODO: wrap core_term" in
+      match Core.eval_ctx_exn (failwith "TODO: ctx") tm with
+        | Operator (_, "true", []) -> String.subo ~pos:1 str, mk_char todo_range c
+        | Operator (_, "false", []) -> str, todo_error
+        | _ -> str, todo_error (* TODO: throw harder error? *)
+  }
+
+  let rec option t =
+    let t_direct = translate_direct t in
+    { run = fun str -> match t_direct.run str with
+      | str', Ok tm -> str', Ok (mk_some todo_range tm)
+      | str', Error _ -> str', Ok (none todo_range)
+    }
+
+  and translate_direct : t -> direct
+    = function
+      | Char c -> char c
+      | String prefix -> string prefix
+      | Satisfy (name, core_term) -> satisfy name core_term
+      | Fail _tm -> failwith "TODO"
+      | Let (_, _, _) -> failwith "TODO"
+      (* | Option t -> { run = fun str -> match *)
+      | _ -> failwith "TODO"
+
+  let parse_direct : direct -> string -> (string, n_term) Either.t
+    = failwith "TODO"
+
+  type t = direct
+end
+
 let rec pp (* Format.formatter -> t -> unit *) : t Fmt.t =
  fun ppf ->
   let core = Core.pp in
@@ -161,10 +221,6 @@ let mk_list : pos:OptRange.t -> n_term list -> n_term * OptRange.t =
   tm, pos
 ;;
 
-let mk_some : OptRange.t -> n_term -> n_term =
- fun pos tm -> Nominal.Operator (pos, "some", [ Scope ([], [ tm ]) ])
-;;
-
 type ctx_entry =
   | BoundChar of char
   | BoundParser of t
@@ -213,7 +269,7 @@ let translate : t -> n_term ParseUtil.t =
              let result =
                match opt_tm with
                | Some tm -> mk_some pos tm
-               | None -> Operator (pos, "none", [])
+               | None -> none pos
              in
              result, pos)
       <?> "option"
