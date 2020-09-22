@@ -70,56 +70,179 @@ let mk_some : OptRange.t -> n_term -> n_term =
 
 let none pos = Nominal.Operator (pos, "none", [])
 
+let mk_list : pos:OptRange.t -> n_term list -> n_term * OptRange.t =
+ fun ~pos lst ->
+  let tm = Nominal.Operator (pos, "list", [ Nominal.Scope ([], lst) ]) in
+  tm, pos
+;;
+
+type ctx_entry =
+  | BoundChar of char
+  | BoundParser of t
+  | BoundTerm of n_term
+
+(* TODO: this is hacky *)
+let thin_ctx : ctx_entry Lvca_util.String.Map.t -> n_term Lvca_util.String.Map.t =
+  Map.filter_map ~f:(function
+      | BoundChar c -> Some (Nominal.Primitive (None, Primitive.PrimChar c))
+      | BoundParser _ -> None
+      | BoundTerm _ -> None)
+;;
+
 module Direct = struct
-  type direct = { run : string -> string * (n_term, string) Result.t }
+  type direct = { run
+    : ctx:(ctx_entry Lvca_util.String.Map.t)
+    -> string
+    -> string * (n_term, string) Result.t
+  }
 
   let todo_range = None
   let todo_error = Error "TODO"
 
   let mk_char range c = Ok (Nominal.Primitive (range, Primitive.PrimChar c))
 
-  let char c = { run = fun str ->
+  let char c = { run = fun ~ctx:_ str ->
       if String.length str > 0 && Char.(String.get str 0 = c)
       then String.subo ~pos:1 str, mk_char todo_range c
       else str, todo_error
     }
 
-  let string prefix = { run = fun str -> match String.chop_prefix str ~prefix with
+  let string prefix = { run = fun ~ctx:_ str -> match String.chop_prefix str ~prefix with
       | None -> str, todo_error
       | Some str' -> str', Ok (Nominal.Primitive (todo_range, PrimString prefix))
     }
 
-  let satisfy _name _core_term = { run = fun str ->
+  let satisfy _name _core_term = { run = fun ~ctx str ->
     if String.length str = 0
     then str, todo_error
     else
       let c = String.get str 0 in
       let tm = failwith "TODO: wrap core_term" in
-      match Core.eval_ctx_exn (failwith "TODO: ctx") tm with
+      match Core.eval_ctx_exn (thin_ctx ctx) tm with
         | Operator (_, "true", []) -> String.subo ~pos:1 str, mk_char todo_range c
         | Operator (_, "false", []) -> str, todo_error
         | _ -> str, todo_error (* TODO: throw harder error? *)
   }
 
-  let rec option t =
-    let t_direct = translate_direct t in
-    { run = fun str -> match t_direct.run str with
+  let fail c_tm =
+    { run = fun ~ctx str -> match Core.eval_ctx_exn (thin_ctx ctx) c_tm with
+      | Primitive (_ (* TODO: use pos *), PrimString msg) -> str, Error msg
+      | _ -> failwith "TODO"
+    }
+
+  let let_ name p body =
+    { run = fun ~ctx str ->
+      let ctx = ctx |> Map.set ~key:name ~data:(BoundParser p) in
+      body.run ~ctx str
+    }
+
+  let option t =
+    { run = fun ~ctx str -> match t.run ~ctx str with
       | str', Ok tm -> str', Ok (mk_some todo_range tm)
       | str', Error _ -> str', Ok (none todo_range)
     }
 
-  and translate_direct : t -> direct
+  let mk_list_result = Result.map ~f:(fun tms -> fst @@ mk_list ~pos:todo_range tms)
+
+  let map_snd ~f (a, b) = a, f b
+
+  let count n_tm t =
+    let rec go ~ctx n str = match n with
+      | 0 -> str, Ok []
+      | _ ->
+        let str, head_result = t.run ~ctx str in
+        match head_result with
+          | Error msg -> str, Error msg
+          | Ok tm ->
+            let str, tail_result = go ~ctx (n - 1) str in
+            str, tail_result |> Result.map ~f:(List.cons tm)
+    in
+    { run = fun ~ctx str ->
+      match Core.eval_ctx_exn (thin_ctx ctx) n_tm with
+        | Primitive (_, PrimInteger n) -> str
+          |> go ~ctx (n |> Bigint.to_int |> Option.value_exn (* XXX *))
+          |> map_snd ~f:mk_list_result
+        | _ -> failwith "TODO"
+    }
+
+  let rec go_many ~ctx t str =
+    let str, head_result = t.run ~ctx str in
+    match head_result with
+      | Error _ -> str, Ok []
+      | Ok tm -> str
+        |> go_many ~ctx t
+        |> map_snd ~f:(Result.map ~f:(List.cons tm))
+
+  let many t =
+    { run = fun ~ctx str -> str
+      |> go_many ~ctx t
+      |> map_snd ~f:mk_list_result
+    }
+
+  let many1 t =
+    { run = fun ~ctx str -> str
+      |> go_many ~ctx t
+      |> map_snd ~f:(function
+        | Ok [] -> Error "many1: empty list"
+        | result -> mk_list_result result
+      )
+    }
+
+  let alt t1 t2 =
+    { run = fun ~ctx str ->
+      let str, result = t1.run ~ctx str in
+      match result with
+        | Error _ -> t2.run ~ctx str
+        | _ -> str, result
+    }
+
+  let return tm = { run = fun ~ctx str -> str, Ok (Core.eval_ctx_exn (thin_ctx ctx) tm) }
+
+  let liftn names tm ps =
+    { run = fun ~ctx str ->
+      let str, result = ps
+        (* TODO: scanl? *)
+        |> List.fold
+          ~init:(str, Ok [])
+          ~f:(fun (str, xs) { run } -> match xs, run ~ctx str with
+              | Ok xs, (str, Ok x) -> str, Ok (x :: xs)
+              | Error msg, _
+              | _, (_, Error msg) -> str, Error msg)
+      in
+      match result with
+        | Error msg -> str, Error msg
+        | Ok xs -> match List.zip names xs with
+          | Unequal_lengths -> failwith "TODO"
+          | Ok name_vals ->
+            let ctx = name_vals
+              |> List.fold
+                ~init:ctx
+                ~f:(fun ctx (key, tm) -> Map.set ctx ~key ~data:(BoundTerm tm))
+            in
+            str, Ok (Core.eval_ctx_exn (thin_ctx ctx) tm)
+    }
+
+  let rec translate_direct : t -> direct
     = function
       | Char c -> char c
       | String prefix -> string prefix
       | Satisfy (name, core_term) -> satisfy name core_term
-      | Fail _tm -> failwith "TODO"
-      | Let (_, _, _) -> failwith "TODO"
-      (* | Option t -> { run = fun str -> match *)
-      | _ -> failwith "TODO"
+      | Fail tm -> fail tm
+      | Let (name, p, body) -> let_ name p (translate_direct body)
+      | Option t -> option (translate_direct t)
+      | Count (t, n) -> count n (translate_direct t)
+      | Many t -> many (translate_direct t)
+      | Many1 t -> many1 (translate_direct t)
+      | Fix _ -> failwith "TODO"
+      | Alt (t1, t2) -> alt (translate_direct t1) (translate_direct t2)
+      | Return tm -> return tm
+      | LiftN (names, tm, ps) -> liftn names tm (List.map ps ~f:translate_direct)
+      | Identifier _ -> failwith "TODO"
 
-  let parse_direct : direct -> string -> (string, n_term) Either.t
-    = failwith "TODO"
+  let parse_direct : direct -> string -> (n_term, string) Result.t
+    = fun { run } str -> match run ~ctx:Lvca_util.String.Map.empty str with
+      | "", result -> result
+      | _str, _ -> Error "Parser didn't consume entire input"
 
   type t = direct
 end
@@ -215,23 +338,6 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
  ;;
 end
 
-let mk_list : pos:OptRange.t -> n_term list -> n_term * OptRange.t =
- fun ~pos lst ->
-  let tm = Nominal.Operator (pos, "list", [ Nominal.Scope ([], lst) ]) in
-  tm, pos
-;;
-
-type ctx_entry =
-  | BoundChar of char
-  | BoundParser of t
-
-(* TODO: this is hacky *)
-let thin_ctx : ctx_entry Lvca_util.String.Map.t -> n_term Lvca_util.String.Map.t =
-  Map.filter_map ~f:(function
-      | BoundChar c -> Some (Nominal.Primitive (None, Primitive.PrimChar c))
-      | BoundParser _ -> None)
-;;
-
 (* Translate our parser type into an angstrom parser *)
 let translate : t -> n_term ParseUtil.t =
   let module Parsers = ParseUtil.Mk (ParseUtil.CComment) in
@@ -292,7 +398,10 @@ let translate : t -> n_term ParseUtil.t =
     | Identifier name ->
       (match Map.find ctx name with
       | Some (BoundParser p) -> translate' ctx p <?> name
-      | None | Some (BoundChar _) -> mk_err ())
+      | None
+      | Some (BoundChar _)
+      | Some (BoundTerm _)  (* XXX is this right? *)
+      -> mk_err ())
   in
   translate' Lvca_util.String.Map.empty
 ;;
