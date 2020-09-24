@@ -40,18 +40,14 @@ val pp_defn : Format.formatter -> 'a defn -> unit
 val defn_to_string : 'a defn -> string
 val erase_defn : 'a defn -> unit defn
 
-type eval_error = string * unit (* TODO: 'a *) term
+type 'a eval_error = string * 'a term
 
-(** @raise eval_error *)
-val eval_ctx_exn
+val eval_ctx
   :  ('a, Primitive.t) Nominal.term Lvca_util.String.Map.t
   -> 'a term
-  -> ('a, Primitive.t) Nominal.term
+  -> (('a, Primitive.t) Nominal.term, 'a eval_error) Base.Result.t
 
-(** @raise eval_error *)
-val eval_exn : 'a term -> ('a, Primitive.t) Nominal.term
-
-val eval : 'a term -> (('a, Primitive.t) Nominal.term, eval_error) Base.Result.t
+val eval : 'a term -> (('a, Primitive.t) Nominal.term, 'a eval_error) Base.Result.t
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val term : OptRange.t term ParseUtil.t

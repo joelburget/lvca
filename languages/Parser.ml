@@ -76,68 +76,85 @@ let mk_list : pos:OptRange.t -> n_term list -> n_term * OptRange.t =
   tm, pos
 ;;
 
+(*
 type ctx_entry =
-  | BoundChar of char
   | BoundParser of t
   | BoundTerm of n_term
 
 (* TODO: this is hacky *)
 let thin_ctx : ctx_entry Lvca_util.String.Map.t -> n_term Lvca_util.String.Map.t =
   Map.filter_map ~f:(function
-      | BoundChar c -> Some (Nominal.Primitive (None, Primitive.PrimChar c))
       | BoundParser _ -> None
-      | BoundTerm _ -> None)
+      | BoundTerm tm -> Some tm)
 ;;
+*)
+
+type term_ctx = n_term Lvca_util.String.Map.t
+type parser_ctx = t Lvca_util.String.Map.t
 
 module Direct = struct
   type direct = { run
-    : ctx:(ctx_entry Lvca_util.String.Map.t)
+    :  term_ctx:term_ctx
+    -> parser_ctx:parser_ctx
     -> string
-    -> string * (n_term, string) Result.t
+    -> string * (n_term, (string * c_term)) Result.t
   }
 
   let todo_range = None
-  let todo_error = Error "TODO"
+  let todo_msg msg = Error
+    ( msg
+    , Core.Term (Nominal.Primitive (todo_range, Primitive.PrimString msg))
+    )
 
   let mk_char range c = Ok (Nominal.Primitive (range, Primitive.PrimChar c))
 
-  let char c = { run = fun ~ctx:_ str ->
+  let char c = { run = fun ~term_ctx:_ ~parser_ctx:_ str ->
       if String.length str > 0 && Char.(String.get str 0 = c)
       then String.subo ~pos:1 str, mk_char todo_range c
-      else str, todo_error
+      else str, todo_msg (Printf.sprintf "char '%c'" c)
     }
 
-  let string prefix = { run = fun ~ctx:_ str -> match String.chop_prefix str ~prefix with
-      | None -> str, todo_error
+  let string prefix = { run = fun ~term_ctx:_ ~parser_ctx:_ str ->
+    match String.chop_prefix str ~prefix with
+      | None -> str, todo_msg (Printf.sprintf {|string "%s"|} prefix)
       | Some str' -> str', Ok (Nominal.Primitive (todo_range, PrimString prefix))
     }
 
-  let satisfy _name _core_term = { run = fun ~ctx str ->
+  let satisfy name core_term = { run = fun ~term_ctx ~parser_ctx:_ str ->
+    let err_msg = todo_msg
+      (Printf.sprintf {|satisfy (%s -> %s)|} name (Core.to_string core_term))
+    in
     if String.length str = 0
-    then str, todo_error
+    then str, err_msg
     else
       let c = String.get str 0 in
-      let tm = failwith "TODO: wrap core_term" in
-      match Core.eval_ctx_exn (thin_ctx ctx) tm with
-        | Operator (_, "true", []) -> String.subo ~pos:1 str, mk_char todo_range c
-        | Operator (_, "false", []) -> str, todo_error
-        | _ -> str, todo_error (* TODO: throw harder error? *)
+      let tm = Core.(Let
+        ( NoRec
+        , Term (Primitive (todo_range, PrimChar c))
+        , Scope (name, core_term))
+        )
+      in
+      match Core.eval_ctx term_ctx tm with
+        | Ok (Operator (_, "true", [])) -> String.subo ~pos:1 str, mk_char todo_range c
+        | Ok (Operator (_, "false", []))
+        | Ok _ -> str, err_msg (* TODO: throw harder error? (type error) *)
+        | Error ((msg, _tm) as err) -> msg, Error err
   }
 
   let fail c_tm =
-    { run = fun ~ctx str -> match Core.eval_ctx_exn (thin_ctx ctx) c_tm with
-      | Primitive (_ (* TODO: use pos *), PrimString msg) -> str, Error msg
+    { run = fun ~term_ctx ~parser_ctx:_ str -> match Core.eval_ctx term_ctx c_tm with
+      | Ok (Primitive (_ (* TODO: use pos *), PrimString msg)) -> str, todo_msg msg
       | _ -> failwith "TODO"
     }
 
   let let_ name p body =
-    { run = fun ~ctx str ->
-      let ctx = ctx |> Map.set ~key:name ~data:(BoundParser p) in
-      body.run ~ctx str
+    { run = fun ~term_ctx ~parser_ctx str ->
+      let parser_ctx = Map.set parser_ctx ~key:name ~data:p in
+      body.run ~term_ctx ~parser_ctx str
     }
 
   let option t =
-    { run = fun ~ctx str -> match t.run ~ctx str with
+    { run = fun ~term_ctx ~parser_ctx str -> match t.run ~term_ctx ~parser_ctx str with
       | str', Ok tm -> str', Ok (mk_some todo_range tm)
       | str', Error _ -> str', Ok (none todo_range)
     }
@@ -147,64 +164,64 @@ module Direct = struct
   let map_snd ~f (a, b) = a, f b
 
   let count n_tm t =
-    let rec go ~ctx n str = match n with
+    let rec go ~term_ctx ~parser_ctx n str = match n with
       | 0 -> str, Ok []
       | _ ->
-        let str, head_result = t.run ~ctx str in
+        let str, head_result = t.run ~term_ctx ~parser_ctx str in
         match head_result with
           | Error msg -> str, Error msg
           | Ok tm ->
-            let str, tail_result = go ~ctx (n - 1) str in
+            let str, tail_result = go ~term_ctx ~parser_ctx (n - 1) str in
             str, tail_result |> Result.map ~f:(List.cons tm)
     in
-    { run = fun ~ctx str ->
-      match Core.eval_ctx_exn (thin_ctx ctx) n_tm with
-        | Primitive (_, PrimInteger n) -> str
-          |> go ~ctx (n |> Bigint.to_int |> Option.value_exn (* XXX *))
+    { run = fun ~term_ctx ~parser_ctx str ->
+      match Core.eval_ctx term_ctx n_tm with
+        | Ok (Primitive (_, PrimInteger n)) -> str
+          |> go ~term_ctx ~parser_ctx (n |> Bigint.to_int |> Option.value_exn (* XXX *))
           |> map_snd ~f:mk_list_result
         | _ -> failwith "TODO"
     }
 
-  let rec go_many ~ctx t str =
-    let str, head_result = t.run ~ctx str in
+  let rec go_many ~term_ctx ~parser_ctx t str =
+    let str, head_result = t.run ~term_ctx ~parser_ctx str in
     match head_result with
       | Error _ -> str, Ok []
       | Ok tm -> str
-        |> go_many ~ctx t
+        |> go_many ~term_ctx ~parser_ctx t
         |> map_snd ~f:(Result.map ~f:(List.cons tm))
 
   let many t =
-    { run = fun ~ctx str -> str
-      |> go_many ~ctx t
+    { run = fun ~term_ctx ~parser_ctx str -> str
+      |> go_many ~term_ctx ~parser_ctx t
       |> map_snd ~f:mk_list_result
     }
 
   let many1 t =
-    { run = fun ~ctx str -> str
-      |> go_many ~ctx t
+    { run = fun ~term_ctx ~parser_ctx str -> str
+      |> go_many ~term_ctx ~parser_ctx t
       |> map_snd ~f:(function
-        | Ok [] -> Error "many1: empty list"
+        | Ok [] -> todo_msg "many1: empty list"
         | result -> mk_list_result result
       )
     }
 
   let alt t1 t2 =
-    { run = fun ~ctx str ->
-      let str, result = t1.run ~ctx str in
+    { run = fun ~term_ctx ~parser_ctx str ->
+      let str, result = t1.run ~term_ctx ~parser_ctx str in
       match result with
-        | Error _ -> t2.run ~ctx str
+        | Error _ -> t2.run ~term_ctx ~parser_ctx str
         | _ -> str, result
     }
 
-  let return tm = { run = fun ~ctx str -> str, Ok (Core.eval_ctx_exn (thin_ctx ctx) tm) }
+  let return tm = { run = fun ~term_ctx ~parser_ctx:_ str -> str, Core.eval_ctx term_ctx tm }
 
   let liftn names tm ps =
-    { run = fun ~ctx str ->
+    { run = fun ~term_ctx ~parser_ctx str ->
       let str, result = ps
         (* TODO: scanl? *)
         |> List.fold
           ~init:(str, Ok [])
-          ~f:(fun (str, xs) { run } -> match xs, run ~ctx str with
+          ~f:(fun (str, xs) { run } -> match xs, run ~term_ctx ~parser_ctx str with
               | Ok xs, (str, Ok x) -> str, Ok (x :: xs)
               | Error msg, _
               | _, (_, Error msg) -> str, Error msg)
@@ -214,13 +231,23 @@ module Direct = struct
         | Ok xs -> match List.zip names xs with
           | Unequal_lengths -> failwith "TODO"
           | Ok name_vals ->
-            let ctx = name_vals
+            let term_ctx = name_vals
               |> List.fold
-                ~init:ctx
-                ~f:(fun ctx (key, tm) -> Map.set ctx ~key ~data:(BoundTerm tm))
+                ~init:term_ctx
+                ~f:(fun ctx (key, tm) -> Map.set ctx ~key ~data:tm)
             in
-            str, Ok (Core.eval_ctx_exn (thin_ctx ctx) tm)
+            str, Core.eval_ctx term_ctx tm
     }
+
+  let fix (_key, p) =
+    let f = fun _p' -> p
+      (* TODO *)
+      (* p.run ~term_ctx ~parser_ctx:(Map.set parser_ctx ~key ~data:p') *)
+    in
+    let rec p = lazy (f r)
+    and r = { run = fun ~term_ctx ~parser_ctx str -> (Lazy.force p).run ~term_ctx
+    ~parser_ctx str }
+    in r
 
   let rec translate_direct : t -> direct
     = function
@@ -233,16 +260,32 @@ module Direct = struct
       | Count (t, n) -> count n (translate_direct t)
       | Many t -> many (translate_direct t)
       | Many1 t -> many1 (translate_direct t)
-      | Fix _ -> failwith "TODO"
+      | Fix _ -> failwith "TODO: fix"
       | Alt (t1, t2) -> alt (translate_direct t1) (translate_direct t2)
       | Return tm -> return tm
       | LiftN (names, tm, ps) -> liftn names tm (List.map ps ~f:translate_direct)
-      | Identifier _ -> failwith "TODO"
+      | Identifier name -> identifier name
 
-  let parse_direct : direct -> string -> (n_term, string) Result.t
-    = fun { run } str -> match run ~ctx:Lvca_util.String.Map.empty str with
+  (* TODO: BoundParser should be already translated? *)
+  and identifier name = { run = fun ~term_ctx ~parser_ctx str -> match Map.find parser_ctx name with
+    | None -> str, todo_msg (Printf.sprintf {|Identifer not found in context: "%s"|} name)
+    | Some p -> (translate_direct p).run ~term_ctx ~parser_ctx str
+  }
+
+  let parse_direct : direct -> string -> (n_term, string * c_term) Result.t
+    = fun { run } str -> match
+        run ~term_ctx:Lvca_util.String.Map.empty
+            ~parser_ctx:Lvca_util.String.Map.empty
+            str
+      with
       | "", result -> result
-      | _str, _ -> Error "Parser didn't consume entire input"
+      | str, Ok _ -> todo_msg (Printf.sprintf
+        {|Parser didn't consume entire input. Left over: "%s"|}
+        (if String.length str > 50
+         then String.prefix str 47 ^ "..."
+         else str)
+      )
+      | _, Error err -> Error err
 
   type t = direct
 end
@@ -343,7 +386,7 @@ let translate : t -> n_term ParseUtil.t =
   let module Parsers = ParseUtil.Mk (ParseUtil.CComment) in
   let open Parsers in
   let mk_err () = failwith "TODO: error" in
-  let rec translate' ctx = function
+  let rec translate' term_ctx parser_ctx = function
     | Char c ->
       char c
       >>|| (fun ~pos c -> Nominal.Primitive (pos, Primitive.PrimChar c), pos)
@@ -354,23 +397,24 @@ let translate : t -> n_term ParseUtil.t =
       <?> Printf.sprintf {|string "%s"|} str
     | Satisfy (name, tm) ->
       let f c =
-        let ctx' = Map.set ctx ~key:name ~data:(BoundChar c) in
-        match Core.eval_ctx_exn (thin_ctx ctx') tm with
-        | Operator (_, "true", []) -> true
+        let c_tm = Nominal.Primitive (None (* TODO: pos *), Primitive.PrimChar c) in
+        let term_ctx = Map.set term_ctx ~key:name ~data:c_tm in
+        match Core.eval_ctx term_ctx tm with
+        | Ok (Operator (_, "true", [])) -> true
         | _ -> false
       in
       satisfy f
       >>|| (fun ~pos c -> Nominal.Primitive (pos, Primitive.PrimChar c), pos)
       <?> Printf.sprintf {|satisfy(\%s. ...)|} name
     | Let (name, named, body) ->
-      let ctx' = Map.set ctx ~key:name ~data:(BoundParser named) in
-      translate' ctx' body <?> name
+      let parser_ctx = Map.set parser_ctx ~key:name ~data:named in
+      translate' term_ctx parser_ctx body <?> name
     | Fail tm ->
-      (match Core.eval_ctx_exn (thin_ctx ctx) tm with
-      | Primitive (_, PrimString msg) -> fail msg
+      (match Core.eval_ctx term_ctx tm with
+      | Ok (Primitive (_, PrimString msg)) -> fail msg
       | _ -> mk_err ())
     | Option p ->
-      option None ((fun tm -> Some tm) <$> translate' ctx p)
+      option None ((fun tm -> Some tm) <$> translate' term_ctx parser_ctx p)
       >>|| (fun ~pos opt_tm ->
              let result =
                match opt_tm with
@@ -381,29 +425,26 @@ let translate : t -> n_term ParseUtil.t =
       <?> "option"
     | Count (p, n_tm) ->
       let n =
-        match Core.eval_ctx_exn (thin_ctx ctx) n_tm with
-        | Primitive (_, PrimInteger i) ->
+        match Core.eval_ctx term_ctx n_tm with
+        | Ok (Primitive (_, PrimInteger i)) ->
           (match Bigint.to_int i with Some n -> n | None -> mk_err ())
         | _ -> mk_err ()
       in
-      count n (translate' ctx p) >>|| mk_list <?> "count"
-    | Many t -> many (translate' ctx t) >>|| mk_list <?> "many"
-    | Many1 t -> many1 (translate' ctx t) >>|| mk_list <?> "many1"
+      count n (translate' term_ctx parser_ctx p) >>|| mk_list <?> "count"
+    | Many t -> many (translate' term_ctx parser_ctx t) >>|| mk_list <?> "many"
+    | Many1 t -> many1 (translate' term_ctx parser_ctx t) >>|| mk_list <?> "many1"
     (* TODO: do we even want explicit fix? or should this be done implicitly? *)
     (* | Fix (name, p) -> fix (fun p' -> translate' (Map.set ctx ~key:name ~data:p') p) *)
     | Fix _ -> failwith "TODO"
-    | Alt (p1, p2) -> translate' ctx p1 <|> translate' ctx p2 <?> "alt"
+    | Alt (p1, p2) -> translate' term_ctx parser_ctx p1 <|> translate' term_ctx parser_ctx p2 <?> "alt"
     | Return tm -> (match tm with Term tm -> return tm | _ -> mk_err ())
     | LiftN (_names, _p, _ps) -> failwith "TODO"
     | Identifier name ->
-      (match Map.find ctx name with
-      | Some (BoundParser p) -> translate' ctx p <?> name
-      | None
-      | Some (BoundChar _)
-      | Some (BoundTerm _)  (* XXX is this right? *)
-      -> mk_err ())
+      (match Map.find parser_ctx name with
+      | Some p -> translate' term_ctx parser_ctx p <?> name
+      | None -> mk_err ())
   in
-  translate' Lvca_util.String.Map.empty
+  translate' Lvca_util.String.Map.empty Lvca_util.String.Map.empty
 ;;
 
 let parse : t -> string -> (n_term, string) Result.t =
@@ -426,41 +467,61 @@ let%test_module "Parsing" =
       match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
       | Error msg -> Caml.print_string ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
-        (match parse parser str with
-        | Error msg -> Caml.print_string ("failed to parse: " ^ msg)
-        | Ok tm -> Fmt.pr "%a\n" (Nominal.pp_term_range Primitive.pp) tm)
+        begin
+          match parse parser str with
+        | Error msg -> Caml.Printf.printf "failed to parse: %s\n" msg
+        | Ok tm -> Fmt.pr "%a\n" (Nominal.pp_term_range Primitive.pp) tm
+        end;
+          match Direct.parse_direct (Direct.translate_direct parser) str with
+        | Error (msg, _) -> Caml.Printf.printf "failed to parse: %s\n" msg
+        | Ok tm -> Fmt.pr "%a\n" (Nominal.pp_term_range Primitive.pp) tm
    ;;
 
     let%expect_test _ =
       parse_print {|"str"|} "str";
-      [%expect {| <0-3>"str"</0-3> |}]
+      [%expect {|
+        <0-3>"str"</0-3>
+        "str" |}]
     ;;
 
     let%expect_test _ =
       parse_print {|"str"|} "foo";
-      [%expect {| failed to parse: string "str": string |}]
+      [%expect {|
+        failed to parse: string "str": string
+        failed to parse: string "str"
+      |}]
     ;;
 
     let%expect_test _ =
       parse_print {|"str"*|} "strstrstr";
       [%expect
-        {| <0-9>list(<0-3>"str"</0-3>, <3-6>"str"</3-6>, <6-9>"str"</6-9>)</0-9> |}]
+        {|
+          <0-9>list(<0-3>"str"</0-3>, <3-6>"str"</3-6>, <6-9>"str"</6-9>)</0-9>
+          list("str", "str", "str") |}]
     ;;
 
     let%expect_test _ =
       parse_print {|"str"+|} "strstrstr";
       [%expect
-        {| <0-9>list(<0-3>"str"</0-3>, <3-6>"str"</3-6>, <6-9>"str"</6-9>)</0-9> |}]
+        {|
+          <0-9>list(<0-3>"str"</0-3>, <3-6>"str"</3-6>, <6-9>"str"</6-9>)</0-9>
+          list("str", "str", "str") |}]
     ;;
 
     let%expect_test _ =
       parse_print {|"str" | "foo"|} "str";
-      [%expect {| <0-3>"str"</0-3> |}]
+      [%expect
+        {|
+          <0-3>"str"</0-3>
+          "str" |}]
     ;;
 
     let%expect_test _ =
       parse_print {|"str" | "foo"|} "foo";
-      [%expect {| <0-3>"foo"</0-3> |}]
+      [%expect
+        {|
+          <0-3>"foo"</0-3>
+          "foo" |}]
     ;;
 
     let sat_parser =
@@ -473,23 +534,35 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print sat_parser "c";
-      [%expect {| <0-1>'c'</0-1> |}]
+      [%expect
+        {|
+          <0-1>'c'</0-1>
+          'c' |}]
     ;;
 
     let%expect_test _ =
       parse_print sat_parser "d";
-      [%expect {| failed to parse: satisfy(\x. ...): satisfy: 'd' |}]
+      [%expect
+        {|
+          failed to parse: satisfy(\x. ...): satisfy: 'd'
+          failed to parse: satisfy (x -> match x with { 'c' -> {true()} | _ -> {false()} }) |}]
     ;;
 
     let%expect_test _ =
       parse_print {|let x = "str" in x|} "str";
-      [%expect {| <0-3>"str"</0-3> |}]
+      [%expect
+        {|
+          <0-3>"str"</0-3>
+          "str" |}]
     ;;
 
     let%expect_test _ =
       parse_print {|fail {"reason"}|} "str";
       (* TODO: nicer formatting *)
-      [%expect {| failed to parse: : reason |}]
+      [%expect
+        {|
+          failed to parse: : reason
+          failed to parse: reason |}]
     ;;
   end)
 ;;

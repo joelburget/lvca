@@ -123,9 +123,11 @@ let pp_defn : Format.formatter -> 'a defn -> unit =
 let defn_to_string : 'a defn -> string = fun defn -> Format.asprintf "%a" pp_defn defn
 let erase_defn (Defn (imports, tm)) = Defn (imports, erase tm)
 
+type 'a n_term = ('a, Primitive.t) Nominal.term
+
 let merge_results
-    :  ('a, Primitive.t) Nominal.term Lvca_util.String.Map.t option list
-    -> ('a, Primitive.t) Nominal.term Lvca_util.String.Map.t option
+    :  'a n_term Lvca_util.String.Map.t option list
+    -> 'a n_term Lvca_util.String.Map.t option
   =
  fun results ->
   if List.for_all results ~f:Option.is_some
@@ -144,8 +146,9 @@ let merge_results
 ;;
 
 let rec match_pattern
-    :  ('a, Primitive.t) Nominal.term -> ('b, Primitive.t) Pattern.t
-    -> ('a, Primitive.t) Nominal.term Lvca_util.String.Map.t option
+    :  'a n_term
+    -> ('b, Primitive.t) Pattern.t
+    -> 'a n_term Lvca_util.String.Map.t option
   =
  fun v pat ->
   match v, pat with
@@ -171,8 +174,9 @@ let rec match_pattern
 ;;
 
 let find_core_match
-    :  ('a, Primitive.t) Nominal.term -> 'b core_case_scope list
-    -> ('b term * ('a, Primitive.t) Nominal.term Lvca_util.String.Map.t) option
+    :  'a n_term
+    -> 'b core_case_scope list
+    -> ('b term * 'a n_term Lvca_util.String.Map.t) option
   =
  fun v branches ->
   branches
@@ -182,64 +186,71 @@ let find_core_match
          | Some bindings -> Some (rhs, bindings))
 ;;
 
-type eval_error = string * unit term
+type 'a eval_error = string * 'a term
 
-exception EvalExn of string * unit term
+(* exception EvalExn of string * unit term *)
 
-let rec eval_ctx_exn
-    :  ('a, Primitive.t) Nominal.term Lvca_util.String.Map.t -> 'a term
-    -> ('a, Primitive.t) Nominal.term
+let rec eval_ctx
+    :  'a n_term Lvca_util.String.Map.t
+    -> 'a term
+    -> ('a n_term, 'a eval_error) Result.t
   =
  fun ctx tm ->
+  let open Result.Let_syntax in
   match tm with
   | Term (Var (_, v)) ->
     (match Map.find ctx v with
-    | Some result -> result
-    | None -> raise @@ EvalExn ("Unbound variable " ^ v, erase tm))
+    | Some result -> Ok result
+    | None -> Error ("Unbound variable " ^ v, tm))
   | CoreApp (Lambda (_ty, Scope (name, body)), arg) ->
-    let arg_val = eval_ctx_exn ctx arg in
-    eval_ctx_exn (Map.set ctx ~key:name ~data:arg_val) body
+    let%bind arg_val = eval_ctx ctx arg in
+    eval_ctx (Map.set ctx ~key:name ~data:arg_val) body
   | Case (tm, branches) ->
-    let tm_val = eval_ctx_exn ctx tm in
+    let%bind tm_val = eval_ctx ctx tm in
     (match find_core_match tm_val branches with
-    | None -> raise @@ EvalExn ("no match found in case", erase @@ Term tm_val)
+    | None -> Error ("no match found in case", Term tm_val)
     | Some (branch, bindings) ->
-      eval_ctx_exn (Lvca_util.Map.union_right_biased ctx bindings) branch)
+      eval_ctx (Lvca_util.Map.union_right_biased ctx bindings) branch)
   (* primitives *)
   (* TODO: or should this be an app? *)
   | Term (Operator (_, "add", [ Scope ([], [ a ]); Scope ([], [ b ]) ])) ->
-    (match eval_ctx_exn' ctx a, eval_ctx_exn' ctx b with
+    let%bind a_result = eval_ctx' ctx a in
+    let%bind b_result = eval_ctx' ctx b in
+    (match a_result, b_result with
     | Primitive (loc, PrimInteger a'), Primitive (_, PrimInteger b') ->
       (* XXX can't reuse loc *)
-      Primitive (loc, PrimInteger Bigint.(a' + b'))
-    | _ -> raise @@ EvalExn ("Invalid arguments to add", erase tm))
+      Ok (Nominal.Primitive (loc, Primitive.PrimInteger Bigint.(a' + b')))
+    | _ -> Error ("Invalid arguments to add", tm))
   | Term (Operator (_, "sub", [ Scope ([], [ a ]); Scope ([], [ b ]) ])) ->
-    (match eval_ctx_exn' ctx a, eval_ctx_exn' ctx b with
+    let%bind a_result = eval_ctx' ctx a in
+    let%bind b_result = eval_ctx' ctx b in
+    (match a_result, b_result with
     | Primitive (loc, PrimInteger a'), Primitive (_, PrimInteger b') ->
-      Primitive (loc, PrimInteger Bigint.(a' - b'))
-    | _ -> raise @@ EvalExn ("Invalid arguments to sub", erase tm))
-  | Term tm -> tm
-  | _ -> raise @@ EvalExn ("Found a term we can't evaluate", erase tm)
+      Ok (Nominal.Primitive (loc, Primitive.PrimInteger Bigint.(a' - b')))
+    | _ -> Error ("Invalid arguments to sub", tm))
+  | Term tm -> Ok tm
+  | Let (_is_rec, tm, Scope (name, body))
+  ->
+    let%bind tm_val = eval_ctx ctx tm in
+    eval_ctx (Map.set ctx ~key:name ~data:tm_val) body
+  | _ -> Error ("Found a term we can't evaluate", tm)
 
-and eval_ctx_exn'
-    :  ('a, Primitive.t) Nominal.term Lvca_util.String.Map.t
-    -> ('a, Primitive.t) Nominal.term -> ('a, Primitive.t) Nominal.term
+and eval_ctx'
+    :  'a n_term Lvca_util.String.Map.t
+    -> 'a n_term
+    -> ('a n_term, 'a eval_error) Result.t
   =
  fun ctx tm ->
   match tm with
   | Var (_, v) ->
     (match Map.find ctx v with
-    | Some result -> result
-    | None -> raise @@ EvalExn ("Unbound variable " ^ v, erase @@ Term tm))
-  | _ -> tm
+    | Some result -> Ok result
+    | None -> Error ("Unbound variable " ^ v, Term tm))
+  | _ -> Ok tm
 ;;
 
-let eval_exn : 'a term -> ('a, Primitive.t) Nominal.term =
- fun core -> eval_ctx_exn Lvca_util.String.Map.empty core
-;;
-
-let eval : 'a term -> (('a, Primitive.t) Nominal.term, eval_error) Result.t =
- fun core -> try Ok (eval_exn core) with EvalExn (msg, tm) -> Error (msg, tm)
+let eval : 'a term -> ('a n_term, 'a eval_error) Result.t =
+ fun core -> eval_ctx Lvca_util.String.Map.empty core
 ;;
 
 module Parse (Comment : ParseUtil.Comment_int) = struct

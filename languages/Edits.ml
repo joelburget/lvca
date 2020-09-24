@@ -107,7 +107,7 @@ let%test_module "Parsing" =
       | Error msg -> Caml.print_string msg
    ;;
 
-    let run_atom : term -> core -> (term, Core.eval_error) Result.t =
+    let run_atom : term -> core -> (term, OptRange.t Core.eval_error) Result.t =
      fun tm core -> Core.(eval (CoreApp (core, Term tm)))
    ;;
 
