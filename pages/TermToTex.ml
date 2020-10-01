@@ -13,9 +13,7 @@ end
 module Controller = struct
   let update (action : Action.t) _model_s signal_update =
     (* let open Model in *)
-    let new_model = match action with
-      | Evaluate str -> str
-    in
+    let new_model = match action with Evaluate str -> str in
     signal_update new_model
   ;;
 end
@@ -28,17 +26,16 @@ module View = struct
     let katex_area = Html5.div [] in
     let katex_dom = To_dom.of_div katex_area in
     let set_katex = Katex.render katex_dom in
-
     let input, input_event = Common.mk_input model_s in
-
-    let _ : unit React.event = input_event |> React.E.map (function
-      | Common.InputUpdate str
-      ->
-        Caml.Printf.printf {|printing "%s"\n|} str;
-        set_katex str; (* XXX *)
-        Controller.update (Action.Evaluate str) model_s signal_update
-      | _ -> ()
-    )
+    let (_ : unit React.event) =
+      input_event
+      |> React.E.map (function
+             | Common.InputUpdate str ->
+               Caml.Printf.printf {|printing "%s"\n|} str;
+               set_katex str;
+               (* XXX *)
+               Controller.update (Action.Evaluate str) model_s signal_update
+             | _ -> ())
     in
 
     [%html {|

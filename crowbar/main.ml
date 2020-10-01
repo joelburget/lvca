@@ -27,18 +27,19 @@ let de_bruijn_gen : var_range -> Binding.DeBruijn.term gen
         in var_gen :: options
     in
     Crowbar.choose options')
-*)
+ *)
 
 module ParseNominal = Nominal.Parse (ParseUtil.NoComment)
 module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
 
 let term_str_conf tm_str =
-   let parser = ParseNominal.whitespace_t ParsePrimitive.t in
-   match ParseUtil.parse_string parser tm_str with
-     | Error _ -> Crowbar.bad_test ()
-     | Ok tm ->
-         let tm_str' = Nominal.pp_term_str Primitive.pp tm in
-         Crowbar.check_eq tm_str tm_str'
+  let parser = ParseNominal.whitespace_t ParsePrimitive.t in
+  match ParseUtil.parse_string parser tm_str with
+  | Error _ -> Crowbar.bad_test ()
+  | Ok tm ->
+    let tm_str' = Nominal.pp_term_str Primitive.pp tm in
+    Crowbar.check_eq tm_str tm_str'
+;;
 
 (* TODO: term meta-model string -> term -> string | ^ ^ | | | | v | +----> term2 ----+ *)
 

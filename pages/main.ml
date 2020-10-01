@@ -7,7 +7,8 @@ module Model = struct
     | TermAndConcretePage
     | EvalWithProvenancePage
     | TermToTexPage
-    (* | TermToDocument *)
+
+  (* | TermToDocument *)
 
   type t = { page : page }
 
@@ -56,24 +57,25 @@ module View = struct
     let i = select_elem##.value |> Js.to_string |> Int.of_string in
     Caml.Printf.printf "%i\n" i;
     let page =
-      match List.nth Model.all_pages i with None -> failwith "TODO: error" | Some page -> page
+      match List.nth Model.all_pages i with
+      | None -> failwith "TODO: error"
+      | Some page -> page
     in
     signal_update Model.{ page };
     false
   ;;
 
   let view model_s signal_update =
-
-    let page_selector = Model.all_pages
-      |> List.mapi ~f:(fun i page -> Html.option
+    let page_selector =
+      Model.all_pages
+      |> List.mapi ~f:(fun i page ->
+             Html.option
                ~a:[ Html.a_value (Int.to_string i) ]
                (page |> page_description |> Html.txt))
     in
-
-    let page_view = R.Html5.div
-      (model_s
-      |> React.S.map (fun { page } -> stateless_view page)
-      |> RList.singleton_s)
+    let page_view =
+      R.Html5.div
+        (model_s |> React.S.map (fun { page } -> stateless_view page) |> RList.singleton_s)
     in
 
     [%html{|

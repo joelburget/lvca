@@ -70,7 +70,8 @@ module View = struct
     let range_s : OptRange.t React.signal =
       model_s |> React.S.map (fun Model.{ selected; _ } -> selected)
     in
-    let formatted_s = model_s
+    let formatted_s =
+      model_s
       |> React.S.map (fun Model.{ result; input_lang; _ } ->
              let elt, formatter = RangeFormatter.mk range_s in
              (match result, input_lang with
@@ -81,6 +82,7 @@ module View = struct
              elt)
     in
     mk_output formatted_s
+  ;;
 
   let make_descriptions model_s =
     model_s
@@ -97,24 +99,26 @@ module View = struct
       Controller.update SwitchInputLang model_s signal_update;
       false
     in
-
-    let input, input_event = Common.mk_input
-      (model_s |> React.S.map (fun model -> model.Model.input))
+    let input, input_event =
+      Common.mk_input (model_s |> React.S.map (fun model -> model.Model.input))
     in
-
-    let _ : unit React.event = input_event |> React.E.map (fun evt ->
-      let evt' = match evt with
-      | InputUpdate str -> Action.Evaluate str
-      | InputSelect (start, finish) -> Select (start, finish)
-      | InputUnselect -> Unselect
-      in
-      Controller.update evt' model_s signal_update
-    )
+    let (_ : unit React.event) =
+      input_event
+      |> React.E.map (fun evt ->
+             let evt' =
+               match evt with
+               | InputUpdate str -> Action.Evaluate str
+               | InputSelect (start, finish) -> Select (start, finish)
+               | InputUnselect -> Unselect
+             in
+             Controller.update evt' model_s signal_update)
     in
-
-    demo_template handler
-      (R.Html.txt input_desc) input
-      (R.Html.txt output_desc) (mk_output' model_s)
+    demo_template
+      handler
+      (R.Html.txt input_desc)
+      input
+      (R.Html.txt output_desc)
+      (mk_output' model_s)
   ;;
 end
 

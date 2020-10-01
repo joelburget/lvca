@@ -106,7 +106,6 @@ let mk_input input_s =
            input_dom##.value := Js.string input)
   in
   input, input_event
-;;
 
 let mk_output
   (elt_s : [ `Code ] Js_of_ocaml_tyxml.Tyxml_js.To_dom.elt React.signal) =

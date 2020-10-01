@@ -146,9 +146,7 @@ let merge_results
 ;;
 
 let rec match_pattern
-    :  'a n_term
-    -> ('b, Primitive.t) Pattern.t
-    -> 'a n_term Lvca_util.String.Map.t option
+    : 'a n_term -> ('b, Primitive.t) Pattern.t -> 'a n_term Lvca_util.String.Map.t option
   =
  fun v pat ->
   match v, pat with
@@ -174,8 +172,7 @@ let rec match_pattern
 ;;
 
 let find_core_match
-    :  'a n_term
-    -> 'b core_case_scope list
+    :  'a n_term -> 'b core_case_scope list
     -> ('b term * 'a n_term Lvca_util.String.Map.t) option
   =
  fun v branches ->
@@ -191,9 +188,7 @@ type 'a eval_error = string * 'a term
 (* exception EvalExn of string * unit term *)
 
 let rec eval_ctx
-    :  'a n_term Lvca_util.String.Map.t
-    -> 'a term
-    -> ('a n_term, 'a eval_error) Result.t
+    : 'a n_term Lvca_util.String.Map.t -> 'a term -> ('a n_term, 'a eval_error) Result.t
   =
  fun ctx tm ->
   let open Result.Let_syntax in
@@ -229,16 +224,13 @@ let rec eval_ctx
       Ok (Nominal.Primitive (loc, Primitive.PrimInteger Bigint.(a' - b')))
     | _ -> Error ("Invalid arguments to sub", tm))
   | Term tm -> Ok tm
-  | Let (_is_rec, tm, Scope (name, body))
-  ->
+  | Let (_is_rec, tm, Scope (name, body)) ->
     let%bind tm_val = eval_ctx ctx tm in
     eval_ctx (Map.set ctx ~key:name ~data:tm_val) body
   | _ -> Error ("Found a term we can't evaluate", tm)
 
 and eval_ctx'
-    :  'a n_term Lvca_util.String.Map.t
-    -> 'a n_term
-    -> ('a n_term, 'a eval_error) Result.t
+    : 'a n_term Lvca_util.String.Map.t -> 'a n_term -> ('a n_term, 'a eval_error) Result.t
   =
  fun ctx tm ->
   match tm with
