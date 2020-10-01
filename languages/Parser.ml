@@ -76,19 +76,6 @@ let mk_list : pos:OptRange.t -> n_term list -> n_term * OptRange.t =
   tm, pos
 ;;
 
-(*
-type ctx_entry =
-  | BoundParser of t
-  | BoundTerm of n_term
-
-(* TODO: this is hacky *)
-let thin_ctx : ctx_entry Lvca_util.String.Map.t -> n_term Lvca_util.String.Map.t =
-  Map.filter_map ~f:(function
-      | BoundParser _ -> None
-      | BoundTerm tm -> Some tm)
-;;
-*)
-
 type term_ctx = n_term Lvca_util.String.Map.t
 type parser_ctx = t Lvca_util.String.Map.t
 
@@ -96,8 +83,9 @@ module Direct = struct
   type direct = { run
     :  term_ctx:term_ctx
     -> parser_ctx:parser_ctx
+    -> pos:int
     -> string
-    -> string * (n_term, (string * c_term)) Result.t
+    -> int * (n_term, (string * c_term)) Result.t
   }
 
   let todo_range = None
@@ -106,99 +94,111 @@ module Direct = struct
     , Core.Term (Nominal.Primitive (todo_range, Primitive.PrimString msg))
     )
 
-  let mk_char range c = Ok (Nominal.Primitive (range, Primitive.PrimChar c))
+  let mk_char pos c = Ok (Nominal.Primitive (OptRange.mk pos (pos + 1), Primitive.PrimChar c))
 
-  let char c = { run = fun ~term_ctx:_ ~parser_ctx:_ str ->
-      if String.length str > 0 && Char.(String.get str 0 = c)
-      then String.subo ~pos:1 str, mk_char todo_range c
-      else str, todo_msg (Printf.sprintf "char '%c'" c)
-    }
+  let char c = { run = fun ~term_ctx:_ ~parser_ctx:_ ~pos str ->
+    if String.length str > pos && Char.(String.get str pos = c)
+    then pos + 1, mk_char pos c
+    else pos, todo_msg (Printf.sprintf "char '%c'" c)
+  }
 
-  let string prefix = { run = fun ~term_ctx:_ ~parser_ctx:_ str ->
-    match String.chop_prefix str ~prefix with
-      | None -> str, todo_msg (Printf.sprintf {|string "%s"|} prefix)
-      | Some str' -> str', Ok (Nominal.Primitive (todo_range, PrimString prefix))
-    }
+  let string prefix = { run = fun ~term_ctx:_ ~parser_ctx:_ ~pos str ->
+    match str |> String.subo ~pos |> String.chop_prefix ~prefix with
+    | None -> pos, todo_msg (Printf.sprintf {|string "%s"|} prefix)
+    | Some _str' ->
+      let pos' = pos + String.length prefix in
+      let rng = OptRange.mk pos pos' in
+      pos', Ok (Nominal.Primitive (rng, PrimString prefix))
+  }
 
-  let satisfy name core_term = { run = fun ~term_ctx ~parser_ctx:_ str ->
+  let satisfy name core_term = { run = fun ~term_ctx ~parser_ctx:_ ~pos str ->
     let err_msg = todo_msg
       (Printf.sprintf {|satisfy (%s -> %s)|} name (Core.to_string core_term))
     in
-    if String.length str = 0
-    then str, err_msg
+    if pos >= String.length str
+    then pos, err_msg
     else
-      let c = String.get str 0 in
+      let c = String.get str pos in
+      let rng = OptRange.mk pos (pos + 1) in
       let tm = Core.(Let
         ( NoRec
-        , Term (Primitive (todo_range, PrimChar c))
+        , Term (Primitive (rng, PrimChar c))
         , Scope (name, core_term))
         )
       in
       match Core.eval_ctx term_ctx tm with
-        | Ok (Operator (_, "true", [])) -> String.subo ~pos:1 str, mk_char todo_range c
+        | Ok (Operator (_, "true", [])) -> pos + 1 , mk_char pos c
         | Ok (Operator (_, "false", []))
-        | Ok _ -> str, err_msg (* TODO: throw harder error? (type error) *)
-        | Error ((msg, _tm) as err) -> msg, Error err
+        | Ok _ -> pos, err_msg (* TODO: throw harder error? (type error) *)
+        | Error err -> pos, Error err
   }
 
   let fail c_tm =
-    { run = fun ~term_ctx ~parser_ctx:_ str -> match Core.eval_ctx term_ctx c_tm with
-      | Ok (Primitive (_ (* TODO: use pos *), PrimString msg)) -> str, todo_msg msg
+    { run = fun ~term_ctx ~parser_ctx:_ ~pos _str -> match Core.eval_ctx term_ctx c_tm with
+      | Ok (Primitive (_, PrimString msg)) -> pos, (* TODO: use pos *) todo_msg msg
       | _ -> failwith "TODO"
     }
 
   let let_ name p body =
-    { run = fun ~term_ctx ~parser_ctx str ->
+    { run = fun ~term_ctx ~parser_ctx ~pos str ->
       let parser_ctx = Map.set parser_ctx ~key:name ~data:p in
-      body.run ~term_ctx ~parser_ctx str
+      body.run ~term_ctx ~parser_ctx ~pos str
     }
 
   let option t =
-    { run = fun ~term_ctx ~parser_ctx str -> match t.run ~term_ctx ~parser_ctx str with
-      | str', Ok tm -> str', Ok (mk_some todo_range tm)
-      | str', Error _ -> str', Ok (none todo_range)
+    { run = fun ~term_ctx ~parser_ctx ~pos str ->
+      match t.run ~term_ctx ~parser_ctx ~pos str with
+      | str', Ok tm -> str', Ok (mk_some (Nominal.location tm) tm)
+      | str', Error _ -> str', Ok (none None)
     }
 
-  let mk_list_result = Result.map ~f:(fun tms -> fst @@ mk_list ~pos:todo_range tms)
+  let mk_list_result = Result.map ~f:(fun lst ->
+    let rng = lst
+      |> List.map ~f:Nominal.location
+      |> OptRange.list_range
+    in
+    Nominal.Operator (rng, "list", [ Nominal.Scope ([], lst) ])
+  )
 
   let map_snd ~f (a, b) = a, f b
 
   let count n_tm t =
-    let rec go ~term_ctx ~parser_ctx n str = match n with
-      | 0 -> str, Ok []
+    let rec go ~term_ctx ~parser_ctx ~pos n str = match n with
+      | 0 -> pos, Ok []
       | _ ->
-        let str, head_result = t.run ~term_ctx ~parser_ctx str in
+        let pos, head_result = t.run ~term_ctx ~parser_ctx ~pos str in
         match head_result with
-          | Error msg -> str, Error msg
+          | Error msg -> pos, Error msg
           | Ok tm ->
-            let str, tail_result = go ~term_ctx ~parser_ctx (n - 1) str in
-            str, tail_result |> Result.map ~f:(List.cons tm)
+            let pos, tail_result = go ~term_ctx ~parser_ctx (n - 1) ~pos str in
+            pos, tail_result |> Result.map ~f:(List.cons tm)
     in
-    { run = fun ~term_ctx ~parser_ctx str ->
+    { run = fun ~term_ctx ~parser_ctx ~pos str ->
       match Core.eval_ctx term_ctx n_tm with
         | Ok (Primitive (_, PrimInteger n)) -> str
-          |> go ~term_ctx ~parser_ctx (n |> Bigint.to_int |> Option.value_exn (* XXX *))
+          |> go ~term_ctx ~parser_ctx ~pos
+             (n |> Bigint.to_int |> Option.value_exn (* XXX *))
           |> map_snd ~f:mk_list_result
         | _ -> failwith "TODO"
     }
 
-  let rec go_many ~term_ctx ~parser_ctx t str =
-    let str, head_result = t.run ~term_ctx ~parser_ctx str in
+  let rec go_many ~term_ctx ~parser_ctx ~pos t str =
+    let pos, head_result = t.run ~term_ctx ~parser_ctx ~pos str in
     match head_result with
-      | Error _ -> str, Ok []
+      | Error _ -> pos, Ok []
       | Ok tm -> str
-        |> go_many ~term_ctx ~parser_ctx t
+        |> go_many ~term_ctx ~parser_ctx ~pos t
         |> map_snd ~f:(Result.map ~f:(List.cons tm))
 
   let many t =
-    { run = fun ~term_ctx ~parser_ctx str -> str
-      |> go_many ~term_ctx ~parser_ctx t
+    { run = fun ~term_ctx ~parser_ctx ~pos str -> str
+      |> go_many ~term_ctx ~parser_ctx ~pos t
       |> map_snd ~f:mk_list_result
     }
 
   let many1 t =
-    { run = fun ~term_ctx ~parser_ctx str -> str
-      |> go_many ~term_ctx ~parser_ctx t
+    { run = fun ~term_ctx ~parser_ctx ~pos str -> str
+      |> go_many ~term_ctx ~parser_ctx ~pos t
       |> map_snd ~f:(function
         | Ok [] -> todo_msg "many1: empty list"
         | result -> mk_list_result result
@@ -206,28 +206,29 @@ module Direct = struct
     }
 
   let alt t1 t2 =
-    { run = fun ~term_ctx ~parser_ctx str ->
-      let str, result = t1.run ~term_ctx ~parser_ctx str in
+    { run = fun ~term_ctx ~parser_ctx ~pos str ->
+      let pos, result = t1.run ~term_ctx ~parser_ctx ~pos str in
       match result with
-        | Error _ -> t2.run ~term_ctx ~parser_ctx str
-        | _ -> str, result
+        | Error _ -> t2.run ~term_ctx ~parser_ctx ~pos str
+        | _ -> pos, result
     }
 
-  let return tm = { run = fun ~term_ctx ~parser_ctx:_ str -> str, Core.eval_ctx term_ctx tm }
+  let return tm = { run = fun ~term_ctx ~parser_ctx:_ ~pos _str ->
+    pos, Core.eval_ctx term_ctx tm }
 
   let liftn names tm ps =
-    { run = fun ~term_ctx ~parser_ctx str ->
-      let str, result = ps
+    { run = fun ~term_ctx ~parser_ctx ~pos str ->
+      let pos, result = ps
         (* TODO: scanl? *)
         |> List.fold
-          ~init:(str, Ok [])
-          ~f:(fun (str, xs) { run } -> match xs, run ~term_ctx ~parser_ctx str with
-              | Ok xs, (str, Ok x) -> str, Ok (x :: xs)
+          ~init:(pos, Ok [])
+          ~f:(fun (pos, xs) { run } -> match xs, run ~term_ctx ~parser_ctx ~pos str with
+              | Ok xs, (pos, Ok x) -> pos, Ok (x :: xs)
               | Error msg, _
-              | _, (_, Error msg) -> str, Error msg)
+              | _, (_, Error msg) -> pos, Error msg)
       in
       match result with
-        | Error msg -> str, Error msg
+        | Error msg -> pos, Error msg
         | Ok xs -> match List.zip names xs with
           | Unequal_lengths -> failwith "TODO"
           | Ok name_vals ->
@@ -236,7 +237,7 @@ module Direct = struct
                 ~init:term_ctx
                 ~f:(fun ctx (key, tm) -> Map.set ctx ~key ~data:tm)
             in
-            str, Core.eval_ctx term_ctx tm
+            pos, Core.eval_ctx term_ctx tm
     }
 
   let fix (_key, p) =
@@ -245,8 +246,8 @@ module Direct = struct
       (* p.run ~term_ctx ~parser_ctx:(Map.set parser_ctx ~key ~data:p') *)
     in
     let rec p = lazy (f r)
-    and r = { run = fun ~term_ctx ~parser_ctx str -> (Lazy.force p).run ~term_ctx
-    ~parser_ctx str }
+    and r = { run = fun ~term_ctx ~parser_ctx ~pos str ->
+      (Lazy.force p).run ~term_ctx ~parser_ctx ~pos str }
     in r
 
   let rec translate_direct : t -> direct
@@ -266,26 +267,30 @@ module Direct = struct
       | LiftN (names, tm, ps) -> liftn names tm (List.map ps ~f:translate_direct)
       | Identifier name -> identifier name
 
-  (* TODO: BoundParser should be already translated? *)
-  and identifier name = { run = fun ~term_ctx ~parser_ctx str -> match Map.find parser_ctx name with
-    | None -> str, todo_msg (Printf.sprintf {|Identifer not found in context: "%s"|} name)
-    | Some p -> (translate_direct p).run ~term_ctx ~parser_ctx str
+  (* TODO: should bound parser p already be translated? *)
+  and identifier name = { run = fun ~term_ctx ~parser_ctx ~pos str ->
+    match Map.find parser_ctx name with
+    | None -> pos, todo_msg (Printf.sprintf {|Identifer not found in context: "%s"|} name)
+    | Some p -> (translate_direct p).run ~term_ctx ~parser_ctx ~pos str
   }
 
   let parse_direct : direct -> string -> (n_term, string * c_term) Result.t
-    = fun { run } str -> match
+    = fun { run } str ->
+      let strlen = String.length str in
+      match
         run ~term_ctx:Lvca_util.String.Map.empty
             ~parser_ctx:Lvca_util.String.Map.empty
+            ~pos:0
             str
       with
-      | "", result -> result
-      | str, Ok _ -> todo_msg (Printf.sprintf
-        {|Parser didn't consume entire input. Left over: "%s"|}
-        (if String.length str > 50
-         then String.prefix str 47 ^ "..."
-         else str)
-      )
-      | _, Error err -> Error err
+        | n, result
+        when n = strlen
+        -> result
+        | _, Ok _ -> todo_msg (Printf.sprintf
+          {|Parser didn't consume entire input. Left over: "%s"|}
+          (if strlen > 50 then String.prefix str 47 ^ "..." else str)
+        )
+        | _, Error err -> Error err
 
   type t = direct
 end
@@ -481,7 +486,7 @@ let%test_module "Parsing" =
       parse_print {|"str"|} "str";
       [%expect {|
         <0-3>"str"</0-3>
-        "str" |}]
+        <0-3>"str"</0-3> |}]
     ;;
 
     let%expect_test _ =
@@ -497,7 +502,7 @@ let%test_module "Parsing" =
       [%expect
         {|
           <0-9>list(<0-3>"str"</0-3>, <3-6>"str"</3-6>, <6-9>"str"</6-9>)</0-9>
-          list("str", "str", "str") |}]
+          <0-9>list(<0-3>"str"</0-3>, <3-6>"str"</3-6>, <6-9>"str"</6-9>)</0-9> |}]
     ;;
 
     let%expect_test _ =
@@ -505,7 +510,7 @@ let%test_module "Parsing" =
       [%expect
         {|
           <0-9>list(<0-3>"str"</0-3>, <3-6>"str"</3-6>, <6-9>"str"</6-9>)</0-9>
-          list("str", "str", "str") |}]
+          <0-9>list(<0-3>"str"</0-3>, <3-6>"str"</3-6>, <6-9>"str"</6-9>)</0-9> |}]
     ;;
 
     let%expect_test _ =
@@ -513,7 +518,7 @@ let%test_module "Parsing" =
       [%expect
         {|
           <0-3>"str"</0-3>
-          "str" |}]
+          <0-3>"str"</0-3> |}]
     ;;
 
     let%expect_test _ =
@@ -521,7 +526,7 @@ let%test_module "Parsing" =
       [%expect
         {|
           <0-3>"foo"</0-3>
-          "foo" |}]
+          <0-3>"foo"</0-3> |}]
     ;;
 
     let sat_parser =
@@ -537,7 +542,7 @@ let%test_module "Parsing" =
       [%expect
         {|
           <0-1>'c'</0-1>
-          'c' |}]
+          <0-1>'c'</0-1> |}]
     ;;
 
     let%expect_test _ =
@@ -553,7 +558,7 @@ let%test_module "Parsing" =
       [%expect
         {|
           <0-3>"str"</0-3>
-          "str" |}]
+          <0-3>"str"</0-3> |}]
     ;;
 
     let%expect_test _ =
