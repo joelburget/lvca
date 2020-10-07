@@ -361,28 +361,6 @@ high lxor high_shifted: %s
       let result = adj_dividend / abs_scaled_divisor in
       if scaled_divisor < zero then neg result else result
 
-  and iterative op p adjustments loop =
-    let open Int32 in
-    if p >= Int32.one then big0
-    else
-      let iterations_needed = neg p / I32.two + I32.two in
-      let calc_precision = p - bound_log2 (I32.two * iterations_needed) -
-      adjustments.calc_precision in
-      let op_prec = p - adjustments.op_prec in
-      let op_appr = get_appr op op_prec in
-      let scaled_1 = calc_precision
-        |> neg
-        |> big_shift_left big1
-      in
-      let current_term = ref scaled_1 in
-      let current_sum = ref scaled_1 in
-      let n = ref 0 in
-      let max_trunc_error = big_shift_left big1 (p - I32.four - calc_precision) in
-      while Bigint.(abs !current_term >= max_trunc_error) do
-        loop n op_prec op_appr current_term current_sum
-      done;
-      scale !current_sum Int32.(calc_precision - p)
-
   and approximate_prescaled_asin_cr op p =
     let open Int32 in
     if p >= I32.two then big0
@@ -593,26 +571,53 @@ next_t: %s
       done;
       scale !current_sum Int32.(calc_precision - p)
 
-  and approximate_prescaled_exp_cr op p =
-    iterative op p { op_prec = I32.three; calc_precision = I32.four }
-    (fun n op_prec op_appr current_term current_sum ->
-      let open Bigint in
-      current_term := scale (!current_term * op_appr) op_prec;
-      current_term := !current_term / Bigint.of_int !n;
-      current_sum := !current_sum + !current_term;
-    )
-
   and approximate_prescaled_cos_cr op p =
-    iterative op p { op_prec = I32.two; calc_precision = I32.four }
-    (fun n op_prec op_appr current_term current_sum ->
-      n := Int.(!n + 2);
-      let open Bigint in
-      current_term := scale (!current_term * op_appr) op_prec;
-      current_term := scale (!current_term * op_appr) op_prec;
-      let divisor = Bigint.(of_int (Int.neg !n) * of_int Int.(!n - 1)) in
-      current_term := !current_term / divisor;
-      current_sum := !current_sum + !current_term;
-    )
+    let open Int32 in
+    if p >= Int32.one then big0
+    else
+      let iterations_needed = neg p / I32.two + I32.four in
+      let calc_precision = p - bound_log2 (I32.two * iterations_needed) - I32.four in
+      let op_prec = p - I32.two in
+      let op_appr = get_appr op op_prec in
+      let scaled_1 = big_shift_left big1 (neg calc_precision) in
+      let current_term = ref scaled_1 in
+      let current_sum = ref scaled_1 in
+      let n = ref 0 in
+      let max_trunc_error = big_shift_left big1 (p - I32.four - calc_precision) in
+      while Bigint.(abs !current_term >= max_trunc_error) do
+        n := Int.(!n + 2);
+        let open Bigint in
+        let divisor = Bigint.(of_int (Int.neg !n) * of_int Int.(!n - 1)) in
+        current_term := scale (!current_term * op_appr) op_prec;
+        current_term := scale (!current_term * op_appr) op_prec;
+        current_term := !current_term / divisor;
+        current_sum := !current_sum + !current_term;
+      done;
+      scale !current_sum Int32.(calc_precision - p)
+
+  and approximate_prescaled_exp_cr op p =
+    let open Int32 in
+    if p >= Int32.one then big0
+    else
+      let iterations_needed = neg p / I32.two + I32.two in
+      let calc_precision = p - bound_log2 (I32.two * iterations_needed) - I32.four in
+      let op_prec = p - I32.three in
+      let op_appr = get_appr op op_prec in
+      let scaled_1 = calc_precision
+        |> neg
+        |> big_shift_left big1
+      in
+      let current_term = ref scaled_1 in
+      let current_sum = ref scaled_1 in
+      let n = ref 0 in
+      let max_trunc_error = big_shift_left big1 (p - I32.four - calc_precision) in
+      while Bigint.(abs !current_term >= max_trunc_error) do
+        let open Bigint in
+        current_term := scale (!current_term * op_appr) op_prec;
+        current_term := !current_term / Bigint.of_int !n;
+        current_sum := !current_sum + !current_term;
+      done;
+      scale !current_sum Int32.(calc_precision - p)
 
   (* Return [value / 2 ** prec] rounded to an integer. *)
   and get_appr : t -> int32 -> Bigint.t
