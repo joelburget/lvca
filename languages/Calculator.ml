@@ -4,20 +4,27 @@ exception EarlyReturn
 exception ArithmeticError of string
 
 module I32 = struct
-  let two = Int32.of_int_exn 2
-  let three = Int32.of_int_exn 3
-  let four = Int32.of_int_exn 4
-  let five = Int32.of_int_exn 5
-  let six = Int32.of_int_exn 6
-  let ten = Int32.of_int_exn 10
-  let minus_ten = Int32.of_int_exn (-10)
-  let sixteen = Int32.of_int_exn 16
-  let twenty = Int32.of_int_exn 20
-  let thirty = Int32.of_int_exn 30
-  let fifty = Int32.of_int_exn 50
-  let sixty = Int32.of_int_exn 60
-  let hundred = Int32.of_int_exn 100
-  let minus_52 =Int32.of_int_exn (-52)
+  open Int32
+
+  let two = of_int_exn 2
+  let three = of_int_exn 3
+  let four = of_int_exn 4
+  let five = of_int_exn 5
+  let six = of_int_exn 6
+  let ten = of_int_exn 10
+  let minus_ten = of_int_exn (-10)
+  let sixteen = of_int_exn 16
+  let twenty = of_int_exn 20
+  let thirty = of_int_exn 30
+  let fourty_eight = of_int_exn 48
+  let fifty = of_int_exn 50
+  let fifty_two = of_int_exn 52
+  let sixty = of_int_exn 60
+  let ninety_six = of_int_exn 96
+  let hundred = of_int_exn 100
+  let minus_52 = of_int_exn (-52)
+  let minus_1000 = of_int_exn (-1000)
+  let minus_1080 = of_int_exn (-1080)
 end
 
 module CR = struct
@@ -798,6 +805,36 @@ get_appr op (n - 1) -> %s
         )
   ;;
 
+  let bigint_value op = get_appr op Int32.zero
+  let int_value op = op |> bigint_value |> Bigint.to_int
+
+  let float_value op =
+    let op_msd = iter_msd op I32.minus_1080 in
+    if (op_msd = Int32.min_value) then 0.0
+    else
+      let needed_prec = op_msd - I32.sixty in
+      let needed_prec' = Int32.to_int_exn needed_prec in
+      let scaled_int = get_appr op needed_prec |> Bigint.to_float in
+      let may_underflow = needed_prec < I32.minus_1000 in
+      let negative = Float.ieee_negative scaled_int in
+      let mantissa = Float.ieee_mantissa scaled_int in
+      let orig_exp = Float.ieee_exponent scaled_int in
+      let exp_adj = if may_underflow then Int.(needed_prec' + 96) else needed_prec' in
+      if Int.(orig_exp + exp_adj >= 0x7ff)
+      then
+        if Float.(scaled_int < 0.0)
+        then Float.neg_infinity
+        else Float.infinity
+      else
+        let exponent = Int.(orig_exp + exp_adj) in
+        let result = Float.create_ieee_exn ~negative ~exponent ~mantissa in
+        if may_underflow
+        then
+          let two48: float = Float.of_int Int.(shift_left 1 48) in
+          result /. two48 /. two48
+        else
+          result
+
   (* more constructors (that use get_appr) *)
   let select selector x y
     = of_cr (SelectCR {
@@ -924,6 +961,8 @@ get_appr op (n - 1) -> %s
 end
 
 let%test_module "Calculator" = (module struct
+  exception AssertionFailure of string
+
   let zero = CR.of_int 0
   let one = CR.of_int 1
   let two = CR.of_int 2
@@ -1083,5 +1122,25 @@ let%test_module "Calculator" = (module struct
   let%expect_test _ =
     print CR.(multiply sqrt13 sqrt13);
     [%expect{| 13.0000000000 |}]
+
+
+  let check_appr_eq x y = if Float.(x -. y > 0.000001) then raise
+    (AssertionFailure (Printf.sprintf "%f vs %f" x y))
+
+  let%test_unit _ = List.init 10 ~f:(fun i -> i * 2 - 10)
+    |> List.map ~f:Float.of_int
+    |> List.iter ~f:(fun n ->
+      check_appr_eq (Float.sin n) CR.(of_float n |> sin |> float_value);
+      check_appr_eq (Float.cos n) CR.(of_float n |> cos |> float_value);
+      (* check_appr_eq (Float.exp n) CR.(of_float n |> exp |> float_value); *)
+      check_appr_eq
+        (Float.asin (0.1 *. n))
+        CR.(of_float (0.1 *. n) |> asin |> float_value);
+      check_appr_eq
+        (Float.acos (0.1 *. n))
+        CR.(of_float (0.1 *. n) |> acos |> float_value);
+      if Float.(n > 0.0) then
+        check_appr_eq (Float.log n) CR.(of_float n |> ln |> float_value);
+    )
 
 end);;
