@@ -240,6 +240,15 @@ module CR = struct
       let open Bigint in
       if i = big0 then Int32.zero else if i > big0 then Int32.one else Int32.minus_one
 
+  (* Check that precision is at least a factor of 8 from overflowing the int32 used to
+   * hold the precision spec. *)
+  let check_prec n =
+    let open Int32 in
+    let high = shift_right n 28 in
+    let high_shifted = shift_right n 29 in
+    if high lxor high_shifted <> zero then raise PrecisionOverflowException
+  ;;
+
   (* constructors *)
 
   let of_cr cr = { base = new_base (); cr }
@@ -247,11 +256,13 @@ module CR = struct
   let add : t -> t -> t
     = fun x y -> of_cr (AddCR (x, y))
   let shift_left : t -> int32 -> t
-    (* TODO: check_prec? *)
-    = fun x n -> of_cr (ShiftedCR (x, n))
+    = fun x n ->
+      check_prec n;
+      of_cr (ShiftedCR (x, n))
   let shift_right : t -> int32 -> t
-    (* TODO: check_prec? *)
-    = fun x n -> of_cr (ShiftedCR (x, neg n))
+    = fun x n ->
+      check_prec n;
+      of_cr (ShiftedCR (x, neg n))
   let assume_int : t -> t
     = fun x -> of_cr (AssumedIntCR x)
   let negate : t -> t
@@ -311,27 +322,6 @@ module CR = struct
       let big_add = Bigint.(+) in
       let adj_k = big_add (shift k (n + Int32.one)) big1 in
       Bigint.shift_right adj_k 1
-  ;;
-
-  (* Check that precision is at least a factor of 8 from overflowing the int32 used to
-   * hold the precision spec. *)
-  let check_prec n =
-    let open Int32 in
-    let high = shift_right n 28 in
-    let high_shifted = shift_right n 29 in
-    if high lxor high_shifted <> zero then (
-      (*
-      let h = Int32.Hex.to_string in
-      debug_printf
-        {|n: %s
-high: %s
-high_shifted: %s
-high lxor high_shifted: %s
-|}
-        (h n) (h high) (h high_shifted) (h (high lxor high_shifted));
-        *)
-      raise PrecisionOverflowException
-    )
   ;;
 
   (* TODO:
