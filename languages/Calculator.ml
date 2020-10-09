@@ -76,17 +76,6 @@ module CR = struct
     else if n < Int32.zero then Bigint.shift_right k (-n')
     else big_shift_left k n
 
-  type iterative_adjustments =
-    { op_prec : int32
-    ; calc_precision : int32
-    }
-
-    (*
-  type iterative_params =
-    {
-    }
-  *)
-
   type base =
     { mutable min_prec: int32
     (** The smallest precision value with which the above has been called? *)
