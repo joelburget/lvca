@@ -1,6 +1,6 @@
 open Base
 
-exception EarlyReturn of Bigint.t
+exception EarlyReturn
 exception ArithmeticError of string
 
 module I32 = struct
@@ -17,6 +17,7 @@ module I32 = struct
   let fifty = Int32.of_int_exn 50
   let sixty = Int32.of_int_exn 60
   let hundred = Int32.of_int_exn 100
+  let minus_52 =Int32.of_int_exn (-52)
 end
 
 module CR = struct
@@ -36,6 +37,28 @@ module CR = struct
   let big10 = Bigint.of_int 10
   let big750 = Bigint.of_int 750
   let bigm750 = Bigint.of_int (-750)
+
+  let string_of_scaled_int scaled_int digits =
+    let scaled_string : string = Bigint.(scaled_int |> abs |> to_string) in
+    let result =
+      if digits = Int32.zero
+      then scaled_string
+      else
+        let len = scaled_string |> String.length |> Int32.of_int_exn in
+        let len, scaled_string = if len <= digits
+          then
+            let z = String.make (Int.of_int32_exn (digits + Int32.one - len)) '0' in
+            digits + Int32.one, z ^ scaled_string
+          else len, scaled_string
+        in
+        let splitting_pos = Int.of_int32_exn (len - digits) in
+        let whole = scaled_string |> String.subo ~pos:0 ~len:splitting_pos in
+        let fraction = scaled_string |> String.subo ~pos:splitting_pos in
+        whole ^ "." ^ fraction
+    in
+      if Bigint.(scaled_int < zero)
+      then "-" ^ result
+      else result
 
   let big_shift_left bi i32 = Bigint.shift_left bi (Int.of_int32_exn i32)
 
@@ -79,7 +102,7 @@ module CR = struct
       (Bigint.to_string max_appr)
       appr_valid
 
-  let start_base () = { min_prec = Int32.zero; max_appr = big0; appr_valid = false }
+  let new_base () = { min_prec = Int32.zero; max_appr = big0; appr_valid = false }
 
   type cr =
     (* | SlowCR of int * int *)
@@ -88,7 +111,7 @@ module CR = struct
     | AddCR of t * t
     | ShiftedCR of t * int32
     | NegCR of t
-    | SelectCR of t * int32 * t * t
+    | SelectCR of selector
     | MultCR of t * t
     | InvCR of t
     | PrescaledExpCR of t
@@ -104,7 +127,14 @@ module CR = struct
     ; cr: cr
     }
 
-  let rec cr_to_string = function
+  and selector =
+    { selector : t
+    ; mutable selector_sign: int32
+    ; op1: t
+    ; op2: t
+    }
+
+  let rec debug_cr_to_string = function
     | IntCR i -> Printf.sprintf "IntCR %s" (Bigint.to_string i)
     | AssumedIntCR op -> Printf.sprintf "AssumedIntCR (%s)" (debug_to_string op)
     | AddCR (op1, op2)
@@ -113,9 +143,9 @@ module CR = struct
     -> Printf.sprintf "ShiftedCR (%s, %li)" (debug_to_string op) shift
     | NegCR op
     -> Printf.sprintf "NegCR (%s)" (debug_to_string op)
-    | SelectCR (selector, shift, op1, op2)
+    | SelectCR { selector; selector_sign; op1; op2 }
     -> Printf.sprintf "SelectCR (%s, %li, %s, %s)"
-      (debug_to_string selector) shift (debug_to_string op1) (debug_to_string op2)
+      (debug_to_string selector) selector_sign (debug_to_string op1) (debug_to_string op2)
     | MultCR (op1, op2)
     -> Printf.sprintf "MultCR (%s, %s)" (debug_to_string op1) (debug_to_string op2)
     | InvCR op
@@ -135,7 +165,75 @@ module CR = struct
     | GlPiCR -> "GlPiCR"
 
   and debug_to_string { base; cr } =
-    Printf.sprintf "{ base = %s; cr = %s }" (base_to_string base) (cr_to_string cr)
+    Printf.sprintf "{ base = %s; cr = %s }" (base_to_string base) (debug_cr_to_string cr)
+
+  type operator =
+    | App
+    | Negate
+    | Mul
+    | Div
+    | Shift
+    | Add
+    | Sub
+
+  (* An odd amalgamation of Haskell and OCaml rules *)
+  let prec : operator -> int
+    = function
+      | App -> 10
+      | Negate -> 8
+      | Mul | Div -> 7
+      | Shift -> 6
+      | Add | Sub -> 5
+
+  (* TODO: this should use associativity as well *)
+  let parens_prec op_prec env_prec str =
+    if Int.(op_prec <= env_prec)
+    then "(" ^ str ^ ")"
+    else str
+
+  let rec to_string' prec { cr; _ } = cr_to_string prec cr
+
+  and cr_to_string ambient_prec = function
+    | IntCR i -> Bigint.to_string i
+    | AssumedIntCR op -> to_string' ambient_prec op
+    | AddCR (op1, op2)
+    -> let prec' = prec Add in
+       parens_prec prec' ambient_prec
+         (Printf.sprintf "%s + %s" (to_string' prec' op1) (to_string' prec' op2))
+    | ShiftedCR (op, shift)
+    -> let prec' = prec Shift in
+       parens_prec prec' ambient_prec
+         (Printf.sprintf "%s << %li" (to_string' prec' op) shift)
+    | NegCR op
+    -> let prec' = prec Negate in
+       parens_prec prec' ambient_prec (Printf.sprintf "-%s" (to_string' prec' op))
+    | SelectCR { selector; selector_sign; op1; op2 }
+    (* TODO: this style is inconsistent with the others *)
+    -> Printf.sprintf "select(%s, %li, %s, %s)"
+             (to_string' 0 selector) selector_sign (to_string' 0 op1) (to_string' 0 op2)
+    | MultCR (op1, op2)
+    -> let prec' = prec Mul in
+       parens_prec prec' ambient_prec
+         (Printf.sprintf "%s * %s" (to_string' prec' op1) (to_string' prec' op2))
+    | InvCR op
+    -> let prec' = prec Div in
+       parens_prec prec' ambient_prec
+         (Printf.sprintf "1 / %s" (to_string' prec' op))
+    | PrescaledExpCR op
+    -> Printf.sprintf "exp %s" (to_string' (prec App) op)
+    | PrescaledCosCR op
+    -> Printf.sprintf "cos %s" (to_string' (prec App) op)
+    | IntegralAtanCR i
+    -> Printf.sprintf "atan %li" i
+    | PrescaledLnCR op
+    -> Printf.sprintf "ln %s" (to_string' (prec App) op)
+    | PrescaledAsinCR op
+    -> Printf.sprintf "asin %s" (to_string' (prec App) op)
+    | SqrtCR op
+    -> Printf.sprintf "sqrt %s" (to_string' (prec App) op)
+    | GlPiCR -> "pi"
+
+  let to_string = to_string' 0
 
   let big_signum : Bigint.t -> int32
     = fun i ->
@@ -144,7 +242,7 @@ module CR = struct
 
   (* constructors *)
 
-  let of_cr cr = { base = start_base (); cr }
+  let of_cr cr = { base = new_base (); cr }
 
   let add : t -> t -> t
     = fun x y -> of_cr (AddCR (x, y))
@@ -170,10 +268,8 @@ module CR = struct
 
   let bound_log2 : int32 -> int32
     = fun n ->
-      Float.of_int (Int.of_int32_exn (Int32.abs n + Int32.one)) /. Float.log 2.0
-        |> Float.log
-        |> Float.round_up
-        |> Int32.of_float
+      let x = Float.of_int (Int.of_int32_exn (Int32.abs n + Int32.one)) in
+      Int32.of_float (Float.round_up (Float.log x /. Float.log 2.0))
 
   let of_bigint : Bigint.t -> t
     = fun x -> of_cr (IntCR x)
@@ -188,14 +284,28 @@ module CR = struct
   let minus_one = of_int (-1)
   let two = of_int 2
   let three = of_int 3
+  let minus_fifty_two = of_int (-52)
 
-  (* TODO of_float *)
+  let of_float n =
+    (* TODO: throw for NaN / infinite *)
+    let negative = Float.ieee_negative n in
+    let pre_mantissa = Int63.to_int_exn (Float.ieee_mantissa n) in
+    let exp = Int.(Float.ieee_exponent n - 1023) |> Int32.of_int_exn in
+
+    let p1 = shift_left one exp in
+    let p2 = shift_left one I32.minus_52 in
+
+    let mantissa = add one (multiply (of_int pre_mantissa) p2) in
+    let result = multiply p1 mantissa in
+
+    if negative then negate result else result
 
   (* end constructors *)
 
+  (* Multiply by 2**n, rounding result *)
   let scale k n =
     if n >= Int32.zero
-    then n |> Int32.to_int_exn |> Bigint.shift_left k
+    then big_shift_left k n
     else
       (* TODO: Seems like an odd way to do this if I'm understanding *)
       let big_add = Bigint.(+) in
@@ -263,9 +373,9 @@ high lxor high_shifted: %s
 
   (* Give a scaled approximation accurate to 2**n *)
   and approximate : t -> int32 -> Bigint.t
-    = fun ({ cr; _ } as t) p -> match cr with
+    = fun ({ cr; _ } as t) p ->
+      match cr with
       | IntCR value -> scale value (neg p)
-        (* Caml.Printf.printf "approximate IntCR -> %s\n" (it |> Bigint.to_string); *)
       | AssumedIntCR value ->
         if p >= Int32.zero
         then get_appr value p
@@ -273,20 +383,25 @@ high lxor high_shifted: %s
       | AddCR (op1, op2) ->
         let (+) = Bigint.(+) in
         scale (get_appr op1 (p - I32.two) + get_appr op2 (p - I32.two)) (neg I32.two)
-      | ShiftedCR (op, count) ->
-        get_appr op (p - count)
+      | ShiftedCR (op, count) -> get_appr op (p - count)
       | NegCR op -> Bigint.neg (get_appr op p)
-      | SelectCR (selector, selector_sign, op1, op2) ->
-        if (selector_sign < Int32.zero) then get_appr op1 p
-        else if (selector_sign > Int32.zero) then get_appr op2 p
+      | SelectCR selector ->
+        if (selector.selector_sign < Int32.zero) then get_appr selector.op1 p
+        else if (selector.selector_sign > Int32.zero) then get_appr selector.op2 p
         else
-          let op1_appr = get_appr op1 (p - Int32.one) in
-          let op2_appr = get_appr op2 (p - Int32.one) in
+          let op1_appr = get_appr selector.op1 (p - Int32.one) in
+          let op2_appr = get_appr selector.op2 (p - Int32.one) in
           let diff = Bigint.(abs (op1_appr - op2_appr)) in
-          if Bigint.(diff < big1) then scale op1_appr Int32.minus_one
-          else if signum selector < Int32.zero then
-            (* XXX mutate *) scale op1_appr Int32.minus_one
-          else (* XXX mutate *) scale op2_appr Int32.minus_one
+          if Bigint.(diff <= big1) then scale op1_appr Int32.minus_one
+          else if signum selector.selector < Int32.zero
+          then (
+            selector.selector_sign <- Int32.minus_one;
+            scale op1_appr Int32.minus_one
+          )
+          else (
+            selector.selector_sign <- Int32.one;
+            scale op2_appr Int32.minus_one
+          )
       | MultCR (x, y) -> approximate_mult_cr x y p
       | InvCR op -> approximate_inv_cr op p
       | PrescaledExpCR op -> approximate_prescaled_exp_cr op p
@@ -311,7 +426,7 @@ high lxor high_shifted: %s
             let msd_op2 = msd op2 half_prec in
             (* debug_printf "msd_op2: %li\n" msd_op2; *)
             (* Product is small enough that zero will do as an approximation *)
-            if msd_op2 = Int32.min_value then raise (EarlyReturn big0);
+            if msd_op2 = Int32.min_value then raise EarlyReturn;
             (* Swap operands so larger is first *)
             op2, op1, msd_op2
           else
@@ -324,29 +439,19 @@ high lxor high_shifted: %s
         Caml.Printf.printf "p: %li, msd_op1: %li, prec2: %li, appr2: %s\n"
           p msd_op1 prec2 (appr2 |> Bigint.to_string);
           *)
-        if Bigint.(appr2 = zero)
-        then big0
-        else
-          let msd_op2 = known_msd op2 in
-          let prec1 = p - msd_op2 - I32.three in
-          let appr1 = get_appr op1 prec1 in
-          let scale_digits = prec1 + prec2 - p in
-          (*
-          Caml.Printf.printf "p: %li, msd_op2: %li, prec1: %li, appr1: %s\n"
-            p msd_op2 prec1 (appr1 |> Bigint.to_string);
-          Caml.Printf.printf "scale_digits: %li\n" scale_digits;
-          Caml.Printf.printf "Bigint.(appr1 * appr2): %s\n"
-            Bigint.(appr1 * appr2 |> to_string);
-            *)
-          scale Bigint.(appr1 * appr2) scale_digits
+        if Bigint.(appr2 = zero) then raise EarlyReturn;
+        let msd_op2 = known_msd op2 in
+        let prec1 = p - msd_op2 - I32.three in
+        let appr1 = get_appr op1 prec1 in
+        let scale_digits = prec1 + prec2 - p in
+        scale Bigint.(appr1 * appr2) scale_digits
       with
-        EarlyReturn i ->
-          (* Caml.Printf.printf "early return -> %s\n" (Bigint.to_string i); *)
-          i
+        EarlyReturn -> big0
+        (* Caml.Printf.printf "early return -> %s\n" (Bigint.to_string i); *)
 
   and approximate_inv_cr op p =
-    let msd = iter_msd op Int32.min_value in
     let open Int32 in
+    let msd = iter_msd op Int32.min_value in
     let inv_msd = Int32.one - msd in
     let digits_needed = inv_msd - p - I32.three in
     let prec_needed = msd - digits_needed in
@@ -499,7 +604,7 @@ next_t: %s
         let op_prec = (msd - fp_op_prec) land lnot Int32.one in
         let working_prec = op_prec - fp_op_prec in
         let scaled_bi_appr = big_shift_left (get_appr op op_prec) fp_op_prec in
-        let scaled_appr = scaled_bi_appr |> Bigint.to_float in
+        let scaled_appr = Bigint.to_float scaled_bi_appr in
         if Float.(scaled_appr < 0.0) then raise (ArithmeticError "sqrt(negative)");
         let scaled_fp_sqrt = Float.sqrt scaled_appr in
         let scaled_sqrt = Bigint.of_float scaled_fp_sqrt in
@@ -587,10 +692,13 @@ next_t: %s
       while Bigint.(abs !current_term >= max_trunc_error) do
         n := Int.(!n + 2);
         let open Bigint in
+        (* current_term := - current_term * op * op / n * (n - 1) *)
+        let numerator = scale
+          ((scale (!current_term * op_appr) op_prec) * op_appr)
+          op_prec
+        in
         let divisor = Bigint.(of_int (Int.neg !n) * of_int Int.(!n - 1)) in
-        current_term := scale (!current_term * op_appr) op_prec;
-        current_term := scale (!current_term * op_appr) op_prec;
-        current_term := !current_term / divisor;
+        current_term := numerator / divisor;
         current_sum := !current_sum + !current_term;
       done;
       scale !current_sum Int32.(calc_precision - p)
@@ -636,9 +744,7 @@ min_prec - precision: %li
     )
     else
       (
-      (* Caml.Printf.printf "get_appr approximating\n"; *)
       let result = approximate op precision in
-      (* Caml.Printf.printf "get_appr approximate result: %s\n" (result |> Bigint.to_string); *)
       op.base.min_prec <- precision;
       op.base.max_appr <- result;
       op.base.appr_valid <- true;
@@ -653,7 +759,7 @@ min_prec - precision: %li
   and known_msd : t -> int32
     = fun op ->
       let length =
-        if big_signum op.base.max_appr >= Int32.zero
+        if Bigint.(op.base.max_appr >= zero)
         then op.base.max_appr |> numbits
         else op.base.max_appr |> Bigint.neg |> numbits
       in
@@ -718,7 +824,12 @@ get_appr op (n - 1) -> %s
 
   (* more constructors (that use get_appr) *)
   let select selector x y
-    = of_cr (SelectCR (selector, neg I32.twenty |> get_appr selector |> big_signum, x, y))
+    = of_cr (SelectCR {
+        selector;
+        selector_sign = neg I32.twenty |> get_appr selector |> big_signum;
+        op1 = x;
+        op2 = y
+      })
   let max x y = select (subtract x y) y x
   let min x y = select (subtract x y) x y
   let abs x = select x (negate x) x
@@ -742,31 +853,40 @@ get_appr op (n - 1) -> %s
       let open Bigint in
       let pi_multiples = scale halfpi_multiples Int32.minus_one in
       let adjustment = multiply pi (of_bigint pi_multiples) in
+      (* if bit_and pi_multiples big1 <> big0 *)
       if bit_and pi_multiples big1 <> big0
-      then subtract op adjustment |> cos |> negate
-      else subtract op adjustment |> cos
-    else
+      then (* Odd number of pi multiples *)
+        subtract op adjustment |> cos |> negate
+      else (* Even number of pi multiples *)
+        subtract op adjustment |> cos
+    else (
       if Bigint.(abs (get_appr op Int32.minus_one) >= big2)
-      then
-        let cos_half = shift_right op Int32.one |> cos in
-        shift_left (multiply cos_half cos_half) Int32.one |> subtract one
-      else
-        of_cr (PrescaledCosCR op)
+      then (
+        (* cos(2x) = 2 * cos(x)^2 - 1 *)
+        let cos_half = cos (shift_right op Int32.one) in
+        subtract (shift_left (multiply cos_half cos_half) Int32.one) one
+      )
+      else of_cr (PrescaledCosCR op)
+    )
 
-  let sin x = subtract half_pi x |> cos
+  let sin x = cos (subtract half_pi x)
 
   let rec asin : t -> t
     = fun op ->
+      (* Caml.Printf.printf "asin %s\n" (debug_to_string op); *)
       let rough_appr = get_appr op I32.minus_ten in
       if Bigint.(rough_appr > big750)
       then
+        (* asin(x) = acos(sqrt(1 - x^2)) *)
         subtract one (multiply op op) |> sqrt |> acos
       else
         if Bigint.(rough_appr < bigm750)
-        then op |> negate |> asin |> negate
+        then
+          (* asin(-x) = -asin(x) <=> asin(x) = -asin(-x) *)
+          op |> negate |> asin |> negate
         else of_cr (PrescaledAsinCR op)
 
-  and acos x = subtract half_pi x |> asin
+  and acos x = subtract half_pi (asin x) (* asin (subtract half_pi x) *)
 
   let low_ln_limit = big8
   let high_ln_limit = Bigint.of_int Int.(16 + 8)
@@ -805,7 +925,7 @@ get_appr op (n - 1) -> %s
 
   (* end more constructors *)
 
-  let to_string : ?digits:int32 -> ?radix:int32 -> t -> string
+  let eval_to_string : ?digits:int32 -> ?radix:int32 -> t -> string
     = fun ?digits:(digits=I32.ten) ?radix:(radix=I32.ten) op ->
       let scaled_cr =
         if radix = I32.sixteen
@@ -815,31 +935,11 @@ get_appr op (n - 1) -> %s
           (* Caml.Printf.printf "scale_factor: %s\n" (Bigint.to_string scale_factor); *)
           multiply op (of_cr (IntCR scale_factor))
       in
-      (* Caml.Printf.printf "scaled_cr: %s\n" (debug_to_string scaled_cr); *)
+      (* Caml.Printf.printf "scaled_cr: %s\n" (to_string scaled_cr); *)
       let scaled_int = get_appr scaled_cr Int32.zero in
       (* Caml.Printf.printf "scaled_int: %s\n" (Bigint.to_string scaled_int); *)
       (* TODO: radix *)
-      let scaled_string : string = Bigint.(scaled_int |> abs |> to_string)
-      in
-      let result =
-        if digits = Int32.zero
-        then scaled_string
-        else
-          let len = scaled_string |> String.length |> Int32.of_int_exn in
-          let len, scaled_string = if len <= digits
-            then
-              let z = String.make (Int.of_int32_exn (digits + Int32.one - len)) '0' in
-              digits + Int32.one, z ^ scaled_string
-            else len, scaled_string
-          in
-          let splitting_pos = Int.of_int32_exn (len - digits) in
-          let whole = scaled_string |> String.subo ~pos:0 ~len:splitting_pos in
-          let fraction = scaled_string |> String.subo ~pos:splitting_pos in
-          whole ^ "." ^ fraction
-      in
-        if big_signum scaled_int < Int32.zero
-        then "-" ^ result
-        else result
+      string_of_scaled_int scaled_int digits
 
   (* to_string_float_rep *)
 
@@ -857,7 +957,7 @@ let%test_module "Calculator" = (module struct
   let half = CR.(divide one two)
 
   let print ?digits:(digits=I32.ten) cr
-    = Caml.Printf.printf "%s\n" (CR.to_string cr ~digits)
+    = Caml.Printf.printf "%s\n" (CR.eval_to_string cr ~digits)
 
   let%expect_test _ =
     print zero;
@@ -920,14 +1020,9 @@ let%test_module "Calculator" = (module struct
     [%expect{| 2.0000000000 |}]
 
   let%expect_test _ =
-    print CR.(sin half_pi);
-    [%expect{| 1.0000000000 |}]
-
-  let%expect_test _ =
     print CR.half_pi;
     [%expect{| 1.5707963268 |}]
 
-    (*
   let%expect_test _ =
     print CR.(asin one);
     [%expect{| 1.5707963268 |}]
@@ -935,15 +1030,40 @@ let%test_module "Calculator" = (module struct
   let%expect_test _ =
     print CR.(asin (negate one));
     [%expect{| -1.5707963268 |}]
-    *)
 
   let%expect_test _ =
     print CR.(asin zero);
     [%expect{| 0.0000000000 |}]
 
   let%expect_test _ =
+    print (CR.sin zero);
+    [%expect{| 0.0000000000 |}]
+
+  let%expect_test _ =
+    print CR.(sin half_pi);
+    print CR.(sin pi);
     print (CR.sin half);
-    [%expect{| 0.4794255386 |}]
+    [%expect{|
+      1.0000000000
+      0.0000000000
+      0.4794255386
+    |}]
+
+  let%expect_test _ =
+    print CR.(of_float 0.684413);
+    print CR.(of_float 0.684414);
+    [%expect{|
+      0.6844130000
+      0.6844140000 |}]
+
+  let%expect_test _ =
+    print (CR.sin one);
+    print (CR.sin two);
+    print (CR.sin three);
+    [%expect{|
+      0.8414709848
+      0.9092974268
+      0.1411200081 |}]
 
   let%expect_test _ =
     print CR.(asin (sin half));
@@ -951,13 +1071,11 @@ let%test_module "Calculator" = (module struct
 
   let%expect_test _ =
     print CR.(cos one);
-    [%expect{| 0.5403023058 |}]
-
-  let%expect_test _ =
     print CR.(cos three);
-    [%expect{| -0.9899924966 |}]
+    [%expect{|
+      0.5403023059
+      -0.9899924966 |}]
 
-    (*
   let%expect_test _ =
     print CR.(asin (sin one));
     [%expect{| 1.0000000000 |}]
@@ -965,7 +1083,6 @@ let%test_module "Calculator" = (module struct
   let%expect_test _ =
     print CR.(acos (cos one));
     [%expect{| 1.0000000000 |}]
-*)
 
     (*
   let%expect_test _ =
@@ -986,6 +1103,7 @@ let%test_module "Calculator" = (module struct
     *)
 
   let sqrt13 = CR.(of_int 13 |> sqrt)
+
   let%expect_test _ =
     print CR.(multiply sqrt13 sqrt13);
     [%expect{| 13.0000000000 |}]
