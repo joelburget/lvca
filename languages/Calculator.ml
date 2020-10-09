@@ -266,6 +266,8 @@ module CR = struct
 
   let sqrt x = of_cr (SqrtCR x)
 
+  let atan_reciprocal n = of_cr (IntegralAtanCR n);;
+
   let bound_log2 : int32 -> int32
     = fun n ->
       let x = Float.of_int (Int.of_int32_exn (Int32.abs n + Int32.one)) in
@@ -312,11 +314,6 @@ module CR = struct
       let adj_k = big_add (shift k (n + Int32.one)) big1 in
       Bigint.shift_right adj_k 1
   ;;
-
-  (* TODO:
-   * simple_ln
-   * atan_reciprocal
-   *)
 
   (*
   let compare x y ~relative_tolerance ~absolute_tolerance
