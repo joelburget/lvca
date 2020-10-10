@@ -420,10 +420,6 @@ module CR = struct
 
         let prec2 = Int32.(p - msd_op1 - I32.three) in
         let appr2 = get_appr op2 prec2 in
-        (*
-        Caml.Printf.printf "p: %li, msd_op1: %li, prec2: %li, appr2: %s\n"
-          p msd_op1 prec2 (appr2 |> Bigint.to_string);
-          *)
         if Bigint.(appr2 = zero) then raise EarlyReturn;
         let msd_op2 = known_msd op2 in
         let prec1 = Int32.(p - msd_op2 - I32.three) in
@@ -432,7 +428,6 @@ module CR = struct
         scale Bigint.(appr1 * appr2) scale_digits
       with
         EarlyReturn -> big0
-        (* Caml.Printf.printf "early return -> %s\n" (Bigint.to_string i); *)
 
   and approximate_inv_cr op p =
     let open Int32 in
@@ -492,17 +487,11 @@ module CR = struct
           + I32.ten)
       in
       let eval_prec = Int32.(p - extra_eval_prec) in
-      (* Caml.Printf.printf "extra_eval_prec: %li, eval_prec: %li\n" extra_eval_prec eval_prec; *)
       let a = ref (big_shift_left big1 (neg eval_prec)) in
       let b = ref (get_appr sqrt_half eval_prec) in
       let t = ref (big_shift_left big1 Int32.(neg eval_prec - I32.two)) in
       let n = ref 0 in
 
-      (*
-      Caml.Printf.printf "!a: %s, !b: %s\n" (Bigint.to_string !a) (Bigint.to_string !b);
-      Caml.Printf.printf "!a - !b - pi_tolerance: %s\n"
-        Bigint.(!a - !b - pi_tolerance |> to_string);
-        *)
       while Bigint.(!a - !b - pi_tolerance > big0) do
         let next_a = Bigint.(shift_right (!a + !b) 1) in
         let a_diff = Bigint.(!a - next_a) in
@@ -511,10 +500,6 @@ module CR = struct
         in
         let b_prod_as_cr = shift_right (of_bigint b_prod) (neg eval_prec) in
         let next_b =
-          (*
-          Caml.Printf.printf "Queue.length pi_b_prec: %i, !n + 1: %i\n"
-            (Queue.length pi_b_prec) Int.(!n + 1);
-            *)
           if Int.(Queue.length pi_b_prec = !n + 1)
           then (
             (* Add an n+1st slot *)
@@ -546,12 +531,6 @@ module CR = struct
           Bigint.(
             !t - (shift_left_allow_neg (a_diff * a_diff) Int.(!n + of_int32_exn eval_prec)))
         in
-        (*
-        Caml.Printf.printf {|next_a: %s
-next_b: %s
-next_t: %s
-|} (Bigint.to_string next_a) (Bigint.to_string next_b) (Bigint.to_string next_t);
-*)
         a := next_a;
         b := next_b;
         t := next_t;
@@ -716,12 +695,6 @@ next_t: %s
     check_prec precision;
     if appr_valid && precision >= min_prec
     then (
-      (*
-      Caml.Printf.printf {|get_appr returning early (appr_valid).
-max_appr: %s
-min_prec - precision: %li
-|} (max_appr |> Bigint.to_string) (min_prec - precision);
-*)
       scale max_appr Int32.(min_prec - precision)
     )
     else
@@ -745,16 +718,6 @@ min_prec - precision: %li
         then op.base.max_appr |> numbits
         else op.base.max_appr |> Bigint.neg |> numbits
       in
-      (*
-      Caml.Printf.printf "length %s -> %i\n"
-        (Bigint.to_string op.base.max_appr) length;
-      Caml.Printf.printf {|min_prec: %li, length: %i, known_msd -> %li
-|}
-        op.base.min_prec
-        length
-        (op.base.min_prec + Int32.of_int_exn length - one)
-        ;
-        *)
       Int32.(op.base.min_prec + of_int_exn length - one)
 
   (* Most significant digit. Returns [Int32.min_value] if the correct answer [< n].
@@ -769,26 +732,9 @@ min_prec - precision: %li
       then
         let (_ : Bigint.t) = get_appr op Int32.(n - one) in
         let max_appr = op.base.max_appr in (* get new value after get_appr *)
-        (*
-        Caml.Printf.printf {|Bigint.abs max_appr: %s
-Bigint.(abs max_appr <= big1): %b
-get_appr op (n - 1) -> %s
-|}
-          Bigint.(abs max_appr |> to_string)
-          Bigint.(abs max_appr <= big1)
-          (i |> Bigint.to_string)
-        ;
-        *)
         if Bigint.(abs max_appr <= big1)
-        then (
-          (* Caml.Printf.printf "msd: returning Int32.min_value\n"; *)
-          (* msd arbitrarily far to the right *)
-          Int32.min_value
-        )
-        else (
-          (* Caml.Printf.printf "msd: returning known_msd op -> %li\n" (known_msd op); *)
-          known_msd op
-        )
+        then Int32.min_value (* msd arbitrarily far to the right *)
+        else known_msd op
       else known_msd op
 
     and iter_msd op n = iter_prec_msd op n Int32.zero
@@ -928,7 +874,6 @@ get_appr op (n - 1) -> %s
 
   let rec asin : t -> t
     = fun op ->
-      (* Caml.Printf.printf "asin %s\n" (debug_to_string op); *)
       let rough_appr = get_appr op I32.minus_ten in
       if Bigint.(rough_appr > big750)
       then
@@ -995,12 +940,9 @@ get_appr op (n - 1) -> %s
         then shift_left op Int32.(I32.four * digits)
         else
           let scale_factor = Bigint.(pow (of_int32 radix) (of_int32 digits)) in
-          (* Caml.Printf.printf "scale_factor: %s\n" (Bigint.to_string scale_factor); *)
           multiply op (of_cr (IntCR scale_factor))
       in
-      (* Caml.Printf.printf "scaled_cr: %s\n" (to_string scaled_cr); *)
       let scaled_int = get_appr scaled_cr Int32.zero in
-      (* Caml.Printf.printf "scaled_int: %s\n" (Bigint.to_string scaled_int); *)
       (* TODO: radix *)
       string_of_scaled_int scaled_int digits
 
