@@ -609,7 +609,7 @@ next_t: %s
 
   and approximate_prescaled_ln_cr op p =
     let open Int32 in
-    if p >= Int32.one then big0
+    if p >= Int32.zero then big0
     else
       let iterations_needed = neg p in
       let calc_precision = p - bound_log2 (I32.two * iterations_needed) - I32.four in
@@ -694,18 +694,15 @@ next_t: %s
       let calc_precision = p - bound_log2 (I32.two * iterations_needed) - I32.four in
       let op_prec = p - I32.three in
       let op_appr = get_appr op op_prec in
-      let scaled_1 = calc_precision
-        |> neg
-        |> big_shift_left big1
-      in
+      let scaled_1 = big_shift_left big1 (neg calc_precision) in
       let current_term = ref scaled_1 in
       let current_sum = ref scaled_1 in
       let n = ref 0 in
       let max_trunc_error = big_shift_left big1 (p - I32.four - calc_precision) in
       while Bigint.(abs !current_term >= max_trunc_error) do
+        Int.incr n;
         let open Bigint in
-        current_term := scale (!current_term * op_appr) op_prec;
-        current_term := !current_term / Bigint.of_int !n;
+        current_term := scale (!current_term * op_appr) op_prec / Bigint.of_int !n;
         current_sum := !current_sum + !current_term;
       done;
       scale !current_sum Int32.(calc_precision - p)
@@ -847,15 +844,15 @@ get_appr op (n - 1) -> %s
   let min x y = select (subtract x y) x y
   let abs x = select x (negate x) x
 
-  let rec exp x =
-    let low_prec = neg I32.ten in
-    let rough_appr = get_appr x low_prec in
+  let rec exp op =
+    let low_prec = I32.minus_ten in
+    let rough_appr = get_appr op low_prec in
     if Bigint.(rough_appr > big2) || Bigint.(rough_appr < bigm2)
     then
-      let square_root = exp @@ shift_right x Int32.one in
+      let square_root = exp (shift_right op Int32.one) in
       multiply square_root square_root
     else
-      of_cr (PrescaledExpCR x)
+      of_cr (PrescaledExpCR op)
 
   let rec cos : t -> t =
     fun op ->
@@ -1123,6 +1120,14 @@ let%test_module "Calculator" = (module struct
     print CR.(multiply sqrt13 sqrt13);
     [%expect{| 13.0000000000 |}]
 
+  let%expect_test _ =
+    let tmp = CR.(exp (add pi (of_int (-123)))) in
+    print CR.(subtract (ln tmp) pi);
+    let tmp = CR.(exp (of_int (-3))) in
+    print (CR.ln tmp);
+    [%expect{|
+      -123.0000000000
+      -3.0000000000 |}]
 
   let check_appr_eq x y = if Float.(x -. y > 0.000001) then raise
     (AssertionFailure (Printf.sprintf "%f vs %f" x y))
