@@ -29,26 +29,37 @@ module Int32 = struct
   let minus_1080 = of_int_exn (-1080)
 end
 
+module Z = struct
+  include Z
+
+  let (=) = equal
+  let (<) = lt
+  let (>) = gt
+  let (<=) = leq
+  let (>=) = geq
+  let (<>) x y = not (x = y)
+end
+
 module CR = struct
   exception PrecisionOverflowException
 
   let neg, (=), (<>), (>=), (<=), (<), (>) =
     Int32.(neg, (=), (<>), (>=), (<=), (<), (>))
 
-  let big0 = Bigint.of_int 0
-  let big1 = Bigint.of_int 1
-  let bigm1 = Bigint.of_int (-1)
-  let big2 = Bigint.of_int 2
-  let bigm2 = Bigint.of_int (-2)
-  let big3 = Bigint.of_int 3
-  let big4 = Bigint.of_int 4
-  let big8 = Bigint.of_int 8
-  let big10 = Bigint.of_int 10
-  let big750 = Bigint.of_int 750
-  let bigm750 = Bigint.of_int (-750)
+  let big0 = Z.of_int 0
+  let big1 = Z.of_int 1
+  let bigm1 = Z.of_int (-1)
+  let big2 = Z.of_int 2
+  let bigm2 = Z.of_int (-2)
+  let big3 = Z.of_int 3
+  let big4 = Z.of_int 4
+  let big8 = Z.of_int 8
+  let big10 = Z.of_int 10
+  let big750 = Z.of_int 750
+  let bigm750 = Z.of_int (-750)
 
   let string_of_scaled_int scaled_int digits =
-    let scaled_string : string = Bigint.(scaled_int |> abs |> to_string) in
+    let scaled_string : string = Z.(scaled_int |> abs |> to_string) in
     let result =
       if digits = Int32.zero
       then scaled_string
@@ -65,30 +76,30 @@ module CR = struct
         let fraction = scaled_string |> String.subo ~pos:splitting_pos in
         whole ^ "." ^ fraction
     in
-      if Bigint.(scaled_int < zero)
+      if Z.(scaled_int < zero)
       then "-" ^ result
       else result
 
-  let big_shift_left bi i32 = Bigint.shift_left bi (Int.of_int32_exn i32)
+  let big_shift_left bi i32 = Z.shift_left bi (Int.of_int32_exn i32)
 
   let shift_left_allow_neg bi i =
     let open Int in
     if i < 0
-    then Bigint.shift_right bi (neg i)
-    else Bigint.shift_left bi i
+    then Z.shift_right bi (neg i)
+    else Z.shift_left bi i
 
-  let numbits bi = bi |> Bigint.to_zarith_bigint |> Z.numbits
+  let numbits bi = bi |> Z.numbits
 
   let shift k n =
     let n' = Int32.to_int_exn n in
     if n = Int32.zero then k
-    else if n < Int32.zero then Bigint.shift_right k (-n')
+    else if n < Int32.zero then Z.shift_right k (-n')
     else big_shift_left k n
 
   type base =
     { mutable min_prec: int32
     (** The smallest precision value with which the above has been called? *)
-    ; mutable max_appr: Bigint.t
+    ; mutable max_appr: Z.t
     (** The scaled approximation corresponding to min_prec *)
     ; mutable appr_valid: bool
     (** min_prec and max_val are valid *)
@@ -97,14 +108,14 @@ module CR = struct
   let base_to_string { min_prec; max_appr; appr_valid } =
     Printf.sprintf "{ min_prec = %s; max_appr = %s; appr_valid = %b }"
       (Int32.to_string min_prec)
-      (Bigint.to_string max_appr)
+      (Z.to_string max_appr)
       appr_valid
 
   let new_base () = { min_prec = Int32.zero; max_appr = big0; appr_valid = false }
 
   type cr =
     (* | SlowCR of int * int *)
-    | IntCR of Bigint.t
+    | IntCR of Z.t
     | AssumedIntCR of t
     | AddCR of t * t
     | ShiftedCR of t * int32
@@ -133,7 +144,7 @@ module CR = struct
     }
 
   let rec debug_cr_to_string = function
-    | IntCR i -> Printf.sprintf "IntCR %s" (Bigint.to_string i)
+    | IntCR i -> Printf.sprintf "IntCR %s" (Z.to_string i)
     | AssumedIntCR op -> Printf.sprintf "AssumedIntCR (%s)" (debug_to_string op)
     | AddCR (op1, op2)
     -> Printf.sprintf "AddCR (%s, %s)" (debug_to_string op1) (debug_to_string op2)
@@ -192,7 +203,7 @@ module CR = struct
   let rec to_string' prec { cr; _ } = cr_to_string prec cr
 
   and cr_to_string ambient_prec = function
-    | IntCR i -> Bigint.to_string i
+    | IntCR i -> Z.to_string i
     | AssumedIntCR op -> to_string' ambient_prec op
     | AddCR (op1, op2)
     -> let prec' = prec Add in
@@ -233,9 +244,9 @@ module CR = struct
 
   let to_string = to_string' 0
 
-  let big_signum : Bigint.t -> int32
+  let big_signum : Z.t -> int32
     = fun i ->
-      let open Bigint in
+      let open Z in
       if i = big0 then Int32.zero else if i > big0 then Int32.one else Int32.minus_one
 
   (* Check that precision is at least a factor of 8 from overflowing the int32 used to
@@ -287,11 +298,11 @@ module CR = struct
       let x = Float.of_int (Int.of_int32_exn Int32.(abs n + one)) in
       Int32.of_float (Float.round_up (Float.log x /. Float.log 2.0))
 
-  let of_bigint : Bigint.t -> t
+  let of_bigint : Z.t -> t
     = fun x -> of_cr (IntCR x)
 
   let of_int : int -> t
-    = fun x -> x |> Bigint.of_int |> of_bigint
+    = fun x -> x |> Z.of_int |> of_bigint
 
   let of_int32 : int32 -> t
     = fun x -> x |> Int32.to_int_exn |> of_int
@@ -324,15 +335,15 @@ module CR = struct
     then big_shift_left k n
     else
       (* TODO: Seems like an odd way to do this if I'm understanding *)
-      let big_add = Bigint.(+) in
+      let big_add = Z.(+) in
       let adj_k = big_add (shift k Int32.(n + one)) big1 in
-      Bigint.shift_right adj_k 1
+      Z.shift_right adj_k 1
   ;;
 
   let pi_b_prec : int32 Queue.t
     = Queue.of_list [Int32.zero] (* Initial entry unused *)
 
-  let pi_b_val : Bigint.t Queue.t
+  let pi_b_val : Z.t Queue.t
     = Queue.of_list [big0] (* Initial entry unused *)
 
   let rec signum_a : t -> int32 -> int32
@@ -357,7 +368,7 @@ module CR = struct
       if Int32.(result <> zero) then result else signum' op Int32.(a * Int32.two)
 
   (* Give a scaled approximation accurate to 2**n *)
-  and approximate : t -> int32 -> Bigint.t
+  and approximate : t -> int32 -> Z.t
     = fun ({ cr; _ } as t) p ->
       match cr with
       | IntCR value -> scale value (neg p)
@@ -366,18 +377,18 @@ module CR = struct
         then get_appr value p
         else scale (get_appr value Int32.zero) (neg p)
       | AddCR (op1, op2) ->
-        let (+) = Bigint.(+) in
+        let (+) = Z.(+) in
         scale (get_appr op1 Int32.(p - two) + get_appr op2 Int32.(p - two)) Int32.(neg two)
       | ShiftedCR (op, count) -> get_appr op Int32.(p - count)
-      | NegCR op -> Bigint.neg (get_appr op p)
+      | NegCR op -> Z.neg (get_appr op p)
       | SelectCR selector ->
         if (selector.selector_sign < Int32.zero) then get_appr selector.op1 p
         else if (selector.selector_sign > Int32.zero) then get_appr selector.op2 p
         else
           let op1_appr = get_appr selector.op1 Int32.(p - one) in
           let op2_appr = get_appr selector.op2 Int32.(p - one) in
-          let diff = Bigint.(abs (op1_appr - op2_appr)) in
-          if Bigint.(diff <= big1) then scale op1_appr Int32.minus_one
+          let diff = Z.(abs (op1_appr - op2_appr)) in
+          if Z.(diff <= big1) then scale op1_appr Int32.minus_one
           else if signum selector.selector < Int32.zero
           then (
             selector.selector_sign <- Int32.minus_one;
@@ -397,7 +408,7 @@ module CR = struct
       | SqrtCR op -> approximate_sqrt_cr t op p
       | GlPiCR -> approximate_pi_cr p
 
-  and approximate_mult_cr : t -> t -> int32 -> Bigint.t
+  and approximate_mult_cr : t -> t -> int32 -> Z.t
     = fun op1 op2 p ->
       try
         let half_prec = Int32.(shift_right p 1 - one) in
@@ -420,12 +431,12 @@ module CR = struct
 
         let prec2 = Int32.(p - msd_op1 - Int32.three) in
         let appr2 = get_appr op2 prec2 in
-        if Bigint.(appr2 = zero) then raise EarlyReturn;
+        if Z.(appr2 = zero) then raise EarlyReturn;
         let msd_op2 = known_msd op2 in
         let prec1 = Int32.(p - msd_op2 - Int32.three) in
         let appr1 = get_appr op1 prec1 in
         let scale_digits = Int32.(prec1 + prec2 - p) in
-        scale Bigint.(appr1 * appr2) scale_digits
+        scale Z.(appr1 * appr2) scale_digits
       with
         EarlyReturn -> big0
 
@@ -438,7 +449,7 @@ module CR = struct
     let log_scale_factor = neg p - prec_needed in
     if log_scale_factor < Int32.zero then big0
     else
-      let open Bigint in
+      let open Z in
       let dividend = big_shift_left big1 log_scale_factor in
       let scaled_divisor = get_appr op prec_needed in
       let abs_scaled_divisor = abs scaled_divisor in
@@ -461,16 +472,16 @@ module CR = struct
       let current_sum = ref start_term_val in
       let current_factor = ref start_term_val in
       let max_trunc_error = big_shift_left big1 (p - four - calc_precision) in
-      while Bigint.(abs !current_term >= max_trunc_error) do
+      while Z.(abs !current_term >= max_trunc_error) do
         exp := Int.(!exp + 2);
-        let open Bigint in
-        current_factor := !current_factor * Bigint.of_int Int.(!exp - 2);
+        let open Z in
+        current_factor := !current_factor * of_int Int.(!exp - 2);
         current_factor := scale (!current_factor * op_appr) Int32.(op_prec + Int32.two);
         current_factor := !current_factor * op_appr;
-        let divisor = Bigint.of_int Int.(!exp - 1) in
+        let divisor = of_int Int.(!exp - 1) in
         current_factor := !current_factor / divisor;
         current_factor := scale !current_factor Int32.(op_prec - Int32.two);
-        current_term := !current_factor / Bigint.of_int !exp;
+        current_term := !current_factor / of_int !exp;
         current_sum := !current_sum + !current_term;
       done;
       scale !current_sum Int32.(calc_precision - p)
@@ -491,10 +502,10 @@ module CR = struct
       let t = ref (big_shift_left big1 Int32.(neg eval_prec - two)) in
       let n = ref 0 in
 
-      while Bigint.(!a - !b - pi_tolerance > big0) do
-        let next_a = Bigint.(shift_right (!a + !b) 1) in
-        let a_diff = Bigint.(!a - next_a) in
-        let b_prod = Bigint.(shift_right (!a * !b)
+      while Z.(!a - !b - pi_tolerance > big0) do
+        let next_a = Z.(shift_right (!a + !b) 1) in
+        let a_diff = Z.(!a - next_a) in
+        let b_prod = Z.(shift_right (!a * !b)
           (eval_prec |> Int32.neg |> Int.of_int32_exn))
         in
         let b_prod_as_cr = shift_right (of_bigint b_prod) (neg eval_prec) in
@@ -527,7 +538,7 @@ module CR = struct
         in
         let next_t =
           (* shift distance is usually negative *)
-          Bigint.(
+          Z.(
             !t - (shift_left_allow_neg (a_diff * a_diff) Int.(!n + of_int32_exn eval_prec)))
         in
         a := next_a;
@@ -536,8 +547,8 @@ module CR = struct
         Int.incr n;
       done;
 
-      let sum = Bigint.(!a + !b) in
-      let result = Bigint.(shift_right (sum * sum / !t) 2) in
+      let sum = Z.(!a + !b) in
+      let result = Z.(shift_right (sum * sum / !t) 2) in
       scale result (neg extra_eval_prec)
 
   and approximate_sqrt_cr t op p =
@@ -558,7 +569,7 @@ module CR = struct
         let prod_prec = two * appr_prec in
         let op_appr = get_appr op prod_prec in
         let last_appr = get_appr t appr_prec in
-        let open Bigint in
+        let open Z in
         let prod_prec_scaled_numerator = last_appr * last_appr + op_appr in
         let scaled_numerator = scale prod_prec_scaled_numerator Int32.(appr_prec - p) in
         let shifted_result = scaled_numerator / last_appr in
@@ -567,10 +578,10 @@ module CR = struct
         let op_prec = (msd - fp_op_prec) land lnot Int32.one in
         let working_prec = op_prec - fp_op_prec in
         let scaled_bi_appr = big_shift_left (get_appr op op_prec) fp_op_prec in
-        let scaled_appr = Bigint.to_float scaled_bi_appr in
+        let scaled_appr = Z.to_float scaled_bi_appr in
         if Float.(scaled_appr < 0.0) then raise (ArithmeticError "sqrt(negative)");
         let scaled_fp_sqrt = Float.sqrt scaled_appr in
-        let scaled_sqrt = Bigint.of_float scaled_fp_sqrt in
+        let scaled_sqrt = Z.of_float scaled_fp_sqrt in
         let shift_count = working_prec / two - p in
         shift scaled_sqrt shift_count
 
@@ -580,7 +591,7 @@ module CR = struct
     else
       let iterations_needed = params.iterations_needed p in
       let calc_precision = params.calc_precision iterations_needed in
-      while Bigint.(abs !current_term >= max_trunc_error) do
+      while Z.(abs !current_term >= max_trunc_error) do
         current_term := loop n;
         current_sum := !current_sum + !current_term
       done;
@@ -602,12 +613,12 @@ module CR = struct
       let n = ref 1 in
       let current_sign = ref 1 in
       let max_trunc_error = big_shift_left big1 (p - four - calc_precision) in
-      while Bigint.(abs !current_term >= max_trunc_error) do
-        let open Bigint in
+      while Z.(abs !current_term >= max_trunc_error) do
+        let open Z in
         Int.incr n;
         current_sign := Int.neg !current_sign;
         x_nth := scale (!x_nth * op_appr) op_prec;
-        current_term := !x_nth / Bigint.of_int Int.(!n * !current_sign);
+        current_term := !x_nth / of_int Int.(!n * !current_sign);
         current_sum := !current_sum + !current_term;
       done;
       scale !current_sum Int32.(calc_precision - p)
@@ -620,21 +631,21 @@ module CR = struct
       let calc_precision = p - bound_log2 (two * iterations_needed) - two in
       let scaled_1 = calc_precision |> neg |> big_shift_left big1
       in
-      let big_op = Bigint.of_int32_exn op in
-      let big_op_squared = Bigint.of_int32_exn (op * op) in
-      let op_inverse = Bigint.(scaled_1 / big_op) in
+      let big_op = Z.of_int32 op in
+      let big_op_squared = Z.of_int32 (op * op) in
+      let op_inverse = Z.(scaled_1 / big_op) in
       let current_power = ref op_inverse in
       let current_term = ref op_inverse in
       let current_sum = ref op_inverse in
       let current_sign = ref 1 in
       let n = ref 1 in
       let max_trunc_error = big_shift_left big1 (p - two - calc_precision) in
-      while Bigint.(abs !current_term >= max_trunc_error) do
+      while Z.(abs !current_term >= max_trunc_error) do
         n := Int.(!n + 2);
-        let open Bigint in
+        let open Z in
         current_power := !current_power / big_op_squared;
         current_sign := Int.neg !current_sign;
-        current_term := !current_power / Bigint.of_int Int.(!current_sign * !n);
+        current_term := !current_power / of_int Int.(!current_sign * !n);
         current_sum := !current_sum + !current_term;
       done;
       scale !current_sum Int32.(calc_precision - p)
@@ -652,15 +663,15 @@ module CR = struct
       let current_sum = ref scaled_1 in
       let n = ref 0 in
       let max_trunc_error = big_shift_left big1 (p - four - calc_precision) in
-      while Bigint.(abs !current_term >= max_trunc_error) do
+      while Z.(abs !current_term >= max_trunc_error) do
         n := Int.(!n + 2);
-        let open Bigint in
+        let open Z in
         (* current_term := - current_term * op * op / n * (n - 1) *)
         let numerator = scale
           ((scale (!current_term * op_appr) op_prec) * op_appr)
           op_prec
         in
-        let divisor = Bigint.(of_int (Int.neg !n) * of_int Int.(!n - 1)) in
+        let divisor = Z.(of_int (Int.neg !n) * of_int Int.(!n - 1)) in
         current_term := numerator / divisor;
         current_sum := !current_sum + !current_term;
       done;
@@ -679,16 +690,16 @@ module CR = struct
       let current_sum = ref scaled_1 in
       let n = ref 0 in
       let max_trunc_error = big_shift_left big1 (p - four - calc_precision) in
-      while Bigint.(abs !current_term >= max_trunc_error) do
+      while Z.(abs !current_term >= max_trunc_error) do
         Int.incr n;
-        let open Bigint in
-        current_term := scale (!current_term * op_appr) op_prec / Bigint.of_int !n;
+        let open Z in
+        current_term := scale (!current_term * op_appr) op_prec / of_int !n;
         current_sum := !current_sum + !current_term;
       done;
       scale !current_sum Int32.(calc_precision - p)
 
   (* Return [value / 2 ** prec] rounded to an integer. *)
-  and get_appr : t -> int32 -> Bigint.t
+  and get_appr : t -> int32 -> Z.t
     = fun ({ base = { min_prec; max_appr; appr_valid }; _ } as op) precision ->
     (* debug_printf "precision: %li\n" precision; *)
     check_prec precision;
@@ -713,9 +724,9 @@ module CR = struct
   and known_msd : t -> int32
     = fun op ->
       let length =
-        if Bigint.(op.base.max_appr >= zero)
+        if Z.(op.base.max_appr >= zero)
         then op.base.max_appr |> numbits
-        else op.base.max_appr |> Bigint.neg |> numbits
+        else op.base.max_appr |> Z.neg |> numbits
       in
       Int32.(op.base.min_prec + of_int_exn length - one)
 
@@ -727,11 +738,11 @@ module CR = struct
       let { max_appr; appr_valid; _ } = op.base in
       if not appr_valid ||
           (* in range [-1, 1] *)
-          Bigint.(max_appr >= bigm1 && max_appr <= big1)
+          Z.(max_appr >= bigm1 && max_appr <= big1)
       then
-        let (_ : Bigint.t) = get_appr op Int32.(n - one) in
+        let (_ : Z.t) = get_appr op Int32.(n - one) in
         let max_appr = op.base.max_appr in (* get new value after get_appr *)
-        if Bigint.(abs max_appr <= big1)
+        if Z.(abs max_appr <= big1)
         then Int32.min_value (* msd arbitrarily far to the right *)
         else known_msd op
       else known_msd op
@@ -753,7 +764,7 @@ module CR = struct
     let needed_prec = Int32.(absolute_tolerance - one) in
     let x_appr = get_appr x needed_prec in
     let y_appr = get_appr y needed_prec in
-    let open Bigint in
+    let open Z in
     if x_appr > y_appr + one
     then 1
     else
@@ -793,7 +804,7 @@ module CR = struct
   ;;
 
   let bigint_value op = get_appr op Int32.zero
-  let int_value op = op |> bigint_value |> Bigint.to_int
+  let int_value op = op |> bigint_value |> Z.to_int
 
   let float_value op =
     let op_msd = iter_msd op Int32.minus_1080 in
@@ -801,7 +812,7 @@ module CR = struct
     else
       let needed_prec = Int32.(op_msd - sixty) in
       let needed_prec' = Int32.to_int_exn needed_prec in
-      let scaled_int = get_appr op needed_prec |> Bigint.to_float in
+      let scaled_int = get_appr op needed_prec |> Z.to_float in
       let may_underflow = needed_prec < Int32.minus_1000 in
       let negative = Float.ieee_negative scaled_int in
       let mantissa = Float.ieee_mantissa scaled_int in
@@ -837,7 +848,7 @@ module CR = struct
   let rec exp op =
     let low_prec = Int32.minus_ten in
     let rough_appr = get_appr op low_prec in
-    if Bigint.(rough_appr > big2) || Bigint.(rough_appr < bigm2)
+    if Z.(rough_appr > big2) || Z.(rough_appr < bigm2)
     then
       let square_root = exp (shift_right op Int32.one) in
       multiply square_root square_root
@@ -847,20 +858,20 @@ module CR = struct
   let rec cos : t -> t =
     fun op ->
     let halfpi_multiples = get_appr (divide op pi) Int32.minus_one in
-    let abs_halfpi_multiples = Bigint.abs halfpi_multiples in
-    if Bigint.(abs_halfpi_multiples >= big2)
+    let abs_halfpi_multiples = Z.abs halfpi_multiples in
+    if Z.(abs_halfpi_multiples >= big2)
     then
-      let open Bigint in
+      let open Z in
       let pi_multiples = scale halfpi_multiples Int32.minus_one in
       let adjustment = multiply pi (of_bigint pi_multiples) in
       (* if bit_and pi_multiples big1 <> big0 *)
-      if bit_and pi_multiples big1 <> big0
+      if Z.logand pi_multiples big1 <> big0
       then (* Odd number of pi multiples *)
         subtract op adjustment |> cos |> negate
       else (* Even number of pi multiples *)
         subtract op adjustment |> cos
     else (
-      if Bigint.(abs (get_appr op Int32.minus_one) >= big2)
+      if Z.(abs (get_appr op Int32.minus_one) >= big2)
       then (
         (* cos(2x) = 2 * cos(x)^2 - 1 *)
         let cos_half = cos (shift_right op Int32.one) in
@@ -874,12 +885,12 @@ module CR = struct
   let rec asin : t -> t
     = fun op ->
       let rough_appr = get_appr op Int32.minus_ten in
-      if Bigint.(rough_appr > big750)
+      if Z.(rough_appr > big750)
       then
         (* asin(x) = acos(sqrt(1 - x^2)) *)
         subtract one (multiply op op) |> sqrt |> acos
       else
-        if Bigint.(rough_appr < bigm750)
+        if Z.(rough_appr < bigm750)
         then
           (* asin(-x) = -asin(x) <=> asin(x) = -asin(-x) *)
           op |> negate |> asin |> negate
@@ -896,8 +907,8 @@ module CR = struct
     asin sin_atan
 
   let low_ln_limit = big8
-  let high_ln_limit = Bigint.of_int Int.(16 + 8)
-  let scaled_4 = Bigint.of_int Int.(4 * 16)
+  let high_ln_limit = Z.of_int Int.(16 + 8)
+  let scaled_4 = Z.of_int Int.(4 * 16)
 
   let simple_ln op = of_cr (PrescaledLnCR (subtract op one))
 
@@ -913,13 +924,13 @@ module CR = struct
     = fun op ->
       let low_prec = Int32.minus_four in
       let rough_appr = get_appr op low_prec in
-      if Bigint.(rough_appr < big0) then raise (ArithmeticError "ln(negative)");
-      if Bigint.(rough_appr <= low_ln_limit)
+      if Z.(rough_appr < big0) then raise (ArithmeticError "ln(negative)");
+      if Z.(rough_appr <= low_ln_limit)
       then op |> inverse |> ln |> negate
       else
-        if Bigint.(rough_appr >= high_ln_limit)
+        if Z.(rough_appr >= high_ln_limit)
         then
-          if Bigint.(rough_appr <= scaled_4)
+          if Z.(rough_appr <= scaled_4)
           then
             let quarter = op |> sqrt |> sqrt |> ln in
             shift_left quarter Int32.two
@@ -938,7 +949,7 @@ module CR = struct
         if radix = Int32.sixteen
         then shift_left op Int32.(four * digits)
         else
-          let scale_factor = Bigint.(pow (of_int32 radix) (of_int32 digits)) in
+          let scale_factor = Z.pow (Z.of_int32 radix) (Int.of_int32_exn digits) in
           multiply op (of_cr (IntCR scale_factor))
       in
       let scaled_int = get_appr scaled_cr Int32.zero in
@@ -947,7 +958,7 @@ module CR = struct
 
   (* to_string_float_rep *)
 
-  let bigint_value : t -> Bigint.t
+  let bigint_value : t -> Z.t
     = fun op -> get_appr op Int32.zero
 end
 
@@ -965,8 +976,8 @@ let%test_module "Calculator" = (module struct
   let thirteen = CR.of_int 13
   let sqrt13 = CR.sqrt thirteen
   let e = CR.exp one
-  let thousand = Bigint.of_int 1000
-  let million = Bigint.of_int 1000000
+  let thousand = Z.of_int 1000
+  let million = Z.of_int 1000000
 
   let print ?digits:(digits=Int32.ten) cr
     = Caml.Printf.printf "%s\n" (CR.eval_to_string cr ~digits)
@@ -1139,7 +1150,7 @@ let%test_module "Calculator" = (module struct
   let check_eq x y = CR.equal_within x y ~absolute_tolerance:(Int32.of_int_exn (-50))
 
   let%test _ =
-    let huge = CR.of_bigint Bigint.(million * million * thousand) in
+    let huge = CR.of_bigint Z.(million * million * thousand) in
     check_eq CR.(tan (atan huge)) huge
 
   let%test _ = List.for_all ~f:Fn.id

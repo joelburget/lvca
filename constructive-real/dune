@@ -1,0 +1,6 @@
+(library
+ (name constructive_real)
+ (inline_tests)
+ (libraries base zarith)
+ (preprocess
+  (pps ppx_jane)))
