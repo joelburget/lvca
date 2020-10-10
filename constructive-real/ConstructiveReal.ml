@@ -227,7 +227,7 @@ let to_string = to_string' 0
 
 let big_signum : Z.t -> int32
   = fun i ->
-    let open Z in
+    let (=), (>) = Z.((=), (>)) in
     if i = big0 then Int32.zero else if i > big0 then Int32.one else Int32.minus_one
 
 (* Check that precision is at least a factor of 8 from overflowing the int32 used to
