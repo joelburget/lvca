@@ -16,6 +16,7 @@ module I32 = struct
   let minus_ten = of_int_exn (-10)
   let sixteen = of_int_exn 16
   let twenty = of_int_exn 20
+  let minus_twenty = of_int_exn (-20)
   let thirty = of_int_exn 30
   let fourty_eight = of_int_exn 48
   let fifty = of_int_exn 50
@@ -327,11 +328,6 @@ module CR = struct
       let adj_k = big_add (shift k Int32.(n + one)) big1 in
       Bigint.shift_right adj_k 1
   ;;
-
-  (*
-  let compare x y ~relative_tolerance ~absolute_tolerance
-    = failwith "TOOD"
-    *)
 
   let pi_b_prec : int32 Queue.t
     = Queue.of_list [Int32.zero] (* Initial entry unused *)
@@ -808,6 +804,49 @@ get_appr op (n - 1) -> %s
         )
   ;;
 
+  let compare_absolute x y ~absolute_tolerance =
+    let needed_prec = Int32.(absolute_tolerance - one) in
+    let x_appr = get_appr x needed_prec in
+    let y_appr = get_appr y needed_prec in
+    let open Bigint in
+    if x_appr > y_appr + one
+    then 1
+    else
+      if x_appr < y_appr - one
+      then -1
+      else 0
+  ;;
+
+  let equal_within x y ~absolute_tolerance
+    = Int.(compare_absolute x y ~absolute_tolerance = 0)
+
+  let compare_known_unequal x y =
+    let rec go x y ~absolute_tolerance =
+      check_prec absolute_tolerance;
+      let result = compare_absolute x y ~absolute_tolerance in
+      if Int.(result <> 0)
+      then result
+      else go x y ~absolute_tolerance
+    in
+    go ~absolute_tolerance:I32.minus_twenty x y
+  ;;
+
+  let compare x y ~relative_tolerance ~absolute_tolerance
+    = let x_msd = iter_msd x absolute_tolerance in
+      let y_msd = iter_msd y
+        (if x_msd > absolute_tolerance then x_msd else absolute_tolerance)
+      in
+      let max_msd = if y_msd > x_msd then y_msd else x_msd in
+      if max_msd = Int32.min_value
+      then 0
+      else (
+        check_prec relative_tolerance;
+        let rel = Int32.(max_msd + relative_tolerance) in
+        let abs_prec = if rel > absolute_tolerance then rel else absolute_tolerance in
+        compare_absolute x y ~absolute_tolerance:abs_prec
+      )
+  ;;
+
   let bigint_value op = get_appr op Int32.zero
   let int_value op = op |> bigint_value |> Bigint.to_int
 
@@ -973,6 +1012,8 @@ let%test_module "Calculator" = (module struct
   let four = CR.add two two
   let i38923 = CR.of_int 38923
   let half = CR.(divide one two)
+  let thirteen = CR.of_int 13
+  let sqrt_thirteen = CR.sqrt thirteen
 
   let print ?digits:(digits=I32.ten) cr
     = Caml.Printf.printf "%s\n" (CR.eval_to_string cr ~digits)
@@ -1153,5 +1194,35 @@ let%test_module "Calculator" = (module struct
       if Float.(n > 0.0) then
         check_appr_eq (Float.log n) CR.(of_float n |> ln |> float_value);
     )
+
+  let check_eq x y = CR.equal_within x y ~absolute_tolerance:(Int32.of_int_exn (-50))
+
+  let%test _ = List.for_all ~f:Fn.id
+    [ check_eq (CR.shift_left one Int32.one) two
+    ; check_eq (CR.shift_right two Int32.one) one
+    ; check_eq CR.(one + one) two
+    ; check_eq CR.(max two one) two
+    ; check_eq CR.(min two one) one
+    ; check_eq CR.(abs one) one
+    ; check_eq CR.(abs (negate one)) one
+    ; check_eq CR.(of_int 4) four
+    ; check_eq CR.(negate one + two) one
+    ; check_eq CR.(two * two) four
+    ; check_eq CR.(shift_left (one / four) I32.four) four
+    ; check_eq CR.(two / negate one) CR.(negate two)
+    ; check_eq CR.(one / thirteen * thirteen) one
+    ; check_eq CR.(exp zero) one
+    (* ; check_eq CR.(ln e) one *)
+    ; check_eq CR.(sin half_pi) one
+    ; check_eq CR.(asin one) CR.half_pi
+    ; check_eq CR.(asin (negate one)) CR.(negate half_pi)
+    ; check_eq CR.(asin zero) zero
+    ; check_eq CR.(asin (sin half)) half
+    ; check_eq CR.(asin (sin one)) one
+    ; check_eq CR.(acos (cos one)) one
+    (* ; check_eq CR.(atan (tan one)) one *)
+    (* ; check_eq CR.(atan (tan minus_one)) minus_one *)
+    ; check_eq CR.(sqrt_thirteen * sqrt_thirteen) thirteen
+    ]
 
 end);;
