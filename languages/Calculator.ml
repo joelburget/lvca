@@ -9,6 +9,7 @@ module I32 = struct
   let two = of_int_exn 2
   let three = of_int_exn 3
   let four = of_int_exn 4
+  let minus_four = of_int_exn (-4)
   let five = of_int_exn 5
   let six = of_int_exn 6
   let ten = of_int_exn 10
@@ -914,7 +915,7 @@ get_appr op (n - 1) -> %s
 
   let rec ln : t -> t
     = fun op ->
-      let low_prec = Int32.neg I32.four in
+      let low_prec = I32.minus_four in
       let rough_appr = get_appr op low_prec in
       if Bigint.(rough_appr < big0) then raise (ArithmeticError "ln(negative)");
       if Bigint.(rough_appr <= low_ln_limit)
