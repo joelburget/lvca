@@ -76,11 +76,11 @@ let mk_list : pos:OptRange.t -> n_term list -> n_term * OptRange.t =
   tm, pos
 ;;
 
-type term_ctx = n_term Lvca_util.String.Map.t
-type parser_ctx = t Lvca_util.String.Map.t
-
 module Direct = struct
-  type direct =
+  type term_ctx = n_term Lvca_util.String.Map.t
+  type parser_ctx = direct Lvca_util.String.Map.t
+
+  and direct =
     { run :
         term_ctx:term_ctx
         -> parser_ctx:parser_ctx
@@ -149,7 +149,7 @@ module Direct = struct
         (fun ~term_ctx ~parser_ctx:_ ~pos _str ->
           match Core.eval_ctx term_ctx c_tm with
           | Ok (Primitive (_, PrimString msg)) -> pos, (* TODO: use pos *) todo_msg msg
-          | _ -> failwith "TODO")
+          | _ -> failwith "TODO: fail")
     }
   ;;
 
@@ -201,7 +201,7 @@ module Direct = struct
                  ~pos
                  (n |> Bigint.to_int |> Option.value_exn (* XXX *))
             |> map_snd ~f:mk_list_result
-          | _ -> failwith "TODO")
+          | _ -> failwith "TODO: count")
     }
   ;;
 
@@ -233,6 +233,33 @@ module Direct = struct
     }
   ;;
 
+  let fix name _p =
+    let max_steps = 20 in
+    let steps = ref max_steps in
+    let f p' = { run = fun ~term_ctx ~parser_ctx ~pos str ->
+      p'.run ~term_ctx ~parser_ctx:(Map.set parser_ctx ~key:name ~data:p') ~pos str
+    }
+    in
+    let rec lazy_p = lazy (f r)
+    and r = { run = fun ~term_ctx ~parser_ctx ~pos str ->
+      Int.decr steps;
+      if !steps < 0
+      then
+        failwith "exceeded steps!"
+      else
+        (Lazy.force lazy_p).run ~term_ctx ~parser_ctx ~pos str
+    }
+    in
+    r
+  ;;
+
+  (*
+  let fix name p =
+    { run = fun ~term_ctx ~parser_ctx ~pos str ->
+      p.run ~term_ctx ~parser_ctx ~pos str
+    }
+*)
+
   let alt t1 t2 =
     { run =
         (fun ~term_ctx ~parser_ctx ~pos str ->
@@ -262,7 +289,9 @@ module Direct = struct
           | Error msg -> pos, Error msg
           | Ok xs ->
             (match List.zip names xs with
-            | Unequal_lengths -> failwith "TODO"
+            | Unequal_lengths -> failwith (Caml.Printf.sprintf
+              "TODO: liftn Unequal_lengths (%n vs %n)" (List.length names) (List.length
+              xs))
             | Ok name_vals ->
               let term_ctx =
                 name_vals
@@ -273,20 +302,14 @@ module Direct = struct
     }
   ;;
 
-  let fix (_key, p) =
-    let f _p' =
-      p
-      (* TODO *)
-      (* p.run ~term_ctx ~parser_ctx:(Map.set parser_ctx ~key ~data:p') *)
-    in
-    let rec p = lazy (f r)
-    and r =
-      { run =
-          (fun ~term_ctx ~parser_ctx ~pos str ->
-            (Lazy.force p).run ~term_ctx ~parser_ctx ~pos str)
-      }
-    in
-    r
+  let identifier name =
+    { run =
+        (fun ~term_ctx ~parser_ctx ~pos str ->
+          match Map.find parser_ctx name with
+          | None ->
+            pos, todo_msg (Printf.sprintf {|Identifer not found in context: "%s"|} name)
+          | Some p -> p.run ~term_ctx ~parser_ctx ~pos str)
+    }
   ;;
 
   let rec translate_direct : t -> direct = function
@@ -294,26 +317,16 @@ module Direct = struct
     | String prefix -> string prefix
     | Satisfy (name, core_term) -> satisfy name core_term
     | Fail tm -> fail tm
-    | Let (name, p, body) -> let_ name p (translate_direct body)
+    | Let (name, p, body) -> let_ name (translate_direct p) (translate_direct body)
     | Option t -> option (translate_direct t)
     | Count (t, n) -> count n (translate_direct t)
     | Many t -> many (translate_direct t)
     | Many1 t -> many1 (translate_direct t)
-    | Fix _ -> failwith "TODO: fix"
+    | Fix (name, p) -> fix name (translate_direct p)
     | Alt (t1, t2) -> alt (translate_direct t1) (translate_direct t2)
     | Return tm -> return tm
     | LiftN (names, tm, ps) -> liftn names tm (List.map ps ~f:translate_direct)
     | Identifier name -> identifier name
-
-  (* TODO: should bound parser p already be translated? *)
-  and identifier name =
-    { run =
-        (fun ~term_ctx ~parser_ctx ~pos str ->
-          match Map.find parser_ctx name with
-          | None ->
-            pos, todo_msg (Printf.sprintf {|Identifer not found in context: "%s"|} name)
-          | Some p -> (translate_direct p).run ~term_ctx ~parser_ctx ~pos str)
-    }
   ;;
 
   let parse_direct : direct -> string -> (n_term, string * c_term) Result.t =
@@ -345,24 +358,24 @@ let rec pp (* Format.formatter -> t -> unit *) : t Fmt.t =
   function
   | Char char -> pf ppf "'%c'" char
   | String str -> pf ppf {|"%s"|} str
-  | Satisfy (name, tm) -> pf ppf "satisfy (\\%s. %a)" name core tm
+  | Satisfy (name, tm) -> pf ppf "satisfy (%s -> %a)" name core tm
   | Let (name, named, body) -> pf ppf "let %s = %a in %a" name pp named pp body
   | Fail tm -> pf ppf "fail %a" core tm
   | Option t -> pf ppf "%a?" pp t
-  | Count (p, t) -> pf ppf "%a{%a}" pp p core t
+  | Count (tm, t) -> pf ppf "%a{%a}" pp tm core t
   | Many t -> pf ppf "%a*" pp t
   | Many1 t -> pf ppf "%a+" pp t
   | Fix (name, t) -> pf ppf "fix (%s -> %a)" name pp t
   | Alt (t1, t2) -> pf ppf "alt %a %a" pp t1 pp t2
   | Return tm -> pf ppf "return %a" core tm
-  | LiftN (names, p, ps) ->
+  | LiftN (names, body, ps) ->
     pf
       ppf
-      "lift (\\%a. %a) [%a]"
+      "lift (%a. %a) [%a]"
       Fmt.(list ~sep:(any ".@ ") string)
       names
       core
-      p
+      body
       Fmt.(list ~sep:comma pp)
       ps
   | Identifier name -> pf ppf "%s" name
@@ -412,8 +425,19 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
                     Parsers.identifier
                     (string "->")
                     parser)
-            (* TODO: sequence *)
-            (* ; string "sequence" *)
+            (* TODO: name sequence or lift? *)
+          ; string "lift"
+            *> lift2
+              (fun (names, body) parsers -> LiftN (names, body, parsers))
+              (parens
+                 (lift3
+                    (fun names _ body -> names, body)
+                    (sep_by (char '.') Parsers.identifier)
+                    (char '.')
+                    term))
+              (brackets (sep_by (char ',') parser))
+
+          ; string "return" *> (term >>| fun tm -> Return tm)
           ; (parse_token
             >>= fun tok ->
             option
@@ -422,6 +446,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
                  [ (char '?' >>| fun _ -> Option tok)
                  ; (char '*' >>| fun _ -> Many tok)
                  ; (char '+' >>| fun _ -> Many1 tok)
+                 ; (braces term >>| fun tm -> Count (tok, tm))
                  ; char '|' *> (parser >>| fun rhs -> Alt (tok, rhs))
                  ]))
           ])
@@ -481,11 +506,11 @@ let translate : t -> n_term ParseUtil.t =
     | Many1 t -> many1 (translate' term_ctx parser_ctx t) >>|| mk_list <?> "many1"
     (* TODO: do we even want explicit fix? or should this be done implicitly? *)
     (* | Fix (name, p) -> fix (fun p' -> translate' (Map.set ctx ~key:name ~data:p') p) *)
-    | Fix _ -> failwith "TODO"
+    | Fix _ -> failwith "TODO: fix"
     | Alt (p1, p2) ->
       translate' term_ctx parser_ctx p1 <|> translate' term_ctx parser_ctx p2 <?> "alt"
     | Return tm -> (match tm with Term tm -> return tm | _ -> mk_err ())
-    | LiftN (_names, _p, _ps) -> failwith "TODO"
+    | LiftN (_names, _p, _ps) -> failwith "TODO: liftn"
     | Identifier name ->
       (match Map.find parser_ctx name with
       | Some p -> translate' term_ctx parser_ctx p <?> name
@@ -509,6 +534,18 @@ let%test_module "Parsing" =
       Format.set_mark_tags true
     ;;
 
+    (*
+    let parse_print_direct : string -> string -> unit =
+     fun parser_str str ->
+      match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
+      | Error msg -> Caml.print_string ("failed to parse parser desc: " ^ msg)
+      | Ok parser ->
+        (match Direct.parse_direct (Direct.translate_direct parser) str with
+        | Error (msg, _) -> Caml.Printf.printf "failed to parse: %s\n" msg
+        | Ok tm -> Fmt.pr "%a\n" (Nominal.pp_term_range Primitive.pp) tm)
+   ;;
+   *)
+
     let parse_print : string -> string -> unit =
      fun parser_str str ->
       match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
@@ -521,6 +558,13 @@ let%test_module "Parsing" =
         | Error (msg, _) -> Caml.Printf.printf "failed to parse: %s\n" msg
         | Ok tm -> Fmt.pr "%a\n" (Nominal.pp_term_range Primitive.pp) tm)
    ;;
+
+    let%expect_test _ =
+      parse_print {|'c'{{2}}|} "cc";
+      [%expect {|
+        <0-2>list(<0-1>'c'</0-1>, <1-2>'c'</1-2>)</0-2>
+        <0-2>list(<0-1>'c'</0-1>, <1-2>'c'</1-2>)</0-2> |}]
+    ;;
 
     let%expect_test _ =
       parse_print {|"str"|} "str";
@@ -606,5 +650,61 @@ let%test_module "Parsing" =
           failed to parse: : reason
           failed to parse: reason |}]
     ;;
+
+    let%expect_test _ =
+      parse_print "'c'?" "c";
+      [%expect{|
+        <0-1>some(<0-1>'c'</0-1>)</0-1>
+        <0-1>some(<0-1>'c'</0-1>)</0-1> |}]
+    ;;
+
+    let%expect_test _ =
+      parse_print "'c'?" "";
+      [%expect{|
+        none()
+        none() |}]
+    ;;
+
+    (*
+    let%expect_test _ =
+      parse_print_direct "return {foo()}" "";
+      [%expect{| foo() |}]
+    ;;
+
+    let%expect_test _ =
+      parse_print_direct "lift (. {foo()}) []" "";
+      [%expect{| foo() |}]
+    ;;
+
+    let%expect_test _ =
+      parse_print_direct "lift (a. b. {pair(a; b)}) ['a', 'b']" "ab";
+      [%expect{| pair('a'; 'b') |}]
+    ;;
+
+    let list_parser =
+      {|fix (lst ->
+          (lift (x. xs. {cons(x; xs)}) ['c', lst]) |
+          return {nil()}
+        )
+      |}
+    ;;
+
+    let%expect_test _ =
+      parse_print_direct list_parser "";
+      [%expect{| nil() |}]
+    ;;
+    *)
+
+    (*
+    let%expect_test _ =
+      parse_print_direct list_parser "c";
+      [%expect{| cons('c'; nil()) |}]
+    ;;
+
+    let%expect_test _ =
+      parse_print_direct list_parser "cc";
+      [%expect{| cons('c'; cons('c'; nil())) |}]
+    ;;
+    *)
   end)
 ;;

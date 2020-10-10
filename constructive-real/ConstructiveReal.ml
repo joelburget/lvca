@@ -11,7 +11,6 @@ module Int32 = struct
   let three = of_int_exn 3
   let four = of_int_exn 4
   let minus_four = of_int_exn (-4)
-  let five = of_int_exn 5
   let six = of_int_exn 6
   let ten = of_int_exn 10
   let minus_ten = of_int_exn (-10)
@@ -19,11 +18,8 @@ module Int32 = struct
   let twenty = of_int_exn 20
   let minus_twenty = of_int_exn (-20)
   let thirty = of_int_exn 30
-  let fourty_eight = of_int_exn 48
   let fifty = of_int_exn 50
-  let fifty_two = of_int_exn 52
   let sixty = of_int_exn 60
-  let ninety_six = of_int_exn 96
   let hundred = of_int_exn 100
   let minus_52 = of_int_exn (-52)
   let minus_1000 = of_int_exn (-1000)
@@ -46,7 +42,6 @@ let bigm2 = Z.of_int (-2)
 let big3 = Z.of_int 3
 let big4 = Z.of_int 4
 let big8 = Z.of_int 8
-let big10 = Z.of_int 10
 let big750 = Z.of_int 750
 let bigm750 = Z.of_int (-750)
 
@@ -117,7 +112,6 @@ type cr =
   | InvCR of t
   | PrescaledExpCR of t
   | PrescaledCosCR of t
-  | IntegralAtanCR of int32
   | PrescaledLnCR of t
   | PrescaledAsinCR of t
   | SqrtCR of t
@@ -155,8 +149,6 @@ let rec debug_cr_to_string = function
   -> Printf.sprintf "PrescaledExpCR (%s)" (debug_to_string op)
   | PrescaledCosCR op
   -> Printf.sprintf "PrescaledCosCR (%s)" (debug_to_string op)
-  | IntegralAtanCR i
-  -> Printf.sprintf "IntegralAtanCR (%li)" i
   | PrescaledLnCR op
   -> Printf.sprintf "PrescaledLnCR (%s)" (debug_to_string op)
   | PrescaledAsinCR op
@@ -175,7 +167,6 @@ type operator =
   | Div
   | Shift
   | Add
-  | Sub
 
 (* An odd amalgamation of Haskell and OCaml rules *)
 let prec : operator -> int
@@ -184,7 +175,7 @@ let prec : operator -> int
     | Negate -> 8
     | Mul | Div -> 7
     | Shift -> 6
-    | Add | Sub -> 5
+    | Add -> 5
 
 (* TODO: this should use associativity as well *)
 let parens_prec op_prec env_prec str =
@@ -224,8 +215,6 @@ and cr_to_string ambient_prec = function
   -> Printf.sprintf "exp %s" (to_string' (prec App) op)
   | PrescaledCosCR op
   -> Printf.sprintf "cos %s" (to_string' (prec App) op)
-  | IntegralAtanCR i
-  -> Printf.sprintf "atan %li" i
   | PrescaledLnCR op
   -> Printf.sprintf "ln %s" (to_string' (prec App) op)
   | PrescaledAsinCR op
@@ -254,20 +243,15 @@ let check_prec n =
 
 let of_cr cr = { base = new_base (); cr }
 
-let add : t -> t -> t
-  = fun x y -> of_cr (AddCR (x, y))
-let shift_left : t -> int32 -> t
-  = fun x n ->
+let add x y = of_cr (AddCR (x, y))
+let shift_left x n =
     check_prec n;
     of_cr (ShiftedCR (x, n))
-let shift_right : t -> int32 -> t
-  = fun x n ->
+let shift_right x n =
     check_prec n;
     of_cr (ShiftedCR (x, neg n))
-let assume_int : t -> t
-  = fun x -> of_cr (AssumedIntCR x)
-let negate : t -> t
-  = fun x -> of_cr (NegCR x)
+let assume_int x = of_cr (AssumedIntCR x)
+let negate x = of_cr (NegCR x)
 let subtract x y = of_cr (AddCR (x, negate y))
 let multiply x y = of_cr (MultCR (x, y))
 let inverse x = of_cr (InvCR x)
@@ -282,8 +266,6 @@ let pi = of_cr GlPiCR
 let half_pi = shift_right pi Int32.one
 
 let sqrt x = of_cr (SqrtCR x)
-
-let atan_reciprocal n = of_cr (IntegralAtanCR n);;
 
 let bound_log2 : int32 -> int32
   = fun n ->
@@ -303,7 +285,6 @@ let one = of_int 1
 let minus_one = of_int (-1)
 let two = of_int 2
 let three = of_int 3
-let minus_fifty_two = of_int (-52)
 
 let of_float n =
   (* TODO: throw for NaN / infinite *)
@@ -394,7 +375,6 @@ and approximate : t -> int32 -> Z.t
     | InvCR op -> approximate_inv_cr op p
     | PrescaledExpCR op -> approximate_prescaled_exp_cr op p
     | PrescaledCosCR op -> approximate_prescaled_cos_cr op p
-    | IntegralAtanCR op -> approximate_integral_atan_cr op p
     | PrescaledLnCR op -> approximate_prescaled_ln_cr op p
     | PrescaledAsinCR op -> approximate_prescaled_asin_cr op p
     | SqrtCR op -> approximate_sqrt_cr t op p
@@ -611,33 +591,6 @@ and approximate_prescaled_ln_cr op p =
       current_sign := Int.neg !current_sign;
       x_nth := scale (!x_nth * op_appr) op_prec;
       current_term := !x_nth / of_int Int.(!n * !current_sign);
-      current_sum := !current_sum + !current_term;
-    done;
-    scale !current_sum Int32.(calc_precision - p)
-
-and approximate_integral_atan_cr op p =
-  let open Int32 in
-  if p >= Int32.one then big0
-  else
-    let iterations_needed = neg p / two + two in
-    let calc_precision = p - bound_log2 (two * iterations_needed) - two in
-    let scaled_1 = calc_precision |> neg |> big_shift_left big1
-    in
-    let big_op = Z.of_int32 op in
-    let big_op_squared = Z.of_int32 (op * op) in
-    let op_inverse = Z.(scaled_1 / big_op) in
-    let current_power = ref op_inverse in
-    let current_term = ref op_inverse in
-    let current_sum = ref op_inverse in
-    let current_sign = ref 1 in
-    let n = ref 1 in
-    let max_trunc_error = big_shift_left big1 (p - two - calc_precision) in
-    while Z.(abs !current_term >= max_trunc_error) do
-      n := Int.(!n + 2);
-      let open Z in
-      current_power := !current_power / big_op_squared;
-      current_sign := Int.neg !current_sign;
-      current_term := !current_power / of_int Int.(!current_sign * !n);
       current_sum := !current_sum + !current_term;
     done;
     scale !current_sum Int32.(calc_precision - p)
@@ -1005,7 +958,14 @@ let%test_module "Calculator" = (module struct
 
   let%expect_test _ =
     print (shift_left one Int32.one);
-    [%expect{| 2.0000000000 |}]
+    print (shift_left one Int32.minus_one);
+    print (shift_right one Int32.one);
+    print (shift_right one Int32.minus_one);
+    [%expect{|
+      2.0000000000
+      0.5000000000
+      0.5000000000
+      2.0000000000 |}]
 
   let%expect_test _ =
     print (shift_right two Int32.one);
