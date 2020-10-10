@@ -943,6 +943,14 @@ get_appr op (n - 1) -> %s
 
   and acos x = subtract half_pi (asin x) (* asin (subtract half_pi x) *)
 
+  let tan x = sin x / cos x
+
+  let atan n =
+    let n2 = n * n in
+    let abs_sin_atan = sqrt (n2 / (one + n2)) in
+    let sin_atan = select n (negate abs_sin_atan) abs_sin_atan in
+    asin sin_atan
+
   let low_ln_limit = big8
   let high_ln_limit = Bigint.of_int Int.(16 + 8)
   let scaled_4 = Bigint.of_int Int.(4 * 16)
@@ -1007,13 +1015,15 @@ let%test_module "Calculator" = (module struct
 
   let zero = CR.of_int 0
   let one = CR.of_int 1
+  let minus_one = CR.of_int (-1)
   let two = CR.of_int 2
   let three = CR.add two one
   let four = CR.add two two
   let i38923 = CR.of_int 38923
-  let half = CR.(divide one two)
+  let half = CR.divide one two
   let thirteen = CR.of_int 13
-  let sqrt_thirteen = CR.sqrt thirteen
+  let sqrt13 = CR.sqrt thirteen
+  let e = CR.exp one
 
   let print ?digits:(digits=I32.ten) cr
     = Caml.Printf.printf "%s\n" (CR.eval_to_string cr ~digits)
@@ -1161,8 +1171,6 @@ let%test_module "Calculator" = (module struct
     print CR.(tan (atan huge));
     *)
 
-  let sqrt13 = CR.(of_int 13 |> sqrt)
-
   let%expect_test _ =
     print CR.(multiply sqrt13 sqrt13);
     [%expect{| 13.0000000000 |}]
@@ -1212,7 +1220,7 @@ let%test_module "Calculator" = (module struct
     ; check_eq CR.(two / negate one) CR.(negate two)
     ; check_eq CR.(one / thirteen * thirteen) one
     ; check_eq CR.(exp zero) one
-    (* ; check_eq CR.(ln e) one *)
+    ; check_eq CR.(ln e) one
     ; check_eq CR.(sin half_pi) one
     ; check_eq CR.(asin one) CR.half_pi
     ; check_eq CR.(asin (negate one)) CR.(negate half_pi)
@@ -1220,9 +1228,9 @@ let%test_module "Calculator" = (module struct
     ; check_eq CR.(asin (sin half)) half
     ; check_eq CR.(asin (sin one)) one
     ; check_eq CR.(acos (cos one)) one
-    (* ; check_eq CR.(atan (tan one)) one *)
-    (* ; check_eq CR.(atan (tan minus_one)) minus_one *)
-    ; check_eq CR.(sqrt_thirteen * sqrt_thirteen) thirteen
+    ; check_eq CR.(atan (tan one)) one
+    ; check_eq CR.(atan (tan minus_one)) minus_one
+    ; check_eq CR.(sqrt13 * sqrt13) thirteen
     ]
 
 end);;
