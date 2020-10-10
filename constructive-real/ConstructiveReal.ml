@@ -32,13 +32,7 @@ end
 
 module Z = struct
   include Z
-
-  let (=) = equal
-  let (<) = lt
-  let (>) = gt
-  let (<=) = leq
-  let (>=) = geq
-  let (<>) x y = not (x = y)
+  include Z.Compare
 end
 
 let neg, (=), (<>), (>=), (<=), (<), (>) =
