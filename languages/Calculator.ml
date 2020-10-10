@@ -965,6 +965,8 @@ let%test_module "Calculator" = (module struct
   let thirteen = CR.of_int 13
   let sqrt13 = CR.sqrt thirteen
   let e = CR.exp one
+  let thousand = Bigint.of_int 1000
+  let million = Bigint.of_int 1000000
 
   let print ?digits:(digits=Int32.ten) cr
     = Caml.Printf.printf "%s\n" (CR.eval_to_string cr ~digits)
@@ -1094,7 +1096,6 @@ let%test_module "Calculator" = (module struct
     print CR.(acos (cos one));
     [%expect{| 1.0000000000 |}]
 
-    (*
   let%expect_test _ =
     print CR.(atan (tan one));
     [%expect{| 1.0000000000 |}]
@@ -1102,15 +1103,6 @@ let%test_module "Calculator" = (module struct
   let%expect_test _ =
     print CR.(atan (tan (negate one)));
     [%expect{| -1.0000000000 |}]
-    *)
-
-    (*
-  let thousand = Bigint.of_int 1000
-  let million = Bigint.of_int 1000000
-  let huge = million * million * thousand
-  let%expect_test _ =
-    print CR.(tan (atan huge));
-    *)
 
   let%expect_test _ =
     print CR.(multiply sqrt13 sqrt13);
@@ -1133,7 +1125,7 @@ let%test_module "Calculator" = (module struct
     |> List.iter ~f:(fun n ->
       check_appr_eq (Float.sin n) CR.(of_float n |> sin |> float_value);
       check_appr_eq (Float.cos n) CR.(of_float n |> cos |> float_value);
-      (* check_appr_eq (Float.exp n) CR.(of_float n |> exp |> float_value); *)
+      check_appr_eq (Float.exp n) CR.(of_float n |> exp |> float_value);
       check_appr_eq
         (Float.asin (0.1 *. n))
         CR.(of_float (0.1 *. n) |> asin |> float_value);
@@ -1145,6 +1137,10 @@ let%test_module "Calculator" = (module struct
     )
 
   let check_eq x y = CR.equal_within x y ~absolute_tolerance:(Int32.of_int_exn (-50))
+
+  let%test _ =
+    let huge = CR.of_bigint Bigint.(million * million * thousand) in
+    check_eq CR.(tan (atan huge)) huge
 
   let%test _ = List.for_all ~f:Fn.id
     [ check_eq (CR.shift_left one Int32.one) two
