@@ -3,8 +3,8 @@ open Base
 exception EarlyReturn
 exception ArithmeticError of string
 
-module I32 = struct
-  open Int32
+module Int32 = struct
+  include Int32
 
   let two = of_int_exn 2
   let three = of_int_exn 3
@@ -309,7 +309,7 @@ module CR = struct
     let exp = Int.(Float.ieee_exponent n - 1023) |> Int32.of_int_exn in
 
     let p1 = shift_left one exp in
-    let p2 = shift_left one I32.minus_52 in
+    let p2 = shift_left one Int32.minus_52 in
 
     let mantissa = add one (multiply (of_int pre_mantissa) p2) in
     let result = multiply p1 mantissa in
@@ -348,13 +348,13 @@ module CR = struct
       big_signum this_appr
 
   and signum : t -> int32
-    = fun op -> signum' op (neg I32.twenty)
+    = fun op -> signum' op (neg Int32.twenty)
 
   and signum' : t -> int32 -> int32
     = fun op a ->
       (* TODO check_prec a *)
       let result = signum_a op a in
-      if Int32.(result <> zero) then result else signum' op Int32.(a * I32.two)
+      if Int32.(result <> zero) then result else signum' op Int32.(a * Int32.two)
 
   (* Give a scaled approximation accurate to 2**n *)
   and approximate : t -> int32 -> Bigint.t
@@ -367,7 +367,7 @@ module CR = struct
         else scale (get_appr value Int32.zero) (neg p)
       | AddCR (op1, op2) ->
         let (+) = Bigint.(+) in
-        scale (get_appr op1 Int32.(p - I32.two) + get_appr op2 Int32.(p - I32.two)) (neg I32.two)
+        scale (get_appr op1 Int32.(p - two) + get_appr op2 Int32.(p - two)) Int32.(neg two)
       | ShiftedCR (op, count) -> get_appr op Int32.(p - count)
       | NegCR op -> Bigint.neg (get_appr op p)
       | SelectCR selector ->
@@ -418,11 +418,11 @@ module CR = struct
             op1, op2, msd_op1
         in
 
-        let prec2 = Int32.(p - msd_op1 - I32.three) in
+        let prec2 = Int32.(p - msd_op1 - Int32.three) in
         let appr2 = get_appr op2 prec2 in
         if Bigint.(appr2 = zero) then raise EarlyReturn;
         let msd_op2 = known_msd op2 in
-        let prec1 = Int32.(p - msd_op2 - I32.three) in
+        let prec1 = Int32.(p - msd_op2 - Int32.three) in
         let appr1 = get_appr op1 prec1 in
         let scale_digits = Int32.(prec1 + prec2 - p) in
         scale Bigint.(appr1 * appr2) scale_digits
@@ -433,7 +433,7 @@ module CR = struct
     let open Int32 in
     let msd = iter_msd op Int32.min_value in
     let inv_msd = Int32.one - msd in
-    let digits_needed = inv_msd - p - I32.three in
+    let digits_needed = inv_msd - p - Int32.three in
     let prec_needed = msd - digits_needed in
     let log_scale_factor = neg p - prec_needed in
     if log_scale_factor < Int32.zero then big0
@@ -448,11 +448,11 @@ module CR = struct
 
   and approximate_prescaled_asin_cr op p =
     let open Int32 in
-    if p >= I32.two then big0
+    if p >= Int32.two then big0
     else
-      let iterations_needed = neg I32.three * p / I32.two + I32.four in
-      let calc_precision = p - bound_log2 (I32.two * iterations_needed) - I32.four in
-      let op_prec = p - I32.three in
+      let iterations_needed = neg three * p / two + four in
+      let calc_precision = p - bound_log2 (two * iterations_needed) - four in
+      let op_prec = p - three in
       let op_appr = get_appr op op_prec in
       let exp = ref 1 in
       let start_term_val = op_prec - calc_precision |> big_shift_left op_appr
@@ -460,16 +460,16 @@ module CR = struct
       let current_term = ref start_term_val in
       let current_sum = ref start_term_val in
       let current_factor = ref start_term_val in
-      let max_trunc_error = big_shift_left big1 (p - I32.four - calc_precision) in
+      let max_trunc_error = big_shift_left big1 (p - four - calc_precision) in
       while Bigint.(abs !current_term >= max_trunc_error) do
         exp := Int.(!exp + 2);
         let open Bigint in
         current_factor := !current_factor * Bigint.of_int Int.(!exp - 2);
-        current_factor := scale (!current_factor * op_appr) Int32.(op_prec + I32.two);
+        current_factor := scale (!current_factor * op_appr) Int32.(op_prec + Int32.two);
         current_factor := !current_factor * op_appr;
         let divisor = Bigint.of_int Int.(!exp - 1) in
         current_factor := !current_factor / divisor;
-        current_factor := scale !current_factor Int32.(op_prec - I32.two);
+        current_factor := scale !current_factor Int32.(op_prec - Int32.two);
         current_term := !current_factor / Bigint.of_int !exp;
         current_sum := !current_sum + !current_term;
       done;
@@ -483,13 +483,12 @@ module CR = struct
     else
       let extra_eval_prec =
         Int32.(of_float
-          (Float.round_up (Float.log (Int32.to_float (neg p)) /. Float.log 2.0))
-          + I32.ten)
+          (Float.round_up (Float.log (Int32.to_float (neg p)) /. Float.log 2.0)) + ten)
       in
       let eval_prec = Int32.(p - extra_eval_prec) in
       let a = ref (big_shift_left big1 (neg eval_prec)) in
       let b = ref (get_appr sqrt_half eval_prec) in
-      let t = ref (big_shift_left big1 Int32.(neg eval_prec - I32.two)) in
+      let t = ref (big_shift_left big1 Int32.(neg eval_prec - two)) in
       let n = ref 0 in
 
       while Bigint.(!a - !b - pi_tolerance > big0) do
@@ -545,18 +544,18 @@ module CR = struct
     let open Int32 in
     (* Convervative estimate of number of significant bits in double precision
      * computation*)
-    let fp_prec = I32.fifty in
-    let fp_op_prec = I32.sixty in
-    let max_op_prec_needed = I32.two * p - Int32.one in
+    let fp_prec = fifty in
+    let fp_op_prec = sixty in
+    let max_op_prec_needed = two * p - one in
     let msd = iter_msd op max_op_prec_needed in
     if msd <= max_op_prec_needed then big0 else
-      let result_msd = msd / I32.two in
+      let result_msd = msd / two in
       let result_digits = result_msd - p in
       if result_digits > fp_prec
       then
-        let appr_digits = result_digits / I32.two + I32.six in
+        let appr_digits = result_digits / two + six in
         let appr_prec = result_msd - appr_digits in
-        let prod_prec = I32.two * appr_prec in
+        let prod_prec = two * appr_prec in
         let op_appr = get_appr op prod_prec in
         let last_appr = get_appr t appr_prec in
         let open Bigint in
@@ -572,7 +571,7 @@ module CR = struct
         if Float.(scaled_appr < 0.0) then raise (ArithmeticError "sqrt(negative)");
         let scaled_fp_sqrt = Float.sqrt scaled_appr in
         let scaled_sqrt = Bigint.of_float scaled_fp_sqrt in
-        let shift_count = working_prec / I32.two - p in
+        let shift_count = working_prec / two - p in
         shift scaled_sqrt shift_count
 
   (*
@@ -593,8 +592,8 @@ module CR = struct
     if p >= Int32.zero then big0
     else
       let iterations_needed = neg p in
-      let calc_precision = p - bound_log2 (I32.two * iterations_needed) - I32.four in
-      let op_prec = p - I32.three in
+      let calc_precision = p - bound_log2 (two * iterations_needed) - four in
+      let op_prec = p - three in
       let op_appr = get_appr op op_prec in
       let x_nth_val = scale op_appr (op_prec - calc_precision) in
       let x_nth = ref x_nth_val in
@@ -602,7 +601,7 @@ module CR = struct
       let current_sum = ref x_nth_val in
       let n = ref 1 in
       let current_sign = ref 1 in
-      let max_trunc_error = big_shift_left big1 (p - I32.four - calc_precision) in
+      let max_trunc_error = big_shift_left big1 (p - four - calc_precision) in
       while Bigint.(abs !current_term >= max_trunc_error) do
         let open Bigint in
         Int.incr n;
@@ -617,8 +616,8 @@ module CR = struct
     let open Int32 in
     if p >= Int32.one then big0
     else
-      let iterations_needed = neg p / I32.two + I32.two in
-      let calc_precision = p - bound_log2 (I32.two * iterations_needed) - I32.two in
+      let iterations_needed = neg p / two + two in
+      let calc_precision = p - bound_log2 (two * iterations_needed) - two in
       let scaled_1 = calc_precision |> neg |> big_shift_left big1
       in
       let big_op = Bigint.of_int32_exn op in
@@ -629,7 +628,7 @@ module CR = struct
       let current_sum = ref op_inverse in
       let current_sign = ref 1 in
       let n = ref 1 in
-      let max_trunc_error = big_shift_left big1 (p - I32.two - calc_precision) in
+      let max_trunc_error = big_shift_left big1 (p - two - calc_precision) in
       while Bigint.(abs !current_term >= max_trunc_error) do
         n := Int.(!n + 2);
         let open Bigint in
@@ -644,15 +643,15 @@ module CR = struct
     let open Int32 in
     if p >= Int32.one then big0
     else
-      let iterations_needed = neg p / I32.two + I32.four in
-      let calc_precision = p - bound_log2 (I32.two * iterations_needed) - I32.four in
-      let op_prec = p - I32.two in
+      let iterations_needed = neg p / two + four in
+      let calc_precision = p - bound_log2 (two * iterations_needed) - four in
+      let op_prec = p - two in
       let op_appr = get_appr op op_prec in
       let scaled_1 = big_shift_left big1 (neg calc_precision) in
       let current_term = ref scaled_1 in
       let current_sum = ref scaled_1 in
       let n = ref 0 in
-      let max_trunc_error = big_shift_left big1 (p - I32.four - calc_precision) in
+      let max_trunc_error = big_shift_left big1 (p - four - calc_precision) in
       while Bigint.(abs !current_term >= max_trunc_error) do
         n := Int.(!n + 2);
         let open Bigint in
@@ -671,15 +670,15 @@ module CR = struct
     let open Int32 in
     if p >= Int32.one then big0
     else
-      let iterations_needed = neg p / I32.two + I32.two in
-      let calc_precision = p - bound_log2 (I32.two * iterations_needed) - I32.four in
-      let op_prec = p - I32.three in
+      let iterations_needed = neg p / two + two in
+      let calc_precision = p - bound_log2 (two * iterations_needed) - four in
+      let op_prec = p - three in
       let op_appr = get_appr op op_prec in
       let scaled_1 = big_shift_left big1 (neg calc_precision) in
       let current_term = ref scaled_1 in
       let current_sum = ref scaled_1 in
       let n = ref 0 in
-      let max_trunc_error = big_shift_left big1 (p - I32.four - calc_precision) in
+      let max_trunc_error = big_shift_left big1 (p - four - calc_precision) in
       while Bigint.(abs !current_term >= max_trunc_error) do
         Int.incr n;
         let open Bigint in
@@ -740,13 +739,13 @@ module CR = struct
     and iter_msd op n = iter_prec_msd op n Int32.zero
 
     and iter_prec_msd op n prec =
-      if prec <= Int32.(n + I32.thirty) then msd op n
+      if prec <= Int32.(n + thirty) then msd op n
       else
         let msd = msd op prec in
         if msd <> Int32.min_value then msd
         else (
           check_prec prec;
-          iter_prec_msd op n Int32.(prec * I32.three / I32.two - I32.sixteen)
+          iter_prec_msd op n Int32.(prec * three / two - sixteen)
         )
   ;;
 
@@ -774,7 +773,7 @@ module CR = struct
       then result
       else go x y ~absolute_tolerance
     in
-    go ~absolute_tolerance:I32.minus_twenty x y
+    go ~absolute_tolerance:Int32.minus_twenty x y
   ;;
 
   let compare x y ~relative_tolerance ~absolute_tolerance
@@ -797,13 +796,13 @@ module CR = struct
   let int_value op = op |> bigint_value |> Bigint.to_int
 
   let float_value op =
-    let op_msd = iter_msd op I32.minus_1080 in
+    let op_msd = iter_msd op Int32.minus_1080 in
     if (op_msd = Int32.min_value) then 0.0
     else
-      let needed_prec = Int32.(op_msd - I32.sixty) in
+      let needed_prec = Int32.(op_msd - sixty) in
       let needed_prec' = Int32.to_int_exn needed_prec in
       let scaled_int = get_appr op needed_prec |> Bigint.to_float in
-      let may_underflow = needed_prec < I32.minus_1000 in
+      let may_underflow = needed_prec < Int32.minus_1000 in
       let negative = Float.ieee_negative scaled_int in
       let mantissa = Float.ieee_mantissa scaled_int in
       let orig_exp = Float.ieee_exponent scaled_int in
@@ -827,7 +826,7 @@ module CR = struct
   let select selector x y
     = of_cr (SelectCR {
         selector;
-        selector_sign = neg I32.twenty |> get_appr selector |> big_signum;
+        selector_sign = neg Int32.twenty |> get_appr selector |> big_signum;
         op1 = x;
         op2 = y
       })
@@ -836,7 +835,7 @@ module CR = struct
   let abs x = select x (negate x) x
 
   let rec exp op =
-    let low_prec = I32.minus_ten in
+    let low_prec = Int32.minus_ten in
     let rough_appr = get_appr op low_prec in
     if Bigint.(rough_appr > big2) || Bigint.(rough_appr < bigm2)
     then
@@ -874,7 +873,7 @@ module CR = struct
 
   let rec asin : t -> t
     = fun op ->
-      let rough_appr = get_appr op I32.minus_ten in
+      let rough_appr = get_appr op Int32.minus_ten in
       if Bigint.(rough_appr > big750)
       then
         (* asin(x) = acos(sqrt(1 - x^2)) *)
@@ -912,7 +911,7 @@ module CR = struct
 
   let rec ln : t -> t
     = fun op ->
-      let low_prec = I32.minus_four in
+      let low_prec = Int32.minus_four in
       let rough_appr = get_appr op low_prec in
       if Bigint.(rough_appr < big0) then raise (ArithmeticError "ln(negative)");
       if Bigint.(rough_appr <= low_ln_limit)
@@ -923,9 +922,9 @@ module CR = struct
           if Bigint.(rough_appr <= scaled_4)
           then
             let quarter = op |> sqrt |> sqrt |> ln in
-            shift_left quarter I32.two
+            shift_left quarter Int32.two
           else
-            let extra_bits = Int32.(of_int_exn (numbits rough_appr) - I32.three) in
+            let extra_bits = Int32.(of_int_exn (numbits rough_appr) - three) in
             let scaled_result = shift_right op extra_bits |> ln in
             add scaled_result (of_int32 extra_bits |> multiply ln2)
         else
@@ -934,10 +933,10 @@ module CR = struct
   (* end more constructors *)
 
   let eval_to_string : ?digits:int32 -> ?radix:int32 -> t -> string
-    = fun ?digits:(digits=I32.ten) ?radix:(radix=I32.ten) op ->
+    = fun ?digits:(digits=Int32.ten) ?radix:(radix=Int32.ten) op ->
       let scaled_cr =
-        if radix = I32.sixteen
-        then shift_left op Int32.(I32.four * digits)
+        if radix = Int32.sixteen
+        then shift_left op Int32.(four * digits)
         else
           let scale_factor = Bigint.(pow (of_int32 radix) (of_int32 digits)) in
           multiply op (of_cr (IntCR scale_factor))
@@ -967,7 +966,7 @@ let%test_module "Calculator" = (module struct
   let sqrt13 = CR.sqrt thirteen
   let e = CR.exp one
 
-  let print ?digits:(digits=I32.ten) cr
+  let print ?digits:(digits=Int32.ten) cr
     = Caml.Printf.printf "%s\n" (CR.eval_to_string cr ~digits)
 
   let%expect_test _ =
@@ -1015,7 +1014,7 @@ let%test_module "Calculator" = (module struct
     [%expect{| 2.0000000000 |}]
 
   let%expect_test _ =
-    print CR.pi ~digits:I32.hundred;
+    print CR.pi ~digits:Int32.hundred;
     [%expect{| 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170680 |}]
 
   let%expect_test _ =
@@ -1023,7 +1022,7 @@ let%test_module "Calculator" = (module struct
     [%expect{| 1.0000000000 |}]
 
   let%expect_test _ =
-    print (CR.sqrt two) ~digits:I32.hundred;
+    print (CR.sqrt two) ~digits:Int32.hundred;
     [%expect{| 1.4142135623730950488016887242096980785696718753769480731766797379907324784621070388503875343276415727 |}]
 
   let%expect_test _ =
@@ -1158,7 +1157,7 @@ let%test_module "Calculator" = (module struct
     ; check_eq CR.(of_int 4) four
     ; check_eq CR.(negate one + two) one
     ; check_eq CR.(two * two) four
-    ; check_eq CR.(shift_left (one / four) I32.four) four
+    ; check_eq CR.(shift_left (one / four) Int32.four) four
     ; check_eq CR.(two / negate one) CR.(negate two)
     ; check_eq CR.(one / thirteen * thirteen) one
     ; check_eq CR.(exp zero) one
