@@ -31,8 +31,8 @@ end
 module CR = struct
   exception PrecisionOverflowException
 
-  let neg, (+), (-), ( * ), (=), (<>), (>=), (<=), (<), (>) =
-    Int32.(neg, (+), (-), ( * ), (=), (<>), (>=), (<=), (<), (>))
+  let neg, (=), (<>), (>=), (<=), (<), (>) =
+    Int32.(neg, (=), (<>), (>=), (<=), (<), (>))
 
   let big0 = Bigint.of_int 0
   let big1 = Bigint.of_int 1
@@ -55,11 +55,11 @@ module CR = struct
         let len = scaled_string |> String.length |> Int32.of_int_exn in
         let len, scaled_string = if len <= digits
           then
-            let z = String.make (Int.of_int32_exn (digits + Int32.one - len)) '0' in
-            digits + Int32.one, z ^ scaled_string
+            let z = String.make (Int.of_int32_exn Int32.(digits + one - len)) '0' in
+            Int32.(digits + one), z ^ scaled_string
           else len, scaled_string
         in
-        let splitting_pos = Int.of_int32_exn (len - digits) in
+        let splitting_pos = Int.of_int32_exn Int32.(len - digits) in
         let whole = scaled_string |> String.subo ~pos:0 ~len:splitting_pos in
         let fraction = scaled_string |> String.subo ~pos:splitting_pos in
         whole ^ "." ^ fraction
@@ -269,6 +269,11 @@ module CR = struct
   let inverse x = of_cr (InvCR x)
   let divide x y = of_cr (MultCR (x, inverse y))
 
+  let (+) = add
+  let (-) = subtract
+  let ( * ) = multiply
+  let (/) = divide
+
   let pi = of_cr GlPiCR
   let half_pi = shift_right pi Int32.one
 
@@ -278,7 +283,7 @@ module CR = struct
 
   let bound_log2 : int32 -> int32
     = fun n ->
-      let x = Float.of_int (Int.of_int32_exn (Int32.abs n + Int32.one)) in
+      let x = Float.of_int (Int.of_int32_exn Int32.(abs n + one)) in
       Int32.of_float (Float.round_up (Float.log x /. Float.log 2.0))
 
   let of_bigint : Bigint.t -> t
@@ -319,7 +324,7 @@ module CR = struct
     else
       (* TODO: Seems like an odd way to do this if I'm understanding *)
       let big_add = Bigint.(+) in
-      let adj_k = big_add (shift k (n + Int32.one)) big1 in
+      let adj_k = big_add (shift k Int32.(n + one)) big1 in
       Bigint.shift_right adj_k 1
   ;;
 
@@ -353,7 +358,7 @@ module CR = struct
     = fun op a ->
       (* TODO check_prec a *)
       let result = signum_a op a in
-      if Int32.(result <> zero) then result else signum' op (a * I32.two)
+      if Int32.(result <> zero) then result else signum' op Int32.(a * I32.two)
 
   (* Give a scaled approximation accurate to 2**n *)
   and approximate : t -> int32 -> Bigint.t
@@ -366,15 +371,15 @@ module CR = struct
         else scale (get_appr value Int32.zero) (neg p)
       | AddCR (op1, op2) ->
         let (+) = Bigint.(+) in
-        scale (get_appr op1 (p - I32.two) + get_appr op2 (p - I32.two)) (neg I32.two)
-      | ShiftedCR (op, count) -> get_appr op (p - count)
+        scale (get_appr op1 Int32.(p - I32.two) + get_appr op2 Int32.(p - I32.two)) (neg I32.two)
+      | ShiftedCR (op, count) -> get_appr op Int32.(p - count)
       | NegCR op -> Bigint.neg (get_appr op p)
       | SelectCR selector ->
         if (selector.selector_sign < Int32.zero) then get_appr selector.op1 p
         else if (selector.selector_sign > Int32.zero) then get_appr selector.op2 p
         else
-          let op1_appr = get_appr selector.op1 (p - Int32.one) in
-          let op2_appr = get_appr selector.op2 (p - Int32.one) in
+          let op1_appr = get_appr selector.op1 Int32.(p - one) in
+          let op2_appr = get_appr selector.op2 Int32.(p - one) in
           let diff = Bigint.(abs (op1_appr - op2_appr)) in
           if Bigint.(diff <= big1) then scale op1_appr Int32.minus_one
           else if signum selector.selector < Int32.zero
@@ -399,7 +404,7 @@ module CR = struct
   and approximate_mult_cr : t -> t -> int32 -> Bigint.t
     = fun op1 op2 p ->
       try
-        let half_prec = Int32.shift_right p 1 - Int32.one in
+        let half_prec = Int32.(shift_right p 1 - one) in
         (* debug_printf "p: %li, half_prec: %li\n" p half_prec; *)
         let msd_op1 = msd op1 half_prec in
         (* debug_printf "msd_op1: %li\n" msd_op1; *)
@@ -417,7 +422,7 @@ module CR = struct
             op1, op2, msd_op1
         in
 
-        let prec2 = p - msd_op1 - I32.three in
+        let prec2 = Int32.(p - msd_op1 - I32.three) in
         let appr2 = get_appr op2 prec2 in
         (*
         Caml.Printf.printf "p: %li, msd_op1: %li, prec2: %li, appr2: %s\n"
@@ -425,9 +430,9 @@ module CR = struct
           *)
         if Bigint.(appr2 = zero) then raise EarlyReturn;
         let msd_op2 = known_msd op2 in
-        let prec1 = p - msd_op2 - I32.three in
+        let prec1 = Int32.(p - msd_op2 - I32.three) in
         let appr1 = get_appr op1 prec1 in
-        let scale_digits = prec1 + prec2 - p in
+        let scale_digits = Int32.(prec1 + prec2 - p) in
         scale Bigint.(appr1 * appr2) scale_digits
       with
         EarlyReturn -> big0
@@ -486,15 +491,15 @@ module CR = struct
     then scale big3 (neg p)
     else
       let extra_eval_prec =
-        Int32.of_float
+        Int32.(of_float
           (Float.round_up (Float.log (Int32.to_float (neg p)) /. Float.log 2.0))
-          + I32.ten
+          + I32.ten)
       in
-      let eval_prec = p - extra_eval_prec in
+      let eval_prec = Int32.(p - extra_eval_prec) in
       (* Caml.Printf.printf "extra_eval_prec: %li, eval_prec: %li\n" extra_eval_prec eval_prec; *)
       let a = ref (big_shift_left big1 (neg eval_prec)) in
       let b = ref (get_appr sqrt_half eval_prec) in
-      let t = ref (big_shift_left big1 (neg eval_prec - I32.two)) in
+      let t = ref (big_shift_left big1 Int32.(neg eval_prec - I32.two)) in
       let n = ref 0 in
 
       (*
@@ -721,7 +726,7 @@ max_appr: %s
 min_prec - precision: %li
 |} (max_appr |> Bigint.to_string) (min_prec - precision);
 *)
-      scale max_appr (min_prec - precision)
+      scale max_appr Int32.(min_prec - precision)
     )
     else
       (
@@ -754,7 +759,7 @@ min_prec - precision: %li
         (op.base.min_prec + Int32.of_int_exn length - one)
         ;
         *)
-      op.base.min_prec + Int32.of_int_exn length - Int32.one
+      Int32.(op.base.min_prec + of_int_exn length - one)
 
   (* Most significant digit. Returns [Int32.min_value] if the correct answer [< n].
      TODO: return option?
@@ -766,7 +771,7 @@ min_prec - precision: %li
           (* in range [-1, 1] *)
           Bigint.(max_appr >= bigm1 && max_appr <= big1)
       then
-        let (_ : Bigint.t) = get_appr op (n - Int32.one) in
+        let (_ : Bigint.t) = get_appr op Int32.(n - one) in
         let max_appr = op.base.max_appr in (* get new value after get_appr *)
         (*
         Caml.Printf.printf {|Bigint.abs max_appr: %s
@@ -793,7 +798,7 @@ get_appr op (n - 1) -> %s
     and iter_msd op n = iter_prec_msd op n Int32.zero
 
     and iter_prec_msd op n prec =
-      if prec <= n + I32.thirty then msd op n
+      if prec <= Int32.(n + I32.thirty) then msd op n
       else
         let msd = msd op prec in
         if msd <> Int32.min_value then msd
@@ -810,7 +815,7 @@ get_appr op (n - 1) -> %s
     let op_msd = iter_msd op I32.minus_1080 in
     if (op_msd = Int32.min_value) then 0.0
     else
-      let needed_prec = op_msd - I32.sixty in
+      let needed_prec = Int32.(op_msd - I32.sixty) in
       let needed_prec' = Int32.to_int_exn needed_prec in
       let scaled_int = get_appr op needed_prec |> Bigint.to_float in
       let may_underflow = needed_prec < I32.minus_1000 in
@@ -928,7 +933,7 @@ get_appr op (n - 1) -> %s
             let quarter = op |> sqrt |> sqrt |> ln in
             shift_left quarter I32.two
           else
-            let extra_bits = Int32.of_int_exn (numbits rough_appr) - I32.three in
+            let extra_bits = Int32.(of_int_exn (numbits rough_appr) - I32.three) in
             let scaled_result = shift_right op extra_bits |> ln in
             add scaled_result (of_int32 extra_bits |> multiply ln2)
         else
@@ -940,7 +945,7 @@ get_appr op (n - 1) -> %s
     = fun ?digits:(digits=I32.ten) ?radix:(radix=I32.ten) op ->
       let scaled_cr =
         if radix = I32.sixteen
-        then shift_left op (I32.four * digits)
+        then shift_left op Int32.(I32.four * digits)
         else
           let scale_factor = Bigint.(pow (of_int32 radix) (of_int32 digits)) in
           (* Caml.Printf.printf "scale_factor: %s\n" (Bigint.to_string scale_factor); *)
