@@ -859,11 +859,9 @@ let rec cos : t -> t =
   let abs_halfpi_multiples = Z.abs halfpi_multiples in
   if Z.(abs_halfpi_multiples >= big2)
   then
-    let open Z in
     let pi_multiples = scale halfpi_multiples Int32.minus_one in
     let adjustment = multiply pi (of_bigint pi_multiples) in
-    (* if bit_and pi_multiples big1 <> big0 *)
-    if Z.logand pi_multiples big1 <> big0
+    if Z.(pi_multiples land big1 <> big0)
     then (* Odd number of pi multiples *)
       subtract op adjustment |> cos |> negate
     else (* Even number of pi multiples *)
