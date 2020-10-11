@@ -63,7 +63,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         Operator
           ( pos
           , "lit"
-          , [ [ Primitive (pos, Primitive.PrimInteger (Bigint.of_string str)) ] ] ))
+          , [ [ Primitive (pos, Primitive.PrimInteger (Z.of_string str)) ] ] ))
     in
     tm, pos
   ;;
@@ -106,22 +106,22 @@ let pp =
       with_stag
         ppf
         (String_tag (NonBinding.hash Primitive.jsonify tm))
-        (fun () -> Bigint.pp ppf i)
+        (fun () -> Z.pp_print ppf i)
     | tm -> Fmt.failwith "Invalid Hutton's Razor term %a" (NonBinding.pp Primitive.pp) tm
   in
   pp' 0
 ;;
 
-let rec eval_tm : _ NonBinding.term -> (Bigint.t, string) Result.t = function
+let rec eval_tm : _ NonBinding.term -> (Z.t, string) Result.t = function
   | Operator (_, "add", [ [ a ]; [ b ] ]) ->
     (match eval_tm a, eval_tm b with
-    | Ok a', Ok b' -> Ok Bigint.(a' + b')
+    | Ok a', Ok b' -> Ok Z.(a' + b')
     | Error msg, _ | _, Error msg -> Error msg)
   | Operator (_, "lit", [ [ Primitive (_, Primitive.PrimInteger i) ] ]) -> Ok i
   | tm -> Error ("found un-evaluable term: " ^ NonBinding.to_string Primitive.pp tm)
 ;;
 
-let eval_str : string -> (Bigint.t, string) Result.t =
+let eval_str : string -> (Z.t, string) Result.t =
   let module Parse = Parse (ParseUtil.NoComment) in
   fun str ->
     match ParseUtil.parse_string Parse.whitespace_t str with
@@ -129,7 +129,7 @@ let eval_str : string -> (Bigint.t, string) Result.t =
     | Ok tm -> eval_tm tm
 ;;
 
-(* let eval_2 : string -> (Bigint.t, string) Result.t = let module Parse =
+(* let eval_2 : string -> (Z.t, string) Result.t = let module Parse =
    AngstromParse(ParseUtil.NoComment) in fun str -> match ParseUtil.parse_string
    Parse.whitespace_t str with | Error str -> Error str | Ok tm -> begin match Core.(eval
    (CoreApp (Description.dynamics, Term (NonBinding.to_nominal tm)))) with | Error (msg,
@@ -221,7 +221,7 @@ let%test_module "Hutton's Razor" =
 
     let print_eval : string -> unit =
      fun str ->
-      let msg = match eval_str str with Error msg -> msg | Ok i -> Bigint.to_string i in
+      let msg = match eval_str str with Error msg -> msg | Ok i -> Z.to_string i in
       Caml.print_string msg
    ;;
 

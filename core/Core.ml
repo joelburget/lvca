@@ -214,14 +214,14 @@ let rec eval_ctx
     (match a_result, b_result with
     | Primitive (loc, PrimInteger a'), Primitive (_, PrimInteger b') ->
       (* XXX can't reuse loc *)
-      Ok (Nominal.Primitive (loc, Primitive.PrimInteger Bigint.(a' + b')))
+      Ok (Nominal.Primitive (loc, Primitive.PrimInteger Z.(a' + b')))
     | _ -> Error ("Invalid arguments to add", tm))
   | Term (Operator (_, "sub", [ Scope ([], [ a ]); Scope ([], [ b ]) ])) ->
     let%bind a_result = eval_ctx' ctx a in
     let%bind b_result = eval_ctx' ctx b in
     (match a_result, b_result with
     | Primitive (loc, PrimInteger a'), Primitive (_, PrimInteger b') ->
-      Ok (Nominal.Primitive (loc, Primitive.PrimInteger Bigint.(a' - b')))
+      Ok (Nominal.Primitive (loc, Primitive.PrimInteger Z.(a' - b')))
     | _ -> Error ("Invalid arguments to sub", tm))
   | Term tm -> Ok tm
   | Let (_is_rec, tm, Scope (name, body)) ->
@@ -355,7 +355,7 @@ let%test_module "Parsing" =
     ;;
 
     let ( = ) = Caml.( = )
-    let one = Nominal.Primitive ((), Primitive.PrimInteger (Bigint.of_int 1))
+    let one = Nominal.Primitive ((), Primitive.PrimInteger (Z.of_int 1))
     let var name = Nominal.Var ((), name)
     let ignored name = Pattern.Ignored ((), name)
     let operator tag children = Nominal.Operator ((), tag, children)

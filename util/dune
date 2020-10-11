@@ -1,6 +1,6 @@
 (library
  (name lvca_util)
  (inline_tests)
- (libraries angstrom base bignum cbor digestif)
+ (libraries angstrom base cbor digestif)
  (preprocess
   (pps ppx_jane)))

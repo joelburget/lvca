@@ -3,13 +3,13 @@
 open Base
 
 type t =
-  | PrimInteger of Bigint.t
+  | PrimInteger of Z.t
   | PrimString of string
   | PrimFloat of float
   | PrimChar of char
 
 let to_string = function
-  | PrimInteger i -> Bigint.to_string i
+  | PrimInteger i -> Z.to_string i
   | PrimString str -> "\"" ^ Caml.String.escaped str ^ "\""
   | PrimFloat f -> Float.to_string f
   | PrimChar c -> "\'" ^ Base.Char.to_string c ^ "\'"
@@ -17,7 +17,7 @@ let to_string = function
 
 let ( = ) p1 p2 =
   match p1, p2 with
-  | PrimInteger i1, PrimInteger i2 -> (Bigint.(i1 = i2) [@warning "-44"])
+  | PrimInteger i1, PrimInteger i2 -> (Z.Compare.(i1 = i2) [@warning "-44"])
   | PrimString s1, PrimString s2 -> String.(s1 = s2)
   | PrimFloat f1, PrimFloat f2 -> Float.(f1 = f2)
   | PrimChar c1, PrimChar c2 -> Char.(c1 = c2)
@@ -33,7 +33,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
       [ (integer_or_float_lit
         >>| fun i_or_f ->
         match i_or_f with
-        | First i -> PrimInteger (Bigint.of_string i)
+        | First i -> PrimInteger (Z.of_string i)
         | Second f -> PrimFloat f)
       ; (string_lit >>| fun s -> PrimString s)
       ; (char_lit >>| fun c -> PrimChar c)
@@ -45,7 +45,7 @@ end
 (** Primitive pretty-printer. *)
 let pp : t Fmt.t =
  fun ppf -> function
-  | PrimInteger i -> Fmt.pf ppf "%s" (Bigint.to_string i)
+  | PrimInteger i -> Fmt.pf ppf "%s" (Z.to_string i)
   | PrimString s -> Fmt.pf ppf "\"%s\"" s
   | PrimFloat f -> Fmt.pf ppf "%g" f
   | PrimChar c -> Fmt.pf ppf "'%c'" c
@@ -54,7 +54,7 @@ let pp : t Fmt.t =
 let jsonify =
   Lvca_util.Json.(
     function
-    | PrimInteger i -> array [| string "i"; string (Bigint.to_string i) |]
+    | PrimInteger i -> array [| string "i"; string (Z.to_string i) |]
     | PrimString s -> array [| string "s"; string s |]
     | PrimFloat f -> array [| string "f"; float f |]
     | PrimChar c -> array [| string "c"; string (Base.Char.to_string c) |])
@@ -64,7 +64,7 @@ let unjsonify =
   Lvca_util.Json.(
     function
     | Array [| String "i"; String i |] ->
-      (try Some (PrimInteger (Bigint.of_string i)) with Failure _ -> None)
+      (try Some (PrimInteger (Z.of_string i)) with Failure _ -> None)
     | Array [| String "s"; String str |] -> Some (PrimString str)
     | _ -> None)
 ;;

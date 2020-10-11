@@ -356,7 +356,7 @@ let%test_module "Nominal" =
       [%expect {| 5898e2f5a6af65e5d43539edd0fa5c539fa4dce2869b4a70e793c5f796658192 |}]
     ;;
 
-    let tm = Primitive ((), Primitive.PrimInteger (Bigint.of_string "12345"))
+    let tm = Primitive ((), Primitive.PrimInteger (Z.of_string "12345"))
 
     let%test _ =
       jsonify Primitive.jsonify tm
@@ -419,7 +419,7 @@ let%test_module "TermParser" =
     let%test _ =
       parse "123"
       |> Result.map ~f:erase
-      = Ok (Primitive ((), PrimInteger (Bigint.of_int 123)))
+      = Ok (Primitive ((), PrimInteger (Z.of_int 123)))
     ;;
 
     let%test _ =

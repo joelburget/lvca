@@ -199,7 +199,7 @@ module Direct = struct
                  ~term_ctx
                  ~parser_ctx
                  ~pos
-                 (n |> Bigint.to_int |> Option.value_exn (* XXX *))
+                 (n |> Z.to_int (* XXX: may raise Overflow *))
             |> map_snd ~f:mk_list_result
           | _ -> failwith "TODO: count")
     }
@@ -498,7 +498,7 @@ let translate : t -> n_term ParseUtil.t =
       let n =
         match Core.eval_ctx term_ctx n_tm with
         | Ok (Primitive (_, PrimInteger i)) ->
-          (match Bigint.to_int i with Some n -> n | None -> mk_err ())
+          (match Z.to_int i with n -> n | exception Z.Overflow -> mk_err ())
         | _ -> mk_err ()
       in
       count n (translate' term_ctx parser_ctx p) >>|| mk_list <?> "count"

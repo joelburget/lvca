@@ -1,6 +1,6 @@
 (library
  (name lvca_languages)
  (inline_tests)
- (libraries lvca_syntax lvca_core zarith)
+ (libraries lvca_syntax lvca_core constructive_real)
  (preprocess
   (pps ppx_jane)))
