@@ -56,6 +56,7 @@ val two : t
 val three : t
 val pi : t
 val half_pi : t
+val e : t
 
 (** A number that may not have been completely evaluated but is assumed to be an integer,
  * so is never evaluated beyond the decimal point. *)

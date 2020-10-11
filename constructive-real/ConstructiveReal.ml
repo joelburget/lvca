@@ -800,6 +800,8 @@ let rec exp op =
   else
     of_cr (PrescaledExpCR op)
 
+let e = exp one
+
 let rec cos : t -> t =
   fun op ->
   let halfpi_multiples = get_appr (divide op pi) Int32.minus_one in
@@ -917,7 +919,6 @@ let%test_module "Calculator" = (module struct
   let half = divide one two
   let thirteen = of_int 13
   let sqrt13 = sqrt thirteen
-  let e = exp one
   let thousand = Z.of_int 1000
   let million = Z.of_int 1000000
 
