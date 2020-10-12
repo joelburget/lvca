@@ -2,7 +2,7 @@ open Base
 open Constructive_real
 open Lvca_syntax
 
-type term = (OptRange.t, Primitive.t) NonBinding.term
+type term = (OptRange.t, ConstructiveReal.t) NonBinding.term
 
 let binary_operators = [ "add"; "sub"; "mul"; "div"; "max"; "min" ]
 
@@ -28,13 +28,13 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   open Parsers
 
   let lit =
-    integer_lit >>|| fun ~pos str ->
-    let tm = NonBinding.Operator
-      ( pos
-      , "lit"
-      , [ [ Primitive (pos, Primitive.PrimInteger (Z.of_string str)) ] ]
-      )
+    (* TODO: this fails on too-large float lits *)
+    integer_or_float_lit >>|| fun ~pos lit ->
+    let lit = match lit with
+      | Either.First str -> ConstructiveReal.of_bigint (Z.of_string str)
+      | Either.Second f -> ConstructiveReal.of_float f
     in
+    let tm = NonBinding.Operator (pos, "lit", [[Primitive (pos, lit)]]) in
     tm, pos
 
   let const =
@@ -117,8 +117,8 @@ let rec interpret : term -> (ConstructiveReal.t, term * string) Result.t
   = fun tm ->
     let open Result.Let_syntax in
     match tm with
-    | Operator (_, "lit", [[ Primitive (_, Primitive.PrimInteger i) ]])
-    -> Ok (ConstructiveReal.of_bigint i)
+    | Operator (_, "lit", [[ Primitive (_, real) ]])
+    -> Ok real
     | Operator (_, name, [])
       when List.mem constants name ~equal:String.equal ->
       ConstructiveReal.(match name with
@@ -179,6 +179,7 @@ let%test_module "Evaluation" = (module struct
     go "acos (cos pi) + asin (sin pi) * negate 1";
     go "min 1 2";
     go "max 1 2";
+    go "1.2";
     [%expect{|
       2.0000000000
       5.8598744820
@@ -189,5 +190,6 @@ let%test_module "Evaluation" = (module struct
       3.1415926536
       1.0000000000
       2.0000000000
+      1.2000000000
       |}]
 end)
