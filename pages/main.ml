@@ -7,13 +7,19 @@ module Model = struct
     | TermAndConcretePage
     | EvalWithProvenancePage
     | TermToTexPage
+    | CalculatorPage
 
   (* | TermToDocument *)
 
   type t = { page : page }
 
-  let initial_model = { page = TermToTexPage }
-  let all_pages = [ TermAndConcretePage; EvalWithProvenancePage; TermToTexPage ]
+  let initial_model = { page = CalculatorPage }
+  let all_pages =
+    [ TermAndConcretePage
+    ; EvalWithProvenancePage
+    ; TermToTexPage
+    ; CalculatorPage
+    ]
 end
 
 type signal = Model.t React.signal
@@ -38,12 +44,14 @@ module View = struct
     | TermAndConcretePage -> "01: term and concrete"
     | EvalWithProvenancePage -> "0x: evaluation with provenance"
     | TermToTexPage -> "0x: term to tex"
+    | CalculatorPage -> "0x: calculator"
   ;;
 
   let stateless_view = function
     | TermAndConcretePage -> TermAndConcrete.stateless_view
     | EvalWithProvenancePage -> EvalWithProvenance.stateless_view
     | TermToTexPage -> TermToTex.stateless_view
+    | CalculatorPage -> Calculator.stateless_view
   ;;
 
   let wrapper_div = Html5.div []
