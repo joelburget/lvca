@@ -1,5 +1,7 @@
 open Base
 
+(* TODO: rename functions to _exn / remove exceptions *)
+
 exception ArithmeticError of string
 exception EarlyReturn
 exception PrecisionOverflowException
