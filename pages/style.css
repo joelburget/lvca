@@ -16,3 +16,16 @@
   flex-direction: row;
   max-width: 1200px;
 }
+
+kbd {
+  display: inline-block;
+  margin: 0 .1em;
+  padding: .1em .6em;
+  color: #555;
+  text-shadow: 0 1px 0 white;
+  background-color: #eee;
+  border: 1px solid #777;
+  border-radius: 3px;
+  box-shadow: 0 1px 1px rgba(12,13,14,0.15), inset 0 1px 0 0 #fff;
+  overflow-wrap: break-word;
+}
