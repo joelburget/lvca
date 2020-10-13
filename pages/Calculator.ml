@@ -105,7 +105,7 @@ module View = struct
           | Error (_tm, msg) -> msg
           | Ok real ->
             let digits = Int32.of_int_exn digits in
-            Constructive_real.ConstructiveReal.eval_to_string real ~digits
+            ConstructiveReal.eval_to_string real ~digits
       )
     in
 

@@ -1,5 +1,4 @@
 open Base
-open Constructive_real
 open Lvca_syntax
 
 type term = (OptRange.t, ConstructiveReal.t) NonBinding.term

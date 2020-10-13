@@ -3,4 +3,5 @@
  (inline_tests)
  (libraries base zarith zarith_stubs_js)
  (preprocess
-  (pps ppx_jane)))
+  (pps ppx_jane))
+ (wrapped false))
