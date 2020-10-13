@@ -15,10 +15,10 @@ end
 
 module Controller = struct
   let update (action : Action.t) model_s signal_update =
-    (* let open Model in *)
     let str, digits = React.S.value model_s in
     let new_model = match action with
-      | Evaluate str -> str, digits
+      | Evaluate str
+      -> str, digits
       | ChangePrecision (SetDigits digits)
       -> str, digits
       | ChangePrecision IncrDigits
@@ -30,14 +30,32 @@ module Controller = struct
   ;;
 end
 
+let mk_example str =
+  let open Js_of_ocaml_tyxml.Tyxml_js in
+
+  let result = Html.(code [txt str]) in
+  let result_dom = To_dom.of_code result in
+
+  let click_event, signal_event = React.E.create () in
+  Common.bind_event Common.Ev.clicks result_dom
+    (fun _evt -> signal_event str; Lwt.return ());
+
+  result , click_event
+
 module View = struct
   open Js_of_ocaml_tyxml.Tyxml_js
   module Ev = Js_of_ocaml_lwt.Lwt_js_events
   module Parse = Lvca_languages.Calculator.Parse (ParseUtil.CComment)
 
   let view model_s signal_update =
-    let input, input_event = Common.mk_input (model_s |> React.S.map fst) in
-    let digits_entry, digits_event = Common.mk_digits_entry (model_s |> React.S.map snd) in
+    let input, input_event = model_s
+      |> React.S.Pair.fst
+      |> Common.mk_input
+    in
+    let digits_entry, digits_event = model_s
+      |> React.S.Pair.snd
+      |> Common.mk_digits_entry
+    in
 
     let (_ : unit React.event) = input_event
       |> React.E.map (function
@@ -52,7 +70,8 @@ module View = struct
     in
 
     let result = model_s
-      |> React.S.map (fun (str, digits) -> match ParseUtil.parse_string Parse.t str with
+      |> React.S.map (fun (str, digits) ->
+        match ParseUtil.parse_string Parse.t str with
         | Error msg -> msg
         | Ok tm -> match Lvca_languages.Calculator.interpret tm with
           | Error (_tm, msg) -> msg
@@ -69,6 +88,27 @@ module View = struct
       | Some instructions -> Html.(span ([ txt "by pressing " ] @ instructions))
     in
 
+    let examples, example_update_es =
+      [ "1 + 1"
+      ; "pi"
+      ; "cos (pi / 4)"
+      ; "sqrt 2 / 2"
+      (* ; "ln (e * e)" *)
+      ] |> List.map ~f:mk_example
+        |> List.unzip
+    in
+
+    let (_ : unit React.event) = example_update_es
+      |> React.E.select
+      |> React.E.map (fun example ->
+        Controller.update (Action.Evaluate example) model_s signal_update)
+    in
+
+    let examples = Html.(ul (examples
+      |> List.map ~f:(fun example -> li ~a:[a_class ["example"]] [example])
+    ))
+    in
+
     [%html {|
       <div>
         <h2>Calculator</h2>
@@ -82,8 +122,10 @@ module View = struct
           </div>
         </div>
         <div>
-          <p>|}[eval_button; instructions]{|</p>
-          <p>digits: |}[digits_entry]{|</p>
+          <p>digits: |}[ digits_entry ]{|</p>
+          <p>|}[ eval_button; instructions ]{|</p>
+          <p>Try an example:</p>
+          |}[ examples ]{|
         </div>
       </div>
     |}]

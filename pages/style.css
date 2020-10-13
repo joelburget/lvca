@@ -34,3 +34,7 @@ pre {
   width: 400px;
   word-wrap: break-word;
 }
+
+.example {
+  cursor: pointer;
+}
