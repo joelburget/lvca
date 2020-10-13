@@ -1,6 +1,11 @@
 open Base
 
-(* TODO: rename functions to _exn / remove exceptions *)
+(* TODO:
+  * rename functions to _exn / remove exceptions
+  * stop using min_value
+  * re-evaluate use of Int32
+  * rewrite / document calculations
+*)
 
 exception ArithmeticError of string
 exception EarlyReturn
@@ -17,7 +22,6 @@ module Int32 = struct
   let ten = of_int_exn 10
   let minus_ten = of_int_exn (-10)
   let sixteen = of_int_exn 16
-  let twenty = of_int_exn 20
   let minus_twenty = of_int_exn (-20)
   let thirty = of_int_exn 30
   let fifty = of_int_exn 50
@@ -33,9 +37,6 @@ module Z = struct
   include Z.Compare
 end
 
-let neg, (=), (<>), (>=), (<=), (<), (>) =
-  Int32.(neg, (=), (<>), (>=), (<=), (<), (>))
-
 let big0 = Z.of_int 0
 let big1 = Z.of_int 1
 let bigm1 = Z.of_int (-1)
@@ -50,11 +51,11 @@ let bigm750 = Z.of_int (-750)
 let string_of_scaled_int scaled_int digits =
   let scaled_string : string = Z.(scaled_int |> abs |> to_string) in
   let result =
-    if digits = Int32.zero
+    if Int32.(digits = zero)
     then scaled_string
     else
       let len = scaled_string |> String.length |> Int32.of_int_exn in
-      let len, scaled_string = if len <= digits
+      let len, scaled_string = if Int32.(len <= digits)
         then
           let z = String.make (Int.of_int32_exn Int32.(digits + one - len)) '0' in
           Int32.(digits + one), z ^ scaled_string
@@ -81,8 +82,8 @@ let numbits bi = bi |> Z.numbits
 
 let shift k n =
   let n' = Int32.to_int_exn n in
-  if n = Int32.zero then k
-  else if n < Int32.zero then Z.shift_right k (-n')
+  if Int32.(n = zero) then k
+  else if Int32.(n < zero) then Z.shift_right k (-n')
   else big_shift_left k n
 
 type base =
@@ -251,7 +252,7 @@ let shift_left x n =
     of_cr (ShiftedCR (x, n))
 let shift_right x n =
     check_prec n;
-    of_cr (ShiftedCR (x, neg n))
+    of_cr (ShiftedCR (x, Int32.neg n))
 let assume_int x = of_cr (AssumedIntCR x)
 let negate x = of_cr (NegCR x)
 let subtract x y = of_cr (AddCR (x, negate y))
@@ -306,7 +307,7 @@ let of_float n =
 
 (* Multiply by 2**n, rounding result *)
 let scale k n =
-  if n >= Int32.zero
+  if Int32.(n >= zero)
   then big_shift_left k n
   else
     (* TODO: Seems like an odd way to do this if I'm understanding *)
@@ -334,7 +335,7 @@ let rec signum_a : t -> int32 -> int32
     big_signum this_appr
 
 and signum : t -> int32
-  = fun op -> signum' op (neg Int32.twenty)
+  = fun op -> signum' op Int32.minus_twenty
 
 and signum' : t -> int32 -> int32
   = fun op a ->
@@ -346,25 +347,25 @@ and signum' : t -> int32 -> int32
 and approximate : t -> int32 -> Z.t
   = fun ({ cr; _ } as t) p ->
     match cr with
-    | IntCR value -> scale value (neg p)
+    | IntCR value -> scale value (Int32.neg p)
     | AssumedIntCR value ->
-      if p >= Int32.zero
+      if Int32.(p >= zero)
       then get_appr value p
-      else scale (get_appr value Int32.zero) (neg p)
+      else scale (get_appr value Int32.zero) (Int32.neg p)
     | AddCR (op1, op2) ->
       let (+) = Z.(+) in
       scale (get_appr op1 Int32.(p - two) + get_appr op2 Int32.(p - two)) Int32.(neg two)
     | ShiftedCR (op, count) -> get_appr op Int32.(p - count)
     | NegCR op -> Z.neg (get_appr op p)
     | SelectCR selector ->
-      if (selector.selector_sign < Int32.zero) then get_appr selector.op1 p
-      else if (selector.selector_sign > Int32.zero) then get_appr selector.op2 p
+      if Int32.(selector.selector_sign < zero) then get_appr selector.op1 p
+      else if Int32.(selector.selector_sign > zero) then get_appr selector.op2 p
       else
         let op1_appr = get_appr selector.op1 Int32.(p - one) in
         let op2_appr = get_appr selector.op2 Int32.(p - one) in
         let diff = Z.(abs (op1_appr - op2_appr)) in
         if Z.(diff <= big1) then scale op1_appr Int32.minus_one
-        else if signum selector.selector < Int32.zero
+        else if Int32.(signum selector.selector < zero)
         then (
           selector.selector_sign <- Int32.minus_one;
           scale op1_appr Int32.minus_one
@@ -391,12 +392,12 @@ and approximate_mult_cr : t -> t -> int32 -> Z.t
       (* debug_printf "msd_op1: %li\n" msd_op1; *)
 
       let op1, op2, msd_op1 =
-        if msd_op1 = Int32.min_value
+        if Int32.(msd_op1 = min_value)
         then
           let msd_op2 = msd op2 half_prec in
           (* debug_printf "msd_op2: %li\n" msd_op2; *)
           (* Product is small enough that zero will do as an approximation *)
-          if msd_op2 = Int32.min_value then raise EarlyReturn;
+          if Int32.(msd_op2 = min_value) then raise EarlyReturn;
           (* Swap operands so larger is first *)
           op2, op1, msd_op2
         else
@@ -463,15 +464,15 @@ and approximate_prescaled_asin_cr op p =
 and approximate_pi_cr p =
   let pi_tolerance = big4 in
   let sqrt_half = sqrt (shift_right one Int32.one) in
-  if p >= Int32.zero
-  then scale big3 (neg p)
+  if Int32.(p >= zero)
+  then scale big3 (Int32.neg p)
   else
     let extra_eval_prec =
       Int32.(of_float
         (Float.round_up (Float.log (Int32.to_float (neg p)) /. Float.log 2.0)) + ten)
     in
     let eval_prec = Int32.(p - extra_eval_prec) in
-    let a = ref (big_shift_left big1 (neg eval_prec)) in
+    let a = ref (big_shift_left big1 (Int32.neg eval_prec)) in
     let b = ref (get_appr sqrt_half eval_prec) in
     let t = ref (big_shift_left big1 Int32.(neg eval_prec - two)) in
     let n = ref 0 in
@@ -482,14 +483,14 @@ and approximate_pi_cr p =
       let b_prod = Z.(shift_right (!a * !b)
         (eval_prec |> Int32.neg |> Int.of_int32_exn))
       in
-      let b_prod_as_cr = shift_right (of_bigint b_prod) (neg eval_prec) in
+      let b_prod_as_cr = shift_right (of_bigint b_prod) (Int32.neg eval_prec) in
       let next_b =
         if Int.(Queue.length pi_b_prec = !n + 1)
         then (
           (* Add an n+1st slot *)
           let next_b_as_cr = sqrt b_prod_as_cr in
           let next_b = get_appr next_b_as_cr eval_prec in
-          let scaled_next_b = scale next_b (neg extra_eval_prec) in
+          let scaled_next_b = scale next_b (Int32.neg extra_eval_prec) in
           Queue.enqueue pi_b_prec p;
           Queue.enqueue pi_b_val scaled_next_b;
           next_b
@@ -506,7 +507,7 @@ and approximate_pi_cr p =
           in
           let next_b = get_appr next_b_as_cr eval_prec in
           Queue.set pi_b_prec Int.(!n + 1) p;
-          Queue.set pi_b_val Int.(!n + 1) (scale next_b (neg extra_eval_prec));
+          Queue.set pi_b_val Int.(!n + 1) (scale next_b (Int32.neg extra_eval_prec));
           next_b
         )
       in
@@ -523,7 +524,7 @@ and approximate_pi_cr p =
 
     let sum = Z.(!a + !b) in
     let result = Z.(shift_right (sum * sum / !t) 2) in
-    scale result (neg extra_eval_prec)
+    scale result (Int32.neg extra_eval_prec)
 
 and approximate_sqrt_cr t op p =
   let open Int32 in
@@ -650,7 +651,7 @@ and get_appr : t -> int32 -> Z.t
   = fun ({ base = { min_prec; max_appr; appr_valid }; _ } as op) precision ->
   (* debug_printf "precision: %li\n" precision; *)
   check_prec precision;
-  if appr_valid && precision >= min_prec
+  if appr_valid && Int32.(precision >= min_prec)
   then (
     scale max_appr Int32.(min_prec - precision)
   )
@@ -697,10 +698,10 @@ and msd : t -> int32 -> int32
   and iter_msd op n = iter_prec_msd op n Int32.zero
 
   and iter_prec_msd op n prec =
-    if prec <= Int32.(n + thirty) then msd op n
+    if Int32.(prec <= n + thirty) then msd op n
     else
       let msd = msd op prec in
-      if msd <> Int32.min_value then msd
+      if Int32.(msd <> min_value) then msd
       else (
         check_prec prec;
         iter_prec_msd op n Int32.(prec * three / two - sixteen)
@@ -737,15 +738,16 @@ let compare_known_unequal x y =
 let compare x y ~relative_tolerance ~absolute_tolerance
   = let x_msd = iter_msd x absolute_tolerance in
     let y_msd = iter_msd y
-      (if x_msd > absolute_tolerance then x_msd else absolute_tolerance)
+      (if Int32.(x_msd > absolute_tolerance) then x_msd else absolute_tolerance)
     in
-    let max_msd = if y_msd > x_msd then y_msd else x_msd in
-    if max_msd = Int32.min_value
+    let max_msd = if Int32.(y_msd > x_msd) then y_msd else x_msd in
+    if Int32.(max_msd = min_value)
     then 0
     else (
       check_prec relative_tolerance;
       let rel = Int32.(max_msd + relative_tolerance) in
-      let abs_prec = if rel > absolute_tolerance then rel else absolute_tolerance in
+      let abs_prec = if Int32.(rel > absolute_tolerance) then rel else absolute_tolerance
+      in
       compare_absolute x y ~absolute_tolerance:abs_prec
     )
 ;;
@@ -755,12 +757,12 @@ let int_value op = op |> bigint_value |> Z.to_int
 
 let float_value op =
   let op_msd = iter_msd op Int32.minus_1080 in
-  if (op_msd = Int32.min_value) then 0.0
+  if Int32.(op_msd = min_value) then 0.0
   else
     let needed_prec = Int32.(op_msd - sixty) in
     let needed_prec' = Int32.to_int_exn needed_prec in
     let scaled_int = get_appr op needed_prec |> Z.to_float in
-    let may_underflow = needed_prec < Int32.minus_1000 in
+    let may_underflow = Int32.(needed_prec < minus_1000) in
     let negative = Float.ieee_negative scaled_int in
     let mantissa = Float.ieee_mantissa scaled_int in
     let orig_exp = Float.ieee_exponent scaled_int in
@@ -784,7 +786,7 @@ let float_value op =
 let select selector x y
   = of_cr (SelectCR {
       selector;
-      selector_sign = neg Int32.twenty |> get_appr selector |> big_signum;
+      selector_sign = Int32.minus_twenty |> get_appr selector |> big_signum;
       op1 = x;
       op2 = y
     })
@@ -893,7 +895,7 @@ let rec ln : t -> t
 let eval_to_string : ?digits:int32 -> ?radix:int32 -> t -> string
   = fun ?digits:(digits=Int32.ten) ?radix:(radix=Int32.ten) op ->
     let scaled_cr =
-      if radix = Int32.sixteen
+      if Int32.(radix = sixteen)
       then shift_left op Int32.(four * digits)
       else
         let scale_factor = Z.pow (Z.of_int32 radix) (Int.of_int32_exn digits) in
