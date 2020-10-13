@@ -113,3 +113,54 @@ let mk_output
   R.Html.div
     ~a:[ R.Html.a_class (React.S.const [ "output" ]) ]
     (RList.singleton_s elt_s)
+
+type digits_update =
+  | SetDigits of int
+  | IncrDigits
+  | DecrDigits
+
+let mk_digits_entry digits_s =
+    let open Js_of_ocaml in
+    let open Js_of_ocaml_tyxml.Tyxml_js in
+    let module Ev = Js_of_ocaml_lwt.Lwt_js_events in
+
+    let digits_event, signal_digits_event = React.E.create () in
+
+    let input_value = Int.to_string (React.S.value digits_s) in
+
+    let input = [%html{|<input type="text" value=|}input_value{|>|}] in
+    let input_dom = To_dom.of_input input in
+
+    bind_event Ev.keydowns input_dom (fun evt ->
+      let key_name = evt##.code
+        |> Js.Optdef.to_option
+        |> Option.value_exn
+        |> Js.to_string
+      in
+      let result = match key_name with
+        | "Enter" -> (
+         Dom.preventDefault evt;
+         try
+           signal_digits_event
+             (SetDigits (Int.of_string (Js.to_string input_dom##.value)))
+         with
+           _ -> ()
+        )
+        | "ArrowUp" | "ArrowRight" ->
+          Dom.preventDefault evt;
+          signal_digits_event IncrDigits
+        | "ArrowDown" | "ArrowLeft" ->
+          Dom.preventDefault evt;
+          signal_digits_event DecrDigits
+        | _ -> ()
+      in
+      Lwt.return result
+    );
+
+    let (_: unit React.event) = digits_s
+      (* Create an event when the input has changed *)
+      |> React.S.map ~eq:Caml.(=) Fn.id
+      |> React.S.changes
+      |> React.E.map (fun i -> input_dom##.value := Js.string (Int.to_string i))
+    in
+    input, digits_event

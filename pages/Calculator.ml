@@ -8,14 +8,9 @@ module Model = struct
 end
 
 module Action = struct
-  type digits_update =
-    | SetDigits of int
-    | IncrDigits
-    | DecrDigits
-
   type t =
     | Evaluate of string
-    | ChangePrecision of digits_update
+    | ChangePrecision of Common.digits_update
 end
 
 module Controller = struct
@@ -36,55 +31,13 @@ module Controller = struct
 end
 
 module View = struct
-  open Js_of_ocaml
   open Js_of_ocaml_tyxml.Tyxml_js
   module Ev = Js_of_ocaml_lwt.Lwt_js_events
   module Parse = Lvca_languages.Calculator.Parse (ParseUtil.CComment)
 
-  let mk_digits_entry digits_s =
-    let digits_event, signal_digits_event = React.E.create () in
-
-    let input_value = Int.to_string (snd Model.initial_model) in
-
-    let input = [%html{|<input type="text" value=|}input_value{|>|}] in
-    let input_dom = To_dom.of_input input in
-    Common.bind_event Ev.keydowns input_dom (fun evt ->
-      let key_name = evt##.code
-        |> Js.Optdef.to_option
-        |> Option.value_exn
-        |> Js.to_string
-      in
-      let result = match key_name with
-        | "Enter" -> (
-         Dom.preventDefault evt;
-         try
-           signal_digits_event
-             (Action.SetDigits (Int.of_string (Js.to_string input_dom##.value)))
-         with
-           _ -> ()
-        )
-        | "ArrowUp" | "ArrowRight" ->
-          Dom.preventDefault evt;
-          signal_digits_event Action.IncrDigits
-        | "ArrowDown" | "ArrowLeft" ->
-          Dom.preventDefault evt;
-          signal_digits_event Action.DecrDigits
-        | _ -> ()
-      in
-      Lwt.return result
-    );
-
-    let (_: unit React.event) = digits_s
-      (* Create an event when the input has changed *)
-      |> React.S.map ~eq:Caml.(=) Fn.id
-      |> React.S.changes
-      |> React.E.map (fun i -> input_dom##.value := Js.string (Int.to_string i))
-    in
-    input, digits_event
-
   let view model_s signal_update =
     let input, input_event = Common.mk_input (model_s |> React.S.map fst) in
-    let digits_entry, digits_event = mk_digits_entry (model_s |> React.S.map snd) in
+    let digits_entry, digits_event = Common.mk_digits_entry (model_s |> React.S.map snd) in
 
     let (_ : unit React.event) = input_event
       |> React.E.map (function
