@@ -1,6 +1,8 @@
 open Base
 open Lvca_syntax
 open ReactiveData
+module Ev = Js_of_ocaml_lwt.Lwt_js_events
+module Tyxml_js = Js_of_ocaml_tyxml.Tyxml_js
 
 type term = (OptRange.t, Primitive.t) Nominal.term
 
@@ -27,11 +29,11 @@ let lambda_pretty = Lvca_languages.LambdaCalculus.pp (* XXX why used twice? *)
 
 let bind_event ev elem handler =
   let handler evt _ = handler evt in
-  Js_of_ocaml_lwt.Lwt_js_events.async @@ fun () -> ev elem handler
+  Ev.async @@ fun () -> ev elem handler
 ;;
 
 let demo_template handler input_desc input_elem output_desc output_elem =
-  let open Js_of_ocaml_tyxml.Tyxml_js in
+  let open Tyxml_js in
   [%html{|
     <div>
       <h2>Eval with Provenance</h2>
@@ -60,8 +62,7 @@ type input_event =
 
 let mk_input input_s =
   let open Js_of_ocaml in
-  let open Js_of_ocaml_tyxml.Tyxml_js in
-  let module Ev = Js_of_ocaml_lwt.Lwt_js_events in
+  let open Tyxml_js in
 
   let input_event, signal_event = React.E.create () in
 
@@ -108,8 +109,8 @@ let mk_input input_s =
   input, input_event
 
 let mk_output
-  (elt_s : [ `Code ] Js_of_ocaml_tyxml.Tyxml_js.To_dom.elt React.signal) =
-  let open Js_of_ocaml_tyxml.Tyxml_js in
+  (elt_s : [ `Code ] Tyxml_js.To_dom.elt React.signal) =
+  let open Tyxml_js in
   R.Html.div
     ~a:[ R.Html.a_class (React.S.const [ "output" ]) ]
     (RList.singleton_s elt_s)
@@ -121,8 +122,7 @@ type digits_update =
 
 let mk_digits_entry digits_s =
     let open Js_of_ocaml in
-    let open Js_of_ocaml_tyxml.Tyxml_js in
-    let module Ev = Js_of_ocaml_lwt.Lwt_js_events in
+    let open Tyxml_js in
 
     let digits_event, signal_digits_event = React.E.create () in
 
