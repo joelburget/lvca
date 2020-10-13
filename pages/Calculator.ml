@@ -43,7 +43,10 @@ module View = struct
 
   let mk_digits_entry digits_s =
     let digits_event, signal_digits_event = React.E.create () in
-    let input = [%html{|<input type="text">|}] in
+
+    let input_value = Int.to_string (snd Model.initial_model) in
+
+    let input = [%html{|<input type="text" value=|}input_value{|>|}] in
     let input_dom = To_dom.of_input input in
     Common.bind_event Ev.keydowns input_dom (fun evt ->
       let key_name = evt##.code
@@ -122,7 +125,7 @@ module View = struct
           </div>
           <div class="side">
             <h3>result</h3>
-            |}[ R.Html.txt result ]{|
+            <pre>|}[ R.Html.txt result ]{|</pre>
           </div>
         </div>
         <div>
