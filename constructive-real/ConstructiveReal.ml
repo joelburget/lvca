@@ -343,7 +343,8 @@ and signum' : t -> int32 -> int32
     let result = signum_a op a in
     if Int32.(result <> zero) then result else signum' op Int32.(a * Int32.two)
 
-(* Give a scaled approximation accurate to 2**n *)
+(* Give a scaled approximation accurate to 2**n. In other words, [value / (2 ** p)],
+   rounded to an integer. *)
 and approximate : t -> int32 -> Z.t
   = fun ({ cr; _ } as t) p ->
     match cr with
@@ -352,9 +353,9 @@ and approximate : t -> int32 -> Z.t
       if Int32.(p >= zero)
       then get_appr value p
       else scale (get_appr value Int32.zero) (Int32.neg p)
-    | AddCR (op1, op2) ->
-      let (+) = Z.(+) in
-      scale (get_appr op1 Int32.(p - two) + get_appr op2 Int32.(p - two)) Int32.(neg two)
+    | AddCR (op1, op2) -> scale
+      Z.(get_appr op1 Int32.(p - two) + get_appr op2 Int32.(p - two))
+      Int32.(neg two)
     | ShiftedCR (op, count) -> get_appr op Int32.(p - count)
     | NegCR op -> Z.neg (get_appr op p)
     | SelectCR selector ->
@@ -458,6 +459,17 @@ and approximate_prescaled_asin_cr op p =
     done;
     scale !current_sum Int32.(calc_precision - p)
 
+(* Uses the Gauss-Legendre algorithm:
+  a_0 = 1
+  b_0 = 1 / sqrt 2
+  t_0 = 1 / 4
+
+  a_{n+1} = (a_n + b_n) / 2
+  b_{n+1} = sqrt (a_n + b_n)
+  t_{n+1} = t_n - (2^n)(a_n - a_{n+1})^2
+
+  pi ~ (a_{n+1} + b_{n+1})^2 / 4t_{n+1}
+  *)
 and approximate_pi_cr p =
   let pi_tolerance = big4 in
   let sqrt_half = sqrt (shift_right one Int32.one) in
@@ -523,6 +535,7 @@ and approximate_pi_cr p =
     let result = Z.(shift_right (sum * sum / !t) 2) in
     scale result (Int32.neg extra_eval_prec)
 
+(* Use Newton's algorithm to compute. *)
 and approximate_sqrt_cr t op p =
   let open Int32 in
   (* Convervative estimate of number of significant bits in double precision
@@ -582,15 +595,14 @@ and approximate_prescaled_ln_cr op p =
     let x_nth = ref x_nth_val in
     let current_term = ref x_nth_val in
     let current_sum = ref x_nth_val in
-    let n = ref 1 in
-    let current_sign = ref 1 in
+    let n = ref 0 in
     let max_trunc_error = big_shift_left big1 (p - four - calc_precision) in
     while Z.(abs !current_term >= max_trunc_error) do
       let open Z in
+      let current_sign = if Int.(!n % 2 = 1) then 1 else -1 in
       Int.incr n;
-      current_sign := Int.neg !current_sign;
       x_nth := scale (!x_nth * op_appr) op_prec;
-      current_term := !x_nth / of_int Int.(!n * !current_sign);
+      current_term := !x_nth / of_int Int.((!n + 1) * current_sign);
       current_sum := !current_sum + !current_term;
     done;
     scale !current_sum Int32.(calc_precision - p)
@@ -609,8 +621,8 @@ and approximate_prescaled_cos_cr op p =
     let n = ref 0 in
     let max_trunc_error = big_shift_left big1 (p - four - calc_precision) in
     while Z.(abs !current_term >= max_trunc_error) do
-      n := Int.(!n + 2);
       let open Z in
+      n := Int.(!n + 2);
       (* current_term := - current_term * op * op / n * (n - 1) *)
       let numerator = scale
         ((scale (!current_term * op_appr) op_prec) * op_appr)
@@ -622,6 +634,11 @@ and approximate_prescaled_cos_cr op p =
     done;
     scale !current_sum Int32.(calc_precision - p)
 
+(* Use a taylor series to calculate [e^x]. Assumes |x| < 1/2.
+
+ [e^x = sum{n=0}{\inf}{x^n / n!} = 1 + x + x^2 / 2! + x^3 / 3! + ...]
+
+ *)
 and approximate_prescaled_exp_cr op p =
   let open Int32 in
   if p >= Int32.one then big0
@@ -636,8 +653,8 @@ and approximate_prescaled_exp_cr op p =
     let n = ref 0 in
     let max_trunc_error = big_shift_left big1 (p - four - calc_precision) in
     while Z.(abs !current_term >= max_trunc_error) do
-      Int.incr n;
       let open Z in
+      Int.incr n;
       current_term := scale (!current_term * op_appr) op_prec / of_int !n;
       current_sum := !current_sum + !current_term;
     done;
