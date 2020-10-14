@@ -387,15 +387,12 @@ and approximate_mult_cr : t -> t -> int32 -> Z.t
   = fun op1 op2 p ->
     try
       let half_prec = Int32.(shift_right p 1 - one) in
-      (* debug_printf "p: %li, half_prec: %li\n" p half_prec; *)
       let msd_op1 = msd op1 half_prec in
-      (* debug_printf "msd_op1: %li\n" msd_op1; *)
 
       let op1, op2, msd_op1 =
         if Int32.(msd_op1 = min_value)
         then
           let msd_op2 = msd op2 half_prec in
-          (* debug_printf "msd_op2: %li\n" msd_op2; *)
           (* Product is small enough that zero will do as an approximation *)
           if Int32.(msd_op2 = min_value) then raise EarlyReturn;
           (* Swap operands so larger is first *)
@@ -649,7 +646,6 @@ and approximate_prescaled_exp_cr op p =
 (* Return [value / 2 ** prec] rounded to an integer. *)
 and get_appr : t -> int32 -> Z.t
   = fun ({ base = { min_prec; max_appr; appr_valid }; _ } as op) precision ->
-  (* debug_printf "precision: %li\n" precision; *)
   check_prec precision;
   if appr_valid && Int32.(precision >= min_prec)
   then (
