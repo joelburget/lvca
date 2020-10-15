@@ -5,6 +5,7 @@ open Base
   * stop using min_value
   * re-evaluate use of Int32
   * rewrite / document calculations
+  * properly use radix when printing strings
 *)
 
 exception ArithmeticError of string
