@@ -57,8 +57,8 @@ module Parse (Comment : ParseUtil.Comment_int) : sig
 end
 
 module Properties : sig
-  val json_round_trip1 : (unit, Primitive.t) term -> bool
-  val json_round_trip2 : Lvca_util.Json.t -> bool
-  val string_round_trip1 : (unit, Primitive.t) term -> bool
-  val string_round_trip2 : string -> bool
+  val json_round_trip1 : (unit, Primitive.t) term -> PropertyResult.t
+  val json_round_trip2 : Lvca_util.Json.t -> PropertyResult.t
+  val string_round_trip1 : (unit, Primitive.t) term -> PropertyResult.t
+  val string_round_trip2 : string -> PropertyResult.t
 end

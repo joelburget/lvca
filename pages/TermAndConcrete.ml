@@ -2,6 +2,16 @@ open Base
 open Lvca_syntax
 open Common
 
+module PrimitiveParse = Primitive.Parse (ParseUtil.NoComment)
+module TermParse = Nominal.Parse (ParseUtil.NoComment)
+
+type lang =
+  | Lambda
+  | Term
+
+let parser_of = function Lambda -> LambdaParse.t | Term -> TermParse.t PrimitiveParse.t
+let term_pretty = Nominal.pp_term_range Primitive.pp (* XXX why used twice? *)
+
 module Model = struct
   type t =
     { input : string
@@ -9,6 +19,7 @@ module Model = struct
     ; result : (term, string) Result.t
     ; selected : OptRange.t
     }
+    (* TODO: evaluate ppx_deriving *)
 
   let print { input; input_lang; result; selected } =
     let input_lang_str = match input_lang with Lambda -> "Lambda" | Term -> "Term" in
@@ -25,9 +36,6 @@ module Model = struct
       selected
   ;;
 end
-
-type signal = Model.t React.signal
-type update_fun = ?step:React.step -> Model.t -> unit
 
 module Controller = struct
   let update (action : Action.t) model_s signal_update =
@@ -84,8 +92,7 @@ module View = struct
     mk_output formatted_s
   ;;
 
-  let make_descriptions model_s =
-    model_s
+  let make_descriptions model_s = model_s
     |> React.S.map (fun Model.{ input_lang; _ } ->
            match input_lang with
            | Lambda -> "input (concrete)", "output (abstract)"
@@ -131,9 +138,3 @@ let stateless_view =
   let model_s, signal_update = React.S.create initial_model in
   View.view model_s signal_update
 ;;
-
-(* let insert_demo elem = let model_s, signal_update = React.S.create Model.initial_model
-   in Dom.appendChild elem (Js_of_ocaml_tyxml.Tyxml_js.To_dom.of_div (View.view model_s
-   signal_update)); Lwt.return ()
-
-   let (_ : unit) = Js.export "TermAndConcrete" (object%js method run = insert_demo end) *)

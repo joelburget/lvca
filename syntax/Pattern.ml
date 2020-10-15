@@ -47,7 +47,7 @@ let rec pp pp_prim ppf =
   let comma, list, pf, semi = Fmt.(comma, list, pf, semi) in
   function
   | Operator (_, name, pats) ->
-    pf ppf "@[<2>%s(%a)@]" name (list ~sep:semi (list ~sep:comma (pp pp_prim))) pats
+    pf ppf "@[<2>%s(%a)@]" name (pp pp_prim |> list ~sep:comma |> list ~sep:semi) pats
   | Primitive (_, prim) -> pp_prim ppf prim
   | Var (_, name) -> pf ppf "%s" name
   | Ignored (_, name) -> pf ppf "_%s" name
@@ -62,7 +62,7 @@ let rec pp_range pp_prim ppf pat =
       ppf
       "@[<2>@{<test>%s@}(%a)@]"
       name
-      (list ~sep:semi (list ~sep:comma (pp_range pp_prim)))
+      (pp_range pp_prim |> list ~sep:comma |> list ~sep:semi)
       pats
   | Primitive (_, prim) -> pf ppf "%a" pp_prim prim
   | Var (_, name) -> pf ppf "%s" name
@@ -281,40 +281,50 @@ let%test_module "Parsing" =
 ;;
 
 module Properties = struct
-  let json_round_trip1 : (unit, Primitive.t) t -> bool =
+  module ParsePattern = Parse (ParseUtil.NoComment)
+  module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
+  open PropertyResult
+
+  let parse = ParseUtil.parse_string (ParsePattern.t ParsePrimitive.t)
+  let pp' = pp Primitive.pp
+  let to_string' = to_string Primitive.pp
+
+  let json_round_trip1 =
    fun t ->
     match t |> jsonify Primitive.jsonify |> unjsonify Primitive.unjsonify with
-    | None -> false
-    | Some t' -> t = t'
+    | None -> Failed (Fmt.str "Failed to unjsonify %a" pp' t)
+    | Some t' -> PropertyResult.check Caml.(t = t') (Fmt.str "%a <> %a" pp' t' pp' t)
  ;;
 
-  let json_round_trip2 : Util.Json.t -> bool =
+  let json_round_trip2 =
    fun json ->
     match json |> unjsonify Primitive.unjsonify with
-    | None -> true (* malformed input *)
-    | Some t -> Util.Json.(jsonify Primitive.jsonify t = json)
+    | None -> Uninteresting
+    | Some t -> PropertyResult.check
+      Lvca_util.Json.(jsonify Primitive.jsonify t = json)
+      "jsonify t <> json (TODO: print)"
  ;;
 
-  module Parse' = Parse (ParseUtil.NoComment)
-  module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
-
-  let string_round_trip1 : (unit, Primitive.t) t -> bool =
-   fun t ->
-    match
-      t |> to_string Primitive.pp |> ParseUtil.parse_string (Parse'.t ParsePrimitive.t)
-    with
-    | Ok prim -> erase prim = t
-    | Error _ -> false
+  let string_round_trip1 =
+   fun t -> match t |> to_string' |> parse with
+    | Ok t' ->
+      let t'' = erase t' in
+      PropertyResult.check Caml.(t'' = t) (Fmt.str "%a <> %a" pp' t'' pp' t)
+    | Error msg
+    -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string' t) msg)
  ;;
 
-  let string_round_trip2 : string -> bool =
-   fun str ->
-    match ParseUtil.parse_string (Parse'.t ParsePrimitive.t) str with
-    | Ok prim ->
-      let str' = to_string Primitive.pp prim in
-      Base.String.(str' = str)
-    | Error _ -> true
+  let string_round_trip2 =
+   fun str -> match parse str with
+    | Error _ -> Uninteresting
+    | Ok t ->
+      let str' = t |> erase |> to_string' in
+      if Base.String.(str' = str)
+      then Ok
+      else match parse str with
+        | Error msg -> Failed msg
+        | Ok t' ->
+        let str'' = t' |> erase |> to_string' in
+        PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str')
  ;;
-
-  (* malformed input *)
 end

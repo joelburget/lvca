@@ -11,6 +11,7 @@ module Model = struct
     ; result : (term, string) Result.t
     ; selected : OptRange.t
     }
+    (* TODO: evaluate ppx_deriving *)
 
   let print { input; result; selected } =
     Fmt.pr
@@ -25,9 +26,6 @@ module Model = struct
       selected
   ;;
 end
-
-type signal = Model.t React.signal
-type update_fun = ?step:React.step -> Model.t -> unit
 
 module Controller = struct
   let update (action : Action.t) model_s signal_update =

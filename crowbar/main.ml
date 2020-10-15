@@ -1,36 +1,100 @@
+open Base
 open Lvca_syntax
-open Core_kernel
+
+let char_gen = Crowbar.(map [range ~min:32 94] Char.of_int_exn)
+let str_gen = Crowbar.(map [list char_gen] String.of_char_list)
+let nonempty_str_gen = Crowbar.(map [char_gen; str_gen]
+  (fun c str -> String.of_char c ^ str))
+
+(* json *)
+
+let rec json_gen =
+  lazy Crowbar.(Lvca_util.(choose
+    [ const (Json.array [||])
+    ; map [float] Json.float
+    ; map [str_gen] Json.string
+    ; map [list (unlazy json_gen)] (fun ts -> ts |> Array.of_list |> Json.array)
+    ]))
+let lazy json_gen = json_gen
+
+(* primitive *)
+
+let prim_gen : Primitive.t Crowbar.gen
+  = let open Crowbar in
+    let open Primitive in
+  let options =
+    [ map [int] (fun i -> PrimInteger (Z.of_int i))
+    (* TODO: string and float parsing has a couple issues *)
+    ; map [str_gen] (fun str -> PrimString str)
+    (* ; map [float] (fun f -> PrimFloat f) *)
+    ; map [char] (fun c -> PrimChar c)
+    ]
+  in
+  choose options
+
+(* de bruijn *)
+
+  (*
+let rec de_bruijn_gen = fun binding_var_count -> lazy Crowbar.(DeBruijn.(
+  let subtm_scope = map [force (de_bruijn_scope_gen binding_var_count)]
+    (fun scope -> Either.First scope)
+  in
+  let subtm_tms = map [list (force (de_bruijn_gen binding_var_count))]
+    (fun tms -> Either.Second tms)
+  in
+  let subtms = list (choose [subtm_scope; subtm_tms]) in
+  let no_bound_var_options =
+    [ map [prim_gen] (fun p -> Primitive ((), p))
+    ; map [str_gen; subtms] (fun name scopes -> Operator ((), name, scopes))
+    ; map [str_gen] (fun name -> FreeVar ((), name))
+    ]
+  in
+  let options = match binding_var_count with
+    | 0 -> no_bound_var_options
+    | _ ->
+      let var_gen = map [range binding_var_count]
+        (fun var_ix -> BoundVar ((), var_ix))
+      in
+      var_gen :: no_bound_var_options
+  in
+  choose options))
+
+and de_bruijn_scope_gen = fun binding_var_count -> lazy Crowbar.(
+  map [str_gen; list (force (de_bruijn_gen (binding_var_count + 1)))]
+    (fun name tms -> DeBruijn.Scope ((), name, tms))
+)
+
+let lazy de_bruijn_gen = de_bruijn_gen 0
+*)
+
+(* pattern *)
+
+let pattern_gen = Crowbar.(Pattern.(fix (fun pattern_gen ->
+  choose
+    [ map [prim_gen] (fun p -> Primitive ((), p))
+    ; map [nonempty_str_gen; list (list pattern_gen)]
+      (fun name subpats -> Operator ((), name, subpats))
+      ; map [nonempty_str_gen] (fun name -> Var ((), name))
+    ; map [str_gen] (fun name -> Ignored ((), name))
+    ])))
+
+(* nominal *)
 
 (*
-(* The range vars are allowed to span. This is a list of de bruijn indices and
- * the number of vars bound at each index. *)
-type var_range = list int
+let rec nominal_gen = lazy Crowbar.(Nominal.(
+  let subtms = list (force nominal_scope_gen) in
+  choose
+    [ map [prim_gen] (fun p -> Primitive ((), p))
+    ; map [nonempty_str_gen; subtms] (fun name scopes -> Operator ((), name, scopes))
+    ; map [nonempty_str_gen] (fun name -> Var ((), name))
+    ]))
 
-let de_bruijn_gen : var_range -> Binding.DeBruijn.term gen
-  =
-  (* let open Crowbar in *)
-  Crowbar.fix (fun de_bruijn_gen ->
-    let options =
-      [ Crowbar.(map [int] (fun i -> Primitive (PrimInteger (Bigint.of_int i))))
-      ; Crowbar.(map [string] (fun str -> Primitive (PrimString str)))
-      ; Crowbar.(map [list de_bruijn_gen] (fun tms -> Sequence tms))
-      (* TODO: use range *)
-      ; Crowbar.(map [pair
-      ]
-    in
-    let options' = match var_range with
-      | [] -> options
-      | _ ->
-        let var_gen = Crowbar.(dynamic_bind (range (List.length var_range))
-          (fun var_ix -> map [range (List.nth_exn var_range var_ix)]
-            (fun var_num -> Var (var_ix, var_num))))
-        in var_gen :: options
-    in
-    Crowbar.choose options')
- *)
+and nominal_scope_gen = lazy Crowbar.(
+    map [list pattern_gen; list (force nominal_gen)]
+      (fun pats tms -> Nominal.Scope (pats, tms))
+)
 
-module ParseNominal = Nominal.Parse (ParseUtil.NoComment)
-module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
+let lazy nominal_gen = nominal_gen
 
 let term_str_conf tm_str =
   let parser = ParseNominal.whitespace_t ParsePrimitive.t in
@@ -40,10 +104,95 @@ let term_str_conf tm_str =
     let tm_str' = Nominal.pp_term_str Primitive.pp tm in
     Crowbar.check_eq tm_str tm_str'
 ;;
+*)
 
-(* TODO: term meta-model string -> term -> string | ^ ^ | | | | v | +----> term2 ----+ *)
+let add_test ~name ~gen ~f = Crowbar.add_test ~name [ gen ]
+  (fun a -> match f a with
+    | PropertyResult.Ok -> ()
+    | Failed msg -> Crowbar.fail msg
+    | Uninteresting -> Crowbar.bad_test ())
+;;
 
 let () =
-  (* let _term_body = In_channel.read_all "term.lvca" in *)
-  Crowbar.(add_test ~name:"nominal round trip" [ bytes ] term_str_conf)
+
+  (* 0 *)
+  add_test
+    ~name:"Primitive json_round_trip1"
+    ~gen:prim_gen
+    ~f:Primitive.Properties.json_round_trip1;
+
+  (* 1 *)
+  add_test
+    ~name:"Primitive json_round_trip2"
+    ~gen:json_gen
+    ~f:Primitive.Properties.json_round_trip2;
+
+  (* 2 *)
+  add_test
+    ~name:"Primitive string_round_trip1"
+    ~gen:prim_gen
+    ~f:Primitive.Properties.string_round_trip1;
+
+  (* 3 *)
+  add_test
+    ~name:"Primitive string_round_trip2"
+    ~gen:nonempty_str_gen
+    ~f:Primitive.Properties.string_round_trip2;
+
+  (*
+  (* 4 *)
+  (* TODO: failing *)
+  add_test
+    ~name:"Nominal json_round_trip1"
+    ~gen:nominal_gen
+    ~f:Nominal.Properties.json_round_trip1;
+    *)
+
+  (* 5 *)
+  add_test
+    ~name:"Nominal json_round_trip2"
+    ~gen:json_gen
+    ~f:Nominal.Properties.json_round_trip2;
+
+    (*
+  (* 6 *)
+  (* TODO: failing *)
+  add_test
+    ~name:"Nominal string_round_trip1"
+    ~gen:nominal_gen
+    ~f:Nominal.Properties.string_round_trip1;
+    *)
+
+  (* 7 *)
+  add_test
+    ~name:"Nominal string_round_trip2"
+    ~gen:nonempty_str_gen
+    ~f:Nominal.Properties.string_round_trip2;
+
+  (* 8 *)
+  add_test
+    ~name:"Pattern json_round_trip1"
+    ~gen:pattern_gen
+    ~f:Pattern.Properties.json_round_trip1;
+
+  (* 9 *)
+  add_test
+    ~name:"Pattern json_round_trip2"
+    ~gen:json_gen
+    ~f:Pattern.Properties.json_round_trip2;
+
+  (* TODO: failing *)
+  (* 10 *)
+  add_test
+    ~name:"Pattern string_round_trip1"
+    ~gen:pattern_gen
+    ~f:Pattern.Properties.string_round_trip1;
+
+  (* 11 *)
+  add_test
+    ~name:"Pattern string_round_trip2"
+    ~gen:nonempty_str_gen
+    ~f:Pattern.Properties.string_round_trip2;
+
+  ()
 ;;

@@ -29,3 +29,5 @@ val alpha_equivalent
   -> ('a, 'prim) term
   -> ('b, 'prim) term
   -> bool
+
+(* XXX add properties *)
