@@ -38,3 +38,7 @@ pre {
 .example {
   cursor: pointer;
 }
+
+table.language_chart {
+  font-family: monospace;
+}
