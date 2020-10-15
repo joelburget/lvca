@@ -66,10 +66,11 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         let application =
           let min_max =
             choice [string "min"; string "max"] >>== fun ~pos:p1 name ->
-            atom >>= fun atom1 ->
-            atom >>| fun atom2 ->
-            let pos = OptRange.union p1 (NonBinding.location atom2) in
-            NonBinding.Operator (pos, name, [[atom1]; [atom2]])
+            lift2 (fun atom1 atom2 ->
+              let pos = OptRange.union p1 (NonBinding.location atom2) in
+              NonBinding.Operator (pos, name, [[atom1]; [atom2]])
+            )
+            atom atom
           in
           atom <|> unary_op <|> min_max
         in
