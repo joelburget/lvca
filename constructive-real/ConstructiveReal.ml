@@ -49,6 +49,24 @@ let big8 = Z.of_int 8
 let big750 = Z.of_int 750
 let bigm750 = Z.of_int (-750)
 
+type series_init =
+  { current_term: Z.t
+  ; current_sum: Z.t
+  ; calc_precision: int32
+  ; max_trunc_error: Z.t
+  ; p: int32
+  }
+
+type sum_iteration =
+  { current_term: Z.t
+  ; current_sum: Z.t
+  }
+
+type sum_scope_value = string * sum_iteration Queue.t
+
+let sum_scope_enabled = ref false
+let sum_scope_values : sum_scope_value Queue.t = Queue.create ()
+
 let string_of_scaled_int scaled_int digits =
   let scaled_string : string = Z.(scaled_int |> abs |> to_string) in
   let result =
@@ -317,6 +335,28 @@ let scale k n =
     Z.shift_right adj_k 1
 ;;
 
+let sum_series
+  : name:string -> init:series_init -> f:(n:int -> current_term:Z.t -> Z.t) -> Z.t
+  = fun ~name ~init ~f ->
+  let n = ref 0 in
+  let current_term = ref init.current_term in
+  let current_sum = ref init.current_sum in
+  let sum_scope_value = Queue.of_list
+    [{ current_term = !current_term; current_sum = !current_sum }]
+  in
+  let { calc_precision; max_trunc_error; _ } = init in
+  while Z.(abs !current_term >= max_trunc_error) do
+    current_term := f ~n:!n ~current_term:!current_term;
+    current_sum := Z.(!current_sum + !current_term);
+    if !sum_scope_enabled then
+      Queue.enqueue sum_scope_value
+        { current_term = !current_term; current_sum = !current_sum };
+    Int.incr n
+  done;
+  if !sum_scope_enabled then Queue.enqueue sum_scope_values (name, sum_scope_value);
+  scale !current_sum Int32.(calc_precision - init.p)
+;;
+
 let pi_b_prec : int32 Queue.t
   = Queue.of_list [Int32.zero] (* Initial entry unused *)
 
@@ -414,6 +454,7 @@ and approximate_mult_cr : t -> t -> int32 -> Z.t
     with
       EarlyReturn -> big0
 
+(* Newton-Raphson? *)
 and approximate_inv_cr op p =
   let open Int32 in
   let msd = iter_msd op Int32.min_value in
@@ -540,7 +581,8 @@ and approximate_pi_cr p =
 and approximate_sqrt_cr t op p =
   let open Int32 in
   (* Convervative estimate of number of significant bits in double precision
-   * computation*)
+     computation
+   *)
   let fp_prec = fifty in
   let fp_op_prec = sixty in
   let max_op_prec_needed = two * p - one in
@@ -571,69 +613,70 @@ and approximate_sqrt_cr t op p =
       let shift_count = working_prec / two - p in
       shift scaled_sqrt shift_count
 
-(*
-and iterative' params p =
-  if p >= Int32.one then big0
-  else
-    let iterations_needed = params.iterations_needed p in
-    let calc_precision = params.calc_precision iterations_needed in
-    while Z.(abs !current_term >= max_trunc_error) do
-      current_term := loop n;
-      current_sum := !current_sum + !current_term
-    done;
-    scale !current_sum Inte32.(calc_precision - p)
-*)
-
+(* Calculate the Taylor series for [ln (1 + x)]. *)
 and approximate_prescaled_ln_cr op p =
   let open Int32 in
   if p >= Int32.zero then big0
   else
     let iterations_needed = neg p in
-    let calc_precision = p - bound_log2 (two * iterations_needed) - four in
     let op_prec = p - three in
     let op_appr = get_appr op op_prec in
+
+    let calc_precision = p - bound_log2 (two * iterations_needed) - four in
+    let max_trunc_error = big_shift_left big1 (p - four - calc_precision) in
+
+    (* x_nth holds the value of x^(n+1) throughout. Initially just x. *)
     let x_nth_val = scale op_appr (op_prec - calc_precision) in
     let x_nth = ref x_nth_val in
-    let current_term = ref x_nth_val in
-    let current_sum = ref x_nth_val in
-    let n = ref 0 in
-    let max_trunc_error = big_shift_left big1 (p - four - calc_precision) in
-    while Z.(abs !current_term >= max_trunc_error) do
-      let open Z in
-      let current_sign = if Int.(!n % 2 = 1) then 1 else -1 in
-      Int.incr n;
-      x_nth := scale (!x_nth * op_appr) op_prec;
-      current_term := !x_nth / of_int Int.((!n + 1) * current_sign);
-      current_sum := !current_sum + !current_term;
-    done;
-    scale !current_sum Int32.(calc_precision - p)
 
+    let init =
+      { current_term = x_nth_val
+      ; current_sum = x_nth_val
+      ; calc_precision
+      ; max_trunc_error
+      ; p
+      }
+    in
+
+    sum_series ~name:"ln" ~init ~f:(fun ~n ~current_term:_ ->
+      let current_sign = if Int.(n % 2 = 1) then 1 else -1 in
+      x_nth := scale Z.(!x_nth * op_appr) op_prec;
+      Z.(!x_nth / of_int Int.((n + 2) * current_sign))
+    )
+
+(* Use a Taylor series to calculate cos x.
+
+ [cos x = sum{n=0}{\inf}{x^{2n} / (2n)!}
+ *)
 and approximate_prescaled_cos_cr op p =
   let open Int32 in
   if p >= Int32.one then big0
   else
     let iterations_needed = neg p / two + four in
-    let calc_precision = p - bound_log2 (two * iterations_needed) - four in
     let op_prec = p - two in
     let op_appr = get_appr op op_prec in
-    let scaled_1 = big_shift_left big1 (neg calc_precision) in
-    let current_term = ref scaled_1 in
-    let current_sum = ref scaled_1 in
-    let n = ref 0 in
+
+    let calc_precision = p - bound_log2 (two * iterations_needed) - four in
     let max_trunc_error = big_shift_left big1 (p - four - calc_precision) in
-    while Z.(abs !current_term >= max_trunc_error) do
-      let open Z in
-      n := Int.(!n + 2);
-      (* current_term := - current_term * op * op / n * (n - 1) *)
-      let numerator = scale
-        ((scale (!current_term * op_appr) op_prec) * op_appr)
-        op_prec
-      in
-      let divisor = Z.(of_int (Int.neg !n) * of_int Int.(!n - 1)) in
-      current_term := numerator / divisor;
-      current_sum := !current_sum + !current_term;
-    done;
-    scale !current_sum Int32.(calc_precision - p)
+
+    let scaled_1 = big_shift_left big1 (neg calc_precision) in
+    let init =
+      { current_term = scaled_1
+      ; current_sum = scaled_1
+      ; calc_precision
+      ; max_trunc_error
+      ; p
+      }
+    in
+
+    sum_series ~name:"cos" ~init ~f:(fun ~n ~current_term ->
+      let n' = Int.(n * 2) in
+      let rescale x = scale x op_prec in
+      (* Multiply numerator by x twice, and denominator by next two terms of factorial. *)
+      let numerator = Z.(neg (rescale (rescale (current_term * op_appr) * op_appr))) in
+      let denominator = Z.of_int Int.((n' + 2) * (n' + 1)) in
+      Z.(numerator / denominator)
+    )
 
 (* Use a taylor series to calculate [e^x]. Assumes |x| < 1/2.
 
@@ -645,21 +688,25 @@ and approximate_prescaled_exp_cr op p =
   if p >= Int32.one then big0
   else
     let iterations_needed = neg p / two + two in
-    let calc_precision = p - bound_log2 (two * iterations_needed) - four in
     let op_prec = p - three in
     let op_appr = get_appr op op_prec in
-    let scaled_1 = big_shift_left big1 (neg calc_precision) in
-    let current_term = ref scaled_1 in
-    let current_sum = ref scaled_1 in
-    let n = ref 0 in
+
+    let calc_precision = p - bound_log2 (two * iterations_needed) - four in
     let max_trunc_error = big_shift_left big1 (p - four - calc_precision) in
-    while Z.(abs !current_term >= max_trunc_error) do
-      let open Z in
-      Int.incr n;
-      current_term := scale (!current_term * op_appr) op_prec / of_int !n;
-      current_sum := !current_sum + !current_term;
-    done;
-    scale !current_sum Int32.(calc_precision - p)
+
+    let scaled_1 = big_shift_left big1 (neg calc_precision) in
+    let init =
+      { current_term = scaled_1
+      ; current_sum = scaled_1
+      ; calc_precision
+      ; max_trunc_error
+      ; p
+      }
+    in
+
+    sum_series ~name:"exp" ~init ~f:(fun ~n ~current_term ->
+      Z.(scale (current_term * op_appr) op_prec / of_int Int.(n + 1))
+    )
 
 (* Return [value / 2 ** prec] rounded to an integer. *)
 and get_appr : t -> int32 -> Z.t
@@ -912,10 +959,12 @@ let eval_to_string : ?digits:int32 -> ?radix:int32 -> t -> string
       if Int32.(radix = sixteen)
       then shift_left op Int32.(four * digits)
       else
-        let scale_factor = Z.pow (Z.of_int32 radix) (Int.of_int32_exn digits) in
+        let scale_factor = Z.(pow (of_int32 radix) (Int.of_int32_exn digits)) in
         multiply op (of_cr (IntCR scale_factor))
     in
     let scaled_int = get_appr scaled_cr Int32.zero in
+    if !sum_scope_enabled
+    then Caml.Printf.printf "scaled int: %s\n" (Z.to_string scaled_int);
     (* TODO: radix *)
     string_of_scaled_int scaled_int digits
 
@@ -1148,5 +1197,41 @@ let%test_module "Calculator" = (module struct
     ; check_eq (atan (tan minus_one)) minus_one
     ; check_eq (sqrt13 * sqrt13) thirteen
     ]
+
+  (*
+  let print_approximation t i =
+    let v = approximate t (Int32.of_int_exn i) in
+    Caml.Printf.printf "%s %s\n" (Z.to_string v) (Z.format "%b" v)
+
+  let%expect_test _ =
+    print_approximation (of_int 5) (-10);
+    print_approximation (of_int 5) 0;
+    print_approximation (of_int 5) 1;
+    print_approximation (of_int 5) 2;
+    print_approximation (of_int 5) 3;
+    print_approximation (of_int 5) 4;
+    [%expect]
+  *)
+
+  let print_sum_scope f =
+    sum_scope_enabled := true;
+    print (f ());
+    sum_scope_values
+      |> Queue.to_list
+      |> List.iter ~f:(fun (name, iterations) ->
+        Caml.Printf.printf "%s:\n" name;
+        iterations
+          |> Queue.to_list
+          |> List.iter ~f:(fun { current_term; current_sum } ->
+          Caml.Printf.printf "current_sum: %s, current_term: %s\n"
+            (Z.to_string current_sum) (Z.to_string current_term)
+        )
+      )
+    (* sum_scope_enabled := false *)
+
+  let%expect_test _ =
+    (* print_sum_scope (fun () -> ln (of_float 0.5)); *)
+    print_sum_scope (fun () -> cos (of_float 0.5));
+    [%expect]
 
 end);;
