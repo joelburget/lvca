@@ -63,6 +63,34 @@ type t =
   | Sequence of string list * c_term * t list
   | Identifier of string
 
+let rec pp (* Format.formatter -> t -> unit *) : t Fmt.t =
+ fun ppf ->
+  let core = Core.pp in
+  let pf = Fmt.pf in
+  function
+  | Char char -> pf ppf "'%c'" char
+  | String str -> pf ppf {|"%s"|} str
+  | Satisfy (name, tm) -> pf ppf "satisfy (%s -> %a)" name core tm
+  | Let (name, named, body) -> pf ppf "let %s = %a in %a" name pp named pp body
+  | Fail tm -> pf ppf "fail %a" core tm
+  | Option t -> pf ppf "%a?" pp t
+  | Count (tm, t) -> pf ppf "%a{%a}" pp tm core t
+  | Many t -> pf ppf "%a*" pp t
+  | Many1 t -> pf ppf "%a+" pp t
+  | Fix (name, t) -> pf ppf "fix (%s -> %a)" name pp t
+  | Alt (t1, t2) -> pf ppf "alt %a %a" pp t1 pp t2
+  | Return tm -> pf ppf "return %a" core tm
+  | Sequence (names, p, ps) ->
+    pf
+      ppf
+      (* TODO: consistent style between sequence, fix, and satisfy *)
+      "sequence (%a. %a) [%a]"
+      Fmt.(list ~sep:(any ".@ ") string) names
+      core p
+      Fmt.(list ~sep:comma pp) ps
+  | Identifier name -> pf ppf "%s" name
+;;
+
 let mk_some : OptRange.t -> n_term -> n_term =
  fun pos tm -> Nominal.Operator (pos, "some", [ Scope ([], [ tm ]) ])
 ;;
@@ -232,32 +260,17 @@ module Direct = struct
     }
   ;;
 
-  let fix name _p =
-    let max_steps = 20 in
-    let steps = ref max_steps in
+  let fix name p =
     let f p' = { run = fun ~term_ctx ~parser_ctx ~pos str ->
-      p'.run ~term_ctx ~parser_ctx:(Map.set parser_ctx ~key:name ~data:p') ~pos str
+      p.run ~term_ctx ~parser_ctx:(Map.set parser_ctx ~key:name ~data:p') ~pos str
     }
     in
     let rec lazy_p = lazy (f r)
     and r = { run = fun ~term_ctx ~parser_ctx ~pos str ->
-      Int.decr steps;
-      if !steps < 0
-      then
-        failwith "exceeded steps!"
-      else
-        (Lazy.force lazy_p).run ~term_ctx ~parser_ctx ~pos str
+      (Lazy.force lazy_p).run ~term_ctx ~parser_ctx ~pos str
     }
     in
     r
-  ;;
-
-  (*
-  let fix name p =
-    { run = fun ~term_ctx ~parser_ctx ~pos str ->
-      p.run ~term_ctx ~parser_ctx ~pos str
-    }
-*)
 
   let alt t1 t2 =
     { run =
@@ -276,13 +289,16 @@ module Direct = struct
   let liftn names tm ps =
     { run =
         (fun ~term_ctx ~parser_ctx ~pos str ->
-          let pos, result =
-            ps
+          let pos, result = ps
             (* TODO: scanl? *)
             |> List.fold ~init:(pos, Ok []) ~f:(fun (pos, xs) { run } ->
-                   match xs, run ~term_ctx ~parser_ctx ~pos str with
-                   | Ok xs, (pos, Ok x) -> pos, Ok (x :: xs)
-                   | Error msg, _ | _, (_, Error msg) -> pos, Error msg)
+               match xs with
+                 Ok xs -> (match run ~term_ctx ~parser_ctx ~pos str with
+                   | pos, Ok x -> pos, Ok (x :: xs)
+                   | _, Error msg -> pos, Error msg
+                 )
+               | Error msg -> pos, Error msg
+             )
           in
           match result with
           | Error msg -> pos, Error msg
@@ -350,41 +366,13 @@ module Direct = struct
   type t = direct
 end
 
-let rec pp (* Format.formatter -> t -> unit *) : t Fmt.t =
- fun ppf ->
-  let core = Core.pp in
-  let pf = Fmt.pf in
-  function
-  | Char char -> pf ppf "'%c'" char
-  | String str -> pf ppf {|"%s"|} str
-  | Satisfy (name, tm) -> pf ppf "satisfy (%s -> %a)" name core tm
-  | Let (name, named, body) -> pf ppf "let %s = %a in %a" name pp named pp body
-  | Fail tm -> pf ppf "fail %a" core tm
-  | Option t -> pf ppf "%a?" pp t
-  | Count (tm, t) -> pf ppf "%a{%a}" pp tm core t
-  | Many t -> pf ppf "%a*" pp t
-  | Many1 t -> pf ppf "%a+" pp t
-  | Fix (name, t) -> pf ppf "fix (%s -> %a)" name pp t
-  | Alt (t1, t2) -> pf ppf "alt %a %a" pp t1 pp t2
-  | Return tm -> pf ppf "return %a" core tm
-  | Sequence (names, p, ps) ->
-    pf
-      ppf
-      (* TODO: consistent style between sequence, fix, and satisfy *)
-      "sequence (%a. %a) [%a]"
-      Fmt.(list ~sep:(any ".@ ") string) names
-      core p
-      Fmt.(list ~sep:comma pp) ps
-  | Identifier name -> pf ppf "%s" name
-;;
-
 module Parse (Comment : ParseUtil.Comment_int) = struct
   type term = t
 
   module Parsers = ParseUtil.Mk (Comment)
   open Parsers
 
-  let keywords : string list = [ "satisfy"; "let"; "in"; "fail"; "sequence"; "fix" ]
+  let keywords : string list = [ "satisfy"; "let"; "in"; "fail"; "sequence"; "return"; "fix" ]
   let keyword : string Parsers.t = keywords |> List.map ~f:string |> choice
   let operators : string list = [ "?"; "*"; "+"; "|"; "=" ]
   let operator : string Parsers.t = operators |> List.map ~f:string |> choice
@@ -427,9 +415,10 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
             (fun (names, body) components -> Sequence (names, body, components))
             (parens (lift2
               (fun names body -> names, body)
-              (many1 (Parsers.identifier <* char '.'))
+              (many (Parsers.identifier <* char '.'))
               term))
             (brackets (sep_by1 (char ',') parser)) <?> "sequence")
+          ; (string "return" *> term >>| fun tm -> Return tm) <?> "return"
           ; (parse_token
             >>= fun tok ->
             option
@@ -523,9 +512,8 @@ let rec translate : t -> n_term ParseUtil.t = fun tm ->
             | Error (msg, _) -> fail msg
           )
           | (key, parser) :: named_parsers'
-          -> translate parser >>= fun _data ->
-             (* XXX data is wrong *)
-             go term_ctx (Map.set parser_ctx ~key ~data:(Return (failwith "TODO")))
+          -> translate parser >>= fun data ->
+             go term_ctx (Map.set parser_ctx ~key ~data:(Return (Term data)))
                named_parsers'
         in
         go term_ctx parser_ctx named_parsers
@@ -553,7 +541,6 @@ let%test_module "Parsing" =
       Format.set_mark_tags true
     ;;
 
-    (*
     let parse_print_direct : string -> string -> unit =
      fun parser_str str ->
       match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
@@ -563,7 +550,6 @@ let%test_module "Parsing" =
         | Error (msg, _) -> Caml.Printf.printf "failed to parse: %s\n" msg
         | Ok tm -> Fmt.pr "%a\n" (Nominal.pp_term_range Primitive.pp) tm)
    ;;
-   *)
 
     let parse_print : string -> string -> unit =
      fun parser_str str ->
@@ -684,25 +670,26 @@ let%test_module "Parsing" =
         none() |}]
     ;;
 
-    (*
     let%expect_test _ =
       parse_print_direct "return {foo()}" "";
       [%expect{| foo() |}]
     ;;
 
+    (*
     let%expect_test _ =
-      parse_print_direct "lift (. {foo()}) []" "";
+      parse_print_direct "sequence (. {foo()}) []" "";
       [%expect{| foo() |}]
     ;;
+    *)
 
     let%expect_test _ =
-      parse_print_direct "lift (a. b. {pair(a; b)}) ['a', 'b']" "ab";
+      parse_print_direct "sequence (a. b. {pair(a; b)}) ['a', 'b']" "ab";
       [%expect{| pair('a'; 'b') |}]
     ;;
 
     let list_parser =
       {|fix (lst ->
-          (lift (x. xs. {cons(x; xs)}) ['c', lst]) |
+          (sequence (x. xs. {cons(x; xs)}) ['c', lst]) |
           return {nil()}
         )
       |}
@@ -712,9 +699,7 @@ let%test_module "Parsing" =
       parse_print_direct list_parser "";
       [%expect{| nil() |}]
     ;;
-    *)
 
-    (*
     let%expect_test _ =
       parse_print_direct list_parser "c";
       [%expect{| cons('c'; nil()) |}]
@@ -724,14 +709,13 @@ let%test_module "Parsing" =
       parse_print_direct list_parser "cc";
       [%expect{| cons('c'; cons('c'; nil())) |}]
     ;;
-    *)
 
     let%expect_test _ =
-      parse_print {|fix (x -> "a" | "b")|} "a";
+      parse_print_direct {|fix (x -> "a" | "b")|} "a";
       [%expect{| <0-1>"a"</0-1> |}]
 
     let%expect_test _ =
-      parse_print {|sequence(a. {"a"})["a"]|} "a";
+      parse_print {|sequence(a. {"a"}) ["a"]|} "a";
       [%expect]
 
     let%expect_test _ =
@@ -743,7 +727,11 @@ let%test_module "Parsing" =
       [%expect]
 
     let%expect_test _ =
-      parse_print {|fix (x -> sequence(a. x. {pair(a; x)}) ["a", x] | "b")|} "a";
+      parse_print_direct {|fix (x -> "b" | sequence(a. x. {pair(a; x)}) ["a", x])|} "a";
+      [%expect{| failed to parse: string "a" |}]
+
+    let%expect_test _ =
+      parse_print_direct {|fix (x -> "b" | sequence(a. x. {pair(a; x)}) ["a", x])|} "ab";
       [%expect]
   end)
 ;;
