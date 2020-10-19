@@ -24,7 +24,8 @@ and 'a core_scope = Scope of string * 'a term
 
 and 'a core_case_scope = CaseScope of ('a, Primitive.t) Pattern.t * 'a term
 
-val erase : 'a term -> unit term
+val map_loc : f:('a -> 'b) -> 'a term -> 'b term
+val erase : _ term -> unit term
 val pp : Format.formatter -> 'a term -> unit
 val to_string : 'a term -> string
 

@@ -11,9 +11,11 @@ and ('loc, 'prim) scope =
 val location : ('loc, _) term -> 'loc
 val pp_term : 'prim Fmt.t -> (_, 'prim) term Fmt.t
 val pp_term_range : 'prim Fmt.t -> (OptRange.t, 'prim) term Fmt.t
+val pp_term_ranges : 'prim Fmt.t -> (SourceRanges.t, 'prim) term Fmt.t
 val pp_term_str : 'prim Fmt.t -> (_, 'prim) term -> string
 val pp_scope : 'prim Fmt.t -> Format.formatter -> (_, 'prim) scope -> unit
 val pp_scope_range : 'prim Fmt.t -> (OptRange.t, 'prim) scope Fmt.t
+val pp_scope_ranges : 'prim Fmt.t -> (SourceRanges.t, 'prim) scope Fmt.t
 val pp_scope_str : 'prim Fmt.t -> (_, 'prim) scope -> string
 val jsonify : 'prim Lvca_util.Json.serializer -> (_, 'prim) term Lvca_util.Json.serializer
 
@@ -32,6 +34,8 @@ val deserialize
 
 (** The SHA-256 hash of the serialized term. This is useful for content-identifying terms. *)
 val hash : 'prim Lvca_util.Json.serializer -> (_, 'prim) term -> string
+
+val map_loc : f:('a -> 'b) -> ('a, 'prim) term -> ('b, 'prim) term
 
 val erase : (_, 'prim) term -> (unit, 'prim) term
 val erase_scope : (_, 'prim) scope -> (unit, 'prim) scope
@@ -53,7 +57,8 @@ val pattern_to_term : ('loc, 'prim) Pattern.t -> ('loc, 'prim) term
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t
-  val whitespace_t : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t
+  val whitespace_t
+    : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t
 end
 
 module Properties : sig

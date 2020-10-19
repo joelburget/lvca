@@ -1213,6 +1213,7 @@ let%test_module "Calculator" = (module struct
     [%expect]
   *)
 
+(*
   let print_sum_scope f =
     sum_scope_enabled := true;
     print (f ());
@@ -1233,5 +1234,6 @@ let%test_module "Calculator" = (module struct
     (* print_sum_scope (fun () -> ln (of_float 0.5)); *)
     print_sum_scope (fun () -> cos (of_float 0.5));
     [%expect]
+*)
 
 end);;

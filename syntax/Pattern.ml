@@ -53,21 +53,31 @@ let rec pp pp_prim ppf =
   | Ignored (_, name) -> pf ppf "_%s" name
 ;;
 
-let rec pp_range pp_prim ppf pat =
+let rec pp_range_generic ~opener ~closer pp_prim ppf pat =
   let comma, list, pf, semi = Fmt.(comma, list, pf, semi) in
-  OptRange.open_stag ppf (location pat);
+  opener ppf (location pat);
   (match pat with
   | Operator (_, name, pats) ->
     pf
       ppf
       "@[<2>@{<test>%s@}(%a)@]"
       name
-      (pp_range pp_prim |> list ~sep:comma |> list ~sep:semi)
+      (pp_range_generic ~opener ~closer pp_prim |> list ~sep:comma |> list ~sep:semi)
       pats
   | Primitive (_, prim) -> pf ppf "%a" pp_prim prim
   | Var (_, name) -> pf ppf "%s" name
   | Ignored (_, name) -> pf ppf "_%s" name);
-  OptRange.close_stag ppf (location pat)
+  closer ppf (location pat)
+;;
+
+let pp_range pp_prim ppf pat = pp_range_generic pp_prim ppf pat
+  ~opener:OptRange.open_stag
+  ~closer:OptRange.close_stag
+;;
+
+let pp_ranges pp_prim ppf pat = pp_range_generic pp_prim ppf pat
+  ~opener:(fun ppf loc -> Format.pp_open_stag ppf (SourceRanges.Stag loc))
+  ~closer:(fun ppf _loc -> Format.pp_close_stag ppf ())
 ;;
 
 let to_string pp_prim pat = Fmt.str "%a" (pp pp_prim) pat
@@ -116,13 +126,16 @@ let rec unjsonify prim_unjsonify =
     | _ -> None)
 ;;
 
-let rec erase = function
-  | Operator (_, tag, subpats) ->
-    Operator ((), tag, subpats |> List.map ~f:(List.map ~f:erase))
-  | Primitive (_, prim) -> Primitive ((), prim)
-  | Var (_, name) -> Var ((), name)
-  | Ignored (_, name) -> Ignored ((), name)
+let rec map_loc : f:('a -> 'b) -> ('a, 'prim) pattern -> ('b, 'prim) pattern
+  = fun ~f -> function
+  | Operator (loc, tag, subpats) ->
+    Operator (f loc, tag, subpats |> List.map ~f:(List.map ~f:(map_loc ~f)))
+  | Primitive (loc, prim) -> Primitive (f loc, prim)
+  | Var (loc, name) -> Var (f loc, name)
+  | Ignored (loc, name) -> Ignored (f loc, name)
 ;;
+
+let erase pat = map_loc ~f:(fun _ -> ()) pat;;
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
