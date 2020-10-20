@@ -435,6 +435,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
           ])
     <?> "parser"
  ;;
+
+ let whitespace_t c_term = ParseUtil.whitespace *> t c_term
 end
 
 let%test_module "Parsing" =

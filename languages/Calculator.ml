@@ -159,6 +159,53 @@ let rec interpret : term -> (ConstructiveReal.t, term * string) Result.t
       )
     | _ -> Error (tm, "unexpected term")
 
+    (*
+let%test_module "Parsing" = (module struct
+  module ParseCore = Lvca_core.Core.Parse (ParseUtil.CComment)
+  module ParseParser = Parser.Parse (ParseUtil.CComment)
+
+  let parse_print : string -> unit =
+   fun parser_str ->
+    match ParseUtil.parse_string (ParseParser.whitespace_t ParseCore.term) parser_str with
+    | Error msg -> Caml.print_string ("failed to parse parser desc: " ^ msg)
+    | Ok parser -> Fmt.pr "%a\n" Parser.pp parser
+ ;;
+
+ let parser_str = {|
+   let constants = "e" | "pi" in
+   let unary_operators = return {list(
+     "negate";
+     "sqrt";
+     "abs";
+     "exp";
+     "ln";
+     "sin"; "cos"; "tan";
+     "asin"; "acos"; "atan";
+   )} in
+
+   let binary_operators = return {list("add"; "sub"; "mul"; "div"; "max"; "min")} in
+   // let integer_or_float_lit =
+   fix (t ->
+     let atom = constants | sequence (_. t. _. t) ['(', t, ')'] in
+     // let unary_op = unquote {
+     // } in
+     // let application = atom | unary_op | min_max in
+     // let mul_div = ... in
+     // let add_sub = ... in
+     // add_sub
+     atom
+   )
+ |}
+ ;;
+
+ let%expect_test _ =
+   parse_print parser_str;
+   [%expect]
+
+end)
+;;
+*)
+
 let%test_module "Evaluation" = (module struct
   module P = Parse (ParseUtil.CComment)
   let print_string str = Caml.Printf.printf "%s\n" str
