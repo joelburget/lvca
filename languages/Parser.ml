@@ -100,6 +100,8 @@ let mk_some : SourceRanges.t -> n_term -> n_term =
 
 let mk_none pos = Nominal.Operator (pos, "none", [])
 
+let map_snd ~f (a, b) = a, f b
+
 module Direct = struct
   type term_ctx = n_term Lvca_util.String.Map.t
   type parser_ctx = direct Lvca_util.String.Map.t
@@ -110,12 +112,10 @@ module Direct = struct
         -> parser_ctx:parser_ctx
         -> pos:int
         -> string
-        -> int * (n_term, string * c_term) Result.t
+        -> int * (n_term, string * c_term option) Result.t
     }
 
-  let todo_msg msg =
-    Error (msg, Core.Term (Nominal.Primitive (SourceRanges.empty, Primitive.PrimString msg)))
-  ;;
+  let todo_msg msg = Error (msg, None);;
 
   let mk_char pos c =
     Ok (Nominal.Primitive (SourceRanges.mk "input" pos (pos + 1), Primitive.PrimChar c))
@@ -162,7 +162,7 @@ module Direct = struct
             | Ok (Operator (_, "true", [])) -> pos + 1, mk_char pos c
             | Ok (Operator (_, "false", [])) | Ok _ ->
               pos, err_msg (* TODO: throw harder error? (type error) *)
-            | Error err -> pos, Error err))
+            | Error err -> pos, Error (map_snd ~f:(fun tm -> Some tm) err)))
     }
   ;;
 
@@ -198,8 +198,6 @@ module Direct = struct
         Nominal.Operator (rng, "list", [ Nominal.Scope ([], lst) ]))
   ;;
 
-  let map_snd ~f (a, b) = a, f b
-
   let count n_tm t =
     let rec go ~term_ctx ~parser_ctx ~pos n str =
       match n with
@@ -221,7 +219,7 @@ module Direct = struct
                  ~term_ctx
                  ~parser_ctx
                  ~pos
-                 (n |> Z.to_int (* XXX: may raise Overflow *))
+                 (Z.to_int n (* XXX: may raise Overflow *))
             |> map_snd ~f:mk_list_result
           | _ -> failwith "TODO: count")
     }
@@ -278,24 +276,26 @@ module Direct = struct
   ;;
 
   let return tm =
-    { run = (fun ~term_ctx ~parser_ctx:_ ~pos _str -> pos, Core.eval_ctx term_ctx tm) }
+    { run = (fun ~term_ctx ~parser_ctx:_ ~pos _str ->
+      let result = Core.eval_ctx term_ctx tm in
+      pos, Result.map_error result ~f:(map_snd ~f:(fun tm -> Some tm))
+    )
+    }
   ;;
 
   let liftn names tm ps =
     { run =
         (fun ~term_ctx ~parser_ctx ~pos str ->
-          let pos, result = ps
-            (* TODO: scanl? *)
-            |> List.fold ~init:(pos, Ok []) ~f:(fun (pos, xs) { run } ->
-               match xs with
-                 Ok xs -> (match run ~term_ctx ~parser_ctx ~pos str with
-                   | pos, Ok x -> pos, Ok (x :: xs)
-                   | _, Error msg -> pos, Error msg
-                 )
-               | Error msg -> pos, Error msg
-             )
+          let (pos, _), result = List.fold_map ps
+            ~init:(pos, true)
+            ~f:(fun (pos, continue) { run } ->
+              if continue
+              then match run ~term_ctx ~parser_ctx ~pos str with
+                | pos, Ok tm -> (pos, true), Ok tm
+                | pos, Error msg -> (pos, false), Error msg
+              else (pos, false), todo_msg "don't continue")
           in
-          match result with
+          match Result.all result with
           | Error msg -> pos, Error msg
           | Ok xs ->
             (match List.zip names xs with
@@ -308,7 +308,11 @@ module Direct = struct
                 |> List.fold ~init:term_ctx ~f:(fun ctx (key, tm) ->
                        Map.set ctx ~key ~data:tm)
               in
-              pos, Core.eval_ctx term_ctx tm))
+              let result = Core.eval_ctx term_ctx tm
+                |> Result.map_error ~f:(map_snd ~f:(fun tm -> Some tm))
+              in
+              pos, result
+            ))
     }
   ;;
 
@@ -339,7 +343,7 @@ module Direct = struct
     | Identifier name -> identifier name
   ;;
 
-  let parse_direct : direct -> string -> (n_term, string * c_term) Result.t =
+  let parse_direct : direct -> string -> (n_term, string * c_term option) Result.t =
    fun { run } str ->
     let strlen = String.length str in
     match
@@ -393,7 +397,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
           ; (string "satisfy"
             *> parens
                  (lift3
-                    (fun name _arr tm -> Satisfy (name, translate_c_term ~buf:"input" tm))
+                    (fun name _arr tm -> Satisfy (name, translate_c_term ~buf:"parser" tm))
                     Parsers.identifier
                     (string "->")
                     c_term) <?> "satisfy")
@@ -410,12 +414,12 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
             *> lift2
             (fun (names, body) components -> Sequence (names, body, components))
             (parens (lift2
-              (fun names body -> names, translate_c_term ~buf:"input" body)
+              (fun names body -> names, translate_c_term ~buf:"parser" body)
               (many (Parsers.identifier <* char '.'))
               c_term))
             (brackets (sep_by1 (char ',') parser)) <?> "sequence")
-          ; (string "return" *> c_term >>| fun tm ->
-            Return (translate_c_term ~buf:"parser" tm) )
+          ; (string "return" *> c_term >>|| fun ~pos tm ->
+            Return (translate_c_term ~buf:"parser" tm), pos )
             <?> "return"
           ; (parse_token
             >>= fun tok ->
@@ -425,7 +429,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
                  [ (char '?' >>| fun _ -> Option tok) <?> "?"
                  ; (char '*' >>| fun _ -> Many tok) <?> "*"
                  ; (char '+' >>| fun _ -> Many1 tok) <?> "+"
-                 ; (braces c_term >>| fun tm -> Count (tok, translate_c_term ~buf:"input" tm))
+                 ; (braces c_term >>| fun tm -> Count (tok, translate_c_term ~buf:"parser" tm))
                  ; char '|' *> (parser >>| fun rhs -> Alt (tok, rhs)) <?> "|"
                  ]))
           ])
@@ -543,11 +547,13 @@ let%test_module "Parsing" =
     ;;
     *)
 
-    (* TODO: should be partially attributed to parser *)
     let%expect_test _ =
-      parse_print "sequence (a. b. {pair(a; b)}) ['a', 'b']" "ab";
-      [%expect{| <input:17-27>pair(<input:22-23>a</input:22-23>; <input:25-26>b</input:25-26>)</input:17-27> |}]
-    ;;
+      parse_print {|fix (x -> "a" | "b")|} "a";
+      [%expect{| <input:0-1>"a"</input:0-1> |}]
+
+    let%expect_test _ =
+      parse_print {|sequence(a. {"a"}) ["a"]|} "a";
+      [%expect{| <parser:13-16>"a"</parser:13-16> |}]
 
     let list_parser =
       {|fix (lst ->
@@ -557,51 +563,40 @@ let%test_module "Parsing" =
       |}
     ;;
 
-    (* TODO: should be partially attributed to parser *)
     let%expect_test _ =
       parse_print list_parser "";
       [%expect{| <parser:87-92>nil()</parser:87-92> |}]
     ;;
 
-    (* TODO: should be partially attributed to parser *)
     let%expect_test _ =
       parse_print list_parser "c";
-      [%expect{| <input:41-52>cons(<input:46-47>x</input:46-47>; <input:49-51>xs</input:49-51>)</input:41-52> |}]
+      [%expect{| <parser:41-52>cons(<input:0-1>'c'</input:0-1>; <parser:87-92>nil()</parser:87-92>)</parser:41-52> |}]
     ;;
 
-    (* TODO: should be partially attributed to parser *)
     let%expect_test _ =
       parse_print list_parser "cc";
-      [%expect{| <input:41-52>cons(<input:46-47>x</input:46-47>; <input:49-51>xs</input:49-51>)</input:41-52> |}]
+      [%expect{| <parser:41-52>cons(<input:0-1>'c'</input:0-1>; <parser:41-52>cons(<input:1-2>'c'</input:1-2>; <parser:87-92>nil()</parser:87-92>)</parser:41-52>)</parser:41-52> |}]
     ;;
 
     let%expect_test _ =
-      parse_print {|fix (x -> "a" | "b")|} "a";
-      [%expect{| <input:0-1>"a"</input:0-1> |}]
-
-    (* TODO: should be attributed to parser *)
-    let%expect_test _ =
-      parse_print {|sequence(a. {"a"}) ["a"]|} "a";
-      [%expect{| <input:13-16>"a"</input:13-16> |}]
-
-    (* TODO: should be partially attributed to parser *)
-    let%expect_test _ =
       parse_print {|sequence(a. a'. b. {triple(a; a'; b)})["a", "a", "b"]|} "aab";
-      [%expect{| <input:20-36>triple(<input:27-28>a</input:27-28>; <input:30-32>a'</input:30-32>; <input:34-35>b</input:34-35>)</input:20-36> |}]
+      [%expect{| <parser:20-36>triple(<input:0-1>"a"</input:0-1>; <input:1-2>"a"</input:1-2>; <input:2-3>"b"</input:2-3>)</parser:20-36> |}]
 
-    (* TODO: should be partially attributed to parser *)
     let%expect_test _ =
       parse_print {|sequence(a. a'. b. {triple(a; a'; b)})['a', 'a', 'b']|} "aab";
-      [%expect{| <input:20-36>triple(<input:27-28>a</input:27-28>; <input:30-32>a'</input:30-32>; <input:34-35>b</input:34-35>)</input:20-36> |}]
+      [%expect{| <parser:20-36>triple(<input:0-1>'a'</input:0-1>; <input:1-2>'a'</input:1-2>; <input:2-3>'b'</input:2-3>)</parser:20-36> |}]
 
-    (* TODO: should be partially attributed to parser *)
     let%expect_test _ =
       parse_print {|fix (x -> "b" | sequence(a. x. {pair(a; x)}) ["a", x])|} "a";
       [%expect{| failed to parse: string "a" |}]
 
-    (* TODO: should be partially attributed to parser *)
     let%expect_test _ =
       parse_print {|fix (x -> "b" | sequence(a. x. {pair(a; x)}) ["a", x])|} "ab";
-      [%expect{| <input:32-42>pair(<input:37-38>a</input:37-38>; <input:40-41>x</input:40-41>)</input:32-42> |}]
+      [%expect{| <parser:32-42>pair(<input:0-1>"a"</input:0-1>; <input:1-2>"b"</input:1-2>)</parser:32-42> |}]
+
+    let%expect_test _ =
+      parse_print "sequence (a. b. {pair(a; b)}) ['a', 'b']" "ab";
+      [%expect{| <parser:17-27>pair(<input:0-1>'a'</input:0-1>; <input:1-2>'b'</input:1-2>)</parser:17-27> |}]
+    ;;
   end)
 ;;

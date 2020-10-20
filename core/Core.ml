@@ -188,8 +188,6 @@ let find_core_match
 
 type 'a eval_error = string * 'a term
 
-(* exception EvalExn of string * unit term *)
-
 let rec eval_ctx
     : 'a n_term Lvca_util.String.Map.t -> 'a term -> ('a n_term, 'a eval_error) Result.t
   =
@@ -226,7 +224,7 @@ let rec eval_ctx
     | Primitive (loc, PrimInteger a'), Primitive (_, PrimInteger b') ->
       Ok (Nominal.Primitive (loc, Primitive.PrimInteger Z.(a' - b')))
     | _ -> Error ("Invalid arguments to sub", tm))
-  | Term tm -> Ok tm
+  | Term tm -> Ok (Nominal.subst_all ctx tm)
   | Let (_is_rec, tm, Scope (name, body)) ->
     let%bind tm_val = eval_ctx ctx tm in
     eval_ctx (Map.set ctx ~key:name ~data:tm_val) body

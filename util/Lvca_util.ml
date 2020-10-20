@@ -88,6 +88,11 @@ module String = struct
 end
 
 module List = struct
+  let rec snoc xs x = match xs with
+    | [] -> [x]
+    | x' :: xs -> x' :: snoc xs x
+  ;;
+
   let rec unsnoc lst =
     match lst with
     | [] -> failwith "unsnoc empty list"

@@ -191,6 +191,21 @@ let rec pattern_to_term : ('loc, 'prim) Pattern.t -> ('loc, 'prim) term = functi
   | Ignored (loc, name) -> Var (loc, "_" ^ name)
 ;;
 
+let rec subst_all ctx tm = match tm with
+  | Primitive _ -> tm
+  | Var (_loc, name) -> (match Map.find ctx name with
+    | Some v -> v
+    | None -> tm
+  )
+  | Operator (loc, name, scopes) -> Operator
+    ( loc
+    , name
+    , List.map scopes ~f:(subst_all_scope ctx)
+    )
+
+and subst_all_scope ctx (Scope (pats, tms)) =
+  Scope (pats, List.map tms ~f:(subst_all ctx))
+
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   module Primitive = Primitive.Parse (Comment)

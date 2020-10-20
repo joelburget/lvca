@@ -55,6 +55,14 @@ val to_pattern
     For example [add(lit(1)); a)] (as a pattern) can be converted to a term. *)
 val pattern_to_term : ('loc, 'prim) Pattern.t -> ('loc, 'prim) term
 
+(** Substitute all the variables in the context.
+
+   Leaves variables not found in the context free. *)
+val subst_all
+  :  ('loc, 'prim) term Lvca_util.String.Map.t
+  -> ('loc, 'prim) term
+  -> ('loc, 'prim) term
+
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t
   val whitespace_t
