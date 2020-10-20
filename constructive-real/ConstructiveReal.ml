@@ -357,11 +357,17 @@ let sum_series
   scale !current_sum Int32.(calc_precision - init.p)
 ;;
 
-let pi_b_prec : int32 Queue.t
-  = Queue.of_list [Int32.zero] (* Initial entry unused *)
+(* Keep the entire sequence b[n] that we've calculated so far.
 
-let pi_b_val : Z.t Queue.t
-  = Queue.of_list [big0] (* Initial entry unused *)
+ Holds the min_prec and max_appr for b_{n+1} = sqrt{a_n b_n}.
+ *)
+let pi_b_precalculated : (int32 * Z.t) Queue.t
+  = Queue.of_list [Int32.zero, big0] (* Initial entry unused *)
+
+let set_or_update_pi_b ~n ~v
+  = if Int.(Queue.length pi_b_precalculated = n)
+    then Queue.enqueue pi_b_precalculated v
+    else Queue.set pi_b_precalculated n v
 
 let rec signum_a : t -> int32 -> int32
   = fun op a ->
@@ -516,11 +522,11 @@ and approximate_pi_cr p =
   let pi_tolerance = big4 in
   let sqrt_half = sqrt (shift_right one Int32.one) in
   if Int32.(p >= zero)
-  then scale big3 (Int32.neg p)
+  then scale big3 (Int32.neg p) (* quick rough approximation *)
   else
     let extra_eval_prec =
       Int32.(of_float
-        (Float.round_up (Float.log (Int32.to_float (neg p)) /. Float.log 2.0)) + ten)
+        (Float.round_up (Float.log (to_float (neg p)) /. Float.log 2.0)) + ten)
     in
     let eval_prec = Int32.(p - extra_eval_prec) in
     let a = ref (big_shift_left big1 (Int32.neg eval_prec)) in
@@ -535,33 +541,18 @@ and approximate_pi_cr p =
         (eval_prec |> Int32.neg |> Int.of_int32_exn))
       in
       let b_prod_as_cr = shift_right (of_bigint b_prod) (Int32.neg eval_prec) in
-      let next_b =
-        if Int.(Queue.length pi_b_prec = !n + 1)
-        then (
-          (* Add an n+1st slot *)
-          let next_b_as_cr = sqrt b_prod_as_cr in
-          let next_b = get_appr next_b_as_cr eval_prec in
-          let scaled_next_b = scale next_b (Int32.neg extra_eval_prec) in
-          Queue.enqueue pi_b_prec p;
-          Queue.enqueue pi_b_val scaled_next_b;
-          next_b
-        )
-        else (
-          let next_b_as_cr =
-            { base =
-              { min_prec = Queue.get pi_b_prec Int.(!n + 1)
-              ; max_appr = Queue.get pi_b_val Int.(!n + 1)
-              ; appr_valid = true
-              }
-            ; cr = SqrtCR b_prod_as_cr
-            }
-          in
-          let next_b = get_appr next_b_as_cr eval_prec in
-          Queue.set pi_b_prec Int.(!n + 1) p;
-          Queue.set pi_b_val Int.(!n + 1) (scale next_b (Int32.neg extra_eval_prec));
-          next_b
-        )
+      let next_b_as_cr =
+        if Int.(Queue.length pi_b_precalculated = !n + 1)
+        then sqrt b_prod_as_cr
+        else
+          (* Reuse previous approximation *)
+          let min_prec, max_appr = Queue.get pi_b_precalculated Int.(!n + 1) in
+          { base = { min_prec; max_appr; appr_valid = true }
+          ; cr = SqrtCR b_prod_as_cr
+          }
       in
+      let next_b = get_appr next_b_as_cr eval_prec in
+      set_or_update_pi_b ~n:Int.(!n + 1) ~v:(p, scale next_b (Int32.neg extra_eval_prec));
       let next_t =
         (* shift distance is usually negative *)
         Z.(
