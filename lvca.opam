@@ -22,4 +22,5 @@ depends: [
   "ppx_jane"
   "ppx_inline_test"
   "dune"             {>= "2.0.0"}
+  "zarith_stubs_js"
 ]
