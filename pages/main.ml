@@ -14,12 +14,10 @@ module Model = struct
   type t = { page : page }
 
   let initial_model = { page = CalculatorPage }
+
   let all_pages =
-    [ TermAndConcretePage
-    ; EvalWithProvenancePage
-    ; TermToTexPage
-    ; CalculatorPage
-    ]
+    [ TermAndConcretePage; EvalWithProvenancePage; TermToTexPage; CalculatorPage ]
+  ;;
 end
 
 type signal = Model.t React.signal

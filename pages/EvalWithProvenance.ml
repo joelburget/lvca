@@ -11,7 +11,8 @@ module Model = struct
     ; result : (term, string) Result.t
     ; selected : OptRange.t
     }
-    (* TODO: evaluate ppx_deriving *)
+
+  (* TODO: evaluate ppx_deriving *)
 
   let print { input; result; selected } =
     Fmt.pr

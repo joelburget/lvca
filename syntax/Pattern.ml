@@ -70,14 +70,17 @@ let rec pp_range_generic ~opener ~closer pp_prim ppf pat =
   closer ppf (location pat)
 ;;
 
-let pp_range pp_prim ppf pat = pp_range_generic pp_prim ppf pat
-  ~opener:OptRange.open_stag
-  ~closer:OptRange.close_stag
+let pp_range pp_prim ppf pat =
+  pp_range_generic pp_prim ppf pat ~opener:OptRange.open_stag ~closer:OptRange.close_stag
 ;;
 
-let pp_ranges pp_prim ppf pat = pp_range_generic pp_prim ppf pat
-  ~opener:(fun ppf loc -> Format.pp_open_stag ppf (SourceRanges.Stag loc))
-  ~closer:(fun ppf _loc -> Format.pp_close_stag ppf ())
+let pp_ranges pp_prim ppf pat =
+  pp_range_generic
+    pp_prim
+    ppf
+    pat
+    ~opener:(fun ppf loc -> Format.pp_open_stag ppf (SourceRanges.Stag loc))
+    ~closer:(fun ppf _loc -> Format.pp_close_stag ppf ())
 ;;
 
 let to_string pp_prim pat = Fmt.str "%a" (pp pp_prim) pat
@@ -126,8 +129,8 @@ let rec unjsonify prim_unjsonify =
     | _ -> None)
 ;;
 
-let rec map_loc : f:('a -> 'b) -> ('a, 'prim) pattern -> ('b, 'prim) pattern
-  = fun ~f -> function
+let rec map_loc : f:('a -> 'b) -> ('a, 'prim) pattern -> ('b, 'prim) pattern =
+ fun ~f -> function
   | Operator (loc, tag, subpats) ->
     Operator (f loc, tag, subpats |> List.map ~f:(List.map ~f:(map_loc ~f)))
   | Primitive (loc, prim) -> Primitive (f loc, prim)
@@ -135,7 +138,7 @@ let rec map_loc : f:('a -> 'b) -> ('a, 'prim) pattern -> ('b, 'prim) pattern
   | Ignored (loc, name) -> Ignored (f loc, name)
 ;;
 
-let erase pat = map_loc ~f:(fun _ -> ()) pat;;
+let erase pat = map_loc ~f:(fun _ -> ()) pat
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
@@ -302,42 +305,41 @@ module Properties = struct
   let pp' = pp Primitive.pp
   let to_string' = to_string Primitive.pp
 
-  let json_round_trip1 =
-   fun t ->
+  let json_round_trip1 t =
     match t |> jsonify Primitive.jsonify |> unjsonify Primitive.unjsonify with
     | None -> Failed (Fmt.str "Failed to unjsonify %a" pp' t)
     | Some t' -> PropertyResult.check Caml.(t = t') (Fmt.str "%a <> %a" pp' t' pp' t)
- ;;
+  ;;
 
-  let json_round_trip2 =
-   fun json ->
+  let json_round_trip2 json =
     match json |> unjsonify Primitive.unjsonify with
     | None -> Uninteresting
-    | Some t -> PropertyResult.check
-      Lvca_util.Json.(jsonify Primitive.jsonify t = json)
-      "jsonify t <> json (TODO: print)"
- ;;
+    | Some t ->
+      PropertyResult.check
+        Lvca_util.Json.(jsonify Primitive.jsonify t = json)
+        "jsonify t <> json (TODO: print)"
+  ;;
 
-  let string_round_trip1 =
-   fun t -> match t |> to_string' |> parse with
+  let string_round_trip1 t =
+    match t |> to_string' |> parse with
     | Ok t' ->
       let t'' = erase t' in
       PropertyResult.check Caml.(t'' = t) (Fmt.str "%a <> %a" pp' t'' pp' t)
-    | Error msg
-    -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string' t) msg)
- ;;
+    | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string' t) msg)
+  ;;
 
-  let string_round_trip2 =
-   fun str -> match parse str with
+  let string_round_trip2 str =
+    match parse str with
     | Error _ -> Uninteresting
     | Ok t ->
       let str' = t |> erase |> to_string' in
       if Base.String.(str' = str)
       then Ok
-      else match parse str with
+      else (
+        match parse str with
         | Error msg -> Failed msg
         | Ok t' ->
-        let str'' = t' |> erase |> to_string' in
-        PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str')
- ;;
+          let str'' = t' |> erase |> to_string' in
+          PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str'))
+  ;;
 end

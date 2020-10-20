@@ -36,7 +36,6 @@ val deserialize
 val hash : 'prim Lvca_util.Json.serializer -> (_, 'prim) term -> string
 
 val map_loc : f:('a -> 'b) -> ('a, 'prim) term -> ('b, 'prim) term
-
 val erase : (_, 'prim) term -> (unit, 'prim) term
 val erase_scope : (_, 'prim) scope -> (unit, 'prim) scope
 
@@ -57,7 +56,7 @@ val pattern_to_term : ('loc, 'prim) Pattern.t -> ('loc, 'prim) term
 
 (** Substitute all the variables in the context.
 
-   Leaves variables not found in the context free. *)
+    Leaves variables not found in the context free. *)
 val subst_all
   :  ('loc, 'prim) term Lvca_util.String.Map.t
   -> ('loc, 'prim) term
@@ -65,8 +64,7 @@ val subst_all
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t
-  val whitespace_t
-    : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t
+  val whitespace_t : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t
 end
 
 module Properties : sig

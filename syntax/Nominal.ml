@@ -36,7 +36,12 @@ let rec pp_term_generic ~opener ~closer ~pp_pat pp_prim ppf tm =
   opener ppf (location tm);
   (match tm with
   | Operator (_, tag, subtms) ->
-    pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi (pp_scope_generic ~opener ~closer ~pp_pat pp_prim)) subtms
+    pf
+      ppf
+      "@[<hv>%s(%a)@]"
+      tag
+      (list ~sep:semi (pp_scope_generic ~opener ~closer ~pp_pat pp_prim))
+      subtms
   | Var (_, v) -> pf ppf "%a" string v
   | Primitive (_, p) -> pf ppf "%a" pp_prim p);
   closer ppf (location tm)
@@ -45,38 +50,47 @@ and pp_scope_generic ~opener ~closer ~pp_pat pp_prim ppf (Scope (bindings, body)
   let pp_body = list ~sep:comma (pp_term_generic ~opener ~closer ~pp_pat pp_prim) in
   match bindings with
   | [] -> pp_body ppf body
-  | _ ->
-    pf
-      ppf
-      "%a.@ %a"
-      (list ~sep:(any ".@ ") (pp_pat pp_prim))
-      bindings
-      pp_body
-      body
+  | _ -> pf ppf "%a.@ %a" (list ~sep:(any ".@ ") (pp_pat pp_prim)) bindings pp_body body
 ;;
 
-let pp_term_range pp_prim ppf tm = pp_term_generic pp_prim ppf tm
-  ~opener:OptRange.open_stag
-  ~closer:OptRange.close_stag
-  ~pp_pat:Pattern.pp_range
+let pp_term_range pp_prim ppf tm =
+  pp_term_generic
+    pp_prim
+    ppf
+    tm
+    ~opener:OptRange.open_stag
+    ~closer:OptRange.close_stag
+    ~pp_pat:Pattern.pp_range
 ;;
 
-let pp_scope_range pp_prim ppf tm = pp_scope_generic pp_prim ppf tm
-  ~opener:OptRange.open_stag
-  ~closer:OptRange.close_stag
-  ~pp_pat:Pattern.pp_range
+let pp_scope_range pp_prim ppf tm =
+  pp_scope_generic
+    pp_prim
+    ppf
+    tm
+    ~opener:OptRange.open_stag
+    ~closer:OptRange.close_stag
+    ~pp_pat:Pattern.pp_range
 ;;
 
-let pp_term_ranges pp_prim ppf tm = pp_term_generic pp_prim ppf tm
-  ~opener:(fun ppf loc -> Caml.Format.pp_open_stag ppf (SourceRanges.Stag loc))
-  ~closer:(fun ppf _loc -> Caml.Format.pp_close_stag ppf ())
-  ~pp_pat:Pattern.pp_ranges
+let pp_term_ranges pp_prim ppf tm =
+  pp_term_generic
+    pp_prim
+    ppf
+    tm
+    ~opener:(fun ppf loc -> Caml.Format.pp_open_stag ppf (SourceRanges.Stag loc))
+    ~closer:(fun ppf _loc -> Caml.Format.pp_close_stag ppf ())
+    ~pp_pat:Pattern.pp_ranges
 ;;
 
-let pp_scope_ranges pp_prim ppf tm = pp_scope_generic pp_prim ppf tm
-  ~opener:(fun ppf loc -> Caml.Format.pp_open_stag ppf (SourceRanges.Stag loc))
-  ~closer:(fun ppf _loc -> Caml.Format.pp_close_stag ppf ())
-  ~pp_pat:Pattern.pp_ranges
+let pp_scope_ranges pp_prim ppf tm =
+  pp_scope_generic
+    pp_prim
+    ppf
+    tm
+    ~opener:(fun ppf loc -> Caml.Format.pp_open_stag ppf (SourceRanges.Stag loc))
+    ~closer:(fun ppf _loc -> Caml.Format.pp_close_stag ppf ())
+    ~pp_pat:Pattern.pp_ranges
 ;;
 
 let pp_term_str pp_prim tm = str "%a" (pp_term pp_prim) tm
@@ -143,8 +157,8 @@ let deserialize unjsonify_prim buf =
 let hash serialize_prim tm = tm |> serialize serialize_prim |> Lvca_util.Sha256.hash
 
 let rec map_loc ~f = function
-  | Operator (loc, name, pats)
-  -> Operator (f loc, name, List.map pats ~f:(map_loc_scope ~f))
+  | Operator (loc, name, pats) ->
+    Operator (f loc, name, List.map pats ~f:(map_loc_scope ~f))
   | Var (loc, name) -> Var (f loc, name)
   | Primitive (loc, prim) -> Primitive (f loc, prim)
 
@@ -154,9 +168,11 @@ and map_loc_scope ~f (Scope (binders, tms)) =
   Scope (binders', tms')
 ;;
 
-let erase tm = map_loc ~f:(fun _ -> ()) tm;;
+let erase tm = map_loc ~f:(fun _ -> ()) tm
+
 let erase_scope (Scope (pats, tms)) =
   Scope (List.map pats ~f:Pattern.erase, List.map tms ~f:erase)
+;;
 
 let rec to_pattern = function
   | Var (loc, name) ->
@@ -191,20 +207,14 @@ let rec pattern_to_term : ('loc, 'prim) Pattern.t -> ('loc, 'prim) term = functi
   | Ignored (loc, name) -> Var (loc, "_" ^ name)
 ;;
 
-let rec subst_all ctx tm = match tm with
+let rec subst_all ctx tm =
+  match tm with
   | Primitive _ -> tm
-  | Var (_loc, name) -> (match Map.find ctx name with
-    | Some v -> v
-    | None -> tm
-  )
-  | Operator (loc, name, scopes) -> Operator
-    ( loc
-    , name
-    , List.map scopes ~f:(subst_all_scope ctx)
-    )
+  | Var (_loc, name) -> (match Map.find ctx name with Some v -> v | None -> tm)
+  | Operator (loc, name, scopes) ->
+    Operator (loc, name, List.map scopes ~f:(subst_all_scope ctx))
 
-and subst_all_scope ctx (Scope (pats, tms)) =
-  Scope (pats, List.map tms ~f:(subst_all ctx))
+and subst_all_scope ctx (Scope (pats, tms)) = Scope (pats, List.map tms ~f:(subst_all ctx))
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
@@ -297,45 +307,46 @@ module Properties = struct
   let pp = pp_term Primitive.pp
   let parse = ParseUtil.parse_string (Parse.t ParsePrimitive.t)
 
-  let json_round_trip1 = fun t ->
+  let json_round_trip1 t =
     match t |> jsonify Primitive.jsonify |> unjsonify Primitive.unjsonify with
     | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
     | Some t' -> PropertyResult.check Caml.(t = t') (Fmt.str "%a <> %a" pp t' pp t)
- ;;
+  ;;
 
-  let json_round_trip2 = fun json ->
+  let json_round_trip2 json =
     match json |> unjsonify Primitive.unjsonify with
     | None -> Uninteresting
-    | Some t -> PropertyResult.check
-      Lvca_util.Json.(jsonify Primitive.jsonify t = json)
-      "jsonify t <> json (TODO: print)"
- ;;
+    | Some t ->
+      PropertyResult.check
+        Lvca_util.Json.(jsonify Primitive.jsonify t = json)
+        "jsonify t <> json (TODO: print)"
+  ;;
 
-  let string_round_trip1 = fun t ->
+  let string_round_trip1 t =
     match t |> pp_term_str Primitive.pp |> parse with
     | Ok t' ->
       let t'' = erase t' in
       PropertyResult.check Caml.(t'' = t) (Fmt.str "%a <> %a" pp t'' pp t)
-    | Error msg
-    -> Failed (Fmt.str {|parse_string "%s": %s|} (pp_term_str Primitive.pp t) msg)
- ;;
+    | Error msg ->
+      Failed (Fmt.str {|parse_string "%s": %s|} (pp_term_str Primitive.pp t) msg)
+  ;;
 
-  let string_round_trip2 = fun str ->
+  let string_round_trip2 str =
     match parse str with
     | Error _ -> Uninteresting
     | Ok t ->
       let str' = pp_term_str Primitive.pp t in
       if Base.String.(str' = str)
       then Ok
-      else match parse str with
+      else (
+        match parse str with
         | Error msg -> Failed msg
         | Ok t' ->
-        let str'' = pp_term_str Primitive.pp t' in
-        PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str')
- ;;
+          let str'' = pp_term_str Primitive.pp t' in
+          PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str'))
+  ;;
 
   (* malformed input *)
-
 end
 
 let%test_module "Nominal" =
@@ -471,9 +482,7 @@ let%test_module "TermParser" =
     let%test _ = parse "x" |> Result.map ~f:erase = Ok (Var ((), "x"))
 
     let%test _ =
-      parse "123"
-      |> Result.map ~f:erase
-      = Ok (Primitive ((), PrimInteger (Z.of_int 123)))
+      parse "123" |> Result.map ~f:erase = Ok (Primitive ((), PrimInteger (Z.of_int 123)))
     ;;
 
     let%test _ =

@@ -9,20 +9,15 @@ type Caml.Format.stag += Stag of t
 val invariants : t -> bool
 
 val empty : t
-
 val mk : string -> int -> int -> t
-
 val of_range : buf:string -> Range.t -> t
-
 val of_opt_range : buf:string -> OptRange.t -> t
 
-(*
-(** Convert from a (possibly unordered and overlapping) list of ranges. *)
-val of_list : Range.t list -> t
+(* (** Convert from a (possibly unordered and overlapping) list of ranges. *) val of_list
+   : Range.t list -> t
 
-(** Convert from a (possibly overlapping) set of ranges. *)
-val of_set : (Range.t, _) Base.Set.t -> t
-*)
+   (** Convert from a (possibly overlapping) set of ranges. *) val of_set : (Range.t, _)
+   Base.Set.t -> t *)
 
 val to_string : t -> string
 

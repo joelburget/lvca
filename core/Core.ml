@@ -26,17 +26,16 @@ let rec map_loc ~f = function
   | CoreApp (t1, t2) -> CoreApp (map_loc ~f t1, map_loc ~f t2)
   | Case (tm, scopes) -> Case (map_loc ~f tm, List.map scopes ~f:(map_loc_case_scope ~f))
   | Lambda (sort, core_scope) -> Lambda (sort, map_loc_core_scope ~f core_scope)
-  | Let (is_rec, tm, core_scope) -> Let (is_rec, map_loc ~f tm, map_loc_core_scope ~f core_scope)
+  | Let (is_rec, tm, core_scope) ->
+    Let (is_rec, map_loc ~f tm, map_loc_core_scope ~f core_scope)
 
-and map_loc_core_scope ~f (Scope (name, tm)) =
-  Scope (name, map_loc ~f tm)
+and map_loc_core_scope ~f (Scope (name, tm)) = Scope (name, map_loc ~f tm)
 
 and map_loc_case_scope ~f (CaseScope (pat, tm)) =
   CaseScope (Pattern.map_loc ~f pat, map_loc ~f tm)
 ;;
 
 let erase tm = map_loc ~f:(fun _ -> ()) tm
-;;
 
 module PP = struct
   let braces, list, any, pf, sp = Fmt.(braces, list, any, pf, sp)

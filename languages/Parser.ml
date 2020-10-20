@@ -44,8 +44,9 @@ let abstract_syntax : AbstractSyntax.t =
 type c_term = SourceRanges.t Core.term
 type n_term = (SourceRanges.t, Primitive.t) Nominal.term
 
-let translate_c_term : buf:string -> OptRange.t Core.term -> c_term
-  = fun ~buf -> Core.map_loc ~f:(SourceRanges.of_opt_range ~buf)
+let translate_c_term : buf:string -> OptRange.t Core.term -> c_term =
+ fun ~buf -> Core.map_loc ~f:(SourceRanges.of_opt_range ~buf)
+;;
 
 type t =
   (* primitive parsers *)
@@ -88,9 +89,12 @@ let rec pp (* Format.formatter -> t -> unit *) : t Fmt.t =
       ppf
       (* TODO: consistent style between sequence, fix, and satisfy *)
       "sequence (%a. %a) [%a]"
-      Fmt.(list ~sep:(any ".@ ") string) names
-      core p
-      Fmt.(list ~sep:comma pp) ps
+      Fmt.(list ~sep:(any ".@ ") string)
+      names
+      core
+      p
+      Fmt.(list ~sep:comma pp)
+      ps
   | Identifier name -> pf ppf "%s" name
 ;;
 
@@ -99,11 +103,11 @@ let mk_some : SourceRanges.t -> n_term -> n_term =
 ;;
 
 let mk_none pos = Nominal.Operator (pos, "none", [])
-
 let map_snd ~f (a, b) = a, f b
 
 module Direct = struct
   type term_ctx = n_term Lvca_util.String.Map.t
+
   type parser_ctx = direct Lvca_util.String.Map.t
 
   and direct =
@@ -115,7 +119,7 @@ module Direct = struct
         -> int * (n_term, string * c_term option) Result.t
     }
 
-  let todo_msg msg = Error (msg, None);;
+  let todo_msg msg = Error (msg, None)
 
   let mk_char pos c =
     Ok (Nominal.Primitive (SourceRanges.mk "input" pos (pos + 1), Primitive.PrimChar c))
@@ -215,11 +219,7 @@ module Direct = struct
           match Core.eval_ctx term_ctx n_tm with
           | Ok (Primitive (_, PrimInteger n)) ->
             str
-            |> go
-                 ~term_ctx
-                 ~parser_ctx
-                 ~pos
-                 (Z.to_int n (* XXX: may raise Overflow *))
+            |> go ~term_ctx ~parser_ctx ~pos (Z.to_int n (* XXX: may raise Overflow *))
             |> map_snd ~f:mk_list_result
           | _ -> failwith "TODO: count")
     }
@@ -254,16 +254,21 @@ module Direct = struct
   ;;
 
   let fix name p =
-    let f p' = { run = fun ~term_ctx ~parser_ctx ~pos str ->
-      p.run ~term_ctx ~parser_ctx:(Map.set parser_ctx ~key:name ~data:p') ~pos str
-    }
+    let f p' =
+      { run =
+          (fun ~term_ctx ~parser_ctx ~pos str ->
+            p.run ~term_ctx ~parser_ctx:(Map.set parser_ctx ~key:name ~data:p') ~pos str)
+      }
     in
     let rec lazy_p = lazy (f r)
-    and r = { run = fun ~term_ctx ~parser_ctx ~pos str ->
-      (Lazy.force lazy_p).run ~term_ctx ~parser_ctx ~pos str
-    }
+    and r =
+      { run =
+          (fun ~term_ctx ~parser_ctx ~pos str ->
+            (Lazy.force lazy_p).run ~term_ctx ~parser_ctx ~pos str)
+      }
     in
     r
+  ;;
 
   let alt t1 t2 =
     { run =
@@ -276,43 +281,46 @@ module Direct = struct
   ;;
 
   let return tm =
-    { run = (fun ~term_ctx ~parser_ctx:_ ~pos _str ->
-      let result = Core.eval_ctx term_ctx tm in
-      pos, Result.map_error result ~f:(map_snd ~f:(fun tm -> Some tm))
-    )
+    { run =
+        (fun ~term_ctx ~parser_ctx:_ ~pos _str ->
+          let result = Core.eval_ctx term_ctx tm in
+          pos, Result.map_error result ~f:(map_snd ~f:(fun tm -> Some tm)))
     }
   ;;
 
   let liftn names tm ps =
     { run =
         (fun ~term_ctx ~parser_ctx ~pos str ->
-          let (pos, _), result = List.fold_map ps
-            ~init:(pos, true)
-            ~f:(fun (pos, continue) { run } ->
-              if continue
-              then match run ~term_ctx ~parser_ctx ~pos str with
-                | pos, Ok tm -> (pos, true), Ok tm
-                | pos, Error msg -> (pos, false), Error msg
-              else (pos, false), todo_msg "don't continue")
+          let (pos, _), result =
+            List.fold_map ps ~init:(pos, true) ~f:(fun (pos, continue) { run } ->
+                if continue
+                then (
+                  match run ~term_ctx ~parser_ctx ~pos str with
+                  | pos, Ok tm -> (pos, true), Ok tm
+                  | pos, Error msg -> (pos, false), Error msg)
+                else (pos, false), todo_msg "don't continue")
           in
           match Result.all result with
           | Error msg -> pos, Error msg
           | Ok xs ->
             (match List.zip names xs with
-            | Unequal_lengths -> failwith (Caml.Printf.sprintf
-              "TODO: liftn Unequal_lengths (%n vs %n)" (List.length names) (List.length
-              xs))
+            | Unequal_lengths ->
+              failwith
+                (Caml.Printf.sprintf
+                   "TODO: liftn Unequal_lengths (%n vs %n)"
+                   (List.length names)
+                   (List.length xs))
             | Ok name_vals ->
               let term_ctx =
                 name_vals
                 |> List.fold ~init:term_ctx ~f:(fun ctx (key, tm) ->
                        Map.set ctx ~key ~data:tm)
               in
-              let result = Core.eval_ctx term_ctx tm
+              let result =
+                Core.eval_ctx term_ctx tm
                 |> Result.map_error ~f:(map_snd ~f:(fun tm -> Some tm))
               in
-              pos, result
-            ))
+              pos, result))
     }
   ;;
 
@@ -371,7 +379,10 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   open Parsers
 
-  let keywords : string list = [ "satisfy"; "let"; "in"; "fail"; "sequence"; "return"; "fix" ]
+  let keywords : string list =
+    [ "satisfy"; "let"; "in"; "fail"; "sequence"; "return"; "fix" ]
+  ;;
+
   let keyword : string Parsers.t = keywords |> List.map ~f:string |> choice
   let operators : string list = [ "?"; "*"; "+"; "|"; "=" ]
   let operator : string Parsers.t = operators |> List.map ~f:string |> choice
@@ -388,55 +399,63 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
             ]
         in
         choice
-          [ (string "let"
+          [ string "let"
             *> lift3
                  (fun name bound body -> Let (name, bound, body))
                  Parsers.identifier
                  (string "=" *> parser)
-                 (string "in" *> parser)) <?> "let"
-          ; (string "satisfy"
+                 (string "in" *> parser)
+            <?> "let"
+          ; string "satisfy"
             *> parens
                  (lift3
-                    (fun name _arr tm -> Satisfy (name, translate_c_term ~buf:"parser" tm))
+                    (fun name _arr tm ->
+                      Satisfy (name, translate_c_term ~buf:"parser" tm))
                     Parsers.identifier
                     (string "->")
-                    c_term) <?> "satisfy")
-          ; (string "fail" *> c_term >>| fun tm -> Fail (translate_c_term ~buf:"parser" tm))
+                    c_term)
+            <?> "satisfy"
+          ; string "fail" *> c_term
+            >>| (fun tm -> Fail (translate_c_term ~buf:"parser" tm))
             <?> "fail"
-          ; (string "fix"
+          ; string "fix"
             *> parens
                  (lift3
                     (fun name _arr tm -> Fix (name, tm))
                     Parsers.identifier
                     (string "->")
-                    parser)) <?> "fix"
-          ; (string "sequence"
+                    parser)
+            <?> "fix"
+          ; string "sequence"
             *> lift2
-            (fun (names, body) components -> Sequence (names, body, components))
-            (parens (lift2
-              (fun names body -> names, translate_c_term ~buf:"parser" body)
-              (many (Parsers.identifier <* char '.'))
-              c_term))
-            (brackets (sep_by1 (char ',') parser)) <?> "sequence")
-          ; (string "return" *> c_term >>|| fun ~pos tm ->
-            Return (translate_c_term ~buf:"parser" tm), pos )
+                 (fun (names, body) components -> Sequence (names, body, components))
+                 (parens
+                    (lift2
+                       (fun names body -> names, translate_c_term ~buf:"parser" body)
+                       (many (Parsers.identifier <* char '.'))
+                       c_term))
+                 (brackets (sep_by1 (char ',') parser))
+            <?> "sequence"
+          ; string "return" *> c_term
+            >>|| (fun ~pos tm -> Return (translate_c_term ~buf:"parser" tm), pos)
             <?> "return"
           ; (parse_token
             >>= fun tok ->
             option
               tok
               (choice
-                 [ (char '?' >>| fun _ -> Option tok) <?> "?"
-                 ; (char '*' >>| fun _ -> Many tok) <?> "*"
-                 ; (char '+' >>| fun _ -> Many1 tok) <?> "+"
-                 ; (braces c_term >>| fun tm -> Count (tok, translate_c_term ~buf:"parser" tm))
+                 [ char '?' >>| (fun _ -> Option tok) <?> "?"
+                 ; char '*' >>| (fun _ -> Many tok) <?> "*"
+                 ; char '+' >>| (fun _ -> Many1 tok) <?> "+"
+                 ; (braces c_term
+                   >>| fun tm -> Count (tok, translate_c_term ~buf:"parser" tm))
                  ; char '|' *> (parser >>| fun rhs -> Alt (tok, rhs)) <?> "|"
                  ]))
           ])
     <?> "parser"
  ;;
 
- let whitespace_t c_term = ParseUtil.whitespace *> t c_term
+  let whitespace_t c_term = ParseUtil.whitespace *> t c_term
 end
 
 let%test_module "Parsing" =
@@ -462,7 +481,8 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print {|'c'{{2}}|} "cc";
-      [%expect {| <input:0-2>list(<input:0-1>'c'</input:0-1>, <input:1-2>'c'</input:1-2>)</input:0-2> |}]
+      [%expect
+        {| <input:0-2>list(<input:0-1>'c'</input:0-1>, <input:1-2>'c'</input:1-2>)</input:0-2> |}]
     ;;
 
     let%expect_test _ =
@@ -472,17 +492,19 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print {|"str"|} "foo";
-      [%expect{| failed to parse: string "str" |}]
+      [%expect {| failed to parse: string "str" |}]
     ;;
 
     let%expect_test _ =
       parse_print {|"str"*|} "strstrstr";
-      [%expect{| <input:0-9>list(<input:0-3>"str"</input:0-3>, <input:3-6>"str"</input:3-6>, <input:6-9>"str"</input:6-9>)</input:0-9> |}]
+      [%expect
+        {| <input:0-9>list(<input:0-3>"str"</input:0-3>, <input:3-6>"str"</input:3-6>, <input:6-9>"str"</input:6-9>)</input:0-9> |}]
     ;;
 
     let%expect_test _ =
       parse_print {|"str"+|} "strstrstr";
-      [%expect {| <input:0-9>list(<input:0-3>"str"</input:0-3>, <input:3-6>"str"</input:3-6>, <input:6-9>"str"</input:6-9>)</input:0-9> |}]
+      [%expect
+        {| <input:0-9>list(<input:0-3>"str"</input:0-3>, <input:3-6>"str"</input:3-6>, <input:6-9>"str"</input:6-9>)</input:0-9> |}]
     ;;
 
     let%expect_test _ =
@@ -528,34 +550,32 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print "'c'?" "c";
-      [%expect{| <input:0-1>some(<input:0-1>'c'</input:0-1>)</input:0-1> |}]
+      [%expect {| <input:0-1>some(<input:0-1>'c'</input:0-1>)</input:0-1> |}]
     ;;
 
     (* TODO: determine proper provenance *)
     let%expect_test _ =
       parse_print "'c'?" "";
-      [%expect{| <>none()</> |}]
+      [%expect {| <>none()</> |}]
     ;;
 
     let%expect_test _ =
       parse_print "return {foo()}" "";
-      [%expect{| <parser:8-13>foo()</parser:8-13> |}]
+      [%expect {| <parser:8-13>foo()</parser:8-13> |}]
     ;;
 
-    (*
-    let%expect_test _ =
-      parse_print "sequence (. {foo()}) []" "";
-      [%expect{| foo() |}]
-    ;;
-    *)
+    (* let%expect_test _ = parse_print "sequence (. {foo()}) []" ""; [%expect{| foo() |}]
+       ;; *)
 
     let%expect_test _ =
       parse_print {|fix (x -> "a" | "b")|} "a";
-      [%expect{| <input:0-1>"a"</input:0-1> |}]
+      [%expect {| <input:0-1>"a"</input:0-1> |}]
+    ;;
 
     let%expect_test _ =
       parse_print {|sequence(a. {"a"}) ["a"]|} "a";
-      [%expect{| <parser:13-16>"a"</parser:13-16> |}]
+      [%expect {| <parser:13-16>"a"</parser:13-16> |}]
+    ;;
 
     let list_parser =
       {|fix (lst ->
@@ -567,38 +587,48 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print list_parser "";
-      [%expect{| <parser:87-92>nil()</parser:87-92> |}]
+      [%expect {| <parser:87-92>nil()</parser:87-92> |}]
     ;;
 
     let%expect_test _ =
       parse_print list_parser "c";
-      [%expect{| <parser:41-52>cons(<input:0-1>'c'</input:0-1>; <parser:87-92>nil()</parser:87-92>)</parser:41-52> |}]
+      [%expect
+        {| <parser:41-52>cons(<input:0-1>'c'</input:0-1>; <parser:87-92>nil()</parser:87-92>)</parser:41-52> |}]
     ;;
 
     let%expect_test _ =
       parse_print list_parser "cc";
-      [%expect{| <parser:41-52>cons(<input:0-1>'c'</input:0-1>; <parser:41-52>cons(<input:1-2>'c'</input:1-2>; <parser:87-92>nil()</parser:87-92>)</parser:41-52>)</parser:41-52> |}]
+      [%expect
+        {| <parser:41-52>cons(<input:0-1>'c'</input:0-1>; <parser:41-52>cons(<input:1-2>'c'</input:1-2>; <parser:87-92>nil()</parser:87-92>)</parser:41-52>)</parser:41-52> |}]
     ;;
 
     let%expect_test _ =
       parse_print {|sequence(a. a'. b. {triple(a; a'; b)})["a", "a", "b"]|} "aab";
-      [%expect{| <parser:20-36>triple(<input:0-1>"a"</input:0-1>; <input:1-2>"a"</input:1-2>; <input:2-3>"b"</input:2-3>)</parser:20-36> |}]
+      [%expect
+        {| <parser:20-36>triple(<input:0-1>"a"</input:0-1>; <input:1-2>"a"</input:1-2>; <input:2-3>"b"</input:2-3>)</parser:20-36> |}]
+    ;;
 
     let%expect_test _ =
       parse_print {|sequence(a. a'. b. {triple(a; a'; b)})['a', 'a', 'b']|} "aab";
-      [%expect{| <parser:20-36>triple(<input:0-1>'a'</input:0-1>; <input:1-2>'a'</input:1-2>; <input:2-3>'b'</input:2-3>)</parser:20-36> |}]
+      [%expect
+        {| <parser:20-36>triple(<input:0-1>'a'</input:0-1>; <input:1-2>'a'</input:1-2>; <input:2-3>'b'</input:2-3>)</parser:20-36> |}]
+    ;;
 
     let%expect_test _ =
       parse_print {|fix (x -> "b" | sequence(a. x. {pair(a; x)}) ["a", x])|} "a";
-      [%expect{| failed to parse: string "a" |}]
+      [%expect {| failed to parse: string "a" |}]
+    ;;
 
     let%expect_test _ =
       parse_print {|fix (x -> "b" | sequence(a. x. {pair(a; x)}) ["a", x])|} "ab";
-      [%expect{| <parser:32-42>pair(<input:0-1>"a"</input:0-1>; <input:1-2>"b"</input:1-2>)</parser:32-42> |}]
+      [%expect
+        {| <parser:32-42>pair(<input:0-1>"a"</input:0-1>; <input:1-2>"b"</input:1-2>)</parser:32-42> |}]
+    ;;
 
     let%expect_test _ =
       parse_print "sequence (a. b. {pair(a; b)}) ['a', 'b']" "ab";
-      [%expect{| <parser:17-27>pair(<input:0-1>'a'</input:0-1>; <input:1-2>'b'</input:1-2>)</parser:17-27> |}]
+      [%expect
+        {| <parser:17-27>pair(<input:0-1>'a'</input:0-1>; <input:1-2>'b'</input:1-2>)</parser:17-27> |}]
     ;;
   end)
 ;;

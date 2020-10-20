@@ -1,7 +1,6 @@
 open Base
 open Lvca_syntax
 open Common
-
 module PrimitiveParse = Primitive.Parse (ParseUtil.NoComment)
 module TermParse = Nominal.Parse (ParseUtil.NoComment)
 
@@ -19,7 +18,8 @@ module Model = struct
     ; result : (term, string) Result.t
     ; selected : OptRange.t
     }
-    (* TODO: evaluate ppx_deriving *)
+
+  (* TODO: evaluate ppx_deriving *)
 
   let print { input; input_lang; result; selected } =
     let input_lang_str = match input_lang with Lambda -> "Lambda" | Term -> "Term" in
@@ -92,7 +92,8 @@ module View = struct
     mk_output formatted_s
   ;;
 
-  let make_descriptions model_s = model_s
+  let make_descriptions model_s =
+    model_s
     |> React.S.map (fun Model.{ input_lang; _ } ->
            match input_lang with
            | Lambda -> "input (concrete)", "output (abstract)"

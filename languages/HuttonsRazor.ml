@@ -61,9 +61,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     let tm =
       NonBinding.(
         Operator
-          ( pos
-          , "lit"
-          , [ [ Primitive (pos, Primitive.PrimInteger (Z.of_string str)) ] ] ))
+          (pos, "lit", [ [ Primitive (pos, Primitive.PrimInteger (Z.of_string str)) ] ]))
     in
     tm, pos
   ;;

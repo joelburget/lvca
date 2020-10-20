@@ -64,10 +64,11 @@ module String = struct
       | DuplicateKey k -> `Duplicate_key k
    ;;
 
-   let intersect : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
-     = fun a_map b_map ~f -> Map.merge a_map b_map ~f:(fun ~key:_ -> function
-       | `Left _ | `Right _ -> None
-       | `Both (a, b) -> Some (f a b))
+    let intersect : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t =
+     fun a_map b_map ~f ->
+      Map.merge a_map b_map ~f:(fun ~key:_ -> function
+        | `Left _ | `Right _ -> None | `Both (a, b) -> Some (f a b))
+   ;;
   end
 
   module Set = struct
@@ -88,10 +89,7 @@ module String = struct
 end
 
 module List = struct
-  let rec snoc xs x = match xs with
-    | [] -> [x]
-    | x' :: xs -> x' :: snoc xs x
-  ;;
+  let rec snoc xs x = match xs with [] -> [ x ] | x' :: xs -> x' :: snoc xs x
 
   let rec unsnoc lst =
     match lst with

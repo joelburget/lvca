@@ -67,27 +67,29 @@ let unjsonify =
       (try Some (PrimInteger (Z.of_string i)) with Failure _ -> None)
     | Array [| String "f"; Float f |] -> Some (PrimFloat f)
     | Array [| String "c"; String c |] ->
-      if Int.(String.length c = 1)
-      then Some (PrimChar (Char.of_string c))
-      else None
+      if Int.(String.length c = 1) then Some (PrimChar (Char.of_string c)) else None
     | Array [| String "s"; String str |] -> Some (PrimString str)
     | _ -> None)
 ;;
 
 module Properties = struct
   let json_round_trip1 : t -> PropertyResult.t =
-   fun t -> match t with
-     | PrimFloat f when Float.is_nan f -> Uninteresting
-     | _ -> match t |> jsonify |> unjsonify with
-       | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
-       | Some t' -> PropertyResult.check (t' = t) (Fmt.str "%a <> %a" pp t' pp t)
+   fun t ->
+    match t with
+    | PrimFloat f when Float.is_nan f -> Uninteresting
+    | _ ->
+      (match t |> jsonify |> unjsonify with
+      | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
+      | Some t' -> PropertyResult.check (t' = t) (Fmt.str "%a <> %a" pp t' pp t))
  ;;
 
   let json_round_trip2 : Lvca_util.Json.t -> PropertyResult.t =
    fun json ->
     match json |> unjsonify with
     | Some t ->
-      PropertyResult.check (Lvca_util.Json.(jsonify t = json)) "jsonify t <> json (TODO: print)"
+      PropertyResult.check
+        Lvca_util.Json.(jsonify t = json)
+        "jsonify t <> json (TODO: print)"
     | None -> Uninteresting
  ;;
 
@@ -96,8 +98,7 @@ module Properties = struct
   let string_round_trip1 : t -> PropertyResult.t =
    fun t ->
     match t |> to_string |> ParseUtil.parse_string ParsePrimitive.t with
-    | Ok prim ->
-      PropertyResult.check (prim = t) (Fmt.str "%a <> %a" pp prim pp t)
+    | Ok prim -> PropertyResult.check (prim = t) (Fmt.str "%a <> %a" pp prim pp t)
     | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
  ;;
 
@@ -110,11 +111,12 @@ module Properties = struct
       let str' = to_string prim in
       if String.(str' = str)
       then Ok
-      else match ParseUtil.parse_string ParsePrimitive.t str with
+      else (
+        match ParseUtil.parse_string ParsePrimitive.t str with
         | Error msg -> Failed msg
         | Ok prim' ->
-        let str'' = to_string prim' in
-        PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str')
+          let str'' = to_string prim' in
+          PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str'))
  ;;
 
   (* malformed input *)
@@ -150,11 +152,13 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       print_parse "0.00000";
-      [%expect{| 0.000000 {0,7} |}]
+      [%expect {| 0.000000 {0,7} |}]
+    ;;
 
     let%expect_test _ =
       print_parse "-0.00000";
-      [%expect{| -0.000000 {0,8} |}]
+      [%expect {| -0.000000 {0,8} |}]
+    ;;
 
       (* TODO: are floats a good idea?
     let%expect_test _ =
