@@ -11,10 +11,21 @@
   padding: 1em;
   background-color: hsl(0 0% 95% / 1);
 }
+
 .container {
   display: flex;
   flex-direction: row;
   max-width: 1200px;
+}
+
+.column-container {
+  display: flex;
+  flex-direction: row;
+}
+
+.row-container {
+  display: flex;
+  flex-direction: column;
 }
 
 kbd {

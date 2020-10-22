@@ -4,26 +4,35 @@ open Lvca_syntax
 (* TODO: consider blocking asking for more than, say 5000 digits? *)
 
 module Model = struct
-  type t = string * int
+  type evaluation = string * int
+  type t = evaluation Queue.t
 
-  let initial_model = {|1 + 1|}, 10
+  let initial_model : t = Queue.create () (* Queue.of_list [{|1 + 1|}, 10] *)
 end
 
 module Action = struct
   type t =
     | Evaluate of string
-    | ChangePrecision of Common.digits_update
+    | ChangePrecision of int * Common.digits_update
 end
 
 module Controller = struct
   let update (action : Action.t) model_s signal_update =
-    let str, digits = React.S.value model_s in
+    let queue = React.S.value model_s |> Queue.copy in
     let new_model =
-      match action with
-      | Evaluate str -> str, digits
-      | ChangePrecision (SetDigits digits) -> str, digits
-      | ChangePrecision IncrDigits -> str, digits + 1
-      | ChangePrecision DecrDigits -> str, digits - 1
+      let () = match action with
+      | Evaluate str -> Queue.enqueue queue (str, 10)
+      | ChangePrecision (i, prec_cmd) ->
+        let str, digits = Queue.get queue i in
+        let digits' = match prec_cmd with
+          | SetDigits digits -> digits
+          | IncrDigits -> digits + 1
+          | DecrDigits -> digits - 1
+        in
+        Queue.set queue i (str, digits')
+      in
+
+      queue
     in
     signal_update new_model
   ;;
@@ -82,10 +91,8 @@ module View = struct
   module Parse = Lvca_languages.Calculator.Parse (ParseUtil.CComment)
 
   let view model_s signal_update =
-    let input, input_event = model_s |> React.S.Pair.fst |> Common.mk_input in
-    let digits_entry, digits_event =
-      model_s |> React.S.Pair.snd |> Common.mk_digits_entry
-    in
+    let input, input_event = Common.mk_input (React.S.const "1 + 1") in
+
     let (_ : unit React.event) =
       input_event
       |> React.E.map (function
@@ -93,23 +100,7 @@ module View = struct
                Controller.update (Evaluate str) model_s signal_update
              | _ -> ())
     in
-    let (_ : unit React.event) =
-      digits_event
-      |> React.E.map (fun update ->
-             Controller.update (ChangePrecision update) model_s signal_update)
-    in
-    let result =
-      model_s
-      |> React.S.map (fun (str, digits) ->
-             match ParseUtil.parse_string Parse.t str with
-             | Error msg -> msg
-             | Ok tm ->
-               (match Lvca_languages.Calculator.interpret tm with
-               | Error (_tm, msg) -> msg
-               | Ok real ->
-                 let digits = Int32.of_int_exn digits in
-                 ConstructiveReal.eval_to_string real ~digits))
-    in
+
     let eval_button = Html.(button [ txt "evaluate" ]) in
     let instructions =
       match WebUtil.platform_special_combo () with
@@ -134,20 +125,60 @@ module View = struct
           |> List.map ~f:(fun example -> li ~a:[ a_class [ "example" ] ] [ example ])))
     in
 
+    let result str digits = match ParseUtil.parse_string Parse.t str with
+      | Error msg -> msg
+      | Ok tm ->
+        (match Lvca_languages.Calculator.interpret tm with
+        | Error (_tm, msg) -> msg
+        | Ok real ->
+          let digits = Int32.of_int_exn digits in
+          ConstructiveReal.eval_to_string real ~digits)
+    in
+
+    let row row_num input digits =
+      (* TODO: const here is hacky? *)
+      let digits_entry, digits_event = Common.mk_digits_entry (React.S.const digits) in
+      let (_ : unit React.event) = digits_event
+        |> React.E.map (fun update ->
+           Controller.update (ChangePrecision (row_num, update)) model_s signal_update)
+      in
+
+      (*
+      let digits' = digits
+        |> React.S.map (result input)
+        |> R.Html.txt
+      in
+      *)
+
+      [%html{|
+        <div class="row column-container">
+          <div>
+            <pre>|}[ Html.txt input ]{|</pre>
+          </div>
+          <div>
+            <pre>|}[ Html.txt (result input digits) ]{|</pre>
+          </div>
+          <p>digits: |}[ digits_entry ]{|</p>
+        </div>
+      |}]
+    in
+
+    let rows = model_s
+      |> React.S.map (fun q -> q
+        |> Queue.to_list
+        |> List.mapi ~f:(fun row_num (input, digits) -> row row_num input digits))
+      |> ReactiveData.RList.from_signal
+      |> R.Html.div
+    in
+
     [%html {|
       <div>
         <h2>Calculator</h2>
-        <div class="container">
-          <div class="side">
-            <h3>|}[ input ]{|</h3>
-          </div>
-          <div class="side">
-            <h3>result</h3>
-            <pre>|}[ R.Html.txt result ]{|</pre>
-          </div>
+        <div class="row-container">
+          <div>|}[ input ]{|</div>
+          |}[ rows ]{|
         </div>
         <div>
-          <p>digits: |}[ digits_entry ]{|</p>
           <p>|}[ eval_button; instructions ]{|</p>
           <p>Try an example:</p>
           |}[ examples ]{|
