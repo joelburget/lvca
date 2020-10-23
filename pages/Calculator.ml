@@ -4,10 +4,10 @@ open Lvca_syntax
 (* TODO: consider blocking asking for more than, say 5000 digits? *)
 
 module Model = struct
-  type evaluation = string * int
-  type t = evaluation Queue.t
+  type evaluation = string * (int React.S.t * (?step:React.step -> int -> unit))
+  type t = evaluation list
 
-  let initial_model : t = Queue.create () (* Queue.of_list [{|1 + 1|}, 10] *)
+  let initial_model : t = []
 end
 
 module Action = struct
@@ -18,21 +18,19 @@ end
 
 module Controller = struct
   let update (action : Action.t) model_s signal_update =
-    let queue = React.S.value model_s |> Queue.copy in
+    let list = React.S.value model_s in
     let new_model =
-      let () = match action with
-      | Evaluate str -> Queue.enqueue queue (str, 10)
+      match action with
+      | Evaluate str -> (str, React.S.create 10) :: list
       | ChangePrecision (i, prec_cmd) ->
-        let str, digits = Queue.get queue i in
-        let digits' = match prec_cmd with
-          | SetDigits digits -> digits
-          | IncrDigits -> digits + 1
-          | DecrDigits -> digits - 1
+        let _, (digits_s, digits_update) = List.nth_exn list i in
+        let () = match prec_cmd with
+          | SetDigits digits -> digits_update digits
+          (* TODO: there has to be a better way (than using value) *)
+          | IncrDigits -> digits_update (React.S.value digits_s + 1)
+          | DecrDigits -> digits_update (React.S.value digits_s - 1)
         in
-        Queue.set queue i (str, digits')
-      in
-
-      queue
+        list
     in
     signal_update new_model
   ;;
@@ -66,7 +64,7 @@ let language_chart =
         <tr> <td>mul</td> <td>expr * expr</td> <td></td> </tr>
         <tr> <td>div</td> <td>expr / expr</td> <td></td> </tr>
 
-        <tr> <td>negate</td> <td>- expr</td> <td></td> </tr>
+        <tr> <td>negate</td> <td>negate expr</td> <td></td> </tr>
         <tr> <td>sqrt</td> <td>sqrt expr</td> <td></td> </tr>
         <tr> <td>abs</td> <td>abs expr</td> <td></td> </tr>
         <tr> <td>exp</td> <td>exp expr</td> <td></td> </tr>
@@ -135,20 +133,17 @@ module View = struct
           ConstructiveReal.eval_to_string real ~digits)
     in
 
-    let row row_num input digits =
-      (* TODO: const here is hacky? *)
-      let digits_entry, digits_event = Common.mk_digits_entry (React.S.const digits) in
+    let row row_num input digits_s _digits_update =
+      let digits_entry, digits_event = Common.mk_digits_entry digits_s in
       let (_ : unit React.event) = digits_event
         |> React.E.map (fun update ->
            Controller.update (ChangePrecision (row_num, update)) model_s signal_update)
       in
 
-      (*
-      let digits' = digits
+      let digits' = digits_s
         |> React.S.map (result input)
         |> R.Html.txt
       in
-      *)
 
       [%html{|
         <div class="row column-container">
@@ -156,7 +151,7 @@ module View = struct
             <pre>|}[ Html.txt input ]{|</pre>
           </div>
           <div>
-            <pre>|}[ Html.txt (result input digits) ]{|</pre>
+            <pre>|}[ digits' ]{|</pre>
           </div>
           <p>digits: |}[ digits_entry ]{|</p>
         </div>
@@ -165,8 +160,8 @@ module View = struct
 
     let rows = model_s
       |> React.S.map (fun q -> q
-        |> Queue.to_list
-        |> List.mapi ~f:(fun row_num (input, digits) -> row row_num input digits))
+        |> List.mapi ~f:(fun row_num (input, (digits_s, digits_update)) ->
+            row row_num input digits_s digits_update))
       |> ReactiveData.RList.from_signal
       |> R.Html.div
     in
