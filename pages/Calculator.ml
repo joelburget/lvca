@@ -113,11 +113,11 @@ let language_chart =
   |}]
 ;;
 
-let mk_button contents =
+let mk_button ?cls:(cls=[]) contents =
   let open Js_of_ocaml_tyxml.Tyxml_js in
   let click_event, signal_event = React.E.create () in
   let handler _evt = signal_event (); false in
-  let button = Html.(button ~a:[a_onclick handler] contents) in
+  let button = Html.(button ~a:[a_onclick handler; a_class cls] contents) in
   button, click_event
 
 module View = struct
@@ -126,34 +126,20 @@ module View = struct
   module Parse = Lvca_languages.Calculator.Parse (ParseUtil.CComment)
 
   let view model_s signal_update =
-    let input, input_event = Common.mk_input (React.S.const "1 + 1") in
-    (* TODO: shouldn't need to use input_dom *)
-    let input_dom = To_dom.of_textarea input in
+    let input, input_event = Common.mk_single_line_input (React.S.const "1 + 1") in
 
-    let (_ : unit React.event) =
-      input_event
-      |> React.E.map (function
-             | Common.InputUpdate str ->
-               Controller.update (Evaluate str) model_s signal_update
-             | _ -> ())
+    let (_ : unit React.event) = input_event
+      |> React.E.map (fun str -> Controller.update (Evaluate str) model_s signal_update)
     in
 
-    let eval_button, eval_event = mk_button Html.[ txt "evaluate" ] in
-
-    let (_ : unit React.event) = eval_event
-      |> React.E.map (fun () -> Controller.update
-        (Evaluate (Js_of_ocaml.Js.to_string input_dom##.value))
-        model_s
-        signal_update)
-    in
-
-    let instructions =
-      match WebUtil.platform_special_combo () with
-      | None -> Html.txt ""
-      | Some instructions -> Html.(span ([ txt "by pressing " ] @ instructions))
-    in
     let examples, example_update_es =
-      [ "1 + 1"; "pi"; "cos (pi / 4)"; "sqrt 2 / 2" (* ; "ln (e * e)" *) ]
+      [ "pi"
+      ; "cos (pi / 4)"
+      ; "sqrt 2 / 2"
+      ; "4 * (4 * atan (1 / 5) - atan (1 / 239))"
+      ; "20 * atan (1 / 7) + 8 * atan (3 / 79)"
+      (* ; "ln (e * e)" *)
+      ]
       |> List.map ~f:mk_example
       |> List.unzip
     in
@@ -171,8 +157,8 @@ module View = struct
     in
 
     let result str digits = match ParseUtil.parse_string Parse.t str with
-      | Error msg -> msg
-      | Ok tm ->
+      | Error msg -> Error msg
+      | Ok tm -> Ok
         (match Lvca_languages.Calculator.interpret tm with
         | Error (_tm, msg) -> msg
         | Ok real ->
@@ -188,27 +174,28 @@ module View = struct
       in
 
       let digits' = digits_s
-        |> React.S.map (result input_str)
-        |> R.Html.txt
+        |> React.S.map (fun digits -> match result input_str digits with
+          | Error msg -> [Html.(span ~a:[a_class ["error"]] [txt msg])]
+          | Ok str -> [Html.(span [txt str])])
+        |> ReactiveData.RList.from_signal
+        |> R.Html.pre
       in
 
-      let delete_button, delete_event = mk_button Html.[ txt "delete" ] in
+      let delete_button, delete_event =
+        mk_button ~cls:["result-delete"] Html.[ txt "remove" ]
+      in
       let (_ : unit React.event) = delete_event
         |> React.E.map (fun () ->
             Controller.update (DeleteRow row_num) model_s signal_update)
       in
 
       [%html{|
-        <div class="row column-container">
-          <div>
-            <pre>|}[ Html.txt input_str ]{|</pre>
-          </div>
-          <div>
-            <pre>|}[ digits' ]{|</pre>
-          </div>
-          <p>digits: |}[ digits_entry ]{|</p>
-          |}[ delete_button ]{|
-        </div>
+        <tr class="row">
+          <td class="result-input"> <pre>|}[ Html.txt input_str ]{|</pre> </td>
+          <td class="result-output">|}[ digits' ]{|</td>
+          <td class="result-digits">digits: |}[ digits_entry ]{|</td>
+          <td>|}[ delete_button ]{|</td>
+        </tr>
       |}]
     in
 
@@ -218,17 +205,12 @@ module View = struct
             let digits_s, digits_update = Map.find_exn model.signal_pool pool_idx in
             row row_num input_str digits_s digits_update))
       |> ReactiveData.RList.from_signal
-      |> R.Html.div
     in
 
     [%html {|
       <div>
-        <h2>Calculator</h2>
         <div>|}[ input ]{|</div>
-        <p>|}[ eval_button; instructions ]{|</p>
-        <div class="row-container">
-          |}[ rows ]{|
-        </div>
+        |}[ R.Html.table rows ]{|
         <div>
           <p>Try an example:</p>
           |}[ examples ]{|
@@ -237,6 +219,21 @@ module View = struct
         </div>
       </div>
     |}]
+    (*
+    [%html {|
+      <div>
+        <h2>Calculator</h2>
+        <div>|}[ input ]{|</div>
+        |}[ R.Html.table rows ]{|
+        <div>
+          <p>Try an example:</p>
+          |}[ examples ]{|
+          <h3>language chart</h3>
+          |}[ language_chart ]{|
+        </div>
+      </div>
+    |}]
+    *)
   ;;
 end
 

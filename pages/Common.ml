@@ -51,17 +51,20 @@ type input_event =
   | InputSelect of int * int
   | InputUnselect
 
-let mk_input input_s =
+let mk_multiline_input ?autofocus:(autofocus=true) ?rows:(rows=2) ?cols:(cols=60) input_s =
   let open Js_of_ocaml in
   let open Tyxml_js in
 
   let input_event, signal_event = React.E.create () in
 
   let input_val = R.Html.txt input_s in
-  let input =
-    [%html{|
-      <textarea rows=2 cols=60 autofocus class="input">|}input_val{|</textarea>
-    |}]
+  let input = Html.(textarea
+    ~a:([ a_rows rows
+        ; a_cols cols
+        ; a_class ["input"]
+        ] @ (if autofocus then [a_autofocus ()] else []))
+     input_val
+    )
   in
   let input_dom = To_dom.of_textarea input in
   bind_event Ev.keydowns input_dom (fun evt ->
@@ -98,6 +101,47 @@ let mk_input input_s =
            input_dom##.value := Js.string input)
   in
   input, input_event
+
+let mk_single_line_input ?autofocus:(autofocus=true) input_s =
+  let open Js_of_ocaml in
+  let open Tyxml_js in
+
+    let input_event, signal_input_event = React.E.create () in
+
+    let input_value = React.S.value input_s in
+
+    let input = Html.(input
+      ~a:(
+        [a_input_type `Text ; a_value input_value] @
+        (if autofocus then [a_autofocus ()] else []))
+      ()
+    )
+    in
+    let input_dom = To_dom.of_input input in
+
+    bind_event Ev.keydowns input_dom (fun evt ->
+      let key_name = evt##.code
+        |> Js.Optdef.to_option
+        |> Option.value_exn
+        |> Js.to_string
+      in
+      let result = match key_name with
+        | "Enter" -> (
+          Dom.preventDefault evt;
+          signal_input_event (Js.to_string input_dom##.value)
+        )
+        | _ -> ()
+      in
+      Lwt.return result
+    );
+
+    let (_: unit React.event) = input_s
+      (* Create an event when the input has changed *)
+      |> React.S.map ~eq:Caml.(=) Fn.id
+      |> React.S.changes
+      |> React.E.map (fun s -> input_dom##.value := Js.string s)
+    in
+    input, input_event
 
 let mk_output
   (elt_s : [ `Code ] Tyxml_js.To_dom.elt React.signal) =
