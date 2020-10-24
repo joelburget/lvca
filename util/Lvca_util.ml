@@ -99,6 +99,10 @@ module List = struct
       let front, last = unsnoc lst' in
       x :: front, last
   ;;
+
+  let rec remove_nth list i = match list with
+    | [] -> list
+    | x :: xs -> if i = 0 then xs else x :: remove_nth xs (i - 1)
 end
 
 exception InvariantViolation of string

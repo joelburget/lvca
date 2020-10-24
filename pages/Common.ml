@@ -160,9 +160,7 @@ let mk_digits_entry digits_s =
     let open Tyxml_js in
 
     let digits_event, signal_digits_event = React.E.create () in
-
     let input_value = Int.to_string (React.S.value digits_s) in
-
     let input = [%html{|<input type="text" value=|}input_value{|>|}] in
     let input_dom = To_dom.of_input input in
 

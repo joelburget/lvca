@@ -1,7 +1,7 @@
 open Base
 open Lvca_syntax
-
-(* TODO: consider blocking asking for more than, say 5000 digits? *)
+module Calculator = Lvca_languages.Calculator
+module Parse = Calculator.Parse (ParseUtil.CComment)
 
 module IntMap = struct
   type 'a t = (int, 'a, Base.Int.comparator_witness) Base.Map.t
@@ -11,15 +11,23 @@ end
 module Model = struct
   type signal = int React.S.t * (?step:React.step -> int -> unit)
   type signal_pool = signal IntMap.t
-  type evaluation = string * int
+
+  module Evaluation = struct
+    type t =
+      { input: string
+      ; parsed: Calculator.term
+      ; pool_idx: int
+      }
+  end
+
   type t =
-    { evaluations: evaluation list
-    ; signal_pool: signal_pool
+    { evaluations: Evaluation.t list
     ; pool_idx: int
+    ; error_msg: string option
     }
 
   let initial_model : t =
-    { evaluations = []; signal_pool = IntMap.empty; pool_idx = 0 }
+    { evaluations = []; pool_idx = 0; error_msg = None }
 end
 
 module Action = struct
@@ -29,40 +37,46 @@ module Action = struct
     | DeleteRow of int
 end
 
-let rec remove_list_item list i = match list with
-  | [] -> list
-  | x :: xs -> if i = 0 then xs else x :: remove_list_item xs (i - 1)
-
 module Controller = struct
-  let update (action : Action.t) (model_s : Model.t React.S.t) signal_update =
-    let Model.{ evaluations; signal_pool; pool_idx } = React.S.value model_s in
-    let new_model =
-      match action with
-      | Evaluate str ->
-        Model.
-          { evaluations = (str, pool_idx) :: evaluations
-          ; signal_pool = Map.set signal_pool ~key:pool_idx ~data:(React.S.create 10)
-          ; pool_idx = Int.succ pool_idx
-          }
-      | DeleteRow i ->
-        let _, pool_idx = List.nth_exn evaluations i in
+  let signal_pool = ref IntMap.empty
 
-        { evaluations = remove_list_item evaluations i
-        ; signal_pool = Map.remove signal_pool pool_idx
-        ; pool_idx
-        }
-      | ChangePrecision (i, prec_cmd) ->
-        let _, pool_idx = List.nth_exn evaluations i in
-        let digits_s, digits_update = Map.find_exn signal_pool pool_idx in
-        let () = match prec_cmd with
-          | SetDigits digits -> digits_update digits
-          (* TODO: there has to be a better way (than using value) *)
-          | IncrDigits -> digits_update (React.S.value digits_s + 1)
-          | DecrDigits -> digits_update (React.S.value digits_s - 1)
-        in
-        { evaluations; signal_pool; pool_idx }
+  let update (action : Action.t) (model_s : Model.t React.S.t) signal_update =
+    let Model.{ evaluations; pool_idx; error_msg }
+      = React.S.value model_s
     in
-    signal_update new_model
+
+    match action with
+      | Evaluate input ->
+        let model = match ParseUtil.parse_string Parse.t input with
+          | Error msg -> Model.{ evaluations; pool_idx; error_msg = Some msg }
+          | Ok parsed ->
+            signal_pool := Map.set !signal_pool ~key:pool_idx ~data:(React.S.create 10);
+            Model.
+              { evaluations = { input; parsed; pool_idx } :: evaluations
+              ; pool_idx = Int.succ pool_idx
+              ; error_msg = None
+              }
+        in signal_update model
+      | DeleteRow i ->
+        let Model.Evaluation.{ pool_idx; _ } = List.nth_exn evaluations i in
+        signal_pool := Map.remove !signal_pool pool_idx;
+
+        signal_update
+          { evaluations = Lvca_util.List.remove_nth evaluations i
+          ; pool_idx
+          ; error_msg
+          }
+      | ChangePrecision (i, prec_cmd) ->
+        let Model.Evaluation.{ pool_idx; _ } = List.nth_exn evaluations i in
+        let digits_s, digits_update = Map.find_exn !signal_pool pool_idx in
+        (* TODO: there has to be a better way (than using value) *)
+        let prev_val = React.S.value digits_s in
+        let new_val = match prec_cmd with
+          | SetDigits digits -> digits
+          | IncrDigits -> Int.succ prev_val
+          | DecrDigits -> Int.pred prev_val
+        in
+        digits_update new_val
   ;;
 end
 
@@ -72,15 +86,15 @@ let mk_example str =
   let result_dom = To_dom.of_code result in
   let click_event, signal_event = React.E.create () in
   Common.bind_event Common.Ev.clicks result_dom (fun _evt ->
-      signal_event str;
-      Lwt.return ());
+    signal_event str;
+    Lwt.return ());
   result, click_event
 ;;
 
 let language_chart =
   let open Js_of_ocaml_tyxml.Tyxml_js in
   [%html{|
-    <table class="language_chart">
+    <table class="language-chart">
       <thead>
         <tr>
           <th>Name</th>
@@ -89,25 +103,25 @@ let language_chart =
         </tr>
       </thead>
       <tbody>
-        <tr> <td>add</td> <td>expr + expr</td> <td></td> </tr>
-        <tr> <td>sub</td> <td>expr - expr</td> <td></td> </tr>
-        <tr> <td>mul</td> <td>expr * expr</td> <td></td> </tr>
-        <tr> <td>div</td> <td>expr / expr</td> <td></td> </tr>
+        <tr> <td>add</td> <td class="syntax">expr + expr</td> </tr>
+        <tr> <td>sub</td> <td class="syntax">expr - expr</td> </tr>
+        <tr> <td>mul</td> <td class="syntax">expr * expr</td> </tr>
+        <tr> <td>div</td> <td class="syntax">expr / expr</td> </tr>
 
-        <tr> <td>negate</td> <td>negate expr</td> <td></td> </tr>
-        <tr> <td>sqrt</td> <td>sqrt expr</td> <td></td> </tr>
-        <tr> <td>abs</td> <td>abs expr</td> <td></td> </tr>
-        <tr> <td>exp</td> <td>exp expr</td> <td></td> </tr>
-        <tr> <td>ln</td> <td>ln expr</td> <td></td> </tr>
-        <tr> <td>sin</td> <td>sin expr</td> <td></td> </tr>
-        <tr> <td>cos</td> <td>cos expr</td> <td></td> </tr>
-        <tr> <td>tan</td> <td>tan expr</td> <td></td> </tr>
-        <tr> <td>asin</td> <td>asin expr</td> <td>arcsin ie inverse sin</td> </tr>
-        <tr> <td>acos</td> <td>acos expr</td> <td>arccos ie inverse cos</td> </tr>
-        <tr> <td>atan</td> <td>atan expr</td> <td>arctan ie inverse tan</td> </tr>
+        <tr> <td>negate</td> <td class="syntax">negate expr</td> </tr>
+        <tr> <td>sqrt</td>   <td class="syntax">sqrt expr</td> </tr>
+        <tr> <td>abs</td>    <td class="syntax">abs expr</td> </tr>
+        <tr> <td>exp</td>    <td class="syntax">exp expr</td> </tr>
+        <tr> <td>ln</td>     <td class="syntax">ln expr</td> </tr>
+        <tr> <td>sin</td>    <td class="syntax">sin expr</td> </tr>
+        <tr> <td>cos</td>    <td class="syntax">cos expr</td> </tr>
+        <tr> <td>tan</td>    <td class="syntax">tan expr</td> </tr>
+        <tr> <td>asin</td>   <td class="syntax">asin expr</td> <td>arcsin ie inverse sin</td> </tr>
+        <tr> <td>acos</td>   <td class="syntax">acos expr</td> <td>arccos ie inverse cos</td> </tr>
+        <tr> <td>atan</td>   <td class="syntax">atan expr</td> <td>arctan ie inverse tan</td> </tr>
 
-        <tr> <td>pi</td> <td>pi</td> </tr>
-        <tr> <td>e</td> <td>e</td> </tr>
+        <tr> <td>pi</td> <td class="syntax">pi</td> </tr>
+        <tr> <td>e</td>  <td class="syntax">e</td> </tr>
       </tbody>
     </table>
   |}]
@@ -123,7 +137,6 @@ let mk_button ?cls:(cls=[]) contents =
 module View = struct
   open Js_of_ocaml_tyxml.Tyxml_js
   module Ev = Js_of_ocaml_lwt.Lwt_js_events
-  module Parse = Lvca_languages.Calculator.Parse (ParseUtil.CComment)
 
   let view model_s signal_update =
     let input, input_event = Common.mk_single_line_input (React.S.const "1 + 1") in
@@ -156,17 +169,7 @@ module View = struct
           |> List.map ~f:(fun example -> li ~a:[ a_class [ "example" ] ] [ example ])))
     in
 
-    let result str digits = match ParseUtil.parse_string Parse.t str with
-      | Error msg -> Error msg
-      | Ok tm -> Ok
-        (match Lvca_languages.Calculator.interpret tm with
-        | Error (_tm, msg) -> msg
-        | Ok real ->
-          let digits = Int32.of_int_exn digits in
-          ConstructiveReal.eval_to_string real ~digits)
-    in
-
-    let row row_num input_str digits_s _digits_update =
+    let row row_num input_str parsed digits_s _digits_update =
       let digits_entry, digits_event = Common.mk_digits_entry digits_s in
       let (_ : unit React.event) = digits_event
         |> React.E.map (fun update ->
@@ -174,9 +177,13 @@ module View = struct
       in
 
       let digits' = digits_s
-        |> React.S.map (fun digits -> match result input_str digits with
-          | Error msg -> [Html.(span ~a:[a_class ["error"]] [txt msg])]
-          | Ok str -> [Html.(span [txt str])])
+        |> React.S.map (fun digits -> match Calculator.interpret parsed with
+          | Error (_tm, msg) -> [Html.(span ~a:[a_class ["error"]] [txt msg])]
+          | Ok real ->
+            let str =
+              ConstructiveReal.eval_to_string real ~digits:(Int32.of_int_exn digits)
+            in
+            [Html.(span [txt str])])
         |> ReactiveData.RList.from_signal
         |> R.Html.pre
       in
@@ -200,16 +207,28 @@ module View = struct
     in
 
     let rows = model_s
-      |> React.S.map (fun model -> model.Model.evaluations
-        |> List.mapi ~f:(fun row_num (input_str, pool_idx)  ->
-            let digits_s, digits_update = Map.find_exn model.signal_pool pool_idx in
-            row row_num input_str digits_s digits_update))
+      |> React.S.map (fun model ->
+        model.Model.evaluations
+        |> List.mapi ~f:(fun row_num { input; parsed; pool_idx }  ->
+            let digits_s, digits_update =
+              Map.find_exn !Controller.signal_pool pool_idx
+            in
+            row row_num input parsed digits_s digits_update))
       |> ReactiveData.RList.from_signal
+    in
+
+    let error_msg = model_s
+      |> React.S.map (fun model -> match model.Model.error_msg with
+        | None -> []
+        | Some msg -> [Html.(span [txt msg])])
+      |> ReactiveData.RList.from_signal
+      |> R.Html.div
     in
 
     [%html {|
       <div>
         <div>|}[ input ]{|</div>
+        <div class="error">|}[ error_msg ]{|</div>
         |}[ R.Html.table rows ]{|
         <div>
           <p>Try an example:</p>
@@ -219,21 +238,6 @@ module View = struct
         </div>
       </div>
     |}]
-    (*
-    [%html {|
-      <div>
-        <h2>Calculator</h2>
-        <div>|}[ input ]{|</div>
-        |}[ R.Html.table rows ]{|
-        <div>
-          <p>Try an example:</p>
-          |}[ examples ]{|
-          <h3>language chart</h3>
-          |}[ language_chart ]{|
-        </div>
-      </div>
-    |}]
-    *)
   ;;
 end
 
