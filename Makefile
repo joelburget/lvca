@@ -5,6 +5,6 @@ doc:
 	@dune build @doc
 
 install-deps:
-	@opam install base zarith cbor digestif js_of_ocaml ppx_jane ppx_inline_test sha dune
+	@opam install angstrom base cbor crowbar digestif fmt js_of_ocaml-lwt js_of_ocaml-ppx js_of_ocaml-tyxml ppx_jane re react reactiveData tyxml-ppx zarith zarith_stubs_js
 
 .PHONY: format doc install-deps
