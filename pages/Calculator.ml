@@ -151,7 +151,7 @@ module View = struct
       ; "sqrt 2 / 2"
       ; "4 * (4 * atan (1 / 5) - atan (1 / 239))"
       ; "20 * atan (1 / 7) + 8 * atan (3 / 79)"
-      (* ; "ln (e * e)" *)
+      ; "ln (e * e)"
       ]
       |> List.map ~f:mk_example
       |> List.unzip

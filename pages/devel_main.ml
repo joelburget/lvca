@@ -5,9 +5,9 @@ open ReactiveData
 module Model = struct
   type page =
     | TermAndConcretePage
+    | CalculatorPage
     | EvalWithProvenancePage
     | TermToTexPage
-    | CalculatorPage
 
   (* | TermToDocument *)
 
@@ -40,16 +40,16 @@ module View = struct
 
   let page_description = function
     | TermAndConcretePage -> "01: term and concrete"
+    | CalculatorPage -> "02: calculator"
     | EvalWithProvenancePage -> "0x: evaluation with provenance"
     | TermToTexPage -> "0x: term to tex"
-    | CalculatorPage -> "0x: calculator"
   ;;
 
   let stateless_view = function
     | TermAndConcretePage -> TermAndConcrete.stateless_view
+    | CalculatorPage -> Calculator.stateless_view
     | EvalWithProvenancePage -> EvalWithProvenance.stateless_view
     | TermToTexPage -> TermToTex.stateless_view
-    | CalculatorPage -> Calculator.stateless_view
   ;;
 
   let wrapper_div = Html5.div []
