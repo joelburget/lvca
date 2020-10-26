@@ -8,15 +8,21 @@ module Model = struct
     | CalculatorPage
     | EvalWithProvenancePage
     | TermToTexPage
+    | ParserPage
 
   (* | TermToDocument *)
 
   type t = { page : page }
 
-  let initial_model = { page = CalculatorPage }
+  let initial_model = { page = ParserPage }
 
   let all_pages =
-    [ TermAndConcretePage; EvalWithProvenancePage; TermToTexPage; CalculatorPage ]
+    [ TermAndConcretePage
+    ; CalculatorPage
+    ; EvalWithProvenancePage
+    ; TermToTexPage
+    ; ParserPage
+    ]
   ;;
 end
 
@@ -43,6 +49,7 @@ module View = struct
     | CalculatorPage -> "02: calculator"
     | EvalWithProvenancePage -> "0x: evaluation with provenance"
     | TermToTexPage -> "0x: term to tex"
+    | ParserPage -> "0x: parser"
   ;;
 
   let stateless_view = function
@@ -50,6 +57,7 @@ module View = struct
     | CalculatorPage -> Calculator.stateless_view
     | EvalWithProvenancePage -> EvalWithProvenance.stateless_view
     | TermToTexPage -> TermToTex.stateless_view
+    | ParserPage -> Parser.stateless_view
   ;;
 
   let wrapper_div = Html5.div []
@@ -89,7 +97,7 @@ module View = struct
         <h2>LVCA demos</h2>
         <div>
           <select onchange=|} (handler signal_update) {|>
-            |} (page_selector) {|
+            |} page_selector {|
           </select>
           |}[ page_view ]{|
         </div>
