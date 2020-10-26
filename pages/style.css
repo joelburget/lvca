@@ -53,3 +53,7 @@ pre {
 table.language_chart {
   font-family: monospace;
 }
+
+.error {
+  background-color: #ff00002b;
+}

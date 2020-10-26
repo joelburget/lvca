@@ -32,8 +32,7 @@ module Controller = struct
     let Model.{ parser_str; parser; test } = React.S.value model_s in
 
     let model = match action with
-      | UpdateParser parser_str
-      ->
+      | UpdateParser parser_str ->
         let parser = parse_parser parser_str in
         Model.{ parser_str; parser; test }
       | UpdateTest test -> { parser_str; parser; test }
@@ -45,8 +44,8 @@ module View = struct
   open Js_of_ocaml_tyxml.Tyxml_js
   let view model_s signal_update =
     let parser_defn_input, parser_defn_input_event =
-      (* TODO: this seems like an antipattern: these values should be synce automatically.
-         Also weird we're not using model_s here *)
+      (* TODO: this seems like an antipattern: these values should be synced
+         automatically. Also weird we're not using model_s here *)
       Common.mk_multiline_input (React.S.const Model.initial_model.parser_str)
     in
     let test_input, test_input_event =
@@ -66,39 +65,32 @@ module View = struct
       |> React.E.map (fun str -> Controller.update (UpdateTest str) model_s signal_update)
     in
 
-    let module Direct = Lvca_languages.Parser.Direct in
-
-    let empty_div = [%html{|<div></div>|}] in
-
-    (* XXX: clean up extra divs and stuff *)
-    let parser_parse_err, test_output =
-      let signals = model_s
-        |> React.S.map (fun Model.{ parser; test; _ } -> match parser with
-          | Error msg -> [%html{|<div>|}[Html.txt msg]{|</div>|}], empty_div
-          | Ok parser ->
-              let output =
-                match Direct.parse_direct (Direct.translate_direct parser) test with
-                | Error (msg, _) -> msg
-                | Ok tm -> Fmt.str "%a" (Nominal.pp_term_ranges Primitive.pp) tm
-              in
-              empty_div, [%html{|<div>|}[Html.txt output]{|</div>|}]
-        )
-      in
-      ReactiveData.RList.singleton_s (React.S.Pair.fst signals),
-        ReactiveData.RList.singleton_s (React.S.Pair.snd signals)
+    let elems_signal = model_s
+      |> React.S.map (fun Model.{ parser; test; _ } -> match parser with
+        | Error msg ->
+          [ parser_defn_input
+          ; [%html{|<div class="error">|}[Html.txt msg]{|</div>|}]
+          ; test_input
+          ]
+        | Ok parser ->
+          let parse_direct, translate_direct =
+            Lvca_languages.Parser.Direct.(parse_direct, translate_direct)
+          in
+          let output = match parse_direct (translate_direct parser) test with
+            | Error (msg, _) -> [%html{|<div class="error">|}[Html.txt msg]{|</div>|}]
+            | Ok tm ->
+              let str = Fmt.str "%a" (Nominal.pp_term_ranges Primitive.pp) tm in
+              [%html{|<div>|}[Html.txt str]{|</div>|}]
+          in
+          [ parser_defn_input
+          ; test_input
+          ; output
+          ]
+      )
     in
 
-    [%html{|
-      <div>
-        |}
-          [ parser_defn_input
-          ; R.Html.div parser_parse_err
-          ; test_input
-          ; R.Html.div test_output
-          ]
-        {|
-      </div>
-    |}]
+
+    R.Html.div (ReactiveData.RList.from_signal elems_signal)
 end
 
 let stateless_view =
