@@ -103,6 +103,14 @@ module List = struct
   let rec remove_nth list i = match list with
     | [] -> list
     | x :: xs -> if i = 0 then xs else x :: remove_nth xs (i - 1)
+
+  let rec update_nth list ~i ~f = match list, i with
+    | [], _ -> []
+    | x :: xs, 0 -> f x :: xs
+    | x :: xs, _ -> x :: update_nth xs ~i:(i - 1) ~f
+
+  let set_nth list ~i ~data = update_nth list ~i ~f:(Fn.const data)
+
 end
 
 exception InvariantViolation of string
