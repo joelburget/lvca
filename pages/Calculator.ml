@@ -4,7 +4,7 @@ module Calculator = Lvca_languages.Calculator
 module Parse = Calculator.Parse (ParseUtil.CComment)
 
 module Model = struct
-  type signal_pool = int SignalPool.t
+  type digits_signal_pool = int SignalPool.t
 
   module Evaluation = struct
     type t =
@@ -20,6 +20,7 @@ module Model = struct
     }
 
   let initial_model : t = { evaluations = []; error_msg = None }
+  let digits_signal_pool = SignalPool.create ()
 end
 
 module Action = struct
@@ -30,17 +31,16 @@ module Action = struct
 end
 
 module Controller = struct
-  let signal_pool = SignalPool.create ()
-
   let update (action : Action.t) (model_s : Model.t React.S.t) signal_update =
     let Model.{ evaluations; error_msg } = React.S.value model_s in
+    let digits_signal_pool = Model.digits_signal_pool in
 
     match action with
       | Evaluate input ->
         let model = match ParseUtil.parse_string Parse.t input with
           | Error msg -> Model.{ evaluations; error_msg = Some msg }
           | Ok parsed ->
-            let pool_key = SignalPool.add signal_pool (React.S.create 10) in
+            let pool_key = SignalPool.add digits_signal_pool (React.S.create 10) in
             Model.
               { evaluations = { input; parsed; pool_key } :: evaluations
               ; error_msg = None
@@ -48,12 +48,12 @@ module Controller = struct
         in signal_update model
       | DeleteRow i ->
         let Model.Evaluation.{ pool_key; _ } = List.nth_exn evaluations i in
-        SignalPool.remove signal_pool pool_key;
+        SignalPool.remove digits_signal_pool pool_key;
 
         signal_update { evaluations = Lvca_util.List.remove_nth evaluations i; error_msg }
       | ChangePrecision (i, prec_cmd) ->
         let Model.Evaluation.{ pool_key; _ } = List.nth_exn evaluations i in
-        let digits_s, digits_update = SignalPool.find_exn signal_pool pool_key in
+        let digits_s, digits_update = SignalPool.find_exn digits_signal_pool pool_key in
         (* TODO: there has to be a better way (than using value) *)
         let prev_val = React.S.value digits_s in
         let new_val = match prec_cmd with
@@ -196,7 +196,7 @@ module View = struct
         model.Model.evaluations
         |> List.mapi ~f:(fun row_num { input; parsed; pool_key }  ->
             let digits_s, digits_update =
-              SignalPool.find_exn Controller.signal_pool pool_key
+              SignalPool.find_exn Model.digits_signal_pool pool_key
             in
             row row_num input parsed digits_s digits_update))
       |> ReactiveData.RList.from_signal
