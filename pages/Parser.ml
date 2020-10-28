@@ -132,14 +132,14 @@ module View = struct
           )
       in
 
+      let parser_s = React.S.Pair.snd parser_s in
+
       let parser_error_elem = parser_s
-        |> React.S.map (fun (_, parser) -> match parser with
+        |> React.S.map (function
           | Model.NoInputYet | Parsed _ -> []
           | FailedParse msg -> [mk_error msg]
         )
       in
-
-      let parser_s = React.S.Pair.snd parser_s in
 
       let test_elems = evaluations_l
         |> RList.map (fun test_key ->
@@ -168,7 +168,7 @@ module View = struct
         ]
     in
 
-    let context_elems_s = React.S.map (List.mapi ~f:mk_context) model_s in
+    let context_elems_s = model_s |> React.S.map (List.mapi ~f:mk_context) in
 
     let new_parser_handler _evt = update AddParser; false in
 
