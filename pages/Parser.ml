@@ -53,13 +53,11 @@ end
 
 module Action = struct
   type parser_no = int
-  type test_no = int
 
   type t =
     | AddParser
     | AddTest of parser_no
-
-    (* | UpdateParser of parser_no * string *)
+    | UpdateParser of Pool.Signal.key * string
 end
 
 module Controller = struct
@@ -67,40 +65,55 @@ module Controller = struct
     let contexts = React.S.value model_s in
     let test_signal_pool = Model.test_signal_pool in
 
-    let model = match action with
+    match action with
       | AddParser
-      -> Model.new_context "" [] :: contexts
-      | AddTest parser_no
-      -> Lvca_util.List.update_nth contexts ~i:parser_no ~f:(fun context ->
-        Caml.Printf.printf "adding test\n";
+      -> signal_update (Model.new_context "" [] :: contexts)
+      | AddTest parser_no ->
+        let context = List.nth_exn contexts parser_no in
         let key = Pool.Signal.add test_signal_pool (React.S.create "") in
         let _, evaluations_h = Pool.RList.find_exn Model.evaluations_pool context.evaluations_key in
-        RList.snoc key evaluations_h;
-        context
-      )
-      (*
-      | UpdateParser (i, parser_str) ->
-        let Model.{ parser_str_key; _ } = List.nth_exn contexts i in
-        let _parser_str_s, parser_str_update =
-          Pool.Signal.find_exn parser_defn_signal_pool parser_str_key
+        RList.snoc key evaluations_h
+      | UpdateParser (key, str) ->
+        let _, update = Pool.Signal.find_exn Model.parser_defn_signal_pool key in
+        let parser_defn = match parse_parser str with
+          | Ok parser -> Model.Parsed parser
+          | Error msg -> FailedParse msg
         in
-        parser_str_update parser_str;
-        contexts
-        *)
-    in
-    signal_update model
+        update (str, parser_defn)
 end
 
 module View = struct
   open Js_of_ocaml_tyxml.Tyxml_js
+  module Direct = Lvca_languages.Parser.Direct
+
+  let mk_error msg = [%html{|<div class="error">|}[Html.txt msg]{|</div>|}]
+
+  let view_parser_test parser test =
+    let translate_direct, parse_direct = Direct.(translate_direct, parse_direct) in
+    match parser with
+    | Model.NoInputYet | FailedParse _ -> []
+    | Parsed parser ->
+      let parser_d = translate_direct parser in
+      let elem = match parse_direct parser_d test with
+        | Error (msg, tm_opt) ->
+          let tm_str = match tm_opt with
+            | None -> "(no tm) " ^ msg
+            | Some tm -> (Printf.sprintf "%s: %s" msg (Fmt.str "%a" Core.pp tm ))
+
+          in
+          mk_error tm_str
+        | Ok tm ->
+          let str = Fmt.str "parsed: %a" (Nominal.pp_term_ranges Primitive.pp) tm in
+          [%html{|<div>|}[Html.txt str]{|</div>|}]
+      in
+      [elem]
+
   let view model_s signal_update =
     let update evt = Controller.update evt model_s signal_update in
 
-    let mk_error msg = [%html{|<div class="error">|}[Html.txt msg]{|</div>|}] in
-
     let mk_context parser_no Model.{ parser_str_key; evaluations_key } =
       let evaluations_l, _ = Pool.RList.find_exn Model.evaluations_pool evaluations_key in
-      let parser_s, parser_str_update =
+      let parser_s, _ =
         Pool.Signal.find_exn Model.parser_defn_signal_pool parser_str_key
       in
       let parser_defn_input, parser_defn_input_event = Common.mk_multiline_input
@@ -114,14 +127,8 @@ module View = struct
 
       let (_ : unit React.event) = parser_defn_input_event
         |> React.E.map (function
-          | Common.InputUpdate str ->
-            let parser_defn = match parse_parser str with
-              | Ok parser -> Model.Parsed parser
-              | Error msg -> FailedParse msg
-            in
-            parser_str_update (str, parser_defn)
-          | InputSelect _ -> ()
-          | InputUnselect -> ()
+          | Common.InputUpdate str -> update (UpdateParser (parser_str_key, str))
+          | InputSelect _ | InputUnselect -> ()
           )
       in
 
@@ -132,8 +139,6 @@ module View = struct
         )
       in
 
-      let module Direct = Lvca_languages.Parser.Direct in
-      let translate_direct, parse_direct = Direct.(translate_direct, parse_direct) in
       let parser_s = React.S.Pair.snd parser_s in
 
       let test_elems = evaluations_l
@@ -144,30 +149,10 @@ module View = struct
 
           let test_input, test_input_event = Common.mk_single_line_input test_s in
 
+          (* Q: is it okay to just update test directly without dispatching? *)
           let (_ : unit React.event) = React.E.map test_update test_input_event in
 
-          let output_s = React.S.l2
-            (fun parser test -> match parser with
-              | Model.NoInputYet | FailedParse _ -> []
-              | Parsed parser ->
-                let parser_d = translate_direct parser in
-                let elem = match parse_direct parser_d test with
-                  | Error (msg, tm_opt) ->
-                    let tm_str = match tm_opt with
-                      | None -> "(no tm) " ^ msg
-                      | Some tm -> (Printf.sprintf "%s: %s" msg (Fmt.str "%a" Core.pp tm ))
-
-                    in
-                    mk_error tm_str
-                  | Ok tm ->
-                    let str = Fmt.str "parsed: %a" (Nominal.pp_term_ranges Primitive.pp) tm in
-                    [%html{|<div>|}[Html.txt str]{|</div>|}]
-                in
-                [elem]
-              )
-            parser_s
-            test_s
-          in
+          let output_s = React.S.l2 view_parser_test parser_s test_s in
           Html.div
             [ test_input
             ; R.Html.div (RList.from_signal output_s)
@@ -183,11 +168,7 @@ module View = struct
         ]
     in
 
-    let context_elems_s = model_s
-      |> React.S.map (fun ctx_list -> ctx_list
-        |> List.mapi ~f:mk_context
-      )
-    in
+    let context_elems_s = React.S.map (List.mapi ~f:mk_context) model_s in
 
     let new_parser_handler _evt = update AddParser; false in
 
