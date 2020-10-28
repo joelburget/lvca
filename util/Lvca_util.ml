@@ -19,6 +19,17 @@ module Map = struct
   ;;
 end
 
+module Int = struct
+  include Base.Int
+
+  module Map = struct
+    type 'a t = (int, 'a, Base.Int.comparator_witness) Map.t
+    type key = int
+
+    let empty = Map.empty (module Base.Int)
+  end
+end
+
 module String = struct
   include Base.String
 
