@@ -472,6 +472,40 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   let whitespace_t c_term = ParseUtil.whitespace *> t c_term
 end
 
+module TestParsers = struct
+  let char_count = {|'c'{{2}}|}
+  let dot = {|.|}
+  let str = {|"str"|}
+  let str_star = {|"str"*|}
+  let str_plus = {|"str"+|}
+  let alt = {|"str" | "foo"|}
+
+  let sat_parser =
+    {|satisfy (x -> match x with {
+    | 'c' -> {true()}
+    | _ -> {false()}
+  })
+  |}
+
+  let let_var = {|let x = "str" in x|}
+  let fail = {|fail {"reason"}|}
+  let char_opt = "'c'?"
+  let ret = "return {foo()}"
+  let fix = {|fix (x -> "a" | "b")|}
+  let seq = {|sequence(a. {"a"}) ["a"]|}
+
+  let list_parser =
+    {|fix (lst ->
+        (sequence (x. xs. {cons(x; xs)}) ['c', lst]) |
+        return {nil()}
+      )
+    |}
+
+  let seq2 = {|sequence(a. a'. b. {triple(a; a'; b)})["a", "a", "b"]|}
+  let fix2 = {|fix (x -> "b" | sequence(a. x. {pair(a; x)}) ["a", x])|}
+  let pair = "sequence (a. b. {pair(a; b)}) ['a', 'b']"
+end
+
 let%test_module "Parsing" =
   (module struct
     module ParseCore = Core.Parse (ParseUtil.CComment)
@@ -493,55 +527,49 @@ let%test_module "Parsing" =
         | Ok tm -> Fmt.pr "%a\n" (Nominal.pp_term_ranges Primitive.pp) tm)
    ;;
 
+   open TestParsers
+
     let%expect_test _ =
-      parse_print {|'c'{{2}}|} "cc";
+      parse_print char_count "cc";
       [%expect
         {| <input:0-2>list(<input:0-1>'c'</input:0-1>, <input:1-2>'c'</input:1-2>)</input:0-2> |}]
     ;;
 
     let%expect_test _ =
-      parse_print {|.|} "c";
+      parse_print dot "c";
       [%expect{| <input:0-1>'c'</input:0-1> |}]
     ;;
 
     let%expect_test _ =
-      parse_print {|"str"|} "str";
+      parse_print str "str";
       [%expect {| <input:0-3>"str"</input:0-3> |}]
     ;;
 
     let%expect_test _ =
-      parse_print {|"str"|} "foo";
+      parse_print str "foo";
       [%expect {| failed to parse: string "str" |}]
     ;;
 
     let%expect_test _ =
-      parse_print {|"str"*|} "strstrstr";
+      parse_print str_star "strstrstr";
       [%expect
         {| <input:0-9>list(<input:0-3>"str"</input:0-3>, <input:3-6>"str"</input:3-6>, <input:6-9>"str"</input:6-9>)</input:0-9> |}]
     ;;
 
     let%expect_test _ =
-      parse_print {|"str"+|} "strstrstr";
+      parse_print str_plus "strstrstr";
       [%expect
         {| <input:0-9>list(<input:0-3>"str"</input:0-3>, <input:3-6>"str"</input:3-6>, <input:6-9>"str"</input:6-9>)</input:0-9> |}]
     ;;
 
     let%expect_test _ =
-      parse_print {|"str" | "foo"|} "str";
+      parse_print alt "str";
       [%expect {| <input:0-3>"str"</input:0-3> |}]
     ;;
 
     let%expect_test _ =
-      parse_print {|"str" | "foo"|} "foo";
+      parse_print alt "foo";
       [%expect {| <input:0-3>"foo"</input:0-3> |}]
-    ;;
-
-    let sat_parser =
-      {|satisfy (x -> match x with {
-      | 'c' -> {true()}
-      | _ -> {false()}
-    })
-    |}
     ;;
 
     let%expect_test _ =
@@ -557,29 +585,29 @@ let%test_module "Parsing" =
     ;;
 
     let%expect_test _ =
-      parse_print {|let x = "str" in x|} "str";
+      parse_print let_var "str";
       [%expect {| <input:0-3>"str"</input:0-3> |}]
     ;;
 
     let%expect_test _ =
-      parse_print {|fail {"reason"}|} "str";
+      parse_print fail "str";
       (* TODO: nicer formatting *)
       [%expect {| failed to parse: reason |}]
     ;;
 
     let%expect_test _ =
-      parse_print "'c'?" "c";
+      parse_print char_opt "c";
       [%expect {| <input:0-1>some(<input:0-1>'c'</input:0-1>)</input:0-1> |}]
     ;;
 
     (* TODO: determine proper provenance *)
     let%expect_test _ =
-      parse_print "'c'?" "";
+      parse_print char_opt "";
       [%expect {| <>none()</> |}]
     ;;
 
     let%expect_test _ =
-      parse_print "return {foo()}" "";
+      parse_print ret "";
       [%expect {| <parser:8-13>foo()</parser:8-13> |}]
     ;;
 
@@ -587,21 +615,13 @@ let%test_module "Parsing" =
        ;; *)
 
     let%expect_test _ =
-      parse_print {|fix (x -> "a" | "b")|} "a";
+      parse_print fix "a";
       [%expect {| <input:0-1>"a"</input:0-1> |}]
     ;;
 
     let%expect_test _ =
-      parse_print {|sequence(a. {"a"}) ["a"]|} "a";
+      parse_print seq "a";
       [%expect {| <parser:13-16>"a"</parser:13-16> |}]
-    ;;
-
-    let list_parser =
-      {|fix (lst ->
-          (sequence (x. xs. {cons(x; xs)}) ['c', lst]) |
-          return {nil()}
-        )
-      |}
     ;;
 
     let%expect_test _ =
@@ -622,30 +642,30 @@ let%test_module "Parsing" =
     ;;
 
     let%expect_test _ =
-      parse_print {|sequence(a. a'. b. {triple(a; a'; b)})["a", "a", "b"]|} "aab";
+      parse_print seq2 "aab";
       [%expect
         {| <parser:20-36>triple(<input:0-1>"a"</input:0-1>; <input:1-2>"a"</input:1-2>; <input:2-3>"b"</input:2-3>)</parser:20-36> |}]
     ;;
 
     let%expect_test _ =
-      parse_print {|sequence(a. a'. b. {triple(a; a'; b)})['a', 'a', 'b']|} "aab";
+      parse_print seq2 "aab";
       [%expect
         {| <parser:20-36>triple(<input:0-1>'a'</input:0-1>; <input:1-2>'a'</input:1-2>; <input:2-3>'b'</input:2-3>)</parser:20-36> |}]
     ;;
 
     let%expect_test _ =
-      parse_print {|fix (x -> "b" | sequence(a. x. {pair(a; x)}) ["a", x])|} "a";
+      parse_print fix2 "a";
       [%expect {| failed to parse: string "a" |}]
     ;;
 
     let%expect_test _ =
-      parse_print {|fix (x -> "b" | sequence(a. x. {pair(a; x)}) ["a", x])|} "ab";
+      parse_print fix2 "ab";
       [%expect
         {| <parser:32-42>pair(<input:0-1>"a"</input:0-1>; <input:1-2>"b"</input:1-2>)</parser:32-42> |}]
     ;;
 
     let%expect_test _ =
-      parse_print "sequence (a. b. {pair(a; b)}) ['a', 'b']" "ab";
+      parse_print pair "ab";
       [%expect
         {| <parser:17-27>pair(<input:0-1>'a'</input:0-1>; <input:1-2>'b'</input:1-2>)</parser:17-27> |}]
     ;;

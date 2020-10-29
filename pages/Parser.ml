@@ -45,10 +45,19 @@ module Model = struct
 
   type t = parser_context list
 
-  let initial_model =
-    [ new_context {|"foo" | "bar"|} [new_test "foo"]
+  let initial_model = Lvca_languages.Parser.TestParsers.(
+    [ new_context char_count [new_test "cc"]
+    ; new_context str [new_test "str"; new_test "foo"]
+    ; new_context str_star [new_test ""; new_test "strstrstr"]
+    ; new_context str_plus [new_test ""; new_test "strstrstr"]
+    ; new_context alt [new_test "str"; new_test "foo"]
+    ; new_context sat_parser [new_test "c"; new_test "d"]
     ; new_context ".*" [new_test "foo"]
-    ]
+    ; new_context fix2
+      [ new_test "a"
+      ; new_test "ab"
+      ]
+    ])
 end
 
 module Action = struct
