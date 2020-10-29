@@ -51,19 +51,28 @@ type input_event =
   | InputSelect of int * int
   | InputUnselect
 
-let mk_multiline_input ?autofocus:(autofocus=true) ?rows:(rows=2) ?cols:(cols=60) input_s =
+let mk_multiline_input
+  ?autofocus:(autofocus=true)
+  ?rows:(rows=None)
+  ?cols:(cols=60)
+  input_s =
   let open Js_of_ocaml in
   let open Tyxml_js in
 
   let input_event, signal_event = React.E.create () in
 
-  let input_val = R.Html.txt input_s in
+  let needed_rows = match rows with
+    | Some n -> n
+    | None ->
+      String.count (React.S.value input_s) ~f:(fun c -> Char.(c = '\n')) + 1
+  in
+
   let input = Html.(textarea
-    ~a:([ a_rows rows
+    ~a:([ a_rows needed_rows
         ; a_cols cols
         ; a_class ["input"]
         ] @ (if autofocus then [a_autofocus ()] else []))
-     input_val
+     (R.Html.txt input_s)
     )
   in
   let input_dom = To_dom.of_textarea input in
