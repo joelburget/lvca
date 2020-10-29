@@ -110,7 +110,6 @@ let map_snd ~f (a, b) = a, f b
 
 module Direct = struct
   type term_ctx = n_term Lvca_util.String.Map.t
-
   type parser_ctx = direct Lvca_util.String.Map.t
 
   and direct =
@@ -161,9 +160,8 @@ module Direct = struct
   let satisfy name core_term =
     { run =
         (fun ~term_ctx ~parser_ctx:_ ~pos str ->
-          let err_msg =
-            todo_msg
-              (Printf.sprintf {|satisfy (%s -> %s)|} name (Core.to_string core_term))
+          let err_msg = todo_msg
+            (Printf.sprintf {|satisfy (%s -> %s)|} name (Core.to_string core_term))
           in
           if pos >= String.length str
           then pos, err_msg
@@ -220,11 +218,11 @@ module Direct = struct
       | 0 -> pos, Ok []
       | _ ->
         let pos, head_result = t.run ~term_ctx ~parser_ctx ~pos str in
-        (match head_result with
+        match head_result with
         | Error msg -> pos, Error msg
         | Ok tm ->
           let pos, tail_result = go ~term_ctx ~parser_ctx (n - 1) ~pos str in
-          pos, tail_result |> Result.map ~f:(List.cons tm))
+          pos, tail_result |> Result.map ~f:(List.cons tm)
     in
     { run =
         (fun ~term_ctx ~parser_ctx ~pos str ->
