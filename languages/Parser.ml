@@ -9,6 +9,7 @@ let abstract_syntax_str =
 
 parser :=
   // primitive parsers
+  | any_char()
   | char(char())
   | string(string())
   | satisfy(char(). c_term())
@@ -50,6 +51,7 @@ let translate_c_term : buf:string -> OptRange.t Core.term -> c_term =
 
 type t =
   (* primitive parsers *)
+  | AnyChar
   | Char of char
   | String of string
   | Satisfy of string * c_term
@@ -72,6 +74,7 @@ let rec pp (* Format.formatter -> t -> unit *) : t Fmt.t =
   let core = Core.pp in
   let pf = Fmt.pf in
   function
+  | AnyChar -> pf ppf "."
   | Char char -> pf ppf "'%c'" char
   | String str -> pf ppf {|"%s"|} str
   | Satisfy (name, tm) -> pf ppf "satisfy (%s -> %a)" name core tm
@@ -123,6 +126,15 @@ module Direct = struct
 
   let mk_char pos c =
     Ok (Nominal.Primitive (SourceRanges.mk "input" pos (pos + 1), Primitive.PrimChar c))
+  ;;
+
+  let anychar =
+    { run =
+        (fun ~term_ctx:_ ~parser_ctx:_ ~pos str ->
+          if String.length str > pos
+          then pos + 1, mk_char pos str.[pos]
+          else pos, todo_msg ".")
+    }
   ;;
 
   let char c =
@@ -335,6 +347,7 @@ module Direct = struct
   ;;
 
   let rec translate_direct : t -> direct = function
+    | AnyChar -> anychar
     | Char c -> char c
     | String prefix -> string prefix
     | Satisfy (name, core_term) -> satisfy name core_term
@@ -392,7 +405,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     fix (fun parser ->
         let parse_token =
           choice
-            [ (fun c -> Char c) <$> char_lit
+            [ (fun _ -> AnyChar) <$> char '.'
+            ; (fun c -> Char c) <$> char_lit
             ; (fun s -> String s) <$> string_lit
             ; parens parser
             ; (fun name -> Identifier name) <$> Parsers.identifier
@@ -483,6 +497,11 @@ let%test_module "Parsing" =
       parse_print {|'c'{{2}}|} "cc";
       [%expect
         {| <input:0-2>list(<input:0-1>'c'</input:0-1>, <input:1-2>'c'</input:1-2>)</input:0-2> |}]
+    ;;
+
+    let%expect_test _ =
+      parse_print {|.|} "c";
+      [%expect{| <input:0-1>'c'</input:0-1> |}]
     ;;
 
     let%expect_test _ =

@@ -57,3 +57,12 @@ table.language_chart {
 .error {
   background-color: #ff00002b;
 }
+
+/* parser */
+
+.parser-context {
+}
+
+.parser-test-row {
+  display: flex;
+}

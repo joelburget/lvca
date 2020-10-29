@@ -53,26 +53,31 @@ end
 
 module Action = struct
   type parser_no = int
+  type test_no = int
 
   type t =
     | AddParser
     | AddTest of parser_no
+    | RemoveTest of parser_no * test_no
     | UpdateParser of Pool.Signal.key * string
 end
 
 module Controller = struct
   let update (action : Action.t) (model_s : Model.t React.S.t) signal_update =
     let contexts = React.S.value model_s in
-    let test_signal_pool = Model.test_signal_pool in
 
     match action with
       | AddParser
       -> signal_update (Model.new_context "" [] :: contexts)
       | AddTest parser_no ->
         let context = List.nth_exn contexts parser_no in
-        let key = Pool.Signal.add test_signal_pool (React.S.create "") in
+        let key = Pool.Signal.add Model.test_signal_pool (React.S.create "") in
         let _, evaluations_h = Pool.RList.find_exn Model.evaluations_pool context.evaluations_key in
         RList.snoc key evaluations_h
+      | RemoveTest (parser_no, test_no) ->
+        let context = List.nth_exn contexts parser_no in
+        let _, evaluations_h = Pool.RList.find_exn Model.evaluations_pool context.evaluations_key in
+        RList.remove test_no evaluations_h
       | UpdateParser (key, str) ->
         let _, update = Pool.Signal.find_exn Model.parser_defn_signal_pool key in
         let parser_defn = match parse_parser str with
@@ -108,68 +113,80 @@ module View = struct
       in
       [elem]
 
-  let view model_s signal_update =
-    let update evt = Controller.update evt model_s signal_update in
-
-    let mk_context parser_no Model.{ parser_str_key; evaluations_key } =
-      let evaluations_l, _ = Pool.RList.find_exn Model.evaluations_pool evaluations_key in
-      let parser_s, _ =
-        Pool.Signal.find_exn Model.parser_defn_signal_pool parser_str_key
-      in
-      let parser_defn_input, parser_defn_input_event = Common.mk_multiline_input
-        (React.S.Pair.fst parser_s)
-      in
-
-      let new_test_handler _evt = update (AddTest parser_no); false in
-      let new_test_button =
-        Html.(button ~a:[a_onclick new_test_handler] [txt "new test"])
-      in
-
-      let (_ : unit React.event) = parser_defn_input_event
-        |> React.E.map (function
-          | Common.InputUpdate str -> update (UpdateParser (parser_str_key, str))
-          | InputSelect _ | InputUnselect -> ()
-          )
-      in
-
-      let parser_s = React.S.Pair.snd parser_s in
-
-      let parser_error_elem = parser_s
-        |> React.S.map (function
-          | Model.NoInputYet | Parsed _ -> []
-          | FailedParse msg -> [mk_error msg]
-        )
-      in
-
-      let test_elems = evaluations_l
-        |> RList.map (fun test_key ->
-          let test_s, test_update =
-            Pool.Signal.find_exn Model.test_signal_pool test_key
-          in
-
-          let test_input, test_input_event = Common.mk_single_line_input test_s in
-
-          (* Q: is it okay to just update test directly without dispatching? *)
-          let (_ : unit React.event) = React.E.map test_update test_input_event in
-
-          let output_s = React.S.l2 view_parser_test parser_s test_s in
-          Html.div
-            [ test_input
-            ; R.Html.div (RList.from_signal output_s)
-            ]
-        )
-      in
-
-      Html.div
-        [ parser_defn_input
-        ; R.Html.div (RList.from_signal parser_error_elem)
-        ; R.Html.div test_elems
-        ; new_test_button
-        ]
+  let mk_context update parser_no Model.{ parser_str_key; evaluations_key } =
+    let evaluations_l, _ = Pool.RList.find_exn Model.evaluations_pool evaluations_key in
+    let parser_s, _ =
+      Pool.Signal.find_exn Model.parser_defn_signal_pool parser_str_key
+    in
+    let parser_defn_input, parser_defn_input_event = Common.mk_multiline_input
+      (React.S.Pair.fst parser_s)
     in
 
-    let context_elems_s = model_s |> React.S.map (List.mapi ~f:mk_context) in
+    let new_test_handler _evt = update (Action.AddTest parser_no); false in
+    let new_test_button =
+      Html.(button ~a:[a_onclick new_test_handler] [txt "new test"])
+    in
 
+    let (_ : unit React.event) = parser_defn_input_event
+      |> React.E.map (function
+        | Common.InputUpdate str -> update (UpdateParser (parser_str_key, str))
+        | InputSelect _ | InputUnselect -> ()
+        )
+    in
+
+    let parser_s = React.S.Pair.snd parser_s in
+
+    let parser_error_elem = parser_s
+      |> React.S.map (function
+        | Model.NoInputYet | Parsed _ -> []
+        | FailedParse msg -> [mk_error msg]
+      )
+    in
+
+    (* TODO: there has to be a way to do this without the ref *)
+    let i = ref 0 in
+    let test_elems = evaluations_l
+      |> RList.map (fun test_key ->
+        let test_s, test_update =
+          Pool.Signal.find_exn Model.test_signal_pool test_key
+        in
+
+        let test_input, test_input_event = Common.mk_single_line_input test_s in
+
+        (* Q: is it okay to just update test directly without dispatching? *)
+        let (_ : unit React.event) = React.E.map test_update test_input_event in
+
+        let test_no = !i in
+        Int.incr i;
+        let remove_test_handler _evt =
+          update (Action.RemoveTest (parser_no, test_no));
+          false
+        in
+        let remove_test_button =
+          Html.(button ~a:[a_onclick remove_test_handler] [txt "remove test"])
+        in
+
+        let output_s = React.S.l2 view_parser_test parser_s test_s in
+        Html.(div
+          ~a:[a_class ["parser-test-row"]]
+          [ test_input
+          ; R.Html.div (RList.from_signal output_s)
+          ; remove_test_button
+          ])
+      )
+    in
+
+    Html.(div
+      ~a:[a_class ["parser-context"]]
+      [ parser_defn_input
+      ; R.Html.div (RList.from_signal parser_error_elem)
+      ; R.Html.div test_elems
+      ; new_test_button
+      ])
+
+  let view model_s signal_update =
+    let update evt = Controller.update evt model_s signal_update in
+    let context_elems_s = model_s |> React.S.map (List.mapi ~f:(mk_context update)) in
     let new_parser_handler _evt = update AddParser; false in
 
     Html.div
