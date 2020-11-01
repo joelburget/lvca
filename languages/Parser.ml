@@ -42,74 +42,159 @@ let abstract_syntax : AbstractSyntax.t =
   |> Result.ok_or_failwith
 ;;
 
-type c_term = SourceRanges.t Core.term
-type n_term = (SourceRanges.t, Primitive.t) Nominal.term
+type 'loc c_term = 'loc Core.term
+type 'loc n_term = ('loc, Primitive.t) Nominal.term
 
-let translate_c_term : buf:string -> OptRange.t Core.term -> c_term =
- fun ~buf -> Core.map_loc ~f:(SourceRanges.of_opt_range ~buf)
-;;
+let pp_c_term = Core.pp
 
-type t =
+type 'loc t =
   (* primitive parsers *)
-  | AnyChar
-  | Char of char
-  | String of string
-  | Satisfy of string * c_term
-  | Fail of c_term
-  | Let of string * t * t
+  | AnyChar of 'loc
+  | Char of 'loc * char
+  | String of 'loc * string
+  | Satisfy of 'loc * string * 'loc c_term
+  | Fail of 'loc * 'loc c_term
+  | Let of 'loc * string * 'loc t * 'loc t
   (* combinators *)
-  | Option of t
-  | Count of t * c_term
-  | Many of t
-  | Many1 of t
-  | Fix of string * t
+  | Option of 'loc * 'loc t
+  | Count of 'loc * 'loc t * 'loc c_term
+  | Many of 'loc * 'loc t
+  | Many1 of 'loc * 'loc t
+  | Fix of 'loc * string * 'loc t
   (* alternative *)
-  | Alt of t * t
-  | Return of c_term
-  | Sequence of string list * c_term * t list
-  | Identifier of string
+  | Alt of 'loc * 'loc t * 'loc t
+  | Return of 'loc * 'loc c_term
+  | Sequence of 'loc * string list * 'loc c_term * 'loc t list
+  | Identifier of 'loc * string
+  (* [@@deriving show] *)
 
-let rec pp (* Format.formatter -> t -> unit *) : t Fmt.t =
- fun ppf ->
-  let core = Core.pp in
-  let pf = Fmt.pf in
+let location = function
+  | AnyChar loc
+  | Char (loc, _)
+  | String (loc, _)
+  | Satisfy (loc, _, _)
+  | Fail (loc, _)
+  | Let (loc, _, _, _)
+  | Option (loc, _)
+  | Count (loc, _, _)
+  | Many (loc, _)
+  | Many1 (loc, _)
+  | Fix (loc, _, _)
+  | Alt (loc, _, _)
+  | Return (loc, _)
+  | Sequence (loc, _, _, _)
+  | Identifier (loc, _)
+  -> loc
+
+let rec map_loc ~f =
+  let cf = Core.map_loc ~f in
   function
-  | AnyChar -> pf ppf "."
-  | Char char -> pf ppf "'%c'" char
-  | String str -> pf ppf {|"%s"|} str
-  | Satisfy (name, tm) -> pf ppf "satisfy (%s -> %a)" name core tm
-  | Let (name, named, body) -> pf ppf "let %s = %a in %a" name pp named pp body
-  | Fail tm -> pf ppf "fail %a" core tm
-  | Option t -> pf ppf "%a?" pp t
-  | Count (tm, t) -> pf ppf "%a{%a}" pp tm core t
-  | Many t -> pf ppf "%a*" pp t
-  | Many1 t -> pf ppf "%a+" pp t
-  | Fix (name, t) -> pf ppf "fix (%s -> %a)" name pp t
-  | Alt (t1, t2) -> pf ppf "alt %a %a" pp t1 pp t2
-  | Return tm -> pf ppf "return %a" core tm
-  | Sequence (names, p, ps) ->
-    pf
-      ppf
-      (* TODO: consistent style between sequence, fix, and satisfy *)
-      "sequence (%a. %a) [%a]"
-      Fmt.(list ~sep:(any ".@ ") string)
-      names
-      core
-      p
-      Fmt.(list ~sep:comma pp)
-      ps
-  | Identifier name -> pf ppf "%s" name
+  | AnyChar loc -> AnyChar (f loc)
+  | Char (loc, c) -> Char (f loc, c)
+  | String (loc, s) -> String (f loc, s)
+  | Satisfy (loc, s, tm) -> Satisfy (f loc, s, cf tm)
+  | Fail (loc, tm) -> Fail (f loc, cf tm)
+  | Let (loc, s, p1, p2) -> Let (f loc, s, map_loc ~f p1, map_loc ~f p2)
+  | Option (loc, p) -> Option (f loc, map_loc ~f p)
+  | Count (loc, p, tm) -> Count (f loc, map_loc ~f p, cf tm)
+  | Many (loc, p) -> Many (f loc, map_loc ~f p)
+  | Many1 (loc, p) -> Many1 (f loc, map_loc ~f p)
+  | Fix (loc, s, p) -> Fix (f loc, s, map_loc ~f p)
+  | Alt (loc, p1, p2) -> Alt (f loc, map_loc ~f p1, map_loc ~f p2)
+  | Return (loc, tm) -> Return (f loc, cf tm)
+  | Sequence (loc, ss, tm, ps)
+  -> Sequence (f loc, ss, cf tm, List.map ps ~f:(map_loc ~f))
+  | Identifier (loc, s) -> Identifier (f loc, s)
+
+let erase = map_loc ~f:(fun _ -> ())
+
+let pp_generic ~open_loc ~close_loc ppf p =
+  let core = Core.pp in
+  let fmt, pf = Fmt.(fmt, pf) in
+
+  let atom_prec = 2 in
+  let quantifier_prec = 1 in
+  let app_prec = 1 in
+  let alt_prec = 0 in
+
+  let with_parens ~ambient_prec ~prec pp =
+    if ambient_prec > prec then Fmt.parens pp else pp
+  in
+
+  let rec go ambient_prec ppf p =
+    let loc = location p in
+    open_loc ppf loc;
+    let formatter, prec = match p with
+    | AnyChar _ -> fmt ".", atom_prec
+    | Char (_, char) -> (fun ppf -> Fmt.(quote ~mark:"'" char) ppf char), atom_prec
+    | String (_, str) -> (fun ppf -> Fmt.(quote string) ppf str), atom_prec
+    | Satisfy (_, name, tm) ->
+      (fun ppf -> pf ppf "@[<2>satisfy (@[%s -> %a@])@]" name core tm), atom_prec
+    | Let (_, name, named, body)
+    -> (fun ppf ->
+        pf ppf "@[<v>@[<2>let %s =@ @[%a@] in@]@ %a@]" name (go 0) named (go 0) body),
+        atom_prec
+    | Fail (_, tm) ->
+      (fun ppf -> pf ppf "@[<2>fail %a@]" core tm), app_prec
+    | Count (_, p, tm) ->
+      (fun ppf -> pf ppf "@[<hv>%a{%a}@]" (go (Int.succ quantifier_prec)) p core tm),
+      quantifier_prec
+    | Option (_, p) ->
+      (fun ppf -> pf ppf "%a?" (go (Int.succ quantifier_prec)) p), quantifier_prec
+    | Many (_, p) ->
+      (fun ppf -> pf ppf "%a*" (go (Int.succ quantifier_prec)) p), quantifier_prec
+    | Many1 (_, p) ->
+      (fun ppf -> pf ppf "%a+" (go (Int.succ quantifier_prec)) p), quantifier_prec
+    | Fix (_, name, p) ->
+      (fun ppf -> pf ppf "@[<2>fix@ (@[%s -> %a@])@]" name (go 0) p), app_prec
+    | Alt (_, t1, t2) ->
+      (fun ppf -> pf ppf "@[<2>%a@ |@ %a@]" (go (Int.succ alt_prec)) t1 (go alt_prec) t2),
+      alt_prec
+    | Return (_, tm) ->
+      (fun ppf -> pf ppf "@[<2>return %a@]" core tm), app_prec
+    | Sequence (_, names, p, ps) ->
+      let formatter ppf =
+      pf
+        ppf
+        (* TODO: consistent binding style between sequence, fix, and satisfy *)
+        "@[<2>sequence (@[%a. %a@]) [%a]@]"
+        Fmt.(list ~sep:(any ".@ ") string)
+        names
+        core
+        p
+        Fmt.(list ~sep:comma (go 0))
+        ps
+      in
+      formatter, app_prec
+    | Identifier (_, name) -> (fun ppf -> pf ppf "%s" name), atom_prec
+    in
+    with_parens ~ambient_prec ~prec (fun ppf () -> formatter ppf) ppf ();
+    close_loc ppf loc
+
+  in
+  go 0 ppf p
 ;;
 
-let mk_some : SourceRanges.t -> n_term -> n_term =
- fun pos tm -> Nominal.Operator (pos, "some", [ Scope ([], [ tm ]) ])
+let pp_range ppf p =
+  pp_generic ~open_loc:OptRange.open_stag ~close_loc:OptRange.close_stag ppf p
+
+let pp_plain ppf p =
+  pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p
+
+let mk_some : 'loc n_term -> 'loc n_term =
+ fun tm -> Nominal.Operator (Nominal.location tm, "some", [ Scope ([], [ tm ]) ])
 ;;
 
 let mk_none pos = Nominal.Operator (pos, "none", [])
 let map_snd ~f (a, b) = a, f b
 
+type 'loc parse_error =
+  { parser: 'loc t
+  ; sub_errors: 'loc parse_error list
+  }
+
 module Direct = struct
-  type term_ctx = n_term Lvca_util.String.Map.t
+  type term_ctx = SourceRanges.t n_term Lvca_util.String.Map.t
   type parser_ctx = direct Lvca_util.String.Map.t
 
   and direct =
@@ -118,7 +203,7 @@ module Direct = struct
         -> parser_ctx:parser_ctx
         -> pos:int
         -> string
-        -> int * (n_term, string * c_term option) Result.t
+        -> int * (SourceRanges.t n_term, string * SourceRanges.t c_term option) Result.t
     }
 
   let todo_msg msg = Error (msg, None)
@@ -201,7 +286,7 @@ module Direct = struct
     { run =
         (fun ~term_ctx ~parser_ctx ~pos str ->
           match t.run ~term_ctx ~parser_ctx ~pos str with
-          | str', Ok tm -> str', Ok (mk_some (Nominal.location tm) tm)
+          | str', Ok tm -> str', Ok (mk_some tm)
           | str', Error _ -> str', Ok (mk_none SourceRanges.empty))
     }
   ;;
@@ -344,25 +429,28 @@ module Direct = struct
     }
   ;;
 
-  let rec translate_direct : t -> direct = function
-    | AnyChar -> anychar
-    | Char c -> char c
-    | String prefix -> string prefix
-    | Satisfy (name, core_term) -> satisfy name core_term
-    | Fail tm -> fail tm
-    | Let (name, p, body) -> let_ name (translate_direct p) (translate_direct body)
-    | Option t -> option (translate_direct t)
-    | Count (t, n) -> count n (translate_direct t)
-    | Many t -> many (translate_direct t)
-    | Many1 t -> many1 (translate_direct t)
-    | Fix (name, p) -> fix name (translate_direct p)
-    | Alt (t1, t2) -> alt (translate_direct t1) (translate_direct t2)
-    | Return tm -> return tm
-    | Sequence (names, tm, ps) -> liftn names tm (List.map ps ~f:translate_direct)
-    | Identifier name -> identifier name
+  let rec translate_direct : SourceRanges.t t -> direct = function
+    | AnyChar _ -> anychar
+    | Char (_, c) -> char c
+    | String (_, prefix) -> string prefix
+    | Satisfy (_, name, core_term) -> satisfy name core_term
+    | Fail (_, tm) -> fail tm
+    | Let (_, name, p, body) -> let_ name (translate_direct p) (translate_direct body)
+    | Option (_, t) -> option (translate_direct t)
+    | Count (_, t, n) -> count n (translate_direct t)
+    | Many (_, t) -> many (translate_direct t)
+    | Many1 (_, t) -> many1 (translate_direct t)
+    | Fix (_, name, p) -> fix name (translate_direct p)
+    | Alt (_, t1, t2) -> alt (translate_direct t1) (translate_direct t2)
+    | Return (_, tm) -> return tm
+    | Sequence (_, names, tm, ps) -> liftn names tm (List.map ps ~f:translate_direct)
+    | Identifier (_, name) -> identifier name
   ;;
 
-  let parse_direct : direct -> string -> (n_term, string * c_term option) Result.t =
+  let parse_direct
+    : direct
+    -> string
+    -> (SourceRanges.t n_term, string * SourceRanges.t c_term option) Result.t =
    fun { run } str ->
     let strlen = String.length str in
     match
@@ -385,7 +473,7 @@ module Direct = struct
 end
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
-  type term = t
+  type term = OptRange.t t
 
   module Parsers = ParseUtil.Mk (Comment)
   open Parsers
@@ -403,67 +491,91 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     fix (fun parser ->
         let parse_token =
           choice
-            [ (fun _ -> AnyChar) <$> char '.'
-            ; (fun c -> Char c) <$> char_lit
-            ; (fun s -> String s) <$> string_lit
-            ; parens parser
-            ; (fun name -> Identifier name) <$> Parsers.identifier
+            [ char '.' >>|| (fun ~pos _ -> AnyChar pos, pos)
+            ; char_lit >>|| (fun ~pos c -> Char (pos, c), pos)
+            ; string_lit >>|| (fun ~pos s -> String (pos, s), pos)
+            ; parens parser (* XXX: update? *)
+            ; Parsers.identifier >>|| (fun ~pos name -> Identifier (pos, name), pos)
             ]
         in
+
         choice
-          [ string "let"
-            *> lift3
-                 (fun name bound body -> Let (name, bound, body))
-                 Parsers.identifier
-                 (string "=" *> parser)
-                 (string "in" *> parser)
+          [ (string "let" >>== fun ~pos:kw_pos _ -> lift3
+             (fun name bound body ->
+               let pos = OptRange.union kw_pos (location body) in
+               Let (pos, name, bound, body))
+             Parsers.identifier
+             (string "=" *> parser)
+             (string "in" *> parser))
             <?> "let"
-          ; string "satisfy"
-            *> parens
+          ; (string "satisfy" >>== fun ~pos:kw_pos _ -> parens
+             (lift3
+                (fun name _arr (tm, pos) ->
+                  let pos = OptRange.union kw_pos pos in
+                  Satisfy (pos, name, tm))
+                Parsers.identifier
+                (string "->")
+                (attach_pos c_term)))
+            <?> "satisfy"
+          ; (string "fail" >>== fun ~pos:kw_pos _ ->
+            c_term
+            >>|| (fun ~pos tm ->
+              let pos = OptRange.union kw_pos pos in
+              Fail (pos, tm), pos))
+            <?> "fail"
+          ; (string "fix" >>== fun ~pos:kw_pos _ ->
+            parens
                  (lift3
                     (fun name _arr tm ->
-                      Satisfy (name, translate_c_term ~buf:"parser" tm))
+                      let pos = OptRange.union kw_pos (location tm) in
+                      Fix (pos, name, tm))
                     Parsers.identifier
                     (string "->")
-                    c_term)
-            <?> "satisfy"
-          ; string "fail" *> c_term
-            >>| (fun tm -> Fail (translate_c_term ~buf:"parser" tm))
-            <?> "fail"
-          ; string "fix"
-            *> parens
-                 (lift3
-                    (fun name _arr tm -> Fix (name, tm))
-                    Parsers.identifier
-                    (string "->")
-                    parser)
+                    parser))
             <?> "fix"
-          ; string "sequence"
-            *> lift2
-                 (fun (names, body) components -> Sequence (names, body, components))
-                 (parens
-                    (lift2
-                       (fun names body -> names, translate_c_term ~buf:"parser" body)
-                       (many (Parsers.identifier <* char '.'))
-                       c_term))
-                 (brackets (sep_by1 (char ',') parser))
+          ; (string "sequence" >>== fun ~pos:kw_pos _ -> lift2
+             (fun (names, body) (components, pos) ->
+               let pos = OptRange.union kw_pos pos in
+               Sequence (pos, names, body, components))
+             (parens
+                (lift2
+                   (fun names body -> names, body)
+                   (many (Parsers.identifier <* char '.'))
+                   c_term))
+             (attach_pos (brackets (sep_by1 (char ',') parser))))
             <?> "sequence"
-          ; string "return" *> c_term
-            >>|| (fun ~pos tm -> Return (translate_c_term ~buf:"parser" tm), pos)
+          ; (string "return" >>== fun ~pos:kw_pos _ ->
+            c_term >>|| fun ~pos tm ->
+            let pos = OptRange.union kw_pos pos in
+            Return (pos, tm), pos)
             <?> "return"
-          ; (parse_token
-            >>= fun tok ->
-            option
-              tok
+
+          (* quantifiers *)
+          ; (parse_token >>= fun tok ->
+              let mk_pos = OptRange.union (location tok) in
+              option tok
               (choice
-                 [ char '?' >>| (fun _ -> Option tok) <?> "?"
-                 ; char '*' >>| (fun _ -> Many tok) <?> "*"
-                 ; char '+' >>| (fun _ -> Many1 tok) <?> "+"
+                 [ char '?' >>|| (fun ~pos _ ->
+                   let pos = mk_pos pos in
+                   Option (pos, tok), pos) <?> "?"
+                 ; char '*' >>|| (fun ~pos _ ->
+                   let pos = mk_pos pos in
+                   Many (pos, tok), pos) <?> "*"
+                 ; char '+' >>|| (fun ~pos _ ->
+                   let pos = mk_pos pos in
+                   Many1 (pos, tok), pos) <?> "+"
                  ; (braces c_term
-                   >>| fun tm -> Count (tok, translate_c_term ~buf:"parser" tm))
-                 ; char '|' *> (parser >>| fun rhs -> Alt (tok, rhs)) <?> "|"
+                   >>|| fun ~pos tm ->
+                   let pos = mk_pos pos in
+                   Count (pos, tok, tm), pos)
+                 ; char '|' >>= (fun _ ->
+                    parser >>|| fun ~pos rhs ->
+                    let pos = mk_pos pos in
+                    Alt (pos, tok, rhs), pos)
+                   <?> "|"
                  ]))
-          ])
+          ]
+        )
     <?> "parser"
  ;;
 
@@ -500,6 +612,7 @@ module TestParsers = struct
     |}
 
   let seq2 = {|sequence(a. a'. b. {triple(a; a'; b)})["a", "a", "b"]|}
+  let seq3 = {|sequence(a. a'. b. {triple(a; a'; b)})['a', 'a', 'b']|}
   let fix2 = {|fix (x -> "b" | sequence(a. x. {pair(a; x)}) ["a", x])|}
   let pair = "sequence (a. b. {pair(a; b)}) ['a', 'b']"
 end
@@ -509,23 +622,24 @@ let%test_module "Parsing" =
     module ParseCore = Core.Parse (ParseUtil.CComment)
     module ParseParser = Parse (ParseUtil.CComment)
 
-    let () =
-      Format.set_formatter_stag_functions SourceRanges.stag_functions;
-      Format.set_tags true;
-      Format.set_mark_tags true
-    ;;
-
     let parse_print : string -> string -> unit =
      fun parser_str str ->
       match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
       | Error msg -> Caml.print_string ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
-        (match Direct.parse_direct (Direct.translate_direct parser) str with
+        let parser' = map_loc ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
+        match Direct.parse_direct (Direct.translate_direct parser') str with
         | Error (msg, _) -> Caml.Printf.printf "failed to parse: %s\n" msg
-        | Ok tm -> Fmt.pr "%a\n" (Nominal.pp_term_ranges Primitive.pp) tm)
+        | Ok tm -> Fmt.pr "%a\n" (Nominal.pp_term_ranges Primitive.pp) tm
    ;;
 
    open TestParsers
+
+    let () =
+      Format.set_formatter_stag_functions SourceRanges.stag_functions;
+      Format.set_tags true;
+      Format.set_mark_tags true
+    ;;
 
     let%expect_test _ =
       parse_print char_count "cc";
@@ -624,19 +738,19 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print list_parser "";
-      [%expect {| <parser:87-92>nil()</parser:87-92> |}]
+      [%expect {| <parser:83-88>nil()</parser:83-88> |}]
     ;;
 
     let%expect_test _ =
       parse_print list_parser "c";
       [%expect
-        {| <parser:41-52>cons(<input:0-1>'c'</input:0-1>; <parser:87-92>nil()</parser:87-92>)</parser:41-52> |}]
+        {| <parser:39-50>cons(<input:0-1>'c'</input:0-1>; <parser:83-88>nil()</parser:83-88>)</parser:39-50> |}]
     ;;
 
     let%expect_test _ =
       parse_print list_parser "cc";
       [%expect
-        {| <parser:41-52>cons(<input:0-1>'c'</input:0-1>; <parser:41-52>cons(<input:1-2>'c'</input:1-2>; <parser:87-92>nil()</parser:87-92>)</parser:41-52>)</parser:41-52> |}]
+        {| <parser:39-50>cons(<input:0-1>'c'</input:0-1>; <parser:39-50>cons(<input:1-2>'c'</input:1-2>; <parser:83-88>nil()</parser:83-88>)</parser:39-50>)</parser:39-50> |}]
     ;;
 
     let%expect_test _ =
@@ -646,7 +760,7 @@ let%test_module "Parsing" =
     ;;
 
     let%expect_test _ =
-      parse_print seq2 "aab";
+      parse_print seq3 "aab";
       [%expect
         {| <parser:20-36>triple(<input:0-1>'a'</input:0-1>; <input:1-2>'a'</input:1-2>; <input:2-3>'b'</input:2-3>)</parser:20-36> |}]
     ;;
@@ -667,5 +781,82 @@ let%test_module "Parsing" =
       [%expect
         {| <parser:17-27>pair(<input:0-1>'a'</input:0-1>; <input:1-2>'b'</input:1-2>)</parser:17-27> |}]
     ;;
+
+   let parse_print_parser : string -> unit =
+     fun parser_str ->
+      match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
+      | Error msg -> Caml.print_string ("failed to parse parser desc: " ^ msg)
+      | Ok parser -> Fmt.pr "%a\n" pp_range parser
+   ;;
+
+   let%expect_test _ =
+     parse_print_parser char_count;
+     [%expect{| 'c'{{2}} |}]
+
+   let%expect_test _ =
+     parse_print_parser "F++";
+     [%expect{| failed to parse parser desc: : end_of_input |}]
+
+   let%expect_test _ =
+     parse_print_parser "(F+)+";
+     [%expect{| (F+)+ |}]
+
+   let%expect_test _ =
+     parse_print_parser dot;
+     [%expect{| . |}]
+
+   let%expect_test _ =
+     parse_print_parser "let a = b | c in d?";
+     [%expect{|
+       let a = b | c in
+       d? |}]
+
+   let%expect_test _ =
+     parse_print_parser str_star;
+     [%expect{| "str"* |}]
+
+   let%expect_test _ =
+     parse_print_parser "'a' | 'b' | 'c'";
+     [%expect{| 'a' | 'b' | 'c' |}]
+
+   let%expect_test _ =
+     parse_print_parser list_parser;
+     [%expect{|
+
+       fix (lst -> sequence (x. xs. {cons(x; xs)}) ['c', lst] | return {nil()}) |}]
   end)
 ;;
+
+module Properties = struct
+  open PropertyResult
+  module ParseCore = Core.Parse (ParseUtil.CComment)
+  module ParseParser = Parse (ParseUtil.CComment)
+
+  let parse parser_str = ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str
+
+  let pp_str p = Fmt.str "%a" pp_plain p
+
+  let string_round_trip1 t =
+    match t |> pp_str |> parse with
+    | Ok t' ->
+      let t'' = erase t' in
+      PropertyResult.check Caml.(t'' = t) (Fmt.str "%a <> %a" pp_plain t'' pp_plain t)
+    | Error msg ->
+      Failed (Fmt.str {|parse_string "%s": %s|} (pp_str t) msg)
+  ;;
+
+  let string_round_trip2 str =
+    match parse str with
+    | Error _ -> Uninteresting
+    | Ok t ->
+      let str' = pp_str t in
+      if Base.String.(str' = str)
+      then Ok
+      else
+        match parse str with
+        | Error msg -> Failed msg
+        | Ok t' ->
+          let str'' = pp_str t' in
+          PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str')
+  ;;
+end

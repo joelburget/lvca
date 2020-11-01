@@ -1,11 +1,21 @@
 open Base
 open Lvca_syntax
 
+let ident_char_gen = Crowbar.(choose
+  [ map [ range ~min:65 26 ] Char.of_int_exn (* A - Z *)
+  ; map [ range ~min:97 26 ] Char.of_int_exn (* a - z *)
+  ]
+)
 let char_gen = Crowbar.(map [ range ~min:32 94 ] Char.of_int_exn)
+let ident_gen = Crowbar.(
+  map [ list1 ident_char_gen ] String.of_char_list
+)
+;;
+
 let str_gen = Crowbar.(map [ list char_gen ] String.of_char_list)
 
 let nonempty_str_gen =
-  Crowbar.(map [ char_gen; str_gen ] (fun c str -> String.of_char c ^ str))
+  Crowbar.(map [ list1 char_gen ] String.of_char_list)
 ;;
 
 (* json *)
@@ -108,6 +118,7 @@ and nominal_scope_gen = lazy Crowbar.(
 
 let lazy nominal_gen = nominal_gen
 
+(*
 let term_str_conf tm_str =
   let parser = ParseNominal.whitespace_t ParsePrimitive.t in
   match ParseUtil.parse_string parser tm_str with
@@ -118,6 +129,43 @@ let term_str_conf tm_str =
 ;;
 *)
 
+(* Limited core generator: only generates nominal terms. *)
+let core_gen = Crowbar.map [ nominal_gen ] (fun tm -> Lvca_core.Core.Term tm)
+;;
+*)
+
+(* Limitations of parser generator:
+   - Uses core_gen, so inherits its limitations
+   - Doesn't generate well-typed or well-bound parsers
+ *)
+let parser_gen = Crowbar.(Lvca_languages.Parser.(
+  fix (fun parser_gen ->
+    choose
+      [ const (AnyChar ())
+      ; map [ char ] (fun c -> Char ((), c))
+      ; map [ str_gen ] (fun s -> String ((), s))
+      (* ; map [ ident_gen; core_gen ] (fun ident tm -> Satisfy ((), ident, tm)) *)
+      (* ; map [ core_gen ] (fun tm -> Fail ((), tm)) *)
+      ; map [ ident_gen; parser_gen; parser_gen ]
+        (fun ident p1 p2 -> Let ((), ident, p1, p2))
+      ; map [ parser_gen ] (fun p -> Option ((), p))
+      (* ; map [ parser_gen; core_gen ] (fun p tm -> Count ((), p, tm)) *)
+      ; map [ parser_gen ] (fun p -> Many ((), p))
+      ; map [ parser_gen ] (fun p -> Many1 ((), p))
+      ; map [ ident_gen; parser_gen ] (fun ident p -> Fix ((), ident, p))
+      ; map [ parser_gen; parser_gen ] (fun p1 p2 -> Alt ((), p1, p2))
+      (* ; map [ core_gen ] (fun tm -> Return ((), tm)) *)
+  (*
+      ; map [ list (pair ident_gen parser_gen); core_gen ]
+        (fun subparsers body ->
+          let names, subparsers = List.unzip subparsers in
+          Sequence ((), names, body, subparsers))
+  *)
+      ; map [ ident_gen ] (fun ident -> Identifier ((), ident))
+      ])
+))
+;;
+
 let add_test ~name ~gen ~f =
   Crowbar.add_test ~name [ gen ] (fun a ->
       match f a with
@@ -127,6 +175,8 @@ let add_test ~name ~gen ~f =
 ;;
 
 let () =
+  (*
+  (* Primitive: *)
   (* 0 *)
   add_test
     ~name:"Primitive json_round_trip1"
@@ -150,6 +200,7 @@ let () =
   (* (* 4 *) (* TODO: failing *) add_test ~name:"Nominal json_round_trip1"
      ~gen:nominal_gen ~f:Nominal.Properties.json_round_trip1; *)
 
+  (* Nominal: *)
   (* 5 *)
   add_test
     ~name:"Nominal json_round_trip2"
@@ -163,6 +214,8 @@ let () =
     ~name:"Nominal string_round_trip2"
     ~gen:nonempty_str_gen
     ~f:Nominal.Properties.string_round_trip2;
+
+  (* Pattern: *)
   (* 8 *)
   add_test
     ~name:"Pattern json_round_trip1"
@@ -184,5 +237,18 @@ let () =
     ~name:"Pattern string_round_trip2"
     ~gen:nonempty_str_gen
     ~f:Pattern.Properties.string_round_trip2;
+
+  (* Parser: *)
+  (* 12 *)
+  *)
+  add_test
+    ~name:"Parser string_round_trip1"
+    ~gen:parser_gen
+    ~f:Lvca_languages.Parser.Properties.string_round_trip1;
+  (* 13 *)
+  add_test
+    ~name:"Parser string_round_trip2"
+    ~gen:nonempty_str_gen
+    ~f:Lvca_languages.Parser.Properties.string_round_trip2;
   ()
 ;;

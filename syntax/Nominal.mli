@@ -9,6 +9,12 @@ and ('loc, 'prim) scope =
   | Scope of ('loc, 'prim) Pattern.t list * ('loc, 'prim) term list
 
 val location : ('loc, _) term -> 'loc
+val pp_term_generic
+  :  open_loc:('loc Fmt.t)
+  -> close_loc:('loc Fmt.t)
+  -> pp_pat:('prim Fmt.t -> ('loc, 'prim) Pattern.t Fmt.t)
+  -> pp_prim:'prim Fmt.t
+  -> ('loc, 'prim) term Fmt.t
 val pp_term : 'prim Fmt.t -> (_, 'prim) term Fmt.t
 val pp_term_range : 'prim Fmt.t -> (OptRange.t, 'prim) term Fmt.t
 val pp_term_ranges : 'prim Fmt.t -> (SourceRanges.t, 'prim) term Fmt.t

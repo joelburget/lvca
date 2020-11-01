@@ -11,7 +11,7 @@ let parse_parser str = ParseUtil.parse_string (ParseParser.t ParseCore.term) str
 module Model = struct
   type parser_defn =
     | NoInputYet
-    | Parsed of Lvca_languages.Parser.t
+    | Parsed of OptRange.t Lvca_languages.Parser.t
     | FailedParse of string
 
   type parser_defn_signal_pool = (string * parser_defn) Pool.Signal.t
@@ -25,13 +25,15 @@ module Model = struct
     ; evaluations_key: Pool.RList.key
     }
 
+  let mk_parser_defn str = match parse_parser str with
+    | Ok parser -> Parsed parser
+    | Error msg -> FailedParse msg
+
   let new_context parser_str lst =
     let create_parser_defn str =
       let parser = match str with
       | "" -> NoInputYet
-      | _ -> match parse_parser str with
-        | Ok parser -> Parsed parser
-        | Error msg -> FailedParse msg
+      | _ -> mk_parser_defn str
       in str, parser
     in
 
@@ -81,19 +83,21 @@ module Controller = struct
       | AddTest parser_no ->
         let context = List.nth_exn contexts parser_no in
         let key = Pool.Signal.add Model.test_signal_pool (React.S.create "") in
-        let _, evaluations_h = Pool.RList.find_exn Model.evaluations_pool context.evaluations_key in
+        let _, evaluations_h = Pool.RList.find_exn
+          Model.evaluations_pool
+          context.evaluations_key
+        in
         RList.snoc key evaluations_h
       | RemoveTest (parser_no, test_no) ->
         let context = List.nth_exn contexts parser_no in
-        let _, evaluations_h = Pool.RList.find_exn Model.evaluations_pool context.evaluations_key in
+        let _, evaluations_h = Pool.RList.find_exn
+          Model.evaluations_pool
+          context.evaluations_key
+        in
         RList.remove test_no evaluations_h
       | UpdateParser (key, str) ->
         let _, update = Pool.Signal.find_exn Model.parser_defn_signal_pool key in
-        let parser_defn = match parse_parser str with
-          | Ok parser -> Model.Parsed parser
-          | Error msg -> FailedParse msg
-        in
-        update (str, parser_defn)
+        update (str, Model.mk_parser_defn str)
 end
 
 module View = struct
@@ -107,7 +111,11 @@ module View = struct
     match parser with
     | Model.NoInputYet | FailedParse _ -> []
     | Parsed parser ->
-      let parser_d = translate_direct parser in
+      let parser' = Lvca_languages.Parser.map_loc
+        ~f:(SourceRanges.of_opt_range ~buf:"TODO")
+        parser
+      in
+      let parser_d = translate_direct parser' in
       let elem = match parse_direct parser_d test with
         | Error (msg, tm_opt) ->
           let tm_str = match tm_opt with

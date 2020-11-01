@@ -18,79 +18,83 @@ let any, comma, list, str, string, semi, pf =
   Fmt.(any, comma, list, str, string, semi, pf)
 ;;
 
-let rec pp_term pp_prim ppf = function
-  | Operator (_, tag, subtms) ->
-    pf ppf "@[<2>%s(%a)@]" tag (list ~sep:semi (pp_scope pp_prim)) subtms
-  | Var (_, v) -> string ppf v
-  | Primitive (_, p) -> pp_prim ppf p
-
-and pp_scope pp_prim ppf (Scope (bindings, body)) =
-  let pp_body = list ~sep:comma (pp_term pp_prim) in
-  match bindings with
-  | [] -> pp_body ppf body
-  | _ ->
-    pf ppf "%a.@ %a" (list ~sep:(any ".@ ") (Pattern.pp pp_prim)) bindings pp_body body
-;;
-
-let rec pp_term_generic ~opener ~closer ~pp_pat pp_prim ppf tm =
-  opener ppf (location tm);
+let rec pp_term_generic ~open_loc ~close_loc ~pp_pat ~pp_prim ppf tm =
+  open_loc ppf (location tm);
   (match tm with
   | Operator (_, tag, subtms) ->
     pf
       ppf
       "@[<hv>%s(%a)@]"
       tag
-      (list ~sep:semi (pp_scope_generic ~opener ~closer ~pp_pat pp_prim))
+      (list ~sep:semi (pp_scope_generic ~open_loc ~close_loc ~pp_pat ~pp_prim))
       subtms
   | Var (_, v) -> pf ppf "%a" string v
   | Primitive (_, p) -> pf ppf "%a" pp_prim p);
-  closer ppf (location tm)
+  close_loc ppf (location tm)
 
-and pp_scope_generic ~opener ~closer ~pp_pat pp_prim ppf (Scope (bindings, body)) =
-  let pp_body = list ~sep:comma (pp_term_generic ~opener ~closer ~pp_pat pp_prim) in
+and pp_scope_generic ~open_loc ~close_loc ~pp_pat ~pp_prim ppf (Scope (bindings, body)) =
+  let pp_body = list ~sep:comma (pp_term_generic ~open_loc ~close_loc ~pp_pat ~pp_prim) in
   match bindings with
   | [] -> pp_body ppf body
   | _ -> pf ppf "%a.@ %a" (list ~sep:(any ".@ ") (pp_pat pp_prim)) bindings pp_body body
 ;;
 
-let pp_term_range pp_prim ppf tm =
+let pp_term pp_prim ppf tm =
   pp_term_generic
-    pp_prim
+    ~open_loc:(fun _ _ -> ())
+    ~close_loc:(fun _ _ -> ())
+    ~pp_pat:Pattern.pp
+    ~pp_prim
     ppf
     tm
-    ~opener:OptRange.open_stag
-    ~closer:OptRange.close_stag
+
+let pp_scope pp_prim ppf tm =
+  pp_scope_generic
+    ~open_loc:(fun _ _ -> ())
+    ~close_loc:(fun _ _ -> ())
+    ~pp_pat:Pattern.pp
+    ~pp_prim
+    ppf
+    tm
+
+let pp_term_range pp_prim ppf tm =
+  pp_term_generic
+    ~open_loc:OptRange.open_stag
+    ~close_loc:OptRange.close_stag
     ~pp_pat:Pattern.pp_range
+    ~pp_prim
+    ppf
+    tm
 ;;
 
 let pp_scope_range pp_prim ppf tm =
   pp_scope_generic
-    pp_prim
+    ~open_loc:OptRange.open_stag
+    ~close_loc:OptRange.close_stag
+    ~pp_pat:Pattern.pp_range
+    ~pp_prim
     ppf
     tm
-    ~opener:OptRange.open_stag
-    ~closer:OptRange.close_stag
-    ~pp_pat:Pattern.pp_range
 ;;
 
 let pp_term_ranges pp_prim ppf tm =
   pp_term_generic
-    pp_prim
+    ~open_loc:(fun ppf loc -> Caml.Format.pp_open_stag ppf (SourceRanges.Stag loc))
+    ~close_loc:(fun ppf _loc -> Caml.Format.pp_close_stag ppf ())
+    ~pp_pat:Pattern.pp_ranges
+    ~pp_prim
     ppf
     tm
-    ~opener:(fun ppf loc -> Caml.Format.pp_open_stag ppf (SourceRanges.Stag loc))
-    ~closer:(fun ppf _loc -> Caml.Format.pp_close_stag ppf ())
-    ~pp_pat:Pattern.pp_ranges
 ;;
 
 let pp_scope_ranges pp_prim ppf tm =
   pp_scope_generic
-    pp_prim
+    ~open_loc:(fun ppf loc -> Caml.Format.pp_open_stag ppf (SourceRanges.Stag loc))
+    ~close_loc:(fun ppf _loc -> Caml.Format.pp_close_stag ppf ())
+    ~pp_pat:Pattern.pp_ranges
+    ~pp_prim
     ppf
     tm
-    ~opener:(fun ppf loc -> Caml.Format.pp_open_stag ppf (SourceRanges.Stag loc))
-    ~closer:(fun ppf _loc -> Caml.Format.pp_close_stag ppf ())
-    ~pp_pat:Pattern.pp_ranges
 ;;
 
 let pp_term_str pp_prim tm = str "%a" (pp_term pp_prim) tm
