@@ -100,6 +100,36 @@ module Controller = struct
         update (str, Model.mk_parser_defn str)
 end
 
+let string_location ~str ~loc =
+  let open Js_of_ocaml_tyxml.Tyxml_js in
+  let before = String.subo str ~len:loc in
+  let after = String.subo str ~pos:loc in
+  [%html{|
+  <div class="string-location">
+    <span class="string-location-before">|}[Html.txt before]{|</span>
+    <span class="string-location-after">|}[Html.txt after]{|</span>
+  </div>
+  |}]
+
+let parser_display parser_s =
+  let open Js_of_ocaml_tyxml.Tyxml_js in
+  let selection_s = React.S.const None in
+  let elt, formatter = RangeFormatter.mk selection_s in
+  let (_ : unit React.signal) = parser_s
+    |> React.S.map (fun p ->
+    Fmt.pf formatter "%a" Lvca_languages.Parser.pp_plain p;
+    Fmt.flush formatter ()
+  )
+  in
+  Html.(div ~a:[a_class ["parser-display"]] [elt])
+
+let parser_stack parsers_rlist =
+  let open Js_of_ocaml_tyxml.Tyxml_js in
+  parsers_rlist
+  |> RList.map (fun p -> parser_display (React.S.const p)) (* XXX this is so bad *)
+  |> R.Html.div
+    ~a:[Html.a_class ["parser-stack"]]
+
 module View = struct
   open Js_of_ocaml_tyxml.Tyxml_js
   module Direct = Lvca_languages.Parser.Direct
@@ -206,8 +236,24 @@ module View = struct
     let context_elems_s = model_s |> React.S.map (List.mapi ~f:(mk_context update)) in
     let new_parser_handler _evt = update AddParser; false in
 
+    let mk_test_parser str = match parse_parser str with
+      | Ok p -> p
+      | Error msg -> failwith msg
+    in
+
+    let test_parsers = Lvca_languages.Parser.TestParsers.
+          [list_parser; let_var; str_star]
+      |> List.map ~f:mk_test_parser
+    in
+
     Html.div
-      [ Html.(button ~a:[a_onclick new_parser_handler] [txt "create new parser"])
+      [ Html.(div
+        [ h2 [txt "components"]
+        ; string_location ~str:"foobar" ~loc:3
+        ; test_parsers |> RList.const |> parser_stack
+        ])
+      ; Html.(h2 [txt "page"])
+      ; Html.(button ~a:[a_onclick new_parser_handler] [txt "create new parser"])
       ; R.Html.div (RList.from_signal context_elems_s)
       ]
 end

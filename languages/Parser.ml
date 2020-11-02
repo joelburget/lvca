@@ -66,7 +66,6 @@ type 'loc t =
   | Return of 'loc * 'loc c_term
   | Sequence of 'loc * string list * 'loc c_term * 'loc t list
   | Identifier of 'loc * string
-  (* [@@deriving show] *)
 
 let location = function
   | AnyChar loc
@@ -786,7 +785,7 @@ let%test_module "Parsing" =
      fun parser_str ->
       match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
       | Error msg -> Caml.print_string ("failed to parse parser desc: " ^ msg)
-      | Ok parser -> Fmt.pr "%a\n" pp_range parser
+      | Ok parser -> Fmt.pr "%a\n" pp_plain parser
    ;;
 
    let%expect_test _ =
@@ -818,6 +817,10 @@ let%test_module "Parsing" =
    let%expect_test _ =
      parse_print_parser "'a' | 'b' | 'c'";
      [%expect{| 'a' | 'b' | 'c' |}]
+
+   let%expect_test _ =
+     parse_print_parser "sequence (Ok. Q) [.] | .";
+     [%expect{| sequence (Ok. Q) [.] | . |}]
 
    let%expect_test _ =
      parse_print_parser list_parser;

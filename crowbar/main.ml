@@ -144,7 +144,7 @@ let parser_gen = Crowbar.(Lvca_languages.Parser.(
       ; map [ char ] (fun c -> Char ((), c))
       ; map [ str_gen ] (fun s -> String ((), s))
       ; map [ ident_gen; core_gen ] (fun ident tm -> Satisfy ((), ident, tm))
-      ; map [ core_gen ] (fun tm -> Fail ((), tm))
+      (* ; map [ core_gen ] (fun tm -> Fail ((), tm)) *)
       ; map [ ident_gen; parser_gen; parser_gen ]
         (fun ident p1 p2 -> Let ((), ident, p1, p2))
       ; map [ parser_gen ] (fun p -> Option ((), p))
