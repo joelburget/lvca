@@ -127,8 +127,7 @@ let parser_stack parsers_rlist =
   let open Js_of_ocaml_tyxml.Tyxml_js in
   parsers_rlist
   |> RList.map (fun p -> parser_display (React.S.const p)) (* XXX this is so bad *)
-  |> R.Html.div
-    ~a:[Html.a_class ["parser-stack"]]
+  |> R.Html.div ~a:[Html.a_class ["parser-stack"]]
 
 module View = struct
   open Js_of_ocaml_tyxml.Tyxml_js
