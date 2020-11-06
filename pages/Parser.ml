@@ -115,7 +115,7 @@ let string_location ~str ~loc =
   |}]
 
 (* TODO: reactive version *)
-let parser_view parser =
+let view_parser parser =
   let selection_s = React.S.const None in
   let elt, formatter = RangeFormatter.mk selection_s in
   Fmt.pf formatter "%a" P.pp_plain parser;
@@ -125,7 +125,7 @@ let parser_view parser =
 let parser_stack parsers_rlist =
   let open Js_of_ocaml_tyxml.Tyxml_js in
   parsers_rlist
-  |> RList.map (fun p -> parser_view p) (* XXX this is so bad *)
+  |> RList.map view_parser (* XXX this is so bad *)
   |> R.Html.div ~a:[Html.a_class ["parser-stack"]]
 
 let view_term tm =
@@ -145,7 +145,7 @@ let view_parser_ctx ctx = ctx
   |> Map.to_alist
   |> List.map ~f:(fun (name, p) -> cols
     [ txt name
-    ; parser_view p
+    ; view_parser p
     ])
   |> rows
 
@@ -156,9 +156,9 @@ let view_snapshots snapshots =
     [ txt (Caml.Printf.sprintf "TODO: view_snapshots (%d)" n)
     ]
 
-let view_snapshot str P.Direct.{ pos; parser = _; term_ctx; parser_ctx; snapshots } = rows
-  [ (* subheader name *)
-    string_location ~str ~loc:pos
+let view_snapshot str P.Direct.{ pos; parser; term_ctx; parser_ctx; snapshots } = rows
+  [ view_parser parser
+  ; string_location ~str ~loc:pos
   ; view_term_ctx term_ctx
   ; view_parser_ctx parser_ctx
   ; view_snapshots snapshots
