@@ -149,19 +149,19 @@ let view_parser_ctx ctx = ctx
     ])
   |> rows
 
-let view_subparses subparses =
+let view_snapshots snapshots =
   let open Js_of_ocaml_tyxml.Tyxml_js in
-  let n = List.length subparses in
+  let n = List.length snapshots in
   Html.div
-    [ txt (Caml.Printf.sprintf "TODO: view_subparses (%d)" n)
+    [ txt (Caml.Printf.sprintf "TODO: view_snapshots (%d)" n)
     ]
 
-let view_snapshot str P.Direct.{ pos; name; term_ctx; parser_ctx; subparses } = rows
-  [ subheader name
-  ; string_location ~str ~loc:pos
+let view_snapshot str P.Direct.{ pos; parser = _; term_ctx; parser_ctx; snapshots } = rows
+  [ (* subheader name *)
+    string_location ~str ~loc:pos
   ; view_term_ctx term_ctx
   ; view_parser_ctx parser_ctx
-  ; view_subparses subparses
+  ; view_snapshots snapshots
   ]
 
 module View = struct
@@ -169,7 +169,6 @@ module View = struct
   module Direct = P.Direct
 
   let view_parser_test parser test =
-    let translate_direct, parse_direct = Direct.(translate_direct, parse_direct) in
     match parser with
     | Model.NoInputYet | FailedParse _ -> Components.empty_elem, Components.empty_elem
     | Parsed parser ->
@@ -177,8 +176,7 @@ module View = struct
         ~f:(SourceRanges.of_opt_range ~buf:"TODO")
         parser
       in
-      let parser_d = translate_direct parser' in
-      let P.Direct.{ snapshot; result } = parse_direct parser_d test in
+      let P.Direct.{ snapshot; result } = Direct.parse_direct parser' test in
       let result = match result with
         | Error (msg, tm_opt) ->
           let tm_str = match tm_opt with

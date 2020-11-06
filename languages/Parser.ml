@@ -211,21 +211,21 @@ module Direct = struct
         -> parser_ctx:parser_ctx
         -> pos:int
         -> string
-        -> trace_snapshot * (SourceRanges.t n_term, string * SourceRanges.t c_term option) Result.t
+        -> int * trace_snapshot list * (SourceRanges.t n_term, string * SourceRanges.t c_term option) Result.t
     }
 
   and trace_snapshot =
     { pos: int
-    ; name: string (* TODO: full description *)
+    ; parser: SourceRanges.t parser
     ; term_ctx: term_ctx
     ; parser_ctx: parser_ctx
-    ; subparses: trace_snapshot list
+    ; snapshots: trace_snapshot list
     }
 
   type t = direct
 
-  let mk_snapshot ~name ~term_ctx ~parser_ctx ?subparses:(subparses=[]) pos
-    = { pos; name; term_ctx; parser_ctx; subparses }
+  let mk_snapshot ~parser ~term_ctx ~parser_ctx ?snapshots:(snapshots=[]) pos
+    = { pos; parser; term_ctx; parser_ctx; snapshots }
 
   let mk_error msg = Error (msg, None)
 
@@ -233,28 +233,27 @@ module Direct = struct
     Nominal.Primitive (SourceRanges.mk "input" pos (pos + 1), Primitive.PrimChar c)
   ;;
 
-  let context_free ~name go =
-    { run = fun ~translate_direct:_ ~term_ctx ~parser_ctx ~pos str ->
-        let mk_snapshot = mk_snapshot ~name ~term_ctx ~parser_ctx in
+  let context_free go =
+    { run = fun ~translate_direct:_ ~term_ctx:_ ~parser_ctx:_ ~pos str ->
         match go pos str with
-          | Ok (pos', result) -> mk_snapshot pos', Ok result
-          | Error msg -> mk_snapshot pos, mk_error msg
+          | Ok (pos, result) -> pos, [], Ok result
+          | Error msg -> pos, [], mk_error msg
     }
   ;;
 
-  let anychar = context_free ~name:"." (fun pos str ->
+  let anychar = context_free (fun pos str ->
     if String.length str > pos
     then Ok (pos + 1, mk_char pos str.[pos])
     else Error ".")
   ;;
 
-  let char c = context_free ~name:"char" (fun pos str ->
+  let char c = context_free (fun pos str ->
     if String.length str > pos && Char.(str.[pos] = c)
     then Ok (pos + 1, mk_char pos c)
     else Error (Printf.sprintf "char '%c'" c))
   ;;
 
-  let string prefix = context_free ~name:"string" (fun pos str ->
+  let string prefix = context_free (fun pos str ->
     match str |> String.subo ~pos |> String.chop_prefix ~prefix with
     | None -> Error (Printf.sprintf {|string "%s"|} prefix)
     | Some _str' ->
@@ -265,13 +264,12 @@ module Direct = struct
 
   let satisfy name core_term =
     { run =
-        (fun ~translate_direct:_ ~term_ctx ~parser_ctx ~pos str ->
-          let mk_snapshot = mk_snapshot ~name:"satisfy" ~term_ctx ~parser_ctx in
+        (fun ~translate_direct:_ ~term_ctx ~parser_ctx:_ ~pos str ->
           let err_msg = mk_error
             (Printf.sprintf {|satisfy (%s -> %s)|} name (Core.to_string core_term))
           in
           if pos >= String.length str
-          then mk_snapshot pos, err_msg
+          then pos, [], err_msg
           else (
             let c = str.[pos] in
             let rng = SourceRanges.mk "input" pos (pos + 1) in
@@ -281,55 +279,50 @@ module Direct = struct
             in
             match Core.eval_ctx term_ctx tm with
             | Ok (Operator (_, "true", [])) ->
-              mk_snapshot (pos + 1), Ok (mk_char pos c)
+              pos + 1, [], Ok (mk_char pos c)
             | Ok (Operator (_, "false", [])) | Ok _ ->
-              mk_snapshot pos, err_msg (* TODO: throw harder error? (type error) *)
+                pos, [], err_msg (* TODO: throw harder error? (type error) *)
             | Error err ->
-              mk_snapshot pos, Error (map_snd ~f:(fun tm -> Some tm) err)))
+              pos, [], Error (map_snd ~f:(fun tm -> Some tm) err)))
     }
   ;;
 
   let fail c_tm =
     { run =
-        (fun ~translate_direct:_ ~term_ctx ~parser_ctx ~pos _str ->
+        (fun ~translate_direct:_ ~term_ctx ~parser_ctx:_ ~pos _str ->
           match Core.eval_ctx term_ctx c_tm with
-          | Ok (Primitive (_, PrimString msg)) ->
-            mk_snapshot ~name:"fail" ~term_ctx ~parser_ctx pos, mk_error msg
+          | Ok (Primitive (_, PrimString msg)) -> pos, [], mk_error msg
           | _ -> failwith "TODO: fail")
     }
   ;;
 
-  let let_ name p body =
+  let let_ name parser body =
     { run =
         (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
-          let parser_ctx = Map.set parser_ctx ~key:name ~data:p in
-          let subparse, result =
+          let parser_ctx = Map.set parser_ctx ~key:name ~data:parser in
+          let pos0 = pos in
+          let pos, snapshots, result =
             (translate_direct body).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
           in
-          let snapshot =
-            mk_snapshot ~name:"let" ~term_ctx ~parser_ctx ~subparses:[subparse]
-              subparse.pos
-          in
-          snapshot, result
+          let snapshot = mk_snapshot ~parser:body ~term_ctx ~parser_ctx ~snapshots pos0 in
+          pos, [snapshot], result
         )
     }
   ;;
 
-  let option t =
+  let option parser =
     { run =
         (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
-          let subparse, result =
-            (translate_direct t).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
+          let pos0 = pos in
+          let pos, snapshots, result =
+            (translate_direct parser).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
           in
-          let snapshot =
-            mk_snapshot ~name:"option" ~term_ctx ~parser_ctx ~subparses:[subparse]
-              subparse.pos
-          in
+          let snapshot = mk_snapshot ~parser ~term_ctx ~parser_ctx ~snapshots pos0 in
           let result = match result with
             | Ok tm -> mk_some tm
             | Error _ -> mk_none SourceRanges.empty
           in
-          snapshot, Ok result)
+          pos, [snapshot], Ok result)
     }
   ;;
 
@@ -338,130 +331,129 @@ module Direct = struct
     Nominal.Operator (rng, "list", [ Nominal.Scope ([], lst) ])
   ;;
 
-  let count n_tm p =
+  let count n_tm parser =
     let rec go ~translate_direct ~term_ctx ~parser_ctx ~pos n str =
-      let p = translate_direct p in
       match n with
       | 0 -> Ok []
       | _ ->
-        let snapshot, head_result = p.run ~translate_direct ~term_ctx ~parser_ctx ~pos str in
+        let pos0 = pos in
+        let pos, snapshots, head_result =
+          (translate_direct parser).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
+        in
+        let snapshot = mk_snapshot ~parser ~term_ctx ~parser_ctx ~snapshots pos0 in
         match head_result with
-        | Error msg -> Error (snapshot, msg)
+        | Error msg -> Error (pos, snapshot :: snapshots, msg)
         | Ok tm ->
-          go ~translate_direct ~term_ctx ~parser_ctx (n - 1) ~pos:snapshot.pos str
-            |> Result.map ~f:(List.cons (snapshot, tm))
+          go ~translate_direct ~term_ctx ~parser_ctx (n - 1) ~pos str
+            |> Result.map ~f:(List.cons (pos, snapshot, tm))
     in
+
     { run = fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
         match Core.eval_ctx term_ctx n_tm with
         | Ok (Primitive (_, PrimInteger n)) ->
-          let n = Z.to_int n (* XXX: may raise Overflow *) in
-          let results =
-            go ~translate_direct ~term_ctx ~parser_ctx ~pos n str
-          in
-          let snapshot, result = match results with
+          let n = Z.to_int n (* TODO: may raise Overflow *) in
+          let results = go ~translate_direct ~term_ctx ~parser_ctx ~pos n str in
+          let pos, rev_snapshots, result = match results with
             | Ok results ->
-              let subparses, tms = List.unzip results in
-              let pos = match List.last subparses with
+              let poss, snapshots, tms = List.unzip3 results in
+              let pos = match List.last poss with
                 | None -> pos
-                | Some { pos; _ } -> pos
+                | Some pos -> pos
               in
-              let snapshot = mk_snapshot ~name:"count" ~term_ctx ~parser_ctx ~subparses
-                pos
-              in
-              snapshot, Ok tms
-            | Error (snapshot, msg) -> snapshot, Error msg
+              pos, snapshots, Ok tms
+            | Error (pos, rev_snapshots, msg) -> pos, rev_snapshots, Error msg
           in
-          snapshot, Result.map ~f:mk_list result
+          pos, List.rev rev_snapshots, Result.map ~f:mk_list result
         | Ok _
         | Error _ -> failwith "TODO"
     }
   ;;
 
-  let rec go_many ~translate_direct ~term_ctx ~parser_ctx ~pos t str =
-    let snapshot, head_result =
-      (translate_direct t).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
+  let rec go_many ~translate_direct ~term_ctx ~parser_ctx ~pos parser str =
+    let pos, snapshots, head_result =
+      (translate_direct parser).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
     in
+    let snapshot = mk_snapshot ~parser ~term_ctx ~parser_ctx ~snapshots pos in
     match head_result with
-    | Error _ -> snapshot, Ok []
-    | Ok tm -> str
-      |> go_many ~translate_direct ~term_ctx ~parser_ctx ~pos:snapshot.pos t
-      |> map_snd ~f:(Result.map ~f:(List.cons tm))
+    | Error _ -> pos, [snapshot], Ok []
+    | Ok tm ->
+      let pos, snapshots, result =
+        go_many ~translate_direct ~term_ctx ~parser_ctx ~pos parser str
+      in
+      pos, snapshot :: snapshots, Result.map result ~f:(List.cons tm)
   ;;
 
-  let many t =
+  let many parser =
     { run =
         (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
-          let snapshot, result =
-            go_many ~translate_direct ~term_ctx ~parser_ctx ~pos t str
-          in
-          let snapshot =
-            mk_snapshot ~name:"*" ~term_ctx ~parser_ctx ~subparses:[snapshot] snapshot.pos
+          let pos, snapshots, result =
+            go_many ~translate_direct ~term_ctx ~parser_ctx ~pos parser str
           in
           let result = Result.map result ~f:mk_list in
-          snapshot, result)
+          pos, snapshots, result)
     }
   ;;
 
-  let many1 t =
+  let many1 parser =
     { run =
         (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
-          let snapshot, result = go_many ~translate_direct ~term_ctx ~parser_ctx ~pos t
-          str
-          in
-          let snapshot =
-            mk_snapshot ~name:"+" ~term_ctx ~parser_ctx ~subparses:[snapshot] snapshot.pos
+          let pos, snapshots, result =
+            go_many ~translate_direct ~term_ctx ~parser_ctx ~pos parser str
           in
           let result = match result with
             | Ok [] -> mk_error "many1: empty list"
             | Ok tms -> Ok (mk_list tms)
             | Error msg -> Error msg
           in
-          snapshot, result)
+          pos, snapshots, result)
     }
   ;;
 
-  let fix name p =
+  let fix name parser =
     { run =
         (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
-          let parser_ctx = Map.set parser_ctx ~key:name ~data:p in
-          let snapshot, result =
-            (translate_direct p).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
+          let pos0 = pos in
+          let parser_ctx = Map.set parser_ctx ~key:name ~data:parser in
+          let pos, snapshots, result =
+            (translate_direct parser).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
           in
-          let snapshot =
-            mk_snapshot ~name:"fix" ~term_ctx ~parser_ctx ~subparses:[snapshot] snapshot.pos
-          in
-          snapshot, result)
+          let snapshot = mk_snapshot ~parser ~term_ctx ~parser_ctx ~snapshots pos0 in
+          pos, [snapshot], result)
     }
   ;;
 
-  let alt t1 t2 =
+  let alt p1 p2 =
     { run =
         (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
-          let t1 = translate_direct t1 in
-          let t2 = translate_direct t2 in
-          let snapshot1, result = t1.run ~translate_direct ~term_ctx ~parser_ctx ~pos str in
-          let snapshots, pos, result = match result with
-          | Error _ ->
-            let snapshot2, result =
-              t2.run ~translate_direct ~term_ctx ~parser_ctx ~pos:snapshot1.pos str
-            in
-            [snapshot1; snapshot2], snapshot2.pos, result
-          | _ -> [snapshot1], snapshot1.pos, result
+          let pos0 = pos in
+          let pos, snapshots1, result =
+            (translate_direct p1).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
           in
-          let snapshot =
-            mk_snapshot ~name:"|" ~term_ctx ~parser_ctx ~subparses:snapshots pos
+          let pos1 = pos in
+          let snapshot1 =
+            mk_snapshot ~parser:p1 ~term_ctx ~parser_ctx ~snapshots:snapshots1 pos0
           in
-          snapshot, result
+          let pos, snapshots, result = match result with
+            | Error _ ->
+              let pos, snapshots2, result =
+                (translate_direct p2).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
+              in
+              let snapshot2 =
+                mk_snapshot ~parser:p2 ~term_ctx ~parser_ctx ~snapshots:snapshots2 pos1
+              in
+              pos, [snapshot1; snapshot2], result
+            | _ -> pos, [snapshot1], result
+          in
+          pos, snapshots, result
         )
     }
   ;;
 
   let return tm =
     { run =
-        (fun ~translate_direct:_ ~term_ctx ~parser_ctx ~pos _str ->
+        (fun ~translate_direct:_ ~term_ctx ~parser_ctx:_ ~pos _str ->
           let result = Core.eval_ctx term_ctx tm in
-          let snapshot = mk_snapshot ~name:"return" ~term_ctx ~parser_ctx pos in
-          snapshot, Result.map_error result ~f:(map_snd ~f:(fun tm -> Some tm)))
+          pos, [], Result.map_error result ~f:(map_snd ~f:(fun tm -> Some tm)))
     }
   ;;
 
@@ -473,15 +465,19 @@ module Direct = struct
            * - results: (snapshop, result) option list
            *)
           let (pos, _), results =
-            List.fold_map ps ~init:(pos, true) ~f:(fun (pos, continue) p ->
-              let { run } = translate_direct p in
+            List.fold_map ps ~init:(pos, true) ~f:(fun (pos, continue) parser ->
+              let { run } = translate_direct parser in
               if continue
               then (
-                let snapshot, result =
+                let pre_pos = pos in
+                let pos, snapshots, result =
                   run ~translate_direct ~term_ctx ~parser_ctx ~pos str
                 in
+                let snapshot =
+                  mk_snapshot ~parser ~term_ctx ~parser_ctx ~snapshots pre_pos
+                in
                 let continue = match result with Ok _ -> true | Error _ -> false in
-                (snapshot.pos, continue), Some (snapshot, result))
+                (pos, continue), Some (snapshot, result))
               else (pos, false), None)
           in
 
@@ -489,15 +485,13 @@ module Direct = struct
            * be Error, otherwise all will be Ok. If there wasn't an error there will
            * always be n Ok results.
            *)
-          let subparses, results = results
+          let snapshots, results = results
             |> List.filter_map ~f:Fn.id
             |> List.unzip
           in
 
-          let snapshot = mk_snapshot ~name:"sequence" ~term_ctx ~parser_ctx ~subparses pos
-          in
           match Result.all results with
-          | Error msg -> snapshot, Error msg
+          | Error msg -> pos, snapshots, Error msg
           | Ok xs ->
             (match List.zip names xs with
             | Unequal_lengths ->
@@ -507,8 +501,7 @@ module Direct = struct
                    (List.length names)
                    (List.length xs))
             | Ok name_vals ->
-              let term_ctx =
-                name_vals
+              let term_ctx = name_vals
                 |> List.fold ~init:term_ctx ~f:(fun ctx (key, tm) ->
                        Map.set ctx ~key ~data:tm)
               in
@@ -516,7 +509,7 @@ module Direct = struct
                 Core.eval_ctx term_ctx tm
                 |> Result.map_error ~f:(map_snd ~f:(fun tm -> Some tm))
               in
-              snapshot, result))
+              pos, snapshots, result))
     }
   ;;
 
@@ -525,10 +518,16 @@ module Direct = struct
         (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
           match Map.find parser_ctx name with
           | None ->
-            mk_snapshot ~name ~term_ctx ~parser_ctx pos,
+            pos, [],
             mk_error (Printf.sprintf {|Identifer not found in context: "%s"|} name)
-          | Some p ->
-            (translate_direct p).run ~translate_direct ~term_ctx ~parser_ctx ~pos str)
+          | Some parser ->
+            let pos, snapshots, result = (translate_direct parser).run
+              ~translate_direct ~term_ctx ~parser_ctx ~pos str
+            in
+            let snapshot =
+              mk_snapshot ~parser ~term_ctx ~parser_ctx ~snapshots pos
+            in
+            pos, [snapshot], result)
     }
   ;;
 
@@ -550,24 +549,22 @@ module Direct = struct
     | Identifier (_, name) -> identifier name
   ;;
 
-  let parse_direct : direct -> string -> parse_result
-   = fun { run } str ->
+  let parse_direct : SourceRanges.t parser -> string -> parse_result
+   = fun parser str ->
+    let { run } = translate_direct parser in
     let strlen = String.length str in
-    let snapshot, result = run
-      ~translate_direct
-      ~term_ctx:Lvca_util.String.Map.empty
-      ~parser_ctx:Lvca_util.String.Map.empty
-      ~pos:0
-      str
-    in
+    let term_ctx = Lvca_util.String.Map.empty in
+    let parser_ctx = Lvca_util.String.Map.empty in
+    let pos, snapshots, result = run ~translate_direct ~term_ctx ~parser_ctx ~pos:0 str in
     let result = match result with
-      | result when snapshot.pos = strlen -> result
+      | result when pos = strlen -> result
       | Ok _ -> mk_error
         (Printf.sprintf
            {|Parser didn't consume entire input. Left over: "%s"|}
            (if strlen > 50 then String.prefix str 47 ^ "..." else str))
       | Error _ as result -> result
     in
+    let snapshot = mk_snapshot ~parser ~term_ctx ~parser_ctx ~snapshots pos in
     { snapshot; result }
  ;;
 end
@@ -729,7 +726,7 @@ let%test_module "Parsing" =
       | Ok parser ->
         let parser' = map_loc ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
         let Direct.{ result; _ } =
-          Direct.parse_direct (Direct.translate_direct parser') str
+          Direct.parse_direct parser' str
         in
         match result with
         | Error (msg, _) -> Caml.Printf.printf "failed to parse: %s\n" msg
