@@ -54,17 +54,9 @@ table.language_chart {
   font-family: monospace;
 }
 
-.error {
-  background-color: #ff00002b;
-}
-
 /* parser */
 
 .parser-context {
-}
-
-.parser-test-row {
-  display: flex;
 }
 
 .string-location {
@@ -82,6 +74,22 @@ table.language_chart {
 }
 
 .parser-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+/* components */
+
+.error {
+  background-color: #ff00002b;
+}
+
+.cols {
+  display: flex;
+  flex-direction: row;
+}
+
+.rows {
   display: flex;
   flex-direction: column;
 }

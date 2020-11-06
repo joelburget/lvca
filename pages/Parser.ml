@@ -3,15 +3,18 @@ open Lvca_core
 open Lvca_syntax
 open ReactiveData
 
+module P = Lvca_languages.Parser
 module ParseCore = Core.Parse (ParseUtil.CComment)
-module ParseParser = Lvca_languages.Parser.Parse (ParseUtil.CComment)
+module ParseParser = P.Parse (ParseUtil.CComment)
+
+open Components
 
 let parse_parser str = ParseUtil.parse_string (ParseParser.t ParseCore.term) str
 
 module Model = struct
   type parser_defn =
     | NoInputYet
-    | Parsed of OptRange.t Lvca_languages.Parser.t
+    | Parsed of OptRange.t P.t
     | FailedParse of string
 
   type parser_defn_signal_pool = (string * parser_defn) Pool.Signal.t
@@ -47,7 +50,7 @@ module Model = struct
 
   type t = parser_context list
 
-  let initial_model = Lvca_languages.Parser.TestParsers.(
+  let initial_model = P.TestParsers.(
     [ new_context char_count [new_test "cc"]
     ; new_context str [new_test "str"; new_test "foo"]
     ; new_context str_star [new_test ""; new_test "strstrstr"]
@@ -111,53 +114,83 @@ let string_location ~str ~loc =
   </div>
   |}]
 
-let parser_display parser_s =
-  let open Js_of_ocaml_tyxml.Tyxml_js in
+(* TODO: reactive version *)
+let parser_view parser =
   let selection_s = React.S.const None in
   let elt, formatter = RangeFormatter.mk selection_s in
-  let (_ : unit React.signal) = parser_s
-    |> React.S.map (fun p ->
-    Fmt.pf formatter "%a" Lvca_languages.Parser.pp_plain p;
-    Fmt.flush formatter ()
-  )
-  in
-  Html.(div ~a:[a_class ["parser-display"]] [elt])
+  Fmt.pf formatter "%a" P.pp_plain parser;
+  Fmt.flush formatter ();
+  rows ~classes:["parser-display"] [elt]
 
 let parser_stack parsers_rlist =
   let open Js_of_ocaml_tyxml.Tyxml_js in
   parsers_rlist
-  |> RList.map (fun p -> parser_display (React.S.const p)) (* XXX this is so bad *)
+  |> RList.map (fun p -> parser_view p) (* XXX this is so bad *)
   |> R.Html.div ~a:[Html.a_class ["parser-stack"]]
+
+let view_term tm =
+  let open Js_of_ocaml_tyxml.Tyxml_js in
+  let str = Fmt.str "parsed: %a" (Nominal.pp_term_ranges Primitive.pp) tm in
+  Html.div [txt str]
+
+let view_term_ctx ctx = ctx
+  |> Map.to_alist
+  |> List.map ~f:(fun (name, tm) -> cols
+    [ txt name
+    ; view_term tm
+    ])
+  |> rows
+
+let view_parser_ctx ctx = ctx
+  |> Map.to_alist
+  |> List.map ~f:(fun (name, p) -> cols
+    [ txt name
+    ; parser_view p
+    ])
+  |> rows
+
+let view_subparses subparses =
+  let open Js_of_ocaml_tyxml.Tyxml_js in
+  let n = List.length subparses in
+  Html.div
+    [ txt (Caml.Printf.sprintf "TODO: view_subparses (%d)" n)
+    ]
+
+let view_snapshot str P.Direct.{ pos; name; term_ctx; parser_ctx; subparses } = rows
+  [ subheader name
+  ; string_location ~str ~loc:pos
+  ; view_term_ctx term_ctx
+  ; view_parser_ctx parser_ctx
+  ; view_subparses subparses
+  ]
 
 module View = struct
   open Js_of_ocaml_tyxml.Tyxml_js
-  module Direct = Lvca_languages.Parser.Direct
-
-  let mk_error msg = [%html{|<div class="error">|}[Html.txt msg]{|</div>|}]
+  module Direct = P.Direct
 
   let view_parser_test parser test =
     let translate_direct, parse_direct = Direct.(translate_direct, parse_direct) in
     match parser with
-    | Model.NoInputYet | FailedParse _ -> []
+    | Model.NoInputYet | FailedParse _ -> Components.empty_elem, Components.empty_elem
     | Parsed parser ->
-      let parser' = Lvca_languages.Parser.map_loc
+      let parser' = P.map_loc
         ~f:(SourceRanges.of_opt_range ~buf:"TODO")
         parser
       in
       let parser_d = translate_direct parser' in
-      let elem = match parse_direct parser_d test with
+      let P.Direct.{ snapshot; result } = parse_direct parser_d test in
+      let result = match result with
         | Error (msg, tm_opt) ->
           let tm_str = match tm_opt with
             | None -> "(no tm) " ^ msg
-            | Some tm -> (Printf.sprintf "%s: %s" msg (Fmt.str "%a" Core.pp tm ))
+            | Some tm -> Printf.sprintf "%s: %s" msg (Fmt.str "%a" Core.pp tm )
 
           in
-          mk_error tm_str
-        | Ok tm ->
-          let str = Fmt.str "parsed: %a" (Nominal.pp_term_ranges Primitive.pp) tm in
-          [%html{|<div>|}[Html.txt str]{|</div>|}]
+          error_msg tm_str
+        | Ok tm -> view_term tm
       in
-      [elem]
+      let trace = view_snapshot test snapshot in
+      result, trace
 
   let mk_context update parser_no Model.{ parser_str_key; evaluations_key } =
     let evaluations_l, _ = Pool.RList.find_exn Model.evaluations_pool evaluations_key in
@@ -169,9 +202,7 @@ module View = struct
     in
 
     let new_test_handler _evt = update (Action.AddTest parser_no); false in
-    let new_test_button =
-      Html.(button ~a:[a_onclick new_test_handler] [txt "new test"])
-    in
+    let new_test_button = button ~onclick:new_test_handler "new test" in
 
     let (_ : unit React.event) = parser_defn_input_event
       |> React.E.map (function
@@ -185,7 +216,7 @@ module View = struct
     let parser_error_elem = parser_s
       |> React.S.map (function
         | Model.NoInputYet | Parsed _ -> []
-        | FailedParse msg -> [mk_error msg]
+        | FailedParse msg -> [error_msg msg]
       )
     in
 
@@ -208,17 +239,19 @@ module View = struct
           update (Action.RemoveTest (parser_no, test_no));
           false
         in
-        let remove_test_button =
-          Html.(button ~a:[a_onclick remove_test_handler] [txt "remove test"])
-        in
+        let remove_test_button = button ~onclick:remove_test_handler "remove test" in
 
-        let output_s = React.S.l2 view_parser_test parser_s test_s in
-        Html.(div
-          ~a:[a_class ["parser-test-row"]]
-          [ test_input
-          ; R.Html.div (RList.from_signal output_s)
-          ; remove_test_button
-          ])
+        let parser_result_s = React.S.l2 view_parser_test parser_s test_s in
+        let output_s = React.S.Pair.fst parser_result_s in
+        let snapshot_s = React.S.Pair.snd parser_result_s in
+        rows
+          [ cols
+            [ test_input
+            ; R.Html.div (RList.singleton_s output_s)
+            ; remove_test_button
+            ]
+          ; R.Html.div (RList.singleton_s snapshot_s)
+          ]
       )
     in
 
@@ -240,19 +273,19 @@ module View = struct
       | Error msg -> failwith msg
     in
 
-    let test_parsers = Lvca_languages.Parser.TestParsers.
+    let test_parsers = P.TestParsers.
           [list_parser; let_var; str_star]
       |> List.map ~f:mk_test_parser
     in
 
-    Html.div
-      [ Html.(div
-        [ h2 [txt "components"]
+    rows
+      [ rows
+        [ header "components"
         ; string_location ~str:"foobar" ~loc:3
         ; test_parsers |> RList.const |> parser_stack
-        ])
-      ; Html.(h2 [txt "page"])
-      ; Html.(button ~a:[a_onclick new_parser_handler] [txt "create new parser"])
+        ]
+      ; header "page"
+      ; button ~onclick:new_parser_handler "create new parser"
       ; R.Html.div (RList.from_signal context_elems_s)
       ]
 end

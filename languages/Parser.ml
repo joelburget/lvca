@@ -199,6 +199,11 @@ module Direct = struct
   type term_ctx = SourceRanges.t n_term Lvca_util.String.Map.t
   type parser_ctx = SourceRanges.t parser Lvca_util.String.Map.t
 
+  and parse_result =
+    { snapshot: trace_snapshot
+    ; result: (SourceRanges.t n_term, string * SourceRanges.t c_term option) Result.t
+    }
+
   and direct =
     { run :
            translate_direct:(SourceRanges.t parser -> direct)
@@ -545,27 +550,25 @@ module Direct = struct
     | Identifier (_, name) -> identifier name
   ;;
 
-  let parse_direct
-    : direct
-    -> string
-    -> (SourceRanges.t n_term, string * SourceRanges.t c_term option) Result.t =
-   fun { run } str ->
+  let parse_direct : direct -> string -> parse_result
+   = fun { run } str ->
     let strlen = String.length str in
-    match
-      run
-        ~translate_direct
-        ~term_ctx:Lvca_util.String.Map.empty
-        ~parser_ctx:Lvca_util.String.Map.empty
-        ~pos:0
-        str
-    with
-    | snapshot, result when snapshot.pos = strlen -> result
-    | _, Ok _ ->
-      mk_error
+    let snapshot, result = run
+      ~translate_direct
+      ~term_ctx:Lvca_util.String.Map.empty
+      ~parser_ctx:Lvca_util.String.Map.empty
+      ~pos:0
+      str
+    in
+    let result = match result with
+      | result when snapshot.pos = strlen -> result
+      | Ok _ -> mk_error
         (Printf.sprintf
            {|Parser didn't consume entire input. Left over: "%s"|}
            (if strlen > 50 then String.prefix str 47 ^ "..." else str))
-    | _, Error err -> Error err
+      | Error _ as result -> result
+    in
+    { snapshot; result }
  ;;
 end
 
@@ -725,7 +728,10 @@ let%test_module "Parsing" =
       | Error msg -> Caml.print_string ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
         let parser' = map_loc ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
-        match Direct.parse_direct (Direct.translate_direct parser') str with
+        let Direct.{ result; _ } =
+          Direct.parse_direct (Direct.translate_direct parser') str
+        in
+        match result with
         | Error (msg, _) -> Caml.Printf.printf "failed to parse: %s\n" msg
         | Ok tm -> Fmt.pr "%a\n" (Nominal.pp_term_ranges Primitive.pp) tm
    ;;
