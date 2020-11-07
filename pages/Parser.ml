@@ -6,6 +6,8 @@ open ReactiveData
 module P = Lvca_languages.Parser
 module ParseCore = Core.Parse (ParseUtil.CComment)
 module ParseParser = P.Parse (ParseUtil.CComment)
+module Html = Js_of_ocaml_tyxml.Tyxml_js.Html
+module RHtml = Js_of_ocaml_tyxml.Tyxml_js.R.Html
 
 open Components
 
@@ -104,7 +106,6 @@ module Controller = struct
 end
 
 let string_location ~str ~loc =
-  let open Js_of_ocaml_tyxml.Tyxml_js in
   let before = String.subo str ~len:loc in
   let after = String.subo str ~pos:loc in
   [%html{|
@@ -122,50 +123,65 @@ let view_parser parser =
   Fmt.flush formatter ();
   rows ~classes:["parser-display"] [elt]
 
-let parser_stack parsers_rlist =
-  let open Js_of_ocaml_tyxml.Tyxml_js in
-  parsers_rlist
-  |> RList.map view_parser (* XXX this is so bad *)
-  |> R.Html.div ~a:[Html.a_class ["parser-stack"]]
-
 let view_term tm =
-  let open Js_of_ocaml_tyxml.Tyxml_js in
   let str = Fmt.str "parsed: %a" (Nominal.pp_term_ranges Primitive.pp) tm in
   Html.div [txt str]
 
 let view_term_ctx ctx = ctx
   |> Map.to_alist
-  |> List.map ~f:(fun (name, tm) -> cols
+  |> List.map ~f:(fun (name, tm) -> cols ~border:true ~label:"term"
     [ txt name
     ; view_term tm
     ])
-  |> rows
+  |> rows ~label:"term-ctx"
 
 let view_parser_ctx ctx = ctx
   |> Map.to_alist
-  |> List.map ~f:(fun (name, p) -> cols
+  |> List.map ~f:(fun (name, p) -> cols ~border:true ~label:"parser"
     [ txt name
     ; view_parser p
     ])
-  |> rows
+  |> rows ~label:"parser-ctx"
 
-let view_snapshots snapshots =
-  let open Js_of_ocaml_tyxml.Tyxml_js in
-  let n = List.length snapshots in
-  Html.div
-    [ txt (Caml.Printf.sprintf "TODO: view_snapshots (%d)" n)
-    ]
+let rec view_snapshots str snapshots =
+  let opened_s, opened_update = React.S.create false in
+  let handle_click v _evt = opened_update v; false in
 
-let view_snapshot str P.Direct.{ pos; parser; term_ctx; parser_ctx; snapshots } = rows
-  [ view_parser parser
-  ; string_location ~str ~loc:pos
-  ; view_term_ctx term_ctx
-  ; view_parser_ctx parser_ctx
-  ; view_snapshots snapshots
+  let view_snapshot' str p = Html.li [view_snapshot str p] in
+
+  opened_s
+    |> React.S.map (fun opened ->
+      let onclick = handle_click (not opened) in
+      match List.length snapshots, opened with
+      | 0, _ -> []
+      | _, true ->
+        [ rows
+          [ (* TODO: div is to prevent button from taking up too much space *)
+            Html.div [button ~onclick "close subparser snapshots"]
+          ]
+        ; snapshots |> List.map ~f:(view_snapshot' str) |> olist
+        ]
+      | n, false ->
+        [ rows
+          [ Html.(p [ txt (Caml.Printf.sprintf "This parser called %d other parsers" n)])
+          ; (* TODO: div is to prevent button from taking up too much space *)
+            Html.div [button ~onclick "open subparser snapshots"]
+          ]
+        ])
+    |> RList.from_signal
+    |> r_rows ~border:true ~label:"view-snapshots"
+
+and view_snapshot str P.Direct.{ pos; parser; term_ctx; parser_ctx; snapshots } = dlist
+  (* ~label:"view-snapshot" *)
+  (* ~border:true *)
+  [ "parser", view_parser parser
+  ; "location", string_location ~str ~loc:pos
+  ; "term context", view_term_ctx term_ctx
+  ; "parser context", view_parser_ctx parser_ctx
+  ; "snapshots", view_snapshots str snapshots
   ]
 
 module View = struct
-  open Js_of_ocaml_tyxml.Tyxml_js
   module Direct = P.Direct
 
   let view_parser_test parser test =
@@ -187,7 +203,12 @@ module View = struct
           error_msg tm_str
         | Ok tm -> view_term tm
       in
-      let trace = view_snapshot test snapshot in
+      let trace =
+        rows ~border:false
+          [ subheader "trace this parser's execution"
+          ; view_snapshot test snapshot
+          ]
+      in
       result, trace
 
   let mk_context update parser_no Model.{ parser_str_key; evaluations_key } =
@@ -245,10 +266,10 @@ module View = struct
         rows
           [ cols
             [ test_input
-            ; R.Html.div (RList.singleton_s output_s)
+            ; RHtml.div (RList.singleton_s output_s)
             ; remove_test_button
             ]
-          ; R.Html.div (RList.singleton_s snapshot_s)
+          ; RHtml.div (RList.singleton_s snapshot_s)
           ]
       )
     in
@@ -256,8 +277,8 @@ module View = struct
     Html.(div
       ~a:[a_class ["parser-context"]]
       [ parser_defn_input
-      ; R.Html.div (RList.from_signal parser_error_elem)
-      ; R.Html.div test_elems
+      ; RHtml.div (RList.from_signal parser_error_elem)
+      ; RHtml.div test_elems
       ; new_test_button
       ])
 
@@ -266,25 +287,9 @@ module View = struct
     let context_elems_s = model_s |> React.S.map (List.mapi ~f:(mk_context update)) in
     let new_parser_handler _evt = update AddParser; false in
 
-    let mk_test_parser str = match parse_parser str with
-      | Ok p -> p
-      | Error msg -> failwith msg
-    in
-
-    let test_parsers = P.TestParsers.
-          [list_parser; let_var; str_star]
-      |> List.map ~f:mk_test_parser
-    in
-
     rows
-      [ rows
-        [ header "components"
-        ; string_location ~str:"foobar" ~loc:3
-        ; test_parsers |> RList.const |> parser_stack
-        ]
-      ; header "page"
-      ; button ~onclick:new_parser_handler "create new parser"
-      ; R.Html.div (RList.from_signal context_elems_s)
+      [ button ~onclick:new_parser_handler "create new parser"
+      ; RHtml.div (RList.from_signal context_elems_s)
       ]
 end
 
