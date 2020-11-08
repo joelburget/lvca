@@ -1,5 +1,6 @@
 open Base
 open Lvca_syntax
+open ReactiveData
 module Calculator = Lvca_languages.Calculator
 module Parse = Calculator.Parse (ParseUtil.CComment)
 
@@ -170,7 +171,7 @@ module View = struct
               ConstructiveReal.eval_to_string real ~digits:(Int32.of_int_exn digits)
             in
             [Html.(span [txt str])])
-        |> ReactiveData.RList.from_signal
+        |> RList.from_signal
         |> R.Html.pre
       in
 
@@ -186,13 +187,23 @@ module View = struct
         <tr class="row">
           <td class="result-input"> <pre>|}[ Html.txt input_str ]{|</pre> </td>
           <td class="result-output">|}[ digits' ]{|</td>
-          <td class="result-digits">digits: |}[ digits_entry ]{|</td>
+          <td class="result-digits">|}[ digits_entry ]{|</td>
           <td>|}[ delete_button ]{|</td>
         </tr>
       |}]
     in
 
-    let rows = model_s
+    let thead = [%html{|
+      <tr>
+        <th>input</th>
+        <th>output</th>
+        <th>digits</th>
+        <th></th>
+      </tr>
+      |}]
+    in
+
+    let tbody = model_s
       |> React.S.map (fun model ->
         model.Model.evaluations
         |> List.mapi ~f:(fun row_num { input; parsed; pool_key }  ->
@@ -200,14 +211,14 @@ module View = struct
               Pool.Signal.find_exn Model.digits_signal_pool pool_key
             in
             row row_num input parsed digits_s digits_update))
-      |> ReactiveData.RList.from_signal
+      |> RList.from_signal
     in
 
     let error_msg = model_s
       |> React.S.map (fun model -> match model.Model.error_msg with
         | None -> []
         | Some msg -> [Html.(span [txt msg])])
-      |> ReactiveData.RList.from_signal
+      |> RList.from_signal
       |> R.Html.div
     in
 
@@ -215,7 +226,7 @@ module View = struct
       <div>
         <div>|}[ input ]{|</div>
         <div class="error">|}[ error_msg ]{|</div>
-        |}[ R.Html.table rows ]{|
+        |}[ R.Html.table RList.(concat (singleton thead) tbody) ]{|
         <div>
           <p>Try an example:</p>
           |}[ examples ]{|
