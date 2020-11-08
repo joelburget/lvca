@@ -53,12 +53,16 @@ let olist ?classes:(classes=[]) elems =
 let r_olist ?classes:(classes=(React.S.const [])) elems =
   R.Html.(ol ~a:[a_class classes] elems)
 
-let dlist ?classes:(classes=[]) elems =
+let dlist
+  ?border:(border=false)
+  ?classes:(classes=[])
+  ?label:(label="")
+  elems =
   let elems = elems
     |> List.map ~f:(fun (k, v) -> Html.[ dt [txt k]; dd [v] ])
     |> List.concat
   in
-  Html.(dl ~a:[a_class classes] elems)
+  Html.dl ~a:(mk_a ~border ~classes ~label) elems
 
 (* let title = Html.h1 *)
 let header str = Html.(h2 [txt str])

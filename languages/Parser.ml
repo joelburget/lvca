@@ -215,7 +215,8 @@ module Direct = struct
     }
 
   and trace_snapshot =
-    { pos: int
+    { success: bool
+    ; pos: int
     ; parser: SourceRanges.t parser
     ; term_ctx: term_ctx
     ; parser_ctx: parser_ctx
@@ -224,8 +225,8 @@ module Direct = struct
 
   type t = direct
 
-  let mk_snapshot ~parser ~term_ctx ~parser_ctx ?snapshots:(snapshots=[]) pos
-    = { pos; parser; term_ctx; parser_ctx; snapshots }
+  let mk_snapshot ~result ~parser ~term_ctx ~parser_ctx ?snapshots:(snapshots=[]) pos
+    = { success = Result.is_ok result; pos; parser; term_ctx; parser_ctx; snapshots }
 
   let mk_error msg = Error (msg, None)
 
@@ -304,7 +305,9 @@ module Direct = struct
           let pos, snapshots, result =
             (translate_direct body).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
           in
-          let snapshot = mk_snapshot ~parser:body ~term_ctx ~parser_ctx ~snapshots pos0 in
+          let snapshot =
+            mk_snapshot ~result ~parser:body ~term_ctx ~parser_ctx ~snapshots pos0
+          in
           pos, [snapshot], result
         )
     }
@@ -317,7 +320,8 @@ module Direct = struct
           let pos, snapshots, result =
             (translate_direct parser).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
           in
-          let snapshot = mk_snapshot ~parser ~term_ctx ~parser_ctx ~snapshots pos0 in
+          let snapshot = mk_snapshot ~result ~parser ~term_ctx ~parser_ctx ~snapshots pos0
+          in
           let result = match result with
             | Ok tm -> mk_some tm
             | Error _ -> mk_none SourceRanges.empty
@@ -340,7 +344,9 @@ module Direct = struct
         let pos, snapshots, head_result =
           (translate_direct parser).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
         in
-        let snapshot = mk_snapshot ~parser ~term_ctx ~parser_ctx ~snapshots pos0 in
+        let snapshot =
+          mk_snapshot ~result:head_result ~parser ~term_ctx ~parser_ctx ~snapshots pos0
+        in
         match head_result with
         | Error msg -> Error (pos, snapshot :: snapshots, msg)
         | Ok tm ->
@@ -373,7 +379,9 @@ module Direct = struct
     let pos, snapshots, head_result =
       (translate_direct parser).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
     in
-    let snapshot = mk_snapshot ~parser ~term_ctx ~parser_ctx ~snapshots pos in
+    let snapshot =
+      mk_snapshot ~result:head_result ~parser ~term_ctx ~parser_ctx ~snapshots pos
+    in
     match head_result with
     | Error _ -> pos, [snapshot], Ok []
     | Ok tm ->
@@ -417,7 +425,8 @@ module Direct = struct
           let pos, snapshots, result =
             (translate_direct parser).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
           in
-          let snapshot = mk_snapshot ~parser ~term_ctx ~parser_ctx ~snapshots pos0 in
+          let snapshot = mk_snapshot ~result ~parser ~term_ctx ~parser_ctx ~snapshots pos0
+          in
           pos, [snapshot], result)
     }
   ;;
@@ -431,7 +440,7 @@ module Direct = struct
           in
           let pos1 = pos in
           let snapshot1 =
-            mk_snapshot ~parser:p1 ~term_ctx ~parser_ctx ~snapshots:snapshots1 pos0
+            mk_snapshot ~result ~parser:p1 ~term_ctx ~parser_ctx ~snapshots:snapshots1 pos0
           in
           let pos, snapshots, result = match result with
             | Error _ ->
@@ -439,7 +448,8 @@ module Direct = struct
                 (translate_direct p2).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
               in
               let snapshot2 =
-                mk_snapshot ~parser:p2 ~term_ctx ~parser_ctx ~snapshots:snapshots2 pos1
+                mk_snapshot ~result ~parser:p2 ~term_ctx ~parser_ctx ~snapshots:snapshots2
+                  pos1
               in
               pos, [snapshot1; snapshot2], result
             | _ -> pos, [snapshot1], result
@@ -474,7 +484,7 @@ module Direct = struct
                   run ~translate_direct ~term_ctx ~parser_ctx ~pos str
                 in
                 let snapshot =
-                  mk_snapshot ~parser ~term_ctx ~parser_ctx ~snapshots pre_pos
+                  mk_snapshot ~result ~parser ~term_ctx ~parser_ctx ~snapshots pre_pos
                 in
                 let continue = match result with Ok _ -> true | Error _ -> false in
                 (pos, continue), Some (snapshot, result))
@@ -525,7 +535,7 @@ module Direct = struct
               ~translate_direct ~term_ctx ~parser_ctx ~pos str
             in
             let snapshot =
-              mk_snapshot ~parser ~term_ctx ~parser_ctx ~snapshots pos
+              mk_snapshot ~result ~parser ~term_ctx ~parser_ctx ~snapshots pos
             in
             pos, [snapshot], result)
     }
@@ -564,7 +574,7 @@ module Direct = struct
            (if strlen > 50 then String.prefix str 47 ^ "..." else str))
       | Error _ as result -> result
     in
-    let snapshot = mk_snapshot ~parser ~term_ctx ~parser_ctx ~snapshots pos in
+    let snapshot = mk_snapshot ~result ~parser ~term_ctx ~parser_ctx ~snapshots pos in
     { snapshot; result }
  ;;
 end

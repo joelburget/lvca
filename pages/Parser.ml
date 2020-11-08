@@ -53,17 +53,17 @@ module Model = struct
   type t = parser_context list
 
   let initial_model = P.TestParsers.(
-    [ new_context char_count [new_test "cc"]
-    ; new_context str [new_test "str"; new_test "foo"]
-    ; new_context str_star [new_test ""; new_test "strstrstr"]
-    ; new_context str_plus [new_test ""; new_test "strstrstr"]
-    ; new_context alt [new_test "str"; new_test "foo"]
-    ; new_context sat_parser [new_test "c"; new_test "d"]
-    ; new_context ".*" [new_test "foo"]
-    ; new_context fix2
+    [ new_context fix2
       [ new_test "a"
       ; new_test "ab"
       ]
+    ; new_context str_star [new_test ""; new_test "strstrstr"]
+    ; new_context ".*" [new_test "foo"]
+    ; new_context char_count [new_test "cc"]
+    ; new_context str [new_test "str"; new_test "foo"]
+    ; new_context str_plus [new_test ""; new_test "strstrstr"]
+    ; new_context alt [new_test "str"; new_test "foo"]
+    ; new_context sat_parser [new_test "c"; new_test "d"]
     ])
 end
 
@@ -129,18 +129,12 @@ let view_term tm =
 
 let view_term_ctx ctx = ctx
   |> Map.to_alist
-  |> List.map ~f:(fun (name, tm) -> cols ~border:true ~label:"term"
-    [ txt name
-    ; view_term tm
-    ])
+  |> List.map ~f:(fun (name, tm) -> dlist ~label:"term" [ name, view_term tm ])
   |> rows ~label:"term-ctx"
 
 let view_parser_ctx ctx = ctx
   |> Map.to_alist
-  |> List.map ~f:(fun (name, p) -> cols ~border:true ~label:"parser"
-    [ txt name
-    ; view_parser p
-    ])
+  |> List.map ~f:(fun (name, p) -> dlist ~label:"parser" [ name, view_parser p ])
   |> rows ~label:"parser-ctx"
 
 let rec view_snapshots str snapshots =
@@ -152,34 +146,43 @@ let rec view_snapshots str snapshots =
   opened_s
     |> React.S.map (fun opened ->
       let onclick = handle_click (not opened) in
-      match List.length snapshots, opened with
-      | 0, _ -> []
-      | _, true ->
-        [ rows
-          [ (* TODO: div is to prevent button from taking up too much space *)
-            Html.div [button ~onclick "close subparser snapshots"]
-          ]
-        ; snapshots |> List.map ~f:(view_snapshot' str) |> olist
-        ]
-      | n, false ->
-        [ rows
+      match List.length snapshots with
+      | 0 -> []
+      | n ->
+        let msg =
+          if opened
+          then "close subparser snapshots"
+          else "open subparser snapshots"
+        in
+        let top_row = cols
           [ Html.(p [ txt (Caml.Printf.sprintf "This parser called %d other parsers" n)])
           ; (* TODO: div is to prevent button from taking up too much space *)
-            Html.div [button ~onclick "open subparser snapshots"]
+            Html.div [button ~onclick msg]
           ]
-        ])
+        in
+
+        if opened
+        then
+          [ top_row
+          ; snapshots |> List.map ~f:(view_snapshot' str) |> olist
+          ]
+        else [ top_row ])
+
     |> RList.from_signal
     |> r_rows ~border:true ~label:"view-snapshots"
 
-and view_snapshot str P.Direct.{ pos; parser; term_ctx; parser_ctx; snapshots } = dlist
-  (* ~label:"view-snapshot" *)
-  (* ~border:true *)
-  [ "parser", view_parser parser
-  ; "location", string_location ~str ~loc:pos
-  ; "term context", view_term_ctx term_ctx
-  ; "parser context", view_parser_ctx parser_ctx
-  ; "snapshots", view_snapshots str snapshots
-  ]
+and view_snapshot str P.Direct.{ success; pos; parser; term_ctx; parser_ctx; snapshots }
+  = dlist
+    ~classes:[if success then "success" else "error"]
+    (* ~label:"view-snapshot" *)
+    (* ~border:true *)
+    [ (* "result", Html.(span [txt (if success then "success" else "failure")]) *)
+      "parser", view_parser parser
+    ; "location", string_location ~str ~loc:pos
+    ; "term context", view_term_ctx term_ctx
+    ; "parser context", view_parser_ctx parser_ctx
+    ; "snapshots", view_snapshots str snapshots
+    ]
 
 module View = struct
   module Direct = P.Direct
@@ -204,7 +207,7 @@ module View = struct
         | Ok tm -> view_term tm
       in
       let trace =
-        rows ~border:false
+        rows ~border:true
           [ subheader "trace this parser's execution"
           ; view_snapshot test snapshot
           ]
@@ -263,7 +266,7 @@ module View = struct
         let parser_result_s = React.S.l2 view_parser_test parser_s test_s in
         let output_s = React.S.Pair.fst parser_result_s in
         let snapshot_s = React.S.Pair.snd parser_result_s in
-        rows
+        rows ~border:true
           [ cols
             [ test_input
             ; RHtml.div (RList.singleton_s output_s)
@@ -288,8 +291,9 @@ module View = struct
     let new_parser_handler _evt = update AddParser; false in
 
     rows
-      [ button ~onclick:new_parser_handler "create new parser"
-      ; RHtml.div (RList.from_signal context_elems_s)
+      [ subheader "parsers"
+      ; button ~onclick:new_parser_handler "create new parser"
+      ; r_rows (RList.from_signal context_elems_s)
       ]
 end
 

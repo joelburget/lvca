@@ -64,7 +64,7 @@ table.language_chart {
 }
 
 .string-location-before {
-  background-color: #0080002e;
+  background-color: #f2fff2;
 }
 
 .parser-display {
@@ -80,8 +80,12 @@ table.language_chart {
 
 /* components */
 
+.success {
+  background-color: #f2fff2;
+}
+
 .error {
-  background-color: #ff00002b;
+  background-color: #ffe1e1;
 }
 
 .cols {
