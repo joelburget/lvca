@@ -155,7 +155,7 @@ let rec view_snapshots str snapshots =
           else "open subparser snapshots"
         in
         let top_row = cols
-          [ Html.(p [ txt (Caml.Printf.sprintf "This parser called %d other parsers" n)])
+          [ Html.(p [txt (Caml.Printf.sprintf "This parser called %d other parsers" n)])
           ; (* TODO: div is to prevent button from taking up too much space *)
             Html.div [button ~onclick msg]
           ]
@@ -191,11 +191,8 @@ module View = struct
     match parser with
     | Model.NoInputYet | FailedParse _ -> Components.empty_elem, Components.empty_elem
     | Parsed parser ->
-      let parser' = P.map_loc
-        ~f:(SourceRanges.of_opt_range ~buf:"TODO")
-        parser
-      in
-      let P.Direct.{ snapshot; result } = Direct.parse_direct parser' test in
+      let parser = P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"TODO") parser in
+      let P.Direct.{ snapshot; result } = Direct.parse_direct parser test in
       let result = match result with
         | Error (msg, tm_opt) ->
           let tm_str = match tm_opt with
