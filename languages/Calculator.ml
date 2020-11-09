@@ -187,6 +187,7 @@ let%test_module "Evaluation" =
       go "min 1 2";
       go "max 1 2";
       go "1.2";
+      go "(1.356 + 1.355) / 2.0";
       [%expect
         {|
       2.0000000000
@@ -199,6 +200,7 @@ let%test_module "Evaluation" =
       1.0000000000
       2.0000000000
       1.2000000000
+      1.3555000000
       |}]
     ;;
   end)

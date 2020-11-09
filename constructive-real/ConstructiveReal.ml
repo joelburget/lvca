@@ -533,7 +533,8 @@ let bound_log2 : int32 -> int32 =
 
 let of_bigint : Z.t -> t = fun x -> of_cr (IntCR x)
 let of_int : int -> t = fun x -> x |> Z.of_int |> of_bigint
-let of_int32 : int32 -> t = fun x -> x |> Int32.to_int_exn |> of_int
+let of_int32 : int32 -> t = fun x -> x |> Z.of_int32 |> of_bigint
+let of_int64 : int64 -> t = fun x -> x |> Z.of_int64 |> of_bigint
 let one = of_int 1
 let minus_one = of_int (-1)
 let two = of_int 2
@@ -542,11 +543,11 @@ let three = of_int 3
 let of_float n =
   (* TODO: throw for NaN / infinite *)
   let negative = Float.ieee_negative n in
-  let pre_mantissa = Int63.to_int_exn (Float.ieee_mantissa n) in
+  let pre_mantissa: int64 = Int63.to_int64 (Float.ieee_mantissa n ) in
   let exp = Int.(Float.ieee_exponent n - 1023) |> Int32.of_int_exn in
   let p1 = shift_left one exp in
   let p2 = shift_left one Int32.minus_52 in
-  let mantissa = add one (multiply (of_int pre_mantissa) p2) in
+  let mantissa = add one (multiply (of_int64 pre_mantissa) p2) in
   let result = multiply p1 mantissa in
   if negative then negate result else result
 ;;
