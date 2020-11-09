@@ -121,7 +121,7 @@ let view_parser parser =
   let elt, formatter = RangeFormatter.mk selection_s in
   Fmt.pf formatter "%a" P.pp_plain parser;
   Fmt.flush formatter ();
-  rows ~classes:["parser-display"] [elt]
+  rows ~border:true [elt]
 
 let view_term tm =
   let str = Fmt.str "parsed: %a" (Nominal.pp_term_ranges Primitive.pp) tm in
@@ -171,7 +171,7 @@ let rec view_snapshots str snapshots =
     |> RList.from_signal
     |> r_rows ~border:true ~label:"view-snapshots"
 
-and view_snapshot str P.Direct.{ success; pos; parser; term_ctx; parser_ctx; snapshots }
+and view_snapshot str P.Direct.{ success; pos; parser; snapshots; _ }
   = dlist
     ~classes:[if success then "success" else "error"]
     (* ~label:"view-snapshot" *)
@@ -179,8 +179,8 @@ and view_snapshot str P.Direct.{ success; pos; parser; term_ctx; parser_ctx; sna
     [ (* "result", Html.(span [txt (if success then "success" else "failure")]) *)
       "parser", view_parser parser
     ; "location", string_location ~str ~loc:pos
-    ; "term context", view_term_ctx term_ctx
-    ; "parser context", view_parser_ctx parser_ctx
+    (* ; "term context", view_term_ctx term_ctx *)
+    (* ; "parser context", view_parser_ctx parser_ctx *)
     ; "snapshots", view_snapshots str snapshots
     ]
 
@@ -277,13 +277,12 @@ module View = struct
       )
     in
 
-    Html.(div
-      ~a:[a_class ["parser-context"]]
+    Html.div
       [ parser_defn_input
       ; RHtml.div (RList.from_signal parser_error_elem)
       ; RHtml.div test_elems
       ; new_test_button
-      ])
+      ]
 
   let view model_s signal_update =
     let update evt = Controller.update evt model_s signal_update in
