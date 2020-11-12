@@ -11,6 +11,8 @@ module RHtml = Js_of_ocaml_tyxml.Tyxml_js.R.Html
 
 open Components
 
+type trace_snapshot = P.Direct.trace_snapshot
+
 let parse_parser str = ParseUtil.parse_string (ParseParser.t ParseCore.term) str
 
 module Model = struct
@@ -111,22 +113,24 @@ let string_location ~str ~loc =
   [%html{|
   <div class="string-location">
     <span class="string-location-before">|}[Html.txt before]{|</span>
+    <div class="string-location-cursor"></div>
     <span class="string-location-after">|}[Html.txt after]{|</span>
   </div>
   |}]
 
 (* TODO: reactive version *)
-let view_parser parser =
+let view_parser parser success =
   let selection_s = React.S.const None in
   let elt, formatter = RangeFormatter.mk selection_s in
   Fmt.pf formatter "%a" P.pp_plain parser;
   Fmt.flush formatter ();
-  rows ~border:true [elt]
+  rows ~classes:[if success then "success" else "error"] ~border:true [elt]
 
 let view_term tm =
   let str = Fmt.str "parsed: %a" (Nominal.pp_term_ranges Primitive.pp) tm in
   Html.div [txt str]
 
+  (*
 let view_term_ctx ctx = ctx
   |> Map.to_alist
   |> List.map ~f:(fun (name, tm) -> dlist ~label:"term" [ name, view_term tm ])
@@ -136,52 +140,158 @@ let view_parser_ctx ctx = ctx
   |> Map.to_alist
   |> List.map ~f:(fun (name, p) -> dlist ~label:"parser" [ name, view_parser p ])
   |> rows ~label:"parser-ctx"
+  *)
 
-let rec view_snapshots str snapshots =
-  let opened_s, opened_update = React.S.create false in
-  let handle_click v _evt = opened_update v; false in
+let path_controls _path_s _path_h = rows
+  []
 
-  let view_snapshot' str p = Html.li [view_snapshot str p] in
+let snapshot_advanced_view str P.Direct.{ pre_pos; post_pos; _ } =
+  let n = post_pos - pre_pos in
+  let chars = match n with
+    | 1 -> "1 character"
+    | _ -> Printf.sprintf "%d characters" n
+  in
 
-  opened_s
-    |> React.S.map (fun opened ->
-      let onclick = handle_click (not opened) in
-      match List.length snapshots with
-      | 0 -> []
-      | n ->
-        let msg =
-          if opened
-          then "close subparser snapshots"
-          else "open subparser snapshots"
-        in
-        let top_row = cols
-          [ Html.(p [txt (Caml.Printf.sprintf "This parser called %d other parsers" n)])
-          ; (* TODO: div is to prevent button from taking up too much space *)
-            Html.div [button ~onclick msg]
+  Html.(div
+    [ txt (" advances the input " ^ chars ^ " to ")
+    ; div
+        ~a:[a_class ["inline-block"]]
+        [string_location ~str ~loc:post_pos]
+    ])
+
+let snapshot_controls str snapshots path_h =
+  let snapshot_buttons = snapshots
+    |> List.mapi ~f:(fun i snapshot ->
+      let P.Direct.{ success; parser; _ } = snapshot in
+      let onclick _ = RList.snoc i path_h; false in
+      Html.li
+        [ cols
+          [ button ~onclick "view"
+          ; view_parser parser success
+          ; snapshot_advanced_view str snapshot
           ]
-        in
+        ])
+  in
 
-        if opened
-        then
-          [ top_row
-          ; snapshots |> List.map ~f:(view_snapshot' str) |> olist
-          ]
-        else [ top_row ])
+  olist snapshot_buttons
 
+let view_controls str path_s path_h snapshots =
+  let n_snaps = List.length snapshots in
+  let msg = match n_snaps with
+    | 0 -> "this parser calls no subparsers"
+    | 1 -> "this parser calls 1 subparser"
+    | _ -> Caml.Printf.sprintf "this parser calls %n subparsers" n_snaps
+  in
+
+  rows
+    [ path_controls path_s path_h
+    ; subheader msg
+    ; snapshot_controls str snapshots path_h
+    ]
+
+type path_traversal =
+  { bottom_snapshot: trace_snapshot
+  ; stack: trace_snapshot list
+  }
+
+(* Traverse the path, returning the snapshot at the bottom and all the snapshots along the
+ * way. *)
+let traverse_path ~root ~path =
+  let current_snapshot = ref root in
+  let stack = path
+    |> List.map ~f:(fun i ->
+      let snapshot = !current_snapshot in
+      let P.Direct.{ snapshots; _ } = snapshot in
+      current_snapshot := List.nth_exn snapshots i;
+      snapshot
+    )
+  in
+  { bottom_snapshot = !current_snapshot; stack }
+
+let view_stack = fun root path_h path_s ->
+
+    let elems = path_s
+      |> RList.signal
+      |> React.S.map (fun path -> (traverse_path ~root ~path).stack
+        |> List.mapi ~f:(fun n snapshot ->
+          let P.Direct.{ parser; success; _ } = snapshot in
+          let elem = view_parser parser success in
+          let onclick _ = RList.set path_h (List.take path n); false in
+          let button = button ~onclick "return here" in
+          Html.li [cols [button; elem]])
+        |> olist
+      )
+      |> RList.singleton_s
+    in
+
+    RHtml.div elems
+
+let view_root_snapshot str root =
+  let path_s, path_h = RList.create [] in
+
+  let current_snapshot_s = path_s
+    |> RList.signal
+    |> React.S.map (fun path -> (traverse_path ~root ~path).bottom_snapshot)
+  in
+
+  let stack_view = view_stack root path_h path_s in
+
+  let stack_section = path_s
+    |> RList.signal
+    |> React.S.map (fun path ->
+      [ subheader "stack"
+      ; if List.length path > 0 then stack_view else txt "(empty)"
+      ]
+    )
     |> RList.from_signal
-    |> r_rows ~border:true ~label:"view-snapshots"
+  in
 
-and view_snapshot str P.Direct.{ success; pos; parser; snapshots; _ }
-  = dlist
-    ~classes:[if success then "success" else "error"]
-    (* ~label:"view-snapshot" *)
-    (* ~border:true *)
-    [ (* "result", Html.(span [txt (if success then "success" else "failure")]) *)
-      "parser", view_parser parser
-    ; "location", string_location ~str ~loc:pos
-    (* ; "term context", view_term_ctx term_ctx *)
-    (* ; "parser context", view_parser_ctx parser_ctx *)
-    ; "snapshots", view_snapshots str snapshots
+  let controls_s = current_snapshot_s
+    |> React.S.map (fun P.Direct.{ snapshots; _ } ->
+        view_controls str path_s path_h snapshots)
+  in
+
+  let parser_view = current_snapshot_s
+    |> React.S.map (fun P.Direct.{ success; parser; _ } -> view_parser parser success)
+  in
+
+  let pre_loc_view = current_snapshot_s
+    |> React.S.map (fun P.Direct.{ pre_pos; _ } -> string_location ~str ~loc:pre_pos)
+    |> RList.singleton_s
+    |> RHtml.(div ~a:[a_class (React.S.const ["inline-block"])])
+  in
+
+  let advanced_n_s = current_snapshot_s |> React.S.map (snapshot_advanced_view str) in
+
+  (* TODO: is there a cleaner way to do this? *)
+  let mk_div r_elem = RHtml.div (RList.singleton_s r_elem) in
+
+  let status_view = current_snapshot_s
+    |> React.S.map (fun P.Direct.{ success; _ } -> Html.(span
+        ~a:[a_class [if success then "success" else "error"]]
+        [ if success
+          then txt "succeeds"
+          else txt "fails"
+        ]))
+    |> React.S.map List.return
+    |> RList.from_signal
+    |> RHtml.span
+  in
+
+  rows
+    [ RHtml.div stack_section
+    ; subheader "parser"
+    ; mk_div parser_view
+    ; cols [ Html.(div [ span [ txt "The input to this parser is " ]]); pre_loc_view]
+    ; Html.(div
+      [ span [ txt "This parser " ]
+      ; status_view
+      ; txt " and "
+      ; RHtml.div
+        ~a:[a_class ["inline-block"]]
+        (RList.singleton_s advanced_n_s) (* TODO: only if success *)
+      ])
+    ; mk_div controls_s
     ]
 
 module View = struct
@@ -206,7 +316,7 @@ module View = struct
       let trace =
         rows ~border:true
           [ subheader "trace this parser's execution"
-          ; view_snapshot test snapshot
+          ; view_root_snapshot test snapshot
           ]
       in
       result, trace

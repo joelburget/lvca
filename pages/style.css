@@ -58,10 +58,21 @@ table.language_chart {
 
 .string-location {
   font-family: monospace;
+  background-color: white;
+  margin: 0 5px;
 }
 
 .string-location-before {
-  background-color: #f2fff2;
+  color: #444;
+}
+
+.string-location-cursor {
+  position: absolute;
+  display: inline-block;
+  width: 2px;
+  height: 20px;
+  background-color: black;
+  margin-top: -2px;
 }
 
 /* components */
@@ -86,4 +97,8 @@ table.language_chart {
 
 .border {
   border: 2px solid black;
+}
+
+.inline-block {
+  display: inline-block;
 }

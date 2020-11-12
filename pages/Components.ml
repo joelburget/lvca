@@ -67,6 +67,7 @@ let dlist
 (* let title = Html.h1 *)
 let header str = Html.(h2 [txt str])
 let subheader str = Html.(h3 [txt str])
+let r_subheader str_s = Html.h3 [R.Html.txt str_s]
 
 let txt = Html.txt
 
