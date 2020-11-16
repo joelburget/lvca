@@ -226,7 +226,7 @@ module View = struct
       <div>
         <div>|}[ input ]{|</div>
         <div class="error">|}[ error_msg ]{|</div>
-        |}[ R.Html.table RList.(concat (singleton thead) tbody) ]{|
+        |}[ Components.table thead tbody ]{|
         <div>
           <p>Try an example:</p>
           |}[ examples ]{|

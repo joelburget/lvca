@@ -29,6 +29,7 @@ module Model = struct
 
   type parser_context =
     { parser_str_key: Pool.Signal.key
+    ; tests_expanded: bool React.signal
     ; evaluations_key: Pool.RList.key
     }
 
@@ -47,6 +48,7 @@ module Model = struct
     let evaluations_key = Pool.RList.add evaluations_pool (RList.create lst) in
     { parser_str_key = Pool.Signal.add parser_defn_signal_pool
         (React.S.create (create_parser_defn parser_str))
+    ; tests_expanded = true
     ; evaluations_key
     }
 
@@ -108,15 +110,28 @@ module Controller = struct
 end
 
 let string_location ~str ~loc =
-  let before = String.subo str ~len:loc in
-  let after = String.subo str ~pos:loc in
-  [%html{|
-  <div class="string-location">
-    <span class="string-location-before">|}[Html.txt before]{|</span>
-    <div class="string-location-cursor"></div>
-    <span class="string-location-after">|}[Html.txt after]{|</span>
-  </div>
-  |}]
+  if String.(str = "")
+  then
+    [%html{|<div class="font-mono mx-2 .bg-gray-100 underline">(empty string)</div>|}]
+  else
+    let before = String.subo str ~len:loc in
+    let after = String.subo str ~pos:loc in
+    [%html{|
+    <div class="flex flex-row font-mono mx-2 .bg-gray-100 underline">
+      <div class="inline-block">
+        <span class="text-gray-500">|}[Html.txt before]{|</span>
+      </div>
+      <div style="width: 0" class="inline-block">
+        <div
+           style="width: 2px; margin-top: 0.125rem"
+           class="h-5 relative bg-black"
+        ></div>
+      </div>
+      <div class="inline-block">
+        <span>|}[Html.txt after]{|</span>
+      </div>
+    </div>
+    |}]
 
 (* TODO: reactive version *)
 let view_parser parser success =
@@ -124,7 +139,7 @@ let view_parser parser success =
   let elt, formatter = RangeFormatter.mk selection_s in
   Fmt.pf formatter "%a" P.pp_plain parser;
   Fmt.flush formatter ();
-  rows ~classes:[if success then "success" else "error"] ~border:true [elt]
+  Html.(div ~a:[a_class [if success then "success" else "error"]] [elt])
 
 let view_term tm =
   let str = Fmt.str "parsed: %a" (Nominal.pp_term_ranges Primitive.pp) tm in
@@ -153,27 +168,36 @@ let snapshot_advanced_view str P.Direct.{ pre_pos; post_pos; _ } =
   in
 
   Html.(div
-    [ txt (" advances the input " ^ chars ^ " to ")
-    ; div
-        ~a:[a_class ["inline-block"]]
-        [string_location ~str ~loc:post_pos]
+    [ inline_block (txt (" advances the input " ^ chars ^ " to "))
+    ; inline_block (string_location ~str ~loc:post_pos)
     ])
 
 let snapshot_controls str snapshots path_h =
-  let snapshot_buttons = snapshots
+
+  let header = [%html{|
+    <tr>
+      <td class="border-2">parser</td>
+      <td class="border-2">action</td>
+      <td class="border-2"></td>
+    </tr>
+  |}]
+  in
+
+  let body = snapshots
     |> List.mapi ~f:(fun i snapshot ->
       let P.Direct.{ success; parser; _ } = snapshot in
       let onclick _ = RList.snoc i path_h; false in
-      Html.li
-        [ cols
-          [ button ~onclick "view"
-          ; view_parser parser success
-          ; snapshot_advanced_view str snapshot
-          ]
-        ])
+      let btn = button ~onclick "view" in
+
+      Html.(tr
+        [ td ~a:[a_class ["border-2"]] [view_parser parser success]
+        ; td ~a:[a_class ["border-2"]] [snapshot_advanced_view str snapshot]
+        ; td ~a:[a_class ["border-2"]] [btn]
+        ]))
+    |> RList.const
   in
 
-  olist snapshot_buttons
+  table header body
 
 let view_controls str path_s path_h snapshots =
   let n_snaps = List.length snapshots in
@@ -183,11 +207,15 @@ let view_controls str path_s path_h snapshots =
     | _ -> Caml.Printf.sprintf "this parser calls %n subparsers" n_snaps
   in
 
-  rows
+  let always_visible_rows =
     [ path_controls path_s path_h
     ; subheader msg
-    ; snapshot_controls str snapshots path_h
     ]
+  in
+
+  rows (if List.length snapshots > 0
+    then Lvca_util.List.snoc always_visible_rows (snapshot_controls str snapshots path_h)
+    else always_visible_rows)
 
 type path_traversal =
   { bottom_snapshot: trace_snapshot
@@ -210,21 +238,22 @@ let traverse_path ~root ~path =
 
 let view_stack = fun root path_h path_s ->
 
-    let elems = path_s
+    path_s
       |> RList.signal
       |> React.S.map (fun path -> (traverse_path ~root ~path).stack
         |> List.mapi ~f:(fun n snapshot ->
           let P.Direct.{ parser; success; _ } = snapshot in
           let elem = view_parser parser success in
           let onclick _ = RList.set path_h (List.take path n); false in
-          let button = button ~onclick "return here" in
-          Html.li [cols [button; elem]])
-        |> olist
+          (* let button = button ~onclick "return here" in *)
+          let btn = Html.(div
+            ~a:[a_onclick onclick; a_class ["button"]]
+            [elem])
+          in
+          Html.(tr [td [btn]]))
       )
-      |> RList.singleton_s
-    in
-
-    RHtml.div elems
+      |> RList.from_signal
+      |> RHtml.table
 
 let view_root_snapshot str root =
   let path_s, path_h = RList.create [] in
@@ -284,9 +313,9 @@ let view_root_snapshot str root =
     ; mk_div parser_view
     ; cols [ Html.(div [ span [ txt "The input to this parser is " ]]); pre_loc_view]
     ; Html.(div
-      [ span [ txt "This parser " ]
-      ; status_view
-      ; txt " and "
+      [ inline_block (span [ txt "This parser " ])
+      ; inline_block status_view
+      ; inline_block (txt " and ")
       ; RHtml.div
         ~a:[a_class ["inline-block"]]
         (RList.singleton_s advanced_n_s) (* TODO: only if success *)
@@ -313,20 +342,21 @@ module View = struct
           error_msg tm_str
         | Ok tm -> view_term tm
       in
-      let trace =
-        rows ~border:true
-          [ subheader "trace this parser's execution"
-          ; view_root_snapshot test snapshot
-          ]
+      let trace = rows ~border:true
+        [ subheader "trace this parser's execution"
+        ; view_root_snapshot test snapshot
+        ]
       in
       result, trace
 
-  let mk_context update parser_no Model.{ parser_str_key; evaluations_key } =
+  let mk_context update parser_no
+    Model.{ parser_str_key; tests_expanded; evaluations_key } =
     let evaluations_l, _ = Pool.RList.find_exn Model.evaluations_pool evaluations_key in
     let parser_s, _ =
       Pool.Signal.find_exn Model.parser_defn_signal_pool parser_str_key
     in
     let parser_defn_input, parser_defn_input_event = Common.mk_multiline_input
+      ~rows:(Some 2)
       (React.S.Pair.fst parser_s)
     in
 
@@ -384,11 +414,16 @@ module View = struct
       )
     in
 
-    Html.div
-      [ parser_defn_input
-      ; RHtml.div (RList.from_signal parser_error_elem)
-      ; RHtml.div test_elems
-      ; new_test_button
+    Html.tr
+      [ Html.td
+        [ parser_defn_input
+        ; Html.table
+          [ Html.(tr ~a:[a_class ["border-2"]]
+            [RHtml.td (RList.from_signal parser_error_elem)])
+          ; Html.(tr ~a:[a_class ["border-2"]] [RHtml.td test_elems])
+          ; Html.(tr ~a:[a_class ["border-2"]] [Html.td [new_test_button]])
+          ]
+        ]
       ]
 
   let view model_s signal_update =
@@ -398,8 +433,8 @@ module View = struct
 
     rows
       [ subheader "parsers"
-      ; button ~onclick:new_parser_handler "create new parser"
-      ; r_rows (RList.from_signal context_elems_s)
+      ; Html.div [button ~onclick:new_parser_handler "create new parser"]
+      ; RHtml.table (RList.from_signal context_elems_s)
       ]
 end
 

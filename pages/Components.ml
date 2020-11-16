@@ -1,5 +1,6 @@
 open Base
 open Js_of_ocaml_tyxml.Tyxml_js
+open ReactiveData
 
 let empty_elem = Html.span []
 
@@ -7,7 +8,7 @@ let error_msg msg = [%html{|<div class="error">|}[Html.txt msg]{|</div>|}]
 
 let mk_a ~border ~classes ~label =
   let classes = if border
-    then "border" :: classes
+    then "border-2" :: classes
     else classes
   in
   let classes = Html.a_class classes in
@@ -17,10 +18,10 @@ let mk_a ~border ~classes ~label =
 
 let rows
   ?border:(border=false)
-  ?classes:(classes=[])
+  ?classes:(classes=["ml-2"])
   ?label:(label="")
   elems =
-  Html.div ~a:(mk_a ~border ~classes:("rows" :: classes) ~label) elems
+  Html.div ~a:(mk_a ~border ~classes:("flex" :: "flex-col" :: classes) ~label) elems
 
 let r_rows
   ?border:(border=false)
@@ -28,8 +29,8 @@ let r_rows
   ?label:(label="")
   elems =
   let classes = classes
-    |> React.S.map (List.cons "rows")
-    |> React.S.map (fun classes -> if border then "border" :: classes else classes)
+    |> React.S.map (List.append ["flex"; "flex-col"])
+    |> React.S.map (fun classes -> if border then "border-2" :: classes else classes)
   in
   let a = match label with
     | "" -> [R.Html.a_class classes]
@@ -45,7 +46,13 @@ let cols
   ?classes:(classes=[])
   ?label:(label="")
   elems =
-  Html.div ~a:(mk_a ~border ~classes:("cols" :: classes) ~label) elems
+  Html.div ~a:(mk_a ~border ~classes:("flex" :: "flex-row" :: classes) ~label) elems
+
+let ulist ?classes:(classes=[]) elems =
+  Html.(ul ~a:[a_class classes] elems)
+
+let r_ulist ?classes:(classes=(React.S.const [])) elems =
+  R.Html.(ul ~a:[a_class classes] elems)
 
 let olist ?classes:(classes=[]) elems =
   Html.(ol ~a:[a_class classes] elems)
@@ -71,6 +78,39 @@ let r_subheader str_s = Html.h3 [R.Html.txt str_s]
 
 let txt = Html.txt
 
+let button_classes =
+  [ "px-2"
+  ; "border-2"
+  ; "border-blue-800"
+  ; "bg-transparent"
+  ; "hover:bg-blue-700"
+  ; "text-blue-800"
+  ; "hover:text-white"
+  ]
+
 (* TODO: automatically return false? *)
-let button ~onclick str =
-  Html.(button ~a:[a_onclick onclick] [txt str])
+let button ~onclick str = Html.(button
+  ~a:[a_onclick onclick; a_class button_classes]
+  [txt str])
+
+let r_button ~onclick str_s = R.Html.(button
+  ~a:[a_onclick onclick; a_class (React.S.const button_classes)]
+  (str_s |> React.S.map txt |> RList.singleton_s))
+
+let table header body = R.Html.table RList.(concat (singleton header) body)
+
+let inline_block x = Html.(div ~a:[a_class ["inline-block"]] [x])
+
+let toggle
+  ~visible_text
+  ~hidden_text
+  visible_s
+  =
+    let e, set_e = React.E.create () in
+    let onclick _evt = set_e (not (React.S.value visible_s)); false in
+    let text_s = visible_s
+      |> React.S.map (function
+        | true -> visible_text
+        | false -> hidden_text)
+    in
+    e, r_button ~onclick text_s

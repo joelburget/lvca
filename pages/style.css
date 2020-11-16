@@ -54,51 +54,8 @@ table.language_chart {
   font-family: monospace;
 }
 
-/* parser */
-
-.string-location {
-  font-family: monospace;
-  background-color: white;
-  margin: 0 5px;
-}
-
-.string-location-before {
-  color: #444;
-}
-
-.string-location-cursor {
-  position: absolute;
-  display: inline-block;
-  width: 2px;
-  height: 20px;
-  background-color: black;
-  margin-top: -2px;
-}
-
 /* components */
 
-.success {
-  background-color: #f2fff2;
-}
-
-.error {
-  background-color: #ffe1e1;
-}
-
-.cols {
-  display: flex;
-  flex-direction: row;
-}
-
-.rows {
-  display: flex;
-  flex-direction: column;
-}
-
-.border {
-  border: 2px solid black;
-}
-
-.inline-block {
-  display: inline-block;
+.button {
+  cursor: pointer;
 }
