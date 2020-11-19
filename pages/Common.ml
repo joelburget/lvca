@@ -115,42 +115,68 @@ let mk_single_line_input ?autofocus:(autofocus=true) input_s =
   let open Js_of_ocaml in
   let open Tyxml_js in
 
-    let input_event, signal_input_event = React.E.create () in
+  let updated_s, update_updated = React.S.create false in
 
-    let input_value = React.S.value input_s in
+  let input_event, signal_input_event = React.E.create () in
 
-    let input = Html.(input
-      ~a:(
-        [a_input_type `Text ; a_value input_value; a_class ["font-mono"; "border-2"]] @
-        (if autofocus then [a_autofocus ()] else []))
-      ()
+  let input_value = React.S.value input_s in
+
+  let input = Html.(input
+    ~a:(
+      [a_input_type `Text ; a_value input_value; a_class ["font-mono"; "border-2"]] @
+      (if autofocus then [a_autofocus ()] else []))
+    ()
+  )
+  in
+
+  let updated = updated_s
+    |> React.S.map (function
+      | true -> "updated (press Enter to re-evaluate)"
+      | false -> ""
     )
-    in
-    let input_dom = To_dom.of_input input in
+    |> R.Html.txt
+  in
 
-    bind_event Ev.keydowns input_dom (fun evt ->
-      let key_name = evt##.code
-        |> Js.Optdef.to_option
-        |> Option.value_exn
-        |> Js.to_string
-      in
-      let result = match key_name with
-        | "Enter" -> (
-          Dom.preventDefault evt;
-          signal_input_event (Js.to_string input_dom##.value)
-        )
-        | _ -> ()
-      in
-      Lwt.return result
-    );
+  let result = [%html{|
+    <div>
+      |}[input]{|
+      |}[updated]{|
+    </div>
+    |}]
+  in
 
-    let (_: unit React.event) = input_s
-      (* Create an event when the input has changed *)
-      |> React.S.map ~eq:Caml.(=) Fn.id
-      |> React.S.changes
-      |> React.E.map (fun s -> input_dom##.value := Js.string s)
+  let input_dom = To_dom.of_input input in
+
+  bind_event Ev.inputs input_dom (fun _evt ->
+    update_updated true;
+    Lwt.return ()
+  );
+
+  bind_event Ev.keydowns input_dom (fun evt ->
+    let key_name = evt##.code
+      |> Js.Optdef.to_option
+      |> Option.value_exn
+      |> Js.to_string
     in
-    input, input_event
+    let _ : unit = match key_name with
+      | "Enter" -> (
+        Dom.preventDefault evt;
+        update_updated false;
+        signal_input_event (Js.to_string input_dom##.value)
+      )
+      | _ -> ()
+    in
+    Lwt.return ()
+  );
+
+  let (_: unit React.event) = input_s
+    (* Create an event when the input has changed *)
+    |> React.S.map ~eq:Caml.(=) Fn.id
+    |> React.S.changes
+    |> React.E.map (fun s -> input_dom##.value := Js.string s)
+  in
+
+  result, input_event
 
 let mk_output
   (elt_s : [ `Code ] Tyxml_js.To_dom.elt React.signal) =

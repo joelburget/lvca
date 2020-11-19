@@ -27,9 +27,6 @@ parser :=
   // alternative
   | alt(parser(); parser())
 
-  // monad
-  | return(c_term())
-
   | sequence(n_term()*. c_term(); parser()*)
 |}
 ;;
@@ -63,8 +60,7 @@ type 'loc t =
   | Fix of 'loc * string * 'loc t
   (* alternative *)
   | Alt of 'loc * 'loc t * 'loc t
-  | Return of 'loc * 'loc c_term
-  | Sequence of 'loc * string list * 'loc c_term * 'loc t list
+  | Sequence of 'loc * (string option * 'loc t) list * 'loc c_term
   | Identifier of 'loc * string
 
 let location = function
@@ -80,8 +76,7 @@ let location = function
   | Many1 (loc, _)
   | Fix (loc, _, _)
   | Alt (loc, _, _)
-  | Return (loc, _)
-  | Sequence (loc, _, _, _)
+  | Sequence (loc, _, _)
   | Identifier (loc, _)
   -> loc
 
@@ -100,9 +95,12 @@ let rec map_loc ~f =
   | Many1 (loc, p) -> Many1 (f loc, map_loc ~f p)
   | Fix (loc, s, p) -> Fix (f loc, s, map_loc ~f p)
   | Alt (loc, p1, p2) -> Alt (f loc, map_loc ~f p1, map_loc ~f p2)
-  | Return (loc, tm) -> Return (f loc, cf tm)
-  | Sequence (loc, ss, tm, ps)
-  -> Sequence (f loc, ss, cf tm, List.map ps ~f:(map_loc ~f))
+  | Sequence (loc, ps, tm)
+  ->
+    let ps' = ps
+      |> List.map ~f:(fun (name, p) -> name, map_loc ~f p)
+    in
+    Sequence (f loc, ps', cf tm)
   | Identifier (loc, s) -> Identifier (f loc, s)
 
 let erase = map_loc ~f:(fun _ -> ())
@@ -149,20 +147,18 @@ let pp_generic ~open_loc ~close_loc ppf p =
     | Alt (_, t1, t2) ->
       (fun ppf -> pf ppf "@[<2>%a@ |@ %a@]" (go (Int.succ alt_prec)) t1 (go alt_prec) t2),
       alt_prec
-    | Return (_, tm) ->
-      (fun ppf -> pf ppf "@[<2>return %a@]" core tm), app_prec
-    | Sequence (_, names, p, ps) ->
-      let formatter ppf =
-      pf
+    | Sequence (_, ps, p) ->
+      let named_parser ppf (opt_name, p) = match opt_name with
+        | None -> pf ppf "%a" (go 0) p
+        | Some name -> pf ppf "%s:%a" name (go 0) p
+      in
+      let formatter ppf = pf
         ppf
-        (* TODO: consistent binding style between sequence, fix, and satisfy *)
-        "@[<2>sequence (@[%a. %a@]) [%a]@]"
-        Fmt.(list ~sep:(any ".@ ") string)
-        names
+        "%a -> %a"
+        Fmt.(list ~sep:(any ".@ ") named_parser)
+        ps
         core
         p
-        Fmt.(list ~sep:comma (go 0))
-        ps
       in
       formatter, app_prec
     | Identifier (_, name) -> (fun ppf -> pf ppf "%s" name), atom_prec
@@ -468,15 +464,8 @@ module Direct = struct
     }
   ;;
 
-  let return tm =
-    { run =
-        (fun ~translate_direct:_ ~term_ctx ~parser_ctx:_ ~pos _str ->
-          let result = Core.eval_ctx term_ctx tm in
-          pos, [], Result.map_error result ~f:(map_snd ~f:(fun tm -> Some tm)))
-    }
-  ;;
-
-  let liftn names tm ps =
+  let liftn named_ps tm =
+    let names, ps = List.unzip named_ps in
     { run =
         (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
           (* Run through each subparser. We end up with
@@ -521,8 +510,10 @@ module Direct = struct
                    (List.length xs))
             | Ok name_vals ->
               let term_ctx = name_vals
-                |> List.fold ~init:term_ctx ~f:(fun ctx (key, tm) ->
-                       Map.set ctx ~key ~data:tm)
+                |> List.fold ~init:term_ctx ~f:(fun ctx (key_opt, tm) ->
+                  match key_opt with
+                    | None -> ctx
+                    | Some key -> Map.set ctx ~key ~data:tm)
               in
               let result =
                 Core.eval_ctx term_ctx tm
@@ -564,8 +555,7 @@ module Direct = struct
     | Many1 (_, t) -> many1 t
     | Fix (_, name, p) -> fix name p
     | Alt (_, t1, t2) -> alt t1 t2
-    | Return (_, tm) -> return tm
-    | Sequence (_, names, tm, ps) -> liftn names tm ps
+    | Sequence (_, ps, tm) -> liftn ps tm
     | Identifier (_, name) -> identifier name
   ;;
 
@@ -596,7 +586,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   open Parsers
 
   let keywords : string list =
-    [ "satisfy"; "let"; "in"; "fail"; "sequence"; "return"; "fix" ]
+    [ "satisfy"; "let"; "in"; "fail"; "fix" ]
   ;;
 
   let keyword : string Parsers.t = keywords |> List.map ~f:string |> choice
@@ -650,25 +640,9 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
                     (string "->")
                     parser))
             <?> "fix"
-          ; (string "sequence" >>== fun ~pos:kw_pos _ -> lift2
-             (fun (names, body) (components, pos) ->
-               let pos = OptRange.union kw_pos pos in
-               Sequence (pos, names, body, components))
-             (parens
-                (lift2
-                   (fun names body -> names, body)
-                   (many (Parsers.identifier <* char '.'))
-                   c_term))
-             (attach_pos (brackets (sep_by1 (char ',') parser))))
-            <?> "sequence"
-          ; (string "return" >>== fun ~pos:kw_pos _ ->
-            c_term >>|| fun ~pos tm ->
-            let pos = OptRange.union kw_pos pos in
-            Return (pos, tm), pos)
-            <?> "return"
-
           (* quantifiers *)
-          ; (parse_token >>= fun tok ->
+          ; (option None ((fun ident -> Some ident) <$> identifier) >>= fun name ->
+             parse_token >>= fun tok ->
               let mk_pos = OptRange.union (location tok) in
               option tok
               (choice
@@ -717,21 +691,21 @@ module TestParsers = struct
   let let_var = {|let x = "str" in x|}
   let fail = {|fail {"reason"}|}
   let char_opt = "'c'?"
-  let ret = "return {foo()}"
+  let ret = "{foo()}"
   let fix = {|fix (x -> "a" | "b")|}
-  let seq = {|sequence(a. {"a"}) ["a"]|}
+  let seq = {|a:"a" -> a|}
 
   let list_parser =
     {|fix (lst ->
-        (sequence (x. xs. {cons(x; xs)}) ['c', lst]) |
-        return {nil()}
+        (c:'c' cs:lst -> {cons(x; xs)}) |
+        {nil()}
       )
     |}
 
-  let seq2 = {|sequence(a. a'. b. {triple(a; a'; b)})["a", "a", "b"]|}
-  let seq3 = {|sequence(a. a'. b. {triple(a; a'; b)})['a', 'a', 'b']|}
-  let fix2 = {|fix (x -> "b" | sequence(a. x. {pair(a; x)}) ["a", x])|}
-  let pair = "sequence (a. b. {pair(a; b)}) ['a', 'b']"
+  let seq2 = {|a:"a" a':"a" b:"b" -> {triple(a; a'; b)}|}
+  let seq3 = {|a:'a' a':'a' b:'b' -> {triple(a; a'; b)}|}
+  let fix2 = {|fix (x -> "b" | a:"a" x:x -> {pair(a; x)}))|}
+  let pair = "a:'a' b:'b' -> {pair(a; b)}"
 end
 
 let%test_module "Parsing" =
@@ -843,8 +817,10 @@ let%test_module "Parsing" =
       [%expect {| <parser:8-13>foo()</parser:8-13> |}]
     ;;
 
-    (* let%expect_test _ = parse_print "sequence (. {foo()}) []" ""; [%expect{| foo() |}]
-       ;; *)
+    let%expect_test _ =
+      parse_print "{foo()}" "";
+      [%expect{| foo() |}]
+    ;;
 
     let%expect_test _ =
       parse_print fix "a";
@@ -871,6 +847,11 @@ let%test_module "Parsing" =
       parse_print list_parser "cc";
       [%expect
         {| <parser:39-50>cons(<input:0-1>'c'</input:0-1>; <parser:39-50>cons(<input:1-2>'c'</input:1-2>; <parser:83-88>nil()</parser:83-88>)</parser:39-50>)</parser:39-50> |}]
+    ;;
+
+    let%expect_test _ =
+      parse_print list_parser "...";
+      [%expect]
     ;;
 
     let%expect_test _ =
@@ -940,14 +921,14 @@ let%test_module "Parsing" =
      [%expect{| 'a' | 'b' | 'c' |}]
 
    let%expect_test _ =
-     parse_print_parser "sequence (Ok. Q) [.] | .";
-     [%expect{| sequence (Ok. Q) [.] | . |}]
+     parse_print_parser "(. -> Q) | .";
+     [%expect{| (. -> Q) | . |}]
 
    let%expect_test _ =
      parse_print_parser list_parser;
      [%expect{|
 
-       fix (lst -> sequence (x. xs. {cons(x; xs)}) ['c', lst] | return {nil()}) |}]
+       fix (lst -> (c:'c' lst:lst -> cons(x; xs)) | {nil()}) |}]
   end)
 ;;
 
@@ -974,7 +955,7 @@ module Properties = struct
     | Error _ -> Uninteresting
     | Ok t ->
       let str' = pp_str t in
-      if Base.String.(str' = str)
+      if String.(str' = str)
       then Ok
       else
         match parse str with

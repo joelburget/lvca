@@ -16,97 +16,38 @@ type trace_snapshot = P.Direct.trace_snapshot
 let parse_parser str = ParseUtil.parse_string (ParseParser.t ParseCore.term) str
 
 module Model = struct
-  type parser_defn =
-    | NoInputYet
-    | Parsed of OptRange.t P.t
-    | FailedParse of string
-
-  type parser_defn_signal_pool = (string * parser_defn) Pool.Signal.t
-  let parser_defn_signal_pool = Pool.Signal.create ()
-  let test_signal_pool = Pool.Signal.create ()
-
-  let evaluations_pool : Pool.Signal.key Pool.RList.t = Pool.RList.create ()
-
-  type parser_context =
-    { parser_str_key: Pool.Signal.key
-    ; tests_expanded: bool React.signal
-    ; evaluations_key: Pool.RList.key
-    }
-
-  let mk_parser_defn str = match parse_parser str with
-    | Ok parser -> Parsed parser
-    | Error msg -> FailedParse msg
-
-  let new_context parser_str lst =
-    let create_parser_defn str =
-      let parser = match str with
-      | "" -> NoInputYet
-      | _ -> mk_parser_defn str
-      in str, parser
-    in
-
-    let evaluations_key = Pool.RList.add evaluations_pool (RList.create lst) in
-    { parser_str_key = Pool.Signal.add parser_defn_signal_pool
-        (React.S.create (create_parser_defn parser_str))
-    ; tests_expanded = true
-    ; evaluations_key
-    }
-
-  let new_test str = Pool.Signal.add test_signal_pool (React.S.create str)
-
-  type t = parser_context list
-
-  let initial_model = P.TestParsers.(
-    [ new_context fix2
-      [ new_test "a"
-      ; new_test "ab"
-      ]
-    ; new_context str_star [new_test ""; new_test "strstrstr"]
-    ; new_context ".*" [new_test "foo"]
-    ; new_context char_count [new_test "cc"]
-    ; new_context str [new_test "str"; new_test "foo"]
-    ; new_context str_plus [new_test ""; new_test "strstrstr"]
-    ; new_context alt [new_test "str"; new_test "foo"]
-    ; new_context sat_parser [new_test "c"; new_test "d"]
-    ])
-end
-
-module Action = struct
-  type parser_no = int
-  type test_no = int
+  type input_sig = string React.signal * (string -> unit)
 
   type t =
-    | AddParser
-    | AddTest of parser_no
-    | RemoveTest of parser_no * test_no
-    | UpdateParser of Pool.Signal.key * string
-end
+    { any_char_input: input_sig
+    ; char_input: input_sig
+    ; string_input: input_sig
+    ; star_input: input_sig
+    ; plus_input: input_sig
+    ; alt_input: input_sig
+    ; count_input: input_sig
+    ; let_input: input_sig
+    ; fail_input: input_sig
+    (* ; satisfy_input: input_sig *)
+    (* TODO: rest *)
+    }
 
-module Controller = struct
-  let update (action : Action.t) (model_s : Model.t React.S.t) signal_update =
-    let contexts = React.S.value model_s in
+  let mk str =
+    let s, update = React.S.create str in
+    s, (fun str -> update str)
 
-    match action with
-      | AddParser
-      -> signal_update (Model.new_context "" [] :: contexts)
-      | AddTest parser_no ->
-        let context = List.nth_exn contexts parser_no in
-        let key = Pool.Signal.add Model.test_signal_pool (React.S.create "") in
-        let _, evaluations_h = Pool.RList.find_exn
-          Model.evaluations_pool
-          context.evaluations_key
-        in
-        RList.snoc key evaluations_h
-      | RemoveTest (parser_no, test_no) ->
-        let context = List.nth_exn contexts parser_no in
-        let _, evaluations_h = Pool.RList.find_exn
-          Model.evaluations_pool
-          context.evaluations_key
-        in
-        RList.remove test_no evaluations_h
-      | UpdateParser (key, str) ->
-        let _, update = Pool.Signal.find_exn Model.parser_defn_signal_pool key in
-        update (str, Model.mk_parser_defn str)
+  let initial_model =
+    { any_char_input = mk "c"
+    ; char_input = mk "c"
+    ; string_input = mk "foo"
+    ; star_input = mk "ccc"
+    ; plus_input = mk "ccc"
+    ; alt_input = mk "c"
+    ; count_input = mk "cc"
+    ; let_input = mk "foo"
+    ; fail_input = mk "foo"
+    (* ; satisfy_input = mk "bar" *)
+    }
 end
 
 let string_location ~str ~loc =
@@ -144,18 +85,6 @@ let view_parser parser success =
 let view_term tm =
   let str = Fmt.str "parsed: %a" (Nominal.pp_term_ranges Primitive.pp) tm in
   Html.div [txt str]
-
-  (*
-let view_term_ctx ctx = ctx
-  |> Map.to_alist
-  |> List.map ~f:(fun (name, tm) -> dlist ~label:"term" [ name, view_term tm ])
-  |> rows ~label:"term-ctx"
-
-let view_parser_ctx ctx = ctx
-  |> Map.to_alist
-  |> List.map ~f:(fun (name, p) -> dlist ~label:"parser" [ name, view_parser p ])
-  |> rows ~label:"parser-ctx"
-  *)
 
 let path_controls _path_s _path_h = rows
   []
@@ -323,13 +252,27 @@ let view_root_snapshot str root =
     ; mk_div controls_s
     ]
 
+module Examples = struct
+  let parse_or_fail parser_str =
+      match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
+      | Error msg -> failwith msg
+      | Ok parser -> parser
+
+  let any_char = "."
+  let char = "'c'"
+  let string = {|"foo"|}
+  let many = "'c'*"
+  let plus = "'c'+"
+  let count = "'c'{{2}}"
+  let alt = {|'c' | "foo"|}
+  let let_ = {|let p1 = "str" in let p2 = 'c'* in p1 | p2|}
+  let fail = {|fail {"failed (reason)"}|}
+end
+
 module View = struct
   module Direct = P.Direct
 
   let view_parser_test parser test =
-    match parser with
-    | Model.NoInputYet | FailedParse _ -> Components.empty_elem, Components.empty_elem
-    | Parsed parser ->
       let parser = P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"TODO") parser in
       let P.Direct.{ snapshot; result } = Direct.parse_direct parser test in
       let result = match result with
@@ -349,96 +292,154 @@ module View = struct
       in
       result, trace
 
-  let mk_context update parser_no
-    Model.{ parser_str_key; tests_expanded; evaluations_key } =
-    let evaluations_l, _ = Pool.RList.find_exn Model.evaluations_pool evaluations_key in
-    let parser_s, _ =
-      Pool.Signal.find_exn Model.parser_defn_signal_pool parser_str_key
-    in
-    let parser_defn_input, parser_defn_input_event = Common.mk_multiline_input
-      ~rows:(Some 2)
-      (React.S.Pair.fst parser_s)
-    in
+  let mk_input_result parser_str (test_s, update_test) =
+    let test_input, test_evt = Common.mk_single_line_input test_s in
+    let parser = Examples.parse_or_fail parser_str in
 
-    let new_test_handler _evt = update (Action.AddTest parser_no); false in
-    let new_test_button = button ~onclick:new_test_handler "new test" in
+    let (_ : unit React.event) = test_evt |> React.E.map update_test in
 
-    let (_ : unit React.event) = parser_defn_input_event
-      |> React.E.map (function
-        | Common.InputUpdate str -> update (UpdateParser (parser_str_key, str))
-        | InputSelect _ | InputUnselect -> ()
-        )
+    let result = test_s
+      |> React.S.map (view_parser_test parser)
+      |> React.S.Pair.fst
+      |> RList.singleton_s
+      |> RHtml.div
     in
 
-    let parser_s = React.S.Pair.snd parser_s in
-
-    let parser_error_elem = parser_s
-      |> React.S.map (function
-        | Model.NoInputYet | Parsed _ -> []
-        | FailedParse msg -> [error_msg msg]
-      )
+    let tab = [%html{|
+      <table class="font-mono">
+        <tr><td class="border-2">Parser</td><td class="border-2">|}[txt parser_str]{|</td></tr>
+        <tr>
+          <td class="border-2">Input</td><td class="border-2">|}[test_input]{|</td></tr>
+        <tr><td class="border-2">Result</td><td class="border-2">|}[result]{|</td></tr>
+      </table>
+      |}]
     in
 
-    (* TODO: there has to be a way to do this without the ref *)
-    let i = ref 0 in
-    let test_elems = evaluations_l
-      |> RList.map (fun test_key ->
-        let test_s, test_update =
-          Pool.Signal.find_exn Model.test_signal_pool test_key
-        in
-
-        let test_input, test_input_event = Common.mk_single_line_input test_s in
-
-        (* Q: is it okay to just update test directly without dispatching? *)
-        let (_ : unit React.event) = React.E.map test_update test_input_event in
-
-        let test_no = !i in
-        Int.incr i;
-        let remove_test_handler _evt =
-          update (Action.RemoveTest (parser_no, test_no));
-          false
-        in
-        let remove_test_button = button ~onclick:remove_test_handler "remove test" in
-
-        let parser_result_s = React.S.l2 view_parser_test parser_s test_s in
-        let output_s = React.S.Pair.fst parser_result_s in
-        let snapshot_s = React.S.Pair.snd parser_result_s in
-        rows ~border:true
-          [ cols
-            [ test_input
-            ; RHtml.div (RList.singleton_s output_s)
-            ; remove_test_button
-            ]
-          ; RHtml.div (RList.singleton_s snapshot_s)
-          ]
-      )
+    let inline_code = [%html{|
+      <code class="font-mono bg-gray-100 p-1 border-2 border-gray-400">
+        |}[txt parser_str]{|
+      </code>
+      |}]
     in
 
-    Html.tr
-      [ Html.td
-        [ parser_defn_input
-        ; Html.table
-          [ Html.(tr ~a:[a_class ["border-2"]]
-            [RHtml.td (RList.from_signal parser_error_elem)])
-          ; Html.(tr ~a:[a_class ["border-2"]] [RHtml.td test_elems])
-          ; Html.(tr ~a:[a_class ["border-2"]] [Html.td [new_test_button]])
-          ]
-        ]
-      ]
+    inline_code, tab
 
-  let view model_s signal_update =
-    let update evt = Controller.update evt model_s signal_update in
-    let context_elems_s = model_s |> React.S.map (List.mapi ~f:(mk_context update)) in
-    let new_parser_handler _evt = update AddParser; false in
+  let view model =
+    let any_char_p, any_char_table =
+      mk_input_result Examples.any_char model.Model.any_char_input
+    in
+    let char_p, char_table =
+      mk_input_result Examples.char model.Model.char_input
+    in
+    let string_p, string_table =
+      mk_input_result Examples.string model.Model.string_input
+    in
+    let star_p, star_table =
+      mk_input_result Examples.many model.Model.star_input
+    in
+    let plus_p, plus_table =
+      mk_input_result Examples.plus model.Model.plus_input
+    in
+    let count_p, count_table =
+      mk_input_result Examples.count model.Model.count_input
+    in
+    let alt_p, alt_table =
+      mk_input_result Examples.alt model.Model.alt_input
+    in
+    let let_p, let_table =
+      mk_input_result Examples.let_ model.Model.alt_input
+    in
+    let fail_p, fail_table =
+      mk_input_result Examples.fail model.Model.alt_input
+    in
 
-    rows
-      [ subheader "parsers"
-      ; Html.div [button ~onclick:new_parser_handler "create new parser"]
-      ; RHtml.table (RList.from_signal context_elems_s)
-      ]
+    [%html{|
+      <div>
+        <h3>Fixed character and string parsers</h3>
+
+        <p>Let's start with the simplest class of parsers, which accept a single character
+        or a single string.</p>
+
+        <p>The parser |}[any_char_p]{| accepts any single character.</p>
+        |}[any_char_table]{|
+
+        <p>We can also parse a single character with |}[char_p]{|. It accepts the
+        single character <code>'c'</code>.</p>
+        |}[char_table]{|
+
+        <p>We can parse a fixed string with |}[string_p]{|. It accepts the
+        string <code>"foo"</code>.</p>
+        |}[string_table]{|
+
+        <h3>Repetition</h3>
+
+        <p>The next class of operators accepts some number of repetitions of another
+        parser.</p>
+
+        <p>The operator <code>*</code> can be used to accept any number of repetitions of
+        the previous parser. For example |}[star_p]{|.</p>
+        |}[star_table]{|
+
+        <p>The operator <code>+</code> can be used to accept one or more repetitions of
+        the previous parser. For example |}[plus_p]{|.</p>
+        |}[plus_table]{|
+
+        <p>We can also require exactly <code>n</code> repetitions of some parser. For
+        example |}[count_p]{|.</p>
+        |}[count_table]{|
+
+        <h3>Alternation</h3>
+
+        <p>The operator <code>|</code> can be used to accept either of two parsers. For
+        example |}[alt_p]{|.</p>
+        |}[alt_table]{|
+
+        <h3>Language constructs</h3>
+
+        <p>So far all of our parsers have looked a lot like regular expressions Let's
+        introduce a construct that will make this look a lot more like a real language.
+        For example |}[let_p]{|. In this case it would have been simpler to write this
+        parser as <code>"str" | 'c'*</code>, but it's often useful to name helpers in
+  larger parsers</p>
+        |}[let_table]{|
+
+        <p>Parsers can also fail with a message. This example as written is of course not
+        very useful, but this can be quite useful as part of a larger parser. For example
+      |}[fail_p]{|.</p>
+        |}[fail_table]{|
+
+        <h3>Sequence and Fix</h3>
+
+        <p>There are two more very important combinators before we hit the misc
+        section. TODO: revamp this completely: motivate it by parsing arithmetic where we
+        need both sequence and fix</p>
+
+        <p>First of all, we can't yet parse a sequence of sub-parsers. For example...
+        TODO</p>
+
+        <p></p>
+
+        <h3>Misc (TODO)</h3>
+
+        <ul>
+          <li>satisfy</li>
+          <li>option</li>
+          <li>return</li>
+        </ul>
+
+        <h3>Notes (TODO)</h3>
+        <ul>
+          <li>Call out ability to write intuitive syntax, in particular the intuitive
+          syntax for sequences and binding.</li>
+          <li>Call out parser debugger, provenance</li>
+          <li>Error messages are good because parser parser written this way</li>
+        </ul>
+
+      </div>
+    |}]
 end
 
 let stateless_view =
-  let model_s, signal_update = React.S.create Model.initial_model in
-  View.view model_s signal_update
+  (* let model_s, signal_update = React.S.create Model.initial_model in *)
+  View.view Model.initial_model
 ;;
