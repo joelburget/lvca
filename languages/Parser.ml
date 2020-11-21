@@ -3,41 +3,7 @@ open Lvca_syntax
 open Lvca_core
 module Format = Caml.Format
 
-let abstract_syntax_str =
-  {|
-// global: { char, string, n_term, c_term }
-
-parser :=
-  // primitive parsers
-  | any_char()
-  | char(char())
-  | string(string())
-  | satisfy(char(). c_term())
-  | fail(c_term())
-
-  | let(parser(); parser(). parser())
-
-  // combinators
-  | option(parser())
-  | count(parser(); c_term())
-  | many(parser())
-  | many1(parser())
-  | fix(parser(). parser())
-
-  // alternative
-  | alt(parser(); parser())
-
-  | sequence(n_term()*. c_term(); parser()*)
-|}
-;;
-
 module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
-
-let abstract_syntax : AbstractSyntax.t =
-  abstract_syntax_str
-  |> ParseUtil.parse_string ParseAbstract.whitespace_t
-  |> Result.ok_or_failwith
-;;
 
 type 'loc c_term = 'loc Core.term
 type 'loc n_term = ('loc, Primitive.t) Nominal.term
