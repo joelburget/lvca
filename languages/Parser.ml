@@ -585,7 +585,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   open Parsers
 
-  let keywords : string list = [ "satisfy"; "let"; "in"; "fail"; "fix" ]
+  let keywords : string list = [ (* "satisfy"; *) "let"; "in"; (* "fail"; "fix" *) ]
   let keyword : string Parsers.t = keywords |> List.map ~f:string |> choice
   let operators : string list = [ "?"; "*"; "+"; "|"; "="; ":" ]
   let operator : string Parsers.t = operators |> List.map ~f:string |> choice
@@ -607,24 +607,31 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     | Ident of string
     | Core of OptRange.t Core.term
     | Parenthesized of term
+    | SatisfyTok of string * OptRange.t Core.term
+    | FailTok of OptRange.t Core.term
+    | FixTok of string * token list
 
-  let string_of_token = function
+  let rec string_of_token = function
     | Atom atom -> string_of_atom atom
     | Operator str | Keyword str | Ident str -> str
     | Core tm -> Core.to_string tm
     | Parenthesized tm -> Fmt.str "%a" pp_plain tm
+    | SatisfyTok (name, tm) -> Fmt.str "satisfy (%s -> %a)" name Core.pp tm
+    | FailTok tm -> Fmt.str "fail (%a)" Core.pp tm
+    | FixTok (name, toks) -> Fmt.str "fix (%s -> %s)"
+      name
+      (toks |> List.map ~f:string_of_token |> String.concat ~sep:"; ")
 
   let todo_pos = None
 
   let lbp = function
-    | "?" | "*" | "+"
-    -> 2 (* ? *)
-    | "|"
-    -> 1
-    | "=" | ":" -> failwith "TODO"
+    | "?" | "*" | "+" -> 3 (* ? *)
+    | ":" -> 2
+    | "|" -> 1
+    | "=" -> failwith "TODO"
     | _ -> failwith "invalid operator name"
 
-  let rec prefix = function
+  let rec prefix ~tokens = function
     | Atom atom -> return ~pos:todo_pos (match atom with
       | CharAtom c -> Char (todo_pos, c)
       | StrAtom c -> String (todo_pos, c)
@@ -632,11 +639,20 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     )
     | Operator _ -> fail "unexpected operator"
     | Keyword kw_name -> (match kw_name with
-      | "satisfy" -> failwith "TODO"
-      | "let" -> failwith "TODO"
-      | "in" -> failwith "TODO"
-      | "fail" -> failwith "TODO"
-      | "fix" -> failwith "TODO"
+      | "let" ->
+        (match Queue.dequeue tokens with
+          | Some (Ident name) ->
+            (match Queue.dequeue tokens with
+              | Some (Operator "=") ->
+                expression ~tokens ~ambient_prec:0 >>= fun e1 ->
+                (match Queue.dequeue tokens with
+                  | Some (Keyword "in")
+                  -> expression ~tokens ~ambient_prec:0 >>= fun e2 ->
+                    let pos = todo_pos in
+                    return ~pos (Let (pos, name, e1, e2))
+                  | Some _ | None -> fail "TODO: error")
+              | Some _ | None -> fail "TODO: error")
+          | Some _ | None -> fail "TODO: error")
       | _ -> failwith "invalid keyword"
     )
     | Ident name ->
@@ -650,8 +666,20 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     | Parenthesized p ->
       let pos = location p in
       return ~pos p
+    | SatisfyTok (name, tm) ->
+      let pos = todo_pos in
+      return ~pos (Satisfy (pos, name, tm))
+    | FailTok tm ->
+      let pos = todo_pos in
+      return ~pos (Fail (pos, tm))
+    | FixTok (name, toks) ->
+      expression ~tokens:(Queue.of_list toks) ~ambient_prec:0 >>= fun expr ->
+      let pos = todo_pos in
+      return ~pos (Fix (pos, name, expr))
 
-  (* TODO: infix keyword "in"? *)
+  (* a:'a' | b:'b' bad: TODO: detect *)
+  (* a:'a'? *)
+
   and infix (* or postfix *) ~tokens ~left ~op_name =
     let pos = todo_pos in
     match op_name with
@@ -661,6 +689,14 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     | "|" ->
       expression ~tokens ~ambient_prec:1 >>= fun right ->
       return ~pos (Alt (pos, left, right))
+    | ":" -> failwith "TODO"
+        (*
+        (match left with
+      | Identifier (_loc, name) ->
+        expression ~tokens ~ambient_prec:2 >>= fun right ->
+        return ~
+    )
+    *)
     | _ -> failwith ("infix TODO: " ^ op_name)
 
   and expression ~tokens ~ambient_prec =
@@ -683,29 +719,47 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
           let pos = todo_pos in
           (* TODO: decide precedence, go *)
           return ~pos (Count (pos, left, tm))
-        | _ -> fail (Caml.Printf.sprintf "unexpected token %s" (string_of_token token))
+        | _ -> return ~pos left
     in
 
     let token = Queue.dequeue_exn tokens in
-    prefix token >>= fun left -> go left tokens
+    prefix ~tokens token >>= fun left -> go left tokens
 
   let tokens_to_parser = function
     | [] -> fail "empty input"
     | tokens -> expression ~tokens:(Queue.of_list tokens) ~ambient_prec:0
 
+  let arrow = string "->"
+
   let t : OptRange.t Core.term Parsers.t -> term Parsers.t =
    fun c_term ->
     fix (fun parser ->
-      let token = choice
+      let token = fix (fun token -> choice
         [ char_lit >>| (fun c -> Atom (CharAtom c))
         ; string_lit >>| (fun str -> Atom (StrAtom str))
         ; char '.' >>| (fun _ -> Atom Dot)
         ; operator >>| (fun op -> Operator op)
         ; keyword >>| (fun kw -> Keyword kw)
+        ; string "satisfy" >>= (fun _ ->
+          parens
+            (lift3
+              (fun name _arr tm -> SatisfyTok (name, tm))
+              identifier
+              arrow
+              c_term))
+        ; string "fail" >>= (fun _ ->
+          c_term >>| fun tm -> FailTok tm)
+        ; string "fix" >>= (fun _ ->
+          parens
+            (lift3
+              (fun name _arr toks -> FixTok (name, toks))
+              identifier
+              arrow
+              (many1 token)))
         ; identifier >>| (fun ident -> Ident ident)
         ; c_term >>| (fun tm -> Core tm)
         ; parens parser >>| (fun p -> Parenthesized p)
-        ] <?> "token"
+        ]) <?> "token"
       in
 
       many token >>= tokens_to_parser
@@ -815,7 +869,6 @@ let%test_module "Parsing" =
       [%expect {| <input:0-3>"str"</input:0-3> |}]
     ;;
 
-    (*
     let%expect_test _ =
       parse_print alt "foo";
       [%expect {| <input:0-3>"foo"</input:0-3> |}]
@@ -855,6 +908,7 @@ let%test_module "Parsing" =
       [%expect {| <>none()</> |}]
     ;;
 
+    (*
     let%expect_test _ =
       parse_print ret "";
       [%expect {| <parser:8-13>foo()</parser:8-13> |}]
@@ -864,12 +918,14 @@ let%test_module "Parsing" =
       parse_print "{foo()}" "";
       [%expect{| foo() |}]
     ;;
+    *)
 
     let%expect_test _ =
       parse_print fix "a";
       [%expect {| <input:0-1>"a"</input:0-1> |}]
     ;;
 
+    (*
     let%expect_test _ =
       parse_print seq "a";
       [%expect {| <parser:13-16>"a"</parser:13-16> |}]

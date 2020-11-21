@@ -358,7 +358,7 @@ module View = struct
         <h3>Fixed character and string parsers</h3>
 
         <p>Let's start with the simplest class of parsers, which accept a single character
-        or a single string.</p>
+        or a fixed string.</p>
 
         <p>The parser |}[any_char_p]{| accepts any single character.</p>
         |}[any_char_table]{|
