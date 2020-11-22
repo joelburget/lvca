@@ -140,6 +140,8 @@ let pp_range ppf p =
 let pp_plain ppf p =
   pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p
 
+let pp_str p = Fmt.str "%a" pp_plain p
+
 let mk_some : 'loc n_term -> 'loc n_term =
  fun tm -> Nominal.Operator (Nominal.location tm, "some", [ Scope ([], [ tm ]) ])
 ;;
@@ -471,7 +473,7 @@ module Direct = struct
             (match List.zip names xs with
             | Unequal_lengths ->
               failwith
-                (Caml.Printf.sprintf
+                (Printf.sprintf
                    "TODO: sequence Unequal_lengths (%n vs %n)"
                    (List.length names)
                    (List.length xs))
@@ -553,7 +555,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
 
   let keywords : string list = [ (* "satisfy"; *) "let"; "in"; (* "fail"; "fix" *) ]
   let keyword : string Parsers.t = keywords |> List.map ~f:string |> choice
-  let operators : string list = [ "?"; "*"; "+"; "|"; "="; ":" ]
+  let operators : string list = [ "?"; "*"; "+"; "|"; "="; "->" ]
   let operator : string Parsers.t = operators |> List.map ~f:string |> choice
 
   type atom =
@@ -592,9 +594,9 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
 
   let lbp = function
     | "?" | "*" | "+" -> 3 (* ? *)
-    | ":" -> 2
+    | "=" -> 2
     | "|" -> 1
-    | "=" -> failwith "TODO"
+    | "->" -> 0
     | _ -> failwith "invalid operator name"
 
   let rec prefix ~tokens = function
@@ -603,7 +605,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
       | StrAtom c -> String (todo_pos, c)
       | Dot -> AnyChar todo_pos
     )
-    | Operator _ -> fail "unexpected operator"
+    | Operator op_name -> fail ("prefix: unexpected operator " ^ op_name)
     | Keyword kw_name -> (match kw_name with
       | "let" ->
         (match Queue.dequeue tokens with
@@ -624,11 +626,9 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     | Ident name ->
       let pos = todo_pos in
       return ~pos (Identifier (pos, name))
-    | Core _tm -> failwith "TODO"
-      (* TODO: bring back return, remove implicit return from sequence?
+    | Core tm ->
       let pos = todo_pos in
-      return ~pos (Core (pos, tm))
-      *)
+      return ~pos (Sequence (pos, [], tm))
     | Parenthesized p ->
       let pos = location p in
       return ~pos p
@@ -644,7 +644,6 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
       return ~pos (Fix (pos, name, expr))
 
   (* a:'a' | b:'b' bad: TODO: detect *)
-  (* a:'a'? *)
 
   and infix (* or postfix *) ~tokens ~left ~op_name =
     let pos = todo_pos in
@@ -655,30 +654,30 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     | "|" ->
       expression ~tokens ~ambient_prec:1 >>= fun right ->
       return ~pos (Alt (pos, left, right))
-    | ":" -> failwith "TODO"
-        (*
-        (match left with
+      (*
+    | "=" -> (match left with
       | Identifier (_loc, name) ->
         expression ~tokens ~ambient_prec:2 >>= fun right ->
-        Binding (left, right)
+        Binder (Some name, right)
       | _ -> failwith "TODO: = non-identifier"
     )
     *)
     | _ -> failwith ("infix TODO: " ^ op_name)
 
   and expression ~tokens ~ambient_prec =
-    let rec go left tokens =
-      let pos = location left in
-      match Queue.peek tokens with
+    let token = Queue.dequeue_exn tokens in
+    prefix ~tokens token >>= fun left ->
+    let pos = location left in
+
+    let rec go ~ambient_prec left = match Queue.peek tokens with
       | None -> return ~pos left
-      | Some token ->
-        match token with
+      | Some token -> match token with
+        | Operator "->" -> return ~pos left
         | Operator op_name ->
           if ambient_prec < lbp op_name
           then (
             let _ : token = Queue.dequeue_exn tokens in
-            infix ~tokens ~left ~op_name >>= fun expr ->
-            go expr tokens
+            infix ~tokens ~left ~op_name >>= go ~ambient_prec:(lbp op_name - 1 (* HACK *))
           )
           else return ~pos left
         | Core tm ->
@@ -689,12 +688,54 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         | _ -> return ~pos left
     in
 
-    let token = Queue.dequeue_exn tokens in
-    prefix ~tokens token >>= fun left -> go left tokens
+    go ~ambient_prec left
+
+  and sequence_elem ~tokens = match Queue.peek tokens with
+    | None -> fail "TODO: sequence_elem error"
+    | Some (Ident name) ->
+      let _ : token = Queue.dequeue_exn tokens in
+      let pos = todo_pos in
+      let ident = Identifier (pos, name) in
+      (match Queue.peek tokens with
+        | Some (Operator "=") ->
+          let _ : token = Queue.dequeue_exn tokens in
+          expression ~tokens ~ambient_prec:2 (* TODO: prec *) >>= fun expr ->
+          let pos = todo_pos in
+          return ~pos (Binder (Some name, expr))
+        | _ ->
+          let pos = todo_pos in
+          return ~pos (Binder (None, ident)))
+    | Some _ -> expression ~tokens ~ambient_prec:0 (* TODO: prec *) >>= fun expr ->
+        let pos = todo_pos in
+        return ~pos (Binder (None, expr))
+
+  and sequence ~tokens =
+    let rec go binders = match Queue.peek tokens with
+      | None -> (match binders with
+        | [Binder (None, expr)] -> let pos = todo_pos in return ~pos expr
+        | _ -> failwith "TODO (sequence 1)"
+      )
+      | Some (Operator "->") ->
+        let _arr : token = Queue.dequeue_exn tokens in
+        (match Queue.dequeue tokens with
+          | Some (Core tm) ->
+            let pos = todo_pos in
+            return ~pos (Sequence (pos, binders, tm))
+          | Some (Ident name) ->
+            let pos = todo_pos in
+            return ~pos (Sequence (pos, binders, Core.Term (Nominal.Var (pos, name))))
+          | Some tok -> fail (Printf.sprintf "TODO (sequence token %s)" (string_of_token tok))
+          | None -> fail "TODO (sequence None)"
+        )
+      | Some _token ->
+        sequence_elem ~tokens >>= fun binder -> go (Lvca_util.List.snoc (* XXX *) binders binder)
+    in
+
+    go []
 
   let tokens_to_parser = function
     | [] -> fail "empty input"
-    | tokens -> expression ~tokens:(Queue.of_list tokens) ~ambient_prec:0
+    | tokens -> sequence ~tokens:(Queue.of_list tokens)
 
   let arrow = string "->"
 
@@ -756,19 +797,19 @@ module TestParsers = struct
   let char_opt = "'c'?"
   let ret = "{foo()}"
   let fix = {|fix (x -> "a" | "b")|}
-  let seq = {|a:"a" -> a|}
+  let seq = {|a="a" -> a|}
 
   let list_parser =
     {|fix (lst ->
-        (c:'c' cs:lst -> {cons(x; xs)}) |
+        (c='c' cs=lst -> {cons(x; xs)}) |
         {nil()}
       )
     |}
 
-  let seq2 = {|a:"a" a':"a" b:"b" -> {triple(a; a'; b)}|}
-  let seq3 = {|a:'a' a':'a' b:'b' -> {triple(a; a'; b)}|}
-  let fix2 = {|fix (x -> "b" | a:"a" x:x -> {pair(a; x)}))|}
-  let pair = "a:'a' b:'b' -> {pair(a; b)}"
+  let seq2 = {|a="a" a'="a" b="b" -> {triple(a; a'; b)}|}
+  let seq3 = {|a='a' a'='a' b='b' -> {triple(a; a'; b)}|}
+  let fix2 = {|fix (x -> "b" | a="a" x=x -> {pair(a; x)}))|}
+  let pair = "a='a' b='b' -> {pair(a; b)}"
 end
 
 let%test_module "Parsing" =
@@ -798,11 +839,13 @@ let%test_module "Parsing" =
       Format.set_mark_tags true
     ;;
 
+    (*
     let%expect_test _ =
       parse_print char_count "cc";
       [%expect
         {| <input:0-2>list(<input:0-1>'c'</input:0-1>, <input:1-2>'c'</input:1-2>)</input:0-2> |}]
     ;;
+    *)
 
     let%expect_test _ =
       parse_print dot "c";
@@ -875,29 +918,23 @@ let%test_module "Parsing" =
       [%expect {| <>none()</> |}]
     ;;
 
-    (*
     let%expect_test _ =
       parse_print ret "";
-      [%expect {| <parser:8-13>foo()</parser:8-13> |}]
+      [%expect {| <parser:1-6>foo()</parser:1-6> |}]
     ;;
-
-    let%expect_test _ =
-      parse_print "{foo()}" "";
-      [%expect{| foo() |}]
-    ;;
-    *)
 
     let%expect_test _ =
       parse_print fix "a";
       [%expect {| <input:0-1>"a"</input:0-1> |}]
     ;;
 
-    (*
     let%expect_test _ =
       parse_print seq "a";
-      [%expect {| <parser:13-16>"a"</parser:13-16> |}]
+      (* TODO: which attribution is correct? [%expect {| <parser:13-16>"a"</parser:13-16> |}] *)
+      [%expect {| <input:0-1>"a"</input:0-1> |}]
     ;;
 
+    (*
     let%expect_test _ =
       parse_print list_parser "";
       [%expect {| <parser:83-88>nil()</parser:83-88> |}]
@@ -919,19 +956,21 @@ let%test_module "Parsing" =
       parse_print list_parser "...";
       [%expect]
     ;;
+    *)
 
     let%expect_test _ =
       parse_print seq2 "aab";
       [%expect
-        {| <parser:20-36>triple(<input:0-1>"a"</input:0-1>; <input:1-2>"a"</input:1-2>; <input:2-3>"b"</input:2-3>)</parser:20-36> |}]
+        {| <parser:23-39>triple(<input:0-1>"a"</input:0-1>; <input:1-2>"a"</input:1-2>; <input:2-3>"b"</input:2-3>)</parser:23-39> |}]
     ;;
 
     let%expect_test _ =
       parse_print seq3 "aab";
       [%expect
-        {| <parser:20-36>triple(<input:0-1>'a'</input:0-1>; <input:1-2>'a'</input:1-2>; <input:2-3>'b'</input:2-3>)</parser:20-36> |}]
+        {| <parser:23-39>triple(<input:0-1>'a'</input:0-1>; <input:1-2>'a'</input:1-2>; <input:2-3>'b'</input:2-3>)</parser:23-39> |}]
     ;;
 
+    (*
     let%expect_test _ =
       parse_print fix2 "a";
       [%expect {| failed to parse: string "a" |}]
@@ -965,7 +1004,7 @@ let%test_module "Parsing" =
 
    let%expect_test _ =
      parse_print_parser "F++";
-     [%expect{| failed to parse parser desc: : end_of_input |}]
+     [%expect{| (F+)+ |}]
 
    let%expect_test _ =
      parse_print_parser "(F+)+";
@@ -975,13 +1014,11 @@ let%test_module "Parsing" =
      parse_print_parser dot;
      [%expect{| . |}]
 
-     (*
    let%expect_test _ =
      parse_print_parser "let a = b | c in d?";
      [%expect{|
        let a = b | c in
        d? |}]
-*)
 
    let%expect_test _ =
      parse_print_parser str_star;
@@ -991,11 +1028,11 @@ let%test_module "Parsing" =
      parse_print_parser "'a' | 'b' | 'c'";
      [%expect{| 'a' | 'b' | 'c' |}]
 
-     (*
    let%expect_test _ =
      parse_print_parser "(. -> Q) | .";
      [%expect{| (. -> Q) | . |}]
 
+     (*
    let%expect_test _ =
      parse_print_parser list_parser;
      [%expect{|
