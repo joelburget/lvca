@@ -8,8 +8,6 @@ module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
 type 'loc c_term = 'loc Core.term
 type 'loc n_term = ('loc, Primitive.t) Nominal.term
 
-let pp_c_term = Core.pp
-
 type 'loc t =
   (* primitive parsers *)
   | AnyChar of 'loc
@@ -65,9 +63,7 @@ let rec map_loc ~f =
   | Alt (loc, p1, p2) -> Alt (f loc, map_loc ~f p1, map_loc ~f p2)
   | Sequence (loc, ps, p)
   ->
-    let ps' = ps
-      |> List.map ~f:(fun (name, p) -> name, map_loc ~f p)
-    in
+    let ps' = List.map ps ~f:(fun (name, p) -> name, map_loc ~f p) in
     Sequence (f loc, ps', map_loc ~f p)
   | Return (loc, tm) -> Return (f loc, cf tm)
   | Identifier (loc, s) -> Identifier (f loc, s)
@@ -114,7 +110,7 @@ let pp_generic ~open_loc ~close_loc ppf p =
     | Fix (_, name, p) ->
       (fun ppf -> pf ppf "@[<2>fix@ (@[%s -> %a@])@]" name (go 0) p), app_prec
     | Alt (_, t1, t2) ->
-      (fun ppf -> pf ppf "@[<2>%a@ |@ %a@]" (go (Int.succ alt_prec)) t1 (go alt_prec) t2),
+      (fun ppf -> pf ppf "@[<2>%a@ |@ %a@]" (go alt_prec) t1 (go (Int.succ alt_prec)) t2),
       alt_prec
     | Sequence (_, ps, p) ->
       let named_parser ppf (opt_name, p) = match opt_name with
@@ -985,11 +981,9 @@ let%test_module "Parsing" =
      parse_print_parser "F++";
      [%expect{| failed to parse parser desc: : end_of_input |}]
 
-     (*
    let%expect_test _ =
      parse_print_parser "(F+)+";
      [%expect{| (F+)+ |}]
-*)
 
    let%expect_test _ =
      parse_print_parser dot;
