@@ -21,9 +21,9 @@ type 'loc t =
   | Count of 'loc * 'loc t * 'loc c_term
   | Many of 'loc * 'loc t
   | Many1 of 'loc * 'loc t
-  | Fix of 'loc * string * 'loc t
   (* alternative *)
   | Alt of 'loc * 'loc t * 'loc t
+  | Fix of 'loc * string * 'loc t
   | Sequence of 'loc * (string option * 'loc t) list * 'loc t
   | Return of 'loc * 'loc c_term
   | Identifier of 'loc * string
@@ -39,8 +39,8 @@ let location = function
   | Count (loc, _, _)
   | Many (loc, _)
   | Many1 (loc, _)
-  | Fix (loc, _, _)
   | Alt (loc, _, _)
+  | Fix (loc, _, _)
   | Sequence (loc, _, _)
   | Return (loc, _)
   | Identifier (loc, _)
@@ -59,8 +59,8 @@ let rec map_loc ~f =
   | Count (loc, p, tm) -> Count (f loc, map_loc ~f p, cf tm)
   | Many (loc, p) -> Many (f loc, map_loc ~f p)
   | Many1 (loc, p) -> Many1 (f loc, map_loc ~f p)
-  | Fix (loc, s, p) -> Fix (f loc, s, map_loc ~f p)
   | Alt (loc, p1, p2) -> Alt (f loc, map_loc ~f p1, map_loc ~f p2)
+  | Fix (loc, s, p) -> Fix (f loc, s, map_loc ~f p)
   | Sequence (loc, ps, p)
   ->
     let ps' = List.map ps ~f:(fun (name, p) -> name, map_loc ~f p) in
@@ -107,11 +107,11 @@ let pp_generic ~open_loc ~close_loc ppf p =
       (fun ppf -> pf ppf "%a*" (go (Int.succ quantifier_prec)) p), quantifier_prec
     | Many1 (_, p) ->
       (fun ppf -> pf ppf "%a+" (go (Int.succ quantifier_prec)) p), quantifier_prec
-    | Fix (_, name, p) ->
-      (fun ppf -> pf ppf "@[<2>fix@ (@[%s -> %a@])@]" name (go 0) p), app_prec
     | Alt (_, t1, t2) ->
       (fun ppf -> pf ppf "@[<2>%a@ |@ %a@]" (go alt_prec) t1 (go (Int.succ alt_prec)) t2),
       alt_prec
+    | Fix (_, name, p) ->
+      (fun ppf -> pf ppf "@[<2>fix@ (@[%s -> %a@])@]" name (go 0) p), app_prec
     | Sequence (_, ps, p) ->
       let named_parser ppf (opt_name, p) = match opt_name with
         | None -> pf ppf "%a" (go 0) p
@@ -385,21 +385,6 @@ module Direct = struct
     }
   ;;
 
-  let fix name parser =
-    { run =
-        (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
-          let pos0 = pos in
-          let parser_ctx = Map.set parser_ctx ~key:name ~data:parser in
-          let pos1, snapshots, result =
-            (translate_direct parser).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
-          in
-          let snapshot = mk_snapshot ~result ~parser ~term_ctx ~parser_ctx ~snapshots
-            pos0 pos1
-          in
-          pos1, [snapshot], result)
-    }
-  ;;
-
   let alt p1 p2 =
     { run =
         (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
@@ -427,6 +412,21 @@ module Direct = struct
           in
           pos, snapshots, result
         )
+    }
+  ;;
+
+  let fix name parser =
+    { run =
+        (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
+          let pos0 = pos in
+          let parser_ctx = Map.set parser_ctx ~key:name ~data:parser in
+          let pos1, snapshots, result =
+            (translate_direct parser).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
+          in
+          let snapshot = mk_snapshot ~result ~parser ~term_ctx ~parser_ctx ~snapshots
+            pos0 pos1
+          in
+          pos1, [snapshot], result)
     }
   ;;
 
@@ -533,8 +533,8 @@ module Direct = struct
     | Count (_, t, n) -> count n t
     | Many (_, t) -> many t
     | Many1 (_, t) -> many1 t
-    | Fix (_, name, p) -> fix name p
     | Alt (_, t1, t2) -> alt t1 t2
+    | Fix (_, name, p) -> fix name p
     | Sequence (_, ps, p) -> liftn ps p
     | Identifier (_, name) -> identifier name
     | Return (_, tm) -> return tm
