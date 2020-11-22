@@ -24,8 +24,7 @@ type 'loc t =
   (* alternative *)
   | Alt of 'loc * 'loc t * 'loc t
   | Fix of 'loc * string * 'loc t
-  | Sequence of 'loc * (string option * 'loc t) list * 'loc t
-  | Return of 'loc * 'loc c_term
+  | Sequence of 'loc * (string option * 'loc t) list * 'loc c_term
   | Identifier of 'loc * string
 
 let location = function
@@ -42,7 +41,6 @@ let location = function
   | Alt (loc, _, _)
   | Fix (loc, _, _)
   | Sequence (loc, _, _)
-  | Return (loc, _)
   | Identifier (loc, _)
   -> loc
 
@@ -64,8 +62,7 @@ let rec map_loc ~f =
   | Sequence (loc, ps, p)
   ->
     let ps' = List.map ps ~f:(fun (name, p) -> name, map_loc ~f p) in
-    Sequence (f loc, ps', map_loc ~f p)
-  | Return (loc, tm) -> Return (f loc, cf tm)
+    Sequence (f loc, ps', cf p)
   | Identifier (loc, s) -> Identifier (f loc, s)
 
 let erase = map_loc ~f:(fun _ -> ())
@@ -120,13 +117,12 @@ let pp_generic ~open_loc ~close_loc ppf p =
       let formatter ppf = pf
         ppf
         "%a -> %a"
-        Fmt.(list ~sep:(any ".@ ") named_parser)
+        Fmt.(list ~sep:(any "@ ") named_parser)
         ps
-        (go 0)
+        core
         p
       in
       formatter, app_prec
-    | Return (_, tm) -> (fun ppf -> pf ppf "@[<2>%a@]" core tm), app_prec
     | Identifier (_, name) -> (fun ppf -> pf ppf "%s" name), atom_prec
     in
     with_parens ~ambient_prec ~prec (fun ppf () -> formatter ppf) ppf ();
@@ -430,7 +426,7 @@ module Direct = struct
     }
   ;;
 
-  let liftn named_ps parser =
+  let sequence named_ps tm =
     let names, ps = List.unzip named_ps in
     { run =
         (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
@@ -471,7 +467,7 @@ module Direct = struct
             | Unequal_lengths ->
               failwith
                 (Caml.Printf.sprintf
-                   "TODO: liftn Unequal_lengths (%n vs %n)"
+                   "TODO: sequence Unequal_lengths (%n vs %n)"
                    (List.length names)
                    (List.length xs))
             | Ok name_vals ->
@@ -481,27 +477,12 @@ module Direct = struct
                     | None -> ctx
                     | Some key -> Map.set ctx ~key ~data:tm)
               in
-              let pos0 = pos in
-              let pos1, snapshots', result = (translate_direct parser).run
-                ~translate_direct ~term_ctx ~parser_ctx ~pos str
+              let result = Core.eval_ctx term_ctx tm
+                |> Result.map_error ~f:(map_snd ~f:(fun tm -> Some tm))
               in
-              let snapshot =
-                mk_snapshot ~result ~parser ~term_ctx ~parser_ctx ~snapshots:snapshots'
-                  pos0 pos1
-              in
-              pos1, snapshot::snapshots, result))
+              pos, snapshots, result))
     }
   ;;
-
-  let return tm =
-    { run =
-        (fun ~translate_direct:_ ~term_ctx ~parser_ctx:_ ~pos _str ->
-          let result =
-                Core.eval_ctx term_ctx tm
-                |> Result.map_error ~f:(map_snd ~f:(fun tm -> Some tm))
-          in
-          pos, [], result)
-    }
 
   let identifier name =
     { run =
@@ -535,9 +516,8 @@ module Direct = struct
     | Many1 (_, t) -> many1 t
     | Alt (_, t1, t2) -> alt t1 t2
     | Fix (_, name, p) -> fix name p
-    | Sequence (_, ps, p) -> liftn ps p
+    | Sequence (_, ps, p) -> sequence ps p
     | Identifier (_, name) -> identifier name
-    | Return (_, tm) -> return tm
   ;;
 
   let parse_direct : SourceRanges.t parser -> string -> parse_result
