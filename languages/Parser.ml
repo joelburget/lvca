@@ -24,8 +24,10 @@ type 'loc t =
   (* alternative *)
   | Alt of 'loc * 'loc t * 'loc t
   | Fix of 'loc * string * 'loc t
-  | Sequence of 'loc * (string option * 'loc t) list * 'loc c_term
+  | Sequence of 'loc * 'loc binder list * 'loc c_term
   | Identifier of 'loc * string
+
+and 'loc binder = Binder of string option * 'loc t
 
 let location = function
   | AnyChar loc
@@ -61,7 +63,7 @@ let rec map_loc ~f =
   | Fix (loc, s, p) -> Fix (f loc, s, map_loc ~f p)
   | Sequence (loc, ps, p)
   ->
-    let ps' = List.map ps ~f:(fun (name, p) -> name, map_loc ~f p) in
+    let ps' = List.map ps ~f:(fun (Binder (name, p)) -> Binder (name, map_loc ~f p)) in
     Sequence (f loc, ps', cf p)
   | Identifier (loc, s) -> Identifier (f loc, s)
 
@@ -110,14 +112,14 @@ let pp_generic ~open_loc ~close_loc ppf p =
     | Fix (_, name, p) ->
       (fun ppf -> pf ppf "@[<2>fix@ (@[%s -> %a@])@]" name (go 0) p), app_prec
     | Sequence (_, ps, p) ->
-      let named_parser ppf (opt_name, p) = match opt_name with
+      let binder ppf (Binder (opt_name, p)) = match opt_name with
         | None -> pf ppf "%a" (go 0) p
         | Some name -> pf ppf "%s:%a" name (go 0) p
       in
       let formatter ppf = pf
         ppf
         "%a -> %a"
-        Fmt.(list ~sep:(any "@ ") named_parser)
+        Fmt.(list ~sep:(any "@ ") binder)
         ps
         core
         p
@@ -427,7 +429,10 @@ module Direct = struct
   ;;
 
   let sequence named_ps tm =
-    let names, ps = List.unzip named_ps in
+    let names, ps = named_ps
+      |> List.map ~f:(fun (Binder (name_opt, p)) -> name_opt, p)
+      |> List.unzip
+    in
     { run =
         (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
           (* Run through each subparser. We end up with
@@ -655,7 +660,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         (match left with
       | Identifier (_loc, name) ->
         expression ~tokens ~ambient_prec:2 >>= fun right ->
-        return ~
+        Binding (left, right)
+      | _ -> failwith "TODO: = non-identifier"
     )
     *)
     | _ -> failwith ("infix TODO: " ^ op_name)
