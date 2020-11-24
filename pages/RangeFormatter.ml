@@ -48,7 +48,7 @@ let mk
     ; out_flush = Fn.id
     ; out_newline = (fun () -> add_at_current_level (br ()))
     ; out_spaces = (fun spaces -> add_text (String.make spaces ' '))
-    ; out_indent = Caml.Printf.printf "out_indent %n\n"
+    ; out_indent = (fun _i -> ()) (* Caml.Printf.printf "out_indent %n\n" *)
     }
   in
   let fmt = Caml.Format.formatter_of_out_functions out_fns in
