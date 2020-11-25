@@ -15,16 +15,16 @@ type 'loc t =
   | String of 'loc * string
   | Satisfy of 'loc * string * 'loc c_term
   | Fail of 'loc * 'loc c_term
-  | Let of 'loc * string * 'loc t * 'loc t
   (* combinators *)
   | Option of 'loc * 'loc t
   | Count of 'loc * 'loc t * 'loc c_term
   | Many of 'loc * 'loc t
   | Many1 of 'loc * 'loc t
-  (* alternative *)
-  | Alt of 'loc * 'loc t * 'loc t
-  | Fix of 'loc * string * 'loc t
+  | Choice of 'loc * 'loc t list
   | Sequence of 'loc * 'loc binder list * 'loc c_term
+  (* language stuff *)
+  | Let of 'loc * string * 'loc t * 'loc t
+  | Fix of 'loc * string * 'loc t
   | Identifier of 'loc * string
 
 and 'loc binder = Binder of string option * 'loc t
@@ -40,7 +40,7 @@ let location = function
   | Count (loc, _, _)
   | Many (loc, _)
   | Many1 (loc, _)
-  | Alt (loc, _, _)
+  | Choice (loc, _)
   | Fix (loc, _, _)
   | Sequence (loc, _, _)
   | Identifier (loc, _)
@@ -48,6 +48,7 @@ let location = function
 
 let rec map_loc ~f =
   let cf = Core.map_loc ~f in
+  let map_binder (Binder (name, p)) = Binder (name, map_loc ~f p) in
   function
   | AnyChar loc -> AnyChar (f loc)
   | Char (loc, c) -> Char (f loc, c)
@@ -59,12 +60,9 @@ let rec map_loc ~f =
   | Count (loc, p, tm) -> Count (f loc, map_loc ~f p, cf tm)
   | Many (loc, p) -> Many (f loc, map_loc ~f p)
   | Many1 (loc, p) -> Many1 (f loc, map_loc ~f p)
-  | Alt (loc, p1, p2) -> Alt (f loc, map_loc ~f p1, map_loc ~f p2)
+  | Choice (loc, ps) -> Choice (f loc, List.map ps ~f:(map_loc ~f))
   | Fix (loc, s, p) -> Fix (f loc, s, map_loc ~f p)
-  | Sequence (loc, ps, p)
-  ->
-    let ps' = List.map ps ~f:(fun (Binder (name, p)) -> Binder (name, map_loc ~f p)) in
-    Sequence (f loc, ps', cf p)
+  | Sequence (loc, ps, p) -> Sequence (f loc, List.map ps ~f:map_binder, cf p)
   | Identifier (loc, s) -> Identifier (f loc, s)
 
 let erase = map_loc ~f:(fun _ -> ())
@@ -74,7 +72,7 @@ module Prec = struct
   let quantifier = 5
   let eq = 4
   let app = 3
-  let alt = 2
+  let alt = 1
   let arr = 1
 end
 
@@ -110,23 +108,24 @@ let pp_generic ~open_loc ~close_loc ppf p =
       (fun ppf -> pf ppf "%a*" (go (Int.succ Prec.quantifier)) p), Prec.quantifier
     | Many1 (_, p) ->
       (fun ppf -> pf ppf "%a+" (go (Int.succ Prec.quantifier)) p), Prec.quantifier
-    | Alt (_, t1, t2) ->
-      (fun ppf -> pf ppf "@[<2>%a@ |@ %a@]" (go Prec.alt) t1 (go (Int.succ Prec.alt)) t2),
-      Prec.alt
+    | Choice (_, branches) ->
+      let initial_bar = Format.pp_print_custom_break
+        ~fits:("", 0, "")
+        ~breaks:("|", 0, "")
+      in
+      let formatter ppf = pf ppf "@[<2>choice@ (@[<2>%t%a@])@]"
+        initial_bar
+        Fmt.(list ~sep:(any " | ") (go Prec.alt)) branches
+      in
+      formatter, Prec.alt
     | Fix (_, name, p) ->
       (fun ppf -> pf ppf "@[<2>fix@ (@[%s -> %a@])@]" name (go 0) p), Prec.app
     | Sequence (_, ps, p) ->
-      let binder ppf (Binder (opt_name, p)) = match opt_name with
-        | None -> pf ppf "%a" (go 0) p
-        | Some name -> pf ppf "%s=%a" name (go Prec.eq) p
-      in
       let formatter ppf = pf
         ppf
         "%a -> %a"
-        Fmt.(list ~sep:(any "@ ") binder)
-        ps
-        core
-        p
+        Fmt.(list ~sep:(any "@ ") binder) ps
+        core p
       in
       formatter, Prec.app
     | Identifier (_, name) -> (fun ppf -> pf ppf "%s" name), Prec.atom
@@ -134,7 +133,11 @@ let pp_generic ~open_loc ~close_loc ppf p =
     with_parens ~ambient_prec ~prec (fun ppf () -> formatter ppf) ppf ();
     close_loc ppf loc
 
+  and binder ppf (Binder (opt_name, p)) = match opt_name with
+    | None -> pf ppf "%a" (go 0) p
+    | Some name -> pf ppf "%s=%a" name (go Prec.eq) p
   in
+
   go 0 ppf p
 ;;
 
@@ -389,32 +392,29 @@ module Direct = struct
     }
   ;;
 
-  let alt p1 p2 =
+  let choice ps =
     { run =
         (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
-          let pos0 = pos in
-          let pos, snapshots1, result =
-            (translate_direct p1).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
-          in
-          let pos1 = pos in
-          let snapshot1 =
-            mk_snapshot ~result ~parser:p1 ~term_ctx ~parser_ctx ~snapshots:snapshots1
-              pos0 pos1
-          in
-          let pos, snapshots, result = match result with
-            | Error _ ->
-              let pos, snapshots2, result =
-                (translate_direct p2).run ~translate_direct ~term_ctx ~parser_ctx ~pos str
+
+          let snapshot_queue = Queue.create () in
+
+          let match_opt = List.find_map ps ~f:(fun parser ->
+              let pos', snapshots, result = (translate_direct parser).run
+                ~translate_direct ~term_ctx ~parser_ctx ~pos str
               in
-              let pos2 = pos in
-              let snapshot2 =
-                mk_snapshot ~result ~parser:p2 ~term_ctx ~parser_ctx ~snapshots:snapshots2
-                  pos1 pos2
+              let snapshot = mk_snapshot ~result ~parser ~term_ctx ~parser_ctx ~snapshots
+                pos pos'
               in
-              pos, [snapshot1; snapshot2], result
-            | _ -> pos, [snapshot1], result
+              Queue.enqueue snapshot_queue snapshot;
+              match result with
+                | Error _ -> None
+                | Ok _ -> Some (pos', result)
+          )
           in
-          pos, snapshots, result
+
+          match match_opt with
+            | None -> pos, Queue.to_list snapshot_queue, Error ("No match found", None)
+            | Some (pos, result) -> pos, Queue.to_list snapshot_queue, result
         )
     }
   ;;
@@ -525,7 +525,7 @@ module Direct = struct
     | Count (_, t, n) -> count n t
     | Many (_, t) -> many t
     | Many1 (_, t) -> many1 t
-    | Alt (_, t1, t2) -> alt t1 t2
+    | Choice (_, ps) -> choice ps
     | Fix (_, name, p) -> fix name p
     | Sequence (_, ps, p) -> sequence ps p
     | Identifier (_, name) -> identifier name
@@ -579,8 +579,9 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     | Ident of string
     | Core of OptRange.t Core.term
     | Parenthesized of term
-    | SatisfyTok of string * OptRange.t Core.term
     | FailTok of OptRange.t Core.term
+    | SatisfyTok of string * OptRange.t Core.term
+    | ChoiceTok of token list
     | FixTok of string * token list
 
   let rec string_of_token = function
@@ -588,8 +589,10 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     | Operator str | Keyword str | Ident str -> str
     | Core tm -> Core.to_string tm
     | Parenthesized tm -> Fmt.str "%a" pp_plain tm
-    | SatisfyTok (name, tm) -> Fmt.str "satisfy (%s -> %a)" name Core.pp tm
     | FailTok tm -> Fmt.str "fail (%a)" Core.pp tm
+    | SatisfyTok (name, tm) -> Fmt.str "satisfy (%s -> %a)" name Core.pp tm
+    | ChoiceTok toks -> Fmt.str "choice (%s)"
+      (toks |> List.map ~f:string_of_token |> String.concat ~sep:"; ")
     | FixTok (name, toks) -> Fmt.str "fix (%s -> %s)"
       name
       (toks |> List.map ~f:string_of_token |> String.concat ~sep:"; ")
@@ -598,6 +601,14 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     |> Queue.to_list
     |> List.map ~f:string_of_token
     |> String.concat ~sep:"; "
+
+  let string_of_binder (Binder (opt_name, p)) = match opt_name with
+    | None -> pp_str p
+    | Some name -> Printf.sprintf "%s=%s" name (pp_str p)
+
+  let string_of_binders binders = binders
+    |> List.map ~f:string_of_binder
+    |> String.concat ~sep:" "
 
   let todo_pos = None
 
@@ -646,22 +657,44 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     | Parenthesized p ->
       let pos = location p in
       return ~pos p
-    | SatisfyTok (name, tm) ->
-      let pos = todo_pos in
-      return ~pos (Satisfy (pos, name, tm))
     | FailTok tm ->
       let pos = todo_pos in
       return ~pos (Fail (pos, tm))
+    | SatisfyTok (name, tm) ->
+      let pos = todo_pos in
+      return ~pos (Satisfy (pos, name, tm))
+    | ChoiceTok toks ->
+      let tokens = Queue.of_list toks in
+      choice_branches ~first:true ~tokens >>= fun branches ->
+      (match Queue.length tokens with
+        | 0 ->
+          let pos = todo_pos in
+          return ~pos (Choice (pos, branches))
+        | _ -> fail ("Leftover tokens in a choice body: " ^ string_of_tokens tokens))
     | FixTok (name, toks) ->
-      let tok_queue = Queue.of_list toks in
-      expression ~tokens:tok_queue ~ambient_prec:0 >>= fun expr ->
-      match Queue.length tok_queue with
+      let tokens = Queue.of_list toks in
+      sequence ~tokens >>= fun expr ->
+      match Queue.length tokens with
         | 0 ->
           let pos = todo_pos in
           return ~pos (Fix (pos, name, expr))
         | _ -> fail "Leftover tokens in a fix body"
 
-  (* a='a' | b='b' bad: TODO: detect *)
+  and choice_branches ~first ~tokens =
+    let go () =
+      sequence ~tokens >>= fun branch ->
+      choice_branches ~first:false ~tokens >>= fun branches ->
+      let pos = todo_pos in
+      return ~pos (branch :: branches)
+    in
+
+    match Queue.peek tokens with
+      | Some (Operator "|") -> let _ : token = Queue.dequeue_exn tokens in go ()
+      | Some tok ->
+        if first
+        then go ()
+        else fail (Printf.sprintf "TODO: choice branches %s" (string_of_token tok))
+      | None -> return ~pos:None []
 
   (* Parse the operator following an expression *)
   and infix (* or postfix *) ~tokens ~left ~op_name =
@@ -670,18 +703,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     | "?" -> return ~pos (Option (pos, left))
     | "*" -> return ~pos (Many (pos, left))
     | "+" -> return ~pos (Many1 (pos, left))
-    | "|" ->
-      expression ~tokens ~ambient_prec:(Prec.alt + 1) >>= fun right ->
-      return ~pos (Alt (pos, left, right))
-      (*
-    | "=" -> (match left with
-      | Identifier (_loc, name) ->
-        expression ~tokens ~ambient_prec:2 >>= fun right ->
-        Binder (Some name, right)
-      | _ -> failwith "TODO: = non-identifier"
-    )
-    *)
-    | _ -> failwith (Printf.sprintf "infix TODO: %s before %s" op_name (string_of_tokens tokens))
+    | _ -> failwith (Printf.sprintf "infix TODO: %s before [%s]" op_name
+      (string_of_tokens tokens))
 
   and expression ~tokens ~ambient_prec =
     let token = Queue.dequeue_exn tokens in
@@ -749,9 +772,10 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     let rec go () =
       match Queue.peek tokens with
       (* Parse form 2. *)
-      | None -> (match Queue.to_list binders with
+      | Some (Operator "|") | None -> (match Queue.to_list binders with
         | [Binder (None, expr)] -> let pos = location expr in return ~pos expr
-        | _ -> failwith "TODO (sequence 1)"
+        | binders -> failwith
+          (Printf.sprintf "TODO (sequence 1) %s" (string_of_binders binders))
       )
 
       (* Parse form 1 *)
@@ -792,6 +816,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         ; char '.' >>| (fun _ -> Atom Dot)
         ; operator >>| (fun op -> Operator op)
         ; keyword >>| (fun kw -> Keyword kw)
+        ; string "fail" >>= (fun _ ->
+          c_term >>| fun tm -> FailTok tm)
         ; string "satisfy" >>= (fun _ ->
           parens
             (lift3
@@ -799,8 +825,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
               identifier
               arrow
               c_term))
-        ; string "fail" >>= (fun _ ->
-          c_term >>| fun tm -> FailTok tm)
+        ; string "choice" >>= (fun _ ->
+          parens (many token) >>| fun toks -> ChoiceTok toks)
         ; string "fix" >>= (fun _ ->
           parens
             (lift3
@@ -827,7 +853,7 @@ module TestParsers = struct
   let str = {|"str"|}
   let str_star = {|"str"*|}
   let str_plus = {|"str"+|}
-  let alt = {|"str" | "foo"|}
+  let choice = {|choice ("str" | "foo")|}
 
   let sat_parser =
     {|satisfy (x -> match x with {
@@ -840,19 +866,27 @@ module TestParsers = struct
   let fail = {|fail {"reason"}|}
   let char_opt = "'c'?"
   let ret = "{foo()}"
-  let fix = {|fix (x -> "a" | "b")|}
+  let fix = {|fix (x -> choice ("a" | "b"))|}
   let seq = {|a="a" -> a|}
 
   let list_parser =
-    {|fix (lst ->
-        (c='c' cs=lst -> {cons(c; cs)}) |
-        {nil()}
-      )
+    {|fix (lst -> choice (
+      | c='c' cs=lst -> {cons(c; cs)}
+      | {nil()}
+      ))
     |}
 
   let seq2 = {|a="a" a'="a" b="b" -> {triple(a; a'; b)}|}
   let seq3 = {|a='a' a'='a' b='b' -> {triple(a; a'; b)}|}
-  let fix2 = {|fix (x -> "b" | (a="a" x=x -> {pair(a; x)}))|}
+  let fix2 = {|fix (x -> choice (
+    | a="a" x=x -> {pair(a; x)}
+    | "b" -> {"b"}
+  ))|}
+  (* XXX: "Invalid arguments to add" *)
+  let fix3 = {|fix (expr -> choice (
+    | name=. '+' expr=expr -> {plus(var(name); expr)}
+    | name=. -> {var(name)}
+  ))|}
   let pair = "a='a' b='b' -> {pair(a; b)}"
   let pair2 = "a=. b=. -> {pair(a; b)}"
 end
@@ -920,12 +954,12 @@ let%test_module "Parsing" =
     ;;
 
     let%expect_test _ =
-      parse_print alt "str";
+      parse_print choice "str";
       [%expect {| <input:0-3>"str"</input:0-3> |}]
     ;;
 
     let%expect_test _ =
-      parse_print alt "foo";
+      parse_print choice "foo";
       [%expect {| <input:0-3>"foo"</input:0-3> |}]
     ;;
 
@@ -981,19 +1015,19 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print list_parser "";
-      [%expect {| <parser:63-68>nil()</parser:63-68> |}]
+      [%expect {| <parser:68-73>nil()</parser:68-73> |}]
     ;;
 
     let%expect_test _ =
       parse_print list_parser "c";
       [%expect
-        {| <parser:38-49>cons(<input:0-1>'c'</input:0-1>; <parser:63-68>nil()</parser:63-68>)</parser:38-49> |}]
+        {| <parser:46-57>cons(<input:0-1>'c'</input:0-1>; <parser:68-73>nil()</parser:68-73>)</parser:46-57> |}]
     ;;
 
     let%expect_test _ =
       parse_print list_parser "cc";
       [%expect
-        {| <parser:38-49>cons(<input:0-1>'c'</input:0-1>; <parser:38-49>cons(<input:1-2>'c'</input:1-2>; <parser:63-68>nil()</parser:63-68>)</parser:38-49>)</parser:38-49> |}]
+        {| <parser:46-57>cons(<input:0-1>'c'</input:0-1>; <parser:46-57>cons(<input:1-2>'c'</input:1-2>; <parser:68-73>nil()</parser:68-73>)</parser:46-57>)</parser:46-57> |}]
     ;;
 
     (*
@@ -1017,13 +1051,18 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print fix2 "a";
-      [%expect {| failed to parse: string "a" |}]
+      [%expect {| failed to parse: No match found |}]
     ;;
 
     let%expect_test _ =
       parse_print fix2 "ab";
       [%expect
-        {| <parser:31-41>pair(<input:0-1>"a"</input:0-1>; <input:1-2>"b"</input:1-2>)</parser:31-41> |}]
+        {| <parser:39-49>pair(<input:0-1>"a"</input:0-1>; <parser:65-68>"b"</parser:65-68>)</parser:39-49> |}]
+    ;;
+
+    let%expect_test _ =
+      parse_print fix3 "a+b";
+      [%expect{| <parser:53-74>plus(<parser:58-67>var(<input:0-1>'a'</input:0-1>)</parser:58-67>; <parser:93-102>var(<input:2-3>'b'</input:2-3>)</parser:93-102>)</parser:53-74> |}]
     ;;
 
     let%expect_test _ =
@@ -1064,28 +1103,22 @@ let%test_module "Parsing" =
      [%expect{| . |}]
 
    let%expect_test _ =
-     parse_print_parser "let a = b | c in d?";
-     [%expect{|
-       let a = b | c in
-       d? |}]
-
-   let%expect_test _ =
      parse_print_parser str_star;
      [%expect{| "str"* |}]
 
    let%expect_test _ =
-     parse_print_parser "'a' | 'b' | 'c'";
-     [%expect{| 'a' | 'b' | 'c' |}]
+     parse_print_parser "choice ('a' | 'b' | 'c')";
+     [%expect{| choice ('a' | 'b' | 'c') |}]
 
    let%expect_test _ =
-     parse_print_parser "(. -> Q) | .";
-     [%expect{| (. -> Q) | . |}]
+     parse_print_parser "choice (. -> Q | .)";
+     [%expect{| choice (. -> Q | .) |}]
 
    let%expect_test _ =
      parse_print_parser list_parser;
      [%expect{|
 
-       fix (lst -> (c='c' cs=lst -> {cons(c; cs)}) | {nil()}) |}]
+       fix (lst -> choice (c='c' cs=lst -> {cons(c; cs)} |  -> {nil()})) |}]
   end)
 ;;
 
