@@ -1083,12 +1083,12 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print fix3 "a + 1";
-      [%expect {||}]
+      [%expect {| <parser:284-300>plus(<parser:115-125>var(<input:0-1>list(<input:0-1>'a'</input:0-1>)</input:0-1>)</parser:115-125>; <parser:163-177>literal(<input:4-5>list(<input:4-5>'1'</input:4-5>)</input:4-5>)</parser:163-177>)</parser:284-300> |}]
     ;;
 
     let%expect_test _ =
       parse_print fix3 "a + b + c";
-      [%expect{| <parser:63-84>plus(<parser:68-77>var(<input:0-1>'a'</input:0-1>)</parser:68-77>; <parser:63-84>plus(<parser:68-77>var(<input:4-5>'b'</input:4-5>)</parser:68-77>; <parser:103-112>var(<input:8-9>'c'</input:8-9>)</parser:103-112>)</parser:63-84>)</parser:63-84> |}]
+      [%expect{| <parser:284-300>plus(<parser:115-125>var(<input:0-1>list(<input:0-1>'a'</input:0-1>)</input:0-1>)</parser:115-125>; <parser:284-300>plus(<parser:115-125>var(<input:4-5>list(<input:4-5>'b'</input:4-5>)</input:4-5>)</parser:115-125>; <parser:115-125>var(<input:8-9>list(<input:8-9>'c'</input:8-9>)</input:8-9>)</parser:115-125>)</parser:284-300>)</parser:284-300> |}]
     ;;
 
     let%expect_test _ =
@@ -1109,6 +1109,34 @@ let%test_module "Parsing" =
       | Error msg -> Caml.print_string ("failed to parse parser desc: " ^ msg)
       | Ok parser -> Fmt.pr "%a\n" pp_plain parser
    ;;
+
+   let%expect_test _ =
+     parse_print_parser {|let atom = choice (name | literal) in
+fix
+(expr -> choice
+(atom=atom ' '* '+'
+' '*
+expr=expr -> {plus(atom;
+expr)} | atom=atom -> atom))|};
+     [%expect{|
+       let atom = choice (name | literal) in
+       fix
+         (expr -> choice
+                    (atom=atom ' '* '+' ' '*
+                       expr=expr -> {plus(atom; expr)} | atom=atom -> atom)) |}]
+
+   let%expect_test _ =
+     parse_print_parser fix3;
+     [%expect{|
+       let char = satisfy (c -> {is_alpha(c)}) in
+       let digit = satisfy (c -> {is_digit(c)}) in
+       let name = chars=char+ -> {var(chars)} in
+       let literal = chars=digit+ -> {literal(chars)} in
+       let atom = choice (name | literal) in
+       fix
+         (expr -> choice
+                    (atom=atom ' '* '+' ' '*
+                       expr=expr -> {plus(atom; expr)} | atom=atom -> atom)) |}]
 
    (*
    let%expect_test _ =
