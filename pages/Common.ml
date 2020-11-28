@@ -180,8 +180,7 @@ let mk_single_line_input ?autofocus:(autofocus=true) input_s =
 
   result, input_event
 
-let mk_output
-  (elt_s : [ `Code ] Tyxml_js.To_dom.elt React.signal) =
+let mk_output elt_s =
   let open Tyxml_js in
   R.Html.div
     ~a:[ R.Html.a_class (React.S.const [ "output" ]) ]

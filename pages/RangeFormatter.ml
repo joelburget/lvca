@@ -40,6 +40,7 @@ let mk
       [ R.Html5.a_style style; Html5.a_user_data "range" (OptRange.to_string rng) ]
   in
   let add_text str = add_at_current_level (span ~a:(get_attrs ()) [ txt str ]) in
+  let add_spaces n = add_text (String.make n ' ') in
   let out_fns : Caml.Format.formatter_out_functions =
     { out_string =
         (fun str _start _char_count -> add_text str)
@@ -47,8 +48,8 @@ let mk
            characters. *)
     ; out_flush = Fn.id
     ; out_newline = (fun () -> add_at_current_level (br ()))
-    ; out_spaces = (fun spaces -> add_text (String.make spaces ' '))
-    ; out_indent = (fun _i -> ()) (* Caml.Printf.printf "out_indent %n\n" *)
+    ; out_spaces = add_spaces
+    ; out_indent = add_spaces
     }
   in
   let fmt = Caml.Format.formatter_of_out_functions out_fns in
@@ -73,5 +74,5 @@ let mk
     ; print_open_stag = Fn.const ()
     ; print_close_stag = Fn.const ()
     };
-  R.Html5.code top_level_elems, fmt
+  Html.pre [R.Html.code top_level_elems], fmt
 ;;
