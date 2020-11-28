@@ -195,10 +195,22 @@ module Direct = struct
 
   type t = direct
 
+  type toplevel_result =
+    { didnt_consume_msg: string option
+    ; snapshot: trace_snapshot
+    ; result: (SourceRanges.t n_term, string * SourceRanges.t c_term option) Result.t
+    }
+
   let mk_snapshot ~result ~parser ~term_ctx ~parser_ctx ?snapshots:(snapshots=[])
-    pre_pos post_pos
-    = { success = Result.is_ok result; pre_pos; post_pos; parser; term_ctx; parser_ctx;
-    snapshots }
+    pre_pos post_pos =
+    { success = Result.is_ok result
+    ; pre_pos
+    ; post_pos
+    ; parser
+    ; term_ctx
+    ; parser_ctx
+    ; snapshots
+    }
 
   let mk_error msg = Error (msg, None)
 
@@ -345,7 +357,7 @@ module Direct = struct
           in
           pos, List.rev rev_snapshots, Result.map ~f:mk_list result
         | Ok _
-        | Error _ -> failwith "TODO"
+        | Error _ -> failwith "TODO: count error"
     }
   ;;
 
@@ -531,23 +543,33 @@ module Direct = struct
     | Identifier (_, name) -> identifier name
   ;;
 
-  let parse_direct : SourceRanges.t parser -> string -> parse_result
-   = fun parser str ->
+  let parse_direct
+    :  ?term_ctx:term_ctx
+    -> ?parser_ctx:parser_ctx
+    -> SourceRanges.t parser
+    -> string
+    -> toplevel_result
+   = fun ?term_ctx:(term_ctx=Lvca_util.String.Map.empty)
+         ?parser_ctx:(parser_ctx=Lvca_util.String.Map.empty)
+         parser str ->
     let { run } = translate_direct parser in
-    let strlen = String.length str in
-    let term_ctx = Lvca_util.String.Map.empty in
-    let parser_ctx = Lvca_util.String.Map.empty in
     let pos, snapshots, result = run ~translate_direct ~term_ctx ~parser_ctx ~pos:0 str in
-    let result = match result with
-      | result when pos = strlen -> result
-      | Ok _ -> mk_error
-        (Printf.sprintf
-           {|Parser didn't consume entire input. Left over: "%s"|}
-           (if strlen > 50 then String.prefix str 47 ^ "..." else str))
-      | Error _ as result -> result
+
+    (* Some str if the parser succeeded but didn't consume the entire input,
+       otherwise None *)
+    let didnt_consume_msg = match result with
+      | _ when pos = String.length str -> None
+      | Ok _ ->
+        let str' = String.subo ~pos str in
+        Some (Printf.sprintf
+          {|Parser didn't consume entire input. Left over: "%s"|}
+          (if String.length str' > 50 then String.prefix str' 47 ^ "..." else str'))
+      | Error _ -> None
     in
+
     let snapshot = mk_snapshot ~result ~parser ~term_ctx ~parser_ctx ~snapshots 0 pos in
-    { snapshot; result }
+
+    { didnt_consume_msg; snapshot; result }
  ;;
 end
 
@@ -882,13 +904,20 @@ module TestParsers = struct
     | a="a" x=x -> {pair(a; x)}
     | "b" -> {"b"}
   ))|}
-  (* XXX: "Invalid arguments to add" *)
-  let fix3 = {|fix (expr -> choice (
-    | name=. '+' expr=expr -> {plus(var(name); expr)}
-    | name=. -> {var(name)}
-  ))|}
   let pair = "a='a' b='b' -> {pair(a; b)}"
   let pair2 = "a=. b=. -> {pair(a; b)}"
+
+  (* XXX: "Invalid arguments to add" *)
+  (* XXX: "fix need for parens" *)
+  let fix3 = {|let char = satisfy (c -> {is_alpha(c)}) in
+let digit = satisfy (c -> {is_digit(c)}) in
+let name = (chars=char+ -> {var(chars)}) in
+let literal = (chars=digit+ -> {literal(chars)}) in
+let atom = choice(name | literal) in
+fix (expr -> choice (
+  | atom=atom ' '* '+' ' '* expr=expr -> {plus(atom; expr)}
+  | atom=atom -> {atom}
+))|}
 end
 
 let%test_module "Parsing" =
@@ -1030,13 +1059,6 @@ let%test_module "Parsing" =
         {| <parser:46-57>cons(<input:0-1>'c'</input:0-1>; <parser:46-57>cons(<input:1-2>'c'</input:1-2>; <parser:68-73>nil()</parser:68-73>)</parser:46-57>)</parser:46-57> |}]
     ;;
 
-    (*
-    let%expect_test _ =
-      parse_print list_parser "...";
-      [%expect]
-    ;;
-    *)
-
     let%expect_test _ =
       parse_print seq2 "aab";
       [%expect
@@ -1061,8 +1083,13 @@ let%test_module "Parsing" =
     ;;
 
     let%expect_test _ =
-      parse_print fix3 "a+b";
-      [%expect{| <parser:53-74>plus(<parser:58-67>var(<input:0-1>'a'</input:0-1>)</parser:58-67>; <parser:93-102>var(<input:2-3>'b'</input:2-3>)</parser:93-102>)</parser:53-74> |}]
+      parse_print fix3 "a + 1";
+      [%expect {||}]
+    ;;
+
+    let%expect_test _ =
+      parse_print fix3 "a + b + c";
+      [%expect{| <parser:63-84>plus(<parser:68-77>var(<input:0-1>'a'</input:0-1>)</parser:68-77>; <parser:63-84>plus(<parser:68-77>var(<input:4-5>'b'</input:4-5>)</parser:68-77>; <parser:103-112>var(<input:8-9>'c'</input:8-9>)</parser:103-112>)</parser:63-84>)</parser:63-84> |}]
     ;;
 
     let%expect_test _ =
