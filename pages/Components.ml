@@ -4,7 +4,8 @@ open ReactiveData
 
 let empty_elem = Html.span []
 
-let error_msg msg = [%html{|<div class="error">|}[Html.txt msg]{|</div>|}]
+let error_msg msg = Html.(div ~a:[a_class ["error"]] [txt msg])
+let success_msg msg = Html.(div ~a:[a_class ["success"]] [txt msg])
 
 let mk_a ~border ~classes ~label =
   let classes = if border
@@ -86,6 +87,7 @@ let button_classes =
   ; "hover:bg-blue-700"
   ; "text-blue-800"
   ; "hover:text-white"
+  ; "cursor-pointer"
   ]
 
 (* TODO: automatically return false? *)
@@ -93,24 +95,28 @@ let button ~onclick str = Html.(button
   ~a:[a_onclick onclick; a_class button_classes]
   [txt str])
 
-let r_button ~onclick str_s = R.Html.(button
-  ~a:[a_onclick onclick; a_class (React.S.const button_classes)]
-  (str_s |> React.S.map txt |> RList.singleton_s))
+let div_button ~onclick content = Html.(div
+  ~a:[a_onclick onclick; a_class button_classes]
+  content)
 
-let table header body = R.Html.table RList.(concat (singleton header) body)
+let r_button ~onclick (str_s: string React.signal) = R.Html.(button
+  ~a:[a_onclick onclick; a_class (React.S.const button_classes)]
+  (str_s |> React.S.map Html.txt |> RList.singleton_s))
+
+let table
+  ?classes:(classes=[])
+  header body =
+  R.Html.table ~a:[Html.a_class classes] RList.(concat (singleton header) body)
 
 let inline_block x = Html.(div ~a:[a_class ["inline-block"]] [x])
+let r_inline_block x = R.Html.div ~a:[Html.a_class ["inline-block"]] x
 
-let toggle
-  ~visible_text
-  ~hidden_text
-  visible_s
-  =
-    let e, set_e = React.E.create () in
-    let onclick _evt = set_e (not (React.S.value visible_s)); false in
-    let text_s = visible_s
-      |> React.S.map (function
-        | true -> visible_text
-        | false -> hidden_text)
-    in
-    e, r_button ~onclick text_s
+let toggle ~visible_text ~hidden_text visible_s =
+  let e, set_e = React.E.create () in
+  let onclick _evt = set_e (not (React.S.value visible_s)); false in
+  let text_s = visible_s
+    |> React.S.map (function
+      | true -> visible_text
+      | false -> hidden_text)
+  in
+  e, r_button ~onclick text_s
