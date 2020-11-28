@@ -226,7 +226,7 @@ let view_stack root path_h path_s = path_s
     stack_lst
     |> List.mapi ~f:(fun i snapshot ->
       let P.Direct.{ parser; success; _ } = snapshot in
-      let elem = view_parser parser success in
+      let p_view = view_parser parser success in
       let onclick _ = RList.set path_h (List.take path i); false in
       let btn = button ~onclick "return here" in
       let classes = List.filter_map ~f:Fn.id
@@ -234,7 +234,7 @@ let view_stack root path_h path_s = path_s
         ; if i < len - 1 then Some "border-b-2" else None
         ]
       in
-      Html.(tr ~a:[a_class classes] [td [btn]; td [elem]]))
+      Html.(tr ~a:[a_class classes] [td [btn]; td [p_view]]))
   )
   |> RList.from_signal
   |> RHtml.table
