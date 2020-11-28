@@ -362,13 +362,18 @@ module View = struct
     in
 
     let tab = [%html{|
-      <table class="font-mono mb-6">
-        <tr><td class="border-2">Parser</td><td class="border-2"><pre><code>|}[txt parser_str]{|</code></pre></td></tr>
-        <tr>
-          <td class="border-2">Input</td><td class="border-2">|}[test_input]{|</td></tr>
-        <tr><td class="border-2">Result</td><td class="border-2">|}[result]{|</td></tr>
-        <tr><td class="border-2">Trace |}[trace_button]{|</td><td class="border-2">|}[trace_cell]{|</td></tr>
-      </table>
+      <div class="grid grid-cols-4">
+        <table class="font-mono mb-6 col-span-4 table-fixed">
+          <tr>
+            <td class="border-2 w-1/6">Parser</td>
+            <td class="border-2 w-5/6"><pre><code>|}[txt parser_str]{|</code></pre></td>
+          </tr>
+          <tr>
+            <td class="border-2">Input</td><td class="border-2">|}[test_input]{|</td></tr>
+          <tr><td class="border-2">Result</td><td class="border-2">|}[result]{|</td></tr>
+          <tr><td class="border-2">Trace |}[trace_button]{|</td><td class="border-2">|}[trace_cell]{|</td></tr>
+        </table>
+      </div>
       |}]
     in
 
