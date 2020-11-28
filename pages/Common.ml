@@ -123,7 +123,9 @@ let mk_single_line_input ?autofocus:(autofocus=true) input_s =
 
   let input = Html.(input
     ~a:(
-      [a_input_type `Text ; a_value input_value; a_class ["font-mono"; "border-2"]] @
+      [ a_input_type `Text
+      ; a_value input_value
+      ; a_class ["font-mono"; "border-2"; "border-blue-900"]] @
       (if autofocus then [a_autofocus ()] else []))
     ()
   )
