@@ -11,8 +11,6 @@ module RHtml = Js_of_ocaml_tyxml.Tyxml_js.R.Html
 
 open Components
 
-type trace_snapshot = P.Direct.trace_snapshot
-
 module Model = struct
   type input_sig = string React.signal * (string -> unit)
 
@@ -105,6 +103,23 @@ module Prelude = struct
       |> Map.map ~f:(P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"prelude"))
 end
 
+let pp_view tm fmt =
+  let selection_s = React.S.const None in
+  let elt, formatter = RangeFormatter.mk selection_s in
+  Caml.Format.pp_set_margin formatter 40 (* TODO: base on current window width! *);
+  Fmt.pf formatter "%a" fmt tm;
+  Fmt.flush formatter ();
+  elt
+
+let view_term tm = success_msg [pp_view tm (Nominal.pp_term_ranges Primitive.pp)]
+
+let view_core core = success_msg [pp_view core Core.pp]
+
+(* TODO: reactive version *)
+let view_parser parser success =
+  let elt = pp_view parser P.pp_plain in
+  Html.(div ~a:[a_class [if success then "success" else "error"]] [elt])
+
 let string_location ~str ~loc =
   if String.(str = "")
   then
@@ -129,14 +144,6 @@ let string_location ~str ~loc =
     </div>
     |}]
 
-(* TODO: reactive version *)
-let view_parser parser success =
-  let selection_s = React.S.const None in
-  let elt, formatter = RangeFormatter.mk selection_s in
-  Fmt.pf formatter "%a" P.pp_plain parser;
-  Fmt.flush formatter ();
-  Html.(div ~a:[a_class [if success then "success" else "error"]] [elt])
-
 (* Produce a div saying "advances the input n chars to ...". Used in both
  *)
 let snapshot_advanced_view str P.Direct.{ pre_pos; post_pos; _ } =
@@ -155,9 +162,9 @@ let snapshot_advanced_view str P.Direct.{ pre_pos; post_pos; _ } =
 let snapshot_controls str snapshots path_h =
   let header = [%html{|
     <tr>
-      <td class="border-2">parser</td>
-      <td class="border-2">action</td>
-      <td class="border-2"></td>
+      <td class="border-t-2 border-b-2 border-r-2">parser</td>
+      <td class="border-t-2 border-b-2 border-r-2">action</td>
+      <td class="border-t-2 border-b-2"></td>
     </tr>
   |}]
   in
@@ -169,9 +176,9 @@ let snapshot_controls str snapshots path_h =
       let btn = button ~onclick "view" in
 
       Html.(tr
-        [ td ~a:[a_class ["border-2"]] [view_parser parser success]
-        ; td ~a:[a_class ["border-2"]] [snapshot_advanced_view str snapshot]
-        ; td ~a:[a_class ["border-2"]] [btn]
+        [ td ~a:[a_class ["border-t-2 border-r-2"]] [view_parser parser success]
+        ; td ~a:[a_class ["border-t-2 border-r-2"]] [snapshot_advanced_view str snapshot]
+        ; td ~a:[a_class ["border-t-2"]] [btn]
         ]))
     |> RList.const
   in
@@ -189,12 +196,12 @@ let view_controls str path_h snapshots =
   rows
     ~classes:[]
     (if List.length snapshots > 0
-    then [ subheader msg; snapshot_controls str snapshots path_h ]
-    else [ subheader msg ])
+    then [ txt msg; snapshot_controls str snapshots path_h ]
+    else [ txt msg ])
 
 type path_traversal =
-  { bottom_snapshot: trace_snapshot
-  ; stack: trace_snapshot list
+  { bottom_snapshot: P.Direct.trace_snapshot
+  ; stack: P.Direct.trace_snapshot list
   }
 
 (* Traverse the path, returning the snapshot at the bottom and all the snapshots along the
@@ -213,14 +220,21 @@ let traverse_path ~root ~path =
 
 let view_stack root path_h path_s = path_s
   |> RList.signal
-  |> React.S.map (fun path -> (traverse_path ~root ~path).stack
-    |> List.mapi ~f:(fun n snapshot ->
+  |> React.S.map (fun path ->
+    let stack_lst = (traverse_path ~root ~path).stack in
+    let len = List.length stack_lst in
+    stack_lst
+    |> List.mapi ~f:(fun i snapshot ->
       let P.Direct.{ parser; success; _ } = snapshot in
       let elem = view_parser parser success in
-      let onclick _ = RList.set path_h (List.take path n); false in
-      (* let button = button ~onclick "return here" in *)
-      let btn = div_button ~onclick [elem] in
-      Html.(tr [td [btn]]))
+      let onclick _ = RList.set path_h (List.take path i); false in
+      let btn = button ~onclick "return here" in
+      let classes = List.filter_map ~f:Fn.id
+        [ if i > 0 then Some "border-t-2" else None
+        ; if i < len - 1 then Some "border-b-2" else None
+        ]
+      in
+      Html.(tr ~a:[a_class classes] [td [btn]; td [elem]]))
   )
   |> RList.from_signal
   |> RHtml.table
@@ -238,14 +252,11 @@ let view_root_snapshot str root =
 
   let stack_view = view_stack root path_h path_s in
 
-  let stack_section = path_s
+  let stack_view = path_s
     |> RList.signal
-    |> React.S.map (fun path ->
-      [ subheader "stack"
-      ; if List.length path > 0 then stack_view else txt "(empty)"
-      ]
-    )
-    |> RList.from_signal
+    |> React.S.map
+      (fun path -> if List.length path > 0 then stack_view else txt "(empty)")
+    |> RList.singleton_s
   in
 
   let controls_s = current_snapshot_s
@@ -271,36 +282,42 @@ let view_root_snapshot str root =
     |> RHtml.span
   in
 
-  rows
-    [ RHtml.div stack_section
-    ; subheader "parser"
-    ; mk_div parser_view
-    ; cols [ Html.(div
-      [ span [ txt "The input to this parser is" ]])
-      ; txt " "
-      ; pre_loc_view
-      ]
-    ; Html.(div
-      [ inline_block (span [ txt "This parser" ])
-      ; txt " "
-      ; inline_block status_view
-      ; txt " "
-      ; inline_block (txt "and")
-      ; txt " "
-      ; current_snapshot_s
-        |> React.S.map (snapshot_advanced_view str)
-        |> RList.singleton_s
-        |> r_inline_block (* TODO: only if success *)
-      ])
-    ; mk_div controls_s
+  let status_view = Html.(div
+    [ inline_block (span [ txt "This parser" ])
+    ; txt " "
+    ; inline_block status_view
+    ; txt " "
+    ; inline_block (txt "and")
+    ; txt " "
+    ; current_snapshot_s
+      |> React.S.map (snapshot_advanced_view str)
+      |> RList.singleton_s
+      |> r_inline_block (* TODO: only if success *)
+    ])
+  in
+
+  let input_view = cols
+    [ Html.(div
+    [ span [ txt "The input to this parser is" ]])
+    ; txt " "
+    ; pre_loc_view
     ]
+  in
+
+  Html.(table ~a:[a_class []]
+    [ tr [ td ~a:[a_class ["border-b-2"; "border-r-2"]] [txt "stack"]
+         ; RHtml.(td ~a:[a_class (React.S.const ["border-b-2"])] stack_view)
+         ]
+    ; tr [ td ~a:[a_class ["border-b-2"; "border-r-2"]] [txt "parser"]
+         ; td ~a:[a_class ["border-b-2"]] [mk_div parser_view; input_view; status_view]
+         ]
+    ; tr [ td ~a:[a_class ["border-r-2"]] [txt "subparsers"]
+         ; td ~a:[a_class []] [mk_div controls_s]
+         ]
+    ])
 
 module View = struct
   module Direct = P.Direct
-
-  let view_term tm = tm
-    |> Fmt.str "%a" (Nominal.pp_term_ranges Primitive.pp)
-    |> success_msg
 
   let view_parser_test
     ?term_ctx:(term_ctx=Lvca_util.String.Map.empty)
@@ -313,13 +330,13 @@ module View = struct
 
       let result_title, result = match result with
         | Error (msg, tm_opt) ->
-          let tm_str = match tm_opt with
-            | None -> msg
-            | Some tm -> Printf.sprintf "%s: %s" msg (Fmt.str "%a" Core.pp tm)
+          let msg = match tm_opt with
+            | None -> error_msg [txt msg]
+            | Some tm -> error_msg [txt msg; view_core tm]
           in
-          "failed", error_msg tm_str
+          "failed", msg
         | Ok tm -> match didnt_consume_msg with
-          | Some msg -> "failed", error_msg msg
+          | Some msg -> "failed", error_msg [txt msg]
           | None -> "parsed", view_term tm
       in
 
@@ -456,10 +473,7 @@ module View = struct
         <h3>Sequence</h3>
 
         <p>Concatenating a sequence of parsers accepts when they all parse successfully in sequence. You're allowed to name the result of any parsers you'd like to use in the result For example |}[sequence_p]{| parses a simple addition expression (where the operands can be anything, as long as it's one character (just wait, we'll make better parsers in a moment)).</p>
-
-        <div class="grid grid-cols-4">
         |}[sequence_table]{|
-        </div>
 
         <h3>Choice</h3>
 

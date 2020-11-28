@@ -4,8 +4,8 @@ open ReactiveData
 
 let empty_elem = Html.span []
 
-let error_msg msg = Html.(div ~a:[a_class ["error"]] [txt msg])
-let success_msg msg = Html.(div ~a:[a_class ["success"]] [txt msg])
+let error_msg x = Html.(div ~a:[a_class ["error"]] x)
+let success_msg x = Html.(div ~a:[a_class ["success"]] x)
 
 let mk_a ~border ~classes ~label =
   let classes = if border
@@ -94,10 +94,6 @@ let button_classes =
 let button ~onclick str = Html.(button
   ~a:[a_onclick onclick; a_class button_classes]
   [txt str])
-
-let div_button ~onclick content = Html.(div
-  ~a:[a_onclick onclick; a_class button_classes]
-  content)
 
 let r_button ~onclick (str_s: string React.signal) = R.Html.(button
   ~a:[a_onclick onclick; a_class (React.S.const button_classes)]
