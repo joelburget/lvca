@@ -136,6 +136,46 @@ let%test_module "Core eval" =
       [%expect {| -1 |}]
     ;;
 
+    let%expect_test _ =
+      eval_str "{is_digit('9')}";
+      [%expect {| true() |}]
+    ;;
+
+    let%expect_test _ =
+      eval_str "{is_digit('a')}";
+      [%expect {| false() |}]
+    ;;
+
+    let%expect_test _ =
+      eval_str "{is_alpha('a')}";
+      [%expect {| true() |}]
+    ;;
+
+    let%expect_test _ =
+      eval_str "{is_alpha('A')}";
+      [%expect {| true() |}]
+    ;;
+
+    let%expect_test _ =
+      eval_str "{is_alpha('9')}";
+      [%expect {| false() |}]
+    ;;
+
+    let%expect_test _ =
+      eval_str "{is_alphanum('9')}";
+      [%expect {| true() |}]
+    ;;
+
+    let%expect_test _ =
+      eval_str "{is_alphanum('Z')}";
+      [%expect {| true() |}]
+    ;;
+
+    let%expect_test _ =
+      eval_str "{is_alphanum('_')}";
+      [%expect {| false() |}]
+    ;;
+
     (* let%expect_test _ = eval_str "sub 1 2"; [%expect{| -1 |}] *)
   end)
 ;;

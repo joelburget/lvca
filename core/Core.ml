@@ -187,6 +187,9 @@ let find_core_match
 
 type 'a eval_error = string * 'a term
 
+let true_tm loc = Nominal.Operator (loc, "true", [])
+let false_tm loc = Nominal.Operator (loc, "false", [])
+
 let rec eval_ctx
     : 'a n_term Lvca_util.String.Map.t -> 'a term -> ('a n_term, 'a eval_error) Result.t
   =
@@ -223,6 +226,20 @@ let rec eval_ctx
     | Primitive (loc, PrimInteger a'), Primitive (_, PrimInteger b') ->
       Ok (Nominal.Primitive (loc, Primitive.PrimInteger Z.(a' - b')))
     | _ -> Error ("Invalid arguments to sub", tm))
+
+  | Term (Operator (_, "is_digit", [ Scope ([], [ c ]) ])) ->
+    eval_char_bool_fn "is_digit" Char.is_digit ctx tm c
+  | Term (Operator (_, "is_lowercase", [ Scope ([], [ c ]) ])) ->
+    eval_char_bool_fn "is_lowercase" Char.is_lowercase ctx tm c
+  | Term (Operator (_, "is_uppercase", [ Scope ([], [ c ]) ])) ->
+    eval_char_bool_fn "is_uppercase" Char.is_uppercase ctx tm c
+  | Term (Operator (_, "is_alpha", [ Scope ([], [ c ]) ])) ->
+    eval_char_bool_fn "is_alpha" Char.is_alpha ctx tm c
+  | Term (Operator (_, "is_alphanum", [ Scope ([], [ c ]) ])) ->
+    eval_char_bool_fn "is_alphanum" Char.is_alphanum ctx tm c
+  | Term (Operator (_, "is_whitespace", [ Scope ([], [ c ]) ])) ->
+    eval_char_bool_fn "is_whitespace" Char.is_whitespace ctx tm c
+
   | Term tm -> Ok (Nominal.subst_all ctx tm)
   | Let (_is_rec, tm, Scope (name, body)) ->
     let%bind tm_val = eval_ctx ctx tm in
@@ -239,6 +256,14 @@ and eval_ctx'
     | Some result -> Ok result
     | None -> Error ("Unbound variable " ^ v, Term tm))
   | _ -> Ok tm
+
+and eval_char_bool_fn name f ctx tm c =
+  let open Result.Let_syntax in
+  let%bind c_result = eval_ctx' ctx c in
+  (match c_result with
+    | Primitive (loc, PrimChar c')
+    -> Ok (if f c' then true_tm loc else false_tm loc)
+    | _ -> Error (Printf.sprintf "Invalid argument to %s" name, tm))
 ;;
 
 let eval : 'a term -> ('a n_term, 'a eval_error) Result.t =
