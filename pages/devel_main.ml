@@ -94,13 +94,16 @@ module View = struct
 
     [%html{|
       <div>
-        <h2>LVCA demos</h2>
-        <div>
-          <select onchange=|} (handler signal_update) {|>
-            |} page_selector {|
-          </select>
-          |}[ page_view ]{|
-        </div>
+        <main class="container flex flex-col md:grid md:grid-cols-8">
+          <div class="col-span-1"></div>
+          <div class="col-span-7">
+            <h2>LVCA demos</h2>
+            <select onchange=|} (handler signal_update) {|>
+              |} page_selector {|
+            </select>
+            |}[ page_view ]{|
+          </div>
+        </main>
       </div>
     |}]
   ;;

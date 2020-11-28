@@ -4,6 +4,7 @@ open Js_of_ocaml
 let pages = Lvca_util.String.Map.of_alist_exn
   [ "term-and-concrete", TermAndConcrete.stateless_view
   ; "calculator", Calculator.stateless_view
+  ; "parser", Parser.stateless_view
   ]
 
 let insert_demo (elem : Dom_html.element Js.t) =
