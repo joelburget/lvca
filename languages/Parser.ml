@@ -166,12 +166,11 @@ type parser_stack = SourceRanges.t t Stack.t
 module Direct = struct
   type 'loc parser = 'loc t
   type term_ctx = SourceRanges.t n_term Lvca_util.String.Map.t
-  type parser_ctx = SourceRanges.t parser Lvca_util.String.Map.t
 
-  and parse_result =
-    { snapshot: trace_snapshot
-    ; result: (SourceRanges.t n_term, string * SourceRanges.t c_term option) Result.t
-    }
+  type parse_result =
+    (SourceRanges.t n_term, string * SourceRanges.t c_term option) Result.t
+
+  type parser_ctx = SourceRanges.t parser Lvca_util.String.Map.t
 
   and direct =
     { run :
@@ -180,7 +179,7 @@ module Direct = struct
         -> parser_ctx:parser_ctx
         -> pos:int
         -> string
-        -> int * trace_snapshot list * (SourceRanges.t n_term, string * SourceRanges.t c_term option) Result.t
+        -> int * trace_snapshot list * parse_result
     }
 
   and trace_snapshot =
@@ -193,13 +192,13 @@ module Direct = struct
     ; snapshots: trace_snapshot list
     }
 
-  type t = direct
-
   type toplevel_result =
     { didnt_consume_msg: string option
     ; snapshot: trace_snapshot
-    ; result: (SourceRanges.t n_term, string * SourceRanges.t c_term option) Result.t
+    ; result: parse_result
     }
+
+  type t = direct
 
   let mk_snapshot ~result ~parser ~term_ctx ~parser_ctx ?snapshots:(snapshots=[])
     pre_pos post_pos =
