@@ -29,6 +29,7 @@ module Model = struct
     ; fail_input: input_sig
     ; sequence_input: input_sig
     ; fix_input: input_sig
+    ; playground_input: input_sig
     }
 
   let mk str =
@@ -50,15 +51,13 @@ module Model = struct
     ; fail_input = mk "doesn't matter"
     ; sequence_input = mk "1 + 2"
     ; fix_input = mk "x + 90 + y"
+    ; playground_input = mk ""
     }
 end
 
-module Examples = struct
-  let parse_or_fail parser_str =
-      match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
-      | Error msg -> failwith msg
-      | Ok parser -> parser
+let parse_parser = ParseUtil.parse_string (ParseParser.t ParseCore.term)
 
+module Examples = struct
   let any_char = "."
   let char = "'c'"
   let string = {|"foo"|}
@@ -322,37 +321,50 @@ module View = struct
   let view_parser_test
     ?term_ctx:(term_ctx=Lvca_util.String.Map.empty)
     ?parser_ctx:(parser_ctx=Lvca_util.String.Map.empty)
-    parser
+    parser_or_err
     test_str =
-      let parser = P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"TODO") parser in
-      let toplevel_result = Direct.parse_direct ~term_ctx ~parser_ctx parser test_str in
-      let P.Direct.{ didnt_consume_msg; result; snapshot } = toplevel_result in
+      let result_title, result, trace =
+        match parser_or_err with
+          | Error msg ->
+            let result = error_msg [txt msg] in
+            let trace = Html.div [txt "not available: parser failed to parse"] in
+            "failed to parse parser", result, trace
+          | Ok parser ->
+            let parser = P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"TODO") parser in
+            let toplevel_result =
+              Direct.parse_direct ~term_ctx ~parser_ctx parser test_str
+            in
+            let P.Direct.{ didnt_consume_msg; result; snapshot } = toplevel_result in
 
-      let result_title, result = match result with
-        | Error (msg, tm_opt) ->
-          let msg = match tm_opt with
-            | None -> error_msg [txt msg]
-            | Some tm -> error_msg [txt msg; view_core tm]
-          in
-          "failed", msg
-        | Ok tm -> match didnt_consume_msg with
-          | Some msg -> "failed", error_msg [txt msg]
-          | None -> "parsed", view_term tm
+            let result_title, result = match result with
+              | Error (msg, tm_opt) ->
+                let msg = match tm_opt with
+                  | None -> error_msg [txt msg]
+                  | Some tm -> error_msg [txt msg; view_core tm]
+                in
+                "failed to parse input", msg
+              | Ok tm -> match didnt_consume_msg with
+                | Some msg -> "failed to parse input", error_msg [txt msg]
+                | None -> "parsed", view_term tm
+            in
+            let trace = view_root_snapshot test_str snapshot in
+            result_title, result, trace
       in
 
+      (* eg "parsed 'c'" *)
       let result = Html.div
         [ inline_block (txt result_title)
         ; txt " "
         ; inline_block result
         ]
       in
-      let trace = view_root_snapshot test_str snapshot in
 
       result, trace
 
   let mk_input_result
     ?parser_ctx:(parser_ctx=Lvca_util.String.Map.empty)
-    parser_str
+    parser_elem
+    parser_str_s
     (test_s, update_test) =
     let test_input, test_evt = Common.mk_single_line_input test_s in
     let (_ : unit React.event) = test_evt |> React.E.map update_test in
@@ -363,11 +375,9 @@ module View = struct
     in
     let (_ : unit React.event) = trace_e |> React.E.map set_show_trace in
 
-    let parser = Examples.parse_or_fail parser_str in
+    let parser_s = parser_str_s |> React.S.map parse_parser in
 
-    let test_s' = test_s
-      |> React.S.map (view_parser_test ~parser_ctx parser)
-    in
+    let test_s' = React.S.l2 (view_parser_test ~parser_ctx) parser_s test_s in
     let result = test_s' |> React.S.Pair.fst |> mk_div in
     let trace_s = test_s' |> React.S.Pair.snd in
 
@@ -383,7 +393,7 @@ module View = struct
         <table class="font-mono mb-6 col-span-4 table-fixed">
           <tr>
             <td class="border-2 w-1/6">Parser</td>
-            <td class="border-2 w-5/6"><pre><code>|}[txt parser_str]{|</code></pre></td>
+            <td class="border-2 w-5/6">|}[parser_elem]{|</td>
           </tr>
           <tr>
             <td class="border-2">Input</td><td class="border-2">|}[test_input]{|</td></tr>
@@ -396,33 +406,44 @@ module View = struct
 
     let inline_code = [%html{|
       <code class="font-mono bg-gray-100 p-1 border-2 border-gray-400">
-        |}[txt parser_str]{|
+        |}[RHtml.txt parser_str_s]{|
       </code>
       |}]
     in
 
     inline_code, tab
 
-  let view Model.{any_char_input; char_input; string_input; satisfy1_input; satisfy_is_alpha_input; satisfy_is_digit_input; star_input; plus_input; count_input = _; choice_input; let_input; fail_input; sequence_input; fix_input} =
+  let view Model.{any_char_input; char_input; string_input; satisfy1_input; satisfy_is_alpha_input; satisfy_is_digit_input; star_input; plus_input; count_input = _; choice_input; let_input; fail_input; sequence_input; fix_input; playground_input} =
 
-    let any_char_p, any_char_table = mk_input_result Examples.any_char any_char_input in
-    let char_p, char_table = mk_input_result Examples.char char_input in
-    let string_p, string_table = mk_input_result Examples.string string_input in
-    let _satisfy1_p, satisfy1_table = mk_input_result Examples.satisfy1 satisfy1_input in
+    let mk_input_result' ?parser_ctx str input =
+      mk_input_result ?parser_ctx (Html.(pre [code [txt str]])) (React.S.const str) input
+    in
+
+    let any_char_p, any_char_table = mk_input_result' Examples.any_char any_char_input in
+    let char_p, char_table = mk_input_result' Examples.char char_input in
+    let string_p, string_table = mk_input_result' Examples.string string_input in
+    let _satisfy1_p, satisfy1_table = mk_input_result' Examples.satisfy1 satisfy1_input in
     let _satisfy_is_alpha_p, satisfy_is_alpha_table =
-      mk_input_result Examples.satisfy_is_alpha satisfy_is_alpha_input
+      mk_input_result' Examples.satisfy_is_alpha satisfy_is_alpha_input
     in
     let _satisfy_is_digit_p, satisfy_is_digit_table =
-      mk_input_result Examples.satisfy_is_digit satisfy_is_digit_input
+      mk_input_result' Examples.satisfy_is_digit satisfy_is_digit_input
     in
-    let star_p, star_table = mk_input_result Examples.many star_input in
-    let plus_p, plus_table = mk_input_result Examples.plus plus_input in
-    (* let count_p, count_table = mk_input_result Examples.count count_input in *)
-    let choice_p, choice_table = mk_input_result Examples.choice choice_input in
-    let let_p, let_table = mk_input_result Examples.let_ let_input in
-    let fail_p, fail_table = mk_input_result Examples.fail fail_input in
-    let sequence_p, sequence_table = mk_input_result Examples.sequence sequence_input in
-    let _fix_p, fix_table = mk_input_result ~parser_ctx:Prelude.ctx Examples.fix fix_input in
+    let star_p, star_table = mk_input_result' Examples.many star_input in
+    let plus_p, plus_table = mk_input_result' Examples.plus plus_input in
+    (* let count_p, count_table = mk_input_result' Examples.count count_input in *)
+    let choice_p, choice_table = mk_input_result' Examples.choice choice_input in
+    let let_p, let_table = mk_input_result' Examples.let_ let_input in
+    let fail_p, fail_table = mk_input_result' Examples.fail fail_input in
+    let sequence_p, sequence_table = mk_input_result' Examples.sequence sequence_input in
+    let _fix_p, fix_table = mk_input_result' ~parser_ctx:Prelude.ctx Examples.fix fix_input in
+
+    let pg_parser_input, set_pg_parser_input = React.S.create "' '" in
+    let pg_input_elem, pg_input_evt = Common.mk_single_line_input pg_parser_input in
+    let _, playground_table = mk_input_result ~parser_ctx:Prelude.ctx
+      pg_input_elem pg_parser_input playground_input
+    in
+    let (_ : unit React.event) = pg_input_evt |> React.E.map set_pg_parser_input in
 
     [%html{|
       <div>
@@ -503,6 +524,11 @@ module View = struct
 
         <p>Finally, fix:</p>
         |}[fix_table]{|
+
+        <h3>Playground</h3>
+        <p>Finally, here is a playground where you can write and test your own parsers.</p>
+
+        |}[playground_table]{|
 
       </div>
     |}]
