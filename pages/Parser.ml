@@ -23,7 +23,7 @@ module Model = struct
     ; satisfy_is_digit_input: input_sig
     ; star_input: input_sig
     ; plus_input: input_sig
-    ; alt_input: input_sig
+    ; choice_input: input_sig
     ; count_input: input_sig
     ; let_input: input_sig
     ; fail_input: input_sig
@@ -38,16 +38,16 @@ module Model = struct
   let initial_model =
     { any_char_input = mk "c"
     ; char_input = mk "c"
-    ; string_input = mk "foo"
+    ; string_input = mk "food"
     ; satisfy1_input = mk "c"
     ; satisfy_is_alpha_input = mk "c"
     ; satisfy_is_digit_input = mk "c"
     ; star_input = mk "ccc"
     ; plus_input = mk "ccc"
-    ; alt_input = mk "c"
+    ; choice_input = mk "foo"
     ; count_input = mk "cc"
-    ; let_input = mk "foo"
-    ; fail_input = mk "foo"
+    ; let_input = mk "ccc"
+    ; fail_input = mk "doesn't matter"
     ; sequence_input = mk "1 + 2"
     ; fix_input = mk "x + 90 + y"
     }
@@ -304,7 +304,7 @@ let view_root_snapshot str root =
     ]
   in
 
-  Html.(table ~a:[a_class []]
+  Html.(table ~a:[a_class ["w-full"]]
     [ tr [ td ~a:[a_class ["border-b-2"; "border-r-2"]] [txt "stack"]
          ; RHtml.(td ~a:[a_class (React.S.const ["border-b-2"])] stack_view)
          ]
@@ -403,12 +403,12 @@ module View = struct
 
     inline_code, tab
 
-  let view Model.{any_char_input; char_input; string_input; satisfy1_input; satisfy_is_alpha_input; satisfy_is_digit_input; star_input; plus_input; count_input = _; alt_input; let_input; fail_input; sequence_input; fix_input} =
+  let view Model.{any_char_input; char_input; string_input; satisfy1_input; satisfy_is_alpha_input; satisfy_is_digit_input; star_input; plus_input; count_input = _; choice_input; let_input; fail_input; sequence_input; fix_input} =
 
     let any_char_p, any_char_table = mk_input_result Examples.any_char any_char_input in
     let char_p, char_table = mk_input_result Examples.char char_input in
     let string_p, string_table = mk_input_result Examples.string string_input in
-    let satisfy1_p, satisfy1_table = mk_input_result Examples.satisfy1 satisfy1_input in
+    let _satisfy1_p, satisfy1_table = mk_input_result Examples.satisfy1 satisfy1_input in
     let _satisfy_is_alpha_p, satisfy_is_alpha_table =
       mk_input_result Examples.satisfy_is_alpha satisfy_is_alpha_input
     in
@@ -418,7 +418,7 @@ module View = struct
     let star_p, star_table = mk_input_result Examples.many star_input in
     let plus_p, plus_table = mk_input_result Examples.plus plus_input in
     (* let count_p, count_table = mk_input_result Examples.count count_input in *)
-    let choice_p, choice_table = mk_input_result Examples.choice alt_input in
+    let choice_p, choice_table = mk_input_result Examples.choice choice_input in
     let let_p, let_table = mk_input_result Examples.let_ let_input in
     let fail_p, fail_table = mk_input_result Examples.fail fail_input in
     let sequence_p, sequence_table = mk_input_result Examples.sequence sequence_input in
@@ -432,7 +432,7 @@ module View = struct
         or a fixed string.</p>
 
         <h4>|}[any_char_p]{|</h4>
-        <p>The parser |}[any_char_p]{| accepts any single character.</p>
+        <p>The parser <code>.</code> accepts any single character.</p>
         |}[any_char_table]{|
 
         <h4>|}[char_p]{|</h4>
@@ -445,15 +445,14 @@ module View = struct
 
         <h3>Satisfy</h3>
 
-        <h4>|}[satisfy1_p]{|</h4>
         <p>Fixed characters are awfully limiting. <code>satisfy</code> parses a single character that satisfies some predicate. The available predicates are <code>is_digit</code>, <code>is_lowercase</code>, <code>is_uppercase</code>, <code>is_alpha</code>, <code>is_alphanum</code>, and <code>is_whitespace</code>.</p>
         |}[satisfy1_table]{|
         |}[satisfy_is_alpha_table]{|
         |}[satisfy_is_digit_table]{|
 
-        <p>For convenience, I'll leave the last two parsers in scope as <code>alpha</code> and <code>digit</code>.</p>
+        <p>For convenience, I'll leave the last two parsers in scope as <code>alpha</code> and <code>digit</code>, so we can use them later on.</p>
 
-        <p>TODO: note about core</p>
+        <p>You might wonder, what's the syntax inside the <code>satisfy</code> expression? It's a language I'm calling <em>core</em>, which can be used for manipulating syntax trees. It's not what this post is about, but I'll have more to say about it in the future.</p>
 
         <h3>Repetition</h3>
 
