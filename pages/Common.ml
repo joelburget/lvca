@@ -105,9 +105,7 @@ let mk_multiline_input
     (* Create an event when the input has changed *)
     |> React.S.map ~eq:Caml.(=) Fn.id
     |> React.S.changes
-    |> React.E.map (fun input ->
-           (* Caml.Printf.printf "Updating input: %s\n" input; *)
-           input_dom##.value := Js.string input)
+    |> React.E.map (fun input -> input_dom##.value := Js.string input)
   in
   input, input_event
 
