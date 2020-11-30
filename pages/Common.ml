@@ -70,7 +70,7 @@ let mk_multiline_input
   let input = Html.(textarea
     ~a:([ a_rows needed_rows
         ; a_cols cols
-        ; a_class ["input"; "font-mono"; "border-2"]
+        ; a_class ["mt-4"; "p-8"; "font-mono"; "border-2"; "border-blue-900"]
         ] @ (if autofocus then [a_autofocus ()] else []))
      (R.Html.txt input_s)
     )
