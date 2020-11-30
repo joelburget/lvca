@@ -175,8 +175,9 @@ module View = struct
         |> R.Html.pre ~a:[Html.a_class ["whitespace-pre-wrap"; "break-all"]]
       in
 
-      let delete_button, delete_event =
-        mk_button ~cls:["inline-block p-1 border-2 border-blue-900 rounded"] Html.[ txt "remove" ]
+      let delete_button, delete_event = mk_button
+        ~cls:["inline-block p-1 border-2 border-blue-900 rounded"]
+        [ Html.txt "remove" ]
       in
       let (_ : unit React.event) = delete_event
         |> React.E.map (fun () ->

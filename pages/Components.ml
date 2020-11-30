@@ -96,7 +96,7 @@ let button ~onclick str = Html.(button
   [txt str])
 
 let r_button ~onclick (str_s: string React.signal) = R.Html.(button
-  ~a:[a_onclick onclick; a_class (React.S.const button_classes)]
+  ~a:[a_onclick onclick; Html.a_class button_classes]
   (str_s |> React.S.map Html.txt |> RList.singleton_s))
 
 let table
