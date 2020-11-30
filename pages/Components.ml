@@ -36,7 +36,7 @@ let r_rows
   let a = match label with
     | "" -> [R.Html.a_class classes]
     | _ ->
-      [ R.Html.a_user_data label (React.S.const "")
+      [ Html.a_user_data label ""
       ; R.Html.a_class classes
       ]
   in
