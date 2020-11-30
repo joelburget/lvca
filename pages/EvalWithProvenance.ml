@@ -89,8 +89,7 @@ module View = struct
     let input, input_event =
       Common.mk_multiline_input (model_s |> React.S.map (fun model -> model.Model.input))
     in
-    let (_ : unit React.event) =
-      input_event
+    let (_ : unit React.event) = input_event
       |> React.E.map (fun evt ->
              let evt' =
                match evt with
