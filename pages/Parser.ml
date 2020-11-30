@@ -64,7 +64,7 @@ module Examples = struct
   let many = "'c'*"
   let plus = "'c'+"
   (* let count = "'c'{{2}}" *)
-  let choice = {|choice('c' | "foo")|}
+  let choice = {|choice ('c' | "foo")|}
   let let_ = {|let p1 = "str" in let p2 = 'c'* in choice (p1 | p2)|}
   let fail = {|fail {"some reason for failing"}|}
   let satisfy1 = {|satisfy (c -> match c with {
@@ -75,7 +75,7 @@ module Examples = struct
   let satisfy_is_digit = "satisfy(c -> {is_digit(c)})"
   let sequence = "a=. ' '* '+' ' '* b=. -> {plus(a; b)}"
   (* TODO: add var / literal types *)
-  let fix = {|let atom = choice(name | literal) in
+  let fix = {|let atom = choice (name | literal) in
 fix (expr -> choice (
   | atom=atom ' '* '+' ' '* expr=expr -> {plus(atom; expr)}
   | atom=atom -> {atom}
@@ -518,12 +518,16 @@ module View = struct
 
         <h3>Fix</h3>
 
-        <p>Let's say you want to parse arithmetic expressions like "x + 1". TODO</p>
+        <p>Our parsers to this point have been limited: we can parse regular languages but not context-free languages. We can extend the language in the same way as <a class="prose-link" href="https://catonmat.net/recursive-regular-expressions">recursive regular expressions</a> to give it more power.
+        </p>
 
-        TODO: mention name and literal parsers.
+        <p>Let's say you want to parse addition expressions, like "1 + 2", "1 + 2 + 3", "1 + 2 + 3 + 4", etc. We need a way to recursively use the parser we're defining. It's a little mind-bending, so let's look at an example.</p>
 
-        <p>Finally, fix:</p>
+        <p>Note: For clarity I've pre-defined two parsers: <code>name = (chars=alpha+ -> {var(chars)})</code> and <code>literal = (chars=digit+ -> {literal(chars)})</code>.</p>
+
         |}[fix_table]{|
+
+        <p><code>fix</code> computes the <a class="prose-link" href="https://mitpress.mit.edu/sites/default/files/sicp/full-text/sicp/book/node24.html#sec:proc-general-methods">fixed-point</a> of our parser. It takes a function which receives the parser being defined... and uses it to define itself.</p>
 
         <h3>Playground</h3>
         <p>Finally, here is a playground where you can write and test your own parsers.</p>
