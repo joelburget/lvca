@@ -181,7 +181,7 @@ let mk_single_line_input ?autofocus:(autofocus=true) input_s =
 let mk_output elt_s =
   let open Tyxml_js in
   R.Html.div
-    ~a:[ R.Html.a_class (React.S.const [ "output" ]) ]
+    ~a:[ Html.a_class [ "bg-gray-100"; "p-1" ] ]
     (RList.singleton_s elt_s)
 
 type digits_update =
