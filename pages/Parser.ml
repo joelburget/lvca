@@ -413,7 +413,25 @@ module View = struct
 
     inline_code, tab
 
-  let view Model.{any_char_input; char_input; string_input; satisfy1_input; satisfy_is_alpha_input; satisfy_is_digit_input; star_input; plus_input; count_input = _; choice_input; let_input; fail_input; sequence_input; fix_input; playground_input} =
+  let view model =
+    let Model.
+      { any_char_input
+      ; char_input
+      ; string_input
+      ; satisfy1_input
+      ; satisfy_is_alpha_input
+      ; satisfy_is_digit_input
+      ; star_input
+      ; plus_input
+      ; count_input = _
+      ; choice_input
+      ; let_input
+      ; fail_input
+      ; sequence_input
+      ; fix_input
+      ; playground_input
+      } = model
+    in
 
     let mk_input_result' ?parser_ctx str input =
       mk_input_result ?parser_ctx (Html.(pre [code [txt str]])) (React.S.const str) input
