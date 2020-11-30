@@ -68,7 +68,10 @@ end
 
 let mk_example str =
   let open Js_of_ocaml_tyxml.Tyxml_js in
-  let result = Html.(code [ txt str ]) in
+  let result = Html.(code
+    ~a:[a_class ["bg-gray-50"; "p-1"; "font-mono"; "text-sm"; "cursor-pointer"]]
+    [ txt str ])
+  in
   let result_dom = To_dom.of_code result in
   let click_event, signal_event = React.E.create () in
   Common.bind_event Common.Ev.clicks result_dom (fun _evt ->
@@ -80,34 +83,34 @@ let mk_example str =
 let language_chart =
   let open Js_of_ocaml_tyxml.Tyxml_js in
   [%html{|
-    <table class="language-chart">
+    <table class="w-full">
       <thead>
-        <tr>
+        <tr class="border-b">
           <th>Name</th>
           <th>Syntax</th>
           <th>Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr> <td>add</td> <td class="syntax">expr + expr</td> </tr>
-        <tr> <td>sub</td> <td class="syntax">expr - expr</td> </tr>
-        <tr> <td>mul</td> <td class="syntax">expr * expr</td> </tr>
-        <tr> <td>div</td> <td class="syntax">expr / expr</td> </tr>
+        <tr class="border-b"> <td>add</td> <td class="font-mono">expr + expr</td> </tr>
+        <tr class="border-b"> <td>sub</td> <td class="font-mono">expr - expr</td> </tr>
+        <tr class="border-b"> <td>mul</td> <td class="font-mono">expr * expr</td> </tr>
+        <tr class="border-b"> <td>div</td> <td class="font-mono">expr / expr</td> </tr>
 
-        <tr> <td>negate</td> <td class="syntax">negate expr</td> </tr>
-        <tr> <td>sqrt</td>   <td class="syntax">sqrt expr</td> </tr>
-        <tr> <td>abs</td>    <td class="syntax">abs expr</td> </tr>
-        <tr> <td>exp</td>    <td class="syntax">exp expr</td> </tr>
-        <tr> <td>ln</td>     <td class="syntax">ln expr</td> </tr>
-        <tr> <td>sin</td>    <td class="syntax">sin expr</td> </tr>
-        <tr> <td>cos</td>    <td class="syntax">cos expr</td> </tr>
-        <tr> <td>tan</td>    <td class="syntax">tan expr</td> </tr>
-        <tr> <td>asin</td>   <td class="syntax">asin expr</td> <td>arcsin ie inverse sin</td> </tr>
-        <tr> <td>acos</td>   <td class="syntax">acos expr</td> <td>arccos ie inverse cos</td> </tr>
-        <tr> <td>atan</td>   <td class="syntax">atan expr</td> <td>arctan ie inverse tan</td> </tr>
+        <tr class="border-b"> <td>negate</td> <td class="font-mono">negate expr</td> </tr>
+        <tr class="border-b"> <td>sqrt</td>   <td class="font-mono">sqrt expr</td> </tr>
+        <tr class="border-b"> <td>abs</td>    <td class="font-mono">abs expr</td> </tr>
+        <tr class="border-b"> <td>exp</td>    <td class="font-mono">exp expr</td> </tr>
+        <tr class="border-b"> <td>ln</td>     <td class="font-mono">ln expr</td> </tr>
+        <tr class="border-b"> <td>sin</td>    <td class="font-mono">sin expr</td> </tr>
+        <tr class="border-b"> <td>cos</td>    <td class="font-mono">cos expr</td> </tr>
+        <tr class="border-b"> <td>tan</td>    <td class="font-mono">tan expr</td> </tr>
+        <tr class="border-b"> <td>asin</td>   <td class="font-mono">asin expr</td> <td>arcsin ie inverse sin</td> </tr>
+        <tr class="border-b"> <td>acos</td>   <td class="font-mono">acos expr</td> <td>arccos ie inverse cos</td> </tr>
+        <tr class="border-b"> <td>atan</td>   <td class="font-mono">atan expr</td> <td>arctan ie inverse tan</td> </tr>
 
-        <tr> <td>pi</td> <td class="syntax">pi</td> </tr>
-        <tr> <td>e</td>  <td class="syntax">e</td> </tr>
+        <tr class="border-b"> <td>pi</td> <td class="font-mono">pi</td> </tr>
+        <tr class="border-b"> <td>e</td>  <td class="font-mono">e</td> </tr>
       </tbody>
     </table>
   |}]
@@ -150,10 +153,7 @@ module View = struct
              Controller.update (Evaluate example) model_s signal_update)
     in
     let examples =
-      Html.(
-        ul
-          (examples
-          |> List.map ~f:(fun example -> li ~a:[ a_class [ "example" ] ] [ example ])))
+      Html.(ul (examples |> List.map ~f:(fun example -> li [ example ])))
     in
 
     let row row_num input_str parsed digits_s _digits_update =
@@ -172,11 +172,11 @@ module View = struct
             in
             [Html.(span [txt str])])
         |> RList.from_signal
-        |> R.Html.pre
+        |> R.Html.pre ~a:[Html.a_class ["whitespace-pre-wrap"; "break-all"]]
       in
 
       let delete_button, delete_event =
-        mk_button ~cls:["result-delete"] Html.[ txt "remove" ]
+        mk_button ~cls:["inline-block p-1 border-2 border-blue-900 rounded"] Html.[ txt "remove" ]
       in
       let (_ : unit React.event) = delete_event
         |> React.E.map (fun () ->
@@ -184,21 +184,23 @@ module View = struct
       in
 
       [%html{|
-        <tr class="row">
-          <td class="result-input"> <pre>|}[ Html.txt input_str ]{|</pre> </td>
-          <td class="result-output">|}[ digits' ]{|</td>
-          <td class="result-digits">|}[ digits_entry ]{|</td>
+        <tr class="border-b">
+          <td class="p-4">
+            <pre class="whitespace-pre-wrap break-word">|}[ Html.txt input_str ]{|</pre>
+          </td>
+          <td class="p-4">|}[ digits' ]{|</td>
+          <td class="p-4">|}[ digits_entry ]{|</td>
           <td>|}[ delete_button ]{|</td>
         </tr>
       |}]
     in
 
     let thead = [%html{|
-      <tr>
-        <th>input</th>
-        <th>output</th>
-        <th>digits</th>
-        <th></th>
+      <tr class="border-b">
+        <th class="w-1/2">input</th>
+        <th class="w-1/3">output</th>
+        <th class="w-1/12">digits</th>
+        <th class="w-1/12"></th>
       </tr>
       |}]
     in
@@ -226,7 +228,7 @@ module View = struct
       <div>
         <div>|}[ input ]{|</div>
         <div class="error">|}[ error_msg ]{|</div>
-        |}[ Components.table thead tbody ]{|
+        |}[ Components.table ~classes:["w-full"; "mb-6"] thead tbody ]{|
         <div>
           <p>Try an example:</p>
           |}[ examples ]{|

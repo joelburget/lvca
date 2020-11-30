@@ -123,7 +123,7 @@ let mk_single_line_input ?autofocus:(autofocus=true) input_s =
     ~a:(
       [ a_input_type `Text
       ; a_value input_value
-      ; a_class ["font-mono"; "border-2"; "border-blue-900"]] @
+      ; a_class ["font-mono"; "border-2"; "border-blue-900"; "rounded"; "p-1"; "focus:ring"]] @
       (if autofocus then [a_autofocus ()] else []))
     ()
   )
@@ -195,7 +195,12 @@ let mk_digits_entry digits_s =
 
     let digits_event, signal_digits_event = React.E.create () in
     let input_value = Int.to_string (React.S.value digits_s) in
-    let input = [%html{|<input class="font-mono border-2" type="text" value=|}input_value{|>|}] in
+    let input = [%html{|
+       <input class="font-mono border-2 border-blue-900 rounded p-1 focus:ring w-16"
+              type="text"
+              value=|}input_value{|
+       >|}]
+    in
     let input_dom = To_dom.of_input input in
 
     bind_event Ev.keydowns input_dom (fun evt ->
