@@ -34,7 +34,9 @@ let demo_template handler input_desc input_elem output_desc output_elem =
           |}[ input_elem ]{|
         </div>
         <div class="switch-languages">
-          <button onclick=|}handler{|>
+          <button
+            class="p-2 border-2 border-blue-900 rounded"
+            onclick=|}handler{|>
             switch input languages
           </button>
         </div>
