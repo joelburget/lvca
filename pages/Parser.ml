@@ -457,11 +457,18 @@ module View = struct
     let _fix_p, fix_table = mk_input_result' ~parser_ctx:Prelude.ctx Examples.fix fix_input in
 
     let pg_parser_input, set_pg_parser_input = React.S.create "' '" in
-    let pg_input_elem, pg_input_evt = Common.mk_single_line_input pg_parser_input in
+    let pg_input_elem, pg_input_evt =
+      Common.mk_multiline_input pg_parser_input
+    in
     let _, playground_table = mk_input_result ~parser_ctx:Prelude.ctx
       pg_input_elem pg_parser_input playground_input
     in
-    let (_ : unit React.event) = pg_input_evt |> React.E.map set_pg_parser_input in
+    let (_ : unit React.event) = pg_input_evt |> React.E.map
+      (fun evt -> match evt with
+         | Common.InputUpdate str -> set_pg_parser_input str
+         | _ -> ()
+      )
+    in
 
     [%html{|
       <div>

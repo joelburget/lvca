@@ -61,12 +61,27 @@ let mk_multiline_input
   let open Js_of_ocaml in
   let open Tyxml_js in
 
+  let input_dirty_s, update_input_dirty = React.S.create false in
   let input_event, signal_event = React.E.create () in
 
   let needed_rows = match rows with
     | Some n -> n
     | None ->
       String.count (React.S.value input_s) ~f:(fun c -> Char.(c = '\n')) + 1
+  in
+
+  let input_dirty_elem = input_dirty_s
+    |> React.S.map (function
+      | true -> (match WebUtil.platform_special_combo () with
+        | Some info_elems -> Html.(span (List.concat
+          [ [ txt "updated, press " ]
+          ; info_elems
+          ; [ txt " to re-evaluate)" ]
+          ]))
+        | None -> Html.txt "updated (press Enter to re-evaluate)"
+      )
+      | false -> Html.txt ""
+    )
   in
 
   let input = Html.(textarea
@@ -78,14 +93,22 @@ let mk_multiline_input
     )
   in
   let input_dom = To_dom.of_textarea input in
+
+  bind_event Ev.inputs input_dom (fun _evt ->
+    update_input_dirty true;
+    Lwt.return ()
+  );
+
   bind_event Ev.keydowns input_dom (fun evt ->
       Lwt.return
         (if WebUtil.is_special_enter evt
         then (
           Dom.preventDefault evt;
+          update_input_dirty false;
           signal_event (InputUpdate (Js.to_string input_dom##.value))
         )
         else ()));
+
   bind_event Ev.selects input_dom (fun evt ->
       let elem = evt##.target |> Js.Opt.to_option |> Option.value_exn in
       let textarea =
@@ -98,9 +121,11 @@ let mk_multiline_input
       (* let str = textarea##.value##substring start finish in *)
       (* Caml.Printf.printf "Selected %u-%u '%s'\n" start finish (Js.to_string str); *)
       Lwt.return ());
+
   bind_event Ev.clicks input_dom (fun _evt ->
       signal_event InputUnselect;
       Lwt.return ());
+
   (* XXX why doesn't the textarea automatically update? *)
   let (_ : unit React.event) =
     input_s
@@ -109,7 +134,16 @@ let mk_multiline_input
     |> React.S.changes
     |> React.E.map (fun input -> input_dom##.value := Js.string input)
   in
-  input, input_event
+
+  let result = [%html{|
+    <div>
+      |}[input]{|
+      |}[R.Html.span (RList.singleton_s input_dirty_elem)]{|
+    </div>
+    |}]
+  in
+
+  result, input_event
 
 let mk_single_line_input ?autofocus:(autofocus=true) input_s =
   let open Js_of_ocaml in
@@ -131,7 +165,7 @@ let mk_single_line_input ?autofocus:(autofocus=true) input_s =
   )
   in
 
-  let updated = updated_s
+  let updated_elem = updated_s
     |> React.S.map (function
       | true -> "updated (press Enter to re-evaluate)"
       | false -> ""
@@ -142,7 +176,7 @@ let mk_single_line_input ?autofocus:(autofocus=true) input_s =
   let result = [%html{|
     <div>
       |}[input]{|
-      |}[updated]{|
+      |}[updated_elem]{|
     </div>
     |}]
   in

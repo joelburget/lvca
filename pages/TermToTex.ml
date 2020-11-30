@@ -43,7 +43,7 @@ module View = struct
         <h2>Term to TeX</h2>
         <div class="container">
           <div class="side">
-            <h3>|}[ input ]{|</h3>
+            |}[ input ]{|
           </div>
           <div class="side">
             <h3>output (rendered)</h3>
