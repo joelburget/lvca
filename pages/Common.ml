@@ -27,7 +27,7 @@ let demo_template handler input_desc input_elem output_desc output_elem =
   let open Tyxml_js in
   [%html{|
     <div>
-      <h2>Eval with Provenance</h2>
+      <h2>Demo</h2>
       <div class="container">
         <div class="side">
           <h3>|}[ input_desc ]{|</h3>
