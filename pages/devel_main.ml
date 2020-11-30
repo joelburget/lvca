@@ -47,9 +47,9 @@ module View = struct
   let page_description = function
     | TermAndConcretePage -> "01: term and concrete"
     | CalculatorPage -> "02: calculator"
+    | ParserPage -> "03: parser"
     | EvalWithProvenancePage -> "0x: evaluation with provenance"
     | TermToTexPage -> "0x: term to tex"
-    | ParserPage -> "0x: parser"
   ;;
 
   let stateless_view = function
