@@ -136,7 +136,7 @@ let mk_multiline_input
   in
 
   let result = [%html{|
-    <div>
+    <div class="flex flex-col">
       |}[input]{|
       |}[R.Html.span (RList.singleton_s input_dirty_elem)]{|
     </div>

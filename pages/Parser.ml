@@ -23,7 +23,9 @@ module Model = struct
     ; satisfy_is_digit_input: input_sig
     ; star_input: input_sig
     ; plus_input: input_sig
-    ; choice_input: input_sig
+    ; choice1_input: input_sig
+    ; choice2_input: input_sig
+    ; choice3_input: input_sig
     ; count_input: input_sig
     ; let_input: input_sig
     ; fail_input: input_sig
@@ -38,14 +40,16 @@ module Model = struct
 
   let initial_model =
     { any_char_input = mk "c"
-    ; char_input = mk "c"
+    ; char_input = mk "cat"
     ; string_input = mk "food"
     ; satisfy1_input = mk "c"
     ; satisfy_is_alpha_input = mk "c"
     ; satisfy_is_digit_input = mk "c"
     ; star_input = mk "ccc"
     ; plus_input = mk "ccc"
-    ; choice_input = mk "foo"
+    ; choice1_input = mk "foo"
+    ; choice2_input = mk "ab"
+    ; choice3_input = mk "foo"
     ; count_input = mk "cc"
     ; let_input = mk "ccc"
     ; fail_input = mk "doesn't matter"
@@ -64,7 +68,14 @@ module Examples = struct
   let many = "'c'*"
   let plus = "'c'+"
   (* let count = "'c'{{2}}" *)
-  let choice = {|choice ('c' | "foo")|}
+  let zero_choice = {|choice ()|}
+  let two_choice = {|choice ('c' | "foo")|}
+  let multi_choice = {|choice (
+  | "abc"
+  | "ab"
+  | "a"
+  | "abcd" // never matches
+)|}
   let let_ = {|let p1 = "str" in let p2 = 'c'* in choice (p1 | p2)|}
   let fail = {|fail {"some reason for failing"}|}
   let satisfy1 = {|satisfy (c -> match c with {
@@ -126,10 +137,14 @@ let string_location ~str ~loc =
   else
     let before = String.subo str ~len:loc in
     let after = String.subo str ~pos:loc in
+
+    let before_elem = if String.(before = "") then Html.wbr () else Html.txt before in
+    let after_elem = if String.(after = "") then Html.wbr () else Html.txt after in
+
     [%html{|
     <div class="flex flex-row font-mono mx-2 .bg-gray-100 underline">
       <div class="inline-block">
-        <span class="text-gray-500">|}[Html.txt before]{|</span>
+        <span class="text-gray-500">|}[before_elem]{|</span>
       </div>
       <div style="width: 0" class="inline-block">
         <div
@@ -138,7 +153,7 @@ let string_location ~str ~loc =
         ></div>
       </div>
       <div class="inline-block">
-        <span>|}[Html.txt after]{|</span>
+        <span>|}[after_elem]{|</span>
       </div>
     </div>
     |}]
@@ -153,17 +168,16 @@ let snapshot_advanced_view str P.Direct.{ pre_pos; post_pos; _ } =
   in
 
   Html.(div
-    [ inline_block (txt ("advances the input " ^ chars ^ " to"))
-    ; txt " "
+    [ span [txt ("advances the input " ^ chars ^ " to")]
     ; inline_block (string_location ~str ~loc:post_pos)
     ])
 
 let snapshot_controls str snapshots path_h =
   let header = [%html{|
     <tr>
-      <td class="border-t-2 border-b-2 border-r-2">parser</td>
-      <td class="border-t-2 border-b-2 border-r-2">action</td>
-      <td class="border-t-2 border-b-2"></td>
+      <td class="p-2 border-t-2 border-b-2 border-r-2">parser</td>
+      <td class="p-2 border-t-2 border-b-2 border-r-2">action</td>
+      <td class="p-2 border-t-2 border-b-2"></td>
     </tr>
   |}]
   in
@@ -175,9 +189,9 @@ let snapshot_controls str snapshots path_h =
       let btn = button ~onclick "view" in
 
       Html.(tr
-        [ td ~a:[a_class ["border-t-2 border-r-2"]] [view_parser parser success]
-        ; td ~a:[a_class ["border-t-2 border-r-2"]] [snapshot_advanced_view str snapshot]
-        ; td ~a:[a_class ["border-t-2"]] [btn]
+        [ td ~a:[a_class ["p-2 border-t-2 border-r-2"]] [view_parser parser success]
+        ; td ~a:[a_class ["p-2 border-t-2 border-r-2"]] [snapshot_advanced_view str snapshot]
+        ; td ~a:[a_class ["p-2 border-t-2"]] [btn]
         ]))
     |> RList.const
   in
@@ -233,7 +247,11 @@ let view_stack root path_h path_s = path_s
         ; if i < len - 1 then Some "border-b-2" else None
         ]
       in
-      Html.(tr ~a:[a_class classes] [td [btn]; td [p_view]]))
+      Html.(tr
+        ~a:[a_class classes]
+        [ td ~a:[a_class ["p-2"]] [btn]
+        ; td ~a:[a_class ["p-2"]] [p_view]
+        ]))
   )
   |> RList.from_signal
   |> RHtml.table
@@ -304,14 +322,14 @@ let view_root_snapshot str root =
   in
 
   Html.(table ~a:[a_class ["w-full"]]
-    [ tr [ td ~a:[a_class ["border-b-2"; "border-r-2"]] [txt "stack"]
-         ; RHtml.(td ~a:[a_class (React.S.const ["border-b-2"])] stack_view)
+    [ tr [ td ~a:[a_class ["p-2 border-b-2"; "border-r-2"]] [txt "stack"]
+         ; RHtml.(td ~a:[Html.a_class ["p-2 border-b-2"]] stack_view)
          ]
-    ; tr [ td ~a:[a_class ["border-b-2"; "border-r-2"]] [txt "parser"]
-         ; td ~a:[a_class ["border-b-2"]] [mk_div parser_view; input_view; status_view]
+    ; tr [ td ~a:[a_class ["p-2 border-b-2"; "border-r-2"]] [txt "parser"]
+         ; td ~a:[a_class ["p-2 border-b-2"]] [mk_div parser_view; input_view; status_view]
          ]
-    ; tr [ td ~a:[a_class ["border-r-2"]] [txt "subparsers"]
-         ; td ~a:[a_class []] [mk_div controls_s]
+    ; tr [ td ~a:[a_class ["p-2 border-r-2"]] [txt "subparsers"]
+         ; td ~a:[a_class ["p-2"]] [mk_div controls_s]
          ]
     ])
 
@@ -366,7 +384,7 @@ module View = struct
     parser_elem
     parser_str_s
     (test_s, update_test) =
-    let test_input, test_evt = Common.mk_single_line_input test_s in
+    let test_input, test_evt = Common.mk_single_line_input ~autofocus:false test_s in
     let (_ : unit React.event) = test_evt |> React.E.map update_test in
 
     let show_trace_s, set_show_trace = React.S.create false in
@@ -392,20 +410,28 @@ module View = struct
       <div class="grid grid-cols-4">
         <table class="font-mono mb-6 col-span-4 table-fixed">
           <tr>
-            <td class="border-2 w-1/6">Parser</td>
-            <td class="border-2 w-5/6">|}[parser_elem]{|</td>
+            <td class="border-2 p-2 w-1/6">Parser</td>
+            <td class="border-2 p-2 w-5/6">|}[parser_elem]{|</td>
           </tr>
           <tr>
-            <td class="border-2">Input</td><td class="border-2">|}[test_input]{|</td></tr>
-          <tr><td class="border-2">Result</td><td class="border-2">|}[result]{|</td></tr>
-          <tr><td class="border-2">Trace |}[trace_button]{|</td><td class="border-2">|}[trace_cell]{|</td></tr>
+            <td class="border-2 p-2">Input</td>
+            <td class="border-2 p-2">|}[test_input]{|</td>
+          </tr>
+          <tr>
+            <td class="border-2 p-2">Result</td>
+            <td class="border-2 p-2">|}[result]{|</td>
+          </tr>
+          <tr>
+            <td class="border-2 p-2">Trace |}[trace_button]{|</td>
+            <td class="border-2 p-2">|}[trace_cell]{|</td>
+          </tr>
         </table>
       </div>
       |}]
     in
 
     let inline_code = [%html{|
-      <code class="font-mono bg-gray-100 p-1 border-2 border-gray-400">
+      <code class="font-mono bg-gray-100 py-0.5 pl-0.5 mx-1 border-2 border-gray-400">
         |}[RHtml.txt parser_str_s]{|
       </code>
       |}]
@@ -424,7 +450,9 @@ module View = struct
       ; star_input
       ; plus_input
       ; count_input = _
-      ; choice_input
+      ; choice1_input
+      ; choice2_input
+      ; choice3_input
       ; let_input
       ; fail_input
       ; sequence_input
@@ -450,15 +478,24 @@ module View = struct
     let star_p, star_table = mk_input_result' Examples.many star_input in
     let plus_p, plus_table = mk_input_result' Examples.plus plus_input in
     (* let count_p, count_table = mk_input_result' Examples.count count_input in *)
-    let choice_p, choice_table = mk_input_result' Examples.choice choice_input in
+
+    let choice1_p, choice1_table = mk_input_result' Examples.two_choice choice1_input in
+    let _choice2_p, choice2_table = mk_input_result' Examples.multi_choice choice2_input
+    in
+    let _choice3_p, choice3_table = mk_input_result' Examples.zero_choice choice3_input
+    in
+
     let let_p, let_table = mk_input_result' Examples.let_ let_input in
     let fail_p, fail_table = mk_input_result' Examples.fail fail_input in
     let sequence_p, sequence_table = mk_input_result' Examples.sequence sequence_input in
-    let _fix_p, fix_table = mk_input_result' ~parser_ctx:Prelude.ctx Examples.fix fix_input in
+    let _fix_p, fix_table =
+      mk_input_result' ~parser_ctx:Prelude.ctx Examples.fix fix_input
+    in
 
-    let pg_parser_input, set_pg_parser_input = React.S.create "' '" in
+    let pg_parser_input, set_pg_parser_input = React.S.create Examples.fix
+    in
     let pg_input_elem, pg_input_evt =
-      Common.mk_multiline_input pg_parser_input
+      Common.mk_multiline_input ~autofocus:false pg_parser_input
     in
     let _, playground_table = mk_input_result ~parser_ctx:Prelude.ctx
       pg_input_elem pg_parser_input playground_input
@@ -482,12 +519,15 @@ module View = struct
         |}[any_char_table]{|
 
         <h4>|}[char_p]{|</h4>
-        <p>A single-quoted character accepts exactly that character</p>
+        <p>A single-quoted character accepts exactly that character. Note that this example, like many of th e others is (intentionally) failing initially. Try changing the input so it's accepted.</p>
         |}[char_table]{|
 
         <h4>|}[string_p]{|</h4>
         <p>Similarly, a double-quoted string accepts exactly that string.</p>
         |}[string_table]{|
+
+        <h4>Debugging</h4>
+        <p>You've probably noticed the <em>trace</em> rows below each parse result. By toggling this row you can see the steps the parser took to consume an input (or not). For the parsers we've seen so far, it's always exactly one step, but as soon as we get to <em>repetition</em> below, that will change. But this tool will really become useful when we get to <code>choice</code> and <code>fix</code>.</p>
 
         <h3>Satisfy</h3>
 
@@ -520,20 +560,28 @@ module View = struct
         <p>Concatenating a sequence of parsers accepts when they all parse successfully in sequence. You're allowed to name the result of any parsers you'd like to use in the result For example |}[sequence_p]{| parses a simple addition expression (where the operands can be anything, as long as it's one character (just wait, we'll make better parsers in a moment)).</p>
         |}[sequence_table]{|
 
+        <p>This is a good time to revisit the <em>Trace</em> tool. If you look at the trace for the sequence parser, you'll see that it calls five subparsers. You can click the <em>view</em> button to inspect the details of any subparser, then <em>return here</em> to return to a caller anywhere up the stack.</p>
+
         <h3>Choice</h3>
 
-        <p>The <code>choice</code> construct can be used to accept either of two parsers. For
-        example |}[choice_p]{| accepts <code>"c"</code> or <code>"foo"</code> .</p>
-        |}[choice_table]{|
+        <p>The <code>choice</code> construct can be used to accept one of several parsers. For
+        example |}[choice1_p]{| accepts <code>"c"</code> or <code>"foo"</code>.</p>
+        |}[choice1_table]{|
+
+        <p><code>choice</code> can accept any number of choices, and you can start each line with <code>|</code>. Note that choice always chooses the first matching branch, so in this example, <code>"abcd"</code> will never match (<code>"abc"</code> will match, leaving <code>"d"</code> unconsumed).</p>
+
+        |}[choice2_table]{|
+
+        <p>An empty choice always fails.</p>
+
+        |}[choice3_table]{|
 
         <h3>Language constructs</h3>
 
         <p>So far all of our parsers have looked a lot like regular expressions. Let's
-        introduce a construct that will make this look a lot more like a real language.
+        introduce a construct that will make this look more like a real language.
         Let-binding allows us to name parsers and use them later, for example
-        |}[let_p]{|. In this case it would have been simpler to write this
-        parser as <code>"str" | 'c'*</code>, but it's often useful to name
-        helpers in larger parsers</p>
+        |}[let_p]{|.</p>
         |}[let_table]{|
 
         <p>Parsers can also fail with a message, like |}[fail_p]{|. This
@@ -543,7 +591,7 @@ module View = struct
 
         <h3>Fix</h3>
 
-        <p>Our parsers to this point have been limited: we can parse regular languages but not context-free languages. We can extend the language in the same way as <a class="prose-link" href="https://catonmat.net/recursive-regular-expressions">recursive regular expressions</a> to give it more power.
+        <p>Our parsers to this point have been limited: we can parse regular languages but not context-free languages. <code>fix</code> extends the language in the same way as <a class="prose-link" href="https://catonmat.net/recursive-regular-expressions">recursive regular expressions</a> to give it more power.
         </p>
 
         <p>Let's say you want to parse addition expressions, like "1 + 2", "1 + 2 + 3", "1 + 2 + 3 + 4", etc. We need a way to recursively use the parser we're defining. It's a little mind-bending, so let's look at an example.</p>
