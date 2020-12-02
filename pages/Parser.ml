@@ -264,7 +264,8 @@ let view_root_snapshot str root =
 
   let current_snapshot_s = path_s
     |> RList.signal
-    |> React.S.map (fun path -> (traverse_path ~root ~path).bottom_snapshot)
+    |> React.S.map ~eq:(fun _ _ -> false)
+      (fun path -> (traverse_path ~root ~path).bottom_snapshot)
   in
 
   let stack_view = view_stack root path_h path_s in
