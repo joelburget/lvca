@@ -83,6 +83,7 @@ let button_classes =
   [ "px-2"
   ; "border-2"
   ; "border-blue-800"
+  ; "rounded"
   ; "bg-transparent"
   ; "hover:bg-blue-700"
   ; "text-blue-800"
