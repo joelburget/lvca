@@ -176,7 +176,7 @@ module View = struct
       in
 
       let delete_button, delete_event = mk_button
-        ~cls:["inline-block p-1 border-2 border-blue-900 rounded"]
+        ~cls:["inline-block p-1 border-2 border-indigo-900 rounded"]
         [ Html.txt "remove" ]
       in
       let (_ : unit React.event) = delete_event

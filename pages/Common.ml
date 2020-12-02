@@ -35,7 +35,7 @@ let demo_template handler input_desc input_elem output_desc output_elem =
         </div>
         <div class="switch-languages">
           <button
-            class="p-2 border-2 border-blue-900 rounded"
+            class="p-2 border-2 border-indigo-900 rounded"
             onclick=|}handler{|>
             switch input languages
           </button>
@@ -87,7 +87,7 @@ let mk_multiline_input
   let input = Html.(textarea
     ~a:([ a_rows needed_rows
         ; a_cols cols
-        ; a_class ["mt-4"; "p-8"; "font-mono"; "border-2"; "border-blue-900"]
+        ; a_class ["mt-4"; "p-8"; "font-mono"; "border-2"; "border-indigo-900"]
         ] @ (if autofocus then [a_autofocus ()] else []))
      (R.Html.txt input_s)
     )
@@ -159,7 +159,7 @@ let mk_single_line_input ?autofocus:(autofocus=true) input_s =
     ~a:(
       [ a_input_type `Text
       ; a_value input_value
-      ; a_class ["font-mono"; "border-2"; "border-blue-900"; "rounded"; "p-1"; "focus:ring"]] @
+      ; a_class ["font-mono"; "border-2"; "border-indigo-900"; "rounded"; "p-1"; "focus:ring"]] @
       (if autofocus then [a_autofocus ()] else []))
     ()
   )
@@ -232,7 +232,7 @@ let mk_digits_entry digits_s =
     let digits_event, signal_digits_event = React.E.create () in
     let input_value = Int.to_string (React.S.value digits_s) in
     let input = [%html{|
-       <input class="font-mono border-2 border-blue-900 rounded p-1 focus:ring w-16"
+       <input class="font-mono border-2 border-indigo-900 rounded p-1 focus:ring w-16"
               type="text"
               value=|}input_value{|
        >|}]
