@@ -29,7 +29,7 @@ let demo_template handler input_desc input_elem output_desc output_elem =
     <div>
       <h2>Demo</h2>
       <div class="container">
-        <div class="side">
+        <div class="py-4">
           <h3>|}[ input_desc ]{|</h3>
           |}[ input_elem ]{|
         </div>
@@ -40,7 +40,7 @@ let demo_template handler input_desc input_elem output_desc output_elem =
             switch input languages
           </button>
         </div>
-        <div class="side">
+        <div class="py-4">
           <h3>|}[ output_desc ]{|</h3>
           |}[ output_elem ]{|
         </div>
@@ -148,7 +148,7 @@ let mk_multiline_input
   let result = [%html{|
     <div class="flex flex-col">
       |}[input]{|
-      |}[R.Html.span (RList.singleton_s input_dirty_elem)]{|
+      |}[R.Html.span ~a:[Html.a_class ["my-2"]] (RList.singleton_s input_dirty_elem)]{|
     </div>
     |}]
   in
@@ -186,7 +186,7 @@ let mk_single_line_input ?autofocus:(autofocus=true) input_s =
   let result = [%html{|
     <div>
       |}[input]{|
-      |}[updated_elem]{|
+      |}[Html.(span ~a:[a_class ["ml-1"]] [updated_elem])]{|
     </div>
     |}]
   in

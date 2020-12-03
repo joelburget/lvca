@@ -231,12 +231,7 @@ let snapshot_controls str snapshots (path_h : int RList.handle) =
   let body = snapshots
     |> List.mapi ~f:(fun i snapshot ->
       let Model.TraceSnapshot.{ success; parser; _ } = snapshot in
-      let onclick _ =
-        Caml.Printf.printf "snocing %d\n" i;
-        RList.snoc i path_h;
-        Caml.Printf.printf "snoced %d\n" i;
-        false
-      in
+      let onclick _ = RList.snoc i path_h; false in
       let btn = button ~onclick "view" in
 
       Html.(tr

@@ -227,10 +227,10 @@ module View = struct
 
     [%html {|
       <div>
-        <div>|}[ input ]{|</div>
-        <div class="error">|}[ error_msg ]{|</div>
+        <div class="my-2">|}[ input ]{|</div>
+        <div class="error my-2">|}[ error_msg ]{|</div>
         |}[ Components.table ~classes:["w-full"; "mb-6"] thead tbody ]{|
-        <div>
+        <div class="my-2">
           <p>Try an example:</p>
           |}[ examples ]{|
           <h3>language chart</h3>
