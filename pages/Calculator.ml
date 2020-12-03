@@ -240,11 +240,11 @@ module View = struct
 
       [%html{|
         <tr class="border-b">
-          <td class="p-4">
+          <td class="py-4 pr-1">
             <pre class="whitespace-pre-wrap break-word">|}[ Html.txt input_str ]{|</pre>
           </td>
-          <td class="p-4">|}[ digits' ]{|</td>
-          <td class="p-4">|}[ digits_entry ]{|</td>
+          <td class="py-4 pr-1">|}[ digits' ]{|</td>
+          <td class="py-4 pr-1">|}[ digits_entry ]{|</td>
           <td>|}[ delete_button ]{|</td>
         </tr>
       |}]
