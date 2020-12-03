@@ -86,31 +86,85 @@ let language_chart =
     <table class="w-full">
       <thead>
         <tr class="border-b">
-          <th>Name</th>
-          <th>Syntax</th>
-          <th>Description</th>
+          <th class="text-left">Name</th>
+          <th class="text-left">Syntax</th>
+          <th class="text-left">Description</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="border-b"> <td>add</td> <td class="font-mono">expr + expr</td> </tr>
-        <tr class="border-b"> <td>sub</td> <td class="font-mono">expr - expr</td> </tr>
-        <tr class="border-b"> <td>mul</td> <td class="font-mono">expr * expr</td> </tr>
-        <tr class="border-b"> <td>div</td> <td class="font-mono">expr / expr</td> </tr>
+        <tr class="border-b">
+          <td class="py-2">add</td>
+          <td class="py-2 font-mono">expr + expr</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2">sub</td>
+          <td class="py-2 font-mono">expr - expr</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2">mul</td>
+          <td class="py-2 font-mono">expr * expr</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2">div</td>
+          <td class="py-2 font-mono">expr / expr</td>
+        </tr>
 
-        <tr class="border-b"> <td>negate</td> <td class="font-mono">negate expr</td> </tr>
-        <tr class="border-b"> <td>sqrt</td>   <td class="font-mono">sqrt expr</td> </tr>
-        <tr class="border-b"> <td>abs</td>    <td class="font-mono">abs expr</td> </tr>
-        <tr class="border-b"> <td>exp</td>    <td class="font-mono">exp expr</td> </tr>
-        <tr class="border-b"> <td>ln</td>     <td class="font-mono">ln expr</td> </tr>
-        <tr class="border-b"> <td>sin</td>    <td class="font-mono">sin expr</td> </tr>
-        <tr class="border-b"> <td>cos</td>    <td class="font-mono">cos expr</td> </tr>
-        <tr class="border-b"> <td>tan</td>    <td class="font-mono">tan expr</td> </tr>
-        <tr class="border-b"> <td>asin</td>   <td class="font-mono">asin expr</td> <td>arcsin ie inverse sin</td> </tr>
-        <tr class="border-b"> <td>acos</td>   <td class="font-mono">acos expr</td> <td>arccos ie inverse cos</td> </tr>
-        <tr class="border-b"> <td>atan</td>   <td class="font-mono">atan expr</td> <td>arctan ie inverse tan</td> </tr>
+        <tr class="border-b">
+          <td class="py-2">negate</td>
+          <td class="py-2 font-mono">negate expr</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2">sqrt</td>
+          <td class="py-2 font-mono">sqrt expr</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2">abs</td>
+          <td class="py-2 font-mono">abs expr</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2">exp</td>
+          <td class="py-2 font-mono">exp expr</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2">ln</td>
+          <td class="py-2 font-mono">ln expr</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2">sin</td>
+          <td class="py-2 font-mono">sin expr</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2">cos</td>
+          <td class="py-2 font-mono">cos expr</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2">tan</td>
+          <td class="py-2 font-mono">tan expr</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2">asin</td>
+          <td class="py-2 font-mono">asin expr</td>
+          <td class="py-2">arcsin ie inverse sin</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2">acos</td>
+          <td class="py-2 font-mono">acos expr</td>
+          <td class="py-2">arccos ie inverse cos</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2">atan</td>
+          <td class="py-2 font-mono">atan expr</td>
+          <td class="py-2">arctan ie inverse tan</td>
+        </tr>
 
-        <tr class="border-b"> <td>pi</td> <td class="font-mono">pi</td> </tr>
-        <tr class="border-b"> <td>e</td>  <td class="font-mono">e</td> </tr>
+        <tr class="border-b">
+          <td class="py-2">pi</td>
+          <td class="py-2 font-mono">pi</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2">e</td>
+          <td class="py-2 font-mono">e</td>
+        </tr>
       </tbody>
     </table>
   |}]
@@ -198,9 +252,9 @@ module View = struct
 
     let thead = [%html{|
       <tr class="border-b">
-        <th class="w-1/2">input</th>
-        <th class="w-1/3">output</th>
-        <th class="w-1/12">digits</th>
+        <th class="w-1/2 text-left">input</th>
+        <th class="w-1/3 text-left">output</th>
+        <th class="w-1/12 text-left">digits</th>
         <th class="w-1/12"></th>
       </tr>
       |}]
