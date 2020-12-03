@@ -55,6 +55,7 @@ type input_event =
 
 let mk_multiline_input
   ?autofocus:(autofocus=true)
+  ?border:(border=true)
   ?rows:(rows=None)
   ?cols:(cols=60)
   input_s =
@@ -84,10 +85,19 @@ let mk_multiline_input
     )
   in
 
+  let classes = List.filter_map ~f:Fn.id
+    [ Some "mt-4"
+    ; Some "p-8"
+    ; Some "font-mono"
+    ; if border then Some "border-2" else None
+    ; if border then Some "border-indigo-900" else None
+    ]
+  in
+
   let input = Html.(textarea
     ~a:([ a_rows needed_rows
         ; a_cols cols
-        ; a_class ["mt-4"; "p-8"; "font-mono"; "border-2"; "border-indigo-900"]
+        ; a_class classes
         ] @ (if autofocus then [a_autofocus ()] else []))
      (R.Html.txt input_s)
     )

@@ -14,6 +14,28 @@ open Components
 module Model = struct
   type input_sig = string React.signal * (string -> unit)
 
+  module TraceSnapshot = struct
+    type t =
+      { success: bool
+      ; pre_pos: int
+      ; post_pos: int
+      (* XXX: SourceRanges is the non-comparable part: uses a map *)
+      ; parser: SourceRanges.t P.t
+      ; snapshots: t list
+      }
+
+    let rec (=) t1 t2 = Bool.(t1.success = t2.success) &&
+      Int.(t1.pre_pos = t2.pre_pos) &&
+      Int.(t1.post_pos = t2.post_pos) &&
+      List.equal (=) t1.snapshots t2.snapshots &&
+      P.equal SourceRanges.(=) t1.parser t2.parser
+
+    let rec restrict_snapshot : P.Direct.trace_snapshot -> t
+      = fun { success; pre_pos; post_pos; parser; snapshots; _ } ->
+        { success; pre_pos; post_pos; parser;
+          snapshots = List.map snapshots ~f:restrict_snapshot }
+  end
+
   type t =
     { any_char_input: input_sig
     ; char_input: input_sig
@@ -85,7 +107,6 @@ module Examples = struct
   let satisfy_is_alpha = "satisfy(c -> {is_alpha(c)})"
   let satisfy_is_digit = "satisfy(c -> {is_digit(c)})"
   let sequence = "a=. ' '* '+' ' '* b=. -> {plus(a; b)}"
-  (* TODO: add var / literal types *)
   let fix = {|let atom = choice (name | literal) in
 fix (expr -> choice (
   | atom=atom ' '* '+' ' '* expr=expr -> {plus(atom; expr)}
@@ -116,6 +137,32 @@ end
 let pp_view tm fmt =
   let selection_s = React.S.const None in
   let elt, formatter = RangeFormatter.mk selection_s in
+
+  (*
+  let open Js_of_ocaml in
+  if (ResizeObserver.is_supported ()) then (
+    let open Js_of_ocaml_tyxml.Tyxml_js in
+    let target = To_dom.of_code elt in
+    let node = (target :> Dom.node Js.t) in
+
+    let f entries _observer =
+      match Js.array_get entries 0 |> Js.Optdef.to_option with
+        | None -> ()
+        | Some entry0 ->
+          match Js.array_get entry0##.contentBoxSize 0 |> Js.Optdef.to_option with
+            | None -> ()
+            | Some box -> Caml.Printf.printf "observing %f\n" box##.blockSize;
+    in
+
+    let _ : ResizeObserver.resizeObserver Js.t = ResizeObserver.observe ~node ~f
+      ~box:(Js.string "content-box")
+      ()
+    in
+
+    ()
+  ) else (Caml.Printf.printf "no resize observer :(\n");
+  *)
+
   Caml.Format.pp_set_margin formatter 40 (* TODO: base on current window width! *);
   Fmt.pf formatter "%a" fmt tm;
   Fmt.flush formatter ();
@@ -125,7 +172,6 @@ let view_term tm = success_msg [pp_view tm (Nominal.pp_term_ranges Primitive.pp)
 
 let view_core core = success_msg [pp_view core Core.pp]
 
-(* TODO: reactive version *)
 let view_parser parser success =
   let elt = pp_view parser P.pp_plain in
   Html.(div ~a:[a_class [if success then "success" else "error"]] [elt])
@@ -133,7 +179,7 @@ let view_parser parser success =
 let string_location ~str ~loc =
   if String.(str = "")
   then
-    [%html{|<div class="font-mono mx-2 .bg-gray-100 underline">(empty string)</div>|}]
+    [%html{|<div class="font-mono mx-2 bg-gray-100 underline">(empty string)</div>|}]
   else
     let before = String.subo str ~len:loc in
     let after = String.subo str ~pos:loc in
@@ -142,7 +188,7 @@ let string_location ~str ~loc =
     let after_elem = if String.(after = "") then Html.wbr () else Html.txt after in
 
     [%html{|
-    <div class="flex flex-row font-mono mx-2 .bg-gray-100 underline">
+    <div class="flex flex-row font-mono mx-2 bg-gray-100 underline">
       <div class="inline-block">
         <span class="text-gray-500">|}[before_elem]{|</span>
       </div>
@@ -160,7 +206,7 @@ let string_location ~str ~loc =
 
 (* Produce a div saying "advances the input n chars to ...". Used in both
  *)
-let snapshot_advanced_view str P.Direct.{ pre_pos; post_pos; _ } =
+let snapshot_advanced_view str Model.TraceSnapshot.{ pre_pos; post_pos; _ } =
   let n = post_pos - pre_pos in
   let chars = match n with
     | 1 -> "1 character"
@@ -172,7 +218,7 @@ let snapshot_advanced_view str P.Direct.{ pre_pos; post_pos; _ } =
     ; inline_block (string_location ~str ~loc:post_pos)
     ])
 
-let snapshot_controls str snapshots path_h =
+let snapshot_controls str snapshots (path_h : int RList.handle) =
   let header = [%html{|
     <tr>
       <td class="p-2 border-t-2 border-b-2 border-r-2">parser</td>
@@ -184,8 +230,13 @@ let snapshot_controls str snapshots path_h =
 
   let body = snapshots
     |> List.mapi ~f:(fun i snapshot ->
-      let P.Direct.{ success; parser; _ } = snapshot in
-      let onclick _ = RList.snoc i path_h; false in
+      let Model.TraceSnapshot.{ success; parser; _ } = snapshot in
+      let onclick _ =
+        Caml.Printf.printf "snocing %d\n" i;
+        RList.snoc i path_h;
+        Caml.Printf.printf "snoced %d\n" i;
+        false
+      in
       let btn = button ~onclick "view" in
 
       Html.(tr
@@ -213,8 +264,8 @@ let view_controls str path_h snapshots =
     else [ txt msg ])
 
 type path_traversal =
-  { bottom_snapshot: P.Direct.trace_snapshot
-  ; stack: P.Direct.trace_snapshot list
+  { bottom_snapshot: Model.TraceSnapshot.t
+  ; stack: Model.TraceSnapshot.t list
   }
 
 (* Traverse the path, returning the snapshot at the bottom and all the snapshots along the
@@ -224,7 +275,7 @@ let traverse_path ~root ~path =
   let stack = path
     |> List.map ~f:(fun i ->
       let snapshot = !current_snapshot in
-      let P.Direct.{ snapshots; _ } = snapshot in
+      let Model.TraceSnapshot.{ snapshots; _ } = snapshot in
       current_snapshot := List.nth_exn snapshots i;
       snapshot
     )
@@ -238,7 +289,7 @@ let view_stack root path_h path_s = path_s
     let len = List.length stack_lst in
     stack_lst
     |> List.mapi ~f:(fun i snapshot ->
-      let P.Direct.{ parser; success; _ } = snapshot in
+      let Model.TraceSnapshot.{ parser; success; _ } = snapshot in
       let p_view = view_parser parser success in
       let onclick _ = RList.set path_h (List.take path i); false in
       let btn = button ~onclick "return here" in
@@ -264,7 +315,7 @@ let view_root_snapshot str root =
 
   let current_snapshot_s = path_s
     |> RList.signal
-    |> React.S.map ~eq:(fun _ _ -> false)
+    |> React.S.map ~eq:Model.TraceSnapshot.(=)
       (fun path -> (traverse_path ~root ~path).bottom_snapshot)
   in
 
@@ -278,21 +329,21 @@ let view_root_snapshot str root =
   in
 
   let controls_s = current_snapshot_s
-    |> React.S.map (fun P.Direct.{ snapshots; _ } -> view_controls str path_h snapshots)
+    |> React.S.map (fun Model.TraceSnapshot.{ snapshots; _ } -> view_controls str path_h snapshots)
   in
 
   let parser_view = current_snapshot_s
-    |> React.S.map (fun P.Direct.{ success; parser; _ } -> view_parser parser success)
+    |> React.S.map (fun Model.TraceSnapshot.{ success; parser; _ } -> view_parser parser success)
   in
 
   let pre_loc_view = current_snapshot_s
-    |> React.S.map (fun P.Direct.{ pre_pos; _ } -> string_location ~str ~loc:pre_pos)
+    |> React.S.map (fun Model.TraceSnapshot.{ pre_pos; _ } -> string_location ~str ~loc:pre_pos)
     |> RList.singleton_s
     |> r_inline_block
   in
 
   let status_view = current_snapshot_s
-    |> React.S.map (fun P.Direct.{ success; _ } -> Html.(span
+    |> React.S.map (fun Model.TraceSnapshot.{ success; _ } -> Html.(span
         ~a:[a_class [if success then "success" else "error"]]
         [ if success then txt "succeeds" else txt "fails" ]))
     |> React.S.map List.return
@@ -310,7 +361,7 @@ let view_root_snapshot str root =
     ; current_snapshot_s
       |> React.S.map (snapshot_advanced_view str)
       |> RList.singleton_s
-      |> r_inline_block (* TODO: only if success *)
+      |> r_inline_block
     ])
   in
 
@@ -349,7 +400,7 @@ module View = struct
             let trace = Html.div [txt "not available: parser failed to parse"] in
             "failed to parse parser", result, trace
           | Ok parser ->
-            let parser = P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"TODO") parser in
+            let parser = P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
             let toplevel_result =
               Direct.parse_direct ~term_ctx ~parser_ctx parser test_str
             in
@@ -366,7 +417,10 @@ module View = struct
                 | Some msg -> "failed to parse input", error_msg [txt msg]
                 | None -> "parsed", view_term tm
             in
-            let trace = view_root_snapshot test_str snapshot in
+            let trace = snapshot
+              |> Model.TraceSnapshot.restrict_snapshot
+              |> view_root_snapshot test_str
+            in
             result_title, result, trace
       in
 
@@ -407,7 +461,7 @@ module View = struct
       |> mk_div
     in
 
-    let tab = [%html{|
+    [%html{|
       <div class="grid grid-cols-4">
         <table class="font-mono mb-6 col-span-4 table-fixed">
           <tr>
@@ -429,16 +483,6 @@ module View = struct
         </table>
       </div>
       |}]
-    in
-
-    let inline_code = [%html{|
-      <code class="font-mono bg-gray-100 py-0.5 pl-0.5 mx-1 border-2 border-gray-400">
-        |}[RHtml.txt parser_str_s]{|
-      </code>
-      |}]
-    in
-
-    inline_code, tab
 
   let view model =
     let Model.
@@ -466,39 +510,34 @@ module View = struct
       mk_input_result ?parser_ctx (Html.(pre [code [txt str]])) (React.S.const str) input
     in
 
-    let any_char_p, any_char_table = mk_input_result' Examples.any_char any_char_input in
-    let char_p, char_table = mk_input_result' Examples.char char_input in
-    let string_p, string_table = mk_input_result' Examples.string string_input in
-    let _satisfy1_p, satisfy1_table = mk_input_result' Examples.satisfy1 satisfy1_input in
-    let _satisfy_is_alpha_p, satisfy_is_alpha_table =
+    let any_char_table = mk_input_result' Examples.any_char any_char_input in
+    let char_table = mk_input_result' Examples.char char_input in
+    let string_table = mk_input_result' Examples.string string_input in
+    let satisfy1_table = mk_input_result' Examples.satisfy1 satisfy1_input in
+    let satisfy_is_alpha_table =
       mk_input_result' Examples.satisfy_is_alpha satisfy_is_alpha_input
     in
-    let _satisfy_is_digit_p, satisfy_is_digit_table =
+    let satisfy_is_digit_table =
       mk_input_result' Examples.satisfy_is_digit satisfy_is_digit_input
     in
-    let star_p, star_table = mk_input_result' Examples.many star_input in
-    let plus_p, plus_table = mk_input_result' Examples.plus plus_input in
-    (* let count_p, count_table = mk_input_result' Examples.count count_input in *)
+    let star_table = mk_input_result' Examples.many star_input in
+    let plus_table = mk_input_result' Examples.plus plus_input in
+    (* let count_table = mk_input_result' Examples.count count_input in *)
 
-    let choice1_p, choice1_table = mk_input_result' Examples.two_choice choice1_input in
-    let _choice2_p, choice2_table = mk_input_result' Examples.multi_choice choice2_input
-    in
-    let _choice3_p, choice3_table = mk_input_result' Examples.zero_choice choice3_input
-    in
+    let choice1_table = mk_input_result' Examples.two_choice choice1_input in
+    let choice2_table = mk_input_result' Examples.multi_choice choice2_input in
+    let choice3_table = mk_input_result' Examples.zero_choice choice3_input in
 
-    let let_p, let_table = mk_input_result' Examples.let_ let_input in
-    let fail_p, fail_table = mk_input_result' Examples.fail fail_input in
-    let sequence_p, sequence_table = mk_input_result' Examples.sequence sequence_input in
-    let _fix_p, fix_table =
-      mk_input_result' ~parser_ctx:Prelude.ctx Examples.fix fix_input
-    in
+    let let_table = mk_input_result' Examples.let_ let_input in
+    let fail_table = mk_input_result' Examples.fail fail_input in
+    let sequence_table = mk_input_result' Examples.sequence sequence_input in
+    let fix_table = mk_input_result' ~parser_ctx:Prelude.ctx Examples.fix fix_input in
 
-    let pg_parser_input, set_pg_parser_input = React.S.create Examples.fix
-    in
+    let pg_parser_input, set_pg_parser_input = React.S.create Examples.fix in
     let pg_input_elem, pg_input_evt =
-      Common.mk_multiline_input ~autofocus:false pg_parser_input
+      Common.mk_multiline_input ~autofocus:false ~border:false pg_parser_input
     in
-    let _, playground_table = mk_input_result ~parser_ctx:Prelude.ctx
+    let playground_table = mk_input_result ~parser_ctx:Prelude.ctx
       pg_input_elem pg_parser_input playground_input
     in
     let (_ : unit React.event) = pg_input_evt |> React.E.map
@@ -515,61 +554,61 @@ module View = struct
         <p>Let's start with the simplest class of parsers, which accept a single character
         or a fixed string.</p>
 
-        <h4>|}[any_char_p]{|</h4>
-        <p>The parser <code>.</code> accepts any single character.</p>
+        <h4><code class="code-inline">.</code></h4>
+        <p>The parser <code class="code-inline">.</code> accepts any single character.</p>
         |}[any_char_table]{|
 
-        <h4>|}[char_p]{|</h4>
+        <h4><code class="code-inline">'c'</code></h4>
         <p>A single-quoted character accepts exactly that character. Note that this example, like many of th e others is (intentionally) failing initially. Try changing the input so it's accepted.</p>
         |}[char_table]{|
 
-        <h4>|}[string_p]{|</h4>
+        <h4><code class="code-inline">"str"</code></h4>
         <p>Similarly, a double-quoted string accepts exactly that string.</p>
         |}[string_table]{|
 
         <h4>Debugging</h4>
-        <p>You've probably noticed the <em>trace</em> rows below each parse result. By toggling this row you can see the steps the parser took to consume an input (or not). For the parsers we've seen so far, it's always exactly one step, but as soon as we get to <em>repetition</em> below, that will change. But this tool will really become useful when we get to <code>choice</code> and <code>fix</code>.</p>
+        <p>You've probably noticed the <em>trace</em> rows below each parse result. By toggling this row you can see the steps the parser took to consume an input (or not). For the parsers we've seen so far, it's always exactly one step, but as soon as we get to <em>repetition</em> below, that will change. But this tool will really become useful when we get to <code class="code-inline">choice</code> and <code class="code-inline">fix</code>.</p>
 
         <h3>Satisfy</h3>
 
-        <p>Fixed characters are awfully limiting. <code>satisfy</code> parses a single character that satisfies some predicate. The available predicates are <code>is_digit</code>, <code>is_lowercase</code>, <code>is_uppercase</code>, <code>is_alpha</code>, <code>is_alphanum</code>, and <code>is_whitespace</code>.</p>
+        <p>Fixed characters are awfully limiting. <code class="code-inline">satisfy</code> parses a single character that satisfies some predicate. The available predicates are <code class="code-inline">is_digit</code>, <code class="code-inline">is_lowercase</code>, <code class="code-inline">is_uppercase</code>, <code class="code-inline">is_alpha</code>, <code class="code-inline">is_alphanum</code>, and <code class="code-inline">is_whitespace</code>.</p>
         |}[satisfy1_table]{|
         |}[satisfy_is_alpha_table]{|
         |}[satisfy_is_digit_table]{|
 
-        <p>For convenience, I'll leave the last two parsers in scope as <code>alpha</code> and <code>digit</code>, so we can use them later on.</p>
+        <p>For convenience, I'll leave the last two parsers in scope as <code class="code-inline">alpha</code> and <code class="code-inline">digit</code>, so we can use them later on.</p>
 
-        <p>You might wonder, what's the syntax inside the <code>satisfy</code> expression? It's a language I'm calling <em>core</em>, which can be used for manipulating syntax trees. It's not what this post is about, but I'll have more to say about it in the future.</p>
+        <p>You might wonder, what's the syntax inside the <code class="code-inline">satisfy</code> expression? It's a language I'm calling <em>core</em>, which can be used for manipulating syntax trees. It's not what this post is about, but I'll have more to say about it in the future.</p>
 
         <h3>Repetition</h3>
 
         <p>The next class of operators accepts some number of repetitions of another
         parser.</p>
 
-        <h4><code>*</code></h4>
+        <h4><code class="code-inline">*</code></h4>
         <p>The star operator can be used to accept any number of repetitions of
-        the previous parser. For example |}[star_p]{| accepts any number of <code>'c'</code>s, including 0.</p>
+        the previous parser. For example <code class="code-inline">'c'*</code> accepts any number of <code class="code-inline">'c'</code>s, including 0.</p>
         |}[star_table]{|
 
-        <h4><code>+</code></h4>
+        <h4><code class="code-inline">+</code></h4>
         <p>The plus operator can be used to accept one or more repetitions of
-        the previous parser. For example |}[plus_p]{| accepts one or more <code>'c'</code>s.</p>
+        the previous parser. For example <code class="code-inline">'c'*</code> accepts one or more <code class="code-inline">'c'</code>s.</p>
         |}[plus_table]{|
 
         <h3>Sequence</h3>
 
-        <p>Concatenating a sequence of parsers accepts when they all parse successfully in sequence. You're allowed to name the result of any parsers you'd like to use in the result For example |}[sequence_p]{| parses a simple addition expression (where the operands can be anything, as long as it's one character (just wait, we'll make better parsers in a moment)).</p>
+        <p>Concatenating a sequence of parsers accepts when they all parse successfully in sequence. You're allowed to name the result of any parsers you'd like to use in the result For example <code class="code-inline">|}[Html.txt Examples.sequence]{|</code> parses a simple addition expression (where the operands can be anything, as long as it's one character (just wait, we'll make better parsers in a moment)).</p>
         |}[sequence_table]{|
 
         <p>This is a good time to revisit the <em>Trace</em> tool. If you look at the trace for the sequence parser, you'll see that it calls five subparsers. You can click the <em>view</em> button to inspect the details of any subparser, then <em>return here</em> to return to a caller anywhere up the stack.</p>
 
         <h3>Choice</h3>
 
-        <p>The <code>choice</code> construct can be used to accept one of several parsers. For
-        example |}[choice1_p]{| accepts <code>"c"</code> or <code>"foo"</code>.</p>
+        <p>The <code class="code-inline">choice</code> construct can be used to accept one of several parsers. For
+        example <code class="code-inline">choice ("c" | "foo")</code> accepts <code class="code-inline">"c"</code> or <code class="code-inline">"foo"</code>.</p>
         |}[choice1_table]{|
 
-        <p><code>choice</code> can accept any number of choices, and you can start each line with <code>|</code>. Note that choice always chooses the first matching branch, so in this example, <code>"abcd"</code> will never match (<code>"abc"</code> will match, leaving <code>"d"</code> unconsumed).</p>
+        <p><code class="code-inline">choice</code> can accept any number of choices, and you can start each line with <code class="code-inline">|</code>. Note that choice always chooses the first matching branch, so in this example, <code class="code-inline">"abcd"</code> will never match (<code class="code-inline">"abc"</code> will match, leaving <code class="code-inline">"d"</code> unconsumed).</p>
 
         |}[choice2_table]{|
 
@@ -582,26 +621,26 @@ module View = struct
         <p>So far all of our parsers have looked a lot like regular expressions. Let's
         introduce a construct that will make this look more like a real language.
         Let-binding allows us to name parsers and use them later, for example
-        |}[let_p]{|.</p>
+        <code class="code-inline">|}[Html.txt Examples.let_]{|</code>.</p>
         |}[let_table]{|
 
-        <p>Parsers can also fail with a message, like |}[fail_p]{|. This
+        <p>Parsers can also fail with a message, like <code class="code-inline">|}[Html.txt Examples.fail]{|</code>. This
         example as written is of course not very useful, but this can be quite
         useful as part of a larger parser.</p>
         |}[fail_table]{|
 
         <h3>Fix</h3>
 
-        <p>Our parsers to this point have been limited: we can parse regular languages but not context-free languages. <code>fix</code> extends the language in the same way as <a class="prose-link" href="https://catonmat.net/recursive-regular-expressions">recursive regular expressions</a> to give it more power.
+        <p>Our parsers to this point have been limited: we can parse regular languages but not context-free languages. <code class="code-inline">fix</code> extends the language in the same way as <a class="prose-link" href="https://catonmat.net/recursive-regular-expressions">recursive regular expressions</a> to give it more power.
         </p>
 
         <p>Let's say you want to parse addition expressions, like "1 + 2", "1 + 2 + 3", "1 + 2 + 3 + 4", etc. We need a way to recursively use the parser we're defining. It's a little mind-bending, so let's look at an example.</p>
 
-        <p>Note: For clarity I've pre-defined two parsers: <code>name = (chars=alpha+ -> {var(chars)})</code> and <code>literal = (chars=digit+ -> {literal(chars)})</code>.</p>
+        <p>Note: For clarity I've pre-defined two parsers: <code class="code-inline">name = (chars=alpha+ -> {var(chars)})</code> and <code class="code-inline">literal = (chars=digit+ -> {literal(chars)})</code>.</p>
 
         |}[fix_table]{|
 
-        <p><code>fix</code> computes the <a class="prose-link" href="https://mitpress.mit.edu/sites/default/files/sicp/full-text/sicp/book/node24.html#sec:proc-general-methods">fixed-point</a> of our parser. It takes a function which receives the parser being defined... and uses it to define itself.</p>
+        <p><code class="code-inline">fix</code> computes the <a class="prose-link" href="https://mitpress.mit.edu/sites/default/files/sicp/full-text/sicp/book/node24.html#sec:proc-general-methods">fixed-point</a> of our parser. It takes a function which receives the parser being defined... and uses it to define itself.</p>
 
         <h3>Playground</h3>
         <p>Finally, here is a playground where you can write and test your own parsers.</p>

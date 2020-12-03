@@ -29,6 +29,27 @@ type 'loc t =
 
 and 'loc binder = Binder of string option * 'loc t
 
+let rec equal loc_eq t1 t2 = match t1, t2 with
+  | AnyChar l1, AnyChar l2 -> loc_eq l1 l2
+  | Char (l1, c1), Char (l2, c2) -> loc_eq l1 l2 && Char.(c1 = c2)
+  | String (l1, s1), String (l2, s2) -> loc_eq l1 l2 && String.(s1 = s2)
+  | Option (l1, t1), Option (l2, t2) -> loc_eq l1 l2 && equal loc_eq t1 t2
+  | Many (l1, t1), Many (l2, t2) -> loc_eq l1 l2 && equal loc_eq t1 t2
+  | Many1 (l1, t1), Many1 (l2, t2) -> loc_eq l1 l2 && equal loc_eq t1 t2
+  | Choice (l1, ts1), Choice (l2, ts2)
+  -> loc_eq l1 l2 && List.equal (equal loc_eq) ts1 ts2
+  | Let (l1, nm1, x1, y1), Let (l2, nm2, x2, y2)
+  -> loc_eq l1 l2 && String.(nm1 = nm2) && equal loc_eq x1 x2 && equal loc_eq y1 y2
+  | Fix (l1, nm1, x1), Fix (l2, nm2, x2)
+  -> loc_eq l1 l2 && String.(nm1 = nm2) && equal loc_eq x1 x2
+  | Identifier (l1, nm1), Identifier (l2, nm2) -> loc_eq l1 l2 && String.(nm1 = nm2)
+  (* XXX: implement these *)
+  (* | Satisfy of 'loc * string * 'loc c_term *)
+  (* | Fail of 'loc * 'loc c_term *)
+  (* | Count of 'loc * 'loc t * 'loc c_term *)
+  (* | Sequence of 'loc * 'loc binder list * 'loc c_term *)
+  | _, _ -> false
+
 let location = function
   | AnyChar loc
   | Char (loc, _)
@@ -172,17 +193,7 @@ module Direct = struct
 
   type parser_ctx = SourceRanges.t parser Lvca_util.String.Map.t
 
-  and direct =
-    { run :
-           translate_direct:(SourceRanges.t parser -> direct)
-        -> term_ctx:term_ctx
-        -> parser_ctx:parser_ctx
-        -> pos:int
-        -> string
-        -> int * trace_snapshot list * parse_result
-    }
-
-  and trace_snapshot =
+  type trace_snapshot =
     { success: bool
     ; pre_pos: int
     ; post_pos: int
@@ -190,6 +201,16 @@ module Direct = struct
     ; term_ctx: term_ctx
     ; parser_ctx: parser_ctx
     ; snapshots: trace_snapshot list
+    }
+
+  type direct =
+    { run :
+           translate_direct:(SourceRanges.t parser -> direct)
+        -> term_ctx:term_ctx
+        -> parser_ctx:parser_ctx
+        -> pos:int
+        -> string
+        -> int * trace_snapshot list * parse_result
     }
 
   type toplevel_result =
