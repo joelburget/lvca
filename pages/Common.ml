@@ -241,9 +241,14 @@ let mk_digits_entry digits_s =
 
     let digits_event, signal_digits_event = React.E.create () in
     let input_value = Int.to_string (React.S.value digits_s) in
+    (* TODO: inputmode="decimal"
+       * https://css-tricks.com/better-form-inputs-for-better-mobile-user-experiences/
+       * https://github.com/ocsigen/tyxml/issues/278
+     *)
     let input = [%html{|
        <input class="font-mono border-2 border-indigo-900 rounded p-1 focus:ring w-16"
               type="text"
+              inputmode="numeric"
               value=|}input_value{|
        >|}]
     in
