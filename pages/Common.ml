@@ -165,15 +165,18 @@ let mk_single_line_input ?autofocus:(autofocus=true) input_s =
 
   let input_value = React.S.value input_s in
 
-  let input = Html.(input
-    ~a:(
-      [ a_input_type `Text
-      ; a_value input_value
-      ; a_class ["font-mono"; "border-2"; "border-indigo-900"; "rounded"; "p-1"; "focus:ring"]] @
-      (if autofocus then [a_autofocus ()] else []))
-    ()
-  )
+  let a = List.filter_map ~f:Fn.id
+    Html.
+    [ Some (a_input_type `Text)
+    (* ; inputmode |> Option.map ~f:a_inputmode *)
+    ; Some (a_value input_value)
+    ; Some (a_class
+      ["font-mono"; "border-2"; "border-indigo-900"; "rounded"; "p-1"; "focus:ring"])
+    ; if autofocus then Some (a_autofocus ()) else None
+    ]
   in
+
+  let input = Html.input ~a () in
 
   let updated_elem = updated_s
     |> React.S.map (function
