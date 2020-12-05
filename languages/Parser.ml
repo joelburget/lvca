@@ -582,7 +582,7 @@ module Direct = struct
       | Ok _ ->
         let str' = String.subo ~pos str in
         Some (Printf.sprintf
-          {|Parser didn't consume entire input. Left over: "%s"|}
+          {|The parser succeeded but didn't consume the entire input. Left over: "%s"|}
           (if String.length str' > 50 then String.prefix str' 47 ^ "..." else str'))
       | Error _ -> None
     in
