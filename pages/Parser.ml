@@ -51,7 +51,8 @@ module Model = struct
     ; count_input: input_sig
     ; let_input: input_sig
     ; fail_input: input_sig
-    ; sequence_input: input_sig
+    ; sequence1_input: input_sig
+    ; sequence2_input: input_sig
     ; fix_input: input_sig
     ; playground_input: input_sig
     }
@@ -75,7 +76,8 @@ module Model = struct
     ; count_input = mk "cc"
     ; let_input = mk "ccc"
     ; fail_input = mk "doesn't matter"
-    ; sequence_input = mk "1 + 2"
+    ; sequence1_input = mk "1 + 2"
+    ; sequence2_input = mk "1 + 2"
     ; fix_input = mk "x + 90 + y"
     ; playground_input = mk ""
     }
@@ -106,11 +108,12 @@ module Examples = struct
 })|}
   let satisfy_is_alpha = "satisfy(c -> {is_alpha(c)})"
   let satisfy_is_digit = "satisfy(c -> {is_digit(c)})"
-  let sequence = "a=. ' '* '+' ' '* b=. -> {plus(a; b)}"
+  let sequence1 = {|. ' '* '+' ' '* . -> {"parsed an addition"}|}
+  let sequence2 = "a=. ' '* '+' ' '* b=. -> {plus(a; b)}"
   let fix = {|let atom = choice (name | literal) in
 fix (expr -> choice (
-  | atom=atom ' '* '+' ' '* expr=expr -> {plus(atom; expr)}
-  | atom=atom -> {atom}
+  | a=atom ' '* '+' ' '* expr=expr -> {plus(a; expr)}
+  | a=atom -> {a}
 ))|}
 end
 
@@ -495,7 +498,8 @@ module View = struct
       ; choice3_input
       ; let_input
       ; fail_input
-      ; sequence_input
+      ; sequence1_input
+      ; sequence2_input
       ; fix_input
       ; playground_input
       } = model
@@ -525,7 +529,8 @@ module View = struct
 
     let let_table = mk_input_result' Examples.let_ let_input in
     let fail_table = mk_input_result' Examples.fail fail_input in
-    let sequence_table = mk_input_result' Examples.sequence sequence_input in
+    let sequence1_table = mk_input_result' Examples.sequence1 sequence1_input in
+    let sequence2_table = mk_input_result' Examples.sequence2 sequence2_input in
     let fix_table = mk_input_result' ~parser_ctx:Prelude.ctx Examples.fix fix_input in
 
     let pg_parser_input, set_pg_parser_input = React.S.create Examples.fix in
@@ -554,7 +559,7 @@ module View = struct
         |}[any_char_table]{|
 
         <h4><code class="code-inline">'c'</code></h4>
-        <p>A single-quoted character accepts exactly that character. Note that this example, like many of th e others is (intentionally) failing initially. Try changing the input so it's accepted.</p>
+        <p>A single-quoted character accepts exactly that character. Note that this example, like many of the others is (intentionally) failing initially. Try changing the input so it's accepted.</p>
         |}[char_table]{|
 
         <h4><code class="code-inline">"str"</code></h4>
@@ -592,8 +597,11 @@ module View = struct
 
         <h3>Sequence</h3>
 
-        <p>Concatenating a sequence of parsers accepts when they all parse successfully in sequence. You're allowed to name the result of any parsers you'd like to use in the result For example <code class="code-inline">|}[Html.txt Examples.sequence]{|</code> parses a simple addition expression (where the operands can be anything, as long as it's one character (just wait, we'll make better parsers in a moment)).</p>
-        |}[sequence_table]{|
+        <p>Concatenating a sequence of parsers accepts when they all parse successfully in sequence. A parser must return something, which goes to the right of the arrow. For example <code class="code-inline">|}[Html.txt Examples.sequence1]{|</code> parses a simple addition expression where the operands, <code>a</code> and <code>b</code>, are both one character (any character).</p>
+        |}[sequence1_table]{|
+
+        <p>Of course, it would be more useful to return something we parsed. That's why you can name the result of any parsers you'd like to use in the result.</p>
+        |}[sequence2_table]{|
 
         <p>This is a good time to revisit the <em>Trace</em> tool. If you look at the trace for the sequence parser, you'll see that it calls five subparsers. You can click the <em>view</em> button to inspect the details of any subparser, then <em>return here</em> to return to a caller anywhere up the stack.</p>
 
