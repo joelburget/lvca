@@ -327,15 +327,18 @@ let view_root_snapshot str root =
   in
 
   let controls_s = current_snapshot_s
-    |> React.S.map (fun Model.TraceSnapshot.{ snapshots; _ } -> view_controls str path_h snapshots)
+    |> React.S.map
+      (fun Model.TraceSnapshot.{ snapshots; _ } -> view_controls str path_h snapshots)
   in
 
   let parser_view = current_snapshot_s
-    |> React.S.map (fun Model.TraceSnapshot.{ success; parser; _ } -> view_parser parser success)
+    |> React.S.map
+      (fun Model.TraceSnapshot.{ success; parser; _ } -> view_parser parser success)
   in
 
   let pre_loc_view = current_snapshot_s
-    |> React.S.map (fun Model.TraceSnapshot.{ pre_pos; _ } -> string_location ~str ~loc:pre_pos)
+    |> React.S.map
+      (fun Model.TraceSnapshot.{ pre_pos; _ } -> string_location ~str ~loc:pre_pos)
     |> RList.singleton_s
     |> r_inline_block
   in
@@ -364,8 +367,7 @@ let view_root_snapshot str root =
   in
 
   let input_view = cols
-    [ Html.(div
-    [ span [ txt "The input to this parser is" ]])
+    [ Html.(div [ span [ txt "The input to this parser is" ]])
     ; txt " "
     ; pre_loc_view
     ]
@@ -373,10 +375,11 @@ let view_root_snapshot str root =
 
   Html.(table ~a:[a_class ["w-full"]]
     [ tr [ td ~a:[a_class ["p-2 border-b-2"; "border-r-2"]] [txt "stack"]
-         ; RHtml.(td ~a:[Html.a_class ["p-2 border-b-2"]] stack_view)
+         ; RHtml.td ~a:[Html.a_class ["p-2 border-b-2"]] stack_view
          ]
     ; tr [ td ~a:[a_class ["p-2 border-b-2"; "border-r-2"]] [txt "parser"]
-         ; td ~a:[a_class ["p-2 border-b-2"]] [mk_div parser_view; input_view; status_view]
+         ; td ~a:[a_class ["p-2 border-b-2"]]
+             [mk_div parser_view; input_view; status_view]
          ]
     ; tr [ td ~a:[a_class ["p-2 border-r-2"]] [txt "subparsers"]
          ; td ~a:[a_class ["p-2"]] [mk_div controls_s]
@@ -395,7 +398,7 @@ module View = struct
         match parser_or_err with
           | Error msg ->
             let result = error_msg [txt msg] in
-            let trace = Html.div [txt "not available: parser failed to parse"] in
+            let%html trace = "<div>not available: parser failed to parse</div>" in
             "failed to parse parser", result, trace
           | Ok parser ->
             let parser = P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
