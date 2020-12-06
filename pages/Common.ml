@@ -155,7 +155,9 @@ let mk_multiline_input
 
   result, input_event
 
-let mk_single_line_input ?autofocus:(autofocus=true) input_s =
+let mk_single_line_input
+  ?autofocus:(autofocus=false)
+  input_s =
   let open Js_of_ocaml in
   let open Tyxml_js in
 

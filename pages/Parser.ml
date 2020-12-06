@@ -440,7 +440,7 @@ module View = struct
     parser_elem
     parser_str_s
     (test_s, update_test) =
-    let test_input, test_evt = Common.mk_single_line_input ~autofocus:false test_s in
+    let test_input, test_evt = Common.mk_single_line_input test_s in
     let (_ : unit React.event) = test_evt |> React.E.map update_test in
 
     let show_trace_s, set_show_trace = React.S.create false in
