@@ -9,6 +9,7 @@ module Model = struct
     | EvalWithProvenancePage
     | TermToTexPage
     | ParserPage
+    | EditsPage
 
   (* | TermToDocument *)
 
@@ -22,6 +23,7 @@ module Model = struct
     ; EvalWithProvenancePage
     ; TermToTexPage
     ; ParserPage
+    ; EditsPage
     ]
   ;;
 end
@@ -48,6 +50,7 @@ module View = struct
     | TermAndConcretePage -> "01: term and concrete"
     | CalculatorPage -> "02: calculator"
     | ParserPage -> "03: parser"
+    | EditsPage -> "0x: edits"
     | EvalWithProvenancePage -> "0x: evaluation with provenance"
     | TermToTexPage -> "0x: term to tex"
   ;;
@@ -58,6 +61,7 @@ module View = struct
     | EvalWithProvenancePage -> EvalWithProvenance.stateless_view
     | TermToTexPage -> TermToTex.stateless_view
     | ParserPage -> Parser.stateless_view
+    | EditsPage -> Edits.stateless_view
   ;;
 
   let wrapper_div = Html5.div []
