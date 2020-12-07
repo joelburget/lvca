@@ -112,7 +112,7 @@ module Examples = struct
   let sequence2 = "a=. ' '* '+' ' '* b=. -> {plus(a; b)}"
   let fix = {|let atom = choice (name | literal) in
 fix (expr -> choice (
-  | a=atom ' '* '+' ' '* expr=expr -> {plus(a; expr)}
+  | a=atom ' '* '+' ' '* e=expr -> {plus(a; e)}
   | a=atom -> {a}
 ))|}
 end
