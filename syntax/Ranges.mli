@@ -16,7 +16,7 @@ val of_set : (Range.t, _) Base.Set.t -> t
 
 val to_string : t -> string
 
-(** Are the two sets of ranges equal *)
+(** Are the two sets of ranges equal? *)
 val ( = ) : t -> t -> bool
 
 (** Union two sets of ranges. *)
@@ -25,8 +25,13 @@ val union : t -> t -> t
 (** Is the first entirely contained in the second? *)
 val is_subset : t -> t -> bool
 
-(** The intersection of two ranges *)
+(** The intersection of two ranges. *)
 val intersect : t -> t -> t
 
 (** Pretty-print this range. *)
 val pp : t Fmt.t
+
+type string_status = Covered of Range.t | Uncovered of Range.t
+
+(** Mark all string segments as either covered or uncovered. *)
+val mark_string : t -> string -> string_status list
