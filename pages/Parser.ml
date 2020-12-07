@@ -657,5 +657,5 @@ module View = struct
     |}]
 end
 
-let stateless_view = View.view Model.initial_model
+let stateless_view () = View.view Model.initial_model
 ;;

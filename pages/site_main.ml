@@ -18,7 +18,7 @@ let insert_demo (elem : Dom_html.element Js.t) =
         -> Caml.Printf.printf "LVCA injected on element with an unknown class (%s)\n" cls
         | Some page -> Dom.appendChild
           elem
-          (Js_of_ocaml_tyxml.Tyxml_js.To_dom.of_div page));
+          (Js_of_ocaml_tyxml.Tyxml_js.To_dom.of_div (page ())));
   Lwt.return ()
 ;;
 

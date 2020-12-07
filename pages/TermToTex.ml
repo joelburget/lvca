@@ -55,7 +55,7 @@ module View = struct
   ;;
 end
 
-let stateless_view =
+let stateless_view () =
   let model_s, signal_update = React.S.create Model.initial_model in
   View.view model_s signal_update
 ;;

@@ -93,7 +93,7 @@ module View = struct
     in
     let page_view =
       R.Html5.div
-        (model_s |> React.S.map (fun { page } -> stateless_view page) |> RList.singleton_s)
+        (model_s |> React.S.map (fun { page } -> stateless_view page ()) |> RList.singleton_s)
     in
 
     [%html{|

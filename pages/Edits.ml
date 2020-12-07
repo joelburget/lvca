@@ -8,4 +8,4 @@ module View = struct
   let view _model = [%html{|<div>TODO</div>|}]
 end
 
-let stateless_view = View.view Model.initial_model
+let stateless_view () = View.view Model.initial_model

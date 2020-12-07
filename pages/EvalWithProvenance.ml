@@ -108,7 +108,7 @@ module View = struct
   ;;
 end
 
-let stateless_view =
+let stateless_view () =
   let initial_model : Model.t =
     let input = {|(\x -> \y -> x) z w|} in
     let result =

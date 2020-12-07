@@ -130,7 +130,7 @@ module View = struct
   ;;
 end
 
-let stateless_view =
+let stateless_view () =
   let initial_model : Model.t =
     let input = {|\f -> \g -> \x -> f (g x)|} in
     let result = ParseUtil.parse_string LambdaParse.t input in
