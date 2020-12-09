@@ -65,13 +65,17 @@ module View = struct
   module Ev = Js_of_ocaml_lwt.Lwt_js_events
 
   let mk_output' model_s =
-    let range_s : OptRange.t React.signal =
-      model_s |> React.S.map (fun Model.{ selected; _ } -> selected)
+    let range_s : SourceRanges.t React.signal = model_s
+      |> React.S.map (fun Model.{ selected; _ } ->
+          SourceRanges.of_opt_range ~buf:"input" selected)
     in
     let formatted_s =
       model_s
       |> React.S.map (fun Model.{ result; _ } ->
-             let elt, formatter = RangeFormatter.mk range_s in
+             let elt, formatter = RangeFormatter.mk
+               ~selection_s:range_s
+               ~set_selection:(fun _ -> () (* TODO *))
+             in
              (match result with
              | Ok tm -> Fmt.pf formatter "%a" lambda_pretty tm
              | Error msg -> Fmt.pf formatter "%s" msg);

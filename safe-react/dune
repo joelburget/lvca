@@ -1,0 +1,5 @@
+(library
+ (name safe_react)
+ ; (inline_tests)
+ (libraries react)
+ (wrapped false))

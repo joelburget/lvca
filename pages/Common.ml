@@ -157,6 +157,7 @@ let mk_multiline_input
 
 let mk_single_line_input
   ?autofocus:(autofocus=false)
+  ?highlights_s:(highlights_s=React.S.const [])
   input_s =
   let open Js_of_ocaml in
   let open Tyxml_js in
@@ -167,18 +168,59 @@ let mk_single_line_input
 
   let input_value = React.S.value input_s in
 
-  let a = List.filter_map ~f:Fn.id
-    Html.
+  let a = List.filter_map ~f:Fn.id Html.
     [ Some (a_input_type `Text)
     (* ; inputmode |> Option.map ~f:a_inputmode *)
     ; Some (a_value input_value)
     ; Some (a_class
-      ["font-mono"; "border-2"; "border-indigo-900"; "rounded"; "p-1"; "focus:ring"])
+      [ "font-mono"
+      (* ; "border-2" *)
+      (* ; "border-indigo-900" *)
+      (* ; "rounded" *)
+      ; "p-1"
+      (* ; "focus:ring" *)
+      ; "bg-none"
+      ; "border-none"
+      ; "display-block";
+      ])
     ; if autofocus then Some (a_autofocus ()) else None
     ]
   in
 
   let input = Html.input ~a () in
+
+  let highlighted_input_s = React.S.l2
+    (fun input_str highlight_ranges -> Ranges.mark_string highlight_ranges input_str
+       |> List.map ~f:(fun string_status ->
+         let Range.{ start; finish } =
+           match string_status with Covered rng | Uncovered rng -> rng
+         in
+         let str = String.sub input_str ~pos:start ~len:(finish - start) in
+         Html.(match string_status with
+           | Covered _ -> span ~a:[a_class ["bg-pink-200"; "rounded"]] [txt str]
+           | Uncovered _ -> txt str)
+       )
+    )
+    input_s
+    highlights_s
+    |> RList.from_signal
+  in
+
+  (* TODO: sync scroll position *)
+  let input_shadow = R.Html.(div
+    ~a:[ Html.a_class
+         [ "absolute"
+         ; "-z-1"
+         ; "left-1"
+         ; "top-1"
+         ; "text-transparent"
+         ; "whitespace-pre"
+         ]
+       ; Html.a_aria "hidden" ["true"]
+       ]
+    highlighted_input_s
+  )
+  in
 
   let updated_elem = updated_s
     |> React.S.map (function
@@ -190,7 +232,9 @@ let mk_single_line_input
 
   let result = [%html{|
     <div>
-      |}[input]{|
+      <div class="relative overflow-hidden b-1">
+        |}[input; input_shadow]{|
+      </div>
       |}[Html.(span ~a:[a_class ["ml-1"]] [updated_elem])]{|
     </div>
     |}]
