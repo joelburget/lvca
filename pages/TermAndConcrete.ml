@@ -4,6 +4,8 @@ open Common
 module PrimitiveParse = Primitive.Parse (ParseUtil.NoComment)
 module TermParse = Nominal.Parse (ParseUtil.NoComment)
 
+module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse (ParseUtil.NoComment)
+
 type lang =
   | Lambda
   | Term

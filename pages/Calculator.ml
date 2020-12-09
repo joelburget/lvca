@@ -185,7 +185,10 @@ module View = struct
     let input, input_event = Common.mk_single_line_input (React.S.const "1 + 1") in
 
     let (_ : unit React.event) = input_event
-      |> React.E.map (fun str -> Controller.update (Evaluate str) model_s signal_update)
+      |> React.E.map (function
+        | Common.InputUpdate str
+        -> Controller.update (Evaluate str) model_s signal_update
+        | _ -> ())
     in
 
     let examples, example_update_es =

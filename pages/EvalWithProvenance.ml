@@ -3,6 +3,8 @@ open Lvca_syntax
 open Result.Let_syntax
 open Common
 
+module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse (ParseUtil.NoComment)
+
 let eval = Lvca_languages.LambdaCalculus.eval
 
 module Model = struct

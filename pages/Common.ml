@@ -6,8 +6,6 @@ module Tyxml_js = Js_of_ocaml_tyxml.Tyxml_js
 
 type term = (OptRange.t, Primitive.t) Nominal.term
 
-module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse (ParseUtil.NoComment)
-
 module Action = struct
   type t =
     | Evaluate of string
@@ -162,9 +160,8 @@ let mk_single_line_input
   let open Js_of_ocaml in
   let open Tyxml_js in
 
-  let updated_s, update_updated = React.S.create false in
-
-  let input_event, signal_input_event = React.E.create () in
+  let dirty_input_s, update_dirty = React.S.create false in
+  let input_event, signal_event = React.E.create () in
 
   let input_value = React.S.value input_s in
 
@@ -222,7 +219,7 @@ let mk_single_line_input
   )
   in
 
-  let updated_elem = updated_s
+  let updated_elem = dirty_input_s
     |> React.S.map (function
       | true -> "updated (press Enter to re-evaluate)"
       | false -> ""
@@ -242,8 +239,25 @@ let mk_single_line_input
 
   let input_dom = To_dom.of_input input in
 
+  bind_event Ev.selects input_dom (fun evt ->
+      let elem = evt##.target |> Js.Opt.to_option |> Option.value_exn in
+      let input =
+        elem |> Dom_html.CoerceTo.input |> Js.Opt.to_option |> Option.value_exn
+      in
+      let start = input##.selectionStart in
+      let finish = input##.selectionEnd in
+      signal_event (InputSelect (start, finish));
+      (* Used for debugging only -- can be removed: *)
+      (* let str = input##.value##substring start finish in *)
+      (* Caml.Printf.printf "Selected %u-%u '%s'\n" start finish (Js.to_string str); *)
+      Lwt.return ());
+
+  bind_event Ev.clicks input_dom (fun _evt ->
+      signal_event InputUnselect;
+      Lwt.return ());
+
   bind_event Ev.inputs input_dom (fun _evt ->
-    update_updated true;
+    update_dirty true;
     Lwt.return ()
   );
 
@@ -256,8 +270,8 @@ let mk_single_line_input
     let _ : unit = match key_name with
       | "Enter" -> (
         Dom.preventDefault evt;
-        update_updated false;
-        signal_input_event (Js.to_string input_dom##.value)
+        update_dirty false;
+        signal_event (InputUpdate (Js.to_string input_dom##.value))
       )
       | _ -> ()
     in
