@@ -2,7 +2,6 @@ open Base
 open ReactiveData
 
 module Ev = Js_of_ocaml_lwt.Lwt_js_events
-module Tyxml_js = Js_of_ocaml_tyxml.Tyxml_js
 
 let mk
   ?autofocus:(autofocus=true)
@@ -11,7 +10,7 @@ let mk
   ?cols:(cols=60)
   input_s =
   let open Js_of_ocaml in
-  let open Tyxml_js in
+  let open Js_of_ocaml_tyxml.Tyxml_js in
 
   let input_dirty_s, update_input_dirty = React.S.create false in
   let input_event, signal_event = React.E.create () in

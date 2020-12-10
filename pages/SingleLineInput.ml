@@ -3,18 +3,16 @@ open Lvca_syntax
 open ReactiveData
 
 module Ev = Js_of_ocaml_lwt.Lwt_js_events
-module Tyxml_js = Js_of_ocaml_tyxml.Tyxml_js
 
 let mk
   ?autofocus:(autofocus=false)
   ?highlights_s:(external_highlights_s=React.S.const [])
   input_s =
   let open Js_of_ocaml in
-  let open Tyxml_js in
+  let open Js_of_ocaml_tyxml.Tyxml_js in
 
   let dirty_input_s, update_dirty = React.S.create false in
   let input_event, signal_event = React.E.create () in
-  (* let internal_reset_e, trigger_internal_reset = SafeReact.E.create () in *)
 
   let highlights_s = SafeReact.E.select
     [ SafeReact.S.diff (fun v _ -> v) external_highlights_s
@@ -100,23 +98,6 @@ let mk
 
   let input_dom = To_dom.of_input input in
 
-  Common.bind_event Ev.selects input_dom (fun evt ->
-      let elem = evt##.target |> Js.Opt.to_option |> Option.value_exn in
-      let input =
-        elem |> Dom_html.CoerceTo.input |> Js.Opt.to_option |> Option.value_exn
-      in
-      let start = input##.selectionStart in
-      let finish = input##.selectionEnd in
-      signal_event (Common.InputSelect (start, finish));
-      (* Used for debugging only -- can be removed: *)
-      let str = input##.value##substring start finish in
-      Caml.Printf.printf "Selected %u-%u '%s'\n" start finish (Js.to_string str);
-      Lwt.return ());
-
-  Common.bind_event Ev.clicks input_dom (fun _evt ->
-      signal_event Common.InputUnselect;
-      Lwt.return ());
-
   Common.bind_event Ev.inputs input_dom (fun _evt ->
     update_dirty true;
     Lwt.return ()
@@ -138,6 +119,23 @@ let mk
     in
     Lwt.return ()
   );
+
+  Common.bind_event Ev.selects input_dom (fun evt ->
+      let elem = evt##.target |> Js.Opt.to_option |> Option.value_exn in
+      let input =
+        elem |> Dom_html.CoerceTo.input |> Js.Opt.to_option |> Option.value_exn
+      in
+      let start = input##.selectionStart in
+      let finish = input##.selectionEnd in
+      signal_event (Common.InputSelect (start, finish));
+      (* Used for debugging only -- can be removed: *)
+      (* let str = input##.value##substring start finish in *)
+      (* Caml.Printf.printf "Selected %u-%u '%s'\n" start finish (Js.to_string str); *)
+      Lwt.return ());
+
+  Common.bind_event Ev.clicks input_dom (fun _evt ->
+      signal_event Common.InputUnselect;
+      Lwt.return ());
 
   let (_: unit React.event) = input_s
     (* Create an event when the input has changed *)
