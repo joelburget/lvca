@@ -409,56 +409,37 @@ module View = struct
   let view_parser_test
     ?term_ctx:(term_ctx=Lvca_util.String.Map.empty)
     ?parser_ctx:(parser_ctx=Lvca_util.String.Map.empty)
+    ~highlight_s
     parser_or_err
-    test_str =
-      let result_title, result, trace, select_s =
-        match parser_or_err with
-          | Error msg ->
-            let result = error_msg [txt msg] in
-            let%html trace = "<div>not available: parser failed to parse</div>" in
-            Some "failed to parse parser", result, trace,
-              SafeReact.S.const SourceRanges.empty
-          | Ok parser ->
-            let parser = P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
-            let toplevel_result =
-              Direct.parse_direct ~term_ctx ~parser_ctx parser test_str
-            in
-            let P.Direct.{ didnt_consume_msg; result; snapshot } = toplevel_result in
+    test_str = match parser_or_err with
+      | Error msg ->
+        let result = error_msg [txt msg] in
+        let%html trace = "<div>not available: parser failed to parse</div>" in
+        result, trace, SafeReact.S.const SourceRanges.empty
+      | Ok parser ->
+        let parser = P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
+        let toplevel_result =
+          Direct.parse_direct ~term_ctx ~parser_ctx parser test_str
+        in
+        let P.Direct.{ didnt_consume_msg; result; snapshot } = toplevel_result in
 
-            let result_title, result, select_s = match result with
-              | Error (msg, tm_opt) ->
-                let msg, s = match tm_opt with
-                  | None -> error_msg [txt msg], SafeReact.S.const SourceRanges.empty
-                  | Some tm ->
-                    let core, select_s = view_core tm in
-                    error_msg [txt msg; core], select_s
-                in
-                None, msg, s
-              | Ok tm -> match didnt_consume_msg with
-                | Some msg ->
-                  None, error_msg [txt msg], SafeReact.S.const SourceRanges.empty
-                | None ->
-                  let tm, select_s = view_term tm in
-                  Some "parsed", tm, select_s
-            in
-            let trace = snapshot
-              |> Model.TraceSnapshot.restrict_snapshot
-              |> view_root_snapshot test_str
-            in
-            result_title, result, trace, select_s
-      in
-
-      (* eg "parsed 'c'" *)
-      let result =
-        [ result_title |> Option.map ~f:(fun title -> title |> txt |> inline_block)
-        ; Some (txt " ")
-        ; Some (inline_block result)
-        ]
-        |> List.filter_map ~f:Fn.id
-        |> Html.div
-      in
-
-      result, trace, select_s
+        let result, select_s = match result with
+          | Error (msg, tm_opt) -> (match tm_opt with
+            | None -> error_msg [txt msg], SafeReact.S.const SourceRanges.empty
+            | Some tm ->
+              let highlight_s = SafeReact.S.const SourceRanges.empty in
+              let core, select_s = view_core ~highlight_s tm in
+              error_msg [txt msg; core], select_s
+          )
+          | Ok tm -> match didnt_consume_msg with
+            | Some msg -> error_msg [txt msg], SafeReact.S.const SourceRanges.empty
+            | None -> view_term ~highlight_s tm
+        in
+        let trace = snapshot
+          |> Model.TraceSnapshot.restrict_snapshot
+          |> view_root_snapshot test_str
+        in
+        result, trace, select_s
 
   let mk_input_result
     ?parser_ctx:(parser_ctx=Lvca_util.String.Map.empty)
