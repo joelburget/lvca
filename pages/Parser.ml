@@ -64,7 +64,8 @@ module Model = struct
 
   let mk str =
     let s, update = SafeReact.S.create ~eq:String.(=) str in
-    s, (fun str -> update str)
+    let handler str = update str in
+    s, handler
 
   let initial_model =
     { any_char_input = mk "c"
@@ -142,13 +143,18 @@ module Prelude = struct
       |> Map.map ~f:(P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"prelude"))
 end
 
-let pp_view tm fmt =
+let pp_view ~highlight_s tm fmt =
   let selection_s, set_selection =
     SafeReact.S.create ~eq:SourceRanges.(=) SourceRanges.empty
   in
-  let elt, formatter = RangeFormatter.mk ~selection_s ~set_selection in
+  let elt, formatter, clear = RangeFormatter.mk ~selection_s:highlight_s ~set_selection in
 
-  (*
+  (* TODO tie this to actual font size *)
+  let font_size = 14.0 in
+  let initial_width = 40 in
+
+  let size_s, set_size = SafeReact.S.create ~eq:Int.(=) initial_width in
+
   let open Js_of_ocaml in
   if (ResizeObserver.is_supported ()) then (
     let open Tyxml_js in
@@ -161,37 +167,42 @@ let pp_view tm fmt =
         | Some entry0 ->
           match Js.array_get entry0##.contentBoxSize 0 |> Js.Optdef.to_option with
             | None -> ()
-            | Some box -> Caml.Printf.printf "observing %f\n" box##.blockSize;
+            | Some box ->
+              let sz = Int.of_float (box##.inlineSize /. font_size) in
+              if sz < 1000 then set_size sz
     in
 
-    let _ : ResizeObserver.resizeObserver Js.t = ResizeObserver.observe ~node ~f
-      ~box:(Js.string "content-box")
-      ()
-    in
-
+    let _ : ResizeObserver.resizeObserver Js.t = ResizeObserver.observe ~node ~f () in
     ()
-  ) else (Caml.Printf.printf "no resize observer :(\n");
-  *)
+  ) else ();
 
-  Caml.Format.pp_set_margin formatter 40 (* TODO: base on current window width! *);
-  Fmt.pf formatter "%a" fmt tm;
-  Fmt.flush formatter ();
+  let _ : unit SafeReact.signal = size_s |> SafeReact.S.map ~eq:Caml.(=)
+    (fun size ->
+      clear ();
+      Caml.Format.pp_set_margin formatter size;
+      Fmt.pf formatter "%a" fmt tm;
+      Fmt.flush formatter ()
+    )
+  in
+
   elt, selection_s
 
-let view_term tm =
-  let pp_view, tm_selection_s = pp_view tm (Nominal.pp_term_ranges Primitive.pp) in
+let view_term ~highlight_s tm =
+  let pp_view, tm_selection_s =
+    pp_view ~highlight_s tm (Nominal.pp_term_ranges Primitive.pp)
+  in
   success_msg [pp_view], tm_selection_s
 
-let view_core core =
-  let pp_view, tm_selection_s = pp_view core Core.pp in
+let view_core ~highlight_s core =
+  let pp_view, tm_selection_s = pp_view ~highlight_s core Core.pp in
   success_msg [pp_view], tm_selection_s
 
-let view_parser parser success =
-  let elt, tm_selection_s = pp_view parser P.pp_plain in
+let view_parser ~highlight_s parser success =
+  let elt, tm_selection_s = pp_view ~highlight_s parser P.pp_plain in
   Html.(div ~a:[a_class [if success then "success" else "error"]] [elt]), tm_selection_s
 
-let view_parser_ignore_selection parser success =
-  let elem, _ = view_parser parser success in elem
+let view_parser_ignore_selection ~highlight_s parser success =
+  let elem, _ = view_parser parser ~highlight_s success in elem
 
 let string_location ~str ~loc =
   if String.(str = "")
@@ -251,9 +262,10 @@ let snapshot_controls str snapshots (path_h : int RList.handle) =
       let onclick _ = RList.snoc i path_h; false in
       let btn = button ~onclick "view" in
 
+      let highlight_s = React.S.const SourceRanges.empty in
       Html.(tr
         [ td ~a:[a_class ["p-2 border-t-2 border-r-2"]]
-          [view_parser_ignore_selection parser success]
+          [view_parser_ignore_selection ~highlight_s parser success]
         ; td ~a:[a_class ["p-2 border-t-2 border-r-2"]] [snapshot_advanced_view str snapshot]
         ; td ~a:[a_class ["p-2 border-t-2"]] [btn]
         ]))
@@ -300,10 +312,11 @@ let view_stack root path_h path_s = path_s
   |> SafeReact.S.map ~eq:(List.equal html_eq) (fun path ->
     let stack_lst = (traverse_path ~root ~path).stack in
     let len = List.length stack_lst in
+    let highlight_s = React.S.const SourceRanges.empty in
     stack_lst
     |> List.mapi ~f:(fun i snapshot ->
       let Model.TraceSnapshot.{ parser; success; _ } = snapshot in
-      let p_view = view_parser_ignore_selection parser success in
+      let p_view = view_parser_ignore_selection ~highlight_s parser success in
       let onclick _ = RList.set path_h (List.take path i); false in
       let btn = button ~onclick "return here" in
       let classes = List.filter_map ~f:Fn.id
@@ -346,10 +359,11 @@ let view_root_snapshot str root =
       (fun Model.TraceSnapshot.{ snapshots; _ } -> view_controls str path_h snapshots)
   in
 
+  let highlight_s = SafeReact.S.const SourceRanges.empty in
   let parser_view = current_snapshot_s
     |> SafeReact.S.map ~eq:html_eq
       (fun Model.TraceSnapshot.{ success; parser; _ } ->
-        view_parser_ignore_selection parser success)
+        view_parser_ignore_selection ~highlight_s parser success)
   in
 
   let pre_loc_view = current_snapshot_s
@@ -460,15 +474,22 @@ module View = struct
       rhtml_eq html11 html21 && rhtml_eq html12 html22 &&
       SafeReact.S.equal ~eq:SourceRanges.(=) src1 src2
     in
-    let test_s' = SafeReact.S.l2 ~eq
-      (view_parser_test ~parser_ctx) parser_s test_s
+
+    let input_hl_s, set_input_hl =
+      SafeReact.S.create ~eq:SourceRanges.(=) SourceRanges.empty
     in
+
+    let test_s' = SafeReact.S.l2 ~eq
+      (view_parser_test ~parser_ctx ~highlight_s:input_hl_s) parser_s test_s
+    in
+
     let result = test_s'
       |> SafeReact.S.map ~eq:html_eq (fun (x, _, _) -> x)
       |> mk_div
     in
     let trace_s = test_s' |> SafeReact.S.map ~eq:html_eq (fun (_, x, _) -> x) in
-    let highlights_s = test_s'
+
+    let tm_hl_s = test_s'
       |> SafeReact.S.map ~eq:(SafeReact.S.equal ~eq:SourceRanges.(=)) (fun (_, _, x) -> x)
       |> SafeReact.S.switch ~eq:SourceRanges.(=)
       |> SafeReact.S.map ~eq:Ranges.(=)
@@ -477,8 +498,14 @@ module View = struct
         | Some ranges -> ranges)
     in
 
-    let (_ : unit SafeReact.event) = test_evt |> SafeReact.E.map update_test in
     let test_input, test_evt = SingleLineInput.mk test_s ~highlights_s:tm_hl_s in
+    let (_ : unit SafeReact.event) = test_evt |> SafeReact.E.map
+      (function
+        | Common.InputUpdate str -> update_test str
+        | InputSelect (start, finish)
+        -> set_input_hl (SourceRanges.of_range ~buf:"input" Range.{ start; finish })
+        | InputUnselect -> set_input_hl SourceRanges.empty)
+    in
 
     let trace_cell = SafeReact.S.l2 ~eq:html_eq
       (fun trace show_trace -> if show_trace then trace else txt "")

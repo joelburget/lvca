@@ -74,7 +74,7 @@ module View = struct
     let formatted_s =
       model_s
       |> React.S.map (fun Model.{ result; _ } ->
-             let elt, formatter = RangeFormatter.mk
+             let elt, formatter, _clear = RangeFormatter.mk
                ~selection_s:range_s
                ~set_selection:(fun _ -> () (* TODO *))
              in
