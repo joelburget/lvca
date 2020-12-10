@@ -28,20 +28,6 @@ type input_event =
   | InputSelect of int * int
   | InputUnselect
 
-val mk_multiline_input :
-  ?autofocus:bool ->
-  ?border:bool ->
-  ?rows:int option ->
-  ?cols:int ->
-  string React.signal ->
-  [> Html_types.div ] Tyxml_js.To_dom.elt * input_event React.event
-
-val mk_single_line_input :
-  ?autofocus:bool ->
-  ?highlights_s:Lvca_syntax.Ranges.t React.signal ->
-  string React.signal ->
-  [> Html_types.div ] Tyxml_js.To_dom.elt * input_event React.event
-
 val mk_output :
   [< Html_types.div_content_fun ] Tyxml_js.To_dom.elt React.signal ->
   [> Html_types.div ] Tyxml_js.To_dom.elt

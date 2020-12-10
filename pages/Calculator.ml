@@ -182,7 +182,7 @@ module View = struct
   module Ev = Js_of_ocaml_lwt.Lwt_js_events
 
   let view model_s signal_update =
-    let input, input_event = Common.mk_single_line_input (React.S.const "1 + 1") in
+    let input, input_event = SingleLineInput.mk (React.S.const "1 + 1") in
 
     let (_ : unit React.event) = input_event
       |> React.E.map (function

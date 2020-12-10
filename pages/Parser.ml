@@ -496,8 +496,8 @@ module View = struct
         | Some ranges -> ranges)
     in
 
-    let test_input, test_evt = Common.mk_single_line_input test_s ~highlights_s in
     let (_ : unit SafeReact.event) = test_evt |> SafeReact.E.map update_test in
+    let test_input, test_evt = SingleLineInput.mk test_s ~highlights_s:tm_hl_s in
 
     let trace_cell = SafeReact.S.l2 ~eq:html_eq
       (fun trace show_trace -> if show_trace then trace else txt "")
@@ -588,7 +588,7 @@ module View = struct
       SafeReact.S.create ~eq:String.(=) Examples.fix
     in
     let pg_input_elem, pg_input_evt =
-      Common.mk_multiline_input ~autofocus:false ~border:false pg_parser_input
+      MultilineInput.mk ~autofocus:false ~border:false pg_parser_input
     in
     let playground_table = mk_input_result
       ~parser_ctx:Prelude.ctx
