@@ -165,6 +165,11 @@ let pp_generic ~open_loc ~close_loc ppf p =
 let pp_range ppf p =
   pp_generic ~open_loc:OptRange.open_stag ~close_loc:OptRange.close_stag ppf p
 
+let pp_ranges ppf p = pp_generic
+  ~open_loc:(fun ppf loc -> Caml.Format.pp_open_stag ppf (SourceRanges.Stag loc))
+  ~close_loc:(fun ppf _loc -> Caml.Format.pp_close_stag ppf ())
+  ppf p
+
 let pp_plain ppf p =
   pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p
 
