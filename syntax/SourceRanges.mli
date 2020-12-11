@@ -38,5 +38,8 @@ val is_subset : t -> t -> bool
 (** The intersection of two ranges *)
 val intersect : t -> t -> t
 
+(** Restrict to a given buffer *)
+val restrict : buf:string -> t -> t
+
 (** For testing only: used to enable outputting of the [Stag] semantic tag. *)
 val stag_functions : Caml.Format.formatter_stag_functions
