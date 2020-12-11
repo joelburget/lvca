@@ -620,27 +620,40 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     | Dot -> "."
 
   type token =
-    | Atom of atom
-    | Operator of string
-    | Keyword of string
-    | Ident of string
-    | Core of OptRange.t Core.term
-    | Parenthesized of term
-    | FailTok of OptRange.t Core.term
-    | SatisfyTok of string * OptRange.t Core.term
-    | ChoiceTok of token list
-    | FixTok of string * token list
+    | Atom of atom * OptRange.t
+    | Operator of string * OptRange.t
+    | Keyword of string * OptRange.t
+    | Ident of string * OptRange.t
+    | Core of OptRange.t Core.term * OptRange.t
+    | Parenthesized of term * OptRange.t
+    | FailTok of OptRange.t Core.term * OptRange.t
+    | SatisfyTok of string * OptRange.t Core.term * OptRange.t
+    | ChoiceTok of token list * OptRange.t
+    | FixTok of string * token list * OptRange.t
+
+  let token_location = function
+    | Atom (_, loc)
+    | Operator (_, loc)
+    | Keyword (_, loc)
+    | Ident (_, loc)
+    | Core (_, loc)
+    | Parenthesized (_, loc)
+    | FailTok (_, loc)
+    | SatisfyTok (_, _, loc)
+    | ChoiceTok (_, loc)
+    | FixTok (_, _, loc)
+    -> loc
 
   let rec string_of_token = function
-    | Atom atom -> string_of_atom atom
-    | Operator str | Keyword str | Ident str -> str
-    | Core tm -> Core.to_string tm
-    | Parenthesized tm -> Fmt.str "%a" pp_plain tm
-    | FailTok tm -> Fmt.str "fail (%a)" Core.pp tm
-    | SatisfyTok (name, tm) -> Fmt.str "satisfy (%s -> %a)" name Core.pp tm
-    | ChoiceTok toks -> Fmt.str "choice (%s)"
+    | Atom (atom, _) -> string_of_atom atom
+    | Operator (str, _) | Keyword (str, _) | Ident (str, _) -> str
+    | Core (tm, _) -> Core.to_string tm
+    | Parenthesized (tm, _) -> Fmt.str "%a" pp_plain tm
+    | FailTok (tm, _) -> Fmt.str "fail (%a)" Core.pp tm
+    | SatisfyTok (name, tm, _) -> Fmt.str "satisfy (%s -> %a)" name Core.pp tm
+    | ChoiceTok (toks, _) -> Fmt.str "choice (%s)"
       (toks |> List.map ~f:string_of_token |> String.concat ~sep:"; ")
-    | FixTok (name, toks) -> Fmt.str "fix (%s -> %s)"
+    | FixTok (name, toks, _) -> Fmt.str "fix (%s -> %s)"
       name
       (toks |> List.map ~f:string_of_token |> String.concat ~sep:"; ")
 
@@ -657,8 +670,6 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     |> List.map ~f:string_of_binder
     |> String.concat ~sep:" "
 
-  let todo_pos = None
-
   let lbp = function
     | "?" | "*" | "+" -> Prec.quantifier
     | "=" -> Prec.eq
@@ -668,75 +679,60 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
 
   (* Parse an expression starting with a token (nothing in front of it) *)
   let rec prefix ~tokens = function
-    | Atom atom ->
-        let pos = todo_pos in
+    | Atom (atom, pos) ->
         return ~pos (match atom with
           | CharAtom c -> Char (pos, c)
           | StrAtom c -> String (pos, c)
           | Dot -> AnyChar pos
         )
-    | Operator op_name ->
+    | Operator (op_name, _pos) ->
       (* There must always be something preceding an operator *)
       fail ("prefix: unexpected operator " ^ op_name)
-    | Keyword kw_name -> (match kw_name with
+    | Keyword (kw_name, let_pos) -> (match kw_name with
       | "let" ->
         (match Queue.dequeue tokens with
-          | Some (Ident name) ->
+          | Some (Ident (name, _)) ->
             (match Queue.dequeue tokens with
-              | Some (Operator "=") ->
+              | Some (Operator ("=", _)) ->
                 expression ~tokens ~ambient_prec:0 >>= fun e1 ->
                 (match Queue.dequeue tokens with
-                  | Some (Keyword "in")
+                  | Some (Keyword ("in", _))
                   -> expression ~tokens ~ambient_prec:0 >>= fun e2 ->
-                    let pos = todo_pos in
+                    let pos = OptRange.union let_pos (location e2) in
                     return ~pos (Let (pos, name, e1, e2))
                   | Some _ | None -> fail "TODO: error")
               | Some _ | None -> fail "TODO: error")
           | Some _ | None -> fail "TODO: error")
         | _ -> fail (Printf.sprintf {|invalid keyword "%s", expected "let"|} kw_name)
     )
-    | Ident name ->
-      let pos = todo_pos in
-      return ~pos (Identifier (pos, name))
-    | Core tm ->
-      let pos = todo_pos in
-      return ~pos (Sequence (pos, [], tm))
-    | Parenthesized p ->
-      let pos = location p in
-      return ~pos p
-    | FailTok tm ->
-      let pos = todo_pos in
-      return ~pos (Fail (pos, tm))
-    | SatisfyTok (name, tm) ->
-      let pos = todo_pos in
-      return ~pos (Satisfy (pos, name, tm))
-    | ChoiceTok toks ->
+    | Ident (name, pos) -> return ~pos (Identifier (pos, name))
+    | Core (tm, pos) -> return ~pos (Sequence (pos, [], tm))
+    | Parenthesized (p, pos) -> return ~pos p
+    | FailTok (tm, pos) -> return ~pos (Fail (pos, tm))
+    | SatisfyTok (name, tm, pos) -> return ~pos (Satisfy (pos, name, tm))
+    | ChoiceTok (toks, pos) ->
       let tokens = Queue.of_list toks in
       choice_branches ~first:true ~tokens >>= fun branches ->
       (match Queue.length tokens with
-        | 0 ->
-          let pos = todo_pos in
-          return ~pos (Choice (pos, branches))
+        | 0 -> return ~pos (Choice (pos, branches))
         | _ -> fail ("Leftover tokens in a choice body: " ^ string_of_tokens tokens))
-    | FixTok (name, toks) ->
+    | FixTok (name, toks, pos) ->
       let tokens = Queue.of_list toks in
       sequence ~tokens >>= fun expr ->
       match Queue.length tokens with
-        | 0 ->
-          let pos = todo_pos in
-          return ~pos (Fix (pos, name, expr))
+        | 0 -> return ~pos (Fix (pos, name, expr))
         | _ -> fail "Leftover tokens in a fix body"
 
   and choice_branches ~first ~tokens =
     let go () =
-      sequence ~tokens >>= fun branch ->
-      choice_branches ~first:false ~tokens >>= fun branches ->
-      let pos = todo_pos in
+      sequence ~tokens >>== fun ~pos:seq_pos branch ->
+      choice_branches ~first:false ~tokens >>== fun ~pos:branch_pos branches ->
+      let pos = OptRange.union seq_pos branch_pos in
       return ~pos (branch :: branches)
     in
 
     match Queue.peek tokens with
-      | Some (Operator "|") -> let _ : token = Queue.dequeue_exn tokens in go ()
+      | Some (Operator ("|", _)) -> let _ : token = Queue.dequeue_exn tokens in go ()
       | Some tok ->
         if first
         then go ()
@@ -744,8 +740,13 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
       | None -> return ~pos:None []
 
   (* Parse the operator following an expression *)
-  and infix (* or postfix *) ~tokens ~left ~op_name =
-    let pos = todo_pos in
+  and infix (* or postfix *) ~tokens ~left ~op_name ~op_pos =
+    let pos = tokens
+      |> Queue.to_list
+      |> List.map ~f:token_location
+      |> OptRange.list_range
+      |> OptRange.union op_pos
+    in
     match op_name with
     | "?" -> return ~pos (Option (pos, left))
     | "*" -> return ~pos (Many (pos, left))
@@ -764,17 +765,17 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
       | None -> return ~pos left
       | Some token ->
         match token with
-        | Operator "->" -> return ~pos left
-        | Operator op_name ->
+        | Operator ("->", _) -> return ~pos left
+        | Operator (op_name, op_pos) ->
           if lbp op_name > ambient_prec
           then (
             let _ : token = Queue.dequeue_exn tokens in
-            infix ~tokens ~left ~op_name >>= go ~ambient_prec:(lbp op_name - 1 (* HACK *))
+            infix ~tokens ~left ~op_name ~op_pos >>=
+              go ~ambient_prec:(lbp op_name - 1 (* HACK *))
           )
           else return ~pos left
-        | Core tm ->
+        | Core (tm, pos) ->
           let _ : token = Queue.dequeue_exn tokens in
-          let pos = todo_pos in
           return ~pos (Count (pos, left, tm))
         | _ -> return ~pos left
     in
@@ -782,15 +783,14 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     go ~ambient_prec left
 
   and sequence_elem ~tokens = match Queue.peek_exn tokens with
-    | Ident name ->
+    | Ident (name, name_pos) ->
       let next_toks = match Queue.to_list tokens with
         | _ :: next_toks -> next_toks
         | [] -> failwith "invariant violation: sequence_elem: no tokens"
       in
-      let name_pos = todo_pos in
       let ident = Identifier (name_pos, name) in
       (match next_toks with
-        | Operator "=" :: _ ->
+        | Operator ("=", _) :: _ ->
           (* dequeue both the identifier and the "=" *)
           let _ : token = Queue.dequeue_exn tokens in
           let _ : token = Queue.dequeue_exn tokens in
@@ -819,23 +819,20 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     let rec go () =
       match Queue.peek tokens with
       (* Parse form 2. *)
-      | Some (Operator "|") | None -> (match Queue.to_list binders with
+      | Some (Operator ("|", _)) | None -> (match Queue.to_list binders with
         | [Binder (None, expr)] -> let pos = location expr in return ~pos expr
         | binders -> failwith
           (Printf.sprintf "TODO (sequence 1) %s" (string_of_binders binders))
       )
 
       (* Parse form 1 *)
-      | Some (Operator "->") ->
+      | Some (Operator ("->", _)) ->
         let _arr : token = Queue.dequeue_exn tokens in
         (match Queue.dequeue tokens with
-          | Some (Core tm) ->
-            let pos = todo_pos in
+          | Some (Core (tm, pos)) ->
             return ~pos (Sequence (pos, Queue.to_list binders, tm))
-          | Some (Ident name) ->
-            let pos = todo_pos in
-            return ~pos
-              (Sequence (pos, Queue.to_list binders, Core.Term (Nominal.Var (pos, name))))
+          | Some (Ident (name, pos)) -> return ~pos
+            (Sequence (pos, Queue.to_list binders, Core.Term (Nominal.Var (pos, name))))
           | Some tok -> fail (Printf.sprintf "TODO (sequence token %s)" (string_of_token tok))
           | None -> fail "TODO (sequence None)"
         )
@@ -858,32 +855,42 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     let arrow = string "->" in
     fix (fun parser ->
       let token = fix (fun token -> choice
-        [ char_lit >>| (fun c -> Atom (CharAtom c))
-        ; string_lit >>| (fun str -> Atom (StrAtom str))
-        ; char '.' >>| (fun _ -> Atom Dot)
-        ; operator >>| (fun op -> Operator op)
-        ; keyword >>| (fun kw -> Keyword kw)
-        ; string "fail" >>= (fun _ ->
-          c_term >>| fun tm -> FailTok tm)
-        ; string "satisfy" >>= (fun _ ->
+        [ char_lit >>|| (fun ~pos c -> Atom (CharAtom c, pos), pos)
+        ; string_lit >>|| (fun ~pos str -> Atom (StrAtom str, pos), pos)
+        ; char '.' >>|| (fun ~pos _ -> Atom (Dot, pos), pos)
+        ; operator >>|| (fun ~pos op -> Operator (op, pos), pos)
+        ; keyword >>|| (fun ~pos kw -> Keyword (kw, pos), pos)
+        ; string "fail" >>== (fun ~pos:p1 _ ->
+          c_term >>|| fun ~pos:p2 tm ->
+          let pos = OptRange.union p1 p2 in
+          FailTok (tm, pos), pos)
+        ; string "satisfy" >>== (fun ~pos:sat_pos _ ->
           parens
             (lift3
-              (fun name _arr tm -> SatisfyTok (name, tm))
+              (fun name _arr (tm, tm_pos) ->
+                let pos = OptRange.union sat_pos tm_pos in
+                SatisfyTok (name, tm, pos))
               identifier
               arrow
-              c_term))
-        ; string "choice" >>= (fun _ ->
-          parens (many token) >>| fun toks -> ChoiceTok toks)
-        ; string "fix" >>= (fun _ ->
+              (attach_pos c_term)))
+        ; string "choice" >>== (fun ~pos:choice_pos _ ->
+          parens (many token) >>|| fun ~pos:toks_pos toks ->
+          let pos = OptRange.union choice_pos toks_pos in
+          ChoiceTok (toks, pos), pos)
+        ; string "fix" >>== (fun ~pos:fix_pos _ ->
           parens
             (lift3
-              (fun name _arr toks -> FixTok (name, toks))
+              (fun name _arr toks ->
+                let toks_pos = toks |> List.map ~f:token_location |> OptRange.list_range
+                in
+                let pos = OptRange.union fix_pos toks_pos in
+                FixTok (name, toks, pos))
               identifier
               arrow
               (many1 token)))
-        ; identifier >>| (fun ident -> Ident ident)
-        ; c_term >>| (fun tm -> Core tm)
-        ; parens parser >>| (fun p -> Parenthesized p)
+        ; identifier >>|| (fun ~pos ident -> Ident (ident, pos), pos)
+        ; c_term >>|| (fun ~pos tm -> Core (tm, pos), pos)
+        ; parens parser >>|| (fun ~pos p -> Parenthesized (p, pos), pos)
         ]) <?> "token"
       in
 
