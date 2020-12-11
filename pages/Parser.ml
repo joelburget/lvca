@@ -10,6 +10,7 @@ module Tyxml_js = Js_of_ocaml_tyxml.Tyxml_js
 module Html = Tyxml_js.Html
 module RHtml = Tyxml_js.R.Html
 module Ev = Js_of_ocaml_lwt.Lwt_js_events
+module React = SafeReact
 
 open Components
 
@@ -17,7 +18,7 @@ let html_eq : 'a Html.elt -> 'a Html.elt -> bool = Caml.(=)
 let rhtml_eq : 'a RHtml.elt -> 'a RHtml.elt -> bool = Caml.(=)
 
 module Model = struct
-  type input_sig = string SafeReact.signal * (string -> unit)
+  type input_sig = string React.signal * (string -> unit)
 
   module TraceSnapshot = struct
     type t =
@@ -63,7 +64,7 @@ module Model = struct
     }
 
   let mk str =
-    let s, update = SafeReact.S.create ~eq:String.(=) str in
+    let s, update = React.S.create ~eq:String.(=) str in
     let handler str = update str in
     s, handler
 
@@ -85,7 +86,7 @@ module Model = struct
     ; sequence1_input = mk "1 + 2"
     ; sequence2_input = mk "1 + 2"
     ; fix_input = mk "x + 90 + y"
-    ; playground_input = mk ""
+    ; playground_input = mk "1 + 2"
     }
 end
 
@@ -145,7 +146,7 @@ end
 
 let pp_view ~highlight_s tm fmt =
   let selection_s, set_selection =
-    SafeReact.S.create ~eq:SourceRanges.(=) SourceRanges.empty
+    React.S.create ~eq:SourceRanges.(=) SourceRanges.empty
   in
   let elt, formatter, clear = RangeFormatter.mk ~selection_s:highlight_s ~set_selection in
 
@@ -153,7 +154,7 @@ let pp_view ~highlight_s tm fmt =
   let font_size = 14.0 in
   let initial_width = 40 in
 
-  let size_s, set_size = SafeReact.S.create ~eq:Int.(=) initial_width in
+  let size_s, set_size = React.S.create ~eq:Int.(=) initial_width in
 
   let open Js_of_ocaml in
   if (ResizeObserver.is_supported ()) then (
@@ -176,7 +177,7 @@ let pp_view ~highlight_s tm fmt =
     ()
   ) else ();
 
-  let _ : unit SafeReact.signal = size_s |> SafeReact.S.map ~eq:Caml.(=)
+  let _ : unit React.signal = size_s |> React.S.map ~eq:Caml.(=)
     (fun size ->
       clear ();
       Caml.Format.pp_set_margin formatter size;
@@ -197,12 +198,12 @@ let view_core ~highlight_s core =
   let pp_view, tm_selection_s = pp_view ~highlight_s core Core.pp in
   success_msg [pp_view], tm_selection_s
 
-let view_parser ~highlight_s parser success =
-  let elt, tm_selection_s = pp_view ~highlight_s parser P.pp_plain in
+let view_parser ~highlight_s ~success parser =
+  let elt, tm_selection_s = pp_view ~highlight_s parser P.pp_ranges in
   Html.(div ~a:[a_class [if success then "success" else "error"]] [elt]), tm_selection_s
 
-let view_parser_ignore_selection ~highlight_s parser success =
-  let elem, _ = view_parser parser ~highlight_s success in elem
+let view_parser_ignore_selection ~highlight_s ~success parser =
+  let elem, _ = view_parser parser ~highlight_s ~success in elem
 
 let string_location ~str ~loc =
   if String.(str = "")
@@ -265,8 +266,9 @@ let snapshot_controls str snapshots (path_h : int RList.handle) =
       let highlight_s = React.S.const SourceRanges.empty in
       Html.(tr
         [ td ~a:[a_class ["p-2 border-t-2 border-r-2"]]
-          [view_parser_ignore_selection ~highlight_s parser success]
-        ; td ~a:[a_class ["p-2 border-t-2 border-r-2"]] [snapshot_advanced_view str snapshot]
+          [view_parser_ignore_selection ~highlight_s ~success parser]
+        ; td ~a:[a_class ["p-2 border-t-2 border-r-2"]]
+          [snapshot_advanced_view str snapshot]
         ; td ~a:[a_class ["p-2 border-t-2"]] [btn]
         ]))
     |> RList.const
@@ -309,14 +311,14 @@ let traverse_path ~root ~path =
 
 let view_stack root path_h path_s = path_s
   |> RList.signal
-  |> SafeReact.S.map ~eq:(List.equal html_eq) (fun path ->
+  |> React.S.map ~eq:(List.equal html_eq) (fun path ->
     let stack_lst = (traverse_path ~root ~path).stack in
     let len = List.length stack_lst in
     let highlight_s = React.S.const SourceRanges.empty in
     stack_lst
     |> List.mapi ~f:(fun i snapshot ->
       let Model.TraceSnapshot.{ parser; success; _ } = snapshot in
-      let p_view = view_parser_ignore_selection ~highlight_s parser success in
+      let p_view = view_parser_ignore_selection ~highlight_s ~success parser in
       let onclick _ = RList.set path_h (List.take path i); false in
       let btn = button ~onclick "return here" in
       let classes = List.filter_map ~f:Fn.id
@@ -326,12 +328,12 @@ let view_stack root path_h path_s = path_s
       in
       Html.(tr
         ~a:[a_class classes]
-        [ td ~a:[a_class ["p-2"]] [btn]
-        ; td ~a:[a_class ["p-2"]] [p_view]
+        [ td ~a:[a_class ["p-2"; "w-1/4"]] [btn]
+        ; td ~a:[a_class ["p-2"; "w-3/4"]] [p_view]
         ]))
   )
   |> RList.from_signal
-  |> RHtml.table
+  |> RHtml.table ~a:[Html.a_class ["w-full"; "table-fixed"]]
 
 (* TODO: is there a cleaner way to do this? *)
 let mk_div r_elem = r_elem |> RList.singleton_s |> RHtml.div
@@ -341,7 +343,7 @@ let view_root_snapshot str root =
 
   let current_snapshot_s = path_s
     |> RList.signal
-    |> SafeReact.S.map ~eq:Model.TraceSnapshot.(=)
+    |> React.S.map ~eq:Model.TraceSnapshot.(=)
       (fun path -> (traverse_path ~root ~path).bottom_snapshot)
   in
 
@@ -349,36 +351,36 @@ let view_root_snapshot str root =
 
   let stack_view = path_s
     |> RList.signal
-    |> SafeReact.S.map ~eq:html_eq
+    |> React.S.map ~eq:html_eq
       (fun path -> if List.length path > 0 then stack_view else txt "(empty)")
     |> RList.singleton_s
   in
 
   let controls_s = current_snapshot_s
-    |> SafeReact.S.map ~eq:html_eq
+    |> React.S.map ~eq:html_eq
       (fun Model.TraceSnapshot.{ snapshots; _ } -> view_controls str path_h snapshots)
   in
 
-  let highlight_s = SafeReact.S.const SourceRanges.empty in
+  let highlight_s = React.S.const SourceRanges.empty in
   let parser_view = current_snapshot_s
-    |> SafeReact.S.map ~eq:html_eq
+    |> React.S.map ~eq:html_eq
       (fun Model.TraceSnapshot.{ success; parser; _ } ->
-        view_parser_ignore_selection ~highlight_s parser success)
+        view_parser_ignore_selection ~highlight_s ~success parser)
   in
 
   let pre_loc_view = current_snapshot_s
-    |> SafeReact.S.map ~eq:html_eq
+    |> React.S.map ~eq:html_eq
       (fun Model.TraceSnapshot.{ pre_pos; _ } -> string_location ~str ~loc:pre_pos)
     |> RList.singleton_s
     |> r_inline_block
   in
 
   let status_view = current_snapshot_s
-    |> SafeReact.S.map ~eq:html_eq
+    |> React.S.map ~eq:html_eq
       (fun Model.TraceSnapshot.{ success; _ } -> Html.(span
         ~a:[a_class [if success then "success" else "error"]]
         [ if success then txt "succeeds" else txt "fails" ]))
-    |> SafeReact.S.map ~eq:(List.equal html_eq) List.return
+    |> React.S.map ~eq:(List.equal html_eq) List.return
     |> RList.from_signal
     |> RHtml.span
   in
@@ -391,9 +393,10 @@ let view_root_snapshot str root =
     ; inline_block (txt "and")
     ; txt " "
     ; current_snapshot_s
-      |> SafeReact.S.map ~eq:html_eq (snapshot_advanced_view str)
+      |> React.S.map ~eq:html_eq (snapshot_advanced_view str)
       |> RList.singleton_s
       |> r_inline_block
+    ; txt "."
     ])
   in
 
@@ -401,6 +404,7 @@ let view_root_snapshot str root =
     [ Html.(div [ span [ txt "The input to this parser is" ]])
     ; txt " "
     ; pre_loc_view
+    ; txt "."
     ]
   in
 
@@ -410,7 +414,10 @@ let view_root_snapshot str root =
          ]
     ; tr [ td ~a:[a_class ["p-2 border-b-2"; "border-r-2"]] [txt "parser"]
          ; td ~a:[a_class ["p-2 border-b-2"]]
-             [mk_div parser_view; input_view; status_view]
+           [ parser_view |> RList.singleton_s |> RHtml.div ~a:[Html.a_class ["py-2"]]
+           ; input_view
+           ; status_view
+           ]
          ]
     ; tr [ td ~a:[a_class ["p-2 border-r-2"]] [txt "subparsers"]
          ; td ~a:[a_class ["p-2"]] [mk_div controls_s]
@@ -429,7 +436,7 @@ module View = struct
       | Error msg ->
         let result = error_msg [txt msg] in
         let%html trace = "<div>not available: parser failed to parse</div>" in
-        result, trace, SafeReact.S.const SourceRanges.empty
+        result, trace, React.S.const SourceRanges.empty
       | Ok parser ->
         let parser = P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
         let toplevel_result =
@@ -439,14 +446,14 @@ module View = struct
 
         let result, select_s = match result with
           | Error (msg, tm_opt) -> (match tm_opt with
-            | None -> error_msg [txt msg], SafeReact.S.const SourceRanges.empty
+            | None -> error_msg [txt msg], React.S.const SourceRanges.empty
             | Some tm ->
-              let highlight_s = SafeReact.S.const SourceRanges.empty in
+              let highlight_s = React.S.const SourceRanges.empty in
               let core, select_s = view_core ~highlight_s tm in
               error_msg [txt msg; core], select_s
           )
           | Ok tm -> match didnt_consume_msg with
-            | Some msg -> error_msg [txt msg], SafeReact.S.const SourceRanges.empty
+            | Some msg -> error_msg [txt msg], React.S.const SourceRanges.empty
             | None -> view_term ~highlight_s tm
         in
         let trace = snapshot
@@ -457,49 +464,70 @@ module View = struct
 
   let mk_input_result
     ?parser_ctx:(parser_ctx=Lvca_util.String.Map.empty)
-    ~parser_elem
+    ?parser_elem
     ~parser_str_s
     (test_s, update_test) =
 
-    let show_trace_s, set_show_trace = SafeReact.S.create ~eq:Bool.(=) false in
+    let show_trace_s, set_show_trace = React.S.create ~eq:Bool.(=) false in
     let trace_e, trace_button =
       toggle ~visible_text:"hide" ~hidden_text:"show" show_trace_s
     in
-    let (_ : unit SafeReact.event) = trace_e |> SafeReact.E.map set_show_trace in
+    let (_ : unit React.event) = trace_e |> React.E.map set_show_trace in
 
-    let eq = Result.equal (P.equal OptRange.(=)) String.(=) in
-    let parser_s = parser_str_s |> SafeReact.S.map ~eq parse_parser in
-
-    let eq (html11, html12, src1) (html21, html22, src2) =
-      rhtml_eq html11 html21 && rhtml_eq html12 html22 &&
-      SafeReact.S.equal ~eq:SourceRanges.(=) src1 src2
+    let parser_s =
+      let eq = Result.equal (P.equal OptRange.(=)) String.(=) in
+      parser_str_s |> React.S.map ~eq parse_parser
     in
 
     let input_hl_s, set_input_hl =
-      SafeReact.S.create ~eq:SourceRanges.(=) SourceRanges.empty
+      React.S.create ~eq:SourceRanges.(=) SourceRanges.empty
     in
 
-    let test_s' = SafeReact.S.l2 ~eq
-      (view_parser_test ~parser_ctx ~highlight_s:input_hl_s) parser_s test_s
+    let test_s' =
+      let eq (html11, html12, src1) (html21, html22, src2) =
+        rhtml_eq html11 html21 && rhtml_eq html12 html22 &&
+        React.S.equal ~eq:SourceRanges.(=) src1 src2
+      in
+      React.S.l2 ~eq
+        (view_parser_test ~parser_ctx ~highlight_s:input_hl_s) parser_s test_s
     in
 
     let result = test_s'
-      |> SafeReact.S.map ~eq:html_eq (fun (x, _, _) -> x)
+      |> React.S.map ~eq:html_eq (fun (x, _, _) -> x)
       |> mk_div
     in
-    let trace_s = test_s' |> SafeReact.S.map ~eq:html_eq (fun (_, x, _) -> x) in
+    let trace_s = test_s' |> React.S.map ~eq:html_eq (fun (_, x, _) -> x) in
 
-    let tm_hl_s = test_s'
-      |> SafeReact.S.map ~eq:(SafeReact.S.equal ~eq:SourceRanges.(=)) (fun (_, _, x) -> x)
-      |> SafeReact.S.switch ~eq:SourceRanges.(=)
-      |> SafeReact.S.map ~eq:Ranges.(=)
+    let input_hl_s = test_s'
+      |> React.S.map ~eq:(React.S.equal ~eq:SourceRanges.(=)) (fun (_, _, x) -> x)
+      |> React.S.switch ~eq:SourceRanges.(=)
+      |> React.S.map ~eq:Ranges.(=)
         (fun ranges -> match Map.find ranges "input" with
         | None -> []
         | Some ranges -> ranges)
     in
 
-    let test_input, test_evt = SingleLineInput.mk test_s ~highlights_s:tm_hl_s in
-    let (_ : unit SafeReact.event) = test_evt |> SafeReact.E.map
+    let parser_hl_s = test_s'
+      |> React.S.map ~eq:(React.S.equal ~eq:SourceRanges.(=)) (fun (_, _, x) -> x)
+      |> React.S.switch ~eq:SourceRanges.(=)
+      |> React.S.map ~eq:SourceRanges.(=) (SourceRanges.restrict ~buf:"parser")
+    in
+
+    let parser_elem = match parser_elem with
+      | Some elem -> elem
+      | None -> parser_s
+        |> React.S.map ~eq:html_eq (function
+          | Ok parser -> parser
+            |> P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"parser")
+            |> view_parser ~highlight_s:parser_hl_s ~success:true
+            |> fst
+          | Error _ -> Html.(pre [code [RHtml.txt parser_str_s]])
+        )
+        |> mk_div
+    in
+
+    let test_input, test_evt = SingleLineInput.mk test_s ~highlights_s:input_hl_s in
+    let (_ : unit React.event) = test_evt |> React.E.map
       (function
         | Common.InputUpdate str -> update_test str
         | InputSelect (start, finish)
@@ -507,7 +535,7 @@ module View = struct
         | InputUnselect -> set_input_hl SourceRanges.empty)
     in
 
-    let trace_cell = SafeReact.S.l2 ~eq:html_eq
+    let trace_cell = React.S.l2 ~eq:html_eq
       (fun trace show_trace -> if show_trace then trace else txt "")
       trace_s
       show_trace_s
@@ -563,12 +591,12 @@ module View = struct
     let mk_input_result' ?parser_ctx str input =
       mk_input_result
         ?parser_ctx
-        ~parser_elem:(Html.(pre [code [txt str]]))
-        ~parser_str_s:(SafeReact.S.const str)
+        ~parser_str_s:(React.S.const str)
         input
     in
 
     let any_char_table = mk_input_result' Examples.any_char any_char_input in
+
     let char_table = mk_input_result' Examples.char char_input in
     let string_table = mk_input_result' Examples.string string_input in
     let satisfy1_table = mk_input_result' Examples.satisfy1 satisfy1_input in
@@ -593,7 +621,7 @@ module View = struct
     let fix_table = mk_input_result' ~parser_ctx:Prelude.ctx Examples.fix fix_input in
 
     let pg_parser_input, set_pg_parser_input =
-      SafeReact.S.create ~eq:String.(=) Examples.fix
+      React.S.create ~eq:String.(=) Examples.fix
     in
     let pg_input_elem, pg_input_evt =
       MultilineInput.mk ~autofocus:false ~border:false pg_parser_input
@@ -604,7 +632,7 @@ module View = struct
       ~parser_str_s:pg_parser_input
       playground_input
     in
-    let (_ : unit SafeReact.event) = pg_input_evt |> SafeReact.E.map
+    let (_ : unit React.event) = pg_input_evt |> React.E.map
       (fun evt -> match evt with
          | Common.InputUpdate str -> set_pg_parser_input str
          | _ -> ()
