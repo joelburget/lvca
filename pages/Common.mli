@@ -1,3 +1,5 @@
+(** Grab-bag of frontend stuff. *)
+
 open Lvca_syntax
 module Ev = Js_of_ocaml_lwt.Lwt_js_events
 module Tyxml_js = Js_of_ocaml_tyxml.Tyxml_js
