@@ -144,7 +144,7 @@ let pp_generic ~open_loc ~close_loc ppf p =
     | Sequence (_, ps, p) ->
       let formatter ppf = pf
         ppf
-        "%a -> %a"
+        "@[<2>%a ->@ @[<2>%a@]@]"
         Fmt.(list ~sep:(any "@ ") binder) ps
         core p
       in
