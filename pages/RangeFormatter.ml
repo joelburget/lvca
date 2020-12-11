@@ -105,7 +105,11 @@ let mk
     );
     add_at_current_level span
   in
-  let add_spaces n = add_text (String.make n ' ') in
+  let add_spaces n =
+    if n > 0
+    then add_text (String.make n ' ')
+    else if n < 0 then Caml.Printf.printf "add_spaces negative value (!): %d\n" n
+  in
 
   let out_fns : Caml.Format.formatter_out_functions =
     { out_string =
