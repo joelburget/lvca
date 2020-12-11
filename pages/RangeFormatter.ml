@@ -1,8 +1,10 @@
 open Base
 open Lvca_syntax
+open Js_of_ocaml_tyxml.Tyxml_js
 open ReactiveData
-module Ev = Js_of_ocaml_lwt.Lwt_js_events
+
 module Dom_html = Js_of_ocaml.Dom_html
+module Ev = Js_of_ocaml_lwt.Lwt_js_events
 module Js = Js_of_ocaml.Js
 
 (** The incoming signal holds the currently selected range. We return both a Dom element
@@ -12,10 +14,9 @@ module Js = Js_of_ocaml.Js
 let mk
     :  selection_s:(SourceRanges.t SafeReact.signal)
     -> set_selection:(SourceRanges.t -> unit)
-    -> [> `Code ] Js_of_ocaml_tyxml.Tyxml_js.Html5.elt * Caml.Format.formatter * (unit -> unit)
+    -> [> `Code ] Html5.elt * Caml.Format.formatter * (unit -> unit)
   =
  fun ~selection_s:externally_selected_s ~set_selection ->
-  let open Js_of_ocaml_tyxml.Tyxml_js in
   let br, span, txt = Html.(br, span, txt) in
   let top_level_elems, top_level_handle = RList.create [] in
   let clear () = RList.set top_level_handle [] in
