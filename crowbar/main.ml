@@ -139,6 +139,12 @@ let core_gen = Crowbar.map [ nominal_gen ] (fun tm -> Lvca_core.Core.Term tm)
  *)
 let parser_gen = Crowbar.(Lvca_languages.Parser.(
   fix (fun parser_gen ->
+    let binder_gen = choose
+      [ map [ str_gen; parser_gen ] (fun name p -> Binder (Some name, p))
+      ; map [          parser_gen ] (fun      p -> Binder (None,      p))
+      ]
+    in
+
     choose
       [ const (AnyChar ())
       ; map [ char ] (fun c -> Char ((), c))
@@ -152,12 +158,9 @@ let parser_gen = Crowbar.(Lvca_languages.Parser.(
       ; map [ parser_gen ] (fun p -> Many ((), p))
       ; map [ parser_gen ] (fun p -> Many1 ((), p))
       ; map [ ident_gen; parser_gen ] (fun ident p -> Fix ((), ident, p))
-      ; map [ parser_gen; parser_gen ] (fun p1 p2 -> Alt ((), p1, p2))
-      ; map [ core_gen ] (fun tm -> Return ((), tm))
-      ; map [ list (pair ident_gen parser_gen); core_gen ]
-        (fun subparsers body ->
-          let names, subparsers = List.unzip subparsers in
-          Sequence ((), names, body, subparsers))
+      ; map [ parser_gen; parser_gen ] (fun p1 p2 -> Choice ((), [p1; p2]))
+      ; map [ list binder_gen; core_gen ]
+        (fun binders body -> Sequence ((), binders, body))
       ; map [ ident_gen ] (fun ident -> Identifier ((), ident))
       ])
 ))

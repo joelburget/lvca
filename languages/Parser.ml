@@ -2,7 +2,6 @@ open Base
 open Lvca_syntax
 open Lvca_core
 module Format = Caml.Format
-
 module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
 
 type 'loc c_term = 'loc Core.term
