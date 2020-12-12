@@ -150,10 +150,11 @@ let pp_view ~highlight_s tm fmt =
   let elt, formatter, clear = RangeFormatter.mk ~selection_s:highlight_s ~set_selection in
 
   (* TODO tie this to actual font size *)
-  let font_size = 14.0 in
-  let initial_width = 40 in
+  let font_size = 14. in
+  let font_adjust = font_size *. 0.6 (* 0.6 is an estimate of font width to height *) in
+  let initial_width = 40. *. font_adjust in
 
-  let size_s, set_size = React.S.create ~eq:Int.(=) initial_width in
+  let px_size_s, set_px_size = React.S.create ~eq:Float.(=) initial_width in
 
   let open Js_of_ocaml in
   if (ResizeObserver.is_supported ()) then (
@@ -167,16 +168,17 @@ let pp_view ~highlight_s tm fmt =
         | Some entry0 ->
           match Js.array_get entry0##.contentBoxSize 0 |> Js.Optdef.to_option with
             | None -> ()
-            | Some box ->
-              let sz = Int.of_float (box##.inlineSize /. font_size) in
-              if sz < 1000 then set_size sz
+            | Some box -> set_px_size box##.inlineSize
     in
 
     let _ : ResizeObserver.resizeObserver Js.t = ResizeObserver.observe ~node ~f () in
     ()
   ) else ();
 
-  let _ : unit React.signal = size_s |> React.S.map ~eq:Caml.(=)
+  let char_size_s = px_size_s |> React.S.map ~eq:Int.(=)
+    (fun size -> Int.of_float (size /. font_adjust))
+  in
+  let _ : unit React.signal = char_size_s |> React.S.map ~eq:Unit.(=)
     (fun size ->
       clear ();
       Caml.Format.pp_set_margin formatter size;
@@ -184,6 +186,16 @@ let pp_view ~highlight_s tm fmt =
       Fmt.flush formatter ()
     )
   in
+
+  let px_user_data = px_size_s
+    |> React.S.map ~eq:String.(=) Float.to_string
+    |> RHtml.a_user_data "px-size"
+  in
+  let char_user_data = char_size_s
+    |> React.S.map ~eq:String.(=) Int.to_string
+    |> RHtml.a_user_data "char-size"
+  in
+  let elt = Html.div ~a:[px_user_data; char_user_data] [elt] in
 
   elt, selection_s
 
@@ -249,7 +261,7 @@ let snapshot_advanced_view str Model.TraceSnapshot.{ pre_pos; post_pos; _ } =
 let snapshot_controls str snapshots (path_h : int RList.handle) =
   let header = [%html{|
     <tr>
-      <td class="p-2 border-t-2 border-b-2 border-r-2">parser</td>
+      <td class="p-2 border-t-2 border-b-2 border-r-2 w-1/2">parser</td>
       <td class="p-2 border-t-2 border-b-2 border-r-2">action</td>
       <td class="p-2 border-t-2 border-b-2"></td>
     </tr>
@@ -273,7 +285,7 @@ let snapshot_controls str snapshots (path_h : int RList.handle) =
     |> RList.const
   in
 
-  table ~classes:["col-span-3"] header body
+  table ~classes:["table-fixed"] header body
 
 let view_controls str path_h snapshots =
   let n_snaps = List.length snapshots in
