@@ -25,7 +25,6 @@ module Model = struct
       { success: bool
       ; pre_pos: int
       ; post_pos: int
-      (* XXX: SourceRanges is the non-comparable part: uses a map *)
       ; parser: SourceRanges.t P.t
       ; snapshots: t list
       }
