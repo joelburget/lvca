@@ -132,11 +132,11 @@ let pp_generic ~open_loc ~close_loc ppf p =
     | Choice (_, branches) ->
       let initial_bar = Format.pp_print_custom_break
         ~fits:("", 0, "")
-        ~breaks:("|", 0, "")
+        ~breaks:("", 0, "| ")
       in
-      let formatter ppf = pf ppf "@[<2>choice@ (@[<2>%t%a@])@]"
+      let formatter ppf = pf ppf "@[<hv 2>choice (%t%a@])"
         initial_bar
-        Fmt.(list ~sep:(any " | ") (go Prec.alt)) branches
+        Fmt.(list ~sep:(any "@ | ") (go Prec.alt)) branches
       in
       formatter, Prec.alt
     | Fix (_, name, p) ->
@@ -1159,9 +1159,9 @@ expr)} | atom=atom -> atom))|};
      [%expect{|
        let atom = choice (name | literal) in
        fix
-         (expr -> choice
-                    (atom=atom ' '* '+' ' '*
-                       expr=expr -> {plus(atom; expr)} | atom=atom -> atom)) |}]
+         (expr -> choice (
+                    | atom=atom ' '* '+' ' '* expr=expr -> {plus(atom; expr)}
+                    | atom=atom -> atom)) |}]
 
    let%expect_test _ =
      parse_print_parser fix3;
@@ -1172,9 +1172,9 @@ expr)} | atom=atom -> atom))|};
        let literal = chars=digit+ -> {literal(chars)} in
        let atom = choice (name | literal) in
        fix
-         (expr -> choice
-                    (atom=atom ' '* '+' ' '*
-                       expr=expr -> {plus(atom; expr)} | atom=atom -> atom)) |}]
+         (expr -> choice (
+                    | atom=atom ' '* '+' ' '* expr=expr -> {plus(atom; expr)}
+                    | atom=atom -> atom)) |}]
 
    (*
    let%expect_test _ =
