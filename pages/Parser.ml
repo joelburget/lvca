@@ -497,18 +497,21 @@ module View = struct
     in
     let trace_s = test_s' |> React.S.map ~eq:html_eq (fun (_, x, _) -> x) in
 
-    let input_hl_s = test_s'
+    let tm_selection_s = test_s'
       |> React.S.map ~eq:(React.S.equal ~eq:SourceRanges.(=)) (fun (_, _, x) -> x)
       |> React.S.switch ~eq:SourceRanges.(=)
-      |> React.S.map ~eq:Ranges.(=)
-        (fun ranges -> match Map.find ranges "input" with
-        | None -> []
-        | Some ranges -> ranges)
     in
 
-    let parser_hl_s = test_s'
-      |> React.S.map ~eq:(React.S.equal ~eq:SourceRanges.(=)) (fun (_, _, x) -> x)
-      |> React.S.switch ~eq:SourceRanges.(=)
+    let input_hl_s = tm_selection_s
+      |> React.S.map ~eq:OptRange.(=)
+        (fun ranges -> match Map.find ranges "input" with
+        | None -> None
+        | Some ranges -> Range.list_range ranges
+        )
+      |> React.S.map ~eq:Ranges.(=) Ranges.of_opt_range
+    in
+
+    let parser_hl_s = tm_selection_s
       |> React.S.map ~eq:SourceRanges.(=) (SourceRanges.restrict ~buf:"parser")
     in
 
