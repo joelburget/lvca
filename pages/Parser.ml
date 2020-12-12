@@ -166,9 +166,9 @@ let pp_view ~highlight_s tm fmt =
       match Js.array_get entries 0 |> Js.Optdef.to_option with
         | None -> ()
         | Some entry0 ->
-          match Js.array_get entry0##.contentBoxSize 0 |> Js.Optdef.to_option with
+          match entry0##.contentRect##.width |> Js.Optdef.to_option with
             | None -> ()
-            | Some box -> set_px_size box##.inlineSize
+            | Some width -> set_px_size width
     in
 
     let _ : ResizeObserver.resizeObserver Js.t = ResizeObserver.observe ~node ~f () in
