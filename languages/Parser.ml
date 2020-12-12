@@ -818,16 +818,23 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   (* Parse the forms:
     1. `x=foo bar y=baz -> {...}`
     2. `foo`
+
+    Algorithm:
+      Consume tokens one at a time:
+        * expressions and bound expressions go in a `binders` queue
+        * if we hit `|` (lower precedence than a sequence) or the end, then we
+          expect a single expression to the left. fail otherwise.
+        * if we hit `->`, return a sequence with all binders to the left,
+          returning the expression to the right.
   *)
   and sequence ~tokens =
     let binders = Queue.create () in
     let rec go () =
       match Queue.peek tokens with
-      (* Parse form 2. *)
       | Some (Operator ("|", _)) | None -> (match Queue.to_list binders with
+        (* Parse form 2: not a binder, but an expression. *)
         | [Binder (None, expr)] -> let pos = location expr in return ~pos expr
-        | binders -> failwith
-          (Printf.sprintf "TODO (sequence 1) %s" (string_of_binders binders))
+        | _binders -> fail "Expected a single expression"
       )
 
       (* Parse form 1 *)
@@ -839,7 +846,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
           | Some (Ident (name, pos)) -> return ~pos
             (Sequence (pos, Queue.to_list binders, Core.Term (Nominal.Var (pos, name))))
           | Some tok -> fail (Printf.sprintf "TODO (sequence token %s)" (string_of_token tok))
-          | None -> fail "TODO (sequence None)"
+          | None -> fail "No token following `->` (expected a return value)"
         )
 
       (* Consume groups of binders until we hit "->" or the end. *)
