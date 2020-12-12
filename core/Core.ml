@@ -12,10 +12,10 @@ type is_rec =
 type 'a term =
   | Term of ('a, Primitive.t) Nominal.term
   (* plus, core-specific ctors *)
-  | CoreApp of 'a term * 'a term
-  | Case of 'a term * 'a core_case_scope list
-  | Lambda of sort * 'a core_scope
-  | Let of is_rec * 'a term * 'a core_scope (** Lets bind only a single variable *)
+  | CoreApp of 'a * 'a term * 'a term
+  | Case of 'a * 'a term * 'a core_case_scope list
+  | Lambda of 'a * sort * 'a core_scope
+  | Let of 'a * is_rec * 'a term * 'a core_scope (** Lets bind only a single variable *)
 
 and 'a core_scope = Scope of string * 'a term
 
@@ -23,17 +23,27 @@ and 'a core_case_scope = CaseScope of ('a, Primitive.t) Pattern.t * 'a term
 
 let rec map_loc ~f = function
   | Term tm -> Term (Nominal.map_loc ~f tm)
-  | CoreApp (t1, t2) -> CoreApp (map_loc ~f t1, map_loc ~f t2)
-  | Case (tm, scopes) -> Case (map_loc ~f tm, List.map scopes ~f:(map_loc_case_scope ~f))
-  | Lambda (sort, core_scope) -> Lambda (sort, map_loc_core_scope ~f core_scope)
-  | Let (is_rec, tm, core_scope) ->
-    Let (is_rec, map_loc ~f tm, map_loc_core_scope ~f core_scope)
+  | CoreApp (loc, t1, t2) -> CoreApp (f loc, map_loc ~f t1, map_loc ~f t2)
+  | Case (loc, tm, scopes)
+  -> Case (f loc, map_loc ~f tm, List.map scopes ~f:(map_loc_case_scope ~f))
+  | Lambda (loc, sort, core_scope)
+  -> Lambda (f loc, sort, map_loc_core_scope ~f core_scope)
+  | Let (loc, is_rec, tm, core_scope) ->
+    Let (f loc, is_rec, map_loc ~f tm, map_loc_core_scope ~f core_scope)
 
 and map_loc_core_scope ~f (Scope (name, tm)) = Scope (name, map_loc ~f tm)
 
 and map_loc_case_scope ~f (CaseScope (pat, tm)) =
   CaseScope (Pattern.map_loc ~f pat, map_loc ~f tm)
 ;;
+
+let location = function
+  | Term tm -> Nominal.location tm
+  | CoreApp (loc, _, _)
+  | Case (loc, _, _)
+  | Lambda (loc, _, _)
+  | Let (loc, _, _, _)
+  -> loc
 
 let erase tm = map_loc ~f:(fun _ -> ()) tm
 
@@ -46,11 +56,11 @@ module PP = struct
   let rec pp ppf = function
     | Term (Var (_, v)) -> pf ppf "%s" v (* XXX *)
     | Term tm -> pf ppf "%a" (braces (Nominal.pp_term Primitive.pp)) tm
-    | Lambda (sort, Scope (name, body)) ->
+    | Lambda (_, sort, Scope (name, body)) ->
       pf ppf "\\(%s : %a) ->@ %a" name pp_sort sort pp body
     (* TODO: parens if necessary *)
     | CoreApp _ as app -> pp_app ppf app
-    | Case (arg, case_scopes) ->
+    | Case (_, arg, case_scopes) ->
       pf
         ppf
         "@[<hv>match %a with {%t%a@ }@]"
@@ -60,7 +70,7 @@ module PP = struct
         (Format.pp_print_custom_break ~fits:("", 1, "") ~breaks:("", 2, "| "))
         (list ~sep:(any "@;<1 2>| ") pp_core_case_scope)
         case_scopes
-    | Let (is_rec, tm, Scope (name, body)) ->
+    | Let (_, is_rec, tm, Scope (name, body)) ->
       pf
         ppf
         "@[let %s%s =@ %a in@ @[%a@]@]"
@@ -78,7 +88,7 @@ module PP = struct
   (* Flatten all arguments into one box *)
   and pp_app ppf app =
     let rec go = function
-      | CoreApp (f_args, final_arg) -> go f_args @ [ final_arg ]
+      | CoreApp (_, f_args, final_arg) -> go f_args @ [ final_arg ]
       | tm -> [ tm ]
     in
     match go app with
@@ -200,10 +210,10 @@ let rec eval_ctx
     (match Map.find ctx v with
     | Some result -> Ok result
     | None -> Error ("Unbound variable " ^ v, tm))
-  | CoreApp (Lambda (_ty, Scope (name, body)), arg) ->
+  | CoreApp (_, Lambda (_, _ty, Scope (name, body)), arg) ->
     let%bind arg_val = eval_ctx ctx arg in
     eval_ctx (Map.set ctx ~key:name ~data:arg_val) body
-  | Case (tm, branches) ->
+  | Case (_, tm, branches) ->
     let%bind tm_val = eval_ctx ctx tm in
     (match find_core_match tm_val branches with
     | None -> Error ("no match found in case", Term tm_val)
@@ -241,7 +251,7 @@ let rec eval_ctx
     eval_char_bool_fn "is_whitespace" Char.is_whitespace ctx tm c
 
   | Term tm -> Ok (Nominal.subst_all ctx tm)
-  | Let (_is_rec, tm, Scope (name, body)) ->
+  | Let (_, _is_rec, tm, Scope (name, body)) ->
     let%bind tm_val = eval_ctx ctx tm in
     eval_ctx (Map.set ctx ~key:name ~data:tm_val) body
   | _ -> Error ("Found a term we can't evaluate", tm)
@@ -287,7 +297,10 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   let make_apps : 'a term list -> 'a term = function
     | [] -> Lvca_util.invariant_violation "make_apps: must be a nonempty list"
     | [ x ] -> x
-    | f :: args -> List.fold_left args ~init:f ~f:(fun f_app arg -> CoreApp (f_app, arg))
+    | f :: args -> List.fold_left args ~init:f
+      ~f:(fun f_app arg ->
+        let pos = OptRange.union (location f_app) (location arg) in
+        CoreApp (pos, f_app, arg))
   ;;
 
   let term : OptRange.t term Parsers.t =
@@ -299,7 +312,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
             ; braces (Term.t ParsePrimitive.t) >>| (fun tm -> Term tm) <?> "quoted term"
             ]
         in
-        let pattern' =
+        let pattern =
           Term.t ParsePrimitive.t
           >>= fun tm ->
           match Nominal.to_pattern tm with
@@ -307,41 +320,47 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
           | Error scope ->
             fail ("Unexpected scope: " ^ Nominal.pp_scope_str Primitive.pp scope)
         in
-        let pattern = pattern' <?> "pattern" in
+        let pattern = pattern <?> "pattern" in
         let case_line =
           lift3 (fun pat _ tm -> CaseScope (pat, tm)) pattern (string "->") term
           <?> "case line"
         in
         choice
           [ lift4
-              (fun _ (name, sort) _ body -> Lambda (sort, Scope (name, body)))
-              (char '\\')
-              (parens
+              (fun (_, lam_loc) ((name, sort), parens_loc) _ body ->
+                let loc = OptRange.union lam_loc parens_loc in
+                Lambda (loc, sort, Scope (name, body)))
+              (attach_pos (char '\\'))
+              (attach_pos (parens
                  (lift3
                     (fun ident _ sort -> ident, sort)
                     identifier
                     (char ':')
-                    Abstract.sort))
+                    Abstract.sort)))
               (string "->")
               term
             <?> "lambda"
           ; lift4
-              (fun _let is_rec name _eq tm _in body ->
-                Let (is_rec, tm, Scope (name, body)))
-              (string "let")
+              (fun (_let, let_pos) is_rec name _eq tm _in (body, body_pos) ->
+                let loc = OptRange.union let_pos body_pos in
+                Let (loc, is_rec, tm, Scope (name, body)))
+              (attach_pos (string "let"))
               (option NoRec (Fn.const Rec <$> string "rec"))
               identifier
               (string "=")
             <*> term
             <*> string "in"
-            <*> term
+            <*> (attach_pos term)
             <?> "let"
           ; lift4
-              (fun _match tm _with lines -> Case (tm, lines))
-              (string "match")
+              (fun (_match, match_pos) tm _with (lines, lines_pos) ->
+                let pos = OptRange.union match_pos lines_pos in
+                Case (pos, tm, lines))
+              (attach_pos (string "match"))
               term
               (string "with")
-              (braces (option '|' (char '|') *> sep_by1 (char '|') case_line))
+              (attach_pos
+                (braces (option '|' (char '|') *> sep_by1 (char '|') case_line)))
             <?> "match"
           ; many1 atomic_term >>| make_apps <?> "application"
           ])
@@ -387,27 +406,28 @@ let%test_module "Parsing" =
 
     let%test _ = parse "{1}" = Term one
     let%test _ = parse "{true()}" = Term (operator "true" [])
-    let%test _ = parse "not x" = CoreApp (Term (var "not"), Term (var "x"))
+    let%test _ = parse "not x" = CoreApp ((), Term (var "not"), Term (var "x"))
 
     let%test _ =
       parse {|\(x : bool()) -> x|}
-      = Lambda (SortAp ("bool", []), Scope ("x", Term (var "x")))
+      = Lambda ((), SortAp ("bool", []), Scope ("x", Term (var "x")))
     ;;
 
     let%test _ =
       parse {|match x with { _ -> {1} }|}
-      = Case (Term (var "x"), [ CaseScope (ignored "", Term one) ])
+      = Case ((), Term (var "x"), [ CaseScope (ignored "", Term one) ])
     ;;
 
     let%test _ =
       parse {|match x with { | _ -> {1} }|}
-      = Case (Term (var "x"), [ CaseScope (ignored "", Term one) ])
+      = Case ((), Term (var "x"), [ CaseScope (ignored "", Term one) ])
     ;;
 
     let%test _ =
       parse {|match x with { true() -> {false()} | false() -> {true()} }|}
       = Case
-          ( Term (var "x")
+          ( ()
+          , Term (var "x")
           , [ CaseScope (Operator ((), "true", []), Term (operator "false" []))
             ; CaseScope (Operator ((), "false", []), Term (operator "true" []))
             ] )
@@ -416,9 +436,10 @@ let%test_module "Parsing" =
     let%test _ =
       parse "let x = {true()} in not x"
       = Let
-          ( NoRec
+          ( ()
+          , NoRec
           , Term (operator "true" [])
-          , Scope ("x", CoreApp (Term (var "not"), Term (var "x"))) )
+          , Scope ("x", CoreApp ((), Term (var "not"), Term (var "x"))) )
     ;;
   end)
 ;;

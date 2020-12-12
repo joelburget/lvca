@@ -14,10 +14,10 @@ type is_rec =
 
 type 'a term =
   | Term of ('a, Primitive.t) Nominal.term
-  | CoreApp of 'a term * 'a term
-  | Case of 'a term * 'a core_case_scope list (** Cases match patterns *)
-  | Lambda of sort * 'a core_scope (** Lambdas bind variables. Patterns not allowed. *)
-  | Let of is_rec * 'a term * 'a core_scope
+  | CoreApp of 'a * 'a term * 'a term
+  | Case of 'a * 'a term * 'a core_case_scope list (** Cases match patterns *)
+  | Lambda of 'a * sort * 'a core_scope (** Lambdas bind variables. Patterns not allowed. *)
+  | Let of 'a * is_rec * 'a term * 'a core_scope
       (** Lets bind variables. Patterns not allowed. *)
 
 and 'a core_scope = Scope of string * 'a term
@@ -26,6 +26,7 @@ and 'a core_case_scope = CaseScope of ('a, Primitive.t) Pattern.t * 'a term
 
 val map_loc : f:('a -> 'b) -> 'a term -> 'b term
 val erase : _ term -> unit term
+val location : 'a term -> 'a
 val pp : Format.formatter -> 'a term -> unit
 val to_string : 'a term -> string
 

@@ -108,7 +108,7 @@ let%test_module "Parsing" =
    ;;
 
     let run_atom : term -> core -> (term, OptRange.t Core.eval_error) Result.t =
-     fun tm core -> Core.(eval (CoreApp (core, Term tm)))
+     fun tm core -> Core.(eval (CoreApp (None, core, Term tm)))
    ;;
 
     (* TODO: don't throw away this information, switch from strings *)

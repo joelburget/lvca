@@ -284,8 +284,13 @@ module Direct = struct
             let c = str.[pos] in
             let rng = SourceRanges.mk "input" pos (pos + 1) in
             let tm =
-              Core.(
-                Let (NoRec, Term (Primitive (rng, PrimChar c)), Scope (name, core_term)))
+              Core.(Let
+                ( SourceRanges.empty
+                , NoRec
+                , Term (Primitive (rng, PrimChar c))
+                , Scope (name, core_term)
+                )
+              )
             in
             match Core.eval_ctx term_ctx tm with
             | Ok (Operator (_, "true", [])) ->

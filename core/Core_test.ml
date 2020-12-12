@@ -36,18 +36,20 @@ let%test_module "Core parsing" =
     let t_var name = Term (Var ((), name))
     let p_operator tag children = Pattern.Operator ((), tag, children)
     let t_operator tag children = Nominal.Operator ((), tag, children)
-    let meaning x = CoreApp (t_var "meaning", x)
+    let meaning x = CoreApp ((), t_var "meaning", x)
     let ty = SortAp ("ty", [])
 
     let dynamics =
       Defn
         ( []
         , Lambda
-            ( ty
+            ( ()
+            , ty
             , Scope
                 ( "tm"
                 , Case
-                    ( t_var "tm"
+                    ( ()
+                    , t_var "tm"
                     , [ CaseScope (p_operator "true" [], Term (t_operator "true" []))
                       ; CaseScope (p_operator "false" [], Term (t_operator "false" []))
                       ; CaseScope
@@ -55,13 +57,14 @@ let%test_module "Core parsing" =
                               "ite"
                               [ [ p_var "t1" ]; [ p_var "t2" ]; [ p_var "t3" ] ]
                           , Case
-                              ( CoreApp (t_var "meaning", t_var "t1")
+                              ( ()
+                              , CoreApp ((), t_var "meaning", t_var "t1")
                               , [ CaseScope (p_operator "true" [], meaning (t_var "t2"))
                                 ; CaseScope (p_operator "false" [], meaning (t_var "t3"))
                                 ] ) )
                       ; CaseScope
                           ( p_operator "ap" [ [ p_var "f" ]; [ p_var "arg" ] ]
-                          , CoreApp (meaning @@ t_var "f", meaning @@ t_var "arg") )
+                          , CoreApp ((), meaning @@ t_var "f", meaning @@ t_var "arg") )
                       ; CaseScope
                           ( p_operator "fun" [ [ p_var "scope" ] ]
                           , Term
@@ -258,9 +261,9 @@ let%test_module "Core pretty" =
 let%test_module "Core eval in dynamics" =
   (module struct
     let eval_in dynamics_str str =
-      let (Defn (_imports, defn)) = parse_defn dynamics_str in
+      let Defn (_imports, defn) = parse_defn dynamics_str in
       let core = parse_term str in
-      match eval (CoreApp (defn, core)) with
+      match eval (CoreApp (None, defn, core)) with
       | Error (msg, tm) -> msg ^ ": " ^ to_string tm
       | Ok result -> Nominal.pp_term_str Primitive.pp result
     ;;
