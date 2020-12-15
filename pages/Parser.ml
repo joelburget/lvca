@@ -106,19 +106,19 @@ module Examples = struct
   | "abcd" // never matches
 )|}
   let let_ = {|let p1 = "str" in let p2 = 'c'* in choice (p1 | p2)|}
-  let fail = {|fail {"some reason for failing"}|}
-  let satisfy1 = {|satisfy (c -> match c with {
+  let fail = {|fail {{"some reason for failing"}}|}
+  let satisfy1 = {|satisfy (c -> {match c with {
   | 'c' -> {true()}
   | _ -> {false()}
-})|}
+}})|}
   let satisfy_is_alpha = "satisfy(c -> {is_alpha(c)})"
   let satisfy_is_digit = "satisfy(c -> {is_digit(c)})"
-  let sequence1 = {|. ' '* '+' ' '* . -> {"parsed an addition"}|}
-  let sequence2 = "a=. ' '* '+' ' '* b=. -> {plus(a; b)}"
+  let sequence1 = {|. ' '* '+' ' '* . -> {{"parsed an addition"}}|}
+  let sequence2 = "a=. ' '* '+' ' '* b=. -> {{add(a; b)}}"
   let fix = {|let atom = choice (name | literal) in
 fix (expr -> choice (
-  | a=atom ' '* '+' ' '* e=expr -> {plus(a; e)}
-  | a=atom -> {a}
+  | a=atom ' '* '+' ' '* e=expr -> {{add(a; e)}}
+  | a=atom -> a
 ))|}
 end
 
@@ -129,8 +129,8 @@ module Prelude = struct
 
   let alpha = parse_parser_exn Examples.satisfy_is_alpha
   let digit = parse_parser_exn Examples.satisfy_is_digit
-  let name = parse_parser_exn {|chars=alpha+ -> {var(chars)}|}
-  let literal = parse_parser_exn {|chars=digit+ -> {literal(chars)}|}
+  let name = parse_parser_exn {|chars=alpha+ -> {var(string_of_chars chars)}|}
+  let literal = parse_parser_exn {|chars=digit+ -> {literal(string_of_chars chars)}|}
 
   let ctx : P.Direct.parser_ctx
     = Lvca_util.String.Map.of_alist_exn
@@ -743,9 +743,9 @@ module View = struct
         <p>Our parsers to this point have been limited: we can parse regular languages but not context-free languages. <code class="code-inline">fix</code> extends the language in the same way as <a class="prose-link" href="https://catonmat.net/recursive-regular-expressions">recursive regular expressions</a> to give it more power.
         </p>
 
-        <p>Let's say you want to parse addition expressions, like "1 + 2", "1 + 2 + 3", "1 + 2 + 3 + 4", etc. We need a way to recursively use the parser we're defining. It's a little mind-bending, so let's look at an example.</p>
+        <p>Let's say you want to parse addition expressions like "1 + 2", "1 + 2 + 3", "1 + 2 + 3 + 4", etc. We need a way to recursively use the parser we're defining. It's a little mind-bending, so let's look at an example.</p>
 
-        <p>Note: For clarity I've pre-defined two parsers: <code class="code-inline">name = (chars=alpha+ -> {var(chars)})</code> and <code class="code-inline">literal = (chars=digit+ -> {literal(chars)})</code>.</p>
+        <p>Note: For clarity I've pre-defined two parsers: <code class="code-inline">name = (chars=alpha+ -> {var(string_of_chars chars)})</code> and <code class="code-inline">literal = (chars=digit+ -> {literal(string_of_chars chars)})</code>.</p>
 
         |}[fix_table]{|
 

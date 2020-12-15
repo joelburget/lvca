@@ -113,13 +113,13 @@ let pp_generic ~open_loc ~close_loc ppf p =
     | Char (_, char) -> (fun ppf -> Fmt.(quote ~mark:"'" char) ppf char), Prec.atom
     | String (_, str) -> (fun ppf -> Fmt.(quote string) ppf str), Prec.atom
     | Satisfy (_, name, tm) ->
-      (fun ppf -> pf ppf "@[<2>satisfy (@[%s -> %a@])@]" name core tm), Prec.atom
+      (fun ppf -> pf ppf "@[<2>satisfy (@[%s -> {%a}@])@]" name core tm), Prec.atom
     | Let (_, name, named, body)
     -> (fun ppf ->
         pf ppf "@[<v>@[<2>let %s =@ @[%a@] in@]@ %a@]" name (go 0) named (go 0) body),
         Prec.atom
     | Fail (_, tm) ->
-      (fun ppf -> pf ppf "@[<2>fail %a@]" core tm), Prec.app
+      (fun ppf -> pf ppf "@[<2>fail {%a}@]" core tm), Prec.app
     | Count (_, p, tm) ->
       (fun ppf -> pf ppf "@[<hv>%a{%a}@]" (go (Int.succ Prec.quantifier)) p core tm),
       Prec.quantifier
@@ -144,7 +144,7 @@ let pp_generic ~open_loc ~close_loc ppf p =
     | Sequence (_, ps, p) ->
       let formatter ppf = pf
         ppf
-        "@[<2>%a ->@ @[<2>%a@]@]"
+        "@[<hv 2>@[<hv>%a@] ->@ {%a}@]"
         Fmt.(list ~sep:(any "@ ") binder) ps
         core p
       in
@@ -275,8 +275,8 @@ module Direct = struct
   let satisfy name core_term =
     { run =
         (fun ~translate_direct:_ ~term_ctx ~parser_ctx:_ ~pos str ->
-          let err_msg = mk_error (Printf.sprintf {|expected: satisfy (%s -> %s)|}
-            name (Core.to_string core_term))
+          let err_msg = mk_error
+            (Printf.sprintf {|expected: satisfy (%s -> {%s})|} name (Core.to_string core_term))
           in
           if pos >= String.length str
           then pos, [], err_msg
@@ -455,7 +455,8 @@ module Direct = struct
           in
 
           match match_opt with
-            | None -> pos, Queue.to_list snapshot_queue, Error ("No match found", None)
+            | None ->
+              pos, Queue.to_list snapshot_queue, Error ("choice: no match found", None)
             | Some (pos, result) -> pos, Queue.to_list snapshot_queue, result
         )
     }
@@ -652,10 +653,10 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   let rec string_of_token = function
     | Atom (atom, _) -> string_of_atom atom
     | Operator (str, _) | Keyword (str, _) | Ident (str, _) -> str
-    | Core (tm, _) -> Core.to_string tm
+    | Core (tm, _) -> Fmt.str "{%s}" (Core.to_string tm)
     | Parenthesized (tm, _) -> Fmt.str "%a" pp_plain tm
-    | FailTok (tm, _) -> Fmt.str "fail (%a)" Core.pp tm
-    | SatisfyTok (name, tm, _) -> Fmt.str "satisfy (%s -> %a)" name Core.pp tm
+    | FailTok (tm, _) -> Fmt.str "fail {%a}" Core.pp tm
+    | SatisfyTok (name, tm, _) -> Fmt.str "satisfy (%s -> {%a})" name Core.pp tm
     | ChoiceTok (toks, _) -> Fmt.str "choice (%s)"
       (toks |> List.map ~f:string_of_token |> String.concat ~sep:"; ")
     | FixTok (name, toks, _) -> Fmt.str "fix (%s -> %s)"
@@ -699,10 +700,11 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
           | Some (Ident (name, _)) ->
             (match Queue.dequeue tokens with
               | Some (Operator ("=", _)) ->
+                (* XXX why treated differently from below? *)
                 expression ~tokens ~ambient_prec:0 >>= fun e1 ->
                 (match Queue.dequeue tokens with
                   | Some (Keyword ("in", _))
-                  -> expression ~tokens ~ambient_prec:0 >>= fun e2 ->
+                  -> sequence ~tokens >>= fun e2 ->
                     let pos = OptRange.union let_pos (location e2) in
                     return ~pos (Let (pos, name, e1, e2))
                   | Some _ | None -> fail "TODO: error")
@@ -771,6 +773,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
       | Some token ->
         match token with
         | Operator ("->", _) -> return ~pos left
+        (* TODO: what about =? *)
         | Operator (op_name, op_pos) ->
           if lbp op_name > ambient_prec
           then (
@@ -858,7 +861,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
 
     go ()
 
-  let tokens_to_parser = function
+  let tokens_to_parser tokens =
+    match tokens with
     | [] -> fail "empty input"
     | tokens -> sequence ~tokens:(Queue.of_list tokens)
 
@@ -873,7 +877,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         ; operator >>|| (fun ~pos op -> Operator (op, pos), pos)
         ; keyword >>|| (fun ~pos kw -> Keyword (kw, pos), pos)
         ; string "fail" >>== (fun ~pos:p1 _ ->
-          c_term >>|| fun ~pos:p2 tm ->
+          braces c_term >>|| fun ~pos:p2 tm ->
           let pos = OptRange.union p1 p2 in
           FailTok (tm, pos), pos)
         ; string "satisfy" >>== (fun ~pos:sat_pos _ ->
@@ -884,7 +888,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
                 SatisfyTok (name, tm, pos))
               identifier
               arrow
-              (attach_pos c_term)))
+              (attach_pos (braces c_term))))
         ; string "choice" >>== (fun ~pos:choice_pos _ ->
           parens (many token) >>|| fun ~pos:toks_pos toks ->
           let pos = OptRange.union choice_pos toks_pos in
@@ -901,7 +905,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
               arrow
               (many1 token)))
         ; identifier >>|| (fun ~pos ident -> Ident (ident, pos), pos)
-        ; c_term >>|| (fun ~pos tm -> Core (tm, pos), pos)
+        ; braces c_term >>|| (fun ~pos tm -> Core (tm, pos), pos)
         ; parens parser >>|| (fun ~pos p -> Parenthesized (p, pos), pos)
         ]) <?> "token"
       in
@@ -922,45 +926,45 @@ module TestParsers = struct
   let choice = {|choice ("str" | "foo")|}
 
   let sat_parser =
-    {|satisfy (x -> match x with {
+    {|satisfy (x -> {match x with {
     | 'c' -> {true()}
     | _ -> {false()}
-  })
+  }})
   |}
 
   let let_var = {|let x = "str" in x|}
-  let fail = {|fail {"reason"}|}
+  let fail = {|fail {{"reason"}}|}
   let char_opt = "'c'?"
-  let ret = "{foo()}"
+  let ret = "{{foo()}}"
   let fix = {|fix (x -> choice ("a" | "b"))|}
   let seq = {|a="a" -> a|}
 
   let list_parser =
     {|fix (lst -> choice (
-      | c='c' cs=lst -> {cons(c; cs)}
-      | {nil()}
+    | c='c' cs=lst -> {{cons(c; cs)}}
+      | {{nil()}}
       ))
     |}
 
-  let seq2 = {|a="a" a'="a" b="b" -> {triple(a; a'; b)}|}
-  let seq3 = {|a='a' a'='a' b='b' -> {triple(a; a'; b)}|}
+  let seq2 = {|a="a" a'="a" b="b" -> {{triple(a; a'; b)}}|}
+  let seq3 = {|a='a' a'='a' b='b' -> {{triple(a; a'; b)}}|}
   let fix2 = {|fix (x -> choice (
-    | a="a" x=x -> {pair(a; x)}
-    | "b" -> {"b"}
+    | a="a" x=x -> {{pair(a; x)}}
+    | "b" -> {{"b"}}
   ))|}
-  let pair = "a='a' b='b' -> {pair(a; b)}"
-  let pair2 = "a=. b=. -> {pair(a; b)}"
+  let pair = "a='a' b='b' -> {{pair(a; b)}}"
+  let pair2 = "a=. b=. -> {{pair(a; b)}}"
 
   (* XXX: "Invalid arguments to add" *)
   (* XXX: "fix need for parens" *)
-  let fix3 = {|let char = satisfy (c -> {is_alpha(c)}) in
-let digit = satisfy (c -> {is_digit(c)}) in
-let name = (chars=char+ -> {var(chars)}) in
-let literal = (chars=digit+ -> {literal(chars)}) in
+  let fix3 = {|let char = satisfy (c -> {is_alpha c}) in
+let digit = satisfy (c -> {is_digit c}) in
+let name = (chars=char+ -> {{var(chars)}}) in
+let literal = (chars=digit+ -> {{literal(chars)}}) in
 let atom = choice(name | literal) in
 fix (expr -> choice (
-  | atom=atom ' '* '+' ' '* expr=expr -> {plus(atom; expr)}
-  | atom=atom -> {atom}
+  | atom=atom ' '* '+' ' '* expr=expr -> {{add(atom; expr)}}
+  | atom=atom -> {{atom}}
 ))|}
 end
 
@@ -991,13 +995,11 @@ let%test_module "Parsing" =
       Format.set_mark_tags true
     ;;
 
-    (*
     let%expect_test _ =
       parse_print char_count "cc";
       [%expect
         {| <input:0-2>list(<input:0-1>'c'</input:0-1>, <input:1-2>'c'</input:1-2>)</input:0-2> |}]
     ;;
-    *)
 
     let%expect_test _ =
       parse_print dot "c";
@@ -1045,7 +1047,7 @@ let%test_module "Parsing" =
       parse_print sat_parser "d";
       [%expect
         {|
-          failed to parse: expected: satisfy (x -> match x with { 'c' -> {true()} | _ -> {false()} }) |}]
+          failed to parse: expected: satisfy (x -> {match x with { 'c' -> {true()} | _ -> {false()} }}) |}]
     ;;
 
     let%expect_test _ =
@@ -1072,7 +1074,7 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print ret "";
-      [%expect {| <parser:1-6>foo()</parser:1-6> |}]
+      [%expect {| <parser:2-7>foo()</parser:2-7> |}]
     ;;
 
     let%expect_test _ =
@@ -1088,31 +1090,31 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print list_parser "";
-      [%expect {| <parser:68-73>nil()</parser:68-73> |}]
+      [%expect {| <parser:69-74>nil()</parser:69-74> |}]
     ;;
 
     let%expect_test _ =
       parse_print list_parser "c";
       [%expect
-        {| <parser:46-57>cons(<input:0-1>'c'</input:0-1>; <parser:68-73>nil()</parser:68-73>)</parser:46-57> |}]
+        {| <parser:45-56>cons(<input:0-1>'c'</input:0-1>; <parser:69-74>nil()</parser:69-74>)</parser:45-56> |}]
     ;;
 
     let%expect_test _ =
       parse_print list_parser "cc";
       [%expect
-        {| <parser:46-57>cons(<input:0-1>'c'</input:0-1>; <parser:46-57>cons(<input:1-2>'c'</input:1-2>; <parser:68-73>nil()</parser:68-73>)</parser:46-57>)</parser:46-57> |}]
+        {| <parser:45-56>cons(<input:0-1>'c'</input:0-1>; <parser:45-56>cons(<input:1-2>'c'</input:1-2>; <parser:69-74>nil()</parser:69-74>)</parser:45-56>)</parser:45-56> |}]
     ;;
 
     let%expect_test _ =
       parse_print seq2 "aab";
       [%expect
-        {| <parser:23-39>triple(<input:0-1>"a"</input:0-1>; <input:1-2>"a"</input:1-2>; <input:2-3>"b"</input:2-3>)</parser:23-39> |}]
+        {| <parser:24-40>triple(<input:0-1>"a"</input:0-1>; <input:1-2>"a"</input:1-2>; <input:2-3>"b"</input:2-3>)</parser:24-40> |}]
     ;;
 
     let%expect_test _ =
       parse_print seq3 "aab";
       [%expect
-        {| <parser:23-39>triple(<input:0-1>'a'</input:0-1>; <input:1-2>'a'</input:1-2>; <input:2-3>'b'</input:2-3>)</parser:23-39> |}]
+        {| <parser:24-40>triple(<input:0-1>'a'</input:0-1>; <input:1-2>'a'</input:1-2>; <input:2-3>'b'</input:2-3>)</parser:24-40> |}]
     ;;
 
     let%expect_test _ =
@@ -1123,34 +1125,34 @@ let%test_module "Parsing" =
     let%expect_test _ =
       parse_print fix2 "ab";
       [%expect
-        {| <parser:39-49>pair(<input:0-1>"a"</input:0-1>; <parser:65-68>"b"</parser:65-68>)</parser:39-49> |}]
+        {| <parser:40-50>pair(<input:0-1>"a"</input:0-1>; <parser:68-71>"b"</parser:68-71>)</parser:40-50> |}]
     ;;
 
     let%expect_test _ =
       parse_print fix3 "a + 1";
-      [%expect {| <parser:284-300>plus(<parser:115-125>var(<input:0-1>list(<input:0-1>'a'</input:0-1>)</input:0-1>)</parser:115-125>; <parser:163-177>literal(<input:4-5>list(<input:4-5>'1'</input:4-5>)</input:4-5>)</parser:163-177>)</parser:284-300> |}]
+      [%expect{| <parser:287-302>add(<parser:114-124>var(<input:0-1>list(<input:0-1>'a'</input:0-1>)</input:0-1>)</parser:114-124>; <parser:164-178>literal(<input:4-5>list(<input:4-5>'1'</input:4-5>)</input:4-5>)</parser:164-178>)</parser:287-302> |}]
     ;;
 
     let%expect_test _ =
       parse_print fix3 "a + b + c";
-      [%expect{| <parser:284-300>plus(<parser:115-125>var(<input:0-1>list(<input:0-1>'a'</input:0-1>)</input:0-1>)</parser:115-125>; <parser:284-300>plus(<parser:115-125>var(<input:4-5>list(<input:4-5>'b'</input:4-5>)</input:4-5>)</parser:115-125>; <parser:115-125>var(<input:8-9>list(<input:8-9>'c'</input:8-9>)</input:8-9>)</parser:115-125>)</parser:284-300>)</parser:284-300> |}]
+      [%expect{| <parser:287-302>add(<parser:114-124>var(<input:0-1>list(<input:0-1>'a'</input:0-1>)</input:0-1>)</parser:114-124>; <parser:287-302>add(<parser:114-124>var(<input:4-5>list(<input:4-5>'b'</input:4-5>)</input:4-5>)</parser:114-124>; <parser:114-124>var(<input:8-9>list(<input:8-9>'c'</input:8-9>)</input:8-9>)</parser:114-124>)</parser:287-302>)</parser:287-302> |}]
     ;;
 
     let%expect_test _ =
       parse_print pair "ab";
       [%expect
-        {| <parser:16-26>pair(<input:0-1>'a'</input:0-1>; <input:1-2>'b'</input:1-2>)</parser:16-26> |}]
+        {| <parser:17-27>pair(<input:0-1>'a'</input:0-1>; <input:1-2>'b'</input:1-2>)</parser:17-27> |}]
     ;;
 
     let%expect_test _ =
       parse_print pair2 "ab";
       [%expect
-        {| <parser:12-22>pair(<input:0-1>'a'</input:0-1>; <input:1-2>'b'</input:1-2>)</parser:12-22> |}]
+        {| <parser:13-23>pair(<input:0-1>'a'</input:0-1>; <input:1-2>'b'</input:1-2>)</parser:13-23> |}]
     ;;
 
    let parse_print_parser : ?width:int -> string -> unit =
      fun ?width parser_str ->
-      match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
+      match ParseUtil.parse_string (ParseParser.whitespace_t ParseCore.term) parser_str with
       | Error msg -> print_string ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
         let pre_geom = match width with
@@ -1165,6 +1167,19 @@ let%test_module "Parsing" =
           | None -> ()
           | Some { max_indent; margin } -> Format.set_geometry ~max_indent ~margin
    ;;
+    (*
+    let%expect_test _ = parse_print
+      {|chars=alpha+ -> { let str = string_of_chars chars in {var(str)} }|}
+      "ab";
+      (* TODO: should give comprehensible error *)
+      [%expect]
+    *)
+
+    let%expect_test _ = parse_print
+      {|let alpha = satisfy (c -> {is_alpha c}) in
+        chars=alpha+ -> { let str = string_of_chars chars in {var(str)} }|}
+      "ab";
+      [%expect{| <parser:105-113>var(<input:0-2>"ab"</input:0-2>)</parser:105-113> |}]
 
    let%expect_test _ =
      parse_print_parser {|let atom = choice (name | literal) in
@@ -1172,35 +1187,33 @@ fix
 (expr -> choice
 (atom=atom ' '* '+'
 ' '*
-expr=expr -> {plus(atom;
-expr)} | atom=atom -> atom))|};
+expr=expr -> {{add(atom;
+expr)}} | atom=atom -> {atom}))|};
      [%expect{|
        let atom = choice (name | literal) in
        fix
          (expr -> choice (
-                    | atom=atom ' '* '+' ' '* expr=expr -> {plus(atom; expr)}
-                    | atom=atom -> atom
+                    | atom=atom ' '* '+' ' '* expr=expr -> {{add(atom; expr)}}
+                    | atom=atom -> {atom}
                   )) |}]
 
    let%expect_test _ =
      parse_print_parser fix3;
      [%expect{|
-       let char = satisfy (c -> {is_alpha(c)}) in
-       let digit = satisfy (c -> {is_digit(c)}) in
-       let name = chars=char+ -> {var(chars)} in
-       let literal = chars=digit+ -> {literal(chars)} in
+       let char = satisfy (c -> {is_alpha c}) in
+       let digit = satisfy (c -> {is_digit c}) in
+       let name = chars=char+ -> {{var(chars)}} in
+       let literal = chars=digit+ -> {{literal(chars)}} in
        let atom = choice (name | literal) in
        fix
          (expr -> choice (
-                    | atom=atom ' '* '+' ' '* expr=expr -> {plus(atom; expr)}
-                    | atom=atom -> atom
+                    | atom=atom ' '* '+' ' '* expr=expr -> {{add(atom; expr)}}
+                    | atom=atom -> {atom}
                   )) |}]
 
-   (*
    let%expect_test _ =
      parse_print_parser char_count;
      [%expect{| 'c'{{2}} |}]
-*)
 
    let%expect_test _ =
      parse_print_parser "F++";
@@ -1223,16 +1236,51 @@ expr)} | atom=atom -> atom))|};
      [%expect{| choice ('a' | 'b' | 'c') |}]
 
    let%expect_test _ =
-     parse_print_parser "choice (. -> Q | .)";
-     [%expect{| choice (. -> Q | .) |}]
+     parse_print_parser "choice (. -> {Q} | .)";
+     [%expect{| choice (. -> {Q} | .) |}]
 
    let%expect_test _ =
      parse_print_parser list_parser;
      [%expect{|
 
-       fix (lst -> choice (c='c' cs=lst -> {cons(c; cs)} |  -> {nil()})) |}]
+       fix (lst -> choice (c='c' cs=lst -> {{cons(c; cs)}} |  -> {{nil()}})) |}]
 
    let%expect_test _ =
+     parse_print_parser {|. ' '* '+' ' '* . -> {{"parsed an addition"}}|};
+     [%expect{| . ' '* '+' ' '* . -> {{"parsed an addition"}} |}]
+
+   let%expect_test _ =
+     parse_print_parser "a=. ' '* '+' ' '* b=. -> {{plus(a; b)}}";
+     [%expect{| a=. ' '* '+' ' '* b=. -> {{plus(a; b)}} |}]
+
+   let%expect_test _ =
+     parse_print_parser {|fail {{"some reason for failing"}}|};
+     [%expect{| fail {{"some reason for failing"}} |}]
+
+   let%expect_test _ =
+     parse_print_parser {|
+     satisfy (c -> {match c with {
+  | 'c' -> {true()}
+  | _ -> {false()}
+     }})|};
+     [%expect{| satisfy (c -> {match c with { 'c' -> {true()} | _ -> {false()} }}) |}]
+
+   let%expect_test _ =
+     parse_print_parser {|
+let atom = choice (name | literal) in
+fix (expr -> choice (
+        | a=atom ' '* '+' ' '* e=expr -> {{plus(a; e)}}
+  | a=atom -> {a}
+))|};
+     [%expect{|
+       let atom = choice (name | literal) in
+       fix
+         (expr -> choice (
+                    | a=atom ' '* '+' ' '* e=expr -> {{plus(a; e)}}
+                    | a=atom -> {a}
+                  )) |}]
+
+    let%expect_test _ =
      parse_print_parser ~width:12 "choice (name | literal)";
      [%expect{|
      choice (

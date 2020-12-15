@@ -130,52 +130,52 @@ let%test_module "Core eval" =
     ;;
 
     let%expect_test _ =
-      eval_str "{add(1; 2)}";
+      eval_str "add {1} {2}";
       [%expect {| 3 |}]
     ;;
 
     let%expect_test _ =
-      eval_str "{sub(1; 2)}";
+      eval_str "sub {1} {2}";
       [%expect {| -1 |}]
     ;;
 
     let%expect_test _ =
-      eval_str "{is_digit('9')}";
+      eval_str "is_digit {'9'}";
       [%expect {| true() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "{is_digit('a')}";
+      eval_str "is_digit {'a'}";
       [%expect {| false() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "{is_alpha('a')}";
+      eval_str "is_alpha {'a'}";
       [%expect {| true() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "{is_alpha('A')}";
+      eval_str "is_alpha {'A'}";
       [%expect {| true() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "{is_alpha('9')}";
+      eval_str "is_alpha {'9'}";
       [%expect {| false() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "{is_alphanum('9')}";
+      eval_str "is_alphanum {'9'}";
       [%expect {| true() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "{is_alphanum('Z')}";
+      eval_str "is_alphanum {'Z'}";
       [%expect {| true() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "{is_alphanum('_')}";
+      eval_str "is_alphanum {'_'}";
       [%expect {| false() |}]
     ;;
 
