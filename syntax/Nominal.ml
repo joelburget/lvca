@@ -1,4 +1,5 @@
 open Base
+open Stdio
 module Printf = Caml.Printf
 module Cbor = Lvca_util.Cbor
 module Json = Lvca_util.Json
@@ -359,10 +360,10 @@ let%test_module "Nominal" =
       let bytes = serialize Primitive.jsonify tm in
       bytes
       |> Bytes.to_array
-      |> Array.iter ~f:(fun char -> Printf.printf "%02x" (Char.to_int char))
+      |> Array.iter ~f:(fun char -> printf "%02x" (Char.to_int char))
     ;;
 
-    let print_hash tm = Printf.printf "%s" (hash Primitive.jsonify tm)
+    let print_hash tm = printf "%s" (hash Primitive.jsonify tm)
     let ( = ) = Caml.( = )
     let tm = Var ((), "x")
     let j_tm = Json.(Array [| String "v"; String "x" |])

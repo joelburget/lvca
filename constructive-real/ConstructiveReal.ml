@@ -229,6 +229,7 @@ EXCLUSION AND LIMITATION MAY NOT APPLY TO YOU.
 
 *)
 open Base
+open Stdio
 
 (* TODO:
   * rename functions to _exn / remove exceptions
@@ -1144,7 +1145,7 @@ let eval_to_string : ?digits:int32 -> ?radix:int32 -> t -> string =
   in
   let scaled_int = get_appr scaled_cr Int32.zero in
   if !sum_scope_enabled
-  then Caml.Printf.printf "scaled int: %s\n" (Z.to_string scaled_int);
+  then printf "scaled int: %s\n" (Z.to_string scaled_int);
   (* TODO: radix *)
   string_of_scaled_int scaled_int digits
 ;;
@@ -1170,9 +1171,7 @@ let%test_module "Calculator" =
     let thousand = Z.of_int 1000
     let million = Z.of_int 1000000
 
-    let print ?(digits = Int32.ten) cr =
-      Caml.Printf.printf "%s\n" (eval_to_string cr ~digits)
-    ;;
+    let print ?(digits = Int32.ten) cr = printf "%s\n" (eval_to_string cr ~digits);;
 
     let%expect_test _ =
       print zero;
@@ -1424,7 +1423,7 @@ let%test_module "Calculator" =
  (*
   let print_approximation t i =
     let v = approximate t (Int32.of_int_exn i) in
-    Caml.Printf.printf "%s %s\n" (Z.to_string v) (Z.format "%b" v)
+    printf "%s %s\n" (Z.to_string v) (Z.format "%b" v)
 
   let%expect_test _ =
     print_approximation (of_int 5) (-10);
@@ -1443,11 +1442,11 @@ let%test_module "Calculator" =
     sum_scope_values
       |> Queue.to_list
       |> List.iter ~f:(fun (name, iterations) ->
-        Caml.Printf.printf "%s:\n" name;
+        printf "%s:\n" name;
         iterations
           |> Queue.to_list
           |> List.iter ~f:(fun { current_term; current_sum } ->
-          Caml.Printf.printf "current_sum: %s, current_term: %s\n"
+          printf "current_sum: %s, current_term: %s\n"
             (Z.to_string current_sum) (Z.to_string current_term)
         )
       )

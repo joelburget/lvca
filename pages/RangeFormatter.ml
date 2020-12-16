@@ -1,7 +1,8 @@
 open Base
-open Lvca_syntax
 open Js_of_ocaml_tyxml.Tyxml_js
+open Lvca_syntax
 open ReactiveData
+open Stdio
 
 module Dom_html = Js_of_ocaml.Dom_html
 module Ev = Js_of_ocaml_lwt.Lwt_js_events
@@ -44,16 +45,16 @@ let mk
 
   (*
   let _ : unit SafeReact.signal = externally_selected_s |> SafeReact.S.map ~eq:Caml.(=)
-    (fun rng -> Caml.Printf.printf "externally selected: %s\n" SourceRanges.(to_string rng))
+    (fun rng -> printf "externally selected: %s\n" SourceRanges.(to_string rng))
   in
 
   let _ : unit SafeReact.signal = internal_reset_e
     |> SafeReact.S.hold ~eq:(fun _ _ -> false) ()
-    |> SafeReact.S.map ~eq:(fun _ _ -> false) (fun () -> Caml.Printf.printf "internal reset\n")
+    |> SafeReact.S.map ~eq:(fun _ _ -> false) (fun () -> printf "internal reset\n")
   in
 
   let _ : unit SafeReact.signal = selected_s |> SafeReact.S.map ~eq:Caml.(=)
-    (fun rng -> Caml.Printf.printf "selected (1): %s\n" SourceRanges.(to_string rng))
+    (fun rng -> printf "selected (1): %s\n" SourceRanges.(to_string rng))
   in
   *)
 
@@ -77,11 +78,11 @@ let mk
     let span_elem = span |> To_dom.of_span in
     (match Stack.top stack with
       | None ->
-        (* Caml.Printf.printf "not binding mouse events (%s)\n" str; *)
+        (* printf "not binding mouse events (%s)\n" str; *)
         ()
       | Some (rng, _) ->
         Common.bind_event Ev.mousedowns span_elem (fun _evt ->
-          (* Caml.Printf.printf "down: %s\n" (SourceRanges.to_string rng); *)
+          (* printf "down: %s\n" (SourceRanges.to_string rng); *)
           start_range := Some rng;
           Lwt.return ()
         );
@@ -109,7 +110,7 @@ let mk
   let add_spaces n =
     if n > 0
     then add_text (String.make n ' ')
-    else if n < 0 then Caml.Printf.printf "add_spaces negative value (!): %d\n" n
+    else if n < 0 then printf "add_spaces negative value (!): %d\n" n
   in
 
   let out_fns : Caml.Format.formatter_out_functions =
@@ -134,22 +135,22 @@ let mk
         (function
           (*
         | Range.Stag rng ->
-          Caml.Printf.printf "opening Range: %s\n" (Range.to_string rng);
+          printf "opening Range: %s\n" (Range.to_string rng);
           Stack.push stack (Some rng, Queue.create ());
           ""
         | SourceRange.Stag rng ->
-          Caml.Printf.printf "opening SourceRange: %s\n" (SourceRange.to_string rng);
+          printf "opening SourceRange: %s\n" (SourceRange.to_string rng);
           ""
           *)
         | SourceRanges.Stag rng ->
-          (* Caml.Printf.printf "opening SourceRanges: %s\n" (SourceRanges.to_string rng); *)
+          (* printf "opening SourceRanges: %s\n" (SourceRanges.to_string rng); *)
           Stack.push stack (rng, Queue.create ());
           ""
         | _ -> "")
         (* Closing a range; create the span holding all of the enqueued children. *)
     ; mark_close_stag =
         (fun _ ->
-          (* Caml.Printf.printf "closing range\n"; *)
+          (* printf "closing range\n"; *)
           (match Stack.pop stack with
           | None -> ()
           | Some (_, q) -> q |> Queue.to_list |> span |> add_at_current_level);

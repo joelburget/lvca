@@ -2,6 +2,7 @@ open Bonsai_web
 open Core_kernel
 open Lvca
 open Lvca_omd
+open Stdio
 open Store
 
 let commands_abstract_syntax =
@@ -46,7 +47,7 @@ command :=
    failwith msg | None -> desc) ;;
 
    let parse_command : string -> (NonBinding.term, string) Result.t = fun str ->
-   Printf.printf "parsing command: '%s'\n" str; let str' = String.slice str 1 (-1) in
+   printf "parsing command: '%s'\n" str; let str' = String.slice str 1 (-1) in
    match ConcreteSyntax.parse commands_concrete_syntax "command" str' with | Error _err ->
    Error (* (ParseError.to_string err) *) "parse error" | Ok tree -> match
    ConcreteSyntax.to_ast commands_concrete_syntax tree with | Error msg -> Error msg | Ok
@@ -72,14 +73,14 @@ let term_of_maybe : NonBinding.term -> NonBinding.term option = function
 
 let lookup_maybe_concrete : store -> NonBinding.term -> store_value =
  fun store tm ->
-  Printf.printf
+  printf
     "lookup_maybe_concrete tm: %s\n"
     (tm |> NonBinding.to_nominal |> Binding.Nominal.pp_term');
   let tm' = term_of_maybe tm in
   match tm' with
   | None -> GenesisTermConcrete
   | Some tm'' ->
-    Printf.printf
+    printf
       "lookup_maybe_concrete tm'': %s\n"
       (tm'' |> NonBinding.to_nominal |> Binding.Nominal.pp_term');
     lookup_lang store tm''
@@ -104,7 +105,7 @@ let term_of_parsed : parsed -> Binding.Nominal.term = function
 let parse_store_value : store_value -> store_value -> string -> parsed =
  fun _abstract_syntax_val concrete_syntax_val str ->
   let lex = Lexing.from_string str in
-  Printf.printf "Parsing {|%s|}\n" str;
+  printf "Parsing {|%s|}\n" str;
   match concrete_syntax_val with
   | GenesisTermConcrete -> ParsedTerm (Term.Parser.top_term Term.Lexer.read lex)
   | GenesisAbstractSyntaxConcrete ->
@@ -144,10 +145,10 @@ let eval_command : store -> NonBinding.term -> string -> Vdom.Node.t =
     Hashtbl.set term_store ~key ~data:defn_tm;
     (match maybe_ident with
     | Operator ("just", [ Primitive (PrimString ident) ]) ->
-      Printf.printf "setting name store %s -> %s\n" ident key;
+      printf "setting name store %s -> %s\n" ident key;
       Hashtbl.set name_store ~key:ident ~data:key
     | _ ->
-      Printf.printf "not setting name store (%s)\n" key;
+      printf "not setting name store (%s)\n" key;
       ());
     (* TODO: structured *)
     Vdom.Node.(pre [] [ code [] [ text @@ Binding.Nominal.pp_term' defn_tm ] ])
@@ -311,11 +312,11 @@ let eval_inline_block : store -> Omd.inline Omd.block -> Vdom.Node.t =
       node_creator [ (* TODO: attributes *) ] (vdom_of_inline text)
     | Code_block _ (* { kind = _; label = _; other = _; code; attributes = _ } *) ->
       failwith "TODO"
-      (* Printf.printf "label: '%s'\n" (match label with | None -> "none" | Some l -> l);
-         Printf.printf "other: '%s'\n" (match other with | None -> "none" | Some l -> l);
-         Printf.printf "code: '%s'\n" (match code with | None -> "none" | Some l -> l);
+      (* printf "label: '%s'\n" (match label with | None -> "none" | Some l -> l);
+         printf "other: '%s'\n" (match other with | None -> "none" | Some l -> l);
+         printf "code: '%s'\n" (match code with | None -> "none" | Some l -> l);
 
-         Printf.printf "attributes:\n- id: %s\n- classes: [%s]\n- attributes: [%s]\n"
+         printf "attributes:\n- id: %s\n- classes: [%s]\n- attributes: [%s]\n"
          (match attributes.id with | None -> "none" | Some str -> str) (attributes.classes
          |> String.concat ~sep:"; ") (attributes.attributes |> List.map ~f:(fun (x, y) ->
          Printf.sprintf {|"%s", "%s"|} x y) |> String.concat ~sep:"; ");
@@ -323,7 +324,7 @@ let eval_inline_block : store -> Omd.inline Omd.block -> Vdom.Node.t =
          (match code with | None -> error_block "No code found in code block" | Some
          headered_code -> (match String.lsplit2 headered_code ~on:'\n' with | Some
          (cmd_str, code_str) -> (match parse_command cmd_str with | Ok cmd ->
-         Printf.printf "code_str:\n%s\n" code_str; eval_command store cmd code_str | Error
+         printf "code_str:\n%s\n" code_str; eval_command store cmd code_str | Error
          msg -> text msg) | None -> error_block (Printf.sprintf "Single line code block
          found -- must include a header: %s" headered_code))) *)
     | Thematic_break -> hr []

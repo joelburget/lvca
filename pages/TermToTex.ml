@@ -1,4 +1,5 @@
 open Base
+open Stdio
 
 module Model = struct
   type t = string
@@ -31,7 +32,7 @@ module View = struct
       input_event
       |> React.E.map (function
              | Common.InputUpdate str ->
-               Caml.Printf.printf {|printing "%s"\n|} str;
+               printf {|printing "%s"\n|} str;
                set_katex str;
                (* XXX *)
                Controller.update (Action.Evaluate str) model_s signal_update

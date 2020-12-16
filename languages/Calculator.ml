@@ -1,5 +1,6 @@
 open Base
 open Lvca_syntax
+open Stdio
 
 type term = (OptRange.t, ConstructiveReal.t) NonBinding.term
 
@@ -145,7 +146,7 @@ let rec interpret : term -> (ConstructiveReal.t, term * string) Result.t =
 
    let parse_print : string -> unit = fun parser_str -> match ParseUtil.parse_string
    (ParseParser.whitespace_t ParseCore.term) parser_str with | Error msg ->
-   Caml.print_string ("failed to parse parser desc: " ^ msg) | Ok parser -> Fmt.pr "%a\n"
+   print_endline ("failed to parse parser desc: " ^ msg) | Ok parser -> Fmt.pr "%a\n"
    Parser.pp parser ;;
 
    let parser_str = {| let constants = "e" | "pi" in let unary_operators = return {list(
@@ -165,15 +166,13 @@ let%test_module "Evaluation" =
   (module struct
     module P = Parse (ParseUtil.CComment)
 
-    let print_string str = Caml.Printf.printf "%s\n" str
-
     let go str =
       match ParseUtil.parse_string P.t str with
-      | Error msg -> print_string msg
+      | Error msg -> print_endline msg
       | Ok tm ->
         (match interpret tm with
-        | Error (_tm, msg) -> print_string msg
-        | Ok real -> print_string @@ ConstructiveReal.eval_to_string real)
+        | Error (_tm, msg) -> print_endline msg
+        | Ok real -> print_endline @@ ConstructiveReal.eval_to_string real)
     ;;
 
     let%expect_test _ =

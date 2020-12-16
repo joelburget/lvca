@@ -130,7 +130,7 @@ let mk
       signal_event (Common.InputSelect (start, finish));
       (* Used for debugging only -- can be removed: *)
       (* let str = input##.value##substring start finish in *)
-      (* Caml.Printf.printf "Selected %u-%u '%s'\n" start finish (Js.to_string str); *)
+      (* printf "Selected %u-%u '%s'\n" start finish (Js.to_string str); *)
       Lwt.return ());
 
   Common.bind_event Ev.clicks input_dom (fun _evt ->

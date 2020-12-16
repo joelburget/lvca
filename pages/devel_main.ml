@@ -1,6 +1,7 @@
 open Base
 open Js_of_ocaml
 open ReactiveData
+open Stdio
 
 module Model = struct
   type page =
@@ -73,7 +74,7 @@ module View = struct
       elem |> Dom_html.CoerceTo.select |> Js.Opt.to_option |> Option.value_exn
     in
     let i = select_elem##.value |> Js.to_string |> Int.of_string in
-    Caml.Printf.printf "%i\n" i;
+    printf "%i\n" i;
     let page =
       match List.nth Model.all_pages i with
       | None -> failwith "TODO: error"

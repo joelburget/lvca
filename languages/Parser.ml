@@ -1,6 +1,7 @@
 open Base
 open Lvca_syntax
 open Lvca_core
+open Stdio
 module Format = Caml.Format
 module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
 
@@ -971,14 +972,14 @@ let%test_module "Parsing" =
     let parse_print : string -> string -> unit =
      fun parser_str str ->
       match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
-      | Error msg -> Caml.print_string ("failed to parse parser desc: " ^ msg)
+      | Error msg -> print_endline ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
         let parser' = map_loc ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
         let Direct.{ result; _ } =
           Direct.parse_direct parser' str
         in
         match result with
-        | Error (msg, _) -> Caml.Printf.printf "failed to parse: %s\n" msg
+        | Error (msg, _) -> printf "failed to parse: %s\n" msg
         | Ok tm -> Fmt.pr "%a\n" (Nominal.pp_term_ranges Primitive.pp) tm
    ;;
 
