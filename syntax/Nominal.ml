@@ -1,6 +1,5 @@
 open Base
 open Stdio
-module Printf = Caml.Printf
 module Cbor = Lvca_util.Cbor
 module Json = Lvca_util.Json
 module String = Lvca_util.String
@@ -478,7 +477,7 @@ let%test_module "TermParser" =
 
     let print_parse str =
       match parse str with
-      | Error msg -> Caml.print_string ("failed: " ^ msg)
+      | Error msg -> print_string ("failed: " ^ msg)
       | Ok tm ->
         Fmt.pr "%a\n" (pp_term Primitive.pp) tm;
         Fmt.pr "%a" (pp_term_range Primitive.pp) tm

@@ -1151,7 +1151,7 @@ let%test_module "Parsing" =
    let parse_print_parser : string -> unit =
      fun parser_str ->
       match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
-      | Error msg -> Caml.print_string ("failed to parse parser desc: " ^ msg)
+      | Error msg -> print_string ("failed to parse parser desc: " ^ msg)
       | Ok parser -> Fmt.pr "%a\n" pp_plain parser
    ;;
 

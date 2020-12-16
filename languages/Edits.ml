@@ -1,6 +1,7 @@
 open Base
 open Lvca_syntax
 open Lvca_core
+open Stdio
 
 let abstract_syntax_str =
   {|
@@ -104,7 +105,7 @@ let%test_module "Parsing" =
      fun str ->
       match parse str with
       | Ok edit -> pp (Fmt.braces Core.pp) Caml.Format.std_formatter edit
-      | Error msg -> Caml.print_string msg
+      | Error msg -> print_string msg
    ;;
 
     let run_atom : term -> core -> (term, OptRange.t Core.eval_error) Result.t =
@@ -133,7 +134,7 @@ let%test_module "Parsing" =
         let%map tm = run tm edit in
         Nominal.pp_term Primitive.pp Caml.Format.std_formatter tm
       with
-      | Error msg -> Caml.print_string msg
+      | Error msg -> print_string msg
       | Ok () -> ()
    ;;
 

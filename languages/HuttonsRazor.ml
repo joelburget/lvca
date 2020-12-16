@@ -1,5 +1,6 @@
 open Base
 open Lvca_syntax
+open Stdio
 
 module Description = struct
   module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
@@ -167,7 +168,7 @@ let%test_module "Hutton's Razor" =
 
     let print_representations str =
       match parse str with
-      | Error str -> Caml.print_string str
+      | Error str -> print_string str
       | Ok tm ->
         Fmt.pr "%a\n" (NonBinding.pp Primitive.pp) tm;
         Fmt.pr "%a\n" (NonBinding.pp_range Primitive.pp) tm;
@@ -220,7 +221,7 @@ let%test_module "Hutton's Razor" =
     let print_eval : string -> unit =
      fun str ->
       let msg = match eval_str str with Error msg -> msg | Ok i -> Z.to_string i in
-      Caml.print_string msg
+      print_string msg
    ;;
 
     let%expect_test _ =
