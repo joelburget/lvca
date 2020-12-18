@@ -132,11 +132,11 @@ let pp_generic ~open_loc ~close_loc ppf p =
     | Choice (_, branches) ->
       let initial_bar = Format.pp_print_custom_break
         ~fits:("", 0, "")
-        ~breaks:("", 0, "| ")
+        ~breaks:("", 2, "| ")
       in
-      let formatter ppf = pf ppf "@[<hv 2>choice (%t%a@])"
+      let formatter ppf = pf ppf "@[<hv 0>choice (%t%a@,)@]"
         initial_bar
-        Fmt.(list ~sep:(any "@ | ") (go Prec.alt)) branches
+        Fmt.(list ~sep:(any "@;<1 2>| ") (go Prec.alt)) branches
       in
       formatter, Prec.alt
     | Fix (_, name, p) ->
@@ -1148,11 +1148,22 @@ let%test_module "Parsing" =
         {| <parser:12-22>pair(<input:0-1>'a'</input:0-1>; <input:1-2>'b'</input:1-2>)</parser:12-22> |}]
     ;;
 
-   let parse_print_parser : string -> unit =
-     fun parser_str ->
+   let parse_print_parser : ?width:int -> string -> unit =
+     fun ?width parser_str ->
       match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
       | Error msg -> print_string ("failed to parse parser desc: " ^ msg)
-      | Ok parser -> Fmt.pr "%a\n" pp_plain parser
+      | Ok parser ->
+        let pre_geom = match width with
+          | None -> None
+          | Some n ->
+            let geom = Format.get_geometry () in
+            Format.set_margin n;
+            Some geom
+        in
+        Fmt.pr "%a\n" pp_plain parser;
+        match pre_geom with
+          | None -> ()
+          | Some { max_indent; margin } -> Format.set_geometry ~max_indent ~margin
    ;;
 
    let%expect_test _ =
@@ -1168,7 +1179,8 @@ expr)} | atom=atom -> atom))|};
        fix
          (expr -> choice (
                     | atom=atom ' '* '+' ' '* expr=expr -> {plus(atom; expr)}
-                    | atom=atom -> atom)) |}]
+                    | atom=atom -> atom
+                  )) |}]
 
    let%expect_test _ =
      parse_print_parser fix3;
@@ -1181,7 +1193,8 @@ expr)} | atom=atom -> atom))|};
        fix
          (expr -> choice (
                     | atom=atom ' '* '+' ' '* expr=expr -> {plus(atom; expr)}
-                    | atom=atom -> atom)) |}]
+                    | atom=atom -> atom
+                  )) |}]
 
    (*
    let%expect_test _ =
@@ -1218,6 +1231,14 @@ expr)} | atom=atom -> atom))|};
      [%expect{|
 
        fix (lst -> choice (c='c' cs=lst -> {cons(c; cs)} |  -> {nil()})) |}]
+
+   let%expect_test _ =
+     parse_print_parser ~width:12 "choice (name | literal)";
+     [%expect{|
+     choice (
+       | name
+       | literal
+     ) |}]
   end)
 ;;
 
