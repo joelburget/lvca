@@ -254,18 +254,18 @@ module Direct = struct
   let anychar = context_free (fun pos str ->
     if String.length str > pos
     then Ok (pos + 1, mk_char pos str.[pos])
-    else Error ".")
+    else Error "expected: .")
   ;;
 
   let char c = context_free (fun pos str ->
     if String.length str > pos && Char.(str.[pos] = c)
     then Ok (pos + 1, mk_char pos c)
-    else Error (Printf.sprintf "char '%c'" c))
+    else Error (Printf.sprintf "expected: char '%c'" c))
   ;;
 
   let string prefix = context_free (fun pos str ->
     match str |> String.subo ~pos |> String.chop_prefix ~prefix with
-    | None -> Error (Printf.sprintf {|string "%s"|} prefix)
+    | None -> Error (Printf.sprintf {|expected: string "%s"|} prefix)
     | Some _str' ->
       let pos' = pos + String.length prefix in
       let rng = SourceRanges.mk "input" pos pos' in
@@ -275,8 +275,8 @@ module Direct = struct
   let satisfy name core_term =
     { run =
         (fun ~translate_direct:_ ~term_ctx ~parser_ctx:_ ~pos str ->
-          let err_msg = mk_error
-            (Printf.sprintf {|satisfy (%s -> %s)|} name (Core.to_string core_term))
+          let err_msg = mk_error (Printf.sprintf {|expected: satisfy (%s -> %s)|}
+            name (Core.to_string core_term))
           in
           if pos >= String.length str
           then pos, [], err_msg
@@ -1011,7 +1011,7 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print str "foo";
-      [%expect {| failed to parse: string "str" |}]
+      [%expect {| failed to parse: expected: string "str" |}]
     ;;
 
     let%expect_test _ =
@@ -1045,7 +1045,7 @@ let%test_module "Parsing" =
       parse_print sat_parser "d";
       [%expect
         {|
-          failed to parse: satisfy (x -> match x with { 'c' -> {true()} | _ -> {false()} }) |}]
+          failed to parse: expected: satisfy (x -> match x with { 'c' -> {true()} | _ -> {false()} }) |}]
     ;;
 
     let%expect_test _ =
