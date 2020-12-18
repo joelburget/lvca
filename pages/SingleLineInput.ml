@@ -88,7 +88,7 @@ let mk
 
   let result = [%html{|
     <div>
-      <div class="relative overflow-hidden border border-blue-800 rounded">
+      <div class="relative overflow-hidden border border-blue-800 dark:border-blue-200 rounded">
         |}[input; input_shadow]{|
       </div>
       |}[Html.(span ~a:[a_class ["ml-1"]] [updated_elem])]{|

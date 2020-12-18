@@ -39,8 +39,9 @@ let mk
     [ Some "mt-4"
     ; Some "p-8"
     ; Some "font-mono"
+    ; Some "dark:bg-transparent"
     ; if border then Some "border-2" else None
-    ; if border then Some "border-indigo-900" else None
+    ; if border then Some "border-indigo-900 dark:border-indigo-200" else None
     ]
   in
 

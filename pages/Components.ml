@@ -82,12 +82,12 @@ let txt = Html.txt
 let button_classes =
   [ "px-2"
   ; "border-2"
-  ; "border-blue-800"
+  ; "border-blue-800"; "dark:border-blue-200"
   ; "rounded"
   ; "bg-transparent"
-  ; "hover:bg-blue-700"
-  ; "text-blue-800"
-  ; "hover:text-white"
+  ; "hover:bg-blue-700"; "dark:hover:bg-blue-900"
+  ; "text-blue-800"; "dark:text-blue-50"
+  ; "hover:text-white" (* (no dark) *)
   ; "cursor-pointer"
   ]
 
