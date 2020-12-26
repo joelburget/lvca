@@ -203,7 +203,8 @@ let view_term ~highlight_s tm =
   let pp_view, tm_selection_s =
     pp_view ~highlight_s tm (Nominal.pp_term_ranges Primitive.pp)
   in
-  success_msg [pp_view], tm_selection_s
+  let tree_view = TreeView.view_tm tm in
+  Html.div [success_msg [pp_view]; tree_view], tm_selection_s
 
 let view_core ~highlight_s core =
   let pp_view, tm_selection_s = pp_view ~highlight_s core Core.pp in
@@ -481,7 +482,7 @@ module View = struct
 
     let show_trace_s, set_show_trace = React.S.create ~eq:Bool.(=) false in
     let trace_e, trace_button =
-      toggle ~visible_text:"hide" ~hidden_text:"show" show_trace_s
+      button_toggle ~visible_text:"hide" ~hidden_text:"show" show_trace_s
     in
     let (_ : unit React.event) = trace_e |> React.E.map set_show_trace in
 

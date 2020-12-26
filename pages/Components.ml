@@ -108,7 +108,7 @@ let table
 let inline_block x = Html.(div ~a:[a_class ["inline-block"]] [x])
 let r_inline_block x = R.Html.div ~a:[Html.a_class ["inline-block"]] x
 
-let toggle ~visible_text ~hidden_text visible_s =
+let button_toggle ~visible_text ~hidden_text visible_s =
   let e, set_e = React.E.create () in
   let onclick _evt = set_e (not (React.S.value visible_s)); false in
   let text_s = visible_s
@@ -117,3 +117,13 @@ let toggle ~visible_text ~hidden_text visible_s =
       | false -> hidden_text)
   in
   e, r_button ~onclick text_s
+
+let chevron_toggle visible_s =
+  let e, set_e = React.E.create () in
+  let onclick _evt = set_e (not (React.S.value visible_s)); false in
+  let class_s = visible_s
+    |> React.S.map (function
+      | true -> ["gg-chevron-down"]
+      | false -> ["gg-chevron-right"])
+  in
+  e, Html.span ~a:[Html.a_onclick onclick; R.Html.a_class class_s] []
