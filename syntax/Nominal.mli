@@ -73,6 +73,12 @@ val select_path
   -> ('loc, 'prim) term
   -> (('loc, 'prim) term, string) Result.t
 
+val match_pattern
+  :  prim_eq:('prim -> 'prim -> bool)
+  -> ('loc, 'prim) Pattern.t
+  -> ('loc, 'prim) term
+  -> (('loc, 'prim) term Lvca_util.String.Map.t) option
+
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t
   val whitespace_t : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t

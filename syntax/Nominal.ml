@@ -220,6 +220,37 @@ let rec subst_all ctx tm =
 
 and subst_all_scope ctx (Scope (pats, tms)) = Scope (pats, List.map tms ~f:(subst_all ctx))
 
+let rec match_pattern ~prim_eq pat tm = match pat, tm with
+  | Pattern.Ignored _, _ -> Some Lvca_util.String.Map.empty
+  | Var (_, name), tm -> Some (Lvca_util.String.Map.singleton name tm)
+  | Primitive (_, p1), Primitive (_, p2) ->
+    if prim_eq p1 p2
+    then Some Lvca_util.String.Map.empty
+    else None
+  | Primitive _, _ -> None
+  | Operator (_, name1, patss), Operator (_, name2, scopes)
+  -> if String.(name1 = name2)
+    then match List.map2 patss scopes ~f:(match_scope ~prim_eq) with
+      | Ok zipped -> (match Lvca_util.String.Map.join_helper zipped with
+        | `Ok result -> result
+        | `Duplicate_key k -> failwith
+          (Printf.sprintf "invariant violation: duplicate key: %s" k)
+      )
+      | Unequal_lengths -> None
+    else None
+  | _ -> None
+
+and match_scope ~prim_eq pats (Scope (binders, tms)) = match binders with
+  | [] -> (match List.map2 pats tms ~f:(match_pattern ~prim_eq) with
+    | Ok zipped -> (match Lvca_util.String.Map.join_helper zipped with
+      | `Ok result -> result
+      | `Duplicate_key k -> failwith
+        (Printf.sprintf "invariant violation: duplicate key: %s" k)
+    )
+    | Unequal_lengths -> None
+  )
+  | _ -> None
+
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   module Primitive = Primitive.Parse (Comment)

@@ -75,6 +75,19 @@ module String = struct
       | DuplicateKey k -> `Duplicate_key k
    ;;
 
+   let join_helper : 'a t option list -> [ `Ok of 'a t option | `Duplicate_key of string ] =
+     fun lst ->
+       try
+         lst
+           |> Option.all
+           |> Option.map ~f:(fun map_list -> match strict_unions map_list with
+             | `Ok result -> result
+             | `Duplicate_key k -> raise (DuplicateKey k)
+           )
+           |> (fun m -> `Ok m)
+        with
+        | DuplicateKey k -> `Duplicate_key k
+
     let intersect : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t =
      fun a_map b_map ~f ->
       Map.merge a_map b_map ~f:(fun ~key:_ -> function
