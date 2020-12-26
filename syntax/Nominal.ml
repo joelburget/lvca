@@ -303,6 +303,20 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   let whitespace_t parse_prim = Parsers.(junk *> t parse_prim)
 end
 
+let rec select_path ~path tm = match path with
+  | [] -> Ok tm
+  | (i, j)::path -> match tm with
+    | Var _ | Primitive _ -> Error "TODO: message"
+    | Operator (_, _, scopes) ->
+      let open Option.Let_syntax in
+      let tm =
+        let%bind (Scope (_pats, tms)) = List.nth scopes i in
+        List.nth tms j
+      in
+      match tm with
+        | None -> Error "TODO: message"
+        | Some tm -> select_path ~path tm
+
 module Properties = struct
   module Parse = Parse (ParseUtil.NoComment)
   module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)

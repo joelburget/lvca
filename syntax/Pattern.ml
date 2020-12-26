@@ -140,6 +140,20 @@ let rec map_loc : f:('a -> 'b) -> ('a, 'prim) pattern -> ('b, 'prim) pattern =
 
 let erase pat = map_loc ~f:(fun _ -> ()) pat
 
+let rec select_path ~path pat = match path with
+  | [] -> Ok pat
+  | (i, j)::path -> match pat with
+    | Primitive _ | Var _ | Ignored _ -> Error "TODO: message"
+    | Operator (_, _, patss) ->
+      let open Option.Let_syntax in
+      let pat =
+        let%bind pats = List.nth patss i in
+        List.nth pats j
+      in
+      match pat with
+        | Some pat -> select_path ~path pat
+        | None -> Error "TODO: message"
+
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   module Primitive = Primitive.Parse (Comment)

@@ -68,6 +68,11 @@ val subst_all
   -> ('loc, 'prim) term
   -> ('loc, 'prim) term
 
+val select_path
+  :  path:((int * int) list)
+  -> ('loc, 'prim) term
+  -> (('loc, 'prim) term, string) Result.t
+
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t
   val whitespace_t : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t

@@ -25,6 +25,11 @@ val map_loc : f:('a -> 'b) -> ('a, 'prim) pattern -> ('b, 'prim) pattern
 val erase : (_, 'prim) pattern -> (unit, 'prim) pattern
 val location : ('info, _) pattern -> 'info
 
+val select_path
+  :  path:((int * int) list)
+  -> ('loc, 'prim) pattern
+  -> (('loc, 'prim) pattern, string) Result.t
+
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : 'prim ParseUtil.t -> (OptRange.t, 'prim) t ParseUtil.t
 end

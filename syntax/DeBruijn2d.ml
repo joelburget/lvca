@@ -94,3 +94,17 @@ let rec alpha_equivalent prim_equivalent t1 t2 =
   | Primitive (_, p1), Primitive (_, p2) -> prim_equivalent p1 p2
   | _, _ -> false
 ;;
+
+let rec select_path ~path tm = match path with
+  | [] -> Ok tm
+  | (i, j)::path -> match tm with
+    | BoundVar _ | FreeVar _ | Primitive _ -> Error "TODO: message"
+    | Operator (_, _, scopes) ->
+      let open Option.Let_syntax in
+      let tm =
+        let%bind (Scope (_pats, tms)) = List.nth scopes i in
+        List.nth tms j
+      in
+      match tm with
+        | None -> Error "TODO: message"
+        | Some tm -> select_path ~path tm
