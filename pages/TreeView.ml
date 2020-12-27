@@ -13,12 +13,21 @@ let grid_tmpl left loc = div ~a:[a_class ["grid"; "grid-cols-3"]]
   ; div [ view_loc loc ]
   ]
 
-let padded_txt depth text = Html.pre
-  ~a:[a_class ["inline-block"]]
-  [txt (String.make depth ' ' ^ text)]
+let indent _ = Html.(span ~a:[a_class ["border-l-2"; "border-dotted"]] [txt "  "])
+
+let padded_txt depth text =
+  let indents = List.init depth ~f:indent in
+  Html.pre
+    ~a:[a_class ["inline-block"]]
+    (Lvca_util.List.snoc indents (txt text))
 
 type map_contents =
   { expanded_s: bool React.signal
+  ; set_expanded: (bool -> unit)
+  }
+
+type map_contents' =
+  { expanded: bool
   ; set_expanded: (bool -> unit)
   }
 
@@ -34,32 +43,41 @@ let rec index_tm ~map_ref path depth = function
 and index_scope ~map_ref i path depth (Nominal.Scope (_pats, tms)) =
   List.iteri tms ~f:(fun j -> index_tm ~map_ref ((i, j)::path) depth)
 
+let rec show_pattern ~depth ~queue = function
+  | Pattern.Primitive (loc, p) ->
+    Queue.enqueue queue (grid_tmpl [p |> Primitive.to_string |> padded_txt depth] loc)
+  | Var (loc, name) | Ignored (loc, name) ->
+    Queue.enqueue queue (grid_tmpl [padded_txt depth name] loc)
+  | Operator (loc, name, patss) ->
+    let open_elem = grid_tmpl [ padded_txt depth (name ^ "(") ] loc in
+    Queue.enqueue queue open_elem;
+
+    patss |> List.iter ~f:(fun pats -> pats
+      |> List.iter ~f:(show_pattern ~depth:(Int.succ depth) ~queue)
+    );
+
+    let close_elem = grid_tmpl [ padded_txt depth ")" ] loc in
+    Queue.enqueue queue close_elem
+
 let rec show_tm ~depth ~path ~map ~queue = function
   | Nominal.Primitive (loc, p) ->
     Queue.enqueue queue (grid_tmpl [p |> Primitive.to_string |> padded_txt depth] loc)
   | Var (loc, name) ->
     Queue.enqueue queue (grid_tmpl [padded_txt depth name] loc)
   | Operator (loc, name, scopes) ->
-    let { expanded_s; set_expanded } = Map.find_exn map path in
+    let { expanded; set_expanded } = Map.find_exn map path in
+    let expanded_s, _xxx = React.S.create ~eq:Bool.(=) expanded in
     let button_event, button = Components.ellipsis_toggle expanded_s in
     (* let _ : unit React.event = button_event |> React.E.map set_expanded in *)
-    let _ : unit React.event = button_event |> React.E.map (fun evt ->
-      Stdio.printf "setting expanded %b\n" evt;
-      set_expanded evt
-    )
-    in
+    let _ : unit React.event = button_event |> React.E.map set_expanded in
 
-    Stdio.printf "showing operator %s, expanded: %b\n" name (React.S.value expanded_s);
     let _: unit React.signal = expanded_s
       |> React.S.map ~eq:Unit.(=) (function
-        | false ->
-          Stdio.printf "enqueuing collapsed %s\n" name;
-            Queue.enqueue queue (grid_tmpl
+        | false -> Queue.enqueue queue (grid_tmpl
           [padded_txt depth (name ^ "("); button; txt ")" ]
           loc
         )
         | true ->
-          Stdio.printf "enqueuing expanded %s\n" name;
           let open_elem = grid_tmpl [ padded_txt depth (name ^ "("); button ] loc in
           Queue.enqueue queue open_elem;
 
@@ -71,10 +89,8 @@ let rec show_tm ~depth ~path ~map ~queue = function
     in
     ()
 
-and show_scope ~depth ~path ~map ~queue i (Nominal.Scope (_pats, tms)) =
-  (* TODO: show pattern *)
-  let elem = txt "TODO: scope pattern" in
-  Queue.enqueue queue elem;
+and show_scope ~depth ~path ~map ~queue i (Nominal.Scope (pats, tms)) =
+  pats |> List.iter ~f:(show_pattern ~depth ~queue);
   tms |> List.iteri ~f:(fun j -> show_tm ~depth ~path:((i, j)::path) ~map ~queue)
 
 let view_tm tm =
@@ -83,14 +99,14 @@ let view_tm tm =
 
   let r_elem = !map_ref
     |> Map.to_alist
-    |> List.map ~f:(fun (_, { expanded_s; _ }) -> expanded_s)
-    |> React.S.merge ~eq:(fun _ _ -> false) (fun () _ -> ()) ()
-    |> React.S.map ~eq:(fun _ _ -> false) (fun () ->
-      Stdio.printf "re-rendering\n";
-      let map = !map_ref in
+    |> List.map ~f:(fun (name, { expanded_s; set_expanded }) -> expanded_s
+      |> React.S.map ~eq:Caml.(=) (fun expanded -> name, { expanded; set_expanded })
+    )
+    |> React.S.merge ~eq:(fun _ _ -> false) (fun kvs kv -> kv::kvs) []
+    |> React.S.map ~eq:(fun _ _ -> false) (fun kvs ->
+      let map = Map.of_alist_exn (module Path) kvs in
       let queue = Queue.create () in
       show_tm ~depth:0 ~path:[] ~map ~queue tm;
-      Stdio.printf "queue length: %d\n" (Queue.length queue);
       Html.div (Queue.to_list queue)
     )
     |> RList.singleton_s
