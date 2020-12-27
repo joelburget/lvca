@@ -42,27 +42,30 @@ let rec index_tm ~map_ref path = function
 and index_scope ~map_ref i path (Nominal.Scope (_pats, tms)) =
   List.iteri tms ~f:(fun j -> index_tm ~map_ref ((i, j)::path))
 
-let rec show_pattern ~depth ~queue = function
+let rec show_pattern ~depth ~queue ~suffix = function
   | Pattern.Primitive (loc, p) ->
-    Queue.enqueue queue (grid_tmpl [p |> Primitive.to_string |> padded_txt depth] loc)
+    let str = Primitive.to_string p ^ suffix in
+    Queue.enqueue queue (grid_tmpl [str |> padded_txt depth] loc)
   | Var (loc, name) | Ignored (loc, name) ->
-    Queue.enqueue queue (grid_tmpl [padded_txt depth name] loc)
+    Queue.enqueue queue (grid_tmpl [padded_txt depth (name ^ suffix)] loc)
   | Operator (loc, name, patss) ->
     let open_elem = grid_tmpl [ padded_txt depth (name ^ "(") ] loc in
     Queue.enqueue queue open_elem;
 
-    List.iter patss ~f:(List.iter ~f:(show_pattern ~depth:(Int.succ depth) ~queue));
+    List.iter patss
+      ~f:(List.iter ~f:(show_pattern ~depth:(Int.succ depth) ~queue ~suffix:";"));
 
-    let close_elem = grid_tmpl [ padded_txt depth ")" ] loc in
+    let close_elem = grid_tmpl [ padded_txt depth (")" ^ suffix) ] loc in
     Queue.enqueue queue close_elem
 
-let rec show_tm ~path ~map ~queue =
+let rec show_tm ~path ~map ~queue ?suffix:(suffix="") =
   let depth = List.length path in
   function
   | Nominal.Primitive (loc, p) ->
-    Queue.enqueue queue (grid_tmpl [p |> Primitive.to_string |> padded_txt depth] loc)
+    let str = Primitive.to_string p ^ suffix in
+    Queue.enqueue queue (grid_tmpl [str |> padded_txt depth] loc)
   | Var (loc, name) ->
-    Queue.enqueue queue (grid_tmpl [padded_txt depth name] loc)
+    Queue.enqueue queue (grid_tmpl [padded_txt depth (name ^ suffix)] loc)
   | Operator (loc, name, scopes) ->
     let { expanded; set_expanded } = Map.find_exn map path in
     let expanded_s, _unused_set_expanded = React.S.create ~eq:Bool.(=) expanded in
@@ -72,24 +75,28 @@ let rec show_tm ~path ~map ~queue =
     let _: unit React.signal = expanded_s
       |> React.S.map ~eq:Unit.(=) (function
         | false -> Queue.enqueue queue (grid_tmpl
-          [padded_txt depth (name ^ "("); button; txt ")" ]
+          [padded_txt depth (name ^ "("); button; txt (")" ^ suffix) ]
           loc
         )
         | true ->
           let open_elem = grid_tmpl [ padded_txt depth (name ^ "("); button ] loc in
           Queue.enqueue queue open_elem;
 
-          scopes |> List.iteri ~f:(show_scope ~path ~map ~queue);
+          List.iteri scopes ~f:(show_scope ~path ~map ~queue);
 
-          let close_elem = grid_tmpl [ padded_txt depth ")" ] loc in
+          let close_elem = grid_tmpl [ padded_txt depth (")" ^ suffix) ] loc in
           Queue.enqueue queue close_elem
       )
     in
     ()
 
 and show_scope ~path ~map ~queue i (Nominal.Scope (pats, tms)) =
-  List.iter pats ~f:(show_pattern ~depth:(List.length path) ~queue);
-  List.iteri tms ~f:(fun j -> show_tm ~path:((i, j)::path) ~map ~queue)
+  List.iter pats ~f:(show_pattern ~depth:(List.length path) ~queue ~suffix:".");
+  let len = List.length tms in
+  List.iteri tms ~f:(fun j ->
+    let suffix = if j = len - 1 then ";" else "," in
+    show_tm ~path:((i, j)::path) ~map ~queue ~suffix
+  )
 
 let view_tm tm =
   (* First index all of the terms, meaning we collect a mapping from their path
@@ -98,7 +105,8 @@ let view_tm tm =
   let map_ref = ref (Base.Map.empty (module Path)) in
   index_tm ~map_ref [] tm;
 
-  (* Any signal change is a real update, don't bother with equality testing. *)
+  (* Any signal change coming from map_ref is a real update, don't bother with
+     equality testing. *)
   let eq _ _ = false in
 
   let map_s = !map_ref
@@ -110,10 +118,16 @@ let view_tm tm =
     |> React.S.map ~eq (Map.of_alist_exn (module Path))
   in
 
-  map_s |> React.S.map ~eq (fun map ->
+  (* let selection_s, set_selection = React.S.create () in *)
+
+  let elem = map_s
+    |> React.S.map ~eq (fun map ->
       let queue = Queue.create () in
       show_tm ~path:[] ~map ~queue tm;
       Html.div (Queue.to_list queue)
     )
     |> RList.singleton_s
     |> R.Html.div
+  in
+
+  elem (* , selection_s *)
