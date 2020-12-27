@@ -56,7 +56,9 @@ let rec show_pattern ~depth ~queue = function
     let close_elem = grid_tmpl [ padded_txt depth ")" ] loc in
     Queue.enqueue queue close_elem
 
-let rec show_tm ~depth ~path ~map ~queue = function
+let rec show_tm ~path ~map ~queue =
+  let depth = List.length path in
+  function
   | Nominal.Primitive (loc, p) ->
     Queue.enqueue queue (grid_tmpl [p |> Primitive.to_string |> padded_txt depth] loc)
   | Var (loc, name) ->
@@ -77,7 +79,7 @@ let rec show_tm ~depth ~path ~map ~queue = function
           let open_elem = grid_tmpl [ padded_txt depth (name ^ "("); button ] loc in
           Queue.enqueue queue open_elem;
 
-          scopes |> List.iteri ~f:(show_scope ~depth:(Int.succ depth) ~path ~map ~queue);
+          scopes |> List.iteri ~f:(show_scope ~path ~map ~queue);
 
           let close_elem = grid_tmpl [ padded_txt depth ")" ] loc in
           Queue.enqueue queue close_elem
@@ -85,9 +87,9 @@ let rec show_tm ~depth ~path ~map ~queue = function
     in
     ()
 
-and show_scope ~depth ~path ~map ~queue i (Nominal.Scope (pats, tms)) =
-  List.iter pats ~f:(show_pattern ~depth ~queue);
-  List.iteri tms ~f:(fun j -> show_tm ~depth ~path:((i, j)::path) ~map ~queue)
+and show_scope ~path ~map ~queue i (Nominal.Scope (pats, tms)) =
+  List.iter pats ~f:(show_pattern ~depth:(List.length path) ~queue);
+  List.iteri tms ~f:(fun j -> show_tm ~path:((i, j)::path) ~map ~queue)
 
 let view_tm tm =
   (* First index all of the terms, meaning we collect a mapping from their path
@@ -110,7 +112,7 @@ let view_tm tm =
 
   map_s |> React.S.map ~eq (fun map ->
       let queue = Queue.create () in
-      show_tm ~depth:0 ~path:[] ~map ~queue tm;
+      show_tm ~path:[] ~map ~queue tm;
       Html.div (Queue.to_list queue)
     )
     |> RList.singleton_s
