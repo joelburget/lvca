@@ -6,6 +6,9 @@ module Tyxml_js = Js_of_ocaml_tyxml.Tyxml_js
 
 type term = (OptRange.t, Primitive.t) Nominal.term
 
+let html_eq = Caml.(=)
+let rhtml_eq = Caml.(=)
+
 module Action = struct
   type t =
     | Evaluate of string

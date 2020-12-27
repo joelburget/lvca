@@ -14,8 +14,7 @@ module React = SafeReact
 
 open Components
 
-let html_eq : 'a Html.elt -> 'a Html.elt -> bool = Caml.(=)
-let rhtml_eq : 'a RHtml.elt -> 'a RHtml.elt -> bool = Caml.(=)
+let html_eq, rhtml_eq = Common.(html_eq, rhtml_eq)
 
 module Model = struct
   type input_sig = string React.signal * (string -> unit)
