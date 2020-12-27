@@ -14,10 +14,9 @@ module T = struct
   type t = (int * int) list
   let compare = List.compare Tuple2.compare
   let sexp_of_t = List.sexp_of_t Tuple2.sexp_of_t
-  let (=) = List.equal Tuple2.(=)
 end
 
 include T
 include Comparable.Make(T)
 
-let is_prefix ~path ~prefix = List.is_prefix path ~prefix ~equal:T.(=)
+let is_prefix ~path ~prefix = List.is_prefix path ~prefix ~equal:Tuple2.(=)
