@@ -31,16 +31,16 @@ type reactive_map_contents =
   ; set_expanded: bool -> unit
   }
 
-let rec index_tm ~map_ref path depth = function
+let rec index_tm ~map_ref path = function
   | Nominal.Primitive _ | Var _ -> ()
   | Operator (_loc, _name, scopes) -> if not (List.is_empty scopes) then (
     let expanded_s, set_expanded = React.S.create ~eq:Bool.(=) false in
     map_ref := Map.set !map_ref ~key:path ~data:{ expanded_s; set_expanded };
-    List.iteri scopes ~f:(fun i -> index_scope ~map_ref i path (Int.succ depth))
+    List.iteri scopes ~f:(fun i -> index_scope ~map_ref i path)
   )
 
-and index_scope ~map_ref i path depth (Nominal.Scope (_pats, tms)) =
-  List.iteri tms ~f:(fun j -> index_tm ~map_ref ((i, j)::path) depth)
+and index_scope ~map_ref i path (Nominal.Scope (_pats, tms)) =
+  List.iteri tms ~f:(fun j -> index_tm ~map_ref ((i, j)::path))
 
 let rec show_pattern ~depth ~queue = function
   | Pattern.Primitive (loc, p) ->
@@ -94,7 +94,7 @@ let view_tm tm =
      to expansion status (so that subterms remember their status even if
      parents / ancestors are closed. *)
   let map_ref = ref (Base.Map.empty (module Path)) in
-  index_tm ~map_ref [] 0 tm;
+  index_tm ~map_ref [] tm;
 
   (* Any signal change is a real update, don't bother with equality testing. *)
   let eq _ _ = false in
