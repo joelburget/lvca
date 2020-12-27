@@ -82,7 +82,8 @@ let rec show_tm ~path ~map ~queue ?suffix:(suffix="") =
           let open_elem = grid_tmpl [ padded_txt depth (name ^ "("); button ] loc in
           Queue.enqueue queue open_elem;
 
-          List.iteri scopes ~f:(show_scope ~path ~map ~queue);
+          List.iteri scopes ~f:(fun i ->
+            show_scope ~path ~map ~queue ~last:(i = List.length scopes - 1) i);
 
           let close_elem = grid_tmpl [ padded_txt depth (")" ^ suffix) ] loc in
           Queue.enqueue queue close_elem
@@ -90,11 +91,19 @@ let rec show_tm ~path ~map ~queue ?suffix:(suffix="") =
     in
     ()
 
-and show_scope ~path ~map ~queue i (Nominal.Scope (pats, tms)) =
+and show_scope ~path ~map ~queue ~last:last_scope i (Nominal.Scope (pats, tms)) =
   List.iter pats ~f:(show_pattern ~depth:(List.length path) ~queue ~suffix:".");
   let len = List.length tms in
   List.iteri tms ~f:(fun j ->
-    let suffix = if j = len - 1 then ";" else "," in
+    let last_tm = j = len - 1 in
+    let suffix =
+      if last_tm
+      then
+        if last_scope
+        then ""
+        else ";"
+      else ","
+    in
     show_tm ~path:((i, j)::path) ~map ~queue ~suffix
   )
 
