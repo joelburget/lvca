@@ -21,23 +21,22 @@ let padded_txt depth text =
     ~a:[a_class ["inline-block"]]
     (Lvca_util.List.snoc indents (txt text))
 
-type map_contents =
+type indexed_map_contents =
   { expanded_s: bool React.signal
-  ; set_expanded: (bool -> unit)
+  ; set_expanded: bool -> unit
   }
 
-type map_contents' =
+type reactive_map_contents =
   { expanded: bool
-  ; set_expanded: (bool -> unit)
+  ; set_expanded: bool -> unit
   }
 
 let rec index_tm ~map_ref path depth = function
-  | Nominal.Primitive _ -> ()
-  | Var _ -> ()
+  | Nominal.Primitive _ | Var _ -> ()
   | Operator (_loc, _name, scopes) -> if not (List.is_empty scopes) then (
     let expanded_s, set_expanded = React.S.create ~eq:Bool.(=) false in
     map_ref := Map.set !map_ref ~key:path ~data:{ expanded_s; set_expanded };
-    scopes |> List.iteri ~f:(fun i -> index_scope ~map_ref i path (Int.succ depth))
+    List.iteri scopes ~f:(fun i -> index_scope ~map_ref i path (Int.succ depth))
   )
 
 and index_scope ~map_ref i path depth (Nominal.Scope (_pats, tms)) =
@@ -52,9 +51,7 @@ let rec show_pattern ~depth ~queue = function
     let open_elem = grid_tmpl [ padded_txt depth (name ^ "(") ] loc in
     Queue.enqueue queue open_elem;
 
-    patss |> List.iter ~f:(fun pats -> pats
-      |> List.iter ~f:(show_pattern ~depth:(Int.succ depth) ~queue)
-    );
+    List.iter patss ~f:(List.iter ~f:(show_pattern ~depth:(Int.succ depth) ~queue));
 
     let close_elem = grid_tmpl [ padded_txt depth ")" ] loc in
     Queue.enqueue queue close_elem
@@ -66,9 +63,8 @@ let rec show_tm ~depth ~path ~map ~queue = function
     Queue.enqueue queue (grid_tmpl [padded_txt depth name] loc)
   | Operator (loc, name, scopes) ->
     let { expanded; set_expanded } = Map.find_exn map path in
-    let expanded_s, _xxx = React.S.create ~eq:Bool.(=) expanded in
+    let expanded_s, _unused_set_expanded = React.S.create ~eq:Bool.(=) expanded in
     let button_event, button = Components.ellipsis_toggle expanded_s in
-    (* let _ : unit React.event = button_event |> React.E.map set_expanded in *)
     let _ : unit React.event = button_event |> React.E.map set_expanded in
 
     let _: unit React.signal = expanded_s
@@ -90,25 +86,32 @@ let rec show_tm ~depth ~path ~map ~queue = function
     ()
 
 and show_scope ~depth ~path ~map ~queue i (Nominal.Scope (pats, tms)) =
-  pats |> List.iter ~f:(show_pattern ~depth ~queue);
-  tms |> List.iteri ~f:(fun j -> show_tm ~depth ~path:((i, j)::path) ~map ~queue)
+  List.iter pats ~f:(show_pattern ~depth ~queue);
+  List.iteri tms ~f:(fun j -> show_tm ~depth ~path:((i, j)::path) ~map ~queue)
 
 let view_tm tm =
+  (* First index all of the terms, meaning we collect a mapping from their path
+     to expansion status (so that subterms remember their status even if
+     parents / ancestors are closed. *)
   let map_ref = ref (Base.Map.empty (module Path)) in
   index_tm ~map_ref [] 0 tm;
 
-  let r_elem = !map_ref
+  (* Any signal change is a real update, don't bother with equality testing. *)
+  let eq _ _ = false in
+
+  let map_s = !map_ref
     |> Map.to_alist
-    |> List.map ~f:(fun (name, { expanded_s; set_expanded }) -> expanded_s
-      |> React.S.map ~eq:Caml.(=) (fun expanded -> name, { expanded; set_expanded })
+    |> List.map ~f:(fun (path, { expanded_s; set_expanded }) -> expanded_s
+      |> React.S.map ~eq (fun expanded -> path, { expanded; set_expanded })
     )
-    |> React.S.merge ~eq:(fun _ _ -> false) (fun kvs kv -> kv::kvs) []
-    |> React.S.map ~eq:(fun _ _ -> false) (fun kvs ->
-      let map = Map.of_alist_exn (module Path) kvs in
+    |> React.S.merge ~eq (fun kvs kv -> kv::kvs) []
+    |> React.S.map ~eq (Map.of_alist_exn (module Path))
+  in
+
+  map_s |> React.S.map ~eq (fun map ->
       let queue = Queue.create () in
       show_tm ~depth:0 ~path:[] ~map ~queue tm;
       Html.div (Queue.to_list queue)
     )
     |> RList.singleton_s
-  in
-  R.Html.div r_elem
+    |> R.Html.div
