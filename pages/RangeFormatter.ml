@@ -45,21 +45,6 @@ let mk
     |> React.S.hold ~eq:SourceRanges.(=) SourceRanges.empty
   in
 
-  (*
-  let _ : unit React.signal = externally_selected_s |> React.S.map ~eq:Caml.(=)
-    (fun rng -> printf "externally selected: %s\n" SourceRanges.(to_string rng))
-  in
-
-  let _ : unit React.signal = internal_reset_e
-    |> React.S.hold ~eq:(fun _ _ -> false) ()
-    |> React.S.map ~eq:(fun _ _ -> false) (fun () -> printf "internal reset\n")
-  in
-
-  let _ : unit React.signal = selected_s |> React.S.map ~eq:Caml.(=)
-    (fun rng -> printf "selected (1): %s\n" SourceRanges.(to_string rng))
-  in
-  *)
-
   let get_attrs () = match Stack.top stack with
     | None -> []
     | Some (rng, _) ->
@@ -78,9 +63,7 @@ let mk
     let span = span ~a:(get_attrs ()) [ txt str ] in
     let span_elem = To_dom.of_span span in
     (match Stack.top stack with
-      | None ->
-        (* printf "not binding mouse events (%s)\n" str; *)
-        ()
+      | None -> ()
       | Some (rng, _) ->
         Common.bind_event Ev.mousedowns span_elem (fun _evt ->
           (* printf "down: %s\n" (SourceRanges.to_string rng); *)
