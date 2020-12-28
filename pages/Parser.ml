@@ -129,8 +129,10 @@ module Prelude = struct
 
   let alpha = parse_parser_exn Examples.satisfy_is_alpha
   let digit = parse_parser_exn Examples.satisfy_is_digit
-  let name = parse_parser_exn {|chars=alpha+ -> {var(string_of_chars chars)}|}
-  let literal = parse_parser_exn {|chars=digit+ -> {literal(string_of_chars chars)}|}
+  let name = parse_parser_exn
+    {|chars=alpha+ -> {let str = string_of_chars chars in {var(str)}}|}
+  let literal = parse_parser_exn
+    {|chars=digit+ -> {let str = string_of_chars chars in {literal(str)}}|}
 
   let ctx : P.Direct.parser_ctx
     = Lvca_util.String.Map.of_alist_exn
