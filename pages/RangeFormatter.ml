@@ -6,6 +6,7 @@ open Stdio
 
 module Dom_html = Js_of_ocaml.Dom_html
 module Ev = Js_of_ocaml_lwt.Lwt_js_events
+module Format = Caml.Format
 module Js = Js_of_ocaml.Js
 
 (** The incoming signal holds the currently selected range. We return both a Dom element
@@ -15,7 +16,7 @@ module Js = Js_of_ocaml.Js
 let mk
     :  selection_s:(SourceRanges.t SafeReact.signal)
     -> set_selection:(SourceRanges.t -> unit)
-    -> [> `Code ] Html5.elt * Caml.Format.formatter * (unit -> unit)
+    -> [> `Code ] Html5.elt * Format.formatter * (unit -> unit)
   =
  fun ~selection_s:externally_selected_s ~set_selection ->
   let br, span, txt = Html.(br, span, txt) in
@@ -115,7 +116,7 @@ let mk
     | () -> ()
   in
 
-  let out_fns : Caml.Format.formatter_out_functions =
+  let out_fns : Format.formatter_out_functions =
     { out_string =
         (fun str _start _char_count -> add_text str)
         (* No need to do anything -- we update the element immediately on receiving
@@ -127,9 +128,9 @@ let mk
     }
   in
 
-  let fmt = Caml.Format.formatter_of_out_functions out_fns in
-  Caml.Format.pp_set_tags fmt true;
-  Caml.Format.pp_set_formatter_stag_functions
+  let fmt = Format.formatter_of_out_functions out_fns in
+  Format.pp_set_tags fmt true;
+  Format.pp_set_formatter_stag_functions
     fmt
     (* We open a new span for every range tag we encounter. All children until we
        encounter the matching close tag will be nested under it (by enqueuing). *)
