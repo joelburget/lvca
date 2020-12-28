@@ -96,7 +96,7 @@ module Examples = struct
   let string = {|"foo"|}
   let many = "'c'*"
   let plus = "'c'+"
-  (* let count = "'c'{{2}}" *)
+  let count = "'c'2"
   let zero_choice = {|choice ()|}
   let two_choice = {|choice ('c' | "foo")|}
   let multi_choice = {|choice (
@@ -106,7 +106,7 @@ module Examples = struct
   | "abcd" // never matches
 )|}
   let let_ = {|let p1 = "str" in let p2 = 'c'* in choice (p1 | p2)|}
-  let fail = {|fail {{"some reason for failing"}}|}
+  let fail = {|fail "some reason for failing"|}
   let satisfy1 = {|satisfy (c -> {match c with {
   | 'c' -> {true()}
   | _ -> {false()}
@@ -591,7 +591,7 @@ module View = struct
       ; satisfy_is_digit_input
       ; star_input
       ; plus_input
-      ; count_input = _
+      ; count_input
       ; choice1_input
       ; choice2_input
       ; choice3_input
@@ -624,7 +624,7 @@ module View = struct
     in
     let star_table = mk_input_result' Examples.many star_input in
     let plus_table = mk_input_result' Examples.plus plus_input in
-    (* let count_table = mk_input_result' Examples.count count_input in *)
+    let _count_table = mk_input_result' Examples.count count_input in
 
     let choice1_table = mk_input_result' Examples.two_choice choice1_input in
     let choice2_table = mk_input_result' Examples.multi_choice choice2_input in
