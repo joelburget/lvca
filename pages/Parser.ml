@@ -195,7 +195,7 @@ let pp_view ~highlight_s tm fmt =
     |> React.S.map ~eq:String.(=) Int.to_string
     |> RHtml.a_user_data "char-size"
   in
-  let elt = Html.div ~a:[px_user_data; char_user_data] [elt] in
+  let elt = Html.div ~a:[px_user_data; char_user_data; Html.a_class ["p-2"]] [elt] in
 
   elt, selection_e
 
@@ -204,7 +204,12 @@ let view_term ~highlight_s tm =
     pp_view ~highlight_s tm (Nominal.pp_term_ranges Primitive.pp)
   in
   let tree_view, tree_selection_e = TreeView.view_tm tm in
-  let view = Html.div [success_msg [pp_view]; tree_view] in
+  let view = Html.(div
+    [ div ~a:[a_class ["my-2"]] [success_msg [pp_view]]
+    ; div ~a:[a_class ["my-2"]] [span [txt "Tree viewer:"]]
+    ; div ~a:[a_class ["my-2"]] [tree_view]
+    ])
+  in
   let e = React.E.select [ tm_selection_e; tree_selection_e ] in
   view, e
 
@@ -447,9 +452,11 @@ module View = struct
     ?parser_ctx:(parser_ctx=Lvca_util.String.Map.empty)
     ~highlight_s
     parser_or_err
-    test_str = match parser_or_err with
+    test_str =
+      let mk_err msg = error_msg Html.[span ~a:[a_class ["p-2"]] [txt msg]] in
+      match parser_or_err with
       | Error msg ->
-        let result = error_msg [txt msg] in
+        let result = mk_err msg in
         let%html trace = "<div>not available: parser failed to parse</div>" in
         result, trace, React.E.never
       | Ok parser ->
@@ -461,14 +468,14 @@ module View = struct
 
         let result, select_e = match result with
           | Error (msg, tm_opt) -> (match tm_opt with
-            | None -> error_msg [txt msg], React.E.never
+            | None -> mk_err msg, React.E.never
             | Some tm ->
               let highlight_s = React.S.const SourceRanges.empty in
               let core, select_e = view_core ~highlight_s tm in
-              error_msg [txt msg; core], select_e
+              error_msg Html.[span ~a:[a_class ["p-2"]] [txt msg]; core], select_e
           )
           | Ok tm -> match didnt_consume_msg with
-            | Some msg -> error_msg [txt msg], React.E.never
+            | Some msg -> mk_err msg, React.E.never
             | None -> view_term ~highlight_s tm
         in
         let trace = snapshot
