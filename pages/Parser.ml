@@ -524,10 +524,7 @@ module View = struct
 
     let input_hl_s = tm_selection_s
       |> React.S.map ~eq:OptRange.(=)
-        (fun ranges -> match Map.find ranges "input" with
-        | None -> None
-        | Some ranges -> Range.list_range ranges
-        )
+        (fun ranges -> Option.(Map.find ranges "input" >>= Range.list_range))
       |> React.S.map ~eq:Ranges.(=) Ranges.of_opt_range
     in
 
