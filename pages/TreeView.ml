@@ -4,6 +4,18 @@ open Base
 open Js_of_ocaml_tyxml.Tyxml_js
 module React = SafeReact
 
+(* TODO: make into a table with source / range columns *)
+
+type indexed_map_contents =
+  { expanded_s: bool React.signal
+  ; set_expanded: bool -> unit
+  }
+
+type reactive_map_contents =
+  { expanded: bool
+  ; set_expanded: bool -> unit
+  }
+
 let a_class, txt, div, _ul, _li = Html.(a_class, txt, div, ul, li)
 
 let view_loc loc = loc |> SourceRanges.to_string |> txt
@@ -20,16 +32,6 @@ let padded_txt depth text =
   Html.pre
     ~a:[a_class ["inline-block"]]
     (Lvca_util.List.snoc indents (txt text))
-
-type indexed_map_contents =
-  { expanded_s: bool React.signal
-  ; set_expanded: bool -> unit
-  }
-
-type reactive_map_contents =
-  { expanded: bool
-  ; set_expanded: bool -> unit
-  }
 
 let rec index_tm ~map_ref path = function
   | Nominal.Primitive _ | Var _ -> ()
