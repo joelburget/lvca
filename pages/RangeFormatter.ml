@@ -75,7 +75,7 @@ let mk
 
   let add_text str =
     let span = span ~a:(get_attrs ()) [ txt str ] in
-    let span_elem = span |> To_dom.of_span in
+    let span_elem = To_dom.of_span span in
     (match Stack.top stack with
       | None ->
         (* printf "not binding mouse events (%s)\n" str; *)
@@ -92,9 +92,9 @@ let mk
               start_range := None;
               let selected_str = Js.to_string Dom_html.window##getSelection##toString in
               (* TODO: union everything in between start and end *)
-              let rng = if String.(selected_str <> "")
-                then SourceRanges.union start rng
-                else SourceRanges.empty
+              let rng = match selected_str with
+                | "" -> SourceRanges.empty
+                | _ -> SourceRanges.union start rng
               in
               set_selection rng;
 
@@ -109,10 +109,10 @@ let mk
     add_at_current_level span
   in
 
-  let add_spaces n =
-    if n > 0
-    then add_text (String.make n ' ')
-    else if n < 0 then printf "add_spaces negative value (!): %d\n" n
+  let add_spaces n = match () with
+    | () when n > 0 -> add_text (String.make n ' ')
+    | () when n < 0 -> printf "add_spaces negative value (!): %d\n" n
+    | () -> ()
   in
 
   let out_fns : Caml.Format.formatter_out_functions =
