@@ -69,7 +69,7 @@ let rec show_tm ~path ~map ~queue ?suffix:(suffix="") =
   | Operator (loc, name, scopes) ->
     let { expanded; set_expanded } = Map.find_exn map path in
     let expanded_s, _unused_set_expanded = React.S.create ~eq:Bool.(=) expanded in
-    let button_event, button = Components.ellipsis_toggle expanded_s in
+    let button_event, button = Components.chevron_toggle expanded_s in
     let _ : unit React.event = button_event |> React.E.map set_expanded in
 
     let _: unit React.signal = expanded_s

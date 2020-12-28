@@ -118,23 +118,21 @@ let button_toggle ~visible_text ~hidden_text visible_s =
   in
   e, r_button ~onclick text_s
 
-let ellipsis_toggle visible_s =
+let chevron_toggle visible_s =
   let e, set_e = React.E.create () in
   let onclick _evt = set_e (not (React.S.value visible_s)); false in
-  (*
   let class_s = visible_s
     |> React.S.map (function
       | true -> ["gg-chevron-down"]
       | false -> ["gg-chevron-right"])
   in
-  *)
   let elem = Html.(a
     ~a:[ a_class ["cursor-pointer"; "p-1"]
        ; a_onclick onclick
        ]
     [ span
-      ~a:[a_class ["icon-wrap"]]
-      [ i ~a:[a_class ["gg-more-alt"]] [] ]
+      ~a:[a_class ["chevron-icon-wrap"]]
+      [ i ~a:[R.Html.a_class class_s] [] ]
     ])
   in
   e, elem
