@@ -119,10 +119,19 @@ let pp_generic ~open_loc ~close_loc ppf p =
         pf ppf "@[<v>@[<2>let %s =@ @[%a@] in@]@ %a@]" name (go 0) named (go 0) body),
         Prec.atom
     | Fail (_, tm) ->
-      (fun ppf -> pf ppf "@[<2>fail {%a}@]" core tm), Prec.app
+      let f ppf = match tm with
+        | Term (Primitive (_, PrimString msg)) -> pf ppf {|@[<2>fail "%s"@]|} msg
+        | _ -> pf ppf "@[<2>fail {%a}@]" core tm
+      in
+      f, Prec.app
     | Count (_, p, tm) ->
-      (fun ppf -> pf ppf "@[<hv>%a{%a}@]" (go (Int.succ Prec.quantifier)) p core tm),
-      Prec.quantifier
+      let f ppf = match tm with
+        | Term (Primitive (_, PrimInteger n)) -> pf ppf "@[<hv>%a%s@]"
+          (go (Int.succ Prec.quantifier)) p
+          (Z.to_string n)
+        | _ -> pf ppf "@[<hv>%a{%a}@]" (go (Int.succ Prec.quantifier)) p core tm
+      in
+      f, Prec.quantifier
     | Option (_, p) ->
       (fun ppf -> pf ppf "%a?" (go (Int.succ Prec.quantifier)) p), Prec.quantifier
     | Many (_, p) ->
@@ -617,11 +626,13 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
 
   type atom =
     | CharAtom of char
+    | IntAtom of int
     | StrAtom of string
     | Dot
 
   let string_of_atom = function
     | CharAtom c -> Printf.sprintf "%C" c
+    | IntAtom i -> Printf.sprintf "%d" i
     | StrAtom str -> Printf.sprintf "%S" str
     | Dot -> "."
 
@@ -685,12 +696,12 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
 
   (* Parse an expression starting with a token (nothing in front of it) *)
   let rec prefix ~tokens = function
-    | Atom (atom, pos) ->
-        return ~pos (match atom with
-          | CharAtom c -> Char (pos, c)
-          | StrAtom c -> String (pos, c)
-          | Dot -> AnyChar pos
-        )
+    | Atom (atom, pos) -> (match atom with
+      | CharAtom c -> return ~pos (Char (pos, c))
+      | IntAtom i -> fail (Printf.sprintf "unexpected int atom (%d) in prefix position" i)
+      | StrAtom c -> return ~pos (String (pos, c))
+      | Dot -> return ~pos (AnyChar pos)
+    )
     | Operator (op_name, _pos) ->
       (* There must always be something preceding an operator *)
       fail ("prefix: unexpected operator " ^ op_name)
@@ -774,7 +785,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     (* Consume all operators with left binding power (precedence) higher than
        the ambient precedence *)
     let rec go ~ambient_prec left = match Queue.peek tokens with
-      | None -> return ~pos left
+      | None ->
+        return ~pos left
       | Some token ->
         match token with
         | Operator ("->", _) -> return ~pos left
@@ -790,6 +802,10 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         | Core (tm, pos) ->
           let _ : token = Queue.dequeue_exn tokens in
           return ~pos (Count (pos, left, tm))
+        | Atom (IntAtom i, pos) ->
+          let _ : token = Queue.dequeue_exn tokens in
+          let i = Z.of_int i in
+          return ~pos (Count (pos, left, Term (Primitive (pos, PrimInteger i))))
         | _ -> return ~pos left
     in
 
@@ -877,14 +893,20 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     fix (fun parser ->
       let token = fix (fun token -> choice
         [ char_lit >>|| (fun ~pos c -> Atom (CharAtom c, pos), pos)
+        ; integer_lit >>|| (fun ~pos i -> Atom (IntAtom (Int.of_string i), pos), pos)
         ; string_lit >>|| (fun ~pos str -> Atom (StrAtom str, pos), pos)
         ; char '.' >>|| (fun ~pos _ -> Atom (Dot, pos), pos)
         ; operator >>|| (fun ~pos op -> Operator (op, pos), pos)
         ; keyword >>|| (fun ~pos kw -> Keyword (kw, pos), pos)
         ; string "fail" >>== (fun ~pos:p1 _ ->
-          braces c_term >>|| fun ~pos:p2 tm ->
-          let pos = OptRange.union p1 p2 in
-          FailTok (tm, pos), pos)
+          choice
+            [ braces c_term >>|| (fun ~pos:p2 tm ->
+              let pos = OptRange.union p1 p2 in
+              FailTok (tm, pos), pos)
+            ; (string_lit >>|| fun ~pos:p2 str ->
+              let pos = OptRange.union p1 p2 in
+              FailTok (Core.Term (Primitive (p2, PrimString str)), pos), pos)
+            ])
         ; string "satisfy" >>== (fun ~pos:sat_pos _ ->
           parens
             (lift3
@@ -923,7 +945,6 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
 end
 
 module TestParsers = struct
-  let char_count = {|'c'{{2}}|}
   let dot = {|.|}
   let str = {|"str"|}
   let str_star = {|"str"*|}
@@ -1001,7 +1022,7 @@ let%test_module "Parsing" =
     ;;
 
     let%expect_test _ =
-      parse_print char_count "cc";
+      parse_print "'c'2" "cc";
       [%expect
         {| <input:0-2>list(<input:0-1>'c'</input:0-1>, <input:1-2>'c'</input:1-2>)</input:0-2> |}]
     ;;
@@ -1124,7 +1145,7 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print fix2 "a";
-      [%expect {| failed to parse: No match found |}]
+      [%expect {| failed to parse: choice: no match found |}]
     ;;
 
     let%expect_test _ =
@@ -1217,8 +1238,12 @@ expr)}} | atom=atom -> {atom}))|};
                   )) |}]
 
    let%expect_test _ =
-     parse_print_parser char_count;
-     [%expect{| 'c'{{2}} |}]
+     parse_print_parser "'c'2";
+     [%expect{| 'c'2 |}]
+
+   let%expect_test _ =
+     parse_print_parser "'c'{{2}}";
+     [%expect{| 'c'2 |}]
 
    let%expect_test _ =
      parse_print_parser "F++";
@@ -1260,7 +1285,11 @@ expr)}} | atom=atom -> {atom}))|};
 
    let%expect_test _ =
      parse_print_parser {|fail {{"some reason for failing"}}|};
-     [%expect{| fail {{"some reason for failing"}} |}]
+     [%expect{| fail "some reason for failing" |}]
+
+   let%expect_test _ =
+     parse_print_parser {|fail "some reason for failing"|};
+     [%expect{| fail "some reason for failing" |}]
 
    let%expect_test _ =
      parse_print_parser {|
