@@ -29,13 +29,20 @@ let mk
      update the style when text is selected *)
   let stack : (SourceRanges.t * [> `Span ] Html5.elt Queue.t) Stack.t = Stack.create () in
 
-  let start_range = ref None in
+  (* Every time we print a string (in add_text), enqueue the position attached
+     to it. Record the indices for mousedown and mouseup events and take the
+     union of every location in that range.
+   *)
+  let positions : SourceRanges.t Queue.t = Queue.create () in
+
+  let selection_start = ref None in
 
   let add_at_current_level elem = match Stack.top stack with
     | None -> RList.snoc elem top_level_handle
     | Some (_, q) -> Queue.enqueue q elem
   in
 
+  (* Event triggered on mouseup to clear the (external) selection. *)
   let internal_reset_e, trigger_internal_reset = React.E.create () in
 
   let selected_s = React.E.select
@@ -65,20 +72,29 @@ let mk
     (match Stack.top stack with
       | None -> ()
       | Some (rng, _) ->
+        let text_pos = Queue.length positions in
+        Queue.enqueue positions rng;
         Common.bind_event Ev.mousedowns span_elem (fun _evt ->
-          (* printf "down: %s\n" (SourceRanges.to_string rng); *)
-          start_range := Some rng;
+          selection_start := Some text_pos;
           Lwt.return ()
         );
         Common.bind_event Ev.mouseups span_elem (fun _evt ->
-          (match !start_range with
-            | Some start ->
-              start_range := None;
+          (match !selection_start with
+            | Some down_pos ->
+              selection_start := None;
               let selected_str = Js.to_string Dom_html.window##getSelection##toString in
-              (* TODO: union everything in between start and end *)
+
               let rng = match selected_str with
                 | "" -> SourceRanges.empty
-                | _ -> SourceRanges.union start rng
+                | _ ->
+                  let up_pos = text_pos in
+                  let pos = Int.min up_pos down_pos in
+                  let len = Int.abs (up_pos - down_pos) in
+
+                  positions
+                    |> Queue.to_list
+                    |> List.sub ~pos ~len
+                    |> SourceRanges.unions
               in
               set_selection rng;
 
