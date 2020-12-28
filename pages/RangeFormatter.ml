@@ -63,15 +63,15 @@ let mk
     match Stack.top stack with
     | None -> []
     | Some (rng, _) ->
-      let style = selected_s
-        |> SafeReact.S.map ~eq:String.(=) (fun selected_rng ->
+      let classes = selected_s
+        |> SafeReact.S.map ~eq:(List.equal String.(=)) (fun selected_rng ->
           (* Highlight if this is a subset of the selected range *)
           if SourceRanges.is_subset rng selected_rng
-          then "background-color: rgba(33 150 243 / 50%);"
-          else "")
+          then ["highlight"]
+          else [])
       in
       (* The data-range attribute is currently used just for debugging, it can be removed. *)
-      [ R.Html5.a_style style; Html5.a_user_data "range" (SourceRanges.to_string rng) ]
+      [ R.Html5.a_class classes; Html5.a_user_data "range" (SourceRanges.to_string rng) ]
   in
 
   let add_text str =
