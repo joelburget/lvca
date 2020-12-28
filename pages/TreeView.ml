@@ -70,6 +70,7 @@ let rec show_tm ~path ~map ~queue ?suffix:(suffix="") =
     let { expanded; set_expanded } = Map.find_exn map path in
     let expanded_s, _unused_set_expanded = React.S.create ~eq:Bool.(=) expanded in
     let button_event, button = Components.chevron_toggle expanded_s in
+
     let _ : unit React.event = button_event |> React.E.map set_expanded in
 
     let _: unit React.signal = expanded_s
@@ -93,16 +94,13 @@ let rec show_tm ~path ~map ~queue ?suffix:(suffix="") =
 
 and show_scope ~path ~map ~queue ~last:last_scope i (Nominal.Scope (pats, tms)) =
   List.iter pats ~f:(show_pattern ~depth:(List.length path) ~queue ~suffix:".");
-  let len = List.length tms in
+  let num_tms = List.length tms in
   List.iteri tms ~f:(fun j ->
-    let last_tm = j = len - 1 in
-    let suffix =
-      if last_tm
-      then
-        if last_scope
-        then ""
-        else ";"
-      else ","
+    let last_tm = j = num_tms - 1 in
+    let suffix = match last_tm, last_scope with
+      | true, true -> ""
+      | true, false -> ";"
+      | _, _ -> ","
     in
     show_tm ~path:((i, j)::path) ~map ~queue ~suffix
   )
