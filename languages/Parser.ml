@@ -696,6 +696,11 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
       fail ("prefix: unexpected operator " ^ op_name)
     | Keyword (kw_name, let_pos) -> (match kw_name with
       | "let" ->
+        let mk_err tok_opt expected = match tok_opt with
+          | Some tok -> fail (Printf.sprintf {|expected %s (got %s)|}
+            expected (string_of_token tok))
+          | None -> fail (Printf.sprintf {|expected %s (hit end of input)|} expected)
+        in
         (match Queue.dequeue tokens with
           | Some (Ident (name, _)) ->
             (match Queue.dequeue tokens with
@@ -707,9 +712,9 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
                   -> sequence ~tokens >>= fun e2 ->
                     let pos = OptRange.union let_pos (location e2) in
                     return ~pos (Let (pos, name, e1, e2))
-                  | Some _ | None -> fail "TODO: error")
-              | Some _ | None -> fail "TODO: error")
-          | Some _ | None -> fail "TODO: error")
+                  | tok_opt -> mk_err tok_opt {|keyword "in"|})
+              | tok_opt -> mk_err tok_opt {|operator "="|})
+          | tok_opt -> mk_err tok_opt "an identifier")
         | _ -> fail (Printf.sprintf {|invalid keyword "%s", expected "let"|} kw_name)
     )
     | Ident (name, pos) -> return ~pos (Identifier (pos, name))
