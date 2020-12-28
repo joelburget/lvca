@@ -90,8 +90,9 @@ let mk
           (match !start_range with
             | Some start ->
               start_range := None;
-              let str = Js.to_string Dom_html.window##getSelection##toString in
-              let rng = if String.(str <> "")
+              let selected_str = Js.to_string Dom_html.window##getSelection##toString in
+              (* TODO: union everything in between start and end *)
+              let rng = if String.(selected_str <> "")
                 then SourceRanges.union start rng
                 else SourceRanges.empty
               in
@@ -107,6 +108,7 @@ let mk
     );
     add_at_current_level span
   in
+
   let add_spaces n =
     if n > 0
     then add_text (String.make n ' ')
