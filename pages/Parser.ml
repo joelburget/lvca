@@ -504,14 +504,12 @@ module View = struct
         (view_parser_test ~parser_ctx ~highlight_s:input_hl_s) parser_s test_s
     in
 
-    let result = test_s'
-      |> React.S.map ~eq:html_eq Tuple3.fst
-      |> mk_div
-    in
+    let result = test_s' |> React.S.map ~eq:html_eq Tuple3.fst |> mk_div in
     let trace_s = test_s' |> React.S.map ~eq:html_eq Tuple3.snd in
 
-
-    let tm_selection_s, set_selection = React.S.create ~eq:SourceRanges.(=) SourceRanges.empty in
+    let tm_selection_s, set_selection =
+      React.S.create ~eq:SourceRanges.(=) SourceRanges.empty
+    in
 
     let _ : unit React.signal = test_s'
       |> React.S.map ~eq:Unit.(=) (fun (_, _, e) ->
