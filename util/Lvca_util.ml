@@ -214,3 +214,32 @@ module Cbor = struct
    fun buf -> buf |> Bytes.to_string |> CBOR.Simple.decode |> to_json
  ;;
 end
+
+module Tuple2 = struct
+  let compare (x1, y1) (x2, y2) =
+    let c1 = Int.compare x1 x2 in
+    if c1 <> 0 then c1 else Int.compare y1 y2
+
+  let sexp_of_t (x, y) = Sexplib0.Sexp.List [Int.sexp_of_t x; Int.sexp_of_t y]
+
+  let (=) (x1, y1) (x2, y2) = Int.(x1 = x2) && Int.(y1 = y2)
+  let equal eq1 eq2 (x1, y1) (x2, y2) = eq1 x1 x2 && eq2 y1 y2
+end
+
+module Tuple3 = struct
+  let compare (x1, y1, z1) (x2, y2, z2) =
+    let c1 = Int.compare x1 x2 in
+    if c1 <> 0 then c1 else
+      let c2 = Int.compare y1 y2 in
+      if c2 <> 0 then c2 else
+      Int.compare z1 z2
+
+  let sexp_of_t (x, y, z) =
+    Sexplib0.Sexp.List [Int.sexp_of_t x; Int.sexp_of_t y; Int.sexp_of_t z]
+
+  let equal eq1 eq2 eq3 (x1, y1, z1) (x2, y2, z2) = eq1 x1 x2 && eq2 y1 y2 && eq3 z1 z2
+
+  let fst (x, _, _) = x
+  let snd (_, y, _) = y
+  let thd (_, _, z) = z
+end

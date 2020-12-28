@@ -11,6 +11,7 @@ module Html = Tyxml_js.Html
 module RHtml = Tyxml_js.R.Html
 module Ev = Js_of_ocaml_lwt.Lwt_js_events
 module React = SafeReact
+module Tuple3 = Lvca_util.Tuple3
 
 open Components
 
@@ -498,19 +499,16 @@ module View = struct
     in
 
     let test_s' =
-      let eq (html11, html12, src1) (html21, html22, src2) =
-        rhtml_eq html11 html21 && rhtml_eq html12 html22 &&
-        React.E.equal src1 src2
-      in
+      let eq = Tuple3.equal rhtml_eq rhtml_eq React.E.equal in
       React.S.l2 ~eq
         (view_parser_test ~parser_ctx ~highlight_s:input_hl_s) parser_s test_s
     in
 
     let result = test_s'
-      |> React.S.map ~eq:html_eq (fun (x, _, _) -> x)
+      |> React.S.map ~eq:html_eq Tuple3.fst
       |> mk_div
     in
-    let trace_s = test_s' |> React.S.map ~eq:html_eq (fun (_, x, _) -> x) in
+    let trace_s = test_s' |> React.S.map ~eq:html_eq Tuple3.snd in
 
 
     let tm_selection_s, set_selection = React.S.create ~eq:SourceRanges.(=) SourceRanges.empty in
