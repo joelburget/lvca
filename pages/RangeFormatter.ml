@@ -8,13 +8,14 @@ module Dom_html = Js_of_ocaml.Dom_html
 module Ev = Js_of_ocaml_lwt.Lwt_js_events
 module Format = Caml.Format
 module Js = Js_of_ocaml.Js
+module React = SafeReact
 
 (** The incoming signal holds the currently selected range. We return both a Dom element
     (<code>) to be inserted in the Dom and the formatter which is used to write formatted
     text to this element. Note that the returned Dom element is empty until the formatter
     is used and flushed. *)
 let mk
-    :  selection_s:(SourceRanges.t SafeReact.signal)
+    :  selection_s:(SourceRanges.t React.signal)
     -> set_selection:(SourceRanges.t -> unit)
     -> [> `Code ] Html5.elt * Format.formatter * (unit -> unit)
   =
@@ -35,26 +36,26 @@ let mk
     | Some (_, q) -> Queue.enqueue q elem
   in
 
-  let internal_reset_e, trigger_internal_reset = SafeReact.E.create () in
+  let internal_reset_e, trigger_internal_reset = React.E.create () in
 
-  let selected_s = SafeReact.E.select
-    [ SafeReact.S.diff (fun v _ -> v) externally_selected_s
+  let selected_s = React.E.select
+    [ React.S.diff (fun v _ -> v) externally_selected_s
     ; internal_reset_e |> React.E.map (fun () -> SourceRanges.empty)
     ]
-    |> SafeReact.S.hold ~eq:SourceRanges.(=) SourceRanges.empty
+    |> React.S.hold ~eq:SourceRanges.(=) SourceRanges.empty
   in
 
   (*
-  let _ : unit SafeReact.signal = externally_selected_s |> SafeReact.S.map ~eq:Caml.(=)
+  let _ : unit React.signal = externally_selected_s |> React.S.map ~eq:Caml.(=)
     (fun rng -> printf "externally selected: %s\n" SourceRanges.(to_string rng))
   in
 
-  let _ : unit SafeReact.signal = internal_reset_e
-    |> SafeReact.S.hold ~eq:(fun _ _ -> false) ()
-    |> SafeReact.S.map ~eq:(fun _ _ -> false) (fun () -> printf "internal reset\n")
+  let _ : unit React.signal = internal_reset_e
+    |> React.S.hold ~eq:(fun _ _ -> false) ()
+    |> React.S.map ~eq:(fun _ _ -> false) (fun () -> printf "internal reset\n")
   in
 
-  let _ : unit SafeReact.signal = selected_s |> SafeReact.S.map ~eq:Caml.(=)
+  let _ : unit React.signal = selected_s |> React.S.map ~eq:Caml.(=)
     (fun rng -> printf "selected (1): %s\n" SourceRanges.(to_string rng))
   in
   *)
@@ -64,7 +65,7 @@ let mk
     | None -> []
     | Some (rng, _) ->
       let classes = selected_s
-        |> SafeReact.S.map ~eq:(List.equal String.(=)) (fun selected_rng ->
+        |> React.S.map ~eq:(List.equal String.(=)) (fun selected_rng ->
           (* Highlight if this is a subset of the selected range *)
           if SourceRanges.is_subset rng selected_rng
           then ["highlight"]
