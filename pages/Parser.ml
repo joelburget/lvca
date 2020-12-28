@@ -145,9 +145,7 @@ module Prelude = struct
 end
 
 let pp_view ~highlight_s tm fmt =
-  let selection_s, set_selection =
-    React.S.create ~eq:SourceRanges.(=) SourceRanges.empty
-  in
+  let selection_e, set_selection = React.E.create () in
   let elt, formatter, clear = RangeFormatter.mk ~selection_s:highlight_s ~set_selection in
 
   (* TODO tie this to actual font size *)
@@ -198,22 +196,25 @@ let pp_view ~highlight_s tm fmt =
   in
   let elt = Html.div ~a:[px_user_data; char_user_data] [elt] in
 
-  elt, selection_s
+  elt, selection_e
 
 let view_term ~highlight_s tm =
-  let pp_view, tm_selection_s =
+  let pp_view, tm_selection_e =
     pp_view ~highlight_s tm (Nominal.pp_term_ranges Primitive.pp)
   in
-  let tree_view = TreeView.view_tm tm in
-  Html.div [success_msg [pp_view]; tree_view], tm_selection_s
+  let tree_view, tree_selection_e = TreeView.view_tm tm in
+  let view = Html.div [success_msg [pp_view]; tree_view] in
+  let e = React.E.select [ tm_selection_e; tree_selection_e ] in
+  view, e
+
 
 let view_core ~highlight_s core =
-  let pp_view, tm_selection_s = pp_view ~highlight_s core Core.pp in
-  success_msg [pp_view], tm_selection_s
+  let pp_view, tm_selection_e = pp_view ~highlight_s core Core.pp in
+  success_msg [pp_view], tm_selection_e
 
 let view_parser ~highlight_s ~success parser =
-  let elt, tm_selection_s = pp_view ~highlight_s parser P.pp_ranges in
-  Html.(div ~a:[a_class [if success then "success" else "error"]] [elt]), tm_selection_s
+  let elt, tm_selection_e = pp_view ~highlight_s parser P.pp_ranges in
+  Html.(div ~a:[a_class [if success then "success" else "error"]] [elt]), tm_selection_e
 
 let view_parser_ignore_selection ~highlight_s ~success parser =
   let elem, _ = view_parser parser ~highlight_s ~success in elem
@@ -449,7 +450,7 @@ module View = struct
       | Error msg ->
         let result = error_msg [txt msg] in
         let%html trace = "<div>not available: parser failed to parse</div>" in
-        result, trace, React.S.const SourceRanges.empty
+        result, trace, React.E.never
       | Ok parser ->
         let parser = P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
         let toplevel_result =
@@ -457,23 +458,23 @@ module View = struct
         in
         let P.Direct.{ didnt_consume_msg; result; snapshot } = toplevel_result in
 
-        let result, select_s = match result with
+        let result, select_e = match result with
           | Error (msg, tm_opt) -> (match tm_opt with
-            | None -> error_msg [txt msg], React.S.const SourceRanges.empty
+            | None -> error_msg [txt msg], React.E.never
             | Some tm ->
               let highlight_s = React.S.const SourceRanges.empty in
-              let core, select_s = view_core ~highlight_s tm in
-              error_msg [txt msg; core], select_s
+              let core, select_e = view_core ~highlight_s tm in
+              error_msg [txt msg; core], select_e
           )
           | Ok tm -> match didnt_consume_msg with
-            | Some msg -> error_msg [txt msg], React.S.const SourceRanges.empty
+            | Some msg -> error_msg [txt msg], React.E.never
             | None -> view_term ~highlight_s tm
         in
         let trace = snapshot
           |> Model.TraceSnapshot.restrict_snapshot
           |> view_root_snapshot test_str
         in
-        result, trace, select_s
+        result, trace, select_e
 
   let mk_input_result
     ?parser_ctx:(parser_ctx=Lvca_util.String.Map.empty)
@@ -499,7 +500,7 @@ module View = struct
     let test_s' =
       let eq (html11, html12, src1) (html21, html22, src2) =
         rhtml_eq html11 html21 && rhtml_eq html12 html22 &&
-        React.S.equal ~eq:SourceRanges.(=) src1 src2
+        React.E.equal src1 src2
       in
       React.S.l2 ~eq
         (view_parser_test ~parser_ctx ~highlight_s:input_hl_s) parser_s test_s
@@ -511,9 +512,14 @@ module View = struct
     in
     let trace_s = test_s' |> React.S.map ~eq:html_eq (fun (_, x, _) -> x) in
 
-    let tm_selection_s = test_s'
-      |> React.S.map ~eq:(React.S.equal ~eq:SourceRanges.(=)) (fun (_, _, x) -> x)
-      |> React.S.switch ~eq:SourceRanges.(=)
+
+    let tm_selection_s, set_selection = React.S.create ~eq:SourceRanges.(=) SourceRanges.empty in
+
+    let _ : unit React.signal = test_s'
+      |> React.S.map ~eq:Unit.(=) (fun (_, _, e) ->
+        let _ : unit React.event = React.E.map set_selection e in
+        ()
+      )
     in
 
     let input_hl_s = tm_selection_s

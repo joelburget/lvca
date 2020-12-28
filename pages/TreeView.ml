@@ -2,6 +2,8 @@ open Lvca_syntax
 open ReactiveData
 open Base
 open Js_of_ocaml_tyxml.Tyxml_js
+
+module Ev = Js_of_ocaml_lwt.Lwt_js_events
 module React = SafeReact
 
 (* TODO: make into a table with source / range columns *)
@@ -20,10 +22,28 @@ let a_class, txt, div, _ul, _li = Html.(a_class, txt, div, ul, li)
 
 let view_loc loc = loc |> SourceRanges.to_string |> txt
 
-let grid_tmpl left loc = div ~a:[a_class ["grid"; "grid-cols-3"]]
-  [ div ~a:[a_class ["col-span-2"]] left
-  ; div [ view_loc loc ]
-  ]
+let grid_tmpl left loc =
+  let div = div ~a:[a_class ["grid"; "grid-cols-3"]]
+    [ div ~a:[a_class ["col-span-2"]] left
+    ; div ~a:[] [ view_loc loc ]
+    ]
+  in
+
+  let div_elem = To_dom.of_div div in
+
+  let evt, trigger_evt = React.E.create () in
+
+  Common.bind_event Ev.mouseovers div_elem (fun _evt ->
+    trigger_evt loc;
+    Lwt.return ()
+  );
+
+  Common.bind_event Ev.mouseouts div_elem (fun _evt ->
+    trigger_evt SourceRanges.empty;
+    Lwt.return ()
+  );
+
+  div, evt
 
 let indent _ = Html.(span ~a:[a_class ["border-l-2"; "border-dotted"]] [txt "  "])
 
@@ -127,16 +147,23 @@ let view_tm tm =
     |> React.S.map ~eq (Map.of_alist_exn (module Path))
   in
 
-  (* let selection_s, set_selection = React.S.create () in *)
+  let selection_e, set_selection = React.E.create () in
 
   let elem = map_s
     |> React.S.map ~eq (fun map ->
       let queue = Queue.create () in
       show_tm ~path:[] ~map ~queue tm;
-      Html.div (Queue.to_list queue)
+      let elems, evts = queue |> Queue.to_list |> List.unzip in
+
+      let _ : unit React.event = evts
+        |> React.E.select
+        |> React.E.map set_selection
+      in
+
+      Html.div elems
     )
     |> RList.singleton_s
     |> R.Html.div
   in
 
-  elem (* , selection_s *)
+  elem, selection_e
