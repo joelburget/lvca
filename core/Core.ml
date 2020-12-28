@@ -257,8 +257,8 @@ let rec eval_ctx
       Ok (Nominal.Primitive (loc, Primitive.PrimInteger Z.(a' - b')))
     | _ -> Error ("Invalid arguments to sub", tm))
 
-  | CoreApp (_, Term (Var (_, "string_of_chars")), Term char_list) ->
-    let%bind char_list = eval_ctx' ctx char_list in
+  | CoreApp (_, Term (Var (_, "string_of_chars")), char_list) ->
+    let%bind char_list = eval_ctx ctx char_list in
     (match char_list with
       | Operator (loc, "list", [ Nominal.Scope ([], chars) ]) -> chars
         |> List.map ~f:(function
@@ -269,7 +269,13 @@ let rec eval_ctx
         |> Result.map ~f:(fun cs ->
             Nominal.Primitive (loc, Primitive.PrimString (String.of_char_list cs)))
         |> Result.map_error ~f:(fun msg -> msg, tm)
-      | _ -> Error ("TODO: string_of_chars 2", tm))
+      | _ -> Error ("expected a list of characters", tm))
+
+  | CoreApp (_, Term (Var (_, "var")), str_tm) ->
+    let%bind str = eval_ctx ctx str_tm in
+    (match str with
+      | Primitive (loc, PrimString name) -> Ok (Nominal.Var (loc, name))
+      | _ -> Error ("expected a string", tm))
 
   | CoreApp (_, Term (Var (_, "is_digit")), Term c) ->
     eval_char_bool_fn "is_digit" Char.is_digit ctx tm c

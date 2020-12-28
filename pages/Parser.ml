@@ -130,7 +130,7 @@ module Prelude = struct
   let alpha = parse_parser_exn Examples.satisfy_is_alpha
   let digit = parse_parser_exn Examples.satisfy_is_digit
   let name = parse_parser_exn
-    {|chars=alpha+ -> {let str = string_of_chars chars in {var(str)}}|}
+    {|chars=alpha+ -> {var (string_of_chars chars)}|}
   let literal = parse_parser_exn
     {|chars=digit+ -> {let str = string_of_chars chars in {literal(str)}}|}
 
