@@ -111,25 +111,30 @@ let mk
     }
   in
 
-  let fmt = Format.formatter_of_out_functions out_fns in
-  Format.pp_set_tags fmt true;
-  Format.pp_set_formatter_stag_functions
-    fmt
+  let stag_fns : Format.formatter_stag_functions =
     (* We open a new span for every range tag we encounter. All children until we
        encounter the matching close tag will be nested under it (by enqueuing). *)
     { mark_open_stag =
         (function
-          | SourceRanges.Stag rng -> Stack.push stack (rng, Queue.create ()); ""
+          | SourceRanges.Stag rng ->
+            Stack.push stack (rng, Queue.create ());
+            ""
           | _ -> ""
         )
-        (* Closing a range; create the span holding all of the enqueued children. *)
+    (* Closing a range; create the span holding all of the enqueued children. *)
     ; mark_close_stag =
         (fun _ -> match Stack.pop stack with
-          | Some (_, q) -> q |> Queue.to_list |> span |> add_at_current_level; ""
+          | Some (_, q) ->
+            q |> Queue.to_list |> span |> add_at_current_level; ""
           | None -> ""
         )
     ; print_open_stag = Fn.const ()
     ; print_close_stag = Fn.const ()
-    };
+    }
+  in
+
+  let fmt = Format.formatter_of_out_functions out_fns in
+  Format.pp_set_tags fmt true;
+  Format.pp_set_formatter_stag_functions fmt stag_fns;
   Html.pre [R.Html.code top_level_elems], fmt, clear
 ;;
