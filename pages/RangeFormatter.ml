@@ -60,8 +60,7 @@ let mk
   in
   *)
 
-  let get_attrs () =
-    match Stack.top stack with
+  let get_attrs () = match Stack.top stack with
     | None -> []
     | Some (rng, _) ->
       let classes = selected_s
@@ -137,28 +136,15 @@ let mk
        encounter the matching close tag will be nested under it (by enqueuing). *)
     { mark_open_stag =
         (function
-          (*
-        | Range.Stag rng ->
-          printf "opening Range: %s\n" (Range.to_string rng);
-          Stack.push stack (Some rng, Queue.create ());
-          ""
-        | SourceRange.Stag rng ->
-          printf "opening SourceRange: %s\n" (SourceRange.to_string rng);
-          ""
-          *)
-        | SourceRanges.Stag rng ->
-          (* printf "opening SourceRanges: %s\n" (SourceRanges.to_string rng); *)
-          Stack.push stack (rng, Queue.create ());
-          ""
-        | _ -> "")
+          | SourceRanges.Stag rng -> Stack.push stack (rng, Queue.create ()); ""
+          | _ -> ""
+        )
         (* Closing a range; create the span holding all of the enqueued children. *)
     ; mark_close_stag =
-        (fun _ ->
-          (* printf "closing range\n"; *)
-          (match Stack.pop stack with
-          | None -> ()
-          | Some (_, q) -> q |> Queue.to_list |> span |> add_at_current_level);
-          "")
+        (fun _ -> match Stack.pop stack with
+          | Some (_, q) -> q |> Queue.to_list |> span |> add_at_current_level; ""
+          | None -> ""
+        )
     ; print_open_stag = Fn.const ()
     ; print_close_stag = Fn.const ()
     };
