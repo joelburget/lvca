@@ -203,7 +203,9 @@ let view_term ~highlight_s tm =
   let pp_view, tm_selection_e =
     pp_view ~highlight_s tm (Nominal.pp_term_ranges Primitive.pp)
   in
-  let tree_view, tree_selection_e = TreeView.view_tm tm in
+  let tree_view, tree_selection_e =
+    TreeView.view_tm ~default_expanded_depth:FullyExpanded tm
+  in
   let view = Html.(div
     [ div ~a:[a_class ["my-2"]] [success_msg [pp_view]]
     ; div ~a:[a_class ["my-2"]] [span [txt "Tree viewer:"]]

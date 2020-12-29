@@ -8,6 +8,15 @@ module React = SafeReact
 
 (* TODO: make into a table with source / range columns *)
 
+type default_expanded_depth
+  = ExpandedTo of int
+  | FullyExpanded
+
+let decrease_depth = function
+  | ExpandedTo 0 -> ExpandedTo 0
+  | ExpandedTo n -> ExpandedTo (n - 1)
+  | FullyExpanded -> FullyExpanded
+
 type indexed_map_contents =
   { expanded_s: bool React.signal
   ; set_expanded: bool -> unit
@@ -67,16 +76,21 @@ let padded_txt depth text =
     ~a:[a_class ["inline-block"]]
     (Lvca_util.List.snoc indents (txt text))
 
-let rec index_tm ~map_ref path = function
+let rec index_tm ~expanded_depth ~map_ref path = function
   | Nominal.Primitive _ | Var _ -> ()
   | Operator (_loc, _name, scopes) -> if not (List.is_empty scopes) then (
-    let expanded_s, set_expanded = React.S.create ~eq:Bool.(=) false in
+    let starts_expanded = match expanded_depth with
+      | FullyExpanded -> true
+      | ExpandedTo n -> n > 0
+    in
+    let expanded_s, set_expanded = React.S.create ~eq:Bool.(=) starts_expanded in
     map_ref := Map.set !map_ref ~key:path ~data:{ expanded_s; set_expanded };
-    List.iteri scopes ~f:(fun i -> index_scope ~map_ref i path)
+    List.iteri scopes ~f:(fun i -> index_scope ~expanded_depth ~map_ref i path)
   )
 
-and index_scope ~map_ref i path (Nominal.Scope (_pats, tms)) =
-  List.iteri tms ~f:(fun j -> index_tm ~map_ref ((i, j)::path))
+and index_scope ~expanded_depth ~map_ref i path (Nominal.Scope (_pats, tms)) =
+  let expanded_depth = decrease_depth expanded_depth in
+  List.iteri tms ~f:(fun j -> index_tm ~expanded_depth ~map_ref ((i, j)::path))
 
 let rec show_pattern ~depth ~queue ~suffix = function
   | Pattern.Primitive (loc, p) ->
@@ -141,14 +155,14 @@ and show_scope ~path ~map ~queue ~last:last_scope i (Nominal.Scope (pats, tms)) 
     show_tm ~path:((i, j)::path) ~map ~queue ~suffix
   )
 
-let view_tm tm =
+let view_tm ?default_expanded_depth:(expanded_depth=(ExpandedTo 1)) tm =
   let tm = Nominal.map_loc ~f:cvt_range tm in
 
   (* First index all of the terms, meaning we collect a mapping from their path
      to expansion status (so that subterms remember their status even if
      parents / ancestors are closed. *)
   let map_ref = ref (Base.Map.empty (module Path)) in
-  index_tm ~map_ref [] tm;
+  index_tm ~expanded_depth ~map_ref [] tm;
 
   (* Any signal change coming from map_ref is a real update, don't bother with
      equality testing. *)
