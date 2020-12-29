@@ -630,7 +630,7 @@ module View = struct
     in
     let star_table = mk_input_result' Examples.many star_input in
     let plus_table = mk_input_result' Examples.plus plus_input in
-    let _count_table = mk_input_result' Examples.count count_input in
+    let count_table = mk_input_result' Examples.count count_input in
 
     let choice1_table = mk_input_result' Examples.two_choice choice1_input in
     let choice2_table = mk_input_result' Examples.multi_choice choice2_input in
@@ -708,6 +708,10 @@ module View = struct
         <p>The plus operator can be used to accept one or more repetitions of
         the previous parser. For example <code class="code-inline">'c'*</code> accepts one or more <code class="code-inline">'c'</code>s.</p>
         |}[plus_table]{|
+
+        <h4>count</h4>
+        <p>A parser followed by a number accepts a fixed number of repetitions of that parser.</p>
+        |}[count_table]{|
 
         <h3>Sequence</h3>
 
