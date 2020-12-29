@@ -163,7 +163,7 @@ let view_tm tm =
       Html.div elems
     )
     |> RList.singleton_s
-    |> R.Html.div
+    |> R.Html.div ~a:[Html.a_class ["border-2"; "p-2"]]
   in
 
   elem, selection_e
