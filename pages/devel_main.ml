@@ -10,20 +10,22 @@ module Model = struct
     | EvalWithProvenancePage
     | TermToTexPage
     | ParserPage
+    | ScopeViewerPage
     | EditsPage
 
   (* | TermToDocument *)
 
   type t = { page : page }
 
-  let initial_model = { page = ParserPage }
+  let initial_model = { page = ScopeViewerPage }
 
   let all_pages =
     [ TermAndConcretePage
     ; CalculatorPage
+    ; ParserPage
     ; EvalWithProvenancePage
     ; TermToTexPage
-    ; ParserPage
+    ; ScopeViewerPage
     ; EditsPage
     ]
   ;;
@@ -51,6 +53,7 @@ module View = struct
     | TermAndConcretePage -> "01: term and concrete"
     | CalculatorPage -> "02: calculator"
     | ParserPage -> "03: parser"
+    | ScopeViewerPage -> "0x: scope viewer"
     | EditsPage -> "0x: edits"
     | EvalWithProvenancePage -> "0x: evaluation with provenance"
     | TermToTexPage -> "0x: term to tex"
@@ -62,6 +65,7 @@ module View = struct
     | EvalWithProvenancePage -> EvalWithProvenance.stateless_view
     | TermToTexPage -> TermToTex.stateless_view
     | ParserPage -> Parser.stateless_view
+    | ScopeViewerPage -> ScopeViewer.stateless_view
     | EditsPage -> Edits.stateless_view
   ;;
 
@@ -94,19 +98,27 @@ module View = struct
     in
     let page_view =
       R.Html5.div
-        (model_s |> React.S.map (fun { page } -> stateless_view page ()) |> RList.singleton_s)
+        (model_s
+        |> React.S.map (fun { page } -> stateless_view page ())
+        |> RList.singleton_s)
     in
-
-    [%html{|
+    [%html
+      {|
       <div>
         <main class="container flex flex-col md:grid md:grid-cols-8">
           <div class="col-span-1"></div>
           <div class="col-span-7">
             <h2>LVCA demos</h2>
-            <select onchange=|} (handler signal_update) {|>
-              |} page_selector {|
+            <select onchange=|}
+        (handler signal_update)
+        {|>
+              |}
+        page_selector
+        {|
             </select>
-            |}[ page_view ]{|
+            |}
+        [ page_view ]
+        {|
           </div>
         </main>
       </div>
