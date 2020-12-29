@@ -102,8 +102,20 @@ let rec show_pattern ~depth ~queue ~suffix = function
     let open_elem = grid_tmpl [ padded_txt depth (name ^ "(") ] loc in
     Queue.enqueue queue open_elem;
 
-    List.iter patss
-      ~f:(List.iter ~f:(show_pattern ~depth:(Int.succ depth) ~queue ~suffix:";"));
+    let num_patss = List.length patss in
+    List.iteri patss ~f:(fun i pats ->
+      let num_pats = List.length pats in
+      let last_outer = i = num_patss - 1 in
+      List.iteri pats ~f:(fun j ->
+        let last_inner = j = num_pats - 1 in
+        let suffix = match last_inner, last_outer with
+          | true, true -> ""
+          | true, false -> ";"
+          | false, _ -> ","
+        in
+        show_pattern ~depth:(Int.succ depth) ~queue ~suffix
+      )
+    );
 
     let close_elem = grid_tmpl [ padded_txt depth (")" ^ suffix) ] loc in
     Queue.enqueue queue close_elem
