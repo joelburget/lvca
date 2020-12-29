@@ -18,32 +18,46 @@ type reactive_map_contents =
   ; set_expanded: bool -> unit
   }
 
-let a_class, txt, div, _ul, _li = Html.(a_class, txt, div, ul, li)
+let a_class, txt, td, tr = Html.(a_class, txt, td, tr)
 
-let view_loc loc = loc |> SourceRanges.to_string |> txt
+let cvt_range : SourceRanges.t -> SourceRange.t option
+  = fun source_ranges -> match Map.to_alist source_ranges with
+    | [source, [range]] -> Some { source; range }
+    | _ -> None
 
 let grid_tmpl left loc =
-  let div = div ~a:[a_class ["grid"; "grid-cols-3"]]
-    [ div ~a:[a_class ["col-span-2"]] left
-    ; div ~a:[] [ view_loc loc ]
-    ]
+  let fst_col = td ~a:[a_class ["col-span-2"; "px-2"]] left in
+  let cols = match loc with
+    | None -> [ fst_col ]
+    | Some SourceRange.{ source; range } ->
+      [ fst_col
+      ; td ~a:[a_class ["px-2"]] [txt source]
+      ; td ~a:[a_class ["px-2"]] [txt (Range.to_string range)]
+      ]
   in
 
-  let div_elem = To_dom.of_div div in
+    (* div ~a:[a_class ["grid"; "grid-cols-3"]] cols in *)
+  let tr = tr cols in
+
+  let tr_elem = To_dom.of_tr tr in
 
   let evt, trigger_evt = React.E.create () in
 
-  Common.bind_event Ev.mouseovers div_elem (fun _evt ->
-    trigger_evt loc;
-    Lwt.return ()
+  (match loc with
+    | None -> ()
+    | Some loc ->
+      Common.bind_event Ev.mouseovers tr_elem (fun _evt ->
+        trigger_evt (SourceRanges.of_source_range loc);
+        Lwt.return ()
+      );
+
+      Common.bind_event Ev.mouseouts tr_elem (fun _evt ->
+        trigger_evt SourceRanges.empty;
+        Lwt.return ()
+      )
   );
 
-  Common.bind_event Ev.mouseouts div_elem (fun _evt ->
-    trigger_evt SourceRanges.empty;
-    Lwt.return ()
-  );
-
-  div, evt
+  tr, evt
 
 let indent _ = Html.(span ~a:[a_class ["border-l-2"; "border-dotted"]] [txt "  "])
 
@@ -128,6 +142,8 @@ and show_scope ~path ~map ~queue ~last:last_scope i (Nominal.Scope (pats, tms)) 
   )
 
 let view_tm tm =
+  let tm = Nominal.map_loc ~f:cvt_range tm in
+
   (* First index all of the terms, meaning we collect a mapping from their path
      to expansion status (so that subterms remember their status even if
      parents / ancestors are closed. *)
@@ -153,17 +169,29 @@ let view_tm tm =
     |> React.S.map ~eq (fun map ->
       let queue = Queue.create () in
       show_tm ~path:[] ~map ~queue tm;
-      let elems, evts = queue |> Queue.to_list |> List.unzip in
+      let rows, evts = queue |> Queue.to_list |> List.unzip in
+      let tbody = rows |> Html.tbody in
 
       let _ : unit React.event = evts
         |> React.E.select
         |> React.E.map set_selection
       in
 
-      Html.div elems
+      [%html{|
+      <table class="w-full table-fixed border-2">
+        <thead>
+          <tr>
+            <td class="p-2 border-t-2 border-b-2 border-r-2 w-1/2">term</td>
+            <td class="p-2 border-t-2 border-b-2 border-r-2">source</td>
+            <td class="p-2 border-t-2 border-b-2">range</td>
+          </tr>
+        </thead>
+        |}[tbody]{|
+      </table>
+        |}]
     )
     |> RList.singleton_s
-    |> R.Html.div ~a:[Html.a_class ["border-2"; "p-2"]]
+    |> R.Html.div (* ~a:[Html.a_class ["border-2"; "p-2"]] *)
   in
 
   elem, selection_e
