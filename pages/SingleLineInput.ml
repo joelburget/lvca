@@ -70,6 +70,7 @@ let mk
          ; "left-1"
          ; "top-1"
          ; "text-transparent"
+         ; "font-mono"
          ; "whitespace-pre"
          ]
        ; Html.a_aria "hidden" ["true"]
