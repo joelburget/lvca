@@ -981,7 +981,6 @@ module TestParsers = struct
   let pair = "a='a' b='b' -> {{pair(a; b)}}"
   let pair2 = "a=. b=. -> {{pair(a; b)}}"
 
-  (* XXX: "Invalid arguments to add" *)
   (* XXX: "fix need for parens" *)
   let fix3 = {|let char = satisfy (c -> {is_alpha c}) in
 let digit = satisfy (c -> {is_digit c}) in
@@ -1336,8 +1335,8 @@ module Properties = struct
   let string_round_trip1 t =
     match t |> pp_str |> parse with
     | Ok t' ->
-      let t'' = erase t' in
-      PropertyResult.check Caml.(t'' = t) (Fmt.str "%a <> %a" pp_plain t'' pp_plain t)
+      let t' = erase t' in
+      PropertyResult.check Caml.(t' = t) (Fmt.str "%a <> %a" pp_plain t' pp_plain t)
     | Error msg ->
       Failed (Fmt.str {|parse_string "%s": %s|} (pp_str t) msg)
   ;;
