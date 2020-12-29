@@ -143,7 +143,7 @@ let rec show_tm ~path ~map ~queue ?suffix:(suffix="") =
     ()
 
 and show_scope ~path ~map ~queue ~last:last_scope i (Nominal.Scope (pats, tms)) =
-  List.iter pats ~f:(show_pattern ~depth:(List.length path) ~queue ~suffix:".");
+  List.iter pats ~f:(show_pattern ~depth:(List.length path + 1) ~queue ~suffix:".");
   let num_tms = List.length tms in
   List.iteri tms ~f:(fun j ->
     let last_tm = j = num_tms - 1 in
