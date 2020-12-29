@@ -25,6 +25,7 @@ let empty = Lvca_util.String.Map.empty
 let unions lst = Base.List.fold lst ~f:union ~init:empty
 let mk buf p1 p2 = Lvca_util.String.Map.singleton buf (Ranges.of_list [ Range.mk p1 p2 ])
 let of_range ~buf Range.{ start; finish } = mk buf start finish
+let of_source_range SourceRange.{ source; range } = of_range ~buf:source range
 let of_opt_range ~buf = function Some range -> of_range ~buf range | None -> empty
 
 let is_subset p1 p2 =

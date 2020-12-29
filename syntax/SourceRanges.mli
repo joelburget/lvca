@@ -10,6 +10,7 @@ val invariants : t -> bool
 
 val empty : t
 val mk : string -> int -> int -> t
+val of_source_range : SourceRange.t -> t
 val of_range : buf:string -> Range.t -> t
 val of_opt_range : buf:string -> OptRange.t -> t
 
