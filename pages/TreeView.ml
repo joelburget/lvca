@@ -155,7 +155,7 @@ and show_scope ~path ~map ~queue ~last:last_scope i (Nominal.Scope (pats, tms)) 
     show_tm ~path:((i, j)::path) ~map ~queue ~suffix
   )
 
-let view_tm ?default_expanded_depth:(expanded_depth=(ExpandedTo 1)) tm =
+let view_tm ?default_expanded_depth:(expanded_depth=FullyExpanded) tm =
   let tm = Nominal.map_loc ~f:cvt_range tm in
 
   (* First index all of the terms, meaning we collect a mapping from their path
