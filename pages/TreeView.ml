@@ -45,9 +45,7 @@ let grid_tmpl left loc =
       ]
   in
 
-    (* div ~a:[a_class ["grid"; "grid-cols-3"]] cols in *)
   let tr = tr cols in
-
   let tr_elem = To_dom.of_tr tr in
 
   let evt, trigger_evt = React.E.create () in
@@ -219,7 +217,7 @@ let view_tm ?default_expanded_depth:(expanded_depth=FullyExpanded) tm =
         |}]
     )
     |> RList.singleton_s
-    |> R.Html.div (* ~a:[Html.a_class ["border-2"; "p-2"]] *)
+    |> R.Html.div
   in
 
   elem, selection_e
