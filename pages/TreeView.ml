@@ -35,13 +35,13 @@ let cvt_range : SourceRanges.t -> SourceRange.t option
     | _ -> None
 
 let grid_tmpl left loc =
-  let fst_col = td ~a:[a_class ["col-span-2"; "px-2"]] left in
+  let fst_col = td ~a:[a_class ["col-span-2"; "px-2"; "py-0"]] left in
   let cols = match loc with
     | None -> [ fst_col ]
     | Some SourceRange.{ source; range } ->
       [ fst_col
-      ; td ~a:[a_class ["px-2"]] [txt source]
-      ; td ~a:[a_class ["px-2"]] [txt (Range.to_string range)]
+      ; td ~a:[a_class ["px-2"; "py-0"]] [txt source]
+      ; td ~a:[a_class ["px-2"; "py-0"]] [txt (Range.to_string range)]
       ]
   in
 
@@ -204,7 +204,7 @@ let view_tm ?default_expanded_depth:(expanded_depth=FullyExpanded) tm =
       in
 
       [%html{|
-      <table class="w-full table-fixed border-2">
+      <table class="w-full table-fixed border-2 cursor-default">
         <thead>
           <tr>
             <td class="p-2 border-t-2 border-b-2 border-r-2 w-1/2">term</td>
