@@ -77,6 +77,11 @@ let padded_txt depth text =
     ~a:[a_class ["inline-block"]]
     (Lvca_util.List.snoc indents (txt text))
 
+let get_suffix ~last_slot ~last_term = match last_term, last_slot with
+  | true, true -> ""
+  | true, false -> ";"
+  | false, _ -> ","
+
 let rec index_tm ~expanded_depth ~expanded_map_ref path = function
   | Nominal.Primitive _ | Var _ -> ()
   | Operator (_loc, _name, scopes) -> if not (List.is_empty scopes) then (
@@ -100,21 +105,17 @@ let rec show_pattern ~source_column ~depth ~queue ~suffix = function
     Queue.enqueue queue (grid_tmpl ~source_column [str |> padded_txt depth] loc)
   | Var (loc, name) | Ignored (loc, name) ->
     Queue.enqueue queue (grid_tmpl ~source_column [padded_txt depth (name ^ suffix)] loc)
-  | Operator (loc, name, patss) ->
+  | Operator (loc, name, slots) ->
     let open_elem = grid_tmpl ~source_column [ padded_txt depth (name ^ "(") ] loc in
     Queue.enqueue queue open_elem;
 
-    let num_patss = List.length patss in
-    List.iteri patss ~f:(fun i pats ->
+    let num_slots = List.length slots in
+    List.iteri slots ~f:(fun i pats ->
       let num_pats = List.length pats in
-      let last_outer = i = num_patss - 1 in
+      let last_slot = i = num_slots - 1 in
       List.iteri pats ~f:(fun j ->
-        let last_inner = j = num_pats - 1 in
-        let suffix = match last_inner, last_outer with
-          | true, true -> ""
-          | true, false -> ";"
-          | false, _ -> ","
-        in
+        let last_term = j = num_pats - 1 in
+        let suffix = get_suffix ~last_slot ~last_term in
         show_pattern ~source_column ~depth:(Int.succ depth) ~queue ~suffix
       )
     );
@@ -161,19 +162,14 @@ let rec show_tm ~source_column ~path ~expanded_map ~queue ?suffix:(suffix="") =
     in
     ()
 
-and show_scope ~source_column ~path ~expanded_map ~queue ~last:last_scope i
+and show_scope ~source_column ~path ~expanded_map ~queue ~last:last_slot i
   (Nominal.Scope (pats, tms)) =
   List.iter pats
     ~f:(show_pattern ~source_column ~depth:(List.length path + 1) ~queue ~suffix:".");
   let num_tms = List.length tms in
   List.iteri tms ~f:(fun j ->
-    let last_tm = j = num_tms - 1 in
-    let suffix = match last_tm, last_scope with
-      | true, true -> ""
-      | true, false -> ";"
-      | _, _ -> ","
-    in
-    show_tm ~source_column ~path:((i, j)::path) ~expanded_map ~queue ~suffix
+    let last_term = j = num_tms - 1 in
+    let suffix = get_suffix ~last_term ~last_slot in
   )
 
 let view_tm
