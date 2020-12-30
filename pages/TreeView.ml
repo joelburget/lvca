@@ -76,7 +76,7 @@ let padded_txt depth text =
     ~a:[a_class ["inline-block"]]
     (Lvca_util.List.snoc indents (txt text))
 
-let rec index_tm ~expanded_depth ~map_ref path = function
+let rec index_tm ~expanded_depth ~expanded_map_ref path = function
   | Nominal.Primitive _ | Var _ -> ()
   | Operator (_loc, _name, scopes) -> if not (List.is_empty scopes) then (
     let starts_expanded = match expanded_depth with
@@ -84,13 +84,14 @@ let rec index_tm ~expanded_depth ~map_ref path = function
       | ExpandedTo n -> n > 0
     in
     let expanded_s, set_expanded = React.S.create ~eq:Bool.(=) starts_expanded in
-    map_ref := Map.set !map_ref ~key:path ~data:{ expanded_s; set_expanded };
-    List.iteri scopes ~f:(fun i -> index_scope ~expanded_depth ~map_ref i path)
+    expanded_map_ref :=
+      Map.set !expanded_map_ref ~key:path ~data:{ expanded_s; set_expanded };
+    List.iteri scopes ~f:(fun i -> index_scope ~expanded_depth ~expanded_map_ref i path)
   )
 
-and index_scope ~expanded_depth ~map_ref i path (Nominal.Scope (_pats, tms)) =
+and index_scope ~expanded_depth ~expanded_map_ref i path (Nominal.Scope (_pats, tms)) =
   let expanded_depth = decrease_depth expanded_depth in
-  List.iteri tms ~f:(fun j -> index_tm ~expanded_depth ~map_ref ((i, j)::path))
+  List.iteri tms ~f:(fun j -> index_tm ~expanded_depth ~expanded_map_ref ((i, j)::path))
 
 let rec show_pattern ~depth ~queue ~suffix = function
   | Pattern.Primitive (loc, p) ->
@@ -174,6 +175,7 @@ let view_tm ?default_expanded_depth:(expanded_depth=FullyExpanded) tm =
      to expansion status (so that subterms remember their status even if
      parents / ancestors are closed. *)
   let expanded_map_ref = ref (Base.Map.empty (module Path)) in
+
   index_tm ~expanded_depth ~expanded_map_ref [] tm;
 
   (* Any signal change coming from expanded_map_ref is a real update, don't bother with
