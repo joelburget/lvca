@@ -79,6 +79,8 @@ val match_pattern
   -> ('loc, 'prim) term
   -> (('loc, 'prim) term Lvca_util.String.Map.t) option
 
+val free_vars : (_, _) term -> Lvca_util.String.Set.t
+
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t
   val whitespace_t : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t

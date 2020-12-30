@@ -251,6 +251,30 @@ and match_scope ~prim_eq pats (Scope (binders, tms)) = match binders with
   )
   | _ -> None
 
+let free_vars tm =
+  let module S = Lvca_util.String.Set in
+
+  let rec free_vars bound_vars = function
+    | Operator (_, _, scopes) -> scopes
+      |> List.map ~f:(scope_free_vars bound_vars)
+      |> S.union_list
+    | Var (_, name) -> if Set.mem bound_vars name then S.empty else S.singleton name
+    | Primitive _ -> S.empty
+
+  and scope_free_vars bound_vars (Scope (binders, tms)) =
+    let bound_vars = binders
+      |> List.map ~f:Pattern.vars_of_pattern
+      |> S.union_list
+      |> Set.union bound_vars
+    in
+
+    tms
+      |> List.map ~f:(free_vars bound_vars)
+      |> S.union_list
+  in
+
+  free_vars S.empty tm
+
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   module Primitive = Primitive.Parse (Comment)
