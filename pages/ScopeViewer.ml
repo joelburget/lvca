@@ -34,7 +34,7 @@ module View = struct
       | Error msg -> [%html{|<div>|}[Html.txt msg]{|</div>|}]
       | Ok tm ->
         let tm = tm |> Nominal.map_loc ~f:(SourceRanges.of_opt_range ~buf) in
-        let tree_view, tree_selection_e = TreeView.view_tm tm in
+        let tree_view, tree_selection_e = TreeView.view_tm ~source_column:false tm in
         let _ : unit React.event = tree_selection_e
           |> React.E.map (fun source_ranges -> match Map.find source_ranges buf with
             | None -> ()

@@ -34,15 +34,18 @@ let cvt_range : SourceRanges.t -> SourceRange.t option
     | [source, [range]] -> Some { source; range }
     | _ -> None
 
-let grid_tmpl left loc =
+let grid_tmpl ~source_column left loc =
   let fst_col = td ~a:[a_class ["col-span-2"; "px-2"; "py-0"]] left in
   let cols = match loc with
     | None -> [ fst_col ]
     | Some SourceRange.{ source; range } ->
-      [ fst_col
-      ; td ~a:[a_class ["px-2"; "py-0"]] [txt source]
-      ; td ~a:[a_class ["px-2"; "py-0"]] [txt (Range.to_string range)]
+      [ Some fst_col
+      ; if source_column
+        then Some (td ~a:[a_class ["px-2"; "py-0"]] [txt source])
+        else None
+      ; Some (td ~a:[a_class ["px-2"; "py-0"]] [txt (Range.to_string range)])
       ]
+      |> List.filter_map ~f:Fn.id
   in
 
   let tr = tr cols in
@@ -91,14 +94,14 @@ and index_scope ~expanded_depth ~expanded_map_ref i path (Nominal.Scope (_pats, 
   let expanded_depth = decrease_depth expanded_depth in
   List.iteri tms ~f:(fun j -> index_tm ~expanded_depth ~expanded_map_ref ((i, j)::path))
 
-let rec show_pattern ~depth ~queue ~suffix = function
+let rec show_pattern ~source_column ~depth ~queue ~suffix = function
   | Pattern.Primitive (loc, p) ->
     let str = Primitive.to_string p ^ suffix in
-    Queue.enqueue queue (grid_tmpl [str |> padded_txt depth] loc)
+    Queue.enqueue queue (grid_tmpl ~source_column [str |> padded_txt depth] loc)
   | Var (loc, name) | Ignored (loc, name) ->
-    Queue.enqueue queue (grid_tmpl [padded_txt depth (name ^ suffix)] loc)
+    Queue.enqueue queue (grid_tmpl ~source_column [padded_txt depth (name ^ suffix)] loc)
   | Operator (loc, name, patss) ->
-    let open_elem = grid_tmpl [ padded_txt depth (name ^ "(") ] loc in
+    let open_elem = grid_tmpl ~source_column [ padded_txt depth (name ^ "(") ] loc in
     Queue.enqueue queue open_elem;
 
     let num_patss = List.length patss in
@@ -112,21 +115,21 @@ let rec show_pattern ~depth ~queue ~suffix = function
           | true, false -> ";"
           | false, _ -> ","
         in
-        show_pattern ~depth:(Int.succ depth) ~queue ~suffix
+        show_pattern ~source_column ~depth:(Int.succ depth) ~queue ~suffix
       )
     );
 
-    let close_elem = grid_tmpl [ padded_txt depth (")" ^ suffix) ] loc in
+    let close_elem = grid_tmpl ~source_column [ padded_txt depth (")" ^ suffix) ] loc in
     Queue.enqueue queue close_elem
 
-let rec show_tm ~path ~expanded_map ~queue ?suffix:(suffix="") =
+let rec show_tm ~source_column ~path ~expanded_map ~queue ?suffix:(suffix="") =
   let depth = List.length path in
   function
   | Nominal.Primitive (loc, p) ->
     let str = Primitive.to_string p ^ suffix in
-    Queue.enqueue queue (grid_tmpl [str |> padded_txt depth] loc)
+    Queue.enqueue queue (grid_tmpl ~source_column [str |> padded_txt depth] loc)
   | Var (loc, name) ->
-    Queue.enqueue queue (grid_tmpl [padded_txt depth (name ^ suffix)] loc)
+    Queue.enqueue queue (grid_tmpl ~source_column [padded_txt depth (name ^ suffix)] loc)
   | Operator (loc, name, scopes) ->
     let { expanded; set_expanded } = Map.find_exn expanded_map path in
     let expanded_s, _unused_set_expanded = React.S.create ~eq:Bool.(=) expanded in
@@ -137,24 +140,31 @@ let rec show_tm ~path ~expanded_map ~queue ?suffix:(suffix="") =
     let _: unit React.signal = expanded_s
       |> React.S.map ~eq:Unit.(=) (function
         | false -> Queue.enqueue queue (grid_tmpl
-          [padded_txt depth (name ^ "("); button; txt (")" ^ suffix) ]
+          ~source_column [padded_txt depth (name ^ "("); button; txt (")" ^ suffix) ]
           loc
         )
         | true ->
-          let open_elem = grid_tmpl [ padded_txt depth (name ^ "("); button ] loc in
+          let open_elem =
+            grid_tmpl ~source_column [ padded_txt depth (name ^ "("); button ] loc
+          in
           Queue.enqueue queue open_elem;
 
           List.iteri scopes ~f:(fun i ->
-            show_scope ~path ~expanded_map ~queue ~last:(i = List.length scopes - 1) i);
+            show_scope ~source_column ~path ~expanded_map ~queue
+              ~last:(i = List.length scopes - 1) i);
 
-          let close_elem = grid_tmpl [ padded_txt depth (")" ^ suffix) ] loc in
+          let close_elem =
+            grid_tmpl ~source_column [ padded_txt depth (")" ^ suffix) ] loc
+          in
           Queue.enqueue queue close_elem
       )
     in
     ()
 
-and show_scope ~path ~expanded_map ~queue ~last:last_scope i (Nominal.Scope (pats, tms)) =
-  List.iter pats ~f:(show_pattern ~depth:(List.length path + 1) ~queue ~suffix:".");
+and show_scope ~source_column ~path ~expanded_map ~queue ~last:last_scope i
+  (Nominal.Scope (pats, tms)) =
+  List.iter pats
+    ~f:(show_pattern ~source_column ~depth:(List.length path + 1) ~queue ~suffix:".");
   let num_tms = List.length tms in
   List.iteri tms ~f:(fun j ->
     let last_tm = j = num_tms - 1 in
@@ -163,10 +173,13 @@ and show_scope ~path ~expanded_map ~queue ~last:last_scope i (Nominal.Scope (pat
       | true, false -> ";"
       | _, _ -> ","
     in
-    show_tm ~path:((i, j)::path) ~expanded_map ~queue ~suffix
+    show_tm ~source_column ~path:((i, j)::path) ~expanded_map ~queue ~suffix
   )
 
-let view_tm ?default_expanded_depth:(expanded_depth=FullyExpanded) tm =
+let view_tm
+  ?source_column:(source_column=true)
+  ?default_expanded_depth:(expanded_depth=FullyExpanded)
+  tm =
   let tm = Nominal.map_loc ~f:cvt_range tm in
 
   (* First index all of the terms, meaning we collect a mapping from their path
@@ -194,7 +207,7 @@ let view_tm ?default_expanded_depth:(expanded_depth=FullyExpanded) tm =
   let elem = expanded_map_s
     |> React.S.map ~eq (fun expanded_map ->
       let queue = Queue.create () in
-      show_tm ~path:[] ~expanded_map ~queue tm;
+      show_tm ~source_column ~path:[] ~expanded_map ~queue tm;
       let rows, evts = queue |> Queue.to_list |> List.unzip in
       let tbody = rows |> Html.tbody in
 
@@ -203,15 +216,21 @@ let view_tm ?default_expanded_depth:(expanded_depth=FullyExpanded) tm =
         |> React.E.map set_selection
       in
 
+      let rows = if source_column
+        then
+          [ [%html{|<td class="p-2 border-t-2 border-b-2 border-r-2 w-1/2">term</td>|}]
+          ; [%html{|<td class="p-2 border-t-2 border-b-2 border-r-2">source</td>|}]
+          ; [%html{|<td class="p-2 border-t-2 border-b-2">range</td>|}]
+          ]
+        else
+          [ [%html{|<td class="p-2 border-t-2 border-b-2 border-r-2 w-2/3">term</td>|}]
+          ; [%html{|<td class="p-2 border-t-2 border-b-2">range</td>|}]
+          ]
+      in
+
       [%html{|
       <table class="w-full table-fixed border-2 cursor-default font-mono">
-        <thead>
-          <tr>
-            <td class="p-2 border-t-2 border-b-2 border-r-2 w-1/2">term</td>
-            <td class="p-2 border-t-2 border-b-2 border-r-2">source</td>
-            <td class="p-2 border-t-2 border-b-2">range</td>
-          </tr>
-        </thead>
+        <thead> <tr>|}rows{|</tr> </thead>
         |}[tbody]{|
       </table>
         |}]
