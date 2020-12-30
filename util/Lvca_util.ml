@@ -100,6 +100,8 @@ module String = struct
 
     let empty = Base.Set.empty (module Base.String)
     let of_list = Base.Set.of_list (module Base.String)
+    let singleton = Base.Set.singleton (module Base.String)
+    let union_list = Base.Set.union_list (module Base.String)
   end
 
   let slice : string -> int -> int -> string =
