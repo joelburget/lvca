@@ -511,8 +511,8 @@ module View = struct
         (view_parser_test ~parser_ctx ~highlight_s:input_hl_s) parser_s test_s
     in
 
-    let result = test_s' |> React.S.map ~eq:html_eq Tuple3.fst |> mk_div in
-    let trace_s = test_s' |> React.S.map ~eq:html_eq Tuple3.snd in
+    let result = test_s' |> React.S.map ~eq:html_eq Tuple3.get1 |> mk_div in
+    let trace_s = test_s' |> React.S.map ~eq:html_eq Tuple3.get2 in
 
     let tm_selection_s, set_selection =
       React.S.create ~eq:SourceRanges.(=) SourceRanges.empty

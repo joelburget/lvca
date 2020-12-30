@@ -215,31 +215,74 @@ module Cbor = struct
  ;;
 end
 
+module type TupleElem = sig
+  type t
+  val compare : t -> t -> int
+  val sexp_of_t : t -> Sexplib0.Sexp.t
+  val (=) : t -> t -> bool
+end
+
 module Tuple2 = struct
-  let compare (x1, y1) (x2, y2) =
-    let c1 = Int.compare x1 x2 in
-    if c1 <> 0 then c1 else Int.compare y1 y2
+  type ('a, 'b) t = 'a * 'b
 
-  let sexp_of_t (x, y) = Sexplib0.Sexp.List [Int.sexp_of_t x; Int.sexp_of_t y]
+  let sexp_of_t f1 f2 (x, y) = Sexplib0.Sexp.List [f1 x; f2 y]
 
-  let (=) (x1, y1) (x2, y2) = Int.(x1 = x2) && Int.(y1 = y2)
+  let compare ~cmp1 ~cmp2 (x1, y1) (x2, y2) =
+      let c1 = cmp1 x1 x2 in
+      if c1 <> 0 then c1 else cmp2 y1 y2
+
   let equal eq1 eq2 (x1, y1) (x2, y2) = eq1 x1 x2 && eq2 y1 y2
+
+  let get1 (x, _) = x
+  let get2 (_, y) = y
+
+  let map  ~f (x, y) = f x, f y
+  let map1 ~f (x, y) = f x, y
+  let map2 ~f (x, y) = x, f y
+
+  let curry f x y = f (x, y)
+  let uncurry f (x, y) = f x y
+
+  module Make (X : TupleElem) (Y : TupleElem) = struct
+    let compare = compare ~cmp1:X.compare ~cmp2:Y.compare
+    let sexp_of_t = sexp_of_t X.sexp_of_t Y.sexp_of_t
+    let (=) = equal X.(=) Y.(=)
+  end
+
+  module Int = Make(Int)(Int)
 end
 
 module Tuple3 = struct
-  let compare (x1, y1, z1) (x2, y2, z2) =
-    let c1 = Int.compare x1 x2 in
-    if c1 <> 0 then c1 else
-      let c2 = Int.compare y1 y2 in
-      if c2 <> 0 then c2 else
-      Int.compare z1 z2
+  type ('a, 'b, 'c) t = 'a * 'b * 'c
 
-  let sexp_of_t (x, y, z) =
-    Sexplib0.Sexp.List [Int.sexp_of_t x; Int.sexp_of_t y; Int.sexp_of_t z]
+  let sexp_of_t f1 f2 f3 (x, y, z) = Sexplib0.Sexp.List [f1 x; f2 y; f3 z]
+
+  let compare ~cmp1 ~cmp2 ~cmp3 (x1, y1, z1) (x2, y2, z2) =
+      let c1 = cmp1 x1 x2 in
+      if c1 <> 0 then c1 else
+        let c2 = cmp2 y1 y2 in
+        if c2 <> 0 then c2 else
+          cmp3 z1 z2
 
   let equal eq1 eq2 eq3 (x1, y1, z1) (x2, y2, z2) = eq1 x1 x2 && eq2 y1 y2 && eq3 z1 z2
 
-  let fst (x, _, _) = x
-  let snd (_, y, _) = y
-  let thd (_, _, z) = z
+  let get1 (x, _, _) = x
+  let get2 (_, y, _) = y
+  let get3 (_, _, z) = z
+
+  let map  ~f (x, y, z) = f x, f y, f z
+  let map1 ~f (x, y, z) = f x, y, z
+  let map2 ~f (x, y, z) = x, f y, z
+  let map3 ~f (x, y, z) = x, y, f z
+
+  let curry f x y z = f (x, y, z)
+  let uncurry f (x, y, z) = f x y z
+
+  module Make (X : TupleElem) (Y : TupleElem) (Z : TupleElem) = struct
+    let compare = compare ~cmp1:X.compare ~cmp2:Y.compare ~cmp3:Z.compare
+    let sexp_of_t = sexp_of_t X.sexp_of_t Y.sexp_of_t Z.sexp_of_t
+    let (=) = equal X.(=) Y.(=) Z.(=)
+  end
+
+  module Int = Make(Int)(Int)(Int)
 end
