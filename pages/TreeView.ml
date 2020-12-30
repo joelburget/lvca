@@ -120,7 +120,7 @@ let rec show_pattern ~depth ~queue ~suffix = function
     let close_elem = grid_tmpl [ padded_txt depth (")" ^ suffix) ] loc in
     Queue.enqueue queue close_elem
 
-let rec show_tm ~path ~map ~queue ?suffix:(suffix="") =
+let rec show_tm ~path ~expanded_map ~queue ?suffix:(suffix="") =
   let depth = List.length path in
   function
   | Nominal.Primitive (loc, p) ->
@@ -129,7 +129,7 @@ let rec show_tm ~path ~map ~queue ?suffix:(suffix="") =
   | Var (loc, name) ->
     Queue.enqueue queue (grid_tmpl [padded_txt depth (name ^ suffix)] loc)
   | Operator (loc, name, scopes) ->
-    let { expanded; set_expanded } = Map.find_exn map path in
+    let { expanded; set_expanded } = Map.find_exn expanded_map path in
     let expanded_s, _unused_set_expanded = React.S.create ~eq:Bool.(=) expanded in
     let button_event, button = Components.chevron_toggle expanded_s in
 
@@ -146,7 +146,7 @@ let rec show_tm ~path ~map ~queue ?suffix:(suffix="") =
           Queue.enqueue queue open_elem;
 
           List.iteri scopes ~f:(fun i ->
-            show_scope ~path ~map ~queue ~last:(i = List.length scopes - 1) i);
+            show_scope ~path ~expanded_map ~queue ~last:(i = List.length scopes - 1) i);
 
           let close_elem = grid_tmpl [ padded_txt depth (")" ^ suffix) ] loc in
           Queue.enqueue queue close_elem
@@ -154,7 +154,7 @@ let rec show_tm ~path ~map ~queue ?suffix:(suffix="") =
     in
     ()
 
-and show_scope ~path ~map ~queue ~last:last_scope i (Nominal.Scope (pats, tms)) =
+and show_scope ~path ~expanded_map ~queue ~last:last_scope i (Nominal.Scope (pats, tms)) =
   List.iter pats ~f:(show_pattern ~depth:(List.length path + 1) ~queue ~suffix:".");
   let num_tms = List.length tms in
   List.iteri tms ~f:(fun j ->
@@ -164,7 +164,7 @@ and show_scope ~path ~map ~queue ~last:last_scope i (Nominal.Scope (pats, tms)) 
       | true, false -> ";"
       | _, _ -> ","
     in
-    show_tm ~path:((i, j)::path) ~map ~queue ~suffix
+    show_tm ~path:((i, j)::path) ~expanded_map ~queue ~suffix
   )
 
 let view_tm ?default_expanded_depth:(expanded_depth=FullyExpanded) tm =
@@ -173,14 +173,14 @@ let view_tm ?default_expanded_depth:(expanded_depth=FullyExpanded) tm =
   (* First index all of the terms, meaning we collect a mapping from their path
      to expansion status (so that subterms remember their status even if
      parents / ancestors are closed. *)
-  let map_ref = ref (Base.Map.empty (module Path)) in
-  index_tm ~expanded_depth ~map_ref [] tm;
+  let expanded_map_ref = ref (Base.Map.empty (module Path)) in
+  index_tm ~expanded_depth ~expanded_map_ref [] tm;
 
-  (* Any signal change coming from map_ref is a real update, don't bother with
+  (* Any signal change coming from expanded_map_ref is a real update, don't bother with
      equality testing. *)
   let eq _ _ = false in
 
-  let map_s = !map_ref
+  let expanded_map_s = !expanded_map_ref
     |> Map.to_alist
     |> List.map ~f:(fun (path, { expanded_s; set_expanded }) -> expanded_s
       |> React.S.map ~eq (fun expanded -> path, { expanded; set_expanded })
@@ -191,10 +191,10 @@ let view_tm ?default_expanded_depth:(expanded_depth=FullyExpanded) tm =
 
   let selection_e, set_selection = React.E.create () in
 
-  let elem = map_s
-    |> React.S.map ~eq (fun map ->
+  let elem = expanded_map_s
+    |> React.S.map ~eq (fun expanded_map ->
       let queue = Queue.create () in
-      show_tm ~path:[] ~map ~queue tm;
+      show_tm ~path:[] ~expanded_map ~queue tm;
       let rows, evts = queue |> Queue.to_list |> List.unzip in
       let tbody = rows |> Html.tbody in
 
