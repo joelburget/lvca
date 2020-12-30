@@ -204,7 +204,7 @@ let view_tm ?default_expanded_depth:(expanded_depth=FullyExpanded) tm =
       in
 
       [%html{|
-      <table class="w-full table-fixed border-2 cursor-default">
+      <table class="w-full table-fixed border-2 cursor-default font-mono">
         <thead>
           <tr>
             <td class="p-2 border-t-2 border-b-2 border-r-2 w-1/2">term</td>
