@@ -6,7 +6,6 @@ open Js_of_ocaml_tyxml.Tyxml_js
 module Ev = Js_of_ocaml_lwt.Lwt_js_events
 module React = SafeReact
 
-(* TODO: make into a table with source / range columns *)
 
 type default_expanded_depth
   = ExpandedTo of int
