@@ -6,6 +6,14 @@ open Js_of_ocaml_tyxml.Tyxml_js
 module Ev = Js_of_ocaml_lwt.Lwt_js_events
 module React = SafeReact
 
+type var_status =
+  | Unselected
+  | Selected
+  | Shadowed
+
+type var_pos =
+  | Reference
+  | Definition of (var_status React.event * (var_status -> unit)) option
 
 type default_expanded_depth
   = ExpandedTo of int
@@ -26,15 +34,23 @@ type reactive_map_contents =
   ; set_expanded: bool -> unit
   }
 
-let a_class, txt, td, tr = Html.(a_class, txt, td, tr)
+let a_class, pre, span, txt, td, tr = Html.(a_class, pre, span, txt, td, tr)
 
 let cvt_range : SourceRanges.t -> SourceRange.t option
   = fun source_ranges -> match Map.to_alist source_ranges with
     | [source, [range]] -> Some { source; range }
     | _ -> None
 
-let grid_tmpl ~source_column left loc =
-  let fst_col = td ~a:[a_class ["col-span-2"; "px-2"; "py-0"]] left in
+let grid_tmpl ?scope_selection_e:(scope_selection_e=React.E.never) ~source_column left loc =
+  let classes = scope_selection_e
+    |> React.S.hold ~eq:Caml.(=) false
+    |> React.S.map ~eq:(List.equal Caml.(=)) (function
+      | true -> ["bg-green-50"; "col-span-2"; "px-2"; "py-0"]
+      | false -> ["col-span-2"; "px-2"; "py-0"]
+    )
+  in
+
+  let fst_col = td ~a:[R.Html.a_class classes] left in
   let cols = match loc with
     | None -> [ fst_col ]
     | Some SourceRange.{ source; range } ->
@@ -68,13 +84,71 @@ let grid_tmpl ~source_column left loc =
 
   tr, evt
 
-let indent _ = Html.(span ~a:[a_class ["border-l-2"; "border-dotted"]] [txt "  "])
+let indent _ = span ~a:[a_class ["border-l-2"; "border-dotted"]] [txt "  "]
 
 let padded_txt depth text =
   let indents = List.init depth ~f:indent in
-  Html.pre
-    ~a:[a_class ["inline-block"]]
-    (Lvca_util.List.snoc indents (txt text))
+  pre ~a:[a_class ["inline-block"]] (Lvca_util.List.snoc indents (txt text))
+
+(* TODO: move into struct *)
+let show_var ~var_pos ~queue ~source_column ~suffix ~selected_events ~depth ~loc ~name =
+  let select_events, set_selected = Map.find_exn selected_events name in
+
+  let shadowed_e = match var_pos with
+    | Definition (Some (shadowed_e, _)) -> shadowed_e
+    | _ -> React.E.never
+  in
+
+  let classes_s = React.E.select
+    [ shadowed_e |> React.E.map (fun e -> Either.First e)
+    ; select_events |> React.E.map (fun e -> Either.Second e)
+    ]
+    |> React.S.hold ~eq:Caml.(=) (Either.Second Unselected)
+    |> React.S.map ~eq:(List.equal String.(=)) (fun evt -> match evt, var_pos with
+      (* highlight if this var is selected or shadowed *)
+      | Either.Second Selected, Reference -> ["inline-block"; "bg-blue-200"]
+      | Second Selected, Definition _ -> ["inline-block"; "bg-pink-200"]
+      | Second Shadowed, Definition _ -> ["inline-block"; "bg-yellow-200"]
+      (* The variable we're shadowing is selected, highlight in orange *)
+      | First Selected, Definition _ -> ["inline-block"; "bg-yellow-500"]
+      | _, _ -> ["inline-block"]
+    )
+  in
+
+  let indents = List.init depth ~f:indent in
+  let name' = span
+    [ span ~a:[R.Html.a_class classes_s] [txt name]
+    ; txt suffix
+    ]
+  in
+  let name_elem = To_dom.of_span name' in
+
+  Common.bind_event Ev.mouseovers name_elem (fun _evt ->
+    set_selected Selected;
+    Lwt.return ()
+  );
+
+  Common.bind_event Ev.mouseouts name_elem (fun _evt ->
+    set_selected Unselected;
+    Lwt.return ()
+  );
+
+  (match var_pos with
+    | Definition (Some (_shadowed_stream, set_shadowed)) ->
+      Common.bind_event Ev.mouseovers name_elem (fun _evt ->
+        set_shadowed Shadowed;
+        Lwt.return ()
+      );
+
+      Common.bind_event Ev.mouseouts name_elem (fun _evt ->
+        set_shadowed Unselected;
+        Lwt.return ()
+      );
+    | _ -> ()
+  );
+
+  let left_col = pre (Lvca_util.List.snoc indents name') in
+  Queue.enqueue queue (grid_tmpl ~source_column [left_col] loc)
 
 let get_suffix ~last_slot ~last_term = match last_term, last_slot with
   | true, true -> ""
@@ -98,11 +172,16 @@ and index_scope ~expanded_depth ~expanded_map_ref i path (Nominal.Scope (_pats, 
   let expanded_depth = decrease_depth expanded_depth in
   List.iteri tms ~f:(fun j -> index_tm ~expanded_depth ~expanded_map_ref ((i, j)::path))
 
-let rec show_pattern ~source_column ~depth ~queue ~suffix = function
+let rec show_pattern
+  ~source_column ~selected_events ~shadowed_var_streams ~depth ~queue ~suffix
+  = function
   | Pattern.Primitive (loc, p) ->
     let str = Primitive.to_string p ^ suffix in
-    Queue.enqueue queue (grid_tmpl ~source_column [str |> padded_txt depth] loc)
-  | Var (loc, name) | Ignored (loc, name) ->
+    Queue.enqueue queue (grid_tmpl ~source_column [padded_txt depth str] loc)
+  | Var (loc, name) ->
+    let var_pos = Definition (Map.find shadowed_var_streams name) in
+    show_var ~var_pos ~queue ~source_column ~suffix ~selected_events ~depth ~loc ~name
+  | Ignored (loc, name) ->
     Queue.enqueue queue (grid_tmpl ~source_column [padded_txt depth (name ^ suffix)] loc)
   | Operator (loc, name, slots) ->
     let open_elem = grid_tmpl ~source_column [ padded_txt depth (name ^ "(") ] loc in
@@ -115,21 +194,22 @@ let rec show_pattern ~source_column ~depth ~queue ~suffix = function
       List.iteri pats ~f:(fun j ->
         let last_term = j = num_pats - 1 in
         let suffix = get_suffix ~last_slot ~last_term in
-        show_pattern ~source_column ~depth:(Int.succ depth) ~queue ~suffix
+        show_pattern ~source_column ~selected_events ~shadowed_var_streams
+          ~depth:(Int.succ depth) ~queue ~suffix
       )
     );
 
     let close_elem = grid_tmpl ~source_column [ padded_txt depth (")" ^ suffix) ] loc in
     Queue.enqueue queue close_elem
 
-let rec show_tm ~source_column ~path ~expanded_map ~queue ?suffix:(suffix="") =
+let rec show_tm ~scope_selection_e ~source_column ~path ~selected_events ~expanded_map ~queue ?suffix:(suffix="") =
   let depth = List.length path in
   function
   | Nominal.Primitive (loc, p) ->
     let str = Primitive.to_string p ^ suffix in
-    Queue.enqueue queue (grid_tmpl ~source_column [str |> padded_txt depth] loc)
+    Queue.enqueue queue (grid_tmpl ~scope_selection_e ~source_column [padded_txt depth str] loc)
   | Var (loc, name) ->
-    Queue.enqueue queue (grid_tmpl ~source_column [padded_txt depth (name ^ suffix)] loc)
+    show_var ~var_pos:Reference ~queue ~source_column ~suffix ~selected_events ~depth ~loc ~name
   | Operator (loc, name, scopes) ->
     let { expanded; set_expanded } = Map.find_exn expanded_map path in
     let expanded_s, _unused_set_expanded = React.S.create ~eq:Bool.(=) expanded in
@@ -139,36 +219,78 @@ let rec show_tm ~source_column ~path ~expanded_map ~queue ?suffix:(suffix="") =
 
     let _: unit React.signal = expanded_s
       |> React.S.map ~eq:Unit.(=) (function
-        | false -> Queue.enqueue queue (grid_tmpl
-          ~source_column [padded_txt depth (name ^ "("); button; txt (")" ^ suffix) ]
+        | false -> Queue.enqueue queue (grid_tmpl ~scope_selection_e ~source_column
+          [padded_txt depth (name ^ "("); button; txt (")" ^ suffix) ]
           loc
         )
         | true ->
           let open_elem =
-            grid_tmpl ~source_column [ padded_txt depth (name ^ "("); button ] loc
+            grid_tmpl ~scope_selection_e ~source_column [ padded_txt depth (name ^ "("); button ] loc
           in
           Queue.enqueue queue open_elem;
 
           List.iteri scopes ~f:(fun i ->
-            show_scope ~source_column ~path ~expanded_map ~queue
-              ~last:(i = List.length scopes - 1) i);
+            show_scope ~scope_selection_e ~source_column ~path ~selected_events
+              ~expanded_map ~queue ~last:(i = List.length scopes - 1) i);
 
           let close_elem =
-            grid_tmpl ~source_column [ padded_txt depth (")" ^ suffix) ] loc
+            grid_tmpl ~scope_selection_e ~source_column [ padded_txt depth (")" ^ suffix) ] loc
           in
           Queue.enqueue queue close_elem
       )
     in
     ()
 
-and show_scope ~source_column ~path ~expanded_map ~queue ~last:last_slot i
-  (Nominal.Scope (pats, tms)) =
-  List.iter pats
-    ~f:(show_pattern ~source_column ~depth:(List.length path + 1) ~queue ~suffix:".");
+and show_scope ~scope_selection_e ~source_column ~path ~selected_events ~expanded_map
+  ~queue ~last:last_slot i (Nominal.Scope (pats, tms)) =
+  let pattern_var_events = List.map pats ~f:(fun pat ->
+    let newly_defined_vars = Pattern.list_vars_of_pattern pat in
+    let newly_defined_var_events = newly_defined_vars
+      |> List.map ~f:(fun (_info, name) ->
+        let stream, setter = React.E.create () in
+        name, (stream, fun b -> setter b))
+      |> Lvca_util.String.Map.of_alist_exn
+    in
+
+    let shadowed_var_streams = newly_defined_vars
+      |> List.filter_map ~f:(fun (_loc, k) -> match Map.find selected_events k with
+        | None -> None
+        | Some evt -> Some (k, evt)
+      )
+      |> Lvca_util.String.Map.of_alist_exn
+    in
+
+    let selected_events = Map.merge_skewed ~combine:(fun ~key:_ _l r -> r)
+      selected_events newly_defined_var_events
+    in
+
+    show_pattern ~source_column ~selected_events ~shadowed_var_streams
+      ~depth:(List.length path + 1) ~queue ~suffix:"." pat;
+    newly_defined_var_events)
+  in
+
+  let selected_events = pattern_var_events
+    |> Lvca_util.String.Map.unions_right_biased
+    |> Map.merge_skewed ~combine:(fun ~key:_ _l r -> r) selected_events
+  in
+
+  let any_pattern_var_selected_event = selected_events
+    |> Map.to_alist
+    |> List.map ~f:(fun (_k, (evt, _)) -> evt
+      |> React.E.map (function Selected -> true | _ -> false)
+    )
+  in
+
+  let scope_selection_e =
+    React.E.select (scope_selection_e :: any_pattern_var_selected_event)
+  in
+
   let num_tms = List.length tms in
   List.iteri tms ~f:(fun j ->
     let last_term = j = num_tms - 1 in
     let suffix = get_suffix ~last_term ~last_slot in
+    show_tm ~scope_selection_e ~source_column ~path:((i, j)::path) ~selected_events
+      ~expanded_map ~queue ~suffix
   )
 
 let view_tm
@@ -176,6 +298,18 @@ let view_tm
   ?default_expanded_depth:(expanded_depth=FullyExpanded)
   tm =
   let tm = Nominal.map_loc ~f:cvt_range tm in
+
+  (* First, create a stream for all free variables actions on them will work
+     like normal. *)
+  let free_vars = Nominal.free_vars tm in
+
+  let selected_events = free_vars
+    |> Set.to_list
+    |> List.map ~f:(fun name ->
+      let stream, setter = React.E.create () in
+      name, (stream, fun b -> setter b))
+    |> Lvca_util.String.Map.of_alist_exn
+  in
 
   (* First index all of the terms, meaning we collect a mapping from their path
      to expansion status (so that subterms remember their status even if
@@ -202,7 +336,9 @@ let view_tm
   let elem = expanded_map_s
     |> React.S.map ~eq (fun expanded_map ->
       let queue = Queue.create () in
-      show_tm ~source_column ~path:[] ~expanded_map ~queue tm;
+      let scope_selection_e = React.E.never in
+
+      show_tm ~scope_selection_e ~source_column ~path:[] ~selected_events ~expanded_map ~queue tm;
       let rows, evts = queue |> Queue.to_list |> List.unzip in
       let tbody = rows |> Html.tbody in
 
