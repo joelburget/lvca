@@ -53,6 +53,7 @@ module View = struct
       <div>
       |}[input_elem]{|
       |}[output_elem]{|
+        <p>Hover over a variable to see more information about it.</p>
         <ul>
           <li><code class="bg-blue-200">blue</code> shows all the uses of a variable</li>
           <li><code class="bg-pink-200">pink</code> shows a variable's definition site</li>
