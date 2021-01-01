@@ -109,7 +109,7 @@ module View = struct
           <div class="col-span-1"></div>
           <div class="col-span-7">
             <h2>LVCA demos</h2>
-            <select onchange=|}
+            <select class="mb-8 mt-2" onchange=|}
         (handler signal_update)
         {|>
               |}

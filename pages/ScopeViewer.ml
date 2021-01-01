@@ -58,7 +58,7 @@ module View = struct
           <li><code class="bg-blue-200">blue</code> shows all the uses of a variable</li>
           <li><code class="bg-pink-200">pink</code> shows a variable's definition site</li>
           <li><code class="bg-yellow-200">yellow</code> shows variables that the selected definition shadows</li>
-          <li><code class="bg-yellow-500">orange</code> shows variables that are shadowed by the selected definition</li>
+          <li><code class="bg-yellow-500">orange</code> shows variables that shadow the selected definition</li>
           <li><code class="bg-green-50">green</code> shows the extent of a variable's scope</li>
         </ul>
       </div>
