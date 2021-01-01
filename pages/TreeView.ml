@@ -128,7 +128,7 @@ let padded_txt depth text =
   pre ~a:[a_class ["inline-block"]] (Lvca_util.List.snoc indents (txt text))
 
 (* TODO: move into struct *)
-let show_var ~var_pos ~var_selected_events ~queue ~source_column ~suffix
+let render_var ~var_pos ~var_selected_events ~queue ~source_column ~suffix
   ~selected_event ~depth ~loc ~name =
   let { event = selected_event; trigger = trigger_selected } = selected_event in
 
@@ -268,7 +268,7 @@ let rec render_pattern
     in
     let var_pos = Definition { trigger_upstream_shadow; trigger_downstream_shadow } in
 
-    show_var ~var_selected_events ~var_pos ~queue ~source_column ~suffix ~selected_event
+    render_var ~var_selected_events ~var_pos ~queue ~source_column ~suffix ~selected_event
       ~depth ~loc ~name
 
   | Ignored (LocIx loc, name) ->
@@ -305,7 +305,7 @@ let rec render_tm ~source_column ?depth:(depth=0) ~var_selected_events ~queue
       (grid_tmpl ~var_selected_events ~source_column [padded_txt depth str] loc)
   | Var (LocIx loc, name) ->
     let selected_event = Map.find_exn var_selected_events name in
-    show_var ~var_pos:Reference ~var_selected_events ~queue ~source_column ~suffix
+    render_var ~var_pos:Reference ~var_selected_events ~queue ~source_column ~suffix
       ~selected_event ~depth ~loc ~name
   | Operator (OperatorIx (loc, { signal = expanded_s; set_s = set_expanded }), name, scopes) ->
     let button_event, button = Components.chevron_toggle expanded_s in
