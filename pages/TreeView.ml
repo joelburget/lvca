@@ -72,7 +72,8 @@ let definition_cls = "bg-pink-200"
 let upstream_shadow_cls = "bg-yellow-200"
 let downstream_shadow_cls = "bg-yellow-500"
 
-let grid_tmpl ~var_selected_events ~source_column left loc =
+let grid_tmpl ~var_selected_events ~source_column left loc
+  : [> Html_types.tr ] Html.elt * SourceRanges.t React.event =
   let classes = var_selected_events
     |> Map.to_alist
     (* Highlight background if any variable in scope is selected *)
@@ -127,9 +128,15 @@ let padded_txt depth text =
   let indents = List.init depth ~f:indent in
   pre ~a:[a_class ["inline-block"]] (Lvca_util.List.snoc indents (txt text))
 
-(* TODO: move into struct *)
-let render_var ~var_pos ~var_selected_events ~queue ~source_column ~suffix
-  ~selected_event ~depth ~loc ~name =
+type render_params =
+  { source_column: bool
+  ; depth: int
+  ; var_selected_events: var_status event Lvca_util.String.Map.t
+  ; queue: ([ `Tr ] Html.elt * SourceRanges.t React.event) Queue.t
+  }
+
+let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit =
+  let { source_column; depth; var_selected_events; queue } = render_params in
   let { event = selected_event; trigger = trigger_selected } = selected_event in
 
   let classes_s = selected_event
@@ -248,13 +255,14 @@ and find_outermost_binding_scope ~var_name (Scope (pats, body)) =
     | Some v -> Some v
     | None -> List.find_map body ~f:(find_outermost_binding ~var_name)
 
-let rec render_pattern
-  ~source_column ~var_selected_events ~shadowed_var_streams ~depth ~queue ~suffix
-  ~downstream
-  = function
+let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
+  : _ Pattern.t -> unit
+  = let { source_column; depth; var_selected_events; queue } = render_params in
+    function
   | Pattern.Primitive (LocIx loc, p) ->
     let str = Primitive.to_string p ^ suffix in
-    Queue.enqueue queue (grid_tmpl ~var_selected_events ~source_column [padded_txt depth str] loc)
+    Queue.enqueue queue
+      (grid_tmpl ~var_selected_events ~source_column [padded_txt depth str] loc)
   | Var (VarDefIx (loc, selected_event), name) ->
 
     let trigger_upstream_shadow = match Map.find shadowed_var_streams name with
@@ -268,15 +276,15 @@ let rec render_pattern
     in
     let var_pos = Definition { trigger_upstream_shadow; trigger_downstream_shadow } in
 
-    render_var ~var_selected_events ~var_pos ~queue ~source_column ~suffix ~selected_event
-      ~depth ~loc ~name
+    render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name
 
   | Ignored (LocIx loc, name) ->
     Queue.enqueue queue (grid_tmpl ~var_selected_events ~source_column
       [padded_txt depth (name ^ suffix)] loc)
   | Operator (LocIx loc, name, slots) ->
     let open_elem = grid_tmpl ~var_selected_events ~source_column
-      [ padded_txt depth (name ^ "(") ] loc in
+      [ padded_txt depth (name ^ "(") ] loc
+    in
     Queue.enqueue queue open_elem;
 
     let num_slots = List.length slots in
@@ -286,8 +294,8 @@ let rec render_pattern
       List.iteri pats ~f:(fun j ->
         let last_term = j = num_pats - 1 in
         let suffix = get_suffix ~last_slot ~last_term in
-        render_pattern ~source_column ~var_selected_events ~shadowed_var_streams
-          ~depth:(Int.succ depth) ~queue ~suffix ~downstream
+        let render_params = { render_params with depth = Int.succ depth } in
+        render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
       )
     );
 
@@ -297,17 +305,18 @@ let rec render_pattern
     Queue.enqueue queue close_elem
   | _ -> failwith "invariant violation: wrong index"
 
-let rec render_tm ~source_column ?depth:(depth=0) ~var_selected_events ~queue
-  ?suffix:(suffix="") = function
+let rec render_tm ~render_params ?suffix:(suffix="") : _ Nominal.term -> unit =
+  let { source_column; depth; var_selected_events; queue } = render_params in
+  function
   | Nominal.Primitive (LocIx loc, p) ->
     let str = Primitive.to_string p ^ suffix in
     Queue.enqueue queue
       (grid_tmpl ~var_selected_events ~source_column [padded_txt depth str] loc)
   | Var (LocIx loc, name) ->
     let selected_event = Map.find_exn var_selected_events name in
-    render_var ~var_pos:Reference ~var_selected_events ~queue ~source_column ~suffix
-      ~selected_event ~depth ~loc ~name
-  | Operator (OperatorIx (loc, { signal = expanded_s; set_s = set_expanded }), name, scopes) ->
+    render_var ~render_params ~var_pos:Reference ~suffix ~selected_event ~loc ~name
+  | Operator (OperatorIx (loc, expanded_signal), name, scopes) ->
+    let { signal = expanded_s; set_s = set_expanded } = expanded_signal in
     let button_event, button = Components.chevron_toggle expanded_s in
 
     let _ : unit React.event = button_event |> React.E.map set_expanded in
@@ -319,8 +328,7 @@ let rec render_tm ~source_column ?depth:(depth=0) ~var_selected_events ~queue
             | [] -> [padded_txt depth (name ^ "()" ^ suffix) ]
             | _ -> [padded_txt depth (name ^ "("); button; txt (")" ^ suffix) ]
           in
-          Queue.enqueue queue (grid_tmpl ~var_selected_events ~source_column left_col loc
-        )
+          Queue.enqueue queue (grid_tmpl ~var_selected_events ~source_column left_col loc)
         | true ->
           let open_elem = grid_tmpl ~var_selected_events ~source_column
             [ padded_txt depth (name ^ "("); button ] loc
@@ -328,8 +336,7 @@ let rec render_tm ~source_column ?depth:(depth=0) ~var_selected_events ~queue
           Queue.enqueue queue open_elem;
 
           List.iteri scopes ~f:(fun i ->
-            render_scope ~var_selected_events ~source_column ~depth ~queue
-              ~last:(i = List.length scopes - 1));
+            render_scope ~render_params ~last:(i = List.length scopes - 1));
 
           let close_elem = grid_tmpl ~var_selected_events ~source_column
             [ padded_txt depth (")" ^ suffix) ] loc
@@ -340,8 +347,8 @@ let rec render_tm ~source_column ?depth:(depth=0) ~var_selected_events ~queue
     ()
   | _ -> failwith "invariant violation: wrong index"
 
-and render_scope ~source_column ~depth ~var_selected_events ~queue
-  ~last:last_slot (Nominal.Scope (pats, tms)) =
+and render_scope ~render_params ~last:last_slot (Nominal.Scope (pats, tms)) =
+  let { depth; var_selected_events; _ } = render_params in
   let pattern_var_events = List.map pats ~f:(fun pat ->
       let newly_defined_vars = Pattern.list_vars_of_pattern pat in
       let newly_defined_var_events = newly_defined_vars
@@ -364,8 +371,10 @@ and render_scope ~source_column ~depth ~var_selected_events ~queue
         var_selected_events newly_defined_var_events
       in
 
-      render_pattern ~source_column ~var_selected_events ~shadowed_var_streams
-        ~depth:(depth + 1) ~queue ~suffix:"." ~downstream:tms pat;
+      let render_params =
+        { render_params with depth = Int.succ depth; var_selected_events }
+      in
+      render_pattern ~render_params ~shadowed_var_streams ~suffix:"." ~downstream:tms pat;
       newly_defined_var_events
     )
   in
@@ -378,12 +387,14 @@ and render_scope ~source_column ~depth ~var_selected_events ~queue
   let var_selected_events =
     Map.merge_skewed ~combine var_selected_events pattern_var_events
   in
+  let render_params = { render_params with depth = Int.succ depth; var_selected_events }
+  in
 
   let num_tms = List.length tms in
   List.iteri tms ~f:(fun j ->
     let last_term = j = num_tms - 1 in
     let suffix = get_suffix ~last_term ~last_slot in
-    render_tm ~source_column ~depth:(depth + 1) ~var_selected_events ~queue ~suffix
+    render_tm ~render_params ~suffix
   )
 
 let view_tm
@@ -409,7 +420,8 @@ let view_tm
   let render () =
     let queue = Queue.create () in
 
-    render_tm ~source_column ~var_selected_events ~queue tm;
+    let render_params = { source_column; var_selected_events; queue; depth = 0 } in
+    render_tm ~render_params tm;
     let rows, evts = queue |> Queue.to_list |> List.unzip in
     let tbody = rows |> Html.tbody in
 
