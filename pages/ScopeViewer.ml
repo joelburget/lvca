@@ -91,7 +91,7 @@ module View = struct
       <div>
       <p>Try the identity function, |}[identity_ex]{|, or the constant function |}[k_ex]{|.</p>
       <p>Try more complicated combinators S |}[s_ex]{| and Y |}[y_ex]{|.</p>
-      <p>Lvca also supports pattern matching, for example |}[pattern_ex]{| and |}[sum_ex]{|.</p>
+      <p>LVCA also supports pattern matching, for example |}[pattern_ex]{| and |}[sum_ex]{|.</p>
       |}[input_elem]{|
       |}[output_elem]{|
       <p>Hover over a variable to see more information about it.</p>
