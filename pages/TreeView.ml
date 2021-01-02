@@ -48,6 +48,16 @@ type definition_streams =
   (** Alert downstream (a var that shadows us) to light up *)
   }
 
+type render_params =
+  { source_column: bool
+  (** Show the "source" column or not *)
+  ; range_column: bool
+  (** Show the "range" column or not *)
+  ; depth: int
+  ; var_selected_events: var_status event Lvca_util.String.Map.t
+  ; queue: ([ `Tr ] Html.elt * SourceRanges.t React.event) Queue.t
+  }
+
 type var_pos =
   | Reference
   (** This variable is a reference to a binding site *)
@@ -72,8 +82,9 @@ let definition_cls = "bg-pink-200"
 let upstream_shadow_cls = "bg-yellow-200"
 let downstream_shadow_cls = "bg-yellow-500"
 
-let grid_tmpl ~var_selected_events ~source_column left loc
+let grid_tmpl ~render_params left loc
   : [> Html_types.tr ] Html.elt * SourceRanges.t React.event =
+  let { var_selected_events; source_column; range_column; _ } = render_params in
   let classes = var_selected_events
     |> Map.to_alist
     (* Highlight background if any variable in scope is selected *)
@@ -96,7 +107,9 @@ let grid_tmpl ~var_selected_events ~source_column left loc
       ; if source_column
         then Some (td ~a:[a_class ["px-2"; "py-0"]] [txt source])
         else None
-      ; Some (td ~a:[a_class ["px-2"; "py-0"]] [txt (Range.to_string range)])
+      ; if range_column
+        then Some (td ~a:[a_class ["px-2"; "py-0"]] [txt (Range.to_string range)])
+        else None
       ]
       |> List.filter_map ~f:Fn.id
   in
@@ -128,15 +141,8 @@ let padded_txt depth text =
   let indents = List.init depth ~f:indent in
   pre ~a:[a_class ["inline-block"]] (Lvca_util.List.snoc indents (txt text))
 
-type render_params =
-  { source_column: bool
-  ; depth: int
-  ; var_selected_events: var_status event Lvca_util.String.Map.t
-  ; queue: ([ `Tr ] Html.elt * SourceRanges.t React.event) Queue.t
-  }
-
 let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit =
-  let { source_column; depth; var_selected_events; queue } = render_params in
+  let { depth; queue; _ } = render_params in
   let { event = selected_event; trigger = trigger_selected } = selected_event in
 
   let classes_s = selected_event
@@ -182,7 +188,7 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
   );
 
   let left_col = pre (Lvca_util.List.snoc indents name') in
-  Queue.enqueue queue (grid_tmpl ~var_selected_events ~source_column [left_col] loc)
+  Queue.enqueue queue (grid_tmpl ~render_params [left_col] loc)
 
 let get_suffix ~last_slot ~last_term = match last_term, last_slot with
   | true, true -> ""
@@ -257,12 +263,11 @@ and find_outermost_binding_scope ~var_name (Scope (pats, body)) =
 
 let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
   : _ Pattern.t -> unit
-  = let { source_column; depth; var_selected_events; queue } = render_params in
+  = let { depth; queue; _ } = render_params in
     function
   | Pattern.Primitive (LocIx loc, p) ->
     let str = Primitive.to_string p ^ suffix in
-    Queue.enqueue queue
-      (grid_tmpl ~var_selected_events ~source_column [padded_txt depth str] loc)
+    Queue.enqueue queue (grid_tmpl ~render_params [padded_txt depth str] loc)
   | Var (VarDefIx (loc, selected_event), name) ->
 
     let trigger_upstream_shadow = match Map.find shadowed_var_streams name with
@@ -279,39 +284,38 @@ let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
     render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name
 
   | Ignored (LocIx loc, name) ->
-    Queue.enqueue queue (grid_tmpl ~var_selected_events ~source_column
-      [padded_txt depth (name ^ suffix)] loc)
-  | Operator (LocIx loc, name, slots) ->
-    let open_elem = grid_tmpl ~var_selected_events ~source_column
-      [ padded_txt depth (name ^ "(") ] loc
-    in
-    Queue.enqueue queue open_elem;
+    Queue.enqueue queue
+      (grid_tmpl ~render_params [padded_txt depth ("_" ^ name ^ suffix)] loc)
+  | Operator (LocIx loc, name, slots) -> (match slots with
+    | [] -> Queue.enqueue queue
+      (grid_tmpl ~render_params [ padded_txt depth (name ^ "()" ^ suffix) ] loc)
+    | _ ->
+      let open_elem = grid_tmpl ~render_params [ padded_txt depth (name ^ "(") ] loc in
+      Queue.enqueue queue open_elem;
 
-    let num_slots = List.length slots in
-    List.iteri slots ~f:(fun i pats ->
-      let num_pats = List.length pats in
-      let last_slot = i = num_slots - 1 in
-      List.iteri pats ~f:(fun j ->
-        let last_term = j = num_pats - 1 in
-        let suffix = get_suffix ~last_slot ~last_term in
-        let render_params = { render_params with depth = Int.succ depth } in
-        render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
-      )
-    );
+      let num_slots = List.length slots in
+      List.iteri slots ~f:(fun i pats ->
+        let num_pats = List.length pats in
+        let last_slot = i = num_slots - 1 in
+        List.iteri pats ~f:(fun j ->
+          let last_term = j = num_pats - 1 in
+          let suffix = get_suffix ~last_slot ~last_term in
+          let render_params = { render_params with depth = Int.succ depth } in
+          render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
+        )
+      );
 
-    let close_elem = grid_tmpl ~var_selected_events ~source_column
-      [ padded_txt depth (")" ^ suffix) ] loc
-    in
-    Queue.enqueue queue close_elem
+      let close_elem = grid_tmpl ~render_params [ padded_txt depth (")" ^ suffix) ] loc in
+      Queue.enqueue queue close_elem
+  )
   | _ -> failwith "invariant violation: wrong index"
 
 let rec render_tm ~render_params ?suffix:(suffix="") : _ Nominal.term -> unit =
-  let { source_column; depth; var_selected_events; queue } = render_params in
+  let { depth; var_selected_events; queue; _ } = render_params in
   function
   | Nominal.Primitive (LocIx loc, p) ->
     let str = Primitive.to_string p ^ suffix in
-    Queue.enqueue queue
-      (grid_tmpl ~var_selected_events ~source_column [padded_txt depth str] loc)
+    Queue.enqueue queue (grid_tmpl ~render_params [padded_txt depth str] loc)
   | Var (LocIx loc, name) ->
     let selected_event = Map.find_exn var_selected_events name in
     render_var ~render_params ~var_pos:Reference ~suffix ~selected_event ~loc ~name
@@ -328,18 +332,18 @@ let rec render_tm ~render_params ?suffix:(suffix="") : _ Nominal.term -> unit =
             | [] -> [padded_txt depth (name ^ "()" ^ suffix) ]
             | _ -> [padded_txt depth (name ^ "("); button; txt (")" ^ suffix) ]
           in
-          Queue.enqueue queue (grid_tmpl ~var_selected_events ~source_column left_col loc)
+          Queue.enqueue queue (grid_tmpl ~render_params left_col loc)
         | true ->
-          let open_elem = grid_tmpl ~var_selected_events ~source_column
-            [ padded_txt depth (name ^ "("); button ] loc
+          let open_elem =
+            grid_tmpl ~render_params [ padded_txt depth (name ^ "("); button ] loc
           in
           Queue.enqueue queue open_elem;
 
           List.iteri scopes ~f:(fun i ->
             render_scope ~render_params ~last:(i = List.length scopes - 1));
 
-          let close_elem = grid_tmpl ~var_selected_events ~source_column
-            [ padded_txt depth (")" ^ suffix) ] loc
+          let close_elem =
+            grid_tmpl ~render_params [ padded_txt depth (")" ^ suffix) ] loc
           in
           Queue.enqueue queue close_elem
       )
@@ -399,6 +403,7 @@ and render_scope ~render_params ~last:last_slot (Nominal.Scope (pats, tms)) =
 
 let view_tm
   ?source_column:(source_column=true)
+  ?range_column:(range_column=true)
   ?default_expanded_depth:(expanded_depth=FullyExpanded)
   tm =
   let tm = Nominal.map_loc ~f:select_source_range tm in
@@ -420,7 +425,9 @@ let view_tm
   let render () =
     let queue = Queue.create () in
 
-    let render_params = { source_column; var_selected_events; queue; depth = 0 } in
+    let render_params =
+      { var_selected_events; queue; depth = 0; source_column; range_column }
+    in
     render_tm ~render_params tm;
     let rows, evts = queue |> Queue.to_list |> List.unzip in
     let tbody = rows |> Html.tbody in
@@ -430,23 +437,31 @@ let view_tm
       |> React.E.map set_selection
     in
 
-    let rows = if source_column
-      then
-        [ [%html{|<td class="p-2 border-t-2 border-b-2 border-r-2 w-1/2">term</td>|}]
-        ; [%html{|<td class="p-2 border-t-2 border-b-2 border-r-2">source</td>|}]
-        ; [%html{|<td class="p-2 border-t-2 border-b-2">range</td>|}]
-        ]
-      else
-        [ [%html{|<td class="p-2 border-t-2 border-b-2 border-r-2 w-2/3">term</td>|}]
-        ; [%html{|<td class="p-2 border-t-2 border-b-2">range</td>|}]
-        ]
+    let rows =
+      [ Some [%html{|<td class="p-2 border-t-2 border-b-2 border-r-2 w-1/2">term</td>|}]
+      ; if source_column
+        then Some [%html{|<td class="p-2 border-t-2 border-b-2 border-r-2">source</td>|}]
+        else None
+      ; if range_column
+        then Some [%html{|<td class="p-2 border-t-2 border-b-2">range</td>|}]
+        else None
+      ]
+      |> List.filter_map ~f:Fn.id
     in
 
-    [%html{|
-    <table class="w-full table-fixed border-2 cursor-default font-mono">
-      <thead> <tr>|}rows{|</tr> </thead>
-      |}[tbody]{|
-    </table>
+    if source_column || range_column
+    then
+      [%html{|
+      <table class="w-full table-fixed border-2 cursor-default font-mono">
+        <thead> <tr>|}rows{|</tr> </thead>
+        |}[tbody]{|
+      </table>
+      |}]
+    else
+      [%html{|
+      <table class="w-full table-fixed border-2 cursor-default font-mono">
+        |}[tbody]{|
+      </table>
       |}]
   in
 
