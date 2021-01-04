@@ -1,7 +1,13 @@
+(*
 open Base
 open Js_of_ocaml
 open Stdio
+*)
+open Brr
 
+let () = El.set_children (Document.body G.document) El.[txt' "Hello World!"]
+
+(*
 let pages = Lvca_util.String.Map.of_alist_exn
   [ "term-and-concrete", TermAndConcrete.stateless_view
   ; "calculator", Calculator.stateless_view
@@ -31,3 +37,4 @@ let (_ : unit Lwt.t) =
   in
   insert_demo parent
 ;;
+*)

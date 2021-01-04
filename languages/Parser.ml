@@ -1313,6 +1313,21 @@ fix (expr -> choice (
                     | a=atom -> {a}
                   )) |}]
 
+   let%expect_test _ =
+     parse_print_parser {|
+let atom = choice (name | literal) in
+fix (expr -> choice (
+        | a=atom ' '* '+' ' '* e=expr -> {{plus(a; e)}}
+  | a=atom -> a
+))|};
+     [%expect{|
+       let atom = choice (name | literal) in
+       fix
+         (expr -> choice (
+                    | a=atom ' '* '+' ' '* e=expr -> {{plus(a; e)}}
+                    | a=atom -> a
+                  )) |}]
+
     let%expect_test _ =
      parse_print_parser ~width:12 "choice (name | literal)";
      [%expect{|

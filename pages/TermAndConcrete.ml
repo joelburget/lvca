@@ -1,9 +1,12 @@
 open Base
-open Lvca_syntax
 open Common
+open Lvca_syntax
+open Brr
+open Brr_note
+open Note
+
 module PrimitiveParse = Primitive.Parse (ParseUtil.NoComment)
 module TermParse = Nominal.Parse (ParseUtil.NoComment)
-
 module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse (ParseUtil.NoComment)
 
 type lang =
@@ -42,7 +45,7 @@ end
 module Controller = struct
   let update (action : Action.t) model_s signal_update =
     let open Model in
-    let { input; result; input_lang; selected } = React.S.value model_s in
+    let { input; result; input_lang; selected } = S.value model_s in
     let new_model =
       match action with
       | Evaluate str ->
@@ -73,17 +76,19 @@ module Controller = struct
 end
 
 module View = struct
+  (*
   open Js_of_ocaml_tyxml.Tyxml_js
   module Ev = Js_of_ocaml_lwt.Lwt_js_events
+  *)
 
   let mk_output' model_s =
-    let range_s : SourceRanges.t React.signal = model_s
-      |> React.S.map (fun Model.{ selected; _ } ->
+    let range_s : SourceRanges.t signal = model_s
+      |> S.map (fun Model.{ selected; _ } ->
           SourceRanges.of_opt_range ~buf:"input" selected)
     in
     let formatted_s =
       model_s
-      |> React.S.map (fun Model.{ result; input_lang; _ } ->
+      |> S.map (fun Model.{ result; input_lang; _ } ->
              let elt, formatter, _clear = RangeFormatter.mk
                ~selection_s:range_s
                ~set_selection:(fun _ -> () (* TODO *))
@@ -100,25 +105,31 @@ module View = struct
 
   let make_descriptions model_s =
     model_s
-    |> React.S.map (fun Model.{ input_lang; _ } ->
+    |> S.map (fun Model.{ input_lang; _ } ->
            match input_lang with
            | Lambda -> "input (concrete)", "output (abstract)"
            | Term -> "input (abstract)", "output (concrete)")
+    |> S.map (Lvca_util.Tuple2.map ~f:(fun str -> [El.txt (Jstr.v str)]))
   ;;
 
   let view model_s signal_update =
     let descriptions_s = make_descriptions model_s in
-    let input_desc, output_desc = React.S.Pair.(fst descriptions_s, snd descriptions_s) in
+    let input_desc, output_desc = S.Pair.(fst descriptions_s, snd descriptions_s) in
+    let input_desc_elem = El.span [] in
+    let output_desc_elem = El.span [] in
+    let () = Elr.def_children input_desc_elem input_desc in
+    let () = Elr.def_children output_desc_elem output_desc in
+
     let handler _evt =
       Controller.update SwitchInputLang model_s signal_update;
       false
     in
     let input, input_event =
-      MultilineInput.mk (model_s |> React.S.map (fun model -> model.Model.input))
+      MultilineInput.mk (model_s |> S.map (fun model -> model.Model.input))
     in
-    let (_ : unit React.event) =
+    let (_ : unit event) =
       input_event
-      |> React.E.map (fun evt ->
+      |> E.map (fun evt ->
              let evt' =
                match evt with
                | InputUpdate str -> Action.Evaluate str
@@ -127,12 +138,8 @@ module View = struct
              in
              Controller.update evt' model_s signal_update)
     in
-    demo_template
-      handler
-      (R.Html.txt input_desc)
-      input
-      (R.Html.txt output_desc)
-      (mk_output' model_s)
+
+    demo_template handler input_desc_elem input output_desc_elem (mk_output' model_s)
   ;;
 end
 
@@ -142,6 +149,6 @@ let stateless_view () =
     let result = ParseUtil.parse_string LambdaParse.t input in
     { input; result; input_lang = Lambda; selected = None }
   in
-  let model_s, signal_update = React.S.create initial_model in
+  let model_s, signal_update = S.create initial_model in
   View.view model_s signal_update
 ;;

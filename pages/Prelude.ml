@@ -1,0 +1,32 @@
+open Base
+open Brr
+
+let main ?d ?at = El.v ?d ?at (Jstr.v "main")
+
+let class' str = At.class' (Jstr.v str)
+
+let classes str = str
+  |> String.split ~on:' '
+  |> List.map ~f:(fun cls -> At.class' (Jstr.v cls))
+
+let inputmode str = At.v (Jstr.v "inputmode") (Jstr.v str)
+
+module Navigator = struct
+  include Brr.Navigator
+  let user_agent = Jv.Jstr.get (Navigator.to_jv G.navigator) "userAgent"
+  let platform = Jv.Jstr.get (Navigator.to_jv G.navigator) "platform"
+end
+
+module Window = struct
+  include Brr.Window
+
+  let get_selection w = Jv.call w "getSelection" [||]
+end
+
+module Selection : sig
+  type t
+  val to_jstr : t -> Jstr.t
+end = struct
+  type t = Jv.t
+  let to_jstr s = Jv.to_jstr (Jv.call s "toString" [||])
+end

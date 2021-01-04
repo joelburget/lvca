@@ -1,7 +1,17 @@
 (executables
  (names devel_main site_main)
  (modes js)
- (libraries angstrom digestif.ocaml js_of_ocaml-lwt js_of_ocaml-tyxml
-   lvca_languages lvca_syntax react safe_react reactiveData)
- (preprocess
-  (pps ppx_jane js_of_ocaml-ppx tyxml-ppx)))
+ (link_flags (:standard -no-check-prims))
+ (libraries angstrom base brr brr.note digestif.ocaml lvca_languages lvca_syntax note))
+ ; (preprocess
+ ;  (pps ppx_jane js_of_ocaml-ppx tyxml-ppx)))
+
+(rule
+  (targets devel_main.js)
+  (deps devel_main.bc.js)
+  (action (run cp %{deps} %{targets})))
+;
+; (rule
+;   (targets site_main.js)
+;   (deps site_main.bc.js)
+;   (action (run cp %{deps} %{targets})))

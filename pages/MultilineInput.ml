@@ -1,41 +1,41 @@
 open Base
-open ReactiveData
-
-module Ev = Js_of_ocaml_lwt.Lwt_js_events
+open Brr
+open Brr_note
+open Note
+open Prelude
 
 let mk
-  ?autofocus:(autofocus=true)
+  ?autofocus:(_autofocus=true)
   ?border:(border=true)
   ?rows:(rows=None)
-  ?cols:(cols=60)
+  ?cols:(_cols=60)
   input_s =
-  let open Js_of_ocaml in
-  let open Js_of_ocaml_tyxml.Tyxml_js in
+  let input_dirty_s, _update_input_dirty = S.create false in
+  let input_event, _signal_event = E.create () in
 
-  let input_dirty_s, update_input_dirty = React.S.create false in
-  let input_event, signal_event = React.E.create () in
-
-  let needed_rows = match rows with
+  let _needed_rows = match rows with
     | Some n -> n
     | None ->
-      String.count (React.S.value input_s) ~f:(fun c -> Char.(c = '\n')) + 1
+      String.count (S.value input_s) ~f:(fun c -> Char.(c = '\n')) + 1
   in
 
+  let txt str = El.txt (Jstr.v str) in
+
   let input_dirty_elem = input_dirty_s
-    |> React.S.map (function
+    |> S.map (function
       | true -> (match WebUtil.platform_special_combo () with
-        | Some info_elems -> Html.(span (List.concat
+        | Some info_elems -> List.concat
           [ [ txt "updated, press " ]
           ; info_elems
           ; [ txt " to re-evaluate)" ]
-          ]))
-        | None -> Html.txt "updated (press Enter to re-evaluate)"
+          ]
+        | None -> [txt "updated (press Enter to re-evaluate)"]
       )
-      | false -> Html.txt ""
+      | false -> [txt ""]
     )
   in
 
-  let classes = List.filter_map ~f:Fn.id
+  let _classes = List.filter_map ~f:Fn.id
     [ Some "mt-4"
     ; Some "p-8"
     ; Some "font-mono"
@@ -45,14 +45,19 @@ let mk
     ]
   in
 
-  let input = Html.(textarea
+  let input = El.(textarea
+    (* TODO
     ~a:([ a_rows needed_rows
         ; a_cols cols
         ; a_class classes
         ] @ (if autofocus then [a_autofocus ()] else []))
-     (R.Html.txt input_s)
+     *)
+     []
     )
   in
+  let () = Elr.def_children input (input_s |> S.map (fun str -> [txt str])) in
+
+  (* TODO
   let input_dom = To_dom.of_textarea input in
 
   Common.bind_event Ev.inputs input_dom (fun _evt ->
@@ -88,20 +93,27 @@ let mk
       Lwt.return ());
 
   (* XXX why doesn't the textarea automatically update? *)
-  let (_ : unit React.event) =
+  let (_ : unit event) =
     input_s
     (* Create an event when the input has changed *)
-    |> React.S.map ~eq:Caml.(=) Fn.id
-    |> React.S.changes
-    |> React.E.map (fun input -> input_dom##.value := Js.string input)
+    |> S.map ~eq:Caml.(=) Fn.id
+    |> S.changes
+    |> E.map (fun input -> input_dom##.value := Js.string input)
   in
+  *)
 
-  let result = [%html{|
+  let span = El.span ~at:[class' "my-2"] [] in
+  let () = Elr.def_children span input_dirty_elem in
+
+  let result = El.div
+    ~at:[class' "flex"; class' "flex-col"]
+    [ input; span ]
+   (*[%html{|
     <div class="flex flex-col">
       |}[input]{|
       |}[R.Html.span ~a:[Html.a_class ["my-2"]] (RList.singleton_s input_dirty_elem)]{|
     </div>
-    |}]
+    |}]*)
   in
 
   result, input_event

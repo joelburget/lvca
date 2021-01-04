@@ -1,7 +1,10 @@
 open Base
-open Js_of_ocaml
-open ReactiveData
-open Stdio
+(* open Stdio *)
+open Brr
+open Brr_note
+open Note
+open Fut.Syntax
+open Prelude
 
 module Model = struct
   type page =
@@ -31,9 +34,9 @@ module Model = struct
   ;;
 end
 
-type signal = Model.t React.signal
-type update_fun = ?step:React.step -> Model.t -> unit
+type signal = Model.t Note.signal
 
+(*
 module Action = struct
   type t = ChangePage of Model.page
 end
@@ -44,10 +47,10 @@ module Controller = struct
     signal_update Model.{ page }
   ;;
 end
+*)
 
 module View = struct
   open Model
-  open Js_of_ocaml_tyxml.Tyxml_js
 
   let page_description = function
     | TermAndConcretePage -> "01: term and concrete"
@@ -59,18 +62,31 @@ module View = struct
     | TermToTexPage -> "0x: term to tex"
   ;;
 
-  let stateless_view = function
-    | TermAndConcretePage -> TermAndConcrete.stateless_view
-    | CalculatorPage -> Calculator.stateless_view
-    | EvalWithProvenancePage -> EvalWithProvenance.stateless_view
-    | TermToTexPage -> TermToTex.stateless_view
-    | ParserPage -> Parser.stateless_view
-    | ScopeViewerPage -> ScopeViewer.stateless_view
-    | EditsPage -> Edits.stateless_view
+  let stateless_view =
+    let txt str = El.txt (Jstr.v str) in
+    function
+    | TermAndConcretePage -> TermAndConcrete.stateless_view ()
+    | CalculatorPage ->
+      txt "TODO (CalculatorPage)"
+      (* Calculator.stateless_view *)
+    | EvalWithProvenancePage ->
+      txt "TODO (EvalWithProvenancePage)"
+      (* EvalWithProvenance.stateless_view *)
+    | TermToTexPage ->
+      txt "TODO (TermToTexPage)"
+      (* TermToTex.stateless_view *)
+    | ParserPage ->
+      txt "TODO (ParserPage)"
+      (* Parser.stateless_view *)
+    | ScopeViewerPage ->
+      txt "TODO (ScopeViewerPage)"
+      (* ScopeViewer.stateless_view *)
+    | EditsPage ->
+      txt "TODO (EditsPage)"
+      (* Edits.stateless_view *)
   ;;
 
-  let wrapper_div = Html5.div []
-  let wrapper_dom = To_dom.of_div wrapper_div
+  (*
 
   let handler signal_update evt =
     let elem = evt##.target |> Js.Opt.to_option |> Option.value_exn in
@@ -88,7 +104,6 @@ module View = struct
     false
   ;;
 
-  let view model_s signal_update =
     let page_selector =
       Model.all_pages
       |> List.mapi ~f:(fun i page ->
@@ -97,49 +112,51 @@ module View = struct
                (page |> page_description |> Html.txt))
     in
     let page_view =
-      R.Html5.div
+      El.div
         (model_s
         |> React.S.map (fun { page } -> stateless_view page ())
         |> RList.singleton_s)
     in
-    [%html
-      {|
-      <div>
-        <main class="container flex flex-col md:grid md:grid-cols-8">
-          <div class="col-span-1"></div>
-          <div class="col-span-7">
-            <h2>LVCA demos</h2>
-            <select class="mb-8 mt-2" onchange=|}
-        (handler signal_update)
-        {|>
-              |}
-        page_selector
-        {|
-            </select>
-            |}
-        [ page_view ]
-        {|
-          </div>
-        </main>
-      </div>
-    |}]
+    *)
+
+  let view model_s _signal_update =
+    let pages = Model.all_pages
+      |> List.mapi ~f:(fun i page -> El.option
+        ~at:At.[ value (Jstr.v (Int.to_string i)) ]
+        [page |> page_description |> Jstr.v |> El.txt]
+      )
+    in
+    let page_selector = El.select ~at:(classes "mb-8 mt-2") pages in
+
+    let page_view = El.div [] in
+    let () = Elr.def_children page_view
+      (model_s |> S.map (fun { page } -> [stateless_view page]))
+    in
+
+    El.(div
+      [ main ~at:(classes "container flex flex-col md:grid md:grid-cols-8")
+        [ div ~at:At.[class' (Jstr.v "col-span-1")] []
+        ; div ~at:At.[class' (Jstr.v "col-span-7")]
+          [ h2 [ El.txt (Jstr.v "LVCA demos") ]
+          ; page_selector
+          ; page_view
+          ]
+        ]
+      ]
+    )
   ;;
 end
 
-let insert_demo elem =
-  let model_s, signal_update = React.S.create Model.initial_model in
-  Dom.appendChild
-    elem
-    (Js_of_ocaml_tyxml.Tyxml_js.To_dom.of_div (View.view model_s signal_update));
-  Lwt.return ()
-;;
+let main () =
+  Console.(log [str "DOM content loaded."]);
+  let* _ev = Ev.next Ev.load (Window.as_target G.window) in
+  Console.(log [str "Resources loaded."]);
 
-let main _ =
-  let doc = Dom_html.document in
-  let parent =
-    Js.Opt.get (doc##getElementById (Js.string "app")) (fun () -> assert false)
-  in
-  insert_demo parent
-;;
+  let model_s, model_set = S.create Model.initial_model in
 
-let (_ : unit Lwt.t) = Lwt.Infix.(Js_of_ocaml_lwt.Lwt_js_events.onload () >>= main)
+  (match Document.find_el_by_id G.document (Jstr.v "app") with
+    | None -> assert false
+    | Some elem -> El.set_children elem [View.view model_s model_set]);
+  Fut.return ()
+
+let () = ignore (main ())
