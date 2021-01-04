@@ -1,6 +1,10 @@
 open Base
+open Brr
+open Brr_note
 open Lvca_syntax
-open ReactiveData
+open Note
+open Prelude
+
 module Calculator = Lvca_languages.Calculator
 module Parse = Calculator.Parse (ParseUtil.CComment)
 
@@ -32,8 +36,8 @@ module Action = struct
 end
 
 module Controller = struct
-  let update (action : Action.t) (model_s : Model.t React.S.t) signal_update =
-    let Model.{ evaluations; error_msg } = React.S.value model_s in
+  let update (action : Action.t) (model_s : Model.t S.t) signal_update =
+    let Model.{ evaluations; error_msg } = S.value model_s in
     let digits_signal_pool = Model.digits_signal_pool in
 
     match action with
@@ -41,7 +45,7 @@ module Controller = struct
         let model = match ParseUtil.parse_string Parse.t input with
           | Error msg -> Model.{ evaluations; error_msg = Some msg }
           | Ok parsed ->
-            let pool_key = Pool.Signal.add digits_signal_pool (React.S.create 10) in
+            let pool_key = Pool.Signal.add digits_signal_pool (S.create 10) in
             Model.
               { evaluations = { input; parsed; pool_key } :: evaluations
               ; error_msg = None
@@ -56,7 +60,7 @@ module Controller = struct
         let Model.Evaluation.{ pool_key; _ } = List.nth_exn evaluations i in
         let digits_s, digits_update = Pool.Signal.find_exn digits_signal_pool pool_key in
         (* TODO: there has to be a better way (than using value) *)
-        let prev_val = React.S.value digits_s in
+        let prev_val = S.value digits_s in
         let new_val = match prec_cmd with
           | SetDigits digits -> digits
           | IncrDigits -> Int.succ prev_val
@@ -67,21 +71,34 @@ module Controller = struct
 end
 
 let mk_example str =
-  let open Js_of_ocaml_tyxml.Tyxml_js in
-  let result = Html.(code
-    ~a:[a_class ["bg-gray-50"; "p-1"; "font-mono"; "text-sm"; "cursor-pointer"]]
-    [ txt str ])
+  let result = El.code
+    ~at:(classes "bg-gray-50 p-1 font-mono text-sm cursor-pointer")
+    [ txt str ]
   in
-  let result_dom = To_dom.of_code result in
-  let click_event, signal_event = React.E.create () in
-  Common.bind_event Common.Ev.clicks result_dom (fun _evt ->
-    signal_event str;
-    Lwt.return ());
+  (* let result_dom = To_dom.of_code result in *)
+  let click_event, signal_event = E.create () in
+  let _ : unit event = Evr.on_el Ev.click (fun _evt -> signal_event str) result in
   result, click_event
 ;;
 
+let row cells = El.tr ~at:[class' "border-b"] cells
+
 let language_chart =
-  let open Js_of_ocaml_tyxml.Tyxml_js in
+  let cell str = El.td ~at:[class' "py-2"] [ txt str ] in
+  El.table ~at:[class' "w-full"]
+    [ El.thead ~at:[class' "border-b"]
+      [ El.th ~at:[class' "text-left"] [ txt "Name" ]
+      ; El.th ~at:[class' "text-left"] [ txt "Syntax" ]
+      ; El.th ~at:[class' "text-left"] [ txt "Description" ]
+      ]
+    ; El.tbody
+      [ row [ cell "add"; cell "expr + expr" ]
+      ; row [ cell "sub"; cell "expr - expr" ]
+      ; row [ cell "mul"; cell "expr * expr" ]
+      ; row [ cell "div"; cell "expr / expr" ]
+      ]
+    ]
+  (*
   [%html{|
     <table class="w-full">
       <thead>
@@ -168,24 +185,26 @@ let language_chart =
       </tbody>
     </table>
   |}]
+  *)
 ;;
 
-let mk_button ?cls:(cls=[]) contents =
-  let open Js_of_ocaml_tyxml.Tyxml_js in
-  let click_event, signal_event = React.E.create () in
+let mk_button ?cls:(cls="") contents =
+  (* let open Js_of_ocaml_tyxml.Tyxml_js in *)
+  let click_event, signal_event = E.create () in
   let handler _evt = signal_event (); false in
-  let button = Html.(button ~a:[a_onclick handler; a_class cls] contents) in
+  let button = El.button ~at:(classes cls) contents in
+  let _ : bool event = Evr.on_el Ev.click handler button in
   button, click_event
 
 module View = struct
-  open Js_of_ocaml_tyxml.Tyxml_js
-  module Ev = Js_of_ocaml_lwt.Lwt_js_events
+  (* open Js_of_ocaml_tyxml.Tyxml_js *)
+  (* module Ev = Js_of_ocaml_lwt.Lwt_js_events *)
 
   let view model_s signal_update =
-    let input, input_event = SingleLineInput.mk (React.S.const "1 + 1") in
+    let input, input_event = SingleLineInput.mk (S.const "1 + 1") in
 
-    let (_ : unit React.event) = input_event
-      |> React.E.map (function
+    let (_ : unit event) = input_event
+      |> E.map (function
         | Common.InputUpdate str
         -> Controller.update (Evaluate str) model_s signal_update
         | _ -> ())
@@ -203,102 +222,98 @@ module View = struct
       |> List.map ~f:mk_example
       |> List.unzip
     in
-    let (_ : unit React.event) =
+    let (_ : unit event) =
       example_update_es
-      |> React.E.select
-      |> React.E.map (fun example ->
+      |> E.select
+      |> E.map (fun example ->
              Controller.update (Evaluate example) model_s signal_update)
     in
     let examples =
-      Html.(ul (examples |> List.map ~f:(fun example -> li [ example ])))
+      El.ul (examples |> List.map ~f:(fun example -> El.li [ example ]))
     in
 
-    let row row_num input_str parsed digits_s _digits_update =
+    let row' row_num input_str parsed digits_s _digits_update =
       let digits_entry, digits_event = Common.mk_digits_entry digits_s in
-      let (_ : unit React.event) = digits_event
-        |> React.E.map (fun update ->
+      let (_ : unit event) = digits_event
+        |> E.map (fun update ->
            Controller.update (ChangePrecision (row_num, update)) model_s signal_update)
       in
 
-      let digits' = digits_s
-        |> React.S.map (fun digits -> match Calculator.interpret parsed with
-          | Error (_tm, msg) -> [Html.(span ~a:[a_class ["error"]] [txt msg])]
+      let digits_s = digits_s
+        |> S.map (fun digits -> match Calculator.interpret parsed with
+          | Error (_tm, msg) -> [El.span ~at:[class' "error"] [txt msg]]
           | Ok real ->
             let str =
               ConstructiveReal.eval_to_string real ~digits:(Int32.of_int_exn digits)
             in
-            [Html.(span [txt str])])
-        |> RList.from_signal
-        |> R.Html.pre ~a:[Html.a_class ["whitespace-pre-wrap"; "break-all"]]
+            [El.span [txt str]])
+        (* |> RList.from_signal *)
       in
+      let digits' = El.pre ~at:(classes "whitespace-pre-wrap break-all") [] in
+      let () = Elr.def_children digits' digits_s in
 
       let delete_button, delete_event = mk_button
-        ~cls:["inline-block p-1 border-2 border-indigo-900 rounded"]
-        [ Html.txt "remove" ]
+        ~cls:"inline-block p-1 border-2 border-indigo-900 rounded"
+        [ txt "remove" ]
       in
-      let (_ : unit React.event) = delete_event
-        |> React.E.map (fun () ->
+      let (_ : unit event) = delete_event
+        |> E.map (fun () ->
             Controller.update (DeleteRow row_num) model_s signal_update)
       in
 
-      [%html{|
-        <tr class="border-b">
-          <td class="py-4 pr-1">
-            <pre class="whitespace-pre-wrap break-word">|}[ Html.txt input_str ]{|</pre>
-          </td>
-          <td class="py-4 pr-1">|}[ digits' ]{|</td>
-          <td class="py-4 pr-1">|}[ digits_entry ]{|</td>
-          <td>|}[ delete_button ]{|</td>
-        </tr>
-      |}]
+      row
+        [ El.td ~at:(classes "py-4 pr-1")
+          [ El.pre ~at:(classes "whitespace-pre-wrap break-word") [ txt input_str ] ]
+        ; El.td ~at:(classes "py-4 pr-1") [ digits' ]
+        ; El.td ~at:(classes "py-4 pr-1") [ digits_entry ]
+        ; El.td [ delete_button ]
+        ]
     in
 
-    let thead = [%html{|
-      <tr class="border-b">
-        <th class="w-1/2 text-left">input</th>
-        <th class="w-1/3 text-left">output</th>
-        <th class="w-1/12 text-left">digits</th>
-        <th class="w-1/12"></th>
-      </tr>
-      |}]
+    let thead = row
+      [ El.th ~at:(classes "w-1/2 text-left") [ txt "input" ]
+      ; El.th ~at:(classes "w-1/3 text-left") [ txt "output" ]
+      ; El.th ~at:(classes "w-1/12 text-left") [ txt "digits" ]
+      ; El.th ~at:(classes "w-1/12") []
+      ]
     in
 
     let tbody = model_s
-      |> React.S.map (fun model ->
+      |> S.map (fun model ->
         model.Model.evaluations
-        |> List.mapi ~f:(fun row_num { input; parsed; pool_key }  ->
+        |> List.mapi ~f:(fun row_num Model.Evaluation.{ input; parsed; pool_key }  ->
             let digits_s, digits_update =
               Pool.Signal.find_exn Model.digits_signal_pool pool_key
             in
-            row row_num input parsed digits_s digits_update))
-      |> RList.from_signal
+            row' row_num input parsed digits_s digits_update))
+      (* |> RList.from_signal *)
     in
 
-    let error_msg = model_s
-      |> React.S.map (fun model -> match model.Model.error_msg with
+    let _error_msg = model_s
+      |> S.map (fun model -> match model.Model.error_msg with
         | None -> []
-        | Some msg -> [Html.(span [txt msg])])
+        | Some msg -> [El.span [txt msg]])
+      (*
       |> RList.from_signal
       |> R.Html.div
+      *)
     in
 
-    [%html {|
-      <div>
-        <div class="my-2">|}[ input ]{|</div>
-        <div class="error my-2">|}[ error_msg ]{|</div>
-        |}[ Components.table ~classes:["w-full"; "mb-6"] thead tbody ]{|
-        <div class="my-2">
-          <p>Try an example:</p>
-          |}[ examples ]{|
-          <h3>language chart</h3>
-          |}[ language_chart ]{|
-        </div>
-      </div>
-    |}]
+    El.div
+      [ El.div ~at:[class' "my-2"] [ input ]
+      ; El.div ~at:(classes "error my-2") [] (* TODO [ error_msg ] *)
+      ; Components.table ~classes:["w-full"; "mb-6"] thead tbody
+      ; El.div ~at:[class' "my-2"]
+        [ El.p [ txt "Try an example" ]
+        ; examples
+        ; El.h3 [ txt "language chart" ]
+        ; language_chart
+        ]
+      ]
   ;;
 end
 
 let stateless_view () =
-  let model_s, signal_update = React.S.create Model.initial_model in
+  let model_s, signal_update = S.create Model.initial_model in
   View.view model_s signal_update
 ;;

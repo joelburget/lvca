@@ -1,65 +1,83 @@
 open Base
-open Js_of_ocaml_tyxml.Tyxml_js
-open ReactiveData
+open Brr
+open Brr_note
+open Note
+open Prelude
+(* open Js_of_ocaml_tyxml.Tyxml_js *)
+(* open ReactiveData *)
 
-let empty_elem = Html.span []
+let empty_elem = El.span []
 
-let error_msg x = Html.(div ~a:[a_class ["error"]] x)
-let success_msg x = Html.(div ~a:[a_class ["success"]] x)
+let error_msg x = El.div ~at:[class' "error"] x
+let success_msg x = El.div ~at:[class' "success"] x
 
-let mk_a ~border ~classes ~label =
+(* TODO: remove *)
+let mk_at ~border ~classes ~label:_todo =
   let classes = if border
     then "border-2" :: classes
     else classes
   in
-  let classes = Html.a_class classes in
+  let classes = classes |> List.map ~f:Prelude.class' in
+  classes
+  (* TODO
   match label with
     | "" -> [classes]
     | _ -> [classes; Html.a_user_data label ""]
+  *)
 
 let rows
   ?border:(border=false)
   ?classes:(classes=["ml-2"])
   ?label:(label="")
   elems =
-  Html.div ~a:(mk_a ~border ~classes:("flex" :: "flex-col" :: classes) ~label) elems
+  El.div ~at:(mk_at ~border ~classes:("flex" :: "flex-col" :: classes) ~label) elems
 
 let r_rows
-  ?border:(border=false)
-  ?classes:(classes=(React.S.const []))
-  ?label:(label="")
+  ?border:(_todo=false)
+  ?classes:(_todo=(S.const []))
+  ?label:(_todo="")
   elems =
+    (* TODO
   let classes = classes
-    |> React.S.map (List.append ["flex"; "flex-col"])
-    |> React.S.map (fun classes -> if border then "border-2" :: classes else classes)
+    |> S.map (List.append ["flex"; "flex-col"])
+    |> S.map (fun classes -> if border then "border-2" :: classes else classes)
   in
-  let a = match label with
-    | "" -> [R.Html.a_class classes]
+  let at = classes |> List.map ~f:class' in
+*)
+  (* TODO
+  let at = match label with
+    | "" -> classes
     | _ ->
       [ Html.a_user_data label ""
       ; R.Html.a_class classes
       ]
   in
-  R.Html.div ~a elems
+    *)
+  El.div elems
 
 let cols
   ?border:(border=false)
   ?classes:(classes=[])
   ?label:(label="")
   elems =
-  Html.div ~a:(mk_a ~border ~classes:("flex" :: "flex-row" :: classes) ~label) elems
+  El.div ~at:(mk_at ~border ~classes:("flex" :: "flex-row" :: classes) ~label) elems
 
 let ulist ?classes:(classes=[]) elems =
-  Html.(ul ~a:[a_class classes] elems)
+  El.ul ~at:(classes |> List.map ~f:class') elems
 
-let r_ulist ?classes:(classes=(React.S.const [])) elems =
-  R.Html.(ul ~a:[a_class classes] elems)
+let r_ulist ?classes:(_classes=(S.const [])) elems =
+  let result = El.ul (* TODO ~at:(classes |> List.map ~f:class') *) [] in
+  let () = Elr.def_children result elems in
+  result
 
 let olist ?classes:(classes=[]) elems =
-  Html.(ol ~a:[a_class classes] elems)
+  El.ol ~at:(classes |> List.map ~f:class') elems
 
-let r_olist ?classes:(classes=(React.S.const [])) elems =
-  R.Html.(ol ~a:[a_class classes] elems)
+let r_olist ?classes:(_classes=(S.const [])) elems =
+  let result = El.ol [] in
+  (* TODO let result = El.ol ~at:(classes |> List.map ~f:class') elems in *)
+  let () = Elr.def_children result elems in
+  result
 
 let dlist
   ?border:(border=false)
@@ -67,17 +85,18 @@ let dlist
   ?label:(label="")
   elems =
   let elems = elems
-    |> List.map ~f:(fun (k, v) -> Html.[ dt [txt k]; dd [v] ])
+    |> List.map ~f:(fun (k, v) -> [El.dt [Prelude.txt k]; El.dd [v]])
     |> List.concat
   in
-  Html.dl ~a:(mk_a ~border ~classes ~label) elems
+  El.dl ~at:(mk_at ~border ~classes ~label) elems
 
-(* let title = Html.h1 *)
-let header str = Html.(h2 [txt str])
-let subheader str = Html.(h3 [txt str])
-let r_subheader str_s = Html.h3 [R.Html.txt str_s]
-
-let txt = Html.txt
+(* let title = El.h1 *)
+let header str = El.h2 [txt str]
+let subheader str = El.h3 [txt str]
+let r_subheader str_s =
+  let result = El.h3 [] in
+  let () = Elr.def_children result (str_s |> S.map (fun str -> [txt str])) in
+  result
 
 let button_classes =
   [ "px-2"
@@ -92,47 +111,57 @@ let button_classes =
   ]
 
 (* TODO: automatically return false? *)
-let button ~onclick str = Html.(button
-  ~a:[a_onclick onclick; a_class button_classes]
-  [txt str])
+let button ~onclick str =
+  let button = El.button ~at:(button_classes |> List.map ~f:class') [txt str] in
+  let _ : unit event = Evr.on_el Ev.click onclick button in
+  button
 
-let r_button ~onclick (str_s: string React.signal) = R.Html.(button
-  ~a:[a_onclick onclick; Html.a_class button_classes]
-  (str_s |> React.S.map Html.txt |> RList.singleton_s))
+let r_button ~onclick (str_s: string signal) =
+  let button = El.button ~at:(button_classes |> List.map ~f:class') [] in
+  let () = Elr.def_children button (str_s |> S.map (fun str -> [txt str])) in
+  let _ : unit event = Evr.on_el Ev.click onclick button in
+  button
 
 let table
   ?classes:(classes=[])
-  header body =
-  R.Html.table ~a:[Html.a_class classes] RList.(concat (singleton header) body)
+  _todo1 _todo2 =
+  let result = El.table ~at:(classes |> List.map ~f:class') [] in
+  (* let () = Elr.def_children result ( *)
+  (* RList.(concat (singleton header) body) *)
+  result
 
-let inline_block x = Html.(div ~a:[a_class ["inline-block"]] [x])
-let r_inline_block x = R.Html.div ~a:[Html.a_class ["inline-block"]] x
+let inline_block x = El.div ~at:[class' "inline-block"] [x]
+let r_inline_block x = El.div ~at:[class' "inline-block"] x
 
 let button_toggle ~visible_text ~hidden_text visible_s =
-  let e, set_e = React.E.create () in
-  let onclick _evt = set_e (not (React.S.value visible_s)); false in
+  let e, set_e = E.create () in
+  let onclick _evt = set_e (not (S.value visible_s)) in
   let text_s = visible_s
-    |> React.S.map (function
+    |> S.map (function
       | true -> visible_text
       | false -> hidden_text)
+    (* |> S.map (fun str -> [txt str]) *)
   in
+  (*
+  let button = r_button [] in
+  let () = Elr.def_children button text_s in
+  let _ : unit event = Evr.on_el Ev.click onclick button in
+  *)
   e, r_button ~onclick text_s
 
 let chevron_toggle visible_s =
-  let e, set_e = React.E.create () in
-  let onclick _evt = set_e (not (React.S.value visible_s)); false in
-  let class_s = visible_s
-    |> React.S.map (function
+  let e, set_e = E.create () in
+  let onclick _evt = set_e (not (S.value visible_s)); false in
+  let _class_s = visible_s
+    |> S.map (function
       | true -> ["gg-chevron-down"]
       | false -> ["gg-chevron-right"])
   in
-  let elem = Html.(a
-    ~a:[ a_class ["cursor-pointer"; "p-1"]
-       ; a_onclick onclick
-       ]
-    [ span
-      ~a:[a_class ["chevron-icon-wrap"]]
-      [ i ~a:[R.Html.a_class class_s] [] ]
-    ])
+  let i = El.i [] in
+  (* TODO let () = Elr.def_at At.class' class_s i in *)
+  let elem = El.a
+    ~at:[ class' "cursor-pointer"; class' "p-1" ]
+    [ El.span ~at:[class' "chevron-icon-wrap"] [ i ] ]
   in
+  let _ : bool event = Evr.on_el Ev.click onclick elem in
   e, elem

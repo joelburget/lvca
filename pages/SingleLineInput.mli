@@ -1,5 +1,5 @@
 val mk :
   ?autofocus:bool ->
-  ?highlights_s:Lvca_syntax.Ranges.t React.signal ->
-  string React.signal ->
-  [> Html_types.div ] Js_of_ocaml_tyxml.Tyxml_js.To_dom.elt * Common.input_event React.event
+  ?highlights_s:Lvca_syntax.Ranges.t Note.signal ->
+  string Note.signal ->
+  Brr.El.t * Common.input_event Note.event

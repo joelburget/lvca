@@ -11,6 +11,8 @@ let classes str = str
 
 let inputmode str = At.v (Jstr.v "inputmode") (Jstr.v str)
 
+let txt str = El.txt (Jstr.v str)
+
 module Navigator = struct
   include Brr.Navigator
   let user_agent = Jv.Jstr.get (Navigator.to_jv G.navigator) "userAgent"
@@ -30,3 +32,6 @@ end = struct
   type t = Jv.t
   let to_jstr s = Jv.to_jstr (Jv.call s "toString" [||])
 end
+
+let selection_start = El.Prop.int (Jstr.v "selectionStart")
+let selection_end = El.Prop.int (Jstr.v "selectionEnd")

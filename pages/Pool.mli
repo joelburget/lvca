@@ -1,6 +1,5 @@
-
 module Signal : sig
-  type 'value signal = 'value React.S.t * (?step:React.step -> 'value -> unit)
+  type 'value signal = 'value Note.S.t * (?step:Note.Step.t -> 'value -> unit)
   type 'value t
   type key
 
@@ -11,6 +10,7 @@ module Signal : sig
   val find_exn : 'value t -> key -> 'value signal
 end
 
+(*
 module RList : sig
   type 'value entry = 'value ReactiveData.RList.t * 'value ReactiveData.RList.handle
   type 'value t
@@ -22,3 +22,4 @@ module RList : sig
   val find : 'value t -> key -> 'value entry option
   val find_exn : 'value t -> key -> 'value entry
 end
+*)

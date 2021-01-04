@@ -4,12 +4,12 @@
  (link_flags (:standard -no-check-prims))
  (libraries angstrom base brr brr.note digestif.ocaml lvca_languages lvca_syntax note))
  ; (preprocess
- ;  (pps ppx_jane js_of_ocaml-ppx tyxml-ppx)))
+ ;  (pps ppx_jane)))
 
-(rule
-  (targets devel_main.js)
-  (deps devel_main.bc.js)
-  (action (run cp %{deps} %{targets})))
+; (rule
+;   (targets devel_main.js)
+;   (deps devel_main.bc.js)
+;   (action (run cp %{deps} %{targets})))
 ;
 ; (rule
 ;   (targets site_main.js)

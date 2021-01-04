@@ -76,18 +76,12 @@ module Controller = struct
 end
 
 module View = struct
-  (*
-  open Js_of_ocaml_tyxml.Tyxml_js
-  module Ev = Js_of_ocaml_lwt.Lwt_js_events
-  *)
-
   let mk_output' model_s =
     let range_s : SourceRanges.t signal = model_s
-      |> S.map (fun Model.{ selected; _ } ->
+      |> S.map ~eq:SourceRanges.(=) (fun Model.{ selected; _ } ->
           SourceRanges.of_opt_range ~buf:"input" selected)
     in
-    let formatted_s =
-      model_s
+    let formatted_s = model_s
       |> S.map (fun Model.{ result; input_lang; _ } ->
              let elt, formatter, _clear = RangeFormatter.mk
                ~selection_s:range_s

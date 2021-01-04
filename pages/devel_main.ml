@@ -1,9 +1,7 @@
 open Base
-(* open Stdio *)
 open Brr
 open Brr_note
 open Note
-open Fut.Syntax
 open Prelude
 
 module Model = struct
@@ -66,9 +64,7 @@ module View = struct
     let txt str = El.txt (Jstr.v str) in
     function
     | TermAndConcretePage -> TermAndConcrete.stateless_view ()
-    | CalculatorPage ->
-      txt "TODO (CalculatorPage)"
-      (* Calculator.stateless_view *)
+    | CalculatorPage -> Calculator.stateless_view ()
     | EvalWithProvenancePage ->
       txt "TODO (EvalWithProvenancePage)"
       (* EvalWithProvenance.stateless_view *)
@@ -86,15 +82,8 @@ module View = struct
       (* Edits.stateless_view *)
   ;;
 
-  (*
-
-  let handler signal_update evt =
-    let elem = evt##.target |> Js.Opt.to_option |> Option.value_exn in
-    let select_elem =
-      elem |> Dom_html.CoerceTo.select |> Js.Opt.to_option |> Option.value_exn
-    in
-    let i = select_elem##.value |> Js.to_string |> Int.of_string in
-    printf "%i\n" i;
+  let handler signal_update elem _evt =
+    let i = El.prop El.Prop.value elem |> Jstr.to_string |> Int.of_string in
     let page =
       match List.nth Model.all_pages i with
       | None -> failwith "TODO: error"
@@ -104,22 +93,7 @@ module View = struct
     false
   ;;
 
-    let page_selector =
-      Model.all_pages
-      |> List.mapi ~f:(fun i page ->
-             Html.option
-               ~a:[ Html.a_value (Int.to_string i) ]
-               (page |> page_description |> Html.txt))
-    in
-    let page_view =
-      El.div
-        (model_s
-        |> React.S.map (fun { page } -> stateless_view page ())
-        |> RList.singleton_s)
-    in
-    *)
-
-  let view model_s _signal_update =
+  let view model_s signal_update =
     let pages = Model.all_pages
       |> List.mapi ~f:(fun i page -> El.option
         ~at:At.[ value (Jstr.v (Int.to_string i)) ]
@@ -127,6 +101,8 @@ module View = struct
       )
     in
     let page_selector = El.select ~at:(classes "mb-8 mt-2") pages in
+    (* XXX use event instead of setting in handler *)
+    let _ : bool event = Evr.on_el Ev.change (handler signal_update page_selector) page_selector in
 
     let page_view = El.div [] in
     let () = Elr.def_children page_view
@@ -148,9 +124,8 @@ module View = struct
 end
 
 let main () =
-  Console.(log [str "DOM content loaded."]);
+  let open Fut.Syntax in
   let* _ev = Ev.next Ev.load (Window.as_target G.window) in
-  Console.(log [str "Resources loaded."]);
 
   let model_s, model_set = S.create Model.initial_model in
 

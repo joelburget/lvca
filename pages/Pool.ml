@@ -3,7 +3,7 @@ module Map = Base.Map
 (* TODO: factor out commonalities, etc *)
 
 module Signal = struct
-  type 'value signal = 'value React.S.t * (?step:React.step -> 'value -> unit)
+  type 'value signal = 'value Note.S.t * (?step:Note.Step.t -> 'value -> unit)
   type key = int
   type 'value t =
     { mutable pool: 'value signal Lvca_util.Int.Map.t
@@ -23,6 +23,7 @@ module Signal = struct
   let find_exn t i = Map.find_exn t.pool i
 end
 
+(*
 module RList = struct
   type 'value entry = 'value ReactiveData.RList.t * 'value ReactiveData.RList.handle
   type key = int
@@ -43,3 +44,4 @@ module RList = struct
   let find t i = Map.find t.pool i
   let find_exn t i = Map.find_exn t.pool i
 end
+*)
