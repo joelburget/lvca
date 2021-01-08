@@ -24,8 +24,6 @@ module Model = struct
     ; selected : OptRange.t
     }
 
-  (* TODO: evaluate ppx_deriving *)
-
   let print { input; input_lang; result; selected } =
     let input_lang_str = match input_lang with Lambda -> "Lambda" | Term -> "Term" in
     Fmt.pr
@@ -66,8 +64,8 @@ module Controller = struct
           | Ok tm ->
             (* TODO: clean up / explain *)
             let result'_str = Fmt.str "%a" formatter tm in
-            Fmt.pr "result'_str: %s\n" result'_str;
-            result'_str, ParseUtil.parse_string (parser_of input_lang') result'_str
+            result'_str, Ok tm
+              (* ParseUtil.parse_string (parser_of input_lang') result'_str *)
         in
         { input = input'; input_lang = input_lang'; selected = None; result = result' }
     in
@@ -121,16 +119,16 @@ module View = struct
     let input, input_event =
       MultilineInput.mk (model_s |> S.map (fun model -> model.Model.input))
     in
-    let (_ : unit event) =
+    let input_event : Action.t event =
       input_event
       |> E.map (fun evt ->
-             let evt' =
-               match evt with
-               | InputUpdate str -> Action.Evaluate str
-               | InputSelect (start, finish) -> Select (start, finish)
-               | InputUnselect -> Unselect
-             in
-             Controller.update evt' model_s signal_update)
+        match evt with
+          | InputUpdate str -> Action.Evaluate str
+          | InputSelect (start, finish) -> Select (start, finish)
+          | InputUnselect -> Unselect)
+    in
+    let _sink : Logr.t option =
+      E.log input_event (fun evt -> Controller.update evt model_s signal_update)
     in
 
     demo_template handler input_desc_elem input output_desc_elem (mk_output' model_s)

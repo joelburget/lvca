@@ -1,8 +1,9 @@
 open Base
+open Brr
+open Brr_note
 open Lvca_syntax
-open ReactiveData
-module Html = Js_of_ocaml_tyxml.Tyxml_js.Html
-module RHtml = Js_of_ocaml_tyxml.Tyxml_js.R.Html
+open Note
+open Prelude
 
 module ParseNominal = Nominal.Parse(ParseUtil.CComment)
 module ParsePrimitive = Primitive.Parse(ParseUtil.CComment)
@@ -20,17 +21,12 @@ end
 
 module Examples = struct
   let mk str =
-    let open Js_of_ocaml_tyxml.Tyxml_js in
-    let result = Html.(code
-      ~a:[a_class ["bg-gray-50"; "p-1"; "font-mono"; "text-sm"; "cursor-pointer"]]
+    let result = El.code
+      ~at:(classes "bg-gray-50 p-1 font-mono text-sm cursor-pointer")
       [ txt str ]
-    )
     in
-    let result_dom = To_dom.of_code result in
-    let click_event, signal_event = React.E.create () in
-    Common.bind_event Common.Ev.clicks result_dom (fun _evt ->
-      signal_event str;
-      Lwt.return ());
+    let click_event, signal_event = E.create () in
+    let _ : unit event = Evr.on_el Ev.click (fun _evt -> signal_event str) result in
     result, click_event
   ;;
 
@@ -44,36 +40,36 @@ end
 
 module View = struct
   let view _model =
-    let model_s, set_model = React.S.create ~eq:Model.(=) Model.initial_model in
-    let input_s = React.S.Pair.fst ~eq:String.(=) model_s in
-    let highlights_s = React.S.Pair.snd ~eq:Ranges.(=) model_s in
+    let model_s, set_model = S.create ~eq:Model.(=) Model.initial_model in
+    let input_s = S.Pair.fst ~eq:String.(=) model_s in
+    let highlights_s = S.Pair.snd ~eq:Ranges.(=) model_s in
     let set_input_highlights hls =
-      let str, _ = React.S.value model_s in
+      let str, _ = S.value model_s in
       set_model (str, hls)
     in
 
-    let (_ : unit React.event) = Examples.[identity_e; k_e; s_e; y_e; pattern_e; sum_e]
-      |> React.E.select
-      |> React.E.map (fun str -> set_model (str, []))
+    let (_ : unit event) = Examples.[identity_e; k_e; s_e; y_e; pattern_e; sum_e]
+      |> E.select
+      |> E.map (fun str -> set_model (str, []))
     in
 
     let input_elem, input_evt = SingleLineInput.mk input_s ~highlights_s in
-    let _ : unit React.event = input_evt |> React.E.map (function
+    let _ : unit event = input_evt |> E.map (function
       | Common.InputUpdate str -> set_model (str, [])
       | _ -> ()
     )
     in
 
-    let output_elem = input_s
-      |> React.S.map (fun str -> match parse_tm str with
-      | Error msg -> [%html{|<div>|}[Html.txt msg]{|</div>|}]
+    let output_children = input_s
+      |> S.map (fun str -> match parse_tm str with
+      | Error msg -> El.div [txt msg]
       | Ok tm ->
         let tm = tm |> Nominal.map_loc ~f:(SourceRanges.of_opt_range ~buf) in
         let tree_view, tree_selection_e = TreeView.view_tm
           ~source_column:false ~range_column:false tm
         in
-        let _ : unit React.event = tree_selection_e
-          |> React.E.map (fun source_ranges -> match Map.find source_ranges buf with
+        let _ : unit event = tree_selection_e
+          |> E.map (fun source_ranges -> match Map.find source_ranges buf with
             | None -> ()
             | Some ranges -> set_input_highlights ranges
           )
@@ -81,29 +77,37 @@ module View = struct
 
         tree_view
       )
-      |> RList.singleton_s
-      |> RHtml.div
+      |> S.map (fun elem -> [elem])
     in
+
+    let output_elem = El.div [] in
+    let () = Elr.def_children output_elem output_children in
 
     let open Examples in
 
-    [%html{|
-      <div>
-      <p>Try the identity function, |}[identity_ex]{|, or the constant function |}[k_ex]{|.</p>
-      <p>Try more complicated combinators S |}[s_ex]{| and Y |}[y_ex]{|.</p>
-      <p>LVCA also supports pattern matching, for example |}[pattern_ex]{| and |}[sum_ex]{|.</p>
-      |}[input_elem]{|
-      |}[output_elem]{|
-      <p>Hover over a variable to see more information about it.</p>
-      <ul>
-        <li><code class="bg-blue-200">blue</code> shows all the uses of a variable</li>
-        <li><code class="bg-pink-200">pink</code> shows a variable's definition site</li>
-        <li><code class="bg-yellow-200">yellow</code> shows variables that the selected definition shadows</li>
-        <li><code class="bg-yellow-500">orange</code> shows variables that shadow the selected definition</li>
-        <li><code class="bg-green-50">green</code> shows the extent of a variable's scope</li>
-      </ul>
-      </div>
-    |}]
+    let div, p, ul, li, code = El.(div, p, ul, li, code) in
+
+    let color_defn cls name desc = li
+      [ code ~at:[class' cls] [ txt name ]
+      ; txt (" " ^ desc)
+      ]
+    in
+
+    div
+      [ p [ txt "Try the identity function, "; identity_ex; txt " or the constant function "; k_ex; txt "."]
+      ; p [ txt "Try more complicated combinators S "; s_ex; txt "and Y "; y_ex; txt "."]
+      ; p [ txt "LVCA also supports pattern matching, for example "; pattern_ex; txt "and "; sum_ex; txt "."]
+      ; input_elem
+      ; output_elem
+      ; p [ txt "Hover over a variable to see more information about it." ]
+      ; ul
+        [ color_defn "bg-blue-200" "blue" "shows all the uses of a variable"
+        ; color_defn "bg-pink-200" "pink" "shows a variable's definition site"
+        ; color_defn "bg-yellow-200" "yellow" "shows variables that the selected definition shadows"
+        ; color_defn "bg-yellow-500" "orange" "shows variables that shadow the selected definition"
+        ; color_defn "bg-green-50" "green" "shows the extent of a variable's scope"
+        ]
+      ]
 end
 
 let stateless_view () = View.view Model.initial_model

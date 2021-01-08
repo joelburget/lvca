@@ -4,17 +4,11 @@ open Brr_note
 open Lvca_syntax
 open Note
 open Prelude
-(* open ReactiveData *)
-
-(* module Ev = Js_of_ocaml_lwt.Lwt_js_events *)
 
 let mk
   ?autofocus:(autofocus=false)
   ?highlights_s:(external_highlights_s=S.const [])
   input_s =
-  (* let open Js_of_ocaml in *)
-  (* let open Js_of_ocaml_tyxml.Tyxml_js in *)
-
   let dirty_input_s, update_dirty = S.create false in
   let input_event, signal_event = E.create () in
 

@@ -5,7 +5,7 @@ let pages = Lvca_util.String.Map.of_alist_exn
   [ "term-and-concrete", TermAndConcrete.stateless_view
   ; "calculator", Calculator.stateless_view
   (* ; "parser", Parser.stateless_view *)
-  (* ; "binding-viewer", ScopeViewer.stateless_view *)
+  ; "binding-viewer", ScopeViewer.stateless_view
   ]
 
 let main () =

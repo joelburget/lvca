@@ -1,5 +1,6 @@
 open Base
 open Brr
+open Brr_note
 
 let main ?d ?at = El.v ?d ?at (Jstr.v "main")
 
@@ -35,3 +36,11 @@ end
 
 let selection_start = El.Prop.int (Jstr.v "selectionStart")
 let selection_end = El.Prop.int (Jstr.v "selectionEnd")
+
+let mk_reactive cons ?d ?at s =
+  let result = cons ?d ?at [] in
+  let () = Elr.def_children result s in
+  result
+
+let mk_reactive' cons ?d ?at s =
+  mk_reactive cons ?d ?at (s |> Note.S.map (fun elem -> [elem]))

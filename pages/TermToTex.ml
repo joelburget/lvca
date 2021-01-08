@@ -1,5 +1,7 @@
 open Base
-open Stdio
+open Brr
+open Note
+open Prelude
 
 module Model = struct
   type t = string
@@ -20,43 +22,34 @@ module Controller = struct
 end
 
 module View = struct
-  open Js_of_ocaml_tyxml.Tyxml_js
-  module Ev = Js_of_ocaml_lwt.Lwt_js_events
-
   let view model_s signal_update =
-    let katex_area = Html5.div [] in
-    let katex_dom = To_dom.of_div katex_area in
-    let set_katex = Katex.render katex_dom in
+    let katex_area = El.div [] in
+    (* let katex_dom = To_dom.of_div katex_area in *)
+    let set_katex = Katex.render katex_area in
     let input, input_event = MultilineInput.mk model_s in
-    let (_ : unit React.event) =
+    let (_ : unit event) =
       input_event
-      |> React.E.map (function
+      |> E.map (function
              | Common.InputUpdate str ->
-               printf {|printing "%s"\n|} str;
                set_katex str;
                (* XXX *)
                Controller.update (Action.Evaluate str) model_s signal_update
              | _ -> ())
     in
 
-    [%html {|
-      <div>
-        <h2>Term to TeX</h2>
-        <div class="container">
-          <div class="side">
-            |}[ input ]{|
-          </div>
-          <div class="side">
-            <h3>output (rendered)</h3>
-            |}[ katex_area ]{|
-          </div>
-        </div>
-      </div>
-    |}]
+    let div, h2, h3 = El.(div, h2, h3) in
+    div
+      [ h2 [ txt "Term to TeX"]
+      ; div ~at:[class' "container"] [input]
+      ; div ~at:[class' "side"]
+        [ h3 [ txt "(rendered)" ]
+        ; katex_area
+        ]
+      ]
   ;;
 end
 
 let stateless_view () =
-  let model_s, signal_update = React.S.create Model.initial_model in
+  let model_s, signal_update = S.create Model.initial_model in
   View.view model_s signal_update
 ;;
