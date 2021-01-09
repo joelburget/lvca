@@ -10,14 +10,11 @@ let mk
   ?highlights_s:(external_highlights_s=S.const [])
   input_s =
   let dirty_input_s, update_dirty = S.create false in
-  (* let input_event, signal_event = E.create () in *)
 
   let highlights_s = external_highlights_s
     |> Note.S.changes
     |> Note.S.hold ~eq:Ranges.(=) []
   in
-
-  (* let input_value = Note.S.value input_s in *)
 
   let at =
     let classes =
@@ -35,17 +32,19 @@ let mk
       |> List.map ~f:class'
     in
     let at' = List.filter_map ~f:Fn.id
-      [
-      (* TODO [ Some (a_input_type `Text) *)
-      (* ; inputmode |> Option.map ~f:a_inputmode *)
-      (* TODO ; Some (a_value input_value) *)
-        if autofocus then Some At.autofocus else None
+      [ Some (At.type' (Jstr.v "text"))
+      ; Some (input_s |> S.value |> Jstr.v |> At.value)
+      ; if autofocus then Some At.autofocus else None
       ]
     in
     at' @ classes
   in
 
   let input = El.input ~at () in
+
+  let () = Elr.set_prop El.Prop.value input
+    ~on:(input_s |> S.changes |> E.map Jstr.v)
+  in
 
   let highlighted_input_s = S.l2
     (fun input_str highlight_ranges -> Ranges.mark_string highlight_ranges input_str
@@ -64,10 +63,12 @@ let mk
   in
 
   (* TODO: sync scroll position *)
-  let input_shadow = El.div
-    ~at:(classes "absolute -z-1 left-1 top-1 text-transparent font-mono whitespace-pre")
-       (* TODO ; Html.a_aria "hidden" ["true"] *)
-    []
+  let input_shadow =
+    let at =
+      At.true' (Jstr.v "aria-hidden") ::
+      (classes "absolute -z-1 left-1 top-1 text-transparent font-mono whitespace-pre")
+    in
+    El.div ~at []
   in
 
   let () = Elr.def_children input_shadow highlighted_input_s in
@@ -90,8 +91,9 @@ let mk
     ]
   in
 
-  let _ : unit event =
-    Evr.on_el Ev.input (fun _evt -> update_dirty true) input
+  let _sink : Logr.t option =
+    let evt = Evr.on_el Ev.input (fun _evt -> update_dirty true) input in
+    E.log evt Fn.id
   in
 
   let keydown_evt =
@@ -122,12 +124,5 @@ let mk
   in
 
   let input_event = E.select [keydown_evt; select_evt; unselect_evt] in
-
-  let _: unit event = input_s
-    (* Create an event when the input has changed *)
-    |> S.map ~eq:Caml.(=) Fn.id
-    |> S.changes
-    |> E.map (fun s -> El.set_prop El.Prop.value (Jstr.v s) input)
-  in
 
   result, input_event

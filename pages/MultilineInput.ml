@@ -49,11 +49,17 @@ let mk
     ~at:([ At.rows needed_rows
         ; At.cols cols
         ] @ classes @ (if autofocus then [At.autofocus] else []))
-     []
+     [input_s |> S.value |> txt]
   in
-  let () = Elr.def_children input (input_s |> S.map (fun str -> [txt str])) in
 
-  let _ : unit event = Evr.on_el Ev.input (fun _evt -> update_input_dirty true) input in
+  let () =
+    Elr.set_prop El.Prop.value input ~on:(input_s |> S.changes |> E.map Jstr.v)
+  in
+
+  let _sink : Logr.t option =
+    let evt = Evr.on_el Ev.input (fun _evt -> update_input_dirty true) input in
+    E.log evt Fn.id
+  in
 
   let keydown_evt =
     let handler evt =
@@ -84,16 +90,9 @@ let mk
 
   let input_event = E.select [keydown_evt; select_evt; unselect_evt] in
 
-  (* XXX why doesn't the textarea automatically update? *)
-  let (_ : unit event) =
-    input_s
-    (* Create an event when the input has changed *)
-    |> S.map ~eq:Caml.(=) Fn.id
-    |> S.changes
-    |> E.map (fun str -> El.set_prop El.Prop.value (Jstr.v str) input)
+  let result = El.div ~at:[class' "flex"; class' "flex-col"]
+    [ input
+    ; mk_reactive El.span ~at:[class' "my-2"] input_dirty_elem
+    ]
   in
-
-  let span = El.span ~at:[class' "my-2"] [] in
-  let () = Elr.def_children span input_dirty_elem in
-  let result = El.div ~at:[class' "flex"; class' "flex-col"] [ input; span ] in
   result, input_event
