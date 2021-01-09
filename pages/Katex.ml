@@ -1,12 +1,13 @@
-open Js_of_ocaml
+open Brr
 
-let render : #Dom_html.element Js.t -> string -> unit =
+let render : El.t -> string -> unit =
  fun elem str ->
-  Js.Unsafe.(
-    fun_call
-      global##.katex##.render
-      [| inject (Js.string str)
-       ; inject elem
-       ; obj [| "throwOnError", inject (Js.bool false) |]
-      |])
+  let katex = Jv.get (Window.to_jv G.window) "katex" in
+  let _ : Jv.t = Jv.call katex "render"
+    [| Jv.of_string str
+     ; El.to_jv elem
+     ; Jv.obj [| "throwOnError", Jv.false' |]
+    |]
+  in
+  ()
 ;;

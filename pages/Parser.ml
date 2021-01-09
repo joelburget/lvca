@@ -88,6 +88,14 @@ module Model = struct
     }
 end
 
+module Action = struct
+  type t =
+    | ToggleTrace
+    | SetSelection of SourceRanges.t
+    | UpdateTest of string
+    | SetInputHl of SourceRanges.t
+end
+
 let parse_parser = ParseUtil.parse_string (ParseParser.t ParseCore.term)
 
 module Examples = struct
@@ -328,7 +336,6 @@ let traverse_path ~root ~path =
 
 let view_stack root set_path path_s =
   let children = path_s
-   (* |> RList.signal *)
    |> S.map ~eq:(List.equal html_eq) (fun path ->
      let stack_lst = (traverse_path ~root ~path).stack in
      let len = List.length stack_lst in
@@ -337,8 +344,10 @@ let view_stack root set_path path_s =
      |> List.mapi ~f:(fun i snapshot ->
        let Model.TraceSnapshot.{ parser; success; _ } = snapshot in
        let p_view = view_parser_ignore_selection ~highlight_s ~success parser in
-       let onclick _ = set_path (List.take path i) in
-       let btn = button ~onclick "return here" in
+       let click_evt, btn = button "return here" in
+       let _ : unit event = click_evt
+         |> E.map (fun _ -> set_path (List.take path i))
+       in
        let at =
          [ if i > 0 then Some "border-t-2" else None
          ; if i < len - 1 then Some "border-b-2" else None
@@ -370,7 +379,6 @@ let view_root_snapshot str root =
   let stack_view = path_s
     |> S.map ~eq:html_eq
       (fun path -> if List.length path > 0 then stack_view else txt "(empty)")
-    (* |> RList.singleton_s *)
   in
 
   let controls_s = current_snapshot_s
@@ -388,7 +396,6 @@ let view_root_snapshot str root =
   let pre_loc_view = current_snapshot_s
     |> S.map ~eq:html_eq
       (fun Model.TraceSnapshot.{ pre_pos; _ } -> string_location ~str ~loc:pre_pos)
-    (* |> RList.singleton_s *)
     |> r_inline_block
   in
 
@@ -399,10 +406,6 @@ let view_root_snapshot str root =
         [ if success then txt "succeeds" else txt "fails" ])
     |> S.map ~eq:(List.equal html_eq) List.return
     |> mk_reactive span
-    (*
-    |> RList.from_signal
-    |> RHtml.span
-    *)
   in
 
   let status_view = El.div
@@ -414,7 +417,6 @@ let view_root_snapshot str root =
     ; txt " "
     ; current_snapshot_s
       |> S.map ~eq:html_eq (snapshot_advanced_view str)
-      (* |> RList.singleton_s *)
       |> r_inline_block
     ; txt "."
     ]
@@ -434,7 +436,7 @@ let view_root_snapshot str root =
          ]
     ; tr [ td ~at:(classes "p-2 border-b-2 border-r-2") [txt "parser"]
          ; td ~at:(classes "p-2 border-b-2")
-           [ parser_view (* |> RList.singleton_s *) |> mk_reactive' div ~at:[class' "py-2"]
+           [ parser_view |> mk_reactive' div ~at:[class' "py-2"]
            ; input_view
            ; status_view
            ]
@@ -490,11 +492,11 @@ module View = struct
     ~parser_str_s
     (test_s, update_test) =
 
-    let show_trace_s, set_show_trace = S.create ~eq:Bool.(=) false in
-    let trace_e, trace_button =
+    let show_trace_s, _set_show_trace = S.create ~eq:Bool.(=) false in
+    let _trace_e, trace_button =
       button_toggle ~visible_text:"hide" ~hidden_text:"show" show_trace_s
     in
-    let (_ : unit event) = trace_e |> E.map set_show_trace in
+    (* TODO let (_ : unit event) = trace_e |> E.map set_show_trace in *)
 
     let parser_s =
       let eq = Result.equal (P.equal OptRange.(=)) String.(=) in
@@ -710,11 +712,14 @@ module View = struct
 
       ; p [ txt "The next class of operators accepts some number of repetitions of another parser." ]
 
-      (*
-        <h4><code class="code-inline">*</code></h4>
-        <p>The star operator can be used to accept any number of repetitions of
-        the previous parser. For example <code class="code-inline">'c'*</code> accepts any number of <code class="code-inline">'c'</code>s, including 0.</p>
-        *)
+      ; h4 [ code_inline' "*" ]
+      ; p [ txt "The star operator can be used to accept any number of repetitions of the previous parser. For example "
+          ; code_inline' "'c'*"
+          ; txt "accepts any number of "
+          ; code_inline' "'c'"
+          ; txt "s, including 0."
+          ]
+
       ; star_table
 
         (*

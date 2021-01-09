@@ -42,5 +42,5 @@ let mk_reactive cons ?d ?at s =
   let () = Elr.def_children result s in
   result
 
-let mk_reactive' cons ?d ?at s =
-  mk_reactive cons ?d ?at (s |> Note.S.map (fun elem -> [elem]))
+let mk_reactive' cons ?eq ?d ?at s =
+  mk_reactive cons ?d ?at (s |> Note.S.map ?eq (fun elem -> [elem]))

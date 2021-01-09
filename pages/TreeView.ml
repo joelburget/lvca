@@ -115,7 +115,6 @@ let grid_tmpl ~render_params left loc
   in
 
   let tr = tr cols in
-  (* let tr_elem = To_dom.of_tr tr in *)
 
   let evt, trigger_evt = E.create () in
 

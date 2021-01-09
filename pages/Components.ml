@@ -3,8 +3,6 @@ open Brr
 open Brr_note
 open Note
 open Prelude
-(* open Js_of_ocaml_tyxml.Tyxml_js *)
-(* open ReactiveData *)
 
 let empty_elem = El.span []
 
@@ -110,32 +108,33 @@ let button_classes =
   ; "cursor-pointer"
   ]
 
-(* TODO: automatically return false? *)
-let button ~onclick str =
+let button str =
   let button = El.button ~at:(button_classes |> List.map ~f:class') [txt str] in
-  let _ : unit event = Evr.on_el Ev.click onclick button in
-  button
+  let evt : unit event = Evr.on_el Ev.click (fun _ -> ()) button in
+  evt, button
 
-let r_button ~onclick (str_s: string signal) =
+let r_button (str_s: string signal) =
   let button = El.button ~at:(button_classes |> List.map ~f:class') [] in
   let () = Elr.def_children button (str_s |> S.map (fun str -> [txt str])) in
-  let _ : unit event = Evr.on_el Ev.click onclick button in
-  button
+  let evt = Evr.on_el Ev.click Fn.id button in
+  evt, button
 
 let table
   ?classes:(classes=[])
-  _todo1 _todo2 =
-  let result = El.table ~at:(classes |> List.map ~f:class') [] in
-  (* let () = Elr.def_children result ( *)
-  (* RList.(concat (singleton header) body) *)
+  thead tbody =
+  let tbody = tbody |> S.map ~eq:Common.htmls_eq (fun tbody -> thead :: tbody) in
+  let result = mk_reactive El.table ~at:(classes |> List.map ~f:class') tbody in
   result
 
 let inline_block x = El.div ~at:[class' "inline-block"] [x]
-let r_inline_block x = El.div ~at:[class' "inline-block"] x
+let r_inline_block child_s =
+  let result = El.div ~at:[class' "inline-block"] [] in
+  let () = Elr.def_children result (child_s |> S.map (fun child -> [child])) in
+  result
 
 let button_toggle ~visible_text ~hidden_text visible_s =
-  let e, set_e = E.create () in
-  let onclick _evt = set_e (not (S.value visible_s)) in
+  (* let e, set_e = E.create () in *)
+  (* let onclick _evt = set_e (not (S.value visible_s)) in *)
   let text_s = visible_s
     |> S.map (function
       | true -> visible_text
@@ -147,11 +146,9 @@ let button_toggle ~visible_text ~hidden_text visible_s =
   let () = Elr.def_children button text_s in
   let _ : unit event = Evr.on_el Ev.click onclick button in
   *)
-  e, r_button ~onclick text_s
+  r_button text_s
 
 let chevron_toggle visible_s =
-  let e, set_e = E.create () in
-  let onclick _evt = set_e (not (S.value visible_s)); false in
   let _class_s = visible_s
     |> S.map (function
       | true -> ["gg-chevron-down"]
@@ -163,5 +160,5 @@ let chevron_toggle visible_s =
     ~at:[ class' "cursor-pointer"; class' "p-1" ]
     [ El.span ~at:[class' "chevron-icon-wrap"] [ i ] ]
   in
-  let _ : bool event = Evr.on_el Ev.click onclick elem in
+  let e = Evr.on_el Ev.click (fun _evt -> not (S.value visible_s)) elem in
   e, elem

@@ -11,10 +11,10 @@ module ParsePrimitive = Primitive.Parse(ParseUtil.CComment)
 let parse_tm = ParseUtil.parse_string (ParseNominal.whitespace_t ParsePrimitive.t)
 
 let buf = "input"
-(* let initial_input = "foo(p(a; b). p'(b). bar(a. a; a; b; c))" *)
 let initial_input = "fun(x. app(fun(x. app(f; x)); x))"
 
 module Model = struct
+  type t = string * Ranges.t
   let initial_model = initial_input, []
   let (=) (str1, ranges1) (str2, ranges2) = String.(str1 = str2) && Ranges.(=) ranges1 ranges2
 end
@@ -25,8 +25,7 @@ module Examples = struct
       ~at:(classes "bg-gray-50 p-1 font-mono text-sm cursor-pointer")
       [ txt str ]
     in
-    let click_event, signal_event = E.create () in
-    let _ : unit event = Evr.on_el Ev.click (fun _evt -> signal_event str) result in
+    let click_event = Evr.on_el Ev.click (fun _evt -> str) result in
     result, click_event
   ;;
 
@@ -38,50 +37,57 @@ module Examples = struct
   let sum_ex, sum_e = mk "match(lst; cons(x; xs). add(x; ap(sum; xs)); empty(). 0)"
 end
 
+module Action = struct
+  type t =
+    | SetInput of string
+    | SetInputHighlights of Ranges.t
+end
+
+module Controller = struct
+  let update action (input, _ranges) = match action with
+    | Action.SetInput input -> input, []
+    | SetInputHighlights ranges -> input, ranges
+end
+
 module View = struct
-  let view _model =
-    let model_s, set_model = S.create ~eq:Model.(=) Model.initial_model in
+  let view model_s =
     let input_s = S.Pair.fst ~eq:String.(=) model_s in
     let highlights_s = S.Pair.snd ~eq:Ranges.(=) model_s in
-    let set_input_highlights hls =
-      let str, _ = S.value model_s in
-      set_model (str, hls)
-    in
 
-    let (_ : unit event) = Examples.[identity_e; k_e; s_e; y_e; pattern_e; sum_e]
+    let click_example_e = Examples.[identity_e; k_e; s_e; y_e; pattern_e; sum_e]
       |> E.select
-      |> E.map (fun str -> set_model (str, []))
+      |> E.map (fun str -> Action.SetInput str)
     in
 
     let input_elem, input_evt = SingleLineInput.mk input_s ~highlights_s in
-    let _ : unit event = input_evt |> E.map (function
-      | Common.InputUpdate str -> set_model (str, [])
-      | _ -> ()
+    let enter_input_e = input_evt |> E.filter_map (function
+      | Common.InputUpdate str -> Some (Action.SetInput str)
+      | _ -> None
     )
     in
 
-    let output_children = input_s
-      |> S.map (fun str -> match parse_tm str with
-      | Error msg -> El.div [txt msg]
-      | Ok tm ->
-        let tm = tm |> Nominal.map_loc ~f:(SourceRanges.of_opt_range ~buf) in
-        let tree_view, tree_selection_e = TreeView.view_tm
-          ~source_column:false ~range_column:false tm
-        in
-        let _ : unit event = tree_selection_e
-          |> E.map (fun source_ranges -> match Map.find source_ranges buf with
-            | None -> ()
-            | Some ranges -> set_input_highlights ranges
-          )
-        in
+    let set_highlight_e, output_children =
+      let s = input_s
+        |> S.map (fun str -> match parse_tm str with
+        | Error msg -> E.never, [El.div [txt msg]]
+        | Ok tm ->
+          let tm = tm |> Nominal.map_loc ~f:(SourceRanges.of_opt_range ~buf) in
+          let tree_view, tree_selection_e = TreeView.view_tm
+            ~source_column:false ~range_column:false tm
+          in
 
-        tree_view
-      )
-      |> S.map (fun elem -> [elem])
+          let set_highlight_e = tree_selection_e
+            |> E.filter_map (fun source_ranges -> Map.find source_ranges buf
+              |> Option.map ~f:(fun ranges -> Action.SetInputHighlights ranges)
+            )
+          in
+
+          set_highlight_e, [tree_view]
+        )
+      in
+
+      S.Pair.fst s, S.Pair.snd s
     in
-
-    let output_elem = El.div [] in
-    let () = Elr.def_children output_elem output_children in
 
     let open Examples in
 
@@ -93,12 +99,19 @@ module View = struct
       ]
     in
 
-    div
+    let actions = E.select
+      [ click_example_e
+      ; enter_input_e
+      ; E.swap set_highlight_e
+      ]
+    in
+
+    let elem = div
       [ p [ txt "Try the identity function, "; identity_ex; txt " or the constant function "; k_ex; txt "."]
       ; p [ txt "Try more complicated combinators S "; s_ex; txt "and Y "; y_ex; txt "."]
       ; p [ txt "LVCA also supports pattern matching, for example "; pattern_ex; txt "and "; sum_ex; txt "."]
       ; input_elem
-      ; output_elem
+      ; mk_reactive div output_children
       ; p [ txt "Hover over a variable to see more information about it." ]
       ; ul
         [ color_defn "bg-blue-200" "blue" "shows all the uses of a variable"
@@ -108,6 +121,19 @@ module View = struct
         ; color_defn "bg-green-50" "green" "shows the extent of a variable's scope"
         ]
       ]
+    in
+
+    actions, elem
 end
 
-let stateless_view () = View.view Model.initial_model
+let stateless_view () =
+  let wrapper model_s =
+    let evts, child = View.view model_s in
+    let do_action = E.map Controller.update evts in
+    let model_s' = S.accum ~eq:Model.(=) (S.value model_s) do_action in
+    model_s', (model_s', child)
+  in
+  let model_s, child = S.fix ~eq:Model.(=) Model.initial_model wrapper in
+  Logr.hold (S.log model_s (fun _ -> ()));
+  child
+;;

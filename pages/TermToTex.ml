@@ -14,31 +14,25 @@ module Action = struct
 end
 
 module Controller = struct
-  let update (action : Action.t) _model_s signal_update =
-    (* let open Model in *)
-    let new_model = match action with Evaluate str -> str in
-    signal_update new_model
+  let update (action : Action.t) _model =
+    match action with Evaluate str -> str
   ;;
 end
 
 module View = struct
-  let view model_s signal_update =
-    let katex_area = El.div [] in
-    (* let katex_dom = To_dom.of_div katex_area in *)
-    let set_katex = Katex.render katex_area in
+  let view model_s =
+    let div, h2, h3 = El.(div, h2, h3) in
+    let katex_area = div [] in
     let input, input_event = MultilineInput.mk model_s in
-    let (_ : unit event) =
-      input_event
-      |> E.map (function
-             | Common.InputUpdate str ->
-               set_katex str;
-               (* XXX *)
-               Controller.update (Action.Evaluate str) model_s signal_update
-             | _ -> ())
+    let evt : Action.t event = input_event
+      |> E.filter_map (function
+        | Common.InputUpdate str ->
+          Katex.render katex_area str;
+          Some (Action.Evaluate str)
+        | _ -> None)
     in
 
-    let div, h2, h3 = El.(div, h2, h3) in
-    div
+    let elem = div
       [ h2 [ txt "Term to TeX"]
       ; div ~at:[class' "container"] [input]
       ; div ~at:[class' "side"]
@@ -46,10 +40,20 @@ module View = struct
         ; katex_area
         ]
       ]
+
+    in evt, elem
   ;;
 end
 
 let stateless_view () =
-  let model_s, signal_update = S.create Model.initial_model in
-  View.view model_s signal_update
+  let wrapper model_s =
+    let evts, elem = View.view model_s in
+    let do_action = E.map Controller.update evts in
+    let model_s' = S.accum (S.value model_s) do_action in
+    model_s', (model_s', elem)
+  in
+
+  let model_s, elem = S.fix Model.initial_model wrapper in
+  Logr.hold (S.log model_s (fun _ -> ()));
+  elem
 ;;

@@ -10,12 +10,10 @@ let mk
   ?highlights_s:(external_highlights_s=S.const [])
   input_s =
   let dirty_input_s, update_dirty = S.create false in
-  let input_event, signal_event = E.create () in
+  (* let input_event, signal_event = E.create () in *)
 
-  let highlights_s = Note.E.select
-    [ Note.S.changes external_highlights_s
-    ; input_event |> Note.E.map (fun _ -> [])
-    ]
+  let highlights_s = external_highlights_s
+    |> Note.S.changes
     |> Note.S.hold ~eq:Ranges.(=) []
   in
 
@@ -92,31 +90,38 @@ let mk
     ]
   in
 
-  let _ : unit event = Evr.on_el Ev.input (fun _evt -> update_dirty true) input in
-  let _ : unit event = Evr.on_el Ev.keydown (fun evt ->
-    let evt = Ev.as_type evt in
-    if WebUtil.is_enter evt
-    then
-      (* TODO Dom.preventDefault evt; *)
-      update_dirty false;
-      signal_event (Common.InputUpdate (El.prop El.Prop.value input |> Jstr.to_string))
-    ) input
+  let _ : unit event =
+    Evr.on_el Ev.input (fun _evt -> update_dirty true) input
   in
 
-  let _ : unit event = Evr.on_el Ev.select (fun _evt ->
+  let keydown_evt =
+    let handler evt =
+      let keyboard_evt = Ev.as_type evt in
+      if WebUtil.is_enter keyboard_evt
+      then (
+        Ev.prevent_default evt;
+        update_dirty false;
+        Some (Common.InputUpdate (El.prop El.Prop.value input |> Jstr.to_string))
+      )
+      else None
+    in
+    Evr.on_el Ev.keydown handler input |> E.filter_map Fn.id
+  in
+
+  let select_evt =
+    let handler _evt =
       let start = El.prop selection_start input in
       let finish = El.prop selection_end input in
-      signal_event (Common.InputSelect (start, finish));
-      (* Used for debugging only -- can be removed: *)
-      (* let str = input##.value##substring start finish in *)
-      (* printf "Selected %u-%u '%s'\n" start finish (Js.to_string str); *)
-  )
-  input
+      Common.InputSelect (start, finish);
+    in
+    Evr.on_el Ev.select handler input
   in
 
-  let _ : unit event =
-    Evr.on_el Ev.click (fun _evt -> signal_event Common.InputUnselect) input
+  let unselect_evt: Common.input_event event =
+    Evr.on_el Ev.click (fun _evt -> Common.InputUnselect) input
   in
+
+  let input_event = E.select [keydown_evt; select_evt; unselect_evt] in
 
   let _: unit event = input_s
     (* Create an event when the input has changed *)

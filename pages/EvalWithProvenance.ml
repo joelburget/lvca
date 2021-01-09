@@ -1,7 +1,9 @@
 open Base
-open Lvca_syntax
-open Result.Let_syntax
 open Common
+open Lvca_syntax
+open Note
+open Prelude
+open Result.Let_syntax
 
 module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse (ParseUtil.NoComment)
 
@@ -33,7 +35,7 @@ end
 module Controller = struct
   let update (action : Action.t) model_s signal_update =
     let open Model in
-    let { input; result; selected } = React.S.value model_s in
+    let { input; result; selected } = S.value model_s in
     let new_model =
       match action with
       | Evaluate str ->
@@ -63,17 +65,14 @@ module Controller = struct
 end
 
 module View = struct
-  open Js_of_ocaml_tyxml.Tyxml_js
-  module Ev = Js_of_ocaml_lwt.Lwt_js_events
-
   let mk_output' model_s =
-    let range_s : SourceRanges.t React.signal = model_s
-      |> React.S.map (fun Model.{ selected; _ } ->
+    let range_s : SourceRanges.t signal = model_s
+      |> S.map (fun Model.{ selected; _ } ->
           SourceRanges.of_opt_range ~buf:"input" selected)
     in
     let formatted_s =
       model_s
-      |> React.S.map (fun Model.{ result; _ } ->
+      |> S.map (fun Model.{ result; _ } ->
              let elt, formatter, _clear = RangeFormatter.mk
                ~selection_s:range_s
                ~set_selection:(fun _ -> () (* TODO *))
@@ -93,10 +92,10 @@ module View = struct
       false
     in
     let input, input_event =
-      MultilineInput.mk (model_s |> React.S.map (fun model -> model.Model.input))
+      MultilineInput.mk (model_s |> S.map (fun model -> model.Model.input))
     in
-    let (_ : unit React.event) = input_event
-      |> React.E.map (fun evt ->
+    let (_ : unit event) = input_event
+      |> E.map (fun evt ->
              let evt' =
                match evt with
                | InputUpdate str -> Action.Evaluate str
@@ -107,9 +106,9 @@ module View = struct
     in
     demo_template
       handler
-      (Html.txt "input")
+      (txt "input")
       input
-      (Html.txt "output")
+      (txt "output")
       (mk_output' model_s)
   ;;
 end
@@ -123,6 +122,6 @@ let stateless_view () =
     in
     { input; result; selected = None }
   in
-  let model_s, signal_update = React.S.create initial_model in
+  let model_s, signal_update = S.create initial_model in
   View.view model_s signal_update
 ;;
