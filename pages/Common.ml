@@ -20,16 +20,16 @@ end
 
 let lambda_pretty = Lvca_languages.LambdaCalculus.pp (* XXX why used twice? *)
 
-let demo_template handler input_desc input_elem output_desc output_elem =
+let demo_template input_desc input_elem output_desc output_elem =
   let button, div, h2, h3 = El.(button, div, h2, h3) in
   let txt str = El.txt (Jstr.v str) in
   let button = button
     ~at:(classes "p-2 border-2 border-indigo-900 rounded")
     [ txt "switch input languages" ]
   in
-  let _ : bool event = Evr.on_el Ev.click handler button in
+  let evt = Evr.on_el Ev.click Fn.id button in
 
-  div
+  let elem = div
     [ h2 [ txt "Demo" ]
     ; div ~at:[ class' "container" ]
       [ div ~at:[ class' "py-4" ]
@@ -43,16 +43,16 @@ let demo_template handler input_desc input_elem output_desc output_elem =
         ]
       ]
     ]
+  in
+
+  elem, evt
 
 type input_event =
   | InputUpdate of string
   | InputSelect of int * int
   | InputUnselect
 
-let mk_output elt_s =
-  let div = El.div ~at:[class' "bg-gray-100"; class' "p-1"] [] in
-  let () = Elr.def_children div (elt_s |> S.map (fun elt -> [elt])) in
-  div
+let mk_output elt_s = mk_reactive' El.div ~at:[class' "bg-gray-100"; class' "p-1"] elt_s
 
 type digits_update =
   | SetDigits of int

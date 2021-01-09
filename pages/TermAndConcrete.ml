@@ -2,8 +2,8 @@ open Base
 open Common
 open Lvca_syntax
 open Brr
-open Brr_note
 open Note
+open Prelude
 
 module PrimitiveParse = Primitive.Parse (ParseUtil.NoComment)
 module TermParse = Nominal.Parse (ParseUtil.NoComment)
@@ -41,35 +41,29 @@ module Model = struct
 end
 
 module Controller = struct
-  let update (action : Action.t) model_s signal_update =
+  let update (action : Action.t) Model.{ input; result; input_lang; selected } =
     let open Model in
-    let { input; result; input_lang; selected } = S.value model_s in
-    let new_model =
-      match action with
-      | Evaluate str ->
-        let result = ParseUtil.parse_string (parser_of input_lang) str in
-        { input; input_lang; result; selected }
-      | Unselect -> { input; result; input_lang; selected = None }
-      | Select (start, finish) ->
-        { input; result; input_lang; selected = Some Range.{ start; finish } }
-      | SwitchInputLang ->
-        let input_lang', formatter =
-          match input_lang with
-          | Lambda -> Term, term_pretty
-          | Term -> Lambda, lambda_pretty
-        in
-        let input', result' =
-          match result with
-          | Error _ -> "", result
-          | Ok tm ->
-            (* TODO: clean up / explain *)
-            let result'_str = Fmt.str "%a" formatter tm in
-            result'_str, Ok tm
-              (* ParseUtil.parse_string (parser_of input_lang') result'_str *)
-        in
-        { input = input'; input_lang = input_lang'; selected = None; result = result' }
-    in
-    signal_update new_model
+    match action with
+    | Evaluate str ->
+      let result = ParseUtil.parse_string (parser_of input_lang) str in
+      { input; input_lang; result; selected }
+    | Unselect -> { input; result; input_lang; selected = None }
+    | Select (start, finish) ->
+      { input; result; input_lang; selected = Some Range.{ start; finish } }
+    | SwitchInputLang ->
+      let input_lang, formatter = match input_lang with
+        | Lambda -> Term, term_pretty
+        | Term -> Lambda, lambda_pretty
+      in
+      let input, result = match result with
+        | Error _ -> "", result
+        | Ok tm ->
+          (* TODO: clean up / explain *)
+          let result_str = Fmt.str "%a" formatter tm in
+          result_str, Ok tm
+            (* ParseUtil.parse_string (parser_of input_lang) result_str *)
+      in
+      { input; input_lang = input_lang; selected = None; result }
   ;;
 end
 
@@ -101,37 +95,35 @@ module View = struct
            match input_lang with
            | Lambda -> "input (concrete)", "output (abstract)"
            | Term -> "input (abstract)", "output (concrete)")
-    |> S.map (Lvca_util.Tuple2.map ~f:(fun str -> [El.txt (Jstr.v str)]))
+    |> S.map (Lvca_util.Tuple2.map ~f:(fun str -> [txt str]))
   ;;
 
-  let view model_s signal_update =
+  let view model_s =
     let descriptions_s = make_descriptions model_s in
     let input_desc, output_desc = S.Pair.(fst descriptions_s, snd descriptions_s) in
-    let input_desc_elem = El.span [] in
-    let output_desc_elem = El.span [] in
-    let () = Elr.def_children input_desc_elem input_desc in
-    let () = Elr.def_children output_desc_elem output_desc in
+    let input_desc_elem = mk_reactive El.span input_desc in
+    let output_desc_elem = mk_reactive El.span output_desc in
 
-    let handler _evt =
-      Controller.update SwitchInputLang model_s signal_update;
-      false
-    in
     let input, input_event =
       MultilineInput.mk (model_s |> S.map (fun model -> model.Model.input))
     in
-    let input_event : Action.t event =
-      input_event
-      |> E.map (fun evt ->
-        match evt with
-          | InputUpdate str -> Action.Evaluate str
-          | InputSelect (start, finish) -> Select (start, finish)
-          | InputUnselect -> Unselect)
-    in
-    let _sink : Logr.t option =
-      E.log input_event (fun evt -> Controller.update evt model_s signal_update)
+
+    let elem, click_evt =
+      demo_template input_desc_elem input output_desc_elem (mk_output' model_s)
     in
 
-    demo_template handler input_desc_elem input output_desc_elem (mk_output' model_s)
+    let evts = E.select
+      [ click_evt |> E.map (fun _click -> Action.SwitchInputLang)
+      ; input_event
+        |> E.map (function
+          | InputUpdate str -> Action.Evaluate str
+          | InputSelect (start, finish) -> Select (start, finish)
+          | InputUnselect -> Unselect
+        )
+      ]
+    in
+
+    evts, elem
   ;;
 end
 
@@ -141,6 +133,15 @@ let stateless_view () =
     let result = ParseUtil.parse_string LambdaParse.t input in
     { input; result; input_lang = Lambda; selected = None }
   in
-  let model_s, signal_update = S.create initial_model in
-  View.view model_s signal_update
+
+  let wrapper model_s =
+    let evts, elem = View.view model_s in
+    let do_action = E.map Controller.update evts in
+    let model_s' = S.accum (S.value model_s) do_action in
+    model_s', (model_s', elem)
+  in
+
+  let model_s, elem = S.fix initial_model wrapper in
+  Logr.hold (S.log model_s (fun _ -> ()));
+  elem
 ;;

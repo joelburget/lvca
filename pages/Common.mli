@@ -18,7 +18,8 @@ end
 val lambda_pretty : (OptRange.t, Primitive.t) Nominal.term Fmt.t
 
 val demo_template
-  : (Brr.Ev.Mouse.t Brr.Ev.t -> bool) -> Brr.El.t -> Brr.El.t -> Brr.El.t -> Brr.El.t -> Brr.El.t
+  : Brr.El.t -> Brr.El.t -> Brr.El.t -> Brr.El.t
+  -> Brr.El.t * Brr.Ev.Mouse.t Brr.Ev.t Note.event
 
 type input_event =
   | InputUpdate of string

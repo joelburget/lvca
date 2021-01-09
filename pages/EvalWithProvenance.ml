@@ -16,8 +16,6 @@ module Model = struct
     ; selected : OptRange.t
     }
 
-  (* TODO: evaluate ppx_deriving *)
-
   let print { input; result; selected } =
     Fmt.pr
       "{ input = %s; result = %a; selected = %a }\n"
@@ -33,34 +31,29 @@ module Model = struct
 end
 
 module Controller = struct
-  let update (action : Action.t) model_s signal_update =
+  let update (action : Action.t) Model.{ input; result; selected } =
     let open Model in
-    let { input; result; selected } = S.value model_s in
-    let new_model =
-      match action with
+    match action with
       | Evaluate str ->
-        let result =
-          let%bind parsed = ParseUtil.parse_string LambdaParse.t str in
-          eval parsed
+        let result = str
+          |> ParseUtil.parse_string LambdaParse.t
+          |> Result.bind ~f:eval
         in
         { input; result; selected }
       | Unselect -> { input; result; selected = None }
       | Select (start, finish) ->
         { input; result; selected = Some Range.{ start; finish } }
       | SwitchInputLang ->
-        let input', result' =
-          match result with
+        let input, result = match result with
           | Error _ -> "", result
           | Ok tm ->
             (* TODO: clean up / explain *)
-            let result'_str = Fmt.str "%a" lambda_pretty tm in
-            Fmt.pr "result'_str: %s\n" result'_str;
-            result'_str, ParseUtil.parse_string LambdaParse.t result'_str
+            let result_str = Fmt.str "%a" lambda_pretty tm in
+            Fmt.pr "result_str: %s\n" result_str;
+            result_str, ParseUtil.parse_string LambdaParse.t result_str
         in
         (* TODO: update not with result but input *)
-        { input = input'; selected = None; result = result' }
-    in
-    signal_update new_model
+        { input; selected = None; result }
   ;;
 end
 
@@ -70,8 +63,7 @@ module View = struct
       |> S.map (fun Model.{ selected; _ } ->
           SourceRanges.of_opt_range ~buf:"input" selected)
     in
-    let formatted_s =
-      model_s
+    let formatted_s = model_s
       |> S.map (fun Model.{ result; _ } ->
              let elt, formatter, _clear = RangeFormatter.mk
                ~selection_s:range_s
@@ -86,30 +78,30 @@ module View = struct
     mk_output formatted_s
   ;;
 
-  let view model_s signal_update =
-    let handler _evt =
-      Controller.update SwitchInputLang model_s signal_update;
-      false
-    in
+  let view model_s =
     let input, input_event =
       MultilineInput.mk (model_s |> S.map (fun model -> model.Model.input))
     in
-    let (_ : unit event) = input_event
-      |> E.map (fun evt ->
-             let evt' =
-               match evt with
-               | InputUpdate str -> Action.Evaluate str
-               | InputSelect (start, finish) -> Select (start, finish)
-               | InputUnselect -> Unselect
-             in
-             Controller.update evt' model_s signal_update)
-    in
-    demo_template
-      handler
+
+    let elem, click_evt = demo_template
       (txt "input")
       input
       (txt "output")
       (mk_output' model_s)
+    in
+
+    let evts = E.select
+      [ click_evt |> E.map (fun _click_evt -> Action.SwitchInputLang)
+      ; input_event
+        |> E.map (function
+          | InputUpdate str -> Action.Evaluate str
+          | InputSelect (start, finish) -> Select (start, finish)
+          | InputUnselect -> Unselect
+        )
+      ]
+    in
+
+    evts, elem
   ;;
 end
 
@@ -122,6 +114,15 @@ let stateless_view () =
     in
     { input; result; selected = None }
   in
-  let model_s, signal_update = S.create initial_model in
-  View.view model_s signal_update
+
+  let wrapper model_s =
+    let evts, elem = View.view model_s in
+    let do_action = E.map Controller.update evts in
+    let model_s' = S.accum (S.value model_s) do_action in
+    model_s', (model_s', elem)
+  in
+
+  let model_s, elem = S.fix initial_model wrapper in
+  Logr.hold (S.log model_s (fun _ -> ()));
+  elem
 ;;
