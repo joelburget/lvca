@@ -4,8 +4,10 @@ open Brr
 open Brr_note
 open Note
 open Prelude
+module Tuple4 = Lvca_util.Tuple4
 
-let pre, span, td, tr, thead = El.(pre, span, td, tr, thead)
+let div, tbody, table, pre, span, td, tr, thead =
+  El.(div, tbody, table, pre, span, td, tr, thead)
 
 type var_status =
   | Unselected
@@ -84,7 +86,7 @@ let downstream_shadow_cls = "bg-yellow-500"
 let grid_tmpl ~render_params left loc
   : El.t * SourceRanges.t event =
   let { var_selected_events; source_column; range_column; _ } = render_params in
-  let _classes = var_selected_events
+  let in_scope_cls_s = var_selected_events
     |> Map.to_alist
     (* Highlight background if any variable in scope is selected *)
     |> List.map ~f:(fun (_k, { event; _ }) -> event
@@ -92,13 +94,10 @@ let grid_tmpl ~render_params left loc
     )
     |> E.select
     |> S.hold ~eq:Bool.(=) false
-    |> S.map ~eq:(List.equal Caml.(=)) (function
-      | true -> [in_scope_cls; "col-span-2"; "px-2"; "py-0"]
-      | false -> ["col-span-2"; "px-2"; "py-0"]
-    )
   in
 
-  let fst_col = td (* TODO ~at:[R.Html.a_class classes]*) left in
+  let fst_col = td ~at:(classes "col-span-2 px-2 py-0") left in
+  Elr.def_class (Jstr.v in_scope_cls) in_scope_cls_s fst_col;
 
   let cols = match loc with
     | None -> [ fst_col ]
@@ -137,26 +136,29 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
   let { depth; queue; _ } = render_params in
   let { event = selected_event; trigger = trigger_selected } = selected_event in
 
-  let _classes_s = selected_event
+  let classes_s = selected_event
     |> S.hold ~eq:Caml.(=) Unselected
-    |> S.map ~eq:(List.equal String.(=)) (fun evt ->
-      let cls = match evt, var_pos with
-        | Selected, Reference -> [reference_cls]
-        | Selected, Definition _ -> [definition_cls]
-        | Shadowed, Definition _ -> [upstream_shadow_cls]
-        | Shadowing, Definition _ -> [downstream_shadow_cls]
-        | _, _ -> []
-      in
-      "inline-block" :: cls
+    |> S.map ~eq:(Tuple4.Bool.(=)) (fun evt -> match evt, var_pos with
+      | Selected, Reference -> true, false, false, false (* reference *)
+      | Selected, Definition _ -> false, true, false, false (* definition *)
+      | Shadowed, Definition _ -> false, false, true, false (* upstream shadow *)
+      | Shadowing, Definition _ -> false, false, false, true (* downstream shadow *)
+      | _, _ -> false, false, false, false
     )
   in
 
+  let reference_cls_s = classes_s |> S.map Tuple4.get1 in
+  let definition_cls_s = classes_s |> S.map Tuple4.get2 in
+  let upstream_shadow_cls_s = classes_s |> S.map Tuple4.get3 in
+  let downstream_shadow_cls_s = classes_s |> S.map Tuple4.get4 in
+  let inner_span = span ~at:[class' "inline-block"] [txt name] in
+  Elr.def_class (Jstr.v reference_cls) reference_cls_s inner_span;
+  Elr.def_class (Jstr.v definition_cls) definition_cls_s inner_span;
+  Elr.def_class (Jstr.v upstream_shadow_cls) upstream_shadow_cls_s inner_span;
+  Elr.def_class (Jstr.v downstream_shadow_cls) downstream_shadow_cls_s inner_span;
+
   let indents = List.init depth ~f:indent in
-  let name' = span
-    [ span (* TODO ~at:[R.Html.a_class classes_s]*) [txt name]
-    ; txt suffix
-    ]
-  in
+  let name_elem = span [ inner_span ; txt suffix ] in
 
   let trigger_upstream_shadow, trigger_downstream_shadow = match var_pos with
     | Definition { trigger_upstream_shadow; trigger_downstream_shadow } ->
@@ -165,7 +167,7 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
   in
 
   let _sink : Logr.t option =
-    let evt = Evr.on_el Ev.mouseover Fn.id name' in
+    let evt = Evr.on_el Ev.mouseover Fn.id name_elem in
     E.log evt (fun _evt ->
       trigger_downstream_shadow Shadowing;
       trigger_upstream_shadow Shadowed;
@@ -174,7 +176,7 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
   in
 
   let _sink : Logr.t option =
-    let evt = Evr.on_el Ev.mouseout Fn.id name' in
+    let evt = Evr.on_el Ev.mouseout Fn.id name_elem in
     E.log evt (fun _evt ->
       trigger_upstream_shadow Unselected;
       trigger_downstream_shadow Unselected;
@@ -182,7 +184,7 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
     )
   in
 
-  let left_col = pre (Lvca_util.List.snoc indents name') in
+  let left_col = pre (Lvca_util.List.snoc indents name_elem) in
   Queue.enqueue queue (grid_tmpl ~render_params [left_col] loc)
 
 let get_suffix ~last_slot ~last_term = match last_term, last_slot with
@@ -203,8 +205,9 @@ let rec index_tm ~expanded_depth = function
   | Var (loc, name) -> Var (LocIx loc, name), E.never
   | Operator (loc, name, scopes) ->
     let scopes, expanded_s, expanded_toggle_e =
-      if not (List.is_empty scopes)
-      then (
+      if List.is_empty scopes
+      then [], (* not actually used *) create_s true ~eq:Bool.(=), E.never
+      else (
         let scopes, children_expanded_toggle_e = scopes
           |> List.map ~f:(index_scope ~expanded_depth)
           |> List.unzip
@@ -225,7 +228,6 @@ let rec index_tm ~expanded_depth = function
         in
         scopes, expanded_s, expanded_toggle_e
       )
-      else [], (* not actually used *) create_s true ~eq:Bool.(=), E.never
     in
 
     Operator (OperatorIx (loc, expanded_s), name, scopes), expanded_toggle_e
@@ -321,37 +323,29 @@ let rec render_tm ~render_params ?suffix:(suffix="") : _ Nominal.term -> unit =
     let { signal = expanded_s; set_s = set_expanded } = expanded_signal in
     let button_event, button = Components.chevron_toggle expanded_s in
 
-    let _sink : Logr.t option =
-      E.log (button_event |> E.map set_expanded) (fun () -> ())
-    in
+    let _sink : Logr.t option = E.log button_event set_expanded in
 
-    let _sink : Logr.t =
-      let s = expanded_s
-        |> S.map ~eq:Unit.(=) (function
-          | false ->
-            let left_col = match scopes with
-              | [] -> [padded_txt depth (name ^ "()" ^ suffix) ]
-              | _ -> [padded_txt depth (name ^ "("); button; txt (")" ^ suffix) ]
-            in
-            Queue.enqueue queue (grid_tmpl ~render_params left_col loc)
-          | true ->
-            let open_elem =
-              grid_tmpl ~render_params [ padded_txt depth (name ^ "("); button ] loc
-            in
-            Queue.enqueue queue open_elem;
-
-            List.iteri scopes ~f:(fun i ->
-              render_scope ~render_params ~last:(i = List.length scopes - 1));
-
-            let close_elem =
-              grid_tmpl ~render_params [ padded_txt depth (")" ^ suffix) ] loc
-            in
-            Queue.enqueue queue close_elem
-        )
+    (match S.value expanded_s with
+    | false ->
+      let left_col = match scopes with
+        | [] -> [padded_txt depth (name ^ "()" ^ suffix) ]
+        | _ -> [padded_txt depth (name ^ "("); button; txt (")" ^ suffix) ]
       in
-      S.log s (fun () -> ())
-    in
-    ()
+      Queue.enqueue queue (grid_tmpl ~render_params left_col loc)
+    | true ->
+      let open_elem =
+        grid_tmpl ~render_params [ padded_txt depth (name ^ "("); button ] loc
+      in
+      Queue.enqueue queue open_elem;
+
+      List.iteri scopes ~f:(fun i ->
+        render_scope ~render_params ~last:(i = List.length scopes - 1));
+
+      let close_elem =
+        grid_tmpl ~render_params [ padded_txt depth (")" ^ suffix) ] loc
+      in
+      Queue.enqueue queue close_elem)
+
   | _ -> failwith "invariant violation: wrong index"
 
 and render_scope ~render_params ~last:last_slot (Nominal.Scope (pats, tms)) =
@@ -433,18 +427,19 @@ let view_tm
     in
     render_tm ~render_params tm;
     let rows, evts = queue |> Queue.to_list |> List.unzip in
-    let tbody = El.tbody rows in
+    let tbody = tbody rows in
 
     let _sink : Logr.t option = E.log (E.select evts) set_selection in
 
     let rows =
-      [ Some (El.td ~at:(classes "p-2 border-t-2 border-b-2 border-r-2 w-1/2") [ txt "source" ])
+      [ Some
+        (td ~at:(classes "p-2 border-t-2 border-b-2 border-r-2 w-1/2") [ txt "term" ])
       ; if source_column
         then Some
-          (El.td ~at:(classes "p-2 border-t-2 border-b-2 border-r-2") [ txt "source" ])
+          (td ~at:(classes "p-2 border-t-2 border-b-2 border-r-2") [ txt "source" ])
         else None
       ; if range_column
-        then Some (El.td ~at:(classes "p-2 border-t-2 border-b-2") [ txt "range" ])
+        then Some (td ~at:(classes "p-2 border-t-2 border-b-2") [ txt "range" ])
         else None
       ]
       |> List.filter_map ~f:Fn.id
@@ -455,7 +450,7 @@ let view_tm
       then [ thead [ tr rows ]; tbody ]
       else [ tbody ]
     in
-    El.table ~at:(classes "w-full table-fixed border-2 cursor-default font-mono")
+    table ~at:(classes "w-full table-fixed border-2 cursor-default font-mono")
         table_contents
   in
 
@@ -463,12 +458,9 @@ let view_tm
      equality testing. *)
   let eq _ _ = false in
 
-  let elem = El.div [] in
-
   let elem_children = visible_toggle_e
-    |> S.hold ~eq:Unit.(=) ()
+    |> S.hold ~eq ()
     |> S.map ~eq (fun () -> [render ()])
   in
-  let () = Elr.def_children elem elem_children in
 
-  elem, selection_e
+  mk_reactive div elem_children, selection_e
