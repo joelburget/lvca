@@ -113,40 +113,26 @@ let button str =
   let evt : unit event = Evr.on_el Ev.click (fun _ -> ()) button in
   evt, button
 
-let r_button (str_s: string signal) =
-  let button = El.button ~at:(button_classes |> List.map ~f:class') [] in
-  let () = Elr.def_children button (str_s |> S.map (fun str -> [txt str])) in
-  let evt = Evr.on_el Ev.click Fn.id button in
-  evt, button
-
 let table
   ?classes:(classes=[])
   thead tbody =
   let tbody = tbody |> S.map ~eq:Common.htmls_eq (fun tbody -> thead :: tbody) in
-  let result = mk_reactive El.table ~at:(classes |> List.map ~f:class') tbody in
-  result
+  mk_reactive El.table ~at:(classes |> List.map ~f:class') tbody
 
 let inline_block x = El.div ~at:[class' "inline-block"] [x]
-let r_inline_block child_s =
-  let result = El.div ~at:[class' "inline-block"] [] in
-  let () = Elr.def_children result (child_s |> S.map (fun child -> [child])) in
-  result
+let r_inline_block child_s = mk_reactive' El.div ~at:[class' "inline-block"] child_s
 
 let button_toggle ~visible_text ~hidden_text visible_s =
-  (* let e, set_e = E.create () in *)
-  (* let onclick _evt = set_e (not (S.value visible_s)) in *)
   let text_s = visible_s
     |> S.map (function
       | true -> visible_text
       | false -> hidden_text)
-    (* |> S.map (fun str -> [txt str]) *)
   in
-  (*
-  let button = r_button [] in
-  let () = Elr.def_children button text_s in
-  let _ : unit event = Evr.on_el Ev.click onclick button in
-  *)
-  r_button text_s
+  let button = mk_reactive' El.button ~at:(List.map button_classes ~f:class')
+    (text_s |> S.map txt)
+  in
+  let evt = Evr.on_el Ev.click Fn.id button in
+  evt, button
 
 let chevron_toggle visible_s =
   let _class_s = visible_s
