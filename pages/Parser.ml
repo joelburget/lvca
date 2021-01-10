@@ -10,6 +10,7 @@ module P = Lvca_languages.Parser
 module ParseCore = Core.Parse (ParseUtil.CComment)
 module ParseParser = P.Parse (ParseUtil.CComment)
 module Tuple3 = Lvca_util.Tuple3
+module Tuple2 = Lvca_util.Tuple2
 
 open Components
 
@@ -94,6 +95,14 @@ module Action = struct
     | SetSelection of SourceRanges.t
     | UpdateTest of string
     | SetInputHl of SourceRanges.t
+end
+
+module DebuggerAction = struct
+  type t =
+    | SubparserZoom of int
+    (** Click on a subparser *)
+    | ChopStack of int list
+    (** Click on a stack member *)
 end
 
 let parse_parser = ParseUtil.parse_string (ParseParser.t ParseCore.term)
@@ -187,7 +196,7 @@ let pp_view ~highlight_s tm fmt =
   let char_size_s = px_size_s |> S.map ~eq:Int.(=)
     (fun size -> Int.of_float (size /. font_adjust))
   in
-  let _ : unit signal = char_size_s |> S.map ~eq:Unit.(=)
+  let _sink : Logr.t = S.log char_size_s
     (fun size ->
       clear ();
       Caml.Format.pp_set_margin formatter size;
@@ -273,8 +282,7 @@ let snapshot_advanced_view str Model.TraceSnapshot.{ pre_pos; post_pos; _ } =
     ; inline_block (string_location ~str ~loc:post_pos)
     ]
 
-    (*
-let snapshot_controls str snapshots set_path =
+let snapshot_controls str snapshots =
   let header = tr
     [ td ~at:(classes "p-2 border-t-2 border-b-2 border-r-2 w-1/2") [txt "parser"]
     ; td ~at:(classes "p-2 border-t-2 border-b-2 border-r-2") [txt "action"]
@@ -282,26 +290,28 @@ let snapshot_controls str snapshots set_path =
     ]
   in
 
-  let body = snapshots
+  let path_evts, body = snapshots
     |> List.mapi ~f:(fun i snapshot ->
       let Model.TraceSnapshot.{ success; parser; _ } = snapshot in
-      let onclick _ = set_path (Lvca_util.List.snoc path i) in
-      let btn = button ~onclick "view" in
+      let click_evt, btn = button "view" in
+      let click_evt = click_evt |> E.map (fun _ -> DebuggerAction.SubparserZoom i) in
 
       let highlight_s = S.const SourceRanges.empty in
-      tr
-        [ td ~a:[a_class ["p-2 border-t-2 border-r-2"]]
+      click_evt, tr
+        [ td ~at:(classes "p-2 border-t-2 border-r-2")
           [view_parser_ignore_selection ~highlight_s ~success parser]
-        ; td ~a:[a_class ["p-2 border-t-2 border-r-2"]]
+        ; td ~at:(classes "p-2 border-t-2 border-r-2")
           [snapshot_advanced_view str snapshot]
-        ; td ~a:[a_class ["p-2 border-t-2"]] [btn]
+        ; td ~at:(classes "p-2 border-t-2") [btn]
         ])
+    |> List.unzip
   in
 
-  table ~classes:["table-fixed"] header body
-  *)
+  let path_evt = E.select path_evts in
 
-let view_controls _str _set_path snapshots =
+  path_evt, Components.table ~classes:["table-fixed"] header (S.const body)
+
+let view_controls str snapshots =
   let n_snaps = List.length snapshots in
   let msg = match n_snaps with
     | 0 -> "this parser calls no subparsers"
@@ -309,10 +319,12 @@ let view_controls _str _set_path snapshots =
     | _ -> Caml.Printf.sprintf "this parser calls %n subparsers" n_snaps
   in
 
-  rows
+  let path_evt, snapshot_controls = snapshot_controls str snapshots in
+
+  path_evt, rows
     ~classes:[]
     (if List.length snapshots > 0
-    then [ txt msg (* TODO ; snapshot_controls str snapshots set_path *) ]
+    then [ txt msg; snapshot_controls ]
     else [ txt msg ])
 
 type path_traversal =
@@ -334,9 +346,10 @@ let traverse_path ~root ~path =
   in
   { bottom_snapshot = !current_snapshot; stack }
 
-let view_stack root set_path path_s =
-  let children = path_s
-   |> S.map ~eq:(List.equal html_eq) (fun path ->
+let view_stack root path_s =
+  let eq = Tuple2.equal (List.equal phys_equal) Common.htmls_eq in
+  let s = path_s
+   |> S.map ~eq (fun path ->
      let stack_lst = (traverse_path ~root ~path).stack in
      let len = List.length stack_lst in
      let highlight_s = S.const SourceRanges.empty in
@@ -345,8 +358,8 @@ let view_stack root set_path path_s =
        let Model.TraceSnapshot.{ parser; success; _ } = snapshot in
        let p_view = view_parser_ignore_selection ~highlight_s ~success parser in
        let click_evt, btn = button "return here" in
-       let _ : unit event = click_evt
-         |> E.map (fun _ -> set_path (List.take path i))
+       let click_evt = click_evt
+         |> E.map (fun _ -> DebuggerAction.ChopStack (List.take path i))
        in
        let at =
          [ if i > 0 then Some "border-t-2" else None
@@ -355,16 +368,20 @@ let view_stack root set_path path_s =
          |> List.filter_map ~f:Fn.id
          |> List.map ~f:class'
        in
-       tr ~at
+       click_evt, tr ~at
          [ td ~at:(classes "p-2 w-1/4") [btn]
          ; td ~at:(classes "p-2 w-3/4") [p_view]
          ])
+     |> List.unzip
     )
   in
 
+  let click_evt = s |> S.Pair.fst |> S.map E.select |> E.swap in
+  let children = S.Pair.snd s in
+
   let table = table ~at:(classes "w-full table-fixed") [] in
   let () = Elr.def_children table children in
-  table
+  click_evt, table
 
 let view_root_snapshot str root =
   let path_s, set_path = S.create [] in
@@ -374,16 +391,28 @@ let view_root_snapshot str root =
       (fun path -> (traverse_path ~root ~path).bottom_snapshot)
   in
 
-  let stack_view = view_stack root set_path path_s in
+  let stack_evt, stack_view = view_stack root path_s in
 
   let stack_view = path_s
     |> S.map ~eq:html_eq
       (fun path -> if List.length path > 0 then stack_view else txt "(empty)")
   in
 
-  let controls_s = current_snapshot_s
-    |> S.map ~eq:html_eq
-      (fun Model.TraceSnapshot.{ snapshots; _ } -> view_controls str set_path snapshots)
+  let s = current_snapshot_s
+    |> S.map ~eq:(Tuple2.equal phys_equal html_eq)
+      (fun Model.TraceSnapshot.{ snapshots; _ } -> view_controls str snapshots)
+  in
+  let controls_evt = s |> S.Pair.fst |> E.swap in
+  let controls_s = S.Pair.snd s in
+
+  let evt = E.select [stack_evt; controls_evt] in
+  let _sink : Logr.t option = E.log evt (fun evt ->
+    let path = match evt with
+      | ChopStack path -> path
+      | SubparserZoom i -> Lvca_util.List.snoc (S.value path_s) i
+    in
+    set_path path
+  )
   in
 
   let highlight_s = S.const SourceRanges.empty in
@@ -492,11 +521,13 @@ module View = struct
     ~parser_str_s
     (test_s, update_test) =
 
-    let show_trace_s, _set_show_trace = S.create ~eq:Bool.(=) false in
-    let _trace_e, trace_button =
+    let show_trace_s, set_show_trace = S.create ~eq:Bool.(=) false in
+    let trace_e, trace_button =
       button_toggle ~visible_text:"hide" ~hidden_text:"show" show_trace_s
     in
-    (* TODO let (_ : unit event) = trace_e |> E.map set_show_trace in *)
+    let _sink : Logr.t option = E.log trace_e
+      (fun _ -> show_trace_s |> S.value |> not |> set_show_trace)
+    in
 
     let parser_s =
       let eq = Result.equal (P.equal OptRange.(=)) String.(=) in
@@ -520,11 +551,8 @@ module View = struct
       S.create ~eq:SourceRanges.(=) SourceRanges.empty
     in
 
-    let _ : unit signal = test_s'
-      |> S.map ~eq:Unit.(=) (fun (_, _, e) ->
-        let _ : unit event = E.map set_selection e in
-        ()
-      )
+    let _sink : Logr.t = S.log test_s'
+      (fun (_, _, e) -> let _sink : Logr.t option = E.log e set_selection in ())
     in
 
     let input_hl_s = tm_selection_s
@@ -551,7 +579,7 @@ module View = struct
     in
 
     let test_input, test_evt = SingleLineInput.mk test_s ~highlights_s:input_hl_s in
-    let (_ : unit event) = test_evt |> E.map
+    let _sink : Logr.t option = E.log test_evt
       (function
         | Common.InputUpdate str -> update_test str
         | InputSelect (start, finish)
@@ -651,7 +679,7 @@ module View = struct
       ~parser_str_s:pg_parser_input
       playground_input
     in
-    let (_ : unit event) = pg_input_evt |> E.map
+    let _sink : Logr.t option = E.log pg_input_evt
       (fun evt -> match evt with
          | Common.InputUpdate str -> set_pg_parser_input str
          | _ -> ()

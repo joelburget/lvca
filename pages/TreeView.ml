@@ -173,7 +173,7 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
     )
   in
 
-  let _ : Logr.t option =
+  let _sink : Logr.t option =
     let evt = Evr.on_el Ev.mouseout Fn.id name' in
     E.log evt (fun _evt ->
       trigger_upstream_shadow Unselected;
