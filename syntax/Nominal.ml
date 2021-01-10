@@ -12,6 +12,21 @@ type ('loc, 'prim) term =
 and ('loc, 'prim) scope =
   | Scope of ('loc, 'prim) Pattern.t list * ('loc, 'prim) term list
 
+let rec equal info_eq prim_eq t1 t2 = match t1, t2 with
+  | Operator (i1, name1, scopes1), Operator (i2, name2, scopes2)
+  -> info_eq i1 i2 && String.(name1 = name2) &&
+     List.equal (scope_equal info_eq prim_eq) scopes1 scopes2
+  | Primitive (i1, p1), Primitive (i2, p2)
+  -> info_eq i1 i2 && prim_eq p1 p2
+  | Var (i1, name1), Var (i2, name2)
+  -> info_eq i1 i2 && String.(name1 = name2)
+  | _, _
+  -> false
+
+and scope_equal info_eq prim_eq (Scope (pats1, tms1)) (Scope (pats2, tms2)) =
+  List.equal (Pattern.equal info_eq prim_eq) pats1 pats2 &&
+  List.equal (equal info_eq prim_eq) tms1 tms2
+
 let location = function Operator (loc, _, _) | Var (loc, _) | Primitive (loc, _) -> loc
 
 let any, comma, list, str, string, semi, pf =

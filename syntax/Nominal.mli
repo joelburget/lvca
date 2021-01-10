@@ -8,6 +8,8 @@ type ('loc, 'prim) term =
 and ('loc, 'prim) scope =
   | Scope of ('loc, 'prim) Pattern.t list * ('loc, 'prim) term list
 
+val equal : ('loc -> 'loc -> bool) -> ('prim -> 'prim -> bool) -> ('loc, 'prim) term -> ('loc, 'prim) term ->  bool
+
 val location : ('loc, _) term -> 'loc
 val pp_term_generic
   :  open_loc:('loc Fmt.t)

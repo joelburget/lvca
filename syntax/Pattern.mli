@@ -8,6 +8,8 @@ type ('info, 'prim) pattern =
 
 type ('info, 'prim) t = ('info, 'prim) pattern
 
+val equal : ('loc -> 'loc -> bool) -> ('prim -> 'prim -> bool) -> ('loc, 'prim) t -> ('loc, 'prim) t ->  bool
+
 val vars_of_pattern : _ t -> Lvca_util.String.Set.t
 val list_vars_of_pattern : ('info, _) t -> ('info * string) list
 val to_string : 'prim Fmt.t -> ('info, 'prim) t -> string (* TODO: remove? *)

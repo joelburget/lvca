@@ -13,6 +13,19 @@ type ('info, 'prim) pattern =
 
 type ('info, 'prim) t = ('info, 'prim) pattern
 
+let rec equal info_eq prim_eq pat1 pat2 = match pat1, pat2 with
+  | Operator (i1, name1, patss1), Operator (i2, name2, patss2)
+  -> info_eq i1 i2 && String.(name1 = name2) &&
+     List.equal (List.equal (equal info_eq prim_eq)) patss1 patss2
+  | Primitive (i1, p1), Primitive (i2, p2)
+  -> info_eq i1 i2 && prim_eq p1 p2
+  | Var (i1, name1), Var (i2, name2)
+  -> info_eq i1 i2 && String.(name1 = name2)
+  | Ignored (i1, name1), Ignored (i2, name2)
+  -> info_eq i1 i2 && String.(name1 = name2)
+  | _, _
+  -> false
+
 let rec vars_of_pattern = function
   | Operator (_, _, pats) ->
     pats |> List.map ~f:vars_of_patterns |> Set.union_list (module String)
