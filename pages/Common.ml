@@ -25,8 +25,8 @@ let htmls_eq = List.equal Caml.(=)
 module Action = struct
   type t =
     | Evaluate of string
-    | Unselect
-    | Select of int * int
+    | InputSelect of OptRange.t
+    | OutputSelect of OptRange.t
     | SwitchInputLang
 end
 
@@ -59,7 +59,7 @@ let demo_template input_desc input_elem output_desc output_elem =
 
 type input_event =
   | InputUpdate of string
-  | InputSelect of int * int
+  | InputSelect of Range.t
   | InputUnselect
 
 let mk_output elt_s = mk_reactive' El.div ~at:[class' "bg-gray-100"; class' "p-1"] elt_s

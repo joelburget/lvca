@@ -114,7 +114,7 @@ let mk
     let handler _evt =
       let start = El.prop selection_start input in
       let finish = El.prop selection_end input in
-      Common.InputSelect (start, finish);
+      Common.InputSelect Range.{ start; finish }
     in
     Evr.on_el Ev.select handler input
   in

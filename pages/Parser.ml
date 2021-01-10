@@ -581,8 +581,8 @@ module View = struct
     let _sink : Logr.t option = E.log test_evt
       (function
         | Common.InputUpdate str -> update_test str
-        | InputSelect (start, finish)
-        -> set_input_hl (SourceRanges.of_range ~buf:"input" Range.{ start; finish })
+        | InputSelect rng
+        -> set_input_hl (SourceRanges.of_range ~buf:"input" rng)
         | InputUnselect -> set_input_hl SourceRanges.empty)
     in
 

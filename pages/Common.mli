@@ -23,8 +23,8 @@ val htmls_eq : Brr.El.t list -> Brr.El.t list -> bool
 module Action : sig
   type t =
     | Evaluate of string
-    | Unselect
-    | Select of int * int
+    | InputSelect of OptRange.t
+    | OutputSelect of OptRange.t
     | SwitchInputLang
 end
 
@@ -34,7 +34,7 @@ val demo_template
 
 type input_event =
   | InputUpdate of string
-  | InputSelect of int * int
+  | InputSelect of Range.t
   | InputUnselect
 
 val mk_output : Brr.El.t Note.signal -> Brr.El.t
