@@ -288,3 +288,43 @@ module Tuple3 = struct
 
   module Int = Make(Int)(Int)(Int)
 end
+
+module Tuple4 = struct
+  type ('a, 'b, 'c, 'd) t = 'a * 'b * 'c * 'd
+
+  let sexp_of_t f1 f2 f3 f4 (w, x, y, z) = Sexplib0.Sexp.List [f1 w; f2 x; f3 y; f4 z]
+
+  let compare ~cmp1 ~cmp2 ~cmp3 ~cmp4 (w1, x1, y1, z1) (w2, x2, y2, z2) =
+      let c1 = cmp1 w1 w2 in
+      if c1 <> 0 then c1 else
+        let c2 = cmp2 x1 x2 in
+        if c2 <> 0 then c2 else
+          let c3 = cmp3 y1 y2 in
+          if c3 <> 0 then c3 else
+            cmp4 z1 z2
+
+  let equal eq1 eq2 eq3 eq4 (w1, x1, y1, z1) (w2, x2, y2, z2) = eq1 w1 w2 && eq2 x1 x2 && eq3 y1 y2 && eq4 z1 z2
+
+  let get1 (w, _, _, _) = w
+  let get2 (_, x, _, _) = x
+  let get3 (_, _, y, _) = y
+  let get4 (_, _, _, z) = z
+
+  let map  ~f (w, x, y, z) = f w, f x, f y, f z
+  let map1 ~f (w, x, y, z) = f w, x, y, z
+  let map2 ~f (w, x, y, z) = w, f x, y, z
+  let map3 ~f (w, x, y, z) = w, x, f y, z
+  let map4 ~f (w, x, y, z) = w, x, y, f z
+
+  let curry f w x y z = f (w, x, y, z)
+  let uncurry f (w, x, y, z) = f w x y z
+
+  module Make (W : TupleElem) (X : TupleElem) (Y : TupleElem) (Z : TupleElem) = struct
+    let compare = compare ~cmp1:W.compare ~cmp2:X.compare ~cmp3:Y.compare ~cmp4:Z.compare
+    let sexp_of_t = sexp_of_t W.sexp_of_t X.sexp_of_t Y.sexp_of_t Z.sexp_of_t
+    let (=) = equal W.(=) X.(=) Y.(=) Z.(=)
+  end
+
+  module Int = Make(Int)(Int)(Int)(Int)
+  module Bool = Make(Bool)(Bool)(Bool)(Bool)
+end
