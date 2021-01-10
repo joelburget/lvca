@@ -4,8 +4,6 @@ open Brr_note
 open Note
 open Prelude
 
-let empty_elem = El.span []
-
 let error_msg x = El.div ~at:[class' "error"] x
 let success_msg x = El.div ~at:[class' "success"] x
 
@@ -15,8 +13,7 @@ let mk_at ~border ~classes =
     then "border-2" :: classes
     else classes
   in
-  let classes = classes |> List.map ~f:Prelude.class' in
-  classes
+  List.map classes ~f:Prelude.class'
 
 let rows
   ?border:(border=false)
@@ -24,59 +21,11 @@ let rows
   elems =
   El.div ~at:(mk_at ~border ~classes:("flex" :: "flex-col" :: classes)) elems
 
-let r_rows
-  ?border:(_border=false)
-  ?classes:(_classes=(S.const []))
-  elems =
-    (*
-  let classes = classes
-    |> S.map (List.append ["flex"; "flex-col"])
-    |> S.map (fun classes -> if border then "border-2" :: classes else classes)
-  in
-  let at = classes |> List.map ~f:class' in
-  *)
-  El.div elems
-
 let cols
   ?border:(border=false)
   ?classes:(classes=[])
   elems =
   El.div ~at:(mk_at ~border ~classes:("flex" :: "flex-row" :: classes)) elems
-
-let ulist ?classes:(classes=[]) elems =
-  El.ul ~at:(classes |> List.map ~f:class') elems
-
-let r_ulist ?classes:(_classes=(S.const [])) elems =
-  let result = El.ul (* TODO ~at:(classes |> List.map ~f:class') *) [] in
-  let () = Elr.def_children result elems in
-  result
-
-let olist ?classes:(classes=[]) elems =
-  El.ol ~at:(classes |> List.map ~f:class') elems
-
-let r_olist ?classes:(_classes=(S.const [])) elems =
-  let result = El.ol [] in
-  (* TODO let result = El.ol ~at:(classes |> List.map ~f:class') elems in *)
-  let () = Elr.def_children result elems in
-  result
-
-let dlist
-  ?border:(border=false)
-  ?classes:(classes=[])
-  elems =
-  let elems = elems
-    |> List.map ~f:(fun (k, v) -> [El.dt [Prelude.txt k]; El.dd [v]])
-    |> List.concat
-  in
-  El.dl ~at:(mk_at ~border ~classes) elems
-
-(* let title = El.h1 *)
-let header str = El.h2 [txt str]
-let subheader str = El.h3 [txt str]
-let r_subheader str_s =
-  let result = El.h3 [] in
-  let () = Elr.def_children result (str_s |> S.map (fun str -> [txt str])) in
-  result
 
 let button_classes =
   [ "px-2"
@@ -117,13 +66,15 @@ let button_toggle ~visible_text ~hidden_text visible_s =
   evt, button
 
 let chevron_toggle visible_s =
-  let _class_s = visible_s
+  let class_s = visible_s
     |> S.map (function
-      | true -> ["gg-chevron-down"]
-      | false -> ["gg-chevron-right"])
+      | true -> "gg-chevron-down"
+      | false -> "gg-chevron-right"
+    )
+    |> S.map (fun cls -> Some (Jstr.v cls))
   in
   let i = El.i [] in
-  (* TODO let () = Elr.def_at At.class' class_s i in *)
+  let () = Elr.def_at At.Name.class' class_s i in
   let elem = El.a
     ~at:[ class' "cursor-pointer"; class' "p-1" ]
     [ El.span ~at:[class' "chevron-icon-wrap"] [ i ] ]
