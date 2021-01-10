@@ -57,8 +57,8 @@ let mk
   in
 
   let _sink : Logr.t option =
-    let evt = Evr.on_el Ev.input (fun _evt -> update_input_dirty true) input in
-    E.log evt Fn.id
+    let evt = Evr.on_el Ev.input Fn.id input in
+    E.log evt (fun _evt -> update_input_dirty true)
   in
 
   let keydown_evt =
