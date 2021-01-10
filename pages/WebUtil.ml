@@ -1,7 +1,6 @@
 open Base
 open Brr
 open Prelude
-(* open Js_of_ocaml *)
 
 type platform =
   | Mac
@@ -29,10 +28,6 @@ let get_platform () =
 
 let is_enter key_evt = String.((key_evt |> Ev.Keyboard.key |> Jstr.to_string) = "Enter")
 ;;
-
-(* let is_meta key_evt = Js.to_bool key_evt##.metaKey *)
-(* let is_shift key_evt = Js.to_bool key_evt##.shiftKey *)
-(* let is_ctrl key_evt = Js.to_bool key_evt##.ctrlKey *)
 
 (** Is this an enter keypress plus meta, shift, or ctrl, depending on the platform *)
 let is_special_enter key_evt =
