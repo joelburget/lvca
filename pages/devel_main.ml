@@ -24,9 +24,9 @@ module Model = struct
     [ TermAndConcretePage
     ; CalculatorPage
     ; ParserPage
+    ; ScopeViewerPage
     ; EvalWithProvenancePage
     ; TermToTexPage
-    ; ScopeViewerPage
     ; EditsPage
     ]
   ;;
@@ -39,7 +39,7 @@ module View = struct
     | TermAndConcretePage -> "01: term and concrete"
     | CalculatorPage -> "02: calculator"
     | ParserPage -> "03: parser"
-    | ScopeViewerPage -> "0x: scope viewer"
+    | ScopeViewerPage -> "04: scope viewer"
     | EditsPage -> "0x: edits"
     | EvalWithProvenancePage -> "0x: evaluation with provenance"
     | TermToTexPage -> "0x: term to tex"
