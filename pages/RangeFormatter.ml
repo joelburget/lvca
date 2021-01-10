@@ -21,7 +21,6 @@ let do_action action elems = match action with
     is used and flushed. *)
 let mk
     :  selection_s:(SourceRanges.t signal)
-    (* -> set_selection:(SourceRanges.t -> unit) *)
     -> El.t * Format.formatter * SourceRanges.t event * (unit -> unit)
   =
  fun ~selection_s:externally_selected_s ->
@@ -76,7 +75,7 @@ let mk
   let add_text str =
     let span = span [ txt (Jstr.v str) ] in
     let () = Elr.def_at (Jstr.v "class") (get_classes ()) span in
-    (match Stack.top stack with
+    let () = match Stack.top stack with
       | None -> ()
       | Some (rng, _) ->
         let text_pos = Queue.length positions in
@@ -119,7 +118,7 @@ let mk
         in
 
         ()
-    );
+    in
     add_at_current_level span
   in
 
