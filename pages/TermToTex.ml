@@ -20,15 +20,17 @@ module Controller = struct
 end
 
 module View = struct
+  let div, h2, h3 = El.(div, h2, h3)
+
   let view model_s =
-    let div, h2, h3 = El.(div, h2, h3) in
-    let katex_area = div [] in
     let input, input_event = MultilineInput.mk model_s in
+
+    let katex_area = div [] in
+    let _sink : Logr.t = S.log model_s (Katex.render katex_area) in
+
     let evt : Action.t event = input_event
       |> E.filter_map (function
-        | Common.InputUpdate str ->
-          Katex.render katex_area str;
-          Some (Action.Evaluate str)
+        | Common.InputUpdate str -> Some (Action.Evaluate str)
         | _ -> None)
     in
 
