@@ -330,7 +330,7 @@ let view_controls str snapshots =
     match n_snaps with
     | 0 -> "this parser calls no subparsers"
     | 1 -> "this parser calls 1 subparser"
-    | _ -> Caml.Printf.sprintf "this parser calls %n subparsers" n_snaps
+    | _ -> Printf.sprintf "this parser calls %n subparsers" n_snaps
   in
   let path_evt, snapshot_controls = snapshot_controls str snapshots in
   ( path_evt
