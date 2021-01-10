@@ -14,7 +14,7 @@ module Tuple3 = Lvca_util.Tuple3
 open Components
 
 let html_eq = Common.html_eq
-let table, tr, td, span, div, h3, h4, p, pre, code = El.(table, tr, td, span, div, h3, h4, p, pre, code)
+let em, table, tr, td, span, div, h3, h4, p, pre, code = El.(em, table, tr, td, span, div, h3, h4, p, pre, code)
 
 module Model = struct
   type input_sig = string signal * (string -> unit)
@@ -251,7 +251,7 @@ let string_location ~str ~loc =
       [ div ~at:[class' "inline-block"]
         [ span ~at:[class' "text-gray-500"] [before_elem]
         ]
-      ; div (*TODO style="width: 0" *) ~at:[class' "inline-block"]
+      ; div ~at:(classes "inline-block w-0")
         [ div ~at:(classes "h-5 relative bg-black") []
              (* TODO style="width: 2px; margin-top: 0.125rem" *)
         ]
@@ -680,7 +680,11 @@ module View = struct
       ; string_table
 
       ; h4 [ txt "Debugging" ]
-      ; p [ txt "You've probably noticed the <em>debugger</em> rows below each parse result. By toggling this row you can see the steps the parser took to consume an input (or not). For the parsers we've seen so far, it's always exactly one step, but as soon as we get to <em>repetition</em> below, that will change. But this tool will really become useful when we get to"  (* TODO tags *)
+      ; p [ txt "You've probably noticed the "
+          ; em [ txt "debugger" ]
+          ; txt " rows below each parse result. By toggling this row you can see the steps the parser took to consume an input (or not). For the parsers we've seen so far, it's always exactly one step, but as soon as we get to "
+          ; em [ txt "repetition" ]
+          ; txt " below, that will change. But this tool will really become useful when we get to"
           ; code_inline' "choice"
           ; txt " and "
           ; code_inline' "fix"
@@ -690,7 +694,20 @@ module View = struct
       ; h3 [ txt "satisfy" ]
 
       ; p [ txt "Fixed characters are awfully limiting. "
-          (* TODO ; <code class="code-inline">satisfy</code> parses a single character that satisfies some predicate. The available predicates are <code class="code-inline">is_digit</code>, <code class="code-inline">is_lowercase</code>, <code class="code-inline">is_uppercase</code>, <code class="code-inline">is_alpha</code>, <code class="code-inline">is_alphanum</code>, and <code class="code-inline">is_whitespace</code>.</p> *)
+          ; code_inline' "satisfy"
+          ; txt " parses a single character that satisfies some predicate. The available predicates are "
+          ; code_inline' "is_digit"
+          ; txt ", "
+          ; code_inline' "is_lowercase"
+          ; txt ", "
+          ; code_inline' "is_uppercase"
+          ; txt ", "
+          ; code_inline' "is_alpha"
+          ; txt ", "
+          ; code_inline' "is_alphanum"
+          ; txt ", and "
+          ; code_inline' "is_whitespace"
+          ; txt "."
           ]
       ; satisfy1_table
       ; satisfy_is_alpha_table
@@ -705,7 +722,9 @@ module View = struct
 
       ; p [ txt "You might wonder, what's the syntax inside the "
           ; code_inline' "satisfy"
-          ; txt " expression? It's a language I'm calling <em>core</em>, which can be used for manipulating syntax trees. It's not what this post is about, but I'll have more to say about it in the future." (* TODO tag *)
+          ; txt " expression? It's a language I'm calling "
+          ; em [ txt "core" ]
+          ; txt ", which can be used for manipulating syntax trees. It's not what this post is about, but I'll have more to say about it in the future."
           ]
 
       ; h3 [ txt "Repetition" ]
@@ -722,17 +741,18 @@ module View = struct
 
       ; star_table
 
-        (*
-        <h4><code class="code-inline">+</code></h4>
-        <p>The plus operator can be used to accept one or more repetitions of
-        the previous parser. For example <code class="code-inline">'c'*</code> accepts one or more <code class="code-inline">'c'</code>s.</p>
-        *)
+      ; h4 [ code_inline' "+" ]
+      ; p
+        [ txt "The plus operator can be used to accept one or more repetitions of the previous parser. For example "
+        ; code_inline' "'c'*"
+        ; txt " accepts one or more "
+        ; code_inline' "'c'"
+        ; txt "s."
+        ]
       ; plus_table
 
-        (*
-        <h4>count</h4>
-        <p>A parser followed by a number accepts a fixed number of repetitions of that parser.</p>
-        *)
+      ; h4 [ txt "count" ]
+      ; p [ txt "A parser followed by a number accepts a fixed number of repetitions of that parser." ]
       ; count_table
 
       ; h3 [ txt "Sequence" ]
@@ -743,28 +763,44 @@ module View = struct
           ]
       ; sequence1_table
 
-        (* <p>Of course, it would be more useful to return something we parsed. That's why you can name the result of any parsers you'd like to use in the result.</p> *)
+      ; p [ txt "Of course, it would be more useful to return something we parsed. That's why you can name the result of any parsers you'd like to use in the result." ]
       ; sequence2_table
 
-        (*
-        <p>This is a good time to revisit the <em>Debugger</em> tool. If you look at the debugger for the sequence parser, you'll see that it calls five subparsers. You can click the <em>view</em> button to inspect the details of any subparser, then <em>return here</em> to return to a caller anywhere up the stack.</p>
+      ; p
+        [ txt "This is a good time to revisit the "
+        ; em [ txt "Debugger" ]
+        ; txt " tool. If you look at the debugger for the sequence parser, you'll see that it calls five subparsers. You can click the "
+        ; em [ txt "view" ]
+        ; txt " button to inspect the details of any subparser, then "
+        ; em [ txt "return here" ]
+        ; txt " to return to a caller anywhere up the stack."
+        ]
 
-        <h3>Choice</h3>
+      ; h3 [ txt "Choice" ]
 
-        <p>The <code class="code-inline">choice</code> construct can be used to accept one of several parsers. For
-        example <code class="code-inline">choice ("c" | "foo")</code> accepts <code class="code-inline">"c"</code> or <code class="code-inline">"foo"</code>.</p>
-        *)
+      ; p
+        [ txt "The "
+        ; code_inline' "choice"
+        ; txt " construct can be used to accept one of several parsers. For example "
+        ; code_inline' {|choice ("c" | "foo")|}
+        ; txt " accepts "
+        ; code_inline' {|"c"|}
+        ; txt " or "
+        ; code_inline' {|"foo"|}
+        ; txt "."
+        ]
+
       ; choice1_table
 
         (* <p><code class="code-inline">choice</code> can accept any number of choices, and you can start each line with <code class="code-inline">|</code>. Note that choice always chooses the first matching branch, so in this example, <code class="code-inline">"abcd"</code> will never match (<code class="code-inline">"abc"</code> will match, leaving <code class="code-inline">"d"</code> unconsumed).</p> *)
 
       ; choice2_table
 
-        (* <p>An empty choice always fails.</p> *)
+      ; p [ txt "An empty choice always fails." ]
 
       ; choice3_table
 
-        (* <h3>Language constructs</h3> *)
+      ; h3 [ txt "Language constructs" ]
 
       ; p [ txt "So far all of our parsers have looked a lot like regular expressions. Let's introduce a construct that will make this look more like a real language. Let-binding allows us to name parsers and use them later, for example "
           ; code_inline' Examples.let_
@@ -779,23 +815,41 @@ module View = struct
         ]
       ; fail_table
 
-        (* <h3>Fix</h3> *)
+      ; h3 [ txt "Fix" ]
 
-        (*
-        <p>Our parsers to this point have been limited: we can parse regular languages but not context-free languages. <code class="code-inline">fix</code> extends the language in the same way as <a class="prose-link" href="https://catonmat.net/recursive-regular-expressions">recursive regular expressions</a> to give it more power.
-        </p>
-        *)
+      ; p
+        [ txt "Our parsers to this point have been limited: we can parse regular languages but not context-free languages. "
+        ; code_inline' "fix"
+        ; txt " extends the language in the same way as "
+        ; El.a ~at:[class' "prose-link"; At.href (Jstr.v "https://catonmat.net/recursive-regular-expressions")]
+          [ txt " recursive regular expressions" ]
+        ; txt " to give it more power."
+        ]
 
-        (* <p>Let's say you want to parse addition expressions like "1 + 2", "1 + 2 + 3", "1 + 2 + 3 + 4", etc. We need a way to recursively use the parser we're defining. It's a little mind-bending, so let's look at an example.</p> *)
+        ; p [ txt {|Let's say you want to parse addition expressions like "1 + 2", "1 + 2 + 3", "1 + 2 + 3 + 4", etc. We need a way to recursively use the parser we're defining. It's a little mind-bending, so let's look at an example.|} ]
 
-        (* <p>Note: For clarity I've pre-defined two parsers: <code class="code-inline">name = (chars=alpha+ -> {var(string_of_chars chars)})</code> and <code class="code-inline">literal = (chars=digit+ -> {literal(string_of_chars chars)})</code>.</p> *)
+        ; p
+          [ txt "Note: For clarity I've pre-defined two parsers: "
+          ; code_inline' "name = (chars=alpha+ -> {var(string_of_chars chars)})"
+          ; txt " and "
+          ; code_inline' "literal = (chars=digit+ -> {literal(string_of_chars chars)})"
+          ; txt "."
+          ]
 
       ; fix_table
 
-        (* <p><code class="code-inline">fix</code> computes the <a class="prose-link" href="https://mitpress.mit.edu/sites/default/files/sicp/full-text/sicp/book/node24.html#sec:proc-general-methods">fixed-point</a> of our parser. It takes a function which receives the parser being defined... and uses it to define itself.</p> *)
+      ; p
+        [ code_inline' "fix"
+        ; txt " computes the "
+        ; El.a
+          ~at:[ class' "prose-link"
+              ; At.href (Jstr.v "https://mitpress.mit.edu/sites/default/files/sicp/full-text/sicp/book/node24.html#sec:proc-general-methods")]
+          [ txt "fixed-point" ]
+        ; txt " of our parser. It takes a function which receives the parser being defined... and uses it to define itself."
+        ]
 
-        (* <h3>Playground</h3> *)
-        (* <p>Finally, here is a playground where you can write and test your own parsers.</p> *)
+      ; h3 [ txt "Playground" ]
+      ; p [ txt "Finally, here is a playground where you can write and test your own parsers." ]
 
       ; playground_table
 
