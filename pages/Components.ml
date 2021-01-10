@@ -10,55 +10,38 @@ let error_msg x = El.div ~at:[class' "error"] x
 let success_msg x = El.div ~at:[class' "success"] x
 
 (* TODO: remove *)
-let mk_at ~border ~classes ~label:_todo =
+let mk_at ~border ~classes =
   let classes = if border
     then "border-2" :: classes
     else classes
   in
   let classes = classes |> List.map ~f:Prelude.class' in
   classes
-  (* TODO
-  match label with
-    | "" -> [classes]
-    | _ -> [classes; Html.a_user_data label ""]
-  *)
 
 let rows
   ?border:(border=false)
   ?classes:(classes=["ml-2"])
-  ?label:(label="")
   elems =
-  El.div ~at:(mk_at ~border ~classes:("flex" :: "flex-col" :: classes) ~label) elems
+  El.div ~at:(mk_at ~border ~classes:("flex" :: "flex-col" :: classes)) elems
 
 let r_rows
-  ?border:(_todo=false)
-  ?classes:(_todo=(S.const []))
-  ?label:(_todo="")
+  ?border:(_border=false)
+  ?classes:(_classes=(S.const []))
   elems =
-    (* TODO
+    (*
   let classes = classes
     |> S.map (List.append ["flex"; "flex-col"])
     |> S.map (fun classes -> if border then "border-2" :: classes else classes)
   in
   let at = classes |> List.map ~f:class' in
-*)
-  (* TODO
-  let at = match label with
-    | "" -> classes
-    | _ ->
-      [ Html.a_user_data label ""
-      ; R.Html.a_class classes
-      ]
-  in
-    *)
+  *)
   El.div elems
 
 let cols
   ?border:(border=false)
   ?classes:(classes=[])
-  ?label:(label="")
   elems =
-  El.div ~at:(mk_at ~border ~classes:("flex" :: "flex-row" :: classes) ~label) elems
+  El.div ~at:(mk_at ~border ~classes:("flex" :: "flex-row" :: classes)) elems
 
 let ulist ?classes:(classes=[]) elems =
   El.ul ~at:(classes |> List.map ~f:class') elems
@@ -80,13 +63,12 @@ let r_olist ?classes:(_classes=(S.const [])) elems =
 let dlist
   ?border:(border=false)
   ?classes:(classes=[])
-  ?label:(label="")
   elems =
   let elems = elems
     |> List.map ~f:(fun (k, v) -> [El.dt [Prelude.txt k]; El.dd [v]])
     |> List.concat
   in
-  El.dl ~at:(mk_at ~border ~classes ~label) elems
+  El.dl ~at:(mk_at ~border ~classes) elems
 
 (* let title = El.h1 *)
 let header str = El.h2 [txt str]
