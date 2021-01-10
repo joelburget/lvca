@@ -116,15 +116,14 @@ let grid_tmpl ~render_params left loc
 
   let tr = tr cols in
 
-  let evt, trigger_evt = E.create () in
-
-  (match loc with
-    | None -> ()
+  let evt = match loc with
+    | None -> E.never
     | Some loc ->
-      let _ : unit event = Evr.on_el Ev.mouseover (fun _evt -> trigger_evt (SourceRanges.of_source_range loc)) tr in
-      let _ : unit event = Evr.on_el Ev.mouseout (fun _evt -> trigger_evt SourceRanges.empty) tr in
-      ()
-  );
+      E.select
+        [ Evr.on_el Ev.mouseover (fun _evt -> SourceRanges.of_source_range loc) tr
+        ; Evr.on_el Ev.mouseout (fun _evt -> SourceRanges.empty) tr
+        ]
+  in
 
   tr, evt
 
@@ -158,7 +157,6 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
     ; txt suffix
     ]
   in
-  (* let name_elem = To_dom.of_span name' in *)
 
   let trigger_upstream_shadow, trigger_downstream_shadow = match var_pos with
     | Definition { trigger_upstream_shadow; trigger_downstream_shadow } ->
@@ -166,18 +164,22 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
     | Reference -> Fn.const (), Fn.const ()
   in
 
-  let _ : unit event = Evr.on_el Ev.mouseover (fun _evt ->
-    trigger_downstream_shadow Shadowing;
-    trigger_upstream_shadow Shadowed;
-    trigger_selected Selected;
-  ) name'
+  let _sink : Logr.t option =
+    let evt = Evr.on_el Ev.mouseover Fn.id name' in
+    E.log evt (fun _evt ->
+      trigger_downstream_shadow Shadowing;
+      trigger_upstream_shadow Shadowed;
+      trigger_selected Selected;
+    )
   in
 
-  let _ : unit event = Evr.on_el Ev.mouseout (fun _evt ->
-    trigger_upstream_shadow Unselected;
-    trigger_downstream_shadow Unselected;
-    trigger_selected Unselected;
-  ) name'
+  let _ : Logr.t option =
+    let evt = Evr.on_el Ev.mouseout Fn.id name' in
+    E.log evt (fun _evt ->
+      trigger_upstream_shadow Unselected;
+      trigger_downstream_shadow Unselected;
+      trigger_selected Unselected;
+    )
   in
 
   let left_col = pre (Lvca_util.List.snoc indents name') in
@@ -319,30 +321,35 @@ let rec render_tm ~render_params ?suffix:(suffix="") : _ Nominal.term -> unit =
     let { signal = expanded_s; set_s = set_expanded } = expanded_signal in
     let button_event, button = Components.chevron_toggle expanded_s in
 
-    let _ : unit event = button_event |> E.map set_expanded in
+    let _sink : Logr.t option =
+      E.log (button_event |> E.map set_expanded) (fun () -> ())
+    in
 
-    let _: unit signal = expanded_s
-      |> S.map ~eq:Unit.(=) (function
-        | false ->
-          let left_col = match scopes with
-            | [] -> [padded_txt depth (name ^ "()" ^ suffix) ]
-            | _ -> [padded_txt depth (name ^ "("); button; txt (")" ^ suffix) ]
-          in
-          Queue.enqueue queue (grid_tmpl ~render_params left_col loc)
-        | true ->
-          let open_elem =
-            grid_tmpl ~render_params [ padded_txt depth (name ^ "("); button ] loc
-          in
-          Queue.enqueue queue open_elem;
+    let _sink : Logr.t =
+      let s = expanded_s
+        |> S.map ~eq:Unit.(=) (function
+          | false ->
+            let left_col = match scopes with
+              | [] -> [padded_txt depth (name ^ "()" ^ suffix) ]
+              | _ -> [padded_txt depth (name ^ "("); button; txt (")" ^ suffix) ]
+            in
+            Queue.enqueue queue (grid_tmpl ~render_params left_col loc)
+          | true ->
+            let open_elem =
+              grid_tmpl ~render_params [ padded_txt depth (name ^ "("); button ] loc
+            in
+            Queue.enqueue queue open_elem;
 
-          List.iteri scopes ~f:(fun i ->
-            render_scope ~render_params ~last:(i = List.length scopes - 1));
+            List.iteri scopes ~f:(fun i ->
+              render_scope ~render_params ~last:(i = List.length scopes - 1));
 
-          let close_elem =
-            grid_tmpl ~render_params [ padded_txt depth (")" ^ suffix) ] loc
-          in
-          Queue.enqueue queue close_elem
-      )
+            let close_elem =
+              grid_tmpl ~render_params [ padded_txt depth (")" ^ suffix) ] loc
+            in
+            Queue.enqueue queue close_elem
+        )
+      in
+      S.log s (fun () -> ())
     in
     ()
   | _ -> failwith "invariant violation: wrong index"
@@ -426,12 +433,9 @@ let view_tm
     in
     render_tm ~render_params tm;
     let rows, evts = queue |> Queue.to_list |> List.unzip in
-    let tbody = rows |> El.tbody in
+    let tbody = El.tbody rows in
 
-    let _ : unit event = evts
-      |> E.select
-      |> E.map set_selection
-    in
+    let _sink : Logr.t option = E.log (E.select evts) set_selection in
 
     let rows =
       [ Some (El.td ~at:(classes "p-2 border-t-2 border-b-2 border-r-2 w-1/2") [ txt "source" ])
@@ -451,7 +455,7 @@ let view_tm
       then [ thead [ tr rows ]; tbody ]
       else [ tbody ]
     in
-      El.table ~at:(classes "w-full table-fixed border-2 cursor-default font-mono")
+    El.table ~at:(classes "w-full table-fixed border-2 cursor-default font-mono")
         table_contents
   in
 
