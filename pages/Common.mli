@@ -27,10 +27,3 @@ type input_event =
   | InputUnselect
 
 val mk_output : Brr.El.t Note.signal -> Brr.El.t
-
-type digits_update =
-  | SetDigits of int
-  | IncrDigits
-  | DecrDigits
-
-val mk_digits_entry : int Note.signal -> Brr.El.t * digits_update Note.event

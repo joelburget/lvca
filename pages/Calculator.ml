@@ -35,7 +35,7 @@ end
 module Action = struct
   type t =
     | Evaluate of string
-    | ChangePrecision of int * Common.digits_update
+    | ChangePrecision of int * DigitsEntry.digits_update
     | DeleteRow of int
 end
 
@@ -140,7 +140,7 @@ module View = struct
     in
 
     let row' row_num input_str parsed digits_s _digits_update =
-      let digits_entry, digits_event = Common.mk_digits_entry digits_s in
+      let digits_entry, digits_event = DigitsEntry.mk digits_s in
 
       let digits_s = digits_s
         |> S.map ~eq:Common.html_eq (fun digits -> match Calculator.interpret parsed with
