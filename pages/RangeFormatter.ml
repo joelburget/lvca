@@ -24,7 +24,7 @@ let mk
     -> set_selection:(SourceRanges.t -> unit)
     -> El.t * Format.formatter * (unit -> unit)
   =
- fun ~selection_s:externally_selected_s ~set_selection:_ ->
+ fun ~selection_s:externally_selected_s ~set_selection ->
   let br, span, txt = El.(br, span, txt) in
 
   let action_e, trigger_action = E.create () in
@@ -44,7 +44,7 @@ let mk
    *)
   let positions : SourceRanges.t Queue.t = Queue.create () in
 
-  let _selection_start = ref None in
+  let selection_start = ref None in
 
   let add_at_current_level elem = match Stack.top stack with
     | None -> trigger_action (Add elem)
@@ -52,7 +52,7 @@ let mk
   in
 
   (* Event triggered on mouseup to clear the (external) selection. *)
-  let internal_reset_e, _trigger_internal_reset = E.create () in
+  let internal_reset_e, trigger_internal_reset = E.create () in
 
   let selected_s = E.select
     [ S.changes externally_selected_s
@@ -74,25 +74,24 @@ let mk
   let add_text str =
     let span = span [ txt (Jstr.v str) ] in
     let () = Elr.def_at (Jstr.v "class") (get_classes ()) span in
-    (* let span_elem = To_dom.of_span span in *)
     (match Stack.top stack with
       | None -> ()
       | Some (rng, _) ->
-        let _text_pos = Queue.length positions in
+        let text_pos = Queue.length positions in
         Queue.enqueue positions rng;
-        (* TODO
-        Common.bind_event Ev.mousedowns span_elem (fun _evt ->
-          selection_start := Some text_pos;
-          Lwt.return ()
-        );
-        Common.bind_event Ev.mouseups span_elem (fun _evt ->
-          (match !selection_start with
+
+        let _sink : Logr.t option =
+          let evt = Evr.on_el Ev.mousedown Fn.id span in
+          E.log evt (fun _evt -> selection_start := Some text_pos)
+        in
+
+        let _sink : Logr.t option =
+          let evt = Evr.on_el Ev.mouseup Fn.id span in
+          let handler _evt = match !selection_start with
             | Some down_pos ->
               selection_start := None;
-              let selected_str = G.window
-                |> Window.get_selection
-                |> Selection.to_jstr
-                |> Jstr.to_string
+              let selected_str = Jv.call (Window.to_jv G.window) "getSelection" [||]
+                |> Jv.to_string
               in
 
               let rng = match selected_str with
@@ -113,10 +112,11 @@ let mk
               trigger_internal_reset ();
               ()
             | None -> () (* Error *)
-          );
-          Lwt.return ()
-        );
-        *)
+          in
+          E.log evt handler
+        in
+
+        ()
     );
     add_at_current_level span
   in
