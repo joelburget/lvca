@@ -1,9 +1,7 @@
 (** Representation of terms that uses 2d de Bruijn indices to represent scope.
 
-  A [BoundVar (_, i, j)] represents a variable bound [i] scopes out, at index
-  [j] in the pattern.
-
- *)
+    A [BoundVar (_, i, j)] represents a variable bound [i] scopes out, at index [j] in the
+    pattern. *)
 
 type ('loc, 'prim) term =
   | Operator of 'loc * string * ('loc, 'prim) scope list
@@ -33,7 +31,7 @@ val alpha_equivalent
   -> bool
 
 val select_path
-  :  path:((int * int) list)
+  :  path:(int * int) list
   -> ('loc, 'prim) term
   -> (('loc, 'prim) term, string) Result.t
 

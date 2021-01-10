@@ -13,10 +13,8 @@ type lang =
   | Term
 
 val parser_of : lang -> (term * OptRange.t) Angstrom.t
-
 val term_pretty : (OptRange.t, Primitive.t) Nominal.term Fmt.t
 val lambda_pretty : (OptRange.t, Primitive.t) Nominal.term Fmt.t
-
 val html_eq : Brr.El.t -> Brr.El.t -> bool
 val htmls_eq : Brr.El.t list -> Brr.El.t list -> bool
 
@@ -29,7 +27,10 @@ module Action : sig
 end
 
 val demo_template
-  : Brr.El.t -> Brr.El.t -> Brr.El.t -> Brr.El.t
+  :  Brr.El.t
+  -> Brr.El.t
+  -> Brr.El.t
+  -> Brr.El.t
   -> Brr.El.t * Brr.Ev.Mouse.t Brr.Ev.t Note.event
 
 type input_event =

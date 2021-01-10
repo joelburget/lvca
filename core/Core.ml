@@ -24,10 +24,10 @@ and 'a core_case_scope = CaseScope of ('a, Primitive.t) Pattern.t * 'a term
 let rec map_loc ~f = function
   | Term tm -> Term (Nominal.map_loc ~f tm)
   | CoreApp (loc, t1, t2) -> CoreApp (f loc, map_loc ~f t1, map_loc ~f t2)
-  | Case (loc, tm, scopes)
-  -> Case (f loc, map_loc ~f tm, List.map scopes ~f:(map_loc_case_scope ~f))
-  | Lambda (loc, sort, core_scope)
-  -> Lambda (f loc, sort, map_loc_core_scope ~f core_scope)
+  | Case (loc, tm, scopes) ->
+    Case (f loc, map_loc ~f tm, List.map scopes ~f:(map_loc_case_scope ~f))
+  | Lambda (loc, sort, core_scope) ->
+    Lambda (f loc, sort, map_loc_core_scope ~f core_scope)
   | Let (loc, is_rec, tm, core_scope) ->
     Let (f loc, is_rec, map_loc ~f tm, map_loc_core_scope ~f core_scope)
 
@@ -39,11 +39,9 @@ and map_loc_case_scope ~f (CaseScope (pat, tm)) =
 
 let location = function
   | Term tm -> Nominal.location tm
-  | CoreApp (loc, _, _)
-  | Case (loc, _, _)
-  | Lambda (loc, _, _)
-  | Let (loc, _, _, _)
-  -> loc
+  | CoreApp (loc, _, _) | Case (loc, _, _) | Lambda (loc, _, _) | Let (loc, _, _, _) ->
+    loc
+;;
 
 let erase tm = map_loc ~f:(fun _ -> ()) tm
 
@@ -219,19 +217,9 @@ let rec eval_ctx
     | None -> Error ("no match found in case", Term tm_val)
     | Some (branch, bindings) ->
       eval_ctx (Lvca_util.Map.union_right_biased ctx bindings) branch)
-
   (* primitives *)
   (* TODO: or should this be an app? *)
-  | CoreApp
-    ( _
-    , CoreApp
-      ( _
-      , Term (Var (_, "add"))
-      , Term a
-      )
-    , Term b
-    )
-  ->
+  | CoreApp (_, CoreApp (_, Term (Var (_, "add")), Term a), Term b) ->
     let%bind a_result = eval_ctx' ctx a in
     let%bind b_result = eval_ctx' ctx b in
     (match a_result, b_result with
@@ -239,44 +227,35 @@ let rec eval_ctx
       (* XXX can't reuse loc *)
       Ok (Nominal.Primitive (loc, Primitive.PrimInteger Z.(a' + b')))
     | _ -> Error ("Invalid arguments to add", tm))
-
-  | CoreApp
-    ( _
-    , CoreApp
-      ( _
-      , Term (Var (_, "sub"))
-      , Term a
-      )
-    , Term b
-    )
-  ->
+  | CoreApp (_, CoreApp (_, Term (Var (_, "sub")), Term a), Term b) ->
     let%bind a_result = eval_ctx' ctx a in
     let%bind b_result = eval_ctx' ctx b in
     (match a_result, b_result with
     | Primitive (loc, PrimInteger a'), Primitive (_, PrimInteger b') ->
       Ok (Nominal.Primitive (loc, Primitive.PrimInteger Z.(a' - b')))
     | _ -> Error ("Invalid arguments to sub", tm))
-
   | CoreApp (_, Term (Var (_, "string_of_chars")), char_list) ->
     let%bind char_list = eval_ctx ctx char_list in
     (match char_list with
-      | Operator (loc, "list", [ Nominal.Scope ([], chars) ]) -> chars
-        |> List.map ~f:(function
-          | Nominal.Primitive (_, Primitive.PrimChar c) -> Ok c
-          | tm -> Error (Printf.sprintf "string_of_chars `list(%s)`"
-              (Nominal.pp_term_str Primitive.pp tm)))
-        |> Result.all
-        |> Result.map ~f:(fun cs ->
-            Nominal.Primitive (loc, Primitive.PrimString (String.of_char_list cs)))
-        |> Result.map_error ~f:(fun msg -> msg, tm)
-      | _ -> Error ("expected a list of characters", tm))
-
+    | Operator (loc, "list", [ Nominal.Scope ([], chars) ]) ->
+      chars
+      |> List.map ~f:(function
+             | Nominal.Primitive (_, Primitive.PrimChar c) -> Ok c
+             | tm ->
+               Error
+                 (Printf.sprintf
+                    "string_of_chars `list(%s)`"
+                    (Nominal.pp_term_str Primitive.pp tm)))
+      |> Result.all
+      |> Result.map ~f:(fun cs ->
+             Nominal.Primitive (loc, Primitive.PrimString (String.of_char_list cs)))
+      |> Result.map_error ~f:(fun msg -> msg, tm)
+    | _ -> Error ("expected a list of characters", tm))
   | CoreApp (_, Term (Var (_, "var")), str_tm) ->
     let%bind str = eval_ctx ctx str_tm in
     (match str with
-      | Primitive (loc, PrimString name) -> Ok (Nominal.Var (loc, name))
-      | _ -> Error ("expected a string", tm))
-
+    | Primitive (loc, PrimString name) -> Ok (Nominal.Var (loc, name))
+    | _ -> Error ("expected a string", tm))
   | CoreApp (_, Term (Var (_, "is_digit")), Term c) ->
     eval_char_bool_fn "is_digit" Char.is_digit ctx tm c
   | CoreApp (_, Term (Var (_, "is_lowercase")), Term c) ->
@@ -289,7 +268,6 @@ let rec eval_ctx
     eval_char_bool_fn "is_alphanum" Char.is_alphanum ctx tm c
   | CoreApp (_, Term (Var (_, "is_whitespace")), Term c) ->
     eval_char_bool_fn "is_whitespace" Char.is_whitespace ctx tm c
-
   | Term tm -> Ok (Nominal.subst_all ctx tm)
   | Let (_, _is_rec, tm, Scope (name, body)) ->
     let%bind tm_val = eval_ctx ctx tm in
@@ -310,10 +288,9 @@ and eval_ctx'
 and eval_char_bool_fn name f ctx tm c =
   let open Result.Let_syntax in
   let%bind c_result = eval_ctx' ctx c in
-  (match c_result with
-    | Primitive (loc, PrimChar c')
-    -> Ok (if f c' then true_tm loc else false_tm loc)
-    | _ -> Error (Printf.sprintf "Invalid argument to %s" name, tm))
+  match c_result with
+  | Primitive (loc, PrimChar c') -> Ok (if f c' then true_tm loc else false_tm loc)
+  | _ -> Error (Printf.sprintf "Invalid argument to %s" name, tm)
 ;;
 
 let eval : 'a term -> ('a n_term, 'a eval_error) Result.t =
@@ -330,17 +307,17 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   let reserved = Lvca_util.String.Set.of_list [ "let"; "rec"; "in"; "match"; "with" ]
 
   let identifier =
-    identifier >>= fun ident ->
-    if Set.mem reserved ident then fail "reserved word" else return ident
+    identifier
+    >>= fun ident -> if Set.mem reserved ident then fail "reserved word" else return ident
   ;;
 
   let make_apps : 'a term list -> 'a term = function
     | [] -> Lvca_util.invariant_violation "make_apps: must be a nonempty list"
     | [ x ] -> x
-    | f :: args -> List.fold_left args ~init:f
-      ~f:(fun f_app arg ->
-        let pos = OptRange.union (location f_app) (location arg) in
-        CoreApp (pos, f_app, arg))
+    | f :: args ->
+      List.fold_left args ~init:f ~f:(fun f_app arg ->
+          let pos = OptRange.union (location f_app) (location arg) in
+          CoreApp (pos, f_app, arg))
   ;;
 
   let term : OptRange.t term Parsers.t =
@@ -371,12 +348,13 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
                 let loc = OptRange.union lam_loc parens_loc in
                 Lambda (loc, sort, Scope (name, body)))
               (attach_pos (char '\\'))
-              (attach_pos (parens
-                 (lift3
-                    (fun ident _ sort -> ident, sort)
-                    identifier
-                    (char ':')
-                    Abstract.sort)))
+              (attach_pos
+                 (parens
+                    (lift3
+                       (fun ident _ sort -> ident, sort)
+                       identifier
+                       (char ':')
+                       Abstract.sort)))
               (string "->")
               term
             <?> "lambda"
@@ -390,7 +368,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
               (string "=")
             <*> term
             <*> string "in"
-            <*> (attach_pos term)
+            <*> attach_pos term
             <?> "let"
           ; lift4
               (fun (_match, match_pos) tm _with (lines, lines_pos) ->
@@ -400,7 +378,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
               term
               (string "with")
               (attach_pos
-                (braces (option '|' (char '|') *> sep_by1 (char '|') case_line)))
+                 (braces (option '|' (char '|') *> sep_by1 (char '|') case_line)))
             <?> "match"
           ; many1 atomic_term >>| make_apps <?> "application"
           ])
@@ -448,16 +426,20 @@ let%test_module "Parsing" =
     let%test _ = parse "{1}" = Term one
     let%test _ = parse "{true()}" = Term (operator "true" [])
     let%test _ = parse "not x" = app (var "not") (var "x")
-    let%test _ = parse "let str = string_of_chars chars in {var(str)}" = Let
-      ( ()
-      , NoRec
-      , app (var "string_of_chars") (var "chars")
-      , Scope ("str", Term (operator "var" Nominal.[ Scope ([], [Var ((), "str")]) ]))
-      )
 
     let%test _ =
-      parse {|\(x : bool()) -> x|}
-      = Lambda ((), SortAp ("bool", []), Scope ("x", var "x"))
+      parse "let str = string_of_chars chars in {var(str)}"
+      = Let
+          ( ()
+          , NoRec
+          , app (var "string_of_chars") (var "chars")
+          , Scope
+              ("str", Term (operator "var" Nominal.[ Scope ([], [ Var ((), "str") ]) ]))
+          )
+    ;;
+
+    let%test _ =
+      parse {|\(x : bool()) -> x|} = Lambda ((), SortAp ("bool", []), Scope ("x", var "x"))
     ;;
 
     let%test _ =
@@ -489,3 +471,4 @@ let%test_module "Parsing" =
           , Scope ("x", CoreApp ((), var "not", var "x")) )
     ;;
   end)
+;;

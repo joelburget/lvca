@@ -35,9 +35,11 @@ let is_subset p1 p2 =
 
 let intersect p1 p2 = Lvca_util.String.Map.intersect p1 p2 ~f:Ranges.intersect
 
-let restrict ~buf p = match Map.find p buf with
+let restrict ~buf p =
+  match Map.find p buf with
   | None -> empty
   | Some ranges -> Lvca_util.String.Map.singleton buf ranges
+;;
 
 let stag_functions =
   Caml.Format.

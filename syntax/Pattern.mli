@@ -8,7 +8,12 @@ type ('info, 'prim) pattern =
 
 type ('info, 'prim) t = ('info, 'prim) pattern
 
-val equal : ('loc -> 'loc -> bool) -> ('prim -> 'prim -> bool) -> ('loc, 'prim) t -> ('loc, 'prim) t ->  bool
+val equal
+  :  ('loc -> 'loc -> bool)
+  -> ('prim -> 'prim -> bool)
+  -> ('loc, 'prim) t
+  -> ('loc, 'prim) t
+  -> bool
 
 val vars_of_pattern : _ t -> Lvca_util.String.Set.t
 val list_vars_of_pattern : ('info, _) t -> ('info * string) list
@@ -28,7 +33,7 @@ val erase : (_, 'prim) pattern -> (unit, 'prim) pattern
 val location : ('info, _) pattern -> 'info
 
 val select_path
-  :  path:((int * int) list)
+  :  path:(int * int) list
   -> ('loc, 'prim) pattern
   -> (('loc, 'prim) pattern, string) Result.t
 

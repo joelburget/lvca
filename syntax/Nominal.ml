@@ -12,20 +12,20 @@ type ('loc, 'prim) term =
 and ('loc, 'prim) scope =
   | Scope of ('loc, 'prim) Pattern.t list * ('loc, 'prim) term list
 
-let rec equal info_eq prim_eq t1 t2 = match t1, t2 with
-  | Operator (i1, name1, scopes1), Operator (i2, name2, scopes2)
-  -> info_eq i1 i2 && String.(name1 = name2) &&
-     List.equal (scope_equal info_eq prim_eq) scopes1 scopes2
-  | Primitive (i1, p1), Primitive (i2, p2)
-  -> info_eq i1 i2 && prim_eq p1 p2
-  | Var (i1, name1), Var (i2, name2)
-  -> info_eq i1 i2 && String.(name1 = name2)
-  | _, _
-  -> false
+let rec equal info_eq prim_eq t1 t2 =
+  match t1, t2 with
+  | Operator (i1, name1, scopes1), Operator (i2, name2, scopes2) ->
+    info_eq i1 i2
+    && String.(name1 = name2)
+    && List.equal (scope_equal info_eq prim_eq) scopes1 scopes2
+  | Primitive (i1, p1), Primitive (i2, p2) -> info_eq i1 i2 && prim_eq p1 p2
+  | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
+  | _, _ -> false
 
 and scope_equal info_eq prim_eq (Scope (pats1, tms1)) (Scope (pats2, tms2)) =
-  List.equal (Pattern.equal info_eq prim_eq) pats1 pats2 &&
-  List.equal (equal info_eq prim_eq) tms1 tms2
+  List.equal (Pattern.equal info_eq prim_eq) pats1 pats2
+  && List.equal (equal info_eq prim_eq) tms1 tms2
+;;
 
 let location = function Operator (loc, _, _) | Var (loc, _) | Primitive (loc, _) -> loc
 
@@ -62,6 +62,7 @@ let pp_term pp_prim ppf tm =
     ~pp_prim
     ppf
     tm
+;;
 
 let pp_scope pp_prim ppf tm =
   pp_scope_generic
@@ -71,6 +72,7 @@ let pp_scope pp_prim ppf tm =
     ~pp_prim
     ppf
     tm
+;;
 
 let pp_term_range pp_prim ppf tm =
   pp_term_generic
@@ -235,60 +237,57 @@ let rec subst_all ctx tm =
 
 and subst_all_scope ctx (Scope (pats, tms)) = Scope (pats, List.map tms ~f:(subst_all ctx))
 
-let rec match_pattern ~prim_eq pat tm = match pat, tm with
+let rec match_pattern ~prim_eq pat tm =
+  match pat, tm with
   | Pattern.Ignored _, _ -> Some Lvca_util.String.Map.empty
   | Var (_, name), tm -> Some (Lvca_util.String.Map.singleton name tm)
   | Primitive (_, p1), Primitive (_, p2) ->
-    if prim_eq p1 p2
-    then Some Lvca_util.String.Map.empty
-    else None
+    if prim_eq p1 p2 then Some Lvca_util.String.Map.empty else None
   | Primitive _, _ -> None
-  | Operator (_, name1, patss), Operator (_, name2, scopes)
-  -> if String.(name1 = name2)
-    then match List.map2 patss scopes ~f:(match_scope ~prim_eq) with
-      | Ok zipped -> (match Lvca_util.String.Map.join_helper zipped with
+  | Operator (_, name1, patss), Operator (_, name2, scopes) ->
+    if String.(name1 = name2)
+    then (
+      match List.map2 patss scopes ~f:(match_scope ~prim_eq) with
+      | Ok zipped ->
+        (match Lvca_util.String.Map.join_helper zipped with
         | `Ok result -> result
-        | `Duplicate_key k -> failwith
-          (Printf.sprintf "invariant violation: duplicate key: %s" k)
-      )
-      | Unequal_lengths -> None
+        | `Duplicate_key k ->
+          failwith (Printf.sprintf "invariant violation: duplicate key: %s" k))
+      | Unequal_lengths -> None)
     else None
   | _ -> None
 
-and match_scope ~prim_eq pats (Scope (binders, tms)) = match binders with
-  | [] -> (match List.map2 pats tms ~f:(match_pattern ~prim_eq) with
-    | Ok zipped -> (match Lvca_util.String.Map.join_helper zipped with
+and match_scope ~prim_eq pats (Scope (binders, tms)) =
+  match binders with
+  | [] ->
+    (match List.map2 pats tms ~f:(match_pattern ~prim_eq) with
+    | Ok zipped ->
+      (match Lvca_util.String.Map.join_helper zipped with
       | `Ok result -> result
-      | `Duplicate_key k -> failwith
-        (Printf.sprintf "invariant violation: duplicate key: %s" k)
-    )
-    | Unequal_lengths -> None
-  )
+      | `Duplicate_key k ->
+        failwith (Printf.sprintf "invariant violation: duplicate key: %s" k))
+    | Unequal_lengths -> None)
   | _ -> None
+;;
 
 let free_vars tm =
   let module S = Lvca_util.String.Set in
-
   let rec free_vars bound_vars = function
-    | Operator (_, _, scopes) -> scopes
-      |> List.map ~f:(scope_free_vars bound_vars)
-      |> S.union_list
+    | Operator (_, _, scopes) ->
+      scopes |> List.map ~f:(scope_free_vars bound_vars) |> S.union_list
     | Var (_, name) -> if Set.mem bound_vars name then S.empty else S.singleton name
     | Primitive _ -> S.empty
-
   and scope_free_vars bound_vars (Scope (binders, tms)) =
-    let bound_vars = binders
+    let bound_vars =
+      binders
       |> List.map ~f:Pattern.vars_of_pattern
       |> S.union_list
       |> Set.union bound_vars
     in
-
-    tms
-      |> List.map ~f:(free_vars bound_vars)
-      |> S.union_list
+    tms |> List.map ~f:(free_vars bound_vars) |> S.union_list
   in
-
   free_vars S.empty tm
+;;
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
@@ -373,9 +372,11 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   let whitespace_t parse_prim = Parsers.(junk *> t parse_prim)
 end
 
-let rec select_path ~path tm = match path with
+let rec select_path ~path tm =
+  match path with
   | [] -> Ok tm
-  | (i, j)::path -> match tm with
+  | (i, j) :: path ->
+    (match tm with
     | Var _ | Primitive _ -> Error "TODO: message"
     | Operator (_, _, scopes) ->
       let open Option.Let_syntax in
@@ -383,9 +384,8 @@ let rec select_path ~path tm = match path with
         let%bind (Scope (_pats, tms)) = List.nth scopes i in
         List.nth tms j
       in
-      match tm with
-        | None -> Error "TODO: message"
-        | Some tm -> select_path ~path tm
+      (match tm with None -> Error "TODO: message" | Some tm -> select_path ~path tm))
+;;
 
 module Properties = struct
   module Parse = Parse (ParseUtil.NoComment)

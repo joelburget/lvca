@@ -6,6 +6,7 @@ module E = React.E
 
 module S : sig
   type 'a t = 'a signal
+
   val const : 'a -> 'a signal
   val create : eq:('a -> 'a -> bool) -> 'a -> 'a signal * (?step:step -> 'a -> unit)
   val value : 'a signal -> 'a
@@ -17,17 +18,37 @@ module S : sig
   val fmap : eq:('b -> 'b -> bool) -> ('a -> 'b option) -> 'b -> 'a signal -> 'b signal
   val diff : ('a -> 'a -> 'b) -> 'a signal -> 'b event
   val changes : 'a signal -> 'a event
-  val merge : eq:('a -> 'a -> bool) -> ('a -> 'b -> 'a) -> 'a -> 'b signal list -> 'a signal
+
+  val merge
+    :  eq:('a -> 'a -> bool)
+    -> ('a -> 'b -> 'a)
+    -> 'a
+    -> 'b signal list
+    -> 'a signal
+
   val switch : eq:('a -> 'a -> bool) -> 'a signal signal -> 'a signal
   val l1 : eq:('b -> 'b -> bool) -> ('a -> 'b) -> 'a signal -> 'b signal
-  val l2 : eq:('c -> 'c -> bool) -> ('a -> 'b -> 'c) -> 'a signal -> 'b signal -> 'c signal
+
+  val l2
+    :  eq:('c -> 'c -> bool)
+    -> ('a -> 'b -> 'c)
+    -> 'a signal
+    -> 'b signal
+    -> 'c signal
+
   module Pair : sig
-    val pair : eq:(('a * 'b) -> ('a * 'b) -> bool) -> 'a signal -> 'b signal -> ('a * 'b) signal
+    val pair
+      :  eq:('a * 'b -> 'a * 'b -> bool)
+      -> 'a signal
+      -> 'b signal
+      -> ('a * 'b) signal
+
     val fst : eq:('a -> 'a -> bool) -> ('a * 'b) signal -> 'a signal
     val snd : eq:('a -> 'a -> bool) -> ('b * 'a) signal -> 'a signal
   end
 end = struct
   type 'a t = 'a signal
+
   let const = React.S.const
   let create ~eq i = React.S.create ~eq i
   let value = React.S.value

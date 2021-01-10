@@ -84,24 +84,29 @@ let rec intersect r1 r2 =
 
 let pp = Fmt.box (Fmt.list ~sep:Fmt.comma Range.pp)
 
-type string_status = Covered of Range.t | Uncovered of Range.t
+type string_status =
+  | Covered of Range.t
+  | Uncovered of Range.t
 
-let rec mark_string' rngs str start = match rngs with
+let rec mark_string' rngs str start =
+  match rngs with
   | [] ->
     if Int.(start < String.length str)
-    then [Uncovered Range.{ start; finish = String.length str }]
+    then [ Uncovered Range.{ start; finish = String.length str } ]
     else []
   | rng :: rngs ->
     let start_covered = Covered rng :: mark_string' rngs str rng.Range.finish in
     if Int.(rng.Range.start = start)
     then start_covered
     else Uncovered Range.{ start; finish = rng.Range.start } :: start_covered
+;;
 
 let mark_string rngs str = mark_string' rngs str 0
 
 let pp_mark ppf = function
   | Covered range -> Fmt.pf ppf "c%a" Range.pp range
   | Uncovered range -> Fmt.pf ppf "u%a" Range.pp range
+;;
 
 let pp_marks = Fmt.box (Fmt.list ~sep:Fmt.sp pp_mark)
 
@@ -186,18 +191,22 @@ let%test_module "Ranges" =
 
     let%expect_test _ =
       Fmt.pr "%a" pp_marks (mark_string (of_list []) "str");
-      [%expect{| u{0,3} |}]
+      [%expect {| u{0,3} |}]
+    ;;
 
     let%expect_test _ =
       Fmt.pr "%a" pp_marks (mark_string (of_list Range.[ mk 0 1 ]) "str");
-      [%expect{| c{0,1} u{1,3} |}]
+      [%expect {| c{0,1} u{1,3} |}]
+    ;;
 
     let%expect_test _ =
       Fmt.pr "%a" pp_marks (mark_string (of_list Range.[ mk 1 2 ]) "str");
-      [%expect{| u{0,1} c{1,2} u{2,3} |}]
+      [%expect {| u{0,1} c{1,2} u{2,3} |}]
+    ;;
 
     let%expect_test _ =
       Fmt.pr "%a" pp_marks (mark_string (of_list Range.[ mk 1 3 ]) "str");
-      [%expect{| u{0,1} c{1,3} |}]
+      [%expect {| u{0,1} c{1,3} |}]
+    ;;
   end)
 ;;

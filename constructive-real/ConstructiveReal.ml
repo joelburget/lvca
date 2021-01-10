@@ -544,7 +544,7 @@ let three = of_int 3
 let of_float n =
   (* TODO: throw for NaN / infinite *)
   let negative = Float.ieee_negative n in
-  let pre_mantissa: int64 = Int63.to_int64 (Float.ieee_mantissa n ) in
+  let pre_mantissa : int64 = Int63.to_int64 (Float.ieee_mantissa n) in
   let exp = Int.(Float.ieee_exponent n - 1023) |> Int32.of_int_exn in
   let p1 = shift_left one exp in
   let p2 = shift_left one Int32.minus_52 in
@@ -1144,8 +1144,7 @@ let eval_to_string : ?digits:int32 -> ?radix:int32 -> t -> string =
       multiply op (of_cr (IntCR scale_factor)))
   in
   let scaled_int = get_appr scaled_cr Int32.zero in
-  if !sum_scope_enabled
-  then printf "scaled int: %s\n" (Z.to_string scaled_int);
+  if !sum_scope_enabled then printf "scaled int: %s\n" (Z.to_string scaled_int);
   (* TODO: radix *)
   string_of_scaled_int scaled_int digits
 ;;
@@ -1170,8 +1169,7 @@ let%test_module "Calculator" =
     let sqrt13 = sqrt thirteen
     let thousand = Z.of_int 1000
     let million = Z.of_int 1000000
-
-    let print ?(digits = Int32.ten) cr = printf "%s\n" (eval_to_string cr ~digits);;
+    let print ?(digits = Int32.ten) cr = printf "%s\n" (eval_to_string cr ~digits)
 
     let%expect_test _ =
       print zero;
@@ -1420,7 +1418,7 @@ let%test_module "Calculator" =
         ]
     ;;
 
- (*
+    (*
   let print_approximation t i =
     let v = approximate t (Int32.of_int_exn i) in
     printf "%s %s\n" (Z.to_string v) (Z.format "%b" v)
@@ -1435,7 +1433,7 @@ let%test_module "Calculator" =
     [%expect]
   *)
 
-(*
+    (*
   let print_sum_scope f =
     sum_scope_enabled := true;
     print (f ());

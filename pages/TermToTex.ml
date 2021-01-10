@@ -14,9 +14,7 @@ module Action = struct
 end
 
 module Controller = struct
-  let update (action : Action.t) _model =
-    match action with Evaluate str -> str
-  ;;
+  let update (action : Action.t) _model = match action with Evaluate str -> str
 end
 
 module View = struct
@@ -24,26 +22,22 @@ module View = struct
 
   let view model_s =
     let input, input_event = MultilineInput.mk model_s in
-
     let katex_area = div [] in
     let _sink : Logr.t = S.log model_s (Katex.render katex_area) in
-
-    let evt : Action.t event = input_event
+    let evt : Action.t event =
+      input_event
       |> E.filter_map (function
-        | Common.InputUpdate str -> Some (Action.Evaluate str)
-        | _ -> None)
+             | Common.InputUpdate str -> Some (Action.Evaluate str)
+             | _ -> None)
     in
-
-    let elem = div
-      [ h2 [ txt "Term to TeX"]
-      ; div ~at:[class' "container"] [input]
-      ; div ~at:[class' "side"]
-        [ h3 [ txt "(rendered)" ]
-        ; katex_area
+    let elem =
+      div
+        [ h2 [ txt "Term to TeX" ]
+        ; div ~at:[ class' "container" ] [ input ]
+        ; div ~at:[ class' "side" ] [ h3 [ txt "(rendered)" ]; katex_area ]
         ]
-      ]
-
-    in evt, elem
+    in
+    evt, elem
   ;;
 end
 
@@ -54,7 +48,6 @@ let stateless_view () =
     let model_s' = S.accum (S.value model_s) do_action in
     model_s', (model_s', elem)
   in
-
   let model_s, elem = S.fix Model.initial_model wrapper in
   Logr.hold (S.log model_s (fun _ -> ()));
   elem

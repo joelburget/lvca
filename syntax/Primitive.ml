@@ -160,7 +160,7 @@ let%test_module "Parsing" =
       [%expect {| -0.000000 {0,8} |}]
     ;;
 
-      (* TODO: are floats a good idea?
+    (* TODO: are floats a good idea?
     let%expect_test _ =
       let f = 2.9384442618974733e-233 in
       Fmt.pr "~negative:%b ~exponent:%i ~mantissa:%s\n"

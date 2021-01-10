@@ -8,15 +8,22 @@ type ('loc, 'prim) term =
 and ('loc, 'prim) scope =
   | Scope of ('loc, 'prim) Pattern.t list * ('loc, 'prim) term list
 
-val equal : ('loc -> 'loc -> bool) -> ('prim -> 'prim -> bool) -> ('loc, 'prim) term -> ('loc, 'prim) term ->  bool
+val equal
+  :  ('loc -> 'loc -> bool)
+  -> ('prim -> 'prim -> bool)
+  -> ('loc, 'prim) term
+  -> ('loc, 'prim) term
+  -> bool
 
 val location : ('loc, _) term -> 'loc
+
 val pp_term_generic
-  :  open_loc:('loc Fmt.t)
-  -> close_loc:('loc Fmt.t)
+  :  open_loc:'loc Fmt.t
+  -> close_loc:'loc Fmt.t
   -> pp_pat:('prim Fmt.t -> ('loc, 'prim) Pattern.t Fmt.t)
   -> pp_prim:'prim Fmt.t
   -> ('loc, 'prim) term Fmt.t
+
 val pp_term : 'prim Fmt.t -> (_, 'prim) term Fmt.t
 val pp_term_range : 'prim Fmt.t -> (OptRange.t, 'prim) term Fmt.t
 val pp_term_ranges : 'prim Fmt.t -> (SourceRanges.t, 'prim) term Fmt.t
@@ -71,7 +78,7 @@ val subst_all
   -> ('loc, 'prim) term
 
 val select_path
-  :  path:((int * int) list)
+  :  path:(int * int) list
   -> ('loc, 'prim) term
   -> (('loc, 'prim) term, string) Result.t
 
@@ -79,7 +86,7 @@ val match_pattern
   :  prim_eq:('prim -> 'prim -> bool)
   -> ('loc, 'prim) Pattern.t
   -> ('loc, 'prim) term
-  -> (('loc, 'prim) term Lvca_util.String.Map.t) option
+  -> ('loc, 'prim) term Lvca_util.String.Map.t option
 
 val free_vars : (_, _) term -> Lvca_util.String.Set.t
 

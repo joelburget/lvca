@@ -31,7 +31,9 @@ val intersect : t -> t -> t
 (** Pretty-print this range. *)
 val pp : t Fmt.t
 
-type string_status = Covered of Range.t | Uncovered of Range.t
+type string_status =
+  | Covered of Range.t
+  | Uncovered of Range.t
 
 (** Mark all string segments as either covered or uncovered. *)
 val mark_string : t -> string -> string_status list

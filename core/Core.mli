@@ -16,7 +16,8 @@ type 'a term =
   | Term of ('a, Primitive.t) Nominal.term
   | CoreApp of 'a * 'a term * 'a term
   | Case of 'a * 'a term * 'a core_case_scope list (** Cases match patterns *)
-  | Lambda of 'a * sort * 'a core_scope (** Lambdas bind variables. Patterns not allowed. *)
+  | Lambda of 'a * sort * 'a core_scope
+      (** Lambdas bind variables. Patterns not allowed. *)
   | Let of 'a * is_rec * 'a term * 'a core_scope
       (** Lets bind variables. Patterns not allowed. *)
 

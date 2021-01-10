@@ -261,7 +261,7 @@ let%test_module "Core pretty" =
 let%test_module "Core eval in dynamics" =
   (module struct
     let eval_in dynamics_str str =
-      let Defn (_imports, defn) = parse_defn dynamics_str in
+      let (Defn (_imports, defn)) = parse_defn dynamics_str in
       let core = parse_term str in
       match eval (CoreApp (None, defn, core)) with
       | Error (msg, tm) -> msg ^ ": " ^ to_string tm

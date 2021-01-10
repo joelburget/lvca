@@ -1,22 +1,18 @@
 open Base
 open Lvca_syntax
 
-let ident_char_gen = Crowbar.(choose
-  [ map [ range ~min:65 26 ] Char.of_int_exn (* A - Z *)
-  ; map [ range ~min:97 26 ] Char.of_int_exn (* a - z *)
-  ]
-)
+let ident_char_gen =
+  Crowbar.(
+    choose
+      [ map [ range ~min:65 26 ] Char.of_int_exn (* A - Z *)
+      ; map [ range ~min:97 26 ] Char.of_int_exn (* a - z *)
+      ])
+;;
+
 let char_gen = Crowbar.(map [ range ~min:32 94 ] Char.of_int_exn)
-let ident_gen = Crowbar.(
-  map [ list1 ident_char_gen ] String.of_char_list
-)
-;;
-
+let ident_gen = Crowbar.(map [ list1 ident_char_gen ] String.of_char_list)
 let str_gen = Crowbar.(map [ list char_gen ] String.of_char_list)
-
-let nonempty_str_gen =
-  Crowbar.(map [ list1 char_gen ] String.of_char_list)
-;;
+let nonempty_str_gen = Crowbar.(map [ list1 char_gen ] String.of_char_list)
 
 (* json *)
 
@@ -32,7 +28,7 @@ let rec json_gen =
           ]))
 ;;
 
-let lazy json_gen = json_gen
+let (lazy json_gen) = json_gen
 
 (* primitive *)
 
@@ -102,21 +98,27 @@ let pattern_gen =
 
 (* nominal *)
 
-let rec nominal_gen = lazy (
-  let choose, list, map, unlazy = Crowbar.(choose, list, map, unlazy) in
-  choose Nominal.
-    [ map [prim_gen] (fun p -> Primitive ((), p))
-    ; map [nonempty_str_gen; list (unlazy nominal_scope_gen)]
-      (fun name scopes -> Operator ((), name, scopes))
-    ; map [nonempty_str_gen] (fun name -> Var ((), name))
-    ])
+let rec nominal_gen =
+  lazy
+    (let choose, list, map, unlazy = Crowbar.(choose, list, map, unlazy) in
+     choose
+       Nominal.
+         [ map [ prim_gen ] (fun p -> Primitive ((), p))
+         ; map
+             [ nonempty_str_gen; list (unlazy nominal_scope_gen) ]
+             (fun name scopes -> Operator ((), name, scopes))
+         ; map [ nonempty_str_gen ] (fun name -> Var ((), name))
+         ])
 
-and nominal_scope_gen = lazy Crowbar.(
-  map [list pattern_gen; list (unlazy nominal_gen)]
-    (fun pats tms -> Nominal.Scope (pats, tms))
-)
+and nominal_scope_gen =
+  lazy
+    Crowbar.(
+      map
+        [ list pattern_gen; list (unlazy nominal_gen) ]
+        (fun pats tms -> Nominal.Scope (pats, tms)))
+;;
 
-let lazy nominal_gen = nominal_gen
+let (lazy nominal_gen) = nominal_gen
 
 (*
 let term_str_conf tm_str =
@@ -131,39 +133,39 @@ let term_str_conf tm_str =
 
 (* Limited core generator: only generates nominal terms. *)
 let core_gen = Crowbar.map [ nominal_gen ] (fun tm -> Lvca_core.Core.Term tm)
-;;
 
 (* Limitations of parser generator:
    - Uses core_gen, so inherits its limitations
    - Doesn't generate well-typed or well-bound parsers
  *)
-let parser_gen = Crowbar.(Lvca_languages.Parser.(
-  fix (fun parser_gen ->
-    let binder_gen = choose
-      [ map [ str_gen; parser_gen ] (fun name p -> Binder (Some name, p))
-      ; map [          parser_gen ] (fun      p -> Binder (None,      p))
-      ]
-    in
-
-    choose
-      [ const (AnyChar ())
-      ; map [ char ] (fun c -> Char ((), c))
-      ; map [ str_gen ] (fun s -> String ((), s))
-      ; map [ ident_gen; core_gen ] (fun ident tm -> Satisfy ((), ident, tm))
-      (* ; map [ core_gen ] (fun tm -> Fail ((), tm)) *)
-      ; map [ ident_gen; parser_gen; parser_gen ]
-        (fun ident p1 p2 -> Let ((), ident, p1, p2))
-      ; map [ parser_gen ] (fun p -> Option ((), p))
-      ; map [ parser_gen; core_gen ] (fun p tm -> Count ((), p, tm))
-      ; map [ parser_gen ] (fun p -> Many ((), p))
-      ; map [ parser_gen ] (fun p -> Many1 ((), p))
-      ; map [ ident_gen; parser_gen ] (fun ident p -> Fix ((), ident, p))
-      ; map [ parser_gen; parser_gen ] (fun p1 p2 -> Choice ((), [p1; p2]))
-      ; map [ list binder_gen; core_gen ]
-        (fun binders body -> Sequence ((), binders, body))
-      ; map [ ident_gen ] (fun ident -> Identifier ((), ident))
-      ])
-))
+let parser_gen =
+  Crowbar.(
+    Lvca_languages.Parser.(
+      fix (fun parser_gen ->
+          let binder_gen =
+            choose
+              [ map [ str_gen; parser_gen ] (fun name p -> Binder (Some name, p))
+              ; map [ parser_gen ] (fun p -> Binder (None, p))
+              ]
+          in
+          choose
+            [ const (AnyChar ())
+            ; map [ char ] (fun c -> Char ((), c))
+            ; map [ str_gen ] (fun s -> String ((), s))
+            ; map [ ident_gen; core_gen ] (fun ident tm -> Satisfy ((), ident, tm))
+              (* ; map [ core_gen ] (fun tm -> Fail ((), tm)) *)
+            ; map [ ident_gen; parser_gen; parser_gen ] (fun ident p1 p2 ->
+                  Let ((), ident, p1, p2))
+            ; map [ parser_gen ] (fun p -> Option ((), p))
+            ; map [ parser_gen; core_gen ] (fun p tm -> Count ((), p, tm))
+            ; map [ parser_gen ] (fun p -> Many ((), p))
+            ; map [ parser_gen ] (fun p -> Many1 ((), p))
+            ; map [ ident_gen; parser_gen ] (fun ident p -> Fix ((), ident, p))
+            ; map [ parser_gen; parser_gen ] (fun p1 p2 -> Choice ((), [ p1; p2 ]))
+            ; map [ list binder_gen; core_gen ] (fun binders body ->
+                  Sequence ((), binders, body))
+            ; map [ ident_gen ] (fun ident -> Identifier ((), ident))
+            ])))
 ;;
 
 let add_test ~name ~gen ~f =

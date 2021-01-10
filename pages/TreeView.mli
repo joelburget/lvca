@@ -1,8 +1,6 @@
-type default_expanded_depth
-  = ExpandedTo of int
-  (** Start tree expanded to this many levels *)
-  | FullyExpanded
-  (** Start tree fully expanded *)
+type default_expanded_depth =
+  | ExpandedTo of int (** Start tree expanded to this many levels *)
+  | FullyExpanded (** Start tree fully expanded *)
 
 val view_tm
   :  ?source_column:bool
