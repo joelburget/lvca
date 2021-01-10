@@ -4,7 +4,20 @@ open Brr_note
 open Lvca_syntax
 open Prelude
 
+module PrimitiveParse = Primitive.Parse (ParseUtil.NoComment)
+module TermParse = Nominal.Parse (ParseUtil.NoComment)
+module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse (ParseUtil.NoComment)
+
 type term = (OptRange.t, Primitive.t) Nominal.term
+
+type lang =
+  | Lambda
+  | Term
+
+let parser_of = function Lambda -> LambdaParse.t | Term -> TermParse.t PrimitiveParse.t
+
+let term_pretty = Nominal.pp_term_range Primitive.pp
+let lambda_pretty = Lvca_languages.LambdaCalculus.pp
 
 let html_eq = Caml.(=)
 let htmls_eq = List.equal Caml.(=)
@@ -16,8 +29,6 @@ module Action = struct
     | Select of int * int
     | SwitchInputLang
 end
-
-let lambda_pretty = Lvca_languages.LambdaCalculus.pp
 
 let demo_template input_desc input_elem output_desc output_elem =
   let button, div, h2, h3 = El.(button, div, h2, h3) in

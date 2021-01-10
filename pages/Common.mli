@@ -4,6 +4,19 @@ open Lvca_syntax
 
 type term = (OptRange.t, Primitive.t) Nominal.term
 
+module LambdaParse : sig
+  val t : (term * OptRange.t) Angstrom.t
+end
+
+type lang =
+  | Lambda
+  | Term
+
+val parser_of : lang -> (term * OptRange.t) Angstrom.t
+
+val term_pretty : (OptRange.t, Primitive.t) Nominal.term Fmt.t
+val lambda_pretty : (OptRange.t, Primitive.t) Nominal.term Fmt.t
+
 val html_eq : Brr.El.t -> Brr.El.t -> bool
 val htmls_eq : Brr.El.t list -> Brr.El.t list -> bool
 
@@ -14,8 +27,6 @@ module Action : sig
     | Select of int * int
     | SwitchInputLang
 end
-
-val lambda_pretty : (OptRange.t, Primitive.t) Nominal.term Fmt.t
 
 val demo_template
   : Brr.El.t -> Brr.El.t -> Brr.El.t -> Brr.El.t

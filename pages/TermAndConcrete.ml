@@ -5,17 +5,6 @@ open Brr
 open Note
 open Prelude
 
-module PrimitiveParse = Primitive.Parse (ParseUtil.NoComment)
-module TermParse = Nominal.Parse (ParseUtil.NoComment)
-module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse (ParseUtil.NoComment)
-
-type lang =
-  | Lambda
-  | Term
-
-let parser_of = function Lambda -> LambdaParse.t | Term -> TermParse.t PrimitiveParse.t
-let term_pretty = Nominal.pp_term_range Primitive.pp (* XXX why used twice? *)
-
 module Model = struct
   type t =
     { input : string
@@ -58,10 +47,8 @@ module Controller = struct
       let input, result = match result with
         | Error _ -> "", result
         | Ok tm ->
-          (* TODO: clean up / explain *)
           let result_str = Fmt.str "%a" formatter tm in
           result_str, Ok tm
-            (* ParseUtil.parse_string (parser_of input_lang) result_str *)
       in
       { input; input_lang = input_lang; selected = None; result }
   ;;
