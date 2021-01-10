@@ -68,19 +68,18 @@ end
 
 module View = struct
   let mk_output' model_s =
-    let range_s : SourceRanges.t signal = model_s
+    let selection_s : SourceRanges.t signal = model_s
       |> S.map ~eq:SourceRanges.(=) (fun Model.{ selected; _ } ->
           SourceRanges.of_opt_range ~buf:"input" selected)
     in
     let formatted_s = model_s
       |> S.map ~eq:html_eq (fun Model.{ result; _ } ->
          Brr.Console.log [Jstr.v "here"];
-         let elt, formatter, _selection_e, _clear =
-           RangeFormatter.mk ~selection_s:range_s
+         let elt, formatter, _selection_e, _clear = RangeFormatter.mk ~selection_s in
+         let () = match result with
+           | Ok tm -> Fmt.pf formatter "%a" lambda_pretty tm
+           | Error msg -> Fmt.pf formatter "%s" msg
          in
-         (match result with
-         | Ok tm -> Fmt.pf formatter "%a" lambda_pretty tm
-         | Error msg -> Fmt.pf formatter "%s" msg);
          Fmt.flush formatter ();
          elt)
     in

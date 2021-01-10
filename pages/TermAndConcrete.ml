@@ -56,21 +56,20 @@ end
 
 module View = struct
   let mk_output' model_s =
-    let range_s : SourceRanges.t signal = model_s
+    let selection_s : SourceRanges.t signal = model_s
       |> S.map ~eq:SourceRanges.(=) (fun Model.{ selected; _ } ->
           SourceRanges.of_opt_range ~buf:"input" selected)
     in
     let formatted_s = model_s
       |> S.map (fun Model.{ result; input_lang; _ } ->
-             let elt, formatter, _selection_e, _clear = RangeFormatter.mk
-               ~selection_s:range_s
-             in
-             (match result, input_lang with
-             | Ok tm, Lambda -> Fmt.pf formatter "%a" term_pretty tm
-             | Ok tm, Term -> Fmt.pf formatter "%a" lambda_pretty tm
-             | Error msg, Lambda | Error msg, Term -> Fmt.pf formatter "%s" msg);
-             Fmt.flush formatter ();
-             elt)
+        let elt, formatter, _selection_e, _clear = RangeFormatter.mk ~selection_s in
+        let () = match result, input_lang with
+          | Ok tm, Lambda -> Fmt.pf formatter "%a" term_pretty tm
+          | Ok tm, Term -> Fmt.pf formatter "%a" lambda_pretty tm
+          | Error msg, Lambda | Error msg, Term -> Fmt.pf formatter "%s" msg
+        in
+        Fmt.flush formatter ();
+        elt)
     in
     mk_output formatted_s
   ;;
