@@ -62,9 +62,8 @@ module View = struct
     in
     let formatted_s = model_s
       |> S.map (fun Model.{ result; input_lang; _ } ->
-             let elt, formatter, _clear = RangeFormatter.mk
+             let elt, formatter, _selection_e, _clear = RangeFormatter.mk
                ~selection_s:range_s
-               ~set_selection:(fun _ -> () (* TODO *))
              in
              (match result, input_lang with
              | Ok tm, Lambda -> Fmt.pf formatter "%a" term_pretty tm

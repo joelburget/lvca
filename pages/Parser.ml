@@ -162,8 +162,7 @@ module Prelude = struct
 end
 
 let pp_view ~highlight_s tm fmt =
-  let selection_e, set_selection = E.create () in
-  let elt, formatter, clear = RangeFormatter.mk ~selection_s:highlight_s ~set_selection in
+  let elt, formatter, selection_e, clear = RangeFormatter.mk ~selection_s:highlight_s in
 
   (* TODO tie this to actual font size *)
   let font_size = 14. in

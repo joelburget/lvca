@@ -21,11 +21,13 @@ let do_action action elems = match action with
     is used and flushed. *)
 let mk
     :  selection_s:(SourceRanges.t signal)
-    -> set_selection:(SourceRanges.t -> unit)
-    -> El.t * Format.formatter * (unit -> unit)
+    (* -> set_selection:(SourceRanges.t -> unit) *)
+    -> El.t * Format.formatter * SourceRanges.t event * (unit -> unit)
   =
- fun ~selection_s:externally_selected_s ~set_selection ->
+ fun ~selection_s:externally_selected_s ->
   let br, span, txt = El.(br, span, txt) in
+
+  let selection_e, set_selection = E.create () in
 
   let action_e, trigger_action = E.create () in
   let do_action = E.map do_action action_e in
@@ -165,8 +167,7 @@ let mk
   Format.pp_set_tags fmt true;
   Format.pp_set_formatter_stag_functions fmt stag_fns;
 
-  let code = El.code [] in
-  let () = Elr.def_children code top_level_elems in
+  let code = Prelude.mk_reactive El.code top_level_elems in
 
-  El.pre [code], fmt, clear
+  El.pre [code], fmt, selection_e, clear
 ;;

@@ -75,9 +75,8 @@ module View = struct
     let formatted_s = model_s
       |> S.map ~eq:html_eq (fun Model.{ result; _ } ->
          Brr.Console.log [Jstr.v "here"];
-         let elt, formatter, _clear = RangeFormatter.mk
-           ~selection_s:range_s
-           ~set_selection:(fun _ -> () (* TODO *))
+         let elt, formatter, _selection_e, _clear =
+           RangeFormatter.mk ~selection_s:range_s
          in
          (match result with
          | Ok tm -> Fmt.pf formatter "%a" lambda_pretty tm
