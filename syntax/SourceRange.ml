@@ -38,9 +38,9 @@ let intersect p1 p2 =
 let stag_functions =
   Format.
     { mark_open_stag =
-        (function Stag rng -> Caml.Printf.sprintf "<%s>" (to_string rng) | _ -> "")
+        (function Stag rng -> Printf.sprintf "<%s>" (to_string rng) | _ -> "")
     ; mark_close_stag =
-        (function Stag rng -> Caml.Printf.sprintf "</%s>" (to_string rng) | _ -> "")
+        (function Stag rng -> Printf.sprintf "</%s>" (to_string rng) | _ -> "")
     ; print_open_stag = (fun _ -> ())
     ; print_close_stag = (fun _ -> ())
     }

@@ -8,9 +8,9 @@ type t =
 
 let to_string = function
   | PrimInteger i -> Z.to_string i
-  | PrimString str -> {|"|} ^ Caml.String.escaped str ^ {|"|}
+  | PrimString str -> {|"|} ^ String.escaped str ^ {|"|}
   (* | PrimFloat f -> Float.to_string f *)
-  | PrimFloat f -> Caml.Printf.sprintf "%f" f
+  | PrimFloat f -> Printf.sprintf "%f" f
   | PrimChar c -> {|'|} ^ Base.Char.to_string c ^ {|'|}
 ;;
 

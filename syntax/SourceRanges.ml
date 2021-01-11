@@ -7,7 +7,7 @@ let to_string t =
   t
   |> Map.to_alist
   |> List.map ~f:(fun (buf, ranges) ->
-         Caml.Printf.sprintf "%s:%s" buf (Ranges.to_string ranges))
+         Printf.sprintf "%s:%s" buf (Ranges.to_string ranges))
   |> String.concat ~sep:","
 ;;
 
@@ -44,9 +44,9 @@ let restrict ~buf p =
 let stag_functions =
   Caml.Format.
     { mark_open_stag =
-        (function Stag t -> Caml.Printf.sprintf "<%s>" (to_string t) | _ -> "")
+        (function Stag t -> Printf.sprintf "<%s>" (to_string t) | _ -> "")
     ; mark_close_stag =
-        (function Stag t -> Caml.Printf.sprintf "</%s>" (to_string t) | _ -> "")
+        (function Stag t -> Printf.sprintf "</%s>" (to_string t) | _ -> "")
     ; print_open_stag = (fun _ -> ())
     ; print_close_stag = (fun _ -> ())
     }
