@@ -81,8 +81,8 @@ module View = struct
       |> S.map
            ~eq:(Tuple2.equal phys_equal html_eq)
            (fun Model.{ result; input_lang; _ } ->
-             let elt, formatter, output_selection_e, _clear =
-               RangeFormatter.mk ~selection_s
+             let RangeFormatter.{ elem; formatter; selection_e = output_selection_e } =
+               RangeFormatter.mk ~selection_s ()
              in
              let () =
                match result, input_lang with
@@ -91,7 +91,7 @@ module View = struct
                | Error msg, Lambda | Error msg, Term -> Fmt.pf formatter "%s" msg
              in
              Fmt.flush formatter ();
-             output_selection_e, elt)
+             output_selection_e, elem)
     in
     let output_selection_e = s |> S.Pair.fst ~eq:phys_equal |> E.swap in
     let formatted_s = s |> S.Pair.snd ~eq:html_eq in

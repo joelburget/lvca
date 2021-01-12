@@ -10,6 +10,12 @@ type action =
   | Clear
   | Add of El.t
 
+type result =
+  { elem : El.t
+  ; formatter : Format.formatter
+  ; selection_e : SourceRanges.t event
+  }
+
 let do_action action elems =
   match action with Clear -> [] | Add elem -> Lvca_util.List.snoc elems elem
 ;;
@@ -18,17 +24,17 @@ let do_action action elems =
     (<code>) to be inserted in the Dom and the formatter which is used to write formatted
     text to this element. Note that the returned Dom element is empty until the formatter
     is used and flushed. *)
-let mk
-    :  selection_s:SourceRanges.t signal
-    -> El.t * Format.formatter * SourceRanges.t event * (unit -> unit)
-  =
- fun ~selection_s:externally_selected_s ->
+let mk : ?clear:unit event -> selection_s:SourceRanges.t signal -> unit -> result =
+ fun ?(clear = E.never) ~selection_s:externally_selected_s () ->
   let br, span, txt = El.(br, span, txt) in
   let selection_e, set_selection = E.create () in
-  let action_e, trigger_action = E.create () in
-  let do_action = E.map do_action action_e in
+  let add_elem_e, trigger_add_elem = E.create () in
+  let do_action =
+    E.select
+      [ add_elem_e |> E.map (fun elem -> Add elem); clear |> E.map (fun () -> Clear) ]
+    |> E.map do_action
+  in
   let top_level_elems = S.accum [] do_action in
-  let clear () = trigger_action Clear in
   (* - Push a new range and queue on the stack every time we enter a semantic tag - Pop
      every time we exit a tag - The queue is used to add elements (text and nested
      children) under this element - The range is the extent of this element, used to
@@ -42,7 +48,7 @@ let mk
   let selection_start = ref None in
   let add_at_current_level elem =
     match Stack.top stack with
-    | None -> trigger_action (Add elem)
+    | None -> trigger_add_elem elem
     | Some (_, q) -> Queue.enqueue q elem
   in
   (* Event triggered on mouseup to clear the (external) selection. *)

@@ -86,8 +86,8 @@ module View = struct
     let s =
       model_s
       |> S.map ~eq:(Tuple2.equal phys_equal html_eq) (fun Model.{ result; _ } ->
-             let elt, formatter, output_selection_e, _clear =
-               RangeFormatter.mk ~selection_s
+             let RangeFormatter.{ elem; formatter; selection_e = output_selection_e } =
+               RangeFormatter.mk ~selection_s ()
              in
              let () =
                match result with
@@ -95,7 +95,7 @@ module View = struct
                | Error msg -> Fmt.pf formatter "%s" msg
              in
              Fmt.flush formatter ();
-             output_selection_e, elt)
+             output_selection_e, elem)
     in
     let output_selection_e = s |> S.Pair.fst ~eq:phys_equal |> E.swap in
     let formatted_s = s |> S.Pair.snd ~eq:html_eq in

@@ -178,7 +178,10 @@ module Prelude = struct
 end
 
 let pp_view ~highlight_s tm fmt =
-  let elt, formatter, selection_e, clear = RangeFormatter.mk ~selection_s:highlight_s in
+  let clear, clear_formatter = E.create () in
+  let RangeFormatter.{ elem; formatter; selection_e } =
+    RangeFormatter.mk ~clear ~selection_s:highlight_s ()
+  in
   (* TODO tie this to actual font size *)
   let font_size = 14. in
   let font_adjust = font_size *. 0.6 (* 0.6 is an estimate of font width to height *) in
@@ -209,7 +212,7 @@ let pp_view ~highlight_s tm fmt =
   in
   let _sink : Logr.t =
     S.log char_size_s (fun size ->
-        clear ();
+        clear_formatter ();
         Caml.Format.pp_set_margin formatter size;
         Fmt.pf formatter "%a" fmt tm;
         Fmt.flush formatter ())
@@ -224,8 +227,8 @@ let pp_view ~highlight_s tm fmt =
     |> RHtml.a_user_data "char-size"
   in
   *)
-  let elt = div ~at:[ class' "p-2" ] [ elt ] in
-  elt, selection_e
+  let elem = div ~at:[ class' "p-2" ] [ elem ] in
+  elem, selection_e
 ;;
 
 let view_term ~highlight_s tm =
