@@ -4,11 +4,18 @@ open Brr_note
 open Lvca_syntax
 open Note
 open Stdio
+open Prelude
 module Format = Caml.Format
 
 type action =
   | Clear
   | Add of El.t
+
+type down_pos =
+  | NoDown
+  | InitialPadding
+  | FinalPadding
+  | AtPos of int
 
 type result =
   { elem : El.t
@@ -26,7 +33,7 @@ let do_action action elems =
     is used and flushed. *)
 let mk : ?clear:unit event -> selection_s:SourceRanges.t signal -> unit -> result =
  fun ?(clear = E.never) ~selection_s:externally_selected_s () ->
-  let br, span, txt = El.(br, span, txt) in
+  let br, div, span, txt = El.(br, div, span, txt) in
   let selection_e, set_selection = E.create () in
   let add_elem_e, trigger_add_elem = E.create () in
   let do_action =
@@ -45,7 +52,7 @@ let mk : ?clear:unit event -> selection_s:SourceRanges.t signal -> unit -> resul
      union of every location in that range.
    *)
   let positions : SourceRanges.t Queue.t = Queue.create () in
-  let selection_start = ref None in
+  let selection_start = ref NoDown in
   let add_at_current_level elem =
     match Stack.top stack with
     | None -> trigger_add_elem elem
@@ -71,8 +78,58 @@ let mk : ?clear:unit event -> selection_s:SourceRanges.t signal -> unit -> resul
              then Some (Jstr.v "highlight")
              else None)
   in
+  let get_data_range () =
+    match Stack.top stack with
+    | None -> "none"
+    | Some (rng, _) -> SourceRanges.to_string rng
+  in
+  let handle_mousedown text_pos _evt =
+    Console.log [ Jstr.v "mousedown" ];
+    selection_start := text_pos
+  in
+  let handle_mouseup up_pos _evt =
+    Console.log [ Jstr.v "mouseup" ];
+    let go down_pos =
+      let up_pos =
+        match up_pos with
+        | AtPos p -> p
+        | InitialPadding -> 0
+        | FinalPadding -> Queue.length positions
+        | NoDown -> assert false
+      in
+      selection_start := NoDown;
+      let selection = Jv.call (Window.to_jv G.window) "getSelection" [||] in
+      let selected_str =
+        (* TODO: use prelude Window / Selection *)
+        Jv.call selection "toString" [||] |> Jv.to_string
+      in
+      Console.log [ Jstr.v "selected_str"; Jstr.v selected_str ];
+      let rng =
+        match selected_str with
+        | "" -> SourceRanges.empty
+        | _ ->
+          let pos = Int.min up_pos down_pos in
+          let len = Int.abs (up_pos - down_pos) in
+          positions |> Queue.to_list |> List.sub ~pos ~len |> SourceRanges.unions
+      in
+      Console.log [ Jstr.v "rng"; rng |> SourceRanges.to_string |> Jstr.v ];
+      set_selection rng;
+      (* Clear the selection *)
+      trigger_internal_reset ();
+      ()
+    in
+    match !selection_start with
+    | NoDown -> ()
+    | AtPos down_pos -> go down_pos
+    | InitialPadding -> go 0
+    | FinalPadding -> go (Queue.length positions)
+    (* XXX *)
+    (* Error *)
+  in
   let add_text str =
-    let span = span [ txt (Jstr.v str) ] in
+    let span =
+      span ~at:[ Prelude.data' "range" (get_data_range ()) ] [ txt (Jstr.v str) ]
+    in
     let () = Elr.def_at (Jstr.v "class") (get_classes ()) span in
     let () =
       match Stack.top stack with
@@ -82,34 +139,11 @@ let mk : ?clear:unit event -> selection_s:SourceRanges.t signal -> unit -> resul
         Queue.enqueue positions rng;
         let _sink : Logr.t option =
           let evt = Evr.on_el Ev.mousedown Fn.id span in
-          E.log evt (fun _evt -> selection_start := Some text_pos)
+          E.log evt (handle_mousedown (AtPos text_pos))
         in
         let _sink : Logr.t option =
           let evt = Evr.on_el Ev.mouseup Fn.id span in
-          let handler _evt =
-            match !selection_start with
-            | Some down_pos ->
-              selection_start := None;
-              let selected_str =
-                Jv.call (Window.to_jv G.window) "getSelection" [||] |> Jv.to_string
-              in
-              let rng =
-                match selected_str with
-                | "" -> SourceRanges.empty
-                | _ ->
-                  let up_pos = text_pos in
-                  let pos = Int.min up_pos down_pos in
-                  let len = Int.abs (up_pos - down_pos) in
-                  positions |> Queue.to_list |> List.sub ~pos ~len |> SourceRanges.unions
-              in
-              set_selection rng;
-              (* Clear the selection *)
-              trigger_internal_reset ();
-              ()
-            | None -> ()
-            (* Error *)
-          in
-          E.log evt handler
+          E.log evt (handle_mouseup (AtPos text_pos))
         in
         ()
     in
@@ -138,9 +172,12 @@ let mk : ?clear:unit event -> selection_s:SourceRanges.t signal -> unit -> resul
     { mark_open_stag =
         (function
         | SourceRanges.Stag rng ->
+          Stdio.printf "RangeFormatter opening stag %s\n" (SourceRanges.to_string rng);
           Stack.push stack (rng, Queue.create ());
           ""
-        | _ -> "")
+        | _ ->
+          Stdio.printf "RangeFormatter unknown stag\n";
+          "")
         (* Closing a range; create the span holding all of the enqueued children. *)
     ; mark_close_stag =
         (fun _ ->
@@ -157,5 +194,26 @@ let mk : ?clear:unit event -> selection_s:SourceRanges.t signal -> unit -> resul
   Format.pp_set_tags fmt true;
   Format.pp_set_formatter_stag_functions fmt stag_fns;
   let code = Prelude.mk_reactive El.code top_level_elems in
-  El.pre [ code ], fmt, selection_e, clear
+  let pre_padding = div ~at:(classes "w-1 h-1") [] in
+  let post_padding = div ~at:(classes "w-1 h-1") [] in
+  let _sink : Logr.t option =
+    let evt = Evr.on_el Ev.mousedown Fn.id pre_padding in
+    E.log evt (handle_mousedown InitialPadding)
+  in
+  let _sink : Logr.t option =
+    let evt = Evr.on_el Ev.mouseup Fn.id pre_padding in
+    E.log evt (handle_mouseup FinalPadding)
+  in
+  let _sink : Logr.t option =
+    let evt = Evr.on_el Ev.mousedown Fn.id post_padding in
+    E.log evt (handle_mousedown InitialPadding)
+  in
+  let _sink : Logr.t option =
+    let evt = Evr.on_el Ev.mouseup Fn.id post_padding in
+    E.log evt (handle_mouseup FinalPadding)
+  in
+  let elem =
+    div ~at:(classes "flex flex-row") [ pre_padding; El.pre [ code ]; post_padding ]
+  in
+  { elem; formatter = fmt; selection_e }
 ;;

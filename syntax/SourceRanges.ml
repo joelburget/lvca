@@ -51,3 +51,17 @@ let stag_functions =
     ; print_close_stag = (fun _ -> ())
     }
 ;;
+
+let%test_module "Range" =
+  (module struct
+    let%expect_test _ =
+      Fmt.pr "%a" pp (unions []);
+      [%expect {| |}]
+    ;;
+
+    let%expect_test _ =
+      Fmt.pr "%a" pp (unions [ mk "input" 16 17 ]);
+      [%expect {| input:{16-17} |}]
+    ;;
+  end)
+;;
