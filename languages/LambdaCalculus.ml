@@ -85,11 +85,12 @@ end
 
 module ParseNoComment = AngstromParse (ParseUtil.NoComment)
 
-let pp : (OptRange.t, Primitive.t) Nominal.term Fmt.t =
+let pp_generic ~open_loc ~close_loc =
   let rec pp' prec ppf tm =
     let module Format = Caml.Format in
     Format.pp_open_stag ppf (Format.String_tag (Nominal.hash Primitive.jsonify tm));
-    OptRange.open_stag ppf (Nominal.location tm);
+    (* Stdio.printf "opening stag %s\n" (OptRange.to_string (Nominal.location tm)); *)
+    open_loc ppf (Nominal.location tm);
     (match tm with
     | Nominal.Operator (_, "app", [ Scope ([], [ a ]); Scope ([], [ b ]) ]) ->
       if prec > 1
@@ -101,7 +102,8 @@ let pp : (OptRange.t, Primitive.t) Nominal.term Fmt.t =
       then Fmt.pf ppf {|(\%s -> %a)|} name (pp' 0) body
       else Fmt.pf ppf {|\%s -> %a|} name (pp' 0) body
     | tm -> Fmt.failwith "Invalid Lambda term %a" (Nominal.pp_term Primitive.pp) tm);
-    OptRange.close_stag ppf (Nominal.location tm);
+    (* OptRange.close_stag ppf (Nominal.location tm); *)
+    close_loc ppf (Nominal.location tm);
     (* range tag *)
     Format.pp_close_stag ppf ()
     (* hash tag *)
@@ -109,18 +111,26 @@ let pp : (OptRange.t, Primitive.t) Nominal.term Fmt.t =
   pp' 0
 ;;
 
+let pp_range = pp_generic ~open_loc:OptRange.open_stag ~close_loc:OptRange.close_stag
+
+let pp_ranges =
+  pp_generic
+    ~open_loc:(fun ppf loc -> Caml.Format.pp_open_stag ppf (SourceRanges.Stag loc))
+    ~close_loc:(fun ppf _loc -> Caml.Format.pp_close_stag ppf ())
+;;
+
 let%test_module "Lambda Calculus" =
   (module struct
     let () = Caml.Format.set_tags false
     let parse str = ParseUtil.parse_string ParseNoComment.whitespace_t str
-    let pretty_parse str = parse str |> Result.ok_or_failwith |> Fmt.pr "%a" pp
+    let pretty_parse str = parse str |> Result.ok_or_failwith |> Fmt.pr "%a" pp_range
 
     let pretty_eval_parse str =
       parse str
       |> Result.ok_or_failwith
       |> eval
       |> Result.ok_or_failwith
-      |> Fmt.pr "%a" pp
+      |> Fmt.pr "%a" pp_range
     ;;
 
     let%expect_test _ =

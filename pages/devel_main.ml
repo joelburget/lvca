@@ -18,7 +18,7 @@ module Model = struct
 
   type t = { page : page }
 
-  let initial_model = { page = TermAndConcretePage }
+  let initial_model = { page = EvalWithProvenancePage }
 
   let all_pages =
     [ TermAndConcretePage

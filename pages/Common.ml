@@ -15,7 +15,8 @@ type lang =
 
 let parser_of = function Lambda -> LambdaParse.t | Term -> TermParse.t PrimitiveParse.t
 let term_pretty = Nominal.pp_term_range Primitive.pp
-let lambda_pretty = Lvca_languages.LambdaCalculus.pp
+let lambda_pretty = Lvca_languages.LambdaCalculus.pp_range
+let lambda_ranges_pretty = Lvca_languages.LambdaCalculus.pp_ranges
 let html_eq = Caml.( = )
 let htmls_eq = List.equal Caml.( = )
 
@@ -55,4 +56,4 @@ type input_event =
   | InputSelect of Range.t
   | InputUnselect
 
-let mk_output elt_s = mk_reactive' El.div ~at:[ class' "bg-gray-100"; class' "p-1" ] elt_s
+let mk_output elt_s = mk_reactive' El.div ~at:[ class' "bg-gray-100" ] elt_s

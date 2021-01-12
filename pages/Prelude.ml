@@ -4,6 +4,7 @@ open Brr_note
 
 let main ?d ?at = El.v ?d ?at (Jstr.v "main")
 let class' str = At.class' (Jstr.v str)
+let data' name v = At.v (Jstr.v ("data-" ^ name)) (Jstr.v v)
 
 let classes str =
   str |> String.split ~on:' ' |> List.map ~f:(fun cls -> At.class' (Jstr.v cls))
