@@ -11,7 +11,7 @@ let to_string = function
   | PrimString str -> {|"|} ^ String.escaped str ^ {|"|}
   (* | PrimFloat f -> Float.to_string f *)
   | PrimFloat f -> Printf.sprintf "%f" f
-  | PrimChar c -> {|'|} ^ Base.Char.to_string c ^ {|'|}
+  | PrimChar c -> {|'|} ^ Char.to_string c ^ {|'|}
 ;;
 
 let ( = ) p1 p2 =
@@ -57,7 +57,7 @@ let jsonify =
     | PrimInteger i -> array [| string "i"; string (Z.to_string i) |]
     | PrimString s -> array [| string "s"; string s |]
     | PrimFloat f -> array [| string "f"; float f |]
-    | PrimChar c -> array [| string "c"; string (Base.Char.to_string c) |])
+    | PrimChar c -> array [| string "c"; string (Char.to_string c) |])
 ;;
 
 let unjsonify =
