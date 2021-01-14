@@ -105,38 +105,6 @@ let rec instantiate_sort : sort String.Map.t -> sort -> sort =
   | SortAp (name, args) -> SortAp (name, List.map args ~f:(instantiate_sort arg_mapping))
 ;;
 
-(* term_of_: *)
-
-(* let rec term_of_sort : sort -> NonBinding.term = function | SortAp (name, sorts) ->
-   Operator ("sort_ap", [ Primitive (PrimString name) ; Sequence (List.map sorts
-   ~f:term_of_sort) ]) | SortVar name -> Operator ("sort_var", [Primitive (PrimString
-   name)])
-
-   let term_of_valence : valence -> NonBinding.term = function | FixedValence
-   (binding_sorts, result_sort) -> Operator ("fixed_valence", [ Sequence (binding_sorts |>
-   List.map ~f:term_of_sort) ; term_of_sort result_sort ]) | VariableValence (s1, s2) ->
-   Operator ("variable_valence", [ term_of_sort s1 ; term_of_sort s2 ])
-
-   let term_of_arity : arity -> NonBinding.term = function | FixedArity valences ->
-   Operator ("fixed_arity", [ Sequence (List.map valences ~f:term_of_valence) ]) |
-   VariableArity sort -> Operator ("variable_arity", [ term_of_sort sort ])
-
-   let term_of_operator_def : operator_def -> NonBinding.term = fun (OperatorDef (op_name,
-   arity)) -> Operator ("operator_def", [ Primitive (PrimString (op_name)) ; term_of_arity
-   arity ])
-
-   let term_of_sort_def : sort_def -> NonBinding.term = fun (SortDef (vars, op_defs)) ->
-   Operator ("sort_def", [ Sequence (vars |> List.map ~f:(fun str -> NonBinding.Primitive
-   (PrimString str))) ; Sequence (op_defs |> List.map ~f:term_of_operator_def) ])
-
-   let term_of_sort_defs : sort_defs -> NonBinding.term = fun (SortDefs sort_defs) ->
-   Sequence (sort_defs |> Map.to_alist |> List.map ~f:(fun (sort_name, sort_def) ->
-   NonBinding.Operator ("pair", [ Primitive (PrimString sort_name) ; term_of_sort_def
-   sort_def ]) ))
-
-   let term_of_option : ('a -> NonBinding.term) -> 'a option -> NonBinding.term = fun f ->
-   function | None -> Operator ("none", []) | Some a -> Operator ("some", [f a]) *)
-
 (* _of_term: *)
 
 let rec sort_of_term tm =
