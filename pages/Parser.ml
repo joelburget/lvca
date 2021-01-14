@@ -816,9 +816,11 @@ module View = struct
                successfully in sequence. A parser must return something, which goes to \
                the right of the arrow. For example "
           ; code_inline' Examples.sequence1
-          ; txt
-              " parses a simple addition expression where the operands, <code>a</code> \
-               and <code>b</code>, are both one character (any character)."
+          ; txt " parses a simple addition expression where the operands, "
+          ; code_inline' "a"
+          ; txt " and "
+          ; code_inline' "b"
+          ; txt ", are both one character (any character)."
           ]
       ; sequence1_table
       ; p
@@ -852,7 +854,20 @@ module View = struct
           ; txt "."
           ]
       ; choice1_table
-        (* <p><code class="code-inline">choice</code> can accept any number of choices, and you can start each line with <code class="code-inline">|</code>. Note that choice always chooses the first matching branch, so in this example, <code class="code-inline">"abcd"</code> will never match (<code class="code-inline">"abc"</code> will match, leaving <code class="code-inline">"d"</code> unconsumed).</p> *)
+      ; p
+          [ code_inline' "choice"
+          ; txt " can accept any number of choices, and you can start each line with "
+          ; code_inline' "|"
+          ; txt
+              ". Note that choice always chooses the first matching branch, so in this \
+               example, "
+          ; code_inline' {|"abcd"|}
+          ; txt " will never match ("
+          ; code_inline' "abc"
+          ; txt " will match, leaving "
+          ; code_inline' "d"
+          ; txt " unconsumed)."
+          ]
       ; choice2_table
       ; p [ txt "An empty choice always fails." ]
       ; choice3_table
