@@ -1,5 +1,6 @@
 (library
  (name lvca_core)
+ (public_name lvca.core)
  (inline_tests)
  (libraries lvca_syntax)
  (preprocess

@@ -1,5 +1,6 @@
 (library
  (name lvca_languages)
+ (public_name lvca.languages)
  (inline_tests)
  (libraries lvca_syntax lvca_core constructive_real)
  (preprocess
