@@ -7,13 +7,3 @@
    lvca_syntax note)
  (preprocess
   (pps ppx_jane)))
-
-; (rule
-;   (targets devel_main.js)
-;   (deps devel_main.bc.js)
-;   (action (run cp %{deps} %{targets})))
-;
-; (rule
-;   (targets site_main.js)
-;   (deps site_main.bc.js)
-;   (action (run cp %{deps} %{targets})))
