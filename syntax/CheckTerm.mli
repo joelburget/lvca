@@ -3,7 +3,7 @@
 type 'a abstract_syntax_check_failure_frame =
   { term : (('a, Primitive.t) Pattern.t, ('a, Primitive.t) Nominal.term) Base.Either.t
         (** Term that failed to check *)
-  ; sort : AbstractSyntax.sort (** Sort it failed to check against *)
+  ; sort : Sort.t (** Sort it failed to check against *)
   }
 
 (** A check failure includes both an error message and the stack of terms / patterns
@@ -61,7 +61,7 @@ val pp_failure : Format.formatter -> 'a abstract_syntax_check_failure -> unit
     } *)
 val check_pattern
   :  AbstractSyntax.t (** Abstract syntax *)
-  -> AbstractSyntax.sort (** Sort to check pattern against *)
+  -> Sort.t (** Sort to check pattern against *)
   -> ('a, Primitive.t) Pattern.t
   -> ( AbstractSyntax.valence Lvca_util.String.Map.t
      , 'a abstract_syntax_check_failure )
@@ -83,6 +83,6 @@ val check_pattern
     + Variable-valence terms must have one binder, a pattern. *)
 val check_term
   :  AbstractSyntax.t (** Abstract syntax *)
-  -> AbstractSyntax.sort (** Sort to check term against *)
+  -> Sort.t (** Sort to check term against *)
   -> ('a, Primitive.t) Nominal.term
   -> 'a abstract_syntax_check_failure option

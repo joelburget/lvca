@@ -1,22 +1,13 @@
 (** Types for representing languages *)
 
 module Util = Lvca_util
-module String = Util.String
-module List = Base.List
-module Map = Base.Map
-module Result = Base.Result
-
-type sort_name = string
-
-type sort =
-  | SortAp of sort_name * sort list
-  | SortVar of string
+open Base
 
 type starred =
   | Starred
   | Unstarred
 
-type sort_slot = sort * starred
+type sort_slot = Sort.t * starred
 type valence = Valence of sort_slot list * sort_slot
 type arity = valence list
 type operator_def = OperatorDef of string * arity
@@ -28,30 +19,11 @@ type t = abstract_syntax
 
 let ( = ) = List.equal Caml.( = )
 
-let rec pp_sort : Format.formatter -> sort -> unit =
- fun ppf ->
-  Format.(
-    function
-    | SortAp (name, args) -> fprintf ppf "%s(@[%a@])" name pp_sort_args args
-    | SortVar name -> fprintf ppf "%s" name)
-
-and pp_sort_args ppf = function
-  | [] -> ()
-  | [ x ] -> Format.fprintf ppf "%a" pp_sort x
-  | x :: xs -> Format.fprintf ppf "%a; %a" pp_sort x pp_sort_args xs
-;;
-
-let rec string_of_sort : sort -> string = function
-  | SortAp (name, args) ->
-    Printf.sprintf "%s(%s)" name (args |> List.map ~f:string_of_sort |> String.concat)
-  | SortVar name -> name
-;;
-
 let string_of_sort_slot : sort_slot -> string =
  fun (sort, starred) ->
   Printf.sprintf
     "%s%s"
-    (string_of_sort sort)
+    (Sort.to_string sort)
     (match starred with Starred -> "*" | Unstarred -> "")
 ;;
 
@@ -70,35 +42,10 @@ let string_of_arity : arity -> string =
  fun valences -> valences |> List.map ~f:string_of_valence |> String.concat ~sep:"; "
 ;;
 
-let rec instantiate_sort : sort String.Map.t -> sort -> sort =
- fun arg_mapping -> function
-  | SortVar name ->
-    (match Map.find arg_mapping name with
-    | None -> failwith "TODO: error"
-    | Some sort' -> sort')
-  | SortAp (name, args) -> SortAp (name, List.map args ~f:(instantiate_sort arg_mapping))
-;;
-
-(* _of_term: *)
-
-let rec sort_of_term tm =
-  match tm with
-  | Nominal.Var (_, name) -> Ok (SortVar name)
-  | Operator (_, name, args) ->
-    let open Result.Let_syntax in
-    let%map args' =
-      args
-      |> List.map ~f:(function Scope ([], [ arg ]) -> sort_of_term arg | _ -> Error tm)
-      |> Result.all
-    in
-    SortAp (name, args')
-  | _ -> Error tm
-;;
-
 module Parse (Comment : ParseUtil.Comment_int) = struct
-  open Base
   module Parsers = ParseUtil.Mk (Comment)
   open Parsers
+  module ParseSort = Sort.Parse (Comment)
 
   exception BuildArityError of string
 
@@ -109,26 +56,16 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   let semi = char ';'
   let star = char '*'
 
-  let sort : sort Parsers.t =
-    fix (fun sort ->
-        identifier
-        >>== fun ~pos ident ->
-        choice
-          [ (parens (sep_by semi sort) >>| fun sorts -> SortAp (ident, sorts))
-          ; return ~pos (SortVar ident)
-          ])
-  ;;
-
   type sort_sequence_entry =
-    | Sort of sort * starred
+    | Sort of Sort.t * starred
     | Dot
     | Semi
 
   type sort_sequence = sort_sequence_entry list
 
   let str_of_entry = function
-    | Sort (sort, Starred) -> string_of_sort sort ^ "*"
-    | Sort (sort, Unstarred) -> string_of_sort sort
+    | Sort (sort, Starred) -> Sort.to_string sort ^ "*"
+    | Sort (sort, Unstarred) -> Sort.to_string sort
     | Dot -> "."
     | Semi -> ";"
   ;;
@@ -168,7 +105,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
          (choice
             [ semi >>| Fn.const Semi
             ; dot >>| Fn.const Dot
-            ; (sort
+            ; (ParseSort.t
               >>== fun ~pos:p1 sort' ->
               choice
                 [ (star
@@ -213,14 +150,13 @@ let%test_module "AbstractSyntax_Parser" =
       | Error msg -> failwith msg
    ;;
 
-    let tm = SortAp ("tm", [])
+    let tm = Sort.Ap ("tm", [])
     let tm_s = tm, Starred
     let tm_u = tm, Unstarred
     let tm_v = Valence ([], tm_u)
-    let integer = SortAp ("integer", [])
+    let integer = Sort.Ap ("integer", [])
     let integer_v = Valence ([], (integer, Unstarred))
 
-    let%test_unit _ = assert (Caml.(parse_with Parse.sort "tm()" = tm))
     let%test_unit _ = assert (Caml.(parse_with Parse.arity "(integer())" = [ integer_v ]))
 
     let%test_unit _ =
@@ -242,7 +178,7 @@ let%test_module "AbstractSyntax_Parser" =
     let expect_okay str =
       match Angstrom.parse_string ~consume:All Parse.arity str with
       | Ok _ -> ()
-      | Error msg -> print_string msg
+      | Error msg -> Stdio.print_string msg
     ;;
 
     let%expect_test _ =

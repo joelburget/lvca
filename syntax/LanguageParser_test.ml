@@ -9,11 +9,11 @@ let%test_module "AbstractSyntax.Parser" =
       |> Base.Result.ok_or_failwith
     ;;
 
-    let tm_sort = SortAp ("tm", [])
+    let tm_sort = Sort.Ap ("tm", [])
     let tm_valence = Valence ([], (tm_sort, Unstarred))
-    let ty_sort = SortAp ("ty", [])
+    let ty_sort = Sort.Ap ("ty", [])
     let ty_valence = Valence ([], (ty_sort, Unstarred))
-    let x_sort = SortVar "x"
+    let x_sort = Sort.Name "x"
 
     let%test _ =
       parse "bool := true() | false()"

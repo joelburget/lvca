@@ -4,7 +4,7 @@ module Util = Lvca_util
 
 type 'a abstract_syntax_check_failure_frame =
   { term : (('a, Primitive.t) Pattern.t, ('a, Primitive.t) Nominal.term) Either.t
-  ; sort : sort
+  ; sort : Sort.t
   }
 
 type 'a abstract_syntax_check_failure =
@@ -32,7 +32,7 @@ let pp_failure : Caml.Format.formatter -> 'a abstract_syntax_check_failure -> un
             "- @[pattern: %a,@ sort: %a@]"
             (Pattern.pp Primitive.pp)
             pat
-            pp_sort
+            Sort.pp
             sort
         | Second tm ->
           Fmt.pf
@@ -40,23 +40,24 @@ let pp_failure : Caml.Format.formatter -> 'a abstract_syntax_check_failure -> un
             "- @[term: %a,@ sort: %a@]"
             (Nominal.pp_term Primitive.pp)
             tm
-            pp_sort
+            Sort.pp
             sort))
 ;;
 
-let rec concretize_sort : sort Util.String.Map.t -> sort -> sort =
+let rec concretize_sort : Sort.t Util.String.Map.t -> Sort.t -> Sort.t =
  fun env -> function
-  | SortAp (name, sub_sorts) -> SortAp (name, List.map sub_sorts ~f:(concretize_sort env))
-  | SortVar name ->
+  | Sort.Ap (name, sub_sorts) ->
+    Sort.Ap (name, List.map sub_sorts ~f:(concretize_sort env))
+  | Sort.Name name ->
     Map.find env name
     |> Util.Option.get_invariant (fun () -> "concretize_sort: unknown variable " ^ name)
 ;;
 
-let concretize_sort_slot : sort Util.String.Map.t -> sort_slot -> sort_slot =
+let concretize_sort_slot : Sort.t Util.String.Map.t -> sort_slot -> sort_slot =
  fun env (sort, starred) -> concretize_sort env sort, starred
 ;;
 
-let concretize_valence : sort Util.String.Map.t -> valence -> valence =
+let concretize_valence : Sort.t Util.String.Map.t -> valence -> valence =
  fun env -> function
   | Valence (binding_sort_slots, body_sort_slot) ->
     Valence
@@ -64,12 +65,12 @@ let concretize_valence : sort Util.String.Map.t -> valence -> valence =
       , concretize_sort_slot env body_sort_slot )
 ;;
 
-let concretize_arity : sort Util.String.Map.t -> arity -> arity =
+let concretize_arity : Sort.t Util.String.Map.t -> arity -> arity =
  fun env -> List.map ~f:(concretize_valence env)
 ;;
 
 let lookup_operator
-    :  AbstractSyntax.t -> sort_name -> string (* operator_name *)
+    :  AbstractSyntax.t -> string (* sort name *) -> string (* operator_name *)
     -> (string list * operator_def) option
   =
  fun sort_defs sort_name op_name ->
@@ -87,29 +88,29 @@ let lookup_operator
 
 (* Check that this pattern is valid and return the valence for each variable it binds *)
 let check_pattern
-    :  AbstractSyntax.t -> sort -> ('a, Primitive.t) Pattern.t
+    :  AbstractSyntax.t -> Sort.t -> ('a, Primitive.t) Pattern.t
     -> (valence Util.String.Map.t, 'a abstract_syntax_check_failure) Result.t
   =
  fun lang ->
   let lookup_operator' = lookup_operator lang in
   let go_primitive
-      :  sort -> Primitive.t
+      :  Sort.t -> Primitive.t
       -> (valence Util.String.Map.t, 'a abstract_syntax_check_failure) Result.t
     =
    fun sort prim ->
     match prim, sort with
     (* TODO: Figure out a real solution (that handles aliasing) *)
-    | PrimString _, SortAp ("string", [])
-    | PrimFloat _, SortAp ("float", [])
-    | PrimChar _, SortAp ("char", [])
-    | PrimInteger _, SortAp ("integer", []) ->
+    | PrimString _, Sort.Ap ("string", [])
+    | PrimFloat _, Sort.Ap ("float", [])
+    | PrimChar _, Sort.Ap ("char", [])
+    | PrimInteger _, Sort.Ap ("integer", []) ->
       Ok Util.String.Map.empty
     | _, _ ->
       Error
         (err
            (Printf.sprintf
               "Unexpected sort (%s) for a primitive (%s)"
-              (string_of_sort sort)
+              (Sort.to_string sort)
               (Primitive.to_string prim)))
   in
   let handle_dup_error = function
@@ -123,7 +124,7 @@ let check_pattern
               k))
   in
   let rec go_pattern
-      :  sort -> ('a, Primitive.t) Pattern.t
+      :  Sort.t -> ('a, Primitive.t) Pattern.t
       -> (valence Util.String.Map.t, 'a abstract_syntax_check_failure) Result.t
     =
    fun sort pat ->
@@ -135,8 +136,8 @@ let check_pattern
       | Primitive (_, prim) -> go_primitive sort prim
       | Operator (_, op_name, subpats) ->
         (match sort with
-        | SortVar _ -> Util.invariant_violation "check_pattern: non-concrete sort"
-        | SortAp (sort_name, sort_args) ->
+        | Sort.Name _ -> Util.invariant_violation "check_pattern: non-concrete sort"
+        | Sort.Ap (sort_name, sort_args) ->
           (match lookup_operator' sort_name op_name with
           | None ->
             Error
@@ -184,7 +185,7 @@ let check_pattern
                            (pats
                            |> List.map ~f:(Pattern.to_string Primitive.pp)
                            |> String.concat ~sep:", ")
-                           (string_of_sort sort))))
+                           (Sort.to_string sort))))
                | Valence ([], (sort, Starred)) ->
                  pats
                  |> List.map ~f:(go_pattern sort)
@@ -218,15 +219,16 @@ let check_pattern
 
    This recursively checks subterms and patterns. *)
 let check_term
-    :  AbstractSyntax.t (** Abstract syntax *) -> sort (** Sort to check term against *)
+    :  AbstractSyntax.t (** Abstract syntax *) -> Sort.t (** Sort to check term against *)
     -> ('a, Primitive.t) Nominal.term -> 'a abstract_syntax_check_failure option
   =
  fun lang ->
   let lookup_operator' = lookup_operator lang in
   let check_pattern' = check_pattern lang in
   let rec go
-      :  valence Util.String.Map.t (* mapping from variable name to its valence *) -> sort
-      -> ('a, Primitive.t) Nominal.term -> 'a abstract_syntax_check_failure option
+      :  valence Util.String.Map.t (* mapping from variable name to its valence *)
+      -> Sort.t -> ('a, Primitive.t) Nominal.term
+      -> 'a abstract_syntax_check_failure option
     =
    fun var_valences sort tm ->
     let result =
@@ -240,7 +242,7 @@ let check_term
         | Some valence ->
           (match valence with
           | Valence ([], (sort', Unstarred)) ->
-            if Caml.(sort' = sort)
+            if Sort.(sort' = sort)
             then None
             else
               Some
@@ -249,21 +251,21 @@ let check_term
                       "Variable %s has unexpected valence (saw: %s) (expected: %s)"
                       v
                       (string_of_valence valence)
-                      (string_of_sort sort)))
+                      (Sort.to_string sort)))
           | _ -> failwith "TODO"))
       | Primitive (_, p) ->
         (match p, sort with
         (* TODO: Figure out a real solution (that handles aliasing) *)
-        | PrimInteger _, SortAp ("integer", [])
-        | PrimString _, SortAp ("string", [])
-        | PrimFloat _, SortAp ("float", [])
-        | PrimChar _, SortAp ("char", []) ->
+        | PrimInteger _, Sort.Ap ("integer", [])
+        | PrimString _, Sort.Ap ("string", [])
+        | PrimFloat _, Sort.Ap ("float", [])
+        | PrimChar _, Sort.Ap ("char", []) ->
           None
         | _, _ -> Some (err "Unexpected primitive sort"))
       | Operator (_, operator_name, op_scopes) ->
         (match sort with
-        | SortVar _ -> Util.invariant_violation "check_term (go): non-concrete sort"
-        | SortAp (sort_name, sort_args) ->
+        | Sort.Name _ -> Util.invariant_violation "check_term (go): non-concrete sort"
+        | Sort.Ap (sort_name, sort_args) ->
           (match lookup_operator' sort_name operator_name with
           | None ->
             Some
@@ -397,7 +399,7 @@ test := foo(term()*. term())
     let language = parse_lang lang_desc
 
     let print_check_pattern sort_str pat_str =
-      match sort_str |> parse_term |> sort_of_term with
+      match sort_str |> parse_term |> Sort.of_term with
       | Error bad_tm -> Fmt.epr "%a" (Nominal.pp_term Primitive.pp) bad_tm
       | Ok sort ->
         let pat =
@@ -516,7 +518,7 @@ test := foo(term()*. term())
     ;;
 
     let check_term' sort_str tm_str =
-      match sort_str |> parse_term |> sort_of_term with
+      match sort_str |> parse_term |> Sort.of_term with
       | Error bad_tm -> Fmt.epr "%a" (Nominal.pp_term Primitive.pp) bad_tm
       | Ok sort ->
         (match tm_str |> parse_term |> Nominal.erase |> check_term language sort with
