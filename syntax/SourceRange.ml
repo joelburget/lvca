@@ -3,7 +3,7 @@ type t =
   ; range : Range.t
   }
 
-type Caml.Format.stag += Stag of t
+type Stdlib.Format.stag += Stag of t
 
 let mk source p1 p2 = { source; range = Range.mk p1 p2 }
 let to_string { source; range } = Printf.sprintf "%s:%s" source (Range.to_string range)

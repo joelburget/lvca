@@ -3,7 +3,7 @@ type t =
   ; finish : int
   }
 
-type Caml.Format.stag += Stag of t
+type Stdlib.Format.stag += Stag of t
 
 let mk start finish = { start; finish }
 let to_string { start; finish } = Printf.sprintf "%i-%i" start finish

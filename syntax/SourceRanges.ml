@@ -1,7 +1,7 @@
 open Base
 
 type t = Ranges.t Lvca_util.String.Map.t
-type Caml.Format.stag += Stag of t
+type Stdlib.Format.stag += Stag of t
 
 let to_string t =
   t
@@ -42,7 +42,7 @@ let restrict ~buf p =
 ;;
 
 let stag_functions =
-  Caml.Format.
+  Stdlib.Format.
     { mark_open_stag =
         (function Stag t -> Printf.sprintf "<%s>" (to_string t) | _ -> "")
     ; mark_close_stag =

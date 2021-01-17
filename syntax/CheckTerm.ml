@@ -16,15 +16,15 @@ let err : string -> 'a abstract_syntax_check_failure =
  fun message -> { message; stack = [] }
 ;;
 
-let pp_failure : Caml.Format.formatter -> 'a abstract_syntax_check_failure -> unit =
+let pp_failure : Stdlib.Format.formatter -> 'a abstract_syntax_check_failure -> unit =
  fun ppf { message; stack } ->
   Fmt.string ppf message;
   if List.length stack > 0
   then (
-    Caml.Format.pp_force_newline ppf ();
+    Stdlib.Format.pp_force_newline ppf ();
     Fmt.pf ppf "stack:";
     List.iter stack ~f:(fun { term; sort } ->
-        Caml.Format.pp_force_newline ppf ();
+        Stdlib.Format.pp_force_newline ppf ();
         match term with
         | First pat ->
           Fmt.pf

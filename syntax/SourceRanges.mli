@@ -3,7 +3,7 @@
     Invariants: each range must be disjoint, ranges must be ordered. *)
 type t = Ranges.t Lvca_util.String.Map.t
 
-type Caml.Format.stag += Stag of t
+type Stdlib.Format.stag += Stag of t
 
 (** Test invariants. Returns true on success. *)
 val invariants : t -> bool
@@ -43,4 +43,4 @@ val intersect : t -> t -> t
 val restrict : buf:string -> t -> t
 
 (** For testing only: used to enable outputting of the [Stag] semantic tag. *)
-val stag_functions : Caml.Format.formatter_stag_functions
+val stag_functions : Stdlib.Format.formatter_stag_functions

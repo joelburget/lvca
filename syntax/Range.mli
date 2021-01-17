@@ -3,7 +3,7 @@ type t =
   ; finish : int
   }
 
-type Caml.Format.stag += Stag of t
+type Stdlib.Format.stag += Stag of t
 
 val mk : int -> int -> t
 val to_string : t -> string
@@ -44,4 +44,4 @@ val intersect : t -> t -> t option
 val pp : t Fmt.t
 
 (** For testing only: used to enable outputting of the [Stag] semantic tag. *)
-val stag_functions : Caml.Format.formatter_stag_functions
+val stag_functions : Stdlib.Format.formatter_stag_functions

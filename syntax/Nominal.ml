@@ -96,8 +96,8 @@ let pp_scope_range pp_prim ppf tm =
 
 let pp_term_ranges pp_prim ppf tm =
   pp_term_generic
-    ~open_loc:(fun ppf loc -> Caml.Format.pp_open_stag ppf (SourceRanges.Stag loc))
-    ~close_loc:(fun ppf _loc -> Caml.Format.pp_close_stag ppf ())
+    ~open_loc:(fun ppf loc -> Stdlib.Format.pp_open_stag ppf (SourceRanges.Stag loc))
+    ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
     ~pp_pat:Pattern.pp_ranges
     ~pp_prim
     ppf
@@ -106,8 +106,8 @@ let pp_term_ranges pp_prim ppf tm =
 
 let pp_scope_ranges pp_prim ppf tm =
   pp_scope_generic
-    ~open_loc:(fun ppf loc -> Caml.Format.pp_open_stag ppf (SourceRanges.Stag loc))
-    ~close_loc:(fun ppf _loc -> Caml.Format.pp_close_stag ppf ())
+    ~open_loc:(fun ppf loc -> Stdlib.Format.pp_open_stag ppf (SourceRanges.Stag loc))
+    ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
     ~pp_pat:Pattern.pp_ranges
     ~pp_prim
     ppf
