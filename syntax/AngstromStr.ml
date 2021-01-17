@@ -90,9 +90,9 @@ let escaped buf = function
 
 let hex c =
   match c with
-  | '0' .. '9' -> Caml.Char.code c - 0x30 (* '0' *)
-  | 'a' .. 'f' -> Caml.Char.code c - 87
-  | 'A' .. 'F' -> Caml.Char.code c - 55
+  | '0' .. '9' -> Char.to_int c - 0x30 (* '0' *)
+  | 'a' .. 'f' -> Char.to_int c - 87
+  | 'A' .. 'F' -> Char.to_int c - 55
   | _ -> 255
 ;;
 
@@ -111,11 +111,11 @@ let utf_8 buf d = function
       else (
         Buffer.add_char
           buf
-          (Caml.Char.unsafe_chr (0b11100000 lor ((cp lsr 12) land 0b00001111)));
+          (Char.of_int_exn (0b11100000 lor ((cp lsr 12) land 0b00001111)));
         Buffer.add_char
           buf
-          (Caml.Char.unsafe_chr (0b10000000 lor ((cp lsr 6) land 0b00111111)));
-        Buffer.add_char buf (Caml.Char.unsafe_chr (0b10000000 lor (cp land 0b00111111)));
+          (Char.of_int_exn (0b10000000 lor ((cp lsr 6) land 0b00111111)));
+        Buffer.add_char buf (Char.of_int_exn (0b10000000 lor (cp land 0b00111111)));
         `Unescaped))
   | cs -> `UTF8 (d :: cs)
 ;;
@@ -140,14 +140,14 @@ let utf_16 buf d x s =
         let cp = 0x10000 + ((hi lsl 10) lor lo) in
         Buffer.add_char
           buf
-          (Caml.Char.unsafe_chr (0b11110000 lor ((cp lsr 18) land 0b00000111)));
+          (Char.of_int_exn (0b11110000 lor ((cp lsr 18) land 0b00000111)));
         Buffer.add_char
           buf
-          (Caml.Char.unsafe_chr (0b10000000 lor ((cp lsr 12) land 0b00111111)));
+          (Char.of_int_exn (0b10000000 lor ((cp lsr 12) land 0b00111111)));
         Buffer.add_char
           buf
-          (Caml.Char.unsafe_chr (0b10000000 lor ((cp lsr 6) land 0b00111111)));
-        Buffer.add_char buf (Caml.Char.unsafe_chr (0b10000000 lor (cp land 0b00111111)));
+          (Char.of_int_exn (0b10000000 lor ((cp lsr 6) land 0b00111111)));
+        Buffer.add_char buf (Char.of_int_exn (0b10000000 lor (cp land 0b00111111)));
         `Unescaped)
       else `Error "invalid escape sequence for utf-16 low surrogate")
   | `C cs, _ -> `UTF16 (x, `C (d :: cs))
