@@ -236,6 +236,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
           ])
     <?> "pattern"
  ;;
+
+  let whitespace_t prim = Parsers.(junk *> t prim)
 end
 
 let%test_module "Parsing" =

@@ -3,23 +3,22 @@ open Lvca_syntax
 open Lvca_core
 open Stdio
 
-let abstract_syntax_str =
-  {|
-{ list }
-
-maybe(a) :=
+let abstract_syntax =
+  [%lvca_abstract_syntax
+    {|
+maybe a :=
   | nothing()
   | some(a)
 
 // An edit in some language is either:
-edit(lang) :=
+edit lang :=
   // A simple, atomic edit
-  | atomic(core(lang; maybe(lang)))
+  | atomic(core lang (maybe lang))
   // Or an edit with a message attached
-  | labeled(edit(); string())
+  | labeled(edit; string)
   // Or a list of edits.
-  | list(list(edit))
-|}
+  | list(list edit)
+|}]
 ;;
 
 (* module ParseAbstract = AbstractSyntax.Parse(ParseUtil.CComment)

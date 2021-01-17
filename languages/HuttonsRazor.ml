@@ -5,13 +5,15 @@ open Stdio
 module Description = struct
   module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
 
-  (* let abstract_syntax : AbstractSyntax.t = ParseUtil.parse_string ParseAbstract.t {| {
-     integer }
+  let abstract_syntax =
+    [%lvca_abstract_syntax
+      {|
+     expr :=
+     | lit(integer) // an expression can be a literal integer
+     | add(expr; expr) // or the addition of two expressions
 
-     expr := | lit(integer()) // an expression can be a literal integer | add(expr();
-     expr()) // or the addition of two expressions
-
-     type := int() // there's only one type in the language |} |> Result.ok_or_failwith ;; *)
+     type := int() // there's only one type in the language |}]
+  ;;
 
   let parser_str =
     {|
