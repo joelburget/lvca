@@ -61,7 +61,7 @@ let%test_module "Range" =
 
     let%expect_test _ =
       Fmt.pr "%a" pp (unions [ mk "input" 16 17 ]);
-      [%expect {| input:{16-17} |}]
+      [%expect {| input:{16,17} |}]
     ;;
   end)
 ;;
