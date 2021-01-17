@@ -1,6 +1,5 @@
 (** Types for representing languages *)
 
-module Util = Lvca_util
 open Base
 
 type starred =
