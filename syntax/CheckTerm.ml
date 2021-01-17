@@ -4,8 +4,7 @@ module Util = Lvca_util
 
 type 'a abstract_syntax_check_failure_frame =
   { term : (('a, Primitive.t) Pattern.t, ('a, Primitive.t) Nominal.term) Either.t
-        (** Term that failed to check *)
-  ; sort : sort (** Sort it failed to check against *)
+  ; sort : sort
   }
 
 type 'a abstract_syntax_check_failure =
