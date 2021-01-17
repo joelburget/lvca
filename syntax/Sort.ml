@@ -72,6 +72,6 @@ let%test_module "Sort_Parser" =
 
     let tm = Ap ("tm", [])
 
-    let%test_unit _ = assert (Caml.(parse_with Parse.t "tm()" = tm))
+    let%test_unit _ = assert (parse_with Parse.t "tm()" = tm)
   end)
 ;;
