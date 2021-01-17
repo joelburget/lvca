@@ -14,8 +14,6 @@ type sort_def = SortDef of string list * operator_def list
 type abstract_syntax = (string * sort_def) list
 type t = abstract_syntax
 
-(* functions: *)
-
 let ( = ) = List.equal Caml.( = )
 
 let string_of_sort_slot : sort_slot -> string =
@@ -40,6 +38,12 @@ let string_of_valence : valence -> string = function
 let string_of_arity : arity -> string =
  fun valences -> valences |> List.map ~f:string_of_valence |> String.concat ~sep:"; "
 ;;
+
+(* TODO
+let pp_sort_def ppf (SortDef (sort_vars, operator_defs)) =
+
+let pp = Fmt.list ~sep:(Fmt.sps 0) (Fmt.pair ~sep:(Fmt.any ":=") Fmt.string pp_sort_def)
+*)
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)

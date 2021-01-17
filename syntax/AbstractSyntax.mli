@@ -31,6 +31,8 @@ val ( = ) : abstract_syntax -> abstract_syntax -> bool
 val string_of_valence : valence -> string
 val string_of_arity : arity -> string
 
+(* TODO val pp : Format.formatter -> t -> unit *)
+
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : t ParseUtil.t
   val whitespace_t : t ParseUtil.t
