@@ -2,7 +2,6 @@
 
 open Base
 open Lvca_syntax
-open AbstractSyntax
 module Format = Caml.Format
 
 type is_rec =
@@ -14,7 +13,7 @@ type 'a term =
   (* plus, core-specific ctors *)
   | CoreApp of 'a * 'a term * 'a term
   | Case of 'a * 'a term * 'a core_case_scope list
-  | Lambda of 'a * sort * 'a core_scope
+  | Lambda of 'a * Sort.t * 'a core_scope
   | Let of 'a * is_rec * 'a term * 'a core_scope (** Lets bind only a single variable *)
 
 and 'a core_scope = Scope of string * 'a term
@@ -55,7 +54,7 @@ module PP = struct
     | Term (Var (_, v)) -> pf ppf "%s" v (* XXX *)
     | Term tm -> pf ppf "%a" (braces (Nominal.pp_term Primitive.pp)) tm
     | Lambda (_, sort, Scope (name, body)) ->
-      pf ppf "\\(%s : %a) ->@ %a" name pp_sort sort pp body
+      pf ppf "\\(%s : %a) ->@ %a" name Sort.pp sort pp body
     (* TODO: parens if necessary *)
     | CoreApp _ as app -> pp_app ppf app
     | Case (_, arg, case_scopes) ->
@@ -302,6 +301,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   module Term = Nominal.Parse (Comment)
   module ParsePrimitive = Primitive.Parse (Comment)
   module Abstract = AbstractSyntax.Parse (Comment)
+  module Sort = Sort.Parse (Comment)
   open Parsers
 
   let reserved = Lvca_util.String.Set.of_list [ "let"; "rec"; "in"; "match"; "with" ]
@@ -350,11 +350,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
               (attach_pos (char '\\'))
               (attach_pos
                  (parens
-                    (lift3
-                       (fun ident _ sort -> ident, sort)
-                       identifier
-                       (char ':')
-                       Abstract.sort)))
+                    (lift3 (fun ident _ sort -> ident, sort) identifier (char ':') Sort.t)))
               (string "->")
               term
             <?> "lambda"
@@ -439,7 +435,7 @@ let%test_module "Parsing" =
     ;;
 
     let%test _ =
-      parse {|\(x : bool()) -> x|} = Lambda ((), SortAp ("bool", []), Scope ("x", var "x"))
+      parse {|\(x : bool) -> x|} = Lambda ((), Sort.Name "bool", Scope ("x", var "x"))
     ;;
 
     let%test _ =

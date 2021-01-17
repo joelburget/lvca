@@ -12,14 +12,12 @@ let parse_term str =
 
 let%test_module "Core parsing" =
   (module struct
-    open AbstractSyntax
-
     let scope : (unit, Primitive.t) Nominal.term -> (unit, Primitive.t) Nominal.scope =
      fun body -> Scope ([], [ body ])
    ;;
 
     let dynamics_str =
-      {|\(tm : ty()) -> match tm with {
+      {|\(tm : ty) -> match tm with {
     | true() -> {true()}
     | false() -> {false()}
     | ite(t1; t2; t3) -> match meaning t1 with {
@@ -37,7 +35,7 @@ let%test_module "Core parsing" =
     let p_operator tag children = Pattern.Operator ((), tag, children)
     let t_operator tag children = Nominal.Operator ((), tag, children)
     let meaning x = CoreApp ((), t_var "meaning", x)
-    let ty = SortAp ("ty", [])
+    let ty = Sort.Name "ty"
 
     let dynamics =
       Defn
