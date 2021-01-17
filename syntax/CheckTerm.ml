@@ -1,6 +1,6 @@
 open Base
 open AbstractSyntax
-module Util = Lvca_util
+module SMap = Lvca_util.String.Map
 
 type 'a abstract_syntax_check_failure_frame =
   { term : (('a, Primitive.t) Pattern.t, ('a, Primitive.t) Nominal.term) Either.t
@@ -44,11 +44,11 @@ let pp_failure : Stdlib.Format.formatter -> 'a abstract_syntax_check_failure -> 
             sort))
 ;;
 
-let concretize_sort_slot : Sort.t Util.String.Map.t -> sort_slot -> sort_slot =
+let concretize_sort_slot : Sort.t SMap.t -> sort_slot -> sort_slot =
  fun env (sort, starred) -> Sort.instantiate env sort, starred
 ;;
 
-let concretize_valence : Sort.t Util.String.Map.t -> valence -> valence =
+let concretize_valence : Sort.t SMap.t -> valence -> valence =
  fun env -> function
   | Valence (binding_sort_slots, body_sort_slot) ->
     Valence
@@ -56,7 +56,7 @@ let concretize_valence : Sort.t Util.String.Map.t -> valence -> valence =
       , concretize_sort_slot env body_sort_slot )
 ;;
 
-let concretize_arity : Sort.t Util.String.Map.t -> arity -> arity =
+let concretize_arity : Sort.t SMap.t -> arity -> arity =
  fun env -> List.map ~f:(concretize_valence env)
 ;;
 
@@ -80,13 +80,13 @@ let lookup_operator
 (* Check that this pattern is valid and return the valence for each variable it binds *)
 let check_pattern
     :  AbstractSyntax.t -> Sort.t -> ('a, Primitive.t) Pattern.t
-    -> (valence Util.String.Map.t, 'a abstract_syntax_check_failure) Result.t
+    -> (valence SMap.t, 'a abstract_syntax_check_failure) Result.t
   =
  fun lang ->
   let lookup_operator' = lookup_operator lang in
   let go_primitive
       :  Sort.t -> Primitive.t
-      -> (valence Util.String.Map.t, 'a abstract_syntax_check_failure) Result.t
+      -> (valence SMap.t, 'a abstract_syntax_check_failure) Result.t
     =
    fun sort prim ->
     match prim, sort with
@@ -95,7 +95,7 @@ let check_pattern
     | PrimFloat _, Sort.Name "float"
     | PrimChar _, Sort.Name "char"
     | PrimInteger _, Sort.Name "integer" ->
-      Ok Util.String.Map.empty
+      Ok SMap.empty
     | _, _ ->
       Error
         (err
@@ -116,14 +116,13 @@ let check_pattern
   in
   let rec go_pattern
       :  Sort.t -> ('a, Primitive.t) Pattern.t
-      -> (valence Util.String.Map.t, 'a abstract_syntax_check_failure) Result.t
+      -> (valence SMap.t, 'a abstract_syntax_check_failure) Result.t
     =
    fun sort pat ->
     let result =
       match pat with
-      | Var (_, name) ->
-        Ok (Util.String.Map.singleton name (Valence ([], (sort, Unstarred))))
-      | Ignored _ -> Ok Util.String.Map.empty
+      | Var (_, name) -> Ok (SMap.singleton name (Valence ([], (sort, Unstarred))))
+      | Ignored _ -> Ok SMap.empty
       | Primitive (_, prim) -> go_primitive sort prim
       | Operator (_, op_name, subpats) ->
         let lookup_and_go sort_name sort_args =
@@ -136,9 +135,7 @@ let check_pattern
                     op_name
                     sort_name))
           | Some (sort_vars, OperatorDef (_, arity)) ->
-            let sort_env =
-              Util.String.Map.of_alist_exn (List.zip_exn sort_vars sort_args)
-            in
+            let sort_env = SMap.of_alist_exn (List.zip_exn sort_vars sort_args) in
             go_arity_pat (concretize_arity sort_env arity) subpats
         in
         (match sort with
@@ -149,7 +146,7 @@ let check_pattern
         { message; stack = { term = First pat; sort } :: stack })
   and go_arity_pat
       :  arity -> ('a, Primitive.t) Pattern.t list list
-      -> (valence Util.String.Map.t, 'a abstract_syntax_check_failure) Result.t
+      -> (valence SMap.t, 'a abstract_syntax_check_failure) Result.t
     =
    fun valences pats ->
     match List.zip pats valences with
@@ -183,13 +180,13 @@ let check_pattern
                  pats
                  |> List.map ~f:(go_pattern sort)
                  |> Result.all
-                 |> Result.map ~f:Util.String.Map.strict_unions
+                 |> Result.map ~f:SMap.strict_unions
                  |> Result.bind ~f:handle_dup_error
                | _ ->
                  (match pats with
                  (* The only thing that can match with a non-sort valence is a var *)
-                 | [ Ignored _ ] -> Ok Util.String.Map.empty
-                 | [ Var (_, name) ] -> Ok (Util.String.Map.singleton name valence)
+                 | [ Ignored _ ] -> Ok SMap.empty
+                 | [ Var (_, name) ] -> Ok (SMap.singleton name valence)
                  | _ ->
                    Error
                      (err
@@ -201,7 +198,7 @@ let check_pattern
                            |> List.map ~f:(Pattern.to_string Primitive.pp)
                            |> String.concat ~sep:", ")))))
         |> Result.all
-        |> Result.map ~f:Util.String.Map.strict_unions
+        |> Result.map ~f:SMap.strict_unions
       in
       handle_dup_error result
   in
@@ -219,9 +216,8 @@ let check_term
   let lookup_operator' = lookup_operator lang in
   let check_pattern' = check_pattern lang in
   let rec go
-      :  valence Util.String.Map.t (* mapping from variable name to its valence *)
-      -> Sort.t -> ('a, Primitive.t) Nominal.term
-      -> 'a abstract_syntax_check_failure option
+      :  valence SMap.t (* mapping from variable name to its valence *) -> Sort.t
+      -> ('a, Primitive.t) Nominal.term -> 'a abstract_syntax_check_failure option
     =
    fun var_valences sort tm ->
     let result =
@@ -266,7 +262,7 @@ let check_term
                     operator_name
                     sort_name))
           | Some (vars, OperatorDef (_, arity)) ->
-            let sort_env = Util.String.Map.of_alist_exn (List.zip_exn vars sort_args) in
+            let sort_env = SMap.of_alist_exn (List.zip_exn vars sort_args) in
             let concrete_arity = concretize_arity sort_env arity in
             go_arity var_valences concrete_arity op_scopes
         in
@@ -277,7 +273,7 @@ let check_term
     Option.map result ~f:(fun { message; stack } ->
         { message; stack = { term = Second tm; sort } :: stack })
   and go_arity
-      :  valence Util.String.Map.t -> arity -> ('a, Primitive.t) Nominal.scope list
+      :  valence SMap.t -> arity -> ('a, Primitive.t) Nominal.scope list
       -> 'a abstract_syntax_check_failure option
     =
    fun var_valences valences scopes ->
@@ -293,15 +289,14 @@ let check_term
       List.find_map scope_valences (* TODO: go_arity *) ~f:(fun (scope, valence) ->
           go_scope var_valences valence scope)
   and go_scope
-      :  valence Util.String.Map.t -> valence -> ('a, Primitive.t) Nominal.scope
+      :  valence SMap.t -> valence -> ('a, Primitive.t) Nominal.scope
       -> 'a abstract_syntax_check_failure option
     =
    fun var_valences valence (Scope (binders, body)) ->
     (* Check the body with the new binders environment *)
     let go_body
         (body_sort, starred)
-        (binders_env :
-          (valence Util.String.Map.t, 'a abstract_syntax_check_failure) Result.t list)
+        (binders_env : (valence SMap.t, 'a abstract_syntax_check_failure) Result.t list)
       =
       (* XXX: is *, 0-or-more repetition (does this make sense?)? or is it 1-or-more?
        * Does + exist?
@@ -312,11 +307,14 @@ let check_term
         match Result.all binders_env with
         | Error err -> Some err
         | Ok binders_env' ->
-          (match Util.String.Map.strict_unions binders_env' with
+          (match SMap.strict_unions binders_env' with
           | `Ok binders_env'' (* check every term in body for an error *) ->
             List.find_map
               body
-              ~f:(go (Util.Map.union_right_biased var_valences binders_env'') body_sort)
+              ~f:
+                (go
+                   (Lvca_util.Map.union_right_biased var_valences binders_env'')
+                   body_sort)
           | `Duplicate_key k ->
             Some
               (err
@@ -346,7 +344,7 @@ let check_term
              | Starred, _ -> check_pattern' sort pat)
       |> go_body body_sort_slot
   in
-  go Util.String.Map.empty
+  go SMap.empty
 ;;
 
 let%test_module "CheckTerm" =
