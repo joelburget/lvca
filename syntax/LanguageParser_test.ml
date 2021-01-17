@@ -19,11 +19,9 @@ let%test_module "AbstractSyntax.Parser" =
       parse "bool := true() | false()"
       = { sort_defs =
             SortDefs
-              (Lvca_util.String.Map.of_alist_exn
-                 [ ( "bool"
-                   , SortDef ([], [ OperatorDef ("true", []); OperatorDef ("false", []) ])
-                   )
-                 ])
+              [ ( "bool"
+                , SortDef ([], [ OperatorDef ("true", []); OperatorDef ("false", []) ]) )
+              ]
         }
     ;;
 
@@ -44,33 +42,31 @@ let%test_module "AbstractSyntax.Parser" =
       |}
       = { sort_defs =
             SortDefs
-              (Lvca_util.String.Map.of_alist_exn
-                 [ ( "ty"
-                   , SortDef
-                       ( []
-                       , [ OperatorDef ("bool", [])
-                         ; OperatorDef ("arr", [ ty_valence; ty_valence ])
-                         ] ) )
-                 ; ( "tm"
-                   , SortDef
-                       ( []
-                       , [ OperatorDef ("app", [ tm_valence; tm_valence ])
-                         ; OperatorDef
-                             ( "lam"
-                             , [ Valence ([ tm_sort, Unstarred ], (tm_sort, Unstarred)) ]
-                             )
-                         ] ) )
-                 ; ( "foo"
-                   , SortDef
-                       ( [ "x" ]
-                       , [ OperatorDef
-                             ( "foo"
-                             , [ Valence ([ x_sort, Starred ], (x_sort, Unstarred))
-                               ; Valence ([ x_sort, Unstarred ], (x_sort, Unstarred))
-                               ] )
-                         ; OperatorDef ("bar", [ Valence ([], (x_sort, Starred)) ])
-                         ] ) )
-                 ])
+              [ ( "ty"
+                , SortDef
+                    ( []
+                    , [ OperatorDef ("bool", [])
+                      ; OperatorDef ("arr", [ ty_valence; ty_valence ])
+                      ] ) )
+              ; ( "tm"
+                , SortDef
+                    ( []
+                    , [ OperatorDef ("app", [ tm_valence; tm_valence ])
+                      ; OperatorDef
+                          ( "lam"
+                          , [ Valence ([ tm_sort, Unstarred ], (tm_sort, Unstarred)) ] )
+                      ] ) )
+              ; ( "foo"
+                , SortDef
+                    ( [ "x" ]
+                    , [ OperatorDef
+                          ( "foo"
+                          , [ Valence ([ x_sort, Starred ], (x_sort, Unstarred))
+                            ; Valence ([ x_sort, Unstarred ], (x_sort, Unstarred))
+                            ] )
+                      ; OperatorDef ("bar", [ Valence ([], (x_sort, Starred)) ])
+                      ] ) )
+              ]
         }
     ;;
   end)

@@ -75,7 +75,10 @@ let lookup_operator
   =
  fun { sort_defs = SortDefs sort_defs; _ } sort_name op_name ->
   let open Option.Let_syntax in
-  let%bind (SortDef (vars, operator_defs)) = Map.find sort_defs sort_name in
+  let%bind (SortDef (vars, operator_defs)) =
+    List.find_map sort_defs ~f:(fun (name, def) ->
+        if String.(name = sort_name) then Some def else None)
+  in
   let%bind result =
     List.find operator_defs ~f:(fun (OperatorDef (op_def_name, _)) ->
         String.(op_def_name = op_name))

@@ -39,16 +39,15 @@ type sort_def =
   | SortDef of string list * operator_def list
       (** A sort is defined by a set of variables and a set of operators *)
 
-(* TODO: should this be a list so the ordering is fixed / deterministic? *)
 type sort_defs =
-  | SortDefs of sort_def String.Map.t (** A language is defined by its sorts *)
+  | SortDefs of (string * sort_def) list (** A language is defined by its sorts *)
 
 type abstract_syntax = { sort_defs : sort_defs }
 type t = abstract_syntax
 
 (* functions: *)
 
-let sort_defs_eq (SortDefs x) (SortDefs y) = Map.equal Caml.( = ) x y
+let sort_defs_eq (SortDefs x) (SortDefs y) = List.equal Caml.( = ) x y
 
 let ( = ) : abstract_syntax -> abstract_syntax -> bool =
  fun x y -> sort_defs_eq x.sort_defs y.sort_defs
@@ -225,11 +224,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   ;;
 
   let t : abstract_syntax Parsers.t =
-    lift
-      (fun sort_defs ->
-        (* XXX remove exn *)
-        { sort_defs = SortDefs (Util.String.Map.of_alist_exn sort_defs) })
-      (many1 sort_def)
+    lift (fun sort_defs -> { sort_defs = SortDefs sort_defs }) (many1 sort_def)
     <?> "abstract syntax"
   ;;
 
@@ -337,7 +332,7 @@ tm :=
   | add(tm(); tm())
   | lit(integer())
       |}
-        = { sort_defs = SortDefs (Util.String.Map.of_alist_exn [ tm_def ]) })
+        = { sort_defs = SortDefs [ tm_def ] })
     ;;
   end)
 ;;

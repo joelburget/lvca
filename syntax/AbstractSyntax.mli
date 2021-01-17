@@ -36,9 +36,8 @@ type sort_def =
   | SortDef of string list * operator_def list
       (** A sort is defined by a set of variables and a set of operators *)
 
-(* TODO: should this be a list so the ordering is fixed / deterministic? *)
 type sort_defs =
-  | SortDefs of sort_def Lvca_util.String.Map.t (** A language is defined by its sorts *)
+  | SortDefs of (string * sort_def) list (** A language is defined by its sorts *)
 
 (** The abstract syntax of a language is represented by all of the external dependencies
     of the language plus the sorts it defines. *)
