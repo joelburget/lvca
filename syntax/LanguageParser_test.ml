@@ -17,12 +17,7 @@ let%test_module "AbstractSyntax.Parser" =
 
     let%test _ =
       parse "bool := true() | false()"
-      = { sort_defs =
-            SortDefs
-              [ ( "bool"
-                , SortDef ([], [ OperatorDef ("true", []); OperatorDef ("false", []) ]) )
-              ]
-        }
+      = [ "bool", SortDef ([], [ OperatorDef ("true", []); OperatorDef ("false", []) ]) ]
     ;;
 
     let%test _ =
@@ -40,34 +35,30 @@ let%test_module "AbstractSyntax.Parser" =
         | foo(x*. x; x. x) // fixed arity, (variable valence, fixed valence)
         | bar(x*)          // variable arity
       |}
-      = { sort_defs =
-            SortDefs
-              [ ( "ty"
-                , SortDef
-                    ( []
-                    , [ OperatorDef ("bool", [])
-                      ; OperatorDef ("arr", [ ty_valence; ty_valence ])
-                      ] ) )
-              ; ( "tm"
-                , SortDef
-                    ( []
-                    , [ OperatorDef ("app", [ tm_valence; tm_valence ])
-                      ; OperatorDef
-                          ( "lam"
-                          , [ Valence ([ tm_sort, Unstarred ], (tm_sort, Unstarred)) ] )
-                      ] ) )
-              ; ( "foo"
-                , SortDef
-                    ( [ "x" ]
-                    , [ OperatorDef
-                          ( "foo"
-                          , [ Valence ([ x_sort, Starred ], (x_sort, Unstarred))
-                            ; Valence ([ x_sort, Unstarred ], (x_sort, Unstarred))
-                            ] )
-                      ; OperatorDef ("bar", [ Valence ([], (x_sort, Starred)) ])
-                      ] ) )
-              ]
-        }
+      = [ ( "ty"
+          , SortDef
+              ( []
+              , [ OperatorDef ("bool", [])
+                ; OperatorDef ("arr", [ ty_valence; ty_valence ])
+                ] ) )
+        ; ( "tm"
+          , SortDef
+              ( []
+              , [ OperatorDef ("app", [ tm_valence; tm_valence ])
+                ; OperatorDef
+                    ("lam", [ Valence ([ tm_sort, Unstarred ], (tm_sort, Unstarred)) ])
+                ] ) )
+        ; ( "foo"
+          , SortDef
+              ( [ "x" ]
+              , [ OperatorDef
+                    ( "foo"
+                    , [ Valence ([ x_sort, Starred ], (x_sort, Unstarred))
+                      ; Valence ([ x_sort, Unstarred ], (x_sort, Unstarred))
+                      ] )
+                ; OperatorDef ("bar", [ Valence ([], (x_sort, Starred)) ])
+                ] ) )
+        ]
     ;;
   end)
 ;;

@@ -72,7 +72,7 @@ let lookup_operator
     :  AbstractSyntax.t -> sort_name -> string (* operator_name *)
     -> (string list * operator_def) option
   =
- fun { sort_defs = SortDefs sort_defs; _ } sort_name op_name ->
+ fun sort_defs sort_name op_name ->
   let open Option.Let_syntax in
   let%bind (SortDef (vars, operator_defs)) =
     List.find_map sort_defs ~f:(fun (name, def) ->

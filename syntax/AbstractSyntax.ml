@@ -8,16 +8,8 @@ module Result = Base.Result
 
 type sort_name = string
 
-(** Sorts divide ASTs into syntactic categories.
-
-    Notes about our representation:
-
-    - Concrete sorts are always represented by a [SortAp], even if not applied to
-      anything. For example, [integer] is represented as [SortAp ("integer", * \[\])].
-    - We don't allow higher-order sorts. In other words, no functions at the sort level.
-      In other words, the head of an application is always concrete. *)
 type sort =
-  | SortAp of sort_name * sort list (** A higher-kinded sort can be applied *)
+  | SortAp of sort_name * sort list
   | SortVar of string
 
 type starred =
@@ -25,33 +17,16 @@ type starred =
   | Unstarred
 
 type sort_slot = sort * starred
-
-(** A valence represents the sort of an argument (to an operator), as well as the number
-    and sorts of the variables bound within it *)
 type valence = Valence of sort_slot list * sort_slot
-
 type arity = valence list
-
-type operator_def =
-  | OperatorDef of string * arity (** An operator is defined by its tag and arity *)
-
-type sort_def =
-  | SortDef of string list * operator_def list
-      (** A sort is defined by a set of variables and a set of operators *)
-
-type sort_defs =
-  | SortDefs of (string * sort_def) list (** A language is defined by its sorts *)
-
-type abstract_syntax = { sort_defs : sort_defs }
+type operator_def = OperatorDef of string * arity
+type sort_def = SortDef of string list * operator_def list
+type abstract_syntax = (string * sort_def) list
 type t = abstract_syntax
 
 (* functions: *)
 
-let sort_defs_eq (SortDefs x) (SortDefs y) = List.equal Caml.( = ) x y
-
-let ( = ) : abstract_syntax -> abstract_syntax -> bool =
- fun x y -> sort_defs_eq x.sort_defs y.sort_defs
-;;
+let ( = ) = List.equal Caml.( = )
 
 let rec pp_sort : Format.formatter -> sort -> unit =
  fun ppf ->
@@ -223,11 +198,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     <?> "sort definition"
   ;;
 
-  let t : abstract_syntax Parsers.t =
-    lift (fun sort_defs -> { sort_defs = SortDefs sort_defs }) (many1 sort_def)
-    <?> "abstract syntax"
-  ;;
-
+  let t : abstract_syntax Parsers.t = many1 sort_def <?> "abstract syntax"
   let whitespace_t = junk *> t
 end
 
@@ -332,7 +303,7 @@ tm :=
   | add(tm(); tm())
   | lit(integer())
       |}
-        = { sort_defs = SortDefs [ tm_def ] })
+        = [ tm_def ])
     ;;
   end)
 ;;

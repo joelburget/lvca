@@ -36,12 +36,8 @@ type sort_def =
   | SortDef of string list * operator_def list
       (** A sort is defined by a set of variables and a set of operators *)
 
-type sort_defs =
-  | SortDefs of (string * sort_def) list (** A language is defined by its sorts *)
-
-(** The abstract syntax of a language is represented by all of the external dependencies
-    of the language plus the sorts it defines. *)
-type abstract_syntax = { sort_defs : sort_defs }
+(** The abstract syntax of a language is the sorts it defines. *)
+type abstract_syntax = (string * sort_def) list
 
 type t = abstract_syntax
 
