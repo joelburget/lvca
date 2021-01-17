@@ -183,7 +183,7 @@ let%test_module "Parsing" =
     ;;
 
     let replace_bar =
-      {|{\(tm : lang()) -> match tm with {
+      {|{\(tm : lang) -> match tm with {
       | bar() -> {baz()}
       | _ -> {foo()}
     }}|}
@@ -191,8 +191,7 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_and_print replace_bar;
-      [%expect
-        {| {\(tm : lang()) -> match tm with { bar() -> {baz()} | _ -> {foo()} }} |}]
+      [%expect {| {\(tm : lang) -> match tm with { bar() -> {baz()} | _ -> {foo()} }} |}]
     ;;
 
     let%expect_test _ =
@@ -240,7 +239,7 @@ let%test_module "Parsing" =
         {|
       sequence:
         [ replace_bar:
-          {\(tm : lang()) -> match tm with {
+          {\(tm : lang) -> match tm with {
             | bar() -> {baz()}
             | _ -> {foo()}
           }}
@@ -249,7 +248,7 @@ let%test_module "Parsing" =
     |};
       (* TODO: This should break *)
       [%expect
-        {| sequence:[replace_bar:{\(tm : lang()) -> match tm with { bar() -> {baz()} | _ -> {foo()} }}, named_edit:{f}] |}]
+        {| sequence:[replace_bar:{\(tm : lang) -> match tm with { bar() -> {baz()} | _ -> {foo()} }}, named_edit:{f}] |}]
     ;;
   end)
 ;;
