@@ -8,13 +8,13 @@ let ( = ) = Caml.( = )
 
 let rec pp : Stdlib.Format.formatter -> t -> unit =
  fun ppf -> function
-  | Ap (name, args) -> Fmt.pf ppf "%s(@[%a@])" name pp_args args
+  | Ap (name, args) -> Fmt.pf ppf "%s @[%a@]" name pp_args args
   | Name name -> Fmt.pf ppf "%s" name
 
 and pp_args ppf = function
   | [] -> ()
   | [ x ] -> Fmt.pf ppf "%a" pp x
-  | x :: xs -> Fmt.pf ppf "%a; %a" pp x pp_args xs
+  | x :: xs -> Fmt.pf ppf "%a %a" pp x pp_args xs
 ;;
 
 let rec to_string : t -> string = function
@@ -46,16 +46,21 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   open Parsers
 
-  let semi = char ';'
-
   let t : sort Parsers.t =
     fix (fun sort ->
-        identifier
-        >>== fun ~pos ident ->
-        choice
-          [ (parens (sep_by semi sort) >>| fun sorts -> Ap (ident, sorts))
-          ; return ~pos (Name ident)
-          ])
+        let atomic_sort =
+          choice [ parens sort; (identifier >>| fun ident -> Name ident) ]
+        in
+        many1 atomic_sort
+        >>== fun ~pos atoms ->
+        match atoms with
+        | Ap _ :: _ ->
+          fail
+            "Higher-order sorts are not allowed. The head of a sort application must be \
+             concrete"
+        | [ Name name ] -> return ~pos (Name name)
+        | Name name :: args -> return ~pos (Ap (name, args))
+        | [] -> assert false)
   ;;
 end
 
@@ -70,8 +75,27 @@ let%test_module "Sort_Parser" =
       | Error msg -> failwith msg
    ;;
 
-    let tm = Ap ("tm", [])
+    let a = Name "a"
+    let abc = Ap ("a", [ Name "b"; Name "c" ])
+    let abcd = Ap ("a", [ Ap ("b", [ Name "c" ]); Name "d" ])
 
-    let%test_unit _ = assert (parse_with Parse.t "tm()" = tm)
+    let%test_unit _ = assert (parse_with Parse.t "a" = a)
+    let%test_unit _ = assert (parse_with Parse.t "a b c" = abc)
+    let%test_unit _ = assert (parse_with Parse.t "a (b c) d" = abcd)
+
+    let%expect_test _ =
+      Fmt.pr "%a" pp a;
+      [%expect {| a |}]
+    ;;
+
+    let%expect_test _ =
+      Fmt.pr "%a" pp abc;
+      [%expect {| a b c |}]
+    ;;
+
+    let%expect_test _ =
+      Fmt.pr "%a" pp abcd;
+      [%expect {| a b c d |}]
+    ;;
   end)
 ;;

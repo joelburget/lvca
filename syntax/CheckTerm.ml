@@ -44,17 +44,8 @@ let pp_failure : Stdlib.Format.formatter -> 'a abstract_syntax_check_failure -> 
             sort))
 ;;
 
-let rec concretize_sort : Sort.t Util.String.Map.t -> Sort.t -> Sort.t =
- fun env -> function
-  | Sort.Ap (name, sub_sorts) ->
-    Sort.Ap (name, List.map sub_sorts ~f:(concretize_sort env))
-  | Sort.Name name ->
-    Map.find env name
-    |> Util.Option.get_invariant (fun () -> "concretize_sort: unknown variable " ^ name)
-;;
-
 let concretize_sort_slot : Sort.t Util.String.Map.t -> sort_slot -> sort_slot =
- fun env (sort, starred) -> concretize_sort env sort, starred
+ fun env (sort, starred) -> Sort.instantiate env sort, starred
 ;;
 
 let concretize_valence : Sort.t Util.String.Map.t -> valence -> valence =
@@ -100,10 +91,10 @@ let check_pattern
    fun sort prim ->
     match prim, sort with
     (* TODO: Figure out a real solution (that handles aliasing) *)
-    | PrimString _, Sort.Ap ("string", [])
-    | PrimFloat _, Sort.Ap ("float", [])
-    | PrimChar _, Sort.Ap ("char", [])
-    | PrimInteger _, Sort.Ap ("integer", []) ->
+    | PrimString _, Sort.Name "string"
+    | PrimFloat _, Sort.Name "float"
+    | PrimChar _, Sort.Name "char"
+    | PrimInteger _, Sort.Name "integer" ->
       Ok Util.String.Map.empty
     | _, _ ->
       Error
@@ -135,10 +126,8 @@ let check_pattern
       | Ignored _ -> Ok Util.String.Map.empty
       | Primitive (_, prim) -> go_primitive sort prim
       | Operator (_, op_name, subpats) ->
-        (match sort with
-        | Sort.Name _ -> Util.invariant_violation "check_pattern: non-concrete sort"
-        | Sort.Ap (sort_name, sort_args) ->
-          (match lookup_operator' sort_name op_name with
+        let lookup_and_go sort_name sort_args =
+          match lookup_operator' sort_name op_name with
           | None ->
             Error
               (err
@@ -150,7 +139,11 @@ let check_pattern
             let sort_env =
               Util.String.Map.of_alist_exn (List.zip_exn sort_vars sort_args)
             in
-            go_arity_pat (concretize_arity sort_env arity) subpats))
+            go_arity_pat (concretize_arity sort_env arity) subpats
+        in
+        (match sort with
+        | Sort.Name sort_name -> lookup_and_go sort_name []
+        | Sort.Ap (sort_name, sort_args) -> lookup_and_go sort_name sort_args)
     in
     Result.map_error result ~f:(fun { message; stack } ->
         { message; stack = { term = First pat; sort } :: stack })
@@ -256,17 +249,15 @@ let check_term
       | Primitive (_, p) ->
         (match p, sort with
         (* TODO: Figure out a real solution (that handles aliasing) *)
-        | PrimInteger _, Sort.Ap ("integer", [])
-        | PrimString _, Sort.Ap ("string", [])
-        | PrimFloat _, Sort.Ap ("float", [])
-        | PrimChar _, Sort.Ap ("char", []) ->
+        | PrimInteger _, Sort.Name "integer"
+        | PrimString _, Sort.Name "string"
+        | PrimFloat _, Sort.Name "float"
+        | PrimChar _, Sort.Name "char" ->
           None
         | _, _ -> Some (err "Unexpected primitive sort"))
       | Operator (_, operator_name, op_scopes) ->
-        (match sort with
-        | Sort.Name _ -> Util.invariant_violation "check_term (go): non-concrete sort"
-        | Sort.Ap (sort_name, sort_args) ->
-          (match lookup_operator' sort_name operator_name with
+        let lookup_and_go sort_name sort_args =
+          match lookup_operator' sort_name operator_name with
           | None ->
             Some
               (err
@@ -277,7 +268,11 @@ let check_term
           | Some (vars, OperatorDef (_, arity)) ->
             let sort_env = Util.String.Map.of_alist_exn (List.zip_exn vars sort_args) in
             let concrete_arity = concretize_arity sort_env arity in
-            go_arity var_valences concrete_arity op_scopes))
+            go_arity var_valences concrete_arity op_scopes
+        in
+        (match sort with
+        | Sort.Name sort_name -> lookup_and_go sort_name []
+        | Sort.Ap (sort_name, sort_args) -> lookup_and_go sort_name sort_args)
     in
     Option.map result ~f:(fun { message; stack } ->
         { message; stack = { term = Second tm; sort } :: stack })
@@ -371,36 +366,40 @@ let%test_module "CheckTerm" =
       |> Result.ok_or_failwith
     ;;
 
+    module SortParse = Sort.Parse (ParseUtil.NoComment)
+
+    let parse_sort str = ParseUtil.parse_string SortParse.t str
+
     let lang_desc =
       {|
 value :=
   | unit()
-  | lit_int(integer())
-  | lit_str(string())
-  | list(list(value()))
+  | lit_int(integer)
+  | lit_str(string)
+  | list(list(value))
 
-list(a) :=
+list a :=
   | nil()
-  | cons(a; list(a))
+  | cons(a; list a)
 
 match_line :=
-  | match_line(value()*. term())
+  | match_line(value*. term)
 
 term :=
-  | lambda(value(). term())
-  | alt_lambda(term(). term())
-  | match(match_line()*)
-  | value(value())
+  | lambda(value. term)
+  | alt_lambda(term. term)
+  | match(match_line*)
+  | value(value)
 
-test := foo(term()*. term())
+test := foo(term*. term)
       |}
     ;;
 
     let language = parse_lang lang_desc
 
     let print_check_pattern sort_str pat_str =
-      match sort_str |> parse_term |> Sort.of_term with
-      | Error bad_tm -> Fmt.epr "%a" (Nominal.pp_term Primitive.pp) bad_tm
+      match parse_sort sort_str with
+      | Error msg -> Fmt.epr "%s" msg
       | Ok sort ->
         let pat =
           match pat_str |> parse_term |> Nominal.to_pattern with
@@ -417,109 +416,109 @@ test := foo(term()*. term())
     ;;
 
     let%expect_test _ =
-      print_check_pattern "value()" "unit()";
+      print_check_pattern "value" "unit()";
       [%expect]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "value()" "lit_int(1)";
+      print_check_pattern "value" "lit_int(1)";
       [%expect]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "value()" {|lit_str("str")|};
+      print_check_pattern "value" {|lit_str("str")|};
       [%expect]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "list(value())" {|nil()|};
+      print_check_pattern "list value" {|nil()|};
       [%expect]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "list(value())" {|cons(unit(); nil())|};
+      print_check_pattern "list value" {|cons(unit(); nil())|};
       [%expect]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "term()" {|value(list(cons(unit(); nil())))|};
+      print_check_pattern "term" {|value(list(cons(unit(); nil())))|};
       [%expect]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "term()" {|value(list(cons(a; nil())))|};
+      print_check_pattern "term" {|value(list(cons(a; nil())))|};
       [%expect]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "term()" {|value(list(cons(a; a)))|};
+      print_check_pattern "term" {|value(list(cons(a; a)))|};
       [%expect
         {|
       Did you mean to bind the same variable (a) twice in the same pattern? That's not allowed!
       stack:
-      - pattern: value(list(cons(a; a))), sort: term()
-      - pattern: list(cons(a; a)), sort: value()
-      - pattern: cons(a; a), sort: list(value()) |}]
+      - pattern: value(list(cons(a; a))), sort: term
+      - pattern: list(cons(a; a)), sort: value
+      - pattern: cons(a; a), sort: list value |}]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "term()" "lambda(a)";
+      print_check_pattern "term" "lambda(a)";
       [%expect]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "match_line()" "match_line(a)";
+      print_check_pattern "match_line" "match_line(a)";
       [%expect]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "integer()" {|"foo"|};
+      print_check_pattern "integer" {|"foo"|};
       [%expect
         {|
-      Unexpected sort (integer()) for a primitive ("foo")
+      Unexpected sort (integer) for a primitive ("foo")
       stack:
-      - pattern: "foo", sort: integer() |}]
+      - pattern: "foo", sort: integer |}]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "value()" "foo()";
+      print_check_pattern "value" "foo()";
       [%expect
         {|
       check_pattern: failed to find operator foo in sort value
       stack:
-      - pattern: foo(), sort: value() |}]
+      - pattern: foo(), sort: value |}]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "value()" "unit(1)";
+      print_check_pattern "value" "unit(1)";
       [%expect
         {|
       Wrong number of subterms (1) for this arity ()
       stack:
-      - pattern: unit(1), sort: value() |}]
+      - pattern: unit(1), sort: value |}]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "term()" "lambda(1)";
+      print_check_pattern "term" "lambda(1)";
       [%expect
         {|
-      Invalid variable-valence (value(). term()) pattern (1). Only a variable is valid.
+      Invalid variable-valence (value. term) pattern (1). Only a variable is valid.
       stack:
-      - pattern: lambda(1), sort: term() |}]
+      - pattern: lambda(1), sort: term |}]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "term()" "match(a; b)";
+      print_check_pattern "term" "match(a; b)";
       [%expect
         {|
-      Wrong number of subterms (2) for this arity (match_line()*)
+      Wrong number of subterms (2) for this arity (match_line*)
       stack:
-      - pattern: match(a; b), sort: term() |}]
+      - pattern: match(a; b), sort: term |}]
     ;;
 
     let check_term' sort_str tm_str =
-      match sort_str |> parse_term |> Sort.of_term with
-      | Error bad_tm -> Fmt.epr "%a" (Nominal.pp_term Primitive.pp) bad_tm
+      match parse_sort sort_str with
+      | Error msg -> Fmt.epr "%s" msg
       | Ok sort ->
         (match tm_str |> parse_term |> Nominal.erase |> check_term language sort with
         | Some failure -> Fmt.epr "%a" pp_failure failure
@@ -527,13 +526,13 @@ test := foo(term()*. term())
     ;;
 
     let%expect_test _ =
-      check_term' "term()" "lambda(a. value(a))";
+      check_term' "term" "lambda(a. value(a))";
       [%expect]
     ;;
 
     let%expect_test _ =
       check_term'
-        "term()"
+        "term"
         {|match(
         match_line(
           list(cons(a; nil())).
@@ -546,144 +545,144 @@ test := foo(term()*. term())
     ;;
 
     let%expect_test _ =
-      check_term' "term()" "unit()";
+      check_term' "term" "unit()";
       [%expect
         {|
       check_term: failed to find operator unit in sort term
       stack:
-      - term: unit(), sort: term() |}]
+      - term: unit(), sort: term |}]
     ;;
 
     let%expect_test _ =
-      check_term' "term()" "lambda(a. b)";
+      check_term' "term" "lambda(a. b)";
       [%expect
         {|
       Unknown variable b (is it bound?)
       stack:
-      - term: lambda(a. b), sort: term()
-      - term: b, sort: term() |}]
+      - term: lambda(a. b), sort: term
+      - term: b, sort: term |}]
     ;;
 
     let%expect_test _ =
-      check_term' "term()" "lambda(val. alt_lambda(tm. val))";
+      check_term' "term" "lambda(val. alt_lambda(tm. val))";
       [%expect
         {|
-      Variable val has unexpected valence (saw: value()) (expected: term())
+      Variable val has unexpected valence (saw: value) (expected: term)
       stack:
-      - term: lambda(val. alt_lambda(tm. val)), sort: term()
-      - term: alt_lambda(tm. val), sort: term()
-      - term: val, sort: term() |}]
+      - term: lambda(val. alt_lambda(tm. val)), sort: term
+      - term: alt_lambda(tm. val), sort: term
+      - term: val, sort: term |}]
     ;;
 
     let%expect_test _ =
-      check_term' "value()" {|lit_int("foo")|};
-      [%expect
-        {|
-      Unexpected primitive sort
-      stack:
-      - term: lit_int("foo"), sort: value()
-      - term: "foo", sort: integer() |}]
-    ;;
-
-    let%expect_test _ =
-      check_term' "value()" "lit_str(123)";
+      check_term' "value" {|lit_int("foo")|};
       [%expect
         {|
       Unexpected primitive sort
       stack:
-      - term: lit_str(123), sort: value()
-      - term: 123, sort: string() |}]
+      - term: lit_int("foo"), sort: value
+      - term: "foo", sort: integer |}]
     ;;
 
     let%expect_test _ =
-      check_term' "term()" "lambda(a; b)";
+      check_term' "value" "lit_str(123)";
       [%expect
         {|
-      Wrong number of subterms (2) for this arity (value(). term())
+      Unexpected primitive sort
       stack:
-      - term: lambda(a; b), sort: term() |}]
+      - term: lit_str(123), sort: value
+      - term: 123, sort: string |}]
     ;;
 
     let%expect_test _ =
-      check_term' "value()" "lit_int(1; 2)";
+      check_term' "term" "lambda(a; b)";
       [%expect
         {|
-      Wrong number of subterms (2) for this arity (integer())
+      Wrong number of subterms (2) for this arity (value. term)
       stack:
-      - term: lit_int(1; 2), sort: value() |}]
+      - term: lambda(a; b), sort: term |}]
     ;;
 
     let%expect_test _ =
-      check_term' "match_line()" "match_line(a. b. value(a))";
+      check_term' "value" "lit_int(1; 2)";
       [%expect
         {|
-      Wrong number of binders (2) for this valence (value()*. term()) (expected 1)
+      Wrong number of subterms (2) for this arity (integer)
       stack:
-      - term: match_line(a. b. value(a)), sort: match_line() |}]
+      - term: lit_int(1; 2), sort: value |}]
     ;;
 
     let%expect_test _ =
-      check_term' "match_line()" "match_line(a. a)";
+      check_term' "match_line" "match_line(a. b. value(a))";
       [%expect
         {|
-      Variable a has unexpected valence (saw: value()) (expected: term())
+      Wrong number of binders (2) for this valence (value*. term) (expected 1)
       stack:
-      - term: match_line(a. a), sort: match_line()
-      - term: a, sort: term() |}]
+      - term: match_line(a. b. value(a)), sort: match_line |}]
     ;;
 
     let%expect_test _ =
-      check_term' "term()" "lambda(a. b. a)";
+      check_term' "match_line" "match_line(a. a)";
       [%expect
         {|
-      Wrong number of binders (2) for this valence (value(). term()) (expected 1)
+      Variable a has unexpected valence (saw: value) (expected: term)
       stack:
-      - term: lambda(a. b. a), sort: term() |}]
+      - term: match_line(a. a), sort: match_line
+      - term: a, sort: term |}]
     ;;
 
     let%expect_test _ =
-      check_term' "term()" "lambda(list(cons(a; cons(b; nil))). value(a))";
+      check_term' "term" "lambda(a. b. a)";
+      [%expect
+        {|
+      Wrong number of binders (2) for this valence (value. term) (expected 1)
+      stack:
+      - term: lambda(a. b. a), sort: term |}]
+    ;;
+
+    let%expect_test _ =
+      check_term' "term" "lambda(list(cons(a; cons(b; nil))). value(a))";
       [%expect
         {|
       Fixed-valence binders must all be vars (no patterns)
       stack:
-      - term: lambda(list(cons(a; cons(b; nil))). value(a)), sort: term() |}]
+      - term: lambda(list(cons(a; cons(b; nil))). value(a)), sort: term |}]
     ;;
 
     let%expect_test _ =
-      check_term' "term()" "match(a. a)";
+      check_term' "term" "match(a. a)";
       [%expect
         {|
-      Wrong number of binders (1) for this valence (match_line()*) (expected 0)
+      Wrong number of binders (1) for this valence (match_line*) (expected 0)
       stack:
-      - term: match(a. a), sort: term() |}]
+      - term: match(a. a), sort: term |}]
     ;;
 
     let%expect_test _ =
-      check_term' "integer()" "1";
-      print_check_pattern "integer()" "1";
+      check_term' "integer" "1";
+      print_check_pattern "integer" "1";
       [%expect]
     ;;
 
     let%expect_test _ =
-      check_term' "float()" "1.";
-      print_check_pattern "float()" "1.";
+      check_term' "float" "1.";
+      print_check_pattern "float" "1.";
       [%expect]
     ;;
 
     let%expect_test _ =
-      check_term' "char()" "'a'";
-      print_check_pattern "char()" "'a'";
+      check_term' "char" "'a'";
+      print_check_pattern "char" "'a'";
       [%expect]
     ;;
 
     let%expect_test _ =
-      check_term' "string()" {|"str"|};
-      print_check_pattern "string()" {|"str"|};
+      check_term' "string" {|"str"|};
+      print_check_pattern "string" {|"str"|};
       [%expect]
     ;;
 
-    (* TODO: clarify stance on binding scopes let%expect_test _ = check_term' "test()"
+    (* TODO: clarify stance on binding scopes let%expect_test _ = check_term' "test"
        "foo(lambda(scope). lambda(scope))"; [%expect {||}] *)
   end)
 ;;

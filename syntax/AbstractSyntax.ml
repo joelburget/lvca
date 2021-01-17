@@ -128,7 +128,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     lift4
       (fun ident bound_names _assign op_defs -> ident, SortDef (bound_names, op_defs))
       identifier
-      (option [] (parens (sep_by semi identifier)))
+      (many identifier)
       assign
       (* TODO: allow empty sorts? *)
       (option '|' bar *> sep_by1 bar operator_def)
@@ -150,29 +150,26 @@ let%test_module "AbstractSyntax_Parser" =
       | Error msg -> failwith msg
    ;;
 
-    let tm = Sort.Ap ("tm", [])
+    let tm = Sort.Name "tm"
     let tm_s = tm, Starred
     let tm_u = tm, Unstarred
     let tm_v = Valence ([], tm_u)
-    let integer = Sort.Ap ("integer", [])
+    let integer = Sort.Name "integer"
     let integer_v = Valence ([], (integer, Unstarred))
 
-    let%test_unit _ = assert (Caml.(parse_with Parse.arity "(integer())" = [ integer_v ]))
+    let%test_unit _ = assert (Caml.(parse_with Parse.arity "(integer)" = [ integer_v ]))
+    let%test_unit _ = assert (Caml.(parse_with Parse.arity "(tm; tm)" = [ tm_v; tm_v ]))
 
     let%test_unit _ =
-      assert (Caml.(parse_with Parse.arity "(tm(); tm())" = [ tm_v; tm_v ]))
+      assert (Caml.(parse_with Parse.arity "(tm. tm)" = [ Valence ([ tm_u ], tm_u) ]))
     ;;
 
     let%test_unit _ =
-      assert (Caml.(parse_with Parse.arity "(tm(). tm())" = [ Valence ([ tm_u ], tm_u) ]))
+      assert (Caml.(parse_with Parse.arity "(tm*)" = [ Valence ([], tm_s) ]))
     ;;
 
     let%test_unit _ =
-      assert (Caml.(parse_with Parse.arity "(tm()*)" = [ Valence ([], tm_s) ]))
-    ;;
-
-    let%test_unit _ =
-      assert (Caml.(parse_with Parse.arity "(tm()*. tm())" = [ Valence ([ tm_s ], tm_u) ]))
+      assert (Caml.(parse_with Parse.arity "(tm*. tm)" = [ Valence ([ tm_s ], tm_u) ]))
     ;;
 
     let expect_okay str =
@@ -182,12 +179,12 @@ let%test_module "AbstractSyntax_Parser" =
     ;;
 
     let%expect_test _ =
-      expect_okay "(tm()*. tm()*. tm())";
+      expect_okay "(tm*. tm*. tm)";
       [%expect]
     ;;
 
     let%expect_test _ =
-      expect_okay "(tm()*. tm()*. tm()*)";
+      expect_okay "(tm*. tm*. tm*)";
       [%expect]
     ;;
 
@@ -207,7 +204,7 @@ let%test_module "AbstractSyntax_Parser" =
     let%test_unit _ =
       assert (
         Caml.(
-          parse_with Parse.sort_def {|foo(x) := foo()|}
+          parse_with Parse.sort_def {|foo x := foo()|}
           = ("foo", SortDef ([ "x" ], [ OperatorDef ("foo", []) ]))))
     ;;
 
@@ -221,23 +218,19 @@ let%test_module "AbstractSyntax_Parser" =
     let%test_unit _ =
       assert (
         Caml.(
-          parse_with
-            Parse.sort_def
-            {|tm :=
-  | add(tm(); tm())
-  | lit(integer())
+          parse_with Parse.sort_def {|tm :=
+  | add(tm; tm)
+  | lit(integer)
       |}
           = tm_def))
     ;;
 
     let%test_unit _ =
       assert (
-        parse_with
-          Parse.whitespace_t
-          {|
+        parse_with Parse.whitespace_t {|
 tm :=
-  | add(tm(); tm())
-  | lit(integer())
+  | add(tm; tm)
+  | lit(integer)
       |}
         = [ tm_def ])
     ;;

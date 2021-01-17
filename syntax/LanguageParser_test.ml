@@ -9,9 +9,9 @@ let%test_module "AbstractSyntax.Parser" =
       |> Base.Result.ok_or_failwith
     ;;
 
-    let tm_sort = Sort.Ap ("tm", [])
+    let tm_sort = Sort.Name "tm"
     let tm_valence = Valence ([], (tm_sort, Unstarred))
-    let ty_sort = Sort.Ap ("ty", [])
+    let ty_sort = Sort.Name "ty"
     let ty_valence = Valence ([], (ty_sort, Unstarred))
     let x_sort = Sort.Name "x"
 
@@ -25,13 +25,13 @@ let%test_module "AbstractSyntax.Parser" =
         {|
       ty :=
         | bool()
-        | arr(ty(); ty())
+        | arr(ty; ty)
 
       tm :=
-        | app(tm(); tm())
-        | lam(tm(). tm())
+        | app(tm; tm)
+        | lam(tm. tm)
 
-      foo(x) :=
+      foo x :=
         | foo(x*. x; x. x) // fixed arity, (variable valence, fixed valence)
         | bar(x*)          // variable arity
       |}

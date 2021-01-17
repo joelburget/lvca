@@ -1,7 +1,7 @@
 (** Sorts divide ASTs into syntactic categories.
 
-    Concrete sorts are always represented by a [SortAp], even if not applied to anything.
-    For example, [integer] is represented as [SortAp ("integer", \[\])]. *)
+    We don't allow higher-order sorts. In other words, no functions at the sort level. In
+    other words, the head of an application is always concrete. *)
 
 type t =
   | Ap of string * t list (** A higher-kinded sort can be applied *)
