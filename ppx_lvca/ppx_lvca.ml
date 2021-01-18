@@ -39,7 +39,19 @@ let mk_str ~loc str = mk_exp ~loc (Pexp_constant (Pconst_string (str, None)))
 let mk_float ~loc f = mk_exp ~loc (Pexp_constant (Pconst_float (Float.to_string f, None)))
 let mk_char ~loc c = mk_exp ~loc (Pexp_constant (Pconst_char c))
 let mk_bigint ~loc i = [%expr Z.of_string [%e mk_str ~loc (Z.to_string i)]]
-let mk_pos ~loc _pos = [%expr None] (* TODO *)
+
+let mk_pos ~loc = function
+  | None -> [%expr None]
+  | Some Range.{ start; finish } ->
+    (* let start = Ast_builder.eint ~loc start in *)
+    let start =
+      mk_exp ~loc (Pexp_constant (Pconst_integer (Int.to_string start, None)))
+    in
+    let finish =
+      mk_exp ~loc (Pexp_constant (Pconst_integer (Int.to_string finish, None)))
+    in
+    [%expr Some Range.{ start = [%e start]; finish = [%e finish] }]
+;;
 
 let mk_prim ~loc = function
   | Lvca_syntax.Primitive.PrimInteger i ->
