@@ -55,7 +55,3 @@ module Parse (Comment : ParseUtil.Comment_int) : sig
   val term : OptRange.t term ParseUtil.t
   val defn : OptRange.t defn ParseUtil.t
 end
-
-(** Convert a module to a nominal term, for storage. *)
-
-(* val module_to_term : defn -> Nominal.term *)
