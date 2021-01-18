@@ -123,7 +123,7 @@ let%test_module "Core eval" =
     ;;
 
     let%expect_test _ =
-      eval_str {|(\(x: bool()) -> x) {true()}|};
+      eval_str {|(\(x: bool) -> x) {true()}|};
       [%expect {| true() |}]
     ;;
 
@@ -267,7 +267,7 @@ let%test_module "Core eval in dynamics" =
     ;;
 
     let dynamics_str =
-      {|\(tm : ty()) -> match tm with {
+      {|\(tm : ty) -> match tm with {
   | true() -> {true()}
   | false() -> {false()}
   | ite(t1; t2; t3) -> match meaning t1 with {
@@ -285,7 +285,7 @@ let%test_module "Core eval in dynamics" =
       [%expect {| true() |}]
     ;;
 
-    let id_dynamics = {|\(tm : ty()) -> tm|}
+    let id_dynamics = {|\(tm : ty) -> tm|}
 
     let%expect_test _ =
       print_string @@ eval_in id_dynamics "{true()}";
