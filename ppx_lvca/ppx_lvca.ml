@@ -22,34 +22,21 @@ let extract_string loc expr =
   | _ -> Location.raise_errorf ~loc "Expecting string payload"
 ;;
 
-let mk_exp ~loc pexp_desc =
-  { pexp_desc
-  ; pexp_loc = loc
-  ; pexp_loc_stack = [] (* TODO *)
-  ; pexp_attributes = [] (* TODO *)
-  }
-;;
-
 let rec mk_list ~loc = function
   | [] -> [%expr []]
   | expr :: exprs -> [%expr [%e expr] :: [%e mk_list ~loc exprs]]
 ;;
 
-let mk_str ~loc str = mk_exp ~loc (Pexp_constant (Pconst_string (str, None)))
-let mk_float ~loc f = mk_exp ~loc (Pexp_constant (Pconst_float (Float.to_string f, None)))
-let mk_char ~loc c = mk_exp ~loc (Pexp_constant (Pconst_char c))
+let mk_str ~loc str = Ast_builder.Default.estring ~loc str
+let mk_float ~loc f = Ast_builder.Default.efloat ~loc (Float.to_string f)
+let mk_char ~loc c = Ast_builder.Default.echar ~loc c
 let mk_bigint ~loc i = [%expr Z.of_string [%e mk_str ~loc (Z.to_string i)]]
 
 let mk_pos ~loc = function
   | None -> [%expr None]
   | Some Range.{ start; finish } ->
-    (* let start = Ast_builder.eint ~loc start in *)
-    let start =
-      mk_exp ~loc (Pexp_constant (Pconst_integer (Int.to_string start, None)))
-    in
-    let finish =
-      mk_exp ~loc (Pexp_constant (Pconst_integer (Int.to_string finish, None)))
-    in
+    let start = Ast_builder.Default.eint ~loc start in
+    let finish = Ast_builder.Default.eint ~loc finish in
     [%expr Some Range.{ start = [%e start]; finish = [%e finish] }]
 ;;
 
