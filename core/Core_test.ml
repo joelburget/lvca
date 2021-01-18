@@ -2,10 +2,6 @@ open Lvca_syntax
 open Core
 module ParseCore = Core.Parse (ParseUtil.CComment)
 
-let parse_defn str =
-  ParseUtil.parse_string ParseCore.defn str |> Base.Result.ok_or_failwith
-;;
-
 let parse_term str =
   ParseUtil.parse_string ParseCore.term str |> Base.Result.ok_or_failwith
 ;;
@@ -38,45 +34,38 @@ let%test_module "Core parsing" =
     let ty = Sort.Name "ty"
 
     let dynamics =
-      Defn
-        ( []
-        , Lambda
-            ( ()
-            , ty
-            , Scope
-                ( "tm"
-                , Case
-                    ( ()
-                    , t_var "tm"
-                    , [ CaseScope (p_operator "true" [], Term (t_operator "true" []))
-                      ; CaseScope (p_operator "false" [], Term (t_operator "false" []))
-                      ; CaseScope
-                          ( p_operator
-                              "ite"
-                              [ [ p_var "t1" ]; [ p_var "t2" ]; [ p_var "t3" ] ]
-                          , Case
-                              ( ()
-                              , CoreApp ((), t_var "meaning", t_var "t1")
-                              , [ CaseScope (p_operator "true" [], meaning (t_var "t2"))
-                                ; CaseScope (p_operator "false" [], meaning (t_var "t3"))
-                                ] ) )
-                      ; CaseScope
-                          ( p_operator "ap" [ [ p_var "f" ]; [ p_var "arg" ] ]
-                          , CoreApp ((), meaning @@ t_var "f", meaning @@ t_var "arg") )
-                      ; CaseScope
-                          ( p_operator "fun" [ [ p_var "scope" ] ]
-                          , Term
-                              (t_operator
-                                 "lambda"
-                                 [ scope @@ t_operator "list" []
-                                 ; scope @@ Var ((), "scope")
-                                 ]) )
-                      ] ) ) ) )
+      Lambda
+        ( ()
+        , ty
+        , Scope
+            ( "tm"
+            , Case
+                ( ()
+                , t_var "tm"
+                , [ CaseScope (p_operator "true" [], Term (t_operator "true" []))
+                  ; CaseScope (p_operator "false" [], Term (t_operator "false" []))
+                  ; CaseScope
+                      ( p_operator "ite" [ [ p_var "t1" ]; [ p_var "t2" ]; [ p_var "t3" ] ]
+                      , Case
+                          ( ()
+                          , CoreApp ((), t_var "meaning", t_var "t1")
+                          , [ CaseScope (p_operator "true" [], meaning (t_var "t2"))
+                            ; CaseScope (p_operator "false" [], meaning (t_var "t3"))
+                            ] ) )
+                  ; CaseScope
+                      ( p_operator "ap" [ [ p_var "f" ]; [ p_var "arg" ] ]
+                      , CoreApp ((), meaning @@ t_var "f", meaning @@ t_var "arg") )
+                  ; CaseScope
+                      ( p_operator "fun" [ [ p_var "scope" ] ]
+                      , Term
+                          (t_operator
+                             "lambda"
+                             [ scope @@ t_operator "list" []; scope @@ Var ((), "scope") ])
+                      )
+                  ] ) ) )
     ;;
 
-    let%test "dynamics as expected" =
-      Caml.(parse_defn dynamics_str |> erase_defn = dynamics)
-    ;;
+    let%test "dynamics as expected" = Caml.(parse_term dynamics_str |> erase = dynamics)
   end)
 ;;
 
@@ -259,7 +248,7 @@ let%test_module "Core pretty" =
 let%test_module "Core eval in dynamics" =
   (module struct
     let eval_in dynamics_str str =
-      let (Defn (_imports, defn)) = parse_defn dynamics_str in
+      let defn = parse_term dynamics_str in
       let core = parse_term str in
       match eval (CoreApp (None, defn, core)) with
       | Error (msg, tm) -> msg ^ ": " ^ to_string tm

@@ -2,7 +2,6 @@
 
     - [term] defines expressions in the core language. It uses [core_scope],
       [core_case_scope], (and [Pattern.t]).
-    - [defn] contains imports and a declaration.
     - [eval] is used to evaluate a core term *)
 
 open Lvca_syntax
@@ -30,18 +29,6 @@ val location : 'a term -> 'a
 val pp : Format.formatter -> 'a term -> unit
 val to_string : 'a term -> string
 
-(* TODO: do we want to remove imports? *)
-type import =
-  { imported_symbols : (string * string option) list
-  ; location : string
-  }
-
-type 'a defn = Defn of import list * 'a term
-
-val pp_defn : Format.formatter -> 'a defn -> unit
-val defn_to_string : 'a defn -> string
-val erase_defn : 'a defn -> unit defn
-
 type 'a eval_error = string * 'a term
 
 val eval_ctx
@@ -53,5 +40,4 @@ val eval : 'a term -> (('a, Primitive.t) Nominal.term, 'a eval_error) Base.Resul
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val term : OptRange.t term ParseUtil.t
-  val defn : OptRange.t defn ParseUtil.t
 end
