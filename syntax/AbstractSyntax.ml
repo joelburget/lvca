@@ -48,16 +48,18 @@ let pp = Fmt.list ~sep:(Fmt.sps 0) (Fmt.pair ~sep:(Fmt.any ":=") Fmt.string pp_s
 type kind_map = int Lvca_util.String.Map.t
 type kind_mismap = Lvca_util.Int.Set.t Lvca_util.String.Map.t
 
-let rec kind_check_sort env sort =
-  let name, n, env =
-    match sort with
-    | Sort.Name name -> name, 0, env
-    | Sort.Ap (name, args) ->
-      name, List.length args, List.fold args ~init:env ~f:kind_check_sort
-  in
+let update_env env name n =
   Map.update env name ~f:(function
       | None -> Lvca_util.Int.Set.singleton n
       | Some set -> Set.add set n)
+;;
+
+let rec kind_check_sort env sort =
+  match sort with
+  | Sort.Name name -> update_env env name 0
+  | Sort.Ap (name, args) ->
+    let env = List.fold args ~init:env ~f:kind_check_sort in
+    update_env env name (List.length args)
 ;;
 
 let kind_check_valence env (Valence (binding_slots, value_slot)) =
@@ -68,13 +70,8 @@ let kind_check_operator_def env (OperatorDef (_name, arity)) =
   arity |> List.fold ~init:env ~f:kind_check_valence
 ;;
 
-let kind_check_sort env sort_name (SortDef (vars, operators)) =
-  let n = List.length vars in
-  let env =
-    Map.update env sort_name ~f:(function
-        | None -> Lvca_util.Int.Set.singleton n
-        | Some set -> Set.add set n)
-  in
+let kind_check_sort_def env sort_name (SortDef (vars, operators)) =
+  let env = update_env env sort_name (List.length vars) in
   List.fold operators ~init:env ~f:kind_check_operator_def
 ;;
 
@@ -83,15 +80,15 @@ let kind_check ?(env = Lvca_util.String.Map.empty) syntax =
   let mismap =
     syntax
     |> List.fold ~init:env ~f:(fun env (sort_name, sort_def) ->
-           kind_check_sort env sort_name sort_def)
+           kind_check_sort_def env sort_name sort_def)
   in
   let fine_vars, mismapped_vars =
     mismap
     |> Map.to_alist
     |> List.partition_map ~f:(fun (name, mismap) ->
-           match Set.to_list mismap with
-           | [ x ] -> Either.First (name, x)
-           | xs -> Either.Second (name, Lvca_util.Int.Set.of_list xs))
+           match Set.length mismap with
+           | 1 -> Either.First (name, Set.min_elt_exn mismap)
+           | _ -> Either.Second (name, mismap))
   in
   match mismapped_vars with
   | [] -> Ok (Lvca_util.String.Map.of_alist_exn fine_vars)
@@ -312,7 +309,7 @@ tm :=
 
     let%expect_test _ =
       kind_check {|tm a := foo(a)|};
-      [%expect{|
+      [%expect {|
         okay
         a: 0
         tm: 1 |}]
