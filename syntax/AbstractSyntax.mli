@@ -25,6 +25,7 @@ type sort_def =
 (** The abstract syntax of a language is the sorts it defines. *)
 type abstract_syntax = (string * sort_def) list
 
+(** The abstract syntax of a language is the sorts it defines. *)
 type t = abstract_syntax
 
 val ( = ) : abstract_syntax -> abstract_syntax -> bool
@@ -32,6 +33,16 @@ val string_of_valence : valence -> string
 val string_of_arity : arity -> string
 
 (* TODO val pp : Format.formatter -> t -> unit *)
+
+(** A mapping from the name of a sort to its arity -- the number of arguments it takes. *)
+type kind_map = int Lvca_util.String.Map.t
+
+(** A mapping from the name of a sort to the different arities it was asserted or infered
+    to have. *)
+type kind_mismap = Lvca_util.Int.Set.t Lvca_util.String.Map.t
+
+(** Check that each sort in the syntax has a consistent arity. *)
+val kind_check : ?env:kind_map -> t -> (kind_map, kind_mismap) Result.t
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : t ParseUtil.t

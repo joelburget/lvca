@@ -28,6 +28,15 @@ module Int = struct
 
     let empty = Map.empty (module Base.Int)
   end
+
+  module Set = struct
+    type t = (int, Base.Int.comparator_witness) Base.Set.t
+
+    let empty = Base.Set.empty (module Base.Int)
+    let of_list = Base.Set.of_list (module Base.Int)
+    let singleton = Base.Set.singleton (module Base.Int)
+    let union_list = Base.Set.union_list (module Base.Int)
+  end
 end
 
 module String = struct
