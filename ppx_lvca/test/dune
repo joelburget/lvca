@@ -1,6 +1,8 @@
 (executable
  (name pp)
  (modules pp)
+ (preprocess ; this preprocess step isn't needed but it silences the dune warning ".merlin generated is inaccurate. Cannot mix preprocessed and non preprocessed specifications."
+  (pps ppx_lvca))
  (libraries ppx_lvca ppxlib))
 
 (rule
