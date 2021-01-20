@@ -6,6 +6,8 @@ module ParsePattern = Lvca_syntax.Pattern.Parse (ParseUtil.CComment)
 module ParseTerm = Nominal.Parse (ParseUtil.CComment)
 module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
 
+(* TODO: parser, core, nonbinding / OCaml data mapping *)
+
 let extract_string loc expr =
   (* payload and location of the string contents, inside "" or {||} *)
   let adjust shift loc =
