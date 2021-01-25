@@ -2,22 +2,25 @@ open Base
 open AbstractSyntax
 module SMap = Lvca_util.String.Map
 
-type 'a abstract_syntax_check_failure_frame =
-  { term : (('a, Primitive.t) Pattern.t, ('a, Primitive.t) Nominal.term) Either.t
+type ('info, 'prim) abstract_syntax_check_failure_frame =
+  { term : (('info, 'prim) Pattern.t, ('info, 'prim) Nominal.term) Either.t
   ; sort : Sort.t
   }
 
-type 'a abstract_syntax_check_failure =
+type ('info, 'prim) abstract_syntax_check_failure =
   { message : string
-  ; stack : 'a abstract_syntax_check_failure_frame list
+  ; stack : ('info, 'prim) abstract_syntax_check_failure_frame list
   }
 
-let err : string -> 'a abstract_syntax_check_failure =
+let err : string -> ('info, 'prim) abstract_syntax_check_failure =
  fun message -> { message; stack = [] }
 ;;
 
-let pp_failure : Stdlib.Format.formatter -> 'a abstract_syntax_check_failure -> unit =
- fun ppf { message; stack } ->
+let pp_failure
+    :  'prim Fmt.t -> Stdlib.Format.formatter
+    -> ('info, 'prim) abstract_syntax_check_failure -> unit
+  =
+ fun prim_pp ppf { message; stack } ->
   Fmt.string ppf message;
   if List.length stack > 0
   then (
@@ -27,21 +30,9 @@ let pp_failure : Stdlib.Format.formatter -> 'a abstract_syntax_check_failure -> 
         Stdlib.Format.pp_force_newline ppf ();
         match term with
         | First pat ->
-          Fmt.pf
-            ppf
-            "- @[pattern: %a,@ sort: %a@]"
-            (Pattern.pp Primitive.pp)
-            pat
-            Sort.pp
-            sort
+          Fmt.pf ppf "- @[pattern: %a,@ sort: %a@]" (Pattern.pp prim_pp) pat Sort.pp sort
         | Second tm ->
-          Fmt.pf
-            ppf
-            "- @[term: %a,@ sort: %a@]"
-            (Nominal.pp_term Primitive.pp)
-            tm
-            Sort.pp
-            sort))
+          Fmt.pf ppf "- @[term: %a,@ sort: %a@]" (Nominal.pp_term prim_pp) tm Sort.pp sort))
 ;;
 
 let concretize_sort_slot : Sort.t SMap.t -> sort_slot -> sort_slot =
@@ -78,32 +69,8 @@ let lookup_operator
 ;;
 
 (* Check that this pattern is valid and return the valence for each variable it binds *)
-let check_pattern
-    :  AbstractSyntax.t -> Sort.t -> ('a, Primitive.t) Pattern.t
-    -> (valence SMap.t, 'a abstract_syntax_check_failure) Result.t
-  =
- fun lang ->
+let check_pattern pp_prim check_prim lang =
   let lookup_operator' = lookup_operator lang in
-  let go_primitive
-      :  Sort.t -> Primitive.t
-      -> (valence SMap.t, 'a abstract_syntax_check_failure) Result.t
-    =
-   fun sort prim ->
-    match prim, sort with
-    (* TODO: Figure out a real solution (that handles aliasing) *)
-    | PrimString _, Sort.Name "string"
-    | PrimFloat _, Sort.Name "float"
-    | PrimChar _, Sort.Name "char"
-    | PrimInteger _, Sort.Name "integer" ->
-      Ok SMap.empty
-    | _, _ ->
-      Error
-        (err
-           (Printf.sprintf
-              "Unexpected sort (%s) for a primitive (%s)"
-              (Sort.to_string sort)
-              (Primitive.to_string prim)))
-  in
   let handle_dup_error = function
     | `Ok result -> Ok result
     | `Duplicate_key k ->
@@ -114,16 +81,16 @@ let check_pattern
                That's not allowed!"
               k))
   in
-  let rec go_pattern
-      :  Sort.t -> ('a, Primitive.t) Pattern.t
-      -> (valence SMap.t, 'a abstract_syntax_check_failure) Result.t
-    =
-   fun sort pat ->
+  let rec go_pattern sort pat =
     let result =
       match pat with
-      | Var (_, name) -> Ok (SMap.singleton name (Valence ([], (sort, Unstarred))))
+      | Pattern.Var (_, name) ->
+        Ok (SMap.singleton name (Valence ([], (sort, Unstarred))))
       | Ignored _ -> Ok SMap.empty
-      | Primitive (_, prim) -> go_primitive sort prim
+      | Primitive (info, prim) ->
+        (match check_prim info prim sort with
+        | None -> Ok SMap.empty
+        | Some msg -> Error (err msg))
       | Operator (_, op_name, subpats) ->
         let lookup_and_go sort_name sort_args =
           match lookup_operator' sort_name op_name with
@@ -144,11 +111,7 @@ let check_pattern
     in
     Result.map_error result ~f:(fun { message; stack } ->
         { message; stack = { term = First pat; sort } :: stack })
-  and go_arity_pat
-      :  arity -> ('a, Primitive.t) Pattern.t list list
-      -> (valence SMap.t, 'a abstract_syntax_check_failure) Result.t
-    =
-   fun valences pats ->
+  and go_arity_pat valences pats =
     match List.zip pats valences with
     | Unequal_lengths ->
       Error
@@ -173,7 +136,7 @@ let check_pattern
                            "A list pattern (%s) was found matching a non-repeated sort \
                             (%s)"
                            (pats
-                           |> List.map ~f:(Pattern.to_string Primitive.pp)
+                           |> List.map ~f:(Pattern.to_string pp_prim)
                            |> String.concat ~sep:", ")
                            (Sort.to_string sort))))
                | Valence ([], (sort, Starred)) ->
@@ -195,7 +158,7 @@ let check_pattern
                             is valid."
                            (string_of_valence valence)
                            (pats
-                           |> List.map ~f:(Pattern.to_string Primitive.pp)
+                           |> List.map ~f:(Pattern.to_string pp_prim)
                            |> String.concat ~sep:", ")))))
         |> Result.all
         |> Result.map ~f:SMap.strict_unions
@@ -208,21 +171,13 @@ let check_pattern
 (* Check that the given term matches the given sort.
 
    This recursively checks subterms and patterns. *)
-let check_term
-    :  AbstractSyntax.t (** Abstract syntax *) -> Sort.t (** Sort to check term against *)
-    -> ('a, Primitive.t) Nominal.term -> 'a abstract_syntax_check_failure option
-  =
- fun lang ->
+let check_term pp_prim check_prim lang =
   let lookup_operator' = lookup_operator lang in
-  let check_pattern' = check_pattern lang in
-  let rec go
-      :  valence SMap.t (* mapping from variable name to its valence *) -> Sort.t
-      -> ('a, Primitive.t) Nominal.term -> 'a abstract_syntax_check_failure option
-    =
-   fun var_valences sort tm ->
+  let check_pattern' = check_pattern pp_prim check_prim lang in
+  let rec go var_valences sort tm =
     let result =
       match tm with
-      | Var (_, v) ->
+      | Nominal.Var (_, v) ->
         (match Map.find var_valences v with
         | None -> Some (err (Printf.sprintf "Unknown variable %s (is it bound?)" v))
         (* Note: We allow patterns to bind scopes, eg we allow the pattern [lambda(x)]
@@ -242,15 +197,8 @@ let check_term
                       (string_of_valence valence)
                       (Sort.to_string sort)))
           | _ -> failwith "TODO"))
-      | Primitive (_, p) ->
-        (match p, sort with
-        (* TODO: Figure out a real solution (that handles aliasing) *)
-        | PrimInteger _, Sort.Name "integer"
-        | PrimString _, Sort.Name "string"
-        | PrimFloat _, Sort.Name "float"
-        | PrimChar _, Sort.Name "char" ->
-          None
-        | _, _ -> Some (err "Unexpected primitive sort"))
+      | Primitive (info, p) ->
+        (match check_prim info p sort with None -> None | Some msg -> Some (err msg))
       | Operator (_, operator_name, op_scopes) ->
         let lookup_and_go sort_name sort_args =
           match lookup_operator' sort_name operator_name with
@@ -272,11 +220,7 @@ let check_term
     in
     Option.map result ~f:(fun { message; stack } ->
         { message; stack = { term = Second tm; sort } :: stack })
-  and go_arity
-      :  valence SMap.t -> arity -> ('a, Primitive.t) Nominal.scope list
-      -> 'a abstract_syntax_check_failure option
-    =
-   fun var_valences valences scopes ->
+  and go_arity var_valences valences scopes =
     match List.zip scopes valences with
     | Unequal_lengths ->
       Some
@@ -288,15 +232,12 @@ let check_term
     | Ok scope_valences ->
       List.find_map scope_valences (* TODO: go_arity *) ~f:(fun (scope, valence) ->
           go_scope var_valences valence scope)
-  and go_scope
-      :  valence SMap.t -> valence -> ('a, Primitive.t) Nominal.scope
-      -> 'a abstract_syntax_check_failure option
-    =
-   fun var_valences valence (Scope (binders, body)) ->
+  and go_scope var_valences valence (Scope (binders, body)) =
     (* Check the body with the new binders environment *)
     let go_body
         (body_sort, starred)
-        (binders_env : (valence SMap.t, 'a abstract_syntax_check_failure) Result.t list)
+        binders_env
+          (* (binders_env : (valence SMap.t, 'a abstract_syntax_check_failure) Result.t list) *)
       =
       (* XXX: is *, 0-or-more repetition (does this make sense?)? or is it 1-or-more?
        * Does + exist?
@@ -395,6 +336,21 @@ test := foo(term*. term)
 
     let language = parse_lang lang_desc
 
+    let check_prim _info prim sort =
+      match prim, sort with
+      | Primitive.PrimString _, Sort.Name "string"
+      | PrimFloat _, Sort.Name "float"
+      | PrimChar _, Sort.Name "char"
+      | PrimInteger _, Sort.Name "integer" ->
+        None
+      | _, _ ->
+        Some
+          (Printf.sprintf
+             "Unexpected sort (%s) for a primitive (%s)"
+             (Sort.to_string sort)
+             (Primitive.to_string prim))
+    ;;
+
     let print_check_pattern sort_str pat_str =
       match parse_sort sort_str with
       | Error msg -> Fmt.epr "%s" msg
@@ -408,8 +364,8 @@ test := foo(term*. term)
                  "Failed to convert term to pattern (found a scope: %s)"
                  (Nominal.pp_scope_str Primitive.pp scope))
         in
-        (match check_pattern language sort pat with
-        | Error failure -> Fmt.epr "%a" pp_failure failure
+        (match check_pattern Primitive.pp check_prim language sort pat with
+        | Error failure -> Fmt.epr "%a" (pp_failure Primitive.pp) failure
         | Ok _ -> ())
     ;;
 
@@ -518,8 +474,13 @@ test := foo(term*. term)
       match parse_sort sort_str with
       | Error msg -> Fmt.epr "%s" msg
       | Ok sort ->
-        (match tm_str |> parse_term |> Nominal.erase |> check_term language sort with
-        | Some failure -> Fmt.epr "%a" pp_failure failure
+        (match
+           tm_str
+           |> parse_term
+           |> Nominal.erase
+           |> check_term Primitive.pp check_prim language sort
+         with
+        | Some failure -> Fmt.epr "%a" (pp_failure Primitive.pp) failure
         | None -> ())
     ;;
 
@@ -576,7 +537,7 @@ test := foo(term*. term)
       check_term' "value" {|lit_int("foo")|};
       [%expect
         {|
-      Unexpected primitive sort
+      Unexpected sort (integer) for a primitive ("foo")
       stack:
       - term: lit_int("foo"), sort: value
       - term: "foo", sort: integer |}]
@@ -586,7 +547,7 @@ test := foo(term*. term)
       check_term' "value" "lit_str(123)";
       [%expect
         {|
-      Unexpected primitive sort
+      Unexpected sort (string) for a primitive (123)
       stack:
       - term: lit_str(123), sort: value
       - term: 123, sort: string |}]

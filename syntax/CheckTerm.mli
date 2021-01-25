@@ -1,46 +1,33 @@
 (** Check that a term is valid in some language. *)
 
-type 'a abstract_syntax_check_failure_frame =
-  { term : (('a, Primitive.t) Pattern.t, ('a, Primitive.t) Nominal.term) Base.Either.t
+type ('info, 'prim) abstract_syntax_check_failure_frame =
+  { term : (('info, 'prim) Pattern.t, ('info, 'prim) Nominal.term) Base.Either.t
         (** Term that failed to check *)
   ; sort : Sort.t (** Sort it failed to check against *)
   }
 
 (** A check failure includes both an error message and the stack of terms / patterns
     leading to the problematic term / pattern. *)
-type 'a abstract_syntax_check_failure =
+type ('info, 'prim) abstract_syntax_check_failure =
   { message : string
-  ; stack : 'a abstract_syntax_check_failure_frame list
+  ; stack : ('info, 'prim) abstract_syntax_check_failure_frame list
         (** The stack of terms leading from the outermost start point to the innermost
             point where the problem was discovered *)
   }
 
 (** Failure pretty-printer. *)
-val pp_failure : Format.formatter -> 'a abstract_syntax_check_failure -> unit
+val pp_failure
+  :  'prim Fmt.t
+  -> Format.formatter
+  -> ('info, 'prim) abstract_syntax_check_failure
+  -> unit
 
 (** Check that this pattern is valid and return the valence for each variable it binds.
 
     Checks performed:
 
     {ol
-     {- Primitives:
-        string
-        and
-        integer
-        literals
-        coincide
-        with
-        the
-        string
-        and
-        integer
-        sorts.
-        XXX
-        what
-        if
-        they're
-        aliased?
-     }
+     {- Primitives: checked by the given primitive checker. }
      {- All used operators are found (in the sort corresponding to the pattern type). }
      {- All
         operators
@@ -60,11 +47,13 @@ val pp_failure : Format.formatter -> 'a abstract_syntax_check_failure -> unit
      {- Patterns can't see valence: they can only bind subterms with some given valence. }
     } *)
 val check_pattern
-  :  AbstractSyntax.t (** Abstract syntax *)
+  :  'prim Fmt.t
+  -> ('info -> 'prim -> Sort.t -> string option) (** Primitive checker *)
+  -> AbstractSyntax.t (** Abstract syntax *)
   -> Sort.t (** Sort to check pattern against *)
-  -> ('a, Primitive.t) Pattern.t
+  -> ('info, 'prim) Pattern.t
   -> ( AbstractSyntax.valence Lvca_util.String.Map.t
-     , 'a abstract_syntax_check_failure )
+     , ('info, 'prim) abstract_syntax_check_failure )
      Result.t
 
 (** Check that the given term matches the given sort.
@@ -82,7 +71,9 @@ val check_pattern
     + Fixed-valence terms must have the correct number of binders. All must be variables.
     + Variable-valence terms must have one binder, a pattern. *)
 val check_term
-  :  AbstractSyntax.t (** Abstract syntax *)
+  :  'prim Fmt.t
+  -> ('info -> 'prim -> Sort.t -> string option) (** Primitive checker *)
+  -> AbstractSyntax.t (** Abstract syntax *)
   -> Sort.t (** Sort to check term against *)
-  -> ('a, Primitive.t) Nominal.term
-  -> 'a abstract_syntax_check_failure option
+  -> ('info, 'prim) Nominal.term
+  -> ('info, 'prim) abstract_syntax_check_failure option
