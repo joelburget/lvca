@@ -288,6 +288,26 @@ let check_term pp_prim check_prim lang =
   go SMap.empty
 ;;
 
+module Primitive' = struct
+  let check_prim _info prim sort =
+    match prim, sort with
+    | Primitive.PrimString _, Sort.Name "string"
+    | PrimFloat _, Sort.Name "float"
+    | PrimChar _, Sort.Name "char"
+    | PrimInteger _, Sort.Name "integer" ->
+      None
+    | _, _ ->
+      Some
+        (Printf.sprintf
+           "Unexpected sort (%s) for a primitive (%s)"
+           (Sort.to_string sort)
+           (Primitive.to_string prim))
+  ;;
+
+  let check_pattern lang sort pat = check_pattern Primitive.pp check_prim lang sort pat
+  let check_term lang sort pat = check_term Primitive.pp check_prim lang sort pat
+end
+
 let%test_module "CheckTerm" =
   (module struct
     module AbstractSyntaxParse = AbstractSyntax.Parse (ParseUtil.NoComment)
@@ -336,21 +356,6 @@ test := foo(term*. term)
 
     let language = parse_lang lang_desc
 
-    let check_prim _info prim sort =
-      match prim, sort with
-      | Primitive.PrimString _, Sort.Name "string"
-      | PrimFloat _, Sort.Name "float"
-      | PrimChar _, Sort.Name "char"
-      | PrimInteger _, Sort.Name "integer" ->
-        None
-      | _, _ ->
-        Some
-          (Printf.sprintf
-             "Unexpected sort (%s) for a primitive (%s)"
-             (Sort.to_string sort)
-             (Primitive.to_string prim))
-    ;;
-
     let print_check_pattern sort_str pat_str =
       match parse_sort sort_str with
       | Error msg -> Fmt.epr "%s" msg
@@ -364,7 +369,7 @@ test := foo(term*. term)
                  "Failed to convert term to pattern (found a scope: %s)"
                  (Nominal.pp_scope_str Primitive.pp scope))
         in
-        (match check_pattern Primitive.pp check_prim language sort pat with
+        (match Primitive'.check_pattern language sort pat with
         | Error failure -> Fmt.epr "%a" (pp_failure Primitive.pp) failure
         | Ok _ -> ())
     ;;
@@ -475,10 +480,7 @@ test := foo(term*. term)
       | Error msg -> Fmt.epr "%s" msg
       | Ok sort ->
         (match
-           tm_str
-           |> parse_term
-           |> Nominal.erase
-           |> check_term Primitive.pp check_prim language sort
+           tm_str |> parse_term |> Nominal.erase |> Primitive'.check_term language sort
          with
         | Some failure -> Fmt.epr "%a" (pp_failure Primitive.pp) failure
         | None -> ())
@@ -645,3 +647,5 @@ test := foo(term*. term)
        "foo(lambda(scope). lambda(scope))"; [%expect {||}] *)
   end)
 ;;
+
+module Primitive = Primitive'

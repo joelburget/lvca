@@ -77,3 +77,21 @@ val check_term
   -> Sort.t (** Sort to check term against *)
   -> ('info, 'prim) Nominal.term
   -> ('info, 'prim) abstract_syntax_check_failure option
+
+module Primitive : sig
+  (** Checks hardcoded for the Primitive type *)
+
+  val check_pattern
+    :  AbstractSyntax.t (** Abstract syntax *)
+    -> Sort.t (** Sort to check pattern against *)
+    -> ('info, Primitive.t) Pattern.t
+    -> ( AbstractSyntax.valence Lvca_util.String.Map.t
+       , ('info, Primitive.t) abstract_syntax_check_failure )
+       Result.t
+
+  val check_term
+    :  AbstractSyntax.t (** Abstract syntax *)
+    -> Sort.t (** Sort to check term against *)
+    -> ('info, Primitive.t) Nominal.term
+    -> ('info, Primitive.t) abstract_syntax_check_failure option
+end
