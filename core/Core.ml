@@ -182,7 +182,6 @@ let rec eval_ctx
     | Some (branch, bindings) ->
       eval_ctx (Lvca_util.Map.union_right_biased ctx bindings) branch)
   (* primitives *)
-  (* TODO: or should this be an app? *)
   | CoreApp (_, CoreApp (_, Term (Var (_, "add")), Term a), Term b) ->
     let%bind a_result = eval_ctx' ctx a in
     let%bind b_result = eval_ctx' ctx b in
