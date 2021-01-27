@@ -72,7 +72,7 @@ let rec pp_range_generic ~opener ~closer pp_prim ppf pat =
   | Operator (_, name, pats) ->
     pf
       ppf
-      "@[<2>@{<test>%s@}(%a)@]"
+      "@[<2>@{%s@}(%a)@]"
       name
       (pp_range_generic ~opener ~closer pp_prim |> list ~sep:comma |> list ~sep:semi)
       pats
