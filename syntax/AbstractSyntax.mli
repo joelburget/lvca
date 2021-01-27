@@ -8,19 +8,20 @@ type starred =
 (** Represents a place where a sort can go in a valence. *)
 type 'info sort_slot = 'info Sort.t * starred
 
-(** A valence represents the sort of an argument (to an operator), as well as the number
-    and sorts of the variables bound within it *)
+(** A valence represents a sort, as well as the number and sorts of the variables bound
+    within it. Valences are most often used to represent slots in an operator. *)
 type 'info valence = Valence of 'info sort_slot list * 'info sort_slot
 
-(** An arity specifies the arguments to an operator *)
+(** An arity specifies the arguments to an operator. *)
 type 'info arity = 'info valence list
 
 type 'info operator_def =
-  | OperatorDef of string * 'info arity (** An operator is defined by its tag and arity *)
+  | OperatorDef of string * 'info arity
+      (** An operator is defined by its tag and arity. *)
 
 type 'info sort_def =
   | SortDef of string list * 'info operator_def list
-      (** A sort is defined by a set of variables and a set of operators *)
+      (** A sort is defined by a set of variables and a set of operators. *)
 
 (** The abstract syntax of a language is the sorts it defines. *)
 type 'info abstract_syntax = (string * 'info sort_def) list
