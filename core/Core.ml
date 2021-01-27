@@ -13,7 +13,7 @@ type 'a term =
   (* plus, core-specific ctors *)
   | CoreApp of 'a * 'a term * 'a term
   | Case of 'a * 'a term * 'a core_case_scope list
-  | Lambda of 'a * Sort.t * 'a core_scope
+  | Lambda of 'a * 'a Sort.t * 'a core_scope
   | Let of 'a * is_rec * 'a term * 'a core_scope (** Lets bind only a single variable *)
 
 and 'a core_scope = Scope of string * 'a term
@@ -26,7 +26,7 @@ let rec map_loc ~f = function
   | Case (loc, tm, scopes) ->
     Case (f loc, map_loc ~f tm, List.map scopes ~f:(map_loc_case_scope ~f))
   | Lambda (loc, sort, core_scope) ->
-    Lambda (f loc, sort, map_loc_core_scope ~f core_scope)
+    Lambda (f loc, Sort.map_info ~f sort, map_loc_core_scope ~f core_scope)
   | Let (loc, is_rec, tm, core_scope) ->
     Let (f loc, is_rec, map_loc ~f tm, map_loc_core_scope ~f core_scope)
 
@@ -377,7 +377,8 @@ let%test_module "Parsing" =
     ;;
 
     let%test _ =
-      parse {|\(x : bool) -> x|} = Lambda ((), Sort.Name "bool", Scope ("x", var "x"))
+      parse {|\(x : bool) -> x|}
+      = Lambda ((), Sort.Name ((), "bool"), Scope ("x", var "x"))
     ;;
 
     let%test _ =

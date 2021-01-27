@@ -6,17 +6,52 @@ type starred =
   | Starred
   | Unstarred
 
-type sort_slot = Sort.t * starred
-type valence = Valence of sort_slot list * sort_slot
-type arity = valence list
-type operator_def = OperatorDef of string * arity
-type sort_def = SortDef of string list * operator_def list
-type abstract_syntax = (string * sort_def) list
-type t = abstract_syntax
+type 'info sort_slot = 'info Sort.t * starred
+type 'info valence = Valence of 'info sort_slot list * 'info sort_slot
+type 'info arity = 'info valence list
+type 'info operator_def = OperatorDef of string * 'info arity
+type 'info sort_def = SortDef of string list * 'info operator_def list
+type 'info abstract_syntax = (string * 'info sort_def) list
+type 'info t = 'info abstract_syntax
 
-let ( = ) = List.equal Caml.( = )
+let equal info_eq =
+  let slot_eq (sort1, starred1) (sort2, starred2) =
+    Sort.equal info_eq sort1 sort2 && Caml.(starred1 = starred2)
+  in
+  let valence_eq (Valence (slots1, slot1)) (Valence (slots2, slot2)) =
+    List.equal slot_eq slots1 slots2 && slot_eq slot1 slot2
+  in
+  let arity_eq = List.equal valence_eq in
+  let op_def_eq (OperatorDef (name1, arity1)) (OperatorDef (name2, arity2)) =
+    String.(name1 = name2) && arity_eq arity1 arity2
+  in
+  let sort_def_eq (SortDef (vs1, ops1)) (SortDef (vs2, ops2)) =
+    List.equal String.( = ) vs1 vs2 && List.equal op_def_eq ops1 ops2
+  in
+  List.equal (Lvca_util.Tuple2.equal String.( = ) sort_def_eq)
+;;
 
-let string_of_sort_slot : sort_slot -> string =
+let valence_map_info ~f (Valence (slots, slot)) =
+  let f (sort, starred) = Sort.map_info ~f sort, starred in
+  Valence (List.map ~f slots, f slot)
+;;
+
+let arity_map_info ~f = List.map ~f:(valence_map_info ~f)
+let erase_arity = arity_map_info ~f:(Fn.const ())
+
+let operator_def_map_info ~f (OperatorDef (name, arity)) =
+  OperatorDef (name, arity_map_info ~f arity)
+;;
+
+let sort_def_map_info ~f (name, SortDef (vars, op_defs)) =
+  name, SortDef (vars, op_defs |> List.map ~f:(operator_def_map_info ~f))
+;;
+
+let erase_sort_def = sort_def_map_info ~f:(Fn.const ())
+let map_info ~f = List.map ~f:(sort_def_map_info ~f)
+let erase_info t = map_info ~f:(Fn.const ()) t
+
+let string_of_sort_slot : _ sort_slot -> string =
  fun (sort, starred) ->
   Printf.sprintf
     "%s%s"
@@ -24,7 +59,7 @@ let string_of_sort_slot : sort_slot -> string =
     (match starred with Starred -> "*" | Unstarred -> "")
 ;;
 
-let string_of_valence : valence -> string = function
+let string_of_valence : _ valence -> string = function
   | Valence (binders, result) ->
     (match binders with
     | [] -> string_of_sort_slot result
@@ -35,7 +70,7 @@ let string_of_valence : valence -> string = function
         (string_of_sort_slot result))
 ;;
 
-let string_of_arity : arity -> string =
+let string_of_arity : _ arity -> string =
  fun valences -> valences |> List.map ~f:string_of_valence |> String.concat ~sep:"; "
 ;;
 
@@ -56,8 +91,8 @@ let update_env env name n =
 
 let rec kind_check_sort env sort =
   match sort with
-  | Sort.Name name -> update_env env name 0
-  | Sort.Ap (name, args) ->
+  | Sort.Name (_, name) -> update_env env name 0
+  | Sort.Ap (_, name, args) ->
     let env = List.fold args ~init:env ~f:kind_check_sort in
     update_env env name (List.length args)
 ;;
@@ -110,7 +145,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   let star = char '*'
 
   type sort_sequence_entry =
-    | Sort of Sort.t * starred
+    | Sort of OptRange.t Sort.t * starred
     | Dot
     | Semi
 
@@ -124,10 +159,10 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   ;;
 
   (* Fold a sequence of sorts, '.'s, and ';'s to an arity. *)
-  let build_arity : sort_sequence -> arity =
+  let build_arity : sort_sequence -> OptRange.t arity =
    fun sort_sequence ->
-    let binding_sorts : sort_slot Queue.t = Queue.create () in
-    let rec go : sort_sequence -> valence list = function
+    let binding_sorts : OptRange.t sort_slot Queue.t = Queue.create () in
+    let rec go : sort_sequence -> OptRange.t valence list = function
       | [] -> []
       | Sort (sort, starred) :: Dot :: sorts ->
         Queue.enqueue binding_sorts (sort, starred);
@@ -152,7 +187,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     go sort_sequence
  ;;
 
-  let arity : arity Parsers.t =
+  let arity : OptRange.t arity Parsers.t =
     parens
       (many
          (choice
@@ -173,11 +208,11 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     <?> "arity"
   ;;
 
-  let operator_def : operator_def Parsers.t =
+  let operator_def : OptRange.t operator_def Parsers.t =
     lift2 (fun ident arity -> OperatorDef (ident, arity)) identifier arity
   ;;
 
-  let sort_def : (string * sort_def) Parsers.t =
+  let sort_def : (string * OptRange.t sort_def) Parsers.t =
     lift4
       (fun ident bound_names _assign op_defs -> ident, SortDef (bound_names, op_defs))
       identifier
@@ -188,7 +223,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     <?> "sort definition"
   ;;
 
-  let t : abstract_syntax Parsers.t = many1 sort_def <?> "abstract syntax"
+  let t : OptRange.t abstract_syntax Parsers.t = many1 sort_def <?> "abstract syntax"
   let whitespace_t = junk *> t
 end
 
@@ -203,26 +238,38 @@ let%test_module "AbstractSyntax_Parser" =
       | Error msg -> failwith msg
    ;;
 
-    let tm = Sort.Name "tm"
+    let tm = Sort.Name ((), "tm")
     let tm_s = tm, Starred
     let tm_u = tm, Unstarred
     let tm_v = Valence ([], tm_u)
-    let integer = Sort.Name "integer"
+    let integer = Sort.Name ((), "integer")
     let integer_v = Valence ([], (integer, Unstarred))
 
-    let%test_unit _ = assert (Caml.(parse_with Parse.arity "(integer)" = [ integer_v ]))
-    let%test_unit _ = assert (Caml.(parse_with Parse.arity "(tm; tm)" = [ tm_v; tm_v ]))
-
     let%test_unit _ =
-      assert (Caml.(parse_with Parse.arity "(tm. tm)" = [ Valence ([ tm_u ], tm_u) ]))
+      assert (Caml.(parse_with Parse.arity "(integer)" |> erase_arity = [ integer_v ]))
     ;;
 
     let%test_unit _ =
-      assert (Caml.(parse_with Parse.arity "(tm*)" = [ Valence ([], tm_s) ]))
+      assert (Caml.(parse_with Parse.arity "(tm; tm)" |> erase_arity = [ tm_v; tm_v ]))
     ;;
 
     let%test_unit _ =
-      assert (Caml.(parse_with Parse.arity "(tm*. tm)" = [ Valence ([ tm_s ], tm_u) ]))
+      assert (
+        Caml.(
+          parse_with Parse.arity "(tm. tm)" |> erase_arity = [ Valence ([ tm_u ], tm_u) ])
+      )
+    ;;
+
+    let%test_unit _ =
+      assert (
+        Caml.(parse_with Parse.arity "(tm*)" |> erase_arity = [ Valence ([], tm_s) ]))
+    ;;
+
+    let%test_unit _ =
+      assert (
+        Caml.(
+          parse_with Parse.arity "(tm*. tm)" |> erase_arity = [ Valence ([ tm_s ], tm_u) ])
+      )
     ;;
 
     let expect_okay str =
@@ -275,17 +322,21 @@ let%test_module "AbstractSyntax_Parser" =
   | add(tm; tm)
   | lit(integer)
       |}
+          |> erase_sort_def
           = tm_def))
     ;;
 
     let%test_unit _ =
       assert (
-        parse_with Parse.whitespace_t {|
+        let parsed =
+          parse_with Parse.whitespace_t {|
 tm :=
   | add(tm; tm)
   | lit(integer)
       |}
-        = [ tm_def ])
+          |> erase_info
+        in
+        equal Unit.( = ) parsed [ tm_def ])
     ;;
 
     let kind_check str =

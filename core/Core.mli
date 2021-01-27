@@ -12,7 +12,7 @@ type 'a term =
   | Term of ('a, Lvca_syntax.Primitive.t) Lvca_syntax.Nominal.term
   | CoreApp of 'a * 'a term * 'a term
   | Case of 'a * 'a term * 'a core_case_scope list (** Cases match patterns *)
-  | Lambda of 'a * Lvca_syntax.Sort.t * 'a core_scope
+  | Lambda of 'a * 'a Lvca_syntax.Sort.t * 'a core_scope
       (** Lambdas bind variables. Patterns not allowed. *)
   | Let of 'a * is_rec * 'a term * 'a core_scope
       (** Lets bind variables. Patterns not allowed. *)

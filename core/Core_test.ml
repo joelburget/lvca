@@ -31,7 +31,7 @@ let%test_module "Core parsing" =
     let p_operator tag children = Pattern.Operator ((), tag, children)
     let t_operator tag children = Nominal.Operator ((), tag, children)
     let meaning x = CoreApp ((), t_var "meaning", x)
-    let ty = Sort.Name "ty"
+    let ty = Sort.Name ((), "ty")
 
     let dynamics =
       Lambda

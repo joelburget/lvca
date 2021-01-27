@@ -9,11 +9,11 @@ let%test_module "AbstractSyntax.Parser" =
       |> Base.Result.ok_or_failwith
     ;;
 
-    let tm_sort = Sort.Name "tm"
+    let tm_sort = Sort.Name ((), "tm")
     let tm_valence = Valence ([], (tm_sort, Unstarred))
-    let ty_sort = Sort.Name "ty"
+    let ty_sort = Sort.Name ((), "ty")
     let ty_valence = Valence ([], (ty_sort, Unstarred))
-    let x_sort = Sort.Name "x"
+    let x_sort = Sort.Name ((), "x")
 
     let%test _ =
       parse "bool := true() | false()"
@@ -35,6 +35,7 @@ let%test_module "AbstractSyntax.Parser" =
         | foo(x*. x; x. x) // fixed arity, (variable valence, fixed valence)
         | bar(x*)          // variable arity
       |}
+      |> erase_info
       = [ ( "ty"
           , SortDef
               ( []

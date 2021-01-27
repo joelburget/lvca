@@ -1,15 +1,21 @@
 open Base
 
-type t =
-  | Ap of string * t list
-  | Name of string
+type 'info t =
+  | Ap of 'info * string * 'info t list
+  | Name of 'info * string
 
-let ( = ) = Caml.( = )
+let rec equal info_eq s1 s2 =
+  match s1, s2 with
+  | Ap (i1, name1, s1), Ap (i2, name2, s2) ->
+    info_eq i1 i2 && String.(name1 = name2) && List.equal (equal info_eq) s1 s2
+  | Name (i1, name1), Name (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
+  | _, _ -> false
+;;
 
-let rec pp : Stdlib.Format.formatter -> t -> unit =
+let rec pp : Stdlib.Format.formatter -> _ t -> unit =
  fun ppf -> function
-  | Ap (name, args) -> Fmt.pf ppf "%s @[%a@]" name pp_args args
-  | Name name -> Fmt.pf ppf "%s" name
+  | Ap (_, name, args) -> Fmt.pf ppf "%s @[%a@]" name pp_args args
+  | Name (_, name) -> Fmt.pf ppf "%s" name
 
 and pp_args ppf = function
   | [] -> ()
@@ -17,39 +23,49 @@ and pp_args ppf = function
   | x :: xs -> Fmt.pf ppf "%a %a" pp x pp_args xs
 ;;
 
-let rec to_string : t -> string = function
-  | Ap (name, args) ->
+let rec to_string : _ t -> string = function
+  | Ap (_, name, args) ->
     Printf.sprintf "%s(%s)" name (args |> List.map ~f:to_string |> String.concat)
-  | Name name -> name
+  | Name (_, name) -> name
 ;;
 
 let rec instantiate arg_mapping = function
-  | Name name ->
-    (match Map.find arg_mapping name with None -> Name name | Some sort' -> sort')
-  | Ap (name, args) -> Ap (name, List.map args ~f:(instantiate arg_mapping))
+  | Name (info, name) ->
+    (match Map.find arg_mapping name with
+    | None -> Name (info, name)
+    | Some sort' -> sort')
+  | Ap (info, name, args) -> Ap (info, name, List.map args ~f:(instantiate arg_mapping))
 ;;
 
 let rec of_term tm =
   match tm with
-  | Nominal.Var (_, name) -> Ok (Name name)
-  | Operator (_, name, args) ->
+  | Nominal.Var (info, name) -> Ok (Name (info, name))
+  | Operator (info, name, args) ->
     args
     |> List.map ~f:(function Scope ([], [ arg ]) -> of_term arg | _ -> Error tm)
     |> Result.all
-    |> Result.map ~f:(fun args' -> Ap (name, args'))
+    |> Result.map ~f:(fun args' -> Ap (info, name, args'))
   | _ -> Error tm
 ;;
 
+let rec map_info ~f = function
+  | Name (info, name) -> Name (f info, name)
+  | Ap (info, name, args) -> Ap (f info, name, List.map args ~f:(map_info ~f))
+;;
+
+let erase_info sort = map_info ~f:(fun _ -> ()) sort
+
 module Parse (Comment : ParseUtil.Comment_int) = struct
-  type sort = t
+  type 'info sort = 'info t
 
   module Parsers = ParseUtil.Mk (Comment)
   open Parsers
 
-  let t : sort Parsers.t =
+  let t : OptRange.t sort Parsers.t =
     fix (fun sort ->
         let atomic_sort =
-          choice [ parens sort; (identifier >>| fun ident -> Name ident) ]
+          choice
+            [ parens sort; (identifier >>|| fun ~pos ident -> Name (pos, ident), pos) ]
         in
         many1 atomic_sort
         >>== fun ~pos atoms ->
@@ -58,8 +74,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
           fail
             "Higher-order sorts are not allowed. The head of a sort application must be \
              concrete"
-        | [ Name name ] -> return ~pos (Name name)
-        | Name name :: args -> return ~pos (Ap (name, args))
+        | [ Name (pos, name) ] -> return ~pos (Name (pos, name))
+        | Name (_, name) :: args -> return ~pos (Ap (pos, name, args))
         | [] -> assert false)
   ;;
 end
@@ -75,13 +91,14 @@ let%test_module "Sort_Parser" =
       | Error msg -> failwith msg
    ;;
 
-    let a = Name "a"
-    let abc = Ap ("a", [ Name "b"; Name "c" ])
-    let abcd = Ap ("a", [ Ap ("b", [ Name "c" ]); Name "d" ])
+    let a = Name ((), "a")
+    let abc = Ap ((), "a", [ Name ((), "b"); Name ((), "c") ])
+    let abcd = Ap ((), "a", [ Ap ((), "b", [ Name ((), "c") ]); Name ((), "d") ])
+    let ( = ) = equal Unit.( = )
 
-    let%test_unit _ = assert (parse_with Parse.t "a" = a)
-    let%test_unit _ = assert (parse_with Parse.t "a b c" = abc)
-    let%test_unit _ = assert (parse_with Parse.t "a (b c) d" = abcd)
+    let%test_unit _ = assert (parse_with Parse.t "a" |> erase_info = a)
+    let%test_unit _ = assert (parse_with Parse.t "a b c" |> erase_info = abc)
+    let%test_unit _ = assert (parse_with Parse.t "a (b c) d" |> erase_info = abcd)
 
     let%expect_test _ =
       Fmt.pr "%a" pp a;

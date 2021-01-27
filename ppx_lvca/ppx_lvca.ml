@@ -82,10 +82,11 @@ and mk_scope ~loc (Nominal.Scope (pats, tms)) =
 ;;
 
 let rec mk_sort ~loc = function
-  | Sort.Ap (name, sorts) ->
+  | Sort.Ap (pos, name, sorts) ->
     let sorts = sorts |> List.map ~f:(mk_sort ~loc) |> mk_list ~loc in
-    [%expr Sort.Ap ([%e mk_str ~loc name], [%e sorts])]
-  | Sort.Name name -> [%expr Sort.Name [%e mk_str ~loc name]]
+    [%expr Sort.Ap ([%e mk_pos ~loc pos], [%e mk_str ~loc name], [%e sorts])]
+  | Sort.Name (pos, name) ->
+    [%expr Sort.Name ([%e mk_pos ~loc pos], [%e mk_str ~loc name])]
 ;;
 
 let mk_sort_slot ~loc (sort, starred) =

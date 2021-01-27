@@ -6,31 +6,38 @@ type starred =
   | Unstarred
 
 (** Represents a place where a sort can go in a valence. *)
-type sort_slot = Sort.t * starred
+type 'info sort_slot = 'info Sort.t * starred
 
 (** A valence represents the sort of an argument (to an operator), as well as the number
     and sorts of the variables bound within it *)
-type valence = Valence of sort_slot list * sort_slot
+type 'info valence = Valence of 'info sort_slot list * 'info sort_slot
 
 (** An arity specifies the arguments to an operator *)
-type arity = valence list
+type 'info arity = 'info valence list
 
-type operator_def =
-  | OperatorDef of string * arity (** An operator is defined by its tag and arity *)
+type 'info operator_def =
+  | OperatorDef of string * 'info arity (** An operator is defined by its tag and arity *)
 
-type sort_def =
-  | SortDef of string list * operator_def list
+type 'info sort_def =
+  | SortDef of string list * 'info operator_def list
       (** A sort is defined by a set of variables and a set of operators *)
 
 (** The abstract syntax of a language is the sorts it defines. *)
-type abstract_syntax = (string * sort_def) list
+type 'info abstract_syntax = (string * 'info sort_def) list
 
 (** The abstract syntax of a language is the sorts it defines. *)
-type t = abstract_syntax
+type 'info t = 'info abstract_syntax
 
-val ( = ) : abstract_syntax -> abstract_syntax -> bool
-val string_of_valence : valence -> string
-val string_of_arity : arity -> string
+val equal
+  :  ('info -> 'info -> bool)
+  -> 'info abstract_syntax
+  -> 'info abstract_syntax
+  -> bool
+
+val map_info : f:('a -> 'b) -> 'a t -> 'b t
+val erase_info : _ t -> unit t
+val string_of_valence : 'info valence -> string
+val string_of_arity : 'info arity -> string
 
 (* TODO val pp : Format.formatter -> t -> unit *)
 
@@ -42,9 +49,9 @@ type kind_map = int Lvca_util.String.Map.t
 type kind_mismap = Lvca_util.Int.Set.t Lvca_util.String.Map.t
 
 (** Check that each sort in the syntax has a consistent arity. *)
-val kind_check : ?env:kind_map -> t -> (kind_map, kind_mismap) Result.t
+val kind_check : ?env:kind_map -> _ t -> (kind_map, kind_mismap) Result.t
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
-  val t : t ParseUtil.t
-  val whitespace_t : t ParseUtil.t
+  val t : OptRange.t t ParseUtil.t
+  val whitespace_t : OptRange.t t ParseUtil.t
 end

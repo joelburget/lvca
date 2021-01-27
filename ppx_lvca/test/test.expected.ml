@@ -19,4 +19,8 @@ let test_language =
           [OperatorDef
              ("foo",
                [AbstractSyntax.Valence
-                  ([], ((Sort.Name "integer"), Unstarred))])])))]
+                  ([],
+                    ((Sort.Name
+                        ((Some
+                            ((let open Range in { start = 12; finish = 19 }))),
+                          "integer")), Unstarred))])])))]

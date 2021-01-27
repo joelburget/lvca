@@ -3,7 +3,7 @@
 type ('info, 'prim) abstract_syntax_check_failure_frame =
   { term : (('info, 'prim) Pattern.t, ('info, 'prim) Nominal.term) Base.Either.t
         (** Term that failed to check *)
-  ; sort : Sort.t (** Sort it failed to check against *)
+  ; sort : 'info Sort.t (** Sort it failed to check against *)
   }
 
 (** A check failure includes both an error message and the stack of terms / patterns
@@ -48,11 +48,11 @@ val pp_failure
     } *)
 val check_pattern
   :  'prim Fmt.t
-  -> ('info -> 'prim -> Sort.t -> string option) (** Primitive checker *)
-  -> AbstractSyntax.t (** Abstract syntax *)
-  -> Sort.t (** Sort to check pattern against *)
+  -> ('info -> 'prim -> 'info Sort.t -> string option) (** Primitive checker *)
+  -> 'info AbstractSyntax.t (** Abstract syntax *)
+  -> 'info Sort.t (** Sort to check pattern against *)
   -> ('info, 'prim) Pattern.t
-  -> ( AbstractSyntax.valence Lvca_util.String.Map.t
+  -> ( 'info AbstractSyntax.valence Lvca_util.String.Map.t
      , ('info, 'prim) abstract_syntax_check_failure )
      Result.t
 
@@ -72,9 +72,9 @@ val check_pattern
     + Variable-valence terms must have one binder, a pattern. *)
 val check_term
   :  'prim Fmt.t
-  -> ('info -> 'prim -> Sort.t -> string option) (** Primitive checker *)
-  -> AbstractSyntax.t (** Abstract syntax *)
-  -> Sort.t (** Sort to check term against *)
+  -> ('info -> 'prim -> 'info Sort.t -> string option) (** Primitive checker *)
+  -> 'info AbstractSyntax.t (** Abstract syntax *)
+  -> 'info Sort.t (** Sort to check term against *)
   -> ('info, 'prim) Nominal.term
   -> ('info, 'prim) abstract_syntax_check_failure option
 
@@ -82,16 +82,16 @@ module Primitive : sig
   (** Checks hardcoded for the Primitive type *)
 
   val check_pattern
-    :  AbstractSyntax.t (** Abstract syntax *)
-    -> Sort.t (** Sort to check pattern against *)
+    :  'info AbstractSyntax.t (** Abstract syntax *)
+    -> 'info Sort.t (** Sort to check pattern against *)
     -> ('info, Primitive.t) Pattern.t
-    -> ( AbstractSyntax.valence Lvca_util.String.Map.t
+    -> ( 'info AbstractSyntax.valence Lvca_util.String.Map.t
        , ('info, Primitive.t) abstract_syntax_check_failure )
        Result.t
 
   val check_term
-    :  AbstractSyntax.t (** Abstract syntax *)
-    -> Sort.t (** Sort to check term against *)
+    :  'info AbstractSyntax.t (** Abstract syntax *)
+    -> 'info Sort.t (** Sort to check term against *)
     -> ('info, Primitive.t) Nominal.term
     -> ('info, Primitive.t) abstract_syntax_check_failure option
 end

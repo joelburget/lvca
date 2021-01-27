@@ -4,7 +4,7 @@ module SMap = Lvca_util.String.Map
 
 type ('info, 'prim) abstract_syntax_check_failure_frame =
   { term : (('info, 'prim) Pattern.t, ('info, 'prim) Nominal.term) Either.t
-  ; sort : Sort.t
+  ; sort : 'info Sort.t
   }
 
 type ('info, 'prim) abstract_syntax_check_failure =
@@ -35,11 +35,11 @@ let pp_failure
           Fmt.pf ppf "- @[term: %a,@ sort: %a@]" (Nominal.pp_term prim_pp) tm Sort.pp sort))
 ;;
 
-let concretize_sort_slot : Sort.t SMap.t -> sort_slot -> sort_slot =
+let concretize_sort_slot : 'info Sort.t SMap.t -> 'info sort_slot -> 'info sort_slot =
  fun env (sort, starred) -> Sort.instantiate env sort, starred
 ;;
 
-let concretize_valence : Sort.t SMap.t -> valence -> valence =
+let concretize_valence : 'info Sort.t SMap.t -> 'info valence -> 'info valence =
  fun env -> function
   | Valence (binding_sort_slots, body_sort_slot) ->
     Valence
@@ -47,13 +47,13 @@ let concretize_valence : Sort.t SMap.t -> valence -> valence =
       , concretize_sort_slot env body_sort_slot )
 ;;
 
-let concretize_arity : Sort.t SMap.t -> arity -> arity =
+let concretize_arity : 'info Sort.t SMap.t -> 'info arity -> 'info arity =
  fun env -> List.map ~f:(concretize_valence env)
 ;;
 
 let lookup_operator
-    :  AbstractSyntax.t -> string (* sort name *) -> string (* operator_name *)
-    -> (string list * operator_def) option
+    :  'info AbstractSyntax.t -> string (* sort name *) -> string (* operator_name *)
+    -> (string list * 'info operator_def) option
   =
  fun sort_defs sort_name op_name ->
   let open Option.Let_syntax in
@@ -106,8 +106,8 @@ let check_pattern pp_prim check_prim lang =
             go_arity_pat (concretize_arity sort_env arity) subpats
         in
         (match sort with
-        | Sort.Name sort_name -> lookup_and_go sort_name []
-        | Sort.Ap (sort_name, sort_args) -> lookup_and_go sort_name sort_args)
+        | Sort.Name (_, sort_name) -> lookup_and_go sort_name []
+        | Sort.Ap (_, sort_name, sort_args) -> lookup_and_go sort_name sort_args)
     in
     Result.map_error result ~f:(fun { message; stack } ->
         { message; stack = { term = First pat; sort } :: stack })
@@ -186,7 +186,7 @@ let check_term pp_prim check_prim lang =
         | Some valence ->
           (match valence with
           | Valence ([], (sort', Unstarred)) ->
-            if Sort.(sort' = sort)
+            if Sort.equal Unit.( = ) (Sort.erase_info sort') (Sort.erase_info sort)
             then None
             else
               Some
@@ -215,8 +215,8 @@ let check_term pp_prim check_prim lang =
             go_arity var_valences concrete_arity op_scopes
         in
         (match sort with
-        | Sort.Name sort_name -> lookup_and_go sort_name []
-        | Sort.Ap (sort_name, sort_args) -> lookup_and_go sort_name sort_args)
+        | Sort.Name (_, sort_name) -> lookup_and_go sort_name []
+        | Sort.Ap (_, sort_name, sort_args) -> lookup_and_go sort_name sort_args)
     in
     Option.map result ~f:(fun { message; stack } ->
         { message; stack = { term = Second tm; sort } :: stack })
@@ -291,10 +291,10 @@ let check_term pp_prim check_prim lang =
 module Primitive' = struct
   let check_prim _info prim sort =
     match prim, sort with
-    | Primitive.PrimString _, Sort.Name "string"
-    | PrimFloat _, Sort.Name "float"
-    | PrimChar _, Sort.Name "char"
-    | PrimInteger _, Sort.Name "integer" ->
+    | Primitive.PrimString _, Sort.Name (_, "string")
+    | PrimFloat _, Sort.Name (_, "float")
+    | PrimChar _, Sort.Name (_, "char")
+    | PrimInteger _, Sort.Name (_, "integer") ->
       None
     | _, _ ->
       Some
@@ -479,9 +479,7 @@ test := foo(term*. term)
       match parse_sort sort_str with
       | Error msg -> Fmt.epr "%s" msg
       | Ok sort ->
-        (match
-           tm_str |> parse_term |> Nominal.erase |> Primitive'.check_term language sort
-         with
+        (match tm_str |> parse_term |> Primitive'.check_term language sort with
         | Some failure -> Fmt.epr "%a" (pp_failure Primitive.pp) failure
         | None -> ())
     ;;
