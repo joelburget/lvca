@@ -75,6 +75,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         many1 atomic_sort
         >>== fun ~pos atoms ->
         match atoms with
+        (* A single ap is just parenthesized. An ap applied to things is a problem. *)
+        | [ (Ap _ as atom) ] -> return ~pos atom
         | Ap _ :: _ ->
           fail
             "Higher-order sorts are not allowed. The head of a sort application must be \
@@ -102,7 +104,9 @@ let%test_module "Sort_Parser" =
     let ( = ) = equal Unit.( = )
 
     let%test_unit _ = assert (parse_with Parse.t "a" |> erase_info = a)
+    let%test_unit _ = assert (parse_with Parse.t "(a)" |> erase_info = a)
     let%test_unit _ = assert (parse_with Parse.t "a b c" |> erase_info = abc)
+    let%test_unit _ = assert (parse_with Parse.t "(a b c)" |> erase_info = abc)
     let%test_unit _ = assert (parse_with Parse.t "a (b c) d" |> erase_info = abcd)
 
     let%expect_test _ =
