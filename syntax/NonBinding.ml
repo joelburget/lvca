@@ -33,10 +33,10 @@ and of_de_bruijn_scope = function
 
 let rec to_de_bruijn tm =
   match tm with
-  | Operator (loc, tag, tms) ->
+  | Operator (info, tag, tms) ->
     DeBruijn.Operator
-      (loc, tag, List.map tms ~f:(fun tm -> Either.Second (to_de_bruijn tm)))
-  | Primitive (loc, p) -> Primitive (loc, p)
+      (info, tag, List.map tms ~f:(fun tm -> Either.Second (to_de_bruijn tm)))
+  | Primitive (info, p) -> Primitive (info, p)
 ;;
 
 type ('info, 'prim) nominal_conversion_error =
@@ -58,10 +58,10 @@ and of_nominal_scope = function
 
 let rec to_nominal tm =
   match tm with
-  | Operator (loc, tag, tms) ->
+  | Operator (info, tag, tms) ->
     Nominal.Operator
-      (loc, tag, List.map tms ~f:(fun tm -> Nominal.Scope ([], to_nominal tm)))
-  | Primitive (loc, p) -> Primitive (loc, p)
+      (info, tag, List.map tms ~f:(fun tm -> Nominal.Scope ([], to_nominal tm)))
+  | Primitive (info, p) -> Primitive (info, p)
 ;;
 
 let pp pp_prim ppf tm = tm |> to_nominal |> Nominal.pp_term pp_prim ppf

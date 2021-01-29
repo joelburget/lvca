@@ -88,10 +88,10 @@ let erase = List.map ~f:erase_rule
 
 (** Convert a de Bruijn term to a [term]. See also [to_de_bruijn_exn]. *)
 let rec of_de_bruijn : 'a Binding.DeBruijn.term -> 'a term = function
-  | Operator (loc, tag, scopes) ->
-    Operator (loc, tag, List.map scopes ~f:scope_of_de_bruijn)
-  | Var (loc, i, j) -> Bound (loc, i, j)
-  | Primitive (loc, p) -> Primitive (loc, p)
+  | Operator (info, tag, scopes) ->
+    Operator (info, tag, List.map scopes ~f:scope_of_de_bruijn)
+  | Var (info, i, j) -> Bound (info, i, j)
+  | Primitive (info, p) -> Primitive (info, p)
 
 and scope_of_de_bruijn : 'a Binding.DeBruijn.scope -> 'a scope =
  fun (Scope (pats, body)) -> Scope (pats, List.map body ~f:of_de_bruijn)
@@ -103,10 +103,10 @@ exception FreeVar of string
 
     @raise FreeVar *)
 let rec to_de_bruijn_exn : 'a term -> 'a Binding.DeBruijn.term = function
-  | Operator (loc, name, scopes) -> Operator (loc, name, List.map scopes ~f:to_scope)
-  | Bound (loc, i, j) -> Var (loc, i, j)
+  | Operator (info, name, scopes) -> Operator (info, name, List.map scopes ~f:to_scope)
+  | Bound (info, i, j) -> Var (info, i, j)
   | Free (_, name) -> raise (FreeVar name)
-  | Primitive (loc, prim) -> Primitive (loc, prim)
+  | Primitive (info, prim) -> Primitive (info, prim)
 
 and to_scope : 'a scope -> 'a Binding.DeBruijn.scope =
  fun (Scope (pats, tms)) -> Scope (pats, List.map tms ~f:to_de_bruijn_exn)
@@ -127,9 +127,9 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   (* TODO: I don't think this is right -- we never produce bound variables. I'm keeping it
      this way temporarily since it's how menhir parsing worked. *)
   let rec cvt_tm : 'a Binding.Nominal.term -> 'a term = function
-    | Operator (loc, name, scopes) -> Operator (loc, name, List.map scopes ~f:cvt_scope)
-    | Var (loc, name) -> Free (loc, name)
-    | Primitive (loc, p) -> Primitive (loc, p)
+    | Operator (info, name, scopes) -> Operator (info, name, List.map scopes ~f:cvt_scope)
+    | Var (info, name) -> Free (info, name)
+    | Primitive (info, p) -> Primitive (info, p)
 
   and cvt_scope : 'a Binding.Nominal.scope -> 'a scope =
    fun (Scope (pats, tms)) -> Scope (pats, List.map tms ~f:cvt_tm)

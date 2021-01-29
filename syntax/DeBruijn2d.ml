@@ -11,17 +11,17 @@ type ('info, 'prim) term =
 and ('info, 'prim) scope = Scope of ('info, 'prim) Pattern.t list * ('info, 'prim) term
 
 let rec to_nominal' ctx = function
-  | BoundVar (loc, ix1, ix2) ->
+  | BoundVar (info, ix1, ix2) ->
     List.nth ctx ix1
     |> Option.bind ~f:(Fn.flip List.nth ix2)
-    |> Option.map ~f:(fun name -> Nominal.Var (loc, name))
-  | Operator (loc, tag, subtms) ->
+    |> Option.map ~f:(fun name -> Nominal.Var (info, name))
+  | Operator (info, tag, subtms) ->
     subtms
     |> List.map ~f:(scope_to_nominal ctx)
     |> Option.all
-    |> Option.map ~f:(fun subtms' -> Nominal.Operator (loc, tag, subtms'))
-  | FreeVar (loc, name) -> Some (Var (loc, name))
-  | Primitive (loc, prim) -> Some (Nominal.Primitive (loc, prim))
+    |> Option.map ~f:(fun subtms' -> Nominal.Operator (info, tag, subtms'))
+  | FreeVar (info, name) -> Some (Var (info, name))
+  | Primitive (info, prim) -> Some (Nominal.Primitive (info, prim))
 
 and scope_to_nominal ctx (Scope (binders, body)) =
   let ctx =
@@ -36,16 +36,16 @@ and scope_to_nominal ctx (Scope (binders, body)) =
 let to_nominal tm = to_nominal' [] tm
 
 let rec of_nominal_with_bindings env = function
-  | Nominal.Operator (loc, tag, subtms) ->
+  | Nominal.Operator (info, tag, subtms) ->
     let open Result.Let_syntax in
     let%map subtms' = subtms |> List.map ~f:(scope_of_nominal env) |> Result.all in
-    Operator (loc, tag, subtms')
-  | Var (loc, name) ->
+    Operator (info, tag, subtms')
+  | Var (info, name) ->
     Ok
       (match Map.find env name with
-      | None -> FreeVar (loc, name)
-      | Some (i, j) -> BoundVar (loc, i, j))
-  | Primitive (loc, prim) -> Ok (Primitive (loc, prim))
+      | None -> FreeVar (info, name)
+      | Some (i, j) -> BoundVar (info, i, j))
+  | Primitive (info, prim) -> Ok (Primitive (info, prim))
 
 and scope_of_nominal env (Nominal.Scope (pats, body) as scope) =
   let open Result.Let_syntax in

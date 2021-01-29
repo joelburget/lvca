@@ -25,7 +25,7 @@ and scope_equal info_eq prim_eq (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
   List.equal (Pattern.equal info_eq prim_eq) pats1 pats2 && equal info_eq prim_eq tm1 tm2
 ;;
 
-let info = function Operator (loc, _, _) | Var (loc, _) | Primitive (loc, _) -> loc
+let info = function Operator (info, _, _) | Var (info, _) | Primitive (info, _) -> info
 let any, list, str, string, semi, pf = Fmt.(any, list, str, string, semi, pf)
 
 let rec pp_term_generic ~open_loc ~close_loc ~pp_pat ~pp_prim ppf tm =
@@ -91,7 +91,7 @@ let pp_scope_range pp_prim ppf tm =
 
 let pp_term_ranges pp_prim ppf tm =
   pp_term_generic
-    ~open_loc:(fun ppf loc -> Stdlib.Format.pp_open_stag ppf (SourceRanges.Stag loc))
+    ~open_loc:(fun ppf info -> Stdlib.Format.pp_open_stag ppf (SourceRanges.Stag info))
     ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
     ~pp_pat:Pattern.pp_ranges
     ~pp_prim
@@ -101,7 +101,7 @@ let pp_term_ranges pp_prim ppf tm =
 
 let pp_scope_ranges pp_prim ppf tm =
   pp_scope_generic
-    ~open_loc:(fun ppf loc -> Stdlib.Format.pp_open_stag ppf (SourceRanges.Stag loc))
+    ~open_loc:(fun ppf info -> Stdlib.Format.pp_open_stag ppf (SourceRanges.Stag info))
     ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
     ~pp_pat:Pattern.pp_ranges
     ~pp_prim
@@ -168,10 +168,10 @@ let deserialize unjsonify_prim buf =
 let hash serialize_prim tm = tm |> serialize serialize_prim |> Lvca_util.Sha256.hash
 
 let rec map_info ~f = function
-  | Operator (loc, name, pats) ->
-    Operator (f loc, name, List.map pats ~f:(map_info_scope ~f))
-  | Var (loc, name) -> Var (f loc, name)
-  | Primitive (loc, prim) -> Primitive (f loc, prim)
+  | Operator (info, name, pats) ->
+    Operator (f info, name, List.map pats ~f:(map_info_scope ~f))
+  | Var (info, name) -> Var (f info, name)
+  | Primitive (info, prim) -> Primitive (f info, prim)
 
 and map_info_scope ~f (Scope (binders, tm)) =
   let binders' = List.map binders ~f:(Pattern.map_info ~f) in
@@ -183,18 +183,18 @@ let erase tm = map_info ~f:(fun _ -> ()) tm
 let erase_scope (Scope (pats, tm)) = Scope (List.map pats ~f:Pattern.erase, erase tm)
 
 let rec to_pattern = function
-  | Var (loc, name) ->
+  | Var (info, name) ->
     let v =
       if String.is_substring_at name ~pos:0 ~substring:"_"
-      then Pattern.Ignored (loc, String.slice name 1 0)
-      else Var (loc, name)
+      then Pattern.Ignored (info, String.slice name 1 0)
+      else Var (info, name)
     in
     Ok v
-  | Operator (loc, name, tms) ->
+  | Operator (info, name, tms) ->
     let open Result.Let_syntax in
     let%map subtms = tms |> List.map ~f:scope_to_patterns |> Result.all in
-    Pattern.Operator (loc, name, subtms)
-  | Primitive (loc, prim) -> Ok (Primitive (loc, prim))
+    Pattern.Operator (info, name, subtms)
+  | Primitive (info, prim) -> Ok (Primitive (info, prim))
 
 and scope_to_patterns = function
   | Scope ([], tm) -> to_pattern tm
@@ -205,22 +205,22 @@ and scope_to_patterns = function
 ;;
 
 let rec pattern_to_term : ('info, 'prim) Pattern.t -> ('info, 'prim) term = function
-  | Operator (loc, name, pats) ->
+  | Operator (info, name, pats) ->
     Operator
-      ( loc
+      ( info
       , name (* TODO: should the scope really inherit the 'info? *)
       , List.map pats ~f:(fun pat -> Scope ([], pattern_to_term pat)) )
-  | Primitive (loc, prim) -> Primitive (loc, prim)
-  | Var (loc, name) -> Var (loc, name)
-  | Ignored (loc, name) -> Var (loc, "_" ^ name)
+  | Primitive (info, prim) -> Primitive (info, prim)
+  | Var (info, name) -> Var (info, name)
+  | Ignored (info, name) -> Var (info, "_" ^ name)
 ;;
 
 let rec subst_all ctx tm =
   match tm with
   | Primitive _ -> tm
   | Var (_loc, name) -> (match Map.find ctx name with Some v -> v | None -> tm)
-  | Operator (loc, name, scopes) ->
-    Operator (loc, name, List.map scopes ~f:(subst_all_scope ctx))
+  | Operator (info, name, scopes) ->
+    Operator (info, name, List.map scopes ~f:(subst_all_scope ctx))
 
 and subst_all_scope ctx (Scope (pats, tm)) = Scope (pats, subst_all ctx tm)
 

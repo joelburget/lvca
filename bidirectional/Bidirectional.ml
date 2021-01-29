@@ -59,7 +59,7 @@ let open_scope (args : 'a term list list) (Scope (names, body)) : 'a term list o
   else (
     let rec open' offset tm =
       match tm with
-      | Operator (loc, tag, subtms) ->
+      | Operator (info, tag, subtms) ->
         subtms
         |> List.map ~f:(fun (Scope (binders, subtms)) ->
                subtms
@@ -67,7 +67,7 @@ let open_scope (args : 'a term list list) (Scope (names, body)) : 'a term list o
                |> Option.all
                |> Option.map ~f:(fun subtms' -> Scope (binders, subtms')))
         |> Option.all
-        |> Option.map ~f:(fun subtms' -> Operator (loc, tag, subtms'))
+        |> Option.map ~f:(fun subtms' -> Operator (info, tag, subtms'))
       | Bound (_, i, j) ->
         if i >= offset
         then
@@ -83,14 +83,16 @@ let open_scope (args : 'a term list list) (Scope (names, body)) : 'a term list o
 
 (** Create free variables from a pattern *)
 let pat_to_free_vars pat =
-  pat |> Pattern.list_vars_of_pattern |> List.map ~f:(fun (loc, name) -> Free (loc, name))
+  pat
+  |> Pattern.list_vars_of_pattern
+  |> List.map ~f:(fun (info, name) -> Free (info, name))
 ;;
 
 let rec instantiate (env : 'a scope String.Map.t) (tm : 'a term)
     : ('a term, string) Result.t
   =
   match tm with
-  | Operator (loc, tag, subtms) ->
+  | Operator (info, tag, subtms) ->
     subtms
     |> List.map ~f:(fun (Scope (binders, body)) ->
            let new_var_names : string array =
@@ -107,7 +109,7 @@ let rec instantiate (env : 'a scope String.Map.t) (tm : 'a term)
            |> Result.all
            |> Result.map ~f:(fun body' -> Scope (binders, body')))
     |> Result.all
-    |> Result.map ~f:(fun subtms' -> Operator (loc, tag, subtms'))
+    |> Result.map ~f:(fun subtms' -> Operator (info, tag, subtms'))
   | Bound _ -> Ok tm
   | Free (_, v) ->
     (match Map.find env v with

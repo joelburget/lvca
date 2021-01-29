@@ -13,17 +13,17 @@ and ('info, 'prim) scope = Scope of 'info * string * ('info, 'prim) term
 
 let rec open_term target_ix subst_tm tm =
   match tm with
-  | Operator (loc, tag, subtms) ->
+  | Operator (info, tag, subtms) ->
     let subtms' =
       subtms
       |> List.map
            ~f:
              (Either.map
-                ~first:(fun (Scope (loc, name, tm)) ->
-                  Scope (loc, name, open_term (target_ix + 1) subst_tm tm))
+                ~first:(fun (Scope (info, name, tm)) ->
+                  Scope (info, name, open_term (target_ix + 1) subst_tm tm))
                 ~second:(open_term target_ix subst_tm))
     in
-    Operator (loc, tag, subtms')
+    Operator (info, tag, subtms')
   | BoundVar (_, i) -> if i = target_ix then subst_tm else tm
   | FreeVar _ | Primitive _ -> tm
 ;;
@@ -31,20 +31,20 @@ let rec open_term target_ix subst_tm tm =
 let open_scope subst_tm (Scope (_, _, tms)) = open_term 0 subst_tm tms
 
 let rec to_nominal' ctx = function
-  | BoundVar (loc, ix) ->
-    ix |> List.nth ctx |> Option.map ~f:(fun name -> Nominal.Var (loc, name))
-  | FreeVar (loc, name) -> Some (Var (loc, name))
-  | Operator (loc, tag, subtms) ->
+  | BoundVar (info, ix) ->
+    ix |> List.nth ctx |> Option.map ~f:(fun name -> Nominal.Var (info, name))
+  | FreeVar (info, name) -> Some (Var (info, name))
+  | Operator (info, tag, subtms) ->
     subtms
     |> List.map ~f:(scope_or_term_to_nominal ctx)
     |> Option.all
-    |> Option.map ~f:(fun subtms' -> Nominal.Operator (loc, tag, subtms'))
-  | Primitive (loc, prim) -> Some (Nominal.Primitive (loc, prim))
+    |> Option.map ~f:(fun subtms' -> Nominal.Operator (info, tag, subtms'))
+  | Primitive (info, prim) -> Some (Nominal.Primitive (info, prim))
 
-and scope_to_nominal ctx (Scope (loc, name, body)) =
+and scope_to_nominal ctx (Scope (info, name, body)) =
   let ctx = List.cons name ctx in
   let%map body = to_nominal' ctx body in
-  Nominal.Scope ([ Var (loc, name) ], body)
+  Nominal.Scope ([ Var (info, name) ], body)
 
 and scope_or_term_to_nominal ctx = function
   | Either.First scope -> scope_to_nominal ctx scope
@@ -56,16 +56,16 @@ and scope_or_term_to_nominal ctx = function
 let to_nominal tm = to_nominal' [] tm
 
 let rec of_nominal_with_bindings env = function
-  | Nominal.Operator (loc, tag, subtms) ->
+  | Nominal.Operator (info, tag, subtms) ->
     let open Result.Let_syntax in
     let%map subtms' = subtms |> List.map ~f:(scope_of_nominal env) |> Result.all in
-    Operator (loc, tag, subtms')
-  | Var (loc, name) ->
+    Operator (info, tag, subtms')
+  | Var (info, name) ->
     Ok
       (match Map.find env name with
-      | None -> FreeVar (loc, name)
-      | Some i -> BoundVar (loc, i))
-  | Primitive (loc, prim) -> Ok (Primitive (loc, prim))
+      | None -> FreeVar (info, name)
+      | Some i -> BoundVar (info, i))
+  | Primitive (info, prim) -> Ok (Primitive (info, prim))
 
 and scope_of_nominal env (Scope (pats, body) as scope) =
   let open Result.Let_syntax in
