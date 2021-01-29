@@ -25,11 +25,11 @@ and scope_equal info_eq prim_eq (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
   List.equal (Pattern.equal info_eq prim_eq) pats1 pats2 && equal info_eq prim_eq tm1 tm2
 ;;
 
-let location = function Operator (loc, _, _) | Var (loc, _) | Primitive (loc, _) -> loc
+let info = function Operator (loc, _, _) | Var (loc, _) | Primitive (loc, _) -> loc
 let any, list, str, string, semi, pf = Fmt.(any, list, str, string, semi, pf)
 
 let rec pp_term_generic ~open_loc ~close_loc ~pp_pat ~pp_prim ppf tm =
-  open_loc ppf (location tm);
+  open_loc ppf (info tm);
   (match tm with
   | Operator (_, tag, subtms) ->
     pf
@@ -40,7 +40,7 @@ let rec pp_term_generic ~open_loc ~close_loc ~pp_pat ~pp_prim ppf tm =
       subtms
   | Var (_, v) -> pf ppf "%a" string v
   | Primitive (_, p) -> pf ppf "%a" pp_prim p);
-  close_loc ppf (location tm)
+  close_loc ppf (info tm)
 
 and pp_scope_generic ~open_loc ~close_loc ~pp_pat ~pp_prim ppf (Scope (bindings, body)) =
   let pp_body = pp_term_generic ~open_loc ~close_loc ~pp_pat ~pp_prim in
@@ -167,19 +167,19 @@ let deserialize unjsonify_prim buf =
 
 let hash serialize_prim tm = tm |> serialize serialize_prim |> Lvca_util.Sha256.hash
 
-let rec map_loc ~f = function
+let rec map_info ~f = function
   | Operator (loc, name, pats) ->
-    Operator (f loc, name, List.map pats ~f:(map_loc_scope ~f))
+    Operator (f loc, name, List.map pats ~f:(map_info_scope ~f))
   | Var (loc, name) -> Var (f loc, name)
   | Primitive (loc, prim) -> Primitive (f loc, prim)
 
-and map_loc_scope ~f (Scope (binders, tm)) =
-  let binders' = List.map binders ~f:(Pattern.map_loc ~f) in
-  let tm = map_loc ~f tm in
+and map_info_scope ~f (Scope (binders, tm)) =
+  let binders' = List.map binders ~f:(Pattern.map_info ~f) in
+  let tm = map_info ~f tm in
   Scope (binders', tm)
 ;;
 
-let erase tm = map_loc ~f:(fun _ -> ()) tm
+let erase tm = map_info ~f:(fun _ -> ()) tm
 let erase_scope (Scope (pats, tm)) = Scope (List.map pats ~f:Pattern.erase, erase tm)
 
 let rec to_pattern = function

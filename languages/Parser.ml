@@ -52,45 +52,45 @@ let rec equal loc_eq t1 t2 =
   | _, _ -> false
 ;;
 
-let location = function
-  | AnyChar loc
-  | Char (loc, _)
-  | String (loc, _)
-  | Satisfy (loc, _, _)
-  | Fail (loc, _)
-  | Let (loc, _, _, _)
-  | Option (loc, _)
-  | Count (loc, _, _)
-  | Many (loc, _)
-  | Many1 (loc, _)
-  | Choice (loc, _)
-  | Fix (loc, _, _)
-  | Sequence (loc, _, _)
-  | Identifier (loc, _) ->
-    loc
+let info = function
+  | AnyChar i
+  | Char (i, _)
+  | String (i, _)
+  | Satisfy (i, _, _)
+  | Fail (i, _)
+  | Let (i, _, _, _)
+  | Option (i, _)
+  | Count (i, _, _)
+  | Many (i, _)
+  | Many1 (i, _)
+  | Choice (i, _)
+  | Fix (i, _, _)
+  | Sequence (i, _, _)
+  | Identifier (i, _) ->
+    i
 ;;
 
-let rec map_loc ~f =
-  let cf = Core.map_loc ~f in
-  let map_binder (Binder (name, p)) = Binder (name, map_loc ~f p) in
+let rec map_info ~f =
+  let cf = Core.map_info ~f in
+  let map_binder (Binder (name, p)) = Binder (name, map_info ~f p) in
   function
   | AnyChar loc -> AnyChar (f loc)
   | Char (loc, c) -> Char (f loc, c)
   | String (loc, s) -> String (f loc, s)
   | Satisfy (loc, s, tm) -> Satisfy (f loc, s, cf tm)
   | Fail (loc, tm) -> Fail (f loc, cf tm)
-  | Let (loc, s, p1, p2) -> Let (f loc, s, map_loc ~f p1, map_loc ~f p2)
-  | Option (loc, p) -> Option (f loc, map_loc ~f p)
-  | Count (loc, p, tm) -> Count (f loc, map_loc ~f p, cf tm)
-  | Many (loc, p) -> Many (f loc, map_loc ~f p)
-  | Many1 (loc, p) -> Many1 (f loc, map_loc ~f p)
-  | Choice (loc, ps) -> Choice (f loc, List.map ps ~f:(map_loc ~f))
-  | Fix (loc, s, p) -> Fix (f loc, s, map_loc ~f p)
+  | Let (loc, s, p1, p2) -> Let (f loc, s, map_info ~f p1, map_info ~f p2)
+  | Option (loc, p) -> Option (f loc, map_info ~f p)
+  | Count (loc, p, tm) -> Count (f loc, map_info ~f p, cf tm)
+  | Many (loc, p) -> Many (f loc, map_info ~f p)
+  | Many1 (loc, p) -> Many1 (f loc, map_info ~f p)
+  | Choice (loc, ps) -> Choice (f loc, List.map ps ~f:(map_info ~f))
+  | Fix (loc, s, p) -> Fix (f loc, s, map_info ~f p)
   | Sequence (loc, ps, p) -> Sequence (f loc, List.map ps ~f:map_binder, cf p)
   | Identifier (loc, s) -> Identifier (f loc, s)
 ;;
 
-let erase = map_loc ~f:(fun _ -> ())
+let erase = map_info ~f:(fun _ -> ())
 
 module Prec = struct
   let atom = 6
@@ -108,7 +108,7 @@ let pp_generic ~open_loc ~close_loc ppf p =
     if ambient_prec > prec then Fmt.parens pp else pp
   in
   let rec go ambient_prec ppf p =
-    let loc = location p in
+    let loc = info p in
     open_loc ppf loc;
     let formatter, prec =
       match p with
@@ -196,7 +196,7 @@ let pp_plain ppf p = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ ->
 let pp_str p = Fmt.str "%a" pp_plain p
 
 let mk_some : 'loc n_term -> 'loc n_term =
- fun tm -> Nominal.Operator (Nominal.location tm, "some", [ Scope ([], tm) ])
+ fun tm -> Nominal.Operator (Nominal.info tm, "some", [ Scope ([], tm) ])
 ;;
 
 let mk_none pos = Nominal.Operator (pos, "none", [])
@@ -372,7 +372,7 @@ module Direct = struct
   ;;
 
   let mk_list lst =
-    let rng = lst |> List.map ~f:Nominal.location |> SourceRanges.unions in
+    let rng = lst |> List.map ~f:Nominal.info |> SourceRanges.unions in
     let lst = lst |> List.map ~f:(fun tm -> Nominal.Scope ([], tm)) in
     Nominal.Operator (rng, "list", lst)
   ;;
@@ -762,7 +762,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
             | Some (Keyword ("in", _)) ->
               sequence ~tokens
               >>= fun e2 ->
-              let pos = OptRange.union let_pos (location e2) in
+              let pos = OptRange.union let_pos (info e2) in
               return ~pos (Let (pos, name, e1, e2))
             | tok_opt -> mk_err tok_opt {|keyword "in"|})
           | tok_opt -> mk_err tok_opt {|operator "="|})
@@ -828,7 +828,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     let token = Queue.dequeue_exn tokens in
     prefix ~tokens token
     >>= fun left ->
-    let pos = location left in
+    let pos = info left in
     (* Consume all operators with left binding power (precedence) higher than
        the ambient precedence *)
     let rec go ~ambient_prec left =
@@ -872,19 +872,19 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         let (_ : token) = Queue.dequeue_exn tokens in
         expression ~tokens ~ambient_prec:Prec.eq
         >>= fun expr ->
-        let pos = OptRange.union name_pos (location expr) in
+        let pos = OptRange.union name_pos (info expr) in
         return ~pos (Binder (Some name, expr))
       | Operator _ :: _ ->
         (* don't dequeue any tokens -- they'll all be parsed by expression *)
         expression ~tokens ~ambient_prec:Prec.arr
-        >>= fun p -> return ~pos:(location p) (Binder (None, p))
+        >>= fun p -> return ~pos:(info p) (Binder (None, p))
       | _ ->
         (* dequeue the identifier *)
         let (_ : token) = Queue.dequeue_exn tokens in
         return ~pos:name_pos (Binder (None, ident)))
     | _ ->
       expression ~tokens ~ambient_prec:Prec.arr
-      >>= fun expr -> return ~pos:(location expr) (Binder (None, expr))
+      >>= fun expr -> return ~pos:(info expr) (Binder (None, expr))
 
   (* Parse the forms:
     1. `x=foo bar y=baz -> {...}`
@@ -906,7 +906,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         (match Queue.to_list binders with
         (* Parse form 2: not a binder, but an expression. *)
         | [ Binder (None, expr) ] ->
-          let pos = location expr in
+          let pos = info expr in
           return ~pos expr
         | _binders -> fail "Expected a single expression")
       (* Parse form 1 *)
@@ -1072,7 +1072,7 @@ let%test_module "Parsing" =
       match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
       | Error msg -> print_endline ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
-        let parser' = map_loc ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
+        let parser' = map_info ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
         let Direct.{ result; _ } = Direct.parse_direct parser' str in
         (match result with
         | Error (msg, _) -> printf "failed to parse: %s\n" msg

@@ -52,7 +52,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
                  >>== fun ~pos:p1 name ->
                  atom
                  >>| fun body ->
-                 let pos = OptRange.union p1 (NonBinding.location body) in
+                 let pos = OptRange.union p1 (NonBinding.info body) in
                  NonBinding.Operator (pos, name, [ body ]))
           |> choice
         in
@@ -62,7 +62,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
             >>== fun ~pos:p1 name ->
             lift2
               (fun atom1 atom2 ->
-                let pos = OptRange.union p1 (NonBinding.location atom2) in
+                let pos = OptRange.union p1 (NonBinding.info atom2) in
                 NonBinding.Operator (pos, name, [ atom1; atom2 ]))
               atom
               atom
@@ -73,7 +73,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         let mul_div : term Parsers.t =
           let op = char '*' <|> char '/' in
           let f l (op, r) =
-            let rng = OptRange.union (NonBinding.location l) (NonBinding.location r) in
+            let rng = OptRange.union (NonBinding.info l) (NonBinding.info r) in
             match op with
             | '*' -> NonBinding.Operator (rng, "mul", [ l; r ])
             | '/' -> NonBinding.Operator (rng, "div", [ l; r ])
@@ -84,7 +84,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         let add_sub : term Parsers.t =
           let op = char '+' <|> char '-' in
           let f l (op, r) =
-            let rng = OptRange.union (NonBinding.location l) (NonBinding.location r) in
+            let rng = OptRange.union (NonBinding.info l) (NonBinding.info r) in
             match op with
             | '+' -> NonBinding.Operator (rng, "add", [ l; r ])
             | '-' -> NonBinding.Operator (rng, "sub", [ l; r ])

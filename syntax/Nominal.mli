@@ -14,7 +14,7 @@ val equal
   -> ('loc, 'prim) term
   -> bool
 
-val location : ('loc, _) term -> 'loc
+val info : ('loc, _) term -> 'loc
 
 val pp_term_generic
   :  open_loc:'loc Fmt.t
@@ -49,7 +49,7 @@ val deserialize
 (** The SHA-256 hash of the serialized term. This is useful for content-identifying terms. *)
 val hash : 'prim Lvca_util.Json.serializer -> (_, 'prim) term -> string
 
-val map_loc : f:('a -> 'b) -> ('a, 'prim) term -> ('b, 'prim) term
+val map_info : f:('a -> 'b) -> ('a, 'prim) term -> ('b, 'prim) term
 val erase : (_, 'prim) term -> (unit, 'prim) term
 val erase_scope : (_, 'prim) scope -> (unit, 'prim) scope
 

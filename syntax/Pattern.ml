@@ -45,7 +45,7 @@ let rec list_vars_of_pattern = function
   | Ignored _ -> []
 ;;
 
-let location = function
+let info = function
   | Operator (loc, _, _) | Primitive (loc, _) | Var (loc, _) | Ignored (loc, _) -> loc
 ;;
 
@@ -61,7 +61,7 @@ let rec pp pp_prim ppf =
 
 let rec pp_range_generic ~opener ~closer pp_prim ppf pat =
   let list, pf, semi = Fmt.(list, pf, semi) in
-  opener ppf (location pat);
+  opener ppf (info pat);
   (match pat with
   | Operator (_, name, pats) ->
     pf
@@ -73,7 +73,7 @@ let rec pp_range_generic ~opener ~closer pp_prim ppf pat =
   | Primitive (_, prim) -> pf ppf "%a" pp_prim prim
   | Var (_, name) -> pf ppf "%s" name
   | Ignored (_, name) -> pf ppf "_%s" name);
-  closer ppf (location pat)
+  closer ppf (info pat)
 ;;
 
 let pp_range pp_prim ppf pat =
@@ -122,16 +122,15 @@ let rec unjsonify prim_unjsonify =
     | _ -> None)
 ;;
 
-let rec map_loc : f:('a -> 'b) -> ('a, 'prim) pattern -> ('b, 'prim) pattern =
- fun ~f -> function
+let rec map_info ~f = function
   | Operator (loc, tag, subpats) ->
-    Operator (f loc, tag, subpats |> List.map ~f:(map_loc ~f))
+    Operator (f loc, tag, subpats |> List.map ~f:(map_info ~f))
   | Primitive (loc, prim) -> Primitive (f loc, prim)
   | Var (loc, name) -> Var (f loc, name)
   | Ignored (loc, name) -> Ignored (f loc, name)
 ;;
 
-let erase pat = map_loc ~f:(fun _ -> ()) pat
+let erase pat = map_info ~f:(fun _ -> ()) pat
 
 let rec select_path ~path pat =
   match path with

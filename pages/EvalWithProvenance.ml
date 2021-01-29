@@ -101,8 +101,8 @@ module View = struct
                match result with
                | Ok tm ->
                  Brr.Console.log
-                   [ Jstr.v ("tm loc: " ^ OptRange.to_string (Nominal.location tm)) ];
-                 let tm = Nominal.map_loc tm ~f:cvt_loc in
+                   [ Jstr.v ("tm loc: " ^ OptRange.to_string (Nominal.info tm)) ];
+                 let tm = Nominal.map_info tm ~f:cvt_loc in
                  Fmt.pf formatter "%a" lambda_ranges_pretty tm
                | Error msg -> Fmt.pf formatter "%s" msg
              in

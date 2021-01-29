@@ -398,7 +398,7 @@ let view_tm
     ?default_expanded_depth:(expanded_depth = FullyExpanded)
     tm
   =
-  let tm = Nominal.map_loc ~f:select_source_range tm in
+  let tm = Nominal.map_info ~f:select_source_range tm in
   (* First, create a stream for all free variables actions on them will work
      like normal. *)
   let free_vars = Nominal.free_vars tm in

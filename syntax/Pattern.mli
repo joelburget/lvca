@@ -28,9 +28,9 @@ val unjsonify
   :  'prim Lvca_util.Json.deserializer
   -> (unit, 'prim) t Lvca_util.Json.deserializer
 
-val map_loc : f:('a -> 'b) -> ('a, 'prim) pattern -> ('b, 'prim) pattern
+val map_info : f:('a -> 'b) -> ('a, 'prim) pattern -> ('b, 'prim) pattern
 val erase : (_, 'prim) pattern -> (unit, 'prim) pattern
-val location : ('info, _) pattern -> 'info
+val info : ('info, _) pattern -> 'info
 
 val select_path
   :  path:int list

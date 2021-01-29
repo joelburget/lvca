@@ -6,7 +6,7 @@ type ('loc, 'prim) term =
   | Operator of 'loc * string * ('loc, 'prim) term list
   | Primitive of 'loc * 'prim
 
-val location : ('loc, _) term -> 'loc
+val info : ('loc, _) term -> 'loc
 
 (** {1 de Bruijn conversion} *)
 

@@ -1,12 +1,11 @@
 open Base
+open Result.Let_syntax
 
 type ('loc, 'prim) term =
   | Operator of 'loc * string * ('loc, 'prim) term list
   | Primitive of 'loc * 'prim
 
-let location = function Operator (loc, _, _) | Primitive (loc, _) -> loc
-
-open Result.Let_syntax
+let info = function Operator (i, _, _) | Primitive (i, _) -> i
 
 type ('loc, 'prim) de_bruijn_conversion_error =
   | ScopeEncountered of ('loc, 'prim) DeBruijn.scope

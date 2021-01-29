@@ -173,7 +173,7 @@ module Prelude = struct
   let ctx : P.Direct.parser_ctx =
     Lvca_util.String.Map.of_alist_exn
       [ "alpha", alpha; "digit", digit; "name", name; "literal", literal ]
-    |> Map.map ~f:(P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"prelude"))
+    |> Map.map ~f:(P.map_info ~f:(SourceRanges.of_opt_range ~buf:"prelude"))
   ;;
 end
 
@@ -517,7 +517,7 @@ module View = struct
       let trace = El.div [ txt "not available: parser failed to parse" ] in
       result, trace, E.never
     | Ok parser ->
-      let parser = P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
+      let parser = P.map_info ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
       let toplevel_result = Direct.parse_direct ~term_ctx ~parser_ctx parser test_str in
       let P.Direct.{ didnt_consume_msg; result; snapshot } = toplevel_result in
       let result, select_e =
@@ -589,7 +589,7 @@ module View = struct
         |> S.map ~eq:html_eq (function
                | Ok parser ->
                  parser
-                 |> P.map_loc ~f:(SourceRanges.of_opt_range ~buf:"parser")
+                 |> P.map_info ~f:(SourceRanges.of_opt_range ~buf:"parser")
                  |> view_parser ~highlight_s:parser_hl_s ~success:true
                  |> fst
                | Error _ -> pre [ mk_reactive' code (parser_str_s |> S.map txt) ])

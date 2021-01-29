@@ -30,8 +30,8 @@ and string_of_scope (Scope (pats, tms)) =
     Printf.sprintf "%s. %s" pats' (string_of_terms tms)
 ;;
 
-let location = function
-  | Operator (loc, _, _) | Bound (loc, _, _) | Free (loc, _) | Primitive (loc, _) -> loc
+let info = function
+  | Operator (i, _, _) | Bound (i, _, _) | Free (i, _) | Primitive (i, _) -> i
 ;;
 
 type 'a typing_rule =

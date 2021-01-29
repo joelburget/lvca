@@ -22,9 +22,9 @@ and 'a core_scope = Scope of string * 'a term
 and 'a core_case_scope =
   | CaseScope of ('a, Lvca_syntax.Primitive.t) Lvca_syntax.Pattern.t * 'a term
 
-val map_loc : f:('a -> 'b) -> 'a term -> 'b term
+val map_info : f:('a -> 'b) -> 'a term -> 'b term
 val erase : _ term -> unit term
-val location : 'a term -> 'a
+val info : 'a term -> 'a
 val pp : Format.formatter -> 'a term -> unit
 val to_string : 'a term -> string
 

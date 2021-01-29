@@ -33,7 +33,7 @@ module AngstromParse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   open Parsers
 
-  let location = Nominal.location
+  let info = Nominal.info
 
   let t_var : (OptRange.t, Primitive.t) Nominal.term Parsers.t =
     Parsers.identifier >>|| fun ~pos name -> Nominal.Var (pos, name), pos
@@ -53,7 +53,7 @@ module AngstromParse (Comment : ParseUtil.Comment_int) = struct
           >>= fun start ->
           lift4
             (fun _lam var _arr body ->
-              let range = OptRange.extend_to (location body) start in
+              let range = OptRange.extend_to (info body) start in
               let tm = Nominal.Operator (range, "lam", [ Scope ([ var ], body) ]) in
               tm)
             (char '\\')
@@ -80,8 +80,8 @@ let pp_generic ~open_loc ~close_loc =
   let rec pp' prec ppf tm =
     let module Format = Caml.Format in
     Format.pp_open_stag ppf (Format.String_tag (Nominal.hash Primitive.jsonify tm));
-    (* Stdio.printf "opening stag %s\n" (OptRange.to_string (Nominal.location tm)); *)
-    open_loc ppf (Nominal.location tm);
+    (* Stdio.printf "opening stag %s\n" (OptRange.to_string (Nominal.info tm)); *)
+    open_loc ppf (Nominal.info tm);
     (match tm with
     | Nominal.Operator (_, "app", [ Scope ([], a); Scope ([], b) ]) ->
       if prec > 1
@@ -93,8 +93,8 @@ let pp_generic ~open_loc ~close_loc =
       then Fmt.pf ppf {|(\%s -> %a)|} name (pp' 0) body
       else Fmt.pf ppf {|\%s -> %a|} name (pp' 0) body
     | tm -> Fmt.failwith "Invalid Lambda term %a" (Nominal.pp_term Primitive.pp) tm);
-    (* OptRange.close_stag ppf (Nominal.location tm); *)
-    close_loc ppf (Nominal.location tm);
+    (* OptRange.close_stag ppf (Nominal.info tm); *)
+    close_loc ppf (Nominal.info tm);
     (* range tag *)
     Format.pp_close_stag ppf ()
     (* hash tag *)

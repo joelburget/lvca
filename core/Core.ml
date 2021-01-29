@@ -20,29 +20,29 @@ and 'a core_scope = Scope of string * 'a term
 
 and 'a core_case_scope = CaseScope of ('a, Primitive.t) Pattern.t * 'a term
 
-let rec map_loc ~f = function
-  | Term tm -> Term (Nominal.map_loc ~f tm)
-  | CoreApp (loc, t1, t2) -> CoreApp (f loc, map_loc ~f t1, map_loc ~f t2)
+let rec map_info ~f = function
+  | Term tm -> Term (Nominal.map_info ~f tm)
+  | CoreApp (loc, t1, t2) -> CoreApp (f loc, map_info ~f t1, map_info ~f t2)
   | Case (loc, tm, scopes) ->
-    Case (f loc, map_loc ~f tm, List.map scopes ~f:(map_loc_case_scope ~f))
+    Case (f loc, map_info ~f tm, List.map scopes ~f:(map_info_case_scope ~f))
   | Lambda (loc, sort, core_scope) ->
-    Lambda (f loc, Sort.map_info ~f sort, map_loc_core_scope ~f core_scope)
+    Lambda (f loc, Sort.map_info ~f sort, map_info_core_scope ~f core_scope)
   | Let (loc, is_rec, tm, core_scope) ->
-    Let (f loc, is_rec, map_loc ~f tm, map_loc_core_scope ~f core_scope)
+    Let (f loc, is_rec, map_info ~f tm, map_info_core_scope ~f core_scope)
 
-and map_loc_core_scope ~f (Scope (name, tm)) = Scope (name, map_loc ~f tm)
+and map_info_core_scope ~f (Scope (name, tm)) = Scope (name, map_info ~f tm)
 
-and map_loc_case_scope ~f (CaseScope (pat, tm)) =
-  CaseScope (Pattern.map_loc ~f pat, map_loc ~f tm)
+and map_info_case_scope ~f (CaseScope (pat, tm)) =
+  CaseScope (Pattern.map_info ~f pat, map_info ~f tm)
 ;;
 
-let location = function
-  | Term tm -> Nominal.location tm
+let info = function
+  | Term tm -> Nominal.info tm
   | CoreApp (loc, _, _) | Case (loc, _, _) | Lambda (loc, _, _) | Let (loc, _, _, _) ->
     loc
 ;;
 
-let erase tm = map_loc ~f:(fun _ -> ()) tm
+let erase tm = map_info ~f:(fun _ -> ()) tm
 
 module PP = struct
   let braces, list, any, pf, sp = Fmt.(braces, list, any, pf, sp)
@@ -276,7 +276,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     | [ x ] -> x
     | f :: args ->
       List.fold_left args ~init:f ~f:(fun f_app arg ->
-          let pos = OptRange.union (location f_app) (location arg) in
+          let pos = OptRange.union (info f_app) (info arg) in
           CoreApp (pos, f_app, arg))
   ;;
 

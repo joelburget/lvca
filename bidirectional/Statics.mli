@@ -12,7 +12,7 @@ type 'a term =
 
 and 'a scope = Scope of 'a Pattern.t list * 'a term list
 
-val location : 'a term -> 'a
+val info : 'a term -> 'a
 val string_of_term : 'a term -> string
 val string_of_scope : 'a scope -> string
 
