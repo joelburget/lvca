@@ -25,7 +25,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
       | Either.First str -> ConstructiveReal.of_bigint (Z.of_string str)
       | Either.Second f -> ConstructiveReal.of_float f
     in
-    let tm = NonBinding.Operator (pos, "lit", [ [ Primitive (pos, lit) ] ]) in
+    let tm = NonBinding.Operator (pos, "lit", [ Primitive (pos, lit) ]) in
     tm, pos
   ;;
 
@@ -53,7 +53,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
                  atom
                  >>| fun body ->
                  let pos = OptRange.union p1 (NonBinding.location body) in
-                 NonBinding.Operator (pos, name, [ [ body ] ]))
+                 NonBinding.Operator (pos, name, [ body ]))
           |> choice
         in
         let application =
@@ -63,7 +63,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
             lift2
               (fun atom1 atom2 ->
                 let pos = OptRange.union p1 (NonBinding.location atom2) in
-                NonBinding.Operator (pos, name, [ [ atom1 ]; [ atom2 ] ]))
+                NonBinding.Operator (pos, name, [ atom1; atom2 ]))
               atom
               atom
           in
@@ -75,8 +75,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
           let f l (op, r) =
             let rng = OptRange.union (NonBinding.location l) (NonBinding.location r) in
             match op with
-            | '*' -> NonBinding.Operator (rng, "mul", [ [ l ]; [ r ] ])
-            | '/' -> NonBinding.Operator (rng, "div", [ [ l ]; [ r ] ])
+            | '*' -> NonBinding.Operator (rng, "mul", [ l; r ])
+            | '/' -> NonBinding.Operator (rng, "div", [ l; r ])
             | _ -> failwith "error: impossible operator"
           in
           application >>= fun init -> many (pair op application) >>| List.fold ~init ~f
@@ -86,8 +86,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
           let f l (op, r) =
             let rng = OptRange.union (NonBinding.location l) (NonBinding.location r) in
             match op with
-            | '+' -> NonBinding.Operator (rng, "add", [ [ l ]; [ r ] ])
-            | '-' -> NonBinding.Operator (rng, "sub", [ [ l ]; [ r ] ])
+            | '+' -> NonBinding.Operator (rng, "add", [ l; r ])
+            | '-' -> NonBinding.Operator (rng, "sub", [ l; r ])
             | _ -> failwith "error: impossible operator"
           in
           mul_div >>= fun init -> many (pair op mul_div) >>| List.fold ~init ~f
@@ -101,15 +101,15 @@ let rec interpret : term -> (ConstructiveReal.t, term * string) Result.t =
  fun tm ->
   let open Result.Let_syntax in
   match tm with
-  | Operator (_, "lit", [ [ Primitive (_, real) ] ]) -> Ok real
+  | Operator (_, "lit", [ Primitive (_, real) ]) -> Ok real
   | Operator (_, name, []) when List.mem constants name ~equal:String.equal ->
     ConstructiveReal.(
       (match name with
       | "e" -> Ok e
       | "pi" -> Ok pi
       | _ -> Error (tm, "expected e or pi")))
-  | Operator (_, name, [ [ l ]; [ r ] ])
-    when List.mem binary_operators name ~equal:String.equal ->
+  | Operator (_, name, [ l; r ]) when List.mem binary_operators name ~equal:String.equal
+    ->
     let%bind l' = interpret l in
     let%bind r' = interpret r in
     ConstructiveReal.(
@@ -121,8 +121,7 @@ let rec interpret : term -> (ConstructiveReal.t, term * string) Result.t =
       | "max" -> Ok (max l' r')
       | "min" -> Ok (min l' r')
       | _ -> Error (tm, "expected a binary operator")))
-  | Operator (_, name, [ [ x ] ]) when List.mem unary_operators name ~equal:String.equal
-    ->
+  | Operator (_, name, [ x ]) when List.mem unary_operators name ~equal:String.equal ->
     let%bind x' = interpret x in
     ConstructiveReal.(
       (match name with

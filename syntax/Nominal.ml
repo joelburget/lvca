@@ -9,8 +9,7 @@ type ('loc, 'prim) term =
   | Var of 'loc * string
   | Primitive of 'loc * 'prim
 
-and ('loc, 'prim) scope =
-  | Scope of ('loc, 'prim) Pattern.t list * ('loc, 'prim) term list
+and ('loc, 'prim) scope = Scope of ('loc, 'prim) Pattern.t list * ('loc, 'prim) term
 
 let rec equal info_eq prim_eq t1 t2 =
   match t1, t2 with
@@ -22,16 +21,12 @@ let rec equal info_eq prim_eq t1 t2 =
   | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
   | _, _ -> false
 
-and scope_equal info_eq prim_eq (Scope (pats1, tms1)) (Scope (pats2, tms2)) =
-  List.equal (Pattern.equal info_eq prim_eq) pats1 pats2
-  && List.equal (equal info_eq prim_eq) tms1 tms2
+and scope_equal info_eq prim_eq (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
+  List.equal (Pattern.equal info_eq prim_eq) pats1 pats2 && equal info_eq prim_eq tm1 tm2
 ;;
 
 let location = function Operator (loc, _, _) | Var (loc, _) | Primitive (loc, _) -> loc
-
-let any, comma, list, str, string, semi, pf =
-  Fmt.(any, comma, list, str, string, semi, pf)
-;;
+let any, list, str, string, semi, pf = Fmt.(any, list, str, string, semi, pf)
 
 let rec pp_term_generic ~open_loc ~close_loc ~pp_pat ~pp_prim ppf tm =
   open_loc ppf (location tm);
@@ -48,7 +43,7 @@ let rec pp_term_generic ~open_loc ~close_loc ~pp_pat ~pp_prim ppf tm =
   close_loc ppf (location tm)
 
 and pp_scope_generic ~open_loc ~close_loc ~pp_pat ~pp_prim ppf (Scope (bindings, body)) =
-  let pp_body = list ~sep:comma (pp_term_generic ~open_loc ~close_loc ~pp_pat ~pp_prim) in
+  let pp_body = pp_term_generic ~open_loc ~close_loc ~pp_pat ~pp_prim in
   match bindings with
   | [] -> pp_body ppf body
   | _ -> pf ppf "%a.@ %a" (list ~sep:(any ".@ ") (pp_pat pp_prim)) bindings pp_body body
@@ -127,7 +122,7 @@ let rec jsonify jsonify_prim tm =
   | Primitive (_, p) -> array [| string "p"; jsonify_prim p |]
 
 and jsonify_scope jsonify_prim (Scope (pats, body)) : Json.t =
-  let body' = body |> List.map ~f:(jsonify jsonify_prim) |> List.to_array |> Json.array in
+  let body' = jsonify jsonify_prim body in
   Json.array [| array_map (Pattern.jsonify jsonify_prim) pats; body' |]
 ;;
 
@@ -159,12 +154,7 @@ and unjsonify_scope prim_unjsonify =
       let%bind binders' =
         binders |> List.map ~f:(Pattern.unjsonify prim_unjsonify) |> Option.all
       in
-      let%bind body' =
-        match body with
-        | Array bodies ->
-          bodies |> Array.to_list |> List.map ~f:(unjsonify prim_unjsonify) |> Option.all
-        | _ -> None
-      in
+      let%bind body' = unjsonify prim_unjsonify body in
       Some (Scope (binders', body'))
     | _ -> None)
 ;;
@@ -183,17 +173,14 @@ let rec map_loc ~f = function
   | Var (loc, name) -> Var (f loc, name)
   | Primitive (loc, prim) -> Primitive (f loc, prim)
 
-and map_loc_scope ~f (Scope (binders, tms)) =
+and map_loc_scope ~f (Scope (binders, tm)) =
   let binders' = List.map binders ~f:(Pattern.map_loc ~f) in
-  let tms' = List.map tms ~f:(map_loc ~f) in
-  Scope (binders', tms')
+  let tm = map_loc ~f tm in
+  Scope (binders', tm)
 ;;
 
 let erase tm = map_loc ~f:(fun _ -> ()) tm
-
-let erase_scope (Scope (pats, tms)) =
-  Scope (List.map pats ~f:Pattern.erase, List.map tms ~f:erase)
-;;
+let erase_scope (Scope (pats, tm)) = Scope (List.map pats ~f:Pattern.erase, erase tm)
 
 let rec to_pattern = function
   | Var (loc, name) ->
@@ -210,11 +197,11 @@ let rec to_pattern = function
   | Primitive (loc, prim) -> Ok (Primitive (loc, prim))
 
 and scope_to_patterns = function
-  | Scope ([], tms) -> tms |> List.map ~f:to_pattern |> Result.all
-  | Scope (binders, tms) ->
+  | Scope ([], tm) -> to_pattern tm
+  | Scope (binders, tm) ->
     let binders' = List.map binders ~f:Pattern.erase in
-    let tms' = List.map tms ~f:erase in
-    Error (Scope (binders', tms'))
+    let tm = erase tm in
+    Error (Scope (binders', tm))
 ;;
 
 let rec pattern_to_term : ('loc, 'prim) Pattern.t -> ('loc, 'prim) term = function
@@ -222,7 +209,7 @@ let rec pattern_to_term : ('loc, 'prim) Pattern.t -> ('loc, 'prim) term = functi
     Operator
       ( loc
       , name (* TODO: should the scope really inherit the 'loc? *)
-      , List.map pats ~f:(fun pats' -> Scope ([], List.map pats' ~f:pattern_to_term)) )
+      , List.map pats ~f:(fun pat -> Scope ([], pattern_to_term pat)) )
   | Primitive (loc, prim) -> Primitive (loc, prim)
   | Var (loc, name) -> Var (loc, name)
   | Ignored (loc, name) -> Var (loc, "_" ^ name)
@@ -235,7 +222,7 @@ let rec subst_all ctx tm =
   | Operator (loc, name, scopes) ->
     Operator (loc, name, List.map scopes ~f:(subst_all_scope ctx))
 
-and subst_all_scope ctx (Scope (pats, tms)) = Scope (pats, List.map tms ~f:(subst_all ctx))
+and subst_all_scope ctx (Scope (pats, tm)) = Scope (pats, subst_all ctx tm)
 
 let rec match_pattern ~prim_eq pat tm =
   match pat, tm with
@@ -244,10 +231,10 @@ let rec match_pattern ~prim_eq pat tm =
   | Primitive (_, p1), Primitive (_, p2) ->
     if prim_eq p1 p2 then Some Lvca_util.String.Map.empty else None
   | Primitive _, _ -> None
-  | Operator (_, name1, patss), Operator (_, name2, scopes) ->
+  | Operator (_, name1, pats), Operator (_, name2, scopes) ->
     if String.(name1 = name2)
     then (
-      match List.map2 patss scopes ~f:(match_scope ~prim_eq) with
+      match List.map2 pats scopes ~f:(match_scope ~prim_eq) with
       | Ok zipped ->
         (match Lvca_util.String.Map.join_helper zipped with
         | `Ok result -> result
@@ -257,17 +244,8 @@ let rec match_pattern ~prim_eq pat tm =
     else None
   | _ -> None
 
-and match_scope ~prim_eq pats (Scope (binders, tms)) =
-  match binders with
-  | [] ->
-    (match List.map2 pats tms ~f:(match_pattern ~prim_eq) with
-    | Ok zipped ->
-      (match Lvca_util.String.Map.join_helper zipped with
-      | `Ok result -> result
-      | `Duplicate_key k ->
-        failwith (Printf.sprintf "invariant violation: duplicate key: %s" k))
-    | Unequal_lengths -> None)
-  | _ -> None
+and match_scope ~prim_eq pat (Scope (binders, tm)) =
+  match binders with [] -> match_pattern ~prim_eq pat tm | _ -> None
 ;;
 
 let free_vars tm =
@@ -277,14 +255,14 @@ let free_vars tm =
       scopes |> List.map ~f:(scope_free_vars bound_vars) |> S.union_list
     | Var (_, name) -> if Set.mem bound_vars name then S.empty else S.singleton name
     | Primitive _ -> S.empty
-  and scope_free_vars bound_vars (Scope (binders, tms)) =
+  and scope_free_vars bound_vars (Scope (binders, tm)) =
     let bound_vars =
       binders
       |> List.map ~f:Pattern.vars_of_pattern
       |> S.union_list
       |> Set.union bound_vars
     in
-    tms |> List.map ~f:(free_vars bound_vars) |> S.union_list
+    free_vars bound_vars tm
   in
   free_vars S.empty tm
 ;;
@@ -297,17 +275,13 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     | Tm of (OptRange.t, 'prim) term
     | Sep of char
 
-  type parse_state =
-    | PossiblyBinding
-    | DefinitelyTerm
-
   let t : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t =
    fun parse_prim ->
     let open Parsers in
     fix (fun term ->
         let t_or_sep : 'prim tm_or_sep ParseUtil.t =
           choice
-            [ (fun c -> Sep c) <$> choice [ char '.'; char ','; char ';' ]
+            [ (fun c -> Sep c) <$> choice [ char '.'; char ';' ]
             ; (fun tm -> Tm tm) <$> term
             ]
         in
@@ -319,21 +293,13 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
          fun range tag tokens ->
           (* terms encountered between '.'s, before hitting ',' / ';' *)
           let binding_queue : (OptRange.t, 'prim) term Queue.t = Queue.create () in
-          (* terms encountered between ','s, before hitting ';' *)
-          let list_queue : (OptRange.t, 'prim) term Queue.t = Queue.create () in
           (* scopes encountered *)
           let scope_queue : (OptRange.t, 'prim) scope Queue.t = Queue.create () in
-          let rec go parse_state = function
+          let rec go = function
             | [] -> return ~pos:range (Operator (range, tag, Queue.to_list scope_queue))
             | Tm tm :: Sep '.' :: rest ->
-              if Caml.(parse_state = DefinitelyTerm)
-              then fail "Unexpected '.' when parsing a list"
-              else (
-                Queue.enqueue binding_queue tm;
-                go parse_state rest)
-            | Tm tm :: Sep ',' :: rest ->
-              Queue.enqueue list_queue tm;
-              go DefinitelyTerm rest
+              Queue.enqueue binding_queue tm;
+              go rest
             | Tm tm :: Sep ';' :: rest (* Note: allow trailing ';' *)
             | Tm tm :: ([] as rest) ->
               (match
@@ -343,14 +309,11 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
                 fail "Unexpectedly found a variable binding in pattern position"
               | Ok binders ->
                 Queue.clear binding_queue;
-                Queue.enqueue list_queue tm;
-                let tms = Queue.to_list list_queue in
-                Queue.clear list_queue;
-                Queue.enqueue scope_queue (Scope (binders, tms));
-                go PossiblyBinding rest)
+                Queue.enqueue scope_queue (Scope (binders, tm));
+                go rest)
             | _ -> fail "Malformed term"
           in
-          go PossiblyBinding tokens
+          go tokens
         in
         pos
         >>= fun p1 ->
@@ -375,16 +338,13 @@ end
 let rec select_path ~path tm =
   match path with
   | [] -> Ok tm
-  | (i, j) :: path ->
+  | i :: path ->
     (match tm with
     | Var _ | Primitive _ -> Error "TODO: message"
     | Operator (_, _, scopes) ->
-      let open Option.Let_syntax in
-      let tm =
-        let%bind (Scope (_pats, tms)) = List.nth scopes i in
-        List.nth tms j
-      in
-      (match tm with None -> Error "TODO: message" | Some tm -> select_path ~path tm))
+      (match List.nth scopes i with
+      | None -> Error "TODO: message"
+      | Some (Scope (_pats, tm)) -> select_path ~path tm))
 ;;
 
 module Properties = struct
@@ -479,7 +439,7 @@ let%test_module "Nominal" =
       [%expect {| 2380ed848a0c5ce3d0ad7420e841578e4068f394b37b9b11bd3c34cea391436c |}]
     ;;
 
-    let tm = Operator ((), "S", [ Scope ([ Var ((), "x") ], [ Var ((), "x") ]) ])
+    let tm = Operator ((), "S", [ Scope ([ Var ((), "x") ], Var ((), "x")) ])
 
     let%test _ =
       jsonify Primitive.jsonify tm
@@ -489,24 +449,21 @@ let%test_module "Nominal" =
              ; String "S"
              ; Array
                  [| (* scopes *)
-                    Array
-                      [| (* scope *)
-                         Array [| j_tm |]
-                       ; (* binders *)
-                         Array [| j_tm |] (* children *)
-                      |]
+                    Array [| (* scope *)
+                             Array [| j_tm |]; (* binders *)
+                                               j_tm |]
                  |]
             |])
     ;;
 
     let%expect_test _ =
       print_serialize tm;
-      [%expect {| 83616f61538182818261766178818261766178 |}]
+      [%expect {| 83616f615381828182617661788261766178 |}]
     ;;
 
     let%expect_test _ =
       print_hash tm;
-      [%expect {| 5898e2f5a6af65e5d43539edd0fa5c539fa4dce2869b4a70e793c5f796658192 |}]
+      [%expect {| 391e4a6e3dc6964d60c642c52416d18b102dca357a3e4953834dfefc0e02dfbc |}]
     ;;
 
     let tm = Primitive ((), Primitive.PrimInteger (Z.of_string "12345"))
@@ -583,13 +540,13 @@ let%test_module "TermParser" =
     let%test _ =
       parse "lam(x. x)"
       |> Result.map ~f:erase
-      = Ok (Operator ((), "lam", [ Scope ([ Var ((), "x") ], [ x ]) ]))
+      = Ok (Operator ((), "lam", [ Scope ([ Var ((), "x") ], x) ]))
     ;;
 
-    let match_line a b = Operator ((), "match_line", [ Scope ([ a ], [ b ]) ])
+    let match_line a b = Operator ((), "match_line", [ Scope ([ a ], b) ])
 
     let match_lines subtms =
-      Operator ((), "match_lines", Base.List.map subtms ~f:(fun tm -> Scope ([], [ tm ])))
+      Operator ((), "match_lines", Base.List.map subtms ~f:(fun tm -> Scope ([], tm)))
     ;;
 
     let%test _ =
@@ -599,19 +556,19 @@ let%test_module "TermParser" =
     let%test _ =
       parse {| match(x; x) |}
       |> Result.map ~f:erase
-      = Ok (Operator ((), "match", [ Scope ([], [ x ]); Scope ([], [ x ]) ]))
+      = Ok (Operator ((), "match", [ Scope ([], x); Scope ([], x) ]))
     ;;
 
     let%test _ =
       parse {| match(true(); true()) |}
       |> Result.map ~f:erase
-      = Ok (Operator ((), "match", [ Scope ([], [ t ]); Scope ([], [ t ]) ]))
+      = Ok (Operator ((), "match", [ Scope ([], t); Scope ([], t) ]))
     ;;
 
     let%test _ =
       parse {| match(x;) |}
       |> Result.map ~f:erase
-      = Ok (Operator ((), "match", [ Scope ([], [ x ]) ]))
+      = Ok (Operator ((), "match", [ Scope ([], x) ]))
     ;;
 
     let%test _ =
@@ -626,24 +583,20 @@ let%test_module "TermParser" =
           (Operator
              ( ()
              , "match"
-             , [ Scope ([], [ x ])
+             , [ Scope ([], x)
                ; Scope
                    ( []
-                   , [ match_lines
-                         [ match_line
-                             (Pattern.Operator ((), "foo", []))
-                             (Operator ((), "true", []))
-                         ; match_line
-                             (Pattern.Operator
-                                ( ()
-                                , "bar"
-                                , [ [ Ignored ((), "") ]
-                                  ; [ Ignored ((), "x") ]
-                                  ; [ Var ((), "y") ]
-                                  ] ))
-                             (Var ((), "y"))
-                         ]
-                     ] )
+                   , match_lines
+                       [ match_line
+                           (Pattern.Operator ((), "foo", []))
+                           (Operator ((), "true", []))
+                       ; match_line
+                           (Pattern.Operator
+                              ( ()
+                              , "bar"
+                              , [ Ignored ((), ""); Ignored ((), "x"); Var ((), "y") ] ))
+                           (Var ((), "y"))
+                       ] )
                ] ))
     ;;
 
@@ -675,41 +628,41 @@ let%test_module "TermParser" =
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b,c)|};
+      print_parse {|a(b;c)|};
       (*0123456*)
       [%expect {|
-      a(b, c)
-      <0-6>a(<2-3>b</2-3>, <4-5>c</4-5>)</0-6>
+      a(b; c)
+      <0-6>a(<2-3>b</2-3>; <4-5>c</4-5>)</0-6>
     |}]
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b,c;d,e;)|};
+      print_parse {|a(b;c;d;e;)|};
       (*012345678901*)
       [%expect
         {|
-      a(b, c; d, e)
-      <0-11>a(<2-3>b</2-3>, <4-5>c</4-5>; <6-7>d</6-7>, <8-9>e</8-9>)</0-11>
+      a(b; c; d; e)
+      <0-11>a(<2-3>b</2-3>; <4-5>c</4-5>; <6-7>d</6-7>; <8-9>e</8-9>)</0-11>
     |}]
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b.c;d,e;)|};
+      print_parse {|a(b.c;d;e;)|};
       (*012345678901*)
       [%expect
         {|
-      a(b. c; d, e)
-      <0-11>a(<2-3>b</2-3>. <4-5>c</4-5>; <6-7>d</6-7>, <8-9>e</8-9>)</0-11>
+      a(b. c; d; e)
+      <0-11>a(<2-3>b</2-3>. <4-5>c</4-5>; <6-7>d</6-7>; <8-9>e</8-9>)</0-11>
     |}]
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b.c;d,e;f,g)|};
+      print_parse {|a(b.c;d;e;f;g)|};
       (*012345678901234*)
       [%expect
         {|
-      a(b. c; d, e; f, g)
-      <0-14>a(<2-3>b</2-3>. <4-5>c</4-5>; <6-7>d</6-7>, <8-9>e</8-9>; <10-11>f</10-11>, <12-13>g</12-13>)</0-14>
+      a(b. c; d; e; f; g)
+      <0-14>a(<2-3>b</2-3>. <4-5>c</4-5>; <6-7>d</6-7>; <8-9>e</8-9>; <10-11>f</10-11>; <12-13>g</12-13>)</0-14>
     |}]
     ;;
   end)

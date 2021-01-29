@@ -8,19 +8,12 @@ let eval tm =
   in
   let rec eval' tm =
     match tm with
-    | DeBruijn.Operator (_, "app", [ Second [ t1 ]; Second [ t2 ] ]) ->
+    | DeBruijn.Operator (_, "app", [ Second t1; Second t2 ]) ->
       let%bind t1' = eval' t1 in
       let%bind t2' = eval' t2 in
       (match t1' with
       | DeBruijn.Operator (_, "lam", [ First body ]) ->
-        let%bind body' =
-          match DeBruijn.open_scope t2' body with
-          | [ tm ] -> Ok tm
-          | tms ->
-            let tms_str = tms |> List.map ~f:tm_str |> String.concat ~sep:", " in
-            Error (Printf.sprintf "Unexpected terms %s" tms_str)
-        in
-        eval' body'
+        eval' (DeBruijn.open_scope t2' body)
       | _ -> Error (Printf.sprintf "Unexpected term (1) %s" (tm_str tm)))
     | Operator (_, "lam", _) -> Ok tm
     | BoundVar (_, _) -> Error "bound variable encountered"
@@ -61,7 +54,7 @@ module AngstromParse (Comment : ParseUtil.Comment_int) = struct
           lift4
             (fun _lam var _arr body ->
               let range = OptRange.extend_to (location body) start in
-              let tm = Nominal.Operator (range, "lam", [ Scope ([ var ], [ body ]) ]) in
+              let tm = Nominal.Operator (range, "lam", [ Scope ([ var ], body) ]) in
               tm)
             (char '\\')
             p_var
@@ -70,9 +63,7 @@ module AngstromParse (Comment : ParseUtil.Comment_int) = struct
         in
         let f (x, rng1) (y, rng2) =
           let range = OptRange.union rng1 rng2 in
-          let tm =
-            Nominal.Operator (range, "app", [ Scope ([], [ x ]); Scope ([], [ y ]) ])
-          in
+          let tm = Nominal.Operator (range, "app", [ Scope ([], x); Scope ([], y) ]) in
           tm, range
         in
         let atom_or_lam = attach_pos (atom <|> lam) in
@@ -92,12 +83,12 @@ let pp_generic ~open_loc ~close_loc =
     (* Stdio.printf "opening stag %s\n" (OptRange.to_string (Nominal.location tm)); *)
     open_loc ppf (Nominal.location tm);
     (match tm with
-    | Nominal.Operator (_, "app", [ Scope ([], [ a ]); Scope ([], [ b ]) ]) ->
+    | Nominal.Operator (_, "app", [ Scope ([], a); Scope ([], b) ]) ->
       if prec > 1
       then Fmt.pf ppf "(%a %a)" (pp' 1) a (pp' 2) b
       else Fmt.pf ppf "%a %a" (pp' 1) a (pp' 2) b
     | Var (_, name) -> Fmt.pf ppf "%s" name
-    | Operator (_, "lam", [ Scope ([ Pattern.Var (_range, name) ], [ body ]) ]) ->
+    | Operator (_, "lam", [ Scope ([ Pattern.Var (_range, name) ], body) ]) ->
       if prec > 0
       then Fmt.pf ppf {|(\%s -> %a)|} name (pp' 0) body
       else Fmt.pf ppf {|\%s -> %a|} name (pp' 0) body

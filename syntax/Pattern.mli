@@ -1,7 +1,7 @@
 (** Patterns match terms and bind variables. *)
 
 type ('info, 'prim) pattern =
-  | Operator of 'info * string * ('info, 'prim) pattern list list
+  | Operator of 'info * string * ('info, 'prim) pattern list
   | Primitive of 'info * 'prim
   | Var of 'info * string
   | Ignored of 'info * string
@@ -33,7 +33,7 @@ val erase : (_, 'prim) pattern -> (unit, 'prim) pattern
 val location : ('info, _) pattern -> 'info
 
 val select_path
-  :  path:(int * int) list
+  :  path:int list
   -> ('loc, 'prim) pattern
   -> (('loc, 'prim) pattern, string) Result.t
 

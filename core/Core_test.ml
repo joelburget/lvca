@@ -9,7 +9,7 @@ let parse_term str =
 let%test_module "Core parsing" =
   (module struct
     let scope : (unit, Primitive.t) Nominal.term -> (unit, Primitive.t) Nominal.scope =
-     fun body -> Scope ([], [ body ])
+     fun body -> Scope ([], body)
    ;;
 
     let dynamics_str =
@@ -45,7 +45,7 @@ let%test_module "Core parsing" =
                 , [ CaseScope (p_operator "true" [], Term (t_operator "true" []))
                   ; CaseScope (p_operator "false" [], Term (t_operator "false" []))
                   ; CaseScope
-                      ( p_operator "ite" [ [ p_var "t1" ]; [ p_var "t2" ]; [ p_var "t3" ] ]
+                      ( p_operator "ite" [ p_var "t1"; p_var "t2"; p_var "t3" ]
                       , Case
                           ( ()
                           , CoreApp ((), t_var "meaning", t_var "t1")
@@ -53,10 +53,10 @@ let%test_module "Core parsing" =
                             ; CaseScope (p_operator "false" [], meaning (t_var "t3"))
                             ] ) )
                   ; CaseScope
-                      ( p_operator "ap" [ [ p_var "f" ]; [ p_var "arg" ] ]
+                      ( p_operator "ap" [ p_var "f"; p_var "arg" ]
                       , CoreApp ((), meaning @@ t_var "f", meaning @@ t_var "arg") )
                   ; CaseScope
-                      ( p_operator "fun" [ [ p_var "scope" ] ]
+                      ( p_operator "fun" [ p_var "scope" ]
                       , Term
                           (t_operator
                              "lambda"

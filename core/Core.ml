@@ -128,12 +128,8 @@ let rec match_pattern
     if String.(tag1 = tag2)
     then (
       match
-        List.map2 pats vals ~f:(fun pats -> function
-          | Scope ([], body_tms) ->
-            (match List.map2 body_tms pats ~f:match_pattern with
-            | Ok results -> merge_results results
-            | Unequal_lengths -> None)
-          | _ -> None)
+        List.map2 pats vals ~f:(fun pat -> function
+          | Scope ([], body_tm) -> match_pattern body_tm pat | _ -> None)
       with
       | Ok results -> merge_results results
       | Unequal_lengths -> None)
@@ -200,15 +196,15 @@ let rec eval_ctx
   | CoreApp (_, Term (Var (_, "string_of_chars")), char_list) ->
     let%bind char_list = eval_ctx ctx char_list in
     (match char_list with
-    | Operator (loc, "list", [ Nominal.Scope ([], chars) ]) ->
+    | Operator (loc, "list", chars) ->
       chars
       |> List.map ~f:(function
-             | Nominal.Primitive (_, Primitive.PrimChar c) -> Ok c
+             | Nominal.Scope ([], Nominal.Primitive (_, Primitive.PrimChar c)) -> Ok c
              | tm ->
                Error
                  (Printf.sprintf
                     "string_of_chars `list(%s)`"
-                    (Nominal.pp_term_str Primitive.pp tm)))
+                    (Nominal.pp_scope_str Primitive.pp tm)))
       |> Result.all
       |> Result.map ~f:(fun cs ->
              Nominal.Primitive (loc, Primitive.PrimString (String.of_char_list cs)))
@@ -371,8 +367,7 @@ let%test_module "Parsing" =
           ( ()
           , NoRec
           , app (var "string_of_chars") (var "chars")
-          , Scope
-              ("str", Term (operator "var" Nominal.[ Scope ([], [ Var ((), "str") ]) ]))
+          , Scope ("str", Term (operator "var" Nominal.[ Scope ([], Var ((), "str")) ]))
           )
     ;;
 

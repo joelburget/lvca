@@ -2,15 +2,15 @@
 
 type ('loc, 'prim) term =
   | Operator of
-      'loc * string * (('loc, 'prim) scope, ('loc, 'prim) term list) Base.Either.t list
+      'loc * string * (('loc, 'prim) scope, ('loc, 'prim) term) Base.Either.t list
   | BoundVar of 'loc * int
   | FreeVar of 'loc * string
   | Primitive of 'loc * 'prim
 
-and ('loc, 'prim) scope = Scope of 'loc * string * ('loc, 'prim) term list
+and ('loc, 'prim) scope = Scope of 'loc * string * ('loc, 'prim) term
 
 (** Open a scope, substituting a term for the variable bound by this scope. *)
-val open_scope : ('loc, 'prim) term -> ('loc, 'prim) scope -> ('loc, 'prim) term list
+val open_scope : ('loc, 'prim) term -> ('loc, 'prim) scope -> ('loc, 'prim) term
 
 val to_nominal : ('loc, 'prim) term -> ('loc, 'prim) Nominal.term option
 

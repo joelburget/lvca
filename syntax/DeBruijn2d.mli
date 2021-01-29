@@ -9,8 +9,7 @@ type ('loc, 'prim) term =
   | FreeVar of 'loc * string
   | Primitive of 'loc * 'prim
 
-and ('loc, 'prim) scope =
-  | Scope of ('loc, 'prim) Pattern.t list * ('loc, 'prim) term list
+and ('loc, 'prim) scope = Scope of ('loc, 'prim) Pattern.t list * ('loc, 'prim) term
 
 val to_nominal : ('loc, 'prim) term -> ('loc, 'prim) Nominal.term option
 
@@ -31,7 +30,7 @@ val alpha_equivalent
   -> bool
 
 val select_path
-  :  path:(int * int) list
+  :  path:int list
   -> ('loc, 'prim) term
   -> (('loc, 'prim) term, string) Result.t
 

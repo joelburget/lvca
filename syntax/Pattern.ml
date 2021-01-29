@@ -6,7 +6,7 @@ module Util = Lvca_util
 module String = Util.String
 
 type ('info, 'prim) pattern =
-  | Operator of 'info * string * ('info, 'prim) pattern list list
+  | Operator of 'info * string * ('info, 'prim) pattern list
   | Primitive of 'info * 'prim
   | Var of 'info * string
   | Ignored of 'info * string
@@ -15,10 +15,10 @@ type ('info, 'prim) t = ('info, 'prim) pattern
 
 let rec equal info_eq prim_eq pat1 pat2 =
   match pat1, pat2 with
-  | Operator (i1, name1, patss1), Operator (i2, name2, patss2) ->
+  | Operator (i1, name1, pats1), Operator (i2, name2, pats2) ->
     info_eq i1 i2
     && String.(name1 = name2)
-    && List.equal (List.equal (equal info_eq prim_eq)) patss1 patss2
+    && List.equal (equal info_eq prim_eq) pats1 pats2
   | Primitive (i1, p1), Primitive (i2, p2) -> info_eq i1 i2 && prim_eq p1 p2
   | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
   | Ignored (i1, name1), Ignored (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
@@ -27,15 +27,10 @@ let rec equal info_eq prim_eq pat1 pat2 =
 
 let rec vars_of_pattern = function
   | Operator (_, _, pats) ->
-    pats |> List.map ~f:vars_of_patterns |> Set.union_list (module String)
+    pats |> List.map ~f:vars_of_pattern |> Set.union_list (module String)
   | Primitive _ -> String.Set.empty
   | Var (_, name) -> String.Set.of_list [ name ]
   | Ignored _ -> String.Set.empty
-
-and vars_of_patterns pats =
-  pats
-  |> List.map ~f:vars_of_pattern
-  |> List.fold_right ~init:String.Set.empty ~f:Set.union
 ;;
 
 let rec list_vars_of_pattern = function
@@ -43,8 +38,7 @@ let rec list_vars_of_pattern = function
     pats
     (* simpler, morally equivalent: List.concat_map ~f:(List.concat_map
        ~f:list_vars_of_pattern) *)
-    |> List.map ~f:(fun pats' ->
-           pats' |> List.map ~f:list_vars_of_pattern |> List.concat_no_order)
+    |> List.map ~f:list_vars_of_pattern
     |> List.concat_no_order
   | Primitive _ -> []
   | Var (loc, name) -> [ loc, name ]
@@ -56,17 +50,17 @@ let location = function
 ;;
 
 let rec pp pp_prim ppf =
-  let comma, list, pf, semi = Fmt.(comma, list, pf, semi) in
+  let list, pf, semi = Fmt.(list, pf, semi) in
   function
   | Operator (_, name, pats) ->
-    pf ppf "@[<2>%s(%a)@]" name (pp pp_prim |> list ~sep:comma |> list ~sep:semi) pats
+    pf ppf "@[<2>%s(%a)@]" name (pp pp_prim |> list ~sep:semi) pats
   | Primitive (_, prim) -> pp_prim ppf prim
   | Var (_, name) -> pf ppf "%s" name
   | Ignored (_, name) -> pf ppf "_%s" name
 ;;
 
 let rec pp_range_generic ~opener ~closer pp_prim ppf pat =
-  let comma, list, pf, semi = Fmt.(comma, list, pf, semi) in
+  let list, pf, semi = Fmt.(list, pf, semi) in
   opener ppf (location pat);
   (match pat with
   | Operator (_, name, pats) ->
@@ -74,7 +68,7 @@ let rec pp_range_generic ~opener ~closer pp_prim ppf pat =
       ppf
       "@[<2>@{%s@}(%a)@]"
       name
-      (pp_range_generic ~opener ~closer pp_prim |> list ~sep:comma |> list ~sep:semi)
+      (pp_range_generic ~opener ~closer pp_prim |> list ~sep:semi)
       pats
   | Primitive (_, prim) -> pf ppf "%a" pp_prim prim
   | Var (_, name) -> pf ppf "%s" name
@@ -104,11 +98,7 @@ let rec jsonify prim_jsonify pat =
       array
         [| string "o"
          ; string tag
-         ; tms
-           |> List.map ~f:(fun tms' ->
-                  tms' |> List.map ~f:(jsonify prim_jsonify) |> Array.of_list |> array)
-           |> Array.of_list
-           |> array
+         ; tms |> List.map ~f:(jsonify prim_jsonify) |> Array.of_list |> array
         |]
     | Primitive (_, p) -> array [| string "p"; prim_jsonify p |]
     | Var (_, name) -> array [| string "v"; string name |]
@@ -121,16 +111,7 @@ let rec unjsonify prim_unjsonify =
     function
     | Array [| String "o"; String tag; Array subtms |] ->
       let%map subtms' =
-        subtms
-        |> Array.to_list
-        |> List.map ~f:(function
-               | Array subtms' ->
-                 subtms'
-                 |> Array.to_list
-                 |> List.map ~f:(unjsonify prim_unjsonify)
-                 |> Option.all
-               | _ -> None)
-        |> Option.all
+        subtms |> Array.to_list |> List.map ~f:(unjsonify prim_unjsonify) |> Option.all
       in
       Operator ((), tag, subtms')
     | Array [| String "p"; prim |] ->
@@ -144,7 +125,7 @@ let rec unjsonify prim_unjsonify =
 let rec map_loc : f:('a -> 'b) -> ('a, 'prim) pattern -> ('b, 'prim) pattern =
  fun ~f -> function
   | Operator (loc, tag, subpats) ->
-    Operator (f loc, tag, subpats |> List.map ~f:(List.map ~f:(map_loc ~f)))
+    Operator (f loc, tag, subpats |> List.map ~f:(map_loc ~f))
   | Primitive (loc, prim) -> Primitive (f loc, prim)
   | Var (loc, name) -> Var (f loc, name)
   | Ignored (loc, name) -> Ignored (f loc, name)
@@ -155,15 +136,11 @@ let erase pat = map_loc ~f:(fun _ -> ()) pat
 let rec select_path ~path pat =
   match path with
   | [] -> Ok pat
-  | (i, j) :: path ->
+  | i :: path ->
     (match pat with
     | Primitive _ | Var _ | Ignored _ -> Error "TODO: message"
-    | Operator (_, _, patss) ->
-      let open Option.Let_syntax in
-      let pat =
-        let%bind pats = List.nth patss i in
-        List.nth pats j
-      in
+    | Operator (_, _, pats) ->
+      let pat = List.nth pats i in
       (match pat with Some pat -> select_path ~path pat | None -> Error "TODO: message"))
 ;;
 
@@ -173,45 +150,28 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
 
   type 'prim pat_or_sep =
     | Pat of (OptRange.t, 'prim) pattern
-    | Sep of char
+    | Semi
 
   let t : 'prim ParseUtil.t -> (OptRange.t, 'prim) t ParseUtil.t =
    fun parse_prim ->
     let open Parsers in
     fix (fun pat ->
         let t_or_sep : 'prim pat_or_sep Parsers.t =
-          choice
-            [ (fun c -> Sep c) <$> choice [ char ','; char ';' ]
-            ; (fun pat -> Pat pat) <$> pat
-            ]
+          choice [ (fun _ -> Semi) <$> choice [ char ';' ]; (fun pat -> Pat pat) <$> pat ]
         in
         let accumulate
             :  OptRange.t -> string -> 'prim pat_or_sep list
             -> (OptRange.t, 'prim) pattern Parsers.t
           =
          fun range tag tokens ->
-          (* patterns encountered between ','s, before hitting ';' *)
-          let list_queue : (OptRange.t, 'prim) pattern Queue.t = Queue.create () in
           (* patterns encountered between ';'s *)
-          let slot_queue : (OptRange.t, 'prim) pattern list Queue.t = Queue.create () in
+          let slot_queue : (OptRange.t, 'prim) pattern Queue.t = Queue.create () in
           (* Move the current list to the slot queue *)
-          let list_to_slot () =
-            if not (Queue.is_empty list_queue)
-            then list_queue |> Queue.to_list |> Queue.enqueue slot_queue;
-            Queue.clear list_queue
-          in
           let rec go = function
-            | [] ->
-              list_to_slot ();
-              return ~pos:range (Operator (range, tag, Queue.to_list slot_queue))
-            | Pat pat :: Sep ',' :: Sep ';' :: rest
-            | Pat pat :: Sep ',' :: rest (* Note: allow trailing ',' *) ->
-              Queue.enqueue list_queue pat;
-              go rest
-            | Pat pat :: Sep ';' :: rest (* Note: allow trailing ';' *)
+            | [] -> return ~pos:range (Operator (range, tag, Queue.to_list slot_queue))
+            | Pat pat :: Semi :: rest (* Note: allow trailing ';' *)
             | Pat pat :: ([] as rest) ->
-              Queue.enqueue list_queue pat;
-              list_to_slot ();
+              Queue.enqueue slot_queue pat;
               go rest
             | _ -> fail "Malformed term"
           in
@@ -282,45 +242,36 @@ let%test_module "Parsing" =
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b,c)|};
+      print_parse {|a(b;c)|};
       (*0123456*)
       [%expect {|
-      a(b, c)
-      <0-6>a(<2-3>b</2-3>, <4-5>c</4-5>)</0-6>
+      a(b; c)
+      <0-6>a(<2-3>b</2-3>; <4-5>c</4-5>)</0-6>
     |}]
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b,c,)|};
+      print_parse {|a(b;c;)|};
       (*01234567*)
       [%expect {|
-      a(b, c)
-      <0-7>a(<2-3>b</2-3>, <4-5>c</4-5>)</0-7>
+      a(b; c)
+      <0-7>a(<2-3>b</2-3>; <4-5>c</4-5>)</0-7>
     |}]
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b,c;d,e;)|};
+      print_parse {|a(b;c;d;e;)|};
       (*012345678901*)
       [%expect
         {|
-      a(b, c; d, e)
-      <0-11>a(<2-3>b</2-3>, <4-5>c</4-5>; <6-7>d</6-7>, <8-9>e</8-9>)</0-11>
+      a(b; c; d; e)
+      <0-11>a(<2-3>b</2-3>; <4-5>c</4-5>; <6-7>d</6-7>; <8-9>e</8-9>)</0-11>
     |}]
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b,,c)|};
+      print_parse {|a(b;;c)|};
       [%expect {| failed: : end_of_input |}]
-    ;;
-
-    let%expect_test _ =
-      print_parse {|a(b,;c)|};
-      (*01234567*)
-      [%expect {|
-      a(b, c)
-      <0-7>a(<2-3>b</2-3>, <5-6>c</5-6>)</0-7>
-    |}]
     ;;
   end)
 ;;

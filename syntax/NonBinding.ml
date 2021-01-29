@@ -1,7 +1,7 @@
 open Base
 
 type ('loc, 'prim) term =
-  | Operator of 'loc * string * ('loc, 'prim) term list list
+  | Operator of 'loc * string * ('loc, 'prim) term list
   | Primitive of 'loc * 'prim
 
 let location = function Operator (loc, _, _) | Primitive (loc, _) -> loc
@@ -22,16 +22,14 @@ let rec of_de_bruijn tm =
 
 and of_de_bruijn_scope = function
   | First scope -> Error (ScopeEncountered scope)
-  | Second tms -> tms |> List.map ~f:of_de_bruijn |> Result.all
+  | Second tm -> of_de_bruijn tm
 ;;
 
 let rec to_de_bruijn tm (* : unit DeBruijn.term *) =
   match tm with
   | Operator (loc, tag, tms) ->
     DeBruijn.Operator
-      ( loc
-      , tag
-      , List.map tms ~f:(fun tms -> Either.Second (tms |> List.map ~f:to_de_bruijn)) )
+      (loc, tag, List.map tms ~f:(fun tm -> Either.Second (to_de_bruijn tm)))
   | Primitive (loc, p) -> Primitive (loc, p)
 ;;
 
@@ -48,7 +46,7 @@ let rec of_nominal tm =
   | Primitive (a, p) -> Ok (Primitive (a, p))
 
 and of_nominal_scope = function
-  | Nominal.Scope ([], tms) -> tms |> List.map ~f:of_nominal |> Result.all
+  | Nominal.Scope ([], tm) -> of_nominal tm
   | scope -> Error (ScopeEncountered scope)
 ;;
 
@@ -56,9 +54,7 @@ let rec to_nominal tm =
   match tm with
   | Operator (loc, tag, tms) ->
     Nominal.Operator
-      ( loc
-      , tag
-      , List.map tms ~f:(fun tms' -> Nominal.Scope ([], List.map tms' ~f:to_nominal)) )
+      (loc, tag, List.map tms ~f:(fun tm -> Nominal.Scope ([], to_nominal tm)))
   | Primitive (loc, p) -> Primitive (loc, p)
 ;;
 
@@ -68,7 +64,6 @@ let to_string pp_prim tm = tm |> to_nominal |> Nominal.pp_term_str pp_prim
 let hash jsonify_prim tm = tm |> to_nominal |> Nominal.hash jsonify_prim
 
 let rec erase = function
-  | Operator (_, tag, subtms) ->
-    Operator ((), tag, subtms |> List.map ~f:(List.map ~f:erase))
+  | Operator (_, tag, subtms) -> Operator ((), tag, subtms |> List.map ~f:erase)
   | Primitive (_, prim) -> Primitive ((), prim)
 ;;

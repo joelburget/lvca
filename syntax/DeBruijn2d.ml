@@ -1,5 +1,6 @@
 open Base
 module String = Lvca_util.String
+open Option.Let_syntax
 
 type ('loc, 'prim) term =
   | Operator of 'loc * string * ('loc, 'prim) scope list
@@ -7,8 +8,7 @@ type ('loc, 'prim) term =
   | FreeVar of 'loc * string
   | Primitive of 'loc * 'prim
 
-and ('loc, 'prim) scope =
-  | Scope of ('loc, 'prim) Pattern.t list * ('loc, 'prim) term list
+and ('loc, 'prim) scope = Scope of ('loc, 'prim) Pattern.t list * ('loc, 'prim) term
 
 let rec to_nominal' ctx = function
   | BoundVar (loc, ix1, ix2) ->
@@ -24,15 +24,13 @@ let rec to_nominal' ctx = function
   | Primitive (loc, prim) -> Some (Nominal.Primitive (loc, prim))
 
 and scope_to_nominal ctx (Scope (binders, body)) =
-  let ctx' =
+  let ctx =
     binders
     |> List.map ~f:(fun pat -> pat |> Pattern.list_vars_of_pattern |> List.map ~f:snd)
     |> List.append ctx
   in
-  body
-  |> List.map ~f:(to_nominal' ctx')
-  |> Option.all
-  |> Option.map ~f:(fun body' -> Nominal.Scope (binders, body'))
+  let%map body = to_nominal' ctx body in
+  Nominal.Scope (binders, body)
 ;;
 
 let to_nominal tm = to_nominal' [] tm
@@ -67,7 +65,7 @@ and scope_of_nominal env (Nominal.Scope (pats, body) as scope) =
       |> Map.map ~f:(fun (i, j) -> i + n, j)
       |> Lvca_util.Map.union_right_biased var_map
     in
-    let%map body' = body |> List.map ~f:(of_nominal_with_bindings env') |> Result.all in
+    let%map body' = of_nominal_with_bindings env' body in
     Scope (pats, body')
   | `Duplicate_key _key -> Error scope
 ;;
@@ -82,12 +80,7 @@ let rec alpha_equivalent prim_equivalent t1 t2 =
     (match List.zip subtms1 subtms2 with
     | Ok zipped ->
       List.for_all zipped ~f:(fun (Scope (_, body1), Scope (_, body2)) ->
-          match List.zip body1 body2 with
-          | Ok bodies ->
-            List.for_all
-              ~f:(fun (b1, b2) -> alpha_equivalent prim_equivalent b1 b2)
-              bodies
-          | _ -> false)
+          alpha_equivalent prim_equivalent body1 body2)
     | Unequal_lengths -> false)
   | BoundVar (_, i1, j1), BoundVar (_, i2, j2) -> i1 = i2 && j1 = j2
   | FreeVar (_, name1), FreeVar (_, name2) -> String.(name1 = name2)
@@ -98,14 +91,11 @@ let rec alpha_equivalent prim_equivalent t1 t2 =
 let rec select_path ~path tm =
   match path with
   | [] -> Ok tm
-  | (i, j) :: path ->
+  | i :: path ->
     (match tm with
     | BoundVar _ | FreeVar _ | Primitive _ -> Error "TODO: message"
     | Operator (_, _, scopes) ->
-      let open Option.Let_syntax in
-      let tm =
-        let%bind (Scope (_pats, tms)) = List.nth scopes i in
-        List.nth tms j
-      in
-      (match tm with None -> Error "TODO: message" | Some tm -> select_path ~path tm))
+      (match List.nth scopes i with
+      | None -> Error "TODO: message"
+      | Some (Scope (_pats, tm)) -> select_path ~path tm))
 ;;

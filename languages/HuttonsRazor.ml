@@ -63,8 +63,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     >>|| fun ~pos str ->
     let tm =
       NonBinding.(
-        Operator
-          (pos, "lit", [ [ Primitive (pos, Primitive.PrimInteger (Z.of_string str)) ] ]))
+        Operator (pos, "lit", [ Primitive (pos, Primitive.PrimInteger (Z.of_string str)) ]))
     in
     tm, pos
   ;;
@@ -75,7 +74,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         let plus = char '+' in
         let f (l, rng1) (r, rng2) =
           let rng = OptRange.union rng1 rng2 in
-          NonBinding.Operator (rng, "add", [ [ l ]; [ r ] ]), rng
+          NonBinding.Operator (rng, "add", [ l; r ]), rng
         in
         atom
         >>= fun init -> many (plus *> atom) >>| fun lst -> List.fold lst ~init ~f |> fst)
@@ -95,7 +94,7 @@ let pp =
   in
   let rec pp' prec ppf tm =
     match tm with
-    | NonBinding.Operator (_, "add", [ [ a ]; [ b ] ]) ->
+    | NonBinding.Operator (_, "add", [ a; b ]) ->
       with_stag
         ppf
         (String_tag (NonBinding.hash Primitive.jsonify tm))
@@ -103,7 +102,7 @@ let pp =
           if prec > 0
           then Fmt.pf ppf "(%a + %a)" (pp' 0) a (pp' 1) b
           else Fmt.pf ppf "%a + %a" (pp' 0) a (pp' 1) b)
-    | Operator (_, "lit", [ [ Primitive (_, Primitive.PrimInteger i) ] ]) ->
+    | Operator (_, "lit", [ Primitive (_, Primitive.PrimInteger i) ]) ->
       with_stag
         ppf
         (String_tag (NonBinding.hash Primitive.jsonify tm))
@@ -114,11 +113,11 @@ let pp =
 ;;
 
 let rec eval_tm : _ NonBinding.term -> (Z.t, string) Result.t = function
-  | Operator (_, "add", [ [ a ]; [ b ] ]) ->
+  | Operator (_, "add", [ a; b ]) ->
     (match eval_tm a, eval_tm b with
     | Ok a', Ok b' -> Ok Z.(a' + b')
     | Error msg, _ | _, Error msg -> Error msg)
-  | Operator (_, "lit", [ [ Primitive (_, Primitive.PrimInteger i) ] ]) -> Ok i
+  | Operator (_, "lit", [ Primitive (_, Primitive.PrimInteger i) ]) -> Ok i
   | tm -> Error ("found un-evaluable term: " ^ NonBinding.to_string Primitive.pp tm)
 ;;
 
@@ -183,7 +182,7 @@ let%test_module "Hutton's Razor" =
         {|
       lit(1)
       <0-1>lit(<0-1>1</0-1>)</0-1>
-      <66d708>1</66d708>
+      <bf7475>1</bf7475>
     |}]
     ;;
 
@@ -194,7 +193,7 @@ let%test_module "Hutton's Razor" =
         {|
       add(lit(1); lit(2))
       <0-5>add(<0-1>lit(<0-1>1</0-1>)</0-1>; <4-5>lit(<4-5>2</4-5>)</4-5>)</0-5>
-      <564912><66d708>1</66d708> + <aaa76b>2</aaa76b></564912>
+      <a2e561><bf7475>1</bf7475> + <20ff08>2</20ff08></a2e561>
     |}]
     ;;
 
@@ -205,7 +204,7 @@ let%test_module "Hutton's Razor" =
         {|
       add(add(lit(1); lit(2)); lit(3))
       <0-9>add(<0-5>add(<0-1>lit(<0-1>1</0-1>)</0-1>; <4-5>lit(<4-5>2</4-5>)</4-5>)</0-5>; <8-9>lit(<8-9>3</8-9>)</8-9>)</0-9>
-      <4196bd><564912><66d708>1</66d708> + <aaa76b>2</aaa76b></564912> + <9c6d16>3</9c6d16></4196bd>
+      <5e04bc><a2e561><bf7475>1</bf7475> + <20ff08>2</20ff08></a2e561> + <420b31>3</420b31></5e04bc>
     |}]
     ;;
 
@@ -216,7 +215,7 @@ let%test_module "Hutton's Razor" =
         {|
       add(lit(1); add(lit(2); lit(3)))
       <0-11>add(<0-1>lit(<0-1>1</0-1>)</0-1>; <5-10>add(<5-6>lit(<5-6>2</5-6>)</5-6>; <9-10>lit(<9-10>3</9-10>)</9-10>)</5-10>)</0-11>
-      <7a73df><66d708>1</66d708> + <1e2d31>(<aaa76b>2</aaa76b> + <9c6d16>3</9c6d16>)</1e2d31></7a73df>
+      <0cc723><bf7475>1</bf7475> + <90e51f>(<20ff08>2</20ff08> + <420b31>3</420b31>)</90e51f></0cc723>
     |}]
     ;;
 

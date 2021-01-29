@@ -51,14 +51,10 @@ let mk_prim ~loc = function
 ;;
 
 let rec mk_pattern ~loc = function
-  | Pattern.Operator (pos, name, patss) ->
+  | Pattern.Operator (pos, name, pats) ->
     let name_exp = mk_str ~loc name in
-    let patss =
-      patss
-      |> List.map ~f:(fun pats -> pats |> List.map ~f:(mk_pattern ~loc) |> mk_list ~loc)
-      |> mk_list ~loc
-    in
-    [%expr Pattern.Operator ([%e mk_pos ~loc pos], [%e name_exp], [%e patss])]
+    let pats = pats |> List.map ~f:(mk_pattern ~loc) |> mk_list ~loc in
+    [%expr Pattern.Operator ([%e mk_pos ~loc pos], [%e name_exp], [%e pats])]
   | Var (pos, str) -> [%expr Pattern.Var ([%e mk_pos ~loc pos], [%e mk_str ~loc str])]
   | Ignored (pos, str) ->
     [%expr Pattern.Ignored ([%e mk_pos ~loc pos], [%e mk_str ~loc str])]
@@ -75,10 +71,10 @@ let rec mk_term ~loc = function
   | Primitive (pos, prim) ->
     [%expr Nominal.Primitive ([%e mk_pos ~loc pos], [%e mk_prim ~loc prim])]
 
-and mk_scope ~loc (Nominal.Scope (pats, tms)) =
-  let tms = tms |> List.map ~f:(mk_term ~loc) |> mk_list ~loc in
+and mk_scope ~loc (Nominal.Scope (pats, tm)) =
+  let tm = mk_term ~loc tm in
   let pats = pats |> List.map ~f:(mk_pattern ~loc) |> mk_list ~loc in
-  [%expr Nominal.Scope ([%e pats], [%e tms])]
+  [%expr Nominal.Scope ([%e pats], [%e tm])]
 ;;
 
 let rec mk_sort ~loc = function
@@ -89,19 +85,16 @@ let rec mk_sort ~loc = function
     [%expr Sort.Name ([%e mk_pos ~loc pos], [%e mk_str ~loc name])]
 ;;
 
-let mk_sort_slot ~loc (sort, starred) =
-  let starred =
-    match starred with
-    | AbstractSyntax.Starred -> [%expr Starred]
-    | Unstarred -> [%expr Unstarred]
-  in
-  [%expr [%e mk_sort ~loc sort], [%e starred]]
+let mk_sort_slot ~loc = function
+  | AbstractSyntax.SortBinding s -> [%expr AbstractSyntax.SortBinding [%e mk_sort ~loc s]]
+  | SortPattern (s1, s2) ->
+    [%expr AbstractSyntax.SortPattern ([%e mk_sort ~loc s1], [%e mk_sort ~loc s2])]
 ;;
 
-let mk_valence ~loc (AbstractSyntax.Valence (sort_slots, sort_slot)) =
+let mk_valence ~loc (AbstractSyntax.Valence (sort_slots, body_sort)) =
   let sort_slots = sort_slots |> List.map ~f:(mk_sort_slot ~loc) |> mk_list ~loc in
-  let sort_slot = mk_sort_slot ~loc sort_slot in
-  [%expr AbstractSyntax.Valence ([%e sort_slots], [%e sort_slot])]
+  let body_sort = mk_sort ~loc body_sort in
+  [%expr AbstractSyntax.Valence ([%e sort_slots], [%e body_sort])]
 ;;
 
 let mk_arity ~loc valences = valences |> List.map ~f:(mk_valence ~loc) |> mk_list ~loc

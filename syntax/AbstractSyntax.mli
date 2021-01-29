@@ -1,16 +1,13 @@
 (** Types for describing the abstract syntax of a language. *)
 
-(** A sort can be starred to indicate it's repeated, or not. *)
-type starred =
-  | Starred
-  | Unstarred
-
 (** Represents a place where a sort can go in a valence. *)
-type 'info sort_slot = 'info Sort.t * starred
+type 'info sort_slot =
+  | SortBinding of 'info Sort.t
+  | SortPattern of 'info Sort.t * 'info Sort.t
 
 (** A valence represents a sort, as well as the number and sorts of the variables bound
     within it. Valences are most often used to represent slots in an operator. *)
-type 'info valence = Valence of 'info sort_slot list * 'info sort_slot
+type 'info valence = Valence of 'info sort_slot list * 'info Sort.t
 
 (** An arity specifies the arguments to an operator. *)
 type 'info arity = 'info valence list

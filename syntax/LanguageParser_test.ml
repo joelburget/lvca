@@ -10,9 +10,10 @@ let%test_module "AbstractSyntax.Parser" =
     ;;
 
     let tm_sort = Sort.Name ((), "tm")
-    let tm_valence = Valence ([], (tm_sort, Unstarred))
+    let tm_valence = Valence ([], tm_sort)
     let ty_sort = Sort.Name ((), "ty")
-    let ty_valence = Valence ([], (ty_sort, Unstarred))
+    let ty_valence = Valence ([], ty_sort)
+    let foo_sort = Sort.Name ((), "foo")
     let x_sort = Sort.Name ((), "x")
 
     let%test _ =
@@ -32,8 +33,8 @@ let%test_module "AbstractSyntax.Parser" =
         | lam(tm. tm)
 
       foo x :=
-        | foo(x*. x; x. x) // fixed arity, (variable valence, fixed valence)
-        | bar(x*)          // variable arity
+        | foo(foo[x]. x; x. x) // fixed arity, (variable valence, fixed valence)
+        | bar(x)          // variable arity
       |}
       |> erase_info
       = [ ( "ty"
@@ -46,18 +47,17 @@ let%test_module "AbstractSyntax.Parser" =
           , SortDef
               ( []
               , [ OperatorDef ("app", [ tm_valence; tm_valence ])
-                ; OperatorDef
-                    ("lam", [ Valence ([ tm_sort, Unstarred ], (tm_sort, Unstarred)) ])
+                ; OperatorDef ("lam", [ Valence ([ SortBinding tm_sort ], tm_sort) ])
                 ] ) )
         ; ( "foo"
           , SortDef
               ( [ "x" ]
               , [ OperatorDef
                     ( "foo"
-                    , [ Valence ([ x_sort, Starred ], (x_sort, Unstarred))
-                      ; Valence ([ x_sort, Unstarred ], (x_sort, Unstarred))
+                    , [ Valence ([ SortPattern (foo_sort, x_sort) ], x_sort)
+                      ; Valence ([ SortBinding x_sort ], x_sort)
                       ] )
-                ; OperatorDef ("bar", [ Valence ([], (x_sort, Starred)) ])
+                ; OperatorDef ("bar", [ Valence ([], x_sort) ])
                 ] ) )
         ]
     ;;

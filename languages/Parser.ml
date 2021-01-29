@@ -196,7 +196,7 @@ let pp_plain ppf p = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ ->
 let pp_str p = Fmt.str "%a" pp_plain p
 
 let mk_some : 'loc n_term -> 'loc n_term =
- fun tm -> Nominal.Operator (Nominal.location tm, "some", [ Scope ([], [ tm ]) ])
+ fun tm -> Nominal.Operator (Nominal.location tm, "some", [ Scope ([], tm) ])
 ;;
 
 let mk_none pos = Nominal.Operator (pos, "none", [])
@@ -373,7 +373,8 @@ module Direct = struct
 
   let mk_list lst =
     let rng = lst |> List.map ~f:Nominal.location |> SourceRanges.unions in
-    Nominal.Operator (rng, "list", [ Nominal.Scope ([], lst) ])
+    let lst = lst |> List.map ~f:(fun tm -> Nominal.Scope ([], tm)) in
+    Nominal.Operator (rng, "list", lst)
   ;;
 
   let count n_tm parser =
@@ -1089,7 +1090,7 @@ let%test_module "Parsing" =
     let%expect_test _ =
       parse_print "'c'2" "cc";
       [%expect
-        {| <input:0-2>list(<input:0-1>'c'</input:0-1>, <input:1-2>'c'</input:1-2>)</input:0-2> |}]
+        {| <input:0-2>list(<input:0-1>'c'</input:0-1>; <input:1-2>'c'</input:1-2>)</input:0-2> |}]
     ;;
 
     let%expect_test _ =
@@ -1110,13 +1111,13 @@ let%test_module "Parsing" =
     let%expect_test _ =
       parse_print str_star "strstrstr";
       [%expect
-        {| <input:0-9>list(<input:0-3>"str"</input:0-3>, <input:3-6>"str"</input:3-6>, <input:6-9>"str"</input:6-9>)</input:0-9> |}]
+        {| <input:0-9>list(<input:0-3>"str"</input:0-3>; <input:3-6>"str"</input:3-6>; <input:6-9>"str"</input:6-9>)</input:0-9> |}]
     ;;
 
     let%expect_test _ =
       parse_print str_plus "strstrstr";
       [%expect
-        {| <input:0-9>list(<input:0-3>"str"</input:0-3>, <input:3-6>"str"</input:3-6>, <input:6-9>"str"</input:6-9>)</input:0-9> |}]
+        {| <input:0-9>list(<input:0-3>"str"</input:0-3>; <input:3-6>"str"</input:3-6>; <input:6-9>"str"</input:6-9>)</input:0-9> |}]
     ;;
 
     let%expect_test _ =

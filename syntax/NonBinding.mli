@@ -3,7 +3,7 @@
     and allows conversion to / from binding types. *)
 
 type ('loc, 'prim) term =
-  | Operator of 'loc * string * ('loc, 'prim) term list list
+  | Operator of 'loc * string * ('loc, 'prim) term list
   | Primitive of 'loc * 'prim
 
 val location : ('loc, _) term -> 'loc

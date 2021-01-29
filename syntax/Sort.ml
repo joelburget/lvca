@@ -12,8 +12,7 @@ let rec equal info_eq s1 s2 =
   | _, _ -> false
 ;;
 
-let rec pp : Stdlib.Format.formatter -> _ t -> unit =
- fun ppf -> function
+let rec pp ppf = function
   | Ap (_, name, args) -> Fmt.pf ppf "%s @[%a@]" name pp_args args
   | Name (_, name) -> Fmt.pf ppf "%s" name
 
@@ -23,10 +22,16 @@ and pp_args ppf = function
   | x :: xs -> Fmt.pf ppf "%a %a" pp x pp_args xs
 ;;
 
-let rec to_string : _ t -> string = function
-  | Ap (_, name, args) ->
-    Printf.sprintf "%s(%s)" name (args |> List.map ~f:to_string |> String.concat)
-  | Name (_, name) -> name
+let to_string sort =
+  let rec go need_parens = function
+    | Ap (_, name, args) ->
+      Printf.sprintf
+        (if need_parens then "(%s %s)" else "%s %s")
+        name
+        (args |> List.map ~f:(go true) |> String.concat)
+    | Name (_, name) -> name
+  in
+  go false sort
 ;;
 
 let rec instantiate arg_mapping = function
@@ -42,7 +47,7 @@ let rec of_term tm =
   | Nominal.Var (info, name) -> Ok (Name (info, name))
   | Operator (info, name, args) ->
     args
-    |> List.map ~f:(function Scope ([], [ arg ]) -> of_term arg | _ -> Error tm)
+    |> List.map ~f:(function Scope ([], arg) -> of_term arg | _ -> Error tm)
     |> Result.all
     |> Result.map ~f:(fun args' -> Ap (info, name, args'))
   | _ -> Error tm

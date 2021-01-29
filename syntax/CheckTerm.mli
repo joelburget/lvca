@@ -51,6 +51,7 @@ val check_pattern
   -> ('info -> 'prim -> 'info Sort.t -> string option) (** Primitive checker *)
   -> 'info AbstractSyntax.t (** Abstract syntax *)
   -> 'info Sort.t (** Sort to check pattern against *)
+  -> 'info Sort.t (** Sort pattern must yield as variables *)
   -> ('info, 'prim) Pattern.t
   -> ( 'info AbstractSyntax.valence Lvca_util.String.Map.t
      , ('info, 'prim) abstract_syntax_check_failure )
@@ -84,6 +85,7 @@ module Primitive : sig
   val check_pattern
     :  'info AbstractSyntax.t (** Abstract syntax *)
     -> 'info Sort.t (** Sort to check pattern against *)
+    -> 'info Sort.t (** Sort pattern must yield as variables *)
     -> ('info, Primitive.t) Pattern.t
     -> ( 'info AbstractSyntax.valence Lvca_util.String.Map.t
        , ('info, Primitive.t) abstract_syntax_check_failure )
