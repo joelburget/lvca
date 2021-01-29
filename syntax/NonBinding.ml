@@ -7,6 +7,13 @@ type ('loc, 'prim) term =
 
 let info = function Operator (i, _, _) | Primitive (i, _) -> i
 
+let rec map_info ~f = function
+  | Operator (i, name, tms) -> Operator (f i, name, List.map tms ~f:(map_info ~f))
+  | Primitive (i, prim) -> Primitive (f i, prim)
+;;
+
+let erase tm = map_info ~f:(Fn.const ()) tm
+
 type ('loc, 'prim) de_bruijn_conversion_error =
   | ScopeEncountered of ('loc, 'prim) DeBruijn.scope
   | VarEncountered of ('loc, 'prim) DeBruijn.term
@@ -24,7 +31,7 @@ and of_de_bruijn_scope = function
   | Second tm -> of_de_bruijn tm
 ;;
 
-let rec to_de_bruijn tm (* : unit DeBruijn.term *) =
+let rec to_de_bruijn tm =
   match tm with
   | Operator (loc, tag, tms) ->
     DeBruijn.Operator
@@ -61,8 +68,3 @@ let pp pp_prim ppf tm = tm |> to_nominal |> Nominal.pp_term pp_prim ppf
 let pp_range pp_prim ppf tm = tm |> to_nominal |> Nominal.pp_term_range pp_prim ppf
 let to_string pp_prim tm = tm |> to_nominal |> Nominal.pp_term_str pp_prim
 let hash jsonify_prim tm = tm |> to_nominal |> Nominal.hash jsonify_prim
-
-let rec erase = function
-  | Operator (_, tag, subtms) -> Operator ((), tag, subtms |> List.map ~f:erase)
-  | Primitive (_, prim) -> Primitive ((), prim)
-;;
