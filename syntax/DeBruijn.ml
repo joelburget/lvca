@@ -2,14 +2,14 @@ open Base
 module String = Lvca_util.String
 open Option.Let_syntax
 
-type ('loc, 'prim) term =
+type ('info, 'prim) term =
   | Operator of
-      'loc * string * (('loc, 'prim) scope, ('loc, 'prim) term) Base.Either.t list
-  | BoundVar of 'loc * int
-  | FreeVar of 'loc * string
-  | Primitive of 'loc * 'prim
+      'info * string * (('info, 'prim) scope, ('info, 'prim) term) Base.Either.t list
+  | BoundVar of 'info * int
+  | FreeVar of 'info * string
+  | Primitive of 'info * 'prim
 
-and ('loc, 'prim) scope = Scope of 'loc * string * ('loc, 'prim) term
+and ('info, 'prim) scope = Scope of 'info * string * ('info, 'prim) term
 
 let rec open_term target_ix subst_tm tm =
   match tm with

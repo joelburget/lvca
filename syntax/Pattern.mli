@@ -9,10 +9,10 @@ type ('info, 'prim) pattern =
 type ('info, 'prim) t = ('info, 'prim) pattern
 
 val equal
-  :  ('loc -> 'loc -> bool)
+  :  ('info -> 'info -> bool)
   -> ('prim -> 'prim -> bool)
-  -> ('loc, 'prim) t
-  -> ('loc, 'prim) t
+  -> ('info, 'prim) t
+  -> ('info, 'prim) t
   -> bool
 
 val vars_of_pattern : _ t -> Lvca_util.String.Set.t
@@ -22,7 +22,10 @@ val to_string : 'prim Fmt.t -> ('info, 'prim) t -> string (* TODO: remove? *)
 val pp : 'prim Fmt.t -> ('info, 'prim) t Fmt.t
 val pp_range : 'prim Fmt.t -> (OptRange.t, 'prim) t Fmt.t
 val pp_ranges : 'prim Fmt.t -> (SourceRanges.t, 'prim) t Fmt.t
-val jsonify : 'prim Lvca_util.Json.serializer -> ('loc, 'prim) t Lvca_util.Json.serializer
+
+val jsonify
+  :  'prim Lvca_util.Json.serializer
+  -> ('info, 'prim) t Lvca_util.Json.serializer
 
 val unjsonify
   :  'prim Lvca_util.Json.deserializer
@@ -34,8 +37,8 @@ val info : ('info, _) pattern -> 'info
 
 val select_path
   :  path:int list
-  -> ('loc, 'prim) pattern
-  -> (('loc, 'prim) pattern, string) Result.t
+  -> ('info, 'prim) pattern
+  -> (('info, 'prim) pattern, string) Result.t
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : 'prim ParseUtil.t -> (OptRange.t, 'prim) t ParseUtil.t

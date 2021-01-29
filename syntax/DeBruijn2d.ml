@@ -2,13 +2,13 @@ open Base
 module String = Lvca_util.String
 open Option.Let_syntax
 
-type ('loc, 'prim) term =
-  | Operator of 'loc * string * ('loc, 'prim) scope list
-  | BoundVar of 'loc * int * int
-  | FreeVar of 'loc * string
-  | Primitive of 'loc * 'prim
+type ('info, 'prim) term =
+  | Operator of 'info * string * ('info, 'prim) scope list
+  | BoundVar of 'info * int * int
+  | FreeVar of 'info * string
+  | Primitive of 'info * 'prim
 
-and ('loc, 'prim) scope = Scope of ('loc, 'prim) Pattern.t list * ('loc, 'prim) term
+and ('info, 'prim) scope = Scope of ('info, 'prim) Pattern.t list * ('info, 'prim) term
 
 let rec to_nominal' ctx = function
   | BoundVar (loc, ix1, ix2) ->

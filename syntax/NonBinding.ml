@@ -1,9 +1,9 @@
 open Base
 open Result.Let_syntax
 
-type ('loc, 'prim) term =
-  | Operator of 'loc * string * ('loc, 'prim) term list
-  | Primitive of 'loc * 'prim
+type ('info, 'prim) term =
+  | Operator of 'info * string * ('info, 'prim) term list
+  | Primitive of 'info * 'prim
 
 let info = function Operator (i, _, _) | Primitive (i, _) -> i
 
@@ -14,9 +14,9 @@ let rec map_info ~f = function
 
 let erase tm = map_info ~f:(Fn.const ()) tm
 
-type ('loc, 'prim) de_bruijn_conversion_error =
-  | ScopeEncountered of ('loc, 'prim) DeBruijn.scope
-  | VarEncountered of ('loc, 'prim) DeBruijn.term
+type ('info, 'prim) de_bruijn_conversion_error =
+  | ScopeEncountered of ('info, 'prim) DeBruijn.scope
+  | VarEncountered of ('info, 'prim) DeBruijn.term
 
 let rec of_de_bruijn tm =
   match tm with
@@ -39,9 +39,9 @@ let rec to_de_bruijn tm =
   | Primitive (loc, p) -> Primitive (loc, p)
 ;;
 
-type ('loc, 'prim) nominal_conversion_error =
-  | ScopeEncountered of ('loc, 'prim) Nominal.scope
-  | VarEncountered of ('loc, 'prim) Nominal.term
+type ('info, 'prim) nominal_conversion_error =
+  | ScopeEncountered of ('info, 'prim) Nominal.scope
+  | VarEncountered of ('info, 'prim) Nominal.term
 
 let rec of_nominal tm =
   match tm with

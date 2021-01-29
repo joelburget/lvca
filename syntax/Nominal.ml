@@ -4,12 +4,12 @@ module Cbor = Lvca_util.Cbor
 module Json = Lvca_util.Json
 module String = Lvca_util.String
 
-type ('loc, 'prim) term =
-  | Operator of 'loc * string * ('loc, 'prim) scope list
-  | Var of 'loc * string
-  | Primitive of 'loc * 'prim
+type ('info, 'prim) term =
+  | Operator of 'info * string * ('info, 'prim) scope list
+  | Var of 'info * string
+  | Primitive of 'info * 'prim
 
-and ('loc, 'prim) scope = Scope of ('loc, 'prim) Pattern.t list * ('loc, 'prim) term
+and ('info, 'prim) scope = Scope of ('info, 'prim) Pattern.t list * ('info, 'prim) term
 
 let rec equal info_eq prim_eq t1 t2 =
   match t1, t2 with
@@ -204,11 +204,11 @@ and scope_to_patterns = function
     Error (Scope (binders', tm))
 ;;
 
-let rec pattern_to_term : ('loc, 'prim) Pattern.t -> ('loc, 'prim) term = function
+let rec pattern_to_term : ('info, 'prim) Pattern.t -> ('info, 'prim) term = function
   | Operator (loc, name, pats) ->
     Operator
       ( loc
-      , name (* TODO: should the scope really inherit the 'loc? *)
+      , name (* TODO: should the scope really inherit the 'info? *)
       , List.map pats ~f:(fun pat -> Scope ([], pattern_to_term pat)) )
   | Primitive (loc, prim) -> Primitive (loc, prim)
   | Var (loc, name) -> Var (loc, name)

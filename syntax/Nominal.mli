@@ -1,27 +1,27 @@
 (** Representation of terms that simply uses variable names to represent scope. *)
 
-type ('loc, 'prim) term =
-  | Operator of 'loc * string * ('loc, 'prim) scope list
-  | Var of 'loc * string
-  | Primitive of 'loc * 'prim
+type ('info, 'prim) term =
+  | Operator of 'info * string * ('info, 'prim) scope list
+  | Var of 'info * string
+  | Primitive of 'info * 'prim
 
-and ('loc, 'prim) scope = Scope of ('loc, 'prim) Pattern.t list * ('loc, 'prim) term
+and ('info, 'prim) scope = Scope of ('info, 'prim) Pattern.t list * ('info, 'prim) term
 
 val equal
-  :  ('loc -> 'loc -> bool)
+  :  ('info -> 'info -> bool)
   -> ('prim -> 'prim -> bool)
-  -> ('loc, 'prim) term
-  -> ('loc, 'prim) term
+  -> ('info, 'prim) term
+  -> ('info, 'prim) term
   -> bool
 
-val info : ('loc, _) term -> 'loc
+val info : ('info, _) term -> 'info
 
 val pp_term_generic
-  :  open_loc:'loc Fmt.t
-  -> close_loc:'loc Fmt.t
-  -> pp_pat:('prim Fmt.t -> ('loc, 'prim) Pattern.t Fmt.t)
+  :  open_loc:'info Fmt.t
+  -> close_loc:'info Fmt.t
+  -> pp_pat:('prim Fmt.t -> ('info, 'prim) Pattern.t Fmt.t)
   -> pp_prim:'prim Fmt.t
-  -> ('loc, 'prim) term Fmt.t
+  -> ('info, 'prim) term Fmt.t
 
 val pp_term : 'prim Fmt.t -> (_, 'prim) term Fmt.t
 val pp_term_range : 'prim Fmt.t -> (OptRange.t, 'prim) term Fmt.t
@@ -60,32 +60,32 @@ val erase_scope : (_, 'prim) scope -> (unit, 'prim) scope
     For example, the term [add(lit(1); a)] is convertible to a pattern, but [lambda(a. a)]
     is not. *)
 val to_pattern
-  :  ('loc, 'prim) term
-  -> (('loc, 'prim) Pattern.t, (unit, 'prim) scope) Result.t
+  :  ('info, 'prim) term
+  -> (('info, 'prim) Pattern.t, (unit, 'prim) scope) Result.t
 
 (** Convert from a pattern to the corresponding term. This always succeeds.
 
     For example [add(lit(1)); a)] (as a pattern) can be converted to a term. *)
-val pattern_to_term : ('loc, 'prim) Pattern.t -> ('loc, 'prim) term
+val pattern_to_term : ('info, 'prim) Pattern.t -> ('info, 'prim) term
 
 (** Substitute all the variables in the context.
 
     Leaves variables not found in the context free. *)
 val subst_all
-  :  ('loc, 'prim) term Lvca_util.String.Map.t
-  -> ('loc, 'prim) term
-  -> ('loc, 'prim) term
+  :  ('info, 'prim) term Lvca_util.String.Map.t
+  -> ('info, 'prim) term
+  -> ('info, 'prim) term
 
 val select_path
   :  path:int list
-  -> ('loc, 'prim) term
-  -> (('loc, 'prim) term, string) Result.t
+  -> ('info, 'prim) term
+  -> (('info, 'prim) term, string) Result.t
 
 val match_pattern
   :  prim_eq:('prim -> 'prim -> bool)
-  -> ('loc, 'prim) Pattern.t
-  -> ('loc, 'prim) term
-  -> ('loc, 'prim) term Lvca_util.String.Map.t option
+  -> ('info, 'prim) Pattern.t
+  -> ('info, 'prim) term
+  -> ('info, 'prim) term Lvca_util.String.Map.t option
 
 val free_vars : (_, _) term -> Lvca_util.String.Set.t
 

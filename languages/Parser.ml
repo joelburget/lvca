@@ -5,29 +5,29 @@ open Stdio
 module Format = Caml.Format
 module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
 
-type 'loc c_term = 'loc Core.term
-type 'loc n_term = ('loc, Primitive.t) Nominal.term
+type 'info c_term = 'info Core.term
+type 'info n_term = ('info, Primitive.t) Nominal.term
 
-type 'loc t =
+type 'info t =
   (* primitive parsers *)
-  | AnyChar of 'loc
-  | Char of 'loc * char
-  | String of 'loc * string
-  | Satisfy of 'loc * string * 'loc c_term
-  | Fail of 'loc * 'loc c_term
+  | AnyChar of 'info
+  | Char of 'info * char
+  | String of 'info * string
+  | Satisfy of 'info * string * 'info c_term
+  | Fail of 'info * 'info c_term
   (* combinators *)
-  | Option of 'loc * 'loc t
-  | Count of 'loc * 'loc t * 'loc c_term
-  | Many of 'loc * 'loc t
-  | Many1 of 'loc * 'loc t
-  | Choice of 'loc * 'loc t list
-  | Sequence of 'loc * 'loc binder list * 'loc c_term
+  | Option of 'info * 'info t
+  | Count of 'info * 'info t * 'info c_term
+  | Many of 'info * 'info t
+  | Many1 of 'info * 'info t
+  | Choice of 'info * 'info t list
+  | Sequence of 'info * 'info binder list * 'info c_term
   (* language stuff *)
-  | Let of 'loc * string * 'loc t * 'loc t
-  | Fix of 'loc * string * 'loc t
-  | Identifier of 'loc * string
+  | Let of 'info * string * 'info t * 'info t
+  | Fix of 'info * string * 'info t
+  | Identifier of 'info * string
 
-and 'loc binder = Binder of string option * 'loc t
+and 'info binder = Binder of string option * 'info t
 
 let rec equal loc_eq t1 t2 =
   match t1, t2 with
@@ -45,10 +45,10 @@ let rec equal loc_eq t1 t2 =
     loc_eq l1 l2 && String.(nm1 = nm2) && equal loc_eq x1 x2
   | Identifier (l1, nm1), Identifier (l2, nm2) -> loc_eq l1 l2 && String.(nm1 = nm2)
   (* XXX: implement these *)
-  (* | Satisfy of 'loc * string * 'loc c_term *)
-  (* | Fail of 'loc * 'loc c_term *)
-  (* | Count of 'loc * 'loc t * 'loc c_term *)
-  (* | Sequence of 'loc * 'loc binder list * 'loc c_term *)
+  (* | Satisfy of 'info * string * 'info c_term *)
+  (* | Fail of 'info * 'info c_term *)
+  (* | Count of 'info * 'info t * 'info c_term *)
+  (* | Sequence of 'info * 'info binder list * 'info c_term *)
   | _, _ -> false
 ;;
 
@@ -195,22 +195,22 @@ let pp_ranges ppf p =
 let pp_plain ppf p = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p
 let pp_str p = Fmt.str "%a" pp_plain p
 
-let mk_some : 'loc n_term -> 'loc n_term =
+let mk_some : 'info n_term -> 'info n_term =
  fun tm -> Nominal.Operator (Nominal.info tm, "some", [ Scope ([], tm) ])
 ;;
 
 let mk_none pos = Nominal.Operator (pos, "none", [])
 let map_snd ~f (a, b) = a, f b
 
-type 'loc parse_error =
-  { parser : 'loc t
-  ; sub_errors : 'loc parse_error list
+type 'info parse_error =
+  { parser : 'info t
+  ; sub_errors : 'info parse_error list
   }
 
 type parser_stack = SourceRanges.t t Stack.t
 
 module Direct = struct
-  type 'loc parser = 'loc t
+  type 'info parser = 'info t
   type term_ctx = SourceRanges.t n_term Lvca_util.String.Map.t
 
   type parse_result =
