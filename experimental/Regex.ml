@@ -132,9 +132,11 @@ let rec is_literal : regex -> string option = function
   | ReConcat res ->
     List.fold_right
       res
-      ~f:(fun re -> function None -> None
-        | Some str ->
-          (match is_literal re with None -> None | Some str' -> Some (str' ^ str)))
+      ~f:
+        (fun re -> function
+          | None -> None
+          | Some str ->
+            (match is_literal re with None -> None | Some str' -> Some (str' ^ str)))
       ~init:(Some "")
   | _ -> None
 ;;

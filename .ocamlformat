@@ -2,4 +2,4 @@ profile = janestreet
 break-cases = fit
 parse-docstrings = true
 wrap-comments = false
-version=0.15.0
+version=0.16.0

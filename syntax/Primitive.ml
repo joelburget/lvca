@@ -16,7 +16,7 @@ let to_string = function
 
 let ( = ) p1 p2 =
   match p1, p2 with
-  | PrimInteger i1, PrimInteger i2 -> (Z.Compare.(i1 = i2) [@warning "-44"])
+  | PrimInteger i1, PrimInteger i2 -> Z.Compare.(i1 = i2) [@warning "-44"]
   | PrimString s1, PrimString s2 -> String.(s1 = s2)
   | PrimFloat f1, PrimFloat f2 -> Float.(f1 = f2)
   | PrimChar c1, PrimChar c2 -> Char.(c1 = c2)
