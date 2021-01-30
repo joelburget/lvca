@@ -41,6 +41,39 @@ val equal
   -> ('info, 'prim) t
   -> bool
 
+(** Check that this pattern is valid and return the valence for each variable it binds.
+
+    Checks performed:
+
+    {ol
+     {- Primitives: checked by the given primitive checker. }
+     {- All used operators are found (in the sort corresponding to the pattern type). }
+     {- All
+        operators
+        have
+        the
+        correct
+        number
+        of
+        subterms
+        for
+        their
+        arity.
+
+        - Fixed arity patterns must have the exact number of subterms.
+        - Variable arity patterns may have any number.
+     }
+    } *)
+val check
+  :  'prim Fmt.t
+  -> ('info -> 'prim -> 'info Sort.t -> string option) (** Primitive checker *)
+  -> 'info AbstractSyntax.t (** Abstract syntax *)
+  -> 'info Sort.t (** Sort to check pattern against *)
+  -> ('info, 'prim) t
+  -> ( 'info AbstractSyntax.valence Lvca_util.String.Map.t
+     , ('info, ('info, 'prim) t) CheckFailure.t )
+     Result.t
+
 (** {1 Parsing} *)
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : 'prim ParseUtil.t -> (OptRange.t, 'prim) t ParseUtil.t

@@ -2,6 +2,7 @@ open Base
 module Util = Lvca_util
 module String = Util.String
 module Format = Stdlib.Format
+module SMap = Lvca_util.String.Map
 
 type ('info, 'prim) t =
   | Operator of 'info * string * ('info, 'prim) scope list
@@ -145,6 +146,9 @@ let pp_scope_ranges pp_prim ppf tm =
     tm
 ;;
 
+let to_string pp_prim pat = Fmt.str "%a" (pp pp_prim) pat
+let scope_to_string pp_prim scope = Fmt.str "%a" (pp_scope pp_prim) scope
+
 let rec select_path ~path pat =
   match path with
   | [] -> Ok pat
@@ -155,6 +159,100 @@ let rec select_path ~path pat =
       (match List.nth scopes i with
       | None -> Error "TODO: message"
       | Some (Scope (_vars, pat)) -> select_path ~path pat))
+;;
+
+let handle_dup_error = function
+  | `Ok result -> Ok result
+  | `Duplicate_key k ->
+    Error
+      (CheckFailure.err
+         (Printf.sprintf
+            "Did you mean to bind the same variable (%s) twice in the same pattern? \
+             That's not allowed!"
+            k))
+;;
+
+let check pp_prim check_prim lang sort =
+  let lookup_operator = AbstractSyntax.lookup_operator lang in
+  let rec check sort pat =
+    let result =
+      match pat with
+      | Var (_, name) -> Ok (SMap.singleton name sort)
+      | Ignored _ -> Ok SMap.empty
+      | Primitive (info, prim) ->
+        (match check_prim info prim sort with
+        | None -> Ok SMap.empty
+        | Some msg -> Error (CheckFailure.err msg))
+      | Operator (_, op_name, subpats) ->
+        let sort_name, sort_args =
+          match sort with
+          | Sort.Name (_, sort_name) -> sort_name, []
+          | Sort.Ap (_, sort_name, sort_args) -> sort_name, sort_args
+        in
+        (match lookup_operator sort_name op_name with
+        | None ->
+          Error
+            (CheckFailure.err
+               (Printf.sprintf
+                  "Pattern.check: failed to find operator %s in sort %s"
+                  op_name
+                  sort_name))
+        | Some (sort_vars, OperatorDef (_, arity)) ->
+          let sort_env = SMap.of_alist_exn (List.zip_exn sort_vars sort_args) in
+          check_slots (AbstractSyntax.instantiate_arity sort_env arity) subpats)
+    in
+    Result.map_error result ~f:(fun CheckFailure.{ message; stack } ->
+        CheckFailure.{ message; stack = { term = pat; sort } :: stack })
+  and check_slots valences scopes =
+    match List.zip scopes valences with
+    | Unequal_lengths ->
+      Error
+        (CheckFailure.err
+           (Printf.sprintf
+              "Wrong number of subterms (%u) for this arity (%s)"
+              (List.length scopes)
+              (valences
+              |> List.map ~f:AbstractSyntax.string_of_valence
+              |> String.concat ~sep:", ")))
+    | Ok scope_valences ->
+      scope_valences
+      |> List.map ~f:(fun (scope, valence) -> check_scope valence scope)
+      |> Result.all
+      |> Result.map ~f:SMap.strict_unions
+      |> Result.bind ~f:handle_dup_error
+  and check_scope valence (Scope (binders, body)) =
+    let (Valence (binder_slots, body_sort)) = valence in
+    match List.zip binder_slots binders with
+    | Unequal_lengths ->
+      Error
+        (CheckFailure.err
+           (Printf.sprintf
+              "Wrong number of binders (%u) for this valence (%s) (expected %u)"
+              (List.length binders)
+              (AbstractSyntax.string_of_valence valence)
+              (List.length binder_slots)))
+    | Ok binders ->
+      let binders_env =
+        binders |> List.map ~f:(fun (slot, (_, v)) -> SMap.singleton v slot)
+      in
+      (* Check the body with the new binders environment *)
+      (match SMap.strict_unions binders_env with
+      | `Ok env ->
+        (match check body_sort body with
+        | Error msg -> Error msg
+        | Ok env' ->
+          (match SMap.strict_union env env' with
+          | `Ok env -> Ok env
+          | `Duplicate_key k -> failwith "TODO"))
+      | `Duplicate_key k ->
+        Error
+          (CheckFailure.err
+             (Printf.sprintf
+                "Did you mean to bind the same variable (%s) twice in the same set of \
+                 patterns? That's not allowed!"
+                k)))
+  in
+  check sort
 ;;
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
