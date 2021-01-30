@@ -8,18 +8,19 @@ homepage: "https://github.com/joelburget/lvca"
 bug-reports: "https://github.com/joelburget/lvca/issues"
 depends: [
   "ocaml" {>= "4.08.0"}
-  "angstrom" {with-test}
-  "base" {with-test}
-  "zarith" {with-test}
-  "cbor" {with-test}
-  "digestif" {with-test}
-  "fmt" {with-test}
+  "angstrom"
+  "base"
+  "zarith"
+  "cbor"
+  "digestif"
+  "fmt"
   "js_of_ocaml"
-  "ppx_jane" {with-test}
+  "ppx_jane"
   "ppx_inline_test"
   "dune" {>= "2.0.0"}
-  "zarith_stubs_js" {with-test}
+  "zarith_stubs_js"
   "uchar" {>= "0.0.2"}
+  "ppxlib" {>= "0.21.0"}
 ]
 build: ["dune" "build" "-p" name "-j" jobs]
 dev-repo: "git+https://github.com/joelburget/lvca.git"
