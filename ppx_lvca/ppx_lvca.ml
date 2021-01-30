@@ -18,8 +18,8 @@ let extract_string loc expr =
     }
   in
   match expr.pexp_desc with
-  | Pexp_constant (Pconst_string (str, None)) -> str, adjust 1 expr.pexp_loc
-  | Pexp_constant (Pconst_string (str, Some x)) ->
+  | Pexp_constant (Pconst_string (str, _loc, None)) -> str, adjust 1 expr.pexp_loc
+  | Pexp_constant (Pconst_string (str, _loc, Some x)) ->
     str, adjust (String.length x + 2) expr.pexp_loc
   | _ -> Location.raise_errorf ~loc "Expecting string payload"
 ;;
