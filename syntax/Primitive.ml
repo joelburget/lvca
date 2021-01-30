@@ -23,6 +23,21 @@ let ( = ) p1 p2 =
   | _ -> false
 ;;
 
+let check _info prim sort =
+  match prim, sort with
+  | PrimString _, Sort.Name (_, "string")
+  | PrimFloat _, Sort.Name (_, "float")
+  | PrimChar _, Sort.Name (_, "char")
+  | PrimInteger _, Sort.Name (_, "integer") ->
+    None
+  | _, _ ->
+    Some
+      (Printf.sprintf
+         "Unexpected sort (%s) for a primitive (%s)"
+         (Sort.to_string sort)
+         (to_string prim))
+;;
+
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
 

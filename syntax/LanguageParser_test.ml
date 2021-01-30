@@ -54,7 +54,9 @@ let%test_module "AbstractSyntax.Parser" =
               ( [ "x" ]
               , [ OperatorDef
                     ( "foo"
-                    , [ Valence ([ SortPattern (foo_sort, x_sort) ], x_sort)
+                    , [ Valence
+                          ( [ SortPattern { pattern_sort = foo_sort; var_sort = x_sort } ]
+                          , x_sort )
                       ; Valence ([ SortBinding x_sort ], x_sort)
                       ] )
                 ; OperatorDef ("bar", [ Valence ([], x_sort) ])

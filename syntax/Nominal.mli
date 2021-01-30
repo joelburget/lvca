@@ -89,6 +89,29 @@ val match_pattern
 
 val free_vars : (_, _) term -> Lvca_util.String.Set.t
 
+(** Check that the given term matches the given sort.
+
+    This recursively checks subterms and patterns.
+
+    Checks performed:
+
+    + All used variables must be bound.
+    + Variables must have the correct sort at their use site.
+    + Primitives must have the correct sort (string / integer).
+    + All mentioned operators must appear in the relevant sort.
+    + All operators must have the correct number of subterms.
+    + Variable-arity terms can have only non-binding terms as children
+    + Fixed-valence terms must have the correct number of binders. All must be variables.
+    + Variable-valence terms must have one binder, a pattern. *)
+val check
+  :  'prim Fmt.t
+  -> ('info -> 'prim -> 'info Sort.t -> string option) (** Primitive checker *)
+  -> 'info AbstractSyntax.t (** Abstract syntax *)
+  -> 'info Sort.t (** Sort to check term against *)
+  -> ('info, 'prim) term
+  -> ('info, (('info, 'prim) Pattern.t, ('info, 'prim) term) Base.Either.t) CheckFailure.t
+     option
+
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t
   val whitespace_t : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t
@@ -99,4 +122,16 @@ module Properties : sig
   val json_round_trip2 : Lvca_util.Json.t -> PropertyResult.t
   val string_round_trip1 : (unit, Primitive.t) term -> PropertyResult.t
   val string_round_trip2 : string -> PropertyResult.t
+end
+
+module Primitive : sig
+  (** Hardcoded for the Primitive type *)
+  val check
+    :  'info AbstractSyntax.t (** Abstract syntax *)
+    -> 'info Sort.t (** Sort to check term against *)
+    -> ('info, Primitive.t) term
+    -> ( 'info
+       , (('info, Primitive.t) Pattern.t, ('info, Primitive.t) term) Base.Either.t )
+       CheckFailure.t
+       option
 end

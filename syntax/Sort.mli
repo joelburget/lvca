@@ -15,9 +15,11 @@ val map_info : f:('a -> 'b) -> 'a t -> 'b t
 val erase_info : _ t -> unit t
 
 (* TODO: remove? *)
+(*
 val of_term
   :  ('info, 'prim) Nominal.term
   -> ('info t, ('info, 'prim) Nominal.term) Result.t
+  *)
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : OptRange.t t ParseUtil.t

@@ -42,6 +42,7 @@ let rec instantiate arg_mapping = function
   | Ap (info, name, args) -> Ap (info, name, List.map args ~f:(instantiate arg_mapping))
 ;;
 
+(*
 let rec of_term tm =
   match tm with
   | Nominal.Var (info, name) -> Ok (Name (info, name))
@@ -52,6 +53,7 @@ let rec of_term tm =
     |> Result.map ~f:(fun args' -> Ap (info, name, args'))
   | _ -> Error tm
 ;;
+*)
 
 let rec map_info ~f = function
   | Name (info, name) -> Name (f info, name)

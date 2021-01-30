@@ -1,9 +1,12 @@
+module Unit = Base.Unit
 module List = Base.List
 module Option = Base.Option
 module Queue = Base.Queue
 module Set = Base.Set
 module Util = Lvca_util
 module String = Util.String
+module SMap = Lvca_util.String.Map
+module Result = Base.Result
 
 type ('info, 'prim) pattern =
   | Operator of 'info * string * ('info, 'prim) pattern list
@@ -141,6 +144,89 @@ let rec select_path ~path pat =
     | Operator (_, _, pats) ->
       let pat = List.nth pats i in
       (match pat with Some pat -> select_path ~path pat | None -> Error "TODO: message"))
+;;
+
+let handle_dup_error = function
+  | `Ok result -> Ok result
+  | `Duplicate_key k ->
+    Error
+      (CheckFailure.err
+         (Printf.sprintf
+            "Did you mean to bind the same variable (%s) twice in the same pattern? \
+             That's not allowed!"
+            k))
+;;
+
+let check pp_prim check_prim lang ~pattern_sort ~var_sort =
+  let lookup_operator = AbstractSyntax.lookup_operator lang in
+  let rec check sort pat =
+    let result =
+      match pat with
+      | Var (_, name) ->
+        if Sort.equal Unit.( = ) (Sort.erase_info sort) (Sort.erase_info var_sort)
+        then Ok (SMap.singleton name sort)
+        else
+          Error
+            (CheckFailure.err
+               (Printf.sprintf
+                  "Pattern %s is of sort `%s`. Expected `%s`."
+                  name
+                  (Sort.to_string var_sort)
+                  (Sort.to_string sort)))
+      | Ignored _ -> Ok SMap.empty
+      | Primitive (info, prim) ->
+        (match check_prim info prim sort with
+        | None -> Ok SMap.empty
+        | Some msg -> Error (CheckFailure.err msg))
+      | Operator (_, op_name, subpats) ->
+        let sort_name, sort_args =
+          match sort with
+          | Sort.Name (_, sort_name) -> sort_name, []
+          | Sort.Ap (_, sort_name, sort_args) -> sort_name, sort_args
+        in
+        (match lookup_operator sort_name op_name with
+        | None ->
+          Error
+            (CheckFailure.err
+               (Printf.sprintf
+                  "Pattern.check: failed to find operator %s in sort %s"
+                  op_name
+                  sort_name))
+        | Some (sort_vars, OperatorDef (_, arity)) ->
+          let sort_env = SMap.of_alist_exn (List.zip_exn sort_vars sort_args) in
+          check_slots (AbstractSyntax.instantiate_arity sort_env arity) subpats)
+    in
+    Result.map_error result ~f:(fun CheckFailure.{ message; stack } ->
+        CheckFailure.{ message; stack = { term = pat; sort } :: stack })
+  and check_slots valences pats =
+    match List.zip pats valences with
+    | Unequal_lengths ->
+      Error
+        (CheckFailure.err
+           (Printf.sprintf
+              "Wrong number of subterms (%u) for this arity (%s)"
+              (List.length pats)
+              (valences
+              |> List.map ~f:AbstractSyntax.string_of_valence
+              |> String.concat ~sep:", ")))
+    | Ok pat_valences ->
+      pat_valences
+      |> List.map ~f:(fun (pat, valence) ->
+             match valence with
+             (* The pattern is a single var of the given sort *)
+             | Valence ([], sort) -> check sort pat
+             | _ ->
+               Error
+                 (CheckFailure.err
+                    (Printf.sprintf
+                       "Invalid pattern (%s) binding a non-sort valence (%s)"
+                       (to_string pp_prim pat)
+                       (AbstractSyntax.string_of_valence valence))))
+      |> Result.all
+      |> Result.map ~f:SMap.strict_unions
+      |> Result.bind ~f:handle_dup_error
+  in
+  check pattern_sort
 ;;
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
@@ -322,3 +408,224 @@ module Properties = struct
           PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str'))
   ;;
 end
+
+module Primitive' = Primitive
+
+module Primitive = struct
+  let check lang ~pattern_sort ~var_sort =
+    check Primitive.pp Primitive.check lang ~pattern_sort ~var_sort
+  ;;
+end
+
+let%test_module "CheckTerm" =
+  (module struct
+    module AbstractSyntaxParse = AbstractSyntax.Parse (ParseUtil.NoComment)
+
+    let parse_lang lang_str =
+      ParseUtil.parse_string AbstractSyntaxParse.whitespace_t lang_str
+      |> Result.ok_or_failwith
+    ;;
+
+    module Parser = Parse (ParseUtil.NoComment)
+    module ParsePrimitive = Primitive'.Parse (ParseUtil.NoComment)
+
+    let parse_pattern str =
+      ParseUtil.parse_string (Parser.t ParsePrimitive.t) str |> Result.ok_or_failwith
+    ;;
+
+    module SortParse = Sort.Parse (ParseUtil.NoComment)
+
+    let parse_sort str = ParseUtil.parse_string SortParse.t str
+
+    let lang_desc =
+      {|
+value :=
+  | unit()
+  | lit_int(integer)
+  | lit_str(string)
+  | list(list value)
+
+list a :=
+  | nil()
+  | cons(a; list a)
+
+match_line :=
+  | match_line(value[value]. term)
+
+term :=
+  | lambda(value. term)
+  | alt_lambda(term. term)
+  | match(match_line)
+  | value(value)
+
+test := foo(term[term]. term)
+      |}
+    ;;
+
+    let language = parse_lang lang_desc
+
+    let print_check_pattern ?var_sort_str sort_str pat_str =
+      let sort = parse_sort sort_str |> Result.ok_or_failwith in
+      let var_sort =
+        match var_sort_str with
+        | None -> sort
+        | Some str -> parse_sort str |> Result.ok_or_failwith
+      in
+      let pat = parse_pattern pat_str in
+      let pp ppf CheckFailure.{ term = pat; sort } =
+        Fmt.pf ppf "- @[pattern: %a,@ sort: %a@]" (pp Primitive'.pp) pat Sort.pp sort
+      in
+      match Primitive.check language ~pattern_sort:sort ~var_sort pat with
+      | Error failure -> Fmt.epr "%a" (CheckFailure.pp pp) failure
+      | Ok _ -> ()
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "value" "unit()";
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "value" "lit_int(1)";
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "value" {|lit_str("str")|};
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "list value" {|nil()|};
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "list value" {|cons(unit(); nil())|};
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern
+        ~var_sort_str:"value"
+        "term"
+        {|value(list(cons(unit(); nil())))|};
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern ~var_sort_str:"value" "term" {|value(list(cons(a; nil())))|};
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "term" {|value(list(cons(a; nil())))|};
+      [%expect
+        {|
+        Pattern a is of sort `term`. Expected `value`.
+        stack:
+        - pattern: value(list(cons(a; nil()))), sort: term
+        - pattern: list(cons(a; nil())), sort: value
+        - pattern: cons(a; nil()), sort: list value
+        - pattern: a, sort: value
+      |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern
+        ~var_sort_str:"value"
+        "term"
+        {|value(list(cons(a; cons(a; _))))|};
+      [%expect
+        {|
+      Did you mean to bind the same variable (a) twice in the same pattern? That's not allowed!
+      stack:
+      - pattern: value(list(cons(a; cons(a; _)))), sort: term
+      - pattern: list(cons(a; cons(a; _))), sort: value
+      - pattern: cons(a; cons(a; _)), sort: list value |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "term" "lambda(a)";
+      [%expect
+        {|
+        Invalid pattern (a) binding a non-sort valence (value. term)
+        stack:
+        - pattern: lambda(a), sort: term |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "match_line" "match_line(a)";
+      [%expect
+        {|
+        Invalid pattern (a) binding a non-sort valence (value[value]. term)
+        stack:
+        - pattern: match_line(a), sort: match_line |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "integer" {|"foo"|};
+      [%expect
+        {|
+      Unexpected sort (integer) for a primitive ("foo")
+      stack:
+      - pattern: "foo", sort: integer |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "value" "foo()";
+      [%expect
+        {|
+      Pattern.check: failed to find operator foo in sort value
+      stack:
+      - pattern: foo(), sort: value |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "value" "unit(1)";
+      [%expect
+        {|
+      Wrong number of subterms (1) for this arity ()
+      stack:
+      - pattern: unit(1), sort: value |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "term" "lambda(1)";
+      [%expect
+        {|
+      Invalid pattern (1) binding a non-sort valence (value. term)
+      stack:
+      - pattern: lambda(1), sort: term |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "term" "match(a; b)";
+      [%expect
+        {|
+      Wrong number of subterms (2) for this arity (match_line)
+      stack:
+      - pattern: match(a; b), sort: term |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "integer" "1";
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "float" "1.";
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "char" "'a'";
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "string" {|"str"|};
+      [%expect]
+    ;;
+  end)
+;;

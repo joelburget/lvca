@@ -15,8 +15,14 @@ val equal
   -> ('info, 'prim) t
   -> bool
 
+(** A set of all the variables bound in a pattern. *)
 val vars_of_pattern : _ t -> Lvca_util.String.Set.t
+
+(** A list of all the variables bound in a pattern. Why have this when [vars_of_pattern]
+    exists? Because in a list we can also include the info for each var (which we can't do
+    in a set). *)
 val list_vars_of_pattern : ('info, _) t -> ('info * string) list
+
 val to_string : 'prim Fmt.t -> ('info, 'prim) t -> string (* TODO: remove? *)
 
 val pp : 'prim Fmt.t -> ('info, 'prim) t Fmt.t
@@ -40,6 +46,41 @@ val select_path
   -> ('info, 'prim) pattern
   -> (('info, 'prim) pattern, string) Result.t
 
+(** Check that this pattern is valid and return the sort for each variable it binds.
+
+    Checks performed:
+
+    {ol
+     {- Primitives: checked by the given primitive checker. }
+     {- All used operators are found (in the sort corresponding to the pattern type). }
+     {- All
+        operators
+        have
+        the
+        correct
+        number
+        of
+        subterms
+        for
+        their
+        arity.
+
+        - Fixed arity patterns must have the exact number of subterms.
+        - Variable arity patterns may have any number.
+     }
+     {- Patterns can't see valence: they can only bind subterms with some given sort. }
+    } *)
+val check
+  :  'prim Fmt.t
+  -> ('info -> 'prim -> 'info Sort.t -> string option) (** Primitive checker *)
+  -> 'info AbstractSyntax.t (** Abstract syntax *)
+  -> pattern_sort:'info Sort.t (** Sort to check pattern against *)
+  -> var_sort:'info Sort.t (** Sort pattern must yield as variables *)
+  -> ('info, 'prim) t
+  -> ( 'info Sort.t Lvca_util.String.Map.t
+     , ('info, ('info, 'prim) t) CheckFailure.t )
+     Result.t
+
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : 'prim ParseUtil.t -> (OptRange.t, 'prim) t ParseUtil.t
   val whitespace_t : 'prim ParseUtil.t -> (OptRange.t, 'prim) t ParseUtil.t
@@ -50,4 +91,17 @@ module Properties : sig
   val json_round_trip2 : Lvca_util.Json.t -> PropertyResult.t
   val string_round_trip1 : (unit, Primitive.t) t -> PropertyResult.t
   val string_round_trip2 : string -> PropertyResult.t
+end
+
+module Primitive : sig
+  (** Hardcoded for the Primitive type *)
+
+  val check
+    :  'info AbstractSyntax.t (** Abstract syntax *)
+    -> pattern_sort:'info Sort.t (** Sort to check pattern against *)
+    -> var_sort:'info Sort.t (** Sort pattern must yield as variables *)
+    -> ('info, Primitive.t) t
+    -> ( 'info Sort.t Lvca_util.String.Map.t
+       , ('info, ('info, Primitive.t) t) CheckFailure.t )
+       Result.t
 end

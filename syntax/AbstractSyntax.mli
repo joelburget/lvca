@@ -1,9 +1,16 @@
 (** Types for describing the abstract syntax of a language. *)
 
+(** A pattern_sort represents the sort of a pattern with variables of some sort. This is
+    written as [pattern_sort\[var_sort\]]. *)
+type 'info pattern_sort =
+  { pattern_sort : 'info Sort.t
+  ; var_sort : 'info Sort.t
+  }
+
 (** Represents a place where a sort can go in a valence. *)
 type 'info sort_slot =
   | SortBinding of 'info Sort.t
-  | SortPattern of 'info Sort.t * 'info Sort.t
+  | SortPattern of 'info pattern_sort
 
 (** A valence represents a sort, as well as the number and sorts of the variables bound
     within it. Valences are most often used to represent slots in an operator. *)
@@ -36,6 +43,26 @@ val map_info : f:('a -> 'b) -> 'a t -> 'b t
 val erase_info : _ t -> unit t
 val string_of_valence : 'info valence -> string
 val string_of_arity : 'info arity -> string
+
+(** {1 Misc} *)
+
+val instantiate_sort_slot
+  :  'info Sort.t Lvca_util.String.Map.t
+  -> 'info sort_slot
+  -> 'info sort_slot
+
+val instantiate_valence
+  :  'info Sort.t Lvca_util.String.Map.t
+  -> 'info valence
+  -> 'info valence
+
+val instantiate_arity : 'info Sort.t Lvca_util.String.Map.t -> 'info arity -> 'info arity
+
+val lookup_operator
+  :  'info t
+  -> string (** sort name *)
+  -> string (** operator_name *)
+  -> (string list * 'info operator_def) option
 
 (* TODO val pp : Format.formatter -> t -> unit *)
 

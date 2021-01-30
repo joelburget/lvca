@@ -87,8 +87,12 @@ let rec mk_sort ~loc = function
 
 let mk_sort_slot ~loc = function
   | AbstractSyntax.SortBinding s -> [%expr AbstractSyntax.SortBinding [%e mk_sort ~loc s]]
-  | SortPattern (s1, s2) ->
-    [%expr AbstractSyntax.SortPattern ([%e mk_sort ~loc s1], [%e mk_sort ~loc s2])]
+  | SortPattern { pattern_sort; var_sort } ->
+    [%expr
+      AbstractSyntax.SortPattern
+        { pattern_sort = [%e mk_sort ~loc pattern_sort]
+        ; var_sort = [%e mk_sort ~loc var_sort]
+        }]
 ;;
 
 let mk_valence ~loc (AbstractSyntax.Valence (sort_slots, body_sort)) =
