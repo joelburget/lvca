@@ -22,6 +22,10 @@ type ('info, 'prim) capture =
   | BoundTerm of ('info, 'prim) Nominal.term
   *)
 
+type ('info, 'prim) capture =
+  | CapturedBinder of ('info, 'prim) Pattern.t
+  | CapturedTerm of ('info, 'prim) Nominal.term
+
 (** {1 Vars} *)
 
 (** A set of all the variables bound in a pattern. *)
@@ -88,6 +92,18 @@ val check
   -> ( 'info capture_type Lvca_util.String.Map.t
      , ('info, ('info, 'prim) t) CheckFailure.t )
      Result.t
+
+val match_term
+  :  prim_eq:('prim -> 'prim -> bool)
+  -> ('info, 'prim) t
+  -> ('info, 'prim) Nominal.term
+  -> ('info, 'prim) capture Lvca_util.String.Map.t option
+
+val match_scope
+  :  prim_eq:('prim -> 'prim -> bool)
+  -> ('info, 'prim) scope
+  -> ('info, 'prim) Nominal.scope
+  -> ('info, 'prim) capture Lvca_util.String.Map.t option
 
 (** {1 Parsing} *)
 module Parse (Comment : ParseUtil.Comment_int) : sig

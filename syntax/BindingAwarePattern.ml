@@ -3,6 +3,7 @@ module Util = Lvca_util
 module String = Util.String
 module Format = Stdlib.Format
 module SMap = Lvca_util.String.Map
+open Option.Let_syntax
 
 type ('info, 'prim) t =
   | Operator of 'info * string * ('info, 'prim) scope list
@@ -16,6 +17,10 @@ type 'info capture_type =
   | BoundVar of 'info Sort.t
   | BoundPattern of 'info AbstractSyntax.pattern_sort
   | BoundTerm of 'info Sort.t
+
+type ('info, 'prim) capture =
+  | CapturedBinder of ('info, 'prim) Pattern.t
+  | CapturedTerm of ('info, 'prim) Nominal.term
 
 let rec equal info_eq prim_eq t1 t2 =
   match t1, t2 with
@@ -168,6 +173,46 @@ let rec select_path ~path pat =
       | Some (Scope (_vars, pat)) -> select_path ~path pat))
 ;;
 
+let rec match_term ~prim_eq pat tm =
+  match pat, tm with
+  | Ignored _, _ -> Some SMap.empty
+  | Var (_, name), tm -> Some (SMap.singleton name (CapturedTerm tm))
+  | Primitive (_, p1), Nominal.Primitive (_, p2) ->
+    if prim_eq p1 p2 then Some SMap.empty else None
+  | Operator (_, name1, pat_scopes), Operator (_, name2, tm_scopes) ->
+    if String.(name1 = name2)
+    then (
+      match List.map2 pat_scopes tm_scopes ~f:(match_scope ~prim_eq) with
+      | Unequal_lengths -> None
+      | Ok zipped ->
+        (match Option.all zipped with
+        | Some list ->
+          (match Lvca_util.String.Map.strict_unions list with
+          | `Ok result -> Some result
+          | `Duplicate_key _k -> failwith "TODO")
+        | None -> None))
+    else None
+  | _, _ -> None
+
+and match_scope ~prim_eq (Scope (binder_pats, body_pat)) (Nominal.Scope (binders, body)) =
+  let f (_, name) pat =
+    if Char.(name.[0] = '_') then None else Some (name, CapturedBinder pat)
+  in
+  match List.map2 binder_pats binders ~f with
+  | List.Or_unequal_lengths.Unequal_lengths -> None
+  | Ok zipped ->
+    let%bind binder_captures = Option.all zipped in
+    let%bind binder_captures =
+      match SMap.of_alist binder_captures with
+      | `Duplicate_key _ -> None (* TODO: error *)
+      | `Ok binder_captures -> Some binder_captures
+    in
+    let%bind body_match = match_term ~prim_eq body_pat body in
+    (match SMap.strict_union binder_captures body_match with
+    | `Duplicate_key _ -> None (* TODO: error *)
+    | `Ok result -> Some result)
+;;
+
 let handle_dup_error = function
   | `Ok result -> Ok result
   | `Duplicate_key k ->
@@ -278,6 +323,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
 
   let to_var = function
     | Var (i, name) -> Ok (i, name)
+    (* TODO: we never parse ignored *)
     | Ignored (i, name) -> Ok (i, "_" ^ name)
     | _ -> Error "not a var"
   ;;
@@ -527,7 +573,7 @@ test := foo(term[term]. term)
 
     let%expect_test _ =
       print_check_pattern "term" {|value(list(cons(a; nil())))|};
-      [%expect{| a: value |}]
+      [%expect {| a: value |}]
     ;;
 
     let%expect_test _ =
