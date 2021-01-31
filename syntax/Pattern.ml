@@ -417,7 +417,7 @@ module Primitive = struct
   ;;
 end
 
-let%test_module "CheckTerm" =
+let%test_module "Pattern.check" =
   (module struct
     module AbstractSyntaxParse = AbstractSyntax.Parse (ParseUtil.NoComment)
 
