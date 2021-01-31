@@ -12,6 +12,11 @@ type ('info, 'prim) t =
 
 and ('info, 'prim) scope = Scope of ('info * string) list * ('info, 'prim) t
 
+type 'info capture_type =
+  | BoundVar of 'info Sort.t
+  | BoundPattern of 'info AbstractSyntax.pattern_sort
+  | BoundTerm of 'info Sort.t
+
 let rec equal info_eq prim_eq t1 t2 =
   match t1, t2 with
   | Operator (i1, name1, scopes1), Operator (i2, name2, scopes2) ->
@@ -146,8 +151,10 @@ let pp_scope_ranges pp_prim ppf tm =
     tm
 ;;
 
+(*
 let to_string pp_prim pat = Fmt.str "%a" (pp pp_prim) pat
 let scope_to_string pp_prim scope = Fmt.str "%a" (pp_scope pp_prim) scope
+*)
 
 let rec select_path ~path pat =
   match path with
@@ -172,12 +179,12 @@ let handle_dup_error = function
             k))
 ;;
 
-let check pp_prim check_prim lang sort =
+let check check_prim lang sort =
   let lookup_operator = AbstractSyntax.lookup_operator lang in
   let rec check sort pat =
     let result =
       match pat with
-      | Var (_, name) -> Ok (SMap.singleton name sort)
+      | Var (_, name) -> Ok (SMap.singleton name (BoundTerm sort))
       | Ignored _ -> Ok SMap.empty
       | Primitive (info, prim) ->
         (match check_prim info prim sort with
@@ -233,17 +240,25 @@ let check pp_prim check_prim lang sort =
               (List.length binder_slots)))
     | Ok binders ->
       let binders_env =
-        binders |> List.map ~f:(fun (slot, (_, v)) -> SMap.singleton v slot)
+        binders
+        |> List.map ~f:(fun (slot, (_, v)) ->
+               let binding_type =
+                 match slot with
+                 | SortBinding sort -> BoundVar sort
+                 | SortPattern pattern_sort -> BoundPattern pattern_sort
+               in
+               v, binding_type)
       in
       (* Check the body with the new binders environment *)
-      (match SMap.strict_unions binders_env with
+      (match SMap.of_alist binders_env with
       | `Ok env ->
         (match check body_sort body with
         | Error msg -> Error msg
         | Ok env' ->
           (match SMap.strict_union env env' with
           | `Ok env -> Ok env
-          | `Duplicate_key k -> failwith "TODO"))
+          | `Duplicate_key k ->
+            failwith (Printf.sprintf "invariant violation -- duplicate key: %s" k)))
       | `Duplicate_key k ->
         Error
           (CheckFailure.err
@@ -404,6 +419,207 @@ let%test_module "Parsing" =
     let%expect_test _ =
       print_parse {|a(b;;c)|};
       [%expect {| failed: : end_of_input |}]
+    ;;
+  end)
+;;
+
+let%test_module "BindingAwarePattern.check" =
+  (module struct
+    module AbstractSyntaxParse = AbstractSyntax.Parse (ParseUtil.NoComment)
+
+    let parse_lang lang_str =
+      ParseUtil.parse_string AbstractSyntaxParse.whitespace_t lang_str
+      |> Result.ok_or_failwith
+    ;;
+
+    module Parser = Parse (ParseUtil.NoComment)
+    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
+
+    let parse_pattern str =
+      ParseUtil.parse_string (Parser.t ParsePrimitive.t) str |> Result.ok_or_failwith
+    ;;
+
+    module SortParse = Sort.Parse (ParseUtil.NoComment)
+
+    let parse_sort str = ParseUtil.parse_string SortParse.t str
+
+    let lang_desc =
+      {|
+value :=
+  | unit()
+  | lit_int(integer)
+  | lit_str(string)
+  | list(list value)
+
+list a :=
+  | nil()
+  | cons(a; list a)
+
+match_line :=
+  | match_line(value[value]. term)
+
+term :=
+  | lambda(value. term)
+  | alt_lambda(term. term)
+  | match(match_line)
+  | value(value)
+
+test := foo(term[term]. term)
+      |}
+    ;;
+
+    let language = parse_lang lang_desc
+
+    let print_check_pattern sort_str pat_str =
+      let sort = parse_sort sort_str |> Result.ok_or_failwith in
+      let pat = parse_pattern pat_str in
+      let pp ppf CheckFailure.{ term = pat; sort } =
+        Fmt.pf ppf "- @[pattern: %a,@ sort: %a@]" (pp Primitive.pp) pat Sort.pp sort
+      in
+      match check Primitive.check language sort pat with
+      | Error failure -> Fmt.epr "%a" (CheckFailure.pp pp) failure
+      | Ok capture_types ->
+        capture_types
+        |> Map.iteri ~f:(fun ~key ~data ->
+               let rhs =
+                 match data with
+                 | BoundVar sort -> Sort.to_string sort
+                 | BoundPattern { pattern_sort; var_sort } ->
+                   (* XXX make pattern_sort printer public *)
+                   Printf.sprintf
+                     "%s[%s]"
+                     (Sort.to_string pattern_sort)
+                     (Sort.to_string var_sort)
+                 | BoundTerm sort -> Sort.to_string sort
+               in
+               Stdio.printf "%s: %s\n" key rhs)
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "value" "unit()";
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "value" "lit_int(1)";
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "value" {|lit_str("str")|};
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "list value" {|nil()|};
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "list value" {|cons(unit(); nil())|};
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "term" {|value(list(cons(unit(); nil())))|};
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "term" {|value(list(cons(a; nil())))|};
+      [%expect{| a: value |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "term" {|value(list(cons(a; cons(a; _))))|};
+      [%expect
+        {|
+      Did you mean to bind the same variable (a) twice in the same pattern? That's not allowed!
+      stack:
+      - pattern: value(list(cons(a; cons(a; _)))), sort: term
+      - pattern: list(cons(a; cons(a; _))), sort: value
+      - pattern: cons(a; cons(a; _)), sort: list value |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "term" "lambda(x. body)";
+      [%expect {|
+      body: term
+      x: value
+      |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "match_line" "match_line(pat. body)";
+      [%expect {|
+      body: term
+      pat: value[value]
+      |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "integer" {|"foo"|};
+      [%expect
+        {|
+      Unexpected sort (integer) for a primitive ("foo")
+      stack:
+      - pattern: "foo", sort: integer |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "value" "foo()";
+      [%expect
+        {|
+      Pattern.check: failed to find operator foo in sort value
+      stack:
+      - pattern: foo(), sort: value |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "value" "unit(1)";
+      [%expect
+        {|
+      Wrong number of subterms (1) for this arity ()
+      stack:
+      - pattern: unit(1), sort: value |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "term" "lambda(1)";
+      [%expect
+        {|
+      Wrong number of binders (0) for this valence (value. term) (expected 1)
+      stack:
+      - pattern: lambda(1), sort: term |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "term" "match(a; b)";
+      [%expect
+        {|
+      Wrong number of subterms (2) for this arity (match_line)
+      stack:
+      - pattern: match(a; b), sort: term |}]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "integer" "1";
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "float" "1.";
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "char" "'a'";
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_check_pattern "string" {|"str"|};
+      [%expect]
     ;;
   end)
 ;;

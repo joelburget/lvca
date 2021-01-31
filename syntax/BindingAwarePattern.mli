@@ -1,3 +1,7 @@
+(** Binding-aware patterns allow one to capture binders (variables and patterns). *)
+
+(** {1 Types} *)
+
 type ('info, 'prim) t =
   | Operator of 'info * string * ('info, 'prim) scope list
   | Primitive of 'info * 'prim
@@ -5,6 +9,18 @@ type ('info, 'prim) t =
   | Ignored of 'info * string
 
 and ('info, 'prim) scope = Scope of ('info * string) list * ('info, 'prim) t
+
+type 'info capture_type =
+  | BoundVar of 'info Sort.t
+  | BoundPattern of 'info AbstractSyntax.pattern_sort
+  | BoundTerm of 'info Sort.t
+
+(*
+type ('info, 'prim) capture =
+  | BoundVar of 'info * string
+  | BoundPattern of 'info * string
+  | BoundTerm of ('info, 'prim) Nominal.term
+  *)
 
 (** {1 Vars} *)
 
@@ -65,12 +81,11 @@ val equal
      }
     } *)
 val check
-  :  'prim Fmt.t
-  -> ('info -> 'prim -> 'info Sort.t -> string option) (** Primitive checker *)
+  :  ('info -> 'prim -> 'info Sort.t -> string option) (** Primitive checker *)
   -> 'info AbstractSyntax.t (** Abstract syntax *)
   -> 'info Sort.t (** Sort to check pattern against *)
   -> ('info, 'prim) t
-  -> ( 'info AbstractSyntax.valence Lvca_util.String.Map.t
+  -> ( 'info capture_type Lvca_util.String.Map.t
      , ('info, ('info, 'prim) t) CheckFailure.t )
      Result.t
 
