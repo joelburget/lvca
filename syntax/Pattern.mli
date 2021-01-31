@@ -1,5 +1,7 @@
 (** Patterns match terms and bind variables. *)
 
+(** {1 Types} *)
+
 type ('info, 'prim) pattern =
   | Operator of 'info * string * ('info, 'prim) pattern list
   | Primitive of 'info * 'prim
@@ -15,6 +17,8 @@ val equal
   -> ('info, 'prim) t
   -> bool
 
+(** {1 Vars} *)
+
 (** A set of all the variables bound in a pattern. *)
 val vars_of_pattern : _ t -> Lvca_util.String.Set.t
 
@@ -23,11 +27,15 @@ val vars_of_pattern : _ t -> Lvca_util.String.Set.t
     in a set). *)
 val list_vars_of_pattern : ('info, _) t -> ('info * string) list
 
+(** {1 Printing} *)
+
 val to_string : 'prim Fmt.t -> ('info, 'prim) t -> string (* TODO: remove? *)
 
 val pp : 'prim Fmt.t -> ('info, 'prim) t Fmt.t
 val pp_range : 'prim Fmt.t -> (OptRange.t, 'prim) t Fmt.t
 val pp_ranges : 'prim Fmt.t -> (SourceRanges.t, 'prim) t Fmt.t
+
+(** {1 Serialization} *)
 
 val jsonify
   :  'prim Lvca_util.Json.serializer
@@ -37,9 +45,13 @@ val unjsonify
   :  'prim Lvca_util.Json.deserializer
   -> (unit, 'prim) t Lvca_util.Json.deserializer
 
+(** {1 Info} *)
+
 val map_info : f:('a -> 'b) -> ('a, 'prim) pattern -> ('b, 'prim) pattern
 val erase : (_, 'prim) pattern -> (unit, 'prim) pattern
 val info : ('info, _) pattern -> 'info
+
+(** {1 Misc} *)
 
 val select_path
   :  path:int list
@@ -80,6 +92,8 @@ val check
   -> ( 'info Sort.t Lvca_util.String.Map.t
      , ('info, ('info, 'prim) t) CheckFailure.t )
      Result.t
+
+(** {1 Parsing} *)
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : 'prim ParseUtil.t -> (OptRange.t, 'prim) t ParseUtil.t
