@@ -226,17 +226,17 @@ and subst_all_scope ctx (Scope (pats, tm)) = Scope (pats, subst_all ctx tm)
 
 let rec match_pattern ~prim_eq pat tm =
   match pat, tm with
-  | Pattern.Ignored _, _ -> Some Lvca_util.String.Map.empty
-  | Var (_, name), tm -> Some (Lvca_util.String.Map.singleton name tm)
+  | Pattern.Ignored _, _ -> Some String.Map.empty
+  | Var (_, name), tm -> Some (String.Map.singleton name tm)
   | Primitive (_, p1), Primitive (_, p2) ->
-    if prim_eq p1 p2 then Some Lvca_util.String.Map.empty else None
+    if prim_eq p1 p2 then Some String.Map.empty else None
   | Primitive _, _ -> None
   | Operator (_, name1, pats), Operator (_, name2, scopes) ->
     if String.(name1 = name2)
     then (
       match List.map2 pats scopes ~f:(match_scope ~prim_eq) with
       | Ok zipped ->
-        (match Lvca_util.String.Map.join_helper zipped with
+        (match String.Map.join_helper zipped with
         | `Ok result -> result
         | `Duplicate_key k ->
           failwith (Printf.sprintf "invariant violation: duplicate key: %s" k))
@@ -249,7 +249,7 @@ and match_scope ~prim_eq pat (Scope (binders, tm)) =
 ;;
 
 let free_vars tm =
-  let module S = Lvca_util.String.Set in
+  let module S = String.Set in
   let rec free_vars bound_vars = function
     | Operator (_, _, scopes) ->
       scopes |> List.map ~f:(scope_free_vars bound_vars) |> S.union_list
