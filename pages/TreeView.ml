@@ -182,19 +182,14 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
   Queue.enqueue queue (grid_tmpl ~render_params [ left_col ] loc)
 ;;
 
-let get_suffix ~last_slot ~last_term =
-  match last_term, last_slot with
-  | true, true -> ""
-  | true, false -> ";"
-  | false, _ -> ","
-;;
+let get_suffix ~last_slot = match last_slot with true -> "" | false -> ";"
 
 let rec index_pat = function
   | Pattern.Primitive (loc, p) -> Pattern.Primitive (LocIx loc, p)
   | Var (loc, name) -> Var (VarDefIx (loc, create_e ()), name)
   | Ignored (loc, name) -> Ignored (LocIx loc, name)
   | Operator (loc, name, slots) ->
-    let slots = List.map slots ~f:(List.map ~f:index_pat) in
+    let slots = List.map slots ~f:index_pat in
     Operator (LocIx loc, name, slots)
 ;;
 
@@ -224,16 +219,11 @@ let rec index_tm ~expanded_depth = function
     in
     Operator (OperatorIx (loc, expanded_s), name, scopes), expanded_toggle_e
 
-and index_scope ~expanded_depth (Nominal.Scope (pats, tms)) =
+and index_scope ~expanded_depth (Nominal.Scope (pats, tm)) =
   let expanded_depth = decrease_depth expanded_depth in
-  let tms, evt =
-    tms
-    |> List.map ~f:(index_tm ~expanded_depth)
-    |> List.unzip
-    |> Lvca_util.Tuple2.map2 ~f:E.select
-  in
+  let tm, evt = index_tm ~expanded_depth tm in
   let pats = pats |> List.map ~f:index_pat in
-  Nominal.Scope (pats, tms), evt
+  Nominal.Scope (pats, tm), evt
 ;;
 
 let rec find_outermost_binding ~var_name = function
@@ -252,9 +242,7 @@ and find_outermost_binding_scope ~var_name (Scope (pats, body)) =
                   | true, VarDefIx (_, evt) -> Some evt
                   | _, _ -> None))
   in
-  match found_var with
-  | Some v -> Some v
-  | None -> List.find_map body ~f:(find_outermost_binding ~var_name)
+  match found_var with Some v -> Some v | None -> find_outermost_binding ~var_name body
 ;;
 
 let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
@@ -272,7 +260,7 @@ let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
       | Some event_stream -> event_stream.trigger
     in
     let trigger_downstream_shadow =
-      match List.find_map downstream ~f:(find_outermost_binding ~var_name:name) with
+      match find_outermost_binding downstream ~var_name:name with
       | None -> Fn.const ()
       | Some event_stream -> event_stream.trigger
     in
@@ -292,14 +280,10 @@ let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
       let open_elem = grid_tmpl ~render_params [ padded_txt depth (name ^ "(") ] loc in
       Queue.enqueue queue open_elem;
       let num_slots = List.length slots in
-      List.iteri slots ~f:(fun i pats ->
-          let num_pats = List.length pats in
-          let last_slot = i = num_slots - 1 in
-          List.iteri pats ~f:(fun j ->
-              let last_term = j = num_pats - 1 in
-              let suffix = get_suffix ~last_slot ~last_term in
-              let render_params = { render_params with depth = Int.succ depth } in
-              render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream));
+      List.iteri slots ~f:(fun i pat ->
+          let suffix = get_suffix ~last_slot:(i = num_slots - 1) in
+          let render_params = { render_params with depth = Int.succ depth } in
+          render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream pat);
       let close_elem = grid_tmpl ~render_params [ padded_txt depth (")" ^ suffix) ] loc in
       Queue.enqueue queue close_elem)
   | _ -> failwith "invariant violation: wrong index"
@@ -337,7 +321,7 @@ let rec render_tm ~render_params ?(suffix = "") : _ Nominal.term -> unit =
       Queue.enqueue queue close_elem)
   | _ -> failwith "invariant violation: wrong index"
 
-and render_scope ~render_params ~last:last_slot (Nominal.Scope (pats, tms)) =
+and render_scope ~render_params ~last:last_slot (Nominal.Scope (pats, tm)) =
   let { depth; var_selected_events; _ } = render_params in
   let pattern_var_events =
     List.map pats ~f:(fun pat ->
@@ -367,12 +351,7 @@ and render_scope ~render_params ~last:last_slot (Nominal.Scope (pats, tms)) =
         let render_params =
           { render_params with depth = Int.succ depth; var_selected_events }
         in
-        render_pattern
-          ~render_params
-          ~shadowed_var_streams
-          ~suffix:"."
-          ~downstream:tms
-          pat;
+        render_pattern ~render_params ~shadowed_var_streams ~suffix:"." ~downstream:tm pat;
         newly_defined_var_events)
   in
   (* Events for variables bound in this scope *)
@@ -385,11 +364,7 @@ and render_scope ~render_params ~last:last_slot (Nominal.Scope (pats, tms)) =
   let render_params =
     { render_params with depth = Int.succ depth; var_selected_events }
   in
-  let num_tms = List.length tms in
-  List.iteri tms ~f:(fun j ->
-      let last_term = j = num_tms - 1 in
-      let suffix = get_suffix ~last_term ~last_slot in
-      render_tm ~render_params ~suffix)
+  render_tm ~render_params ~suffix:(get_suffix ~last_slot) tm
 ;;
 
 let view_tm
