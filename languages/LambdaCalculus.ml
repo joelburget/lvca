@@ -1,6 +1,8 @@
 open Base
 open Lvca_syntax
 
+let language = [%lvca_abstract_syntax "tm := app(tm; tm) | lam(tm. tm)"]
+
 let eval tm =
   let open Result.Let_syntax in
   let tm_str tm =

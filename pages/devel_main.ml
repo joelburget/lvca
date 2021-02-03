@@ -13,12 +13,15 @@ module Model = struct
     | ParserPage
     | ScopeViewerPage
     | EditsPage
+    | CheckTermPage
+    | AstOperationsPage
+    | ListNatPage
 
   (* | TermToDocument *)
 
   type t = { page : page }
 
-  let initial_model = { page = EvalWithProvenancePage }
+  let initial_model = { page = CheckTermPage }
 
   let all_pages =
     [ TermAndConcretePage
@@ -28,6 +31,9 @@ module Model = struct
     ; EvalWithProvenancePage
     ; TermToTexPage
     ; EditsPage
+    ; CheckTermPage
+    ; AstOperationsPage
+    ; ListNatPage
     ]
   ;;
 end
@@ -43,6 +49,9 @@ module View = struct
     | EditsPage -> "0x: edits"
     | EvalWithProvenancePage -> "0x: evaluation with provenance"
     | TermToTexPage -> "0x: term to tex"
+    | CheckTermPage -> "0x: check term"
+    | AstOperationsPage -> "0x: operations on ASTs"
+    | ListNatPage -> "0x: ListNat"
   ;;
 
   let stateless_view = function
@@ -53,6 +62,9 @@ module View = struct
     | ParserPage -> Parser.stateless_view
     | ScopeViewerPage -> ScopeViewer.stateless_view
     | EditsPage -> Edits.stateless_view
+    | CheckTermPage -> CheckTerm.stateless_view
+    | AstOperationsPage -> AstOperations.stateless_view
+    | ListNatPage -> ListNat.stateless_view
   ;;
 
   let view model_s =
