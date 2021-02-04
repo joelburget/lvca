@@ -1,5 +1,7 @@
 # Language Verification, Construction, and Analysis
 
+[![OCaml-CI Build Status](https://img.shields.io/endpoint?url=https%3A%2F%2Fci.ocamllabs.io%2Fbadge%2Fjoelburget%2Flvca%2Fmain&logo=ocaml&style=for-the-badge)](https://ci.ocamllabs.io/github/joelburget/lvca)
+
 ## Introduction
 
 LVCA is a tool for building programming languages. It has an intentionally
