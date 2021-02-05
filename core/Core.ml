@@ -12,11 +12,13 @@ type 'a term =
   | Term of ('a, Primitive.t) Nominal.term
   (* plus, core-specific ctors *)
   | CoreApp of 'a * 'a term * 'a term
-  | Case of 'a * 'a term * 'a case_scope list
+  | Case of 'a * 'a term * 'a cases
   | Lambda of 'a * 'a Sort.t * 'a scope
   | Let of 'a * is_rec * 'a term * 'a scope (** Lets bind only a single variable *)
 
 and 'a scope = Scope of string * 'a term
+
+and 'a cases = 'a case_scope list
 
 and 'a case_scope = CaseScope of ('a, Primitive.t) Pattern.t * 'a term
 

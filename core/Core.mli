@@ -11,13 +11,15 @@ type is_rec =
 type 'a term =
   | Term of ('a, Lvca_syntax.Primitive.t) Lvca_syntax.Nominal.term
   | CoreApp of 'a * 'a term * 'a term
-  | Case of 'a * 'a term * 'a case_scope list (** Cases match patterns *)
+  | Case of 'a * 'a term * 'a cases (** Cases match patterns *)
   | Lambda of 'a * 'a Lvca_syntax.Sort.t * 'a scope
       (** Lambdas bind variables. Patterns not allowed. *)
   | Let of 'a * is_rec * 'a term * 'a scope
       (** Lets bind variables. Patterns not allowed. *)
 
 and 'a scope = Scope of string * 'a term
+
+and 'a cases = 'a case_scope list
 
 and 'a case_scope =
   | CaseScope of ('a, Lvca_syntax.Primitive.t) Lvca_syntax.Pattern.t * 'a term
