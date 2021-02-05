@@ -12,23 +12,23 @@ type 'a term =
   | Term of ('a, Primitive.t) Nominal.term
   (* plus, core-specific ctors *)
   | CoreApp of 'a * 'a term * 'a term
-  | Case of 'a * 'a term * 'a core_case_scope list
-  | Lambda of 'a * 'a Sort.t * 'a core_scope
-  | Let of 'a * is_rec * 'a term * 'a core_scope (** Lets bind only a single variable *)
+  | Case of 'a * 'a term * 'a case_scope list
+  | Lambda of 'a * 'a Sort.t * 'a scope
+  | Let of 'a * is_rec * 'a term * 'a scope (** Lets bind only a single variable *)
 
-and 'a core_scope = Scope of string * 'a term
+and 'a scope = Scope of string * 'a term
 
-and 'a core_case_scope = CaseScope of ('a, Primitive.t) Pattern.t * 'a term
+and 'a case_scope = CaseScope of ('a, Primitive.t) Pattern.t * 'a term
 
 let rec map_info ~f = function
   | Term tm -> Term (Nominal.map_info ~f tm)
   | CoreApp (info, t1, t2) -> CoreApp (f info, map_info ~f t1, map_info ~f t2)
   | Case (info, tm, scopes) ->
     Case (f info, map_info ~f tm, List.map scopes ~f:(map_info_case_scope ~f))
-  | Lambda (info, sort, core_scope) ->
-    Lambda (f info, Sort.map_info ~f sort, map_info_core_scope ~f core_scope)
-  | Let (info, is_rec, tm, core_scope) ->
-    Let (f info, is_rec, map_info ~f tm, map_info_core_scope ~f core_scope)
+  | Lambda (info, sort, scope) ->
+    Lambda (f info, Sort.map_info ~f sort, map_info_core_scope ~f scope)
+  | Let (info, is_rec, tm, scope) ->
+    Let (f info, is_rec, map_info ~f tm, map_info_core_scope ~f scope)
 
 and map_info_core_scope ~f (Scope (name, tm)) = Scope (name, map_info ~f tm)
 
@@ -79,7 +79,7 @@ module PP = struct
         pp
         body
 
-  and pp_core_case_scope : Format.formatter -> 'a core_case_scope -> unit =
+  and pp_core_case_scope : Format.formatter -> 'a case_scope -> unit =
    fun ppf (CaseScope (pat, body)) ->
     pf ppf "@[%a@ -> %a@]" (Pattern.pp Primitive.pp) pat pp body
 
@@ -143,7 +143,7 @@ let rec match_pattern
 ;;
 
 let find_core_match
-    :  'a n_term -> 'b core_case_scope list
+    :  'a n_term -> 'b case_scope list
     -> ('b term * 'a n_term Lvca_util.String.Map.t) option
   =
  fun v branches ->

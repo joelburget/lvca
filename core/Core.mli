@@ -1,7 +1,7 @@
 (** Tools for dealing with the core language in LVCA.
 
-    - [term] defines expressions in the core language. It uses [core_scope],
-      [core_case_scope], (and [Pattern.t]).
+    - [term] defines expressions in the core language. It uses [scope], [case_scope], (and
+      [Pattern.t]).
     - [eval] is used to evaluate a core term *)
 
 type is_rec =
@@ -11,15 +11,15 @@ type is_rec =
 type 'a term =
   | Term of ('a, Lvca_syntax.Primitive.t) Lvca_syntax.Nominal.term
   | CoreApp of 'a * 'a term * 'a term
-  | Case of 'a * 'a term * 'a core_case_scope list (** Cases match patterns *)
-  | Lambda of 'a * 'a Lvca_syntax.Sort.t * 'a core_scope
+  | Case of 'a * 'a term * 'a case_scope list (** Cases match patterns *)
+  | Lambda of 'a * 'a Lvca_syntax.Sort.t * 'a scope
       (** Lambdas bind variables. Patterns not allowed. *)
-  | Let of 'a * is_rec * 'a term * 'a core_scope
+  | Let of 'a * is_rec * 'a term * 'a scope
       (** Lets bind variables. Patterns not allowed. *)
 
-and 'a core_scope = Scope of string * 'a term
+and 'a scope = Scope of string * 'a term
 
-and 'a core_case_scope =
+and 'a case_scope =
   | CaseScope of ('a, Lvca_syntax.Primitive.t) Lvca_syntax.Pattern.t * 'a term
 
 val map_info : f:('a -> 'b) -> 'a term -> 'b term
