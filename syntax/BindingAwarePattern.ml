@@ -383,7 +383,11 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
               [ (parens (many t_or_sep)
                 >>= fun tokens ->
                 pos >>= fun p2 -> accumulate (OptRange.mk p1 p2) ident tokens)
-              ; (pos >>| fun p2 -> Var (OptRange.mk p1 p2, ident))
+              ; (pos
+                >>| fun p2 ->
+                if Char.(ident.[0] = '_')
+                then Ignored (OptRange.mk p1 p2, String.subo ident ~pos:1)
+                else Var (OptRange.mk p1 p2, ident))
               ])
           ])
     <?> "binding-aware pattern"
