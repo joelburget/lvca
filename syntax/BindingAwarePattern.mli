@@ -110,3 +110,8 @@ module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : 'prim ParseUtil.t -> (OptRange.t, 'prim) t ParseUtil.t
   val whitespace_t : 'prim ParseUtil.t -> (OptRange.t, 'prim) t ParseUtil.t
 end
+
+module Properties : sig
+  val string_round_trip1 : (unit, Primitive.t) t -> PropertyResult.t
+  val string_round_trip2 : string -> PropertyResult.t
+end

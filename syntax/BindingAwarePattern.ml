@@ -396,6 +396,39 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   let whitespace_t parse_prim = Parsers.(junk *> t parse_prim)
 end
 
+module Properties = struct
+  module ParsePattern = Parse (ParseUtil.NoComment)
+  module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
+  open PropertyResult
+
+  let parse = ParseUtil.parse_string (ParsePattern.t ParsePrimitive.t)
+  let pp = pp Primitive.pp
+  let to_string = Fmt.str "%a" pp
+
+  let string_round_trip1 t =
+    match t |> to_string |> parse with
+    | Ok t' ->
+      let t' = erase t' in
+      PropertyResult.check Caml.(t' = t) (Fmt.str "%a <> %a" pp t' pp t)
+    | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
+  ;;
+
+  let string_round_trip2 str =
+    match parse str with
+    | Error _ -> Uninteresting
+    | Ok t ->
+      let str' = t |> erase |> to_string in
+      if Base.String.(str' = str)
+      then Ok
+      else (
+        match parse str with
+        | Error msg -> Failed msg
+        | Ok t' ->
+          let str'' = t' |> erase |> to_string in
+          PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str'))
+  ;;
+end
+
 let%test_module "Parsing" =
   (module struct
     module Parser = Parse (ParseUtil.NoComment)
