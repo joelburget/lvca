@@ -789,7 +789,7 @@ module Primitive = struct
   let check lang sort pat = check Primitive.pp Primitive.check lang sort pat
 end
 
-let%test_module "Nominal.check" =
+let%test_module "check" =
   (module struct
     module AbstractSyntaxParse = AbstractSyntax.Parse (ParseUtil.NoComment)
 
