@@ -1,11 +1,12 @@
 open Base
 open Lvca_syntax
 
-type 'info term = ('info, Primitive.t) BindingAwarePattern.t
+type 'info pattern = ('info, Primitive.t) BindingAwarePattern.t
+type 'info term = ('info, Primitive.t) Nominal.term
 
 type 'a typing_rule =
-  { tm : 'a term
-  ; ty : 'a term
+  { tm : 'a pattern
+  ; ty : 'a pattern
   }
 
 type 'a inference_rule = 'a typing_rule
@@ -15,7 +16,7 @@ type 'a typing_clause =
   | InferenceRule of 'a inference_rule
   | CheckingRule of 'a checking_rule
 
-type 'a hypothesis = 'a term Lvca_util.String.Map.t * 'a typing_clause
+type 'a hypothesis = 'a pattern Lvca_util.String.Map.t * 'a typing_clause
 
 type 'a rule =
   { hypotheses : 'a hypothesis list
@@ -46,10 +47,7 @@ let erase_rule { hypotheses; name; conclusion } =
   }
 ;;
 
-let erase_typing (Typing (t1, t2)) =
-  Typing (BindingAwarePattern.erase t1, BindingAwarePattern.erase t2)
-;;
-
+let erase_typing (Typing (t1, t2)) = Typing (Nominal.erase t1, Nominal.erase t2)
 let erase = List.map ~f:erase_rule
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
@@ -68,7 +66,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     | LeftArr
     | RightArr
 
-  let term : OptRange.t term Parsers.t = Pattern.t ParsePrimitive.t <?> "term"
+  let pattern : OptRange.t pattern Parsers.t = Pattern.t ParsePrimitive.t <?> "pattern"
 
   let typing_clause : OptRange.t typing_clause Parsers.t =
     lift3
@@ -76,17 +74,17 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         match dir with
         | LeftArr -> CheckingRule { tm; ty }
         | RightArr -> InferenceRule { tm; ty })
-      term
+      pattern
       (choice [ (string "<=" >>| fun _ -> LeftArr); (string "=>" >>| fun _ -> RightArr) ])
-      term
+      pattern
     <?> "typing clause"
   ;;
 
-  let typed_term : (string * OptRange.t term) Parsers.t =
-    lift3 (fun ident _ tm -> ident, tm) identifier (char ':') term <?> "typed term"
+  let typed_term : (string * OptRange.t pattern) Parsers.t =
+    lift3 (fun ident _ tm -> ident, tm) identifier (char ':') pattern <?> "typed pattern"
   ;;
 
-  let context : OptRange.t term Lvca_util.String.Map.t Parsers.t =
+  let context : OptRange.t pattern Lvca_util.String.Map.t Parsers.t =
     string "ctx"
     *> choice
          [ (char ','

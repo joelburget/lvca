@@ -3,7 +3,8 @@
 
 open Lvca_syntax
 
-type 'info term = ('info, Primitive.t) BindingAwarePattern.t
+type 'info pattern = ('info, Primitive.t) BindingAwarePattern.t
+type 'info term = ('info, Primitive.t) Nominal.term
 
 (** Both typing and inference rules share this shape.
 
@@ -12,8 +13,8 @@ type 'info term = ('info, Primitive.t) BindingAwarePattern.t
     rules assert that given both a term and a type we can check if the term is of that
     type. *)
 type 'info typing_rule =
-  { tm : 'info term
-  ; ty : 'info term
+  { tm : 'info pattern
+  ; ty : 'info pattern
   }
 
 type 'info inference_rule = 'info typing_rule
@@ -25,7 +26,7 @@ type 'info typing_clause =
 
 (** A hypothesis contains a set of variables (and their types) that must appear in the
     context, as well as an inference or checking clause. *)
-type 'info hypothesis = 'info term Lvca_util.String.Map.t * 'info typing_clause
+type 'info hypothesis = 'info pattern Lvca_util.String.Map.t * 'info typing_clause
 
 (** A rule contains a set of hypotheses, an optional name, and a conclusion *)
 type 'info rule =
@@ -47,12 +48,12 @@ val erase : _ t -> unit t
 module Parse (Comment : ParseUtil.Comment_int) : sig
   exception StaticsParseError of string
 
-  val term : OptRange.t term ParseUtil.t
+  val pattern : OptRange.t pattern ParseUtil.t
   val typing_clause : OptRange.t typing_clause ParseUtil.t
-  val typed_term : (string * OptRange.t term) ParseUtil.t
+  val typed_term : (string * OptRange.t pattern) ParseUtil.t
 
   (** @raise StaticsParseError *)
-  val context : OptRange.t term Lvca_util.String.Map.t ParseUtil.t
+  val context : OptRange.t pattern Lvca_util.String.Map.t ParseUtil.t
 
   (** @raise StaticsParseError *)
   val hypothesis : OptRange.t hypothesis ParseUtil.t
