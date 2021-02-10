@@ -3,18 +3,7 @@
 
 open Lvca_syntax
 
-(** A term is the same as Binding.DeBruijn.term, but allows for free variables. *)
-type 'a term =
-  | Operator of 'a * string * 'a scope list
-  | Bound of 'a * int * int (** Bound vars come via conversion of de Bruijn terms. *)
-  | Free of 'a * string (** Free vars are used during typechecking. *)
-  | Primitive of 'a * Primitive.t
-
-and 'a scope = Scope of 'a Pattern.t list * 'a term list
-
-val info : 'a term -> 'a
-val string_of_term : 'a term -> string
-val string_of_scope : 'a scope -> string
+type 'info term = ('info, Primitive.t) BindingAwarePattern.t
 
 (** Both typing and inference rules share this shape.
 
@@ -22,68 +11,60 @@ val string_of_scope : 'a scope -> string
     Inference rules assert that some type can be synthesized from the given term. Checking
     rules assert that given both a term and a type we can check if the term is of that
     type. *)
-type 'a typing_rule =
-  { tm : 'a term
-  ; ty : 'a term
+type 'info typing_rule =
+  { tm : 'info term
+  ; ty : 'info term
   }
 
-type 'a inference_rule = 'a typing_rule
-type 'a checking_rule = 'a typing_rule
+type 'info inference_rule = 'info typing_rule
+type 'info checking_rule = 'info typing_rule
 
-type 'a typing_clause =
-  | InferenceRule of 'a inference_rule
-  | CheckingRule of 'a checking_rule
+type 'info typing_clause =
+  | InferenceRule of 'info inference_rule
+  | CheckingRule of 'info checking_rule
 
 (** A hypothesis contains a set of variables (and their types) that must appear in the
     context, as well as an inference or checking clause. *)
-type 'a hypothesis = 'a term Lvca_util.String.Map.t * 'a typing_clause
+type 'info hypothesis = 'info term Lvca_util.String.Map.t * 'info typing_clause
 
 (** A rule contains a set of hypotheses, an optional name, and a conclusion *)
-type 'a rule =
-  { hypotheses : 'a hypothesis list
+type 'info rule =
+  { hypotheses : 'info hypothesis list
   ; name : string option
-  ; conclusion : 'a hypothesis
+  ; conclusion : 'info hypothesis
   }
 
-type 'a typing = Typing of 'a term * 'a term
-type 'a t = 'a rule list
+type 'info typing = Typing of 'info term * 'info term
+type 'info t = 'info rule list
 
-val erase_term : 'a term -> unit term
-val erase_scope : 'a scope -> unit scope
-val erase_typing_rule : 'a typing_rule -> unit typing_rule
-val erase_typing_clause : 'a typing_clause -> unit typing_clause
-val erase_hypothesis : 'a hypothesis -> unit hypothesis
-val erase_rule : 'a rule -> unit rule
-val erase_typing : 'a typing -> unit typing
-val erase : 'a t -> unit t
-val of_de_bruijn : 'a Binding.DeBruijn.term -> 'a term
-
-(** Raised by [to_de_bruijn_exn] when it encounters a free variable. *)
-exception FreeVar of string
-
-(** Convert a [term] to a de Bruijn representation. See also [of_de_bruijn].
-
-    @raise FreeVar *)
-val to_de_bruijn_exn : 'a term -> 'a Binding.DeBruijn.term
+val erase_typing_rule : _ typing_rule -> unit typing_rule
+val erase_typing_clause : _ typing_clause -> unit typing_clause
+val erase_hypothesis : _ hypothesis -> unit hypothesis
+val erase_rule : _ rule -> unit rule
+val erase_typing : _ typing -> unit typing
+val erase : _ t -> unit t
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
   exception StaticsParseError of string
 
-  val term : Range.t term Angstrom.t
-  val typing_clause : Range.t typing_clause Angstrom.t
-  val typed_term : (string * Range.t term) Angstrom.t
+  val term : OptRange.t term ParseUtil.t
+  val typing_clause : OptRange.t typing_clause ParseUtil.t
+  val typed_term : (string * OptRange.t term) ParseUtil.t
 
   (** @raise StaticsParseError *)
-  val context : Range.t term Lvca_util.String.Map.t Angstrom.t
+  val context : OptRange.t term Lvca_util.String.Map.t ParseUtil.t
 
   (** @raise StaticsParseError *)
-  val hypothesis : Range.t hypothesis Angstrom.t
+  val hypothesis : OptRange.t hypothesis ParseUtil.t
 
-  val line : string option Angstrom.t
-
-  (** @raise StaticsParseError *)
-  val rule : Range.t rule Angstrom.t
+  val line : string option ParseUtil.t
 
   (** @raise StaticsParseError *)
-  val t : Range.t t Angstrom.t
+  val rule : OptRange.t rule ParseUtil.t
+
+  (** @raise StaticsParseError *)
+  val t : OptRange.t t ParseUtil.t
+
+  (** @raise StaticsParseError *)
+  val whitespace_t : OptRange.t t ParseUtil.t
 end
