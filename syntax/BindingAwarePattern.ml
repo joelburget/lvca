@@ -161,6 +161,11 @@ let to_string pp_prim pat = Fmt.str "%a" (pp pp_prim) pat
 let scope_to_string pp_prim scope = Fmt.str "%a" (pp_scope pp_prim) scope
 *)
 
+let pp_capture pp_prim ppf = function
+  | CapturedBinder pat -> Pattern.pp pp_prim ppf pat
+  | CapturedTerm pat -> Nominal.pp_term pp_prim ppf pat
+;;
+
 let rec select_path ~path pat =
   match path with
   | [] -> Ok pat
@@ -506,23 +511,21 @@ let%test_module "Parsing" =
   end)
 ;;
 
-let%test_module "BindingAwarePattern.check" =
+let%test_module "check" =
   (module struct
     module AbstractSyntaxParse = AbstractSyntax.Parse (ParseUtil.NoComment)
+    module Parser = Parse (ParseUtil.NoComment)
+    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
+    module SortParse = Sort.Parse (ParseUtil.NoComment)
 
     let parse_lang lang_str =
       ParseUtil.parse_string AbstractSyntaxParse.whitespace_t lang_str
       |> Result.ok_or_failwith
     ;;
 
-    module Parser = Parse (ParseUtil.NoComment)
-    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
-
     let parse_pattern str =
       ParseUtil.parse_string (Parser.t ParsePrimitive.t) str |> Result.ok_or_failwith
     ;;
-
-    module SortParse = Sort.Parse (ParseUtil.NoComment)
 
     let parse_sort str = ParseUtil.parse_string SortParse.t str
 
@@ -703,6 +706,54 @@ test := foo(term[term]. term)
     let%expect_test _ =
       print_check_pattern "string" {|"str"|};
       [%expect]
+    ;;
+  end)
+;;
+
+let%test_module "check" =
+  (module struct
+    module Parser = Parse (ParseUtil.NoComment)
+    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
+    module ParseNominal = Nominal.Parse (ParseUtil.NoComment)
+    module SortParse = Sort.Parse (ParseUtil.NoComment)
+
+    let parse_pattern str =
+      ParseUtil.parse_string (Parser.t ParsePrimitive.t) str |> Result.ok_or_failwith
+    ;;
+
+    let parse_term str =
+      ParseUtil.parse_string (ParseNominal.t ParsePrimitive.t) str
+      |> Result.ok_or_failwith
+    ;;
+
+    let print_match pat_str tm_str =
+      let pat = parse_pattern pat_str in
+      let tm = parse_term tm_str in
+      match match_term ~prim_eq:Primitive.( = ) pat tm with
+      | None -> ()
+      | Some mapping ->
+        mapping
+        |> Map.iteri ~f:(fun ~key ~data ->
+               Fmt.pr "%s -> %a\n" key (pp_capture Primitive.pp) data)
+    ;;
+
+    let%expect_test _ =
+      print_match "foo()" "foo()";
+      [%expect]
+    ;;
+
+    let%expect_test _ =
+      print_match "lam(a. b)" "lam(x. y)";
+      [%expect{|
+        a -> x
+        b -> y |}]
+    ;;
+
+    let%expect_test _ =
+      print_match "match(a. b)" "match(foo(bar(); baz()). x)";
+      [%expect{|
+        a -> foo(bar(); baz())
+        b -> x |}]
     ;;
   end)
 ;;

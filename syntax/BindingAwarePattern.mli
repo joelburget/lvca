@@ -15,13 +15,6 @@ type 'info capture_type =
   | BoundPattern of 'info AbstractSyntax.pattern_sort
   | BoundTerm of 'info Sort.t
 
-(*
-type ('info, 'prim) capture =
-  | BoundVar of 'info * string
-  | BoundPattern of 'info * string
-  | BoundTerm of ('info, 'prim) Nominal.term
-  *)
-
 type ('info, 'prim) capture =
   | CapturedBinder of ('info, 'prim) Pattern.t
   | CapturedTerm of ('info, 'prim) Nominal.term
@@ -35,6 +28,20 @@ val vars_of_pattern : _ t -> Lvca_util.String.Set.t
     exists? Because in a list we can also include the info for each var (which we can't do
     in a set). *)
 val list_vars_of_pattern : ('info, _) t -> ('info * string) list
+
+(** {1 Matching} *)
+
+val match_term
+  :  prim_eq:('prim -> 'prim -> bool)
+  -> ('info, 'prim) t
+  -> ('info, 'prim) Nominal.term
+  -> ('info, 'prim) capture Lvca_util.String.Map.t option
+
+val match_scope
+  :  prim_eq:('prim -> 'prim -> bool)
+  -> ('info, 'prim) scope
+  -> ('info, 'prim) Nominal.scope
+  -> ('info, 'prim) capture Lvca_util.String.Map.t option
 
 (** {1 Pretty-printing} *)
 
@@ -92,18 +99,6 @@ val check
   -> ( 'info capture_type Lvca_util.String.Map.t
      , ('info, ('info, 'prim) t) CheckFailure.t )
      Result.t
-
-val match_term
-  :  prim_eq:('prim -> 'prim -> bool)
-  -> ('info, 'prim) t
-  -> ('info, 'prim) Nominal.term
-  -> ('info, 'prim) capture Lvca_util.String.Map.t option
-
-val match_scope
-  :  prim_eq:('prim -> 'prim -> bool)
-  -> ('info, 'prim) scope
-  -> ('info, 'prim) Nominal.scope
-  -> ('info, 'prim) capture Lvca_util.String.Map.t option
 
 (** {1 Parsing} *)
 module Parse (Comment : ParseUtil.Comment_int) : sig
