@@ -157,5 +157,31 @@ let%test_module "Parsing" =
         && erase_typing_clause rule
            = CheckingRule { tm = Var ((), "t1"); ty = Operator ((), "bool", []) }
     ;;
+
+    let print_parse desc =
+      let str =
+        ParseUtil.parse_string Parse.whitespace_t desc
+        |> Result.ok_or_failwith
+        |> Fn.const "parsed"
+      in
+      Stdio.print_string str
+    ;;
+
+    let%expect_test _ =
+      print_parse {|
+    ---
+    ctx >> tm => ty
+  |};
+      [%expect {| parsed |}]
+    ;;
+
+    let%expect_test _ =
+      print_parse {|
+    ctx, x : a >> foo(x) <= a
+    ---
+    ctx >> tm => ty
+  |};
+      [%expect {| parsed |}]
+    ;;
   end)
 ;;
