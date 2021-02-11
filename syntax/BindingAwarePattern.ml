@@ -22,6 +22,13 @@ type ('info, 'prim) capture =
   | CapturedBinder of ('info, 'prim) Pattern.t
   | CapturedTerm of ('info, 'prim) Nominal.term
 
+let capture_eq ~info_eq ~prim_eq cap1 cap2 =
+  match cap1, cap2 with
+  | CapturedBinder pat1, CapturedBinder pat2 -> Pattern.equal info_eq prim_eq pat1 pat2
+  | CapturedTerm tm1, CapturedTerm tm2 -> Nominal.equal info_eq prim_eq tm1 tm2
+  | _, _ -> false
+;;
+
 let rec equal info_eq prim_eq t1 t2 =
   match t1, t2 with
   | Operator (i1, name1, scopes1), Operator (i2, name2, scopes2) ->
@@ -744,14 +751,14 @@ let%test_module "check" =
 
     let%expect_test _ =
       print_match "lam(a. b)" "lam(x. y)";
-      [%expect{|
+      [%expect {|
         a -> x
         b -> y |}]
     ;;
 
     let%expect_test _ =
       print_match "match(a. b)" "match(foo(bar(); baz()). x)";
-      [%expect{|
+      [%expect {|
         a -> foo(bar(); baz())
         b -> x |}]
     ;;

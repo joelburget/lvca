@@ -19,6 +19,13 @@ type ('info, 'prim) capture =
   | CapturedBinder of ('info, 'prim) Pattern.t
   | CapturedTerm of ('info, 'prim) Nominal.term
 
+val capture_eq
+  :  info_eq:('info -> 'info -> bool)
+  -> prim_eq:('prim -> 'prim -> bool)
+  -> ('info, 'prim) capture
+  -> ('info, 'prim) capture
+  -> bool
+
 (** {1 Vars} *)
 
 (** A set of all the variables bound in a pattern. *)
