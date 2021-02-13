@@ -52,12 +52,13 @@ val match_scope
 
 (** {1 Pretty-printing} *)
 
-val pp : 'prim Fmt.t -> ('info, 'prim) t Fmt.t
+val pp : 'prim Fmt.t -> (_, 'prim) t Fmt.t
 val pp_range : 'prim Fmt.t -> (OptRange.t, 'prim) t Fmt.t
 val pp_ranges : 'prim Fmt.t -> (SourceRanges.t, 'prim) t Fmt.t
-val pp_scope : 'prim Fmt.t -> ('info, 'prim) scope Fmt.t
+val pp_scope : 'prim Fmt.t -> (_, 'prim) scope Fmt.t
 val pp_scope_range : 'prim Fmt.t -> (OptRange.t, 'prim) scope Fmt.t
 val pp_scope_ranges : 'prim Fmt.t -> (SourceRanges.t, 'prim) scope Fmt.t
+val pp_capture : 'prim Fmt.t -> (_, 'prim) capture Fmt.t
 
 (** {1 Info} *)
 
