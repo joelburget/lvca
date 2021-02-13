@@ -38,7 +38,11 @@ let pp_err ppf = function
 
 (* [pat] is a (binding-aware) pattern taken from the typing rule. Use the
    values in the context to fill it in. *)
-let instantiate name env pat =
+let instantiate
+    :  string option -> ('a, Primitive.t) capture SMap.t
+    -> ('a, Primitive.t) BindingAwarePattern.t -> ('a term, 'a check_error) Result.t
+  =
+ fun name env pat ->
   let open Result.Let_syntax in
   let err msg =
     let msg =
@@ -86,7 +90,11 @@ let instantiate name env pat =
   go_term pat
 ;;
 
-let update_ctx ctx_state learned_tys =
+let update_ctx
+    :  ('a, Primitive.t) capture SMap.t ref -> ('a, Primitive.t) capture SMap.t
+    -> 'a check_error option
+  =
+ fun ctx_state learned_tys ->
   let do_assignment (k, v) =
     match Map.find !ctx_state k with
     | None ->
@@ -106,7 +114,8 @@ let update_ctx ctx_state learned_tys =
   learned_tys |> Map.to_alist |> List.find_map ~f:do_assignment
 ;;
 
-let ctx_infer var_types = function
+let ctx_infer : 'a term SMap.t -> 'a term -> ('a term, 'a check_error) Result.t =
+ fun var_types -> function
   | Nominal.Var (_, name) ->
     (match Map.find var_types name with
     | None ->
@@ -123,7 +132,11 @@ let ctx_infer var_types = function
       (CheckError (Fmt.str "unable to infer type (no matching rule) for %a" pp_term tm))
 ;;
 
-let rec check' trace_stack emit_trace ({ rules; _ } as env) (Typing (tm, ty) as typing) =
+let rec check'
+    :  'a trace_step -> ('a trace_step -> unit) -> 'a env -> 'a typing
+    -> 'a check_error option
+  =
+ fun trace_stack emit_trace ({ rules; _ } as env) (Typing (tm, ty) as typing) ->
   let trace_entry = CheckTrace (env, typing) in
   let trace_stack = trace_entry :: trace_stack in
   emit_trace trace_stack;
@@ -169,7 +182,11 @@ let rec check' trace_stack emit_trace ({ rules; _ } as env) (Typing (tm, ty) as 
       emit_trace (trace_entry :: trace_stack);
       result)
 
-and infer' trace_stack emit_trace ({ rules; var_types } as env) tm =
+and infer'
+    :  'a trace_step -> ('a trace_step -> unit) -> 'a env -> 'a term
+    -> ('a term, 'a check_error) Result.t
+  =
+ fun trace_stack emit_trace ({ rules; var_types } as env) tm ->
   let open Result.Let_syntax in
   let var_types : 'a term SMap.t ref = ref var_types in
   let trace_stack = InferTrace (env, tm) :: trace_stack in
@@ -200,7 +217,12 @@ and infer' trace_stack emit_trace ({ rules; var_types } as env) tm =
   ty
 
 (* Check (or infer, depending on the rule) a hypothesis *)
-and check_hyp trace_stack emit_trace name ctx_state env (pattern_ctx, rule) =
+and check_hyp
+    :  'a trace_step -> ('a trace_step -> unit) -> 'string
+    -> ('a, Primitive.t) capture SMap.t ref -> 'a env -> 'a hypothesis
+    -> 'a check_error option
+  =
+ fun trace_stack emit_trace name ctx_state env (pattern_ctx, rule) ->
   let open Result.Let_syntax in
   match
     let%map var_type_list =
