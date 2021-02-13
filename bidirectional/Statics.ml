@@ -183,5 +183,36 @@ let%test_module "Parsing" =
   |};
       [%expect {| parsed |}]
     ;;
+
+    let%expect_test _ =
+      print_parse
+        {|
+    ---
+    ctx, x : t >> x => t
+
+    ---
+    ctx >> str(x) => str()
+
+    ---
+    ctx >> num(x) => num()
+
+    ctx >> e1 <= num()    ctx >> e2 <= num()
+    ---
+    ctx >> plus(e1; e2) => num()
+
+    ctx >> e1 <= str()    ctx >> e2 <= str()
+    ---
+    ctx >> cat(e1; e2) => str()
+
+    ctx >> e <= str()
+    ---
+    ctx >> len(e) => num()
+
+    ctx >> e1 => t1   ctx, x : t1 >> e2 <= t2
+    --- (let)
+    ctx >> let(e1; x. e2) <= t2
+  |};
+      [%expect {| parsed |}]
+    ;;
   end)
 ;;

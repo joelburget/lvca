@@ -8,33 +8,52 @@ type 'a env =
         (** The types of all known free variables *)
   }
 
-(* TODO: add docs *)
-exception BadTermMerge of unit term * unit term
-exception BadScopeMerge of unit scope * unit scope
-
-(* TODO: remove from public interface? *)
-
-(** Raised by check *)
-exception CheckError of string
+type 'info check_error =
+  | CheckError of string
+  | BadMerge of
+      ('info, Lvca_syntax.Primitive.t) Lvca_syntax.BindingAwarePattern.capture
+      * ('info, Lvca_syntax.Primitive.t) Lvca_syntax.BindingAwarePattern.capture
 
 type 'a trace_entry =
   | CheckTrace of 'a env * 'a typing
   | CheckSuccess
-  | CheckFailure of string
+  | CheckFailure of 'a check_error
   | InferTrace of 'a env * 'a term
   | Inferred of 'a term
 
 type 'a trace_step = 'a trace_entry list
 
-(* module type CHECKINFER = sig val check : env -> typing -> unit val infer : env -> term
-   -> term end
+(*
+val check_trace : ('a trace_step -> unit) -> 'a env -> 'a typing -> 'a check_error option
 
-   module type TRACER = sig val emit_trace : trace_entry -> unit end
+val infer_trace
+  :  ('a trace_step -> unit)
+  -> 'a env
+  -> 'a term
+  -> ('a term, 'a check_error) Result.t
 
-   module CheckInfer (Tracer : TRACER) = struct val check : env -> typing -> unit val
-   infer : env -> term -> term end *)
+val check : 'a env -> 'a typing -> 'a check_error option
+val infer : 'a env -> 'a term -> ('a term, 'a check_error) Result.t
+*)
 
-val check_trace : ('a trace_step -> unit) -> 'a env -> 'a typing -> unit
-val infer_trace : ('a trace_step -> unit) -> 'a env -> 'a term -> 'a term
-val check : 'a env -> 'a typing -> unit
-val infer : 'a env -> 'a term -> 'a term
+val check_trace
+  :  (Lvca_syntax.OptRange.t trace_step -> unit)
+  -> Lvca_syntax.OptRange.t env
+  -> Lvca_syntax.OptRange.t typing
+  -> Lvca_syntax.OptRange.t check_error option
+
+val infer_trace
+  :  (Lvca_syntax.OptRange.t trace_step -> unit)
+  -> Lvca_syntax.OptRange.t env
+  -> Lvca_syntax.OptRange.t term
+  -> (Lvca_syntax.OptRange.t term, Lvca_syntax.OptRange.t check_error) Result.t
+
+val check
+  :  Lvca_syntax.OptRange.t env
+  -> Lvca_syntax.OptRange.t typing
+  -> Lvca_syntax.OptRange.t check_error option
+
+val infer
+  :  Lvca_syntax.OptRange.t env
+  -> Lvca_syntax.OptRange.t term
+  -> (Lvca_syntax.OptRange.t term, Lvca_syntax.OptRange.t check_error) Result.t

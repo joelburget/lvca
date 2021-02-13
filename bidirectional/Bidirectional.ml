@@ -1,202 +1,154 @@
+open Base
 open Lvca_syntax
 open Statics
-module Fn = Base.Fn
-module List = Base.List
-module Map = Base.Map
-module Option = Base.Option
-module Result = Base.Result
-module String = Lvca_util.String
+module SMap = Lvca_util.String.Map
 
 type 'a env =
   { rules : 'a rule list (** The (checking / inference) rules we can apply *)
-  ; var_types : 'a term String.Map.t (** The types of all known free variables *)
+  ; var_types : 'a term SMap.t (** The types of all known free variables *)
   }
 
-let enscope (binders : 'a Pattern.t list) (Scope (binders', body)) =
-  Scope (binders' @ binders, body)
+type ('info, 'prim) capture = ('info, 'prim) BindingAwarePattern.capture
+
+type 'info check_error =
+  | CheckError of string
+  | BadMerge of ('info, Primitive.t) capture * ('info, Primitive.t) capture
+
+type 'a trace_entry =
+  | CheckTrace of 'a env * 'a typing
+  | CheckSuccess
+  | CheckFailure of 'a check_error
+  | InferTrace of 'a env * 'a term
+  | Inferred of 'a term
+
+type 'a trace_step = 'a trace_entry list
+
+let pp_bpat : ('a, Primitive.t) BindingAwarePattern.t Fmt.t =
+  BindingAwarePattern.pp Primitive.pp
 ;;
 
-(** Only used internally to match_schema_vars *)
-exception NoMatch
+let pp_pat = Pattern.pp Primitive.pp
+let pp_capture = BindingAwarePattern.pp_capture Primitive.pp
+let pp_term = Nominal.pp_term Primitive.pp
 
-let rec match_schema_vars' : 'a term -> 'a term -> 'a scope String.Map.t =
- fun t1 t2 ->
-  match t1, t2 with
-  | Free (_, v), tm -> String.Map.of_alist_exn [ v, Scope ([], [ tm ]) ]
-  | Operator (_, tag1, args1), Operator (_, tag2, args2) ->
-    if String.(tag1 = tag2) && List.(length args1 = length args2)
-    then (
-      let matched_scopes = List.map2_exn args1 args2 ~f:match_schema_vars_scope in
-      match String.Map.strict_unions matched_scopes with
-      | `Ok result -> result
-      | `Duplicate_key str -> failwith ("TODO: error: duplicate key: " ^ str))
-    else raise NoMatch
-  | _, _ -> raise NoMatch
-
-and match_schema_vars_scope (Scope (names1, body1)) (Scope (names2, body2)) =
-  if List.(length names1 = length names2)
-     (* TODO: is it okay to use names1? what happens to names2? *)
-  then (
-    match
-      List.zip_exn body1 body2
-      |> List.map ~f:(fun (tm1, tm2) ->
-             match_schema_vars' tm1 tm2 |> Map.map ~f:(enscope names1))
-      |> String.Map.strict_unions
-    with
-    | `Ok map -> map
-    | `Duplicate_key name -> failwith ("TODO error: duplicate key: " ^ name))
-  else raise NoMatch
+let pp_err ppf = function
+  | CheckError msg -> Fmt.pf ppf "%s" msg
+  | BadMerge (cap1, cap2) -> Fmt.pf ppf "%a / %a" pp_capture cap1 pp_capture cap2
 ;;
 
-let match_schema_vars : 'a term -> 'a term -> 'a scope String.Map.t option =
- fun t1 t2 -> try Some (match_schema_vars' t1 t2) with NoMatch -> None
-;;
-
-(** Open a scope, instantiating all of its bound variables *)
-let open_scope (args : 'a term list list) (Scope (names, body)) : 'a term list option =
-  if List.(length args <> length names)
-  then None
-  else (
-    let rec open' offset tm =
-      match tm with
-      | Operator (info, tag, subtms) ->
-        subtms
-        |> List.map ~f:(fun (Scope (binders, subtms)) ->
-               subtms
-               |> List.map ~f:(open' (offset + List.length binders))
-               |> Option.all
-               |> Option.map ~f:(fun subtms' -> Scope (binders, subtms')))
-        |> Option.all
-        |> Option.map ~f:(fun subtms' -> Operator (info, tag, subtms'))
-      | Bound (_, i, j) ->
-        if i >= offset
-        then
-          args
-          |> Fn.flip List.nth (i - offset)
-          |> Option.bind ~f:(fun args' -> List.nth args' j)
-        else Some tm
-      | Free _ -> Some tm
-      | Primitive _ -> Some tm
+(* [pat] is a (binding-aware) pattern taken from the typing rule. Use the
+   values in the context to fill it in. *)
+let instantiate name env pat =
+  let open Result.Let_syntax in
+  let err msg =
+    let msg =
+      match name with
+      | Some name -> Printf.sprintf "instantiate %s: %s" name msg
+      | None -> Printf.sprintf "instantiate: %s" msg
     in
-    body |> List.map ~f:(open' 0) |> Option.all)
+    Error (CheckError msg)
+  in
+  let rec go_term pat =
+    match pat with
+    | BindingAwarePattern.Operator (info, op_name, scopes) ->
+      let%map scopes = scopes |> List.map ~f:go_scope |> Result.all in
+      Nominal.Operator (info, op_name, scopes)
+    | Var (_info, pattern_var_name) ->
+      (match Map.find env pattern_var_name with
+      | Some (BindingAwarePattern.CapturedTerm tm) -> Ok tm
+      | Some _ ->
+        err
+          (Printf.sprintf
+             "%s: found a captured binder but expected a term"
+             pattern_var_name)
+      | None -> err (Printf.sprintf "didn't find variable %s in context" pattern_var_name))
+    | Primitive (info, p) -> Ok (Primitive (info, p))
+    | Ignored (_, name) ->
+      err (Printf.sprintf "Can't instantiate ignored variable _%s" name)
+  and go_scope (Scope (binders, body)) =
+    let%bind binders =
+      binders
+      |> List.map ~f:(fun (_info, binder_name) ->
+             match Map.find env binder_name with
+             | Some (CapturedTerm _) ->
+               err
+                 (Printf.sprintf
+                    "%s: found a captured term but expected a binder"
+                    binder_name)
+             | Some (CapturedBinder pat) -> Ok pat
+             | None ->
+               err (Printf.sprintf "didn't find variable %s in context" binder_name))
+      |> Result.all
+    in
+    let%map body = go_term body in
+    Nominal.Scope (binders, body)
+  in
+  go_term pat
 ;;
 
-(** Create free variables from a pattern *)
-let pat_to_free_vars pat =
-  pat
-  |> Pattern.list_vars_of_pattern
-  |> List.map ~f:(fun (info, name) -> Free (info, name))
-;;
-
-let rec instantiate (env : 'a scope String.Map.t) (tm : 'a term)
-    : ('a term, string) Result.t
-  =
-  match tm with
-  | Operator (info, tag, subtms) ->
-    subtms
-    |> List.map ~f:(fun (Scope (binders, body)) ->
-           let new_var_names : string array =
-             binders
-             |> List.map ~f:(fun pat ->
-                    pat
-                    |> Pattern.list_vars_of_pattern
-                    |> List.map ~f:(fun (_loc, name) -> name)
-                    |> Array.of_list)
-             |> Array.concat
-           in
-           body
-           |> List.map ~f:(instantiate (Lvca_util.Map.remove_many env new_var_names))
-           |> Result.all
-           |> Result.map ~f:(fun body' -> Scope (binders, body')))
-    |> Result.all
-    |> Result.map ~f:(fun subtms' -> Operator (info, tag, subtms'))
-  | Bound _ -> Ok tm
-  | Free (_, v) ->
-    (match Map.find env v with
-    | None -> Error ("instantiate: couldn't find var " ^ v)
-    | Some (Scope (pats, _) as sc)
-    (* Open the scope, instantiating all variables it binds as free *) ->
-      (match open_scope (List.map pats ~f:pat_to_free_vars) sc with
-      | None -> Error "instantiate: failed to open scope"
-      | Some [ tm ] -> Ok tm (* XXX *)
-      | Some _ -> Error "XXX"))
-  | Primitive _ -> Ok tm
-;;
-
-(* TODO: remove exceptions, unit -> 'a *)
-exception BadTermMerge of unit term * unit term
-exception BadScopeMerge of unit scope * unit scope
-
-(* TODO: remove? *)
-(* let safe_union m1 m2 : 'a String.Map.t = String.Map.merge m1 m2 ~f:(fun ~key:_ ->
-   function | `Both (v1, v2) -> if Caml.(v1 = v2) then Some v1 else raise (BadTermMerge
-   (v1, v2)) | `Left v | `Right v -> Some v ) *)
-
-exception CheckError of string
-
-let update_ctx (ctx_state : scope String.Map.t ref) (learned_tys : scope String.Map.t) =
+let update_ctx ctx_state learned_tys =
   let do_assignment (k, v) =
     match Map.find !ctx_state k with
     | None ->
-      let state' = Map.remove !ctx_state k in
-      ctx_state := Map.set state' ~key:k ~data:v
-    | Some v' -> if Caml.(v <> v') then raise (BadScopeMerge (v, v'))
+      let state = Map.remove !ctx_state k in
+      ctx_state := Map.set state ~key:k ~data:v;
+      None
+    | Some v' ->
+      if not
+           (BindingAwarePattern.capture_eq
+              ~info_eq:(fun _ _ -> true)
+              ~prim_eq:Primitive.( = )
+              v
+              v')
+      then Some (BadMerge (v, v'))
+      else None
   in
-  List.iter ~f:do_assignment (Map.to_alist learned_tys)
+  learned_tys |> Map.to_alist |> List.find_map ~f:do_assignment
 ;;
 
-let get_or_raise msg = function Some x -> x | None -> raise (CheckError msg)
-
-let raise_if_not_ok outer_msg : ('a, 'err) Result.t -> 'a = function
-  | Ok x -> x
-  | Error msg -> raise (CheckError (outer_msg ^ ":\n" ^ msg))
+let ctx_infer var_types = function
+  | Nominal.Var (_, name) ->
+    (match Map.find var_types name with
+    | None ->
+      let var_types = var_types |> Map.keys |> String.concat ~sep:", " in
+      Error
+        (CheckError
+           (Printf.sprintf
+              "ctx_infer: couldn't find variable %s among {%s}"
+              name
+              var_types))
+    | Some ty -> Ok ty)
+  | tm ->
+    Error
+      (CheckError (Fmt.str "unable to infer type (no matching rule) for %a" pp_term tm))
 ;;
-
-let ctx_infer (var_types : term String.Map.t) : term -> term = function
-  | Free v ->
-    (match Map.find var_types v with
-    | None -> raise (CheckError ("ctx_infer: couldn't find variable " ^ v))
-    | Some ty -> ty)
-  | _ -> raise (CheckError "ctx_infer: called with non-free-variable")
-;;
-
-type trace_entry =
-  | CheckTrace of env * typing
-  | CheckSuccess
-  | CheckFailure of string
-  | InferTrace of env * term
-  | Inferred of term
-
-type trace_step = trace_entry list
 
 let rec check' trace_stack emit_trace ({ rules; _ } as env) (Typing (tm, ty) as typing) =
   let trace_entry = CheckTrace (env, typing) in
-  let trace_stack' = trace_entry :: trace_stack in
-  emit_trace trace_stack';
+  let trace_stack = trace_entry :: trace_stack in
+  emit_trace trace_stack;
   let match_rule = function
     | { conclusion = _, InferenceRule _; _ } -> None
-    (* XXX conclusion context *)
+    (* TODO: the conclusion may have a context, which we're currently ignoring *)
     | { name; hypotheses; conclusion = _, CheckingRule { tm = rule_tm; ty = rule_ty } } ->
-      let match1 = match_schema_vars rule_tm tm in
-      let match2 = match_schema_vars rule_ty ty in
+      let match1 = BindingAwarePattern.match_term ~prim_eq:Primitive.( = ) rule_tm tm in
+      let match2 = BindingAwarePattern.match_term ~prim_eq:Primitive.( = ) rule_ty ty in
       (match match1, match2 with
       | Some tm_assignments, Some ty_assignments ->
         Some (name, hypotheses, tm_assignments, ty_assignments)
       | _ -> None)
   in
-  let name, hypotheses, tm_assignments, ty_assignments =
-    get_or_raise "check': no matching rule found" (List.find_map rules ~f:match_rule)
-  in
-  (* TODO: check term / type assignments disjoint *)
-  let schema_assignments =
-    match String.Map.strict_union tm_assignments ty_assignments with
-    | `Ok assignments -> assignments
-    | `Duplicate_key k -> failwith ("TODO: check' error for duplicate key: " ^ k)
-  in
-  (* ctx_state is a mapping of schema variables we've learned:
-   * We fill this in initially with `schema_assignments` from matching the
+  match rules |> List.find_map ~f:match_rule with
+  | None -> Some (CheckError "check': no matching rule found")
+  | Some (name, hypotheses, tm_assignments, ty_assignments) ->
+    (match SMap.strict_union tm_assignments ty_assignments with
+    | `Duplicate_key k ->
+      Some (CheckError ("Found two different bindings for the same variable: " ^ k))
+    | `Ok schema_assignments ->
+      (* ctx_state is a mapping of schema variables we've learned:
+       * We fill this in initially with `schema_assignments` from matching the
      conclusion.
-   * It's also updated as we evaluate the hypotheses (from left to right) if
+       * It's also updated as we evaluate the hypotheses (from left to right) if
      we learn any more assignments. Example:
 
      ctx >> tm1 => arr(ty1; ty2)   ctx >> tm2 <= ty1
@@ -205,153 +157,254 @@ let rec check' trace_stack emit_trace ({ rules; _ } as env) (Typing (tm, ty) as 
 
      Here we initially learn tm1, tm2, and ty2, but only learn ty1 via
      checking of hypotheses.
-   *)
-  let ctx_state : scope String.Map.t ref = ref schema_assignments in
-  (* let name' = match name with | None -> "infer" | Some name -> "infer " ^ name in *)
-  try
-    List.iter ~f:(check_hyp trace_stack' emit_trace name ctx_state env) hypotheses;
-    emit_trace (CheckSuccess :: trace_stack')
-  with
-  | CheckError msg as err ->
-    emit_trace (CheckFailure msg :: trace_stack');
-    raise err
-  | BadTermMerge (v1, v2) ->
-    let msg =
-      Printf.sprintf "bad merge: %s vs %s" (string_of_term v1) (string_of_term v2)
-    in
-    emit_trace (CheckFailure msg :: trace_stack');
-    raise (BadTermMerge (v1, v2))
-  | BadScopeMerge (v1, v2) ->
-    let msg =
-      Printf.sprintf "bad merge: %s vs %s" (string_of_scope v1) (string_of_scope v2)
-    in
-    emit_trace (CheckFailure msg :: trace_stack');
-    raise (BadScopeMerge (v1, v2))
+       *)
+      let ctx_state : ('a, Primitive.t) capture SMap.t ref = ref schema_assignments in
+      let result =
+        hypotheses
+        |> List.find_map ~f:(check_hyp trace_stack emit_trace name ctx_state env)
+      in
+      let trace_entry =
+        match result with None -> CheckSuccess | Some err -> CheckFailure err
+      in
+      emit_trace (trace_entry :: trace_stack);
+      result)
 
-(* TODO: catch other exception? *)
 and infer' trace_stack emit_trace ({ rules; var_types } as env) tm =
-  let trace_stack' = InferTrace (env, tm) :: trace_stack in
-  emit_trace trace_stack';
+  let open Result.Let_syntax in
+  let var_types : 'a term SMap.t ref = ref var_types in
+  let trace_stack = InferTrace (env, tm) :: trace_stack in
+  emit_trace trace_stack;
   let match_rule { name; hypotheses; conclusion } =
     match conclusion with
     | _, CheckingRule _ -> None
-    (* XXX conclusion context *)
+    (* TODO: the conclusion may have a context, which we're currently ignoring *)
     | _, InferenceRule { tm = rule_tm; ty = rule_ty } ->
-      match_schema_vars rule_tm tm
+      let match_ = BindingAwarePattern.match_term ~prim_eq:Primitive.( = ) rule_tm tm in
+      match_
       |> Option.map ~f:(fun schema_assignments ->
              name, hypotheses, schema_assignments, rule_ty)
   in
-  let ty =
+  let%map ty =
     match List.find_map rules ~f:match_rule with
     | Some (name, hypotheses, schema_assignments, rule_ty) ->
-      let ctx_state : scope String.Map.t ref = ref schema_assignments in
-      let name' = match name with None -> "infer'" | Some name -> "infer' " ^ name in
-      List.iter ~f:(check_hyp trace_stack' emit_trace name ctx_state env) hypotheses;
-      instantiate !ctx_state rule_ty |> raise_if_not_ok name'
-    | None -> ctx_infer var_types tm
+      let ctx_state : ('a, Primitive.t) capture SMap.t ref = ref schema_assignments in
+      (match
+         hypotheses
+         |> List.find_map ~f:(check_hyp trace_stack emit_trace name ctx_state env)
+       with
+      | None -> instantiate name !ctx_state rule_ty
+      | Some err -> Error err)
+    | None -> ctx_infer !var_types tm
   in
-  emit_trace (Inferred ty :: trace_stack');
+  emit_trace (Inferred ty :: trace_stack);
   ty
 
-and check_hyp trace_stack emit_trace name ctx_state env (_pattern_ctx, rule) =
-  let name' = match name with None -> "check_hyp" | Some name -> "check_hyp " ^ name in
-  match rule with
-  | CheckingRule { tm = hyp_tm; ty = hyp_ty } ->
-    let tm = instantiate !ctx_state hyp_tm |> raise_if_not_ok name' in
-    let ty = instantiate !ctx_state hyp_ty |> raise_if_not_ok name' in
-    check' trace_stack emit_trace env (Typing (tm, ty))
-  | InferenceRule { tm = hyp_tm; ty = hyp_ty } ->
-    let tm = instantiate !ctx_state hyp_tm |> raise_if_not_ok name' in
-    let ty = infer' trace_stack emit_trace env tm in
-    let learned_tys =
-      get_or_raise "check_hyp: failed to match schema vars" (match_schema_vars hyp_ty ty)
+(* Check (or infer, depending on the rule) a hypothesis *)
+and check_hyp trace_stack emit_trace name ctx_state env (pattern_ctx, rule) =
+  let open Result.Let_syntax in
+  match
+    let%map var_type_list =
+      (* For every variable in the context, for example, rule:
+
+        ctx >> e1 => t1     ctx, x : t1 >> e2 => t2
+        ---
+        ctx >> let(e1; x. e2) => t2
+
+      and term [let(num(1); v. v)]:
+
+        [x] is the only variable that appears in a context. We first look up
+        its [ty], in this case [t1]. Then we find the name the variable is
+        actually called in the term ([v]).
+        *)
+      pattern_ctx
+      |> Map.to_alist
+      |> List.map ~f:(fun (ctx_var_name, pat) ->
+             match pat with
+             | BindingAwarePattern.Var (_, ctx_ty_name) ->
+               let%bind ty =
+                 match Map.find_exn !ctx_state ctx_ty_name with
+                 | CapturedTerm ty -> Ok ty
+                 | CapturedBinder pat ->
+                   Error
+                     (Fmt.str
+                        "Expected type reference in context to refer to a term, not a \
+                         binder (%a)"
+                        pp_pat
+                        pat)
+               in
+               let%map term_var_name =
+                 match Map.find_exn !ctx_state ctx_var_name with
+                 | CapturedBinder (Pattern.Var (_, name)) -> Ok name
+                 | CapturedBinder pat ->
+                   Error
+                     (Fmt.str
+                        "Binding non-variable patterns (%a) is not yet supported! This \
+                         should be supported but we need to extend bidirectional to have \
+                         a notion of pattern types (ty1[ty2]) TODO!"
+                        pp_pat
+                        pat)
+                 | CapturedTerm tm ->
+                   Error
+                     (Fmt.str
+                        "Expected a binder but found a term (%a) -- only binders can \
+                         occur in the context"
+                        pp_term
+                        tm)
+               in
+               term_var_name, ty
+             | pat ->
+               Error
+                 (Fmt.str
+                    "Binding non-variable patterns (%a) is not yet supported! This \
+                     should be supported but we need to extend bidirectional to have a \
+                     notion of pattern types (ty1[ty2]) TODO!"
+                    pp_bpat
+                    pat))
+      |> Result.all
     in
-    update_ctx ctx_state learned_tys
+    SMap.of_alist_exn var_type_list
+  with
+  | Error msg -> Some (CheckError msg)
+  | Ok new_var_types ->
+    let var_types = SMap.unions_right_biased [ env.var_types; new_var_types ] in
+    let env = { env with var_types } in
+    (match rule with
+    | CheckingRule { tm = hyp_tm; ty = hyp_ty } ->
+      let tm_ty =
+        let%bind tm = instantiate name !ctx_state hyp_tm in
+        let%map ty = instantiate name !ctx_state hyp_ty in
+        tm, ty
+      in
+      (match tm_ty with
+      | Ok (tm, ty) -> check' trace_stack emit_trace env (Typing (tm, ty))
+      | Error err -> Some err)
+    | InferenceRule { tm = hyp_tm; ty = hyp_ty } ->
+      let ty =
+        let%bind tm = instantiate name !ctx_state hyp_tm in
+        infer' trace_stack emit_trace env tm
+      in
+      (match ty with
+      | Ok ty ->
+        (match BindingAwarePattern.match_term ~prim_eq:Primitive.( = ) hyp_ty ty with
+        | None -> Some (CheckError "check_hyp: failed to match schema vars")
+        | Some learned_tys -> update_ctx ctx_state learned_tys)
+      | Error err -> Some err))
 ;;
 
-let check_trace = check' []
-let infer_trace = infer' []
-let check = check_trace (fun _ -> ())
-let infer = infer_trace (fun _ -> ())
+let check_trace f env typing = check' [] f env typing
+let infer_trace f env term = infer' [] f env term
+let check env typing = check_trace (fun _ -> ()) env typing
+let infer env term = infer_trace (fun _ -> ()) env term
 
-let%test_module "bidirectional tests" =
+let%test_module "check / infer" =
   (module struct
-    let statics_str =
+    module ParseStatics = Statics.Parse (ParseUtil.NoComment)
+    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
+    module ParseNominal = Nominal.Parse (ParseUtil.NoComment)
+
+    let parse_statics = ParseUtil.parse_string ParseStatics.whitespace_t
+    let parse_tm = ParseUtil.parse_string (ParseNominal.whitespace_t ParsePrimitive.t)
+
+    let rules =
       {|
+    --- (str_literal)
+    ctx >> str(x) => str()
 
-  ----------------------- (infer_true)
-  ctx >> true() => bool()
+    --- (num_literal)
+    ctx >> num(x) => num()
 
-  ------------------------ (infer_false)
-  ctx >> false() => bool()
+    ctx >> e1 <= num()    ctx >> e2 <= num()
+    --- (plus)
+    ctx >> plus(e1; e2) => num()
 
-  ctx >> tm1 => arr(ty1; ty2)   ctx >> tm2 <= ty1
-  ----------------------------------------------- (infer_app)
-            ctx >> app(tm1; tm2) => ty2
+    ctx >> e1 <= str()    ctx >> e2 <= str()
+    --- (cat)
+    ctx >> cat(e1; e2) => str()
 
-      ctx, x : ty1 >> body <= ty2
-  ------------------------------------ (check_lam)
-  ctx >> lam(x. body) <= arr(ty1; ty2)
+    ctx >> e <= str()
+    --- (len)
+    ctx >> len(e) => num()
 
-       ctx >> tm <= ty
-  -------------------------- (infer_annot)
-  ctx >> annot(tm; ty) => ty
+    ctx >> e1 => t1   ctx, x : t1 >> e2 => t2
+    --- (let)
+    ctx >> let(e1; x. e2) => t2
 
-  ctx >> t1 <= bool()  ctx >> t2 => ty  ctx >> t3 => ty
-  ----------------------------------------------------- (infer_ite)
-             ctx >> ite(t1; t2; t3) => ty
-
-  ctx >> tm => ty
-  --------------- (reverse)
-  ctx >> tm <= ty
+    ctx >> e => t
+    --- (infer_check)
+    ctx >> e <= t
   |}
+      |> parse_statics
+      |> Result.ok_or_failwith
     ;;
 
-    module Parse = Statics.Parse (Lvca_util.Angstrom.NoComment)
-    module NominalParse = Binding.Nominal.Parse (Lvca_util.Angstrom.NoComment)
-
-    let statics =
-      ParseUtil.parse_string Parse.whitespace_t statics_str |> Result.ok_or_failwith
+    let print_check ~tm ~ty =
+      let env = { rules; var_types = SMap.empty } in
+      match parse_tm tm, parse_tm ty with
+      | Ok tm, Ok ty ->
+        (match check env (Typing (tm, ty)) with
+        | None -> ()
+        | Some err -> Fmt.pr "%a\n" pp_err err)
+      | _, _ -> failwith "failed to parse term or type"
     ;;
 
-    let parse_cvt : string -> term =
-     fun str ->
-      let tm =
-        match ParseUtil.parse_string NominalParse.t str with
-        | Ok tm -> tm
-        | Error err -> failwith err
-      in
-      let tm' =
-        match Binding.DeBruijn.from_nominal tm with
-        | Ok tm -> tm
-        | Error msg -> failwith msg
-      in
-      Statics.of_de_bruijn tm'
-   ;;
-
-    let true_tm = parse_cvt "true()"
-    let bool_ty = parse_cvt "bool()"
-    let env = { rules = statics; var_types = String.Map.empty }
-    let ite = parse_cvt "ite(true(); false(); true())"
-    let annot_ite = parse_cvt "annot(ite(true(); false(); true()); bool())"
-    let lam_tm = parse_cvt "lam(x. true())"
-    let bool_to_bool = parse_cvt "arr(bool(); bool())"
-    let annot_lam = parse_cvt "annot(lam(x. true()); arr(bool(); bool()))"
-
-    let app_annot =
-      Statics.(Operator ("app", [ Scope ([], [ annot_lam ]); Scope ([], [ true_tm ]) ]))
+    let print_infer tm =
+      let env = { rules; var_types = SMap.empty } in
+      match parse_tm tm with
+      | Ok tm ->
+        (match infer env tm with
+        | Ok ty -> Fmt.pr "%a\n" pp_term ty
+        | Error err -> Fmt.pr "%a\n" pp_err err)
+      | _ -> failwith "failed to parse term"
     ;;
 
-    let ( = ) = Caml.( = )
+    let%expect_test _ =
+      print_check ~tm:"num(1)" ~ty:"num()";
+      [%expect {| |}]
+    ;;
 
-    let%test "check true() : bool()" = check env (Typing (true_tm, bool_ty)) = ()
-    let%test "infer true()" = infer env true_tm = bool_ty
-    let%test "check ite" = check env (Typing (ite, bool_ty)) = ()
-    let%test "infer ite" = infer env ite = bool_ty
-    let%test "infer annotated ite" = infer env annot_ite = bool_ty
-    let%test "check lam" = check env (Typing (lam_tm, bool_to_bool)) = ()
-    let%test "infer annotated lam" = infer env annot_lam = bool_to_bool
-    let%test "check annotated lam" = check env (Typing (annot_lam, bool_to_bool)) = ()
-    let%test "infer annotated app" = infer env app_annot = bool_ty
+    let%expect_test _ =
+      print_infer "num(1)";
+      [%expect {| num() |}]
+    ;;
+
+    let%expect_test _ =
+      print_check ~tm:"num(1)" ~ty:"num()";
+      [%expect {| |}]
+    ;;
+
+    let%expect_test _ =
+      print_infer {| len(str("foo")) |};
+      [%expect {| num() |}]
+    ;;
+
+    let%expect_test _ =
+      print_check ~tm:{| len(str("foo")) |} ~ty:"num()";
+      [%expect {| |}]
+    ;;
+
+    let%expect_test _ =
+      print_infer {| plus(len(str("foo")); num(1)) |};
+      [%expect {| num() |}]
+    ;;
+
+    let%expect_test _ =
+      print_infer {| let(num(1); v. v) |};
+      [%expect {| num() |}]
+    ;;
+
+    let%expect_test _ =
+      print_infer {| let(len(str("foo")); x. plus(x; num(1))) |};
+      [%expect {| num() |}]
+    ;;
+
+    let%expect_test _ =
+      print_infer {| let(num(1); x. let(str("foo"); y. y)) |};
+      [%expect {| str() |}]
+    ;;
+
+    let%expect_test _ =
+      print_infer {| let(num(1); x. let(str("foo"); x. x)) |};
+      [%expect {| str() |}]
+    ;;
   end)
 ;;
