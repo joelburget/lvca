@@ -17,6 +17,9 @@ type 'info operator_def = OperatorDef of string * 'info arity
 type 'info sort_def = SortDef of string list * 'info operator_def list
 type 'info abstract_syntax = (string * 'info sort_def) list
 type 'info t = 'info abstract_syntax
+type 'info unordered = 'info sort_def Lvca_util.String.Map.t
+
+let unordered = Lvca_util.String.Map.of_alist
 
 let equal info_eq =
   let slot_eq slot1 slot2 =

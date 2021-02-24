@@ -33,6 +33,10 @@ type 'info abstract_syntax = (string * 'info sort_def) list
 (** The abstract syntax of a language is the sorts it defines. *)
 type 'info t = 'info abstract_syntax
 
+type 'info unordered = 'info sort_def Lvca_util.String.Map.t
+
+val unordered : 'info t -> [ `Ok of 'info unordered | `Duplicate_key of string ]
+
 val equal
   :  ('info -> 'info -> bool)
   -> 'info abstract_syntax
