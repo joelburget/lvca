@@ -1,4 +1,4 @@
-(** Binding-aware patterns allow one to capture binders (variables and patterns). *)
+(** Patterns for matching binding terms. *)
 
 (** {1 Types} *)
 

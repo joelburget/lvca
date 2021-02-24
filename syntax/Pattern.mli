@@ -1,4 +1,4 @@
-(** Patterns match terms and bind variables. *)
+(** Patterns for matching non-binding terms. *)
 
 (** {1 Types} *)
 
