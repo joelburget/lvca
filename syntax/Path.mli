@@ -7,6 +7,8 @@
     - [\[1; 1\]] points to [c] *)
 type t = int list
 
+val empty : t
+
 type comparator_witness
 
 val comparator : (t, comparator_witness) Base.Comparator.t
@@ -14,3 +16,4 @@ val compare : t -> t -> int
 val sexp_of_t : t -> Sexplib0.Sexp.t
 val ( = ) : t -> t -> bool
 val is_prefix : path:t -> prefix:t -> bool
+val pp : t Fmt.t
