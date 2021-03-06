@@ -272,10 +272,17 @@ let rec select_path ~path tm =
   | [] -> Ok tm
   | i :: path ->
     (match tm with
-    | Var _ | Primitive _ -> Error "TODO: message"
+    | Var (_, name) ->
+      Error (Printf.sprintf "select_path: hit var %s but path not finished" name)
+    | Primitive _ -> Error "select_path: hit primitive but path not finished"
     | Operator (_, _, scopes) ->
       (match List.nth scopes i with
-      | None -> Error "TODO: message"
+      | None ->
+        Error
+          (Printf.sprintf
+             "select_path: path index %n too high (only %n scopes)"
+             i
+             (List.length scopes))
       | Some (Scope (_pats, tm)) -> select_path ~path tm))
 ;;
 
