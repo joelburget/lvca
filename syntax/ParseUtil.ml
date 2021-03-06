@@ -24,6 +24,7 @@ module type Parsers = sig
   val many1 : 'a t -> 'a list t
   val sep_by : _ t -> 'a t -> 'a list t
   val sep_by1 : _ t -> 'a t -> 'a list t
+  val sep_end_by : _ t -> 'a t -> 'a list t
   val option : 'a -> 'a t -> 'a t
   val ( >>== ) : 'a t -> (pos:OptRange.t -> 'a -> 'b t) -> 'b t
   val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
@@ -291,6 +292,18 @@ module Mk (Comment : Comment_int) : Parsers = struct
   let choice = Angstrom.choice
   let attach_pos p = p >>|| fun ~pos t -> (t, pos), pos
 
+  let sep_end_by s p =
+    let open Angstrom in
+    let seb =
+      fix (fun seb ->
+          let seb1 =
+            p >>= fun x -> choice [ lift2 (fun _ xs -> x :: xs) s seb; return [ x ] ]
+          in
+          choice [ seb1; return [] ])
+    in
+    mk_list_parser seb
+  ;;
+
   let satisfy f =
     Angstrom.(pos >>= fun p -> satisfy f >>| fun c -> c, OptRange.mk p (p + 1))
   ;;
@@ -342,5 +355,20 @@ let%test_module "Parsing" =
     ;;
 
     let%test _ = parse_string_pos Parse.integer_or_float_lit "1." = Ok (Second 1., mk 0 2)
+
+    let%test _ =
+      parse_string_pos Parse.(sep_end_by (char ';') string_lit) {|"abc"|}
+      = Ok ([ "abc" ], mk 0 5)
+    ;;
+
+    let%test _ =
+      parse_string_pos Parse.(sep_end_by (char ';') string_lit) {|"abc"; "def"|}
+      = Ok ([ "abc"; "def" ], mk 0 12)
+    ;;
+
+    let%test _ =
+      parse_string_pos Parse.(sep_end_by (char ';') string_lit) {|"abc"; "def";|}
+      = Ok ([ "abc"; "def" ], mk 0 13)
+    ;;
   end)
 ;;

@@ -233,49 +233,23 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   module Primitive = Primitive.Parse (Comment)
 
-  type 'prim pat_or_sep =
-    | Pat of (OptRange.t, 'prim) pattern
-    | Semi
-
   let t : 'prim ParseUtil.t -> (OptRange.t, 'prim) t ParseUtil.t =
    fun parse_prim ->
     let open Parsers in
     fix (fun pat ->
-        let t_or_sep : 'prim pat_or_sep Parsers.t =
-          choice [ (fun _ -> Semi) <$> char ';'; (fun pat -> Pat pat) <$> pat ]
-        in
-        let accumulate
-            :  OptRange.t -> string -> 'prim pat_or_sep list
-            -> (OptRange.t, 'prim) pattern Parsers.t
-          =
-         fun range tag tokens ->
-          (* patterns encountered between ';'s *)
-          let slot_queue : (OptRange.t, 'prim) pattern Queue.t = Queue.create () in
-          (* Move the current list to the slot queue *)
-          let rec go = function
-            | [] -> return ~pos:range (Operator (range, tag, Queue.to_list slot_queue))
-            | Pat pat :: Semi :: rest (* Note: allow trailing ';' *)
-            | Pat pat :: ([] as rest) ->
-              Queue.enqueue slot_queue pat;
-              go rest
-            | _ -> fail "Malformed term"
-          in
-          go tokens
-        in
         choice
           [ (parse_prim >>|| fun ~pos prim -> Primitive (pos, prim), pos)
           ; (identifier
-            >>== fun ~pos:rng ident ->
+            >>== fun ~pos ident ->
             if ident.[0] = '_'
-            then return ~pos:rng (Ignored (rng, String.subo ~pos:1 ident))
+            then return ~pos (Ignored (pos, String.subo ~pos:1 ident))
             else
               choice
-                [ (parens (many t_or_sep)
-                  >>= fun tokens ->
-                  pos
-                  >>= fun finish ->
-                  accumulate (OptRange.extend_to rng finish) ident tokens)
-                ; return ~pos:rng (Var (rng, ident))
+                [ (parens (sep_end_by (char ';') pat)
+                  >>|| fun ~pos:finish children ->
+                  let pos = OptRange.union pos finish in
+                  Operator (pos, ident, children), pos)
+                ; return ~pos (Var (pos, ident))
                 ]
               <?> "pattern body")
           ])
