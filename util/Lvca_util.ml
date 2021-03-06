@@ -152,6 +152,18 @@ module List = struct
   ;;
 
   let set_nth list ~i ~data = update_nth list ~i ~f:(Fn.const data)
+
+  (* i, j < len list *)
+  let swap list ~i ~j =
+    let rec swap list n m =
+      match n, list with
+      | 0, x :: xs ->
+        let mth = List.nth_exn xs (m - 1) in
+        mth :: set_nth xs ~i:(m - 1) ~data:x
+      | _ -> swap list (n - 1) (m - 1)
+    in
+    if Int.(i = j) then list else swap list (min i j) (max i j)
+  ;;
 end
 
 exception InvariantViolation of string
