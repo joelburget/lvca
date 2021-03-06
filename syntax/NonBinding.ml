@@ -100,44 +100,18 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   module Primitive = Primitive.Parse (Comment)
 
-  type 'prim pat_or_sep =
-    | Term of (OptRange.t, 'prim) term
-    | Semi
-
   let term : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t =
    fun parse_prim ->
     let open Parsers in
-    fix (fun tm ->
-        let tm_or_sep : 'prim pat_or_sep Parsers.t =
-          choice [ (fun _ -> Semi) <$> char ';'; (fun tm -> Term tm) <$> tm ]
-        in
-        let accumulate
-            :  OptRange.t -> string -> 'prim pat_or_sep list
-            -> (OptRange.t, 'prim) term Parsers.t
-          =
-         fun range tag tokens ->
-          (* patterns encountered between ';'s *)
-          let slot_queue : (OptRange.t, 'prim) term Queue.t = Queue.create () in
-          (* Move the current list to the slot queue *)
-          let rec go = function
-            | [] -> return ~pos:range (Operator (range, tag, Queue.to_list slot_queue))
-            | Term tm :: Semi :: rest (* Note: allow trailing ';' *)
-            | Term tm :: ([] as rest) ->
-              Queue.enqueue slot_queue tm;
-              go rest
-            | _ -> fail "Malformed term"
-          in
-          go tokens
-        in
+    fix (fun term ->
         choice
           [ (parse_prim >>|| fun ~pos prim -> Primitive (pos, prim), pos)
           ; (identifier
-            >>== fun ~pos:rng ident ->
-            parens (many tm_or_sep)
-            >>= (fun tokens ->
-                  pos
-                  >>= fun finish ->
-                  accumulate (OptRange.extend_to rng finish) ident tokens)
+            >>== fun ~pos:start ident ->
+            parens (sep_end_by (char ';') term)
+            >>|| (fun ~pos:finish children ->
+                   let pos = OptRange.union start finish in
+                   Operator (pos, ident, children), pos)
             <?> "term body")
           ])
     <?> "term"
