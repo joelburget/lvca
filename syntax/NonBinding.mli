@@ -6,6 +6,13 @@ type ('info, 'prim) term =
   | Operator of 'info * string * ('info, 'prim) term list
   | Primitive of 'info * 'prim
 
+val equal
+  :  ('info -> 'info -> bool)
+  -> ('prim -> 'prim -> bool)
+  -> ('info, 'prim) term
+  -> ('info, 'prim) term
+  -> bool
+
 (** {1 info} *)
 
 val info : ('info, _) term -> 'info
@@ -46,5 +53,16 @@ val pp_range : 'prim Fmt.t -> (OptRange.t, 'prim) term Fmt.t
 (* Format.formatter -> OptRange.t term -> unit *)
 val to_string : 'prim Fmt.t -> (_, 'prim) term -> string
 
+(** {1 Parsing} *)
+module Parse (Comment : ParseUtil.Comment_int) : sig
+  val term : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t
+  val whitespace_term : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t
+end
+
 (** {1 Misc} *)
 val hash : 'prim Lvca_util.Json.serializer -> (_, 'prim) term -> string
+
+val select_path
+  :  path:int list
+  -> ('info, 'prim) term
+  -> (('info, 'prim) term, string) Result.t

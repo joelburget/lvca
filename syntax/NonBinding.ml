@@ -5,6 +5,16 @@ type ('info, 'prim) term =
   | Operator of 'info * string * ('info, 'prim) term list
   | Primitive of 'info * 'prim
 
+let rec equal info_eq prim_eq t1 t2 =
+  match t1, t2 with
+  | Operator (i1, name1, scopes1), Operator (i2, name2, scopes2) ->
+    info_eq i1 i2
+    && String.(name1 = name2)
+    && List.equal (equal info_eq prim_eq) scopes1 scopes2
+  | Primitive (i1, p1), Primitive (i2, p2) -> info_eq i1 i2 && prim_eq p1 p2
+  | _, _ -> false
+;;
+
 let info = function Operator (i, _, _) | Primitive (i, _) -> i
 
 let rec map_info ~f = function
@@ -68,3 +78,70 @@ let pp pp_prim ppf tm = tm |> to_nominal |> Nominal.pp_term pp_prim ppf
 let pp_range pp_prim ppf tm = tm |> to_nominal |> Nominal.pp_term_range pp_prim ppf
 let to_string pp_prim tm = tm |> to_nominal |> Nominal.pp_term_str pp_prim
 let hash jsonify_prim tm = tm |> to_nominal |> Nominal.hash jsonify_prim
+
+let rec select_path ~path tm =
+  match path with
+  | [] -> Ok tm
+  | i :: path ->
+    (match tm with
+    | Primitive _ -> Error "select_path: hit primitive but path not finished"
+    | Operator (_, _, tms) ->
+      (match List.nth tms i with
+      | None ->
+        Error
+          (Printf.sprintf
+             "select_path: path index %n too high (only %n tms)"
+             i
+             (List.length tms))
+      | Some tm -> select_path ~path tm))
+;;
+
+module Parse (Comment : ParseUtil.Comment_int) = struct
+  module Parsers = ParseUtil.Mk (Comment)
+  module Primitive = Primitive.Parse (Comment)
+
+  type 'prim pat_or_sep =
+    | Term of (OptRange.t, 'prim) term
+    | Semi
+
+  let term : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t =
+   fun parse_prim ->
+    let open Parsers in
+    fix (fun tm ->
+        let tm_or_sep : 'prim pat_or_sep Parsers.t =
+          choice [ (fun _ -> Semi) <$> char ';'; (fun tm -> Term tm) <$> tm ]
+        in
+        let accumulate
+            :  OptRange.t -> string -> 'prim pat_or_sep list
+            -> (OptRange.t, 'prim) term Parsers.t
+          =
+         fun range tag tokens ->
+          (* patterns encountered between ';'s *)
+          let slot_queue : (OptRange.t, 'prim) term Queue.t = Queue.create () in
+          (* Move the current list to the slot queue *)
+          let rec go = function
+            | [] -> return ~pos:range (Operator (range, tag, Queue.to_list slot_queue))
+            | Term tm :: Semi :: rest (* Note: allow trailing ';' *)
+            | Term tm :: ([] as rest) ->
+              Queue.enqueue slot_queue tm;
+              go rest
+            | _ -> fail "Malformed term"
+          in
+          go tokens
+        in
+        choice
+          [ (parse_prim >>|| fun ~pos prim -> Primitive (pos, prim), pos)
+          ; (identifier
+            >>== fun ~pos:rng ident ->
+            parens (many tm_or_sep)
+            >>= (fun tokens ->
+                  pos
+                  >>= fun finish ->
+                  accumulate (OptRange.extend_to rng finish) ident tokens)
+            <?> "term body")
+          ])
+    <?> "term"
+ ;;
+
+  let whitespace_term prim = Parsers.(junk *> term prim)
+end
