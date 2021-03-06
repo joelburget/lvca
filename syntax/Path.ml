@@ -12,4 +12,4 @@ include Comparable.Make (T)
 
 let empty = []
 let is_prefix ~path ~prefix = List.is_prefix path ~prefix ~equal:Int.( = )
-let pp = Fmt.(list int ~sep:comma)
+let pp = Fmt.(list int ~sep:(any "."))
