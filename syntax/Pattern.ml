@@ -242,7 +242,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     let open Parsers in
     fix (fun pat ->
         let t_or_sep : 'prim pat_or_sep Parsers.t =
-          choice [ (fun _ -> Semi) <$> choice [ char ';' ]; (fun pat -> Pat pat) <$> pat ]
+          choice [ (fun _ -> Semi) <$> char ';'; (fun pat -> Pat pat) <$> pat ]
         in
         let accumulate
             :  OptRange.t -> string -> 'prim pat_or_sep list
@@ -315,6 +315,30 @@ let%test_module "Parsing" =
       [%expect {|
       a()
       <0-3>a()</0-3>
+    |}]
+    ;;
+
+    let%expect_test _ =
+      print_parse {|x|};
+      [%expect {|
+      x
+      <0-1>x</0-1>
+    |}]
+    ;;
+
+    let%expect_test _ =
+      print_parse {|_|};
+      [%expect {|
+      _
+      <0-1>_</0-1>
+    |}]
+    ;;
+
+    let%expect_test _ =
+      print_parse {|_x|};
+      [%expect {|
+      _x
+      <0-2>_x</0-2>
     |}]
     ;;
 
