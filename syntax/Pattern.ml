@@ -92,8 +92,6 @@ let pp_ranges pp_prim ppf pat =
     ~closer:(fun ppf _loc -> Format.pp_close_stag ppf ())
 ;;
 
-let to_string pp_prim pat = Fmt.str "%a" (pp pp_prim) pat
-
 let rec jsonify prim_jsonify pat =
   Util.Json.(
     match pat with
@@ -220,7 +218,7 @@ let check pp_prim check_prim lang ~pattern_sort ~var_sort =
                  (CheckFailure.err
                     (Printf.sprintf
                        "Invalid pattern (%s) binding a non-sort valence (%s)"
-                       (to_string pp_prim pat)
+                       (Fmt.to_to_string (pp pp_prim) pat)
                        (AbstractSyntax.string_of_valence valence))))
       |> Result.all
       |> Result.map ~f:SMap.strict_unions
@@ -327,7 +325,8 @@ let%test_module "Parsing" =
     let%expect_test _ =
       print_parse {|a(b;c)|};
       (*0123456*)
-      [%expect {|
+      [%expect
+        {|
       a(b; c)
       <{0,6}>a(<{2,3}>b</{2,3}>; <{4,5}>c</{4,5}>)</{0,6}>
     |}]
@@ -336,7 +335,8 @@ let%test_module "Parsing" =
     let%expect_test _ =
       print_parse {|a(b;c;)|};
       (*01234567*)
-      [%expect {|
+      [%expect
+        {|
       a(b; c)
       <{0,7}>a(<{2,3}>b</{2,3}>; <{4,5}>c</{4,5}>)</{0,7}>
     |}]
@@ -365,13 +365,13 @@ module Properties = struct
   open PropertyResult
 
   let parse = ParseUtil.parse_string (ParsePattern.t ParsePrimitive.t)
-  let pp' = pp Primitive.pp
-  let to_string' = to_string Primitive.pp
+  let pp = pp Primitive.pp
+  let to_string = Fmt.to_to_string pp
 
   let json_round_trip1 t =
     match t |> jsonify Primitive.jsonify |> unjsonify Primitive.unjsonify with
-    | None -> Failed (Fmt.str "Failed to unjsonify %a" pp' t)
-    | Some t' -> PropertyResult.check Caml.(t = t') (Fmt.str "%a <> %a" pp' t' pp' t)
+    | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
+    | Some t' -> PropertyResult.check Caml.(t = t') (Fmt.str "%a <> %a" pp t' pp t)
   ;;
 
   let json_round_trip2 json =
@@ -384,25 +384,25 @@ module Properties = struct
   ;;
 
   let string_round_trip1 t =
-    match t |> to_string' |> parse with
+    match t |> to_string |> parse with
     | Ok t' ->
       let t'' = erase t' in
-      PropertyResult.check Caml.(t'' = t) (Fmt.str "%a <> %a" pp' t'' pp' t)
-    | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string' t) msg)
+      PropertyResult.check Caml.(t'' = t) (Fmt.str "%a <> %a" pp t'' pp t)
+    | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
   ;;
 
   let string_round_trip2 str =
     match parse str with
     | Error _ -> Uninteresting
     | Ok t ->
-      let str' = t |> erase |> to_string' in
+      let str' = t |> erase |> to_string in
       if Base.String.(str' = str)
       then Ok
       else (
         match parse str with
         | Error msg -> Failed msg
         | Ok t' ->
-          let str'' = t' |> erase |> to_string' in
+          let str'' = t' |> erase |> to_string in
           PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str'))
   ;;
 end

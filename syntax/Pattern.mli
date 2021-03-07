@@ -29,8 +29,6 @@ val list_vars_of_pattern : ('info, _) t -> ('info * string) list
 
 (** {1 Printing} *)
 
-val to_string : 'prim Fmt.t -> ('info, 'prim) t -> string (* TODO: remove? *)
-
 val pp : 'prim Fmt.t -> (_, 'prim) t Fmt.t
 val pp_range : 'prim Fmt.t -> (OptRange.t, 'prim) t Fmt.t
 val pp_ranges : 'prim Fmt.t -> (SourceRanges.t, 'prim) t Fmt.t
