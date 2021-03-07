@@ -6,7 +6,6 @@ type t =
 type Stdlib.Format.stag += Stag of t
 
 val mk : string -> int -> int -> t
-val to_string : t -> string
 
 (** Pretty-print this range. *)
 val pp : t Fmt.t

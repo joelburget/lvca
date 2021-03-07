@@ -14,8 +14,6 @@ val of_list : Range.t list -> t
 (** Convert from a (possibly overlapping) set of ranges. *)
 val of_set : (Range.t, _) Base.Set.t -> t
 
-val to_string : t -> string
-
 (** Are the two sets of ranges equal? *)
 val ( = ) : t -> t -> bool
 

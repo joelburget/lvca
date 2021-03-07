@@ -8,7 +8,6 @@ let rec invariants = function
 ;;
 
 let of_opt_range = function None -> [] | Some rng -> [ rng ]
-let to_string ranges = ranges |> List.map ~f:Range.to_string |> String.concat ~sep:", "
 let ( = ) r1 r2 = List.equal Range.( = ) r1 r2
 
 (* Takes a list of ranges which satisfy the requirement that start positions are ordered,

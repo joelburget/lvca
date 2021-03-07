@@ -6,7 +6,6 @@ type t =
 type Stdlib.Format.stag += Stag of t
 
 let mk source p1 p2 = { source; range = Range.mk p1 p2 }
-let to_string { source; range } = Printf.sprintf "%s:%s" source (Range.to_string range)
 let pp ppf { source; range } = Fmt.pf ppf "%s:%a" source Range.pp range
 let extend_to { source; range } pos = { source; range = Range.extend_to range pos }
 
@@ -36,6 +35,7 @@ let intersect p1 p2 =
 ;;
 
 let stag_functions =
+  let to_string = Fmt.to_to_string pp in
   Format.
     { mark_open_stag =
         (function Stag rng -> Printf.sprintf "<%s>" (to_string rng) | _ -> "")

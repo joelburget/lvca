@@ -3,14 +3,6 @@ open Base
 type t = Ranges.t Lvca_util.String.Map.t
 type Stdlib.Format.stag += Stag of t
 
-let to_string t =
-  t
-  |> Map.to_alist
-  |> List.map ~f:(fun (buf, ranges) ->
-         Printf.sprintf "%s:%s" buf (Ranges.to_string ranges))
-  |> String.concat ~sep:","
-;;
-
 let pp' ppf (buf, ranges) = Fmt.pf ppf "%s:%a" buf Ranges.pp ranges
 let pp ppf t = Fmt.pf ppf "%a" (Fmt.list ~sep:(Fmt.any ",") pp') (Map.to_alist t)
 let invariants t = Map.for_all t ~f:Ranges.invariants
@@ -42,6 +34,7 @@ let restrict ~buf p =
 ;;
 
 let stag_functions =
+  let to_string = Fmt.to_to_string pp in
   Stdlib.Format.
     { mark_open_stag =
         (function Stag t -> Printf.sprintf "<%s>" (to_string t) | _ -> "")

@@ -1,7 +1,6 @@
 type t = Range.t option
 
 let mk start finish = Some (Range.mk start finish)
-let to_string = function Some rng -> Range.to_string rng | None -> "_"
 
 let extend_to opt_rng pos =
   match opt_rng with None -> None | Some rng -> Some (Range.extend_to rng pos)

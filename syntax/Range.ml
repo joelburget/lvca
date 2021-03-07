@@ -6,7 +6,6 @@ type t =
 type Stdlib.Format.stag += Stag of t
 
 let mk start finish = { start; finish }
-let to_string { start; finish } = Printf.sprintf "%i-%i" start finish
 let extend_to { start; finish } pos = { start = min start pos; finish = max finish pos }
 let union r1 r2 = { start = min r1.start r2.start; finish = max r1.finish r2.finish }
 
@@ -48,6 +47,7 @@ let ( = ) x y = x.start = y.start && x.finish = y.finish
 let pp ppf { start; finish } = Fmt.pf ppf "{%u,%u}" start finish
 
 let stag_functions =
+  let to_string = Fmt.to_to_string pp in
   Format.
     { mark_open_stag =
         (function Stag rng -> Printf.sprintf "<%s>" (to_string rng) | _ -> "")

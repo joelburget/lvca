@@ -6,7 +6,6 @@ type t =
 type Stdlib.Format.stag += Stag of t
 
 val mk : int -> int -> t
-val to_string : t -> string
 
 (** Extend this range to include the given position *)
 val extend_to : t -> int -> t
