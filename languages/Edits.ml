@@ -108,8 +108,15 @@ let%test_module "Parsing" =
    ;;
 
     let run_atom : term -> core -> (term, OptRange.t Core.eval_error) Result.t =
-     fun tm core -> Core.(eval (CoreApp (None, core, Term tm)))
-   ;;
+      let eval_primitive _eval_ctx _eval_ctx' _ctx _tm _name _args =
+        Error
+          ( "no primitive evaluation"
+          , Core.Term
+              (Nominal.Primitive (None, Primitive.PrimString "TODO: make this unnecessary"))
+          )
+      in
+      fun tm core -> Core.(eval eval_primitive (CoreApp (None, core, [ Term tm ])))
+    ;;
 
     (* TODO: don't throw away this information, switch from strings *)
     let run_atom' : term -> core -> (term, string) Result.t =

@@ -8,6 +8,14 @@ module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
 type 'info c_term = 'info Core.term
 type 'info n_term = ('info, Primitive.t) Nominal.term
 
+let eval_primitive _eval_ctx _eval_ctx' _ctx _tm _name _args =
+  Error
+    ( "no primitive evaluation"
+    , Core.Term
+        (Nominal.Primitive
+           (SourceRanges.empty, Primitive.PrimString "TODO: make this unnecessary")) )
+;;
+
 type 'info t =
   (* primitive parsers *)
   | AnyChar of 'info
@@ -315,12 +323,14 @@ module Direct = struct
             let tm =
               Core.(
                 Let
-                  ( SourceRanges.empty
-                  , NoRec
-                  , Term (Primitive (rng, PrimChar c))
-                  , Scope (name, core_term) ))
+                  { info = SourceRanges.empty
+                  ; is_rec = NoRec
+                  ; tm = Term (Primitive (rng, PrimChar c))
+                  ; ty = None
+                  ; scope = Scope (name, core_term)
+                  })
             in
-            match Core.eval_ctx term_ctx tm with
+            match Core.eval_ctx eval_primitive term_ctx tm with
             | Ok (Operator (_, "true", [])) -> pos + 1, [], Ok (mk_char pos c)
             | Ok (Operator (_, "false", [])) | Ok _ ->
               pos, [], err_msg (* TODO: throw harder error? (type error) *)
@@ -331,7 +341,7 @@ module Direct = struct
   let fail c_tm =
     { run =
         (fun ~translate_direct:_ ~term_ctx ~parser_ctx:_ ~pos _str ->
-          match Core.eval_ctx term_ctx c_tm with
+          match Core.eval_ctx eval_primitive term_ctx c_tm with
           | Ok (Primitive (_, PrimString msg)) -> pos, [], mk_error msg
           | _ -> failwith "TODO: fail")
     }
@@ -404,7 +414,7 @@ module Direct = struct
     in
     { run =
         (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
-          match Core.eval_ctx term_ctx n_tm with
+          match Core.eval_ctx eval_primitive term_ctx n_tm with
           | Ok (Primitive (_, PrimInteger n)) ->
             let n = Z.to_int n (* TODO: may raise Overflow *) in
             let results = go ~translate_direct ~term_ctx ~parser_ctx ~pos n str in
@@ -564,7 +574,7 @@ module Direct = struct
                        | Some key -> Map.set ctx ~key ~data:tm)
               in
               let result =
-                Core.eval_ctx term_ctx tm
+                Core.eval_ctx eval_primitive term_ctx tm
                 |> Result.map_error ~f:(map_snd ~f:(fun tm -> Some tm))
               in
               pos, snapshots, result))
