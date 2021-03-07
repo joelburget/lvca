@@ -50,9 +50,6 @@ val pp : 'prim Fmt.t -> (_, 'prim) term Fmt.t
 (* Format.formatter -> ('info, 'prim) term -> unit *)
 val pp_range : 'prim Fmt.t -> (OptRange.t, 'prim) term Fmt.t
 
-(* Format.formatter -> OptRange.t term -> unit *)
-val to_string : 'prim Fmt.t -> (_, 'prim) term -> string
-
 (** {1 Parsing} *)
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val term : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t

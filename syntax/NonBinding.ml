@@ -76,7 +76,6 @@ let rec to_nominal tm =
 
 let pp pp_prim ppf tm = tm |> to_nominal |> Nominal.pp_term pp_prim ppf
 let pp_range pp_prim ppf tm = tm |> to_nominal |> Nominal.pp_term_range pp_prim ppf
-let to_string pp_prim tm = tm |> to_nominal |> Nominal.pp_term_str pp_prim
 let hash jsonify_prim tm = tm |> to_nominal |> Nominal.hash jsonify_prim
 
 let rec select_path ~path tm =
