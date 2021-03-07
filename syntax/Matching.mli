@@ -25,6 +25,8 @@ type binding_instruction =
   ; path : Path.t
   }
 
+val pp_instruction : binding_instruction Fmt.t
+
 type ('info, 'prim, 'rhs) decision_tree =
   | OperatorCases of
       ('info, 'prim, 'rhs) decision_tree Lvca_util.String.Map.t
@@ -32,6 +34,8 @@ type ('info, 'prim, 'rhs) decision_tree =
   | PrimCases of ('prim option * ('info, 'prim, 'rhs) decision_tree) list
   | Matched of binding_instruction list * 'rhs
   | Swap of int * ('info, 'prim, 'rhs) decision_tree
+
+val pp_tree : _ decision_tree Fmt.t
 
 type ('info, 'prim) match_compilation_error =
   | BadSort of ('info, 'prim) Pattern.t * 'info Sort.t * 'info Sort.t
@@ -71,7 +75,7 @@ val compile_matrix
   :  'info AbstractSyntax.unordered
   -> 'info Sort.t list
   -> ('info, 'prim, 'rhs) matrix
-  -> ('info, 'prim, 'rhs) decision_tree
+  -> (('info, 'prim, 'rhs) decision_tree, ('info, 'prim) match_compilation_error) Result.t
 
 (** Match a term against a [decision_tree] (a compiled list of cases), resulting in a
     branch and an environment if there is a match. *)
