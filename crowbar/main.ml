@@ -88,9 +88,8 @@ let pattern_gen =
       fix (fun pattern_gen ->
           choose
             [ map [ prim_gen ] (fun p -> Primitive ((), p))
-            ; map
-                [ nonempty_str_gen; list (list pattern_gen) ]
-                (fun name subpats -> Operator ((), name, subpats))
+            ; map [ nonempty_str_gen; list pattern_gen ] (fun name subpats ->
+                  Operator ((), name, subpats))
             ; map [ nonempty_str_gen ] (fun name -> Var ((), name))
             ; map [ str_gen ] (fun name -> Ignored ((), name))
             ])))
@@ -113,9 +112,8 @@ let rec nominal_gen =
 and nominal_scope_gen =
   lazy
     Crowbar.(
-      map
-        [ list pattern_gen; list (unlazy nominal_gen) ]
-        (fun pats tms -> Nominal.Scope (pats, tms)))
+      map [ list pattern_gen; unlazy nominal_gen ] (fun pats tm ->
+          Nominal.Scope (pats, tm)))
 ;;
 
 let (lazy nominal_gen) = nominal_gen
