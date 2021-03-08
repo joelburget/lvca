@@ -1,5 +1,7 @@
 (** Pattern matching. See Maranget's "Compiling pattern matching to good decision trees". *)
 
+(* TODO: add heuristics *)
+
 (** The cases in a pattern match (matching one term). *)
 type ('info, 'prim, 'rhs) cases = (('info, 'prim) Pattern.t * 'rhs) list
 
@@ -87,6 +89,13 @@ val run_match
   -> ('rhs * ('info, 'prim) env) option
 
 (* val check_coverage *)
+
+val useful
+  :  'info AbstractSyntax.unordered
+  -> 'info Sort.t list
+  -> ('info, 'prim, 'rhs) matrix
+  -> ('info, 'prim, 'rhs) cases
+  -> bool
 
 module Properties : sig
   type term = (unit, Primitive.t) NonBinding.term

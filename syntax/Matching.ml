@@ -95,6 +95,11 @@ let get_arity lang sort_name ctor_name =
   arity
 ;;
 
+let split_exn = function
+  | [] -> Util.invariant_violation "split_exn: called with empty sorts"
+  | x :: xs -> x, xs
+;;
+
 (* Specialize the matrix for rows where the given constructor matches the first column. *)
 let specialize lang sort sorts ctor_name matrix =
   let ctor_sorts =
@@ -109,19 +114,12 @@ let specialize lang sort sorts ctor_name matrix =
                   "specialize: valence is not a simple sort: %s"
                   (AbstractSyntax.string_of_valence v)))
   in
-  let sorts =
-    match sorts with
-    | [] -> Util.invariant_violation "specialize: called with no sorts"
-    | _ :: sorts' -> ctor_sorts @ sorts'
-  in
+  let _head_sort, sorts' = split_exn sorts in
+  let sorts = ctor_sorts @ sorts' in
   let matrix =
     matrix
     |> List.concat_map ~f:(fun (entries, rhs) ->
-           let head_entry, entries =
-             match entries with
-             | x :: xs -> x, xs
-             | [] -> Util.invariant_violation "specialize: matrix row with no entries"
-           in
+           let head_entry, entries = split_exn entries in
            match head_entry.pattern with
            | Pattern.Operator (_, name, children) ->
              if String.(name = ctor_name)
@@ -177,6 +175,67 @@ let swap_cols matrix i j =
   List.zip_exn rows rhss
 ;;
 
+let matrix_transpose matrix =
+  let rows, _rhss = List.unzip matrix in
+  List.transpose_exn rows
+;;
+
+(*
+let check_matrix matrix n =
+  if n = 0 then
+  match matrix with
+    | [] ->
+  else
+    failwith "TODO"
+    *)
+
+(* m x n pattern matrix, pattern vector of size n *)
+let rec useful lang sorts matrix vec =
+  match vec with
+  (* base case -- no columns *)
+  | [] ->
+    (* vec is useful iff matrix has no rows *)
+    (match matrix with [] -> true | _ -> false)
+  | (pat, rhs) :: vec' ->
+    let head_sort, sorts = split_exn sorts in
+    (match pat with
+    | Pattern.Operator (_, name, subpats) ->
+      let matrix, _sorts = specialize lang head_sort sorts name matrix in
+      let new_entries =
+        subpats |> List.map ~f:(fun pattern -> pattern, rhs (* not used *))
+      in
+      useful lang sorts matrix (new_entries @ vec')
+    | Pattern.Var _ | Pattern.Ignored _ ->
+      let (AbstractSyntax.SortDef (_ty_vars, op_defs)) =
+        Map.find_exn lang (sort_name head_sort)
+      in
+      let transpose = matrix_transpose matrix in
+      let first_col =
+        match transpose with
+        | [] -> Util.invariant_violation "No first column of matrix"
+        | col :: _ -> col
+      in
+      let head_ctors =
+        first_col
+        |> List.filter_map ~f:(fun { pattern; _ } ->
+               match pattern with Pattern.Operator (_, name, _) -> Some name | _ -> None)
+        |> Util.String.Set.of_list
+      in
+      (* is every constructor covered? *)
+      let is_signature =
+        List.for_all op_defs ~f:(fun (OperatorDef (name, _arity)) ->
+            Set.mem head_ctors name)
+      in
+      if is_signature
+      then
+        List.exists op_defs ~f:(fun (OperatorDef (ctor_name, _arity)) ->
+            let matrix, _ = specialize lang head_sort sorts ctor_name matrix in
+            (* XXX let vec, _ = specialize lang head_sort sorts ctor_name vec in *)
+            useful lang sorts matrix vec)
+      else useful lang sorts (default matrix) vec'
+    | Pattern.Primitive _ -> failwith "TODO")
+;;
+
 let rec compile_matrix lang sorts matrix =
   let open Result.Let_syntax in
   match matrix with
@@ -194,10 +253,7 @@ let rec compile_matrix lang sorts matrix =
       Ok (Matched (instructions, rhs))
       (* Otherwise, find the first column with a non-wildcard entry. *))
     else (
-      let transpose =
-        let rows, _rhss = List.unzip matrix in
-        List.transpose_exn rows
-      in
+      let transpose = matrix_transpose matrix in
       let i =
         (* find first column which is not all wildcards *)
         let col_no =
@@ -221,11 +277,7 @@ let rec compile_matrix lang sorts matrix =
                  | _ -> None)
           |> Util.String.Set.of_list
         in
-        let head_sort =
-          match sorts with
-          | [] -> Util.invariant_violation "compile_matrix: empty sorts"
-          | sort :: _ -> sort
-        in
+        let head_sort, _ = split_exn sorts in
         let (AbstractSyntax.SortDef (_ty_vars, op_defs)) =
           Map.find_exn lang (sort_name head_sort)
         in
@@ -235,10 +287,10 @@ let rec compile_matrix lang sorts matrix =
               Set.mem head_ctors name)
         in
         let%bind default_case =
-          let matrix = default matrix in
           if is_signature
           then Ok None
           else (
+            let matrix = default matrix in
             let%map matrix = compile_matrix lang sorts matrix in
             Some matrix)
         in
