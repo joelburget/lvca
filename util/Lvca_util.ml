@@ -126,6 +126,10 @@ module String = struct
  ;;
 end
 
+exception InvariantViolation of string
+
+let invariant_violation str = raise (InvariantViolation str)
+
 module List = struct
   let rec snoc xs x = match xs with [] -> [ x ] | x' :: xs -> x' :: snoc xs x
 
@@ -164,11 +168,12 @@ module List = struct
     in
     if Int.(i = j) then list else swap list (min i j) (max i j)
   ;;
+
+  let split_exn = function
+    | [] -> invariant_violation "split_exn: called with empty sorts"
+    | x :: xs -> x, xs
+  ;;
 end
-
-exception InvariantViolation of string
-
-let invariant_violation str = raise (InvariantViolation str)
 
 module Option = struct
   let get_or_raise : 'b -> 'a option -> 'a =

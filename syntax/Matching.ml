@@ -78,48 +78,87 @@ let rec match_pattern ~prim_eq tm pat =
   | _, _ -> None
 ;;
 
-let rec simple_match ~prim_eq tm cases =
+let rec simple_find_match ~prim_eq tm cases =
   match cases with
   | [] -> None
   | (pat, rhs) :: cases ->
     (match match_pattern ~prim_eq tm pat with
-    | None -> simple_match ~prim_eq tm cases
+    | None -> simple_find_match ~prim_eq tm cases
     | Some env -> Some (rhs, env))
 ;;
 
-let get_arity lang sort_name ctor_name =
-  let (AbstractSyntax.SortDef (_vars, op_defs)) = Map.find_exn lang sort_name in
-  let (OperatorDef (_name, arity)) =
-    List.find_exn op_defs ~f:(fun (OperatorDef (name, _)) -> String.(name = ctor_name))
-  in
-  arity
+(* Given a sort, produce a mapping of sort variables to concrete sorts it's
+   instantiated with. Example:
+
+   Language: list a := nil() | cons(a; list a)
+   Sort: list int
+   Result: a -> int
+*)
+let produce_sort_env lang sort =
+  match sort with
+  | Sort.Name _ -> SMap.empty
+  | Sort.Ap (_, sort_name, args) ->
+    let (AbstractSyntax.SortDef (ty_vars, _op_defs)) = Map.find_exn lang sort_name in
+    (match List.zip ty_vars args with
+    | List.Or_unequal_lengths.Unequal_lengths ->
+      Util.invariant_violation "produce_sort_env: sort / args unequal lengths"
+    | Ok alist -> SMap.of_alist_exn alist)
 ;;
 
-let split_exn = function
-  | [] -> Util.invariant_violation "split_exn: called with empty sorts"
-  | x :: xs -> x, xs
+(* Given a sort, produce a mapping from operator name to a list of the concrete
+   sorts of its children. Example
+
+   Language: list a := nil() | cons(a; list a)
+   Sort: list int
+   Result:
+     nil: []
+     cons: [int; list int]
+*)
+let get_children_concrete_sorts lang sort =
+  let sort_env = produce_sort_env lang sort in
+  let sort_name = sort_name sort in
+  let (AbstractSyntax.SortDef (_ty_vars, op_defs)) = Map.find_exn lang sort_name in
+  op_defs
+  |> List.map ~f:(fun (OperatorDef (name, arity)) ->
+         let subsorts =
+           arity
+           |> List.map ~f:(fun (Valence (binders, body_sort) as v) ->
+                  if not (List.is_empty binders)
+                  then
+                    Util.invariant_violation
+                      (Printf.sprintf
+                         "get_children_concrete_sorts: valence is not a simple sort: %s"
+                         (AbstractSyntax.string_of_valence v))
+                  else Sort.instantiate sort_env body_sort)
+         in
+         name, subsorts)
+  |> SMap.of_alist_exn
+;;
+
+let specialize_wildcard ctor_sorts info name wildcard =
+  let num_children = List.length ctor_sorts in
+  let wildcards =
+    match num_children with
+    | 0 -> []
+    | 1 -> [ wildcard ]
+    | _ ->
+      let ignores =
+        List.init (num_children - 1) ~f:(fun _ -> Pattern.Ignored (info, name))
+      in
+      wildcard :: ignores
+  in
+  wildcards
 ;;
 
 (* Specialize the matrix for rows where the given constructor matches the first column. *)
-let specialize lang sort sorts ctor_name matrix =
-  let ctor_sorts =
-    ctor_name
-    |> get_arity lang (sort_name sort)
-    |> List.map ~f:(fun (Valence (binders, body_sort) as v) ->
-           if List.is_empty binders
-           then body_sort
-           else
-             Util.invariant_violation
-               (Printf.sprintf
-                  "specialize: valence is not a simple sort: %s"
-                  (AbstractSyntax.string_of_valence v)))
-  in
-  let _head_sort, sorts' = split_exn sorts in
-  let sorts = ctor_sorts @ sorts' in
+let specialize lang ctor_sort tail_sorts ctor_name matrix =
+  let concrete_sort_mapping = get_children_concrete_sorts lang ctor_sort in
+  let ctor_sorts = Map.find_exn concrete_sort_mapping ctor_name in
+  let sorts = ctor_sorts @ tail_sorts in
   let matrix =
     matrix
     |> List.concat_map ~f:(fun (entries, rhs) ->
-           let head_entry, entries = split_exn entries in
+           let head_entry, entries = Util.List.split_exn entries in
            match head_entry.pattern with
            | Pattern.Operator (_, name, children) ->
              if String.(name = ctor_name)
@@ -129,40 +168,43 @@ let specialize lang sort sorts ctor_name matrix =
                  |> List.mapi ~f:(fun i pattern ->
                         { term_no = head_entry.term_no
                         ; pattern
-                        ; path = Util.List.snoc head_entry.path i
+                        ; path =
+                            Util.List.snoc head_entry.path i
+                            (* TODO: change paths to be quickly appendable *)
                         })
                in
                [ new_entries @ entries, rhs ])
              else []
            | Pattern.Var (info, name) | Ignored (info, name) ->
-             (* TODO: synthetic info? *)
-             let num_children = List.length ctor_sorts in
              let wildcards =
-               match num_children with
-               | 0 -> []
-               | 1 -> [ head_entry ]
-               | _ ->
-                 let ignores =
-                   List.init (num_children - 1) ~f:(fun _ ->
-                       { head_entry with pattern = Pattern.Ignored (info, name) })
-                 in
-                 head_entry :: ignores
+               specialize_wildcard ctor_sorts info name head_entry.pattern
+               |> List.map ~f:(fun pattern -> { head_entry with pattern })
              in
              [ wildcards @ entries, rhs ]
+             (* TODO: synthetic info? *)
            | Pattern.Primitive _ -> [])
   in
   matrix, sorts
+;;
+
+let specialize_vec lang ctor_sort ctor_name pat_vec =
+  let concrete_sort_mapping = get_children_concrete_sorts lang ctor_sort in
+  let ctor_sorts = Map.find_exn concrete_sort_mapping ctor_name in
+  let head_pat, pats = Util.List.split_exn pat_vec in
+  match head_pat with
+  | Pattern.Var (info, name) | Pattern.Ignored (info, name) ->
+    specialize_wildcard ctor_sorts info name head_pat
+  | Primitive _ -> []
+  | Operator (_, name, children) ->
+    (* XXX confusion about empty case *)
+    if String.(name = ctor_name) then children @ pats else []
 ;;
 
 (* Retain rows whose first pattern is a wildcard *)
 let default matrix =
   matrix
   |> List.concat_map ~f:(fun (entries, rhs) ->
-         let head_entry, entries =
-           match entries with
-           | x :: xs -> x, xs
-           | [] -> Util.invariant_violation "default: matrix row with no entries"
-         in
+         let head_entry, entries = Util.List.split_exn entries in
          match head_entry.pattern with
          | Pattern.Operator _ -> []
          | Pattern.Var _ | Ignored _ -> [ entries, rhs ]
@@ -180,41 +222,83 @@ let matrix_transpose matrix =
   List.transpose_exn rows
 ;;
 
-(*
-let check_matrix matrix n =
-  if n = 0 then
-  match matrix with
-    | [] ->
-  else
-    failwith "TODO"
-    *)
+(* Return a pattern vector of size `length sorts` such that all instances are non-matching values *)
+let rec check_matrix lang sorts matrix =
+  if List.is_empty sorts
+  then (match matrix with [] -> Some [] | _ -> None)
+  else (
+    let transpose = matrix_transpose matrix in
+    let first_col, _ = Util.List.split_exn transpose in
+    let head_ctors =
+      first_col
+      |> List.filter_map ~f:(fun { pattern; _ } ->
+             match pattern with Pattern.Operator (_, name, _) -> Some name | _ -> None)
+      |> Util.String.Set.of_list
+    in
+    let head_sort, sorts' = Util.List.split_exn sorts in
+    let (AbstractSyntax.SortDef (_ty_vars, op_defs)) =
+      Map.find_exn lang (sort_name head_sort)
+    in
+    let is_signature =
+      List.for_all op_defs ~f:(fun (OperatorDef (name, _arity)) ->
+          Set.mem head_ctors name)
+    in
+    let info = (* TODO *) None in
+    if is_signature
+    then
+      let open Option.Let_syntax in
+      head_ctors
+      |> Set.to_list
+      |> List.find_map ~f:(fun ctor_name ->
+             let (OperatorDef (_, ctor_arity)) =
+               op_defs
+               |> List.find_exn ~f:(fun (OperatorDef (name, _arity)) ->
+                      String.(name = ctor_name))
+             in
+             let ctor_arity = List.length ctor_arity in
+             let matrix, sorts = specialize lang head_sort sorts' ctor_name matrix in
+             let%map pat_vec = check_matrix lang sorts matrix in
+             let subpats, pat_vec = List.split_n pat_vec ctor_arity in
+             Pattern.Operator (info, ctor_name, subpats) :: pat_vec)
+    else
+      check_matrix lang sorts' (default matrix)
+      |> Option.map ~f:(fun example ->
+             let ignore = Pattern.Ignored (info, "") in
+             let head =
+               if Set.is_empty head_ctors
+               then ignore
+               else (
+                 let (OperatorDef (ctor_name, ctor_arity)) =
+                   op_defs
+                   (* Find an operator not listed *)
+                   |> List.find_exn ~f:(fun (OperatorDef (name, _)) ->
+                          not (Set.mem head_ctors name))
+                 in
+                 let wildcards = List.map ctor_arity ~f:(fun _ -> ignore) in
+                 Pattern.Operator (info, ctor_name, wildcards))
+             in
+             head :: example))
+;;
 
 (* m x n pattern matrix, pattern vector of size n *)
-let rec useful lang sorts matrix vec =
-  match vec with
+let rec useful lang sorts matrix pat_vec =
+  match pat_vec with
   (* base case -- no columns *)
   | [] ->
-    (* vec is useful iff matrix has no rows *)
+    (* pat_vec is useful iff matrix has no rows *)
     (match matrix with [] -> true | _ -> false)
-  | (pat, rhs) :: vec' ->
-    let head_sort, sorts = split_exn sorts in
+  | pat :: vec' ->
+    let head_sort, tail_sorts = Util.List.split_exn sorts in
     (match pat with
     | Pattern.Operator (_, name, subpats) ->
-      let matrix, _sorts = specialize lang head_sort sorts name matrix in
-      let new_entries =
-        subpats |> List.map ~f:(fun pattern -> pattern, rhs (* not used *))
-      in
-      useful lang sorts matrix (new_entries @ vec')
+      let matrix, sorts = specialize lang head_sort tail_sorts name matrix in
+      useful lang sorts matrix (subpats @ vec')
     | Pattern.Var _ | Pattern.Ignored _ ->
       let (AbstractSyntax.SortDef (_ty_vars, op_defs)) =
         Map.find_exn lang (sort_name head_sort)
       in
       let transpose = matrix_transpose matrix in
-      let first_col =
-        match transpose with
-        | [] -> Util.invariant_violation "No first column of matrix"
-        | col :: _ -> col
-      in
+      let first_col, _ = Util.List.split_exn transpose in
       let head_ctors =
         first_col
         |> List.filter_map ~f:(fun { pattern; _ } ->
@@ -229,10 +313,10 @@ let rec useful lang sorts matrix vec =
       if is_signature
       then
         List.exists op_defs ~f:(fun (OperatorDef (ctor_name, _arity)) ->
-            let matrix, _ = specialize lang head_sort sorts ctor_name matrix in
-            (* XXX let vec, _ = specialize lang head_sort sorts ctor_name vec in *)
-            useful lang sorts matrix vec)
-      else useful lang sorts (default matrix) vec'
+            let matrix, sorts = specialize lang head_sort tail_sorts ctor_name matrix in
+            let pat_vec = specialize_vec lang head_sort ctor_name pat_vec in
+            useful lang sorts matrix pat_vec)
+      else useful lang tail_sorts (default matrix) vec'
     | Pattern.Primitive _ -> failwith "TODO")
 ;;
 
@@ -265,10 +349,10 @@ let rec compile_matrix lang sorts matrix =
           Util.invariant_violation "compile_matrix: no column which is not all wildcards"
         | Some (i, _) -> i
       in
-      let non_wildcard_col = List.nth_exn transpose i in
       (* the first column is a non-wildcard *)
       if Int.(i = 0)
       then (
+        let non_wildcard_col = List.nth_exn transpose i in
         let head_ctors =
           non_wildcard_col
           |> List.filter_map ~f:(fun { pattern; _ } ->
@@ -277,7 +361,7 @@ let rec compile_matrix lang sorts matrix =
                  | _ -> None)
           |> Util.String.Set.of_list
         in
-        let head_sort, _ = split_exn sorts in
+        let head_sort, tail_sorts = Util.List.split_exn sorts in
         let (AbstractSyntax.SortDef (_ty_vars, op_defs)) =
           Map.find_exn lang (sort_name head_sort)
         in
@@ -290,15 +374,16 @@ let rec compile_matrix lang sorts matrix =
           if is_signature
           then Ok None
           else (
-            let matrix = default matrix in
-            let%map matrix = compile_matrix lang sorts matrix in
+            let%map matrix = compile_matrix lang sorts (default matrix) in
             Some matrix)
         in
         let%map branches_alist =
           head_ctors
           |> Set.to_list
           |> List.map ~f:(fun ctor_name ->
-                 let matrix, sorts = specialize lang head_sort sorts ctor_name matrix in
+                 let matrix, sorts =
+                   specialize lang head_sort tail_sorts ctor_name matrix
+                 in
                  let%map decision_tree = compile_matrix lang sorts matrix in
                  ctor_name, decision_tree)
           |> Result.all
@@ -403,7 +488,7 @@ module Properties = struct
   let match_equivalent tm cases =
     let tmeq = NonBinding.equal Unit.( = ) Primitive.( = ) in
     let ( = ) = Option.equal (Lvca_util.Tuple2.equal tmeq (Map.equal tmeq)) in
-    let result1 = simple_match ~prim_eq:Primitive.( = ) tm cases in
+    let result1 = simple_find_match ~prim_eq:Primitive.( = ) tm cases in
     let lang = failwith "TODO 5" in
     let sort = failwith "TODO 6" in
     match compile_cases lang sort cases with
@@ -459,6 +544,7 @@ let%test_module "Matching" =
     module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
 
     let str_of_tm tm = Fmt.to_to_string (NonBinding.pp Primitive.pp) tm
+    let str_of_pat tm = Fmt.to_to_string (Pattern.pp Primitive.pp) tm
 
     let str_of_env env =
       env
@@ -477,7 +563,7 @@ let%test_module "Matching" =
         , ParseUtil.parse_string (ParseTerm.whitespace_term ParsePrimitive.t) tm_str )
       with
       | Ok branches, Ok tm ->
-        (match simple_match ~prim_eq:Primitive.( = ) tm branches with
+        (match simple_find_match ~prim_eq:Primitive.( = ) tm branches with
         | None -> Stdio.print_string "no match"
         | Some result -> Stdio.print_string (str_of_result result))
       | _ -> failwith "something failed to parse"
@@ -526,9 +612,7 @@ let%test_module "Matching" =
 
     let bool_lang = "bool := t() | f()"
 
-    (* let list_lang = "list a := nil() | cons(a; list a)" *)
-    let list_lang = {|
-      list := nil() | cons(unit; list)
+    let list_lang = {|list a := nil() | cons(a; list a)
       unit := unit()
     |}
 
@@ -572,8 +656,7 @@ let%test_module "Matching" =
     ;;
 
     let run_list_match tms =
-      (* list unit, list unit *)
-      run_compiled_matches list_lang "list, list" merge_match tms
+      run_compiled_matches list_lang "list unit, list unit" merge_match tms
     ;;
 
     let%expect_test _ =
@@ -589,6 +672,46 @@ let%test_module "Matching" =
     let%expect_test _ =
       run_list_match "cons(unit(); nil()), cons(unit(); nil())";
       [%expect "{w -> nil(), x -> unit(), y -> nil(), z -> unit()} 3"]
+    ;;
+
+    let print_check syntax_str sorts_str matrix_str =
+      match
+        ( ParseUtil.parse_string ParseSyntax.whitespace_t syntax_str
+        , ParseUtil.parse_string Parsers.(sep_by (char ',') ParseSort.t) sorts_str
+        , ParseUtil.parse_string Parse.matrix_rows matrix_str )
+      with
+      | Ok syntax, Ok sorts, Ok matrix ->
+        let syntax =
+          match AbstractSyntax.unordered syntax with
+          | `Ok syntax -> syntax
+          | `Duplicate_key name -> failwith (Printf.sprintf "duplicate key: %s" name)
+        in
+        (match check_matrix syntax sorts matrix with
+        | None -> Stdio.print_string "okay"
+        | Some example ->
+          Stdio.print_string (example |> List.map ~f:str_of_pat |> String.concat ~sep:", "))
+      | _ -> failwith "something failed to parse"
+    ;;
+
+    let%expect_test _ =
+      print_check list_lang "list unit" "nil() -> 1";
+      [%expect "cons(_; _)"]
+    ;;
+
+    let%expect_test _ =
+      print_check list_lang "list unit" "cons(_; _) -> 1";
+      [%expect "nil()"]
+    ;;
+
+    let%expect_test _ =
+      print_check list_lang "list unit" {|| nil() -> 1
+        | cons(_; nil()) -> 2 |};
+      [%expect "cons(_; cons(_; _))"]
+    ;;
+
+    let%expect_test _ =
+      print_check bool_lang "bool, bool, bool" three_bool_match;
+      [%expect "okay"]
     ;;
   end)
 ;;

@@ -54,7 +54,7 @@ val match_pattern
 
 (** Match a term against an ordered set of patterns, producing a branch and bindings if
     there is a match *)
-val simple_match
+val simple_find_match
   :  prim_eq:('prim -> 'prim -> bool)
   -> ('info, 'prim) NonBinding.term
   -> ('info, 'prim, 'rhs) cases
@@ -94,8 +94,16 @@ val useful
   :  'info AbstractSyntax.unordered
   -> 'info Sort.t list
   -> ('info, 'prim, 'rhs) matrix
-  -> ('info, 'prim, 'rhs) cases
+  -> ('info, 'prim) Pattern.t list
   -> bool
+
+(*
+val check_matrix
+  :  'info AbstractSyntax.unordered
+  -> 'info Sort.t list
+  -> ('info, 'prim, 'rhs) matrix
+  -> ('info, 'prim) Pattern.t list option
+  *)
 
 module Properties : sig
   type term = (unit, Primitive.t) NonBinding.term
