@@ -36,7 +36,7 @@ type ('info, 'prim, 'rhs) decision_tree =
 type ('info, 'prim) match_compilation_error =
   | BadSort of ('info, 'prim) Pattern.t * 'info Sort.t * 'info Sort.t
   | RedundantPattern of ('info, 'prim) Pattern.t
-  | NonExhaustive of ('info, 'prim) Pattern.t
+  | NonExhaustive of (unit, 'prim) Pattern.t list
   | DuplicateName of ('info, 'prim) Pattern.t * string
 
 let rec pp_tree ppf = function
@@ -230,7 +230,6 @@ let rec check_matrix lang sorts matrix =
       List.for_all op_defs ~f:(fun (OperatorDef (name, _arity)) ->
           Set.mem head_ctors name)
     in
-    let info = (* TODO *) None in
     if is_signature
     then
       let open Option.Let_syntax in
@@ -246,11 +245,11 @@ let rec check_matrix lang sorts matrix =
              let matrix, sorts = specialize lang head_sort sorts' ctor_name matrix in
              let%map pat_vec = check_matrix lang sorts matrix in
              let subpats, pat_vec = List.split_n pat_vec ctor_arity in
-             Pattern.Operator (info, ctor_name, subpats) :: pat_vec)
+             Pattern.Operator ((), ctor_name, subpats) :: pat_vec)
     else
       check_matrix lang sorts' (default matrix)
       |> Option.map ~f:(fun example ->
-             let ignore = Pattern.Ignored (info, "") in
+             let ignore = Pattern.Ignored ((), "") in
              let head =
                if Set.is_empty head_ctors
                then ignore
@@ -262,7 +261,7 @@ let rec check_matrix lang sorts matrix =
                           not (Set.mem head_ctors name))
                  in
                  let wildcards = List.map ctor_arity ~f:(fun _ -> ignore) in
-                 Pattern.Operator (info, ctor_name, wildcards))
+                 Pattern.Operator ((), ctor_name, wildcards))
              in
              head :: example))
 ;;
@@ -270,7 +269,12 @@ let rec check_matrix lang sorts matrix =
 let rec compile_matrix lang sorts matrix =
   let open Result.Let_syntax in
   match matrix with
-  | [] -> Error (NonExhaustive (failwith "TODO"))
+  | [] ->
+    (* If the matrix has no rows, matching would always fail. Give a list of
+       wildcards as an example. *)
+    let ignore = Pattern.Ignored ((), "") in
+    let example = List.map sorts ~f:(fun _ -> ignore) in
+    Error (NonExhaustive example)
   | (row_entries, rhs) :: _ ->
     (* If the first row is all wildcards (including the zero column case), match. *)
     if List.for_all row_entries ~f:(fun { pattern; _ } -> is_wildcard pattern)
@@ -393,7 +397,7 @@ let run_matches ~prim_pp ~prim_eq tms tree =
                |> String.concat ~sep:", "))
       in
       Some (rhs, env)
-    | [], _ -> Util.invariant_violation "empty pattern but not matched"
+    | [], _ -> Util.invariant_violation "run_matches: empty pattern but not matched"
     | NonBinding.Operator (_, op_name, subtms) :: tms', OperatorCases (branches, default)
       ->
       let branch =
@@ -659,6 +663,28 @@ let%test_module "Matching" =
     let%expect_test _ =
       print_check bool_lang "bool, bool, bool" three_bool_match;
       [%expect "okay"]
+    ;;
+
+    let%expect_test _ =
+      print_check
+        bool_lang
+        "bool, bool, bool"
+        {|| _, f(), t() -> 1
+        | f(), t(), _ -> 2
+        | _, _, f() -> 3
+      |};
+      [%expect "t(), t(), t()"]
+    ;;
+
+    let%expect_test _ =
+      print_check
+        bool_lang
+        "bool, bool, bool"
+        {|| _, f(), t() -> 1
+        | t(), t(), _ -> 2
+        | _, _, f() -> 3
+      |};
+      [%expect "f(), t(), t()"]
     ;;
   end)
 ;;

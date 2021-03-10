@@ -42,7 +42,7 @@ val pp_tree : _ decision_tree Fmt.t
 type ('info, 'prim) match_compilation_error =
   | BadSort of ('info, 'prim) Pattern.t * 'info Sort.t * 'info Sort.t
   | RedundantPattern of ('info, 'prim) Pattern.t
-  | NonExhaustive of ('info, 'prim) Pattern.t
+  | NonExhaustive of (unit, 'prim) Pattern.t list
   | DuplicateName of ('info, 'prim) Pattern.t * string
 
 (** Match a term against a pattern, extracting bindings *)
@@ -88,18 +88,18 @@ val run_match
   -> ('info, 'prim, 'rhs) decision_tree
   -> ('rhs * ('info, 'prim) env) option
 
-(* val check_coverage *)
-
-(*
+(** Check a matrix for coverage, possibly returning an example pattern that's not matched. *)
 val check_matrix
   :  'info AbstractSyntax.unordered
   -> 'info Sort.t list
   -> ('info, 'prim, 'rhs) matrix
-  -> ('info, 'prim) Pattern.t list option
-  *)
+  -> (unit, 'prim) Pattern.t list option
 
 module Properties : sig
   type term = (unit, Primitive.t) NonBinding.term
 
+  (** Check that [run_match . compile_cases] gives the same result as [simple_find_match] *)
   val match_equivalent : term -> (unit, Primitive.t, term) cases -> PropertyResult.t
+
+  (* TODO: could also check that check_matrix finds an example if compile_matrix does. *)
 end
