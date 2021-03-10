@@ -63,11 +63,15 @@ module Controller = struct
       { model with parsed_input; result; input_selected = None; output_selected = None }
     | InputSelect output_selected ->
       Brr.Console.log
-        [ Jstr.v "output_selected"; output_selected |> OptRange.to_string |> Jstr.v ];
+        [ Jstr.v "output_selected"
+        ; output_selected |> Fmt.to_to_string OptRange.pp |> Jstr.v
+        ];
       { model with output_selected; input_selected = None }
     | OutputSelect input_selected ->
       Brr.Console.log
-        [ Jstr.v "input_selected"; input_selected |> OptRange.to_string |> Jstr.v ];
+        [ Jstr.v "input_selected"
+        ; input_selected |> Fmt.to_to_string OptRange.pp |> Jstr.v
+        ];
       { model with input_selected; output_selected = None }
     | SwitchInputLang ->
       let input_lang, formatter =
@@ -76,7 +80,9 @@ module Controller = struct
         | Term -> Lambda, lambda_pretty
       in
       let input =
-        match parsed_input with Error _ -> input | Ok tm -> Fmt.str "%a" formatter tm
+        match parsed_input with
+        | Error _ -> input
+        | Ok tm -> Fmt.to_to_string formatter tm
       in
       { model with input; input_lang; input_selected = None; output_selected = None }
   ;;
@@ -101,7 +107,8 @@ module View = struct
                match result with
                | Ok tm ->
                  Brr.Console.log
-                   [ Jstr.v ("tm loc: " ^ OptRange.to_string (Nominal.info tm)) ];
+                   [ Jstr.v ("tm loc: " ^ Fmt.to_to_string OptRange.pp (Nominal.info tm))
+                   ];
                  let tm = Nominal.map_info tm ~f:cvt_loc in
                  Fmt.pf formatter "%a" lambda_ranges_pretty tm
                | Error msg -> Fmt.pf formatter "%s" msg

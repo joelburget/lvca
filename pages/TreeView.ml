@@ -108,7 +108,10 @@ let grid_tmpl ~render_params left loc : El.t * SourceRanges.t event =
         else None)
       ; (if range_column
         then
-          Some (td ~at:[ class' "px-2"; class' "py-0" ] [ txt (Range.to_string range) ])
+          Some
+            (td
+               ~at:[ class' "px-2"; class' "py-0" ]
+               [ txt (Fmt.to_to_string Range.pp range) ])
         else None)
       ]
       |> List.filter_map ~f:Fn.id
@@ -251,7 +254,7 @@ let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
   let { depth; queue; _ } = render_params in
   function
   | Pattern.Primitive (LocIx loc, p) ->
-    let str = Primitive.to_string p ^ suffix in
+    let str = Fmt.to_to_string Primitive.pp p ^ suffix in
     Queue.enqueue queue (grid_tmpl ~render_params [ padded_txt depth str ] loc)
   | Var (VarDefIx (loc, selected_event), name) ->
     let trigger_upstream_shadow =
@@ -293,7 +296,7 @@ let rec render_tm ~render_params ?(suffix = "") : _ Nominal.term -> unit =
   let { depth; var_selected_events; queue; _ } = render_params in
   function
   | Nominal.Primitive (LocIx loc, p) ->
-    let str = Primitive.to_string p ^ suffix in
+    let str = Fmt.to_to_string Primitive.pp p ^ suffix in
     Queue.enqueue queue (grid_tmpl ~render_params [ padded_txt depth str ] loc)
   | Var (LocIx loc, name) ->
     let selected_event = Map.find_exn var_selected_events name in

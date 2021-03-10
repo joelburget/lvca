@@ -201,7 +201,7 @@ let pp_ranges ppf p =
 ;;
 
 let pp_plain ppf p = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p
-let pp_str p = Fmt.str "%a" pp_plain p
+let pp_str p = Fmt.to_to_string pp_plain p
 
 let mk_some : 'info n_term -> 'info n_term =
  fun tm -> Nominal.Operator (Nominal.info tm, "some", [ Scope ([], tm) ])
@@ -705,7 +705,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     | Atom (atom, _) -> string_of_atom atom
     | Operator (str, _) | Keyword (str, _) | Ident (str, _) -> str
     | Core (tm, _) -> Fmt.str "{%s}" (Core.to_string tm)
-    | Parenthesized (tm, _) -> Fmt.str "%a" pp_plain tm
+    | Parenthesized (tm, _) -> Fmt.to_to_string pp_plain tm
     | FailTok (tm, _) -> Fmt.str "fail {%a}" Core.pp tm
     | SatisfyTok (name, tm, _) -> Fmt.str "satisfy (%s -> {%a})" name Core.pp tm
     | ChoiceTok (toks, _) ->
@@ -1459,7 +1459,7 @@ module Properties = struct
   module ParseParser = Parse (ParseUtil.CComment)
 
   let parse parser_str = ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str
-  let pp_str p = Fmt.str "%a" pp_plain p
+  let pp_str p = Fmt.to_to_string pp_plain p
 
   let string_round_trip1 t =
     match t |> pp_str |> parse with

@@ -163,11 +163,6 @@ let pp_scope_ranges pp_prim ppf tm =
     tm
 ;;
 
-(*
-let to_string pp_prim pat = Fmt.str "%a" (pp pp_prim) pat
-let scope_to_string pp_prim scope = Fmt.str "%a" (pp_scope pp_prim) scope
-*)
-
 let pp_capture pp_prim ppf = function
   | CapturedBinder pat -> Pattern.pp pp_prim ppf pat
   | CapturedTerm pat -> Nominal.pp_term pp_prim ppf pat
@@ -415,7 +410,7 @@ module Properties = struct
 
   let parse = ParseUtil.parse_string (ParsePattern.t ParsePrimitive.t)
   let pp = pp Primitive.pp
-  let to_string = Fmt.str "%a" pp
+  let to_string = Fmt.to_to_string pp
 
   let string_round_trip1 t =
     match t |> to_string |> parse with

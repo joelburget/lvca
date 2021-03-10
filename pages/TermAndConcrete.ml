@@ -63,7 +63,7 @@ module Controller = struct
       let input, result =
         match result with
         | Error _ -> "", result
-        | Ok tm -> Fmt.str "%a" formatter tm, Ok tm
+        | Ok tm -> Fmt.to_to_string formatter tm, Ok tm
       in
       { input; input_lang; input_selected = None; output_selected = None; result }
   ;;

@@ -81,7 +81,7 @@ let mk : ?clear:unit event -> selection_s:SourceRanges.t signal -> unit -> resul
   let get_data_range () =
     match Stack.top stack with
     | None -> "none"
-    | Some (rng, _) -> SourceRanges.to_string rng
+    | Some (rng, _) -> Fmt.to_to_string SourceRanges.pp rng
   in
   let handle_mousedown text_pos _evt =
     Console.log [ Jstr.v "mousedown" ];
@@ -112,7 +112,7 @@ let mk : ?clear:unit event -> selection_s:SourceRanges.t signal -> unit -> resul
           let len = Int.abs (up_pos - down_pos) in
           positions |> Queue.to_list |> List.sub ~pos ~len |> SourceRanges.unions
       in
-      Console.log [ Jstr.v "rng"; rng |> SourceRanges.to_string |> Jstr.v ];
+      Console.log [ Jstr.v "rng"; rng |> Fmt.to_to_string SourceRanges.pp |> Jstr.v ];
       set_selection rng;
       (* Clear the selection *)
       trigger_internal_reset ();
@@ -172,7 +172,9 @@ let mk : ?clear:unit event -> selection_s:SourceRanges.t signal -> unit -> resul
     { mark_open_stag =
         (function
         | SourceRanges.Stag rng ->
-          Stdio.printf "RangeFormatter opening stag %s\n" (SourceRanges.to_string rng);
+          Stdio.printf
+            "RangeFormatter opening stag %s\n"
+            (Fmt.to_to_string SourceRanges.pp rng);
           Stack.push stack (rng, Queue.create ());
           ""
         | _ ->

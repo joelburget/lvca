@@ -26,7 +26,7 @@ and scope_equal info_eq prim_eq (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
 ;;
 
 let info = function Operator (info, _, _) | Var (info, _) | Primitive (info, _) -> info
-let any, list, str, string, semi, pf = Fmt.(any, list, str, string, semi, pf)
+let any, list, string, semi, pf = Fmt.(any, list, string, semi, pf)
 
 let rec pp_term_generic ~open_loc ~close_loc ~pp_pat ~pp_prim ppf tm =
   open_loc ppf (info tm);
@@ -109,8 +109,8 @@ let pp_scope_ranges pp_prim ppf tm =
     tm
 ;;
 
-let pp_term_str pp_prim tm = str "%a" (pp_term pp_prim) tm
-let pp_scope_str pp_prim scope = str "%a" (pp_scope pp_prim) scope
+let pp_term_str pp_prim tm = Fmt.to_to_string (pp_term pp_prim) tm
+let pp_scope_str pp_prim scope = Fmt.to_to_string (pp_scope pp_prim) scope
 let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
 
 let rec jsonify jsonify_prim tm =
