@@ -6,14 +6,6 @@ type t =
   | PrimFloat of float
   | PrimChar of char
 
-let to_string = function
-  | PrimInteger i -> Z.to_string i
-  | PrimString str -> {|"|} ^ String.escaped str ^ {|"|}
-  (* | PrimFloat f -> Float.to_string f *)
-  | PrimFloat f -> Printf.sprintf "%f" f
-  | PrimChar c -> {|'|} ^ Char.to_string c ^ {|'|}
-;;
-
 let ( = ) p1 p2 =
   match p1, p2 with
   | PrimInteger i1, PrimInteger i2 -> Z.Compare.(i1 = i2) [@warning "-44"]
@@ -22,6 +14,17 @@ let ( = ) p1 p2 =
   | PrimChar c1, PrimChar c2 -> Char.(c1 = c2)
   | _ -> false
 ;;
+
+(** Primitive pretty-printer. *)
+let pp ppf = function
+  | PrimInteger i -> Fmt.pf ppf "%s" (Z.to_string i)
+  | PrimString s -> Fmt.pf ppf {|"%s"|} s
+  | PrimFloat f -> Fmt.pf ppf "%f" f
+  (* | PrimFloat f -> Fmt.pf ppf "%s" (Float.to_string f) *)
+  | PrimChar c -> Fmt.pf ppf "'%c'" c
+;;
+
+let to_string = Fmt.to_to_string pp
 
 let check _info prim sort =
   match prim, sort with
@@ -55,16 +58,6 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     <?> "primitive"
   ;;
 end
-
-(** Primitive pretty-printer. *)
-let pp : t Fmt.t =
- fun ppf -> function
-  | PrimInteger i -> Fmt.pf ppf "%s" (Z.to_string i)
-  | PrimString s -> Fmt.pf ppf {|"%s"|} s
-  | PrimFloat f -> Fmt.pf ppf "%f" f
-  (* | PrimFloat f -> Fmt.pf ppf "%s" (Float.to_string f) *)
-  | PrimChar c -> Fmt.pf ppf "'%c'" c
-;;
 
 let jsonify =
   Lvca_util.Json.(
