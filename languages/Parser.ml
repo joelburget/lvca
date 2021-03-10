@@ -1100,17 +1100,17 @@ let%test_module "Parsing" =
     let%expect_test _ =
       parse_print "'c'2" "cc";
       [%expect
-        {| <input:0-2>list(<input:0-1>'c'</input:0-1>; <input:1-2>'c'</input:1-2>)</input:0-2> |}]
+        {| <input:{0,2}>list(<input:{0,1}>'c'</input:{0,1}>; <input:{1,2}>'c'</input:{1,2}>)</input:{0,2}> |}]
     ;;
 
     let%expect_test _ =
       parse_print dot "c";
-      [%expect {| <input:0-1>'c'</input:0-1> |}]
+      [%expect {| <input:{0,1}>'c'</input:{0,1}> |}]
     ;;
 
     let%expect_test _ =
       parse_print str "str";
-      [%expect {| <input:0-3>"str"</input:0-3> |}]
+      [%expect {| <input:{0,3}>"str"</input:{0,3}> |}]
     ;;
 
     let%expect_test _ =
@@ -1121,28 +1121,28 @@ let%test_module "Parsing" =
     let%expect_test _ =
       parse_print str_star "strstrstr";
       [%expect
-        {| <input:0-9>list(<input:0-3>"str"</input:0-3>; <input:3-6>"str"</input:3-6>; <input:6-9>"str"</input:6-9>)</input:0-9> |}]
+        {| <input:{0,9}>list(<input:{0,3}>"str"</input:{0,3}>; <input:{3,6}>"str"</input:{3,6}>; <input:{6,9}>"str"</input:{6,9}>)</input:{0,9}> |}]
     ;;
 
     let%expect_test _ =
       parse_print str_plus "strstrstr";
       [%expect
-        {| <input:0-9>list(<input:0-3>"str"</input:0-3>; <input:3-6>"str"</input:3-6>; <input:6-9>"str"</input:6-9>)</input:0-9> |}]
+        {| <input:{0,9}>list(<input:{0,3}>"str"</input:{0,3}>; <input:{3,6}>"str"</input:{3,6}>; <input:{6,9}>"str"</input:{6,9}>)</input:{0,9}> |}]
     ;;
 
     let%expect_test _ =
       parse_print choice "str";
-      [%expect {| <input:0-3>"str"</input:0-3> |}]
+      [%expect {| <input:{0,3}>"str"</input:{0,3}> |}]
     ;;
 
     let%expect_test _ =
       parse_print choice "foo";
-      [%expect {| <input:0-3>"foo"</input:0-3> |}]
+      [%expect {| <input:{0,3}>"foo"</input:{0,3}> |}]
     ;;
 
     let%expect_test _ =
       parse_print sat_parser "c";
-      [%expect {| <input:0-1>'c'</input:0-1> |}]
+      [%expect {| <input:{0,1}>'c'</input:{0,1}> |}]
     ;;
 
     let%expect_test _ =
@@ -1154,7 +1154,7 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print let_var "str";
-      [%expect {| <input:0-3>"str"</input:0-3> |}]
+      [%expect {| <input:{0,3}>"str"</input:{0,3}> |}]
     ;;
 
     let%expect_test _ =
@@ -1165,7 +1165,7 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print char_opt "c";
-      [%expect {| <input:0-1>some(<input:0-1>'c'</input:0-1>)</input:0-1> |}]
+      [%expect {| <input:{0,1}>some(<input:{0,1}>'c'</input:{0,1}>)</input:{0,1}> |}]
     ;;
 
     (* TODO: determine proper provenance *)
@@ -1176,47 +1176,47 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print ret "";
-      [%expect {| <parser:2-7>foo()</parser:2-7> |}]
+      [%expect {| <parser:{2,7}>foo()</parser:{2,7}> |}]
     ;;
 
     let%expect_test _ =
       parse_print fix "a";
-      [%expect {| <input:0-1>"a"</input:0-1> |}]
+      [%expect {| <input:{0,1}>"a"</input:{0,1}> |}]
     ;;
 
     let%expect_test _ =
       parse_print seq "a";
       (* TODO: which attribution is correct? [%expect {| <parser:13-16>"a"</parser:13-16> |}] *)
-      [%expect {| <input:0-1>"a"</input:0-1> |}]
+      [%expect {| <input:{0,1}>"a"</input:{0,1}> |}]
     ;;
 
     let%expect_test _ =
       parse_print list_parser "";
-      [%expect {| <parser:69-74>nil()</parser:69-74> |}]
+      [%expect {| <parser:{69,74}>nil()</parser:{69,74}> |}]
     ;;
 
     let%expect_test _ =
       parse_print list_parser "c";
       [%expect
-        {| <parser:45-56>cons(<input:0-1>'c'</input:0-1>; <parser:69-74>nil()</parser:69-74>)</parser:45-56> |}]
+        {| <parser:{45,56}>cons(<input:{0,1}>'c'</input:{0,1}>; <parser:{69,74}>nil()</parser:{69,74}>)</parser:{45,56}> |}]
     ;;
 
     let%expect_test _ =
       parse_print list_parser "cc";
       [%expect
-        {| <parser:45-56>cons(<input:0-1>'c'</input:0-1>; <parser:45-56>cons(<input:1-2>'c'</input:1-2>; <parser:69-74>nil()</parser:69-74>)</parser:45-56>)</parser:45-56> |}]
+        {| <parser:{45,56}>cons(<input:{0,1}>'c'</input:{0,1}>; <parser:{45,56}>cons(<input:{1,2}>'c'</input:{1,2}>; <parser:{69,74}>nil()</parser:{69,74}>)</parser:{45,56}>)</parser:{45,56}> |}]
     ;;
 
     let%expect_test _ =
       parse_print seq2 "aab";
       [%expect
-        {| <parser:24-40>triple(<input:0-1>"a"</input:0-1>; <input:1-2>"a"</input:1-2>; <input:2-3>"b"</input:2-3>)</parser:24-40> |}]
+        {| <parser:{24,40}>triple(<input:{0,1}>"a"</input:{0,1}>; <input:{1,2}>"a"</input:{1,2}>; <input:{2,3}>"b"</input:{2,3}>)</parser:{24,40}> |}]
     ;;
 
     let%expect_test _ =
       parse_print seq3 "aab";
       [%expect
-        {| <parser:24-40>triple(<input:0-1>'a'</input:0-1>; <input:1-2>'a'</input:1-2>; <input:2-3>'b'</input:2-3>)</parser:24-40> |}]
+        {| <parser:{24,40}>triple(<input:{0,1}>'a'</input:{0,1}>; <input:{1,2}>'a'</input:{1,2}>; <input:{2,3}>'b'</input:{2,3}>)</parser:{24,40}> |}]
     ;;
 
     let%expect_test _ =
@@ -1227,31 +1227,31 @@ let%test_module "Parsing" =
     let%expect_test _ =
       parse_print fix2 "ab";
       [%expect
-        {| <parser:40-50>pair(<input:0-1>"a"</input:0-1>; <parser:68-71>"b"</parser:68-71>)</parser:40-50> |}]
+        {| <parser:{40,50}>pair(<input:{0,1}>"a"</input:{0,1}>; <parser:{68,71}>"b"</parser:{68,71}>)</parser:{40,50}> |}]
     ;;
 
     let%expect_test _ =
       parse_print fix3 "a + 1";
       [%expect
-        {| <parser:287-302>add(<parser:114-124>var(<input:0-1>list(<input:0-1>'a'</input:0-1>)</input:0-1>)</parser:114-124>; <parser:164-178>literal(<input:4-5>list(<input:4-5>'1'</input:4-5>)</input:4-5>)</parser:164-178>)</parser:287-302> |}]
+        {| failed to parse: choice: no match found |}]
     ;;
 
     let%expect_test _ =
       parse_print fix3 "a + b + c";
       [%expect
-        {| <parser:287-302>add(<parser:114-124>var(<input:0-1>list(<input:0-1>'a'</input:0-1>)</input:0-1>)</parser:114-124>; <parser:287-302>add(<parser:114-124>var(<input:4-5>list(<input:4-5>'b'</input:4-5>)</input:4-5>)</parser:114-124>; <parser:114-124>var(<input:8-9>list(<input:8-9>'c'</input:8-9>)</input:8-9>)</parser:114-124>)</parser:287-302>)</parser:287-302> |}]
+        {| failed to parse: choice: no match found |}]
     ;;
 
     let%expect_test _ =
       parse_print pair "ab";
       [%expect
-        {| <parser:17-27>pair(<input:0-1>'a'</input:0-1>; <input:1-2>'b'</input:1-2>)</parser:17-27> |}]
+        {| <parser:{17,27}>pair(<input:{0,1}>'a'</input:{0,1}>; <input:{1,2}>'b'</input:{1,2}>)</parser:{17,27}> |}]
     ;;
 
     let%expect_test _ =
       parse_print pair2 "ab";
       [%expect
-        {| <parser:13-23>pair(<input:0-1>'a'</input:0-1>; <input:1-2>'b'</input:1-2>)</parser:13-23> |}]
+        {| <parser:{13,23}>pair(<input:{0,1}>'a'</input:{0,1}>; <input:{1,2}>'b'</input:{1,2}>)</parser:{13,23}> |}]
     ;;
 
     let parse_print_parser : ?width:int -> string -> unit =
@@ -1288,7 +1288,7 @@ let%test_module "Parsing" =
         {|let alpha = satisfy (c -> {is_alpha c}) in
         chars=alpha+ -> { let str = string_of_chars chars in {var(str)} }|}
         "ab";
-      [%expect {| <parser:105-113>var(<input:0-2>"ab"</input:0-2>)</parser:105-113> |}]
+      [%expect {| failed to parse: many1: empty list |}]
     ;;
 
     let%expect_test _ =
@@ -1322,7 +1322,7 @@ expr)}} | atom=atom -> {atom}))|};
        fix
          (expr -> choice (
                     | atom=atom ' '* '+' ' '* expr=expr -> {{add(atom; expr)}}
-                    | atom=atom -> {atom}
+                    | atom=atom -> {{atom}}
                   )) |}]
     ;;
 
