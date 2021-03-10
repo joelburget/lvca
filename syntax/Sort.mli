@@ -9,7 +9,6 @@ type 'info t =
 
 val equal : ('info -> 'info -> bool) -> 'info t -> 'info t -> bool
 val pp : Format.formatter -> _ t -> unit
-val to_string : _ t -> string
 val instantiate : 'info t Lvca_util.String.Map.t -> 'info t -> 'info t
 val map_info : f:('a -> 'b) -> 'a t -> 'b t
 val erase_info : _ t -> unit t

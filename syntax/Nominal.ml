@@ -302,14 +302,15 @@ let check pp_prim check_prim lang =
                (Sort.erase_info var_sort)
                (Sort.erase_info expected_sort)
           then None
-          else
+          else (
+            let sort_to_string = Fmt.to_to_string Sort.pp in
             Some
               (CheckFailure.err
                  (Printf.sprintf
                     "Variable %s has unexpected sort (saw: %s) (expected: %s)"
                     v
-                    (Sort.to_string var_sort)
-                    (Sort.to_string expected_sort))))
+                    (sort_to_string var_sort)
+                    (sort_to_string expected_sort)))))
       | Primitive (info, p) ->
         (match check_prim info p expected_sort with
         | None -> None
@@ -752,7 +753,8 @@ let%test_module "TermParser" =
     let%expect_test _ =
       print_parse {|a(b;c)|};
       (*0123456*)
-      [%expect {|
+      [%expect
+        {|
       a(b; c)
       <{0,6}>a(<{2,3}>b</{2,3}>; <{4,5}>c</{4,5}>)</{0,6}>
     |}]

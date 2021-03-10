@@ -12,26 +12,15 @@ let rec equal info_eq s1 s2 =
   | _, _ -> false
 ;;
 
-let rec pp ppf = function
-  | Ap (_, name, args) -> Fmt.pf ppf "%s @[%a@]" name pp_args args
-  | Name (_, name) -> Fmt.pf ppf "%s" name
-
-and pp_args ppf = function
-  | [] -> ()
-  | [ x ] -> Fmt.pf ppf "%a" pp x
-  | x :: xs -> Fmt.pf ppf "%a %a" pp x pp_args xs
-;;
-
-let to_string sort =
-  let rec go need_parens = function
+let pp ppf sort =
+  let rec pp need_parens ppf = function
     | Ap (_, name, args) ->
-      Printf.sprintf
-        (if need_parens then "(%s %s)" else "%s %s")
-        name
-        (args |> List.map ~f:(go true) |> String.concat)
-    | Name (_, name) -> name
+      if need_parens
+      then Fmt.pf ppf "@[(%s %a)@]" name Fmt.(list (pp true) ~sep:sp) args
+      else Fmt.pf ppf "@[%s %a@]" name Fmt.(list (pp true) ~sep:sp) args
+    | Name (_, name) -> Fmt.pf ppf "%s" name
   in
-  go false sort
+  pp false ppf sort
 ;;
 
 let rec instantiate arg_mapping = function
@@ -123,7 +112,7 @@ let%test_module "Sort_Parser" =
 
     let%expect_test _ =
       Fmt.pr "%a" pp abcd;
-      [%expect {| a b c d |}]
+      [%expect {| a (b c) d |}]
     ;;
   end)
 ;;

@@ -42,7 +42,7 @@ type ('info, 'prim) match_compilation_error =
 let rec pp_tree ppf = function
   | OperatorCases (branches, default) ->
     let branches = Map.to_alist branches in
-    let pp_branches = Fmt.(list (pair string pp_tree ~sep:(any ": ")) ~sep:(sps 1)) in
+    let pp_branches = Fmt.(list (pair string pp_tree ~sep:(any ": ")) ~sep:sp) in
     (match default with
     | None -> Fmt.pf ppf "OperatorCases [@[<hv 2>%a@]]" pp_branches branches
     | Some tree ->

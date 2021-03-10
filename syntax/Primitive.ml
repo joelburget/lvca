@@ -34,7 +34,7 @@ let check _info prim sort =
     Some
       (Printf.sprintf
          "Unexpected sort (%s) for a primitive (%s)"
-         (Sort.to_string sort)
+         (Fmt.to_to_string Sort.pp sort)
          (to_string prim))
 ;;
 

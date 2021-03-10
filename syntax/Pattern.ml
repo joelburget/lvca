@@ -163,14 +163,15 @@ let check pp_prim check_prim lang ~pattern_sort ~var_sort =
       | Var (_, name) ->
         if Sort.equal Unit.( = ) (Sort.erase_info sort) (Sort.erase_info var_sort)
         then Ok (SMap.singleton name sort)
-        else
+        else (
+          let sort_to_string = Fmt.to_to_string Sort.pp in
           Error
             (CheckFailure.err
                (Printf.sprintf
                   "Pattern %s is of sort `%s`. Expected `%s`."
                   name
-                  (Sort.to_string var_sort)
-                  (Sort.to_string sort)))
+                  (sort_to_string var_sort)
+                  (sort_to_string sort))))
       | Ignored _ -> Ok SMap.empty
       | Primitive (info, prim) ->
         (match check_prim info prim sort with

@@ -485,7 +485,8 @@ let%test_module "Parsing" =
     let%expect_test _ =
       print_parse {|a(b;c)|};
       (*0123456*)
-      [%expect {|
+      [%expect
+        {|
       a(b; c)
       <{0,6}>a(<{2,3}>b</{2,3}>; <{4,5}>c</{4,5}>)</{0,6}>
     |}]
@@ -574,16 +575,17 @@ test := foo(term[term]. term)
       | Ok capture_types ->
         capture_types
         |> Map.iteri ~f:(fun ~key ~data ->
+               let sort_to_string = Fmt.to_to_string Sort.pp in
                let rhs =
                  match data with
-                 | BoundVar sort -> Sort.to_string sort
+                 | BoundVar sort -> sort_to_string sort
                  | BoundPattern { pattern_sort; var_sort } ->
                    (* XXX make pattern_sort printer public *)
                    Printf.sprintf
                      "%s[%s]"
-                     (Sort.to_string pattern_sort)
-                     (Sort.to_string var_sort)
-                 | BoundTerm sort -> Sort.to_string sort
+                     (sort_to_string pattern_sort)
+                     (sort_to_string var_sort)
+                 | BoundTerm sort -> sort_to_string sort
                in
                Stdio.printf "%s: %s\n" key rhs)
     ;;

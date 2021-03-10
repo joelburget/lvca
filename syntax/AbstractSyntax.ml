@@ -70,19 +70,20 @@ let sort_def_map_info ~f (name, SortDef (vars, op_defs)) =
 let erase_sort_def = sort_def_map_info ~f:(Fn.const ())
 let map_info ~f = List.map ~f:(sort_def_map_info ~f)
 let erase_info t = map_info ~f:(Fn.const ()) t
+let sort_to_string sort = Fmt.to_to_string Sort.pp sort
 
 let string_of_sort_slot = function
-  | SortBinding sort -> Sort.to_string sort
+  | SortBinding sort -> sort_to_string sort
   | SortPattern { pattern_sort; var_sort } ->
     Printf.sprintf
       (match pattern_sort with Sort.Name _ -> "%s[%s]" | _ -> "(%s)[%s]")
-      (Sort.to_string pattern_sort)
-      (Sort.to_string var_sort)
+      (sort_to_string pattern_sort)
+      (sort_to_string var_sort)
 ;;
 
 let string_of_valence : _ valence -> string = function
   | Valence (binders, result) ->
-    let result_str = Sort.to_string result in
+    let result_str = sort_to_string result in
     (match binders with
     | [] -> result_str
     | _ ->
@@ -215,8 +216,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   type sort_sequence = sort_sequence_entry list
 
   let str_of_entry = function
-    | Sort sort -> Sort.to_string sort
-    | Bracketed sort -> "[" ^ Sort.to_string sort ^ "]"
+    | Sort sort -> sort_to_string sort
+    | Bracketed sort -> "[" ^ sort_to_string sort ^ "]"
     | Dot -> "."
     | Semi -> ";"
   ;;
