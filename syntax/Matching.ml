@@ -187,19 +187,6 @@ let specialize lang ctor_sort tail_sorts ctor_name matrix =
   matrix, sorts
 ;;
 
-let specialize_vec lang ctor_sort ctor_name pat_vec =
-  let concrete_sort_mapping = get_children_concrete_sorts lang ctor_sort in
-  let ctor_sorts = Map.find_exn concrete_sort_mapping ctor_name in
-  let head_pat, pats = Util.List.split_exn pat_vec in
-  match head_pat with
-  | Pattern.Var (info, name) | Pattern.Ignored (info, name) ->
-    specialize_wildcard ctor_sorts info name head_pat
-  | Primitive _ -> []
-  | Operator (_, name, children) ->
-    (* XXX confusion about empty case *)
-    if String.(name = ctor_name) then children @ pats else []
-;;
-
 (* Retain rows whose first pattern is a wildcard *)
 let default matrix =
   matrix
@@ -278,46 +265,6 @@ let rec check_matrix lang sorts matrix =
                  Pattern.Operator (info, ctor_name, wildcards))
              in
              head :: example))
-;;
-
-(* m x n pattern matrix, pattern vector of size n *)
-let rec useful lang sorts matrix pat_vec =
-  match pat_vec with
-  (* base case -- no columns *)
-  | [] ->
-    (* pat_vec is useful iff matrix has no rows *)
-    (match matrix with [] -> true | _ -> false)
-  | pat :: vec' ->
-    let head_sort, tail_sorts = Util.List.split_exn sorts in
-    (match pat with
-    | Pattern.Operator (_, name, subpats) ->
-      let matrix, sorts = specialize lang head_sort tail_sorts name matrix in
-      useful lang sorts matrix (subpats @ vec')
-    | Pattern.Var _ | Pattern.Ignored _ ->
-      let (AbstractSyntax.SortDef (_ty_vars, op_defs)) =
-        Map.find_exn lang (sort_name head_sort)
-      in
-      let transpose = matrix_transpose matrix in
-      let first_col, _ = Util.List.split_exn transpose in
-      let head_ctors =
-        first_col
-        |> List.filter_map ~f:(fun { pattern; _ } ->
-               match pattern with Pattern.Operator (_, name, _) -> Some name | _ -> None)
-        |> Util.String.Set.of_list
-      in
-      (* is every constructor covered? *)
-      let is_signature =
-        List.for_all op_defs ~f:(fun (OperatorDef (name, _arity)) ->
-            Set.mem head_ctors name)
-      in
-      if is_signature
-      then
-        List.exists op_defs ~f:(fun (OperatorDef (ctor_name, _arity)) ->
-            let matrix, sorts = specialize lang head_sort tail_sorts ctor_name matrix in
-            let pat_vec = specialize_vec lang head_sort ctor_name pat_vec in
-            useful lang sorts matrix pat_vec)
-      else useful lang tail_sorts (default matrix) vec'
-    | Pattern.Primitive _ -> failwith "TODO")
 ;;
 
 let rec compile_matrix lang sorts matrix =

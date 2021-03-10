@@ -90,13 +90,6 @@ val run_match
 
 (* val check_coverage *)
 
-val useful
-  :  'info AbstractSyntax.unordered
-  -> 'info Sort.t list
-  -> ('info, 'prim, 'rhs) matrix
-  -> ('info, 'prim) Pattern.t list
-  -> bool
-
 (*
 val check_matrix
   :  'info AbstractSyntax.unordered
