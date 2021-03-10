@@ -1232,14 +1232,12 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print fix3 "a + 1";
-      [%expect
-        {| failed to parse: choice: no match found |}]
+      [%expect {| failed to parse: choice: no match found |}]
     ;;
 
     let%expect_test _ =
       parse_print fix3 "a + b + c";
-      [%expect
-        {| failed to parse: choice: no match found |}]
+      [%expect {| failed to parse: choice: no match found |}]
     ;;
 
     let%expect_test _ =
