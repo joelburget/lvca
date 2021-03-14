@@ -38,18 +38,28 @@ type doc =
   | Align of doc
   | Alt of doc * doc
 
-let rec of_term = function
-  | NonBinding.Operator (_, "line", []) -> Line
-  | Operator (_, "nil", []) -> Nil
-  | Operator (_, "cat", [ d1; d2 ]) -> Cat (of_term d1, of_term d2)
-  | Operator (_, "text", [ Primitive (_, Primitive.PrimString s) ]) -> Text s
-  | Operator (_, "spacing", [ Primitive (_, Primitive.PrimString s) ]) -> Spacing s
+let rec of_term tm =
+  let open Result.Let_syntax in
+  match tm with
+  | NonBinding.Operator (_, "line", []) -> Ok Line
+  | Operator (_, "nil", []) -> Ok Nil
+  | Operator (_, "cat", [ d1; d2 ]) ->
+    let%bind d1 = of_term d1 in
+    let%map d2 = of_term d2 in
+    Cat (d1, d2)
+  | Operator (_, "text", [ Primitive (_, Primitive.PrimString s) ]) -> Ok (Text s)
+  | Operator (_, "spacing", [ Primitive (_, Primitive.PrimString s) ]) -> Ok (Spacing s)
   | Operator (_, "nest", [ Primitive (_, Primitive.PrimInteger j); d ]) ->
-    Nest (Z.to_int j, of_term d)
-  | Operator (_, "align", [ d ]) -> Align (of_term d)
-  | Operator (_, "alt", [ d1; d2 ]) -> Alt (of_term d1, of_term d2)
-  | Primitive _ -> failwith "TODO: error"
-  | Operator _ -> failwith "TODO: error"
+    let%map d = of_term d in
+    Nest (Z.to_int j, d)
+  | Operator (_, "align", [ d ]) ->
+    let%map d = of_term d in
+    Align d
+  | Operator (_, "alt", [ d1; d2 ]) ->
+    let%bind d1 = of_term d1 in
+    let%map d2 = of_term d2 in
+    Alt (d1, d2)
+  | Primitive _ | Operator _ -> Error ("Couldn't convert term", tm)
 ;;
 
 type semantics = int -> int -> (string * int) list
@@ -125,7 +135,14 @@ let render_fast : int -> doc -> string =
     | done_ :: _ -> done_
     | [] ->
       (match conts with
-      | _ :: _ -> conts |> List.sort ~compare:(failwith "TODO") |> filtering |> loop
+      | _ :: _ ->
+        conts
+        |> List.sort ~compare:(fun x y ->
+               let x = measure x in
+               let y = measure y in
+               Lvca_util.Tuple2.compare ~cmp1:Int.compare ~cmp2:Int.compare x y)
+        |> filtering
+        |> loop
       | [] -> failwith "overflow")
   in
   [ { cur_indent = 0; progress = 0; tokens = []; rest = [ 0, doc ] } ]
@@ -142,7 +159,9 @@ let cvt tm =
 
 let%expect_test _ =
   let tm = [%lvca_term {|cat(text("("); text(")"))|}] in
-  Stdio.print_string (render_fast 80 (cvt tm));
+  (match cvt tm with
+  | Ok tm -> Stdio.print_string (render_fast 80 tm)
+  | Error (msg, _) -> failwith msg);
   [%expect {| () |}]
 ;;
 
