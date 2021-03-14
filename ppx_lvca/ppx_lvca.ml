@@ -4,6 +4,7 @@ open Ppxlib
 module ParsePrimitive = Lvca_syntax.Primitive.Parse (ParseUtil.CComment)
 module ParsePattern = Lvca_syntax.Pattern.Parse (ParseUtil.CComment)
 module ParseTerm = Nominal.Parse (ParseUtil.CComment)
+module ParseNonbinding = NonBinding.Parse (ParseUtil.CComment)
 module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
 
 (* TODO: parser, core, nonbinding / OCaml data mapping *)
@@ -62,7 +63,7 @@ let rec mk_pattern ~loc = function
     [%expr Pattern.Primitive ([%e mk_pos ~loc pos], [%e mk_prim ~loc prim])]
 ;;
 
-let rec mk_term ~loc = function
+let rec mk_nominal ~loc = function
   | Nominal.Operator (pos, name, scopes) ->
     let name_exp = mk_str ~loc name in
     let scopes = scopes |> List.map ~f:(mk_scope ~loc) |> mk_list ~loc in
@@ -72,9 +73,18 @@ let rec mk_term ~loc = function
     [%expr Nominal.Primitive ([%e mk_pos ~loc pos], [%e mk_prim ~loc prim])]
 
 and mk_scope ~loc (Nominal.Scope (pats, tm)) =
-  let tm = mk_term ~loc tm in
+  let tm = mk_nominal ~loc tm in
   let pats = pats |> List.map ~f:(mk_pattern ~loc) |> mk_list ~loc in
   [%expr Nominal.Scope ([%e pats], [%e tm])]
+;;
+
+let rec mk_nonbinding ~loc = function
+  | NonBinding.Operator (pos, name, tms) ->
+    let name_exp = mk_str ~loc name in
+    let tms = tms |> List.map ~f:(mk_nonbinding ~loc) |> mk_list ~loc in
+    [%expr NonBinding.Operator ([%e mk_pos ~loc pos], [%e name_exp], [%e tms])]
+  | Primitive (pos, prim) ->
+    [%expr NonBinding.Primitive ([%e mk_pos ~loc pos], [%e mk_prim ~loc prim])]
 ;;
 
 let rec mk_sort ~loc = function
@@ -120,11 +130,18 @@ let mk_language ~loc sort_defs =
   |> mk_list ~loc
 ;;
 
-let expand_term ~(loc : Location.t) ~path:_ (expr : expression) : expression =
+let expand_nominal ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
   match ParseUtil.parse_string (ParseTerm.whitespace_t ParsePrimitive.t) str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
-  | Ok tm -> mk_term ~loc tm
+  | Ok tm -> mk_nominal ~loc tm
+;;
+
+let expand_nonbinding ~(loc : Location.t) ~path:_ (expr : expression) : expression =
+  let str, loc = extract_string loc expr in
+  match ParseUtil.parse_string (ParseNonbinding.whitespace_term ParsePrimitive.t) str with
+  | Error msg -> Location.raise_errorf ~loc "%s" msg
+  | Ok tm -> mk_nonbinding ~loc tm
 ;;
 
 let expand_pattern ~(loc : Location.t) ~path:_ (expr : expression) : expression =
@@ -143,10 +160,18 @@ let expand_abstract_syntax ~(loc : Location.t) ~path:_ (expr : expression) : exp
 
 let term_extension =
   Extension.declare
-    "lvca_term"
+    "lvca_nominal"
     Extension.Context.Expression
     Ast_pattern.(single_expr_payload __)
-    expand_term
+    expand_nominal
+;;
+
+let nonbinding_extension =
+  Extension.declare
+    "lvca_nonbinding"
+    Extension.Context.Expression
+    Ast_pattern.(single_expr_payload __)
+    expand_nonbinding
 ;;
 
 let pattern_extension =
@@ -170,6 +195,7 @@ let () =
     "lvca"
     ~rules:
       [ Context_free.Rule.extension term_extension
+      ; Context_free.Rule.extension nonbinding_extension
       ; Context_free.Rule.extension pattern_extension
       ; Context_free.Rule.extension abstract_syntax_extension
       ]
