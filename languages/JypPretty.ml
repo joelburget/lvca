@@ -9,6 +9,8 @@ data Doc where
   Align :: Doc -> Doc
   (:<|>) :: Doc -> Doc -> Doc -- ^ Attn: INVARIANT
   Spacing :: String -> Doc
+
+TODO: make disjunctionless? https://github.com/jyp/prettiest/pull/10
  *)
 open Base
 open Lvca_syntax
@@ -95,7 +97,7 @@ let rec filtering : process list -> process list = function
   | xs -> xs
 ;;
 
-let render_fast : int -> doc -> string =
+let render_fast : int -> doc -> string option =
  fun w doc ->
   let rec rall : int -> string list -> int -> docs -> (string list, process) Either.t list
     =
@@ -123,32 +125,33 @@ let render_fast : int -> doc -> string =
         | Alt (x, y) -> rall p ts k ((i, x) :: ds) @ rall p ts k ((i, y) :: ds)
         | Align x -> rall p ts k ((k, x) :: ds)))
   in
-  let rec loop : process list -> string list =
-   fun ps ->
-    let ps =
-      ps
+  let rec loop : process list -> string list option =
+   fun processes ->
+    let dones, conts =
+      processes
       |> List.concat_map ~f:(fun { cur_indent; progress; tokens; rest } ->
              rall progress tokens cur_indent rest)
+      |> List.partition_map ~f:Fn.id
     in
-    let dones, conts = List.partition_map ps ~f:Fn.id in
     match dones with
-    | done_ :: _ -> done_
+    | done_ :: _ -> Some done_
     | [] ->
       (match conts with
       | _ :: _ ->
         conts
         |> List.sort ~compare:(fun x y ->
-               let x = measure x in
-               let y = measure y in
-               Lvca_util.Tuple2.compare ~cmp1:Int.compare ~cmp2:Int.compare x y)
+               Lvca_util.Tuple2.compare
+                 ~cmp1:Int.compare
+                 ~cmp2:Int.compare
+                 (measure x)
+                 (measure y))
         |> filtering
         |> loop
-      | [] -> failwith "overflow")
+      | [] -> None)
   in
   [ { cur_indent = 0; progress = 0; tokens = []; rest = [ 0, doc ] } ]
   |> loop
-  |> List.rev
-  |> String.concat
+  |> Option.map ~f:(fun strs -> strs |> List.rev |> String.concat)
 ;;
 
 let cvt tm =
@@ -157,20 +160,77 @@ let cvt tm =
   | Error _ -> failwith "failed to convert from nominal"
 ;;
 
+let test_render width tm =
+  match cvt tm with
+  | Ok tm ->
+    let str =
+      match render_fast width tm with None -> "no valid render" | Some str -> str
+    in
+    Stdio.print_string str
+  | Error (msg, _) -> failwith msg
+;;
+
 let%expect_test _ =
-  let tm = [%lvca_term {|cat(text("("); text(")"))|}] in
-  (match cvt tm with
-  | Ok tm -> Stdio.print_string (render_fast 80 tm)
-  | Error (msg, _) -> failwith msg);
+  let tm = [%lvca_nominal {|cat(text("("); text(")"))|}] in
+  test_render 80 tm;
   [%expect {| () |}]
 ;;
 
-(*
-let x <+> y = x <> spacing(" ") <> y in
-let x </> y = x <> line() <> y in
-let sep xs = match xs {
-  | [] -> Nil
-  | xs -> alt(foldr1 (<+>) xs; align(foldr1 (</>) xs))
-}
-...
-*)
+let%expect_test _ =
+  let tm =
+    [%lvca_nominal
+      {|alt(
+    cat(text("abc"); cat(spacing(" "); text("def")));
+    cat(text("abc"); cat(line(); text("def")))
+    )|}]
+  in
+  test_render 7 tm;
+  Stdio.print_string "\n";
+  test_render 6 tm;
+  [%expect {|
+    abc def
+    abc
+    def |}]
+;;
+
+let%expect_test _ =
+  let tm = [%lvca_nominal {|cat(text("abc"); cat(text("def"); text("ghi")))|}] in
+  test_render 1 tm;
+  Stdio.print_string "\n";
+  test_render 9 tm;
+  [%expect {|
+  no valid render
+  abcdefghi |}]
+;;
+
+let%expect_test _ =
+  let tm =
+    let init = [%lvca_nonbinding {|text("9")|}] in
+    let space = [%lvca_nonbinding {|spacing(" ")|}] in
+    let line = [%lvca_nonbinding {|line()|}] in
+    let cat l r = NonBinding.Operator (None, "cat", [ l; r ]) in
+    let mk_chain sep =
+      List.init 9 ~f:(fun i ->
+          NonBinding.Operator
+            (None, "text", [ Primitive (None, Primitive.PrimString (Int.to_string i)) ]))
+      |> List.fold_right ~init ~f:(fun l r -> cat l (cat sep r))
+    in
+    NonBinding.Operator (None, "alt", [ mk_chain space; mk_chain line ])
+    |> NonBinding.to_nominal
+  in
+  test_render 19 tm;
+  Stdio.print_string "\n";
+  test_render 18 tm;
+  [%expect {|
+  0 1 2 3 4 5 6 7 8 9
+  0
+  1
+  2
+  3
+  4
+  5
+  6
+  7
+  8
+  9 |}]
+;;
