@@ -40,26 +40,26 @@ type doc =
   | Align of doc
   | Alt of doc * doc
 
-let rec of_term tm =
+let rec of_nonbinding tm =
   let open Result.Let_syntax in
   match tm with
   | NonBinding.Operator (_, "line", []) -> Ok Line
   | Operator (_, "nil", []) -> Ok Nil
   | Operator (_, "cat", [ d1; d2 ]) ->
-    let%bind d1 = of_term d1 in
-    let%map d2 = of_term d2 in
+    let%bind d1 = of_nonbinding d1 in
+    let%map d2 = of_nonbinding d2 in
     Cat (d1, d2)
   | Operator (_, "text", [ Primitive (_, Primitive.PrimString s) ]) -> Ok (Text s)
   | Operator (_, "spacing", [ Primitive (_, Primitive.PrimString s) ]) -> Ok (Spacing s)
   | Operator (_, "nest", [ Primitive (_, Primitive.PrimInteger j); d ]) ->
-    let%map d = of_term d in
+    let%map d = of_nonbinding d in
     Nest (Z.to_int j, d)
   | Operator (_, "align", [ d ]) ->
-    let%map d = of_term d in
+    let%map d = of_nonbinding d in
     Align d
   | Operator (_, "alt", [ d1; d2 ]) ->
-    let%bind d1 = of_term d1 in
-    let%map d2 = of_term d2 in
+    let%bind d1 = of_nonbinding d1 in
+    let%map d2 = of_nonbinding d2 in
     Alt (d1, d2)
   | Primitive _ | Operator _ -> Error ("Couldn't convert term", tm)
 ;;
@@ -155,7 +155,7 @@ let render_fast : int -> doc -> string option =
 ;;
 
 let test_render width tm =
-  match of_term tm with
+  match of_nonbinding tm with
   | Ok tm ->
     let str =
       match render_fast width tm with None -> "no valid render" | Some str -> str
