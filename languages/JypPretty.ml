@@ -154,14 +154,8 @@ let render_fast : int -> doc -> string option =
   |> Option.map ~f:(fun strs -> strs |> List.rev |> String.concat)
 ;;
 
-let cvt tm =
-  match NonBinding.of_nominal tm with
-  | Ok tm -> of_term tm
-  | Error _ -> failwith "failed to convert from nominal"
-;;
-
 let test_render width tm =
-  match cvt tm with
+  match of_term tm with
   | Ok tm ->
     let str =
       match render_fast width tm with None -> "no valid render" | Some str -> str
@@ -171,14 +165,14 @@ let test_render width tm =
 ;;
 
 let%expect_test _ =
-  let tm = [%lvca_nominal {|cat(text("("); text(")"))|}] in
+  let tm = [%lvca_nonbinding {|cat(text("("); text(")"))|}] in
   test_render 80 tm;
   [%expect {| () |}]
 ;;
 
 let%expect_test _ =
   let tm =
-    [%lvca_nominal
+    [%lvca_nonbinding
       {|alt(
     cat(text("abc"); cat(spacing(" "); text("def")));
     cat(text("abc"); cat(line(); text("def")))
@@ -194,7 +188,7 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  let tm = [%lvca_nominal {|cat(text("abc"); cat(text("def"); text("ghi")))|}] in
+  let tm = [%lvca_nonbinding {|cat(text("abc"); cat(text("def"); text("ghi")))|}] in
   test_render 1 tm;
   Stdio.print_string "\n";
   test_render 9 tm;
@@ -216,7 +210,6 @@ let%expect_test _ =
       |> List.fold_right ~init ~f:(fun l r -> cat l (cat sep r))
     in
     NonBinding.Operator (None, "alt", [ mk_chain space; mk_chain line ])
-    |> NonBinding.to_nominal
   in
   test_render 19 tm;
   Stdio.print_string "\n";
