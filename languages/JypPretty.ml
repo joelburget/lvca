@@ -1,15 +1,5 @@
 (* https://jyp.github.io/posts/towards-the-prettiest-printer.html
 
-data Doc where
-  Line :: Doc
-  Nil :: Doc
-  (:<>) :: Doc -> Doc -> Doc
-  Text :: String -> Doc
-  Nest :: Int -> Doc -> Doc
-  Align :: Doc -> Doc
-  (:<|>) :: Doc -> Doc -> Doc -- ^ Attn: INVARIANT
-  Spacing :: String -> Doc
-
 TODO: make disjunctionless? https://github.com/jyp/prettiest/pull/10
  *)
 open Base
@@ -19,14 +9,14 @@ let language =
   [%lvca_abstract_syntax
     {|
 doc :=
-  | line()
-  | nil()
-  | cat(doc; doc)
-  | text(string)
-  | spacing(string)
-  | nest(int; doc)
-  | align(doc)
-  | alt(doc; doc)
+  | line() // insert a new line (unconditionally)
+  | nil() // the empty document
+  | cat(doc; doc) // concatenation
+  | text(string) // insert a meaningful piece of text
+  | spacing(string) // non-meaningful text
+  | nest(int; doc) // nest the argument
+  | align(doc) // align the documents in the argument
+  | alt(doc; doc) // disjunction
 |}]
 ;;
 
