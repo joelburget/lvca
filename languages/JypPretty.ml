@@ -73,13 +73,11 @@ let rec eval doc i (* current indentation *) c (* current column *) =
 type docs = (int * doc) list
 
 type process =
-  { cur_indent : int
+  { cur_indent : int (** current indentation *)
   ; progress : int
-  ; tokens : string list
-  ; rest : docs
+  ; tokens : string list (** tokens produced, in reverse order *)
+  ; rest : docs (** rest of the input document to process *)
   }
-
-let measure { cur_indent; progress; _ } = cur_indent, -progress
 
 let rec filtering : process list -> process list = function
   | x :: y :: xs ->
@@ -96,7 +94,7 @@ let render_fast : int -> doc -> string option =
     then []
     else (
       match ds0 with
-      | [] -> [ First ts ]
+      | [] -> [ First ts ] (* done *)
       | (i, d) :: ds ->
         (match d with
         | Nil -> rall p ts k ds
@@ -106,7 +104,7 @@ let render_fast : int -> doc -> string option =
           [ Either.Second
               { cur_indent = i
               ; progress = p
-              ; tokens = String.(of_char '\n' ^ String.make i ' ') :: ts
+              ; tokens = ("\n" ^ String.make i ' ') :: ts
               ; rest = ds
               }
           ]
@@ -130,6 +128,7 @@ let render_fast : int -> doc -> string option =
       | _ :: _ ->
         conts
         |> List.sort ~compare:(fun x y ->
+               let measure { cur_indent; progress; _ } = cur_indent, -progress in
                Lvca_util.Tuple2.compare
                  ~cmp1:Int.compare
                  ~cmp2:Int.compare
@@ -144,76 +143,145 @@ let render_fast : int -> doc -> string option =
   |> Option.map ~f:(fun strs -> strs |> List.rev |> String.concat)
 ;;
 
-let test_render width tm =
-  match of_nonbinding tm with
-  | Ok tm ->
-    let str =
-      match render_fast width tm with None -> "no valid render" | Some str -> str
-    in
-    Stdio.print_string str
-  | Error (msg, _) -> failwith msg
-;;
+let%test_module _ =
+  (module struct
+    let test_render width tm =
+      match of_nonbinding tm with
+      | Ok tm ->
+        let str =
+          match render_fast width tm with None -> "no valid render" | Some str -> str
+        in
+        Stdio.print_string str
+      | Error (msg, _) -> failwith msg
+    ;;
 
-let%expect_test _ =
-  let tm = [%lvca_nonbinding {|cat(text("("); text(")"))|}] in
-  test_render 80 tm;
-  [%expect {| () |}]
-;;
+    let%expect_test _ =
+      let tm = [%lvca_nonbinding {|cat(text("("); text(")"))|}] in
+      test_render 80 tm;
+      [%expect {| () |}]
+    ;;
 
-let%expect_test _ =
-  let tm =
-    [%lvca_nonbinding
-      {|alt(
+    let%expect_test _ =
+      let tm =
+        [%lvca_nonbinding
+          {|alt(
     cat(text("abc"); cat(spacing(" "); text("def")));
     cat(text("abc"); cat(line(); text("def")))
     )|}]
-  in
-  test_render 7 tm;
-  Stdio.print_string "\n";
-  test_render 6 tm;
-  [%expect {|
+      in
+      test_render 7 tm;
+      Stdio.print_string "\n";
+      test_render 6 tm;
+      [%expect {|
     abc def
     abc
     def |}]
-;;
+    ;;
 
-let%expect_test _ =
-  let tm = [%lvca_nonbinding {|cat(text("abc"); cat(text("def"); text("ghi")))|}] in
-  test_render 1 tm;
-  Stdio.print_string "\n";
-  test_render 9 tm;
-  [%expect {|
+    let%expect_test _ =
+      let tm = [%lvca_nonbinding {|cat(text("abc"); cat(text("def"); text("ghi")))|}] in
+      test_render 1 tm;
+      Stdio.print_string "\n";
+      test_render 9 tm;
+      [%expect {|
   no valid render
   abcdefghi |}]
-;;
+    ;;
 
-let%expect_test _ =
-  let tm =
-    let init = [%lvca_nonbinding {|text("9")|}] in
-    let space = [%lvca_nonbinding {|spacing(" ")|}] in
-    let line = [%lvca_nonbinding {|line()|}] in
-    let cat l r = NonBinding.Operator (None, "cat", [ l; r ]) in
-    let mk_chain sep =
-      List.init 9 ~f:(fun i ->
-          NonBinding.Operator
-            (None, "text", [ Primitive (None, Primitive.PrimString (Int.to_string i)) ]))
-      |> List.fold_right ~init ~f:(fun l r -> cat l (cat sep r))
-    in
-    NonBinding.Operator (None, "alt", [ mk_chain space; mk_chain line ])
-  in
-  test_render 19 tm;
-  Stdio.print_string "\n";
-  test_render 18 tm;
-  [%expect {|
-  0 1 2 3 4 5 6 7 8 9
+    let space = [%lvca_nonbinding {|spacing(" ")|}]
+    let line = [%lvca_nonbinding {|line()|}]
+
+    let text str =
+      NonBinding.Operator (None, "text", [ Primitive (None, Primitive.PrimString str) ])
+    ;;
+
+    let cat l r = NonBinding.Operator (None, "cat", [ l; r ])
+    let alt l r = NonBinding.Operator (None, "alt", [ l; r ])
+
+    let cats lst =
+      let init = List.last_exn lst in
+      let lst = List.drop_last_exn lst in
+      List.fold_right lst ~init ~f:cat
+    ;;
+
+    let parenthesize doc = cats [ text "("; doc; text ")" ]
+    let sep_list list ~sep = list |> List.intersperse ~sep |> cats
+    let vsep = sep_list ~sep:line
+    let hsep = sep_list ~sep:space
+    let counting_list n = List.init n ~f:(fun i -> i |> Int.to_string |> text)
+    let align docs = NonBinding.Operator (None, "align", [ docs ])
+
+    let%expect_test _ =
+      let tm =
+        let items = counting_list 5 in
+        alt (hsep items) (vsep items)
+      in
+      test_render 9 tm;
+      Stdio.print_string "\n";
+      test_render 8 tm;
+      [%expect {|
+  0 1 2 3 4
   0
   1
   2
   3
-  4
-  5
-  6
-  7
-  8
-  9 |}]
+  4 |}]
+    ;;
+
+    let%expect_test _ =
+      let tm =
+        cat [%lvca_nonbinding {|text("abc")|}] (3 |> counting_list |> vsep |> align)
+      in
+      test_render 5 tm;
+      [%expect{|
+        abc0
+           1
+           2 |}]
+    ;;
+
+    type sexpr =
+      | SExpr of sexpr list
+      | Atom of string
+
+    let sep = function
+      | [] -> [%lvca_nonbinding "nil()"]
+      | xs -> alt (hsep xs) (align (vsep xs))
+    ;;
+
+    let rec pretty_sexp = function
+      | Atom s -> text s
+      | SExpr xs -> parenthesize (xs |> List.map ~f:pretty_sexp |> sep)
+    ;;
+
+    let%expect_test _ =
+      let tm =
+        let abcd = SExpr [ Atom "a"; Atom "b"; Atom "c"; Atom "d" ] in
+        let abcd4 = SExpr [ abcd; abcd; abcd; abcd ] in
+        SExpr [ Atom "axbxcxd"; abcd4 ] |> pretty_sexp
+      in
+      test_render 20 tm;
+      [%expect
+        {|
+        (axbxcxd
+         ((a b c d)
+          (a b c d)
+          (a b c d)
+          (a b c d))) |}]
+    ;;
+
+    let%expect_test _ =
+      let tm =
+        let abcd = SExpr [ Atom "a"; Atom "b"; Atom "c"; Atom "d" ] in
+        let abcd4 = SExpr [ abcd; abcd; abcd; abcd ] in
+        SExpr [ Atom "axbxcxd"; abcd4 ] |> pretty_sexp
+      in
+      test_render 21 tm;
+      [%expect
+        {|
+        (axbxcxd ((a b c d)
+                  (a b c d)
+                  (a b c d)
+                  (a b c d))) |}]
+    ;;
+  end)
 ;;
