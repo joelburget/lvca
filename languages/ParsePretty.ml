@@ -1,3 +1,4 @@
+open Base
 open Lvca_syntax
 
 let language =
@@ -18,6 +19,59 @@ directive :=
   |}]
 ;;
 
+module Directive = struct
+  type t =
+    | Literal of string
+    | Many of t list
+    | Many1 of t list
+    | SepBy of t * t list
+    | SepBy1 of t * t list
+
+  (* | Term *)
+
+  let rec of_nonbinding tm =
+    let open Result.Let_syntax in
+    match tm with
+    | NonBinding.Operator (_, "literal", [ Primitive (_, Primitive.PrimString str) ]) ->
+      Ok (Literal str)
+    | Operator (_, "many", [ directives ]) ->
+      let%map directives = list_of_nonbinding directives in
+      Many directives
+    | Operator (_, "many1", [ directives ]) ->
+      let%map directives = list_of_nonbinding directives in
+      Many1 directives
+    | Operator (_, "sepby", [ directive; directives ]) ->
+      let%bind directive = of_nonbinding directive in
+      let%map directives = list_of_nonbinding directives in
+      SepBy (directive, directives)
+    | Operator (_, "sepby1", [ directive; directives ]) ->
+      let%bind directive = of_nonbinding directive in
+      let%map directives = list_of_nonbinding directives in
+      SepBy1 (directive, directives)
+    | _ -> Error ("Couldn't convert term", tm)
+
+  and list_of_nonbinding tm =
+    let open Result.Let_syntax in
+    match tm with
+    | NonBinding.Operator (_, "nil", []) -> Ok []
+    | Operator (_, "cons", [ x; xs ]) ->
+      let%bind x = of_nonbinding x in
+      let%map xs = list_of_nonbinding xs in
+      x :: xs
+    | _ -> Error ("Couldn't convert term", tm)
+  ;;
+end
+
+module Row = struct
+  type ('info, 'prim) t =
+    { pattern : ('info, 'prim) Pattern.t
+    ; directive : Directive.t
+    }
+end
+
+type ('info, 'prim) t = ('info, 'prim) Row.t list
+
+(* Translate from this language to the parser langugage *)
 let parser_mapping =
   {|
 
@@ -31,6 +85,7 @@ let translate_row = \(row : row) -> match row with {
 |}
 ;;
 
+(* Translate from this language to the JYP printer langugage *)
 let printer_mapping =
   {|
 let translate_directive = \(directive : directive) -> match directive with {
