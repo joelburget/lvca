@@ -40,7 +40,11 @@ module type ExtendedTermS = sig
   (* TODO: to_pattern, of_pattern *)
   (* TODO: parsing? *)
 
-  val select_path : path:int list -> 'info t -> ('info t, string) Result.t
+  val select_path
+    :  path:int list
+    -> 'info t
+    -> ('info t, (string, ('info, Lvca_util.Void.t) Nominal.term) Base.Either.t) Result.t
+
   val jsonify : _ t Lvca_util.Json.serializer
   val unjsonify : unit t Lvca_util.Json.deserializer
 
