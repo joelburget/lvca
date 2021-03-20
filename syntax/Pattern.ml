@@ -9,13 +9,11 @@ module SMap = Util.String.Map
 module Tuple2 = Util.Tuple2
 module Result = Base.Result
 
-type ('info, 'prim) pattern =
-  | Operator of 'info * string * ('info, 'prim) pattern list
+type ('info, 'prim) t =
+  | Operator of 'info * string * ('info, 'prim) t list
   | Primitive of 'info * 'prim
   | Var of 'info * string
   | Ignored of 'info * string
-
-type ('info, 'prim) t = ('info, 'prim) pattern
 
 let rec equal info_eq prim_eq pat1 pat2 =
   match pat1, pat2 with

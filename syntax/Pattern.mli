@@ -2,13 +2,11 @@
 
 (** {1 Types} *)
 
-type ('info, 'prim) pattern =
-  | Operator of 'info * string * ('info, 'prim) pattern list
+type ('info, 'prim) t =
+  | Operator of 'info * string * ('info, 'prim) t list
   | Primitive of 'info * 'prim
   | Var of 'info * string
   | Ignored of 'info * string
-
-type ('info, 'prim) t = ('info, 'prim) pattern
 
 val equal
   :  ('info -> 'info -> bool)
@@ -45,16 +43,13 @@ val unjsonify
 
 (** {1 Info} *)
 
-val map_info : f:('a -> 'b) -> ('a, 'prim) pattern -> ('b, 'prim) pattern
-val erase : (_, 'prim) pattern -> (unit, 'prim) pattern
-val info : ('info, _) pattern -> 'info
+val map_info : f:('a -> 'b) -> ('a, 'prim) t -> ('b, 'prim) t
+val erase : (_, 'prim) t -> (unit, 'prim) t
+val info : ('info, _) t -> 'info
 
 (** {1 Misc} *)
 
-val select_path
-  :  path:int list
-  -> ('info, 'prim) pattern
-  -> (('info, 'prim) pattern, string) Result.t
+val select_path : path:int list -> ('info, 'prim) t -> (('info, 'prim) t, string) Result.t
 
 (** Check that this pattern is valid and return the sort for each variable it binds.
 
