@@ -45,7 +45,7 @@ let%test_module "AbstractSyntax.Parser" =
       |}
       |> erase_info
       =
-      let externals = [ "integer", Kind 1; "list", Kind 2 ] in
+      let externals = [ "integer", Kind.Kind 1; "list", Kind 2 ] in
       let sort_defs =
         [ ( "ty"
           , SortDef

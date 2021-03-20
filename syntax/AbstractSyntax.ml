@@ -14,14 +14,19 @@ type 'info sort_slot =
   | SortBinding of 'info Sort.t
   | SortPattern of 'info pattern_sort
 
-type kind = Kind of int
+module Kind = struct
+  type t = Kind of int
+
+  let ( = ) (Kind k1) (Kind k2) = Int.(k1 = k2)
+end
+
 type 'info valence = Valence of 'info sort_slot list * 'info Sort.t
 type 'info arity = 'info valence list
 type 'info operator_def = OperatorDef of string * 'info arity
-type 'info sort_def = SortDef of (string * kind option) list * 'info operator_def list
+type 'info sort_def = SortDef of (string * Kind.t option) list * 'info operator_def list
 
 type 'info abstract_syntax =
-  { externals : (string * kind) list
+  { externals : (string * Kind.t) list
   ; sort_defs : (string * 'info sort_def) list
   }
 
@@ -29,7 +34,7 @@ type 'info t = 'info abstract_syntax
 
 module Unordered = struct
   type 'info t =
-    { externals : kind SMap.t
+    { externals : Kind.t SMap.t
     ; sort_defs : 'info sort_def SMap.t
     }
 end
@@ -56,13 +61,12 @@ let equal info_eq t1 t2 =
   let op_def_eq (OperatorDef (name1, arity1)) (OperatorDef (name2, arity2)) =
     String.(name1 = name2) && arity_eq arity1 arity2
   in
-  let kind_eq (Kind k1) (Kind k2) = Int.(k1 = k2) in
   let sort_def_eq (SortDef (vars1, ops1)) (SortDef (vars2, ops2)) =
-    List.equal (Tuple2.equal String.( = ) (Option.equal kind_eq)) vars1 vars2
+    List.equal (Tuple2.equal String.( = ) (Option.equal Kind.( = ))) vars1 vars2
     && List.equal op_def_eq ops1 ops2
   in
   let sort_defs_eq = List.equal (Tuple2.equal String.( = ) sort_def_eq) in
-  let externals_eq = List.equal (Tuple2.equal String.( = ) kind_eq) in
+  let externals_eq = List.equal (Tuple2.equal String.( = ) Kind.( = )) in
   externals_eq t1.externals t2.externals && sort_defs_eq t1.sort_defs t2.sort_defs
 ;;
 
@@ -308,9 +312,9 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     lift2 (fun ident arity -> OperatorDef (ident, arity)) identifier arity
   ;;
 
-  let kind_decl : (string * kind) Parsers.t =
+  let kind_decl : (string * Kind.t) Parsers.t =
     lift3
-      (fun ident _colon stars -> ident, Kind (List.length stars))
+      (fun ident _colon stars -> ident, Kind.Kind (List.length stars))
       identifier
       colon
       (sep_by1 arrow star)

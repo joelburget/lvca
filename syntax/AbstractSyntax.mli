@@ -14,7 +14,11 @@ type 'info sort_slot =
 
 (** The kind of a sort is the number of arguments it takes. Invariant: must be a natural
     number. *)
-type kind = Kind of int
+module Kind : sig
+  type t = Kind of int
+
+  val ( = ) : t -> t -> bool
+end
 
 (** A valence represents a sort, as well as the number and sorts of the variables bound
     within it. Valences are most often used to represent slots in an operator. *)
@@ -28,12 +32,12 @@ type 'info operator_def =
       (** An operator is defined by its tag and arity. *)
 
 type 'info sort_def =
-  | SortDef of (string * kind option) list * 'info operator_def list
+  | SortDef of (string * Kind.t option) list * 'info operator_def list
       (** A sort is defined by a set of variables and a set of operators. *)
 
 (** The abstract syntax of a language is the sorts it defines. *)
 type 'info abstract_syntax =
-  { externals : (string * kind) list
+  { externals : (string * Kind.t) list
   ; sort_defs : (string * 'info sort_def) list
   }
 
@@ -46,7 +50,7 @@ module Unordered : sig
   (** The same as [abstract_syntax] but definition order is not significant (this is a map
       rather than a list). *)
   type 'info t =
-    { externals : kind Lvca_util.String.Map.t
+    { externals : Kind.t Lvca_util.String.Map.t
     ; sort_defs : 'info sort_def Lvca_util.String.Map.t
     }
 end
@@ -85,7 +89,7 @@ val lookup_operator
   :  'info t
   -> string (** sort name *)
   -> string (** operator_name *)
-  -> ((string * kind option) list * 'info operator_def) option
+  -> ((string * Kind.t option) list * 'info operator_def) option
 
 (* TODO val pp : Format.formatter -> t -> unit *)
 
