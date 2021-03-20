@@ -29,6 +29,7 @@ module Kind : sig
   type t = Kind of int
 
   val ( = ) : t -> t -> bool
+  val pp : t Fmt.t
 end
 
 (** A valence represents a sort, as well as the number and sorts of the variables bound
@@ -61,12 +62,16 @@ module OperatorDef : sig
   type 'info t =
     | OperatorDef of string * 'info Arity.t
         (** An operator is defined by its tag and arity. *)
+
+  val pp : _ t Fmt.t
 end
 
 module SortDef : sig
   type 'info t =
     | SortDef of (string * Kind.t option) list * 'info OperatorDef.t list
         (** A sort is defined by a set of variables and a set of operators. *)
+
+  val pp : name:string -> _ t Fmt.t
 end
 
 (** The abstract syntax of a language is the sorts it defines. Definition order is
@@ -99,7 +104,7 @@ val lookup_operator
   -> string (** operator_name *)
   -> ((string * Kind.t option) list * 'info OperatorDef.t) option
 
-(* TODO val pp : Format.formatter -> t -> unit *)
+val pp : _ t Fmt.t
 
 (** A mapping from the name of a sort to its arity -- the number of arguments it takes. *)
 type kind_map = int Lvca_util.String.Map.t

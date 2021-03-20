@@ -71,6 +71,10 @@ module Kind = struct
   type t = Kind of int
 
   let ( = ) (Kind k1) (Kind k2) = Int.(k1 = k2)
+
+  let pp ppf (Kind k) =
+    Fmt.(pf ppf "%a" (list ~sep:(any " -> ") (any "*")) (List.init k ~f:(Fn.const ())))
+  ;;
 end
 
 module Valence = struct
@@ -109,7 +113,7 @@ end
 module Arity = struct
   type 'info t = 'info Valence.t list
 
-  let pp t = Fmt.(list ~sep:semi Valence.pp) t
+  let pp t = Fmt.(parens (list ~sep:semi Valence.pp)) t
   let equal ~info_eq = List.equal (Valence.equal ~info_eq)
   let map_info ~f = List.map ~f:(Valence.map_info ~f)
   let erase = map_info ~f:(Fn.const ())
@@ -128,6 +132,8 @@ module OperatorDef = struct
   let kind_check env (OperatorDef (_name, arity)) =
     arity |> List.fold ~init:env ~f:Valence.kind_check
   ;;
+
+  let pp ppf (OperatorDef (name, arity)) = Fmt.pf ppf "%s%a" name Arity.pp arity
 end
 
 module SortDef = struct
@@ -152,6 +158,31 @@ module SortDef = struct
     in
     let env = update_env env sort_name (List.length vars) in
     List.fold operators ~init:env ~f:OperatorDef.kind_check
+  ;;
+
+  let pp ~name ppf (SortDef (sort_vars, operator_defs)) =
+    let open Fmt in
+    let pp_sort_var ppf (name, kind_opt) =
+      match kind_opt with
+      | None -> pf ppf "%s" name
+      | Some kind -> pf ppf "(%s : %a)" name Kind.pp kind
+    in
+    let pp_sort_vars ppf vars =
+      match vars with [] -> () | _ -> Fmt.pf ppf " %a" (list pp_sort_var) vars
+    in
+    match operator_defs with
+    | [] -> pf ppf "%s%a :=" name pp_sort_vars sort_vars
+    | [ single_def ] ->
+      pf ppf "%s%a := @[%a@]" name pp_sort_vars sort_vars OperatorDef.pp single_def
+    | _ ->
+      pf
+        ppf
+        "%s%a :=@,@[<v 2>  | %a@]"
+        name
+        pp_sort_vars
+        sort_vars
+        (list ~sep:(any "@,| ") OperatorDef.pp)
+        operator_defs
   ;;
 end
 
@@ -198,11 +229,67 @@ let lookup_operator { externals = _; sort_defs } sort_name op_name =
   vars, result
 ;;
 
-(* TODO
-let pp_sort_def ppf (SortDef (sort_vars, operator_defs)) =
+let pp ppf { externals; sort_defs } =
+  let pp_externals = Fmt.(list (pair ~sep:(any " : ") string Kind.pp)) in
+  let pp_sort_def ppf (name, sort_def) = SortDef.pp ~name ppf sort_def in
+  Fmt.pf ppf "%a@,%a" pp_externals externals Fmt.(list pp_sort_def) sort_defs
+;;
 
-let pp = Fmt.list ~sep:(Fmt.sps 0) (Fmt.pair ~sep:(Fmt.any ":=") Fmt.string pp_sort_def)
-*)
+let%test_module _ =
+  (module struct
+    let%expect_test _ =
+      let foo = Sort.Name ((), "foo") in
+      let sort_def =
+        SortDef.SortDef
+          ( []
+          , [ OperatorDef.OperatorDef ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
+            ; OperatorDef
+                ( "bar"
+                , [ Valence
+                      ( [ SortPattern { pattern_sort = foo; var_sort = foo }
+                        ; SortBinding foo
+                        ]
+                      , foo )
+                  ] )
+            ] )
+      in
+      Fmt.pr "%a" (SortDef.pp ~name:"foo") sort_def;
+      [%expect
+        {|
+        foo :=
+          | foo(integer)
+          | bar(foo[foo]. foo. foo) |}]
+    ;;
+
+    let%expect_test _ =
+      let sort_def =
+        SortDef.SortDef
+          ( []
+          , [ OperatorDef.OperatorDef ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
+            ] )
+      in
+      Fmt.pr "%a" (SortDef.pp ~name:"foo") sort_def;
+      [%expect {| foo := foo(integer) |}]
+    ;;
+
+    let%expect_test _ =
+      let sort_def =
+        SortDef.SortDef
+          ( [ "a", None ]
+          , [ OperatorDef.OperatorDef ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
+            ] )
+      in
+      Fmt.pr "%a" (SortDef.pp ~name:"foo") sort_def;
+      [%expect {| foo a := foo(integer) |}]
+    ;;
+
+    let%expect_test _ =
+      let sort_def = SortDef.SortDef ([ "a", Some (Kind 2) ], []) in
+      Fmt.pr "%a" (SortDef.pp ~name:"foo") sort_def;
+      [%expect {| foo (a : * -> *) := |}]
+    ;;
+  end)
+;;
 
 type kind_map = int SMap.t
 type kind_mismap = ISet.t SMap.t
