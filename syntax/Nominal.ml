@@ -349,7 +349,7 @@ let check pp_prim check_prim lang =
               "Wrong number of subterms (%u) for this arity (%s)"
               (List.length scopes)
               (valences
-              |> List.map ~f:AbstractSyntax.string_of_valence
+              |> List.map ~f:AbstractSyntax.Valence.to_string
               |> String.concat ~sep:", ")))
     | Ok scope_valences ->
       List.find_map scope_valences ~f:(fun (scope, valence) ->
@@ -363,7 +363,7 @@ let check pp_prim check_prim lang =
            (Printf.sprintf
               "Wrong number of binders (%u) for this valence (%s) (expected %u)"
               (List.length binders)
-              (AbstractSyntax.string_of_valence valence)
+              (AbstractSyntax.Valence.to_string valence)
               (List.length binder_sorts)))
     | Ok binders ->
       let binders_env =

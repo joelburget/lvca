@@ -207,7 +207,7 @@ let check pp_prim check_prim lang ~pattern_sort ~var_sort =
               "Wrong number of subterms (%u) for this arity (%s)"
               (List.length pats)
               (valences
-              |> List.map ~f:AbstractSyntax.string_of_valence
+              |> List.map ~f:AbstractSyntax.Valence.to_string
               |> String.concat ~sep:", ")))
     | Ok pat_valences ->
       pat_valences
@@ -221,7 +221,7 @@ let check pp_prim check_prim lang ~pattern_sort ~var_sort =
                     (Printf.sprintf
                        "Invalid pattern (%s) binding a non-sort valence (%s)"
                        (Fmt.to_to_string (pp pp_prim) pat)
-                       (AbstractSyntax.string_of_valence valence))))
+                       (AbstractSyntax.Valence.to_string valence))))
       |> Result.all
       |> Result.map ~f:SMap.strict_unions
       |> Result.bind ~f:handle_dup_error

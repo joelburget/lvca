@@ -10,9 +10,65 @@ type 'info pattern_sort =
   ; var_sort : 'info Sort.t
   }
 
-type 'info sort_slot =
-  | SortBinding of 'info Sort.t
-  | SortPattern of 'info pattern_sort
+let update_env env name n =
+  Map.update env name ~f:(function None -> ISet.singleton n | Some set -> Set.add set n)
+;;
+
+(* TODO: move to Sort module? *)
+let rec kind_check_sort env sort =
+  match sort with
+  | Sort.Name (_, name) -> update_env env name 0
+  | Sort.Ap (_, name, args) ->
+    let env = List.fold args ~init:env ~f:kind_check_sort in
+    update_env env name (List.length args)
+;;
+
+module SortSlot = struct
+  type 'info t =
+    | SortBinding of 'info Sort.t
+    | SortPattern of 'info pattern_sort
+
+  let map_info ~f = function
+    | SortBinding s -> SortBinding (Sort.map_info ~f s)
+    | SortPattern { pattern_sort; var_sort } ->
+      SortPattern
+        { pattern_sort = Sort.map_info ~f pattern_sort
+        ; var_sort = Sort.map_info ~f var_sort
+        }
+  ;;
+
+  let equal ~info_eq slot1 slot2 =
+    match slot1, slot2 with
+    | SortBinding s1, SortBinding s2 -> Sort.equal info_eq s1 s2
+    | SortPattern ps1, SortPattern ps2 ->
+      Sort.equal info_eq ps1.pattern_sort ps2.pattern_sort
+      && Sort.equal info_eq ps1.var_sort ps2.var_sort
+    | _, _ -> false
+  ;;
+
+  let pp ppf = function
+    | SortBinding sort -> Sort.pp ppf sort
+    | SortPattern { pattern_sort; var_sort } ->
+      (match pattern_sort with
+      | Sort.Name _ -> Fmt.pf ppf "%a[%a]" Sort.pp pattern_sort Sort.pp var_sort
+      | _ -> Fmt.pf ppf "(%a)[%a]" Sort.pp pattern_sort Sort.pp var_sort)
+  ;;
+
+  let instantiate env = function
+    | SortBinding s -> SortBinding (Sort.instantiate env s)
+    | SortPattern { pattern_sort; var_sort } ->
+      SortPattern
+        { pattern_sort = Sort.instantiate env pattern_sort
+        ; var_sort = Sort.instantiate env var_sort
+        }
+  ;;
+
+  let kind_check env = function
+    | SortBinding sort -> kind_check_sort env sort
+    | SortPattern { pattern_sort; var_sort } ->
+      [ pattern_sort; var_sort ] |> List.fold ~init:env ~f:kind_check_sort
+  ;;
+end
 
 module Kind = struct
   type t = Kind of int
@@ -20,8 +76,40 @@ module Kind = struct
   let ( = ) (Kind k1) (Kind k2) = Int.(k1 = k2)
 end
 
-type 'info valence = Valence of 'info sort_slot list * 'info Sort.t
-type 'info arity = 'info valence list
+module Valence = struct
+  type 'info t = Valence of 'info SortSlot.t list * 'info Sort.t
+
+  let equal ~info_eq (Valence (slots1, sort1)) (Valence (slots2, sort2)) =
+    List.equal (SortSlot.equal ~info_eq) slots1 slots2 && Sort.equal info_eq sort1 sort2
+  ;;
+
+  let map_info ~f (Valence (slots, sort)) =
+    Valence (List.map ~f:(SortSlot.map_info ~f) slots, Sort.map_info ~f sort)
+  ;;
+
+  let pp ppf (Valence (binders, result)) =
+    match binders with
+    | [] -> Sort.pp ppf result
+    | _ ->
+      Fmt.pf ppf "%a. %a" Fmt.(list ~sep:(any ".@ ") SortSlot.pp) binders Sort.pp result
+  ;;
+
+  let to_string v = Fmt.to_to_string pp v
+
+  let instantiate env = function
+    | Valence (binding_sort_slots, body_sort) ->
+      Valence
+        ( List.map binding_sort_slots ~f:(SortSlot.instantiate env)
+        , Sort.instantiate env body_sort )
+  ;;
+
+  let kind_check env (Valence (binding_slots, value_sort)) =
+    let env = binding_slots |> List.fold ~init:env ~f:SortSlot.kind_check in
+    kind_check_sort env value_sort
+  ;;
+end
+
+type 'info arity = 'info Valence.t list
 type 'info operator_def = OperatorDef of string * 'info arity
 type 'info sort_def = SortDef of (string * Kind.t option) list * 'info operator_def list
 
@@ -44,18 +132,7 @@ let mk_unordered { externals; sort_defs } =
 ;;
 
 let equal info_eq t1 t2 =
-  let slot_eq slot1 slot2 =
-    match slot1, slot2 with
-    | SortBinding s1, SortBinding s2 -> Sort.equal info_eq s1 s2
-    | SortPattern ps1, SortPattern ps2 ->
-      Sort.equal info_eq ps1.pattern_sort ps2.pattern_sort
-      && Sort.equal info_eq ps1.var_sort ps2.var_sort
-    | _, _ -> false
-  in
-  let valence_eq (Valence (slots1, sort1)) (Valence (slots2, sort2)) =
-    List.equal slot_eq slots1 slots2 && Sort.equal info_eq sort1 sort2
-  in
-  let arity_eq = List.equal valence_eq in
+  let arity_eq = List.equal (Valence.equal ~info_eq) in
   let op_def_eq (OperatorDef (name1, arity1)) (OperatorDef (name2, arity2)) =
     String.(name1 = name2) && arity_eq arity1 arity2
   in
@@ -68,20 +145,7 @@ let equal info_eq t1 t2 =
   externals_eq t1.externals t2.externals && sort_defs_eq t1.sort_defs t2.sort_defs
 ;;
 
-let sort_slot_map_info ~f = function
-  | SortBinding s -> SortBinding (Sort.map_info ~f s)
-  | SortPattern { pattern_sort; var_sort } ->
-    SortPattern
-      { pattern_sort = Sort.map_info ~f pattern_sort
-      ; var_sort = Sort.map_info ~f var_sort
-      }
-;;
-
-let valence_map_info ~f (Valence (slots, sort)) =
-  Valence (List.map ~f:(sort_slot_map_info ~f) slots, Sort.map_info ~f sort)
-;;
-
-let arity_map_info ~f = List.map ~f:(valence_map_info ~f)
+let arity_map_info ~f = List.map ~f:(Valence.map_info ~f)
 let erase_arity = arity_map_info ~f:(Fn.const ())
 
 let operator_def_map_info ~f (OperatorDef (name, arity)) =
@@ -99,50 +163,12 @@ let map_info ~f { externals; sort_defs } =
 ;;
 
 let erase_info t = map_info ~f:(Fn.const ()) t
-let sort_to_string sort = Fmt.to_to_string Sort.pp sort
-
-let string_of_sort_slot = function
-  | SortBinding sort -> sort_to_string sort
-  | SortPattern { pattern_sort; var_sort } ->
-    Printf.sprintf
-      (match pattern_sort with Sort.Name _ -> "%s[%s]" | _ -> "(%s)[%s]")
-      (sort_to_string pattern_sort)
-      (sort_to_string var_sort)
-;;
-
-let string_of_valence : _ valence -> string = function
-  | Valence (binders, result) ->
-    let result_str = sort_to_string result in
-    (match binders with
-    | [] -> result_str
-    | _ ->
-      Printf.sprintf
-        "%s. %s"
-        (binders |> List.map ~f:string_of_sort_slot |> String.concat ~sep:". ")
-        result_str)
-;;
 
 let string_of_arity : _ arity -> string =
- fun valences -> valences |> List.map ~f:string_of_valence |> String.concat ~sep:"; "
+ fun valences -> valences |> List.map ~f:Valence.to_string |> String.concat ~sep:"; "
 ;;
 
-let instantiate_sort_slot env = function
-  | SortBinding s -> SortBinding (Sort.instantiate env s)
-  | SortPattern { pattern_sort; var_sort } ->
-    SortPattern
-      { pattern_sort = Sort.instantiate env pattern_sort
-      ; var_sort = Sort.instantiate env var_sort
-      }
-;;
-
-let instantiate_valence env = function
-  | Valence (binding_sort_slots, body_sort) ->
-    Valence
-      ( List.map binding_sort_slots ~f:(instantiate_sort_slot env)
-      , Sort.instantiate env body_sort )
-;;
-
-let instantiate_arity env = List.map ~f:(instantiate_valence env)
+let instantiate_arity env = List.map ~f:(Valence.instantiate env)
 
 let lookup_operator { externals = _; sort_defs } sort_name op_name =
   let open Option.Let_syntax in
@@ -166,34 +192,11 @@ let pp = Fmt.list ~sep:(Fmt.sps 0) (Fmt.pair ~sep:(Fmt.any ":=") Fmt.string pp_s
 type kind_map = int SMap.t
 type kind_mismap = ISet.t SMap.t
 
-let update_env env name n =
-  Map.update env name ~f:(function None -> ISet.singleton n | Some set -> Set.add set n)
-;;
-
-let rec kind_check_sort env sort =
-  match sort with
-  | Sort.Name (_, name) -> update_env env name 0
-  | Sort.Ap (_, name, args) ->
-    let env = List.fold args ~init:env ~f:kind_check_sort in
-    update_env env name (List.length args)
-;;
-
-let kind_check_sort_slot env = function
-  | SortBinding sort -> kind_check_sort env sort
-  | SortPattern { pattern_sort; var_sort } ->
-    [ pattern_sort; var_sort ] |> List.fold ~init:env ~f:kind_check_sort
-;;
-
-let kind_check_valence env (Valence (binding_slots, value_sort)) =
-  let env = binding_slots |> List.fold ~init:env ~f:kind_check_sort_slot in
-  kind_check_sort env value_sort
-;;
-
 (* XXX finish *)
 (* value_slot :: binding_slots |> List.map ~f:fst |> List.fold ~init:env ~f:kind_check_sort *)
 
 let kind_check_operator_def env (OperatorDef (_name, arity)) =
-  arity |> List.fold ~init:env ~f:kind_check_valence
+  arity |> List.fold ~init:env ~f:Valence.kind_check
 ;;
 
 let kind_check_sort_def env sort_name (SortDef (vars, operators)) =
@@ -250,6 +253,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
 
   type sort_sequence = sort_sequence_entry list
 
+  let sort_to_string sort = Fmt.to_to_string Sort.pp sort
+
   let str_of_entry = function
     | Sort sort -> sort_to_string sort
     | Bracketed sort -> "[" ^ sort_to_string sort ^ "]"
@@ -260,8 +265,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   (* Fold a sequence of sorts, '.'s, and ';'s to an arity. *)
   let build_arity : sort_sequence -> OptRange.t arity =
    fun sort_sequence ->
-    let binding_sorts : OptRange.t sort_slot Queue.t = Queue.create () in
-    let rec go : sort_sequence -> OptRange.t valence list = function
+    let binding_sorts : OptRange.t SortSlot.t Queue.t = Queue.create () in
+    let rec go : sort_sequence -> OptRange.t Valence.t list = function
       | [] -> []
       (* s. ss *)
       | Sort sort :: Dot :: sorts ->
@@ -280,7 +285,9 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         let entries_str = sorts |> List.map ~f:str_of_entry |> String.concat ~sep:" " in
         let binding_sorts_lst = Queue.to_list binding_sorts in
         let sorts_str =
-          binding_sorts_lst |> List.map ~f:string_of_sort_slot |> String.concat ~sep:". "
+          binding_sorts_lst
+          |> List.map ~f:(Fmt.to_to_string SortSlot.pp)
+          |> String.concat ~sep:". "
         in
         let msg =
           match binding_sorts_lst with
@@ -361,9 +368,9 @@ let%test_module "AbstractSyntax_Parser" =
    ;;
 
     let tm = Sort.Name ((), "tm")
-    let tm_v = Valence ([], tm)
+    let tm_v = Valence.Valence ([], tm)
     let integer = Sort.Name ((), "integer")
-    let integer_v = Valence ([], integer)
+    let integer_v = Valence.Valence ([], integer)
 
     let%test_unit _ =
       assert (Caml.(parse_with Parse.arity "(integer)" |> erase_arity = [ integer_v ]))
@@ -378,11 +385,12 @@ let%test_module "AbstractSyntax_Parser" =
         Caml.(
           parse_with Parse.arity "(tm. tm)"
           |> erase_arity
-          = [ Valence ([ SortBinding tm ], tm) ]))
+          = [ Valence.Valence ([ SortBinding tm ], tm) ]))
     ;;
 
     let%test_unit _ =
-      assert (Caml.(parse_with Parse.arity "(tm)" |> erase_arity = [ Valence ([], tm) ]))
+      assert (
+        Caml.(parse_with Parse.arity "(tm)" |> erase_arity = [ Valence.Valence ([], tm) ]))
     ;;
 
     let%test_unit _ =
@@ -390,7 +398,7 @@ let%test_module "AbstractSyntax_Parser" =
         Caml.(
           parse_with Parse.arity "(tm[tm]. tm)"
           |> erase_arity
-          = [ Valence ([ SortPattern { pattern_sort = tm; var_sort = tm } ], tm) ]))
+          = [ Valence.Valence ([ SortPattern { pattern_sort = tm; var_sort = tm } ], tm) ]))
     ;;
 
     let expect_okay str =

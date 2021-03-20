@@ -10,9 +10,9 @@ let%test_module "AbstractSyntax.Parser" =
     ;;
 
     let tm_sort = Sort.Name ((), "tm")
-    let tm_valence = Valence ([], tm_sort)
+    let tm_valence = Valence.Valence ([], tm_sort)
     let ty_sort = Sort.Name ((), "ty")
-    let ty_valence = Valence ([], ty_sort)
+    let ty_valence = Valence.Valence ([], ty_sort)
     let foo_sort = Sort.Name ((), "foo")
     let x_sort = Sort.Name ((), "x")
 

@@ -8,9 +8,14 @@ type 'info pattern_sort =
   }
 
 (** Represents a place where a sort can go in a valence. *)
-type 'info sort_slot =
-  | SortBinding of 'info Sort.t
-  | SortPattern of 'info pattern_sort
+module SortSlot : sig
+  type 'info t =
+    | SortBinding of 'info Sort.t
+    | SortPattern of 'info pattern_sort
+
+  (** Instantiate concrete vars in a sort *)
+  val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
+end
 
 (** The kind of a sort is the number of arguments it takes. Invariant: must be a natural
     number. *)
@@ -22,10 +27,22 @@ end
 
 (** A valence represents a sort, as well as the number and sorts of the variables bound
     within it. Valences are most often used to represent slots in an operator. *)
-type 'info valence = Valence of 'info sort_slot list * 'info Sort.t
+module Valence : sig
+  type 'info t = Valence of 'info SortSlot.t list * 'info Sort.t
+
+  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
+  val map_info : f:('a -> 'b) -> 'a t -> 'b t
+
+  (* TODO: remove *)
+  val to_string : _ t -> string
+  val pp : _ t Fmt.t
+
+  (** Instantiate concrete vars in a valence *)
+  val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
+end
 
 (** An arity specifies the arguments to an operator. *)
-type 'info arity = 'info valence list
+type 'info arity = 'info Valence.t list
 
 type 'info operator_def =
   | OperatorDef of string * 'info arity
@@ -56,22 +73,9 @@ val mk_unordered : 'info t -> [ `Ok of 'info Unordered.t | `Duplicate_key of str
 val equal : ('info -> 'info -> bool) -> 'info t -> 'info t -> bool
 val map_info : f:('a -> 'b) -> 'a t -> 'b t
 val erase_info : _ t -> unit t
-val string_of_valence : 'info valence -> string
 val string_of_arity : 'info arity -> string
 
 (** {1 Misc} *)
-
-(** Instantiate concrete vars in a sort *)
-val instantiate_sort_slot
-  :  'info Sort.t Lvca_util.String.Map.t
-  -> 'info sort_slot
-  -> 'info sort_slot
-
-(** Instantiate concrete vars in a valence *)
-val instantiate_valence
-  :  'info Sort.t Lvca_util.String.Map.t
-  -> 'info valence
-  -> 'info valence
 
 (** Instantiate concrete vars in an arity *)
 val instantiate_arity : 'info Sort.t Lvca_util.String.Map.t -> 'info arity -> 'info arity

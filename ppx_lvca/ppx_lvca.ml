@@ -97,7 +97,8 @@ let rec mk_sort ~loc = function
 ;;
 
 let mk_sort_slot ~loc = function
-  | AbstractSyntax.SortBinding s -> [%expr AbstractSyntax.SortBinding [%e mk_sort ~loc s]]
+  | AbstractSyntax.SortSlot.SortBinding s ->
+    [%expr AbstractSyntax.SortBinding [%e mk_sort ~loc s]]
   | SortPattern { pattern_sort; var_sort } ->
     [%expr
       AbstractSyntax.SortPattern
@@ -106,7 +107,7 @@ let mk_sort_slot ~loc = function
         }]
 ;;
 
-let mk_valence ~loc (AbstractSyntax.Valence (sort_slots, body_sort)) =
+let mk_valence ~loc (AbstractSyntax.Valence.Valence (sort_slots, body_sort)) =
   let sort_slots = sort_slots |> List.map ~f:(mk_sort_slot ~loc) |> mk_list ~loc in
   let body_sort = mk_sort ~loc body_sort in
   [%expr AbstractSyntax.Valence ([%e sort_slots], [%e body_sort])]
@@ -166,7 +167,7 @@ let mk_var_type ~loc name = mk_type ~loc (Ptyp_var name)
 let core_type_of_valence
     ~loc
     var_set
-    (AbstractSyntax.Valence (binding_sort_slots, body_sort))
+    (AbstractSyntax.Valence.Valence (binding_sort_slots, body_sort))
   =
   let body_type = ptyp_of_sort ~loc var_set body_sort in
   let ptyp_desc =
@@ -179,7 +180,7 @@ let core_type_of_valence
         |> List.map ~f:(fun slot ->
                let ty =
                  match slot with
-                 | AbstractSyntax.SortBinding _sort ->
+                 | AbstractSyntax.SortSlot.SortBinding _sort ->
                    Ptyp_constr ({ txt = Lident "string"; loc }, [])
                  | SortPattern _sort ->
                    Ptyp_constr ({ txt = Ldot (Lident "Pattern", "t"); loc }, var_types)
