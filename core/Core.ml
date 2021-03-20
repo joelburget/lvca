@@ -392,8 +392,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
               (attach_pos (string "match"))
               term
               (string "with")
-              (attach_pos
-                 (braces (option '|' (char '|') *> sep_by1 (char '|') case_line)))
+              (attach_pos (braces (option '|' (char '|') *> sep_by (char '|') case_line)))
             <?> "match"
           ; many1 atomic_term >>| make_apps <?> "application"
           ])
@@ -441,6 +440,8 @@ let%test_module "Parsing" =
       parse {|match x with { _ -> {1} }|}
       = Case ((), var "x", [ CaseScope (ignored "", Term one) ])
     ;;
+
+    let%test _ = parse {|match empty with { }|} = Case ((), var "empty", [])
 
     let%test _ =
       parse {|match x with { | _ -> {1} }|}

@@ -433,8 +433,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
       identifier
       (many sort_var_decl)
       assign
-      (* TODO: allow empty sorts? *)
-      (option '|' bar *> sep_by1 bar operator_def)
+      (option '|' bar *> sep_by bar operator_def)
     <?> "sort definition"
   ;;
 
@@ -558,10 +557,16 @@ integer : *
 tm :=
   | add(tm; tm)
   | lit(integer)
+
+empty :=
       |}
         |> erase_info
       in
-      let expected = { externals = [ "integer", Kind 1 ]; sort_defs = [ tm_def ] } in
+      let expected =
+        { externals = [ "integer", Kind 1 ]
+        ; sort_defs = [ tm_def; "empty", SortDef ([], []) ]
+        }
+      in
       assert (equal Unit.( = ) parsed expected)
     ;;
 
