@@ -35,20 +35,17 @@ type 'info sort_def =
   | SortDef of (string * Kind.t option) list * 'info operator_def list
       (** A sort is defined by a set of variables and a set of operators. *)
 
-(** The abstract syntax of a language is the sorts it defines. *)
-type 'info abstract_syntax =
+(** The abstract syntax of a language is the sorts it defines. Definition order is
+    significant (so we'll always print definitions in the same order they were parsed. For
+    the definition of a language without significant ordering, see [unordered]. *)
+type 'info t =
   { externals : (string * Kind.t) list
   ; sort_defs : (string * 'info sort_def) list
   }
 
-(** The abstract syntax of a language is the sorts it defines. Definition order is
-    significant (so we'll always print definitions in the same order they were parsed. For
-    the definition of a language without significant ordering, see [unordered]. *)
-type 'info t = 'info abstract_syntax
-
 module Unordered : sig
-  (** The same as [abstract_syntax] but definition order is not significant (this is a map
-      rather than a list). *)
+  (** The same as [t] but definition order is not significant (this is a map rather than a
+      list). *)
   type 'info t =
     { externals : Kind.t Lvca_util.String.Map.t
     ; sort_defs : 'info sort_def Lvca_util.String.Map.t
@@ -56,13 +53,7 @@ module Unordered : sig
 end
 
 val unordered : 'info t -> [ `Ok of 'info Unordered.t | `Duplicate_key of string ]
-
-val equal
-  :  ('info -> 'info -> bool)
-  -> 'info abstract_syntax
-  -> 'info abstract_syntax
-  -> bool
-
+val equal : ('info -> 'info -> bool) -> 'info t -> 'info t -> bool
 val map_info : f:('a -> 'b) -> 'a t -> 'b t
 val erase_info : _ t -> unit t
 val string_of_valence : 'info valence -> string

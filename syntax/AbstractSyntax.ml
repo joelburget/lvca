@@ -25,12 +25,10 @@ type 'info arity = 'info valence list
 type 'info operator_def = OperatorDef of string * 'info arity
 type 'info sort_def = SortDef of (string * Kind.t option) list * 'info operator_def list
 
-type 'info abstract_syntax =
+type 'info t =
   { externals : (string * Kind.t) list
   ; sort_defs : (string * 'info sort_def) list
   }
-
-type 'info t = 'info abstract_syntax
 
 module Unordered = struct
   type 'info t =
@@ -340,7 +338,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     <?> "sort definition"
   ;;
 
-  let t : OptRange.t abstract_syntax Parsers.t =
+  let t =
     lift2
       (fun externals sort_defs -> { externals; sort_defs })
       (many kind_decl)
