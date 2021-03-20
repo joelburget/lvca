@@ -5,15 +5,34 @@ module SMap = Lvca_util.String.Map
 module Tuple2 = Lvca_util.Tuple2
 module ISet = Lvca_util.Int.Set
 
-type 'info pattern_sort =
-  { pattern_sort : 'info Sort.t
-  ; var_sort : 'info Sort.t
-  }
+module PatternSort = struct
+  type 'info t =
+    { pattern_sort : 'info Sort.t
+    ; var_sort : 'info Sort.t
+    }
+
+  let equal ~info_eq ps1 ps2 =
+    Sort.equal info_eq ps1.pattern_sort ps2.pattern_sort
+    && Sort.equal info_eq ps1.var_sort ps2.var_sort
+  ;;
+
+  let pp ppf { pattern_sort; var_sort } =
+    match pattern_sort with
+    | Sort.Name _ -> Fmt.pf ppf "%a[%a]" Sort.pp pattern_sort Sort.pp var_sort
+    | _ -> Fmt.pf ppf "(%a)[%a]" Sort.pp pattern_sort Sort.pp var_sort
+  ;;
+
+  let instantiate env { pattern_sort; var_sort } =
+    { pattern_sort = Sort.instantiate env pattern_sort
+    ; var_sort = Sort.instantiate env var_sort
+    }
+  ;;
+end
 
 module SortSlot = struct
   type 'info t =
     | SortBinding of 'info Sort.t
-    | SortPattern of 'info pattern_sort
+    | SortPattern of 'info PatternSort.t
 
   let map_info ~f = function
     | SortBinding s -> SortBinding (Sort.map_info ~f s)
@@ -27,27 +46,18 @@ module SortSlot = struct
   let equal ~info_eq slot1 slot2 =
     match slot1, slot2 with
     | SortBinding s1, SortBinding s2 -> Sort.equal info_eq s1 s2
-    | SortPattern ps1, SortPattern ps2 ->
-      Sort.equal info_eq ps1.pattern_sort ps2.pattern_sort
-      && Sort.equal info_eq ps1.var_sort ps2.var_sort
+    | SortPattern ps1, SortPattern ps2 -> PatternSort.equal ~info_eq ps1 ps2
     | _, _ -> false
   ;;
 
   let pp ppf = function
     | SortBinding sort -> Sort.pp ppf sort
-    | SortPattern { pattern_sort; var_sort } ->
-      (match pattern_sort with
-      | Sort.Name _ -> Fmt.pf ppf "%a[%a]" Sort.pp pattern_sort Sort.pp var_sort
-      | _ -> Fmt.pf ppf "(%a)[%a]" Sort.pp pattern_sort Sort.pp var_sort)
+    | SortPattern ps -> PatternSort.pp ppf ps
   ;;
 
   let instantiate env = function
     | SortBinding s -> SortBinding (Sort.instantiate env s)
-    | SortPattern { pattern_sort; var_sort } ->
-      SortPattern
-        { pattern_sort = Sort.instantiate env pattern_sort
-        ; var_sort = Sort.instantiate env var_sort
-        }
+    | SortPattern ps -> SortPattern (PatternSort.instantiate env ps)
   ;;
 
   let kind_check env = function

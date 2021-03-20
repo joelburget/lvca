@@ -1,17 +1,23 @@
 (** Types for describing the abstract syntax of a language. *)
 
-(** A pattern_sort represents the sort of a pattern with variables of some sort. This is
+(** A pattern sort represents the sort of a pattern with variables of some sort. This is
     written as [pattern_sort\[var_sort\]]. *)
-type 'info pattern_sort =
-  { pattern_sort : 'info Sort.t
-  ; var_sort : 'info Sort.t
-  }
+module PatternSort : sig
+  type 'info t =
+    { pattern_sort : 'info Sort.t
+    ; var_sort : 'info Sort.t
+    }
+
+  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
+  val pp : _ t Fmt.t
+  val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
+end
 
 (** Represents a place where a sort can go in a valence. *)
 module SortSlot : sig
   type 'info t =
     | SortBinding of 'info Sort.t
-    | SortPattern of 'info pattern_sort
+    | SortPattern of 'info PatternSort.t
 
   (** Instantiate concrete vars in a sort *)
   val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t

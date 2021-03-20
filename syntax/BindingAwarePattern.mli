@@ -12,7 +12,7 @@ and ('info, 'prim) scope = Scope of ('info * string) list * ('info, 'prim) t
 
 type 'info capture_type =
   | BoundVar of 'info Sort.t
-  | BoundPattern of 'info AbstractSyntax.pattern_sort
+  | BoundPattern of 'info AbstractSyntax.PatternSort.t
   | BoundTerm of 'info Sort.t
 
 type ('info, 'prim) capture =
