@@ -66,16 +66,19 @@ val string_of_arity : 'info arity -> string
 
 (** {1 Misc} *)
 
+(** Instantiate concrete vars in a sort *)
 val instantiate_sort_slot
   :  'info Sort.t Lvca_util.String.Map.t
   -> 'info sort_slot
   -> 'info sort_slot
 
+(** Instantiate concrete vars in a valence *)
 val instantiate_valence
   :  'info Sort.t Lvca_util.String.Map.t
   -> 'info valence
   -> 'info valence
 
+(** Instantiate concrete vars in an arity *)
 val instantiate_arity : 'info Sort.t Lvca_util.String.Map.t -> 'info arity -> 'info arity
 
 val lookup_operator
