@@ -140,6 +140,101 @@ let mk_language ~loc AbstractSyntax.{ externals = _; sort_defs } =
   |> mk_list ~loc
 ;;
 
+let rec ptyp_of_sort ~loc var_set = function
+  | Sort.Name (_, name) ->
+    if Set.mem var_set name
+    then Ptyp_var name
+    else Ptyp_constr ({ txt = Lident name; loc }, [])
+  | Ap (_, name, args) ->
+    Ptyp_constr
+      ( { txt = Lident name; loc }
+      , args
+        |> List.map ~f:(fun sort ->
+               { ptyp_desc = ptyp_of_sort ~loc var_set sort
+               ; ptyp_loc = loc
+               ; ptyp_loc_stack = []
+               ; ptyp_attributes = []
+               }) )
+;;
+
+let mk_type ~loc ptyp_desc =
+  { ptyp_desc; ptyp_loc = loc; ptyp_loc_stack = []; ptyp_attributes = [] }
+;;
+
+let mk_var_type ~loc name = mk_type ~loc (Ptyp_var name)
+
+let core_type_of_valence
+    ~loc
+    var_set
+    (AbstractSyntax.Valence (binding_sort_slots, body_sort))
+  =
+  let body_type = ptyp_of_sort ~loc var_set body_sort in
+  let ptyp_desc =
+    match binding_sort_slots with
+    | [] -> body_type
+    | slots ->
+      let var_types = [ mk_var_type ~loc "info" ] in
+      let binding_types =
+        slots
+        |> List.map ~f:(fun slot ->
+               let ty =
+                 match slot with
+                 | AbstractSyntax.SortBinding _sort ->
+                   Ptyp_constr ({ txt = Lident "string"; loc }, [])
+                 | SortPattern _sort ->
+                   Ptyp_constr ({ txt = Ldot (Lident "Pattern", "t"); loc }, var_types)
+               in
+               mk_type ~loc ty)
+      in
+      let body_type = mk_type ~loc body_type in
+      Ptyp_tuple (binding_types @ [ body_type ])
+  in
+  mk_type ~loc ptyp_desc
+;;
+
+(* TODO: more sophisticated rule? *)
+let ctor_name = String.capitalize
+
+let mk_language_module ~loc AbstractSyntax.{ externals = _; sort_defs } =
+  let structure_items =
+    sort_defs
+    |> List.map ~f:(fun (name, AbstractSyntax.SortDef (vars, op_defs)) ->
+           let vars = vars |> List.map ~f:Lvca_util.Tuple2.get1 in
+           let var_set = vars |> Lvca_util.String.Set.of_list in
+           let ctor_decls =
+             op_defs
+             |> List.map ~f:(fun (AbstractSyntax.OperatorDef (op_name, arity)) ->
+                    let args = arity |> List.map ~f:(core_type_of_valence ~loc var_set) in
+                    { pcd_name = { txt = ctor_name op_name; loc }
+                    ; pcd_args = Pcstr_tuple args
+                    ; pcd_res = None (* Is this only for GADTs? *)
+                    ; pcd_loc = loc
+                    ; pcd_attributes = []
+                    })
+           in
+           let ptype_params =
+             "info" :: vars
+             |> List.map ~f:(fun var_name ->
+                    let core_type = mk_var_type ~loc var_name in
+                    core_type, Invariant
+                    (* Covariant? *))
+           in
+           let type_decl =
+             { ptype_name = { txt = name; loc }
+             ; ptype_params
+             ; ptype_cstrs = [] (* we never use constraints *)
+             ; ptype_kind = Ptype_variant ctor_decls
+             ; ptype_private = Public
+             ; ptype_manifest = None
+             ; ptype_attributes = [] (* we never have attributes *)
+             ; ptype_loc = loc
+             }
+           in
+           { pstr_desc = Pstr_type (Recursive, [ type_decl ]); pstr_loc = loc })
+  in
+  { pmod_desc = Pmod_structure structure_items; pmod_loc = loc; pmod_attributes = [] }
+;;
+
 let expand_nominal ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
   match ParseUtil.parse_string (ParseTerm.whitespace_t ParsePrimitive.t) str with
@@ -166,6 +261,15 @@ let expand_abstract_syntax ~(loc : Location.t) ~path:_ (expr : expression) : exp
   match ParseUtil.parse_string ParseAbstract.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax -> mk_language ~loc syntax
+;;
+
+let expand_abstract_syntax_module ~(loc : Location.t) ~path:_ (expr : expression)
+    : module_expr
+  =
+  let str, loc = extract_string loc expr in
+  match ParseUtil.parse_string ParseAbstract.whitespace_t str with
+  | Error msg -> Location.raise_errorf ~loc "%s" msg
+  | Ok syntax -> mk_language_module ~loc syntax
 ;;
 
 let term_extension =
@@ -200,6 +304,14 @@ let abstract_syntax_extension =
     expand_abstract_syntax
 ;;
 
+let abstract_syntax_module_extension =
+  Extension.declare
+    "abstract_syntax_module" (* TODO: better naming *)
+    Extension.Context.Module_expr
+    Ast_pattern.(single_expr_payload __)
+    expand_abstract_syntax_module
+;;
+
 let () =
   Ppxlib.Driver.register_transformation
     "lvca"
@@ -208,5 +320,6 @@ let () =
       ; Context_free.Rule.extension nonbinding_extension
       ; Context_free.Rule.extension pattern_extension
       ; Context_free.Rule.extension abstract_syntax_extension
+      ; Context_free.Rule.extension abstract_syntax_module_extension
       ]
 ;;
