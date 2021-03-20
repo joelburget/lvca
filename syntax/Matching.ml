@@ -114,7 +114,7 @@ let produce_sort_env lang sort =
         (Printf.sprintf
            "produce_sort_env: sort (%s) must be defined, not in externals"
            sort_name)
-    | _, Some (AbstractSyntax.SortDef (ty_vars, _op_defs)) ->
+    | _, Some (AbstractSyntax.SortDef.SortDef (ty_vars, _op_defs)) ->
       let ty_vars = ty_vars |> List.map ~f:(fun (name, _kind) -> name) in
       (match List.zip ty_vars args with
       | List.Or_unequal_lengths.Unequal_lengths ->
@@ -137,7 +137,7 @@ let produce_sort_env lang sort =
 let get_children_concrete_sorts lang sort =
   let sort_env = produce_sort_env lang sort in
   let sort_name = sort_name sort in
-  let (AbstractSyntax.SortDef (_ty_vars, op_defs)) =
+  let (AbstractSyntax.SortDef.SortDef (_ty_vars, op_defs)) =
     Map.find_exn lang.Unordered.sort_defs sort_name
   in
   op_defs
@@ -245,7 +245,7 @@ let rec check_matrix lang sorts matrix =
       |> Util.String.Set.of_list
     in
     let head_sort, sorts' = Util.List.split_exn sorts in
-    let (AbstractSyntax.SortDef (_ty_vars, op_defs)) =
+    let (AbstractSyntax.SortDef.SortDef (_ty_vars, op_defs)) =
       Map.find_exn lang.Unordered.sort_defs (sort_name head_sort)
     in
     let is_signature =
@@ -335,7 +335,7 @@ let rec compile_matrix lang sorts matrix =
           |> Util.String.Set.of_list
         in
         let head_sort, tail_sorts = Util.List.split_exn sorts in
-        let (AbstractSyntax.SortDef (_ty_vars, op_defs)) =
+        let (AbstractSyntax.SortDef.SortDef (_ty_vars, op_defs)) =
           Map.find_exn lang.Unordered.sort_defs (sort_name head_sort)
         in
         (* is every constructor covered? *)

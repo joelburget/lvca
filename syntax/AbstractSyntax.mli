@@ -42,22 +42,30 @@ module Valence : sig
 end
 
 (** An arity specifies the arguments to an operator. *)
-type 'info arity = 'info Valence.t list
+module Arity : sig
+  type 'info t = 'info Valence.t list
 
-type 'info operator_def =
-  | OperatorDef of string * 'info arity
-      (** An operator is defined by its tag and arity. *)
+  val pp : _ t Fmt.t
+end
 
-type 'info sort_def =
-  | SortDef of (string * Kind.t option) list * 'info operator_def list
-      (** A sort is defined by a set of variables and a set of operators. *)
+module OperatorDef : sig
+  type 'info t =
+    | OperatorDef of string * 'info Arity.t
+        (** An operator is defined by its tag and arity. *)
+end
+
+module SortDef : sig
+  type 'info t =
+    | SortDef of (string * Kind.t option) list * 'info OperatorDef.t list
+        (** A sort is defined by a set of variables and a set of operators. *)
+end
 
 (** The abstract syntax of a language is the sorts it defines. Definition order is
     significant (so we'll always print definitions in the same order they were parsed. For
     the definition of a language without significant ordering, see [unordered]. *)
 type 'info t =
   { externals : (string * Kind.t) list
-  ; sort_defs : (string * 'info sort_def) list
+  ; sort_defs : (string * 'info SortDef.t) list
   }
 
 module Unordered : sig
@@ -65,7 +73,7 @@ module Unordered : sig
       list). *)
   type 'info t =
     { externals : Kind.t Lvca_util.String.Map.t
-    ; sort_defs : 'info sort_def Lvca_util.String.Map.t
+    ; sort_defs : 'info SortDef.t Lvca_util.String.Map.t
     }
 end
 
@@ -73,18 +81,20 @@ val mk_unordered : 'info t -> [ `Ok of 'info Unordered.t | `Duplicate_key of str
 val equal : ('info -> 'info -> bool) -> 'info t -> 'info t -> bool
 val map_info : f:('a -> 'b) -> 'a t -> 'b t
 val erase_info : _ t -> unit t
-val string_of_arity : 'info arity -> string
 
 (** {1 Misc} *)
 
 (** Instantiate concrete vars in an arity *)
-val instantiate_arity : 'info Sort.t Lvca_util.String.Map.t -> 'info arity -> 'info arity
+val instantiate_arity
+  :  'info Sort.t Lvca_util.String.Map.t
+  -> 'info Arity.t
+  -> 'info Arity.t
 
 val lookup_operator
   :  'info t
   -> string (** sort name *)
   -> string (** operator_name *)
-  -> ((string * Kind.t option) list * 'info operator_def) option
+  -> ((string * Kind.t option) list * 'info OperatorDef.t) option
 
 (* TODO val pp : Format.formatter -> t -> unit *)
 

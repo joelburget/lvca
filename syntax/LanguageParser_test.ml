@@ -48,7 +48,7 @@ let%test_module "AbstractSyntax.Parser" =
       let externals = [ "integer", Kind.Kind 1; "list", Kind 2 ] in
       let sort_defs =
         [ ( "ty"
-          , SortDef
+          , SortDef.SortDef
               ( []
               , [ OperatorDef ("bool", [])
                 ; OperatorDef ("arr", [ ty_valence; ty_valence ])

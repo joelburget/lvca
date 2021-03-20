@@ -98,10 +98,10 @@ let rec mk_sort ~loc = function
 
 let mk_sort_slot ~loc = function
   | AbstractSyntax.SortSlot.SortBinding s ->
-    [%expr AbstractSyntax.SortBinding [%e mk_sort ~loc s]]
+    [%expr AbstractSyntax.SortSlot.SortBinding [%e mk_sort ~loc s]]
   | SortPattern { pattern_sort; var_sort } ->
     [%expr
-      AbstractSyntax.SortPattern
+      AbstractSyntax.SortSlot.SortPattern
         { pattern_sort = [%e mk_sort ~loc pattern_sort]
         ; var_sort = [%e mk_sort ~loc var_sort]
         }]
@@ -110,13 +110,15 @@ let mk_sort_slot ~loc = function
 let mk_valence ~loc (AbstractSyntax.Valence.Valence (sort_slots, body_sort)) =
   let sort_slots = sort_slots |> List.map ~f:(mk_sort_slot ~loc) |> mk_list ~loc in
   let body_sort = mk_sort ~loc body_sort in
-  [%expr AbstractSyntax.Valence ([%e sort_slots], [%e body_sort])]
+  [%expr AbstractSyntax.Valence.Valence ([%e sort_slots], [%e body_sort])]
 ;;
 
 let mk_arity ~loc valences = valences |> List.map ~f:(mk_valence ~loc) |> mk_list ~loc
 
-let mk_operator_def ~loc (AbstractSyntax.OperatorDef (name, arity)) =
-  [%expr OperatorDef ([%e mk_str ~loc name], [%e mk_arity ~loc arity])]
+let mk_operator_def ~loc (AbstractSyntax.OperatorDef.OperatorDef (name, arity)) =
+  [%expr
+    AbstractSyntax.OperatorDef.OperatorDef
+      ([%e mk_str ~loc name], [%e mk_arity ~loc arity])]
 ;;
 
 let mk_kind ~loc (AbstractSyntax.Kind.Kind n) =
@@ -125,20 +127,29 @@ let mk_kind ~loc (AbstractSyntax.Kind.Kind n) =
 
 let mk_option ~loc maker = function None -> [%expr None] | Some x -> maker ~loc x
 
-let mk_sort_def ~loc (AbstractSyntax.SortDef (vars, op_defs)) =
+let mk_sort_def ~loc (AbstractSyntax.SortDef.SortDef (vars, op_defs)) =
   let f (name, kind_opt) =
     [%expr [%e mk_str ~loc name], [%e mk_option ~loc mk_kind kind_opt]]
   in
   let vars = vars |> List.map ~f |> mk_list ~loc in
   let op_defs = op_defs |> List.map ~f:(mk_operator_def ~loc) |> mk_list ~loc in
-  [%expr AbstractSyntax.SortDef ([%e vars], [%e op_defs])]
+  [%expr AbstractSyntax.SortDef.SortDef ([%e vars], [%e op_defs])]
 ;;
 
-let mk_language ~loc AbstractSyntax.{ externals = _; sort_defs } =
-  sort_defs
-  |> List.map ~f:(fun (name, sort_def) ->
-         [%expr [%e mk_str ~loc name], [%e mk_sort_def ~loc sort_def]])
-  |> mk_list ~loc
+let mk_language ~loc AbstractSyntax.{ externals; sort_defs } =
+  let externals =
+    externals
+    |> List.map ~f:(fun (name, kind) ->
+           [%expr [%e mk_str ~loc name], [%e mk_kind ~loc kind]])
+    |> mk_list ~loc
+  in
+  let sort_defs =
+    sort_defs
+    |> List.map ~f:(fun (name, sort_def) ->
+           [%expr [%e mk_str ~loc name], [%e mk_sort_def ~loc sort_def]])
+    |> mk_list ~loc
+  in
+  [%expr AbstractSyntax.{ externals = [%e externals]; sort_defs = [%e sort_defs] }]
 ;;
 
 let rec ptyp_of_sort ~loc var_set = function
@@ -199,12 +210,13 @@ let ctor_name = String.capitalize
 let mk_language_module ~loc AbstractSyntax.{ externals = _; sort_defs } =
   let structure_items =
     sort_defs
-    |> List.map ~f:(fun (name, AbstractSyntax.SortDef (vars, op_defs)) ->
+    |> List.map ~f:(fun (name, AbstractSyntax.SortDef.SortDef (vars, op_defs)) ->
            let vars = vars |> List.map ~f:Lvca_util.Tuple2.get1 in
            let var_set = vars |> Lvca_util.String.Set.of_list in
            let ctor_decls =
              op_defs
-             |> List.map ~f:(fun (AbstractSyntax.OperatorDef (op_name, arity)) ->
+             |> List.map
+                  ~f:(fun (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity)) ->
                     let args = arity |> List.map ~f:(core_type_of_valence ~loc var_set) in
                     { pcd_name = { txt = ctor_name op_name; loc }
                     ; pcd_args = Pcstr_tuple args

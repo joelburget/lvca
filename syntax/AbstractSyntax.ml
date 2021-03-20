@@ -109,19 +109,58 @@ module Valence = struct
   ;;
 end
 
-type 'info arity = 'info Valence.t list
-type 'info operator_def = OperatorDef of string * 'info arity
-type 'info sort_def = SortDef of (string * Kind.t option) list * 'info operator_def list
+module Arity = struct
+  type 'info t = 'info Valence.t list
+
+  let pp t = Fmt.(list ~sep:semi Valence.pp) t
+  let equal ~info_eq = List.equal (Valence.equal ~info_eq)
+  let map_info ~f = List.map ~f:(Valence.map_info ~f)
+  let erase = map_info ~f:(Fn.const ())
+end
+
+module OperatorDef = struct
+  type 'info t = OperatorDef of string * 'info Arity.t
+
+  let equal ~info_eq (OperatorDef (name1, arity1)) (OperatorDef (name2, arity2)) =
+    String.(name1 = name2) && Arity.equal ~info_eq arity1 arity2
+  ;;
+
+  let map_info ~f (OperatorDef (name, arity)) = OperatorDef (name, Arity.map_info ~f arity)
+
+  let kind_check env (OperatorDef (_name, arity)) =
+    arity |> List.fold ~init:env ~f:Valence.kind_check
+  ;;
+end
+
+module SortDef = struct
+  type 'info t = SortDef of (string * Kind.t option) list * 'info OperatorDef.t list
+
+  let equal ~info_eq (SortDef (vars1, ops1)) (SortDef (vars2, ops2)) =
+    List.equal (Tuple2.equal String.( = ) (Option.equal Kind.( = ))) vars1 vars2
+    && List.equal (OperatorDef.equal ~info_eq) ops1 ops2
+  ;;
+
+  let map_info ~f (name, SortDef (vars, op_defs)) =
+    name, SortDef (vars, op_defs |> List.map ~f:(OperatorDef.map_info ~f))
+  ;;
+
+  let erase = map_info ~f:(Fn.const ())
+
+  let kind_check env sort_name (SortDef (vars, operators)) =
+    let env = update_env env sort_name (List.length vars) in
+    List.fold operators ~init:env ~f:OperatorDef.kind_check
+  ;;
+end
 
 type 'info t =
   { externals : (string * Kind.t) list
-  ; sort_defs : (string * 'info sort_def) list
+  ; sort_defs : (string * 'info SortDef.t) list
   }
 
 module Unordered = struct
   type 'info t =
     { externals : Kind.t SMap.t
-    ; sort_defs : 'info sort_def SMap.t
+    ; sort_defs : 'info SortDef.t SMap.t
     }
 end
 
@@ -132,42 +171,16 @@ let mk_unordered { externals; sort_defs } =
 ;;
 
 let equal info_eq t1 t2 =
-  let arity_eq = List.equal (Valence.equal ~info_eq) in
-  let op_def_eq (OperatorDef (name1, arity1)) (OperatorDef (name2, arity2)) =
-    String.(name1 = name2) && arity_eq arity1 arity2
-  in
-  let sort_def_eq (SortDef (vars1, ops1)) (SortDef (vars2, ops2)) =
-    List.equal (Tuple2.equal String.( = ) (Option.equal Kind.( = ))) vars1 vars2
-    && List.equal op_def_eq ops1 ops2
-  in
-  let sort_defs_eq = List.equal (Tuple2.equal String.( = ) sort_def_eq) in
+  let sort_defs_eq = List.equal (Tuple2.equal String.( = ) (SortDef.equal ~info_eq)) in
   let externals_eq = List.equal (Tuple2.equal String.( = ) Kind.( = )) in
   externals_eq t1.externals t2.externals && sort_defs_eq t1.sort_defs t2.sort_defs
 ;;
 
-let arity_map_info ~f = List.map ~f:(Valence.map_info ~f)
-let erase_arity = arity_map_info ~f:(Fn.const ())
-
-let operator_def_map_info ~f (OperatorDef (name, arity)) =
-  OperatorDef (name, arity_map_info ~f arity)
-;;
-
-let sort_def_map_info ~f (name, SortDef (vars, op_defs)) =
-  name, SortDef (vars, op_defs |> List.map ~f:(operator_def_map_info ~f))
-;;
-
-let erase_sort_def = sort_def_map_info ~f:(Fn.const ())
-
 let map_info ~f { externals; sort_defs } =
-  { externals; sort_defs = List.map ~f:(sort_def_map_info ~f) sort_defs }
+  { externals; sort_defs = List.map ~f:(SortDef.map_info ~f) sort_defs }
 ;;
 
 let erase_info t = map_info ~f:(Fn.const ()) t
-
-let string_of_arity : _ arity -> string =
- fun valences -> valences |> List.map ~f:Valence.to_string |> String.concat ~sep:"; "
-;;
-
 let instantiate_arity env = List.map ~f:(Valence.instantiate env)
 
 let lookup_operator { externals = _; sort_defs } sort_name op_name =
@@ -195,15 +208,6 @@ type kind_mismap = ISet.t SMap.t
 (* XXX finish *)
 (* value_slot :: binding_slots |> List.map ~f:fst |> List.fold ~init:env ~f:kind_check_sort *)
 
-let kind_check_operator_def env (OperatorDef (_name, arity)) =
-  arity |> List.fold ~init:env ~f:Valence.kind_check
-;;
-
-let kind_check_sort_def env sort_name (SortDef (vars, operators)) =
-  let env = update_env env sort_name (List.length vars) in
-  List.fold operators ~init:env ~f:kind_check_operator_def
-;;
-
 let kind_check lang =
   let env =
     lang.externals
@@ -214,7 +218,7 @@ let kind_check lang =
   let mismap =
     lang.sort_defs
     |> List.fold ~init:env ~f:(fun env (sort_name, sort_def) ->
-           kind_check_sort_def env sort_name sort_def)
+           SortDef.kind_check env sort_name sort_def)
   in
   let fine_vars, mismapped_vars =
     mismap
@@ -263,7 +267,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   ;;
 
   (* Fold a sequence of sorts, '.'s, and ';'s to an arity. *)
-  let build_arity : sort_sequence -> OptRange.t arity =
+  let build_arity : sort_sequence -> OptRange.t Arity.t =
    fun sort_sequence ->
     let binding_sorts : OptRange.t SortSlot.t Queue.t = Queue.create () in
     let rec go : sort_sequence -> OptRange.t Valence.t list = function
@@ -299,7 +303,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     go sort_sequence
  ;;
 
-  let arity : OptRange.t arity Parsers.t =
+  let arity : OptRange.t Arity.t Parsers.t =
     parens
       (many
          (choice
@@ -313,8 +317,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     <?> "arity"
   ;;
 
-  let operator_def : OptRange.t operator_def Parsers.t =
-    lift2 (fun ident arity -> OperatorDef (ident, arity)) identifier arity
+  let operator_def : OptRange.t OperatorDef.t Parsers.t =
+    lift2 (fun ident arity -> OperatorDef.OperatorDef (ident, arity)) identifier arity
   ;;
 
   let kind_decl : (string * Kind.t) Parsers.t =
@@ -334,9 +338,9 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     <?> "sort variable declaration"
   ;;
 
-  let sort_def : (string * OptRange.t sort_def) Parsers.t =
+  let sort_def : (string * OptRange.t SortDef.t) Parsers.t =
     lift4
-      (fun name vars _assign op_defs -> name, SortDef (vars, op_defs))
+      (fun name vars _assign op_defs -> name, SortDef.SortDef (vars, op_defs))
       identifier
       (many sort_var_decl)
       assign
@@ -373,31 +377,31 @@ let%test_module "AbstractSyntax_Parser" =
     let integer_v = Valence.Valence ([], integer)
 
     let%test_unit _ =
-      assert (Caml.(parse_with Parse.arity "(integer)" |> erase_arity = [ integer_v ]))
+      assert (Caml.(parse_with Parse.arity "(integer)" |> Arity.erase = [ integer_v ]))
     ;;
 
     let%test_unit _ =
-      assert (Caml.(parse_with Parse.arity "(tm; tm)" |> erase_arity = [ tm_v; tm_v ]))
+      assert (Caml.(parse_with Parse.arity "(tm; tm)" |> Arity.erase = [ tm_v; tm_v ]))
     ;;
 
     let%test_unit _ =
       assert (
         Caml.(
           parse_with Parse.arity "(tm. tm)"
-          |> erase_arity
+          |> Arity.erase
           = [ Valence.Valence ([ SortBinding tm ], tm) ]))
     ;;
 
     let%test_unit _ =
       assert (
-        Caml.(parse_with Parse.arity "(tm)" |> erase_arity = [ Valence.Valence ([], tm) ]))
+        Caml.(parse_with Parse.arity "(tm)" |> Arity.erase = [ Valence.Valence ([], tm) ]))
     ;;
 
     let%test_unit _ =
       assert (
         Caml.(
           parse_with Parse.arity "(tm[tm]. tm)"
-          |> erase_arity
+          |> Arity.erase
           = [ Valence.Valence ([ SortPattern { pattern_sort = tm; var_sort = tm } ], tm) ]))
     ;;
 
@@ -439,7 +443,7 @@ let%test_module "AbstractSyntax_Parser" =
 
     let tm_def =
       ( "tm"
-      , SortDef
+      , SortDef.SortDef
           ([], [ OperatorDef ("add", [ tm_v; tm_v ]); OperatorDef ("lit", [ integer_v ]) ])
       )
     ;;
@@ -451,7 +455,7 @@ let%test_module "AbstractSyntax_Parser" =
   | add(tm; tm)
   | lit(integer)
       |}
-          |> erase_sort_def
+          |> SortDef.erase
           = tm_def))
     ;;
 
