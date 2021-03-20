@@ -294,18 +294,15 @@ let%test_module _ =
 type kind_map = int SMap.t
 type kind_mismap = ISet.t SMap.t
 
-(* XXX finish *)
-(* value_slot :: binding_slots |> List.map ~f:fst |> List.fold ~init:env ~f:Sort.kind_check *)
-
-let kind_check lang =
+let kind_check { externals; sort_defs } =
   let env =
-    lang.externals
+    externals
     |> List.map ~f:(fun (name, Kind n) -> name, n)
     |> SMap.of_alist_exn
     |> Map.map ~f:ISet.singleton
   in
   let mismap =
-    lang.sort_defs
+    sort_defs
     |> List.fold ~init:env ~f:(fun env (sort_name, sort_def) ->
            SortDef.kind_check env sort_name sort_def)
   in
