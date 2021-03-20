@@ -1,4 +1,5 @@
 open Base
+module ISet = Lvca_util.Int.Set
 
 type 'info t =
   | Ap of 'info * string * 'info t list
@@ -29,6 +30,18 @@ let rec instantiate arg_mapping = function
     | None -> Name (info, name)
     | Some sort' -> sort')
   | Ap (info, name, args) -> Ap (info, name, List.map args ~f:(instantiate arg_mapping))
+;;
+
+let update_env env name n =
+  Map.update env name ~f:(function None -> ISet.singleton n | Some set -> Set.add set n)
+;;
+
+let rec kind_check env sort =
+  match sort with
+  | Name (_, name) -> update_env env name 0
+  | Ap (_, name, args) ->
+    let env = List.fold args ~init:env ~f:kind_check in
+    update_env env name (List.length args)
 ;;
 
 (*

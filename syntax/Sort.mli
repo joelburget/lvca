@@ -13,6 +13,11 @@ val instantiate : 'info t Lvca_util.String.Map.t -> 'info t -> 'info t
 val map_info : f:('a -> 'b) -> 'a t -> 'b t
 val erase_info : _ t -> unit t
 
+val kind_check
+  :  Lvca_util.Int.Set.t Lvca_util.String.Map.t
+  -> 'info t
+  -> Lvca_util.Int.Set.t Lvca_util.String.Map.t
+
 (* TODO: remove? *)
 (*
 val of_term

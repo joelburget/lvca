@@ -10,19 +10,6 @@ type 'info pattern_sort =
   ; var_sort : 'info Sort.t
   }
 
-let update_env env name n =
-  Map.update env name ~f:(function None -> ISet.singleton n | Some set -> Set.add set n)
-;;
-
-(* TODO: move to Sort module? *)
-let rec kind_check_sort env sort =
-  match sort with
-  | Sort.Name (_, name) -> update_env env name 0
-  | Sort.Ap (_, name, args) ->
-    let env = List.fold args ~init:env ~f:kind_check_sort in
-    update_env env name (List.length args)
-;;
-
 module SortSlot = struct
   type 'info t =
     | SortBinding of 'info Sort.t
@@ -64,9 +51,9 @@ module SortSlot = struct
   ;;
 
   let kind_check env = function
-    | SortBinding sort -> kind_check_sort env sort
+    | SortBinding sort -> Sort.kind_check env sort
     | SortPattern { pattern_sort; var_sort } ->
-      [ pattern_sort; var_sort ] |> List.fold ~init:env ~f:kind_check_sort
+      [ pattern_sort; var_sort ] |> List.fold ~init:env ~f:Sort.kind_check
   ;;
 end
 
@@ -105,7 +92,7 @@ module Valence = struct
 
   let kind_check env (Valence (binding_slots, value_sort)) =
     let env = binding_slots |> List.fold ~init:env ~f:SortSlot.kind_check in
-    kind_check_sort env value_sort
+    Sort.kind_check env value_sort
   ;;
 end
 
@@ -147,6 +134,11 @@ module SortDef = struct
   let erase = map_info ~f:(Fn.const ())
 
   let kind_check env sort_name (SortDef (vars, operators)) =
+    let update_env env name n =
+      Map.update env name ~f:(function
+          | None -> ISet.singleton n
+          | Some set -> Set.add set n)
+    in
     let env = update_env env sort_name (List.length vars) in
     List.fold operators ~init:env ~f:OperatorDef.kind_check
   ;;
@@ -206,7 +198,7 @@ type kind_map = int SMap.t
 type kind_mismap = ISet.t SMap.t
 
 (* XXX finish *)
-(* value_slot :: binding_slots |> List.map ~f:fst |> List.fold ~init:env ~f:kind_check_sort *)
+(* value_slot :: binding_slots |> List.map ~f:fst |> List.fold ~init:env ~f:Sort.kind_check *)
 
 let kind_check lang =
   let env =
