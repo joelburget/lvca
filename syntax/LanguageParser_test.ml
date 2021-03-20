@@ -39,7 +39,7 @@ let%test_module "AbstractSyntax.Parser" =
         | app(tm; tm)
         | lam(tm. tm)
 
-      foo x :=
+      foo (x : *) :=
         | foo(foo[x]. x; x. x) // fixed arity, (variable valence, fixed valence)
         | bar(x)          // variable arity
       |}
@@ -61,7 +61,7 @@ let%test_module "AbstractSyntax.Parser" =
                 ] ) )
         ; ( "foo"
           , SortDef
-              ( [ "x" ]
+              ( [ "x", Some (Kind 1) ]
               , [ OperatorDef
                     ( "foo"
                     , [ Valence

@@ -28,7 +28,7 @@ type 'info operator_def =
       (** An operator is defined by its tag and arity. *)
 
 type 'info sort_def =
-  | SortDef of string list * 'info operator_def list
+  | SortDef of (string * kind option) list * 'info operator_def list
       (** A sort is defined by a set of variables and a set of operators. *)
 
 (** The abstract syntax of a language is the sorts it defines. *)
@@ -82,7 +82,7 @@ val lookup_operator
   :  'info t
   -> string (** sort name *)
   -> string (** operator_name *)
-  -> (string list * 'info operator_def) option
+  -> ((string * kind option) list * 'info operator_def) option
 
 (* TODO val pp : Format.formatter -> t -> unit *)
 

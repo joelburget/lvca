@@ -31,6 +31,7 @@ let rec mk_list ~loc = function
 ;;
 
 let mk_str ~loc str = Ast_builder.Default.estring ~loc str
+let mk_int ~loc i = Ast_builder.Default.eint ~loc i
 let mk_float ~loc f = Ast_builder.Default.efloat ~loc (Float.to_string f)
 let mk_char ~loc c = Ast_builder.Default.echar ~loc c
 let mk_bigint ~loc i = [%expr Z.of_string [%e mk_str ~loc (Z.to_string i)]]
@@ -38,8 +39,8 @@ let mk_bigint ~loc i = [%expr Z.of_string [%e mk_str ~loc (Z.to_string i)]]
 let mk_pos ~loc = function
   | None -> [%expr None]
   | Some Range.{ start; finish } ->
-    let start = Ast_builder.Default.eint ~loc start in
-    let finish = Ast_builder.Default.eint ~loc finish in
+    let start = mk_int ~loc start in
+    let finish = mk_int ~loc finish in
     [%expr Some Range.{ start = [%e start]; finish = [%e finish] }]
 ;;
 
@@ -117,8 +118,14 @@ let mk_operator_def ~loc (AbstractSyntax.OperatorDef (name, arity)) =
   [%expr OperatorDef ([%e mk_str ~loc name], [%e mk_arity ~loc arity])]
 ;;
 
+let mk_kind ~loc (AbstractSyntax.Kind n) = [%expr AbstractSyntax.Kind [%e mk_int ~loc n]]
+let mk_option ~loc maker = function None -> [%expr None] | Some x -> maker ~loc x
+
 let mk_sort_def ~loc (AbstractSyntax.SortDef (vars, op_defs)) =
-  let vars = vars |> List.map ~f:(mk_str ~loc) |> mk_list ~loc in
+  let f (name, kind_opt) =
+    [%expr [%e mk_str ~loc name], [%e mk_option ~loc mk_kind kind_opt]]
+  in
+  let vars = vars |> List.map ~f |> mk_list ~loc in
   let op_defs = op_defs |> List.map ~f:(mk_operator_def ~loc) |> mk_list ~loc in
   [%expr AbstractSyntax.SortDef ([%e vars], [%e op_defs])]
 ;;

@@ -2,6 +2,8 @@
 
 open Base
 module SMap = Lvca_util.String.Map
+module Tuple2 = Lvca_util.Tuple2
+module ISet = Lvca_util.Int.Set
 
 type 'info pattern_sort =
   { pattern_sort : 'info Sort.t
@@ -16,7 +18,7 @@ type kind = Kind of int
 type 'info valence = Valence of 'info sort_slot list * 'info Sort.t
 type 'info arity = 'info valence list
 type 'info operator_def = OperatorDef of string * 'info arity
-type 'info sort_def = SortDef of string list * 'info operator_def list
+type 'info sort_def = SortDef of (string * kind option) list * 'info operator_def list
 
 type 'info abstract_syntax =
   { externals : (string * kind) list
@@ -54,12 +56,13 @@ let equal info_eq t1 t2 =
   let op_def_eq (OperatorDef (name1, arity1)) (OperatorDef (name2, arity2)) =
     String.(name1 = name2) && arity_eq arity1 arity2
   in
-  let sort_def_eq (SortDef (vs1, ops1)) (SortDef (vs2, ops2)) =
-    List.equal String.( = ) vs1 vs2 && List.equal op_def_eq ops1 ops2
-  in
-  let sort_defs_eq = List.equal (Lvca_util.Tuple2.equal String.( = ) sort_def_eq) in
   let kind_eq (Kind k1) (Kind k2) = Int.(k1 = k2) in
-  let externals_eq = List.equal (Lvca_util.Tuple2.equal String.( = ) kind_eq) in
+  let sort_def_eq (SortDef (vars1, ops1)) (SortDef (vars2, ops2)) =
+    List.equal (Tuple2.equal String.( = ) (Option.equal kind_eq)) vars1 vars2
+    && List.equal op_def_eq ops1 ops2
+  in
+  let sort_defs_eq = List.equal (Tuple2.equal String.( = ) sort_def_eq) in
+  let externals_eq = List.equal (Tuple2.equal String.( = ) kind_eq) in
   externals_eq t1.externals t2.externals && sort_defs_eq t1.sort_defs t2.sort_defs
 ;;
 
@@ -159,12 +162,10 @@ let pp = Fmt.list ~sep:(Fmt.sps 0) (Fmt.pair ~sep:(Fmt.any ":=") Fmt.string pp_s
 *)
 
 type kind_map = int SMap.t
-type kind_mismap = Lvca_util.Int.Set.t SMap.t
+type kind_mismap = ISet.t SMap.t
 
 let update_env env name n =
-  Map.update env name ~f:(function
-      | None -> Lvca_util.Int.Set.singleton n
-      | Some set -> Set.add set n)
+  Map.update env name ~f:(function None -> ISet.singleton n | Some set -> Set.add set n)
 ;;
 
 let rec kind_check_sort env sort =
@@ -203,7 +204,7 @@ let kind_check lang =
     lang.externals
     |> List.map ~f:(fun (name, Kind n) -> name, n)
     |> SMap.of_alist_exn
-    |> Map.map ~f:Lvca_util.Int.Set.singleton
+    |> Map.map ~f:ISet.singleton
   in
   let mismap =
     lang.sort_defs
@@ -307,17 +308,6 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     lift2 (fun ident arity -> OperatorDef (ident, arity)) identifier arity
   ;;
 
-  let sort_def : (string * OptRange.t sort_def) Parsers.t =
-    lift4
-      (fun ident bound_names _assign op_defs -> ident, SortDef (bound_names, op_defs))
-      identifier
-      (many identifier)
-      assign
-      (* TODO: allow empty sorts? *)
-      (option '|' bar *> sep_by1 bar operator_def)
-    <?> "sort definition"
-  ;;
-
   let kind_decl : (string * kind) Parsers.t =
     lift3
       (fun ident _colon stars -> ident, Kind (List.length stars))
@@ -325,6 +315,25 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
       colon
       (sep_by1 arrow star)
     <?> "kind declaration"
+  ;;
+
+  let sort_var_decl =
+    choice
+      [ (identifier >>| fun name -> name, None)
+      ; (parens kind_decl >>| fun (name, kind) -> name, Some kind)
+      ]
+    <?> "sort variable declaration"
+  ;;
+
+  let sort_def : (string * OptRange.t sort_def) Parsers.t =
+    lift4
+      (fun name vars _assign op_defs -> name, SortDef (vars, op_defs))
+      identifier
+      (many sort_var_decl)
+      assign
+      (* TODO: allow empty sorts? *)
+      (option '|' bar *> sep_by1 bar operator_def)
+    <?> "sort definition"
   ;;
 
   let t : OptRange.t abstract_syntax Parsers.t =
@@ -415,7 +424,7 @@ let%test_module "AbstractSyntax_Parser" =
       assert (
         Caml.(
           parse_with Parse.sort_def {|foo x := foo()|}
-          = ("foo", SortDef ([ "x" ], [ OperatorDef ("foo", []) ]))))
+          = ("foo", SortDef ([ "x", None ], [ OperatorDef ("foo", []) ]))))
     ;;
 
     let tm_def =

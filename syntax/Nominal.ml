@@ -3,6 +3,7 @@ open Stdio
 module Cbor = Lvca_util.Cbor
 module Json = Lvca_util.Json
 module String = Lvca_util.String
+module Tuple2 = Lvca_util.Tuple2
 
 type ('info, 'prim) term =
   | Operator of 'info * string * ('info, 'prim) scope list
@@ -329,8 +330,10 @@ let check pp_prim check_prim lang =
                   "Nominal.check: failed to find operator %s in sort %s"
                   operator_name
                   sort_name))
-        | Some (vars, OperatorDef (_, arity)) ->
-          let sort_env = String.Map.of_alist_exn (List.zip_exn vars sort_args) in
+        | Some (sort_vars, OperatorDef (_, arity)) ->
+          (* TODO: kind check *)
+          let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
+          let sort_env = String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in
           let concrete_arity = AbstractSyntax.instantiate_arity sort_env arity in
           check_slots var_sorts concrete_arity op_scopes)
     in

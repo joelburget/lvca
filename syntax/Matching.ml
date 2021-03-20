@@ -115,6 +115,7 @@ let produce_sort_env lang sort =
            "produce_sort_env: sort (%s) must be defined, not in externals"
            sort_name)
     | _, Some (AbstractSyntax.SortDef (ty_vars, _op_defs)) ->
+      let ty_vars = ty_vars |> List.map ~f:(fun (name, _kind) -> name) in
       (match List.zip ty_vars args with
       | List.Or_unequal_lengths.Unequal_lengths ->
         Util.invariant_violation "produce_sort_env: sort / args unequal lengths"

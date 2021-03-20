@@ -2,7 +2,8 @@ open Base
 module Util = Lvca_util
 module String = Util.String
 module Format = Stdlib.Format
-module SMap = Lvca_util.String.Map
+module SMap = Util.String.Map
+module Tuple2 = Util.Tuple2
 open Option.Let_syntax
 
 type ('info, 'prim) t =
@@ -257,6 +258,8 @@ let check check_prim lang sort =
                   op_name
                   sort_name))
         | Some (sort_vars, OperatorDef (_, arity)) ->
+          (* TODO: kind check *)
+          let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
           let sort_env = SMap.of_alist_exn (List.zip_exn sort_vars sort_args) in
           check_slots (AbstractSyntax.instantiate_arity sort_env arity) subpats)
     in

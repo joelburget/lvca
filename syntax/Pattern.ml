@@ -5,7 +5,8 @@ module Queue = Base.Queue
 module Set = Base.Set
 module Util = Lvca_util
 module String = Util.String
-module SMap = Lvca_util.String.Map
+module SMap = Util.String.Map
+module Tuple2 = Util.Tuple2
 module Result = Base.Result
 
 type ('info, 'prim) pattern =
@@ -192,6 +193,8 @@ let check pp_prim check_prim lang ~pattern_sort ~var_sort =
                   op_name
                   sort_name))
         | Some (sort_vars, OperatorDef (_, arity)) ->
+          (* TODO: kind check *)
+          let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
           let sort_env = SMap.of_alist_exn (List.zip_exn sort_vars sort_args) in
           check_slots (AbstractSyntax.instantiate_arity sort_env arity) subpats)
     in
