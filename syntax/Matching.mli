@@ -65,7 +65,7 @@ val simple_find_match
     including coverage and redundancy. *)
 
 val compile_cases
-  :  'info AbstractSyntax.unordered
+  :  'info AbstractSyntax.Unordered.t
   -> 'info Sort.t
   -> ('info, 'prim, 'rhs) cases
   -> (('info, 'prim, 'rhs) decision_tree, ('info, 'prim) match_compilation_error) Result.t
@@ -74,7 +74,7 @@ val compile_cases
     efficiently. This has the side-effect of checking the cases for well-formedness,
     including coverage and redundancy. *)
 val compile_matrix
-  :  'info AbstractSyntax.unordered
+  :  'info AbstractSyntax.Unordered.t
   -> 'info Sort.t list
   -> ('info, 'prim, 'rhs) matrix
   -> (('info, 'prim, 'rhs) decision_tree, ('info, 'prim) match_compilation_error) Result.t
@@ -90,7 +90,7 @@ val run_match
 
 (** Check a matrix for coverage, possibly returning an example pattern that's not matched. *)
 val check_matrix
-  :  'info AbstractSyntax.unordered
+  :  'info AbstractSyntax.Unordered.t
   -> 'info Sort.t list
   -> ('info, 'prim, 'rhs) matrix
   -> (unit, 'prim) Pattern.t list option

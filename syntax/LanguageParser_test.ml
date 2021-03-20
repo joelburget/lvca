@@ -18,12 +18,19 @@ let%test_module "AbstractSyntax.Parser" =
 
     let%test _ =
       parse "bool := true() | false()"
-      = [ "bool", SortDef ([], [ OperatorDef ("true", []); OperatorDef ("false", []) ]) ]
+      = { externals = []
+        ; sort_defs =
+            [ "bool", SortDef ([], [ OperatorDef ("true", []); OperatorDef ("false", []) ])
+            ]
+        }
     ;;
 
     let%test _ =
       parse
         {|
+      integer : *
+      list : * -> *
+
       ty :=
         | bool()
         | arr(ty; ty)
@@ -37,7 +44,10 @@ let%test_module "AbstractSyntax.Parser" =
         | bar(x)          // variable arity
       |}
       |> erase_info
-      = [ ( "ty"
+      =
+      let externals = [ "integer", Kind 1; "list", Kind 2 ] in
+      let sort_defs =
+        [ ( "ty"
           , SortDef
               ( []
               , [ OperatorDef ("bool", [])
@@ -62,6 +72,8 @@ let%test_module "AbstractSyntax.Parser" =
                 ; OperatorDef ("bar", [ Valence ([], x_sort) ])
                 ] ) )
         ]
+      in
+      { externals; sort_defs }
     ;;
   end)
 ;;

@@ -1,6 +1,7 @@
 (** Types for representing languages *)
 
 open Base
+module SMap = Lvca_util.String.Map
 
 type 'info pattern_sort =
   { pattern_sort : 'info Sort.t
@@ -11,17 +12,33 @@ type 'info sort_slot =
   | SortBinding of 'info Sort.t
   | SortPattern of 'info pattern_sort
 
+type kind = Kind of int
 type 'info valence = Valence of 'info sort_slot list * 'info Sort.t
 type 'info arity = 'info valence list
 type 'info operator_def = OperatorDef of string * 'info arity
 type 'info sort_def = SortDef of string list * 'info operator_def list
-type 'info abstract_syntax = (string * 'info sort_def) list
+
+type 'info abstract_syntax =
+  { externals : (string * kind) list
+  ; sort_defs : (string * 'info sort_def) list
+  }
+
 type 'info t = 'info abstract_syntax
-type 'info unordered = 'info sort_def Lvca_util.String.Map.t
 
-let unordered = Lvca_util.String.Map.of_alist
+module Unordered = struct
+  type 'info t =
+    { externals : kind SMap.t
+    ; sort_defs : 'info sort_def SMap.t
+    }
+end
 
-let equal info_eq =
+let unordered { externals; sort_defs } =
+  match SMap.of_alist externals, SMap.of_alist sort_defs with
+  | `Ok externals, `Ok sort_defs -> `Ok Unordered.{ externals; sort_defs }
+  | `Duplicate_key k, _ | _, `Duplicate_key k -> `Duplicate_key k
+;;
+
+let equal info_eq t1 t2 =
   let slot_eq slot1 slot2 =
     match slot1, slot2 with
     | SortBinding s1, SortBinding s2 -> Sort.equal info_eq s1 s2
@@ -40,7 +57,10 @@ let equal info_eq =
   let sort_def_eq (SortDef (vs1, ops1)) (SortDef (vs2, ops2)) =
     List.equal String.( = ) vs1 vs2 && List.equal op_def_eq ops1 ops2
   in
-  List.equal (Lvca_util.Tuple2.equal String.( = ) sort_def_eq)
+  let sort_defs_eq = List.equal (Lvca_util.Tuple2.equal String.( = ) sort_def_eq) in
+  let kind_eq (Kind k1) (Kind k2) = Int.(k1 = k2) in
+  let externals_eq = List.equal (Lvca_util.Tuple2.equal String.( = ) kind_eq) in
+  externals_eq t1.externals t2.externals && sort_defs_eq t1.sort_defs t2.sort_defs
 ;;
 
 let sort_slot_map_info ~f = function
@@ -68,7 +88,11 @@ let sort_def_map_info ~f (name, SortDef (vars, op_defs)) =
 ;;
 
 let erase_sort_def = sort_def_map_info ~f:(Fn.const ())
-let map_info ~f = List.map ~f:(sort_def_map_info ~f)
+
+let map_info ~f { externals; sort_defs } =
+  { externals; sort_defs = List.map ~f:(sort_def_map_info ~f) sort_defs }
+;;
+
 let erase_info t = map_info ~f:(Fn.const ()) t
 let sort_to_string sort = Fmt.to_to_string Sort.pp sort
 
@@ -115,17 +139,17 @@ let instantiate_valence env = function
 
 let instantiate_arity env = List.map ~f:(instantiate_valence env)
 
-let lookup_operator sort_defs sort_name op_name =
+let lookup_operator { externals = _; sort_defs } sort_name op_name =
   let open Option.Let_syntax in
   let%bind (SortDef (vars, operator_defs)) =
     List.find_map sort_defs ~f:(fun (name, def) ->
         if String.(name = sort_name) then Some def else None)
   in
-  let%bind result =
+  let%map result =
     List.find operator_defs ~f:(fun (OperatorDef (op_def_name, _)) ->
         String.(op_def_name = op_name))
   in
-  Some (vars, result)
+  vars, result
 ;;
 
 (* TODO
@@ -134,8 +158,8 @@ let pp_sort_def ppf (SortDef (sort_vars, operator_defs)) =
 let pp = Fmt.list ~sep:(Fmt.sps 0) (Fmt.pair ~sep:(Fmt.any ":=") Fmt.string pp_sort_def)
 *)
 
-type kind_map = int Lvca_util.String.Map.t
-type kind_mismap = Lvca_util.Int.Set.t Lvca_util.String.Map.t
+type kind_map = int SMap.t
+type kind_mismap = Lvca_util.Int.Set.t SMap.t
 
 let update_env env name n =
   Map.update env name ~f:(function
@@ -174,10 +198,15 @@ let kind_check_sort_def env sort_name (SortDef (vars, operators)) =
   List.fold operators ~init:env ~f:kind_check_operator_def
 ;;
 
-let kind_check ?(env = Lvca_util.String.Map.empty) syntax =
-  let env = env |> Map.map ~f:Lvca_util.Int.Set.singleton in
+let kind_check lang =
+  let env =
+    lang.externals
+    |> List.map ~f:(fun (name, Kind n) -> name, n)
+    |> SMap.of_alist_exn
+    |> Map.map ~f:Lvca_util.Int.Set.singleton
+  in
   let mismap =
-    syntax
+    lang.sort_defs
     |> List.fold ~init:env ~f:(fun env (sort_name, sort_def) ->
            kind_check_sort_def env sort_name sort_def)
   in
@@ -190,8 +219,8 @@ let kind_check ?(env = Lvca_util.String.Map.empty) syntax =
            | _ -> Either.Second (name, mismap))
   in
   match mismapped_vars with
-  | [] -> Ok (Lvca_util.String.Map.of_alist_exn fine_vars)
-  | _ -> Error (Lvca_util.String.Map.of_alist_exn mismapped_vars)
+  | [] -> Ok (SMap.of_alist_exn fine_vars)
+  | _ -> Error (SMap.of_alist_exn mismapped_vars)
 ;;
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
@@ -206,6 +235,9 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   let bar = char '|'
   let dot = char '.'
   let semi = char ';'
+  let colon = char ':'
+  let star = char '*'
+  let arrow = string "->"
 
   type sort_sequence_entry =
     | Sort of OptRange.t Sort.t
@@ -286,7 +318,23 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     <?> "sort definition"
   ;;
 
-  let t : OptRange.t abstract_syntax Parsers.t = many1 sort_def <?> "abstract syntax"
+  let kind_decl : (string * kind) Parsers.t =
+    lift3
+      (fun ident _colon stars -> ident, Kind (List.length stars))
+      identifier
+      colon
+      (sep_by1 arrow star)
+    <?> "kind declaration"
+  ;;
+
+  let t : OptRange.t abstract_syntax Parsers.t =
+    lift2
+      (fun externals sort_defs -> { externals; sort_defs })
+      (many kind_decl)
+      (many1 sort_def)
+    <?> "abstract syntax"
+  ;;
+
   let whitespace_t = junk *> t
 end
 
@@ -389,16 +437,20 @@ let%test_module "AbstractSyntax_Parser" =
     ;;
 
     let%test_unit _ =
-      assert (
-        let parsed =
-          parse_with Parse.whitespace_t {|
+      let parsed =
+        parse_with
+          Parse.whitespace_t
+          {|
+integer : *
+
 tm :=
   | add(tm; tm)
   | lit(integer)
       |}
-          |> erase_info
-        in
-        equal Unit.( = ) parsed [ tm_def ])
+        |> erase_info
+      in
+      let expected = { externals = [ "integer", Kind 1 ]; sort_defs = [ tm_def ] } in
+      assert (equal Unit.( = ) parsed expected)
     ;;
 
     let kind_check str =

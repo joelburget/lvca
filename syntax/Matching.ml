@@ -1,6 +1,7 @@
 open Base
 module Util = Lvca_util
 module SMap = Lvca_util.String.Map
+module Unordered = AbstractSyntax.Unordered
 
 type ('info, 'prim, 'rhs) cases = (('info, 'prim) Pattern.t * 'rhs) list
 type ('info, 'prim) env = ('info, 'prim) NonBinding.term Lvca_util.String.Map.t
@@ -92,17 +93,35 @@ let rec simple_find_match ~prim_eq tm cases =
 
    Language: list a := nil() | cons(a; list a)
    Sort: list int
-   Result: a -> int
+   Result:
+     a: int
 *)
 let produce_sort_env lang sort =
   match sort with
   | Sort.Name _ -> SMap.empty
   | Sort.Ap (_, sort_name, args) ->
-    let (AbstractSyntax.SortDef (ty_vars, _op_defs)) = Map.find_exn lang sort_name in
-    (match List.zip ty_vars args with
-    | List.Or_unequal_lengths.Unequal_lengths ->
-      Util.invariant_violation "produce_sort_env: sort / args unequal lengths"
-    | Ok alist -> SMap.of_alist_exn alist)
+    (match
+       ( Map.find lang.Unordered.externals sort_name
+       , Map.find lang.Unordered.sort_defs sort_name )
+     with
+    | Some _, Some _ ->
+      Util.invariant_violation
+        (Printf.sprintf
+           "produce_sort_env: sort %s both in externals and defined"
+           sort_name)
+    | Some (Kind _), _ ->
+      Util.invariant_violation
+        (Printf.sprintf
+           "produce_sort_env: sort (%s) must be defined, not in externals"
+           sort_name)
+    | _, Some (AbstractSyntax.SortDef (ty_vars, _op_defs)) ->
+      (match List.zip ty_vars args with
+      | List.Or_unequal_lengths.Unequal_lengths ->
+        Util.invariant_violation "produce_sort_env: sort / args unequal lengths"
+      | Ok alist -> SMap.of_alist_exn alist)
+    | None, None ->
+      Util.invariant_violation
+        (Printf.sprintf "produce_sort_env: sort %s not found" sort_name))
 ;;
 
 (* Given a sort, produce a mapping from operator name to a list of the concrete
@@ -117,7 +136,9 @@ let produce_sort_env lang sort =
 let get_children_concrete_sorts lang sort =
   let sort_env = produce_sort_env lang sort in
   let sort_name = sort_name sort in
-  let (AbstractSyntax.SortDef (_ty_vars, op_defs)) = Map.find_exn lang sort_name in
+  let (AbstractSyntax.SortDef (_ty_vars, op_defs)) =
+    Map.find_exn lang.Unordered.sort_defs sort_name
+  in
   op_defs
   |> List.map ~f:(fun (OperatorDef (name, arity)) ->
          let subsorts =
@@ -224,7 +245,7 @@ let rec check_matrix lang sorts matrix =
     in
     let head_sort, sorts' = Util.List.split_exn sorts in
     let (AbstractSyntax.SortDef (_ty_vars, op_defs)) =
-      Map.find_exn lang (sort_name head_sort)
+      Map.find_exn lang.Unordered.sort_defs (sort_name head_sort)
     in
     let is_signature =
       List.for_all op_defs ~f:(fun (OperatorDef (name, _arity)) ->
@@ -314,7 +335,7 @@ let rec compile_matrix lang sorts matrix =
         in
         let head_sort, tail_sorts = Util.List.split_exn sorts in
         let (AbstractSyntax.SortDef (_ty_vars, op_defs)) =
-          Map.find_exn lang (sort_name head_sort)
+          Map.find_exn lang.Unordered.sort_defs (sort_name head_sort)
         in
         (* is every constructor covered? *)
         let is_signature =

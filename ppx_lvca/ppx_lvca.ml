@@ -123,7 +123,7 @@ let mk_sort_def ~loc (AbstractSyntax.SortDef (vars, op_defs)) =
   [%expr AbstractSyntax.SortDef ([%e vars], [%e op_defs])]
 ;;
 
-let mk_language ~loc sort_defs =
+let mk_language ~loc AbstractSyntax.{ externals = _; sort_defs } =
   sort_defs
   |> List.map ~f:(fun (name, sort_def) ->
          [%expr [%e mk_str ~loc name], [%e mk_sort_def ~loc sort_def]])
@@ -155,7 +155,7 @@ let expand_abstract_syntax ~(loc : Location.t) ~path:_ (expr : expression) : exp
   let str, loc = extract_string loc expr in
   match ParseUtil.parse_string ParseAbstract.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
-  | Ok sorts -> mk_language ~loc sorts
+  | Ok syntax -> mk_language ~loc syntax
 ;;
 
 let term_extension =

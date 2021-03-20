@@ -12,6 +12,10 @@ type 'info sort_slot =
   | SortBinding of 'info Sort.t
   | SortPattern of 'info pattern_sort
 
+(** The kind of a sort is the number of arguments it takes. Invariant: must be a natural
+    number. *)
+type kind = Kind of int
+
 (** A valence represents a sort, as well as the number and sorts of the variables bound
     within it. Valences are most often used to represent slots in an operator. *)
 type 'info valence = Valence of 'info sort_slot list * 'info Sort.t
@@ -28,14 +32,26 @@ type 'info sort_def =
       (** A sort is defined by a set of variables and a set of operators. *)
 
 (** The abstract syntax of a language is the sorts it defines. *)
-type 'info abstract_syntax = (string * 'info sort_def) list
+type 'info abstract_syntax =
+  { externals : (string * kind) list
+  ; sort_defs : (string * 'info sort_def) list
+  }
 
-(** The abstract syntax of a language is the sorts it defines. *)
+(** The abstract syntax of a language is the sorts it defines. Definition order is
+    significant (so we'll always print definitions in the same order they were parsed. For
+    the definition of a language without significant ordering, see [unordered]. *)
 type 'info t = 'info abstract_syntax
 
-type 'info unordered = 'info sort_def Lvca_util.String.Map.t
+module Unordered : sig
+  (** The same as [abstract_syntax] but definition order is not significant (this is a map
+      rather than a list). *)
+  type 'info t =
+    { externals : kind Lvca_util.String.Map.t
+    ; sort_defs : 'info sort_def Lvca_util.String.Map.t
+    }
+end
 
-val unordered : 'info t -> [ `Ok of 'info unordered | `Duplicate_key of string ]
+val unordered : 'info t -> [ `Ok of 'info Unordered.t | `Duplicate_key of string ]
 
 val equal
   :  ('info -> 'info -> bool)
@@ -78,7 +94,7 @@ type kind_map = int Lvca_util.String.Map.t
 type kind_mismap = Lvca_util.Int.Set.t Lvca_util.String.Map.t
 
 (** Check that each sort in the syntax has a consistent arity. *)
-val kind_check : ?env:kind_map -> _ t -> (kind_map, kind_mismap) Result.t
+val kind_check : _ t -> (kind_map, kind_mismap) Result.t
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : OptRange.t t ParseUtil.t
