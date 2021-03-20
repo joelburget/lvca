@@ -194,7 +194,7 @@ let check pp_prim check_prim lang ~pattern_sort ~var_sort =
           (* TODO: kind check *)
           let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
           let sort_env = SMap.of_alist_exn (List.zip_exn sort_vars sort_args) in
-          check_slots (AbstractSyntax.instantiate_arity sort_env arity) subpats)
+          check_slots (AbstractSyntax.Arity.instantiate sort_env arity) subpats)
     in
     Result.map_error result ~f:(fun CheckFailure.{ message; stack } ->
         CheckFailure.{ message; stack = { term = pat; sort } :: stack })

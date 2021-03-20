@@ -334,7 +334,7 @@ let check pp_prim check_prim lang =
           (* TODO: kind check *)
           let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
           let sort_env = String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in
-          let concrete_arity = AbstractSyntax.instantiate_arity sort_env arity in
+          let concrete_arity = AbstractSyntax.Arity.instantiate sort_env arity in
           check_slots var_sorts concrete_arity op_scopes)
     in
     Option.map result ~f:(fun { message; stack } ->

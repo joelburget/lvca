@@ -46,6 +46,9 @@ module Arity : sig
   type 'info t = 'info Valence.t list
 
   val pp : _ t Fmt.t
+
+  (** Instantiate concrete vars in an arity *)
+  val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
 end
 
 module OperatorDef : sig
@@ -83,12 +86,6 @@ val map_info : f:('a -> 'b) -> 'a t -> 'b t
 val erase_info : _ t -> unit t
 
 (** {1 Misc} *)
-
-(** Instantiate concrete vars in an arity *)
-val instantiate_arity
-  :  'info Sort.t Lvca_util.String.Map.t
-  -> 'info Arity.t
-  -> 'info Arity.t
 
 val lookup_operator
   :  'info t

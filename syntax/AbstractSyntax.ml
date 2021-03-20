@@ -103,6 +103,7 @@ module Arity = struct
   let equal ~info_eq = List.equal (Valence.equal ~info_eq)
   let map_info ~f = List.map ~f:(Valence.map_info ~f)
   let erase = map_info ~f:(Fn.const ())
+  let instantiate env = List.map ~f:(Valence.instantiate env)
 end
 
 module OperatorDef = struct
@@ -173,7 +174,6 @@ let map_info ~f { externals; sort_defs } =
 ;;
 
 let erase_info t = map_info ~f:(Fn.const ()) t
-let instantiate_arity env = List.map ~f:(Valence.instantiate env)
 
 let lookup_operator { externals = _; sort_defs } sort_name op_name =
   let open Option.Let_syntax in
