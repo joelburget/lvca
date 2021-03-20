@@ -567,7 +567,7 @@ let%test_module "Matching" =
       | _, _, _, Error tm_msg -> failwith ("term failed to parse: " ^ tm_msg)
       | Ok syntax, Ok sorts, Ok matrix_rows, Ok tms ->
         let syntax =
-          match AbstractSyntax.unordered syntax with
+          match AbstractSyntax.mk_unordered syntax with
           | `Ok syntax -> syntax
           | `Duplicate_key name -> failwith (Printf.sprintf "duplicate key: %s" name)
         in
@@ -655,7 +655,7 @@ let%test_module "Matching" =
       with
       | Ok syntax, Ok sorts, Ok matrix ->
         let syntax =
-          match AbstractSyntax.unordered syntax with
+          match AbstractSyntax.mk_unordered syntax with
           | `Ok syntax -> syntax
           | `Duplicate_key name -> failwith (Printf.sprintf "duplicate key: %s" name)
         in

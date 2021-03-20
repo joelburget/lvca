@@ -52,7 +52,7 @@ module Unordered : sig
     }
 end
 
-val unordered : 'info t -> [ `Ok of 'info Unordered.t | `Duplicate_key of string ]
+val mk_unordered : 'info t -> [ `Ok of 'info Unordered.t | `Duplicate_key of string ]
 val equal : ('info -> 'info -> bool) -> 'info t -> 'info t -> bool
 val map_info : f:('a -> 'b) -> 'a t -> 'b t
 val erase_info : _ t -> unit t

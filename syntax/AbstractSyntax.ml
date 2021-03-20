@@ -37,7 +37,7 @@ module Unordered = struct
     }
 end
 
-let unordered { externals; sort_defs } =
+let mk_unordered { externals; sort_defs } =
   match SMap.of_alist externals, SMap.of_alist sort_defs with
   | `Ok externals, `Ok sort_defs -> `Ok Unordered.{ externals; sort_defs }
   | `Duplicate_key k, _ | _, `Duplicate_key k -> `Duplicate_key k
