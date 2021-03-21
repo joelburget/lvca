@@ -232,6 +232,8 @@ let handle_dup_error = function
             k))
 ;;
 
+let valence_to_string v = Fmt.to_to_string AbstractSyntax.Valence.pp v
+
 let check check_prim lang sort =
   let lookup_operator = AbstractSyntax.lookup_operator lang in
   let rec check sort pat =
@@ -273,9 +275,7 @@ let check check_prim lang sort =
            (Printf.sprintf
               "Wrong number of subterms (%u) for this arity (%s)"
               (List.length scopes)
-              (valences
-              |> List.map ~f:AbstractSyntax.Valence.to_string
-              |> String.concat ~sep:", ")))
+              (valences |> List.map ~f:valence_to_string |> String.concat ~sep:", ")))
     | Ok scope_valences ->
       scope_valences
       |> List.map ~f:(fun (scope, valence) -> check_scope valence scope)
@@ -291,7 +291,7 @@ let check check_prim lang sort =
            (Printf.sprintf
               "Wrong number of binders (%u) for this valence (%s) (expected %u)"
               (List.length binders)
-              (AbstractSyntax.Valence.to_string valence)
+              (valence_to_string valence)
               (List.length binder_slots)))
     | Ok binders ->
       let binders_env =

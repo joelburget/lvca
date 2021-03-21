@@ -287,6 +287,8 @@ let rec select_path ~path tm =
       | Some (Scope (_pats, tm)) -> select_path ~path tm))
 ;;
 
+let valence_to_string v = Fmt.to_to_string AbstractSyntax.Valence.pp v
+
 let check pp_prim check_prim lang =
   let lookup_operator = AbstractSyntax.lookup_operator lang in
   let check_pattern = Pattern.check pp_prim check_prim lang in
@@ -348,9 +350,7 @@ let check pp_prim check_prim lang =
            (Printf.sprintf
               "Wrong number of subterms (%u) for this arity (%s)"
               (List.length scopes)
-              (valences
-              |> List.map ~f:AbstractSyntax.Valence.to_string
-              |> String.concat ~sep:", ")))
+              (valences |> List.map ~f:valence_to_string |> String.concat ~sep:", ")))
     | Ok scope_valences ->
       List.find_map scope_valences ~f:(fun (scope, valence) ->
           check_scope var_sorts valence scope)
@@ -363,7 +363,7 @@ let check pp_prim check_prim lang =
            (Printf.sprintf
               "Wrong number of binders (%u) for this valence (%s) (expected %u)"
               (List.length binders)
-              (AbstractSyntax.Valence.to_string valence)
+              (valence_to_string valence)
               (List.length binder_sorts)))
     | Ok binders ->
       let binders_env =

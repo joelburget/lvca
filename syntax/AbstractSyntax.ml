@@ -5,6 +5,13 @@ module SMap = Lvca_util.String.Map
 module Tuple2 = Lvca_util.Tuple2
 module ISet = Lvca_util.Int.Set
 
+let test_parse_with : 'a ParseUtil.t -> string -> 'a =
+ fun p str ->
+  match Angstrom.parse_string ~consume:All p str with
+  | Ok (t, _pos) -> t
+  | Error msg -> failwith msg
+;;
+
 module PatternSort = struct
   type 'info t =
     { pattern_sort : 'info Sort.t
@@ -14,6 +21,10 @@ module PatternSort = struct
   let equal ~info_eq ps1 ps2 =
     Sort.equal info_eq ps1.pattern_sort ps2.pattern_sort
     && Sort.equal info_eq ps1.var_sort ps2.var_sort
+  ;;
+
+  let map_info ~f { pattern_sort; var_sort } =
+    { pattern_sort = Sort.map_info ~f pattern_sort; var_sort = Sort.map_info ~f var_sort }
   ;;
 
   let pp ppf { pattern_sort; var_sort } =
@@ -75,6 +86,22 @@ module Kind = struct
   let pp ppf (Kind k) =
     Fmt.(pf ppf "%a" (list ~sep:(any " -> ") (any "*")) (List.init k ~f:(Fn.const ())))
   ;;
+
+  module Parse (Comment : ParseUtil.Comment_int) = struct
+    module Parsers = ParseUtil.Mk (Comment)
+    open Parsers
+
+    let t =
+      sep_by1 (string "->") (char '*')
+      >>| (fun stars -> Kind (List.length stars))
+      <?> "kind"
+    ;;
+
+    let decl =
+      lift3 (fun ident _colon kind -> ident, kind) identifier (char ':') t
+      <?> "kind declaration"
+    ;;
+  end
 end
 
 module Valence = struct
@@ -95,8 +122,6 @@ module Valence = struct
       Fmt.pf ppf "%a. %a" Fmt.(list ~sep:(any ".@ ") SortSlot.pp) binders Sort.pp result
   ;;
 
-  let to_string v = Fmt.to_to_string pp v
-
   let instantiate env = function
     | Valence (binding_sort_slots, body_sort) ->
       Valence
@@ -116,8 +141,132 @@ module Arity = struct
   let pp t = Fmt.(parens (list ~sep:semi Valence.pp)) t
   let equal ~info_eq = List.equal (Valence.equal ~info_eq)
   let map_info ~f = List.map ~f:(Valence.map_info ~f)
-  let erase = map_info ~f:(Fn.const ())
+  let erase arity = map_info ~f:(Fn.const ()) arity
   let instantiate env = List.map ~f:(Valence.instantiate env)
+
+  module Parse (Comment : ParseUtil.Comment_int) = struct
+    module Parsers = ParseUtil.Mk (Comment)
+    open Parsers
+    module ParseSort = Sort.Parse (Comment)
+
+    exception BuildArityError of string
+
+    type sort_sequence_entry =
+      | Sort of OptRange.t Sort.t
+      | Bracketed of OptRange.t Sort.t
+      | Dot
+      | Semi
+
+    type sort_sequence = sort_sequence_entry list
+
+    let sort_to_string sort = Fmt.to_to_string Sort.pp sort
+
+    let str_of_entry = function
+      | Sort sort -> sort_to_string sort
+      | Bracketed sort -> "[" ^ sort_to_string sort ^ "]"
+      | Dot -> "."
+      | Semi -> ";"
+    ;;
+
+    (* Fold a sequence of sorts, '.'s, and ';'s to an arity. *)
+    let build_arity sort_sequence =
+      let binding_sorts : OptRange.t SortSlot.t Queue.t = Queue.create () in
+      let rec go : sort_sequence -> OptRange.t Valence.t list = function
+        | [] -> []
+        (* s. ss *)
+        | Sort sort :: Dot :: sorts ->
+          Queue.enqueue binding_sorts (SortBinding sort);
+          go sorts
+        (* s1[s2]. ss *)
+        | Sort pattern_sort :: Bracketed var_sort :: Dot :: sorts ->
+          Queue.enqueue binding_sorts (SortPattern { pattern_sort; var_sort });
+          go sorts
+        (* s; ss *)
+        | Sort sort :: Semi :: sorts | Sort sort :: ([] as sorts) ->
+          let binding_sorts_lst = Queue.to_list binding_sorts in
+          Queue.clear binding_sorts;
+          Valence (binding_sorts_lst, sort) :: go sorts
+        | sorts ->
+          let entries_str = sorts |> List.map ~f:str_of_entry |> String.concat ~sep:" " in
+          let binding_sorts_lst = Queue.to_list binding_sorts in
+          let sorts_str =
+            binding_sorts_lst
+            |> List.map ~f:(Fmt.to_to_string SortSlot.pp)
+            |> String.concat ~sep:". "
+          in
+          let msg =
+            match binding_sorts_lst with
+            | [] -> entries_str
+            | _ -> entries_str ^ " " ^ sorts_str
+          in
+          raise (BuildArityError (Printf.sprintf "Unexpected sequence of sorts: %s" msg))
+      in
+      go sort_sequence
+    ;;
+
+    let t =
+      parens
+        (many
+           (choice
+              [ char ';' >>| Fn.const Semi
+              ; char '.' >>| Fn.const Dot
+              ; (ParseSort.t >>| fun sort -> Sort sort)
+              ; (brackets ParseSort.t >>| fun sort -> Bracketed sort)
+              ])
+        >>== fun ~pos sort_sequence ->
+        try return ~pos (build_arity sort_sequence) with BuildArityError msg -> fail msg)
+      <?> "arity"
+    ;;
+  end
+
+  let%test_module _ =
+    (module struct
+      module Parse = Parse (ParseUtil.NoComment)
+
+      let tm = Sort.Name (None, "tm")
+      let tm_v = Valence.Valence ([], tm)
+      let integer = Sort.Name (None, "integer")
+      let integer_v = Valence.Valence ([], integer)
+      let ( = ) = equal ~info_eq:(fun _ _ -> true)
+
+      let%test_unit _ = assert (test_parse_with Parse.t "(integer)" = [ integer_v ])
+      let%test_unit _ = assert (test_parse_with Parse.t "(tm; tm)" = [ tm_v; tm_v ])
+
+      let%test_unit _ =
+        assert (
+          test_parse_with Parse.t "(tm. tm)"
+          = [ Valence.Valence ([ SortBinding tm ], tm) ])
+      ;;
+
+      let%test_unit _ =
+        assert (test_parse_with Parse.t "(tm)" = [ Valence.Valence ([], tm) ])
+      ;;
+
+      let%test_unit _ =
+        assert (
+          test_parse_with Parse.t "(tm[tm]. tm)"
+          = [ Valence.Valence ([ SortPattern { pattern_sort = tm; var_sort = tm } ], tm) ])
+      ;;
+
+      let expect_okay str =
+        match Angstrom.parse_string ~consume:All Parse.t str with
+        | Ok _ -> ()
+        | Error msg -> Stdio.print_string msg
+      ;;
+
+      let%expect_test _ =
+        expect_okay "(tm[tm]. tm[tm]. tm)";
+        [%expect]
+      ;;
+
+      let%expect_test _ =
+        expect_okay "((foo bar)[baz quux]. tm)";
+        [%expect]
+      ;;
+
+      let%test_unit _ = assert (test_parse_with Parse.t "()" = [])
+    end)
+  ;;
 end
 
 module OperatorDef = struct
@@ -134,6 +283,28 @@ module OperatorDef = struct
   ;;
 
   let pp ppf (OperatorDef (name, arity)) = Fmt.pf ppf "%s%a" name Arity.pp arity
+
+  module Parse (Comment : ParseUtil.Comment_int) = struct
+    module Parsers = ParseUtil.Mk (Comment)
+    module ParseArity = Arity.Parse (Comment)
+    open Parsers
+
+    let t =
+      lift2 (fun ident arity -> OperatorDef (ident, arity)) identifier ParseArity.t
+      <?> "operator definition"
+    ;;
+  end
+
+  let%test_module _ =
+    (module struct
+      module Parse = Parse (ParseUtil.NoComment)
+
+      let%test_unit _ =
+        let ( = ) = equal ~info_eq:(fun _ _ -> true) in
+        assert (test_parse_with Parse.t "foo()" = OperatorDef ("foo", []))
+      ;;
+    end)
+  ;;
 end
 
 module SortDef = struct
@@ -144,11 +315,11 @@ module SortDef = struct
     && List.equal (OperatorDef.equal ~info_eq) ops1 ops2
   ;;
 
-  let map_info ~f (name, SortDef (vars, op_defs)) =
-    name, SortDef (vars, op_defs |> List.map ~f:(OperatorDef.map_info ~f))
+  let map_info ~f (SortDef (vars, op_defs)) =
+    SortDef (vars, op_defs |> List.map ~f:(OperatorDef.map_info ~f))
   ;;
 
-  let erase = map_info ~f:(Fn.const ())
+  let erase sd = map_info ~f:(Fn.const ()) sd
 
   let kind_check env sort_name (SortDef (vars, operators)) =
     let update_env env name n =
@@ -184,6 +355,130 @@ module SortDef = struct
         (list ~sep:(any "@,| ") OperatorDef.pp)
         operator_defs
   ;;
+
+  module Parse (Comment : ParseUtil.Comment_int) = struct
+    module Parsers = ParseUtil.Mk (Comment)
+    module OperatorDef = OperatorDef.Parse (Comment)
+    module Kind = Kind.Parse (Comment)
+    open Parsers
+
+    let assign = string ":="
+    let bar = char '|'
+
+    let sort_var_decl =
+      choice
+        [ (identifier >>| fun name -> name, None)
+        ; (parens Kind.decl >>| fun (name, kind) -> name, Some kind)
+        ]
+      <?> "sort variable declaration"
+    ;;
+
+    let t =
+      lift4
+        (fun name vars _assign op_defs -> name, SortDef (vars, op_defs))
+        identifier
+        (many sort_var_decl)
+        assign
+        (option '|' bar *> sep_by bar OperatorDef.t)
+      <?> "sort definition"
+    ;;
+  end
+
+  let%test_module _ =
+    (module struct
+      module Parse = Parse (ParseUtil.NoComment)
+
+      let ( = ) = Tuple2.equal String.( = ) (equal ~info_eq:(fun _ _ -> true))
+
+      let%test_unit _ =
+        assert (
+          test_parse_with Parse.t {|foo := foo()|}
+          = ("foo", SortDef ([], [ OperatorDef ("foo", []) ])))
+      ;;
+
+      let%test_unit _ =
+        assert (
+          test_parse_with Parse.t {|foo x := foo()|}
+          = ("foo", SortDef ([ "x", None ], [ OperatorDef ("foo", []) ])))
+      ;;
+
+      let tm_def =
+        let tm = Sort.Name (None, "tm") in
+        let tm_v = Valence.Valence ([], tm) in
+        let integer = Sort.Name (None, "integer") in
+        let integer_v = Valence.Valence ([], integer) in
+        ( "tm"
+        , SortDef
+            ( []
+            , [ OperatorDef ("add", [ tm_v; tm_v ]); OperatorDef ("lit", [ integer_v ]) ]
+            ) )
+      ;;
+
+      let%test_unit _ =
+        assert (
+          test_parse_with Parse.t {|tm :=
+  | add(tm; tm)
+  | lit(integer)
+      |}
+          = tm_def)
+      ;;
+
+      let%expect_test _ =
+        let foo = Sort.Name ((), "foo") in
+        let sort_def =
+          SortDef
+            ( []
+            , [ OperatorDef.OperatorDef
+                  ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
+              ; OperatorDef
+                  ( "bar"
+                  , [ Valence
+                        ( [ SortPattern { pattern_sort = foo; var_sort = foo }
+                          ; SortBinding foo
+                          ]
+                        , foo )
+                    ] )
+              ] )
+        in
+        Fmt.pr "%a" (pp ~name:"foo") sort_def;
+        [%expect
+          {|
+        foo :=
+          | foo(integer)
+          | bar(foo[foo]. foo. foo) |}]
+      ;;
+
+      let%expect_test _ =
+        let sort_def =
+          SortDef
+            ( []
+            , [ OperatorDef.OperatorDef
+                  ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
+              ] )
+        in
+        Fmt.pr "%a" (pp ~name:"foo") sort_def;
+        [%expect {| foo := foo(integer) |}]
+      ;;
+
+      let%expect_test _ =
+        let sort_def =
+          SortDef
+            ( [ "a", None ]
+            , [ OperatorDef.OperatorDef
+                  ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
+              ] )
+        in
+        Fmt.pr "%a" (pp ~name:"foo") sort_def;
+        [%expect {| foo a := foo(integer) |}]
+      ;;
+
+      let%expect_test _ =
+        let sort_def = SortDef ([ "a", Some (Kind 2) ], []) in
+        Fmt.pr "%a" (pp ~name:"foo") sort_def;
+        [%expect {| foo (a : * -> *) := |}]
+      ;;
+    end)
+  ;;
 end
 
 type 'info t =
@@ -211,7 +506,10 @@ let equal info_eq t1 t2 =
 ;;
 
 let map_info ~f { externals; sort_defs } =
-  { externals; sort_defs = List.map ~f:(SortDef.map_info ~f) sort_defs }
+  { externals
+  ; sort_defs =
+      List.map ~f:(fun (name, sort_def) -> name, SortDef.map_info ~f sort_def) sort_defs
+  }
 ;;
 
 let erase_info t = map_info ~f:(Fn.const ()) t
@@ -233,62 +531,6 @@ let pp ppf { externals; sort_defs } =
   let pp_externals = Fmt.(list (pair ~sep:(any " : ") string Kind.pp)) in
   let pp_sort_def ppf (name, sort_def) = SortDef.pp ~name ppf sort_def in
   Fmt.pf ppf "%a@,%a" pp_externals externals Fmt.(list pp_sort_def) sort_defs
-;;
-
-let%test_module _ =
-  (module struct
-    let%expect_test _ =
-      let foo = Sort.Name ((), "foo") in
-      let sort_def =
-        SortDef.SortDef
-          ( []
-          , [ OperatorDef.OperatorDef ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
-            ; OperatorDef
-                ( "bar"
-                , [ Valence
-                      ( [ SortPattern { pattern_sort = foo; var_sort = foo }
-                        ; SortBinding foo
-                        ]
-                      , foo )
-                  ] )
-            ] )
-      in
-      Fmt.pr "%a" (SortDef.pp ~name:"foo") sort_def;
-      [%expect
-        {|
-        foo :=
-          | foo(integer)
-          | bar(foo[foo]. foo. foo) |}]
-    ;;
-
-    let%expect_test _ =
-      let sort_def =
-        SortDef.SortDef
-          ( []
-          , [ OperatorDef.OperatorDef ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
-            ] )
-      in
-      Fmt.pr "%a" (SortDef.pp ~name:"foo") sort_def;
-      [%expect {| foo := foo(integer) |}]
-    ;;
-
-    let%expect_test _ =
-      let sort_def =
-        SortDef.SortDef
-          ( [ "a", None ]
-          , [ OperatorDef.OperatorDef ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
-            ] )
-      in
-      Fmt.pr "%a" (SortDef.pp ~name:"foo") sort_def;
-      [%expect {| foo a := foo(integer) |}]
-    ;;
-
-    let%expect_test _ =
-      let sort_def = SortDef.SortDef ([ "a", Some (Kind 2) ], []) in
-      Fmt.pr "%a" (SortDef.pp ~name:"foo") sort_def;
-      [%expect {| foo (a : * -> *) := |}]
-    ;;
-  end)
 ;;
 
 type kind_map = int SMap.t
@@ -321,212 +563,30 @@ let kind_check { externals; sort_defs } =
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
+  module Kind = Kind.Parse (Comment)
+  module SortDef = SortDef.Parse (Comment)
   open Parsers
-  module ParseSort = Sort.Parse (Comment)
-
-  exception BuildArityError of string
-
-  (* punctuation *)
-  let assign = string ":="
-  let bar = char '|'
-  let dot = char '.'
-  let semi = char ';'
-  let colon = char ':'
-  let star = char '*'
-  let arrow = string "->"
-
-  type sort_sequence_entry =
-    | Sort of OptRange.t Sort.t
-    | Bracketed of OptRange.t Sort.t
-    | Dot
-    | Semi
-
-  type sort_sequence = sort_sequence_entry list
-
-  let sort_to_string sort = Fmt.to_to_string Sort.pp sort
-
-  let str_of_entry = function
-    | Sort sort -> sort_to_string sort
-    | Bracketed sort -> "[" ^ sort_to_string sort ^ "]"
-    | Dot -> "."
-    | Semi -> ";"
-  ;;
-
-  (* Fold a sequence of sorts, '.'s, and ';'s to an arity. *)
-  let build_arity : sort_sequence -> OptRange.t Arity.t =
-   fun sort_sequence ->
-    let binding_sorts : OptRange.t SortSlot.t Queue.t = Queue.create () in
-    let rec go : sort_sequence -> OptRange.t Valence.t list = function
-      | [] -> []
-      (* s. ss *)
-      | Sort sort :: Dot :: sorts ->
-        Queue.enqueue binding_sorts (SortBinding sort);
-        go sorts
-      (* s1[s2]. ss *)
-      | Sort pattern_sort :: Bracketed var_sort :: Dot :: sorts ->
-        Queue.enqueue binding_sorts (SortPattern { pattern_sort; var_sort });
-        go sorts
-      (* s; ss *)
-      | Sort sort :: Semi :: sorts | Sort sort :: ([] as sorts) ->
-        let binding_sorts_lst = Queue.to_list binding_sorts in
-        Queue.clear binding_sorts;
-        Valence (binding_sorts_lst, sort) :: go sorts
-      | sorts ->
-        let entries_str = sorts |> List.map ~f:str_of_entry |> String.concat ~sep:" " in
-        let binding_sorts_lst = Queue.to_list binding_sorts in
-        let sorts_str =
-          binding_sorts_lst
-          |> List.map ~f:(Fmt.to_to_string SortSlot.pp)
-          |> String.concat ~sep:". "
-        in
-        let msg =
-          match binding_sorts_lst with
-          | [] -> entries_str
-          | _ -> entries_str ^ " " ^ sorts_str
-        in
-        raise (BuildArityError (Printf.sprintf "Unexpected sequence of sorts: %s" msg))
-    in
-    go sort_sequence
- ;;
-
-  let arity : OptRange.t Arity.t Parsers.t =
-    parens
-      (many
-         (choice
-            [ semi >>| Fn.const Semi
-            ; dot >>| Fn.const Dot
-            ; (ParseSort.t >>| fun sort -> Sort sort)
-            ; (brackets ParseSort.t >>| fun sort -> Bracketed sort)
-            ])
-      >>== fun ~pos sort_sequence ->
-      try return ~pos (build_arity sort_sequence) with BuildArityError msg -> fail msg)
-    <?> "arity"
-  ;;
-
-  let operator_def : OptRange.t OperatorDef.t Parsers.t =
-    lift2 (fun ident arity -> OperatorDef.OperatorDef (ident, arity)) identifier arity
-  ;;
-
-  let kind_decl : (string * Kind.t) Parsers.t =
-    lift3
-      (fun ident _colon stars -> ident, Kind.Kind (List.length stars))
-      identifier
-      colon
-      (sep_by1 arrow star)
-    <?> "kind declaration"
-  ;;
-
-  let sort_var_decl =
-    choice
-      [ (identifier >>| fun name -> name, None)
-      ; (parens kind_decl >>| fun (name, kind) -> name, Some kind)
-      ]
-    <?> "sort variable declaration"
-  ;;
-
-  let sort_def : (string * OptRange.t SortDef.t) Parsers.t =
-    lift4
-      (fun name vars _assign op_defs -> name, SortDef.SortDef (vars, op_defs))
-      identifier
-      (many sort_var_decl)
-      assign
-      (option '|' bar *> sep_by bar operator_def)
-    <?> "sort definition"
-  ;;
 
   let t =
     lift2
       (fun externals sort_defs -> { externals; sort_defs })
-      (many kind_decl)
-      (many1 sort_def)
+      (many Kind.decl)
+      (many1 SortDef.t)
     <?> "abstract syntax"
   ;;
 
   let whitespace_t = junk *> t
 end
 
-let%test_module "AbstractSyntax_Parser" =
+let%test_module _ =
   (module struct
     module Parse = Parse (ParseUtil.NoComment)
 
-    let parse_with : 'a ParseUtil.t -> string -> 'a =
-     fun p str ->
-      match Angstrom.parse_string ~consume:All p str with
-      | Ok (t, _pos) -> t
-      | Error msg -> failwith msg
-   ;;
-
-    let tm = Sort.Name ((), "tm")
-    let tm_v = Valence.Valence ([], tm)
-    let integer = Sort.Name ((), "integer")
-    let integer_v = Valence.Valence ([], integer)
-
-    let%test_unit _ =
-      assert (Caml.(parse_with Parse.arity "(integer)" |> Arity.erase = [ integer_v ]))
-    ;;
-
-    let%test_unit _ =
-      assert (Caml.(parse_with Parse.arity "(tm; tm)" |> Arity.erase = [ tm_v; tm_v ]))
-    ;;
-
-    let%test_unit _ =
-      assert (
-        Caml.(
-          parse_with Parse.arity "(tm. tm)"
-          |> Arity.erase
-          = [ Valence.Valence ([ SortBinding tm ], tm) ]))
-    ;;
-
-    let%test_unit _ =
-      assert (
-        Caml.(parse_with Parse.arity "(tm)" |> Arity.erase = [ Valence.Valence ([], tm) ]))
-    ;;
-
-    let%test_unit _ =
-      assert (
-        Caml.(
-          parse_with Parse.arity "(tm[tm]. tm)"
-          |> Arity.erase
-          = [ Valence.Valence ([ SortPattern { pattern_sort = tm; var_sort = tm } ], tm) ]))
-    ;;
-
-    let expect_okay str =
-      match Angstrom.parse_string ~consume:All Parse.arity str with
-      | Ok _ -> ()
-      | Error msg -> Stdio.print_string msg
-    ;;
-
-    let%expect_test _ =
-      expect_okay "(tm[tm]. tm[tm]. tm)";
-      [%expect]
-    ;;
-
-    let%expect_test _ =
-      expect_okay "((foo bar)[baz quux]. tm)";
-      [%expect]
-    ;;
-
-    let%test_unit _ = assert (Caml.(parse_with Parse.arity "()" = []))
-
-    let%test_unit _ =
-      assert (Caml.(parse_with Parse.operator_def "foo()" = OperatorDef ("foo", [])))
-    ;;
-
-    let%test_unit _ =
-      assert (
-        Caml.(
-          parse_with Parse.sort_def {|foo := foo()|}
-          = ("foo", SortDef ([], [ OperatorDef ("foo", []) ]))))
-    ;;
-
-    let%test_unit _ =
-      assert (
-        Caml.(
-          parse_with Parse.sort_def {|foo x := foo()|}
-          = ("foo", SortDef ([ "x", None ], [ OperatorDef ("foo", []) ]))))
-    ;;
-
     let tm_def =
+      let tm = Sort.Name ((), "tm") in
+      let tm_v = Valence.Valence ([], tm) in
+      let integer = Sort.Name ((), "integer") in
+      let integer_v = Valence.Valence ([], integer) in
       ( "tm"
       , SortDef.SortDef
           ([], [ OperatorDef ("add", [ tm_v; tm_v ]); OperatorDef ("lit", [ integer_v ]) ])
@@ -534,19 +594,8 @@ let%test_module "AbstractSyntax_Parser" =
     ;;
 
     let%test_unit _ =
-      assert (
-        Caml.(
-          parse_with Parse.sort_def {|tm :=
-  | add(tm; tm)
-  | lit(integer)
-      |}
-          |> SortDef.erase
-          = tm_def))
-    ;;
-
-    let%test_unit _ =
       let parsed =
-        parse_with
+        test_parse_with
           Parse.whitespace_t
           {|
 integer : *
@@ -568,7 +617,7 @@ empty :=
     ;;
 
     let kind_check str =
-      let lang = parse_with Parse.whitespace_t str in
+      let lang = test_parse_with Parse.whitespace_t str in
       match kind_check lang with
       | Ok map ->
         Stdio.printf "okay\n";

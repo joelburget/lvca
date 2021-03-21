@@ -154,6 +154,8 @@ let handle_dup_error = function
             k))
 ;;
 
+let valence_to_string v = Fmt.to_to_string AbstractSyntax.Valence.pp v
+
 let check pp_prim check_prim lang ~pattern_sort ~var_sort =
   let lookup_operator = AbstractSyntax.lookup_operator lang in
   let rec check sort pat =
@@ -206,9 +208,7 @@ let check pp_prim check_prim lang ~pattern_sort ~var_sort =
            (Printf.sprintf
               "Wrong number of subterms (%u) for this arity (%s)"
               (List.length pats)
-              (valences
-              |> List.map ~f:AbstractSyntax.Valence.to_string
-              |> String.concat ~sep:", ")))
+              (valences |> List.map ~f:valence_to_string |> String.concat ~sep:", ")))
     | Ok pat_valences ->
       pat_valences
       |> List.map ~f:(fun (pat, valence) ->
@@ -221,7 +221,7 @@ let check pp_prim check_prim lang ~pattern_sort ~var_sort =
                     (Printf.sprintf
                        "Invalid pattern (%s) binding a non-sort valence (%s)"
                        (Fmt.to_to_string (pp pp_prim) pat)
-                       (AbstractSyntax.Valence.to_string valence))))
+                       (valence_to_string valence))))
       |> Result.all
       |> Result.map ~f:SMap.strict_unions
       |> Result.bind ~f:handle_dup_error

@@ -150,7 +150,7 @@ let get_children_concrete_sorts lang sort =
                     Util.invariant_violation
                       (Printf.sprintf
                          "get_children_concrete_sorts: valence is not a simple sort: %s"
-                         (AbstractSyntax.Valence.to_string v))
+                         (Fmt.to_to_string AbstractSyntax.Valence.pp v))
                   else Sort.instantiate sort_env body_sort)
          in
          name, subsorts)
