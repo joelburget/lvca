@@ -7,6 +7,10 @@ module type AllTermS = sig
   val info : 'info t -> 'info
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
+
+  module Parse (Comment : ParseUtil.Comment_int) : sig
+    val t : 'info t ParseUtil.t
+  end
 end
 
 module type NonBindingTermS = sig
@@ -93,12 +97,15 @@ end
 
 module CheckProperties (Object : BindingTermS) :
   Properties with type 'info t = 'info Object.t = struct
+  module Parse = Object.Parse (ParseUtil.NoComment)
   open PropertyResult
   module Object = Mk (Object)
 
   type 'info t = 'info Object.t
 
   let pp = Object.pp
+  let to_string = Fmt.to_to_string Object.pp
+  let parse = ParseUtil.parse_string Parse.t
 
   let json_round_trip1 t =
     match t |> Object.jsonify |> Object.unjsonify with
@@ -115,6 +122,26 @@ module CheckProperties (Object : BindingTermS) :
         "jsonify t <> json (TODO: print)"
   ;;
 
-  let string_round_trip1 _ = failwith "TODO: Add when we add parsing to LanguageObject."
-  let string_round_trip2 _ = failwith "TODO: Add when we add parsing to LanguageObject."
+  let string_round_trip1 t =
+    match t |> to_string |> parse with
+    | Ok t' ->
+      let t'' = Object.erase t' in
+      PropertyResult.check Caml.(t'' = t) (Fmt.str "%a <> %a" pp t'' pp t)
+    | Error msg -> Failed (Fmt.str {|parse_string "%a": %s|} pp t msg)
+  ;;
+
+  let string_round_trip2 str =
+    match parse str with
+    | Error _ -> Uninteresting
+    | Ok t ->
+      let str' = to_string t in
+      if String.(str' = str)
+      then Ok
+      else (
+        match parse str with
+        | Error msg -> Failed msg
+        | Ok t' ->
+          let str'' = to_string t' in
+          PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str'))
+  ;;
 end

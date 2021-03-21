@@ -5,6 +5,10 @@ module type AllTermS = sig
   val info : 'info t -> 'info
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
+
+  module Parse (Comment : ParseUtil.Comment_int) : sig
+    val t : 'info t ParseUtil.t
+  end
 end
 
 (* TODO: we could generalize NonBindingTermS and BindingTermS by making them a
