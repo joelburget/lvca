@@ -13,11 +13,13 @@ let test_parse_with : 'a ParseUtil.t -> string -> 'a =
 ;;
 
 module Kind = struct
-  type t = Kind of int
+  type 'info t = Kind of 'info * int
 
-  let ( = ) (Kind k1) (Kind k2) = Int.(k1 = k2)
+  let equal ~info_eq (Kind (i1, k1)) (Kind (i2, k2)) = info_eq i1 i2 && Int.(k1 = k2)
+  let info (Kind (i, _)) = i
+  let map_info ~f (Kind (i, k)) = Kind (f i, k)
 
-  let pp ppf (Kind k) =
+  let pp ppf (Kind (_, k)) =
     Fmt.(pf ppf "%a" (list ~sep:(any " -> ") (any "*")) (List.init k ~f:(Fn.const ())))
   ;;
 
@@ -27,7 +29,7 @@ module Kind = struct
 
     let t =
       sep_by1 (string "->") (char '*')
-      >>| (fun stars -> Kind (List.length stars))
+      >>|| (fun ~pos stars -> Kind (pos, List.length stars), pos)
       <?> "kind"
     ;;
 
@@ -280,15 +282,27 @@ module OperatorDef = struct
 end
 
 module SortDef = struct
-  type 'info t = SortDef of (string * Kind.t option) list * 'info OperatorDef.t list
+  type 'info t =
+    | SortDef of (string * 'info Kind.t option) list * 'info OperatorDef.t list
 
   let equal ~info_eq (SortDef (vars1, ops1)) (SortDef (vars2, ops2)) =
-    List.equal (Tuple2.equal String.( = ) (Option.equal Kind.( = ))) vars1 vars2
+    List.equal
+      (Tuple2.equal String.( = ) (Option.equal (Kind.equal ~info_eq)))
+      vars1
+      vars2
     && List.equal (OperatorDef.equal ~info_eq) ops1 ops2
   ;;
 
   let map_info ~f (SortDef (vars, op_defs)) =
-    SortDef (vars, op_defs |> List.map ~f:(OperatorDef.map_info ~f))
+    let vars =
+      vars
+      |> List.map ~f:(fun (name, kind_opt) ->
+             match kind_opt with
+             | None -> name, None
+             | Some kind -> name, Some (Kind.map_info ~f kind))
+    in
+    let op_defs = op_defs |> List.map ~f:(OperatorDef.map_info ~f) in
+    SortDef (vars, op_defs)
   ;;
 
   let erase sd = map_info ~f:(Fn.const ()) sd
@@ -445,7 +459,7 @@ module SortDef = struct
       ;;
 
       let%expect_test _ =
-        let sort_def = SortDef ([ "a", Some (Kind 2) ], []) in
+        let sort_def = SortDef ([ "a", Some (Kind ((), 2)) ], []) in
         Fmt.pr "%a" (pp ~name:"foo") sort_def;
         [%expect {| foo (a : * -> *) := |}]
       ;;
@@ -454,13 +468,13 @@ module SortDef = struct
 end
 
 type 'info t =
-  { externals : (string * Kind.t) list
+  { externals : (string * 'info Kind.t) list
   ; sort_defs : (string * 'info SortDef.t) list
   }
 
 module Unordered = struct
   type 'info t =
-    { externals : Kind.t SMap.t
+    { externals : 'info Kind.t SMap.t
     ; sort_defs : 'info SortDef.t SMap.t
     }
 end
@@ -473,12 +487,12 @@ let mk_unordered { externals; sort_defs } =
 
 let equal info_eq t1 t2 =
   let sort_defs_eq = List.equal (Tuple2.equal String.( = ) (SortDef.equal ~info_eq)) in
-  let externals_eq = List.equal (Tuple2.equal String.( = ) Kind.( = )) in
+  let externals_eq = List.equal (Tuple2.equal String.( = ) (Kind.equal ~info_eq)) in
   externals_eq t1.externals t2.externals && sort_defs_eq t1.sort_defs t2.sort_defs
 ;;
 
 let map_info ~f { externals; sort_defs } =
-  { externals
+  { externals = externals |> List.map ~f:(fun (name, kind) -> name, Kind.map_info ~f kind)
   ; sort_defs =
       List.map ~f:(fun (name, sort_def) -> name, SortDef.map_info ~f sort_def) sort_defs
   }
@@ -511,7 +525,7 @@ type kind_mismap = ISet.t SMap.t
 let kind_check { externals; sort_defs } =
   let env =
     externals
-    |> List.map ~f:(fun (name, Kind n) -> name, n)
+    |> List.map ~f:(fun (name, Kind (_, n)) -> name, n)
     |> SMap.of_alist_exn
     |> Map.map ~f:ISet.singleton
   in
@@ -581,7 +595,7 @@ empty :=
         |> erase_info
       in
       let expected =
-        { externals = [ "integer", Kind 1 ]
+        { externals = [ "integer", Kind ((), 1) ]
         ; sort_defs = [ tm_def; "empty", SortDef ([], []) ]
         }
       in

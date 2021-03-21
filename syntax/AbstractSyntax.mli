@@ -10,14 +10,16 @@ type kind_mismap = Lvca_util.Int.Set.t Lvca_util.String.Map.t
 (** The kind of a sort is the number of arguments it takes. Invariant: must be a natural
     number. *)
 module Kind : sig
-  type t = Kind of int
+  type 'info t = Kind of 'info * int
 
-  val ( = ) : t -> t -> bool
-  val pp : t Fmt.t
+  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
+  val info : 'info t -> 'info
+  val map_info : f:('a -> 'b) -> 'a t -> 'b t
+  val pp : _ t Fmt.t
 
   module Parse (Comment : ParseUtil.Comment_int) : sig
-    val t : t ParseUtil.t
-    val decl : (string * t) ParseUtil.t
+    val t : OptRange.t t ParseUtil.t
+    val decl : (string * OptRange.t t) ParseUtil.t
   end
 end
 
@@ -108,7 +110,7 @@ end
 
 module SortDef : sig
   type 'info t =
-    | SortDef of (string * Kind.t option) list * 'info OperatorDef.t list
+    | SortDef of (string * 'info Kind.t option) list * 'info OperatorDef.t list
         (** A sort is defined by a set of variables and a set of operators. *)
 
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
@@ -131,7 +133,7 @@ end
     significant (so we'll always print definitions in the same order they were parsed. For
     the definition of a language without significant ordering, see [unordered]. *)
 type 'info t =
-  { externals : (string * Kind.t) list
+  { externals : (string * 'info Kind.t) list
   ; sort_defs : (string * 'info SortDef.t) list
   }
 
@@ -139,7 +141,7 @@ module Unordered : sig
   (** The same as [t] but definition order is not significant (this is a map rather than a
       list). *)
   type 'info t =
-    { externals : Kind.t Lvca_util.String.Map.t
+    { externals : 'info Kind.t Lvca_util.String.Map.t
     ; sort_defs : 'info SortDef.t Lvca_util.String.Map.t
     }
 end
@@ -155,7 +157,7 @@ val lookup_operator
   :  'info t
   -> string (** sort name *)
   -> string (** operator_name *)
-  -> ((string * Kind.t option) list * 'info OperatorDef.t) option
+  -> ((string * 'info Kind.t option) list * 'info OperatorDef.t) option
 
 val pp : _ t Fmt.t
 
