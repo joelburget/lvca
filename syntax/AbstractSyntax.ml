@@ -12,6 +12,32 @@ let test_parse_with : 'a ParseUtil.t -> string -> 'a =
   | Error msg -> failwith msg
 ;;
 
+module Kind = struct
+  type t = Kind of int
+
+  let ( = ) (Kind k1) (Kind k2) = Int.(k1 = k2)
+
+  let pp ppf (Kind k) =
+    Fmt.(pf ppf "%a" (list ~sep:(any " -> ") (any "*")) (List.init k ~f:(Fn.const ())))
+  ;;
+
+  module Parse (Comment : ParseUtil.Comment_int) = struct
+    module Parsers = ParseUtil.Mk (Comment)
+    open Parsers
+
+    let t =
+      sep_by1 (string "->") (char '*')
+      >>| (fun stars -> Kind (List.length stars))
+      <?> "kind"
+    ;;
+
+    let decl =
+      lift3 (fun ident _colon kind -> ident, kind) identifier (char ':') t
+      <?> "kind declaration"
+    ;;
+  end
+end
+
 module PatternSort = struct
   type 'info t =
     { pattern_sort : 'info Sort.t
@@ -76,30 +102,21 @@ module SortSlot = struct
     | SortPattern { pattern_sort; var_sort } ->
       [ pattern_sort; var_sort ] |> List.fold ~init:env ~f:Sort.kind_check
   ;;
-end
-
-module Kind = struct
-  type t = Kind of int
-
-  let ( = ) (Kind k1) (Kind k2) = Int.(k1 = k2)
-
-  let pp ppf (Kind k) =
-    Fmt.(pf ppf "%a" (list ~sep:(any " -> ") (any "*")) (List.init k ~f:(Fn.const ())))
-  ;;
 
   module Parse (Comment : ParseUtil.Comment_int) = struct
+    module Sort = Sort.Parse (Comment)
     module Parsers = ParseUtil.Mk (Comment)
     open Parsers
 
     let t =
-      sep_by1 (string "->") (char '*')
-      >>| (fun stars -> Kind (List.length stars))
-      <?> "kind"
-    ;;
-
-    let decl =
-      lift3 (fun ident _colon kind -> ident, kind) identifier (char ':') t
-      <?> "kind declaration"
+      Sort.t
+      >>= fun sort ->
+      choice
+        [ (brackets Sort.t
+          >>| fun var_sort -> SortPattern { pattern_sort = sort; var_sort })
+        ; return (SortBinding sort)
+        ]
+      <?> "sort slot"
     ;;
   end
 end
@@ -133,6 +150,29 @@ module Valence = struct
     let env = binding_slots |> List.fold ~init:env ~f:SortSlot.kind_check in
     Sort.kind_check env value_sort
   ;;
+
+  module Parse (Comment : ParseUtil.Comment_int) = struct
+    module ParseSortSlot = SortSlot.Parse (Comment)
+    module Parsers = ParseUtil.Mk (Comment)
+    open Parsers
+
+    let t =
+      let t' =
+        sep_by1 (char '.') ParseSortSlot.t
+        >>= fun slots ->
+        let binders, body_slot = Lvca_util.List.unsnoc slots in
+        match body_slot with
+        | SortSlot.SortBinding body_sort -> return (Valence (binders, body_sort))
+        | _ ->
+          fail
+            (Fmt.str
+               "Expected a simple sort, instead found a pattern sort (%a)"
+               SortSlot.pp
+               body_slot)
+      in
+      t' <?> "valence"
+    ;;
+  end
 end
 
 module Arity = struct
@@ -145,78 +185,10 @@ module Arity = struct
   let instantiate env = List.map ~f:(Valence.instantiate env)
 
   module Parse (Comment : ParseUtil.Comment_int) = struct
-    module ParseSort = Sort.Parse (Comment)
+    module Valence = Valence.Parse (Comment)
     module Parsers = ParseUtil.Mk (Comment)
-    open Parsers
 
-    exception BuildArityError of string
-
-    type sort_sequence_entry =
-      | Sort of OptRange.t Sort.t
-      | Bracketed of OptRange.t Sort.t
-      | Dot
-      | Semi
-
-    type sort_sequence = sort_sequence_entry list
-
-    let sort_to_string sort = Fmt.to_to_string Sort.pp sort
-
-    let str_of_entry = function
-      | Sort sort -> sort_to_string sort
-      | Bracketed sort -> "[" ^ sort_to_string sort ^ "]"
-      | Dot -> "."
-      | Semi -> ";"
-    ;;
-
-    (* Fold a sequence of sorts, '.'s, and ';'s to an arity. *)
-    let build_arity sort_sequence =
-      let binding_sorts : OptRange.t SortSlot.t Queue.t = Queue.create () in
-      let rec go : sort_sequence -> OptRange.t Valence.t list = function
-        | [] -> []
-        (* s. ss *)
-        | Sort sort :: Dot :: sorts ->
-          Queue.enqueue binding_sorts (SortBinding sort);
-          go sorts
-        (* s1[s2]. ss *)
-        | Sort pattern_sort :: Bracketed var_sort :: Dot :: sorts ->
-          Queue.enqueue binding_sorts (SortPattern { pattern_sort; var_sort });
-          go sorts
-        (* s; ss *)
-        | Sort sort :: Semi :: sorts | Sort sort :: ([] as sorts) ->
-          let binding_sorts_lst = Queue.to_list binding_sorts in
-          Queue.clear binding_sorts;
-          Valence (binding_sorts_lst, sort) :: go sorts
-        | sorts ->
-          let entries_str = sorts |> List.map ~f:str_of_entry |> String.concat ~sep:" " in
-          let binding_sorts_lst = Queue.to_list binding_sorts in
-          let sorts_str =
-            binding_sorts_lst
-            |> List.map ~f:(Fmt.to_to_string SortSlot.pp)
-            |> String.concat ~sep:". "
-          in
-          let msg =
-            match binding_sorts_lst with
-            | [] -> entries_str
-            | _ -> entries_str ^ " " ^ sorts_str
-          in
-          raise (BuildArityError (Printf.sprintf "Unexpected sequence of sorts: %s" msg))
-      in
-      go sort_sequence
-    ;;
-
-    let t =
-      parens
-        (many
-           (choice
-              [ char ';' >>| Fn.const Semi
-              ; char '.' >>| Fn.const Dot
-              ; (ParseSort.t >>| fun sort -> Sort sort)
-              ; (brackets ParseSort.t >>| fun sort -> Bracketed sort)
-              ])
-        >>== fun ~pos sort_sequence ->
-        try return ~pos (build_arity sort_sequence) with BuildArityError msg -> fail msg)
-      <?> "arity"
-    ;;
+    let t = Parsers.(parens (sep_by (char ';') Valence.t) <?> "arity")
   end
 
   let%test_module _ =

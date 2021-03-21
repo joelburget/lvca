@@ -7,6 +7,20 @@ type kind_map = int Lvca_util.String.Map.t
     to have. *)
 type kind_mismap = Lvca_util.Int.Set.t Lvca_util.String.Map.t
 
+(** The kind of a sort is the number of arguments it takes. Invariant: must be a natural
+    number. *)
+module Kind : sig
+  type t = Kind of int
+
+  val ( = ) : t -> t -> bool
+  val pp : t Fmt.t
+
+  module Parse (Comment : ParseUtil.Comment_int) : sig
+    val t : t ParseUtil.t
+    val decl : (string * t) ParseUtil.t
+  end
+end
+
 (** A pattern sort represents the sort of a pattern with variables of some sort. This is
     written as [pattern_sort\[var_sort\]]. *)
 module PatternSort : sig
@@ -38,19 +52,9 @@ module SortSlot : sig
 
   (** Instantiate concrete vars in a sort *)
   val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
-end
-
-(** The kind of a sort is the number of arguments it takes. Invariant: must be a natural
-    number. *)
-module Kind : sig
-  type t = Kind of int
-
-  val ( = ) : t -> t -> bool
-  val pp : t Fmt.t
 
   module Parse (Comment : ParseUtil.Comment_int) : sig
-    val t : t ParseUtil.t
-    val decl : (string * t) ParseUtil.t
+    val t : OptRange.t t ParseUtil.t
   end
 end
 
@@ -65,6 +69,10 @@ module Valence : sig
 
   (** Instantiate concrete vars in a valence *)
   val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
+
+  module Parse (Comment : ParseUtil.Comment_int) : sig
+    val t : OptRange.t t ParseUtil.t
+  end
 end
 
 (** An arity specifies the arguments to an operator. *)
