@@ -12,6 +12,7 @@ end
 
 (* TODO: we could generalize NonBindingTermS and BindingTermS by making them a
    functor taking the term type and changing the names to to_term and of_term.
+   Or returning an Either.
    *)
 module type NonBindingTermS = sig
   include AllTermS
@@ -41,7 +42,6 @@ module type ExtendedTermS = sig
   val to_string : _ t -> string
 
   (* TODO: to_pattern, of_pattern *)
-  (* TODO: parsing? *)
 
   val select_path
     :  path:int list
