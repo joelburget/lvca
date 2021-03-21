@@ -4,12 +4,11 @@ module type AllTermS = sig
   type 'info t
 
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
-  val info : 'info t -> 'info
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   module Parse (Comment : ParseUtil.Comment_int) : sig
-    val t : 'info t ParseUtil.t
+    val t : OptRange.t t ParseUtil.t
   end
 end
 
@@ -50,6 +49,10 @@ module type ExtendedTermS = sig
   val serialize : _ t -> Bytes.t
   val deserialize : Bytes.t -> unit t option
   val hash : _ t -> string
+
+  module Parse (Comment : ParseUtil.Comment_int) : sig
+    val whitespace_t : OptRange.t t ParseUtil.t
+  end
 end
 
 module Mk (Object : BindingTermS) : ExtendedTermS with type 'info t = 'info Object.t =
@@ -84,6 +87,13 @@ struct
   let serialize tm = tm |> jsonify |> Lvca_util.Cbor.encode
   let deserialize buf = buf |> Lvca_util.Cbor.decode |> Option.bind ~f:unjsonify
   let hash tm = tm |> serialize |> Lvca_util.Sha256.hash
+
+  module Parse (Comment : ParseUtil.Comment_int) = struct
+    module Parsers = ParseUtil.Mk (Comment)
+    module Parse = Object.Parse (Comment)
+
+    let whitespace_t = Parsers.(junk *> Parse.t)
+  end
 end
 
 module type Properties = sig
@@ -134,14 +144,14 @@ module CheckProperties (Object : BindingTermS) :
     match parse str with
     | Error _ -> Uninteresting
     | Ok t ->
-      let str' = to_string t in
+      let str' = t |> Object.erase |> to_string in
       if String.(str' = str)
       then Ok
       else (
         match parse str with
         | Error msg -> Failed msg
         | Ok t' ->
-          let str'' = to_string t' in
+          let str'' = t' |> Object.erase |> to_string in
           PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str'))
   ;;
 end

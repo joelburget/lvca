@@ -2,12 +2,11 @@ module type AllTermS = sig
   type 'info t
 
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
-  val info : 'info t -> 'info
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   module Parse (Comment : ParseUtil.Comment_int) : sig
-    val t : 'info t ParseUtil.t
+    val t : OptRange.t t ParseUtil.t
   end
 end
 
@@ -61,6 +60,10 @@ module type ExtendedTermS = sig
   (** The SHA-256 hash of the serialized term. This is useful for content-identifying
       terms. *)
   val hash : _ t -> string
+
+  module Parse (Comment : ParseUtil.Comment_int) : sig
+    val whitespace_t : OptRange.t t ParseUtil.t
+  end
 end
 
 module Mk (Object : BindingTermS) : ExtendedTermS with type 'info t = 'info Object.t
