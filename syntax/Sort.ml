@@ -65,12 +65,10 @@ let rec map_info ~f = function
 let erase_info sort = map_info ~f:(fun _ -> ()) sort
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
-  type 'info sort = 'info t
-
   module Parsers = ParseUtil.Mk (Comment)
   open Parsers
 
-  let t : OptRange.t sort Parsers.t =
+  let t =
     fix (fun sort ->
         let atomic_sort =
           choice

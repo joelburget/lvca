@@ -145,9 +145,9 @@ module Arity = struct
   let instantiate env = List.map ~f:(Valence.instantiate env)
 
   module Parse (Comment : ParseUtil.Comment_int) = struct
+    module ParseSort = Sort.Parse (Comment)
     module Parsers = ParseUtil.Mk (Comment)
     open Parsers
-    module ParseSort = Sort.Parse (Comment)
 
     exception BuildArityError of string
 
