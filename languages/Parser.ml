@@ -6,13 +6,13 @@ module Format = Caml.Format
 module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
 
 type 'info c_term = 'info Core.term
-type 'info n_term = ('info, Primitive.t) Nominal.term
+type 'info n_term = ('info, Primitive.t) Nominal.Term.t
 
 let eval_primitive _eval_ctx _eval_ctx' _ctx _tm _name _args =
   Error
     ( "no primitive evaluation"
     , Core.Term
-        (Nominal.Primitive
+        (Nominal.Term.Primitive
            (SourceRanges.empty, Primitive.PrimString "TODO: make this unnecessary")) )
 ;;
 
@@ -204,10 +204,10 @@ let pp_plain ppf p = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ ->
 let pp_str p = Fmt.to_to_string pp_plain p
 
 let mk_some : 'info n_term -> 'info n_term =
- fun tm -> Nominal.Operator (Nominal.info tm, "some", [ Scope ([], tm) ])
+ fun tm -> Nominal.Term.Operator (Nominal.Term.info tm, "some", [ Scope ([], tm) ])
 ;;
 
-let mk_none pos = Nominal.Operator (pos, "none", [])
+let mk_none pos = Nominal.Term.Operator (pos, "none", [])
 let map_snd ~f (a, b) = a, f b
 
 type 'info parse_error =
@@ -269,7 +269,7 @@ module Direct = struct
   let mk_error msg = Error (msg, None)
 
   let mk_char pos c =
-    Nominal.Primitive (SourceRanges.mk "input" pos (pos + 1), Primitive.PrimChar c)
+    Nominal.Term.Primitive (SourceRanges.mk "input" pos (pos + 1), Primitive.PrimChar c)
   ;;
 
   let context_free go =
@@ -302,7 +302,7 @@ module Direct = struct
         | Some _str' ->
           let pos' = pos + String.length prefix in
           let rng = SourceRanges.mk "input" pos pos' in
-          Ok (pos', Nominal.Primitive (rng, PrimString prefix)))
+          Ok (pos', Nominal.Term.Primitive (rng, PrimString prefix)))
   ;;
 
   let satisfy name core_term =
@@ -382,9 +382,9 @@ module Direct = struct
   ;;
 
   let mk_list lst =
-    let rng = lst |> List.map ~f:Nominal.info |> SourceRanges.unions in
-    let lst = lst |> List.map ~f:(fun tm -> Nominal.Scope ([], tm)) in
-    Nominal.Operator (rng, "list", lst)
+    let rng = lst |> List.map ~f:Nominal.Term.info |> SourceRanges.unions in
+    let lst = lst |> List.map ~f:(fun tm -> Nominal.Scope.Scope ([], tm)) in
+    Nominal.Term.Operator (rng, "list", lst)
   ;;
 
   let count n_tm parser =
@@ -927,7 +927,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         | Some (Ident (name, pos)) ->
           return
             ~pos
-            (Sequence (pos, Queue.to_list binders, Core.Term (Nominal.Var (pos, name))))
+            (Sequence
+               (pos, Queue.to_list binders, Core.Term (Nominal.Term.Var (pos, name))))
         | Some tok ->
           fail (Printf.sprintf "TODO (sequence token %s)" (string_of_token tok))
         | None -> fail "No token following `->` (expected a return value)")
@@ -1086,7 +1087,7 @@ let%test_module "Parsing" =
         let Direct.{ result; _ } = Direct.parse_direct parser' str in
         (match result with
         | Error (msg, _) -> printf "failed to parse: %s\n" msg
-        | Ok tm -> Fmt.pr "%a\n" (Nominal.pp_term_ranges Primitive.pp) tm)
+        | Ok tm -> Fmt.pr "%a\n" (Nominal.Term.pp_ranges Primitive.pp) tm)
    ;;
 
     open TestParsers

@@ -21,12 +21,12 @@ type 'info capture_type =
 
 type ('info, 'prim) capture =
   | CapturedBinder of ('info, 'prim) Pattern.t
-  | CapturedTerm of ('info, 'prim) Nominal.term
+  | CapturedTerm of ('info, 'prim) Nominal.Term.t
 
 let capture_eq ~info_eq ~prim_eq cap1 cap2 =
   match cap1, cap2 with
   | CapturedBinder pat1, CapturedBinder pat2 -> Pattern.equal info_eq prim_eq pat1 pat2
-  | CapturedTerm tm1, CapturedTerm tm2 -> Nominal.equal info_eq prim_eq tm1 tm2
+  | CapturedTerm tm1, CapturedTerm tm2 -> Nominal.Term.equal info_eq prim_eq tm1 tm2
   | _, _ -> false
 ;;
 
@@ -166,7 +166,7 @@ let pp_scope_ranges pp_prim ppf tm =
 
 let pp_capture pp_prim ppf = function
   | CapturedBinder pat -> Pattern.pp pp_prim ppf pat
-  | CapturedTerm pat -> Nominal.pp_term pp_prim ppf pat
+  | CapturedTerm pat -> Nominal.Term.pp pp_prim ppf pat
 ;;
 
 let rec select_path ~path pat =
@@ -185,7 +185,7 @@ let rec match_term ~prim_eq pat tm =
   match pat, tm with
   | Ignored _, _ -> Some SMap.empty
   | Var (_, name), tm -> Some (SMap.singleton name (CapturedTerm tm))
-  | Primitive (_, p1), Nominal.Primitive (_, p2) ->
+  | Primitive (_, p1), Nominal.Term.Primitive (_, p2) ->
     if prim_eq p1 p2 then Some SMap.empty else None
   | Operator (_, name1, pat_scopes), Operator (_, name2, tm_scopes) ->
     if String.(name1 = name2)
@@ -202,7 +202,11 @@ let rec match_term ~prim_eq pat tm =
     else None
   | _, _ -> None
 
-and match_scope ~prim_eq (Scope (binder_pats, body_pat)) (Nominal.Scope (binders, body)) =
+and match_scope
+    ~prim_eq
+    (Scope (binder_pats, body_pat))
+    (Nominal.Scope.Scope (binders, body))
+  =
   let f (_, name) pat =
     if Char.(name.[0] = '_') then None else Some (name, CapturedBinder pat)
   in
@@ -721,7 +725,7 @@ let%test_module "check" =
   (module struct
     module Parser = Parse (ParseUtil.NoComment)
     module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
-    module ParseNominal = Nominal.Parse (ParseUtil.NoComment)
+    module ParseNominal = Nominal.Term.Parse (ParseUtil.NoComment)
     module SortParse = Sort.Parse (ParseUtil.NoComment)
 
     let parse_pattern str =

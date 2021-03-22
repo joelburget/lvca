@@ -17,7 +17,7 @@ type 'info capture_type =
 
 type ('info, 'prim) capture =
   | CapturedBinder of ('info, 'prim) Pattern.t
-  | CapturedTerm of ('info, 'prim) Nominal.term
+  | CapturedTerm of ('info, 'prim) Nominal.Term.t
 
 val capture_eq
   :  info_eq:('info -> 'info -> bool)
@@ -41,13 +41,13 @@ val list_vars_of_pattern : ('info, _) t -> ('info * string) list
 val match_term
   :  prim_eq:('prim -> 'prim -> bool)
   -> ('info, 'prim) t
-  -> ('info, 'prim) Nominal.term
+  -> ('info, 'prim) Nominal.Term.t
   -> ('info, 'prim) capture Lvca_util.String.Map.t option
 
 val match_scope
   :  prim_eq:('prim -> 'prim -> bool)
   -> ('info, 'prim) scope
-  -> ('info, 'prim) Nominal.scope
+  -> ('info, 'prim) Nominal.Scope.t
   -> ('info, 'prim) capture Lvca_util.String.Map.t option
 
 (** {1 Pretty-printing} *)

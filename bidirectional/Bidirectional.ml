@@ -29,7 +29,7 @@ let pp_bpat : ('a, Primitive.t) BindingAwarePattern.t Fmt.t =
 
 let pp_pat = Pattern.pp Primitive.pp
 let pp_capture = BindingAwarePattern.pp_capture Primitive.pp
-let pp_term = Nominal.pp_term Primitive.pp
+let pp_term = Nominal.Term.pp Primitive.pp
 
 let pp_err ppf = function
   | CheckError msg -> Fmt.pf ppf "%s" msg
@@ -56,7 +56,7 @@ let instantiate
     match pat with
     | BindingAwarePattern.Operator (info, op_name, scopes) ->
       let%map scopes = scopes |> List.map ~f:go_scope |> Result.all in
-      Nominal.Operator (info, op_name, scopes)
+      Nominal.Term.Operator (info, op_name, scopes)
     | Var (_info, pattern_var_name) ->
       (match Map.find env pattern_var_name with
       | Some (BindingAwarePattern.CapturedTerm tm) -> Ok tm
@@ -85,7 +85,7 @@ let instantiate
       |> Result.all
     in
     let%map body = go_term body in
-    Nominal.Scope (binders, body)
+    Nominal.Scope.Scope (binders, body)
   in
   go_term pat
 ;;
@@ -116,7 +116,7 @@ let update_ctx
 
 let ctx_infer : 'a term SMap.t -> 'a term -> ('a term, 'a check_error) Result.t =
  fun var_types -> function
-  | Nominal.Var (_, name) ->
+  | Nominal.Term.Var (_, name) ->
     (match Map.find var_types name with
     | None ->
       let var_types = var_types |> Map.keys |> String.concat ~sep:", " in
@@ -322,7 +322,7 @@ let%test_module "check / infer" =
   (module struct
     module ParseStatics = Statics.Parse (ParseUtil.NoComment)
     module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
-    module ParseNominal = Nominal.Parse (ParseUtil.NoComment)
+    module ParseNominal = Nominal.Term.Parse (ParseUtil.NoComment)
 
     let parse_statics = ParseUtil.parse_string ParseStatics.whitespace_t
     let parse_tm = ParseUtil.parse_string (ParseNominal.whitespace_t ParsePrimitive.t)

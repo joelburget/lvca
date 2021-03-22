@@ -6,7 +6,7 @@ let language = [%lvca_abstract_syntax "tm := app(tm; tm) | lam(tm. tm)"]
 let eval tm =
   let open Result.Let_syntax in
   let tm_str tm =
-    tm |> DeBruijn.to_nominal |> Option.value_exn |> Nominal.pp_term_str Primitive.pp
+    tm |> DeBruijn.to_nominal |> Option.value_exn |> Nominal.Term.pp_str Primitive.pp
   in
   let rec eval' tm =
     match tm with
@@ -23,7 +23,7 @@ let eval tm =
     | _ -> Error (Printf.sprintf "Unexpected term (2) %s" (tm_str tm))
   in
   let%bind db_tm =
-    tm |> DeBruijn.of_nominal |> Result.map_error ~f:(Nominal.pp_scope_str Primitive.pp)
+    tm |> DeBruijn.of_nominal |> Result.map_error ~f:(Nominal.Scope.pp_str Primitive.pp)
   in
   let%bind db_tm' = eval' db_tm in
   match DeBruijn.to_nominal db_tm' with
@@ -35,10 +35,10 @@ module AngstromParse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   open Parsers
 
-  let info = Nominal.info
+  let info = Nominal.Term.info
 
-  let t_var : (OptRange.t, Primitive.t) Nominal.term Parsers.t =
-    Parsers.identifier >>|| fun ~pos name -> Nominal.Var (pos, name), pos
+  let t_var : (OptRange.t, Primitive.t) Nominal.Term.t Parsers.t =
+    Parsers.identifier >>|| fun ~pos name -> Nominal.Term.Var (pos, name), pos
   ;;
 
   let p_var : (OptRange.t, Primitive.t) Pattern.t Parsers.t =
@@ -47,16 +47,16 @@ module AngstromParse (Comment : ParseUtil.Comment_int) = struct
 
   (* Precedence 0: lam (right-associative) 1: app (left-associative) *)
 
-  let t : (OptRange.t, Primitive.t) Nominal.term Parsers.t =
+  let t : (OptRange.t, Primitive.t) Nominal.Term.t Parsers.t =
     fix (fun t ->
         let atom = t_var <|> parens t in
-        let lam : (OptRange.t, Primitive.t) Nominal.term Parsers.t =
+        let lam : (OptRange.t, Primitive.t) Nominal.Term.t Parsers.t =
           pos
           >>= fun start ->
           lift4
             (fun _lam var _arr body ->
               let range = OptRange.extend_to (info body) start in
-              let tm = Nominal.Operator (range, "lam", [ Scope ([ var ], body) ]) in
+              let tm = Nominal.Term.Operator (range, "lam", [ Scope ([ var ], body) ]) in
               tm)
             (char '\\')
             p_var
@@ -65,7 +65,9 @@ module AngstromParse (Comment : ParseUtil.Comment_int) = struct
         in
         let f (x, rng1) (y, rng2) =
           let range = OptRange.union rng1 rng2 in
-          let tm = Nominal.Operator (range, "app", [ Scope ([], x); Scope ([], y) ]) in
+          let tm =
+            Nominal.Term.Operator (range, "app", [ Scope ([], x); Scope ([], y) ])
+          in
           tm, range
         in
         let atom_or_lam = attach_pos (atom <|> lam) in
@@ -81,11 +83,11 @@ module ParseNoComment = AngstromParse (ParseUtil.NoComment)
 let pp_generic ~open_loc ~close_loc =
   let rec pp' prec ppf tm =
     let module Format = Caml.Format in
-    Format.pp_open_stag ppf (Format.String_tag (Nominal.hash Primitive.jsonify tm));
-    (* Stdio.printf "opening stag %s\n" (OptRange.to_string (Nominal.info tm)); *)
-    open_loc ppf (Nominal.info tm);
+    Format.pp_open_stag ppf (Format.String_tag (Nominal.Term.hash Primitive.jsonify tm));
+    (* Stdio.printf "opening stag %s\n" (OptRange.to_string (Nominal.Term.info tm)); *)
+    open_loc ppf (Nominal.Term.info tm);
     (match tm with
-    | Nominal.Operator (_, "app", [ Scope ([], a); Scope ([], b) ]) ->
+    | Nominal.Term.Operator (_, "app", [ Scope ([], a); Scope ([], b) ]) ->
       if prec > 1
       then Fmt.pf ppf "(%a %a)" (pp' 1) a (pp' 2) b
       else Fmt.pf ppf "%a %a" (pp' 1) a (pp' 2) b
@@ -94,9 +96,9 @@ let pp_generic ~open_loc ~close_loc =
       if prec > 0
       then Fmt.pf ppf {|(\%s -> %a)|} name (pp' 0) body
       else Fmt.pf ppf {|\%s -> %a|} name (pp' 0) body
-    | tm -> Fmt.failwith "Invalid Lambda term %a" (Nominal.pp_term Primitive.pp) tm);
-    (* OptRange.close_stag ppf (Nominal.info tm); *)
-    close_loc ppf (Nominal.info tm);
+    | tm -> Fmt.failwith "Invalid Lambda term %a" (Nominal.Term.pp Primitive.pp) tm);
+    (* OptRange.close_stag ppf (Nominal.Term.info tm); *)
+    close_loc ppf (Nominal.Term.info tm);
     (* range tag *)
     Format.pp_close_stag ppf ()
     (* hash tag *)

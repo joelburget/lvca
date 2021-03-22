@@ -50,33 +50,33 @@ let rec to_de_bruijn tm =
 ;;
 
 type ('info, 'prim) nominal_conversion_error =
-  | ScopeEncountered of ('info, 'prim) Nominal.scope
-  | VarEncountered of ('info, 'prim) Nominal.term
+  | ScopeEncountered of ('info, 'prim) Nominal.Scope.t
+  | VarEncountered of ('info, 'prim) Nominal.Term.t
 
 let rec of_nominal tm =
   match tm with
-  | Nominal.Operator (a, tag, scopes) ->
+  | Nominal.Term.Operator (a, tag, scopes) ->
     let%map scopes' = scopes |> List.map ~f:of_nominal_scope |> Result.all in
     Operator (a, tag, scopes')
   | Var _ -> Error (VarEncountered tm)
   | Primitive (a, p) -> Ok (Primitive (a, p))
 
 and of_nominal_scope = function
-  | Nominal.Scope ([], tm) -> of_nominal tm
+  | Nominal.Scope.Scope ([], tm) -> of_nominal tm
   | scope -> Error (ScopeEncountered scope)
 ;;
 
 let rec to_nominal tm =
   match tm with
   | Operator (info, tag, tms) ->
-    Nominal.Operator
-      (info, tag, List.map tms ~f:(fun tm -> Nominal.Scope ([], to_nominal tm)))
+    Nominal.Term.Operator
+      (info, tag, List.map tms ~f:(fun tm -> Nominal.Scope.Scope ([], to_nominal tm)))
   | Primitive (info, p) -> Primitive (info, p)
 ;;
 
-let pp pp_prim ppf tm = tm |> to_nominal |> Nominal.pp_term pp_prim ppf
-let pp_range pp_prim ppf tm = tm |> to_nominal |> Nominal.pp_term_range pp_prim ppf
-let hash jsonify_prim tm = tm |> to_nominal |> Nominal.hash jsonify_prim
+let pp pp_prim ppf tm = tm |> to_nominal |> Nominal.Term.pp pp_prim ppf
+let pp_range pp_prim ppf tm = tm |> to_nominal |> Nominal.Term.pp_range pp_prim ppf
+let hash jsonify_prim tm = tm |> to_nominal |> Nominal.Term.hash jsonify_prim
 
 let rec select_path ~path tm =
   match path with

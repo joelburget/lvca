@@ -34,14 +34,14 @@ val to_de_bruijn : ('info, 'prim) term -> ('info, 'prim) DeBruijn.term
 (** {1 Nominal conversion} *)
 
 type ('info, 'prim) nominal_conversion_error =
-  | ScopeEncountered of ('info, 'prim) Nominal.scope
-  | VarEncountered of ('info, 'prim) Nominal.term
+  | ScopeEncountered of ('info, 'prim) Nominal.Scope.t
+  | VarEncountered of ('info, 'prim) Nominal.Term.t
 
 val of_nominal
-  :  ('info, 'prim) Nominal.term
+  :  ('info, 'prim) Nominal.Term.t
   -> (('info, 'prim) term, ('info, 'prim) nominal_conversion_error) Result.t
 
-val to_nominal : ('info, 'prim) term -> ('info, 'prim) Nominal.term
+val to_nominal : ('info, 'prim) term -> ('info, 'prim) Nominal.Term.t
 
 (** {1 Printing} *)
 

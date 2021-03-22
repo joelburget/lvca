@@ -32,31 +32,31 @@ let open_scope subst_tm (Scope (_, _, tms)) = open_term 0 subst_tm tms
 
 let rec to_nominal' ctx = function
   | BoundVar (info, ix) ->
-    ix |> List.nth ctx |> Option.map ~f:(fun name -> Nominal.Var (info, name))
+    ix |> List.nth ctx |> Option.map ~f:(fun name -> Nominal.Term.Var (info, name))
   | FreeVar (info, name) -> Some (Var (info, name))
   | Operator (info, tag, subtms) ->
     subtms
     |> List.map ~f:(scope_or_term_to_nominal ctx)
     |> Option.all
-    |> Option.map ~f:(fun subtms' -> Nominal.Operator (info, tag, subtms'))
-  | Primitive (info, prim) -> Some (Nominal.Primitive (info, prim))
+    |> Option.map ~f:(fun subtms' -> Nominal.Term.Operator (info, tag, subtms'))
+  | Primitive (info, prim) -> Some (Nominal.Term.Primitive (info, prim))
 
 and scope_to_nominal ctx (Scope (info, name, body)) =
   let ctx = List.cons name ctx in
   let%map body = to_nominal' ctx body in
-  Nominal.Scope ([ Var (info, name) ], body)
+  Nominal.Scope.Scope ([ Var (info, name) ], body)
 
 and scope_or_term_to_nominal ctx = function
   | Either.First scope -> scope_to_nominal ctx scope
   | Second body ->
     let%map body = to_nominal' ctx body in
-    Nominal.Scope ([], body)
+    Nominal.Scope.Scope ([], body)
 ;;
 
 let to_nominal tm = to_nominal' [] tm
 
 let rec of_nominal_with_bindings env = function
-  | Nominal.Operator (info, tag, subtms) ->
+  | Nominal.Term.Operator (info, tag, subtms) ->
     let open Result.Let_syntax in
     let%map subtms' = subtms |> List.map ~f:(scope_of_nominal env) |> Result.all in
     Operator (info, tag, subtms')

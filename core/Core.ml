@@ -4,7 +4,7 @@ open Base
 open Lvca_syntax
 module Format = Caml.Format
 
-type 'info n_term = ('info, Primitive.t) Nominal.term
+type 'info n_term = ('info, Primitive.t) Nominal.Term.t
 type 'info pattern = ('info, Primitive.t) BindingAwarePattern.t
 
 type is_rec =
@@ -34,13 +34,13 @@ and 'info cases = 'info case_scope list
 
 and 'info case_scope = CaseScope of 'info pattern * 'info term
 
-type 'a env = ('a, Primitive.t) Nominal.term Lvca_util.String.Map.t
+type 'a env = ('a, Primitive.t) Nominal.Term.t Lvca_util.String.Map.t
 
 let preimage _ = failwith "TODO"
 let reverse _tm _cases = failwith "TODO"
 
 let rec map_info ~f = function
-  | Term tm -> Term (Nominal.map_info ~f tm)
+  | Term tm -> Term (Nominal.Term.map_info ~f tm)
   | CoreApp (info, t1, args) ->
     CoreApp (f info, map_info ~f t1, List.map ~f:(map_info ~f) args)
   | Case (info, tm, cases) -> Case (f info, map_info ~f tm, map_info_cases ~f cases)
@@ -51,7 +51,7 @@ let rec map_info ~f = function
       { info = f info
       ; is_rec
       ; tm = map_info ~f tm
-      ; ty = Option.map ~f:(Nominal.map_info ~f) ty
+      ; ty = Option.map ~f:(Nominal.Term.map_info ~f) ty
       ; scope = map_info_core_scope ~f scope
       }
   | Var (info, name) -> Var (f info, name)
@@ -64,7 +64,7 @@ and map_info_case_scope ~f (CaseScope (pat, tm)) =
 ;;
 
 let info = function
-  | Term tm -> Nominal.info tm
+  | Term tm -> Nominal.Term.info tm
   | CoreApp (info, _, _)
   | Case (info, _, _)
   | Lambda (info, _, _)
@@ -82,7 +82,7 @@ module PP = struct
 
   let rec pp ppf = function
     | Var (_, v) -> pf ppf "%s" v
-    | Term tm -> pf ppf "%a" (braces (Nominal.pp_term Primitive.pp)) tm
+    | Term tm -> pf ppf "%a" (braces (Nominal.Term.pp Primitive.pp)) tm
     | Lambda (_, sort, Scope (name, body)) ->
       pf ppf "\\(%s : %a) ->@ %a" name Sort.pp sort pp body
     (* TODO: parens if necessary *)
@@ -99,7 +99,7 @@ module PP = struct
         cases
     | Let { info = _; is_rec; tm; ty; scope = Scope (name, body) } ->
       let pp_ty ppf = function
-        | Some ty -> pf ppf ": %a" (Nominal.pp_term Primitive.pp) ty
+        | Some ty -> pf ppf ": %a" (Nominal.Term.pp Primitive.pp) ty
         | None -> ()
       in
       pf
@@ -179,7 +179,7 @@ let rec match_pattern
 
 and match_pattern_scope
     (BindingAwarePattern.Scope (_namesXXX, pat))
-    (Nominal.Scope (_patsXXX, body))
+    (Nominal.Scope.Scope (_patsXXX, body))
   =
   match_pattern body pat
 ;;
@@ -195,14 +195,14 @@ let find_match : 'a n_term -> 'b cases -> ('b term * 'a env) option =
 
 type 'a eval_error = string * 'a term
 
-let true_tm info = Nominal.Operator (info, "true", [])
-let false_tm info = Nominal.Operator (info, "false", [])
+let true_tm info = Nominal.Term.Operator (info, "true", [])
+let false_tm info = Nominal.Term.Operator (info, "false", [])
 
 let eval_char_bool_fn eval_ctx' name f ctx tm c =
   let open Result.Let_syntax in
   let%bind c_result = eval_ctx' ctx c in
   match c_result with
-  | Nominal.Primitive (info, Primitive.PrimChar c') ->
+  | Nominal.Term.Primitive (info, Primitive.PrimChar c') ->
     Ok (if f c' then true_tm info else false_tm info)
   | _ -> Error (Printf.sprintf "Invalid argument to %s" name, tm)
 ;;
@@ -241,7 +241,7 @@ let rec eval_ctx
     if Map.mem ctx name
     then failwith "TODO"
     else eval_primitive eval_ctx eval_ctx' ctx tm name args
-  | Term tm -> Ok (Nominal.subst_all ctx tm)
+  | Term tm -> Ok (Nominal.Term.subst_all ctx tm)
   | Let { tm; scope = Scope (name, body); _ } ->
     let%bind tm_val = eval_ctx ctx tm in
     eval_ctx (Map.set ctx ~key:name ~data:tm_val) body
@@ -265,7 +265,7 @@ let eval : 'a primitive_eval -> 'a term -> ('a n_term, 'a eval_error) Result.t =
 
 let eval_primitive eval_ctx eval_ctx' ctx tm name args =
   let open Result.Let_syntax in
-  let open Nominal in
+  let open Nominal.Term in
   let open Lvca_syntax.Primitive in
   match name, args with
   | "add", [ Term a; Term b ] ->
@@ -274,14 +274,14 @@ let eval_primitive eval_ctx eval_ctx' ctx tm name args =
     (match a_result, b_result with
     | Primitive (info, PrimInteger a'), Primitive (_, PrimInteger b') ->
       (* XXX can't reuse info *)
-      Ok (Nominal.Primitive (info, PrimInteger Z.(a' + b')))
+      Ok (Nominal.Term.Primitive (info, PrimInteger Z.(a' + b')))
     | _ -> Error ("Invalid arguments to add", tm))
   | "sub", [ Term a; Term b ] ->
     let%bind a_result = eval_ctx' ctx a in
     let%bind b_result = eval_ctx' ctx b in
     (match a_result, b_result with
     | Primitive (info, PrimInteger a'), Primitive (_, PrimInteger b') ->
-      Ok (Nominal.Primitive (info, PrimInteger Z.(a' - b')))
+      Ok (Nominal.Term.Primitive (info, PrimInteger Z.(a' - b')))
     | _ -> Error ("Invalid arguments to sub", tm))
   | "string_of_chars", [ char_list ] ->
     let%bind char_list = eval_ctx ctx char_list in
@@ -289,21 +289,21 @@ let eval_primitive eval_ctx eval_ctx' ctx tm name args =
     | Operator (info, "list", chars) ->
       chars
       |> List.map ~f:(function
-             | Nominal.Scope ([], Nominal.Primitive (_, PrimChar c)) -> Ok c
+             | Nominal.Scope.Scope ([], Nominal.Term.Primitive (_, PrimChar c)) -> Ok c
              | tm ->
                Error
                  (Printf.sprintf
                     "string_of_chars `list(%s)`"
-                    (Nominal.pp_scope_str Lvca_syntax.Primitive.pp tm)))
+                    (Nominal.Scope.pp_str Lvca_syntax.Primitive.pp tm)))
       |> Result.all
       |> Result.map ~f:(fun cs ->
-             Nominal.Primitive (info, PrimString (String.of_char_list cs)))
+             Nominal.Term.Primitive (info, PrimString (String.of_char_list cs)))
       |> Result.map_error ~f:(fun msg -> msg, tm)
     | _ -> Error ("expected a list of characters", tm))
   | "var", [ str_tm ] ->
     let%bind str = eval_ctx ctx str_tm in
     (match str with
-    | Primitive (info, PrimString name) -> Ok (Nominal.Var (info, name))
+    | Primitive (info, PrimString name) -> Ok (Nominal.Term.Var (info, name))
     | _ -> Error ("expected a string", tm))
   | "is_digit", [ Term c ] ->
     eval_char_bool_fn eval_ctx' "is_digit" Char.is_digit ctx tm c
@@ -323,7 +323,7 @@ let eval_primitive eval_ctx eval_ctx' ctx tm name args =
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
-  module Term = Nominal.Parse (Comment)
+  module Term = Nominal.Term.Parse (Comment)
   module ParsePrimitive = Primitive.Parse (Comment)
   module Abstract = AbstractSyntax.Parse (Comment)
   module Sort = Sort.Parse (Comment)
@@ -409,10 +409,10 @@ let%test_module "Parsing" =
     ;;
 
     let ( = ) = Caml.( = )
-    let one = Nominal.Primitive ((), Primitive.PrimInteger (Z.of_int 1))
+    let one = Nominal.Term.Primitive ((), Primitive.PrimInteger (Z.of_int 1))
     let var name = Var ((), name)
     let ignored name = BindingAwarePattern.Ignored ((), name)
-    let operator tag children = Nominal.Operator ((), tag, children)
+    let operator tag children = Nominal.Term.Operator ((), tag, children)
     let app f a = CoreApp ((), f, a)
 
     let%test _ = parse "{1}" = Term one
@@ -427,7 +427,10 @@ let%test_module "Parsing" =
           ; ty = None
           ; tm = app (var "string_of_chars") [ var "chars" ]
           ; scope =
-              Scope ("str", Term (operator "var" Nominal.[ Scope ([], Var ((), "str")) ]))
+              Scope
+                ( "str"
+                , Term (operator "var" Nominal.[ Scope.Scope ([], Term.Var ((), "str")) ])
+                )
           }
     ;;
 
@@ -475,7 +478,7 @@ let%test_module "Core parsing" =
   (module struct
     module ParseCore = Parse (ParseUtil.CComment)
 
-    let scope : (unit, Primitive.t) Nominal.term -> (unit, Primitive.t) Nominal.scope =
+    let scope : (unit, Primitive.t) Nominal.Term.t -> (unit, Primitive.t) Nominal.Scope.t =
      fun body -> Scope ([], body)
    ;;
 
@@ -501,7 +504,7 @@ let%test_module "Core parsing" =
         ((), tag, children |> List.map ~f:(fun pat -> BindingAwarePattern.Scope ([], pat)))
     ;;
 
-    let t_operator tag children = Nominal.Operator ((), tag, children)
+    let t_operator tag children = Nominal.Term.Operator ((), tag, children)
     let meaning x = CoreApp ((), c_var "meaning", [ x ])
     let ty = Sort.Name ((), "ty")
 
@@ -558,7 +561,7 @@ let%test_module "Core eval" =
       let result =
         match eval eval_primitive core with
         | Error (msg, tm) -> msg ^ ": " ^ to_string tm
-        | Ok result -> Nominal.pp_term_str Primitive.pp result
+        | Ok result -> Nominal.Term.pp_str Primitive.pp result
       in
       Stdio.print_string result
     ;;
@@ -749,7 +752,7 @@ let%test_module "Core eval in dynamics" =
       let core = parse_term str in
       match eval eval_primitive (CoreApp (None, defn, [ core ])) with
       | Error (msg, tm) -> msg ^ ": " ^ to_string tm
-      | Ok result -> Nominal.pp_term_str Primitive.pp result
+      | Ok result -> Nominal.Term.pp_str Primitive.pp result
     ;;
 
     let dynamics_str =

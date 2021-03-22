@@ -86,13 +86,13 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   let whitespace_t lang_p = junk *> t lang_p
 end
 
-type term = (OptRange.t, Primitive.t) Nominal.term
+type term = (OptRange.t, Primitive.t) Nominal.Term.t
 
 let%test_module "Parsing" =
   (module struct
     module Parsers = ParseUtil.Mk (ParseUtil.CComment)
     module ParseEdit = Parse (ParseUtil.CComment)
-    module ParseTerm = Nominal.Parse (ParseUtil.CComment)
+    module ParseTerm = Nominal.Term.Parse (ParseUtil.CComment)
     module ParseCore = Core.Parse (ParseUtil.CComment)
     module ParsePrimitive = Primitive.Parse (ParseUtil.CComment)
 
@@ -112,8 +112,8 @@ let%test_module "Parsing" =
         Error
           ( "no primitive evaluation"
           , Core.Term
-              (Nominal.Primitive (None, Primitive.PrimString "TODO: make this unnecessary"))
-          )
+              (Nominal.Term.Primitive
+                 (None, Primitive.PrimString "TODO: make this unnecessary")) )
       in
       fun tm core -> Core.(eval eval_primitive (CoreApp (None, core, [ Term tm ])))
     ;;
@@ -138,7 +138,7 @@ let%test_module "Parsing" =
         let%bind edit = parse edit in
         let%bind tm = ParseUtil.parse_string (ParseTerm.t ParsePrimitive.t) tm in
         let%map tm = run tm edit in
-        Nominal.pp_term Primitive.pp Caml.Format.std_formatter tm
+        Nominal.Term.pp Primitive.pp Caml.Format.std_formatter tm
       with
       | Error msg -> print_string msg
       | Ok () -> ()

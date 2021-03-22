@@ -25,11 +25,11 @@ end
 module type BindingTermS = sig
   include AllTermS
 
-  val to_nominal : 'info t -> ('info, Lvca_util.Void.t) Nominal.term
+  val to_nominal : 'info t -> ('info, Lvca_util.Void.t) Nominal.Term.t
 
   val of_nominal
-    :  ('info, 'prim) Nominal.term
-    -> ('info t, ('info, 'prim) Nominal.term) Result.t
+    :  ('info, 'prim) Nominal.Term.t
+    -> ('info t, ('info, 'prim) Nominal.Term.t) Result.t
 end
 
 module type ExtendedTermS = sig
@@ -42,7 +42,7 @@ module type ExtendedTermS = sig
   val select_path
     :  path:int list
     -> 'info t
-    -> ('info t, (string, ('info, Lvca_util.Void.t) Nominal.term) Either.t) Result.t
+    -> ('info t, (string, ('info, Lvca_util.Void.t) Nominal.Term.t) Either.t) Result.t
 
   val jsonify : _ t Lvca_util.Json.serializer
   val unjsonify : unit t Lvca_util.Json.deserializer
@@ -68,7 +68,7 @@ struct
   let to_string tm = Fmt.to_to_string pp tm
 
   let select_path ~path tm =
-    match tm |> Object.to_nominal |> Nominal.select_path ~path with
+    match tm |> Object.to_nominal |> Nominal.Term.select_path ~path with
     | Ok tm ->
       (match Object.of_nominal tm with
       | Ok tm -> Ok tm
@@ -76,11 +76,11 @@ struct
     | Error msg -> Error (Either.First msg)
   ;;
 
-  let jsonify tm = tm |> Object.to_nominal |> Nominal.jsonify Lvca_util.Void.absurd
+  let jsonify tm = tm |> Object.to_nominal |> Nominal.Term.jsonify Lvca_util.Void.absurd
 
   let unjsonify json =
     let open Option.Let_syntax in
-    let%bind nom = json |> Nominal.unjsonify (Fn.const None) in
+    let%bind nom = json |> Nominal.Term.unjsonify (Fn.const None) in
     match Object.of_nominal nom with Ok tm -> Some tm | Error _ -> None
   ;;
 

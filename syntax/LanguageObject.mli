@@ -27,11 +27,11 @@ end
 module type BindingTermS = sig
   include AllTermS
 
-  val to_nominal : 'info t -> ('info, Lvca_util.Void.t) Nominal.term
+  val to_nominal : 'info t -> ('info, Lvca_util.Void.t) Nominal.Term.t
 
   val of_nominal
-    :  ('info, 'prim) Nominal.term
-    -> ('info t, ('info, 'prim) Nominal.term) Result.t
+    :  ('info, 'prim) Nominal.Term.t
+    -> ('info t, ('info, 'prim) Nominal.Term.t) Result.t
 end
 
 module type ExtendedTermS = sig
@@ -46,7 +46,9 @@ module type ExtendedTermS = sig
   val select_path
     :  path:int list
     -> 'info t
-    -> ('info t, (string, ('info, Lvca_util.Void.t) Nominal.term) Base.Either.t) Result.t
+    -> ( 'info t
+       , (string, ('info, Lvca_util.Void.t) Nominal.Term.t) Base.Either.t )
+       Result.t
 
   val jsonify : _ t Lvca_util.Json.serializer
   val unjsonify : unit t Lvca_util.Json.deserializer

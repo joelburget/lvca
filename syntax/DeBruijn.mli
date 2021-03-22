@@ -12,16 +12,16 @@ and ('info, 'prim) scope = Scope of 'info * string * ('info, 'prim) term
 (** Open a scope, substituting a term for the variable bound by this scope. *)
 val open_scope : ('info, 'prim) term -> ('info, 'prim) scope -> ('info, 'prim) term
 
-val to_nominal : ('info, 'prim) term -> ('info, 'prim) Nominal.term option
+val to_nominal : ('info, 'prim) term -> ('info, 'prim) Nominal.Term.t option
 
 val of_nominal
-  :  ('info, 'prim) Nominal.term
-  -> (('info, 'prim) term, ('info, 'prim) Nominal.scope) Result.t
+  :  ('info, 'prim) Nominal.Term.t
+  -> (('info, 'prim) term, ('info, 'prim) Nominal.Scope.t) Result.t
 
 val of_nominal_with_bindings
   :  int Lvca_util.String.Map.t
-  -> ('info, 'prim) Nominal.term
-  -> (('info, 'prim) term, ('info, 'prim) Nominal.scope) Result.t
+  -> ('info, 'prim) Nominal.Term.t
+  -> (('info, 'prim) term, ('info, 'prim) Nominal.Scope.t) Result.t
 
 (** Are the two terms equivalent up to variable renaming? *)
 val alpha_equivalent

@@ -1,11 +1,11 @@
 open Lvca_syntax
 let test_nominal =
-  Nominal.Operator
+  Nominal.Term.Operator
     ((Some (let open Range in { start = 0; finish = 9 })), "foo",
-      [Nominal.Scope
+      [Nominal.Scope.Scope
          ([Pattern.Var
              ((Some ((let open Range in { start = 4; finish = 5 }))), "x")],
-           (Nominal.Var
+           (Nominal.Term.Var
               ((Some ((let open Range in { start = 7; finish = 8 }))), "x")))])
 let test_nonbinding =
   NonBinding.Operator

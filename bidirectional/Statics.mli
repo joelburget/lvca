@@ -4,7 +4,7 @@
 open Lvca_syntax
 
 type 'info pattern = ('info, Primitive.t) BindingAwarePattern.t
-type 'info term = ('info, Primitive.t) Nominal.term
+type 'info term = ('info, Primitive.t) Nominal.Term.t
 
 (** Both typing and inference rules share this shape.
 

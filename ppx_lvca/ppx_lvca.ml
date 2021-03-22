@@ -3,7 +3,7 @@ open Lvca_syntax
 open Ppxlib
 module ParsePrimitive = Lvca_syntax.Primitive.Parse (ParseUtil.CComment)
 module ParsePattern = Lvca_syntax.Pattern.Parse (ParseUtil.CComment)
-module ParseTerm = Nominal.Parse (ParseUtil.CComment)
+module ParseTerm = Nominal.Term.Parse (ParseUtil.CComment)
 module ParseNonbinding = NonBinding.Parse (ParseUtil.CComment)
 module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
 
@@ -65,18 +65,19 @@ let rec mk_pattern ~loc = function
 ;;
 
 let rec mk_nominal ~loc = function
-  | Nominal.Operator (pos, name, scopes) ->
+  | Nominal.Term.Operator (pos, name, scopes) ->
     let name_exp = mk_str ~loc name in
     let scopes = scopes |> List.map ~f:(mk_scope ~loc) |> mk_list ~loc in
-    [%expr Nominal.Operator ([%e mk_pos ~loc pos], [%e name_exp], [%e scopes])]
-  | Var (pos, str) -> [%expr Nominal.Var ([%e mk_pos ~loc pos], [%e mk_str ~loc str])]
+    [%expr Nominal.Term.Operator ([%e mk_pos ~loc pos], [%e name_exp], [%e scopes])]
+  | Var (pos, str) ->
+    [%expr Nominal.Term.Var ([%e mk_pos ~loc pos], [%e mk_str ~loc str])]
   | Primitive (pos, prim) ->
-    [%expr Nominal.Primitive ([%e mk_pos ~loc pos], [%e mk_prim ~loc prim])]
+    [%expr Nominal.Term.Primitive ([%e mk_pos ~loc pos], [%e mk_prim ~loc prim])]
 
-and mk_scope ~loc (Nominal.Scope (pats, tm)) =
+and mk_scope ~loc (Nominal.Scope.Scope (pats, tm)) =
   let tm = mk_nominal ~loc tm in
   let pats = pats |> List.map ~f:(mk_pattern ~loc) |> mk_list ~loc in
-  [%expr Nominal.Scope ([%e pats], [%e tm])]
+  [%expr Nominal.Scope.Scope ([%e pats], [%e tm])]
 ;;
 
 let rec mk_nonbinding ~loc = function

@@ -2,7 +2,7 @@ open Base
 open Lvca_syntax
 
 type 'info pattern = ('info, Primitive.t) BindingAwarePattern.t
-type 'info term = ('info, Primitive.t) Nominal.term
+type 'info term = ('info, Primitive.t) Nominal.Term.t
 
 type 'a typing_rule =
   { tm : 'a pattern
@@ -47,14 +47,14 @@ let erase_rule { hypotheses; name; conclusion } =
   }
 ;;
 
-let erase_typing (Typing (t1, t2)) = Typing (Nominal.erase t1, Nominal.erase t2)
+let erase_typing (Typing (t1, t2)) = Typing (Nominal.Term.erase t1, Nominal.Term.erase t2)
 let erase = List.map ~f:erase_rule
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   open Parsers
 
-  (* module Term = Nominal.Parse (Comment) *)
+  (* module Term = Nominal.Term.Parse (Comment) *)
   module Pattern = BindingAwarePattern.Parse (Comment)
   module ParsePrimitive = Primitive.Parse (Comment)
 
