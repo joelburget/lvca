@@ -16,6 +16,7 @@ module Kind : sig
   val info : 'info t -> 'info
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val pp : _ t Fmt.t
+  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   module Parse (Comment : ParseUtil.Comment_int) : sig
     val t : OptRange.t t ParseUtil.t
@@ -34,6 +35,7 @@ module PatternSort : sig
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val pp : _ t Fmt.t
+  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
 end
 
@@ -46,6 +48,7 @@ module SortSlot : sig
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val pp : _ t Fmt.t
+  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   val kind_check
     :  Lvca_util.Int.Set.t Lvca_util.String.Map.t
@@ -68,6 +71,7 @@ module Valence : sig
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val pp : _ t Fmt.t
+  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   (** Instantiate concrete vars in a valence *)
   val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
@@ -85,6 +89,7 @@ module Arity : sig
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val erase : _ t -> unit t
   val pp : _ t Fmt.t
+  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   (** Instantiate concrete vars in an arity *)
   val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
@@ -102,6 +107,7 @@ module OperatorDef : sig
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val pp : _ t Fmt.t
+  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   module Parse (Comment : ParseUtil.Comment_int) : sig
     val t : OptRange.t t ParseUtil.t
@@ -117,6 +123,12 @@ module SortDef : sig
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val erase : _ t -> unit t
   val pp : name:string -> _ t Fmt.t
+
+  val pp_generic
+    :  open_loc:'info Fmt.t
+    -> close_loc:'info Fmt.t
+    -> name:string
+    -> 'info t Fmt.t
 
   val kind_check
     :  Lvca_util.Int.Set.t Lvca_util.String.Map.t
@@ -160,6 +172,7 @@ val lookup_operator
   -> ((string * 'info Kind.t option) list * 'info OperatorDef.t) option
 
 val pp : _ t Fmt.t
+val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
 (** Check that each sort in the syntax has a consistent arity. *)
 val kind_check : _ t -> (kind_map, kind_mismap) Result.t

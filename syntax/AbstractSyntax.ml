@@ -19,9 +19,13 @@ module Kind = struct
   let info (Kind (i, _)) = i
   let map_info ~f (Kind (i, k)) = Kind (f i, k)
 
-  let pp ppf (Kind (_, k)) =
-    Fmt.(pf ppf "%a" (list ~sep:(any " -> ") (any "*")) (List.init k ~f:(Fn.const ())))
+  let pp_generic ~open_loc ~close_loc ppf (Kind (info, k)) =
+    open_loc ppf info;
+    Fmt.(pf ppf "%a" (list ~sep:(any " -> ") (any "*")) (List.init k ~f:(Fn.const ())));
+    close_loc ppf info
   ;;
+
+  let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
   module Parse (Comment : ParseUtil.Comment_int) = struct
     module Parsers = ParseUtil.Mk (Comment)
@@ -55,11 +59,14 @@ module PatternSort = struct
     { pattern_sort = Sort.map_info ~f pattern_sort; var_sort = Sort.map_info ~f var_sort }
   ;;
 
-  let pp ppf { pattern_sort; var_sort } =
+  let pp_generic ~open_loc ~close_loc ppf { pattern_sort; var_sort } =
+    let sort_pp = Sort.pp_generic ~open_loc ~close_loc in
     match pattern_sort with
-    | Sort.Name _ -> Fmt.pf ppf "%a[%a]" Sort.pp pattern_sort Sort.pp var_sort
-    | _ -> Fmt.pf ppf "(%a)[%a]" Sort.pp pattern_sort Sort.pp var_sort
+    | Sort.Name _ -> Fmt.pf ppf "%a[%a]" sort_pp pattern_sort sort_pp var_sort
+    | _ -> Fmt.pf ppf "(%a)[%a]" sort_pp pattern_sort sort_pp var_sort
   ;;
+
+  let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
   let instantiate env { pattern_sort; var_sort } =
     { pattern_sort = Sort.instantiate env pattern_sort
@@ -89,10 +96,12 @@ module SortSlot = struct
     | _, _ -> false
   ;;
 
-  let pp ppf = function
-    | SortBinding sort -> Sort.pp ppf sort
-    | SortPattern ps -> PatternSort.pp ppf ps
+  let pp_generic ~open_loc ~close_loc ppf = function
+    | SortBinding sort -> Sort.pp_generic ~open_loc ~close_loc ppf sort
+    | SortPattern ps -> PatternSort.pp_generic ~open_loc ~close_loc ppf ps
   ;;
+
+  let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
   let instantiate env = function
     | SortBinding s -> SortBinding (Sort.instantiate env s)
@@ -134,12 +143,21 @@ module Valence = struct
     Valence (List.map ~f:(SortSlot.map_info ~f) slots, Sort.map_info ~f sort)
   ;;
 
-  let pp ppf (Valence (binders, result)) =
+  let pp_generic ~open_loc ~close_loc ppf (Valence (binders, result)) =
+    let sort_pp = Sort.pp_generic ~open_loc ~close_loc in
     match binders with
-    | [] -> Sort.pp ppf result
+    | [] -> sort_pp ppf result
     | _ ->
-      Fmt.pf ppf "%a. %a" Fmt.(list ~sep:(any ".@ ") SortSlot.pp) binders Sort.pp result
+      Fmt.pf
+        ppf
+        "%a. %a"
+        Fmt.(list ~sep:(any ".@ ") (SortSlot.pp_generic ~open_loc ~close_loc))
+        binders
+        sort_pp
+        result
   ;;
+
+  let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
   let instantiate env = function
     | Valence (binding_sort_slots, body_sort) ->
@@ -180,7 +198,11 @@ end
 module Arity = struct
   type 'info t = 'info Valence.t list
 
-  let pp t = Fmt.(parens (list ~sep:semi Valence.pp)) t
+  let pp_generic ~open_loc ~close_loc ppf t =
+    Fmt.(parens (list ~sep:semi (Valence.pp_generic ~open_loc ~close_loc))) ppf t
+  ;;
+
+  let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
   let equal ~info_eq = List.equal (Valence.equal ~info_eq)
   let map_info ~f = List.map ~f:(Valence.map_info ~f)
   let erase arity = map_info ~f:(Fn.const ()) arity
@@ -256,7 +278,11 @@ module OperatorDef = struct
     arity |> List.fold ~init:env ~f:Valence.kind_check
   ;;
 
-  let pp ppf (OperatorDef (name, arity)) = Fmt.pf ppf "%s%a" name Arity.pp arity
+  let pp_generic ~open_loc ~close_loc ppf (OperatorDef (name, arity)) =
+    Fmt.pf ppf "%s%a" name (Arity.pp_generic ~open_loc ~close_loc) arity
+  ;;
+
+  let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
   module Parse (Comment : ParseUtil.Comment_int) = struct
     module Parsers = ParseUtil.Mk (Comment)
@@ -317,20 +343,21 @@ module SortDef = struct
     List.fold operators ~init:env ~f:OperatorDef.kind_check
   ;;
 
-  let pp ~name ppf (SortDef (sort_vars, operator_defs)) =
+  let pp_generic ~open_loc ~close_loc ~name ppf (SortDef (sort_vars, operator_defs)) =
     let open Fmt in
     let pp_sort_var ppf (name, kind_opt) =
       match kind_opt with
       | None -> pf ppf "%s" name
-      | Some kind -> pf ppf "(%s : %a)" name Kind.pp kind
+      | Some kind -> pf ppf "(%s : %a)" name (Kind.pp_generic ~open_loc ~close_loc) kind
     in
     let pp_sort_vars ppf vars =
       match vars with [] -> () | _ -> Fmt.pf ppf " %a" (list pp_sort_var) vars
     in
+    let pp_op_def = OperatorDef.pp_generic ~open_loc ~close_loc in
     match operator_defs with
     | [] -> pf ppf "%s%a :=" name pp_sort_vars sort_vars
     | [ single_def ] ->
-      pf ppf "%s%a := @[%a@]" name pp_sort_vars sort_vars OperatorDef.pp single_def
+      pf ppf "%s%a := @[%a@]" name pp_sort_vars sort_vars pp_op_def single_def
     | _ ->
       pf
         ppf
@@ -338,8 +365,12 @@ module SortDef = struct
         name
         pp_sort_vars
         sort_vars
-        (list ~sep:(any "@,| ") OperatorDef.pp)
+        (list ~sep:(any "@,| ") pp_op_def)
         operator_defs
+  ;;
+
+  let pp ~name ppf t =
+    pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ~name ppf t
   ;;
 
   module Parse (Comment : ParseUtil.Comment_int) = struct
@@ -513,11 +544,17 @@ let lookup_operator { externals = _; sort_defs } sort_name op_name =
   vars, result
 ;;
 
-let pp ppf { externals; sort_defs } =
-  let pp_externals = Fmt.(list (pair ~sep:(any " : ") string Kind.pp)) in
-  let pp_sort_def ppf (name, sort_def) = SortDef.pp ~name ppf sort_def in
+let pp_generic ~open_loc ~close_loc ppf { externals; sort_defs } =
+  let pp_externals =
+    Fmt.(list (pair ~sep:(any " : ") string (Kind.pp_generic ~open_loc ~close_loc)))
+  in
+  let pp_sort_def ppf (name, sort_def) =
+    SortDef.pp_generic ~open_loc ~close_loc ~name ppf sort_def
+  in
   Fmt.pf ppf "%a@,%a" pp_externals externals Fmt.(list pp_sort_def) sort_defs
 ;;
+
+let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
 type kind_map = int SMap.t
 type kind_mismap = ISet.t SMap.t

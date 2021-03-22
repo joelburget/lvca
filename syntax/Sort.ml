@@ -13,6 +13,8 @@ let rec equal info_eq s1 s2 =
   | _, _ -> false
 ;;
 
+let info = function Ap (i, _, _) | Name (i, _) -> i
+
 let pp ppf sort =
   let rec pp need_parens ppf = function
     | Ap (_, name, args) ->
@@ -22,6 +24,13 @@ let pp ppf sort =
     | Name (_, name) -> Fmt.pf ppf "%s" name
   in
   pp false ppf sort
+;;
+
+let pp_generic ~open_loc ~close_loc ppf sort =
+  let info = info sort in
+  open_loc ppf info;
+  pp ppf sort;
+  close_loc ppf info
 ;;
 
 let rec instantiate arg_mapping = function
