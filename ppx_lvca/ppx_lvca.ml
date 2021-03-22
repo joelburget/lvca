@@ -121,8 +121,8 @@ let mk_operator_def ~loc (AbstractSyntax.OperatorDef.OperatorDef (name, arity)) 
       ([%e mk_str ~loc name], [%e mk_arity ~loc arity])]
 ;;
 
-let mk_kind ~loc (AbstractSyntax.Kind.Kind n) =
-  [%expr AbstractSyntax.Kind.Kind [%e mk_int ~loc n]]
+let mk_kind ~loc (AbstractSyntax.Kind.Kind (pos, n)) =
+  [%expr AbstractSyntax.Kind.Kind ([%e mk_pos ~loc pos], [%e mk_int ~loc n])]
 ;;
 
 let mk_option ~loc maker = function None -> [%expr None] | Some x -> maker ~loc x
