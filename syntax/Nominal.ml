@@ -1020,20 +1020,18 @@ let%test_module "TermParser" =
 let%test_module "check" =
   (module struct
     module AbstractSyntaxParse = AbstractSyntax.Parse (ParseUtil.NoComment)
+    module Parser = Term.Parse (ParseUtil.NoComment)
+    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
+    module SortParse = Sort.Parse (ParseUtil.NoComment)
 
     let parse_lang lang_str =
       ParseUtil.parse_string AbstractSyntaxParse.whitespace_t lang_str
       |> Result.ok_or_failwith
     ;;
 
-    module Parser = Term.Parse (ParseUtil.NoComment)
-    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
-
     let parse_term term_str =
       ParseUtil.parse_string (Parser.t ParsePrimitive.t) term_str |> Result.ok_or_failwith
     ;;
-
-    module SortParse = Sort.Parse (ParseUtil.NoComment)
 
     let parse_sort str = ParseUtil.parse_string SortParse.t str
 
