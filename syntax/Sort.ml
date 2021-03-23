@@ -5,6 +5,23 @@ type 'info t =
   | Ap of 'info * string * 'info t list
   | Name of 'info * string
 
+module Plain = struct
+  type t =
+    | Ap of string * t list
+    | Name of string
+end
+
+let rec of_plain plain =
+  match plain with
+  | Plain.Ap (name, ts) -> Ap (plain, name, List.map ts ~f:of_plain)
+  | Plain.Name name -> Name (plain, name)
+;;
+
+let rec to_plain = function
+  | Ap (_, name, ts) -> Plain.Ap (name, List.map ts ~f:to_plain)
+  | Name (_, name) -> Plain.Name name
+;;
+
 let rec equal info_eq s1 s2 =
   match s1, s2 with
   | Ap (i1, name1, s1), Ap (i2, name2, s2) ->

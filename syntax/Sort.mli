@@ -7,6 +7,14 @@ type 'info t =
   | Ap of 'info * string * 'info t list (** A higher-kinded sort can be applied *)
   | Name of 'info * string
 
+module Plain : sig
+  type t =
+    | Ap of string * t list
+    | Name of string
+end
+
+val of_plain : Plain.t -> Plain.t t
+val to_plain : _ t -> Plain.t
 val equal : ('info -> 'info -> bool) -> 'info t -> 'info t -> bool
 val info : 'info t -> 'info
 val pp : _ t Fmt.t
