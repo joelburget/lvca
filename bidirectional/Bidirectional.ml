@@ -4,7 +4,7 @@ open Statics
 module SMap = Lvca_util.String.Map
 
 type 'a env =
-  { rules : 'a rule list (** The (checking / inference) rules we can apply *)
+  { rules : 'a Rule.t list (** The (checking / inference) rules we can apply *)
   ; var_types : 'a term SMap.t (** The types of all known free variables *)
   }
 
@@ -15,7 +15,7 @@ type 'info check_error =
   | BadMerge of ('info, Primitive.t) capture * ('info, Primitive.t) capture
 
 type 'a trace_entry =
-  | CheckTrace of 'a env * 'a typing
+  | CheckTrace of 'a env * 'a Typing.t
   | CheckSuccess
   | CheckFailure of 'a check_error
   | InferTrace of 'a env * 'a term
@@ -133,7 +133,7 @@ let ctx_infer : 'a term SMap.t -> 'a term -> ('a term, 'a check_error) Result.t 
 ;;
 
 let rec check'
-    :  'a trace_step -> ('a trace_step -> unit) -> 'a env -> 'a typing
+    :  'a trace_step -> ('a trace_step -> unit) -> 'a env -> 'a Typing.t
     -> 'a check_error option
   =
  fun trace_stack emit_trace ({ rules; _ } as env) (Typing (tm, ty) as typing) ->
@@ -141,7 +141,7 @@ let rec check'
   let trace_stack = trace_entry :: trace_stack in
   emit_trace trace_stack;
   let match_rule = function
-    | { conclusion = _, InferenceRule _; _ } -> None
+    | Rule.{ conclusion = _, InferenceRule _; _ } -> None
     (* TODO: the conclusion may have a context, which we're currently ignoring *)
     | { name; hypotheses; conclusion = _, CheckingRule { tm = rule_tm; ty = rule_ty } } ->
       let match1 = BindingAwarePattern.match_term ~prim_eq:Primitive.( = ) rule_tm tm in
@@ -191,7 +191,7 @@ and infer'
   let var_types : 'a term SMap.t ref = ref var_types in
   let trace_stack = InferTrace (env, tm) :: trace_stack in
   emit_trace trace_stack;
-  let match_rule { name; hypotheses; conclusion } =
+  let match_rule Rule.{ name; hypotheses; conclusion } =
     match conclusion with
     | _, CheckingRule _ -> None
     (* TODO: the conclusion may have a context, which we're currently ignoring *)
@@ -219,7 +219,7 @@ and infer'
 (* Check (or infer, depending on the rule) a hypothesis *)
 and check_hyp
     :  'a trace_step -> ('a trace_step -> unit) -> 'string
-    -> ('a, Primitive.t) capture SMap.t ref -> 'a env -> 'a hypothesis
+    -> ('a, Primitive.t) capture SMap.t ref -> 'a env -> 'a Hypothesis.t
     -> 'a check_error option
   =
  fun trace_stack emit_trace name ctx_state env (pattern_ctx, rule) ->

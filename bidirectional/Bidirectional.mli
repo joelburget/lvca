@@ -3,7 +3,7 @@
 open Statics
 
 type 'a env =
-  { rules : 'a rule list (** The (checking / inference) rules we can apply *)
+  { rules : 'a Rule.t list (** The (checking / inference) rules we can apply *)
   ; var_types : 'a term Lvca_util.String.Map.t
         (** The types of all known free variables *)
   }
@@ -15,7 +15,7 @@ type 'info check_error =
       * ('info, Lvca_syntax.Primitive.t) Lvca_syntax.BindingAwarePattern.capture
 
 type 'a trace_entry =
-  | CheckTrace of 'a env * 'a typing
+  | CheckTrace of 'a env * 'a Typing.t
   | CheckSuccess
   | CheckFailure of 'a check_error
   | InferTrace of 'a env * 'a term
@@ -24,7 +24,7 @@ type 'a trace_entry =
 type 'a trace_step = 'a trace_entry list
 
 (*
-val check_trace : ('a trace_step -> unit) -> 'a env -> 'a typing -> 'a check_error option
+val check_trace : ('a trace_step -> unit) -> 'a env -> 'a Typing.t -> 'a check_error option
 
 val infer_trace
   :  ('a trace_step -> unit)
@@ -32,14 +32,14 @@ val infer_trace
   -> 'a term
   -> ('a term, 'a check_error) Result.t
 
-val check : 'a env -> 'a typing -> 'a check_error option
+val check : 'a env -> 'a Typing.t -> 'a check_error option
 val infer : 'a env -> 'a term -> ('a term, 'a check_error) Result.t
 *)
 
 val check_trace
   :  (Lvca_syntax.OptRange.t trace_step -> unit)
   -> Lvca_syntax.OptRange.t env
-  -> Lvca_syntax.OptRange.t typing
+  -> Lvca_syntax.OptRange.t Typing.t
   -> Lvca_syntax.OptRange.t check_error option
 
 val infer_trace
@@ -50,7 +50,7 @@ val infer_trace
 
 val check
   :  Lvca_syntax.OptRange.t env
-  -> Lvca_syntax.OptRange.t typing
+  -> Lvca_syntax.OptRange.t Typing.t
   -> Lvca_syntax.OptRange.t check_error option
 
 val infer
