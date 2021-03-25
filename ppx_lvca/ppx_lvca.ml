@@ -153,102 +153,6 @@ let mk_language ~loc AbstractSyntax.{ externals; sort_defs } =
   [%expr AbstractSyntax.{ externals = [%e externals]; sort_defs = [%e sort_defs] }]
 ;;
 
-let rec ptyp_of_sort ~loc var_set = function
-  | Sort.Name (_, name) ->
-    if Set.mem var_set name
-    then Ptyp_var name
-    else Ptyp_constr ({ txt = Lident name; loc }, [])
-  | Ap (_, name, args) ->
-    Ptyp_constr
-      ( { txt = Lident name; loc }
-      , args
-        |> List.map ~f:(fun sort ->
-               { ptyp_desc = ptyp_of_sort ~loc var_set sort
-               ; ptyp_loc = loc
-               ; ptyp_loc_stack = []
-               ; ptyp_attributes = []
-               }) )
-;;
-
-let mk_type ~loc ptyp_desc =
-  { ptyp_desc; ptyp_loc = loc; ptyp_loc_stack = []; ptyp_attributes = [] }
-;;
-
-let mk_var_type ~loc name = mk_type ~loc (Ptyp_var name)
-
-let core_type_of_valence
-    ~loc
-    var_set
-    (AbstractSyntax.Valence.Valence (binding_sort_slots, body_sort))
-  =
-  let body_type = ptyp_of_sort ~loc var_set body_sort in
-  let ptyp_desc =
-    match binding_sort_slots with
-    | [] -> body_type
-    | slots ->
-      let var_types = [ mk_var_type ~loc "info" ] in
-      let binding_types =
-        slots
-        |> List.map ~f:(fun slot ->
-               let ty =
-                 match slot with
-                 | AbstractSyntax.SortSlot.SortBinding _sort ->
-                   Ptyp_constr ({ txt = Lident "string"; loc }, [])
-                 | SortPattern _sort ->
-                   Ptyp_constr ({ txt = Ldot (Lident "Pattern", "t"); loc }, var_types)
-               in
-               mk_type ~loc ty)
-      in
-      let body_type = mk_type ~loc body_type in
-      Ptyp_tuple (binding_types @ [ body_type ])
-  in
-  mk_type ~loc ptyp_desc
-;;
-
-(* TODO: more sophisticated rule? *)
-let ctor_name = String.capitalize
-
-let mk_language_module ~loc AbstractSyntax.{ externals = _; sort_defs } =
-  let structure_items =
-    sort_defs
-    |> List.map ~f:(fun (name, AbstractSyntax.SortDef.SortDef (vars, op_defs)) ->
-           let vars = vars |> List.map ~f:Lvca_util.Tuple2.get1 in
-           let var_set = vars |> Lvca_util.String.Set.of_list in
-           let ctor_decls =
-             op_defs
-             |> List.map
-                  ~f:(fun (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity)) ->
-                    let args = arity |> List.map ~f:(core_type_of_valence ~loc var_set) in
-                    { pcd_name = { txt = ctor_name op_name; loc }
-                    ; pcd_args = Pcstr_tuple args
-                    ; pcd_res = None (* Is this only for GADTs? *)
-                    ; pcd_loc = loc
-                    ; pcd_attributes = []
-                    })
-           in
-           let ptype_params =
-             "info" :: vars
-             |> List.map ~f:(fun var_name ->
-                    let core_type = mk_var_type ~loc var_name in
-                    core_type, Invariant
-                    (* Covariant? *))
-           in
-           let type_decl =
-             { ptype_name = { txt = name; loc }
-             ; ptype_params
-             ; ptype_cstrs = [] (* we never use constraints *)
-             ; ptype_kind = Ptype_variant ctor_decls
-             ; ptype_private = Public
-             ; ptype_manifest = None
-             ; ptype_attributes = [] (* we never have attributes *)
-             ; ptype_loc = loc
-             }
-           in
-           { pstr_desc = Pstr_type (Recursive, [ type_decl ]); pstr_loc = loc })
-  in
-  { pmod_desc = Pmod_structure structure_items; pmod_loc = loc; pmod_attributes = [] }
-;;
-
 let expand_nominal ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
   match ParseUtil.parse_string (ParseTerm.whitespace_t ParsePrimitive.t) str with
@@ -277,14 +181,648 @@ let expand_abstract_syntax ~(loc : Location.t) ~path:_ (expr : expression) : exp
   | Ok syntax -> mk_language ~loc syntax
 ;;
 
-let expand_abstract_syntax_module ~(loc : Location.t) ~path:_ (expr : expression)
-    : module_expr
-  =
-  let str, loc = extract_string loc expr in
-  match ParseUtil.parse_string ParseAbstract.whitespace_t str with
-  | Error msg -> Location.raise_errorf ~loc "%s" msg
-  | Ok syntax -> mk_language_module ~loc syntax
-;;
+module ModuleExpander = struct
+  module Util = Lvca_util
+
+  let mk_type ~loc ptyp_desc =
+    { ptyp_desc; ptyp_loc = loc; ptyp_loc_stack = []; ptyp_attributes = [] }
+  ;;
+
+  let mk_pat ~loc ppat_desc =
+    { ppat_desc; ppat_loc = loc; ppat_loc_stack = []; ppat_attributes = [] }
+  ;;
+
+  let mk_exp ~loc pexp_desc =
+    { pexp_desc; pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
+  ;;
+
+  let mk_value_binding ~loc pvb_pat pvb_expr =
+    { pvb_pat; pvb_expr; pvb_attributes = []; pvb_loc = loc }
+  ;;
+
+  (* TODO: more sophisticated rule? *)
+  let ctor_name = String.capitalize
+  let module_name = String.capitalize
+  let mk_var_type ~loc name = mk_type ~loc (Ptyp_var name)
+  let pattern_t_ident = Ldot (Lident "Pattern", "t")
+  let pattern_t ~loc = { txt = pattern_t_ident; loc }
+  let void_t_loc = Ldot (Ldot (Lident "Lvca_util", "Void"), "t")
+  let void_t ~loc = { txt = void_t_loc; loc }
+
+  let rec ptyp_of_sort ~loc var_set = function
+    | Sort.Name (_, name) ->
+      if Set.mem var_set name
+      then Ptyp_var name
+      else Ptyp_constr ({ txt = Lident name; loc }, [])
+    | Ap (_, name, args) ->
+      Ptyp_constr
+        ( { txt = Lident name; loc }
+        , args
+          |> List.map ~f:(fun sort ->
+                 { ptyp_desc = ptyp_of_sort ~loc var_set sort
+                 ; ptyp_loc = loc
+                 ; ptyp_loc_stack = []
+                 ; ptyp_attributes = []
+                 }) )
+  ;;
+
+  let args_of_valence
+      ~loc
+      ~info
+      var_set
+      (AbstractSyntax.Valence.Valence (binding_sort_slots, body_sort))
+    =
+    let body_type = ptyp_of_sort ~loc var_set body_sort in
+    let ptyp_desc =
+      match binding_sort_slots with
+      | [] -> body_type
+      | slots ->
+        let pat_var_types =
+          if info
+          then [ mk_var_type ~loc "info"; mk_type ~loc (Ptyp_constr (void_t ~loc, [])) ]
+          else
+            [ mk_type ~loc (Ptyp_constr ({ txt = Lident "unit"; loc }, []))
+            ; mk_type ~loc (Ptyp_constr (void_t ~loc, []))
+            ]
+        in
+        let binding_types =
+          slots
+          |> List.map ~f:(fun slot ->
+                 let ty =
+                   match slot with
+                   | AbstractSyntax.SortSlot.SortBinding _sort ->
+                     Ptyp_constr ({ txt = Lident "string"; loc }, [])
+                   | SortPattern _sort -> Ptyp_constr (pattern_t ~loc, pat_var_types)
+                 in
+                 mk_type ~loc ty)
+        in
+        let body_type = mk_type ~loc body_type in
+        Ptyp_tuple (binding_types @ [ body_type ])
+    in
+    mk_type ~loc ptyp_desc
+  ;;
+
+  (* XXX possibility of generating two constructors with same name *)
+  let mk_ctor ~loc ~info var_set (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity))
+    =
+    let args = arity |> List.map ~f:(args_of_valence ~loc ~info var_set) in
+    let args = if info then mk_type ~loc (Ptyp_var "info") :: args else args in
+    { pcd_name = { txt = ctor_name op_name; loc }
+    ; pcd_args = Pcstr_tuple args
+    ; pcd_res = None (* Is this only for GADTs? *)
+    ; pcd_loc = loc
+    ; pcd_attributes = []
+    }
+  ;;
+
+  let mk_params ~loc vars =
+    vars
+    |> List.map ~f:(fun var_name ->
+           let core_type = mk_var_type ~loc var_name in
+           core_type, Invariant
+           (* Covariant? *))
+  ;;
+
+  let mk_type_decl ~loc ~info (AbstractSyntax.SortDef.SortDef (vars, op_defs)) =
+    let vars = vars |> List.map ~f:Util.Tuple2.get1 in
+    let var_set = vars |> Util.String.Set.of_list in
+    let params = if info then "info" :: vars else vars in
+    let type_decl =
+      { ptype_name = { txt = "t"; loc }
+      ; ptype_params = mk_params ~loc params
+      ; ptype_cstrs = [] (* we never use constraints *)
+      ; ptype_kind = Ptype_variant (op_defs |> List.map ~f:(mk_ctor ~loc ~info var_set))
+      ; ptype_private = Public
+      ; ptype_manifest = None
+      ; ptype_attributes = [] (* we never have attributes *)
+      ; ptype_loc = loc
+      }
+    in
+    { pstr_desc = Pstr_type (Recursive, [ type_decl ]); pstr_loc = loc }
+  ;;
+
+  type tofrom =
+    | To
+    | From
+
+  let mk_plain_coverter ~loc tofrom op_defs =
+    let value_binding =
+      let pat =
+        let txt = match tofrom with To -> "to_plain" | From -> "of_plain" in
+        mk_pat ~loc (Ppat_var { txt; loc })
+      in
+      let exp =
+        let f (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity)) =
+          let var_ix = ref 0 in
+          let binders =
+            arity
+            |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, _)) ->
+                   let slots =
+                     ( (* Always one binder for the body *) )
+                     :: List.map slots ~f:(Fn.const ())
+                   in
+                   slots
+                   |> List.map ~f:(fun () ->
+                          Int.incr var_ix;
+                          Printf.sprintf "x%d" !var_ix))
+            |> List.join
+          in
+          let binders = match tofrom with To -> "_" :: binders | From -> binders in
+          let binders =
+            binders |> List.map ~f:(fun txt -> mk_pat ~loc (Ppat_var { txt; loc }))
+          in
+          let constr_body =
+            match binders with [ x ] -> x | _ -> mk_pat ~loc (Ppat_tuple binders)
+          in
+          { pc_lhs =
+              mk_pat
+                ~loc
+                (let txt =
+                   match tofrom with
+                   | To -> Lident op_name
+                   | From -> Ldot (Lident "Plain", op_name)
+                 in
+                 Ppat_construct ({ txt; loc }, Some constr_body))
+          ; pc_guard = None
+          ; pc_rhs =
+              (let ctor_contents =
+                 match arity with
+                 | [] -> None
+                 | _ ->
+                   let var_ix = ref 0 in
+                   (* TODO: recurse with of_plain *)
+                   let contents =
+                     arity
+                     |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, _)) ->
+                            let slots =
+                              ( (* Always one var for the body *) )
+                              :: List.map slots ~f:(Fn.const ())
+                            in
+                            slots
+                            |> List.map ~f:(fun () ->
+                                   Int.incr var_ix;
+                                   Printf.sprintf "x%d" !var_ix))
+                     |> List.join
+                     |> List.map ~f:(fun name ->
+                            mk_exp ~loc (Pexp_ident { txt = Lident name; loc }))
+                   in
+                   let contents =
+                     match tofrom with
+                     | To -> contents
+                     | From -> mk_exp ~loc (Pexp_tuple []) :: contents
+                   in
+                   (match contents with
+                   | [ x1 ] -> Some x1
+                   | _ -> Some (mk_exp ~loc (Pexp_tuple contents)))
+               in
+               mk_exp
+                 ~loc
+                 (let txt =
+                    match tofrom with
+                    | To -> Ldot (Lident "Plain", op_name)
+                    | From -> Lident op_name
+                  in
+                  Pexp_construct ({ txt; loc }, ctor_contents)))
+          }
+        in
+        let branches = List.map op_defs ~f in
+        mk_exp ~loc (Pexp_function branches)
+      in
+      mk_value_binding ~loc pat exp
+    in
+    { pstr_desc = Pstr_value (Recursive, [ value_binding ]); pstr_loc = loc }
+  ;;
+
+  let mk_sort_module
+      ~loc
+      name
+      (AbstractSyntax.SortDef.SortDef (_vars, op_defs) as sort_def)
+    =
+    let plain_module =
+      let module_binding =
+        { pmb_name = { txt = Some "Plain"; loc }
+        ; pmb_expr =
+            { pmod_desc = Pmod_structure [ mk_type_decl ~loc ~info:false sort_def ]
+            ; pmod_loc = loc
+            ; pmod_attributes = []
+            }
+        ; pmb_attributes = []
+        ; pmb_loc = loc
+        }
+      in
+      { pstr_desc = Pstr_module module_binding; pstr_loc = loc }
+    in
+    let to_plain = mk_plain_coverter ~loc To op_defs in
+    let of_plain = mk_plain_coverter ~loc From op_defs in
+    (*
+{pstr_desc =
+   Pstr_value (Recursive,
+    [{pvb_pat = {ppat_desc = Ppat_var {txt = "equal"}; ppat_loc_stack = []};
+      pvb_expr =
+       {pexp_desc =
+         Pexp_fun (Nolabel, None,
+          {ppat_desc = Ppat_var {txt = "info_eq"}; ppat_loc_stack = []},
+          {pexp_desc =
+            Pexp_fun (Nolabel, None,
+             {ppat_desc = Ppat_var {txt = "s1"}; ppat_loc_stack = []},
+             {pexp_desc =
+               Pexp_fun (Nolabel, None,
+                {ppat_desc = Ppat_var {txt = "s2"}; ppat_loc_stack = []},
+                {pexp_desc =
+                  Pexp_match
+                   ({pexp_desc =
+                      Pexp_tuple
+                       [{pexp_desc = Pexp_ident {txt = Lident "s1"};
+                         pexp_loc_stack = []};
+                        {pexp_desc = Pexp_ident {txt = Lident "s2"};
+                         pexp_loc_stack = []}];
+                     pexp_loc_stack = []},
+                   [{pc_lhs =
+                      {ppat_desc =
+                        Ppat_tuple
+                         [{ppat_desc =
+                            Ppat_construct ({txt = Lident "Ap"},
+                             Some
+                              {ppat_desc =
+                                Ppat_tuple
+                                 [{ppat_desc = Ppat_var {txt = "i1"};
+                                   ppat_loc_stack = []};
+                                  {ppat_desc = Ppat_var {txt = "name1"};
+                                   ppat_loc_stack = []};
+                                  {ppat_desc = Ppat_var {txt = "s1"};
+                                   ppat_loc_stack = []}];
+                               ppat_loc_stack = [...]});
+                           ppat_loc_stack = []};
+                          {ppat_desc =
+                            Ppat_construct ({txt = Lident "Ap"},
+                             Some
+                              {ppat_desc =
+                                Ppat_tuple
+                                 [{ppat_desc = Ppat_var {txt = "i2"};
+                                   ppat_loc_stack = []};
+                                  {ppat_desc = Ppat_var {txt = "name2"};
+                                   ppat_loc_stack = []};
+                                  {ppat_desc = Ppat_var {txt = "s2"};
+                                   ppat_loc_stack = []}];
+                               ppat_loc_stack = [...]});
+                           ppat_loc_stack = []}];
+                       ppat_loc_stack = []};
+                     pc_guard = None;
+                     pc_rhs =
+                      {pexp_desc =
+                        Pexp_apply
+                         ({pexp_desc = Pexp_ident {txt = Lident "&&"};
+                           pexp_loc_stack = []},
+                         [(Nolabel,
+                           {pexp_desc =
+                             Pexp_apply
+                              ({pexp_desc =
+                                 Pexp_ident {txt = Lident "info_eq"};
+                                pexp_loc_stack = []},
+                              [(Nolabel,
+                                {pexp_desc = Pexp_ident {txt = Lident "i1"};
+                                 pexp_loc_stack = []});
+                               (Nolabel,
+                                {pexp_desc = Pexp_ident {txt = Lident "i2"};
+                                 pexp_loc_stack = []})]);
+                            pexp_loc_stack = []});
+                          (Nolabel,
+                           {pexp_desc =
+                             Pexp_apply
+                              ({pexp_desc = Pexp_ident {txt = Lident "&&"};
+                                pexp_loc_stack = []},
+                              [(Nolabel,
+                                {pexp_desc =
+                                  Pexp_open
+                                   ({popen_expr =
+                                      {pmod_desc =
+                                        Pmod_ident {txt = Lident "String"}};
+                                     popen_override = Fresh},
+                                   {pexp_desc =
+                                     Pexp_apply
+                                      ({pexp_desc =
+                                         Pexp_ident {txt = Lident "="};
+                                        pexp_loc_stack = []},
+                                      [(Nolabel,
+                                        {pexp_desc =
+                                          Pexp_ident {txt = Lident "name1"};
+                                         pexp_loc_stack = []});
+                                       (Nolabel,
+                                        {pexp_desc =
+                                          Pexp_ident {txt = Lident "name2"};
+                                         pexp_loc_stack = []})]);
+                                    pexp_loc_stack = []});
+                                 pexp_loc_stack = []});
+                               (Nolabel,
+                                {pexp_desc =
+                                  Pexp_apply
+                                   ({pexp_desc =
+                                      Pexp_ident
+                                       {txt = Ldot (Lident "List", "equal")};
+                                     pexp_loc_stack = []},
+                                   [(Nolabel,
+                                     {pexp_desc =
+                                       Pexp_apply
+                                        ({pexp_desc =
+                                           Pexp_ident {txt = Lident "equal"};
+                                          pexp_loc_stack = []},
+                                        [(Nolabel,
+                                          {pexp_desc =
+                                            Pexp_ident
+                                             {txt = Lident "info_eq"};
+                                           pexp_loc_stack = []})]);
+                                      pexp_loc_stack = [...]});
+                                    (Nolabel,
+                                     {pexp_desc =
+                                       Pexp_ident {txt = Lident "s1"};
+                                      pexp_loc_stack = []});
+                                    (Nolabel,
+                                     {pexp_desc =
+                                       Pexp_ident {txt = Lident "s2"};
+                                      pexp_loc_stack = []})]);
+                                 pexp_loc_stack = []})]);
+                            pexp_loc_stack = []})]);
+                       pexp_loc_stack = []}};
+                    {pc_lhs =
+                      {ppat_desc =
+                        Ppat_tuple
+                         [{ppat_desc =
+                            Ppat_construct ({txt = Lident "Name"},
+                             Some
+                              {ppat_desc =
+                                Ppat_tuple
+                                 [{ppat_desc = Ppat_var {txt = "i1"};
+                                   ppat_loc_stack = []};
+                                  {ppat_desc = Ppat_var {txt = "name1"};
+                                   ppat_loc_stack = []}];
+                               ppat_loc_stack = [...]});
+                           ppat_loc_stack = []};
+                          {ppat_desc =
+                            Ppat_construct ({txt = Lident "Name"},
+                             Some
+                              {ppat_desc =
+                                Ppat_tuple
+                                 [{ppat_desc = Ppat_var {txt = "i2"};
+                                   ppat_loc_stack = []};
+                                  {ppat_desc = Ppat_var {txt = "name2"};
+                                   ppat_loc_stack = []}];
+                               ppat_loc_stack = [...]});
+                           ppat_loc_stack = []}];
+                       ppat_loc_stack = []};
+                     pc_guard = None;
+                     pc_rhs =
+                      {pexp_desc =
+                        Pexp_apply
+                         ({pexp_desc = Pexp_ident {txt = Lident "&&"};
+                           pexp_loc_stack = []},
+                         [(Nolabel,
+                           {pexp_desc =
+                             Pexp_apply
+                              ({pexp_desc =
+                                 Pexp_ident {txt = Lident "info_eq"};
+                                pexp_loc_stack = []},
+                              [(Nolabel,
+                                {pexp_desc = Pexp_ident {txt = Lident "i1"};
+                                 pexp_loc_stack = []});
+                               (Nolabel,
+                                {pexp_desc = Pexp_ident {txt = Lident "i2"};
+                                 pexp_loc_stack = []})]);
+                            pexp_loc_stack = []});
+                          (Nolabel,
+                           {pexp_desc =
+                             Pexp_open
+                              ({popen_expr =
+                                 {pmod_desc =
+                                   Pmod_ident {txt = Lident "String"}};
+                                popen_override = Fresh},
+                              {pexp_desc =
+                                Pexp_apply
+                                 ({pexp_desc = Pexp_ident {txt = Lident "="};
+                                   pexp_loc_stack = []},
+                                 [(Nolabel,
+                                   {pexp_desc =
+                                     Pexp_ident {txt = Lident "name1"};
+                                    pexp_loc_stack = []});
+                                  (Nolabel,
+                                   {pexp_desc =
+                                     Pexp_ident {txt = Lident "name2"};
+                                    pexp_loc_stack = []})]);
+                               pexp_loc_stack = []});
+                            pexp_loc_stack = []})]);
+                       pexp_loc_stack = []}};
+                    {pc_lhs =
+                      {ppat_desc =
+                        Ppat_tuple
+                         [{ppat_desc = Ppat_any; ppat_loc_stack = []};
+                          {ppat_desc = Ppat_any; ppat_loc_stack = []}];
+                       ppat_loc_stack = []};
+                     pc_guard = None;
+                     pc_rhs =
+                      {pexp_desc =
+                        Pexp_construct ({txt = Lident "false"}, None);
+                       pexp_loc_stack = []}}]);
+                 pexp_loc_stack = []});
+              pexp_loc_stack = []});
+           pexp_loc_stack = []});
+        pexp_loc_stack = []}}])};
+    *)
+    let equal =
+      let body =
+        Pexp_match
+          ( mk_exp
+              ~loc
+              (Pexp_tuple
+                 [ mk_exp ~loc (Pexp_ident { txt = Lident "s1"; loc })
+                 ; mk_exp ~loc (Pexp_ident { txt = Lident "s2"; loc })
+                 ])
+          , [ { pc_lhs = mk_pat ~loc Ppat_any (* TODO *)
+              ; pc_guard = None
+              ; pc_rhs = mk_exp ~loc (* TODO *) Pexp_unreachable
+              }
+            ] )
+      in
+      let pat = mk_pat ~loc (Ppat_var { txt = "equal"; loc }) in
+      let exp =
+        let pat = mk_pat ~loc (Ppat_var { txt = "info_eq"; loc }) in
+        let exp =
+          let pat = mk_pat ~loc (Ppat_var { txt = "t1"; loc }) in
+          let exp =
+            let pat = mk_pat ~loc (Ppat_var { txt = "t2"; loc }) in
+            let exp = mk_exp ~loc body in
+            mk_exp ~loc (Pexp_fun (Nolabel, None, pat, exp))
+          in
+          mk_exp ~loc (Pexp_fun (Nolabel, None, pat, exp))
+        in
+        mk_exp ~loc (Pexp_fun (Labelled "info_eq", None, pat, exp))
+      in
+      let value_binding = mk_value_binding ~loc pat exp in
+      { pstr_desc = Pstr_value (Recursive, [ value_binding ]); pstr_loc = loc }
+    in
+    let info =
+      let pat = mk_pat ~loc (Ppat_var { txt = "info"; loc }) in
+      let f (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity)) =
+        let binders = arity |> List.map ~f:(fun _ -> Ppat_any) in
+        let binders = Ppat_var { txt = "i"; loc } :: binders in
+        let binders = binders |> List.map ~f:(mk_pat ~loc) in
+        { pc_lhs =
+            mk_pat
+              ~loc
+              (let txt = Lident op_name in
+               Ppat_construct ({ txt; loc }, Some (mk_pat ~loc (Ppat_tuple binders))))
+        ; pc_guard = None
+        ; pc_rhs = mk_exp ~loc (Pexp_ident { txt = Lident "i"; loc })
+        }
+      in
+      let branches = op_defs |> List.map ~f in
+      let exp = mk_exp ~loc (Pexp_function branches) in
+      let value_binding = mk_value_binding ~loc pat exp in
+      { pstr_desc = Pstr_value (Nonrecursive, [ value_binding ]); pstr_loc = loc }
+    in
+    (*
+  {pstr_desc =
+   Pstr_value (Recursive,
+    [{pvb_pat =
+       {ppat_desc = Ppat_var {txt = "map_info"}; ppat_loc_stack = []};
+      pvb_expr =
+       {pexp_desc =
+         Pexp_fun (Labelled "f", None,
+          {ppat_desc = Ppat_var {txt = "f"}; ppat_loc_stack = []},
+          {pexp_desc =
+            Pexp_function
+             [{pc_lhs =
+                {ppat_desc =
+                  Ppat_construct ({txt = Lident "Name"},
+                   Some
+                    {ppat_desc =
+                      Ppat_tuple
+                       [{ppat_desc = Ppat_var {txt = "info"};
+                         ppat_loc_stack = []};
+                        {ppat_desc = Ppat_var {txt = "name"};
+                         ppat_loc_stack = []}];
+                     ppat_loc_stack = [...]});
+                 ppat_loc_stack = []};
+               pc_guard = None;
+               pc_rhs =
+                {pexp_desc =
+                  Pexp_construct ({txt = Lident "Name"},
+                   Some
+                    {pexp_desc =
+                      Pexp_tuple
+                       [{pexp_desc =
+                          Pexp_apply
+                           ({pexp_desc = Pexp_ident {txt = Lident "f"};
+                             pexp_loc_stack = []},
+                           [(Nolabel,
+                             {pexp_desc = Pexp_ident {txt = Lident "info"};
+                              pexp_loc_stack = []})]);
+                         pexp_loc_stack = []};
+                        {pexp_desc = Pexp_ident {txt = Lident "name"};
+                         pexp_loc_stack = []}];
+                     pexp_loc_stack = [...]});
+                 pexp_loc_stack = []}};
+              {pc_lhs =
+                {ppat_desc =
+                  Ppat_construct ({txt = Lident "Ap"},
+                   Some
+                    {ppat_desc =
+                      Ppat_tuple
+                       [{ppat_desc = Ppat_var {txt = "info"};
+                         ppat_loc_stack = []};
+                        {ppat_desc = Ppat_var {txt = "name"};
+                         ppat_loc_stack = []};
+                        {ppat_desc = Ppat_var {txt = "args"};
+                         ppat_loc_stack = []}];
+                     ppat_loc_stack = [...]});
+                 ppat_loc_stack = []};
+               pc_guard = None;
+               pc_rhs =
+                {pexp_desc =
+                  Pexp_construct ({txt = Lident "Ap"},
+                   Some
+                    {pexp_desc =
+                      Pexp_tuple
+                       [{pexp_desc =
+                          Pexp_apply
+                           ({pexp_desc = Pexp_ident {txt = Lident "f"};
+                             pexp_loc_stack = []},
+                           [(Nolabel,
+                             {pexp_desc = Pexp_ident {txt = Lident "info"};
+                              pexp_loc_stack = []})]);
+                         pexp_loc_stack = []};
+                        {pexp_desc = Pexp_ident {txt = Lident "name"};
+                         pexp_loc_stack = []};
+                        {pexp_desc =
+                          Pexp_apply
+                           ({pexp_desc =
+                              Pexp_ident {txt = Ldot (Lident "List", "map")};
+                             pexp_loc_stack = []},
+                           [(Nolabel,
+                             {pexp_desc = Pexp_ident {txt = Lident "args"};
+                              pexp_loc_stack = []});
+                            (Labelled "f",
+                             {pexp_desc =
+                               Pexp_apply
+                                ({pexp_desc =
+                                   Pexp_ident {txt = Lident "map_info"};
+                                  pexp_loc_stack = []},
+                                [(Labelled "f",
+                                  {pexp_desc = Pexp_ident {txt = Lident "f"};
+                                   pexp_loc_stack = []})]);
+                              pexp_loc_stack = [...]})]);
+                         pexp_loc_stack = []}];
+                     pexp_loc_stack = [...]});
+                 pexp_loc_stack = []}}];
+           pexp_loc_stack = []});
+        pexp_loc_stack = []}}])};
+*)
+    let map_info = { pstr_desc = Pstr_value (Recursive, []); pstr_loc = loc } in
+    (*
+    let pp_generic = { pstr_desc = Pstr_value (Recursive, []); pstr_loc = loc } in
+    let of_nominal = { pstr_desc = Pstr_value (Recursive, []); pstr_loc = loc } in
+    let to_nominal = { pstr_desc = Pstr_value (Recursive, []); pstr_loc = loc } in
+    *)
+    let module_binding =
+      { pmb_name = { txt = Some (module_name name); loc }
+      ; pmb_expr =
+          { pmod_desc =
+              Pmod_structure
+                [ mk_type_decl ~loc ~info:true sort_def
+                ; plain_module
+                ; to_plain
+                ; of_plain
+                ; equal
+                ; info
+                ; map_info
+                  (*
+                ; pp_generic
+                ; of_nominal
+                ; to_nominal
+                *)
+                ]
+          ; pmod_loc = loc
+          ; pmod_attributes = []
+          }
+      ; pmb_attributes = []
+      ; pmb_loc = loc
+      }
+    in
+    { pstr_desc = Pstr_module module_binding; pstr_loc = loc }
+  ;;
+
+  let mk_container_module ~loc AbstractSyntax.{ externals = _; sort_defs } =
+    let structure_items =
+      sort_defs |> List.map ~f:(Util.Tuple2.uncurry (mk_sort_module ~loc))
+    in
+    { pmod_desc = Pmod_structure structure_items; pmod_loc = loc; pmod_attributes = [] }
+  ;;
+
+  let expand ~(loc : Location.t) ~path:_ (expr : expression) : module_expr =
+    let str, loc = extract_string loc expr in
+    match ParseUtil.parse_string ParseAbstract.whitespace_t str with
+    | Error msg -> Location.raise_errorf ~loc "%s" msg
+    | Ok syntax -> mk_container_module ~loc syntax
+  ;;
+end
 
 let term_extension =
   Extension.declare
@@ -323,7 +861,7 @@ let abstract_syntax_module_extension =
     "abstract_syntax_module" (* TODO: better naming *)
     Extension.Context.Module_expr
     Ast_pattern.(single_expr_payload __)
-    expand_abstract_syntax_module
+    ModuleExpander.expand
 ;;
 
 let () =
