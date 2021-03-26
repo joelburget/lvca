@@ -58,20 +58,16 @@ module Lang (Integer : LanguageObject.AllTermS) = struct
           | Plain.Foo x1 -> Foo ((), x1)
           | Plain.Bar (x1, x2, x3) -> Bar ((), x1, x2, of_plain x3)
 
-        let equal ~info_eq t1 t2 = match t1, t2 with
-          | Foo (i1, a1), Foo (i2, a2) -> info_eq i1 i2 && Integer.equal ~info_eq a1 a2
-          | Bar (i1, a1, b1, c1), Bar (i2, a2, b2, c2) -> info_eq i1 i2 && Pattern.equal info_eq Lvca_util.Void.(=) a1 a2 && String.(b1 = b2) && equal ~info_eq c1 c2
-          | _, _ -> false
+        let equal ~info_eq t1 t2 =
+          match (t1, t2) with
+          | (Foo (x0, x1), Foo (y0, y1)) -> info_eq x0 y0 && Integer.equal ~info_eq x1 y1
+          | (Bar (x0, x1, x2, x3), Bar (y0, y1, y2, y3)) -> info_eq x0 y0 && Pattern.equal info_eq Lvca_util.Void.(=) x1 y1 && String.(x2 = y2) && equal ~info_eq x3 y3
+          | (_, _) -> false
 
-        let info = function | Foo (i, _) -> i | Bar (i, _, _, _) -> i
+        let info = function | Foo (x0, _) -> x0 | Bar (x0, _, _, _) -> x0
 
         let rec map_info ~f = function
-          | Foo (i, a) -> Foo (f i, a)
-          | Bar (i, a, b, c) -> Bar (f i, a, b, map_info ~f c)
-
-        (* let pp_generic ~opener ~closer ppf = function ... *)
-        (* let of_nominal = function ... *)
-        (* let to_nominal = function ... *)
-        (* Erase, select? *)
+          | Foo (x0, x1) -> Foo (f x0, x1)
+          | Bar (x0, x1, x2, x3) -> Bar (f x0, x1, x2, map_info ~f x3)
     end
 end
