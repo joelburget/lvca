@@ -200,72 +200,96 @@ module ModuleExpander = struct
     { pvb_pat; pvb_expr; pvb_attributes = []; pvb_loc = loc }
   ;;
 
-  (* TODO: more sophisticated rule? *)
+  (* Concatenate a list of names into a Longident. *)
+  let build_names names =
+    match names with
+    | [] -> Lvca_util.invariant_violation "build_names: names must be nonempty"
+    | nm0 :: nms -> List.fold nms ~init:(Lident nm0) ~f:(fun accum m -> Ldot (accum, m))
+  ;;
+
+  (* Access a module member, by default [t]. Eg [Sort.Plain.t]. *)
+  let modules_t ?(op_name = "t") modules =
+    Lvca_util.List.snoc modules op_name |> build_names
+  ;;
+
+  (* TODO: more sophisticated naming rules? *)
   let ctor_name = String.capitalize
   let module_name = String.capitalize
   let mk_var_type ~loc name = mk_type ~loc (Ptyp_var name)
-  let pattern_t_ident = Ldot (Lident "Pattern", "t")
+  let pattern_t_ident = modules_t [ "Pattern" ]
   let pattern_t ~loc = { txt = pattern_t_ident; loc }
-  let void_t_loc = Ldot (Ldot (Lident "Lvca_util", "Void"), "t")
+  let void_t_loc = modules_t [ "Lvca_util"; "Void" ]
   let void_t ~loc = { txt = void_t_loc; loc }
 
-  let rec ptyp_of_sort ~loc var_set = function
+  let rec ptyp_of_sort ~loc ~sort_name ~info var_set = function
     | Sort.Name (_, name) ->
+      let info_args = if info then [ mk_type ~loc (Ptyp_var "info") ] else [] in
       if Set.mem var_set name
-      then Ptyp_var name
-      else Ptyp_constr ({ txt = Lident name; loc }, [])
+      then (* This is a variable if it's in the set of vars ... *)
+        Ptyp_var name
+      else if String.(name = sort_name)
+      then
+        (* ... otherwise it's [t] if it matches the sort name ... *)
+        Ptyp_constr ({ txt = Lident "t"; loc }, info_args)
+      else if info
+      then (
+        (* ... otherwise it's ['info Module_name.t] if we include info ... *)
+        let txt = modules_t [ module_name name ] in
+        Ptyp_constr ({ txt; loc }, info_args))
+      else (
+        (* ... otherwise it's [Module_name.Plain.t]. *)
+        let txt = modules_t [ module_name name; "Plain" ] in
+        Ptyp_constr ({ txt; loc }, []))
     | Ap (_, name, args) ->
-      Ptyp_constr
-        ( { txt = Lident name; loc }
-        , args
-          |> List.map ~f:(fun sort ->
-                 { ptyp_desc = ptyp_of_sort ~loc var_set sort
-                 ; ptyp_loc = loc
-                 ; ptyp_loc_stack = []
-                 ; ptyp_attributes = []
-                 }) )
+      let f sort = sort |> ptyp_of_sort ~loc ~sort_name ~info var_set |> mk_type ~loc in
+      Ptyp_constr ({ txt = Lident name; loc }, List.map args ~f)
   ;;
 
   let args_of_valence
       ~loc
       ~info
+      ~sort_name
       var_set
       (AbstractSyntax.Valence.Valence (binding_sort_slots, body_sort))
     =
-    let body_type = ptyp_of_sort ~loc var_set body_sort in
-    let ptyp_desc =
-      match binding_sort_slots with
-      | [] -> body_type
-      | slots ->
-        let pat_var_types =
-          if info
-          then [ mk_var_type ~loc "info"; mk_type ~loc (Ptyp_constr (void_t ~loc, [])) ]
-          else
-            [ mk_type ~loc (Ptyp_constr ({ txt = Lident "unit"; loc }, []))
-            ; mk_type ~loc (Ptyp_constr (void_t ~loc, []))
-            ]
-        in
-        let binding_types =
-          slots
-          |> List.map ~f:(fun slot ->
-                 let ty =
-                   match slot with
-                   | AbstractSyntax.SortSlot.SortBinding _sort ->
-                     Ptyp_constr ({ txt = Lident "string"; loc }, [])
-                   | SortPattern _sort -> Ptyp_constr (pattern_t ~loc, pat_var_types)
-                 in
-                 mk_type ~loc ty)
-        in
-        let body_type = mk_type ~loc body_type in
-        Ptyp_tuple (binding_types @ [ body_type ])
-    in
-    mk_type ~loc ptyp_desc
+    let body_type = ptyp_of_sort ~loc ~sort_name ~info var_set body_sort in
+    match binding_sort_slots with
+    | [] -> [ mk_type ~loc body_type ]
+    | slots ->
+      let pat_var_types =
+        if info
+        then [ mk_var_type ~loc "info"; mk_type ~loc (Ptyp_constr (void_t ~loc, [])) ]
+        else
+          [ mk_type ~loc (Ptyp_constr ({ txt = Lident "unit"; loc }, []))
+          ; mk_type ~loc (Ptyp_constr (void_t ~loc, []))
+          ]
+      in
+      let binding_types =
+        slots
+        |> List.map ~f:(fun slot ->
+               let ty =
+                 match slot with
+                 | AbstractSyntax.SortSlot.SortBinding _sort ->
+                   Ptyp_constr ({ txt = Lident "string"; loc }, [])
+                 | SortPattern _sort -> Ptyp_constr (pattern_t ~loc, pat_var_types)
+               in
+               mk_type ~loc ty)
+      in
+      let body_type = mk_type ~loc body_type in
+      binding_types @ [ body_type ]
   ;;
 
   (* XXX possibility of generating two constructors with same name *)
-  let mk_ctor ~loc ~info var_set (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity))
+  let mk_ctor_decl
+      ~loc
+      ~info
+      ~sort_name
+      var_set
+      (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity))
     =
-    let args = arity |> List.map ~f:(args_of_valence ~loc ~info var_set) in
+    let args =
+      arity |> List.map ~f:(args_of_valence ~loc ~info ~sort_name var_set) |> List.join
+    in
     let args = if info then mk_type ~loc (Ptyp_var "info") :: args else args in
     { pcd_name = { txt = ctor_name op_name; loc }
     ; pcd_args = Pcstr_tuple args
@@ -283,15 +307,17 @@ module ModuleExpander = struct
            (* Covariant? *))
   ;;
 
-  let mk_type_decl ~loc ~info (AbstractSyntax.SortDef.SortDef (vars, op_defs)) =
-    let vars = vars |> List.map ~f:Util.Tuple2.get1 in
-    let var_set = vars |> Util.String.Set.of_list in
+  let mk_type_decl ~loc ~info ~sort_name (AbstractSyntax.SortDef.SortDef (vars, op_defs)) =
+    let vars = List.map vars ~f:Util.Tuple2.get1 in
+    let var_set = Util.String.Set.of_list vars in
     let params = if info then "info" :: vars else vars in
     let type_decl =
       { ptype_name = { txt = "t"; loc }
       ; ptype_params = mk_params ~loc params
       ; ptype_cstrs = [] (* we never use constraints *)
-      ; ptype_kind = Ptype_variant (op_defs |> List.map ~f:(mk_ctor ~loc ~info var_set))
+      ; ptype_kind =
+          Ptype_variant
+            (op_defs |> List.map ~f:(mk_ctor_decl ~loc ~info ~sort_name var_set))
       ; ptype_private = Public
       ; ptype_manifest = None
       ; ptype_attributes = [] (* we never have attributes *)
@@ -350,7 +376,7 @@ module ModuleExpander = struct
       (let txt =
          match ctor_type with
          | WithInfo -> Lident op_name
-         | Plain -> Ldot (Lident "Plain", op_name)
+         | Plain -> build_names [ "Plain"; op_name ]
        in
        Ppat_construct ({ txt; loc }, Some constr_body))
   ;;
@@ -395,9 +421,10 @@ module ModuleExpander = struct
         | _ -> Some (mk_exp ~loc (Pexp_tuple contents)))
     in
     let txt =
-      match ctor_type with
-      | WithInfo -> Lident op_name
-      | Plain -> Ldot (Lident "Plain", op_name)
+      let names =
+        match ctor_type with WithInfo -> [ op_name ] | Plain -> [ "Plain"; op_name ]
+      in
+      build_names names
     in
     mk_exp ~loc (Pexp_construct ({ txt; loc }, ctor_contents))
   ;;
@@ -432,14 +459,15 @@ module ModuleExpander = struct
 
   let mk_sort_module
       ~loc
-      name
+      sort_name
       (AbstractSyntax.SortDef.SortDef (_vars, op_defs) as sort_def)
     =
     let plain_module =
       let module_binding =
         { pmb_name = { txt = Some "Plain"; loc }
         ; pmb_expr =
-            { pmod_desc = Pmod_structure [ mk_type_decl ~loc ~info:false sort_def ]
+            { pmod_desc =
+                Pmod_structure [ mk_type_decl ~loc ~info:false ~sort_name sort_def ]
             ; pmod_loc = loc
             ; pmod_attributes = []
             }
@@ -565,11 +593,11 @@ module ModuleExpander = struct
     select?
     *)
     let module_binding =
-      { pmb_name = { txt = Some (module_name name); loc }
+      { pmb_name = { txt = Some (module_name sort_name); loc }
       ; pmb_expr =
           { pmod_desc =
               Pmod_structure
-                [ mk_type_decl ~loc ~info:true sort_def
+                [ mk_type_decl ~loc ~info:true ~sort_name sort_def
                 ; plain_module
                 ; to_plain
                 ; of_plain
