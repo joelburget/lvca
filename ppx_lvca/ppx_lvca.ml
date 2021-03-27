@@ -279,6 +279,8 @@ module ModuleExpander = struct
       binding_types @ [ body_type ]
   ;;
 
+  let mk_typ_tuple ~loc = function [ ty ] -> ty | tys -> mk_type ~loc (Ptyp_tuple tys)
+
   (* XXX possibility of generating two constructors with same name *)
   let mk_ctor_decl
       ~loc
@@ -287,10 +289,9 @@ module ModuleExpander = struct
       var_set
       (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity))
     =
-    let args =
-      arity |> List.map ~f:(args_of_valence ~loc ~info ~sort_name var_set) |> List.join
-    in
-    let args = if info then mk_type ~loc (Ptyp_var "info") :: args else args in
+    let args = arity |> List.map ~f:(args_of_valence ~loc ~info ~sort_name var_set) in
+    let args = if info then [ mk_type ~loc (Ptyp_var "info") ] :: args else args in
+    let args = List.map args ~f:(mk_typ_tuple ~loc) in
     { pcd_name = { txt = ctor_name op_name; loc }
     ; pcd_args = Pcstr_tuple args
     ; pcd_res = None (* Is this only for GADTs? *)
@@ -335,6 +336,11 @@ module ModuleExpander = struct
     | ToPlain
     | OfPlain
 
+  let mk_pat_tuple ~loc = function
+    | [ elem ] -> elem
+    | elems -> mk_pat ~loc (Ppat_tuple elems)
+  ;;
+
   let mk_operator_pat
       ~loc
       ~ctor_type
@@ -357,19 +363,20 @@ module ModuleExpander = struct
                       Int.incr var_ix;
                       Printf.sprintf "%s%d" name_base !var_ix)
                     else "_"))
-      |> List.join
     in
     let binders =
       match ctor_type, match_info with
-      | WithInfo, false -> "_" :: binders
-      | WithInfo, true -> Printf.sprintf "%s0" name_base :: binders
+      | WithInfo, false -> [ "_" ] :: binders
+      | WithInfo, true -> [ Printf.sprintf "%s0" name_base ] :: binders
       | Plain, _ -> binders
     in
-    let binders =
-      binders |> List.map ~f:(fun txt -> mk_pat ~loc (Ppat_var { txt; loc }))
-    in
     let constr_body =
-      match binders with [ x ] -> x | _ -> mk_pat ~loc (Ppat_tuple binders)
+      binders
+      |> List.map ~f:(fun names ->
+             names
+             |> List.map ~f:(fun txt -> mk_pat ~loc (Ppat_var { txt; loc }))
+             |> mk_pat_tuple ~loc)
+      |> mk_pat_tuple ~loc
     in
     mk_pat
       ~loc
@@ -379,6 +386,11 @@ module ModuleExpander = struct
          | Plain -> build_names [ "Plain"; op_name ]
        in
        Ppat_construct ({ txt; loc }, Some constr_body))
+  ;;
+
+  let mk_exp_tuple ~loc = function
+    | [ elem ] -> elem
+    | elems -> mk_exp ~loc (Pexp_tuple elems)
   ;;
 
   let mk_operator_exp
@@ -404,21 +416,23 @@ module ModuleExpander = struct
                  |> List.map ~f:(fun () ->
                         Int.incr var_ix;
                         Printf.sprintf "%s%d" name_base !var_ix))
-          |> List.join
         in
         let contents =
           match ctor_type with
-          | WithInfo -> Printf.sprintf "%s0" name_base :: contents
+          | WithInfo -> [ Printf.sprintf "%s0" name_base ] :: contents
           | Plain -> contents
         in
         let contents =
           contents
-          |> List.map ~f:(fun name -> mk_exp ~loc (Pexp_ident { txt = Lident name; loc }))
+          |> List.map ~f:(fun names ->
+                 names
+                 |> List.map ~f:(fun name ->
+                        mk_exp ~loc (Pexp_ident { txt = Lident name; loc }))
+                 |> mk_exp_tuple ~loc)
+          (* TODO: apply f *)
+          |> mk_exp_tuple ~loc
         in
-        (* TODO: apply f *)
-        (match contents with
-        | [ x1 ] -> Some x1
-        | _ -> Some (mk_exp ~loc (Pexp_tuple contents)))
+        Some contents
     in
     let txt =
       let names =
