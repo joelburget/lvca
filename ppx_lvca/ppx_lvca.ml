@@ -200,6 +200,19 @@ module ModuleExpander = struct
     { pvb_pat; pvb_expr; pvb_attributes = []; pvb_loc = loc }
   ;;
 
+  let mk_args ~loc args body =
+    List.fold_right args ~init:(mk_exp ~loc body) ~f:(fun (label, txt) body ->
+        let pat = mk_pat ~loc (Ppat_var { txt; loc }) in
+        mk_exp ~loc (Pexp_fun (label, None, pat, body)))
+  ;;
+
+  let mk_fun ~loc fun_name args body =
+    mk_value_binding
+      ~loc
+      (mk_pat ~loc (Ppat_var { txt = fun_name; loc }))
+      (mk_args ~loc args body)
+  ;;
+
   (* Concatenate a list of names into a Longident. *)
   let build_names names =
     match names with
@@ -393,6 +406,8 @@ module ModuleExpander = struct
     | elems -> mk_exp ~loc (Pexp_tuple elems)
   ;;
 
+  let sort_head = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
+
   let mk_operator_exp
       ~loc
       ~ctor_type
@@ -471,6 +486,159 @@ module ModuleExpander = struct
     { pstr_desc = Pstr_value (Recursive, [ value_binding ]); pstr_loc = loc }
   ;;
 
+  let mk_equal ~loc op_defs =
+    let body =
+      let branches =
+        op_defs
+        |> List.map ~f:(fun op_def ->
+               let pc_lhs =
+                 let p1 =
+                   mk_operator_pat
+                     ~loc
+                     ~ctor_type:WithInfo
+                     ~match_info:true
+                     ~name_base:"x"
+                     op_def
+                 in
+                 let p2 =
+                   mk_operator_pat
+                     ~loc
+                     ~ctor_type:WithInfo
+                     ~match_info:true
+                     ~name_base:"y"
+                     op_def
+                 in
+                 mk_pat ~loc (Ppat_tuple [ p1; p2 ])
+               in
+               let pc_rhs =
+                 let info_eq = mk_exp ~loc (Pexp_ident { txt = Lident "info_eq"; loc }) in
+                 let args =
+                   [ "x0"; "y0" ]
+                   |> List.map ~f:(fun name ->
+                          Nolabel, mk_exp ~loc (Pexp_ident { txt = Lident name; loc }))
+                 in
+                 mk_exp ~loc (Pexp_apply (info_eq, args))
+               in
+               { pc_lhs; pc_guard = None; pc_rhs })
+      in
+      let last_branch =
+        { pc_lhs = mk_pat ~loc (Ppat_tuple [ mk_pat ~loc Ppat_any; mk_pat ~loc Ppat_any ])
+        ; pc_guard = None
+        ; pc_rhs = mk_exp ~loc (Pexp_ident { txt = Lident "false"; loc })
+        }
+      in
+      let branches = Lvca_util.List.snoc branches last_branch in
+      Pexp_match
+        ( mk_exp
+            ~loc
+            (Pexp_tuple
+               [ mk_exp ~loc (Pexp_ident { txt = Lident "t1"; loc })
+               ; mk_exp ~loc (Pexp_ident { txt = Lident "t2"; loc })
+               ])
+        , branches )
+    in
+    let value_binding =
+      mk_fun
+        ~loc
+        "equal"
+        [ Labelled "info_eq", "info_eq"; Nolabel, "t1"; Nolabel, "t2" ]
+        body
+    in
+    { pstr_desc = Pstr_value (Recursive, [ value_binding ]); pstr_loc = loc }
+  ;;
+
+  let mk_info ~loc op_defs =
+    let pat = mk_pat ~loc (Ppat_var { txt = "info"; loc }) in
+    let f op_def =
+      let pc_lhs =
+        mk_operator_pat
+          ~loc
+          ~ctor_type:WithInfo
+          ~match_info:true
+          ~match_non_info:false
+          op_def
+      in
+      { pc_lhs
+      ; pc_guard = None
+      ; pc_rhs = mk_exp ~loc (Pexp_ident { txt = Lident "x0"; loc })
+      }
+    in
+    let branches = op_defs |> List.map ~f in
+    let exp = mk_exp ~loc (Pexp_function branches) in
+    let value_binding = mk_value_binding ~loc pat exp in
+    { pstr_desc = Pstr_value (Nonrecursive, [ value_binding ]); pstr_loc = loc }
+  ;;
+
+  let pc_rhs ~loc sort_name (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity)) =
+    let name_base = "x" in
+    (* let map_info = mk_exp ~loc (Pexp_ident { txt = Lident "map_info"; loc }) in *)
+    let pattern_map_info =
+      mk_exp ~loc (Pexp_ident { txt = build_names [ "Pattern"; "map_info" ]; loc })
+    in
+    let f = mk_exp ~loc (Pexp_ident { txt = Lident "f"; loc }) in
+    let ctor_contents =
+      match arity with
+      | [] -> None
+      | _ ->
+        let var_ix = ref 0 in
+        let body_arg sort =
+          Int.incr var_ix;
+          let arg = Lident (Printf.sprintf "x%d" !var_ix) in
+          let scoped_map_info =
+            if String.(sort_head sort = sort_name)
+            then Lident "map_info"
+            else
+              (* is it always valid to just use module_name? *)
+              build_names [ module_name (sort_head sort); "map_info" ]
+          in
+          Pexp_apply
+            ( mk_exp ~loc (Pexp_ident { txt = scoped_map_info; loc })
+            , [ Labelled "f", f; Nolabel, mk_exp ~loc (Pexp_ident { txt = arg; loc }) ] )
+        in
+        let contents =
+          arity
+          |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, body_sort)) ->
+                 slots
+                 |> List.map ~f:(fun slot ->
+                        Int.incr var_ix;
+                        let arg =
+                          let name = Printf.sprintf "%s%d" name_base !var_ix in
+                          Pexp_ident { txt = Lident name; loc }
+                        in
+                        match slot with
+                        | AbstractSyntax.SortSlot.SortBinding _sort -> arg
+                        | SortPattern _ ->
+                          Pexp_apply
+                            ( pattern_map_info
+                            , [ Labelled "f", f; Nolabel, mk_exp ~loc arg ] ))
+                 |> Fn.flip Lvca_util.List.snoc (body_arg body_sort))
+          |> List.cons
+               [ Pexp_apply
+                   (f, [ Nolabel, mk_exp ~loc (Pexp_ident { txt = Lident "x0"; loc }) ])
+               ]
+          |> List.map ~f:(fun names ->
+                 names |> List.map ~f:(mk_exp ~loc) |> mk_exp_tuple ~loc)
+          |> mk_exp_tuple ~loc
+        in
+        Some contents
+    in
+    mk_exp ~loc (Pexp_construct ({ txt = build_names [ op_name ]; loc }, ctor_contents))
+  ;;
+
+  let mk_map_info ~loc sort_name op_defs =
+    (* let pat = mk_pat ~loc (Ppat_var { txt = "map_info"; loc }) in *)
+    let body =
+      let f op_def =
+        let pc_lhs = mk_operator_pat ~loc ~ctor_type:WithInfo ~match_info:true op_def in
+        { pc_lhs; pc_guard = None; pc_rhs = pc_rhs ~loc sort_name op_def }
+      in
+      let branches = List.map op_defs ~f in
+      Pexp_function branches
+    in
+    let value_binding = mk_fun ~loc "map_info" [ Labelled "f", "f" ] body in
+    { pstr_desc = Pstr_value (Recursive, [ value_binding ]); pstr_loc = loc }
+  ;;
+
   let mk_sort_module
       ~loc
       sort_name
@@ -493,113 +661,9 @@ module ModuleExpander = struct
     in
     let to_plain = mk_plain_converter ~loc ToPlain op_defs in
     let of_plain = mk_plain_converter ~loc OfPlain op_defs in
-    let equal =
-      let body =
-        let branches =
-          op_defs
-          |> List.map ~f:(fun op_def ->
-                 let pc_lhs =
-                   let p1 =
-                     mk_operator_pat
-                       ~loc
-                       ~ctor_type:WithInfo
-                       ~match_info:true
-                       ~name_base:"x"
-                       op_def
-                   in
-                   let p2 =
-                     mk_operator_pat
-                       ~loc
-                       ~ctor_type:WithInfo
-                       ~match_info:true
-                       ~name_base:"y"
-                       op_def
-                   in
-                   mk_pat ~loc (Ppat_tuple [ p1; p2 ])
-                 in
-                 let pc_rhs =
-                   let info_eq =
-                     mk_exp ~loc (Pexp_ident { txt = Lident "info_eq"; loc })
-                   in
-                   let args =
-                     [ "x0"; "y0" ]
-                     |> List.map ~f:(fun name ->
-                            Nolabel, mk_exp ~loc (Pexp_ident { txt = Lident name; loc }))
-                   in
-                   mk_exp ~loc (Pexp_apply (info_eq, args))
-                 in
-                 { pc_lhs; pc_guard = None; pc_rhs })
-        in
-        let last_branch =
-          { pc_lhs =
-              mk_pat ~loc (Ppat_tuple [ mk_pat ~loc Ppat_any; mk_pat ~loc Ppat_any ])
-          ; pc_guard = None
-          ; pc_rhs = mk_exp ~loc (Pexp_ident { txt = Lident "false"; loc })
-          }
-        in
-        let branches = Lvca_util.List.snoc branches last_branch in
-        Pexp_match
-          ( mk_exp
-              ~loc
-              (Pexp_tuple
-                 [ mk_exp ~loc (Pexp_ident { txt = Lident "t1"; loc })
-                 ; mk_exp ~loc (Pexp_ident { txt = Lident "t2"; loc })
-                 ])
-          , branches )
-      in
-      let pat = mk_pat ~loc (Ppat_var { txt = "equal"; loc }) in
-      let exp =
-        let pat = mk_pat ~loc (Ppat_var { txt = "info_eq"; loc }) in
-        let exp =
-          let pat = mk_pat ~loc (Ppat_var { txt = "t1"; loc }) in
-          let exp =
-            let pat = mk_pat ~loc (Ppat_var { txt = "t2"; loc }) in
-            let exp = mk_exp ~loc body in
-            mk_exp ~loc (Pexp_fun (Nolabel, None, pat, exp))
-          in
-          mk_exp ~loc (Pexp_fun (Nolabel, None, pat, exp))
-        in
-        mk_exp ~loc (Pexp_fun (Labelled "info_eq", None, pat, exp))
-      in
-      let value_binding = mk_value_binding ~loc pat exp in
-      { pstr_desc = Pstr_value (Recursive, [ value_binding ]); pstr_loc = loc }
-    in
-    let info =
-      let pat = mk_pat ~loc (Ppat_var { txt = "info"; loc }) in
-      let f op_def =
-        let pc_lhs =
-          mk_operator_pat
-            ~loc
-            ~ctor_type:WithInfo
-            ~match_info:true
-            ~match_non_info:false
-            op_def
-        in
-        { pc_lhs
-        ; pc_guard = None
-        ; pc_rhs = mk_exp ~loc (Pexp_ident { txt = Lident "x0"; loc })
-        }
-      in
-      let branches = op_defs |> List.map ~f in
-      let exp = mk_exp ~loc (Pexp_function branches) in
-      let value_binding = mk_value_binding ~loc pat exp in
-      { pstr_desc = Pstr_value (Nonrecursive, [ value_binding ]); pstr_loc = loc }
-    in
-    let map_info =
-      let pat = mk_pat ~loc (Ppat_var { txt = "map_info"; loc }) in
-      let exp =
-        let f op_def =
-          { pc_lhs = mk_operator_pat ~loc ~ctor_type:WithInfo op_def
-          ; pc_guard = None
-          ; pc_rhs = mk_operator_exp ~loc ~ctor_type:WithInfo op_def
-          }
-        in
-        let branches = List.map op_defs ~f in
-        mk_exp ~loc (Pexp_function branches)
-      in
-      let value_binding = mk_value_binding ~loc pat exp in
-      { pstr_desc = Pstr_value (Recursive, [ value_binding ]); pstr_loc = loc }
-    in
+    let equal = mk_equal ~loc op_defs in
+    let info = mk_info ~loc op_defs in
+    let map_info = mk_map_info ~loc sort_name op_defs in
     (*
     let pp_generic = { pstr_desc = Pstr_value (Recursive, []); pstr_loc = loc } in
     let of_nominal = { pstr_desc = Pstr_value (Recursive, []); pstr_loc = loc } in
