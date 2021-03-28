@@ -408,6 +408,7 @@ module ModuleExpander = struct
 
   let sort_head = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
 
+  (* TODO: remove redundancy with pc_rhs *)
   let plain_converter_operator_exp
       ~loc
       ~ctor_type
@@ -591,9 +592,9 @@ module ModuleExpander = struct
     { pstr_desc = Pstr_value (Nonrecursive, [ value_binding ]); pstr_loc = loc }
   ;;
 
+  (* TODO: remove redundancy with plain_converter_operator_exp *)
   let pc_rhs ~loc sort_name (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity)) =
     let name_base = "x" in
-    (* let map_info = mk_exp ~loc (Pexp_ident { txt = Lident "map_info"; loc }) in *)
     let pattern_map_info =
       mk_exp ~loc (Pexp_ident { txt = build_names [ "Pattern"; "map_info" ]; loc })
     in
@@ -648,7 +649,6 @@ module ModuleExpander = struct
   ;;
 
   let mk_map_info ~loc sort_name op_defs =
-    (* let pat = mk_pat ~loc (Ppat_var { txt = "map_info"; loc }) in *)
     let body =
       let f op_def =
         let pc_lhs = mk_operator_pat ~loc ~ctor_type:WithInfo ~match_info:true op_def in
