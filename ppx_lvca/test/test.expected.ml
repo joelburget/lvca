@@ -21,17 +21,22 @@ let test_pattern =
       [Pattern.Var
          ((Some ((let open Range in { start = 4; finish = 5 }))), "x")])
 let test_language =
-  [("foo",
-     (AbstractSyntax.SortDef
-        ([],
-          [OperatorDef
-             ("foo",
-               [AbstractSyntax.Valence
-                  ([],
-                    (Sort.Name
-                       ((Some
-                           ((let open Range in { start = 12; finish = 19 }))),
-                         "integer")))])])))]
+    {
+      externals = [];
+      sort_defs =
+        [("foo",
+           (AbstractSyntax.SortDef.SortDef
+              ([],
+                [AbstractSyntax.OperatorDef.OperatorDef
+                   ("foo",
+                     [AbstractSyntax.Valence.Valence
+                        ([],
+                          (Sort.Name
+                             ((Some
+                                 ((let open Range in
+                                     { start = 12; finish = 19 }))),
+                               "integer")))])])))]
+    }
 
 module Lang (Integer : LanguageObject.AllTermS) =
   struct
