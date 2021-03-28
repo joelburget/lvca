@@ -408,43 +408,61 @@ module ModuleExpander = struct
 
   let sort_head = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
 
-  let mk_operator_exp
+  let plain_converter_operator_exp
       ~loc
       ~ctor_type
       ?(name_base = "x")
+      fun_name
+      sort_name
       (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity))
     =
+    let pattern_converter =
+      mk_exp ~loc (Pexp_ident { txt = build_names [ "Pattern"; fun_name ]; loc })
+    in
     let ctor_contents =
       match arity with
       | [] -> None
       | _ ->
         let var_ix = ref 0 in
-        (* TODO: recurse with map_info / of_plain *)
+        let body_arg sort =
+          Int.incr var_ix;
+          let arg = Lident (Printf.sprintf "x%d" !var_ix) in
+          let scoped_converter =
+            if String.(sort_head sort = sort_name)
+            then Lident fun_name
+            else
+              (* is it always valid to just use module_name? *)
+              build_names [ module_name (sort_head sort); fun_name ]
+          in
+          Pexp_apply
+            ( mk_exp ~loc (Pexp_ident { txt = scoped_converter; loc })
+            , [ Nolabel, mk_exp ~loc (Pexp_ident { txt = arg; loc }) ] )
+        in
         let contents =
           arity
-          |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, _)) ->
-                 let slots =
-                   ( (* Always one var for the body *) )
-                   :: List.map slots ~f:(Fn.const ())
-                 in
+          |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, body_sort)) ->
                  slots
-                 |> List.map ~f:(fun () ->
+                 |> List.map ~f:(fun slot ->
                         Int.incr var_ix;
-                        Printf.sprintf "%s%d" name_base !var_ix))
+                        let arg =
+                          let name = Printf.sprintf "%s%d" name_base !var_ix in
+                          Pexp_ident { txt = Lident name; loc }
+                        in
+                        match slot with
+                        | AbstractSyntax.SortSlot.SortBinding _sort -> arg
+                        | SortPattern _ ->
+                          Pexp_apply (pattern_converter, [ Nolabel, mk_exp ~loc arg ]))
+                 |> Fn.flip Lvca_util.List.snoc (body_arg body_sort))
         in
         let contents =
           match ctor_type with
-          | WithInfo -> [ Printf.sprintf "%s0" name_base ] :: contents
+          | WithInfo -> [ Pexp_tuple [] ] :: contents
           | Plain -> contents
         in
         let contents =
           contents
           |> List.map ~f:(fun names ->
-                 names
-                 |> List.map ~f:(fun name ->
-                        mk_exp ~loc (Pexp_ident { txt = Lident name; loc }))
-                 |> mk_exp_tuple ~loc)
-          (* TODO: apply f *)
+                 names |> List.map ~f:(mk_exp ~loc) |> mk_exp_tuple ~loc)
           |> mk_exp_tuple ~loc
         in
         Some contents
@@ -458,14 +476,12 @@ module ModuleExpander = struct
     mk_exp ~loc (Pexp_construct ({ txt; loc }, ctor_contents))
   ;;
 
-  let mk_plain_converter ~loc conversion_direction op_defs =
+  let mk_plain_converter ~loc conversion_direction sort_name op_defs =
     let value_binding =
-      let pat =
-        let txt =
-          match conversion_direction with ToPlain -> "to_plain" | OfPlain -> "of_plain"
-        in
-        mk_pat ~loc (Ppat_var { txt; loc })
+      let fun_name =
+        match conversion_direction with ToPlain -> "to_plain" | OfPlain -> "of_plain"
       in
+      let pat = mk_pat ~loc (Ppat_var { txt = fun_name; loc }) in
       let exp =
         let f op_def =
           let pat_ctor_type, exp_ctor_type =
@@ -475,7 +491,13 @@ module ModuleExpander = struct
           in
           { pc_lhs = mk_operator_pat ~loc ~ctor_type:pat_ctor_type op_def
           ; pc_guard = None
-          ; pc_rhs = mk_operator_exp ~loc ~ctor_type:exp_ctor_type op_def
+          ; pc_rhs =
+              plain_converter_operator_exp
+                ~loc
+                ~ctor_type:exp_ctor_type
+                fun_name
+                sort_name
+                op_def
           }
         in
         let branches = List.map op_defs ~f in
@@ -659,8 +681,8 @@ module ModuleExpander = struct
       in
       { pstr_desc = Pstr_module module_binding; pstr_loc = loc }
     in
-    let to_plain = mk_plain_converter ~loc ToPlain op_defs in
-    let of_plain = mk_plain_converter ~loc OfPlain op_defs in
+    let to_plain = mk_plain_converter ~loc ToPlain sort_name op_defs in
+    let of_plain = mk_plain_converter ~loc OfPlain sort_name op_defs in
     let equal = mk_equal ~loc op_defs in
     let info = mk_info ~loc op_defs in
     let map_info = mk_map_info ~loc sort_name op_defs in

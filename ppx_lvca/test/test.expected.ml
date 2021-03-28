@@ -39,33 +39,30 @@ module Lang (Integer : LanguageObject.AllTermS) =
       struct
         type 'info t =
           | Foo of 'info * 'info Integer.t
-          | Bar of 'info * (('info, Lvca_util.Void.t) Pattern.t * string * 'info t)
-
+          | Bar of 'info * (('info, Lvca_util.Void.t) Pattern.t * string *
+          'info t)
         module Plain =
           struct
             type t =
               | Foo of Integer.Plain.t
-              | Bar of (unit, Lvca_util.Void.t) Pattern.t * string * t
+              | Bar of ((unit, Lvca_util.Void.t) Pattern.t * string * t)
           end
-
         let rec to_plain =
           function
-          | Foo (_, x1) -> Plain.Foo x1
-          | Bar (_, (x1, x2, x3)) -> Plain.Bar (x1, x2, to_plain x3)
-
+          | Foo (_, x1) -> Plain.Foo (Integer.to_plain x1)
+          | Bar (_, (x1, x2, x3)) ->
+              Plain.Bar ((Pattern.to_plain x1), x2, (to_plain x3))
         let rec of_plain =
           function
-          | Plain.Foo x1 -> Foo ((), x1)
-          | Plain.Bar (x1, x2, x3) -> Bar ((), (x1, x2, of_plain x3))
-
+          | Plain.Foo x1 -> Foo ((), (Integer.of_plain x1))
+          | Plain.Bar (x1, x2, x3) ->
+              Bar ((), ((Pattern.of_plain x1), x2, (of_plain x3)))
         let rec equal ~info_eq  t1 t2 =
           match (t1, t2) with
           | (Foo (x0, x1), Foo (y0, y1)) -> info_eq x0 y0 && Integer.equal ~info_eq x1 y1
           | (Bar (x0, (x1, x2, x3)), Bar (y0, (y1, y2, y3))) -> info_eq x0 y0 && Pattern.equal info_eq Lvca_util.Void.(=) x1 y1 && String.(x2 = y2) && equal ~info_eq x3 y3
           | (_, _) -> false
-
         let info = function | Foo (x0, _) -> x0 | Bar (x0, (_, _, _)) -> x0
-
         let rec map_info ~f  =
           function
           | Foo (x0, x1) -> Foo ((f x0), (Integer.map_info ~f x1))
