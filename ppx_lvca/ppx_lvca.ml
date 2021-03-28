@@ -512,11 +512,21 @@ module ModuleExpander = struct
     { pstr_desc = Pstr_value (Recursive, [ value_binding ]); pstr_loc = loc }
   ;;
 
-  let mk_equal ~loc op_defs =
+  let conjuntion ~loc exps =
+    let exps, last = Lvca_util.List.unsnoc exps in
+    let op = mk_exp ~loc (Pexp_ident { txt = Lident "&&"; loc }) in
+    List.fold_right exps ~init:last ~f:(fun e1 e2 ->
+        mk_exp ~loc (Pexp_apply (op, [ Nolabel, e1; Nolabel, e2 ])))
+  ;;
+
+  let mk_equal ~loc sort_name op_defs =
+    let same_sort sort = String.(sort_head sort = sort_name) in
     let body =
       let branches =
         op_defs
-        |> List.map ~f:(fun op_def ->
+        |> List.map
+             ~f:(fun (AbstractSyntax.OperatorDef.OperatorDef (_op_name, arity) as op_def)
+                ->
                let pc_lhs =
                  let p1 =
                    mk_operator_pat
@@ -537,13 +547,66 @@ module ModuleExpander = struct
                  mk_pat ~loc (Ppat_tuple [ p1; p2 ])
                in
                let pc_rhs =
-                 let info_eq = mk_exp ~loc (Pexp_ident { txt = Lident "info_eq"; loc }) in
-                 let args =
-                   [ "x0"; "y0" ]
-                   |> List.map ~f:(fun name ->
-                          Nolabel, mk_exp ~loc (Pexp_ident { txt = Lident name; loc }))
+                 let info_exp =
+                   let info_eq =
+                     mk_exp ~loc (Pexp_ident { txt = Lident "info_eq"; loc })
+                   in
+                   let args =
+                     [ "x0"; "y0" ]
+                     |> List.map ~f:(fun name ->
+                            Nolabel, mk_exp ~loc (Pexp_ident { txt = Lident name; loc }))
+                   in
+                   mk_exp ~loc (Pexp_apply (info_eq, args))
                  in
-                 mk_exp ~loc (Pexp_apply (info_eq, args))
+                 let var_ix = ref 0 in
+                 let mk_xy () =
+                   [ "x"; "y" ]
+                   |> List.map ~f:(fun base ->
+                          let txt = Lident (Printf.sprintf "%s%d" base !var_ix) in
+                          Nolabel, mk_exp ~loc (Pexp_ident { txt; loc }))
+                 in
+                 let other_exps =
+                   arity
+                   |> List.map
+                        ~f:(fun (AbstractSyntax.Valence.Valence (slots, body_sort)) ->
+                          let slots_checks =
+                            slots
+                            |> List.map ~f:(fun slot ->
+                                   Int.incr var_ix;
+                                   let f =
+                                     match slot with
+                                     | AbstractSyntax.SortSlot.SortBinding sort ->
+                                       let equal =
+                                         if same_sort sort
+                                         then Lident "equal"
+                                         else
+                                           build_names
+                                             [ module_name (sort_head sort); "equal" ]
+                                       in
+                                       mk_exp ~loc (Pexp_ident { txt = equal; loc })
+                                     | SortPattern _ ->
+                                       let txt = build_names [ "Pattern"; "equal" ] in
+                                       mk_exp ~loc (Pexp_ident { txt; loc })
+                                   in
+                                   let args = (Labelled "f", f) :: mk_xy () in
+                                   mk_exp ~loc (Pexp_apply (f, args)))
+                          in
+                          let body_check =
+                            let f =
+                              if same_sort body_sort
+                              then Lident "equal"
+                              else
+                                build_names [ module_name (sort_head body_sort); "equal" ]
+                            in
+                            mk_exp
+                              ~loc
+                              (Pexp_apply
+                                 (mk_exp ~loc (Pexp_ident { txt = f; loc }), mk_xy ()))
+                          in
+                          Lvca_util.List.snoc slots_checks body_check)
+                   |> List.join
+                 in
+                 conjuntion ~loc (info_exp :: other_exps)
                in
                { pc_lhs; pc_guard = None; pc_rhs })
       in
@@ -624,32 +687,28 @@ module ModuleExpander = struct
             ( mk_exp ~loc (Pexp_ident { txt = scoped_map_info; loc })
             , [ Labelled "f", f; Nolabel, mk_exp ~loc (Pexp_ident { txt = arg; loc }) ] )
         in
-        let contents =
-          arity
-          |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, body_sort)) ->
-                 slots
-                 |> List.map ~f:(fun slot ->
-                        Int.incr var_ix;
-                        let arg =
-                          let name = Printf.sprintf "x%d" !var_ix in
-                          Pexp_ident { txt = Lident name; loc }
-                        in
-                        match slot with
-                        | AbstractSyntax.SortSlot.SortBinding _sort -> arg
-                        | SortPattern _ ->
-                          Pexp_apply
-                            ( pattern_map_info
-                            , [ Labelled "f", f; Nolabel, mk_exp ~loc arg ] ))
-                 |> Fn.flip Lvca_util.List.snoc (body_arg body_sort))
-          |> List.cons
-               [ Pexp_apply
-                   (f, [ Nolabel, mk_exp ~loc (Pexp_ident { txt = Lident "x0"; loc }) ])
-               ]
-          |> List.map ~f:(fun names ->
-                 names |> List.map ~f:(mk_exp ~loc) |> mk_exp_tuple ~loc)
-          |> mk_exp_tuple ~loc
-        in
-        contents
+        arity
+        |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, body_sort)) ->
+               slots
+               |> List.map ~f:(fun slot ->
+                      Int.incr var_ix;
+                      let arg =
+                        let name = Printf.sprintf "x%d" !var_ix in
+                        Pexp_ident { txt = Lident name; loc }
+                      in
+                      match slot with
+                      | AbstractSyntax.SortSlot.SortBinding _sort -> arg
+                      | SortPattern _ ->
+                        Pexp_apply
+                          (pattern_map_info, [ Labelled "f", f; Nolabel, mk_exp ~loc arg ]))
+               |> Fn.flip Lvca_util.List.snoc (body_arg body_sort))
+        |> List.cons
+             [ Pexp_apply
+                 (f, [ Nolabel, mk_exp ~loc (Pexp_ident { txt = Lident "x0"; loc }) ])
+             ]
+        |> List.map ~f:(fun names ->
+               names |> List.map ~f:(mk_exp ~loc) |> mk_exp_tuple ~loc)
+        |> mk_exp_tuple ~loc
     in
     mk_exp
       ~loc
@@ -691,7 +750,7 @@ module ModuleExpander = struct
     in
     let to_plain = mk_plain_converter ~loc ToPlain sort_name op_defs in
     let of_plain = mk_plain_converter ~loc OfPlain sort_name op_defs in
-    let equal = mk_equal ~loc op_defs in
+    let equal = mk_equal ~loc sort_name op_defs in
     let info = mk_info ~loc op_defs in
     let map_info = mk_map_info ~loc sort_name op_defs in
     (*
