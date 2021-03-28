@@ -422,12 +422,15 @@ module ModuleExpander = struct
     in
     let ctor_contents =
       match arity with
-      | [] -> None
+      | [] ->
+        (match ctor_type with
+        | WithInfo -> Some (mk_exp ~loc (Pexp_tuple []))
+        | Plain -> None)
       | _ ->
         let var_ix = ref 0 in
         let body_arg sort =
           Int.incr var_ix;
-          let arg = Lident (Printf.sprintf "x%d" !var_ix) in
+          let arg = Lident (Printf.sprintf "%s%d" name_base !var_ix) in
           let scoped_converter =
             if String.(sort_head sort = sort_name)
             then Lident fun_name
@@ -594,14 +597,17 @@ module ModuleExpander = struct
 
   (* TODO: remove redundancy with plain_converter_operator_exp *)
   let pc_rhs ~loc sort_name (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity)) =
-    let name_base = "x" in
     let pattern_map_info =
       mk_exp ~loc (Pexp_ident { txt = build_names [ "Pattern"; "map_info" ]; loc })
     in
     let f = mk_exp ~loc (Pexp_ident { txt = Lident "f"; loc }) in
     let ctor_contents =
       match arity with
-      | [] -> None
+      | [] ->
+        (* TODO: add test case for this *)
+        mk_exp
+          ~loc
+          (Pexp_apply (f, [ Nolabel, mk_exp ~loc (Pexp_ident { txt = Lident "x0"; loc }) ]))
       | _ ->
         let var_ix = ref 0 in
         let body_arg sort =
@@ -625,7 +631,7 @@ module ModuleExpander = struct
                  |> List.map ~f:(fun slot ->
                         Int.incr var_ix;
                         let arg =
-                          let name = Printf.sprintf "%s%d" name_base !var_ix in
+                          let name = Printf.sprintf "x%d" !var_ix in
                           Pexp_ident { txt = Lident name; loc }
                         in
                         match slot with
@@ -643,9 +649,11 @@ module ModuleExpander = struct
                  names |> List.map ~f:(mk_exp ~loc) |> mk_exp_tuple ~loc)
           |> mk_exp_tuple ~loc
         in
-        Some contents
+        contents
     in
-    mk_exp ~loc (Pexp_construct ({ txt = build_names [ op_name ]; loc }, ctor_contents))
+    mk_exp
+      ~loc
+      (Pexp_construct ({ txt = build_names [ op_name ]; loc }, Some ctor_contents))
   ;;
 
   let mk_map_info ~loc sort_name op_defs =
