@@ -36,6 +36,7 @@ and 'info cases = 'info case_scope list
 
 and 'info case_scope = CaseScope of 'info pattern * 'info term
 
+val equal : info_eq:('info -> 'info -> bool) -> 'info term -> 'info term -> bool
 val map_info : f:('a -> 'b) -> 'a term -> 'b term
 val erase : _ term -> unit term
 val info : 'info term -> 'info

@@ -11,6 +11,8 @@ type is_rec =
   | Rec
   | NoRec
 
+let is_rec_equal x y = match x, y with Rec, Rec | NoRec, NoRec -> true | _, _ -> false
+
 type 'info term =
   | Term of 'info n_term
   | CoreApp of 'info * 'info term * 'info term list
@@ -33,6 +35,33 @@ and 'info scope = Scope of string * 'info term
 and 'info cases = 'info case_scope list
 
 and 'info case_scope = CaseScope of 'info pattern * 'info term
+
+let rec equal ~info_eq x y =
+  match x, y with
+  | Term x, Term y -> Nominal.Term.equal info_eq Primitive.( = ) x y
+  | CoreApp (x1, x2, x3), CoreApp (y1, y2, y3) ->
+    info_eq x1 y1 && equal ~info_eq x2 y2 && List.equal (equal ~info_eq) x3 y3
+  | Case (x1, x2, x3), Case (y1, y2, y3) ->
+    info_eq x1 y1 && equal ~info_eq x2 y2 && List.equal (case_scope_equal ~info_eq) x3 y3
+  | Lambda (x1, x2, x3), Lambda (y1, y2, y3) ->
+    info_eq x1 y1 && Sort.equal info_eq x2 y2 && scope_equal ~info_eq x3 y3
+  | Let x, Let y -> let_equal ~info_eq x y
+  | Var (x1, x2), Var (y1, y2) -> info_eq x1 y1 && String.(x2 = y2)
+  | _, _ -> false
+
+and case_scope_equal ~info_eq (CaseScope (x1, x2)) (CaseScope (y1, y2)) =
+  BindingAwarePattern.equal info_eq Primitive.( = ) x1 y1 && equal ~info_eq x2 y2
+
+and scope_equal ~info_eq (Scope (x1, x2)) (Scope (y1, y2)) =
+  String.(x1 = y1) && equal ~info_eq x2 y2
+
+and let_equal ~info_eq x y =
+  info_eq x.info y.info
+  && is_rec_equal x.is_rec y.is_rec
+  && equal ~info_eq x.tm y.tm
+  && Option.equal (Nominal.Term.equal info_eq Primitive.( = )) x.ty y.ty
+  && scope_equal ~info_eq x.scope y.scope
+;;
 
 type 'a env = ('a, Primitive.t) Nominal.Term.t Lvca_util.String.Map.t
 
@@ -408,7 +437,7 @@ let%test_module "Parsing" =
       ParseUtil.parse_string Parse.term str |> Result.ok_or_failwith |> erase
     ;;
 
-    let ( = ) = Caml.( = )
+    let ( = ) = equal ~info_eq:Unit.( = )
     let one = Nominal.Term.Primitive ((), Primitive.PrimInteger (Z.of_int 1))
     let var name = Var ((), name)
     let ignored name = BindingAwarePattern.Ignored ((), name)
