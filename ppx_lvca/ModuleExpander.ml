@@ -4,6 +4,14 @@ open Ppxlib
 module Util = Lvca_util
 module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
 
+type ctor_type =
+  | Plain
+  | WithInfo
+
+type conversion_direction =
+  | ToPlain
+  | OfPlain
+
 let extract_string loc expr =
   (* payload and location of the string contents, inside "" or {||} *)
   let adjust shift loc =
@@ -69,6 +77,19 @@ let pattern_t_ident = modules_t [ "Pattern" ]
 let pattern_t ~loc = { txt = pattern_t_ident; loc }
 let void_t_loc = modules_t [ "Lvca_util"; "Void" ]
 let void_t ~loc = { txt = void_t_loc; loc }
+let mk_typ_tuple ~loc = function [ ty ] -> ty | tys -> mk_type ~loc (Ptyp_tuple tys)
+
+let mk_pat_tuple ~loc = function
+  | [ elem ] -> elem
+  | elems -> mk_pat ~loc (Ppat_tuple elems)
+;;
+
+let mk_exp_tuple ~loc = function
+  | [ elem ] -> elem
+  | elems -> mk_exp ~loc (Pexp_tuple elems)
+;;
+
+let sort_head = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
 
 let rec ptyp_of_sort ~loc ~sort_name ~info var_set = function
   | Sort.Name (_, name) ->
@@ -92,6 +113,13 @@ let rec ptyp_of_sort ~loc ~sort_name ~info var_set = function
   | Ap (_, name, args) ->
     let f sort = sort |> ptyp_of_sort ~loc ~sort_name ~info var_set |> mk_type ~loc in
     Ptyp_constr ({ txt = Lident name; loc }, List.map args ~f)
+;;
+
+let conjuntion ~loc exps =
+  let exps, last = Lvca_util.List.unsnoc exps in
+  let op = mk_exp ~loc (Pexp_ident { txt = Lident "&&"; loc }) in
+  List.fold_right exps ~init:last ~f:(fun e1 e2 ->
+      mk_exp ~loc (Pexp_apply (op, [ Nolabel, e1; Nolabel, e2 ])))
 ;;
 
 let args_of_valence
@@ -127,8 +155,6 @@ let args_of_valence
     let body_type = mk_type ~loc body_type in
     binding_types @ [ body_type ]
 ;;
-
-let mk_typ_tuple ~loc = function [ ty ] -> ty | tys -> mk_type ~loc (Ptyp_tuple tys)
 
 (* XXX possibility of generating two constructors with same name *)
 let mk_ctor_decl
@@ -174,19 +200,6 @@ let mk_type_decl ~loc ~info ~sort_name (AbstractSyntax.SortDef.SortDef (vars, op
     }
   in
   { pstr_desc = Pstr_type (Recursive, [ type_decl ]); pstr_loc = loc }
-;;
-
-type ctor_type =
-  | Plain
-  | WithInfo
-
-type conversion_direction =
-  | ToPlain
-  | OfPlain
-
-let mk_pat_tuple ~loc = function
-  | [ elem ] -> elem
-  | elems -> mk_pat ~loc (Ppat_tuple elems)
 ;;
 
 let mk_operator_pat
@@ -235,13 +248,6 @@ let mk_operator_pat
      in
      Ppat_construct ({ txt; loc }, Some constr_body))
 ;;
-
-let mk_exp_tuple ~loc = function
-  | [ elem ] -> elem
-  | elems -> mk_exp ~loc (Pexp_tuple elems)
-;;
-
-let sort_head = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
 
 (* TODO: remove redundancy with pc_rhs *)
 let plain_converter_operator_exp
@@ -306,13 +312,10 @@ let plain_converter_operator_exp
       in
       Some contents
   in
-  let txt =
-    let names =
-      match ctor_type with WithInfo -> [ op_name ] | Plain -> [ "Plain"; op_name ]
-    in
-    build_names names
+  let names =
+    match ctor_type with WithInfo -> [ op_name ] | Plain -> [ "Plain"; op_name ]
   in
-  mk_exp ~loc (Pexp_construct ({ txt; loc }, ctor_contents))
+  mk_exp ~loc (Pexp_construct ({ txt = build_names names; loc }, ctor_contents))
 ;;
 
 let mk_plain_converter ~loc conversion_direction sort_name op_defs =
@@ -345,13 +348,6 @@ let mk_plain_converter ~loc conversion_direction sort_name op_defs =
     mk_value_binding ~loc pat exp
   in
   { pstr_desc = Pstr_value (Recursive, [ value_binding ]); pstr_loc = loc }
-;;
-
-let conjuntion ~loc exps =
-  let exps, last = Lvca_util.List.unsnoc exps in
-  let op = mk_exp ~loc (Pexp_ident { txt = Lident "&&"; loc }) in
-  List.fold_right exps ~init:last ~f:(fun e1 e2 ->
-      mk_exp ~loc (Pexp_apply (op, [ Nolabel, e1; Nolabel, e2 ])))
 ;;
 
 let mk_equal ~loc sort_name op_defs =
