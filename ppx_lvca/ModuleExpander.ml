@@ -72,9 +72,6 @@ let modules_t ?(op_name = "t") modules =
 (* TODO: more sophisticated naming rules? *)
 let ctor_name = String.capitalize
 let module_name = String.capitalize
-let mk_var_type ~loc name = mk_type ~loc (Ptyp_var name)
-let pattern_t_ident = modules_t [ "Pattern" ]
-let pattern_t ~loc = { txt = pattern_t_ident; loc }
 
 let mk_typ_tuple ~loc = function
   | [] -> [%type: unit]
@@ -98,7 +95,7 @@ let sort_head = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
 
 let rec ptyp_of_sort ~loc ~sort_name ~info var_set = function
   | Sort.Name (_, name) ->
-    let info_args = if info then [ [%type: info] ] else [] in
+    let info_args = if info then [ [%type: 'info] ] else [] in
     if Set.mem var_set name
     then (* This is a variable if it's in the set of vars ... *)
       Ptyp_var name
@@ -133,23 +130,20 @@ let args_of_valence
     (AbstractSyntax.Valence.Valence (binding_sort_slots, body_sort))
   =
   let body_type = ptyp_of_sort ~loc ~sort_name ~info var_set body_sort in
-  let void_t = [%type: Lvca_util.Void.t] in
   match binding_sort_slots with
   | [] -> [ mk_type ~loc body_type ]
   | slots ->
-    let pat_var_types =
-      if info then [ mk_var_type ~loc "info"; void_t ] else [ [%type: unit]; void_t ]
+    let pat_type =
+      if info
+      then [%type: ('info, Lvca_util.Void.t) Pattern.t]
+      else [%type: (unit, Lvca_util.Void.t) Pattern.t]
     in
     let binding_types =
       slots
       |> List.map ~f:(fun slot ->
-             let ty =
-               match slot with
-               | AbstractSyntax.SortSlot.SortBinding _sort ->
-                 Ptyp_constr ({ txt = Lident "string"; loc }, [])
-               | SortPattern _sort -> Ptyp_constr (pattern_t ~loc, pat_var_types)
-             in
-             mk_type ~loc ty)
+             match slot with
+             | AbstractSyntax.SortSlot.SortBinding _sort -> [%type: string]
+             | SortPattern _sort -> pat_type)
     in
     let body_type = mk_type ~loc body_type in
     binding_types @ [ body_type ]
@@ -164,7 +158,7 @@ let mk_ctor_decl
     (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity))
   =
   let args = arity |> List.map ~f:(args_of_valence ~loc ~info ~sort_name var_set) in
-  let args = if info then [ [%type: info] ] :: args else args in
+  let args = if info then [ [%type: 'info] ] :: args else args in
   let args = List.map args ~f:(mk_typ_tuple ~loc) in
   { pcd_name = { txt = ctor_name op_name; loc }
   ; pcd_args = Pcstr_tuple args
@@ -177,7 +171,7 @@ let mk_ctor_decl
 let mk_params ~loc vars =
   vars
   |> List.map ~f:(fun var_name ->
-         let core_type = mk_var_type ~loc var_name in
+         let core_type = mk_type ~loc (Ptyp_var var_name) in
          core_type, Invariant
          (* Covariant? *))
 ;;
