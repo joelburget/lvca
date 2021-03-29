@@ -261,12 +261,10 @@ let plain_converter_operator_exp
   let pattern_converter =
     mk_exp ~loc (Pexp_ident { txt = build_names [ "Pattern"; fun_name ]; loc })
   in
+  let unit = Pexp_ident { txt = Lident "()"; loc } in
   let ctor_contents =
     match arity with
-    | [] ->
-      (match ctor_type with
-      | WithInfo -> Some (mk_exp ~loc (Pexp_tuple []))
-      | Plain -> None)
+    | [] -> (match ctor_type with WithInfo -> Some (mk_exp ~loc unit) | Plain -> None)
     | _ ->
       let var_ix = ref 0 in
       let body_arg sort =
@@ -300,9 +298,7 @@ let plain_converter_operator_exp
                |> Fn.flip Lvca_util.List.snoc (body_arg body_sort))
       in
       let contents =
-        match ctor_type with
-        | WithInfo -> [ Pexp_tuple [] ] :: contents
-        | Plain -> contents
+        match ctor_type with WithInfo -> [ unit ] :: contents | Plain -> contents
       in
       let contents =
         contents
