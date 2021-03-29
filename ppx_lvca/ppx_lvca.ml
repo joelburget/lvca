@@ -555,10 +555,7 @@ module ModuleExpander = struct
                           let txt = Lident (Printf.sprintf "%s%d" base !var_ix) in
                           Nolabel, mk_exp ~loc (Pexp_ident { txt; loc }))
                  in
-                 let info_exp =
-                   let args = mk_xy () in
-                   mk_exp ~loc (Pexp_apply (info_eq, args))
-                 in
+                 let info_exp = mk_exp ~loc (Pexp_apply (info_eq, mk_xy ())) in
                  let other_exps =
                    arity
                    |> List.map
@@ -567,22 +564,19 @@ module ModuleExpander = struct
                             slots
                             |> List.map ~f:(fun slot ->
                                    Int.incr var_ix;
-                                   let f =
+                                   let names, args =
                                      match slot with
-                                     | AbstractSyntax.SortSlot.SortBinding sort ->
-                                       let equal =
-                                         if same_sort sort
-                                         then Lident "equal"
-                                         else
-                                           build_names
-                                             [ module_name (sort_head sort); "equal" ]
-                                       in
-                                       mk_exp ~loc (Pexp_ident { txt = equal; loc })
+                                     | AbstractSyntax.SortSlot.SortBinding _sort ->
+                                       [ "String"; "=" ], mk_xy ()
                                      | SortPattern _ ->
-                                       let txt = build_names [ "Pattern"; "equal" ] in
-                                       mk_exp ~loc (Pexp_ident { txt; loc })
+                                       ( [ "Pattern"; "equal" ]
+                                       , (Labelled "info_eq", info_eq) :: mk_xy () )
                                    in
-                                   let args = (Labelled "info_eq", info_eq) :: mk_xy () in
+                                   let f =
+                                     mk_exp
+                                       ~loc
+                                       (Pexp_ident { txt = build_names names; loc })
+                                   in
                                    mk_exp ~loc (Pexp_apply (f, args)))
                           in
                           let body_check =
