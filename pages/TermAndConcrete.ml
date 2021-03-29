@@ -25,7 +25,7 @@ module Model = struct
       (fun ppf tm_result ->
         match tm_result with
         | Error msg -> Fmt.pf ppf "%s" msg
-        | Ok tm -> Nominal.pp_term Primitive.pp ppf tm)
+        | Ok tm -> Nominal.Term.pp Primitive.pp ppf tm)
       result
       OptRange.pp
       input_selected
@@ -35,7 +35,7 @@ module Model = struct
 
   let ( = ) m1 m2 =
     let result_eq =
-      Result.equal (Nominal.equal OptRange.( = ) Primitive.( = )) String.( = )
+      Result.equal (Nominal.Term.equal OptRange.( = ) Primitive.( = )) String.( = )
     in
     String.(m1.input = m2.input)
     && result_eq m1.result m2.result

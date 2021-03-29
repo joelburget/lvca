@@ -197,7 +197,7 @@ let rec index_pat = function
 ;;
 
 let rec index_tm ~expanded_depth = function
-  | Nominal.Primitive (loc, p) -> Nominal.Primitive (LocIx loc, p), E.never
+  | Nominal.Term.Primitive (loc, p) -> Nominal.Term.Primitive (LocIx loc, p), E.never
   | Var (loc, name) -> Var (LocIx loc, name), E.never
   | Operator (loc, name, scopes) ->
     let scopes, expanded_s, expanded_toggle_e =
@@ -222,15 +222,15 @@ let rec index_tm ~expanded_depth = function
     in
     Operator (OperatorIx (loc, expanded_s), name, scopes), expanded_toggle_e
 
-and index_scope ~expanded_depth (Nominal.Scope (pats, tm)) =
+and index_scope ~expanded_depth (Nominal.Scope.Scope (pats, tm)) =
   let expanded_depth = decrease_depth expanded_depth in
   let tm, evt = index_tm ~expanded_depth tm in
   let pats = pats |> List.map ~f:index_pat in
-  Nominal.Scope (pats, tm), evt
+  Nominal.Scope.Scope (pats, tm), evt
 ;;
 
 let rec find_outermost_binding ~var_name = function
-  | Nominal.Primitive _ | Var _ -> None
+  | Nominal.Term.Primitive _ | Var _ -> None
   | Operator (_, _, scopes) ->
     List.find_map scopes ~f:(find_outermost_binding_scope ~var_name)
 
@@ -292,10 +292,10 @@ let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
   | _ -> failwith "invariant violation: wrong index"
 ;;
 
-let rec render_tm ~render_params ?(suffix = "") : _ Nominal.term -> unit =
+let rec render_tm ~render_params ?(suffix = "") : _ Nominal.Term.t -> unit =
   let { depth; var_selected_events; queue; _ } = render_params in
   function
-  | Nominal.Primitive (LocIx loc, p) ->
+  | Nominal.Term.Primitive (LocIx loc, p) ->
     let str = Fmt.to_to_string Primitive.pp p ^ suffix in
     Queue.enqueue queue (grid_tmpl ~render_params [ padded_txt depth str ] loc)
   | Var (LocIx loc, name) ->
@@ -324,7 +324,7 @@ let rec render_tm ~render_params ?(suffix = "") : _ Nominal.term -> unit =
       Queue.enqueue queue close_elem)
   | _ -> failwith "invariant violation: wrong index"
 
-and render_scope ~render_params ~last:last_slot (Nominal.Scope (pats, tm)) =
+and render_scope ~render_params ~last:last_slot (Nominal.Scope.Scope (pats, tm)) =
   let { depth; var_selected_events; _ } = render_params in
   let pattern_var_events =
     List.map pats ~f:(fun pat ->
@@ -376,10 +376,10 @@ let view_tm
     ?default_expanded_depth:(expanded_depth = FullyExpanded)
     tm
   =
-  let tm = Nominal.map_info ~f:select_source_range tm in
+  let tm = Nominal.Term.map_info ~f:select_source_range tm in
   (* First, create a stream for all free variables actions on them will work
      like normal. *)
-  let free_vars = Nominal.free_vars tm in
+  let free_vars = Nominal.Term.free_vars tm in
   let var_selected_events =
     free_vars
     |> Set.to_list

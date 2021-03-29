@@ -101,7 +101,7 @@ let rec nominal_gen =
   lazy
     (let choose, list, map, unlazy = Crowbar.(choose, list, map, unlazy) in
      choose
-       Nominal.
+       Nominal.Term.
          [ map [ prim_gen ] (fun p -> Primitive ((), p))
          ; map
              [ nonempty_str_gen; list (unlazy nominal_scope_gen) ]
@@ -113,7 +113,7 @@ and nominal_scope_gen =
   lazy
     Crowbar.(
       map [ list pattern_gen; unlazy nominal_gen ] (fun pats tm ->
-          Nominal.Scope (pats, tm)))
+          Nominal.Scope.Scope (pats, tm)))
 ;;
 
 let (lazy nominal_gen) = nominal_gen

@@ -4,7 +4,7 @@ open Brr_note
 open Lvca_syntax
 open Note
 open Prelude
-module ParseNominal = Nominal.Parse (ParseUtil.CComment)
+module ParseNominal = Nominal.Term.Parse (ParseUtil.CComment)
 module ParsePrimitive = Primitive.Parse (ParseUtil.CComment)
 
 let parse_tm = ParseUtil.parse_string (ParseNominal.whitespace_t ParsePrimitive.t)
@@ -75,7 +75,9 @@ module View = struct
                match parse_tm str with
                | Error msg -> E.never, [ El.div [ txt msg ] ]
                | Ok tm ->
-                 let tm = tm |> Nominal.map_info ~f:(SourceRanges.of_opt_range ~buf) in
+                 let tm =
+                   tm |> Nominal.Term.map_info ~f:(SourceRanges.of_opt_range ~buf)
+                 in
                  let tree_view, tree_selection_e =
                    TreeView.view_tm ~source_column:false ~range_column:false tm
                  in

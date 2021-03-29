@@ -4,17 +4,17 @@ open Brr_note
 open Lvca_syntax
 open Prelude
 module PrimitiveParse = Primitive.Parse (ParseUtil.NoComment)
-module TermParse = Nominal.Parse (ParseUtil.NoComment)
+module TermParse = Nominal.Term.Parse (ParseUtil.NoComment)
 module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse (ParseUtil.NoComment)
 
-type term = (OptRange.t, Primitive.t) Nominal.term
+type term = (OptRange.t, Primitive.t) Nominal.Term.t
 
 type lang =
   | Lambda
   | Term
 
 let parser_of = function Lambda -> LambdaParse.t | Term -> TermParse.t PrimitiveParse.t
-let term_pretty = Nominal.pp_term_range Primitive.pp
+let term_pretty = Nominal.Term.pp_range Primitive.pp
 let lambda_pretty = Lvca_languages.LambdaCalculus.pp_range
 let lambda_ranges_pretty = Lvca_languages.LambdaCalculus.pp_ranges
 let html_eq = Caml.( = )

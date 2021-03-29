@@ -22,7 +22,7 @@ module Model = struct
     let pp_tm_result ppf tm_result =
       match tm_result with
       | Error msg -> Fmt.pf ppf "%s" msg
-      | Ok tm -> Nominal.pp_term Primitive.pp ppf tm
+      | Ok tm -> Nominal.Term.pp Primitive.pp ppf tm
     in
     let input_lang_str = match input_lang with Lambda -> "Lambda" | Term -> "Term" in
     Fmt.pr
@@ -42,7 +42,7 @@ module Model = struct
 
   let ( = ) m1 m2 =
     let result_eq =
-      Result.equal (Nominal.equal OptRange.( = ) Primitive.( = )) String.( = )
+      Result.equal (Nominal.Term.equal OptRange.( = ) Primitive.( = )) String.( = )
     in
     String.(m1.input = m2.input)
     && result_eq m1.parsed_input m2.parsed_input
@@ -107,9 +107,10 @@ module View = struct
                match result with
                | Ok tm ->
                  Brr.Console.log
-                   [ Jstr.v ("tm loc: " ^ Fmt.to_to_string OptRange.pp (Nominal.info tm))
+                   [ Jstr.v
+                       ("tm loc: " ^ Fmt.to_to_string OptRange.pp (Nominal.Term.info tm))
                    ];
-                 let tm = Nominal.map_info tm ~f:cvt_loc in
+                 let tm = Nominal.Term.map_info tm ~f:cvt_loc in
                  Fmt.pf formatter "%a" lambda_ranges_pretty tm
                | Error msg -> Fmt.pf formatter "%s" msg
              in
