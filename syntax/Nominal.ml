@@ -667,7 +667,7 @@ end = struct
   type ('info, 'prim) t = Scope of ('info, 'prim) Pattern.t list * ('info, 'prim) Term.t
 
   let equal info_eq prim_eq (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
-    List.equal (Pattern.equal info_eq prim_eq) pats1 pats2
+    List.equal (Pattern.equal ~info_eq ~prim_eq) pats1 pats2
     && Term.equal info_eq prim_eq tm1 tm2
   ;;
 

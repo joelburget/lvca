@@ -15,12 +15,12 @@ type ('info, 'prim) t =
   | Var of 'info * string
   | Ignored of 'info * string
 
-let rec equal info_eq prim_eq pat1 pat2 =
+let rec equal ~info_eq ~prim_eq pat1 pat2 =
   match pat1, pat2 with
   | Operator (i1, name1, pats1), Operator (i2, name2, pats2) ->
     info_eq i1 i2
     && String.(name1 = name2)
-    && List.equal (equal info_eq prim_eq) pats1 pats2
+    && List.equal (equal ~info_eq ~prim_eq) pats1 pats2
   | Primitive (i1, p1), Primitive (i2, p2) -> info_eq i1 i2 && prim_eq p1 p2
   | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
   | Ignored (i1, name1), Ignored (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)

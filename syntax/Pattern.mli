@@ -9,8 +9,8 @@ type ('info, 'prim) t =
   | Ignored of 'info * string
 
 val equal
-  :  ('info -> 'info -> bool)
-  -> ('prim -> 'prim -> bool)
+  :  info_eq:('info -> 'info -> bool)
+  -> prim_eq:('prim -> 'prim -> bool)
   -> ('info, 'prim) t
   -> ('info, 'prim) t
   -> bool

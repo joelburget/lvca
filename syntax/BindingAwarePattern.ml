@@ -25,7 +25,7 @@ type ('info, 'prim) capture =
 
 let capture_eq ~info_eq ~prim_eq cap1 cap2 =
   match cap1, cap2 with
-  | CapturedBinder pat1, CapturedBinder pat2 -> Pattern.equal info_eq prim_eq pat1 pat2
+  | CapturedBinder pat1, CapturedBinder pat2 -> Pattern.equal ~info_eq ~prim_eq pat1 pat2
   | CapturedTerm tm1, CapturedTerm tm2 -> Nominal.Term.equal info_eq prim_eq tm1 tm2
   | _, _ -> false
 ;;
