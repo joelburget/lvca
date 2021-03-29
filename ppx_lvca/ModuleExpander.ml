@@ -75,14 +75,21 @@ let module_name = String.capitalize
 let mk_var_type ~loc name = mk_type ~loc (Ptyp_var name)
 let pattern_t_ident = modules_t [ "Pattern" ]
 let pattern_t ~loc = { txt = pattern_t_ident; loc }
-let mk_typ_tuple ~loc = function [ ty ] -> ty | tys -> mk_type ~loc (Ptyp_tuple tys)
+
+let mk_typ_tuple ~loc = function
+  | [] -> [%type: unit]
+  | [ ty ] -> ty
+  | tys -> mk_type ~loc (Ptyp_tuple tys)
+;;
 
 let mk_pat_tuple ~loc = function
+  | [] -> [%pat? ()]
   | [ elem ] -> elem
   | elems -> mk_pat ~loc (Ppat_tuple elems)
 ;;
 
 let mk_exp_tuple ~loc = function
+  | [] -> [%expr ()]
   | [ elem ] -> elem
   | elems -> mk_exp ~loc (Pexp_tuple elems)
 ;;
