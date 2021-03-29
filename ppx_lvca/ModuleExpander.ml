@@ -75,8 +75,6 @@ let module_name = String.capitalize
 let mk_var_type ~loc name = mk_type ~loc (Ptyp_var name)
 let pattern_t_ident = modules_t [ "Pattern" ]
 let pattern_t ~loc = { txt = pattern_t_ident; loc }
-let void_t_loc = modules_t [ "Lvca_util"; "Void" ]
-let void_t ~loc = { txt = void_t_loc; loc }
 let mk_typ_tuple ~loc = function [ ty ] -> ty | tys -> mk_type ~loc (Ptyp_tuple tys)
 
 let mk_pat_tuple ~loc = function
@@ -93,7 +91,7 @@ let sort_head = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
 
 let rec ptyp_of_sort ~loc ~sort_name ~info var_set = function
   | Sort.Name (_, name) ->
-    let info_args = if info then [ mk_type ~loc (Ptyp_var "info") ] else [] in
+    let info_args = if info then [ [%type: info] ] else [] in
     if Set.mem var_set name
     then (* This is a variable if it's in the set of vars ... *)
       Ptyp_var name
@@ -117,9 +115,7 @@ let rec ptyp_of_sort ~loc ~sort_name ~info var_set = function
 
 let conjuntion ~loc exps =
   let exps, last = Lvca_util.List.unsnoc exps in
-  let op = mk_exp ~loc (Pexp_ident { txt = Lident "&&"; loc }) in
-  List.fold_right exps ~init:last ~f:(fun e1 e2 ->
-      mk_exp ~loc (Pexp_apply (op, [ Nolabel, e1; Nolabel, e2 ])))
+  List.fold_right exps ~init:last ~f:(fun e1 e2 -> [%expr [%e e1] && [%e e2]])
 ;;
 
 let args_of_valence
@@ -130,16 +126,12 @@ let args_of_valence
     (AbstractSyntax.Valence.Valence (binding_sort_slots, body_sort))
   =
   let body_type = ptyp_of_sort ~loc ~sort_name ~info var_set body_sort in
+  let void_t = [%type: Lvca_util.Void.t] in
   match binding_sort_slots with
   | [] -> [ mk_type ~loc body_type ]
   | slots ->
     let pat_var_types =
-      if info
-      then [ mk_var_type ~loc "info"; mk_type ~loc (Ptyp_constr (void_t ~loc, [])) ]
-      else
-        [ mk_type ~loc (Ptyp_constr ({ txt = Lident "unit"; loc }, []))
-        ; mk_type ~loc (Ptyp_constr (void_t ~loc, []))
-        ]
+      if info then [ mk_var_type ~loc "info"; void_t ] else [ [%type: unit]; void_t ]
     in
     let binding_types =
       slots
@@ -165,7 +157,7 @@ let mk_ctor_decl
     (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity))
   =
   let args = arity |> List.map ~f:(args_of_valence ~loc ~info ~sort_name var_set) in
-  let args = if info then [ mk_type ~loc (Ptyp_var "info") ] :: args else args in
+  let args = if info then [ [%type: info] ] :: args else args in
   let args = List.map args ~f:(mk_typ_tuple ~loc) in
   { pcd_name = { txt = ctor_name op_name; loc }
   ; pcd_args = Pcstr_tuple args
@@ -261,10 +253,9 @@ let plain_converter_operator_exp
   let pattern_converter =
     mk_exp ~loc (Pexp_ident { txt = build_names [ "Pattern"; fun_name ]; loc })
   in
-  let unit = Pexp_ident { txt = Lident "()"; loc } in
   let ctor_contents =
     match arity with
-    | [] -> (match ctor_type with WithInfo -> Some (mk_exp ~loc unit) | Plain -> None)
+    | [] -> (match ctor_type with WithInfo -> Some [%expr ()] | Plain -> None)
     | _ ->
       let var_ix = ref 0 in
       let body_arg sort =
@@ -296,16 +287,13 @@ let plain_converter_operator_exp
                       | SortPattern _ ->
                         Pexp_apply (pattern_converter, [ Nolabel, mk_exp ~loc arg ]))
                |> Fn.flip Lvca_util.List.snoc (body_arg body_sort))
-      in
-      let contents =
-        match ctor_type with WithInfo -> [ unit ] :: contents | Plain -> contents
-      in
-      let contents =
-        contents
         |> List.map ~f:(fun names ->
                names |> List.map ~f:(mk_exp ~loc) |> mk_exp_tuple ~loc)
-        |> mk_exp_tuple ~loc
       in
+      let contents =
+        match ctor_type with WithInfo -> [%expr ()] :: contents | Plain -> contents
+      in
+      let contents = contents |> mk_exp_tuple ~loc in
       Some contents
   in
   let names =
@@ -370,10 +358,10 @@ let mk_equal ~loc sort_name op_defs =
                    ~name_base:"y"
                    op_def
                in
-               mk_pat ~loc (Ppat_tuple [ p1; p2 ])
+               [%pat? [%p p1], [%p p2]]
              in
              let pc_rhs =
-               let info_eq = mk_exp ~loc (Pexp_ident { txt = Lident "info_eq"; loc }) in
+               let info_eq = [%expr info_eq] in
                let var_ix = ref 0 in
                let mk_xy () =
                  [ "x"; "y" ]
@@ -426,20 +414,9 @@ let mk_equal ~loc sort_name op_defs =
              { pc_lhs; pc_guard = None; pc_rhs })
     in
     let last_branch =
-      { pc_lhs = mk_pat ~loc (Ppat_tuple [ mk_pat ~loc Ppat_any; mk_pat ~loc Ppat_any ])
-      ; pc_guard = None
-      ; pc_rhs = mk_exp ~loc (Pexp_ident { txt = Lident "false"; loc })
-      }
+      { pc_lhs = [%pat? _, _]; pc_guard = None; pc_rhs = [%expr false] }
     in
-    let branches = Lvca_util.List.snoc branches last_branch in
-    Pexp_match
-      ( mk_exp
-          ~loc
-          (Pexp_tuple
-             [ mk_exp ~loc (Pexp_ident { txt = Lident "t1"; loc })
-             ; mk_exp ~loc (Pexp_ident { txt = Lident "t2"; loc })
-             ])
-      , branches )
+    Pexp_match ([%expr t1, t2], Lvca_util.List.snoc branches last_branch)
   in
   let value_binding =
     mk_fun
@@ -452,7 +429,6 @@ let mk_equal ~loc sort_name op_defs =
 ;;
 
 let mk_info ~loc op_defs =
-  let pat = mk_pat ~loc (Ppat_var { txt = "info"; loc }) in
   let f op_def =
     let pc_lhs =
       mk_operator_pat
@@ -462,30 +438,21 @@ let mk_info ~loc op_defs =
         ~match_non_info:false
         op_def
     in
-    { pc_lhs
-    ; pc_guard = None
-    ; pc_rhs = mk_exp ~loc (Pexp_ident { txt = Lident "x0"; loc })
-    }
+    { pc_lhs; pc_guard = None; pc_rhs = [%expr x0] }
   in
   let branches = op_defs |> List.map ~f in
   let exp = mk_exp ~loc (Pexp_function branches) in
-  let value_binding = mk_value_binding ~loc pat exp in
+  let value_binding = mk_value_binding ~loc [%pat? info] exp in
   { pstr_desc = Pstr_value (Nonrecursive, [ value_binding ]); pstr_loc = loc }
 ;;
 
 (* TODO: remove redundancy with plain_converter_operator_exp *)
 let map_info_rhs ~loc sort_name (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity)) =
-  let pattern_map_info =
-    mk_exp ~loc (Pexp_ident { txt = build_names [ "Pattern"; "map_info" ]; loc })
-  in
-  let f = mk_exp ~loc (Pexp_ident { txt = Lident "f"; loc }) in
+  let pattern_map_info = [%expr Pattern.map_info] in
+  let f = [%expr f] in
   let ctor_contents =
     match arity with
-    | [] ->
-      (* TODO: add test case for this *)
-      mk_exp
-        ~loc
-        (Pexp_apply (f, [ Nolabel, mk_exp ~loc (Pexp_ident { txt = Lident "x0"; loc }) ]))
+    | [] -> (* TODO: add test case for this *) [%expr f x0]
     | _ ->
       let var_ix = ref 0 in
       let body_arg sort =
@@ -517,10 +484,7 @@ let map_info_rhs ~loc sort_name (AbstractSyntax.OperatorDef.OperatorDef (op_name
                       Pexp_apply
                         (pattern_map_info, [ Labelled "f", f; Nolabel, mk_exp ~loc arg ]))
              |> Fn.flip Lvca_util.List.snoc (body_arg body_sort))
-      |> List.cons
-           [ Pexp_apply
-               (f, [ Nolabel, mk_exp ~loc (Pexp_ident { txt = Lident "x0"; loc }) ])
-           ]
+      |> List.cons [ Pexp_apply (f, [ Nolabel, [%expr x0] ]) ]
       |> List.map ~f:(fun names ->
              names |> List.map ~f:(mk_exp ~loc) |> mk_exp_tuple ~loc)
       |> mk_exp_tuple ~loc
