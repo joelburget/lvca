@@ -362,15 +362,17 @@ let mk_equal ~loc sort_name op_defs =
                [%pat? [%p p1], [%p p2]]
              in
              let pc_rhs =
-               let info_eq = [%expr info_eq] in
                let var_ix = ref 0 in
                let mk_xy () =
-                 [ "x"; "y" ]
-                 |> List.map ~f:(fun base ->
+                 ("x", "y")
+                 |> Lvca_util.Tuple2.map ~f:(fun base ->
                         let txt = Lident (Printf.sprintf "%s%d" base !var_ix) in
-                        Nolabel, mk_exp ~loc (Pexp_ident { txt; loc }))
+                        mk_exp ~loc (Pexp_ident { txt; loc }))
                in
-               let info_exp = mk_exp ~loc (Pexp_apply (info_eq, mk_xy ())) in
+               let info_exp =
+                 let x, y = mk_xy () in
+                 [%expr info_eq [%e x] [%e y]]
+               in
                let other_exps =
                  arity
                  |> List.map
@@ -379,20 +381,12 @@ let mk_equal ~loc sort_name op_defs =
                           slots
                           |> List.map ~f:(fun slot ->
                                  Int.incr var_ix;
-                                 let names, args =
-                                   match slot with
-                                   | AbstractSyntax.SortSlot.SortBinding _sort ->
-                                     [ "String"; "=" ], mk_xy ()
-                                   | SortPattern _ ->
-                                     ( [ "Pattern"; "equal" ]
-                                     , (Labelled "info_eq", info_eq) :: mk_xy () )
-                                 in
-                                 let f =
-                                   mk_exp
-                                     ~loc
-                                     (Pexp_ident { txt = build_names names; loc })
-                                 in
-                                 mk_exp ~loc (Pexp_apply (f, args)))
+                                 let x, y = mk_xy () in
+                                 match slot with
+                                 | AbstractSyntax.SortSlot.SortBinding _sort ->
+                                   [%expr String.([%e x] = [%e y])]
+                                 | SortPattern _ ->
+                                   [%expr Pattern.equal ~info_eq [%e x] [%e y]])
                         in
                         let body_check =
                           Int.incr var_ix;
@@ -402,10 +396,9 @@ let mk_equal ~loc sort_name op_defs =
                             else
                               build_names [ module_name (sort_head body_sort); "equal" ]
                           in
-                          let args = (Labelled "info_eq", info_eq) :: mk_xy () in
-                          mk_exp
-                            ~loc
-                            (Pexp_apply (mk_exp ~loc (Pexp_ident { txt; loc }), args))
+                          let ident = mk_exp ~loc (Pexp_ident { txt; loc }) in
+                          let x, y = mk_xy () in
+                          [%expr [%e ident] ~info_eq [%e x] [%e y]]
                         in
                         Lvca_util.List.snoc slots_checks body_check)
                  |> List.join
