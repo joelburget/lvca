@@ -206,7 +206,6 @@ let mk_operator_pat
   Ast.ppat_construct { txt; loc } (Some constr_body)
 ;;
 
-(* TODO: remove redundancy with pc_rhs *)
 let plain_converter_operator_exp
     (module Ast : Ast_builder.S)
     ~ctor_type
@@ -364,7 +363,6 @@ let mk_info (module Ast : Ast_builder.S) op_defs =
   op_defs |> List.map ~f |> Ast.pexp_function
 ;;
 
-(* TODO: remove redundancy with plain_converter_operator_exp *)
 let map_info_rhs
     (module Ast : Ast_builder.S)
     sort_name
