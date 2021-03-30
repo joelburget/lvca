@@ -262,15 +262,13 @@ let plain_converter_operator_exp
 
 let mk_plain_converter (module Ast : Ast_builder.S) conversion_direction sort_name op_defs
   =
-  let fun_name =
-    match conversion_direction with ToPlain -> "to_plain" | OfPlain -> "of_plain"
+  let fun_name, pat_ctor_type, exp_ctor_type =
+    match conversion_direction with
+    | ToPlain -> "to_plain", WithInfo, Plain
+    | OfPlain -> "of_plain", Plain, WithInfo
   in
   let f op_def =
-    let pat_ctor_type, exp_ctor_type =
-      match conversion_direction with
-      | ToPlain -> WithInfo, Plain
-      | OfPlain -> Plain, WithInfo
-    in
+    let lhs = mk_operator_pat (module Ast) ~ctor_type:pat_ctor_type op_def in
     let rhs =
       plain_converter_operator_exp
         (module Ast)
@@ -279,10 +277,7 @@ let mk_plain_converter (module Ast : Ast_builder.S) conversion_direction sort_na
         sort_name
         op_def
     in
-    Ast.case
-      ~lhs:(mk_operator_pat (module Ast) ~ctor_type:pat_ctor_type op_def)
-      ~guard
-      ~rhs
+    Ast.case ~lhs ~guard ~rhs
   in
   op_defs |> List.map ~f |> Ast.pexp_function
 ;;
