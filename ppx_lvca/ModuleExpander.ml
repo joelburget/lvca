@@ -291,64 +291,61 @@ let mk_plain_converter (module Ast : Ast_builder.S) conversion_direction sort_na
 let mk_equal (module Ast : Ast_builder.S) sort_name op_defs =
   let loc = Ast.loc in
   let same_sort sort = String.(sort_head sort = sort_name) in
-  let branches =
-    op_defs
-    |> List.map
-         ~f:(fun (AbstractSyntax.OperatorDef.OperatorDef (_op_name, arity) as op_def) ->
-           let lhs =
-             let p1, p2 =
-               ("x", "y")
-               |> Lvca_util.Tuple2.map ~f:(fun name_base ->
-                      mk_operator_pat
-                        (module Ast)
-                        ~ctor_type:WithInfo
-                        ~match_info:true
-                        ~name_base
-                        op_def)
-             in
-             [%pat? [%p p1], [%p p2]]
-           in
-           let rhs =
-             let arity_exps =
-               let var_ix = ref 0 in
-               let mk_xy () =
-                 ("x", "y")
-                 |> Lvca_util.Tuple2.map ~f:(fun base ->
-                        Ast.evar (Printf.sprintf "%s%d" base !var_ix))
-               in
-               arity
-               |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, body_sort)) ->
-                      let slots_checks =
-                        slots
-                        |> List.map ~f:(fun slot ->
-                               Int.incr var_ix;
-                               let x, y = mk_xy () in
-                               match slot with
-                               | AbstractSyntax.SortSlot.SortBinding _sort ->
-                                 [%expr String.([%e x] = [%e y])]
-                               | SortPattern _ ->
-                                 [%expr Pattern.equal ~info_eq [%e x] [%e y]])
-                      in
-                      let body_check =
+  let f (AbstractSyntax.OperatorDef.OperatorDef (_op_name, arity) as op_def) =
+    let lhs =
+      let p1, p2 =
+        ("x", "y")
+        |> Lvca_util.Tuple2.map ~f:(fun name_base ->
+               mk_operator_pat
+                 (module Ast)
+                 ~ctor_type:WithInfo
+                 ~match_info:true
+                 ~name_base
+                 op_def)
+      in
+      [%pat? [%p p1], [%p p2]]
+    in
+    let rhs =
+      let arity_exps =
+        let var_ix = ref 0 in
+        let mk_xy () =
+          ("x", "y")
+          |> Lvca_util.Tuple2.map ~f:(fun base ->
+                 Ast.evar (Printf.sprintf "%s%d" base !var_ix))
+        in
+        arity
+        |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, body_sort)) ->
+               let slots_checks =
+                 slots
+                 |> List.map ~f:(fun slot ->
                         Int.incr var_ix;
-                        let txt =
-                          if same_sort body_sort
-                          then Lident "equal"
-                          else build_names [ module_name (sort_head body_sort); "equal" ]
-                        in
-                        let ident = Ast.pexp_ident { txt; loc } in
                         let x, y = mk_xy () in
-                        [%expr [%e ident] ~info_eq [%e x] [%e y]]
-                      in
-                      Lvca_util.List.snoc slots_checks body_check)
-               |> List.join
-             in
-             conjuntion ~loc ([%expr info_eq x0 y0] :: arity_exps)
-           in
-           Ast.case ~lhs ~guard ~rhs)
+                        match slot with
+                        | AbstractSyntax.SortSlot.SortBinding _sort ->
+                          [%expr String.([%e x] = [%e y])]
+                        | SortPattern _ -> [%expr Pattern.equal ~info_eq [%e x] [%e y]])
+               in
+               let body_check =
+                 Int.incr var_ix;
+                 let txt =
+                   if same_sort body_sort
+                   then Lident "equal"
+                   else build_names [ module_name (sort_head body_sort); "equal" ]
+                 in
+                 let ident = Ast.pexp_ident { txt; loc } in
+                 let x, y = mk_xy () in
+                 [%expr [%e ident] ~info_eq [%e x] [%e y]]
+               in
+               Lvca_util.List.snoc slots_checks body_check)
+        |> List.join
+      in
+      conjuntion ~loc ([%expr info_eq x0 y0] :: arity_exps)
+    in
+    Ast.case ~lhs ~guard ~rhs
   in
   let last_branch = Ast.case ~lhs:[%pat? _, _] ~guard ~rhs:[%expr false] in
-  Ast.pexp_match [%expr t1, t2] (Lvca_util.List.snoc branches last_branch)
+  let branches = op_defs |> List.map ~f |> Fn.flip Lvca_util.List.snoc last_branch in
+  Ast.pexp_match [%expr t1, t2] branches
 ;;
 
 let mk_info (module Ast : Ast_builder.S) op_defs =
