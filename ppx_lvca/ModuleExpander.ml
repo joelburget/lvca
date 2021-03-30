@@ -137,7 +137,6 @@ let mk_type_decl
     ~sort_name
     (AbstractSyntax.SortDef.SortDef (vars, op_defs))
   =
-  let loc = Ast.loc in
   let vars = List.map vars ~f:Util.Tuple2.get1 in
   let var_set = Util.String.Set.of_list vars in
   let params =
@@ -151,7 +150,7 @@ let mk_type_decl
   in
   let type_decl =
     Ast.type_declaration
-      ~name:{ txt = "t"; loc }
+      ~name:{ txt = "t"; loc = Ast.loc }
       ~params
       ~cstrs:[]
       ~kind
@@ -297,36 +296,26 @@ let mk_equal (module Ast : Ast_builder.S) sort_name op_defs =
     |> List.map
          ~f:(fun (AbstractSyntax.OperatorDef.OperatorDef (_op_name, arity) as op_def) ->
            let lhs =
-             let p1 =
-               mk_operator_pat
-                 (module Ast)
-                 ~ctor_type:WithInfo
-                 ~match_info:true
-                 ~name_base:"x"
-                 op_def
-             in
-             let p2 =
-               mk_operator_pat
-                 (module Ast)
-                 ~ctor_type:WithInfo
-                 ~match_info:true
-                 ~name_base:"y"
-                 op_def
+             let p1, p2 =
+               ("x", "y")
+               |> Lvca_util.Tuple2.map ~f:(fun name_base ->
+                      mk_operator_pat
+                        (module Ast)
+                        ~ctor_type:WithInfo
+                        ~match_info:true
+                        ~name_base
+                        op_def)
              in
              [%pat? [%p p1], [%p p2]]
            in
            let rhs =
-             let var_ix = ref 0 in
-             let mk_xy () =
-               ("x", "y")
-               |> Lvca_util.Tuple2.map ~f:(fun base ->
-                      Ast.evar (Printf.sprintf "%s%d" base !var_ix))
-             in
-             let info_exp =
-               let x, y = mk_xy () in
-               [%expr info_eq [%e x] [%e y]]
-             in
-             let other_exps =
+             let arity_exps =
+               let var_ix = ref 0 in
+               let mk_xy () =
+                 ("x", "y")
+                 |> Lvca_util.Tuple2.map ~f:(fun base ->
+                        Ast.evar (Printf.sprintf "%s%d" base !var_ix))
+               in
                arity
                |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, body_sort)) ->
                       let slots_checks =
@@ -354,7 +343,7 @@ let mk_equal (module Ast : Ast_builder.S) sort_name op_defs =
                       Lvca_util.List.snoc slots_checks body_check)
                |> List.join
              in
-             conjuntion ~loc (info_exp :: other_exps)
+             conjuntion ~loc ([%expr info_eq x0 y0] :: arity_exps)
            in
            Ast.case ~lhs ~guard ~rhs)
   in
