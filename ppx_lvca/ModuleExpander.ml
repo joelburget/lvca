@@ -28,10 +28,6 @@ let extract_string loc expr =
   | _ -> Location.raise_errorf ~loc "Expecting string payload"
 ;;
 
-let mk_type ~loc ptyp_desc =
-  { ptyp_desc; ptyp_loc = loc; ptyp_loc_stack = []; ptyp_attributes = [] }
-;;
-
 (* Concatenate a list of names into a Longident. *)
 let build_names names =
   match names with
@@ -47,55 +43,47 @@ let guard = None
 let mk_typ_tuple ~loc = function
   | [] -> [%type: unit]
   | [ ty ] -> ty
-  | tys -> mk_type ~loc (Ptyp_tuple tys)
+  | tys -> Ast_builder.Default.ptyp_tuple ~loc tys
 ;;
 
 let mk_pat_tuple ~loc = function
   | [] -> [%pat? ()]
   | [ elem ] -> elem
-  | elems ->
-    { ppat_desc = Ppat_tuple elems
-    ; ppat_loc = loc
-    ; ppat_loc_stack = []
-    ; ppat_attributes = []
-    }
+  | elems -> Ast_builder.Default.ppat_tuple ~loc elems
 ;;
 
 let mk_exp_tuple ~loc = function
   | [] -> [%expr ()]
   | [ elem ] -> elem
-  | elems ->
-    { pexp_desc = Pexp_tuple elems
-    ; pexp_loc = loc
-    ; pexp_loc_stack = []
-    ; pexp_attributes = []
-    }
+  | elems -> Ast_builder.Default.pexp_tuple ~loc elems
 ;;
 
 let sort_head = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
 
-let rec ptyp_of_sort ~loc ~sort_name ~info var_set = function
+let rec ptyp_of_sort ~loc ~sort_name ~info var_set =
+  let (module Ast) = Ast_builder.make loc in
+  function
   | Sort.Name (_, name) ->
     let info_args = if info then [ [%type: 'info] ] else [] in
     if Set.mem var_set name
     then (* This is a variable if it's in the set of vars ... *)
-      Ptyp_var name
+      Ast.ptyp_var name
     else if String.(name = sort_name)
     then
       (* ... otherwise it's [t] if it matches the sort name ... *)
-      Ptyp_constr ({ txt = Lident "t"; loc }, info_args)
+      Ast.ptyp_constr { txt = Lident "t"; loc } info_args
     else if info
     then (
       (* ... otherwise it's ['info Module_name.t] if we include info ... *)
       let txt = build_names [ module_name name; "t" ] in
-      Ptyp_constr ({ txt; loc }, info_args))
+      Ast.ptyp_constr { txt; loc } info_args)
     else (
       (* ... otherwise it's [Module_name.Plain.t]. *)
       let txt = build_names [ module_name name; "Plain"; "t" ] in
-      Ptyp_constr ({ txt; loc }, []))
+      Ast.ptyp_constr { txt; loc } [])
   | Ap (_, name, args) ->
-    let f sort = sort |> ptyp_of_sort ~loc ~sort_name ~info var_set |> mk_type ~loc in
-    Ptyp_constr ({ txt = Lident name; loc }, List.map args ~f)
+    let f sort = sort |> ptyp_of_sort ~loc ~sort_name ~info var_set in
+    Ast.ptyp_constr { txt = Lident name; loc } (List.map args ~f)
 ;;
 
 let conjuntion ~loc exps =
@@ -112,7 +100,7 @@ let args_of_valence
   =
   let body_type = ptyp_of_sort ~loc ~sort_name ~info var_set body_sort in
   match binding_sort_slots with
-  | [] -> [ mk_type ~loc body_type ]
+  | [] -> [ body_type ]
   | _ ->
     binding_sort_slots
     |> List.map ~f:(function
@@ -121,7 +109,7 @@ let args_of_valence
              if info
              then [%type: ('info, Lvca_util.Void.t) Pattern.t]
              else [%type: (unit, Lvca_util.Void.t) Pattern.t])
-    |> Fn.flip Lvca_util.List.snoc (mk_type ~loc body_type)
+    |> Fn.flip Lvca_util.List.snoc body_type
 ;;
 
 (* XXX possibility of generating two constructors with same name *)
