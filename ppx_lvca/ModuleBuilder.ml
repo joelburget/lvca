@@ -394,12 +394,13 @@ let mk_sort_module
   |> Ast.pstr_module
 ;;
 
-let mk_container_module ~loc AbstractSyntax.{ externals; sort_defs } =
+let mk_container_module ~loc (AbstractSyntax.{ externals; sort_defs } as lang) =
   let (module Ast) = Ast_builder.make loc in
-  let lang_module =
-    sort_defs
-    |> List.map ~f:(Util.Tuple2.uncurry (mk_sort_module (module Ast)))
-    |> Ast.pmod_structure
+  let sort_defs =
+    List.map sort_defs ~f:(Util.Tuple2.uncurry (mk_sort_module (module Ast)))
+  in
+  let sort_defs =
+    [%str let language = [%e SyntaxQuoter.mk_language ~loc lang]] @ sort_defs
   in
   let f (name, kind) accum =
     match kind with
@@ -417,5 +418,5 @@ let mk_container_module ~loc AbstractSyntax.{ externals; sort_defs } =
         name
         (Fmt.to_to_string AbstractSyntax.Kind.pp kind)
   in
-  List.fold_right externals ~init:lang_module ~f
+  List.fold_right externals ~init:(Ast.pmod_structure sort_defs) ~f
 ;;

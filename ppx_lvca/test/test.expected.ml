@@ -40,6 +40,57 @@ let test_language =
     }
 module Lang(Integer:LanguageObject.AllTermS) =
   struct
+    let language =
+      let open AbstractSyntax in
+        {
+          externals =
+            [("integer",
+               (AbstractSyntax.Kind.Kind
+                  ((Some ((let open Range in { start = 11; finish = 121 }))),
+                    1)))];
+          sort_defs =
+            [("foo",
+               (AbstractSyntax.SortDef.SortDef
+                  ([],
+                    [AbstractSyntax.OperatorDef.OperatorDef
+                       ("Foo",
+                         [AbstractSyntax.Valence.Valence
+                            ([],
+                              (Sort.Name
+                                 ((Some
+                                     ((let open Range in
+                                         { start = 136; finish = 143 }))),
+                                   "integer")))]);
+                    AbstractSyntax.OperatorDef.OperatorDef
+                      ("Bar",
+                        [AbstractSyntax.Valence.Valence
+                           ([AbstractSyntax.SortSlot.SortPattern
+                               {
+                                 pattern_sort =
+                                   (Sort.Name
+                                      ((Some
+                                          ((let open Range in
+                                              { start = 153; finish = 156 }))),
+                                        "foo"));
+                                 var_sort =
+                                   (Sort.Name
+                                      ((Some
+                                          ((let open Range in
+                                              { start = 157; finish = 160 }))),
+                                        "foo"))
+                               };
+                            AbstractSyntax.SortSlot.SortBinding
+                              (Sort.Name
+                                 ((Some
+                                     ((let open Range in
+                                         { start = 163; finish = 166 }))),
+                                   "foo"))],
+                             (Sort.Name
+                                ((Some
+                                    ((let open Range in
+                                        { start = 168; finish = 171 }))),
+                                  "foo")))])])))]
+        }
     module Foo =
       struct
         type 'info t =
