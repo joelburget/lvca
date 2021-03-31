@@ -8,6 +8,17 @@ type ('info, 'prim) t =
   | Var of 'info * string
   | Ignored of 'info * string
 
+module Plain : sig
+  type 'prim t =
+    | Operator of string * 'prim t list
+    | Primitive of 'prim
+    | Var of string
+    | Ignored of string
+end
+
+val to_plain : (_, 'prim) t -> 'prim Plain.t
+val of_plain : 'prim Plain.t -> (unit, 'prim) t
+
 val equal
   :  info_eq:('info -> 'info -> bool)
   -> prim_eq:('prim -> 'prim -> bool)
