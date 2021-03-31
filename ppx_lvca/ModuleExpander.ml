@@ -338,7 +338,13 @@ let mk_equal (module Ast : Ast_builder.S) sort_name op_defs =
                         match slot with
                         | AbstractSyntax.SortSlot.SortBinding _sort ->
                           [%expr String.([%e x] = [%e y])]
-                        | SortPattern _ -> [%expr Pattern.equal ~info_eq [%e x] [%e y]])
+                        | SortPattern _ ->
+                          [%expr
+                            Pattern.equal
+                              ~info_eq
+                              ~prim_eq:Lvca_util.Void.( = )
+                              [%e x]
+                              [%e y]])
                in
                let body_check =
                  Int.incr var_ix;
