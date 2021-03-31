@@ -21,6 +21,7 @@ let test_pattern =
       [Pattern.Var
          ((Some ((let open Range in { start = 4; finish = 5 }))), "x")])
 let test_language =
+  let open AbstractSyntax in
     {
       externals = [];
       sort_defs =
@@ -37,8 +38,7 @@ let test_language =
                                      { start = 12; finish = 19 }))),
                                "integer")))])])))]
     }
-
-module Lang (Integer : LanguageObject.AllTermS) =
+module Lang(Integer:LanguageObject.AllTermS) =
   struct
     module Foo =
       struct

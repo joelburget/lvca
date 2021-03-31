@@ -417,11 +417,30 @@ let mk_sort_module
   |> Ast.pstr_module
 ;;
 
-let mk_container_module ~loc AbstractSyntax.{ externals = _; sort_defs } =
+let mk_container_module ~loc AbstractSyntax.{ externals; sort_defs } =
   let (module Ast) = Ast_builder.make loc in
-  sort_defs
-  |> List.map ~f:(Util.Tuple2.uncurry (mk_sort_module (module Ast)))
-  |> Ast.pmod_structure
+  let lang_module =
+    sort_defs
+    |> List.map ~f:(Util.Tuple2.uncurry (mk_sort_module (module Ast)))
+    |> Ast.pmod_structure
+  in
+  let f (name, kind) accum =
+    match kind with
+    | AbstractSyntax.Kind.Kind (_, 1) ->
+      let mod_param =
+        Named
+          ( { txt = Some (module_name name); loc }
+          , Ast.pmty_ident { txt = build_names [ "LanguageObject"; "AllTermS" ]; loc } )
+      in
+      Ast.pmod_functor mod_param accum
+    | _ ->
+      Location.raise_errorf
+        ~loc
+        "Code generation currently only supports external modules of kind * (%s is %s)"
+        name
+        (Fmt.to_to_string AbstractSyntax.Kind.pp kind)
+  in
+  List.fold_right externals ~init:lang_module ~f
 ;;
 
 let expand ~(loc : Location.t) ~path:_ (expr : expression) : module_expr =

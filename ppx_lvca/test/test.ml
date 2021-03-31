@@ -8,8 +8,6 @@ let test_language = [%lvca_abstract_syntax {|
 foo := foo(integer)
 |}]
 
-type integer = int
-
 module Lang =
 [%abstract_syntax_module
 {|
