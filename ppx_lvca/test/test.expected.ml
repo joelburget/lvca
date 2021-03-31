@@ -69,8 +69,7 @@ module Lang(Integer:LanguageObject.AllTermS) =
           | (Bar (x0, (x1, x2, x3)), Bar (y0, (y1, y2, y3))) ->
               (info_eq x0 y0) &&
                 ((Pattern.equal ~info_eq ~prim_eq:Lvca_util.Void.(=) x1 y1)
-                   &&
-                   ((let open String in x2 = y2) && (equal ~info_eq x3 y3)))
+                   && ((Base.String.(=) x2 y2) && (equal ~info_eq x3 y3)))
           | (_, _) -> false
         let info = function | Foo (x0, _) -> x0 | Bar (x0, (_, _, _)) -> x0
         let rec map_info ~f  =

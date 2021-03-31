@@ -331,7 +331,7 @@ let mk_equal (module Ast : Ast_builder.S) sort_name op_defs =
                         let x, y = mk_xy () in
                         match slot with
                         | AbstractSyntax.SortSlot.SortBinding _sort ->
-                          [%expr String.([%e x] = [%e y])]
+                          [%expr Base.String.( = ) [%e x] [%e y]]
                         | SortPattern _ ->
                           [%expr
                             Pattern.equal
