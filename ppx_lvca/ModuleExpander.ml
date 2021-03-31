@@ -385,11 +385,8 @@ let mk_sort_module
     (AbstractSyntax.SortDef.SortDef (_vars, op_defs) as sort_def)
   =
   let loc = Ast.loc in
-  let plain_module =
-    let expr =
-      Ast.pmod_structure [ mk_type_decl (module Ast) ~info:false ~sort_name sort_def ]
-    in
-    Ast.module_binding ~name:{ txt = Some "Plain"; loc } ~expr |> Ast.pstr_module
+  let expr =
+    Ast.pmod_structure [ mk_type_decl (module Ast) ~info:false ~sort_name sort_def ]
   in
   (*
     let pp_generic = { pstr_desc = Pstr_value (Recursive, []); pstr_loc = loc } in
@@ -399,7 +396,9 @@ let mk_sort_module
     *)
   let expr =
     Ast.pmod_structure
-      ([ mk_type_decl (module Ast) ~info:true ~sort_name sort_def; plain_module ]
+      ([ mk_type_decl (module Ast) ~info:true ~sort_name sort_def
+       ; Ast.module_binding ~name:{ txt = Some "Plain"; loc } ~expr |> Ast.pstr_module
+       ]
       @ [%str
           let rec to_plain = [%e mk_to_plain (module Ast) sort_name op_defs]
           let rec of_plain = [%e mk_of_plain (module Ast) sort_name op_defs]
