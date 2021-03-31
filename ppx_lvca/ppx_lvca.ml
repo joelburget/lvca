@@ -8,7 +8,21 @@ module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
 
 (* TODO: parser, core, nonbinding / OCaml data mapping *)
 
-let extract_string = ModuleExpander.extract_string
+let extract_string loc expr =
+  (* payload and location of the string contents, inside "" or {||} *)
+  let adjust shift loc =
+    let adjust shift p = { p with Lexing.pos_cnum = p.pos_cnum + shift } in
+    { loc with
+      Location.loc_start = adjust shift loc.loc_start
+    ; Location.loc_end = adjust (-shift) loc.loc_end
+    }
+  in
+  match expr.pexp_desc with
+  | Pexp_constant (Pconst_string (str, _loc, None)) -> str, adjust 1 expr.pexp_loc
+  | Pexp_constant (Pconst_string (str, _loc, Some x)) ->
+    str, adjust (String.length x + 2) expr.pexp_loc
+  | _ -> Location.raise_errorf ~loc "Expecting string payload"
+;;
 
 let expand_nominal ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
@@ -36,6 +50,13 @@ let expand_abstract_syntax ~(loc : Location.t) ~path:_ (expr : expression) : exp
   match ParseUtil.parse_string ParseAbstract.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax -> SyntaxQuoter.mk_language ~loc syntax
+;;
+
+let expand_module ~(loc : Location.t) ~path:_ (expr : expression) : module_expr =
+  let str, loc = extract_string loc expr in
+  match ParseUtil.parse_string ParseAbstract.whitespace_t str with
+  | Error msg -> Location.raise_errorf ~loc "%s" msg
+  | Ok syntax -> ModuleExpander.mk_container_module ~loc syntax
 ;;
 
 let term_extension =
@@ -75,7 +96,7 @@ let abstract_syntax_module_extension =
     "abstract_syntax_module" (* TODO: better naming *)
     Extension.Context.Module_expr
     Ast_pattern.(single_expr_payload __)
-    ModuleExpander.expand
+    expand_module
 ;;
 
 let () =
