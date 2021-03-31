@@ -109,7 +109,7 @@ let args_of_valence
            | SortPattern _sort ->
              if info
              then [%type: ('info, Lvca_util.Void.t) Pattern.t]
-             else [%type: (unit, Lvca_util.Void.t) Pattern.t])
+             else [%type: Lvca_util.Void.t Pattern.Plain.t])
     |> Fn.flip Lvca_util.List.snoc body_type
 ;;
 

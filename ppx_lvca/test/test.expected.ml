@@ -50,7 +50,7 @@ module Lang(Integer:LanguageObject.AllTermS) =
           struct
             type t =
               | Foo of Integer.Plain.t 
-              | Bar of ((unit, Lvca_util.Void.t) Pattern.t * string * t) 
+              | Bar of (Lvca_util.Void.t Pattern.Plain.t * string * t) 
           end
         let rec to_plain =
           function
