@@ -206,76 +206,97 @@ let mk_operator_pat
   Ast.ppat_construct { txt; loc } (Some constr_body)
 ;;
 
-let plain_converter_operator_exp
+type mapping_rhs_ty =
+  | Plain
+  | WithInfo of expression
+
+let mk_ctor_args
     (module Ast : Ast_builder.S)
-    ~ctor_type
-    ?(name_base = "x")
-    fun_name
-    sort_name
-    (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity))
+    ?(mk_app = fun f arg -> Ast.([%expr [%e f] [%e arg]]))
+    mapping_rhs_ty (* Building a plain or with-info data type *)
+    sort_name (* The name of the sort being defined *)
+    fun_name (* The name of the function being defined *)
+    (AbstractSyntax.OperatorDef.OperatorDef (_, arity))
   =
   let loc = Ast.loc in
   let pattern_converter =
     Ast.pexp_ident { txt = build_names [ "Pattern"; fun_name ]; loc }
   in
-  let ctor_contents =
-    match arity with
-    | [] -> (match ctor_type with WithInfo -> Some [%expr ()] | Plain -> None)
-    | _ ->
-      let var_ix = ref 0 in
-      let body_arg sort =
-        Int.incr var_ix;
-        let f =
-          if String.(sort_head sort = sort_name)
-          then Ast.evar fun_name
-          else
-            (* is it always valid to just use module_name? *)
-            Ast.pexp_ident
-              { txt = build_names [ module_name (sort_head sort); fun_name ]; loc }
-        in
-        let arg = Ast.evar (Printf.sprintf "%s%d" name_base !var_ix) in
-        [%expr [%e f] [%e arg]]
+  match arity with
+  | [] -> (match mapping_rhs_ty with Plain -> None | WithInfo expr -> Some expr)
+  | _ ->
+    let var_ix = ref 0 in
+    let mk_var () = Ast.evar (Printf.sprintf "x%d" !var_ix) in
+    let body_arg sort =
+      Int.incr var_ix;
+      let f =
+        if String.(sort_head sort = sort_name)
+        then Ast.evar fun_name
+        else
+          (* is it always valid to just use module_name? *)
+          Ast.pexp_ident
+            { txt = build_names [ module_name (sort_head sort); fun_name ]; loc }
       in
-      let contents =
-        arity
-        |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, body_sort)) ->
-               slots
-               |> List.map ~f:(fun slot ->
-                      Int.incr var_ix;
-                      let arg = Ast.evar (Printf.sprintf "%s%d" name_base !var_ix) in
-                      match slot with
-                      | AbstractSyntax.SortSlot.SortBinding _sort -> arg
-                      | SortPattern _ -> [%expr [%e pattern_converter] [%e arg]])
-               |> Fn.flip Lvca_util.List.snoc (body_arg body_sort))
-        |> List.map ~f:(mk_exp_tuple ~loc)
-      in
-      let contents =
-        match ctor_type with WithInfo -> [%expr ()] :: contents | Plain -> contents
-      in
-      Some (mk_exp_tuple contents ~loc)
-  in
-  let names =
-    match ctor_type with WithInfo -> [ op_name ] | Plain -> [ "Plain"; op_name ]
-  in
-  Ast.pexp_construct { txt = build_names names; loc } ctor_contents
+      mk_app f (mk_var ())
+    in
+    let contents =
+      arity
+      |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, body_sort)) ->
+             slots
+             |> List.map ~f:(fun slot ->
+                    Int.incr var_ix;
+                    let arg = mk_var () in
+                    match slot with
+                    | AbstractSyntax.SortSlot.SortBinding _sort -> arg
+                    | SortPattern _ -> mk_app pattern_converter arg)
+             |> Fn.flip Lvca_util.List.snoc (body_arg body_sort))
+      |> List.map ~f:(mk_exp_tuple ~loc)
+    in
+    let contents =
+      match mapping_rhs_ty with Plain -> contents | WithInfo expr -> expr :: contents
+    in
+    Some (mk_exp_tuple ~loc contents)
 ;;
 
-let mk_plain_converter (module Ast : Ast_builder.S) conversion_direction sort_name op_defs
-  =
-  let fun_name, pat_ctor_type, exp_ctor_type =
-    match conversion_direction with
-    | ToPlain -> "to_plain", WithInfo, Plain
-    | OfPlain -> "of_plain", Plain, WithInfo
-  in
-  let f op_def =
-    let lhs = mk_operator_pat (module Ast) ~ctor_type:pat_ctor_type op_def in
+let mk_to_plain (module Ast : Ast_builder.S) sort_name op_defs =
+  let loc = Ast.loc in
+  let f (AbstractSyntax.OperatorDef.OperatorDef (op_name, _arity) as op_def) =
+    let lhs = mk_operator_pat (module Ast) ~ctor_type:WithInfo op_def in
     let rhs =
-      plain_converter_operator_exp
+      mk_ctor_args (module Ast) Plain sort_name "to_plain" op_def
+      |> Ast.pexp_construct { txt = build_names [ "Plain"; op_name ]; loc }
+    in
+    Ast.case ~lhs ~guard ~rhs
+  in
+  op_defs |> List.map ~f |> Ast.pexp_function
+;;
+
+let mk_of_plain (module Ast : Ast_builder.S) sort_name op_defs =
+  let loc = Ast.loc in
+  let f (AbstractSyntax.OperatorDef.OperatorDef (op_name, _arity) as op_def) =
+    let lhs = mk_operator_pat (module Ast) ~ctor_type:Plain op_def in
+    let rhs =
+      mk_ctor_args (module Ast) (WithInfo [%expr ()]) sort_name "of_plain" op_def
+      |> Ast.pexp_construct { txt = Lident op_name; loc }
+    in
+    Ast.case ~lhs ~guard ~rhs
+  in
+  op_defs |> List.map ~f |> Ast.pexp_function
+;;
+
+let mk_map_info (module Ast : Ast_builder.S) sort_name op_defs =
+  let loc = Ast.loc in
+  let f (AbstractSyntax.OperatorDef.OperatorDef (op_name, _arity) as op_def) =
+    let lhs = mk_operator_pat (module Ast) ~ctor_type:WithInfo ~match_info:true op_def in
+    let rhs =
+      mk_ctor_args
         (module Ast)
-        ~ctor_type:exp_ctor_type
-        fun_name
+        ~mk_app:(fun f arg -> [%expr [%e f] ~f [%e arg]])
+        (WithInfo Ast.([%expr f x0]))
         sort_name
+        "map_info"
         op_def
+      |> Ast.pexp_construct { txt = Lident op_name; loc }
     in
     Ast.case ~lhs ~guard ~rhs
   in
@@ -358,55 +379,6 @@ let mk_info (module Ast : Ast_builder.S) op_defs =
   op_defs |> List.map ~f |> Ast.pexp_function
 ;;
 
-let map_info_rhs
-    (module Ast : Ast_builder.S)
-    sort_name
-    (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity))
-  =
-  let loc = Ast.loc in
-  let ctor_contents =
-    match arity with
-    | [] -> (* TODO: add test case for this *) [%expr f x0]
-    | _ ->
-      let var_ix = ref 0 in
-      let body_arg sort =
-        Int.incr var_ix;
-        let f =
-          if String.(sort_head sort = sort_name)
-          then Ast.evar "map_info"
-          else
-            (* is it always valid to just use module_name? *)
-            Ast.pexp_ident
-              { txt = build_names [ module_name (sort_head sort); "map_info" ]; loc }
-        in
-        let arg = Ast.evar (Printf.sprintf "x%d" !var_ix) in
-        [%expr [%e f] ~f [%e arg]]
-      in
-      arity
-      |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, body_sort)) ->
-             slots
-             |> List.map ~f:(fun slot ->
-                    Int.incr var_ix;
-                    let arg = Ast.evar (Printf.sprintf "x%d" !var_ix) in
-                    match slot with
-                    | AbstractSyntax.SortSlot.SortBinding _sort -> arg
-                    | SortPattern _ -> [%expr Pattern.map_info ~f [%e arg]])
-             |> Fn.flip Lvca_util.List.snoc (body_arg body_sort))
-      |> List.cons [ [%expr f x0] ]
-      |> List.map ~f:(mk_exp_tuple ~loc)
-      |> mk_exp_tuple ~loc
-  in
-  Ast.pexp_construct { txt = build_names [ op_name ]; loc } (Some ctor_contents)
-;;
-
-let mk_map_info (module Ast : Ast_builder.S) sort_name op_defs =
-  let f op_def =
-    let lhs = mk_operator_pat (module Ast) ~ctor_type:WithInfo ~match_info:true op_def in
-    Ast.case ~lhs ~guard ~rhs:(map_info_rhs (module Ast) sort_name op_def)
-  in
-  op_defs |> List.map ~f |> Ast.pexp_function
-;;
-
 let mk_sort_module
     (module Ast : Ast_builder.S)
     sort_name
@@ -429,14 +401,8 @@ let mk_sort_module
     Ast.pmod_structure
       ([ mk_type_decl (module Ast) ~info:true ~sort_name sort_def; plain_module ]
       @ [%str
-          let rec to_plain =
-            [%e mk_plain_converter (module Ast) ToPlain sort_name op_defs]
-          ;;
-
-          let rec of_plain =
-            [%e mk_plain_converter (module Ast) OfPlain sort_name op_defs]
-          ;;
-
+          let rec to_plain = [%e mk_to_plain (module Ast) sort_name op_defs]
+          let rec of_plain = [%e mk_of_plain (module Ast) sort_name op_defs]
           let rec equal ~info_eq t1 t2 = [%e mk_equal (module Ast) sort_name op_defs]
           let info = [%e mk_info (module Ast) op_defs]
           let rec map_info ~f = [%e mk_map_info (module Ast) sort_name op_defs]])
