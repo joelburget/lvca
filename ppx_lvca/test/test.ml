@@ -19,6 +19,8 @@ foo :=
   | Foo(integer)
   | Bar(foo[foo]. foo. foo)
 
+nat := Z() | S(nat)
+
 // multiple slots, parameters
 // TODO: quux a b := Quux(a; b; foo)
 // TODO: test mutual definitions

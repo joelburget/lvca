@@ -89,7 +89,20 @@ module Lang(Integer:LanguageObject.AllTermS) =
                                 ((Some
                                     ((let open Range in
                                         { start = 168; finish = 171 }))),
-                                  "foo")))])])))]
+                                  "foo")))])])));
+            ("nat",
+              (AbstractSyntax.SortDef.SortDef
+                 ([],
+                   [AbstractSyntax.OperatorDef.OperatorDef ("Z", []);
+                   AbstractSyntax.OperatorDef.OperatorDef
+                     ("S",
+                       [AbstractSyntax.Valence.Valence
+                          ([],
+                            (Sort.Name
+                               ((Some
+                                   ((let open Range in
+                                       { start = 189; finish = 192 }))),
+                                 "nat")))])])))]
         }
     module Foo =
       struct
@@ -128,5 +141,29 @@ module Lang(Integer:LanguageObject.AllTermS) =
           | Foo (x0, x1) -> Foo ((f x0), (Integer.map_info ~f x1))
           | Bar (x0, (x1, x2, x3)) ->
               Bar ((f x0), ((Pattern.map_info ~f x1), x2, (map_info ~f x3)))
+      end
+    module Nat =
+      struct
+        type 'info t =
+          | Z of 'info 
+          | S of 'info * 'info t 
+        module Plain = struct type t =
+                                | Z 
+                                | S of t  end
+        let rec to_plain =
+          function | Z _ -> Plain.Z | S (_, x1) -> Plain.S (to_plain x1)
+        let rec of_plain =
+          function | Plain.Z -> Z () | Plain.S x1 -> S ((), (of_plain x1))
+        let rec equal ~info_eq  t1 t2 =
+          match (t1, t2) with
+          | (Z x0, Z y0) -> info_eq x0 y0
+          | (S (x0, x1), S (y0, y1)) ->
+              (info_eq x0 y0) && (equal ~info_eq x1 y1)
+          | (_, _) -> false
+        let info = function | Z x0 -> x0 | S (x0, _) -> x0
+        let rec map_info ~f  =
+          function
+          | Z x0 -> Z (f x0)
+          | S (x0, x1) -> S ((f x0), (map_info ~f x1))
       end
   end

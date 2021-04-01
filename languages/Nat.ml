@@ -2,11 +2,13 @@ open Base
 open Lvca_syntax
 open Option.Let_syntax
 
-let language_def = {|
+module Lang =
+[%abstract_syntax_module
+{|
 nat := Z() | S(nat)
 
-list(a) := Nil() | Cons(a; list(a))
-|}
+list a := Nil() | Cons(a; list(a))
+|}]
 
 (* very loosely *)
 let correspondence =

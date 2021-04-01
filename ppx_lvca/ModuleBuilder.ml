@@ -170,18 +170,23 @@ let mk_operator_pat
                   else Ast.ppat_any))
   in
   let binders =
-    match ctor_type, match_info with
-    | WithInfo, false -> [ Ast.ppat_any ] :: binders
-    | WithInfo, true -> [ mk_var (Printf.sprintf "%s0" name_base) ] :: binders
-    | Plain, _ -> binders
+    match ctor_type with
+    | WithInfo ->
+      [ (if match_info then mk_var (Printf.sprintf "%s0" name_base) else Ast.ppat_any) ]
+      :: binders
+    | Plain -> binders
   in
-  let constr_body = binders |> List.map ~f:(mk_pat_tuple ~loc) |> mk_pat_tuple ~loc in
   let txt =
     match ctor_type with
     | WithInfo -> Lident op_name
     | Plain -> build_names [ "Plain"; op_name ]
   in
-  Ast.ppat_construct { txt; loc } (Some constr_body)
+  let constr_body =
+    match binders with
+    | [] -> None
+    | _ -> Some (binders |> List.map ~f:(mk_pat_tuple ~loc) |> mk_pat_tuple ~loc)
+  in
+  Ast.ppat_construct { txt; loc } constr_body
 ;;
 
 type mapping_rhs_ty =
