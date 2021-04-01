@@ -24,12 +24,6 @@ let ctor_name = String.capitalize
 let module_name = String.capitalize
 let guard = None
 
-let mk_typ_tuple ~loc = function
-  | [] -> [%type: unit]
-  | [ ty ] -> ty
-  | tys -> Ast_builder.Default.ptyp_tuple ~loc tys
-;;
-
 let mk_pat_tuple ~loc = function
   | [] -> [%pat? ()]
   | [ elem ] -> elem
@@ -108,7 +102,12 @@ let mk_ctor_decl
   let loc = Ast.loc in
   let args = List.map arity ~f:(args_of_valence (module Ast) ~info ~sort_name var_set) in
   let args = if info then [ [%type: 'info] ] :: args else args in
-  let args = List.map args ~f:(mk_typ_tuple ~loc) in
+  let args =
+    List.map args ~f:(function
+        | [] -> [%type: unit]
+        | [ ty ] -> ty
+        | tys -> Ast_builder.Default.ptyp_tuple ~loc tys)
+  in
   Ast.constructor_declaration
     ~name:{ txt = ctor_name op_name; loc }
     ~args:(Pcstr_tuple args)
