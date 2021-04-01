@@ -206,7 +206,7 @@ let mk_ctor_args
   | [] -> (match mapping_rhs_ty with Plain -> None | WithInfo expr -> Some expr)
   | _ ->
     let var_ix = ref 0 in
-    let mk_var () = Ast.evar (Printf.sprintf "x%d" !var_ix) in
+    let v () = Ast.evar (Printf.sprintf "x%d" !var_ix) in
     let body_arg sort =
       Int.incr var_ix;
       let f =
@@ -217,7 +217,7 @@ let mk_ctor_args
           Ast.pexp_ident
             { txt = build_names [ module_name (sort_head sort); fun_name ]; loc }
       in
-      mk_app f (mk_var ())
+      mk_app f (v ())
     in
     let contents =
       arity
@@ -225,10 +225,9 @@ let mk_ctor_args
              slots
              |> List.map ~f:(fun slot ->
                     Int.incr var_ix;
-                    let arg = mk_var () in
                     match slot with
-                    | AbstractSyntax.SortSlot.SortBinding _sort -> arg
-                    | SortPattern _ -> mk_app pattern_converter arg)
+                    | AbstractSyntax.SortSlot.SortBinding _sort -> v ()
+                    | SortPattern _ -> mk_app pattern_converter (v ()))
              |> Fn.flip Lvca_util.List.snoc (body_arg body_sort))
       |> List.map ~f:(mk_exp_tuple ~loc)
     in
