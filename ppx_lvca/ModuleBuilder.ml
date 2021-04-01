@@ -154,7 +154,7 @@ let mk_operator_pat
   =
   let loc = Ast.loc in
   let var_ix = ref 0 in
-  let mk_var txt = Ast.ppat_var { txt; loc } in
+  let v ix = Ast.ppat_var { txt = Printf.sprintf "%s%d" name_base ix; loc } in
   let binders =
     arity
     |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, _)) ->
@@ -166,14 +166,12 @@ let mk_operator_pat
                   if match_non_info
                   then (
                     Int.incr var_ix;
-                    mk_var (Printf.sprintf "%s%d" name_base !var_ix))
+                    v !var_ix)
                   else Ast.ppat_any))
   in
   let binders =
     match ctor_type with
-    | WithInfo ->
-      [ (if match_info then mk_var (Printf.sprintf "%s0" name_base) else Ast.ppat_any) ]
-      :: binders
+    | WithInfo -> [ (if match_info then v 0 else Ast.ppat_any) ] :: binders
     | Plain -> binders
   in
   let txt =
