@@ -34,30 +34,20 @@ let mk_exp_tuple ~loc = function
 
 let sort_head = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
 
-let rec ptyp_of_sort (module Ast : Ast_builder.S) ~sort_name ~info var_set =
+let ptyp_of_sort (module Ast : Ast_builder.S) ~sort_name ~info =
   let loc = Ast.loc in
   function
-  | Sort.Name (_, name) ->
-    let info_args = if info then [ [%type: 'info] ] else [] in
-    if Set.mem var_set name
-    then (* This is a variable if it's in the set of vars ... *)
-      Ast.ptyp_var name
-    else if String.(name = sort_name)
-    then
-      (* ... otherwise it's [t] if it matches the sort name ... *)
-      Ast.ptyp_constr { txt = Lident "t"; loc } info_args
-    else if info
-    then (
-      (* ... otherwise it's ['info Module_name.t] if we include info ... *)
-      let txt = build_names [ module_name name; "t" ] in
-      Ast.ptyp_constr { txt; loc } info_args)
-    else (
-      (* ... otherwise it's [Module_name.Plain.t]. *)
-      let txt = build_names [ module_name name; "Plain"; "t" ] in
-      Ast.ptyp_constr { txt; loc } [])
-  | Ap (_, name, args) ->
-    let f sort = sort |> ptyp_of_sort (module Ast) ~sort_name ~info var_set in
-    Ast.ptyp_constr { txt = Lident name; loc } (List.map args ~f)
+  | Sort.Name (_, name) | Ap (_, name, _) ->
+    let args = if info then [ [%type: 'info] ] else [] in
+    let names =
+      (* [t] if it matches the sort name, otherwise it's ['info Module_name.t]
+         if we include info, otherwise it's [Module_name.Plain.t]. *)
+      match String.(name = sort_name), info with
+      | true, _ -> [ "t" ]
+      | false, true -> [ module_name name; "t" ]
+      | false, false -> [ module_name name; "Plain"; "t" ]
+    in
+    Ast.ptyp_constr { txt = build_names names; loc } args
 ;;
 
 let conjuntion ~loc exps =
@@ -69,11 +59,10 @@ let args_of_valence
     (module Ast : Ast_builder.S)
     ~info
     ~sort_name
-    var_set
     (AbstractSyntax.Valence.Valence (binding_sort_slots, body_sort))
   =
   let loc = Ast.loc in
-  let body_type = ptyp_of_sort (module Ast) ~sort_name ~info var_set body_sort in
+  let body_type = ptyp_of_sort (module Ast) ~sort_name ~info body_sort in
   match binding_sort_slots with
   | [] -> [ body_type ]
   | _ ->
@@ -92,17 +81,17 @@ let mk_ctor_decl
     (module Ast : Ast_builder.S)
     ~info
     ~sort_name
-    var_set
     (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity))
   =
   let loc = Ast.loc in
-  let args = List.map arity ~f:(args_of_valence (module Ast) ~info ~sort_name var_set) in
-  let args = if info then [ [%type: 'info] ] :: args else args in
   let args =
-    List.map args ~f:(function
-        | [] -> [%type: unit]
-        | [ ty ] -> ty
-        | tys -> Ast_builder.Default.ptyp_tuple ~loc tys)
+    arity
+    |> List.map ~f:(args_of_valence (module Ast) ~info ~sort_name)
+    |> (if info then List.cons [ [%type: 'info] ] else Fn.id)
+    |> List.map ~f:(function
+           | [] -> [%type: unit]
+           | [ ty ] -> ty
+           | tys -> Ast_builder.Default.ptyp_tuple ~loc tys)
   in
   Ast.constructor_declaration
     ~name:{ txt = ctor_name op_name; loc }
@@ -110,22 +99,10 @@ let mk_ctor_decl
     ~res:None
 ;;
 
-let mk_type_decl
-    (module Ast : Ast_builder.S)
-    ~info
-    ~sort_name
-    (AbstractSyntax.SortDef.SortDef (vars, op_defs))
-  =
-  let vars = List.map vars ~f:Util.Tuple2.get1 in
-  let var_set = Util.String.Set.of_list vars in
-  let params =
-    (if info then "info" :: vars else vars)
-    |> List.map ~f:Ast.ptyp_var
-    |> List.map ~f:(fun ty -> ty, Invariant (* Covariant? *))
-  in
+let mk_type_decl (module Ast : Ast_builder.S) ~info ~sort_name op_defs =
+  let params = if info then [ Ast.ptyp_var "info", Invariant ] else [] in
   let kind =
-    Ptype_variant
-      (List.map op_defs ~f:(mk_ctor_decl (module Ast) ~info ~sort_name var_set))
+    Ptype_variant (List.map op_defs ~f:(mk_ctor_decl (module Ast) ~info ~sort_name))
   in
   let type_decl =
     Ast.type_declaration
@@ -356,7 +333,6 @@ let mk_equal (module Ast : Ast_builder.S) sort_name op_defs =
 ;;
 
 let mk_info (module Ast : Ast_builder.S) op_defs =
-  let loc = Ast.loc in
   let f op_def =
     let lhs =
       OperatorPat.mk
@@ -366,7 +342,7 @@ let mk_info (module Ast : Ast_builder.S) op_defs =
         ~match_non_info:false
         op_def
     in
-    Ast.case ~lhs ~guard ~rhs:[%expr x0]
+    Ast.case ~lhs ~guard ~rhs:Ast.([%expr x0])
   in
   op_defs |> List.map ~f |> Ast.pexp_function
 ;;
@@ -374,11 +350,11 @@ let mk_info (module Ast : Ast_builder.S) op_defs =
 let mk_sort_module
     (module Ast : Ast_builder.S)
     sort_name
-    (AbstractSyntax.SortDef.SortDef (_vars, op_defs) as sort_def)
+    (AbstractSyntax.SortDef.SortDef (vars, op_defs))
   =
   let loc = Ast.loc in
   let expr =
-    Ast.pmod_structure [ mk_type_decl (module Ast) ~info:false ~sort_name sort_def ]
+    Ast.pmod_structure [ mk_type_decl (module Ast) ~info:false ~sort_name op_defs ]
   in
   (*
     let pp_generic = { pstr_desc = Pstr_value (Recursive, []); pstr_loc = loc } in
@@ -386,9 +362,9 @@ let mk_sort_module
     let to_nominal = { pstr_desc = Pstr_value (Recursive, []); pstr_loc = loc } in
     select?
     *)
-  let expr =
+  let init =
     Ast.pmod_structure
-      ([ mk_type_decl (module Ast) ~info:true ~sort_name sort_def
+      ([ mk_type_decl (module Ast) ~info:true ~sort_name op_defs
        ; Ast.module_binding ~name:{ txt = Some "Plain"; loc } ~expr |> Ast.pstr_module
        ]
       @ [%str
@@ -398,6 +374,25 @@ let mk_sort_module
           let info = [%e mk_info (module Ast) op_defs]
           let rec map_info ~f = [%e mk_map_info (module Ast) sort_name op_defs]])
   in
+  (* Turn into a functor over type args *)
+  let f (name, kind_opt) accum =
+    match kind_opt with
+    | None (* XXX should do kind inference instead of assuming it's * *)
+    | Some (AbstractSyntax.Kind.Kind (_, 1)) ->
+      let mod_param =
+        Named
+          ( { txt = Some (module_name name); loc }
+          , Ast.pmty_ident { txt = build_names [ "LanguageObject"; "AllTermS" ]; loc } )
+      in
+      Ast.pmod_functor mod_param accum
+    | Some kind ->
+      Location.raise_errorf
+        ~loc
+        "Code generation currently only supports external modules of kind * (%s is %s)"
+        name
+        (Fmt.to_to_string AbstractSyntax.Kind.pp kind)
+  in
+  let expr = List.fold_right vars ~init ~f in
   Ast.module_binding ~name:{ txt = Some (module_name sort_name); loc } ~expr
   |> Ast.pstr_module
 ;;
@@ -410,6 +405,7 @@ let mk_container_module ~loc (AbstractSyntax.{ externals; sort_defs } as lang) =
   let sort_defs =
     [%str let language = [%e SyntaxQuoter.mk_language ~loc lang]] @ sort_defs
   in
+  (* Turn into a functor over externals *)
   let f (name, kind) accum =
     match kind with
     | AbstractSyntax.Kind.Kind (_, 1) ->

@@ -7,7 +7,7 @@ module Lang =
 {|
 nat := Z() | S(nat)
 
-list a := Nil() | Cons(a; list(a))
+// list a := Nil() | Cons(a; list(a))
 |}]
 
 (* very loosely *)
@@ -19,6 +19,7 @@ let rec f = function
 |}
 ;;
 
+(*
 let rec list_to_nat = function
   | NonBinding.Operator (info, "Nil", []) ->
     Some (NonBinding.Operator ((info, None), "Z", []))
@@ -27,6 +28,13 @@ let rec list_to_nat = function
     NonBinding.Operator ((info, Some a), "Cons", [ lst ])
   | _ -> None
 ;;
+let rec list_to_nat = function
+  | Lang.List.Nil info -> Some (Lang.Nat.Z (info, None))
+  | Cons (info, a, lst) ->
+    let%map lst = list_to_nat lst in
+    Lang.Nat.S ((info, Some a), lst)
+;;
+*)
 
 let rec nat_to_list = function
   | NonBinding.Operator ((info, None), "Z", []) ->

@@ -21,6 +21,8 @@ foo :=
 
 nat := Z() | S(nat)
 
+list a := Nil() | Cons(a; list(a))
+
 // multiple slots, parameters
 // TODO: quux a b := Quux(a; b; foo)
 // TODO: test mutual definitions

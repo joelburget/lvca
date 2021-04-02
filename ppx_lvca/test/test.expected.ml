@@ -102,7 +102,31 @@ module Lang(Integer:LanguageObject.AllTermS) =
                                ((Some
                                    ((let open Range in
                                        { start = 189; finish = 192 }))),
-                                 "nat")))])])))]
+                                 "nat")))])])));
+            ("list",
+              (AbstractSyntax.SortDef.SortDef
+                 ([("a", None)],
+                   [AbstractSyntax.OperatorDef.OperatorDef ("Nil", []);
+                   AbstractSyntax.OperatorDef.OperatorDef
+                     ("Cons",
+                       [AbstractSyntax.Valence.Valence
+                          ([],
+                            (Sort.Name
+                               ((Some
+                                   ((let open Range in
+                                       { start = 218; finish = 219 }))), "a")));
+                       AbstractSyntax.Valence.Valence
+                         ([],
+                           (Sort.Ap
+                              ((Some
+                                  ((let open Range in
+                                      { start = 221; finish = 228 }))),
+                                "list",
+                                [Sort.Name
+                                   ((Some
+                                       ((let open Range in
+                                           { start = 226; finish = 227 }))),
+                                     "a")])))])])))]
         }
     module Foo =
       struct
@@ -165,5 +189,35 @@ module Lang(Integer:LanguageObject.AllTermS) =
           function
           | Z x0 -> Z (f x0)
           | S (x0, x1) -> S ((f x0), (map_info ~f x1))
+      end
+    module List(A:LanguageObject.AllTermS) =
+      struct
+        type 'info t =
+          | Nil of 'info 
+          | Cons of 'info * 'info A.t * 'info t 
+        module Plain = struct type t =
+                                | Nil 
+                                | Cons of A.Plain.t * t  end
+        let rec to_plain =
+          function
+          | Nil _ -> Plain.Nil
+          | Cons (_, x1, x2) -> Plain.Cons ((A.to_plain x1), (to_plain x2))
+        let rec of_plain =
+          function
+          | Plain.Nil -> Nil ()
+          | Plain.Cons (x1, x2) -> Cons ((), (A.of_plain x1), (of_plain x2))
+        let rec equal ~info_eq  t1 t2 =
+          match (t1, t2) with
+          | (Nil x0, Nil y0) -> info_eq x0 y0
+          | (Cons (x0, x1, x2), Cons (y0, y1, y2)) ->
+              (info_eq x0 y0) &&
+                ((A.equal ~info_eq x1 y1) && (equal ~info_eq x2 y2))
+          | (_, _) -> false
+        let info = function | Nil x0 -> x0 | Cons (x0, _, _) -> x0
+        let rec map_info ~f  =
+          function
+          | Nil x0 -> Nil (f x0)
+          | Cons (x0, x1, x2) ->
+              Cons ((f x0), (A.map_info ~f x1), (map_info ~f x2))
       end
   end
