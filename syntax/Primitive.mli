@@ -15,12 +15,7 @@ val check : 'info -> t -> 'info Sort.t -> string option
 val jsonify : t -> Lvca_util.Json.t
 val unjsonify : Lvca_util.Json.t -> t option
 
-module Properties : sig
-  val json_round_trip1 : t -> PropertyResult.t
-  val json_round_trip2 : Lvca_util.Json.t -> PropertyResult.t
-  val string_round_trip1 : t -> PropertyResult.t
-  val string_round_trip2 : string -> PropertyResult.t
-end
+module Properties : Properties_intf.S with type t := t
 
 module Integer : sig
   module Plain_typedef : sig

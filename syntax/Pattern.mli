@@ -104,12 +104,7 @@ module Parse (Comment : ParseUtil.Comment_int) : sig
   val whitespace_t : 'prim ParseUtil.t -> (OptRange.t, 'prim) t ParseUtil.t
 end
 
-module Properties : sig
-  val json_round_trip1 : (unit, Primitive.t) t -> PropertyResult.t
-  val json_round_trip2 : Lvca_util.Json.t -> PropertyResult.t
-  val string_round_trip1 : (unit, Primitive.t) t -> PropertyResult.t
-  val string_round_trip2 : string -> PropertyResult.t
-end
+module Properties : Properties_intf.S with type t := (unit, Primitive.t) t
 
 module Primitive : sig
   (** Hardcoded for the Primitive type *)
