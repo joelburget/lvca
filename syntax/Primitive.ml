@@ -185,9 +185,11 @@ let%test_module "Parsing" =
 module Integer = struct
   type 'info t = 'info * Z.t
 
-  module Plain = struct
+  module Plain_typedef = struct
     type t = Z.t
   end
+
+  module Plain = Plain_typedef
 
   let to_plain (_, z) = z
   let of_plain z = (), z
@@ -217,9 +219,11 @@ end
 module Int = struct
   type 'info t = 'info * int
 
-  module Plain = struct
+  module Plain_typedef = struct
     type t = int
   end
+
+  module Plain = Plain_typedef
 
   let to_plain (_, n) = n
   let of_plain n = (), n
@@ -245,9 +249,11 @@ end
 module String = struct
   type 'info t = 'info * string
 
-  module Plain = struct
+  module Plain_typedef = struct
     type t = string
   end
+
+  module Plain = Plain_typedef
 
   let to_plain (_, s) = s
   let of_plain s = (), s

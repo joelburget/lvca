@@ -1,27 +1,11 @@
-module type AllTermS = sig
-  type 'info t
-
-  module Plain : sig
-    type t
-  end
-
-  val to_plain : _ t -> Plain.t
-  val of_plain : Plain.t -> unit t
-  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
-  val map_info : f:('a -> 'b) -> 'a t -> 'b t
-  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
-
-  module Parse (Comment : ParseUtil.Comment_int) : sig
-    val t : OptRange.t t ParseUtil.t
-  end
-end
+module type AllTermS = LanguageObject_intf.S
 
 (* TODO: we could generalize NonBindingTermS and BindingTermS by making them a
    functor taking the term type and changing the names to to_term and of_term.
    Or returning an Either.
    *)
 module type NonBindingTermS = sig
-  include AllTermS
+  include LanguageObject_intf.S
 
   val to_nonbinding : 'info t -> ('info, Lvca_util.Void.t) NonBinding.term
 
@@ -31,7 +15,7 @@ module type NonBindingTermS = sig
 end
 
 module type BindingTermS = sig
-  include AllTermS
+  include LanguageObject_intf.S
 
   val to_nominal : 'info t -> ('info, Lvca_util.Void.t) Nominal.Term.t
 
