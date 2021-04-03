@@ -5,52 +5,49 @@ TODO: make disjunctionless? https://github.com/jyp/prettiest/pull/10
 open Base
 open Lvca_syntax
 
-let language =
-  [%lvca_abstract_syntax
-    {|
-doc :=
-  | line() // insert a new line (unconditionally)
-  | nil() // the empty document
-  | cat(doc; doc) // concatenation
-  | text(string) // insert a meaningful piece of text
-  | spacing(string) // non-meaningful text
-  | nest(int; doc) // nest the argument
-  | align(doc) // align the documents in the argument
-  | alt(doc; doc) // disjunction
-|}]
-;;
+module Lang =
+[%abstract_syntax_module
+{|
+int : *
+string : *
 
-type doc =
-  | Line
-  | Nil
-  | Cat of doc * doc
-  | Text of string
-  | Spacing of string
-  | Nest of int * doc
-  | Align of doc
-  | Alt of doc * doc
+doc :=
+  | Line() // insert a new line (unconditionally)
+  | Nil() // the empty document
+  | Cat(doc; doc) // concatenation
+  | Text(string) // insert a meaningful piece of text
+  | Spacing(string) // non-meaningful text
+  | Nest(int; doc) // nest the argument
+  | Align(doc) // align the documents in the argument
+  | Alt(doc; doc) // disjunction
+|}]
+
+module Lang' = Lang (Primitive.Int) (Primitive.String)
+module Doc = Lang'.Doc
+
+type doc = Doc.Plain.t
 
 let rec of_nonbinding tm =
   let open Result.Let_syntax in
   match tm with
-  | NonBinding.Operator (_, "line", []) -> Ok Line
+  | NonBinding.Operator (_, "line", []) -> Ok Doc.Plain.Line
   | Operator (_, "nil", []) -> Ok Nil
   | Operator (_, "cat", [ d1; d2 ]) ->
     let%bind d1 = of_nonbinding d1 in
     let%map d2 = of_nonbinding d2 in
-    Cat (d1, d2)
+    Doc.Plain.Cat (d1, d2)
   | Operator (_, "text", [ Primitive (_, Primitive.PrimString s) ]) -> Ok (Text s)
   | Operator (_, "spacing", [ Primitive (_, Primitive.PrimString s) ]) -> Ok (Spacing s)
   | Operator (_, "nest", [ Primitive (_, Primitive.PrimInteger j); d ]) ->
     let%map d = of_nonbinding d in
-    Nest (Z.to_int j, d)
+    Doc.Plain.Nest (Z.to_int j, d)
   | Operator (_, "align", [ d ]) ->
     let%map d = of_nonbinding d in
-    Align d
+    Doc.Plain.Align d
   | Operator (_, "alt", [ d1; d2 ]) ->
     let%bind d1 = of_nonbinding d1 in
     let%map d2 = of_nonbinding d2 in
-    Alt (d1, d2)
+    Doc.Plain.Alt (d1, d2)
   | Primitive _ | Operator _ -> Error ("Couldn't convert term", tm)
 ;;
 
@@ -58,14 +55,14 @@ type semantics = int -> int -> (string * int) list
 
 let rec eval doc i (* current indentation *) c (* current column *) =
   match doc with
-  | Line -> [ String.(of_char '\n' ^ make i ' '), i ]
+  | Doc.Plain.Line -> [ String.(of_char '\n' ^ make i ' '), i ]
   | Nil -> [ "", c ]
   | Cat (d1, d2) ->
     eval d1 i c
     |> List.concat_map ~f:(fun (t1, c1) ->
            eval d2 i c1 |> List.map ~f:(fun (t2, c2) -> t1 ^ t2, c2))
   | Text s | Spacing s -> [ s, c + String.length s ]
-  | Nest (j, d) -> eval d (i + j) c
+  | Nest (j, d) -> eval d Int.(i + j) c
   | Align d -> eval d c c
   | Alt (d1, d2) -> eval d1 i c @ eval d2 i c
 ;;
@@ -233,7 +230,7 @@ let%test_module _ =
         cat [%lvca_nonbinding {|text("abc")|}] (3 |> counting_list |> vsep |> align)
       in
       test_render 5 tm;
-      [%expect{|
+      [%expect {|
         abc0
            1
            2 |}]

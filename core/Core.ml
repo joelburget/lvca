@@ -326,7 +326,7 @@ let eval_primitive eval_ctx eval_ctx' ctx tm name args =
                     (Nominal.Scope.pp_str Lvca_syntax.Primitive.pp tm)))
       |> Result.all
       |> Result.map ~f:(fun cs ->
-             Nominal.Term.Primitive (info, PrimString (String.of_char_list cs)))
+             Nominal.Term.Primitive (info, PrimString (Base.String.of_char_list cs)))
       |> Result.map_error ~f:(fun msg -> msg, tm)
     | _ -> Error ("expected a list of characters", tm))
   | "var", [ str_tm ] ->

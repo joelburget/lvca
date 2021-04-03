@@ -181,3 +181,91 @@ let%test_module "Parsing" =
       *)
   end)
 ;;
+
+module Integer = struct
+  type 'info t = 'info * Z.t
+
+  module Plain = struct
+    type t = Z.t
+  end
+
+  let to_plain (_, z) = z
+  let of_plain z = (), z
+
+  let equal ~info_eq (i1, z1) (i2, z2) =
+    info_eq i1 i2 && (Z.Compare.(z1 = z2) [@warning "-44"])
+  ;;
+
+  let map_info ~f (i, z) = f i, z
+
+  let pp_generic ~open_loc ~close_loc ppf (i, z) =
+    open_loc ppf i;
+    Fmt.pf ppf "%s" (Z.to_string z);
+    close_loc ppf i
+  ;;
+
+  module Parse (Comment : ParseUtil.Comment_int) = struct
+    module Parsers = ParseUtil.Mk (Comment)
+
+    let t : OptRange.t t Parsers.t =
+      let open Parsers in
+      integer_lit >>|| (fun ~pos s -> (pos, Z.of_string s), pos) <?> "integer"
+    ;;
+  end
+end
+
+module Int = struct
+  type 'info t = 'info * int
+
+  module Plain = struct
+    type t = int
+  end
+
+  let to_plain (_, n) = n
+  let of_plain n = (), n
+  let equal ~info_eq (i1, n1) (i2, n2) = info_eq i1 i2 && Int.(n1 = n2)
+  let map_info ~f (i, n) = f i, n
+
+  let pp_generic ~open_loc ~close_loc ppf (i, n) =
+    open_loc ppf i;
+    Fmt.pf ppf "%d" n;
+    close_loc ppf i
+  ;;
+
+  module Parse (Comment : ParseUtil.Comment_int) = struct
+    module Parsers = ParseUtil.Mk (Comment)
+
+    let t : OptRange.t t Parsers.t =
+      let open Parsers in
+      integer_lit >>|| (fun ~pos s -> (pos, Int.of_string s), pos) <?> "integer"
+    ;;
+  end
+end
+
+module String = struct
+  type 'info t = 'info * string
+
+  module Plain = struct
+    type t = string
+  end
+
+  let to_plain (_, s) = s
+  let of_plain s = (), s
+  let equal ~info_eq (i1, s1) (i2, s2) = info_eq i1 i2 && String.(s1 = s2)
+  let map_info ~f (i, s) = f i, s
+
+  let pp_generic ~open_loc ~close_loc ppf (i, s) =
+    open_loc ppf i;
+    Fmt.pf ppf {|"%s"|} s;
+    close_loc ppf i
+  ;;
+
+  module Parse (Comment : ParseUtil.Comment_int) = struct
+    module Parsers = ParseUtil.Mk (Comment)
+
+    let t : OptRange.t t Parsers.t =
+      let open Parsers in
+      string_lit >>|| (fun ~pos s -> (pos, s), pos) <?> "string"
+    ;;
+  end
+end
