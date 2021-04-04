@@ -99,18 +99,10 @@ let mk_ctor_decl
     ~res:None
 ;;
 
-[%%if ocaml_version < (4, 12, 0)]
-
-let invariant = Invariant
-
-[%%else]
-
-let invariant = NoVariance, NoInjectivity
-
-[%%endif]
-
 let mk_type_decl (module Ast : Ast_builder.S) ~info ~sort_name op_defs =
-  let params = if info then [ Ast.ptyp_var "info", invariant ] else [] in
+  let params =
+    if info then [ Ast.ptyp_var "info", (NoVariance, NoInjectivity) ] else []
+  in
   let kind =
     Ptype_variant (List.map op_defs ~f:(mk_ctor_decl (module Ast) ~info ~sort_name))
   in
