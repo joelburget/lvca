@@ -3,5 +3,5 @@
  (public_name lvca.ppx)
  (kind ppx_rewriter)
  (preprocess
-  (pps ppxlib.metaquot ppx_optcomp))
+  (pps ppxlib.metaquot))
  (libraries base lvca_syntax ppxlib))
