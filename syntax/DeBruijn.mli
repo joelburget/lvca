@@ -5,7 +5,7 @@ type ('info, 'prim) term =
       'info * string * (('info, 'prim) scope, ('info, 'prim) term) Base.Either.t list
   | BoundVar of 'info * int
   | FreeVar of 'info * string
-  | Primitive of 'info * 'prim
+  | Primitive of 'prim
 
 and ('info, 'prim) scope = Scope of 'info * string * ('info, 'prim) term
 

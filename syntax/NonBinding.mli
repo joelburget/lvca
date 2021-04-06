@@ -4,7 +4,7 @@
 
 type ('info, 'prim) term =
   | Operator of 'info * string * ('info, 'prim) term list
-  | Primitive of 'info * 'prim
+  | Primitive of 'prim
 
 val equal
   :  ('info -> 'info -> bool)
@@ -15,9 +15,18 @@ val equal
 
 (** {1 info} *)
 
-val info : ('info, _) term -> 'info
-val map_info : f:('a -> 'b) -> ('a, 'prim) term -> ('b, 'prim) term
-val erase : (_, 'prim) term -> (unit, 'prim) term
+val info : prim_info:('prim -> 'info) -> ('info, 'prim) term -> 'info
+
+val map_info
+  :  prim_map_info:(('a -> 'b) -> 'a_prim -> 'b_prim)
+  -> f:('a -> 'b)
+  -> ('a, 'a_prim) term
+  -> ('b, 'b_prim) term
+
+val erase
+  :  prim_map_info:(('a -> 'b) -> 'a_prim -> 'b_prim)
+  -> (_, 'prim) term
+  -> (unit, 'prim) term
 
 (** {1 de Bruijn conversion} *)
 

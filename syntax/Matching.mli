@@ -96,10 +96,10 @@ val check_matrix
   -> (unit, 'prim) Pattern.t list option
 
 module Properties : sig
-  type term = (unit, Primitive.t) NonBinding.term
+  type term = (unit, unit Primitive.t) NonBinding.term
 
   (** Check that [run_match . compile_cases] gives the same result as [simple_find_match] *)
-  val match_equivalent : term -> (unit, Primitive.t, term) cases -> PropertyResult.t
+  val match_equivalent : term -> (unit, unit Primitive.t, term) cases -> PropertyResult.t
 
   (* TODO: could also check that check_matrix finds an example if compile_matrix does. *)
 end

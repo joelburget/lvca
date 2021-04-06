@@ -12,7 +12,7 @@ type ('info, 'prim) capture = ('info, 'prim) BindingAwarePattern.capture
 
 type 'info check_error =
   | CheckError of string
-  | BadMerge of ('info, Primitive.t) capture * ('info, Primitive.t) capture
+  | BadMerge of ('info, 'info Primitive.t) capture * ('info, 'info Primitive.t) capture
 
 type 'a trace_entry =
   | CheckTrace of 'a env * 'a Typing.t
@@ -23,7 +23,7 @@ type 'a trace_entry =
 
 type 'a trace_step = 'a trace_entry list
 
-let pp_bpat : ('a, Primitive.t) BindingAwarePattern.t Fmt.t =
+let pp_bpat : ('a, 'a Primitive.t) BindingAwarePattern.t Fmt.t =
   BindingAwarePattern.pp Primitive.pp
 ;;
 
@@ -39,8 +39,8 @@ let pp_err ppf = function
 (* [pat] is a (binding-aware) pattern taken from the typing rule. Use the
    values in the context to fill it in. *)
 let instantiate
-    :  string option -> ('a, Primitive.t) capture SMap.t
-    -> ('a, Primitive.t) BindingAwarePattern.t -> ('a term, 'a check_error) Result.t
+    :  string option -> ('a, 'a Primitive.t) capture SMap.t
+    -> ('a, 'a Primitive.t) BindingAwarePattern.t -> ('a term, 'a check_error) Result.t
   =
  fun name env pat ->
   let open Result.Let_syntax in
@@ -66,7 +66,7 @@ let instantiate
              "%s: found a captured binder but expected a term"
              pattern_var_name)
       | None -> err (Printf.sprintf "didn't find variable %s in context" pattern_var_name))
-    | Primitive (info, p) -> Ok (Primitive (info, p))
+    | Primitive p -> Ok (Primitive p)
     | Ignored (_, name) ->
       err (Printf.sprintf "Can't instantiate ignored variable _%s" name)
   and go_scope (Scope (binders, body)) =
@@ -90,8 +90,11 @@ let instantiate
   go_term pat
 ;;
 
+let info_eq _ _ = true
+let prim_eq = Primitive.equal ~info_eq
+
 let update_ctx
-    :  ('a, Primitive.t) capture SMap.t ref -> ('a, Primitive.t) capture SMap.t
+    :  ('a, 'a Primitive.t) capture SMap.t ref -> ('a, 'a Primitive.t) capture SMap.t
     -> 'a check_error option
   =
  fun ctx_state learned_tys ->
@@ -102,12 +105,7 @@ let update_ctx
       ctx_state := Map.set state ~key:k ~data:v;
       None
     | Some v' ->
-      if not
-           (BindingAwarePattern.capture_eq
-              ~info_eq:(fun _ _ -> true)
-              ~prim_eq:Primitive.( = )
-              v
-              v')
+      if not (BindingAwarePattern.capture_eq ~info_eq ~prim_eq v v')
       then Some (BadMerge (v, v'))
       else None
   in
@@ -144,8 +142,8 @@ let rec check'
     | Rule.{ conclusion = _, InferenceRule _; _ } -> None
     (* TODO: the conclusion may have a context, which we're currently ignoring *)
     | { name; hypotheses; conclusion = _, CheckingRule { tm = rule_tm; ty = rule_ty } } ->
-      let match1 = BindingAwarePattern.match_term ~prim_eq:Primitive.( = ) rule_tm tm in
-      let match2 = BindingAwarePattern.match_term ~prim_eq:Primitive.( = ) rule_ty ty in
+      let match1 = BindingAwarePattern.match_term ~prim_eq rule_tm tm in
+      let match2 = BindingAwarePattern.match_term ~prim_eq rule_ty ty in
       (match match1, match2 with
       | Some tm_assignments, Some ty_assignments ->
         Some (name, hypotheses, tm_assignments, ty_assignments)
@@ -171,7 +169,7 @@ let rec check'
      Here we initially learn tm1, tm2, and ty2, but only learn ty1 via
      checking of hypotheses.
        *)
-      let ctx_state : ('a, Primitive.t) capture SMap.t ref = ref schema_assignments in
+      let ctx_state : ('a, 'a Primitive.t) capture SMap.t ref = ref schema_assignments in
       let result =
         hypotheses
         |> List.find_map ~f:(check_hyp trace_stack emit_trace name ctx_state env)
@@ -196,7 +194,8 @@ and infer'
     | _, CheckingRule _ -> None
     (* TODO: the conclusion may have a context, which we're currently ignoring *)
     | _, InferenceRule { tm = rule_tm; ty = rule_ty } ->
-      let match_ = BindingAwarePattern.match_term ~prim_eq:Primitive.( = ) rule_tm tm in
+      let prim_eq = Primitive.equal ~info_eq in
+      let match_ = BindingAwarePattern.match_term ~prim_eq rule_tm tm in
       match_
       |> Option.map ~f:(fun schema_assignments ->
              name, hypotheses, schema_assignments, rule_ty)
@@ -204,7 +203,7 @@ and infer'
   let%map ty =
     match List.find_map rules ~f:match_rule with
     | Some (name, hypotheses, schema_assignments, rule_ty) ->
-      let ctx_state : ('a, Primitive.t) capture SMap.t ref = ref schema_assignments in
+      let ctx_state : ('a, 'a Primitive.t) capture SMap.t ref = ref schema_assignments in
       (match
          hypotheses
          |> List.find_map ~f:(check_hyp trace_stack emit_trace name ctx_state env)
@@ -219,7 +218,7 @@ and infer'
 (* Check (or infer, depending on the rule) a hypothesis *)
 and check_hyp
     :  'a trace_step -> ('a trace_step -> unit) -> 'string
-    -> ('a, Primitive.t) capture SMap.t ref -> 'a env -> 'a Hypothesis.t
+    -> ('a, 'a Primitive.t) capture SMap.t ref -> 'a env -> 'a Hypothesis.t
     -> 'a check_error option
   =
  fun trace_stack emit_trace name ctx_state env (pattern_ctx, rule) ->
@@ -307,7 +306,7 @@ and check_hyp
       in
       (match ty with
       | Ok ty ->
-        (match BindingAwarePattern.match_term ~prim_eq:Primitive.( = ) hyp_ty ty with
+        (match BindingAwarePattern.match_term ~prim_eq hyp_ty ty with
         | None -> Some (CheckError "check_hyp: failed to match schema vars")
         | Some learned_tys -> update_ctx ctx_state learned_tys)
       | Error err -> Some err))

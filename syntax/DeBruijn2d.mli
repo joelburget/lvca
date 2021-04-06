@@ -7,7 +7,7 @@ type ('info, 'prim) term =
   | Operator of 'info * string * ('info, 'prim) scope list
   | BoundVar of 'info * int * int
   | FreeVar of 'info * string
-  | Primitive of 'info * 'prim
+  | Primitive of 'prim
 
 and ('info, 'prim) scope = Scope of ('info, 'prim) Pattern.t list * ('info, 'prim) term
 

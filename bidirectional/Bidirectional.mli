@@ -1,5 +1,6 @@
 (** An implementation of bidirectional typechecking. *)
 
+open Lvca_syntax
 open Statics
 
 type 'a env =
@@ -11,8 +12,8 @@ type 'a env =
 type 'info check_error =
   | CheckError of string
   | BadMerge of
-      ('info, Lvca_syntax.Primitive.t) Lvca_syntax.BindingAwarePattern.capture
-      * ('info, Lvca_syntax.Primitive.t) Lvca_syntax.BindingAwarePattern.capture
+      ('info, 'info Primitive.t) BindingAwarePattern.capture
+      * ('info, 'info Primitive.t) BindingAwarePattern.capture
 
 type 'a trace_entry =
   | CheckTrace of 'a env * 'a Typing.t
@@ -37,23 +38,23 @@ val infer : 'a env -> 'a term -> ('a term, 'a check_error) Result.t
 *)
 
 val check_trace
-  :  (Lvca_syntax.OptRange.t trace_step -> unit)
-  -> Lvca_syntax.OptRange.t env
-  -> Lvca_syntax.OptRange.t Typing.t
-  -> Lvca_syntax.OptRange.t check_error option
+  :  (OptRange.t trace_step -> unit)
+  -> OptRange.t env
+  -> OptRange.t Typing.t
+  -> OptRange.t check_error option
 
 val infer_trace
-  :  (Lvca_syntax.OptRange.t trace_step -> unit)
-  -> Lvca_syntax.OptRange.t env
-  -> Lvca_syntax.OptRange.t term
-  -> (Lvca_syntax.OptRange.t term, Lvca_syntax.OptRange.t check_error) Result.t
+  :  (OptRange.t trace_step -> unit)
+  -> OptRange.t env
+  -> OptRange.t term
+  -> (OptRange.t term, OptRange.t check_error) Result.t
 
 val check
-  :  Lvca_syntax.OptRange.t env
-  -> Lvca_syntax.OptRange.t Typing.t
-  -> Lvca_syntax.OptRange.t check_error option
+  :  OptRange.t env
+  -> OptRange.t Typing.t
+  -> OptRange.t check_error option
 
 val infer
-  :  Lvca_syntax.OptRange.t env
-  -> Lvca_syntax.OptRange.t term
-  -> (Lvca_syntax.OptRange.t term, Lvca_syntax.OptRange.t check_error) Result.t
+  :  OptRange.t env
+  -> OptRange.t term
+  -> (OptRange.t term, OptRange.t check_error) Result.t

@@ -7,7 +7,7 @@ type ('info, 'prim) term =
       'info * string * (('info, 'prim) scope, ('info, 'prim) term) Base.Either.t list
   | BoundVar of 'info * int
   | FreeVar of 'info * string
-  | Primitive of 'info * 'prim
+  | Primitive of 'prim
 
 and ('info, 'prim) scope = Scope of 'info * string * ('info, 'prim) term
 
@@ -39,7 +39,7 @@ let rec to_nominal' ctx = function
     |> List.map ~f:(scope_or_term_to_nominal ctx)
     |> Option.all
     |> Option.map ~f:(fun subtms' -> Nominal.Term.Operator (info, tag, subtms'))
-  | Primitive (info, prim) -> Some (Nominal.Term.Primitive (info, prim))
+  | Primitive prim -> Some (Nominal.Term.Primitive prim)
 
 and scope_to_nominal ctx (Scope (info, name, body)) =
   let ctx = List.cons name ctx in
@@ -65,7 +65,7 @@ let rec of_nominal_with_bindings env = function
       (match Map.find env name with
       | None -> FreeVar (info, name)
       | Some i -> BoundVar (info, i))
-  | Primitive (info, prim) -> Ok (Primitive (info, prim))
+  | Primitive prim -> Ok (Primitive prim)
 
 and scope_of_nominal env (Scope (pats, body) as scope) =
   let open Result.Let_syntax in
@@ -104,6 +104,6 @@ let rec alpha_equivalent prim_equivalent t1 t2 =
     | Unequal_lengths -> false)
   | BoundVar (_, i1), BoundVar (_, i2) -> i1 = i2
   | FreeVar (_, name1), FreeVar (_, name2) -> String.(name1 = name2)
-  | Primitive (_, p1), Primitive (_, p2) -> prim_equivalent p1 p2
+  | Primitive p1, Primitive p2 -> prim_equivalent p1 p2
   | _, _ -> false
 ;;

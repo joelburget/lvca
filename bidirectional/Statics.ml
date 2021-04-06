@@ -1,8 +1,8 @@
 open Base
 open Lvca_syntax
 
-type 'info pattern = ('info, Primitive.t) BindingAwarePattern.t
-type 'info term = ('info, Primitive.t) Nominal.Term.t
+type 'info pattern = ('info, 'info Primitive.t) BindingAwarePattern.t
+type 'info term = ('info, 'info Primitive.t) Nominal.Term.t
 
 module TypingRule = struct
   type 'info t =
@@ -11,8 +11,9 @@ module TypingRule = struct
     }
 
   let equal ~info_eq a b =
+    let prim_eq = Primitive.equal ~info_eq in
     BindingAwarePattern.(
-      equal info_eq Primitive.( = ) a.tm b.tm && equal info_eq Primitive.( = ) a.ty b.ty)
+      equal info_eq prim_eq a.tm b.tm && equal info_eq prim_eq a.ty b.ty)
   ;;
 
   let erase { tm; ty } =

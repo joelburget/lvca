@@ -456,19 +456,19 @@ let run_matches ~prim_pp ~prim_eq tms tree =
 let run_match ~prim_pp ~prim_eq tm tree = run_matches ~prim_pp ~prim_eq [ tm ] tree
 
 module Properties = struct
-  type term = (unit, Primitive.t) NonBinding.term
+  type term = (unit, unit Primitive.t) NonBinding.term
+
+  let prim_eq = Primitive.equal ~info_eq:Unit.( = )
 
   let match_equivalent tm cases =
-    let tmeq = NonBinding.equal Unit.( = ) Primitive.( = ) in
+    let tmeq = NonBinding.equal Unit.( = ) prim_eq in
     let ( = ) = Option.equal (Lvca_util.Tuple2.equal tmeq (Map.equal tmeq)) in
-    let result1 = simple_find_match ~prim_eq:Primitive.( = ) tm cases in
+    let result1 = simple_find_match ~prim_eq tm cases in
     let lang = failwith "TODO 5" in
     let sort = failwith "TODO 6" in
     match compile_cases lang sort cases with
     | Ok decision_tree ->
-      let result2 =
-        run_match ~prim_pp:Primitive.pp ~prim_eq:Primitive.( = ) tm decision_tree
-      in
+      let result2 = run_match ~prim_pp:Primitive.pp ~prim_eq tm decision_tree in
       if result1 = result2 then PropertyResult.Ok else Failed "match result not equal"
     | Error _ -> failwith "TODO: error 9"
   ;;
@@ -518,6 +518,7 @@ let%test_module "Matching" =
 
     let str_of_tm tm = Fmt.to_to_string (NonBinding.pp Primitive.pp) tm
     let str_of_pat tm = Fmt.to_to_string (Pattern.pp Primitive.pp) tm
+    let prim_eq = Primitive.equal ~info_eq:OptRange.( = )
 
     let str_of_env env =
       env
@@ -536,7 +537,7 @@ let%test_module "Matching" =
         , ParseUtil.parse_string (ParseTerm.whitespace_term ParsePrimitive.t) tm_str )
       with
       | Ok branches, Ok tm ->
-        (match simple_find_match ~prim_eq:Primitive.( = ) tm branches with
+        (match simple_find_match ~prim_eq tm branches with
         | None -> Stdio.print_string "no match"
         | Some result -> Stdio.print_string (str_of_result result))
       | _ -> failwith "something failed to parse"
@@ -576,9 +577,7 @@ let%test_module "Matching" =
           | Ok tree -> tree
           | Error _msg -> failwith "failed to compile decision tree"
         in
-        (match
-           run_matches ~prim_pp:Primitive.pp ~prim_eq:Primitive.( = ) tms decision_tree
-         with
+        (match run_matches ~prim_pp:Primitive.pp ~prim_eq tms decision_tree with
         | None -> Stdio.print_string "no match"
         | Some result -> Stdio.print_string (str_of_result result))
     ;;

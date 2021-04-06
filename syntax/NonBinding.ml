@@ -3,7 +3,7 @@ open Result.Let_syntax
 
 type ('info, 'prim) term =
   | Operator of 'info * string * ('info, 'prim) term list
-  | Primitive of 'info * 'prim
+  | Primitive of 'prim
 
 let rec equal info_eq prim_eq t1 t2 =
   match t1, t2 with
@@ -11,15 +11,16 @@ let rec equal info_eq prim_eq t1 t2 =
     info_eq i1 i2
     && String.(name1 = name2)
     && List.equal (equal info_eq prim_eq) scopes1 scopes2
-  | Primitive (i1, p1), Primitive (i2, p2) -> info_eq i1 i2 && prim_eq p1 p2
+  | Primitive i1, Primitive i2 -> info_eq i1 i2
   | _, _ -> false
 ;;
 
-let info = function Operator (i, _, _) | Primitive (i, _) -> i
+let info ~prim_info = function Operator (i, _, _) -> i | Primitive p -> prim_info p
 
-let rec map_info ~f = function
-  | Operator (i, name, tms) -> Operator (f i, name, List.map tms ~f:(map_info ~f))
-  | Primitive (i, prim) -> Primitive (f i, prim)
+let rec map_info ~prim_map_info ~f = function
+  | Operator (i, name, tms) ->
+    Operator (f i, name, List.map tms ~f:(map_info ~prim_map_info ~f))
+  | Primitive prim -> Primitive (prim_map_info ~f prim)
 ;;
 
 let erase tm = map_info ~f:(Fn.const ()) tm
@@ -34,7 +35,7 @@ let rec of_de_bruijn tm =
     let%map scopes' = scopes |> List.map ~f:of_de_bruijn_scope |> Result.all in
     Operator (a, tag, scopes')
   | BoundVar _ | FreeVar _ -> Error (VarEncountered tm)
-  | Primitive (a, p) -> Ok (Primitive (a, p))
+  | Primitive p -> Ok (Primitive p)
 
 and of_de_bruijn_scope = function
   | First scope -> Error (ScopeEncountered scope)
@@ -46,7 +47,7 @@ let rec to_de_bruijn tm =
   | Operator (info, tag, tms) ->
     DeBruijn.Operator
       (info, tag, List.map tms ~f:(fun tm -> Either.Second (to_de_bruijn tm)))
-  | Primitive (info, p) -> Primitive (info, p)
+  | Primitive p -> Primitive p
 ;;
 
 type ('info, 'prim) nominal_conversion_error =
@@ -59,7 +60,7 @@ let rec of_nominal tm =
     let%map scopes' = scopes |> List.map ~f:of_nominal_scope |> Result.all in
     Operator (a, tag, scopes')
   | Var _ -> Error (VarEncountered tm)
-  | Primitive (a, p) -> Ok (Primitive (a, p))
+  | Primitive p -> Ok (Primitive p)
 
 and of_nominal_scope = function
   | Nominal.Scope.Scope ([], tm) -> of_nominal tm
@@ -71,7 +72,7 @@ let rec to_nominal tm =
   | Operator (info, tag, tms) ->
     Nominal.Term.Operator
       (info, tag, List.map tms ~f:(fun tm -> Nominal.Scope.Scope ([], to_nominal tm)))
-  | Primitive (info, p) -> Primitive (info, p)
+  | Primitive p -> Primitive p
 ;;
 
 let pp pp_prim ppf tm = tm |> to_nominal |> Nominal.Term.pp pp_prim ppf
@@ -104,7 +105,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     let open Parsers in
     fix (fun term ->
         choice
-          [ (parse_prim >>|| fun ~pos prim -> Primitive (pos, prim), pos)
+          [ (parse_prim >>| fun prim -> Primitive prim)
           ; (identifier
             >>== fun ~pos:start ident ->
             parens (sep_end_by (char ';') term)
