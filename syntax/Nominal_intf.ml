@@ -157,6 +157,12 @@ end
 module type S = sig
   type 'info pattern
   type 'info prim
+  type plain_prim
+
+  module Prim : LanguageObject_intf.S with type 'info t = 'info prim
+
+  module Pattern :
+    Pattern_intf.S with type 'info prim = 'info prim and type plain_prim = plain_prim
 
   module Term :
     TermS with type 'info pattern = 'info pattern and type 'info prim = 'info prim

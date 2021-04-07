@@ -7,11 +7,20 @@ module Tuple2 = Lvca_util.Tuple2
 
 let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
 
-module Make (Prim : LanguageObject_intf.S) : Nominal_intf.S
-(* with type 'info prim = 'info Prim.t
-     and type 'info pattern = 'info Pattern.t*) =
-struct
-  module Pattern = Pattern.Make (Prim)
+module PatternF = Pattern
+
+module Make (Prim : LanguageObject_intf.S) :
+  Nominal_intf.S
+    with type 'info prim = 'info Prim.t
+     and type plain_prim = Prim.Plain.t
+     and module Pattern = PatternF.Make(Prim)
+     and module Prim = Prim = struct
+  module Prim = Prim
+  module Pattern = PatternF.Make (Prim)
+
+  type 'info pattern = 'info Pattern.t
+  type 'info prim = 'info Prim.t
+  type plain_prim = Prim.Plain.t
 
   module rec Term :
     (Nominal_intf.TermS
@@ -19,6 +28,8 @@ struct
        and type 'info prim = 'info Prim.t
        and type 'info pattern = 'info Pattern.t) = struct
     type 'info scope = 'info Scope.t
+    type 'info pattern = 'info Pattern.t
+    type 'info prim = 'info Prim.t
 
     type 'info t =
       | Operator of 'info * string * 'info Scope.t list
@@ -484,8 +495,18 @@ struct
     end
   end
 
-  and Scope : (Nominal_intf.Scope with type 'info term = 'info Term.t) = struct
+  and Scope :
+    (Nominal_intf.ScopeS
+      with type 'info term = 'info Term.t
+       and type 'info prim = 'info Prim.t
+      (* and type plain_prim = Prim.Plain.t *)
+      (* and module Pattern = Pattern.Make(Prim) *)
+       and type 'info pattern = 'info Pattern.t) = struct
+    (* module Pattern = Pattern.Make (Prim) *)
+
     type 'info term = 'info Term.t
+    type 'info pattern = 'info Pattern.t
+    type 'info prim = 'info Prim.t
     type 'info t = Scope of 'info Pattern.t list * 'info Term.t
 
     let equal info_eq (Scope (pats1, tm1)) (Scope (pats2, tm2)) =

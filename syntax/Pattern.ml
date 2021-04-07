@@ -10,6 +10,9 @@ module Tuple2 = Util.Tuple2
 module Result = Base.Result
 
 module Make (Prim : LanguageObject_intf.S) = struct
+  type 'info prim = 'info Prim.t
+  type plain_prim = Prim.Plain.t
+
   let prim_info _ = failwith "XXX"
   let prim_jsonify _ = failwith "XXX"
   let prim_unjsonify _ = failwith "XXX"
