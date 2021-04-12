@@ -3,11 +3,10 @@
 (** {1 Types} *)
 
 module Make (Prim : LanguageObject_intf.S) : sig
-  module Nominal : Nominal_intf.S
+  module Nominal : Nominal_intf.S with module Prim = Prim
+  module Pattern = Nominal.Pattern
   module Term = Nominal.Term
   module Scope = Nominal.Scope
-
-  type 'info pattern
 
   type 'info t =
     | Operator of 'info * string * 'info scope list
@@ -23,7 +22,7 @@ module Make (Prim : LanguageObject_intf.S) : sig
     | BoundTerm of 'info Sort.t
 
   type 'info capture =
-    | CapturedBinder of 'info pattern
+    | CapturedBinder of 'info Pattern.t
     | CapturedTerm of 'info Term.t
 
   val capture_eq
@@ -44,10 +43,15 @@ module Make (Prim : LanguageObject_intf.S) : sig
 
   (** {1 Matching} *)
 
-  val match_term : 'info t -> 'info Term.t -> 'info capture Lvca_util.String.Map.t option
+  val match_term
+    :  info_eq:('info -> 'info -> bool)
+    -> 'info t
+    -> 'info Term.t
+    -> 'info capture Lvca_util.String.Map.t option
 
   val match_scope
-    :  'info scope
+    :  info_eq:('info -> 'info -> bool)
+    -> 'info scope
     -> 'info Scope.t
     -> 'info capture Lvca_util.String.Map.t option
 
@@ -96,7 +100,7 @@ module Make (Prim : LanguageObject_intf.S) : sig
        }
       } *)
   val check
-    :  ('info -> 'prim -> 'info Sort.t -> string option) (** Primitive checker *)
+    :  ('info -> 'info Prim.t -> 'info Sort.t -> string option) (** Primitive checker *)
     -> 'info AbstractSyntax.t (** Abstract syntax *)
     -> 'info Sort.t (** Sort to check pattern against *)
     -> 'info t

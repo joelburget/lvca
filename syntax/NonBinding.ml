@@ -1,121 +1,127 @@
 open Base
 open Result.Let_syntax
 
-type ('info, 'prim) term =
-  | Operator of 'info * string * ('info, 'prim) term list
-  | Primitive of 'prim
+module Make (Prim : LanguageObject_intf.S) = struct
+  module Prim = Prim
+  module Nominal : Nominal_intf.S with module Prim = Prim = Nominal.Make (Prim)
+  module DeBruijn : DeBruijn_intf.S with module Prim = Prim = DeBruijn.Make (Prim)
 
-let rec equal info_eq prim_eq t1 t2 =
-  match t1, t2 with
-  | Operator (i1, name1, scopes1), Operator (i2, name2, scopes2) ->
-    info_eq i1 i2
-    && String.(name1 = name2)
-    && List.equal (equal info_eq prim_eq) scopes1 scopes2
-  | Primitive i1, Primitive i2 -> info_eq i1 i2
-  | _, _ -> false
-;;
+  type 'info term =
+    | Operator of 'info * string * 'info term list
+    | Primitive of 'info Prim.t
 
-let info ~prim_info = function Operator (i, _, _) -> i | Primitive p -> prim_info p
+  let rec equal ~info_eq t1 t2 =
+    match t1, t2 with
+    | Operator (i1, name1, scopes1), Operator (i2, name2, scopes2) ->
+      info_eq i1 i2
+      && String.(name1 = name2)
+      && List.equal (equal ~info_eq) scopes1 scopes2
+    | Primitive i1, Primitive i2 -> Prim.equal ~info_eq i1 i2
+    | _, _ -> false
+  ;;
 
-let rec map_info ~prim_map_info ~f = function
-  | Operator (i, name, tms) ->
-    Operator (f i, name, List.map tms ~f:(map_info ~prim_map_info ~f))
-  | Primitive prim -> Primitive (prim_map_info ~f prim)
-;;
+  let info = function Operator (i, _, _) -> i | Primitive _p -> failwith "XXX"
+  (* Prim.info p *)
 
-let erase tm = map_info ~f:(Fn.const ()) tm
+  let rec map_info ~f = function
+    | Operator (i, name, tms) -> Operator (f i, name, List.map tms ~f:(map_info ~f))
+    | Primitive prim -> Primitive (Prim.map_info ~f prim)
+  ;;
 
-type ('info, 'prim) de_bruijn_conversion_error =
-  | ScopeEncountered of ('info, 'prim) DeBruijn.scope
-  | VarEncountered of ('info, 'prim) DeBruijn.term
+  let erase tm = map_info ~f:(Fn.const ()) tm
 
-let rec of_de_bruijn tm =
-  match tm with
-  | DeBruijn.Operator (a, tag, scopes) ->
-    let%map scopes' = scopes |> List.map ~f:of_de_bruijn_scope |> Result.all in
-    Operator (a, tag, scopes')
-  | BoundVar _ | FreeVar _ -> Error (VarEncountered tm)
-  | Primitive p -> Ok (Primitive p)
+  type 'info de_bruijn_conversion_error =
+    | ScopeEncountered of 'info DeBruijn.scope
+    | VarEncountered of 'info DeBruijn.term
 
-and of_de_bruijn_scope = function
-  | First scope -> Error (ScopeEncountered scope)
-  | Second tm -> of_de_bruijn tm
-;;
+  let rec of_de_bruijn tm =
+    match tm with
+    | DeBruijn.Operator (a, tag, scopes) ->
+      let%map scopes' = scopes |> List.map ~f:of_de_bruijn_scope |> Result.all in
+      Operator (a, tag, scopes')
+    | BoundVar _ | FreeVar _ -> Error (VarEncountered tm)
+    | Primitive p -> Ok (Primitive p)
 
-let rec to_de_bruijn tm =
-  match tm with
-  | Operator (info, tag, tms) ->
-    DeBruijn.Operator
-      (info, tag, List.map tms ~f:(fun tm -> Either.Second (to_de_bruijn tm)))
-  | Primitive p -> Primitive p
-;;
+  and of_de_bruijn_scope = function
+    | First scope -> Error (ScopeEncountered scope)
+    | Second tm -> of_de_bruijn tm
+  ;;
 
-type ('info, 'prim) nominal_conversion_error =
-  | ScopeEncountered of ('info, 'prim) Nominal.Scope.t
-  | VarEncountered of ('info, 'prim) Nominal.Term.t
+  let rec to_de_bruijn tm =
+    match tm with
+    | Operator (info, tag, tms) ->
+      DeBruijn.Operator
+        (info, tag, List.map tms ~f:(fun tm -> Either.Second (to_de_bruijn tm)))
+    | Primitive p -> Primitive p
+  ;;
 
-let rec of_nominal tm =
-  match tm with
-  | Nominal.Term.Operator (a, tag, scopes) ->
-    let%map scopes' = scopes |> List.map ~f:of_nominal_scope |> Result.all in
-    Operator (a, tag, scopes')
-  | Var _ -> Error (VarEncountered tm)
-  | Primitive p -> Ok (Primitive p)
+  type 'info nominal_conversion_error =
+    | ScopeEncountered of 'info Nominal.Scope.t
+    | VarEncountered of 'info Nominal.Term.t
 
-and of_nominal_scope = function
-  | Nominal.Scope.Scope ([], tm) -> of_nominal tm
-  | scope -> Error (ScopeEncountered scope)
-;;
+  let rec of_nominal tm =
+    match tm with
+    | Nominal.Term.Operator (a, tag, scopes) ->
+      let%map scopes' = scopes |> List.map ~f:of_nominal_scope |> Result.all in
+      Operator (a, tag, scopes')
+    | Var _ -> Error (VarEncountered tm)
+    | Primitive p -> Ok (Primitive p)
 
-let rec to_nominal tm =
-  match tm with
-  | Operator (info, tag, tms) ->
-    Nominal.Term.Operator
-      (info, tag, List.map tms ~f:(fun tm -> Nominal.Scope.Scope ([], to_nominal tm)))
-  | Primitive p -> Primitive p
-;;
+  and of_nominal_scope = function
+    | Nominal.Scope.Scope ([], tm) -> of_nominal tm
+    | scope -> Error (ScopeEncountered scope)
+  ;;
 
-let pp pp_prim ppf tm = tm |> to_nominal |> Nominal.Term.pp pp_prim ppf
-let pp_range pp_prim ppf tm = tm |> to_nominal |> Nominal.Term.pp_range pp_prim ppf
-let hash jsonify_prim tm = tm |> to_nominal |> Nominal.Term.hash jsonify_prim
+  let rec to_nominal tm =
+    match tm with
+    | Operator (info, tag, tms) ->
+      Nominal.Term.Operator
+        (info, tag, List.map tms ~f:(fun tm -> Nominal.Scope.Scope ([], to_nominal tm)))
+    | Primitive p -> Primitive p
+  ;;
 
-let rec select_path ~path tm =
-  match path with
-  | [] -> Ok tm
-  | i :: path ->
-    (match tm with
-    | Primitive _ -> Error "select_path: hit primitive but path not finished"
-    | Operator (_, _, tms) ->
-      (match List.nth tms i with
-      | None ->
-        Error
-          (Printf.sprintf
-             "select_path: path index %n too high (only %n tms)"
-             i
-             (List.length tms))
-      | Some tm -> select_path ~path tm))
-;;
+  let pp ppf tm = tm |> to_nominal |> Nominal.Term.pp ppf
+  let pp_range ppf tm = tm |> to_nominal |> Nominal.Term.pp_range ppf
+  let hash tm = tm |> to_nominal |> Nominal.Term.hash
 
-module Parse (Comment : ParseUtil.Comment_int) = struct
-  module Parsers = ParseUtil.Mk (Comment)
-  module Primitive = Primitive.Parse (Comment)
+  let rec select_path ~path tm =
+    match path with
+    | [] -> Ok tm
+    | i :: path ->
+      (match tm with
+      | Primitive _ -> Error "select_path: hit primitive but path not finished"
+      | Operator (_, _, tms) ->
+        (match List.nth tms i with
+        | None ->
+          Error
+            (Printf.sprintf
+               "select_path: path index %n too high (only %n tms)"
+               i
+               (List.length tms))
+        | Some tm -> select_path ~path tm))
+  ;;
 
-  let term : 'prim ParseUtil.t -> (OptRange.t, 'prim) term ParseUtil.t =
-   fun parse_prim ->
-    let open Parsers in
-    fix (fun term ->
-        choice
-          [ (parse_prim >>| fun prim -> Primitive prim)
-          ; (identifier
-            >>== fun ~pos:start ident ->
-            parens (sep_end_by (char ';') term)
-            >>|| (fun ~pos:finish children ->
-                   let pos = OptRange.union start finish in
-                   Operator (pos, ident, children), pos)
-            <?> "term body")
-          ])
-    <?> "term"
- ;;
+  module Parse (Comment : ParseUtil.Comment_int) = struct
+    module Parsers = ParseUtil.Mk (Comment)
+    module ParsePrim = Prim.Parse (Comment)
+    (* module Primitive = Primitive.Parse (Comment) *)
 
-  let whitespace_term prim = Parsers.(junk *> term prim)
+    let term : OptRange.t term ParseUtil.t =
+      let open Parsers in
+      fix (fun term ->
+          choice
+            [ (ParsePrim.t >>| fun prim -> Primitive prim)
+            ; (identifier
+              >>== fun ~pos:start ident ->
+              parens (sep_end_by (char ';') term)
+              >>|| (fun ~pos:finish children ->
+                     let pos = OptRange.union start finish in
+                     Operator (pos, ident, children), pos)
+              <?> "term body")
+            ])
+      <?> "term"
+    ;;
+
+    let whitespace_term = Parsers.(junk *> term)
+  end
 end

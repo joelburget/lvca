@@ -155,18 +155,27 @@ val of_pattern : ('info, 'prim) pattern -> ('info, 'prim) t
 end
 
 module type S = sig
-  type 'info pattern
-  type 'info prim
-  type plain_prim
+  module Prim : LanguageObject_intf.S
+  module Pattern : Pattern_intf.S with type 'info prim = 'info Prim.t
 
-  module Prim : LanguageObject_intf.S with type 'info t = 'info prim
+  type 'info term =
+    | Operator of 'info * string * 'info scope list
+    | Var of 'info * string
+    | Primitive of 'info Prim.t
 
-  module Pattern :
-    Pattern_intf.S with type 'info prim = 'info prim and type plain_prim = plain_prim
+  and 'info scope = Scope of 'info Pattern.t list * 'info term
 
   module Term :
-    TermS with type 'info pattern = 'info pattern and type 'info prim = 'info prim
+    TermS
+      with type 'info pattern = 'info Pattern.t
+       and type 'info prim = 'info Prim.t
+       and type 'info scope = 'info scope
+       and type 'info t = 'info term
 
   module Scope :
-    ScopeS with type 'info pattern = 'info pattern and type 'info prim = 'info prim
+    ScopeS
+      with type 'info pattern = 'info Pattern.t
+       and type 'info prim = 'info Prim.t
+       and type 'info term = 'info term
+       and type 'info t = 'info scope
 end

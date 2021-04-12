@@ -7,13 +7,10 @@ module Tuple2 = Util.Tuple2
 open Option.Let_syntax
 
 module Make (Prim : LanguageObject_intf.S) = struct
-  module Pattern = Pattern.Make (Prim)
-
-  module Nominal :
-    Nominal_intf.S
-      with type 'info pattern = 'info Pattern.t
-       and type 'info prim = 'info Prim.t =
-    Nominal.Make (Prim)
+  module Nominal : Nominal_intf.S with module Prim = Prim = Nominal.Make (Prim)
+  module Pattern = Nominal.Pattern
+  module Term = Nominal.Term
+  module Scope = Nominal.Scope
 
   type 'info t =
     | Operator of 'info * string * 'info scope list
@@ -30,12 +27,12 @@ module Make (Prim : LanguageObject_intf.S) = struct
 
   type 'info capture =
     | CapturedBinder of 'info Pattern.t
-    | CapturedTerm of 'info Nominal.Term.t
+    | CapturedTerm of 'info Term.t
 
   let capture_eq ~info_eq cap1 cap2 =
     match cap1, cap2 with
     | CapturedBinder pat1, CapturedBinder pat2 -> Pattern.equal ~info_eq pat1 pat2
-    | CapturedTerm tm1, CapturedTerm tm2 -> Nominal.Term.equal info_eq tm1 tm2
+    | CapturedTerm tm1, CapturedTerm tm2 -> Term.equal info_eq tm1 tm2
     | _, _ -> false
   ;;
 
@@ -167,7 +164,7 @@ module Make (Prim : LanguageObject_intf.S) = struct
 
   let pp_capture ppf = function
     | CapturedBinder pat -> Pattern.pp ppf pat
-    | CapturedTerm pat -> Nominal.Term.pp ppf pat
+    | CapturedTerm pat -> Term.pp ppf pat
   ;;
 
   let rec select_path ~path pat =
@@ -186,7 +183,7 @@ module Make (Prim : LanguageObject_intf.S) = struct
     match pat, tm with
     | Ignored _, _ -> Some SMap.empty
     | Var (_, name), tm -> Some (SMap.singleton name (CapturedTerm tm))
-    | Primitive p1, Nominal.Term.Primitive p2 ->
+    | Primitive p1, Term.Primitive p2 ->
       if Prim.equal ~info_eq p1 p2 then Some SMap.empty else None
     | Operator (_, name1, pat_scopes), Operator (_, name2, tm_scopes) ->
       if String.(name1 = name2)
@@ -203,11 +200,7 @@ module Make (Prim : LanguageObject_intf.S) = struct
       else None
     | _, _ -> None
 
-  and match_scope
-      ~info_eq
-      (Scope (binder_pats, body_pat))
-      (Nominal.Scope.Scope (binders, body))
-    =
+  and match_scope ~info_eq (Scope (binder_pats, body_pat)) (Scope.Scope (binders, body)) =
     let f (_, name) pat =
       if Char.(name.[0] = '_') then None else Some (name, CapturedBinder pat)
     in
@@ -247,7 +240,7 @@ module Make (Prim : LanguageObject_intf.S) = struct
         | Var (_, name) -> Ok (SMap.singleton name (BoundTerm sort))
         | Ignored _ -> Ok SMap.empty
         | Primitive prim ->
-          (match check_prim (* info *) prim sort with
+          (match check_prim (failwith "XXX") (* info *) prim sort with
           | None -> Ok SMap.empty
           | Some msg -> Error (CheckFailure.err msg))
         | Operator (_, op_name, subpats) ->

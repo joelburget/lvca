@@ -9,30 +9,33 @@ let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
 
 module PatternF = Pattern
 
-module Make (Prim : LanguageObject_intf.S) :
-  Nominal_intf.S
-    with type 'info prim = 'info Prim.t
-     and type plain_prim = Prim.Plain.t
-     and module Pattern = PatternF.Make(Prim)
-     and module Prim = Prim = struct
+module Make (Prim : LanguageObject_intf.S) : Nominal_intf.S with module Prim = Prim =
+struct
   module Prim = Prim
   module Pattern = PatternF.Make (Prim)
 
-  type 'info pattern = 'info Pattern.t
   type 'info prim = 'info Prim.t
-  type plain_prim = Prim.Plain.t
+
+  type 'info term =
+    | Operator of 'info * string * 'info scope list
+    | Var of 'info * string
+    | Primitive of 'info Prim.t
+
+  and 'info scope = Scope of 'info Pattern.t list * 'info term
 
   module rec Term :
     (Nominal_intf.TermS
-      with type 'info scope = 'info Scope.t
-       and type 'info prim = 'info Prim.t
-       and type 'info pattern = 'info Pattern.t) = struct
-    type 'info scope = 'info Scope.t
+      with type 'info prim = 'info Prim.t
+       and type 'info pattern = 'info Pattern.t
+       and type 'info scope = 'info scope
+       and type 'info t = 'info term) = struct
     type 'info pattern = 'info Pattern.t
     type 'info prim = 'info Prim.t
+    type 'info scope_outer = 'info scope
+    type 'info scope = 'info scope_outer
 
-    type 'info t =
-      | Operator of 'info * string * 'info Scope.t list
+    type 'info t = 'info term =
+      | Operator of 'info * string * 'info scope list
       | Var of 'info * string
       | Primitive of 'info Prim.t
 
@@ -497,17 +500,15 @@ module Make (Prim : LanguageObject_intf.S) :
 
   and Scope :
     (Nominal_intf.ScopeS
-      with type 'info term = 'info Term.t
-       and type 'info prim = 'info Prim.t
-      (* and type plain_prim = Prim.Plain.t *)
-      (* and module Pattern = Pattern.Make(Prim) *)
-       and type 'info pattern = 'info Pattern.t) = struct
-    (* module Pattern = Pattern.Make (Prim) *)
-
-    type 'info term = 'info Term.t
+      with type 'info prim = 'info prim
+       and type 'info pattern = 'info Pattern.t
+       and type 'info term = 'info term
+       and type 'info t = 'info scope) = struct
     type 'info pattern = 'info Pattern.t
     type 'info prim = 'info Prim.t
-    type 'info t = Scope of 'info Pattern.t list * 'info Term.t
+    type 'info term_outer = 'info term
+    type 'info term = 'info term_outer
+    type 'info t = 'info scope = Scope of 'info Pattern.t list * 'info term
 
     let equal info_eq (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
       List.equal (Pattern.equal ~info_eq) pats1 pats2 && Term.equal info_eq tm1 tm2
@@ -585,10 +586,11 @@ let%test_module "Nominal" =
     module TermScope = Make (Primitive)
     module Term = TermScope.Term
     module Scope = TermScope.Scope
+    module Pattern = TermScope.Pattern
 
     let print_serialize tm =
-      let bytes = Term.serialize tm in
-      bytes
+      tm
+      |> Term.serialize
       |> Bytes.to_array
       |> Array.iter ~f:(fun char -> printf "%02x" (Char.to_int char))
     ;;
@@ -624,7 +626,9 @@ let%test_module "Nominal" =
       [%expect {| 2380ed848a0c5ce3d0ad7420e841578e4068f394b37b9b11bd3c34cea391436c |}]
     ;;
 
-    let tm = Term.Operator ((), "S", [ Scope ([ Var ((), "x") ], Var ((), "x")) ])
+    let tm =
+      Term.Operator ((), "S", [ Scope.Scope ([ Pattern.Var ((), "x") ], Var ((), "x")) ])
+    ;;
 
     let%test _ =
       Term.jsonify tm
@@ -696,14 +700,15 @@ let%test_module "TermParser" =
   (module struct
     let ( = ) = Caml.( = )
 
-    module Pattern = Pattern.Make (Primitive)
     module TermScope = Make (Primitive)
+    module Pattern = TermScope.Pattern
     module Term = TermScope.Term
     module Scope = TermScope.Scope
     module ParseNominal = Term.Parse (ParseUtil.NoComment)
     module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
 
     let parse = ParseUtil.parse_string ParseNominal.whitespace_t
+    let parse_erase str = parse str |> Result.map ~f:Term.erase
 
     let print_parse str =
       match parse str with
@@ -713,26 +718,15 @@ let%test_module "TermParser" =
         Fmt.pr "%a" Term.pp_range tm
     ;;
 
-    let%test _ = parse "x" |> Result.map ~f:Term.erase = Ok (Var ((), "x"))
-
-    let%test _ =
-      parse "123"
-      |> Result.map ~f:Term.erase
-      = Ok (Primitive (PrimInteger ((), Z.of_int 123)))
-    ;;
-
-    let%test _ =
-      parse "\"abc\""
-      |> Result.map ~f:Term.erase
-      = Ok (Primitive (PrimString ((), "abc")))
-    ;;
+    let%test _ = parse_erase "x" = Ok (Var ((), "x"))
+    let%test _ = parse_erase "123" = Ok (Primitive (PrimInteger ((), Z.of_int 123)))
+    let%test _ = parse_erase "\"abc\"" = Ok (Primitive (PrimString ((), "abc")))
 
     let x = Term.Var ((), "x")
     let t = Term.Operator ((), "true", [])
 
     let%test _ =
-      parse "lam(x. x)"
-      |> Result.map ~f:Term.erase
+      parse_erase "lam(x. x)"
       = Ok (Operator ((), "lam", [ Scope ([ Var ((), "x") ], x) ]))
     ;;
 
@@ -743,36 +737,29 @@ let%test_module "TermParser" =
         ((), "match_lines", Base.List.map subtms ~f:(fun tm -> Scope.Scope ([], tm)))
     ;;
 
-    let%test _ =
-      parse {| match() |} |> Result.map ~f:Term.erase = Ok (Operator ((), "match", []))
-    ;;
+    let%test _ = parse_erase {| match() |} = Ok (Operator ((), "match", []))
 
     let%test _ =
-      parse {| match(x; x) |}
-      |> Result.map ~f:Term.erase
+      parse_erase {| match(x; x) |}
       = Ok (Operator ((), "match", [ Scope ([], x); Scope ([], x) ]))
     ;;
 
     let%test _ =
-      parse {| match(true(); true()) |}
-      |> Result.map ~f:Term.erase
+      parse_erase {| match(true(); true()) |}
       = Ok (Operator ((), "match", [ Scope ([], t); Scope ([], t) ]))
     ;;
 
     let%test _ =
-      parse {| match(x;) |}
-      |> Result.map ~f:Term.erase
-      = Ok (Operator ((), "match", [ Scope ([], x) ]))
+      parse_erase {| match(x;) |} = Ok (Operator ((), "match", [ Scope ([], x) ]))
     ;;
 
     let%test _ =
-      parse
+      parse_erase
         {|
     match(x; match_lines(
       match_line(foo(). true());
       match_line(bar(_; _x; y). y)
     )) |}
-      |> Result.map ~f:Term.erase
       = Ok
           (Operator
              ( ()
@@ -915,7 +902,7 @@ test := foo(term[term]. term)
       match parse_sort sort_str with
       | Error msg -> Fmt.epr "%s" msg
       | Ok sort ->
-        let pp ppf CheckFailure.{ term; sort } =
+        let _pp ppf CheckFailure.{ term; sort } =
           match term with
           | Either.First pat ->
             Fmt.pf ppf "- @[pattern: %a,@ sort: %a@]" Pattern.pp pat Sort.pp sort
@@ -924,7 +911,8 @@ test := foo(term[term]. term)
         (match
            tm_str |> parse_term |> Term.check (fun _ _ -> None (* XXX *)) language sort
          with
-        | Some failure -> Fmt.epr "%a" (CheckFailure.pp pp) failure
+        (* | Some failure -> Fmt.epr "%a" (CheckFailure.pp pp) failure *)
+        | Some _failure -> Fmt.epr "failed"
         | None -> ())
     ;;
 
