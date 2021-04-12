@@ -1,17 +1,18 @@
+(** Patterns for matching non-binding terms. *)
+
 module type S = sig
-  type 'info prim
-  type plain_prim
+  module Prim : LanguageObject_intf.S
 
   type 'info t =
     | Operator of 'info * string * 'info t list
-    | Primitive of 'info prim
+    | Primitive of 'info Prim.t
     | Var of 'info * string
     | Ignored of 'info * string
 
   module Plain : sig
     type t =
       | Operator of string * t list
-      | Primitive of plain_prim
+      | Primitive of Prim.Plain.t
       | Var of string
       | Ignored of string
   end
@@ -76,7 +77,7 @@ module type S = sig
        {- Patterns can't see valence: they can only bind subterms with some given sort. }
       } *)
   val check
-    :  ('info prim -> 'info Sort.t -> string option) (** Primitive checker *)
+    :  ('info Prim.t -> 'info Sort.t -> string option) (** Primitive checker *)
     -> 'info AbstractSyntax.t (** Abstract syntax *)
     -> pattern_sort:'info Sort.t (** Sort to check pattern against *)
     -> var_sort:'info Sort.t (** Sort pattern must yield as variables *)
@@ -93,5 +94,17 @@ module type S = sig
   module Properties : Properties_intf.S with type 'info t := 'info t
 end
 
-module type SF = functor (Prim : LanguageObject_intf.S) ->
-  S with type 'info prim = 'info Prim.t and type plain_prim = Prim.Plain.t
+(*
+module Primitive : sig
+  (** Hardcoded for the Primitive type *)
+
+  val check
+    :  'info AbstractSyntax.t (** Abstract syntax *)
+    -> pattern_sort:'info Sort.t (** Sort to check pattern against *)
+    -> var_sort:'info Sort.t (** Sort pattern must yield as variables *)
+    -> ('info, 'info Primitive.t) t
+    -> ( 'info Sort.t Lvca_util.String.Map.t
+       , ('info, ('info, 'info Primitive.t) t) CheckFailure.t )
+       Result.t
+end
+*)

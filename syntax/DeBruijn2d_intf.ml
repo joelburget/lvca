@@ -4,8 +4,8 @@
     pattern. *)
 module type S = sig
   module Prim : LanguageObject_intf.S
+  module Pattern : Pattern_intf.S with module Prim = Prim
   module Nominal : Nominal_intf.S with module Prim = Prim
-  module Pattern : Pattern_intf.S with type 'info prim = 'info Prim.t
 
   type 'info term =
     | Operator of 'info * string * 'info scope list

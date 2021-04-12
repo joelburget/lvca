@@ -7,30 +7,27 @@ module Tuple2 = Lvca_util.Tuple2
 
 let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
 
-module PatternF = Pattern
-
 module Make (Prim : LanguageObject_intf.S) : Nominal_intf.S with module Prim = Prim =
 struct
   module Prim = Prim
-  module Pattern = PatternF.Make (Prim)
-
-  type 'info prim = 'info Prim.t
+  module Pat : Pattern_intf.S with module Prim = Prim = Pattern.Make (Prim)
 
   type 'info term =
     | Operator of 'info * string * 'info scope list
     | Var of 'info * string
     | Primitive of 'info Prim.t
 
-  and 'info scope = Scope of 'info Pattern.t list * 'info term
+  and 'info scope = Scope of 'info Pat.t list * 'info term
 
   module rec Term :
     (Nominal_intf.TermS
-      with type 'info prim = 'info Prim.t
-       and type 'info pattern = 'info Pattern.t
+      with module Prim = Prim
+       and module Pat = Pat
        and type 'info scope = 'info scope
        and type 'info t = 'info term) = struct
-    type 'info pattern = 'info Pattern.t
-    type 'info prim = 'info Prim.t
+    module Prim = Prim
+    module Pat = Pat
+
     type 'info scope_outer = 'info scope
     type 'info scope = 'info scope_outer
 
@@ -77,7 +74,7 @@ struct
       pp_generic
         ~open_loc:(fun _ _ -> ())
         ~close_loc:(fun _ _ -> ())
-        ~pp_pat:Pattern.pp
+        ~pp_pat:Pat.pp
         ppf
         tm
     ;;
@@ -86,7 +83,7 @@ struct
       pp_generic
         ~open_loc:OptRange.open_stag
         ~close_loc:OptRange.close_stag
-        ~pp_pat:Pattern.pp_range
+        ~pp_pat:Pat.pp_range
         ppf
         tm
     ;;
@@ -96,7 +93,7 @@ struct
         ~open_loc:(fun ppf info ->
           Stdlib.Format.pp_open_stag ppf (SourceRanges.Stag info))
         ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
-        ~pp_pat:Pattern.pp_ranges
+        ~pp_pat:Pat.pp_ranges
         ppf
         tm
     ;;
@@ -153,7 +150,7 @@ struct
 
     let rec match_pattern ~info_eq pat tm =
       match pat, tm with
-      | Pattern.Ignored _, _ -> Some String.Map.empty
+      | Pat.Ignored _, _ -> Some String.Map.empty
       | Var (_, name), tm -> Some (String.Map.singleton name tm)
       | Primitive p1, Primitive p2 ->
         if Prim.equal ~info_eq p1 p2 then Some String.Map.empty else None
@@ -185,7 +182,7 @@ struct
       and scope_free_vars bound_vars (Scope (binders, tm)) =
         let bound_vars =
           binders
-          |> List.map ~f:Pattern.vars_of_pattern
+          |> List.map ~f:Pat.vars_of_pattern
           |> S.union_list
           |> Set.union bound_vars
         in
@@ -217,7 +214,7 @@ struct
 
     let check check_prim lang =
       let lookup_operator = AbstractSyntax.lookup_operator lang in
-      let check_pattern = Pattern.check check_prim lang in
+      let check_pattern = Pat.check check_prim lang in
       let rec check_term var_sorts expected_sort tm =
         let result =
           match tm with
@@ -338,26 +335,26 @@ struct
       | Var (info, name) ->
         let v =
           if String.is_substring_at name ~pos:0 ~substring:"_"
-          then Pattern.Ignored (info, String.slice name 1 0)
+          then Pat.Ignored (info, String.slice name 1 0)
           else Var (info, name)
         in
         Ok v
       | Operator (info, name, tms) ->
         let open Result.Let_syntax in
         let%map subtms = tms |> List.map ~f:scope_to_patterns |> Result.all in
-        Pattern.Operator (info, name, subtms)
+        Pat.Operator (info, name, subtms)
       | Primitive prim -> Ok (Primitive prim)
 
     and scope_to_patterns = function
       | Scope ([], tm) -> to_pattern tm
       | Scope (binders, tm) ->
-        let binders' = List.map binders ~f:Pattern.erase in
+        let binders' = List.map binders ~f:Pat.erase in
         let tm = erase tm in
         Error (Scope.Scope (binders', tm))
     ;;
 
     let rec of_pattern = function
-      | Pattern.Operator (info, name, pats) ->
+      | Pat.Operator (info, name, pats) ->
         Operator
           ( info
           , name (* TODO: should the scope really inherit the 'info? *)
@@ -500,18 +497,19 @@ struct
 
   and Scope :
     (Nominal_intf.ScopeS
-      with type 'info prim = 'info prim
-       and type 'info pattern = 'info Pattern.t
+      with module Prim = Prim
+       and module Pat = Pat
        and type 'info term = 'info term
        and type 'info t = 'info scope) = struct
-    type 'info pattern = 'info Pattern.t
-    type 'info prim = 'info Prim.t
+    module Prim = Prim
+    module Pat = Pat
+
     type 'info term_outer = 'info term
     type 'info term = 'info term_outer
-    type 'info t = 'info scope = Scope of 'info Pattern.t list * 'info term
+    type 'info t = 'info scope = Scope of 'info Pat.t list * 'info term
 
     let equal info_eq (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
-      List.equal (Pattern.equal ~info_eq) pats1 pats2 && Term.equal info_eq tm1 tm2
+      List.equal (Pat.equal ~info_eq) pats1 pats2 && Term.equal info_eq tm1 tm2
     ;;
 
     let pp_generic ~open_loc ~close_loc ~pp_pat ppf (Scope (bindings, body)) =
@@ -526,7 +524,7 @@ struct
       pp_generic
         ~open_loc:(fun _ _ -> ())
         ~close_loc:(fun _ _ -> ())
-        ~pp_pat:Pattern.pp
+        ~pp_pat:Pat.pp
         ppf
         tm
     ;;
@@ -535,7 +533,7 @@ struct
       pp_generic
         ~open_loc:OptRange.open_stag
         ~close_loc:OptRange.close_stag
-        ~pp_pat:Pattern.pp_range
+        ~pp_pat:Pat.pp_range
         ppf
         tm
     ;;
@@ -545,7 +543,7 @@ struct
         ~open_loc:(fun ppf info ->
           Stdlib.Format.pp_open_stag ppf (SourceRanges.Stag info))
         ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
-        ~pp_pat:Pattern.pp_ranges
+        ~pp_pat:Pat.pp_ranges
         ppf
         tm
     ;;
@@ -554,7 +552,7 @@ struct
 
     and jsonify (Scope (pats, body)) : Json.t =
       let body = Term.jsonify body in
-      Json.array [| array_map Pattern.jsonify pats; body |]
+      Json.array [| array_map Pat.jsonify pats; body |]
     ;;
 
     let unjsonify =
@@ -564,19 +562,19 @@ struct
         | Array arr ->
           let open Option.Let_syntax in
           let binders, body = arr |> Array.to_list |> Lvca_util.List.unsnoc in
-          let%bind binders' = binders |> List.map ~f:Pattern.unjsonify |> Option.all in
+          let%bind binders' = binders |> List.map ~f:Pat.unjsonify |> Option.all in
           let%bind body' = Term.unjsonify body in
           Some (Scope (binders', body'))
         | _ -> None)
     ;;
 
     let map_info ~f (Scope (binders, tm)) =
-      let binders' = List.map binders ~f:(Pattern.map_info ~f) in
+      let binders' = List.map binders ~f:(Pat.map_info ~f) in
       let tm = Term.map_info ~f tm in
       Scope (binders', tm)
     ;;
 
-    let erase (Scope (pats, tm)) = Scope (List.map pats ~f:Pattern.erase, Term.erase tm)
+    let erase (Scope (pats, tm)) = Scope (List.map pats ~f:Pat.erase, Term.erase tm)
     let subst_all ctx (Scope (pats, tm)) = Scope (pats, Term.subst_all ctx tm)
   end
 end
@@ -586,7 +584,7 @@ let%test_module "Nominal" =
     module TermScope = Make (Primitive)
     module Term = TermScope.Term
     module Scope = TermScope.Scope
-    module Pattern = TermScope.Pattern
+    module Pat = TermScope.Pat
 
     let print_serialize tm =
       tm
@@ -627,7 +625,7 @@ let%test_module "Nominal" =
     ;;
 
     let tm =
-      Term.Operator ((), "S", [ Scope.Scope ([ Pattern.Var ((), "x") ], Var ((), "x")) ])
+      Term.Operator ((), "S", [ Scope.Scope ([ Pat.Var ((), "x") ], Var ((), "x")) ])
     ;;
 
     let%test _ =
@@ -701,7 +699,7 @@ let%test_module "TermParser" =
     let ( = ) = Caml.( = )
 
     module TermScope = Make (Primitive)
-    module Pattern = TermScope.Pattern
+    module Pat = TermScope.Pat
     module Term = TermScope.Term
     module Scope = TermScope.Scope
     module ParseNominal = Term.Parse (ParseUtil.NoComment)
@@ -769,10 +767,10 @@ let%test_module "TermParser" =
                    ( []
                    , match_lines
                        [ match_line
-                           (Pattern.Operator ((), "foo", []))
+                           (Pat.Operator ((), "foo", []))
                            (Operator ((), "true", []))
                        ; match_line
-                           (Pattern.Operator
+                           (Pat.Operator
                               ( ()
                               , "bar"
                               , [ Ignored ((), ""); Ignored ((), "x"); Var ((), "y") ] ))

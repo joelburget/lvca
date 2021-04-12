@@ -1,16 +1,13 @@
 open Base
 module String = Lvca_util.String
 open Option.Let_syntax
-module PatternF = Pattern
 
 module Make (Prim : LanguageObject_intf.S) : DeBruijn2d_intf.S with module Prim = Prim =
 struct
   module Prim = Prim
+  module Pat : Pattern_intf.S with module Prim = Prim = Pattern.Make (Prim)
 
-  module Pattern : Pattern_intf.S with type 'info prim = 'info Prim.t =
-    PatternF.Make (Prim)
-
-  module Nominal : Nominal_intf.S with module Prim = Prim and module Pattern = Pattern =
+  module Nominal : Nominal_intf.S with module Prim = Prim and module Pat = Pat =
     Nominal.Make (Prim)
 
   type 'info term =
@@ -19,7 +16,7 @@ struct
     | FreeVar of 'info * string
     | Primitive of 'info Prim.t
 
-  and 'info scope = Scope of 'info Pattern.t list * 'info term
+  and 'info scope = Scope of 'info Pat.t list * 'info term
 
   let rec to_nominal' ctx = function
     | BoundVar (info, ix1, ix2) ->
@@ -37,7 +34,7 @@ struct
   and scope_to_nominal ctx (Scope (binders, body)) =
     let ctx =
       binders
-      |> List.map ~f:(fun pat -> pat |> Pattern.list_vars_of_pattern |> List.map ~f:snd)
+      |> List.map ~f:(fun pat -> pat |> Pat.list_vars_of_pattern |> List.map ~f:snd)
       |> List.append ctx
     in
     let%map body = to_nominal' ctx body in
@@ -65,7 +62,7 @@ struct
       pats
       |> List.mapi ~f:(fun i pat ->
              pat
-             |> Pattern.list_vars_of_pattern
+             |> Pat.list_vars_of_pattern
              |> List.mapi ~f:(fun j (_, var) -> var, (i, j)))
       |> List.join
     in

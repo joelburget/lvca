@@ -1,12 +1,13 @@
 module type TermS = sig
-  type 'info prim
-  type 'info pattern
+  module Prim : LanguageObject_intf.S
+  module Pat : Pattern_intf.S (* with module Prim = Prim *)
+
   type 'info scope
 
   type 'info t =
     | Operator of 'info * string * 'info scope list
     | Var of 'info * string
-    | Primitive of 'info prim
+    | Primitive of 'info Prim.t
 
   val equal : ('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val info : 'info t -> 'info
@@ -14,7 +15,7 @@ module type TermS = sig
   val pp_generic
     :  open_loc:'info Fmt.t
     -> close_loc:'info Fmt.t
-    -> pp_pat:'info pattern Fmt.t
+    -> pp_pat:'info Pat.t Fmt.t
     -> 'info t Fmt.t
 
   val pp : _ t Fmt.t
@@ -43,12 +44,12 @@ module type TermS = sig
 
       For example, the term [add(lit(1); a)] is convertible to a pattern, but
       [lambda(a. a)] is not. *)
-  val to_pattern : 'info t -> ('info pattern, unit scope) Result.t
+  val to_pattern : 'info t -> ('info Pat.t, unit scope) Result.t
 
   (** Convert from a pattern to the corresponding term. This always succeeds.
 
       For example [add(lit(1)); a)] (as a pattern) can be converted to a term. *)
-  val of_pattern : 'info pattern -> 'info t
+  val of_pattern : 'info Pat.t -> 'info t
 
   (** Substitute all the variables in the context.
 
@@ -59,7 +60,7 @@ module type TermS = sig
 
   val match_pattern
     :  info_eq:('info -> 'info -> bool)
-    -> 'info pattern
+    -> 'info Pat.t
     -> 'info t
     -> 'info t Lvca_util.String.Map.t option
 
@@ -81,11 +82,11 @@ module type TermS = sig
         variables.
       + Variable-valence terms must have one binder, a pattern. *)
   val check
-    :  ('info prim -> 'info Sort.t -> string option) (** Primitive checker *)
+    :  ('info Prim.t -> 'info Sort.t -> string option) (** Primitive checker *)
     -> 'info AbstractSyntax.t (** Abstract syntax *)
     -> 'info Sort.t (** Sort to check term against *)
     -> 'info t
-    -> ('info, ('info pattern, 'info t) Base.Either.t) CheckFailure.t option
+    -> ('info, ('info Pat.t, 'info t) Base.Either.t) CheckFailure.t option
 
   module Parse (Comment : ParseUtil.Comment_int) : sig
     val t : OptRange.t t ParseUtil.t
@@ -101,23 +102,24 @@ module type TermS = sig
       :  'info AbstractSyntax.t (** Abstract syntax *)
       -> 'info Sort.t (** Sort to check term against *)
       -> 'info t
-      -> ('info, ('info pattern, 'info t) Base.Either.t) CheckFailure.t option
+      -> ('info, ('info Pat.t, 'info t) Base.Either.t) CheckFailure.t option
   end
 *)
 end
 
 module type ScopeS = sig
-  type 'info prim
-  type 'info pattern
+  module Prim : LanguageObject_intf.S
+  module Pat : Pattern_intf.S (* with module Prim = Prim *)
+
   type 'info term
-  type 'info t = Scope of 'info pattern list * 'info term
+  type 'info t = Scope of 'info Pat.t list * 'info term
 
   val equal : ('info -> 'info -> bool) -> 'info t -> 'info t -> bool
 
   val pp_generic
     :  open_loc:'info Fmt.t
     -> close_loc:'info Fmt.t
-    -> pp_pat:'info pattern Fmt.t
+    -> pp_pat:'info Pat.t Fmt.t
     -> 'info t Fmt.t
 
   val pp : _ t Fmt.t
@@ -132,9 +134,9 @@ module type ScopeS = sig
   (* TODO?
 val to_pattern
   :  ('info, 'prim) t
-  -> (('info, 'prim) pattern (unit, 'prim) scope) Result.t
+  -> (('info, 'prim) Pat.t (unit, 'prim) scope) Result.t
 
-val of_pattern : ('info, 'prim) pattern -> ('info, 'prim) t
+val of_pattern : ('info, 'prim) Pat.t -> ('info, 'prim) t
   *)
 
   (** Substitute all the variables in the context.
@@ -156,26 +158,26 @@ end
 
 module type S = sig
   module Prim : LanguageObject_intf.S
-  module Pattern : Pattern_intf.S with type 'info prim = 'info Prim.t
+  module Pat : Pattern_intf.S (* with module Prim = Prim *)
 
   type 'info term =
     | Operator of 'info * string * 'info scope list
     | Var of 'info * string
     | Primitive of 'info Prim.t
 
-  and 'info scope = Scope of 'info Pattern.t list * 'info term
+  and 'info scope = Scope of 'info Pat.t list * 'info term
 
   module Term :
     TermS
-      with type 'info pattern = 'info Pattern.t
-       and type 'info prim = 'info Prim.t
+      with module Prim = Prim
+       and module Pat = Pat
        and type 'info scope = 'info scope
        and type 'info t = 'info term
 
   module Scope :
     ScopeS
-      with type 'info pattern = 'info Pattern.t
-       and type 'info prim = 'info Prim.t
+      with module Prim = Prim
+       and module Pat = Pat
        and type 'info term = 'info term
        and type 'info t = 'info scope
 end

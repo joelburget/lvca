@@ -1,16 +1,12 @@
 module type S = sig
   module Prim : LanguageObject_intf.S
-  module Pattern : Pattern_intf.S with type 'info prim = 'info Prim.t
-
-  type 'info pattern = 'info Pattern.t
-
-  (* module Pattern = Pattern.Make (Prim) *)
+  module Pat : Pattern_intf.S with module Prim = Prim
   module NonBinding : NonBinding_intf.S with module Prim = Prim
 
   (* TODO: add heuristics *)
 
   (** The cases in a pattern match (matching one term). *)
-  type ('info, 'rhs) cases = ('info pattern * 'rhs) list
+  type ('info, 'rhs) cases = ('info Pat.t * 'rhs) list
 
   (** The terms bound by a pattern match. *)
   type 'info env = 'info NonBinding.term Lvca_util.String.Map.t
@@ -19,7 +15,7 @@ module type S = sig
   type 'info matrix_entry =
     { term_no : int
     ; path : Path.t
-    ; pattern : 'info pattern
+    ; pattern : 'info Pat.t
     }
 
   (** A row in a pattern matching matrix (matching multiple terms simultaneously). *)
@@ -47,13 +43,13 @@ module type S = sig
   val pp_tree : _ decision_tree Fmt.t
 
   type 'info match_compilation_error =
-    | BadSort of 'info pattern * 'info Sort.t * 'info Sort.t
-    | RedundantPattern of 'info pattern
-    | NonExhaustive of unit pattern list
-    | DuplicateName of 'info pattern * string
+    | BadSort of 'info Pat.t * 'info Sort.t * 'info Sort.t
+    | RedundantPattern of 'info Pat.t
+    | NonExhaustive of unit Pat.t list
+    | DuplicateName of 'info Pat.t * string
 
   (** Match a term against a pattern, extracting bindings *)
-  val match_pattern : 'info NonBinding.term -> 'info pattern -> 'info env option
+  val match_pattern : 'info NonBinding.term -> 'info Pat.t -> 'info env option
 
   (** Match a term against an ordered set of patterns, producing a branch and bindings if
       there is a match *)
@@ -99,14 +95,14 @@ module type S = sig
     :  'info AbstractSyntax.Unordered.t
     -> 'info Sort.t list
     -> ('info, 'rhs) matrix
-    -> unit pattern list option
+    -> unit Pat.t list option
 
   (** {1 Parsing} *)
   module Parse (Comment : ParseUtil.Comment_int) : sig
     type 'info matrix_row = 'info matrix_entry list * 'info NonBinding.term
 
-    val branch : (OptRange.t pattern * OptRange.t NonBinding.term) ParseUtil.t
-    val branches : (OptRange.t pattern * OptRange.t NonBinding.term) list ParseUtil.t
+    val branch : (OptRange.t Pat.t * OptRange.t NonBinding.term) ParseUtil.t
+    val branches : (OptRange.t Pat.t * OptRange.t NonBinding.term) list ParseUtil.t
     val matrix_row : OptRange.t matrix_row ParseUtil.t
     val matrix_rows : OptRange.t matrix_row list ParseUtil.t
   end

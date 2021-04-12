@@ -8,7 +8,7 @@ open Option.Let_syntax
 
 module Make (Prim : LanguageObject_intf.S) = struct
   module Nominal : Nominal_intf.S with module Prim = Prim = Nominal.Make (Prim)
-  module Pattern = Nominal.Pattern
+  module Pat = Nominal.Pat
   module Term = Nominal.Term
   module Scope = Nominal.Scope
 
@@ -26,12 +26,12 @@ module Make (Prim : LanguageObject_intf.S) = struct
     | BoundTerm of 'info Sort.t
 
   type 'info capture =
-    | CapturedBinder of 'info Pattern.t
+    | CapturedBinder of 'info Pat.t
     | CapturedTerm of 'info Term.t
 
   let capture_eq ~info_eq cap1 cap2 =
     match cap1, cap2 with
-    | CapturedBinder pat1, CapturedBinder pat2 -> Pattern.equal ~info_eq pat1 pat2
+    | CapturedBinder pat1, CapturedBinder pat2 -> Pat.equal ~info_eq pat1 pat2
     | CapturedTerm tm1, CapturedTerm tm2 -> Term.equal info_eq tm1 tm2
     | _, _ -> false
   ;;
@@ -163,7 +163,7 @@ module Make (Prim : LanguageObject_intf.S) = struct
   ;;
 
   let pp_capture ppf = function
-    | CapturedBinder pat -> Pattern.pp ppf pat
+    | CapturedBinder pat -> Pat.pp ppf pat
     | CapturedTerm pat -> Term.pp ppf pat
   ;;
 
@@ -254,7 +254,7 @@ module Make (Prim : LanguageObject_intf.S) = struct
             Error
               (CheckFailure.err
                  (Printf.sprintf
-                    "Pattern.check: failed to find operator %s in sort %s"
+                    "BindingAwarePattern.check: failed to find operator %s in sort %s"
                     op_name
                     sort_name))
           | Some (sort_vars, OperatorDef (_, arity)) ->
@@ -662,7 +662,7 @@ test := foo(term[term]. term)
       print_check_pattern "value" "foo()";
       [%expect
         {|
-      Pattern.check: failed to find operator foo in sort value
+      BindingAwarePattern.check: failed to find operator foo in sort value
       stack:
       - pattern: foo(), sort: value |}]
     ;;

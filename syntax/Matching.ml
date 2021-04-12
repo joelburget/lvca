@@ -2,26 +2,20 @@ open Base
 module Util = Lvca_util
 module SMap = Util.String.Map
 module Unordered = AbstractSyntax.Unordered
-module PatternF = Pattern
 
 module Make (Prim : LanguageObject_intf.S) : Matching_intf.S with module Prim = Prim =
 struct
   module Prim = Prim
-
-  module Pattern : Pattern_intf.S with type 'info prim = 'info Prim.t =
-    PatternF.Make (Prim)
-
-  type 'info pattern = 'info Pattern.t
-
+  module Pat : Pattern_intf.S with module Prim = Prim = Pattern.Make (Prim)
   module NonBinding : NonBinding_intf.S with module Prim = Prim = NonBinding.Make (Prim)
 
-  type ('info, 'rhs) cases = ('info Pattern.t * 'rhs) list
+  type ('info, 'rhs) cases = ('info Pat.t * 'rhs) list
   type 'info env = 'info NonBinding.term Lvca_util.String.Map.t
 
   type 'info matrix_entry =
     { term_no : int
     ; path : Path.t
-    ; pattern : 'info Pattern.t
+    ; pattern : 'info Pat.t
     }
 
   type ('info, 'rhs) matrix_row = 'info matrix_entry list * 'rhs
@@ -46,10 +40,10 @@ struct
     | Swap of int * ('info, 'rhs) decision_tree
 
   type 'info match_compilation_error =
-    | BadSort of 'info Pattern.t * 'info Sort.t * 'info Sort.t
-    | RedundantPattern of 'info Pattern.t
-    | NonExhaustive of unit Pattern.t list
-    | DuplicateName of 'info Pattern.t * string
+    | BadSort of 'info Pat.t * 'info Sort.t * 'info Sort.t
+    | RedundantPattern of 'info Pat.t
+    | NonExhaustive of unit Pat.t list
+    | DuplicateName of 'info Pat.t * string
 
   let rec pp_tree ppf = function
     | OperatorCases (branches, default) ->
@@ -67,12 +61,12 @@ struct
     | Swap (i, tree) -> Fmt.pf ppf "Swap (@[<hv 2>%n, %a@])" i pp_tree tree
   ;;
 
-  let is_wildcard = function Pattern.Var _ | Ignored _ -> true | _ -> false
+  let is_wildcard = function Pat.Var _ | Ignored _ -> true | _ -> false
   let sort_name = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
 
   let rec match_pattern tm pat =
     match tm, pat with
-    | NonBinding.Operator (_, op_name, subtms), Pattern.Operator (_, pat_name, subpats) ->
+    | NonBinding.Operator (_, op_name, subtms), Pat.Operator (_, pat_name, subpats) ->
       if String.(op_name = pat_name)
       then
         if List.length subtms = List.length subpats
@@ -176,7 +170,7 @@ struct
       | 1 -> [ wildcard ]
       | _ ->
         let ignores =
-          List.init (num_children - 1) ~f:(fun _ -> Pattern.Ignored (info, name))
+          List.init (num_children - 1) ~f:(fun _ -> Pat.Ignored (info, name))
         in
         wildcard :: ignores
     in
@@ -193,7 +187,7 @@ struct
       |> List.concat_map ~f:(fun (entries, rhs) ->
              let head_entry, entries = Util.List.split_exn entries in
              match head_entry.pattern with
-             | Pattern.Operator (_, name, children) ->
+             | Pat.Operator (_, name, children) ->
                if String.(name = ctor_name)
                then (
                  let new_entries =
@@ -208,14 +202,14 @@ struct
                  in
                  [ new_entries @ entries, rhs ])
                else []
-             | Pattern.Var (info, name) | Ignored (info, name) ->
+             | Pat.Var (info, name) | Ignored (info, name) ->
                let wildcards =
                  specialize_wildcard ctor_sorts info name head_entry.pattern
                  |> List.map ~f:(fun pattern -> { head_entry with pattern })
                in
                [ wildcards @ entries, rhs ]
                (* TODO: synthetic info? *)
-             | Pattern.Primitive _ -> [])
+             | Pat.Primitive _ -> [])
     in
     matrix, sorts
   ;;
@@ -226,9 +220,9 @@ struct
     |> List.concat_map ~f:(fun (entries, rhs) ->
            let head_entry, entries = Util.List.split_exn entries in
            match head_entry.pattern with
-           | Pattern.Operator _ -> []
-           | Pattern.Var _ | Ignored _ -> [ entries, rhs ]
-           | Pattern.Primitive _ -> [])
+           | Pat.Operator _ -> []
+           | Pat.Var _ | Ignored _ -> [ entries, rhs ]
+           | Pat.Primitive _ -> [])
   ;;
 
   let swap_cols matrix i j =
@@ -252,7 +246,7 @@ struct
       let head_ctors =
         first_col
         |> List.filter_map ~f:(fun { pattern; _ } ->
-               match pattern with Pattern.Operator (_, name, _) -> Some name | _ -> None)
+               match pattern with Pat.Operator (_, name, _) -> Some name | _ -> None)
         |> Util.String.Set.of_list
       in
       let head_sort, sorts' = Util.List.split_exn sorts in
@@ -278,11 +272,11 @@ struct
                let matrix, sorts = specialize lang head_sort sorts' ctor_name matrix in
                let%map pat_vec = check_matrix lang sorts matrix in
                let subpats, pat_vec = List.split_n pat_vec ctor_arity in
-               Pattern.Operator ((), ctor_name, subpats) :: pat_vec)
+               Pat.Operator ((), ctor_name, subpats) :: pat_vec)
       else
         check_matrix lang sorts' (default matrix)
         |> Option.map ~f:(fun example ->
-               let ignore = Pattern.Ignored ((), "") in
+               let ignore = Pat.Ignored ((), "") in
                let head =
                  if Set.is_empty head_ctors
                  then ignore
@@ -294,7 +288,7 @@ struct
                             not (Set.mem head_ctors name))
                    in
                    let wildcards = List.map ctor_arity ~f:(fun _ -> ignore) in
-                   Pattern.Operator ((), ctor_name, wildcards))
+                   Pat.Operator ((), ctor_name, wildcards))
                in
                head :: example))
   ;;
@@ -305,7 +299,7 @@ struct
     | [] ->
       (* If the matrix has no rows, matching would always fail. Give a list of
        wildcards as an example. *)
-      let ignore = Pattern.Ignored ((), "") in
+      let ignore = Pat.Ignored ((), "") in
       let example = List.map sorts ~f:(fun _ -> ignore) in
       Error (NonExhaustive example)
     | (row_entries, rhs) :: _ ->
@@ -315,7 +309,7 @@ struct
         let instructions =
           List.filter_map row_entries ~f:(fun { term_no; pattern; path } ->
               match pattern with
-              | Pattern.Var (_, name) -> Some { term_no; name; path }
+              | Pat.Var (_, name) -> Some { term_no; name; path }
               | _ -> None)
         in
         Ok (Matched (instructions, rhs))
@@ -341,9 +335,7 @@ struct
           let head_ctors =
             non_wildcard_col
             |> List.filter_map ~f:(fun { pattern; _ } ->
-                   match pattern with
-                   | Pattern.Operator (_, name, _) -> Some name
-                   | _ -> None)
+                   match pattern with Pat.Operator (_, name, _) -> Some name | _ -> None)
             |> Util.String.Set.of_list
           in
           let head_sort, tail_sorts = Util.List.split_exn sorts in
@@ -489,7 +481,7 @@ struct
 
   module Parse (Comment : ParseUtil.Comment_int) = struct
     module Parsers = ParseUtil.Mk (Comment)
-    module Pattern = Pattern.Parse (Comment)
+    module Pat = Pat.Parse (Comment)
     module Term = NonBinding.Parse (Comment)
 
     (* module ParsePrimitive = Primitive.Parse (Comment) *)
@@ -498,7 +490,7 @@ struct
     type 'info matrix_row = 'info matrix_entry list * 'info NonBinding.term
 
     let branch =
-      lift3 (fun pat _ tm -> pat, tm) Pattern.t (string "->") Term.term <?> "branch"
+      lift3 (fun pat _ tm -> pat, tm) Pat.t (string "->") Term.term <?> "branch"
     ;;
 
     let branches = option '|' (char '|') *> sep_by1 (char '|') branch <?> "branches"
@@ -507,7 +499,7 @@ struct
       lift3
         (fun pats _ tm ->
           List.mapi pats ~f:(fun term_no pattern -> { term_no; pattern; path = [] }), tm)
-        (sep_by1 (char ',') Pattern.t)
+        (sep_by1 (char ',') Pat.t)
         (string "->")
         Term.term
       <?> "matrix_row"
@@ -522,7 +514,6 @@ end
 let%test_module "Matching" =
   (module struct
     module Parsers = ParseUtil.Mk (ParseUtil.NoComment)
-    module Pattern = Pattern.Make (Primitive)
     module Matching = Make (Primitive)
     open Matching
     module Parse = Parse (ParseUtil.NoComment)
@@ -532,7 +523,7 @@ let%test_module "Matching" =
     module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
 
     let str_of_tm tm = Fmt.to_to_string NonBinding.pp tm
-    let str_of_pat tm = Fmt.to_to_string Pattern.pp tm
+    let str_of_pat tm = Fmt.to_to_string Matching.Pat.pp tm
 
     let str_of_env env =
       env

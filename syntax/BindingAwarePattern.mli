@@ -4,7 +4,7 @@
 
 module Make (Prim : LanguageObject_intf.S) : sig
   module Nominal : Nominal_intf.S with module Prim = Prim
-  module Pattern = Nominal.Pattern
+  module Pat = Nominal.Pat
   module Term = Nominal.Term
   module Scope = Nominal.Scope
 
@@ -22,7 +22,7 @@ module Make (Prim : LanguageObject_intf.S) : sig
     | BoundTerm of 'info Sort.t
 
   type 'info capture =
-    | CapturedBinder of 'info Pattern.t
+    | CapturedBinder of 'info Pat.t
     | CapturedTerm of 'info Term.t
 
   val capture_eq
