@@ -7,11 +7,10 @@ module Tuple2 = Lvca_util.Tuple2
 
 let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
 
-module Make2 (Prim : LanguageObject_intf.S) (Pat : Pattern_intf.S with module Prim = Prim) :
-  Nominal_intf.S with module Prim = Prim and module Pat = Pat = struct
+module Make (Prim : LanguageObject_intf.S) : Nominal_intf.S with module Prim = Prim =
+struct
   module Prim = Prim
-  module Pat : Pattern_intf.S with module Prim = Prim = Pat
-  (* module Pat = Pat *)
+  module Pat : Pattern_intf.S with module Prim = Prim = Pattern.Make (Prim)
 
   type 'info term =
     | Operator of 'info * string * 'info scope list
@@ -580,11 +579,9 @@ module Make2 (Prim : LanguageObject_intf.S) (Pat : Pattern_intf.S with module Pr
   end
 end
 
-module Make (Prim : LanguageObject_intf.S) = Make2 (Prim) (Pattern.Make (Prim))
-
 let%test_module "Nominal" =
   (module struct
-    module TermScope = Make2 (Primitive) (Pattern.Make (Primitive))
+    module TermScope = Make (Primitive)
     module Term = TermScope.Term
     module Scope = TermScope.Scope
     module Pat = TermScope.Pat
@@ -701,7 +698,7 @@ let%test_module "TermParser" =
   (module struct
     let ( = ) = Caml.( = )
 
-    module TermScope = Make2 (Primitive) (Pattern.Make (Primitive))
+    module TermScope = Make (Primitive)
     module Pat = TermScope.Pat
     module Term = TermScope.Term
     module Scope = TermScope.Scope
@@ -854,9 +851,9 @@ let%test_module "TermParser" =
 let%test_module "check" =
   (module struct
     module AbstractSyntaxParse = AbstractSyntax.Parse (ParseUtil.NoComment)
-    module Pattern = Pattern.Make (Primitive)
-    module TermScope = Make2 (Primitive) (Pattern)
+    module TermScope = Make (Primitive)
     module Term = TermScope.Term
+    module Pattern = TermScope.Pat
     module Parser = Term.Parse (ParseUtil.NoComment)
     module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
     module SortParse = Sort.Parse (ParseUtil.NoComment)

@@ -1,6 +1,6 @@
 module type TermS = sig
   module Prim : LanguageObject_intf.S
-  module Pat : Pattern_intf.S
+  module Pat : Pattern_intf.S with module Prim = Prim
 
   type 'info scope
 
@@ -158,7 +158,7 @@ end
 
 module type S = sig
   module Prim : LanguageObject_intf.S
-  module Pat : Pattern_intf.S (* with module Prim = Prim *)
+  module Pat : Pattern_intf.S with module Prim = Prim
 
   type 'info term =
     | Operator of 'info * string * 'info scope list
