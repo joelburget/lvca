@@ -7,7 +7,8 @@ struct
   module Prim = Prim
   module Pat : Pattern_intf.S with module Prim = Prim = Pattern.Make (Prim)
 
-  module Nominal : Nominal_intf.S with module Prim = Prim and module Pat = Pat =
+  module Nominal :
+    Nominal_intf.S with module Prim = Prim and module Pat = Pattern.Make(Prim) =
     Nominal.Make (Prim)
 
   type 'info term =

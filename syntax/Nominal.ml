@@ -7,10 +7,10 @@ module Tuple2 = Lvca_util.Tuple2
 
 let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
 
-module Make (Prim : LanguageObject_intf.S) : Nominal_intf.S with module Prim = Prim =
-struct
+module Make2 (Prim : LanguageObject_intf.S) (Pat : Pattern_intf.S with module Prim = Prim) :
+  Nominal_intf.S with module Prim = Prim and module Pat = Pat = struct
   module Prim = Prim
-  module Pat : Pattern_intf.S with module Prim = Prim = Pattern.Make (Prim)
+  module Pat = Pat
 
   type 'info term =
     | Operator of 'info * string * 'info scope list
@@ -578,6 +578,8 @@ struct
     let subst_all ctx (Scope (pats, tm)) = Scope (pats, Term.subst_all ctx tm)
   end
 end
+
+module Make (Prim : LanguageObject_intf.S) = Make2 (Prim) (Pattern.Make (Prim))
 
 let%test_module "Nominal" =
   (module struct

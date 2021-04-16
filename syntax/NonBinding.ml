@@ -3,7 +3,11 @@ open Result.Let_syntax
 
 module Make (Prim : LanguageObject_intf.S) = struct
   module Prim = Prim
-  module Nominal : Nominal_intf.S with module Prim = Prim = Nominal.Make (Prim)
+
+  module Nominal :
+    Nominal_intf.S with module Prim = Prim and module Pat = Pattern.Make(Prim) =
+    Nominal.Make (Prim)
+
   module DeBruijn : DeBruijn_intf.S with module Prim = Prim = DeBruijn.Make (Prim)
 
   type 'info term =
