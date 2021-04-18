@@ -148,17 +148,17 @@ val of_pattern : ('info, 'prim) Pat.t -> ('info, 'prim) t
   val free_vars : (_, _) t -> Lvca_util.String.Set.t
 
   module Parse (Comment : ParseUtil.Comment_int) : sig
-    val t : 'prim ParseUtil.t -> (OptRange.t, 'prim) t ParseUtil.t
-    val whitespace_t : 'prim ParseUtil.t -> (OptRange.t, 'prim) t ParseUtil.t
+    val t : 'prim ParseUtil.t -> OptRange.t t ParseUtil.t
+    val whitespace_t : 'prim ParseUtil.t -> OptRange.t t ParseUtil.t
   end
 
-  module Properties : Properties_intf.S with type t := (unit, Primitive.t) t
+  module Properties : Properties_intf.S with type 'info t := unit t
   *)
 end
 
 module type S = sig
   module Prim : LanguageObject_intf.S
-  module Pat : Pattern_intf.S (* with module Prim = Prim *)
+  module Pat : Pattern_intf.S
 
   type 'info term =
     | Operator of 'info * string * 'info scope list
