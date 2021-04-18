@@ -1,16 +1,10 @@
 open Base
 open Lvca_syntax
-module BindingAwarePattern = BindingAwarePattern.Make (Primitive)
-module Nominal = BindingAwarePattern.Nominal
-module Pattern = BindingAwarePattern.Pat
-
-type 'info pattern = 'info BindingAwarePattern.t
-type 'info term = 'info Nominal.Term.t
 
 module TypingRule = struct
   type 'info t =
-    { tm : 'info pattern
-    ; ty : 'info pattern
+    { tm : 'info BindingAwarePattern.t
+    ; ty : 'info BindingAwarePattern.t
     }
 
   let equal ~info_eq a b =
@@ -51,7 +45,7 @@ module TypingClause = struct
       | LeftArr
       | RightArr
 
-    let pattern : OptRange.t pattern Parsers.t = Pattern.t <?> "pattern"
+    let pattern = Pattern.t <?> "pattern"
 
     let t =
       lift3
@@ -85,7 +79,7 @@ end
 exception StaticsParseError of string
 
 module Hypothesis = struct
-  type 'info t = 'info pattern Lvca_util.String.Map.t * 'info TypingClause.t
+  type 'info t = 'info BindingAwarePattern.t Lvca_util.String.Map.t * 'info TypingClause.t
 
   let equal ~info_eq (m1, c1) (m2, c2) =
     Map.equal (BindingAwarePattern.equal ~info_eq) m1 m2
@@ -103,9 +97,9 @@ module Hypothesis = struct
     open Parsers
 
     (* TODO: remove duplication *)
-    let pattern : OptRange.t pattern Parsers.t = Pattern.t <?> "pattern"
+    let pattern = Pattern.t <?> "pattern"
 
-    let typed_term : (string * OptRange.t pattern) Parsers.t =
+    let typed_term =
       lift3 (fun ident _ tm -> ident, tm) identifier (char ':') pattern
       <?> "typed pattern"
     ;;
@@ -204,7 +198,7 @@ module Rule = struct
 end
 
 module Typing = struct
-  type 'a t = Typing of 'a term * 'a term
+  type 'a t = Typing of 'a Nominal.Term.t * 'a Nominal.Term.t
 
   let erase (Typing (t1, t2)) = Typing (Nominal.Term.erase t1, Nominal.Term.erase t2)
 end

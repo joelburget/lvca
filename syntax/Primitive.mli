@@ -15,6 +15,7 @@ end
 val to_plain : _ t -> Plain.t
 val of_plain : Plain.t -> unit t
 val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
+val info : 'info t -> 'info
 val map_info : f:('a -> 'b) -> 'a t -> 'b t
 val erase : _ t -> unit t
 val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
@@ -24,7 +25,7 @@ module Parse (Comment : ParseUtil.Comment_int) : sig
   val t : OptRange.t t ParseUtil.t
 end
 
-val check : 'info -> _ t -> 'info Sort.t -> string option
+val check : _ t -> 'info Sort.t -> string option
 val jsonify : _ t -> Lvca_util.Json.t
 val unjsonify : Lvca_util.Json.t -> unit t option
 

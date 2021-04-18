@@ -3,17 +3,11 @@ open Lvca_syntax
 open Statics
 module SMap = Lvca_util.String.Map
 
-(* module BindingAwarePattern = Statics.BindingAwarePattern *)
-(* module Pattern = Pat *)
-(* module Nominal = Nominal *)
-
 type 'info capture = 'info BindingAwarePattern.capture
-type 'info pattern = 'info Statics.pattern
-type 'info term = 'info Nominal.term
 
 type 'a env =
   { rules : 'a Rule.t list (** The (checking / inference) rules we can apply *)
-  ; var_types : 'a term SMap.t (** The types of all known free variables *)
+  ; var_types : 'a Nominal.term SMap.t (** The types of all known free variables *)
   }
 
 type 'info check_error =
@@ -24,8 +18,8 @@ type 'a trace_entry =
   | CheckTrace of 'a env * 'a Typing.t
   | CheckSuccess
   | CheckFailure of 'a check_error
-  | InferTrace of 'a env * 'a term
-  | Inferred of 'a term
+  | InferTrace of 'a env * 'a Nominal.term
+  | Inferred of 'a Nominal.term
 
 type 'a trace_step = 'a trace_entry list
 
@@ -43,7 +37,7 @@ let pp_err ppf = function
    values in the context to fill it in. *)
 let instantiate
     :  string option -> 'info capture SMap.t -> 'info BindingAwarePattern.t
-    -> ('info term, 'info check_error) Result.t
+    -> ('info Nominal.term, 'info check_error) Result.t
   =
  fun name env pat ->
   let open Result.Let_syntax in
@@ -114,7 +108,8 @@ let update_ctx
 ;;
 
 let ctx_infer
-    : 'info term SMap.t -> 'info term -> ('info term, 'info check_error) Result.t
+    :  'info Nominal.term SMap.t -> 'info Nominal.term
+    -> ('info Nominal.term, 'info check_error) Result.t
   =
  fun var_types -> function
   | Nominal.Term.Var (_, name) ->
@@ -172,7 +167,7 @@ let rec check'
      Here we initially learn tm1, tm2, and ty2, but only learn ty1 via
      checking of hypotheses.
        *)
-      let ctx_state : ('a, 'a Primitive.t) capture SMap.t ref = ref schema_assignments in
+      let ctx_state : 'a capture SMap.t ref = ref schema_assignments in
       let result =
         hypotheses
         |> List.find_map ~f:(check_hyp trace_stack emit_trace name ctx_state env)
@@ -184,12 +179,12 @@ let rec check'
       result)
 
 and infer'
-    :  'info trace_step -> ('info trace_step -> unit) -> 'info env -> 'info term
-    -> ('info term, 'info check_error) Result.t
+    :  'info trace_step -> ('info trace_step -> unit) -> 'info env -> 'info Nominal.term
+    -> ('info Nominal.term, 'info check_error) Result.t
   =
  fun trace_stack emit_trace ({ rules; var_types } as env) tm ->
   let open Result.Let_syntax in
-  let var_types : 'a term SMap.t ref = ref var_types in
+  let var_types : 'a Nominal.term SMap.t ref = ref var_types in
   let trace_stack = InferTrace (env, tm) :: trace_stack in
   emit_trace trace_stack;
   let match_rule Rule.{ name; hypotheses; conclusion } =
@@ -219,8 +214,8 @@ and infer'
 
 (* Check (or infer, depending on the rule) a hypothesis *)
 and check_hyp
-    :  'info trace_step -> ('info trace_step -> unit) -> string -> 'a capture SMap.t ref
-    -> 'a env -> 'a Hypothesis.t -> 'a check_error option
+    :  'info trace_step -> ('info trace_step -> unit) -> string option
+    -> 'a capture SMap.t ref -> 'a env -> 'a Hypothesis.t -> 'a check_error option
   =
  fun trace_stack emit_trace name ctx_state env (pattern_ctx, rule) ->
   let open Result.Let_syntax in

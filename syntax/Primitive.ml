@@ -69,7 +69,7 @@ let pp_generic ~open_loc ~close_loc ppf prim =
 let pp ppf prim = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf prim
 let to_string t = Fmt.to_to_string pp t
 
-let check _info prim sort =
+let check prim sort =
   match prim, sort with
   | PrimString _, Sort.Name (_, "string")
   | PrimFloat _, Sort.Name (_, "float")

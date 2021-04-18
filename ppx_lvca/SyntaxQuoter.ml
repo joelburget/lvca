@@ -28,10 +28,14 @@ let mk_pos ~loc = function
 
 let mk_prim ~loc = function
   | Lvca_syntax.Primitive.PrimInteger (pos, i) ->
-      [%expr Lvca_syntax.Primitive.PrimInteger ([%e mk_pos ~loc pos], [%e mk_bigint ~loc i])]
-  | PrimString (pos, s) -> [%expr Lvca_syntax.Primitive.PrimString ([%e mk_pos ~loc pos], [%e mk_str ~loc s])]
-  | PrimFloat (pos, f) -> [%expr Lvca_syntax.Primitive.PrimFloat ([%e mk_pos ~loc pos], [%e mk_float ~loc f])]
-  | PrimChar (pos, c) -> [%expr Lvca_syntax.Primitive.PrimChar ([%e mk_pos ~loc pos], [%e mk_char ~loc c])]
+    [%expr
+      Lvca_syntax.Primitive.PrimInteger ([%e mk_pos ~loc pos], [%e mk_bigint ~loc i])]
+  | PrimString (pos, s) ->
+    [%expr Lvca_syntax.Primitive.PrimString ([%e mk_pos ~loc pos], [%e mk_str ~loc s])]
+  | PrimFloat (pos, f) ->
+    [%expr Lvca_syntax.Primitive.PrimFloat ([%e mk_pos ~loc pos], [%e mk_float ~loc f])]
+  | PrimChar (pos, c) ->
+    [%expr Lvca_syntax.Primitive.PrimChar ([%e mk_pos ~loc pos], [%e mk_char ~loc c])]
 ;;
 
 let rec mk_pattern ~loc = function
@@ -42,8 +46,7 @@ let rec mk_pattern ~loc = function
   | Var (pos, str) -> [%expr Pattern.Var ([%e mk_pos ~loc pos], [%e mk_str ~loc str])]
   | Ignored (pos, str) ->
     [%expr Pattern.Ignored ([%e mk_pos ~loc pos], [%e mk_str ~loc str])]
-  | Primitive (pos, prim) ->
-    [%expr Pattern.Primitive ([%e mk_pos ~loc pos], [%e mk_prim ~loc prim])]
+  | Primitive prim -> [%expr Pattern.Primitive [%e mk_prim ~loc prim]]
 ;;
 
 let rec mk_nominal ~loc = function
@@ -53,8 +56,7 @@ let rec mk_nominal ~loc = function
     [%expr Nominal.Term.Operator ([%e mk_pos ~loc pos], [%e name_exp], [%e scopes])]
   | Var (pos, str) ->
     [%expr Nominal.Term.Var ([%e mk_pos ~loc pos], [%e mk_str ~loc str])]
-  | Primitive (pos, prim) ->
-    [%expr Nominal.Term.Primitive ([%e mk_pos ~loc pos], [%e mk_prim ~loc prim])]
+  | Primitive prim -> [%expr Nominal.Term.Primitive [%e mk_prim ~loc prim]]
 
 and mk_scope ~loc (Nominal.Scope.Scope (pats, tm)) =
   let tm = mk_nominal ~loc tm in
@@ -67,8 +69,7 @@ let rec mk_nonbinding ~loc = function
     let name_exp = mk_str ~loc name in
     let tms = tms |> List.map ~f:(mk_nonbinding ~loc) |> mk_list ~loc in
     [%expr NonBinding.Operator ([%e mk_pos ~loc pos], [%e name_exp], [%e tms])]
-  | Primitive (pos, prim) ->
-    [%expr NonBinding.Primitive ([%e mk_pos ~loc pos], [%e mk_prim ~loc prim])]
+  | Primitive prim -> [%expr NonBinding.Primitive [%e mk_prim ~loc prim]]
 ;;
 
 let rec mk_sort ~loc = function

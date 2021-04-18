@@ -1,6 +1,5 @@
 open Lvca_syntax
 open Ppxlib
-module ParsePrimitive = Lvca_syntax.Primitive.Parse (ParseUtil.CComment)
 module ParsePattern = Lvca_syntax.Pattern.Parse (ParseUtil.CComment)
 module ParseTerm = Nominal.Term.Parse (ParseUtil.CComment)
 module ParseNonbinding = NonBinding.Parse (ParseUtil.CComment)
@@ -26,21 +25,21 @@ let extract_string loc expr =
 
 let expand_nominal ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match ParseUtil.parse_string (ParseTerm.whitespace_t ParsePrimitive.t) str with
+  match ParseUtil.parse_string ParseTerm.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> SyntaxQuoter.mk_nominal ~loc tm
 ;;
 
 let expand_nonbinding ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match ParseUtil.parse_string (ParseNonbinding.whitespace_term ParsePrimitive.t) str with
+  match ParseUtil.parse_string ParseNonbinding.whitespace_term str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> SyntaxQuoter.mk_nonbinding ~loc tm
 ;;
 
 let expand_pattern ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match ParseUtil.parse_string (ParsePattern.whitespace_t ParsePrimitive.t) str with
+  match ParseUtil.parse_string ParsePattern.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> SyntaxQuoter.mk_pattern ~loc tm
 ;;

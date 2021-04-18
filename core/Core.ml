@@ -3,8 +3,6 @@
 open Base
 open Lvca_syntax
 module Format = Caml.Format
-module BindingAwarePattern = BindingAwarePattern.Make (Primitive)
-module Nominal = Nominal.Make (Primitive)
 
 type 'info n_term = 'info Nominal.Term.t
 type 'info pattern = 'info BindingAwarePattern.t
