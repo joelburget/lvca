@@ -5,11 +5,9 @@ open Option.Let_syntax
 module Make (Prim : LanguageObject_intf.S) : DeBruijn2d_intf.S with module Prim = Prim =
 struct
   module Prim = Prim
-  module Pat : Pattern_intf.S with module Prim = Prim = Pattern.Make (Prim)
-
-  module Nominal :
-    Nominal_intf.S with module Prim = Prim and module Pat = Pattern.Make(Prim) =
-    Nominal.Make (Prim)
+  module Nominal = Nominal.Make (Prim)
+  module Pat = Nominal.Pat
+  module Pattern = Pat
 
   type 'info term =
     | Operator of 'info * string * 'info scope list
@@ -81,7 +79,7 @@ struct
 
   let of_nominal tm = of_nominal_with_bindings String.Map.empty tm
 
-  let rec alpha_equivalent prim_equivalent t1 t2 =
+  let rec alpha_equivalent t1 t2 =
     match t1, t2 with
     | Operator (_, h1, subtms1), Operator (_, h2, subtms2) ->
       String.(h1 = h2)
@@ -89,11 +87,15 @@ struct
       (match List.zip subtms1 subtms2 with
       | Ok zipped ->
         List.for_all zipped ~f:(fun (Scope (_, body1), Scope (_, body2)) ->
-            alpha_equivalent prim_equivalent body1 body2)
+            alpha_equivalent body1 body2)
       | Unequal_lengths -> false)
-    | BoundVar (_, i1, j1), BoundVar (_, i2, j2) -> i1 = i2 && j1 = j2
+    | BoundVar (_, i1, j1), BoundVar (_, i2, j2) -> Int.(i1 = i2 && j1 = j2)
     | FreeVar (_, name1), FreeVar (_, name2) -> String.(name1 = name2)
-    | Primitive p1, Primitive p2 -> prim_equivalent p1 p2
+    | Primitive p1, Primitive p2 ->
+      Prim.equal
+        ~info_eq:Unit.( = )
+        (Prim.map_info ~f:(fun _ -> ()) p1) (* TODO: erase *)
+        (Prim.map_info ~f:(fun _ -> ()) p2)
     | _, _ -> false
   ;;
 
