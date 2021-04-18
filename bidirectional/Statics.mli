@@ -2,9 +2,12 @@
     implementation is for expressing bidirectional typing rules. *)
 
 open Lvca_syntax
+module BindingAwarePattern : BindingAwarePattern_intf.S with module Prim = Primitive
+module Nominal : NonBinding_intf.S with module Prim = Primitive
+module Pattern : Pattern_intf.S with module Prim = Primitive
 
-type 'info pattern = ('info, 'info Primitive.t) BindingAwarePattern.t
-type 'info term = ('info, 'info Primitive.t) Nominal.Term.t
+type 'info pattern
+type 'info term
 
 (** Both typing and inference rules share this shape.
 

@@ -7,6 +7,7 @@ module Tuple2 = Util.Tuple2
 open Option.Let_syntax
 
 module Make (Prim : LanguageObject_intf.S) = struct
+  module Prim = Prim
   module Nominal : Nominal_intf.S with module Prim = Prim = Nominal.Make (Prim)
   module Pat = Nominal.Pat
   module Term = Nominal.Term

@@ -88,7 +88,7 @@ module Make (Prim : LanguageObject_intf.S) = struct
     function
     | Operator (_, name, pats) -> pf ppf "@[<2>%s(%a)@]" name (pp |> list ~sep:semi) pats
     | Primitive prim -> prim_pp ppf prim
-    | Var (_, name) -> pf ppf "%s" name
+    | Var (_, name) -> Fmt.string ppf name
     | Ignored (_, name) -> pf ppf "_%s" name
   ;;
 
@@ -105,7 +105,7 @@ module Make (Prim : LanguageObject_intf.S) = struct
         pats
     | Primitive prim ->
       pf ppf "%a" (Prim.pp_generic ~open_loc:opener ~close_loc:closer) prim
-    | Var (_, name) -> pf ppf "%s" name
+    | Var (_, name) -> Fmt.string ppf name
     | Ignored (_, name) -> pf ppf "_%s" name);
     closer ppf (info pat)
   ;;

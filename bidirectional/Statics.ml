@@ -1,8 +1,11 @@
 open Base
 open Lvca_syntax
+module BindingAwarePattern = BindingAwarePattern.Make (Primitive)
+module Nominal = BindingAwarePattern.Nominal
+module Pattern = BindingAwarePattern.Pat
 
-type 'info pattern = ('info, 'info Primitive.t) BindingAwarePattern.t
-type 'info term = ('info, 'info Primitive.t) Nominal.Term.t
+type 'info pattern = 'info BindingAwarePattern.t
+type 'info term = 'info Nominal.Term.t
 
 module TypingRule = struct
   type 'info t =
@@ -11,9 +14,7 @@ module TypingRule = struct
     }
 
   let equal ~info_eq a b =
-    let prim_eq = Primitive.equal ~info_eq in
-    BindingAwarePattern.(
-      equal info_eq prim_eq a.tm b.tm && equal info_eq prim_eq a.ty b.ty)
+    BindingAwarePattern.(equal ~info_eq a.tm b.tm && equal ~info_eq a.ty b.ty)
   ;;
 
   let erase { tm; ty } =
@@ -44,14 +45,13 @@ module TypingClause = struct
   module Parse (Comment : ParseUtil.Comment_int) = struct
     module Parsers = ParseUtil.Mk (Comment)
     module Pattern = BindingAwarePattern.Parse (Comment)
-    module ParsePrimitive = Primitive.Parse (Comment)
     open Parsers
 
     type arrow_dir =
       | LeftArr
       | RightArr
 
-    let pattern : OptRange.t pattern Parsers.t = Pattern.t ParsePrimitive.t <?> "pattern"
+    let pattern : OptRange.t pattern Parsers.t = Pattern.t <?> "pattern"
 
     let t =
       lift3
@@ -71,7 +71,7 @@ module TypingClause = struct
     (module struct
       module Parse = Parse (ParseUtil.NoComment)
 
-      let ( = ) = Caml.( = )
+      let ( = ) = Result.equal (equal ~info_eq:Unit.( = )) String.( = )
 
       let%test _ =
         ParseUtil.parse_string Parse.t "tm => ty"
@@ -88,7 +88,7 @@ module Hypothesis = struct
   type 'info t = 'info pattern Lvca_util.String.Map.t * 'info TypingClause.t
 
   let equal ~info_eq (m1, c1) (m2, c2) =
-    Map.equal (BindingAwarePattern.equal info_eq Primitive.( = )) m1 m2
+    Map.equal (BindingAwarePattern.equal ~info_eq) m1 m2
     && TypingClause.equal ~info_eq c1 c2
   ;;
 
@@ -100,11 +100,10 @@ module Hypothesis = struct
     module Parsers = ParseUtil.Mk (Comment)
     module TypingClause = TypingClause.Parse (Comment)
     module Pattern = BindingAwarePattern.Parse (Comment)
-    module ParsePrimitive = Primitive.Parse (Comment)
     open Parsers
 
     (* TODO: remove duplication *)
-    let pattern : OptRange.t pattern Parsers.t = Pattern.t ParsePrimitive.t <?> "pattern"
+    let pattern : OptRange.t pattern Parsers.t = Pattern.t <?> "pattern"
 
     let typed_term : (string * OptRange.t pattern) Parsers.t =
       lift3 (fun ident _ tm -> ident, tm) identifier (char ':') pattern

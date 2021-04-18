@@ -4,24 +4,19 @@ module type AllTermS = LanguageObject_intf.S
    functor taking the term type and changing the names to to_term and of_term.
    Or returning an Either.
    *)
+(*
 module type NonBindingTermS = sig
   include LanguageObject_intf.S
 
-  val to_nonbinding : 'info t -> ('info, Lvca_util.Void.t) NonBinding.term
-
-  val of_nonbinding
-    :  ('info, 'prim) NonBinding.term
-    -> ('info t, ('info, 'prim) NonBinding.term) Result.t
+  val of_nonbinding : 'info NonBinding.term -> ('info t, 'info NonBinding.term) Result.t
+  val to_nonbinding : 'info  -> 'info NonBinding_intf.S.term
 end
 
 module type BindingTermS = sig
   include LanguageObject_intf.S
 
-  val to_nominal : 'info t -> ('info, Lvca_util.Void.t) Nominal.Term.t
-
-  val of_nominal
-    :  ('info, 'prim) Nominal.Term.t
-    -> ('info t, ('info, 'prim) Nominal.Term.t) Result.t
+  val to_nominal : 'info t -> 'info Nominal.Term.t
+  val of_nominal : 'info Nominal.Term.t -> ('info t, 'info Nominal.Term.t) Result.t
 end
 
 module type ExtendedTermS = sig
@@ -36,9 +31,7 @@ module type ExtendedTermS = sig
   val select_path
     :  path:int list
     -> 'info t
-    -> ( 'info t
-       , (string, ('info, Lvca_util.Void.t) Nominal.Term.t) Base.Either.t )
-       Result.t
+    -> ('info t, (string, 'info Nominal.Term.t) Base.Either.t) Result.t
 
   val jsonify : _ t Lvca_util.Json.serializer
   val unjsonify : unit t Lvca_util.Json.deserializer
@@ -59,5 +52,6 @@ module type ExtendedTermS = sig
 end
 
 module Mk (Object : BindingTermS) : ExtendedTermS with type 'info t = 'info Object.t
+*)
 
 module type Properties = Properties_intf.S

@@ -1,7 +1,6 @@
-open Base
-
 module type AllTermS = LanguageObject_intf.S
 
+(*
 module type NonBindingTermS = sig
   include AllTermS
 
@@ -85,9 +84,11 @@ struct
     let whitespace_t = Parsers.(junk *> Parse.t)
   end
 end
+*)
 
 module type Properties = Properties_intf.S
 
+(*
 module CheckProperties (Object : BindingTermS) :
   Properties with type 'info t = 'info Object.t = struct
   module Parse = Object.Parse (ParseUtil.NoComment)
@@ -138,3 +139,4 @@ module CheckProperties (Object : BindingTermS) :
           PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str'))
   ;;
 end
+*)

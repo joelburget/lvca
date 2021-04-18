@@ -3,16 +3,22 @@ open Lvca_syntax
 open Statics
 module SMap = Lvca_util.String.Map
 
+(* module BindingAwarePattern = Statics.BindingAwarePattern *)
+(* module Pattern = Pat *)
+(* module Nominal = Nominal *)
+
+type 'info capture = 'info BindingAwarePattern.capture
+type 'info pattern = 'info Statics.pattern
+type 'info term = 'info Nominal.term
+
 type 'a env =
   { rules : 'a Rule.t list (** The (checking / inference) rules we can apply *)
   ; var_types : 'a term SMap.t (** The types of all known free variables *)
   }
 
-type ('info, 'prim) capture = ('info, 'prim) BindingAwarePattern.capture
-
 type 'info check_error =
   | CheckError of string
-  | BadMerge of ('info, 'info Primitive.t) capture * ('info, 'info Primitive.t) capture
+  | BadMerge of 'info capture * 'info capture
 
 type 'a trace_entry =
   | CheckTrace of 'a env * 'a Typing.t
@@ -23,24 +29,21 @@ type 'a trace_entry =
 
 type 'a trace_step = 'a trace_entry list
 
-let pp_bpat : ('a, 'a Primitive.t) BindingAwarePattern.t Fmt.t =
-  BindingAwarePattern.pp Primitive.pp
-;;
-
-let pp_pat = Pattern.pp Primitive.pp
-let pp_capture = BindingAwarePattern.pp_capture Primitive.pp
-let pp_term = Nominal.Term.pp Primitive.pp
+let pp_bpat : _ BindingAwarePattern.t Fmt.t = BindingAwarePattern.pp
+let pp_pat = Pattern.pp
+let pp_capture = BindingAwarePattern.pp_capture
+let pp_term = Nominal.Term.pp
 
 let pp_err ppf = function
-  | CheckError msg -> Fmt.pf ppf "%s" msg
+  | CheckError msg -> Fmt.string ppf msg
   | BadMerge (cap1, cap2) -> Fmt.pf ppf "%a / %a" pp_capture cap1 pp_capture cap2
 ;;
 
 (* [pat] is a (binding-aware) pattern taken from the typing rule. Use the
    values in the context to fill it in. *)
 let instantiate
-    :  string option -> ('a, 'a Primitive.t) capture SMap.t
-    -> ('a, 'a Primitive.t) BindingAwarePattern.t -> ('a term, 'a check_error) Result.t
+    :  string option -> 'info capture SMap.t -> 'info BindingAwarePattern.t
+    -> ('info term, 'info check_error) Result.t
   =
  fun name env pat ->
   let open Result.Let_syntax in
@@ -91,11 +94,9 @@ let instantiate
 ;;
 
 let info_eq _ _ = true
-let prim_eq = Primitive.equal ~info_eq
 
 let update_ctx
-    :  ('a, 'a Primitive.t) capture SMap.t ref -> ('a, 'a Primitive.t) capture SMap.t
-    -> 'a check_error option
+    : 'info capture SMap.t ref -> 'info capture SMap.t -> 'info check_error option
   =
  fun ctx_state learned_tys ->
   let do_assignment (k, v) =
@@ -105,14 +106,16 @@ let update_ctx
       ctx_state := Map.set state ~key:k ~data:v;
       None
     | Some v' ->
-      if not (BindingAwarePattern.capture_eq ~info_eq ~prim_eq v v')
+      if not (BindingAwarePattern.capture_eq ~info_eq v v')
       then Some (BadMerge (v, v'))
       else None
   in
   learned_tys |> Map.to_alist |> List.find_map ~f:do_assignment
 ;;
 
-let ctx_infer : 'a term SMap.t -> 'a term -> ('a term, 'a check_error) Result.t =
+let ctx_infer
+    : 'info term SMap.t -> 'info term -> ('info term, 'info check_error) Result.t
+  =
  fun var_types -> function
   | Nominal.Term.Var (_, name) ->
     (match Map.find var_types name with
@@ -131,8 +134,8 @@ let ctx_infer : 'a term SMap.t -> 'a term -> ('a term, 'a check_error) Result.t 
 ;;
 
 let rec check'
-    :  'a trace_step -> ('a trace_step -> unit) -> 'a env -> 'a Typing.t
-    -> 'a check_error option
+    :  'info trace_step -> ('info trace_step -> unit) -> 'info env -> 'info Typing.t
+    -> 'info check_error option
   =
  fun trace_stack emit_trace ({ rules; _ } as env) (Typing (tm, ty) as typing) ->
   let trace_entry = CheckTrace (env, typing) in
@@ -142,8 +145,8 @@ let rec check'
     | Rule.{ conclusion = _, InferenceRule _; _ } -> None
     (* TODO: the conclusion may have a context, which we're currently ignoring *)
     | { name; hypotheses; conclusion = _, CheckingRule { tm = rule_tm; ty = rule_ty } } ->
-      let match1 = BindingAwarePattern.match_term ~prim_eq rule_tm tm in
-      let match2 = BindingAwarePattern.match_term ~prim_eq rule_ty ty in
+      let match1 = BindingAwarePattern.match_term ~info_eq:(fun _ _ -> true) rule_tm tm in
+      let match2 = BindingAwarePattern.match_term ~info_eq:(fun _ _ -> true) rule_ty ty in
       (match match1, match2 with
       | Some tm_assignments, Some ty_assignments ->
         Some (name, hypotheses, tm_assignments, ty_assignments)
@@ -181,8 +184,8 @@ let rec check'
       result)
 
 and infer'
-    :  'a trace_step -> ('a trace_step -> unit) -> 'a env -> 'a term
-    -> ('a term, 'a check_error) Result.t
+    :  'info trace_step -> ('info trace_step -> unit) -> 'info env -> 'info term
+    -> ('info term, 'info check_error) Result.t
   =
  fun trace_stack emit_trace ({ rules; var_types } as env) tm ->
   let open Result.Let_syntax in
@@ -194,8 +197,7 @@ and infer'
     | _, CheckingRule _ -> None
     (* TODO: the conclusion may have a context, which we're currently ignoring *)
     | _, InferenceRule { tm = rule_tm; ty = rule_ty } ->
-      let prim_eq = Primitive.equal ~info_eq in
-      let match_ = BindingAwarePattern.match_term ~prim_eq rule_tm tm in
+      let match_ = BindingAwarePattern.match_term ~info_eq:(fun _ _ -> true) rule_tm tm in
       match_
       |> Option.map ~f:(fun schema_assignments ->
              name, hypotheses, schema_assignments, rule_ty)
@@ -203,7 +205,7 @@ and infer'
   let%map ty =
     match List.find_map rules ~f:match_rule with
     | Some (name, hypotheses, schema_assignments, rule_ty) ->
-      let ctx_state : ('a, 'a Primitive.t) capture SMap.t ref = ref schema_assignments in
+      let ctx_state : 'a capture SMap.t ref = ref schema_assignments in
       (match
          hypotheses
          |> List.find_map ~f:(check_hyp trace_stack emit_trace name ctx_state env)
@@ -217,9 +219,8 @@ and infer'
 
 (* Check (or infer, depending on the rule) a hypothesis *)
 and check_hyp
-    :  'a trace_step -> ('a trace_step -> unit) -> 'string
-    -> ('a, 'a Primitive.t) capture SMap.t ref -> 'a env -> 'a Hypothesis.t
-    -> 'a check_error option
+    :  'info trace_step -> ('info trace_step -> unit) -> string -> 'a capture SMap.t ref
+    -> 'a env -> 'a Hypothesis.t -> 'a check_error option
   =
  fun trace_stack emit_trace name ctx_state env (pattern_ctx, rule) ->
   let open Result.Let_syntax in
@@ -306,7 +307,7 @@ and check_hyp
       in
       (match ty with
       | Ok ty ->
-        (match BindingAwarePattern.match_term ~prim_eq hyp_ty ty with
+        (match BindingAwarePattern.match_term ~info_eq:(fun _ _ -> true) hyp_ty ty with
         | None -> Some (CheckError "check_hyp: failed to match schema vars")
         | Some learned_tys -> update_ctx ctx_state learned_tys)
       | Error err -> Some err))
@@ -324,7 +325,7 @@ let%test_module "check / infer" =
     module ParseNominal = Nominal.Term.Parse (ParseUtil.NoComment)
 
     let parse_statics = ParseUtil.parse_string ParseStatics.whitespace_t
-    let parse_tm = ParseUtil.parse_string (ParseNominal.whitespace_t ParsePrimitive.t)
+    let parse_tm = ParseUtil.parse_string ParseNominal.whitespace_t
 
     let rules =
       {|
