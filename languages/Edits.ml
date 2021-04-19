@@ -86,7 +86,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   let whitespace_t lang_p = junk *> t lang_p
 end
 
-type term = (OptRange.t, Primitive.t) Nominal.Term.t
+type term = OptRange.t Nominal.Term.t
 
 let%test_module "Parsing" =
   (module struct
@@ -113,7 +113,7 @@ let%test_module "Parsing" =
           ( "no primitive evaluation"
           , Core.Term
               (Nominal.Term.Primitive
-                 (None, Primitive.PrimString "TODO: make this unnecessary")) )
+                 (Primitive.PrimString (None, "TODO: make this unnecessary"))) )
       in
       fun tm core -> Core.(eval eval_primitive (CoreApp (None, core, [ Term tm ])))
     ;;
@@ -136,9 +136,9 @@ let%test_module "Parsing" =
       let open Result.Let_syntax in
       match
         let%bind edit = parse edit in
-        let%bind tm = ParseUtil.parse_string (ParseTerm.t ParsePrimitive.t) tm in
+        let%bind tm = ParseUtil.parse_string ParseTerm.t tm in
         let%map tm = run tm edit in
-        Nominal.Term.pp Primitive.pp Caml.Format.std_formatter tm
+        Nominal.Term.pp Caml.Format.std_formatter tm
       with
       | Error msg -> print_string msg
       | Ok () -> ()

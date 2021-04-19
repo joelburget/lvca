@@ -58,17 +58,17 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)
   open Parsers
 
-  let lit : (OptRange.t, Primitive.t) NonBinding.term Parsers.t =
+  let lit : OptRange.t NonBinding.term Parsers.t =
     integer_lit
     >>|| fun ~pos str ->
     let tm =
       NonBinding.(
-        Operator (pos, "lit", [ Primitive (pos, Primitive.PrimInteger (Z.of_string str)) ]))
+        Operator (pos, "lit", [ Primitive (Primitive.PrimInteger (pos, Z.of_string str)) ]))
     in
     tm, pos
   ;;
 
-  let t : (OptRange.t, Primitive.t) NonBinding.term Parsers.t =
+  let t : OptRange.t NonBinding.term Parsers.t =
     fix (fun t ->
         let atom = attach_pos (lit <|> parens t) in
         let plus = char '+' in
@@ -97,17 +97,14 @@ let pp =
     | NonBinding.Operator (_, "add", [ a; b ]) ->
       with_stag
         ppf
-        (String_tag (NonBinding.hash Primitive.jsonify tm))
+        (String_tag (NonBinding.hash tm))
         (fun () ->
           if prec > 0
           then Fmt.pf ppf "(%a + %a)" (pp' 0) a (pp' 1) b
           else Fmt.pf ppf "%a + %a" (pp' 0) a (pp' 1) b)
-    | Operator (_, "lit", [ Primitive (_, Primitive.PrimInteger i) ]) ->
-      with_stag
-        ppf
-        (String_tag (NonBinding.hash Primitive.jsonify tm))
-        (fun () -> Z.pp_print ppf i)
-    | tm -> Fmt.failwith "Invalid Hutton's Razor term %a" (NonBinding.pp Primitive.pp) tm
+    | Operator (_, "lit", [ Primitive (Primitive.PrimInteger (_, i)) ]) ->
+      with_stag ppf (String_tag (NonBinding.hash tm)) (fun () -> Z.pp_print ppf i)
+    | tm -> Fmt.failwith "Invalid Hutton's Razor term %a" NonBinding.pp tm
   in
   pp' 0
 ;;
@@ -117,9 +114,8 @@ let rec eval_tm : _ NonBinding.term -> (Z.t, string) Result.t = function
     (match eval_tm a, eval_tm b with
     | Ok a', Ok b' -> Ok Z.(a' + b')
     | Error msg, _ | _, Error msg -> Error msg)
-  | Operator (_, "lit", [ Primitive (_, Primitive.PrimInteger i) ]) -> Ok i
-  | tm ->
-    Error ("found un-evaluable term: " ^ Fmt.to_to_string (NonBinding.pp Primitive.pp) tm)
+  | Operator (_, "lit", [ Primitive (Primitive.PrimInteger (_, i)) ]) -> Ok i
+  | tm -> Error ("found un-evaluable term: " ^ Fmt.to_to_string NonBinding.pp tm)
 ;;
 
 let eval_str : string -> (Z.t, string) Result.t =
@@ -172,8 +168,8 @@ let%test_module "Hutton's Razor" =
       match parse str with
       | Error str -> print_string str
       | Ok tm ->
-        Fmt.pr "%a\n" (NonBinding.pp Primitive.pp) tm;
-        Fmt.pr "%a\n" (NonBinding.pp_range Primitive.pp) tm;
+        Fmt.pr "%a\n" NonBinding.pp tm;
+        Fmt.pr "%a\n" NonBinding.pp_range tm;
         Fmt.pr "%a" pp tm
     ;;
 

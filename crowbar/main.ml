@@ -32,15 +32,15 @@ let (lazy json_gen) = json_gen
 
 (* primitive *)
 
-let prim_gen : Primitive.t Crowbar.gen =
+let prim_gen : unit Primitive.t Crowbar.gen =
   let open Crowbar in
   let open Primitive in
   let options =
-    [ map [ int ] (fun i -> PrimInteger (Z.of_int i))
+    [ map [ int ] (fun i -> PrimInteger ((), Z.of_int i))
       (* TODO: string and float parsing has a couple issues *)
-    ; map [ str_gen ] (fun str -> PrimString str)
+    ; map [ str_gen ] (fun str -> PrimString ((), str))
       (* ; map [float] (fun f -> PrimFloat f) *)
-    ; map [ char ] (fun c -> PrimChar c)
+    ; map [ char ] (fun c -> PrimChar ((), c))
     ]
   in
   choose options
@@ -87,7 +87,7 @@ let pattern_gen =
     Pattern.(
       fix (fun pattern_gen ->
           choose
-            [ map [ prim_gen ] (fun p -> Primitive ((), p))
+            [ map [ prim_gen ] (fun p -> Primitive p)
             ; map [ nonempty_str_gen; list pattern_gen ] (fun name subpats ->
                   Operator ((), name, subpats))
             ; map [ nonempty_str_gen ] (fun name -> Var ((), name))
@@ -102,7 +102,7 @@ let rec nominal_gen =
     (let choose, list, map, unlazy = Crowbar.(choose, list, map, unlazy) in
      choose
        Nominal.Term.
-         [ map [ prim_gen ] (fun p -> Primitive ((), p))
+         [ map [ prim_gen ] (fun p -> Primitive p)
          ; map
              [ nonempty_str_gen; list (unlazy nominal_scope_gen) ]
              (fun name scopes -> Operator ((), name, scopes))
@@ -124,7 +124,7 @@ let term_str_conf tm_str =
   match ParseUtil.parse_string parser tm_str with
   | Error _ -> Crowbar.bad_test ()
   | Ok tm ->
-    let tm_str' = Nominal.pp_term_str Primitive.pp tm in
+    let tm_str' = Nominal.pp_term_str tm in
     Crowbar.check_eq tm_str tm_str'
 ;;
 *)

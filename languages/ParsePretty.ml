@@ -32,7 +32,7 @@ module Directive = struct
   let rec of_nonbinding tm =
     let open Result.Let_syntax in
     match tm with
-    | NonBinding.Operator (_, "literal", [ Primitive (_, Primitive.PrimString str) ]) ->
+    | NonBinding.Operator (_, "literal", [ Primitive (Primitive.PrimString (_, str)) ]) ->
       Ok (Literal str)
     | Operator (_, "many", [ directives ]) ->
       let%map directives = list_of_nonbinding directives in
@@ -63,13 +63,13 @@ module Directive = struct
 end
 
 module Row = struct
-  type ('info, 'prim) t =
-    { pattern : ('info, 'prim) Pattern.t
+  type 'info t =
+    { pattern : 'info Pattern.t
     ; directive : Directive.t
     }
 end
 
-type ('info, 'prim) t = ('info, 'prim) Row.t list
+type 'info t = 'info Row.t list
 
 (* Translate from this language to the parser langugage *)
 let parser_mapping =

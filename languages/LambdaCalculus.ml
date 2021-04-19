@@ -5,9 +5,7 @@ let language = [%lvca_abstract_syntax "tm := app(tm; tm) | lam(tm. tm)"]
 
 let eval tm =
   let open Result.Let_syntax in
-  let tm_str tm =
-    tm |> DeBruijn.to_nominal |> Option.value_exn |> Nominal.Term.pp_str Primitive.pp
-  in
+  let tm_str tm = tm |> DeBruijn.to_nominal |> Option.value_exn |> Nominal.Term.pp_str in
   let rec eval' tm =
     match tm with
     | DeBruijn.Operator (_, "app", [ Second t1; Second t2 ]) ->
@@ -23,7 +21,7 @@ let eval tm =
     | _ -> Error (Printf.sprintf "Unexpected term (2) %s" (tm_str tm))
   in
   let%bind db_tm =
-    tm |> DeBruijn.of_nominal |> Result.map_error ~f:(Nominal.Scope.pp_str Primitive.pp)
+    tm |> DeBruijn.of_nominal |> Result.map_error ~f:Nominal.Scope.pp_str
   in
   let%bind db_tm' = eval' db_tm in
   match DeBruijn.to_nominal db_tm' with
@@ -37,20 +35,20 @@ module AngstromParse (Comment : ParseUtil.Comment_int) = struct
 
   let info = Nominal.Term.info
 
-  let t_var : (OptRange.t, Primitive.t) Nominal.Term.t Parsers.t =
+  let t_var : OptRange.t Nominal.Term.t Parsers.t =
     Parsers.identifier >>|| fun ~pos name -> Nominal.Term.Var (pos, name), pos
   ;;
 
-  let p_var : (OptRange.t, Primitive.t) Pattern.t Parsers.t =
+  let p_var : OptRange.t Pattern.t Parsers.t =
     Parsers.identifier >>|| fun ~pos name -> Pattern.Var (pos, name), pos
   ;;
 
   (* Precedence 0: lam (right-associative) 1: app (left-associative) *)
 
-  let t : (OptRange.t, Primitive.t) Nominal.Term.t Parsers.t =
+  let t : OptRange.t Nominal.Term.t Parsers.t =
     fix (fun t ->
         let atom = t_var <|> parens t in
-        let lam : (OptRange.t, Primitive.t) Nominal.Term.t Parsers.t =
+        let lam : OptRange.t Nominal.Term.t Parsers.t =
           pos
           >>= fun start ->
           lift4
@@ -83,7 +81,7 @@ module ParseNoComment = AngstromParse (ParseUtil.NoComment)
 let pp_generic ~open_loc ~close_loc =
   let rec pp' prec ppf tm =
     let module Format = Caml.Format in
-    Format.pp_open_stag ppf (Format.String_tag (Nominal.Term.hash Primitive.jsonify tm));
+    Format.pp_open_stag ppf (Format.String_tag (Nominal.Term.hash tm));
     (* Stdio.printf "opening stag %s\n" (OptRange.to_string (Nominal.Term.info tm)); *)
     open_loc ppf (Nominal.Term.info tm);
     (match tm with
@@ -96,7 +94,7 @@ let pp_generic ~open_loc ~close_loc =
       if prec > 0
       then Fmt.pf ppf {|(\%s -> %a)|} name (pp' 0) body
       else Fmt.pf ppf {|\%s -> %a|} name (pp' 0) body
-    | tm -> Fmt.failwith "Invalid Lambda term %a" (Nominal.Term.pp Primitive.pp) tm);
+    | tm -> Fmt.failwith "Invalid Lambda term %a" Nominal.Term.pp tm);
     (* OptRange.close_stag ppf (Nominal.Term.info tm); *)
     close_loc ppf (Nominal.Term.info tm);
     (* range tag *)

@@ -5,11 +5,9 @@
     - [eval] is used to evaluate a core term *)
 
 (** {1 Types} *)
-type 'info n_term
-(* = ('info, 'info Lvca_syntax.Primitive.t) Lvca_syntax.Nominal.Term.t *)
+type 'info n_term = 'info Lvca_syntax.Nominal.Term.t
 
-type 'info pattern
-(* = ('info, 'info Lvca_syntax.Primitive.t) Lvca_syntax.BindingAwarePattern.t *)
+type 'info pattern = 'info Lvca_syntax.BindingAwarePattern.t
 
 type is_rec =
   | Rec

@@ -22,7 +22,7 @@ module Model = struct
     let pp_tm_result ppf tm_result =
       match tm_result with
       | Error msg -> Fmt.pf ppf "%s" msg
-      | Ok tm -> Nominal.Term.pp Primitive.pp ppf tm
+      | Ok tm -> Nominal.Term.pp ppf tm
     in
     let input_lang_str = match input_lang with Lambda -> "Lambda" | Term -> "Term" in
     Fmt.pr
@@ -41,9 +41,7 @@ module Model = struct
   ;;
 
   let ( = ) m1 m2 =
-    let result_eq =
-      Result.equal (Nominal.Term.equal OptRange.( = ) Primitive.( = )) String.( = )
-    in
+    let result_eq = Result.equal (Nominal.Term.equal OptRange.( = )) String.( = ) in
     String.(m1.input = m2.input)
     && result_eq m1.parsed_input m2.parsed_input
     && result_eq m1.result m2.result

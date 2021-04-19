@@ -188,7 +188,9 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
 let get_suffix ~last_slot = match last_slot with true -> "" | false -> ";"
 
 let rec index_pat = function
-  | Pattern.Primitive (loc, p) -> Pattern.Primitive (LocIx loc, p)
+  | Pattern.Primitive p ->
+    let p = Primitive.map_info ~f:(fun loc -> LocIx loc) p in
+    Pattern.Primitive p
   | Var (loc, name) -> Var (VarDefIx (loc, create_e ()), name)
   | Ignored (loc, name) -> Ignored (LocIx loc, name)
   | Operator (loc, name, slots) ->
@@ -197,7 +199,9 @@ let rec index_pat = function
 ;;
 
 let rec index_tm ~expanded_depth = function
-  | Nominal.Term.Primitive (loc, p) -> Nominal.Term.Primitive (LocIx loc, p), E.never
+  | Nominal.Term.Primitive p ->
+    let p = Primitive.map_info ~f:(fun loc -> LocIx loc) p in
+    Nominal.Term.Primitive p, E.never
   | Var (loc, name) -> Var (LocIx loc, name), E.never
   | Operator (loc, name, scopes) ->
     let scopes, expanded_s, expanded_toggle_e =
@@ -253,7 +257,12 @@ let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
   =
   let { depth; queue; _ } = render_params in
   function
-  | Pattern.Primitive (LocIx loc, p) ->
+  | Pattern.Primitive p ->
+    let loc =
+      match Primitive.info p with
+      | LocIx loc -> loc
+      | _ -> Lvca_util.invariant_violation "Expected LocIx"
+    in
     let str = Fmt.to_to_string Primitive.pp p ^ suffix in
     Queue.enqueue queue (grid_tmpl ~render_params [ padded_txt depth str ] loc)
   | Var (VarDefIx (loc, selected_event), name) ->
@@ -295,8 +304,13 @@ let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
 let rec render_tm ~render_params ?(suffix = "") : _ Nominal.Term.t -> unit =
   let { depth; var_selected_events; queue; _ } = render_params in
   function
-  | Nominal.Term.Primitive (LocIx loc, p) ->
+  | Nominal.Term.Primitive p ->
     let str = Fmt.to_to_string Primitive.pp p ^ suffix in
+    let loc =
+      match Primitive.info p with
+      | LocIx loc -> loc
+      | _ -> Lvca_util.invariant_violation "Expected LocIx"
+    in
     Queue.enqueue queue (grid_tmpl ~render_params [ padded_txt depth str ] loc)
   | Var (LocIx loc, name) ->
     let selected_event = Map.find_exn var_selected_events name in

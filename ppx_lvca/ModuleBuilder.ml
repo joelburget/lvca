@@ -70,9 +70,7 @@ let args_of_valence
     |> List.map ~f:(function
            | AbstractSyntax.SortSlot.SortBinding _sort -> [%type: string]
            | SortPattern _sort ->
-             if info
-             then [%type: ('info, Lvca_util.Void.t) Pattern.t]
-             else [%type: Lvca_util.Void.t Pattern.Plain.t])
+             if info then [%type: 'info Pattern.t] else [%type: Pattern.Plain.t])
     |> Fn.flip Lvca_util.List.snoc body_type
 ;;
 
@@ -303,13 +301,7 @@ let mk_equal (module Ast : Ast_builder.S) sort_name op_defs =
                         match slot with
                         | AbstractSyntax.SortSlot.SortBinding _sort ->
                           [%expr Base.String.( = ) [%e x] [%e y]]
-                        | SortPattern _ ->
-                          [%expr
-                            Pattern.equal
-                              ~info_eq
-                              ~prim_eq:Lvca_util.Void.( = )
-                              [%e x]
-                              [%e y]])
+                        | SortPattern _ -> [%expr Pattern.equal ~info_eq [%e x] [%e y]])
                in
                let body_check =
                  Int.incr var_ix;

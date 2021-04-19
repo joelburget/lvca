@@ -2,7 +2,7 @@
 
 open Lvca_syntax
 
-type term = (OptRange.t, Primitive.t) Nominal.Term.t
+type term = OptRange.t Nominal.Term.t
 
 module LambdaParse : sig
   val t : (term * OptRange.t) Angstrom.t
@@ -13,9 +13,9 @@ type lang =
   | Term
 
 val parser_of : lang -> (term * OptRange.t) Angstrom.t
-val term_pretty : (OptRange.t, Primitive.t) Nominal.Term.t Fmt.t
-val lambda_pretty : (OptRange.t, Primitive.t) Nominal.Term.t Fmt.t
-val lambda_ranges_pretty : (SourceRanges.t, Primitive.t) Nominal.Term.t Fmt.t
+val term_pretty : OptRange.t Nominal.Term.t Fmt.t
+val lambda_pretty : OptRange.t Nominal.Term.t Fmt.t
+val lambda_ranges_pretty : SourceRanges.t Nominal.Term.t Fmt.t
 val html_eq : Brr.El.t -> Brr.El.t -> bool
 val htmls_eq : Brr.El.t list -> Brr.El.t list -> bool
 

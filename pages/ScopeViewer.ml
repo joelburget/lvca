@@ -5,9 +5,8 @@ open Lvca_syntax
 open Note
 open Prelude
 module ParseNominal = Nominal.Term.Parse (ParseUtil.CComment)
-module ParsePrimitive = Primitive.Parse (ParseUtil.CComment)
 
-let parse_tm = ParseUtil.parse_string (ParseNominal.whitespace_t ParsePrimitive.t)
+let parse_tm = ParseUtil.parse_string ParseNominal.whitespace_t
 let buf = "input"
 let initial_input = "fun(x. app(fun(x. app(f; x)); x))"
 

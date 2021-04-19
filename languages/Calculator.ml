@@ -2,7 +2,7 @@ open Base
 open Lvca_syntax
 open Stdio
 
-type term = (OptRange.t, ConstructiveReal.t) NonBinding.term
+type term = OptRange.t NonBinding.term
 
 let binary_operators = [ "add"; "sub"; "mul"; "div"; "max"; "min" ]
 
@@ -22,10 +22,10 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     >>|| fun ~pos lit ->
     let lit =
       match lit with
-      | Either.First str -> ConstructiveReal.of_bigint (Z.of_string str)
-      | Either.Second f -> ConstructiveReal.of_float f
+      | Either.First str -> Primitive.PrimInteger (pos, Z.of_string str)
+      | Either.Second f -> Primitive.PrimFloat (pos, f)
     in
-    let tm = NonBinding.Operator (pos, "lit", [ Primitive (pos, lit) ]) in
+    let tm = NonBinding.Operator (pos, "lit", [ Primitive lit ]) in
     tm, pos
   ;;
 
@@ -101,7 +101,10 @@ let rec interpret : term -> (ConstructiveReal.t, term * string) Result.t =
  fun tm ->
   let open Result.Let_syntax in
   match tm with
-  | Operator (_, "lit", [ Primitive (_, real) ]) -> Ok real
+  | Operator (_, "lit", [ Primitive (PrimInteger (_, i)) ]) ->
+    Ok (ConstructiveReal.of_bigint i)
+  | Operator (_, "lit", [ Primitive (PrimFloat (_, f)) ]) ->
+    Ok (ConstructiveReal.of_float f)
   | Operator (_, name, []) when List.mem constants name ~equal:String.equal ->
     ConstructiveReal.(
       (match name with

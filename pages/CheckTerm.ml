@@ -8,17 +8,14 @@ module NominalParse = Nominal.Term.Parse (ParseUtil.NoComment)
 module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
 
 let parse_lang lang_str = ParseUtil.parse_string AbstractSyntaxParse.whitespace_t lang_str
-
-let parse_term term_str =
-  ParseUtil.parse_string (NominalParse.t ParsePrimitive.t) term_str
-;;
+let parse_term term_str = ParseUtil.parse_string NominalParse.t term_str
 
 module Model = struct
   type t =
     { language_str : string
     ; language_parsed : (OptRange.t AbstractSyntax.t, string) Result.t
     ; term_str : string
-    ; term_parsed : ((OptRange.t, Primitive.t) Nominal.Term.t, string) Result.t
+    ; term_parsed : (OptRange.t Nominal.Term.t, string) Result.t
     }
 
   let language_str =
@@ -71,14 +68,14 @@ module View = struct
   let rec view_pat = function
     | Pattern.Var (_, name) -> txt name
     | Ignored (_, name) -> txt ("_" ^ name)
-    | Primitive (_, prim) -> txt (Fmt.to_to_string Primitive.pp prim)
+    | Primitive prim -> txt (Fmt.to_to_string Primitive.pp prim)
     | Operator (_, name, pats) ->
       div [ txt name; div (List.map pats ~f:(fun pat -> div [ view_pat pat ])) ]
   ;;
 
   let rec view_term = function
     | Nominal.Term.Var (_, name) -> txt name
-    | Primitive (_, prim) -> txt (Fmt.to_to_string Primitive.pp prim)
+    | Primitive prim -> txt (Fmt.to_to_string Primitive.pp prim)
     | Operator (_, name, scopes) -> div [ txt name; div (List.map scopes ~f:view_scope) ]
 
   and view_scope (Nominal.Scope.Scope (pats, tm)) =
@@ -93,9 +90,7 @@ module View = struct
 
   let view_check_frame
       :  ( OptRange.t
-         , ( ('info, Primitive.t) Pattern.t
-           , ('info, Primitive.t) Nominal.Term.t )
-           Base.Either.t )
+         , ('info Pattern.t, 'info Nominal.Term.t) Base.Either.t )
          CheckFailure.frame
       -> El.t
     =
@@ -111,11 +106,7 @@ module View = struct
  ;;
 
   let view_check_failure
-      :  ( OptRange.t
-         , ( ('info, Primitive.t) Pattern.t
-           , ('info, Primitive.t) Nominal.Term.t )
-           Base.Either.t )
-         CheckFailure.t
+      :  (OptRange.t, ('info Pattern.t, 'info Nominal.Term.t) Base.Either.t) CheckFailure.t
       -> El.t
     =
    fun { message; stack } ->
@@ -151,7 +142,8 @@ module View = struct
       |> S.map (fun Model.{ language_parsed; term_parsed; _ } ->
              match language_parsed, term_parsed with
              | Ok language, Ok term ->
-               Some (Nominal.Term.Primitive.check language todo_sort term)
+               Some
+                 (Nominal.Term.check (failwith "XXX: check_prim") language todo_sort term)
              | _, _ -> None)
     in
     let result_elem =
