@@ -1,7 +1,7 @@
 (** Constructive / computable real numbers. *)
 type t
 
-val to_string : t -> string
+val pp : t Fmt.t
 val debug_to_string : t -> string
 val ( + ) : t -> t -> t
 val ( - ) : t -> t -> t

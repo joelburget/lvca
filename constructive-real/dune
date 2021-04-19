@@ -2,7 +2,7 @@
  (name constructive_real)
  (public_name lvca.constructive_real)
  (inline_tests)
- (libraries base zarith zarith_stubs_js)
+ (libraries base fmt zarith zarith_stubs_js)
  (preprocess
   (pps ppx_jane))
  (wrapped false))

@@ -430,57 +430,57 @@ let prec : operator -> int = function
   | Add -> 5
 ;;
 
-(* TODO: this should use associativity as well *)
-let parens_prec op_prec env_prec str =
-  if Int.(op_prec <= env_prec) then "(" ^ str ^ ")" else str
-;;
+let rec pp' prec ppf { cr; _ } = pp_cr prec ppf cr
 
-let rec to_string' prec { cr; _ } = cr_to_string prec cr
-
-and cr_to_string ambient_prec = function
-  | IntCR i -> Z.to_string i
-  | AssumedIntCR op -> to_string' ambient_prec op
+and pp_cr ambient_prec ppf = function
+  | IntCR i -> Fmt.pf ppf "%s" (Z.to_string i)
+  | AssumedIntCR op -> pp' ambient_prec ppf op
   | AddCR (op1, op2) ->
     let prec' = prec Add in
-    parens_prec
-      prec'
-      ambient_prec
-      (Printf.sprintf "%s + %s" (to_string' prec' op1) (to_string' prec' op2))
+    if Int.(prec' <= ambient_prec)
+    then Fmt.pf ppf "@[<hv>(%a + %a)@]" (pp' prec') op1 (pp' prec') op2
+    else Fmt.pf ppf "%a + %a" (pp' prec') op1 (pp' prec') op2
   | ShiftedCR (op, shift) ->
     let prec' = prec Shift in
-    parens_prec
-      prec'
-      ambient_prec
-      (Printf.sprintf "%s << %li" (to_string' prec' op) shift)
+    if Int.(prec' <= ambient_prec)
+    then Fmt.pf ppf "@[<hv>(%a << %li)@]" (pp' prec') op shift
+    else Fmt.pf ppf "%a << %li" (pp' prec') op shift
   | NegCR op ->
     let prec' = prec Negate in
-    parens_prec prec' ambient_prec (Printf.sprintf "-%s" (to_string' prec' op))
+    if Int.(prec' <= ambient_prec)
+    then Fmt.pf ppf "@[<hv>(-%a)@]" (pp' prec') op
+    else Fmt.pf ppf "-%a" (pp' prec') op
   | SelectCR { selector; selector_sign; op1; op2 }
   (* TODO: this style is inconsistent with the others *) ->
-    Printf.sprintf
-      "select(%s, %li, %s, %s)"
-      (to_string' 0 selector)
+    Fmt.pf
+      ppf
+      "select(%a, %li, %a, %a)"
+      (pp' 0)
+      selector
       selector_sign
-      (to_string' 0 op1)
-      (to_string' 0 op2)
+      (pp' 0)
+      op1
+      (pp' 0)
+      op2
   | MultCR (op1, op2) ->
     let prec' = prec Mul in
-    parens_prec
-      prec'
-      ambient_prec
-      (Printf.sprintf "%s * %s" (to_string' prec' op1) (to_string' prec' op2))
+    if Int.(prec' <= ambient_prec)
+    then Fmt.pf ppf "@[<hv>(%a * %a)@]" (pp' prec') op1 (pp' prec') op2
+    else Fmt.pf ppf "%a * %a" (pp' prec') op1 (pp' prec') op2
   | InvCR op ->
     let prec' = prec Div in
-    parens_prec prec' ambient_prec (Printf.sprintf "1 / %s" (to_string' prec' op))
-  | PrescaledExpCR op -> Printf.sprintf "exp %s" (to_string' (prec App) op)
-  | PrescaledCosCR op -> Printf.sprintf "cos %s" (to_string' (prec App) op)
-  | PrescaledLnCR op -> Printf.sprintf "ln %s" (to_string' (prec App) op)
-  | PrescaledAsinCR op -> Printf.sprintf "asin %s" (to_string' (prec App) op)
-  | SqrtCR op -> Printf.sprintf "sqrt %s" (to_string' (prec App) op)
-  | GlPiCR -> "pi"
+    if Int.(prec' <= ambient_prec)
+    then Fmt.pf ppf "@[<hv>(1 / %a)@]" (pp' prec') op
+    else Fmt.pf ppf "1 / %a" (pp' prec') op
+  | PrescaledExpCR op -> Fmt.pf ppf "exp %a" (pp' (prec App)) op
+  | PrescaledCosCR op -> Fmt.pf ppf "cos %a" (pp' (prec App)) op
+  | PrescaledLnCR op -> Fmt.pf ppf "ln %a" (pp' (prec App)) op
+  | PrescaledAsinCR op -> Fmt.pf ppf "asin %a" (pp' (prec App)) op
+  | SqrtCR op -> Fmt.pf ppf "sqrt %a" (pp' (prec App)) op
+  | GlPiCR -> Fmt.string ppf "pi"
 ;;
 
-let to_string = to_string' 0
+let pp = pp' 0
 
 let big_signum : Z.t -> int32 =
  fun i ->
