@@ -1,3 +1,65 @@
+module Integer : sig
+  module Plain_typedef : sig
+    type t = Z.t
+  end
+
+  include
+    LanguageObject_intf.S with type 'info t = 'info * Z.t and module Plain = Plain_typedef
+end
+
+module Int : sig
+  module Plain_typedef : sig
+    type t = int
+  end
+
+  include
+    LanguageObject_intf.S with type 'info t = 'info * int and module Plain = Plain_typedef
+end
+
+module Int32 : sig
+  module Plain_typedef : sig
+    type t = int32
+  end
+
+  include
+    LanguageObject_intf.S
+      with type 'info t = 'info * int32
+       and module Plain = Plain_typedef
+end
+
+module Float : sig
+  module Plain_typedef : sig
+    type t = float
+  end
+
+  include
+    LanguageObject_intf.S
+      with type 'info t = 'info * float
+       and module Plain = Plain_typedef
+end
+
+module Char : sig
+  module Plain_typedef : sig
+    type t = char
+  end
+
+  include
+    LanguageObject_intf.S
+      with type 'info t = 'info * char
+       and module Plain = Plain_typedef
+end
+
+module String : sig
+  module Plain_typedef : sig
+    type t = string
+  end
+
+  include
+    LanguageObject_intf.S
+      with type 'info t = 'info * string
+       and module Plain = Plain_typedef
+end
+
 module Plain : sig
   type t =
     | PrimInteger of Z.t
@@ -26,32 +88,3 @@ val jsonify : _ t -> Lvca_util.Json.t
 val unjsonify : Lvca_util.Json.t -> unit t option
 
 module Properties : Properties_intf.S with type 'info t := 'info t
-
-module Integer : sig
-  module Plain_typedef : sig
-    type t = Z.t
-  end
-
-  include
-    LanguageObject_intf.S with type 'info t = 'info * Z.t and module Plain = Plain_typedef
-end
-
-module Int : sig
-  module Plain_typedef : sig
-    type t = int
-  end
-
-  include
-    LanguageObject_intf.S with type 'info t = 'info * int and module Plain = Plain_typedef
-end
-
-module String : sig
-  module Plain_typedef : sig
-    type t = string
-  end
-
-  include
-    LanguageObject_intf.S
-      with type 'info t = 'info * string
-       and module Plain = Plain_typedef
-end

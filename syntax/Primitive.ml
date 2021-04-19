@@ -1,5 +1,103 @@
 open Base
 
+module type PlainBase_s = sig
+  type t
+
+  val pp : t Fmt.t
+  val ( = ) : t -> t -> bool
+  val parse : (module ParseUtil.Parsers) -> t ParseUtil.t
+end
+
+module Make (PlainBase : PlainBase_s) = struct
+  type 'info t = 'info * PlainBase.t
+
+  module Plain_typedef = PlainBase
+  module Plain = PlainBase
+
+  let to_plain (_, x) = x
+  let of_plain x = (), x
+  let equal ~info_eq (i1, x1) (i2, x2) = info_eq i1 i2 && PlainBase.(x1 = x2)
+  let map_info ~f (i, z) = f i, z
+
+  let pp_generic ~open_loc ~close_loc ppf (i, x) =
+    open_loc ppf i;
+    PlainBase.pp ppf x;
+    close_loc ppf i
+  ;;
+
+  module Parse (Comment : ParseUtil.Comment_int) = struct
+    module Parsers = ParseUtil.Mk (Comment)
+
+    let t =
+      let ( >>|| ) = Parsers.( >>|| ) in
+      PlainBase.parse (module Parsers) >>|| fun ~pos t -> (pos, t), pos
+    ;;
+  end
+end
+
+module Integer = Make (struct
+  type t = Z.t
+
+  let pp ppf x = Fmt.pf ppf "%s" (Z.to_string x)
+  let ( = ) x1 x2 = (Z.Compare.(x1 = x2) [@warning "-44"])
+
+  let parse (module Parsers : ParseUtil.Parsers) =
+    Parsers.(integer_lit >>| Z.of_string <?> "integer")
+  ;;
+end)
+
+module Float = Make (struct
+  type t = float
+
+  let pp = Fmt.float
+  let ( = ) = Float.( = )
+
+  let parse (module Parsers : ParseUtil.Parsers) =
+    let open Parsers in
+    integer_or_float_lit
+    >>= (function First _ -> fail "TODO" | Second f -> return f)
+    <?> "float"
+  ;;
+end)
+
+module Char = Make (struct
+  type t = char
+
+  let pp = Fmt.char
+  let ( = ) = Char.( = )
+  let parse (module Parsers : ParseUtil.Parsers) = Parsers.(char_lit <?> "char")
+end)
+
+module Int = Make (struct
+  type t = int
+
+  let pp = Fmt.int
+  let ( = ) = Int.( = )
+
+  let parse (module Parsers : ParseUtil.Parsers) =
+    Parsers.(integer_lit >>| Int.of_string <?> "int")
+  ;;
+end)
+
+module Int32 = Make (struct
+  type t = int32
+
+  let pp = Fmt.int32
+  let ( = ) = Int32.( = )
+
+  let parse (module Parsers : ParseUtil.Parsers) =
+    Parsers.(integer_lit >>| Int32.of_string <?> "int32")
+  ;;
+end)
+
+module String = Make (struct
+  type t = string
+
+  let pp = Fmt.string
+  let ( = ) = String.( = )
+  let parse (module Parsers : ParseUtil.Parsers) = Parsers.(string_lit <?> "string")
+end)
+
 module Plain = struct
   type t =
     | PrimInteger of Z.t
@@ -17,9 +115,9 @@ let equal ~info_eq (info1, p1) (info2, p2) =
   let same_ps =
     match p1, p2 with
     | Plain.PrimInteger i1, Plain.PrimInteger i2 -> Z.Compare.(i1 = i2) [@warning "-44"]
-    | PrimString s1, PrimString s2 -> String.(s1 = s2)
-    | PrimFloat f1, PrimFloat f2 -> Float.(f1 = f2)
-    | PrimChar c1, PrimChar c2 -> Char.(c1 = c2)
+    | PrimString s1, PrimString s2 -> Base.String.(s1 = s2)
+    | PrimFloat f1, PrimFloat f2 -> Base.Float.(f1 = f2)
+    | PrimChar c1, PrimChar c2 -> Base.Char.(c1 = c2)
     | _ -> false
   in
   same_ps && info_eq info1 info2
@@ -31,14 +129,12 @@ let erase t = map_info ~f:(Fn.const ()) t
 
 (** Primitive pretty-printer. *)
 let pp_generic ~open_loc ~close_loc ppf (info, prim) =
-  open_loc ppf info;
-  (match prim with
-  | Plain.PrimInteger i -> Fmt.pf ppf "%s" (Z.to_string i)
-  | PrimString s -> Fmt.pf ppf {|"%s"|} s
-  | PrimFloat f -> Fmt.pf ppf "%f" f
+  match prim with
+  | Plain.PrimInteger i -> Integer.pp_generic ~open_loc ~close_loc ppf (info, i)
+  | PrimString s -> String.pp_generic ~open_loc ~close_loc ppf (info, s)
+  | PrimFloat f -> Float.pp_generic ~open_loc ~close_loc ppf (info, f)
   (* | PrimFloat f -> Fmt.pf ppf "%s" (Float.to_string f) *)
-  | PrimChar c -> Fmt.pf ppf "'%c'" c);
-  close_loc ppf info
+  | PrimChar c -> Char.pp_generic ~open_loc ~close_loc ppf (info, c)
 ;;
 
 let pp ppf prim = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf prim
@@ -86,7 +182,7 @@ let jsonify (_, p) =
     | Plain.PrimInteger i -> array [| string "i"; string (Z.to_string i) |]
     | PrimString s -> array [| string "s"; string s |]
     | PrimFloat f -> array [| string "f"; float f |]
-    | PrimChar c -> array [| string "c"; string (Char.to_string c) |])
+    | PrimChar c -> array [| string "c"; string (Base.Char.to_string c) |])
 ;;
 
 let unjsonify json =
@@ -96,7 +192,9 @@ let unjsonify json =
       (try Some ((), Plain.PrimInteger (Z.of_string i)) with Failure _ -> None)
     | Array [| String "f"; Float f |] -> Some ((), PrimFloat f)
     | Array [| String "c"; String c |] ->
-      if Int.(String.length c = 1) then Some ((), PrimChar (Char.of_string c)) else None
+      if Base.Int.(Base.String.length c = 1)
+      then Some ((), PrimChar (Base.Char.of_string c))
+      else None
     | Array [| String "s"; String str |] -> Some ((), PrimString str)
     | _ -> None)
 ;;
@@ -107,7 +205,7 @@ module Properties = struct
   let json_round_trip1 : unit t -> PropertyResult.t =
    fun t ->
     match t with
-    | _, Plain.PrimFloat f when Float.is_nan f -> Uninteresting
+    | _, Plain.PrimFloat f when Base.Float.is_nan f -> Uninteresting
     | _ ->
       (match t |> jsonify |> unjsonify with
       | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
@@ -140,14 +238,16 @@ module Properties = struct
     | Error _ -> Uninteresting
     | Ok prim ->
       let str' = to_string prim in
-      if String.(str' = str)
+      if Base.String.(str' = str)
       then Ok
       else (
         match ParseUtil.parse_string ParsePrimitive.t str with
         | Error msg -> Failed msg
         | Ok prim' ->
           let str'' = to_string prim' in
-          PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str'))
+          PropertyResult.check
+            Base.String.(str'' = str')
+            (Fmt.str {|"%s" <> "%s"|} str'' str'))
  ;;
 
   (* malformed input *)
@@ -204,97 +304,3 @@ let%test_module "Parsing" =
       *)
   end)
 ;;
-
-module Integer = struct
-  type 'info t = 'info * Z.t
-
-  module Plain_typedef = struct
-    type t = Z.t
-  end
-
-  module Plain = Plain_typedef
-
-  let to_plain (_, z) = z
-  let of_plain z = (), z
-
-  let equal ~info_eq (i1, z1) (i2, z2) =
-    info_eq i1 i2 && (Z.Compare.(z1 = z2) [@warning "-44"])
-  ;;
-
-  let map_info ~f (i, z) = f i, z
-
-  let pp_generic ~open_loc ~close_loc ppf (i, z) =
-    open_loc ppf i;
-    Fmt.pf ppf "%s" (Z.to_string z);
-    close_loc ppf i
-  ;;
-
-  module Parse (Comment : ParseUtil.Comment_int) = struct
-    module Parsers = ParseUtil.Mk (Comment)
-
-    let t : OptRange.t t Parsers.t =
-      let open Parsers in
-      integer_lit >>|| (fun ~pos s -> (pos, Z.of_string s), pos) <?> "integer"
-    ;;
-  end
-end
-
-module Int = struct
-  type 'info t = 'info * int
-
-  module Plain_typedef = struct
-    type t = int
-  end
-
-  module Plain = Plain_typedef
-
-  let to_plain (_, n) = n
-  let of_plain n = (), n
-  let equal ~info_eq (i1, n1) (i2, n2) = info_eq i1 i2 && Int.(n1 = n2)
-  let map_info ~f (i, n) = f i, n
-
-  let pp_generic ~open_loc ~close_loc ppf (i, n) =
-    open_loc ppf i;
-    Fmt.pf ppf "%d" n;
-    close_loc ppf i
-  ;;
-
-  module Parse (Comment : ParseUtil.Comment_int) = struct
-    module Parsers = ParseUtil.Mk (Comment)
-
-    let t : OptRange.t t Parsers.t =
-      let open Parsers in
-      integer_lit >>|| (fun ~pos s -> (pos, Int.of_string s), pos) <?> "integer"
-    ;;
-  end
-end
-
-module String = struct
-  type 'info t = 'info * string
-
-  module Plain_typedef = struct
-    type t = string
-  end
-
-  module Plain = Plain_typedef
-
-  let to_plain (_, s) = s
-  let of_plain s = (), s
-  let equal ~info_eq (i1, s1) (i2, s2) = info_eq i1 i2 && String.(s1 = s2)
-  let map_info ~f (i, s) = f i, s
-
-  let pp_generic ~open_loc ~close_loc ppf (i, s) =
-    open_loc ppf i;
-    Fmt.pf ppf {|"%s"|} s;
-    close_loc ppf i
-  ;;
-
-  module Parse (Comment : ParseUtil.Comment_int) = struct
-    module Parsers = ParseUtil.Mk (Comment)
-
-    let t : OptRange.t t Parsers.t =
-      let open Parsers in
-      string_lit >>|| (fun ~pos s -> (pos, s), pos) <?> "string"
-    ;;
-  end
-end
