@@ -112,8 +112,7 @@ let%test_module "Parsing" =
         Error
           ( "no primitive evaluation"
           , Core.Term
-              (Nominal.Term.Primitive
-                 (Primitive.PrimString (None, "TODO: make this unnecessary"))) )
+              (Nominal.Term.Primitive (None, PrimString "TODO: make this unnecessary")) )
       in
       fun tm core -> Core.(eval eval_primitive (CoreApp (None, core, [ Term tm ])))
     ;;

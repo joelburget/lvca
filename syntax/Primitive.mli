@@ -1,9 +1,3 @@
-type 'info t =
-  | PrimInteger of 'info * Z.t
-  | PrimString of 'info * string
-  | PrimFloat of 'info * float
-  | PrimChar of 'info * char
-
 module Plain : sig
   type t =
     | PrimInteger of Z.t
@@ -11,6 +5,8 @@ module Plain : sig
     | PrimFloat of float
     | PrimChar of char
 end
+
+type 'info t = 'info * Plain.t
 
 val to_plain : _ t -> Plain.t
 val of_plain : Plain.t -> unit t

@@ -13,7 +13,7 @@ let eval_primitive _eval_ctx _eval_ctx' _ctx _tm _name _args =
     ( "no primitive evaluation"
     , Core.Term
         (Nominal.Term.Primitive
-           (Primitive.PrimString (SourceRanges.empty, "TODO: make this unnecessary"))) )
+           (SourceRanges.empty, PrimString "TODO: make this unnecessary")) )
 ;;
 
 type 'info t =
@@ -132,14 +132,14 @@ let pp_generic ~open_loc ~close_loc ppf p =
       | Fail (_, tm) ->
         let f ppf =
           match tm with
-          | Term (Primitive (PrimString (_, msg))) -> pf ppf {|@[<2>fail "%s"@]|} msg
+          | Term (Primitive (_, PrimString msg)) -> pf ppf {|@[<2>fail "%s"@]|} msg
           | _ -> pf ppf "@[<2>fail {%a}@]" core tm
         in
         f, Prec.app
       | Count (_, p, tm) ->
         let f ppf =
           match tm with
-          | Term (Primitive (PrimInteger (_, n))) ->
+          | Term (Primitive (_, PrimInteger n)) ->
             pf ppf "@[<hv>%a%s@]" (go (Int.succ Prec.quantifier)) p (Z.to_string n)
           | _ -> pf ppf "@[<hv>%a{%a}@]" (go (Int.succ Prec.quantifier)) p core tm
         in
@@ -269,7 +269,7 @@ module Direct = struct
   let mk_error msg = Error (msg, None)
 
   let mk_char pos c =
-    Nominal.Term.Primitive (Primitive.PrimChar (SourceRanges.mk "input" pos (pos + 1), c))
+    Nominal.Term.Primitive (SourceRanges.mk "input" pos (pos + 1), PrimChar c)
   ;;
 
   let context_free go =
@@ -302,7 +302,7 @@ module Direct = struct
         | Some _str' ->
           let pos' = pos + String.length prefix in
           let rng = SourceRanges.mk "input" pos pos' in
-          Ok (pos', Nominal.Term.Primitive (PrimString (rng, prefix))))
+          Ok (pos', Nominal.Term.Primitive (rng, PrimString prefix)))
   ;;
 
   let satisfy name core_term =
@@ -325,7 +325,7 @@ module Direct = struct
                 Let
                   { info = SourceRanges.empty
                   ; is_rec = NoRec
-                  ; tm = Term (Primitive (PrimChar (rng, c)))
+                  ; tm = Term (Primitive (rng, PrimChar c))
                   ; ty = None
                   ; scope = Scope (name, core_term)
                   })
@@ -342,7 +342,7 @@ module Direct = struct
     { run =
         (fun ~translate_direct:_ ~term_ctx ~parser_ctx:_ ~pos _str ->
           match Core.eval_ctx eval_primitive term_ctx c_tm with
-          | Ok (Primitive (PrimString (_, msg))) -> pos, [], mk_error msg
+          | Ok (Primitive (_, PrimString msg)) -> pos, [], mk_error msg
           | _ -> failwith "TODO: fail")
     }
   ;;
@@ -415,7 +415,7 @@ module Direct = struct
     { run =
         (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
           match Core.eval_ctx eval_primitive term_ctx n_tm with
-          | Ok (Primitive (PrimInteger (_, n))) ->
+          | Ok (Primitive (_, PrimInteger n)) ->
             let n = Z.to_int n (* TODO: may raise Overflow *) in
             let results = go ~translate_direct ~term_ctx ~parser_ctx ~pos n str in
             let pos, rev_snapshots, result =
@@ -861,7 +861,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         | Atom (IntAtom i, pos) ->
           let (_ : token) = Queue.dequeue_exn tokens in
           let i = Z.of_int i in
-          return ~pos (Count (pos, left, Term (Primitive (PrimInteger (pos, i)))))
+          return ~pos (Count (pos, left, Term (Primitive (pos, PrimInteger i))))
         | _ -> return ~pos left)
     in
     go ~ambient_prec left
@@ -972,7 +972,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
                     ; (string_lit
                       >>|| fun ~pos:p2 str ->
                       let pos = OptRange.union p1 p2 in
-                      FailTok (Core.Term (Primitive (PrimString (p2, str))), pos), pos)
+                      FailTok (Core.Term (Primitive (p2, PrimString str)), pos), pos)
                     ])
                 ; (string "satisfy"
                   >>== fun ~pos:sat_pos _ ->

@@ -27,15 +27,17 @@ let mk_pos ~loc = function
 ;;
 
 let mk_prim ~loc = function
-  | Lvca_syntax.Primitive.PrimInteger (pos, i) ->
+  | pos, Lvca_syntax.Primitive.Plain.PrimInteger i ->
     [%expr
-      Lvca_syntax.Primitive.PrimInteger ([%e mk_pos ~loc pos], [%e mk_bigint ~loc i])]
-  | PrimString (pos, s) ->
-    [%expr Lvca_syntax.Primitive.PrimString ([%e mk_pos ~loc pos], [%e mk_str ~loc s])]
-  | PrimFloat (pos, f) ->
-    [%expr Lvca_syntax.Primitive.PrimFloat ([%e mk_pos ~loc pos], [%e mk_float ~loc f])]
-  | PrimChar (pos, c) ->
-    [%expr Lvca_syntax.Primitive.PrimChar ([%e mk_pos ~loc pos], [%e mk_char ~loc c])]
+      [%e mk_pos ~loc pos], Lvca_syntax.Primitive.Plain.PrimInteger [%e mk_bigint ~loc i]]
+  | pos, PrimString s ->
+    [%expr
+      [%e mk_pos ~loc pos], Lvca_syntax.Primitive.Plain.PrimString [%e mk_str ~loc s]]
+  | pos, PrimFloat f ->
+    [%expr
+      [%e mk_pos ~loc pos], Lvca_syntax.Primitive.Plain.PrimFloat [%e mk_float ~loc f]]
+  | pos, PrimChar c ->
+    [%expr [%e mk_pos ~loc pos], Lvca_syntax.Primitive.Plain.PrimChar [%e mk_char ~loc c]]
 ;;
 
 let rec mk_pattern ~loc = function

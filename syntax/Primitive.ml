@@ -1,11 +1,5 @@
 open Base
 
-type 'info t =
-  | PrimInteger of 'info * Z.t
-  | PrimString of 'info * string
-  | PrimFloat of 'info * float
-  | PrimChar of 'info * char
-
 module Plain = struct
   type t =
     | PrimInteger of Z.t
@@ -14,64 +8,45 @@ module Plain = struct
     | PrimChar of char
 end
 
-let to_plain = function
-  | PrimInteger (_, x) -> Plain.PrimInteger x
-  | PrimString (_, x) -> Plain.PrimString x
-  | PrimFloat (_, x) -> Plain.PrimFloat x
-  | PrimChar (_, x) -> Plain.PrimChar x
+type 'info t = 'info * Plain.t
+
+let to_plain (_, x) = x
+let of_plain x = (), x
+
+let equal ~info_eq (info1, p1) (info2, p2) =
+  let same_ps =
+    match p1, p2 with
+    | Plain.PrimInteger i1, Plain.PrimInteger i2 -> Z.Compare.(i1 = i2) [@warning "-44"]
+    | PrimString s1, PrimString s2 -> String.(s1 = s2)
+    | PrimFloat f1, PrimFloat f2 -> Float.(f1 = f2)
+    | PrimChar c1, PrimChar c2 -> Char.(c1 = c2)
+    | _ -> false
+  in
+  same_ps && info_eq info1 info2
 ;;
 
-let of_plain = function
-  | Plain.PrimInteger x -> PrimInteger ((), x)
-  | Plain.PrimString x -> PrimString ((), x)
-  | Plain.PrimFloat x -> PrimFloat ((), x)
-  | Plain.PrimChar x -> PrimChar ((), x)
-;;
-
-let equal ~info_eq p1 p2 =
-  match p1, p2 with
-  | PrimInteger (info1, i1), PrimInteger (info2, i2) ->
-    info_eq info1 info2 && (Z.Compare.(i1 = i2) [@warning "-44"])
-  | PrimString (info1, s1), PrimString (info2, s2) ->
-    info_eq info1 info2 && String.(s1 = s2)
-  | PrimFloat (info1, f1), PrimFloat (info2, f2) -> info_eq info1 info2 && Float.(f1 = f2)
-  | PrimChar (info1, c1), PrimChar (info2, c2) -> info_eq info1 info2 && Char.(c1 = c2)
-  | _ -> false
-;;
-
-let info = function
-  | PrimInteger (info, _) | PrimString (info, _) | PrimFloat (info, _) | PrimChar (info, _)
-    ->
-    info
-;;
-
-let map_info ~f = function
-  | PrimInteger (info, i) -> PrimInteger (f info, i)
-  | PrimString (info, s) -> PrimString (f info, s)
-  | PrimFloat (info, x) -> PrimFloat (f info, x)
-  | PrimChar (info, c) -> PrimChar (f info, c)
-;;
-
+let info (i, _) = i
+let map_info ~f (i, x) = f i, x
 let erase t = map_info ~f:(Fn.const ()) t
 
 (** Primitive pretty-printer. *)
-let pp_generic ~open_loc ~close_loc ppf prim =
-  open_loc ppf (info prim);
+let pp_generic ~open_loc ~close_loc ppf (info, prim) =
+  open_loc ppf info;
   (match prim with
-  | PrimInteger (_, i) -> Fmt.pf ppf "%s" (Z.to_string i)
-  | PrimString (_, s) -> Fmt.pf ppf {|"%s"|} s
-  | PrimFloat (_, f) -> Fmt.pf ppf "%f" f
+  | Plain.PrimInteger i -> Fmt.pf ppf "%s" (Z.to_string i)
+  | PrimString s -> Fmt.pf ppf {|"%s"|} s
+  | PrimFloat f -> Fmt.pf ppf "%f" f
   (* | PrimFloat f -> Fmt.pf ppf "%s" (Float.to_string f) *)
-  | PrimChar (_, c) -> Fmt.pf ppf "'%c'" c);
-  close_loc ppf (info prim)
+  | PrimChar c -> Fmt.pf ppf "'%c'" c);
+  close_loc ppf info
 ;;
 
 let pp ppf prim = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf prim
 let to_string t = Fmt.to_to_string pp t
 
 let check prim sort =
-  match prim, sort with
-  | PrimString _, Sort.Name (_, "string")
+  match snd prim, sort with
+  | Plain.PrimString _, Sort.Name (_, "string")
   | PrimFloat _, Sort.Name (_, "float")
   | PrimChar _, Sort.Name (_, "char")
   | PrimInteger _, Sort.Name (_, "integer") ->
@@ -94,35 +69,35 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         >>|| fun ~pos i_or_f ->
         let tm =
           match i_or_f with
-          | First i -> PrimInteger (pos, Z.of_string i)
-          | Second f -> PrimFloat (pos, f)
+          | First i -> pos, Plain.PrimInteger (Z.of_string i)
+          | Second f -> pos, PrimFloat f
         in
         tm, pos)
-      ; (string_lit >>|| fun ~pos s -> PrimString (pos, s), pos)
-      ; (char_lit >>|| fun ~pos c -> PrimChar (pos, c), pos)
+      ; (string_lit >>|| fun ~pos s -> (pos, Plain.PrimString s), pos)
+      ; (char_lit >>|| fun ~pos c -> (pos, Plain.PrimChar c), pos)
       ]
     <?> "primitive"
   ;;
 end
 
-let jsonify =
+let jsonify (_, p) =
   Lvca_util.Json.(
-    function
-    | PrimInteger (_, i) -> array [| string "i"; string (Z.to_string i) |]
-    | PrimString (_, s) -> array [| string "s"; string s |]
-    | PrimFloat (_, f) -> array [| string "f"; float f |]
-    | PrimChar (_, c) -> array [| string "c"; string (Char.to_string c) |])
+    match p with
+    | Plain.PrimInteger i -> array [| string "i"; string (Z.to_string i) |]
+    | PrimString s -> array [| string "s"; string s |]
+    | PrimFloat f -> array [| string "f"; float f |]
+    | PrimChar c -> array [| string "c"; string (Char.to_string c) |])
 ;;
 
-let unjsonify =
+let unjsonify json =
   Lvca_util.Json.(
-    function
+    match json with
     | Array [| String "i"; String i |] ->
-      (try Some (PrimInteger ((), Z.of_string i)) with Failure _ -> None)
-    | Array [| String "f"; Float f |] -> Some (PrimFloat ((), f))
+      (try Some ((), Plain.PrimInteger (Z.of_string i)) with Failure _ -> None)
+    | Array [| String "f"; Float f |] -> Some ((), PrimFloat f)
     | Array [| String "c"; String c |] ->
-      if Int.(String.length c = 1) then Some (PrimChar ((), Char.of_string c)) else None
-    | Array [| String "s"; String str |] -> Some (PrimString ((), str))
+      if Int.(String.length c = 1) then Some ((), PrimChar (Char.of_string c)) else None
+    | Array [| String "s"; String str |] -> Some ((), PrimString str)
     | _ -> None)
 ;;
 
@@ -132,7 +107,7 @@ module Properties = struct
   let json_round_trip1 : unit t -> PropertyResult.t =
    fun t ->
     match t with
-    | PrimFloat ((), f) when Float.is_nan f -> Uninteresting
+    | _, Plain.PrimFloat f when Float.is_nan f -> Uninteresting
     | _ ->
       (match t |> jsonify |> unjsonify with
       | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
