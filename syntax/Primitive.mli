@@ -1,3 +1,6 @@
+(* TODO: potentially add (u)int8, (u)int64, etc via stdint. Downside: "integers
+   smaller than the standard integer type are stored in a standard int." Or
+   possibly using bitvec? (https://stackoverflow.com/a/65080349) *)
 module Integer : sig
   module Plain_typedef : sig
     type t = Z.t
