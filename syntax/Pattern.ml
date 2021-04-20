@@ -97,7 +97,7 @@ let rec pp_range_generic ~opener ~closer ppf pat =
       (pp_range_generic ~opener ~closer |> list ~sep:semi)
       pats
   | Primitive prim ->
-    pf ppf "%a" (Primitive.pp_generic ~open_loc:opener ~close_loc:closer) prim
+    Primitive.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf prim
   | Var (_, name) -> Fmt.string ppf name
   | Ignored (_, name) -> pf ppf "_%s" name);
   closer ppf (info pat)
@@ -175,7 +175,7 @@ let handle_dup_error = function
 
 let valence_to_string v = Fmt.to_to_string AbstractSyntax.Valence.pp v
 
-let check check_prim lang ~pattern_sort ~var_sort =
+let check lang ~pattern_sort ~var_sort =
   let lookup_operator = AbstractSyntax.lookup_operator lang in
   let rec check sort pat =
     let result =
@@ -194,7 +194,7 @@ let check check_prim lang ~pattern_sort ~var_sort =
                   (sort_to_string sort))))
       | Ignored _ -> Ok SMap.empty
       | Primitive prim ->
-        (match check_prim prim sort with
+        (match Primitive.check prim sort with
         | None -> Ok SMap.empty
         | Some msg -> Error (CheckFailure.err msg))
       | Operator (_, op_name, subpats) ->
@@ -428,14 +428,6 @@ module Properties = struct
   ;;
 end
 
-module Primitive' = Primitive
-
-module Primitive = struct
-  let check lang ~pattern_sort ~var_sort =
-    check Primitive'.check lang ~pattern_sort ~var_sort
-  ;;
-end
-
 let%test_module "check" =
   (module struct
     module AbstractSyntaxParse = AbstractSyntax.Parse (ParseUtil.NoComment)
@@ -446,7 +438,7 @@ let%test_module "check" =
     ;;
 
     module Parser = Parse (ParseUtil.NoComment)
-    module ParsePrimitive = Primitive'.Parse (ParseUtil.NoComment)
+    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
 
     let parse_pattern str = ParseUtil.parse_string Parser.t str |> Result.ok_or_failwith
 
@@ -492,7 +484,7 @@ test := foo(term[term]. term)
       let pp ppf CheckFailure.{ term = pat; sort } =
         Fmt.pf ppf "- @[pattern: %a,@ sort: %a@]" pp pat Sort.pp sort
       in
-      match Primitive.check language ~pattern_sort:sort ~var_sort pat with
+      match check language ~pattern_sort:sort ~var_sort pat with
       | Error failure -> Fmt.epr "%a" (CheckFailure.pp pp) failure
       | Ok _ -> ()
     ;;

@@ -86,8 +86,7 @@ module Term : sig
         variables.
       + Variable-valence terms must have one binder, a pattern. *)
   val check
-    :  ('info Primitive.t -> 'info Sort.t -> string option) (** Primitive checker *)
-    -> 'info AbstractSyntax.t (** Abstract syntax *)
+    :  'info AbstractSyntax.t (** Abstract syntax *)
     -> 'info Sort.t (** Sort to check term against *)
     -> 'info t
     -> ('info, ('info Pattern.t, 'info t) Base.Either.t) CheckFailure.t option

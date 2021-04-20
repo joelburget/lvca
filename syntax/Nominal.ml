@@ -45,7 +45,12 @@ let rec term_pp_generic ~open_loc ~close_loc ~pp_pat ppf tm =
       (list ~sep:semi (scope_pp_generic ~open_loc ~close_loc ~pp_pat))
       subtms
   | Var (_, v) -> pf ppf "%a" string v
-  | Primitive p -> pf ppf "%a" (Primitive.pp_generic ~open_loc ~close_loc) p);
+  | Primitive p ->
+    pf
+      ppf
+      "%a"
+      (Primitive.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()))
+      p);
   close_loc ppf (info tm)
 
 and scope_pp_generic ~open_loc ~close_loc ~pp_pat ppf (Scope (bindings, body)) =
@@ -229,9 +234,9 @@ module Term = struct
 
   let valence_to_string v = Fmt.to_to_string AbstractSyntax.Valence.pp v
 
-  let check check_prim lang =
+  let check lang =
     let lookup_operator = AbstractSyntax.lookup_operator lang in
-    let check_pattern = Pattern.check check_prim lang in
+    let check_pattern = Pattern.check lang in
     let rec check_term var_sorts expected_sort tm =
       let result =
         match tm with
@@ -256,7 +261,7 @@ module Term = struct
                       (sort_to_string var_sort)
                       (sort_to_string expected_sort)))))
         | Primitive p ->
-          (match check_prim p expected_sort with
+          (match Primitive.check p expected_sort with
           | None -> None
           | Some msg -> Some (CheckFailure.err msg))
         | Operator (_, operator_name, op_scopes) ->
@@ -858,17 +863,14 @@ test := foo(term[term]. term)
       match parse_sort sort_str with
       | Error msg -> Fmt.epr "%s" msg
       | Ok sort ->
-        let _pp ppf CheckFailure.{ term; sort } =
+        let pp ppf CheckFailure.{ term; sort } =
           match term with
           | Either.First pat ->
             Fmt.pf ppf "- @[pattern: %a,@ sort: %a@]" Pattern.pp pat Sort.pp sort
           | Second tm -> Fmt.pf ppf "- @[term: %a,@ sort: %a@]" Term.pp tm Sort.pp sort
         in
-        (match
-           tm_str |> parse_term |> Term.check (fun _ _ -> None (* XXX *)) language sort
-         with
-        (* | Some failure -> Fmt.epr "%a" (CheckFailure.pp pp) failure *)
-        | Some _failure -> Fmt.epr "failed"
+        (match tm_str |> parse_term |> Term.check language sort with
+        | Some failure -> Fmt.epr "%a" (CheckFailure.pp pp) failure
         | None -> ())
     ;;
 

@@ -14,7 +14,7 @@ let test_nonbinding =
          ((Some ((let open Range in { start = 4; finish = 10 }))), "bar",
            [NonBinding.Primitive
               ((Some ((let open Range in { start = 8; finish = 9 }))),
-                (Lvca_syntax.Primitive.PrimInteger (Z.of_string "1")))])])
+                (Lvca_syntax.Primitive.Plain.PrimInteger (Z.of_string "1")))])])
 let test_pattern =
   Pattern.Operator
     ((Some (let open Range in { start = 0; finish = 6 })), "foo",
@@ -132,13 +132,12 @@ module Lang(Integer:LanguageObject.AllTermS) =
       struct
         type 'info t =
           | Foo of 'info * 'info Integer.t 
-          | Bar of 'info * (('info, Lvca_util.Void.t) Pattern.t * string *
-          'info t) 
+          | Bar of 'info * ('info Pattern.t * string * 'info t) 
         module Plain =
           struct
             type t =
               | Foo of Integer.Plain.t 
-              | Bar of (Lvca_util.Void.t Pattern.Plain.t * string * t) 
+              | Bar of (Pattern.Plain.t * string * t) 
           end
         let rec to_plain =
           function
@@ -156,8 +155,8 @@ module Lang(Integer:LanguageObject.AllTermS) =
               (info_eq x0 y0) && (Integer.equal ~info_eq x1 y1)
           | (Bar (x0, (x1, x2, x3)), Bar (y0, (y1, y2, y3))) ->
               (info_eq x0 y0) &&
-                ((Pattern.equal ~info_eq ~prim_eq:Lvca_util.Void.(=) x1 y1)
-                   && ((Base.String.(=) x2 y2) && (equal ~info_eq x3 y3)))
+                ((Pattern.equal ~info_eq x1 y1) &&
+                   ((Base.String.(=) x2 y2) && (equal ~info_eq x3 y3)))
           | (_, _) -> false
         let info = function | Foo (x0, _) -> x0 | Bar (x0, (_, _, _)) -> x0
         let rec map_info ~f  =

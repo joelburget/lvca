@@ -96,7 +96,7 @@ let erase pat = map_info ~f:(fun _ -> ()) pat
 
 let info = function
   | Operator (i, _, _) | Var (i, _) | Ignored (i, _) -> i
-  | Primitive _ -> failwith "XXX"
+  | Primitive prim -> Primitive.info prim
 ;;
 
 let any, list, string, semi, pf = Fmt.(any, list, string, semi, pf)
@@ -113,7 +113,8 @@ let rec pp_generic ~open_loc ~close_loc ppf tm =
       subtms
   | Var (_, v) -> pf ppf "%a" string v
   | Ignored (_, v) -> pf ppf "_%a" string v
-  | Primitive p -> Primitive.pp_generic ~open_loc ~close_loc ppf p);
+  | Primitive p ->
+    Primitive.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p);
   close_loc ppf (info tm)
 
 and pp_scope_generic ~open_loc ~close_loc ppf (Scope (bindings, body)) =
@@ -633,8 +634,8 @@ test := foo(term[term]. term)
     let%expect_test _ =
       print_check_pattern "match_line" "match_line(Pattern. body)";
       [%expect {|
-      body: term
       Pattern: value[value]
+      body: term
       |}]
     ;;
 

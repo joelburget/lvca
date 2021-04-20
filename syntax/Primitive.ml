@@ -49,7 +49,7 @@ end)
 module Float = Make (struct
   type t = float
 
-  let pp = Fmt.float
+  let pp ppf = Fmt.pf ppf "%f"
   let ( = ) = Float.( = )
 
   let parse (module Parsers : ParseUtil.Parsers) =
@@ -63,7 +63,7 @@ end)
 module Char = Make (struct
   type t = char
 
-  let pp = Fmt.char
+  let pp = Fmt.quote ~mark:"\'" Fmt.char
   let ( = ) = Char.( = )
   let parse (module Parsers : ParseUtil.Parsers) = Parsers.(char_lit <?> "char")
 end)
@@ -93,7 +93,7 @@ end)
 module String = Make (struct
   type t = string
 
-  let pp = Fmt.string
+  let pp = Fmt.(quote string)
   let ( = ) = String.( = )
   let parse (module Parsers : ParseUtil.Parsers) = Parsers.(string_lit <?> "string")
 end)
@@ -133,7 +133,6 @@ let pp_generic ~open_loc ~close_loc ppf (info, prim) =
   | Plain.PrimInteger i -> Integer.pp_generic ~open_loc ~close_loc ppf (info, i)
   | PrimString s -> String.pp_generic ~open_loc ~close_loc ppf (info, s)
   | PrimFloat f -> Float.pp_generic ~open_loc ~close_loc ppf (info, f)
-  (* | PrimFloat f -> Fmt.pf ppf "%s" (Float.to_string f) *)
   | PrimChar c -> Char.pp_generic ~open_loc ~close_loc ppf (info, c)
 ;;
 

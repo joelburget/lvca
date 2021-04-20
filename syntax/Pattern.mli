@@ -74,8 +74,7 @@ val select_path : path:int list -> 'info t -> ('info t, string) Result.t
      {- Patterns can't see valence: they can only bind subterms with some given sort. }
     } *)
 val check
-  :  ('info Primitive.t -> 'info Sort.t -> string option) (** Primitive checker *)
-  -> 'info AbstractSyntax.t (** Abstract syntax *)
+  :  'info AbstractSyntax.t (** Abstract syntax *)
   -> pattern_sort:'info Sort.t (** Sort to check pattern against *)
   -> var_sort:'info Sort.t (** Sort pattern must yield as variables *)
   -> 'info t
@@ -89,14 +88,3 @@ module Parse (Comment : ParseUtil.Comment_int) : sig
 end
 
 module Properties : Properties_intf.S with type 'info t := 'info t
-
-module Primitive : sig
-  (** Hardcoded for the Primitive type *)
-
-  val check
-    :  'info AbstractSyntax.t (** Abstract syntax *)
-    -> pattern_sort:'info Sort.t (** Sort to check pattern against *)
-    -> var_sort:'info Sort.t (** Sort pattern must yield as variables *)
-    -> 'info t
-    -> ('info Sort.t Lvca_util.String.Map.t, ('info, 'info t) CheckFailure.t) Result.t
-end
