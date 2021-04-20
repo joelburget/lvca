@@ -21,7 +21,7 @@ module Model = struct
   let print { input; parsed_input; input_lang; result; input_selected; output_selected } =
     let pp_tm_result ppf tm_result =
       match tm_result with
-      | Error msg -> Fmt.pf ppf "%s" msg
+      | Error msg -> Fmt.string ppf msg
       | Ok tm -> Nominal.Term.pp ppf tm
     in
     let input_lang_str = match input_lang with Lambda -> "Lambda" | Term -> "Term" in
@@ -110,7 +110,7 @@ module View = struct
                    ];
                  let tm = Nominal.Term.map_info tm ~f:cvt_loc in
                  lambda_ranges_pretty formatter tm
-               | Error msg -> Fmt.pf formatter "%s" msg
+               | Error msg -> Fmt.string formatter msg
              in
              Fmt.flush formatter ();
              output_selection_e, elem)

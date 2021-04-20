@@ -38,7 +38,7 @@ end
 module Integer = Make (struct
   type t = Z.t
 
-  let pp ppf x = Fmt.pf ppf "%s" (Z.to_string x)
+  let pp ppf x = Fmt.string ppf (Z.to_string x)
   let ( = ) x1 x2 = (Z.Compare.(x1 = x2) [@warning "-44"])
 
   let parse (module Parsers : ParseUtil.Parsers) =

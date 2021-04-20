@@ -347,7 +347,7 @@ module SortDef = struct
     let open Fmt in
     let pp_sort_var ppf (name, kind_opt) =
       match kind_opt with
-      | None -> pf ppf "%s" name
+      | None -> string ppf name
       | Some kind -> pf ppf "(%s : %a)" name (Kind.pp_generic ~open_loc ~close_loc) kind
     in
     let pp_sort_vars ppf vars =

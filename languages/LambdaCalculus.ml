@@ -89,7 +89,7 @@ let pp_generic ~open_loc ~close_loc =
       if prec > 1
       then Fmt.pf ppf "(%a %a)" (pp' 1) a (pp' 2) b
       else Fmt.pf ppf "%a %a" (pp' 1) a (pp' 2) b
-    | Var (_, name) -> Fmt.pf ppf "%s" name
+    | Var (_, name) -> Fmt.string ppf name
     | Operator (_, "lam", [ Scope ([ Pattern.Var (_range, name) ], body) ]) ->
       if prec > 0
       then Fmt.pf ppf {|(\%s -> %a)|} name (pp' 0) body

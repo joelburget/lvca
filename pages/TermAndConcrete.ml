@@ -24,7 +24,7 @@ module Model = struct
       input_lang_str
       (fun ppf tm_result ->
         match tm_result with
-        | Error msg -> Fmt.pf ppf "%s" msg
+        | Error msg -> Fmt.string ppf msg
         | Ok tm -> Nominal.Term.pp ppf tm)
       result
       OptRange.pp
@@ -84,9 +84,9 @@ module View = struct
              in
              let () =
                match result, input_lang with
-               | Ok tm, Lambda -> Fmt.pf formatter "%a" term_pretty tm
-               | Ok tm, Term -> Fmt.pf formatter "%a" lambda_pretty tm
-               | Error msg, Lambda | Error msg, Term -> Fmt.pf formatter "%s" msg
+               | Ok tm, Lambda -> term_pretty formatter tm
+               | Ok tm, Term -> lambda_pretty formatter tm
+               | Error msg, Lambda | Error msg, Term -> Fmt.string formatter msg
              in
              Fmt.flush formatter ();
              output_selection_e, elem)

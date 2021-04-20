@@ -38,7 +38,7 @@ let pp ppf sort =
       if need_parens
       then Fmt.pf ppf "@[(%s %a)@]" name Fmt.(list (pp true) ~sep:sp) args
       else Fmt.pf ppf "@[%s %a@]" name Fmt.(list (pp true) ~sep:sp) args
-    | Name (_, name) -> Fmt.pf ppf "%s" name
+    | Name (_, name) -> Fmt.string ppf name
   in
   pp false ppf sort
 ;;

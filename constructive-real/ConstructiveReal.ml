@@ -433,7 +433,7 @@ let prec : operator -> int = function
 let rec pp' prec ppf { cr; _ } = pp_cr prec ppf cr
 
 and pp_cr ambient_prec ppf = function
-  | IntCR i -> Fmt.pf ppf "%s" (Z.to_string i)
+  | IntCR i -> Fmt.string ppf (Z.to_string i)
   | AssumedIntCR op -> pp' ambient_prec ppf op
   | AddCR (op1, op2) ->
     let prec' = prec Add in

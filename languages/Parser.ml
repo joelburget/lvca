@@ -176,7 +176,7 @@ let pp_generic ~open_loc ~close_loc ppf p =
             p
         in
         formatter, Prec.app
-      | Identifier (_, name) -> (fun ppf -> pf ppf "%s" name), Prec.atom
+      | Identifier (_, name) -> (fun ppf -> Fmt.string ppf name), Prec.atom
     in
     with_parens ~ambient_prec ~prec (fun ppf () -> formatter ppf) ppf ();
     close_loc ppf loc
