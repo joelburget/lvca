@@ -4,7 +4,7 @@ type t = Ranges.t Lvca_util.String.Map.t
 type Stdlib.Format.stag += Stag of t
 
 let pp' ppf (buf, ranges) = Fmt.pf ppf "%s:%a" buf Ranges.pp ranges
-let pp ppf t = Fmt.pf ppf "%a" (Fmt.list ~sep:(Fmt.any ",") pp') (Map.to_alist t)
+let pp ppf t = Fmt.(list ~sep:(any ",") pp') ppf (Map.to_alist t)
 let invariants t = Map.for_all t ~f:Ranges.invariants
 let ( = ) x y = Map.equal Ranges.( = ) x y
 

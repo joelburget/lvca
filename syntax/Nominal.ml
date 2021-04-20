@@ -44,13 +44,9 @@ let rec term_pp_generic ~open_loc ~close_loc ~pp_pat ppf tm =
       tag
       (list ~sep:semi (scope_pp_generic ~open_loc ~close_loc ~pp_pat))
       subtms
-  | Var (_, v) -> pf ppf "%a" string v
+  | Var (_, v) -> string ppf v
   | Primitive p ->
-    pf
-      ppf
-      "%a"
-      (Primitive.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()))
-      p);
+    Primitive.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p);
   close_loc ppf (info tm)
 
 and scope_pp_generic ~open_loc ~close_loc ~pp_pat ppf (Scope (bindings, body)) =

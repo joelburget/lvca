@@ -35,7 +35,7 @@ let intersect a b =
 ;;
 
 let pp ppf rng_opt =
-  match rng_opt with Some rng -> Fmt.pf ppf "%a" Range.pp rng | None -> Fmt.pf ppf "_"
+  match rng_opt with Some rng -> Range.pp ppf rng | None -> Fmt.pf ppf "_"
 ;;
 
 let open_stag ppf = function

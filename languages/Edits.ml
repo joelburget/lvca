@@ -37,9 +37,9 @@ let rec pp : 'lang Fmt.t -> 'lang t Fmt.t =
  fun lang_fmt ppf ->
   let pp' = pp lang_fmt in
   function
-  | Atomic core -> Fmt.pf ppf "%a" lang_fmt (* (Fmt.braces Core.pp) *) core
+  | Atomic core -> lang_fmt ppf (* (Fmt.braces Core.pp) *) core
   | Labeled (edit, name) -> Fmt.pf ppf "%s:%a" name pp' edit
-  | List edits -> Fmt.pf ppf "%a" Fmt.(brackets (list ~sep:comma pp')) edits
+  | List edits -> Fmt.(brackets (list ~sep:comma pp')) ppf edits
 ;;
 
 module Parse (Comment : ParseUtil.Comment_int) = struct

@@ -182,7 +182,7 @@ let pp_generic ~open_loc ~close_loc ppf p =
     close_loc ppf loc
   and binder ppf (Binder (opt_name, p)) =
     match opt_name with
-    | None -> pf ppf "%a" (go 0) p
+    | None -> (go 0) ppf p
     | Some name -> pf ppf "%s=%a" name (go Prec.eq) p
   in
   go 0 ppf p

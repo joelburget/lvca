@@ -21,7 +21,7 @@ module Kind = struct
 
   let pp_generic ~open_loc ~close_loc ppf (Kind (info, k)) =
     open_loc ppf info;
-    Fmt.(pf ppf "%a" (list ~sep:(any " -> ") (any "*")) (List.init k ~f:(Fn.const ())));
+    Fmt.(list ~sep:(any " -> ") (any "*")) ppf (List.init k ~f:(Fn.const ()));
     close_loc ppf info
   ;;
 

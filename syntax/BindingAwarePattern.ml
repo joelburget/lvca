@@ -111,7 +111,7 @@ let rec pp_generic ~open_loc ~close_loc ppf tm =
       tag
       (list ~sep:semi (pp_scope_generic ~open_loc ~close_loc))
       subtms
-  | Var (_, v) -> pf ppf "%a" string v
+  | Var (_, v) -> string ppf v
   | Ignored (_, v) -> pf ppf "_%a" string v
   | Primitive p ->
     Primitive.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p);

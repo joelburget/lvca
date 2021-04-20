@@ -111,7 +111,7 @@ module PP = struct
 
   let rec pp ppf = function
     | Var (_, v) -> Fmt.string ppf v
-    | Term tm -> pf ppf "%a" (braces Nominal.Term.pp) tm
+    | Term tm -> (braces Nominal.Term.pp) ppf tm
     | Lambda (_, sort, Scope (name, body)) ->
       pf ppf "\\(%s : %a) ->@ %a" name Sort.pp sort pp body
     (* TODO: parens if necessary *)

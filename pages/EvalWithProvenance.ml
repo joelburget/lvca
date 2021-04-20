@@ -109,7 +109,7 @@ module View = struct
                        ("tm loc: " ^ Fmt.to_to_string OptRange.pp (Nominal.Term.info tm))
                    ];
                  let tm = Nominal.Term.map_info tm ~f:cvt_loc in
-                 Fmt.pf formatter "%a" lambda_ranges_pretty tm
+                 lambda_ranges_pretty formatter tm
                | Error msg -> Fmt.pf formatter "%s" msg
              in
              Fmt.flush formatter ();
