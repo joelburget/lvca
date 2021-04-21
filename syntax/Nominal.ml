@@ -619,7 +619,7 @@ let%test_module "Nominal" =
       [%expect {| 391e4a6e3dc6964d60c642c52416d18b102dca357a3e4953834dfefc0e02dfbc |}]
     ;;
 
-    let tm = Term.Primitive ((), PrimInteger (Z.of_string "12345"))
+    let tm = Term.Primitive ((), Integer (Z.of_string "12345"))
 
     let%test _ =
       Term.jsonify tm
@@ -679,8 +679,8 @@ let%test_module "TermParser" =
     ;;
 
     let%test _ = parse_erase "x" = Ok (Var ((), "x"))
-    let%test _ = parse_erase "123" = Ok (Primitive ((), PrimInteger (Z.of_int 123)))
-    let%test _ = parse_erase "\"abc\"" = Ok (Primitive ((), PrimString "abc"))
+    let%test _ = parse_erase "123" = Ok (Primitive ((), Integer (Z.of_int 123)))
+    let%test _ = parse_erase "\"abc\"" = Ok (Primitive ((), String "abc"))
 
     let x = Term.Var ((), "x")
     let t = Term.Operator ((), "true", [])

@@ -22,8 +22,8 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     >>|| fun ~pos lit ->
     let lit =
       match lit with
-      | Either.First str -> pos, Primitive.Plain.PrimInteger (Z.of_string str)
-      | Either.Second f -> pos, PrimFloat f
+      | Either.First str -> pos, Primitive.Plain.Integer (Z.of_string str)
+      | Either.Second f -> pos, Float f
     in
     let tm = NonBinding.Operator (pos, "lit", [ Primitive lit ]) in
     tm, pos
@@ -101,10 +101,8 @@ let rec interpret : term -> (ConstructiveReal.t, term * string) Result.t =
  fun tm ->
   let open Result.Let_syntax in
   match tm with
-  | Operator (_, "lit", [ Primitive (_, PrimInteger i) ]) ->
-    Ok (ConstructiveReal.of_bigint i)
-  | Operator (_, "lit", [ Primitive (_, PrimFloat f) ]) ->
-    Ok (ConstructiveReal.of_float f)
+  | Operator (_, "lit", [ Primitive (_, Integer i) ]) -> Ok (ConstructiveReal.of_bigint i)
+  | Operator (_, "lit", [ Primitive (_, Float f) ]) -> Ok (ConstructiveReal.of_float f)
   | Operator (_, name, []) when List.mem constants name ~equal:String.equal ->
     ConstructiveReal.(
       (match name with

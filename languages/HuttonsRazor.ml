@@ -62,8 +62,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     integer_lit
     >>|| fun ~pos str ->
     let tm =
-      NonBinding.(
-        Operator (pos, "lit", [ Primitive (pos, PrimInteger (Z.of_string str)) ]))
+      NonBinding.(Operator (pos, "lit", [ Primitive (pos, Integer (Z.of_string str)) ]))
     in
     tm, pos
   ;;
@@ -102,7 +101,7 @@ let pp =
           if prec > 0
           then Fmt.pf ppf "(%a + %a)" (pp' 0) a (pp' 1) b
           else Fmt.pf ppf "%a + %a" (pp' 0) a (pp' 1) b)
-    | Operator (_, "lit", [ Primitive (_, PrimInteger i) ]) ->
+    | Operator (_, "lit", [ Primitive (_, Integer i) ]) ->
       with_stag ppf (String_tag (NonBinding.hash tm)) (fun () -> Z.pp_print ppf i)
     | tm -> Fmt.failwith "Invalid Hutton's Razor term %a" NonBinding.pp tm
   in
@@ -114,7 +113,7 @@ let rec eval_tm : _ NonBinding.term -> (Z.t, string) Result.t = function
     (match eval_tm a, eval_tm b with
     | Ok a', Ok b' -> Ok Z.(a' + b')
     | Error msg, _ | _, Error msg -> Error msg)
-  | Operator (_, "lit", [ Primitive (_, PrimInteger i) ]) -> Ok i
+  | Operator (_, "lit", [ Primitive (_, Integer i) ]) -> Ok i
   | tm -> Error ("found un-evaluable term: " ^ Fmt.to_to_string NonBinding.pp tm)
 ;;
 
@@ -130,7 +129,7 @@ let eval_str : string -> (Z.t, string) Result.t =
    AngstromParse(ParseUtil.NoComment) in fun str -> match ParseUtil.parse_string
    Parse.whitespace_t str with | Error str -> Error str | Ok tm -> begin match Core.(eval
    (CoreApp (Description.dynamics, Term (NonBinding.to_nominal tm)))) with | Error (msg,
-   tm) -> Error (msg ^ ": " ^ Core.to_string tm) | Ok (Primitive (_, PrimInteger i)) -> Ok i
+   tm) -> Error (msg ^ ": " ^ Core.to_string tm) | Ok (Primitive (_, Integer i)) -> Ok i
    | _ -> Error "unexpected non-integer result" end *)
 
 let ident_stag_funs =

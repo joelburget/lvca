@@ -36,9 +36,9 @@ let rec of_nonbinding tm =
     let%bind d1 = of_nonbinding d1 in
     let%map d2 = of_nonbinding d2 in
     Doc.Plain.Cat (d1, d2)
-  | Operator (_, "text", [ Primitive (_, PrimString s) ]) -> Ok (Text s)
-  | Operator (_, "spacing", [ Primitive (_, PrimString s) ]) -> Ok (Spacing s)
-  | Operator (_, "nest", [ Primitive (_, PrimInteger j); d ]) ->
+  | Operator (_, "text", [ Primitive (_, String s) ]) -> Ok (Text s)
+  | Operator (_, "spacing", [ Primitive (_, String s) ]) -> Ok (Spacing s)
+  | Operator (_, "nest", [ Primitive (_, Integer j); d ]) ->
     let%map d = of_nonbinding d in
     Doc.Plain.Nest (Z.to_int j, d)
   | Operator (_, "align", [ d ]) ->
@@ -187,7 +187,7 @@ let%test_module _ =
 
     let space = [%lvca_nonbinding {|spacing(" ")|}]
     let line = [%lvca_nonbinding {|line()|}]
-    let text str = NonBinding.Operator (None, "text", [ Primitive (None, PrimString str) ])
+    let text str = NonBinding.Operator (None, "text", [ Primitive (None, String str) ])
     let cat l r = NonBinding.Operator (None, "cat", [ l; r ])
     let alt l r = NonBinding.Operator (None, "alt", [ l; r ])
 

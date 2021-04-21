@@ -100,10 +100,10 @@ end)
 
 module Plain = struct
   type t =
-    | PrimInteger of Z.t
-    | PrimString of string
-    | PrimFloat of float
-    | PrimChar of char
+    | Integer of Z.t
+    | String of string
+    | Float of float
+    | Char of char
 end
 
 type 'info t = 'info * Plain.t
@@ -114,10 +114,10 @@ let of_plain x = (), x
 let equal ~info_eq (info1, p1) (info2, p2) =
   let same_ps =
     match p1, p2 with
-    | Plain.PrimInteger i1, Plain.PrimInteger i2 -> Z.Compare.(i1 = i2) [@warning "-44"]
-    | PrimString s1, PrimString s2 -> Base.String.(s1 = s2)
-    | PrimFloat f1, PrimFloat f2 -> Base.Float.(f1 = f2)
-    | PrimChar c1, PrimChar c2 -> Base.Char.(c1 = c2)
+    | Plain.Integer i1, Plain.Integer i2 -> Z.Compare.(i1 = i2) [@warning "-44"]
+    | String s1, String s2 -> Base.String.(s1 = s2)
+    | Float f1, Float f2 -> Base.Float.(f1 = f2)
+    | Char c1, Char c2 -> Base.Char.(c1 = c2)
     | _ -> false
   in
   same_ps && info_eq info1 info2
@@ -130,10 +130,10 @@ let erase t = map_info ~f:(Fn.const ()) t
 (** Primitive pretty-printer. *)
 let pp_generic ~open_loc ~close_loc ppf (info, prim) =
   match prim with
-  | Plain.PrimInteger i -> Integer.pp_generic ~open_loc ~close_loc ppf (info, i)
-  | PrimString s -> String.pp_generic ~open_loc ~close_loc ppf (info, s)
-  | PrimFloat f -> Float.pp_generic ~open_loc ~close_loc ppf (info, f)
-  | PrimChar c -> Char.pp_generic ~open_loc ~close_loc ppf (info, c)
+  | Plain.Integer i -> Integer.pp_generic ~open_loc ~close_loc ppf (info, i)
+  | String s -> String.pp_generic ~open_loc ~close_loc ppf (info, s)
+  | Float f -> Float.pp_generic ~open_loc ~close_loc ppf (info, f)
+  | Char c -> Char.pp_generic ~open_loc ~close_loc ppf (info, c)
 ;;
 
 let pp ppf prim = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf prim
@@ -141,10 +141,10 @@ let to_string t = Fmt.to_to_string pp t
 
 let check prim sort =
   match snd prim, sort with
-  | Plain.PrimString _, Sort.Name (_, "string")
-  | PrimFloat _, Sort.Name (_, "float")
-  | PrimChar _, Sort.Name (_, "char")
-  | PrimInteger _, Sort.Name (_, "integer") ->
+  | Plain.String _, Sort.Name (_, "string")
+  | Float _, Sort.Name (_, "float")
+  | Char _, Sort.Name (_, "char")
+  | Integer _, Sort.Name (_, "integer") ->
     None
   | _, _ ->
     Some
@@ -164,12 +164,12 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         >>|| fun ~pos i_or_f ->
         let tm =
           match i_or_f with
-          | First i -> pos, Plain.PrimInteger (Z.of_string i)
-          | Second f -> pos, PrimFloat f
+          | First i -> pos, Plain.Integer (Z.of_string i)
+          | Second f -> pos, Float f
         in
         tm, pos)
-      ; (string_lit >>|| fun ~pos s -> (pos, Plain.PrimString s), pos)
-      ; (char_lit >>|| fun ~pos c -> (pos, Plain.PrimChar c), pos)
+      ; (string_lit >>|| fun ~pos s -> (pos, Plain.String s), pos)
+      ; (char_lit >>|| fun ~pos c -> (pos, Plain.Char c), pos)
       ]
     <?> "primitive"
   ;;
@@ -178,23 +178,23 @@ end
 let jsonify (_, p) =
   Lvca_util.Json.(
     match p with
-    | Plain.PrimInteger i -> array [| string "i"; string (Z.to_string i) |]
-    | PrimString s -> array [| string "s"; string s |]
-    | PrimFloat f -> array [| string "f"; float f |]
-    | PrimChar c -> array [| string "c"; string (Base.Char.to_string c) |])
+    | Plain.Integer i -> array [| string "i"; string (Z.to_string i) |]
+    | String s -> array [| string "s"; string s |]
+    | Float f -> array [| string "f"; float f |]
+    | Char c -> array [| string "c"; string (Base.Char.to_string c) |])
 ;;
 
 let unjsonify json =
   Lvca_util.Json.(
     match json with
     | Array [| String "i"; String i |] ->
-      (try Some ((), Plain.PrimInteger (Z.of_string i)) with Failure _ -> None)
-    | Array [| String "f"; Float f |] -> Some ((), PrimFloat f)
+      (try Some ((), Plain.Integer (Z.of_string i)) with Failure _ -> None)
+    | Array [| String "f"; Float f |] -> Some ((), Float f)
     | Array [| String "c"; String c |] ->
       if Base.Int.(Base.String.length c = 1)
-      then Some ((), PrimChar (Base.Char.of_string c))
+      then Some ((), Char (Base.Char.of_string c))
       else None
-    | Array [| String "s"; String str |] -> Some ((), PrimString str)
+    | Array [| String "s"; String str |] -> Some ((), String str)
     | _ -> None)
 ;;
 
@@ -204,7 +204,7 @@ module Properties = struct
   let json_round_trip1 : unit t -> PropertyResult.t =
    fun t ->
     match t with
-    | _, Plain.PrimFloat f when Base.Float.is_nan f -> Uninteresting
+    | _, Plain.Float f when Base.Float.is_nan f -> Uninteresting
     | _ ->
       (match t |> jsonify |> unjsonify with
       | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
@@ -297,7 +297,7 @@ let%test_module "Parsing" =
         (* 1 bit: *) (Float.ieee_negative f)
         (* 11 bits: *) (Float.ieee_exponent f)
         (* 52 bits: *) (f |> Float.ieee_mantissa |> Int63.to_string);
-      (* Fmt.pr "%a" pp (PrimFloat f); *)
+      (* Fmt.pr "%a" pp (Float f); *)
       Fmt.pr "%f %F %e %E %g %G %s\n" f f f f f f (Float.to_string f);
       [%expect]
       *)

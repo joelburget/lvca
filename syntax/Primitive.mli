@@ -65,10 +65,10 @@ end
 
 module Plain : sig
   type t =
-    | PrimInteger of Z.t
-    | PrimString of string
-    | PrimFloat of float
-    | PrimChar of char
+    | Integer of Z.t
+    | String of string
+    | Float of float
+    | Char of char
 end
 
 type 'info t = 'info * Plain.t

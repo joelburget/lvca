@@ -230,7 +230,7 @@ let eval_char_bool_fn eval_ctx' name f ctx tm c =
   let open Result.Let_syntax in
   let%bind c_result = eval_ctx' ctx c in
   match c_result with
-  | Nominal.Term.Primitive (info, PrimChar c') ->
+  | Nominal.Term.Primitive (info, Char c') ->
     Ok (if f c' then true_tm info else false_tm info)
   | _ -> Error (Printf.sprintf "Invalid argument to %s" name, tm)
 ;;
@@ -299,16 +299,16 @@ let eval_primitive eval_ctx eval_ctx' ctx tm name args =
     let%bind a_result = eval_ctx' ctx a in
     let%bind b_result = eval_ctx' ctx b in
     (match a_result, b_result with
-    | Primitive (info, PrimInteger a'), Primitive (_binfo, PrimInteger b') ->
+    | Primitive (info, Integer a'), Primitive (_binfo, Integer b') ->
       (* XXX can't reuse info *)
-      Ok (Nominal.Term.Primitive (info, PrimInteger Z.(a' + b')))
+      Ok (Nominal.Term.Primitive (info, Integer Z.(a' + b')))
     | _ -> Error ("Invalid arguments to add", tm))
   | "sub", [ Term a; Term b ] ->
     let%bind a_result = eval_ctx' ctx a in
     let%bind b_result = eval_ctx' ctx b in
     (match a_result, b_result with
-    | Primitive (info, PrimInteger a'), Primitive (_binfo, PrimInteger b') ->
-      Ok (Nominal.Term.Primitive (info, PrimInteger Z.(a' - b')))
+    | Primitive (info, Integer a'), Primitive (_binfo, Integer b') ->
+      Ok (Nominal.Term.Primitive (info, Integer Z.(a' - b')))
     | _ -> Error ("Invalid arguments to sub", tm))
   | "string_of_chars", [ char_list ] ->
     let%bind char_list = eval_ctx ctx char_list in
@@ -316,19 +316,19 @@ let eval_primitive eval_ctx eval_ctx' ctx tm name args =
     | Operator (info, "list", chars) ->
       chars
       |> List.map ~f:(function
-             | Nominal.Scope.Scope ([], Nominal.Term.Primitive (_, PrimChar c)) -> Ok c
+             | Nominal.Scope.Scope ([], Nominal.Term.Primitive (_, Char c)) -> Ok c
              | tm ->
                Error
                  (Printf.sprintf "string_of_chars `list(%s)`" (Nominal.Scope.pp_str tm)))
       |> Result.all
       |> Result.map ~f:(fun cs ->
-             Nominal.Term.Primitive (info, PrimString (Base.String.of_char_list cs)))
+             Nominal.Term.Primitive (info, String (Base.String.of_char_list cs)))
       |> Result.map_error ~f:(fun msg -> msg, tm)
     | _ -> Error ("expected a list of characters", tm))
   | "var", [ str_tm ] ->
     let%bind str = eval_ctx ctx str_tm in
     (match str with
-    | Primitive (info, PrimString name) -> Ok (Nominal.Term.Var (info, name))
+    | Primitive (info, String name) -> Ok (Nominal.Term.Var (info, name))
     | _ -> Error ("expected a string", tm))
   | "is_digit", [ Term c ] ->
     eval_char_bool_fn eval_ctx' "is_digit" Char.is_digit ctx tm c
@@ -434,7 +434,7 @@ let%test_module "Parsing" =
     ;;
 
     let ( = ) = equal ~info_eq:Unit.( = )
-    let one = Nominal.Term.Primitive ((), PrimInteger (Z.of_int 1))
+    let one = Nominal.Term.Primitive ((), Integer (Z.of_int 1))
     let var name = Var ((), name)
     let ignored name = BindingAwarePattern.Ignored ((), name)
     let operator tag children = Nominal.Term.Operator ((), tag, children)

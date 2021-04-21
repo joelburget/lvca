@@ -14,7 +14,7 @@ let test_nonbinding =
          ((Some ((let open Range in { start = 4; finish = 10 }))), "bar",
            [NonBinding.Primitive
               ((Some ((let open Range in { start = 8; finish = 9 }))),
-                (Lvca_syntax.Primitive.Plain.PrimInteger (Z.of_string "1")))])])
+                (Lvca_syntax.Primitive.Plain.Integer (Z.of_string "1")))])])
 let test_pattern =
   Pattern.Operator
     ((Some (let open Range in { start = 0; finish = 6 })), "foo",
