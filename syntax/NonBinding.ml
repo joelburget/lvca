@@ -13,8 +13,7 @@ let rec equal ~info_eq t1 t2 =
   | _, _ -> false
 ;;
 
-let info = function Operator (i, _, _) -> i | Primitive _p -> failwith "XXX"
-(* Prim.info p *)
+let info = function Operator (i, _, _) -> i | Primitive p -> Primitive.info p
 
 let rec map_info ~f = function
   | Operator (i, name, tms) -> Operator (f i, name, List.map tms ~f:(map_info ~f))

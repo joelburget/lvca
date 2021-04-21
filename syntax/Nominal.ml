@@ -1,11 +1,8 @@
 open Base
 open Stdio
-module Cbor = Lvca_util.Cbor
-module Json = Lvca_util.Json
-module String = Lvca_util.String
-module Tuple2 = Lvca_util.Tuple2
-
-let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
+module Util = Lvca_util
+module Json = Util.Json
+module String = Util.String
 
 type 'info term =
   | Operator of 'info * string * 'info scope list
@@ -57,6 +54,8 @@ and scope_pp_generic ~open_loc ~close_loc ~pp_pat ppf (Scope (bindings, body)) =
   | _ -> pf ppf "%a.@ %a" (list ~sep:(any ".@ ") pp_pat) bindings pp_body body
 ;;
 
+let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
+
 let rec term_jsonify tm =
   let array, string = Json.(array, string) in
   match tm with
@@ -93,8 +92,8 @@ and scope_unjsonify =
       let open Option.Let_syntax in
       let binders, body = arr |> Array.to_list |> Lvca_util.List.unsnoc in
       let%bind binders' = binders |> List.map ~f:Pattern.unjsonify |> Option.all in
-      let%bind body' = term_unjsonify body in
-      Some (Scope (binders', body'))
+      let%map body' = term_unjsonify body in
+      Scope (binders', body')
     | _ -> None)
 ;;
 
@@ -157,8 +156,8 @@ module Term = struct
   ;;
 
   let pp_str tm = Fmt.to_to_string pp tm
-  let serialize tm = tm |> term_jsonify |> Cbor.encode
-  let deserialize buf = buf |> Cbor.decode |> Option.bind ~f:term_unjsonify
+  let serialize tm = tm |> term_jsonify |> Util.Cbor.encode
+  let deserialize buf = buf |> Util.Cbor.decode |> Option.bind ~f:term_unjsonify
   let hash tm = tm |> serialize |> Lvca_util.Sha256.hash
   let map_info = term_map_info
   let erase tm = map_info ~f:(fun _ -> ()) tm
@@ -276,7 +275,7 @@ module Term = struct
                     sort_name))
           | Some (sort_vars, OperatorDef (_, arity)) ->
             (* TODO: kind check *)
-            let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
+            let sort_vars = sort_vars |> List.map ~f:Util.Tuple2.get1 in
             let sort_env = String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in
             let concrete_arity = AbstractSyntax.Arity.instantiate sort_env arity in
             check_slots var_sorts concrete_arity op_scopes)

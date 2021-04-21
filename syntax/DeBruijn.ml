@@ -90,16 +90,11 @@ and scope_of_nominal env (Scope (pats, body) as scope) =
     let%map body = of_nominal_with_bindings env body in
     Either.Second body
   | [ Var (pos, name) ] ->
-    let env' : int String.Map.t =
-      env |> Map.map ~f:Int.succ |> Map.set ~key:name ~data:0
-    in
-    let%map body = of_nominal_with_bindings env' body in
+    let env = env |> Map.map ~f:Int.succ |> Map.set ~key:name ~data:0 in
+    let%map body = of_nominal_with_bindings env body in
     Either.First (Scope (pos, name, body))
   | _ -> Error scope
 ;;
-
-(* (Printf.sprintf "Expected zero-or-one variable binding, found %s" (Nominal.pp_scope_str
-   Primitive.pp scope))) *)
 
 let of_nominal tm = of_nominal_with_bindings String.Map.empty tm
 
