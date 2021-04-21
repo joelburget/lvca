@@ -1,4 +1,0 @@
-(library
- (name lvca_omd)
- (public_name lvca.omd)
- (libraries bigarray uchar))
