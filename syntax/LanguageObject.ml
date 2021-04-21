@@ -1,24 +1,19 @@
+open Base
+
 module type AllTermS = LanguageObject_intf.S
 
-(*
 module type NonBindingTermS = sig
   include AllTermS
 
-  val to_nonbinding : 'info t -> ('info, Lvca_util.Void.t) NonBinding.term
-
-  val of_nonbinding
-    :  ('info, 'prim) NonBinding.term
-    -> ('info t, ('info, 'prim) NonBinding.term) Result.t
+  val of_nonbinding : 'info NonBinding.term -> ('info t, 'info NonBinding.term) Result.t
+  val to_nonbinding : 'info t -> 'info NonBinding.term
 end
 
 module type BindingTermS = sig
   include AllTermS
 
-  val to_nominal : 'info t -> ('info, Lvca_util.Void.t) Nominal.Term.t
-
-  val of_nominal
-    :  ('info, 'prim) Nominal.Term.t
-    -> ('info t, ('info, 'prim) Nominal.Term.t) Result.t
+  val to_nominal : 'info t -> 'info Nominal.Term.t
+  val of_nominal : 'info Nominal.Term.t -> ('info t, 'info Nominal.Term.t) Result.t
 end
 
 module type ExtendedTermS = sig
@@ -31,7 +26,7 @@ module type ExtendedTermS = sig
   val select_path
     :  path:int list
     -> 'info t
-    -> ('info t, (string, ('info, Lvca_util.Void.t) Nominal.Term.t) Either.t) Result.t
+    -> ('info t, (string, 'info Nominal.Term.t) Either.t) Result.t
 
   val jsonify : _ t Lvca_util.Json.serializer
   val unjsonify : unit t Lvca_util.Json.deserializer
@@ -65,11 +60,11 @@ struct
     | Error msg -> Error (Either.First msg)
   ;;
 
-  let jsonify tm = tm |> Object.to_nominal |> Nominal.Term.jsonify Lvca_util.Void.absurd
+  let jsonify tm = tm |> Object.to_nominal |> Nominal.Term.jsonify
 
   let unjsonify json =
     let open Option.Let_syntax in
-    let%bind nom = json |> Nominal.Term.unjsonify (Fn.const None) in
+    let%bind nom = json |> Nominal.Term.unjsonify in
     match Object.of_nominal nom with Ok tm -> Some tm | Error _ -> None
   ;;
 
@@ -84,11 +79,9 @@ struct
     let whitespace_t = Parsers.(junk *> Parse.t)
   end
 end
-*)
 
 module type Properties = Properties_intf.S
 
-(*
 module CheckProperties (Object : BindingTermS) :
   Properties with type 'info t = 'info Object.t = struct
   module Parse = Object.Parse (ParseUtil.NoComment)
@@ -139,4 +132,3 @@ module CheckProperties (Object : BindingTermS) :
           PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str'))
   ;;
 end
-*)

@@ -4,12 +4,11 @@ module type AllTermS = LanguageObject_intf.S
    functor taking the term type and changing the names to to_term and of_term.
    Or returning an Either.
    *)
-(*
 module type NonBindingTermS = sig
   include LanguageObject_intf.S
 
   val of_nonbinding : 'info NonBinding.term -> ('info t, 'info NonBinding.term) Result.t
-  val to_nonbinding : 'info  -> 'info NonBinding_intf.S.term
+  val to_nonbinding : 'info t -> 'info NonBinding.term
 end
 
 module type BindingTermS = sig
@@ -52,6 +51,5 @@ module type ExtendedTermS = sig
 end
 
 module Mk (Object : BindingTermS) : ExtendedTermS with type 'info t = 'info Object.t
-*)
 
 module type Properties = Properties_intf.S
