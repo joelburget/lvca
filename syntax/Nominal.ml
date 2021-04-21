@@ -382,14 +382,6 @@ module Term = struct
     | Ignored (info, name) -> Var (info, "_" ^ name)
   ;;
 
-  module Primitive' = Primitive
-
-  (*
-    module Primitive = struct
-      let check lang sort pat = check lang sort pat
-    end
-       *)
-
   module Parse (Comment : ParseUtil.Comment_int) = struct
     module Parsers = ParseUtil.Mk (Comment)
     module Primitive = Primitive.Parse (Comment)
@@ -459,9 +451,8 @@ module Term = struct
 
   module Properties = struct
     module Parse = Parse (ParseUtil.NoComment)
-    module ParsePrimitive = Primitive'.Parse (ParseUtil.NoComment)
+    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
     open PropertyResult
-    module Primitive = Primitive'
 
     let parse = ParseUtil.parse_string Parse.t
 

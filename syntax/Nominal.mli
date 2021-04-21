@@ -97,17 +97,6 @@ module Term : sig
   end
 
   module Properties : Properties_intf.S with type 'info t := 'info t
-
-  (*
-  module Primitive : sig
-    (** Hardcoded for the Primitive type *)
-    val check
-      :  'info AbstractSyntax.t (** Abstract syntax *)
-      -> 'info Sort.t (** Sort to check term against *)
-      -> 'info t
-      -> ('info, ('info Pattern.t, 'info t) Base.Either.t) CheckFailure.t option
-  end
-*)
 end
 
 module Scope : sig
