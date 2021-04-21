@@ -1,9 +1,86 @@
-open Bonsai_web
-open Core_kernel
-open Lvca
-open Lvca_omd
+open Base
+open Lvca_bidirectional
+open Lvca_core
+open Lvca_syntax
+open Omd
 open Stdio
-open Store
+module Util = Lvca_util
+
+module Store = struct
+  type store_value =
+    (* abstract syntaxes *)
+    | GenesisTermLanguage
+    | GenesisAbstractSyntaxLanguage
+    | GenesisConcreteSyntaxLanguage
+    | GenesisDynamicsLanguage
+    | GenesisStaticsLanguage
+    (* concrete syntaxes *)
+    | GenesisTermConcrete
+    | GenesisAbstractSyntaxConcrete
+    | GenesisConcreteSyntaxConcrete
+    | GenesisDynamicsConcrete
+    | GenesisStaticsConcrete
+    | Term of unit Nominal.term
+
+  type term_store = unit Nominal.term Util.String.Map.t
+  type name_store = string Util.String.Map.t
+
+  type t =
+    { term_store : term_store
+    ; name_store : name_store
+    }
+
+  let lookup_sha : term_store -> string -> store_value =
+   fun term_store -> function
+    (* abstract syntaxes *)
+    | "0000000000000000000000000000000000000000000000000000000000000001" ->
+      GenesisTermLanguage
+    | "0000000000000000000000000000000000000000000000000000000000000002" ->
+      GenesisAbstractSyntaxLanguage
+    | "0000000000000000000000000000000000000000000000000000000000000003" ->
+      GenesisConcreteSyntaxLanguage
+    | "0000000000000000000000000000000000000000000000000000000000000004" ->
+      GenesisDynamicsLanguage
+    | "0000000000000000000000000000000000000000000000000000000000000005" ->
+      GenesisStaticsLanguage
+    (* concrete syntaxes *)
+    | "0000000000000000000000000000000000000000000000000000000000000006" ->
+      GenesisTermConcrete
+    | "0000000000000000000000000000000000000000000000000000000000000007" ->
+      GenesisAbstractSyntaxConcrete
+    | "0000000000000000000000000000000000000000000000000000000000000008" ->
+      GenesisConcreteSyntaxConcrete
+    | "0000000000000000000000000000000000000000000000000000000000000009" ->
+      GenesisDynamicsConcrete
+    | "000000000000000000000000000000000000000000000000000000000000000a" ->
+      GenesisStaticsConcrete
+    | sha_str -> Term (Map.find_exn term_store sha_str)
+ ;;
+
+  let initial_name_store : name_store =
+    Util.String.Map.of_alist_exn
+      (* abstract syntaxes *)
+      [ "term", "0000000000000000000000000000000000000000000000000000000000000001"
+      ; ( "abstract_syntax"
+        , "0000000000000000000000000000000000000000000000000000000000000002" )
+      ; ( "concrete_syntax"
+        , "0000000000000000000000000000000000000000000000000000000000000003" )
+      ; "dynamics", "0000000000000000000000000000000000000000000000000000000000000004"
+      ; "statics", "0000000000000000000000000000000000000000000000000000000000000005"
+        (* concrete syntaxes *)
+      ; ( "term_concrete"
+        , "0000000000000000000000000000000000000000000000000000000000000006" )
+      ; ( "abstract_syntax_concrete"
+        , "0000000000000000000000000000000000000000000000000000000000000007" )
+      ; ( "concrete_syntax_concrete"
+        , "0000000000000000000000000000000000000000000000000000000000000008" )
+      ; ( "dynamics_concrete"
+        , "0000000000000000000000000000000000000000000000000000000000000009" )
+      ; ( "statics_concrete"
+        , "000000000000000000000000000000000000000000000000000000000000000a" )
+      ]
+  ;;
+end
 
 let commands_abstract_syntax =
   {|
@@ -54,47 +131,44 @@ command :=
    ast -> match NonBinding.from_nominal ast with | None -> Error "Failed to convert ast to
    non-binding" | Some tm -> Ok tm *)
 
-let lookup_lang : store -> NonBinding.term -> store_value =
+let lookup_lang : Store.t -> unit NonBinding.term -> Store.store_value =
  fun { term_store; name_store } -> function
-  | Operator ("sha", [ Primitive (PrimString sha_str) ]) -> lookup_sha term_store sha_str
-  | Operator ("name", [ Primitive (PrimString name) ]) ->
-    Hashtbl.find_exn name_store name |> lookup_sha term_store
+  | Operator ((), "sha", [ Primitive ((), String sha_str) ]) ->
+    Store.lookup_sha term_store sha_str
+  | Operator ((), "name", [ Primitive ((), String name) ]) ->
+    Map.find_exn name_store name |> Store.lookup_sha term_store
   | tm ->
-    failwith
-      ("Failed to look up language term "
-      ^ (tm |> NonBinding.to_nominal |> Binding.Nominal.pp_term'))
+    Fmt.failwith
+      "Failed to look up language term %a"
+      Nominal.Term.pp
+      (NonBinding.to_nominal tm)
 ;;
 
-let term_of_maybe : NonBinding.term -> NonBinding.term option = function
-  | Operator ("just", [ a ]) -> Some a
-  | Operator ("nothing", []) -> None
+let term_of_maybe : unit NonBinding.term -> unit NonBinding.term option = function
+  | Operator ((), "just", [ a ]) -> Some a
+  | Operator ((), "nothing", []) -> None
   | _ -> failwith "term_of_maybe: unexpected term"
 ;;
 
-let lookup_maybe_concrete : store -> NonBinding.term -> store_value =
+let lookup_maybe_concrete : Store.t -> unit NonBinding.term -> Store.store_value =
  fun store tm ->
-  printf
-    "lookup_maybe_concrete tm: %s\n"
-    (tm |> NonBinding.to_nominal |> Binding.Nominal.pp_term');
+  Fmt.pr "lookup_maybe_concrete tm: %a\n" Nominal.Term.pp (NonBinding.to_nominal tm);
   let tm' = term_of_maybe tm in
   match tm' with
   | None -> GenesisTermConcrete
   | Some tm'' ->
-    printf
-      "lookup_maybe_concrete tm'': %s\n"
-      (tm'' |> NonBinding.to_nominal |> Binding.Nominal.pp_term');
+    Fmt.pr "lookup_maybe_concrete tm'': %a\n" Nominal.Term.pp (NonBinding.to_nominal tm'');
     lookup_lang store tm''
 ;;
 
 type parsed =
-  | ParsedTerm of Binding.Nominal.term
-  | ParsedAbstract of AbstractSyntax.abstract_syntax
-  | ParsedStatics of Statics.rule list
-  | ParsedDynamics of Core.Types.term
+  | ParsedTerm of unit Nominal.term
+  | ParsedAbstract of unit AbstractSyntax.t
+  | ParsedStatics of unit Statics.TypingRule.t list
+  | ParsedDynamics of unit Core.term
 
-(* | ParsedParseable of parseable' *)
-
-let term_of_parsed : parsed -> Binding.Nominal.term = function
+(*
+let term_of_parsed : parsed -> unit Nominal.term = function
   | ParsedTerm tm -> tm
   | ParsedAbstract abstract_syntax ->
     abstract_syntax |> AbstractSyntax.to_term |> NonBinding.to_nominal
@@ -102,7 +176,7 @@ let term_of_parsed : parsed -> Binding.Nominal.term = function
   | ParsedDynamics dynamics -> Dynamics.Core.to_term dynamics
 ;;
 
-let parse_store_value : store_value -> store_value -> string -> parsed =
+let parse_store_value : Store.store_value -> Store.store_value -> string -> parsed =
  fun _abstract_syntax_val concrete_syntax_val str ->
   let lex = Lexing.from_string str in
   printf "Parsing {|%s|}\n" str;
@@ -132,7 +206,7 @@ let parse_store_value : store_value -> store_value -> string -> parsed =
    failwith "TODO" *)
 
 (* TODO: we end up double-wrapping the results of this call in eval_inline_block *)
-let eval_command : store -> NonBinding.term -> string -> Vdom.Node.t =
+let eval_command : Store.t -> unit NonBinding.term -> string -> Vdom.Node.t =
  fun ({ term_store; name_store } as store) cmd body ->
   match cmd with
   | Operator
@@ -142,11 +216,11 @@ let eval_command : store -> NonBinding.term -> string -> Vdom.Node.t =
     let parsed_defn = parse_store_value lang_val concrete_val body in
     let defn_tm = term_of_parsed parsed_defn in
     let key = Binding.Nominal.hash defn_tm in
-    Hashtbl.set term_store ~key ~data:defn_tm;
+    Map.set term_store ~key ~data:defn_tm;
     (match maybe_ident with
-    | Operator ("just", [ Primitive (PrimString ident) ]) ->
+    | Operator ("just", [ Primitive (String ident) ]) ->
       printf "setting name store %s -> %s\n" ident key;
-      Hashtbl.set name_store ~key:ident ~data:key
+      Map.set name_store ~key:ident ~data:key
     | _ ->
       printf "not setting name store (%s)\n" key;
       ());
@@ -155,6 +229,7 @@ let eval_command : store -> NonBinding.term -> string -> Vdom.Node.t =
   | Operator ("eval", [ _ident ]) -> failwith "TODO eval"
   | _ -> failwith "TODO unknown command"
 ;;
+*)
 
 let abstractSyntax =
   {|
@@ -230,13 +305,16 @@ document := document(list(block(element())))
 
 exception TranslationError of string
 
-let term_of_option : f:('a -> NonBinding.term) -> 'a option -> NonBinding.term =
- fun ~f -> function None -> Operator ("none", []) | Some a -> Operator ("some", [ f a ])
+let term_of_option : f:('a -> unit NonBinding.term) -> 'a option -> unit NonBinding.term =
+ fun ~f -> function
+  | None -> Operator ((), "none", [])
+  | Some a -> Operator ((), "some", [ f a ])
 ;;
 
-let term_of_string : string -> NonBinding.term = fun str -> Primitive (PrimString str)
+let term_of_string : string -> unit NonBinding.term = fun str -> Primitive ((), String str)
 
-let term_of_attributes : Omd.Attributes.t -> NonBinding.term =
+(*
+let term_of_attributes : Omd.attributes -> unit NonBinding.term =
  fun { id; classes; attributes } ->
   Operator
     ( "attributes"
@@ -248,44 +326,60 @@ let term_of_attributes : Omd.Attributes.t -> NonBinding.term =
                  ("pair", [ Primitive (PrimString x); Primitive (PrimString y) ])))
       ] )
 ;;
+*)
 
-let rec term_of_inline : Omd.inline -> NonBinding.term = function
-  | Concat inlines -> Sequence (List.map inlines ~f:term_of_inline)
-  | Text str -> Primitive (PrimString str)
+let mk_sequence tms = NonBinding.Operator ((), "sequence", tms)
+
+let rec term_of_inline_desc : Omd.inline_desc -> unit NonBinding.term = function
+  | Concat inlines ->
+    Operator ((), "concat", List.map inlines ~f:term_of_inline) (* XXX: convert to list *)
+  | Text str -> Primitive ((), String str)
   | _ -> raise (TranslationError "Unsupported inline type")
+
+and term_of_inline : Omd.inline -> unit NonBinding.term =
+ fun { il_desc; il_attributes = _TODO } -> term_of_inline_desc il_desc
 ;;
 
-let term_of_inline_block : Omd.inline Omd.block -> NonBinding.term = function
+let term_of_inline_block_desc : Omd.block_desc -> unit NonBinding.term = function
   | Paragraph inline -> term_of_inline inline
-  | List _blocks -> raise (TranslationError "TODO: list blocks")
+  | List (_list_type, _list_spacing, _blocks) ->
+    raise (TranslationError "TODO: list blocks")
   | Blockquote _ -> raise (TranslationError "TODO: blockquote")
-  | Heading { level; text; attributes } ->
+  | Heading (level, inline) ->
     Operator
-      ( "heading"
-      , [ Primitive (PrimInteger (Bigint.of_int level))
-        ; term_of_inline text
-        ; term_of_attributes attributes
+      ( ()
+      , "heading"
+      , [ Primitive ((), Integer (Z.of_int level))
+        ; term_of_inline inline
+          (* ; term_of_attributes attributes *)
         ] )
-  | Code_block { kind = _; label; other = _; code; attributes } ->
+  (* | Code_block { kind = _; label; other = _; code; attributes } -> *)
+  | Code_block (label, code) ->
     Operator
-      ( "code_block"
-      , [ term_of_option label ~f:term_of_string
-        ; term_of_option code ~f:term_of_string
-        ; term_of_attributes attributes
+      ( ()
+      , "code_block"
+      , [ term_of_string label
+        ; term_of_string code
+          (* ; term_of_attributes attributes *)
         ] )
-  | Thematic_break -> Operator ("thematic_break", [])
+  | Thematic_break -> Operator ((), "thematic_break", [])
   | _ -> raise (TranslationError "Unsupported block type")
 ;;
 
-let rec vdom_of_inline : Omd.inline -> Vdom.Node.t list =
-  Vdom.Node.(
+let term_of_inline_block : Omd.block -> unit NonBinding.term =
+ fun { bl_desc; bl_attributes = _TODO } -> term_of_inline_block_desc bl_desc
+;;
+
+(*
+let rec dom_of_inline : Omd.inline -> Brr.El.t list =
+  Brr.El.(
     function
-    | Concat inlines -> inlines |> List.map ~f:vdom_of_inline |> List.concat
+    | Concat inlines -> inlines |> List.map ~f:dom_of_inline |> List.concat
     | Text str -> [ text str ]
     | Emph { style = _; kind; content } ->
       [ (match kind with
-        | Normal -> create "em" [] (vdom_of_inline content)
-        | Strong -> strong [] (vdom_of_inline content))
+        | Normal -> create "em" [] (dom_of_inline content)
+        | Strong -> strong [] (dom_of_inline content))
       ]
     | Code { level = _; content; attributes = _ } -> [ code [] [ text content ] ]
     | Hard_break -> [ br [] ]
@@ -295,13 +389,13 @@ let rec vdom_of_inline : Omd.inline -> Vdom.Node.t list =
     | Tag _ (* inline Tag.t *) -> [ text "tag not supported" ])
 ;;
 
-let error_block msg = Vdom.Node.(div [] [ text msg ])
+let error_block msg = Brr.El.(div [] [ text msg ])
 
-let eval_inline_block : store -> Omd.inline Omd.block -> Vdom.Node.t =
+let eval_inline_block : store -> Omd.inline Omd.block -> Brr.El.t =
  fun store ->
-  Vdom.Node.(
+  Brr.El.(
     function
-    | Paragraph inline -> p [] (vdom_of_inline inline)
+    | Paragraph inline -> p [] (dom_of_inline inline)
     | List _blocks -> text "TODO eval_inline_block: list blocks"
     | Blockquote _ -> text "TODO eval_inline_block: blockquote"
     | Heading { level; text; attributes = _ } ->
@@ -309,7 +403,7 @@ let eval_inline_block : store -> Omd.inline Omd.block -> Vdom.Node.t =
         match level with 1 -> h1 | 2 -> h2 | 3 -> h3 | 4 -> h4 | 5 -> h5 | _ -> h6
         (* TODO: error *)
       in
-      node_creator [ (* TODO: attributes *) ] (vdom_of_inline text)
+      node_creator [ (* TODO: attributes *) ] (dom_of_inline text)
     | Code_block _ (* { kind = _; label = _; other = _; code; attributes = _ } *) ->
       failwith "TODO"
       (* printf "label: '%s'\n" (match label with | None -> "none" | Some l -> l);
@@ -334,16 +428,17 @@ let eval_inline_block : store -> Omd.inline Omd.block -> Vdom.Node.t =
     | Tag_block _ (* 'a block Tag_block.t *) -> text "TODO: tag blocks")
 ;;
 
-let evaluate_and_produce_vdom : store -> string -> Vdom.Node.t =
+let evaluate_and_produce_dom : store -> string -> Brr.El.t =
  fun store str ->
   let md = Omd.of_string str in
-  Vdom.Node.div [] (List.map md ~f:(eval_inline_block store))
+  Brr.El.div [] (List.map md ~f:(eval_inline_block store))
 ;;
+*)
 
-let parse : string -> (NonBinding.term, string) Result.t =
+let parse : string -> (unit NonBinding.term, string) Result.t =
  fun str ->
   let md = Omd.of_string str in
-  try Ok (Sequence (List.map md ~f:term_of_inline_block)) with
+  try Ok (mk_sequence (List.map md ~f:term_of_inline_block)) with
   | TranslationError msg -> Error msg
 ;;
 
@@ -351,7 +446,7 @@ let%test_module "markdown" =
   (module struct
     let print_parse str =
       print_string
-        (match parse str with Ok tm -> NonBinding.to_string tm | Error msg -> msg)
+        (match parse str with Ok tm -> Fmt.str "%a" NonBinding.pp tm | Error msg -> msg)
     ;;
 
     let%expect_test _ =
