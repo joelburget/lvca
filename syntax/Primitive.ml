@@ -199,6 +199,8 @@ let unjsonify json =
 ;;
 
 module Properties = struct
+  module ParsePrimitive = Parse (ParseUtil.NoComment)
+
   let ( = ) = equal ~info_eq:Unit.( = )
 
   let json_round_trip1 : unit t -> PropertyResult.t =
@@ -220,8 +222,6 @@ module Properties = struct
         "jsonify t <> json (TODO: print)"
     | None -> Uninteresting
  ;;
-
-  module ParsePrimitive = Parse (ParseUtil.NoComment)
 
   let string_round_trip1 : unit t -> PropertyResult.t =
    fun t ->
@@ -254,8 +254,10 @@ end
 
 let%test_module "Parsing" =
   (module struct
+    module ParsePrimitive = Parse (ParseUtil.NoComment)
+
     let print_parse str =
-      match ParseUtil.parse_string_pos Properties.ParsePrimitive.t str with
+      match ParseUtil.parse_string_pos ParsePrimitive.t str with
       | Ok (prim, range) -> Fmt.pr "%a %a" pp prim OptRange.pp range
       | Error msg -> Fmt.pr "%s" msg
     ;;
