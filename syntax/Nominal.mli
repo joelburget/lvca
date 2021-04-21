@@ -15,13 +15,7 @@ module Term : sig
 
   val equal : ('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val info : 'info t -> 'info
-
-  val pp_generic
-    :  open_loc:'info Fmt.t
-    -> close_loc:'info Fmt.t
-    -> pp_pat:'info Pattern.t Fmt.t
-    -> 'info t Fmt.t
-
+  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val pp : _ t Fmt.t
   val pp_range : OptRange.t t Fmt.t
   val pp_ranges : SourceRanges.t t Fmt.t
@@ -103,13 +97,7 @@ module Scope : sig
   type 'info t = 'info scope = Scope of 'info Pattern.t list * 'info term
 
   val equal : ('info -> 'info -> bool) -> 'info t -> 'info t -> bool
-
-  val pp_generic
-    :  open_loc:'info Fmt.t
-    -> close_loc:'info Fmt.t
-    -> pp_pat:'info Pattern.t Fmt.t
-    -> 'info t Fmt.t
-
+  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val pp : _ t Fmt.t
   val pp_range : OptRange.t t Fmt.t
   val pp_ranges : SourceRanges.t t Fmt.t

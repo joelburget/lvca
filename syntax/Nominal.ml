@@ -30,7 +30,7 @@ let info = function
   | Primitive p -> Primitive.info p
 ;;
 
-let rec term_pp_generic ~open_loc ~close_loc ~pp_pat ppf tm =
+let rec term_pp_generic ~open_loc ~close_loc ppf tm =
   let list, string, semi, pf = Fmt.(list, string, semi, pf) in
   open_loc ppf (info tm);
   (match tm with
@@ -39,19 +39,26 @@ let rec term_pp_generic ~open_loc ~close_loc ~pp_pat ppf tm =
       ppf
       "@[<hv>%s(%a)@]"
       tag
-      (list ~sep:semi (scope_pp_generic ~open_loc ~close_loc ~pp_pat))
+      (list ~sep:semi (scope_pp_generic ~open_loc ~close_loc))
       subtms
   | Var (_, v) -> string ppf v
   | Primitive p ->
     Primitive.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p);
   close_loc ppf (info tm)
 
-and scope_pp_generic ~open_loc ~close_loc ~pp_pat ppf (Scope (bindings, body)) =
+and scope_pp_generic ~open_loc ~close_loc ppf (Scope (bindings, body)) =
   let any, list, pf = Fmt.(any, list, pf) in
-  let pp_body = term_pp_generic ~open_loc ~close_loc ~pp_pat in
+  let pp_body = term_pp_generic ~open_loc ~close_loc in
   match bindings with
   | [] -> pp_body ppf body
-  | _ -> pf ppf "%a.@ %a" (list ~sep:(any ".@ ") pp_pat) bindings pp_body body
+  | _ ->
+    pf
+      ppf
+      "%a.@ %a"
+      (list ~sep:(any ".@ ") (Pattern.pp_generic ~open_loc ~close_loc))
+      bindings
+      pp_body
+      body
 ;;
 
 let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
@@ -127,30 +134,16 @@ module Term = struct
   let equal = term_equal
   let info = info
   let pp_generic = term_pp_generic
-
-  let pp ppf tm =
-    pp_generic
-      ~open_loc:(fun _ _ -> ())
-      ~close_loc:(fun _ _ -> ())
-      ~pp_pat:Pattern.pp
-      ppf
-      tm
-  ;;
+  let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 
   let pp_range ppf tm =
-    pp_generic
-      ~open_loc:OptRange.open_stag
-      ~close_loc:OptRange.close_stag
-      ~pp_pat:Pattern.pp_range
-      ppf
-      tm
+    pp_generic ~open_loc:OptRange.open_stag ~close_loc:OptRange.close_stag ppf tm
   ;;
 
   let pp_ranges ppf tm =
     pp_generic
       ~open_loc:(fun ppf info -> Stdlib.Format.pp_open_stag ppf (SourceRanges.Stag info))
       ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
-      ~pp_pat:Pattern.pp_ranges
       ppf
       tm
   ;;
@@ -504,30 +497,16 @@ module Scope = struct
 
   let equal = scope_equal
   let pp_generic = scope_pp_generic
-
-  let pp ppf tm =
-    pp_generic
-      ~open_loc:(fun _ _ -> ())
-      ~close_loc:(fun _ _ -> ())
-      ~pp_pat:Pattern.pp
-      ppf
-      tm
-  ;;
+  let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 
   let pp_range ppf tm =
-    pp_generic
-      ~open_loc:OptRange.open_stag
-      ~close_loc:OptRange.close_stag
-      ~pp_pat:Pattern.pp_range
-      ppf
-      tm
+    pp_generic ~open_loc:OptRange.open_stag ~close_loc:OptRange.close_stag ppf tm
   ;;
 
   let pp_ranges ppf tm =
     pp_generic
       ~open_loc:(fun ppf info -> Stdlib.Format.pp_open_stag ppf (SourceRanges.Stag info))
       ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
-      ~pp_pat:Pattern.pp_ranges
       ppf
       tm
   ;;

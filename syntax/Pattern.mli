@@ -30,6 +30,7 @@ val list_vars_of_pattern : 'info t -> ('info * string) list
 
 (** {1 Printing} *)
 
+val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 val pp : _ t Fmt.t
 val pp_range : OptRange.t t Fmt.t
 val pp_ranges : SourceRanges.t t Fmt.t

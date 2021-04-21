@@ -72,47 +72,36 @@ let info = function
   | Primitive p -> Primitive.info p
 ;;
 
-let prim_pp ppf prim =
-  Primitive.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf prim
-;;
-
-let rec pp ppf =
+let rec pp_generic ~open_loc ~close_loc ppf pat =
   let list, pf, semi = Fmt.(list, pf, semi) in
-  function
-  | Operator (_, name, pats) -> pf ppf "@[<2>%s(%a)@]" name (pp |> list ~sep:semi) pats
-  | Primitive prim -> prim_pp ppf prim
-  | Var (_, name) -> Fmt.string ppf name
-  | Ignored (_, name) -> pf ppf "_%s" name
-;;
-
-let rec pp_range_generic ~opener ~closer ppf pat =
-  let list, pf, semi = Fmt.(list, pf, semi) in
-  opener ppf (info pat);
+  open_loc ppf (info pat);
   (match pat with
   | Operator (_, name, pats) ->
     pf
       ppf
       "@[<2>@{%s@}(%a)@]"
       name
-      (pp_range_generic ~opener ~closer |> list ~sep:semi)
+      (pp_generic ~open_loc ~close_loc |> list ~sep:semi)
       pats
   | Primitive prim ->
     Primitive.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf prim
   | Var (_, name) -> Fmt.string ppf name
   | Ignored (_, name) -> pf ppf "_%s" name);
-  closer ppf (info pat)
+  close_loc ppf (info pat)
 ;;
 
+let pp ppf = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf
+
 let pp_range ppf pat =
-  pp_range_generic ppf pat ~opener:OptRange.open_stag ~closer:OptRange.close_stag
+  pp_generic ppf pat ~open_loc:OptRange.open_stag ~close_loc:OptRange.close_stag
 ;;
 
 let pp_ranges ppf pat =
-  pp_range_generic
+  pp_generic
     ppf
     pat
-    ~opener:(fun ppf loc -> Format.pp_open_stag ppf (SourceRanges.Stag loc))
-    ~closer:(fun ppf _loc -> Format.pp_close_stag ppf ())
+    ~open_loc:(fun ppf loc -> Format.pp_open_stag ppf (SourceRanges.Stag loc))
+    ~close_loc:(fun ppf _loc -> Format.pp_close_stag ppf ())
 ;;
 
 let rec jsonify pat =
@@ -380,19 +369,18 @@ let%test_module "Parsing" =
 ;;
 
 module Properties = struct
+  open PropertyResult
   module ParsePattern = Parse (ParseUtil.NoComment)
   module Prim = Primitive.Parse (ParseUtil.NoComment)
-  open PropertyResult
 
   let parse = ParseUtil.parse_string ParsePattern.t
   let to_string = Fmt.to_to_string pp
+  let ( = ) = equal ~info_eq:Unit.( = )
 
   let json_round_trip1 t =
     match t |> jsonify |> unjsonify with
     | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
-    | Some t' ->
-      let t = erase t in
-      PropertyResult.check Caml.(t = t') (Fmt.str "%a <> %a" pp t' pp t)
+    | Some t' -> PropertyResult.check (t = t') (Fmt.str "%a <> %a" pp t' pp t)
   ;;
 
   let json_round_trip2 json =
@@ -401,14 +389,14 @@ module Properties = struct
     | Some t ->
       PropertyResult.check
         Lvca_util.Json.(jsonify t = json)
-        "jsonify t <> json (TODO: print)"
+        (Fmt.str "jsonify %a <> json (TODO: print)" pp t)
   ;;
 
   let string_round_trip1 t =
     match t |> to_string |> parse with
     | Ok t' ->
       let t'' = erase t' in
-      PropertyResult.check Caml.(t'' = t) (Fmt.str "%a <> %a" pp t'' pp t)
+      PropertyResult.check (t'' = t) (Fmt.str "%a <> %a" pp t'' pp t)
     | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
   ;;
 
