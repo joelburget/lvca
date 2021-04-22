@@ -36,11 +36,11 @@ let prim_gen : unit Primitive.t Crowbar.gen =
   let open Crowbar in
   let open Primitive in
   let options =
-    [ map [ int ] (fun i -> (), Plain.PrimInteger (Z.of_int i))
+    [ map [ int ] (fun i -> (), Plain.Integer (Z.of_int i))
       (* TODO: string and float parsing has a couple issues *)
-    ; map [ str_gen ] (fun str -> (), Plain.PrimString str)
+    ; map [ str_gen ] (fun str -> (), Plain.String str)
       (* ; map [float] (fun f -> PrimFloat f) *)
-    ; map [ char ] (fun c -> (), Plain.PrimChar c)
+    ; map [ char ] (fun c -> (), Plain.Char c)
     ]
   in
   choose options
