@@ -4,16 +4,18 @@ module Util = Lvca_util
 module Json = Util.Json
 module String = Util.String
 
-type 'info term =
-  | Operator of 'info * string * 'info scope list
-  | Var of 'info * string
-  | Primitive of 'info Primitive.t
+module Types = struct
+  type 'info term =
+    | Operator of 'info * string * 'info scope list
+    | Var of 'info * string
+    | Primitive of 'info Primitive.t
 
-and 'info scope = Scope of 'info Pattern.t list * 'info term
+  and 'info scope = Scope of 'info Pattern.t list * 'info term
+end
 
 let rec term_equal info_eq t1 t2 =
   match t1, t2 with
-  | Operator (i1, name1, scopes1), Operator (i2, name2, scopes2) ->
+  | Types.Operator (i1, name1, scopes1), Types.Operator (i2, name2, scopes2) ->
     info_eq i1 i2
     && String.(name1 = name2)
     && List.equal (scope_equal info_eq) scopes1 scopes2
@@ -26,7 +28,7 @@ and scope_equal info_eq (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
 ;;
 
 let info = function
-  | Operator (info, _, _) | Var (info, _) -> info
+  | Types.Operator (info, _, _) | Var (info, _) -> info
   | Primitive p -> Primitive.info p
 ;;
 
@@ -66,12 +68,12 @@ let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
 let rec term_jsonify tm =
   let array, string = Json.(array, string) in
   match tm with
-  | Operator (_, tag, tms) ->
+  | Types.Operator (_, tag, tms) ->
     array [| string "o"; string tag; array_map scope_jsonify tms |]
   | Var (_, name) -> array [| string "v"; string name |]
   | Primitive p -> array [| string "p"; Primitive.jsonify p |]
 
-and scope_jsonify (Scope (pats, body)) : Json.t =
+and scope_jsonify (Types.Scope (pats, body)) : Json.t =
   let body = term_jsonify body in
   Json.array [| array_map Pattern.jsonify pats; body |]
 ;;
@@ -84,11 +86,11 @@ let rec term_unjsonify =
       let%map scopes' =
         scopes |> Array.to_list |> List.map ~f:scope_unjsonify |> Option.all
       in
-      Operator ((), tag, scopes')
+      Types.Operator ((), tag, scopes')
     | Array [| String "v"; String name |] -> Some (Var ((), name))
     | Array [| String "p"; prim |] ->
       let%map prim = Primitive.unjsonify prim in
-      Primitive prim
+      Types.Primitive prim
     | _ -> None)
 
 and scope_unjsonify =
@@ -100,13 +102,13 @@ and scope_unjsonify =
       let binders, body = arr |> Array.to_list |> Lvca_util.List.unsnoc in
       let%bind binders' = binders |> List.map ~f:Pattern.unjsonify |> Option.all in
       let%map body' = term_unjsonify body in
-      Scope (binders', body')
+      Types.Scope (binders', body')
     | _ -> None)
 ;;
 
 let rec term_map_info ~f = function
-  | Operator (info, name, pats) ->
-    Operator (f info, name, List.map pats ~f:(scope_map_info ~f))
+  | Types.Operator (info, name, pats) ->
+    Types.Operator (f info, name, List.map pats ~f:(scope_map_info ~f))
   | Var (info, name) -> Var (f info, name)
   | Primitive prim -> Primitive (Primitive.map_info ~f prim)
 
@@ -118,7 +120,7 @@ and scope_map_info ~f (Scope (binders, tm)) =
 
 let rec term_subst_all ctx tm =
   match tm with
-  | Primitive _ -> tm
+  | Types.Primitive _ -> tm
   | Var (_loc, name) -> (match Map.find ctx name with Some v -> v | None -> tm)
   | Operator (info, name, scopes) ->
     Operator (info, name, List.map scopes ~f:(scope_subst_all ctx))
@@ -126,8 +128,8 @@ let rec term_subst_all ctx tm =
 and scope_subst_all ctx (Scope (pats, tm)) = Scope (pats, term_subst_all ctx tm)
 
 module Term = struct
-  type 'info t = 'info term =
-    | Operator of 'info * string * 'info scope list
+  type 'info t = 'info Types.term =
+    | Operator of 'info * string * 'info Types.scope list
     | Var of 'info * string
     | Primitive of 'info Primitive.t
 
@@ -360,7 +362,7 @@ module Term = struct
     | Scope (binders, tm) ->
       let binders' = List.map binders ~f:Pattern.erase in
       let tm = erase tm in
-      Error (Scope (binders', tm))
+      Error (Types.Scope (binders', tm))
   ;;
 
   let rec of_pattern = function
@@ -368,7 +370,7 @@ module Term = struct
       Operator
         ( info
         , name (* TODO: should the scope really inherit the 'info? *)
-        , List.map pats ~f:(fun pat -> Scope ([], of_pattern pat)) )
+        , List.map pats ~f:(fun pat -> Types.Scope ([], of_pattern pat)) )
     | Primitive prim -> Primitive prim
     | Var (info, name) -> Var (info, name)
     | Ignored (info, name) -> Var (info, "_" ^ name)
@@ -399,9 +401,9 @@ module Term = struct
             =
            fun range tag tokens ->
             (* terms encountered between '.'s, before hitting ',' / ';' *)
-            let binding_queue : OptRange.t term Queue.t = Queue.create () in
+            let binding_queue : OptRange.t Types.term Queue.t = Queue.create () in
             (* scopes encountered *)
-            let scope_queue : OptRange.t scope Queue.t = Queue.create () in
+            let scope_queue : OptRange.t Types.scope Queue.t = Queue.create () in
             let rec go = function
               | [] -> return ~pos:range (Operator (range, tag, Queue.to_list scope_queue))
               | Tm tm :: Sep '.' :: rest ->
@@ -493,7 +495,7 @@ module Term = struct
 end
 
 module Scope = struct
-  type 'info t = 'info scope = Scope of 'info Pattern.t list * 'info term
+  type 'info t = 'info Types.scope = Scope of 'info Pattern.t list * 'info Types.term
 
   let equal = scope_equal
   let pp_generic = scope_pp_generic

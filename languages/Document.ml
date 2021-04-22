@@ -20,9 +20,9 @@ module Store = struct
     | GenesisConcreteSyntaxConcrete
     | GenesisDynamicsConcrete
     | GenesisStaticsConcrete
-    | Term of unit Nominal.term
+    | Term of unit Nominal.Term.t
 
-  type term_store = unit Nominal.term Util.String.Map.t
+  type term_store = unit Nominal.Term.t Util.String.Map.t
   type name_store = string Util.String.Map.t
 
   type t =
@@ -162,7 +162,7 @@ let lookup_maybe_concrete : Store.t -> unit NonBinding.term -> Store.store_value
 ;;
 
 type parsed =
-  | ParsedTerm of unit Nominal.term
+  | ParsedTerm of unit Nominal.Term.t
   | ParsedAbstract of unit AbstractSyntax.t
   | ParsedStatics of unit Statics.TypingRule.t list
   | ParsedDynamics of unit Core.term

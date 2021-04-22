@@ -1,15 +1,17 @@
 (** Representation of terms that simply uses variable names to represent scope. *)
 
-type 'info term =
-  | Operator of 'info * string * 'info scope list
-  | Var of 'info * string
-  | Primitive of 'info Primitive.t
+module Types : sig
+  type 'info term =
+    | Operator of 'info * string * 'info scope list
+    | Var of 'info * string
+    | Primitive of 'info Primitive.t
 
-and 'info scope = Scope of 'info Pattern.t list * 'info term
+  and 'info scope = Scope of 'info Pattern.t list * 'info term
+end
 
 module Term : sig
-  type 'info t = 'info term =
-    | Operator of 'info * string * 'info scope list
+  type 'info t = 'info Types.term =
+    | Operator of 'info * string * 'info Types.scope list
     | Var of 'info * string
     | Primitive of 'info Primitive.t
 
@@ -42,7 +44,7 @@ module Term : sig
 
       For example, the term [add(lit(1); a)] is convertible to a pattern, but
       [lambda(a. a)] is not. *)
-  val to_pattern : 'info t -> ('info Pattern.t, unit scope) Result.t
+  val to_pattern : 'info t -> ('info Pattern.t, unit Types.scope) Result.t
 
   (** Convert from a pattern to the corresponding term. This always succeeds.
 
@@ -94,7 +96,7 @@ module Term : sig
 end
 
 module Scope : sig
-  type 'info t = 'info scope = Scope of 'info Pattern.t list * 'info term
+  type 'info t = 'info Types.scope = Scope of 'info Pattern.t list * 'info Types.term
 
   val equal : ('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
@@ -118,7 +120,7 @@ val of_pattern : ('info, 'prim) Pattern.t -> ('info, 'prim) t
   (** Substitute all the variables in the context.
 
       Leaves variables not found in the context free. *)
-  val subst_all : 'info term Lvca_util.String.Map.t -> 'info t -> 'info t
+  val subst_all : 'info Types.term Lvca_util.String.Map.t -> 'info t -> 'info t
 
   (* TODO:
   val free_vars : (_, _) t -> Lvca_util.String.Set.t

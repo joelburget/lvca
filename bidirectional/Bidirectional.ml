@@ -7,7 +7,7 @@ type 'info capture = 'info BindingAwarePattern.capture
 
 type 'a env =
   { rules : 'a Rule.t list (** The (checking / inference) rules we can apply *)
-  ; var_types : 'a Nominal.term SMap.t (** The types of all known free variables *)
+  ; var_types : 'a Nominal.Term.t SMap.t (** The types of all known free variables *)
   }
 
 type 'info check_error =
@@ -18,8 +18,8 @@ type 'a trace_entry =
   | CheckTrace of 'a env * 'a Typing.t
   | CheckSuccess
   | CheckFailure of 'a check_error
-  | InferTrace of 'a env * 'a Nominal.term
-  | Inferred of 'a Nominal.term
+  | InferTrace of 'a env * 'a Nominal.Term.t
+  | Inferred of 'a Nominal.Term.t
 
 type 'a trace_step = 'a trace_entry list
 
@@ -37,7 +37,7 @@ let pp_err ppf = function
    values in the context to fill it in. *)
 let instantiate
     :  string option -> 'info capture SMap.t -> 'info BindingAwarePattern.t
-    -> ('info Nominal.term, 'info check_error) Result.t
+    -> ('info Nominal.Term.t, 'info check_error) Result.t
   =
  fun name env pat ->
   let open Result.Let_syntax in
@@ -108,8 +108,8 @@ let update_ctx
 ;;
 
 let ctx_infer
-    :  'info Nominal.term SMap.t -> 'info Nominal.term
-    -> ('info Nominal.term, 'info check_error) Result.t
+    :  'info Nominal.Term.t SMap.t -> 'info Nominal.Term.t
+    -> ('info Nominal.Term.t, 'info check_error) Result.t
   =
  fun var_types -> function
   | Nominal.Term.Var (_, name) ->
@@ -179,12 +179,12 @@ let rec check'
       result)
 
 and infer'
-    :  'info trace_step -> ('info trace_step -> unit) -> 'info env -> 'info Nominal.term
-    -> ('info Nominal.term, 'info check_error) Result.t
+    :  'info trace_step -> ('info trace_step -> unit) -> 'info env -> 'info Nominal.Term.t
+    -> ('info Nominal.Term.t, 'info check_error) Result.t
   =
  fun trace_stack emit_trace ({ rules; var_types } as env) tm ->
   let open Result.Let_syntax in
-  let var_types : 'a Nominal.term SMap.t ref = ref var_types in
+  let var_types : 'a Nominal.Term.t SMap.t ref = ref var_types in
   let trace_stack = InferTrace (env, tm) :: trace_stack in
   emit_trace trace_stack;
   let match_rule Rule.{ name; hypotheses; conclusion } =
