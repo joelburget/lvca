@@ -454,11 +454,12 @@ module Term = struct
     open PropertyResult
 
     let parse = ParseUtil.parse_string Parse.t
+    let ( = ) = equal ~info_eq:Unit.( = )
 
     let json_round_trip1 t =
       match t |> jsonify |> unjsonify with
       | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
-      | Some t' -> PropertyResult.check Caml.(t = t') (Fmt.str "%a <> %a" pp t' pp t)
+      | Some t' -> PropertyResult.check (t = t') (Fmt.str "%a <> %a" pp t' pp t)
     ;;
 
     let json_round_trip2 json =
@@ -474,7 +475,7 @@ module Term = struct
       match t |> pp_str |> parse with
       | Ok t' ->
         let t'' = erase t' in
-        PropertyResult.check Caml.(t'' = t) (Fmt.str "%a <> %a" pp t'' pp t)
+        PropertyResult.check (t'' = t) (Fmt.str "%a <> %a" pp t'' pp t)
       | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (pp_str t) msg)
     ;;
 
@@ -536,7 +537,7 @@ let%test_module "Nominal" =
     ;;
 
     let print_hash tm = printf "%s" (Term.hash tm)
-    let ( = ) = Caml.( = )
+    let ( = ) = Json.( = )
     let tm = Term.Var ((), "x")
     let j_tm = Json.(Array [| String "v"; String "x" |])
 
@@ -628,9 +629,14 @@ let%test_module "Nominal" =
       | Error _ -> failwith "failed to convert term to pattern"
     ;;
 
+    let ( = ) = Pattern.equal ~info_eq:Int.( = )
+
     let%test _ = to_pattern_exn (Var (1, "abc")) = Var (1, "abc")
     let%test _ = to_pattern_exn (Var (2, "_abc")) = Ignored (2, "abc")
     let%test _ = to_pattern_exn (Var (3, "_")) = Ignored (3, "")
+
+    let ( = ) = Term.equal ~info_eq:Int.( = )
+
     let%test _ = Term.of_pattern (Ignored (4, "abc")) = Var (4, "_abc")
     let%test _ = Term.of_pattern (Ignored (5, "")) = Var (5, "_")
   end)
@@ -638,7 +644,7 @@ let%test_module "Nominal" =
 
 let%test_module "TermParser" =
   (module struct
-    let ( = ) = Caml.( = )
+    let ( = ) = Result.equal (Term.equal ~info_eq:Unit.( = )) String.( = )
 
     module ParseNominal = Term.Parse (ParseUtil.NoComment)
     module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)

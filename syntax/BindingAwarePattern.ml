@@ -412,7 +412,9 @@ module Properties = struct
     match t |> to_string |> parse with
     | Ok t' ->
       let t' = erase t' in
-      PropertyResult.check Caml.(t' = t) (Fmt.str "%a <> %a" pp t' pp t)
+      PropertyResult.check
+        (equal ~info_eq:Unit.( = ) t' t)
+        (Fmt.str "%a <> %a" pp t' pp t)
     | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
   ;;
 

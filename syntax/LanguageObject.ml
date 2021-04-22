@@ -86,6 +86,7 @@ module CheckProperties (Object : BindingTermS) :
   Properties with type 'info t = 'info Object.t = struct
   module Parse = Object.Parse (ParseUtil.NoComment)
   open PropertyResult
+  module Object' = Object
   module Object = Mk (Object)
 
   type 'info t = 'info Object.t
@@ -97,7 +98,10 @@ module CheckProperties (Object : BindingTermS) :
   let json_round_trip1 t =
     match t |> Object.jsonify |> Object.unjsonify with
     | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
-    | Some t' -> PropertyResult.check Caml.(t = t') (Fmt.str "%a <> %a" pp t' pp t)
+    | Some t' ->
+      PropertyResult.check
+        (Object'.equal ~info_eq:Unit.( = ) t t')
+        (Fmt.str "%a <> %a" pp t' pp t)
   ;;
 
   let json_round_trip2 json =
@@ -113,7 +117,9 @@ module CheckProperties (Object : BindingTermS) :
     match t |> to_string |> parse with
     | Ok t' ->
       let t'' = Object.erase t' in
-      PropertyResult.check Caml.(t'' = t) (Fmt.str "%a <> %a" pp t'' pp t)
+      PropertyResult.check
+        Object'.(equal ~info_eq:Unit.( = ) t'' t)
+        (Fmt.str "%a <> %a" pp t'' pp t)
     | Error msg -> Failed (Fmt.str {|parse_string "%a": %s|} pp t msg)
   ;;
 

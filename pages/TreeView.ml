@@ -10,11 +10,23 @@ let div, tbody, table, pre, span, td, tr, thead =
   El.(div, tbody, table, pre, span, td, tr, thead)
 ;;
 
-type var_status =
-  | Unselected
-  | Selected
-  | Shadowed
-  | Shadowing
+module VarStatus = struct
+  type t =
+    | Unselected
+    | Selected
+    | Shadowed
+    | Shadowing
+
+  let ( = ) x y =
+    match x, y with
+    | Unselected, Unselected
+    | Selected, Selected
+    | Shadowed, Shadowed
+    | Shadowing, Shadowing ->
+      true
+    | _ -> false
+  ;;
+end
 
 type default_expanded_depth =
   | ExpandedTo of int
@@ -47,9 +59,9 @@ let create_e () =
 ;;
 
 type definition_streams =
-  { trigger_upstream_shadow : var_status -> unit
+  { trigger_upstream_shadow : VarStatus.t -> unit
         (** Alert upstream (a var that we're shadowing) to light up *)
-  ; trigger_downstream_shadow : var_status -> unit
+  ; trigger_downstream_shadow : VarStatus.t -> unit
         (** Alert downstream (a var that shadows us) to light up *)
   }
 
@@ -57,7 +69,7 @@ type render_params =
   { source_column : bool (** Show the "source" column or not *)
   ; range_column : bool (** Show the "range" column or not *)
   ; depth : int
-  ; var_selected_events : var_status event' Lvca_util.String.Map.t
+  ; var_selected_events : VarStatus.t event' Lvca_util.String.Map.t
   ; queue : (El.t * SourceRanges.t event) Queue.t
   }
 
@@ -69,7 +81,7 @@ type expanded = bool
 
 type term_index =
   | OperatorIx of SourceRange.t option * expanded signal'
-  | VarDefIx of SourceRange.t option * var_status event'
+  | VarDefIx of SourceRange.t option * VarStatus.t event'
   | LocIx of SourceRange.t option
 
 let select_source_range : SourceRanges.t -> SourceRange.t option =
@@ -92,7 +104,7 @@ let grid_tmpl ~render_params left loc : El.t * SourceRanges.t event =
     |> Map.to_alist
     (* Highlight background if any variable in scope is selected *)
     |> List.map ~f:(fun (_k, { event; _ }) ->
-           event |> E.map (function Selected -> true | _ -> false))
+           event |> E.map (function VarStatus.Selected -> true | _ -> false))
     |> E.select
     |> S.hold ~eq:Bool.( = ) false
   in
@@ -141,10 +153,10 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
   let { event = selected_event; trigger = trigger_selected } = selected_event in
   let classes_s =
     selected_event
-    |> S.hold ~eq:Caml.( = ) Unselected
+    |> S.hold ~eq:VarStatus.( = ) Unselected
     |> S.map ~eq:Tuple4.Bool.( = ) (fun evt ->
            match evt, var_pos with
-           | Selected, Reference -> true, false, false, false (* reference *)
+           | VarStatus.Selected, Reference -> true, false, false, false (* reference *)
            | Selected, Definition _ -> false, true, false, false (* definition *)
            | Shadowed, Definition _ -> false, false, true, false (* upstream shadow *)
            | Shadowing, Definition _ -> false, false, false, true (* downstream shadow *)

@@ -1464,7 +1464,9 @@ module Properties = struct
     match t |> pp_str |> parse with
     | Ok t' ->
       let t' = erase t' in
-      PropertyResult.check Caml.(t' = t) (Fmt.str "%a <> %a" pp_plain t' pp_plain t)
+      PropertyResult.check
+        (equal Unit.( = ) t' t)
+        (Fmt.str "%a <> %a" pp_plain t' pp_plain t)
     | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (pp_str t) msg)
   ;;
 

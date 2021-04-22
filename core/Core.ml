@@ -567,7 +567,8 @@ let%test_module "Core parsing" =
       let parse_term str =
         ParseUtil.parse_string ParseCore.term str |> Base.Result.ok_or_failwith
       in
-      Caml.(parse_term dynamics_str |> erase = dynamics)
+      let ( = ) = equal ~info_eq:Unit.( = ) in
+      parse_term dynamics_str |> erase = dynamics
     ;;
   end)
 ;;

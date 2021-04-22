@@ -320,7 +320,9 @@ end
 
 let%test_module "Parsing" =
   (module struct
-    let ( = ) = Caml.( = )
+    let ( = ) =
+      Result.equal (Lvca_util.Tuple2.equal String.( = ) OptRange.( = )) String.( = )
+    ;;
 
     module Parse = Mk (NoComment)
 
@@ -329,6 +331,12 @@ let%test_module "Parsing" =
     let%test _ = parse_string_pos Parse.string_lit {|"abc"|} = Ok ("abc", mk 0 5)
     let%test _ = parse_string_pos Parse.string_lit {|"\""|} = Ok ({|"|}, mk 0 4)
     let%test _ = parse_string_pos Parse.string_lit {|"\\"|} = Ok ({|\|}, mk 0 4)
+
+    let ( = ) =
+      Result.equal
+        (Lvca_util.Tuple2.equal (Either.equal String.( = ) Float.( = )) OptRange.( = ))
+        String.( = )
+    ;;
 
     let%test _ =
       parse_string_pos Parse.integer_or_float_lit "123" = Ok (First "123", mk 0 3)
@@ -355,6 +363,12 @@ let%test_module "Parsing" =
     ;;
 
     let%test _ = parse_string_pos Parse.integer_or_float_lit "1." = Ok (Second 1., mk 0 2)
+
+    let ( = ) =
+      Result.equal
+        (Lvca_util.Tuple2.equal (List.equal String.( = )) OptRange.( = ))
+        String.( = )
+    ;;
 
     let%test _ =
       parse_string_pos Parse.(sep_end_by (char ';') string_lit) {|"abc"|}
