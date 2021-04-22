@@ -13,119 +13,124 @@ module Types = struct
   and 'info scope = Scope of 'info Pattern.t list * 'info term
 end
 
-let rec term_equal ~info_eq t1 t2 =
-  match t1, t2 with
-  | Types.Operator (i1, name1, scopes1), Types.Operator (i2, name2, scopes2) ->
-    info_eq i1 i2
-    && String.(name1 = name2)
-    && List.equal (scope_equal ~info_eq) scopes1 scopes2
-  | Primitive p1, Primitive p2 -> Primitive.equal ~info_eq p1 p2
-  | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
-  | _, _ -> false
-
-and scope_equal ~info_eq (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
-  List.equal (Pattern.equal ~info_eq) pats1 pats2 && term_equal ~info_eq tm1 tm2
-;;
-
 let info = function
   | Types.Operator (info, _, _) | Var (info, _) -> info
   | Primitive p -> Primitive.info p
 ;;
 
-let rec term_pp_generic ~open_loc ~close_loc ppf tm =
-  let list, string, semi, pf = Fmt.(list, string, semi, pf) in
-  open_loc ppf (info tm);
-  (match tm with
-  | Operator (_, tag, subtms) ->
-    pf
-      ppf
-      "@[<hv>%s(%a)@]"
-      tag
-      (list ~sep:semi (scope_pp_generic ~open_loc ~close_loc))
-      subtms
-  | Var (_, v) -> string ppf v
-  | Primitive p ->
-    Primitive.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p);
-  close_loc ppf (info tm)
+module Equal = struct
+  let rec term ~info_eq t1 t2 =
+    match t1, t2 with
+    | Types.Operator (i1, name1, scopes1), Types.Operator (i2, name2, scopes2) ->
+      info_eq i1 i2
+      && String.(name1 = name2)
+      && List.equal (scope ~info_eq) scopes1 scopes2
+    | Primitive p1, Primitive p2 -> Primitive.equal ~info_eq p1 p2
+    | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
+    | _, _ -> false
 
-and scope_pp_generic ~open_loc ~close_loc ppf (Scope (bindings, body)) =
-  let any, list, pf = Fmt.(any, list, pf) in
-  let pp_body = term_pp_generic ~open_loc ~close_loc in
-  match bindings with
-  | [] -> pp_body ppf body
-  | _ ->
-    pf
-      ppf
-      "%a.@ %a"
-      (list ~sep:(any ".@ ") (Pattern.pp_generic ~open_loc ~close_loc))
-      bindings
-      pp_body
-      body
-;;
+  and scope ~info_eq (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
+    List.equal (Pattern.equal ~info_eq) pats1 pats2 && term ~info_eq tm1 tm2
+  ;;
+end
 
-let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
+module PpGeneric = struct
+  let rec term ~open_loc ~close_loc ppf tm =
+    let list, string, semi, pf = Fmt.(list, string, semi, pf) in
+    open_loc ppf (info tm);
+    (match tm with
+    | Operator (_, tag, subtms) ->
+      pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi (scope ~open_loc ~close_loc)) subtms
+    | Var (_, v) -> string ppf v
+    | Primitive p ->
+      Primitive.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p);
+    close_loc ppf (info tm)
 
-let rec term_jsonify tm =
-  let array, string = Json.(array, string) in
-  match tm with
-  | Types.Operator (_, tag, tms) ->
-    array [| string "o"; string tag; array_map scope_jsonify tms |]
-  | Var (_, name) -> array [| string "v"; string name |]
-  | Primitive p -> array [| string "p"; Primitive.jsonify p |]
+  and scope ~open_loc ~close_loc ppf (Scope (bindings, body)) =
+    let any, list, pf = Fmt.(any, list, pf) in
+    let pp_body = term ~open_loc ~close_loc in
+    match bindings with
+    | [] -> pp_body ppf body
+    | _ ->
+      pf
+        ppf
+        "%a.@ %a"
+        (list ~sep:(any ".@ ") (Pattern.pp_generic ~open_loc ~close_loc))
+        bindings
+        pp_body
+        body
+  ;;
+end
 
-and scope_jsonify (Types.Scope (pats, body)) : Json.t =
-  let body = term_jsonify body in
-  Json.array [| array_map Pattern.jsonify pats; body |]
-;;
+module Jsonify = struct
+  let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
 
-let rec term_unjsonify =
-  let open Option.Let_syntax in
-  Json.(
-    function
-    | Array [| String "o"; String tag; Array scopes |] ->
-      let%map scopes' =
-        scopes |> Array.to_list |> List.map ~f:scope_unjsonify |> Option.all
-      in
-      Types.Operator ((), tag, scopes')
-    | Array [| String "v"; String name |] -> Some (Var ((), name))
-    | Array [| String "p"; prim |] ->
-      let%map prim = Primitive.unjsonify prim in
-      Types.Primitive prim
-    | _ -> None)
+  let rec term tm =
+    let array, string = Json.(array, string) in
+    match tm with
+    | Types.Operator (_, tag, tms) ->
+      array [| string "o"; string tag; array_map scope tms |]
+    | Var (_, name) -> array [| string "v"; string name |]
+    | Primitive p -> array [| string "p"; Primitive.jsonify p |]
 
-and scope_unjsonify =
-  Json.(
-    function
-    | Array [||] -> None
-    | Array arr ->
-      let open Option.Let_syntax in
-      let binders, body = arr |> Array.to_list |> Lvca_util.List.unsnoc in
-      let%bind binders' = binders |> List.map ~f:Pattern.unjsonify |> Option.all in
-      let%map body' = term_unjsonify body in
-      Types.Scope (binders', body')
-    | _ -> None)
-;;
+  and scope (Types.Scope (pats, body)) : Json.t =
+    let body = term body in
+    Json.array [| array_map Pattern.jsonify pats; body |]
+  ;;
+end
 
-let rec term_map_info ~f = function
-  | Types.Operator (info, name, pats) ->
-    Types.Operator (f info, name, List.map pats ~f:(scope_map_info ~f))
-  | Var (info, name) -> Var (f info, name)
-  | Primitive prim -> Primitive (Primitive.map_info ~f prim)
+module Unjsonify = struct
+  let rec term =
+    let open Option.Let_syntax in
+    Json.(
+      function
+      | Array [| String "o"; String tag; Array scopes |] ->
+        let%map scopes' = scopes |> Array.to_list |> List.map ~f:scope |> Option.all in
+        Types.Operator ((), tag, scopes')
+      | Array [| String "v"; String name |] -> Some (Var ((), name))
+      | Array [| String "p"; prim |] ->
+        let%map prim = Primitive.unjsonify prim in
+        Types.Primitive prim
+      | _ -> None)
 
-and scope_map_info ~f (Scope (binders, tm)) =
-  let binders' = List.map binders ~f:(Pattern.map_info ~f) in
-  let tm = term_map_info ~f tm in
-  Scope (binders', tm)
-;;
+  and scope =
+    Json.(
+      function
+      | Array [||] -> None
+      | Array arr ->
+        let open Option.Let_syntax in
+        let binders, body = arr |> Array.to_list |> Lvca_util.List.unsnoc in
+        let%bind binders' = binders |> List.map ~f:Pattern.unjsonify |> Option.all in
+        let%map body' = term body in
+        Types.Scope (binders', body')
+      | _ -> None)
+  ;;
+end
 
-let rec term_subst_all ctx tm =
-  match tm with
-  | Types.Primitive _ -> tm
-  | Var (_loc, name) -> (match Map.find ctx name with Some v -> v | None -> tm)
-  | Operator (info, name, scopes) ->
-    Operator (info, name, List.map scopes ~f:(scope_subst_all ctx))
+module MapInfo = struct
+  let rec term ~f = function
+    | Types.Operator (info, name, pats) ->
+      Types.Operator (f info, name, List.map pats ~f:(scope ~f))
+    | Var (info, name) -> Var (f info, name)
+    | Primitive prim -> Primitive (Primitive.map_info ~f prim)
 
-and scope_subst_all ctx (Scope (pats, tm)) = Scope (pats, term_subst_all ctx tm)
+  and scope ~f (Scope (binders, tm)) =
+    let binders' = List.map binders ~f:(Pattern.map_info ~f) in
+    let tm = term ~f tm in
+    Scope (binders', tm)
+  ;;
+end
+
+module SubstAll = struct
+  let rec term ctx tm =
+    match tm with
+    | Types.Primitive _ -> tm
+    | Var (_loc, name) -> (match Map.find ctx name with Some v -> v | None -> tm)
+    | Operator (info, name, scopes) ->
+      Operator (info, name, List.map scopes ~f:(scope ctx))
+
+  and scope ctx (Scope (pats, tm)) = Scope (pats, term ctx tm)
+end
 
 module Term = struct
   type 'info t = 'info Types.term =
@@ -133,9 +138,13 @@ module Term = struct
     | Var of 'info * string
     | Primitive of 'info Primitive.t
 
-  let equal = term_equal
+  let equal = Equal.term
+  let map_info = MapInfo.term
+  let subst_all = SubstAll.term
+  let jsonify = Jsonify.term
+  let unjsonify = Unjsonify.term
+  let pp_generic = PpGeneric.term
   let info = info
-  let pp_generic = term_pp_generic
   let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 
   let pp_range ppf tm =
@@ -151,14 +160,10 @@ module Term = struct
   ;;
 
   let pp_str tm = Fmt.to_to_string pp tm
-  let serialize tm = tm |> term_jsonify |> Util.Cbor.encode
-  let deserialize buf = buf |> Util.Cbor.decode |> Option.bind ~f:term_unjsonify
-  let hash tm = tm |> serialize |> Lvca_util.Sha256.hash
-  let map_info = term_map_info
   let erase tm = map_info ~f:(fun _ -> ()) tm
-  let subst_all = term_subst_all
-  let jsonify = term_jsonify
-  let unjsonify = term_unjsonify
+  let serialize tm = tm |> jsonify |> Util.Cbor.encode
+  let deserialize buf = buf |> Util.Cbor.decode |> Option.bind ~f:unjsonify
+  let hash tm = tm |> serialize |> Lvca_util.Sha256.hash
 
   let rec match_pattern ~info_eq pat tm =
     match pat, tm with
@@ -497,8 +502,12 @@ end
 module Scope = struct
   type 'info t = 'info Types.scope = Scope of 'info Pattern.t list * 'info Types.term
 
-  let equal = scope_equal
-  let pp_generic = scope_pp_generic
+  let equal = Equal.scope
+  let pp_generic = PpGeneric.scope
+  let subst_all = SubstAll.scope
+  let map_info = MapInfo.scope
+  let jsonify = Jsonify.scope
+  let unjsonify = Unjsonify.scope
   let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 
   let pp_range ppf tm =
@@ -515,10 +524,6 @@ module Scope = struct
 
   let pp_str scope = Fmt.to_to_string pp scope
   let erase (Scope (pats, tm)) = Scope (List.map pats ~f:Pattern.erase, Term.erase tm)
-  let subst_all = scope_subst_all
-  let map_info = scope_map_info
-  let jsonify = scope_jsonify
-  let unjsonify = scope_unjsonify
 end
 
 let%test_module "Nominal" =
