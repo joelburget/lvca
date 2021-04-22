@@ -38,7 +38,7 @@ and 'info case_scope = CaseScope of 'info pattern * 'info term
 
 let rec equal ~info_eq x y =
   match x, y with
-  | Term x, Term y -> Nominal.Term.equal info_eq x y
+  | Term x, Term y -> Nominal.Term.equal ~info_eq x y
   | CoreApp (x1, x2, x3), CoreApp (y1, y2, y3) ->
     info_eq x1 y1 && equal ~info_eq x2 y2 && List.equal (equal ~info_eq) x3 y3
   | Case (x1, x2, x3), Case (y1, y2, y3) ->
@@ -59,7 +59,7 @@ and let_equal ~info_eq x y =
   info_eq x.info y.info
   && is_rec_equal x.is_rec y.is_rec
   && equal ~info_eq x.tm y.tm
-  && Option.equal (Nominal.Term.equal info_eq) x.ty y.ty
+  && Option.equal (Nominal.Term.equal ~info_eq) x.ty y.ty
   && scope_equal ~info_eq x.scope y.scope
 ;;
 

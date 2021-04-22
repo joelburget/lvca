@@ -15,7 +15,7 @@ module Term : sig
     | Var of 'info * string
     | Primitive of 'info Primitive.t
 
-  val equal : ('info -> 'info -> bool) -> 'info t -> 'info t -> bool
+  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val info : 'info t -> 'info
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val pp : _ t Fmt.t
@@ -98,7 +98,7 @@ end
 module Scope : sig
   type 'info t = 'info Types.scope = Scope of 'info Pattern.t list * 'info Types.term
 
-  val equal : ('info -> 'info -> bool) -> 'info t -> 'info t -> bool
+  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val pp : _ t Fmt.t
   val pp_range : OptRange.t t Fmt.t

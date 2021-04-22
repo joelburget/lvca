@@ -28,7 +28,7 @@ type 'info capture =
 let capture_eq ~info_eq cap1 cap2 =
   match cap1, cap2 with
   | CapturedBinder pat1, CapturedBinder pat2 -> Pattern.equal ~info_eq pat1 pat2
-  | CapturedTerm tm1, CapturedTerm tm2 -> Term.equal info_eq tm1 tm2
+  | CapturedTerm tm1, CapturedTerm tm2 -> Term.equal ~info_eq tm1 tm2
   | _, _ -> false
 ;;
 

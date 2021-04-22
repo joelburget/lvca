@@ -41,7 +41,9 @@ module Model = struct
   ;;
 
   let ( = ) m1 m2 =
-    let result_eq = Result.equal (Nominal.Term.equal OptRange.( = )) String.( = ) in
+    let result_eq =
+      Result.equal (Nominal.Term.equal ~info_eq:OptRange.( = )) String.( = )
+    in
     String.(m1.input = m2.input)
     && result_eq m1.parsed_input m2.parsed_input
     && result_eq m1.result m2.result

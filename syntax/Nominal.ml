@@ -13,18 +13,18 @@ module Types = struct
   and 'info scope = Scope of 'info Pattern.t list * 'info term
 end
 
-let rec term_equal info_eq t1 t2 =
+let rec term_equal ~info_eq t1 t2 =
   match t1, t2 with
   | Types.Operator (i1, name1, scopes1), Types.Operator (i2, name2, scopes2) ->
     info_eq i1 i2
     && String.(name1 = name2)
-    && List.equal (scope_equal info_eq) scopes1 scopes2
+    && List.equal (scope_equal ~info_eq) scopes1 scopes2
   | Primitive p1, Primitive p2 -> Primitive.equal ~info_eq p1 p2
   | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
   | _, _ -> false
 
-and scope_equal info_eq (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
-  List.equal (Pattern.equal ~info_eq) pats1 pats2 && term_equal info_eq tm1 tm2
+and scope_equal ~info_eq (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
+  List.equal (Pattern.equal ~info_eq) pats1 pats2 && term_equal ~info_eq tm1 tm2
 ;;
 
 let info = function
