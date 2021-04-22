@@ -3,6 +3,8 @@
 open Base
 open Lvca_syntax
 module Format = Caml.Format
+module Util = Lvca_util
+module SMap = Util.String.Map
 
 type 'info n_term = 'info Nominal.Term.t
 type 'info pattern = 'info BindingAwarePattern.t
@@ -63,7 +65,7 @@ and let_equal ~info_eq x y =
   && scope_equal ~info_eq x.scope y.scope
 ;;
 
-type 'info env = 'info Nominal.Term.t Lvca_util.String.Map.t
+type 'info env = 'info Nominal.Term.t SMap.t
 
 let preimage _ = failwith "TODO"
 let reverse _tm _cases = failwith "TODO"
@@ -154,7 +156,7 @@ end
 let pp : Format.formatter -> 'a term -> unit = PP.pp
 let to_string : 'a term -> string = fun tm -> Format.asprintf "%a" pp tm
 
-type 'info check_env = 'info Lvca_syntax.Sort.t Lvca_util.String.Map.t
+type 'info check_env = 'info Lvca_syntax.Sort.t SMap.t
 type 'info check_error
 
 let check _env tm =
@@ -167,21 +169,17 @@ let check _env tm =
   | Var _ -> failwith "TODO"
 ;;
 
-let merge_results
-    :  'a n_term Lvca_util.String.Map.t option list
-    -> 'a n_term Lvca_util.String.Map.t option
-  =
+let merge_results : 'a n_term SMap.t option list -> 'a n_term SMap.t option =
  fun results ->
   if List.for_all results ~f:Option.is_some
   then
     Some
       (results
-      |> List.map
-           ~f:(Lvca_util.Option.get_invariant (fun () -> "we just checked all is_some"))
-      |> Lvca_util.String.Map.strict_unions
+      |> List.map ~f:(Util.Option.get_invariant (fun () -> "we just checked all is_some"))
+      |> SMap.strict_unions
       |> function
       | `Duplicate_key k ->
-        Lvca_util.invariant_violation
+        Util.invariant_violation
           (Printf.sprintf "multiple variables with the same name (%s) in one pattern" k)
       | `Ok m -> m)
   else None
@@ -199,16 +197,14 @@ let rec match_pattern v pat =
   | Primitive l1, Primitive l2 ->
     let l1 = Primitive.erase l1 in
     let l2 = Primitive.erase l2 in
-    if Primitive.(equal ~info_eq:Unit.( = ) l1 l2)
-    then Some Lvca_util.String.Map.empty
-    else None
-  | _, Ignored _ -> Some Lvca_util.String.Map.empty
-  | tm, Var (_, v) -> Some (Lvca_util.String.Map.of_alist_exn [ v, tm ])
+    if Primitive.(equal ~info_eq:Unit.( = ) l1 l2) then Some SMap.empty else None
+  | _, Ignored _ -> Some SMap.empty
+  | tm, Var (_, v) -> Some (SMap.of_alist_exn [ v, tm ])
   | _ -> None
 
 and match_pattern_scope
-    (BindingAwarePattern.Scope (_namesXXX, pat))
-    (Nominal.Scope.Scope (_patsXXX, body))
+    (BindingAwarePattern.Scope (_XXXnames, pat))
+    (Nominal.Scope.Scope (_XXXpats, body))
   =
   match_pattern body pat
 ;;
@@ -245,7 +241,7 @@ type 'info primitive_eval =
   -> ('info n_term, 'info eval_error) Result.t
 
 let rec eval_ctx
-    :  'info primitive_eval -> 'info n_term Lvca_util.String.Map.t -> 'info term
+    :  'info primitive_eval -> 'info n_term SMap.t -> 'info term
     -> ('info n_term, 'info eval_error) Result.t
   =
  fun eval_primitive ctx tm ->
@@ -261,7 +257,7 @@ let rec eval_ctx
     (match find_match tm_val branches with
     | None -> Error ("no match found in case", Term tm_val)
     | Some (branch, bindings) ->
-      eval_ctx (Lvca_util.Map.union_right_biased ctx bindings) branch)
+      eval_ctx (Util.Map.union_right_biased ctx bindings) branch)
   | CoreApp (_, Lambda (_, _ty, Scope (name, body)), [ arg ]) ->
     let%bind arg_val = eval_ctx ctx arg in
     eval_ctx (Map.set ctx ~key:name ~data:arg_val) body
@@ -275,9 +271,7 @@ let rec eval_ctx
     eval_ctx (Map.set ctx ~key:name ~data:tm_val) body
   | _ -> Error ("Found a term we can't evaluate", tm)
 
-and eval_ctx'
-    : 'a n_term Lvca_util.String.Map.t -> 'a n_term -> ('a n_term, 'a eval_error) Result.t
-  =
+and eval_ctx' : 'a n_term SMap.t -> 'a n_term -> ('a n_term, 'a eval_error) Result.t =
  fun ctx tm ->
   match tm with
   | Var (_, v) ->
@@ -288,7 +282,7 @@ and eval_ctx'
 ;;
 
 let eval : 'a primitive_eval -> 'a term -> ('a n_term, 'a eval_error) Result.t =
- fun eval_primitive core -> eval_ctx eval_primitive Lvca_util.String.Map.empty core
+ fun eval_primitive core -> eval_ctx eval_primitive SMap.empty core
 ;;
 
 let eval_primitive eval_ctx eval_ctx' ctx tm name args =
@@ -355,7 +349,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   module BindingAwarePattern = BindingAwarePattern.Parse (Comment)
   open Parsers
 
-  let reserved = Lvca_util.String.Set.of_list [ "let"; "rec"; "in"; "match"; "with" ]
+  let reserved = Util.String.Set.of_list [ "let"; "rec"; "in"; "match"; "with" ]
 
   let identifier =
     identifier
@@ -363,7 +357,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   ;;
 
   let make_apps : 'a term list -> 'a term = function
-    | [] -> Lvca_util.invariant_violation "make_apps: must be a nonempty list"
+    | [] -> Util.invariant_violation "make_apps: must be a nonempty list"
     | [ x ] -> x
     | f :: args as xs ->
       let pos = xs |> List.map ~f:info |> OptRange.list_range in
