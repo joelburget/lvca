@@ -141,9 +141,7 @@ module View = struct
       model_s
       |> S.map (fun Model.{ language_parsed; term_parsed; _ } ->
              match language_parsed, term_parsed with
-             | Ok language, Ok term ->
-               Some
-                 (Nominal.Term.check (failwith "XXX: check_prim") language todo_sort term)
+             | Ok language, Ok term -> Some (Nominal.Term.check language todo_sort term)
              | _, _ -> None)
     in
     let result_elem =
