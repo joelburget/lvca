@@ -2,31 +2,6 @@ open Base
 open Lvca_syntax
 open Omd
 open Stdio
-module Util = Lvca_util
-
-let commands_abstract_syntax =
-  {|
-string : *
-maybe : * -> *
-
-// maybe(a) := nothing() | just(a)
-
-sha_or_name := sha(string()) | name(string())
-
-// A pair of abstract syntax and optionally concrete syntax
-language := language(sha_or_name(); maybe(sha_or_name()))
-
-command :=
-  | define(
-    maybe(string()); // name
-    language()
-  )
-  | eval(
-    sha_or_name(); // dynamics
-    language() // target language
-  )
-  |}
-;;
 
 let abstract_syntax =
   {|
