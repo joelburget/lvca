@@ -2,7 +2,8 @@ open Base
 open Lvca_syntax
 open Ppxlib
 module Util = Lvca_util
-module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
+module Syn = AbstractSyntax
+module ParseAbstract = Syn.Parse (ParseUtil.CComment)
 
 type conversion_direction =
   | ToPlain
@@ -59,7 +60,7 @@ let args_of_valence
     (module Ast : Ast_builder.S)
     ~info
     ~sort_name
-    (AbstractSyntax.Valence.Valence (binding_sort_slots, body_sort))
+    (Syn.Valence.Valence (binding_sort_slots, body_sort))
   =
   let loc = Ast.loc in
   let body_type = ptyp_of_sort (module Ast) ~sort_name ~info body_sort in
@@ -68,7 +69,7 @@ let args_of_valence
   | _ ->
     binding_sort_slots
     |> List.map ~f:(function
-           | AbstractSyntax.SortSlot.SortBinding _sort -> [%type: string]
+           | Syn.SortSlot.SortBinding _sort -> [%type: string]
            | SortPattern _sort ->
              if info then [%type: 'info Pattern.t] else [%type: Pattern.Plain.t])
     |> Fn.flip Lvca_util.List.snoc body_type
@@ -79,7 +80,7 @@ let mk_ctor_decl
     (module Ast : Ast_builder.S)
     ~info
     ~sort_name
-    (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity))
+    (Syn.OperatorDef.OperatorDef (op_name, arity))
   =
   let loc = Ast.loc in
   let args =
@@ -95,6 +96,40 @@ let mk_ctor_decl
     ~name:{ txt = ctor_name op_name; loc }
     ~args:(Pcstr_tuple args)
     ~res:None
+;;
+
+type self_referential =
+  | IsSelfReferential
+  | IsntSelfReferential
+
+let get_self_ref_map sort_defs =
+  let module SSet = Lvca_util.String.Set in
+  let module SMap = Lvca_util.String.Map in
+  let sort_map = SMap.of_alist_exn sort_defs in
+  sort_defs
+  |> List.map ~f:(fun (sort_name, _) ->
+         let seen_sorts = ref SSet.empty in
+         let rec go sort_name =
+           if Set.mem !seen_sorts sort_name
+           then false
+           else (
+             seen_sorts := Set.add !seen_sorts sort_name;
+             match Map.find sort_map sort_name with
+             | None -> (* external *) false
+             | Some (Syn.SortDef.SortDef (_, op_defs)) ->
+               op_defs
+               |> List.exists ~f:(fun (Syn.OperatorDef.OperatorDef (_name, arity)) ->
+                      arity
+                      |> List.exists
+                           ~f:(fun (Syn.Valence.Valence (_sort_slots, body_sort)) ->
+                             let name = sort_head body_sort in
+                             String.(name = sort_name) || go name)))
+         in
+         let self_referential =
+           if go sort_name then IsSelfReferential else IsntSelfReferential
+         in
+         sort_name, self_referential)
+  |> SMap.of_alist_exn
 ;;
 
 let mk_type_decl (module Ast : Ast_builder.S) ~info ~sort_name op_defs =
@@ -121,20 +156,26 @@ module OperatorPat = struct
     | Plain
     | WithInfo
 
+  let is_valid_ocaml_constr_name str =
+    (not (String.is_empty str)) && Char.is_uppercase str.[0]
+  ;;
+
   let mk
       (module Ast : Ast_builder.S)
       ~ctor_type
       ?(match_info = false)
       ?(match_non_info = true)
       ?(name_base = "x")
-      (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity))
+      (Syn.OperatorDef.OperatorDef (op_name, arity))
     =
     let loc = Ast.loc in
+    if not (is_valid_ocaml_constr_name op_name)
+    then Location.raise_errorf ~loc "Invalid OCaml operator name: %s" op_name;
     let var_ix = ref 0 in
     let v ix = Ast.ppat_var { txt = Printf.sprintf "%s%d" name_base ix; loc } in
     let contents =
       arity
-      |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, _)) ->
+      |> List.map ~f:(fun (Syn.Valence.Valence (slots, _)) ->
              let slots =
                ( (* Always one binder for the body *) ) :: List.map slots ~f:(Fn.const ())
              in
@@ -177,7 +218,7 @@ module OperatorExp = struct
       ?(name_base = "x")
       sort_name (* The name of the sort being defined *)
       fun_name (* The name of the function being defined *)
-      (AbstractSyntax.OperatorDef.OperatorDef (op_name, arity))
+      (Syn.OperatorDef.OperatorDef (op_name, arity))
     =
     let loc = Ast.loc in
     let var_ix = ref 0 in
@@ -199,12 +240,12 @@ module OperatorExp = struct
     in
     let contents =
       arity
-      |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, body_sort)) ->
+      |> List.map ~f:(fun (Syn.Valence.Valence (slots, body_sort)) ->
              slots
              |> List.map ~f:(fun slot ->
                     Int.incr var_ix;
                     match slot with
-                    | AbstractSyntax.SortSlot.SortBinding _sort -> v ()
+                    | Syn.SortSlot.SortBinding _sort -> v ()
                     | SortPattern _ -> mk_app pattern_converter (v ()))
              |> Fn.flip Lvca_util.List.snoc (body_arg body_sort))
       |> List.map ~f:(mk_exp_tuple ~loc)
@@ -269,7 +310,7 @@ let mk_map_info (module Ast : Ast_builder.S) sort_name op_defs =
 let mk_equal (module Ast : Ast_builder.S) sort_name op_defs =
   let loc = Ast.loc in
   let same_sort sort = String.(sort_head sort = sort_name) in
-  let f (AbstractSyntax.OperatorDef.OperatorDef (_op_name, arity) as op_def) =
+  let f (Syn.OperatorDef.OperatorDef (_op_name, arity) as op_def) =
     let lhs =
       let p1, p2 =
         ("x", "y")
@@ -292,14 +333,14 @@ let mk_equal (module Ast : Ast_builder.S) sort_name op_defs =
                  Ast.evar (Printf.sprintf "%s%d" base !var_ix))
         in
         arity
-        |> List.map ~f:(fun (AbstractSyntax.Valence.Valence (slots, body_sort)) ->
+        |> List.map ~f:(fun (Syn.Valence.Valence (slots, body_sort)) ->
                let slots_checks =
                  slots
                  |> List.map ~f:(fun slot ->
                         Int.incr var_ix;
                         let x, y = mk_xy () in
                         match slot with
-                        | AbstractSyntax.SortSlot.SortBinding _sort ->
+                        | Syn.SortSlot.SortBinding _sort ->
                           [%expr Base.String.( = ) [%e x] [%e y]]
                         | SortPattern _ -> [%expr Pattern.equal ~info_eq [%e x] [%e y]])
                in
@@ -321,8 +362,15 @@ let mk_equal (module Ast : Ast_builder.S) sort_name op_defs =
     in
     Ast.case ~lhs ~guard ~rhs
   in
-  let last_branch = Ast.case ~lhs:[%pat? _, _] ~guard ~rhs:[%expr false] in
-  let branches = op_defs |> List.map ~f |> Fn.flip Lvca_util.List.snoc last_branch in
+  let branches = List.map op_defs ~f in
+  let branches =
+    match op_defs with
+    | [] | [ _ ] -> branches
+    | _ ->
+      (* If there's more than one operator we need to add an extra case *)
+      let last_branch = Ast.case ~lhs:[%pat? _, _] ~guard ~rhs:[%expr false] in
+      Lvca_util.List.snoc branches last_branch
+  in
   Ast.pexp_match [%expr t1, t2] branches
 ;;
 
@@ -343,8 +391,9 @@ let mk_info (module Ast : Ast_builder.S) op_defs =
 
 let mk_sort_module
     (module Ast : Ast_builder.S)
+    self_ref_map
     sort_name
-    (AbstractSyntax.SortDef.SortDef (vars, op_defs))
+    (Syn.SortDef.SortDef (vars, op_defs))
   =
   let loc = Ast.loc in
   let expr =
@@ -356,23 +405,34 @@ let mk_sort_module
     let to_nominal = { pstr_desc = Pstr_value (Recursive, []); pstr_loc = loc } in
     select?
     *)
+  let defs =
+    match Map.find_exn self_ref_map sort_name with
+    | IsSelfReferential ->
+      [%str
+        let rec to_plain = [%e mk_to_plain (module Ast) sort_name op_defs]
+        let rec of_plain = [%e mk_of_plain (module Ast) sort_name op_defs]
+        let rec equal ~info_eq t1 t2 = [%e mk_equal (module Ast) sort_name op_defs]
+        let rec map_info ~f = [%e mk_map_info (module Ast) sort_name op_defs]]
+    | IsntSelfReferential ->
+      [%str
+        let to_plain = [%e mk_to_plain (module Ast) sort_name op_defs]
+        let of_plain = [%e mk_of_plain (module Ast) sort_name op_defs]
+        let equal ~info_eq t1 t2 = [%e mk_equal (module Ast) sort_name op_defs]
+        let map_info ~f = [%e mk_map_info (module Ast) sort_name op_defs]]
+  in
   let init =
     Ast.pmod_structure
       ([ mk_type_decl (module Ast) ~info:true ~sort_name op_defs
        ; Ast.module_binding ~name:{ txt = Some "Plain"; loc } ~expr |> Ast.pstr_module
        ]
-      @ [%str
-          let rec to_plain = [%e mk_to_plain (module Ast) sort_name op_defs]
-          let rec of_plain = [%e mk_of_plain (module Ast) sort_name op_defs]
-          let rec equal ~info_eq t1 t2 = [%e mk_equal (module Ast) sort_name op_defs]
-          let info = [%e mk_info (module Ast) op_defs]
-          let rec map_info ~f = [%e mk_map_info (module Ast) sort_name op_defs]])
+      @ [%str let info = [%e mk_info (module Ast) op_defs]]
+      @ defs)
   in
   (* Turn into a functor over type args *)
   let f (name, kind_opt) accum =
     match kind_opt with
     | None (* XXX should do kind inference instead of assuming it's * *)
-    | Some (AbstractSyntax.Kind.Kind (_, 1)) ->
+    | Some (Syn.Kind.Kind (_, 1)) ->
       let mod_param =
         Named
           ( { txt = Some (module_name name); loc }
@@ -384,17 +444,18 @@ let mk_sort_module
         ~loc
         "Code generation currently only supports external modules of kind * (%s is %s)"
         name
-        (Fmt.to_to_string AbstractSyntax.Kind.pp kind)
+        (Fmt.to_to_string Syn.Kind.pp kind)
   in
   let expr = List.fold_right vars ~init ~f in
   Ast.module_binding ~name:{ txt = Some (module_name sort_name); loc } ~expr
   |> Ast.pstr_module
 ;;
 
-let mk_container_module ~loc (AbstractSyntax.{ externals; sort_defs } as lang) =
+let mk_container_module ~loc (Syn.{ externals; sort_defs } as lang) =
   let (module Ast) = Ast_builder.make loc in
+  let self_ref_map = get_self_ref_map sort_defs in
   let sort_defs =
-    List.map sort_defs ~f:(Util.Tuple2.uncurry (mk_sort_module (module Ast)))
+    List.map sort_defs ~f:(Util.Tuple2.uncurry (mk_sort_module (module Ast) self_ref_map))
   in
   let sort_defs =
     [%str let language = [%e SyntaxQuoter.mk_language ~loc lang]] @ sort_defs
@@ -402,7 +463,7 @@ let mk_container_module ~loc (AbstractSyntax.{ externals; sort_defs } as lang) =
   (* Turn into a functor over externals *)
   let f (name, kind) accum =
     match kind with
-    | AbstractSyntax.Kind.Kind (_, 1) ->
+    | Syn.Kind.Kind (_, 1) ->
       let mod_param =
         Named
           ( { txt = Some (module_name name); loc }
@@ -414,7 +475,7 @@ let mk_container_module ~loc (AbstractSyntax.{ externals; sort_defs } as lang) =
         ~loc
         "Code generation currently only supports external modules of kind * (%s is %s)"
         name
-        (Fmt.to_to_string AbstractSyntax.Kind.pp kind)
+        (Fmt.to_to_string Syn.Kind.pp kind)
   in
   List.fold_right externals ~init:(Ast.pmod_structure sort_defs) ~f
 ;;

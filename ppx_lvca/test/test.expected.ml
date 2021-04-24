@@ -126,7 +126,25 @@ module Lang(Integer:LanguageObject.AllTermS) =
                                    ((Some
                                        ((let open Range in
                                            { start = 226; finish = 227 }))),
-                                     "a")])))])])))]
+                                     "a")])))])])));
+            ("pair",
+              (AbstractSyntax.SortDef.SortDef
+                 ([("a", None); ("b", None)],
+                   [AbstractSyntax.OperatorDef.OperatorDef
+                      ("Pair",
+                        [AbstractSyntax.Valence.Valence
+                           ([],
+                             (Sort.Name
+                                ((Some
+                                    ((let open Range in
+                                        { start = 248; finish = 249 }))),
+                                  "a")));
+                        AbstractSyntax.Valence.Valence
+                          ([],
+                            (Sort.Name
+                               ((Some
+                                   ((let open Range in
+                                       { start = 251; finish = 252 }))), "b")))])])))]
         }
     module Foo =
       struct
@@ -139,6 +157,7 @@ module Lang(Integer:LanguageObject.AllTermS) =
               | Foo of Integer.Plain.t 
               | Bar of (Pattern.Plain.t * string * t) 
           end
+        let info = function | Foo (x0, _) -> x0 | Bar (x0, (_, _, _)) -> x0
         let rec to_plain =
           function
           | Foo (_, x1) -> Plain.Foo (Integer.to_plain x1)
@@ -158,7 +177,6 @@ module Lang(Integer:LanguageObject.AllTermS) =
                 ((Pattern.equal ~info_eq x1 y1) &&
                    ((Base.String.(=) x2 y2) && (equal ~info_eq x3 y3)))
           | (_, _) -> false
-        let info = function | Foo (x0, _) -> x0 | Bar (x0, (_, _, _)) -> x0
         let rec map_info ~f  =
           function
           | Foo (x0, x1) -> Foo ((f x0), (Integer.map_info ~f x1))
@@ -173,6 +191,7 @@ module Lang(Integer:LanguageObject.AllTermS) =
         module Plain = struct type t =
                                 | Z 
                                 | S of t  end
+        let info = function | Z x0 -> x0 | S (x0, _) -> x0
         let rec to_plain =
           function | Z _ -> Plain.Z | S (_, x1) -> Plain.S (to_plain x1)
         let rec of_plain =
@@ -183,7 +202,6 @@ module Lang(Integer:LanguageObject.AllTermS) =
           | (S (x0, x1), S (y0, y1)) ->
               (info_eq x0 y0) && (equal ~info_eq x1 y1)
           | (_, _) -> false
-        let info = function | Z x0 -> x0 | S (x0, _) -> x0
         let rec map_info ~f  =
           function
           | Z x0 -> Z (f x0)
@@ -197,6 +215,7 @@ module Lang(Integer:LanguageObject.AllTermS) =
         module Plain = struct type t =
                                 | Nil 
                                 | Cons of A.Plain.t * t  end
+        let info = function | Nil x0 -> x0 | Cons (x0, _, _) -> x0
         let rec to_plain =
           function
           | Nil _ -> Plain.Nil
@@ -212,11 +231,34 @@ module Lang(Integer:LanguageObject.AllTermS) =
               (info_eq x0 y0) &&
                 ((A.equal ~info_eq x1 y1) && (equal ~info_eq x2 y2))
           | (_, _) -> false
-        let info = function | Nil x0 -> x0 | Cons (x0, _, _) -> x0
         let rec map_info ~f  =
           function
           | Nil x0 -> Nil (f x0)
           | Cons (x0, x1, x2) ->
               Cons ((f x0), (A.map_info ~f x1), (map_info ~f x2))
+      end
+    module Pair(A:LanguageObject.AllTermS)(B:LanguageObject.AllTermS) =
+      struct
+        type 'info t =
+          | Pair of 'info * 'info A.t * 'info B.t 
+        module Plain = struct type t =
+                                | Pair of A.Plain.t * B.Plain.t  end
+        let info = function | Pair (x0, _, _) -> x0
+        let to_plain =
+          function
+          | Pair (_, x1, x2) -> Plain.Pair ((A.to_plain x1), (B.to_plain x2))
+        let of_plain =
+          function
+          | Plain.Pair (x1, x2) ->
+              Pair ((), (A.of_plain x1), (B.of_plain x2))
+        let equal ~info_eq  t1 t2 =
+          match (t1, t2) with
+          | (Pair (x0, x1, x2), Pair (y0, y1, y2)) ->
+              (info_eq x0 y0) &&
+                ((A.equal ~info_eq x1 y1) && (B.equal ~info_eq x2 y2))
+        let map_info ~f  =
+          function
+          | Pair (x0, x1, x2) ->
+              Pair ((f x0), (A.map_info ~f x1), (B.map_info ~f x2))
       end
   end
