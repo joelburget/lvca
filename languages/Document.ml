@@ -3,78 +3,76 @@ open Lvca_syntax
 open Omd
 open Stdio
 
-let abstract_syntax =
-  {|
-list : * -> *
+module Lang =
+[%abstract_syntax_module
+{|
+// list : * -> *
+char : *
+int : *
 string : *
 
-option(a) := some(a) | none()
+list a := Nil() | Cons(a; list a)
+option a := Some(a) | None()
+pair a b := Pair(a; b)
 
-pair(a; b) := pair(a; b)
+emph_kind := Normal() | Strong()
+emph_style := Star() | Underscore()
+// emph inline := Emph(emph_kind; emph_style; inline)
 
-emph_kind := normal() | strong()
-emph_style := star() | underscore()
-emph(inline) := emph(
-  emph_kind();
-  emph_style();
-  inline
+attributes := Attributes(
+  // option string; // id
+  // list string; // classes
+  // list (pair string string) // attributes
 )
 
-attributes := attributes(
-  option(string()); // id
-  list(string()); // classes
-  list(pair(string(); string())) // attributes
-)
-
-heading(block) := heading(
-  int(); // level
+heading block := Heading(
+  int; // level
   block; // text
-  attributes()
+  attributes
 )
 
 block_list_kind :=
-  | ordered(int(); char())
-  | unordered(char())
+  | Ordered(int; char)
+  | Unordered(char)
 
-block_list_style := loose() | tight()
+block_list_style := Loose() | Tight()
 
-block_list(block) := block_list(
-  block_list_kind();
-  block_list_style();
-  list(list(block))
+block_list block := Block_list(
+  block_list_kind;
+  block_list_style
+  // list list block
 )
 
 inline :=
-  | concat(list(inline()))
-  | text(string())
-  | emph(emph(inline()))
-  | code(
-    int(); // level
-    string(); // content
-    attributes()
+  // | Concat(list inline)
+  | Text(string)
+  // | Emph(emph inline)
+  | Code(
+    int; // level
+    string; // content
+    attributes
   )
-  | hard_break()
-  | soft_break()
+  | Hard_break()
+  | Soft_break()
   // | link(
   // | ref
   // | html
   // | tag
 
-block(a) :=
-  | paragraph(a)
-  | list(block_list(block(a)))
+block a :=
+  | Paragraph(a)
+  // | List(block_list block a)
   // | blockquote(list(block(a)))
-  | thematic_break()
-  | heading(heading(a))
-  | code_block(option(string); attributes())
+  | Thematic_break()
+  // | Heading(heading a)
+  // | Code_block(option string; attributes)
   // | html_block
   // | link_def
   // | def_list
   // | tag_block
 
-document := document(list(block(element())))
-|}
-;;
+// document := Document(list block element)
+|}]
 
 exception TranslationError of string
 
