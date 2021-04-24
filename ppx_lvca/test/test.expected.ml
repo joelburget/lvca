@@ -144,7 +144,32 @@ module Lang(Integer:LanguageObject.AllTermS) =
                             (Sort.Name
                                ((Some
                                    ((let open Range in
-                                       { start = 251; finish = 252 }))), "b")))])])))]
+                                       { start = 251; finish = 252 }))), "b")))])])));
+            ("pair_plus",
+              (AbstractSyntax.SortDef.SortDef
+                 ([("a", None); ("b", None)],
+                   [AbstractSyntax.OperatorDef.OperatorDef
+                      ("PairPlus",
+                        [AbstractSyntax.Valence.Valence
+                           ([],
+                             (Sort.Name
+                                ((Some
+                                    ((let open Range in
+                                        { start = 281; finish = 282 }))),
+                                  "a")));
+                        AbstractSyntax.Valence.Valence
+                          ([],
+                            (Sort.Name
+                               ((Some
+                                   ((let open Range in
+                                       { start = 284; finish = 285 }))), "b")));
+                        AbstractSyntax.Valence.Valence
+                          ([],
+                            (Sort.Name
+                               ((Some
+                                   ((let open Range in
+                                       { start = 287; finish = 290 }))),
+                                 "foo")))])])))]
         }
     module Foo =
       struct
@@ -260,5 +285,38 @@ module Lang(Integer:LanguageObject.AllTermS) =
           function
           | Pair (x0, x1, x2) ->
               Pair ((f x0), (A.map_info ~f x1), (B.map_info ~f x2))
+      end
+    module Pair_plus(A:LanguageObject.AllTermS)(B:LanguageObject.AllTermS) =
+      struct
+        type 'info t =
+          | PairPlus of 'info * 'info A.t * 'info B.t * 'info Foo.t 
+        module Plain =
+          struct
+            type t =
+              | PairPlus of A.Plain.t * B.Plain.t * Foo.Plain.t 
+          end
+        let info = function | PairPlus (x0, _, _, _) -> x0
+        let to_plain =
+          function
+          | PairPlus (_, x1, x2, x3) ->
+              Plain.PairPlus
+                ((A.to_plain x1), (B.to_plain x2), (Foo.to_plain x3))
+        let of_plain =
+          function
+          | Plain.PairPlus (x1, x2, x3) ->
+              PairPlus
+                ((), (A.of_plain x1), (B.of_plain x2), (Foo.of_plain x3))
+        let equal ~info_eq  t1 t2 =
+          match (t1, t2) with
+          | (PairPlus (x0, x1, x2, x3), PairPlus (y0, y1, y2, y3)) ->
+              (info_eq x0 y0) &&
+                ((A.equal ~info_eq x1 y1) &&
+                   ((B.equal ~info_eq x2 y2) && (Foo.equal ~info_eq x3 y3)))
+        let map_info ~f  =
+          function
+          | PairPlus (x0, x1, x2, x3) ->
+              PairPlus
+                ((f x0), (A.map_info ~f x1), (B.map_info ~f x2),
+                  (Foo.map_info ~f x3))
       end
   end

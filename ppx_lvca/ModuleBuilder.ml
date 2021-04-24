@@ -4,6 +4,8 @@ open Ppxlib
 module Util = Lvca_util
 module Syn = AbstractSyntax
 module ParseAbstract = Syn.Parse (ParseUtil.CComment)
+module SSet = Lvca_util.String.Set
+module SMap = Lvca_util.String.Map
 
 type conversion_direction =
   | ToPlain
@@ -103,18 +105,16 @@ type self_referential =
   | IsntSelfReferential
 
 let get_self_ref_map sort_defs =
-  let module SSet = Lvca_util.String.Set in
-  let module SMap = Lvca_util.String.Map in
   let sort_map = SMap.of_alist_exn sort_defs in
   sort_defs
   |> List.map ~f:(fun (sort_name, _) ->
          let seen_sorts = ref SSet.empty in
-         let rec go sort_name =
-           if Set.mem !seen_sorts sort_name
+         let rec go current_sort_name =
+           if Set.mem !seen_sorts current_sort_name
            then false
            else (
-             seen_sorts := Set.add !seen_sorts sort_name;
-             match Map.find sort_map sort_name with
+             seen_sorts := Set.add !seen_sorts current_sort_name;
+             match Map.find sort_map current_sort_name with
              | None -> (* external *) false
              | Some (Syn.SortDef.SortDef (_, op_defs)) ->
                op_defs

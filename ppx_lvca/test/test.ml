@@ -25,7 +25,7 @@ list a := Nil() | Cons(a; list(a))
 
 pair a b := Pair(a; b)
 
-// multiple slots, parameters
-// TODO: quux a b := Quux(a; b; foo)
+pair_plus a b := PairPlus(a; b; foo)
+
 // TODO: test mutual definitions
 |}]
