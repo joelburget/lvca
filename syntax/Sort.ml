@@ -119,12 +119,11 @@ let%test_module "Sort_Parser" =
   (module struct
     module Parse = Parse (ParseUtil.NoComment)
 
-    let parse_with : 'a ParseUtil.t -> string -> 'a =
-     fun p str ->
-      match Angstrom.parse_string ~consume:All p str with
+    let parse_with parser str =
+      match Angstrom.parse_string ~consume:All parser str with
       | Ok (t, _pos) -> t
       | Error msg -> failwith msg
-   ;;
+    ;;
 
     let a = Name ((), "a")
     let abc = Ap ((), "a", [ Name ((), "b"); Name ((), "c") ])
