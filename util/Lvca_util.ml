@@ -362,10 +362,3 @@ module Tuple4 = struct
   module Int = Make (Int) (Int) (Int) (Int)
   module Bool = Make (Bool) (Bool) (Bool) (Bool)
 end
-
-module Void = struct
-  type t = |
-
-  let absurd (x : t) = match x with _ -> .
-  let ( = ) _ _ = true
-end
