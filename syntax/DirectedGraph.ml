@@ -8,6 +8,8 @@ module type Key_intf = sig
   include Hashtbl.Key.S with type t := t
 end
 
+exception NotDag
+
 module Int = struct
   type connected_components =
     { scc_count : int
@@ -64,6 +66,40 @@ module Int = struct
     let { scc_numbering; _ } = connected_components adjacency in
     make_sets scc_numbering
   ;;
+
+  (* DFS-based topsort. *)
+  let topsort_exn adjacency =
+    (* Start with every node unmarked *)
+    let unmarked = adjacency |> List.mapi ~f:(fun i _ -> i) |> ISet.of_list in
+    let temporarily_marked = Hash_set.create (module Int) in
+    let permanently_marked = Hash_set.create (module Int) in
+    (* Satck to hold the result *)
+    let l = Stack.create () in
+    let rec go unmarked =
+      match Set.choose unmarked with
+      | None -> () (* done -- no more unmarked *)
+      | Some node ->
+        let unmarked = Set.remove unmarked node in
+        let rec visit node =
+          if Hash_set.mem permanently_marked node
+          then ()
+          else if Hash_set.mem temporarily_marked node
+          then raise NotDag
+          else (
+            Hash_set.add temporarily_marked node;
+            List.nth_exn adjacency node |> List.iter ~f:visit;
+            Hash_set.remove temporarily_marked node;
+            Hash_set.add permanently_marked node;
+            Stack.push l node)
+        in
+        visit node;
+        go unmarked
+    in
+    go unmarked;
+    Stack.to_list l
+  ;;
+
+  let topsort adjacency = try Some (topsort_exn adjacency) with NotDag -> None
 end
 
 module F (Key : Key_intf) = struct
@@ -74,8 +110,7 @@ module F (Key : Key_intf) = struct
     ; sccs : (Key.t, Key.comparator_witness) Base.Set.t Lvca_util.Int.Map.t
     }
 
-  let connected_components graph =
-    (* First find mappings from the map key to int id and back. *)
+  let conversions graph =
     let key_to_id, id_to_key =
       graph
       |> Map.to_alist
@@ -84,12 +119,18 @@ module F (Key : Key_intf) = struct
     in
     let key_to_id = Map.of_alist_exn (module Key) key_to_id in
     let id_to_key = Map.of_alist_exn (module Base.Int) id_to_key in
-    (* Now, build an (int) adjacency list to pass to Int.connected_components. *)
+    (* Build an (int) adjacency list to pass to Int functions. *)
     let adjacency =
       graph
       |> Map.to_alist
       |> List.map ~f:(fun (_, nodes) -> List.map nodes ~f:(Map.find_exn key_to_id))
     in
+    key_to_id, id_to_key, adjacency
+  ;;
+
+  let connected_components graph =
+    let _key_to_id, id_to_key, adjacency = conversions graph in
+    (* First find mappings from the map key to int id and back. *)
     let Int.{ scc_count; scc_numbering } = Int.connected_components adjacency in
     let int_sccs = Int.make_sets scc_numbering in
     (* Build the graph between SCCs. *)
@@ -132,6 +173,13 @@ module F (Key : Key_intf) = struct
     in
     { scc_graph; sccs }
   ;;
+
+  let topsort_exn graph =
+    let _key_to_id, id_to_key, adjacency = conversions graph in
+    adjacency |> Int.topsort_exn |> List.map ~f:(Map.find_exn id_to_key)
+  ;;
+
+  let topsort adjacency = try Some (topsort_exn adjacency) with NotDag -> None
 end
 
 let%test_module _ =
@@ -163,13 +211,13 @@ let%test_module _ =
         sets: 4,5 2,3 0,1,6|}]
     ;;
 
-    module Int = F (Base.Int)
+    module Int' = F (Base.Int)
 
     let print_connected_components adjacency =
-      let map =
+      let graph =
         adjacency |> List.mapi ~f:(fun i v -> i, v) |> Map.of_alist_exn (module Base.Int)
       in
-      let Int.{ scc_graph; sccs } = Int.connected_components map in
+      let Int'.{ scc_graph; sccs } = Int'.connected_components graph in
       Fmt.pr "scc_graph:\n";
       scc_graph
       |> List.iteri ~f:(fun i nodes ->
@@ -208,6 +256,38 @@ let%test_module _ =
           0 -> 4 5
           1 -> 2 3
           2 -> 0 1 6|}]
+    ;;
+
+    let print_scc adjacency =
+      Fmt.(pr "%a" (list ~sep:(any " ") int)) (Int.topsort_exn adjacency)
+    ;;
+
+    let%expect_test _ =
+      print_scc [ [ 2 ]; [ 0 ]; [] ];
+      [%expect {|1 0 2|}]
+    ;;
+
+    let%expect_test _ =
+      print_scc [ []; [ 0 ]; [ 0; 1 ] ];
+      [%expect {|2 1 0|}]
+    ;;
+
+    let print_scc adjacency =
+      let graph =
+        adjacency |> List.mapi ~f:(fun i v -> i, v) |> Map.of_alist_exn (module Base.Int)
+      in
+      let Int'.{ scc_graph; _ } = Int'.connected_components graph in
+      Fmt.(pr "%a" (list ~sep:(any " ") int)) (Int.topsort_exn scc_graph)
+    ;;
+
+    let%expect_test _ =
+      print_scc adjacency1;
+      [%expect {|1 0 2|}]
+    ;;
+
+    let%expect_test _ =
+      print_scc adjacency2;
+      [%expect {|2 1 0|}]
     ;;
   end)
 ;;

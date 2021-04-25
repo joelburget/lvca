@@ -5,6 +5,9 @@ module type Key_intf = sig
   include Base.Hashtbl.Key.S with type t := t
 end
 
+(** Raised by [topsort_exn] if the graph is not a dag. *)
+exception NotDag
+
 module Int : sig
   (** The output from connected component algorithm. *)
   type connected_components =
@@ -22,6 +25,12 @@ module Int : sig
 
   (** The composition of [connected_components] and [make_sets]. *)
   val connected_component_sets : int list list -> Lvca_util.Int.Set.t list
+
+  (** Topologically sort a graph given as an adjacency list. *)
+  val topsort_exn : int list list -> int list
+
+  (** Topologically sort a graph given as an adjacency list. *)
+  val topsort : int list list -> int list option
 end
 
 module F (Key : Key_intf) : sig
@@ -37,4 +46,10 @@ module F (Key : Key_intf) : sig
 
   (** Find the (strongly) [connected_components] in a [graph]. *)
   val connected_components : graph -> connected_components
+
+  (** Topologically sort a graph given as an adjacency list. *)
+  val topsort_exn : graph -> Key.t list
+
+  (** Topologically sort a graph given as an adjacency list. *)
+  val topsort : graph -> Key.t list option
 end
