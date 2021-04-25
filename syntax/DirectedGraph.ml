@@ -7,12 +7,12 @@ module Int = struct
   type component_sets = ISet.t list
 
   let numbered_connected_components adjacencies =
-    let nodes = List.length adjacencies in
+    let len = List.length adjacencies in
     let unvisited = -1 in
     let id = ref 0 in
-    let ids = Array.init nodes ~f:(fun _ -> unvisited) in
-    let low = Array.init nodes ~f:(fun _ -> 0) in
-    let on_stack = Array.init nodes ~f:(fun _ -> false) in
+    let ids = Array.create ~len unvisited in
+    let low = Array.create ~len 0 in
+    let on_stack = Array.create ~len false in
     let stack = Stack.create () in
     let rec dfs at =
       Stack.push stack at;
