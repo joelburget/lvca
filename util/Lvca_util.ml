@@ -1,5 +1,8 @@
 open Base
 
+let ( << ) f g x = f (g x)
+let ( >> ) f g = g << f
+
 (* Used by bidirectional *)
 module Map = struct
   include Base.Map
