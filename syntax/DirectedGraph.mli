@@ -9,15 +9,17 @@ end
 exception NotDag
 
 module Int : sig
-  (** The output from connected component algorithm. *)
-  type connected_components =
-    { scc_count : int (** The number of SCCs found. *)
-    ; scc_numbering : int list
-          (** A list corresponding to the input adjacency list, with the SCC number assigned to each node. Note that SCC numbers need not be contiguous: they're the numbers of a representative from each SCC (the lowest-numbered representative). So, each SCC number is in the range [0,n). *)
-    }
+  module ConnectedComponents : sig
+    (** The output from connected component algorithm. *)
+    type t =
+      { scc_count : int (** The number of SCCs found. *)
+      ; scc_numbering : int list
+            (** A list corresponding to the input adjacency list, with the SCC number assigned to each node. Note that SCC numbers need not be contiguous: they're the numbers of a representative from each SCC (the lowest-numbered representative). So, each SCC number is in the range [0,n). *)
+      }
+  end
 
   (** Given an adjacency list, give the SCCs. *)
-  val connected_components : int list list -> connected_components
+  val connected_components : int list list -> ConnectedComponents.t
 
   (** Given an SCC numbering (see [connected_components]), give a list of SCCs, each
       represented as a set of nodes contained in it. *)
@@ -34,22 +36,26 @@ module Int : sig
 end
 
 module F (Key : Key_intf) : sig
-  (** A graph is represented as a mapping from key to key list. *)
-  type graph = (Key.t, Key.t list, Key.comparator_witness) Base.Map.t
+  module Graph : sig
+    (** A graph is represented as a mapping from key to key list. *)
+    type t = (Key.t, Key.t list, Key.comparator_witness) Base.Map.t
+  end
 
-  (** The output from the connected component algorithm. *)
-  type connected_components =
-    { scc_graph : int list list (** An adjacency list representing the graph of SCCs. *)
-    ; sccs : (Key.t, Key.comparator_witness) Base.Set.t Lvca_util.Int.Map.t
-          (** Mapping from SCC number to keys contained in it. *)
-    }
+  module ConnectedComponents : sig
+    (** The output from the connected component algorithm. *)
+    type t =
+      { scc_graph : int list list (** An adjacency list representing the graph of SCCs. *)
+      ; sccs : (Key.t, Key.comparator_witness) Base.Set.t Lvca_util.Int.Map.t
+            (** Mapping from SCC number to keys contained in it. *)
+      }
+  end
 
   (** Find the (strongly) [connected_components] in a [graph]. *)
-  val connected_components : graph -> connected_components
+  val connected_components : Graph.t -> ConnectedComponents.t
 
   (** Topologically sort a graph given as an adjacency list. *)
-  val topsort_exn : graph -> Key.t list
+  val topsort_exn : Graph.t -> Key.t list
 
   (** Topologically sort a graph given as an adjacency list. *)
-  val topsort : graph -> Key.t list option
+  val topsort : Graph.t -> Key.t list option
 end

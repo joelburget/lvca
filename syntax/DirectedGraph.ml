@@ -11,10 +11,22 @@ end
 exception NotDag
 
 module Int = struct
-  type connected_components =
-    { scc_count : int
-    ; scc_numbering : int list
-    }
+  module ConnectedComponents = struct
+    type t =
+      { scc_count : int
+      ; scc_numbering : int list
+      }
+
+    (*
+    let pp =
+      let open Fmt in
+      record
+        [ field "scc_count" (fun t -> t.scc_count) int
+        ; field "scc_numbering" (fun t -> t.scc_numbering) (list ~sep:(any " ") int)
+        ]
+    ;;
+    *)
+  end
 
   (* Tarjan's algorithm *)
   let connected_components adjacencies =
@@ -50,7 +62,7 @@ module Int = struct
         Int.incr scc_count)
     in
     Array.iteri ids ~f:(fun i id -> if Int.(id = unvisited) then dfs i);
-    { scc_count = !scc_count; scc_numbering = Array.to_list low }
+    ConnectedComponents.{ scc_count = !scc_count; scc_numbering = Array.to_list low }
   ;;
 
   let make_sets numbered =
@@ -63,7 +75,7 @@ module Int = struct
   ;;
 
   let connected_component_sets adjacency =
-    let { scc_numbering; _ } = connected_components adjacency in
+    let ConnectedComponents.{ scc_numbering; _ } = connected_components adjacency in
     make_sets scc_numbering
   ;;
 
@@ -103,12 +115,16 @@ module Int = struct
 end
 
 module F (Key : Key_intf) = struct
-  type graph = (Key.t, Key.t list, Key.comparator_witness) Base.Map.t
+  module Graph = struct
+    type t = (Key.t, Key.t list, Key.comparator_witness) Base.Map.t
+  end
 
-  type connected_components =
-    { scc_graph : int list list
-    ; sccs : (Key.t, Key.comparator_witness) Base.Set.t Lvca_util.Int.Map.t
-    }
+  module ConnectedComponents = struct
+    type t =
+      { scc_graph : int list list
+      ; sccs : (Key.t, Key.comparator_witness) Base.Set.t Lvca_util.Int.Map.t
+      }
+  end
 
   let conversions graph =
     let key_to_id, id_to_key =
@@ -131,7 +147,9 @@ module F (Key : Key_intf) = struct
   let connected_components graph =
     let _key_to_id, id_to_key, adjacency = conversions graph in
     (* First find mappings from the map key to int id and back. *)
-    let Int.{ scc_count; scc_numbering } = Int.connected_components adjacency in
+    let Int.ConnectedComponents.{ scc_count; scc_numbering } =
+      Int.connected_components adjacency
+    in
     let int_sccs = Int.make_sets scc_numbering in
     (* Build the graph between SCCs. *)
     let scc_graph =
@@ -171,7 +189,7 @@ module F (Key : Key_intf) = struct
              scc_num, Set.map (module Key) set ~f:(Map.find_exn id_to_key))
       |> Map.of_alist_exn (module Base.Int)
     in
-    { scc_graph; sccs }
+    ConnectedComponents.{ scc_graph; sccs }
   ;;
 
   let topsort_exn graph =
@@ -191,7 +209,9 @@ let%test_module _ =
     let adjacency2 = [ [ 1 ]; [ 2; 4; 6 ]; [ 3 ]; [ 2; 4; 5 ]; [ 5 ]; [ 4 ]; [ 0; 2 ] ]
 
     let print_connected_components adjacency =
-      let Int.{ scc_numbering; _ } = Int.connected_components adjacency in
+      let Int.ConnectedComponents.{ scc_numbering; _ } =
+        Int.connected_components adjacency
+      in
       let sets = Int.make_sets scc_numbering |> List.map ~f:Set.to_list in
       Fmt.(pr "scc_numbering: %a\n" (list ~sep:(any " ") int)) scc_numbering;
       Fmt.(pr "sets: %a\n" (list ~sep:(any " ") (list ~sep:(any ",") int))) sets
@@ -217,7 +237,9 @@ let%test_module _ =
       let graph =
         adjacency |> List.mapi ~f:(fun i v -> i, v) |> Map.of_alist_exn (module Base.Int)
       in
-      let Int'.{ scc_graph; sccs } = Int'.connected_components graph in
+      let Int'.ConnectedComponents.{ scc_graph; sccs } =
+        Int'.connected_components graph
+      in
       Fmt.pr "scc_graph:\n";
       scc_graph
       |> List.iteri ~f:(fun i nodes ->
@@ -276,7 +298,7 @@ let%test_module _ =
       let graph =
         adjacency |> List.mapi ~f:(fun i v -> i, v) |> Map.of_alist_exn (module Base.Int)
       in
-      let Int'.{ scc_graph; _ } = Int'.connected_components graph in
+      let Int'.ConnectedComponents.{ scc_graph; _ } = Int'.connected_components graph in
       Fmt.(pr "%a" (list ~sep:(any " ") int)) (Int.topsort_exn scc_graph)
     ;;
 
