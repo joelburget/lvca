@@ -9,12 +9,30 @@ module Types : sig
   and 'info scope = Scope of 'info Pattern.t list * 'info term
 end
 
+module Plain : sig
+  type term =
+    | Operator of string * scope list
+    | Var of string
+    | Primitive of Primitive.Plain.t
+
+  and scope = Scope of Pattern.Plain.t list * term
+end
+
 module Term : sig
   type 'info t = 'info Types.term =
     | Operator of 'info * string * 'info Types.scope list
     | Var of 'info * string
     | Primitive of 'info Primitive.t
 
+  module Plain : sig
+    type t = Plain.term =
+      | Operator of string * Plain.scope list
+      | Var of string
+      | Primitive of Primitive.Plain.t
+  end
+
+  val of_plain : Plain.t -> unit t
+  val to_plain : _ t -> Plain.t
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val info : 'info t -> 'info
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
@@ -98,6 +116,12 @@ end
 module Scope : sig
   type 'info t = 'info Types.scope = Scope of 'info Pattern.t list * 'info Types.term
 
+  module Plain : sig
+    type t = Plain.scope = Scope of Pattern.Plain.t list * Plain.term
+  end
+
+  val of_plain : Plain.t -> unit t
+  val to_plain : _ t -> Plain.t
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val pp : _ t Fmt.t

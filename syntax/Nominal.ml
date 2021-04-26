@@ -13,6 +13,37 @@ module Types = struct
   and 'info scope = Scope of 'info Pattern.t list * 'info term
 end
 
+module Plain = struct
+  type term =
+    | Operator of string * scope list
+    | Var of string
+    | Primitive of Primitive.Plain.t
+
+  and scope = Scope of Pattern.Plain.t list * term
+end
+
+module ToPlain = struct
+  let rec term = function
+    | Types.Operator (_, name, scopes) -> Plain.Operator (name, List.map scopes ~f:scope)
+    | Var (_, name) -> Var name
+    | Primitive prim -> Primitive (Primitive.to_plain prim)
+
+  and scope (Types.Scope (pats, tm)) =
+    Plain.Scope (List.map pats ~f:Pattern.to_plain, term tm)
+  ;;
+end
+
+module OfPlain = struct
+  let rec term = function
+    | Plain.Operator (name, scopes) -> Types.Operator ((), name, List.map scopes ~f:scope)
+    | Var name -> Var ((), name)
+    | Primitive prim -> Primitive (Primitive.of_plain prim)
+
+  and scope (Plain.Scope (pats, tm)) =
+    Types.Scope (List.map pats ~f:Pattern.of_plain, term tm)
+  ;;
+end
+
 let info = function
   | Types.Operator (info, _, _) | Var (info, _) -> info
   | Primitive p -> Primitive.info p
@@ -63,7 +94,7 @@ module PpGeneric = struct
 end
 
 module Jsonify = struct
-  let array_map f args = args |> List.map ~f |> Array.of_list |> Json.array
+  let array_map f = Util.(Base.List.map ~f >> Array.of_list >> Json.array)
 
   let rec term tm =
     let array, string = Json.(array, string) in
@@ -74,8 +105,7 @@ module Jsonify = struct
     | Primitive p -> array [| string "p"; Primitive.jsonify p |]
 
   and scope (Types.Scope (pats, body)) : Json.t =
-    let body = term body in
-    Json.array [| array_map Pattern.jsonify pats; body |]
+    Json.array [| array_map Pattern.jsonify pats; term body |]
   ;;
 end
 
@@ -138,6 +168,15 @@ module Term = struct
     | Var of 'info * string
     | Primitive of 'info Primitive.t
 
+  module Plain = struct
+    type t = Plain.term =
+      | Operator of string * Plain.scope list
+      | Var of string
+      | Primitive of Primitive.Plain.t
+  end
+
+  let to_plain = ToPlain.term
+  let of_plain = OfPlain.term
   let equal = Equal.term
   let map_info = MapInfo.term
   let subst_all = SubstAll.term
@@ -503,6 +542,12 @@ end
 module Scope = struct
   type 'info t = 'info Types.scope = Scope of 'info Pattern.t list * 'info Types.term
 
+  module Plain = struct
+    type t = Plain.scope = Scope of Pattern.Plain.t list * Plain.term
+  end
+
+  let to_plain = ToPlain.scope
+  let of_plain = OfPlain.scope
   let equal = Equal.scope
   let pp_generic = PpGeneric.scope
   let subst_all = SubstAll.scope
