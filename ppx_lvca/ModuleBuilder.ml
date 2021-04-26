@@ -295,7 +295,7 @@ let mk_of_plain (module Ast : Ast_builder.S) sort_name op_defs =
   [%stri let of_plain ~info_eq t1 t2 = [%e body]]
 ;;
 
-let mk_map_info (module Ast : Ast_builder.S) sort_name op_defs is_self_referential =
+let mk_map_info (module Ast : Ast_builder.S) sort_name op_defs =
   let f op_def =
     let lhs = OperatorPat.mk (module Ast) ~ctor_type:WithInfo ~match_info:true op_def in
     let rhs =
@@ -311,9 +311,7 @@ let mk_map_info (module Ast : Ast_builder.S) sort_name op_defs is_self_referenti
   in
   let loc = Ast.loc in
   let body = op_defs |> List.map ~f |> Ast.pexp_function in
-  match is_self_referential with
-  | IsSelfReferential -> [%stri let rec map_info ~info_eq t1 t2 = [%e body]]
-  | IsntSelfReferential -> [%stri let map_info ~info_eq t1 t2 = [%e body]]
+  [%stri let map_info ~info_eq t1 t2 = [%e body]]
 ;;
 
 let mk_equal (module Ast : Ast_builder.S) sort_name op_defs =
@@ -455,8 +453,7 @@ let mk_sort_module
       module SubstAll = struct end
       *)
       module MapInfo = struct
-        ;;
-        [%i mk_map_info (module Ast) sort_name op_defs is_self_referential]
+        [%%i mk_map_info (module Ast) sort_name op_defs |> modify_rec is_self_referential]
       end]
   in
   let init =
