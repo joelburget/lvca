@@ -267,14 +267,13 @@ module OperatorExp = struct
 end
 
 let mk_to_plain (module Ast : Ast_builder.S) sort_name op_defs =
-  let loc = Ast.loc in
   let f op_def =
     let lhs = OperatorPat.mk (module Ast) ~ctor_type:WithInfo op_def in
     let rhs = OperatorExp.mk (module Ast) ~ctor_type:Plain sort_name "to_plain" op_def in
     Ast.case ~lhs ~guard ~rhs
   in
   let body = op_defs |> List.map ~f |> Ast.pexp_function in
-  [%stri let to_plain ~info_eq t1 t2 = [%e body]]
+  Ast.([%stri let to_plain ~info_eq t1 t2 = [%e body]])
 ;;
 
 let mk_of_plain (module Ast : Ast_builder.S) sort_name op_defs =
@@ -291,8 +290,7 @@ let mk_of_plain (module Ast : Ast_builder.S) sort_name op_defs =
     Ast.case ~lhs ~guard ~rhs
   in
   let body = op_defs |> List.map ~f |> Ast.pexp_function in
-  let loc = Ast.loc in
-  [%stri let of_plain ~info_eq t1 t2 = [%e body]]
+  Ast.([%stri let of_plain ~info_eq t1 t2 = [%e body]])
 ;;
 
 let mk_map_info (module Ast : Ast_builder.S) sort_name op_defs =
@@ -309,9 +307,8 @@ let mk_map_info (module Ast : Ast_builder.S) sort_name op_defs =
     in
     Ast.case ~lhs ~guard ~rhs
   in
-  let loc = Ast.loc in
   let body = op_defs |> List.map ~f |> Ast.pexp_function in
-  [%stri let map_info ~info_eq t1 t2 = [%e body]]
+  Ast.([%stri let map_info ~info_eq t1 t2 = [%e body]])
 ;;
 
 let mk_equal (module Ast : Ast_builder.S) sort_name op_defs =
@@ -383,18 +380,6 @@ let mk_equal (module Ast : Ast_builder.S) sort_name op_defs =
   [%stri let equal ~info_eq t1 t2 = [%e match_exp]]
 ;;
 
-let modify_rec is_self_referential { pstr_desc; pstr_loc } =
-  match pstr_desc with
-  | Pstr_value (_is_rec, value_bindings) ->
-    let is_rec =
-      match is_self_referential with
-      | IsSelfReferential -> Recursive
-      | IsntSelfReferential -> Nonrecursive
-    in
-    { pstr_desc = Pstr_value (is_rec, value_bindings); pstr_loc }
-  | _ -> Util.invariant_violation "modify_rec: expected Pstr_value"
-;;
-
 let mk_info (module Ast : Ast_builder.S) op_defs =
   let f op_def =
     let lhs =
@@ -408,6 +393,18 @@ let mk_info (module Ast : Ast_builder.S) op_defs =
     Ast.case ~lhs ~guard ~rhs:Ast.([%expr x0])
   in
   op_defs |> List.map ~f |> Ast.pexp_function
+;;
+
+let modify_rec is_self_referential { pstr_desc; pstr_loc } =
+  match pstr_desc with
+  | Pstr_value (_is_rec, value_bindings) ->
+    let is_rec =
+      match is_self_referential with
+      | IsSelfReferential -> Recursive
+      | IsntSelfReferential -> Nonrecursive
+    in
+    { pstr_desc = Pstr_value (is_rec, value_bindings); pstr_loc }
+  | _ -> Util.invariant_violation "modify_rec: expected Pstr_value"
 ;;
 
 let mk_sort_module
