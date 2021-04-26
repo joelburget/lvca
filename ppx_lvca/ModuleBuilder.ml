@@ -104,6 +104,7 @@ type self_referential =
   | IsSelfReferential
   | IsntSelfReferential
 
+(* Whether each sort is or is not self-referential. *)
 let get_self_ref_map sort_defs =
   let sort_map = SMap.of_alist_exn sort_defs in
   sort_defs
@@ -266,12 +267,14 @@ module OperatorExp = struct
 end
 
 let mk_to_plain (module Ast : Ast_builder.S) sort_name op_defs =
+  let loc = Ast.loc in
   let f op_def =
     let lhs = OperatorPat.mk (module Ast) ~ctor_type:WithInfo op_def in
     let rhs = OperatorExp.mk (module Ast) ~ctor_type:Plain sort_name "to_plain" op_def in
     Ast.case ~lhs ~guard ~rhs
   in
-  op_defs |> List.map ~f |> Ast.pexp_function
+  let body = op_defs |> List.map ~f |> Ast.pexp_function in
+  [%stri let to_plain ~info_eq t1 t2 = [%e body]]
 ;;
 
 let mk_of_plain (module Ast : Ast_builder.S) sort_name op_defs =
@@ -287,10 +290,12 @@ let mk_of_plain (module Ast : Ast_builder.S) sort_name op_defs =
     in
     Ast.case ~lhs ~guard ~rhs
   in
-  op_defs |> List.map ~f |> Ast.pexp_function
+  let body = op_defs |> List.map ~f |> Ast.pexp_function in
+  let loc = Ast.loc in
+  [%stri let of_plain ~info_eq t1 t2 = [%e body]]
 ;;
 
-let mk_map_info (module Ast : Ast_builder.S) sort_name op_defs =
+let mk_map_info (module Ast : Ast_builder.S) sort_name op_defs is_self_referential =
   let f op_def =
     let lhs = OperatorPat.mk (module Ast) ~ctor_type:WithInfo ~match_info:true op_def in
     let rhs =
@@ -304,7 +309,11 @@ let mk_map_info (module Ast : Ast_builder.S) sort_name op_defs =
     in
     Ast.case ~lhs ~guard ~rhs
   in
-  op_defs |> List.map ~f |> Ast.pexp_function
+  let loc = Ast.loc in
+  let body = op_defs |> List.map ~f |> Ast.pexp_function in
+  match is_self_referential with
+  | IsSelfReferential -> [%stri let rec map_info ~info_eq t1 t2 = [%e body]]
+  | IsntSelfReferential -> [%stri let map_info ~info_eq t1 t2 = [%e body]]
 ;;
 
 let mk_equal (module Ast : Ast_builder.S) sort_name op_defs =
@@ -371,7 +380,21 @@ let mk_equal (module Ast : Ast_builder.S) sort_name op_defs =
       let last_branch = Ast.case ~lhs:[%pat? _, _] ~guard ~rhs:[%expr false] in
       Lvca_util.List.snoc branches last_branch
   in
-  Ast.pexp_match [%expr t1, t2] branches
+  let match_exp = Ast.pexp_match [%expr t1, t2] branches in
+  (* XXX use term / scope names *)
+  [%stri let equal ~info_eq t1 t2 = [%e match_exp]]
+;;
+
+let modify_rec is_self_referential { pstr_desc; pstr_loc } =
+  match pstr_desc with
+  | Pstr_value (_is_rec, value_bindings) ->
+    let is_rec =
+      match is_self_referential with
+      | IsSelfReferential -> Recursive
+      | IsntSelfReferential -> Nonrecursive
+    in
+    { pstr_desc = Pstr_value (is_rec, value_bindings); pstr_loc }
+  | _ -> Util.invariant_violation "modify_rec: expected Pstr_value"
 ;;
 
 let mk_info (module Ast : Ast_builder.S) op_defs =
@@ -396,34 +419,52 @@ let mk_sort_module
     (Syn.SortDef.SortDef (vars, op_defs))
   =
   let loc = Ast.loc in
-  let expr =
-    Ast.pmod_structure [ mk_type_decl (module Ast) ~info:false ~sort_name op_defs ]
-  in
-  (*
-    let pp_generic = { pstr_desc = Pstr_value (Recursive, []); pstr_loc = loc } in
-    let of_nominal = { pstr_desc = Pstr_value (Recursive, []); pstr_loc = loc } in
-    let to_nominal = { pstr_desc = Pstr_value (Recursive, []); pstr_loc = loc } in
-    select?
-    *)
+  let info_type_decl = mk_type_decl (module Ast) ~info:true ~sort_name op_defs in
+  let plain_type_decl = mk_type_decl (module Ast) ~info:false ~sort_name op_defs in
+  let is_self_referential = Map.find_exn self_ref_map sort_name in
   let defs =
-    match Map.find_exn self_ref_map sort_name with
-    | IsSelfReferential ->
-      [%str
-        let rec to_plain = [%e mk_to_plain (module Ast) sort_name op_defs]
-        let rec of_plain = [%e mk_of_plain (module Ast) sort_name op_defs]
-        let rec equal ~info_eq t1 t2 = [%e mk_equal (module Ast) sort_name op_defs]
-        let rec map_info ~f = [%e mk_map_info (module Ast) sort_name op_defs]]
-    | IsntSelfReferential ->
-      [%str
-        let to_plain = [%e mk_to_plain (module Ast) sort_name op_defs]
-        let of_plain = [%e mk_of_plain (module Ast) sort_name op_defs]
-        let equal ~info_eq t1 t2 = [%e mk_equal (module Ast) sort_name op_defs]
-        let map_info ~f = [%e mk_map_info (module Ast) sort_name op_defs]]
+    (* Each of these functions is potentially recursive (across multiple types), pre-declare. *)
+    [%str
+      module Types = struct
+        [%%i info_type_decl]
+      end
+
+      module Plain = struct
+        [%%i plain_type_decl]
+      end
+
+      module ToPlain = struct
+        [%%i mk_to_plain (module Ast) sort_name op_defs |> modify_rec is_self_referential]
+      end
+
+      module OfPlain = struct
+        [%%i mk_of_plain (module Ast) sort_name op_defs |> modify_rec is_self_referential]
+      end
+
+      module Equal = struct
+        [%%i mk_equal (module Ast) sort_name op_defs |> modify_rec is_self_referential]
+      end
+
+      (*
+      module PpGeneric = struct end
+      module OfNominal = struct end
+      module ToNominal = struct end
+      module Jsonify = struct end
+      module Unjsonify = struct end
+      module Select = struct end
+      module SubstAll = struct end
+      *)
+      module MapInfo = struct
+        ;;
+        [%i mk_map_info (module Ast) sort_name op_defs is_self_referential]
+      end]
   in
   let init =
     Ast.pmod_structure
-      ([ mk_type_decl (module Ast) ~info:true ~sort_name op_defs
-       ; Ast.module_binding ~name:{ txt = Some "Plain"; loc } ~expr |> Ast.pstr_module
+      ([ Ast.module_binding
+           ~name:{ txt = Some "Plain"; loc }
+           ~expr:(Ast.pmod_structure [ plain_type_decl ])
+         |> Ast.pstr_module
        ]
       @ [%str let info = [%e mk_info (module Ast) op_defs]]
       @ defs)
@@ -454,6 +495,7 @@ let mk_sort_module
 let mk_container_module ~loc (Syn.{ externals; sort_defs } as lang) =
   let (module Ast) = Ast_builder.make loc in
   let self_ref_map = get_self_ref_map sort_defs in
+  (* pre-declare types *)
   let sort_defs =
     List.map sort_defs ~f:(Util.Tuple2.uncurry (mk_sort_module (module Ast) self_ref_map))
   in
