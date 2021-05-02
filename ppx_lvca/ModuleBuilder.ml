@@ -2,16 +2,80 @@ open Base
 open Lvca_syntax
 open Ppxlib
 module Util = Lvca_util
+module SSet = Util.String.Set
+module SMap = Util.String.Map
 module Syn = AbstractSyntax
 module ParseAbstract = Syn.Parse (ParseUtil.CComment)
-module SSet = Lvca_util.String.Set
-module SMap = Lvca_util.String.Map
+
+(* Explanation for not supporting sort variables:
+
+  Example definition: [pair a b := Pair(a; b)]. We have two choices for how to
+  translate this to OCaml:
+
+  1. type variables
+
+  We end up with something like [type ('a, 'b) pair = Pair of 'a * 'b] (or
+  [type ('info, 'a, 'b) pair = Pair of 'info * 'a * 'b]). This is
+  great but we can't easily define helpers:
+
+    [let of_plain = function Plain.Pair (x1, x2) -> Types.Pair ((), ???, ???)]
+
+  2. functor
+
+  We define
+
+      module Pair (A : LanguageObject_intf.S) (B : LanguageObject_intf.S) = struct
+        type 'info t = Pair of 'info * 'info A.t * 'info B.t
+        ...
+      end
+
+  This might work actually? Except it's kind of a massive pain given that we
+  define all types together and all modules separately.
+
+  3. hybrid
+
+      module Types = struct
+        type ('info, 'a, 'b) pair = Pair of 'info * 'a * 'b
+        type 'info uses_pair = UsesPair of 'info * ('info, Integer.t, String.t) pair
+        type ('info, 'a) diag = Diag of ('info, 'a, 'a) pair
+      end
+
+      module Pair (A : LanguageObject_intf.S) (B : LanguageObject_intf.S) = struct
+        type 'info t = ('info, 'info A.t, 'info B.t) Types.pair =
+          | Pair of 'info * 'info A.t * 'info B.t
+        let of_plain = function
+          | Plain.Pair (x1, x2) -> Types.Pair ((), A.of_plain x1, B.of_plain x2)
+      end
+
+      module UsesPair = struct
+        module Pair_Integer_String = Pair (Integer) (String)
+        type 'info uses_pair = ('info, 'info Integer.t, 'info String.t) Types.uses_pair =
+          | UsesPair of 'info * ('info, Integer.t, 'info String.t) pair
+        let of_plain = function
+          | Plain.UsesPair x1 -> Types.UsesPair ((), Pair_Integer_String.of_plain x1)
+      end
+
+      module Diag (A : LanguageObject_intf.S) = struct
+        module Pair_A_A = Pair (A) (A)
+        type 'info diag = ('info, 'info A.t) Types.diag =
+          | Diag of 'info * ('info, 'info A.t, 'info A.t) pair
+        let of_plain = function
+          | Plain.Diag x1 -> Types.Diag ((), Pair_A_A.of_plain x1)
+      end
+
+    This seems to work! TODO Need to add:
+      * parametrized Types typedef
+      * functorized module def
+        - module alias for each distinct instantiation
+        - manifest type referencing Types
+*)
 
 type conversion_direction =
   | ToPlain
   | OfPlain
 
 (* Concatenate a list of names into a Longident. *)
+(* TODO: is this just Longident.unflatten? Also see Longident.parse. *)
 let build_names names =
   match names with
   | [] -> Lvca_util.invariant_violation "build_names: names must be nonempty"
