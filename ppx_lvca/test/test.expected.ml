@@ -40,283 +40,187 @@ let test_language =
     }
 module Lang(Integer:LanguageObject.AllTermS) =
   struct
-    let language =
-      let open AbstractSyntax in
-        {
-          externals =
-            [("integer",
-               (AbstractSyntax.Kind.Kind
-                  ((Some ((let open Range in { start = 11; finish = 121 }))),
-                    1)))];
-          sort_defs =
-            [("foo",
-               (AbstractSyntax.SortDef.SortDef
-                  ([],
-                    [AbstractSyntax.OperatorDef.OperatorDef
-                       ("Foo",
-                         [AbstractSyntax.Valence.Valence
-                            ([],
-                              (Sort.Name
-                                 ((Some
-                                     ((let open Range in
-                                         { start = 136; finish = 143 }))),
-                                   "integer")))]);
-                    AbstractSyntax.OperatorDef.OperatorDef
-                      ("Bar",
-                        [AbstractSyntax.Valence.Valence
-                           ([AbstractSyntax.SortSlot.SortPattern
-                               {
-                                 pattern_sort =
-                                   (Sort.Name
-                                      ((Some
-                                          ((let open Range in
-                                              { start = 153; finish = 156 }))),
-                                        "foo"));
-                                 var_sort =
-                                   (Sort.Name
-                                      ((Some
-                                          ((let open Range in
-                                              { start = 157; finish = 160 }))),
-                                        "foo"))
-                               };
-                            AbstractSyntax.SortSlot.SortBinding
-                              (Sort.Name
-                                 ((Some
-                                     ((let open Range in
-                                         { start = 163; finish = 166 }))),
-                                   "foo"))],
-                             (Sort.Name
-                                ((Some
-                                    ((let open Range in
-                                        { start = 168; finish = 171 }))),
-                                  "foo")))])])));
-            ("nat",
-              (AbstractSyntax.SortDef.SortDef
-                 ([],
-                   [AbstractSyntax.OperatorDef.OperatorDef ("Z", []);
-                   AbstractSyntax.OperatorDef.OperatorDef
-                     ("S",
-                       [AbstractSyntax.Valence.Valence
-                          ([],
-                            (Sort.Name
-                               ((Some
-                                   ((let open Range in
-                                       { start = 189; finish = 192 }))),
-                                 "nat")))])])));
-            ("list",
-              (AbstractSyntax.SortDef.SortDef
-                 ([("a", None)],
-                   [AbstractSyntax.OperatorDef.OperatorDef ("Nil", []);
-                   AbstractSyntax.OperatorDef.OperatorDef
-                     ("Cons",
-                       [AbstractSyntax.Valence.Valence
-                          ([],
-                            (Sort.Name
-                               ((Some
-                                   ((let open Range in
-                                       { start = 218; finish = 219 }))), "a")));
-                       AbstractSyntax.Valence.Valence
-                         ([],
-                           (Sort.Ap
-                              ((Some
-                                  ((let open Range in
-                                      { start = 221; finish = 228 }))),
-                                "list",
-                                [Sort.Name
-                                   ((Some
-                                       ((let open Range in
-                                           { start = 226; finish = 227 }))),
-                                     "a")])))])])));
-            ("pair",
-              (AbstractSyntax.SortDef.SortDef
-                 ([("a", None); ("b", None)],
-                   [AbstractSyntax.OperatorDef.OperatorDef
-                      ("Pair",
-                        [AbstractSyntax.Valence.Valence
-                           ([],
-                             (Sort.Name
-                                ((Some
-                                    ((let open Range in
-                                        { start = 248; finish = 249 }))),
-                                  "a")));
-                        AbstractSyntax.Valence.Valence
-                          ([],
-                            (Sort.Name
-                               ((Some
-                                   ((let open Range in
-                                       { start = 251; finish = 252 }))), "b")))])])));
-            ("pair_plus",
-              (AbstractSyntax.SortDef.SortDef
-                 ([("a", None); ("b", None)],
-                   [AbstractSyntax.OperatorDef.OperatorDef
-                      ("PairPlus",
-                        [AbstractSyntax.Valence.Valence
-                           ([],
-                             (Sort.Name
-                                ((Some
-                                    ((let open Range in
-                                        { start = 281; finish = 282 }))),
-                                  "a")));
-                        AbstractSyntax.Valence.Valence
-                          ([],
-                            (Sort.Name
-                               ((Some
-                                   ((let open Range in
-                                       { start = 284; finish = 285 }))), "b")));
-                        AbstractSyntax.Valence.Valence
-                          ([],
-                            (Sort.Name
-                               ((Some
-                                   ((let open Range in
-                                       { start = 287; finish = 290 }))),
-                                 "foo")))])])))]
-        }
-    module Foo =
+    module Wrapper =
       struct
-        type 'info t =
-          | Foo of 'info * 'info Integer.t 
-          | Bar of 'info * ('info Pattern.t * string * 'info t) 
+        module Types =
+          struct
+            type 'info foo =
+              | Foo of 'info * 'info Integer.t 
+              | Bar of 'info * ('info Pattern.t * string * 'info foo) 
+            and 'info mut_a =
+              | Mut_a of 'info * 'info mut_b 
+            and 'info mut_b =
+              | Mut_b of 'info * 'info mut_a 
+            and 'info nat =
+              | Z of 'info 
+              | S of 'info * 'info nat 
+          end
         module Plain =
           struct
-            type t =
+            type foo =
               | Foo of Integer.Plain.t 
-              | Bar of (Pattern.Plain.t * string * t) 
+              | Bar of (Pattern.Plain.t * string * foo) 
+            and mut_a =
+              | Mut_a of mut_b 
+            and mut_b =
+              | Mut_b of mut_a 
+            and nat =
+              | Z 
+              | S of nat 
           end
-        let info = function | Foo (x0, _) -> x0 | Bar (x0, (_, _, _)) -> x0
-        let rec to_plain =
-          function
-          | Foo (_, x1) -> Plain.Foo (Integer.to_plain x1)
-          | Bar (_, (x1, x2, x3)) ->
-              Plain.Bar ((Pattern.to_plain x1), x2, (to_plain x3))
-        let rec of_plain =
-          function
-          | Plain.Foo x1 -> Foo ((), (Integer.of_plain x1))
-          | Plain.Bar (x1, x2, x3) ->
-              Bar ((), ((Pattern.of_plain x1), x2, (of_plain x3)))
-        let rec equal ~info_eq  t1 t2 =
-          match (t1, t2) with
-          | (Foo (x0, x1), Foo (y0, y1)) ->
-              (info_eq x0 y0) && (Integer.equal ~info_eq x1 y1)
-          | (Bar (x0, (x1, x2, x3)), Bar (y0, (y1, y2, y3))) ->
-              (info_eq x0 y0) &&
-                ((Pattern.equal ~info_eq x1 y1) &&
-                   ((Base.String.(=) x2 y2) && (equal ~info_eq x3 y3)))
-          | (_, _) -> false
-        let rec map_info ~f  =
-          function
-          | Foo (x0, x1) -> Foo ((f x0), (Integer.map_info ~f x1))
-          | Bar (x0, (x1, x2, x3)) ->
-              Bar ((f x0), ((Pattern.map_info ~f x1), x2, (map_info ~f x3)))
+        module Info =
+          struct
+            let foo =
+              function
+              | Types.Foo (x0, _) -> x0
+              | Types.Bar (x0, (_, _, _)) -> x0
+            let nat = function | Types.Z x0 -> x0 | Types.S (x0, _) -> x0
+            let mut_a = function | Types.Mut_a (x0, _) -> x0
+            and mut_b = function | Types.Mut_b (x0, _) -> x0
+          end
+        module ToPlain =
+          struct
+            let rec foo =
+              function
+              | Types.Foo (_, x1) -> Plain.Foo (Integer.to_plain x1)
+              | Types.Bar (_, (x1, x2, x3)) ->
+                  Plain.Bar ((Pattern.to_plain x1), x2, (foo x3))
+            let rec nat =
+              function
+              | Types.Z _ -> Plain.Z
+              | Types.S (_, x1) -> Plain.S (nat x1)
+            let rec mut_a =
+              function | Types.Mut_a (_, x1) -> Plain.Mut_a (mut_b x1)
+            and mut_b =
+              function | Types.Mut_b (_, x1) -> Plain.Mut_b (mut_a x1)
+          end
+        module OfPlain =
+          struct
+            let rec foo =
+              function
+              | Plain.Foo x1 -> Types.Foo ((), (Integer.of_plain x1))
+              | Plain.Bar (x1, x2, x3) ->
+                  Types.Bar ((), ((Pattern.of_plain x1), x2, (foo x3)))
+            let rec nat =
+              function
+              | Plain.Z -> Types.Z ()
+              | Plain.S x1 -> Types.S ((), (nat x1))
+            let rec mut_a =
+              function | Plain.Mut_a x1 -> Types.Mut_a ((), (mut_b x1))
+            and mut_b =
+              function | Plain.Mut_b x1 -> Types.Mut_b ((), (mut_a x1))
+          end
+        module Equal =
+          struct
+            let rec foo ~info_eq  t1 t2 =
+              match (t1, t2) with
+              | (Types.Foo (x0, x1), Types.Foo (y0, y1)) ->
+                  (info_eq x0 y0) && (Integer.equal ~info_eq x1 y1)
+              | (Types.Bar (x0, (x1, x2, x3)), Types.Bar (y0, (y1, y2, y3)))
+                  ->
+                  (info_eq x0 y0) &&
+                    ((Pattern.equal ~info_eq x1 y1) &&
+                       ((Base.String.(=) x2 y2) && (foo ~info_eq x3 y3)))
+              | (_, _) -> false
+            let rec nat ~info_eq  t1 t2 =
+              match (t1, t2) with
+              | (Types.Z x0, Types.Z y0) -> info_eq x0 y0
+              | (Types.S (x0, x1), Types.S (y0, y1)) ->
+                  (info_eq x0 y0) && (nat ~info_eq x1 y1)
+              | (_, _) -> false
+            let rec mut_a ~info_eq  t1 t2 =
+              match (t1, t2) with
+              | (Types.Mut_a (x0, x1), Types.Mut_a (y0, y1)) ->
+                  (info_eq x0 y0) && (mut_b ~info_eq x1 y1)
+            and mut_b ~info_eq  t1 t2 =
+              match (t1, t2) with
+              | (Types.Mut_b (x0, x1), Types.Mut_b (y0, y1)) ->
+                  (info_eq x0 y0) && (mut_a ~info_eq x1 y1)
+          end
+        module MapInfo =
+          struct
+            let rec foo ~f  =
+              function
+              | Types.Foo (x0, x1) ->
+                  Types.Foo ((f x0), (Integer.map_info ~f x1))
+              | Types.Bar (x0, (x1, x2, x3)) ->
+                  Types.Bar
+                    ((f x0), ((Pattern.map_info ~f x1), x2, (foo ~f x3)))
+            let rec nat ~f  =
+              function
+              | Types.Z x0 -> Types.Z (f x0)
+              | Types.S (x0, x1) -> Types.S ((f x0), (nat ~f x1))
+            let rec mut_a ~f  =
+              function
+              | Types.Mut_a (x0, x1) -> Types.Mut_a ((f x0), (mut_b ~f x1))
+            and mut_b ~f  =
+              function
+              | Types.Mut_b (x0, x1) -> Types.Mut_b ((f x0), (mut_a ~f x1))
+          end
+      end
+    module Foo =
+      struct
+        module Plain =
+          struct
+            type t = Wrapper.Plain.foo =
+              | Foo of Integer.Plain.t 
+              | Bar of (Pattern.Plain.t * string * Wrapper.Plain.foo) 
+          end
+        type 'info t = 'info Wrapper.Types.foo =
+          | Foo of 'info * 'info Integer.t 
+          | Bar of 'info * ('info Pattern.t * string * 'info
+          Wrapper.Types.foo) 
+        let info = Wrapper.Info.foo
+        let to_plain = Wrapper.ToPlain.foo
+        let of_plain = Wrapper.OfPlain.foo
+        let equal = Wrapper.Equal.foo
+        let map_info = Wrapper.MapInfo.foo
       end
     module Nat =
       struct
-        type 'info t =
-          | Z of 'info 
-          | S of 'info * 'info t 
-        module Plain = struct type t =
-                                | Z 
-                                | S of t  end
-        let info = function | Z x0 -> x0 | S (x0, _) -> x0
-        let rec to_plain =
-          function | Z _ -> Plain.Z | S (_, x1) -> Plain.S (to_plain x1)
-        let rec of_plain =
-          function | Plain.Z -> Z () | Plain.S x1 -> S ((), (of_plain x1))
-        let rec equal ~info_eq  t1 t2 =
-          match (t1, t2) with
-          | (Z x0, Z y0) -> info_eq x0 y0
-          | (S (x0, x1), S (y0, y1)) ->
-              (info_eq x0 y0) && (equal ~info_eq x1 y1)
-          | (_, _) -> false
-        let rec map_info ~f  =
-          function
-          | Z x0 -> Z (f x0)
-          | S (x0, x1) -> S ((f x0), (map_info ~f x1))
-      end
-    module List(A:LanguageObject.AllTermS) =
-      struct
-        type 'info t =
-          | Nil of 'info 
-          | Cons of 'info * 'info A.t * 'info t 
-        module Plain = struct type t =
-                                | Nil 
-                                | Cons of A.Plain.t * t  end
-        let info = function | Nil x0 -> x0 | Cons (x0, _, _) -> x0
-        let rec to_plain =
-          function
-          | Nil _ -> Plain.Nil
-          | Cons (_, x1, x2) -> Plain.Cons ((A.to_plain x1), (to_plain x2))
-        let rec of_plain =
-          function
-          | Plain.Nil -> Nil ()
-          | Plain.Cons (x1, x2) -> Cons ((), (A.of_plain x1), (of_plain x2))
-        let rec equal ~info_eq  t1 t2 =
-          match (t1, t2) with
-          | (Nil x0, Nil y0) -> info_eq x0 y0
-          | (Cons (x0, x1, x2), Cons (y0, y1, y2)) ->
-              (info_eq x0 y0) &&
-                ((A.equal ~info_eq x1 y1) && (equal ~info_eq x2 y2))
-          | (_, _) -> false
-        let rec map_info ~f  =
-          function
-          | Nil x0 -> Nil (f x0)
-          | Cons (x0, x1, x2) ->
-              Cons ((f x0), (A.map_info ~f x1), (map_info ~f x2))
-      end
-    module Pair(A:LanguageObject.AllTermS)(B:LanguageObject.AllTermS) =
-      struct
-        type 'info t =
-          | Pair of 'info * 'info A.t * 'info B.t 
-        module Plain = struct type t =
-                                | Pair of A.Plain.t * B.Plain.t  end
-        let info = function | Pair (x0, _, _) -> x0
-        let to_plain =
-          function
-          | Pair (_, x1, x2) -> Plain.Pair ((A.to_plain x1), (B.to_plain x2))
-        let of_plain =
-          function
-          | Plain.Pair (x1, x2) ->
-              Pair ((), (A.of_plain x1), (B.of_plain x2))
-        let equal ~info_eq  t1 t2 =
-          match (t1, t2) with
-          | (Pair (x0, x1, x2), Pair (y0, y1, y2)) ->
-              (info_eq x0 y0) &&
-                ((A.equal ~info_eq x1 y1) && (B.equal ~info_eq x2 y2))
-        let map_info ~f  =
-          function
-          | Pair (x0, x1, x2) ->
-              Pair ((f x0), (A.map_info ~f x1), (B.map_info ~f x2))
-      end
-    module Pair_plus(A:LanguageObject.AllTermS)(B:LanguageObject.AllTermS) =
-      struct
-        type 'info t =
-          | PairPlus of 'info * 'info A.t * 'info B.t * 'info Foo.t 
         module Plain =
           struct
-            type t =
-              | PairPlus of A.Plain.t * B.Plain.t * Foo.Plain.t 
+            type t = Wrapper.Plain.nat =
+              | Z 
+              | S of Wrapper.Plain.nat 
           end
-        let info = function | PairPlus (x0, _, _, _) -> x0
-        let to_plain =
-          function
-          | PairPlus (_, x1, x2, x3) ->
-              Plain.PairPlus
-                ((A.to_plain x1), (B.to_plain x2), (Foo.to_plain x3))
-        let of_plain =
-          function
-          | Plain.PairPlus (x1, x2, x3) ->
-              PairPlus
-                ((), (A.of_plain x1), (B.of_plain x2), (Foo.of_plain x3))
-        let equal ~info_eq  t1 t2 =
-          match (t1, t2) with
-          | (PairPlus (x0, x1, x2, x3), PairPlus (y0, y1, y2, y3)) ->
-              (info_eq x0 y0) &&
-                ((A.equal ~info_eq x1 y1) &&
-                   ((B.equal ~info_eq x2 y2) && (Foo.equal ~info_eq x3 y3)))
-        let map_info ~f  =
-          function
-          | PairPlus (x0, x1, x2, x3) ->
-              PairPlus
-                ((f x0), (A.map_info ~f x1), (B.map_info ~f x2),
-                  (Foo.map_info ~f x3))
+        type 'info t = 'info Wrapper.Types.nat =
+          | Z of 'info 
+          | S of 'info * 'info Wrapper.Types.nat 
+        let info = Wrapper.Info.nat
+        let to_plain = Wrapper.ToPlain.nat
+        let of_plain = Wrapper.OfPlain.nat
+        let equal = Wrapper.Equal.nat
+        let map_info = Wrapper.MapInfo.nat
+      end
+    module Mut_a =
+      struct
+        module Plain =
+          struct
+            type t = Wrapper.Plain.mut_a =
+              | Mut_a of Wrapper.Plain.mut_b 
+          end
+        type 'info t = 'info Wrapper.Types.mut_a =
+          | Mut_a of 'info * 'info Wrapper.Types.mut_b 
+        let info = Wrapper.Info.mut_a
+        let to_plain = Wrapper.ToPlain.mut_a
+        let of_plain = Wrapper.OfPlain.mut_a
+        let equal = Wrapper.Equal.mut_a
+        let map_info = Wrapper.MapInfo.mut_a
+      end
+    module Mut_b =
+      struct
+        module Plain =
+          struct
+            type t = Wrapper.Plain.mut_b =
+              | Mut_b of Wrapper.Plain.mut_a 
+          end
+        type 'info t = 'info Wrapper.Types.mut_b =
+          | Mut_b of 'info * 'info Wrapper.Types.mut_a 
+        let info = Wrapper.Info.mut_b
+        let to_plain = Wrapper.ToPlain.mut_b
+        let of_plain = Wrapper.OfPlain.mut_b
+        let equal = Wrapper.Equal.mut_b
+        let map_info = Wrapper.MapInfo.mut_b
       end
   end

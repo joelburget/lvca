@@ -21,11 +21,11 @@ foo :=
 
 nat := Z() | S(nat)
 
-list a := Nil() | Cons(a; list(a))
+// ignoring sort vars for now.
+// list a := Nil() | Cons(a; list a)
+// pair a b := Pair(a; b)
+// pair_plus a b := PairPlus(a; b; foo)
 
-pair a b := Pair(a; b)
-
-pair_plus a b := PairPlus(a; b; foo)
-
-// TODO: test mutual definitions
+mut_a := Mut_a(mut_b)
+mut_b := Mut_b(mut_a)
 |}]
