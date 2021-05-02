@@ -14,6 +14,7 @@ module Make (PlainBase : PlainBase_s) = struct
   module Plain_typedef = PlainBase
   module Plain = PlainBase
 
+  let info (i, _) = i
   let to_plain (_, x) = x
   let of_plain x = (), x
   let equal ~info_eq (i1, x1) (i2, x2) = info_eq i1 i2 && PlainBase.(x1 = x2)

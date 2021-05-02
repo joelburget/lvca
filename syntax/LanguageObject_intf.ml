@@ -5,6 +5,7 @@ module type S = sig
     type t
   end
 
+  val info : 'info t -> 'info
   val to_plain : _ t -> Plain.t
   val of_plain : Plain.t -> unit t
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
