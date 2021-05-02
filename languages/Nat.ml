@@ -4,9 +4,11 @@ open Lvca_syntax
 module Lang =
 [%abstract_syntax_module
 {|
+string : *
+
 nat := Z() | S(nat)
 
-list a := Nil() | Cons(a; list(a))
+list := Nil() | Cons(string; list)
 |}]
 
 (* very loosely *)
@@ -18,32 +20,37 @@ let rec f = function
 |}
 ;;
 
-module Foo (A : LanguageObject.AllTermS) : sig
-  (* module List : LanguageObject.AllTermS *)
-  module List : sig
-    type 'info t
-  end
+module Lang' = Lang (Primitive.String)
+module List = Lang'.List
 
-  val list_to_nat : 'info List.t -> ('info * 'info A.t option) Lang.Nat.t option
-  val nat_to_list : ('info * 'info A.t option) Lang.Nat.t -> 'info List.t option
+module Foo : sig
+  val list_to_nat
+    :  'info List.t
+    -> ('info * 'info Primitive.String.t option) Lang'.Nat.t option
+
+  val nat_to_list
+    :  ('info * 'info Primitive.String.t option) Lang'.Nat.t
+    -> 'info List.t option
 
   module Properties : sig
     val round_trip_1 : unit List.t -> PropertyResult.t
-    val round_trip_2 : (unit * unit A.t option) Lang.Nat.t -> PropertyResult.t
+
+    val round_trip_2
+      :  (unit * unit Primitive.String.t option) Lang'.Nat.t
+      -> PropertyResult.t
   end
 end = struct
-  module List = Lang.List (A)
   open Option.Let_syntax
 
   let rec list_to_nat = function
-    | List.Nil info -> Some (Lang.Nat.Z (info, None))
+    | List.Nil info -> Some (Lang'.Nat.Z (info, None))
     | Cons (info, a, lst) ->
       let%map lst = list_to_nat lst in
-      Lang.Nat.S ((info, Some a), lst)
+      Lang'.Nat.S ((info, Some a), lst)
   ;;
 
   let rec nat_to_list = function
-    | Lang.Nat.Z (info, None) -> Some (List.Nil info)
+    | Lang'.Nat.Z (info, None) -> Some (List.Nil info)
     | S ((info, Some a), n) ->
       let%map lst = nat_to_list n in
       List.Cons (info, a, lst)
@@ -69,14 +76,17 @@ end = struct
         | None -> Failed "Failed to convert list back to nat"
         | Some nat' ->
           let info_eq =
-            Lvca_util.Tuple2.equal Unit.( = ) (Option.equal (A.equal ~info_eq:Unit.( = )))
+            Lvca_util.Tuple2.equal
+              Unit.( = )
+              (Option.equal (Primitive.String.equal ~info_eq:Unit.( = )))
           in
-          PropertyResult.check (Lang.Nat.equal ~info_eq nat nat') "Nats not equal")
+          PropertyResult.check (Lang'.Nat.equal ~info_eq nat nat') "Nats not equal")
     ;;
   end
 end
 
 (* TODO:
+  - un-hardcode string
   - check:
     * list_to_nat, nat_to_list round-trip
     * correspondence parser, matches list_to_nat, nat_to_list
