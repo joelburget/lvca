@@ -37,59 +37,9 @@ let mk_exp_tuple ~loc = function
 
 let sort_head = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
 
-let ptyp_of_sort
-    (module Ast : Ast_builder.S)
-    ~var_names
-    ~mutual_sort_names
-    ~prim_names
-    ~info
-  =
-  let loc = Ast.loc in
-  function
-  | Sort.Name (_, name) | Ap (_, name, _) ->
-    let args = if info then [ [%type: 'info] ] else [] in
-    let txt =
-      if Set.mem mutual_sort_names name || Set.mem var_names name
-      then Lident name
-      else (
-        let qualified_name =
-          match Set.mem prim_names name, info with
-          | true, true -> [ module_name name; "t" ]
-          | true, false -> [ module_name name; "Plain"; "t" ]
-          | false, true -> [ "Wrapper"; "Types"; name ]
-          | false, false -> [ "Wrapper"; "Plain"; name ]
-        in
-        build_names qualified_name)
-    in
-    Ast.ptyp_constr { txt; loc } args
-;;
-
 let conjuntion ~loc exps =
   let exps, last = Lvca_util.List.unsnoc exps in
   List.fold_right exps ~init:last ~f:(fun e1 e2 -> [%expr [%e e1] && [%e e2]])
-;;
-
-let args_of_valence
-    (module Ast : Ast_builder.S)
-    ~info
-    ~var_names
-    ~mutual_sort_names
-    ~prim_names
-    (Syn.Valence.Valence (binding_sort_slots, body_sort))
-  =
-  let loc = Ast.loc in
-  let body_type =
-    ptyp_of_sort (module Ast) ~info ~var_names ~mutual_sort_names ~prim_names body_sort
-  in
-  match binding_sort_slots with
-  | [] -> [ body_type ]
-  | _ ->
-    binding_sort_slots
-    |> List.map ~f:(function
-           | Syn.SortSlot.SortBinding _sort -> [%type: string]
-           | SortPattern _sort ->
-             if info then [%type: 'info Pattern.t] else [%type: Pattern.Plain.t])
-    |> Fn.flip Lvca_util.List.snoc body_type
 ;;
 
 (* XXX possibility of generating two constructors with same name *)
@@ -102,10 +52,39 @@ let mk_ctor_decl
     (Syn.OperatorDef.OperatorDef (op_name, arity))
   =
   let loc = Ast.loc in
+  let ptyp_of_sort = function
+    | Sort.Name (_, name) | Ap (_, name, _) ->
+      let args = if info then [ [%type: 'info] ] else [] in
+      let txt =
+        if Set.mem mutual_sort_names name || Set.mem var_names name
+        then Lident name
+        else (
+          let qualified_name =
+            match Set.mem prim_names name, info with
+            | true, true -> [ module_name name; "t" ]
+            | true, false -> [ module_name name; "Plain"; "t" ]
+            | false, true -> [ "Wrapper"; "Types"; name ]
+            | false, false -> [ "Wrapper"; "Plain"; name ]
+          in
+          build_names qualified_name)
+      in
+      Ast.ptyp_constr { txt; loc } args
+  in
+  let args_of_valence (Syn.Valence.Valence (binding_sort_slots, body_sort)) =
+    let body_type = ptyp_of_sort body_sort in
+    match binding_sort_slots with
+    | [] -> [ body_type ]
+    | _ ->
+      binding_sort_slots
+      |> List.map ~f:(function
+             | Syn.SortSlot.SortBinding _sort -> [%type: string]
+             | SortPattern _sort ->
+               if info then [%type: 'info Pattern.t] else [%type: Pattern.Plain.t])
+      |> Fn.flip Lvca_util.List.snoc body_type
+  in
   let args =
     arity
-    |> List.map
-         ~f:(args_of_valence (module Ast) ~info ~var_names ~mutual_sort_names ~prim_names)
+    |> List.map ~f:args_of_valence
     |> (if info then List.cons [ [%type: 'info] ] else Fn.id)
     |> List.map ~f:(function
            | [] -> [%type: unit]
