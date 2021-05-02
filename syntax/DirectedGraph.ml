@@ -221,6 +221,7 @@ let%test_module _ =
       6 ---> 2 <--> 3
     *)
     let adjacency2 = [ [ 1 ]; [ 2; 4; 6 ]; [ 3 ]; [ 2; 4; 5 ]; [ 5 ]; [ 4 ]; [ 0; 2 ] ]
+    let adjacency3 = [ [ 0 ] ]
 
     let print_connected_components adjacency =
       let Int.ConnectedComponents.{ scc_numbering; _ } =
@@ -243,6 +244,13 @@ let%test_module _ =
       [%expect {|
         scc_numbering: 0 0 2 2 4 4 0
         sets: 4,5 2,3 0,1,6|}]
+    ;;
+
+    let%expect_test _ =
+      print_connected_components adjacency3;
+      [%expect {|
+        scc_numbering: 0
+        sets: 0|}]
     ;;
 
     module Int' = F (Base.Int)
@@ -294,6 +302,15 @@ let%test_module _ =
           2 -> 0 1 6|}]
     ;;
 
+    let%expect_test _ =
+      print_connected_components adjacency3;
+      [%expect {|
+        scc_graph:
+          0 ->
+        sccs:
+          0 -> 0|}]
+    ;;
+
     let print_scc adjacency =
       Fmt.(pr "%a" (list ~sep:(any " ") int)) (Int.topsort_exn adjacency)
     ;;
@@ -324,6 +341,22 @@ let%test_module _ =
     let%expect_test _ =
       print_scc adjacency2;
       [%expect {|2 1 0|}]
+    ;;
+
+    let%expect_test _ =
+      print_scc adjacency3;
+      [%expect {|0|}]
+    ;;
+
+    module String = F (Base.String)
+
+    let%expect_test _ =
+      let graph = Map.of_alist_exn (module Base.String) [ "foo", [ "foo" ] ] in
+      let String.ConnectedComponents.{ scc_graph; _ } =
+        String.connected_components graph
+      in
+      Fmt.(pr "%a" (list ~sep:(any " ") int)) (Int.topsort_exn scc_graph);
+      [%expect {|0|}]
     ;;
   end)
 ;;
