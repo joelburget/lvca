@@ -114,6 +114,14 @@ let mk_exp_tuple ~loc = function
 
 let sort_head = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
 
+let labelled_fun (module Ast : Ast_builder.S) name =
+  Ast.(pexp_fun (Labelled name) None (ppat_var { txt = name; loc }))
+;;
+
+let labelled_arg (module Ast : Ast_builder.S) name =
+  Ast.(Labelled name, pexp_ident { txt = Lident name; loc })
+;;
+
 let conjuntion ~loc exps =
   let exps, last = Lvca_util.List.unsnoc exps in
   List.fold_right exps ~init:last ~f:(fun e1 e2 -> [%expr [%e e1] && [%e e2]])
@@ -449,11 +457,7 @@ let mk_map_info
     Ast.case ~lhs ~guard ~rhs
   in
   let init =
-    let open Ast in
-    op_defs
-    |> List.map ~f
-    |> pexp_function
-    |> pexp_fun (Labelled "f") None (ppat_var { txt = "f"; loc })
+    op_defs |> List.map ~f |> Ast.pexp_function |> labelled_fun (module Ast) "f"
   in
   let f (var_name, _kind_opt) body =
     Ast.(pexp_fun Nolabel None (ppat_var { txt = "f_" ^ var_name; loc }) body)
@@ -542,7 +546,7 @@ let mk_equal
     |> pexp_match [%expr t1, t2]
     |> pexp_fun Nolabel None (ppat_var { txt = "t2"; loc })
     |> pexp_fun Nolabel None (ppat_var { txt = "t1"; loc })
-    |> pexp_fun (Labelled "info_eq") None (ppat_var { txt = "info_eq"; loc })
+    |> labelled_fun (module Ast) "info_eq"
   in
   let f (var_name, _kind_opt) body =
     Ast.(pexp_fun Nolabel None (ppat_var { txt = "f_" ^ var_name; loc }) body)
@@ -664,12 +668,12 @@ let all_term_s (module Ast : Ast_builder.S) =
 
 let mk_individual_type_module
     (module Ast : Ast_builder.S)
-    ~prim_names
+    ~prim_names:_
     sort_name
-    (Syn.SortDef.SortDef (vars, op_defs))
+    (Syn.SortDef.SortDef (vars, _op_defs))
   =
   let loc = Ast.loc in
-  let var_names = vars |> List.map ~f:fst |> SSet.of_list in
+  (* let var_names = vars |> List.map ~f:fst |> SSet.of_list in *)
   let plain_type_decl =
     let manifest_arg_list =
       vars
@@ -680,6 +684,8 @@ let mk_individual_type_module
                [])
     in
     let kind =
+      Ptype_abstract
+      (*
       Ptype_variant
         (List.map
            op_defs
@@ -691,6 +697,7 @@ let mk_individual_type_module
                 ~var_names
                 ~mutual_sort_names:SSet.empty
                 ~prim_names))
+                *)
     in
     let manifest =
       Some
@@ -714,9 +721,13 @@ let mk_individual_type_module
       vars
       |> List.map ~f:fst
       |> List.map ~f:(fun name ->
-             Ast.ptyp_constr { txt = build_names [ module_name name; "t" ]; loc } [])
+             Ast.ptyp_constr
+               { txt = build_names [ module_name name; "t" ]; loc }
+               [ Ast.ptyp_var "info" ])
     in
     let kind =
+      Ptype_abstract
+      (*
       Ptype_variant
         (List.map
            op_defs
@@ -728,6 +739,7 @@ let mk_individual_type_module
                 ~var_names
                 ~mutual_sort_names:SSet.empty
                 ~prim_names))
+                *)
     in
     let manifest =
       Some
@@ -759,20 +771,34 @@ let mk_individual_type_module
              pexp_ident { txt = build_names [ "Wrapper"; mod_name; sort_name ]; loc }
            in
            let expr =
-             match vars with
-             | [] -> wrapper_fun
-             | _ ->
-               let args =
+             let args =
+               match vars with
+               | [] -> []
+               | _ ->
                  vars
                  |> List.map ~f:(fun (name, _kind_opt) ->
                         let txt = build_names [ module_name name; fun_name ] in
                         Nolabel, pexp_ident { txt; loc })
-               in
-               pexp_apply wrapper_fun args
+             in
+             let args =
+               match fun_name with
+               | "equal" -> Util.List.snoc args (labelled_arg (module Ast) "info_eq")
+               | "map_info" -> Util.List.snoc args (labelled_arg (module Ast) "f")
+               | _ -> args
+             in
+             let tm = pexp_ident { txt = Lident "tm"; loc } in
+             let args = Util.List.snoc args (Nolabel, tm) in
+             pexp_apply wrapper_fun args
            in
-           pstr_value
-             Nonrecursive
-             [ value_binding ~pat:(ppat_var { txt = fun_name; loc }) ~expr ])
+           let expr = pexp_fun Nolabel None (ppat_var { txt = "tm"; loc }) expr in
+           let expr =
+             match fun_name with
+             | "equal" -> labelled_fun (module Ast) "info_eq" expr
+             | "map_info" -> labelled_fun (module Ast) "f" expr
+             | _ -> expr
+           in
+           let pat = ppat_var { txt = fun_name; loc } in
+           pstr_value Nonrecursive [ value_binding ~pat ~expr ])
   in
   (* TODO: implement *)
   let fun_defs =

@@ -189,21 +189,13 @@ module Lang(Integer:LanguageObject.AllTermS) :
       end
     module Foo =
       struct
-        type 'info t = 'info Wrapper.Types.foo =
-          | Foo of 'info * 'info Integer.t 
-          | Bar of 'info * ('info Pattern.t * string * 'info
-          Wrapper.Types.foo) 
-        module Plain =
-          struct
-            type t = Wrapper.Plain.foo =
-              | Foo of Integer.Plain.t 
-              | Bar of (Pattern.Plain.t * string * Wrapper.Plain.foo) 
-          end
-        let info = Wrapper.Info.foo
-        let to_plain = Wrapper.ToPlain.foo
-        let of_plain = Wrapper.OfPlain.foo
-        let equal = Wrapper.Equal.foo
-        let map_info = Wrapper.MapInfo.foo
+        type 'info t = 'info Wrapper.Types.foo
+        module Plain = struct type t = Wrapper.Plain.foo end
+        let info tm = Wrapper.Info.foo tm
+        let to_plain tm = Wrapper.ToPlain.foo tm
+        let of_plain tm = Wrapper.OfPlain.foo tm
+        let equal ~info_eq  tm = Wrapper.Equal.foo ~info_eq tm
+        let map_info ~f  tm = Wrapper.MapInfo.foo ~f tm
         let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
           Fmt.pf ppf "TODO: pp_generic"
         module Parse(Comment:ParseUtil.Comment_int) =
@@ -211,20 +203,13 @@ module Lang(Integer:LanguageObject.AllTermS) :
       end
     module Nat =
       struct
-        type 'info t = 'info Wrapper.Types.nat =
-          | Z of 'info 
-          | S of 'info * 'info Wrapper.Types.nat 
-        module Plain =
-          struct
-            type t = Wrapper.Plain.nat =
-              | Z 
-              | S of Wrapper.Plain.nat 
-          end
-        let info = Wrapper.Info.nat
-        let to_plain = Wrapper.ToPlain.nat
-        let of_plain = Wrapper.OfPlain.nat
-        let equal = Wrapper.Equal.nat
-        let map_info = Wrapper.MapInfo.nat
+        type 'info t = 'info Wrapper.Types.nat
+        module Plain = struct type t = Wrapper.Plain.nat end
+        let info tm = Wrapper.Info.nat tm
+        let to_plain tm = Wrapper.ToPlain.nat tm
+        let of_plain tm = Wrapper.OfPlain.nat tm
+        let equal ~info_eq  tm = Wrapper.Equal.nat ~info_eq tm
+        let map_info ~f  tm = Wrapper.MapInfo.nat ~f tm
         let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
           Fmt.pf ppf "TODO: pp_generic"
         module Parse(Comment:ParseUtil.Comment_int) =
@@ -232,18 +217,16 @@ module Lang(Integer:LanguageObject.AllTermS) :
       end
     module Pair(A:LanguageObject.AllTermS)(B:LanguageObject.AllTermS) =
       struct
-        type 'info t = ('info, A.t, B.t) Wrapper.Types.pair =
-          | Pair of 'info * 'info A.t * 'info B.t 
+        type 'info t = ('info, 'info A.t, 'info B.t) Wrapper.Types.pair
         module Plain =
-          struct
-            type t = (A.Plain.t, B.Plain.t) Wrapper.Plain.pair =
-              | Pair of A.Plain.t * B.Plain.t 
-          end
-        let info = Wrapper.Info.pair A.info B.info
-        let to_plain = Wrapper.ToPlain.pair A.to_plain B.to_plain
-        let of_plain = Wrapper.OfPlain.pair A.of_plain B.of_plain
-        let equal = Wrapper.Equal.pair A.equal B.equal
-        let map_info = Wrapper.MapInfo.pair A.map_info B.map_info
+          struct type t = (A.Plain.t, B.Plain.t) Wrapper.Plain.pair end
+        let info tm = Wrapper.Info.pair A.info B.info tm
+        let to_plain tm = Wrapper.ToPlain.pair A.to_plain B.to_plain tm
+        let of_plain tm = Wrapper.OfPlain.pair A.of_plain B.of_plain tm
+        let equal ~info_eq  tm =
+          Wrapper.Equal.pair A.equal B.equal ~info_eq tm
+        let map_info ~f  tm =
+          Wrapper.MapInfo.pair A.map_info B.map_info ~f tm
         let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
           Fmt.pf ppf "TODO: pp_generic"
         module Parse(Comment:ParseUtil.Comment_int) =
@@ -251,18 +234,13 @@ module Lang(Integer:LanguageObject.AllTermS) :
       end
     module Mut_a =
       struct
-        type 'info t = 'info Wrapper.Types.mut_a =
-          | Mut_a of 'info * 'info Wrapper.Types.mut_b 
-        module Plain =
-          struct
-            type t = Wrapper.Plain.mut_a =
-              | Mut_a of Wrapper.Plain.mut_b 
-          end
-        let info = Wrapper.Info.mut_a
-        let to_plain = Wrapper.ToPlain.mut_a
-        let of_plain = Wrapper.OfPlain.mut_a
-        let equal = Wrapper.Equal.mut_a
-        let map_info = Wrapper.MapInfo.mut_a
+        type 'info t = 'info Wrapper.Types.mut_a
+        module Plain = struct type t = Wrapper.Plain.mut_a end
+        let info tm = Wrapper.Info.mut_a tm
+        let to_plain tm = Wrapper.ToPlain.mut_a tm
+        let of_plain tm = Wrapper.OfPlain.mut_a tm
+        let equal ~info_eq  tm = Wrapper.Equal.mut_a ~info_eq tm
+        let map_info ~f  tm = Wrapper.MapInfo.mut_a ~f tm
         let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
           Fmt.pf ppf "TODO: pp_generic"
         module Parse(Comment:ParseUtil.Comment_int) =
@@ -270,18 +248,13 @@ module Lang(Integer:LanguageObject.AllTermS) :
       end
     module Mut_b =
       struct
-        type 'info t = 'info Wrapper.Types.mut_b =
-          | Mut_b of 'info * 'info Wrapper.Types.mut_a 
-        module Plain =
-          struct
-            type t = Wrapper.Plain.mut_b =
-              | Mut_b of Wrapper.Plain.mut_a 
-          end
-        let info = Wrapper.Info.mut_b
-        let to_plain = Wrapper.ToPlain.mut_b
-        let of_plain = Wrapper.OfPlain.mut_b
-        let equal = Wrapper.Equal.mut_b
-        let map_info = Wrapper.MapInfo.mut_b
+        type 'info t = 'info Wrapper.Types.mut_b
+        module Plain = struct type t = Wrapper.Plain.mut_b end
+        let info tm = Wrapper.Info.mut_b tm
+        let to_plain tm = Wrapper.ToPlain.mut_b tm
+        let of_plain tm = Wrapper.OfPlain.mut_b tm
+        let equal ~info_eq  tm = Wrapper.Equal.mut_b ~info_eq tm
+        let map_info ~f  tm = Wrapper.MapInfo.mut_b ~f tm
         let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
           Fmt.pf ppf "TODO: pp_generic"
         module Parse(Comment:ParseUtil.Comment_int) =
