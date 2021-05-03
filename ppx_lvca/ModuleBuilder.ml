@@ -73,14 +73,6 @@ module ParseAbstract = Syn.Parse (ParseUtil.CComment)
           | Diag of 'info * ('info, 'info A.t, 'info A.t) pair
         let of_plain = OfPlain.diag A.of_plain
       end
-
-    This seems to work! TODO Need to add:
-      [x] parametrized Types typedef
-      [x] add f_* args to OfPlain (etc)
-      [ ] functorized module def
-        [x] module alias for each distinct instantiation
-        [ ] manifest type referencing Types
-        [x] call OfPlain (etc)
 *)
 
 type conversion_direction =
@@ -474,7 +466,6 @@ let mk_equal
   =
   let loc = Ast.loc in
   let var_names = vars |> List.map ~f:fst |> SSet.of_list in
-  (* let same_sort sort = String.(sort_head sort = sort_name) in *)
   let f (Syn.OperatorDef.OperatorDef (_op_name, arity) as op_def) =
     let lhs =
       let p1, p2 =
@@ -561,6 +552,7 @@ let mk_info
     sort_name
     (Syn.SortDef.SortDef (vars, op_defs))
   =
+  let open Ast in
   let f op_def =
     let lhs =
       OperatorPat.mk
@@ -570,14 +562,14 @@ let mk_info
         ~match_non_info:false
         op_def
     in
-    Ast.(case ~lhs ~guard ~rhs:[%expr x0])
+    case ~lhs ~guard ~rhs:[%expr x0]
   in
-  let init = op_defs |> List.map ~f |> Ast.pexp_function in
+  let init = op_defs |> List.map ~f |> pexp_function in
   let f (var_name, _kind_opt) body =
-    Ast.(pexp_fun Nolabel None (ppat_var { txt = "_f_" ^ var_name; loc }) body)
+    pexp_fun Nolabel None (ppat_var { txt = "_f_" ^ var_name; loc }) body
   in
   let expr = List.fold_right vars ~init ~f in
-  Ast.(value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr)
+  value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
 ;;
 
 let mk_wrapper_module (module Ast : Ast_builder.S) ~prim_names sort_defs =
@@ -780,14 +772,14 @@ let mk_individual_type_module
                         let txt = build_names [ module_name name; fun_name ] in
                         Nolabel, pexp_ident { txt; loc })
              in
-             let args =
+             let labelled_args =
                match fun_name with
-               | "equal" -> Util.List.snoc args (labelled_arg (module Ast) "info_eq")
-               | "map_info" -> Util.List.snoc args (labelled_arg (module Ast) "f")
-               | _ -> args
+               | "equal" -> [ labelled_arg (module Ast) "info_eq" ]
+               | "map_info" -> [ labelled_arg (module Ast) "f" ]
+               | _ -> []
              in
              let tm = pexp_ident { txt = Lident "tm"; loc } in
-             let args = Util.List.snoc args (Nolabel, tm) in
+             let args = List.append args (Util.List.snoc labelled_args (Nolabel, tm)) in
              pexp_apply wrapper_fun args
            in
            let expr = pexp_fun Nolabel None (ppat_var { txt = "tm"; loc }) expr in
