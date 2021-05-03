@@ -8,7 +8,8 @@ let test_language = [%lvca_abstract_syntax {|
 foo := foo(integer)
 |}]
 
-module Lang =
+(* TODO: automate functorizing *)
+module Lang (Integer : LanguageObject.AllTermS) =
 [%abstract_syntax_module
 {|
 integer : *
@@ -23,7 +24,7 @@ nat := Z() | S(nat)
 
 // ignoring sort vars for now.
 // list a := Nil() | Cons(a; list a)
-// pair a b := Pair(a; b)
+pair a b := Pair(a; b)
 // pair_plus a b := PairPlus(a; b; foo)
 
 mut_a := Mut_a(mut_b)

@@ -34,40 +34,53 @@ module ParseAbstract = Syn.Parse (ParseUtil.CComment)
 
   3. hybrid
 
+      integer : *
+      string : *
+      pair a b := Pair(a; b)
+      uses_pair := UsesPair(pair integer string)
+      diag a := Diag(pair a a)
+
       module Types = struct
         type ('info, 'a, 'b) pair = Pair of 'info * 'a * 'b
         type 'info uses_pair = UsesPair of 'info * ('info, Integer.t, String.t) pair
         type ('info, 'a) diag = Diag of ('info, 'a, 'a) pair
       end
 
+      module OfPlain = struct
+        let pair f_a f_b = function
+          | Plain.Pair (x1, x2) -> Types.Pair ((), f_a x1, f_b x2)
+        let uses_pair = function
+          | Plain.UsesPair x1 ->
+              Types.UsesPair ((), pair Integer.of_plain String.of_plain x1)
+        let diag f_a = function
+          | Plain.Diag x1 -> Types.Diag ((), pair f_a f_a x1)
+      end
+
       module Pair (A : LanguageObject_intf.S) (B : LanguageObject_intf.S) = struct
         type 'info t = ('info, 'info A.t, 'info B.t) Types.pair =
           | Pair of 'info * 'info A.t * 'info B.t
-        let of_plain = function
-          | Plain.Pair (x1, x2) -> Types.Pair ((), A.of_plain x1, B.of_plain x2)
+        let of_plain = OfPlain.pair A.of_plain B.of_plain
       end
 
       module UsesPair = struct
-        module Pair_Integer_String = Pair (Integer) (String)
         type 'info uses_pair = ('info, 'info Integer.t, 'info String.t) Types.uses_pair =
           | UsesPair of 'info * ('info, Integer.t, 'info String.t) pair
-        let of_plain = function
-          | Plain.UsesPair x1 -> Types.UsesPair ((), Pair_Integer_String.of_plain x1)
+        let of_plain = OfPlain.uses_pair
       end
 
       module Diag (A : LanguageObject_intf.S) = struct
-        module Pair_A_A = Pair (A) (A)
         type 'info diag = ('info, 'info A.t) Types.diag =
           | Diag of 'info * ('info, 'info A.t, 'info A.t) pair
-        let of_plain = function
-          | Plain.Diag x1 -> Types.Diag ((), Pair_A_A.of_plain x1)
+        let of_plain = OfPlain.diag A.of_plain
       end
 
     This seems to work! TODO Need to add:
-      * parametrized Types typedef
-      * functorized module def
-        - module alias for each distinct instantiation
-        - manifest type referencing Types
+      [x] parametrized Types typedef
+      [x] add f_* args to OfPlain (etc)
+      [ ] functorized module def
+        [x] module alias for each distinct instantiation
+        [ ] manifest type referencing Types
+        [x] call OfPlain (etc)
 *)
 
 type conversion_direction =
@@ -106,33 +119,51 @@ let conjuntion ~loc exps =
   List.fold_right exps ~init:last ~f:(fun e1 e2 -> [%expr [%e e1] && [%e e2]])
 ;;
 
-(* XXX possibility of generating two constructors with same name *)
+type typedef_mode =
+  | TypesModule
+  | IndividualTypeModule
+
 let mk_ctor_decl
     (module Ast : Ast_builder.S)
     ~info
+    ~typedef_mode
     ~var_names
     ~mutual_sort_names
     ~prim_names
     (Syn.OperatorDef.OperatorDef (op_name, arity))
   =
   let loc = Ast.loc in
+  let pattern_type =
+    if info then [%type: 'info Pattern.t] else [%type: Pattern.Plain.t]
+  in
   let ptyp_of_sort = function
     | Sort.Name (_, name) | Ap (_, name, _) ->
       let args = if info then [ [%type: 'info] ] else [] in
-      let txt =
-        if Set.mem mutual_sort_names name || Set.mem var_names name
-        then Lident name
-        else (
-          let qualified_name =
-            match Set.mem prim_names name, info with
-            | true, true -> [ module_name name; "t" ]
-            | true, false -> [ module_name name; "Plain"; "t" ]
-            | false, true -> [ "Wrapper"; "Types"; name ]
-            | false, false -> [ "Wrapper"; "Plain"; name ]
+      if Set.mem var_names name
+      then (
+        match typedef_mode with
+        | TypesModule -> Ast.ptyp_var name
+        | IndividualTypeModule ->
+          let txt =
+            if info then [ module_name name; "t" ] else [ module_name name; "Plain"; "t" ]
           in
-          build_names qualified_name)
-      in
-      Ast.ptyp_constr { txt; loc } args
+          let txt = build_names txt in
+          Ast.ptyp_constr { txt; loc } args)
+      else (
+        let txt =
+          if Set.mem mutual_sort_names name
+          then Lident name
+          else (
+            let qualified_name =
+              match Set.mem prim_names name, info with
+              | true, true -> [ module_name name; "t" ]
+              | true, false -> [ module_name name; "Plain"; "t" ]
+              | false, true -> [ "Wrapper"; "Types"; name ]
+              | false, false -> [ "Wrapper"; "Plain"; name ]
+            in
+            build_names qualified_name)
+        in
+        Ast.ptyp_constr { txt; loc } args)
   in
   let args_of_valence (Syn.Valence.Valence (binding_sort_slots, body_sort)) =
     let body_type = ptyp_of_sort body_sort in
@@ -142,8 +173,7 @@ let mk_ctor_decl
       binding_sort_slots
       |> List.map ~f:(function
              | Syn.SortSlot.SortBinding _sort -> [%type: string]
-             | SortPattern _sort ->
-               if info then [%type: 'info Pattern.t] else [%type: Pattern.Plain.t])
+             | SortPattern _sort -> pattern_type)
       |> Fn.flip Lvca_util.List.snoc body_type
   in
   let args =
@@ -190,39 +220,8 @@ type is_rec =
   | IsRec
   | IsntRec
 
-(* Whether each sort is or is not self-referential. *)
-(*
-let get_self_ref_map sort_defs =
-  let sort_map = SMap.of_alist_exn sort_defs in
-  sort_defs
-  |> List.map ~f:(fun (sort_name, _) ->
-         let seen_sorts = ref SSet.empty in
-         let rec go current_sort_name =
-           if Set.mem !seen_sorts current_sort_name
-           then false
-           else (
-             seen_sorts := Set.add !seen_sorts current_sort_name;
-             match Map.find sort_map current_sort_name with
-             | None -> (* external *) false
-             | Some (Syn.SortDef.SortDef (_, op_defs)) ->
-               op_defs
-               |> List.exists ~f:(fun (Syn.OperatorDef.OperatorDef (_name, arity)) ->
-                      arity
-                      |> List.exists
-                           ~f:(fun (Syn.Valence.Valence (_sort_slots, body_sort)) ->
-                             let name = sort_head body_sort in
-                             String.(name = sort_name) || go name)))
-         in
-         let self_referential =
-           if go sort_name then IsSelfReferential else IsntSelfReferential
-         in
-         sort_name, self_referential)
-  |> SMap.of_alist_exn
-;;
-*)
-
 let mk_type_decl (module Ast : Ast_builder.S) ~info ~sort_def_map ~prim_names =
-  let params =
+  let params0 =
     if info then [ Ast.ptyp_var "info", (NoVariance, NoInjectivity) ] else []
   in
   let mutual_sort_names = sort_def_map |> Map.keys |> SSet.of_list in
@@ -231,11 +230,9 @@ let mk_type_decl (module Ast : Ast_builder.S) ~info ~sort_def_map ~prim_names =
     |> Map.to_alist
     |> List.map ~f:(fun (sort_name, Syn.SortDef.SortDef (vars, op_defs)) ->
            let var_names = vars |> List.map ~f:fst |> SSet.of_list in
-           (*
            let mk_var name = Ast.ptyp_var name, (NoVariance, NoInjectivity) in
            let params = vars |> List.map ~f:fst |> List.map ~f:mk_var in
            let params = params0 @ params in
-           *)
            let kind =
              Ptype_variant
                (List.map
@@ -244,6 +241,7 @@ let mk_type_decl (module Ast : Ast_builder.S) ~info ~sort_def_map ~prim_names =
                     (mk_ctor_decl
                        (module Ast)
                        ~info
+                       ~typedef_mode:TypesModule
                        ~var_names
                        ~mutual_sort_names
                        ~prim_names))
@@ -323,6 +321,7 @@ module OperatorExp = struct
   let mk
       (module Ast : Ast_builder.S)
       ~ctor_type (* Building a plain or with-info data type *)
+      ~var_names
       ?(mk_app = fun f arg -> Ast.([%expr [%e f] [%e arg]]))
       ?(name_base = "x")
       sort_defs (* Sorts being defined together *)
@@ -341,6 +340,8 @@ module OperatorExp = struct
         let sort_name = sort_head sort in
         if Map.mem sort_defs sort_name
         then Ast.evar sort_name
+        else if Set.mem var_names sort_name
+        then Ast.pexp_ident { txt = Lident ("f_" ^ sort_name); loc }
         else
           (* is it always valid to just use module_name? *)
           Ast.pexp_ident
@@ -376,22 +377,41 @@ module OperatorExp = struct
   ;;
 end
 
-let mk_to_plain (module Ast : Ast_builder.S) sort_defs sort_name op_defs =
+let mk_to_plain
+    (module Ast : Ast_builder.S)
+    sort_defs
+    sort_name
+    (Syn.SortDef.SortDef (vars, op_defs))
+  =
+  let var_names = vars |> List.map ~f:fst |> SSet.of_list in
   let f op_def =
     let lhs = OperatorPat.mk (module Ast) ~ctor_type:WithInfo op_def in
-    let rhs = OperatorExp.mk (module Ast) ~ctor_type:Plain sort_defs "to_plain" op_def in
+    let rhs =
+      OperatorExp.mk (module Ast) ~var_names ~ctor_type:Plain sort_defs "to_plain" op_def
+    in
     Ast.case ~lhs ~guard ~rhs
   in
-  let body = op_defs |> List.map ~f |> Ast.pexp_function in
-  Ast.value_binding ~pat:Ast.(ppat_var { txt = sort_name; loc }) ~expr:body
+  let init = op_defs |> List.map ~f |> Ast.pexp_function in
+  let f (var_name, _kind_opt) body =
+    Ast.(pexp_fun Nolabel None (ppat_var { txt = "f_" ^ var_name; loc }) body)
+  in
+  let expr = List.fold_right vars ~init ~f in
+  Ast.value_binding ~pat:Ast.(ppat_var { txt = sort_name; loc }) ~expr
 ;;
 
-let mk_of_plain (module Ast : Ast_builder.S) sort_defs sort_name op_defs =
+let mk_of_plain
+    (module Ast : Ast_builder.S)
+    sort_defs
+    sort_name
+    (Syn.SortDef.SortDef (vars, op_defs))
+  =
+  let var_names = vars |> List.map ~f:fst |> SSet.of_list in
   let f op_def =
     let lhs = OperatorPat.mk (module Ast) ~ctor_type:Plain op_def in
     let rhs =
       OperatorExp.mk
         (module Ast)
+        ~var_names
         ~ctor_type:Ast.(WithInfo [%expr ()])
         sort_defs
         "of_plain"
@@ -399,16 +419,27 @@ let mk_of_plain (module Ast : Ast_builder.S) sort_defs sort_name op_defs =
     in
     Ast.case ~lhs ~guard ~rhs
   in
-  let body = op_defs |> List.map ~f |> Ast.pexp_function in
-  Ast.(value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr:body)
+  let init = op_defs |> List.map ~f |> Ast.pexp_function in
+  let f (var_name, _kind_opt) body =
+    Ast.(pexp_fun Nolabel None (ppat_var { txt = "f_" ^ var_name; loc }) body)
+  in
+  let expr = List.fold_right vars ~init ~f in
+  Ast.(value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr)
 ;;
 
-let mk_map_info (module Ast : Ast_builder.S) sort_defs sort_name op_defs =
+let mk_map_info
+    (module Ast : Ast_builder.S)
+    sort_defs
+    sort_name
+    (Syn.SortDef.SortDef (vars, op_defs))
+  =
+  let var_names = vars |> List.map ~f:fst |> SSet.of_list in
   let f op_def =
     let lhs = OperatorPat.mk (module Ast) ~ctor_type:WithInfo ~match_info:true op_def in
     let rhs =
       OperatorExp.mk
         (module Ast)
+        ~var_names
         ~ctor_type:Ast.(WithInfo [%expr f x0])
         ~mk_app:Ast.(fun f arg -> [%expr [%e f] ~f [%e arg]])
         sort_defs
@@ -417,18 +448,28 @@ let mk_map_info (module Ast : Ast_builder.S) sort_defs sort_name op_defs =
     in
     Ast.case ~lhs ~guard ~rhs
   in
-  let body =
+  let init =
     let open Ast in
     op_defs
     |> List.map ~f
     |> pexp_function
     |> pexp_fun (Labelled "f") None (ppat_var { txt = "f"; loc })
   in
-  Ast.(value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr:body)
+  let f (var_name, _kind_opt) body =
+    Ast.(pexp_fun Nolabel None (ppat_var { txt = "f_" ^ var_name; loc }) body)
+  in
+  let expr = List.fold_right vars ~init ~f in
+  Ast.(value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr)
 ;;
 
-let mk_equal (module Ast : Ast_builder.S) sort_defs sort_name op_defs =
+let mk_equal
+    (module Ast : Ast_builder.S)
+    sort_defs
+    sort_name
+    (Syn.SortDef.SortDef (vars, op_defs))
+  =
   let loc = Ast.loc in
+  let var_names = vars |> List.map ~f:fst |> SSet.of_list in
   (* let same_sort sort = String.(sort_head sort = sort_name) in *)
   let f (Syn.OperatorDef.OperatorDef (_op_name, arity) as op_def) =
     let lhs =
@@ -471,6 +512,8 @@ let mk_equal (module Ast : Ast_builder.S) sort_defs sort_name op_defs =
                    let sort_name = sort_head body_sort in
                    if Map.mem sort_defs sort_name
                    then Lident sort_name
+                   else if Set.mem var_names sort_name
+                   then Lident ("f_" ^ sort_name)
                    else build_names [ module_name sort_name; "equal" ]
                  in
                  let ident = Ast.pexp_ident { txt; loc } in
@@ -493,7 +536,7 @@ let mk_equal (module Ast : Ast_builder.S) sort_defs sort_name op_defs =
       let last_branch = Ast.case ~lhs:[%pat? _, _] ~guard ~rhs:[%expr false] in
       Lvca_util.List.snoc branches last_branch
   in
-  let expr =
+  let init =
     let open Ast in
     branches
     |> pexp_match [%expr t1, t2]
@@ -501,10 +544,19 @@ let mk_equal (module Ast : Ast_builder.S) sort_defs sort_name op_defs =
     |> pexp_fun Nolabel None (ppat_var { txt = "t1"; loc })
     |> pexp_fun (Labelled "info_eq") None (ppat_var { txt = "info_eq"; loc })
   in
+  let f (var_name, _kind_opt) body =
+    Ast.(pexp_fun Nolabel None (ppat_var { txt = "f_" ^ var_name; loc }) body)
+  in
+  let expr = List.fold_right vars ~init ~f in
   Ast.(value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr)
 ;;
 
-let mk_info (module Ast : Ast_builder.S) _sort_defs sort_name op_defs =
+let mk_info
+    (module Ast : Ast_builder.S)
+    _sort_defs
+    sort_name
+    (Syn.SortDef.SortDef (vars, op_defs))
+  =
   let f op_def =
     let lhs =
       OperatorPat.mk
@@ -516,8 +568,12 @@ let mk_info (module Ast : Ast_builder.S) _sort_defs sort_name op_defs =
     in
     Ast.(case ~lhs ~guard ~rhs:[%expr x0])
   in
-  let body = op_defs |> List.map ~f |> Ast.pexp_function in
-  Ast.(value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr:body)
+  let init = op_defs |> List.map ~f |> Ast.pexp_function in
+  let f (var_name, _kind_opt) body =
+    Ast.(pexp_fun Nolabel None (ppat_var { txt = "_f_" ^ var_name; loc }) body)
+  in
+  let expr = List.fold_right vars ~init ~f in
+  Ast.(value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr)
 ;;
 
 let mk_wrapper_module (module Ast : Ast_builder.S) ~prim_names sort_defs =
@@ -544,14 +600,14 @@ let mk_wrapper_module (module Ast : Ast_builder.S) ~prim_names sort_defs =
         (module Ast_builder.S)
         -> _ Syn.SortDef.t SMap.t
         -> string
-        -> _ Syn.OperatorDef.t list
+        -> _ Syn.SortDef.t (* -> _ Syn.OperatorDef.t list *)
         -> Ppxlib.value_binding)
     =
     ordered_sccs
     |> List.map ~f:(fun scc ->
            let value_bindings =
-             List.map scc ~f:(fun (sort_name, Syn.SortDef.SortDef (_vars, op_defs)) ->
-                 maker (module Ast) sort_def_map sort_name op_defs)
+             List.map scc ~f:(fun (sort_name, sort_def) ->
+                 maker (module Ast) sort_def_map sort_name sort_def)
            in
            let is_rec =
              match definite_rec with
@@ -602,7 +658,11 @@ let mk_wrapper_module (module Ast : Ast_builder.S) ~prim_names sort_defs =
   |> Ast.pstr_module
 ;;
 
-let mk_type_module
+let all_term_s (module Ast : Ast_builder.S) =
+  Ast.pmty_ident { txt = build_names [ "LanguageObject"; "AllTermS" ]; loc = Ast.loc }
+;;
+
+let mk_individual_type_module
     (module Ast : Ast_builder.S)
     ~prim_names
     sort_name
@@ -610,10 +670,15 @@ let mk_type_module
   =
   let loc = Ast.loc in
   let var_names = vars |> List.map ~f:fst |> SSet.of_list in
-  let mk_var name = Ast.ptyp_var name, (NoVariance, NoInjectivity) in
-  (* let params = vars |> List.map ~f:fst |> List.map ~f:mk_var in *)
-  let params = [] in
   let plain_type_decl =
+    let manifest_arg_list =
+      vars
+      |> List.map ~f:fst
+      |> List.map ~f:(fun name ->
+             Ast.ptyp_constr
+               { txt = build_names [ module_name name; "Plain"; "t" ]; loc }
+               [])
+    in
     let kind =
       Ptype_variant
         (List.map
@@ -622,26 +687,35 @@ let mk_type_module
              (mk_ctor_decl
                 (module Ast)
                 ~info:false
+                ~typedef_mode:IndividualTypeModule
                 ~var_names
                 ~mutual_sort_names:SSet.empty
                 ~prim_names))
+    in
+    let manifest =
+      Some
+        (Ast.ptyp_constr
+           { txt = build_names [ "Wrapper"; "Plain"; sort_name ]; loc }
+           manifest_arg_list)
     in
     Ast.pstr_type
       Recursive
       [ Ast.type_declaration
           ~name:{ txt = "t"; loc = Ast.loc }
-          ~params
+          ~params:[]
           ~cstrs:[]
           ~kind
           ~private_:Public
-          ~manifest:
-            (Some
-               (Ast.ptyp_constr
-                  { txt = build_names [ "Wrapper"; "Plain"; sort_name ]; loc }
-                  []))
+          ~manifest
       ]
   in
   let info_type_decl =
+    let manifest_arg_list =
+      vars
+      |> List.map ~f:fst
+      |> List.map ~f:(fun name ->
+             Ast.ptyp_constr { txt = build_names [ module_name name; "t" ]; loc } [])
+    in
     let kind =
       Ptype_variant
         (List.map
@@ -650,23 +724,26 @@ let mk_type_module
              (mk_ctor_decl
                 (module Ast)
                 ~info:true
+                ~typedef_mode:IndividualTypeModule
                 ~var_names
                 ~mutual_sort_names:SSet.empty
                 ~prim_names))
+    in
+    let manifest =
+      Some
+        (Ast.ptyp_constr
+           { txt = build_names [ "Wrapper"; "Types"; sort_name ]; loc }
+           (Ast.ptyp_var "info" :: manifest_arg_list))
     in
     Ast.pstr_type
       Recursive
       [ Ast.type_declaration
           ~name:{ txt = "t"; loc = Ast.loc }
-          ~params:(mk_var "info" :: params)
+          ~params:[ Ast.ptyp_var "info", (NoVariance, NoInjectivity) ]
           ~cstrs:[]
           ~kind
           ~private_:Public
-          ~manifest:
-            (Some
-               (Ast.ptyp_constr
-                  { txt = build_names [ "Wrapper"; "Types"; sort_name ]; loc }
-                  [ Ast.ptyp_var "info" ]))
+          ~manifest
       ]
   in
   let fun_defs =
@@ -678,32 +755,49 @@ let mk_type_module
     ]
     |> List.map ~f:(fun (fun_name, mod_name) ->
            let open Ast in
+           let wrapper_fun =
+             pexp_ident { txt = build_names [ "Wrapper"; mod_name; sort_name ]; loc }
+           in
+           let expr =
+             match vars with
+             | [] -> wrapper_fun
+             | _ ->
+               let args =
+                 vars
+                 |> List.map ~f:(fun (name, _kind_opt) ->
+                        let txt = build_names [ module_name name; fun_name ] in
+                        Nolabel, pexp_ident { txt; loc })
+               in
+               pexp_apply wrapper_fun args
+           in
            pstr_value
              Nonrecursive
-             [ value_binding
-                 ~pat:(ppat_var { txt = fun_name; loc })
-                 ~expr:
-                   (pexp_ident
-                      { txt = build_names [ "Wrapper"; mod_name; sort_name ]; loc })
-             ])
+             [ value_binding ~pat:(ppat_var { txt = fun_name; loc }) ~expr ])
+  in
+  (* TODO: implement *)
+  let fun_defs =
+    List.append
+      fun_defs
+      [ [%stri
+          let pp_generic ~open_loc:_ ~close_loc:_ ppf _tm = Fmt.pf ppf "TODO: pp_generic"]
+      ; [%stri
+          module Parse (Comment : ParseUtil.Comment_int) = struct
+            let t = failwith "TODO"
+          end]
+      ]
   in
   let init =
-    Ast.pmod_structure
-      ([ Ast.module_binding
-           ~name:{ txt = Some "Plain"; loc }
-           ~expr:(Ast.pmod_structure [ plain_type_decl ])
-         |> Ast.pstr_module
-       ]
-      @ info_type_decl :: fun_defs)
+    let open Ast in
+    pmod_structure
+      (info_type_decl
+       :: [%stri module Plain = [%m pmod_structure [ plain_type_decl ]]] :: fun_defs)
   in
   let f (name, kind_opt) accum =
     match kind_opt with
     | None (* XXX should do kind inference instead of assuming it's * *)
     | Some (Syn.Kind.Kind (_, 1)) ->
       let mod_param =
-        Named
-          ( { txt = Some (module_name name); loc }
-          , Ast.pmty_ident { txt = build_names [ "LanguageObject"; "AllTermS" ]; loc } )
+        Named ({ txt = Some (module_name name); loc }, all_term_s (module Ast))
       in
       Ast.pmod_functor mod_param accum
     | Some kind ->
@@ -721,18 +815,33 @@ let mk_type_module
 let mk_container_module ~loc Syn.{ externals; sort_defs } =
   let (module Ast) = Ast_builder.make loc in
   (* pre-declare types *)
-  (* let sort_names = sort_defs |> List.map ~f:fst |> SSet.of_list in *)
   let prim_names = externals |> List.map ~f:fst |> SSet.of_list in
   let wrapper_module = mk_wrapper_module (module Ast) ~prim_names sort_defs in
   let type_modules =
-    List.map sort_defs ~f:(Util.Tuple2.uncurry (mk_type_module (module Ast) ~prim_names))
+    List.map
+      sort_defs
+      ~f:(Util.Tuple2.uncurry (mk_individual_type_module (module Ast) ~prim_names))
   in
-  (*
+  let mod_tys =
+    List.map sort_defs ~f:(fun (sort_name, Syn.SortDef.SortDef (vars, _op_defs)) ->
+        let name = { txt = Some (module_name sort_name); loc } in
+        let init = all_term_s (module Ast) in
+        let f (var_name, _kind_opt) mod_ty =
+          let mod_param =
+            Named ({ txt = Some (module_name var_name); loc }, all_term_s (module Ast))
+          in
+          Ast.pmty_functor mod_param mod_ty
+        in
+        let type_ = List.fold_right vars ~init ~f in
+        Ast.(psig_module (module_declaration ~name ~type_)))
+  in
+  (* TODO: include language?
   let sort_defs =
     [%str let language = [%e SyntaxQuoter.mk_language ~loc lang]] @ sort_defs
   in
   *)
   (* Turn into a functor over externals *)
+  (*
   let f (name, kind) accum =
     match kind with
     | Syn.Kind.Kind (_, 1) ->
@@ -749,5 +858,14 @@ let mk_container_module ~loc Syn.{ externals; sort_defs } =
         name
         (Fmt.to_to_string Syn.Kind.pp kind)
   in
-  List.fold_right externals ~init:(Ast.pmod_structure (wrapper_module :: type_modules)) ~f
+  let expr =
+    List.fold_right
+      externals
+      ~init:
+      ~f
+  in
+  *)
+  let expr = Ast.pmod_structure (wrapper_module :: type_modules) in
+  let mod_ty = Ast.pmty_signature mod_tys in
+  Ast.pmod_constraint expr mod_ty
 ;;
