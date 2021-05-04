@@ -3,75 +3,57 @@ open Lvca_syntax
 open Omd
 open Stdio
 
-module Lang =
+module Lang
+    (Char : LanguageObject_intf.S)
+    (Int : LanguageObject_intf.S)
+    (String : LanguageObject_intf.S) =
 [%abstract_syntax_module
 {|
-// list : * -> *
 char : *
 int : *
 string : *
 
-list a := Nil() | Cons(a; list a)
-option a := Some(a) | None()
-pair a b := Pair(a; b)
+attributes :=
+  | NoAttributes()
+  | Attribute(string; string; attributes)
 
-emph_kind := Normal() | Strong()
-emph_style := Star() | Underscore()
-// emph inline := Emph(emph_kind; emph_style; inline)
-
-attributes := Attributes(
-  // option string; // id
-  // list string; // classes
-  // list (pair string string) // attributes
-)
-
-heading block := Heading(
-  int; // level
-  block; // text
-  attributes
-)
-
-block_list_kind :=
+list_type :=
   | Ordered(int; char)
-  | Unordered(char)
+  | Bullet(char)
 
-block_list_style := Loose() | Tight()
+list_spacing := Loose() | Tight()
 
-block_list block := Block_list(
-  block_list_kind;
-  block_list_style
-  // list list block
-)
+// inline :=
+//   | Concat(attributes; inline_list)
+//   | Text(attributes; string)
+//   | Emph(attributes; inline)
+//   | Strong(attributes; inline)
+//   | Code(attributes; string)
+//   | Hard_break(attributes)
+//   | Soft_break(attributes)
+//   // | Link()
+//   // | Image()
+//   | Html(attributes; string)
 
-inline :=
-  // | Concat(list inline)
-  | Text(string)
-  // | Emph(emph inline)
-  | Code(
-    int; // level
-    string; // content
-    attributes
-  )
-  | Hard_break()
-  | Soft_break()
-  // | link(
-  // | ref
-  // | html
-  // | tag
+// inline_list :=
+//   | InlineNil()
+//   | InlineCons(inline; inline_list)
 
-block a :=
-  | Paragraph(a)
-  // | List(block_list block a)
-  // | blockquote(list(block(a)))
-  | Thematic_break()
-  // | Heading(heading a)
-  // | Code_block(option string; attributes)
-  // | html_block
-  // | link_def
-  // | def_list
-  // | tag_block
+// block :=
+//   | Paragraph(attributes)
+//   | List(attributes; block_list)
+//   | blockquote(attributes; block_list0
+//   | Thematic_break(attributes)
+//   | Heading(attributes; int; inline)
+//   | Code_block(attributes; string; string)
+//   | Html_block(attributes; string)
+//   // | Definition_list(attributes; def_elt_list)
 
-// document := Document(list block element)
+// block_list :=
+//   | BlockNil()
+//   | BlockCons(block; block_list)
+
+// document := Document(block_list)
 |}]
 
 exception TranslationError of string
@@ -232,13 +214,8 @@ foo
     |};
       [%expect
         {|
-    [heading(1; "hello, world"; attributes(none(); []; [])), "para", code_block(
-                                                                     some("nolang");
-                                                                     some("foo");
-                                                                     attributes(
-                                                                     none();
-                                                                     [];
-                                                                     []))] |}]
+    sequence(heading(1; "hello, world"); "para"; code_block("nolang"; "foo
+    ")) |}]
     ;;
   end)
 ;;

@@ -1,7 +1,7 @@
 open Base
 open Lvca_syntax
 
-module Lang =
+module Lang (String : LanguageObject_intf.S) =
 [%abstract_syntax_module
 {|
 string : *
@@ -22,35 +22,28 @@ let rec f = function
 
 module Lang' = Lang (Primitive.String)
 module List = Lang'.List
+module Nat = Lang'.Nat
 
 module Foo : sig
-  val list_to_nat
-    :  'info List.t
-    -> ('info * 'info Primitive.String.t option) Lang'.Nat.t option
-
-  val nat_to_list
-    :  ('info * 'info Primitive.String.t option) Lang'.Nat.t
-    -> 'info List.t option
+  val list_to_nat : 'info List.t -> ('info * 'info Primitive.String.t option) Nat.t option
+  val nat_to_list : ('info * 'info Primitive.String.t option) Nat.t -> 'info List.t option
 
   module Properties : sig
     val round_trip_1 : unit List.t -> PropertyResult.t
-
-    val round_trip_2
-      :  (unit * unit Primitive.String.t option) Lang'.Nat.t
-      -> PropertyResult.t
+    val round_trip_2 : (unit * unit Primitive.String.t option) Nat.t -> PropertyResult.t
   end
 end = struct
   open Option.Let_syntax
 
   let rec list_to_nat = function
-    | List.Nil info -> Some (Lang'.Nat.Z (info, None))
+    | List.Nil info -> Some (Nat.Z (info, None))
     | Cons (info, a, lst) ->
       let%map lst = list_to_nat lst in
-      Lang'.Nat.S ((info, Some a), lst)
+      Nat.S ((info, Some a), lst)
   ;;
 
   let rec nat_to_list = function
-    | Lang'.Nat.Z (info, None) -> Some (List.Nil info)
+    | Nat.Z (info, None) -> Some (List.Nil info)
     | S ((info, Some a), n) ->
       let%map lst = nat_to_list n in
       List.Cons (info, a, lst)
@@ -80,7 +73,7 @@ end = struct
               Unit.( = )
               (Option.equal (Primitive.String.equal ~info_eq:Unit.( = )))
           in
-          PropertyResult.check (Lang'.Nat.equal ~info_eq nat nat') "Nats not equal")
+          PropertyResult.check (Nat.equal ~info_eq nat nat') "Nats not equal")
     ;;
   end
 end

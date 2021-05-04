@@ -14,7 +14,11 @@ either a b :=
 |}]
 *)
 
-module Primitive =
+module Primitive
+    (Integer : LanguageObject_intf.S)
+    (String : LanguageObject_intf.S)
+    (Float : LanguageObject_intf.S)
+    (Char : LanguageObject_intf.S) =
 [%abstract_syntax_module
 {|
 integer : *
@@ -29,7 +33,7 @@ primitive :=
   | Char(char)
 |}]
 
-module NonBinding =
+module NonBinding (String : LanguageObject_intf.S) (Primitive : LanguageObject_intf.S) =
 [%abstract_syntax_module
 {|
 string : *
@@ -45,7 +49,7 @@ term_list :=
   | Cons(term; term_list)
 |}]
 
-module Pattern =
+module Pattern (String : LanguageObject_intf.S) (Primitive : LanguageObject_intf.S) =
 [%abstract_syntax_module
 {|
 string : *
@@ -63,28 +67,26 @@ pattern_list :=
   | Cons(pattern; pattern_list)
 |}]
 
-module BindingAwarePattern =
+module BindingAwarePattern
+    (String : LanguageObject_intf.S)
+    (Primitive : LanguageObject_intf.S) =
 [%abstract_syntax_module
 {|
 string : *
 primitive : *
 // list : * -> *
 
+list a :=
+  | Nil()
+  | Cons(a; list a)
+
 t :=
-  | Operator(string; scope_list)
+  | Operator(string; list scope)
   | Primitive(primitive)
   | Var(string)
   | Ignored(string)
 
-scope := Scope(string_list; t)
-
-scope_list :=
-  | ScopeNil()
-  | ScopeCons(scope; scope_list)
-
-string_list :=
-  | StringNil()
-  | StringCons(string; string_list)
+scope := Scope(list string; t)
 |}]
 
 (*
