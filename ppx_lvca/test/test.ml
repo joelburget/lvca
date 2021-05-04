@@ -23,7 +23,7 @@ foo :=
 nat := Z() | S(nat)
 
 // ignoring sort vars for now.
-// list a := Nil() | Cons(a; list a)
+list a := Nil() | Cons(a; list a)
 pair a b := Pair(a; b)
 // pair_plus a b := PairPlus(a; b; foo)
 

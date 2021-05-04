@@ -7,7 +7,8 @@ module SMap = Util.String.Map
 module Syn = AbstractSyntax
 module ParseAbstract = Syn.Parse (ParseUtil.CComment)
 
-(* Explanation for not supporting sort variables:
+(*
+  ## Sort variables
 
   Example definition: [pair a b := Pair(a; b)]. We have two choices for how to
   translate this to OCaml:
@@ -73,6 +74,19 @@ module ParseAbstract = Syn.Parse (ParseUtil.CComment)
           | Diag of 'info * ('info, 'info A.t, 'info A.t) pair
         let of_plain = OfPlain.diag A.of_plain
       end
+
+  ## Handling of sorts
+
+  There are a few factors determining the definition and use of a given sort:
+    * The use of 'info or not
+    * Whether the sort:
+      - an external
+      - a variable
+      - or defined in this language, in which case, whether
+        + the sort is part of the SCC we're currently defining
+        + or, was previously defined
+    * Whether we're using the sort in the [Types] module or in an individual
+      sort definition module
 *)
 
 type conversion_direction =
@@ -128,42 +142,41 @@ let mk_ctor_decl
     ~info
     ~typedef_mode
     ~var_names
-    ~mutual_sort_names
+    ~mutual_sorts
     ~prim_names
     (Syn.OperatorDef.OperatorDef (op_name, arity))
   =
-  let loc = Ast.loc in
+  let open Ast in
   let pattern_type =
     if info then [%type: 'info Pattern.t] else [%type: Pattern.Plain.t]
   in
-  let ptyp_of_sort = function
-    | Sort.Name (_, name) | Ap (_, name, _) ->
-      let args = if info then [ [%type: 'info] ] else [] in
-      if Set.mem var_names name
-      then (
-        match typedef_mode with
-        | TypesModule -> Ast.ptyp_var name
-        | IndividualTypeModule ->
-          let txt =
-            if info then [ module_name name; "t" ] else [ module_name name; "Plain"; "t" ]
-          in
-          let txt = build_names txt in
-          Ast.ptyp_constr { txt; loc } args)
-      else (
-        let txt =
-          if Set.mem mutual_sort_names name
-          then Lident name
-          else (
-            let qualified_name =
-              match Set.mem prim_names name, info with
-              | true, true -> [ module_name name; "t" ]
-              | true, false -> [ module_name name; "Plain"; "t" ]
-              | false, true -> [ "Wrapper"; "Types"; name ]
-              | false, false -> [ "Wrapper"; "Plain"; name ]
-            in
-            build_names qualified_name)
+  let ptyp_of_sort sort =
+    let name = sort_head sort in
+    let args = if info then [ [%type: 'info] ] else [] in
+    match Set.mem var_names name with
+    | true ->
+      (match typedef_mode with
+      | TypesModule -> ptyp_var name
+      | IndividualTypeModule ->
+        let names =
+          if info then [ module_name name; "t" ] else [ module_name name; "Plain"; "t" ]
         in
-        Ast.ptyp_constr { txt; loc } args)
+        ptyp_constr { txt = build_names names; loc } args)
+    | false ->
+      (match Map.find mutual_sorts name with
+      | Some (Syn.SortDef.SortDef (vars, _op_defs)) ->
+        let extra_args = List.map vars ~f:(fun (var_name, _) -> ptyp_var var_name) in
+        ptyp_constr { txt = Lident name; loc } (args @ extra_args)
+      | None ->
+        let qualified_name =
+          match Set.mem prim_names name, info with
+          | true, true -> [ module_name name; "t" ]
+          | true, false -> [ module_name name; "Plain"; "t" ]
+          | false, true -> [ "Wrapper"; "Types"; name ]
+          | false, false -> [ "Wrapper"; "Plain"; name ]
+        in
+        let txt = build_names qualified_name in
+        ptyp_constr { txt; loc } args)
   in
   let args_of_valence (Syn.Valence.Valence (binding_sort_slots, body_sort)) =
     let body_type = ptyp_of_sort body_sort in
@@ -185,7 +198,7 @@ let mk_ctor_decl
            | [ ty ] -> ty
            | tys -> Ast_builder.Default.ptyp_tuple ~loc tys)
   in
-  Ast.constructor_declaration
+  constructor_declaration
     ~name:{ txt = ctor_name op_name; loc }
     ~args:(Pcstr_tuple args)
     ~res:None
@@ -224,7 +237,6 @@ let mk_type_decl (module Ast : Ast_builder.S) ~info ~sort_def_map ~prim_names =
   let params0 =
     if info then [ Ast.ptyp_var "info", (NoVariance, NoInjectivity) ] else []
   in
-  let mutual_sort_names = sort_def_map |> Map.keys |> SSet.of_list in
   let decls =
     sort_def_map
     |> Map.to_alist
@@ -243,7 +255,7 @@ let mk_type_decl (module Ast : Ast_builder.S) ~info ~sort_def_map ~prim_names =
                        ~info
                        ~typedef_mode:TypesModule
                        ~var_names
-                       ~mutual_sort_names
+                       ~mutual_sorts:sort_def_map
                        ~prim_names))
            in
            Ast.type_declaration
@@ -322,7 +334,7 @@ module OperatorExp = struct
       (module Ast : Ast_builder.S)
       ~ctor_type (* Building a plain or with-info data type *)
       ~var_names
-      ?(mk_app = fun f arg -> Ast.([%expr [%e f] [%e arg]]))
+      ?(mk_app = fun f args -> Ast.(pexp_apply f args))
       ?(name_base = "x")
       sort_defs (* Sorts being defined together *)
       fun_name (* The name of the function being defined *)
@@ -336,18 +348,26 @@ module OperatorExp = struct
     in
     let body_arg sort =
       Int.incr var_ix;
-      let f =
+      let f, var_args =
         let sort_name = sort_head sort in
-        if Map.mem sort_defs sort_name
-        then Ast.evar sort_name
-        else if Set.mem var_names sort_name
-        then Ast.pexp_ident { txt = Lident ("f_" ^ sort_name); loc }
-        else
+        match true with
+        | _ when Map.mem sort_defs sort_name ->
+          (* XXX are these the right var args? make sure correct sort def *)
+          let var_args =
+            var_names
+            |> Set.to_list
+            |> List.map ~f:(fun sort_name -> Nolabel, Ast.evar ("f_" ^ sort_name))
+          in
+          Ast.evar sort_name, var_args
+        | _ when Set.mem var_names sort_name ->
+          Ast.pexp_ident { txt = Lident ("f_" ^ sort_name); loc }, []
+        | _ ->
           (* is it always valid to just use module_name? *)
-          Ast.pexp_ident
-            { txt = build_names [ module_name (sort_head sort); fun_name ]; loc }
+          ( Ast.pexp_ident
+              { txt = build_names [ module_name (sort_head sort); fun_name ]; loc }
+          , [] )
       in
-      mk_app f (v ())
+      mk_app f (var_args @ [ Nolabel, v () ])
     in
     let contents =
       arity
@@ -357,7 +377,7 @@ module OperatorExp = struct
                     Int.incr var_ix;
                     match slot with
                     | Syn.SortSlot.SortBinding _sort -> v ()
-                    | SortPattern _ -> mk_app pattern_converter (v ()))
+                    | SortPattern _ -> mk_app pattern_converter [ Nolabel, v () ])
              |> Fn.flip Lvca_util.List.snoc (body_arg body_sort))
       |> List.map ~f:(mk_exp_tuple ~loc)
     in
@@ -441,7 +461,7 @@ let mk_map_info
         (module Ast)
         ~var_names
         ~ctor_type:Ast.(WithInfo [%expr f x0])
-        ~mk_app:Ast.(fun f arg -> [%expr [%e f] ~f [%e arg]])
+        ~mk_app:Ast.(fun f args -> pexp_apply f (labelled_arg (module Ast) "f" :: args))
         sort_defs
         "map_info"
         op_def
@@ -502,18 +522,27 @@ let mk_equal
                in
                let body_check =
                  Int.incr var_ix;
-                 let txt =
+                 let txt, var_args =
                    (* Defined sort vs external *)
                    let sort_name = sort_head body_sort in
-                   if Map.mem sort_defs sort_name
-                   then Lident sort_name
-                   else if Set.mem var_names sort_name
-                   then Lident ("f_" ^ sort_name)
-                   else build_names [ module_name sort_name; "equal" ]
+                   match true with
+                   | _ when Map.mem sort_defs sort_name ->
+                     let var_args =
+                       var_names
+                       |> Set.to_list
+                       |> List.map ~f:(fun sort_name ->
+                              Nolabel, Ast.evar ("f_" ^ sort_name))
+                     in
+                     Lident sort_name, var_args
+                   | _ when Set.mem var_names sort_name -> Lident ("f_" ^ sort_name), []
+                   | _ -> build_names [ module_name sort_name; "equal" ], []
                  in
                  let ident = Ast.pexp_ident { txt; loc } in
                  let x, y = mk_xy () in
-                 [%expr [%e ident] ~info_eq [%e x] [%e y]]
+                 Ast.pexp_apply
+                   ident
+                   (var_args
+                   @ [ labelled_arg (module Ast) "info_eq"; Nolabel, x; Nolabel, y ])
                in
                Lvca_util.List.snoc slots_checks body_check)
         |> List.join
@@ -779,7 +808,7 @@ let mk_individual_type_module
                | _ -> []
              in
              let tm = pexp_ident { txt = Lident "tm"; loc } in
-             let args = List.append args (Util.List.snoc labelled_args (Nolabel, tm)) in
+             let args = args @ Util.List.snoc labelled_args (Nolabel, tm) in
              pexp_apply wrapper_fun args
            in
            let expr = pexp_fun Nolabel None (ppat_var { txt = "tm"; loc }) expr in
