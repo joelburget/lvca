@@ -5,7 +5,7 @@ TODO: make disjunctionless? https://github.com/jyp/prettiest/pull/10
 open Base
 open Lvca_syntax
 
-module Lang (Int : LanguageObject_intf.S) (String : LanguageObject_intf.S) =
+module Lang =
 [%abstract_syntax_module
 {|
 int : *

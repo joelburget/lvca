@@ -14,11 +14,7 @@ either a b :=
 |}]
 *)
 
-module Primitive
-    (Integer : LanguageObject_intf.S)
-    (String : LanguageObject_intf.S)
-    (Float : LanguageObject_intf.S)
-    (Char : LanguageObject_intf.S) =
+module Primitive =
 [%abstract_syntax_module
 {|
 integer : *
@@ -33,7 +29,7 @@ primitive :=
   | Char(char)
 |}]
 
-module NonBinding (String : LanguageObject_intf.S) (Primitive : LanguageObject_intf.S) =
+module NonBinding =
 [%abstract_syntax_module
 {|
 string : *
@@ -49,7 +45,7 @@ term_list :=
   | Cons(term; term_list)
 |}]
 
-module Pattern (String : LanguageObject_intf.S) (Primitive : LanguageObject_intf.S) =
+module Pattern =
 [%abstract_syntax_module
 {|
 string : *
@@ -67,9 +63,7 @@ pattern_list :=
   | Cons(pattern; pattern_list)
 |}]
 
-module BindingAwarePattern
-    (String : LanguageObject_intf.S)
-    (Primitive : LanguageObject_intf.S) =
+module BindingAwarePattern =
 [%abstract_syntax_module
 {|
 string : *

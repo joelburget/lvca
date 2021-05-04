@@ -9,7 +9,7 @@ foo := foo(integer)
 |}]
 
 (* TODO: automate functorizing *)
-module Lang (Integer : LanguageObject.AllTermS) =
+module Lang =
 [%abstract_syntax_module
 {|
 integer : *

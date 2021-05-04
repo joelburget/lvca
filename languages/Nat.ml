@@ -1,7 +1,7 @@
 open Base
 open Lvca_syntax
 
-module Lang (String : LanguageObject_intf.S) =
+module Lang =
 [%abstract_syntax_module
 {|
 string : *

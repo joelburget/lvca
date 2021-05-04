@@ -3,12 +3,20 @@ open Lvca_syntax
 open Omd
 open Stdio
 
+(*
 module Lang
     (Char : LanguageObject_intf.S)
     (Int : LanguageObject_intf.S)
     (String : LanguageObject_intf.S) =
-[%abstract_syntax_module
-{|
+      *)
+module Lang =
+functor
+  (Char : LanguageObject_intf.S)
+  (Int : LanguageObject_intf.S)
+  (String : LanguageObject_intf.S)
+  ->
+  [%abstract_syntax_module
+  {|
 char : *
 int : *
 string : *

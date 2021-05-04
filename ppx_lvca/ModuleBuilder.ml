@@ -856,6 +856,7 @@ let mk_individual_type_module
 
 let mk_container_module ~loc Syn.{ externals; sort_defs } =
   let (module Ast) = Ast_builder.make loc in
+  let all_term_s = all_term_s (module Ast) in
   (* pre-declare types *)
   let prim_names = externals |> List.map ~f:fst |> SSet.of_list in
   let wrapper_module = mk_wrapper_module (module Ast) ~prim_names sort_defs in
@@ -864,50 +865,39 @@ let mk_container_module ~loc Syn.{ externals; sort_defs } =
       sort_defs
       ~f:(Util.Tuple2.uncurry (mk_individual_type_module (module Ast) ~prim_names))
   in
-  let mod_tys =
-    List.map sort_defs ~f:(fun (sort_name, Syn.SortDef.SortDef (vars, _op_defs)) ->
-        let name = { txt = Some (module_name sort_name); loc } in
-        let init = all_term_s (module Ast) in
-        let f (var_name, _kind_opt) mod_ty =
-          let mod_param =
-            Named ({ txt = Some (module_name var_name); loc }, all_term_s (module Ast))
-          in
-          Ast.pmty_functor mod_param mod_ty
-        in
-        let type_ = List.fold_right vars ~init ~f in
-        Ast.(psig_module (module_declaration ~name ~type_)))
-  in
   (* TODO: include language?
   let sort_defs =
     [%str let language = [%e SyntaxQuoter.mk_language ~loc lang]] @ sort_defs
   in
   *)
   (* Turn into a functor over externals *)
-  (*
-  let f (name, kind) accum =
+  let mod_param (name, kind) =
     match kind with
-    | Syn.Kind.Kind (_, 1) ->
-      let mod_param =
-        Named
-          ( { txt = Some (module_name name); loc }
-          , Ast.pmty_ident { txt = unflatten [ "LanguageObject"; "AllTermS" ]; loc } )
-      in
-      Ast.pmod_functor mod_param accum
-    | _ ->
+    | Some (Syn.Kind.Kind (_, 1)) | None ->
+      Named ({ txt = Some (module_name name); loc }, all_term_s)
+    | Some kind ->
       Location.raise_errorf
         ~loc
         "Code generation currently only supports external modules of kind * (%s is %s)"
         name
         (Fmt.to_to_string Syn.Kind.pp kind)
   in
+  let mod_param' (name, kind) = mod_param (name, Some kind) in
   let expr =
-    List.fold_right
-      externals
-      ~init:
-      ~f
+    let init = Ast.pmod_structure (wrapper_module :: type_modules) in
+    List.fold_right externals ~init ~f:(mod_param' >> Ast.pmod_functor)
   in
-  *)
-  let expr = Ast.pmod_structure (wrapper_module :: type_modules) in
-  let mod_ty = Ast.pmty_signature mod_tys in
+  let mod_ty =
+    let init =
+      sort_defs
+      |> List.map ~f:(fun (sort_name, Syn.SortDef.SortDef (vars, _op_defs)) ->
+             let name = { txt = Some (module_name sort_name); loc } in
+             let init = all_term_s in
+             let type_ = List.fold_right vars ~init ~f:(mod_param >> Ast.pmty_functor) in
+             Ast.(psig_module (module_declaration ~name ~type_)))
+      |> Ast.pmty_signature
+    in
+    List.fold_right externals ~init ~f:(mod_param' >> Ast.pmty_functor)
+  in
   Ast.pmod_constraint expr mod_ty
 ;;
