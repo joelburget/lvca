@@ -7,6 +7,8 @@ module SMap = Util.String.Map
 module Syn = AbstractSyntax
 module ParseAbstract = Syn.Parse (ParseUtil.CComment)
 
+let ( >> ), ( << ) = Util.(( >> ), ( << ))
+
 (*
   ## Sort variables
 
@@ -209,7 +211,7 @@ let get_sort_ref_map sort_defs =
   sort_defs
   |> List.map ~f:(fun (sort_name, Syn.SortDef.SortDef (vars, op_defs)) ->
          let vars = List.map vars ~f:fst in
-         let result =
+         let connections =
            op_defs
            |> List.map ~f:(fun (Syn.OperatorDef.OperatorDef (_name, arity)) ->
                   arity
@@ -225,7 +227,7 @@ let get_sort_ref_map sort_defs =
            |> SSet.union_list
            |> Set.to_list
          in
-         sort_name, result)
+         sort_name, connections)
   |> SMap.of_alist_exn
 ;;
 
@@ -350,18 +352,17 @@ module OperatorExp = struct
       Int.incr var_ix;
       let f, var_args =
         let sort_name = sort_head sort in
-        match true with
-        | _ when Map.mem sort_defs sort_name ->
-          (* XXX are these the right var args? make sure correct sort def *)
+        match Map.find sort_defs sort_name with
+        | Some (Syn.SortDef.SortDef (vars, _)) ->
           let var_args =
-            var_names
-            |> Set.to_list
+            vars
+            |> List.map ~f:fst
             |> List.map ~f:(fun sort_name -> Nolabel, Ast.evar ("f_" ^ sort_name))
           in
           Ast.evar sort_name, var_args
-        | _ when Set.mem var_names sort_name ->
+        | None when Set.mem var_names sort_name ->
           Ast.pexp_ident { txt = Lident ("f_" ^ sort_name); loc }, []
-        | _ ->
+        | None ->
           (* is it always valid to just use module_name? *)
           ( Ast.pexp_ident
               { txt = build_names [ module_name (sort_head sort); fun_name ]; loc }
@@ -525,11 +526,11 @@ let mk_equal
                  let txt, var_args =
                    (* Defined sort vs external *)
                    let sort_name = sort_head body_sort in
-                   match true with
-                   | _ when Map.mem sort_defs sort_name ->
+                   match Map.find sort_defs sort_name with
+                   | Some (Syn.SortDef.SortDef (vars, _)) ->
                      let var_args =
-                       var_names
-                       |> Set.to_list
+                       vars
+                       |> List.map ~f:fst
                        |> List.map ~f:(fun sort_name ->
                               Nolabel, Ast.evar ("f_" ^ sort_name))
                      in
@@ -610,14 +611,12 @@ let mk_wrapper_module (module Ast : Ast_builder.S) ~prim_names sort_defs =
     Graph.connected_components sort_ref_map
   in
   let ordered_sccs =
-    scc_graph |> DirectedGraph.Int.topsort_exn |> List.map ~f:(Map.find_exn sccs)
-  in
-  let ordered_sccs =
-    ordered_sccs
-    |> List.map ~f:(fun sort_names ->
-           sort_names
-           |> Set.to_list
-           |> List.map ~f:(fun name -> name, Map.find_exn sort_def_map name))
+    scc_graph
+    |> DirectedGraph.Int.topsort_exn
+    |> List.map ~f:(Map.find_exn sccs)
+    |> List.map
+         ~f:(Set.to_list >> List.map ~f:(fun name -> name, Map.find_exn sort_def_map name))
+    |> List.rev
   in
   let adapt
       ?definite_rec

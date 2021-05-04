@@ -25,7 +25,7 @@ nat := Z() | S(nat)
 // ignoring sort vars for now.
 list a := Nil() | Cons(a; list a)
 pair a b := Pair(a; b)
-// pair_plus a b := PairPlus(a; b; foo)
+pair_plus a b := PairPlus(a; b; foo)
 
 mut_a := Mut_a(mut_b)
 mut_b := Mut_b(mut_a)
