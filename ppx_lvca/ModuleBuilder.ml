@@ -96,10 +96,10 @@ type conversion_direction =
   | OfPlain
 
 (* Concatenate a list of names into a Longident. *)
-(* TODO: is this just Longident.unflatten? Also see Longident.parse. *)
-let build_names names =
+(* TODO: is this just Longident.unflatten? *)
+let unflatten names =
   match names with
-  | [] -> Lvca_util.invariant_violation "build_names: names must be nonempty"
+  | [] -> Lvca_util.invariant_violation "unflatten: names must be nonempty"
   | nm0 :: nms -> List.fold nms ~init:(Lident nm0) ~f:(fun accum m -> Ldot (accum, m))
 ;;
 
@@ -163,7 +163,7 @@ let mk_ctor_decl
         let names =
           if info then [ module_name name; "t" ] else [ module_name name; "Plain"; "t" ]
         in
-        ptyp_constr { txt = build_names names; loc } args)
+        ptyp_constr { txt = unflatten names; loc } args)
     | false ->
       (match Map.find mutual_sorts name with
       | Some (Syn.SortDef.SortDef (vars, _op_defs)) ->
@@ -177,7 +177,7 @@ let mk_ctor_decl
           | false, true -> [ "Wrapper"; "Types"; name ]
           | false, false -> [ "Wrapper"; "Plain"; name ]
         in
-        let txt = build_names qualified_name in
+        let txt = unflatten qualified_name in
         ptyp_constr { txt; loc } args)
   in
   let args_of_valence (Syn.Valence.Valence (binding_sort_slots, body_sort)) =
@@ -321,7 +321,7 @@ module OperatorPat = struct
       let container_name =
         match ctor_type with WithInfo -> "Types" | Plain -> "Plain"
       in
-      build_names [ container_name; op_name ]
+      unflatten [ container_name; op_name ]
     in
     Ast.ppat_construct { txt; loc } body
   ;;
@@ -346,7 +346,7 @@ module OperatorExp = struct
     let var_ix = ref 0 in
     let v () = Ast.evar (Printf.sprintf "%s%d" name_base !var_ix) in
     let pattern_converter =
-      Ast.pexp_ident { txt = build_names [ "Pattern"; fun_name ]; loc }
+      Ast.pexp_ident { txt = unflatten [ "Pattern"; fun_name ]; loc }
     in
     let body_arg sort =
       Int.incr var_ix;
@@ -365,7 +365,7 @@ module OperatorExp = struct
         | None ->
           (* is it always valid to just use module_name? *)
           ( Ast.pexp_ident
-              { txt = build_names [ module_name (sort_head sort); fun_name ]; loc }
+              { txt = unflatten [ module_name (sort_head sort); fun_name ]; loc }
           , [] )
       in
       mk_app f (var_args @ [ Nolabel, v () ])
@@ -392,7 +392,7 @@ module OperatorExp = struct
       let container_name =
         match ctor_type with WithInfo _ -> "Types" | Plain -> "Plain"
       in
-      build_names [ container_name; op_name ]
+      unflatten [ container_name; op_name ]
     in
     Ast.pexp_construct { txt; loc } body
   ;;
@@ -536,7 +536,7 @@ let mk_equal
                      in
                      Lident sort_name, var_args
                    | _ when Set.mem var_names sort_name -> Lident ("f_" ^ sort_name), []
-                   | _ -> build_names [ module_name sort_name; "equal" ], []
+                   | _ -> unflatten [ module_name sort_name; "equal" ], []
                  in
                  let ident = Ast.pexp_ident { txt; loc } in
                  let x, y = mk_xy () in
@@ -683,7 +683,7 @@ let mk_wrapper_module (module Ast : Ast_builder.S) ~prim_names sort_defs =
 ;;
 
 let all_term_s (module Ast : Ast_builder.S) =
-  Ast.pmty_ident { txt = build_names [ "LanguageObject"; "AllTermS" ]; loc = Ast.loc }
+  Ast.pmty_ident { txt = unflatten [ "LanguageObject"; "AllTermS" ]; loc = Ast.loc }
 ;;
 
 let mk_individual_type_module
@@ -700,7 +700,7 @@ let mk_individual_type_module
       |> List.map ~f:fst
       |> List.map ~f:(fun name ->
              Ast.ptyp_constr
-               { txt = build_names [ module_name name; "Plain"; "t" ]; loc }
+               { txt = unflatten [ module_name name; "Plain"; "t" ]; loc }
                [])
     in
     let kind =
@@ -722,7 +722,7 @@ let mk_individual_type_module
     let manifest =
       Some
         (Ast.ptyp_constr
-           { txt = build_names [ "Wrapper"; "Plain"; sort_name ]; loc }
+           { txt = unflatten [ "Wrapper"; "Plain"; sort_name ]; loc }
            manifest_arg_list)
     in
     Ast.pstr_type
@@ -742,7 +742,7 @@ let mk_individual_type_module
       |> List.map ~f:fst
       |> List.map ~f:(fun name ->
              Ast.ptyp_constr
-               { txt = build_names [ module_name name; "t" ]; loc }
+               { txt = unflatten [ module_name name; "t" ]; loc }
                [ Ast.ptyp_var "info" ])
     in
     let kind =
@@ -764,7 +764,7 @@ let mk_individual_type_module
     let manifest =
       Some
         (Ast.ptyp_constr
-           { txt = build_names [ "Wrapper"; "Types"; sort_name ]; loc }
+           { txt = unflatten [ "Wrapper"; "Types"; sort_name ]; loc }
            (Ast.ptyp_var "info" :: manifest_arg_list))
     in
     Ast.pstr_type
@@ -788,7 +788,7 @@ let mk_individual_type_module
     |> List.map ~f:(fun (fun_name, mod_name) ->
            let open Ast in
            let wrapper_fun =
-             pexp_ident { txt = build_names [ "Wrapper"; mod_name; sort_name ]; loc }
+             pexp_ident { txt = unflatten [ "Wrapper"; mod_name; sort_name ]; loc }
            in
            let expr =
              let args =
@@ -797,7 +797,7 @@ let mk_individual_type_module
                | _ ->
                  vars
                  |> List.map ~f:(fun (name, _kind_opt) ->
-                        let txt = build_names [ module_name name; fun_name ] in
+                        let txt = unflatten [ module_name name; fun_name ] in
                         Nolabel, pexp_ident { txt; loc })
              in
              let labelled_args =
@@ -894,7 +894,7 @@ let mk_container_module ~loc Syn.{ externals; sort_defs } =
       let mod_param =
         Named
           ( { txt = Some (module_name name); loc }
-          , Ast.pmty_ident { txt = build_names [ "LanguageObject"; "AllTermS" ]; loc } )
+          , Ast.pmty_ident { txt = unflatten [ "LanguageObject"; "AllTermS" ]; loc } )
       in
       Ast.pmod_functor mod_param accum
     | _ ->
