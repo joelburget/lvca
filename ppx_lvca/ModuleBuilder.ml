@@ -271,7 +271,7 @@ let mk_type_decl (module Ast : Ast_builder.S) ~info ~sort_def_map ~prim_names =
   Ast.pstr_type Recursive decls
 ;;
 
-module OperatorPat = struct
+module OperatorPat (Ast : Ast_builder.S) = struct
   type ctor_type =
     | Plain
     | WithInfo
@@ -281,7 +281,6 @@ module OperatorPat = struct
   ;;
 
   let mk
-      (module Ast : Ast_builder.S)
       ~ctor_type
       ?(match_info = false)
       ?(match_non_info = true)
@@ -404,9 +403,10 @@ let mk_to_plain
     sort_name
     (Syn.SortDef.SortDef (vars, op_defs))
   =
+  let module OperatorPat = OperatorPat (Ast) in
   let var_names = vars |> List.map ~f:fst |> SSet.of_list in
   let f op_def =
-    let lhs = OperatorPat.mk (module Ast) ~ctor_type:WithInfo op_def in
+    let lhs = OperatorPat.mk ~ctor_type:WithInfo op_def in
     let rhs =
       OperatorExp.mk (module Ast) ~var_names ~ctor_type:Plain sort_defs "to_plain" op_def
     in
@@ -426,9 +426,10 @@ let mk_of_plain
     sort_name
     (Syn.SortDef.SortDef (vars, op_defs))
   =
+  let module OperatorPat = OperatorPat (Ast) in
   let var_names = vars |> List.map ~f:fst |> SSet.of_list in
   let f op_def =
-    let lhs = OperatorPat.mk (module Ast) ~ctor_type:Plain op_def in
+    let lhs = OperatorPat.mk ~ctor_type:Plain op_def in
     let rhs =
       OperatorExp.mk
         (module Ast)
@@ -454,9 +455,10 @@ let mk_map_info
     sort_name
     (Syn.SortDef.SortDef (vars, op_defs))
   =
+  let module OperatorPat = OperatorPat (Ast) in
   let var_names = vars |> List.map ~f:fst |> SSet.of_list in
   let f op_def =
-    let lhs = OperatorPat.mk (module Ast) ~ctor_type:WithInfo ~match_info:true op_def in
+    let lhs = OperatorPat.mk ~ctor_type:WithInfo ~match_info:true op_def in
     let rhs =
       OperatorExp.mk
         (module Ast)
@@ -485,6 +487,7 @@ let mk_equal
     sort_name
     (Syn.SortDef.SortDef (vars, op_defs))
   =
+  let module OperatorPat = OperatorPat (Ast) in
   let loc = Ast.loc in
   let var_names = vars |> List.map ~f:fst |> SSet.of_list in
   let f (Syn.OperatorDef.OperatorDef (_op_name, arity) as op_def) =
@@ -492,12 +495,7 @@ let mk_equal
       let p1, p2 =
         ("x", "y")
         |> Lvca_util.Tuple2.map ~f:(fun name_base ->
-               OperatorPat.mk
-                 (module Ast)
-                 ~ctor_type:WithInfo
-                 ~match_info:true
-                 ~name_base
-                 op_def)
+               OperatorPat.mk ~ctor_type:WithInfo ~match_info:true ~name_base op_def)
       in
       [%pat? [%p p1], [%p p2]]
     in
@@ -582,23 +580,21 @@ let mk_info
     sort_name
     (Syn.SortDef.SortDef (vars, op_defs))
   =
+  let module OperatorPat = OperatorPat (Ast) in
   let open Ast in
-  let f op_def =
+  let mk_case op_def =
     let lhs =
-      OperatorPat.mk
-        (module Ast)
-        ~ctor_type:WithInfo
-        ~match_info:true
-        ~match_non_info:false
-        op_def
+      OperatorPat.mk ~ctor_type:WithInfo ~match_info:true ~match_non_info:false op_def
     in
     case ~lhs ~guard ~rhs:[%expr x0]
   in
-  let init = op_defs |> List.map ~f |> pexp_function in
-  let f (var_name, _kind_opt) body =
-    pexp_fun Nolabel None (ppat_var { txt = "_f_" ^ var_name; loc }) body
+  let expr =
+    let init = op_defs |> List.map ~f:mk_case |> pexp_function in
+    let mk_var_arg (var_name, _kind_opt) body =
+      pexp_fun Nolabel None (ppat_var { txt = "_f_" ^ var_name; loc }) body
+    in
+    List.fold_right vars ~init ~f:mk_var_arg
   in
-  let expr = List.fold_right vars ~init ~f in
   value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
 ;;
 
@@ -683,7 +679,7 @@ let mk_wrapper_module (module Ast : Ast_builder.S) ~prim_names sort_defs =
 ;;
 
 let all_term_s (module Ast : Ast_builder.S) =
-  Ast.pmty_ident { txt = unflatten [ "LanguageObject"; "AllTermS" ]; loc = Ast.loc }
+  Ast.(pmty_ident { txt = unflatten [ "LanguageObject"; "AllTermS" ]; loc })
 ;;
 
 let mk_individual_type_module
