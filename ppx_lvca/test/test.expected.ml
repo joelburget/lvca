@@ -389,16 +389,33 @@ module Lang =
           and ('a, 'b) pair_plus =
             | PairPlus of 'a * 'b * foo 
         end
-        module Foo : LanguageObject.AllTermS
-        module Nat : LanguageObject.AllTermS
+        module Foo :
+        LanguageObject.AllTermS with type 'info t =  'info Types.foo and type
+           Plain.t =  Plain.foo
+        module Nat :
+        LanguageObject.AllTermS with type 'info t =  'info Types.nat and type
+           Plain.t =  Plain.nat
         module List :
-        functor (A : LanguageObject.AllTermS) -> LanguageObject.AllTermS
+        functor (A : LanguageObject.AllTermS) ->
+          LanguageObject.AllTermS with type 'info t = 
+            ('info, 'info A.t) Types.list and type  Plain.t = 
+            A.Plain.t Plain.list
         module Pair :
         functor (A : LanguageObject.AllTermS) ->
-          functor (B : LanguageObject.AllTermS) -> LanguageObject.AllTermS
+          functor (B : LanguageObject.AllTermS) ->
+            LanguageObject.AllTermS with type 'info t = 
+              ('info, 'info A.t, 'info B.t) Types.pair and type  Plain.t = 
+              (A.Plain.t, B.Plain.t) Plain.pair
         module Pair_plus :
         functor (A : LanguageObject.AllTermS) ->
-          functor (B : LanguageObject.AllTermS) -> LanguageObject.AllTermS
-        module Mut_a : LanguageObject.AllTermS
-        module Mut_b : LanguageObject.AllTermS
+          functor (B : LanguageObject.AllTermS) ->
+            LanguageObject.AllTermS with type 'info t = 
+              ('info, 'info A.t, 'info B.t) Types.pair_plus and type
+               Plain.t =  (A.Plain.t, B.Plain.t) Plain.pair_plus
+        module Mut_a :
+        LanguageObject.AllTermS with type 'info t =  'info Types.mut_a and
+          type  Plain.t =  Plain.mut_a
+        module Mut_b :
+        LanguageObject.AllTermS with type 'info t =  'info Types.mut_b and
+          type  Plain.t =  Plain.mut_b
       end)

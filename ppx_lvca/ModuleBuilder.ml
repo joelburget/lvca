@@ -927,16 +927,9 @@ let mk_container_module ~loc Syn.{ externals; sort_defs } =
     in
     List.fold_right externals ~init ~f:(mod_param' >> Ast.pmod_functor)
   in
+  let open Ast in
+  let info = ptyp_var "info" in
   let mod_ty =
-    let sort_module_sigs =
-      sort_defs
-      |> List.map ~f:(fun (sort_name, Syn.SortDef.SortDef (vars, _op_defs)) ->
-             let name = { txt = Some (module_name sort_name); loc } in
-             let init = all_term_s in
-             let type_ = List.fold_right vars ~init ~f:(mod_param >> Ast.pmty_functor) in
-             Ast.(psig_module (module_declaration ~name ~type_)))
-    in
-    let open Ast in
     let plain_sig =
       psig_module
         (module_declaration
@@ -948,6 +941,54 @@ let mk_container_module ~loc Syn.{ externals; sort_defs } =
         (module_declaration
            ~name:{ txt = Some "Types"; loc }
            ~type_:(pmty_signature [ info_types_sig ]))
+    in
+    let sort_module_sigs =
+      sort_defs
+      |> List.map ~f:(fun (sort_name, Syn.SortDef.SortDef (vars, _op_defs)) ->
+             let type_decl =
+               let info_ty = { txt = unflatten [ "Types"; sort_name ]; loc } in
+               let info_args =
+                 vars
+                 |> List.map ~f:(fun (name, _) ->
+                        let qualified_name = [ module_name name; "t" ] in
+                        ptyp_constr { txt = unflatten qualified_name; loc } [ info ])
+                 |> List.cons info
+               in
+               let params = [ info, (NoVariance, NoInjectivity) ] in
+               type_declaration
+                 ~name:{ txt = "t"; loc }
+                 ~params
+                 ~cstrs:[]
+                 ~kind:Ptype_abstract
+                 ~private_:Public
+                 ~manifest:(Some (ptyp_constr info_ty info_args))
+             in
+             let plain_type_decl =
+               let plain_ty = { txt = unflatten [ "Plain"; sort_name ]; loc } in
+               let plain_args =
+                 vars
+                 |> List.map ~f:(fun (name, _) ->
+                        let qualified_name = [ module_name name; "Plain"; "t" ] in
+                        ptyp_constr { txt = unflatten qualified_name; loc } [])
+               in
+               type_declaration
+                 ~name:{ txt = "t"; loc }
+                 ~params:[]
+                 ~cstrs:[]
+                 ~kind:Ptype_abstract
+                 ~private_:Public
+                 ~manifest:(Some (ptyp_constr plain_ty plain_args))
+             in
+             let init =
+               pmty_with
+                 all_term_s
+                 [ Pwith_type ({ txt = Lident "t"; loc }, type_decl)
+                 ; Pwith_type ({ txt = unflatten [ "Plain"; "t" ]; loc }, plain_type_decl)
+                 ]
+             in
+             let name = { txt = Some (module_name sort_name); loc } in
+             let type_ = List.fold_right vars ~init ~f:(mod_param >> Ast.pmty_functor) in
+             psig_module (module_declaration ~name ~type_))
     in
     let init = Ast.pmty_signature (types_sig :: plain_sig :: sort_module_sigs) in
     List.fold_right externals ~init ~f:(mod_param' >> Ast.pmty_functor)
