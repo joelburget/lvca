@@ -36,17 +36,17 @@ end = struct
   open Option.Let_syntax
 
   let rec list_to_nat = function
-    | List.Nil info -> Some (Nat.Z (info, None))
+    | Lang'.Types.Nil info -> Some (Lang'.Types.Z (info, None))
     | Cons (info, a, lst) ->
       let%map lst = list_to_nat lst in
-      Nat.S ((info, Some a), lst)
+      Lang'.Types.S ((info, Some a), lst)
   ;;
 
   let rec nat_to_list = function
-    | Nat.Z (info, None) -> Some (List.Nil info)
+    | Lang'.Types.Z (info, None) -> Some (Lang'.Types.Nil info)
     | S ((info, Some a), n) ->
       let%map lst = nat_to_list n in
-      List.Cons (info, a, lst)
+      Lang'.Types.Cons (info, a, lst)
     | _ -> None
   ;;
 

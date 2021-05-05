@@ -235,6 +235,8 @@ module Lang =
                     Types.Cons ((f x0), (f_a ~f x1), (list ~f f_a x2))
             end
         end
+      module Types = Wrapper.Types
+      module Plain = Wrapper.Plain
       module Foo =
         struct
           type 'info t = 'info Wrapper.Types.foo
@@ -347,6 +349,46 @@ module Lang =
     end :
     functor (Integer : LanguageObject.AllTermS) ->
       sig
+        module Types :
+        sig
+          type 'info foo =
+            | Foo of 'info * 'info Integer.t 
+            | Bar of 'info * ('info Pattern.t * string * 'info foo) 
+          and ('info, 'a) list =
+            | Nil of 'info 
+            | Cons of 'info * 'a * ('info, 'a) list 
+          and 'info mut_a =
+            | Mut_a of 'info * 'info mut_b 
+          and 'info mut_b =
+            | Mut_b of 'info * 'info mut_a 
+          and 'info nat =
+            | Z of 'info 
+            | S of 'info * 'info nat 
+          and ('info, 'a, 'b) pair =
+            | Pair of 'info * 'a * 'b 
+          and ('info, 'a, 'b) pair_plus =
+            | PairPlus of 'info * 'a * 'b * 'info foo 
+        end
+        module Plain :
+        sig
+          type foo =
+            | Foo of Integer.Plain.t 
+            | Bar of (Pattern.Plain.t * string * foo) 
+          and 'a list =
+            | Nil 
+            | Cons of 'a * 'a list 
+          and mut_a =
+            | Mut_a of mut_b 
+          and mut_b =
+            | Mut_b of mut_a 
+          and nat =
+            | Z 
+            | S of nat 
+          and ('a, 'b) pair =
+            | Pair of 'a * 'b 
+          and ('a, 'b) pair_plus =
+            | PairPlus of 'a * 'b * foo 
+        end
         module Foo : LanguageObject.AllTermS
         module Nat : LanguageObject.AllTermS
         module List :

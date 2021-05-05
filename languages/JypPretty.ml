@@ -25,29 +25,29 @@ doc :=
 module Lang' = Lang (Primitive.Int) (Primitive.String)
 module Doc = Lang'.Doc
 
-type doc = Doc.Plain.t
+(* type doc = Doc.Plain.t *)
 
 let rec of_nonbinding tm =
   let open Result.Let_syntax in
   match tm with
-  | NonBinding.Operator (_, "line", []) -> Ok Doc.Plain.Line
+  | NonBinding.Operator (_, "line", []) -> Ok Lang'.Plain.Line
   | Operator (_, "nil", []) -> Ok Nil
   | Operator (_, "cat", [ d1; d2 ]) ->
     let%bind d1 = of_nonbinding d1 in
     let%map d2 = of_nonbinding d2 in
-    Doc.Plain.Cat (d1, d2)
+    Lang'.Plain.Cat (d1, d2)
   | Operator (_, "text", [ Primitive (_, String s) ]) -> Ok (Text s)
   | Operator (_, "spacing", [ Primitive (_, String s) ]) -> Ok (Spacing s)
   | Operator (_, "nest", [ Primitive (_, Integer j); d ]) ->
     let%map d = of_nonbinding d in
-    Doc.Plain.Nest (Z.to_int j, d)
+    Lang'.Plain.Nest (Z.to_int j, d)
   | Operator (_, "align", [ d ]) ->
     let%map d = of_nonbinding d in
-    Doc.Plain.Align d
+    Lang'.Plain.Align d
   | Operator (_, "alt", [ d1; d2 ]) ->
     let%bind d1 = of_nonbinding d1 in
     let%map d2 = of_nonbinding d2 in
-    Doc.Plain.Alt (d1, d2)
+    Lang'.Plain.Alt (d1, d2)
   | Primitive _ | Operator _ -> Error ("Couldn't convert term", tm)
 ;;
 
@@ -55,7 +55,7 @@ type semantics = int -> int -> (string * int) list
 
 let rec eval doc i (* current indentation *) c (* current column *) =
   match doc with
-  | Doc.Plain.Line -> [ String.(of_char '\n' ^ make i ' '), i ]
+  | Lang'.Plain.Line -> [ String.(of_char '\n' ^ make i ' '), i ]
   | Nil -> [ "", c ]
   | Cat (d1, d2) ->
     eval d1 i c
@@ -67,7 +67,8 @@ let rec eval doc i (* current indentation *) c (* current column *) =
   | Alt (d1, d2) -> eval d1 i c @ eval d2 i c
 ;;
 
-type docs = (int * doc) list
+(* type docs = (int * doc) list *)
+type docs = (int * Doc.Plain.t) list
 
 type process =
   { cur_indent : int (** current indentation *)
@@ -82,7 +83,7 @@ let rec filtering : process list -> process list = function
   | xs -> xs
 ;;
 
-let render_fast : int -> doc -> string option =
+let render_fast : int -> Doc.Plain.t -> string option =
  fun w doc ->
   let rec rall : int -> string list -> int -> docs -> (string list, process) Either.t list
     =
@@ -94,7 +95,7 @@ let render_fast : int -> doc -> string option =
       | [] -> [ First ts ] (* done *)
       | (i, d) :: ds ->
         (match d with
-        | Nil -> rall p ts k ds
+        | Lang'.Plain.Nil -> rall p ts k ds
         | Text s -> rall (p + 1) (s :: ts) (k + String.length s) ds
         | Spacing s -> rall p (s :: ts) (k + String.length s) ds
         | Line ->

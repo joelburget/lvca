@@ -43,6 +43,8 @@ let ( >> ), ( << ) = Util.(( >> ), ( << ))
       uses_pair := UsesPair(pair integer string)
       diag a := Diag(pair a a)
 
+  ==>
+
       module Types = struct
         type ('info, 'a, 'b) pair = Pair of 'info * 'a * 'b
         type 'info uses_pair = UsesPair of 'info * ('info, Integer.t, String.t) pair
@@ -167,8 +169,29 @@ let mk_ctor_decl
     | false ->
       (match Map.find mutual_sorts name with
       | Some (Syn.SortDef.SortDef (vars, _op_defs)) ->
-        let extra_args = List.map vars ~f:(fun (var_name, _) -> ptyp_var var_name) in
-        ptyp_constr { txt = Lident name; loc } (args @ extra_args)
+        let qualified_name, extra_args =
+          match typedef_mode with
+          | TypesModule ->
+            let extra_args = List.map vars ~f:(fun (var_name, _) -> ptyp_var var_name) in
+            [ name ], extra_args
+          | IndividualTypeModule ->
+            (match info with
+            | true ->
+              let extra_args =
+                List.map vars ~f:(fun (var_name, _) ->
+                    let txt = unflatten [ module_name var_name; "t" ] in
+                    ptyp_constr { txt; loc } args)
+              in
+              [ "Wrapper"; "Types"; name ], extra_args
+            | false ->
+              let extra_args =
+                List.map vars ~f:(fun (var_name, _) ->
+                    let txt = unflatten [ module_name var_name; "Plain"; "t" ] in
+                    ptyp_constr { txt; loc } args)
+              in
+              [ "Wrapper"; "Plain"; name ], extra_args)
+        in
+        ptyp_constr { txt = unflatten qualified_name; loc } (args @ extra_args)
       | None ->
         let qualified_name =
           match Set.mem prim_names name, info with
@@ -177,19 +200,19 @@ let mk_ctor_decl
           | false, true -> [ "Wrapper"; "Types"; name ]
           | false, false -> [ "Wrapper"; "Plain"; name ]
         in
-        let txt = unflatten qualified_name in
-        ptyp_constr { txt; loc } args)
+        ptyp_constr { txt = unflatten qualified_name; loc } args)
   in
   let args_of_valence (Syn.Valence.Valence (binding_sort_slots, body_sort)) =
-    let body_type = ptyp_of_sort body_sort in
-    match binding_sort_slots with
-    | [] -> [ body_type ]
-    | _ ->
-      binding_sort_slots
-      |> List.map ~f:(function
-             | Syn.SortSlot.SortBinding _sort -> [%type: string]
-             | SortPattern _sort -> pattern_type)
-      |> Fn.flip Lvca_util.List.snoc body_type
+    let args =
+      match binding_sort_slots with
+      | [] -> []
+      | _ ->
+        binding_sort_slots
+        |> List.map ~f:(function
+               | Syn.SortSlot.SortBinding _sort -> [%type: string]
+               | SortPattern _sort -> pattern_type)
+    in
+    args @ [ ptyp_of_sort body_sort ]
   in
   let args =
     arity
@@ -235,41 +258,40 @@ type is_rec =
   | IsRec
   | IsntRec
 
-let mk_type_decl (module Ast : Ast_builder.S) ~info ~sort_def_map ~prim_names =
+let mk_type_decls (module Ast : Ast_builder.S) ~info ~sort_def_map ~prim_names =
   let params0 =
     if info then [ Ast.ptyp_var "info", (NoVariance, NoInjectivity) ] else []
   in
-  let decls =
-    sort_def_map
-    |> Map.to_alist
-    |> List.map ~f:(fun (sort_name, Syn.SortDef.SortDef (vars, op_defs)) ->
-           let var_names = vars |> List.map ~f:fst |> SSet.of_list in
-           let mk_var name = Ast.ptyp_var name, (NoVariance, NoInjectivity) in
-           let params = vars |> List.map ~f:fst |> List.map ~f:mk_var in
-           let params = params0 @ params in
-           let kind =
-             Ptype_variant
-               (List.map
-                  op_defs
-                  ~f:
-                    (mk_ctor_decl
-                       (module Ast)
-                       ~info
-                       ~typedef_mode:TypesModule
-                       ~var_names
-                       ~mutual_sorts:sort_def_map
-                       ~prim_names))
-           in
-           Ast.type_declaration
-             ~name:{ txt = sort_name; loc = Ast.loc }
-             ~params
-             ~cstrs:[]
-             ~kind
-             ~private_:Public
-             ~manifest:None)
-  in
-  Ast.pstr_type Recursive decls
+  sort_def_map
+  |> Map.to_alist
+  |> List.map ~f:(fun (sort_name, Syn.SortDef.SortDef (vars, op_defs)) ->
+         let var_names = vars |> List.map ~f:fst |> SSet.of_list in
+         let mk_var name = Ast.ptyp_var name, (NoVariance, NoInjectivity) in
+         let params = vars |> List.map ~f:fst |> List.map ~f:mk_var in
+         let params = params0 @ params in
+         let kind =
+           Ptype_variant
+             (List.map
+                op_defs
+                ~f:
+                  (mk_ctor_decl
+                     (module Ast)
+                     ~info
+                     ~typedef_mode:TypesModule
+                     ~var_names
+                     ~mutual_sorts:sort_def_map
+                     ~prim_names))
+         in
+         Ast.type_declaration
+           ~name:{ txt = sort_name; loc = Ast.loc }
+           ~params
+           ~cstrs:[]
+           ~kind
+           ~private_:Public
+           ~manifest:None)
 ;;
+
+(* let mk_types_sigs (module Ast) ~sort_def_map ~prim_names = *)
 
 module OperatorPat (Ast : Ast_builder.S) = struct
   type ctor_type =
@@ -598,6 +620,7 @@ let mk_info
   value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
 ;;
 
+(* The wrapper module holds TODO *)
 let mk_wrapper_module (module Ast : Ast_builder.S) ~prim_names sort_defs =
   let loc = Ast.loc in
   let sort_def_map = SMap.of_alist_exn sort_defs in
@@ -643,15 +666,17 @@ let mk_wrapper_module (module Ast : Ast_builder.S) ~prim_names sort_defs =
            in
            Ast.pstr_value is_rec value_bindings)
   in
+  let info_decls = mk_type_decls (module Ast) ~info:true ~sort_def_map ~prim_names in
+  let plain_decls = mk_type_decls (module Ast) ~info:false ~sort_def_map ~prim_names in
   let defs =
     (* Each of these functions is potentially recursive (across multiple types), pre-declare. *)
     [%str
       module Types = struct
-        [%%i mk_type_decl (module Ast) ~info:true ~sort_def_map ~prim_names]
+        [%%i Ast.pstr_type Recursive info_decls]
       end
 
       module Plain = struct
-        [%%i mk_type_decl (module Ast) ~info:false ~sort_def_map ~prim_names]
+        [%%i Ast.pstr_type Recursive plain_decls]
       end
 
       module Info = [%m Ast.pmod_structure (adapt ~definite_rec:Nonrecursive mk_info)]
@@ -671,11 +696,13 @@ let mk_wrapper_module (module Ast : Ast_builder.S) ~prim_names sort_defs =
       module SubstAll = struct end
       *)]
   in
-  let init = Ast.pmod_structure defs in
-  Ast.module_binding
-    ~name:{ txt = Some "Wrapper" (* (module_name sort_name) *); loc }
-    ~expr:init
-  |> Ast.pstr_module
+  let wrapper_module =
+    Ast.module_binding
+      ~name:{ txt = Some "Wrapper" (* (module_name sort_name) *); loc }
+      ~expr:(Ast.pmod_structure defs)
+    |> Ast.pstr_module
+  in
+  wrapper_module, Ast.psig_type Recursive info_decls, Ast.psig_type Recursive plain_decls
 ;;
 
 let all_term_s (module Ast : Ast_builder.S) =
@@ -685,11 +712,12 @@ let all_term_s (module Ast : Ast_builder.S) =
 let mk_individual_type_module
     (module Ast : Ast_builder.S)
     ~prim_names:_
+    ~sort_def_map:_
     sort_name
     (Syn.SortDef.SortDef (vars, _op_defs))
   =
   let loc = Ast.loc in
-  (* let var_names = vars |> List.map ~f:fst |> SSet.of_list in *)
+  let _var_names = vars |> List.map ~f:fst |> SSet.of_list in
   let plain_type_decl =
     let manifest_arg_list =
       vars
@@ -711,7 +739,7 @@ let mk_individual_type_module
                 ~info:false
                 ~typedef_mode:IndividualTypeModule
                 ~var_names
-                ~mutual_sort_names:SSet.empty
+                ~mutual_sorts:sort_def_map
                 ~prim_names))
                 *)
     in
@@ -753,7 +781,7 @@ let mk_individual_type_module
                 ~info:true
                 ~typedef_mode:IndividualTypeModule
                 ~var_names
-                ~mutual_sort_names:SSet.empty
+                ~mutual_sorts:sort_def_map
                 ~prim_names))
                 *)
     in
@@ -854,16 +882,22 @@ let mk_individual_type_module
   |> Ast.pstr_module
 ;;
 
+(* The top-level container / result (which is really a functor if there are externals). *)
 let mk_container_module ~loc Syn.{ externals; sort_defs } =
   let (module Ast) = Ast_builder.make loc in
   let all_term_s = all_term_s (module Ast) in
-  (* pre-declare types *)
   let prim_names = externals |> List.map ~f:fst |> SSet.of_list in
-  let wrapper_module = mk_wrapper_module (module Ast) ~prim_names sort_defs in
+  (* pre-declare types *)
+  let wrapper_module, info_types_sig, plain_types_sig =
+    mk_wrapper_module (module Ast) ~prim_names sort_defs
+  in
+  let sort_def_map = SMap.of_alist_exn sort_defs in
   let type_modules =
     List.map
       sort_defs
-      ~f:(Util.Tuple2.uncurry (mk_individual_type_module (module Ast) ~prim_names))
+      ~f:
+        (Util.Tuple2.uncurry
+           (mk_individual_type_module (module Ast) ~prim_names ~sort_def_map))
   in
   (* TODO: include language?
   let sort_defs =
@@ -884,19 +918,38 @@ let mk_container_module ~loc Syn.{ externals; sort_defs } =
   in
   let mod_param' (name, kind) = mod_param (name, Some kind) in
   let expr =
-    let init = Ast.pmod_structure (wrapper_module :: type_modules) in
+    let init =
+      Ast.pmod_structure
+        (wrapper_module
+         ::
+         [%stri module Types = Wrapper.Types]
+         :: [%stri module Plain = Wrapper.Plain] :: type_modules)
+    in
     List.fold_right externals ~init ~f:(mod_param' >> Ast.pmod_functor)
   in
   let mod_ty =
-    let init =
+    let sort_module_sigs =
       sort_defs
       |> List.map ~f:(fun (sort_name, Syn.SortDef.SortDef (vars, _op_defs)) ->
              let name = { txt = Some (module_name sort_name); loc } in
              let init = all_term_s in
              let type_ = List.fold_right vars ~init ~f:(mod_param >> Ast.pmty_functor) in
              Ast.(psig_module (module_declaration ~name ~type_)))
-      |> Ast.pmty_signature
     in
+    let open Ast in
+    let plain_sig =
+      psig_module
+        (module_declaration
+           ~name:{ txt = Some "Plain"; loc }
+           ~type_:(pmty_signature [ plain_types_sig ]))
+    in
+    let types_sig =
+      psig_module
+        (module_declaration
+           ~name:{ txt = Some "Types"; loc }
+           ~type_:(pmty_signature [ info_types_sig ]))
+    in
+    let init = Ast.pmty_signature (types_sig :: plain_sig :: sort_module_sigs) in
     List.fold_right externals ~init ~f:(mod_param' >> Ast.pmty_functor)
   in
   Ast.pmod_constraint expr mod_ty
