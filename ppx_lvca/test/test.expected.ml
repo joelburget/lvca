@@ -232,7 +232,7 @@ module Lang =
                 function
                 | Types.Nil x0 -> Types.Nil (f x0)
                 | Types.Cons (x0, x1, x2) ->
-                    Types.Cons ((f x0), (f_a ~f x1), (list ~f f_a x2))
+                    Types.Cons ((f x0), (f_a ~f x1), (list f_a ~f x2))
             end
         end
       module Types = Wrapper.Types

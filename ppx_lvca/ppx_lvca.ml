@@ -4,6 +4,7 @@ module ParsePattern = Lvca_syntax.Pattern.Parse (ParseUtil.CComment)
 module ParseTerm = Nominal.Term.Parse (ParseUtil.CComment)
 module ParseNonbinding = NonBinding.Parse (ParseUtil.CComment)
 module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
+module ModuleBuilder = ModuleBuilder
 
 (* TODO: parser, core, nonbinding / OCaml data mapping *)
 
@@ -55,7 +56,10 @@ let expand_module ~(loc : Location.t) ~path:_ (expr : expression) : module_expr 
   let str, loc = extract_string loc expr in
   match ParseUtil.parse_string ParseAbstract.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
-  | Ok syntax -> ModuleBuilder.mk_container_module ~loc syntax
+  | Ok syntax ->
+    let (module Ast) = Ast_builder.make loc in
+    let module ContainerModule = ModuleBuilder.ContainerModule (Ast) in
+    ContainerModule.mk syntax
 ;;
 
 let term_extension =
