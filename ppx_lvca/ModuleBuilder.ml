@@ -95,7 +95,7 @@ let ( >> ), ( << ) = Util.(( >> ), ( << ))
     There are a few factors determining the definition and use of a given sort:
 
     {ul
-     {- The use of 'info or not }
+     {- The use of ['info] or not }
      {- Whether
         the
         sort
@@ -133,19 +133,6 @@ let unflatten names =
 let ctor_name = String.capitalize
 let module_name = String.capitalize
 let guard = None
-
-let mk_pat_tuple ~loc = function
-  | [] -> [%pat? ()]
-  | [ elem ] -> elem
-  | elems -> Ast_builder.Default.ppat_tuple ~loc elems
-;;
-
-let mk_exp_tuple ~loc = function
-  | [] -> [%expr ()]
-  | [ elem ] -> elem
-  | elems -> Ast_builder.Default.pexp_tuple ~loc elems
-;;
-
 let sort_head = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
 
 let conjuntion ~loc exps =
@@ -246,11 +233,8 @@ module CtorDecl (Ast : Ast_builder.S) = struct
       | false ->
         (match Map.find mutual_sorts name with
         | Some (Syn.SortDef.SortDef (vars, _op_defs)) ->
-          let qualified_name, extra_args =
-            let extra_args = List.map vars ~f:(fun (var_name, _) -> ptyp_var var_name) in
-            [ name ], extra_args
-          in
-          ptyp_constr { txt = unflatten qualified_name; loc } (args @ extra_args)
+          let extra_args = List.map vars ~f:(fun (var_name, _) -> ptyp_var var_name) in
+          ptyp_constr { txt = unflatten [ name ]; loc } (args @ extra_args)
         | None ->
           let qualified_name =
             match Set.mem prim_names name, info with
@@ -263,13 +247,9 @@ module CtorDecl (Ast : Ast_builder.S) = struct
     in
     let args_of_valence (Syn.Valence.Valence (binding_sort_slots, body_sort)) =
       let args =
-        match binding_sort_slots with
-        | [] -> []
-        | _ ->
-          binding_sort_slots
-          |> List.map ~f:(function
-                 | Syn.SortSlot.SortBinding _sort -> [%type: string]
-                 | SortPattern _sort -> pattern_type)
+        List.map binding_sort_slots ~f:(function
+            | Syn.SortSlot.SortBinding _sort -> [%type: string]
+            | SortPattern _sort -> pattern_type)
       in
       args @ [ ptyp_of_sort body_sort ]
     in
@@ -280,7 +260,7 @@ module CtorDecl (Ast : Ast_builder.S) = struct
       |> List.map ~f:(function
              | [] -> [%type: unit]
              | [ ty ] -> ty
-             | tys -> Ast_builder.Default.ptyp_tuple ~loc tys)
+             | tys -> ptyp_tuple tys)
     in
     constructor_declaration
       ~name:{ txt = ctor_name op_name; loc }
@@ -319,6 +299,7 @@ module TypeDecls (Ast : Ast_builder.S) = struct
 end
 
 module OperatorPat (Ast : Ast_builder.S) = struct
+  open Helpers (Ast)
   open Ast
 
   type ctor_type =
@@ -327,6 +308,12 @@ module OperatorPat (Ast : Ast_builder.S) = struct
 
   let is_valid_ocaml_constr_name str =
     (not (String.is_empty str)) && Char.is_uppercase str.[0]
+  ;;
+
+  let mk_pat_tuple = function
+    | [] -> [%pat? ()]
+    | [ elem ] -> elem
+    | elems -> ppat_tuple elems
   ;;
 
   let mk
@@ -362,7 +349,7 @@ module OperatorPat (Ast : Ast_builder.S) = struct
     let body =
       match contents with
       | [] -> None
-      | _ -> Some (contents |> List.map ~f:(mk_pat_tuple ~loc) |> mk_pat_tuple ~loc)
+      | _ -> Some (contents |> List.map ~f:mk_pat_tuple |> mk_pat_tuple)
     in
     let txt =
       let container_name =
@@ -381,6 +368,12 @@ module OperatorExp (Ast : Ast_builder.S) = struct
   type mapping_rhs_ty =
     | Plain
     | WithInfo of expression
+
+  let mk_exp_tuple = function
+    | [] -> [%expr ()]
+    | [ elem ] -> elem
+    | elems -> pexp_tuple elems
+  ;;
 
   let mk
       ~ctor_type (* Building a plain or with-info data type *)
@@ -416,14 +409,12 @@ module OperatorExp (Ast : Ast_builder.S) = struct
                         pexp_apply pattern_converter (extra_args @ [ Nolabel, v () ]))
              in
              slots_args @ [ body_arg body_sort ])
-      |> List.map ~f:(mk_exp_tuple ~loc)
+      |> List.map ~f:mk_exp_tuple
     in
     let contents =
       match ctor_type with WithInfo expr -> expr :: contents | Plain -> contents
     in
-    let body =
-      match contents with [] -> None | _ -> Some (contents |> mk_exp_tuple ~loc)
-    in
+    let body = match contents with [] -> None | _ -> Some (mk_exp_tuple contents) in
     let txt =
       let container_name =
         match ctor_type with WithInfo _ -> "Types" | Plain -> "Plain"
