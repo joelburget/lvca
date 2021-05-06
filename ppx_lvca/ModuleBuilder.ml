@@ -119,28 +119,7 @@ let ( >> ), ( << ) = Util.(( >> ), ( << ))
          }
         }
      }
-     {- Whether
-        we're
-        using
-        the
-        sort
-        in
-        the
-        [Types]
-        module
-        or
-        in
-        an
-        individual
-        sort
-        definition
-        module
-     }
     } *)
-
-type typedef_mode =
-  | TypesModule
-  | IndividualTypeModule
 
 (* Concatenate a list of names into a Longident. *)
 (* TODO: is this just Longident.unflatten? *)
@@ -245,10 +224,10 @@ module Helpers (Ast : Ast_builder.S) = struct
   let all_term_s = pmty_ident { txt = unflatten [ "LanguageObject"; "AllTermS" ]; loc }
 end
 
+(** Helper for declaring a constructor. *)
 module CtorDecl (Ast : Ast_builder.S) = struct
   let mk
       ~info
-      ~typedef_mode
       ~var_names
       ~mutual_sorts
       ~prim_names
@@ -262,42 +241,13 @@ module CtorDecl (Ast : Ast_builder.S) = struct
       let name = sort_head sort in
       let args = if info then [ [%type: 'info] ] else [] in
       match Set.mem var_names name with
-      | true ->
-        (match typedef_mode with
-        | TypesModule -> ptyp_var name
-        | IndividualTypeModule ->
-          let names =
-            if info then [ module_name name; "t" ] else [ module_name name; "Plain"; "t" ]
-          in
-          ptyp_constr { txt = unflatten names; loc } args)
+      | true -> ptyp_var name
       | false ->
         (match Map.find mutual_sorts name with
         | Some (Syn.SortDef.SortDef (vars, _op_defs)) ->
           let qualified_name, extra_args =
-            match typedef_mode with
-            | TypesModule ->
-              let extra_args =
-                List.map vars ~f:(fun (var_name, _) -> ptyp_var var_name)
-              in
-              [ name ], extra_args
-            | IndividualTypeModule ->
-              (match info with
-              | true ->
-                let extra_args =
-                  List.map vars ~f:(fun (var_name, _) ->
-                      ptyp_constr
-                        { txt = unflatten [ module_name var_name; "t" ]; loc }
-                        args)
-                in
-                [ "Wrapper"; "Types"; name ], extra_args
-              | false ->
-                let extra_args =
-                  List.map vars ~f:(fun (var_name, _) ->
-                      ptyp_constr
-                        { txt = unflatten [ module_name var_name; "Plain"; "t" ]; loc }
-                        args)
-                in
-                [ "Wrapper"; "Plain"; name ], extra_args)
+            let extra_args = List.map vars ~f:(fun (var_name, _) -> ptyp_var var_name) in
+            [ name ], extra_args
           in
           ptyp_constr { txt = unflatten qualified_name; loc } (args @ extra_args)
         | None ->
@@ -356,13 +306,7 @@ module TypeDecls (Ast : Ast_builder.S) = struct
              Ptype_variant
                (List.map
                   op_defs
-                  ~f:
-                    (CtorDecl.mk
-                       ~info
-                       ~typedef_mode:TypesModule
-                       ~var_names
-                       ~mutual_sorts:sort_def_map
-                       ~prim_names))
+                  ~f:(CtorDecl.mk ~info ~var_names ~mutual_sorts:sort_def_map ~prim_names))
            in
            Ast.(
              type_declaration
