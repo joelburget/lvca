@@ -226,6 +226,8 @@ end
 
 (** Helper for declaring a constructor. *)
 module CtorDecl (Ast : Ast_builder.S) = struct
+  open Ast
+
   let mk
       ~info
       ~var_names
@@ -233,7 +235,6 @@ module CtorDecl (Ast : Ast_builder.S) = struct
       ~prim_names
       (Syn.OperatorDef.OperatorDef (op_name, arity))
     =
-    let open Ast in
     let pattern_type =
       if info then [%type: 'info Pattern.t] else [%type: Pattern.Plain.t]
     in
@@ -290,16 +291,15 @@ end
 
 module TypeDecls (Ast : Ast_builder.S) = struct
   module CtorDecl = CtorDecl (Ast)
+  open Ast
 
   let mk ~info ~sort_def_map ~prim_names =
-    let params0 =
-      if info then [ Ast.ptyp_var "info", (NoVariance, NoInjectivity) ] else []
-    in
+    let params0 = if info then [ ptyp_var "info", (NoVariance, NoInjectivity) ] else [] in
     sort_def_map
     |> Map.to_alist
     |> List.map ~f:(fun (sort_name, Syn.SortDef.SortDef (vars, op_defs)) ->
            let var_names = vars |> List.map ~f:fst |> SSet.of_list in
-           let mk_var name = Ast.ptyp_var name, (NoVariance, NoInjectivity) in
+           let mk_var name = ptyp_var name, (NoVariance, NoInjectivity) in
            let params = vars |> List.map ~f:fst |> List.map ~f:mk_var in
            let params = params0 @ params in
            let kind =
@@ -308,18 +308,19 @@ module TypeDecls (Ast : Ast_builder.S) = struct
                   op_defs
                   ~f:(CtorDecl.mk ~info ~var_names ~mutual_sorts:sort_def_map ~prim_names))
            in
-           Ast.(
-             type_declaration
-               ~name:{ txt = sort_name; loc }
-               ~params
-               ~cstrs:[]
-               ~kind
-               ~private_:Public
-               ~manifest:None))
+           type_declaration
+             ~name:{ txt = sort_name; loc }
+             ~params
+             ~cstrs:[]
+             ~kind
+             ~private_:Public
+             ~manifest:None)
   ;;
 end
 
 module OperatorPat (Ast : Ast_builder.S) = struct
+  open Ast
+
   type ctor_type =
     | Plain
     | WithInfo
@@ -335,11 +336,10 @@ module OperatorPat (Ast : Ast_builder.S) = struct
       ?(name_base = "x")
       (Syn.OperatorDef.OperatorDef (op_name, arity))
     =
-    let loc = Ast.loc in
     if not (is_valid_ocaml_constr_name op_name)
     then Location.raise_errorf ~loc "Invalid OCaml operator name: %s" op_name;
     let var_ix = ref 0 in
-    let v ix = Ast.ppat_var { txt = Printf.sprintf "%s%d" name_base ix; loc } in
+    let v ix = ppat_var { txt = Printf.sprintf "%s%d" name_base ix; loc } in
     let contents =
       arity
       |> List.map ~f:(fun (Syn.Valence.Valence (slots, _)) ->
@@ -352,11 +352,11 @@ module OperatorPat (Ast : Ast_builder.S) = struct
                     then (
                       Int.incr var_ix;
                       v !var_ix)
-                    else Ast.ppat_any))
+                    else ppat_any))
     in
     let contents =
       match ctor_type with
-      | WithInfo -> [ (if match_info then v 0 else Ast.ppat_any) ] :: contents
+      | WithInfo -> [ (if match_info then v 0 else ppat_any) ] :: contents
       | Plain -> contents
     in
     let body =
@@ -370,12 +370,13 @@ module OperatorPat (Ast : Ast_builder.S) = struct
       in
       unflatten [ container_name; op_name ]
     in
-    Ast.ppat_construct { txt; loc } body
+    ppat_construct { txt; loc } body
   ;;
 end
 
 module OperatorExp (Ast : Ast_builder.S) = struct
   open Helpers (Ast)
+  open Ast
 
   type mapping_rhs_ty =
     | Plain
@@ -390,12 +391,9 @@ module OperatorExp (Ast : Ast_builder.S) = struct
       fun_name (* The name of the function being defined *)
       (Syn.OperatorDef.OperatorDef (op_name, arity))
     =
-    let loc = Ast.loc in
     let var_ix = ref 0 in
-    let v () = Ast.evar (Printf.sprintf "%s%d" name_base !var_ix) in
-    let pattern_converter =
-      Ast.pexp_ident { txt = unflatten [ "Pattern"; fun_name ]; loc }
-    in
+    let v () = evar (Printf.sprintf "%s%d" name_base !var_ix) in
+    let pattern_converter = pexp_ident { txt = unflatten [ "Pattern"; fun_name ]; loc } in
     let body_arg sort =
       Int.incr var_ix;
       mk_sort_app
@@ -415,7 +413,7 @@ module OperatorExp (Ast : Ast_builder.S) = struct
                       match slot with
                       | Syn.SortSlot.SortBinding _sort -> v ()
                       | SortPattern _ ->
-                        Ast.pexp_apply pattern_converter (extra_args @ [ Nolabel, v () ]))
+                        pexp_apply pattern_converter (extra_args @ [ Nolabel, v () ]))
              in
              slots_args @ [ body_arg body_sort ])
       |> List.map ~f:(mk_exp_tuple ~loc)
@@ -432,7 +430,7 @@ module OperatorExp (Ast : Ast_builder.S) = struct
       in
       unflatten [ container_name; op_name ]
     in
-    Ast.pexp_construct { txt; loc } body
+    pexp_construct { txt; loc } body
   ;;
 end
 
@@ -511,9 +509,9 @@ end
 module Equal (Ast : Ast_builder.S) = struct
   module OperatorPat = OperatorPat (Ast)
   open Helpers (Ast)
+  open Ast
 
   let mk sort_defs sort_name (Syn.SortDef.SortDef (vars, op_defs)) =
-    let loc = Ast.loc in
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let f (Syn.OperatorDef.OperatorDef (_op_name, arity) as op_def) =
       let lhs =
@@ -530,7 +528,7 @@ module Equal (Ast : Ast_builder.S) = struct
           let mk_xy () =
             ("x", "y")
             |> Lvca_util.Tuple2.map ~f:(fun base ->
-                   Ast.evar (Printf.sprintf "%s%d" base !var_ix))
+                   evar (Printf.sprintf "%s%d" base !var_ix))
           in
           arity
           |> List.map ~f:(fun (Syn.Valence.Valence (slots, body_sort)) ->
@@ -560,7 +558,7 @@ module Equal (Ast : Ast_builder.S) = struct
         in
         conjuntion ~loc ([%expr info_eq x0 y0] :: arity_exps)
       in
-      Ast.case ~lhs ~guard ~rhs
+      case ~lhs ~guard ~rhs
     in
     let branches = List.map op_defs ~f in
     let branches =
@@ -568,11 +566,10 @@ module Equal (Ast : Ast_builder.S) = struct
       | [] | [ _ ] -> branches
       | _ ->
         (* If there's more than one operator we need to add an extra case *)
-        let last_branch = Ast.case ~lhs:[%pat? _, _] ~guard ~rhs:[%expr false] in
+        let last_branch = case ~lhs:[%pat? _, _] ~guard ~rhs:[%expr false] in
         Lvca_util.List.snoc branches last_branch
     in
     let init =
-      let open Ast in
       branches
       |> pexp_match [%expr t1, t2]
       |> pexp_fun Nolabel None (ppat_var { txt = "t2"; loc })
@@ -580,7 +577,7 @@ module Equal (Ast : Ast_builder.S) = struct
       |> labelled_fun "info_eq"
     in
     let expr = List.fold_right vars ~init ~f:f_fun in
-    Ast.(value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr)
+    value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
   ;;
 end
 
@@ -613,6 +610,7 @@ module WrapperModule (Ast : Ast_builder.S) = struct
   module OfPlain = OfPlain (Ast)
   module Equal = Equal (Ast)
   module MapInfo = MapInfo (Ast)
+  open Ast
 
   let mk ~prim_names sort_defs =
     let sort_def_map = SMap.of_alist_exn sort_defs in
@@ -656,11 +654,10 @@ module WrapperModule (Ast : Ast_builder.S) = struct
                    | _ -> Nonrecursive)
                  | _ -> Recursive)
              in
-             Ast.pstr_value is_rec value_bindings)
+             pstr_value is_rec value_bindings)
     in
     let info_decls = TypeDecls.mk ~info:true ~sort_def_map ~prim_names in
     let plain_decls = TypeDecls.mk ~info:false ~sort_def_map ~prim_names in
-    let open Ast in
     let defs =
       (* Each of these functions is potentially recursive (across multiple types), pre-declare. *)
       [%str
@@ -701,26 +698,25 @@ end
 
 module IndividualTypeModule (Ast : Ast_builder.S) = struct
   open Helpers (Ast)
-
-  let loc = Ast.loc
+  open Ast
 
   let mk ~prim_names:_ ~sort_def_map:_ sort_name (Syn.SortDef.SortDef (vars, _op_defs)) =
     let _var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let plain_type_decl =
       let manifest_arg_list =
         List.map vars ~f:(fun (name, _) ->
-            Ast.ptyp_constr { txt = unflatten [ module_name name; "Plain"; "t" ]; loc } [])
+            ptyp_constr { txt = unflatten [ module_name name; "Plain"; "t" ]; loc } [])
       in
       let manifest =
         Some
-          (Ast.ptyp_constr
+          (ptyp_constr
              { txt = unflatten [ "Wrapper"; "Plain"; sort_name ]; loc }
              manifest_arg_list)
       in
-      Ast.pstr_type
+      pstr_type
         Recursive
-        [ Ast.type_declaration
-            ~name:{ txt = "t"; loc = Ast.loc }
+        [ type_declaration
+            ~name:{ txt = "t"; loc }
             ~params:[]
             ~cstrs:[]
             ~kind:Ptype_abstract
@@ -731,21 +727,21 @@ module IndividualTypeModule (Ast : Ast_builder.S) = struct
     let info_type_decl =
       let manifest_arg_list =
         List.map vars ~f:(fun (name, _) ->
-            Ast.ptyp_constr
+            ptyp_constr
               { txt = unflatten [ module_name name; "t" ]; loc }
-              [ Ast.ptyp_var "info" ])
+              [ ptyp_var "info" ])
       in
       let manifest =
         Some
-          (Ast.ptyp_constr
+          (ptyp_constr
              { txt = unflatten [ "Wrapper"; "Types"; sort_name ]; loc }
-             (Ast.ptyp_var "info" :: manifest_arg_list))
+             (ptyp_var "info" :: manifest_arg_list))
       in
-      Ast.pstr_type
+      pstr_type
         Recursive
-        [ Ast.type_declaration
-            ~name:{ txt = "t"; loc = Ast.loc }
-            ~params:[ Ast.ptyp_var "info", (NoVariance, NoInjectivity) ]
+        [ type_declaration
+            ~name:{ txt = "t"; loc }
+            ~params:[ ptyp_var "info", (NoVariance, NoInjectivity) ]
             ~cstrs:[]
             ~kind:Ptype_abstract
             ~private_:Public
@@ -760,7 +756,6 @@ module IndividualTypeModule (Ast : Ast_builder.S) = struct
       ; "map_info", "MapInfo"
       ]
       |> List.map ~f:(fun (fun_name, mod_name) ->
-             let open Ast in
              let wrapper_fun =
                pexp_ident { txt = unflatten [ "Wrapper"; mod_name; sort_name ]; loc }
              in
@@ -809,7 +804,6 @@ module IndividualTypeModule (Ast : Ast_builder.S) = struct
         ]
     in
     let init =
-      let open Ast in
       pmod_structure
         (info_type_decl
          :: [%stri module Plain = [%m pmod_structure [ plain_type_decl ]]] :: fun_defs)
@@ -819,7 +813,7 @@ module IndividualTypeModule (Ast : Ast_builder.S) = struct
       | None (* XXX should do kind inference instead of assuming it's * *)
       | Some (Syn.Kind.Kind (_, 1)) ->
         let mod_param = Named ({ txt = Some (module_name name); loc }, all_term_s) in
-        Ast.pmod_functor mod_param accum
+        pmod_functor mod_param accum
       | Some kind ->
         Location.raise_errorf
           ~loc
@@ -828,8 +822,7 @@ module IndividualTypeModule (Ast : Ast_builder.S) = struct
           (Fmt.to_to_string Syn.Kind.pp kind)
     in
     let expr = List.fold_right vars ~init ~f in
-    Ast.module_binding ~name:{ txt = Some (module_name sort_name); loc } ~expr
-    |> Ast.pstr_module
+    module_binding ~name:{ txt = Some (module_name sort_name); loc } ~expr |> pstr_module
   ;;
 end
 
@@ -838,8 +831,7 @@ module ContainerModule (Ast : Ast_builder.S) = struct
   module WrapperModule = WrapperModule (Ast)
   module IndividualTypeModule = IndividualTypeModule (Ast)
   open Helpers (Ast)
-
-  let loc = Ast.loc
+  open Ast
 
   let mk Syn.{ externals; sort_defs } =
     let prim_names = externals |> List.map ~f:fst |> SSet.of_list in
@@ -873,16 +865,15 @@ module ContainerModule (Ast : Ast_builder.S) = struct
     let mod_param' (name, kind) = mod_param (name, Some kind) in
     let expr =
       let init =
-        Ast.pmod_structure
+        pmod_structure
           ([ wrapper_module
            ; [%stri module Types = Wrapper.Types]
            ; [%stri module Plain = Wrapper.Plain]
            ]
           @ type_modules)
       in
-      List.fold_right externals ~init ~f:(mod_param' >> Ast.pmod_functor)
+      List.fold_right externals ~init ~f:(mod_param' >> pmod_functor)
     in
-    let open Ast in
     let info = ptyp_var "info" in
     let mod_ty =
       let plain_sig =
@@ -939,14 +930,12 @@ module ContainerModule (Ast : Ast_builder.S) = struct
                    ]
                in
                let name = { txt = Some (module_name sort_name); loc } in
-               let type_ =
-                 List.fold_right vars ~init ~f:(mod_param >> Ast.pmty_functor)
-               in
+               let type_ = List.fold_right vars ~init ~f:(mod_param >> pmty_functor) in
                psig_module (module_declaration ~name ~type_))
       in
-      let init = Ast.pmty_signature (types_sig :: plain_sig :: sort_module_sigs) in
-      List.fold_right externals ~init ~f:(mod_param' >> Ast.pmty_functor)
+      let init = pmty_signature (types_sig :: plain_sig :: sort_module_sigs) in
+      List.fold_right externals ~init ~f:(mod_param' >> pmty_functor)
     in
-    Ast.pmod_constraint expr mod_ty
+    pmod_constraint expr mod_ty
   ;;
 end
