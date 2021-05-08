@@ -89,6 +89,7 @@ let rec map_info ~f = function
 ;;
 
 let erase_info sort = map_info ~f:(fun _ -> ()) sort
+let split = function Name (_, name) -> name, [] | Ap (_, name, args) -> name, args
 
 module Parse (Comment : ParseUtil.Comment_int) = struct
   module Parsers = ParseUtil.Mk (Comment)

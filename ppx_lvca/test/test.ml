@@ -13,6 +13,7 @@ module Lang =
 [%abstract_syntax_module
 {|
 integer : *
+string : *
 // TODO: handle / test * -> * externals
 
 // multiple operators, external reference, pattern and var binding
@@ -26,6 +27,8 @@ nat := Z() | S(nat)
 list a := Nil() | Cons(a; list a)
 pair a b := Pair(a; b)
 pair_plus a b := PairPlus(a; b; foo)
+
+nonempty := Nonempty(string; list string)
 
 mut_a := Mut_a(mut_b)
 mut_b := Mut_b(mut_a)
