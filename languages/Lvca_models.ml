@@ -34,15 +34,14 @@ module NonBinding =
 {|
 string : *
 primitive : *
-// list : * -> *
+
+list a :=
+  | Nil()
+  | Cons(a; list a)
 
 term :=
-  | Operator(string; term_list)
+  | Operator(string; list term)
   | Primitive(primitive)
-
-term_list :=
-  | Nil()
-  | Cons(term; term_list)
 |}]
 
 module Pattern =
@@ -50,17 +49,16 @@ module Pattern =
 {|
 string : *
 primitive : *
-// list : * -> *
+
+list a :=
+  | Nil()
+  | Cons(a; list a)
 
 pattern :=
-  | Operator(string; pattern_list)
+  | Operator(string; list pattern)
   | Primitive(primitive)
   | Var(string)
   | Ignored(string)
-
-pattern_list :=
-  | Nil()
-  | Cons(pattern; pattern_list)
 |}]
 
 module BindingAwarePattern =
@@ -68,7 +66,6 @@ module BindingAwarePattern =
 {|
 string : *
 primitive : *
-// list : * -> *
 
 list a :=
   | Nil()
@@ -80,10 +77,9 @@ t :=
   | Var(string)
   | Ignored(string)
 
-scope := Scope(list string; t)
+scope := Scope(list string) // ; t)
 |}]
 
-(*
 module Nominal =
 [%abstract_syntax_module
 {|
@@ -91,22 +87,17 @@ string : *
 primitive : *
 pattern : *
 
+list a :=
+  | Nil()
+  | Cons(a; list a)
+
 term :=
-  | Operator(string; scope_list)
+  | Operator(string; list scope)
   | Var(string)
   | Primitive(primitive)
 
-scope := Scope(pattern_list; term)
-
-scope_list :=
-  | ScopeNil()
-  | ScopeCons(scope; scope_list)
-
-pattern_list :=
-  | PatternNil()
-  | PatternCons(pattern; pattern_list)
+scope := Scope(list pattern; term)
 |}]
-*)
 
 (*
 module DeBruijn =
