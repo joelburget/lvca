@@ -30,6 +30,8 @@ pair_plus a b := PairPlus(a; b; foo)
 
 nonempty := Nonempty(string; list string)
 
+term := Operator(list term)
+
 mut_a := Mut_a(mut_b)
 mut_b := Mut_b(mut_a)
 |}]

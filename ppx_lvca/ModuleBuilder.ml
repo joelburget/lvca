@@ -139,28 +139,29 @@ let conjuntion ~loc exps =
   List.fold_right exps ~init:last ~f:(fun e1 e2 -> [%expr [%e e1] && [%e e2]])
 ;;
 
+let rec all_sort_names = function
+  | Sort.Name (_, name) -> SSet.singleton name
+  | Sort.Ap (_, name, args) ->
+    Set.union (SSet.singleton name) (args |> List.map ~f:all_sort_names |> SSet.union_list)
+;;
+
 let get_sort_ref_map sort_defs =
-  let sort_set = sort_defs |> List.map ~f:fst |> SSet.of_list in
+  let known_sorts = sort_defs |> List.map ~f:fst |> SSet.of_list in
   sort_defs
   |> List.map ~f:(fun (sort_name, Syn.SortDef.SortDef (vars, op_defs)) ->
-         let vars = List.map vars ~f:fst in
+         let vars = List.map vars ~f:fst |> SSet.of_list in
          let connections =
            op_defs
            |> List.map ~f:(fun (Syn.OperatorDef.OperatorDef (_name, arity)) ->
                   arity
-                  |> List.filter_map
-                       ~f:(fun (Syn.Valence.Valence (_sort_slots, body_sort)) ->
-                         let sort_name, _ = Sort.split body_sort in
-                         (* Only add if it's a known sort name (not an external) and not shadowed by a var. *)
-                         if Set.mem sort_set sort_name
-                            && not (List.mem vars sort_name ~equal:String.( = ))
-                         then Some sort_name
-                         else None)
-                  |> SSet.of_list)
+                  |> List.map ~f:(fun (Syn.Valence.Valence (_sort_slots, body_sort)) ->
+                         all_sort_names body_sort)
+                  |> SSet.union_list)
            |> SSet.union_list
-           |> Set.to_list
          in
-         sort_name, connections)
+         (* Only add if it's a known sort name (not an external) and not shadowed by a var. *)
+         let connections = Set.diff (Set.inter connections known_sorts) vars in
+         sort_name, Set.to_list connections)
   |> SMap.of_alist_exn
 ;;
 
@@ -718,7 +719,7 @@ module WrapperModule (Ast : Ast_builder.S) = struct
           prim_names:SSet.t
           -> _ Syn.SortDef.t SMap.t
           -> string
-          -> _ Syn.SortDef.t (* -> _ Syn.OperatorDef.t list *)
+          -> _ Syn.SortDef.t
           -> Ppxlib.value_binding)
       =
       ordered_sccs
@@ -735,7 +736,9 @@ module WrapperModule (Ast : Ast_builder.S) = struct
                  (match scc with
                  | [ (sort_name, _) ] ->
                    (match Map.find sort_ref_map sort_name with
-                   | Some [ sort_name' ] when String.(sort_name' = sort_name) -> Recursive
+                   | Some sort_names
+                     when List.mem sort_names sort_name ~equal:String.( = ) ->
+                     Recursive
                    | _ -> Nonrecursive)
                  | _ -> Recursive)
              in
