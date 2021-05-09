@@ -30,6 +30,7 @@ module Int = struct
     type key = int
 
     let empty = Map.empty (module Base.Int)
+    let of_alist_exn lst = Map.of_alist_exn (module Base.Int) lst
   end
 
   module Set = struct

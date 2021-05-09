@@ -18,21 +18,26 @@ module Int : sig
       }
   end
 
+  val graph_of_adjacency : int list list -> int list Lvca_util.Int.Map.t
+
   (** Given an adjacency list, give the SCCs. *)
-  val connected_components : int list list -> ConnectedComponents.t
+  val connected_components : int list Lvca_util.Int.Map.t -> ConnectedComponents.t
 
   (** Given an SCC numbering (see [connected_components]), give a list of SCCs, each
       represented as a set of nodes contained in it. *)
   val make_sets : int list -> Lvca_util.Int.Set.t list
 
+  (* better version of make_sets? *)
+  val make_sets' : int list -> Lvca_util.Int.Set.t Lvca_util.Int.Map.t
+
   (** The composition of [connected_components] and [make_sets]. *)
-  val connected_component_sets : int list list -> Lvca_util.Int.Set.t list
+  val connected_component_sets : int list Lvca_util.Int.Map.t -> Lvca_util.Int.Set.t list
 
   (** Topologically sort a graph given as an adjacency list. *)
-  val topsort_exn : int list list -> int list
+  val topsort_exn : int list Lvca_util.Int.Map.t -> int list
 
   (** Topologically sort a graph given as an adjacency list. *)
-  val topsort : int list list -> int list option
+  val topsort : int list Lvca_util.Int.Map.t -> int list option
 end
 
 module F (Key : Key_intf) : sig
@@ -44,7 +49,8 @@ module F (Key : Key_intf) : sig
   module ConnectedComponents : sig
     (** The output from the connected component algorithm. *)
     type t =
-      { scc_graph : int list list (** An adjacency list representing the graph of SCCs. *)
+      { scc_graph : int list Lvca_util.Int.Map.t
+            (** An adjacency list representing the graph of SCCs. *)
       ; sccs : (Key.t, Key.comparator_witness) Base.Set.t Lvca_util.Int.Map.t
             (** Mapping from SCC number to keys contained in it. *)
       }
