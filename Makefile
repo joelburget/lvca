@@ -8,8 +8,9 @@ doc:
 install-deps:
 	@opam install angstrom base cbor crowbar digestif fmt js_of_ocaml-lwt js_of_ocaml-ppx js_of_ocaml-tyxml ppx_jane re react reactiveData tyxml-ppx zarith zarith_stubs_js
 
-# TODO: opam-dune-lint
 lint:
+	@opam-dune-lint
 	@dune build @fmt
+	@dune build @check @runtest
 
 .PHONY: format doc install-deps lint
