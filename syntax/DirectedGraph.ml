@@ -246,7 +246,7 @@ let%test_module _ =
       let Int.ConnectedComponents.{ scc_numbering; _ } =
         Int.connected_components connections
       in
-      let sets = Int.make_sets scc_numbering |> List.map ~f:Set.to_list in
+      let sets = Int.make_sets' scc_numbering |> Map.data |> List.map ~f:Set.to_list in
       Fmt.(pr "scc_numbering: %a\n" (list ~sep:(any " ") int)) scc_numbering;
       Fmt.(pr "sets: %a\n" (list ~sep:(any " ") (list ~sep:(any ",") int))) sets
     ;;
@@ -255,14 +255,14 @@ let%test_module _ =
       print_connected_components adjacency1;
       [%expect {|
         scc_numbering: 0 0 0 3 4 4 4 3
-        sets: 4,5,6 3,7 0,1,2|}]
+        sets: 0,1,2 3,7 4,5,6|}]
     ;;
 
     let%expect_test _ =
       print_connected_components adjacency2;
       [%expect {|
         scc_numbering: 0 0 2 2 4 4 0
-        sets: 4,5 2,3 0,1,6|}]
+        sets: 0,1,6 2,3 4,5|}]
     ;;
 
     let%expect_test _ =
