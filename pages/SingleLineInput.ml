@@ -12,9 +12,10 @@ let mk ?(autofocus = false) ?highlights_s:(external_highlights_s = S.const []) i
   in
   let at =
     let classes =
-      [ "font-mono" (* ; "border-2" *)
-                    (* ; "border-indigo-900" *)
-                    (* ; "rounded" *)
+      [ "font-mono"
+        (* ; "border-2" *)
+        (* ; "border-indigo-900" *)
+        (* ; "rounded" *)
       ; "p-1" (* ; "focus:ring" *)
       ; "bg-none"
       ; "border-none"

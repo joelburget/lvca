@@ -35,18 +35,18 @@ type re_set = set_member list
 type regex =
   | ReChar of char (** Just a character, eg 'a' *)
   | ReClass of re_class
-      (** A character class, eg `\w` or `\d`. Syntactically, these are all started by a
+      (** A character class, eg [\w] or [\d]. Syntactically, these are all started by a
           backslash. We just use javascript character classes. *)
   (* Question: do we support octal escapes (\40)? The lex manual points out
    * this is non-portable. But don't we presuppose unicode? We accept unicode
-   * categories, right? `\cc`, `\cf`, etc. *)
-  | ReSet of re_set (** A character set, eg `[a-z]` or `[^abc]` *)
-  | ReStar of regex (** Zero-or-more repetition, eg `(ab)*` *)
-  | RePlus of regex (** One-or-more repetition, eg `(ab)+` *)
+   * categories, right? [\cc], [\cf], etc. *)
+  | ReSet of re_set (** A character set, eg [\[a-z\]] or [\[^abc\]] *)
+  | ReStar of regex (** Zero-or-more repetition, eg [(ab)*] *)
+  | RePlus of regex (** One-or-more repetition, eg [(ab)+] *)
   | ReCount of regex * int
-      (** A specific number of repetitions, eg `(ab){5}`. Must be greater than 0. *)
-  | ReOption of regex (** Option, eg `(ab)?` *)
-  | ReChoice of regex list (** Choice, eg `a|b` *)
+      (** A specific number of repetitions, eg [(ab){5}]. Must be greater than 0. *)
+  | ReOption of regex (** Option, eg [(ab)?] *)
+  | ReChoice of regex list (** Choice, eg [a|b] *)
   | ReAny (** Any character *)
   | ReConcat of regex list
 

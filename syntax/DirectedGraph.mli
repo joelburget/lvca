@@ -14,7 +14,10 @@ module Int : sig
     type t =
       { scc_count : int (** The number of SCCs found. *)
       ; scc_numbering : int list
-            (** A list corresponding to the input adjacency list, with the SCC number assigned to each node. Note that SCC numbers need not be contiguous: they're the numbers of a representative from each SCC (the lowest-numbered representative). So, each SCC number is in the range [0,n). *)
+            (** A list corresponding to the input adjacency list, with the SCC number
+                assigned to each node. Note that SCC numbers need not be contiguous:
+                they're the numbers of a representative from each SCC (the lowest-numbered
+                representative). So, each SCC number is in the range \[0,n). *)
       }
   end
 
