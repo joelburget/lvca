@@ -95,35 +95,23 @@ module Lang =
             end
           module Info =
             struct
+              let nat = function | Types.Z x0 -> x0 | Types.S (x0, _) -> x0
+              let list _f_a =
+                function | Types.Nil x0 -> x0 | Types.Cons (x0, _, _) -> x0
+              let nonempty = function | Types.Nonempty (x0, _, _) -> x0
+              let pair _f_a _f_b = function | Types.Pair (x0, _, _) -> x0
               let foo =
                 function
                 | Types.Foo (x0, _) -> x0
                 | Types.Bar (x0, (_, _, _)) -> x0
               let pair_plus _f_a _f_b =
                 function | Types.PairPlus (x0, _, _, _) -> x0
-              let pair _f_a _f_b = function | Types.Pair (x0, _, _) -> x0
-              let nat = function | Types.Z x0 -> x0 | Types.S (x0, _) -> x0
-              let list _f_a =
-                function | Types.Nil x0 -> x0 | Types.Cons (x0, _, _) -> x0
-              let nonempty = function | Types.Nonempty (x0, _, _) -> x0
+              let term = function | Types.Operator (x0, _) -> x0
               let mut_a = function | Types.Mut_a (x0, _) -> x0
               and mut_b = function | Types.Mut_b (x0, _) -> x0
-              let term = function | Types.Operator (x0, _) -> x0
             end
           module ToPlain =
             struct
-              let rec foo =
-                function
-                | Types.Foo (_, x1) -> Plain.Foo (Integer.to_plain x1)
-                | Types.Bar (_, (x1, x2, x3)) ->
-                    Plain.Bar ((Pattern.to_plain x1), x2, (foo x3))
-              let pair_plus f_a f_b =
-                function
-                | Types.PairPlus (_, x1, x2, x3) ->
-                    Plain.PairPlus ((f_a x1), (f_b x2), (foo x3))
-              let pair f_a f_b =
-                function
-                | Types.Pair (_, x1, x2) -> Plain.Pair ((f_a x1), (f_b x2))
               let rec nat =
                 function
                 | Types.Z _ -> Plain.Z
@@ -138,28 +126,28 @@ module Lang =
                 | Types.Nonempty (_, x1, x2) ->
                     Plain.Nonempty
                       ((String.to_plain x1), (list String.to_plain x2))
+              let pair f_a f_b =
+                function
+                | Types.Pair (_, x1, x2) -> Plain.Pair ((f_a x1), (f_b x2))
+              let rec foo =
+                function
+                | Types.Foo (_, x1) -> Plain.Foo (Integer.to_plain x1)
+                | Types.Bar (_, (x1, x2, x3)) ->
+                    Plain.Bar ((Pattern.to_plain x1), x2, (foo x3))
+              let pair_plus f_a f_b =
+                function
+                | Types.PairPlus (_, x1, x2, x3) ->
+                    Plain.PairPlus ((f_a x1), (f_b x2), (foo x3))
+              let rec term =
+                function
+                | Types.Operator (_, x1) -> Plain.Operator (list term x1)
               let rec mut_a =
                 function | Types.Mut_a (_, x1) -> Plain.Mut_a (mut_b x1)
               and mut_b =
                 function | Types.Mut_b (_, x1) -> Plain.Mut_b (mut_a x1)
-              let rec term =
-                function
-                | Types.Operator (_, x1) -> Plain.Operator (list term x1)
             end
           module OfPlain =
             struct
-              let rec foo =
-                function
-                | Plain.Foo x1 -> Types.Foo ((), (Integer.of_plain x1))
-                | Plain.Bar (x1, x2, x3) ->
-                    Types.Bar ((), ((Pattern.of_plain x1), x2, (foo x3)))
-              let pair_plus f_a f_b =
-                function
-                | Plain.PairPlus (x1, x2, x3) ->
-                    Types.PairPlus ((), (f_a x1), (f_b x2), (foo x3))
-              let pair f_a f_b =
-                function
-                | Plain.Pair (x1, x2) -> Types.Pair ((), (f_a x1), (f_b x2))
               let rec nat =
                 function
                 | Plain.Z -> Types.Z ()
@@ -174,38 +162,28 @@ module Lang =
                 | Plain.Nonempty (x1, x2) ->
                     Types.Nonempty
                       ((), (String.of_plain x1), (list String.of_plain x2))
+              let pair f_a f_b =
+                function
+                | Plain.Pair (x1, x2) -> Types.Pair ((), (f_a x1), (f_b x2))
+              let rec foo =
+                function
+                | Plain.Foo x1 -> Types.Foo ((), (Integer.of_plain x1))
+                | Plain.Bar (x1, x2, x3) ->
+                    Types.Bar ((), ((Pattern.of_plain x1), x2, (foo x3)))
+              let pair_plus f_a f_b =
+                function
+                | Plain.PairPlus (x1, x2, x3) ->
+                    Types.PairPlus ((), (f_a x1), (f_b x2), (foo x3))
+              let rec term =
+                function
+                | Plain.Operator x1 -> Types.Operator ((), (list term x1))
               let rec mut_a =
                 function | Plain.Mut_a x1 -> Types.Mut_a ((), (mut_b x1))
               and mut_b =
                 function | Plain.Mut_b x1 -> Types.Mut_b ((), (mut_a x1))
-              let rec term =
-                function
-                | Plain.Operator x1 -> Types.Operator ((), (list term x1))
             end
           module Equal =
             struct
-              let rec foo ~info_eq  t1 t2 =
-                match (t1, t2) with
-                | (Types.Foo (x0, x1), Types.Foo (y0, y1)) ->
-                    (info_eq x0 y0) && (Integer.equal ~info_eq x1 y1)
-                | (Types.Bar (x0, (x1, x2, x3)), Types.Bar
-                   (y0, (y1, y2, y3))) ->
-                    (info_eq x0 y0) &&
-                      ((Pattern.equal ~info_eq x1 y1) &&
-                         ((Base.String.(=) x2 y2) && (foo ~info_eq x3 y3)))
-                | (_, _) -> false
-              let pair_plus f_a f_b ~info_eq  t1 t2 =
-                match (t1, t2) with
-                | (Types.PairPlus (x0, x1, x2, x3), Types.PairPlus
-                   (y0, y1, y2, y3)) ->
-                    (info_eq x0 y0) &&
-                      ((f_a ~info_eq x1 y1) &&
-                         ((f_b ~info_eq x2 y2) && (foo ~info_eq x3 y3)))
-              let pair f_a f_b ~info_eq  t1 t2 =
-                match (t1, t2) with
-                | (Types.Pair (x0, x1, x2), Types.Pair (y0, y1, y2)) ->
-                    (info_eq x0 y0) &&
-                      ((f_a ~info_eq x1 y1) && (f_b ~info_eq x2 y2))
               let rec nat ~info_eq  t1 t2 =
                 match (t1, t2) with
                 | (Types.Z x0, Types.Z y0) -> info_eq x0 y0
@@ -226,6 +204,32 @@ module Lang =
                     (info_eq x0 y0) &&
                       ((String.equal ~info_eq x1 y1) &&
                          (list String.equal ~info_eq x2 y2))
+              let pair f_a f_b ~info_eq  t1 t2 =
+                match (t1, t2) with
+                | (Types.Pair (x0, x1, x2), Types.Pair (y0, y1, y2)) ->
+                    (info_eq x0 y0) &&
+                      ((f_a ~info_eq x1 y1) && (f_b ~info_eq x2 y2))
+              let rec foo ~info_eq  t1 t2 =
+                match (t1, t2) with
+                | (Types.Foo (x0, x1), Types.Foo (y0, y1)) ->
+                    (info_eq x0 y0) && (Integer.equal ~info_eq x1 y1)
+                | (Types.Bar (x0, (x1, x2, x3)), Types.Bar
+                   (y0, (y1, y2, y3))) ->
+                    (info_eq x0 y0) &&
+                      ((Pattern.equal ~info_eq x1 y1) &&
+                         ((Base.String.(=) x2 y2) && (foo ~info_eq x3 y3)))
+                | (_, _) -> false
+              let pair_plus f_a f_b ~info_eq  t1 t2 =
+                match (t1, t2) with
+                | (Types.PairPlus (x0, x1, x2, x3), Types.PairPlus
+                   (y0, y1, y2, y3)) ->
+                    (info_eq x0 y0) &&
+                      ((f_a ~info_eq x1 y1) &&
+                         ((f_b ~info_eq x2 y2) && (foo ~info_eq x3 y3)))
+              let rec term ~info_eq  t1 t2 =
+                match (t1, t2) with
+                | (Types.Operator (x0, x1), Types.Operator (y0, y1)) ->
+                    (info_eq x0 y0) && (list term ~info_eq x1 y1)
               let rec mut_a ~info_eq  t1 t2 =
                 match (t1, t2) with
                 | (Types.Mut_a (x0, x1), Types.Mut_a (y0, y1)) ->
@@ -234,29 +238,9 @@ module Lang =
                 match (t1, t2) with
                 | (Types.Mut_b (x0, x1), Types.Mut_b (y0, y1)) ->
                     (info_eq x0 y0) && (mut_a ~info_eq x1 y1)
-              let rec term ~info_eq  t1 t2 =
-                match (t1, t2) with
-                | (Types.Operator (x0, x1), Types.Operator (y0, y1)) ->
-                    (info_eq x0 y0) && (list term ~info_eq x1 y1)
             end
           module MapInfo =
             struct
-              let rec foo ~f  =
-                function
-                | Types.Foo (x0, x1) ->
-                    Types.Foo ((f x0), (Integer.map_info ~f x1))
-                | Types.Bar (x0, (x1, x2, x3)) ->
-                    Types.Bar
-                      ((f x0), ((Pattern.map_info ~f x1), x2, (foo ~f x3)))
-              let pair_plus f_a f_b ~f  =
-                function
-                | Types.PairPlus (x0, x1, x2, x3) ->
-                    Types.PairPlus
-                      ((f x0), (f_a ~f x1), (f_b ~f x2), (foo ~f x3))
-              let pair f_a f_b ~f  =
-                function
-                | Types.Pair (x0, x1, x2) ->
-                    Types.Pair ((f x0), (f_a ~f x1), (f_b ~f x2))
               let rec nat ~f  =
                 function
                 | Types.Z x0 -> Types.Z (f x0)
@@ -272,16 +256,32 @@ module Lang =
                     Types.Nonempty
                       ((f x0), (String.map_info ~f x1),
                         (list String.map_info ~f x2))
+              let pair f_a f_b ~f  =
+                function
+                | Types.Pair (x0, x1, x2) ->
+                    Types.Pair ((f x0), (f_a ~f x1), (f_b ~f x2))
+              let rec foo ~f  =
+                function
+                | Types.Foo (x0, x1) ->
+                    Types.Foo ((f x0), (Integer.map_info ~f x1))
+                | Types.Bar (x0, (x1, x2, x3)) ->
+                    Types.Bar
+                      ((f x0), ((Pattern.map_info ~f x1), x2, (foo ~f x3)))
+              let pair_plus f_a f_b ~f  =
+                function
+                | Types.PairPlus (x0, x1, x2, x3) ->
+                    Types.PairPlus
+                      ((f x0), (f_a ~f x1), (f_b ~f x2), (foo ~f x3))
+              let rec term ~f  =
+                function
+                | Types.Operator (x0, x1) ->
+                    Types.Operator ((f x0), (list term ~f x1))
               let rec mut_a ~f  =
                 function
                 | Types.Mut_a (x0, x1) -> Types.Mut_a ((f x0), (mut_b ~f x1))
               and mut_b ~f  =
                 function
                 | Types.Mut_b (x0, x1) -> Types.Mut_b ((f x0), (mut_a ~f x1))
-              let rec term ~f  =
-                function
-                | Types.Operator (x0, x1) ->
-                    Types.Operator ((f x0), (list term ~f x1))
             end
         end
       module Types = Wrapper.Types
