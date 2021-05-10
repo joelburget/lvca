@@ -1,6 +1,5 @@
 open Lvca_syntax
 
-(*
 module Prelude =
 [%abstract_syntax_module
 {|
@@ -12,7 +11,6 @@ either a b :=
   | Left(a)
   | Right(b)
 |}]
-*)
 
 module Primitive =
 [%abstract_syntax_module
@@ -34,6 +32,7 @@ module NonBinding =
 {|
 string : *
 primitive : *
+// TODO: list : * -> *
 
 list a :=
   | Nil()
@@ -49,6 +48,7 @@ module Pattern =
 {|
 string : *
 primitive : *
+// TODO: list : * -> *
 
 list a :=
   | Nil()
@@ -66,6 +66,7 @@ module BindingAwarePattern =
 {|
 string : *
 primitive : *
+// TODO: list : * -> *
 
 list a :=
   | Nil()
@@ -77,7 +78,7 @@ t :=
   | Var(string)
   | Ignored(string)
 
-scope := Scope(list string) // ; t)
+scope := Scope(list string; t)
 |}]
 
 module Nominal =
@@ -86,6 +87,7 @@ module Nominal =
 string : *
 primitive : *
 pattern : *
+// TODO: list : * -> *
 
 list a :=
   | Nil()
@@ -99,15 +101,14 @@ term :=
 scope := Scope(list pattern; term)
 |}]
 
-(*
 module DeBruijn =
 [%abstract_syntax_module
 {|
 int : *
 string : *
 primitive : *
-// list : * -> *
-// either : * -> *
+// TODO: list : * -> *
+// TODO: either : * -> *
 
 term :=
   // TODO | Operator(string; list (either scope term))
@@ -117,9 +118,7 @@ term :=
 
 scope := Scope(string; term)
 |}]
-*)
 
-(*
 module DeBruijn2d =
 [%abstract_syntax_module
 {|
@@ -127,7 +126,11 @@ int : *
 string : *
 primitive : *
 pattern : *
-// list : * -> *
+// TODO list : * -> *
+
+list a :=
+  | Nil()
+  | Cons(a; list a)
 
 term :=
   | Operator(string; list scope)
@@ -136,16 +139,7 @@ term :=
   | Primitive(primitive)
 
 scope := Scope(list pattern; term)
-
-scope_list :=
-  | Nil()
-  | Cons(scope; scope_list)
-
-pattern_list :=
-  | Nil()
-  | Cons(pattern; pattern_list)
 |}]
-*)
 
 module Properties (Lang : LanguageObject_intf.S) = struct
   (* check all generated functions equivalent *)

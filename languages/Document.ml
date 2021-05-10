@@ -3,27 +3,26 @@ open Lvca_syntax
 open Omd
 open Stdio
 
-(*
-module Lang
-    (Char : LanguageObject_intf.S)
-    (Int : LanguageObject_intf.S)
-    (String : LanguageObject_intf.S) =
-      *)
 module Lang =
-functor
-  (Char : LanguageObject_intf.S)
-  (Int : LanguageObject_intf.S)
-  (String : LanguageObject_intf.S)
-  ->
-  [%abstract_syntax_module
-  {|
+[%abstract_syntax_module
+{|
 char : *
 int : *
 string : *
 
-attributes :=
-  | NoAttributes()
-  | Attribute(string; string; attributes)
+maybe a := Nothing() | Just(a)
+
+attribute := Attribute(string; string)
+
+link := LinkDef(
+  inline; // label
+  string; // destination
+  maybe string // title
+)
+
+list a :=
+  | Nil()
+  | Cons(a; list a)
 
 list_type :=
   | Ordered(int; char)
@@ -31,37 +30,35 @@ list_type :=
 
 list_spacing := Loose() | Tight()
 
-// inline :=
-//   | Concat(attributes; inline_list)
-//   | Text(attributes; string)
-//   | Emph(attributes; inline)
-//   | Strong(attributes; inline)
-//   | Code(attributes; string)
-//   | Hard_break(attributes)
-//   | Soft_break(attributes)
-//   // | Link()
-//   // | Image()
-//   | Html(attributes; string)
+inline_desc :=
+  | Concat(list inline)
+  | Text(string)
+  | Emph(inline)
+  | Strong(inline)
+  | Code(string)
+  | Hard_break()
+  | Soft_break()
+  | Link(link)
+  | Image(link)
+  | Html(string)
 
-// inline_list :=
-//   | InlineNil()
-//   | InlineCons(inline; inline_list)
+inline := Inline(inline_desc; list attribute)
 
-// block :=
-//   | Paragraph(attributes)
-//   | List(attributes; block_list)
-//   | blockquote(attributes; block_list0
-//   | Thematic_break(attributes)
-//   | Heading(attributes; int; inline)
-//   | Code_block(attributes; string; string)
-//   | Html_block(attributes; string)
-//   // | Definition_list(attributes; def_elt_list)
+def_elt := DefElt(inline; list inline)
 
-// block_list :=
-//   | BlockNil()
-//   | BlockCons(block; block_list)
+block_desc :=
+  | Paragraph(inline)
+  | List(list_type; list_spacing; list block) // TODO: list (list block)
+  | Blockquote(list block)
+  | Thematic_break()
+  | Heading(int; inline)
+  | Code_block(string; string)
+  | Html_block(string)
+  | Definition_list(list def_elt)
 
-// document := Document(block_list)
+block := Block(block_desc; list attribute)
+
+doc := Doc(list block)
 |}]
 
 exception TranslationError of string
@@ -74,20 +71,74 @@ let term_of_option : f:('a -> unit NonBinding.term) -> 'a option -> unit NonBind
 
 let term_of_string : string -> unit NonBinding.term = fun str -> Primitive ((), String str)
 
-(*
-let term_of_attributes : Omd.attributes -> unit NonBinding.term =
- fun { id; classes; attributes } ->
-  Operator
-    ( "attributes"
-    , [ term_of_option id ~f:term_of_string
-      ; Sequence (List.map classes ~f:term_of_string)
-      ; Sequence
-          (List.map attributes ~f:(fun (x, y) ->
-               NonBinding.Operator
-                 ("pair", [ Primitive (PrimString x); Primitive (PrimString y) ])))
-      ] )
-;;
-*)
+module Of_omd = struct
+  module Lang = Lang (Primitive.Char) (Primitive.Int) (Primitive.String)
+
+  let attribute : string * string -> Lang.Plain.attribute = fun (x, y) -> Attribute (x, y)
+
+  let maybe : ('a -> 'b) -> 'a option -> 'b Lang.Plain.maybe =
+   fun f -> function None -> Nothing | Some a -> Just (f a)
+ ;;
+
+  let rec list : ('a -> 'b) -> 'a list -> 'b Lang.Plain.list =
+   fun f -> function [] -> Nil | x :: xs -> Cons (f x, list f xs)
+ ;;
+
+  let attributes : Omd.attributes -> Lang.Plain.attribute Lang.Plain.list = list attribute
+
+  let list_type : Omd.list_type -> Lang.Plain.list_type = function
+    | Ordered (i, c) -> Ordered (i, c)
+    | Bullet c -> Bullet c
+  ;;
+
+  let list_spacing : Omd.list_spacing -> Lang.Plain.list_spacing = function
+    | Loose -> Loose
+    | Tight -> Tight
+  ;;
+
+  let rec inline : Omd.inline -> Lang.Plain.inline =
+   fun { il_desc; il_attributes } -> Inline (inline_desc il_desc, attributes il_attributes)
+
+  and inline_desc : Omd.inline_desc -> Lang.Plain.inline_desc = function
+    | Concat inlines -> Concat (list inline inlines)
+    | Text str -> Text str
+    | Emph inl -> Emph (inline inl)
+    | Strong inl -> Strong (inline inl)
+    | Code str -> Code str
+    | Hard_break -> Hard_break
+    | Soft_break -> Soft_break
+    | Html str -> Html str
+    | Link link_def -> Link (link link_def)
+    | Image link_def -> Image (link link_def)
+
+  and link : Omd.link -> Lang.Plain.link =
+   fun { label; destination; title } ->
+    LinkDef (inline label, destination, maybe Fn.id title)
+ ;;
+
+  let def_elt : Omd.def_elt -> Lang.Plain.def_elt =
+   fun { term; defs } -> DefElt (inline term, list inline defs)
+ ;;
+
+  let rec block_desc : Omd.block_desc -> Lang.Plain.block_desc = function
+    | Paragraph inl -> Paragraph (inline inl)
+    | Thematic_break -> Thematic_break
+    | Heading (n, inl) -> Heading (n, inline inl)
+    | Code_block (x, y) -> Code_block (x, y)
+    | Html_block str -> Html_block str
+    | List (t, s, blocks) ->
+      (match blocks with
+      | [ blocks ] -> List (list_type t, list_spacing s, list block blocks)
+      | _ -> failwith "TODO")
+    | Blockquote blocks -> Blockquote (list block blocks)
+    | Definition_list def_elts -> Definition_list (list def_elt def_elts)
+
+  and block : Omd.block -> Lang.Plain.block =
+   fun { bl_desc; bl_attributes } -> Block (block_desc bl_desc, attributes bl_attributes)
+ ;;
+
+  let document : Omd.doc -> Lang.Plain.doc = fun blocks -> Doc (list block blocks)
+end
 
 let mk_sequence tms = NonBinding.Operator ((), "sequence", tms)
 
