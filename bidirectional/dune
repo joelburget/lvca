@@ -1,0 +1,7 @@
+(library
+ (name lvca_bidirectional)
+ (public_name lvca.bidirectional)
+ (inline_tests)
+ (libraries lvca_syntax)
+ (preprocess
+  (pps ppx_jane)))
