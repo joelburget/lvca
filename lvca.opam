@@ -24,6 +24,7 @@ depends: [
   "ppx_optcomp" {>= "v0.14.1"}
   "omd"
   "crowbar"
+  "brr"
   "note"
 ]
 build: ["dune" "build" "-p" name "-j" jobs]
