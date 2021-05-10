@@ -23,6 +23,7 @@ depends: [
   "ppxlib" {>= "0.22.0"}
   "ppx_optcomp" {>= "v0.14.1"}
   "omd"
+  "crowbar"
 ]
 build: ["dune" "build" "-p" name "-j" jobs]
 dev-repo: "git+https://github.com/joelburget/lvca.git"

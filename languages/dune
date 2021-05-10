@@ -2,13 +2,7 @@
  (name lvca_languages)
  (public_name lvca.languages)
  (inline_tests)
- (libraries
-  constructive_real
-  fmt
-  lvca_bidirectional
-  lvca_core
-  lvca_syntax
-  lvca_util
-  omd)
+ (libraries constructive_real fmt lvca_bidirectional lvca_core lvca_syntax
+   lvca_util omd)
  (preprocess
   (pps ppx_jane ppx_lvca)))
