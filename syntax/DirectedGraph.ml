@@ -78,9 +78,7 @@ module Int = struct
     map
   ;;
 
-  let make_sets numbered = numbered |> pre_make_sets |> Hashtbl.data
-
-  let make_sets' numbered =
+  let make_sets numbered =
     numbered |> pre_make_sets |> Hashtbl.to_alist |> Lvca_util.Int.Map.of_alist_exn
   ;;
 
@@ -162,7 +160,7 @@ module F (Key : Key_intf) = struct
     let Int.ConnectedComponents.{ scc_count = _; scc_numbering } =
       Int.connected_components connections
     in
-    let int_sccs = Int.make_sets' scc_numbering in
+    let int_sccs = Int.make_sets scc_numbering in
     let scc_graph =
       int_sccs
       |> Map.mapi ~f:(fun ~key:origin_scc_id ~data:node_id_set ->
@@ -246,7 +244,7 @@ let%test_module _ =
       let Int.ConnectedComponents.{ scc_numbering; _ } =
         Int.connected_components connections
       in
-      let sets = Int.make_sets' scc_numbering |> Map.data |> List.map ~f:Set.to_list in
+      let sets = Int.make_sets scc_numbering |> Map.data |> List.map ~f:Set.to_list in
       Fmt.(pr "scc_numbering: %a\n" (list ~sep:(any " ") int)) scc_numbering;
       Fmt.(pr "sets: %a\n" (list ~sep:(any " ") (list ~sep:(any ",") int))) sets
     ;;
