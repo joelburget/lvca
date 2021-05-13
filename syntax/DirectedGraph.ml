@@ -93,7 +93,7 @@ module Int = struct
     let unmarked = Map.keys connections |> ISet.of_list in
     let temporarily_marked = Hash_set.create (module Int) in
     let permanently_marked = Hash_set.create (module Int) in
-    (* Satck to hold the result *)
+    (* Stack to hold the result *)
     let l = Stack.create () in
     let rec go unmarked =
       match Set.choose unmarked with
@@ -122,7 +122,7 @@ module Int = struct
   let topsort connections = try Some (topsort_exn connections) with NotDag -> None
 end
 
-module F (Key : Key_intf) = struct
+module Make (Key : Key_intf) = struct
   module Graph = struct
     type t = (Key.t, Key.t list, Key.comparator_witness) Base.Map.t
   end
@@ -270,7 +270,7 @@ let%test_module _ =
         sets: 0|}]
     ;;
 
-    module Int' = F (Base.Int)
+    module Int' = Make (Base.Int)
 
     let print_connected_components adjacency =
       let graph = Int.graph_of_adjacency adjacency in
@@ -364,7 +364,7 @@ let%test_module _ =
       [%expect {|0|}]
     ;;
 
-    module String = F (Base.String)
+    module String = Make (Base.String)
 
     let%expect_test _ =
       let graph = Map.of_alist_exn (module Base.String) [ "foo", [ "foo" ] ] in

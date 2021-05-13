@@ -42,7 +42,7 @@ module Int : sig
   val topsort : int list Lvca_util.Int.Map.t -> int list option
 end
 
-module F (Key : Key_intf) : sig
+module Make (Key : Key_intf) : sig
   module Graph : sig
     (** A graph is represented as a mapping from key to key list. *)
     type t = (Key.t, Key.t list, Key.comparator_witness) Base.Map.t
@@ -51,8 +51,7 @@ module F (Key : Key_intf) : sig
   module ConnectedComponents : sig
     (** The output from the connected component algorithm. *)
     type t =
-      { scc_graph : int list Lvca_util.Int.Map.t
-            (** An adjacency list representing the graph of SCCs. *)
+      { scc_graph : int list Lvca_util.Int.Map.t (** The graph of SCCs. *)
       ; sccs : (Key.t, Key.comparator_witness) Base.Set.t Lvca_util.Int.Map.t
             (** Mapping from SCC number to keys contained in it. *)
       }

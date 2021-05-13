@@ -689,7 +689,7 @@ end
 (* The wrapper module holds TODO *)
 module WrapperModule (Ast : Ast_builder.S) = struct
   open Ast
-  module Graph = DirectedGraph.F (Base.String)
+  module Graph = DirectedGraph.Make (Base.String)
   module TypeDecls = TypeDecls (Ast)
   module Info = Info (Ast)
   module ToPlain = ToPlain (Ast)
