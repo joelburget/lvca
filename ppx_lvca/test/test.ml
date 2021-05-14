@@ -14,6 +14,7 @@ module Lang =
 {|
 integer : *
 string : *
+maybe : * -> *
 // TODO: handle / test * -> * externals
 
 // multiple operators, external reference, pattern and var binding

@@ -121,6 +121,27 @@ diag a := Diag(pair a a)
      }
     } *)
 
+let cvt_loc : Location.t -> OptRange.t -> Location.t =
+ fun loc optrange ->
+  match optrange with
+  | None -> loc
+  | Some { start; finish } ->
+    (* TODO: update pos_lnum, pos_bol? *)
+    { loc with
+      loc_start = { loc.loc_start with pos_cnum = start }
+    ; loc_end = { loc.loc_end with pos_cnum = finish }
+    }
+;;
+
+(*
+type Lexing.position = {
+  pos_fname : string;
+  pos_lnum : int;
+  pos_bol : int;
+  pos_cnum : int;
+}
+*)
+
 (* Concatenate a list of names into a Longident. *)
 (* TODO: is this just Longident.unflatten? *)
 let unflatten names =
@@ -334,7 +355,9 @@ module CtorDecl (Ast : Ast_builder.S) = struct
     let args_of_valence (Syn.Valence.Valence (binding_sort_slots, body_sort)) =
       let args =
         List.map binding_sort_slots ~f:(function
-            | Syn.SortSlot.SortBinding _sort -> [%type: string]
+            | Syn.SortSlot.SortBinding sort ->
+              let loc = cvt_loc loc (Sort.info sort) in
+              [%type: string]
             | SortPattern _sort -> pattern_type)
       in
       let context = { info; var_names; mutual_sorts; prim_names } in
@@ -898,14 +921,20 @@ module IndividualTypeModule (Ast : Ast_builder.S) = struct
     in
     let f (name, kind_opt) accum =
       match kind_opt with
-      | None (* XXX should do kind inference instead of assuming it's * *)
-      | Some (Syn.Kind.Kind (_, 1)) ->
+      | None ->
+        (* XXX should do kind inference instead of assuming it's * *)
         let mod_param = Named ({ txt = Some (module_name name); loc }, all_term_s) in
         pmod_functor mod_param accum
-      | Some kind ->
+      | Some (Syn.Kind.Kind (info, 1)) ->
+        let mod_param =
+          Named ({ txt = Some (module_name name); loc = cvt_loc loc info }, all_term_s)
+        in
+        pmod_functor mod_param accum
+      | Some (Syn.Kind.Kind (info, _) as kind) ->
         Location.raise_errorf
-          ~loc
-          "Code generation currently only supports external modules of kind * (%s is %s)"
+          ~loc:(cvt_loc loc info)
+          "Code generation currently only supports external modules of kind * (`%s` is \
+           %s)"
           name
           (Fmt.to_to_string Syn.Kind.pp kind)
     in
@@ -941,12 +970,14 @@ module ContainerModule (Ast : Ast_builder.S) = struct
     (* Turn into a functor over externals *)
     let mod_param (name, kind) =
       match kind with
-      | Some (Syn.Kind.Kind (_, 1)) | None ->
-        Named ({ txt = Some (module_name name); loc }, all_term_s)
-      | Some kind ->
+      | Some (Syn.Kind.Kind (info, 1)) ->
+        Named ({ txt = Some (module_name name); loc = cvt_loc loc info }, all_term_s)
+      | None -> Named ({ txt = Some (module_name name); loc }, all_term_s)
+      | Some (Syn.Kind.Kind (info, _) as kind) ->
         Location.raise_errorf
-          ~loc
-          "Code generation currently only supports external modules of kind * (%s is %s)"
+          ~loc:(cvt_loc loc info)
+          "Code generation currently only supports external modules of kind * (`%s` is \
+           %s)"
           name
           (Fmt.to_to_string Syn.Kind.pp kind)
     in
