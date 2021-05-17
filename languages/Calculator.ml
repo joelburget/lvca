@@ -1,5 +1,6 @@
 open Base
 open Lvca_syntax
+open Lvca_provenance
 open Stdio
 
 type term = OptRange.t NonBinding.term

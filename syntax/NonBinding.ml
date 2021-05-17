@@ -1,4 +1,5 @@
 open Base
+open Lvca_provenance
 open Result.Let_syntax
 
 type 'info term =

@@ -1,3 +1,4 @@
+open Lvca_provenance
 open Lvca_syntax
 
 val mk_pattern : loc:Ppxlib.location -> OptRange.t Pattern.t -> Ppxlib.expression

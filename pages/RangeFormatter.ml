@@ -1,7 +1,7 @@
 open Base
 open Brr
 open Brr_note
-open Lvca_syntax
+open Lvca_provenance
 open Note
 open Stdio
 open Prelude

@@ -1,5 +1,6 @@
 open Base
 open Lvca_syntax
+open Lvca_provenance
 open Ppxlib
 module Util = Lvca_util
 module SSet = Util.String.Set

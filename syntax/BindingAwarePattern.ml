@@ -1,10 +1,11 @@
 open Base
+open Lvca_provenance
+open Option.Let_syntax
 module Util = Lvca_util
 module String = Util.String
 module Format = Stdlib.Format
 module SMap = Util.String.Map
 module Tuple2 = Util.Tuple2
-open Option.Let_syntax
 module Term = Nominal.Term
 module Scope = Nominal.Scope
 

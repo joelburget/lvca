@@ -1,5 +1,6 @@
 open Base
 open Lvca_syntax
+open Lvca_provenance
 
 let language = [%lvca_abstract_syntax "tm := app(tm; tm) | lam(tm. tm)"]
 

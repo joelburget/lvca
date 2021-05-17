@@ -31,8 +31,8 @@ val of_nominal_with_bindings
 val alpha_equivalent : 'a term -> 'b term -> bool
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
-  val t : OptRange.t term ParseUtil.t
-  val whitespace_t : OptRange.t term ParseUtil.t
+  val t : Lvca_provenance.OptRange.t term ParseUtil.t
+  val whitespace_t : Lvca_provenance.OptRange.t term ParseUtil.t
 end
 
 (* module Properties : Properties_intf.S with type 'info t := 'info term *)

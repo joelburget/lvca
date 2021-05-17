@@ -46,7 +46,7 @@ module type ExtendedTermS = sig
   val hash : _ t -> string
 
   module Parse (Comment : ParseUtil.Comment_int) : sig
-    val whitespace_t : OptRange.t t ParseUtil.t
+    val whitespace_t : Lvca_provenance.OptRange.t t ParseUtil.t
   end
 end
 

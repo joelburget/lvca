@@ -1,4 +1,5 @@
 open Base
+open Lvca_provenance
 open Lvca_syntax
 
 module TypingRule = struct

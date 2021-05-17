@@ -1,5 +1,6 @@
 open Base
 open Lvca_syntax
+open Lvca_provenance
 open Lvca_core
 open Stdio
 

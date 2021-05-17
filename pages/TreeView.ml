@@ -1,3 +1,4 @@
+open Lvca_provenance
 open Lvca_syntax
 open Base
 open Brr

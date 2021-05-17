@@ -1,4 +1,5 @@
 open Base
+open Lvca_provenance
 
 module type AllTermS = LanguageObject_intf.S
 

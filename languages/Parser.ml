@@ -1,6 +1,7 @@
 open Base
-open Lvca_syntax
 open Lvca_core
+open Lvca_provenance
+open Lvca_syntax
 open Stdio
 module Format = Caml.Format
 module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)

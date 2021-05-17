@@ -1,3 +1,4 @@
+open Lvca_provenance
 open Base
 
 module type PlainBase_s = sig

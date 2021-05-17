@@ -37,5 +37,5 @@ val of_term
   *)
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
-  val t : OptRange.t t ParseUtil.t
+  val t : Lvca_provenance.OptRange.t t ParseUtil.t
 end

@@ -1,5 +1,6 @@
 open Base
 open Common
+open Lvca_provenance
 open Lvca_syntax
 open Brr
 open Note

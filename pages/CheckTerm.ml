@@ -2,6 +2,7 @@ open Base
 open Brr
 open Note
 open Prelude
+open Lvca_provenance
 open Lvca_syntax
 module AbstractSyntaxParse = AbstractSyntax.Parse (ParseUtil.NoComment)
 module NominalParse = Nominal.Term.Parse (ParseUtil.NoComment)

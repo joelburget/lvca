@@ -37,8 +37,8 @@ module Term : sig
   val info : 'info t -> 'info
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val pp : _ t Fmt.t
-  val pp_range : OptRange.t t Fmt.t
-  val pp_ranges : SourceRanges.t t Fmt.t
+  val pp_range : Lvca_provenance.OptRange.t t Fmt.t
+  val pp_ranges : Lvca_provenance.SourceRanges.t t Fmt.t
 
   (* TODO: remove *)
   val pp_str : _ t -> string
@@ -106,8 +106,8 @@ module Term : sig
     -> ('info, ('info Pattern.t, 'info t) Base.Either.t) CheckFailure.t option
 
   module Parse (Comment : ParseUtil.Comment_int) : sig
-    val t : OptRange.t t ParseUtil.t
-    val whitespace_t : OptRange.t t ParseUtil.t
+    val t : Lvca_provenance.OptRange.t t ParseUtil.t
+    val whitespace_t : Lvca_provenance.OptRange.t t ParseUtil.t
   end
 
   module Properties : Properties_intf.S with type 'info t := 'info t
@@ -125,8 +125,8 @@ module Scope : sig
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val pp : _ t Fmt.t
-  val pp_range : OptRange.t t Fmt.t
-  val pp_ranges : SourceRanges.t t Fmt.t
+  val pp_range : Lvca_provenance.OptRange.t t Fmt.t
+  val pp_ranges : Lvca_provenance.SourceRanges.t t Fmt.t
   val pp_str : _ t -> string
   val jsonify : _ t Lvca_util.Json.serializer
   val unjsonify : unit t Lvca_util.Json.deserializer
@@ -150,8 +150,8 @@ val of_pattern : ('info, 'prim) Pattern.t -> ('info, 'prim) t
   val free_vars : (_, _) t -> Lvca_util.String.Set.t
 
   module Parse (Comment : ParseUtil.Comment_int) : sig
-    val t : 'prim ParseUtil.t -> OptRange.t t ParseUtil.t
-    val whitespace_t : 'prim ParseUtil.t -> OptRange.t t ParseUtil.t
+    val t : 'prim ParseUtil.t -> Lvca_provenance.OptRange.t t ParseUtil.t
+    val whitespace_t : 'prim ParseUtil.t -> Lvca_provenance.OptRange.t t ParseUtil.t
   end
 
   module Properties : Properties_intf.S with type 'info t := unit t

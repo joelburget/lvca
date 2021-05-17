@@ -96,10 +96,17 @@ val check_matrix
 module Parse (Comment : ParseUtil.Comment_int) : sig
   type 'info matrix_row = 'info matrix_entry list * 'info NonBinding.term
 
-  val branch : (OptRange.t Pattern.t * OptRange.t NonBinding.term) ParseUtil.t
-  val branches : (OptRange.t Pattern.t * OptRange.t NonBinding.term) list ParseUtil.t
-  val matrix_row : OptRange.t matrix_row ParseUtil.t
-  val matrix_rows : OptRange.t matrix_row list ParseUtil.t
+  val branch
+    : (Lvca_provenance.OptRange.t Pattern.t * Lvca_provenance.OptRange.t NonBinding.term)
+      ParseUtil.t
+
+  val branches
+    : (Lvca_provenance.OptRange.t Pattern.t * Lvca_provenance.OptRange.t NonBinding.term)
+      list
+      ParseUtil.t
+
+  val matrix_row : Lvca_provenance.OptRange.t matrix_row ParseUtil.t
+  val matrix_rows : Lvca_provenance.OptRange.t matrix_row list ParseUtil.t
 end
 
 module Properties : sig

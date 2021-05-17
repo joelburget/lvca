@@ -2,6 +2,13 @@
  (name lvca_syntax)
  (public_name lvca.syntax)
  (inline_tests)
- (libraries angstrom base fmt zarith zarith_stubs_js lvca_util)
+ (libraries
+  angstrom
+  base
+  fmt
+  zarith
+  zarith_stubs_js
+  lvca_util
+  lvca_provenance)
  (preprocess
   (pps ppx_jane)))

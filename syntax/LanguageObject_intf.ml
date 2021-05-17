@@ -13,6 +13,6 @@ module type S = sig
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   module Parse (Comment : ParseUtil.Comment_int) : sig
-    val t : OptRange.t t ParseUtil.t
+    val t : Lvca_provenance.OptRange.t t ParseUtil.t
   end
 end

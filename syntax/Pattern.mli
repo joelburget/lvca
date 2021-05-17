@@ -32,8 +32,8 @@ val list_vars_of_pattern : 'info t -> ('info * string) list
 
 val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 val pp : _ t Fmt.t
-val pp_range : OptRange.t t Fmt.t
-val pp_ranges : SourceRanges.t t Fmt.t
+val pp_range : Lvca_provenance.OptRange.t t Fmt.t
+val pp_ranges : Lvca_provenance.SourceRanges.t t Fmt.t
 
 (** {1 Serialization} *)
 
@@ -84,8 +84,8 @@ val check
 (** {1 Parsing} *)
 
 module Parse (Comment : ParseUtil.Comment_int) : sig
-  val t : OptRange.t t ParseUtil.t
-  val whitespace_t : OptRange.t t ParseUtil.t
+  val t : Lvca_provenance.OptRange.t t ParseUtil.t
+  val whitespace_t : Lvca_provenance.OptRange.t t ParseUtil.t
 end
 
 module Properties : Properties_intf.S with type 'info t := 'info t

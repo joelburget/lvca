@@ -1,4 +1,5 @@
 open Base
+open Lvca_provenance
 open Lvca_syntax
 open Ppxlib
 module ParsePrimitive = Lvca_syntax.Primitive.Parse (ParseUtil.CComment)
@@ -23,7 +24,7 @@ let mk_pos ~loc = function
   | Some Range.{ start; finish } ->
     let start = mk_int ~loc start in
     let finish = mk_int ~loc finish in
-    [%expr Some Range.{ start = [%e start]; finish = [%e finish] }]
+    [%expr Some Lvca_provenance.Range.{ start = [%e start]; finish = [%e finish] }]
 ;;
 
 let mk_prim ~loc = function

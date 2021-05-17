@@ -8,6 +8,7 @@ module Util = Lvca_util
 module String = Util.String
 module SMap = Util.String.Map
 module Tuple2 = Util.Tuple2
+open Lvca_provenance
 
 type 'info t =
   | Operator of 'info * string * 'info t list

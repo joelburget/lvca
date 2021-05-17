@@ -63,7 +63,7 @@ let mk ?(autofocus = true) ?(border = true) ?(rows = None) ?(cols = 60) input_s 
     let handler _evt =
       let start = El.prop selection_start input in
       let finish = El.prop selection_end input in
-      Common.InputSelect Lvca_syntax.Range.{ start; finish }
+      Common.InputSelect Lvca_provenance.Range.{ start; finish }
     in
     Evr.on_el Ev.select handler input
   in

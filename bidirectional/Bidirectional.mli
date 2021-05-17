@@ -1,5 +1,6 @@
 (** An implementation of bidirectional typechecking. *)
 
+open Lvca_provenance
 open Lvca_syntax
 open Statics
 

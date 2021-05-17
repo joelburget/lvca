@@ -1,5 +1,6 @@
 (** Grab-bag of frontend stuff. *)
 
+open Lvca_provenance
 open Lvca_syntax
 
 type term = OptRange.t Nominal.Term.t

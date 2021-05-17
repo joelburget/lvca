@@ -1,5 +1,6 @@
 open Base
 open Lvca_syntax
+open Lvca_provenance
 open Stdio
 
 module Description = struct

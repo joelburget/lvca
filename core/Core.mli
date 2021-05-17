@@ -4,6 +4,8 @@
       [Pattern.t]).
     - [eval] is used to evaluate a core term *)
 
+open Lvca_provenance
+
 (** {1 Types} *)
 type 'info n_term = 'info Lvca_syntax.Nominal.Term.t
 
@@ -86,5 +88,5 @@ val reverse : 'info n_term -> 'info cases -> 'info env option
 
 (** {1 Parsing} *)
 module Parse (Comment : Lvca_syntax.ParseUtil.Comment_int) : sig
-  val term : Lvca_syntax.OptRange.t term Lvca_syntax.ParseUtil.t
+  val term : OptRange.t term Lvca_syntax.ParseUtil.t
 end

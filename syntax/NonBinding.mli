@@ -40,12 +40,12 @@ val to_nominal : 'info term -> 'info Nominal.Term.t
 (** {1 Printing} *)
 
 val pp : _ term Fmt.t
-val pp_range : OptRange.t term Fmt.t
+val pp_range : Lvca_provenance.OptRange.t term Fmt.t
 
 (** {1 Parsing} *)
 module Parse (Comment : ParseUtil.Comment_int) : sig
-  val term : OptRange.t term ParseUtil.t
-  val whitespace_term : OptRange.t term ParseUtil.t
+  val term : Lvca_provenance.OptRange.t term ParseUtil.t
+  val whitespace_term : Lvca_provenance.OptRange.t term ParseUtil.t
 end
 
 (** {1 Misc} *)

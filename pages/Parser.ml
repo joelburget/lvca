@@ -2,6 +2,7 @@ open Base
 open Brr
 open Brr_note
 open Lvca_core
+open Lvca_provenance
 open Lvca_syntax
 open Note
 open Prelude

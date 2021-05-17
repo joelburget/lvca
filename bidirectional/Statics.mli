@@ -1,6 +1,7 @@
 (** Statics describe the rules for stating whether an expression is well-formed. This
     implementation is for expressing bidirectional typing rules. *)
 
+open Lvca_provenance
 open Lvca_syntax
 
 (** Both typing and inference rules share this shape.

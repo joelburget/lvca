@@ -1,0 +1,7 @@
+(library
+ (name lvca_provenance)
+ (public_name lvca.provenance)
+ (inline_tests)
+ (libraries base fmt lvca_util)
+ (preprocess
+  (pps ppx_jane)))

@@ -1,5 +1,6 @@
 open Base
 open Stdio
+open Lvca_provenance
 module Util = Lvca_util
 module Json = Util.Json
 module String = Util.String

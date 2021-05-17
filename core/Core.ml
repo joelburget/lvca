@@ -1,6 +1,7 @@
 (** A small "core" language. *)
 
 open Base
+open Lvca_provenance
 open Lvca_syntax
 module Format = Caml.Format
 module Util = Lvca_util
