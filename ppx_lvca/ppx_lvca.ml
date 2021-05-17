@@ -57,8 +57,15 @@ let expand_module ~(loc : Location.t) ~path:_ (expr : expression) : module_expr 
   match ParseUtil.parse_string ParseAbstract.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax ->
-    let (module Ast) = Ast_builder.make loc in
-    let module ContainerModule = ModuleBuilder.ContainerModule (Ast) in
+    let module ContainerModule =
+      ModuleBuilder.ContainerModule (struct
+        let buf = str
+
+        module Ast = Ast_builder.Make (struct
+          let loc = loc
+        end)
+      end)
+    in
     ContainerModule.mk syntax
 ;;
 

@@ -8,7 +8,6 @@ let test_language = [%lvca_abstract_syntax {|
 foo := foo(integer)
 |}]
 
-(* TODO: automate functorizing *)
 module Lang =
 [%abstract_syntax_module
 {|

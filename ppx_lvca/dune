@@ -1,7 +1,8 @@
 (library
  (name ppx_lvca)
  (public_name lvca.ppx)
+ (inline_tests)
  (kind ppx_rewriter)
  (preprocess
-  (pps ppxlib.metaquot))
+  (pps ppx_jane ppxlib.metaquot))
  (libraries base lvca_syntax lvca_provenance ppxlib))

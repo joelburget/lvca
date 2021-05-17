@@ -122,26 +122,146 @@ diag a := Diag(pair a a)
      }
     } *)
 
-let cvt_loc : Location.t -> OptRange.t -> Location.t =
- fun loc optrange ->
-  match optrange with
-  | None -> loc
-  | Some { start; finish } ->
-    (* TODO: update pos_lnum, pos_bol? *)
-    { loc with
-      loc_start = { loc.loc_start with pos_cnum = start }
-    ; loc_end = { loc.loc_end with pos_cnum = finish }
-    }
-;;
+module type Builder_context = sig
+  (** The contents of the source file. *)
+  val buf : string
 
-(*
-type Lexing.position = {
-  pos_fname : string;
-  pos_lnum : int;
-  pos_bol : int;
-  pos_cnum : int;
-}
-*)
+  module Ast : Ast_builder.S
+end
+
+module Update_loc (Context : Builder_context) = struct
+  open Context
+
+  let loc = Ast.loc
+
+  (* pos_bol: offset of the beginning of the line
+     pos_cnum: offset of the position (number of characters between the
+       beginning of the lexbuf and the position)
+
+     > The difference between pos_cnum and pos_bol is the character offset
+     within the line (i.e. the column number, assuming each character is one
+     column wide).
+   *)
+  let go : OptRange.t -> Location.t =
+   fun optrange ->
+    match optrange with
+    | None -> loc
+    | Some { start; finish } ->
+      let before_buf = String.subo ~len:start buf in
+      let internal_buf = String.sub ~pos:start ~len:(finish - start) buf in
+      let buf_start_lnum = String.count ~f:Char.(fun c -> c = '\n') before_buf in
+      let internal_lines = String.count ~f:Char.(fun c -> c = '\n') internal_buf in
+      let start_bol =
+        match String.rsplit2 before_buf ~on:'\n' with
+        | Some (lstr, _rstr) -> String.(length lstr)
+        | None -> 0
+      in
+      let finish_bol =
+        match String.rsplit2 internal_buf ~on:'\n' with
+        | Some (lstr, _rstr) -> String.(length before_buf + length lstr)
+        | None -> start_bol
+      in
+      { loc with
+        loc_start =
+          { loc.loc_start with
+            pos_lnum = loc.loc_start.pos_lnum + buf_start_lnum
+          ; pos_bol = start_bol
+          ; pos_cnum = start
+          }
+      ; loc_end =
+          { loc.loc_end with
+            pos_lnum = loc.loc_start.pos_lnum + buf_start_lnum + internal_lines
+          ; pos_bol = finish_bol
+          ; pos_cnum = finish
+          }
+      }
+ ;;
+end
+
+let%test_module "Update_loc" =
+  (module struct
+    let mk_pos pos_lnum pos_bol pos_cnum =
+      Lexing.{ pos_fname = "test"; pos_lnum; pos_bol; pos_cnum }
+    ;;
+
+    module Context1 = struct
+      let buf = "quick\nbrown\nfox"
+      (*         ^      ^        ^
+                 012345 678901 234
+                 1      2        3 *)
+
+      let loc =
+        Location.
+          { loc_start = mk_pos 1 0 0
+          ; loc_end = mk_pos 2 12 (String.length buf - 1)
+          ; loc_ghost = false
+          }
+      ;;
+
+      module Ast = Ast_builder.Make (struct
+        let loc = loc
+      end)
+    end
+
+    let print loc =
+      Location.print Fmt.stdout loc;
+      Fmt.pr "\n"
+    ;;
+
+    let%expect_test _ =
+      let module Update_loc = Update_loc (Context1) in
+      let go = Update_loc.go >> print in
+      go None;
+      go (Some { start = 0; finish = 14 });
+      go (Some { start = 0; finish = 13 });
+      go (Some { start = 6; finish = 14 });
+      go (Some { start = 12; finish = 14 });
+      [%expect
+        {|
+      File "test", line 1, characters 0-14:
+      File "test", line 1, characters 0-14:
+      File "test", line 1, characters 0-13:
+      File "test", line 2, characters 1-9:
+      File "test", line 3, characters 1-3: |}]
+    ;;
+
+    module Context2 = struct
+      let buf = "quick brown fox"
+      (*         ^     ^       ^
+                 012345678901234
+                 1     2       3 *)
+
+      let loc =
+        Location.
+          { loc_start = mk_pos 0 0 0
+          ; loc_end = mk_pos 2 12 (String.length buf - 1)
+          ; loc_ghost = false
+          }
+      ;;
+
+      module Ast = Ast_builder.Make (struct
+        let loc = loc
+      end)
+    end
+
+    let%expect_test _ =
+      let module Update_loc = Update_loc (Context2) in
+      let go = Update_loc.go >> print in
+      go None;
+      go (Some { start = 0; finish = 14 });
+      go (Some { start = 0; finish = 13 });
+      go (Some { start = 6; finish = 14 });
+      go (Some { start = 12; finish = 14 });
+      [%expect
+        {|
+      File "test", line 0, characters 0-14:
+      File "test", line 0, characters 0-14:
+      File "test", line 0, characters 0-13:
+      File "test", line 0, characters 6-14:
+      File "test", line 0, characters 12-14: |}]
+    ;;
+  end)
+;;
 
 (* Concatenate a list of names into a Longident. *)
 (* TODO: is this just Longident.unflatten? *)
@@ -187,7 +307,8 @@ let get_sort_ref_map sort_defs =
   |> SMap.of_alist_exn
 ;;
 
-module Helpers (Ast : Ast_builder.S) = struct
+module Helpers (Context : Builder_context) = struct
+  open Context
   open Ast
 
   (** Context for classifying a sort ([classify_sort]) as [defn_status]. *)
@@ -339,9 +460,11 @@ module Helpers (Ast : Ast_builder.S) = struct
 end
 
 (** Helper for declaring a constructor. *)
-module CtorDecl (Ast : Ast_builder.S) = struct
+module CtorDecl (Context : Builder_context) = struct
+  open Context
   open Ast
-  open Helpers (Ast)
+  open Helpers (Context)
+  module Update_loc = Update_loc (Context)
 
   let mk
       ~info
@@ -357,7 +480,7 @@ module CtorDecl (Ast : Ast_builder.S) = struct
       let args =
         List.map binding_sort_slots ~f:(function
             | Syn.SortSlot.SortBinding sort ->
-              let loc = cvt_loc loc (Sort.info sort) in
+              let loc = Update_loc.go (Sort.info sort) in
               [%type: string]
             | SortPattern _sort -> pattern_type)
       in
@@ -380,9 +503,10 @@ module CtorDecl (Ast : Ast_builder.S) = struct
   ;;
 end
 
-module TypeDecls (Ast : Ast_builder.S) = struct
+module TypeDecls (Context : Builder_context) = struct
+  open Context
   open Ast
-  module CtorDecl = CtorDecl (Ast)
+  module CtorDecl = CtorDecl (Context)
 
   let mk ~info ~sort_def_map ~prim_names =
     let params0 = if info then [ ptyp_var "info", (NoVariance, NoInjectivity) ] else [] in
@@ -409,9 +533,10 @@ module TypeDecls (Ast : Ast_builder.S) = struct
   ;;
 end
 
-module OperatorPat (Ast : Ast_builder.S) = struct
+module OperatorPat (Context : Builder_context) = struct
+  open Context
   open Ast
-  open Helpers (Ast)
+  open Helpers (Context)
 
   type ctor_type =
     | Plain
@@ -472,9 +597,10 @@ module OperatorPat (Ast : Ast_builder.S) = struct
   ;;
 end
 
-module OperatorExp (Ast : Ast_builder.S) = struct
+module OperatorExp (Context : Builder_context) = struct
+  open Context
   open Ast
-  open Helpers (Ast)
+  open Helpers (Context)
 
   type mapping_rhs_ty =
     | Plain
@@ -538,11 +664,12 @@ module OperatorExp (Ast : Ast_builder.S) = struct
   ;;
 end
 
-module ToPlain (Ast : Ast_builder.S) = struct
+module ToPlain (Context : Builder_context) = struct
+  open Context
   open Ast
-  open Helpers (Ast)
-  module OperatorPat = OperatorPat (Ast)
-  module OperatorExp = OperatorExp (Ast)
+  open Helpers (Context)
+  module OperatorPat = OperatorPat (Context)
+  module OperatorExp = OperatorExp (Context)
 
   let mk ~prim_names sort_defs sort_name (Syn.SortDef.SortDef (vars, op_defs)) =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
@@ -559,11 +686,12 @@ module ToPlain (Ast : Ast_builder.S) = struct
   ;;
 end
 
-module OfPlain (Ast : Ast_builder.S) = struct
+module OfPlain (Context : Builder_context) = struct
+  open Context
   open Ast
-  open Helpers (Ast)
-  module OperatorPat = OperatorPat (Ast)
-  module OperatorExp = OperatorExp (Ast)
+  open Helpers (Context)
+  module OperatorPat = OperatorPat (Context)
+  module OperatorExp = OperatorExp (Context)
 
   let mk ~prim_names sort_defs sort_name (Syn.SortDef.SortDef (vars, op_defs)) =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
@@ -586,11 +714,12 @@ module OfPlain (Ast : Ast_builder.S) = struct
   ;;
 end
 
-module MapInfo (Ast : Ast_builder.S) = struct
+module MapInfo (Context : Builder_context) = struct
+  open Context
   open Ast
-  open Helpers (Ast)
-  module OperatorPat = OperatorPat (Ast)
-  module OperatorExp = OperatorExp (Ast)
+  open Helpers (Context)
+  module OperatorPat = OperatorPat (Context)
+  module OperatorExp = OperatorExp (Context)
 
   let mk ~prim_names sort_defs sort_name (Syn.SortDef.SortDef (vars, op_defs)) =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
@@ -614,10 +743,11 @@ module MapInfo (Ast : Ast_builder.S) = struct
   ;;
 end
 
-module Equal (Ast : Ast_builder.S) = struct
+module Equal (Context : Builder_context) = struct
+  open Context
   open Ast
-  open Helpers (Ast)
-  module OperatorPat = OperatorPat (Ast)
+  open Helpers (Context)
+  module OperatorPat = OperatorPat (Context)
 
   let mk ~prim_names sort_defs sort_name (Syn.SortDef.SortDef (vars, op_defs)) =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
@@ -690,10 +820,11 @@ module Equal (Ast : Ast_builder.S) = struct
   ;;
 end
 
-module Info (Ast : Ast_builder.S) = struct
+module Info (Context : Builder_context) = struct
+  open Context
   open Ast
-  open Helpers (Ast)
-  module OperatorPat = OperatorPat (Ast)
+  open Helpers (Context)
+  module OperatorPat = OperatorPat (Context)
 
   let mk ~prim_names:_ _sort_defs sort_name (Syn.SortDef.SortDef (vars, op_defs)) =
     let mk_case op_def =
@@ -711,15 +842,16 @@ module Info (Ast : Ast_builder.S) = struct
 end
 
 (* The wrapper module holds TODO *)
-module WrapperModule (Ast : Ast_builder.S) = struct
+module WrapperModule (Context : Builder_context) = struct
+  open Context
   open Ast
   module Graph = DirectedGraph.Make (Base.String)
-  module TypeDecls = TypeDecls (Ast)
-  module Info = Info (Ast)
-  module ToPlain = ToPlain (Ast)
-  module OfPlain = OfPlain (Ast)
-  module Equal = Equal (Ast)
-  module MapInfo = MapInfo (Ast)
+  module TypeDecls = TypeDecls (Context)
+  module Info = Info (Context)
+  module ToPlain = ToPlain (Context)
+  module OfPlain = OfPlain (Context)
+  module Equal = Equal (Context)
+  module MapInfo = MapInfo (Context)
 
   let mk ~prim_names sort_defs =
     let sort_def_map = SMap.of_alist_exn sort_defs in
@@ -808,9 +940,11 @@ module WrapperModule (Ast : Ast_builder.S) = struct
   ;;
 end
 
-module IndividualTypeModule (Ast : Ast_builder.S) = struct
+module IndividualTypeModule (Context : Builder_context) = struct
+  open Context
   open Ast
-  open Helpers (Ast)
+  open Helpers (Context)
+  module Update_loc = Update_loc (Context)
 
   let mk ~prim_names:_ ~sort_def_map:_ sort_name (Syn.SortDef.SortDef (vars, _op_defs)) =
     let _var_names = vars |> List.map ~f:fst |> SSet.of_list in
@@ -928,12 +1062,12 @@ module IndividualTypeModule (Ast : Ast_builder.S) = struct
         pmod_functor mod_param accum
       | Some (Syn.Kind.Kind (info, 1)) ->
         let mod_param =
-          Named ({ txt = Some (module_name name); loc = cvt_loc loc info }, all_term_s)
+          Named ({ txt = Some (module_name name); loc = Update_loc.go info }, all_term_s)
         in
         pmod_functor mod_param accum
       | Some (Syn.Kind.Kind (info, _) as kind) ->
         Location.raise_errorf
-          ~loc:(cvt_loc loc info)
+          ~loc:(Update_loc.go info)
           "Code generation currently only supports external modules of kind * (`%s` is \
            %s)"
           name
@@ -945,11 +1079,13 @@ module IndividualTypeModule (Ast : Ast_builder.S) = struct
 end
 
 (* The top-level container / result (which is really a functor if there are externals). *)
-module ContainerModule (Ast : Ast_builder.S) = struct
+module ContainerModule (Context : Builder_context) = struct
+  open Context
   open Ast
-  open Helpers (Ast)
-  module WrapperModule = WrapperModule (Ast)
-  module IndividualTypeModule = IndividualTypeModule (Ast)
+  open Helpers (Context)
+  module WrapperModule = WrapperModule (Context)
+  module IndividualTypeModule = IndividualTypeModule (Context)
+  module Update_loc = Update_loc (Context)
 
   let mk Syn.{ externals; sort_defs } =
     let prim_names = externals |> List.map ~f:fst |> SSet.of_list in
@@ -972,11 +1108,11 @@ module ContainerModule (Ast : Ast_builder.S) = struct
     let mod_param (name, kind) =
       match kind with
       | Some (Syn.Kind.Kind (info, 1)) ->
-        Named ({ txt = Some (module_name name); loc = cvt_loc loc info }, all_term_s)
+        Named ({ txt = Some (module_name name); loc = Update_loc.go info }, all_term_s)
       | None -> Named ({ txt = Some (module_name name); loc }, all_term_s)
       | Some (Syn.Kind.Kind (info, _) as kind) ->
         Location.raise_errorf
-          ~loc:(cvt_loc loc info)
+          ~loc:(Update_loc.go info)
           "Code generation currently only supports external modules of kind * (`%s` is \
            %s)"
           name
