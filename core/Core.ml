@@ -176,11 +176,15 @@ let merge_results : 'a n_term SMap.t option list -> 'a n_term SMap.t option =
   then
     Some
       (results
-      |> List.map ~f:(Util.Option.get_invariant (fun () -> "we just checked all is_some"))
+      |> List.map
+           ~f:
+             (Util.Option.get_invariant ~here:[%here] (fun () ->
+                  "we just checked all is_some"))
       |> SMap.strict_unions
       |> function
       | `Duplicate_key k ->
         Util.invariant_violation
+          ~here:[%here]
           (Printf.sprintf "multiple variables with the same name (%s) in one pattern" k)
       | `Ok m -> m)
   else None
@@ -354,11 +358,14 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
 
   let identifier =
     identifier
-    >>= fun ident -> if Set.mem reserved ident then fail "reserved word" else return ident
+    >>= fun ident ->
+    if Set.mem reserved ident
+    then fail (Printf.sprintf "identifier: reserved word (%s)" ident)
+    else return ident
   ;;
 
   let make_apps : 'a term list -> 'a term = function
-    | [] -> Util.invariant_violation "make_apps: must be a nonempty list"
+    | [] -> Util.invariant_violation ~here:[%here] "must be a nonempty list"
     | [ x ] -> x
     | f :: args as xs ->
       let pos = xs |> List.map ~f:info |> OptRange.list_range in
@@ -374,8 +381,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
             ; braces Term.t >>| (fun tm -> Term tm) <?> "quoted term"
             ]
         in
-        let pattern = BindingAwarePattern.t in
-        let pattern = pattern <?> "pattern" in
+        let pattern = BindingAwarePattern.t <?> "pattern" in
         let case_line =
           lift3 (fun pat _ tm -> CaseScope (pat, tm)) pattern (string "->") term
           <?> "case line"
