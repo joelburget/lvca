@@ -220,7 +220,7 @@ module Term = struct
           (match String.Map.join_helper zipped with
           | `Ok result -> result
           | `Duplicate_key k ->
-            failwith (Printf.sprintf "invariant violation: duplicate key: %s" k))
+            Lvca_util.invariant_violation ~here:[%here] ("duplicate key: " ^ k))
         | Unequal_lengths -> None)
       else None
     | _ -> None
@@ -431,8 +431,37 @@ module Term = struct
 
     type 'info term = 'info t
 
+    open Parsers
+
+    (* (b11. ... b1n. t11, ... t1n; b21. ... b2n. t21, ... t2n) *)
+    let accumulate (range : OptRange.t) (tag : string) (tokens : tm_or_sep list)
+        : OptRange.t term ParseUtil.t
+      =
+      (* terms encountered between '.'s, before hitting ',' / ';' *)
+      let binding_queue : OptRange.t Types.term Queue.t = Queue.create () in
+      (* scopes encountered *)
+      let scope_queue : OptRange.t Types.scope Queue.t = Queue.create () in
+      let rec go = function
+        | [] -> return ~pos:range (Operator (range, tag, Queue.to_list scope_queue))
+        | Tm tm :: Sep '.' :: rest ->
+          Queue.enqueue binding_queue tm;
+          go rest
+        | Tm tm :: Sep ';' :: rest (* Note: allow trailing ';' *) | Tm tm :: ([] as rest)
+          ->
+          (match
+             binding_queue |> Queue.to_list |> List.map ~f:to_pattern |> Result.all
+           with
+          | Error _ -> fail "Unexpectedly found a variable binding in pattern position"
+          | Ok binders ->
+            Queue.clear binding_queue;
+            Queue.enqueue scope_queue (Scope (binders, tm));
+            go rest)
+        | _ -> fail "Malformed term"
+      in
+      go tokens
+    ;;
+
     let t : OptRange.t term ParseUtil.t =
-      let open Parsers in
       fix (fun term ->
           let tm_or_sep : tm_or_sep ParseUtil.t =
             choice
@@ -440,52 +469,25 @@ module Term = struct
               ; (fun tm -> Tm tm) <$> term
               ]
           in
-          (* (b11. ... b1n. t11, ... t1n; b21. ... b2n. t21, ... t2n) *)
-          let accumulate
-              : OptRange.t -> string -> tm_or_sep list -> OptRange.t term ParseUtil.t
-            =
-           fun range tag tokens ->
-            (* terms encountered between '.'s, before hitting ',' / ';' *)
-            let binding_queue : OptRange.t Types.term Queue.t = Queue.create () in
-            (* scopes encountered *)
-            let scope_queue : OptRange.t Types.scope Queue.t = Queue.create () in
-            let rec go = function
-              | [] -> return ~pos:range (Operator (range, tag, Queue.to_list scope_queue))
-              | Tm tm :: Sep '.' :: rest ->
-                Queue.enqueue binding_queue tm;
-                go rest
-              | Tm tm :: Sep ';' :: rest (* Note: allow trailing ';' *)
-              | Tm tm :: ([] as rest) ->
-                (match
-                   binding_queue |> Queue.to_list |> List.map ~f:to_pattern |> Result.all
-                 with
-                | Error _ ->
-                  fail "Unexpectedly found a variable binding in pattern position"
-                | Ok binders ->
-                  Queue.clear binding_queue;
-                  Queue.enqueue scope_queue (Scope (binders, tm));
-                  go rest)
-              | _ -> fail "Malformed term"
-            in
-            go tokens
-          in
           pos
-          >>= fun p1 ->
+          >>= fun pre_ident_pos ->
+          let pre_ident_pos = OptRange.mk pre_ident_pos pre_ident_pos in
           choice
             [ (Primitive.t >>| fun prim -> Primitive prim)
             ; (identifier
-              >>= fun ident ->
+              >>== fun ~pos:ident_pos ident ->
               choice
                 [ (parens (many tm_or_sep)
-                  >>= fun tokens ->
-                  pos >>= fun p2 -> accumulate (OptRange.mk p1 p2) ident tokens)
-                ; (pos >>| fun p2 -> Var (OptRange.mk p1 p2, ident))
+                  >>== fun ~pos:parens_pos tokens ->
+                  accumulate (OptRange.union pre_ident_pos parens_pos) ident tokens)
+                ; (let pos = OptRange.(union pre_ident_pos ident_pos) in
+                   return ~pos (Var (pos, ident)))
                 ])
             ])
       <?> "term"
     ;;
 
-    let whitespace_t = Parsers.(junk *> t)
+    let whitespace_t = junk *> t
   end
 
   module Properties = struct
@@ -718,13 +720,6 @@ let%test_module "TermParser" =
       = Ok (Operator ((), "lam", [ Scope ([ Var ((), "x") ], x) ]))
     ;;
 
-    let match_line a b = Term.Operator ((), "match_line", [ Scope ([ a ], b) ])
-
-    let match_lines subtms =
-      Term.Operator
-        ((), "match_lines", Base.List.map subtms ~f:(fun tm -> Scope.Scope ([], tm)))
-    ;;
-
     let%test _ = parse_erase {| match() |} = Ok (Operator ((), "match", []))
 
     let%test _ =
@@ -741,37 +736,9 @@ let%test_module "TermParser" =
       parse_erase {| match(x;) |} = Ok (Operator ((), "match", [ Scope ([], x) ]))
     ;;
 
-    let%test _ =
-      parse_erase
-        {|
-    match(x; match_lines(
-      match_line(foo(). true());
-      match_line(bar(_; _x; y). y)
-    )) |}
-      = Ok
-          (Operator
-             ( ()
-             , "match"
-             , [ Scope ([], x)
-               ; Scope
-                   ( []
-                   , match_lines
-                       [ match_line
-                           (Pattern.Operator ((), "foo", []))
-                           (Operator ((), "true", []))
-                       ; match_line
-                           (Pattern.Operator
-                              ( ()
-                              , "bar"
-                              , [ Ignored ((), ""); Ignored ((), "x"); Var ((), "y") ] ))
-                           (Var ((), "y"))
-                       ] )
-               ] ))
-    ;;
-
     let%expect_test _ =
       print_parse {|"str"|};
-      (*012345*)
+      (*            012345*)
       [%expect {|
       "str"
       <{0,5}>"str"</{0,5}>
@@ -780,7 +747,7 @@ let%test_module "TermParser" =
 
     let%expect_test _ =
       print_parse {|a()|};
-      (*0123*)
+      (*            0123*)
       [%expect {|
       a()
       <{0,3}>a()</{0,3}>
@@ -789,7 +756,7 @@ let%test_module "TermParser" =
 
     let%expect_test _ =
       print_parse {|a(b)|};
-      (*01234*)
+      (*            01234*)
       [%expect {|
       a(b)
       <{0,4}>a(<{2,3}>b</{2,3}>)</{0,4}>
@@ -798,7 +765,7 @@ let%test_module "TermParser" =
 
     let%expect_test _ =
       print_parse {|a(b;c)|};
-      (*0123456*)
+      (*            0123456*)
       [%expect
         {|
       a(b; c)
@@ -808,7 +775,7 @@ let%test_module "TermParser" =
 
     let%expect_test _ =
       print_parse {|a(b;c;d;e;)|};
-      (*012345678901*)
+      (*            012345678901*)
       [%expect
         {|
       a(b; c; d; e)
@@ -818,7 +785,7 @@ let%test_module "TermParser" =
 
     let%expect_test _ =
       print_parse {|a(b.c;d;e;)|};
-      (*012345678901*)
+      (*            012345678901*)
       [%expect
         {|
       a(b. c; d; e)
@@ -828,12 +795,28 @@ let%test_module "TermParser" =
 
     let%expect_test _ =
       print_parse {|a(b.c;d;e;f;g)|};
-      (*012345678901234*)
+      (*            012345678901234*)
       [%expect
         {|
       a(b. c; d; e; f; g)
       <{0,14}>a(<{2,3}>b</{2,3}>. <{4,5}>c</{4,5}>; <{6,7}>d</{6,7}>; <{8,9}>e</{8,9}>; <{10,11}>f</{10,11}>; <{12,13}>g</{12,13}>)</{0,14}>
     |}]
+    ;;
+
+    let%expect_test _ =
+      print_parse
+        {|
+match(x; match_lines(
+  match_line(foo(). true());
+  match_line(bar(_; _x; y). y)
+)) |};
+      [%expect
+        {|
+        match(x;
+        match_lines(match_line(foo(). true()); match_line(bar(_; _x; y). y)))
+        <{1,85}>
+        match(<{7,8}>x</{7,8}>;
+        <{10,84}>match_lines(<{25,50}>match_line(<{36,41}>foo()</{36,41}>. <{43,49}>true()</{43,49}>)</{25,50}>; <{54,82}>match_line(<{65,78}>bar(<{69,70}>_</{69,70}>; <{72,74}>_x</{72,74}>; <{76,77}>y</{76,77}>)</{65,78}>. <{80,81}>y</{80,81}>)</{54,82}>)</{10,84}>)</{1,85}> |}]
     ;;
   end)
 ;;
