@@ -1,7 +1,7 @@
 open Base
 open Lvca_provenance
 
-type 'a t = ('a * OptRange.t) Angstrom.t
+type +'a t = ('a * OptRange.t) Angstrom.t
 
 let parse_string_pos p str = Angstrom.parse_string ~consume:All p str
 let parse_string p str = parse_string_pos p str |> Result.map ~f:fst
@@ -10,10 +10,40 @@ module type Comment_int = sig
   val comment : unit Angstrom.t
 end
 
-module type Parsers = sig
+module type Junkless_int = sig
   type +'a t = ('a * OptRange.t) Angstrom.t
 
+  val ( >>== ) : 'a t -> (pos:OptRange.t -> 'a -> 'b t) -> 'b t
+  val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
+  val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
+  val ( >>|| ) : 'a t -> (pos:OptRange.t -> 'a -> 'b * OptRange.t) -> 'b t
+  val ( <$> ) : ('a -> 'b) -> 'a t -> 'b t
+  val ( <*> ) : ('a -> 'b) t -> 'a t -> 'b t
+  val char_lit : char t
+  val identifier : string t
+  val integer_lit : string t
+  val integer_or_float_lit : (string, float) Either.t t
+  val string_lit : string t
+  val pos : int t
+  val option : 'a -> 'a t -> 'a t
   val return : ?pos:OptRange.t -> 'a -> 'a t
+  val attach_pos : 'a t -> ('a * OptRange.t) t
+  val satisfy : (char -> bool) -> char t
+  val count : int -> 'a t -> 'a list t
+  val lift : ('a -> 'b) -> 'a t -> 'b t
+  val lift2 : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
+  val lift3 : ('a -> 'b -> 'c -> 'd) -> 'a t -> 'b t -> 'c t -> 'd t
+  val lift4 : ('a -> 'b -> 'c -> 'd -> 'e) -> 'a t -> 'b t -> 'c t -> 'd t -> 'e t
+  val char : char -> char t
+  val string : string -> string t
+  val many : 'a t -> 'a list t
+  val many1 : 'a t -> 'a list t
+  val sep_by : _ t -> 'a t -> 'a list t
+  val sep_by1 : _ t -> 'a t -> 'a list t
+  val sep_end_by : _ t -> 'a t -> 'a list t
+  val parens : 'a t -> 'a t
+  val braces : 'a t -> 'a t
+  val brackets : 'a t -> 'a t
   val fail : string -> 'a t
   val ( *> ) : 'a Angstrom.t -> 'b t -> 'b t
   val ( <* ) : 'a t -> 'b Angstrom.t -> 'a t
@@ -21,101 +51,21 @@ module type Parsers = sig
   val choice : ?failure_msg:string -> 'a t list -> 'a t
   val ( <?> ) : 'a t -> string -> 'a t
   val fix : ('a t -> 'a t) -> 'a t
-  val many : 'a t -> 'a list t
-  val many1 : 'a t -> 'a list t
-  val sep_by : _ t -> 'a t -> 'a list t
-  val sep_by1 : _ t -> 'a t -> 'a list t
-  val sep_end_by : _ t -> 'a t -> 'a list t
-  val option : 'a -> 'a t -> 'a t
-  val ( >>== ) : 'a t -> (pos:OptRange.t -> 'a -> 'b t) -> 'b t
-  val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
-  val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
-  val ( >>|| ) : 'a t -> (pos:OptRange.t -> 'a -> 'b * OptRange.t) -> 'b t
-  val ( <$> ) : ('a -> 'b) -> 'a t -> 'b t
-  val ( <*> ) : ('a -> 'b) t -> 'a t -> 'b t
-  val lift : ('a -> 'b) -> 'a t -> 'b t
-  val lift2 : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
-  val lift3 : ('a -> 'b -> 'c -> 'd) -> 'a t -> 'b t -> 'c t -> 'd t
-  val lift4 : ('a -> 'b -> 'c -> 'd -> 'e) -> 'a t -> 'b t -> 'c t -> 'd t -> 'e t
-  val identifier : string t
-  val junk : unit t
-  val char : char -> char t
-  val parens : 'a t -> 'a t
-  val braces : 'a t -> 'a t
-  val brackets : 'a t -> 'a t
-  val string : string -> string t
-  val integer_lit : string t
-  val integer_or_float_lit : (string, float) Either.t t
-  val string_lit : string t
-  val char_lit : char t
-  val pos : int t
-  val attach_pos : 'a t -> ('a * OptRange.t) t
-  val satisfy : (char -> bool) -> char t
-  val count : int -> 'a t -> 'a list t
 end
 
-module type Internal = sig
+module type Parsers_int = sig
+  include Junkless_int
+
+  val junk : unit t
+end
+
+(** Parser combinators that *don't* handle trailing whitespace / comments. *)
+module Junkless : Junkless_int = struct
+  include Angstrom
+
   type +'a t = ('a * OptRange.t) Angstrom.t
 
-  val is_alpha : char -> bool
-  val is_digit : char -> bool
-  val is_whitespace : char -> bool
-  val integer_lit : string t
-  val integer_or_float_lit : (string, float) Either.t t
-  val string_lit : string t
-  val char_lit : char t
-  val identifier : string t
-  val pos : 'a t -> OptRange.t Angstrom.t
-  val value : 'a t -> 'a Angstrom.t
-end
-
-module Internal : Internal = struct
-  let ( ( *> )
-      , ( <* )
-      , ( >>= )
-      , ( >>| )
-      , advance
-      , any_char
-      , char
-      , choice
-      , fail
-      , lift3
-      , lift4
-      , option
-      , peek_char
-      , pos
-      , return
-      , satisfy
-      , take_while
-      , take_while1 )
-    =
-    Angstrom.(
-      ( ( *> )
-      , ( <* )
-      , ( >>= )
-      , ( >>| )
-      , advance
-      , any_char
-      , char
-      , choice
-      , fail
-      , lift3
-      , lift4
-      , option
-      , peek_char
-      , pos
-      , return
-      , satisfy
-      , take_while
-      , take_while1 ))
-  ;;
-
-  type 'a t = ('a * OptRange.t) Angstrom.t
-
-  let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
-  let is_digit = function '0' .. '9' -> true | _ -> false
-  let is_whitespace = function '\x20' | '\x0a' | '\x0d' | '\x09' -> true | _ -> false
-  let integer_lit_no_range = take_while1 is_digit
+  let integer_lit_no_range = take_while1 Char.is_digit
 
   let integer_lit =
     lift3
@@ -130,7 +80,7 @@ module Internal : Internal = struct
     >>= function
     | Some '-' -> advance 1 >>| fun () -> "-"
     | Some '+' -> advance 1 >>| fun () -> "+"
-    | Some c when is_digit c -> return ""
+    | Some c when Char.is_digit c -> return ""
     | _ -> fail "Sign or digit expected"
   ;;
 
@@ -177,84 +127,82 @@ module Internal : Internal = struct
       pos
   ;;
 
-  let pos p = p >>| fun (_, pos) -> pos
-  let value p = p >>| fun (v, _) -> v
-end
-
-let whitespace = Angstrom.(take_while Internal.is_whitespace *> return ())
-let whitespace1 = Angstrom.(take_while1 Internal.is_whitespace *> return ())
-
-module NoComment : Comment_int = struct
-  let comment = Angstrom.fail "no comment"
-end
-
-module CComment : Comment_int = struct
-  open Angstrom
-
-  let comment =
-    string "//" >>= fun _ -> many (satisfy Char.(fun x -> x <> '\n')) >>| fun _ -> ()
+  let char c =
+    lift3
+      (fun start result finish -> result, Some Range.{ start; finish })
+      pos
+      (char c)
+      pos
   ;;
-end
 
-module Mk (Comment : Comment_int) : Parsers = struct
-  let ( <* ) = Angstrom.( <* )
+  let string str =
+    lift3
+      (fun start result finish -> result, Some Range.{ start; finish })
+      pos
+      (string str)
+      pos
+  ;;
 
-  type 'a t = ('a * OptRange.t) Angstrom.t
+  let mk_list_parser p =
+    Angstrom.lift3
+      (fun start x finish -> List.map ~f:fst x, Some Range.{ start; finish })
+      Angstrom.pos
+      p
+      Angstrom.pos
+  ;;
 
+  let many p = mk_list_parser (Angstrom.many p)
+  let many1 p = mk_list_parser (Angstrom.many1 p)
+  let sep_by s p = mk_list_parser (Angstrom.sep_by s p)
+  let sep_by1 s p = mk_list_parser (Angstrom.sep_by1 s p)
+
+  let sep_end_by s p =
+    let open Angstrom in
+    let seb =
+      fix (fun seb ->
+          let seb1 =
+            p >>= fun x -> choice [ lift2 (fun _ xs -> x :: xs) s seb; return [ x ] ]
+          in
+          choice [ seb1; return [] ])
+    in
+    mk_list_parser seb
+  ;;
+
+  let mk_bracket_parser open_c close_c p =
+    Angstrom.lift3
+      (fun (_, rng1) (v, _) (_, rng2) -> v, OptRange.union rng1 rng2)
+      (char open_c)
+      p
+      (char close_c)
+  ;;
+
+  let parens p = mk_bracket_parser '(' ')' p
+  let braces p = mk_bracket_parser '{' '}' p
+  let brackets p = mk_bracket_parser '[' ']' p
   let ( >>== ) a f = Angstrom.(a >>= fun (a, pos) -> f ~pos a)
   let ( >>= ) a f = a >>== fun ~pos:_ a -> f a
   let ( >>|| ) a f = Angstrom.(a >>| fun (a, pos) -> f ~pos a)
   let ( >>| ) a f = a >>|| fun ~pos a -> f a, pos
   let ( <$> ) f a = a >>| f
   let ( <*> ) f a = f >>= fun f' -> a >>| f'
-  let junk = Angstrom.(many (whitespace1 <|> Comment.comment) >>| fun _ -> (), None)
-
-  let mk_list_parser : ('a * OptRange.t) list Angstrom.t -> 'a list t =
-   fun p ->
-    Angstrom.lift3
-      (fun start lst finish -> List.map lst ~f:fst, Some Range.{ start; finish })
-      Angstrom.pos
-      p
-      Angstrom.pos
- ;;
-
-  let mk_pos_parser : 'a Angstrom.t -> 'a t =
-   fun p ->
-    Angstrom.lift4
-      (fun start result finish _junk -> result, Some Range.{ start; finish })
-      Angstrom.pos
-      p
-      Angstrom.pos
-      junk
- ;;
-
-  let many p = mk_list_parser (Angstrom.many p)
-  let many1 p = mk_list_parser (Angstrom.many1 p)
-  let sep_by s p = mk_list_parser (Angstrom.sep_by s p)
-  let sep_by1 s p = mk_list_parser (Angstrom.sep_by1 s p)
-  let char c = mk_pos_parser (Angstrom.char c)
-
-  let mk_bracket_parser : char -> char -> 'a t -> 'a t =
-   fun open_c close_c p ->
-    Angstrom.lift4
-      (fun (_, rng1) (v, _) (_, rng2) _junk -> v, OptRange.union rng1 rng2)
-      (char open_c)
-      p
-      (char close_c)
-      junk
- ;;
-
-  let identifier = Internal.identifier <* junk
-  let parens p = mk_bracket_parser '(' ')' p
-  let braces p = mk_bracket_parser '{' '}' p
-  let brackets p = mk_bracket_parser '[' ']' p
-  let string str = mk_pos_parser (Angstrom.string str)
-  let integer_lit = Internal.integer_lit <* junk
-  let integer_or_float_lit = Internal.integer_or_float_lit <* junk
-  let string_lit = Internal.string_lit <* junk
-  let char_lit = Internal.char_lit <* junk
   let pos = Angstrom.(pos >>| fun p -> p, OptRange.mk p p)
   let option a = Angstrom.option (a, None)
+  let return ?(pos = None) a = Angstrom.return (a, pos)
+  let attach_pos p = p >>|| fun ~pos t -> (t, pos), pos
+
+  let satisfy f =
+    Angstrom.(pos >>= fun p -> satisfy f >>| fun c -> c, OptRange.mk p (p + 1))
+  ;;
+
+  let count n p =
+    let open Angstrom in
+    pos
+    >>= fun p1 ->
+    count n p
+    >>= fun result ->
+    pos >>= fun p2 -> return (result |> List.map ~f:fst, OptRange.mk p1 p2)
+  ;;
+
   let lift f a = Angstrom.lift (fun (a, pos) -> f a, pos) a
 
   let lift2 f a b =
@@ -282,41 +230,43 @@ module Mk (Comment : Comment_int) : Parsers = struct
       c
       d
   ;;
+end
 
-  let ( <?> ) = Angstrom.( <?> )
-  let ( <|> ) = Angstrom.( <|> )
-  let ( <* ) = Angstrom.( <* )
-  let ( *> ) = Angstrom.( *> )
-  let fail = Angstrom.fail
-  let return ?(pos = None) a = Angstrom.return (a, pos)
-  let fix = Angstrom.fix
-  let choice = Angstrom.choice
-  let attach_pos p = p >>|| fun ~pos t -> (t, pos), pos
+let whitespace = Angstrom.(take_while Char.is_whitespace *> return ())
+let whitespace1 = Angstrom.(take_while1 Char.is_whitespace *> return ())
 
-  let sep_end_by s p =
-    let open Angstrom in
-    let seb =
-      fix (fun seb ->
-          let seb1 =
-            p >>= fun x -> choice [ lift2 (fun _ xs -> x :: xs) s seb; return [ x ] ]
-          in
-          choice [ seb1; return [] ])
-    in
-    mk_list_parser seb
+module NoComment : Comment_int = struct
+  let comment = Angstrom.fail "no comment"
+end
+
+(** C-style comments *)
+module CComment : Comment_int = struct
+  open Angstrom
+
+  let comment =
+    string "//" >>= fun _ -> many (satisfy Char.(fun x -> x <> '\n')) >>| fun _ -> ()
   ;;
+end
 
-  let satisfy f =
-    Angstrom.(pos >>= fun p -> satisfy f >>| fun c -> c, OptRange.mk p (p + 1))
-  ;;
+(** Parser combinators that clean up trailing whitespace / comments. *)
+module Mk (Comment : Comment_int) : Parsers_int = struct
+  include Junkless
 
-  let count n p =
-    Angstrom.(
-      pos
-      >>= fun p1 ->
-      count n p
-      >>= fun result ->
-      pos >>= fun p2 -> return (result |> List.map ~f:fst, OptRange.mk p1 p2))
-  ;;
+  let junk = Angstrom.(many (whitespace1 <|> Comment.comment) >>| fun _ -> (), None)
+  let char_lit = char_lit <* junk
+  let identifier = identifier <* junk
+  let integer_lit = integer_lit <* junk
+  let integer_or_float_lit = integer_or_float_lit <* junk
+  let string_lit = string_lit <* junk
+  let char c = char c <* junk
+  let string str = string str <* junk
+  let many p = many p <* junk
+  let many1 p = many1 p <* junk
+  let sep_by s p = sep_by s p <* junk
+  let sep_by1 s p = sep_by1 s p <* junk
+  let parens p = parens (junk *> p) <* junk
+  let braces p = braces (junk *> p) <* junk
+  let brackets p = brackets (junk *> p) <* junk
 end
 
 let%test_module "Parsing" =
@@ -325,7 +275,7 @@ let%test_module "Parsing" =
       Result.equal (Lvca_util.Tuple2.equal String.( = ) OptRange.( = )) String.( = )
     ;;
 
-    module Parse = Mk (NoComment)
+    module Parse = Mk (CComment)
 
     let mk a b = Some (Range.mk a b)
 
@@ -384,6 +334,25 @@ let%test_module "Parsing" =
     let%test _ =
       parse_string_pos Parse.(sep_end_by (char ';') string_lit) {|"abc"; "def";|}
       = Ok ([ "abc"; "def" ], mk 0 13)
+    ;;
+
+    let%expect_test _ =
+      let open Junkless in
+      let junk = Parse.junk in
+      let parse =
+        parse_string_pos
+          (sep_by1 (junk *> string "->") (junk *> char '*') <* junk <* string "foo")
+      in
+      let result1 = parse "* -> *\nfoo" in
+      (*                   0123456 7890 *)
+      let result2 = parse "* -> * // asjdflksajfklasjfsal\nfoo" in
+      (*                   0123456789012345678901234567890 1234
+                                     1         2         3
+       *)
+      (match result1, result2 with
+      | Ok (_, rng1), Ok (_, rng2) -> Fmt.pr "%a, %a\n" OptRange.pp rng1 OptRange.pp rng2
+      | _ -> Fmt.pr "not okay\n");
+      [%expect {|{0,6}, {0,6}|}]
     ;;
   end)
 ;;

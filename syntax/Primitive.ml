@@ -6,7 +6,7 @@ module type PlainBase_s = sig
 
   val pp : t Fmt.t
   val ( = ) : t -> t -> bool
-  val parse : (module ParseUtil.Parsers) -> t ParseUtil.t
+  val parse : (module ParseUtil.Parsers_int) -> t ParseUtil.t
 end
 
 module Make (PlainBase : PlainBase_s) = struct
@@ -43,7 +43,7 @@ module Integer = Make (struct
   let pp ppf x = Fmt.string ppf (Z.to_string x)
   let ( = ) x1 x2 = (Z.Compare.(x1 = x2) [@warning "-44"])
 
-  let parse (module Parsers : ParseUtil.Parsers) =
+  let parse (module Parsers : ParseUtil.Parsers_int) =
     Parsers.(integer_lit >>| Z.of_string <?> "integer")
   ;;
 end)
@@ -54,7 +54,7 @@ module Float = Make (struct
   let pp ppf = Fmt.pf ppf "%f"
   let ( = ) = Float.( = )
 
-  let parse (module Parsers : ParseUtil.Parsers) =
+  let parse (module Parsers : ParseUtil.Parsers_int) =
     let open Parsers in
     integer_or_float_lit
     >>= (function First _ -> fail "TODO" | Second f -> return f)
@@ -67,7 +67,7 @@ module Char = Make (struct
 
   let pp = Fmt.quote ~mark:"\'" Fmt.char
   let ( = ) = Char.( = )
-  let parse (module Parsers : ParseUtil.Parsers) = Parsers.(char_lit <?> "char")
+  let parse (module Parsers : ParseUtil.Parsers_int) = Parsers.(char_lit <?> "char")
 end)
 
 module Int = Make (struct
@@ -76,7 +76,7 @@ module Int = Make (struct
   let pp = Fmt.int
   let ( = ) = Int.( = )
 
-  let parse (module Parsers : ParseUtil.Parsers) =
+  let parse (module Parsers : ParseUtil.Parsers_int) =
     Parsers.(integer_lit >>| Int.of_string <?> "int")
   ;;
 end)
@@ -87,7 +87,7 @@ module Int32 = Make (struct
   let pp = Fmt.int32
   let ( = ) = Int32.( = )
 
-  let parse (module Parsers : ParseUtil.Parsers) =
+  let parse (module Parsers : ParseUtil.Parsers_int) =
     Parsers.(integer_lit >>| Int32.of_string <?> "int32")
   ;;
 end)
@@ -97,7 +97,7 @@ module String = Make (struct
 
   let pp = Fmt.(quote string)
   let ( = ) = String.( = )
-  let parse (module Parsers : ParseUtil.Parsers) = Parsers.(string_lit <?> "string")
+  let parse (module Parsers : ParseUtil.Parsers_int) = Parsers.(string_lit <?> "string")
 end)
 
 module Plain = struct
