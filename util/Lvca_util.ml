@@ -130,9 +130,9 @@ module String = struct
  ;;
 end
 
-exception InvariantViolation of string
+exception InvariantViolation of Lexing.position option * string
 
-let invariant_violation str = raise (InvariantViolation str)
+let invariant_violation ?here str = raise (InvariantViolation (here, str))
 
 module List = struct
   let rec snoc xs x = match xs with [] -> [ x ] | x' :: xs -> x' :: snoc xs x
@@ -174,7 +174,7 @@ module List = struct
   ;;
 
   let split_exn = function
-    | [] -> invariant_violation "split_exn: called with empty sorts"
+    | [] -> invariant_violation ~here:[%here] "called with empty sorts"
     | x :: xs -> x, xs
   ;;
 end
@@ -184,9 +184,9 @@ module Option = struct
    fun err -> function None -> raise err | Some a -> a
  ;;
 
-  let get_invariant : (unit -> string) -> 'a option -> 'a =
-   fun msg -> function
-    | None -> raise (InvariantViolation ("invariant violation: " ^ msg ()))
+  let get_invariant : ?here:Lexing.position -> (unit -> string) -> 'a option -> 'a =
+   fun ?here msg -> function
+    | None -> raise (InvariantViolation (here, "invariant violation: " ^ msg ()))
     | Some a -> a
  ;;
 end
