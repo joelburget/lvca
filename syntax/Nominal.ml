@@ -421,7 +421,7 @@ module Term = struct
     | Ignored (info, name) -> Var (info, "_" ^ name)
   ;;
 
-  module Parse (Comment : ParseUtil.Comment_int) = struct
+  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
     module Parsers = ParseUtil.Mk (Comment)
     module Primitive = Primitive.Parse (Comment)
 
@@ -475,10 +475,10 @@ module Term = struct
           choice
             [ (Primitive.t >>| fun prim -> Primitive prim)
             ; (identifier
-              >>== fun ~pos:ident_pos ident ->
+              >>== fun ParseResult.{ value = ident; range = ident_pos; _ } ->
               choice
                 [ (parens (many tm_or_sep)
-                  >>== fun ~pos:parens_pos tokens ->
+                  >>== fun ParseResult.{ value = tokens; range = parens_pos; _ } ->
                   accumulate (OptRange.union pre_ident_pos parens_pos) ident tokens)
                 ; (let pos = OptRange.(union pre_ident_pos ident_pos) in
                    return ~pos (Var (pos, ident)))

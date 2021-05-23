@@ -35,7 +35,7 @@ module type ExtendedTermS = sig
   val deserialize : Bytes.t -> unit t option
   val hash : _ t -> string
 
-  module Parse (Comment : ParseUtil.Comment_int) : sig
+  module Parse (Comment : ParseUtil_intf.Comment_s) : sig
     val whitespace_t : OptRange.t t ParseUtil.t
   end
 end
@@ -73,7 +73,7 @@ struct
   let deserialize buf = buf |> Lvca_util.Cbor.decode |> Option.bind ~f:unjsonify
   let hash tm = tm |> serialize |> Lvca_util.Sha256.hash
 
-  module Parse (Comment : ParseUtil.Comment_int) = struct
+  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
     module Parsers = ParseUtil.Mk (Comment)
     module Parse = Object.Parse (Comment)
 

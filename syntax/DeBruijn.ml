@@ -127,7 +127,7 @@ module Kernel = struct
     | Some tm -> Nominal.Term.pp_generic ~open_loc ~close_loc ppf tm
   ;;
 
-  module Parse (Comment : ParseUtil.Comment_int) = struct
+  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
     module NParse = Nominal.Term.Parse (Comment)
     module Parsers = ParseUtil.Mk (Comment)
     open Parsers

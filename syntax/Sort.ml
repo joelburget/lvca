@@ -89,29 +89,37 @@ let rec map_info ~f = function
 ;;
 
 let erase_info sort = map_info ~f:(fun _ -> ()) sort
+
+(** Split a sort into a name and its arguments. *)
 let split = function Name (_, name) -> name, [] | Ap (_, name, args) -> name, args
 
-module Parse (Comment : ParseUtil.Comment_int) = struct
+module Parse (Comment : ParseUtil_intf.Comment_s) = struct
   module Parsers = ParseUtil.Mk (Comment)
   open Parsers
+
+  let parse_string = parse_string
 
   let t =
     fix (fun sort ->
         let atomic_sort =
           choice
-            [ parens sort; (identifier >>|| fun ~pos ident -> Name (pos, ident), pos) ]
+            [ parens sort
+            ; (identifier
+              >>|| fun ParseResult.{ value; range; latest_pos } ->
+              { latest_pos; value = Name (range, value); range })
+            ]
         in
         many1 atomic_sort
-        >>== fun ~pos atoms ->
+        >>== fun ParseResult.{ value = atoms; range; _ } ->
         match atoms with
         (* A single ap is just parenthesized. An ap applied to things is a problem. *)
-        | [ (Ap _ as atom) ] -> return ~pos atom
+        | [ (Ap _ as atom) ] -> return ~pos:range atom
         | Ap _ :: _ ->
           fail
             "Higher-order sorts are not allowed. The head of a sort application must be \
              concrete"
-        | [ Name (pos, name) ] -> return ~pos (Name (pos, name))
-        | Name (_, name) :: args -> return ~pos (Ap (pos, name, args))
+        | [ (Name _ as value) ] -> return ~pos:range value
+        | Name (_, name) :: args -> return ~pos:range (Ap (range, name, args))
         | [] -> assert false)
   ;;
 end
@@ -121,8 +129,8 @@ let%test_module "Sort_Parser" =
     module Parse = Parse (ParseUtil.NoComment)
 
     let parse_with parser str =
-      match Angstrom.parse_string ~consume:All parser str with
-      | Ok (t, _pos) -> t
+      match Parse.parse_string parser str with
+      | Ok value -> value
       | Error msg -> failwith msg
     ;;
 

@@ -473,7 +473,7 @@ module Properties = struct
   ;;
 end
 
-module Parse (Comment : ParseUtil.Comment_int) = struct
+module Parse (Comment : ParseUtil_intf.Comment_s) = struct
   module Parsers = ParseUtil.Mk (Comment)
   module Pat = Pattern.Parse (Comment)
   module Term = NonBinding.Parse (Comment)

@@ -238,7 +238,7 @@ let check lang ~pattern_sort ~var_sort =
   check pattern_sort
 ;;
 
-module Parse (Comment : ParseUtil.Comment_int) = struct
+module Parse (Comment : ParseUtil_intf.Comment_s) = struct
   module Parsers = ParseUtil.Mk (Comment)
   module Prim = Primitive.Parse (Comment)
 
@@ -248,16 +248,16 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         choice
           [ (Prim.t >>| fun prim -> Primitive prim)
           ; (identifier
-            >>== fun ~pos ident ->
+            >>== fun { value = ident; range; _ } ->
             if ident.[0] = '_'
-            then return ~pos (Ignored (pos, String.subo ~pos:1 ident))
+            then return ~pos:range (Ignored (range, String.subo ~pos:1 ident))
             else
               choice
                 [ (parens (sep_end_by (char ';') pat)
-                  >>|| fun ~pos:finish children ->
-                  let pos = OptRange.union pos finish in
-                  Operator (pos, ident, children), pos)
-                ; return ~pos (Var (pos, ident))
+                  >>|| fun ParseResult.{ value = children; range = finish; latest_pos } ->
+                  let range = OptRange.union range finish in
+                  { value = Operator (range, ident, children); range; latest_pos })
+                ; return ~pos:range (Var (range, ident))
                 ]
               <?> "pattern body")
           ])

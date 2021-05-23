@@ -18,7 +18,7 @@ module Kind : sig
   val pp : _ t Fmt.t
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
-  module Parse (Comment : ParseUtil.Comment_int) : sig
+  module Parse (Comment : ParseUtil_intf.Comment_s) : sig
     val t : Lvca_provenance.OptRange.t t ParseUtil.t
     val decl : (string * Lvca_provenance.OptRange.t t) ParseUtil.t
   end
@@ -58,7 +58,7 @@ module SortSlot : sig
   (** Instantiate concrete vars in a sort *)
   val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
 
-  module Parse (Comment : ParseUtil.Comment_int) : sig
+  module Parse (Comment : ParseUtil_intf.Comment_s) : sig
     val t : Lvca_provenance.OptRange.t t ParseUtil.t
   end
 end
@@ -76,7 +76,7 @@ module Valence : sig
   (** Instantiate concrete vars in a valence *)
   val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
 
-  module Parse (Comment : ParseUtil.Comment_int) : sig
+  module Parse (Comment : ParseUtil_intf.Comment_s) : sig
     val t : Lvca_provenance.OptRange.t t ParseUtil.t
   end
 end
@@ -94,7 +94,7 @@ module Arity : sig
   (** Instantiate concrete vars in an arity *)
   val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
 
-  module Parse (Comment : ParseUtil.Comment_int) : sig
+  module Parse (Comment : ParseUtil_intf.Comment_s) : sig
     val t : Lvca_provenance.OptRange.t t ParseUtil.t
   end
 end
@@ -109,7 +109,7 @@ module OperatorDef : sig
   val pp : _ t Fmt.t
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
-  module Parse (Comment : ParseUtil.Comment_int) : sig
+  module Parse (Comment : ParseUtil_intf.Comment_s) : sig
     val t : Lvca_provenance.OptRange.t t ParseUtil.t
   end
 end
@@ -136,7 +136,7 @@ module SortDef : sig
     -> 'info t
     -> Lvca_util.Int.Set.t Lvca_util.String.Map.t
 
-  module Parse (Comment : ParseUtil.Comment_int) : sig
+  module Parse (Comment : ParseUtil_intf.Comment_s) : sig
     val t : (string * Lvca_provenance.OptRange.t t) ParseUtil.t
   end
 end
@@ -177,7 +177,7 @@ val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 (** Check that each sort in the syntax has a consistent arity. *)
 val kind_check : _ t -> (kind_map, kind_mismap) Result.t
 
-module Parse (Comment : ParseUtil.Comment_int) : sig
+module Parse (Comment : ParseUtil_intf.Comment_s) : sig
   val t : Lvca_provenance.OptRange.t t ParseUtil.t
   val whitespace_t : Lvca_provenance.OptRange.t t ParseUtil.t
 end

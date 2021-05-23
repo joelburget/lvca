@@ -37,7 +37,7 @@ module TypingClause = struct
     | _, _ -> false
   ;;
 
-  module Parse (Comment : ParseUtil.Comment_int) = struct
+  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
     module Parsers = ParseUtil.Mk (Comment)
     module Pattern = BindingAwarePattern.Parse (Comment)
     open Parsers
@@ -91,7 +91,7 @@ module Hypothesis = struct
     Map.map env ~f:BindingAwarePattern.erase, TypingClause.erase clause
   ;;
 
-  module Parse (Comment : ParseUtil.Comment_int) = struct
+  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
     module Parsers = ParseUtil.Mk (Comment)
     module TypingClause = TypingClause.Parse (Comment)
     module Pattern = BindingAwarePattern.Parse (Comment)
@@ -162,7 +162,7 @@ module Rule = struct
     }
   ;;
 
-  module Parse (Comment : ParseUtil.Comment_int) = struct
+  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
     module Parsers = ParseUtil.Mk (Comment)
     module Hypothesis = Hypothesis.Parse (Comment)
     open Parsers
@@ -170,12 +170,11 @@ module Rule = struct
     let identifier, char, parens = Parsers.(identifier, char, parens)
 
     let bar =
-      Angstrom.(
-        lift3
-          (fun start result finish -> result, Some Range.{ start; finish })
-          pos
-          (string "--") (* use Angstrom.string to prevent spaces here *)
-          pos)
+      lift3
+        (fun start result finish -> result, Some Range.{ start; finish })
+        pos
+        (string "--") (* use Angstrom.string to prevent spaces here *)
+        pos
     ;;
 
     let line : string option Parsers.t =
@@ -208,13 +207,13 @@ type 'a t = 'a Rule.t list
 
 let erase = List.map ~f:Rule.erase
 
-module Parse (Comment : ParseUtil.Comment_int) = struct
+module Parse (Comment : ParseUtil_intf.Comment_s) = struct
   module Parsers = ParseUtil.Mk (Comment)
   module Rule = Rule.Parse (Comment)
   open Parsers
 
   let t = many Rule.t
-  let whitespace_t = ParseUtil.whitespace *> t
+  let whitespace_t = whitespace *> t
 end
 
 let%test_module "Parsing" =

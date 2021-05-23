@@ -345,7 +345,7 @@ let eval_primitive eval_ctx eval_ctx' ctx tm name args =
     failwith (Printf.sprintf "Unknown function (%s), or wrong number of arguments" name)
 ;;
 
-module Parse (Comment : ParseUtil.Comment_int) = struct
+module Parse (Comment : ParseUtil_intf.Comment_s) = struct
   module Parsers = ParseUtil.Mk (Comment)
   module Term = Nominal.Term.Parse (Comment)
   module ParsePrimitive = Primitive.Parse (Comment)
@@ -377,7 +377,9 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         let atomic_term =
           choice
             [ parens term
-            ; (identifier >>|| fun ~pos ident -> Var (pos, ident), pos)
+            ; (identifier
+              >>|| fun { value; range; latest_pos } ->
+              { value = Var (range, value); range; latest_pos })
             ; braces Term.t >>| (fun tm -> Term tm) <?> "quoted term"
             ]
         in
@@ -682,13 +684,12 @@ let%test_module "Core eval" =
 
 let%test_module "Core pretty" =
   (module struct
+    module Parsers = ParseUtil.Mk (ParseUtil.CComment)
     module ParseCore = Parse (ParseUtil.CComment)
 
     let pretty width str =
       let str =
-        match
-          ParseUtil.parse_string Angstrom.(ParseUtil.whitespace *> ParseCore.term) str
-        with
+        match ParseUtil.parse_string Parsers.(junk *> ParseCore.term) str with
         | Error err -> err
         | Ok core ->
           let module Format = Stdlib.Format in

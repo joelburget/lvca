@@ -321,7 +321,7 @@ let check check_prim lang sort =
   check sort
 ;;
 
-module Parse (Comment : ParseUtil.Comment_int) = struct
+module Parse (Comment : ParseUtil_intf.Comment_s) = struct
   type 'info pattern = 'info t
 
   module Parsers = ParseUtil.Mk (Comment)
@@ -399,6 +399,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   ;;
 
   let whitespace_t = Parsers.(junk *> t)
+  let parse_string = Parsers.parse_string
 end
 
 module Properties = struct
@@ -406,7 +407,7 @@ module Properties = struct
   module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
   open PropertyResult
 
-  let parse = ParseUtil.parse_string ParsePattern.t
+  let parse = ParsePattern.parse_string ParsePattern.t
   let to_string = Fmt.to_to_string pp
 
   let string_round_trip1 t =
@@ -446,7 +447,7 @@ let%test_module "Parsing" =
     ;;
 
     let print_parse tm =
-      match ParseUtil.parse_string Parser.t tm with
+      match Parser.parse_string Parser.t tm with
       | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range pat
       | Error msg -> Fmt.pr "failed: %s\n" msg
     ;;
@@ -520,12 +521,12 @@ let%test_module "check" =
     module SortParse = Sort.Parse (ParseUtil.NoComment)
 
     let parse_lang lang_str =
-      ParseUtil.parse_string AbstractSyntaxParse.whitespace_t lang_str
+      Parser.parse_string AbstractSyntaxParse.whitespace_t lang_str
       |> Result.ok_or_failwith
     ;;
 
-    let parse_pattern str = ParseUtil.parse_string Parser.t str |> Result.ok_or_failwith
-    let parse_sort str = ParseUtil.parse_string SortParse.t str
+    let parse_pattern str = Parser.parse_string Parser.t str |> Result.ok_or_failwith
+    let parse_sort str = Parser.parse_string SortParse.t str
 
     let lang_desc =
       {|
@@ -716,11 +717,8 @@ let%test_module "check" =
     module ParseNominal = Nominal.Term.Parse (ParseUtil.NoComment)
     module SortParse = Sort.Parse (ParseUtil.NoComment)
 
-    let parse_pattern str = ParseUtil.parse_string Parser.t str |> Result.ok_or_failwith
-
-    let parse_term str =
-      ParseUtil.parse_string ParseNominal.t str |> Result.ok_or_failwith
-    ;;
+    let parse_pattern str = Parser.parse_string Parser.t str |> Result.ok_or_failwith
+    let parse_term str = Parser.parse_string ParseNominal.t str |> Result.ok_or_failwith
 
     let print_match pat_str tm_str =
       let pattern = parse_pattern pat_str in

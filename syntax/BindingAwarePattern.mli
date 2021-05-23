@@ -101,7 +101,7 @@ val check
   -> ('info capture_type Lvca_util.String.Map.t, ('info, 'info t) CheckFailure.t) Result.t
 
 (** {1 Parsing} *)
-module Parse (Comment : ParseUtil.Comment_int) : sig
+module Parse (Comment : ParseUtil_intf.Comment_s) : sig
   val t : Lvca_provenance.OptRange.t t ParseUtil.t
   val whitespace_t : Lvca_provenance.OptRange.t t ParseUtil.t
 end

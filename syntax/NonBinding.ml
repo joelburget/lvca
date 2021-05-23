@@ -94,7 +94,7 @@ let rec select_path ~path tm =
       | Some tm -> select_path ~path tm))
 ;;
 
-module Parse (Comment : ParseUtil.Comment_int) = struct
+module Parse (Comment : ParseUtil_intf.Comment_s) = struct
   module Parsers = ParseUtil.Mk (Comment)
   module ParsePrim = Primitive.Parse (Comment)
 
@@ -104,11 +104,12 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         choice
           [ (ParsePrim.t >>| fun prim -> Primitive prim)
           ; (identifier
-            >>== fun ~pos:start ident ->
+            >>== fun ParseResult.{ value = ident; range = start; _ } ->
             parens (sep_end_by (char ';') term)
-            >>|| (fun ~pos:finish children ->
+            >>|| (fun ParseResult.{ value = children; range = finish; latest_pos } ->
                    let pos = OptRange.union start finish in
-                   Operator (pos, ident, children), pos)
+                   ParseResult.
+                     { value = Operator (pos, ident, children); range = pos; latest_pos })
             <?> "term body")
           ])
     <?> "term"

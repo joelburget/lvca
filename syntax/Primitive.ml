@@ -6,7 +6,7 @@ module type PlainBase_s = sig
 
   val pp : t Fmt.t
   val ( = ) : t -> t -> bool
-  val parse : (module ParseUtil.Parsers_int) -> t ParseUtil.t
+  val parse : (module ParseUtil_intf.Parsers_s) -> t ParseUtil.t
 end
 
 module Make (PlainBase : PlainBase_s) = struct
@@ -27,12 +27,14 @@ module Make (PlainBase : PlainBase_s) = struct
     close_loc ppf i
   ;;
 
-  module Parse (Comment : ParseUtil.Comment_int) = struct
+  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
     module Parsers = ParseUtil.Mk (Comment)
+    open Parsers
 
     let t =
-      let ( >>|| ) = Parsers.( >>|| ) in
-      PlainBase.parse (module Parsers) >>|| fun ~pos t -> (pos, t), pos
+      PlainBase.parse (module Parsers)
+      >>|| fun (ParseResult.{ value; range; _ } as parse_result) ->
+      { parse_result with value = range, value }
     ;;
   end
 end
@@ -43,7 +45,7 @@ module Integer = Make (struct
   let pp ppf x = Fmt.string ppf (Z.to_string x)
   let ( = ) x1 x2 = (Z.Compare.(x1 = x2) [@warning "-44"])
 
-  let parse (module Parsers : ParseUtil.Parsers_int) =
+  let parse (module Parsers : ParseUtil_intf.Parsers_s) =
     Parsers.(integer_lit >>| Z.of_string <?> "integer")
   ;;
 end)
@@ -54,7 +56,7 @@ module Float = Make (struct
   let pp ppf = Fmt.pf ppf "%f"
   let ( = ) = Float.( = )
 
-  let parse (module Parsers : ParseUtil.Parsers_int) =
+  let parse (module Parsers : ParseUtil_intf.Parsers_s) =
     let open Parsers in
     integer_or_float_lit
     >>= (function First _ -> fail "TODO" | Second f -> return f)
@@ -67,7 +69,7 @@ module Char = Make (struct
 
   let pp = Fmt.quote ~mark:"\'" Fmt.char
   let ( = ) = Char.( = )
-  let parse (module Parsers : ParseUtil.Parsers_int) = Parsers.(char_lit <?> "char")
+  let parse (module Parsers : ParseUtil_intf.Parsers_s) = Parsers.(char_lit <?> "char")
 end)
 
 module Int = Make (struct
@@ -76,7 +78,7 @@ module Int = Make (struct
   let pp = Fmt.int
   let ( = ) = Int.( = )
 
-  let parse (module Parsers : ParseUtil.Parsers_int) =
+  let parse (module Parsers : ParseUtil_intf.Parsers_s) =
     Parsers.(integer_lit >>| Int.of_string <?> "int")
   ;;
 end)
@@ -87,7 +89,7 @@ module Int32 = Make (struct
   let pp = Fmt.int32
   let ( = ) = Int32.( = )
 
-  let parse (module Parsers : ParseUtil.Parsers_int) =
+  let parse (module Parsers : ParseUtil_intf.Parsers_s) =
     Parsers.(integer_lit >>| Int32.of_string <?> "int32")
   ;;
 end)
@@ -97,7 +99,10 @@ module String = Make (struct
 
   let pp = Fmt.(quote string)
   let ( = ) = String.( = )
-  let parse (module Parsers : ParseUtil.Parsers_int) = Parsers.(string_lit <?> "string")
+
+  let parse (module Parsers : ParseUtil_intf.Parsers_s) =
+    Parsers.(string_lit <?> "string")
+  ;;
 end)
 
 module Plain = struct
@@ -156,23 +161,20 @@ let check prim sort =
          (to_string prim))
 ;;
 
-module Parse (Comment : ParseUtil.Comment_int) = struct
+module Parse (Comment : ParseUtil_intf.Comment_s) = struct
   module Parsers = ParseUtil.Mk (Comment)
+  open Parsers
 
-  let t : OptRange.t t Parsers.t =
-    let open Parsers in
+  let t =
     choice
       [ (integer_or_float_lit
-        >>|| fun ~pos i_or_f ->
-        let tm =
-          match i_or_f with
-          | First i -> pos, Plain.Integer (Z.of_string i)
-          | Second f -> pos, Float f
-        in
-        tm, pos)
-      ; (string_lit >>|| fun ~pos s -> (pos, Plain.String s), pos)
-      ; (char_lit >>|| fun ~pos c -> (pos, Plain.Char c), pos)
+        >>| function First i -> Plain.Integer (Z.of_string i) | Second f -> Float f)
+      ; (string_lit >>| fun s -> Plain.String s)
+      ; (char_lit >>| fun c -> Plain.Char c)
       ]
+    >>|| (fun parse_result ->
+           let value = parse_result.range, parse_result.value in
+           { parse_result with value })
     <?> "primitive"
   ;;
 end
@@ -260,7 +262,7 @@ let%test_module "Parsing" =
 
     let print_parse str =
       match ParseUtil.parse_string_pos ParsePrimitive.t str with
-      | Ok (prim, range) -> Fmt.pr "%a %a" pp prim OptRange.pp range
+      | Ok { value = prim; range; _ } -> Fmt.pr "%a %a" pp prim OptRange.pp range
       | Error msg -> Fmt.pr "%s" msg
     ;;
 

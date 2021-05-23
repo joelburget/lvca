@@ -30,7 +30,7 @@ val of_nominal_with_bindings
 (** Are the two terms equivalent up to variable renaming? *)
 val alpha_equivalent : 'a term -> 'b term -> bool
 
-module Parse (Comment : ParseUtil.Comment_int) : sig
+module Parse (Comment : ParseUtil_intf.Comment_s) : sig
   val t : Lvca_provenance.OptRange.t term ParseUtil.t
   val whitespace_t : Lvca_provenance.OptRange.t term ParseUtil.t
 end

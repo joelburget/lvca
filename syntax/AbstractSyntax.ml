@@ -7,9 +7,7 @@ module ISet = Lvca_util.Int.Set
 
 let test_parse_with : 'a ParseUtil.t -> string -> 'a =
  fun p str ->
-  match Angstrom.parse_string ~consume:All p str with
-  | Ok (t, _pos) -> t
-  | Error msg -> failwith msg
+  match ParseUtil.parse_string p str with Ok value -> value | Error msg -> failwith msg
 ;;
 
 module Kind = struct
@@ -27,13 +25,14 @@ module Kind = struct
 
   let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
-  module Parse (Comment : ParseUtil.Comment_int) = struct
+  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
     module Parsers = ParseUtil.Mk (Comment)
     open Parsers
 
     let t =
       sep_by1 (string "->") (char '*')
-      >>|| (fun ~pos stars -> Kind (pos, List.length stars), pos)
+      >>|| (fun (ParseResult.{ value = stars; range; _ } as parse_result) ->
+             { parse_result with value = Kind (range, List.length stars) })
       <?> "kind"
     ;;
 
@@ -114,7 +113,7 @@ module SortSlot = struct
       [ pattern_sort; var_sort ] |> List.fold ~init:env ~f:Sort.kind_check
   ;;
 
-  module Parse (Comment : ParseUtil.Comment_int) = struct
+  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
     module Sort = Sort.Parse (Comment)
     module Parsers = ParseUtil.Mk (Comment)
     open Parsers
@@ -171,7 +170,7 @@ module Valence = struct
     Sort.kind_check env value_sort
   ;;
 
-  module Parse (Comment : ParseUtil.Comment_int) = struct
+  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
     module ParseSortSlot = SortSlot.Parse (Comment)
     module Parsers = ParseUtil.Mk (Comment)
     open Parsers
@@ -208,7 +207,7 @@ module Arity = struct
   let erase arity = map_info ~f:(Fn.const ()) arity
   let instantiate env = List.map ~f:(Valence.instantiate env)
 
-  module Parse (Comment : ParseUtil.Comment_int) = struct
+  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
     module Valence = Valence.Parse (Comment)
     module Parsers = ParseUtil.Mk (Comment)
 
@@ -245,7 +244,7 @@ module Arity = struct
       ;;
 
       let expect_okay str =
-        match Angstrom.parse_string ~consume:All Parse.t str with
+        match ParseUtil.parse_string Parse.t str with
         | Ok _ -> ()
         | Error msg -> Stdio.print_string msg
       ;;
@@ -284,7 +283,7 @@ module OperatorDef = struct
 
   let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
-  module Parse (Comment : ParseUtil.Comment_int) = struct
+  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
     module Parsers = ParseUtil.Mk (Comment)
     module ParseArity = Arity.Parse (Comment)
     open Parsers
@@ -373,27 +372,28 @@ module SortDef = struct
     pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ~name ppf t
   ;;
 
-  module Parse (Comment : ParseUtil.Comment_int) = struct
+  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
     module Parsers = ParseUtil.Mk (Comment)
     module OperatorDef = OperatorDef.Parse (Comment)
     module Kind = Kind.Parse (Comment)
     open Parsers
 
-    let assign = string ":="
-    let bar = char '|'
+    let assign = string ":=" <* junk
+    let bar = char '|' <* junk
 
     let sort_var_decl =
       choice
         [ (identifier >>| fun name -> name, None)
         ; (parens Kind.decl >>| fun (name, kind) -> name, Some kind)
         ]
+      <* junk
       <?> "sort variable declaration"
     ;;
 
     let t =
       lift4
         (fun name vars _assign op_defs -> name, SortDef (vars, op_defs))
-        identifier
+        (identifier <* junk)
         (many sort_var_decl)
         assign
         (option '|' bar *> sep_by bar OperatorDef.t)
@@ -584,7 +584,7 @@ let kind_check { externals; sort_defs } =
   | _ -> Error (SMap.of_alist_exn mismapped_vars)
 ;;
 
-module Parse (Comment : ParseUtil.Comment_int) = struct
+module Parse (Comment : ParseUtil_intf.Comment_s) = struct
   module Parsers = ParseUtil.Mk (Comment)
   module Kind = Kind.Parse (Comment)
   module SortDef = SortDef.Parse (Comment)
