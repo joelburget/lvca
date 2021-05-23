@@ -127,20 +127,18 @@ module Kernel = struct
     | Some tm -> Nominal.Term.pp_generic ~open_loc ~close_loc ppf tm
   ;;
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-    module NParse = Nominal.Term.Parse (Comment)
-    module Parsers = ParseUtil.Mk (Comment)
-    open Parsers
+  module Parse = struct
+    open ParseUtil.Parsers
 
     let t =
-      NParse.t
+      Nominal.Term.Parse.t
       >>= fun tm ->
       match of_nominal tm with
       | Ok tm -> return tm
       | Error _scope -> fail "DeBruijn.Parse.t: failed to convert from nominal"
     ;;
 
-    let whitespace_t = Parsers.(junk *> t)
+    let whitespace_t = whitespace *> t
   end
 end
 

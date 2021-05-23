@@ -83,7 +83,7 @@ val check
 
 (** {1 Parsing} *)
 
-module Parse (Comment : ParseUtil_intf.Comment_s) : sig
+module Parse : sig
   val t : Lvca_provenance.OptRange.t t ParseUtil.t
   val whitespace_t : Lvca_provenance.OptRange.t t ParseUtil.t
 end

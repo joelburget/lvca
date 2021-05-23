@@ -25,8 +25,8 @@ module Kind = struct
 
   let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-    module Parsers = ParseUtil.Mk (Comment)
+  module Parse = struct
+    module Parsers = ParseUtil.Parsers
     open Parsers
 
     let t =
@@ -113,9 +113,9 @@ module SortSlot = struct
       [ pattern_sort; var_sort ] |> List.fold ~init:env ~f:Sort.kind_check
   ;;
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-    module Sort = Sort.Parse (Comment)
-    module Parsers = ParseUtil.Mk (Comment)
+  module Parse = struct
+    module Sort = Sort.Parse
+    module Parsers = ParseUtil.Parsers
     open Parsers
 
     let t =
@@ -170,9 +170,9 @@ module Valence = struct
     Sort.kind_check env value_sort
   ;;
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-    module ParseSortSlot = SortSlot.Parse (Comment)
-    module Parsers = ParseUtil.Mk (Comment)
+  module Parse = struct
+    module ParseSortSlot = SortSlot.Parse
+    module Parsers = ParseUtil.Parsers
     open Parsers
 
     let t =
@@ -207,17 +207,12 @@ module Arity = struct
   let erase arity = map_info ~f:(Fn.const ()) arity
   let instantiate env = List.map ~f:(Valence.instantiate env)
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-    module Valence = Valence.Parse (Comment)
-    module Parsers = ParseUtil.Mk (Comment)
-
-    let t = Parsers.(parens (sep_by (char ';') Valence.t) <?> "arity")
+  module Parse = struct
+    let t = ParseUtil.Parsers.(parens (sep_by (char ';') Valence.Parse.t) <?> "arity")
   end
 
   let%test_module _ =
     (module struct
-      module Parse = Parse (ParseUtil.NoComment)
-
       let tm = Sort.Name (None, "tm")
       let tm_v = Valence.Valence ([], tm)
       let integer = Sort.Name (None, "integer")
@@ -283,21 +278,17 @@ module OperatorDef = struct
 
   let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-    module Parsers = ParseUtil.Mk (Comment)
-    module ParseArity = Arity.Parse (Comment)
-    open Parsers
+  module Parse = struct
+    open ParseUtil.Parsers
 
     let t =
-      lift2 (fun ident arity -> OperatorDef (ident, arity)) identifier ParseArity.t
+      lift2 (fun ident arity -> OperatorDef (ident, arity)) identifier Arity.Parse.t
       <?> "operator definition"
     ;;
   end
 
   let%test_module _ =
     (module struct
-      module Parse = Parse (ParseUtil.NoComment)
-
       let%test_unit _ =
         let ( = ) = equal ~info_eq:(fun _ _ -> true) in
         assert (test_parse_with Parse.t "foo()" = OperatorDef ("foo", []))
@@ -372,39 +363,33 @@ module SortDef = struct
     pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ~name ppf t
   ;;
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-    module Parsers = ParseUtil.Mk (Comment)
-    module OperatorDef = OperatorDef.Parse (Comment)
-    module Kind = Kind.Parse (Comment)
-    open Parsers
+  module Parse = struct
+    open ParseUtil.Parsers
 
-    let assign = string ":=" <* junk
-    let bar = char '|' <* junk
+    let assign = string ":="
+    let bar = char '|'
 
     let sort_var_decl =
       choice
         [ (identifier >>| fun name -> name, None)
-        ; (parens Kind.decl >>| fun (name, kind) -> name, Some kind)
+        ; (parens Kind.Parse.decl >>| fun (name, kind) -> name, Some kind)
         ]
-      <* junk
       <?> "sort variable declaration"
     ;;
 
     let t =
       lift4
         (fun name vars _assign op_defs -> name, SortDef (vars, op_defs))
-        (identifier <* junk)
+        identifier
         (many sort_var_decl)
         assign
-        (option '|' bar *> sep_by bar OperatorDef.t)
+        (option '|' bar *> sep_by bar OperatorDef.Parse.t)
       <?> "sort definition"
     ;;
   end
 
   let%test_module _ =
     (module struct
-      module Parse = Parse (ParseUtil.NoComment)
-
       let ( = ) = Tuple2.equal String.( = ) (equal ~info_eq:(fun _ _ -> true))
 
       let%test_unit _ =
@@ -584,27 +569,22 @@ let kind_check { externals; sort_defs } =
   | _ -> Error (SMap.of_alist_exn mismapped_vars)
 ;;
 
-module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-  module Parsers = ParseUtil.Mk (Comment)
-  module Kind = Kind.Parse (Comment)
-  module SortDef = SortDef.Parse (Comment)
-  open Parsers
+module Parse = struct
+  open ParseUtil.Parsers
 
   let t =
     lift2
       (fun externals sort_defs -> { externals; sort_defs })
-      (many Kind.decl)
-      (many1 SortDef.t)
+      (many Kind.Parse.decl)
+      (many1 SortDef.Parse.t)
     <?> "abstract syntax"
   ;;
 
-  let whitespace_t = junk *> t
+  let whitespace_t = whitespace *> t
 end
 
 let%test_module _ =
   (module struct
-    module Parse = Parse (ParseUtil.NoComment)
-
     let tm_def =
       let tm = Sort.Name ((), "tm") in
       let tm_v = Valence.Valence ([], tm) in

@@ -421,17 +421,14 @@ module Term = struct
     | Ignored (info, name) -> Var (info, "_" ^ name)
   ;;
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-    module Parsers = ParseUtil.Mk (Comment)
-    module Primitive = Primitive.Parse (Comment)
-
+  module Parse = struct
     type tm_or_sep =
       | Tm of OptRange.t t
       | Sep of char
 
     type 'info term = 'info t
 
-    open Parsers
+    open ParseUtil.Parsers
 
     (* (b11. ... b1n. t11, ... t1n; b21. ... b2n. t21, ... t2n) *)
     let accumulate (range : OptRange.t) (tag : string) (tokens : tm_or_sep list)
@@ -473,7 +470,7 @@ module Term = struct
           >>= fun pre_ident_pos ->
           let pre_ident_pos = OptRange.mk pre_ident_pos pre_ident_pos in
           choice
-            [ (Primitive.t >>| fun prim -> Primitive prim)
+            [ (Primitive.Parse.t >>| fun prim -> Primitive prim)
             ; (identifier
               >>== fun ParseResult.{ value = ident; range = ident_pos; _ } ->
               choice
@@ -487,12 +484,10 @@ module Term = struct
       <?> "term"
     ;;
 
-    let whitespace_t = junk *> t
+    let whitespace_t = whitespace *> t
   end
 
   module Properties = struct
-    module Parse = Parse (ParseUtil.NoComment)
-    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
     open PropertyResult
 
     let parse = ParseUtil.parse_string Parse.t
@@ -693,11 +688,7 @@ let%test_module "Nominal" =
 let%test_module "TermParser" =
   (module struct
     let ( = ) = Result.equal (Term.equal ~info_eq:Unit.( = )) String.( = )
-
-    module ParseNominal = Term.Parse (ParseUtil.NoComment)
-    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
-
-    let parse = ParseUtil.parse_string ParseNominal.whitespace_t
+    let parse = ParseUtil.parse_string Term.Parse.whitespace_t
     let parse_erase str = parse str |> Result.map ~f:Term.erase
 
     let print_parse str =
@@ -823,21 +814,16 @@ match(x; match_lines(
 
 let%test_module "check" =
   (module struct
-    module AbstractSyntaxParse = AbstractSyntax.Parse (ParseUtil.NoComment)
-    module Parser = Term.Parse (ParseUtil.NoComment)
-    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
-    module SortParse = Sort.Parse (ParseUtil.NoComment)
-
     let parse_lang lang_str =
-      ParseUtil.parse_string AbstractSyntaxParse.whitespace_t lang_str
+      ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t lang_str
       |> Result.ok_or_failwith
     ;;
 
     let parse_term term_str =
-      ParseUtil.parse_string Parser.t term_str |> Result.ok_or_failwith
+      ParseUtil.parse_string Term.Parse.t term_str |> Result.ok_or_failwith
     ;;
 
-    let parse_sort str = ParseUtil.parse_string SortParse.t str
+    let parse_sort str = ParseUtil.parse_string Sort.Parse.t str
 
     let lang_desc =
       {|

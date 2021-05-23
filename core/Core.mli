@@ -87,6 +87,6 @@ val preimage : 'info cases -> 'info pattern list
 val reverse : 'info n_term -> 'info cases -> 'info env option
 
 (** {1 Parsing} *)
-module Parse (Comment : Lvca_syntax.ParseUtil_intf.Comment_s) : sig
+module Parse : sig
   val term : OptRange.t term Lvca_syntax.ParseUtil.t
 end

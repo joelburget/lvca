@@ -2,11 +2,6 @@ open Base
 open Lvca_provenance
 open Lvca_syntax
 open Ppxlib
-module ParsePrimitive = Lvca_syntax.Primitive.Parse (ParseUtil.CComment)
-module ParsePattern = Lvca_syntax.Pattern.Parse (ParseUtil.CComment)
-module ParseTerm = Nominal.Term.Parse (ParseUtil.CComment)
-module ParseNonbinding = NonBinding.Parse (ParseUtil.CComment)
-module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
 
 let rec mk_list ~loc = function
   | [] -> [%expr []]

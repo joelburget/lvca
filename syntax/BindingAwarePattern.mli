@@ -1,4 +1,5 @@
 (** Patterns for matching binding terms. *)
+open Lvca_provenance
 
 (** {1 Types} *)
 
@@ -52,11 +53,11 @@ val match_scope
 (** {1 Pretty-printing} *)
 
 val pp : _ t Fmt.t
-val pp_range : Lvca_provenance.OptRange.t t Fmt.t
-val pp_ranges : Lvca_provenance.SourceRanges.t t Fmt.t
+val pp_range : OptRange.t t Fmt.t
+val pp_ranges : SourceRanges.t t Fmt.t
 val pp_scope : _ scope Fmt.t
-val pp_scope_range : Lvca_provenance.OptRange.t scope Fmt.t
-val pp_scope_ranges : Lvca_provenance.SourceRanges.t scope Fmt.t
+val pp_scope_range : OptRange.t scope Fmt.t
+val pp_scope_ranges : SourceRanges.t scope Fmt.t
 val pp_capture : _ capture Fmt.t
 
 (** {1 Info} *)
@@ -101,9 +102,9 @@ val check
   -> ('info capture_type Lvca_util.String.Map.t, ('info, 'info t) CheckFailure.t) Result.t
 
 (** {1 Parsing} *)
-module Parse (Comment : ParseUtil_intf.Comment_s) : sig
-  val t : Lvca_provenance.OptRange.t t ParseUtil.t
-  val whitespace_t : Lvca_provenance.OptRange.t t ParseUtil.t
+module Parse : sig
+  val t : OptRange.t t ParseUtil.t
+  val whitespace_t : OptRange.t t ParseUtil.t
 end
 
 module Properties : sig

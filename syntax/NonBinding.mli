@@ -43,7 +43,7 @@ val pp : _ term Fmt.t
 val pp_range : Lvca_provenance.OptRange.t term Fmt.t
 
 (** {1 Parsing} *)
-module Parse (Comment : ParseUtil_intf.Comment_s) : sig
+module Parse : sig
   val term : Lvca_provenance.OptRange.t term ParseUtil.t
   val whitespace_term : Lvca_provenance.OptRange.t term ParseUtil.t
 end

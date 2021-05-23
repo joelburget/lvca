@@ -6,7 +6,7 @@ module type PlainBase_s = sig
 
   val pp : t Fmt.t
   val ( = ) : t -> t -> bool
-  val parse : (module ParseUtil_intf.Parsers_s) -> t ParseUtil.t
+  val parse : t ParseUtil.t
 end
 
 module Make (PlainBase : PlainBase_s) = struct
@@ -27,12 +27,11 @@ module Make (PlainBase : PlainBase_s) = struct
     close_loc ppf i
   ;;
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-    module Parsers = ParseUtil.Mk (Comment)
-    open Parsers
+  module Parse = struct
+    open ParseUtil.Parsers
 
     let t =
-      PlainBase.parse (module Parsers)
+      PlainBase.parse
       >>|| fun (ParseResult.{ value; range; _ } as parse_result) ->
       { parse_result with value = range, value }
     ;;
@@ -44,10 +43,7 @@ module Integer = Make (struct
 
   let pp ppf x = Fmt.string ppf (Z.to_string x)
   let ( = ) x1 x2 = (Z.Compare.(x1 = x2) [@warning "-44"])
-
-  let parse (module Parsers : ParseUtil_intf.Parsers_s) =
-    Parsers.(integer_lit >>| Z.of_string <?> "integer")
-  ;;
+  let parse = ParseUtil.Parsers.(integer_lit >>| Z.of_string <?> "integer")
 end)
 
 module Float = Make (struct
@@ -56,8 +52,8 @@ module Float = Make (struct
   let pp ppf = Fmt.pf ppf "%f"
   let ( = ) = Float.( = )
 
-  let parse (module Parsers : ParseUtil_intf.Parsers_s) =
-    let open Parsers in
+  let parse =
+    let open ParseUtil.Parsers in
     integer_or_float_lit
     >>= (function First _ -> fail "TODO" | Second f -> return f)
     <?> "float"
@@ -69,7 +65,7 @@ module Char = Make (struct
 
   let pp = Fmt.quote ~mark:"\'" Fmt.char
   let ( = ) = Char.( = )
-  let parse (module Parsers : ParseUtil_intf.Parsers_s) = Parsers.(char_lit <?> "char")
+  let parse = ParseUtil.Parsers.(char_lit <?> "char")
 end)
 
 module Int = Make (struct
@@ -77,10 +73,7 @@ module Int = Make (struct
 
   let pp = Fmt.int
   let ( = ) = Int.( = )
-
-  let parse (module Parsers : ParseUtil_intf.Parsers_s) =
-    Parsers.(integer_lit >>| Int.of_string <?> "int")
-  ;;
+  let parse = ParseUtil.Parsers.(integer_lit >>| Int.of_string <?> "int")
 end)
 
 module Int32 = Make (struct
@@ -88,10 +81,7 @@ module Int32 = Make (struct
 
   let pp = Fmt.int32
   let ( = ) = Int32.( = )
-
-  let parse (module Parsers : ParseUtil_intf.Parsers_s) =
-    Parsers.(integer_lit >>| Int32.of_string <?> "int32")
-  ;;
+  let parse = ParseUtil.Parsers.(integer_lit >>| Int32.of_string <?> "int32")
 end)
 
 module String = Make (struct
@@ -99,10 +89,7 @@ module String = Make (struct
 
   let pp = Fmt.(quote string)
   let ( = ) = String.( = )
-
-  let parse (module Parsers : ParseUtil_intf.Parsers_s) =
-    Parsers.(string_lit <?> "string")
-  ;;
+  let parse = ParseUtil.Parsers.(string_lit <?> "string")
 end)
 
 module Plain = struct
@@ -161,9 +148,8 @@ let check prim sort =
          (to_string prim))
 ;;
 
-module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-  module Parsers = ParseUtil.Mk (Comment)
-  open Parsers
+module Parse = struct
+  open ParseUtil.Parsers
 
   let t =
     choice
@@ -203,8 +189,6 @@ let unjsonify json =
 ;;
 
 module Properties = struct
-  module ParsePrimitive = Parse (ParseUtil.NoComment)
-
   let ( = ) = equal ~info_eq:Unit.( = )
 
   let json_round_trip1 : unit t -> PropertyResult.t =
@@ -229,7 +213,7 @@ module Properties = struct
 
   let string_round_trip1 : unit t -> PropertyResult.t =
    fun t ->
-    match t |> to_string |> ParseUtil.parse_string ParsePrimitive.t with
+    match t |> to_string |> ParseUtil.parse_string Parse.t with
     | Ok prim -> PropertyResult.check (erase prim = t) (Fmt.str "%a <> %a" pp prim pp t)
     | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
  ;;
@@ -237,14 +221,14 @@ module Properties = struct
   (* Note: +1 -> 1. If the first round-trip isn't equal, try once more. *)
   let string_round_trip2 : string -> PropertyResult.t =
    fun str ->
-    match ParseUtil.parse_string ParsePrimitive.t str with
+    match ParseUtil.parse_string Parse.t str with
     | Error _ -> Uninteresting
     | Ok prim ->
       let str' = to_string prim in
       if Base.String.(str' = str)
       then Ok
       else (
-        match ParseUtil.parse_string ParsePrimitive.t str with
+        match ParseUtil.parse_string Parse.t str with
         | Error msg -> Failed msg
         | Ok prim' ->
           let str'' = to_string prim' in
@@ -258,10 +242,8 @@ end
 
 let%test_module "Parsing" =
   (module struct
-    module ParsePrimitive = Parse (ParseUtil.NoComment)
-
     let print_parse str =
-      match ParseUtil.parse_string_pos ParsePrimitive.t str with
+      match ParseUtil.parse_string_pos Parse.t str with
       | Ok { value = prim; range; _ } -> Fmt.pr "%a %a" pp prim OptRange.pp range
       | Error msg -> Fmt.pr "%s" msg
     ;;

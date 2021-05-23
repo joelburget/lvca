@@ -6,7 +6,6 @@ module Util = Lvca_util
 module SSet = Util.String.Set
 module SMap = Util.String.Map
 module Syn = AbstractSyntax
-module ParseAbstract = Syn.Parse (ParseUtil.CComment)
 
 let ( >> ), ( << ) = Util.(( >> ), ( << ))
 

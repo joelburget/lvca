@@ -31,7 +31,7 @@ module TypingClause : sig
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val erase : _ t -> unit t
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) : sig
+  module Parse : sig
     val t : OptRange.t t ParseUtil.t
   end
 end
@@ -46,7 +46,7 @@ module Hypothesis : sig
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val erase : _ t -> unit t
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) : sig
+  module Parse : sig
     val pattern : OptRange.t BindingAwarePattern.t ParseUtil.t
     val typed_term : (string * OptRange.t BindingAwarePattern.t) ParseUtil.t
 
@@ -68,7 +68,7 @@ module Rule : sig
 
   val erase : _ t -> unit t
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) : sig
+  module Parse : sig
     val line : string option ParseUtil.t
 
     (** @raise StaticsParseError *)
@@ -86,7 +86,7 @@ type 'info t = 'info Rule.t list
 
 val erase : _ t -> unit t
 
-module Parse (Comment : ParseUtil_intf.Comment_s) : sig
+module Parse : sig
   (** @raise StaticsParseError *)
   val t : OptRange.t t ParseUtil.t
 

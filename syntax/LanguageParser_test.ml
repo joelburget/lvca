@@ -1,11 +1,10 @@
+open Lvca_provenance
 open AbstractSyntax
 
 let%test_module "AbstractSyntax.Parser" =
   (module struct
-    module AbstractSyntaxParse = AbstractSyntax.Parse (ParseUtil.CComment)
-
     let parse str =
-      ParseUtil.parse_string AbstractSyntaxParse.whitespace_t str
+      ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t str
       |> Base.Result.ok_or_failwith
     ;;
 
@@ -74,6 +73,19 @@ let%test_module "AbstractSyntax.Parser" =
         ]
       in
       { externals; sort_defs }
+    ;;
+
+    let%test _ =
+      (parse {|
+      integer : *
+      list : * -> *
+
+      foo := Foo()
+      |})
+        .externals
+      = [ "integer", Kind.Kind (OptRange.mk 17 25 (* XXX *), 1)
+        ; "list", Kind (OptRange.mk 32 46 (* XXX *), 2)
+        ]
     ;;
   end)
 ;;

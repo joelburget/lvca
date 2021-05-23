@@ -345,14 +345,8 @@ let eval_primitive eval_ctx eval_ctx' ctx tm name args =
     failwith (Printf.sprintf "Unknown function (%s), or wrong number of arguments" name)
 ;;
 
-module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-  module Parsers = ParseUtil.Mk (Comment)
-  module Term = Nominal.Term.Parse (Comment)
-  module ParsePrimitive = Primitive.Parse (Comment)
-  module Abstract = AbstractSyntax.Parse (Comment)
-  module Sort = Sort.Parse (Comment)
-  module BindingAwarePattern = BindingAwarePattern.Parse (Comment)
-  open Parsers
+module Parse = struct
+  open ParseUtil.Parsers
 
   let reserved = Util.String.Set.of_list [ "let"; "rec"; "in"; "match"; "with" ]
 
@@ -372,7 +366,7 @@ module Parse (Comment : ParseUtil_intf.Comment_s) = struct
       CoreApp (pos, f, args)
   ;;
 
-  let term : OptRange.t term Parsers.t =
+  let term : OptRange.t term ParseUtil.Parsers.t =
     fix (fun term ->
         let atomic_term =
           choice
@@ -380,10 +374,10 @@ module Parse (Comment : ParseUtil_intf.Comment_s) = struct
             ; (identifier
               >>|| fun { value; range; latest_pos } ->
               { value = Var (range, value); range; latest_pos })
-            ; braces Term.t >>| (fun tm -> Term tm) <?> "quoted term"
+            ; braces Nominal.Term.Parse.t >>| (fun tm -> Term tm) <?> "quoted term"
             ]
         in
-        let pattern = BindingAwarePattern.t <?> "pattern" in
+        let pattern = BindingAwarePattern.Parse.t <?> "pattern" in
         let case_line =
           lift3 (fun pat _ tm -> CaseScope (pat, tm)) pattern (string "->") term
           <?> "case line"
@@ -396,7 +390,11 @@ module Parse (Comment : ParseUtil_intf.Comment_s) = struct
               (attach_pos (char '\\'))
               (attach_pos
                  (parens
-                    (lift3 (fun ident _ sort -> ident, sort) identifier (char ':') Sort.t)))
+                    (lift3
+                       (fun ident _ sort -> ident, sort)
+                       identifier
+                       (char ':')
+                       Sort.Parse.t)))
               (string "->")
               term
             <?> "lambda"
@@ -407,7 +405,7 @@ module Parse (Comment : ParseUtil_intf.Comment_s) = struct
               (attach_pos (string "let"))
               (option NoRec (Fn.const Rec <$> string "rec"))
               identifier
-              (option None (char ':' *> Term.t >>| fun tm -> Some tm))
+              (option None (char ':' *> Nominal.Term.Parse.t >>| fun tm -> Some tm))
             <*> string "="
             <*> term
             <*> string "in"
@@ -430,8 +428,6 @@ end
 
 let%test_module "Parsing" =
   (module struct
-    module Parse = Parse (ParseUtil.NoComment)
-
     let parse str =
       ParseUtil.parse_string Parse.term str |> Result.ok_or_failwith |> erase
     ;;
@@ -504,8 +500,6 @@ let%test_module "Parsing" =
 
 let%test_module "Core parsing" =
   (module struct
-    module ParseCore = Parse (ParseUtil.CComment)
-
     let scope : unit Nominal.Term.t -> unit Nominal.Scope.t = fun body -> Scope ([], body)
 
     let dynamics_str =
@@ -568,7 +562,7 @@ let%test_module "Core parsing" =
 
     let%test "dynamics as expected" =
       let parse_term str =
-        ParseUtil.parse_string ParseCore.term str |> Base.Result.ok_or_failwith
+        ParseUtil.parse_string Parse.term str |> Base.Result.ok_or_failwith
       in
       let ( = ) = equal ~info_eq:Unit.( = ) in
       parse_term dynamics_str |> erase = dynamics
@@ -578,11 +572,9 @@ let%test_module "Core parsing" =
 
 let%test_module "Core eval" =
   (module struct
-    module ParseCore = Parse (ParseUtil.CComment)
-
     let eval_str str =
       let parse_term str =
-        ParseUtil.parse_string ParseCore.term str |> Base.Result.ok_or_failwith
+        ParseUtil.parse_string Parse.term str |> Base.Result.ok_or_failwith
       in
       let core = parse_term str in
       let result =
@@ -684,12 +676,9 @@ let%test_module "Core eval" =
 
 let%test_module "Core pretty" =
   (module struct
-    module Parsers = ParseUtil.Mk (ParseUtil.CComment)
-    module ParseCore = Parse (ParseUtil.CComment)
-
     let pretty width str =
       let str =
-        match ParseUtil.parse_string Parsers.(junk *> ParseCore.term) str with
+        match ParseUtil.parse_string ParseUtil.Parsers.(whitespace *> Parse.term) str with
         | Error err -> err
         | Ok core ->
           let module Format = Stdlib.Format in
@@ -768,11 +757,9 @@ let%test_module "Core pretty" =
 
 let%test_module "Core eval in dynamics" =
   (module struct
-    module ParseCore = Parse (ParseUtil.CComment)
-
     let eval_in dynamics_str str =
       let parse_term str =
-        ParseUtil.parse_string ParseCore.term str |> Base.Result.ok_or_failwith
+        ParseUtil.parse_string Parse.term str |> Base.Result.ok_or_failwith
       in
       let defn = parse_term dynamics_str in
       let core = parse_term str in

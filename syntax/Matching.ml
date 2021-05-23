@@ -473,26 +473,25 @@ module Properties = struct
   ;;
 end
 
-module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-  module Parsers = ParseUtil.Mk (Comment)
-  module Pat = Pattern.Parse (Comment)
-  module Term = NonBinding.Parse (Comment)
-
-  (* module ParsePrimitive = Primitive.Parse (Comment) *)
-  open Parsers
+module Parse = struct
+  open ParseUtil.Parsers
 
   type 'info matrix_row = 'info matrix_entry list * 'info NonBinding.term
 
-  let branch = lift3 (fun pat _ tm -> pat, tm) Pat.t (string "->") Term.term <?> "branch"
+  let branch =
+    lift3 (fun pat _ tm -> pat, tm) Pattern.Parse.t (string "->") NonBinding.Parse.term
+    <?> "branch"
+  ;;
+
   let branches = option '|' (char '|') *> sep_by1 (char '|') branch <?> "branches"
 
   let matrix_row =
     lift3
       (fun pats _ tm ->
         List.mapi pats ~f:(fun term_no pattern -> { term_no; pattern; path = [] }), tm)
-      (sep_by1 (char ',') Pat.t)
+      (sep_by1 (char ',') Pattern.Parse.t)
       (string "->")
-      Term.term
+      NonBinding.Parse.term
     <?> "matrix_row"
   ;;
 
@@ -503,13 +502,6 @@ end
 
 let%test_module "Matching" =
   (module struct
-    module Parsers = ParseUtil.Mk (ParseUtil.NoComment)
-    module Parse = Parse (ParseUtil.NoComment)
-    module ParseSyntax = AbstractSyntax.Parse (ParseUtil.NoComment)
-    module ParseSort = Sort.Parse (ParseUtil.NoComment)
-    module ParseTerm = NonBinding.Parse (ParseUtil.NoComment)
-    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
-
     let str_of_tm tm = Fmt.to_to_string NonBinding.pp tm
     let str_of_pat tm = Fmt.to_to_string Pattern.pp tm
 
@@ -527,7 +519,7 @@ let%test_module "Matching" =
     let run_simple_match branches_str tm_str =
       match
         ( ParseUtil.parse_string Parse.branches branches_str
-        , ParseUtil.parse_string ParseTerm.whitespace_term tm_str )
+        , ParseUtil.parse_string NonBinding.Parse.whitespace_term tm_str )
       with
       | Ok branches, Ok tm ->
         (match simple_find_match tm branches with
@@ -548,11 +540,13 @@ let%test_module "Matching" =
 
     let run_compiled_matches syntax_str sorts_str matrix_str tms_str =
       match
-        ( ParseUtil.parse_string ParseSyntax.whitespace_t syntax_str
-        , ParseUtil.parse_string Parsers.(sep_by (char ',') ParseSort.t) sorts_str
+        ( ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t syntax_str
+        , ParseUtil.parse_string
+            ParseUtil.Parsers.(sep_by (char ',') Sort.Parse.t)
+            sorts_str
         , ParseUtil.parse_string Parse.matrix_rows matrix_str
         , ParseUtil.parse_string
-            Parsers.(sep_by (char ',') ParseTerm.whitespace_term)
+            ParseUtil.Parsers.(sep_by (char ',') NonBinding.Parse.whitespace_term)
             tms_str )
       with
       | Error syntax_msg, _, _, _ -> failwith ("syntax failed to parse: " ^ syntax_msg)
@@ -641,8 +635,10 @@ let%test_module "Matching" =
 
     let print_check syntax_str sorts_str matrix_str =
       match
-        ( ParseUtil.parse_string ParseSyntax.whitespace_t syntax_str
-        , ParseUtil.parse_string Parsers.(sep_by (char ',') ParseSort.t) sorts_str
+        ( ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t syntax_str
+        , ParseUtil.parse_string
+            ParseUtil.Parsers.(sep_by (char ',') Sort.Parse.t)
+            sorts_str
         , ParseUtil.parse_string Parse.matrix_rows matrix_str )
       with
       | Ok syntax, Ok sorts, Ok matrix ->

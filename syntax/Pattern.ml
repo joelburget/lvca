@@ -238,12 +238,11 @@ let check lang ~pattern_sort ~var_sort =
   check pattern_sort
 ;;
 
-module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-  module Parsers = ParseUtil.Mk (Comment)
-  module Prim = Primitive.Parse (Comment)
+module Parse = struct
+  module Prim = Primitive.Parse
 
   let t : OptRange.t t ParseUtil.t =
-    let open Parsers in
+    let open ParseUtil.Parsers in
     fix (fun pat ->
         choice
           [ (Prim.t >>| fun prim -> Primitive prim)
@@ -264,13 +263,12 @@ module Parse (Comment : ParseUtil_intf.Comment_s) = struct
     <?> "pattern"
   ;;
 
-  let whitespace_t = Parsers.(junk *> t)
+  let whitespace_t = ParseUtil.Parsers.(whitespace *> t)
 end
 
 let%test_module "Parsing" =
   (module struct
-    module Parser = Parse (ParseUtil.NoComment)
-    module PrimParser = Primitive.Parse (ParseUtil.NoComment)
+    module PrimParser = Primitive.Parse
 
     let () =
       Format.set_formatter_stag_functions Range.stag_functions;
@@ -279,7 +277,7 @@ let%test_module "Parsing" =
     ;;
 
     let print_parse tm =
-      match ParseUtil.parse_string Parser.t tm with
+      match ParseUtil.parse_string Parse.t tm with
       | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range pat
       | Error msg -> Fmt.pr "failed: %s\n" msg
     ;;
@@ -371,10 +369,8 @@ let%test_module "Parsing" =
 
 module Properties = struct
   open PropertyResult
-  module ParsePattern = Parse (ParseUtil.NoComment)
-  module Prim = Primitive.Parse (ParseUtil.NoComment)
 
-  let parse = ParseUtil.parse_string ParsePattern.t
+  let parse = ParseUtil.parse_string Parse.t
   let to_string = Fmt.to_to_string pp
   let ( = ) = equal ~info_eq:Unit.( = )
 
@@ -419,21 +415,13 @@ end
 
 let%test_module "check" =
   (module struct
-    module AbstractSyntaxParse = AbstractSyntax.Parse (ParseUtil.NoComment)
-
     let parse_lang lang_str =
-      ParseUtil.parse_string AbstractSyntaxParse.whitespace_t lang_str
+      ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t lang_str
       |> Result.ok_or_failwith
     ;;
 
-    module Parser = Parse (ParseUtil.NoComment)
-    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
-
-    let parse_pattern str = ParseUtil.parse_string Parser.t str |> Result.ok_or_failwith
-
-    module SortParse = Sort.Parse (ParseUtil.NoComment)
-
-    let parse_sort str = ParseUtil.parse_string SortParse.t str
+    let parse_pattern str = ParseUtil.parse_string Parse.t str |> Result.ok_or_failwith
+    let parse_sort str = ParseUtil.parse_string Sort.Parse.t str
 
     let lang_desc =
       {|

@@ -315,12 +315,8 @@ let infer env term = infer_trace (fun _ -> ()) env term
 
 let%test_module "check / infer" =
   (module struct
-    module ParseStatics = Statics.Parse (ParseUtil.NoComment)
-    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
-    module ParseNominal = Nominal.Term.Parse (ParseUtil.NoComment)
-
-    let parse_statics = ParseUtil.parse_string ParseStatics.whitespace_t
-    let parse_tm = ParseUtil.parse_string ParseNominal.whitespace_t
+    let parse_statics = ParseUtil.parse_string Statics.Parse.whitespace_t
+    let parse_tm = ParseUtil.parse_string Nominal.Term.Parse.whitespace_t
 
     let rules =
       {|

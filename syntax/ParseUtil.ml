@@ -16,7 +16,7 @@ end
 
 include ParseString
 
-(** Parser combinators that *don't* handle trailing whitespace / comments. *)
+(** Parser combinators that *don't* handle trailing whitespace. *)
 module Junkless = struct
   include Angstrom
 
@@ -195,32 +195,14 @@ end
 let whitespace = Angstrom.(take_while Char.is_whitespace *> return ())
 let whitespace1 = Angstrom.(take_while1 Char.is_whitespace *> return ())
 
-module NoComment = struct
-  let comment = Angstrom.fail "no comment"
-end
-
-(** C-style comments *)
-module CComment = struct
-  open Angstrom
-
-  let comment =
-    string "//" >>= fun _ -> many (satisfy Char.(fun x -> x <> '\n')) >>| fun _ -> ()
-  ;;
-end
-
-(** Parser combinators that clean up trailing whitespace / comments. *)
-module Mk (Comment : Comment_s) = struct
+(** Parser combinators that clean up trailing whitespace. *)
+module Parsers = struct
   module ParseResult = ParseResult
   module JL = Junkless
   open Angstrom
   include ParseString
 
   type +'a t = latest_pos:int -> 'a ParseResult.t Angstrom.t
-
-  let junk ~latest_pos =
-    many (whitespace1 <|> Comment.comment)
-    >>| fun _ -> ParseResult.{ latest_pos; value = (); range = None }
-  ;;
 
   let ( <* ) p1 p2 ~latest_pos =
     p1 ~latest_pos
@@ -284,13 +266,13 @@ module Mk (Comment : Comment_s) = struct
       whitespace1 >>| fun _ -> ParseResult.{ value = (); range = None; latest_pos })
   ;;
 
-  let char_lit = adapt JL.char_lit <* junk
-  let identifier = adapt JL.identifier <* junk
-  let integer_lit = adapt JL.integer_lit <* junk
-  let integer_or_float_lit = adapt JL.integer_or_float_lit <* junk
-  let string_lit = adapt JL.string_lit <* junk
-  let char c = adapt (JL.char c) <* junk
-  let string str = adapt (JL.string str) <* junk
+  let char_lit = adapt JL.char_lit <* whitespace
+  let identifier = adapt JL.identifier <* whitespace
+  let integer_lit = adapt JL.integer_lit <* whitespace
+  let integer_or_float_lit = adapt JL.integer_or_float_lit <* whitespace
+  let string_lit = adapt JL.string_lit <* whitespace
+  let char c = adapt (JL.char c) <* whitespace
+  let string str = adapt (JL.string str) <* whitespace
   let ( <$> ) f p = p >>| f
   let choice = failwith "TODO"
   let fail msg ~latest_pos:_ = fail msg
@@ -385,23 +367,23 @@ end
 
 let%test_module "Parsing" =
   (module struct
-    module Parse = Mk (CComment)
+    open Parsers
 
     let ( = ) = Result.equal (ParseResult.equal String.( = )) String.( = )
     let mk a b = Some (Range.mk a b)
 
     let%test _ =
-      Parse.parse_string_pos Parse.string_lit {|"abc"|}
+      parse_string_pos string_lit {|"abc"|}
       = Ok ParseResult.{ value = "abc"; range = mk 0 5; latest_pos = 5 }
     ;;
 
     let%test _ =
-      Parse.parse_string_pos Parse.string_lit {|"\""|}
+      parse_string_pos string_lit {|"\""|}
       = Ok ParseResult.{ value = {|"|}; range = mk 0 4; latest_pos = 4 }
     ;;
 
     let%test _ =
-      Parse.parse_string_pos Parse.string_lit {|"\\"|}
+      parse_string_pos string_lit {|"\\"|}
       = Ok ParseResult.{ value = {|\|}; range = mk 0 4; latest_pos = 4 }
     ;;
 
@@ -412,64 +394,63 @@ let%test_module "Parsing" =
     ;;
 
     let%test _ =
-      Parse.parse_string_pos Parse.integer_or_float_lit "123"
+      parse_string_pos integer_or_float_lit "123"
       = Ok ParseResult.{ value = First "123"; range = mk 0 3; latest_pos = 4 }
     ;;
 
     let%test _ =
-      Parse.parse_string_pos Parse.integer_or_float_lit "-123"
+      parse_string_pos integer_or_float_lit "-123"
       = Ok ParseResult.{ value = First "-123"; range = mk 0 4; latest_pos = 4 }
     ;;
 
     let%test _ =
-      Parse.parse_string_pos Parse.integer_or_float_lit "+123"
+      parse_string_pos integer_or_float_lit "+123"
       = Ok ParseResult.{ value = First "+123"; range = mk 0 4; latest_pos = 4 }
     ;;
 
     let%test _ =
-      Parse.parse_string_pos Parse.integer_or_float_lit "1.1"
+      parse_string_pos integer_or_float_lit "1.1"
       = Ok ParseResult.{ value = Second 1.1; range = mk 0 3; latest_pos = 4 }
     ;;
 
     let%test _ =
-      Parse.parse_string_pos Parse.integer_or_float_lit "-1.1"
+      parse_string_pos integer_or_float_lit "-1.1"
       = Ok ParseResult.{ value = Second (-1.1); range = mk 0 4; latest_pos = 4 }
     ;;
 
     let%test _ =
-      Parse.parse_string_pos Parse.integer_or_float_lit "+1.1"
+      parse_string_pos integer_or_float_lit "+1.1"
       = Ok ParseResult.{ value = Second 1.1; range = mk 0 4; latest_pos = 4 }
     ;;
 
     let%test _ =
-      Parse.parse_string_pos Parse.integer_or_float_lit "1."
+      parse_string_pos integer_or_float_lit "1."
       = Ok ParseResult.{ value = Second 1.; range = mk 0 2; latest_pos = 4 }
     ;;
 
     let ( = ) = Result.equal (ParseResult.equal (List.equal String.( = ))) String.( = )
 
     let%test _ =
-      Parse.parse_string_pos Parse.(sep_end_by (char ';') string_lit) {|"abc"|}
+      parse_string_pos (sep_end_by (char ';') string_lit) {|"abc"|}
       = Ok ParseResult.{ value = [ "abc" ]; range = mk 0 5; latest_pos = 4 }
     ;;
 
     let%test _ =
-      Parse.parse_string_pos Parse.(sep_end_by (char ';') string_lit) {|"abc"; "def"|}
+      parse_string_pos (sep_end_by (char ';') string_lit) {|"abc"; "def"|}
       = Ok ParseResult.{ value = [ "abc"; "def" ]; range = mk 0 12; latest_pos = 4 }
     ;;
 
     let%test _ =
-      Parse.parse_string_pos Parse.(sep_end_by (char ';') string_lit) {|"abc"; "def";|}
+      parse_string_pos (sep_end_by (char ';') string_lit) {|"abc"; "def";|}
       = Ok ParseResult.{ value = [ "abc"; "def" ]; range = mk 0 13; latest_pos = 4 }
     ;;
 
     (*
     let%expect_test _ =
       let open Junkless in
-      let junk = Parse.junk in
       let parse =
         parse_string_pos
-          (sep_by1 (junk *> string "->") (junk *> char '*') <* junk <* string "foo")
+          (sep_by1 (whitespace *> string "->") (whitespace *> char '*') <* whitespace <* string "foo")
       in
       let result1 = parse "* -> *\nfoo" in
       (*                   0123456 7890 *)

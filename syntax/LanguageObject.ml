@@ -35,7 +35,7 @@ module type ExtendedTermS = sig
   val deserialize : Bytes.t -> unit t option
   val hash : _ t -> string
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) : sig
+  module Parse : sig
     val whitespace_t : OptRange.t t ParseUtil.t
   end
 end
@@ -73,11 +73,10 @@ struct
   let deserialize buf = buf |> Lvca_util.Cbor.decode |> Option.bind ~f:unjsonify
   let hash tm = tm |> serialize |> Lvca_util.Sha256.hash
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-    module Parsers = ParseUtil.Mk (Comment)
-    module Parse = Object.Parse (Comment)
+  module Parse = struct
+    module Parse = Object.Parse
 
-    let whitespace_t = Parsers.(junk *> Parse.t)
+    let whitespace_t = ParseUtil.Parsers.(whitespace *> Parse.t)
   end
 end
 
@@ -85,7 +84,7 @@ module type Properties = Properties_intf.S
 
 module CheckProperties (Object : BindingTermS) :
   Properties with type 'info t = 'info Object.t = struct
-  module Parse = Object.Parse (ParseUtil.NoComment)
+  module Parse = Object.Parse
   open PropertyResult
   module Object' = Object
   module Object = Mk (Object)

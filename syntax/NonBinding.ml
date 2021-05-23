@@ -94,15 +94,13 @@ let rec select_path ~path tm =
       | Some tm -> select_path ~path tm))
 ;;
 
-module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-  module Parsers = ParseUtil.Mk (Comment)
-  module ParsePrim = Primitive.Parse (Comment)
+module Parse = struct
+  open ParseUtil.Parsers
 
   let term : OptRange.t term ParseUtil.t =
-    let open Parsers in
     fix (fun term ->
         choice
-          [ (ParsePrim.t >>| fun prim -> Primitive prim)
+          [ (Primitive.Parse.t >>| fun prim -> Primitive prim)
           ; (identifier
             >>== fun ParseResult.{ value = ident; range = start; _ } ->
             parens (sep_end_by (char ';') term)
@@ -115,5 +113,5 @@ module Parse (Comment : ParseUtil_intf.Comment_s) = struct
     <?> "term"
   ;;
 
-  let whitespace_term = Parsers.(junk *> term)
+  let whitespace_term = whitespace *> term
 end

@@ -37,16 +37,14 @@ module TypingClause = struct
     | _, _ -> false
   ;;
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-    module Parsers = ParseUtil.Mk (Comment)
-    module Pattern = BindingAwarePattern.Parse (Comment)
-    open Parsers
+  module Parse = struct
+    open ParseUtil.Parsers
 
     type arrow_dir =
       | LeftArr
       | RightArr
 
-    let pattern = Pattern.t <?> "pattern"
+    let pattern = BindingAwarePattern.Parse.t <?> "pattern"
 
     let t =
       lift3
@@ -64,8 +62,6 @@ module TypingClause = struct
 
   let%test_module _ =
     (module struct
-      module Parse = Parse (ParseUtil.NoComment)
-
       let ( = ) = Result.equal (equal ~info_eq:Unit.( = )) String.( = )
 
       let%test _ =
@@ -91,14 +87,11 @@ module Hypothesis = struct
     Map.map env ~f:BindingAwarePattern.erase, TypingClause.erase clause
   ;;
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-    module Parsers = ParseUtil.Mk (Comment)
-    module TypingClause = TypingClause.Parse (Comment)
-    module Pattern = BindingAwarePattern.Parse (Comment)
-    open Parsers
+  module Parse = struct
+    open ParseUtil.Parsers
 
     (* TODO: remove duplication *)
-    let pattern = Pattern.t <?> "pattern"
+    let pattern = BindingAwarePattern.Parse.t <?> "pattern"
 
     let typed_term =
       lift3 (fun ident _ tm -> ident, tm) identifier (char ':') pattern
@@ -124,15 +117,13 @@ module Hypothesis = struct
     ;;
 
     let t =
-      lift3 (fun ctx _ clause -> ctx, clause) context (string ">>") TypingClause.t
+      lift3 (fun ctx _ clause -> ctx, clause) context (string ">>") TypingClause.Parse.t
       <?> "hypothesis"
     ;;
   end
 
   let%test_module "Parsing" =
     (module struct
-      module Parse = Parse (ParseUtil.NoComment)
-
       let%test _ =
         match ParseUtil.parse_string Parse.t "ctx >> t1 <= bool()" with
         | Error _ -> false
@@ -162,12 +153,8 @@ module Rule = struct
     }
   ;;
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-    module Parsers = ParseUtil.Mk (Comment)
-    module Hypothesis = Hypothesis.Parse (Comment)
-    open Parsers
-
-    let identifier, char, parens = Parsers.(identifier, char, parens)
+  module Parse = struct
+    open ParseUtil.Parsers
 
     let bar =
       lift3
@@ -177,7 +164,7 @@ module Rule = struct
         pos
     ;;
 
-    let line : string option Parsers.t =
+    let line : string option ParseUtil.Parsers.t =
       lift3
         (fun _ _ ident -> ident)
         bar
@@ -189,9 +176,9 @@ module Rule = struct
     let t =
       lift3
         (fun hypotheses name conclusion -> { hypotheses; name; conclusion })
-        (many Hypothesis.t)
+        (many Hypothesis.Parse.t)
         line
-        Hypothesis.t
+        Hypothesis.Parse.t
       <?> "typing rule"
     ;;
   end
@@ -207,19 +194,15 @@ type 'a t = 'a Rule.t list
 
 let erase = List.map ~f:Rule.erase
 
-module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-  module Parsers = ParseUtil.Mk (Comment)
-  module Rule = Rule.Parse (Comment)
-  open Parsers
+module Parse = struct
+  open ParseUtil.Parsers
 
-  let t = many Rule.t
+  let t = many Rule.Parse.t
   let whitespace_t = whitespace *> t
 end
 
 let%test_module "Parsing" =
   (module struct
-    module Parse = Parse (ParseUtil.NoComment)
-
     let print_parse desc =
       let str =
         ParseUtil.parse_string Parse.whitespace_t desc

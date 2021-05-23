@@ -1,10 +1,5 @@
 open Lvca_syntax
 open Ppxlib
-module ParsePattern = Lvca_syntax.Pattern.Parse (ParseUtil.CComment)
-module ParseTerm = Nominal.Term.Parse (ParseUtil.CComment)
-module ParseNonbinding = NonBinding.Parse (ParseUtil.CComment)
-module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
-module ModuleBuilder = ModuleBuilder
 
 (* TODO: parser, core, nonbinding / OCaml data mapping *)
 
@@ -26,35 +21,40 @@ let extract_string loc expr =
 
 let expand_nominal ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match ParseUtil.parse_string ParseTerm.whitespace_t str with
+  match ParseUtil.parse_string Nominal.Term.Parse.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> SyntaxQuoter.mk_nominal ~loc tm
 ;;
 
 let expand_nonbinding ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match ParseUtil.parse_string ParseNonbinding.whitespace_term str with
+  match ParseUtil.parse_string NonBinding.Parse.whitespace_term str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> SyntaxQuoter.mk_nonbinding ~loc tm
 ;;
 
 let expand_pattern ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match ParseUtil.parse_string ParsePattern.whitespace_t str with
+  match ParseUtil.parse_string Lvca_syntax.Pattern.Parse.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> SyntaxQuoter.mk_pattern ~loc tm
 ;;
 
 let expand_abstract_syntax ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match ParseUtil.parse_string ParseAbstract.whitespace_t str with
+  match ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax -> SyntaxQuoter.mk_language ~loc syntax
 ;;
 
 let expand_module ~(loc : Location.t) ~path:_ (expr : expression) : module_expr =
   let str, loc = extract_string loc expr in
-  match ParseUtil.parse_string ParseAbstract.whitespace_t str with
+  (*
+  Fmt.pr "contextual loc: ";
+  Location.print Fmt.stdout loc;
+  Fmt.pr "\n";
+  *)
+  match ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax ->
     let module ContainerModule =

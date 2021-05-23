@@ -25,11 +25,7 @@ module ParseResult : ParseResult_s = struct
   ;;
 end
 
-module type Comment_s = sig
-  val comment : unit Angstrom.t
-end
-
-(** Interface for parsers that *don't* handle trailing whitespace / comments. *)
+(** Interface for parsers that *don't* handle trailing whitespace. *)
 module type Junkless_s = sig
   type +'a t = ('a * OptRange.t) Angstrom.t
 
@@ -80,7 +76,6 @@ module type Parsers_s = sig
 
   type +'a t = latest_pos:int -> 'a ParseResult.t Angstrom.t
 
-  val junk : unit t
   val ( >>== ) : 'a t -> ('a ParseResult.t -> 'b t) -> 'b t
   val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
   val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t

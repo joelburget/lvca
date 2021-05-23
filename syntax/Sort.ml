@@ -93,11 +93,8 @@ let erase_info sort = map_info ~f:(fun _ -> ()) sort
 (** Split a sort into a name and its arguments. *)
 let split = function Name (_, name) -> name, [] | Ap (_, name, args) -> name, args
 
-module Parse (Comment : ParseUtil_intf.Comment_s) = struct
-  module Parsers = ParseUtil.Mk (Comment)
-  open Parsers
-
-  let parse_string = parse_string
+module Parse = struct
+  open ParseUtil.Parsers
 
   let t =
     fix (fun sort ->
@@ -126,10 +123,8 @@ end
 
 let%test_module "Sort_Parser" =
   (module struct
-    module Parse = Parse (ParseUtil.NoComment)
-
     let parse_with parser str =
-      match Parse.parse_string parser str with
+      match ParseUtil.Parsers.parse_string parser str with
       | Ok value -> value
       | Error msg -> failwith msg
     ;;

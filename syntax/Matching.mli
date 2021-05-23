@@ -93,7 +93,7 @@ val check_matrix
   -> unit Pattern.t list option
 
 (** {1 Parsing} *)
-module Parse (Comment : ParseUtil_intf.Comment_s) : sig
+module Parse : sig
   type 'info matrix_row = 'info matrix_entry list * 'info NonBinding.term
 
   val branch

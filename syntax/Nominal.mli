@@ -105,7 +105,7 @@ module Term : sig
     -> 'info t
     -> ('info, ('info Pattern.t, 'info t) Base.Either.t) CheckFailure.t option
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) : sig
+  module Parse : sig
     val t : Lvca_provenance.OptRange.t t ParseUtil.t
     val whitespace_t : Lvca_provenance.OptRange.t t ParseUtil.t
   end
@@ -149,7 +149,7 @@ val of_pattern : ('info, 'prim) Pattern.t -> ('info, 'prim) t
   (* TODO:
   val free_vars : (_, _) t -> Lvca_util.String.Set.t
 
-  module Parse (Comment : ParseUtil_intf.Comment_s) : sig
+  module Parse  : sig
     val t : 'prim ParseUtil.t -> Lvca_provenance.OptRange.t t ParseUtil.t
     val whitespace_t : 'prim ParseUtil.t -> Lvca_provenance.OptRange.t t ParseUtil.t
   end

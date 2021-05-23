@@ -9,6 +9,4 @@ val parse_string : 'a t -> string -> ('a, string) Base.Result.t
 
 module ParseResult : ParseResult_s
 module Junkless : Junkless_s
-module NoComment : Comment_s
-module CComment : Comment_s
-module Mk (Comment : Comment_s) : Parsers_s
+module Parsers : Parsers_s

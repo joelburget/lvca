@@ -321,13 +321,8 @@ let check check_prim lang sort =
   check sort
 ;;
 
-module Parse (Comment : ParseUtil_intf.Comment_s) = struct
+module Parse = struct
   type 'info pattern = 'info t
-
-  module Parsers = ParseUtil.Mk (Comment)
-  module Primitive = Primitive.Parse (Comment)
-
-  let parse_prim = Primitive.t
 
   let to_var = function
     | Var (i, name) -> Ok (i, name)
@@ -337,11 +332,11 @@ module Parse (Comment : ParseUtil_intf.Comment_s) = struct
   ;;
 
   type tm_or_sep =
-    | Tm of OptRange.t pattern
+    | Tm of OptRange.t t
     | Sep of char
 
-  let t : OptRange.t pattern ParseUtil.t =
-    let open Parsers in
+  let t : OptRange.t t ParseUtil.t =
+    let open ParseUtil.Parsers in
     fix (fun pat ->
         let t_or_sep : tm_or_sep ParseUtil.t =
           choice
@@ -381,7 +376,7 @@ module Parse (Comment : ParseUtil_intf.Comment_s) = struct
         pos
         >>= fun p1 ->
         choice
-          [ (parse_prim >>| fun prim -> Primitive prim)
+          [ (Primitive.Parse.t >>| fun prim -> Primitive prim)
           ; (identifier
             >>= fun ident ->
             choice
@@ -398,16 +393,13 @@ module Parse (Comment : ParseUtil_intf.Comment_s) = struct
     <?> "binding-aware pattern"
   ;;
 
-  let whitespace_t = Parsers.(junk *> t)
-  let parse_string = Parsers.parse_string
+  let whitespace_t = ParseUtil.Parsers.(whitespace *> t)
 end
 
 module Properties = struct
-  module ParsePattern = Parse (ParseUtil.NoComment)
-  module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
   open PropertyResult
 
-  let parse = ParsePattern.parse_string ParsePattern.t
+  let parse = ParseUtil.parse_string Parse.t
   let to_string = Fmt.to_to_string pp
 
   let string_round_trip1 t =
@@ -438,8 +430,6 @@ end
 
 let%test_module "Parsing" =
   (module struct
-    module Parser = Parse (ParseUtil.NoComment)
-
     let () =
       Format.set_formatter_stag_functions Range.stag_functions;
       Format.set_tags true;
@@ -447,7 +437,7 @@ let%test_module "Parsing" =
     ;;
 
     let print_parse tm =
-      match Parser.parse_string Parser.t tm with
+      match ParseUtil.parse_string Parse.t tm with
       | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range pat
       | Error msg -> Fmt.pr "failed: %s\n" msg
     ;;
@@ -515,18 +505,13 @@ let%test_module "Parsing" =
 
 let%test_module "check" =
   (module struct
-    module AbstractSyntaxParse = AbstractSyntax.Parse (ParseUtil.NoComment)
-    module Parser = Parse (ParseUtil.NoComment)
-    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
-    module SortParse = Sort.Parse (ParseUtil.NoComment)
-
     let parse_lang lang_str =
-      Parser.parse_string AbstractSyntaxParse.whitespace_t lang_str
+      ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t lang_str
       |> Result.ok_or_failwith
     ;;
 
-    let parse_pattern str = Parser.parse_string Parser.t str |> Result.ok_or_failwith
-    let parse_sort str = Parser.parse_string SortParse.t str
+    let parse_pattern str = ParseUtil.parse_string Parse.t str |> Result.ok_or_failwith
+    let parse_sort str = ParseUtil.parse_string Sort.Parse.t str
 
     let lang_desc =
       {|
@@ -712,13 +697,11 @@ test := foo(term[term]. term)
 
 let%test_module "check" =
   (module struct
-    module Parser = Parse (ParseUtil.NoComment)
-    module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
-    module ParseNominal = Nominal.Term.Parse (ParseUtil.NoComment)
-    module SortParse = Sort.Parse (ParseUtil.NoComment)
+    let parse_pattern str = ParseUtil.parse_string Parse.t str |> Result.ok_or_failwith
 
-    let parse_pattern str = Parser.parse_string Parser.t str |> Result.ok_or_failwith
-    let parse_term str = Parser.parse_string ParseNominal.t str |> Result.ok_or_failwith
+    let parse_term str =
+      ParseUtil.parse_string Nominal.Term.Parse.t str |> Result.ok_or_failwith
+    ;;
 
     let print_match pat_str tm_str =
       let pattern = parse_pattern pat_str in
