@@ -195,180 +195,169 @@ end
 let whitespace = Angstrom.(take_while Char.is_whitespace *> return ())
 let whitespace1 = Angstrom.(take_while1 Char.is_whitespace *> return ())
 
-(** Parser combinators that clean up trailing whitespace. *)
-module Parsers = struct
-  module ParseResult = ParseResult
-  module JL = Junkless
-  open Angstrom
-  include ParseString
+let ( <|> ), ( <?> ), ( >>| ), ( >>= ), fail, return =
+  Angstrom.(( <|> ), ( <?> ), ( >>| ), ( >>= ), fail, return)
+;;
 
-  type +'a t = latest_pos:int -> 'a ParseResult.t Angstrom.t
+let ( <* ) p1 p2 ~latest_pos =
+  p1 ~latest_pos
+  >>= fun result -> p2 ~latest_pos:result.ParseResult.latest_pos >>| fun _ -> result
+;;
 
-  let ( <* ) p1 p2 ~latest_pos =
-    p1 ~latest_pos
-    >>= fun result -> p2 ~latest_pos:result.ParseResult.latest_pos >>| fun _ -> result
-  ;;
+let ( *> ) p1 p2 ~latest_pos =
+  p1 ~latest_pos >>= fun ParseResult.{ latest_pos; _ } -> p2 ~latest_pos
+;;
 
-  let ( *> ) p1 p2 ~latest_pos =
-    p1 ~latest_pos >>= fun ParseResult.{ latest_pos; _ } -> p2 ~latest_pos
-  ;;
+let ( <|> ) p1 p2 ~latest_pos = p1 ~latest_pos <|> p2 ~latest_pos
 
-  let ( <|> ) p1 p2 ~latest_pos = p1 ~latest_pos <|> p2 ~latest_pos
+let ( <*> ) p1 p2 ~latest_pos =
+  p1 ~latest_pos
+  >>= fun result1 ->
+  p2 ~latest_pos:result1.ParseResult.latest_pos
+  >>= fun result2 ->
+  return
+    ParseResult.
+      { value = result1.value result2.value
+      ; latest_pos = result2.latest_pos
+      ; range = OptRange.union result1.range result2.range
+      }
+;;
 
-  let ( <*> ) p1 p2 ~latest_pos =
-    p1 ~latest_pos
-    >>= fun result1 ->
-    p2 ~latest_pos:result1.ParseResult.latest_pos
-    >>= fun result2 ->
-    return
-      ParseResult.
-        { value = result1.value result2.value
-        ; latest_pos = result2.latest_pos
-        ; range = OptRange.union result1.range result2.range
-        }
-  ;;
+let ( >>|| ) p f ~latest_pos = p ~latest_pos >>| f
 
-  let ( >>|| ) p f ~latest_pos = p ~latest_pos >>| f
+let ( >>| ) p f ~latest_pos =
+  p ~latest_pos >>| fun result -> ParseResult.{ result with value = f result.value }
+;;
 
-  let ( >>| ) p f ~latest_pos =
-    p ~latest_pos >>| fun result -> ParseResult.{ result with value = f result.value }
-  ;;
+let ( >>== ) p f ~latest_pos =
+  p ~latest_pos
+  >>= fun (ParseResult.{ latest_pos; _ } as parse_result) -> f parse_result ~latest_pos
+;;
 
-  let ( >>== ) p f ~latest_pos =
-    p ~latest_pos
-    >>= fun (ParseResult.{ latest_pos; _ } as parse_result) -> f parse_result ~latest_pos
-  ;;
+let ( >>= ) p f ~latest_pos =
+  p ~latest_pos >>= fun ParseResult.{ value; latest_pos; _ } -> f value ~latest_pos
+;;
 
-  let ( >>= ) p f ~latest_pos =
-    p ~latest_pos >>= fun ParseResult.{ value; latest_pos; _ } -> f value ~latest_pos
-  ;;
+let ( <?> ) p msg ~latest_pos = p ~latest_pos <?> msg
 
-  let ( <?> ) p msg ~latest_pos = p ~latest_pos <?> msg
-
-  let adapt (junkless_p : ('a * OptRange.t) Angstrom.t) : 'a t =
-   fun ~latest_pos ->
-    let f (value, range) =
-      let latest_pos =
-        match range with None -> latest_pos | Some Range.{ finish; _ } -> finish
-      in
-      Angstrom.return ParseResult.{ latest_pos; value; range }
+let adapt (junkless_p : ('a * OptRange.t) Angstrom.t) : 'a t =
+ fun ~latest_pos ->
+  let f (value, range) =
+    let latest_pos =
+      match range with None -> latest_pos | Some Range.{ finish; _ } -> finish
     in
-    Angstrom.(junkless_p >>= f)
- ;;
+    Angstrom.return ParseResult.{ latest_pos; value; range }
+  in
+  Angstrom.(junkless_p >>= f)
+;;
 
-  let whitespace ~latest_pos =
-    Angstrom.(
-      whitespace >>| fun _ -> ParseResult.{ value = (); range = None; latest_pos })
-  ;;
+let whitespace ~latest_pos =
+  Angstrom.(whitespace >>| fun _ -> ParseResult.{ value = (); range = None; latest_pos })
+;;
 
-  let whitespace1 ~latest_pos =
-    Angstrom.(
-      whitespace1 >>| fun _ -> ParseResult.{ value = (); range = None; latest_pos })
-  ;;
+let whitespace1 ~latest_pos =
+  Angstrom.(whitespace1 >>| fun _ -> ParseResult.{ value = (); range = None; latest_pos })
+;;
 
-  let char_lit = adapt JL.char_lit <* whitespace
-  let identifier = adapt JL.identifier <* whitespace
-  let integer_lit = adapt JL.integer_lit <* whitespace
-  let integer_or_float_lit = adapt JL.integer_or_float_lit <* whitespace
-  let string_lit = adapt JL.string_lit <* whitespace
-  let char c = adapt (JL.char c) <* whitespace
-  let string str = adapt (JL.string str) <* whitespace
-  let ( <$> ) f p = p >>| f
-  let choice = failwith "TODO"
-  let fail msg ~latest_pos:_ = fail msg
+let char_lit = adapt Junkless.char_lit <* whitespace
+let identifier = adapt Junkless.identifier <* whitespace
+let integer_lit = adapt Junkless.integer_lit <* whitespace
+let integer_or_float_lit = adapt Junkless.integer_or_float_lit <* whitespace
+let string_lit = adapt Junkless.string_lit <* whitespace
+let char c = adapt (Junkless.char c) <* whitespace
+let string str = adapt (Junkless.string str) <* whitespace
+let ( <$> ) f p = p >>| f
+let choice = failwith "TODO"
+let fail msg ~latest_pos:_ = fail msg
 
-  let lift f a ~latest_pos =
-    Angstrom.lift
-      (fun (ParseResult.{ value; _ } as parse_result) ->
-        { parse_result with value = f value })
-      (a ~latest_pos)
-  ;;
+let lift f a ~latest_pos =
+  Angstrom.lift
+    (fun (ParseResult.{ value; _ } as parse_result) ->
+      { parse_result with value = f value })
+    (a ~latest_pos)
+;;
 
-  let lift2 f a b ~latest_pos =
-    Angstrom.lift2
-      (fun ParseResult.{ value = a; range = a_range; _ }
-           ParseResult.{ value = b; range = b_range; latest_pos } ->
-        ParseResult.{ value = f a b; range = OptRange.union a_range b_range; latest_pos })
-      (a ~latest_pos)
-      (b ~latest_pos)
-  ;;
+let lift2 f a b ~latest_pos =
+  Angstrom.lift2
+    (fun ParseResult.{ value = a; range = a_range; _ }
+         ParseResult.{ value = b; range = b_range; latest_pos } ->
+      ParseResult.{ value = f a b; range = OptRange.union a_range b_range; latest_pos })
+    (a ~latest_pos)
+    (b ~latest_pos)
+;;
 
-  let lift3 f a b c ~latest_pos =
-    Angstrom.lift3
-      (fun ParseResult.{ value = a; range = a_range; _ }
-           ParseResult.{ value = b; range = b_range; _ }
-           ParseResult.{ value = c; range = c_range; latest_pos } ->
-        ParseResult.
-          { value = f a b c
-          ; range = OptRange.list_range [ a_range; b_range; c_range ]
-          ; latest_pos
-          })
-      (a ~latest_pos)
-      (b ~latest_pos)
-      (c ~latest_pos)
-  ;;
+let lift3 f a b c ~latest_pos =
+  Angstrom.lift3
+    (fun ParseResult.{ value = a; range = a_range; _ }
+         ParseResult.{ value = b; range = b_range; _ }
+         ParseResult.{ value = c; range = c_range; latest_pos } ->
+      ParseResult.
+        { value = f a b c
+        ; range = OptRange.list_range [ a_range; b_range; c_range ]
+        ; latest_pos
+        })
+    (a ~latest_pos)
+    (b ~latest_pos)
+    (c ~latest_pos)
+;;
 
-  let lift4 f a b c d ~latest_pos =
-    Angstrom.lift4
-      (fun ParseResult.{ value = a; range = a_range; _ }
-           ParseResult.{ value = b; range = b_range; _ }
-           ParseResult.{ value = c; range = c_range; _ }
-           ParseResult.{ value = d; range = d_range; latest_pos } ->
-        ParseResult.
-          { value = f a b c d
-          ; range = OptRange.list_range [ a_range; b_range; c_range; d_range ]
-          ; latest_pos
-          })
-      (a ~latest_pos)
-      (b ~latest_pos)
-      (c ~latest_pos)
-      (d ~latest_pos)
-  ;;
+let lift4 f a b c d ~latest_pos =
+  Angstrom.lift4
+    (fun ParseResult.{ value = a; range = a_range; _ }
+         ParseResult.{ value = b; range = b_range; _ }
+         ParseResult.{ value = c; range = c_range; _ }
+         ParseResult.{ value = d; range = d_range; latest_pos } ->
+      ParseResult.
+        { value = f a b c d
+        ; range = OptRange.list_range [ a_range; b_range; c_range; d_range ]
+        ; latest_pos
+        })
+    (a ~latest_pos)
+    (b ~latest_pos)
+    (c ~latest_pos)
+    (d ~latest_pos)
+;;
 
-  let count n p ~latest_pos =
-    let open Angstrom in
-    pos
-    >>= fun p1 ->
-    count n (p ~latest_pos)
-    >>= fun result ->
-    pos >>= fun p2 -> return (result |> List.map ~f:fst, OptRange.mk p1 p2)
-  ;;
+let count n p ~latest_pos =
+  let open Angstrom in
+  pos
+  >>= fun p1 ->
+  count n (p ~latest_pos)
+  >>= fun result -> pos >>= fun p2 -> return (result |> List.map ~f:fst, OptRange.mk p1 p2)
+;;
 
-  let satisfy f ~latest_pos:_ =
-    Angstrom.(pos >>= fun p -> satisfy f >>| fun c -> c, OptRange.mk p (p + 1))
-  ;;
+let satisfy f ~latest_pos:_ =
+  Angstrom.(pos >>= fun p -> satisfy f >>| fun c -> c, OptRange.mk p (p + 1))
+;;
 
-  let attach_pos p ~latest_pos =
-    Angstrom.(
-      p ~latest_pos
-      >>| fun (ParseResult.{ value; range; _ } as parse_result) ->
-      { parse_result with value = value, range })
-  ;;
+let attach_pos p ~latest_pos =
+  Angstrom.(
+    p ~latest_pos
+    >>| fun (ParseResult.{ value; range; _ } as parse_result) ->
+    { parse_result with value = value, range })
+;;
 
-  let return ?pos value ~latest_pos =
-    Angstrom.return ParseResult.{ value; range = pos; latest_pos }
-  ;;
+let return ?pos value ~latest_pos =
+  Angstrom.return ParseResult.{ value; range = pos; latest_pos }
+;;
 
-  let option value p ~latest_pos =
-    Angstrom.option ParseResult.{ value; range = None; latest_pos } p
-  ;;
+let option value p ~latest_pos =
+  Angstrom.option ParseResult.{ value; range = None; latest_pos } p
+;;
 
-  let pos ~latest_pos = ParseResult.{ value = latest_pos; range = None; latest_pos }
-  let fix f ~latest_pos:_ = Angstrom.fix f
-  let many _p ~latest_pos:_ = failwith "TODO"
-  let many1 _p ~latest_pos:_ = failwith "TODO"
-  let sep_by _s _p ~latest_pos:_ = failwith "TODO"
-  let sep_by1 _s _p ~latest_pos:_ = failwith "TODO"
-  let sep_end_by _s _p ~latest_pos:_ = failwith "TODO"
-  let parens _p ~latest_pos:_ = failwith "TODO"
-  let braces _p ~latest_pos:_ = failwith "TODO"
-  let brackets _p ~latest_pos:_ = failwith "TODO"
-end
+let pos ~latest_pos = ParseResult.{ value = latest_pos; range = None; latest_pos }
+let fix f ~latest_pos:_ = Angstrom.fix f
+let many _p ~latest_pos:_ = failwith "TODO"
+let many1 _p ~latest_pos:_ = failwith "TODO"
+let sep_by _s _p ~latest_pos:_ = failwith "TODO"
+let sep_by1 _s _p ~latest_pos:_ = failwith "TODO"
+let sep_end_by _s _p ~latest_pos:_ = failwith "TODO"
+let parens _p ~latest_pos:_ = failwith "TODO"
+let braces _p ~latest_pos:_ = failwith "TODO"
+let brackets _p ~latest_pos:_ = failwith "TODO"
 
 let%test_module "Parsing" =
   (module struct
-    open Parsers
-
     let ( = ) = Result.equal (ParseResult.equal String.( = )) String.( = )
     let mk a b = Some (Range.mk a b)
 

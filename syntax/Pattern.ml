@@ -239,13 +239,11 @@ let check lang ~pattern_sort ~var_sort =
 ;;
 
 module Parse = struct
-  module Prim = Primitive.Parse
-
   let t : OptRange.t t ParseUtil.t =
-    let open ParseUtil.Parsers in
+    let open ParseUtil in
     fix (fun pat ->
         choice
-          [ (Prim.t >>| fun prim -> Primitive prim)
+          [ (Primitive.Parse.t >>| fun prim -> Primitive prim)
           ; (identifier
             >>== fun { value = ident; range; _ } ->
             if ident.[0] = '_'
@@ -263,13 +261,11 @@ module Parse = struct
     <?> "pattern"
   ;;
 
-  let whitespace_t = ParseUtil.Parsers.(whitespace *> t)
+  let whitespace_t = ParseUtil.(whitespace *> t)
 end
 
 let%test_module "Parsing" =
   (module struct
-    module PrimParser = Primitive.Parse
-
     let () =
       Format.set_formatter_stag_functions Range.stag_functions;
       Format.set_tags true;

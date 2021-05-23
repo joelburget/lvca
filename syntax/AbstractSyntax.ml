@@ -26,8 +26,7 @@ module Kind = struct
   let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
   module Parse = struct
-    module Parsers = ParseUtil.Parsers
-    open Parsers
+    open ParseUtil
 
     let t =
       sep_by1 (string "->") (char '*')
@@ -115,8 +114,7 @@ module SortSlot = struct
 
   module Parse = struct
     module Sort = Sort.Parse
-    module Parsers = ParseUtil.Parsers
-    open Parsers
+    open ParseUtil
 
     let t =
       Sort.t
@@ -172,8 +170,7 @@ module Valence = struct
 
   module Parse = struct
     module ParseSortSlot = SortSlot.Parse
-    module Parsers = ParseUtil.Parsers
-    open Parsers
+    open ParseUtil
 
     let t =
       let t' =
@@ -208,7 +205,7 @@ module Arity = struct
   let instantiate env = List.map ~f:(Valence.instantiate env)
 
   module Parse = struct
-    let t = ParseUtil.Parsers.(parens (sep_by (char ';') Valence.Parse.t) <?> "arity")
+    let t = ParseUtil.(parens (sep_by (char ';') Valence.Parse.t) <?> "arity")
   end
 
   let%test_module _ =
@@ -279,7 +276,7 @@ module OperatorDef = struct
   let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
   module Parse = struct
-    open ParseUtil.Parsers
+    open ParseUtil
 
     let t =
       lift2 (fun ident arity -> OperatorDef (ident, arity)) identifier Arity.Parse.t
@@ -364,7 +361,7 @@ module SortDef = struct
   ;;
 
   module Parse = struct
-    open ParseUtil.Parsers
+    open ParseUtil
 
     let assign = string ":="
     let bar = char '|'
@@ -570,7 +567,7 @@ let kind_check { externals; sort_defs } =
 ;;
 
 module Parse = struct
-  open ParseUtil.Parsers
+  open ParseUtil
 
   let t =
     lift2

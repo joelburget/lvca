@@ -346,7 +346,7 @@ let eval_primitive eval_ctx eval_ctx' ctx tm name args =
 ;;
 
 module Parse = struct
-  open ParseUtil.Parsers
+  open ParseUtil
 
   let reserved = Util.String.Set.of_list [ "let"; "rec"; "in"; "match"; "with" ]
 
@@ -366,7 +366,7 @@ module Parse = struct
       CoreApp (pos, f, args)
   ;;
 
-  let term : OptRange.t term ParseUtil.Parsers.t =
+  let term : OptRange.t term ParseUtil.t =
     fix (fun term ->
         let atomic_term =
           choice
@@ -678,7 +678,7 @@ let%test_module "Core pretty" =
   (module struct
     let pretty width str =
       let str =
-        match ParseUtil.parse_string ParseUtil.Parsers.(whitespace *> Parse.term) str with
+        match ParseUtil.parse_string ParseUtil.(whitespace *> Parse.term) str with
         | Error err -> err
         | Ok core ->
           let module Format = Stdlib.Format in

@@ -95,7 +95,7 @@ let rec select_path ~path tm =
 ;;
 
 module Parse = struct
-  open ParseUtil.Parsers
+  open ParseUtil
 
   let term : OptRange.t term ParseUtil.t =
     fix (fun term ->

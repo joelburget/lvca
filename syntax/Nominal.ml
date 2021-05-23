@@ -428,7 +428,7 @@ module Term = struct
 
     type 'info term = 'info t
 
-    open ParseUtil.Parsers
+    open ParseUtil
 
     (* (b11. ... b1n. t11, ... t1n; b21. ... b2n. t21, ... t2n) *)
     let accumulate (range : OptRange.t) (tag : string) (tokens : tm_or_sep list)

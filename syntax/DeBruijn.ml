@@ -128,7 +128,7 @@ module Kernel = struct
   ;;
 
   module Parse = struct
-    open ParseUtil.Parsers
+    open ParseUtil
 
     let t =
       Nominal.Term.Parse.t

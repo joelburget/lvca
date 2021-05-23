@@ -94,7 +94,7 @@ let erase_info sort = map_info ~f:(fun _ -> ()) sort
 let split = function Name (_, name) -> name, [] | Ap (_, name, args) -> name, args
 
 module Parse = struct
-  open ParseUtil.Parsers
+  open ParseUtil
 
   let t =
     fix (fun sort ->
@@ -124,7 +124,7 @@ end
 let%test_module "Sort_Parser" =
   (module struct
     let parse_with parser str =
-      match ParseUtil.Parsers.parse_string parser str with
+      match ParseUtil.parse_string parser str with
       | Ok value -> value
       | Error msg -> failwith msg
     ;;

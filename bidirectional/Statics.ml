@@ -38,7 +38,7 @@ module TypingClause = struct
   ;;
 
   module Parse = struct
-    open ParseUtil.Parsers
+    open ParseUtil
 
     type arrow_dir =
       | LeftArr
@@ -88,7 +88,7 @@ module Hypothesis = struct
   ;;
 
   module Parse = struct
-    open ParseUtil.Parsers
+    open ParseUtil
 
     (* TODO: remove duplication *)
     let pattern = BindingAwarePattern.Parse.t <?> "pattern"
@@ -154,7 +154,7 @@ module Rule = struct
   ;;
 
   module Parse = struct
-    open ParseUtil.Parsers
+    open ParseUtil
 
     let bar =
       lift3
@@ -164,7 +164,7 @@ module Rule = struct
         pos
     ;;
 
-    let line : string option ParseUtil.Parsers.t =
+    let line : string option ParseUtil.t =
       lift3
         (fun _ _ ident -> ident)
         bar
@@ -195,7 +195,7 @@ type 'a t = 'a Rule.t list
 let erase = List.map ~f:Rule.erase
 
 module Parse = struct
-  open ParseUtil.Parsers
+  open ParseUtil
 
   let t = many Rule.Parse.t
   let whitespace_t = whitespace *> t

@@ -474,7 +474,7 @@ module Properties = struct
 end
 
 module Parse = struct
-  open ParseUtil.Parsers
+  open ParseUtil
 
   type 'info matrix_row = 'info matrix_entry list * 'info NonBinding.term
 
@@ -541,12 +541,10 @@ let%test_module "Matching" =
     let run_compiled_matches syntax_str sorts_str matrix_str tms_str =
       match
         ( ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t syntax_str
-        , ParseUtil.parse_string
-            ParseUtil.Parsers.(sep_by (char ',') Sort.Parse.t)
-            sorts_str
+        , ParseUtil.parse_string ParseUtil.(sep_by (char ',') Sort.Parse.t) sorts_str
         , ParseUtil.parse_string Parse.matrix_rows matrix_str
         , ParseUtil.parse_string
-            ParseUtil.Parsers.(sep_by (char ',') NonBinding.Parse.whitespace_term)
+            ParseUtil.(sep_by (char ',') NonBinding.Parse.whitespace_term)
             tms_str )
       with
       | Error syntax_msg, _, _, _ -> failwith ("syntax failed to parse: " ^ syntax_msg)
@@ -636,9 +634,7 @@ let%test_module "Matching" =
     let print_check syntax_str sorts_str matrix_str =
       match
         ( ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t syntax_str
-        , ParseUtil.parse_string
-            ParseUtil.Parsers.(sep_by (char ',') Sort.Parse.t)
-            sorts_str
+        , ParseUtil.parse_string ParseUtil.(sep_by (char ',') Sort.Parse.t) sorts_str
         , ParseUtil.parse_string Parse.matrix_rows matrix_str )
       with
       | Ok syntax, Ok sorts, Ok matrix ->

@@ -28,7 +28,7 @@ module Make (PlainBase : PlainBase_s) = struct
   ;;
 
   module Parse = struct
-    open ParseUtil.Parsers
+    open ParseUtil
 
     let t =
       PlainBase.parse
@@ -43,7 +43,7 @@ module Integer = Make (struct
 
   let pp ppf x = Fmt.string ppf (Z.to_string x)
   let ( = ) x1 x2 = (Z.Compare.(x1 = x2) [@warning "-44"])
-  let parse = ParseUtil.Parsers.(integer_lit >>| Z.of_string <?> "integer")
+  let parse = ParseUtil.(integer_lit >>| Z.of_string <?> "integer")
 end)
 
 module Float = Make (struct
@@ -53,7 +53,7 @@ module Float = Make (struct
   let ( = ) = Float.( = )
 
   let parse =
-    let open ParseUtil.Parsers in
+    let open ParseUtil in
     integer_or_float_lit
     >>= (function First _ -> fail "TODO" | Second f -> return f)
     <?> "float"
@@ -65,7 +65,7 @@ module Char = Make (struct
 
   let pp = Fmt.quote ~mark:"\'" Fmt.char
   let ( = ) = Char.( = )
-  let parse = ParseUtil.Parsers.(char_lit <?> "char")
+  let parse = ParseUtil.(char_lit <?> "char")
 end)
 
 module Int = Make (struct
@@ -73,7 +73,7 @@ module Int = Make (struct
 
   let pp = Fmt.int
   let ( = ) = Int.( = )
-  let parse = ParseUtil.Parsers.(integer_lit >>| Int.of_string <?> "int")
+  let parse = ParseUtil.(integer_lit >>| Int.of_string <?> "int")
 end)
 
 module Int32 = Make (struct
@@ -81,7 +81,7 @@ module Int32 = Make (struct
 
   let pp = Fmt.int32
   let ( = ) = Int32.( = )
-  let parse = ParseUtil.Parsers.(integer_lit >>| Int32.of_string <?> "int32")
+  let parse = ParseUtil.(integer_lit >>| Int32.of_string <?> "int32")
 end)
 
 module String = Make (struct
@@ -89,7 +89,7 @@ module String = Make (struct
 
   let pp = Fmt.(quote string)
   let ( = ) = String.( = )
-  let parse = ParseUtil.Parsers.(string_lit <?> "string")
+  let parse = ParseUtil.(string_lit <?> "string")
 end)
 
 module Plain = struct
@@ -149,7 +149,7 @@ let check prim sort =
 ;;
 
 module Parse = struct
-  open ParseUtil.Parsers
+  open ParseUtil
 
   let t =
     choice

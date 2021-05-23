@@ -76,7 +76,7 @@ struct
   module Parse = struct
     module Parse = Object.Parse
 
-    let whitespace_t = ParseUtil.Parsers.(whitespace *> Parse.t)
+    let whitespace_t = ParseUtil.(whitespace *> Parse.t)
   end
 end
 

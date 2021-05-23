@@ -336,7 +336,7 @@ module Parse = struct
     | Sep of char
 
   let t : OptRange.t t ParseUtil.t =
-    let open ParseUtil.Parsers in
+    let open ParseUtil in
     fix (fun pat ->
         let t_or_sep : tm_or_sep ParseUtil.t =
           choice
@@ -393,7 +393,7 @@ module Parse = struct
     <?> "binding-aware pattern"
   ;;
 
-  let whitespace_t = ParseUtil.Parsers.(whitespace *> t)
+  let whitespace_t = ParseUtil.(whitespace *> t)
 end
 
 module Properties = struct
