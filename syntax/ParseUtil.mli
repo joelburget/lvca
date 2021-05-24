@@ -1,3 +1,1 @@
-open ParseUtil_intf
-module Junkless : Junkless_s
-include Parsers_s
+include ParseUtil_intf.Parsers_s

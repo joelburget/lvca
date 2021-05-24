@@ -14,9 +14,9 @@ let parse_string p str =
 
 (** Parser combinators that *don't* handle trailing whitespace. *)
 module Junkless = struct
-  include Angstrom
+  open Angstrom
 
-  type +'a t = ('a * OptRange.t) Angstrom.t
+  (* type +'a t = ('a * OptRange.t) Angstrom.t *)
 
   let integer_lit_no_range = take_while1 Char.is_digit
 
@@ -96,6 +96,7 @@ module Junkless = struct
       pos
   ;;
 
+  (*
   let mk_list_parser p =
     Angstrom.lift3
       (fun start x finish -> List.map ~f:fst x, Some Range.{ start; finish })
@@ -186,6 +187,7 @@ module Junkless = struct
 
   let parse_string_pos p str = Angstrom.parse_string ~consume:All p str
   let parse_string p str = parse_string_pos p str |> Result.map ~f:fst
+  *)
 end
 
 let whitespace = Angstrom.(take_while Char.is_whitespace *> return ())
