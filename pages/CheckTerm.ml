@@ -4,12 +4,12 @@ open Note
 open Prelude
 open Lvca_provenance
 open Lvca_syntax
-module AbstractSyntaxParse = AbstractSyntax.Parse (ParseUtil.NoComment)
-module NominalParse = Nominal.Term.Parse (ParseUtil.NoComment)
-module ParsePrimitive = Primitive.Parse (ParseUtil.NoComment)
 
-let parse_lang lang_str = ParseUtil.parse_string AbstractSyntaxParse.whitespace_t lang_str
-let parse_term term_str = ParseUtil.parse_string NominalParse.t term_str
+let parse_lang lang_str =
+  ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t lang_str
+;;
+
+let parse_term term_str = ParseUtil.parse_string Nominal.Term.Parse.t term_str
 
 module Model = struct
   type t =

@@ -15,9 +15,9 @@ maybe a := Nothing() | Just(a)
 attribute := Attribute(string; string)
 
 link := LinkDef(
-  inline; // label
-  string; // destination
-  maybe string // title
+  inline;
+  string;
+  maybe string
 )
 
 list a :=
@@ -48,7 +48,7 @@ def_elt := DefElt(inline; list inline)
 
 block_desc :=
   | Paragraph(inline)
-  | List(list_type; list_spacing; list block) // TODO: list (list block)
+  | List(list_type; list_spacing; list block)
   | Blockquote(list block)
   | Thematic_break()
   | Heading(int; inline)

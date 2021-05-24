@@ -11,13 +11,9 @@ maybe a :=
   | nothing()
   | some(a)
 
-// An edit in some language is either:
 edit lang :=
-  // A simple, atomic edit
   | atomic(core lang (maybe lang))
-  // Or an edit with a message attached
   | labeled(edit; string)
-  // Or a list of edits.
   | list(list edit)
 |}]
 ;;
@@ -43,37 +39,10 @@ let rec pp : 'lang Fmt.t -> 'lang t Fmt.t =
   | List edits -> Fmt.(brackets (list ~sep:comma pp')) ppf edits
 ;;
 
-module Parse (Comment : ParseUtil.Comment_int) = struct
-  module Parsers = ParseUtil.Mk (Comment)
+module Parse = struct
+  open ParseUtil
 
-  let ( junk
-      , sep_by
-      , identifier
-      , brackets
-      , choice
-      , fix
-      , lift3
-      , ( >>| )
-      , ( <?> )
-      , ( *> )
-      , char )
-    =
-    Parsers.(
-      ( junk
-      , sep_by
-      , identifier
-      , brackets
-      , choice
-      , fix
-      , lift3
-      , ( >>| )
-      , ( <?> )
-      , ( *> )
-      , char ))
-  ;;
-
-  let t : 'lang Parsers.t -> 'lang t Parsers.t =
-   fun lang_p ->
+  let t (* : 'lang ParseUtil.t -> 'lang t ParseUtil.t *) lang_p =
     fix (fun t ->
         choice
           [ lang_p >>| (fun core -> Atomic core) <?> "core term"
@@ -82,23 +51,17 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
             <?> "labeled"
           ])
     <?> "edit"
- ;;
+  ;;
 
-  let whitespace_t lang_p = junk *> t lang_p
+  let whitespace_t lang_p = whitespace *> t lang_p
 end
 
 type term = OptRange.t Nominal.Term.t
 
 let%test_module "Parsing" =
   (module struct
-    module Parsers = ParseUtil.Mk (ParseUtil.CComment)
-    module ParseEdit = Parse (ParseUtil.CComment)
-    module ParseTerm = Nominal.Term.Parse (ParseUtil.CComment)
-    module ParseCore = Core.Parse (ParseUtil.CComment)
-    module ParsePrimitive = Primitive.Parse (ParseUtil.CComment)
-
     let parse : string -> (core t, string) Result.t =
-      ParseUtil.parse_string (ParseEdit.whitespace_t (Parsers.braces ParseCore.term))
+      ParseUtil.(parse_string (Parse.whitespace_t (braces Core.Parse.term)))
     ;;
 
     let parse_and_print : string -> unit =
@@ -136,7 +99,7 @@ let%test_module "Parsing" =
       let open Result.Let_syntax in
       match
         let%bind edit = parse edit in
-        let%bind tm = ParseUtil.parse_string ParseTerm.t tm in
+        let%bind tm = ParseUtil.parse_string Nominal.Term.Parse.t tm in
         let%map tm = run tm edit in
         Nominal.Term.pp Caml.Format.std_formatter tm
       with

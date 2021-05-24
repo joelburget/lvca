@@ -7,8 +7,6 @@ open Lvca_syntax
 open Note
 open Prelude
 module P = Lvca_languages.Parser
-module ParseCore = Core.Parse (ParseUtil.CComment)
-module ParseParser = P.Parse (ParseUtil.CComment)
 module Tuple3 = Lvca_util.Tuple3
 module Tuple2 = Lvca_util.Tuple2
 open Components
@@ -114,7 +112,7 @@ module DebuggerAction = struct
     | ChopStack of int list (** Click on a stack member *)
 end
 
-let parse_parser = ParseUtil.parse_string (ParseParser.t ParseCore.term)
+let parse_parser = ParseUtil.parse_string (P.Parse.t Core.Parse.term)
 
 module Examples = struct
   let any_char = "."
@@ -159,7 +157,7 @@ end
 
 module Prelude = struct
   let parse_parser_exn str =
-    str |> ParseUtil.parse_string (ParseParser.t ParseCore.term) |> Result.ok_or_failwith
+    str |> ParseUtil.parse_string (P.Parse.t Core.Parse.term) |> Result.ok_or_failwith
   ;;
 
   let alpha = parse_parser_exn Examples.satisfy_is_alpha

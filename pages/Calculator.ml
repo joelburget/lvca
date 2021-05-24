@@ -5,7 +5,6 @@ open Lvca_syntax
 open Note
 open Prelude
 module Calculator = Lvca_languages.Calculator
-module Parse = Calculator.Parse (ParseUtil.CComment)
 
 module Model = struct
   module Evaluation = struct
@@ -48,7 +47,7 @@ module Controller = struct
     match action with
     | Evaluate input ->
       let model =
-        match ParseUtil.parse_string Parse.t input with
+        match ParseUtil.parse_string Calculator.Parse.t input with
         | Error msg -> Model.{ evaluations; error_msg = Some msg }
         | Ok parsed ->
           let digits = S.create ~eq:Int.( = ) 10 in

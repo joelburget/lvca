@@ -12,14 +12,14 @@ int : *
 string : *
 
 doc :=
-  | Line() // insert a new line (unconditionally)
-  | Nil() // the empty document
-  | Cat(doc; doc) // concatenation
-  | Text(string) // insert a meaningful piece of text
-  | Spacing(string) // non-meaningful text
-  | Nest(int; doc) // nest the argument
-  | Align(doc) // align the documents in the argument
-  | Alt(doc; doc) // disjunction
+  | Line()
+  | Nil()
+  | Cat(doc; doc)
+  | Text(string)
+  | Spacing(string)
+  | Nest(int; doc)
+  | Align(doc)
+  | Alt(doc; doc)
 |}]
 
 module Lang' = Lang (Primitive.Int) (Primitive.String)

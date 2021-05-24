@@ -13,28 +13,28 @@ let unary_operators =
 
 let constants = [ "pi"; "e" ]
 
-module Parse (Comment : ParseUtil.Comment_int) = struct
-  module Parsers = ParseUtil.Mk (Comment)
-  open Parsers
+module Parse = struct
+  open ParseUtil
 
-  let lit =
+  let lit : OptRange.t NonBinding.term ParseUtil.t =
     (* TODO: this fails on too-large float lits *)
     integer_or_float_lit
-    >>|| fun ~pos lit ->
+    >>|| fun { value = lit; range; latest_pos } ->
     let lit =
       match lit with
-      | Either.First str -> pos, Primitive.Plain.Integer (Z.of_string str)
-      | Either.Second f -> pos, Float f
+      | Either.First str -> range, Primitive.Plain.Integer (Z.of_string str)
+      | Either.Second f -> range, Float f
     in
-    let tm = NonBinding.Operator (pos, "lit", [ Primitive lit ]) in
-    tm, pos
+    let tm = NonBinding.Operator (range, "lit", [ Primitive lit ]) in
+    { value = tm; range; latest_pos }
   ;;
 
   let const =
     constants
     |> List.map ~f:string
     |> choice
-    >>|| fun ~pos name -> NonBinding.Operator (pos, name, []), pos
+    >>|| fun { value = name; range; latest_pos } ->
+    { value = NonBinding.Operator (range, name, []); range; latest_pos }
   ;;
 
   (* Precedence:
@@ -42,15 +42,15 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
    * *, /
    * +, -
    *)
-  let t : term Parsers.t =
+  let t : term ParseUtil.t =
     fix (fun t ->
-        let atom : term Parsers.t = choice [ lit; const; parens t ] in
+        let atom : term ParseUtil.t = choice [ lit; const; parens t ] in
         (* TODO: rename negate to - *)
-        let unary_op : term Parsers.t =
+        let unary_op : term ParseUtil.t =
           unary_operators
           |> List.map ~f:(fun name ->
                  string name
-                 >>== fun ~pos:p1 name ->
+                 >>== fun { value = name; range = p1; _ } ->
                  atom
                  >>| fun body ->
                  let pos = OptRange.union p1 (NonBinding.info body) in
@@ -60,7 +60,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         let application =
           let min_max =
             choice [ string "min"; string "max" ]
-            >>== fun ~pos:p1 name ->
+            >>== fun { value = name; range = p1; _ } ->
             lift2
               (fun atom1 atom2 ->
                 let pos = OptRange.union p1 (NonBinding.info atom2) in
@@ -71,7 +71,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
           atom <|> unary_op <|> min_max
         in
         let pair p1 p2 = lift2 (fun x y -> x, y) p1 p2 in
-        let mul_div : term Parsers.t =
+        let mul_div : term ParseUtil.t =
           let op = char '*' <|> char '/' in
           let f l (op, r) =
             let rng = OptRange.union (NonBinding.info l) (NonBinding.info r) in
@@ -82,7 +82,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
           in
           application >>= fun init -> many (pair op application) >>| List.fold ~init ~f
         in
-        let add_sub : term Parsers.t =
+        let add_sub : term ParseUtil.t =
           let op = char '+' <|> char '-' in
           let f l (op, r) =
             let rng = OptRange.union (NonBinding.info l) (NonBinding.info r) in
@@ -165,10 +165,8 @@ let rec interpret : term -> (ConstructiveReal.t, term * string) Result.t =
 
 let%test_module "Evaluation" =
   (module struct
-    module P = Parse (ParseUtil.CComment)
-
     let go str =
-      match ParseUtil.parse_string P.t str with
+      match ParseUtil.parse_string Parse.t str with
       | Error msg -> print_endline msg
       | Ok tm ->
         (match interpret tm with

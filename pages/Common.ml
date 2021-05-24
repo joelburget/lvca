@@ -4,8 +4,6 @@ open Brr_note
 open Lvca_provenance
 open Lvca_syntax
 open Prelude
-module TermParse = Nominal.Term.Parse (ParseUtil.NoComment)
-module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse (ParseUtil.NoComment)
 
 type term = OptRange.t Nominal.Term.t
 
@@ -13,7 +11,11 @@ type lang =
   | Lambda
   | Term
 
-let parser_of = function Lambda -> LambdaParse.t | Term -> TermParse.t
+let parser_of = function
+  | Lambda -> Lvca_languages.LambdaCalculus.Parse.t
+  | Term -> Nominal.Term.Parse.t
+;;
+
 let term_pretty = Nominal.Term.pp_range
 let lambda_pretty = Lvca_languages.LambdaCalculus.pp_range
 let lambda_ranges_pretty = Lvca_languages.LambdaCalculus.pp_ranges

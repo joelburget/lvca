@@ -6,6 +6,7 @@ open Brr
 open Note
 open Prelude
 module Tuple2 = Lvca_util.Tuple2
+module ParseResult = ParseUtil.ParseResult
 
 module Model = struct
   type t =
@@ -143,7 +144,7 @@ end
 let stateless_view () =
   let initial_model : Model.t =
     let input = {|\f -> \g -> \x -> f (g x)|} in
-    let result = ParseUtil.parse_string LambdaParse.t input in
+    let result = ParseUtil.parse_string Lvca_languages.LambdaCalculus.Parse.t input in
     { input; result; input_lang = Lambda; input_selected = None; output_selected = None }
   in
   let wrapper model_s =

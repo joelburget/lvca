@@ -5,7 +5,6 @@ open Lvca_syntax
 open Note
 open Prelude
 module Tuple2 = Lvca_util.Tuple2
-module LambdaParse = Lvca_languages.LambdaCalculus.AngstromParse (ParseUtil.NoComment)
 
 let eval = Lvca_languages.LambdaCalculus.eval
 
@@ -59,7 +58,9 @@ module Controller = struct
     let { input; parsed_input; input_lang; _ } = model in
     match action with
     | Evaluate str ->
-      let parsed_input = ParseUtil.parse_string LambdaParse.t str in
+      let parsed_input =
+        ParseUtil.parse_string Lvca_languages.LambdaCalculus.Parse.t str
+      in
       let result = Result.bind parsed_input ~f:eval in
       { model with parsed_input; result; input_selected = None; output_selected = None }
     | InputSelect output_selected ->
@@ -152,7 +153,9 @@ end
 let stateless_view () =
   let initial_model : Model.t =
     let input = {|(\x -> \y -> x) z w|} in
-    let parsed_input = ParseUtil.parse_string LambdaParse.t input in
+    let parsed_input =
+      ParseUtil.parse_string Lvca_languages.LambdaCalculus.Parse.t input
+    in
     let result = Result.bind parsed_input ~f:eval in
     { input
     ; parsed_input

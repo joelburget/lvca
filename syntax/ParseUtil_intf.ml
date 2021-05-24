@@ -112,6 +112,7 @@ module type Parsers_s = sig
   val many1 : 'a t -> 'a list t
   val sep_by : _ t -> 'a t -> 'a list t
   val sep_by1 : _ t -> 'a t -> 'a list t
+  (** [sep_end_by sep p]: Parse zero or more occurences of [p], separated and optionally ended by [sep]. *)
   val sep_end_by : _ t -> 'a t -> 'a list t
   val parens : 'a t -> 'a t
   val braces : 'a t -> 'a t

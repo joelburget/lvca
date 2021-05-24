@@ -3,8 +3,7 @@ open Lvca_core
 open Lvca_provenance
 open Lvca_syntax
 open Stdio
-module Format = Caml.Format
-module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
+module Format = Stdlib.Format
 
 type 'info c_term = 'info Core.term
 type 'info n_term = 'info Nominal.Term.t
@@ -652,16 +651,15 @@ module Direct = struct
  ;;
 end
 
-module Parse (Comment : ParseUtil.Comment_int) = struct
+module Parse = struct
   type term = OptRange.t t
 
-  module Parsers = ParseUtil.Mk (Comment)
-  open Parsers
+  open ParseUtil
 
   let keywords : string list = [ (* "satisfy"; *) "let"; "in" (* "fail"; "fix" *) ]
-  let keyword : string Parsers.t = keywords |> List.map ~f:string |> choice
+  let keyword : string ParseUtil.t = keywords |> List.map ~f:string |> choice
   let operators : string list = [ "?"; "*"; "+"; "|"; "="; "->" ]
-  let operator : string Parsers.t = operators |> List.map ~f:string |> choice
+  let operator : string ParseUtil.t = operators |> List.map ~f:string |> choice
 
   type atom =
     | CharAtom of char
@@ -802,9 +800,9 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
   and choice_branches ~first ~tokens =
     let go () =
       sequence ~tokens
-      >>== fun ~pos:seq_pos branch ->
+      >>== fun { value = branch; range = seq_pos; _ } ->
       choice_branches ~first:false ~tokens
-      >>== fun ~pos:branch_pos branches ->
+      >>== fun { value = branches; range = branch_pos; _ } ->
       let pos = OptRange.union seq_pos branch_pos in
       return ~pos (branch :: branches)
     in
@@ -949,34 +947,38 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
     | tokens -> sequence ~tokens:(Queue.of_list tokens)
   ;;
 
-  let t : OptRange.t Core.term Parsers.t -> term Parsers.t =
+  let go f ParseResult.{ value; range; latest_pos } =
+    ParseResult.{ value = f value range; range; latest_pos }
+  ;;
+
+  let t : OptRange.t Core.term ParseUtil.t -> term ParseUtil.t =
    fun c_term ->
     let arrow = string "->" in
     fix (fun parser ->
         let token =
           fix (fun token ->
               choice
-                [ (char_lit >>|| fun ~pos c -> Atom (CharAtom c, pos), pos)
-                ; (integer_lit
-                  >>|| fun ~pos i -> Atom (IntAtom (Int.of_string i), pos), pos)
-                ; (string_lit >>|| fun ~pos str -> Atom (StrAtom str, pos), pos)
-                ; (char '.' >>|| fun ~pos _ -> Atom (Dot, pos), pos)
-                ; (operator >>|| fun ~pos op -> Operator (op, pos), pos)
-                ; (keyword >>|| fun ~pos kw -> Keyword (kw, pos), pos)
+                [ char_lit >>|| go (fun c range -> Atom (CharAtom c, range))
+                ; integer_lit
+                  >>|| go (fun i range -> Atom (IntAtom (Int.of_string i), range))
+                ; string_lit >>|| go (fun str range -> Atom (StrAtom str, range))
+                ; char '.' >>|| go (fun _ range -> Atom (Dot, range))
+                ; operator >>|| go (fun op range -> Operator (op, range))
+                ; keyword >>|| go (fun kw range -> Keyword (kw, range))
                 ; (string "fail"
-                  >>== fun ~pos:p1 _ ->
+                  >>== fun { range = p1; _ } ->
                   choice
-                    [ (braces c_term
-                      >>|| fun ~pos:p2 tm ->
-                      let pos = OptRange.union p1 p2 in
-                      FailTok (tm, pos), pos)
-                    ; (string_lit
-                      >>|| fun ~pos:p2 str ->
-                      let pos = OptRange.union p1 p2 in
-                      FailTok (Core.Term (Primitive (p2, String str)), pos), pos)
+                    [ braces c_term
+                      >>|| go (fun tm p2 ->
+                               let pos = OptRange.union p1 p2 in
+                               FailTok (tm, pos))
+                    ; string_lit
+                      >>|| go (fun str p2 ->
+                               let pos = OptRange.union p1 p2 in
+                               FailTok (Core.Term (Primitive (p2, String str)), pos))
                     ])
                 ; (string "satisfy"
-                  >>== fun ~pos:sat_pos _ ->
+                  >>== fun { range = sat_pos; _ } ->
                   parens
                     (lift3
                        (fun name _arr (tm, tm_pos) ->
@@ -986,13 +988,13 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
                        arrow
                        (attach_pos (braces c_term))))
                 ; (string "choice"
-                  >>== fun ~pos:choice_pos _ ->
+                  >>== fun { range = choice_pos; _ } ->
                   parens (many token)
-                  >>|| fun ~pos:toks_pos toks ->
-                  let pos = OptRange.union choice_pos toks_pos in
-                  ChoiceTok (toks, pos), pos)
+                  >>|| go (fun toks toks_pos ->
+                           let pos = OptRange.union choice_pos toks_pos in
+                           ChoiceTok (toks, pos)))
                 ; (string "fix"
-                  >>== fun ~pos:fix_pos _ ->
+                  >>== fun { range = fix_pos; _ } ->
                   parens
                     (lift3
                        (fun name _arr toks ->
@@ -1004,9 +1006,9 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
                        identifier
                        arrow
                        (many1 token)))
-                ; (identifier >>|| fun ~pos ident -> Ident (ident, pos), pos)
-                ; (braces c_term >>|| fun ~pos tm -> Core (tm, pos), pos)
-                ; (parens parser >>|| fun ~pos p -> Parenthesized (p, pos), pos)
+                ; identifier >>|| go (fun ident pos -> Ident (ident, pos))
+                ; braces c_term >>|| go (fun tm pos -> Core (tm, pos))
+                ; parens parser >>|| go (fun p pos -> Parenthesized (p, pos))
                 ])
           <?> "token"
         in
@@ -1076,12 +1078,9 @@ end
 
 let%test_module "Parsing" =
   (module struct
-    module ParseCore = Core.Parse (ParseUtil.CComment)
-    module ParseParser = Parse (ParseUtil.CComment)
-
     let parse_print : string -> string -> unit =
      fun parser_str str ->
-      match ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str with
+      match ParseUtil.parse_string (Parse.t Core.Parse.term) parser_str with
       | Error msg -> print_endline ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
         let parser' = map_info ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
@@ -1256,9 +1255,7 @@ let%test_module "Parsing" =
 
     let parse_print_parser : ?width:int -> string -> unit =
      fun ?width parser_str ->
-      match
-        ParseUtil.parse_string (ParseParser.whitespace_t ParseCore.term) parser_str
-      with
+      match ParseUtil.parse_string (Parse.whitespace_t Core.Parse.term) parser_str with
       | Error msg -> print_string ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
         let pre_geom =
@@ -1455,10 +1452,8 @@ fix (expr -> choice (
 
 module Properties = struct
   open PropertyResult
-  module ParseCore = Core.Parse (ParseUtil.CComment)
-  module ParseParser = Parse (ParseUtil.CComment)
 
-  let parse parser_str = ParseUtil.parse_string (ParseParser.t ParseCore.term) parser_str
+  let parse parser_str = ParseUtil.parse_string (Parse.t Core.Parse.term) parser_str
   let pp_str p = Fmt.to_to_string pp_plain p
 
   let string_round_trip1 t =

@@ -4,16 +4,14 @@ open Lvca_provenance
 open Stdio
 
 module Description = struct
-  module ParseAbstract = AbstractSyntax.Parse (ParseUtil.CComment)
-
   let abstract_syntax =
     [%lvca_abstract_syntax
       {|
      expr :=
-     | lit(integer) // an expression can be a literal integer
-     | add(expr; expr) // or the addition of two expressions
+     | lit(integer)
+     | add(expr; expr)
 
-     type := int() // there's only one type in the language |}]
+     type := int()  |}]
   ;;
 
   let parser_str =
@@ -55,20 +53,20 @@ module Description = struct
 end
 
 (* Write by hand first, later assert the generated parser is equivalent *)
-module Parse (Comment : ParseUtil.Comment_int) = struct
-  module Parsers = ParseUtil.Mk (Comment)
-  open Parsers
+module Parse = struct
+  open ParseUtil
 
-  let lit : OptRange.t NonBinding.term Parsers.t =
+  let lit : OptRange.t NonBinding.term ParseUtil.t =
     integer_lit
-    >>|| fun ~pos str ->
+    >>|| fun { value = str; range; latest_pos } ->
     let tm =
-      NonBinding.(Operator (pos, "lit", [ Primitive (pos, Integer (Z.of_string str)) ]))
+      NonBinding.(
+        Operator (range, "lit", [ Primitive (range, Integer (Z.of_string str)) ]))
     in
-    tm, pos
+    { value = tm; range; latest_pos }
   ;;
 
-  let t : OptRange.t NonBinding.term Parsers.t =
+  let t : OptRange.t NonBinding.term ParseUtil.t =
     fix (fun t ->
         let atom = attach_pos (lit <|> parens t) in
         let plus = char '+' in
@@ -80,7 +78,7 @@ module Parse (Comment : ParseUtil.Comment_int) = struct
         >>= fun init -> many (plus *> atom) >>| fun lst -> List.fold lst ~init ~f |> fst)
   ;;
 
-  let whitespace_t = junk *> t
+  let whitespace_t = whitespace *> t
 end
 
 let pp =
@@ -119,11 +117,10 @@ let rec eval_tm : _ NonBinding.term -> (Z.t, string) Result.t = function
 ;;
 
 let eval_str : string -> (Z.t, string) Result.t =
-  let module Parse = Parse (ParseUtil.NoComment) in
-  fun str ->
-    match ParseUtil.parse_string Parse.whitespace_t str with
-    | Error str -> Error str
-    | Ok tm -> eval_tm tm
+ fun str ->
+  match ParseUtil.parse_string Parse.whitespace_t str with
+  | Error str -> Error str
+  | Ok tm -> eval_tm tm
 ;;
 
 (* let eval_2 : string -> (Z.t, string) Result.t = let module Parse =
@@ -152,8 +149,6 @@ let ident_stag_funs =
 
 let%test_module "Hutton's Razor" =
   (module struct
-    module Parse = Parse (ParseUtil.NoComment)
-
     let parse str = ParseUtil.parse_string Parse.whitespace_t str
 
     let () =

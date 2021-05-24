@@ -30,26 +30,29 @@ let eval tm =
   | Some tm' -> Ok tm'
 ;;
 
-module AngstromParse (Comment : ParseUtil.Comment_int) = struct
-  module Parsers = ParseUtil.Mk (Comment)
-  open Parsers
+module Parse = struct
+  open ParseUtil
 
   let info = Nominal.Term.info
 
-  let t_var : OptRange.t Nominal.Term.t Parsers.t =
-    Parsers.identifier >>|| fun ~pos name -> Nominal.Term.Var (pos, name), pos
+  let t_var : OptRange.t Nominal.Term.t ParseUtil.t =
+    ParseUtil.identifier
+    >>|| fun { range; value = name; latest_pos } ->
+    { value = Nominal.Term.Var (range, name); range; latest_pos }
   ;;
 
-  let p_var : OptRange.t Pattern.t Parsers.t =
-    Parsers.identifier >>|| fun ~pos name -> Pattern.Var (pos, name), pos
+  let p_var : OptRange.t Pattern.t ParseUtil.t =
+    ParseUtil.identifier
+    >>|| fun { range; value = name; latest_pos } ->
+    { value = Pattern.Var (range, name); range; latest_pos }
   ;;
 
   (* Precedence 0: lam (right-associative) 1: app (left-associative) *)
 
-  let t : OptRange.t Nominal.Term.t Parsers.t =
+  let t : OptRange.t Nominal.Term.t ParseUtil.t =
     fix (fun t ->
         let atom = t_var <|> parens t in
-        let lam : OptRange.t Nominal.Term.t Parsers.t =
+        let lam : OptRange.t Nominal.Term.t ParseUtil.t =
           pos
           >>= fun start ->
           lift4
@@ -74,10 +77,8 @@ module AngstromParse (Comment : ParseUtil.Comment_int) = struct
         >>= fun init -> many atom_or_lam >>| fun atoms -> List.fold atoms ~init ~f |> fst)
   ;;
 
-  let whitespace_t = junk *> t
+  let whitespace_t = whitespace *> t
 end
-
-module ParseNoComment = AngstromParse (ParseUtil.NoComment)
 
 let pp_generic ~open_loc ~close_loc =
   let rec pp' prec ppf tm =
@@ -116,7 +117,7 @@ let pp_ranges =
 let%test_module "Lambda Calculus" =
   (module struct
     let () = Caml.Format.set_tags false
-    let parse str = ParseUtil.parse_string ParseNoComment.whitespace_t str
+    let parse str = ParseUtil.parse_string Parse.whitespace_t str
     let pretty_parse str = parse str |> Result.ok_or_failwith |> Fmt.pr "%a" pp_range
 
     let pretty_eval_parse str =

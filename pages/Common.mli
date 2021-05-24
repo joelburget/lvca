@@ -5,15 +5,11 @@ open Lvca_syntax
 
 type term = OptRange.t Nominal.Term.t
 
-module LambdaParse : sig
-  val t : (term * OptRange.t) Angstrom.t
-end
-
 type lang =
   | Lambda
   | Term
 
-val parser_of : lang -> (term * OptRange.t) Angstrom.t
+val parser_of : lang -> term ParseUtil.t
 val term_pretty : OptRange.t Nominal.Term.t Fmt.t
 val lambda_pretty : OptRange.t Nominal.Term.t Fmt.t
 val lambda_ranges_pretty : SourceRanges.t Nominal.Term.t Fmt.t

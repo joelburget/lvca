@@ -27,12 +27,12 @@ primitive :=
   | Char(char)
 |}]
 
+(* TODO: list : * -> * *)
 module NonBinding =
 [%abstract_syntax_module
 {|
 string : *
 primitive : *
-// TODO: list : * -> *
 
 list a :=
   | Nil()
@@ -43,12 +43,12 @@ term :=
   | Primitive(primitive)
 |}]
 
+(* TODO: list : * -> * *)
 module Pattern =
 [%abstract_syntax_module
 {|
 string : *
 primitive : *
-// TODO: list : * -> *
 
 list a :=
   | Nil()
@@ -61,12 +61,12 @@ pattern :=
   | Ignored(string)
 |}]
 
+(* TODO: list : * -> * *)
 module BindingAwarePattern =
 [%abstract_syntax_module
 {|
 string : *
 primitive : *
-// TODO: list : * -> *
 
 list a :=
   | Nil()
@@ -81,13 +81,13 @@ t :=
 scope := Scope(list string; t)
 |}]
 
+(* TODO: list : * -> * *)
 module Nominal =
 [%abstract_syntax_module
 {|
 string : *
 primitive : *
 pattern : *
-// TODO: list : * -> *
 
 list a :=
   | Nil()
@@ -101,17 +101,19 @@ term :=
 scope := Scope(list pattern; term)
 |}]
 
+(*
+TODO: list : * -> *
+TODO: either : * -> *
+TODO | Operator(string; list (either scope term))
+*)
 module DeBruijn =
 [%abstract_syntax_module
 {|
 int : *
 string : *
 primitive : *
-// TODO: list : * -> *
-// TODO: either : * -> *
 
 term :=
-  // TODO | Operator(string; list (either scope term))
   | BoundVar(int)
   | FreeVar(string)
   | Primitive(primitive)
@@ -119,6 +121,7 @@ term :=
 scope := Scope(string; term)
 |}]
 
+(* TODO: list : * -> * *)
 module DeBruijn2d =
 [%abstract_syntax_module
 {|
@@ -126,7 +129,6 @@ int : *
 string : *
 primitive : *
 pattern : *
-// TODO list : * -> *
 
 list a :=
   | Nil()

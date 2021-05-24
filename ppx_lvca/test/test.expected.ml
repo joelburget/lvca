@@ -310,8 +310,7 @@ module Lang =
           let map_info ~f  tm = Wrapper.MapInfo.foo ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
-          module Parse(Comment:ParseUtil.Comment_int) =
-            struct let t = failwith "TODO" end
+          module Parse = struct let t = failwith "TODO" end
         end
       module Nat =
         struct
@@ -324,8 +323,7 @@ module Lang =
           let map_info ~f  tm = Wrapper.MapInfo.nat ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
-          module Parse(Comment:ParseUtil.Comment_int) =
-            struct let t = failwith "TODO" end
+          module Parse = struct let t = failwith "TODO" end
         end
       module List(A:LanguageObject.AllTermS) =
         struct
@@ -338,8 +336,7 @@ module Lang =
           let map_info ~f  tm = Wrapper.MapInfo.list A.map_info ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
-          module Parse(Comment:ParseUtil.Comment_int) =
-            struct let t = failwith "TODO" end
+          module Parse = struct let t = failwith "TODO" end
         end
       module Pair(A:LanguageObject.AllTermS)(B:LanguageObject.AllTermS) =
         struct
@@ -355,8 +352,7 @@ module Lang =
             Wrapper.MapInfo.pair A.map_info B.map_info ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
-          module Parse(Comment:ParseUtil.Comment_int) =
-            struct let t = failwith "TODO" end
+          module Parse = struct let t = failwith "TODO" end
         end
       module Pair_plus(A:LanguageObject.AllTermS)(B:LanguageObject.AllTermS) =
         struct
@@ -377,8 +373,7 @@ module Lang =
             Wrapper.MapInfo.pair_plus A.map_info B.map_info ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
-          module Parse(Comment:ParseUtil.Comment_int) =
-            struct let t = failwith "TODO" end
+          module Parse = struct let t = failwith "TODO" end
         end
       module Nonempty =
         struct
@@ -391,8 +386,7 @@ module Lang =
           let map_info ~f  tm = Wrapper.MapInfo.nonempty ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
-          module Parse(Comment:ParseUtil.Comment_int) =
-            struct let t = failwith "TODO" end
+          module Parse = struct let t = failwith "TODO" end
         end
       module Term =
         struct
@@ -405,8 +399,7 @@ module Lang =
           let map_info ~f  tm = Wrapper.MapInfo.term ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
-          module Parse(Comment:ParseUtil.Comment_int) =
-            struct let t = failwith "TODO" end
+          module Parse = struct let t = failwith "TODO" end
         end
       module Mut_a =
         struct
@@ -419,8 +412,7 @@ module Lang =
           let map_info ~f  tm = Wrapper.MapInfo.mut_a ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
-          module Parse(Comment:ParseUtil.Comment_int) =
-            struct let t = failwith "TODO" end
+          module Parse = struct let t = failwith "TODO" end
         end
       module Mut_b =
         struct
@@ -433,8 +425,7 @@ module Lang =
           let map_info ~f  tm = Wrapper.MapInfo.mut_b ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
-          module Parse(Comment:ParseUtil.Comment_int) =
-            struct let t = failwith "TODO" end
+          module Parse = struct let t = failwith "TODO" end
         end
     end :
     functor (Integer : LanguageObject.AllTermS) ->

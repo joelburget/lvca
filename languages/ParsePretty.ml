@@ -6,7 +6,6 @@ let language =
     {|
 lang := rows(list row)
 
-// TODO: define exactly what term is
 row := row(term[term]. directive)
 
 directive :=

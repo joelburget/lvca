@@ -6,15 +6,11 @@ type +'a t = latest_pos:int -> 'a ParseResult.t Angstrom.t
 
 module ParseResult = ParseResult
 
-module ParseString = struct
-  let parse_string_pos p str = Angstrom.parse_string ~consume:All (p ~latest_pos:0) str
+let parse_string_pos p str = Angstrom.parse_string ~consume:All (p ~latest_pos:0) str
 
-  let parse_string p str =
-    parse_string_pos p str |> Result.map ~f:(fun ParseResult.{ value; _ } -> value)
-  ;;
-end
-
-include ParseString
+let parse_string p str =
+  parse_string_pos p str |> Result.map ~f:(fun ParseResult.{ value; _ } -> value)
+;;
 
 (** Parser combinators that *don't* handle trailing whitespace. *)
 module Junkless = struct
@@ -267,7 +263,6 @@ let string_lit = adapt Junkless.string_lit <* whitespace
 let char c = adapt (Junkless.char c) <* whitespace
 let string str = adapt (Junkless.string str) <* whitespace
 let ( <$> ) f p = p >>| f
-let choice = failwith "TODO"
 let fail msg ~latest_pos:_ = fail msg
 
 let lift f a ~latest_pos =
@@ -323,11 +318,20 @@ let count n p ~latest_pos =
   pos
   >>= fun p1 ->
   count n (p ~latest_pos)
-  >>= fun result -> pos >>= fun p2 -> return (result |> List.map ~f:fst, OptRange.mk p1 p2)
+  >>= fun result ->
+  pos
+  >>= fun p2 ->
+  let value = List.map result ~f:(fun elem -> elem.ParseResult.value) in
+  return ParseResult.{ value; range = OptRange.mk p1 p2; latest_pos = p2 }
 ;;
 
 let satisfy f ~latest_pos:_ =
-  Angstrom.(pos >>= fun p -> satisfy f >>| fun c -> c, OptRange.mk p (p + 1))
+  Angstrom.(
+    pos
+    >>= fun pos ->
+    satisfy f
+    >>| fun c ->
+    ParseResult.{ value = c; range = OptRange.mk pos (pos + 1); latest_pos = pos + 1 })
 ;;
 
 let attach_pos p ~latest_pos =
@@ -337,24 +341,63 @@ let attach_pos p ~latest_pos =
     { parse_result with value = value, range })
 ;;
 
-let return ?pos value ~latest_pos =
+let return ?(pos = None) value ~latest_pos =
   Angstrom.return ParseResult.{ value; range = pos; latest_pos }
 ;;
 
 let option value p ~latest_pos =
-  Angstrom.option ParseResult.{ value; range = None; latest_pos } p
+  Angstrom.option ParseResult.{ value; range = None; latest_pos } (p ~latest_pos)
 ;;
 
-let pos ~latest_pos = ParseResult.{ value = latest_pos; range = None; latest_pos }
-let fix f ~latest_pos:_ = Angstrom.fix f
-let many _p ~latest_pos:_ = failwith "TODO"
-let many1 _p ~latest_pos:_ = failwith "TODO"
-let sep_by _s _p ~latest_pos:_ = failwith "TODO"
-let sep_by1 _s _p ~latest_pos:_ = failwith "TODO"
-let sep_end_by _s _p ~latest_pos:_ = failwith "TODO"
-let parens _p ~latest_pos:_ = failwith "TODO"
-let braces _p ~latest_pos:_ = failwith "TODO"
-let brackets _p ~latest_pos:_ = failwith "TODO"
+let pos ~latest_pos =
+  Angstrom.return ParseResult.{ value = latest_pos; range = None; latest_pos }
+;;
+
+let fix f ~latest_pos =
+  (* TODO: okay to ignore latest_pos? *)
+  Angstrom.fix (fun angstrom_t -> f (fun ~latest_pos:_ -> angstrom_t) ~latest_pos)
+;;
+
+let choice ?failure_msg ps ~latest_pos =
+  Angstrom.choice ?failure_msg (List.map ps ~f:(fun p -> p ~latest_pos))
+;;
+
+let handle_list lst ~latest_pos =
+  let open ParseResult in
+  match List.hd lst, List.last lst with
+  | Some head, Some last ->
+    { value = List.map lst ~f:(fun elem -> elem.value)
+    ; range = OptRange.union head.range last.range
+    ; latest_pos = last.latest_pos
+    }
+  | _, _ -> ParseResult.{ value = []; range = None; latest_pos }
+;;
+
+let many p ~latest_pos = Angstrom.(many (p ~latest_pos) >>| handle_list ~latest_pos)
+let many1 p ~latest_pos = Angstrom.(many1 (p ~latest_pos) >>| handle_list ~latest_pos)
+
+let sep_by s p ~latest_pos =
+  Angstrom.(sep_by (s ~latest_pos) (p ~latest_pos) >>| handle_list ~latest_pos)
+;;
+
+let sep_by1 s p ~latest_pos =
+  Angstrom.(sep_by1 (s ~latest_pos) (p ~latest_pos) >>| handle_list ~latest_pos)
+;;
+
+let sep_end_by s p ~latest_pos =
+  let seb =
+    fix (fun seb ->
+        let seb1 =
+          p >>= fun x -> choice [ lift2 (fun _ xs -> x :: xs) s seb; return [ x ] ]
+        in
+        choice [ seb1; return [] ])
+  in
+  seb ~latest_pos
+;;
+
+let parens p = lift3 (fun _ v _ -> v) (char '(') p (char ')')
+let braces p = lift3 (fun _ v _ -> v) (char '{') p (char '}')
+let brackets p = lift3 (fun _ v _ -> v) (char '[') p (char ']')
 
 let%test_module "Parsing" =
   (module struct
