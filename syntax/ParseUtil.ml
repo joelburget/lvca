@@ -49,11 +49,65 @@ module Junkless = struct
         >>= fun _ ->
         option "" integer_lit_no_range
         >>= fun part ->
-        return (Either.Second (Float.of_string (sign ^ whole ^ "." ^ part))))
+        let str = sign ^ whole ^ "." ^ part in
+        match Stdlib.float_of_string_opt str with
+        | Some f -> return (Either.Second f)
+        | None -> fail (Printf.sprintf "Failed to convert %s to float" str))
       ; return (Either.First (sign ^ whole))
       ]
     >>= fun result -> pos >>| fun finish -> result, Some Range.{ start; finish }
   ;;
+
+  let escape_sequence =
+    (* TODO: use decimal_code, char_for_octal_code, char_for_hexadecimal_code
+       from ocaml's lexer.mll? Or, share logic with AngstromStr. *)
+    let cvt cs =
+      let str = String.of_char_list cs in
+      match str |> Stdlib.int_of_string_opt |> Option.bind ~f:Char.of_int with
+      | None -> fail (Printf.sprintf "couldn't convert %S to character" str)
+      | Some c -> return c
+    in
+    (* decimal code \ddd *)
+    let decimal =
+      char 'd'
+      >>= fun _ ->
+      satisfy Char.is_digit
+      >>= fun d1 -> satisfy Char.is_digit >>= fun d2 -> cvt [ 'd'; d1; d2 ]
+    in
+    (* hex code \xhh *)
+    let hex =
+      char 'x'
+      >>= fun _ ->
+      satisfy Char.is_alphanum
+      >>= fun h1 -> satisfy Char.is_alphanum >>= fun h2 -> cvt [ 'x'; h1; h2 ]
+    in
+    (* octal code \oooo *)
+    let octal =
+      let ( <= ), ( >= ) = Char.(( <= ), ( >= )) in
+      char 'o'
+      >>= fun _ ->
+      satisfy (fun c -> c >= '0' && c <= '3')
+      >>= fun o1 ->
+      satisfy (fun c -> c >= '0' && c <= '7')
+      >>= fun o2 ->
+      satisfy (fun c -> c >= '0' && c <= '7') >>= fun o3 -> cvt [ 'o'; o1; o2; o3 ]
+    in
+    let p =
+      char '\\'
+      >>= fun _ ->
+      choice
+        ~failure_msg:"illegal escape sequence"
+        [ (* backslash, double quote, single quote, newline, tab, backspace, or carriage return *)
+          satisfy (List.mem [ '\\'; '"'; '\''; 'n'; 't'; 'b'; 'r' ] ~equal:Char.( = ))
+        ; decimal <?> "decimal"
+        ; hex <?> "hex"
+        ; octal <?> "octal"
+        ]
+    in
+    p <?> "escape sequence"
+  ;;
+
+  let regular_char = satisfy Char.(fun c -> c <> '\\') <?> "regular char"
 
   let string_lit =
     lift3
@@ -67,7 +121,7 @@ module Junkless = struct
     lift3
       (fun start result finish -> result, Some Range.{ start; finish })
       pos
-      (char '\'' *> any_char <* char '\'')
+      (char '\'' *> (regular_char <|> escape_sequence) <* char '\'')
       pos
   ;;
 
