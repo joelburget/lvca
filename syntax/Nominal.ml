@@ -426,18 +426,14 @@ module Term = struct
       | Tm of OptRange.t t
       | Sep of char
 
-    type 'info term = 'info t
-
     open ParseUtil
 
     (* (b11. ... b1n. t11, ... t1n; b21. ... b2n. t21, ... t2n) *)
-    let accumulate (range : OptRange.t) (tag : string) (tokens : tm_or_sep list)
-        : OptRange.t term ParseUtil.t
-      =
+    let accumulate range tag tokens =
       (* terms encountered between '.'s, before hitting ',' / ';' *)
-      let binding_queue : OptRange.t Types.term Queue.t = Queue.create () in
+      let binding_queue = Queue.create () in
       (* scopes encountered *)
-      let scope_queue : OptRange.t Types.scope Queue.t = Queue.create () in
+      let scope_queue = Queue.create () in
       let rec go = function
         | [] -> return ~pos:range (Operator (range, tag, Queue.to_list scope_queue))
         | Tm tm :: Sep '.' :: rest ->
@@ -458,27 +454,23 @@ module Term = struct
       go tokens
     ;;
 
-    let t : OptRange.t term ParseUtil.t =
+    let t =
       fix (fun term ->
-          let tm_or_sep : tm_or_sep ParseUtil.t =
+          let tm_or_sep =
             choice
               [ (fun c -> Sep c) <$> choice [ char '.'; char ';' ]
               ; (fun tm -> Tm tm) <$> term
               ]
           in
-          pos
-          >>= fun pre_ident_pos ->
-          let pre_ident_pos = OptRange.mk pre_ident_pos pre_ident_pos in
           choice
             [ (Primitive.Parse.t >>| fun prim -> Primitive prim)
             ; (identifier
-              >>== fun ParseResult.{ value = ident; range = ident_pos; _ } ->
+              >>== fun ParseResult.{ value = ident; range = ident_range; _ } ->
               choice
                 [ (parens (many tm_or_sep)
-                  >>== fun ParseResult.{ value = tokens; range = parens_pos; _ } ->
-                  accumulate (OptRange.union pre_ident_pos parens_pos) ident tokens)
-                ; (let pos = OptRange.(union pre_ident_pos ident_pos) in
-                   return ~pos (Var (pos, ident)))
+                  >>== fun ParseResult.{ value = tokens; range = parens_range; _ } ->
+                  accumulate (OptRange.union ident_range parens_range) ident tokens)
+                ; return (Var (ident_range, ident))
                 ])
             ])
       <?> "term"
