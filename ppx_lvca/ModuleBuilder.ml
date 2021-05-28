@@ -140,14 +140,43 @@ module Update_loc (Context : Builder_context) = struct
      > The difference between pos_cnum and pos_bol is the character offset
      within the line (i.e. the column number, assuming each character is one
      column wide).
+
+     Update the contextual location to focus on just the given [OptRange]. Example:
+
+     {[
+  012345678901234567890123456
+0 module Lang =
+1 [%abstract_syntax_module
+2 {\|
+3 integer : *
+4
+5 foo :=
+6   | Foo(integer)
+7   | Bar(foo[foo]. foo. foo)
+  012345678901234567890123456
+     ]}
+
+     Here the module-level loc will be the location of the string, from 2,2 to
+     2,100 (or something like that). So, we need to add locations in [optrange]
+     to the contextual [loc].
    *)
   let go : OptRange.t -> Location.t =
    fun optrange ->
     match optrange with
     | None -> loc
     | Some { start; finish } ->
+      (*
+      let x =
+        { loc with
+          loc_start = { loc.loc_start with pos_cnum = loc.loc_start.pos_cnum + start }
+        ; loc_end = { loc.loc_end with pos_cnum = loc.loc_start.pos_cnum + finish }
+        }
+      in
+      *)
+      (* Buffers before and internal to the referenced span. *)
       let before_buf = String.subo ~len:start buf in
       let internal_buf = String.sub ~pos:start ~len:(finish - start) buf in
+      (* Number of newlines before and internal to the referenced span. *)
       let buf_start_lnum = String.count ~f:Char.(fun c -> c = '\n') before_buf in
       let internal_lines = String.count ~f:Char.(fun c -> c = '\n') internal_buf in
       let start_bol =
@@ -189,16 +218,14 @@ let%test_module "Update_loc" =
                  012345 678901 234
                  1      2        3 *)
 
-      let loc =
-        Location.
-          { loc_start = mk_pos 1 0 0
-          ; loc_end = mk_pos 2 12 (String.length buf - 1)
-          ; loc_ghost = false
-          }
-      ;;
-
       module Ast = Ast_builder.Make (struct
-        let loc = loc
+        let loc =
+          Location.
+            { loc_start = mk_pos 1 0 0
+            ; loc_end = mk_pos 2 12 (String.length buf - 1)
+            ; loc_ghost = false
+            }
+        ;;
       end)
     end
 
@@ -230,16 +257,14 @@ let%test_module "Update_loc" =
                  012345678901234
                  1     2       3 *)
 
-      let loc =
-        Location.
-          { loc_start = mk_pos 0 0 0
-          ; loc_end = mk_pos 2 12 (String.length buf - 1)
-          ; loc_ghost = false
-          }
-      ;;
-
       module Ast = Ast_builder.Make (struct
-        let loc = loc
+        let loc =
+          Location.
+            { loc_start = mk_pos 0 0 0
+            ; loc_end = mk_pos 2 12 (String.length buf - 1)
+            ; loc_ghost = false
+            }
+        ;;
       end)
     end
 
@@ -309,6 +334,9 @@ let get_sort_ref_map sort_defs =
 module Helpers (Context : Builder_context) = struct
   open Context
   open Ast
+  module Update_loc = Update_loc (Context)
+
+  let update_loc rng = Update_loc.go rng
 
   (** Context for classifying a sort ([classify_sort]) as [defn_status]. *)
   type context =
@@ -359,6 +387,7 @@ module Helpers (Context : Builder_context) = struct
     (* let { info; var_names; mutual_sorts; prim_names } = context in *)
     let args = if context.info then [ [%type: 'info] ] else [] in
     let rec go sort =
+      let loc = update_loc (Sort.info sort) in
       let name, sort_args = Sort.split sort in
       match classify_sort context sort with
       | Variable -> ptyp_var name
@@ -433,7 +462,7 @@ module Helpers (Context : Builder_context) = struct
           | false, true -> [ "Wrapper"; "Types"; sort_name ]
           | false, false -> [ "Wrapper"; "Plain"; sort_name ]
         in
-        pexp_ident { txt = unflatten qualified_name; loc }
+        pexp_ident { txt = unflatten qualified_name; loc = update_loc (Sort.info sort') }
     in
     let txt, var_args =
       match classify_sort context sort with
@@ -443,7 +472,9 @@ module Helpers (Context : Builder_context) = struct
         Lident sort_name, sort_args
       | PredefinedSort _ -> unflatten [ module_name sort_name; fun_name ], []
     in
-    pexp_apply (pexp_ident { txt; loc }) (var_args @ extra_args)
+    pexp_apply
+      (pexp_ident { txt; loc = update_loc (Sort.info sort) })
+      (var_args @ extra_args)
   ;;
 
   let labelled_fun name = pexp_fun (Labelled name) None (ppat_var { txt = name; loc })
@@ -463,7 +494,6 @@ module CtorDecl (Context : Builder_context) = struct
   open Context
   open Ast
   open Helpers (Context)
-  module Update_loc = Update_loc (Context)
 
   let mk
       ~info
@@ -479,7 +509,7 @@ module CtorDecl (Context : Builder_context) = struct
       let args =
         List.map binding_sort_slots ~f:(function
             | Syn.SortSlot.SortBinding sort ->
-              let loc = Update_loc.go (Sort.info sort) in
+              let loc = update_loc (Sort.info sort) in
               [%type: string]
             | SortPattern _sort -> pattern_type)
       in
@@ -943,7 +973,6 @@ module IndividualTypeModule (Context : Builder_context) = struct
   open Context
   open Ast
   open Helpers (Context)
-  module Update_loc = Update_loc (Context)
 
   let mk ~prim_names:_ ~sort_def_map:_ sort_name (Syn.SortDef.SortDef (vars, _op_defs)) =
     let _var_names = vars |> List.map ~f:fst |> SSet.of_list in
@@ -1043,7 +1072,7 @@ module IndividualTypeModule (Context : Builder_context) = struct
               Fmt.pf ppf "TODO: pp_generic"
             ;;]
         ; [%stri
-            module Parse (Comment : ParseUtil.Comment_int) = struct
+            module Parse = struct
               let t = failwith "TODO"
             end]
         ]
@@ -1061,12 +1090,12 @@ module IndividualTypeModule (Context : Builder_context) = struct
         pmod_functor mod_param accum
       | Some (Syn.Kind.Kind (info, 1)) ->
         let mod_param =
-          Named ({ txt = Some (module_name name); loc = Update_loc.go info }, all_term_s)
+          Named ({ txt = Some (module_name name); loc = update_loc info }, all_term_s)
         in
         pmod_functor mod_param accum
       | Some (Syn.Kind.Kind (info, _) as kind) ->
         Location.raise_errorf
-          ~loc:(Update_loc.go info)
+          ~loc:(update_loc info)
           "Code generation currently only supports external modules of kind * (`%s` is \
            %s)"
           name
@@ -1084,7 +1113,6 @@ module ContainerModule (Context : Builder_context) = struct
   open Helpers (Context)
   module WrapperModule = WrapperModule (Context)
   module IndividualTypeModule = IndividualTypeModule (Context)
-  module Update_loc = Update_loc (Context)
 
   let mk Syn.{ externals; sort_defs } =
     let prim_names = externals |> List.map ~f:fst |> SSet.of_list in
@@ -1107,11 +1135,11 @@ module ContainerModule (Context : Builder_context) = struct
     let mod_param (name, kind) =
       match kind with
       | Some (Syn.Kind.Kind (info, 1)) ->
-        Named ({ txt = Some (module_name name); loc = Update_loc.go info }, all_term_s)
+        Named ({ txt = Some (module_name name); loc = update_loc info }, all_term_s)
       | None -> Named ({ txt = Some (module_name name); loc }, all_term_s)
       | Some (Syn.Kind.Kind (info, _) as kind) ->
         Location.raise_errorf
-          ~loc:(Update_loc.go info)
+          ~loc:(update_loc info)
           "Code generation currently only supports external modules of kind * (`%s` is \
            %s)"
           name
