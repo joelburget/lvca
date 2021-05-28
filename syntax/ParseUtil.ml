@@ -236,6 +236,8 @@ let lift2 f a b =
   { value = f a_val b_val; range = OptRange.union a_range b_range; latest_pos }
 ;;
 
+let debug = ref false
+
 let lift3 f a b c =
   a
   >>== fun { value = a_val; range = a_range; _ } ->
@@ -243,10 +245,20 @@ let lift3 f a b c =
   >>== fun { value = b_val; range = b_range; _ } ->
   c
   >>|| fun { value = c_val; range = c_range; latest_pos } ->
-  { value = f a_val b_val c_val
-  ; range = OptRange.list_range [ a_range; b_range; c_range ]
-  ; latest_pos
-  }
+  let range = OptRange.list_range [ a_range; b_range; c_range ] in
+  if !debug
+  then
+    Fmt.pr
+      "lift3 a_range: %a; b_range: %a; c_range: %a, range: %a\n"
+      OptRange.pp
+      a_range
+      OptRange.pp
+      b_range
+      OptRange.pp
+      c_range
+      OptRange.pp
+      range;
+  { value = f a_val b_val c_val; range; latest_pos }
 ;;
 
 let lift4 f a b c d =
@@ -438,6 +450,23 @@ let%test_module "Parsing" =
     let%expect_test _ =
       go {|"\\"|};
       [%expect {|{ value = "\\"; range = {0,4}; latest_pos = 4 }|}]
+    ;;
+
+    let go = parse_print (parens string_lit) pp_str
+
+    let%expect_test _ =
+      go {|("a")|};
+      (*   012345 *)
+      [%expect {|{ value = "a"; range = {0,5}; latest_pos = 5 }|}]
+    ;;
+
+    let pp ppf = Fmt.(pf ppf "[%a]" (list ~sep:(any "; ") pp_str))
+    let go = parse_print (parens (sep_by whitespace string_lit)) pp
+
+    let%expect_test _ =
+      go {|("a" "b")|};
+      (*   0123456789 *)
+      [%expect {|{ value = ["a"; "b"]; range = {0,9}; latest_pos = 9 }|}]
     ;;
 
     let go =
