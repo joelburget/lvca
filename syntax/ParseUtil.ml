@@ -204,19 +204,11 @@ let whitespace1 ~latest_pos =
   Angstrom.(whitespace1 >>| fun _ -> { value = (); range = None; latest_pos })
 ;;
 
-let debug = ref false
-
 let adapt_junkless junkless_p =
   let p ~latest_pos =
     let f (value, range) =
       let latest_pos =
-        match range with
-        | None ->
-          if !debug then Fmt.pr "adapt_junkless | None -> %d\n" latest_pos;
-          latest_pos
-        | Some Range.{ finish; _ } ->
-          if !debug then Fmt.pr "adapt_junkless | Some _ -> %d\n" finish;
-          finish
+        match range with None -> latest_pos | Some Range.{ finish; _ } -> finish
       in
       return { value; range; latest_pos }
     in
@@ -310,8 +302,22 @@ let option value p ~latest_pos =
 let pos ~latest_pos = Angstrom.return { value = latest_pos; range = None; latest_pos }
 
 let fix f ~latest_pos =
-  (* TODO: okay to ignore latest_pos? *)
-  Angstrom.fix (fun angstrom_t -> f (fun ~latest_pos:_ -> angstrom_t) ~latest_pos)
+  let pos_ref = ref latest_pos in
+  let result =
+    Angstrom.fix (fun angstrom_t ->
+        f
+          (fun ~latest_pos ->
+            pos_ref := latest_pos;
+            angstrom_t)
+          ~latest_pos:!pos_ref)
+  in
+  let adjust_latest_pos { value; range; latest_pos } =
+    let latest_pos =
+      match range with Some { finish; _ } -> finish | None -> latest_pos
+    in
+    { value; range; latest_pos }
+  in
+  Angstrom.(result >>| adjust_latest_pos)
 ;;
 
 let choice ?failure_msg ps ~latest_pos =
@@ -497,24 +503,28 @@ let%test_module "Parsing" =
       [%expect {|{ value = ["abc"; "def"]; range = {0,13}; latest_pos = 13 }|}]
     ;;
 
-    let%expect_test _ =
+    let go str =
       let parse =
         parse_string_pos
           (sep_by1 (whitespace *> string "->") (whitespace *> char '*')
           <* whitespace
           <* string "foo")
       in
-      let result1 = parse "* -> *\nfoo" in
-      (*                   0123456 7890 *)
-      let result2 = parse "* -> * // asjdflksajfklasjfsal\nfoo" in
-      (*                   0123456789012345678901234567890 1234
-                                     1         2         3
-       *)
-      (match result1, result2 with
-      | Ok { range = rng1; _ }, Ok { range = rng2; _ } ->
-        Fmt.pr "%a, %a\n" OptRange.pp rng1 OptRange.pp rng2
-      | _ -> Fmt.pr "not okay\n");
-      [%expect {|{0,6}, {0,6}|}]
+      match parse str with
+      | Ok { range; _ } -> Fmt.pr "%a\n" OptRange.pp range
+      | _ -> Fmt.pr "not okay\n"
+    ;;
+
+    let%expect_test _ =
+      go "* -> *\nfoo";
+      (*  0123456 7890 *)
+      [%expect {|{0,6}|}]
+    ;;
+
+    let%expect_test _ =
+      go "* -> * foo";
+      (*  01234567890 *)
+      [%expect {|{0,6}|}]
     ;;
   end)
 ;;

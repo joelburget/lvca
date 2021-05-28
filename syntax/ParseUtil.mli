@@ -2,8 +2,8 @@ open Lvca_provenance
 
 type +'a t = latest_pos:int -> 'a ParseResult.t Angstrom.t
 
-val ( >>== ) : 'a t -> ('a ParseResult.t -> 'b t) -> 'b t
 val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
+val ( >>== ) : 'a t -> ('a ParseResult.t -> 'b t) -> 'b t
 val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
 val ( >>|| ) : 'a t -> ('a ParseResult.t -> 'b ParseResult.t) -> 'b t
 val ( <$> ) : ('a -> 'b) -> 'a t -> 'b t
