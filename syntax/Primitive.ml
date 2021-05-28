@@ -1,4 +1,3 @@
-open Lvca_provenance
 open Base
 
 module type PlainBase_s = sig
@@ -242,6 +241,8 @@ end
 
 let%test_module "Parsing" =
   (module struct
+    open Lvca_provenance
+
     let print_parse str =
       match ParseUtil.parse_string_pos Parse.t str with
       | Ok { value = prim; range; _ } -> Fmt.pr "%a %a" pp prim OptRange.pp range
