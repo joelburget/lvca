@@ -1,7 +1,5 @@
 open Base
 open Lvca_provenance
-open ParseUtil_intf
-module ParseResult = ParseResult
 open ParseResult
 
 type +'a t = latest_pos:int -> 'a ParseResult.t Angstrom.t
