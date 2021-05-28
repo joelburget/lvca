@@ -251,9 +251,9 @@ module Parse = struct
             else
               choice
                 [ (parens (sep_end_by (char ';') pat)
-                  >>|| fun ParseResult.{ value = children; range = finish; latest_pos } ->
+                  >>|| fun ParseResult.{ value = children; range = finish } ->
                   let range = OptRange.union range finish in
-                  { value = Operator (range, ident, children); range; latest_pos })
+                  { value = Operator (range, ident, children); range })
                 ; return ~pos:range (Var (range, ident))
                 ]
               <?> "pattern body")

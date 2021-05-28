@@ -2,10 +2,7 @@ open Lvca_provenance
 
 module ParseResult : sig
   type 'a t =
-    { latest_pos : int
-          (** The first position *after* the last non-whitespace character read. This may
-              be used as the endpoint (non-inclusive) of the range for enclosing parsers *)
-    ; value : 'a
+    { value : 'a
     ; range : Lvca_provenance.OptRange.t
     }
 
@@ -13,7 +10,7 @@ module ParseResult : sig
   val pp : 'a Fmt.t -> 'a t Fmt.t
 end
 
-type +'a t = latest_pos:int -> 'a ParseResult.t Angstrom.t
+type +'a t = 'a ParseResult.t Angstrom.t
 
 val debug : bool ref
 val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
@@ -33,7 +30,7 @@ val identifier : string t
 val integer_lit : string t
 val integer_or_float_lit : (string, float) Base.Either.t t
 val string_lit : string t
-val pos : int t (* TODO: remove? *)
+(* val pos : int t (1* TODO: remove? *1) *)
 
 val option : 'a -> 'a t -> 'a t
 val return : ?pos:OptRange.t -> 'a -> 'a t (* TODO: rename to range? *)

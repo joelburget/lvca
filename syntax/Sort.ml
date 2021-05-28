@@ -102,8 +102,8 @@ module Parse = struct
           choice
             [ parens sort
             ; (identifier
-              >>|| fun ParseResult.{ value; range; latest_pos } ->
-              { latest_pos; value = Name (range, value); range })
+              >>|| fun ParseResult.{ value; range } ->
+              { value = Name (range, value); range })
             ]
         in
         many1 atomic_sort

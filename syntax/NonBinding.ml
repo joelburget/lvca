@@ -104,10 +104,9 @@ module Parse = struct
           ; (identifier
             >>== fun ParseResult.{ value = ident; range = start; _ } ->
             parens (sep_end_by (char ';') term)
-            >>|| (fun ParseResult.{ value = children; range = finish; latest_pos } ->
+            >>|| (fun ParseResult.{ value = children; range = finish } ->
                    let pos = OptRange.union start finish in
-                   ParseResult.
-                     { value = Operator (pos, ident, children); range = pos; latest_pos })
+                   ParseResult.{ value = Operator (pos, ident, children); range = pos })
             <?> "term body")
           ])
     <?> "term"

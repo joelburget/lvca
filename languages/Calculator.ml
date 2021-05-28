@@ -19,22 +19,22 @@ module Parse = struct
   let lit : OptRange.t NonBinding.term Lvca_parsing.t =
     (* TODO: this fails on too-large float lits *)
     integer_or_float_lit
-    >>|| fun { value = lit; range; latest_pos } ->
+    >>|| fun { value = lit; range } ->
     let lit =
       match lit with
       | Either.First str -> range, Primitive.Plain.Integer (Z.of_string str)
       | Either.Second f -> range, Float f
     in
     let tm = NonBinding.Operator (range, "lit", [ Primitive lit ]) in
-    { value = tm; range; latest_pos }
+    { value = tm; range }
   ;;
 
   let const =
     constants
     |> List.map ~f:string
     |> choice
-    >>|| fun { value = name; range; latest_pos } ->
-    { value = NonBinding.Operator (range, name, []); range; latest_pos }
+    >>|| fun { value = name; range } ->
+    { value = NonBinding.Operator (range, name, []); range }
   ;;
 
   (* Precedence:

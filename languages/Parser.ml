@@ -947,9 +947,7 @@ module Parse = struct
     | tokens -> sequence ~tokens:(Queue.of_list tokens)
   ;;
 
-  let go f ParseResult.{ value; range; latest_pos } =
-    ParseResult.{ value = f value range; range; latest_pos }
-  ;;
+  let go f ParseResult.{ value; range } = ParseResult.{ value = f value range; range }
 
   let t : OptRange.t Core.term Lvca_parsing.t -> term Lvca_parsing.t =
    fun c_term ->

@@ -185,35 +185,22 @@ end
 
 module ParseResult = struct
   type 'a t =
-    { latest_pos : int
-    ; value : 'a
+    { value : 'a
     ; range : OptRange.t
     }
 
-  let equal a_eq r1 r2 =
-    Base.Int.(r1.latest_pos = r2.latest_pos)
-    && a_eq r1.value r2.value
-    && OptRange.(r1.range = r2.range)
-  ;;
+  let equal a_eq r1 r2 = a_eq r1.value r2.value && OptRange.(r1.range = r2.range)
 
-  let pp pp_a ppf { value; range; latest_pos } =
-    Fmt.pf
-      ppf
-      "{ value = %a; range = %a; latest_pos = %d }"
-      pp_a
-      value
-      OptRange.pp
-      range
-      latest_pos
+  let pp pp_a ppf { value; range } =
+    Fmt.pf ppf "{ value = %a; range = %a }" pp_a value OptRange.pp range
   ;;
 end
 
 open ParseResult
 
-type +'a t = latest_pos:int -> 'a ParseResult.t Angstrom.t
+type +'a t = 'a ParseResult.t Angstrom.t
 
-(* TODO: change start point from 0! *)
-let parse_string_pos p str = Angstrom.parse_string ~consume:All (p ~latest_pos:0) str
+let parse_string_pos p str = Angstrom.parse_string ~consume:All p str
 
 let parse_string p str =
   parse_string_pos p str |> Result.map ~f:(fun { value; _ } -> value)
@@ -359,67 +346,36 @@ end
 let whitespace = Angstrom.(take_while Char.is_whitespace *> return ())
 let whitespace1 = Angstrom.(take_while1 Char.is_whitespace *> return ())
 
-let ( <|> ), ( <?> ), ( >>| ), ( >>= ), fail, return =
-  Angstrom.(( <|> ), ( <?> ), ( >>| ), ( >>= ), fail, return)
+let ( >>|| ), ( >>== ), ( *> ), ( <* ), ( <|> ), ( <?> ), ( >>| ), ( >>= ), fail, return =
+  Angstrom.(
+    ( >>| ), ( >>= ), ( *> ), ( <* ), ( <|> ), ( <?> ), ( >>| ), ( >>= ), fail, return)
 ;;
 
-let ( <* ) p1 p2 ~latest_pos =
-  p1 ~latest_pos
-  >>= fun result ->
-  p2 ~latest_pos:result.latest_pos >>| fun { latest_pos; _ } -> { result with latest_pos }
+let ( <*> ) f_p a_p =
+  f_p
+  >>== fun { value = f; range = range1 } ->
+  a_p
+  >>|| fun { value = a; range = range2 } ->
+  { value = f a; range = OptRange.union range1 range2 }
 ;;
 
-let ( *> ) p1 p2 ~latest_pos = p1 ~latest_pos >>= fun { latest_pos; _ } -> p2 ~latest_pos
-let ( <|> ) p1 p2 ~latest_pos = p1 ~latest_pos <|> p2 ~latest_pos
+let ( >>| ) p f = p >>| fun result -> { result with value = f result.value }
 
-let ( <*> ) p1 p2 ~latest_pos =
-  p1 ~latest_pos
-  >>= fun result1 ->
-  p2 ~latest_pos:result1.latest_pos
-  >>= fun result2 ->
-  return
-    { value = result1.value result2.value
-    ; latest_pos = result2.latest_pos
-    ; range = OptRange.union result1.range result2.range
-    }
-;;
-
-let ( >>|| ) p f ~latest_pos = p ~latest_pos >>| f
-
-let ( >>| ) p f ~latest_pos =
-  p ~latest_pos >>| fun result -> { result with value = f result.value }
-;;
-
-let ( >>== ) p f ~latest_pos =
-  p ~latest_pos >>= fun ({ latest_pos; _ } as parse_result) -> f parse_result ~latest_pos
-;;
-
-let ( >>= ) p f ~latest_pos =
-  p ~latest_pos
-  >>= fun { value; latest_pos; range = range1 } ->
-  f value ~latest_pos
+let ( >>= ) p f =
+  p
+  >>= fun { value; range = range1 } ->
+  f value
   >>= fun ({ range = range2; _ } as result) ->
   Angstrom.return { result with range = OptRange.union range1 range2 }
 ;;
 
-let ( <?> ) p msg ~latest_pos = p ~latest_pos <?> msg
-
-let whitespace ~latest_pos =
-  Angstrom.(whitespace >>| fun _ -> { value = (); range = None; latest_pos })
-;;
-
-let whitespace1 ~latest_pos =
-  Angstrom.(whitespace1 >>| fun _ -> { value = (); range = None; latest_pos })
-;;
+let ( <?> ) p msg = p <?> msg
+let whitespace = Angstrom.(whitespace >>| fun _ -> { value = (); range = None })
+let whitespace1 = Angstrom.(whitespace1 >>| fun _ -> { value = (); range = None })
 
 let adapt_junkless junkless_p =
-  let p ~latest_pos =
-    let f (value, range) =
-      let latest_pos =
-        match range with None -> latest_pos | Some Range.{ finish; _ } -> finish
-      in
-      return { value; range; latest_pos }
-    in
+  let p =
+    let f (value, range) = return { value; range } in
     Angstrom.(junkless_p >>= f)
   in
   p <* whitespace
@@ -433,26 +389,26 @@ let string_lit = adapt_junkless Junkless.string_lit
 let char c = adapt_junkless (Junkless.char c)
 let string str = adapt_junkless (Junkless.string str)
 let ( <$> ) f p = p >>| f
-let fail msg ~latest_pos:_ = fail msg
+let fail msg = fail msg
 let lift f a = f <$> a
 
 let lift2 f a b =
   a
-  >>== fun { value = a_val; range = a_range; _ } ->
+  >>== fun { value = a_val; range = a_range } ->
   b
-  >>|| fun { value = b_val; range = b_range; latest_pos } ->
-  { value = f a_val b_val; range = OptRange.union a_range b_range; latest_pos }
+  >>|| fun { value = b_val; range = b_range } ->
+  { value = f a_val b_val; range = OptRange.union a_range b_range }
 ;;
 
 let debug = ref false
 
 let lift3 f a b c =
   a
-  >>== fun { value = a_val; range = a_range; _ } ->
+  >>== fun { value = a_val; range = a_range } ->
   b
-  >>== fun { value = b_val; range = b_range; _ } ->
+  >>== fun { value = b_val; range = b_range } ->
   c
-  >>|| fun { value = c_val; range = c_range; latest_pos } ->
+  >>|| fun { value = c_val; range = c_range } ->
   let range = OptRange.list_range [ a_range; b_range; c_range ] in
   if !debug
   then
@@ -466,104 +422,69 @@ let lift3 f a b c =
       c_range
       OptRange.pp
       range;
-  { value = f a_val b_val c_val; range; latest_pos }
+  { value = f a_val b_val c_val; range }
 ;;
 
 let lift4 f a b c d =
   a
-  >>== fun { value = a_val; range = a_range; _ } ->
+  >>== fun { value = a_val; range = a_range } ->
   b
-  >>== fun { value = b_val; range = b_range; _ } ->
+  >>== fun { value = b_val; range = b_range } ->
   c
-  >>== fun { value = c_val; range = c_range; _ } ->
+  >>== fun { value = c_val; range = c_range } ->
   d
-  >>|| fun { value = d_val; range = d_range; latest_pos } ->
+  >>|| fun { value = d_val; range = d_range } ->
   { value = f a_val b_val c_val d_val
   ; range = OptRange.list_range [ a_range; b_range; c_range; d_range ]
-  ; latest_pos
   }
 ;;
 
-let count n p ~latest_pos =
+let count n p =
   let open Angstrom in
   pos
   >>= fun p1 ->
-  count n (p ~latest_pos)
+  count n p
   >>= fun result ->
   pos
   >>= fun p2 ->
   let value = List.map result ~f:(fun elem -> elem.value) in
-  return { value; range = OptRange.mk p1 p2; latest_pos = p2 }
+  return { value; range = OptRange.mk p1 p2 }
 ;;
 
-let satisfy f ~latest_pos:_ =
+let satisfy f =
   Angstrom.(
     pos
-    >>= fun pos ->
-    satisfy f
-    >>| fun c -> { value = c; range = OptRange.mk pos (pos + 1); latest_pos = pos + 1 })
+    >>= fun pos -> satisfy f >>| fun c -> { value = c; range = OptRange.mk pos (pos + 1) })
 ;;
 
-let attach_pos p ~latest_pos =
+let attach_pos p =
   Angstrom.(
-    p ~latest_pos
+    p
     >>| fun ({ value; range; _ } as parse_result) ->
     { parse_result with value = value, range })
 ;;
 
-let return ?(pos = None) value ~latest_pos =
-  Angstrom.return { value; range = pos; latest_pos }
-;;
+let return ?(pos = None) value = Angstrom.return { value; range = pos }
+let option value p = Angstrom.option { value; range = None } p
 
-let option value p ~latest_pos =
-  Angstrom.option { value; range = None; latest_pos } (p ~latest_pos)
-;;
+(* let pos = Angstrom.return { value = latest_pos; range = None } *)
 
-let pos ~latest_pos = Angstrom.return { value = latest_pos; range = None; latest_pos }
+let fix f = Angstrom.fix f
+let choice ?failure_msg ps = Angstrom.choice ?failure_msg ps
 
-let fix f ~latest_pos =
-  let pos_ref = ref latest_pos in
-  let result =
-    Angstrom.fix (fun angstrom_t ->
-        f
-          (fun ~latest_pos ->
-            pos_ref := latest_pos;
-            angstrom_t)
-          ~latest_pos:!pos_ref)
-  in
-  let adjust_latest_pos { value; range; latest_pos } =
-    let latest_pos =
-      match range with Some { finish; _ } -> finish | None -> latest_pos
-    in
-    { value; range; latest_pos }
-  in
-  Angstrom.(result >>| adjust_latest_pos)
-;;
-
-let choice ?failure_msg ps ~latest_pos =
-  Angstrom.choice ?failure_msg (List.map ps ~f:(fun p -> p ~latest_pos))
-;;
-
-let handle_list lst ~latest_pos =
+let handle_list lst =
   match List.hd lst, List.last lst with
   | Some head, Some last ->
     { value = List.map lst ~f:(fun elem -> elem.value)
     ; range = OptRange.union head.range last.range
-    ; latest_pos = last.latest_pos
     }
-  | _, _ -> { value = []; range = None; latest_pos }
+  | _, _ -> { value = []; range = None }
 ;;
 
-let many p ~latest_pos = Angstrom.(many (p ~latest_pos) >>| handle_list ~latest_pos)
-let many1 p ~latest_pos = Angstrom.(many1 (p ~latest_pos) >>| handle_list ~latest_pos)
-
-let sep_by s p ~latest_pos =
-  Angstrom.(sep_by (s ~latest_pos) (p ~latest_pos) >>| handle_list ~latest_pos)
-;;
-
-let sep_by1 s p ~latest_pos =
-  Angstrom.(sep_by1 (s ~latest_pos) (p ~latest_pos) >>| handle_list ~latest_pos)
-;;
+let many p = Angstrom.(many p >>| handle_list)
+let many1 p = Angstrom.(many1 p >>| handle_list)
+let sep_by s p = Angstrom.(sep_by s p >>| handle_list)
+let sep_by1 s p = Angstrom.(sep_by1 s p >>| handle_list)
 
 let sep_end_by s p =
   fix (fun seb ->
@@ -594,7 +515,7 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       go {|'x'|};
-      [%expect {|{ value = 'x'; range = {0,3}; latest_pos = 3 }|}]
+      [%expect {|{ value = 'x'; range = {0,3} }|}]
     ;;
 
     let%expect_test _ =
@@ -604,12 +525,12 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       go {|'\123'|};
-      [%expect {|{ value = '{'; range = {0,6}; latest_pos = 6 }|}]
+      [%expect {|{ value = '{'; range = {0,6} }|}]
     ;;
 
     let%expect_test _ =
       go {|'\xbb'|};
-      [%expect {|{ value = '\187'; range = {0,6}; latest_pos = 6 }|}]
+      [%expect {|{ value = '\187'; range = {0,6} }|}]
     ;;
 
     let%expect_test _ =
@@ -624,7 +545,7 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       go {|'\o377'|};
-      [%expect {|{ value = '\255'; range = {0,7}; latest_pos = 7 }|}]
+      [%expect {|{ value = '\255'; range = {0,7} }|}]
     ;;
 
     let%expect_test _ =
@@ -634,12 +555,12 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       go {|'\\'|};
-      [%expect {|{ value = '\\'; range = {0,4}; latest_pos = 4 }|}]
+      [%expect {|{ value = '\\'; range = {0,4} }|}]
     ;;
 
     let%expect_test _ =
       go {|'\''|};
-      [%expect {|{ value = '\''; range = {0,4}; latest_pos = 4 }|}]
+      [%expect {|{ value = '\''; range = {0,4} }|}]
     ;;
 
     let pp_str ppf str = Fmt.pf ppf "%S" str
@@ -647,17 +568,17 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       go {|"abc"|};
-      [%expect {|{ value = "abc"; range = {0,5}; latest_pos = 5 }|}]
+      [%expect {|{ value = "abc"; range = {0,5} }|}]
     ;;
 
     let%expect_test _ =
       go {|"\""|};
-      [%expect {|{ value = "\""; range = {0,4}; latest_pos = 4 }|}]
+      [%expect {|{ value = "\""; range = {0,4} }|}]
     ;;
 
     let%expect_test _ =
       go {|"\\"|};
-      [%expect {|{ value = "\\"; range = {0,4}; latest_pos = 4 }|}]
+      [%expect {|{ value = "\\"; range = {0,4} }|}]
     ;;
 
     let go = parse_print (parens string_lit) pp_str
@@ -665,7 +586,7 @@ let%test_module "Parsing" =
     let%expect_test _ =
       go {|("a")|};
       (*   012345 *)
-      [%expect {|{ value = "a"; range = {0,5}; latest_pos = 5 }|}]
+      [%expect {|{ value = "a"; range = {0,5} }|}]
     ;;
 
     let pp ppf = Fmt.(pf ppf "[%a]" (list ~sep:(any "; ") pp_str))
@@ -674,7 +595,7 @@ let%test_module "Parsing" =
     let%expect_test _ =
       go {|("a" "b")|};
       (*   0123456789 *)
-      [%expect {|{ value = ["a"; "b"]; range = {0,9}; latest_pos = 9 }|}]
+      [%expect {|{ value = ["a"; "b"]; range = {0,9} }|}]
     ;;
 
     let go =
@@ -687,37 +608,37 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       go "123";
-      [%expect {|{ value = First "123"; range = {0,3}; latest_pos = 3 }|}]
+      [%expect {|{ value = First "123"; range = {0,3} }|}]
     ;;
 
     let%expect_test _ =
       go "-123";
-      [%expect {|{ value = First "-123"; range = {0,4}; latest_pos = 4 }|}]
+      [%expect {|{ value = First "-123"; range = {0,4} }|}]
     ;;
 
     let%expect_test _ =
       go "+123";
-      [%expect {|{ value = First "+123"; range = {0,4}; latest_pos = 4 }|}]
+      [%expect {|{ value = First "+123"; range = {0,4} }|}]
     ;;
 
     let%expect_test _ =
       go "1.1";
-      [%expect {|{ value = Second 1.1; range = {0,3}; latest_pos = 3 }|}]
+      [%expect {|{ value = Second 1.1; range = {0,3} }|}]
     ;;
 
     let%expect_test _ =
       go "-1.1";
-      [%expect {|{ value = Second -1.1; range = {0,4}; latest_pos = 4 }|}]
+      [%expect {|{ value = Second -1.1; range = {0,4} }|}]
     ;;
 
     let%expect_test _ =
       go "+1.1";
-      [%expect {|{ value = Second 1.1; range = {0,4}; latest_pos = 4 }|}]
+      [%expect {|{ value = Second 1.1; range = {0,4} }|}]
     ;;
 
     let%expect_test _ =
       go "1.";
-      [%expect {|{ value = Second 1.; range = {0,2}; latest_pos = 2 }|}]
+      [%expect {|{ value = Second 1.; range = {0,2} }|}]
     ;;
 
     let go =
@@ -727,17 +648,17 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       go {|"abc"|};
-      [%expect {|{ value = ["abc"]; range = {0,5}; latest_pos = 5 }|}]
+      [%expect {|{ value = ["abc"]; range = {0,5} }|}]
     ;;
 
     let%expect_test _ =
       go {|"abc"; "def"|};
-      [%expect {|{ value = ["abc"; "def"]; range = {0,12}; latest_pos = 12 }|}]
+      [%expect {|{ value = ["abc"; "def"]; range = {0,12} }|}]
     ;;
 
     let%expect_test _ =
       go {|"abc"; "def";|};
-      [%expect {|{ value = ["abc"; "def"]; range = {0,13}; latest_pos = 13 }|}]
+      [%expect {|{ value = ["abc"; "def"]; range = {0,13} }|}]
     ;;
 
     let go str =

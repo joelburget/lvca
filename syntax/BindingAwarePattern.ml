@@ -373,21 +373,19 @@ module Parse = struct
           in
           go tokens
         in
-        pos
-        >>= fun p1 ->
         choice
           [ (Primitive.Parse.t >>| fun prim -> Primitive prim)
           ; (identifier
-            >>= fun ident ->
+            >>== fun { value = ident; range = ident_range } ->
             choice
               [ (parens (many t_or_sep)
-                >>= fun tokens ->
-                pos >>= fun p2 -> accumulate (OptRange.mk p1 p2) ident tokens)
-              ; (pos
-                >>| fun p2 ->
-                if Char.(ident.[0] = '_')
-                then Ignored (OptRange.mk p1 p2, String.subo ident ~pos:1)
-                else Var (OptRange.mk p1 p2, ident))
+                >>== fun { value = tokens; range = tokens_range } ->
+                let range = OptRange.union ident_range tokens_range in
+                accumulate range ident tokens)
+              ; return
+                  (if Char.(ident.[0] = '_')
+                  then Ignored (ident_range, String.subo ident ~pos:1)
+                  else Var (ident_range, ident))
               ])
           ])
     <?> "binding-aware pattern"

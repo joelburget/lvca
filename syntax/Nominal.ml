@@ -441,7 +441,7 @@ module Term = struct
               choice
                 [ parens
                     (sep_by (char ';') slot
-                    >>|| fun { value = slots; range; latest_pos } ->
+                    >>|| fun { value = slots; range } ->
                     if !Lvca_parsing.debug
                     then
                       Fmt.pr
@@ -451,7 +451,7 @@ module Term = struct
                         OptRange.pp
                         range;
                     let range = OptRange.union ident_range range in
-                    { value = Operator (range, ident, slots); range; latest_pos })
+                    { value = Operator (range, ident, slots); range })
                 ; return (Var (ident_range, ident))
                 ])
             ])

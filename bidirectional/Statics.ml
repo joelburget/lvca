@@ -1,5 +1,4 @@
 open Base
-open Lvca_provenance
 open Lvca_syntax
 
 module TypingRule = struct
@@ -156,18 +155,10 @@ module Rule = struct
   module Parse = struct
     open Lvca_parsing
 
-    let bar =
-      lift3
-        (fun start result finish -> result, Some Range.{ start; finish })
-        pos
-        (string "--") (* use Angstrom.string to prevent spaces here *)
-        pos
-    ;;
-
     let line : string option Lvca_parsing.t =
       lift3
         (fun _ _ ident -> ident)
-        bar
+        (string "--")
         (many (char '-'))
         (option None ((fun ident -> Some ident) <$> parens identifier))
       <?> "line"

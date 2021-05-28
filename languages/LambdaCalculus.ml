@@ -37,14 +37,12 @@ module Parse = struct
 
   let t_var : OptRange.t Nominal.Term.t Lvca_parsing.t =
     Lvca_parsing.identifier
-    >>|| fun { range; value = name; latest_pos } ->
-    { value = Nominal.Term.Var (range, name); range; latest_pos }
+    >>|| fun { range; value = name } -> { value = Nominal.Term.Var (range, name); range }
   ;;
 
   let p_var : OptRange.t Pattern.t Lvca_parsing.t =
     Lvca_parsing.identifier
-    >>|| fun { range; value = name; latest_pos } ->
-    { value = Pattern.Var (range, name); range; latest_pos }
+    >>|| fun { range; value = name } -> { value = Pattern.Var (range, name); range }
   ;;
 
   (* Precedence 0: lam (right-associative) 1: app (left-associative) *)
@@ -53,11 +51,10 @@ module Parse = struct
     fix (fun t ->
         let atom = t_var <|> parens t in
         let lam : OptRange.t Nominal.Term.t Lvca_parsing.t =
-          pos
-          >>= fun start ->
           lift4
             (fun _lam var _arr body ->
-              let range = OptRange.extend_to (info body) start in
+              (* TODO: incorrect range: let range = OptRange.extend_to (info body) start in *)
+              let range = info body in
               let tm = Nominal.Term.Operator (range, "lam", [ Scope ([ var ], body) ]) in
               tm)
             (char '\\')

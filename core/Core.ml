@@ -372,8 +372,8 @@ module Parse = struct
           choice
             [ parens term
             ; (identifier
-              >>|| fun { value; range; latest_pos } ->
-              { value = Var (range, value); range; latest_pos })
+              >>|| fun { value; range } ->
+              { value = Var (range, value); range })
             ; braces Nominal.Term.Parse.t >>| (fun tm -> Term tm) <?> "quoted term"
             ]
         in
