@@ -6,10 +6,10 @@ open Lvca_provenance
 open Lvca_syntax
 
 let parse_lang lang_str =
-  ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t lang_str
+  Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t lang_str
 ;;
 
-let parse_term term_str = ParseUtil.parse_string Nominal.Term.Parse.t term_str
+let parse_term term_str = Lvca_parsing.parse_string Nominal.Term.Parse.t term_str
 
 module Model = struct
   type t =

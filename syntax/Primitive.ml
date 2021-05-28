@@ -5,7 +5,7 @@ module type PlainBase_s = sig
 
   val pp : t Fmt.t
   val ( = ) : t -> t -> bool
-  val parse : t ParseUtil.t
+  val parse : t Lvca_parsing.t
 end
 
 module Make (PlainBase : PlainBase_s) = struct
@@ -27,7 +27,7 @@ module Make (PlainBase : PlainBase_s) = struct
   ;;
 
   module Parse = struct
-    open ParseUtil
+    open Lvca_parsing
 
     let t =
       PlainBase.parse
@@ -42,7 +42,7 @@ module Integer = Make (struct
 
   let pp ppf x = Fmt.string ppf (Z.to_string x)
   let ( = ) x1 x2 = (Z.Compare.(x1 = x2) [@warning "-44"])
-  let parse = ParseUtil.(integer_lit >>| Z.of_string <?> "integer")
+  let parse = Lvca_parsing.(integer_lit >>| Z.of_string <?> "integer")
 end)
 
 module Float = Make (struct
@@ -52,7 +52,7 @@ module Float = Make (struct
   let ( = ) = Float.( = )
 
   let parse =
-    let open ParseUtil in
+    let open Lvca_parsing in
     integer_or_float_lit
     >>= (function First _ -> fail "TODO" | Second f -> return f)
     <?> "float"
@@ -64,7 +64,7 @@ module Char = Make (struct
 
   let pp = Fmt.quote ~mark:"\'" Fmt.char
   let ( = ) = Char.( = )
-  let parse = ParseUtil.(char_lit <?> "char")
+  let parse = Lvca_parsing.(char_lit <?> "char")
 end)
 
 module Int = Make (struct
@@ -72,7 +72,7 @@ module Int = Make (struct
 
   let pp = Fmt.int
   let ( = ) = Int.( = )
-  let parse = ParseUtil.(integer_lit >>| Int.of_string <?> "int")
+  let parse = Lvca_parsing.(integer_lit >>| Int.of_string <?> "int")
 end)
 
 module Int32 = Make (struct
@@ -80,7 +80,7 @@ module Int32 = Make (struct
 
   let pp = Fmt.int32
   let ( = ) = Int32.( = )
-  let parse = ParseUtil.(integer_lit >>| Int32.of_string <?> "int32")
+  let parse = Lvca_parsing.(integer_lit >>| Int32.of_string <?> "int32")
 end)
 
 module String = Make (struct
@@ -88,7 +88,7 @@ module String = Make (struct
 
   let pp = Fmt.(quote string)
   let ( = ) = String.( = )
-  let parse = ParseUtil.(string_lit <?> "string")
+  let parse = Lvca_parsing.(string_lit <?> "string")
 end)
 
 module Plain = struct
@@ -148,7 +148,7 @@ let check prim sort =
 ;;
 
 module Parse = struct
-  open ParseUtil
+  open Lvca_parsing
 
   let t =
     choice
@@ -212,7 +212,7 @@ module Properties = struct
 
   let string_round_trip1 : unit t -> PropertyResult.t =
    fun t ->
-    match t |> to_string |> ParseUtil.parse_string Parse.t with
+    match t |> to_string |> Lvca_parsing.parse_string Parse.t with
     | Ok prim -> PropertyResult.check (erase prim = t) (Fmt.str "%a <> %a" pp prim pp t)
     | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
  ;;
@@ -220,14 +220,14 @@ module Properties = struct
   (* Note: +1 -> 1. If the first round-trip isn't equal, try once more. *)
   let string_round_trip2 : string -> PropertyResult.t =
    fun str ->
-    match ParseUtil.parse_string Parse.t str with
+    match Lvca_parsing.parse_string Parse.t str with
     | Error _ -> Uninteresting
     | Ok prim ->
       let str' = to_string prim in
       if Base.String.(str' = str)
       then Ok
       else (
-        match ParseUtil.parse_string Parse.t str with
+        match Lvca_parsing.parse_string Parse.t str with
         | Error msg -> Failed msg
         | Ok prim' ->
           let str'' = to_string prim' in
@@ -244,7 +244,7 @@ let%test_module "Parsing" =
     open Lvca_provenance
 
     let print_parse str =
-      match ParseUtil.parse_string_pos Parse.t str with
+      match Lvca_parsing.parse_string_pos Parse.t str with
       | Ok { value = prim; range; _ } -> Fmt.pr "%a %a" pp prim OptRange.pp range
       | Error msg -> Fmt.pr "%s" msg
     ;;

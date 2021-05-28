@@ -32,7 +32,7 @@ module TypingClause : sig
   val erase : _ t -> unit t
 
   module Parse : sig
-    val t : OptRange.t t ParseUtil.t
+    val t : OptRange.t t Lvca_parsing.t
   end
 end
 
@@ -47,14 +47,14 @@ module Hypothesis : sig
   val erase : _ t -> unit t
 
   module Parse : sig
-    val pattern : OptRange.t BindingAwarePattern.t ParseUtil.t
-    val typed_term : (string * OptRange.t BindingAwarePattern.t) ParseUtil.t
+    val pattern : OptRange.t BindingAwarePattern.t Lvca_parsing.t
+    val typed_term : (string * OptRange.t BindingAwarePattern.t) Lvca_parsing.t
 
     (** @raise StaticsParseError *)
-    val context : OptRange.t BindingAwarePattern.t Lvca_util.String.Map.t ParseUtil.t
+    val context : OptRange.t BindingAwarePattern.t Lvca_util.String.Map.t Lvca_parsing.t
 
     (** @raise StaticsParseError *)
-    val t : OptRange.t t ParseUtil.t
+    val t : OptRange.t t Lvca_parsing.t
   end
 end
 
@@ -69,10 +69,10 @@ module Rule : sig
   val erase : _ t -> unit t
 
   module Parse : sig
-    val line : string option ParseUtil.t
+    val line : string option Lvca_parsing.t
 
     (** @raise StaticsParseError *)
-    val t : OptRange.t t ParseUtil.t
+    val t : OptRange.t t Lvca_parsing.t
   end
 end
 
@@ -88,8 +88,8 @@ val erase : _ t -> unit t
 
 module Parse : sig
   (** @raise StaticsParseError *)
-  val t : OptRange.t t ParseUtil.t
+  val t : OptRange.t t Lvca_parsing.t
 
   (** @raise StaticsParseError *)
-  val whitespace_t : OptRange.t t ParseUtil.t
+  val whitespace_t : OptRange.t t Lvca_parsing.t
 end

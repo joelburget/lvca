@@ -128,7 +128,7 @@ module Kernel = struct
   ;;
 
   module Parse = struct
-    open ParseUtil
+    open Lvca_parsing
 
     let t =
       Nominal.Term.Parse.t

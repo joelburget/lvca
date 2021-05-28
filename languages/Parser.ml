@@ -654,12 +654,12 @@ end
 module Parse = struct
   type term = OptRange.t t
 
-  open ParseUtil
+  open Lvca_parsing
 
   let keywords : string list = [ (* "satisfy"; *) "let"; "in" (* "fail"; "fix" *) ]
-  let keyword : string ParseUtil.t = keywords |> List.map ~f:string |> choice
+  let keyword : string Lvca_parsing.t = keywords |> List.map ~f:string |> choice
   let operators : string list = [ "?"; "*"; "+"; "|"; "="; "->" ]
-  let operator : string ParseUtil.t = operators |> List.map ~f:string |> choice
+  let operator : string Lvca_parsing.t = operators |> List.map ~f:string |> choice
 
   type atom =
     | CharAtom of char
@@ -951,7 +951,7 @@ module Parse = struct
     ParseResult.{ value = f value range; range; latest_pos }
   ;;
 
-  let t : OptRange.t Core.term ParseUtil.t -> term ParseUtil.t =
+  let t : OptRange.t Core.term Lvca_parsing.t -> term Lvca_parsing.t =
    fun c_term ->
     let arrow = string "->" in
     fix (fun parser ->
@@ -1016,7 +1016,7 @@ module Parse = struct
     <?> "parser"
  ;;
 
-  let whitespace_t c_term = ParseUtil.whitespace *> t c_term
+  let whitespace_t c_term = Lvca_parsing.whitespace *> t c_term
 end
 
 module TestParsers = struct
@@ -1080,7 +1080,7 @@ let%test_module "Parsing" =
   (module struct
     let parse_print : string -> string -> unit =
      fun parser_str str ->
-      match ParseUtil.parse_string (Parse.t Core.Parse.term) parser_str with
+      match Lvca_parsing.parse_string (Parse.t Core.Parse.term) parser_str with
       | Error msg -> print_endline ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
         let parser' = map_info ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
@@ -1255,7 +1255,7 @@ let%test_module "Parsing" =
 
     let parse_print_parser : ?width:int -> string -> unit =
      fun ?width parser_str ->
-      match ParseUtil.parse_string (Parse.whitespace_t Core.Parse.term) parser_str with
+      match Lvca_parsing.parse_string (Parse.whitespace_t Core.Parse.term) parser_str with
       | Error msg -> print_string ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
         let pre_geom =
@@ -1453,7 +1453,7 @@ fix (expr -> choice (
 module Properties = struct
   open PropertyResult
 
-  let parse parser_str = ParseUtil.parse_string (Parse.t Core.Parse.term) parser_str
+  let parse parser_str = Lvca_parsing.parse_string (Parse.t Core.Parse.term) parser_str
   let pp_str p = Fmt.to_to_string pp_plain p
 
   let string_round_trip1 t =

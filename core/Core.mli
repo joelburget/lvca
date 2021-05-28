@@ -88,5 +88,5 @@ val reverse : 'info n_term -> 'info cases -> 'info env option
 
 (** {1 Parsing} *)
 module Parse : sig
-  val term : OptRange.t term Lvca_syntax.ParseUtil.t
+  val term : OptRange.t term Lvca_parsing.t
 end

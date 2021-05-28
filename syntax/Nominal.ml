@@ -422,7 +422,7 @@ module Term = struct
   ;;
 
   module Parse = struct
-    open ParseUtil
+    open Lvca_parsing
 
     let t =
       fix (fun term ->
@@ -442,7 +442,7 @@ module Term = struct
                 [ parens
                     (sep_by (char ';') slot
                     >>|| fun { value = slots; range; latest_pos } ->
-                    if !ParseUtil.debug
+                    if !Lvca_parsing.debug
                     then
                       Fmt.pr
                         "ident_range: %a, range: %a\n"
@@ -464,7 +464,7 @@ module Term = struct
   module Properties = struct
     open PropertyResult
 
-    let parse = ParseUtil.parse_string Parse.t
+    let parse = Lvca_parsing.parse_string Parse.t
     let ( = ) = equal ~info_eq:Unit.( = )
 
     let json_round_trip1 t =
@@ -662,7 +662,7 @@ let%test_module "Nominal" =
 let%test_module "TermParser" =
   (module struct
     let ( = ) = Result.equal (Term.equal ~info_eq:Unit.( = )) String.( = )
-    let parse = ParseUtil.parse_string Term.Parse.whitespace_t
+    let parse = Lvca_parsing.parse_string Term.Parse.whitespace_t
     let parse_erase str = parse str |> Result.map ~f:Term.erase
 
     let print_parse str =
@@ -713,10 +713,10 @@ let%test_module "TermParser" =
     ;;
 
     let%expect_test _ =
-      ParseUtil.debug := true;
+      Lvca_parsing.debug := true;
       print_parse {|a()|};
       (*            0123*)
-      ParseUtil.debug := false;
+      Lvca_parsing.debug := false;
       [%expect {|
       a()
       <{0,3}>a()</{0,3}>
@@ -793,15 +793,15 @@ match(x; match_lines(
 let%test_module "check" =
   (module struct
     let parse_lang lang_str =
-      ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t lang_str
+      Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t lang_str
       |> Result.ok_or_failwith
     ;;
 
     let parse_term term_str =
-      ParseUtil.parse_string Term.Parse.t term_str |> Result.ok_or_failwith
+      Lvca_parsing.parse_string Term.Parse.t term_str |> Result.ok_or_failwith
     ;;
 
-    let parse_sort str = ParseUtil.parse_string Sort.Parse.t str
+    let parse_sort str = Lvca_parsing.parse_string Sort.Parse.t str
 
     let lang_desc =
       {|

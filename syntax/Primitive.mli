@@ -83,7 +83,7 @@ val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 val pp : _ t Fmt.t
 
 module Parse : sig
-  val t : Lvca_provenance.OptRange.t t ParseUtil.t
+  val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
 end
 
 val check : _ t -> 'info Sort.t -> string option

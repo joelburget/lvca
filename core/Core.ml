@@ -346,7 +346,7 @@ let eval_primitive eval_ctx eval_ctx' ctx tm name args =
 ;;
 
 module Parse = struct
-  open ParseUtil
+  open Lvca_parsing
 
   let reserved = Util.String.Set.of_list [ "let"; "rec"; "in"; "match"; "with" ]
 
@@ -366,7 +366,7 @@ module Parse = struct
       CoreApp (pos, f, args)
   ;;
 
-  let term : OptRange.t term ParseUtil.t =
+  let term : OptRange.t term Lvca_parsing.t =
     fix (fun term ->
         let atomic_term =
           choice
@@ -429,7 +429,7 @@ end
 let%test_module "Parsing" =
   (module struct
     let parse str =
-      ParseUtil.parse_string Parse.term str |> Result.ok_or_failwith |> erase
+      Lvca_parsing.parse_string Parse.term str |> Result.ok_or_failwith |> erase
     ;;
 
     let ( = ) = equal ~info_eq:Unit.( = )
@@ -562,7 +562,7 @@ let%test_module "Core parsing" =
 
     let%test "dynamics as expected" =
       let parse_term str =
-        ParseUtil.parse_string Parse.term str |> Base.Result.ok_or_failwith
+        Lvca_parsing.parse_string Parse.term str |> Base.Result.ok_or_failwith
       in
       let ( = ) = equal ~info_eq:Unit.( = ) in
       parse_term dynamics_str |> erase = dynamics
@@ -574,7 +574,7 @@ let%test_module "Core eval" =
   (module struct
     let eval_str str =
       let parse_term str =
-        ParseUtil.parse_string Parse.term str |> Base.Result.ok_or_failwith
+        Lvca_parsing.parse_string Parse.term str |> Base.Result.ok_or_failwith
       in
       let core = parse_term str in
       let result =
@@ -678,7 +678,7 @@ let%test_module "Core pretty" =
   (module struct
     let pretty width str =
       let str =
-        match ParseUtil.parse_string ParseUtil.(whitespace *> Parse.term) str with
+        match Lvca_parsing.parse_string Lvca_parsing.(whitespace *> Parse.term) str with
         | Error err -> err
         | Ok core ->
           let module Format = Stdlib.Format in
@@ -759,7 +759,7 @@ let%test_module "Core eval in dynamics" =
   (module struct
     let eval_in dynamics_str str =
       let parse_term str =
-        ParseUtil.parse_string Parse.term str |> Base.Result.ok_or_failwith
+        Lvca_parsing.parse_string Parse.term str |> Base.Result.ok_or_failwith
       in
       let defn = parse_term dynamics_str in
       let core = parse_term str in

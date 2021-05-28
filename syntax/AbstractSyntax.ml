@@ -5,9 +5,11 @@ module SMap = Lvca_util.String.Map
 module Tuple2 = Lvca_util.Tuple2
 module ISet = Lvca_util.Int.Set
 
-let test_parse_with : 'a ParseUtil.t -> string -> 'a =
+let test_parse_with : 'a Lvca_parsing.t -> string -> 'a =
  fun p str ->
-  match ParseUtil.parse_string p str with Ok value -> value | Error msg -> failwith msg
+  match Lvca_parsing.parse_string p str with
+  | Ok value -> value
+  | Error msg -> failwith msg
 ;;
 
 module Kind = struct
@@ -26,7 +28,7 @@ module Kind = struct
   let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
   module Parse = struct
-    open ParseUtil
+    open Lvca_parsing
 
     let t =
       sep_by1 (string "->") (char '*')
@@ -114,7 +116,7 @@ module SortSlot = struct
 
   module Parse = struct
     module Sort = Sort.Parse
-    open ParseUtil
+    open Lvca_parsing
 
     let t =
       Sort.t
@@ -170,7 +172,7 @@ module Valence = struct
 
   module Parse = struct
     module ParseSortSlot = SortSlot.Parse
-    open ParseUtil
+    open Lvca_parsing
 
     let t =
       let t' =
@@ -205,7 +207,7 @@ module Arity = struct
   let instantiate env = List.map ~f:(Valence.instantiate env)
 
   module Parse = struct
-    let t = ParseUtil.(parens (sep_by (char ';') Valence.Parse.t) <?> "arity")
+    let t = Lvca_parsing.(parens (sep_by (char ';') Valence.Parse.t) <?> "arity")
   end
 
   let%test_module _ =
@@ -236,7 +238,7 @@ module Arity = struct
       ;;
 
       let expect_okay str =
-        match ParseUtil.parse_string Parse.t str with
+        match Lvca_parsing.parse_string Parse.t str with
         | Ok _ -> ()
         | Error msg -> Stdio.print_string msg
       ;;
@@ -276,7 +278,7 @@ module OperatorDef = struct
   let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
   module Parse = struct
-    open ParseUtil
+    open Lvca_parsing
 
     let t =
       lift2 (fun ident arity -> OperatorDef (ident, arity)) identifier Arity.Parse.t
@@ -361,7 +363,7 @@ module SortDef = struct
   ;;
 
   module Parse = struct
-    open ParseUtil
+    open Lvca_parsing
 
     let assign = string ":="
     let bar = char '|'
@@ -567,7 +569,7 @@ let kind_check { externals; sort_defs } =
 ;;
 
 module Parse = struct
-  open ParseUtil
+  open Lvca_parsing
 
   let t =
     lift2

@@ -84,8 +84,8 @@ val check
 (** {1 Parsing} *)
 
 module Parse : sig
-  val t : Lvca_provenance.OptRange.t t ParseUtil.t
-  val whitespace_t : Lvca_provenance.OptRange.t t ParseUtil.t
+  val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
+  val whitespace_t : Lvca_provenance.OptRange.t t Lvca_parsing.t
 end
 
 module Properties : Properties_intf.S with type 'info t := 'info t

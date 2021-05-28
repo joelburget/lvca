@@ -6,7 +6,7 @@ open Brr
 open Note
 open Prelude
 module Tuple2 = Lvca_util.Tuple2
-module ParseResult = ParseUtil.ParseResult
+module ParseResult = Lvca_parsing.ParseResult
 
 module Model = struct
   type t =
@@ -52,7 +52,7 @@ module Controller = struct
     let { result; input_lang; _ } = model in
     match action with
     | Evaluate str ->
-      let result = ParseUtil.parse_string (parser_of input_lang) str in
+      let result = Lvca_parsing.parse_string (parser_of input_lang) str in
       { model with result; input_selected = None; output_selected = None }
     | InputSelect output_selected -> { model with output_selected; input_selected = None }
     | OutputSelect input_selected -> { model with input_selected; output_selected = None }
@@ -144,7 +144,7 @@ end
 let stateless_view () =
   let initial_model : Model.t =
     let input = {|\f -> \g -> \x -> f (g x)|} in
-    let result = ParseUtil.parse_string Lvca_languages.LambdaCalculus.Parse.t input in
+    let result = Lvca_parsing.parse_string Lvca_languages.LambdaCalculus.Parse.t input in
     { input; result; input_lang = Lambda; input_selected = None; output_selected = None }
   in
   let wrapper model_s =

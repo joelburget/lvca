@@ -44,8 +44,8 @@ val pp_range : Lvca_provenance.OptRange.t term Fmt.t
 
 (** {1 Parsing} *)
 module Parse : sig
-  val term : Lvca_provenance.OptRange.t term ParseUtil.t
-  val whitespace_term : Lvca_provenance.OptRange.t term ParseUtil.t
+  val term : Lvca_provenance.OptRange.t term Lvca_parsing.t
+  val whitespace_term : Lvca_provenance.OptRange.t term Lvca_parsing.t
 end
 
 (** {1 Misc} *)

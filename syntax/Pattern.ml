@@ -239,8 +239,8 @@ let check lang ~pattern_sort ~var_sort =
 ;;
 
 module Parse = struct
-  let t : OptRange.t t ParseUtil.t =
-    let open ParseUtil in
+  let t : OptRange.t t Lvca_parsing.t =
+    let open Lvca_parsing in
     fix (fun pat ->
         choice
           [ (Primitive.Parse.t >>| fun prim -> Primitive prim)
@@ -261,7 +261,7 @@ module Parse = struct
     <?> "pattern"
   ;;
 
-  let whitespace_t = ParseUtil.(whitespace *> t)
+  let whitespace_t = Lvca_parsing.(whitespace *> t)
 end
 
 let%test_module "Parsing" =
@@ -273,7 +273,7 @@ let%test_module "Parsing" =
     ;;
 
     let print_parse tm =
-      match ParseUtil.parse_string Parse.t tm with
+      match Lvca_parsing.parse_string Parse.t tm with
       | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range pat
       | Error msg -> Fmt.pr "failed: %s\n" msg
     ;;
@@ -366,7 +366,7 @@ let%test_module "Parsing" =
 module Properties = struct
   open PropertyResult
 
-  let parse = ParseUtil.parse_string Parse.t
+  let parse = Lvca_parsing.parse_string Parse.t
   let to_string = Fmt.to_to_string pp
   let ( = ) = equal ~info_eq:Unit.( = )
 
@@ -412,12 +412,12 @@ end
 let%test_module "check" =
   (module struct
     let parse_lang lang_str =
-      ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t lang_str
+      Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t lang_str
       |> Result.ok_or_failwith
     ;;
 
-    let parse_pattern str = ParseUtil.parse_string Parse.t str |> Result.ok_or_failwith
-    let parse_sort str = ParseUtil.parse_string Sort.Parse.t str
+    let parse_pattern str = Lvca_parsing.parse_string Parse.t str |> Result.ok_or_failwith
+    let parse_sort str = Lvca_parsing.parse_string Sort.Parse.t str
 
     let lang_desc =
       {|

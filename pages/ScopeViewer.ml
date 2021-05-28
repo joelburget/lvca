@@ -6,7 +6,7 @@ open Lvca_syntax
 open Note
 open Prelude
 
-let parse_tm = ParseUtil.parse_string Nominal.Term.Parse.whitespace_t
+let parse_tm = Lvca_parsing.parse_string Nominal.Term.Parse.whitespace_t
 let buf = "input"
 let initial_input = "fun(x. app(fun(x. app(f; x)); x))"
 

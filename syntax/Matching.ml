@@ -474,7 +474,7 @@ module Properties = struct
 end
 
 module Parse = struct
-  open ParseUtil
+  open Lvca_parsing
 
   type 'info matrix_row = 'info matrix_entry list * 'info NonBinding.term
 
@@ -518,8 +518,8 @@ let%test_module "Matching" =
 
     let run_simple_match branches_str tm_str =
       match
-        ( ParseUtil.parse_string Parse.branches branches_str
-        , ParseUtil.parse_string NonBinding.Parse.whitespace_term tm_str )
+        ( Lvca_parsing.parse_string Parse.branches branches_str
+        , Lvca_parsing.parse_string NonBinding.Parse.whitespace_term tm_str )
       with
       | Ok branches, Ok tm ->
         (match simple_find_match tm branches with
@@ -540,11 +540,13 @@ let%test_module "Matching" =
 
     let run_compiled_matches syntax_str sorts_str matrix_str tms_str =
       match
-        ( ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t syntax_str
-        , ParseUtil.parse_string ParseUtil.(sep_by (char ',') Sort.Parse.t) sorts_str
-        , ParseUtil.parse_string Parse.matrix_rows matrix_str
-        , ParseUtil.parse_string
-            ParseUtil.(sep_by (char ',') NonBinding.Parse.whitespace_term)
+        ( Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t syntax_str
+        , Lvca_parsing.parse_string
+            Lvca_parsing.(sep_by (char ',') Sort.Parse.t)
+            sorts_str
+        , Lvca_parsing.parse_string Parse.matrix_rows matrix_str
+        , Lvca_parsing.parse_string
+            Lvca_parsing.(sep_by (char ',') NonBinding.Parse.whitespace_term)
             tms_str )
       with
       | Error syntax_msg, _, _, _ -> failwith ("syntax failed to parse: " ^ syntax_msg)
@@ -633,9 +635,11 @@ let%test_module "Matching" =
 
     let print_check syntax_str sorts_str matrix_str =
       match
-        ( ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t syntax_str
-        , ParseUtil.parse_string ParseUtil.(sep_by (char ',') Sort.Parse.t) sorts_str
-        , ParseUtil.parse_string Parse.matrix_rows matrix_str )
+        ( Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t syntax_str
+        , Lvca_parsing.parse_string
+            Lvca_parsing.(sep_by (char ',') Sort.Parse.t)
+            sorts_str
+        , Lvca_parsing.parse_string Parse.matrix_rows matrix_str )
       with
       | Ok syntax, Ok sorts, Ok matrix ->
         let syntax =

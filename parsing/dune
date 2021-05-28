@@ -1,0 +1,8 @@
+(library
+ (name lvca_parsing)
+ (public_name lvca.parsing)
+ (inline_tests)
+ (libraries angstrom base fmt lvca_util lvca_provenance)
+ (wrapped false)
+ (preprocess
+  (pps ppx_jane)))

@@ -4,7 +4,7 @@ open AbstractSyntax
 let%test_module "AbstractSyntax.Parser" =
   (module struct
     let parse str =
-      ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t str
+      Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t str
       |> Base.Result.ok_or_failwith
     ;;
 

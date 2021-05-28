@@ -5,4 +5,4 @@
  (kind ppx_rewriter)
  (preprocess
   (pps ppx_jane ppxlib.metaquot))
- (libraries base lvca_syntax lvca_provenance ppxlib))
+ (libraries base lvca_syntax lvca_parsing lvca_provenance ppxlib))

@@ -37,5 +37,5 @@ val of_term
   *)
 
 module Parse : sig
-  val t : Lvca_provenance.OptRange.t t ParseUtil.t
+  val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
 end

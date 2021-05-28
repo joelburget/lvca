@@ -95,9 +95,9 @@ let rec select_path ~path tm =
 ;;
 
 module Parse = struct
-  open ParseUtil
+  open Lvca_parsing
 
-  let term : OptRange.t term ParseUtil.t =
+  let term : OptRange.t term Lvca_parsing.t =
     fix (fun term ->
         choice
           [ (Primitive.Parse.t >>| fun prim -> Primitive prim)

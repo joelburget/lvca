@@ -98,15 +98,15 @@ module Parse : sig
 
   val branch
     : (Lvca_provenance.OptRange.t Pattern.t * Lvca_provenance.OptRange.t NonBinding.term)
-      ParseUtil.t
+      Lvca_parsing.t
 
   val branches
     : (Lvca_provenance.OptRange.t Pattern.t * Lvca_provenance.OptRange.t NonBinding.term)
       list
-      ParseUtil.t
+      Lvca_parsing.t
 
-  val matrix_row : Lvca_provenance.OptRange.t matrix_row ParseUtil.t
-  val matrix_rows : Lvca_provenance.OptRange.t matrix_row list ParseUtil.t
+  val matrix_row : Lvca_provenance.OptRange.t matrix_row Lvca_parsing.t
+  val matrix_rows : Lvca_provenance.OptRange.t matrix_row list Lvca_parsing.t
 end
 
 module Properties : sig

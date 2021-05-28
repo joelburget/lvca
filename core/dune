@@ -2,6 +2,6 @@
  (name lvca_core)
  (public_name lvca.core)
  (inline_tests)
- (libraries lvca_syntax)
+ (libraries lvca_parsing lvca_syntax)
  (preprocess
   (pps ppx_jane)))

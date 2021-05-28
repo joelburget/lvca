@@ -31,28 +31,28 @@ let eval tm =
 ;;
 
 module Parse = struct
-  open ParseUtil
+  open Lvca_parsing
 
   let info = Nominal.Term.info
 
-  let t_var : OptRange.t Nominal.Term.t ParseUtil.t =
-    ParseUtil.identifier
+  let t_var : OptRange.t Nominal.Term.t Lvca_parsing.t =
+    Lvca_parsing.identifier
     >>|| fun { range; value = name; latest_pos } ->
     { value = Nominal.Term.Var (range, name); range; latest_pos }
   ;;
 
-  let p_var : OptRange.t Pattern.t ParseUtil.t =
-    ParseUtil.identifier
+  let p_var : OptRange.t Pattern.t Lvca_parsing.t =
+    Lvca_parsing.identifier
     >>|| fun { range; value = name; latest_pos } ->
     { value = Pattern.Var (range, name); range; latest_pos }
   ;;
 
   (* Precedence 0: lam (right-associative) 1: app (left-associative) *)
 
-  let t : OptRange.t Nominal.Term.t ParseUtil.t =
+  let t : OptRange.t Nominal.Term.t Lvca_parsing.t =
     fix (fun t ->
         let atom = t_var <|> parens t in
-        let lam : OptRange.t Nominal.Term.t ParseUtil.t =
+        let lam : OptRange.t Nominal.Term.t Lvca_parsing.t =
           pos
           >>= fun start ->
           lift4
@@ -117,7 +117,7 @@ let pp_ranges =
 let%test_module "Lambda Calculus" =
   (module struct
     let () = Caml.Format.set_tags false
-    let parse str = ParseUtil.parse_string Parse.whitespace_t str
+    let parse str = Lvca_parsing.parse_string Parse.whitespace_t str
     let pretty_parse str = parse str |> Result.ok_or_failwith |> Fmt.pr "%a" pp_range
 
     let pretty_eval_parse str =

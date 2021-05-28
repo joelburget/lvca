@@ -14,9 +14,9 @@ let unary_operators =
 let constants = [ "pi"; "e" ]
 
 module Parse = struct
-  open ParseUtil
+  open Lvca_parsing
 
-  let lit : OptRange.t NonBinding.term ParseUtil.t =
+  let lit : OptRange.t NonBinding.term Lvca_parsing.t =
     (* TODO: this fails on too-large float lits *)
     integer_or_float_lit
     >>|| fun { value = lit; range; latest_pos } ->
@@ -42,11 +42,11 @@ module Parse = struct
    * *, /
    * +, -
    *)
-  let t : term ParseUtil.t =
+  let t : term Lvca_parsing.t =
     fix (fun t ->
-        let atom : term ParseUtil.t = choice [ lit; const; parens t ] in
+        let atom : term Lvca_parsing.t = choice [ lit; const; parens t ] in
         (* TODO: rename negate to - *)
-        let unary_op : term ParseUtil.t =
+        let unary_op : term Lvca_parsing.t =
           unary_operators
           |> List.map ~f:(fun name ->
                  string name
@@ -71,7 +71,7 @@ module Parse = struct
           atom <|> unary_op <|> min_max
         in
         let pair p1 p2 = lift2 (fun x y -> x, y) p1 p2 in
-        let mul_div : term ParseUtil.t =
+        let mul_div : term Lvca_parsing.t =
           let op = char '*' <|> char '/' in
           let f l (op, r) =
             let rng = OptRange.union (NonBinding.info l) (NonBinding.info r) in
@@ -82,7 +82,7 @@ module Parse = struct
           in
           application >>= fun init -> many (pair op application) >>| List.fold ~init ~f
         in
-        let add_sub : term ParseUtil.t =
+        let add_sub : term Lvca_parsing.t =
           let op = char '+' <|> char '-' in
           let f l (op, r) =
             let rng = OptRange.union (NonBinding.info l) (NonBinding.info r) in
@@ -143,9 +143,9 @@ let rec interpret : term -> (ConstructiveReal.t, term * string) Result.t =
 ;;
 
 (* let%test_module "Parsing" = (module struct module ParseCore = Lvca_core.Core.Parse
-   (ParseUtil.CComment) module ParseParser = Parser.Parse (ParseUtil.CComment)
+   (Lvca_parsing.CComment) module ParseParser = Parser.Parse (Lvca_parsing.CComment)
 
-   let parse_print : string -> unit = fun parser_str -> match ParseUtil.parse_string
+   let parse_print : string -> unit = fun parser_str -> match Lvca_parsing.parse_string
    (ParseParser.whitespace_t ParseCore.term) parser_str with | Error msg ->
    print_endline ("failed to parse parser desc: " ^ msg) | Ok parser -> Fmt.pr "%a\n"
    Parser.pp parser ;;
@@ -166,7 +166,7 @@ let rec interpret : term -> (ConstructiveReal.t, term * string) Result.t =
 let%test_module "Evaluation" =
   (module struct
     let go str =
-      match ParseUtil.parse_string Parse.t str with
+      match Lvca_parsing.parse_string Parse.t str with
       | Error msg -> print_endline msg
       | Ok tm ->
         (match interpret tm with

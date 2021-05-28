@@ -2,6 +2,6 @@
  (name lvca_bidirectional)
  (public_name lvca.bidirectional)
  (inline_tests)
- (libraries lvca_syntax lvca_provenance)
+ (libraries lvca_parsing lvca_provenance lvca_syntax)
  (preprocess
   (pps ppx_jane)))

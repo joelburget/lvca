@@ -9,7 +9,7 @@ type lang =
   | Lambda
   | Term
 
-val parser_of : lang -> term ParseUtil.t
+val parser_of : lang -> term Lvca_parsing.t
 val term_pretty : OptRange.t Nominal.Term.t Fmt.t
 val lambda_pretty : OptRange.t Nominal.Term.t Fmt.t
 val lambda_ranges_pretty : SourceRanges.t Nominal.Term.t Fmt.t

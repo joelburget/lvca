@@ -18,9 +18,9 @@ edit lang :=
 |}]
 ;;
 
-(* module ParseAbstract = AbstractSyntax.Parse(ParseUtil.CComment)
+(* module ParseAbstract = AbstractSyntax.Parse(Lvca_parsing.CComment)
 
-   let abstract_syntax : AbstractSyntax.t = abstract_syntax_str |> ParseUtil.parse_string
+   let abstract_syntax : AbstractSyntax.t = abstract_syntax_str |> Lvca_parsing.parse_string
    ParseAbstract.whitespace_t |> Result.ok_or_failwith *)
 
 type core = OptRange.t Core.term
@@ -40,9 +40,9 @@ let rec pp : 'lang Fmt.t -> 'lang t Fmt.t =
 ;;
 
 module Parse = struct
-  open ParseUtil
+  open Lvca_parsing
 
-  let t (* : 'lang ParseUtil.t -> 'lang t ParseUtil.t *) lang_p =
+  let t (* : 'lang Lvca_parsing.t -> 'lang t Lvca_parsing.t *) lang_p =
     fix (fun t ->
         choice
           [ lang_p >>| (fun core -> Atomic core) <?> "core term"
@@ -61,7 +61,7 @@ type term = OptRange.t Nominal.Term.t
 let%test_module "Parsing" =
   (module struct
     let parse : string -> (core t, string) Result.t =
-      ParseUtil.(parse_string (Parse.whitespace_t (braces Core.Parse.term)))
+      Lvca_parsing.(parse_string (Parse.whitespace_t (braces Core.Parse.term)))
     ;;
 
     let parse_and_print : string -> unit =
@@ -99,7 +99,7 @@ let%test_module "Parsing" =
       let open Result.Let_syntax in
       match
         let%bind edit = parse edit in
-        let%bind tm = ParseUtil.parse_string Nominal.Term.Parse.t tm in
+        let%bind tm = Lvca_parsing.parse_string Nominal.Term.Parse.t tm in
         let%map tm = run tm edit in
         Nominal.Term.pp Caml.Format.std_formatter tm
       with

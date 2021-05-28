@@ -10,6 +10,7 @@
   brr.note
   digestif.ocaml
   lvca_languages
+  lvca_parsing
   lvca_provenance
   lvca_syntax
   note)

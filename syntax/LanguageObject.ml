@@ -36,7 +36,7 @@ module type ExtendedTermS = sig
   val hash : _ t -> string
 
   module Parse : sig
-    val whitespace_t : OptRange.t t ParseUtil.t
+    val whitespace_t : OptRange.t t Lvca_parsing.t
   end
 end
 
@@ -76,7 +76,7 @@ struct
   module Parse = struct
     module Parse = Object.Parse
 
-    let whitespace_t = ParseUtil.(whitespace *> Parse.t)
+    let whitespace_t = Lvca_parsing.(whitespace *> Parse.t)
   end
 end
 
@@ -93,7 +93,7 @@ module CheckProperties (Object : BindingTermS) :
 
   let pp = Object.pp
   let to_string = Fmt.to_to_string Object.pp
-  let parse = ParseUtil.parse_string Parse.t
+  let parse = Lvca_parsing.parse_string Parse.t
 
   let json_round_trip1 t =
     match t |> Object.jsonify |> Object.unjsonify with

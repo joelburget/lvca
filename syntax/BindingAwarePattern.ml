@@ -335,10 +335,10 @@ module Parse = struct
     | Tm of OptRange.t t
     | Sep of char
 
-  let t : OptRange.t t ParseUtil.t =
-    let open ParseUtil in
+  let t : OptRange.t t Lvca_parsing.t =
+    let open Lvca_parsing in
     fix (fun pat ->
-        let t_or_sep : tm_or_sep ParseUtil.t =
+        let t_or_sep : tm_or_sep Lvca_parsing.t =
           choice
             [ (fun c -> Sep c) <$> choice [ char '.'; char ';' ]
             ; (fun tm -> Tm tm) <$> pat
@@ -346,7 +346,7 @@ module Parse = struct
         in
         (* (b11. ... b1n. t11, ... t1n; b21. ... b2n. t21, ... t2n) *)
         let accumulate
-            : OptRange.t -> string -> tm_or_sep list -> OptRange.t pattern ParseUtil.t
+            : OptRange.t -> string -> tm_or_sep list -> OptRange.t pattern Lvca_parsing.t
           =
          fun range tag tokens ->
           (* vars encountered between '.'s, before hitting ',' / ';' *)
@@ -393,13 +393,13 @@ module Parse = struct
     <?> "binding-aware pattern"
   ;;
 
-  let whitespace_t = ParseUtil.(whitespace *> t)
+  let whitespace_t = Lvca_parsing.(whitespace *> t)
 end
 
 module Properties = struct
   open PropertyResult
 
-  let parse = ParseUtil.parse_string Parse.t
+  let parse = Lvca_parsing.parse_string Parse.t
   let to_string = Fmt.to_to_string pp
 
   let string_round_trip1 t =
@@ -437,7 +437,7 @@ let%test_module "Parsing" =
     ;;
 
     let print_parse tm =
-      match ParseUtil.parse_string Parse.t tm with
+      match Lvca_parsing.parse_string Parse.t tm with
       | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range pat
       | Error msg -> Fmt.pr "failed: %s\n" msg
     ;;
@@ -506,12 +506,12 @@ let%test_module "Parsing" =
 let%test_module "check" =
   (module struct
     let parse_lang lang_str =
-      ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t lang_str
+      Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t lang_str
       |> Result.ok_or_failwith
     ;;
 
-    let parse_pattern str = ParseUtil.parse_string Parse.t str |> Result.ok_or_failwith
-    let parse_sort str = ParseUtil.parse_string Sort.Parse.t str
+    let parse_pattern str = Lvca_parsing.parse_string Parse.t str |> Result.ok_or_failwith
+    let parse_sort str = Lvca_parsing.parse_string Sort.Parse.t str
 
     let lang_desc =
       {|
@@ -697,10 +697,10 @@ test := foo(term[term]. term)
 
 let%test_module "check" =
   (module struct
-    let parse_pattern str = ParseUtil.parse_string Parse.t str |> Result.ok_or_failwith
+    let parse_pattern str = Lvca_parsing.parse_string Parse.t str |> Result.ok_or_failwith
 
     let parse_term str =
-      ParseUtil.parse_string Nominal.Term.Parse.t str |> Result.ok_or_failwith
+      Lvca_parsing.parse_string Nominal.Term.Parse.t str |> Result.ok_or_failwith
     ;;
 
     let print_match pat_str tm_str =

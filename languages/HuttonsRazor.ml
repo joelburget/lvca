@@ -48,15 +48,15 @@ module Description = struct
      add(a; b) -> let a' = dynamics a in let b' = dynamics b in {add(a'; b')} | lit(i) ->
      i } in dynamics |}
 
-     let dynamics : Core.term = ParseUtil.parse_string ParseDynamics.whitespace_term
+     let dynamics : Core.term = Lvca_parsing.parse_string ParseDynamics.whitespace_term
      dynamics_str |> Result.ok_or_failwith ;; *)
 end
 
 (* Write by hand first, later assert the generated parser is equivalent *)
 module Parse = struct
-  open ParseUtil
+  open Lvca_parsing
 
-  let lit : OptRange.t NonBinding.term ParseUtil.t =
+  let lit : OptRange.t NonBinding.term Lvca_parsing.t =
     integer_lit
     >>|| fun { value = str; range; latest_pos } ->
     let tm =
@@ -66,7 +66,7 @@ module Parse = struct
     { value = tm; range; latest_pos }
   ;;
 
-  let t : OptRange.t NonBinding.term ParseUtil.t =
+  let t : OptRange.t NonBinding.term Lvca_parsing.t =
     fix (fun t ->
         let atom = attach_pos (lit <|> parens t) in
         let plus = char '+' in
@@ -118,13 +118,13 @@ let rec eval_tm : _ NonBinding.term -> (Z.t, string) Result.t = function
 
 let eval_str : string -> (Z.t, string) Result.t =
  fun str ->
-  match ParseUtil.parse_string Parse.whitespace_t str with
+  match Lvca_parsing.parse_string Parse.whitespace_t str with
   | Error str -> Error str
   | Ok tm -> eval_tm tm
 ;;
 
 (* let eval_2 : string -> (Z.t, string) Result.t = let module Parse =
-   AngstromParse(ParseUtil.NoComment) in fun str -> match ParseUtil.parse_string
+   AngstromParse(Lvca_parsing.NoComment) in fun str -> match Lvca_parsing.parse_string
    Parse.whitespace_t str with | Error str -> Error str | Ok tm -> begin match Core.(eval
    (CoreApp (Description.dynamics, Term (NonBinding.to_nominal tm)))) with | Error (msg,
    tm) -> Error (msg ^ ": " ^ Core.to_string tm) | Ok (Primitive (_, Integer i)) -> Ok i
@@ -149,7 +149,7 @@ let ident_stag_funs =
 
 let%test_module "Hutton's Razor" =
   (module struct
-    let parse str = ParseUtil.parse_string Parse.whitespace_t str
+    let parse str = Lvca_parsing.parse_string Parse.whitespace_t str
 
     let () =
       let open Caml.Format in

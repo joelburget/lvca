@@ -19,8 +19,8 @@ module Kind : sig
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   module Parse : sig
-    val t : Lvca_provenance.OptRange.t t ParseUtil.t
-    val decl : (string * Lvca_provenance.OptRange.t t) ParseUtil.t
+    val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
+    val decl : (string * Lvca_provenance.OptRange.t t) Lvca_parsing.t
   end
 end
 
@@ -59,7 +59,7 @@ module SortSlot : sig
   val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
 
   module Parse : sig
-    val t : Lvca_provenance.OptRange.t t ParseUtil.t
+    val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
   end
 end
 
@@ -77,7 +77,7 @@ module Valence : sig
   val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
 
   module Parse : sig
-    val t : Lvca_provenance.OptRange.t t ParseUtil.t
+    val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
   end
 end
 
@@ -95,7 +95,7 @@ module Arity : sig
   val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
 
   module Parse : sig
-    val t : Lvca_provenance.OptRange.t t ParseUtil.t
+    val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
   end
 end
 
@@ -110,7 +110,7 @@ module OperatorDef : sig
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   module Parse : sig
-    val t : Lvca_provenance.OptRange.t t ParseUtil.t
+    val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
   end
 end
 
@@ -137,7 +137,7 @@ module SortDef : sig
     -> Lvca_util.Int.Set.t Lvca_util.String.Map.t
 
   module Parse : sig
-    val t : (string * Lvca_provenance.OptRange.t t) ParseUtil.t
+    val t : (string * Lvca_provenance.OptRange.t t) Lvca_parsing.t
   end
 end
 
@@ -178,6 +178,6 @@ val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 val kind_check : _ t -> (kind_map, kind_mismap) Result.t
 
 module Parse : sig
-  val t : Lvca_provenance.OptRange.t t ParseUtil.t
-  val whitespace_t : Lvca_provenance.OptRange.t t ParseUtil.t
+  val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
+  val whitespace_t : Lvca_provenance.OptRange.t t Lvca_parsing.t
 end

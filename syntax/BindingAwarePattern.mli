@@ -103,8 +103,8 @@ val check
 
 (** {1 Parsing} *)
 module Parse : sig
-  val t : OptRange.t t ParseUtil.t
-  val whitespace_t : OptRange.t t ParseUtil.t
+  val t : OptRange.t t Lvca_parsing.t
+  val whitespace_t : OptRange.t t Lvca_parsing.t
 end
 
 module Properties : sig

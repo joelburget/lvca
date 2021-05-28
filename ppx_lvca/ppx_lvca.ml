@@ -21,28 +21,28 @@ let extract_string loc expr =
 
 let expand_nominal ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match ParseUtil.parse_string Nominal.Term.Parse.whitespace_t str with
+  match Lvca_parsing.parse_string Nominal.Term.Parse.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> SyntaxQuoter.mk_nominal ~loc tm
 ;;
 
 let expand_nonbinding ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match ParseUtil.parse_string NonBinding.Parse.whitespace_term str with
+  match Lvca_parsing.parse_string NonBinding.Parse.whitespace_term str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> SyntaxQuoter.mk_nonbinding ~loc tm
 ;;
 
 let expand_pattern ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match ParseUtil.parse_string Lvca_syntax.Pattern.Parse.whitespace_t str with
+  match Lvca_parsing.parse_string Lvca_syntax.Pattern.Parse.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> SyntaxQuoter.mk_pattern ~loc tm
 ;;
 
 let expand_abstract_syntax ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t str with
+  match Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax -> SyntaxQuoter.mk_language ~loc syntax
 ;;
@@ -54,7 +54,7 @@ let expand_module ~(loc : Location.t) ~path:_ (expr : expression) : module_expr 
   Location.print Fmt.stdout loc;
   Fmt.pr "\n";
   *)
-  match ParseUtil.parse_string AbstractSyntax.Parse.whitespace_t str with
+  match Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax ->
     let module ContainerModule =

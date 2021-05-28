@@ -3,12 +3,12 @@
  (public_name lvca.syntax)
  (inline_tests)
  (libraries
-  angstrom
   base
   fmt
   zarith
   zarith_stubs_js
   lvca_util
+  lvca_parsing
   lvca_provenance)
  (preprocess
   (pps ppx_jane)))
