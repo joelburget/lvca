@@ -247,14 +247,14 @@ module Parse = struct
           ; (identifier
             >>== fun { value = ident; range; _ } ->
             if ident.[0] = '_'
-            then return ~pos:range (Ignored (range, String.subo ~pos:1 ident))
+            then return ~range (Ignored (range, String.subo ~pos:1 ident))
             else
               choice
                 [ (parens (sep_end_by (char ';') pat)
                   >>|| fun ParseResult.{ value = children; range = finish } ->
                   let range = OptRange.union range finish in
                   { value = Operator (range, ident, children); range })
-                ; return ~pos:range (Var (range, ident))
+                ; return ~range (Var (range, ident))
                 ]
               <?> "pattern body")
           ])

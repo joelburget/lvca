@@ -206,19 +206,16 @@ let parse_string p str =
   parse_string_pos p str |> Result.map ~f:(fun { value; _ } -> value)
 ;;
 
-(** Parser combinators that *don't* handle trailing whitespace. *)
-module Junkless = struct
+(** Helpers that may call pos. *)
+module Basic = struct
   open Angstrom
 
-  let integer_lit_no_range = take_while1 Char.is_digit
-
-  let integer_lit =
-    lift3
-      (fun start lit finish -> lit, Some Range.{ start; finish })
-      pos
-      integer_lit_no_range
-      pos
+  let go p =
+    lift3 (fun start result finish -> result, Some Range.{ start; finish }) pos p pos
   ;;
+
+  let integer_lit_no_range = take_while1 Char.is_digit
+  let integer_lit = go integer_lit_no_range
 
   let sign =
     peek_char
@@ -230,24 +227,24 @@ module Junkless = struct
   ;;
 
   let integer_or_float_lit =
-    pos
-    >>= fun start ->
-    sign
-    >>= fun sign ->
-    integer_lit_no_range
-    >>= fun whole ->
-    choice
-      [ (char '.'
-        >>= fun _ ->
-        option "" integer_lit_no_range
-        >>= fun part ->
-        let str = sign ^ whole ^ "." ^ part in
-        match Stdlib.float_of_string_opt str with
-        | Some f -> return (Either.Second f)
-        | None -> fail (Printf.sprintf "Failed to convert %s to float" str))
-      ; return (Either.First (sign ^ whole))
-      ]
-    >>= fun result -> pos >>| fun finish -> result, Some Range.{ start; finish }
+    let p =
+      sign
+      >>= fun sign ->
+      integer_lit_no_range
+      >>= fun whole ->
+      choice
+        [ (char '.'
+          >>= fun _ ->
+          option "" integer_lit_no_range
+          >>= fun part ->
+          let str = sign ^ whole ^ "." ^ part in
+          match Stdlib.float_of_string_opt str with
+          | Some f -> return (Either.Second f)
+          | None -> fail (Printf.sprintf "Failed to convert %s to float" str))
+        ; return (Either.First (sign ^ whole))
+        ]
+    in
+    go p
   ;;
 
   let escape_sequence =
@@ -300,55 +297,45 @@ module Junkless = struct
   ;;
 
   let regular_char = satisfy Char.(fun c -> c <> '\\') <?> "regular char"
-
-  let string_lit =
-    lift3
-      (fun start result finish -> result, Some Range.{ start; finish })
-      pos
-      (char '"' *> AngstromStr.str (Buffer.create 0x100))
-      pos
-  ;;
-
-  let char_lit =
-    lift3
-      (fun start result finish -> result, Some Range.{ start; finish })
-      pos
-      (char '\'' *> (regular_char <|> escape_sequence) <* char '\'')
-      pos
-  ;;
+  let string_lit = go (char '"' *> AngstromStr.str (Buffer.create 0x100))
+  let char_lit = go (char '\'' *> (regular_char <|> escape_sequence) <* char '\'')
+  let char c = go (char c)
+  let satisfy f = go (satisfy f)
+  let string str = go (string str)
 
   let identifier =
-    lift4
-      (fun start c cs finish -> String.(of_char c ^ cs), Some Range.{ start; finish })
-      pos
-      (satisfy Char.(fun c -> is_alpha c || c = '_'))
-      (take_while Char.(fun c -> is_alpha c || is_digit c || c = '_' || c = '\''))
-      pos
-  ;;
-
-  let char c =
-    lift3
-      (fun start result finish -> result, Some Range.{ start; finish })
-      pos
-      (char c)
-      pos
-  ;;
-
-  let string str =
-    lift3
-      (fun start result finish -> result, Some Range.{ start; finish })
-      pos
-      (string str)
-      pos
+    go
+      (lift2
+         (fun c cs -> String.(of_char c ^ cs))
+         (Angstrom.satisfy Char.(fun c -> is_alpha c || c = '_'))
+         (take_while Char.(fun c -> is_alpha c || is_digit c || c = '_' || c = '\'')))
   ;;
 end
 
-let whitespace = Angstrom.(take_while Char.is_whitespace *> return ())
-let whitespace1 = Angstrom.(take_while1 Char.is_whitespace *> return ())
-
-let ( >>|| ), ( >>== ), ( *> ), ( <* ), ( <|> ), ( <?> ), ( >>| ), ( >>= ), fail, return =
+let ( ( >>|| )
+    , ( >>== )
+    , ( *> )
+    , ( <* )
+    , ( <|> )
+    , ( <?> )
+    , ( >>| )
+    , ( >>= )
+    , fail
+    , fix
+    , return )
+  =
   Angstrom.(
-    ( >>| ), ( >>= ), ( *> ), ( <* ), ( <|> ), ( <?> ), ( >>| ), ( >>= ), fail, return)
+    ( ( >>| )
+    , ( >>= )
+    , ( *> )
+    , ( <* )
+    , ( <|> )
+    , ( <?> )
+    , ( >>| )
+    , ( >>= )
+    , fail
+    , fix
+    , return ))
 ;;
 
 let ( <*> ) f_p a_p =
@@ -366,12 +353,18 @@ let ( >>= ) p f =
   >>= fun { value; range = range1 } ->
   f value
   >>= fun ({ range = range2; _ } as result) ->
-  Angstrom.return { result with range = OptRange.union range1 range2 }
+  return { result with range = OptRange.union range1 range2 }
 ;;
 
 let ( <?> ) p msg = p <?> msg
-let whitespace = Angstrom.(whitespace >>| fun _ -> { value = (); range = None })
-let whitespace1 = Angstrom.(whitespace1 >>| fun _ -> { value = (); range = None })
+
+let whitespace =
+  Angstrom.take_while Char.is_whitespace >>|| fun _ -> { value = (); range = None }
+;;
+
+let whitespace1 =
+  Angstrom.take_while1 Char.is_whitespace >>|| fun _ -> { value = (); range = None }
+;;
 
 let adapt_junkless junkless_p =
   let p =
@@ -381,13 +374,14 @@ let adapt_junkless junkless_p =
   p <* whitespace
 ;;
 
-let char_lit = adapt_junkless Junkless.char_lit
-let identifier = adapt_junkless Junkless.identifier
-let integer_lit = adapt_junkless Junkless.integer_lit
-let integer_or_float_lit = adapt_junkless Junkless.integer_or_float_lit
-let string_lit = adapt_junkless Junkless.string_lit
-let char c = adapt_junkless (Junkless.char c)
-let string str = adapt_junkless (Junkless.string str)
+let char_lit = adapt_junkless Basic.char_lit
+let identifier = adapt_junkless Basic.identifier
+let integer_lit = adapt_junkless Basic.integer_lit
+let integer_or_float_lit = adapt_junkless Basic.integer_or_float_lit
+let string_lit = adapt_junkless Basic.string_lit
+let char c = adapt_junkless (Basic.char c)
+let satisfy f = adapt_junkless (Basic.satisfy f)
+let string str = adapt_junkless (Basic.string str)
 let ( <$> ) f p = p >>| f
 let fail msg = fail msg
 let lift f a = f <$> a
@@ -400,8 +394,6 @@ let lift2 f a b =
   { value = f a_val b_val; range = OptRange.union a_range b_range }
 ;;
 
-let debug = ref false
-
 let lift3 f a b c =
   a
   >>== fun { value = a_val; range = a_range } ->
@@ -410,18 +402,6 @@ let lift3 f a b c =
   c
   >>|| fun { value = c_val; range = c_range } ->
   let range = OptRange.list_range [ a_range; b_range; c_range ] in
-  if !debug
-  then
-    Fmt.pr
-      "lift3 a_range: %a; b_range: %a; c_range: %a, range: %a\n"
-      OptRange.pp
-      a_range
-      OptRange.pp
-      b_range
-      OptRange.pp
-      c_range
-      OptRange.pp
-      range;
   { value = f a_val b_val c_val; range }
 ;;
 
@@ -439,24 +419,6 @@ let lift4 f a b c d =
   }
 ;;
 
-let count n p =
-  let open Angstrom in
-  pos
-  >>= fun p1 ->
-  count n p
-  >>= fun result ->
-  pos
-  >>= fun p2 ->
-  let value = List.map result ~f:(fun elem -> elem.value) in
-  return { value; range = OptRange.mk p1 p2 }
-;;
-
-let satisfy f =
-  Angstrom.(
-    pos
-    >>= fun pos -> satisfy f >>| fun c -> { value = c; range = OptRange.mk pos (pos + 1) })
-;;
-
 let attach_pos p =
   Angstrom.(
     p
@@ -464,12 +426,8 @@ let attach_pos p =
     { parse_result with value = value, range })
 ;;
 
-let return ?(pos = None) value = Angstrom.return { value; range = pos }
+let return ?(range = None) value = return { value; range }
 let option value p = Angstrom.option { value; range = None } p
-
-(* let pos = Angstrom.return { value = latest_pos; range = None } *)
-
-let fix f = Angstrom.fix f
 let choice ?failure_msg ps = Angstrom.choice ?failure_msg ps
 
 let handle_list lst =
@@ -481,10 +439,11 @@ let handle_list lst =
   | _, _ -> { value = []; range = None }
 ;;
 
-let many p = Angstrom.(many p >>| handle_list)
-let many1 p = Angstrom.(many1 p >>| handle_list)
-let sep_by s p = Angstrom.(sep_by s p >>| handle_list)
-let sep_by1 s p = Angstrom.(sep_by1 s p >>| handle_list)
+let many p = Angstrom.many p >>|| handle_list
+let many1 p = Angstrom.many1 p >>|| handle_list
+let sep_by s p = Angstrom.sep_by s p >>|| handle_list
+let sep_by1 s p = Angstrom.sep_by1 s p >>|| handle_list
+let count n p = Angstrom.count n p >>|| handle_list
 
 let sep_end_by s p =
   fix (fun seb ->

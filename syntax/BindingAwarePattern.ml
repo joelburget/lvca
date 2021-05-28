@@ -354,7 +354,7 @@ module Parse = struct
           (* scopes encountered *)
           let scope_queue : OptRange.t scope Queue.t = Queue.create () in
           let rec go = function
-            | [] -> return ~pos:range (Operator (range, tag, Queue.to_list scope_queue))
+            | [] -> return ~range (Operator (range, tag, Queue.to_list scope_queue))
             | Tm tm :: Sep '.' :: rest ->
               Queue.enqueue binding_queue tm;
               go rest

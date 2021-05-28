@@ -30,11 +30,8 @@ val identifier : string t
 val integer_lit : string t
 val integer_or_float_lit : (string, float) Base.Either.t t
 val string_lit : string t
-(* val pos : int t (1* TODO: remove? *1) *)
-
 val option : 'a -> 'a t -> 'a t
-val return : ?pos:OptRange.t -> 'a -> 'a t (* TODO: rename to range? *)
-
+val return : ?range:OptRange.t -> 'a -> 'a t
 val attach_pos : 'a t -> ('a * OptRange.t) t (* TODO: remove? *)
 
 val satisfy : (char -> bool) -> char t

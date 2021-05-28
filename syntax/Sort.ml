@@ -110,13 +110,13 @@ module Parse = struct
         >>== fun ParseResult.{ value = atoms; range; _ } ->
         match atoms with
         (* A single ap is just parenthesized. An ap applied to things is a problem. *)
-        | [ (Ap _ as atom) ] -> return ~pos:range atom
+        | [ (Ap _ as atom) ] -> return ~range atom
         | Ap _ :: _ ->
           fail
             "Higher-order sorts are not allowed. The head of a sort application must be \
              concrete"
-        | [ (Name _ as value) ] -> return ~pos:range value
-        | Name (_, name) :: args -> return ~pos:range (Ap (range, name, args))
+        | [ (Name _ as value) ] -> return ~range value
+        | Name (_, name) :: args -> return ~range (Ap (range, name, args))
         | [] -> assert false)
   ;;
 end
