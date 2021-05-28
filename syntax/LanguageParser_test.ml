@@ -39,8 +39,8 @@ let%test_module "AbstractSyntax.Parser" =
         | lam(tm. tm)
 
       foo (x : *) :=
-        | foo(foo[x]. x; x. x) // fixed arity, (variable valence, fixed valence)
-        | bar(x)          // variable arity
+        | foo(foo[x]. x; x. x)
+        | bar(x)
       |}
       |> erase_info
       =
@@ -76,15 +76,17 @@ let%test_module "AbstractSyntax.Parser" =
     ;;
 
     let%test _ =
-      (parse {|
+      let lang =
+        parse {|
       integer : *
       list : * -> *
 
       foo := Foo()
-      |})
-        .externals
-      = [ "integer", Kind.Kind (OptRange.mk 17 25 (* XXX *), 1)
-        ; "list", Kind (OptRange.mk 32 46 (* XXX *), 2)
+      |}
+      in
+      lang.externals
+      = [ "integer", Kind.Kind (OptRange.mk 17 18, 1)
+        ; "list", Kind (OptRange.mk 32 38, 2)
         ]
     ;;
   end)

@@ -356,8 +356,6 @@ let ( >>= ) p f =
   return { result with range = OptRange.union range1 range2 }
 ;;
 
-let ( <?> ) p msg = p <?> msg
-
 let whitespace =
   Angstrom.take_while Char.is_whitespace >>|| fun _ -> { value = (); range = None }
 ;;

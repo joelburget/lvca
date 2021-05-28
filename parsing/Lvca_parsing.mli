@@ -12,7 +12,6 @@ end
 
 type +'a t = 'a ParseResult.t Angstrom.t
 
-val debug : bool ref
 val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
 val ( >>== ) : 'a t -> ('a ParseResult.t -> 'b t) -> 'b t
 val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t

@@ -372,8 +372,7 @@ module Parse = struct
           choice
             [ parens term
             ; (identifier
-              >>|| fun { value; range } ->
-              { value = Var (range, value); range })
+              >>|| fun { value; range } -> { value = Var (range, value); range })
             ; braces Nominal.Term.Parse.t >>| (fun tm -> Term tm) <?> "quoted term"
             ]
         in
@@ -511,7 +510,7 @@ let%test_module "Core parsing" =
       | false() -> meaning t3
     }
     | ap(f; arg) -> (meaning f) (meaning arg)
-    | fun(scope) -> {lambda(list(); scope)} // TODO: add type
+    | fun(scope) -> {lambda(list(); scope)}
   }
   |}
     ;;
@@ -777,7 +776,7 @@ let%test_module "Core eval in dynamics" =
     | false() -> meaning t3
   }
   | ap(f; arg) -> (meaning f) (meaning arg)
-  | fun(scope) -> {lambda(list(); scope)} // TODO: add type
+  | fun(scope) -> {lambda(list(); scope)}
 }
       |}
     ;;

@@ -439,21 +439,10 @@ module Term = struct
             ; (identifier
               >>== fun ParseResult.{ value = ident; range = ident_range; _ } ->
               choice
-                [ parens
-                    (sep_by (char ';') slot
-                    >>|| fun { value = slots; range = parens_range } ->
-                    let range = OptRange.union ident_range parens_range in
-                    if !Lvca_parsing.debug
-                    then
-                      Fmt.pr
-                        "ident_range: %a, parens_range: %a, range: %a\n"
-                        OptRange.pp
-                        ident_range
-                        OptRange.pp
-                        parens_range
-                        OptRange.pp
-                        range;
-                    { value = Operator (range, ident, slots); range })
+                [ (parens (sep_end_by (char ';') slot)
+                  >>|| fun { value = slots; range = parens_range } ->
+                  let range = OptRange.union ident_range parens_range in
+                  { value = Operator (range, ident, slots); range })
                 ; return (Var (ident_range, ident))
                 ])
             ])
@@ -715,17 +704,14 @@ let%test_module "TermParser" =
     ;;
 
     let%expect_test _ =
-      Lvca_parsing.debug := true;
       print_parse {|a()|};
       (*            0123*)
-      Lvca_parsing.debug := false;
       [%expect {|
       a()
       <{0,3}>a()</{0,3}>
     |}]
     ;;
 
-    (*
     let%expect_test _ =
       print_parse {|a(b)|};
       (*            01234*)
@@ -1009,6 +995,5 @@ test := foo(term[term]. term)
       check_term' "string" {|"str"|};
       [%expect]
     ;;
-    *)
   end)
 ;;
