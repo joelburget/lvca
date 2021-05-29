@@ -13,14 +13,14 @@ let test_nominal =
                   ((let open Lvca_provenance.Range in
                       { start = 7; finish = 8 }))), "x")))])
 let test_nonbinding =
-  NonBinding.Operator
+  Nonbinding.Operator
     ((Some (let open Lvca_provenance.Range in { start = 0; finish = 11 })),
       "foo",
-      [NonBinding.Operator
+      [Nonbinding.Operator
          ((Some
              ((let open Lvca_provenance.Range in { start = 4; finish = 10 }))),
            "bar",
-           [NonBinding.Primitive
+           [Nonbinding.Primitive
               ((Some
                   ((let open Lvca_provenance.Range in
                       { start = 8; finish = 9 }))),
@@ -34,16 +34,16 @@ let test_pattern =
              ((let open Lvca_provenance.Range in { start = 4; finish = 5 }))),
            "x")])
 let test_language =
-  let open AbstractSyntax in
+  let open Abstract_syntax in
     {
       externals = [];
       sort_defs =
         [("foo",
-           (AbstractSyntax.SortDef.SortDef
+           (Abstract_syntax.Sort_def.Sort_def
               ([],
-                [AbstractSyntax.OperatorDef.OperatorDef
+                [Abstract_syntax.OperatorDef.OperatorDef
                    ("foo",
-                     [AbstractSyntax.Valence.Valence
+                     [Abstract_syntax.Valence.Valence
                         ([],
                           (Sort.Name
                              ((Some
@@ -52,8 +52,8 @@ let test_language =
                                "integer")))])])))]
     }
 module Lang =
-  (functor (Integer : LanguageObject.AllTermS) -> functor (String :
-    LanguageObject.AllTermS) ->
+  (functor (Integer : Language_object.All_term_s) -> functor (String :
+    Language_object.All_term_s) ->
     struct
       module Wrapper =
         struct
@@ -325,7 +325,7 @@ module Lang =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = failwith "TODO" end
         end
-      module List(A:LanguageObject.AllTermS) =
+      module List(A:Language_object.All_term_s) =
         struct
           type 'info t = ('info, 'info A.t) Wrapper.Types.list
           module Plain = struct type t = A.Plain.t Wrapper.Plain.list end
@@ -338,7 +338,7 @@ module Lang =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = failwith "TODO" end
         end
-      module Pair(A:LanguageObject.AllTermS)(B:LanguageObject.AllTermS) =
+      module Pair(A:Language_object.All_term_s)(B:Language_object.All_term_s) =
         struct
           type 'info t = ('info, 'info A.t, 'info B.t) Wrapper.Types.pair
           module Plain =
@@ -354,7 +354,7 @@ module Lang =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = failwith "TODO" end
         end
-      module Pair_plus(A:LanguageObject.AllTermS)(B:LanguageObject.AllTermS) =
+      module Pair_plus(A:Language_object.All_term_s)(B:Language_object.All_term_s) =
         struct
           type 'info t =
             ('info, 'info A.t, 'info B.t) Wrapper.Types.pair_plus
@@ -428,8 +428,8 @@ module Lang =
           module Parse = struct let t = failwith "TODO" end
         end
     end :
-    functor (Integer : LanguageObject.AllTermS) ->
-      functor (String : LanguageObject.AllTermS) ->
+    functor (Integer : Language_object.All_term_s) ->
+      functor (String : Language_object.All_term_s) ->
         sig
           module Types :
           sig
@@ -481,38 +481,38 @@ module Lang =
               | Operator of term list 
           end
           module Foo :
-          LanguageObject.AllTermS with type 'info t =  'info Types.foo and
+          Language_object.All_term_s with type 'info t =  'info Types.foo and
             type  Plain.t =  Plain.foo
           module Nat :
-          LanguageObject.AllTermS with type 'info t =  'info Types.nat and
+          Language_object.All_term_s with type 'info t =  'info Types.nat and
             type  Plain.t =  Plain.nat
           module List :
-          functor (A : LanguageObject.AllTermS) ->
-            LanguageObject.AllTermS with type 'info t = 
+          functor (A : Language_object.All_term_s) ->
+            Language_object.All_term_s with type 'info t = 
               ('info, 'info A.t) Types.list and type  Plain.t = 
               A.Plain.t Plain.list
           module Pair :
-          functor (A : LanguageObject.AllTermS) ->
-            functor (B : LanguageObject.AllTermS) ->
-              LanguageObject.AllTermS with type 'info t = 
+          functor (A : Language_object.All_term_s) ->
+            functor (B : Language_object.All_term_s) ->
+              Language_object.All_term_s with type 'info t = 
                 ('info, 'info A.t, 'info B.t) Types.pair and type  Plain.t = 
                 (A.Plain.t, B.Plain.t) Plain.pair
           module Pair_plus :
-          functor (A : LanguageObject.AllTermS) ->
-            functor (B : LanguageObject.AllTermS) ->
-              LanguageObject.AllTermS with type 'info t = 
+          functor (A : Language_object.All_term_s) ->
+            functor (B : Language_object.All_term_s) ->
+              Language_object.All_term_s with type 'info t = 
                 ('info, 'info A.t, 'info B.t) Types.pair_plus and type
                  Plain.t =  (A.Plain.t, B.Plain.t) Plain.pair_plus
           module Nonempty :
-          LanguageObject.AllTermS with type 'info t =  'info Types.nonempty
-            and type  Plain.t =  Plain.nonempty
+          Language_object.All_term_s with type 'info t = 
+            'info Types.nonempty and type  Plain.t =  Plain.nonempty
           module Term :
-          LanguageObject.AllTermS with type 'info t =  'info Types.term and
-            type  Plain.t =  Plain.term
+          Language_object.All_term_s with type 'info t =  'info Types.term
+            and type  Plain.t =  Plain.term
           module Mut_a :
-          LanguageObject.AllTermS with type 'info t =  'info Types.mut_a and
-            type  Plain.t =  Plain.mut_a
+          Language_object.All_term_s with type 'info t =  'info Types.mut_a
+            and type  Plain.t =  Plain.mut_a
           module Mut_b :
-          LanguageObject.AllTermS with type 'info t =  'info Types.mut_b and
-            type  Plain.t =  Plain.mut_b
+          Language_object.All_term_s with type 'info t =  'info Types.mut_b
+            and type  Plain.t =  Plain.mut_b
         end)

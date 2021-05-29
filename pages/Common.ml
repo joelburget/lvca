@@ -5,28 +5,28 @@ open Lvca_provenance
 open Lvca_syntax
 open Prelude
 
-type term = OptRange.t Nominal.Term.t
+type term = Opt_range.t Nominal.Term.t
 
 type lang =
   | Lambda
   | Term
 
 let parser_of = function
-  | Lambda -> Lvca_languages.LambdaCalculus.Parse.t
+  | Lambda -> Lvca_languages.Lambda_calculus.Parse.t
   | Term -> Nominal.Term.Parse.t
 ;;
 
 let term_pretty = Nominal.Term.pp_range
-let lambda_pretty = Lvca_languages.LambdaCalculus.pp_range
-let lambda_ranges_pretty = Lvca_languages.LambdaCalculus.pp_ranges
+let lambda_pretty = Lvca_languages.Lambda_calculus.pp_range
+let lambda_ranges_pretty = Lvca_languages.Lambda_calculus.pp_ranges
 let html_eq = Caml.( = )
 let htmls_eq = List.equal Caml.( = )
 
 module Action = struct
   type t =
     | Evaluate of string
-    | InputSelect of OptRange.t
-    | OutputSelect of OptRange.t
+    | InputSelect of Opt_range.t
+    | OutputSelect of Opt_range.t
     | SwitchInputLang
 end
 

@@ -21,8 +21,8 @@ module Kind : sig
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   module Parse : sig
-    val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
-    val decl : (string * Lvca_provenance.OptRange.t t) Lvca_parsing.t
+    val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+    val decl : (string * Lvca_provenance.Opt_range.t t) Lvca_parsing.t
   end
 end
 
@@ -57,7 +57,7 @@ module SortSlot : sig
   val instantiate : 'info Sort.t String.Map.t -> 'info t -> 'info t
 
   module Parse : sig
-    val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
+    val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
   end
 end
 
@@ -75,7 +75,7 @@ module Valence : sig
   val instantiate : 'info Sort.t String.Map.t -> 'info t -> 'info t
 
   module Parse : sig
-    val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
+    val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
   end
 end
 
@@ -93,7 +93,7 @@ module Arity : sig
   val instantiate : 'info Sort.t String.Map.t -> 'info t -> 'info t
 
   module Parse : sig
-    val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
+    val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
   end
 end
 
@@ -108,13 +108,13 @@ module OperatorDef : sig
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   module Parse : sig
-    val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
+    val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
   end
 end
 
-module SortDef : sig
+module Sort_def : sig
   type 'info t =
-    | SortDef of (string * 'info Kind.t option) list * 'info OperatorDef.t list
+    | Sort_def of (string * 'info Kind.t option) list * 'info OperatorDef.t list
         (** A sort is defined by a set of variables and a set of operators. *)
 
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
@@ -131,7 +131,7 @@ module SortDef : sig
   val kind_check : Int.Set.t String.Map.t -> string -> 'info t -> Int.Set.t String.Map.t
 
   module Parse : sig
-    val t : (string * Lvca_provenance.OptRange.t t) Lvca_parsing.t
+    val t : (string * Lvca_provenance.Opt_range.t t) Lvca_parsing.t
   end
 end
 
@@ -140,7 +140,7 @@ end
     the definition of a language without significant ordering, see [unordered]. *)
 type 'info t =
   { externals : (string * 'info Kind.t) list
-  ; sort_defs : (string * 'info SortDef.t) list
+  ; sort_defs : (string * 'info Sort_def.t) list
   }
 
 module Unordered : sig
@@ -148,7 +148,7 @@ module Unordered : sig
       list). *)
   type 'info t =
     { externals : 'info Kind.t String.Map.t
-    ; sort_defs : 'info SortDef.t String.Map.t
+    ; sort_defs : 'info Sort_def.t String.Map.t
     }
 end
 
@@ -172,6 +172,6 @@ val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 val kind_check : _ t -> (kind_map, kind_mismap) Result.t
 
 module Parse : sig
-  val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
-  val whitespace_t : Lvca_provenance.OptRange.t t Lvca_parsing.t
+  val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+  val whitespace_t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
 end

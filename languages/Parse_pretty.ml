@@ -31,7 +31,7 @@ module Directive = struct
   let rec of_nonbinding tm =
     let open Result.Let_syntax in
     match tm with
-    | NonBinding.Operator (_, "literal", [ Primitive (_, String str) ]) ->
+    | Nonbinding.Operator (_, "literal", [ Primitive (_, String str) ]) ->
       Ok (Literal str)
     | Operator (_, "many", [ directives ]) ->
       let%map directives = list_of_nonbinding directives in
@@ -52,7 +52,7 @@ module Directive = struct
   and list_of_nonbinding tm =
     let open Result.Let_syntax in
     match tm with
-    | NonBinding.Operator (_, "nil", []) -> Ok []
+    | Nonbinding.Operator (_, "nil", []) -> Ok []
     | Operator (_, "cons", [ x; xs ]) ->
       let%bind x = of_nonbinding x in
       let%map xs = list_of_nonbinding xs in

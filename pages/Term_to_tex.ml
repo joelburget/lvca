@@ -21,7 +21,7 @@ module View = struct
   let div, h2, h3 = El.(div, h2, h3)
 
   let view model_s =
-    let input, input_event = MultilineInput.mk model_s in
+    let input, input_event = Multiline_input.mk model_s in
     let katex_area = div [] in
     let _sink : Logr.t = S.log model_s (Katex.render katex_area) in
     let evt : Action.t event =

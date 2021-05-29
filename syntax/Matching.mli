@@ -6,7 +6,7 @@ open Lvca_util
 type ('info, 'rhs) cases = ('info Pattern.t * 'rhs) list
 
 (** The terms bound by a pattern match. *)
-type 'info env = 'info NonBinding.term String.Map.t
+type 'info env = 'info Nonbinding.term String.Map.t
 
 (** An entry in a pattern matching matrix (matching multiple terms simultaneously). *)
 type 'info matrix_entry =
@@ -45,12 +45,12 @@ type 'info match_compilation_error =
   | DuplicateName of 'info Pattern.t * string
 
 (** Match a term against a pattern, extracting bindings *)
-val match_pattern : 'info NonBinding.term -> 'info Pattern.t -> 'info env option
+val match_pattern : 'info Nonbinding.term -> 'info Pattern.t -> 'info env option
 
 (** Match a term against an ordered set of patterns, producing a branch and bindings if
     there is a match *)
 val simple_find_match
-  :  'info NonBinding.term
+  :  'info Nonbinding.term
   -> ('info, 'rhs) cases
   -> ('rhs * 'info env) option
 
@@ -59,7 +59,7 @@ val simple_find_match
     including coverage and redundancy. *)
 
 val compile_cases
-  :  'info AbstractSyntax.Unordered.t
+  :  'info Abstract_syntax.Unordered.t
   -> 'info Sort.t
   -> ('info, 'rhs) cases
   -> (('info, 'rhs) decision_tree, 'info match_compilation_error) Result.t
@@ -68,7 +68,7 @@ val compile_cases
     efficiently. This has the side-effect of checking the cases for well-formedness,
     including coverage and redundancy. *)
 val compile_matrix
-  :  'info AbstractSyntax.Unordered.t
+  :  'info Abstract_syntax.Unordered.t
   -> 'info Sort.t list
   -> ('info, 'rhs) matrix
   -> (('info, 'rhs) decision_tree, 'info match_compilation_error) Result.t
@@ -76,44 +76,46 @@ val compile_matrix
 (** Match a term against a [decision_tree] (a compiled list of cases), resulting in a
     branch and an environment if there is a match. *)
 val run_match
-  :  'info NonBinding.term
+  :  'info Nonbinding.term
   -> ('info, 'rhs) decision_tree
   -> ('rhs * 'info env) option
 
 val run_matches
-  :  'info NonBinding.term list
+  :  'info Nonbinding.term list
   -> ('info, 'rhs) decision_tree
   -> ('rhs * 'info env) option
 
 (** Check a matrix for coverage, possibly returning an example pattern that's not matched. *)
 val check_matrix
-  :  'info AbstractSyntax.Unordered.t
+  :  'info Abstract_syntax.Unordered.t
   -> 'info Sort.t list
   -> ('info, 'rhs) matrix
   -> unit Pattern.t list option
 
 (** {1 Parsing} *)
 module Parse : sig
-  type 'info matrix_row = 'info matrix_entry list * 'info NonBinding.term
+  type 'info matrix_row = 'info matrix_entry list * 'info Nonbinding.term
 
   val branch
-    : (Lvca_provenance.OptRange.t Pattern.t * Lvca_provenance.OptRange.t NonBinding.term)
+    : (Lvca_provenance.Opt_range.t Pattern.t
+      * Lvca_provenance.Opt_range.t Nonbinding.term)
       Lvca_parsing.t
 
   val branches
-    : (Lvca_provenance.OptRange.t Pattern.t * Lvca_provenance.OptRange.t NonBinding.term)
+    : (Lvca_provenance.Opt_range.t Pattern.t
+      * Lvca_provenance.Opt_range.t Nonbinding.term)
       list
       Lvca_parsing.t
 
-  val matrix_row : Lvca_provenance.OptRange.t matrix_row Lvca_parsing.t
-  val matrix_rows : Lvca_provenance.OptRange.t matrix_row list Lvca_parsing.t
+  val matrix_row : Lvca_provenance.Opt_range.t matrix_row Lvca_parsing.t
+  val matrix_rows : Lvca_provenance.Opt_range.t matrix_row list Lvca_parsing.t
 end
 
 module Properties : sig
-  type term = unit NonBinding.term
+  type term = unit Nonbinding.term
 
   (** Check that [run_match . compile_cases] gives the same result as [simple_find_match] *)
-  val match_equivalent : term -> (unit, term) cases -> PropertyResult.t
+  val match_equivalent : term -> (unit, term) cases -> Property_result.t
 
   (* TODO: could also check that check_matrix finds an example if compile_matrix does. *)
 end

@@ -23,28 +23,28 @@ let expand_nominal ~(loc : Location.t) ~path:_ (expr : expression) : expression 
   let str, loc = extract_string loc expr in
   match Lvca_parsing.parse_string Nominal.Term.Parse.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
-  | Ok tm -> SyntaxQuoter.mk_nominal ~loc tm
+  | Ok tm -> Syntax_quoter.mk_nominal ~loc tm
 ;;
 
 let expand_nonbinding ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match Lvca_parsing.parse_string NonBinding.Parse.whitespace_term str with
+  match Lvca_parsing.parse_string Nonbinding.Parse.whitespace_term str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
-  | Ok tm -> SyntaxQuoter.mk_nonbinding ~loc tm
+  | Ok tm -> Syntax_quoter.mk_nonbinding ~loc tm
 ;;
 
 let expand_pattern ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
   match Lvca_parsing.parse_string Lvca_syntax.Pattern.Parse.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
-  | Ok tm -> SyntaxQuoter.mk_pattern ~loc tm
+  | Ok tm -> Syntax_quoter.mk_pattern ~loc tm
 ;;
 
 let expand_abstract_syntax ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t str with
+  match Lvca_parsing.parse_string Abstract_syntax.Parse.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
-  | Ok syntax -> SyntaxQuoter.mk_language ~loc syntax
+  | Ok syntax -> Syntax_quoter.mk_language ~loc syntax
 ;;
 
 let expand_module ~(loc : Location.t) ~path:_ (expr : expression) : module_expr =
@@ -54,11 +54,11 @@ let expand_module ~(loc : Location.t) ~path:_ (expr : expression) : module_expr 
   Location.print Fmt.stdout loc;
   Fmt.pr "\n";
   *)
-  match Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t str with
+  match Lvca_parsing.parse_string Abstract_syntax.Parse.whitespace_t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax ->
-    let module ContainerModule =
-      ModuleBuilder.ContainerModule (struct
+    let module Container_module =
+      Module_builder.Container_module (struct
         let buf = str
 
         module Ast = Ast_builder.Make (struct
@@ -66,7 +66,7 @@ let expand_module ~(loc : Location.t) ~path:_ (expr : expression) : module_expr 
         end)
       end)
     in
-    ContainerModule.mk syntax
+    Container_module.mk syntax
 ;;
 
 let term_extension =

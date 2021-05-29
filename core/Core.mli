@@ -10,7 +10,7 @@ open Lvca_util
 (** {1 Types} *)
 type 'info n_term = 'info Lvca_syntax.Nominal.Term.t
 
-type 'info pattern = 'info Lvca_syntax.BindingAwarePattern.t
+type 'info pattern = 'info Lvca_syntax.Binding_aware_pattern.t
 
 type is_rec =
   | Rec
@@ -89,5 +89,5 @@ val reverse : 'info n_term -> 'info cases -> 'info env option
 
 (** {1 Parsing} *)
 module Parse : sig
-  val term : OptRange.t term Lvca_parsing.t
+  val term : Opt_range.t term Lvca_parsing.t
 end

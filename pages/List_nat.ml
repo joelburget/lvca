@@ -7,13 +7,13 @@ module Language = struct
   let list = [%lvca_abstract_syntax "list a := Nil() | Cons(a; list a)"]
 
   let rec nat_to_list = function
-    | NonBinding.Operator (_, "Z", []) -> NonBinding.Operator ((), "Nil", [])
+    | Nonbinding.Operator (_, "Z", []) -> Nonbinding.Operator ((), "Nil", [])
     | Operator (i, "S", [ nat ]) -> Operator ((), "Cons", [ i; nat_to_list nat ])
     | Operator _ | Primitive _ -> failwith "invariant violation"
   ;;
 
   let rec list_to_nat = function
-    | NonBinding.Operator (_, "Nil", []) -> NonBinding.Operator (None, "Z", [])
+    | Nonbinding.Operator (_, "Nil", []) -> Nonbinding.Operator (None, "Z", [])
     | Operator ((), "Cons", [ i; list ]) -> Operator (Some i, "S", [ list_to_nat list ])
     | Operator _ | Primitive _ -> failwith "invariant violation"
   ;;

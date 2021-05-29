@@ -33,8 +33,8 @@ val list_vars_of_pattern : 'info t -> ('info * string) list
 
 val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 val pp : _ t Fmt.t
-val pp_range : Lvca_provenance.OptRange.t t Fmt.t
-val pp_ranges : Lvca_provenance.SourceRanges.t t Fmt.t
+val pp_range : Lvca_provenance.Opt_range.t t Fmt.t
+val pp_ranges : Lvca_provenance.Source_ranges.t t Fmt.t
 
 (** {1 Serialization} *)
 
@@ -76,17 +76,17 @@ val select_path : path:int list -> 'info t -> ('info t, string) Result.t
      {- Patterns can't see valence: they can only bind subterms with some given sort. }
     } *)
 val check
-  :  'info AbstractSyntax.t (** Abstract syntax *)
+  :  'info Abstract_syntax.t (** Abstract syntax *)
   -> pattern_sort:'info Sort.t (** Sort to check pattern against *)
   -> var_sort:'info Sort.t (** Sort pattern must yield as variables *)
   -> 'info t
-  -> ('info Sort.t String.Map.t, ('info, 'info t) CheckFailure.t) Result.t
+  -> ('info Sort.t String.Map.t, ('info, 'info t) Check_failure.t) Result.t
 
 (** {1 Parsing} *)
 
 module Parse : sig
-  val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
-  val whitespace_t : Lvca_provenance.OptRange.t t Lvca_parsing.t
+  val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+  val whitespace_t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
 end
 
 module Properties : Properties_intf.S with type 'info t := 'info t

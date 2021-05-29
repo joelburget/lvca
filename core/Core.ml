@@ -8,7 +8,7 @@ module Util = Lvca_util
 module SMap = Util.String.Map
 
 type 'info n_term = 'info Nominal.Term.t
-type 'info pattern = 'info BindingAwarePattern.t
+type 'info pattern = 'info Binding_aware_pattern.t
 
 type is_rec =
   | Rec
@@ -53,7 +53,7 @@ let rec equal ~info_eq x y =
   | _, _ -> false
 
 and case_scope_equal ~info_eq (CaseScope (x1, x2)) (CaseScope (y1, y2)) =
-  BindingAwarePattern.equal ~info_eq x1 y1 && equal ~info_eq x2 y2
+  Binding_aware_pattern.equal ~info_eq x1 y1 && equal ~info_eq x2 y2
 
 and scope_equal ~info_eq (Scope (x1, x2)) (Scope (y1, y2)) =
   String.(x1 = y1) && equal ~info_eq x2 y2
@@ -92,7 +92,7 @@ and map_info_core_scope ~f (Scope (name, tm)) = Scope (name, map_info ~f tm)
 and map_info_cases ~f = List.map ~f:(map_info_case_scope ~f)
 
 and map_info_case_scope ~f (CaseScope (pat, tm)) =
-  CaseScope (BindingAwarePattern.map_info ~f pat, map_info ~f tm)
+  CaseScope (Binding_aware_pattern.map_info ~f pat, map_info ~f tm)
 ;;
 
 let info = function
@@ -150,7 +150,7 @@ module PP = struct
 
   and pp_core_case_scope : Format.formatter -> 'a case_scope -> unit =
    fun ppf (CaseScope (pat, body)) ->
-    pf ppf "@[%a@ -> %a@]" BindingAwarePattern.pp pat pp body
+    pf ppf "@[%a@ -> %a@]" Binding_aware_pattern.pp pat pp body
  ;;
 end
 
@@ -192,7 +192,8 @@ let merge_results : 'a n_term SMap.t option list -> 'a n_term SMap.t option =
 
 let rec match_pattern v pat =
   match v, pat with
-  | Nominal.Term.Operator (_, tag1, vals), BindingAwarePattern.Operator (_, tag2, pats) ->
+  | Nominal.Term.Operator (_, tag1, vals), Binding_aware_pattern.Operator (_, tag2, pats)
+    ->
     if String.(tag1 = tag2)
     then (
       match List.map2 pats vals ~f:match_pattern_scope with
@@ -208,7 +209,7 @@ let rec match_pattern v pat =
   | _ -> None
 
 and match_pattern_scope
-    (BindingAwarePattern.Scope (_XXXnames, pat))
+    (Binding_aware_pattern.Scope (_XXXnames, pat))
     (Nominal.Scope.Scope (_XXXpats, body))
   =
   match_pattern body pat
@@ -362,11 +363,11 @@ module Parse = struct
     | [] -> Util.invariant_violation ~here:[%here] "must be a nonempty list"
     | [ x ] -> x
     | f :: args as xs ->
-      let pos = xs |> List.map ~f:info |> OptRange.list_range in
+      let pos = xs |> List.map ~f:info |> Opt_range.list_range in
       CoreApp (pos, f, args)
   ;;
 
-  let term : OptRange.t term Lvca_parsing.t =
+  let term : Opt_range.t term Lvca_parsing.t =
     fix (fun term ->
         let atomic_term =
           choice
@@ -376,7 +377,7 @@ module Parse = struct
             ; braces Nominal.Term.Parse.t >>| (fun tm -> Term tm) <?> "quoted term"
             ]
         in
-        let pattern = BindingAwarePattern.Parse.t <?> "pattern" in
+        let pattern = Binding_aware_pattern.Parse.t <?> "pattern" in
         let case_line =
           lift3 (fun pat _ tm -> CaseScope (pat, tm)) pattern (string "->") term
           <?> "case line"
@@ -384,7 +385,7 @@ module Parse = struct
         choice
           [ lift4
               (fun (_, lam_loc) ((name, sort), parens_loc) _ body ->
-                let info = OptRange.union lam_loc parens_loc in
+                let info = Opt_range.union lam_loc parens_loc in
                 Lambda (info, sort, Scope (name, body)))
               (attach_pos (char '\\'))
               (attach_pos
@@ -399,7 +400,7 @@ module Parse = struct
             <?> "lambda"
           ; lift4
               (fun (_let, let_pos) is_rec name ty _eq tm _in (body, body_pos) ->
-                let info = OptRange.union let_pos body_pos in
+                let info = Opt_range.union let_pos body_pos in
                 Let { info; is_rec; ty; tm; scope = Scope (name, body) })
               (attach_pos (string "let"))
               (option NoRec (Fn.const Rec <$> string "rec"))
@@ -412,7 +413,7 @@ module Parse = struct
             <?> "let"
           ; lift4
               (fun (_match, match_pos) tm _with (lines, lines_pos) ->
-                let pos = OptRange.union match_pos lines_pos in
+                let pos = Opt_range.union match_pos lines_pos in
                 Case (pos, tm, lines))
               (attach_pos (string "match"))
               term
@@ -434,7 +435,7 @@ let%test_module "Parsing" =
     let ( = ) = equal ~info_eq:Unit.( = )
     let one = Nominal.Term.Primitive ((), Integer (Z.of_int 1))
     let var name = Var ((), name)
-    let ignored name = BindingAwarePattern.Ignored ((), name)
+    let ignored name = Binding_aware_pattern.Ignored ((), name)
     let operator tag children = Nominal.Term.Operator ((), tag, children)
     let app f a = CoreApp ((), f, a)
 
@@ -515,12 +516,14 @@ let%test_module "Core parsing" =
   |}
     ;;
 
-    let p_var name = BindingAwarePattern.Var ((), name)
+    let p_var name = Binding_aware_pattern.Var ((), name)
     let c_var name = Var ((), name)
 
     let p_operator tag children =
-      BindingAwarePattern.Operator
-        ((), tag, children |> List.map ~f:(fun pat -> BindingAwarePattern.Scope ([], pat)))
+      Binding_aware_pattern.Operator
+        ( ()
+        , tag
+        , children |> List.map ~f:(fun pat -> Binding_aware_pattern.Scope ([], pat)) )
     ;;
 
     let t_operator tag children = Nominal.Term.Operator ((), tag, children)

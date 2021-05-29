@@ -19,7 +19,7 @@ and 'info scope = Scope of ('info * string) list * 'info t
 
 type 'info capture_type =
   | BoundVar of 'info Sort.t
-  | BoundPattern of 'info AbstractSyntax.PatternSort.t
+  | BoundPattern of 'info Abstract_syntax.PatternSort.t
   | BoundTerm of 'info Sort.t
 
 type 'info capture =
@@ -137,16 +137,16 @@ let pp_scope ppf tm =
 ;;
 
 let pp_range ppf tm =
-  pp_generic ~open_loc:OptRange.open_stag ~close_loc:OptRange.close_stag ppf tm
+  pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag ppf tm
 ;;
 
 let pp_scope_range ppf tm =
-  pp_scope_generic ~open_loc:OptRange.open_stag ~close_loc:OptRange.close_stag ppf tm
+  pp_scope_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag ppf tm
 ;;
 
 let pp_ranges ppf tm =
   pp_generic
-    ~open_loc:(fun ppf info -> Stdlib.Format.pp_open_stag ppf (SourceRanges.Stag info))
+    ~open_loc:(fun ppf info -> Stdlib.Format.pp_open_stag ppf (Source_ranges.Stag info))
     ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
     ppf
     tm
@@ -154,7 +154,7 @@ let pp_ranges ppf tm =
 
 let pp_scope_ranges ppf tm =
   pp_scope_generic
-    ~open_loc:(fun ppf info -> Stdlib.Format.pp_open_stag ppf (SourceRanges.Stag info))
+    ~open_loc:(fun ppf info -> Stdlib.Format.pp_open_stag ppf (Source_ranges.Stag info))
     ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
     ppf
     tm
@@ -221,17 +221,17 @@ let handle_dup_error = function
   | `Ok result -> Ok result
   | `Duplicate_key k ->
     Error
-      (CheckFailure.err
+      (Check_failure.err
          (Printf.sprintf
             "Did you mean to bind the same variable (%s) twice in the same pattern? \
              That's not allowed!"
             k))
 ;;
 
-let valence_to_string v = Fmt.to_to_string AbstractSyntax.Valence.pp v
+let valence_to_string v = Fmt.to_to_string Abstract_syntax.Valence.pp v
 
 let check check_prim lang sort =
-  let lookup_operator = AbstractSyntax.lookup_operator lang in
+  let lookup_operator = Abstract_syntax.lookup_operator lang in
   let rec check sort pat =
     let result =
       match pat with
@@ -240,7 +240,7 @@ let check check_prim lang sort =
       | Primitive prim ->
         (match check_prim prim sort with
         | None -> Ok SMap.empty
-        | Some msg -> Error (CheckFailure.err msg))
+        | Some msg -> Error (Check_failure.err msg))
       | Operator (_, op_name, subpats) ->
         let sort_name, sort_args =
           match sort with
@@ -250,7 +250,7 @@ let check check_prim lang sort =
         (match lookup_operator sort_name op_name with
         | None ->
           Error
-            (CheckFailure.err
+            (Check_failure.err
                (Printf.sprintf
                   "BindingAwarePattern.check: failed to find operator %s in sort %s"
                   op_name
@@ -259,15 +259,15 @@ let check check_prim lang sort =
           (* TODO: kind check *)
           let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
           let sort_env = SMap.of_alist_exn (List.zip_exn sort_vars sort_args) in
-          check_slots (AbstractSyntax.Arity.instantiate sort_env arity) subpats)
+          check_slots (Abstract_syntax.Arity.instantiate sort_env arity) subpats)
     in
-    Result.map_error result ~f:(fun CheckFailure.{ message; stack } ->
-        CheckFailure.{ message; stack = { term = pat; sort } :: stack })
+    Result.map_error result ~f:(fun Check_failure.{ message; stack } ->
+        Check_failure.{ message; stack = { term = pat; sort } :: stack })
   and check_slots valences scopes =
     match List.zip scopes valences with
     | Unequal_lengths ->
       Error
-        (CheckFailure.err
+        (Check_failure.err
            (Printf.sprintf
               "Wrong number of subterms (%u) for this arity (%s)"
               (List.length scopes)
@@ -283,7 +283,7 @@ let check check_prim lang sort =
     match List.zip binder_slots binders with
     | Unequal_lengths ->
       Error
-        (CheckFailure.err
+        (Check_failure.err
            (Printf.sprintf
               "Wrong number of binders (%u) for this valence (%s) (expected %u)"
               (List.length binders)
@@ -312,7 +312,7 @@ let check check_prim lang sort =
             failwith (Printf.sprintf "invariant violation -- duplicate key: %s" k)))
       | `Duplicate_key k ->
         Error
-          (CheckFailure.err
+          (Check_failure.err
              (Printf.sprintf
                 "Did you mean to bind the same variable (%s) twice in the same set of \
                  patterns? That's not allowed!"
@@ -332,10 +332,10 @@ module Parse = struct
   ;;
 
   type tm_or_sep =
-    | Tm of OptRange.t t
+    | Tm of Opt_range.t t
     | Sep of char
 
-  let t : OptRange.t t Lvca_parsing.t =
+  let t : Opt_range.t t Lvca_parsing.t =
     let open Lvca_parsing in
     fix (fun pat ->
         let t_or_sep : tm_or_sep Lvca_parsing.t =
@@ -346,13 +346,14 @@ module Parse = struct
         in
         (* (b11. ... b1n. t11, ... t1n; b21. ... b2n. t21, ... t2n) *)
         let accumulate
-            : OptRange.t -> string -> tm_or_sep list -> OptRange.t pattern Lvca_parsing.t
+            :  Opt_range.t -> string -> tm_or_sep list
+            -> Opt_range.t pattern Lvca_parsing.t
           =
          fun range tag tokens ->
           (* vars encountered between '.'s, before hitting ',' / ';' *)
-          let binding_queue : OptRange.t pattern Queue.t = Queue.create () in
+          let binding_queue : Opt_range.t pattern Queue.t = Queue.create () in
           (* scopes encountered *)
-          let scope_queue : OptRange.t scope Queue.t = Queue.create () in
+          let scope_queue : Opt_range.t scope Queue.t = Queue.create () in
           let rec go = function
             | [] -> return ~range (Operator (range, tag, Queue.to_list scope_queue))
             | Tm tm :: Sep '.' :: rest ->
@@ -380,7 +381,7 @@ module Parse = struct
             choice
               [ (parens (many t_or_sep)
                 >>== fun { value = tokens; range = tokens_range } ->
-                let range = OptRange.union ident_range tokens_range in
+                let range = Opt_range.union ident_range tokens_range in
                 accumulate range ident tokens)
               ; return
                   (if Char.(ident.[0] = '_')
@@ -395,7 +396,7 @@ module Parse = struct
 end
 
 module Properties = struct
-  open PropertyResult
+  open Property_result
 
   let parse = Lvca_parsing.parse_string Parse.t
   let to_string = Fmt.to_to_string pp
@@ -404,7 +405,7 @@ module Properties = struct
     match t |> to_string |> parse with
     | Ok t' ->
       let t' = erase t' in
-      PropertyResult.check
+      Property_result.check
         (equal ~info_eq:Unit.( = ) t' t)
         (Fmt.str "%a <> %a" pp t' pp t)
     | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
@@ -422,7 +423,9 @@ module Properties = struct
         | Error msg -> Failed msg
         | Ok t' ->
           let str'' = t' |> erase |> to_string in
-          PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str'))
+          Property_result.check
+            String.(str'' = str')
+            (Fmt.str {|"%s" <> "%s"|} str'' str'))
   ;;
 end
 
@@ -504,7 +507,7 @@ let%test_module "Parsing" =
 let%test_module "check" =
   (module struct
     let parse_lang lang_str =
-      Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t lang_str
+      Lvca_parsing.parse_string Abstract_syntax.Parse.whitespace_t lang_str
       |> Result.ok_or_failwith
     ;;
 
@@ -541,11 +544,11 @@ test := foo(term[term]. term)
     let print_check_pattern sort_str pat_str =
       let sort = parse_sort sort_str |> Result.ok_or_failwith in
       let pat = parse_pattern pat_str in
-      let pp ppf CheckFailure.{ term = pat; sort } =
+      let pp ppf Check_failure.{ term = pat; sort } =
         Fmt.pf ppf "- @[pattern: %a,@ sort: %a@]" pp pat Sort.pp sort
       in
       match check Primitive.check language sort pat with
-      | Error failure -> Fmt.epr "%a" (CheckFailure.pp pp) failure
+      | Error failure -> Fmt.epr "%a" (Check_failure.pp pp) failure
       | Ok capture_types ->
         capture_types
         |> Map.iteri ~f:(fun ~key ~data ->
@@ -704,7 +707,7 @@ let%test_module "check" =
     let print_match pat_str tm_str =
       let pattern = parse_pattern pat_str in
       let tm = parse_term tm_str in
-      let info_eq = OptRange.( = ) in
+      let info_eq = Opt_range.( = ) in
       match match_term ~info_eq pattern tm with
       | None -> ()
       | Some mapping ->

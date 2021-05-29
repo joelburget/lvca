@@ -257,7 +257,7 @@ module Cbor = struct
  ;;
 end
 
-module type TupleElem = sig
+module type Tuple_elem = sig
   type t
 
   val compare : t -> t -> int
@@ -284,7 +284,7 @@ module Tuple2 = struct
   let curry f x y = f (x, y)
   let uncurry f (x, y) = f x y
 
-  module Make (X : TupleElem) (Y : TupleElem) = struct
+  module Make (X : Tuple_elem) (Y : Tuple_elem) = struct
     let compare = compare ~cmp1:X.compare ~cmp2:Y.compare
     let sexp_of_t = sexp_of_t X.sexp_of_t Y.sexp_of_t
     let ( = ) = equal X.( = ) Y.( = )
@@ -318,7 +318,7 @@ module Tuple3 = struct
   let curry f x y z = f (x, y, z)
   let uncurry f (x, y, z) = f x y z
 
-  module Make (X : TupleElem) (Y : TupleElem) (Z : TupleElem) = struct
+  module Make (X : Tuple_elem) (Y : Tuple_elem) (Z : Tuple_elem) = struct
     let compare = compare ~cmp1:X.compare ~cmp2:Y.compare ~cmp3:Z.compare
     let sexp_of_t = sexp_of_t X.sexp_of_t Y.sexp_of_t Z.sexp_of_t
     let ( = ) = equal X.( = ) Y.( = ) Z.( = )
@@ -361,7 +361,7 @@ module Tuple4 = struct
   let curry f w x y z = f (w, x, y, z)
   let uncurry f (w, x, y, z) = f w x y z
 
-  module Make (W : TupleElem) (X : TupleElem) (Y : TupleElem) (Z : TupleElem) = struct
+  module Make (W : Tuple_elem) (X : Tuple_elem) (Y : Tuple_elem) (Z : Tuple_elem) = struct
     let compare = compare ~cmp1:W.compare ~cmp2:X.compare ~cmp3:Y.compare ~cmp4:Z.compare
     let sexp_of_t = sexp_of_t W.sexp_of_t X.sexp_of_t Y.sexp_of_t Z.sexp_of_t
     let ( = ) = equal W.( = ) X.( = ) Y.( = ) Z.( = )

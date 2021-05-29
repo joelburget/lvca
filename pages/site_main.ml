@@ -3,9 +3,9 @@ open Brr
 
 let pages =
   Lvca_util.String.Map.of_alist_exn
-    [ "term-and-concrete", TermAndConcrete.stateless_view
+    [ "term-and-concrete", Term_and_concrete.stateless_view
     ; "calculator", Calculator.stateless_view (* ; "parser", Parser.stateless_view *)
-    ; "binding-viewer", ScopeViewer.stateless_view
+    ; "binding-viewer", Scope_viewer.stateless_view
     ]
 ;;
 

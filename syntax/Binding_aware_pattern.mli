@@ -15,7 +15,7 @@ and 'info scope = Scope of ('info * string) list * 'info t
 
 type 'info capture_type =
   | BoundVar of 'info Sort.t
-  | BoundPattern of 'info AbstractSyntax.PatternSort.t
+  | BoundPattern of 'info Abstract_syntax.PatternSort.t
   | BoundTerm of 'info Sort.t
 
 type 'info capture =
@@ -55,11 +55,11 @@ val match_scope
 (** {1 Pretty-printing} *)
 
 val pp : _ t Fmt.t
-val pp_range : OptRange.t t Fmt.t
-val pp_ranges : SourceRanges.t t Fmt.t
+val pp_range : Opt_range.t t Fmt.t
+val pp_ranges : Source_ranges.t t Fmt.t
 val pp_scope : _ scope Fmt.t
-val pp_scope_range : OptRange.t scope Fmt.t
-val pp_scope_ranges : SourceRanges.t scope Fmt.t
+val pp_scope_range : Opt_range.t scope Fmt.t
+val pp_scope_ranges : Source_ranges.t scope Fmt.t
 val pp_capture : _ capture Fmt.t
 
 (** {1 Info} *)
@@ -98,18 +98,18 @@ val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
     } *)
 val check
   :  ('info Primitive.t -> 'info Sort.t -> string option) (** Primitive checker *)
-  -> 'info AbstractSyntax.t (** Abstract syntax *)
+  -> 'info Abstract_syntax.t (** Abstract syntax *)
   -> 'info Sort.t (** Sort to check pattern against *)
   -> 'info t
-  -> ('info capture_type String.Map.t, ('info, 'info t) CheckFailure.t) Result.t
+  -> ('info capture_type String.Map.t, ('info, 'info t) Check_failure.t) Result.t
 
 (** {1 Parsing} *)
 module Parse : sig
-  val t : OptRange.t t Lvca_parsing.t
-  val whitespace_t : OptRange.t t Lvca_parsing.t
+  val t : Opt_range.t t Lvca_parsing.t
+  val whitespace_t : Opt_range.t t Lvca_parsing.t
 end
 
 module Properties : sig
-  val string_round_trip1 : unit t -> PropertyResult.t
-  val string_round_trip2 : string -> PropertyResult.t
+  val string_round_trip1 : unit t -> Property_result.t
+  val string_round_trip2 : string -> Property_result.t
 end

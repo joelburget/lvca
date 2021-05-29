@@ -23,7 +23,7 @@ edit lang :=
    let abstract_syntax : AbstractSyntax.t = abstract_syntax_str |> Lvca_parsing.parse_string
    ParseAbstract.whitespace_t |> Result.ok_or_failwith *)
 
-type core = OptRange.t Core.term
+type core = Opt_range.t Core.term
 
 type 'lang t =
   | Atomic of 'lang
@@ -56,7 +56,7 @@ module Parse = struct
   let whitespace_t lang_p = whitespace *> t lang_p
 end
 
-type term = OptRange.t Nominal.Term.t
+type term = Opt_range.t Nominal.Term.t
 
 let%test_module "Parsing" =
   (module struct
@@ -71,7 +71,7 @@ let%test_module "Parsing" =
       | Error msg -> print_string msg
    ;;
 
-    let run_atom : term -> core -> (term, OptRange.t Core.eval_error) Result.t =
+    let run_atom : term -> core -> (term, Opt_range.t Core.eval_error) Result.t =
       let eval_primitive _eval_ctx _eval_ctx' _ctx _tm _name _args =
         Error
           ( "no primitive evaluation"

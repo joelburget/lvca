@@ -60,7 +60,7 @@ module View = struct
       |> E.select
       |> E.map (fun str -> Action.SetInput str)
     in
-    let input_elem, input_evt = SingleLineInput.mk input_s ~highlights_s in
+    let input_elem, input_evt = Single_line_input.mk input_s ~highlights_s in
     let enter_input_e =
       input_evt
       |> E.filter_map (function
@@ -75,10 +75,10 @@ module View = struct
                | Error msg -> E.never, [ El.div [ txt msg ] ]
                | Ok tm ->
                  let tm =
-                   tm |> Nominal.Term.map_info ~f:(SourceRanges.of_opt_range ~buf)
+                   tm |> Nominal.Term.map_info ~f:(Source_ranges.of_opt_range ~buf)
                  in
                  let tree_view, tree_selection_e =
-                   TreeView.view_tm ~source_column:false ~range_column:false tm
+                   Tree_view.view_tm ~source_column:false ~range_column:false tm
                  in
                  let set_highlight_e =
                    tree_selection_e

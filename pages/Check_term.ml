@@ -6,7 +6,7 @@ open Lvca_provenance
 open Lvca_syntax
 
 let parse_lang lang_str =
-  Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t lang_str
+  Lvca_parsing.parse_string Abstract_syntax.Parse.whitespace_t lang_str
 ;;
 
 let parse_term term_str = Lvca_parsing.parse_string Nominal.Term.Parse.t term_str
@@ -14,9 +14,9 @@ let parse_term term_str = Lvca_parsing.parse_string Nominal.Term.Parse.t term_st
 module Model = struct
   type t =
     { language_str : string
-    ; language_parsed : (OptRange.t AbstractSyntax.t, string) Result.t
+    ; language_parsed : (Opt_range.t Abstract_syntax.t, string) Result.t
     ; term_str : string
-    ; term_parsed : (OptRange.t Nominal.Term.t, string) Result.t
+    ; term_parsed : (Opt_range.t Nominal.Term.t, string) Result.t
     }
 
   let language_str =
@@ -90,9 +90,9 @@ module View = struct
   ;;
 
   let view_check_frame
-      :  ( OptRange.t
+      :  ( Opt_range.t
          , ('info Pattern.t, 'info Nominal.Term.t) Base.Either.t )
-         CheckFailure.frame
+         Check_failure.frame
       -> El.t
     =
    fun { term; sort } ->
@@ -107,7 +107,9 @@ module View = struct
  ;;
 
   let view_check_failure
-      :  (OptRange.t, ('info Pattern.t, 'info Nominal.Term.t) Base.Either.t) CheckFailure.t
+      :  ( Opt_range.t
+         , ('info Pattern.t, 'info Nominal.Term.t) Base.Either.t )
+         Check_failure.t
       -> El.t
     =
    fun { message; stack } ->
@@ -120,7 +122,7 @@ module View = struct
     let language_input, input_event =
       model_s
       |> S.map (fun Model.{ language_str; _ } -> language_str)
-      |> MultilineInput.mk
+      |> Multiline_input.mk
     in
     let language_evt : Action.t event =
       input_event
@@ -129,7 +131,7 @@ module View = struct
              | _ -> None)
     in
     let term_input, input_event =
-      model_s |> S.map (fun Model.{ term_str; _ } -> term_str) |> SingleLineInput.mk
+      model_s |> S.map (fun Model.{ term_str; _ } -> term_str) |> Single_line_input.mk
     in
     let term_evt : Action.t event =
       input_event

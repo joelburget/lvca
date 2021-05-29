@@ -11,29 +11,29 @@ open Lvca_util
     Inference rules assert that some type can be synthesized from the given term. Checking
     rules assert that given both a term and a type we can check if the term is of that
     type. *)
-module TypingRule : sig
+module Typing_rule : sig
   type 'info t =
-    { tm : 'info BindingAwarePattern.t
-    ; ty : 'info BindingAwarePattern.t
+    { tm : 'info Binding_aware_pattern.t
+    ; ty : 'info Binding_aware_pattern.t
     }
 
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val erase : _ t -> unit t
 end
 
-module TypingClause : sig
-  type 'info inference_rule = 'info TypingRule.t
-  type 'info checking_rule = 'info TypingRule.t
+module Typing_clause : sig
+  type 'info inference_rule = 'info Typing_rule.t
+  type 'info checking_rule = 'info Typing_rule.t
 
   type 'info t =
-    | InferenceRule of 'info inference_rule
-    | CheckingRule of 'info checking_rule
+    | Inference_rule of 'info inference_rule
+    | Checking_rule of 'info checking_rule
 
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val erase : _ t -> unit t
 
   module Parse : sig
-    val t : OptRange.t t Lvca_parsing.t
+    val t : Opt_range.t t Lvca_parsing.t
   end
 end
 
@@ -42,20 +42,20 @@ exception StaticsParseError of string
 (** A hypothesis contains a set of variables (and their types) that must appear in the
     context, as well as an inference or checking clause. *)
 module Hypothesis : sig
-  type 'info t = 'info BindingAwarePattern.t String.Map.t * 'info TypingClause.t
+  type 'info t = 'info Binding_aware_pattern.t String.Map.t * 'info Typing_clause.t
 
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val erase : _ t -> unit t
 
   module Parse : sig
-    val pattern : OptRange.t BindingAwarePattern.t Lvca_parsing.t
-    val typed_term : (string * OptRange.t BindingAwarePattern.t) Lvca_parsing.t
+    val pattern : Opt_range.t Binding_aware_pattern.t Lvca_parsing.t
+    val typed_term : (string * Opt_range.t Binding_aware_pattern.t) Lvca_parsing.t
 
     (** @raise StaticsParseError *)
-    val context : OptRange.t BindingAwarePattern.t String.Map.t Lvca_parsing.t
+    val context : Opt_range.t Binding_aware_pattern.t String.Map.t Lvca_parsing.t
 
     (** @raise StaticsParseError *)
-    val t : OptRange.t t Lvca_parsing.t
+    val t : Opt_range.t t Lvca_parsing.t
   end
 end
 
@@ -73,7 +73,7 @@ module Rule : sig
     val line : string option Lvca_parsing.t
 
     (** @raise StaticsParseError *)
-    val t : OptRange.t t Lvca_parsing.t
+    val t : Opt_range.t t Lvca_parsing.t
   end
 end
 
@@ -89,8 +89,8 @@ val erase : _ t -> unit t
 
 module Parse : sig
   (** @raise StaticsParseError *)
-  val t : OptRange.t t Lvca_parsing.t
+  val t : Opt_range.t t Lvca_parsing.t
 
   (** @raise StaticsParseError *)
-  val whitespace_t : OptRange.t t Lvca_parsing.t
+  val whitespace_t : Opt_range.t t Lvca_parsing.t
 end

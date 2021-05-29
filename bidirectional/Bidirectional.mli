@@ -4,7 +4,7 @@ open Lvca_provenance
 open Lvca_syntax
 open Statics
 
-type 'info capture = 'info BindingAwarePattern.capture
+type 'info capture = 'info Binding_aware_pattern.capture
 
 type 'info env =
   { rules : 'info Rule.t list (** The (checking / inference) rules we can apply *)
@@ -13,14 +13,14 @@ type 'info env =
   }
 
 type 'info check_error =
-  | CheckError of string
-  | BadMerge of 'info capture * 'info capture
+  | Check_error of string
+  | Bad_merge of 'info capture * 'info capture
 
 type 'info trace_entry =
-  | CheckTrace of 'info env * 'info Typing.t
-  | CheckSuccess
-  | CheckFailure of 'info check_error
-  | InferTrace of 'info env * 'info Nominal.Term.t
+  | Check_trace of 'info env * 'info Typing.t
+  | Check_success
+  | Check_failure of 'info check_error
+  | Infer_trace of 'info env * 'info Nominal.Term.t
   | Inferred of 'info Nominal.Term.t
 
 type 'info trace_step = 'info trace_entry list
@@ -39,20 +39,20 @@ val infer : 'info env -> 'info Nominal.term -> ('info Nominal.term, 'info check_
 *)
 
 val check_trace
-  :  (OptRange.t trace_step -> unit)
-  -> OptRange.t env
-  -> OptRange.t Typing.t
-  -> OptRange.t check_error option
+  :  (Opt_range.t trace_step -> unit)
+  -> Opt_range.t env
+  -> Opt_range.t Typing.t
+  -> Opt_range.t check_error option
 
 val infer_trace
-  :  (OptRange.t trace_step -> unit)
-  -> OptRange.t env
-  -> OptRange.t Nominal.Term.t
-  -> (OptRange.t Nominal.Term.t, OptRange.t check_error) Result.t
+  :  (Opt_range.t trace_step -> unit)
+  -> Opt_range.t env
+  -> Opt_range.t Nominal.Term.t
+  -> (Opt_range.t Nominal.Term.t, Opt_range.t check_error) Result.t
 
-val check : OptRange.t env -> OptRange.t Typing.t -> OptRange.t check_error option
+val check : Opt_range.t env -> Opt_range.t Typing.t -> Opt_range.t check_error option
 
 val infer
-  :  OptRange.t env
-  -> OptRange.t Nominal.Term.t
-  -> (OptRange.t Nominal.Term.t, OptRange.t check_error) Result.t
+  :  Opt_range.t env
+  -> Opt_range.t Nominal.Term.t
+  -> (Opt_range.t Nominal.Term.t, Opt_range.t check_error) Result.t

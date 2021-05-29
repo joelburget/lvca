@@ -61,11 +61,11 @@ and mk_scope ~loc (Nominal.Scope.Scope (pats, tm)) =
 ;;
 
 let rec mk_nonbinding ~loc = function
-  | NonBinding.Operator (pos, name, tms) ->
+  | Nonbinding.Operator (pos, name, tms) ->
     let name_exp = mk_str ~loc name in
     let tms = tms |> List.map ~f:(mk_nonbinding ~loc) |> mk_list ~loc in
-    [%expr NonBinding.Operator ([%e mk_pos ~loc pos], [%e name_exp], [%e tms])]
-  | Primitive prim -> [%expr NonBinding.Primitive [%e mk_prim ~loc prim]]
+    [%expr Nonbinding.Operator ([%e mk_pos ~loc pos], [%e name_exp], [%e tms])]
+  | Primitive prim -> [%expr Nonbinding.Primitive [%e mk_prim ~loc prim]]
 ;;
 
 let rec mk_sort ~loc = function
@@ -77,46 +77,46 @@ let rec mk_sort ~loc = function
 ;;
 
 let mk_sort_slot ~loc = function
-  | AbstractSyntax.SortSlot.SortBinding s ->
-    [%expr AbstractSyntax.SortSlot.SortBinding [%e mk_sort ~loc s]]
+  | Abstract_syntax.SortSlot.SortBinding s ->
+    [%expr Abstract_syntax.SortSlot.SortBinding [%e mk_sort ~loc s]]
   | SortPattern { pattern_sort; var_sort } ->
     [%expr
-      AbstractSyntax.SortSlot.SortPattern
+      Abstract_syntax.SortSlot.SortPattern
         { pattern_sort = [%e mk_sort ~loc pattern_sort]
         ; var_sort = [%e mk_sort ~loc var_sort]
         }]
 ;;
 
-let mk_valence ~loc (AbstractSyntax.Valence.Valence (sort_slots, body_sort)) =
+let mk_valence ~loc (Abstract_syntax.Valence.Valence (sort_slots, body_sort)) =
   let sort_slots = sort_slots |> List.map ~f:(mk_sort_slot ~loc) |> mk_list ~loc in
   let body_sort = mk_sort ~loc body_sort in
-  [%expr AbstractSyntax.Valence.Valence ([%e sort_slots], [%e body_sort])]
+  [%expr Abstract_syntax.Valence.Valence ([%e sort_slots], [%e body_sort])]
 ;;
 
 let mk_arity ~loc valences = valences |> List.map ~f:(mk_valence ~loc) |> mk_list ~loc
 
-let mk_operator_def ~loc (AbstractSyntax.OperatorDef.OperatorDef (name, arity)) =
+let mk_operator_def ~loc (Abstract_syntax.OperatorDef.OperatorDef (name, arity)) =
   [%expr
-    AbstractSyntax.OperatorDef.OperatorDef
+    Abstract_syntax.OperatorDef.OperatorDef
       ([%e mk_str ~loc name], [%e mk_arity ~loc arity])]
 ;;
 
-let mk_kind ~loc (AbstractSyntax.Kind.Kind (pos, n)) =
-  [%expr AbstractSyntax.Kind.Kind ([%e mk_pos ~loc pos], [%e mk_int ~loc n])]
+let mk_kind ~loc (Abstract_syntax.Kind.Kind (pos, n)) =
+  [%expr Abstract_syntax.Kind.Kind ([%e mk_pos ~loc pos], [%e mk_int ~loc n])]
 ;;
 
 let mk_option ~loc maker = function None -> [%expr None] | Some x -> maker ~loc x
 
-let mk_sort_def ~loc (AbstractSyntax.SortDef.SortDef (vars, op_defs)) =
+let mk_sort_def ~loc (Abstract_syntax.Sort_def.Sort_def (vars, op_defs)) =
   let f (name, kind_opt) =
     [%expr [%e mk_str ~loc name], [%e mk_option ~loc mk_kind kind_opt]]
   in
   let vars = vars |> List.map ~f |> mk_list ~loc in
   let op_defs = op_defs |> List.map ~f:(mk_operator_def ~loc) |> mk_list ~loc in
-  [%expr AbstractSyntax.SortDef.SortDef ([%e vars], [%e op_defs])]
+  [%expr Abstract_syntax.Sort_def.Sort_def ([%e vars], [%e op_defs])]
 ;;
 
-let mk_language ~loc AbstractSyntax.{ externals; sort_defs } =
+let mk_language ~loc Abstract_syntax.{ externals; sort_defs } =
   let externals =
     externals
     |> List.map ~f:(fun (name, kind) ->
@@ -129,5 +129,5 @@ let mk_language ~loc AbstractSyntax.{ externals; sort_defs } =
            [%expr [%e mk_str ~loc name], [%e mk_sort_def ~loc sort_def]])
     |> mk_list ~loc
   in
-  [%expr AbstractSyntax.{ externals = [%e externals]; sort_defs = [%e sort_defs] }]
+  [%expr Abstract_syntax.{ externals = [%e externals]; sort_defs = [%e sort_defs] }]
 ;;

@@ -3,24 +3,24 @@
 open Lvca_provenance
 open Lvca_syntax
 
-type term = OptRange.t Nominal.Term.t
+type term = Opt_range.t Nominal.Term.t
 
 type lang =
   | Lambda
   | Term
 
 val parser_of : lang -> term Lvca_parsing.t
-val term_pretty : OptRange.t Nominal.Term.t Fmt.t
-val lambda_pretty : OptRange.t Nominal.Term.t Fmt.t
-val lambda_ranges_pretty : SourceRanges.t Nominal.Term.t Fmt.t
+val term_pretty : Opt_range.t Nominal.Term.t Fmt.t
+val lambda_pretty : Opt_range.t Nominal.Term.t Fmt.t
+val lambda_ranges_pretty : Source_ranges.t Nominal.Term.t Fmt.t
 val html_eq : Brr.El.t -> Brr.El.t -> bool
 val htmls_eq : Brr.El.t list -> Brr.El.t list -> bool
 
 module Action : sig
   type t =
     | Evaluate of string
-    | InputSelect of OptRange.t
-    | OutputSelect of OptRange.t
+    | InputSelect of Opt_range.t
+    | OutputSelect of Opt_range.t
     | SwitchInputLang
 end
 

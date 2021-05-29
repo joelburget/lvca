@@ -2,38 +2,38 @@ open Base
 open Lvca_syntax
 open Lvca_util
 
-module TypingRule = struct
+module Typing_rule = struct
   type 'info t =
-    { tm : 'info BindingAwarePattern.t
-    ; ty : 'info BindingAwarePattern.t
+    { tm : 'info Binding_aware_pattern.t
+    ; ty : 'info Binding_aware_pattern.t
     }
 
   let equal ~info_eq a b =
-    BindingAwarePattern.(equal ~info_eq a.tm b.tm && equal ~info_eq a.ty b.ty)
+    Binding_aware_pattern.(equal ~info_eq a.tm b.tm && equal ~info_eq a.ty b.ty)
   ;;
 
   let erase { tm; ty } =
-    { tm = BindingAwarePattern.erase tm; ty = BindingAwarePattern.erase ty }
+    { tm = Binding_aware_pattern.erase tm; ty = Binding_aware_pattern.erase ty }
   ;;
 end
 
-module TypingClause = struct
-  type 'info inference_rule = 'info TypingRule.t
-  type 'info checking_rule = 'info TypingRule.t
+module Typing_clause = struct
+  type 'info inference_rule = 'info Typing_rule.t
+  type 'info checking_rule = 'info Typing_rule.t
 
   type 'info t =
-    | InferenceRule of 'info inference_rule
-    | CheckingRule of 'info checking_rule
+    | Inference_rule of 'info inference_rule
+    | Checking_rule of 'info checking_rule
 
   let erase = function
-    | InferenceRule rule -> InferenceRule (TypingRule.erase rule)
-    | CheckingRule rule -> CheckingRule (TypingRule.erase rule)
+    | Inference_rule rule -> Inference_rule (Typing_rule.erase rule)
+    | Checking_rule rule -> Checking_rule (Typing_rule.erase rule)
   ;;
 
   let equal ~info_eq a b =
     match a, b with
-    | InferenceRule a, InferenceRule b -> TypingRule.equal ~info_eq a b
-    | CheckingRule a, CheckingRule b -> TypingRule.equal ~info_eq a b
+    | Inference_rule a, Inference_rule b -> Typing_rule.equal ~info_eq a b
+    | Checking_rule a, Checking_rule b -> Typing_rule.equal ~info_eq a b
     | _, _ -> false
   ;;
 
@@ -44,14 +44,14 @@ module TypingClause = struct
       | LeftArr
       | RightArr
 
-    let pattern = BindingAwarePattern.Parse.t <?> "pattern"
+    let pattern = Binding_aware_pattern.Parse.t <?> "pattern"
 
     let t =
       lift3
         (fun tm dir ty ->
           match dir with
-          | LeftArr -> CheckingRule { tm; ty }
-          | RightArr -> InferenceRule { tm; ty })
+          | LeftArr -> Checking_rule { tm; ty }
+          | RightArr -> Inference_rule { tm; ty })
         pattern
         (choice
            [ (string "<=" >>| fun _ -> LeftArr); (string "=>" >>| fun _ -> RightArr) ])
@@ -67,7 +67,7 @@ module TypingClause = struct
       let%test _ =
         Lvca_parsing.parse_string Parse.t "tm => ty"
         |> Result.map ~f:erase
-        = Ok (InferenceRule { tm = Var ((), "tm"); ty = Var ((), "ty") })
+        = Ok (Inference_rule { tm = Var ((), "tm"); ty = Var ((), "ty") })
       ;;
     end)
   ;;
@@ -76,22 +76,22 @@ end
 exception StaticsParseError of string
 
 module Hypothesis = struct
-  type 'info t = 'info BindingAwarePattern.t String.Map.t * 'info TypingClause.t
+  type 'info t = 'info Binding_aware_pattern.t String.Map.t * 'info Typing_clause.t
 
   let equal ~info_eq (m1, c1) (m2, c2) =
-    Map.equal (BindingAwarePattern.equal ~info_eq) m1 m2
-    && TypingClause.equal ~info_eq c1 c2
+    Map.equal (Binding_aware_pattern.equal ~info_eq) m1 m2
+    && Typing_clause.equal ~info_eq c1 c2
   ;;
 
   let erase (env, clause) =
-    Map.map env ~f:BindingAwarePattern.erase, TypingClause.erase clause
+    Map.map env ~f:Binding_aware_pattern.erase, Typing_clause.erase clause
   ;;
 
   module Parse = struct
     open Lvca_parsing
 
     (* TODO: remove duplication *)
-    let pattern = BindingAwarePattern.Parse.t <?> "pattern"
+    let pattern = Binding_aware_pattern.Parse.t <?> "pattern"
 
     let typed_term =
       lift3 (fun ident _ tm -> ident, tm) identifier (char ':') pattern
@@ -117,7 +117,7 @@ module Hypothesis = struct
     ;;
 
     let t =
-      lift3 (fun ctx _ clause -> ctx, clause) context (string ">>") TypingClause.Parse.t
+      lift3 (fun ctx _ clause -> ctx, clause) context (string ">>") Typing_clause.Parse.t
       <?> "hypothesis"
     ;;
   end
@@ -129,11 +129,11 @@ module Hypothesis = struct
         | Error _ -> false
         | Ok (m, rule) ->
           Map.is_empty m
-          && TypingClause.(
+          && Typing_clause.(
                equal
                  ~info_eq:Unit.( = )
                  (erase rule)
-                 (CheckingRule { tm = Var ((), "t1"); ty = Operator ((), "bool", []) }))
+                 (Checking_rule { tm = Var ((), "t1"); ty = Operator ((), "bool", []) }))
       ;;
     end)
   ;;

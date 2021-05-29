@@ -6,7 +6,7 @@ type t = Range.t list
 (** Test invariants. Returns true on success. *)
 val invariants : t -> bool
 
-val of_opt_range : OptRange.t -> t
+val of_opt_range : Opt_range.t -> t
 
 (** Convert from a (possibly unordered and overlapping) list of ranges. *)
 val of_list : Range.t list -> t

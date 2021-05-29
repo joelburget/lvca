@@ -35,25 +35,25 @@ module Parse = struct
 
   let info = Nominal.Term.info
 
-  let t_var : OptRange.t Nominal.Term.t Lvca_parsing.t =
+  let t_var : Opt_range.t Nominal.Term.t Lvca_parsing.t =
     Lvca_parsing.identifier
     >>|| fun { range; value = name } -> { value = Nominal.Term.Var (range, name); range }
   ;;
 
-  let p_var : OptRange.t Pattern.t Lvca_parsing.t =
+  let p_var : Opt_range.t Pattern.t Lvca_parsing.t =
     Lvca_parsing.identifier
     >>|| fun { range; value = name } -> { value = Pattern.Var (range, name); range }
   ;;
 
   (* Precedence 0: lam (right-associative) 1: app (left-associative) *)
 
-  let t : OptRange.t Nominal.Term.t Lvca_parsing.t =
+  let t : Opt_range.t Nominal.Term.t Lvca_parsing.t =
     fix (fun t ->
         let atom = t_var <|> parens t in
-        let lam : OptRange.t Nominal.Term.t Lvca_parsing.t =
+        let lam : Opt_range.t Nominal.Term.t Lvca_parsing.t =
           lift4
             (fun _lam var _arr body ->
-              (* TODO: incorrect range: let range = OptRange.extend_to (info body) start in *)
+              (* TODO: incorrect range: let range = Opt_range.extend_to (info body) start in *)
               let range = info body in
               let tm = Nominal.Term.Operator (range, "lam", [ Scope ([ var ], body) ]) in
               tm)
@@ -63,7 +63,7 @@ module Parse = struct
             t
         in
         let f (x, rng1) (y, rng2) =
-          let range = OptRange.union rng1 rng2 in
+          let range = Opt_range.union rng1 rng2 in
           let tm =
             Nominal.Term.Operator (range, "app", [ Scope ([], x); Scope ([], y) ])
           in
@@ -81,7 +81,7 @@ let pp_generic ~open_loc ~close_loc =
   let rec pp' prec ppf tm =
     let module Format = Caml.Format in
     Format.pp_open_stag ppf (Format.String_tag (Nominal.Term.hash tm));
-    (* Stdio.printf "opening stag %s\n" (OptRange.to_string (Nominal.Term.info tm)); *)
+    (* Stdio.printf "opening stag %s\n" (Opt_range.to_string (Nominal.Term.info tm)); *)
     open_loc ppf (Nominal.Term.info tm);
     (match tm with
     | Nominal.Term.Operator (_, "app", [ Scope ([], a); Scope ([], b) ]) ->
@@ -94,7 +94,7 @@ let pp_generic ~open_loc ~close_loc =
       then Fmt.pf ppf {|(\%s -> %a)|} name (pp' 0) body
       else Fmt.pf ppf {|\%s -> %a|} name (pp' 0) body
     | tm -> Fmt.failwith "Invalid Lambda term %a" Nominal.Term.pp tm);
-    (* OptRange.close_stag ppf (Nominal.Term.info tm); *)
+    (* Opt_range.close_stag ppf (Nominal.Term.info tm); *)
     close_loc ppf (Nominal.Term.info tm);
     (* range tag *)
     Format.pp_close_stag ppf ()
@@ -103,11 +103,11 @@ let pp_generic ~open_loc ~close_loc =
   pp' 0
 ;;
 
-let pp_range = pp_generic ~open_loc:OptRange.open_stag ~close_loc:OptRange.close_stag
+let pp_range = pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag
 
 let pp_ranges =
   pp_generic
-    ~open_loc:(fun ppf loc -> Caml.Format.pp_open_stag ppf (SourceRanges.Stag loc))
+    ~open_loc:(fun ppf loc -> Caml.Format.pp_open_stag ppf (Source_ranges.Stag loc))
     ~close_loc:(fun ppf _loc -> Caml.Format.pp_close_stag ppf ())
 ;;
 

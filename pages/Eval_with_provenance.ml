@@ -6,7 +6,7 @@ open Note
 open Prelude
 module Tuple2 = Lvca_util.Tuple2
 
-let eval = Lvca_languages.LambdaCalculus.eval
+let eval = Lvca_languages.Lambda_calculus.eval
 
 module Model = struct
   type t =
@@ -14,8 +14,8 @@ module Model = struct
     ; parsed_input : (term, string) Result.t
     ; input_lang : lang
     ; result : (term, string) Result.t
-    ; input_selected : OptRange.t
-    ; output_selected : OptRange.t
+    ; input_selected : Opt_range.t
+    ; output_selected : Opt_range.t
     }
 
   let print { input; parsed_input; input_lang; result; input_selected; output_selected } =
@@ -34,21 +34,21 @@ module Model = struct
       input_lang_str
       pp_tm_result
       result
-      OptRange.pp
+      Opt_range.pp
       input_selected
-      OptRange.pp
+      Opt_range.pp
       output_selected
   ;;
 
   let ( = ) m1 m2 =
     let result_eq =
-      Result.equal (Nominal.Term.equal ~info_eq:OptRange.( = )) String.( = )
+      Result.equal (Nominal.Term.equal ~info_eq:Opt_range.( = )) String.( = )
     in
     String.(m1.input = m2.input)
     && result_eq m1.parsed_input m2.parsed_input
     && result_eq m1.result m2.result
-    && OptRange.(m1.input_selected = m2.input_selected)
-    && OptRange.(m1.output_selected = m2.output_selected)
+    && Opt_range.(m1.input_selected = m2.input_selected)
+    && Opt_range.(m1.output_selected = m2.output_selected)
   ;;
 end
 
@@ -59,20 +59,20 @@ module Controller = struct
     match action with
     | Evaluate str ->
       let parsed_input =
-        Lvca_parsing.parse_string Lvca_languages.LambdaCalculus.Parse.t str
+        Lvca_parsing.parse_string Lvca_languages.Lambda_calculus.Parse.t str
       in
       let result = Result.bind parsed_input ~f:eval in
       { model with parsed_input; result; input_selected = None; output_selected = None }
     | InputSelect output_selected ->
       Brr.Console.log
         [ Jstr.v "output_selected"
-        ; output_selected |> Fmt.to_to_string OptRange.pp |> Jstr.v
+        ; output_selected |> Fmt.to_to_string Opt_range.pp |> Jstr.v
         ];
       { model with output_selected; input_selected = None }
     | OutputSelect input_selected ->
       Brr.Console.log
         [ Jstr.v "input_selected"
-        ; input_selected |> Fmt.to_to_string OptRange.pp |> Jstr.v
+        ; input_selected |> Fmt.to_to_string Opt_range.pp |> Jstr.v
         ];
       { model with input_selected; output_selected = None }
     | SwitchInputLang ->
@@ -91,26 +91,26 @@ module Controller = struct
 end
 
 module View = struct
-  let cvt_loc = SourceRanges.of_opt_range ~buf:"input"
+  let cvt_loc = Source_ranges.of_opt_range ~buf:"input"
 
   let mk_output' model_s =
-    let selection_s : SourceRanges.t signal =
+    let selection_s : Source_ranges.t signal =
       model_s
-      |> S.map ~eq:SourceRanges.( = ) (fun Model.{ input_selected; _ } ->
+      |> S.map ~eq:Source_ranges.( = ) (fun Model.{ input_selected; _ } ->
              cvt_loc input_selected)
     in
     let s =
       model_s
       |> S.map ~eq:(Tuple2.equal phys_equal html_eq) (fun Model.{ result; _ } ->
-             let RangeFormatter.{ elem; formatter; selection_e = output_selection_e } =
-               RangeFormatter.mk ~selection_s ()
+             let Range_formatter.{ elem; formatter; selection_e = output_selection_e } =
+               Range_formatter.mk ~selection_s ()
              in
              let () =
                match result with
                | Ok tm ->
                  Brr.Console.log
                    [ Jstr.v
-                       ("tm loc: " ^ Fmt.to_to_string OptRange.pp (Nominal.Term.info tm))
+                       ("tm loc: " ^ Fmt.to_to_string Opt_range.pp (Nominal.Term.info tm))
                    ];
                  let tm = Nominal.Term.map_info tm ~f:cvt_loc in
                  lambda_ranges_pretty formatter tm
@@ -126,7 +126,7 @@ module View = struct
 
   let view model_s =
     let input, input_event =
-      MultilineInput.mk
+      Multiline_input.mk
         (model_s |> S.map ~eq:String.( = ) (fun model -> model.Model.input))
     in
     let output_selection_e, output_elem = mk_output' model_s in
@@ -154,7 +154,7 @@ let stateless_view () =
   let initial_model : Model.t =
     let input = {|(\x -> \y -> x) z w|} in
     let parsed_input =
-      Lvca_parsing.parse_string Lvca_languages.LambdaCalculus.Parse.t input
+      Lvca_parsing.parse_string Lvca_languages.Lambda_calculus.Parse.t input
     in
     let result = Result.bind parsed_input ~f:eval in
     { input

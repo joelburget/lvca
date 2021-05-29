@@ -56,23 +56,23 @@ end
 module Parse = struct
   open Lvca_parsing
 
-  let lit : OptRange.t NonBinding.term Lvca_parsing.t =
+  let lit : Opt_range.t Nonbinding.term Lvca_parsing.t =
     integer_lit
     >>|| fun { value = str; range } ->
     let tm =
-      NonBinding.(
+      Nonbinding.(
         Operator (range, "lit", [ Primitive (range, Integer (Z.of_string str)) ]))
     in
     { value = tm; range }
   ;;
 
-  let t : OptRange.t NonBinding.term Lvca_parsing.t =
+  let t : Opt_range.t Nonbinding.term Lvca_parsing.t =
     fix (fun t ->
         let atom = attach_pos (lit <|> parens t) in
         let plus = char '+' in
         let f (l, rng1) (r, rng2) =
-          let rng = OptRange.union rng1 rng2 in
-          NonBinding.Operator (rng, "add", [ l; r ]), rng
+          let rng = Opt_range.union rng1 rng2 in
+          Nonbinding.Operator (rng, "add", [ l; r ]), rng
         in
         atom
         >>= fun init -> many (plus *> atom) >>| fun lst -> List.fold lst ~init ~f |> fst)
@@ -92,28 +92,28 @@ let pp =
   in
   let rec pp' prec ppf tm =
     match tm with
-    | NonBinding.Operator (_, "add", [ a; b ]) ->
+    | Nonbinding.Operator (_, "add", [ a; b ]) ->
       with_stag
         ppf
-        (String_tag (NonBinding.hash tm))
+        (String_tag (Nonbinding.hash tm))
         (fun () ->
           if prec > 0
           then Fmt.pf ppf "(%a + %a)" (pp' 0) a (pp' 1) b
           else Fmt.pf ppf "%a + %a" (pp' 0) a (pp' 1) b)
     | Operator (_, "lit", [ Primitive (_, Integer i) ]) ->
-      with_stag ppf (String_tag (NonBinding.hash tm)) (fun () -> Z.pp_print ppf i)
-    | tm -> Fmt.failwith "Invalid Hutton's Razor term %a" NonBinding.pp tm
+      with_stag ppf (String_tag (Nonbinding.hash tm)) (fun () -> Z.pp_print ppf i)
+    | tm -> Fmt.failwith "Invalid Hutton's Razor term %a" Nonbinding.pp tm
   in
   pp' 0
 ;;
 
-let rec eval_tm : _ NonBinding.term -> (Z.t, string) Result.t = function
+let rec eval_tm : _ Nonbinding.term -> (Z.t, string) Result.t = function
   | Operator (_, "add", [ a; b ]) ->
     (match eval_tm a, eval_tm b with
     | Ok a', Ok b' -> Ok Z.(a' + b')
     | Error msg, _ | _, Error msg -> Error msg)
   | Operator (_, "lit", [ Primitive (_, Integer i) ]) -> Ok i
-  | tm -> Error ("found un-evaluable term: " ^ Fmt.to_to_string NonBinding.pp tm)
+  | tm -> Error ("found un-evaluable term: " ^ Fmt.to_to_string Nonbinding.pp tm)
 ;;
 
 let eval_str : string -> (Z.t, string) Result.t =
@@ -126,7 +126,7 @@ let eval_str : string -> (Z.t, string) Result.t =
 (* let eval_2 : string -> (Z.t, string) Result.t = let module Parse =
    AngstromParse(Lvca_parsing.NoComment) in fun str -> match Lvca_parsing.parse_string
    Parse.whitespace_t str with | Error str -> Error str | Ok tm -> begin match Core.(eval
-   (CoreApp (Description.dynamics, Term (NonBinding.to_nominal tm)))) with | Error (msg,
+   (CoreApp (Description.dynamics, Term (Nonbinding.to_nominal tm)))) with | Error (msg,
    tm) -> Error (msg ^ ": " ^ Core.to_string tm) | Ok (Primitive (_, Integer i)) -> Ok i
    | _ -> Error "unexpected non-integer result" end *)
 
@@ -163,8 +163,8 @@ let%test_module "Hutton's Razor" =
       match parse str with
       | Error str -> print_string str
       | Ok tm ->
-        Fmt.pr "%a\n" NonBinding.pp tm;
-        Fmt.pr "%a\n" NonBinding.pp_range tm;
+        Fmt.pr "%a\n" Nonbinding.pp tm;
+        Fmt.pr "%a\n" Nonbinding.pp_range tm;
         Fmt.pr "%a" pp tm
     ;;
 

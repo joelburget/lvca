@@ -24,7 +24,7 @@ module Model = struct
       { success : bool
       ; pre_pos : int
       ; post_pos : int
-      ; parser : SourceRanges.t P.t
+      ; parser : Source_ranges.t P.t
       ; snapshots : t list
       }
 
@@ -33,7 +33,7 @@ module Model = struct
       && Int.(t1.pre_pos = t2.pre_pos)
       && Int.(t1.post_pos = t2.post_pos)
       && List.equal ( = ) t1.snapshots t2.snapshots
-      && P.equal SourceRanges.( = ) t1.parser t2.parser
+      && P.equal Source_ranges.( = ) t1.parser t2.parser
     ;;
 
     let rec restrict_snapshot : P.Direct.trace_snapshot -> t =
@@ -100,9 +100,9 @@ end
 module Action = struct
   type t =
     | ToggleTrace
-    | SetSelection of SourceRanges.t
+    | SetSelection of Source_ranges.t
     | UpdateTest of string
-    | SetInputHl of SourceRanges.t
+    | SetInputHl of Source_ranges.t
 end
 
 module DebuggerAction = struct
@@ -171,14 +171,14 @@ module Prelude = struct
   let ctx : P.Direct.parser_ctx =
     String.Map.of_alist_exn
       [ "alpha", alpha; "digit", digit; "name", name; "literal", literal ]
-    |> Map.map ~f:(P.map_info ~f:(SourceRanges.of_opt_range ~buf:"prelude"))
+    |> Map.map ~f:(P.map_info ~f:(Source_ranges.of_opt_range ~buf:"prelude"))
   ;;
 end
 
 let pp_view ~highlight_s tm fmt =
   let clear, clear_formatter = E.create () in
-  let RangeFormatter.{ elem; formatter; selection_e } =
-    RangeFormatter.mk ~clear ~selection_s:highlight_s ()
+  let Range_formatter.{ elem; formatter; selection_e } =
+    Range_formatter.mk ~clear ~selection_s:highlight_s ()
   in
   (* TODO tie this to actual font size *)
   let font_size = 14. in
@@ -231,7 +231,7 @@ let pp_view ~highlight_s tm fmt =
 
 let view_term ~highlight_s tm =
   let pp_view, tm_selection_e = pp_view ~highlight_s tm Nominal.Term.pp_ranges in
-  let tree_view, tree_selection_e = TreeView.view_tm tm in
+  let tree_view, tree_selection_e = Tree_view.view_tm tm in
   let view =
     div
       [ div ~at:[ class' "my-2" ] [ success_msg [ pp_view ] ]
@@ -306,7 +306,7 @@ let snapshot_controls str snapshots =
            let Model.TraceSnapshot.{ success; parser; _ } = snapshot in
            let click_evt, btn = button "view" in
            let click_evt = click_evt |> E.map (fun _ -> DebuggerAction.SubparserZoom i) in
-           let highlight_s = S.const SourceRanges.empty in
+           let highlight_s = S.const Source_ranges.empty in
            ( click_evt
            , tr
                [ td
@@ -366,7 +366,7 @@ let view_stack root path_s =
     |> S.map ~eq (fun path ->
            let stack_lst = (traverse_path ~root ~path).stack in
            let len = List.length stack_lst in
-           let highlight_s = S.const SourceRanges.empty in
+           let highlight_s = S.const Source_ranges.empty in
            stack_lst
            |> List.mapi ~f:(fun i snapshot ->
                   let Model.TraceSnapshot.{ parser; success; _ } = snapshot in
@@ -431,7 +431,7 @@ let view_root_snapshot str root =
         in
         set_path path)
   in
-  let highlight_s = S.const SourceRanges.empty in
+  let highlight_s = S.const Source_ranges.empty in
   let parser_view =
     current_snapshot_s
     |> S.map ~eq:html_eq (fun Model.TraceSnapshot.{ success; parser; _ } ->
@@ -513,7 +513,7 @@ module View = struct
       let trace = El.div [ txt "not available: parser failed to parse" ] in
       result, trace, E.never
     | Ok parser ->
-      let parser = P.map_info ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
+      let parser = P.map_info ~f:(Source_ranges.of_opt_range ~buf:"parser") parser in
       let toplevel_result = Direct.parse_direct ~term_ctx ~parser_ctx parser test_str in
       let P.Direct.{ didnt_consume_msg; result; snapshot } = toplevel_result in
       let result, select_e =
@@ -522,7 +522,7 @@ module View = struct
           (match tm_opt with
           | None -> mk_err msg, E.never
           | Some tm ->
-            let highlight_s = S.const SourceRanges.empty in
+            let highlight_s = S.const Source_ranges.empty in
             let core, select_e = view_core ~highlight_s tm in
             error_msg [ El.span ~at:[ class' "p-2" ] [ txt msg ]; core ], select_e)
         | Ok tm ->
@@ -550,10 +550,10 @@ module View = struct
       E.log trace_e (fun _ -> show_trace_s |> S.value |> not |> set_show_trace)
     in
     let parser_s =
-      let eq = Result.equal (P.equal OptRange.( = )) String.( = ) in
+      let eq = Result.equal (P.equal Opt_range.( = )) String.( = ) in
       parser_str_s |> S.map ~eq parse_parser
     in
-    let input_hl_s, set_input_hl = S.create ~eq:SourceRanges.( = ) SourceRanges.empty in
+    let input_hl_s, set_input_hl = S.create ~eq:Source_ranges.( = ) Source_ranges.empty in
     let test_s' =
       let eq = Tuple3.equal html_eq html_eq phys_equal in
       S.l2 ~eq (view_parser_test ~parser_ctx ~highlight_s:input_hl_s) parser_s test_s
@@ -561,7 +561,7 @@ module View = struct
     let result = test_s' |> S.map ~eq:html_eq Tuple3.get1 |> mk_reactive' div in
     let trace_s = test_s' |> S.map ~eq:html_eq Tuple3.get2 in
     let tm_selection_s, set_selection =
-      S.create ~eq:SourceRanges.( = ) SourceRanges.empty
+      S.create ~eq:Source_ranges.( = ) Source_ranges.empty
     in
     let _sink : Logr.t =
       S.log test_s' (fun (_, _, e) ->
@@ -570,12 +570,13 @@ module View = struct
     in
     let input_hl_s =
       tm_selection_s
-      |> S.map ~eq:OptRange.( = ) (fun ranges ->
+      |> S.map ~eq:Opt_range.( = ) (fun ranges ->
              Option.(Map.find ranges "input" >>= Range.list_range))
       |> S.map ~eq:Ranges.( = ) Ranges.of_opt_range
     in
     let parser_hl_s =
-      tm_selection_s |> S.map ~eq:SourceRanges.( = ) (SourceRanges.restrict ~buf:"parser")
+      tm_selection_s
+      |> S.map ~eq:Source_ranges.( = ) (Source_ranges.restrict ~buf:"parser")
     in
     let parser_elem =
       match parser_elem with
@@ -585,18 +586,18 @@ module View = struct
         |> S.map ~eq:html_eq (function
                | Ok parser ->
                  parser
-                 |> P.map_info ~f:(SourceRanges.of_opt_range ~buf:"parser")
+                 |> P.map_info ~f:(Source_ranges.of_opt_range ~buf:"parser")
                  |> view_parser ~highlight_s:parser_hl_s ~success:true
                  |> fst
                | Error _ -> pre [ mk_reactive' code (parser_str_s |> S.map txt) ])
         |> mk_reactive' div
     in
-    let test_input, test_evt = SingleLineInput.mk test_s ~highlights_s:input_hl_s in
+    let test_input, test_evt = Single_line_input.mk test_s ~highlights_s:input_hl_s in
     let _sink : Logr.t option =
       E.log test_evt (function
           | Common.InputUpdate str -> update_test str
-          | InputSelect rng -> set_input_hl (SourceRanges.of_range ~buf:"input" rng)
-          | InputUnselect -> set_input_hl SourceRanges.empty)
+          | InputSelect rng -> set_input_hl (Source_ranges.of_range ~buf:"input" rng)
+          | InputUnselect -> set_input_hl Source_ranges.empty)
     in
     let trace_cell =
       S.l2
@@ -674,7 +675,7 @@ module View = struct
     let fix_table = mk_input_result' ~parser_ctx:Prelude.ctx Examples.fix fix_input in
     let pg_parser_input, set_pg_parser_input = S.create ~eq:String.( = ) Examples.fix in
     let pg_input_elem, pg_input_evt =
-      MultilineInput.mk ~autofocus:false ~border:false pg_parser_input
+      Multiline_input.mk ~autofocus:false ~border:false pg_parser_input
     in
     let playground_table =
       mk_input_result

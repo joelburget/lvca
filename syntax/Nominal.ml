@@ -186,12 +186,12 @@ module Term = struct
   let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 
   let pp_range ppf tm =
-    pp_generic ~open_loc:OptRange.open_stag ~close_loc:OptRange.close_stag ppf tm
+    pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag ppf tm
   ;;
 
   let pp_ranges ppf tm =
     pp_generic
-      ~open_loc:(fun ppf info -> Stdlib.Format.pp_open_stag ppf (SourceRanges.Stag info))
+      ~open_loc:(fun ppf info -> Stdlib.Format.pp_open_stag ppf (Source_ranges.Stag info))
       ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
       ppf
       tm
@@ -264,10 +264,10 @@ module Term = struct
         | Some (Scope (_pats, tm)) -> select_path ~path tm))
   ;;
 
-  let valence_to_string v = Fmt.to_to_string AbstractSyntax.Valence.pp v
+  let valence_to_string v = Fmt.to_to_string Abstract_syntax.Valence.pp v
 
   let check lang =
-    let lookup_operator = AbstractSyntax.lookup_operator lang in
+    let lookup_operator = Abstract_syntax.lookup_operator lang in
     let check_pattern = Pattern.check lang in
     let rec check_term var_sorts expected_sort tm =
       let result =
@@ -276,7 +276,7 @@ module Term = struct
           (match Map.find var_sorts v with
           | None ->
             Some
-              (CheckFailure.err (Printf.sprintf "Unknown variable %s (is it bound?)" v))
+              (Check_failure.err (Printf.sprintf "Unknown variable %s (is it bound?)" v))
           | Some var_sort ->
             if Sort.equal
                  Unit.( = )
@@ -286,7 +286,7 @@ module Term = struct
             else (
               let sort_to_string = Fmt.to_to_string Sort.pp in
               Some
-                (CheckFailure.err
+                (Check_failure.err
                    (Printf.sprintf
                       "Variable %s has unexpected sort (saw: %s) (expected: %s)"
                       v
@@ -295,7 +295,7 @@ module Term = struct
         | Primitive p ->
           (match Primitive.check p expected_sort with
           | None -> None
-          | Some msg -> Some (CheckFailure.err msg))
+          | Some msg -> Some (Check_failure.err msg))
         | Operator (_, operator_name, op_scopes) ->
           let sort_name, sort_args =
             match expected_sort with
@@ -305,7 +305,7 @@ module Term = struct
           (match lookup_operator sort_name operator_name with
           | None ->
             Some
-              (CheckFailure.err
+              (Check_failure.err
                  (Printf.sprintf
                     "Nominal.check: failed to find operator %s in sort %s"
                     operator_name
@@ -314,11 +314,11 @@ module Term = struct
             (* TODO: kind check *)
             let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
             let sort_env = String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in
-            let concrete_arity = AbstractSyntax.Arity.instantiate sort_env arity in
+            let concrete_arity = Abstract_syntax.Arity.instantiate sort_env arity in
             check_slots var_sorts concrete_arity op_scopes)
       in
       Option.map result ~f:(fun { message; stack } ->
-          CheckFailure.
+          Check_failure.
             { message
             ; stack = { term = Either.Second tm; sort = expected_sort } :: stack
             })
@@ -326,7 +326,7 @@ module Term = struct
       match List.zip scopes valences with
       | Unequal_lengths ->
         Some
-          (CheckFailure.err
+          (Check_failure.err
              (Printf.sprintf
                 "Wrong number of subterms (%u) for this arity (%s)"
                 (List.length scopes)
@@ -339,7 +339,7 @@ module Term = struct
       match List.zip binder_sorts binders with
       | Unequal_lengths ->
         Some
-          (CheckFailure.err
+          (Check_failure.err
              (Printf.sprintf
                 "Wrong number of binders (%u) for this valence (%s) (expected %u)"
                 (List.length binders)
@@ -354,14 +354,14 @@ module Term = struct
                    check_pattern ~pattern_sort:sort ~var_sort:sort pat
                  | SortBinding _sort, _ ->
                    Error
-                     (CheckFailure.err
+                     (Check_failure.err
                         "Fixed-valence binders must all be vars (no patterns)")
                  | SortPattern { pattern_sort; var_sort }, _ ->
                    check_pattern ~pattern_sort ~var_sort pat)
           |> List.map
                ~f:
                  (Result.map_error
-                    ~f:(CheckFailure.map_frame_terms ~f:(fun pat -> Either.First pat)))
+                    ~f:(Check_failure.map_frame_terms ~f:(fun pat -> Either.First pat)))
         in
         (* Check the body with the new binders environment *)
         (match Result.all binders_env with
@@ -372,7 +372,7 @@ module Term = struct
             check_term (Map.union_right_biased var_sorts binders_env) body_sort body
           | `Duplicate_key k ->
             Some
-              (CheckFailure.err
+              (Check_failure.err
                  (* TODO: should this definitely not be allowed? Seems okay. *)
                  (Printf.sprintf
                     "Did you mean to bind the same variable (%s) twice in the same set \
@@ -422,7 +422,7 @@ module Term = struct
       fix (fun term ->
           let slot =
             sep_by1 (char '.') term
-            >>== fun ParseResult.{ value; range; _ } ->
+            >>== fun Parse_result.{ value; range; _ } ->
             let binders, tm = List.unsnoc value in
             match binders |> List.map ~f:to_pattern |> Result.all with
             | Error _ -> fail "Unexpectedly found a variable binding in pattern position"
@@ -431,11 +431,11 @@ module Term = struct
           choice
             [ (Primitive.Parse.t >>| fun prim -> Primitive prim)
             ; (identifier
-              >>== fun ParseResult.{ value = ident; range = ident_range; _ } ->
+              >>== fun Parse_result.{ value = ident; range = ident_range; _ } ->
               choice
                 [ (parens (sep_end_by (char ';') slot)
                   >>|| fun { value = slots; range = parens_range } ->
-                  let range = OptRange.union ident_range parens_range in
+                  let range = Opt_range.union ident_range parens_range in
                   { value = Operator (range, ident, slots); range })
                 ; return (Var (ident_range, ident))
                 ])
@@ -447,7 +447,7 @@ module Term = struct
   end
 
   module Properties = struct
-    open PropertyResult
+    open Property_result
 
     let parse = Lvca_parsing.parse_string Parse.t
     let ( = ) = equal ~info_eq:Unit.( = )
@@ -455,21 +455,21 @@ module Term = struct
     let json_round_trip1 t =
       match t |> jsonify |> unjsonify with
       | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
-      | Some t' -> PropertyResult.check (t = t') (Fmt.str "%a <> %a" pp t' pp t)
+      | Some t' -> Property_result.check (t = t') (Fmt.str "%a <> %a" pp t' pp t)
     ;;
 
     let json_round_trip2 json =
       match json |> unjsonify with
       | None -> Uninteresting
       | Some t ->
-        PropertyResult.check Json.(jsonify t = json) "jsonify t <> json (TODO: print)"
+        Property_result.check Json.(jsonify t = json) "jsonify t <> json (TODO: print)"
     ;;
 
     let string_round_trip1 t =
       match t |> pp_str |> parse with
       | Ok t' ->
         let t'' = erase t' in
-        PropertyResult.check (t'' = t) (Fmt.str "%a <> %a" pp t'' pp t)
+        Property_result.check (t'' = t) (Fmt.str "%a <> %a" pp t'' pp t)
       | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (pp_str t) msg)
     ;;
 
@@ -485,7 +485,7 @@ module Term = struct
           | Error msg -> Failed msg
           | Ok t' ->
             let str'' = pp_str t' in
-            PropertyResult.check
+            Property_result.check
               String.(str'' = str')
               (Fmt.str {|"%s" <> "%s"|} str'' str'))
     ;;
@@ -512,12 +512,12 @@ module Scope = struct
   let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 
   let pp_range ppf tm =
-    pp_generic ~open_loc:OptRange.open_stag ~close_loc:OptRange.close_stag ppf tm
+    pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag ppf tm
   ;;
 
   let pp_ranges ppf tm =
     pp_generic
-      ~open_loc:(fun ppf info -> Stdlib.Format.pp_open_stag ppf (SourceRanges.Stag info))
+      ~open_loc:(fun ppf info -> Stdlib.Format.pp_open_stag ppf (Source_ranges.Stag info))
       ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
       ppf
       tm
@@ -774,7 +774,7 @@ match(x; match_lines(
 let%test_module "check" =
   (module struct
     let parse_lang lang_str =
-      Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t lang_str
+      Lvca_parsing.parse_string Abstract_syntax.Parse.whitespace_t lang_str
       |> Result.ok_or_failwith
     ;;
 
@@ -815,14 +815,14 @@ test := foo(term[term]. term)
       match parse_sort sort_str with
       | Error msg -> Fmt.epr "%s" msg
       | Ok sort ->
-        let pp ppf CheckFailure.{ term; sort } =
+        let pp ppf Check_failure.{ term; sort } =
           match term with
           | Either.First pat ->
             Fmt.pf ppf "- @[pattern: %a,@ sort: %a@]" Pattern.pp pat Sort.pp sort
           | Second tm -> Fmt.pf ppf "- @[term: %a,@ sort: %a@]" Term.pp tm Sort.pp sort
         in
         (match tm_str |> parse_term |> Term.check language sort with
-        | Some failure -> Fmt.epr "%a" (CheckFailure.pp pp) failure
+        | Some failure -> Fmt.epr "%a" (Check_failure.pp pp) failure
         | None -> ())
     ;;
 

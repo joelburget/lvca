@@ -38,8 +38,8 @@ module Term : sig
   val info : 'info t -> 'info
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val pp : _ t Fmt.t
-  val pp_range : Lvca_provenance.OptRange.t t Fmt.t
-  val pp_ranges : Lvca_provenance.SourceRanges.t t Fmt.t
+  val pp_range : Lvca_provenance.Opt_range.t t Fmt.t
+  val pp_ranges : Lvca_provenance.Source_ranges.t t Fmt.t
 
   (* TODO: remove *)
   val pp_str : _ t -> string
@@ -101,14 +101,14 @@ module Term : sig
         variables.
       + Variable-valence terms must have one binder, a pattern. *)
   val check
-    :  'info AbstractSyntax.t (** Abstract syntax *)
+    :  'info Abstract_syntax.t (** Abstract syntax *)
     -> 'info Sort.t (** Sort to check term against *)
     -> 'info t
-    -> ('info, ('info Pattern.t, 'info t) Base.Either.t) CheckFailure.t option
+    -> ('info, ('info Pattern.t, 'info t) Base.Either.t) Check_failure.t option
 
   module Parse : sig
-    val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
-    val whitespace_t : Lvca_provenance.OptRange.t t Lvca_parsing.t
+    val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+    val whitespace_t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
   end
 
   module Properties : Properties_intf.S with type 'info t := 'info t
@@ -126,8 +126,8 @@ module Scope : sig
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val pp : _ t Fmt.t
-  val pp_range : Lvca_provenance.OptRange.t t Fmt.t
-  val pp_ranges : Lvca_provenance.SourceRanges.t t Fmt.t
+  val pp_range : Lvca_provenance.Opt_range.t t Fmt.t
+  val pp_ranges : Lvca_provenance.Source_ranges.t t Fmt.t
   val pp_str : _ t -> string
   val jsonify : _ t Json.serializer
   val unjsonify : unit t Json.deserializer
@@ -151,8 +151,8 @@ val of_pattern : ('info, 'prim) Pattern.t -> ('info, 'prim) t
   val free_vars : (_, _) t -> String.Set.t
 
   module Parse  : sig
-    val t : 'prim Lvca_parsing.t -> Lvca_provenance.OptRange.t t Lvca_parsing.t
-    val whitespace_t : 'prim Lvca_parsing.t -> Lvca_provenance.OptRange.t t Lvca_parsing.t
+    val t : 'prim Lvca_parsing.t -> Lvca_provenance.Opt_range.t t Lvca_parsing.t
+    val whitespace_t : 'prim Lvca_parsing.t -> Lvca_provenance.Opt_range.t t Lvca_parsing.t
   end
 
   module Properties : Properties_intf.S with type 'info t := unit t

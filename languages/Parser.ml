@@ -13,7 +13,7 @@ let eval_primitive _eval_ctx _eval_ctx' _ctx _tm _name _args =
   Error
     ( "no primitive evaluation"
     , Core.Term
-        (Nominal.Term.Primitive (SourceRanges.empty, String "TODO: make this unnecessary"))
+        (Nominal.Term.Primitive (Source_ranges.empty, String "TODO: make this unnecessary"))
     )
 ;;
 
@@ -190,13 +190,13 @@ let pp_generic ~open_loc ~close_loc ppf p =
 ;;
 
 let pp_range ppf p =
-  pp_generic ~open_loc:OptRange.open_stag ~close_loc:OptRange.close_stag ppf p
+  pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag ppf p
 ;;
 
 let pp_ranges ppf p =
   pp_generic
-    ~open_loc:(fun ppf loc -> Caml.Format.pp_open_stag ppf (SourceRanges.Stag loc))
-    ~close_loc:(fun ppf _loc -> Caml.Format.pp_close_stag ppf ())
+    ~open_loc:(fun ppf loc -> Stdlib.Format.pp_open_stag ppf (Source_ranges.Stag loc))
+    ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
     ppf
     p
 ;;
@@ -216,22 +216,22 @@ type 'info parse_error =
   ; sub_errors : 'info parse_error list
   }
 
-type parser_stack = SourceRanges.t t Stack.t
+type parser_stack = Source_ranges.t t Stack.t
 
 module Direct = struct
   type 'info parser = 'info t
-  type term_ctx = SourceRanges.t n_term String.Map.t
+  type term_ctx = Source_ranges.t n_term String.Map.t
 
   type parse_result =
-    (SourceRanges.t n_term, string * SourceRanges.t c_term option) Result.t
+    (Source_ranges.t n_term, string * Source_ranges.t c_term option) Result.t
 
-  type parser_ctx = SourceRanges.t parser String.Map.t
+  type parser_ctx = Source_ranges.t parser String.Map.t
 
   type trace_snapshot =
     { success : bool
     ; pre_pos : int
     ; post_pos : int
-    ; parser : SourceRanges.t parser
+    ; parser : Source_ranges.t parser
     ; term_ctx : term_ctx
     ; parser_ctx : parser_ctx
     ; snapshots : trace_snapshot list
@@ -239,7 +239,7 @@ module Direct = struct
 
   type direct =
     { run :
-        translate_direct:(SourceRanges.t parser -> direct)
+        translate_direct:(Source_ranges.t parser -> direct)
         -> term_ctx:term_ctx
         -> parser_ctx:parser_ctx
         -> pos:int
@@ -270,7 +270,7 @@ module Direct = struct
   let mk_error msg = Error (msg, None)
 
   let mk_char pos c =
-    Nominal.Term.Primitive (SourceRanges.mk "input" pos (pos + 1), Char c)
+    Nominal.Term.Primitive (Source_ranges.mk "input" pos (pos + 1), Char c)
   ;;
 
   let context_free go =
@@ -302,7 +302,7 @@ module Direct = struct
         | None -> Error (Printf.sprintf {|expected: string "%s"|} prefix)
         | Some _str' ->
           let pos' = pos + String.length prefix in
-          let rng = SourceRanges.mk "input" pos pos' in
+          let rng = Source_ranges.mk "input" pos pos' in
           Ok (pos', Nominal.Term.Primitive (rng, String prefix)))
   ;;
 
@@ -320,11 +320,11 @@ module Direct = struct
           then pos, [], err_msg
           else (
             let c = str.[pos] in
-            let rng = SourceRanges.mk "input" pos (pos + 1) in
+            let rng = Source_ranges.mk "input" pos (pos + 1) in
             let tm =
               Core.(
                 Let
-                  { info = SourceRanges.empty
+                  { info = Source_ranges.empty
                   ; is_rec = NoRec
                   ; tm = Term (Primitive (rng, Char c))
                   ; ty = None
@@ -376,14 +376,14 @@ module Direct = struct
           let result =
             match result with
             | Ok tm -> mk_some tm
-            | Error _ -> mk_none SourceRanges.empty
+            | Error _ -> mk_none Source_ranges.empty
           in
           pos1, [ snapshot ], Ok result)
     }
   ;;
 
   let mk_list lst =
-    let rng = lst |> List.map ~f:Nominal.Term.info |> SourceRanges.unions in
+    let rng = lst |> List.map ~f:Nominal.Term.info |> Source_ranges.unions in
     let lst = lst |> List.map ~f:(fun tm -> Nominal.Scope.Scope ([], tm)) in
     Nominal.Term.Operator (rng, "list", lst)
   ;;
@@ -607,7 +607,7 @@ module Direct = struct
     }
   ;;
 
-  let translate_direct : SourceRanges.t parser -> direct = function
+  let translate_direct : Source_ranges.t parser -> direct = function
     | AnyChar _ -> anychar
     | Char (_, c) -> char c
     | String (_, prefix) -> string prefix
@@ -625,7 +625,7 @@ module Direct = struct
   ;;
 
   let parse_direct
-      :  ?term_ctx:term_ctx -> ?parser_ctx:parser_ctx -> SourceRanges.t parser -> string
+      :  ?term_ctx:term_ctx -> ?parser_ctx:parser_ctx -> Source_ranges.t parser -> string
       -> toplevel_result
     =
    fun ?(term_ctx = String.Map.empty) ?(parser_ctx = String.Map.empty) parser str ->
@@ -650,7 +650,7 @@ module Direct = struct
 end
 
 module Parse = struct
-  type term = OptRange.t t
+  type term = Opt_range.t t
 
   open Lvca_parsing
 
@@ -673,16 +673,16 @@ module Parse = struct
   ;;
 
   type token =
-    | Atom of atom * OptRange.t
-    | Operator of string * OptRange.t
-    | Keyword of string * OptRange.t
-    | Ident of string * OptRange.t
-    | Core of OptRange.t Core.term * OptRange.t
-    | Parenthesized of term * OptRange.t
-    | FailTok of OptRange.t Core.term * OptRange.t
-    | SatisfyTok of string * OptRange.t Core.term * OptRange.t
-    | ChoiceTok of token list * OptRange.t
-    | FixTok of string * token list * OptRange.t
+    | Atom of atom * Opt_range.t
+    | Operator of string * Opt_range.t
+    | Keyword of string * Opt_range.t
+    | Ident of string * Opt_range.t
+    | Core of Opt_range.t Core.term * Opt_range.t
+    | Parenthesized of term * Opt_range.t
+    | FailTok of Opt_range.t Core.term * Opt_range.t
+    | SatisfyTok of string * Opt_range.t Core.term * Opt_range.t
+    | ChoiceTok of token list * Opt_range.t
+    | FixTok of string * token list * Opt_range.t
 
   let token_location = function
     | Atom (_, loc)
@@ -769,7 +769,7 @@ module Parse = struct
             | Some (Keyword ("in", _)) ->
               sequence ~tokens
               >>= fun e2 ->
-              let range = OptRange.union let_pos (info e2) in
+              let range = Opt_range.union let_pos (info e2) in
               return ~range (Let (range, name, e1, e2))
             | tok_opt -> mk_err tok_opt {|keyword "in"|})
           | tok_opt -> mk_err tok_opt {|operator "="|})
@@ -801,7 +801,7 @@ module Parse = struct
       >>== fun { value = branch; range = seq_pos; _ } ->
       choice_branches ~first:false ~tokens
       >>== fun { value = branches; range = branch_pos; _ } ->
-      let range = OptRange.union seq_pos branch_pos in
+      let range = Opt_range.union seq_pos branch_pos in
       return ~range (branch :: branches)
     in
     match Queue.peek tokens with
@@ -820,8 +820,8 @@ module Parse = struct
       tokens
       |> Queue.to_list
       |> List.map ~f:token_location
-      |> OptRange.list_range
-      |> OptRange.union op_pos
+      |> Opt_range.list_range
+      |> Opt_range.union op_pos
     in
     match op_name with
     | "?" -> return ~range (Option (range, left))
@@ -879,7 +879,7 @@ module Parse = struct
         let (_ : token) = Queue.dequeue_exn tokens in
         expression ~tokens ~ambient_prec:Prec.eq
         >>= fun expr ->
-        let range = OptRange.union name_pos (info expr) in
+        let range = Opt_range.union name_pos (info expr) in
         return ~range (Binder (Some name, expr))
       | Operator _ :: _ ->
         (* don't dequeue any tokens -- they'll all be parsed by expression *)
@@ -944,9 +944,9 @@ module Parse = struct
     | tokens -> sequence ~tokens:(Queue.of_list tokens)
   ;;
 
-  let go f ParseResult.{ value; range } = ParseResult.{ value = f value range; range }
+  let go f Parse_result.{ value; range } = Parse_result.{ value = f value range; range }
 
-  let t : OptRange.t Core.term Lvca_parsing.t -> term Lvca_parsing.t =
+  let t : Opt_range.t Core.term Lvca_parsing.t -> term Lvca_parsing.t =
    fun c_term ->
     let arrow = string "->" in
     fix (fun parser ->
@@ -965,11 +965,11 @@ module Parse = struct
                   choice
                     [ braces c_term
                       >>|| go (fun tm p2 ->
-                               let range = OptRange.union p1 p2 in
+                               let range = Opt_range.union p1 p2 in
                                FailTok (tm, range))
                     ; string_lit
                       >>|| go (fun str p2 ->
-                               let range = OptRange.union p1 p2 in
+                               let range = Opt_range.union p1 p2 in
                                FailTok (Core.Term (Primitive (p2, String str)), range))
                     ])
                 ; (string "satisfy"
@@ -977,7 +977,7 @@ module Parse = struct
                   parens
                     (lift3
                        (fun name _arr (tm, tm_pos) ->
-                         let range = OptRange.union sat_pos tm_pos in
+                         let range = Opt_range.union sat_pos tm_pos in
                          SatisfyTok (name, tm, range))
                        identifier
                        arrow
@@ -986,7 +986,7 @@ module Parse = struct
                   >>== fun { range = choice_pos; _ } ->
                   parens (many token)
                   >>|| go (fun toks toks_pos ->
-                           let range = OptRange.union choice_pos toks_pos in
+                           let range = Opt_range.union choice_pos toks_pos in
                            ChoiceTok (toks, range)))
                 ; (string "fix"
                   >>== fun { range = fix_pos; _ } ->
@@ -994,9 +994,9 @@ module Parse = struct
                     (lift3
                        (fun name _arr toks ->
                          let toks_pos =
-                           toks |> List.map ~f:token_location |> OptRange.list_range
+                           toks |> List.map ~f:token_location |> Opt_range.list_range
                          in
-                         let range = OptRange.union fix_pos toks_pos in
+                         let range = Opt_range.union fix_pos toks_pos in
                          FixTok (name, toks, range))
                        identifier
                        arrow
@@ -1078,7 +1078,7 @@ let%test_module "Parsing" =
       match Lvca_parsing.parse_string (Parse.t Core.Parse.term) parser_str with
       | Error msg -> print_endline ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
-        let parser' = map_info ~f:(SourceRanges.of_opt_range ~buf:"parser") parser in
+        let parser' = map_info ~f:(Source_ranges.of_opt_range ~buf:"parser") parser in
         let Direct.{ result; _ } = Direct.parse_direct parser' str in
         (match result with
         | Error (msg, _) -> printf "failed to parse: %s\n" msg
@@ -1088,7 +1088,7 @@ let%test_module "Parsing" =
     open TestParsers
 
     let () =
-      Format.set_formatter_stag_functions SourceRanges.stag_functions;
+      Format.set_formatter_stag_functions Source_ranges.stag_functions;
       Format.set_tags true;
       Format.set_mark_tags true
     ;;
@@ -1446,7 +1446,7 @@ fix (expr -> choice (
 ;;
 
 module Properties = struct
-  open PropertyResult
+  open Property_result
 
   let parse parser_str = Lvca_parsing.parse_string (Parse.t Core.Parse.term) parser_str
   let pp_str p = Fmt.to_to_string pp_plain p
@@ -1455,7 +1455,7 @@ module Properties = struct
     match t |> pp_str |> parse with
     | Ok t' ->
       let t' = erase t' in
-      PropertyResult.check
+      Property_result.check
         (equal Unit.( = ) t' t)
         (Fmt.str "%a <> %a" pp_plain t' pp_plain t)
     | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (pp_str t) msg)
@@ -1473,6 +1473,8 @@ module Properties = struct
         | Error msg -> Failed msg
         | Ok t' ->
           let str'' = pp_str t' in
-          PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str'))
+          Property_result.check
+            String.(str'' = str')
+            (Fmt.str {|"%s" <> "%s"|} str'' str'))
   ;;
 end

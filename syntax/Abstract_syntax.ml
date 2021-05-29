@@ -30,7 +30,7 @@ module Kind = struct
 
     let t =
       sep_by1 (string "->") (char '*')
-      >>|| (fun (ParseResult.{ value = stars; range; _ } as parse_result) ->
+      >>|| (fun (Parse_result.{ value = stars; range; _ } as parse_result) ->
              { parse_result with value = Kind (range, List.length stars) })
       <?> "kind"
     ;;
@@ -294,11 +294,11 @@ module OperatorDef = struct
   ;;
 end
 
-module SortDef = struct
+module Sort_def = struct
   type 'info t =
-    | SortDef of (string * 'info Kind.t option) list * 'info OperatorDef.t list
+    | Sort_def of (string * 'info Kind.t option) list * 'info OperatorDef.t list
 
-  let equal ~info_eq (SortDef (vars1, ops1)) (SortDef (vars2, ops2)) =
+  let equal ~info_eq (Sort_def (vars1, ops1)) (Sort_def (vars2, ops2)) =
     List.equal
       (Tuple2.equal String.( = ) (Option.equal (Kind.equal ~info_eq)))
       vars1
@@ -306,7 +306,7 @@ module SortDef = struct
     && List.equal (OperatorDef.equal ~info_eq) ops1 ops2
   ;;
 
-  let map_info ~f (SortDef (vars, op_defs)) =
+  let map_info ~f (Sort_def (vars, op_defs)) =
     let vars =
       vars
       |> List.map ~f:(fun (name, kind_opt) ->
@@ -315,12 +315,12 @@ module SortDef = struct
              | Some kind -> name, Some (Kind.map_info ~f kind))
     in
     let op_defs = op_defs |> List.map ~f:(OperatorDef.map_info ~f) in
-    SortDef (vars, op_defs)
+    Sort_def (vars, op_defs)
   ;;
 
   let erase sd = map_info ~f:(Fn.const ()) sd
 
-  let kind_check env sort_name (SortDef (vars, operators)) =
+  let kind_check env sort_name (Sort_def (vars, operators)) =
     let update_env env name n =
       Map.update env name ~f:(function
           | None -> Int.Set.singleton n
@@ -330,7 +330,7 @@ module SortDef = struct
     List.fold operators ~init:env ~f:OperatorDef.kind_check
   ;;
 
-  let pp_generic ~open_loc ~close_loc ~name ppf (SortDef (sort_vars, operator_defs)) =
+  let pp_generic ~open_loc ~close_loc ~name ppf (Sort_def (sort_vars, operator_defs)) =
     let open Fmt in
     let pp_sort_var ppf (name, kind_opt) =
       match kind_opt with
@@ -376,7 +376,7 @@ module SortDef = struct
 
     let t =
       lift4
-        (fun name vars _assign op_defs -> name, SortDef (vars, op_defs))
+        (fun name vars _assign op_defs -> name, Sort_def (vars, op_defs))
         identifier
         (many sort_var_decl)
         assign
@@ -392,13 +392,13 @@ module SortDef = struct
       let%test_unit _ =
         assert (
           test_parse_with Parse.t {|foo := foo()|}
-          = ("foo", SortDef ([], [ OperatorDef ("foo", []) ])))
+          = ("foo", Sort_def ([], [ OperatorDef ("foo", []) ])))
       ;;
 
       let%test_unit _ =
         assert (
           test_parse_with Parse.t {|foo x := foo()|}
-          = ("foo", SortDef ([ "x", None ], [ OperatorDef ("foo", []) ])))
+          = ("foo", Sort_def ([ "x", None ], [ OperatorDef ("foo", []) ])))
       ;;
 
       let tm_def =
@@ -407,7 +407,7 @@ module SortDef = struct
         let integer = Sort.Name (None, "integer") in
         let integer_v = Valence.Valence ([], integer) in
         ( "tm"
-        , SortDef
+        , Sort_def
             ( []
             , [ OperatorDef ("add", [ tm_v; tm_v ]); OperatorDef ("lit", [ integer_v ]) ]
             ) )
@@ -425,7 +425,7 @@ module SortDef = struct
       let%expect_test _ =
         let foo = Sort.Name ((), "foo") in
         let sort_def =
-          SortDef
+          Sort_def
             ( []
             , [ OperatorDef.OperatorDef
                   ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
@@ -449,7 +449,7 @@ module SortDef = struct
 
       let%expect_test _ =
         let sort_def =
-          SortDef
+          Sort_def
             ( []
             , [ OperatorDef.OperatorDef
                   ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
@@ -461,7 +461,7 @@ module SortDef = struct
 
       let%expect_test _ =
         let sort_def =
-          SortDef
+          Sort_def
             ( [ "a", None ]
             , [ OperatorDef.OperatorDef
                   ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
@@ -472,7 +472,7 @@ module SortDef = struct
       ;;
 
       let%expect_test _ =
-        let sort_def = SortDef ([ "a", Some (Kind ((), 2)) ], []) in
+        let sort_def = Sort_def ([ "a", Some (Kind ((), 2)) ], []) in
         Fmt.pr "%a" (pp ~name:"foo") sort_def;
         [%expect {| foo (a : * -> *) := |}]
       ;;
@@ -482,13 +482,13 @@ end
 
 type 'info t =
   { externals : (string * 'info Kind.t) list
-  ; sort_defs : (string * 'info SortDef.t) list
+  ; sort_defs : (string * 'info Sort_def.t) list
   }
 
 module Unordered = struct
   type 'info t =
     { externals : 'info Kind.t String.Map.t
-    ; sort_defs : 'info SortDef.t String.Map.t
+    ; sort_defs : 'info Sort_def.t String.Map.t
     }
 end
 
@@ -499,7 +499,7 @@ let mk_unordered { externals; sort_defs } =
 ;;
 
 let equal info_eq t1 t2 =
-  let sort_defs_eq = List.equal (Tuple2.equal String.( = ) (SortDef.equal ~info_eq)) in
+  let sort_defs_eq = List.equal (Tuple2.equal String.( = ) (Sort_def.equal ~info_eq)) in
   let externals_eq = List.equal (Tuple2.equal String.( = ) (Kind.equal ~info_eq)) in
   externals_eq t1.externals t2.externals && sort_defs_eq t1.sort_defs t2.sort_defs
 ;;
@@ -507,7 +507,7 @@ let equal info_eq t1 t2 =
 let map_info ~f { externals; sort_defs } =
   { externals = externals |> List.map ~f:(fun (name, kind) -> name, Kind.map_info ~f kind)
   ; sort_defs =
-      List.map ~f:(fun (name, sort_def) -> name, SortDef.map_info ~f sort_def) sort_defs
+      List.map ~f:(fun (name, sort_def) -> name, Sort_def.map_info ~f sort_def) sort_defs
   }
 ;;
 
@@ -515,7 +515,7 @@ let erase_info t = map_info ~f:(Fn.const ()) t
 
 let lookup_operator { externals = _; sort_defs } sort_name op_name =
   let open Option.Let_syntax in
-  let%bind (SortDef (vars, operator_defs)) =
+  let%bind (Sort_def (vars, operator_defs)) =
     List.find_map sort_defs ~f:(fun (name, def) ->
         if String.(name = sort_name) then Some def else None)
   in
@@ -531,7 +531,7 @@ let pp_generic ~open_loc ~close_loc ppf { externals; sort_defs } =
     Fmt.(list (pair ~sep:(any " : ") string (Kind.pp_generic ~open_loc ~close_loc)))
   in
   let pp_sort_def ppf (name, sort_def) =
-    SortDef.pp_generic ~open_loc ~close_loc ~name ppf sort_def
+    Sort_def.pp_generic ~open_loc ~close_loc ~name ppf sort_def
   in
   Fmt.pf ppf "%a@,%a" pp_externals externals Fmt.(list pp_sort_def) sort_defs
 ;;
@@ -551,7 +551,7 @@ let kind_check { externals; sort_defs } =
   let mismap =
     sort_defs
     |> List.fold ~init:env ~f:(fun env (sort_name, sort_def) ->
-           SortDef.kind_check env sort_name sort_def)
+           Sort_def.kind_check env sort_name sort_def)
   in
   let fine_vars, mismapped_vars =
     mismap
@@ -573,7 +573,7 @@ module Parse = struct
     lift2
       (fun externals sort_defs -> { externals; sort_defs })
       (many Kind.Parse.decl)
-      (many1 SortDef.Parse.t)
+      (many1 Sort_def.Parse.t)
     <?> "abstract syntax"
   ;;
 
@@ -588,7 +588,7 @@ let%test_module _ =
       let integer = Sort.Name ((), "integer") in
       let integer_v = Valence.Valence ([], integer) in
       ( "tm"
-      , SortDef.SortDef
+      , Sort_def.Sort_def
           ([], [ OperatorDef ("add", [ tm_v; tm_v ]); OperatorDef ("lit", [ integer_v ]) ])
       )
     ;;
@@ -610,7 +610,7 @@ empty :=
       in
       let expected =
         { externals = [ "integer", Kind ((), 1) ]
-        ; sort_defs = [ tm_def; "empty", SortDef ([], []) ]
+        ; sort_defs = [ tm_def; "empty", Sort_def ([], []) ]
         }
       in
       assert (equal Unit.( = ) parsed expected)

@@ -1,21 +1,21 @@
 open Lvca_provenance
 
-module ParseResult : sig
+module Parse_result : sig
   type 'a t =
     { value : 'a
-    ; range : Lvca_provenance.OptRange.t
+    ; range : Lvca_provenance.Opt_range.t
     }
 
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
   val pp : 'a Fmt.t -> 'a t Fmt.t
 end
 
-type +'a t = 'a ParseResult.t Angstrom.t
+type +'a t = 'a Parse_result.t Angstrom.t
 
 val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
-val ( >>== ) : 'a t -> ('a ParseResult.t -> 'b t) -> 'b t
+val ( >>== ) : 'a t -> ('a Parse_result.t -> 'b t) -> 'b t
 val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
-val ( >>|| ) : 'a t -> ('a ParseResult.t -> 'b ParseResult.t) -> 'b t
+val ( >>|| ) : 'a t -> ('a Parse_result.t -> 'b Parse_result.t) -> 'b t
 val ( <$> ) : ('a -> 'b) -> 'a t -> 'b t
 val ( <*> ) : ('a -> 'b) t -> 'a t -> 'b t
 val ( *> ) : 'a t -> 'b t -> 'b t
@@ -30,8 +30,8 @@ val integer_lit : string t
 val integer_or_float_lit : (string, float) Base.Either.t t
 val string_lit : string t
 val option : 'a -> 'a t -> 'a t
-val return : ?range:OptRange.t -> 'a -> 'a t
-val attach_pos : 'a t -> ('a * OptRange.t) t (* TODO: remove? *)
+val return : ?range:Opt_range.t -> 'a -> 'a t
+val attach_pos : 'a t -> ('a * Opt_range.t) t (* TODO: remove? *)
 
 val satisfy : (char -> bool) -> char t
 val count : int -> 'a t -> 'a list t
@@ -56,5 +56,5 @@ val brackets : 'a t -> 'a t
 val fail : string -> 'a t
 val whitespace : unit t
 val whitespace1 : unit t
-val parse_string_pos : 'a t -> string -> ('a ParseResult.t, string) Base.Result.t
+val parse_string_pos : 'a t -> string -> ('a Parse_result.t, string) Base.Result.t
 val parse_string : 'a t -> string -> ('a, string) Base.Result.t

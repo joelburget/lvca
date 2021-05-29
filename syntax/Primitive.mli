@@ -7,7 +7,9 @@ module Integer : sig
   end
 
   include
-    LanguageObject_intf.S with type 'info t = 'info * Z.t and module Plain = Plain_typedef
+    Language_object_intf.S
+      with type 'info t = 'info * Z.t
+       and module Plain = Plain_typedef
 end
 
 module Int : sig
@@ -16,7 +18,9 @@ module Int : sig
   end
 
   include
-    LanguageObject_intf.S with type 'info t = 'info * int and module Plain = Plain_typedef
+    Language_object_intf.S
+      with type 'info t = 'info * int
+       and module Plain = Plain_typedef
 end
 
 module Int32 : sig
@@ -25,7 +29,7 @@ module Int32 : sig
   end
 
   include
-    LanguageObject_intf.S
+    Language_object_intf.S
       with type 'info t = 'info * int32
        and module Plain = Plain_typedef
 end
@@ -36,7 +40,7 @@ module Float : sig
   end
 
   include
-    LanguageObject_intf.S
+    Language_object_intf.S
       with type 'info t = 'info * float
        and module Plain = Plain_typedef
 end
@@ -47,7 +51,7 @@ module Char : sig
   end
 
   include
-    LanguageObject_intf.S
+    Language_object_intf.S
       with type 'info t = 'info * char
        and module Plain = Plain_typedef
 end
@@ -58,7 +62,7 @@ module String : sig
   end
 
   include
-    LanguageObject_intf.S
+    Language_object_intf.S
       with type 'info t = 'info * string
        and module Plain = Plain_typedef
 end
@@ -83,7 +87,7 @@ val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 val pp : _ t Fmt.t
 
 module Parse : sig
-  val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
+  val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
 end
 
 val check : _ t -> 'info Sort.t -> string option

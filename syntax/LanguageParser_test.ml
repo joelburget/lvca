@@ -1,10 +1,10 @@
 open Lvca_provenance
-open AbstractSyntax
+open Abstract_syntax
 
-let%test_module "AbstractSyntax.Parser" =
+let%test_module "Abstract_syntax.Parser" =
   (module struct
     let parse str =
-      Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t str
+      Lvca_parsing.parse_string Abstract_syntax.Parse.whitespace_t str
       |> Base.Result.ok_or_failwith
     ;;
 
@@ -19,7 +19,8 @@ let%test_module "AbstractSyntax.Parser" =
       parse "bool := true() | false()"
       = { externals = []
         ; sort_defs =
-            [ "bool", SortDef ([], [ OperatorDef ("true", []); OperatorDef ("false", []) ])
+            [ ( "bool"
+              , Sort_def ([], [ OperatorDef ("true", []); OperatorDef ("false", []) ]) )
             ]
         }
     ;;
@@ -47,19 +48,19 @@ let%test_module "AbstractSyntax.Parser" =
       let externals = [ "integer", Kind.Kind ((), 1); "list", Kind ((), 2) ] in
       let sort_defs =
         [ ( "ty"
-          , SortDef.SortDef
+          , Sort_def.Sort_def
               ( []
               , [ OperatorDef ("bool", [])
                 ; OperatorDef ("arr", [ ty_valence; ty_valence ])
                 ] ) )
         ; ( "tm"
-          , SortDef
+          , Sort_def
               ( []
               , [ OperatorDef ("app", [ tm_valence; tm_valence ])
                 ; OperatorDef ("lam", [ Valence ([ SortBinding tm_sort ], tm_sort) ])
                 ] ) )
         ; ( "foo"
-          , SortDef
+          , Sort_def
               ( [ "x", Some (Kind ((), 1)) ]
               , [ OperatorDef
                     ( "foo"
@@ -85,8 +86,8 @@ let%test_module "AbstractSyntax.Parser" =
       |}
       in
       lang.externals
-      = [ "integer", Kind.Kind (OptRange.mk 17 18, 1)
-        ; "list", Kind (OptRange.mk 32 38, 2)
+      = [ "integer", Kind.Kind (Opt_range.mk 17 18, 1)
+        ; "list", Kind (Opt_range.mk 32 38, 2)
         ]
     ;;
   end)

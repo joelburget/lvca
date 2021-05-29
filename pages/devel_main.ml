@@ -6,34 +6,34 @@ open Prelude
 
 module Model = struct
   type page =
-    | TermAndConcretePage
-    | CalculatorPage
-    | EvalWithProvenancePage
-    | TermToTexPage
-    | ParserPage
-    | ScopeViewerPage
-    | EditsPage
-    | CheckTermPage
-    | AstOperationsPage
-    | ListNatPage
+    | Term_and_concrete_page
+    | Calculator_page
+    | Eval_with_provenance_page
+    | Term_to_tex_page
+    | Parser_page
+    | Scope_viewer_page
+    | Edits_page
+    | Check_term_page
+    | Ast_operations_page
+    | List_nat_page
 
   (* | TermToDocument *)
 
   type t = { page : page }
 
-  let initial_model = { page = CheckTermPage }
+  let initial_model = { page = Check_term_page }
 
   let all_pages =
-    [ TermAndConcretePage
-    ; CalculatorPage
-    ; ParserPage
-    ; ScopeViewerPage
-    ; EvalWithProvenancePage
-    ; TermToTexPage
-    ; EditsPage
-    ; CheckTermPage
-    ; AstOperationsPage
-    ; ListNatPage
+    [ Term_and_concrete_page
+    ; Calculator_page
+    ; Parser_page
+    ; Scope_viewer_page
+    ; Eval_with_provenance_page
+    ; Term_to_tex_page
+    ; Edits_page
+    ; Check_term_page
+    ; Ast_operations_page
+    ; List_nat_page
     ]
   ;;
 end
@@ -42,29 +42,29 @@ module View = struct
   open Model
 
   let page_description = function
-    | TermAndConcretePage -> "01: term and concrete"
-    | CalculatorPage -> "02: calculator"
-    | ParserPage -> "03: parser"
-    | ScopeViewerPage -> "04: scope viewer"
-    | EditsPage -> "0x: edits"
-    | EvalWithProvenancePage -> "0x: evaluation with provenance"
-    | TermToTexPage -> "0x: term to tex"
-    | CheckTermPage -> "0x: check term"
-    | AstOperationsPage -> "0x: operations on ASTs"
-    | ListNatPage -> "0x: ListNat"
+    | Term_and_concrete_page -> "01: term and concrete"
+    | Calculator_page -> "02: calculator"
+    | Parser_page -> "03: parser"
+    | Scope_viewer_page -> "04: scope viewer"
+    | Edits_page -> "0x: edits"
+    | Eval_with_provenance_page -> "0x: evaluation with provenance"
+    | Term_to_tex_page -> "0x: term to tex"
+    | Check_term_page -> "0x: check term"
+    | Ast_operations_page -> "0x: operations on ASTs"
+    | List_nat_page -> "0x: List_nat"
   ;;
 
   let stateless_view = function
-    | TermAndConcretePage -> TermAndConcrete.stateless_view
-    | CalculatorPage -> Calculator.stateless_view
-    | EvalWithProvenancePage -> EvalWithProvenance.stateless_view
-    | TermToTexPage -> TermToTex.stateless_view
-    | ParserPage -> Parser.stateless_view
-    | ScopeViewerPage -> ScopeViewer.stateless_view
-    | EditsPage -> Edits.stateless_view
-    | CheckTermPage -> CheckTerm.stateless_view
-    | AstOperationsPage -> AstOperations.stateless_view
-    | ListNatPage -> ListNat.stateless_view
+    | Term_and_concrete_page -> Term_and_concrete.stateless_view
+    | Calculator_page -> Calculator.stateless_view
+    | Eval_with_provenance_page -> Eval_with_provenance.stateless_view
+    | Term_to_tex_page -> Term_to_tex.stateless_view
+    | Parser_page -> Parser.stateless_view
+    | Scope_viewer_page -> Scope_viewer.stateless_view
+    | Edits_page -> Edits.stateless_view
+    | Check_term_page -> Check_term.stateless_view
+    | Ast_operations_page -> Ast_operations.stateless_view
+    | List_nat_page -> List_nat.stateless_view
   ;;
 
   let view model_s =

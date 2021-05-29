@@ -63,13 +63,13 @@ doc := Doc(list block)
 
 exception TranslationError of string
 
-let term_of_option : f:('a -> unit NonBinding.term) -> 'a option -> unit NonBinding.term =
+let term_of_option : f:('a -> unit Nonbinding.term) -> 'a option -> unit Nonbinding.term =
  fun ~f -> function
   | None -> Operator ((), "none", [])
   | Some a -> Operator ((), "some", [ f a ])
 ;;
 
-let term_of_string : string -> unit NonBinding.term = fun str -> Primitive ((), String str)
+let term_of_string : string -> unit Nonbinding.term = fun str -> Primitive ((), String str)
 
 module Of_omd = struct
   module Lang = Lang (Primitive.Char) (Primitive.Int) (Primitive.String)
@@ -140,19 +140,19 @@ module Of_omd = struct
   let document : Omd.doc -> Lang.Plain.doc = fun blocks -> Doc (list block blocks)
 end
 
-let mk_sequence tms = NonBinding.Operator ((), "sequence", tms)
+let mk_sequence tms = Nonbinding.Operator ((), "sequence", tms)
 
-let rec term_of_inline_desc : Omd.inline_desc -> unit NonBinding.term = function
+let rec term_of_inline_desc : Omd.inline_desc -> unit Nonbinding.term = function
   | Concat inlines ->
     Operator ((), "concat", List.map inlines ~f:term_of_inline) (* XXX: convert to list *)
   | Text str -> Primitive ((), String str)
   | _ -> raise (TranslationError "Unsupported inline type")
 
-and term_of_inline : Omd.inline -> unit NonBinding.term =
+and term_of_inline : Omd.inline -> unit Nonbinding.term =
  fun { il_desc; il_attributes = _TODO } -> term_of_inline_desc il_desc
 ;;
 
-let term_of_inline_block_desc : Omd.block_desc -> unit NonBinding.term = function
+let term_of_inline_block_desc : Omd.block_desc -> unit Nonbinding.term = function
   | Paragraph inline -> term_of_inline inline
   | List (_list_type, _list_spacing, _blocks) ->
     raise (TranslationError "TODO: list blocks")
@@ -178,7 +178,7 @@ let term_of_inline_block_desc : Omd.block_desc -> unit NonBinding.term = functio
   | _ -> raise (TranslationError "Unsupported block type")
 ;;
 
-let term_of_inline_block : Omd.block -> unit NonBinding.term =
+let term_of_inline_block : Omd.block -> unit Nonbinding.term =
  fun { bl_desc; bl_attributes = _TODO } -> term_of_inline_block_desc bl_desc
 ;;
 
@@ -247,7 +247,7 @@ let evaluate_and_produce_dom : store -> string -> Brr.El.t =
 ;;
 *)
 
-let parse : string -> (unit NonBinding.term, string) Result.t =
+let parse : string -> (unit Nonbinding.term, string) Result.t =
  fun str ->
   try Ok (str |> Omd.of_string |> List.map ~f:term_of_inline_block |> mk_sequence) with
   | TranslationError msg -> Error msg
@@ -257,7 +257,7 @@ let%test_module "markdown" =
   (module struct
     let print_parse str =
       match parse str with
-      | Ok tm -> Fmt.pr "%a" NonBinding.pp tm
+      | Ok tm -> Fmt.pr "%a" Nonbinding.pp tm
       | Error msg -> print_string msg
     ;;
 

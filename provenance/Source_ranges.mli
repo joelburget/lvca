@@ -10,9 +10,9 @@ val invariants : t -> bool
 
 val empty : t
 val mk : string -> int -> int -> t
-val of_source_range : SourceRange.t -> t
+val of_source_range : Source_range.t -> t
 val of_range : buf:string -> Range.t -> t
-val of_opt_range : buf:string -> OptRange.t -> t
+val of_opt_range : buf:string -> Opt_range.t -> t
 
 (* (** Convert from a (possibly unordered and overlapping) list of ranges. *) val of_list
    : Range.t list -> t

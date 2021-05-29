@@ -2,23 +2,23 @@ open Base
 open Lvca_util
 open Lvca_provenance
 
-module type AllTermS = LanguageObject_intf.S
+module type All_term_s = Language_object_intf.S
 
-module type NonBindingTermS = sig
-  include AllTermS
+module type Non_binding_term_s = sig
+  include All_term_s
 
-  val of_nonbinding : 'info NonBinding.term -> ('info t, 'info NonBinding.term) Result.t
-  val to_nonbinding : 'info t -> 'info NonBinding.term
+  val of_nonbinding : 'info Nonbinding.term -> ('info t, 'info Nonbinding.term) Result.t
+  val to_nonbinding : 'info t -> 'info Nonbinding.term
 end
 
-module type BindingTermS = sig
-  include AllTermS
+module type Binding_term_s = sig
+  include All_term_s
 
   val to_nominal : 'info t -> 'info Nominal.Term.t
   val of_nominal : 'info Nominal.Term.t -> ('info t, 'info Nominal.Term.t) Result.t
 end
 
-module type ExtendedTermS = sig
+module type Extended_term_s = sig
   type 'a t
 
   val erase : _ t -> unit t
@@ -37,11 +37,11 @@ module type ExtendedTermS = sig
   val hash : _ t -> string
 
   module Parse : sig
-    val whitespace_t : OptRange.t t Lvca_parsing.t
+    val whitespace_t : Opt_range.t t Lvca_parsing.t
   end
 end
 
-module Mk (Object : BindingTermS) : ExtendedTermS with type 'info t = 'info Object.t =
+module Mk (Object : Binding_term_s) : Extended_term_s with type 'info t = 'info Object.t =
 struct
   type 'info t = 'info Object.t
 
@@ -83,10 +83,10 @@ end
 
 module type Properties = Properties_intf.S
 
-module CheckProperties (Object : BindingTermS) :
+module CheckProperties (Object : Binding_term_s) :
   Properties with type 'info t = 'info Object.t = struct
   module Parse = Object.Parse
-  open PropertyResult
+  open Property_result
   module Object' = Object
   module Object = Mk (Object)
 
@@ -100,7 +100,7 @@ module CheckProperties (Object : BindingTermS) :
     match t |> Object.jsonify |> Object.unjsonify with
     | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
     | Some t' ->
-      PropertyResult.check
+      Property_result.check
         (Object'.equal ~info_eq:Unit.( = ) t t')
         (Fmt.str "%a <> %a" pp t' pp t)
   ;;
@@ -109,7 +109,7 @@ module CheckProperties (Object : BindingTermS) :
     match json |> Object.unjsonify with
     | None -> Uninteresting
     | Some t ->
-      PropertyResult.check
+      Property_result.check
         Json.(Object.jsonify t = json)
         "jsonify t <> json (TODO: print)"
   ;;
@@ -118,7 +118,7 @@ module CheckProperties (Object : BindingTermS) :
     match t |> to_string |> parse with
     | Ok t' ->
       let t'' = Object.erase t' in
-      PropertyResult.check
+      Property_result.check
         Object'.(equal ~info_eq:Unit.( = ) t'' t)
         (Fmt.str "%a <> %a" pp t'' pp t)
     | Error msg -> Failed (Fmt.str {|parse_string "%a": %s|} pp t msg)
@@ -136,6 +136,8 @@ module CheckProperties (Object : BindingTermS) :
         | Error msg -> Failed msg
         | Ok t' ->
           let str'' = t' |> Object.erase |> to_string in
-          PropertyResult.check String.(str'' = str') (Fmt.str {|"%s" <> "%s"|} str'' str'))
+          Property_result.check
+            String.(str'' = str')
+            (Fmt.str {|"%s" <> "%s"|} str'' str'))
   ;;
 end

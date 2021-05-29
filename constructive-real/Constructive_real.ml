@@ -239,9 +239,9 @@ open Stdio
   * properly use radix when printing strings
 *)
 
-exception ArithmeticError of string
-exception EarlyReturn
-exception PrecisionOverflowException
+exception Arithmetic_error of string
+exception Early_return
+exception Precision_overflow
 
 module Int32 = struct
   include Int32
@@ -494,7 +494,7 @@ let check_prec n =
   let open Int32 in
   let high = shift_right n 28 in
   let high_shifted = shift_right n 29 in
-  if high lxor high_shifted <> zero then raise PrecisionOverflowException
+  if high lxor high_shifted <> zero then raise Precision_overflow
 ;;
 
 (* constructors *)
@@ -671,21 +671,21 @@ and approximate_mult_cr : t -> t -> int32 -> Z.t =
       then (
         let msd_op2 = msd op2 half_prec in
         (* Product is small enough that zero will do as an approximation *)
-        if Int32.(msd_op2 = min_value) then raise EarlyReturn;
+        if Int32.(msd_op2 = min_value) then raise Early_return;
         (* Swap operands so larger is first *)
         op2, op1, msd_op2)
       else op1, op2, msd_op1
     in
     let prec2 = Int32.(p - msd_op1 - Int32.three) in
     let appr2 = get_appr op2 prec2 in
-    if Z.(appr2 = zero) then raise EarlyReturn;
+    if Z.(appr2 = zero) then raise Early_return;
     let msd_op2 = known_msd op2 in
     let prec1 = Int32.(p - msd_op2 - Int32.three) in
     let appr1 = get_appr op1 prec1 in
     let scale_digits = Int32.(prec1 + prec2 - p) in
     scale Z.(appr1 * appr2) scale_digits
   with
-  | EarlyReturn -> big0
+  | Early_return -> big0
 
 (* Newton-Raphson? *)
 and approximate_inv_cr op p =
@@ -817,7 +817,7 @@ and approximate_sqrt_cr t op p =
       let working_prec = op_prec - fp_op_prec in
       let scaled_bi_appr = big_shift_left (get_appr op op_prec) fp_op_prec in
       let scaled_appr = Z.to_float scaled_bi_appr in
-      if Float.(scaled_appr < 0.0) then raise (ArithmeticError "sqrt(negative)");
+      if Float.(scaled_appr < 0.0) then raise (Arithmetic_error "sqrt(negative)");
       let scaled_fp_sqrt = Float.sqrt scaled_appr in
       let scaled_sqrt = Z.of_float scaled_fp_sqrt in
       let shift_count = (working_prec / two) - p in
@@ -1116,7 +1116,7 @@ let rec ln : t -> t =
  fun op ->
   let low_prec = Int32.minus_four in
   let rough_appr = get_appr op low_prec in
-  if Z.(rough_appr < big0) then raise (ArithmeticError "ln(negative)");
+  if Z.(rough_appr < big0) then raise (Arithmetic_error "ln(negative)");
   if Z.(rough_appr <= low_ln_limit)
   then op |> inverse |> ln |> negate
   else if Z.(rough_appr >= high_ln_limit)

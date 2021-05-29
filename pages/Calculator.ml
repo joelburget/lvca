@@ -37,7 +37,7 @@ end
 module Action = struct
   type t =
     | Evaluate of string
-    | ChangePrecision of int * DigitsEntry.digits_update
+    | ChangePrecision of int * Digits_entry.digits_update
     | DeleteRow of int
 end
 
@@ -121,7 +121,7 @@ module View = struct
   ;;
 
   let view model_s =
-    let input, input_event = SingleLineInput.mk (S.const ~eq:String.( = ) "1 + 1") in
+    let input, input_event = Single_line_input.mk (S.const ~eq:String.( = ) "1 + 1") in
     let examples, example_update_es =
       [ "pi"
       ; "cos (pi / 4)"
@@ -136,7 +136,7 @@ module View = struct
     in
     let examples = ul (examples |> List.map ~f:(fun example -> li [ example ])) in
     let row' row_num input_str parsed digits_s _digits_update =
-      let digits_entry, digits_event = DigitsEntry.mk digits_s in
+      let digits_entry, digits_event = Digits_entry.mk digits_s in
       let digits_s =
         digits_s
         |> S.map ~eq:Common.html_eq (fun digits ->
@@ -144,7 +144,7 @@ module View = struct
                | Error (_tm, msg) -> span ~at:[ class' "error" ] [ txt msg ]
                | Ok real ->
                  let str =
-                   ConstructiveReal.eval_to_string real ~digits:(Int32.of_int_exn digits)
+                   Constructive_real.eval_to_string real ~digits:(Int32.of_int_exn digits)
                  in
                  span [ txt str ])
       in

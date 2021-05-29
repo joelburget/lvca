@@ -6,5 +6,5 @@ val view_tm
   :  ?source_column:bool
   -> ?range_column:bool
   -> ?default_expanded_depth:default_expanded_depth
-  -> Lvca_provenance.SourceRanges.t Lvca_syntax.Nominal.Term.t
-  -> Brr.El.t * Lvca_provenance.SourceRanges.t Note.event
+  -> Lvca_provenance.Source_ranges.t Lvca_syntax.Nominal.Term.t
+  -> Brr.El.t * Lvca_provenance.Source_ranges.t Note.event

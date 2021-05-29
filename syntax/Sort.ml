@@ -102,12 +102,12 @@ module Parse = struct
           choice
             [ parens sort
             ; (identifier
-              >>|| fun ParseResult.{ value; range } ->
+              >>|| fun Parse_result.{ value; range } ->
               { value = Name (range, value); range })
             ]
         in
         many1 atomic_sort
-        >>== fun ParseResult.{ value = atoms; range; _ } ->
+        >>== fun Parse_result.{ value = atoms; range; _ } ->
         match atoms with
         (* A single ap is just parenthesized. An ap applied to things is a problem. *)
         | [ (Ap _ as atom) ] -> return ~range atom

@@ -1,9 +1,9 @@
-open Lvca_provenance
-open Lvca_syntax
-open Lvca_util
 open Base
 open Brr
 open Brr_note
+open Lvca_provenance
+open Lvca_syntax
+open Lvca_util
 open Note
 open Prelude
 
@@ -71,7 +71,7 @@ type render_params =
   ; range_column : bool (** Show the "range" column or not *)
   ; depth : int
   ; var_selected_events : VarStatus.t event' String.Map.t
-  ; queue : (El.t * SourceRanges.t event) Queue.t
+  ; queue : (El.t * Source_ranges.t event) Queue.t
   }
 
 type var_pos =
@@ -81,11 +81,11 @@ type var_pos =
 type expanded = bool
 
 type term_index =
-  | OperatorIx of SourceRange.t option * expanded signal'
-  | VarDefIx of SourceRange.t option * VarStatus.t event'
-  | LocIx of SourceRange.t option
+  | OperatorIx of Source_range.t option * expanded signal'
+  | VarDefIx of Source_range.t option * VarStatus.t event'
+  | LocIx of Source_range.t option
 
-let select_source_range : SourceRanges.t -> SourceRange.t option =
+let select_source_range : Source_ranges.t -> Source_range.t option =
  fun source_ranges ->
   match Map.to_alist source_ranges with
   | [ (source, [ range ]) ] -> Some { source; range }
@@ -98,7 +98,7 @@ let definition_cls = "bg-pink-200"
 let upstream_shadow_cls = "bg-yellow-200"
 let downstream_shadow_cls = "bg-yellow-500"
 
-let grid_tmpl ~render_params left loc : El.t * SourceRanges.t event =
+let grid_tmpl ~render_params left loc : El.t * Source_ranges.t event =
   let { var_selected_events; source_column; range_column; _ } = render_params in
   let in_scope_cls_s =
     var_selected_events
@@ -114,7 +114,7 @@ let grid_tmpl ~render_params left loc : El.t * SourceRanges.t event =
   let cols =
     match loc with
     | None -> [ fst_col ]
-    | Some SourceRange.{ source; range } ->
+    | Some Source_range.{ source; range } ->
       [ Some fst_col
       ; (if source_column
         then Some (td ~at:[ class' "px-2"; class' "py-0" ] [ txt source ])
@@ -135,8 +135,8 @@ let grid_tmpl ~render_params left loc : El.t * SourceRanges.t event =
     | None -> E.never
     | Some loc ->
       E.select
-        [ Evr.on_el Ev.mouseover (fun _evt -> SourceRanges.of_source_range loc) tr
-        ; Evr.on_el Ev.mouseout (fun _evt -> SourceRanges.empty) tr
+        [ Evr.on_el Ev.mouseover (fun _evt -> Source_ranges.of_source_range loc) tr
+        ; Evr.on_el Ev.mouseout (fun _evt -> Source_ranges.empty) tr
         ]
   in
   tr, evt

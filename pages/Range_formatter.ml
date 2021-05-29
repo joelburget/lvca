@@ -6,7 +6,7 @@ open Lvca_util
 open Note
 open Stdio
 open Prelude
-module Format = Caml.Format
+module Format = Stdlib.Format
 
 type action =
   | Clear
@@ -21,7 +21,7 @@ type down_pos =
 type result =
   { elem : El.t
   ; formatter : Format.formatter
-  ; selection_e : SourceRanges.t event
+  ; selection_e : Source_ranges.t event
   }
 
 let do_action action elems =
@@ -32,7 +32,7 @@ let do_action action elems =
     (<code>) to be inserted in the Dom and the formatter which is used to write formatted
     text to this element. Note that the returned Dom element is empty until the formatter
     is used and flushed. *)
-let mk : ?clear:unit event -> selection_s:SourceRanges.t signal -> unit -> result =
+let mk : ?clear:unit event -> selection_s:Source_ranges.t signal -> unit -> result =
  fun ?(clear = E.never) ~selection_s:externally_selected_s () ->
   let br, div, span, txt = El.(br, div, span, txt) in
   let selection_e, set_selection = E.create () in
@@ -47,12 +47,12 @@ let mk : ?clear:unit event -> selection_s:SourceRanges.t signal -> unit -> resul
      every time we exit a tag - The queue is used to add elements (text and nested
      children) under this element - The range is the extent of this element, used to
      update the style when text is selected *)
-  let stack : (SourceRanges.t * El.t Queue.t) Stack.t = Stack.create () in
+  let stack : (Source_ranges.t * El.t Queue.t) Stack.t = Stack.create () in
   (* Every time we print a string (in add_text), enqueue the position attached
      to it. Record the indices for mousedown and mouseup events and take the
      union of every location in that range.
    *)
-  let positions : SourceRanges.t Queue.t = Queue.create () in
+  let positions : Source_ranges.t Queue.t = Queue.create () in
   let selection_start = ref NoDown in
   let add_at_current_level elem =
     match Stack.top stack with
@@ -64,9 +64,9 @@ let mk : ?clear:unit event -> selection_s:SourceRanges.t signal -> unit -> resul
   let selected_s =
     E.select
       [ S.changes externally_selected_s
-      ; internal_reset_e |> E.map (fun () -> SourceRanges.empty)
+      ; internal_reset_e |> E.map (fun () -> Source_ranges.empty)
       ]
-    |> S.hold ~eq:SourceRanges.( = ) SourceRanges.empty
+    |> S.hold ~eq:Source_ranges.( = ) Source_ranges.empty
   in
   let get_classes () =
     match Stack.top stack with
@@ -75,14 +75,14 @@ let mk : ?clear:unit event -> selection_s:SourceRanges.t signal -> unit -> resul
       selected_s
       |> S.map (fun selected_rng ->
              (* Highlight if this is a subset of the selected range *)
-             if SourceRanges.is_subset rng selected_rng
+             if Source_ranges.is_subset rng selected_rng
              then Some (Jstr.v "highlight")
              else None)
   in
   let get_data_range () =
     match Stack.top stack with
     | None -> "none"
-    | Some (rng, _) -> Fmt.to_to_string SourceRanges.pp rng
+    | Some (rng, _) -> Fmt.to_to_string Source_ranges.pp rng
   in
   let handle_mousedown text_pos _evt =
     Console.log [ Jstr.v "mousedown" ];
@@ -107,13 +107,13 @@ let mk : ?clear:unit event -> selection_s:SourceRanges.t signal -> unit -> resul
       Console.log [ Jstr.v "selected_str"; Jstr.v selected_str ];
       let rng =
         match selected_str with
-        | "" -> SourceRanges.empty
+        | "" -> Source_ranges.empty
         | _ ->
           let pos = Int.min up_pos down_pos in
           let len = Int.abs (up_pos - down_pos) in
-          positions |> Queue.to_list |> List.sub ~pos ~len |> SourceRanges.unions
+          positions |> Queue.to_list |> List.sub ~pos ~len |> Source_ranges.unions
       in
-      Console.log [ Jstr.v "rng"; rng |> Fmt.to_to_string SourceRanges.pp |> Jstr.v ];
+      Console.log [ Jstr.v "rng"; rng |> Fmt.to_to_string Source_ranges.pp |> Jstr.v ];
       set_selection rng;
       (* Clear the selection *)
       trigger_internal_reset ();
@@ -172,10 +172,10 @@ let mk : ?clear:unit event -> selection_s:SourceRanges.t signal -> unit -> resul
        encounter the matching close tag will be nested under it (by enqueuing). *)
     { mark_open_stag =
         (function
-        | SourceRanges.Stag rng ->
+        | Source_ranges.Stag rng ->
           Stdio.printf
             "RangeFormatter opening stag %s\n"
-            (Fmt.to_to_string SourceRanges.pp rng);
+            (Fmt.to_to_string Source_ranges.pp rng);
           Stack.push stack (rng, Queue.create ());
           ""
         | _ ->

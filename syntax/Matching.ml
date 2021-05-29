@@ -1,10 +1,10 @@
 open Base
 open Lvca_util
 module SMap = String.Map
-module Unordered = AbstractSyntax.Unordered
+module Unordered = Abstract_syntax.Unordered
 
 type ('info, 'rhs) cases = ('info Pattern.t * 'rhs) list
-type 'info env = 'info NonBinding.term Lvca_util.String.Map.t
+type 'info env = 'info Nonbinding.term Lvca_util.String.Map.t
 
 type 'info matrix_entry =
   { term_no : int
@@ -60,7 +60,7 @@ let sort_name = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
 
 let rec match_pattern tm pat =
   match tm, pat with
-  | NonBinding.Operator (_, op_name, subtms), Pattern.Operator (_, pat_name, subpats) ->
+  | Nonbinding.Operator (_, op_name, subtms), Pattern.Operator (_, pat_name, subpats) ->
     if String.(op_name = pat_name)
     then
       if List.length subtms = List.length subpats
@@ -113,7 +113,7 @@ let produce_sort_env lang sort =
         (Printf.sprintf
            "produce_sort_env: sort (%s) must be defined, not in externals"
            sort_name)
-    | _, Some (AbstractSyntax.SortDef.SortDef (ty_vars, _op_defs)) ->
+    | _, Some (Abstract_syntax.Sort_def.Sort_def (ty_vars, _op_defs)) ->
       let ty_vars = ty_vars |> List.map ~f:(fun (name, _kind) -> name) in
       (match List.zip ty_vars args with
       | List.Or_unequal_lengths.Unequal_lengths ->
@@ -135,7 +135,7 @@ let produce_sort_env lang sort =
 let get_children_concrete_sorts lang sort =
   let sort_env = produce_sort_env lang sort in
   let sort_name = sort_name sort in
-  let (AbstractSyntax.SortDef.SortDef (_ty_vars, op_defs)) =
+  let (Abstract_syntax.Sort_def.Sort_def (_ty_vars, op_defs)) =
     Map.find_exn lang.Unordered.sort_defs sort_name
   in
   op_defs
@@ -148,7 +148,7 @@ let get_children_concrete_sorts lang sort =
                     invariant_violation
                       (Printf.sprintf
                          "get_children_concrete_sorts: valence is not a simple sort: %s"
-                         (Fmt.to_to_string AbstractSyntax.Valence.pp v))
+                         (Fmt.to_to_string Abstract_syntax.Valence.pp v))
                   else Sort.instantiate sort_env body_sort)
          in
          name, subsorts)
@@ -243,7 +243,7 @@ let rec check_matrix lang sorts matrix =
       |> String.Set.of_list
     in
     let head_sort, sorts' = List.split_exn sorts in
-    let (AbstractSyntax.SortDef.SortDef (_ty_vars, op_defs)) =
+    let (Abstract_syntax.Sort_def.Sort_def (_ty_vars, op_defs)) =
       Map.find_exn lang.Unordered.sort_defs (sort_name head_sort)
     in
     let is_signature =
@@ -333,7 +333,7 @@ let rec compile_matrix lang sorts matrix =
           |> String.Set.of_list
         in
         let head_sort, tail_sorts = List.split_exn sorts in
-        let (AbstractSyntax.SortDef.SortDef (_ty_vars, op_defs)) =
+        let (Abstract_syntax.Sort_def.Sort_def (_ty_vars, op_defs)) =
           Map.find_exn lang.Unordered.sort_defs (sort_name head_sort)
         in
         (* is every constructor covered? *)
@@ -385,13 +385,13 @@ let run_matches tms tree =
         |> List.map ~f:(fun { term_no; name; path } ->
                match List.nth tms term_no with
                | Some tm ->
-                 (match NonBinding.select_path tm ~path with
+                 (match Nonbinding.select_path tm ~path with
                  | Error msg ->
                    failwith
                      (Printf.sprintf
                         "run_matches trying to select invalid path (%s) in term %s: %s"
                         (Fmt.to_to_string Path.pp path)
-                        (Fmt.to_to_string NonBinding.pp tm)
+                        (Fmt.to_to_string Nonbinding.pp tm)
                         msg)
                  | Ok tm -> name, tm)
                | None ->
@@ -413,12 +413,12 @@ let run_matches tms tree =
                |> List.map ~f:(Fmt.to_to_string pp_instruction)
                |> String.concat ~sep:", ")
                (tms
-               |> List.map ~f:(Fmt.to_to_string NonBinding.pp)
+               |> List.map ~f:(Fmt.to_to_string Nonbinding.pp)
                |> String.concat ~sep:", "))
       in
       Some (rhs, env)
     | [], _ -> invariant_violation "run_matches: empty pattern but not matched"
-    | NonBinding.Operator (_, op_name, subtms) :: tms', OperatorCases (branches, default)
+    | Nonbinding.Operator (_, op_name, subtms) :: tms', OperatorCases (branches, default)
       ->
       let branch =
         match Map.find branches op_name, default with
@@ -434,7 +434,7 @@ let run_matches tms tree =
       in
       go (subtms @ tms') branch
     | _, OperatorCases _ -> invariant_violation "OperatorCases matched with non-operator"
-    | NonBinding.Primitive prim :: tms', PrimCases branches ->
+    | Nonbinding.Primitive prim :: tms', PrimCases branches ->
       let found =
         branches
         |> List.find ~f:(fun (prim', _) ->
@@ -455,10 +455,10 @@ let run_matches tms tree =
 let run_match tm tree = run_matches [ tm ] tree
 
 module Properties = struct
-  type term = unit NonBinding.term
+  type term = unit Nonbinding.term
 
   let match_equivalent tm cases =
-    let tmeq = NonBinding.equal ~info_eq:Unit.( = ) in
+    let tmeq = Nonbinding.equal ~info_eq:Unit.( = ) in
     let ( = ) = Option.equal (Lvca_util.Tuple2.equal tmeq (Map.equal tmeq)) in
     let result1 = simple_find_match tm cases in
     let lang = failwith "TODO 5" in
@@ -466,7 +466,7 @@ module Properties = struct
     match compile_cases lang sort cases with
     | Ok decision_tree ->
       let result2 = run_match tm decision_tree in
-      if result1 = result2 then PropertyResult.Ok else Failed "match result not equal"
+      if result1 = result2 then Property_result.Ok else Failed "match result not equal"
     | Error _ -> failwith "TODO: error 9"
   ;;
 end
@@ -474,10 +474,10 @@ end
 module Parse = struct
   open Lvca_parsing
 
-  type 'info matrix_row = 'info matrix_entry list * 'info NonBinding.term
+  type 'info matrix_row = 'info matrix_entry list * 'info Nonbinding.term
 
   let branch =
-    lift3 (fun pat _ tm -> pat, tm) Pattern.Parse.t (string "->") NonBinding.Parse.term
+    lift3 (fun pat _ tm -> pat, tm) Pattern.Parse.t (string "->") Nonbinding.Parse.term
     <?> "branch"
   ;;
 
@@ -489,7 +489,7 @@ module Parse = struct
         List.mapi pats ~f:(fun term_no pattern -> { term_no; pattern; path = [] }), tm)
       (sep_by1 (char ',') Pattern.Parse.t)
       (string "->")
-      NonBinding.Parse.term
+      Nonbinding.Parse.term
     <?> "matrix_row"
   ;;
 
@@ -500,7 +500,7 @@ end
 
 let%test_module "Matching" =
   (module struct
-    let str_of_tm tm = Fmt.to_to_string NonBinding.pp tm
+    let str_of_tm tm = Fmt.to_to_string Nonbinding.pp tm
     let str_of_pat tm = Fmt.to_to_string Pattern.pp tm
 
     let str_of_env env =
@@ -517,7 +517,7 @@ let%test_module "Matching" =
     let run_simple_match branches_str tm_str =
       match
         ( Lvca_parsing.parse_string Parse.branches branches_str
-        , Lvca_parsing.parse_string NonBinding.Parse.whitespace_term tm_str )
+        , Lvca_parsing.parse_string Nonbinding.Parse.whitespace_term tm_str )
       with
       | Ok branches, Ok tm ->
         (match simple_find_match tm branches with
@@ -538,13 +538,13 @@ let%test_module "Matching" =
 
     let run_compiled_matches syntax_str sorts_str matrix_str tms_str =
       match
-        ( Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t syntax_str
+        ( Lvca_parsing.parse_string Abstract_syntax.Parse.whitespace_t syntax_str
         , Lvca_parsing.parse_string
             Lvca_parsing.(sep_by (char ',') Sort.Parse.t)
             sorts_str
         , Lvca_parsing.parse_string Parse.matrix_rows matrix_str
         , Lvca_parsing.parse_string
-            Lvca_parsing.(sep_by (char ',') NonBinding.Parse.whitespace_term)
+            Lvca_parsing.(sep_by (char ',') Nonbinding.Parse.whitespace_term)
             tms_str )
       with
       | Error syntax_msg, _, _, _ -> failwith ("syntax failed to parse: " ^ syntax_msg)
@@ -553,7 +553,7 @@ let%test_module "Matching" =
       | _, _, _, Error tm_msg -> failwith ("term failed to parse: " ^ tm_msg)
       | Ok syntax, Ok sorts, Ok matrix_rows, Ok tms ->
         let syntax =
-          match AbstractSyntax.mk_unordered syntax with
+          match Abstract_syntax.mk_unordered syntax with
           | `Ok syntax -> syntax
           | `Duplicate_key name -> failwith (Printf.sprintf "duplicate key: %s" name)
         in
@@ -633,7 +633,7 @@ let%test_module "Matching" =
 
     let print_check syntax_str sorts_str matrix_str =
       match
-        ( Lvca_parsing.parse_string AbstractSyntax.Parse.whitespace_t syntax_str
+        ( Lvca_parsing.parse_string Abstract_syntax.Parse.whitespace_t syntax_str
         , Lvca_parsing.parse_string
             Lvca_parsing.(sep_by (char ',') Sort.Parse.t)
             sorts_str
@@ -641,7 +641,7 @@ let%test_module "Matching" =
       with
       | Ok syntax, Ok sorts, Ok matrix ->
         let syntax =
-          match AbstractSyntax.mk_unordered syntax with
+          match Abstract_syntax.mk_unordered syntax with
           | `Ok syntax -> syntax
           | `Duplicate_key name -> failwith (Printf.sprintf "duplicate key: %s" name)
         in

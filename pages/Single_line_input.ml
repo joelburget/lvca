@@ -87,7 +87,7 @@ let mk ?(autofocus = false) ?highlights_s:(external_highlights_s = S.const []) i
   let keydown_evt =
     let handler evt =
       let keyboard_evt = Ev.as_type evt in
-      if WebUtil.is_enter keyboard_evt
+      if Web_util.is_enter keyboard_evt
       then (
         Ev.prevent_default evt;
         update_dirty false;

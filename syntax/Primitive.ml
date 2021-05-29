@@ -31,7 +31,7 @@ module Make (PlainBase : PlainBase_s) = struct
 
     let t =
       PlainBase.parse
-      >>|| fun (ParseResult.{ value; range; _ } as parse_result) ->
+      >>|| fun (Parse_result.{ value; range; _ } as parse_result) ->
       { parse_result with value = range, value }
     ;;
   end
@@ -190,35 +190,35 @@ let unjsonify json =
 module Properties = struct
   let ( = ) = equal ~info_eq:Unit.( = )
 
-  let json_round_trip1 : unit t -> PropertyResult.t =
+  let json_round_trip1 : unit t -> Property_result.t =
    fun t ->
     match t with
     | _, Plain.Float f when Base.Float.is_nan f -> Uninteresting
     | _ ->
       (match t |> jsonify |> unjsonify with
       | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
-      | Some t' -> PropertyResult.check (t' = t) (Fmt.str "%a <> %a" pp t' pp t))
+      | Some t' -> Property_result.check (t' = t) (Fmt.str "%a <> %a" pp t' pp t))
  ;;
 
-  let json_round_trip2 : Lvca_util.Json.t -> PropertyResult.t =
+  let json_round_trip2 : Lvca_util.Json.t -> Property_result.t =
    fun json ->
     match json |> unjsonify with
     | Some t ->
-      PropertyResult.check
+      Property_result.check
         Lvca_util.Json.(jsonify t = json)
         "jsonify t <> json (TODO: print)"
     | None -> Uninteresting
  ;;
 
-  let string_round_trip1 : unit t -> PropertyResult.t =
+  let string_round_trip1 : unit t -> Property_result.t =
    fun t ->
     match t |> to_string |> Lvca_parsing.parse_string Parse.t with
-    | Ok prim -> PropertyResult.check (erase prim = t) (Fmt.str "%a <> %a" pp prim pp t)
+    | Ok prim -> Property_result.check (erase prim = t) (Fmt.str "%a <> %a" pp prim pp t)
     | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
  ;;
 
   (* Note: +1 -> 1. If the first round-trip isn't equal, try once more. *)
-  let string_round_trip2 : string -> PropertyResult.t =
+  let string_round_trip2 : string -> Property_result.t =
    fun str ->
     match Lvca_parsing.parse_string Parse.t str with
     | Error _ -> Uninteresting
@@ -231,7 +231,7 @@ module Properties = struct
         | Error msg -> Failed msg
         | Ok prim' ->
           let str'' = to_string prim' in
-          PropertyResult.check
+          Property_result.check
             Base.String.(str'' = str')
             (Fmt.str {|"%s" <> "%s"|} str'' str'))
  ;;
@@ -245,7 +245,7 @@ let%test_module "Parsing" =
 
     let print_parse str =
       match Lvca_parsing.parse_string_pos Parse.t str with
-      | Ok { value = prim; range; _ } -> Fmt.pr "%a %a" pp prim OptRange.pp range
+      | Ok { value = prim; range; _ } -> Fmt.pr "%a %a" pp prim Opt_range.pp range
       | Error msg -> Fmt.pr "%s" msg
     ;;
 

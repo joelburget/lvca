@@ -143,7 +143,7 @@ term :=
 scope := Scope(list pattern; term)
 |}]
 
-module Properties (Lang : LanguageObject_intf.S) = struct
+module Properties (Lang : Language_object_intf.S) = struct
   (* check all generated functions equivalent *)
 end
 

@@ -15,7 +15,7 @@ let mk ?(autofocus = true) ?(border = true) ?(rows = None) ?(cols = 60) input_s 
     input_dirty_s
     |> S.map (function
            | true ->
-             (match WebUtil.platform_special_combo () with
+             (match Web_util.platform_special_combo () with
              | Some info_elems ->
                List.concat
                  [ [ txt "updated, press " ]; info_elems; [ txt " to re-evaluate)" ] ]
@@ -50,7 +50,7 @@ let mk ?(autofocus = true) ?(border = true) ?(rows = None) ?(cols = 60) input_s 
   let keydown_evt =
     let handler evt =
       let keyboard_evt = Ev.as_type evt in
-      if WebUtil.is_special_enter keyboard_evt
+      if Web_util.is_special_enter keyboard_evt
       then (
         Ev.prevent_default evt;
         update_input_dirty false;

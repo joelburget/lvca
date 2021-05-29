@@ -183,22 +183,22 @@ module AngstromStr = struct
   ;;
 end
 
-module ParseResult = struct
+module Parse_result = struct
   type 'a t =
     { value : 'a
-    ; range : OptRange.t
+    ; range : Opt_range.t
     }
 
-  let equal a_eq r1 r2 = a_eq r1.value r2.value && OptRange.(r1.range = r2.range)
+  let equal a_eq r1 r2 = a_eq r1.value r2.value && Opt_range.(r1.range = r2.range)
 
   let pp pp_a ppf { value; range } =
-    Fmt.pf ppf "{ value = %a; range = %a }" pp_a value OptRange.pp range
+    Fmt.pf ppf "{ value = %a; range = %a }" pp_a value Opt_range.pp range
   ;;
 end
 
-open ParseResult
+open Parse_result
 
-type +'a t = 'a ParseResult.t Angstrom.t
+type +'a t = 'a Parse_result.t Angstrom.t
 
 let parse_string_pos p str = Angstrom.parse_string ~consume:All p str
 
@@ -343,7 +343,7 @@ let ( <*> ) f_p a_p =
   >>== fun { value = f; range = range1 } ->
   a_p
   >>|| fun { value = a; range = range2 } ->
-  { value = f a; range = OptRange.union range1 range2 }
+  { value = f a; range = Opt_range.union range1 range2 }
 ;;
 
 let ( >>| ) p f = p >>| fun result -> { result with value = f result.value }
@@ -353,7 +353,7 @@ let ( >>= ) p f =
   >>= fun { value; range = range1 } ->
   f value
   >>= fun ({ range = range2; _ } as result) ->
-  return { result with range = OptRange.union range1 range2 }
+  return { result with range = Opt_range.union range1 range2 }
 ;;
 
 let whitespace =
@@ -389,7 +389,7 @@ let lift2 f a b =
   >>== fun { value = a_val; range = a_range } ->
   b
   >>|| fun { value = b_val; range = b_range } ->
-  { value = f a_val b_val; range = OptRange.union a_range b_range }
+  { value = f a_val b_val; range = Opt_range.union a_range b_range }
 ;;
 
 let lift3 f a b c =
@@ -399,7 +399,7 @@ let lift3 f a b c =
   >>== fun { value = b_val; range = b_range } ->
   c
   >>|| fun { value = c_val; range = c_range } ->
-  let range = OptRange.list_range [ a_range; b_range; c_range ] in
+  let range = Opt_range.list_range [ a_range; b_range; c_range ] in
   { value = f a_val b_val c_val; range }
 ;;
 
@@ -413,7 +413,7 @@ let lift4 f a b c d =
   d
   >>|| fun { value = d_val; range = d_range } ->
   { value = f a_val b_val c_val d_val
-  ; range = OptRange.list_range [ a_range; b_range; c_range; d_range ]
+  ; range = Opt_range.list_range [ a_range; b_range; c_range; d_range ]
   }
 ;;
 
@@ -432,7 +432,7 @@ let handle_list lst =
   match List.hd lst, List.last lst with
   | Some head, Some last ->
     { value = List.map lst ~f:(fun elem -> elem.value)
-    ; range = OptRange.union head.range last.range
+    ; range = Opt_range.union head.range last.range
     }
   | _, _ -> { value = []; range = None }
 ;;
@@ -464,7 +464,7 @@ let%test_module "Parsing" =
     let parse_print p pp str =
       match parse_string_pos p str with
       | Error msg -> Stdio.print_string msg
-      | Ok value -> ParseResult.pp pp Fmt.stdout value
+      | Ok value -> Parse_result.pp pp Fmt.stdout value
     ;;
 
     let pp_char ppf str = Fmt.pf ppf "%C" str
@@ -626,7 +626,7 @@ let%test_module "Parsing" =
           <* string "foo")
       in
       match parse str with
-      | Ok { range; _ } -> Fmt.pr "%a\n" OptRange.pp range
+      | Ok { range; _ } -> Fmt.pr "%a\n" Opt_range.pp range
       | _ -> Fmt.pr "not okay\n"
     ;;
 

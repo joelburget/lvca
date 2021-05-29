@@ -30,7 +30,7 @@ module Doc = Lang'.Doc
 let rec of_nonbinding tm =
   let open Result.Let_syntax in
   match tm with
-  | NonBinding.Operator (_, "line", []) -> Ok Lang'.Plain.Line
+  | Nonbinding.Operator (_, "line", []) -> Ok Lang'.Plain.Line
   | Operator (_, "nil", []) -> Ok Nil
   | Operator (_, "cat", [ d1; d2 ]) ->
     let%bind d1 = of_nonbinding d1 in
@@ -188,9 +188,9 @@ let%test_module _ =
 
     let space = [%lvca_nonbinding {|spacing(" ")|}]
     let line = [%lvca_nonbinding {|line()|}]
-    let text str = NonBinding.Operator (None, "text", [ Primitive (None, String str) ])
-    let cat l r = NonBinding.Operator (None, "cat", [ l; r ])
-    let alt l r = NonBinding.Operator (None, "alt", [ l; r ])
+    let text str = Nonbinding.Operator (None, "text", [ Primitive (None, String str) ])
+    let cat l r = Nonbinding.Operator (None, "cat", [ l; r ])
+    let alt l r = Nonbinding.Operator (None, "alt", [ l; r ])
 
     let cats lst =
       let init = List.last_exn lst in
@@ -203,7 +203,7 @@ let%test_module _ =
     let vsep = sep_list ~sep:line
     let hsep = sep_list ~sep:space
     let counting_list n = List.init n ~f:(fun i -> i |> Int.to_string |> text)
-    let align docs = NonBinding.Operator (None, "align", [ docs ])
+    let align docs = Nonbinding.Operator (None, "align", [ docs ])
 
     let%expect_test _ =
       let tm =

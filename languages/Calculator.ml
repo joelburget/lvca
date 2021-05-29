@@ -3,7 +3,7 @@ open Lvca_syntax
 open Lvca_provenance
 open Stdio
 
-type term = OptRange.t NonBinding.term
+type term = Opt_range.t Nonbinding.term
 
 let binary_operators = [ "add"; "sub"; "mul"; "div"; "max"; "min" ]
 
@@ -16,7 +16,7 @@ let constants = [ "pi"; "e" ]
 module Parse = struct
   open Lvca_parsing
 
-  let lit : OptRange.t NonBinding.term Lvca_parsing.t =
+  let lit : Opt_range.t Nonbinding.term Lvca_parsing.t =
     (* TODO: this fails on too-large float lits *)
     integer_or_float_lit
     >>|| fun { value = lit; range } ->
@@ -25,7 +25,7 @@ module Parse = struct
       | Either.First str -> range, Primitive.Plain.Integer (Z.of_string str)
       | Either.Second f -> range, Float f
     in
-    let tm = NonBinding.Operator (range, "lit", [ Primitive lit ]) in
+    let tm = Nonbinding.Operator (range, "lit", [ Primitive lit ]) in
     { value = tm; range }
   ;;
 
@@ -34,7 +34,7 @@ module Parse = struct
     |> List.map ~f:string
     |> choice
     >>|| fun { value = name; range } ->
-    { value = NonBinding.Operator (range, name, []); range }
+    { value = Nonbinding.Operator (range, name, []); range }
   ;;
 
   (* Precedence:
@@ -53,8 +53,8 @@ module Parse = struct
                  >>== fun { value = name; range = p1; _ } ->
                  atom
                  >>| fun body ->
-                 let pos = OptRange.union p1 (NonBinding.info body) in
-                 NonBinding.Operator (pos, name, [ body ]))
+                 let pos = Opt_range.union p1 (Nonbinding.info body) in
+                 Nonbinding.Operator (pos, name, [ body ]))
           |> choice
         in
         let application =
@@ -63,8 +63,8 @@ module Parse = struct
             >>== fun { value = name; range = p1; _ } ->
             lift2
               (fun atom1 atom2 ->
-                let pos = OptRange.union p1 (NonBinding.info atom2) in
-                NonBinding.Operator (pos, name, [ atom1; atom2 ]))
+                let pos = Opt_range.union p1 (Nonbinding.info atom2) in
+                Nonbinding.Operator (pos, name, [ atom1; atom2 ]))
               atom
               atom
           in
@@ -74,10 +74,10 @@ module Parse = struct
         let mul_div : term Lvca_parsing.t =
           let op = char '*' <|> char '/' in
           let f l (op, r) =
-            let rng = OptRange.union (NonBinding.info l) (NonBinding.info r) in
+            let rng = Opt_range.union (Nonbinding.info l) (Nonbinding.info r) in
             match op with
-            | '*' -> NonBinding.Operator (rng, "mul", [ l; r ])
-            | '/' -> NonBinding.Operator (rng, "div", [ l; r ])
+            | '*' -> Nonbinding.Operator (rng, "mul", [ l; r ])
+            | '/' -> Nonbinding.Operator (rng, "div", [ l; r ])
             | _ -> failwith "error: impossible operator"
           in
           application >>= fun init -> many (pair op application) >>| List.fold ~init ~f
@@ -85,10 +85,10 @@ module Parse = struct
         let add_sub : term Lvca_parsing.t =
           let op = char '+' <|> char '-' in
           let f l (op, r) =
-            let rng = OptRange.union (NonBinding.info l) (NonBinding.info r) in
+            let rng = Opt_range.union (Nonbinding.info l) (Nonbinding.info r) in
             match op with
-            | '+' -> NonBinding.Operator (rng, "add", [ l; r ])
-            | '-' -> NonBinding.Operator (rng, "sub", [ l; r ])
+            | '+' -> Nonbinding.Operator (rng, "add", [ l; r ])
+            | '-' -> Nonbinding.Operator (rng, "sub", [ l; r ])
             | _ -> failwith "error: impossible operator"
           in
           mul_div >>= fun init -> many (pair op mul_div) >>| List.fold ~init ~f
@@ -98,14 +98,15 @@ module Parse = struct
   ;;
 end
 
-let rec interpret : term -> (ConstructiveReal.t, term * string) Result.t =
+let rec interpret : term -> (Constructive_real.t, term * string) Result.t =
  fun tm ->
   let open Result.Let_syntax in
   match tm with
-  | Operator (_, "lit", [ Primitive (_, Integer i) ]) -> Ok (ConstructiveReal.of_bigint i)
-  | Operator (_, "lit", [ Primitive (_, Float f) ]) -> Ok (ConstructiveReal.of_float f)
+  | Operator (_, "lit", [ Primitive (_, Integer i) ]) ->
+    Ok (Constructive_real.of_bigint i)
+  | Operator (_, "lit", [ Primitive (_, Float f) ]) -> Ok (Constructive_real.of_float f)
   | Operator (_, name, []) when List.mem constants name ~equal:String.equal ->
-    ConstructiveReal.(
+    Constructive_real.(
       (match name with
       | "e" -> Ok e
       | "pi" -> Ok pi
@@ -114,7 +115,7 @@ let rec interpret : term -> (ConstructiveReal.t, term * string) Result.t =
     ->
     let%bind l' = interpret l in
     let%bind r' = interpret r in
-    ConstructiveReal.(
+    Constructive_real.(
       (match name with
       | "add" -> Ok (l' + r')
       | "sub" -> Ok (l' - r')
@@ -125,7 +126,7 @@ let rec interpret : term -> (ConstructiveReal.t, term * string) Result.t =
       | _ -> Error (tm, "expected a binary operator")))
   | Operator (_, name, [ x ]) when List.mem unary_operators name ~equal:String.equal ->
     let%bind x' = interpret x in
-    ConstructiveReal.(
+    Constructive_real.(
       (match name with
       | "negate" -> Ok (negate x')
       | "sqrt" -> Ok (sqrt x')
@@ -171,7 +172,7 @@ let%test_module "Evaluation" =
       | Ok tm ->
         (match interpret tm with
         | Error (_tm, msg) -> print_endline msg
-        | Ok real -> print_endline @@ ConstructiveReal.eval_to_string real)
+        | Ok real -> print_endline @@ Constructive_real.eval_to_string real)
     ;;
 
     let%expect_test _ =

@@ -1,24 +1,24 @@
-module type AllTermS = LanguageObject_intf.S
+module type All_term_s = Language_object_intf.S
 
-(* TODO: we could generalize NonBindingTermS and BindingTermS by making them a
+(* TODO: we could generalize Non_binding_term_s and Binding_term_s by making them a
    functor taking the term type and changing the names to to_term and of_term.
    Or returning an Either.
    *)
-module type NonBindingTermS = sig
-  include LanguageObject_intf.S
+module type Non_binding_term_s = sig
+  include Language_object_intf.S
 
-  val of_nonbinding : 'info NonBinding.term -> ('info t, 'info NonBinding.term) Result.t
-  val to_nonbinding : 'info t -> 'info NonBinding.term
+  val of_nonbinding : 'info Nonbinding.term -> ('info t, 'info Nonbinding.term) Result.t
+  val to_nonbinding : 'info t -> 'info Nonbinding.term
 end
 
-module type BindingTermS = sig
-  include LanguageObject_intf.S
+module type Binding_term_s = sig
+  include Language_object_intf.S
 
   val to_nominal : 'info t -> 'info Nominal.Term.t
   val of_nominal : 'info Nominal.Term.t -> ('info t, 'info Nominal.Term.t) Result.t
 end
 
-module type ExtendedTermS = sig
+module type Extended_term_s = sig
   type 'a t
 
   val erase : _ t -> unit t
@@ -46,10 +46,10 @@ module type ExtendedTermS = sig
   val hash : _ t -> string
 
   module Parse : sig
-    val whitespace_t : Lvca_provenance.OptRange.t t Lvca_parsing.t
+    val whitespace_t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
   end
 end
 
-module Mk (Object : BindingTermS) : ExtendedTermS with type 'info t = 'info Object.t
+module Mk (Object : Binding_term_s) : Extended_term_s with type 'info t = 'info Object.t
 
 module type Properties = Properties_intf.S

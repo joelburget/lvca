@@ -97,16 +97,16 @@ let rec select_path ~path tm =
 module Parse = struct
   open Lvca_parsing
 
-  let term : OptRange.t term Lvca_parsing.t =
+  let term : Opt_range.t term Lvca_parsing.t =
     fix (fun term ->
         choice
           [ (Primitive.Parse.t >>| fun prim -> Primitive prim)
           ; (identifier
-            >>== fun ParseResult.{ value = ident; range = start; _ } ->
+            >>== fun Parse_result.{ value = ident; range = start; _ } ->
             parens (sep_end_by (char ';') term)
-            >>|| (fun ParseResult.{ value = children; range = finish } ->
-                   let pos = OptRange.union start finish in
-                   ParseResult.{ value = Operator (pos, ident, children); range = pos })
+            >>|| (fun Parse_result.{ value = children; range = finish } ->
+                   let pos = Opt_range.union start finish in
+                   Parse_result.{ value = Operator (pos, ident, children); range = pos })
             <?> "term body")
           ])
     <?> "term"
