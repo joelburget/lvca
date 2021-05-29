@@ -19,7 +19,7 @@ module type Binding_term_s = sig
 end
 
 module type Extended_term_s = sig
-  type 'a t
+  include All_term_s
 
   val erase : _ t -> unit t
   val pp : _ t Fmt.t
@@ -43,7 +43,7 @@ end
 
 module Mk (Object : Binding_term_s) : Extended_term_s with type 'info t = 'info Object.t =
 struct
-  type 'info t = 'info Object.t
+  include Object
 
   let erase tm = Object.map_info ~f:(fun _ -> ()) tm
 

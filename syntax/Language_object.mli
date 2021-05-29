@@ -19,7 +19,7 @@ module type Binding_term_s = sig
 end
 
 module type Extended_term_s = sig
-  type 'a t
+  include All_term_s
 
   val erase : _ t -> unit t
   val pp : _ t Fmt.t
