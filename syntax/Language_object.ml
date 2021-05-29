@@ -66,7 +66,7 @@ struct
 
   let unjsonify json =
     let open Option.Let_syntax in
-    let%bind nom = json |> Nominal.Term.unjsonify in
+    let%bind nom = Nominal.Term.unjsonify json in
     match Object.of_nominal nom with Ok tm -> Some tm | Error _ -> None
   ;;
 

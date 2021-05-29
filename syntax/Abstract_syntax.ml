@@ -3,12 +3,7 @@
 open Base
 open Lvca_util
 
-let test_parse_with : 'a Lvca_parsing.t -> string -> 'a =
- fun p str ->
-  match Lvca_parsing.parse_string p str with
-  | Ok value -> value
-  | Error msg -> failwith msg
-;;
+let test_parse_with p str = Lvca_parsing.parse_string p str |> Result.ok_or_failwith
 
 module Kind = struct
   type 'info t = Kind of 'info * int
