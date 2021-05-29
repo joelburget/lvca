@@ -1,11 +1,12 @@
-(** Pattern matching. See Maranget's "Compiling pattern matching to good decision trees". *)
 (* TODO: add heuristics *)
+(** Pattern matching. See Maranget's "Compiling pattern matching to good decision trees". *)
+open Lvca_util
 
 (** The cases in a pattern match (matching one term). *)
 type ('info, 'rhs) cases = ('info Pattern.t * 'rhs) list
 
 (** The terms bound by a pattern match. *)
-type 'info env = 'info NonBinding.term Lvca_util.String.Map.t
+type 'info env = 'info NonBinding.term String.Map.t
 
 (** An entry in a pattern matching matrix (matching multiple terms simultaneously). *)
 type 'info matrix_entry =
@@ -30,8 +31,7 @@ val pp_instruction : binding_instruction Fmt.t
 
 type ('info, 'rhs) decision_tree =
   | OperatorCases of
-      ('info, 'rhs) decision_tree Lvca_util.String.Map.t
-      * ('info, 'rhs) decision_tree option
+      ('info, 'rhs) decision_tree String.Map.t * ('info, 'rhs) decision_tree option
   | PrimCases of ('info Primitive.t option * ('info, 'rhs) decision_tree) list
   | Matched of binding_instruction list * 'rhs
   | Swap of int * ('info, 'rhs) decision_tree

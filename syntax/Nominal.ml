@@ -1,9 +1,7 @@
 open Base
 open Stdio
 open Lvca_provenance
-module Util = Lvca_util
-module Json = Util.Json
-module String = Util.String
+open Lvca_util
 
 module Types = struct
   type 'info term =
@@ -95,7 +93,7 @@ module PpGeneric = struct
 end
 
 module Jsonify = struct
-  let array_map f = Util.(Base.List.map ~f >> Array.of_list >> Json.array)
+  let array_map f = Base.List.map ~f >> Array.of_list >> Json.array
 
   let rec term tm =
     let array, string = Json.(array, string) in
@@ -130,7 +128,7 @@ module Unjsonify = struct
       | Array [||] -> None
       | Array arr ->
         let open Option.Let_syntax in
-        let binders, body = arr |> Array.to_list |> Lvca_util.List.unsnoc in
+        let binders, body = arr |> Array.to_list |> List.unsnoc in
         let%bind binders' = binders |> List.map ~f:Pattern.unjsonify |> Option.all in
         let%map body' = term body in
         Types.Scope (binders', body')
@@ -201,9 +199,9 @@ module Term = struct
 
   let pp_str tm = Fmt.to_to_string pp tm
   let erase tm = map_info ~f:(fun _ -> ()) tm
-  let serialize tm = tm |> jsonify |> Util.Cbor.encode
-  let deserialize buf = buf |> Util.Cbor.decode |> Option.bind ~f:unjsonify
-  let hash tm = tm |> serialize |> Lvca_util.Sha256.hash
+  let serialize tm = tm |> jsonify |> Cbor.encode
+  let deserialize buf = buf |> Cbor.decode |> Option.bind ~f:unjsonify
+  let hash tm = tm |> serialize |> Sha256.hash
 
   let rec match_pattern ~info_eq pat tm =
     match pat, tm with
@@ -219,8 +217,7 @@ module Term = struct
         | Ok zipped ->
           (match String.Map.join_helper zipped with
           | `Ok result -> result
-          | `Duplicate_key k ->
-            Lvca_util.invariant_violation ~here:[%here] ("duplicate key: " ^ k))
+          | `Duplicate_key k -> invariant_violation ~here:[%here] ("duplicate key: " ^ k))
         | Unequal_lengths -> None)
       else None
     | _ -> None
@@ -315,7 +312,7 @@ module Term = struct
                     sort_name))
           | Some (sort_vars, OperatorDef (_, arity)) ->
             (* TODO: kind check *)
-            let sort_vars = sort_vars |> List.map ~f:Util.Tuple2.get1 in
+            let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
             let sort_env = String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in
             let concrete_arity = AbstractSyntax.Arity.instantiate sort_env arity in
             check_slots var_sorts concrete_arity op_scopes)
@@ -372,10 +369,7 @@ module Term = struct
         | Ok binders_env ->
           (match String.Map.strict_unions binders_env with
           | `Ok binders_env (* check every term in body for an error *) ->
-            check_term
-              (Lvca_util.Map.union_right_biased var_sorts binders_env)
-              body_sort
-              body
+            check_term (Map.union_right_biased var_sorts binders_env) body_sort body
           | `Duplicate_key k ->
             Some
               (CheckFailure.err
@@ -429,7 +423,7 @@ module Term = struct
           let slot =
             sep_by1 (char '.') term
             >>== fun ParseResult.{ value; range; _ } ->
-            let binders, tm = Lvca_util.List.unsnoc value in
+            let binders, tm = List.unsnoc value in
             match binders |> List.map ~f:to_pattern |> Result.all with
             | Error _ -> fail "Unexpectedly found a variable binding in pattern position"
             | Ok binders -> return ~range (Types.Scope (binders, tm))
@@ -468,9 +462,7 @@ module Term = struct
       match json |> unjsonify with
       | None -> Uninteresting
       | Some t ->
-        PropertyResult.check
-          Lvca_util.Json.(jsonify t = json)
-          "jsonify t <> json (TODO: print)"
+        PropertyResult.check Json.(jsonify t = json) "jsonify t <> json (TODO: print)"
     ;;
 
     let string_round_trip1 t =

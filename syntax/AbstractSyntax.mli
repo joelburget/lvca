@@ -1,11 +1,13 @@
+open Lvca_util
+
 (** Types for describing the abstract syntax of a language. *)
 
 (** A mapping from the name of a sort to its arity -- the number of arguments it takes. *)
-type kind_map = int Lvca_util.String.Map.t
+type kind_map = int String.Map.t
 
 (** A mapping from the name of a sort to the different arities it was asserted or infered
     to have. *)
-type kind_mismap = Lvca_util.Int.Set.t Lvca_util.String.Map.t
+type kind_mismap = Int.Set.t String.Map.t
 
 (** The kind of a sort is the number of arguments it takes. Invariant: must be a natural
     number. *)
@@ -36,7 +38,7 @@ module PatternSort : sig
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val pp : _ t Fmt.t
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
-  val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
+  val instantiate : 'info Sort.t String.Map.t -> 'info t -> 'info t
 end
 
 (** Represents a place where a sort can go in a valence. *)
@@ -49,14 +51,10 @@ module SortSlot : sig
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val pp : _ t Fmt.t
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
-
-  val kind_check
-    :  Lvca_util.Int.Set.t Lvca_util.String.Map.t
-    -> 'info t
-    -> Lvca_util.Int.Set.t Lvca_util.String.Map.t
+  val kind_check : Int.Set.t String.Map.t -> 'info t -> Int.Set.t String.Map.t
 
   (** Instantiate concrete vars in a sort *)
-  val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
+  val instantiate : 'info Sort.t String.Map.t -> 'info t -> 'info t
 
   module Parse : sig
     val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
@@ -74,7 +72,7 @@ module Valence : sig
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   (** Instantiate concrete vars in a valence *)
-  val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
+  val instantiate : 'info Sort.t String.Map.t -> 'info t -> 'info t
 
   module Parse : sig
     val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
@@ -92,7 +90,7 @@ module Arity : sig
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   (** Instantiate concrete vars in an arity *)
-  val instantiate : 'info Sort.t Lvca_util.String.Map.t -> 'info t -> 'info t
+  val instantiate : 'info Sort.t String.Map.t -> 'info t -> 'info t
 
   module Parse : sig
     val t : Lvca_provenance.OptRange.t t Lvca_parsing.t
@@ -130,11 +128,7 @@ module SortDef : sig
     -> name:string
     -> 'info t Fmt.t
 
-  val kind_check
-    :  Lvca_util.Int.Set.t Lvca_util.String.Map.t
-    -> string
-    -> 'info t
-    -> Lvca_util.Int.Set.t Lvca_util.String.Map.t
+  val kind_check : Int.Set.t String.Map.t -> string -> 'info t -> Int.Set.t String.Map.t
 
   module Parse : sig
     val t : (string * Lvca_provenance.OptRange.t t) Lvca_parsing.t
@@ -153,8 +147,8 @@ module Unordered : sig
   (** The same as [t] but definition order is not significant (this is a map rather than a
       list). *)
   type 'info t =
-    { externals : 'info Kind.t Lvca_util.String.Map.t
-    ; sort_defs : 'info SortDef.t Lvca_util.String.Map.t
+    { externals : 'info Kind.t String.Map.t
+    ; sort_defs : 'info SortDef.t String.Map.t
     }
 end
 

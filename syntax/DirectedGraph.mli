@@ -1,3 +1,5 @@
+open Lvca_util
+
 module type Key_intf = sig
   type t
 
@@ -21,25 +23,25 @@ module Int : sig
       }
   end
 
-  val graph_of_adjacency : int list list -> int list Lvca_util.Int.Map.t
+  val graph_of_adjacency : int list list -> int list Int.Map.t
 
   (** Given an adjacency list, give the SCCs. *)
-  val connected_components : int list Lvca_util.Int.Map.t -> ConnectedComponents.t
+  val connected_components : int list Int.Map.t -> ConnectedComponents.t
 
   (** Given an SCC numbering (see [connected_components]), return SCCs, each represented
       as a set of nodes contained in it. *)
-  val make_sets : int list -> Lvca_util.Int.Set.t Lvca_util.Int.Map.t
+  val make_sets : int list -> Int.Set.t Int.Map.t
 
   (** The composition of [connected_components] and [make_sets]. *)
   val connected_component_sets
-    :  int list Lvca_util.Int.Map.t
-    -> Lvca_util.Int.Set.t Lvca_util.Int.Map.t
+    :  int list Int.Map.t
+    -> Int.Set.t Int.Map.t
 
   (** Topologically sort a graph given as an adjacency list. *)
-  val topsort_exn : int list Lvca_util.Int.Map.t -> int list
+  val topsort_exn : int list Int.Map.t -> int list
 
   (** Topologically sort a graph given as an adjacency list. *)
-  val topsort : int list Lvca_util.Int.Map.t -> int list option
+  val topsort : int list Int.Map.t -> int list option
 end
 
 module Make (Key : Key_intf) : sig

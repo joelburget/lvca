@@ -5,6 +5,7 @@
     - [eval] is used to evaluate a core term *)
 
 open Lvca_provenance
+open Lvca_util
 
 (** {1 Types} *)
 type 'info n_term = 'info Lvca_syntax.Nominal.Term.t
@@ -47,14 +48,14 @@ val to_string : _ term -> string
 
 (** {1 Checking} *)
 
-type 'info check_env = 'info Lvca_syntax.Sort.t Lvca_util.String.Map.t
+type 'info check_env = 'info Lvca_syntax.Sort.t String.Map.t
 type 'info check_error
 
 val check : 'info check_env -> 'info term -> 'info check_error option
 
 (** {1 Evaluation} *)
 
-type 'info env = 'info n_term Lvca_util.String.Map.t
+type 'info env = 'info n_term String.Map.t
 type 'info eval_error = string * 'info term
 
 type 'info primitive_eval =

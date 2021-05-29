@@ -1,5 +1,6 @@
 open Base
 open Lvca_syntax
+open Lvca_util
 
 module TypingRule = struct
   type 'info t =
@@ -75,7 +76,7 @@ end
 exception StaticsParseError of string
 
 module Hypothesis = struct
-  type 'info t = 'info BindingAwarePattern.t Lvca_util.String.Map.t * 'info TypingClause.t
+  type 'info t = 'info BindingAwarePattern.t String.Map.t * 'info TypingClause.t
 
   let equal ~info_eq (m1, c1) (m2, c2) =
     Map.equal (BindingAwarePattern.equal ~info_eq) m1 m2
@@ -104,13 +105,13 @@ module Hypothesis = struct
              >>= fun _ ->
              sep_by1 (char ',') typed_term
              >>= fun ctx_entries ->
-             match Lvca_util.String.Map.of_alist ctx_entries with
+             match String.Map.of_alist ctx_entries with
              | `Ok context -> return context
              | `Duplicate_key str ->
                raise
                  (StaticsParseError (Printf.sprintf "duplicate name in context: %s" str))
              )
-           ; return Lvca_util.String.Map.empty
+           ; return String.Map.empty
            ]
       <?> "context"
     ;;

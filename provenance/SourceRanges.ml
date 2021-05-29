@@ -1,6 +1,7 @@
 open Base
+open Lvca_util
 
-type t = Ranges.t Lvca_util.String.Map.t
+type t = Ranges.t String.Map.t
 type Stdlib.Format.stag += Stag of t
 
 let pp' ppf (buf, ranges) = Fmt.pf ppf "%s:%a" buf Ranges.pp ranges
@@ -13,9 +14,9 @@ let union x y =
     | `Left v | `Right v -> Some v | `Both (v1, v2) -> Some (Ranges.union v1 v2))
 ;;
 
-let empty = Lvca_util.String.Map.empty
+let empty = String.Map.empty
 let unions lst = Base.List.fold lst ~f:union ~init:empty
-let mk buf p1 p2 = Lvca_util.String.Map.singleton buf (Ranges.of_list [ Range.mk p1 p2 ])
+let mk buf p1 p2 = String.Map.singleton buf (Ranges.of_list [ Range.mk p1 p2 ])
 let of_range ~buf Range.{ start; finish } = mk buf start finish
 let of_source_range SourceRange.{ source; range } = of_range ~buf:source range
 let of_opt_range ~buf = function Some range -> of_range ~buf range | None -> empty
@@ -25,12 +26,12 @@ let is_subset p1 p2 =
       match Map.find p2 key with None -> false | Some r2 -> Ranges.is_subset r1 r2)
 ;;
 
-let intersect p1 p2 = Lvca_util.String.Map.intersect p1 p2 ~f:Ranges.intersect
+let intersect p1 p2 = String.Map.intersect p1 p2 ~f:Ranges.intersect
 
 let restrict ~buf p =
   match Map.find p buf with
   | None -> empty
-  | Some ranges -> Lvca_util.String.Map.singleton buf ranges
+  | Some ranges -> String.Map.singleton buf ranges
 ;;
 
 let stag_functions =

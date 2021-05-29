@@ -1,9 +1,7 @@
 (** Types for representing languages *)
 
 open Base
-module SMap = Lvca_util.String.Map
-module Tuple2 = Lvca_util.Tuple2
-module ISet = Lvca_util.Int.Set
+open Lvca_util
 
 let test_parse_with : 'a Lvca_parsing.t -> string -> 'a =
  fun p str ->
@@ -178,7 +176,7 @@ module Valence = struct
       let t' =
         sep_by1 (char '.') ParseSortSlot.t
         >>= fun slots ->
-        let binders, body_slot = Lvca_util.List.unsnoc slots in
+        let binders, body_slot = List.unsnoc slots in
         match body_slot with
         | SortSlot.SortBinding body_sort -> return (Valence (binders, body_sort))
         | _ ->
@@ -325,7 +323,7 @@ module SortDef = struct
   let kind_check env sort_name (SortDef (vars, operators)) =
     let update_env env name n =
       Map.update env name ~f:(function
-          | None -> ISet.singleton n
+          | None -> Int.Set.singleton n
           | Some set -> Set.add set n)
     in
     let env = update_env env sort_name (List.length vars) in
@@ -489,13 +487,13 @@ type 'info t =
 
 module Unordered = struct
   type 'info t =
-    { externals : 'info Kind.t SMap.t
-    ; sort_defs : 'info SortDef.t SMap.t
+    { externals : 'info Kind.t String.Map.t
+    ; sort_defs : 'info SortDef.t String.Map.t
     }
 end
 
 let mk_unordered { externals; sort_defs } =
-  match SMap.of_alist externals, SMap.of_alist sort_defs with
+  match String.Map.of_alist externals, String.Map.of_alist sort_defs with
   | `Ok externals, `Ok sort_defs -> `Ok Unordered.{ externals; sort_defs }
   | `Duplicate_key k, _ | _, `Duplicate_key k -> `Duplicate_key k
 ;;
@@ -540,15 +538,15 @@ let pp_generic ~open_loc ~close_loc ppf { externals; sort_defs } =
 
 let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
-type kind_map = int SMap.t
-type kind_mismap = ISet.t SMap.t
+type kind_map = int String.Map.t
+type kind_mismap = Int.Set.t String.Map.t
 
 let kind_check { externals; sort_defs } =
   let env =
     externals
     |> List.map ~f:(fun (name, Kind (_, n)) -> name, n)
-    |> SMap.of_alist_exn
-    |> Map.map ~f:ISet.singleton
+    |> String.Map.of_alist_exn
+    |> Map.map ~f:Int.Set.singleton
   in
   let mismap =
     sort_defs
@@ -564,8 +562,8 @@ let kind_check { externals; sort_defs } =
            | _ -> Either.Second (name, mismap))
   in
   match mismapped_vars with
-  | [] -> Ok (SMap.of_alist_exn fine_vars)
-  | _ -> Error (SMap.of_alist_exn mismapped_vars)
+  | [] -> Ok (String.Map.of_alist_exn fine_vars)
+  | _ -> Error (String.Map.of_alist_exn mismapped_vars)
 ;;
 
 module Parse = struct

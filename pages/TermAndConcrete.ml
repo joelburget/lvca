@@ -2,10 +2,10 @@ open Base
 open Common
 open Lvca_provenance
 open Lvca_syntax
+open Lvca_util
 open Brr
 open Note
 open Prelude
-module Tuple2 = Lvca_util.Tuple2
 module ParseResult = Lvca_parsing.ParseResult
 
 module Model = struct

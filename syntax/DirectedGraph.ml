@@ -1,5 +1,7 @@
 open Base
-module ISet = Lvca_util.Int.Set
+open Lvca_util
+module ISet = Int.Set
+module IMap = Int.Map
 
 module type Key_intf = sig
   type t
@@ -29,7 +31,7 @@ module Int = struct
   end
 
   let graph_of_adjacency =
-    Lvca_util.(Base.List.mapi ~f:(fun i v -> i, v) >> Map.of_alist_exn (module Base.Int))
+    Base.List.mapi ~f:(fun i v -> i, v) >> Map.of_alist_exn (module Base.Int)
   ;;
 
   (* Tarjan's algorithm *)
@@ -79,7 +81,7 @@ module Int = struct
   ;;
 
   let make_sets numbered =
-    numbered |> pre_make_sets |> Hashtbl.to_alist |> Lvca_util.Int.Map.of_alist_exn
+    numbered |> pre_make_sets |> Hashtbl.to_alist |> Int.Map.of_alist_exn
   ;;
 
   let connected_component_sets connections =
@@ -129,8 +131,8 @@ module Make (Key : Key_intf) = struct
 
   module ConnectedComponents = struct
     type t =
-      { scc_graph : int list Lvca_util.Int.Map.t
-      ; sccs : (Key.t, Key.comparator_witness) Base.Set.t Lvca_util.Int.Map.t
+      { scc_graph : int list IMap.t
+      ; sccs : (Key.t, Key.comparator_witness) Base.Set.t IMap.t
       }
   end
 

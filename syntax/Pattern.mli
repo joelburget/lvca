@@ -1,4 +1,5 @@
 (** Patterns for matching non-binding terms. *)
+open Lvca_util
 
 type 'info t =
   | Operator of 'info * string * 'info t list
@@ -21,7 +22,7 @@ val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
 (** {1 Vars} *)
 
 (** A set of all the variables bound in a pattern. *)
-val vars_of_pattern : _ t -> Lvca_util.String.Set.t
+val vars_of_pattern : _ t -> String.Set.t
 
 (** A list of all the variables bound in a pattern. Why have this when [vars_of_pattern]
     exists? Because in a list we can also include the info for each var (which we can't do
@@ -37,8 +38,8 @@ val pp_ranges : Lvca_provenance.SourceRanges.t t Fmt.t
 
 (** {1 Serialization} *)
 
-val jsonify : 'info t Lvca_util.Json.serializer
-val unjsonify : unit t Lvca_util.Json.deserializer
+val jsonify : 'info t Json.serializer
+val unjsonify : unit t Json.deserializer
 
 (** {1 Info} *)
 
@@ -79,7 +80,7 @@ val check
   -> pattern_sort:'info Sort.t (** Sort to check pattern against *)
   -> var_sort:'info Sort.t (** Sort pattern must yield as variables *)
   -> 'info t
-  -> ('info Sort.t Lvca_util.String.Map.t, ('info, 'info t) CheckFailure.t) Result.t
+  -> ('info Sort.t String.Map.t, ('info, 'info t) CheckFailure.t) Result.t
 
 (** {1 Parsing} *)
 

@@ -2,6 +2,7 @@
 
     We don't allow higher-order sorts. In other words, no functions at the sort level. In
     other words, the head of an application is always concrete. *)
+open Lvca_util
 
 type 'info t =
   | Ap of 'info * string * 'info t list (** A higher-kinded sort can be applied *)
@@ -19,15 +20,11 @@ val equal : ('info -> 'info -> bool) -> 'info t -> 'info t -> bool
 val info : 'info t -> 'info
 val pp : _ t Fmt.t
 val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
-val instantiate : 'info t Lvca_util.String.Map.t -> 'info t -> 'info t
+val instantiate : 'info t String.Map.t -> 'info t -> 'info t
 val map_info : f:('a -> 'b) -> 'a t -> 'b t
 val erase_info : _ t -> unit t
 val split : 'info t -> string * 'info t list
-
-val kind_check
-  :  Lvca_util.Int.Set.t Lvca_util.String.Map.t
-  -> 'info t
-  -> Lvca_util.Int.Set.t Lvca_util.String.Map.t
+val kind_check : Int.Set.t String.Map.t -> 'info t -> Int.Set.t String.Map.t
 
 (* TODO: remove? *)
 (*

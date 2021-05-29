@@ -3,6 +3,7 @@
 
 open Lvca_provenance
 open Lvca_syntax
+open Lvca_util
 
 (** Both typing and inference rules share this shape.
 
@@ -41,7 +42,7 @@ exception StaticsParseError of string
 (** A hypothesis contains a set of variables (and their types) that must appear in the
     context, as well as an inference or checking clause. *)
 module Hypothesis : sig
-  type 'info t = 'info BindingAwarePattern.t Lvca_util.String.Map.t * 'info TypingClause.t
+  type 'info t = 'info BindingAwarePattern.t String.Map.t * 'info TypingClause.t
 
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val erase : _ t -> unit t
@@ -51,7 +52,7 @@ module Hypothesis : sig
     val typed_term : (string * OptRange.t BindingAwarePattern.t) Lvca_parsing.t
 
     (** @raise StaticsParseError *)
-    val context : OptRange.t BindingAwarePattern.t Lvca_util.String.Map.t Lvca_parsing.t
+    val context : OptRange.t BindingAwarePattern.t String.Map.t Lvca_parsing.t
 
     (** @raise StaticsParseError *)
     val t : OptRange.t t Lvca_parsing.t

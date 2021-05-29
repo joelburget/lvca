@@ -4,11 +4,8 @@ module Option = Base.Option
 module Queue = Base.Queue
 module Result = Base.Result
 module Set = Base.Set
-module Util = Lvca_util
-module String = Util.String
-module SMap = Util.String.Map
-module Tuple2 = Util.Tuple2
 open Lvca_provenance
+open Lvca_util
 
 type 'info t =
   | Operator of 'info * string * 'info t list
@@ -106,7 +103,7 @@ let pp_ranges ppf pat =
 ;;
 
 let rec jsonify pat =
-  Util.Json.(
+  Lvca_util.Json.(
     match pat with
     | Operator (_, tag, tms) ->
       array
@@ -118,7 +115,7 @@ let rec jsonify pat =
 
 let rec unjsonify =
   let open Option.Let_syntax in
-  Util.Json.(
+  Lvca_util.Json.(
     function
     | Array [| String "o"; String tag; Array subtms |] ->
       let%map subtms' = subtms |> Array.to_list |> List.map ~f:unjsonify |> Option.all in
@@ -172,7 +169,7 @@ let check lang ~pattern_sort ~var_sort =
       match pat with
       | Var (_, name) ->
         if Sort.equal Unit.( = ) (Sort.erase_info sort) (Sort.erase_info var_sort)
-        then Ok (SMap.singleton name sort)
+        then Ok (String.Map.singleton name sort)
         else (
           let sort_to_string = Fmt.to_to_string Sort.pp in
           Error
@@ -182,10 +179,10 @@ let check lang ~pattern_sort ~var_sort =
                   name
                   (sort_to_string var_sort)
                   (sort_to_string sort))))
-      | Ignored _ -> Ok SMap.empty
+      | Ignored _ -> Ok String.Map.empty
       | Primitive prim ->
         (match Primitive.check prim sort with
-        | None -> Ok SMap.empty
+        | None -> Ok String.Map.empty
         | Some msg -> Error (CheckFailure.err msg))
       | Operator (_, op_name, subpats) ->
         let sort_name, sort_args =
@@ -204,7 +201,7 @@ let check lang ~pattern_sort ~var_sort =
         | Some (sort_vars, OperatorDef (_, arity)) ->
           (* TODO: kind check *)
           let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
-          let sort_env = SMap.of_alist_exn (List.zip_exn sort_vars sort_args) in
+          let sort_env = String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in
           check_slots (AbstractSyntax.Arity.instantiate sort_env arity) subpats)
     in
     Result.map_error result ~f:(fun CheckFailure.{ message; stack } ->
@@ -232,7 +229,7 @@ let check lang ~pattern_sort ~var_sort =
                        (Fmt.to_to_string pp pat)
                        (valence_to_string valence))))
       |> Result.all
-      |> Result.map ~f:SMap.strict_unions
+      |> Result.map ~f:String.Map.strict_unions
       |> Result.bind ~f:handle_dup_error
   in
   check pattern_sort

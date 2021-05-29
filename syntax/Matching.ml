@@ -1,6 +1,6 @@
 open Base
-module Util = Lvca_util
-module SMap = Util.String.Map
+open Lvca_util
+module SMap = String.Map
 module Unordered = AbstractSyntax.Unordered
 
 type ('info, 'rhs) cases = ('info Pattern.t * 'rhs) list
@@ -69,7 +69,7 @@ let rec match_pattern tm pat =
         |> Option.all
         (* Assumption: valid patterns with no repeated variable names *)
         |> Option.map ~f:SMap.unions_right_biased
-      else Util.invariant_violation "match_pattern: mismatched subterms / patterns"
+      else invariant_violation "match_pattern: mismatched subterms / patterns"
     else None
   | Primitive pl, Primitive pr ->
     if Primitive.equal ~info_eq:(fun _ _ -> true) pl pr then Some SMap.empty else None
@@ -104,12 +104,12 @@ let produce_sort_env lang sort =
        , Map.find lang.Unordered.sort_defs sort_name )
      with
     | Some _, Some _ ->
-      Util.invariant_violation
+      invariant_violation
         (Printf.sprintf
            "produce_sort_env: sort %s both in externals and defined"
            sort_name)
     | Some (Kind _), _ ->
-      Util.invariant_violation
+      invariant_violation
         (Printf.sprintf
            "produce_sort_env: sort (%s) must be defined, not in externals"
            sort_name)
@@ -117,11 +117,10 @@ let produce_sort_env lang sort =
       let ty_vars = ty_vars |> List.map ~f:(fun (name, _kind) -> name) in
       (match List.zip ty_vars args with
       | List.Or_unequal_lengths.Unequal_lengths ->
-        Util.invariant_violation "produce_sort_env: sort / args unequal lengths"
+        invariant_violation "produce_sort_env: sort / args unequal lengths"
       | Ok alist -> SMap.of_alist_exn alist)
     | None, None ->
-      Util.invariant_violation
-        (Printf.sprintf "produce_sort_env: sort %s not found" sort_name))
+      invariant_violation (Printf.sprintf "produce_sort_env: sort %s not found" sort_name))
 ;;
 
 (* Given a sort, produce a mapping from operator name to a list of the concrete
@@ -146,7 +145,7 @@ let get_children_concrete_sorts lang sort =
            |> List.map ~f:(fun (Valence (binders, body_sort) as v) ->
                   if not (List.is_empty binders)
                   then
-                    Util.invariant_violation
+                    invariant_violation
                       (Printf.sprintf
                          "get_children_concrete_sorts: valence is not a simple sort: %s"
                          (Fmt.to_to_string AbstractSyntax.Valence.pp v))
@@ -179,7 +178,7 @@ let specialize lang ctor_sort tail_sorts ctor_name matrix =
   let matrix =
     matrix
     |> List.concat_map ~f:(fun (entries, rhs) ->
-           let head_entry, entries = Util.List.split_exn entries in
+           let head_entry, entries = List.split_exn entries in
            match head_entry.pattern with
            | Pattern.Operator (_, name, children) ->
              if String.(name = ctor_name)
@@ -190,7 +189,7 @@ let specialize lang ctor_sort tail_sorts ctor_name matrix =
                         { term_no = head_entry.term_no
                         ; pattern
                         ; path =
-                            Util.List.snoc head_entry.path i
+                            List.snoc head_entry.path i
                             (* TODO: change paths to be quickly appendable *)
                         })
                in
@@ -212,7 +211,7 @@ let specialize lang ctor_sort tail_sorts ctor_name matrix =
 let default matrix =
   matrix
   |> List.concat_map ~f:(fun (entries, rhs) ->
-         let head_entry, entries = Util.List.split_exn entries in
+         let head_entry, entries = List.split_exn entries in
          match head_entry.pattern with
          | Pattern.Operator _ -> []
          | Var _ | Ignored _ -> [ entries, rhs ]
@@ -221,7 +220,7 @@ let default matrix =
 
 let swap_cols matrix i j =
   let rows, rhss = List.unzip matrix in
-  let rows = rows |> List.transpose_exn |> Util.List.swap ~i ~j |> List.transpose_exn in
+  let rows = rows |> List.transpose_exn |> List.swap ~i ~j |> List.transpose_exn in
   List.zip_exn rows rhss
 ;;
 
@@ -236,14 +235,14 @@ let rec check_matrix lang sorts matrix =
   then (match matrix with [] -> Some [] | _ -> None)
   else (
     let transpose = matrix_transpose matrix in
-    let first_col, _ = Util.List.split_exn transpose in
+    let first_col, _ = List.split_exn transpose in
     let head_ctors =
       first_col
       |> List.filter_map ~f:(fun { pattern; _ } ->
              match pattern with Pattern.Operator (_, name, _) -> Some name | _ -> None)
-      |> Util.String.Set.of_list
+      |> String.Set.of_list
     in
-    let head_sort, sorts' = Util.List.split_exn sorts in
+    let head_sort, sorts' = List.split_exn sorts in
     let (AbstractSyntax.SortDef.SortDef (_ty_vars, op_defs)) =
       Map.find_exn lang.Unordered.sort_defs (sort_name head_sort)
     in
@@ -318,7 +317,7 @@ let rec compile_matrix lang sorts matrix =
         in
         match col_no with
         | None ->
-          Util.invariant_violation "compile_matrix: no column which is not all wildcards"
+          invariant_violation "compile_matrix: no column which is not all wildcards"
         | Some (i, _) -> i
       in
       (* the first column is a non-wildcard *)
@@ -331,9 +330,9 @@ let rec compile_matrix lang sorts matrix =
                  match pattern with
                  | Pattern.Operator (_, name, _) -> Some name
                  | _ -> None)
-          |> Util.String.Set.of_list
+          |> String.Set.of_list
         in
-        let head_sort, tail_sorts = Util.List.split_exn sorts in
+        let head_sort, tail_sorts = List.split_exn sorts in
         let (AbstractSyntax.SortDef.SortDef (_ty_vars, op_defs)) =
           Map.find_exn lang.Unordered.sort_defs (sort_name head_sort)
         in
@@ -364,7 +363,7 @@ let rec compile_matrix lang sorts matrix =
         (* swap columns so the first is a non-wildcard *))
       else (
         let matrix = swap_cols matrix 0 i in
-        let sorts = Util.List.swap sorts ~i ~j:0 in
+        let sorts = List.swap sorts ~i ~j:0 in
         let%map matrix = compile_matrix lang sorts matrix in
         Swap (i, matrix)))
 ;;
@@ -406,7 +405,7 @@ let run_matches tms tree =
         match SMap.of_alist env_list with
         | `Ok env -> env
         | `Duplicate_key name ->
-          Util.invariant_violation
+          invariant_violation
             (Printf.sprintf
                "run_matches: duplicate key: %s (instrs: [%s], terms: (%s)"
                name
@@ -418,7 +417,7 @@ let run_matches tms tree =
                |> String.concat ~sep:", "))
       in
       Some (rhs, env)
-    | [], _ -> Util.invariant_violation "run_matches: empty pattern but not matched"
+    | [], _ -> invariant_violation "run_matches: empty pattern but not matched"
     | NonBinding.Operator (_, op_name, subtms) :: tms', OperatorCases (branches, default)
       ->
       let branch =
@@ -427,15 +426,14 @@ let run_matches tms tree =
         | None, Some branch -> branch
         | _, _ ->
           let op_names = branches |> Map.keys |> String.concat ~sep:", " in
-          Util.invariant_violation
+          invariant_violation
             (Printf.sprintf
                "expected branch %s (found [%s]) (no default)"
                op_name
                op_names)
       in
       go (subtms @ tms') branch
-    | _, OperatorCases _ ->
-      Util.invariant_violation "OperatorCases matched with non-operator"
+    | _, OperatorCases _ -> invariant_violation "OperatorCases matched with non-operator"
     | NonBinding.Primitive prim :: tms', PrimCases branches ->
       let found =
         branches
@@ -448,8 +446,8 @@ let run_matches tms tree =
       | None -> None (* failwith "TODO: error -- no matching primitive" *)
       | Some (_, branch) -> go tms' branch)
     | _, PrimCases _ ->
-      Util.invariant_violation "decision_tree.PrimCases paired with non-Primitive"
-    | _, Swap (i, tree) -> go (Util.List.swap tms' ~i ~j:0) tree
+      invariant_violation "decision_tree.PrimCases paired with non-Primitive"
+    | _, Swap (i, tree) -> go (List.swap tms' ~i ~j:0) tree
   in
   go tms tree
 ;;

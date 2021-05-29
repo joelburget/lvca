@@ -2,6 +2,7 @@ open Base
 open Brr
 open Brr_note
 open Lvca_provenance
+open Lvca_util
 open Note
 open Stdio
 open Prelude
@@ -24,7 +25,7 @@ type result =
   }
 
 let do_action action elems =
-  match action with Clear -> [] | Add elem -> Lvca_util.List.snoc elems elem
+  match action with Clear -> [] | Add elem -> List.snoc elems elem
 ;;
 
 (** The incoming signal holds the currently selected range. We return both a Dom element

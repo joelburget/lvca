@@ -1,5 +1,5 @@
 open Base
-module String = Lvca_util.String
+open Lvca_util
 open Option.Let_syntax
 
 type 'info term =
@@ -61,9 +61,7 @@ and scope_of_nominal env (Nominal.Scope.Scope (pats, body) as scope) =
   match String.Map.of_alist var_nums with
   | `Ok var_map ->
     let env' : (int * int) String.Map.t =
-      env
-      |> Map.map ~f:(fun (i, j) -> i + n, j)
-      |> Lvca_util.Map.union_right_biased var_map
+      env |> Map.map ~f:(fun (i, j) -> i + n, j) |> Map.union_right_biased var_map
     in
     let%map body' = of_nominal_with_bindings env' body in
     Scope (pats, body')

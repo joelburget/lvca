@@ -1,11 +1,11 @@
 open Lvca_provenance
 open Lvca_syntax
+open Lvca_util
 open Base
 open Brr
 open Brr_note
 open Note
 open Prelude
-module Tuple4 = Lvca_util.Tuple4
 
 let div, tbody, table, pre, span, td, tr, thead =
   El.(div, tbody, table, pre, span, td, tr, thead)
@@ -70,7 +70,7 @@ type render_params =
   { source_column : bool (** Show the "source" column or not *)
   ; range_column : bool (** Show the "range" column or not *)
   ; depth : int
-  ; var_selected_events : VarStatus.t event' Lvca_util.String.Map.t
+  ; var_selected_events : VarStatus.t event' String.Map.t
   ; queue : (El.t * SourceRanges.t event) Queue.t
   }
 
@@ -146,7 +146,7 @@ let indent _ = span ~at:[ class' "border-l-2"; class' "border-dotted" ] [ txt " 
 
 let padded_txt depth text =
   let indents = List.init depth ~f:indent in
-  pre ~at:[ class' "inline-block" ] (Lvca_util.List.snoc indents (txt text))
+  pre ~at:[ class' "inline-block" ] (List.snoc indents (txt text))
 ;;
 
 let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit =
@@ -194,7 +194,7 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
         trigger_downstream_shadow Unselected;
         trigger_selected Unselected)
   in
-  let left_col = pre (Lvca_util.List.snoc indents name_elem) in
+  let left_col = pre (List.snoc indents name_elem) in
   Queue.enqueue queue (grid_tmpl ~render_params [ left_col ] loc)
 ;;
 
@@ -225,7 +225,7 @@ let rec index_tm ~expanded_depth = function
           scopes
           |> List.map ~f:(index_scope ~expanded_depth)
           |> List.unzip
-          |> Lvca_util.Tuple2.map2 ~f:E.select
+          |> Tuple2.map2 ~f:E.select
         in
         let starts_expanded =
           match expanded_depth with FullyExpanded -> true | ExpandedTo n -> n > 0
@@ -274,7 +274,7 @@ let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
     let loc =
       match Primitive.info p with
       | LocIx loc -> loc
-      | _ -> Lvca_util.invariant_violation "Expected LocIx"
+      | _ -> invariant_violation "Expected LocIx"
     in
     let str = Fmt.to_to_string Primitive.pp p ^ suffix in
     Queue.enqueue queue (grid_tmpl ~render_params [ padded_txt depth str ] loc)
@@ -322,7 +322,7 @@ let rec render_tm ~render_params ?(suffix = "") : _ Nominal.Term.t -> unit =
     let loc =
       match Primitive.info p with
       | LocIx loc -> loc
-      | _ -> Lvca_util.invariant_violation "Expected LocIx"
+      | _ -> invariant_violation "Expected LocIx"
     in
     Queue.enqueue queue (grid_tmpl ~render_params [ padded_txt depth str ] loc)
   | Var (LocIx loc, name) ->
@@ -362,7 +362,7 @@ and render_scope ~render_params ~last:last_slot (Nominal.Scope.Scope (pats, tm))
                  match info with
                  | VarDefIx (_loc, event) -> name, event
                  | _ -> failwith "invariant violation: wrong index")
-          |> Lvca_util.String.Map.of_alist_exn
+          |> String.Map.of_alist_exn
         in
         let shadowed_var_streams =
           newly_defined_vars
@@ -370,7 +370,7 @@ and render_scope ~render_params ~last:last_slot (Nominal.Scope.Scope (pats, tm))
                  match Map.find var_selected_events k with
                  | None -> None
                  | Some evt -> Some (k, evt))
-          |> Lvca_util.String.Map.of_alist_exn
+          |> String.Map.of_alist_exn
         in
         let var_selected_events =
           Map.merge_skewed
@@ -385,7 +385,7 @@ and render_scope ~render_params ~last:last_slot (Nominal.Scope.Scope (pats, tm))
         newly_defined_var_events)
   in
   (* Events for variables bound in this scope *)
-  let pattern_var_events = Lvca_util.String.Map.unions_right_biased pattern_var_events in
+  let pattern_var_events = String.Map.unions_right_biased pattern_var_events in
   let combine ~key:_ _l r = r in
   (* Select events for variables visible in this scope *)
   let var_selected_events =
@@ -411,7 +411,7 @@ let view_tm
     free_vars
     |> Set.to_list
     |> List.map ~f:(fun name -> name, create_e ())
-    |> Lvca_util.String.Map.of_alist_exn
+    |> String.Map.of_alist_exn
   in
   let tm, visible_toggle_e = index_tm ~expanded_depth tm in
   let selection_e, set_selection = E.create () in

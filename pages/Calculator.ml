@@ -3,6 +3,7 @@ open Brr
 open Brr_note
 open Note
 open Prelude
+open Lvca_util
 module Calculator = Lvca_languages.Calculator
 
 module Model = struct
@@ -54,7 +55,7 @@ module Controller = struct
             { evaluations = { input; parsed; digits } :: evaluations; error_msg = None }
       in
       model
-    | DeleteRow i -> { evaluations = Lvca_util.List.remove_nth evaluations i; error_msg }
+    | DeleteRow i -> { evaluations = List.remove_nth evaluations i; error_msg }
     | ChangePrecision (i, prec_cmd) ->
       let Model.Evaluation.{ digits; _ } = List.nth_exn evaluations i in
       let digits_s, digits_update = digits in
@@ -187,7 +188,7 @@ module View = struct
     in
     let tbody, tbody_evts =
       let never_eq _ _ = false in
-      let eq = Lvca_util.Tuple2.equal Common.htmls_eq never_eq in
+      let eq = Tuple2.equal Common.htmls_eq never_eq in
       let s =
         model_s
         |> S.map ~eq (fun model ->

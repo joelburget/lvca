@@ -2,6 +2,7 @@ open Base
 open Lvca_core
 open Lvca_provenance
 open Lvca_syntax
+open Lvca_util
 open Stdio
 module Format = Stdlib.Format
 
@@ -219,12 +220,12 @@ type parser_stack = SourceRanges.t t Stack.t
 
 module Direct = struct
   type 'info parser = 'info t
-  type term_ctx = SourceRanges.t n_term Lvca_util.String.Map.t
+  type term_ctx = SourceRanges.t n_term String.Map.t
 
   type parse_result =
     (SourceRanges.t n_term, string * SourceRanges.t c_term option) Result.t
 
-  type parser_ctx = SourceRanges.t parser Lvca_util.String.Map.t
+  type parser_ctx = SourceRanges.t parser String.Map.t
 
   type trace_snapshot =
     { success : bool
@@ -627,10 +628,7 @@ module Direct = struct
       :  ?term_ctx:term_ctx -> ?parser_ctx:parser_ctx -> SourceRanges.t parser -> string
       -> toplevel_result
     =
-   fun ?(term_ctx = Lvca_util.String.Map.empty)
-       ?(parser_ctx = Lvca_util.String.Map.empty)
-       parser
-       str ->
+   fun ?(term_ctx = String.Map.empty) ?(parser_ctx = String.Map.empty) parser str ->
     let { run } = translate_direct parser in
     let pos, snapshots, result = run ~translate_direct ~term_ctx ~parser_ctx ~pos:0 str in
     (* Some str if the parser succeeded but didn't consume the entire input,
@@ -914,14 +912,14 @@ module Parse = struct
       | Some (Operator ("|", _)) | None ->
         (match Queue.to_list binders with
         (* Parse form 2: not a binder, but an expression. *)
-        | [ Binder (None, expr) ] ->
-          return ~range:(info expr) expr
+        | [ Binder (None, expr) ] -> return ~range:(info expr) expr
         | _binders -> fail "Expected a single expression")
       (* Parse form 1 *)
       | Some (Operator ("->", _)) ->
         let _arr : token = Queue.dequeue_exn tokens in
         (match Queue.dequeue tokens with
-        | Some (Core (tm, range)) -> return ~range (Sequence (range, Queue.to_list binders, tm))
+        | Some (Core (tm, range)) ->
+          return ~range (Sequence (range, Queue.to_list binders, tm))
         | Some (Ident (name, range)) ->
           return
             ~range

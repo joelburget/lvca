@@ -1,4 +1,5 @@
 (** Representation of terms that simply uses variable names to represent scope. *)
+open Lvca_util
 
 module Types : sig
   type 'info term =
@@ -42,8 +43,8 @@ module Term : sig
 
   (* TODO: remove *)
   val pp_str : _ t -> string
-  val jsonify : _ t Lvca_util.Json.serializer
-  val unjsonify : unit t Lvca_util.Json.deserializer
+  val jsonify : _ t Json.serializer
+  val unjsonify : unit t Json.deserializer
 
   (** Encode (using {{:https://cbor.io} CBOR}) as bytes. *)
   val serialize : _ t -> Bytes.t
@@ -72,7 +73,7 @@ module Term : sig
   (** Substitute all the variables in the context.
 
       Leaves variables not found in the context free. *)
-  val subst_all : 'info t Lvca_util.String.Map.t -> 'info t -> 'info t
+  val subst_all : 'info t String.Map.t -> 'info t -> 'info t
 
   val select_path : path:int list -> 'info t -> ('info t, string) Result.t
 
@@ -80,9 +81,9 @@ module Term : sig
     :  info_eq:('info -> 'info -> bool)
     -> 'info Pattern.t
     -> 'info t
-    -> 'info t Lvca_util.String.Map.t option
+    -> 'info t String.Map.t option
 
-  val free_vars : _ t -> Lvca_util.String.Set.t
+  val free_vars : _ t -> String.Set.t
 
   (** Check that the given term matches the given sort.
 
@@ -128,8 +129,8 @@ module Scope : sig
   val pp_range : Lvca_provenance.OptRange.t t Fmt.t
   val pp_ranges : Lvca_provenance.SourceRanges.t t Fmt.t
   val pp_str : _ t -> string
-  val jsonify : _ t Lvca_util.Json.serializer
-  val unjsonify : unit t Lvca_util.Json.deserializer
+  val jsonify : _ t Json.serializer
+  val unjsonify : unit t Json.deserializer
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val erase : _ t -> unit t
 
@@ -144,10 +145,10 @@ val of_pattern : ('info, 'prim) Pattern.t -> ('info, 'prim) t
   (** Substitute all the variables in the context.
 
       Leaves variables not found in the context free. *)
-  val subst_all : 'info Types.term Lvca_util.String.Map.t -> 'info t -> 'info t
+  val subst_all : 'info Types.term String.Map.t -> 'info t -> 'info t
 
   (* TODO:
-  val free_vars : (_, _) t -> Lvca_util.String.Set.t
+  val free_vars : (_, _) t -> String.Set.t
 
   module Parse  : sig
     val t : 'prim Lvca_parsing.t -> Lvca_provenance.OptRange.t t Lvca_parsing.t

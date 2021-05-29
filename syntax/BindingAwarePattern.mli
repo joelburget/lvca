@@ -1,6 +1,8 @@
 (** Patterns for matching binding terms. *)
 open Lvca_provenance
 
+open Lvca_util
+
 (** {1 Types} *)
 
 type 'info t =
@@ -29,7 +31,7 @@ val capture_eq
 (** {1 Vars} *)
 
 (** A set of all the variables bound in a pattern. *)
-val vars_of_pattern : _ t -> Lvca_util.String.Set.t
+val vars_of_pattern : _ t -> String.Set.t
 
 (** A list of all the variables bound in a pattern. Why have this when [vars_of_pattern]
     exists? Because in a list we can also include the info for each var (which we can't do
@@ -42,13 +44,13 @@ val match_term
   :  info_eq:('info -> 'info -> bool)
   -> 'info t
   -> 'info Nominal.Term.t
-  -> 'info capture Lvca_util.String.Map.t option
+  -> 'info capture String.Map.t option
 
 val match_scope
   :  info_eq:('info -> 'info -> bool)
   -> 'info scope
   -> 'info Nominal.Scope.t
-  -> 'info capture Lvca_util.String.Map.t option
+  -> 'info capture String.Map.t option
 
 (** {1 Pretty-printing} *)
 
@@ -99,7 +101,7 @@ val check
   -> 'info AbstractSyntax.t (** Abstract syntax *)
   -> 'info Sort.t (** Sort to check pattern against *)
   -> 'info t
-  -> ('info capture_type Lvca_util.String.Map.t, ('info, 'info t) CheckFailure.t) Result.t
+  -> ('info capture_type String.Map.t, ('info, 'info t) CheckFailure.t) Result.t
 
 (** {1 Parsing} *)
 module Parse : sig

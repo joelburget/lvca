@@ -4,11 +4,10 @@ open Brr_note
 open Lvca_core
 open Lvca_provenance
 open Lvca_syntax
+open Lvca_util
 open Note
 open Prelude
 module P = Lvca_languages.Parser
-module Tuple3 = Lvca_util.Tuple3
-module Tuple2 = Lvca_util.Tuple2
 open Components
 
 let html_eq = Common.html_eq
@@ -170,7 +169,7 @@ module Prelude = struct
   ;;
 
   let ctx : P.Direct.parser_ctx =
-    Lvca_util.String.Map.of_alist_exn
+    String.Map.of_alist_exn
       [ "alpha", alpha; "digit", digit; "name", name; "literal", literal ]
     |> Map.map ~f:(P.map_info ~f:(SourceRanges.of_opt_range ~buf:"prelude"))
   ;;
@@ -428,7 +427,7 @@ let view_root_snapshot str root =
         let path =
           match evt with
           | ChopStack path -> path
-          | SubparserZoom i -> Lvca_util.List.snoc (S.value path_s) i
+          | SubparserZoom i -> List.snoc (S.value path_s) i
         in
         set_path path)
   in
@@ -501,8 +500,8 @@ module View = struct
   module Direct = P.Direct
 
   let view_parser_test
-      ?(term_ctx = Lvca_util.String.Map.empty)
-      ?(parser_ctx = Lvca_util.String.Map.empty)
+      ?(term_ctx = String.Map.empty)
+      ?(parser_ctx = String.Map.empty)
       ~highlight_s
       parser_or_err
       test_str
@@ -538,7 +537,7 @@ module View = struct
   ;;
 
   let mk_input_result
-      ?(parser_ctx = Lvca_util.String.Map.empty)
+      ?(parser_ctx = String.Map.empty)
       ?parser_elem
       ~parser_str_s
       (test_s, update_test)

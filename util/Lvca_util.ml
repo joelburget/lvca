@@ -135,6 +135,8 @@ exception InvariantViolation of Lexing.position option * string
 let invariant_violation ?here str = raise (InvariantViolation (here, str))
 
 module List = struct
+  include Base.List
+
   let rec snoc xs x = match xs with [] -> [ x ] | x' :: xs -> x' :: snoc xs x
 
   let rec unsnoc lst =
@@ -180,6 +182,8 @@ module List = struct
 end
 
 module Option = struct
+  include Base.Option
+
   let get_or_raise : 'b -> 'a option -> 'a =
    fun err -> function None -> raise err | Some a -> a
  ;;

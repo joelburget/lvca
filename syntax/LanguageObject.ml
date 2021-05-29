@@ -1,4 +1,5 @@
 open Base
+open Lvca_util
 open Lvca_provenance
 
 module type AllTermS = LanguageObject_intf.S
@@ -29,8 +30,8 @@ module type ExtendedTermS = sig
     -> 'info t
     -> ('info t, (string, 'info Nominal.Term.t) Either.t) Result.t
 
-  val jsonify : _ t Lvca_util.Json.serializer
-  val unjsonify : unit t Lvca_util.Json.deserializer
+  val jsonify : _ t Json.serializer
+  val unjsonify : unit t Json.deserializer
   val serialize : _ t -> Bytes.t
   val deserialize : Bytes.t -> unit t option
   val hash : _ t -> string
@@ -69,9 +70,9 @@ struct
     match Object.of_nominal nom with Ok tm -> Some tm | Error _ -> None
   ;;
 
-  let serialize tm = tm |> jsonify |> Lvca_util.Cbor.encode
-  let deserialize buf = buf |> Lvca_util.Cbor.decode |> Option.bind ~f:unjsonify
-  let hash tm = tm |> serialize |> Lvca_util.Sha256.hash
+  let serialize tm = tm |> jsonify |> Cbor.encode
+  let deserialize buf = buf |> Cbor.decode |> Option.bind ~f:unjsonify
+  let hash tm = tm |> serialize |> Sha256.hash
 
   module Parse = struct
     module Parse = Object.Parse
@@ -109,7 +110,7 @@ module CheckProperties (Object : BindingTermS) :
     | None -> Uninteresting
     | Some t ->
       PropertyResult.check
-        Lvca_util.Json.(Object.jsonify t = json)
+        Json.(Object.jsonify t = json)
         "jsonify t <> json (TODO: print)"
   ;;
 
