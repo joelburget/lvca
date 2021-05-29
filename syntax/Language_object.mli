@@ -1,10 +1,10 @@
 module type All_term_s = Language_object_intf.S
 
-(* TODO: we could generalize Non_binding_term_s and Binding_term_s by making them a
+(* TODO: we could generalize Nonbinding_term_s and Binding_term_s by making them a
    functor taking the term type and changing the names to to_term and of_term.
    Or returning an Either.
    *)
-module type Non_binding_term_s = sig
+module type Nonbinding_term_s = sig
   include Language_object_intf.S
 
   val of_nonbinding : 'info Nonbinding.term -> ('info t, 'info Nonbinding.term) Result.t

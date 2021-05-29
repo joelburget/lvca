@@ -4,7 +4,7 @@ open Lvca_provenance
 
 module type All_term_s = Language_object_intf.S
 
-module type Non_binding_term_s = sig
+module type Nonbinding_term_s = sig
   include All_term_s
 
   val of_nonbinding : 'info Nonbinding.term -> ('info t, 'info Nonbinding.term) Result.t
