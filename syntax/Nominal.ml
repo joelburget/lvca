@@ -93,10 +93,9 @@ module PpGeneric = struct
 end
 
 module Jsonify = struct
-  let array_map f = Base.List.map ~f >> Array.of_list >> Json.array
+  open Json
 
   let rec term tm =
-    let array, string = Json.(array, string) in
     match tm with
     | Types.Operator (_, tag, tms) ->
       array [| string "o"; string tag; array_map scope tms |]
@@ -104,35 +103,32 @@ module Jsonify = struct
     | Primitive p -> array [| string "p"; Primitive.jsonify p |]
 
   and scope (Types.Scope (pats, body)) : Json.t =
-    Json.array [| array_map Pattern.jsonify pats; term body |]
+    array [| array_map Pattern.jsonify pats; term body |]
   ;;
 end
 
 module Unjsonify = struct
-  let rec term =
-    let open Option.Let_syntax in
-    Json.(
-      function
-      | Array [| String "o"; String tag; Array scopes |] ->
-        let%map scopes' = scopes |> Array.to_list |> List.map ~f:scope |> Option.all in
-        Types.Operator ((), tag, scopes')
-      | Array [| String "v"; String name |] -> Some (Var ((), name))
-      | Array [| String "p"; prim |] ->
-        let%map prim = Primitive.unjsonify prim in
-        Types.Primitive prim
-      | _ -> None)
+  open Json
+  open Option.Let_syntax
 
-  and scope =
-    Json.(
-      function
-      | Array [||] -> None
-      | Array arr ->
-        let open Option.Let_syntax in
-        let binders, body = arr |> Array.to_list |> List.unsnoc in
-        let%bind binders' = binders |> List.map ~f:Pattern.unjsonify |> Option.all in
-        let%map body' = term body in
-        Types.Scope (binders', body')
-      | _ -> None)
+  let rec term = function
+    | Array [| String "o"; String tag; Array scopes |] ->
+      let%map scopes' = scopes |> Array.to_list |> List.map ~f:scope |> Option.all in
+      Types.Operator ((), tag, scopes')
+    | Array [| String "v"; String name |] -> Some (Var ((), name))
+    | Array [| String "p"; prim |] ->
+      let%map prim = Primitive.unjsonify prim in
+      Types.Primitive prim
+    | _ -> None
+
+  and scope = function
+    | Array [||] -> None
+    | Array arr ->
+      let binders, body = arr |> Array.to_list |> List.unsnoc in
+      let%bind binders = binders |> List.map ~f:Pattern.unjsonify |> Option.all in
+      let%map body = term body in
+      Types.Scope (binders, body)
+    | _ -> None
   ;;
 end
 
@@ -144,9 +140,9 @@ module MapInfo = struct
     | Primitive prim -> Primitive (Primitive.map_info ~f prim)
 
   and scope ~f (Scope (binders, tm)) =
-    let binders' = List.map binders ~f:(Pattern.map_info ~f) in
+    let binders = List.map binders ~f:(Pattern.map_info ~f) in
     let tm = term ~f tm in
-    Scope (binders', tm)
+    Scope (binders, tm)
   ;;
 end
 
@@ -525,6 +521,77 @@ module Scope = struct
 
   let pp_str scope = Fmt.to_to_string pp scope
   let erase (Scope (pats, tm)) = Scope (List.map pats ~f:Pattern.erase, Term.erase tm)
+end
+
+module type Convertible_s = sig
+  include Language_object_intf.S
+
+  val to_nominal : 'info t -> 'info Term.t
+  val of_nominal : 'info Term.t -> ('info t, 'info Term.t) Result.t
+end
+
+module type Extended_term_s = sig
+  include Language_object_intf.S
+
+  val erase : _ t -> unit t
+  val pp : _ t Fmt.t
+  val to_string : _ t -> string
+
+  module Parse : sig
+    val t : Opt_range.t t Lvca_parsing.t
+    val whitespace_t : Opt_range.t t Lvca_parsing.t
+  end
+
+  val select_path
+    :  path:int list
+    -> 'info t
+    -> ('info t, (string, 'info Term.t) Either.t) Result.t
+
+  val jsonify : _ t Json.serializer
+  val unjsonify : unit t Json.deserializer
+  val serialize : _ t -> Bytes.t
+  val deserialize : Bytes.t -> unit t option
+  val hash : _ t -> string
+end
+
+module Extend_term (Object : Convertible_s) :
+  Extended_term_s with type 'info t = 'info Object.t = struct
+  include Object
+
+  let erase tm = Object.map_info ~f:(fun _ -> ()) tm
+
+  let pp ppf tm =
+    Object.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
+  ;;
+
+  let to_string tm = Fmt.to_to_string pp tm
+
+  let select_path ~path tm =
+    match tm |> Object.to_nominal |> Term.select_path ~path with
+    | Ok tm ->
+      (match Object.of_nominal tm with
+      | Ok tm -> Ok tm
+      | Error tm -> Error (Either.Second tm))
+    | Error msg -> Error (Either.First msg)
+  ;;
+
+  let jsonify tm = tm |> Object.to_nominal |> Term.jsonify
+
+  let unjsonify json =
+    let open Option.Let_syntax in
+    let%bind nom = Term.unjsonify json in
+    match Object.of_nominal nom with Ok tm -> Some tm | Error _ -> None
+  ;;
+
+  let serialize tm = tm |> jsonify |> Cbor.encode
+  let deserialize buf = buf |> Cbor.decode |> Option.bind ~f:unjsonify
+  let hash tm = tm |> serialize |> Sha256.hash
+
+  module Parse = struct
+    include Object.Parse
+
+    let whitespace_t = Lvca_parsing.(whitespace *> Parse.t)
+  end
 end
 
 let%test_module "Nominal" =

@@ -1,4 +1,5 @@
 open Base
+open Lvca_util
 
 module type PlainBase_s = sig
   type t
@@ -6,6 +7,8 @@ module type PlainBase_s = sig
   val pp : t Fmt.t
   val ( = ) : t -> t -> bool
   val parse : t Lvca_parsing.t
+  val jsonify : t Json.serializer
+  val unjsonify : t Json.deserializer
 end
 
 module Make (PlainBase : PlainBase_s) = struct
@@ -26,6 +29,9 @@ module Make (PlainBase : PlainBase_s) = struct
     close_loc ppf i
   ;;
 
+  let jsonify (_, plain) = PlainBase.jsonify plain
+  let unjsonify json = PlainBase.unjsonify json |> Option.map ~f:(fun tm -> (), tm)
+
   module Parse = struct
     open Lvca_parsing
 
@@ -43,6 +49,13 @@ module Integer = Make (struct
   let pp ppf x = Fmt.string ppf (Z.to_string x)
   let ( = ) x1 x2 = (Z.Compare.(x1 = x2) [@warning "-44"])
   let parse = Lvca_parsing.(integer_lit >>| Z.of_string <?> "integer")
+  let jsonify i = Json.string (Z.to_string i)
+
+  let unjsonify =
+    Json.(
+      function
+      | String i -> (try Some (Z.of_string i) with Failure _ -> None) | _ -> None)
+  ;;
 end)
 
 module Float = Make (struct
@@ -57,6 +70,9 @@ module Float = Make (struct
     >>= (function First _ -> fail "TODO" | Second f -> return f)
     <?> "float"
   ;;
+
+  let jsonify f = Json.float f
+  let unjsonify = Json.(function Float f -> Some f | _ -> None)
 end)
 
 module Char = Make (struct
@@ -65,6 +81,15 @@ module Char = Make (struct
   let pp = Fmt.quote ~mark:"\'" Fmt.char
   let ( = ) = Char.( = )
   let parse = Lvca_parsing.(char_lit <?> "char")
+  let jsonify c = Json.string (Char.to_string c)
+
+  let unjsonify =
+    Json.(
+      function
+      | String c ->
+        if Base.Int.(Base.String.length c = 1) then Some (Base.Char.of_string c) else None
+      | _ -> None)
+  ;;
 end)
 
 module Int = Make (struct
@@ -73,6 +98,8 @@ module Int = Make (struct
   let pp = Fmt.int
   let ( = ) = Int.( = )
   let parse = Lvca_parsing.(integer_lit >>| Int.of_string <?> "int")
+  let jsonify i = Json.int i
+  let unjsonify = Json.(function Int f -> Some f | _ -> None)
 end)
 
 module Int32 = Make (struct
@@ -81,6 +108,10 @@ module Int32 = Make (struct
   let pp = Fmt.int32
   let ( = ) = Int32.( = )
   let parse = Lvca_parsing.(integer_lit >>| Int32.of_string <?> "int32")
+
+  (* TODO: remove exns *)
+  let jsonify = Int32.to_int_exn >> Json.int
+  let unjsonify = Json.(function Int f -> Some (Int32.of_int_exn f) | _ -> None)
 end)
 
 module String = Make (struct
@@ -89,6 +120,8 @@ module String = Make (struct
   let pp = Fmt.(quote string)
   let ( = ) = String.( = )
   let parse = Lvca_parsing.(string_lit <?> "string")
+  let jsonify s = Json.string s
+  let unjsonify = Json.(function String s -> Some s | _ -> None)
 end)
 
 module Plain = struct
@@ -165,7 +198,7 @@ module Parse = struct
 end
 
 let jsonify (_, p) =
-  Lvca_util.Json.(
+  Json.(
     match p with
     | Plain.Integer i -> array [| string "i"; string (Z.to_string i) |]
     | String s -> array [| string "s"; string s |]
@@ -174,7 +207,7 @@ let jsonify (_, p) =
 ;;
 
 let unjsonify json =
-  Lvca_util.Json.(
+  Json.(
     match json with
     | Array [| String "i"; String i |] ->
       (try Some ((), Plain.Integer (Z.of_string i)) with Failure _ -> None)
@@ -200,13 +233,11 @@ module Properties = struct
       | Some t' -> Property_result.check (t' = t) (Fmt.str "%a <> %a" pp t' pp t))
  ;;
 
-  let json_round_trip2 : Lvca_util.Json.t -> Property_result.t =
+  let json_round_trip2 : Json.t -> Property_result.t =
    fun json ->
     match json |> unjsonify with
     | Some t ->
-      Property_result.check
-        Lvca_util.Json.(jsonify t = json)
-        "jsonify t <> json (TODO: print)"
+      Property_result.check Json.(jsonify t = json) "jsonify t <> json (TODO: print)"
     | None -> Uninteresting
  ;;
 

@@ -52,59 +52,59 @@ let test_language =
                                "integer")))])])))]
     }
 module Lang =
-  (functor (Integer : Language_object.All_term_s) -> functor (String :
-    Language_object.All_term_s) ->
+  (functor (Integer : Language_object_intf.S) -> functor (String :
+    Language_object_intf.S) ->
     struct
       module Wrapper =
         struct
           module Types =
             struct
               type 'info foo =
-                | Foo of 'info * 'info Integer.t 
-                | Bar of 'info * ('info Pattern.t * string * 'info foo) 
+                | Foo of 'info * 'info Integer.t
+                | Bar of 'info * ('info Pattern.t * string * 'info foo)
               and ('info, 'a) list =
-                | Nil of 'info 
-                | Cons of 'info * 'a * ('info, 'a) list 
+                | Nil of 'info
+                | Cons of 'info * 'a * ('info, 'a) list
               and 'info mut_a =
-                | Mut_a of 'info * 'info mut_b 
+                | Mut_a of 'info * 'info mut_b
               and 'info mut_b =
-                | Mut_b of 'info * 'info mut_a 
+                | Mut_b of 'info * 'info mut_a
               and 'info nat =
-                | Z of 'info 
-                | S of 'info * 'info nat 
+                | Z of 'info
+                | S of 'info * 'info nat
               and 'info nonempty =
                 | Nonempty of 'info * 'info String.t * ('info,
-                'info String.t) list 
+                'info String.t) list
               and ('info, 'a, 'b) pair =
-                | Pair of 'info * 'a * 'b 
+                | Pair of 'info * 'a * 'b
               and ('info, 'a, 'b) pair_plus =
-                | PairPlus of 'info * 'a * 'b * 'info foo 
+                | PairPlus of 'info * 'a * 'b * 'info foo
               and 'info term =
-                | Operator of 'info * ('info, 'info term) list 
+                | Operator of 'info * ('info, 'info term) list
             end
           module Plain =
             struct
               type foo =
-                | Foo of Integer.Plain.t 
-                | Bar of (Pattern.Plain.t * string * foo) 
+                | Foo of Integer.Plain.t
+                | Bar of (Pattern.Plain.t * string * foo)
               and 'a list =
-                | Nil 
-                | Cons of 'a * 'a list 
+                | Nil
+                | Cons of 'a * 'a list
               and mut_a =
-                | Mut_a of mut_b 
+                | Mut_a of mut_b
               and mut_b =
-                | Mut_b of mut_a 
+                | Mut_b of mut_a
               and nat =
-                | Z 
-                | S of nat 
+                | Z
+                | S of nat
               and nonempty =
-                | Nonempty of String.Plain.t * String.Plain.t list 
+                | Nonempty of String.Plain.t * String.Plain.t list
               and ('a, 'b) pair =
-                | Pair of 'a * 'b 
+                | Pair of 'a * 'b
               and ('a, 'b) pair_plus =
-                | PairPlus of 'a * 'b * foo 
+                | PairPlus of 'a * 'b * foo
               and term =
-                | Operator of term list 
+                | Operator of term list
             end
           module Info =
             struct
@@ -325,7 +325,7 @@ module Lang =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = failwith "TODO" end
         end
-      module List(A:Language_object.All_term_s) =
+      module List(A:Language_object_intf.S) =
         struct
           type 'info t = ('info, 'info A.t) Wrapper.Types.list
           module Plain = struct type t = A.Plain.t Wrapper.Plain.list end
@@ -338,7 +338,7 @@ module Lang =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = failwith "TODO" end
         end
-      module Pair(A:Language_object.All_term_s)(B:Language_object.All_term_s) =
+      module Pair(A:Language_object_intf.S)(B:Language_object_intf.S) =
         struct
           type 'info t = ('info, 'info A.t, 'info B.t) Wrapper.Types.pair
           module Plain =
@@ -354,7 +354,7 @@ module Lang =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = failwith "TODO" end
         end
-      module Pair_plus(A:Language_object.All_term_s)(B:Language_object.All_term_s) =
+      module Pair_plus(A:Language_object_intf.S)(B:Language_object_intf.S) =
         struct
           type 'info t =
             ('info, 'info A.t, 'info B.t) Wrapper.Types.pair_plus
@@ -428,91 +428,91 @@ module Lang =
           module Parse = struct let t = failwith "TODO" end
         end
     end :
-    functor (Integer : Language_object.All_term_s) ->
-      functor (String : Language_object.All_term_s) ->
+    functor (Integer : Language_object_intf.S) ->
+      functor (String : Language_object_intf.S) ->
         sig
           module Types :
           sig
             type 'info foo =
-              | Foo of 'info * 'info Integer.t 
-              | Bar of 'info * ('info Pattern.t * string * 'info foo) 
+              | Foo of 'info * 'info Integer.t
+              | Bar of 'info * ('info Pattern.t * string * 'info foo)
             and ('info, 'a) list =
-              | Nil of 'info 
-              | Cons of 'info * 'a * ('info, 'a) list 
+              | Nil of 'info
+              | Cons of 'info * 'a * ('info, 'a) list
             and 'info mut_a =
-              | Mut_a of 'info * 'info mut_b 
+              | Mut_a of 'info * 'info mut_b
             and 'info mut_b =
-              | Mut_b of 'info * 'info mut_a 
+              | Mut_b of 'info * 'info mut_a
             and 'info nat =
-              | Z of 'info 
-              | S of 'info * 'info nat 
+              | Z of 'info
+              | S of 'info * 'info nat
             and 'info nonempty =
               | Nonempty of 'info * 'info String.t * ('info, 'info String.t)
-              list 
+              list
             and ('info, 'a, 'b) pair =
-              | Pair of 'info * 'a * 'b 
+              | Pair of 'info * 'a * 'b
             and ('info, 'a, 'b) pair_plus =
-              | PairPlus of 'info * 'a * 'b * 'info foo 
+              | PairPlus of 'info * 'a * 'b * 'info foo
             and 'info term =
-              | Operator of 'info * ('info, 'info term) list 
+              | Operator of 'info * ('info, 'info term) list
           end
           module Plain :
           sig
             type foo =
-              | Foo of Integer.Plain.t 
-              | Bar of (Pattern.Plain.t * string * foo) 
+              | Foo of Integer.Plain.t
+              | Bar of (Pattern.Plain.t * string * foo)
             and 'a list =
-              | Nil 
-              | Cons of 'a * 'a list 
+              | Nil
+              | Cons of 'a * 'a list
             and mut_a =
-              | Mut_a of mut_b 
+              | Mut_a of mut_b
             and mut_b =
-              | Mut_b of mut_a 
+              | Mut_b of mut_a
             and nat =
-              | Z 
-              | S of nat 
+              | Z
+              | S of nat
             and nonempty =
-              | Nonempty of String.Plain.t * String.Plain.t list 
+              | Nonempty of String.Plain.t * String.Plain.t list
             and ('a, 'b) pair =
-              | Pair of 'a * 'b 
+              | Pair of 'a * 'b
             and ('a, 'b) pair_plus =
-              | PairPlus of 'a * 'b * foo 
+              | PairPlus of 'a * 'b * foo
             and term =
-              | Operator of term list 
+              | Operator of term list
           end
           module Foo :
-          Language_object.All_term_s with type 'info t =  'info Types.foo and
+          Language_object_intf.S with type 'info t =  'info Types.foo and
             type  Plain.t =  Plain.foo
           module Nat :
-          Language_object.All_term_s with type 'info t =  'info Types.nat and
+          Language_object_intf.S with type 'info t =  'info Types.nat and
             type  Plain.t =  Plain.nat
           module List :
-          functor (A : Language_object.All_term_s) ->
-            Language_object.All_term_s with type 'info t = 
-              ('info, 'info A.t) Types.list and type  Plain.t = 
+          functor (A : Language_object_intf.S) ->
+            Language_object_intf.S with type 'info t =
+              ('info, 'info A.t) Types.list and type  Plain.t =
               A.Plain.t Plain.list
           module Pair :
-          functor (A : Language_object.All_term_s) ->
-            functor (B : Language_object.All_term_s) ->
-              Language_object.All_term_s with type 'info t = 
-                ('info, 'info A.t, 'info B.t) Types.pair and type  Plain.t = 
+          functor (A : Language_object_intf.S) ->
+            functor (B : Language_object_intf.S) ->
+              Language_object_intf.S with type 'info t =
+                ('info, 'info A.t, 'info B.t) Types.pair and type  Plain.t =
                 (A.Plain.t, B.Plain.t) Plain.pair
           module Pair_plus :
-          functor (A : Language_object.All_term_s) ->
-            functor (B : Language_object.All_term_s) ->
-              Language_object.All_term_s with type 'info t = 
+          functor (A : Language_object_intf.S) ->
+            functor (B : Language_object_intf.S) ->
+              Language_object_intf.S with type 'info t =
                 ('info, 'info A.t, 'info B.t) Types.pair_plus and type
                  Plain.t =  (A.Plain.t, B.Plain.t) Plain.pair_plus
           module Nonempty :
-          Language_object.All_term_s with type 'info t = 
+          Language_object_intf.S with type 'info t =
             'info Types.nonempty and type  Plain.t =  Plain.nonempty
           module Term :
-          Language_object.All_term_s with type 'info t =  'info Types.term
+          Language_object_intf.S with type 'info t =  'info Types.term
             and type  Plain.t =  Plain.term
           module Mut_a :
-          Language_object.All_term_s with type 'info t =  'info Types.mut_a
+          Language_object_intf.S with type 'info t =  'info Types.mut_a
             and type  Plain.t =  Plain.mut_a
           module Mut_b :
-          Language_object.All_term_s with type 'info t =  'info Types.mut_b
+          Language_object_intf.S with type 'info t =  'info Types.mut_b
             and type  Plain.t =  Plain.mut_b
         end)

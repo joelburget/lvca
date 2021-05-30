@@ -1,3 +1,5 @@
+open Lvca_util
+
 (** Lots of interesting domains have no binding. At that point they're not really
     languages, just data types. This module gives a tighter representation for such types
     and allows conversion to / from binding types. *)
@@ -52,3 +54,41 @@ end
 val hash : _ term -> string
 
 val select_path : path:int list -> 'info term -> ('info term, string) Result.t
+
+(** {1 Serialization} *)
+val jsonify : _ term Json.serializer
+
+val unjsonify : unit term Json.deserializer
+
+module type Convertible_s = sig
+  include Language_object_intf.S with type 'info t = 'info term
+
+  val of_nonbinding : 'info term -> ('info t, 'info term) Result.t
+  val to_nonbinding : 'info t -> 'info term
+end
+
+module type Extended_term_s = sig
+  include Language_object_intf.Extended_s with type 'info t = 'info term
+
+  (* TODO: to_pattern, of_pattern *)
+
+  val select_path
+    :  path:int list
+    -> 'info t
+    -> ('info t, (string, 'info term) Base.Either.t) Result.t
+
+  val jsonify : _ t Lvca_util.Json.serializer
+  val unjsonify : unit t Lvca_util.Json.deserializer
+
+  (** Encode (using {{:https://cbor.io} CBOR}) as bytes. *)
+  val serialize : _ t -> Bytes.t
+
+  (** Decode from {{:https://cbor.io} CBOR}). *)
+  val deserialize : Bytes.t -> unit t option
+
+  (** The SHA-256 hash of the serialized term. This is useful for content-identifying
+      terms. *)
+  val hash : _ t -> string
+end
+
+module Extend_term (Object : Convertible_s) : Extended_term_s

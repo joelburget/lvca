@@ -1,55 +1,16 @@
-module type All_term_s = Language_object_intf.S
+(** Derive helpers (an extended language object) from the basics. *)
+module Extend (Object : Language_object_intf.S) :
+  Language_object_intf.Extended_s with type 'info t = 'info Object.t
 
-(* TODO: we could generalize Nonbinding_term_s and Binding_term_s by making them a
-   functor taking the term type and changing the names to to_term and of_term.
-   Or returning an Either.
-   *)
-module type Nonbinding_term_s = sig
-  include Language_object_intf.S
+(** Properties of parsing and pretty-printing that should hold for any language object. *)
+module Check_parse_pretty (Object : Language_object_intf.S) :
+  Properties_intf.Parse_pretty_s with type 'info t = 'info Object.t
 
-  val of_nonbinding : 'info Nonbinding.term -> ('info t, 'info Nonbinding.term) Result.t
-  val to_nonbinding : 'info t -> 'info Nonbinding.term
-end
+(** Properties of json serialization / deserialization that should hold for any language
+    object. *)
+module Check_json (Object : Language_object_intf.S) :
+  Properties_intf.Json_s with type 'info t = 'info Object.t
 
-module type Binding_term_s = sig
-  include Language_object_intf.S
-
-  val to_nominal : 'info t -> 'info Nominal.Term.t
-  val of_nominal : 'info Nominal.Term.t -> ('info t, 'info Nominal.Term.t) Result.t
-end
-
-module type Extended_term_s = sig
-  include All_term_s
-
-  val erase : _ t -> unit t
-  val pp : _ t Fmt.t
-  val to_string : _ t -> string
-
-  (* TODO: to_pattern, of_pattern *)
-
-  val select_path
-    :  path:int list
-    -> 'info t
-    -> ('info t, (string, 'info Nominal.Term.t) Base.Either.t) Result.t
-
-  val jsonify : _ t Lvca_util.Json.serializer
-  val unjsonify : unit t Lvca_util.Json.deserializer
-
-  (** Encode (using {{:https://cbor.io} CBOR}) as bytes. *)
-  val serialize : _ t -> Bytes.t
-
-  (** Decode from {{:https://cbor.io} CBOR}). *)
-  val deserialize : Bytes.t -> unit t option
-
-  (** The SHA-256 hash of the serialized term. This is useful for content-identifying
-      terms. *)
-  val hash : _ t -> string
-
-  module Parse : sig
-    val whitespace_t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
-  end
-end
-
-module Mk (Object : Binding_term_s) : Extended_term_s with type 'info t = 'info Object.t
-
-module type Properties = Properties_intf.S
+(** Check json serialization / deserialization and parsing / pretty-printing properties *)
+module Check_properties (Object : Language_object_intf.S) :
+  Properties_intf.S with type 'info t = 'info Object.t

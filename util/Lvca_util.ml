@@ -200,6 +200,7 @@ module Json = struct
     | String of string
     | Array of t array
     | Float of float
+    | Int of int
 
   type -'a serializer = 'a -> t
   type +'a deserializer = t -> 'a option
@@ -207,6 +208,11 @@ module Json = struct
   let array : t array -> t = fun arr -> Array arr
   let string : string -> t = fun str -> String str
   let float : float -> t = fun f -> Float f
+  let int : int -> t = fun f -> Int f
+
+  let array_map : ('a -> t) -> 'a list -> t =
+   fun f -> Base.List.map ~f >> Array.of_list >> array
+ ;;
 
   let rec ( = ) : t -> t -> bool =
    fun t1 t2 ->
@@ -217,6 +223,7 @@ module Json = struct
       | None -> false
       | Some arr -> Array.for_all arr ~f:(fun (t1, t2) -> t1 = t2))
     | Float f1, Float f2 -> Float.(f1 = f2)
+    | Int i1, Int i2 -> Int.(i1 = i2)
     | _, _ -> false
  ;;
 end
@@ -235,6 +242,7 @@ module Cbor = struct
     | String str -> `Text str
     | Array arr -> `Array (arr |> Array.map ~f:of_json |> Array.to_list)
     | Float f -> `Float f
+    | Int i -> `Int i
   ;;
 
   let rec to_json : CBOR.Simple.t -> Json.t option = function

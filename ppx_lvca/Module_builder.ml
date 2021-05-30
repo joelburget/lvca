@@ -486,7 +486,7 @@ module Helpers (Context : Builder_context) = struct
     pexp_fun Nolabel None (ppat_var { txt; loc })
   ;;
 
-  let all_term_s = pmty_ident { txt = unflatten [ "Language_object"; "All_term_s" ]; loc }
+  let all_term_s = pmty_ident { txt = unflatten [ "Language_object_intf"; "S" ]; loc }
 end
 
 (** Helper for declaring a constructor. *)

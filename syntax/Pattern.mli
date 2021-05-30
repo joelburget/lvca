@@ -89,4 +89,7 @@ module Parse : sig
   val whitespace_t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
 end
 
-module Properties : Properties_intf.S with type 'info t := 'info t
+module Properties : sig
+  include Properties_intf.Parse_pretty_s with type 'info t := 'info t
+  include Properties_intf.Json_s with type 'info t := 'info t
+end

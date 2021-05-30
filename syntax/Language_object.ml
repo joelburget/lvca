@@ -1,48 +1,8 @@
 open Base
 open Lvca_util
-open Lvca_provenance
 
-module type All_term_s = Language_object_intf.S
-
-module type Nonbinding_term_s = sig
-  include All_term_s
-
-  val of_nonbinding : 'info Nonbinding.term -> ('info t, 'info Nonbinding.term) Result.t
-  val to_nonbinding : 'info t -> 'info Nonbinding.term
-end
-
-module type Binding_term_s = sig
-  include All_term_s
-
-  val to_nominal : 'info t -> 'info Nominal.Term.t
-  val of_nominal : 'info Nominal.Term.t -> ('info t, 'info Nominal.Term.t) Result.t
-end
-
-module type Extended_term_s = sig
-  include All_term_s
-
-  val erase : _ t -> unit t
-  val pp : _ t Fmt.t
-  val to_string : _ t -> string
-
-  val select_path
-    :  path:int list
-    -> 'info t
-    -> ('info t, (string, 'info Nominal.Term.t) Either.t) Result.t
-
-  val jsonify : _ t Json.serializer
-  val unjsonify : unit t Json.deserializer
-  val serialize : _ t -> Bytes.t
-  val deserialize : Bytes.t -> unit t option
-  val hash : _ t -> string
-
-  module Parse : sig
-    val whitespace_t : Opt_range.t t Lvca_parsing.t
-  end
-end
-
-module Mk (Object : Binding_term_s) : Extended_term_s with type 'info t = 'info Object.t =
-struct
+module Extend (Object : Language_object_intf.S) :
+  Language_object_intf.Extended_s with type 'info t = 'info Object.t = struct
   include Object
 
   let erase tm = Object.map_info ~f:(fun _ -> ()) tm
@@ -53,73 +13,30 @@ struct
 
   let to_string tm = Fmt.to_to_string pp tm
 
-  let select_path ~path tm =
-    match tm |> Object.to_nominal |> Nominal.Term.select_path ~path with
-    | Ok tm ->
-      (match Object.of_nominal tm with
-      | Ok tm -> Ok tm
-      | Error tm -> Error (Either.Second tm))
-    | Error msg -> Error (Either.First msg)
-  ;;
-
-  let jsonify tm = tm |> Object.to_nominal |> Nominal.Term.jsonify
-
-  let unjsonify json =
-    let open Option.Let_syntax in
-    let%bind nom = Nominal.Term.unjsonify json in
-    match Object.of_nominal nom with Ok tm -> Some tm | Error _ -> None
-  ;;
-
-  let serialize tm = tm |> jsonify |> Cbor.encode
-  let deserialize buf = buf |> Cbor.decode |> Option.bind ~f:unjsonify
-  let hash tm = tm |> serialize |> Sha256.hash
-
   module Parse = struct
-    module Parse = Object.Parse
+    include Parse
 
-    let whitespace_t = Lvca_parsing.(whitespace *> Parse.t)
+    let whitespace_t = Lvca_parsing.(whitespace *> t)
   end
 end
 
-module type Properties = Properties_intf.S
-
-module CheckProperties (Object : Binding_term_s) :
-  Properties with type 'info t = 'info Object.t = struct
-  module Parse = Object.Parse
+module Check_parse_pretty (Object : Language_object_intf.S) :
+  Properties_intf.Parse_pretty_s with type 'info t = 'info Object.t = struct
   open Property_result
-  module Object' = Object
-  module Object = Mk (Object)
+  module Object = Extend (Object)
+  open Object
 
   type 'info t = 'info Object.t
 
-  let pp = Object.pp
   let to_string = Fmt.to_to_string Object.pp
   let parse = Lvca_parsing.parse_string Parse.t
-
-  let json_round_trip1 t =
-    match t |> Object.jsonify |> Object.unjsonify with
-    | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
-    | Some t' ->
-      Property_result.check
-        (Object'.equal ~info_eq:Unit.( = ) t t')
-        (Fmt.str "%a <> %a" pp t' pp t)
-  ;;
-
-  let json_round_trip2 json =
-    match json |> Object.unjsonify with
-    | None -> Uninteresting
-    | Some t ->
-      Property_result.check
-        Json.(Object.jsonify t = json)
-        "jsonify t <> json (TODO: print)"
-  ;;
 
   let string_round_trip1 t =
     match t |> to_string |> parse with
     | Ok t' ->
       let t'' = Object.erase t' in
       Property_result.check
-        Object'.(equal ~info_eq:Unit.( = ) t'' t)
+        Object.(equal ~info_eq:Unit.( = ) t'' t)
         (Fmt.str "%a <> %a" pp t'' pp t)
     | Error msg -> Failed (Fmt.str {|parse_string "%a": %s|} pp t msg)
   ;;
@@ -140,4 +57,37 @@ module CheckProperties (Object : Binding_term_s) :
             String.(str'' = str')
             (Fmt.str {|"%s" <> "%s"|} str'' str'))
   ;;
+end
+
+module Check_json (Object : Language_object_intf.S) :
+  Properties_intf.Json_s with type 'info t = 'info Object.t = struct
+  open Property_result
+  module Object = Extend (Object)
+  open Object
+
+  type 'info t = 'info Object.t
+
+  let json_round_trip1 t =
+    match t |> Object.jsonify |> Object.unjsonify with
+    | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
+    | Some t' ->
+      Property_result.check
+        (Object.equal ~info_eq:Unit.( = ) t t')
+        (Fmt.str "%a <> %a" pp t' pp t)
+  ;;
+
+  let json_round_trip2 json =
+    match json |> Object.unjsonify with
+    | None -> Uninteresting
+    | Some t ->
+      Property_result.check
+        Json.(Object.jsonify t = json)
+        "jsonify t <> json (TODO: print)"
+  ;;
+end
+
+module Check_properties (Object : Language_object_intf.S) :
+  Properties_intf.S with type 'info t = 'info Object.t = struct
+  include Check_parse_pretty (Object)
+  include Check_json (Object)
 end

@@ -94,4 +94,7 @@ val check : _ t -> 'info Sort.t -> string option
 val jsonify : _ t -> Lvca_util.Json.t
 val unjsonify : Lvca_util.Json.t -> unit t option
 
-module Properties : Properties_intf.S with type 'info t := 'info t
+module Properties : sig
+  include Properties_intf.Parse_pretty_s with type 'info t := 'info t
+  include Properties_intf.Json_s with type 'info t := 'info t
+end

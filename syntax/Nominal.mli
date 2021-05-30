@@ -111,7 +111,10 @@ module Term : sig
     val whitespace_t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
   end
 
-  module Properties : Properties_intf.S with type 'info t := 'info t
+  module Properties : sig
+    include Properties_intf.Parse_pretty_s with type 'info t := 'info t
+    include Properties_intf.Json_s with type 'info t := 'info t
+  end
 end
 
 module Scope : sig
@@ -158,3 +161,37 @@ val of_pattern : ('info, 'prim) Pattern.t -> ('info, 'prim) t
   module Properties : Properties_intf.S with type 'info t := unit t
   *)
 end
+
+module type Convertible_s = sig
+  include Language_object_intf.S
+
+  val to_nominal : 'info t -> 'info Term.t
+  val of_nominal : 'info Term.t -> ('info t, 'info Term.t) Result.t
+end
+
+module type Extended_term_s = sig
+  include Language_object_intf.Extended_s
+
+  (* TODO: to_pattern, of_pattern *)
+
+  val select_path
+    :  path:int list
+    -> 'info t
+    -> ('info t, (string, 'info Term.t) Base.Either.t) Result.t
+
+  val jsonify : _ t Lvca_util.Json.serializer
+  val unjsonify : unit t Lvca_util.Json.deserializer
+
+  (** Encode (using {{:https://cbor.io} CBOR}) as bytes. *)
+  val serialize : _ t -> Bytes.t
+
+  (** Decode from {{:https://cbor.io} CBOR}). *)
+  val deserialize : Bytes.t -> unit t option
+
+  (** The SHA-256 hash of the serialized term. This is useful for content-identifying
+      terms. *)
+  val hash : _ t -> string
+end
+
+module Extend_term (Object : Convertible_s) :
+  Extended_term_s with type 'info t = 'info Object.t
