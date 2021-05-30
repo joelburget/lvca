@@ -1073,8 +1073,10 @@ module Individual_type_module (Context : Builder_context) = struct
             ;;]
         ; [%stri
             module Parse = struct
-              let t = failwith "TODO"
+              let t = Lvca_parsing.fail "TODO: parse"
             end]
+        ; [%stri let jsonify _tm = failwith "TODO: jsonify"]
+        ; [%stri let unjsonify _json = failwith "TODO: unjsonify"]
         ]
     in
     let init =
