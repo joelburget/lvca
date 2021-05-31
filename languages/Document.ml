@@ -4,7 +4,7 @@ open Omd
 open Stdio
 
 module Lang =
-[%abstract_syntax_module
+[%lvca.abstract_syntax_module
 {|
 char : *
 int : *

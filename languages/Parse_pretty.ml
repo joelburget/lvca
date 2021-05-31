@@ -2,7 +2,7 @@ open Base
 open Lvca_syntax
 
 let language =
-  [%lvca_abstract_syntax
+  [%lvca.abstract_syntax
     {|
 lang := rows(list row)
 

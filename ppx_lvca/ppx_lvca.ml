@@ -71,7 +71,7 @@ let expand_module ~(loc : Location.t) ~path:_ (expr : expression) : module_expr 
 
 let term_extension =
   Extension.declare
-    "lvca_nominal"
+    "lvca.nominal"
     Extension.Context.Expression
     Ast_pattern.(single_expr_payload __)
     expand_nominal
@@ -79,7 +79,7 @@ let term_extension =
 
 let nonbinding_extension =
   Extension.declare
-    "lvca_nonbinding"
+    "lvca.nonbinding"
     Extension.Context.Expression
     Ast_pattern.(single_expr_payload __)
     expand_nonbinding
@@ -87,7 +87,7 @@ let nonbinding_extension =
 
 let pattern_extension =
   Extension.declare
-    "lvca_pattern"
+    "lvca.pattern"
     Extension.Context.Expression
     Ast_pattern.(single_expr_payload __)
     expand_pattern
@@ -95,7 +95,7 @@ let pattern_extension =
 
 let abstract_syntax_extension =
   Extension.declare
-    "lvca_abstract_syntax"
+    "lvca.abstract_syntax"
     Extension.Context.Expression
     Ast_pattern.(single_expr_payload __)
     expand_abstract_syntax
@@ -103,7 +103,7 @@ let abstract_syntax_extension =
 
 let abstract_syntax_module_extension =
   Extension.declare
-    "abstract_syntax_module" (* TODO: better naming *)
+    "lvca.abstract_syntax_module"
     Extension.Context.Module_expr
     Ast_pattern.(single_expr_payload __)
     expand_module

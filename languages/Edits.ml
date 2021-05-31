@@ -5,7 +5,7 @@ open Lvca_core
 open Stdio
 
 let abstract_syntax =
-  [%lvca_abstract_syntax
+  [%lvca.abstract_syntax
     {|
 maybe a :=
   | nothing()

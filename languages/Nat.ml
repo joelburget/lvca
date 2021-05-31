@@ -2,7 +2,7 @@ open Base
 open Lvca_syntax
 
 module Lang =
-[%abstract_syntax_module
+[%lvca.abstract_syntax_module
 {|
 string : *
 

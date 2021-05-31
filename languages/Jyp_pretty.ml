@@ -6,7 +6,7 @@ open Base
 open Lvca_syntax
 
 module Lang =
-[%abstract_syntax_module
+[%lvca.abstract_syntax_module
 {|
 int : *
 string : *
@@ -154,14 +154,14 @@ let%test_module _ =
     ;;
 
     let%expect_test _ =
-      let tm = [%lvca_nonbinding {|cat(text("("); text(")"))|}] in
+      let tm = [%lvca.nonbinding {|cat(text("("); text(")"))|}] in
       test_render 80 tm;
       [%expect {| () |}]
     ;;
 
     let%expect_test _ =
       let tm =
-        [%lvca_nonbinding
+        [%lvca.nonbinding
           {|alt(
     cat(text("abc"); cat(spacing(" "); text("def")));
     cat(text("abc"); cat(line(); text("def")))
@@ -177,7 +177,7 @@ let%test_module _ =
     ;;
 
     let%expect_test _ =
-      let tm = [%lvca_nonbinding {|cat(text("abc"); cat(text("def"); text("ghi")))|}] in
+      let tm = [%lvca.nonbinding {|cat(text("abc"); cat(text("def"); text("ghi")))|}] in
       test_render 1 tm;
       Stdio.print_string "\n";
       test_render 9 tm;
@@ -186,8 +186,8 @@ let%test_module _ =
   abcdefghi |}]
     ;;
 
-    let space = [%lvca_nonbinding {|spacing(" ")|}]
-    let line = [%lvca_nonbinding {|line()|}]
+    let space = [%lvca.nonbinding {|spacing(" ")|}]
+    let line = [%lvca.nonbinding {|line()|}]
     let text str = Nonbinding.Operator (None, "text", [ Primitive (None, String str) ])
     let cat l r = Nonbinding.Operator (None, "cat", [ l; r ])
     let alt l r = Nonbinding.Operator (None, "alt", [ l; r ])
@@ -224,7 +224,7 @@ let%test_module _ =
 
     let%expect_test _ =
       let tm =
-        cat [%lvca_nonbinding {|text("abc")|}] (3 |> counting_list |> vsep |> align)
+        cat [%lvca.nonbinding {|text("abc")|}] (3 |> counting_list |> vsep |> align)
       in
       test_render 5 tm;
       [%expect {|
@@ -238,7 +238,7 @@ let%test_module _ =
       | Atom of string
 
     let sep = function
-      | [] -> [%lvca_nonbinding "nil()"]
+      | [] -> [%lvca.nonbinding "nil()"]
       | xs -> alt (hsep xs) (align (vsep xs))
     ;;
 

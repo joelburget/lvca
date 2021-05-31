@@ -1,7 +1,7 @@
 open Lvca_syntax
 
 module Prelude =
-[%abstract_syntax_module
+[%lvca.abstract_syntax_module
 {|
 list a :=
   | Nil()
@@ -13,7 +13,7 @@ either a b :=
 |}]
 
 module Primitive =
-[%abstract_syntax_module
+[%lvca.abstract_syntax_module
 {|
 integer : *
 string : *
@@ -29,7 +29,7 @@ primitive :=
 
 (* TODO: list : * -> * *)
 module NonBinding =
-[%abstract_syntax_module
+[%lvca.abstract_syntax_module
 {|
 string : *
 primitive : *
@@ -45,7 +45,7 @@ term :=
 
 (* TODO: list : * -> * *)
 module Pattern =
-[%abstract_syntax_module
+[%lvca.abstract_syntax_module
 {|
 string : *
 primitive : *
@@ -63,7 +63,7 @@ pattern :=
 
 (* TODO: list : * -> * *)
 module BindingAwarePattern =
-[%abstract_syntax_module
+[%lvca.abstract_syntax_module
 {|
 string : *
 primitive : *
@@ -83,7 +83,7 @@ scope := Scope(list string; t)
 
 (* TODO: list : * -> * *)
 module Nominal =
-[%abstract_syntax_module
+[%lvca.abstract_syntax_module
 {|
 string : *
 primitive : *
@@ -107,7 +107,7 @@ TODO: either : * -> *
 TODO | Operator(string; list (either scope term))
 *)
 module DeBruijn =
-[%abstract_syntax_module
+[%lvca.abstract_syntax_module
 {|
 int : *
 string : *
@@ -123,7 +123,7 @@ scope := Scope(string; term)
 
 (* TODO: list : * -> * *)
 module DeBruijn2d =
-[%abstract_syntax_module
+[%lvca.abstract_syntax_module
 {|
 int : *
 string : *

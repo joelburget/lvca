@@ -2,7 +2,7 @@ open Base
 open Lvca_syntax
 open Lvca_provenance
 
-let language = [%lvca_abstract_syntax "tm := app(tm; tm) | lam(tm. tm)"]
+let language = [%lvca.abstract_syntax "tm := app(tm; tm) | lam(tm. tm)"]
 
 let eval tm =
   let open Result.Let_syntax in

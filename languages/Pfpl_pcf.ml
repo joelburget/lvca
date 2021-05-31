@@ -1,7 +1,7 @@
 open Lvca_syntax
 
 let abstract_syntax =
-  [%lvca_abstract_syntax
+  [%lvca.abstract_syntax
     {|
 typ := nat() | parr(typ; typ)
 

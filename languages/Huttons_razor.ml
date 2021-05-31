@@ -5,7 +5,7 @@ open Stdio
 
 module Description = struct
   let abstract_syntax =
-    [%lvca_abstract_syntax
+    [%lvca.abstract_syntax
       {|
      expr :=
      | lit(integer)

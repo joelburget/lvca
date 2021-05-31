@@ -146,7 +146,7 @@ module Update_loc (Context : Builder_context) = struct
      {[
   012345678901234567890123456
 0 module Lang =
-1 [%abstract_syntax_module
+1 [%lvca.abstract_syntax_module
 2 {\|
 3 integer : *
 4
