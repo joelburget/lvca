@@ -296,6 +296,71 @@ module Lang =
                 function
                 | Types.Mut_b (x0, x1) -> Types.Mut_b ((f x0), (mut_a ~f x1))
             end
+          module To_nominal =
+            struct
+              let rec nat ~f  =
+                function
+                | Types.Z x0 -> Nominal.Term.Operator (x0, "Z", [])
+                | Types.S (x0, x1) ->
+                    Nominal.Term.Operator
+                      (x0, "S", [Nominal.Scope.Scope ([], (nat x1))])
+              let rec list f_a ~f  =
+                function
+                | Types.Nil x0 -> Nominal.Term.Operator (x0, "Nil", [])
+                | Types.Cons (x0, x1, x2) ->
+                    Nominal.Term.Operator
+                      (x0, "Cons",
+                        [Nominal.Scope.Scope ([], (f_a x1));
+                        Nominal.Scope.Scope ([], (list f_a x2))])
+              let nonempty ~f  =
+                function
+                | Types.Nonempty (x0, x1, x2) ->
+                    Nominal.Term.Operator
+                      (x0, "Nonempty",
+                        [Nominal.Scope.Scope ([], (String.to_nominal x1));
+                        Nominal.Scope.Scope ([], (list String.to_nominal x2))])
+              let pair f_a f_b ~f  =
+                function
+                | Types.Pair (x0, x1, x2) ->
+                    Nominal.Term.Operator
+                      (x0, "Pair",
+                        [Nominal.Scope.Scope ([], (f_a x1));
+                        Nominal.Scope.Scope ([], (f_b x2))])
+              let rec foo ~f  =
+                function
+                | Types.Foo (x0, x1) ->
+                    Nominal.Term.Operator
+                      (x0, "Foo",
+                        [Nominal.Scope.Scope ([], (Integer.to_nominal x1))])
+                | Types.Bar (x0, (x1, x2, x3)) ->
+                    Nominal.Term.Operator
+                      (x0, "Bar",
+                        [Nominal.Scope.Scope ([x1; (info, x2)], (foo x3))])
+              let pair_plus f_a f_b ~f  =
+                function
+                | Types.PairPlus (x0, x1, x2, x3) ->
+                    Nominal.Term.Operator
+                      (x0, "PairPlus",
+                        [Nominal.Scope.Scope ([], (f_a x1));
+                        Nominal.Scope.Scope ([], (f_b x2));
+                        Nominal.Scope.Scope ([], (foo x3))])
+              let rec term ~f  =
+                function
+                | Types.Operator (x0, x1) ->
+                    Nominal.Term.Operator
+                      (x0, "Operator",
+                        [Nominal.Scope.Scope ([], (list term x1))])
+              let rec mut_a ~f  =
+                function
+                | Types.Mut_a (x0, x1) ->
+                    Nominal.Term.Operator
+                      (x0, "Mut_a", [Nominal.Scope.Scope ([], (mut_b x1))])
+              and mut_b ~f  =
+                function
+                | Types.Mut_b (x0, x1) ->
+                    Nominal.Term.Operator
+                      (x0, "Mut_b", [Nominal.Scope.Scope ([], (mut_a x1))])
+            end
         end
       module Types = Wrapper.Types
       module Plain = Wrapper.Plain

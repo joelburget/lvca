@@ -487,6 +487,23 @@ module Helpers (Context : Builder_context) = struct
   ;;
 
   let all_term_s = pmty_ident { txt = unflatten [ "Language_object_intf"; "S" ]; loc }
+
+  let mk_exp_tuple = function
+    | [] -> [%expr ()]
+    | [ elem ] -> elem
+    | elems -> pexp_tuple elems
+  ;;
+
+  let mk_exp_tuple' contents =
+    match contents with [] -> None | _ -> Some (mk_exp_tuple contents)
+  ;;
+
+  let var_allocator name_base =
+    let var_ix = ref 0 in
+    fun () ->
+      Int.incr var_ix;
+      evar (Printf.sprintf "%s%d" name_base !var_ix)
+  ;;
 end
 
 (** Helper for declaring a constructor. *)
@@ -636,12 +653,6 @@ module Operator_exp (Context : Builder_context) = struct
     | Plain
     | With_info of expression
 
-  let mk_exp_tuple = function
-    | [] -> [%expr ()]
-    | [ elem ] -> elem
-    | elems -> pexp_tuple elems
-  ;;
-
   let mk
       ~ctor_type (* Building a plain or with-info data type *)
       ~var_names
@@ -652,11 +663,9 @@ module Operator_exp (Context : Builder_context) = struct
       fun_name (* The name of the function being defined *)
       (Syn.Operator_def.Operator_def (op_name, arity))
     =
-    let var_ix = ref 0 in
-    let v () = evar (Printf.sprintf "%s%d" name_base !var_ix) in
+    let v = var_allocator name_base in
     let pattern_converter = pexp_ident { txt = unflatten [ "Pattern"; fun_name ]; loc } in
     let body_arg sort =
-      Int.incr var_ix;
       mk_sort_app
         ~var_names
         ~fun_name
@@ -671,7 +680,6 @@ module Operator_exp (Context : Builder_context) = struct
              let slots_args =
                slots
                |> List.map ~f:(fun slot ->
-                      Int.incr var_ix;
                       match slot with
                       | Syn.Sort_slot.Sort_binding _sort -> v ()
                       | Sort_pattern _ ->
@@ -683,14 +691,13 @@ module Operator_exp (Context : Builder_context) = struct
     let contents =
       match ctor_type with With_info expr -> expr :: contents | Plain -> contents
     in
-    let body = match contents with [] -> None | _ -> Some (mk_exp_tuple contents) in
     let txt =
       let container_name =
         match ctor_type with With_info _ -> "Types" | Plain -> "Plain"
       in
       unflatten [ container_name; op_name ]
     in
-    pexp_construct { txt; loc } body
+    pexp_construct { txt; loc } (mk_exp_tuple' contents)
   ;;
 end
 
@@ -771,6 +778,83 @@ module Map_info (Context : Builder_context) = struct
           "map_info"
           op_def
       in
+      case ~lhs ~guard ~rhs
+    in
+    let init = op_defs |> List.map ~f |> pexp_function |> labelled_fun "f" in
+    let expr = List.fold_right vars ~init ~f:f_fun in
+    value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
+  ;;
+end
+
+module To_nominal (Context : Builder_context) = struct
+  open Context
+  open Ast
+  open Helpers (Context)
+  module Operator_pat = Operator_pat (Context)
+  module Operator_exp = Operator_exp (Context)
+
+  let operator = unflatten [ "Nominal"; "Term"; "Operator" ]
+
+  (* Eg:
+
+    {[
+      (* Lam(tm. tm) *)
+      | Lam (info, (x0, x1)) ->
+        Nominal.Term.Operator (info, "Lam", [
+          Nominal.Scope.Scope ([Pattern.Var (info, x0)], to_nominal x1)
+        ])
+      (* Match_line(tm[tm]. tm) *)
+      | Match_line (info, (x0, x1)) ->
+        Nominal.Term.Operator (info, "Match_line", [
+          Nominal.Scope.Scope ([x0], to_nominal x1)
+        ])
+      (* Pair(tm; tm) *)
+      | Pair (info, x0, x1) ->
+        Nominal.Term.Operator (info, "Pair", [
+          Nominal.Scope.Scope ([], to_nominal x0);
+          Nominal.Scope.Scope ([], to_nominal x1)
+        ])
+    ]}
+
+    Note: we currently never map to [Primitive].
+  *)
+  let mk_nominal_exp
+      ~var_names
+      ~prim_names
+      sort_defs
+      (Syn.Operator_def.Operator_def (op_name, arity))
+    =
+    let info = evar "x0" in
+    (* TODO: change to name "info" *)
+    let v = var_allocator "x" in
+    let body_arg sort =
+      mk_sort_app
+        ~var_names
+        ~fun_name:"to_nominal"
+        ~sort_defs
+        ~sort
+        ~extra_args:[ Nolabel, v () ]
+        ~prim_names
+    in
+    let mk_scope (Syn.Valence.Valence (slots, body_sort)) =
+      let args =
+        List.map slots ~f:(function
+            | Syn.Sort_slot.Sort_binding _ -> [%expr info, [%e v ()]]
+            | Sort_pattern _ -> v ())
+        |> Syntax_quoter.mk_list ~loc
+      in
+      [%expr Nominal.Scope.Scope ([%e args], [%e body_arg body_sort])]
+    in
+    let children = List.map arity ~f:mk_scope |> Syntax_quoter.mk_list ~loc in
+    let body = mk_exp_tuple' [ info; estring op_name; children ] in
+    pexp_construct { txt = operator; loc } body
+  ;;
+
+  let mk ~prim_names sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
+    let var_names = vars |> List.map ~f:fst |> SSet.of_list in
+    let f op_def =
+      let lhs = Operator_pat.mk ~ctor_type:With_info ~match_info:true op_def in
+      let rhs = mk_nominal_exp ~var_names ~prim_names sort_defs op_def in
       case ~lhs ~guard ~rhs
     in
     let init = op_defs |> List.map ~f |> pexp_function |> labelled_fun "f" in
@@ -888,6 +972,7 @@ module Wrapper_module (Context : Builder_context) = struct
   module Of_plain = Of_plain (Context)
   module Equal = Equal (Context)
   module Map_info = Map_info (Context)
+  module To_nominal = To_nominal (Context)
 
   let mk ~prim_names sort_defs =
     let sort_def_map = SMap.of_alist_exn sort_defs in
@@ -954,17 +1039,8 @@ module Wrapper_module (Context : Builder_context) = struct
         module Of_plain = [%m pmod_structure (adapt Of_plain.mk)]
         module Equal = [%m pmod_structure (adapt Equal.mk)]
         module Map_info = [%m pmod_structure (adapt Map_info.mk)]
-
-        (*
-      TODO:
-      module PpGeneric = struct end
-      module OfNominal = struct end
-      module ToNominal = struct end
-      module Jsonify = struct end
-      module Unjsonify = struct end
-      module Select = struct end
-      module SubstAll = struct end
-      *)]
+        module To_nominal = [%m pmod_structure (adapt To_nominal.mk)]
+        (* TODO: module Of_Nominal = struct end *)]
     in
     let wrapper_module =
       module_binding
@@ -1137,7 +1213,7 @@ module Container_module (Context : Builder_context) = struct
     in
     (* TODO: include language?
   let sort_defs =
-    [%str let language = [%e SyntaxQuoter.mk_language ~loc lang]] @ sort_defs
+    [%str let language = [%e Syntax_quoter.mk_language ~loc lang]] @ sort_defs
   in
   *)
     (* Turn into a functor over externals *)
