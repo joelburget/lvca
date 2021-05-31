@@ -54,6 +54,7 @@ module Term : sig
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val info : 'info t -> 'info
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
+  val pp : _ t Fmt.t
 end
 
 module Let : sig

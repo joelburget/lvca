@@ -113,14 +113,15 @@ module Pp_generic = struct
 
   (* TODO: add parse <-> pretty tests *)
 
-  let rec term ~open_loc ~close_loc ppf tm =
+  let rec term : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info Types.term Fmt.t =
+   fun ~open_loc ~close_loc ppf tm ->
     let pp = term ~open_loc ~close_loc in
     open_loc ppf (Info.term tm);
     (match tm with
     | Var (_, v) -> Fmt.string ppf v
-    | Term tm -> (braces Nominal.Term.pp) ppf tm
+    | Term tm -> braces (Nominal.Term.pp_generic ~open_loc ~close_loc) ppf tm
     | Lambda (_, sort, Scope (name, body)) ->
-      pf ppf "\\(%s : %a) ->@ %a" name Sort.pp sort pp body
+      pf ppf "\\(%s : %a) ->@ %a" name (Sort.pp_generic ~open_loc ~close_loc) sort pp body
     (* TODO: parens if necessary *)
     | Core_app (_, f, args) -> pf ppf "@[<h>%a@ @[<hov>%a@]@]" pp f (list ~sep:sp pp) args
     | Case (_, arg, cases') ->
@@ -142,7 +143,10 @@ module Pp_generic = struct
       ppf
       { info = _; is_rec; tm; ty; scope = Scope (name, body) }
     =
-    let pp_ty ppf = function Some ty -> pf ppf ": %a" Nominal.Term.pp ty | None -> () in
+    let pp_ty ppf = function
+      | Some ty -> pf ppf ": %a" (Nominal.Term.pp_generic ~open_loc ~close_loc) ty
+      | None -> ()
+    in
     pf
       ppf
       "@[let %s%s%a =@ %a in@ @[%a@]@]"
@@ -155,8 +159,8 @@ module Pp_generic = struct
       (term ~open_loc ~close_loc)
       body
 
-  and cases ~open_loc ~close_loc ppf cases =
-    list ~sep:(any "@;<1 2>| ") (case_scope ~open_loc ~close_loc) ppf cases
+  and cases ~open_loc ~close_loc =
+    list ~sep:(any "@;<1 2>| ") (case_scope ~open_loc ~close_loc)
 
   and case_scope ~open_loc ~close_loc ppf (Case_scope (pat, body)) =
     pf
@@ -269,7 +273,7 @@ module Term = struct
   include Kernel
 
   let erase = map_info ~f:(fun _ -> ())
-  let pp = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ())
+  let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 end
 
 module Let = struct

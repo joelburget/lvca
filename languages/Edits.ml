@@ -23,7 +23,7 @@ edit lang :=
    let abstract_syntax : AbstractSyntax.t = abstract_syntax_str |> Lvca_parsing.parse_string
    ParseAbstract.whitespace_t |> Result.ok_or_failwith *)
 
-type core = Opt_range.t Core.term
+type core = Opt_range.t Term.t
 
 type 'lang t =
   | Atomic of 'lang
@@ -61,24 +61,24 @@ type term = Opt_range.t Nominal.Term.t
 let%test_module "Parsing" =
   (module struct
     let parse : string -> (core t, string) Result.t =
-      Lvca_parsing.(parse_string (Parse.whitespace_t (braces Core.Parse.term)))
+      Lvca_parsing.(parse_string (Parse.whitespace_t (braces Lvca_core.Parse.term)))
     ;;
 
     let parse_and_print : string -> unit =
      fun str ->
       match parse str with
-      | Ok edit -> pp (Fmt.braces Core.pp) Caml.Format.std_formatter edit
+      | Ok edit -> pp (Fmt.braces Term.pp) Caml.Format.std_formatter edit
       | Error msg -> print_string msg
    ;;
 
-    let run_atom : term -> core -> (term, Opt_range.t Core.eval_error) Result.t =
+    let run_atom : term -> core -> (term, Opt_range.t eval_error) Result.t =
       let eval_primitive _eval_ctx _eval_ctx' _ctx _tm _name _args =
         Error
           ( "no primitive evaluation"
-          , Core.Term
+          , Term.Term
               (Nominal.Term.Primitive (None, String "TODO: make this unnecessary")) )
       in
-      fun tm core -> Core.(eval eval_primitive (CoreApp (None, core, [ Term tm ])))
+      fun tm core -> eval eval_primitive (Term.Core_app (None, core, [ Term tm ]))
     ;;
 
     (* TODO: don't throw away this information, switch from strings *)
