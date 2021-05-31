@@ -150,8 +150,44 @@ module DeBruijn_2d_model =
   Mk_DeBruijn_2d_model (Primitive.Int32) (Primitive.String) (Primitive) (Pattern) (List)
 *)
 
+module Mk_core_type_model =
+[%lvca.abstract_syntax_module
+{|
+list : * -> *
+sort : *
+
+list a :=
+  | Nil()
+  | Cons(a; list a)
+
+type :=
+  | Arrow(list type)
+  | Sort(sort)
+|}]
+
+module Mk_core_model =
+[%lvca.abstract_syntax_module
+{|
+nominal_term : *
+type : *
+string : *
+binding_aware_pattern : *
+is_rec : *
+list : * -> *
+option : * -> *
+
+term :=
+  | Term(nominal_term)
+  | Core_app(term; list term)
+  | Case(term; list case_scope)
+  | Lambda(type; scope)
+  | Let(is_rec; term; option type; scope)
+
+scope := Scope(string; term)
+
+case_scope := Case_scope(binding_aware_pattern; term)
+|}]
+
 module Properties (Lang : Language_object_intf.S) = struct
   (* check all generated functions equivalent *)
 end
-
-(* TODO: core, bidirectional *)

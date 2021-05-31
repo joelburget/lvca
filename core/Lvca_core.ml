@@ -15,21 +15,6 @@ module Is_rec = struct
   let ( = ) x y = match x, y with Rec, Rec | No_rec, No_rec -> true | _, _ -> false
 end
 
-(* list : * -> * *)
-module Type_model =
-[%lvca.abstract_syntax_module
-{|
-sort : *
-
-list a :=
-  | Nil()
-  | Cons(a; list a)
-
-type :=
-  | Arrow(list type)
-  | Sort(sort)
-|}]
-
 module Type = struct
   type 'info t =
     | Arrow of 'info t list (* TODO: or should we handle just a pair? *)
@@ -109,29 +94,6 @@ module Type = struct
     ;;
   end
 end
-
-module Model =
-[%lvca.abstract_syntax_module
-{|
-nominal_term : *
-type : *
-string : *
-binding_aware_pattern : *
-is_rec : *
-list : * -> *
-option : * -> *
-
-term :=
-  | Term(nominal_term)
-  | Core_app(term; list term)
-  | Case(term; list case_scope)
-  | Lambda(type; scope)
-  | Let(is_rec; term; option type; scope)
-
-scope := Scope(string; term)
-
-case_scope := Case_scope(binding_aware_pattern; term)
-|}]
 
 module Types = struct
   type 'info term =
