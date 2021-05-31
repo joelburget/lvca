@@ -7,9 +7,6 @@ module Format = Caml.Format
 module Util = Lvca_util
 module SMap = Util.String.Map
 
-type 'info n_term = 'info Nominal.Term.t
-type 'info pattern = 'info Binding_aware_pattern.t
-
 type is_rec =
   | Rec
   | NoRec
@@ -17,7 +14,7 @@ type is_rec =
 let is_rec_equal x y = match x, y with Rec, Rec | NoRec, NoRec -> true | _, _ -> false
 
 type 'info term =
-  | Term of 'info n_term
+  | Term of 'info Nominal.Term.t
   | CoreApp of 'info * 'info term * 'info term list
   | Case of 'info * 'info term * 'info cases (** Cases match patterns *)
   | Lambda of 'info * 'info Sort.t * 'info scope
@@ -29,7 +26,7 @@ and 'info let_ =
   { info : 'info
   ; is_rec : is_rec
   ; tm : 'info term
-  ; ty : 'info n_term option
+  ; ty : 'info Nominal.Term.t option
   ; scope : 'info scope
   }
 
@@ -37,7 +34,7 @@ and 'info scope = Scope of string * 'info term
 
 and 'info cases = 'info case_scope list
 
-and 'info case_scope = CaseScope of 'info pattern * 'info term
+and 'info case_scope = CaseScope of 'info Binding_aware_pattern.t * 'info term
 
 let rec equal ~info_eq x y =
   match x, y with
@@ -170,7 +167,9 @@ let check _env tm =
   | Var _ -> failwith "TODO"
 ;;
 
-let merge_results : 'a n_term SMap.t option list -> 'a n_term SMap.t option =
+let merge_results
+    : 'a Nominal.Term.t SMap.t option list -> 'a Nominal.Term.t SMap.t option
+  =
  fun results ->
   if List.for_all results ~f:Option.is_some
   then
@@ -238,17 +237,19 @@ let eval_char_bool_fn eval_ctx' name f ctx tm c =
 ;;
 
 type 'info primitive_eval =
-  ('info env -> 'info term -> ('info n_term, 'info eval_error) Result.t)
-  -> ('info env -> 'info n_term -> ('info n_term, 'info eval_error) Result.t)
+  ('info env -> 'info term -> ('info Nominal.Term.t, 'info eval_error) Result.t)
+  -> ('info env
+      -> 'info Nominal.Term.t
+      -> ('info Nominal.Term.t, 'info eval_error) Result.t)
   -> 'info env
   -> 'info term
   -> string
   -> 'info term list
-  -> ('info n_term, 'info eval_error) Result.t
+  -> ('info Nominal.Term.t, 'info eval_error) Result.t
 
 let rec eval_ctx
-    :  'info primitive_eval -> 'info n_term SMap.t -> 'info term
-    -> ('info n_term, 'info eval_error) Result.t
+    :  'info primitive_eval -> 'info Nominal.Term.t SMap.t -> 'info term
+    -> ('info Nominal.Term.t, 'info eval_error) Result.t
   =
  fun eval_primitive ctx tm ->
   let open Result.Let_syntax in
@@ -277,7 +278,10 @@ let rec eval_ctx
     eval_ctx (Map.set ctx ~key:name ~data:tm_val) body
   | _ -> Error ("Found a term we can't evaluate", tm)
 
-and eval_ctx' : 'a n_term SMap.t -> 'a n_term -> ('a n_term, 'a eval_error) Result.t =
+and eval_ctx'
+    :  'a Nominal.Term.t SMap.t -> 'a Nominal.Term.t
+    -> ('a Nominal.Term.t, 'a eval_error) Result.t
+  =
  fun ctx tm ->
   match tm with
   | Var (_, v) ->
@@ -287,7 +291,7 @@ and eval_ctx' : 'a n_term SMap.t -> 'a n_term -> ('a n_term, 'a eval_error) Resu
   | _ -> Ok tm
 ;;
 
-let eval : 'a primitive_eval -> 'a term -> ('a n_term, 'a eval_error) Result.t =
+let eval : 'a primitive_eval -> 'a term -> ('a Nominal.Term.t, 'a eval_error) Result.t =
  fun eval_primitive core -> eval_ctx eval_primitive SMap.empty core
 ;;
 
