@@ -7,116 +7,123 @@ module Format = Caml.Format
 module Util = Lvca_util
 module SMap = Util.String.Map
 
-type is_rec =
-  | Rec
-  | NoRec
+module Is_rec = struct
+  type t =
+    | Rec
+    | No_rec
 
-let is_rec_equal x y = match x, y with Rec, Rec | NoRec, NoRec -> true | _, _ -> false
+  let ( = ) x y = match x, y with Rec, Rec | No_rec, No_rec -> true | _, _ -> false
+end
 
-type 'info term =
-  | Term of 'info Nominal.Term.t
-  | CoreApp of 'info * 'info term * 'info term list
-  | Case of 'info * 'info term * 'info cases (** Cases match patterns *)
-  | Lambda of 'info * 'info Sort.t * 'info scope
-      (** Lambdas bind variables. Patterns not allowed. *)
-  | Let of 'info let_ (** Lets bind variables. Patterns not allowed. *)
-  | Var of 'info * string
+module Types = struct
+  type 'info term =
+    | Term of 'info Nominal.Term.t
+    | Core_app of 'info * 'info term * 'info term list
+    | Case of 'info * 'info term * 'info case_scope list (** Cases match patterns *)
+    | Lambda of 'info * 'info Sort.t * 'info scope
+        (** Lambdas bind variables. Patterns not allowed. *)
+    | Let of 'info let_ (** Lets bind variables. Patterns not allowed. *)
+    | Var of 'info * string
 
-and 'info let_ =
-  { info : 'info
-  ; is_rec : is_rec
-  ; tm : 'info term
-  ; ty : 'info Nominal.Term.t option
-  ; scope : 'info scope
-  }
+  and 'info let_ =
+    { info : 'info
+    ; is_rec : Is_rec.t
+    ; tm : 'info term
+    ; ty : 'info Nominal.Term.t option
+    ; scope : 'info scope
+    }
 
-and 'info scope = Scope of string * 'info term
+  and 'info scope = Scope of string * 'info term
 
-and 'info cases = 'info case_scope list
+  and 'info case_scope = Case_scope of 'info Binding_aware_pattern.t * 'info term
+end
 
-and 'info case_scope = CaseScope of 'info Binding_aware_pattern.t * 'info term
+module Equal = struct
+  let rec term ~info_eq x y =
+    match x, y with
+    | Types.Term x, Types.Term y -> Nominal.Term.equal ~info_eq x y
+    | Core_app (x1, x2, x3), Core_app (y1, y2, y3) ->
+      info_eq x1 y1 && term ~info_eq x2 y2 && List.equal (term ~info_eq) x3 y3
+    | Case (x1, x2, x3), Case (y1, y2, y3) ->
+      info_eq x1 y1 && term ~info_eq x2 y2 && List.equal (case_scope ~info_eq) x3 y3
+    | Lambda (x1, x2, x3), Lambda (y1, y2, y3) ->
+      info_eq x1 y1 && Sort.equal info_eq x2 y2 && scope ~info_eq x3 y3
+    | Let x, Let y -> let_ ~info_eq x y
+    | Var (x1, x2), Var (y1, y2) -> info_eq x1 y1 && String.(x2 = y2)
+    | _, _ -> false
 
-let rec equal ~info_eq x y =
-  match x, y with
-  | Term x, Term y -> Nominal.Term.equal ~info_eq x y
-  | CoreApp (x1, x2, x3), CoreApp (y1, y2, y3) ->
-    info_eq x1 y1 && equal ~info_eq x2 y2 && List.equal (equal ~info_eq) x3 y3
-  | Case (x1, x2, x3), Case (y1, y2, y3) ->
-    info_eq x1 y1 && equal ~info_eq x2 y2 && List.equal (case_scope_equal ~info_eq) x3 y3
-  | Lambda (x1, x2, x3), Lambda (y1, y2, y3) ->
-    info_eq x1 y1 && Sort.equal info_eq x2 y2 && scope_equal ~info_eq x3 y3
-  | Let x, Let y -> let_equal ~info_eq x y
-  | Var (x1, x2), Var (y1, y2) -> info_eq x1 y1 && String.(x2 = y2)
-  | _, _ -> false
+  and case_scope ~info_eq (Case_scope (x1, x2)) (Case_scope (y1, y2)) =
+    Binding_aware_pattern.equal ~info_eq x1 y1 && term ~info_eq x2 y2
 
-and case_scope_equal ~info_eq (CaseScope (x1, x2)) (CaseScope (y1, y2)) =
-  Binding_aware_pattern.equal ~info_eq x1 y1 && equal ~info_eq x2 y2
+  and scope ~info_eq (Scope (x1, x2)) (Scope (y1, y2)) =
+    String.(x1 = y1) && term ~info_eq x2 y2
 
-and scope_equal ~info_eq (Scope (x1, x2)) (Scope (y1, y2)) =
-  String.(x1 = y1) && equal ~info_eq x2 y2
+  and let_ ~info_eq x y =
+    info_eq x.info y.info
+    && Is_rec.(x.is_rec = y.is_rec)
+    && term ~info_eq x.tm y.tm
+    && Option.equal (Nominal.Term.equal ~info_eq) x.ty y.ty
+    && scope ~info_eq x.scope y.scope
+  ;;
+end
 
-and let_equal ~info_eq x y =
-  info_eq x.info y.info
-  && is_rec_equal x.is_rec y.is_rec
-  && equal ~info_eq x.tm y.tm
-  && Option.equal (Nominal.Term.equal ~info_eq) x.ty y.ty
-  && scope_equal ~info_eq x.scope y.scope
-;;
+module Info = struct
+  let term = function
+    | Types.Term tm -> Nominal.Term.info tm
+    | Core_app (info, _, _)
+    | Case (info, _, _)
+    | Lambda (info, _, _)
+    | Let { info; _ }
+    | Var (info, _) ->
+      info
+  ;;
 
-type 'info env = 'info Nominal.Term.t SMap.t
+  let let_ Types.{ info; _ } = info
+end
 
-let preimage _ = failwith "TODO"
-let reverse _tm _cases = failwith "TODO"
+module Map_info = struct
+  let rec term ~f = function
+    | Types.Term tm -> Types.Term (Nominal.Term.map_info ~f tm)
+    | Core_app (info, t1, args) ->
+      Core_app (f info, term ~f t1, List.map ~f:(term ~f) args)
+    | Case (info, tm, cases) ->
+      Case (f info, term ~f tm, List.map cases ~f:(case_scope ~f))
+    | Lambda (info, sort, scope') ->
+      Lambda (f info, Sort.map_info ~f sort, scope ~f scope')
+    | Let x -> Let (let_ ~f x)
+    | Var (info, name) -> Var (f info, name)
 
-let rec map_info ~f = function
-  | Term tm -> Term (Nominal.Term.map_info ~f tm)
-  | CoreApp (info, t1, args) ->
-    CoreApp (f info, map_info ~f t1, List.map ~f:(map_info ~f) args)
-  | Case (info, tm, cases) -> Case (f info, map_info ~f tm, map_info_cases ~f cases)
-  | Lambda (info, sort, scope) ->
-    Lambda (f info, Sort.map_info ~f sort, map_info_core_scope ~f scope)
-  | Let { info; is_rec; tm; ty; scope } ->
-    Let
-      { info = f info
-      ; is_rec
-      ; tm = map_info ~f tm
-      ; ty = Option.map ~f:(Nominal.Term.map_info ~f) ty
-      ; scope = map_info_core_scope ~f scope
-      }
-  | Var (info, name) -> Var (f info, name)
+  and let_ ~f { info; is_rec; tm; ty; scope = scope' } =
+    { info = f info
+    ; is_rec
+    ; tm = term ~f tm
+    ; ty = Option.map ~f:(Nominal.Term.map_info ~f) ty
+    ; scope = scope ~f scope'
+    }
 
-and map_info_core_scope ~f (Scope (name, tm)) = Scope (name, map_info ~f tm)
-and map_info_cases ~f = List.map ~f:(map_info_case_scope ~f)
+  and scope ~f (Scope (name, tm)) = Scope (name, term ~f tm)
 
-and map_info_case_scope ~f (CaseScope (pat, tm)) =
-  CaseScope (Binding_aware_pattern.map_info ~f pat, map_info ~f tm)
-;;
+  and case_scope ~f (Case_scope (pat, tm)) =
+    Case_scope (Binding_aware_pattern.map_info ~f pat, term ~f tm)
+  ;;
+end
 
-let info = function
-  | Term tm -> Nominal.Term.info tm
-  | CoreApp (info, _, _)
-  | Case (info, _, _)
-  | Lambda (info, _, _)
-  | Let { info; _ }
-  | Var (info, _) ->
-    info
-;;
-
-let erase tm = map_info ~f:(fun _ -> ()) tm
-
-module PP = struct
+module Pp_generic = struct
   let braces, list, any, pf, sp = Fmt.(braces, list, any, pf, sp)
 
   (* TODO: add parse <-> pretty tests *)
 
-  let rec pp ppf = function
+  let rec term ~open_loc ~close_loc ppf tm =
+    let pp = term ~open_loc ~close_loc in
+    open_loc ppf (Info.term tm);
+    (match tm with
     | Var (_, v) -> Fmt.string ppf v
     | Term tm -> (braces Nominal.Term.pp) ppf tm
     | Lambda (_, sort, Scope (name, body)) ->
       pf ppf "\\(%s : %a) ->@ %a" name Sort.pp sort pp body
     (* TODO: parens if necessary *)
-    | CoreApp (_, f, args) -> pf ppf "@[<h>%a@ @[<hov>%a@]@]" pp f (list ~sep:sp pp) args
-    | Case (_, arg, cases) ->
+    | Core_app (_, f, args) -> pf ppf "@[<h>%a@ @[<hov>%a@]@]" pp f (list ~sep:sp pp) args
+    | Case (_, arg, cases') ->
       pf
         ppf
         "@[<hv>match %a with {%t%a@ }@]"
@@ -124,43 +131,191 @@ module PP = struct
         arg
         (* Before `|`, emit a single space if on the same line, or two when broken *)
         (Format.pp_print_custom_break ~fits:("", 1, "") ~breaks:("", 2, "| "))
-        pp_cases
-        cases
-    | Let { info = _; is_rec; tm; ty; scope = Scope (name, body) } ->
-      let pp_ty ppf = function
-        | Some ty -> pf ppf ": %a" Nominal.Term.pp ty
-        | None -> ()
-      in
-      pf
-        ppf
-        "@[let %s%s%a =@ %a in@ @[%a@]@]"
-        (match is_rec with Rec -> "rec " | NoRec -> "")
-        name
-        pp_ty
-        ty
-        pp
-        tm
-        pp
-        body
+        (cases ~open_loc ~close_loc)
+        cases'
+    | Let x -> let_ ~open_loc ~close_loc ppf x);
+    close_loc ppf (Info.term tm)
 
-  and pp_cases ppf cases = list ~sep:(any "@;<1 2>| ") pp_core_case_scope ppf cases
+  and let_
+      ~open_loc
+      ~close_loc
+      ppf
+      { info = _; is_rec; tm; ty; scope = Scope (name, body) }
+    =
+    let pp_ty ppf = function Some ty -> pf ppf ": %a" Nominal.Term.pp ty | None -> () in
+    pf
+      ppf
+      "@[let %s%s%a =@ %a in@ @[%a@]@]"
+      (match is_rec with Rec -> "rec " | No_rec -> "")
+      name
+      pp_ty
+      ty
+      (term ~open_loc ~close_loc)
+      tm
+      (term ~open_loc ~close_loc)
+      body
 
-  and pp_core_case_scope : Format.formatter -> 'a case_scope -> unit =
-   fun ppf (CaseScope (pat, body)) ->
-    pf ppf "@[%a@ -> %a@]" Binding_aware_pattern.pp pat pp body
- ;;
+  and cases ~open_loc ~close_loc ppf cases =
+    list ~sep:(any "@;<1 2>| ") (case_scope ~open_loc ~close_loc) ppf cases
+
+  and case_scope ~open_loc ~close_loc ppf (Case_scope (pat, body)) =
+    pf
+      ppf
+      "@[%a@ -> %a@]"
+      (Binding_aware_pattern.pp_generic ~open_loc ~close_loc)
+      pat
+      (term ~open_loc ~close_loc)
+      body
+  ;;
 end
 
-let pp : Format.formatter -> 'a term -> unit = PP.pp
-let to_string : 'a term -> string = fun tm -> Format.asprintf "%a" pp tm
+module Parse = struct
+  open Lvca_parsing
+
+  let reserved = Util.String.Set.of_list [ "let"; "rec"; "in"; "match"; "with" ]
+
+  let identifier =
+    identifier
+    >>= fun ident ->
+    if Set.mem reserved ident
+    then fail (Printf.sprintf "identifier: reserved word (%s)" ident)
+    else return ident
+  ;;
+
+  let make_apps : 'a Types.term list -> 'a Types.term = function
+    | [] -> Util.invariant_violation ~here:[%here] "must be a nonempty list"
+    | [ x ] -> x
+    | f :: args as xs ->
+      let pos = xs |> List.map ~f:Info.term |> Opt_range.list_range in
+      Core_app (pos, f, args)
+  ;;
+
+  let term : Opt_range.t Types.term Lvca_parsing.t =
+    fix (fun term ->
+        let atomic_term =
+          choice
+            [ parens term
+            ; (identifier
+              >>|| fun { value; range } -> { value = Types.Var (range, value); range })
+            ; braces Nominal.Term.Parse.t >>| (fun tm -> Types.Term tm) <?> "quoted term"
+            ]
+        in
+        let pattern = Binding_aware_pattern.Parse.t <?> "pattern" in
+        let case_line =
+          lift3 (fun pat _ tm -> Types.Case_scope (pat, tm)) pattern (string "->") term
+          <?> "case line"
+        in
+        choice
+          [ lift4
+              (fun (_, lam_loc) ((name, sort), parens_loc) _ body ->
+                let info = Opt_range.union lam_loc parens_loc in
+                Types.Lambda (info, sort, Scope (name, body)))
+              (attach_pos (char '\\'))
+              (attach_pos
+                 (parens
+                    (lift3
+                       (fun ident _ sort -> ident, sort)
+                       identifier
+                       (char ':')
+                       Sort.Parse.t)))
+              (string "->")
+              term
+            <?> "lambda"
+          ; lift4
+              (fun (_let, let_pos) is_rec name ty _eq tm _in (body, body_pos) ->
+                let info = Opt_range.union let_pos body_pos in
+                Types.Let { info; is_rec; ty; tm; scope = Scope (name, body) })
+              (attach_pos (string "let"))
+              Is_rec.(option No_rec (Fn.const Rec <$> string "rec"))
+              identifier
+              (option None (char ':' *> Nominal.Term.Parse.t >>| fun tm -> Some tm))
+            <*> string "="
+            <*> term
+            <*> string "in"
+            <*> attach_pos term
+            <?> "let"
+          ; lift4
+              (fun (_match, match_pos) tm _with (lines, lines_pos) ->
+                let pos = Opt_range.union match_pos lines_pos in
+                Types.Case (pos, tm, lines))
+              (attach_pos (string "match"))
+              term
+              (string "with")
+              (attach_pos (braces (option '|' (char '|') *> sep_by (char '|') case_line)))
+            <?> "match"
+          ; many1 atomic_term >>| make_apps <?> "application"
+          ])
+    <?> "core term"
+  ;;
+end
+
+module Term = struct
+  module Kernel = struct
+    type 'info t = 'info Types.term =
+      | Term of 'info Nominal.Term.t
+      | Core_app of 'info * 'info t * 'info t list
+      | Case of 'info * 'info t * 'info Types.case_scope list
+      | Lambda of 'info * 'info Sort.t * 'info Types.scope
+      | Let of 'info Types.let_
+      | Var of 'info * string
+
+    let equal = Equal.term
+    let map_info = Map_info.term
+    let pp_generic = Pp_generic.term
+    let info = Info.term
+  end
+
+  (* include Language_object.Extend (Kernel) *)
+  include Kernel
+
+  let erase = map_info ~f:(fun _ -> ())
+  let pp = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ())
+end
+
+module Let = struct
+  type 'info t = 'info Types.let_ =
+    { info : 'info
+    ; is_rec : Is_rec.t
+    ; tm : 'info Types.term
+    ; ty : 'info Nominal.Term.t option
+    ; scope : 'info Types.scope
+    }
+
+  let equal = Equal.let_
+  let map_info = Map_info.let_
+  let pp_generic = Pp_generic.let_
+  let info = Info.let_
+end
+
+module Scope = struct
+  type 'info t = 'info Types.scope = Scope of string * 'info Types.term
+
+  let equal = Equal.scope
+  let map_info = Map_info.scope
+  (* let pp_generic = Pp_generic.scope *)
+end
+
+module Case_scope = struct
+  type 'info t = 'info Types.case_scope =
+    | Case_scope of 'info Binding_aware_pattern.t * 'info Types.term
+
+  let equal = Equal.case_scope
+  let map_info = Map_info.case_scope
+  let pp_generic = Pp_generic.case_scope
+end
+
+type 'info env = 'info Nominal.Term.t SMap.t
+
+let preimage _ = failwith "TODO"
+let reverse _tm _cases = failwith "TODO"
 
 type 'info check_env = 'info Lvca_syntax.Sort.t SMap.t
 type 'info check_error
 
 let check _env tm =
   match tm with
-  | Term _ -> failwith "TODO"
-  | CoreApp _ -> failwith "TODO"
+  | Term.Term _ -> failwith "TODO"
+  | Core_app _ -> failwith "TODO"
   | Case _ -> failwith "TODO"
   | Lambda _ -> failwith "TODO"
   | Let _ -> failwith "TODO"
@@ -216,13 +371,13 @@ and match_pattern_scope
 
 let find_match v branches =
   branches
-  |> List.find_map ~f:(fun (CaseScope (pat, rhs)) ->
+  |> List.find_map ~f:(fun (Types.Case_scope (pat, rhs)) ->
          match match_pattern v pat with
          | None -> None
          | Some bindings -> Some (rhs, bindings))
 ;;
 
-type 'a eval_error = string * 'a term
+type 'a eval_error = string * 'a Term.t
 
 let true_tm info = Nominal.Term.Operator (info, "true", [])
 let false_tm info = Nominal.Term.Operator (info, "false", [])
@@ -237,18 +392,18 @@ let eval_char_bool_fn eval_ctx' name f ctx tm c =
 ;;
 
 type 'info primitive_eval =
-  ('info env -> 'info term -> ('info Nominal.Term.t, 'info eval_error) Result.t)
+  ('info env -> 'info Term.t -> ('info Nominal.Term.t, 'info eval_error) Result.t)
   -> ('info env
       -> 'info Nominal.Term.t
       -> ('info Nominal.Term.t, 'info eval_error) Result.t)
   -> 'info env
-  -> 'info term
+  -> 'info Term.t
   -> string
-  -> 'info term list
+  -> 'info Term.t list
   -> ('info Nominal.Term.t, 'info eval_error) Result.t
 
 let rec eval_ctx
-    :  'info primitive_eval -> 'info Nominal.Term.t SMap.t -> 'info term
+    :  'info primitive_eval -> 'info Nominal.Term.t SMap.t -> 'info Term.t
     -> ('info Nominal.Term.t, 'info eval_error) Result.t
   =
  fun eval_primitive ctx tm ->
@@ -265,10 +420,10 @@ let rec eval_ctx
     | None -> Error ("no match found in case", Term tm_val)
     | Some (branch, bindings) ->
       eval_ctx (Util.Map.union_right_biased ctx bindings) branch)
-  | CoreApp (_, Lambda (_, _ty, Scope (name, body)), [ arg ]) ->
+  | Core_app (_, Lambda (_, _ty, Scope (name, body)), [ arg ]) ->
     let%bind arg_val = eval_ctx ctx arg in
     eval_ctx (Map.set ctx ~key:name ~data:arg_val) body
-  | CoreApp (_, Var (_, name), args) ->
+  | Core_app (_, Var (_, name), args) ->
     if Map.mem ctx name
     then failwith "TODO"
     else eval_primitive eval_ctx eval_ctx' ctx tm name args
@@ -291,13 +446,14 @@ and eval_ctx'
   | _ -> Ok tm
 ;;
 
-let eval : 'a primitive_eval -> 'a term -> ('a Nominal.Term.t, 'a eval_error) Result.t =
+let eval : 'a primitive_eval -> 'a Term.t -> ('a Nominal.Term.t, 'a eval_error) Result.t =
  fun eval_primitive core -> eval_ctx eval_primitive SMap.empty core
 ;;
 
 let eval_primitive eval_ctx eval_ctx' ctx tm name args =
   let open Result.Let_syntax in
   let open Nominal.Term in
+  let open Types in
   match name, args with
   | "add", [ Term a; Term b ] ->
     let%bind a_result = eval_ctx' ctx a in
@@ -350,98 +506,18 @@ let eval_primitive eval_ctx eval_ctx' ctx tm name args =
     failwith (Printf.sprintf "Unknown function (%s), or wrong number of arguments" name)
 ;;
 
-module Parse = struct
-  open Lvca_parsing
-
-  let reserved = Util.String.Set.of_list [ "let"; "rec"; "in"; "match"; "with" ]
-
-  let identifier =
-    identifier
-    >>= fun ident ->
-    if Set.mem reserved ident
-    then fail (Printf.sprintf "identifier: reserved word (%s)" ident)
-    else return ident
-  ;;
-
-  let make_apps : 'a term list -> 'a term = function
-    | [] -> Util.invariant_violation ~here:[%here] "must be a nonempty list"
-    | [ x ] -> x
-    | f :: args as xs ->
-      let pos = xs |> List.map ~f:info |> Opt_range.list_range in
-      CoreApp (pos, f, args)
-  ;;
-
-  let term : Opt_range.t term Lvca_parsing.t =
-    fix (fun term ->
-        let atomic_term =
-          choice
-            [ parens term
-            ; (identifier
-              >>|| fun { value; range } -> { value = Var (range, value); range })
-            ; braces Nominal.Term.Parse.t >>| (fun tm -> Term tm) <?> "quoted term"
-            ]
-        in
-        let pattern = Binding_aware_pattern.Parse.t <?> "pattern" in
-        let case_line =
-          lift3 (fun pat _ tm -> CaseScope (pat, tm)) pattern (string "->") term
-          <?> "case line"
-        in
-        choice
-          [ lift4
-              (fun (_, lam_loc) ((name, sort), parens_loc) _ body ->
-                let info = Opt_range.union lam_loc parens_loc in
-                Lambda (info, sort, Scope (name, body)))
-              (attach_pos (char '\\'))
-              (attach_pos
-                 (parens
-                    (lift3
-                       (fun ident _ sort -> ident, sort)
-                       identifier
-                       (char ':')
-                       Sort.Parse.t)))
-              (string "->")
-              term
-            <?> "lambda"
-          ; lift4
-              (fun (_let, let_pos) is_rec name ty _eq tm _in (body, body_pos) ->
-                let info = Opt_range.union let_pos body_pos in
-                Let { info; is_rec; ty; tm; scope = Scope (name, body) })
-              (attach_pos (string "let"))
-              (option NoRec (Fn.const Rec <$> string "rec"))
-              identifier
-              (option None (char ':' *> Nominal.Term.Parse.t >>| fun tm -> Some tm))
-            <*> string "="
-            <*> term
-            <*> string "in"
-            <*> attach_pos term
-            <?> "let"
-          ; lift4
-              (fun (_match, match_pos) tm _with (lines, lines_pos) ->
-                let pos = Opt_range.union match_pos lines_pos in
-                Case (pos, tm, lines))
-              (attach_pos (string "match"))
-              term
-              (string "with")
-              (attach_pos (braces (option '|' (char '|') *> sep_by (char '|') case_line)))
-            <?> "match"
-          ; many1 atomic_term >>| make_apps <?> "application"
-          ])
-    <?> "core term"
-  ;;
-end
-
 let%test_module "Parsing" =
   (module struct
     let parse str =
-      Lvca_parsing.parse_string Parse.term str |> Result.ok_or_failwith |> erase
+      Lvca_parsing.parse_string Parse.term str |> Result.ok_or_failwith |> Term.erase
     ;;
 
-    let ( = ) = equal ~info_eq:Unit.( = )
+    let ( = ) = Term.equal ~info_eq:Unit.( = )
     let one = Nominal.Term.Primitive ((), Integer (Z.of_int 1))
-    let var name = Var ((), name)
+    let var name = Term.Var ((), name)
     let ignored name = Binding_aware_pattern.Ignored ((), name)
     let operator tag children = Nominal.Term.Operator ((), tag, children)
-    let app f a = CoreApp ((), f, a)
+    let app f a = Term.Core_app ((), f, a)
 
     let%test _ = parse "{1}" = Term one
     let%test _ = parse "{true()}" = Term (operator "true" [])
@@ -451,7 +527,7 @@ let%test_module "Parsing" =
       parse "let str = string_of_chars chars in {var(str)}"
       = Let
           { info = ()
-          ; is_rec = NoRec
+          ; is_rec = No_rec
           ; ty = None
           ; tm = app (var "string_of_chars") [ var "chars" ]
           ; scope =
@@ -469,14 +545,14 @@ let%test_module "Parsing" =
 
     let%test _ =
       parse {|match x with { _ -> {1} }|}
-      = Case ((), var "x", [ CaseScope (ignored "", Term one) ])
+      = Case ((), var "x", [ Case_scope (ignored "", Term one) ])
     ;;
 
     let%test _ = parse {|match empty with { }|} = Case ((), var "empty", [])
 
     let%test _ =
       parse {|match x with { | _ -> {1} }|}
-      = Case ((), var "x", [ CaseScope (ignored "", Term one) ])
+      = Case ((), var "x", [ Case_scope (ignored "", Term one) ])
     ;;
 
     let%test _ =
@@ -484,8 +560,8 @@ let%test_module "Parsing" =
       = Case
           ( ()
           , var "x"
-          , [ CaseScope (Operator ((), "true", []), Term (operator "false" []))
-            ; CaseScope (Operator ((), "false", []), Term (operator "true" []))
+          , [ Case_scope (Operator ((), "true", []), Term (operator "false" []))
+            ; Case_scope (Operator ((), "false", []), Term (operator "true" []))
             ] )
     ;;
 
@@ -493,10 +569,10 @@ let%test_module "Parsing" =
       parse "let x = {true()} in not x"
       = Let
           { info = ()
-          ; is_rec = NoRec
+          ; is_rec = No_rec
           ; ty = None
           ; tm = Term (operator "true" [])
-          ; scope = Scope ("x", CoreApp ((), var "not", [ var "x" ]))
+          ; scope = Scope ("x", Core_app ((), var "not", [ var "x" ]))
           }
     ;;
   end)
@@ -521,7 +597,7 @@ let%test_module "Core parsing" =
     ;;
 
     let p_var name = Binding_aware_pattern.Var ((), name)
-    let c_var name = Var ((), name)
+    let c_var name = Term.Var ((), name)
 
     let p_operator tag children =
       Binding_aware_pattern.Operator
@@ -531,11 +607,11 @@ let%test_module "Core parsing" =
     ;;
 
     let t_operator tag children = Nominal.Term.Operator ((), tag, children)
-    let meaning x = CoreApp ((), c_var "meaning", [ x ])
+    let meaning x = Term.Core_app ((), c_var "meaning", [ x ])
     let ty = Sort.Name ((), "ty")
 
     let dynamics =
-      Lambda
+      Term.Lambda
         ( ()
         , ty
         , Scope
@@ -543,20 +619,20 @@ let%test_module "Core parsing" =
             , Case
                 ( ()
                 , c_var "tm"
-                , [ CaseScope (p_operator "true" [], Term (t_operator "true" []))
-                  ; CaseScope (p_operator "false" [], Term (t_operator "false" []))
-                  ; CaseScope
+                , [ Case_scope (p_operator "true" [], Term (t_operator "true" []))
+                  ; Case_scope (p_operator "false" [], Term (t_operator "false" []))
+                  ; Case_scope
                       ( p_operator "ite" [ p_var "t1"; p_var "t2"; p_var "t3" ]
                       , Case
                           ( ()
                           , meaning (c_var "t1")
-                          , [ CaseScope (p_operator "true" [], meaning (c_var "t2"))
-                            ; CaseScope (p_operator "false" [], meaning (c_var "t3"))
+                          , [ Case_scope (p_operator "true" [], meaning (c_var "t2"))
+                            ; Case_scope (p_operator "false" [], meaning (c_var "t3"))
                             ] ) )
-                  ; CaseScope
+                  ; Case_scope
                       ( p_operator "ap" [ p_var "f"; p_var "arg" ]
-                      , CoreApp ((), meaning @@ c_var "f", [ meaning @@ c_var "arg" ]) )
-                  ; CaseScope
+                      , Core_app ((), meaning @@ c_var "f", [ meaning @@ c_var "arg" ]) )
+                  ; Case_scope
                       ( p_operator "fun" [ p_var "scope" ]
                       , Term
                           (t_operator
@@ -570,8 +646,8 @@ let%test_module "Core parsing" =
       let parse_term str =
         Lvca_parsing.parse_string Parse.term str |> Base.Result.ok_or_failwith
       in
-      let ( = ) = equal ~info_eq:Unit.( = ) in
-      parse_term dynamics_str |> erase = dynamics
+      let ( = ) = Term.equal ~info_eq:Unit.( = ) in
+      parse_term dynamics_str |> Term.erase = dynamics
     ;;
   end)
 ;;
@@ -585,7 +661,7 @@ let%test_module "Core eval" =
       let core = parse_term str in
       let result =
         match eval eval_primitive core with
-        | Error (msg, tm) -> msg ^ ": " ^ to_string tm
+        | Error (msg, tm) -> Fmt.str "%s: %a" msg Term.pp tm
         | Ok result -> Nominal.Term.pp_str result
       in
       Stdio.print_string result
@@ -690,7 +766,7 @@ let%test_module "Core pretty" =
           let module Format = Stdlib.Format in
           let fmt = Format.str_formatter in
           Format.pp_set_geometry fmt ~max_indent:width ~margin:(width + 1);
-          pp fmt core;
+          Term.pp fmt core;
           Format.flush_str_formatter ()
       in
       Stdio.print_string str
@@ -769,8 +845,8 @@ let%test_module "Core eval in dynamics" =
       in
       let defn = parse_term dynamics_str in
       let core = parse_term str in
-      match eval eval_primitive (CoreApp (None, defn, [ core ])) with
-      | Error (msg, tm) -> msg ^ ": " ^ to_string tm
+      match eval eval_primitive (Core_app (None, defn, [ core ])) with
+      | Error (msg, tm) -> Fmt.str "%s: %a" msg Term.pp tm
       | Ok result -> Nominal.Term.pp_str result
     ;;
 
