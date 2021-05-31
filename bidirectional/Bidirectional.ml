@@ -23,9 +23,18 @@ type 'a trace_entry =
 
 type 'a trace_step = 'a trace_entry list
 
-let pp_bpat : _ Binding_aware_pattern.t Fmt.t = Binding_aware_pattern.pp
+let pp_bpat : _ Binding_aware_pattern.t Fmt.t =
+  Binding_aware_pattern.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ())
+;;
+
 let pp_pat = Pattern.pp
-let pp_capture = Binding_aware_pattern.pp_capture
+
+let pp_capture =
+  Binding_aware_pattern.pp_capture_generic
+    ~open_loc:(fun _ _ -> ())
+    ~close_loc:(fun _ _ -> ())
+;;
+
 let pp_term = Nominal.Term.pp
 
 let pp_err ppf = function

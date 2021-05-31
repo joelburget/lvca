@@ -130,39 +130,9 @@ and pp_scope_generic ~open_loc ~close_loc ppf (Scope (bindings, body)) =
   | _ -> pf ppf "%a.@ %a" (list ~sep:(any ".@ ") pp_binding) bindings pp_body body
 ;;
 
-let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
-
-let pp_scope ppf tm =
-  pp_scope_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
-;;
-
-let pp_range ppf tm =
-  pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag ppf tm
-;;
-
-let pp_scope_range ppf tm =
-  pp_scope_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag ppf tm
-;;
-
-let pp_ranges ppf tm =
-  pp_generic
-    ~open_loc:(fun ppf info -> Stdlib.Format.pp_open_stag ppf (Source_ranges.Stag info))
-    ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
-    ppf
-    tm
-;;
-
-let pp_scope_ranges ppf tm =
-  pp_scope_generic
-    ~open_loc:(fun ppf info -> Stdlib.Format.pp_open_stag ppf (Source_ranges.Stag info))
-    ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
-    ppf
-    tm
-;;
-
-let pp_capture ppf = function
-  | CapturedBinder pat -> Pattern.pp ppf pat
-  | CapturedTerm pat -> Term.pp ppf pat
+let pp_capture_generic ~open_loc ~close_loc ppf = function
+  | CapturedBinder pat -> Pattern.pp_generic ~open_loc ~close_loc ppf pat
+  | CapturedTerm pat -> Term.pp_generic ~open_loc ~close_loc ppf pat
 ;;
 
 let rec select_path ~path pat =
@@ -395,6 +365,8 @@ module Parse = struct
   let whitespace_t = Lvca_parsing.(whitespace *> t)
 end
 
+let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
+
 module Properties = struct
   open Property_result
 
@@ -435,6 +407,10 @@ let%test_module "Parsing" =
       Format.set_formatter_stag_functions Range.stag_functions;
       Format.set_tags true;
       Format.set_mark_tags true
+    ;;
+
+    let pp_range ppf tm =
+      pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag ppf tm
     ;;
 
     let print_parse tm =
@@ -702,6 +678,10 @@ let%test_module "check" =
 
     let parse_term str =
       Lvca_parsing.parse_string Nominal.Term.Parse.t str |> Result.ok_or_failwith
+    ;;
+
+    let pp_capture =
+      pp_capture_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ())
     ;;
 
     let print_match pat_str tm_str =

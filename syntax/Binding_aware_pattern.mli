@@ -54,13 +54,13 @@ val match_scope
 
 (** {1 Pretty-printing} *)
 
-val pp : _ t Fmt.t
-val pp_range : Opt_range.t t Fmt.t
-val pp_ranges : Source_ranges.t t Fmt.t
-val pp_scope : _ scope Fmt.t
-val pp_scope_range : Opt_range.t scope Fmt.t
-val pp_scope_ranges : Source_ranges.t scope Fmt.t
-val pp_capture : _ capture Fmt.t
+val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
+val pp_scope_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info scope Fmt.t
+
+val pp_capture_generic
+  :  open_loc:'info Fmt.t
+  -> close_loc:'info Fmt.t
+  -> 'info capture Fmt.t
 
 (** {1 Info} *)
 
