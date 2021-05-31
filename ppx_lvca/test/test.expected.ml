@@ -41,7 +41,7 @@ let test_language =
         [("foo",
            (Abstract_syntax.Sort_def.Sort_def
               ([],
-                [Abstract_syntax.OperatorDef.OperatorDef
+                [Abstract_syntax.Operator_def.Operator_def
                    ("foo",
                      [Abstract_syntax.Valence.Valence
                         ([],
@@ -123,7 +123,7 @@ module Lang =
               let mut_a = function | Types.Mut_a (x0, _) -> x0
               and mut_b = function | Types.Mut_b (x0, _) -> x0
             end
-          module ToPlain =
+          module To_plain =
             struct
               let rec nat =
                 function
@@ -159,7 +159,7 @@ module Lang =
               and mut_b =
                 function | Types.Mut_b (_, x1) -> Plain.Mut_b (mut_a x1)
             end
-          module OfPlain =
+          module Of_plain =
             struct
               let rec nat =
                 function
@@ -252,7 +252,7 @@ module Lang =
                 | (Types.Mut_b (x0, x1), Types.Mut_b (y0, y1)) ->
                     (info_eq x0 y0) && (mut_a ~info_eq x1 y1)
             end
-          module MapInfo =
+          module Map_info =
             struct
               let rec nat ~f  =
                 function
@@ -304,10 +304,10 @@ module Lang =
           type 'info t = 'info Wrapper.Types.foo
           module Plain = struct type t = Wrapper.Plain.foo end
           let info tm = Wrapper.Info.foo tm
-          let to_plain tm = Wrapper.ToPlain.foo tm
-          let of_plain tm = Wrapper.OfPlain.foo tm
+          let to_plain tm = Wrapper.To_plain.foo tm
+          let of_plain tm = Wrapper.Of_plain.foo tm
           let equal ~info_eq  tm = Wrapper.Equal.foo ~info_eq tm
-          let map_info ~f  tm = Wrapper.MapInfo.foo ~f tm
+          let map_info ~f  tm = Wrapper.Map_info.foo ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
@@ -319,10 +319,10 @@ module Lang =
           type 'info t = 'info Wrapper.Types.nat
           module Plain = struct type t = Wrapper.Plain.nat end
           let info tm = Wrapper.Info.nat tm
-          let to_plain tm = Wrapper.ToPlain.nat tm
-          let of_plain tm = Wrapper.OfPlain.nat tm
+          let to_plain tm = Wrapper.To_plain.nat tm
+          let of_plain tm = Wrapper.Of_plain.nat tm
           let equal ~info_eq  tm = Wrapper.Equal.nat ~info_eq tm
-          let map_info ~f  tm = Wrapper.MapInfo.nat ~f tm
+          let map_info ~f  tm = Wrapper.Map_info.nat ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
@@ -334,10 +334,10 @@ module Lang =
           type 'info t = ('info, 'info A.t) Wrapper.Types.list
           module Plain = struct type t = A.Plain.t Wrapper.Plain.list end
           let info tm = Wrapper.Info.list A.info tm
-          let to_plain tm = Wrapper.ToPlain.list A.to_plain tm
-          let of_plain tm = Wrapper.OfPlain.list A.of_plain tm
+          let to_plain tm = Wrapper.To_plain.list A.to_plain tm
+          let of_plain tm = Wrapper.Of_plain.list A.of_plain tm
           let equal ~info_eq  tm = Wrapper.Equal.list A.equal ~info_eq tm
-          let map_info ~f  tm = Wrapper.MapInfo.list A.map_info ~f tm
+          let map_info ~f  tm = Wrapper.Map_info.list A.map_info ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
@@ -350,12 +350,12 @@ module Lang =
           module Plain =
             struct type t = (A.Plain.t, B.Plain.t) Wrapper.Plain.pair end
           let info tm = Wrapper.Info.pair A.info B.info tm
-          let to_plain tm = Wrapper.ToPlain.pair A.to_plain B.to_plain tm
-          let of_plain tm = Wrapper.OfPlain.pair A.of_plain B.of_plain tm
+          let to_plain tm = Wrapper.To_plain.pair A.to_plain B.to_plain tm
+          let of_plain tm = Wrapper.Of_plain.pair A.of_plain B.of_plain tm
           let equal ~info_eq  tm =
             Wrapper.Equal.pair A.equal B.equal ~info_eq tm
           let map_info ~f  tm =
-            Wrapper.MapInfo.pair A.map_info B.map_info ~f tm
+            Wrapper.Map_info.pair A.map_info B.map_info ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
@@ -372,13 +372,13 @@ module Lang =
             end
           let info tm = Wrapper.Info.pair_plus A.info B.info tm
           let to_plain tm =
-            Wrapper.ToPlain.pair_plus A.to_plain B.to_plain tm
+            Wrapper.To_plain.pair_plus A.to_plain B.to_plain tm
           let of_plain tm =
-            Wrapper.OfPlain.pair_plus A.of_plain B.of_plain tm
+            Wrapper.Of_plain.pair_plus A.of_plain B.of_plain tm
           let equal ~info_eq  tm =
             Wrapper.Equal.pair_plus A.equal B.equal ~info_eq tm
           let map_info ~f  tm =
-            Wrapper.MapInfo.pair_plus A.map_info B.map_info ~f tm
+            Wrapper.Map_info.pair_plus A.map_info B.map_info ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
@@ -390,10 +390,10 @@ module Lang =
           type 'info t = 'info Wrapper.Types.nonempty
           module Plain = struct type t = Wrapper.Plain.nonempty end
           let info tm = Wrapper.Info.nonempty tm
-          let to_plain tm = Wrapper.ToPlain.nonempty tm
-          let of_plain tm = Wrapper.OfPlain.nonempty tm
+          let to_plain tm = Wrapper.To_plain.nonempty tm
+          let of_plain tm = Wrapper.Of_plain.nonempty tm
           let equal ~info_eq  tm = Wrapper.Equal.nonempty ~info_eq tm
-          let map_info ~f  tm = Wrapper.MapInfo.nonempty ~f tm
+          let map_info ~f  tm = Wrapper.Map_info.nonempty ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
@@ -405,10 +405,10 @@ module Lang =
           type 'info t = 'info Wrapper.Types.term
           module Plain = struct type t = Wrapper.Plain.term end
           let info tm = Wrapper.Info.term tm
-          let to_plain tm = Wrapper.ToPlain.term tm
-          let of_plain tm = Wrapper.OfPlain.term tm
+          let to_plain tm = Wrapper.To_plain.term tm
+          let of_plain tm = Wrapper.Of_plain.term tm
           let equal ~info_eq  tm = Wrapper.Equal.term ~info_eq tm
-          let map_info ~f  tm = Wrapper.MapInfo.term ~f tm
+          let map_info ~f  tm = Wrapper.Map_info.term ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
@@ -420,10 +420,10 @@ module Lang =
           type 'info t = 'info Wrapper.Types.mut_a
           module Plain = struct type t = Wrapper.Plain.mut_a end
           let info tm = Wrapper.Info.mut_a tm
-          let to_plain tm = Wrapper.ToPlain.mut_a tm
-          let of_plain tm = Wrapper.OfPlain.mut_a tm
+          let to_plain tm = Wrapper.To_plain.mut_a tm
+          let of_plain tm = Wrapper.Of_plain.mut_a tm
           let equal ~info_eq  tm = Wrapper.Equal.mut_a ~info_eq tm
-          let map_info ~f  tm = Wrapper.MapInfo.mut_a ~f tm
+          let map_info ~f  tm = Wrapper.Map_info.mut_a ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
@@ -435,10 +435,10 @@ module Lang =
           type 'info t = 'info Wrapper.Types.mut_b
           module Plain = struct type t = Wrapper.Plain.mut_b end
           let info tm = Wrapper.Info.mut_b tm
-          let to_plain tm = Wrapper.ToPlain.mut_b tm
-          let of_plain tm = Wrapper.OfPlain.mut_b tm
+          let to_plain tm = Wrapper.To_plain.mut_b tm
+          let of_plain tm = Wrapper.Of_plain.mut_b tm
           let equal ~info_eq  tm = Wrapper.Equal.mut_b ~info_eq tm
-          let map_info ~f  tm = Wrapper.MapInfo.mut_b ~f tm
+          let map_info ~f  tm = Wrapper.Map_info.mut_b ~f tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end

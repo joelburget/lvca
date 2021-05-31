@@ -55,7 +55,7 @@ diag a := Diag(pair a a)
         type ('info, 'a) diag = Diag of ('info, 'a, 'a) pair
       end
 
-      module OfPlain = struct
+      module Of_plain = struct
         let pair f_a f_b = function
           | Plain.Pair (x1, x2) -> Types.Pair ((), f_a x1, f_b x2)
         ;;
@@ -72,21 +72,21 @@ diag a := Diag(pair a a)
         type 'info t = ('info, 'info A.t, 'info B.t) Types.pair =
           | Pair of 'info * 'info A.t * 'info B.t
 
-        let of_plain = OfPlain.pair A.of_plain B.of_plain
+        let of_plain = Of_plain.pair A.of_plain B.of_plain
       end
 
       module UsesPair = struct
         type 'info uses_pair = ('info, 'info Integer.t, 'info String.t) Types.uses_pair =
           | UsesPair of 'info * ('info, Integer.t, 'info String.t) pair
 
-        let of_plain = OfPlain.uses_pair
+        let of_plain = Of_plain.uses_pair
       end
 
       module Diag (A : Language_object_intf.S) = struct
         type 'info diag = ('info, 'info A.t) Types.diag =
           | Diag of 'info * ('info, 'info A.t, 'info A.t) pair
 
-        let of_plain = OfPlain.diag A.of_plain
+        let of_plain = Of_plain.diag A.of_plain
       end
     ]}
 
@@ -318,7 +318,7 @@ let get_sort_ref_map sort_defs =
          let vars = List.map vars ~f:fst |> SSet.of_list in
          let connections =
            op_defs
-           |> List.map ~f:(fun (Syn.OperatorDef.OperatorDef (_name, arity)) ->
+           |> List.map ~f:(fun (Syn.Operator_def.Operator_def (_name, arity)) ->
                   arity
                   |> List.map ~f:(fun (Syn.Valence.Valence (_sort_slots, body_sort)) ->
                          all_sort_names body_sort)
@@ -351,8 +351,8 @@ module Helpers (Context : Builder_context) = struct
       as an imported primitive or a sort defined earlier in this language). *)
   type defn_status =
     | Variable
-    | MutualSort
-    | PredefinedSort of
+    | Mutual_sort
+    | Predefined_sort of
         { prim : bool
         ; info : bool
         }
@@ -368,8 +368,8 @@ module Helpers (Context : Builder_context) = struct
       match Map.find mutual_sorts sort_name with
       | Some (Syn.Sort_def.Sort_def (vars, _op_defs)) ->
         assert (List.(Int.(length vars = length sort_args)));
-        MutualSort
-      | None -> PredefinedSort { prim = Set.mem prim_names sort_name; info })
+        Mutual_sort
+      | None -> Predefined_sort { prim = Set.mem prim_names sort_name; info })
   ;;
 
   (** Make the type corresponding to a sort in a constructor declaration. Eg:
@@ -391,10 +391,10 @@ module Helpers (Context : Builder_context) = struct
       let name, sort_args = Sort.split sort in
       match classify_sort context sort with
       | Variable -> ptyp_var name
-      | MutualSort ->
+      | Mutual_sort ->
         let extra_args = List.map sort_args ~f:go in
         ptyp_constr { txt = unflatten [ name ]; loc } (args @ extra_args)
-      | PredefinedSort { prim; info } ->
+      | Predefined_sort { prim; info } ->
         let qualified_name =
           match prim, info with
           | true, true -> [ module_name name; "t" ]
@@ -453,8 +453,8 @@ module Helpers (Context : Builder_context) = struct
       let sort_name, _sort_args = Sort.split sort' in
       match classify_sort context sort' with
       | Variable -> evar ("f_" ^ sort_name)
-      | MutualSort -> evar sort_name (* XXX args? *)
-      | PredefinedSort { prim; info } ->
+      | Mutual_sort -> evar sort_name (* XXX args? *)
+      | Predefined_sort { prim; info } ->
         let qualified_name =
           match prim, info with
           | true, true -> [ module_name sort_name; fun_name ]
@@ -467,10 +467,10 @@ module Helpers (Context : Builder_context) = struct
     let txt, var_args =
       match classify_sort context sort with
       | Variable -> Lident ("f_" ^ sort_name), []
-      | MutualSort ->
+      | Mutual_sort ->
         let sort_args = List.map sort_args ~f:(fun sort -> Nolabel, mk_var_arg sort) in
         Lident sort_name, sort_args
-      | PredefinedSort _ -> unflatten [ module_name sort_name; fun_name ], []
+      | Predefined_sort _ -> unflatten [ module_name sort_name; fun_name ], []
     in
     pexp_apply
       (pexp_ident { txt; loc = update_loc (Sort.info sort) })
@@ -490,7 +490,7 @@ module Helpers (Context : Builder_context) = struct
 end
 
 (** Helper for declaring a constructor. *)
-module CtorDecl (Context : Builder_context) = struct
+module Ctor_decl (Context : Builder_context) = struct
   open Context
   open Ast
   open Helpers (Context)
@@ -500,7 +500,7 @@ module CtorDecl (Context : Builder_context) = struct
       ~var_names
       ~mutual_sorts
       ~prim_names
-      (Syn.OperatorDef.OperatorDef (op_name, arity))
+      (Syn.Operator_def.Operator_def (op_name, arity))
     =
     let pattern_type =
       if info then [%type: 'info Pattern.t] else [%type: Pattern.Plain.t]
@@ -508,10 +508,10 @@ module CtorDecl (Context : Builder_context) = struct
     let args_of_valence (Syn.Valence.Valence (binding_sort_slots, body_sort)) =
       let args =
         List.map binding_sort_slots ~f:(function
-            | Syn.SortSlot.SortBinding sort ->
+            | Syn.Sort_slot.Sort_binding sort ->
               let loc = update_loc (Sort.info sort) in
               [%type: string]
-            | SortPattern _sort -> pattern_type)
+            | Sort_pattern _sort -> pattern_type)
       in
       let context = { info; var_names; mutual_sorts; prim_names } in
       args @ [ ptyp_of_sort context body_sort ]
@@ -532,10 +532,10 @@ module CtorDecl (Context : Builder_context) = struct
   ;;
 end
 
-module TypeDecls (Context : Builder_context) = struct
+module Type_decls (Context : Builder_context) = struct
   open Context
   open Ast
-  module CtorDecl = CtorDecl (Context)
+  module Ctor_decl = Ctor_decl (Context)
 
   let mk ~info ~sort_def_map ~prim_names =
     let params0 = if info then [ ptyp_var "info", (NoVariance, NoInjectivity) ] else [] in
@@ -550,7 +550,8 @@ module TypeDecls (Context : Builder_context) = struct
              Ptype_variant
                (List.map
                   op_defs
-                  ~f:(CtorDecl.mk ~info ~var_names ~mutual_sorts:sort_def_map ~prim_names))
+                  ~f:
+                    (Ctor_decl.mk ~info ~var_names ~mutual_sorts:sort_def_map ~prim_names))
            in
            type_declaration
              ~name:{ txt = sort_name; loc }
@@ -562,14 +563,14 @@ module TypeDecls (Context : Builder_context) = struct
   ;;
 end
 
-module OperatorPat (Context : Builder_context) = struct
+module Operator_pat (Context : Builder_context) = struct
   open Context
   open Ast
   open Helpers (Context)
 
   type ctor_type =
     | Plain
-    | WithInfo
+    | With_info
 
   let is_valid_ocaml_constr_name str =
     (not (String.is_empty str)) && Char.is_uppercase str.[0]
@@ -586,7 +587,7 @@ module OperatorPat (Context : Builder_context) = struct
       ?(match_info = false)
       ?(match_non_info = true)
       ?(name_base = "x")
-      (Syn.OperatorDef.OperatorDef (op_name, arity))
+      (Syn.Operator_def.Operator_def (op_name, arity))
     =
     if not (is_valid_ocaml_constr_name op_name)
     then Location.raise_errorf ~loc "Invalid OCaml operator name: %s" op_name;
@@ -608,7 +609,7 @@ module OperatorPat (Context : Builder_context) = struct
     in
     let contents =
       match ctor_type with
-      | WithInfo -> [ (if match_info then v 0 else ppat_any) ] :: contents
+      | With_info -> [ (if match_info then v 0 else ppat_any) ] :: contents
       | Plain -> contents
     in
     let body =
@@ -618,7 +619,7 @@ module OperatorPat (Context : Builder_context) = struct
     in
     let txt =
       let container_name =
-        match ctor_type with WithInfo -> "Types" | Plain -> "Plain"
+        match ctor_type with With_info -> "Types" | Plain -> "Plain"
       in
       unflatten [ container_name; op_name ]
     in
@@ -626,14 +627,14 @@ module OperatorPat (Context : Builder_context) = struct
   ;;
 end
 
-module OperatorExp (Context : Builder_context) = struct
+module Operator_exp (Context : Builder_context) = struct
   open Context
   open Ast
   open Helpers (Context)
 
   type mapping_rhs_ty =
     | Plain
-    | WithInfo of expression
+    | With_info of expression
 
   let mk_exp_tuple = function
     | [] -> [%expr ()]
@@ -649,7 +650,7 @@ module OperatorExp (Context : Builder_context) = struct
       ?(name_base = "x")
       sort_defs (* Sorts being defined together *)
       fun_name (* The name of the function being defined *)
-      (Syn.OperatorDef.OperatorDef (op_name, arity))
+      (Syn.Operator_def.Operator_def (op_name, arity))
     =
     let var_ix = ref 0 in
     let v () = evar (Printf.sprintf "%s%d" name_base !var_ix) in
@@ -672,20 +673,20 @@ module OperatorExp (Context : Builder_context) = struct
                |> List.map ~f:(fun slot ->
                       Int.incr var_ix;
                       match slot with
-                      | Syn.SortSlot.SortBinding _sort -> v ()
-                      | SortPattern _ ->
+                      | Syn.Sort_slot.Sort_binding _sort -> v ()
+                      | Sort_pattern _ ->
                         pexp_apply pattern_converter (extra_args @ [ Nolabel, v () ]))
              in
              slots_args @ [ body_arg body_sort ])
       |> List.map ~f:mk_exp_tuple
     in
     let contents =
-      match ctor_type with WithInfo expr -> expr :: contents | Plain -> contents
+      match ctor_type with With_info expr -> expr :: contents | Plain -> contents
     in
     let body = match contents with [] -> None | _ -> Some (mk_exp_tuple contents) in
     let txt =
       let container_name =
-        match ctor_type with WithInfo _ -> "Types" | Plain -> "Plain"
+        match ctor_type with With_info _ -> "Types" | Plain -> "Plain"
       in
       unflatten [ container_name; op_name ]
     in
@@ -693,19 +694,25 @@ module OperatorExp (Context : Builder_context) = struct
   ;;
 end
 
-module ToPlain (Context : Builder_context) = struct
+module To_plain (Context : Builder_context) = struct
   open Context
   open Ast
   open Helpers (Context)
-  module OperatorPat = OperatorPat (Context)
-  module OperatorExp = OperatorExp (Context)
+  module Operator_pat = Operator_pat (Context)
+  module Operator_exp = Operator_exp (Context)
 
   let mk ~prim_names sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let f op_def =
-      let lhs = OperatorPat.mk ~ctor_type:WithInfo op_def in
+      let lhs = Operator_pat.mk ~ctor_type:With_info op_def in
       let rhs =
-        OperatorExp.mk ~var_names ~prim_names ~ctor_type:Plain sort_defs "to_plain" op_def
+        Operator_exp.mk
+          ~var_names
+          ~prim_names
+          ~ctor_type:Plain
+          sort_defs
+          "to_plain"
+          op_def
       in
       case ~lhs ~guard ~rhs
     in
@@ -715,22 +722,22 @@ module ToPlain (Context : Builder_context) = struct
   ;;
 end
 
-module OfPlain (Context : Builder_context) = struct
+module Of_plain (Context : Builder_context) = struct
   open Context
   open Ast
   open Helpers (Context)
-  module OperatorPat = OperatorPat (Context)
-  module OperatorExp = OperatorExp (Context)
+  module Operator_pat = Operator_pat (Context)
+  module Operator_exp = Operator_exp (Context)
 
   let mk ~prim_names sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let f op_def =
-      let lhs = OperatorPat.mk ~ctor_type:Plain op_def in
+      let lhs = Operator_pat.mk ~ctor_type:Plain op_def in
       let rhs =
-        OperatorExp.mk
+        Operator_exp.mk
           ~var_names
           ~prim_names
-          ~ctor_type:(WithInfo [%expr ()])
+          ~ctor_type:(With_info [%expr ()])
           sort_defs
           "of_plain"
           op_def
@@ -743,22 +750,22 @@ module OfPlain (Context : Builder_context) = struct
   ;;
 end
 
-module MapInfo (Context : Builder_context) = struct
+module Map_info (Context : Builder_context) = struct
   open Context
   open Ast
   open Helpers (Context)
-  module OperatorPat = OperatorPat (Context)
-  module OperatorExp = OperatorExp (Context)
+  module Operator_pat = Operator_pat (Context)
+  module Operator_exp = Operator_exp (Context)
 
   let mk ~prim_names sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let f op_def =
-      let lhs = OperatorPat.mk ~ctor_type:WithInfo ~match_info:true op_def in
+      let lhs = Operator_pat.mk ~ctor_type:With_info ~match_info:true op_def in
       let rhs =
-        OperatorExp.mk
+        Operator_exp.mk
           ~var_names
           ~prim_names
-          ~ctor_type:(WithInfo [%expr f x0])
+          ~ctor_type:(With_info [%expr f x0])
           ~extra_args:[ labelled_arg "f" ]
           sort_defs
           "map_info"
@@ -776,16 +783,16 @@ module Equal (Context : Builder_context) = struct
   open Context
   open Ast
   open Helpers (Context)
-  module OperatorPat = OperatorPat (Context)
+  module Operator_pat = Operator_pat (Context)
 
   let mk ~prim_names sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
-    let f (Syn.OperatorDef.OperatorDef (_op_name, arity) as op_def) =
+    let f (Syn.Operator_def.Operator_def (_op_name, arity) as op_def) =
       let lhs =
         let p1, p2 =
           ("x", "y")
           |> Lvca_util.Tuple2.map ~f:(fun name_base ->
-                 OperatorPat.mk ~ctor_type:WithInfo ~match_info:true ~name_base op_def)
+                 Operator_pat.mk ~ctor_type:With_info ~match_info:true ~name_base op_def)
         in
         [%pat? [%p p1], [%p p2]]
       in
@@ -805,9 +812,9 @@ module Equal (Context : Builder_context) = struct
                           Int.incr var_ix;
                           let x, y = mk_xy () in
                           match slot with
-                          | Syn.SortSlot.SortBinding _sort ->
+                          | Syn.Sort_slot.Sort_binding _sort ->
                             [%expr Base.String.( = ) [%e x] [%e y]]
-                          | SortPattern _ -> [%expr Pattern.equal ~info_eq [%e x] [%e y]])
+                          | Sort_pattern _ -> [%expr Pattern.equal ~info_eq [%e x] [%e y]])
                  in
                  let body_check =
                    Int.incr var_ix;
@@ -853,12 +860,12 @@ module Info (Context : Builder_context) = struct
   open Context
   open Ast
   open Helpers (Context)
-  module OperatorPat = OperatorPat (Context)
+  module Operator_pat = Operator_pat (Context)
 
   let mk ~prim_names:_ _sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
     let mk_case op_def =
       let lhs =
-        OperatorPat.mk ~ctor_type:WithInfo ~match_info:true ~match_non_info:false op_def
+        Operator_pat.mk ~ctor_type:With_info ~match_info:true ~match_non_info:false op_def
       in
       case ~lhs ~guard ~rhs:[%expr x0]
     in
@@ -875,17 +882,17 @@ module Wrapper_module (Context : Builder_context) = struct
   open Context
   open Ast
   module Graph = Directed_graph.Make (Base.String)
-  module TypeDecls = TypeDecls (Context)
+  module Type_decls = Type_decls (Context)
   module Info = Info (Context)
-  module ToPlain = ToPlain (Context)
-  module OfPlain = OfPlain (Context)
+  module To_plain = To_plain (Context)
+  module Of_plain = Of_plain (Context)
   module Equal = Equal (Context)
-  module MapInfo = MapInfo (Context)
+  module Map_info = Map_info (Context)
 
   let mk ~prim_names sort_defs =
     let sort_def_map = SMap.of_alist_exn sort_defs in
     let sort_ref_map = get_sort_ref_map sort_defs in
-    let Graph.ConnectedComponents.{ scc_graph; sccs } =
+    let Graph.Connected_components.{ scc_graph; sccs } =
       Graph.connected_components sort_ref_map
     in
     let ordered_sccs =
@@ -929,8 +936,8 @@ module Wrapper_module (Context : Builder_context) = struct
              in
              pstr_value is_rec value_bindings)
     in
-    let info_decls = TypeDecls.mk ~info:true ~sort_def_map ~prim_names in
-    let plain_decls = TypeDecls.mk ~info:false ~sort_def_map ~prim_names in
+    let info_decls = Type_decls.mk ~info:true ~sort_def_map ~prim_names in
+    let plain_decls = Type_decls.mk ~info:false ~sort_def_map ~prim_names in
     let defs =
       (* Each of these functions is potentially recursive (across multiple types), pre-declare. *)
       [%str
@@ -943,10 +950,10 @@ module Wrapper_module (Context : Builder_context) = struct
         end
 
         module Info = [%m pmod_structure (adapt ~definite_rec:Nonrecursive Info.mk)]
-        module ToPlain = [%m pmod_structure (adapt ToPlain.mk)]
-        module OfPlain = [%m pmod_structure (adapt OfPlain.mk)]
+        module To_plain = [%m pmod_structure (adapt To_plain.mk)]
+        module Of_plain = [%m pmod_structure (adapt Of_plain.mk)]
         module Equal = [%m pmod_structure (adapt Equal.mk)]
-        module MapInfo = [%m pmod_structure (adapt MapInfo.mk)]
+        module Map_info = [%m pmod_structure (adapt Map_info.mk)]
 
         (*
       TODO:
@@ -1024,10 +1031,10 @@ module Individual_type_module (Context : Builder_context) = struct
     in
     let fun_defs =
       [ "info", "Info"
-      ; "to_plain", "ToPlain"
-      ; "of_plain", "OfPlain"
+      ; "to_plain", "To_plain"
+      ; "of_plain", "Of_plain"
       ; "equal", "Equal"
-      ; "map_info", "MapInfo"
+      ; "map_info", "Map_info"
       ]
       |> List.map ~f:(fun (fun_name, mod_name) ->
              let wrapper_fun =

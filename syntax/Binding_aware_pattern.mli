@@ -15,7 +15,7 @@ and 'info scope = Scope of ('info * string) list * 'info t
 
 type 'info capture_type =
   | BoundVar of 'info Sort.t
-  | BoundPattern of 'info Abstract_syntax.PatternSort.t
+  | BoundPattern of 'info Abstract_syntax.Pattern_sort.t
   | BoundTerm of 'info Sort.t
 
 type 'info capture =

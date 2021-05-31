@@ -19,7 +19,7 @@ and 'info scope = Scope of ('info * string) list * 'info t
 
 type 'info capture_type =
   | BoundVar of 'info Sort.t
-  | BoundPattern of 'info Abstract_syntax.PatternSort.t
+  | BoundPattern of 'info Abstract_syntax.Pattern_sort.t
   | BoundTerm of 'info Sort.t
 
 type 'info capture =
@@ -225,7 +225,7 @@ let check check_prim lang sort =
                   "BindingAwarePattern.check: failed to find operator %s in sort %s"
                   op_name
                   sort_name))
-        | Some (sort_vars, OperatorDef (_, arity)) ->
+        | Some (sort_vars, Operator_def (_, arity)) ->
           (* TODO: kind check *)
           let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
           let sort_env = SMap.of_alist_exn (List.zip_exn sort_vars sort_args) in
@@ -265,8 +265,8 @@ let check check_prim lang sort =
         |> List.map ~f:(fun (slot, (_, v)) ->
                let binding_type =
                  match slot with
-                 | SortBinding sort -> BoundVar sort
-                 | SortPattern pattern_sort -> BoundPattern pattern_sort
+                 | Sort_binding sort -> BoundVar sort
+                 | Sort_pattern pattern_sort -> BoundPattern pattern_sort
                in
                v, binding_type)
       in

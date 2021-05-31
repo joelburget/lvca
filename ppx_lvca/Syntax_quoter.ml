@@ -77,11 +77,11 @@ let rec mk_sort ~loc = function
 ;;
 
 let mk_sort_slot ~loc = function
-  | Abstract_syntax.SortSlot.SortBinding s ->
-    [%expr Abstract_syntax.SortSlot.SortBinding [%e mk_sort ~loc s]]
-  | SortPattern { pattern_sort; var_sort } ->
+  | Abstract_syntax.Sort_slot.Sort_binding s ->
+    [%expr Abstract_syntax.Sort_slot.Sort_binding [%e mk_sort ~loc s]]
+  | Sort_pattern { pattern_sort; var_sort } ->
     [%expr
-      Abstract_syntax.SortSlot.SortPattern
+      Abstract_syntax.Sort_slot.Sort_pattern
         { pattern_sort = [%e mk_sort ~loc pattern_sort]
         ; var_sort = [%e mk_sort ~loc var_sort]
         }]
@@ -95,9 +95,9 @@ let mk_valence ~loc (Abstract_syntax.Valence.Valence (sort_slots, body_sort)) =
 
 let mk_arity ~loc valences = valences |> List.map ~f:(mk_valence ~loc) |> mk_list ~loc
 
-let mk_operator_def ~loc (Abstract_syntax.OperatorDef.OperatorDef (name, arity)) =
+let mk_operator_def ~loc (Abstract_syntax.Operator_def.Operator_def (name, arity)) =
   [%expr
-    Abstract_syntax.OperatorDef.OperatorDef
+    Abstract_syntax.Operator_def.Operator_def
       ([%e mk_str ~loc name], [%e mk_arity ~loc arity])]
 ;;
 

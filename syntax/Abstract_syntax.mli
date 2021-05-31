@@ -28,7 +28,7 @@ end
 
 (** A pattern sort represents the sort of a pattern with variables of some sort. This is
     written as [pattern_sort\[var_sort\]]. *)
-module PatternSort : sig
+module Pattern_sort : sig
   type 'info t =
     { pattern_sort : 'info Sort.t
     ; var_sort : 'info Sort.t
@@ -42,10 +42,10 @@ module PatternSort : sig
 end
 
 (** Represents a place where a sort can go in a valence. *)
-module SortSlot : sig
+module Sort_slot : sig
   type 'info t =
-    | SortBinding of 'info Sort.t
-    | SortPattern of 'info PatternSort.t
+    | Sort_binding of 'info Sort.t
+    | Sort_pattern of 'info Pattern_sort.t
 
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
@@ -64,7 +64,7 @@ end
 (** A valence represents a sort, as well as the number and sorts of the variables bound
     within it. Valences are most often used to represent slots in an operator. *)
 module Valence : sig
-  type 'info t = Valence of 'info SortSlot.t list * 'info Sort.t
+  type 'info t = Valence of 'info Sort_slot.t list * 'info Sort.t
 
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
@@ -97,9 +97,9 @@ module Arity : sig
   end
 end
 
-module OperatorDef : sig
+module Operator_def : sig
   type 'info t =
-    | OperatorDef of string * 'info Arity.t
+    | Operator_def of string * 'info Arity.t
         (** An operator is defined by its tag and arity. *)
 
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
@@ -114,7 +114,7 @@ end
 
 module Sort_def : sig
   type 'info t =
-    | Sort_def of (string * 'info Kind.t option) list * 'info OperatorDef.t list
+    | Sort_def of (string * 'info Kind.t option) list * 'info Operator_def.t list
         (** A sort is defined by a set of variables and a set of operators. *)
 
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
@@ -163,7 +163,7 @@ val lookup_operator
   :  'info t
   -> string (** sort name *)
   -> string (** operator_name *)
-  -> ((string * 'info Kind.t option) list * 'info OperatorDef.t) option
+  -> ((string * 'info Kind.t option) list * 'info Operator_def.t) option
 
 val pp : _ t Fmt.t
 val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t

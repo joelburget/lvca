@@ -13,7 +13,7 @@ end
 exception NotDag
 
 module Int = struct
-  module ConnectedComponents = struct
+  module Connected_components = struct
     type t =
       { scc_count : int
       ; scc_numbering : int list
@@ -68,7 +68,7 @@ module Int = struct
         Int.incr scc_count)
     in
     Array.iteri ids ~f:(fun i id -> if Int.(id = unvisited) then dfs i);
-    ConnectedComponents.{ scc_count = !scc_count; scc_numbering = Array.to_list low }
+    Connected_components.{ scc_count = !scc_count; scc_numbering = Array.to_list low }
   ;;
 
   let pre_make_sets numbered =
@@ -85,7 +85,7 @@ module Int = struct
   ;;
 
   let connected_component_sets connections =
-    let ConnectedComponents.{ scc_numbering; _ } = connected_components connections in
+    let Connected_components.{ scc_numbering; _ } = connected_components connections in
     make_sets scc_numbering
   ;;
 
@@ -129,7 +129,7 @@ module Make (Key : Key_intf) = struct
     type t = (Key.t, Key.t list, Key.comparator_witness) Base.Map.t
   end
 
-  module ConnectedComponents = struct
+  module Connected_components = struct
     type t =
       { scc_graph : int list IMap.t
       ; sccs : (Key.t, Key.comparator_witness) Base.Set.t IMap.t
@@ -159,7 +159,7 @@ module Make (Key : Key_intf) = struct
   let connected_components graph =
     let _key_to_id, id_to_key, connections = conversions graph in
     (* First find mappings from the map key to int id and back. *)
-    let Int.ConnectedComponents.{ scc_count = _; scc_numbering } =
+    let Int.Connected_components.{ scc_count = _; scc_numbering } =
       Int.connected_components connections
     in
     let int_sccs = Int.make_sets scc_numbering in
@@ -195,7 +195,7 @@ module Make (Key : Key_intf) = struct
       |> Map.map ~f:(fun int_set ->
              Set.map (module Key) int_set ~f:(Map.find_exn id_to_key))
     in
-    ConnectedComponents.{ scc_graph; sccs }
+    Connected_components.{ scc_graph; sccs }
   ;;
 
   let topsort_exn graph =
@@ -243,7 +243,7 @@ let%test_module _ =
       let connections =
         adjacency |> List.mapi ~f:(fun i a -> i, a) |> Map.of_alist_exn (module Base.Int)
       in
-      let Int.ConnectedComponents.{ scc_numbering; _ } =
+      let Int.Connected_components.{ scc_numbering; _ } =
         Int.connected_components connections
       in
       let sets = Int.make_sets scc_numbering |> Map.data |> List.map ~f:Set.to_list in
@@ -276,7 +276,7 @@ let%test_module _ =
 
     let print_connected_components adjacency =
       let graph = Int.graph_of_adjacency adjacency in
-      let Int'.ConnectedComponents.{ scc_graph; sccs } =
+      let Int'.Connected_components.{ scc_graph; sccs } =
         Int'.connected_components graph
       in
       Fmt.pr "scc_graph:\n";
@@ -345,7 +345,7 @@ let%test_module _ =
 
     let print_scc adjacency =
       let graph = Int.graph_of_adjacency adjacency in
-      let Int'.ConnectedComponents.{ scc_graph; sccs = _ } =
+      let Int'.Connected_components.{ scc_graph; sccs = _ } =
         Int'.connected_components graph
       in
       Fmt.(pr "%a" (list ~sep:(any " ") int)) (Int.topsort_exn scc_graph)
@@ -370,7 +370,7 @@ let%test_module _ =
 
     let%expect_test _ =
       let graph = Map.of_alist_exn (module Base.String) [ "foo", [ "foo" ] ] in
-      let String.ConnectedComponents.{ scc_graph; sccs = _ } =
+      let String.Connected_components.{ scc_graph; sccs = _ } =
         String.connected_components graph
       in
       Fmt.(pr "%a" (list ~sep:(any " ") int)) (Int.topsort_exn scc_graph);
@@ -390,7 +390,7 @@ let%test_module _ =
           ; "list", [ "list" ]
           ]
       in
-      let String.ConnectedComponents.{ scc_graph; sccs = _ } =
+      let String.Connected_components.{ scc_graph; sccs = _ } =
         String.connected_components graph
       in
       Stdlib.Format.set_margin 80;

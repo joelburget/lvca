@@ -37,7 +37,7 @@ module Kind = struct
   end
 end
 
-module PatternSort = struct
+module Pattern_sort = struct
   type 'info t =
     { pattern_sort : 'info Sort.t
     ; var_sort : 'info Sort.t
@@ -68,15 +68,15 @@ module PatternSort = struct
   ;;
 end
 
-module SortSlot = struct
+module Sort_slot = struct
   type 'info t =
-    | SortBinding of 'info Sort.t
-    | SortPattern of 'info PatternSort.t
+    | Sort_binding of 'info Sort.t
+    | Sort_pattern of 'info Pattern_sort.t
 
   let map_info ~f = function
-    | SortBinding s -> SortBinding (Sort.map_info ~f s)
-    | SortPattern { pattern_sort; var_sort } ->
-      SortPattern
+    | Sort_binding s -> Sort_binding (Sort.map_info ~f s)
+    | Sort_pattern { pattern_sort; var_sort } ->
+      Sort_pattern
         { pattern_sort = Sort.map_info ~f pattern_sort
         ; var_sort = Sort.map_info ~f var_sort
         }
@@ -84,26 +84,26 @@ module SortSlot = struct
 
   let equal ~info_eq slot1 slot2 =
     match slot1, slot2 with
-    | SortBinding s1, SortBinding s2 -> Sort.equal info_eq s1 s2
-    | SortPattern ps1, SortPattern ps2 -> PatternSort.equal ~info_eq ps1 ps2
+    | Sort_binding s1, Sort_binding s2 -> Sort.equal info_eq s1 s2
+    | Sort_pattern ps1, Sort_pattern ps2 -> Pattern_sort.equal ~info_eq ps1 ps2
     | _, _ -> false
   ;;
 
   let pp_generic ~open_loc ~close_loc ppf = function
-    | SortBinding sort -> Sort.pp_generic ~open_loc ~close_loc ppf sort
-    | SortPattern ps -> PatternSort.pp_generic ~open_loc ~close_loc ppf ps
+    | Sort_binding sort -> Sort.pp_generic ~open_loc ~close_loc ppf sort
+    | Sort_pattern ps -> Pattern_sort.pp_generic ~open_loc ~close_loc ppf ps
   ;;
 
   let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
   let instantiate env = function
-    | SortBinding s -> SortBinding (Sort.instantiate env s)
-    | SortPattern ps -> SortPattern (PatternSort.instantiate env ps)
+    | Sort_binding s -> Sort_binding (Sort.instantiate env s)
+    | Sort_pattern ps -> Sort_pattern (Pattern_sort.instantiate env ps)
   ;;
 
   let kind_check env = function
-    | SortBinding sort -> Sort.kind_check env sort
-    | SortPattern { pattern_sort; var_sort } ->
+    | Sort_binding sort -> Sort.kind_check env sort
+    | Sort_pattern { pattern_sort; var_sort } ->
       [ pattern_sort; var_sort ] |> List.fold ~init:env ~f:Sort.kind_check
   ;;
 
@@ -116,8 +116,8 @@ module SortSlot = struct
       >>= fun sort ->
       choice
         [ (brackets Sort.t
-          >>| fun var_sort -> SortPattern { pattern_sort = sort; var_sort })
-        ; return (SortBinding sort)
+          >>| fun var_sort -> Sort_pattern { pattern_sort = sort; var_sort })
+        ; return (Sort_binding sort)
         ]
       <?> "sort slot"
     ;;
@@ -125,14 +125,14 @@ module SortSlot = struct
 end
 
 module Valence = struct
-  type 'info t = Valence of 'info SortSlot.t list * 'info Sort.t
+  type 'info t = Valence of 'info Sort_slot.t list * 'info Sort.t
 
   let equal ~info_eq (Valence (slots1, sort1)) (Valence (slots2, sort2)) =
-    List.equal (SortSlot.equal ~info_eq) slots1 slots2 && Sort.equal info_eq sort1 sort2
+    List.equal (Sort_slot.equal ~info_eq) slots1 slots2 && Sort.equal info_eq sort1 sort2
   ;;
 
   let map_info ~f (Valence (slots, sort)) =
-    Valence (List.map ~f:(SortSlot.map_info ~f) slots, Sort.map_info ~f sort)
+    Valence (List.map ~f:(Sort_slot.map_info ~f) slots, Sort.map_info ~f sort)
   ;;
 
   let pp_generic ~open_loc ~close_loc ppf (Valence (binders, result)) =
@@ -143,7 +143,7 @@ module Valence = struct
       Fmt.pf
         ppf
         "%a. %a"
-        Fmt.(list ~sep:(any ".@ ") (SortSlot.pp_generic ~open_loc ~close_loc))
+        Fmt.(list ~sep:(any ".@ ") (Sort_slot.pp_generic ~open_loc ~close_loc))
         binders
         sort_pp
         result
@@ -154,17 +154,17 @@ module Valence = struct
   let instantiate env = function
     | Valence (binding_sort_slots, body_sort) ->
       Valence
-        ( List.map binding_sort_slots ~f:(SortSlot.instantiate env)
+        ( List.map binding_sort_slots ~f:(Sort_slot.instantiate env)
         , Sort.instantiate env body_sort )
   ;;
 
   let kind_check env (Valence (binding_slots, value_sort)) =
-    let env = binding_slots |> List.fold ~init:env ~f:SortSlot.kind_check in
+    let env = binding_slots |> List.fold ~init:env ~f:Sort_slot.kind_check in
     Sort.kind_check env value_sort
   ;;
 
   module Parse = struct
-    module ParseSortSlot = SortSlot.Parse
+    module ParseSortSlot = Sort_slot.Parse
     open Lvca_parsing
 
     let t =
@@ -173,12 +173,12 @@ module Valence = struct
         >>= fun slots ->
         let binders, body_slot = List.unsnoc slots in
         match body_slot with
-        | SortSlot.SortBinding body_sort -> return (Valence (binders, body_sort))
+        | Sort_slot.Sort_binding body_sort -> return (Valence (binders, body_sort))
         | _ ->
           fail
             (Fmt.str
                "Expected a simple sort, instead found a pattern sort (%a)"
-               SortSlot.pp
+               Sort_slot.pp
                body_slot)
       in
       t' <?> "valence"
@@ -217,7 +217,7 @@ module Arity = struct
       let%test_unit _ =
         assert (
           test_parse_with Parse.t "(tm. tm)"
-          = [ Valence.Valence ([ SortBinding tm ], tm) ])
+          = [ Valence.Valence ([ Sort_binding tm ], tm) ])
       ;;
 
       let%test_unit _ =
@@ -227,7 +227,8 @@ module Arity = struct
       let%test_unit _ =
         assert (
           test_parse_with Parse.t "(tm[tm]. tm)"
-          = [ Valence.Valence ([ SortPattern { pattern_sort = tm; var_sort = tm } ], tm) ])
+          = [ Valence.Valence ([ Sort_pattern { pattern_sort = tm; var_sort = tm } ], tm)
+            ])
       ;;
 
       let expect_okay str =
@@ -251,20 +252,22 @@ module Arity = struct
   ;;
 end
 
-module OperatorDef = struct
-  type 'info t = OperatorDef of string * 'info Arity.t
+module Operator_def = struct
+  type 'info t = Operator_def of string * 'info Arity.t
 
-  let equal ~info_eq (OperatorDef (name1, arity1)) (OperatorDef (name2, arity2)) =
+  let equal ~info_eq (Operator_def (name1, arity1)) (Operator_def (name2, arity2)) =
     String.(name1 = name2) && Arity.equal ~info_eq arity1 arity2
   ;;
 
-  let map_info ~f (OperatorDef (name, arity)) = OperatorDef (name, Arity.map_info ~f arity)
+  let map_info ~f (Operator_def (name, arity)) =
+    Operator_def (name, Arity.map_info ~f arity)
+  ;;
 
-  let kind_check env (OperatorDef (_name, arity)) =
+  let kind_check env (Operator_def (_name, arity)) =
     arity |> List.fold ~init:env ~f:Valence.kind_check
   ;;
 
-  let pp_generic ~open_loc ~close_loc ppf (OperatorDef (name, arity)) =
+  let pp_generic ~open_loc ~close_loc ppf (Operator_def (name, arity)) =
     Fmt.pf ppf "%s%a" name (Arity.pp_generic ~open_loc ~close_loc) arity
   ;;
 
@@ -274,7 +277,7 @@ module OperatorDef = struct
     open Lvca_parsing
 
     let t =
-      lift2 (fun ident arity -> OperatorDef (ident, arity)) identifier Arity.Parse.t
+      lift2 (fun ident arity -> Operator_def (ident, arity)) identifier Arity.Parse.t
       <?> "operator definition"
     ;;
   end
@@ -283,7 +286,7 @@ module OperatorDef = struct
     (module struct
       let%test_unit _ =
         let ( = ) = equal ~info_eq:(fun _ _ -> true) in
-        assert (test_parse_with Parse.t "foo()" = OperatorDef ("foo", []))
+        assert (test_parse_with Parse.t "foo()" = Operator_def ("foo", []))
       ;;
     end)
   ;;
@@ -291,14 +294,14 @@ end
 
 module Sort_def = struct
   type 'info t =
-    | Sort_def of (string * 'info Kind.t option) list * 'info OperatorDef.t list
+    | Sort_def of (string * 'info Kind.t option) list * 'info Operator_def.t list
 
   let equal ~info_eq (Sort_def (vars1, ops1)) (Sort_def (vars2, ops2)) =
     List.equal
       (Tuple2.equal String.( = ) (Option.equal (Kind.equal ~info_eq)))
       vars1
       vars2
-    && List.equal (OperatorDef.equal ~info_eq) ops1 ops2
+    && List.equal (Operator_def.equal ~info_eq) ops1 ops2
   ;;
 
   let map_info ~f (Sort_def (vars, op_defs)) =
@@ -309,7 +312,7 @@ module Sort_def = struct
              | None -> name, None
              | Some kind -> name, Some (Kind.map_info ~f kind))
     in
-    let op_defs = op_defs |> List.map ~f:(OperatorDef.map_info ~f) in
+    let op_defs = op_defs |> List.map ~f:(Operator_def.map_info ~f) in
     Sort_def (vars, op_defs)
   ;;
 
@@ -322,7 +325,7 @@ module Sort_def = struct
           | Some set -> Set.add set n)
     in
     let env = update_env env sort_name (List.length vars) in
-    List.fold operators ~init:env ~f:OperatorDef.kind_check
+    List.fold operators ~init:env ~f:Operator_def.kind_check
   ;;
 
   let pp_generic ~open_loc ~close_loc ~name ppf (Sort_def (sort_vars, operator_defs)) =
@@ -335,7 +338,7 @@ module Sort_def = struct
     let pp_sort_vars ppf vars =
       match vars with [] -> () | _ -> Fmt.pf ppf " %a" (list pp_sort_var) vars
     in
-    let pp_op_def = OperatorDef.pp_generic ~open_loc ~close_loc in
+    let pp_op_def = Operator_def.pp_generic ~open_loc ~close_loc in
     match operator_defs with
     | [] -> pf ppf "%s%a :=" name pp_sort_vars sort_vars
     | [ single_def ] ->
@@ -375,7 +378,7 @@ module Sort_def = struct
         identifier
         (many sort_var_decl)
         assign
-        (option '|' bar *> sep_by bar OperatorDef.Parse.t)
+        (option '|' bar *> sep_by bar Operator_def.Parse.t)
       <?> "sort definition"
     ;;
   end
@@ -387,13 +390,13 @@ module Sort_def = struct
       let%test_unit _ =
         assert (
           test_parse_with Parse.t {|foo := foo()|}
-          = ("foo", Sort_def ([], [ OperatorDef ("foo", []) ])))
+          = ("foo", Sort_def ([], [ Operator_def ("foo", []) ])))
       ;;
 
       let%test_unit _ =
         assert (
           test_parse_with Parse.t {|foo x := foo()|}
-          = ("foo", Sort_def ([ "x", None ], [ OperatorDef ("foo", []) ])))
+          = ("foo", Sort_def ([ "x", None ], [ Operator_def ("foo", []) ])))
       ;;
 
       let tm_def =
@@ -404,8 +407,9 @@ module Sort_def = struct
         ( "tm"
         , Sort_def
             ( []
-            , [ OperatorDef ("add", [ tm_v; tm_v ]); OperatorDef ("lit", [ integer_v ]) ]
-            ) )
+            , [ Operator_def ("add", [ tm_v; tm_v ])
+              ; Operator_def ("lit", [ integer_v ])
+              ] ) )
       ;;
 
       let%test_unit _ =
@@ -422,13 +426,13 @@ module Sort_def = struct
         let sort_def =
           Sort_def
             ( []
-            , [ OperatorDef.OperatorDef
+            , [ Operator_def.Operator_def
                   ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
-              ; OperatorDef
+              ; Operator_def
                   ( "bar"
                   , [ Valence
-                        ( [ SortPattern { pattern_sort = foo; var_sort = foo }
-                          ; SortBinding foo
+                        ( [ Sort_pattern { pattern_sort = foo; var_sort = foo }
+                          ; Sort_binding foo
                           ]
                         , foo )
                     ] )
@@ -446,7 +450,7 @@ module Sort_def = struct
         let sort_def =
           Sort_def
             ( []
-            , [ OperatorDef.OperatorDef
+            , [ Operator_def.Operator_def
                   ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
               ] )
         in
@@ -458,7 +462,7 @@ module Sort_def = struct
         let sort_def =
           Sort_def
             ( [ "a", None ]
-            , [ OperatorDef.OperatorDef
+            , [ Operator_def.Operator_def
                   ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
               ] )
         in
@@ -515,7 +519,7 @@ let lookup_operator { externals = _; sort_defs } sort_name op_name =
         if String.(name = sort_name) then Some def else None)
   in
   let%map result =
-    List.find operator_defs ~f:(fun (OperatorDef (op_def_name, _)) ->
+    List.find operator_defs ~f:(fun (Operator_def (op_def_name, _)) ->
         String.(op_def_name = op_name))
   in
   vars, result
@@ -584,8 +588,9 @@ let%test_module _ =
       let integer_v = Valence.Valence ([], integer) in
       ( "tm"
       , Sort_def.Sort_def
-          ([], [ OperatorDef ("add", [ tm_v; tm_v ]); OperatorDef ("lit", [ integer_v ]) ])
-      )
+          ( []
+          , [ Operator_def ("add", [ tm_v; tm_v ]); Operator_def ("lit", [ integer_v ]) ]
+          ) )
     ;;
 
     let%test_unit _ =
@@ -675,7 +680,7 @@ let%test_module "Parser" =
       = { externals = []
         ; sort_defs =
             [ ( "bool"
-              , Sort_def ([], [ OperatorDef ("true", []); OperatorDef ("false", []) ]) )
+              , Sort_def ([], [ Operator_def ("true", []); Operator_def ("false", []) ]) )
             ]
         }
     ;;
@@ -707,26 +712,26 @@ let%test_module "Parser" =
         [ ( "ty"
           , Sort_def.Sort_def
               ( []
-              , [ OperatorDef ("bool", [])
-                ; OperatorDef ("arr", [ ty_valence; ty_valence ])
+              , [ Operator_def ("bool", [])
+                ; Operator_def ("arr", [ ty_valence; ty_valence ])
                 ] ) )
         ; ( "tm"
           , Sort_def
               ( []
-              , [ OperatorDef ("app", [ tm_valence; tm_valence ])
-                ; OperatorDef ("lam", [ Valence ([ SortBinding tm_sort ], tm_sort) ])
+              , [ Operator_def ("app", [ tm_valence; tm_valence ])
+                ; Operator_def ("lam", [ Valence ([ Sort_binding tm_sort ], tm_sort) ])
                 ] ) )
         ; ( "foo"
           , Sort_def
               ( [ "x", Some (Kind ((), 1)) ]
-              , [ OperatorDef
+              , [ Operator_def
                     ( "foo"
                     , [ Valence
-                          ( [ SortPattern { pattern_sort = foo_sort; var_sort = x_sort } ]
+                          ( [ Sort_pattern { pattern_sort = foo_sort; var_sort = x_sort } ]
                           , x_sort )
-                      ; Valence ([ SortBinding x_sort ], x_sort)
+                      ; Valence ([ Sort_binding x_sort ], x_sort)
                       ] )
-                ; OperatorDef ("bar", [ Valence ([], x_sort) ])
+                ; Operator_def ("bar", [ Valence ([], x_sort) ])
                 ] ) )
         ]
       in

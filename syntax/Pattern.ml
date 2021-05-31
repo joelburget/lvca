@@ -198,7 +198,7 @@ let check lang ~pattern_sort ~var_sort =
                   "Pattern.check: failed to find operator %s in sort %s"
                   op_name
                   sort_name))
-        | Some (sort_vars, OperatorDef (_, arity)) ->
+        | Some (sort_vars, Operator_def (_, arity)) ->
           (* TODO: kind check *)
           let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
           let sort_env = String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in

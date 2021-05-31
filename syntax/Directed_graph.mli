@@ -11,7 +11,7 @@ end
 exception NotDag
 
 module Int : sig
-  module ConnectedComponents : sig
+  module Connected_components : sig
     (** The output from connected component algorithm. *)
     type t =
       { scc_count : int (** The number of SCCs found. *)
@@ -26,16 +26,14 @@ module Int : sig
   val graph_of_adjacency : int list list -> int list Int.Map.t
 
   (** Given an adjacency list, give the SCCs. *)
-  val connected_components : int list Int.Map.t -> ConnectedComponents.t
+  val connected_components : int list Int.Map.t -> Connected_components.t
 
   (** Given an SCC numbering (see [connected_components]), return SCCs, each represented
       as a set of nodes contained in it. *)
   val make_sets : int list -> Int.Set.t Int.Map.t
 
   (** The composition of [connected_components] and [make_sets]. *)
-  val connected_component_sets
-    :  int list Int.Map.t
-    -> Int.Set.t Int.Map.t
+  val connected_component_sets : int list Int.Map.t -> Int.Set.t Int.Map.t
 
   (** Topologically sort a graph given as an adjacency list. *)
   val topsort_exn : int list Int.Map.t -> int list
@@ -50,7 +48,7 @@ module Make (Key : Key_intf) : sig
     type t = (Key.t, Key.t list, Key.comparator_witness) Base.Map.t
   end
 
-  module ConnectedComponents : sig
+  module Connected_components : sig
     (** The output from the connected component algorithm. *)
     type t =
       { scc_graph : int list Lvca_util.Int.Map.t (** The graph of SCCs. *)
@@ -60,7 +58,7 @@ module Make (Key : Key_intf) : sig
   end
 
   (** Find the (strongly) [connected_components] in a [graph]. *)
-  val connected_components : Graph.t -> ConnectedComponents.t
+  val connected_components : Graph.t -> Connected_components.t
 
   (** Topologically sort a graph given as an adjacency list. *)
   val topsort_exn : Graph.t -> Key.t list

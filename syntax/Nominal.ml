@@ -306,7 +306,7 @@ module Term = struct
                     "Nominal.check: failed to find operator %s in sort %s"
                     operator_name
                     sort_name))
-          | Some (sort_vars, OperatorDef (_, arity)) ->
+          | Some (sort_vars, Operator_def (_, arity)) ->
             (* TODO: kind check *)
             let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
             let sort_env = String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in
@@ -346,13 +346,13 @@ module Term = struct
           binders
           |> List.map ~f:(fun (slot, pat) ->
                  match slot, pat with
-                 | SortBinding sort, Var (_, _v) ->
+                 | Sort_binding sort, Var (_, _v) ->
                    check_pattern ~pattern_sort:sort ~var_sort:sort pat
-                 | SortBinding _sort, _ ->
+                 | Sort_binding _sort, _ ->
                    Error
                      (Check_failure.err
                         "Fixed-valence binders must all be vars (no patterns)")
-                 | SortPattern { pattern_sort; var_sort }, _ ->
+                 | Sort_pattern { pattern_sort; var_sort }, _ ->
                    check_pattern ~pattern_sort ~var_sort pat)
           |> List.map
                ~f:
