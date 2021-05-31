@@ -18,6 +18,19 @@ module Is_rec : sig
   val ( = ) : t -> t -> bool
 end
 
+module Type : sig
+  (** A type [a -> b -> c]. In other words, we treat arrows implicitly *)
+  type 'info t = 'info Nominal.Term.t list
+
+  val map_info : f:('a -> 'b) -> 'a t -> 'b t
+  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
+  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
+
+  module Parse : sig
+    val t : Opt_range.t t Lvca_parsing.t
+  end
+end
+
 module Types : sig
   type 'info term =
     | Term of 'info Nominal.Term.t
@@ -32,7 +45,7 @@ module Types : sig
     { info : 'info
     ; is_rec : Is_rec.t
     ; tm : 'info term
-    ; ty : 'info Nominal.Term.t option
+    ; ty : 'info Type.t option
     ; scope : 'info scope
     }
 
@@ -62,7 +75,7 @@ module Let : sig
     { info : 'info
     ; is_rec : Is_rec.t
     ; tm : 'info Types.term
-    ; ty : 'info Nominal.Term.t option
+    ; ty : 'info Type.t option
     ; scope : 'info Types.scope
     }
 

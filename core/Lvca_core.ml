@@ -15,6 +15,25 @@ module Is_rec = struct
   let ( = ) x y = match x, y with Rec, Rec | No_rec, No_rec -> true | _, _ -> false
 end
 
+module Type = struct
+  (* A type [a -> b -> c]. In other words, we treat arrows implicitly *)
+  (* TODO: bad idea? what if we take a function? *)
+  type 'info t = 'info Nominal.Term.t list
+
+  let map_info ~f = List.map ~f:(Nominal.Term.map_info ~f)
+  let equal ~info_eq a b = List.equal (Nominal.Term.equal ~info_eq) a b
+
+  let pp_generic ~open_loc ~close_loc =
+    Fmt.(list ~sep:(any " -> ") (Nominal.Term.pp_generic ~open_loc ~close_loc))
+  ;;
+
+  module Parse = struct
+    open Lvca_parsing
+
+    let t = sep_by1 (string "->" <* whitespace) Nominal.Term.Parse.t
+  end
+end
+
 module Types = struct
   type 'info term =
     | Term of 'info Nominal.Term.t
@@ -29,7 +48,7 @@ module Types = struct
     { info : 'info
     ; is_rec : Is_rec.t
     ; tm : 'info term
-    ; ty : 'info Nominal.Term.t option
+    ; ty : 'info Type.t option
     ; scope : 'info scope
     }
 
@@ -62,7 +81,7 @@ module Equal = struct
     info_eq x.info y.info
     && Is_rec.(x.is_rec = y.is_rec)
     && term ~info_eq x.tm y.tm
-    && Option.equal (Nominal.Term.equal ~info_eq) x.ty y.ty
+    && Option.equal (Type.equal ~info_eq) x.ty y.ty
     && scope ~info_eq x.scope y.scope
   ;;
 end
@@ -97,7 +116,7 @@ module Map_info = struct
     { info = f info
     ; is_rec
     ; tm = term ~f tm
-    ; ty = Option.map ~f:(Nominal.Term.map_info ~f) ty
+    ; ty = Option.map ~f:(Type.map_info ~f) ty
     ; scope = scope ~f scope'
     }
 
@@ -144,7 +163,7 @@ module Pp_generic = struct
       { info = _; is_rec; tm; ty; scope = Scope (name, body) }
     =
     let pp_ty ppf = function
-      | Some ty -> pf ppf ": %a" (Nominal.Term.pp_generic ~open_loc ~close_loc) ty
+      | Some ty -> pf ppf ": %a" (Type.pp_generic ~open_loc ~close_loc) ty
       | None -> ()
     in
     pf
@@ -232,7 +251,7 @@ module Parse = struct
               (attach_pos (string "let"))
               Is_rec.(option No_rec (Fn.const Rec <$> string "rec"))
               identifier
-              (option None (char ':' *> Nominal.Term.Parse.t >>| fun tm -> Some tm))
+              (option None (char ':' *> Type.Parse.t >>| fun tm -> Some tm))
             <*> string "="
             <*> term
             <*> string "in"
@@ -281,7 +300,7 @@ module Let = struct
     { info : 'info
     ; is_rec : Is_rec.t
     ; tm : 'info Types.term
-    ; ty : 'info Nominal.Term.t option
+    ; ty : 'info Type.t option
     ; scope : 'info Types.scope
     }
 
