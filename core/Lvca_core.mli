@@ -19,8 +19,9 @@ module Is_rec : sig
 end
 
 module Type : sig
-  (** A type [a -> b -> c]. In other words, we treat arrows implicitly *)
-  type 'info t = 'info Nominal.Term.t list
+  type 'info t =
+    | Arrow of 'info t list
+    | Sort of 'info Sort.t
 
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool

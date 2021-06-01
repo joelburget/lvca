@@ -16,21 +16,36 @@ module Is_rec = struct
 end
 
 module Type = struct
-  (* A type [a -> b -> c]. In other words, we treat arrows implicitly *)
-  (* TODO: bad idea? what if we take a function? *)
-  type 'info t = 'info Nominal.Term.t list
+  type 'info t =
+    | Arrow of 'info t list (* TODO: or should we handle just a pair? *)
+    | Sort of 'info Sort.t
 
-  let map_info ~f = List.map ~f:(Nominal.Term.map_info ~f)
-  let equal ~info_eq a b = List.equal (Nominal.Term.equal ~info_eq) a b
+  let rec map_info ~f = function
+    | Arrow ts -> Arrow (List.map ~f:(map_info ~f) ts)
+    | Sort sort -> Sort (Sort.map_info ~f sort)
+  ;;
 
-  let pp_generic ~open_loc ~close_loc =
-    Fmt.(list ~sep:(any " -> ") (Nominal.Term.pp_generic ~open_loc ~close_loc))
+  let rec equal ~info_eq x y =
+    match x, y with
+    | Arrow xs, Arrow ys -> List.equal (equal ~info_eq) xs ys
+    | Sort x, Sort y -> Sort.equal info_eq x y
+    | _, _ -> false
+  ;;
+
+  let rec pp_generic ~open_loc ~close_loc ppf = function
+    | Arrow ts -> Fmt.(list ~sep:(any " -> ") (pp_generic ~open_loc ~close_loc)) ppf ts
+    | Sort s -> Sort.pp_generic ~open_loc ~close_loc ppf s
   ;;
 
   module Parse = struct
     open Lvca_parsing
 
-    let t = sep_by1 (string "->" <* whitespace) Nominal.Term.Parse.t
+    let t =
+      fix (fun t ->
+          let atom = parens t <|> (Sort.Parse.t >>| fun sort -> Sort sort) in
+          sep_by1 (string "->") atom >>| function [ t ] -> t | ts -> Arrow ts)
+      <?> "core type"
+    ;;
   end
 end
 
@@ -315,13 +330,14 @@ module Term = struct
 end
 
 let pp_generic ~open_loc ~close_loc ppf { externals; defs } =
+  let open Fmt in
   let pp_externals =
-    Fmt.(list (pair ~sep:(any " : ") string (Type.pp_generic ~open_loc ~close_loc)))
+    list (pair ~sep:(any " : ") string (Type.pp_generic ~open_loc ~close_loc))
   in
   let pp_def ppf (name, sort_def) =
-    Fmt.pf ppf "%s := %a" name (Term.pp_generic ~open_loc ~close_loc) sort_def
+    pf ppf "%s := %a" name (Term.pp_generic ~open_loc ~close_loc) sort_def
   in
-  Fmt.pf ppf "%a@,%a" pp_externals externals Fmt.(list pp_def) defs
+  pf ppf "%a@,%a" pp_externals externals (list pp_def) defs
 ;;
 
 let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
