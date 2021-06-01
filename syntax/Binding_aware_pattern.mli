@@ -22,15 +22,15 @@ module Capture_type : sig
   val pp : _ t Fmt.t
 end
 
-type 'info capture =
-  | Captured_binder of 'info Pattern.t
-  | Captured_term of 'info Nominal.Term.t
+module Capture : sig
+  type 'info t =
+    | Binder of 'info Pattern.t
+    | Term of 'info Nominal.Term.t
 
-val capture_eq
-  :  info_eq:('info -> 'info -> bool)
-  -> 'info capture
-  -> 'info capture
-  -> bool
+  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
+  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
+  val pp : _ t Fmt.t
+end
 
 (** {1 Vars} *)
 
@@ -48,23 +48,18 @@ val match_term
   :  info_eq:('info -> 'info -> bool)
   -> 'info t
   -> 'info Nominal.Term.t
-  -> 'info capture String.Map.t option
+  -> 'info Capture.t String.Map.t option
 
 val match_scope
   :  info_eq:('info -> 'info -> bool)
   -> 'info scope
   -> 'info Nominal.Scope.t
-  -> 'info capture String.Map.t option
+  -> 'info Capture.t String.Map.t option
 
 (** {1 Pretty-printing} *)
 
 val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 val pp_scope_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info scope Fmt.t
-
-val pp_capture_generic
-  :  open_loc:'info Fmt.t
-  -> close_loc:'info Fmt.t
-  -> 'info capture Fmt.t
 
 (** {1 Info} *)
 

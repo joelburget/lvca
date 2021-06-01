@@ -9,14 +9,6 @@ module Tuple2 = Util.Tuple2
 module Term = Nominal.Term
 module Scope = Nominal.Scope
 
-type 'info t =
-  | Operator of 'info * string * 'info scope list
-  | Primitive of 'info Primitive.t
-  | Var of 'info * string
-  | Ignored of 'info * string
-
-and 'info scope = Scope of ('info * string) list * 'info t
-
 module Capture_type = struct
   type 'info t =
     | Bound_var of 'info Sort.t
@@ -24,22 +16,38 @@ module Capture_type = struct
     | Bound_term of 'info Sort.t
 
   let pp ppf = function
-    | Bound_var sort -> Sort.pp ppf sort
     | Bound_pattern pattern_sort -> Abstract_syntax.Pattern_sort.pp ppf pattern_sort
-    | Bound_term sort -> Sort.pp ppf sort
+    | Bound_var sort | Bound_term sort -> Sort.pp ppf sort
   ;;
 end
 
-type 'info capture =
-  | Captured_binder of 'info Pattern.t
-  | Captured_term of 'info Term.t
+module Capture = struct
+  type 'info t =
+    | Binder of 'info Pattern.t
+    | Term of 'info Term.t
 
-let capture_eq ~info_eq cap1 cap2 =
-  match cap1, cap2 with
-  | Captured_binder pat1, Captured_binder pat2 -> Pattern.equal ~info_eq pat1 pat2
-  | Captured_term tm1, Captured_term tm2 -> Term.equal ~info_eq tm1 tm2
-  | _, _ -> false
-;;
+  let equal ~info_eq cap1 cap2 =
+    match cap1, cap2 with
+    | Binder pat1, Binder pat2 -> Pattern.equal ~info_eq pat1 pat2
+    | Term tm1, Term tm2 -> Term.equal ~info_eq tm1 tm2
+    | _, _ -> false
+  ;;
+
+  let pp_generic ~open_loc ~close_loc ppf = function
+    | Binder pat -> Pattern.pp_generic ~open_loc ~close_loc ppf pat
+    | Term tm -> Term.pp_generic ~open_loc ~close_loc ppf tm
+  ;;
+
+  let pp ppf cap = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf cap
+end
+
+type 'info t =
+  | Operator of 'info * string * 'info scope list
+  | Primitive of 'info Primitive.t
+  | Var of 'info * string
+  | Ignored of 'info * string
+
+and 'info scope = Scope of ('info * string) list * 'info t
 
 let rec equal ~info_eq t1 t2 =
   match t1, t2 with
@@ -138,11 +146,6 @@ and pp_scope_generic ~open_loc ~close_loc ppf (Scope (bindings, body)) =
   | _ -> pf ppf "%a.@ %a" (list ~sep:(any ".@ ") pp_binding) bindings pp_body body
 ;;
 
-let pp_capture_generic ~open_loc ~close_loc ppf = function
-  | Captured_binder pat -> Pattern.pp_generic ~open_loc ~close_loc ppf pat
-  | Captured_term pat -> Term.pp_generic ~open_loc ~close_loc ppf pat
-;;
-
 let rec select_path ~path pat =
   match path with
   | [] -> Ok pat
@@ -158,7 +161,7 @@ let rec select_path ~path pat =
 let rec match_term ~info_eq pat tm =
   match pat, tm with
   | Ignored _, _ -> Some SMap.empty
-  | Var (_, name), tm -> Some (SMap.singleton name (Captured_term tm))
+  | Var (_, name), tm -> Some (SMap.singleton name (Capture.Term tm))
   | Primitive p1, Term.Primitive p2 ->
     if Primitive.equal ~info_eq p1 p2 then Some SMap.empty else None
   | Operator (_, name1, pat_scopes), Operator (_, name2, tm_scopes) ->
@@ -178,7 +181,7 @@ let rec match_term ~info_eq pat tm =
 
 and match_scope ~info_eq (Scope (binder_pats, body_pat)) (Scope.Scope (binders, body)) =
   let f (_, name) pat =
-    if Char.(name.[0] = '_') then None else Some (name, Captured_binder pat)
+    if Char.(name.[0] = '_') then None else Some (name, Capture.Binder pat)
   in
   match List.map2 binder_pats binders ~f with
   | List.Or_unequal_lengths.Unequal_lengths -> None
@@ -676,10 +679,6 @@ let%test_module "check" =
       Lvca_parsing.parse_string Nominal.Term.Parse.t str |> Result.ok_or_failwith
     ;;
 
-    let pp_capture =
-      pp_capture_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ())
-    ;;
-
     let print_match pat_str tm_str =
       let pattern = parse_pattern pat_str in
       let tm = parse_term tm_str in
@@ -688,7 +687,7 @@ let%test_module "check" =
       | None -> ()
       | Some mapping ->
         mapping
-        |> Map.iteri ~f:(fun ~key ~data -> Fmt.pr "%s -> %a\n" key pp_capture data)
+        |> Map.iteri ~f:(fun ~key ~data -> Fmt.pr "%s -> %a\n" key Capture.pp data)
     ;;
 
     let%expect_test _ =
