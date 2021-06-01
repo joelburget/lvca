@@ -40,9 +40,6 @@ module Term : sig
   val pp : _ t Fmt.t
   val pp_range : Lvca_provenance.Opt_range.t t Fmt.t
   val pp_ranges : Lvca_provenance.Source_ranges.t t Fmt.t
-
-  (* TODO: remove *)
-  val pp_str : _ t -> string
   val jsonify : _ t Json.serializer
   val unjsonify : unit t Json.deserializer
 
@@ -131,7 +128,6 @@ module Scope : sig
   val pp : _ t Fmt.t
   val pp_range : Lvca_provenance.Opt_range.t t Fmt.t
   val pp_ranges : Lvca_provenance.Source_ranges.t t Fmt.t
-  val pp_str : _ t -> string
   val jsonify : _ t Json.serializer
   val unjsonify : unit t Json.deserializer
   val map_info : f:('a -> 'b) -> 'a t -> 'b t

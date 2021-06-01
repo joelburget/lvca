@@ -146,9 +146,10 @@ let get_children_concrete_sorts lang sort =
                   then
                     invariant_violation
                       ~here:[%here]
-                      (Printf.sprintf
-                         "valence is not a simple sort: %s"
-                         (Fmt.to_to_string Abstract_syntax.Valence.pp v))
+                      (Fmt.str
+                         "valence is not a simple sort: %a"
+                         Abstract_syntax.Valence.pp
+                         v)
                   else Sort.instantiate sort_env body_sort)
          in
          name, subsorts)
@@ -387,10 +388,12 @@ let run_matches tms tree =
                  (match Nonbinding.select_path tm ~path with
                  | Error msg ->
                    failwith
-                     (Printf.sprintf
-                        "run_matches trying to select invalid path (%s) in term %s: %s"
-                        (Fmt.to_to_string Path.pp path)
-                        (Fmt.to_to_string Nonbinding.pp tm)
+                     (Fmt.str
+                        "trying to select invalid path (%a) in term %a: %s"
+                        Path.pp
+                        path
+                        Nonbinding.pp
+                        tm
                         msg)
                  | Ok tm -> name, tm)
                | None ->
@@ -406,15 +409,14 @@ let run_matches tms tree =
         | `Duplicate_key name ->
           invariant_violation
             ~here:[%here]
-            (Printf.sprintf
-               "duplicate key: %s (instrs: [%s], terms: (%s)"
-               name
-               (instrs
-               |> List.map ~f:(Fmt.to_to_string pp_instruction)
-               |> String.concat ~sep:", ")
-               (tms
-               |> List.map ~f:(Fmt.to_to_string Nonbinding.pp)
-               |> String.concat ~sep:", "))
+            Fmt.(
+              str
+                "duplicate key: %s (instrs: [%a], terms: (%a)"
+                name
+                (list ~sep:comma pp_instruction)
+                instrs
+                (list ~sep:comma Nonbinding.pp)
+                tms)
       in
       Some (rhs, env)
     | [], _ -> invariant_violation ~here:[%here] "empty pattern but not matched"
@@ -504,19 +506,13 @@ end
 
 let%test_module "Matching" =
   (module struct
-    let str_of_tm tm = Fmt.to_to_string Nonbinding.pp tm
-    let str_of_pat tm = Fmt.to_to_string Pattern.pp tm
-
-    let str_of_env env =
-      env
-      |> Map.to_alist
-      |> List.map ~f:(fun (key, data) -> Printf.sprintf "%s -> %s" key (str_of_tm data))
-      |> String.concat ~sep:", "
+    let pp_env ppf env =
+      let open Fmt in
+      let pp_entry ppf (key, data) = Fmt.pf ppf "%s -> %a" key Nonbinding.pp data in
+      list ~sep:comma pp_entry ppf (Map.to_alist env)
     ;;
 
-    let str_of_result (rhs, env) =
-      Printf.sprintf "{%s} %s" (str_of_env env) (str_of_tm rhs)
-    ;;
+    let pp_result ppf (rhs, env) = Fmt.pf ppf "{%a} %a" pp_env env Nonbinding.pp rhs
 
     let run_simple_match branches_str tm_str =
       match
@@ -525,8 +521,8 @@ let%test_module "Matching" =
       with
       | Ok branches, Ok tm ->
         (match simple_find_match tm branches with
-        | None -> Stdio.print_string "no match"
-        | Some result -> Stdio.print_string (str_of_result result))
+        | None -> Fmt.pr "no match"
+        | Some result -> pp_result Fmt.stdout result)
       | _ -> failwith "something failed to parse"
     ;;
 
@@ -567,8 +563,8 @@ let%test_module "Matching" =
           | Error _msg -> failwith "failed to compile decision tree"
         in
         (match run_matches tms decision_tree with
-        | None -> Stdio.print_string "no match"
-        | Some result -> Stdio.print_string (str_of_result result))
+        | None -> Fmt.pr "no match"
+        | Some result -> pp_result Fmt.stdout result)
     ;;
 
     let bool_lang = "bool := t() | f()"
@@ -650,9 +646,8 @@ let%test_module "Matching" =
           | `Duplicate_key name -> failwith (Printf.sprintf "duplicate key: %s" name)
         in
         (match check_matrix syntax sorts matrix with
-        | None -> Stdio.print_string "okay"
-        | Some example ->
-          Stdio.print_string (example |> List.map ~f:str_of_pat |> String.concat ~sep:", "))
+        | None -> Fmt.pr "okay"
+        | Some example -> Fmt.(list ~sep:comma Pattern.pp Fmt.stdout example))
       | _ -> failwith "something failed to parse"
     ;;
 

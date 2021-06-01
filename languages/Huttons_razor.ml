@@ -113,7 +113,7 @@ let rec eval_tm : _ Nonbinding.term -> (Z.t, string) Result.t = function
     | Ok a', Ok b' -> Ok Z.(a' + b')
     | Error msg, _ | _, Error msg -> Error msg)
   | Operator (_, "lit", [ Primitive (_, Integer i) ]) -> Ok i
-  | tm -> Error ("found un-evaluable term: " ^ Fmt.to_to_string Nonbinding.pp tm)
+  | tm -> Error (Fmt.str "found un-evaluable term: %a" Nonbinding.pp tm)
 ;;
 
 let eval_str : string -> (Z.t, string) Result.t =
@@ -134,13 +134,13 @@ let ident_stag_funs =
   Caml.Format.
     { mark_open_stag =
         (function
-        | Range.Stag rng -> Printf.sprintf "<%s>" (Fmt.to_to_string Range.pp rng)
-        | String_tag str -> Printf.sprintf "<%s>" (String.subo str ~len:6)
+        | Range.Stag rng -> Fmt.str "<%a>" Range.pp rng
+        | String_tag str -> Fmt.str "<%s>" (String.subo str ~len:6)
         | _ -> "")
     ; mark_close_stag =
         (function
-        | Range.Stag rng -> Printf.sprintf "</%s>" (Fmt.to_to_string Range.pp rng)
-        | String_tag str -> Printf.sprintf "</%s>" (String.subo str ~len:6)
+        | Range.Stag rng -> Fmt.str "</%a>" Range.pp rng
+        | String_tag str -> Fmt.str "</%s>" (String.subo str ~len:6)
         | _ -> "")
     ; print_open_stag = (fun _ -> ())
     ; print_close_stag = (fun _ -> ())

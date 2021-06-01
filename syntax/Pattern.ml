@@ -160,8 +160,6 @@ let handle_dup_error = function
             k))
 ;;
 
-let valence_to_string v = Fmt.to_to_string Abstract_syntax.Valence.pp v
-
 let check lang ~pattern_sort ~var_sort =
   let lookup_operator = Abstract_syntax.lookup_operator lang in
   let rec check sort pat =
@@ -170,15 +168,16 @@ let check lang ~pattern_sort ~var_sort =
       | Var (_, name) ->
         if Sort.equal Unit.( = ) (Sort.erase_info sort) (Sort.erase_info var_sort)
         then Ok (String.Map.singleton name sort)
-        else (
-          let sort_to_string = Fmt.to_to_string Sort.pp in
+        else
           Error
             (Check_failure.err
-               (Printf.sprintf
-                  "Pattern %s is of sort `%s`. Expected `%s`."
+               (Fmt.str
+                  "Pattern %s is of sort `%a`. Expected `%a`."
                   name
-                  (sort_to_string var_sort)
-                  (sort_to_string sort))))
+                  Sort.pp
+                  var_sort
+                  Sort.pp
+                  sort))
       | Ignored _ -> Ok String.Map.empty
       | Primitive prim ->
         (match Primitive.check prim sort with
@@ -211,10 +210,12 @@ let check lang ~pattern_sort ~var_sort =
     | Unequal_lengths ->
       Error
         (Check_failure.err
-           (Printf.sprintf
-              "Wrong number of subterms (%u) for this arity (%s)"
-              (List.length pats)
-              (valences |> List.map ~f:valence_to_string |> String.concat ~sep:", ")))
+           Fmt.(
+             str
+               "Wrong number of subterms (%u) for this arity (%a)"
+               (List.length pats)
+               (list ~sep:comma Abstract_syntax.Valence.pp)
+               valences))
     | Ok pat_valences ->
       pat_valences
       |> List.map ~f:(fun (pat, valence) ->
@@ -224,10 +225,12 @@ let check lang ~pattern_sort ~var_sort =
              | _ ->
                Error
                  (Check_failure.err
-                    (Printf.sprintf
-                       "Invalid pattern (%s) binding a non-sort valence (%s)"
-                       (Fmt.to_to_string pp pat)
-                       (valence_to_string valence))))
+                    (Fmt.str
+                       "Invalid pattern (%a) binding a non-sort valence (%a)"
+                       pp
+                       pat
+                       Abstract_syntax.Valence.pp
+                       valence)))
       |> Result.all
       |> Result.map ~f:String.Map.strict_unions
       |> Result.bind ~f:handle_dup_error

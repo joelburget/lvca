@@ -198,8 +198,6 @@ let handle_dup_error = function
             k))
 ;;
 
-let valence_to_string v = Fmt.to_to_string Abstract_syntax.Valence.pp v
-
 let check check_prim lang sort =
   let lookup_operator = Abstract_syntax.lookup_operator lang in
   let rec check sort pat =
@@ -238,10 +236,11 @@ let check check_prim lang sort =
     | Unequal_lengths ->
       Error
         (Check_failure.err
-           (Printf.sprintf
-              "Wrong number of subterms (%u) for this arity (%s)"
+           (Fmt.(str
+              "Wrong number of subterms (%u) for this arity (%a)"
               (List.length scopes)
-              (valences |> List.map ~f:valence_to_string |> String.concat ~sep:", ")))
+              (list ~sep:comma Abstract_syntax.Valence.pp)
+              valences)))
     | Ok scope_valences ->
       scope_valences
       |> List.map ~f:(fun (scope, valence) -> check_scope valence scope)
@@ -254,10 +253,11 @@ let check check_prim lang sort =
     | Unequal_lengths ->
       Error
         (Check_failure.err
-           (Printf.sprintf
-              "Wrong number of binders (%u) for this valence (%s) (expected %u)"
+           (Fmt.str
+              "Wrong number of binders (%u) for this valence (%a) (expected %u)"
               (List.length binders)
-              (valence_to_string valence)
+              Abstract_syntax.Valence.pp
+              valence
               (List.length binder_slots)))
     | Ok binders ->
       let binders_env =
@@ -534,10 +534,7 @@ test := foo(term[term]. term)
                  | Bound_var sort -> sort_to_string sort
                  | Bound_pattern { pattern_sort; var_sort } ->
                    (* XXX make pattern_sort printer public *)
-                   Printf.sprintf
-                     "%s[%s]"
-                     (sort_to_string pattern_sort)
-                     (sort_to_string var_sort)
+                   Fmt.str "%a[%a]" Sort.pp pattern_sort Sort.pp var_sort
                  | Bound_term sort -> sort_to_string sort
                in
                Stdio.printf "%s: %s\n" key rhs)

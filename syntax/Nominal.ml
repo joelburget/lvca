@@ -193,7 +193,6 @@ module Term = struct
       tm
   ;;
 
-  let pp_str tm = Fmt.to_to_string pp tm
   let erase tm = map_info ~f:(fun _ -> ()) tm
   let serialize tm = tm |> jsonify |> Cbor.encode
   let deserialize buf = buf |> Cbor.decode |> Option.bind ~f:unjsonify
@@ -260,8 +259,6 @@ module Term = struct
         | Some (Scope (_pats, tm)) -> select_path ~path tm))
   ;;
 
-  let valence_to_string v = Fmt.to_to_string Abstract_syntax.Valence.pp v
-
   let check lang =
     let lookup_operator = Abstract_syntax.lookup_operator lang in
     let check_pattern = Pattern.check lang in
@@ -279,15 +276,16 @@ module Term = struct
                  (Sort.erase_info var_sort)
                  (Sort.erase_info expected_sort)
             then None
-            else (
-              let sort_to_string = Fmt.to_to_string Sort.pp in
+            else
               Some
                 (Check_failure.err
-                   (Printf.sprintf
-                      "Variable %s has unexpected sort (saw: %s) (expected: %s)"
+                   (Fmt.str
+                      "Variable %s has unexpected sort (saw: %a) (expected: %a)"
                       v
-                      (sort_to_string var_sort)
-                      (sort_to_string expected_sort)))))
+                      Sort.pp
+                      var_sort
+                      Sort.pp
+                      expected_sort)))
         | Primitive p ->
           (match Primitive.check p expected_sort with
           | None -> None
@@ -323,10 +321,12 @@ module Term = struct
       | Unequal_lengths ->
         Some
           (Check_failure.err
-             (Printf.sprintf
-                "Wrong number of subterms (%u) for this arity (%s)"
-                (List.length scopes)
-                (valences |> List.map ~f:valence_to_string |> String.concat ~sep:", ")))
+             Fmt.(
+               str
+                 "Wrong number of subterms (%u) for this arity (%a)"
+                 (List.length scopes)
+                 (list ~sep:comma Abstract_syntax.Valence.pp)
+                 valences))
       | Ok scope_valences ->
         List.find_map scope_valences ~f:(fun (scope, valence) ->
             check_scope var_sorts valence scope)
@@ -336,11 +336,13 @@ module Term = struct
       | Unequal_lengths ->
         Some
           (Check_failure.err
-             (Printf.sprintf
-                "Wrong number of binders (%u) for this valence (%s) (expected %u)"
-                (List.length binders)
-                (valence_to_string valence)
-                (List.length binder_sorts)))
+             Fmt.(
+               str
+                 "Wrong number of binders (%u) for this valence (%a) (expected %u)"
+                 (List.length binders)
+                 Abstract_syntax.Valence.pp
+                 valence
+                 (List.length binder_sorts)))
       | Ok binders ->
         let binders_env =
           binders
@@ -446,6 +448,7 @@ module Term = struct
     open Property_result
 
     let parse = Lvca_parsing.parse_string Parse.t
+    let to_string tm = Fmt.to_to_string pp tm
     let ( = ) = equal ~info_eq:Unit.( = )
 
     let json_round_trip1 t =
@@ -462,25 +465,25 @@ module Term = struct
     ;;
 
     let string_round_trip1 t =
-      match t |> pp_str |> parse with
+      match t |> to_string |> parse with
       | Ok t' ->
         let t'' = erase t' in
         Property_result.check (t'' = t) (Fmt.str "%a <> %a" pp t'' pp t)
-      | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (pp_str t) msg)
+      | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
     ;;
 
     let string_round_trip2 str =
       match parse str with
       | Error _ -> Uninteresting
       | Ok t ->
-        let str' = pp_str t in
+        let str' = to_string t in
         if Base.String.(str' = str)
         then Ok
         else (
           match parse str with
           | Error msg -> Failed msg
           | Ok t' ->
-            let str'' = pp_str t' in
+            let str'' = to_string t' in
             Property_result.check
               String.(str'' = str')
               (Fmt.str {|"%s" <> "%s"|} str'' str'))
@@ -519,7 +522,6 @@ module Scope = struct
       tm
   ;;
 
-  let pp_str scope = Fmt.to_to_string pp scope
   let erase (Scope (pats, tm)) = Scope (List.map pats ~f:Pattern.erase, Term.erase tm)
 end
 

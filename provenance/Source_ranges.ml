@@ -35,12 +35,9 @@ let restrict ~buf p =
 ;;
 
 let stag_functions =
-  let to_string = Fmt.to_to_string pp in
   Stdlib.Format.
-    { mark_open_stag =
-        (function Stag t -> Printf.sprintf "<%s>" (to_string t) | _ -> "")
-    ; mark_close_stag =
-        (function Stag t -> Printf.sprintf "</%s>" (to_string t) | _ -> "")
+    { mark_open_stag = (function Stag t -> Fmt.str "<%a>" pp t | _ -> "")
+    ; mark_close_stag = (function Stag t -> Fmt.str "</%a>" pp t | _ -> "")
     ; print_open_stag = (fun _ -> ())
     ; print_close_stag = (fun _ -> ())
     }

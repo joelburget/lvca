@@ -47,12 +47,9 @@ let ( = ) x y = x.start = y.start && x.finish = y.finish
 let pp ppf { start; finish } = Fmt.pf ppf "{%u,%u}" start finish
 
 let stag_functions =
-  let to_string = Fmt.to_to_string pp in
   Format.
-    { mark_open_stag =
-        (function Stag rng -> Printf.sprintf "<%s>" (to_string rng) | _ -> "")
-    ; mark_close_stag =
-        (function Stag rng -> Printf.sprintf "</%s>" (to_string rng) | _ -> "")
+    { mark_open_stag = (function Stag rng -> Fmt.str "<%a>" pp rng | _ -> "")
+    ; mark_close_stag = (function Stag rng -> Fmt.str "</%a>" pp rng | _ -> "")
     ; print_open_stag = (fun _ -> ())
     ; print_close_stag = (fun _ -> ())
     }

@@ -276,7 +276,7 @@ let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
       | LocIx loc -> loc
       | _ -> invariant_violation ~here:[%here] "Expected LocIx"
     in
-    let str = Fmt.to_to_string Primitive.pp p ^ suffix in
+    let str = Fmt.str "%a%s" Primitive.pp p suffix in
     Queue.enqueue queue (grid_tmpl ~render_params [ padded_txt depth str ] loc)
   | Var (VarDefIx (loc, selected_event), name) ->
     let trigger_upstream_shadow =
@@ -318,7 +318,7 @@ let rec render_tm ~render_params ?(suffix = "") : _ Nominal.Term.t -> unit =
   let { depth; var_selected_events; queue; _ } = render_params in
   function
   | Nominal.Term.Primitive p ->
-    let str = Fmt.to_to_string Primitive.pp p ^ suffix in
+    let str = Fmt.str "%a%s" Primitive.pp p suffix in
     let loc =
       match Primitive.info p with
       | LocIx loc -> loc
