@@ -18,18 +18,18 @@ type 'info t =
 and 'info scope = Scope of ('info * string) list * 'info t
 
 type 'info capture_type =
-  | BoundVar of 'info Sort.t
-  | BoundPattern of 'info Abstract_syntax.Pattern_sort.t
-  | BoundTerm of 'info Sort.t
+  | Bound_var of 'info Sort.t
+  | Bound_pattern of 'info Abstract_syntax.Pattern_sort.t
+  | Bound_term of 'info Sort.t
 
 type 'info capture =
-  | CapturedBinder of 'info Pattern.t
-  | CapturedTerm of 'info Term.t
+  | Captured_binder of 'info Pattern.t
+  | Captured_term of 'info Term.t
 
 let capture_eq ~info_eq cap1 cap2 =
   match cap1, cap2 with
-  | CapturedBinder pat1, CapturedBinder pat2 -> Pattern.equal ~info_eq pat1 pat2
-  | CapturedTerm tm1, CapturedTerm tm2 -> Term.equal ~info_eq tm1 tm2
+  | Captured_binder pat1, Captured_binder pat2 -> Pattern.equal ~info_eq pat1 pat2
+  | Captured_term tm1, Captured_term tm2 -> Term.equal ~info_eq tm1 tm2
   | _, _ -> false
 ;;
 
@@ -131,8 +131,8 @@ and pp_scope_generic ~open_loc ~close_loc ppf (Scope (bindings, body)) =
 ;;
 
 let pp_capture_generic ~open_loc ~close_loc ppf = function
-  | CapturedBinder pat -> Pattern.pp_generic ~open_loc ~close_loc ppf pat
-  | CapturedTerm pat -> Term.pp_generic ~open_loc ~close_loc ppf pat
+  | Captured_binder pat -> Pattern.pp_generic ~open_loc ~close_loc ppf pat
+  | Captured_term pat -> Term.pp_generic ~open_loc ~close_loc ppf pat
 ;;
 
 let rec select_path ~path pat =
@@ -150,7 +150,7 @@ let rec select_path ~path pat =
 let rec match_term ~info_eq pat tm =
   match pat, tm with
   | Ignored _, _ -> Some SMap.empty
-  | Var (_, name), tm -> Some (SMap.singleton name (CapturedTerm tm))
+  | Var (_, name), tm -> Some (SMap.singleton name (Captured_term tm))
   | Primitive p1, Term.Primitive p2 ->
     if Primitive.equal ~info_eq p1 p2 then Some SMap.empty else None
   | Operator (_, name1, pat_scopes), Operator (_, name2, tm_scopes) ->
@@ -170,7 +170,7 @@ let rec match_term ~info_eq pat tm =
 
 and match_scope ~info_eq (Scope (binder_pats, body_pat)) (Scope.Scope (binders, body)) =
   let f (_, name) pat =
-    if Char.(name.[0] = '_') then None else Some (name, CapturedBinder pat)
+    if Char.(name.[0] = '_') then None else Some (name, Captured_binder pat)
   in
   match List.map2 binder_pats binders ~f with
   | List.Or_unequal_lengths.Unequal_lengths -> None
@@ -205,7 +205,7 @@ let check check_prim lang sort =
   let rec check sort pat =
     let result =
       match pat with
-      | Var (_, name) -> Ok (SMap.singleton name (BoundTerm sort))
+      | Var (_, name) -> Ok (SMap.singleton name (Bound_term sort))
       | Ignored _ -> Ok SMap.empty
       | Primitive prim ->
         (match check_prim prim sort with
@@ -265,8 +265,8 @@ let check check_prim lang sort =
         |> List.map ~f:(fun (slot, (_, v)) ->
                let binding_type =
                  match slot with
-                 | Sort_binding sort -> BoundVar sort
-                 | Sort_pattern pattern_sort -> BoundPattern pattern_sort
+                 | Sort_binding sort -> Bound_var sort
+                 | Sort_pattern pattern_sort -> Bound_pattern pattern_sort
                in
                v, binding_type)
       in
@@ -531,14 +531,14 @@ test := foo(term[term]. term)
                let sort_to_string = Fmt.to_to_string Sort.pp in
                let rhs =
                  match data with
-                 | BoundVar sort -> sort_to_string sort
-                 | BoundPattern { pattern_sort; var_sort } ->
+                 | Bound_var sort -> sort_to_string sort
+                 | Bound_pattern { pattern_sort; var_sort } ->
                    (* XXX make pattern_sort printer public *)
                    Printf.sprintf
                      "%s[%s]"
                      (sort_to_string pattern_sort)
                      (sort_to_string var_sort)
-                 | BoundTerm sort -> sort_to_string sort
+                 | Bound_term sort -> sort_to_string sort
                in
                Stdio.printf "%s: %s\n" key rhs)
     ;;

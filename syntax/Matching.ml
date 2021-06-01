@@ -27,29 +27,30 @@ let pp_instruction ppf = function
 ;;
 
 type ('info, 'rhs) decision_tree =
-  | OperatorCases of
+  | Operator_cases of
       ('info, 'rhs) decision_tree SMap.t * ('info, 'rhs) decision_tree option
-  | PrimCases of ('info Primitive.t option * ('info, 'rhs) decision_tree) list
+  | Prim_cases of ('info Primitive.t option * ('info, 'rhs) decision_tree) list
   | Matched of binding_instruction list * 'rhs
   | Swap of int * ('info, 'rhs) decision_tree
 
+(* TODO: Bad_sort, Redundant_pattern, and Duplicate_name are not used *)
 type 'info match_compilation_error =
-  | BadSort of 'info Pattern.t * 'info Sort.t * 'info Sort.t
-  | RedundantPattern of 'info Pattern.t
-  | NonExhaustive of unit Pattern.t list
-  | DuplicateName of 'info Pattern.t * string
+  | Bad_sort of 'info Pattern.t * 'info Sort.t * 'info Sort.t
+  | Redundant_pattern of 'info Pattern.t
+  | Non_exhaustive of unit Pattern.t list
+  | Duplicate_name of 'info Pattern.t * string
 
 let rec pp_tree ppf = function
-  | OperatorCases (branches, default) ->
+  | Operator_cases (branches, default) ->
     let branches = Map.to_alist branches in
     let pp_branches = Fmt.(list (pair string pp_tree ~sep:(any ": ")) ~sep:sp) in
     (match default with
-    | None -> Fmt.pf ppf "OperatorCases [@[<hv 2>%a@]]" pp_branches branches
+    | None -> Fmt.pf ppf "Operator_cases [@[<hv 2>%a@]]" pp_branches branches
     | Some tree ->
-      Fmt.pf ppf "OperatorCases [@[<hv 2>%a@]](%a)" pp_branches branches pp_tree tree)
-  | PrimCases cases ->
+      Fmt.pf ppf "Operator_cases [@[<hv 2>%a@]](%a)" pp_branches branches pp_tree tree)
+  | Prim_cases cases ->
     let cases = List.map cases ~f:(fun (_, tree) -> tree) in
-    Fmt.pf ppf "PrimCases [@[<hv 2>%a@]]" Fmt.(list pp_tree ~sep:semi) cases
+    Fmt.pf ppf "Prim_cases [@[<hv 2>%a@]]" Fmt.(list pp_tree ~sep:semi) cases
   | Matched (instrs, _rhs) ->
     Fmt.pf ppf "Matched [%a]" Fmt.(list pp_instruction ~sep:comma) instrs
   | Swap (i, tree) -> Fmt.pf ppf "Swap (@[<hv 2>%n, %a@])" i pp_tree tree
@@ -293,7 +294,7 @@ let rec compile_matrix lang sorts matrix =
        wildcards as an example. *)
     let ignore = Pattern.Ignored ((), "") in
     let example = List.map sorts ~f:(fun _ -> ignore) in
-    Error (NonExhaustive example)
+    Error (Non_exhaustive example)
   | (row_entries, rhs) :: _ ->
     (* If the first row is all wildcards (including the zero column case), match. *)
     if List.for_all row_entries ~f:(fun { pattern; _ } -> is_wildcard pattern)
@@ -357,7 +358,7 @@ let rec compile_matrix lang sorts matrix =
                  ctor_name, decision_tree)
           |> Result.all
         in
-        OperatorCases (SMap.of_alist_exn branches_alist, default_case)
+        Operator_cases (SMap.of_alist_exn branches_alist, default_case)
         (* swap columns so the first is a non-wildcard *))
       else (
         let matrix = swap_cols matrix 0 i in
@@ -417,7 +418,7 @@ let run_matches tms tree =
       in
       Some (rhs, env)
     | [], _ -> invariant_violation ~here:[%here] "empty pattern but not matched"
-    | Nonbinding.Operator (_, op_name, subtms) :: tms', OperatorCases (branches, default)
+    | Nonbinding.Operator (_, op_name, subtms) :: tms', Operator_cases (branches, default)
       ->
       let branch =
         match Map.find branches op_name, default with
@@ -433,9 +434,9 @@ let run_matches tms tree =
                op_names)
       in
       go (subtms @ tms') branch
-    | _, OperatorCases _ ->
-      invariant_violation ~here:[%here] "OperatorCases matched with non-operator"
-    | Nonbinding.Primitive prim :: tms', PrimCases branches ->
+    | _, Operator_cases _ ->
+      invariant_violation ~here:[%here] "Operator_cases matched with non-operator"
+    | Nonbinding.Primitive prim :: tms', Prim_cases branches ->
       let found =
         branches
         |> List.find ~f:(fun (prim', _) ->
@@ -446,10 +447,10 @@ let run_matches tms tree =
       (match found with
       | None -> None (* failwith "TODO: error -- no matching primitive" *)
       | Some (_, branch) -> go tms' branch)
-    | _, PrimCases _ ->
+    | _, Prim_cases _ ->
       invariant_violation
         ~here:[%here]
-        "decision_tree.PrimCases paired with non-Primitive"
+        "decision_tree.Prim_cases paired with non-Primitive"
     | _, Swap (i, tree) -> go (List.swap tms' ~i ~j:0) tree
   in
   go tms tree

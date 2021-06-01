@@ -14,13 +14,13 @@ type 'info t =
 and 'info scope = Scope of ('info * string) list * 'info t
 
 type 'info capture_type =
-  | BoundVar of 'info Sort.t
-  | BoundPattern of 'info Abstract_syntax.Pattern_sort.t
-  | BoundTerm of 'info Sort.t
+  | Bound_var of 'info Sort.t
+  | Bound_pattern of 'info Abstract_syntax.Pattern_sort.t
+  | Bound_term of 'info Sort.t
 
 type 'info capture =
-  | CapturedBinder of 'info Pattern.t
-  | CapturedTerm of 'info Nominal.Term.t
+  | Captured_binder of 'info Pattern.t
+  | Captured_term of 'info Nominal.Term.t
 
 val capture_eq
   :  info_eq:('info -> 'info -> bool)

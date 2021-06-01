@@ -30,19 +30,19 @@ type binding_instruction =
 val pp_instruction : binding_instruction Fmt.t
 
 type ('info, 'rhs) decision_tree =
-  | OperatorCases of
+  | Operator_cases of
       ('info, 'rhs) decision_tree String.Map.t * ('info, 'rhs) decision_tree option
-  | PrimCases of ('info Primitive.t option * ('info, 'rhs) decision_tree) list
+  | Prim_cases of ('info Primitive.t option * ('info, 'rhs) decision_tree) list
   | Matched of binding_instruction list * 'rhs
   | Swap of int * ('info, 'rhs) decision_tree
 
 val pp_tree : _ decision_tree Fmt.t
 
 type 'info match_compilation_error =
-  | BadSort of 'info Pattern.t * 'info Sort.t * 'info Sort.t
-  | RedundantPattern of 'info Pattern.t
-  | NonExhaustive of unit Pattern.t list
-  | DuplicateName of 'info Pattern.t * string
+  | Bad_sort of 'info Pattern.t * 'info Sort.t * 'info Sort.t
+  | Redundant_pattern of 'info Pattern.t
+  | Non_exhaustive of unit Pattern.t list
+  | Duplicate_name of 'info Pattern.t * string
 
 (** Match a term against a pattern, extracting bindings *)
 val match_pattern : 'info Nonbinding.term -> 'info Pattern.t -> 'info env option
