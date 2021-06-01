@@ -17,10 +17,18 @@ type 'info t =
 
 and 'info scope = Scope of ('info * string) list * 'info t
 
-type 'info capture_type =
-  | Bound_var of 'info Sort.t
-  | Bound_pattern of 'info Abstract_syntax.Pattern_sort.t
-  | Bound_term of 'info Sort.t
+module Capture_type = struct
+  type 'info t =
+    | Bound_var of 'info Sort.t
+    | Bound_pattern of 'info Abstract_syntax.Pattern_sort.t
+    | Bound_term of 'info Sort.t
+
+  let pp ppf = function
+    | Bound_var sort -> Sort.pp ppf sort
+    | Bound_pattern pattern_sort -> Abstract_syntax.Pattern_sort.pp ppf pattern_sort
+    | Bound_term sort -> Sort.pp ppf sort
+  ;;
+end
 
 type 'info capture =
   | Captured_binder of 'info Pattern.t
@@ -203,7 +211,7 @@ let check check_prim lang sort =
   let rec check sort pat =
     let result =
       match pat with
-      | Var (_, name) -> Ok (SMap.singleton name (Bound_term sort))
+      | Var (_, name) -> Ok (SMap.singleton name (Capture_type.Bound_term sort))
       | Ignored _ -> Ok SMap.empty
       | Primitive prim ->
         (match check_prim prim sort with
@@ -236,11 +244,12 @@ let check check_prim lang sort =
     | Unequal_lengths ->
       Error
         (Check_failure.err
-           (Fmt.(str
-              "Wrong number of subterms (%u) for this arity (%a)"
-              (List.length scopes)
-              (list ~sep:comma Abstract_syntax.Valence.pp)
-              valences)))
+           Fmt.(
+             str
+               "Wrong number of subterms (%u) for this arity (%a)"
+               (List.length scopes)
+               (list ~sep:comma Abstract_syntax.Valence.pp)
+               valences))
     | Ok scope_valences ->
       scope_valences
       |> List.map ~f:(fun (scope, valence) -> check_scope valence scope)
@@ -265,7 +274,7 @@ let check check_prim lang sort =
         |> List.map ~f:(fun (slot, (_, v)) ->
                let binding_type =
                  match slot with
-                 | Sort_binding sort -> Bound_var sort
+                 | Sort_binding sort -> Capture_type.Bound_var sort
                  | Sort_pattern pattern_sort -> Bound_pattern pattern_sort
                in
                v, binding_type)
@@ -527,17 +536,7 @@ test := foo(term[term]. term)
       | Error failure -> Fmt.epr "%a" (Check_failure.pp pp) failure
       | Ok capture_types ->
         capture_types
-        |> Map.iteri ~f:(fun ~key ~data ->
-               let sort_to_string = Fmt.to_to_string Sort.pp in
-               let rhs =
-                 match data with
-                 | Bound_var sort -> sort_to_string sort
-                 | Bound_pattern { pattern_sort; var_sort } ->
-                   (* XXX make pattern_sort printer public *)
-                   Fmt.str "%a[%a]" Sort.pp pattern_sort Sort.pp var_sort
-                 | Bound_term sort -> sort_to_string sort
-               in
-               Stdio.printf "%s: %s\n" key rhs)
+        |> Map.iteri ~f:(fun ~key ~data -> Fmt.pr "%s: %a\n" key Capture_type.pp data)
     ;;
 
     let%expect_test _ =

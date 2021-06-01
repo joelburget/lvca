@@ -13,10 +13,14 @@ type 'info t =
 
 and 'info scope = Scope of ('info * string) list * 'info t
 
-type 'info capture_type =
-  | Bound_var of 'info Sort.t
-  | Bound_pattern of 'info Abstract_syntax.Pattern_sort.t
-  | Bound_term of 'info Sort.t
+module Capture_type : sig
+  type 'info t =
+    | Bound_var of 'info Sort.t
+    | Bound_pattern of 'info Abstract_syntax.Pattern_sort.t
+    | Bound_term of 'info Sort.t
+
+  val pp : _ t Fmt.t
+end
 
 type 'info capture =
   | Captured_binder of 'info Pattern.t
@@ -101,7 +105,7 @@ val check
   -> 'info Abstract_syntax.t (** Abstract syntax *)
   -> 'info Sort.t (** Sort to check pattern against *)
   -> 'info t
-  -> ('info capture_type String.Map.t, ('info, 'info t) Check_failure.t) Result.t
+  -> ('info Capture_type.t String.Map.t, ('info, 'info t) Check_failure.t) Result.t
 
 (** {1 Parsing} *)
 module Parse : sig
