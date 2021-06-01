@@ -420,7 +420,7 @@ module Term = struct
       fix (fun term ->
           let slot =
             sep_by1 (char '.') term
-            >>== fun Parse_result.{ value; range; _ } ->
+            >>== fun Parse_result.{ value; range } ->
             let binders, tm = List.unsnoc value in
             match binders |> List.map ~f:to_pattern |> Result.all with
             | Error _ -> fail "Unexpectedly found a variable binding in pattern position"
@@ -429,7 +429,7 @@ module Term = struct
           choice
             [ (Primitive.Parse.t >>| fun prim -> Primitive prim)
             ; (identifier
-              >>== fun Parse_result.{ value = ident; range = ident_range; _ } ->
+              >>== fun Parse_result.{ value = ident; range = ident_range } ->
               choice
                 [ (parens (sep_end_by (char ';') slot)
                   >>|| fun { value = slots; range = parens_range } ->

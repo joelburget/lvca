@@ -239,8 +239,9 @@ let check lang ~pattern_sort ~var_sort =
 ;;
 
 module Parse = struct
-  let t : Opt_range.t t Lvca_parsing.t =
-    let open Lvca_parsing in
+  open Lvca_parsing
+
+  let t =
     fix (fun pat ->
         choice
           [ (Primitive.Parse.t >>| fun prim -> Primitive prim)

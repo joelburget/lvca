@@ -49,6 +49,12 @@ type 'info t =
 
 and 'info scope = Scope of ('info * string) list * 'info t
 
+let mk_var range ident =
+  if Char.(ident.[0] = '_')
+  then Ignored (range, String.subo ident ~pos:1)
+  else Var (range, ident)
+;;
+
 let rec equal ~info_eq t1 t2 =
   match t1, t2 with
   | Operator (i1, name1, scopes1), Operator (i2, name2, scopes2) ->
@@ -56,8 +62,8 @@ let rec equal ~info_eq t1 t2 =
     && String.(name1 = name2)
     && List.equal (scope_eq ~info_eq) scopes1 scopes2
   | Primitive p1, Primitive p2 -> Primitive.equal ~info_eq p1 p2
-  | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
-  | Ignored (i1, name1), Ignored (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
+  | Var (i1, name1), Var (i2, name2) | Ignored (i1, name1), Ignored (i2, name2) ->
+    info_eq i1 i2 && String.(name1 = name2)
   | _, _ -> false
 
 and scope_eq ~info_eq (Scope (names1, t1)) (Scope (names2, t2)) =
@@ -68,13 +74,11 @@ and scope_eq ~info_eq (Scope (names1, t1)) (Scope (names2, t2)) =
 let rec vars_of_pattern = function
   | Operator (_, _, pats) ->
     pats |> List.map ~f:vars_of_scope |> Set.union_list (module String)
-  | Primitive _ -> String.Set.empty
   | Var (_, name) -> String.Set.of_list [ name ]
-  | Ignored _ -> String.Set.empty
+  | Primitive _ | Ignored _ -> String.Set.empty
 
 and vars_of_scope (Scope (vars, t)) =
-  let vars = vars |> List.map ~f:snd in
-  Set.union (String.Set.of_list vars) (vars_of_pattern t)
+  vars |> List.map ~f:snd |> String.Set.of_list |> Set.union (vars_of_pattern t)
 ;;
 
 let rec list_vars_of_pattern = function
@@ -84,9 +88,8 @@ let rec list_vars_of_pattern = function
        ~f:list_vars_of_scope) *)
     |> List.map ~f:list_vars_of_scope
     |> List.concat_no_order
-  | Primitive _ -> []
   | Var (loc, name) -> [ loc, name ]
-  | Ignored _ -> []
+  | Primitive _ | Ignored _ -> []
 
 and list_vars_of_scope (Scope (names, pat)) =
   let names' = List.map names ~f:snd in
@@ -304,71 +307,37 @@ let check check_prim lang sort =
 ;;
 
 module Parse = struct
-  type 'info pattern = 'info t
+  open Lvca_parsing
 
-  let to_var = function
-    | Var (i, name) -> Ok (i, name)
-    (* TODO: we never parse ignored *)
-    | Ignored (i, name) -> Ok (i, "_" ^ name)
-    | _ -> Error "not a var"
+  let pat_to_ident = function
+    | Var (_, name) -> Some name
+    | Ignored (_, name) -> Some ("_" ^ name)
+    | _ -> None
   ;;
 
-  type tm_or_sep =
-    | Tm of Opt_range.t t
-    | Sep of char
-
-  let t : Opt_range.t t Lvca_parsing.t =
-    let open Lvca_parsing in
+  let t =
     fix (fun pat ->
-        let t_or_sep : tm_or_sep Lvca_parsing.t =
-          choice
-            [ (fun c -> Sep c) <$> choice [ char '.'; char ';' ]
-            ; (fun tm -> Tm tm) <$> pat
-            ]
-        in
-        (* (b11. ... b1n. t11, ... t1n; b21. ... b2n. t21, ... t2n) *)
-        let accumulate
-            :  Opt_range.t -> string -> tm_or_sep list
-            -> Opt_range.t pattern Lvca_parsing.t
-          =
-         fun range tag tokens ->
-          (* vars encountered between '.'s, before hitting ',' / ';' *)
-          let binding_queue : Opt_range.t pattern Queue.t = Queue.create () in
-          (* scopes encountered *)
-          let scope_queue : Opt_range.t scope Queue.t = Queue.create () in
-          let rec go = function
-            | [] -> return ~range (Operator (range, tag, Queue.to_list scope_queue))
-            | Tm tm :: Sep '.' :: rest ->
-              Queue.enqueue binding_queue tm;
-              go rest
-            | Tm tm :: Sep ';' :: rest (* Note: allow trailing ';' *)
-            | Tm tm :: ([] as rest) ->
-              (match
-                 binding_queue |> Queue.to_list |> List.map ~f:to_var |> Result.all
-               with
-              | Error _ ->
-                fail "Unexpectedly found a variable binding in pattern position"
-              | Ok binders ->
-                Queue.clear binding_queue;
-                Queue.enqueue scope_queue (Scope (binders, tm));
-                go rest)
-            | _ -> fail "Malformed pattern"
-          in
-          go tokens
+        let slot =
+          sep_by1 (char '.') (attach_pos pat)
+          >>= fun value ->
+          let binders_pats, (pat, _) = Util.List.unsnoc value in
+          let f (pat, pos) = pat_to_ident pat |> Option.map ~f:(fun pat -> pos, pat) in
+          match binders_pats |> List.map ~f |> Option.all with
+          | None ->
+            fail
+              "found an operator pattern where only a variable is allowed (left of a `.`)"
+          | Some binders -> return (Scope (binders, pat))
         in
         choice
           [ (Primitive.Parse.t >>| fun prim -> Primitive prim)
           ; (identifier
             >>== fun { value = ident; range = ident_range } ->
             choice
-              [ (parens (many t_or_sep)
-                >>== fun { value = tokens; range = tokens_range } ->
-                let range = Opt_range.union ident_range tokens_range in
-                accumulate range ident tokens)
-              ; return
-                  (if Char.(ident.[0] = '_')
-                  then Ignored (ident_range, String.subo ident ~pos:1)
-                  else Var (ident_range, ident))
+              [ (parens (sep_end_by (char ';') slot)
+                >>|| fun { value = slots; range = parens_range } ->
+                let range = Opt_range.union ident_range parens_range in
+                { value = Operator (range, ident, slots); range })
+              ; return ~range:ident_range (mk_var ident_range ident)
               ])
           ])
     <?> "binding-aware pattern"

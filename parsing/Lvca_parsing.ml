@@ -618,6 +618,18 @@ let%test_module "Parsing" =
       [%expect {|{ value = ["abc"; "def"]; range = {0,13} }|}]
     ;;
 
+    let go =
+      let pp ppf =
+        Fmt.(pf ppf "[%a]" (list ~sep:(any "; ") (list ~sep:(any ". ") pp_str)))
+      in
+      parse_print (sep_end_by (char ';') (sep_end_by (char '.') string_lit)) pp
+    ;;
+
+    let%expect_test _ =
+      go {|"a". "b"; "c". "d"|};
+      [%expect {|{ value = ["a". "b"; "c". "d"]; range = {0,18} }|}]
+    ;;
+
     let go str =
       let parse =
         parse_string_pos
