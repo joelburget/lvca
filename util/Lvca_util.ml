@@ -130,9 +130,9 @@ module String = struct
  ;;
 end
 
-exception InvariantViolation of Lexing.position option * string
+exception InvariantViolation of Lexing.position * string
 
-let invariant_violation ?here str = raise (InvariantViolation (here, str))
+let invariant_violation ~here str = raise (InvariantViolation (here, str))
 
 module List = struct
   include Base.List
@@ -188,8 +188,8 @@ module Option = struct
    fun err -> function None -> raise err | Some a -> a
  ;;
 
-  let get_invariant : ?here:Lexing.position -> (unit -> string) -> 'a option -> 'a =
-   fun ?here msg -> function
+  let get_invariant : here:Lexing.position -> (unit -> string) -> 'a option -> 'a =
+   fun ~here msg -> function
     | None -> raise (InvariantViolation (here, "invariant violation: " ^ msg ()))
     | Some a -> a
  ;;

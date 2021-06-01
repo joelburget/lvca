@@ -291,7 +291,7 @@ let%test_module "Update_loc" =
 (* TODO: is this just Longident.unflatten? *)
 let unflatten names =
   match names with
-  | [] -> Lvca_util.invariant_violation "unflatten: names must be nonempty"
+  | [] -> Lvca_util.invariant_violation ~here:[%here] "unflatten: names must be nonempty"
   | nm0 :: nms -> List.fold nms ~init:(Lident nm0) ~f:(fun accum m -> Ldot (accum, m))
 ;;
 

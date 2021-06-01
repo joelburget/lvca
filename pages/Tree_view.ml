@@ -274,7 +274,7 @@ let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
     let loc =
       match Primitive.info p with
       | LocIx loc -> loc
-      | _ -> invariant_violation "Expected LocIx"
+      | _ -> invariant_violation ~here:[%here] "Expected LocIx"
     in
     let str = Fmt.to_to_string Primitive.pp p ^ suffix in
     Queue.enqueue queue (grid_tmpl ~render_params [ padded_txt depth str ] loc)
@@ -322,7 +322,7 @@ let rec render_tm ~render_params ?(suffix = "") : _ Nominal.Term.t -> unit =
     let loc =
       match Primitive.info p with
       | LocIx loc -> loc
-      | _ -> invariant_violation "Expected LocIx"
+      | _ -> invariant_violation ~here:[%here] "Expected LocIx"
     in
     Queue.enqueue queue (grid_tmpl ~render_params [ padded_txt depth str ] loc)
   | Var (LocIx loc, name) ->
