@@ -3,7 +3,7 @@
 open Base
 open Lvca_provenance
 open Lvca_syntax
-module Format = Caml.Format
+module Format = Stdlib.Format
 module Util = Lvca_util
 module SMap = Util.String.Map
 
@@ -56,6 +56,11 @@ module Types = struct
 
   and 'info case_scope = Case_scope of 'info Binding_aware_pattern.t * 'info term
 end
+
+type 'info t =
+  { externals : (string * 'info Type.t) list
+  ; defs : (string * 'info Types.term) list
+  }
 
 module Equal = struct
   let rec term ~info_eq x y =
@@ -213,7 +218,7 @@ module Parse = struct
       Core_app (pos, f, args)
   ;;
 
-  let term : Opt_range.t Types.term Lvca_parsing.t =
+  let term =
     fix (fun term ->
         let atomic_term =
           choice
@@ -270,6 +275,16 @@ module Parse = struct
           ])
     <?> "core term"
   ;;
+
+  let external_decl =
+    lift3 (fun ident _ ty -> ident, ty) identifier (string ":") Type.Parse.t
+  ;;
+
+  let def = lift3 (fun ident _ tm -> ident, tm) identifier (string ":=") term
+
+  let t =
+    lift2 (fun externals defs -> { externals; defs }) (many external_decl) (many1 def)
+  ;;
 end
 
 module Term = struct
@@ -293,7 +308,23 @@ module Term = struct
 
   let erase = map_info ~f:(fun _ -> ())
   let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
+
+  module Parse = struct
+    let t = Parse.term
+  end
 end
+
+let pp_generic ~open_loc ~close_loc ppf { externals; defs } =
+  let pp_externals =
+    Fmt.(list (pair ~sep:(any " : ") string (Type.pp_generic ~open_loc ~close_loc)))
+  in
+  let pp_def ppf (name, sort_def) =
+    Fmt.pf ppf "%s := %a" name (Term.pp_generic ~open_loc ~close_loc) sort_def
+  in
+  Fmt.pf ppf "%a@,%a" pp_externals externals Fmt.(list pp_def) defs
+;;
+
+let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 
 module Let = struct
   type 'info t = 'info Types.let_ =
@@ -786,7 +817,6 @@ let%test_module "Core pretty" =
         match Lvca_parsing.parse_string Lvca_parsing.(whitespace *> Parse.term) str with
         | Error err -> err
         | Ok core ->
-          let module Format = Stdlib.Format in
           let fmt = Format.str_formatter in
           Format.pp_set_geometry fmt ~max_indent:width ~margin:(width + 1);
           Term.pp fmt core;

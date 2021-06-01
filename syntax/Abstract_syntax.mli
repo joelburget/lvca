@@ -165,8 +165,8 @@ val lookup_operator
   -> string (** operator_name *)
   -> ((string * 'info Kind.t option) list * 'info Operator_def.t) option
 
-val pp : _ t Fmt.t
 val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
+val pp : _ t Fmt.t
 
 (** Check that each sort in the syntax has a consistent arity. *)
 val kind_check : _ t -> (kind_map, kind_mismap) Result.t

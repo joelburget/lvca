@@ -68,6 +68,10 @@ module Term : sig
   val info : 'info t -> 'info
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val pp : _ t Fmt.t
+
+  module Parse : sig
+    val t : Opt_range.t t Lvca_parsing.t
+  end
 end
 
 module Let : sig
@@ -99,6 +103,20 @@ module Case_scope : sig
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
+end
+
+(** {1 Core type} *)
+type 'info t =
+  { externals : (string * 'info Type.t) list
+  ; defs : (string * 'info Term.t) list
+  }
+
+val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
+val pp : _ t Fmt.t
+
+(** {2 Parsing} *)
+module Parse : sig
+  val t : Opt_range.t t Lvca_parsing.t
 end
 
 (** {1 Checking} *)
@@ -149,8 +167,3 @@ val find_match
 (* val coverage_check : 'info Cases.t -> *)
 val preimage : 'info Case_scope.t list -> 'info Binding_aware_pattern.t list
 val reverse : 'info Nominal.Term.t -> 'info Case_scope.t list -> 'info env option
-
-(** {1 Parsing} *)
-module Parse : sig
-  val term : Opt_range.t Term.t Lvca_parsing.t
-end
