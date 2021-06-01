@@ -246,7 +246,7 @@ module Parse = struct
         choice
           [ (Primitive.Parse.t >>| fun prim -> Primitive prim)
           ; (identifier
-            >>== fun { value = ident; range; _ } ->
+            >>== fun { value = ident; range } ->
             if ident.[0] = '_'
             then return ~range (Ignored (range, String.subo ~pos:1 ident))
             else

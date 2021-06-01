@@ -203,7 +203,7 @@ type +'a t = 'a Parse_result.t Angstrom.t
 let parse_string_pos p str = Angstrom.parse_string ~consume:All p str
 
 let parse_string p str =
-  parse_string_pos p str |> Result.map ~f:(fun { value; _ } -> value)
+  parse_string_pos p str |> Result.map ~f:(fun { value; range = _ } -> value)
 ;;
 
 (** Helpers that may call pos. *)
@@ -420,7 +420,7 @@ let lift4 f a b c d =
 let attach_pos p =
   Angstrom.(
     p
-    >>| fun ({ value; range; _ } as parse_result) ->
+    >>| fun ({ value; range } as parse_result) ->
     { parse_result with value = value, range })
 ;;
 
@@ -638,7 +638,7 @@ let%test_module "Parsing" =
           <* string "foo")
       in
       match parse str with
-      | Ok { range; _ } -> Fmt.pr "%a\n" Opt_range.pp range
+      | Ok { range; value = _ } -> Fmt.pr "%a\n" Opt_range.pp range
       | _ -> Fmt.pr "not okay\n"
     ;;
 

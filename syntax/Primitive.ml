@@ -37,7 +37,7 @@ module Make (PlainBase : PlainBase_s) = struct
 
     let t =
       PlainBase.parse
-      >>|| fun (Parse_result.{ value; range; _ } as parse_result) ->
+      >>|| fun (Parse_result.{ value; range } as parse_result) ->
       { parse_result with value = range, value }
     ;;
   end
@@ -276,7 +276,7 @@ let%test_module "Parsing" =
 
     let print_parse str =
       match Lvca_parsing.parse_string_pos Parse.t str with
-      | Ok { value = prim; range; _ } -> Fmt.pr "%a %a" pp prim Opt_range.pp range
+      | Ok { value = prim; range } -> Fmt.pr "%a %a" pp prim Opt_range.pp range
       | Error msg -> Fmt.pr "%s" msg
     ;;
 

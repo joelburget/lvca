@@ -107,7 +107,7 @@ module Parse = struct
             ]
         in
         many1 atomic_sort
-        >>== fun Parse_result.{ value = atoms; range; _ } ->
+        >>== fun Parse_result.{ value = atoms; range } ->
         match atoms with
         (* A single ap is just parenthesized. An ap applied to things is a problem. *)
         | [ (Ap _ as atom) ] -> return ~range atom

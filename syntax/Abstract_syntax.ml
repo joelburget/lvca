@@ -25,7 +25,7 @@ module Kind = struct
 
     let t =
       sep_by1 (string "->") (char '*')
-      >>|| (fun (Parse_result.{ value = stars; range; _ } as parse_result) ->
+      >>|| (fun (Parse_result.{ value = stars; range } as parse_result) ->
              { parse_result with value = Kind (range, List.length stars) })
       <?> "kind"
     ;;
