@@ -504,6 +504,21 @@ module Helpers (Context : Builder_context) = struct
       Int.incr var_ix;
       evar (Printf.sprintf "%s%d" name_base !var_ix)
   ;;
+
+  let raise_kind_err name (Syn.Kind.Kind (info, _) as kind) =
+    let loc = update_loc info in
+    Location.Error.(
+      raise
+        (make
+           ~loc
+           ~sub:[]
+           (Fmt.str
+              "Code generation currently only supports external modules of kind * (`%s` \
+               is %a)"
+              name
+              Syn.Kind.pp
+              kind)))
+  ;;
 end
 
 (** Helper for declaring a constructor. *)
@@ -1178,13 +1193,7 @@ module Individual_type_module (Context : Builder_context) = struct
           Named ({ txt = Some (module_name name); loc = update_loc info }, all_term_s)
         in
         pmod_functor mod_param accum
-      | Some (Syn.Kind.Kind (info, _) as kind) ->
-        Location.raise_errorf
-          ~loc:(update_loc info)
-          "Code generation currently only supports external modules of kind * (`%s` is \
-           %s)"
-          name
-          (Fmt.to_to_string Syn.Kind.pp kind)
+      | Some kind -> raise_kind_err name kind
     in
     let expr = List.fold_right vars ~init ~f in
     module_binding ~name:{ txt = Some (module_name sort_name); loc } ~expr |> pstr_module
@@ -1222,13 +1231,7 @@ module Container_module (Context : Builder_context) = struct
       | Some (Syn.Kind.Kind (info, 1)) ->
         Named ({ txt = Some (module_name name); loc = update_loc info }, all_term_s)
       | None -> Named ({ txt = Some (module_name name); loc }, all_term_s)
-      | Some (Syn.Kind.Kind (info, _) as kind) ->
-        Location.raise_errorf
-          ~loc:(update_loc info)
-          "Code generation currently only supports external modules of kind * (`%s` is \
-           %s)"
-          name
-          (Fmt.to_to_string Syn.Kind.pp kind)
+      | Some kind -> raise_kind_err name kind
     in
     let mod_param' (name, kind) = mod_param (name, Some kind) in
     let expr =
