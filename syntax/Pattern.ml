@@ -1,11 +1,7 @@
-module Unit = Base.Unit
-module List = Base.List
-module Option = Base.Option
-module Queue = Base.Queue
-module Result = Base.Result
-module Set = Base.Set
+open Base
 open Lvca_provenance
 open Lvca_util
+module Format = Stdlib.Format
 
 type 'info t =
   | Operator of 'info * string * 'info t list
@@ -238,6 +234,12 @@ let check lang ~pattern_sort ~var_sort =
   check pattern_sort
 ;;
 
+let mk_var range ident =
+  if Char.(ident.[0] = '_')
+  then Ignored (range, String.subo ident ~pos:1)
+  else Var (range, ident)
+;;
+
 module Parse = struct
   open Lvca_parsing
 
@@ -247,17 +249,14 @@ module Parse = struct
           [ (Primitive.Parse.t >>| fun prim -> Primitive prim)
           ; (identifier
             >>== fun { value = ident; range } ->
-            if ident.[0] = '_'
-            then return ~range (Ignored (range, String.subo ~pos:1 ident))
-            else
-              choice
-                [ (parens (sep_end_by (char ';') pat)
-                  >>|| fun Parse_result.{ value = children; range = finish } ->
-                  let range = Opt_range.union range finish in
-                  { value = Operator (range, ident, children); range })
-                ; return ~range (Var (range, ident))
-                ]
-              <?> "pattern body")
+            choice
+              [ (parens (sep_end_by (char ';') pat)
+                >>|| fun Parse_result.{ value = children; range = finish } ->
+                let range = Opt_range.union range finish in
+                { value = Operator (range, ident, children); range })
+              ; return ~range (mk_var range ident)
+              ]
+            <?> "pattern body")
           ])
     <?> "pattern"
   ;;
