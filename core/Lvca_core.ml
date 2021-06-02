@@ -547,9 +547,7 @@ let eval_primitive eval_ctx eval_ctx' ctx tm name args =
       chars
       |> List.map ~f:(function
              | Nominal.Scope.Scope ([], Nominal.Term.Primitive (_, Char c)) -> Ok c
-             | tm ->
-               Error
-                 (Printf.sprintf "string_of_chars `list(%s)`" (Nominal.Scope.pp_str tm)))
+             | tm -> Error (Fmt.str "string_of_chars `list(%a)`" Nominal.Scope.pp tm))
       |> Result.all
       |> Result.map ~f:(fun cs ->
              Nominal.Term.Primitive (info, String (Base.String.of_char_list cs)))
@@ -732,7 +730,7 @@ let%test_module "Core eval" =
       let result =
         match eval eval_primitive core with
         | Error (msg, tm) -> Fmt.str "%s: %a" msg Term.pp tm
-        | Ok result -> Nominal.Term.pp_str result
+        | Ok result -> Fmt.to_to_string Nominal.Term.pp result
       in
       Stdio.print_string result
     ;;
@@ -916,7 +914,7 @@ let%test_module "Core eval in dynamics" =
       let core = parse_term str in
       match eval eval_primitive (Core_app (None, defn, [ core ])) with
       | Error (msg, tm) -> Fmt.str "%s: %a" msg Term.pp tm
-      | Ok result -> Nominal.Term.pp_str result
+      | Ok result -> Fmt.to_to_string Nominal.Term.pp result
     ;;
 
     let dynamics_str =

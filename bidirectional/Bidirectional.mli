@@ -4,7 +4,7 @@ open Lvca_provenance
 open Lvca_syntax
 open Statics
 
-type 'info capture = 'info Binding_aware_pattern.capture
+type 'info capture = 'info Binding_aware_pattern.Capture.t
 
 type 'info env =
   { rules : 'info Rule.t list (** The (checking / inference) rules we can apply *)

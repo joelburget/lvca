@@ -3,7 +3,7 @@ open Lvca_syntax
 open Statics
 module SMap = Lvca_util.String.Map
 
-type 'info capture = 'info Binding_aware_pattern.capture
+type 'info capture = 'info Binding_aware_pattern.Capture.t
 
 type 'a env =
   { rules : 'a Rule.t list (** The (checking / inference) rules we can apply *)
@@ -27,19 +27,16 @@ let pp_bpat : _ Binding_aware_pattern.t Fmt.t =
   Binding_aware_pattern.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ())
 ;;
 
-let pp_pat = Pattern.pp
-
-let pp_capture =
-  Binding_aware_pattern.pp_capture_generic
-    ~open_loc:(fun _ _ -> ())
-    ~close_loc:(fun _ _ -> ())
-;;
-
-let pp_term = Nominal.Term.pp
-
 let pp_err ppf = function
   | Check_error msg -> Fmt.string ppf msg
-  | Bad_merge (cap1, cap2) -> Fmt.pf ppf "%a / %a" pp_capture cap1 pp_capture cap2
+  | Bad_merge (cap1, cap2) ->
+    Fmt.pf
+      ppf
+      "%a / %a"
+      Binding_aware_pattern.Capture.pp
+      cap1
+      Binding_aware_pattern.Capture.pp
+      cap2
 ;;
 
 (* [pat] is a (binding-aware) pattern taken from the typing rule. Use the
@@ -65,7 +62,7 @@ let instantiate
       Nominal.Term.Operator (info, op_name, scopes)
     | Var (_info, pattern_var_name) ->
       (match Map.find env pattern_var_name with
-      | Some (Binding_aware_pattern.CapturedTerm tm) -> Ok tm
+      | Some (Binding_aware_pattern.Capture.Term tm) -> Ok tm
       | Some _ ->
         err
           (Printf.sprintf
@@ -80,12 +77,12 @@ let instantiate
       binders
       |> List.map ~f:(fun (_info, binder_name) ->
              match Map.find env binder_name with
-             | Some (CapturedTerm _) ->
+             | Some (Term _) ->
                err
                  (Printf.sprintf
                     "%s: found a captured term but expected a binder"
                     binder_name)
-             | Some (CapturedBinder pat) -> Ok pat
+             | Some (Binder pat) -> Ok pat
              | None ->
                err (Printf.sprintf "didn't find variable %s in context" binder_name))
       |> Result.all
@@ -109,7 +106,7 @@ let update_ctx
       ctx_state := Map.set state ~key:k ~data:v;
       None
     | Some v' ->
-      if not (Binding_aware_pattern.capture_eq ~info_eq v v')
+      if not (Binding_aware_pattern.Capture.equal ~info_eq v v')
       then Some (Bad_merge (v, v'))
       else None
   in
@@ -134,7 +131,8 @@ let ctx_infer
     | Some ty -> Ok ty)
   | tm ->
     Error
-      (Check_error (Fmt.str "unable to infer type (no matching rule) for %a" pp_term tm))
+      (Check_error
+         (Fmt.str "unable to infer type (no matching rule) for %a" Nominal.Term.pp tm))
 ;;
 
 let rec check'
@@ -256,32 +254,32 @@ and check_hyp
              | Binding_aware_pattern.Var (_, ctx_ty_name) ->
                let%bind ty =
                  match Map.find_exn !ctx_state ctx_ty_name with
-                 | CapturedTerm ty -> Ok ty
-                 | CapturedBinder pat ->
+                 | Term ty -> Ok ty
+                 | Binder pat ->
                    Error
                      (Fmt.str
                         "Expected type reference in context to refer to a term, not a \
                          binder (%a)"
-                        pp_pat
+                        Pattern.pp
                         pat)
                in
                let%map term_var_name =
                  match Map.find_exn !ctx_state ctx_var_name with
-                 | CapturedBinder (Pattern.Var (_, name)) -> Ok name
-                 | CapturedBinder pat ->
+                 | Binder (Pattern.Var (_, name)) -> Ok name
+                 | Binder pat ->
                    Error
                      (Fmt.str
                         "Binding non-variable patterns (%a) is not yet supported! This \
                          should be supported but we need to extend bidirectional to have \
                          a notion of pattern types (ty1[ty2]) TODO!"
-                        pp_pat
+                        Pattern.pp
                         pat)
-                 | CapturedTerm tm ->
+                 | Term tm ->
                    Error
                      (Fmt.str
                         "Expected a binder but found a term (%a) -- only binders can \
                          occur in the context"
-                        pp_term
+                        Nominal.Term.pp
                         tm)
                in
                term_var_name, ty
@@ -381,7 +379,7 @@ let%test_module "check / infer" =
       match parse_tm tm with
       | Ok tm ->
         (match infer env tm with
-        | Ok ty -> Fmt.pr "%a\n" pp_term ty
+        | Ok ty -> Fmt.pr "%a\n" Nominal.Term.pp ty
         | Error err -> Fmt.pr "%a\n" pp_err err)
       | _ -> failwith "failed to parse term"
     ;;

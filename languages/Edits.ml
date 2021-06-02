@@ -61,7 +61,7 @@ type term = Opt_range.t Nominal.Term.t
 let%test_module "Parsing" =
   (module struct
     let parse : string -> (core t, string) Result.t =
-      Lvca_parsing.(parse_string (Parse.whitespace_t (braces Lvca_core.Parse.term)))
+      Lvca_parsing.(parse_string (Parse.whitespace_t (braces Lvca_core.Term.Parse.t)))
     ;;
 
     let parse_and_print : string -> unit =

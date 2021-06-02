@@ -6,7 +6,9 @@ let language = [%lvca.abstract_syntax "tm := app(tm; tm) | lam(tm. tm)"]
 
 let eval tm =
   let open Result.Let_syntax in
-  let tm_str tm = tm |> DeBruijn.to_nominal |> Option.value_exn |> Nominal.Term.pp_str in
+  let tm_str tm =
+    tm |> DeBruijn.to_nominal |> Option.value_exn |> Fmt.to_to_string Nominal.Term.pp
+  in
   let rec eval' tm =
     match tm with
     | DeBruijn.Operator (_, "app", [ Second t1; Second t2 ]) ->
@@ -22,7 +24,7 @@ let eval tm =
     | _ -> Error (Printf.sprintf "Unexpected term (2) %s" (tm_str tm))
   in
   let%bind db_tm =
-    tm |> DeBruijn.of_nominal |> Result.map_error ~f:Nominal.Scope.pp_str
+    tm |> DeBruijn.of_nominal |> Result.map_error ~f:(Fmt.to_to_string Nominal.Scope.pp)
   in
   let%bind db_tm' = eval' db_tm in
   match DeBruijn.to_nominal db_tm' with
