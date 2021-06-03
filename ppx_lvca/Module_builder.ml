@@ -165,14 +165,6 @@ module Update_loc (Context : Builder_context) = struct
     match optrange with
     | None -> loc
     | Some { start; finish } ->
-      (*
-      let x =
-        { loc with
-          loc_start = { loc.loc_start with pos_cnum = loc.loc_start.pos_cnum + start }
-        ; loc_end = { loc.loc_end with pos_cnum = loc.loc_start.pos_cnum + finish }
-        }
-      in
-      *)
       (* Buffers before and internal to the referenced span. *)
       let before_buf = String.subo ~len:start buf in
       let internal_buf = String.sub ~pos:start ~len:(finish - start) buf in
@@ -194,13 +186,13 @@ module Update_loc (Context : Builder_context) = struct
           { loc.loc_start with
             pos_lnum = loc.loc_start.pos_lnum + buf_start_lnum
           ; pos_bol = start_bol
-          ; pos_cnum = start
+          ; pos_cnum = start - 1
           }
       ; loc_end =
           { loc.loc_end with
             pos_lnum = loc.loc_start.pos_lnum + buf_start_lnum + internal_lines
           ; pos_bol = finish_bol
-          ; pos_cnum = finish
+          ; pos_cnum = finish - 1
           }
       }
  ;;
