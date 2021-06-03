@@ -854,7 +854,7 @@ module To_nominal (Context : Builder_context) = struct
     let mk_scope (Syn.Valence.Valence (slots, body_sort)) =
       let args =
         List.map slots ~f:(function
-            | Syn.Sort_slot.Sort_binding _ -> [%expr info, [%e v ()]]
+            | Syn.Sort_slot.Sort_binding _ -> [%expr Pattern.Var (x0, [%e v ()])]
             | Sort_pattern _ -> v ())
         |> Syntax_quoter.mk_list ~loc
       in
@@ -872,7 +872,7 @@ module To_nominal (Context : Builder_context) = struct
       let rhs = mk_nominal_exp ~var_names ~prim_names sort_defs op_def in
       case ~lhs ~guard ~rhs
     in
-    let init = op_defs |> List.map ~f |> pexp_function |> labelled_fun "f" in
+    let init = op_defs |> List.map ~f |> pexp_function in
     let expr = List.fold_right vars ~init ~f:f_fun in
     value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
   ;;
