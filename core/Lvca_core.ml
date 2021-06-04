@@ -55,7 +55,7 @@ module Types = struct
     | Term of 'info Nominal.Term.t
     | Core_app of 'info * 'info term * 'info term list
     | Case of 'info * 'info term * 'info case_scope list (** Cases match patterns *)
-    | Lambda of 'info * 'info Sort.t * 'info scope
+    | Lambda of 'info * 'info Type.t * 'info scope
         (** Lambdas bind variables. Patterns not allowed. *)
     | Let of 'info let_ (** Lets bind variables. Patterns not allowed. *)
     | Var of 'info * string
@@ -87,7 +87,7 @@ module Equal = struct
     | Case (x1, x2, x3), Case (y1, y2, y3) ->
       info_eq x1 y1 && term ~info_eq x2 y2 && List.equal (case_scope ~info_eq) x3 y3
     | Lambda (x1, x2, x3), Lambda (y1, y2, y3) ->
-      info_eq x1 y1 && Sort.equal info_eq x2 y2 && scope ~info_eq x3 y3
+      info_eq x1 y1 && Type.equal ~info_eq x2 y2 && scope ~info_eq x3 y3
     | Let x, Let y -> let_ ~info_eq x y
     | Var (x1, x2), Var (y1, y2) -> info_eq x1 y1 && String.(x2 = y2)
     | _, _ -> false
@@ -128,8 +128,7 @@ module Map_info = struct
       Core_app (f info, term ~f t1, List.map ~f:(term ~f) args)
     | Case (info, tm, cases) ->
       Case (f info, term ~f tm, List.map cases ~f:(case_scope ~f))
-    | Lambda (info, sort, scope') ->
-      Lambda (f info, Sort.map_info ~f sort, scope ~f scope')
+    | Lambda (info, ty, scope') -> Lambda (f info, Type.map_info ~f ty, scope ~f scope')
     | Let x -> Let (let_ ~f x)
     | Var (info, name) -> Var (f info, name)
 
@@ -160,8 +159,8 @@ module Pp_generic = struct
     (match tm with
     | Var (_, v) -> Fmt.string ppf v
     | Term tm -> braces (Nominal.Term.pp_generic ~open_loc ~close_loc) ppf tm
-    | Lambda (_, sort, Scope (name, body)) ->
-      pf ppf "\\(%s : %a) ->@ %a" name (Sort.pp_generic ~open_loc ~close_loc) sort pp body
+    | Lambda (_, ty, Scope (name, body)) ->
+      pf ppf "\\(%s : %a) ->@ %a" name (Type.pp_generic ~open_loc ~close_loc) ty pp body
     (* TODO: parens if necessary *)
     | Core_app (_, f, args) -> pf ppf "@[<h>%a@ @[<hov>%a@]@]" pp f (list ~sep:sp pp) args
     | Case (_, arg, cases') ->
@@ -251,17 +250,17 @@ module Parse = struct
         in
         choice
           [ lift4
-              (fun (_, lam_loc) ((name, sort), parens_loc) _ body ->
+              (fun (_, lam_loc) ((name, ty), parens_loc) _ body ->
                 let info = Opt_range.union lam_loc parens_loc in
-                Types.Lambda (info, sort, Scope (name, body)))
+                Types.Lambda (info, ty, Scope (name, body)))
               (attach_pos (char '\\'))
               (attach_pos
                  (parens
                     (lift3
-                       (fun ident _ sort -> ident, sort)
+                       (fun ident _ ty -> ident, ty)
                        identifier
                        (char ':')
-                       Sort.Parse.t)))
+                       Type.Parse.t)))
               (string "->")
               term
             <?> "lambda"
@@ -309,7 +308,7 @@ module Term = struct
       | Term of 'info Nominal.Term.t
       | Core_app of 'info * 'info t * 'info t list
       | Case of 'info * 'info t * 'info Types.case_scope list
-      | Lambda of 'info * 'info Sort.t * 'info Types.scope
+      | Lambda of 'info * 'info Type.t * 'info Types.scope
       | Let of 'info Types.let_
       | Var of 'info * string
 
@@ -380,7 +379,7 @@ type 'info env = 'info Nominal.Term.t SMap.t
 let preimage _ = failwith "TODO"
 let reverse _tm _cases = failwith "TODO"
 
-type 'info check_env = 'info Lvca_syntax.Sort.t SMap.t
+type 'info check_env = 'info Type.t SMap.t
 type 'info check_error
 
 let check _env tm =
@@ -585,7 +584,7 @@ let%test_module "Parsing" =
 
     let%test _ =
       parse {|\(x : bool) -> x|}
-      = Lambda ((), Sort.Name ((), "bool"), Scope ("x", var "x"))
+      = Lambda ((), Type.Sort (Name ((), "bool")), Scope ("x", var "x"))
     ;;
 
     let%test _ =
@@ -653,7 +652,7 @@ let%test_module "Core parsing" =
 
     let t_operator tag children = Nominal.Term.Operator ((), tag, children)
     let meaning x = Term.Core_app ((), c_var "meaning", [ x ])
-    let ty = Sort.Name ((), "ty")
+    let ty = Type.Sort (Name ((), "ty"))
 
     let dynamics =
       Term.Lambda

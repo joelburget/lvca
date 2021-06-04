@@ -37,7 +37,7 @@ module Types : sig
     | Term of 'info Nominal.Term.t
     | Core_app of 'info * 'info term * 'info term list
     | Case of 'info * 'info term * 'info case_scope list (** Cases match patterns *)
-    | Lambda of 'info * 'info Sort.t * 'info scope
+    | Lambda of 'info * 'info Type.t * 'info scope
         (** Lambdas bind variables. Patterns not allowed. *)
     | Let of 'info let_ (** Lets bind variables. Patterns not allowed. *)
     | Var of 'info * string
@@ -60,7 +60,7 @@ module Term : sig
     | Term of 'info Nominal.Term.t
     | Core_app of 'info * 'info t * 'info t list
     | Case of 'info * 'info t * 'info Types.case_scope list
-    | Lambda of 'info * 'info Sort.t * 'info Types.scope
+    | Lambda of 'info * 'info Type.t * 'info Types.scope
     | Let of 'info Types.let_
     | Var of 'info * string
 
@@ -122,9 +122,10 @@ end
 
 (** {1 Checking} *)
 
-type 'info check_env = 'info Sort.t String.Map.t
+type 'info check_env = 'info Type.t String.Map.t
 type 'info check_error
 
+(** Typecheck a term in an environment. *)
 val check : 'info check_env -> 'info Term.t -> 'info check_error option
 
 (** {1 Evaluation} *)
