@@ -6,6 +6,7 @@ open Lvca_syntax
 module Format = Stdlib.Format
 module Util = Lvca_util
 module SMap = Util.String.Map
+open Result.Let_syntax
 
 module Is_rec = struct
   type t =
@@ -453,7 +454,6 @@ let true_tm info = Nominal.Term.Operator (info, "true", [])
 let false_tm info = Nominal.Term.Operator (info, "false", [])
 
 let eval_char_bool_fn eval_ctx' name f ctx tm c =
-  let open Result.Let_syntax in
   let%bind c_result = eval_ctx' ctx c in
   match c_result with
   | Nominal.Term.Primitive (info, Char c') ->
@@ -461,26 +461,9 @@ let eval_char_bool_fn eval_ctx' name f ctx tm c =
   | _ -> Error (Printf.sprintf "Invalid argument to %s" name, tm)
 ;;
 
-type 'info primitive_eval =
-  ('info env -> 'info Term.t -> ('info Nominal.Term.t, 'info eval_error) Result.t)
-  -> ('info env
-      -> 'info Nominal.Term.t
-      -> ('info Nominal.Term.t, 'info eval_error) Result.t)
-  -> 'info env
-  -> 'info Term.t
-  -> string
-  -> 'info Term.t list
-  -> ('info Nominal.Term.t, 'info eval_error) Result.t
-
-let rec eval_ctx
-    :  'info primitive_eval -> 'info Nominal.Term.t SMap.t -> 'info Term.t
-    -> ('info Nominal.Term.t, 'info eval_error) Result.t
-  =
- fun eval_primitive ctx tm ->
-  let open Result.Let_syntax in
-  let eval_ctx = eval_ctx eval_primitive in
+let rec eval_ctx ctx tm =
   match tm with
-  | Var (_, v) ->
+  | Term.Var (_, v) ->
     (match Map.find ctx v with
     | Some result -> Ok result
     | None -> Error ("Unbound variable " ^ v, tm))
@@ -503,25 +486,15 @@ let rec eval_ctx
     eval_ctx (Map.set ctx ~key:name ~data:tm_val) body
   | _ -> Error ("Found a term we can't evaluate", tm)
 
-and eval_ctx'
-    :  'a Nominal.Term.t SMap.t -> 'a Nominal.Term.t
-    -> ('a Nominal.Term.t, 'a eval_error) Result.t
-  =
- fun ctx tm ->
+and eval_ctx' ctx tm =
   match tm with
-  | Var (_, v) ->
+  | Nominal.Term.Var (_, v) ->
     (match Map.find ctx v with
     | Some result -> Ok result
-    | None -> Error ("Unbound variable " ^ v, Term tm))
+    | None -> Error ("Unbound variable " ^ v, Term.Term tm))
   | _ -> Ok tm
-;;
 
-let eval : 'a primitive_eval -> 'a Term.t -> ('a Nominal.Term.t, 'a eval_error) Result.t =
- fun eval_primitive core -> eval_ctx eval_primitive SMap.empty core
-;;
-
-let eval_primitive eval_ctx eval_ctx' ctx tm name args =
-  let open Result.Let_syntax in
+and eval_primitive eval_ctx eval_ctx' ctx tm name args =
   let open Nominal.Term in
   let open Types in
   match name, args with
@@ -572,6 +545,10 @@ let eval_primitive eval_ctx eval_ctx' ctx tm name args =
     eval_char_bool_fn eval_ctx' "is_whitespace" Char.is_whitespace ctx tm c
   | _ ->
     failwith (Printf.sprintf "Unknown function (%s), or wrong number of arguments" name)
+;;
+
+let eval : 'a Term.t -> ('a Nominal.Term.t, 'a eval_error) Result.t =
+ fun core -> eval_ctx SMap.empty core
 ;;
 
 let%test_module "Parsing" =
@@ -728,7 +705,7 @@ let%test_module "Core eval" =
       in
       let core = parse_term str in
       let result =
-        match eval eval_primitive core with
+        match eval core with
         | Error (msg, tm) -> Fmt.str "%s: %a" msg Term.pp tm
         | Ok result -> Fmt.to_to_string Nominal.Term.pp result
       in
@@ -912,7 +889,7 @@ let%test_module "Core eval in dynamics" =
       in
       let defn = parse_term dynamics_str in
       let core = parse_term str in
-      match eval eval_primitive (Core_app (None, defn, [ core ])) with
+      match eval (Core_app (None, defn, [ core ])) with
       | Error (msg, tm) -> Fmt.str "%s: %a" msg Term.pp tm
       | Ok result -> Fmt.to_to_string Nominal.Term.pp result
     ;;

@@ -132,27 +132,12 @@ val check : 'info check_env -> 'info Term.t -> 'info check_error option
 type 'info env = 'info Nominal.Term.t String.Map.t
 type 'info eval_error = string * 'info Term.t
 
-type 'info primitive_eval =
-  ('info env -> 'info Term.t -> ('info Nominal.Term.t, 'info eval_error) Result.t)
-  -> ('info env
-      -> 'info Nominal.Term.t
-      -> ('info Nominal.Term.t, 'info eval_error) Result.t)
-  -> 'info env
-  -> 'info Term.t
-  -> string
-  -> 'info Term.t list
-  -> ('info Nominal.Term.t, 'info eval_error) Result.t
-
 val eval_ctx
-  :  'info primitive_eval
-  -> 'info env
+  :  'info env
   -> 'info Term.t
   -> ('info Nominal.Term.t, 'info eval_error) Base.Result.t
 
-val eval
-  :  'info primitive_eval
-  -> 'info Term.t
-  -> ('info Nominal.Term.t, 'info eval_error) Base.Result.t
+val eval : 'info Term.t -> ('info Nominal.Term.t, 'info eval_error) Base.Result.t
 
 (** {1 Patterns} *)
 val match_pattern
