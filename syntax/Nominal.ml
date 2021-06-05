@@ -884,11 +884,10 @@ test := foo(term[term]. term)
       match parse_sort sort_str with
       | Error msg -> Fmt.epr "%s" msg
       | Ok sort ->
-        let pp ppf Check_failure.{ term; sort } =
+        let pp ppf term =
           match term with
-          | Either.First pat ->
-            Fmt.pf ppf "- @[pattern: %a,@ sort: %a@]" Pattern.pp pat Sort.pp sort
-          | Second tm -> Fmt.pf ppf "- @[term: %a,@ sort: %a@]" Term.pp tm Sort.pp sort
+          | Either.First pat -> Fmt.pf ppf "pattern: %a" Pattern.pp pat
+          | Second tm -> Fmt.pf ppf "term: %a" Term.pp tm
         in
         (match tm_str |> parse_term |> Term.check language sort with
         | Some failure -> Fmt.epr "%a" (Check_failure.pp pp) failure

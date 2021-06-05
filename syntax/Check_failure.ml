@@ -1,38 +1,38 @@
 open Base
+module Format = Stdlib.Format
 
-type ('info, 'term) frame =
-  { term : 'term
-  ; sort : 'info Sort.t
-  }
+module Frame = struct
+  type ('info, 'term) t =
+    { term : 'term
+    ; sort : 'info Sort.t
+    }
+
+  let pp term_pp ppf { term; sort } =
+    Fmt.pf ppf "- @[%a,@ sort: %a@]" term_pp term Sort.pp sort
+  ;;
+end
 
 type ('info, 'term) t =
   { message : string
-  ; stack : ('info, 'term) frame list
+  ; stack : ('info, 'term) Frame.t list
   }
 
 let err message = { message; stack = [] }
 
 let map_frame_terms ~f { message; stack } =
-  let stack = stack |> List.map ~f:(fun { term; sort } -> { term = f term; sort }) in
+  let stack =
+    stack |> List.map ~f:(fun { term; sort } -> Frame.{ term = f term; sort })
+  in
   { message; stack }
 ;;
 
-let pp frame_pp ppf { message; stack } =
+let pp term_pp ppf { message; stack } =
   Fmt.string ppf message;
   if List.length stack > 0
   then (
-    Stdlib.Format.pp_force_newline ppf ();
+    Format.pp_force_newline ppf ();
     Fmt.pf ppf "stack:";
     List.iter stack ~f:(fun frame ->
-        Stdlib.Format.pp_force_newline ppf ();
-        frame_pp ppf frame))
+        Format.pp_force_newline ppf ();
+        Frame.pp term_pp ppf frame))
 ;;
-
-(*
-      (fun { term; sort } ->
-        match term with
-        | First pat ->
-          Fmt.pf ppf "- @[pattern: %a,@ sort: %a@]" (Pattern.pp prim_pp) pat Sort.pp sort
-        | Second tm ->
-          Fmt.pf ppf "- @[term: %a,@ sort: %a@]" (Nominal.pp_term prim_pp) tm Sort.pp sort))
-  *)

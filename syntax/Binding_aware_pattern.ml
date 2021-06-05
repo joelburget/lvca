@@ -501,9 +501,7 @@ test := foo(term[term]. term)
     let print_check_pattern sort_str pat_str =
       let sort = parse_sort sort_str |> Result.ok_or_failwith in
       let pat = parse_pattern pat_str in
-      let pp ppf Check_failure.{ term = pat; sort } =
-        Fmt.pf ppf "- @[pattern: %a,@ sort: %a@]" pp pat Sort.pp sort
-      in
+      let pp ppf pat = Fmt.pf ppf "pattern: %a" pp pat in
       match check Primitive.check language sort pat with
       | Error failure -> Fmt.epr "%a" (Check_failure.pp pp) failure
       | Ok capture_types ->

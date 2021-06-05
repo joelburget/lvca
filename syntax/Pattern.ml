@@ -456,9 +456,7 @@ test := foo(term[term]. term)
         | Some str -> parse_sort str |> Result.ok_or_failwith
       in
       let pat = parse_pattern pat_str in
-      let pp ppf Check_failure.{ term = pat; sort } =
-        Fmt.pf ppf "- @[pattern: %a,@ sort: %a@]" pp pat Sort.pp sort
-      in
+      let pp ppf pat = Fmt.pf ppf "pattern: %a" pp pat in
       match check language ~pattern_sort:sort ~var_sort pat with
       | Error failure -> Fmt.epr "%a" (Check_failure.pp pp) failure
       | Ok _ -> ()
