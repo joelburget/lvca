@@ -124,15 +124,24 @@ end
 
 type 'info check_env =
   { type_env : 'info Type.t String.Map.t
-  ; syntax : 'info Abstract_syntax.Unordered.t
+  ; syntax : 'info Abstract_syntax.t
   }
 
 module Check_error' : sig
+  type term_failure_inference_reason =
+    | Term_var_not_found of string
+    | Operator_not_supported
+
   type 'info t =
+    | Cant_infer_case
+    | Cant_infer_lambda
     | Var_not_found
     | Operator_not_found
     | Mismatch of 'info Type.t
-    | Failed_term_inference
+    | Term_isnt_arrow
+    | Failed_term_inference of term_failure_inference_reason
+    | Failed_check_term of
+        ('info, ('info Pattern.t, 'info Nominal.Term.t) Base.Either.t) Check_failure.t
 end
 
 module Check_error : sig

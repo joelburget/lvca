@@ -383,17 +383,28 @@ let reverse _tm _cases = failwith "TODO"
 
 type 'info check_env =
   { type_env : 'info Type.t SMap.t
-  ; syntax : 'info Abstract_syntax.Unordered.t
+  ; syntax : 'info Abstract_syntax.t
   }
 
 module Check_error' = struct
+  type term_failure_inference_reason =
+    | Term_var_not_found of string
+    | Operator_not_supported
+
   type 'info t =
+    | Cant_infer_case
+    | Cant_infer_lambda
     | Var_not_found
     | Operator_not_found
     | Mismatch of 'info Type.t
-    | Failed_term_inference
+    | Term_isnt_arrow
+    | Failed_term_inference of term_failure_inference_reason
+    | Failed_check_term of
+        ('info, ('info Pattern.t, 'info Nominal.Term.t) Base.Either.t) Check_failure.t
 
   let pp ppf tm ty_opt = function
+    | Cant_infer_case -> Fmt.pf ppf "can't infer cases"
+    | Cant_infer_lambda -> Fmt.pf ppf "can't infer lambdas"
     | Var_not_found ->
       (match tm with
       | Term.Term (Nominal.Term.Var (_, name)) -> Fmt.pf ppf "variable %s not found" name
@@ -403,7 +414,21 @@ module Check_error' = struct
       (match ty_opt with
       | None -> Lvca_util.invariant_violation ~here:[%here] "expected Some ty'"
       | Some ty' -> Fmt.pf ppf "%a != %a" Type.pp ty Type.pp ty')
-    | Failed_term_inference -> Fmt.pf ppf "failed to infer type of term %a" Term.pp tm
+    | Term_isnt_arrow -> Fmt.pf ppf "terms can't have arrow types"
+    | Failed_term_inference reason ->
+      let explanation =
+        match reason with
+        | Term_var_not_found name -> Fmt.str "variable %s not found" name
+        | Operator_not_supported -> "inference not supported for operators"
+      in
+      Fmt.pf ppf "failed to infer type of term %a @[(%s)@]" Term.pp tm explanation
+    | Failed_check_term err ->
+      let pp ppf pat_or_tm =
+        match pat_or_tm with
+        | Either.First pat -> Fmt.pf ppf "term: %a" Pattern.pp pat
+        | Second tm -> Fmt.pf ppf "term: %a" Nominal.Term.pp tm
+      in
+      Fmt.pf ppf "failed to check term: %a" (Check_failure.pp pp) err
   ;;
 end
 
@@ -428,21 +453,9 @@ module Infer_error = struct
   let pp ppf { env = _; tm; error } = Check_error'.pp ppf tm None error
 end
 
-let infer_term type_env syntax tm =
+let infer_term type_env tm =
   match tm with
-  | Nominal.Term.Operator (_, op_name, _) ->
-    let sorts = syntax.Abstract_syntax.Unordered.sort_defs in
-    (* TODO: caching *)
-    let sorts_list = Map.to_alist sorts in
-    sorts_list
-    |> List.find ~f:(fun (_sort_name, Abstract_syntax.Sort_def.Sort_def (_, op_defs)) ->
-           op_defs
-           |> List.exists
-                ~f:(fun (Abstract_syntax.Operator_def.Operator_def (op_name', _)) ->
-                  String.(op_name' = op_name)))
-    (* XXX wrong when the sort is applied *)
-    |> Option.map ~f:(fun (sort_name, _) -> Type.Sort (Sort.Name (None, sort_name)))
-  | Primitive (_, prim) ->
+  | Nominal.Term.Primitive (_, prim) ->
     let name =
       match prim with
       | Integer _ -> "integer"
@@ -450,8 +463,12 @@ let infer_term type_env syntax tm =
       | Float _ -> "float"
       | Char _ -> "char"
     in
-    Some (Type.Sort (Sort.Name (None, name)))
-  | Var (_, v) -> Map.find type_env v
+    Ok (Type.Sort (Sort.Name (None, name)))
+  | Var (_, v) ->
+    (match Map.find type_env v with
+    | Some ty -> Ok ty
+    | None -> Error (Check_error'.Term_var_not_found v))
+  | Operator _ -> Error Check_error'.Operator_not_supported
 ;;
 
 let rec check ({ type_env; syntax } as env) tm ty =
@@ -462,33 +479,46 @@ let rec check ({ type_env; syntax } as env) tm ty =
   in
   match tm with
   | Term.Term tm' ->
-    (match infer_term type_env syntax tm' with
-    | None -> Some Check_error.{ env; tm; ty; error = Operator_not_found }
-    | Some ty' -> check_ty ty')
+    (match ty with
+    | Type.Arrow _ -> Some Check_error.{ env; tm; ty; error = Term_isnt_arrow }
+    | Type.Sort sort ->
+      (match Nominal.Term.check syntax sort tm' with
+      | None -> None
+      | Some err -> Some Check_error.{ env; tm; ty; error = Failed_check_term err }))
   | Core_app _ -> failwith "TODO"
-  | Case _ -> failwith "TODO"
-  | Lambda _ -> failwith "TODO"
+  | Case (_, tm, branches) ->
+    (match infer env tm with
+    | Error Infer_error.{ env; tm; error } -> Some { env; tm; ty; error }
+    | Ok _tm_ty ->
+      (* TODO *)
+      branches |> List.find_map ~f:(fun (Case_scope (_pat, rhs)) -> check env rhs ty))
+  | Lambda (_, ty', Scope (name, body)) ->
+    let type_env = Map.set type_env ~key:name ~data:ty' in
+    check { type_env; syntax } body ty
   | Let { is_rec = _; tm; ty = ty'; scope = Scope (name, body); _ } ->
     let inferred_tm_ty = match ty' with None -> infer env tm | Some tm_ty -> Ok tm_ty in
     (match inferred_tm_ty with
     | Ok tm_ty ->
       let type_env = Map.set type_env ~key:name ~data:tm_ty in
       check { env with type_env } body ty
-    | Error Infer_error.{ env; tm; error } -> Some { env; tm; ty; error })
+    | Error Infer_error.{ env; tm; error } -> Some Check_error.{ env; tm; ty; error })
   | Var _ ->
     (match infer env tm with
     | Error { env; tm; error } -> Some { env; tm; ty; error }
     | Ok ty' -> check_ty ty')
 
-and infer ({ type_env; syntax } as env) tm =
+and infer ({ type_env; syntax = _ } as env) tm =
   match tm with
   | Term.Term tm' ->
-    (match infer_term type_env syntax tm' with
-    | None -> Error { env; tm; error = Failed_term_inference }
-    | Some ty -> Ok ty)
-  | Core_app _ -> failwith "TODO"
-  | Case _ -> failwith "TODO"
-  | Lambda _ -> failwith "TODO"
+    (match infer_term type_env tm' with
+    | Error reason -> Error { env; tm; error = Failed_term_inference reason }
+    | Ok ty -> Ok ty)
+  | Core_app (_, f, args) ->
+    let _arg_tys = args |> List.map ~f:(infer env) |> Result.all in
+    (* XXX add arg tys to env *)
+    infer env f
+  | Case _ -> Error { env; tm; error = Cant_infer_case }
+  | Lambda _ -> Error { env; tm; error = Cant_infer_lambda }
   | Let { is_rec = _; tm; ty; scope = Scope (name, body); _ } ->
     let%bind tm_ty = match ty with None -> infer env tm | Some ty -> Ok ty in
     let type_env = Map.set type_env ~key:name ~data:tm_ty in
@@ -1045,31 +1075,30 @@ let%test_module "Evaluation / inference" =
 
     open Abstract_syntax
 
-    let externals = SMap.of_alist_exn [ "option", Kind.Kind (None, 2) ]
+    let externals = [ "option", Kind.Kind (None, 2) ]
 
     let sort_defs =
-      SMap.of_alist_exn
-        [ ( "bool"
-          , Sort_def.Sort_def
-              ( []
-              , [ Operator_def.Operator_def ("true", [])
-                ; Operator_def.Operator_def ("false", [])
-                ] ) )
-        ; ( "list"
-          , let a = Sort.Name (None, "a") in
-            Sort_def.Sort_def
-              ( [ "a", Some (Kind.Kind (None, 1)) ]
-              , [ Operator_def.Operator_def ("nil", [])
-                ; Operator_def.Operator_def
-                    ( "cons"
-                    , [ Valence.Valence ([], a)
-                      ; Valence.Valence ([], Sort.Ap (None, "list", [ a ]))
-                      ] )
-                ] ) )
-        ]
+      [ ( "bool"
+        , Sort_def.Sort_def
+            ( []
+            , [ Operator_def.Operator_def ("true", [])
+              ; Operator_def.Operator_def ("false", [])
+              ] ) )
+      ; ( "list"
+        , let a = Sort.Name (None, "a") in
+          Sort_def.Sort_def
+            ( [ "a", Some (Kind.Kind (None, 1)) ]
+            , [ Operator_def.Operator_def ("nil", [])
+              ; Operator_def.Operator_def
+                  ( "cons"
+                  , [ Valence.Valence ([], a)
+                    ; Valence.Valence ([], Sort.Ap (None, "list", [ a ]))
+                    ] )
+              ] ) )
+      ]
     ;;
 
-    let syntax = Unordered.{ externals; sort_defs }
+    let syntax = Abstract_syntax.{ externals; sort_defs }
 
     let check ?(type_env = SMap.empty) ty_str tm_str =
       let tm = parse_term tm_str in
@@ -1100,7 +1129,11 @@ let%test_module "Evaluation / inference" =
 
     let%expect_test _ =
       check "bool" "{2}";
-      [%expect {| integer != bool |}]
+      [%expect
+        {|
+        failed to check term: Unexpected sort (bool) for a primitive (2)
+        stack:
+        - term: 2, sort: bool |}]
     ;;
 
     let%expect_test _ =
@@ -1110,12 +1143,19 @@ let%test_module "Evaluation / inference" =
 
     let%expect_test _ =
       infer "{true()}";
-      [%expect {| inferred: bool |}]
+      [%expect
+        {| failed to infer type of term {true()} (inference not supported for operators) |}]
     ;;
 
     let%expect_test _ =
       infer "{nil()}";
-      [%expect {| inferred: list a |}]
+      [%expect
+        {| failed to infer type of term {nil()} (inference not supported for operators) |}]
+    ;;
+
+    let%expect_test _ =
+      check "a -> a" "{nil()}";
+      [%expect {| terms can't have arrow types |}]
     ;;
 
     let%expect_test _ =
