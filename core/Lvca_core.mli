@@ -122,11 +122,47 @@ end
 
 (** {1 Checking} *)
 
-type 'info check_env = 'info Type.t String.Map.t
-type 'info check_error
+type 'info check_env =
+  { type_env : 'info Type.t String.Map.t
+  ; syntax : 'info Abstract_syntax.Unordered.t
+  }
+
+module Check_error' : sig
+  type 'info t =
+    | Var_not_found
+    | Operator_not_found
+    | Mismatch of 'info Type.t
+    | Failed_term_inference
+end
+
+module Check_error : sig
+  type 'info t =
+    { env : 'info check_env
+    ; tm : 'info Term.t
+    ; ty : 'info Type.t
+    ; error : 'info Check_error'.t
+    }
+end
+
+module Infer_error : sig
+  type 'info t =
+    { env : 'info check_env
+    ; tm : 'info Term.t
+    ; error : 'info Check_error'.t
+    }
+end
 
 (** Typecheck a term in an environment. *)
-val check : 'info check_env -> 'info Term.t -> 'info check_error option
+val infer
+  :  'info option check_env
+  -> 'info option Term.t
+  -> ('info option Type.t, 'info option Infer_error.t) Result.t
+
+val check
+  :  'info option check_env
+  -> 'info option Term.t
+  -> 'info option Type.t
+  -> 'info option Check_error.t option
 
 (** {1 Evaluation} *)
 
