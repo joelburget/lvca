@@ -75,11 +75,6 @@ module Types = struct
   and 'info case_scope = Case_scope of 'info Binding_aware_pattern.t * 'info term
 end
 
-type 'info t =
-  { externals : (string * 'info Type.t) list
-  ; defs : (string * 'info Types.term) list
-  }
-
 module Equal = struct
   let rec term ~info_eq x y =
     match x, y with
@@ -298,10 +293,6 @@ module Parse = struct
   ;;
 
   let def = lift3 (fun ident _ tm -> ident, tm) identifier (string ":=") term
-
-  let t =
-    lift2 (fun externals defs -> { externals; defs }) (many external_decl) (many1 def)
-  ;;
 end
 
 module Term = struct
@@ -330,19 +321,6 @@ module Term = struct
     let t = Parse.term
   end
 end
-
-let pp_generic ~open_loc ~close_loc ppf { externals; defs } =
-  let open Fmt in
-  let pp_externals =
-    list (pair ~sep:(any " : ") string (Type.pp_generic ~open_loc ~close_loc))
-  in
-  let pp_def ppf (name, sort_def) =
-    pf ppf "%s := %a" name (Term.pp_generic ~open_loc ~close_loc) sort_def
-  in
-  pf ppf "%a@,%a" pp_externals externals (list pp_def) defs
-;;
-
-let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 
 module Let = struct
   type 'info t = 'info Types.let_ =
@@ -374,6 +352,37 @@ module Case_scope = struct
   let equal = Equal.case_scope
   let map_info = Map_info.case_scope
   let pp_generic = Pp_generic.case_scope
+end
+
+module Module = struct
+  type 'info t =
+    { externals : (string * 'info Type.t) list
+    ; defs : (string * 'info Types.term) list
+    }
+
+  let pp_generic ~open_loc ~close_loc ppf { externals; defs } =
+    let open Fmt in
+    let pp_externals =
+      list (pair ~sep:(any " : ") string (Type.pp_generic ~open_loc ~close_loc))
+    in
+    let pp_def ppf (name, sort_def) =
+      pf ppf "%s := %a" name (Term.pp_generic ~open_loc ~close_loc) sort_def
+    in
+    pf ppf "%a@,%a" pp_externals externals (list pp_def) defs
+  ;;
+
+  let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
+
+  module Parse = struct
+    open Lvca_parsing
+
+    let t =
+      lift2
+        (fun externals defs -> { externals; defs })
+        (many Parse.external_decl)
+        (many1 Parse.def)
+    ;;
+  end
 end
 
 type 'info env = 'info Nominal.Term.t SMap.t

@@ -107,17 +107,19 @@ module Case_scope : sig
 end
 
 (** {1 Core type} *)
-type 'info t =
-  { externals : (string * 'info Type.t) list
-  ; defs : (string * 'info Term.t) list
-  }
+module Module : sig
+  type 'info t =
+    { externals : (string * 'info Type.t) list
+    ; defs : (string * 'info Term.t) list
+    }
 
-val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
-val pp : _ t Fmt.t
+  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
+  val pp : _ t Fmt.t
 
-(** {2 Parsing} *)
-module Parse : sig
-  val t : Opt_range.t t Lvca_parsing.t
+  (** {2 Parsing} *)
+  module Parse : sig
+    val t : Opt_range.t t Lvca_parsing.t
+  end
 end
 
 (** {1 Checking} *)
