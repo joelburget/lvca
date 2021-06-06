@@ -33,9 +33,15 @@ module Type = struct
     | _, _ -> false
   ;;
 
-  let rec pp_generic ~open_loc ~close_loc ppf = function
-    | Arrow ts -> Fmt.(list ~sep:(any " -> ") (pp_generic ~open_loc ~close_loc)) ppf ts
-    | Sort s -> Sort.pp_generic ~open_loc ~close_loc ppf s
+  let pp_generic ~open_loc ~close_loc ppf =
+    let rec go need_parens ppf = function
+      | Arrow ts ->
+        let fmt = Fmt.(list ~sep:(any " -> ") (go true)) in
+        let fmt = if need_parens then Fmt.parens fmt else fmt in
+        fmt ppf ts
+      | Sort s -> Sort.pp_generic ~open_loc ~close_loc ppf s
+    in
+    go false ppf
   ;;
 
   let pp = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ())
@@ -43,11 +49,49 @@ module Type = struct
   module Parse = struct
     open Lvca_parsing
 
+    let rec go tys =
+      match Lvca_util.List.unsnoc tys with pre, Arrow tys' -> pre @ go tys' | _ -> tys
+    ;;
+
+    let normalize ty = match ty with Sort _ -> ty | Arrow tys -> Arrow (go tys)
+
     let t =
-      fix (fun t ->
-          let atom = parens t <|> (Sort.Parse.t >>| fun sort -> Sort sort) in
-          sep_by1 (string "->") atom >>| function [ t ] -> t | ts -> Arrow ts)
-      <?> "core type"
+      let t =
+        fix (fun t ->
+            let atom = parens t <|> (Sort.Parse.t >>| fun sort -> Sort sort) in
+            sep_by1 (string "->") atom >>| function [ t ] -> t | ts -> Arrow ts)
+      in
+      t >>| normalize <?> "core type"
+    ;;
+
+    let%test_module "normalize" =
+      (module struct
+        let ( = ) = equal ~info_eq:Unit.( = )
+        let s = Sort.Name ((), "s")
+
+        let%test _ = normalize (Sort s) = Sort s
+        let%test _ = normalize (Arrow [ Sort s; Sort s ]) = Arrow [ Sort s; Sort s ]
+
+        let%test _ =
+          normalize (Arrow [ Arrow [ Sort s; Sort s ]; Sort s ])
+          = Arrow [ Arrow [ Sort s; Sort s ]; Sort s ]
+        ;;
+
+        let%test _ =
+          normalize (Arrow [ Sort s; Arrow [ Sort s; Sort s ] ])
+          = Arrow [ Sort s; Sort s; Sort s ]
+        ;;
+
+        let%test _ =
+          normalize (Arrow [ Sort s; Arrow [ Sort s; Arrow [ Sort s; Sort s ] ] ])
+          = Arrow [ Sort s; Sort s; Sort s; Sort s ]
+        ;;
+
+        let%test _ =
+          normalize (Arrow [ Arrow [ Sort s; Sort s ]; Arrow [ Sort s; Sort s ] ])
+          = Arrow [ Arrow [ Sort s; Sort s ]; Sort s; Sort s ]
+        ;;
+      end)
     ;;
   end
 end
