@@ -331,12 +331,6 @@ module Parse = struct
           ])
     <?> "core term"
   ;;
-
-  let external_decl =
-    lift3 (fun ident _ ty -> ident, ty) identifier (string ":") Type.Parse.t
-  ;;
-
-  let def = lift3 (fun ident _ tm -> ident, tm) identifier (string ":=") term
 end
 
 module Term = struct
@@ -406,8 +400,16 @@ module Module = struct
 
   let pp_generic ~open_loc ~close_loc ppf { externals; defs } =
     let open Fmt in
-    let pp_externals =
-      list (pair ~sep:(any " : ") string (Type.pp_generic ~open_loc ~close_loc))
+    let pp_externals ppf = function
+      | [] -> ()
+      | lst ->
+        Fmt.pf
+          ppf
+          "%a;"
+          (list
+             ~sep:semi
+             (pair ~sep:(any " : ") string (Type.pp_generic ~open_loc ~close_loc)))
+          lst
     in
     let pp_def ppf (name, sort_def) =
       pf ppf "%s := %a" name (Term.pp_generic ~open_loc ~close_loc) sort_def
@@ -420,11 +422,19 @@ module Module = struct
   module Parse = struct
     open Lvca_parsing
 
+    let external_decl =
+      lift4
+        (fun ident _ ty _ -> ident, ty)
+        identifier
+        (string ":")
+        Type.Parse.t
+        (string ";")
+    ;;
+
+    let def = lift3 (fun ident _ tm -> ident, tm) identifier (string ":=") Term.Parse.t
+
     let t =
-      lift2
-        (fun externals defs -> { externals; defs })
-        (many Parse.external_decl)
-        (many1 Parse.def)
+      lift2 (fun externals defs -> { externals; defs }) (many external_decl) (many1 def)
     ;;
   end
 end
@@ -992,21 +1002,25 @@ let%test_module "Core eval" =
 
 let%test_module "Core pretty" =
   (module struct
-    let pretty width str =
+    let mk_test parser pp ?(width = 80) str =
       let str =
-        match Lvca_parsing.parse_string Lvca_parsing.(whitespace *> Parse.term) str with
+        match Lvca_parsing.parse_string Lvca_parsing.(whitespace *> parser) str with
         | Error err -> err
         | Ok core ->
           let fmt = Format.str_formatter in
           Format.pp_set_geometry fmt ~max_indent:width ~margin:(width + 1);
-          Term.pp fmt core;
+          pp fmt core;
           Format.flush_str_formatter ()
       in
       Stdio.print_string str
     ;;
 
+    let term = mk_test Term.Parse.t Term.pp
+    let ty = mk_test Type.Parse.t Type.pp
+    let module' = mk_test Module.Parse.t Module.pp
+
     let%expect_test _ =
-      pretty 22 "match {true()} with { true() -> {false()} | false() -> {true()} }";
+      term ~width:22 "match {true()} with { true() -> {false()} | false() -> {true()} }";
       [%expect
         {|
         match {true()} with {
@@ -1018,7 +1032,7 @@ let%test_module "Core pretty" =
     ;;
 
     let%expect_test _ =
-      pretty 23 "match {true()} with { true() -> {false()} | false() -> {true()} }";
+      term ~width:23 "match {true()} with { true() -> {false()} | false() -> {true()} }";
       [%expect
         {|
         match {true()} with {
@@ -1028,12 +1042,12 @@ let%test_module "Core pretty" =
     ;;
 
     let%expect_test _ =
-      pretty 25 "match x with { _ -> {1} }";
+      term ~width:25 "match x with { _ -> {1} }";
       [%expect {| match x with { _ -> {1} } |}]
     ;;
 
     let%expect_test _ =
-      pretty 24 "match x with { _ -> {1} }";
+      term ~width:24 "match x with { _ -> {1} }";
       [%expect {|
         match x with {
           | _ -> {1}
@@ -1041,31 +1055,63 @@ let%test_module "Core pretty" =
     ;;
 
     let%expect_test _ =
-      pretty 20 "foo a b c d e f g h i j k l";
+      term ~width:20 "foo a b c d e f g h i j k l";
       [%expect {|
         foo a b c d e f g h
             i j k l |}]
     ;;
 
     let%expect_test _ =
-      pretty 20 "f a b c d e f g h i j k l";
+      term ~width:20 "f a b c d e f g h i j k l";
       [%expect {|
         f a b c d e f g h i
           j k l |}]
     ;;
 
     let%expect_test _ =
-      pretty 20 "let x = {true()} in not x";
+      term ~width:20 "let x = {true()} in not x";
       [%expect {|
         let x = {true()} in
         not x |}]
     ;;
 
     let%expect_test _ =
-      pretty 20 "let x: bool = {true()} in not x";
+      term ~width:20 "let x: bool = {true()} in not x";
       [%expect {|
         let x: bool =
         {true()} in not x |}]
+    ;;
+
+    let%expect_test _ =
+      ty "string";
+      [%expect "string"]
+    ;;
+
+    let%expect_test _ =
+      ty "int -> bool";
+      [%expect "int -> bool"]
+    ;;
+
+    let%expect_test _ =
+      ty "(int -> bool) -> string";
+      [%expect "(int -> bool) -> string"]
+    ;;
+
+    let%expect_test _ =
+      ty "int -> (bool -> string)";
+      [%expect "int -> bool -> string"]
+    ;;
+
+    let%expect_test _ =
+      ty "(int -> float) -> (bool -> string)";
+      [%expect "(int -> float) -> bool -> string"]
+    ;;
+
+    let%expect_test _ =
+      module' {|go : string; x := {"foo"}|};
+      [%expect {|
+        go : string;
+        x := {"foo"} |}]
     ;;
   end)
 ;;
