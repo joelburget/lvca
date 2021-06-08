@@ -996,7 +996,10 @@ let%test_module "Core eval" =
       [%expect {| false() |}]
     ;;
 
-    (* let%expect_test _ = eval_str "sub 1 2"; [%expect{| -1 |}] *)
+    let%expect_test _ =
+      eval_str "sub {1} {2}";
+      [%expect {| -1 |}]
+    ;;
   end)
 ;;
 
