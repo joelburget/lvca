@@ -237,10 +237,10 @@ let%test_module "Update_loc" =
       [%expect
         {|
       File "test", line 1, characters 0-14:
-      File "test", line 1, characters 0-14:
-      File "test", line 1, characters 0-13:
-      File "test", line 2, characters 1-9:
-      File "test", line 3, characters 1-3: |}]
+      File "test", line 1, characters -1-13:
+      File "test", line 1, characters -1-12:
+      File "test", line 2, characters 0-8:
+      File "test", line 3, characters 0-2: |}]
     ;;
 
     module Context2 = struct
@@ -271,10 +271,10 @@ let%test_module "Update_loc" =
       [%expect
         {|
       File "test", line 0, characters 0-14:
-      File "test", line 0, characters 0-14:
-      File "test", line 0, characters 0-13:
-      File "test", line 0, characters 6-14:
-      File "test", line 0, characters 12-14: |}]
+      File "test", line 0, characters -1-13:
+      File "test", line 0, characters -1-12:
+      File "test", line 0, characters 5-13:
+      File "test", line 0, characters 11-13: |}]
     ;;
   end)
 ;;
@@ -490,11 +490,32 @@ module Helpers (Context : Builder_context) = struct
     match contents with [] -> None | _ -> Some (mk_exp_tuple contents)
   ;;
 
+  let mk_pat_tuple = function
+    | [] -> [%pat? ()]
+    | [ elem ] -> elem
+    | elems -> ppat_tuple elems
+  ;;
+
+  let mk_pat_tuple' contents =
+    match contents with [] -> None | _ -> Some (mk_pat_tuple contents)
+  ;;
+
   let var_allocator name_base =
     let var_ix = ref 0 in
     fun () ->
       Int.incr var_ix;
-      evar (Printf.sprintf "%s%d" name_base !var_ix)
+      let name = Printf.sprintf "%s%d" name_base !var_ix in
+      pvar name, evar name
+  ;;
+
+  let evar_allocator name_base =
+    let alloc = var_allocator name_base in
+    alloc >> snd
+  ;;
+
+  let pvar_allocator name_base =
+    let alloc = var_allocator name_base in
+    alloc >> fst
   ;;
 
   let raise_kind_err name (Syn.Kind.Kind (info, _) as kind) =
@@ -600,12 +621,6 @@ module Operator_pat (Context : Builder_context) = struct
     (not (String.is_empty str)) && Char.is_uppercase str.[0]
   ;;
 
-  let mk_pat_tuple = function
-    | [] -> [%pat? ()]
-    | [ elem ] -> elem
-    | elems -> ppat_tuple elems
-  ;;
-
   let mk
       ~ctor_type
       ?(match_info = false)
@@ -670,7 +685,7 @@ module Operator_exp (Context : Builder_context) = struct
       fun_name (* The name of the function being defined *)
       (Syn.Operator_def.Operator_def (op_name, arity))
     =
-    let v = var_allocator name_base in
+    let v = evar_allocator name_base in
     let pattern_converter = pexp_ident { txt = unflatten [ "Pattern"; fun_name ]; loc } in
     let body_arg sort =
       mk_sort_app
@@ -808,18 +823,18 @@ module To_nominal (Context : Builder_context) = struct
       (* Lam(tm. tm) *)
       | Lam (info, (x0, x1)) ->
         Nominal.Term.Operator (info, "Lam", [
-          Nominal.Scope.Scope ([Pattern.Var (info, x0)], to_nominal x1)
+          Nominal.Scope.Scope ([Pattern.Var (info, x0)], tm x1)
         ])
       (* Match_line(tm[tm]. tm) *)
       | Match_line (info, (x0, x1)) ->
         Nominal.Term.Operator (info, "Match_line", [
-          Nominal.Scope.Scope ([x0], to_nominal x1)
+          Nominal.Scope.Scope ([x0], tm x1)
         ])
       (* Pair(tm; tm) *)
       | Pair (info, x0, x1) ->
         Nominal.Term.Operator (info, "Pair", [
-          Nominal.Scope.Scope ([], to_nominal x0);
-          Nominal.Scope.Scope ([], to_nominal x1)
+          Nominal.Scope.Scope ([], tm x0);
+          Nominal.Scope.Scope ([], tm x1)
         ])
     ]}
 
@@ -831,9 +846,9 @@ module To_nominal (Context : Builder_context) = struct
       sort_defs
       (Syn.Operator_def.Operator_def (op_name, arity))
     =
-    let info = evar "x0" in
     (* TODO: change to name "info" *)
-    let v = var_allocator "x" in
+    let info = evar "x0" in
+    let v = evar_allocator "x" in
     let body_arg sort =
       mk_sort_app
         ~var_names
@@ -848,11 +863,11 @@ module To_nominal (Context : Builder_context) = struct
         List.map slots ~f:(function
             | Syn.Sort_slot.Sort_binding _ -> [%expr Pattern.Var (x0, [%e v ()])]
             | Sort_pattern _ -> v ())
-        |> Syntax_quoter.mk_list ~loc
+        |> Syntax_quoter.Exp.list ~loc
       in
       [%expr Nominal.Scope.Scope ([%e args], [%e body_arg body_sort])]
     in
-    let children = List.map arity ~f:mk_scope |> Syntax_quoter.mk_list ~loc in
+    let children = List.map arity ~f:mk_scope |> Syntax_quoter.Exp.list ~loc in
     let body = mk_exp_tuple' [ info; estring op_name; children ] in
     pexp_construct { txt = operator; loc } body
   ;;
@@ -865,6 +880,133 @@ module To_nominal (Context : Builder_context) = struct
       case ~lhs ~guard ~rhs
     in
     let init = op_defs |> List.map ~f |> pexp_function in
+    let expr = List.fold_right vars ~init ~f:f_fun in
+    value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
+  ;;
+end
+
+module Of_nominal (Context : Builder_context) = struct
+  open Context
+  open Ast
+  open Helpers (Context)
+  module Operator_pat = Operator_pat (Context)
+  module Operator_exp = Operator_exp (Context)
+
+  let operator = unflatten [ "Nominal"; "Term"; "Operator" ]
+
+  (* Eg:
+
+    {[
+      (* Lam(tm. tm) *)
+        Nominal.Term.Operator (info, "Lam", [
+          Nominal.Scope.Scope ([Pattern.Var (info, x0)], x1)
+        ])
+        ->
+          let%bind x1 = tm x1 in
+          Ok (Lam (info, (x0, x1)))
+      (* Match_line(tm[tm]. tm) *)
+      | Nominal.Term.Operator (info, "Match_line", [
+          Nominal.Scope.Scope ([x0], x1)
+        ])
+        ->
+          let%bind x1 = tm x1 in
+          Ok (Match_line (info, (x0, x1)))
+      (* Pair(tm; tm) *)
+      | Nominal.Term.Operator (info, "Pair", [
+          Nominal.Scope.Scope ([], x0);
+          Nominal.Scope.Scope ([], x1)
+        ])
+        ->
+          let%bind x0 = tm x0 in
+          let%bind x1 = tm x1 in
+          Ok (Pair (info, x0, x1))
+      | tm -> Error tm
+    ]}
+
+    Note: we currently never map to [Primitive].
+  *)
+  let mk_nominal_pat (Syn.Operator_def.Operator_def (op_name, arity)) =
+    (* TODO: change to name "info" *)
+    let info = pvar "x0" in
+    let v = pvar_allocator "x" in
+    let mk_scope (Syn.Valence.Valence (slots, _body_sort)) =
+      let args =
+        List.map slots ~f:(function
+            | Syn.Sort_slot.Sort_binding _ -> [%pat? Pattern.Var (_, [%p v ()])]
+            | Sort_pattern _ -> v ())
+        |> Syntax_quoter.Pat.list ~loc
+      in
+      [%pat? Nominal.Scope.Scope ([%p args], [%p v ()])]
+    in
+    let children = List.map arity ~f:mk_scope |> Syntax_quoter.Pat.list ~loc in
+    let body = mk_pat_tuple' [ info; pstring op_name; children ] in
+    ppat_construct { txt = operator; loc } body
+  ;;
+
+  let mk_exp
+      ~var_names
+      ~prim_names
+      sort_defs
+      (Syn.Operator_def.Operator_def (op_name, arity))
+    =
+    let v = var_allocator "x" in
+    let ev = v >> snd in
+    let info = evar "x0" in
+    (* Queue of (variable, conversion to perform) *)
+    let conversions_needed = Queue.create () in
+    let body_arg sort ev =
+      mk_sort_app
+        ~var_names
+        ~fun_name:"of_nominal"
+        ~sort_defs
+        ~sort
+        ~extra_args:[ Nolabel, ev ]
+        ~prim_names
+    in
+    let contents =
+      arity
+      |> List.map ~f:(fun (Syn.Valence.Valence (slots, body_sort)) ->
+             let slots_args =
+               slots
+               |> List.map ~f:(fun slot ->
+                      match slot with
+                      | Syn.Sort_slot.Sort_binding _sort -> ev ()
+                      | Sort_pattern _ -> ev ()
+                      (* TODO: pattern_converter? *))
+             in
+             let pv, ev = v () in
+             let conversion = body_arg body_sort ev in
+             Queue.enqueue conversions_needed (pv, conversion);
+             slots_args @ [ ev ])
+      |> List.map ~f:mk_exp_tuple
+    in
+    let contents = info :: contents in
+    let txt = unflatten [ "Types"; op_name ] in
+    let type_constr = pexp_construct { txt; loc } (mk_exp_tuple' contents) in
+    conversions_needed, [%expr Ok [%e type_constr]]
+  ;;
+
+  let mk ~prim_names sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
+    let var_names = vars |> List.map ~f:fst |> SSet.of_list in
+    let f op_def =
+      let lhs = mk_nominal_pat op_def in
+      let rhs =
+        let conversions_needed, init = mk_exp ~var_names ~prim_names sort_defs op_def in
+        let f (v, conversion) accum =
+          [%expr
+            match [%e conversion] with Error msg -> Error msg | Ok [%p v] -> [%e accum]]
+          (* Can also do this way but I think matching is clearer:
+             [%expr [%e conversion] |> Result.bind ~f:(fun [%p v] -> [%e accum])] *)
+        in
+        conversions_needed |> Queue.to_list |> List.fold_right ~f ~init
+      in
+      case ~lhs ~guard ~rhs
+    in
+    let matching_cases = List.map op_defs ~f in
+    let fallthrough =
+      case ~lhs:(ppat_var { txt = "tm"; loc }) ~guard ~rhs:[%expr Error tm]
+    in
+    let init = Util.List.snoc matching_cases fallthrough |> pexp_function in
     let expr = List.fold_right vars ~init ~f:f_fun in
     value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
   ;;
@@ -980,6 +1122,7 @@ module Wrapper_module (Context : Builder_context) = struct
   module Equal = Equal (Context)
   module Map_info = Map_info (Context)
   module To_nominal = To_nominal (Context)
+  module Of_nominal = Of_nominal (Context)
 
   let mk ~prim_names sort_defs =
     let sort_def_map = SMap.of_alist_exn sort_defs in
@@ -1047,7 +1190,7 @@ module Wrapper_module (Context : Builder_context) = struct
         module Equal = [%m pmod_structure (adapt Equal.mk)]
         module Map_info = [%m pmod_structure (adapt Map_info.mk)]
         module To_nominal = [%m pmod_structure (adapt To_nominal.mk)]
-        (* TODO: module Of_Nominal = struct end *)]
+        module Of_nominal = [%m pmod_structure (adapt Of_nominal.mk)]]
     in
     let wrapper_module =
       module_binding

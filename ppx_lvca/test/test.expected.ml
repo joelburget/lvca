@@ -362,6 +362,115 @@ module Lang =
                     Nominal.Term.Operator
                       (x0, "Mut_b", [Nominal.Scope.Scope ([], (mut_a x1))])
             end
+          module Of_nominal =
+            struct
+              let rec nat =
+                function
+                | Nominal.Term.Operator (x0, "Z", []) -> Ok (Types.Z x0)
+                | Nominal.Term.Operator
+                    (x0, "S", (Nominal.Scope.Scope ([], x1))::[]) ->
+                    (match nat x1 with
+                     | Error msg -> Error msg
+                     | Ok x1 -> Ok (Types.S (x0, x1)))
+                | tm -> Error tm
+              let rec list f_a =
+                function
+                | Nominal.Term.Operator (x0, "Nil", []) -> Ok (Types.Nil x0)
+                | Nominal.Term.Operator
+                    (x0, "Cons", (Nominal.Scope.Scope
+                     ([], x1))::(Nominal.Scope.Scope ([], x2))::[])
+                    ->
+                    (match f_a x1 with
+                     | Error msg -> Error msg
+                     | Ok x1 ->
+                         (match list f_a x2 with
+                          | Error msg -> Error msg
+                          | Ok x2 -> Ok (Types.Cons (x0, x1, x2))))
+                | tm -> Error tm
+              let nonempty =
+                function
+                | Nominal.Term.Operator
+                    (x0, "Nonempty", (Nominal.Scope.Scope
+                     ([], x1))::(Nominal.Scope.Scope ([], x2))::[])
+                    ->
+                    (match String.of_nominal x1 with
+                     | Error msg -> Error msg
+                     | Ok x1 ->
+                         (match list String.of_nominal x2 with
+                          | Error msg -> Error msg
+                          | Ok x2 -> Ok (Types.Nonempty (x0, x1, x2))))
+                | tm -> Error tm
+              let pair f_a f_b =
+                function
+                | Nominal.Term.Operator
+                    (x0, "Pair", (Nominal.Scope.Scope
+                     ([], x1))::(Nominal.Scope.Scope ([], x2))::[])
+                    ->
+                    (match f_a x1 with
+                     | Error msg -> Error msg
+                     | Ok x1 ->
+                         (match f_b x2 with
+                          | Error msg -> Error msg
+                          | Ok x2 -> Ok (Types.Pair (x0, x1, x2))))
+                | tm -> Error tm
+              let rec foo =
+                function
+                | Nominal.Term.Operator
+                    (x0, "Foo", (Nominal.Scope.Scope ([], x1))::[]) ->
+                    (match Integer.of_nominal x1 with
+                     | Error msg -> Error msg
+                     | Ok x1 -> Ok (Types.Foo (x0, x1)))
+                | Nominal.Term.Operator
+                    (x0, "Bar", (Nominal.Scope.Scope
+                     (x1::(Pattern.Var (_, x2))::[], x3))::[])
+                    ->
+                    (match foo x3 with
+                     | Error msg -> Error msg
+                     | Ok x3 -> Ok (Types.Bar (x0, (x1, x2, x3))))
+                | tm -> Error tm
+              let pair_plus f_a f_b =
+                function
+                | Nominal.Term.Operator
+                    (x0, "PairPlus", (Nominal.Scope.Scope
+                     ([], x1))::(Nominal.Scope.Scope
+                     ([], x2))::(Nominal.Scope.Scope ([], x3))::[])
+                    ->
+                    (match f_a x1 with
+                     | Error msg -> Error msg
+                     | Ok x1 ->
+                         (match f_b x2 with
+                          | Error msg -> Error msg
+                          | Ok x2 ->
+                              (match foo x3 with
+                               | Error msg -> Error msg
+                               | Ok x3 ->
+                                   Ok (Types.PairPlus (x0, x1, x2, x3)))))
+                | tm -> Error tm
+              let rec term =
+                function
+                | Nominal.Term.Operator
+                    (x0, "Operator", (Nominal.Scope.Scope ([], x1))::[]) ->
+                    (match list term x1 with
+                     | Error msg -> Error msg
+                     | Ok x1 -> Ok (Types.Operator (x0, x1)))
+                | tm -> Error tm
+              let rec mut_a =
+                function
+                | Nominal.Term.Operator
+                    (x0, "Mut_a", (Nominal.Scope.Scope ([], x1))::[]) ->
+                    (match mut_b x1 with
+                     | Error msg -> Error msg
+                     | Ok x1 -> Ok (Types.Mut_a (x0, x1)))
+                | tm -> Error tm
+              and mut_b =
+                function
+                | Nominal.Term.Operator
+                    (x0, "Mut_b", (Nominal.Scope.Scope ([], x1))::[]) ->
+                    (match mut_a x1 with
+                     | Error msg -> Error msg
+                     | Ok x1 -> Ok (Types.Mut_b (x0, x1)))
+                | tm -> Error tm
+            end
         end
       module Types = Wrapper.Types
       module Plain = Wrapper.Plain
