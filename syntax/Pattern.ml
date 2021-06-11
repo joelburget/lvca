@@ -5,28 +5,28 @@ module Format = Stdlib.Format
 
 type 'info t =
   | Operator of 'info * string * 'info t list
-  | Primitive of 'info Primitive.t
+  | Primitive of 'info Primitive_impl.t
   | Var of 'info * string
   | Ignored of 'info * string
 
 module Plain = struct
   type t =
     | Operator of string * t list
-    | Primitive of Primitive.Plain.t
+    | Primitive of Primitive_impl.Plain.t
     | Var of string
     | Ignored of string
 end
 
 let rec to_plain = function
   | Operator (_, name, pats) -> Plain.Operator (name, List.map ~f:to_plain pats)
-  | Primitive prim -> Plain.Primitive (Primitive.to_plain prim)
+  | Primitive prim -> Plain.Primitive (Primitive_impl.to_plain prim)
   | Var (_, name) -> Plain.Var name
   | Ignored (_, name) -> Plain.Ignored name
 ;;
 
 let rec of_plain = function
   | Plain.Operator (name, pats) -> Operator ((), name, List.map ~f:of_plain pats)
-  | Primitive prim -> Primitive (Primitive.of_plain prim)
+  | Primitive prim -> Primitive (Primitive_impl.of_plain prim)
   | Var name -> Var ((), name)
   | Ignored name -> Ignored ((), name)
 ;;
@@ -35,7 +35,7 @@ let rec equal ~info_eq pat1 pat2 =
   match pat1, pat2 with
   | Operator (i1, name1, pats1), Operator (i2, name2, pats2) ->
     info_eq i1 i2 && String.(name1 = name2) && List.equal (equal ~info_eq) pats1 pats2
-  | Primitive p1, Primitive p2 -> Primitive.equal ~info_eq p1 p2
+  | Primitive p1, Primitive p2 -> Primitive_impl.equal ~info_eq p1 p2
   | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
   | Ignored (i1, name1), Ignored (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
   | _, _ -> false
@@ -63,7 +63,7 @@ let rec list_vars_of_pattern = function
 
 let info = function
   | Operator (loc, _, _) | Var (loc, _) | Ignored (loc, _) -> loc
-  | Primitive p -> Primitive.info p
+  | Primitive p -> Primitive_impl.info p
 ;;
 
 let rec pp_generic ~open_loc ~close_loc ppf pat =
@@ -78,7 +78,11 @@ let rec pp_generic ~open_loc ~close_loc ppf pat =
       (pp_generic ~open_loc ~close_loc |> list ~sep:semi)
       pats
   | Primitive prim ->
-    Primitive.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf prim
+    Primitive_impl.pp_generic
+      ~open_loc:(fun _ _ -> ())
+      ~close_loc:(fun _ _ -> ())
+      ppf
+      prim
   | Var (_, name) -> Fmt.string ppf name
   | Ignored (_, name) -> pf ppf "_%s" name);
   close_loc ppf (info pat)
@@ -104,7 +108,7 @@ let rec jsonify pat =
     | Operator (_, tag, tms) ->
       array
         [| string "o"; string tag; tms |> List.map ~f:jsonify |> Array.of_list |> array |]
-    | Primitive p -> array [| string "p"; Primitive.jsonify p |]
+    | Primitive p -> array [| string "p"; Primitive_impl.jsonify p |]
     | Var (_, name) -> array [| string "v"; string name |]
     | Ignored (_, name) -> array [| string "_"; string name |])
 ;;
@@ -117,7 +121,7 @@ let rec unjsonify =
       let%map subtms' = subtms |> Array.to_list |> List.map ~f:unjsonify |> Option.all in
       Operator ((), tag, subtms')
     | Array [| String "p"; prim |] ->
-      let%map prim = Primitive.unjsonify prim in
+      let%map prim = Primitive_impl.unjsonify prim in
       Primitive prim
     | Array [| String "v"; String name |] -> Some (Var ((), name))
     | Array [| String "_"; String name |] -> Some (Ignored ((), name))
@@ -127,7 +131,7 @@ let rec unjsonify =
 let rec map_info ~f = function
   | Operator (loc, tag, subpats) ->
     Operator (f loc, tag, subpats |> List.map ~f:(map_info ~f))
-  | Primitive prim -> Primitive (Primitive.map_info ~f prim)
+  | Primitive prim -> Primitive (Primitive_impl.map_info ~f prim)
   | Var (loc, name) -> Var (f loc, name)
   | Ignored (loc, name) -> Ignored (f loc, name)
 ;;
@@ -176,7 +180,7 @@ let check lang ~pattern_sort ~var_sort =
                   sort))
       | Ignored _ -> Ok String.Map.empty
       | Primitive prim ->
-        (match Primitive.check prim sort with
+        (match Primitive_impl.check prim sort with
         | None -> Ok String.Map.empty
         | Some msg -> Error (Check_failure.err msg))
       | Operator (_, op_name, subpats) ->
@@ -246,7 +250,7 @@ module Parse = struct
   let t =
     fix (fun pat ->
         choice
-          [ (Primitive.Parse.t >>| fun prim -> Primitive prim)
+          [ (Primitive_impl.Parse.t >>| fun prim -> Primitive prim)
           ; (identifier
             >>== fun { value = ident; range } ->
             choice

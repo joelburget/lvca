@@ -5,7 +5,7 @@ module Types : sig
   type 'info term =
     | Operator of 'info * string * 'info scope list
     | Var of 'info * string
-    | Primitive of 'info Primitive.t
+    | Primitive of 'info Primitive_impl.t
 
   and 'info scope = Scope of 'info Pattern.t list * 'info term
 end
@@ -14,7 +14,7 @@ module Plain : sig
   type term =
     | Operator of string * scope list
     | Var of string
-    | Primitive of Primitive.Plain.t
+    | Primitive of Primitive_impl.Plain.t
 
   and scope = Scope of Pattern.Plain.t list * term
 end
@@ -23,13 +23,13 @@ module Term : sig
   type 'info t = 'info Types.term =
     | Operator of 'info * string * 'info Types.scope list
     | Var of 'info * string
-    | Primitive of 'info Primitive.t
+    | Primitive of 'info Primitive_impl.t
 
   module Plain : sig
     type t = Plain.term =
       | Operator of string * Plain.scope list
       | Var of string
-      | Primitive of Primitive.Plain.t
+      | Primitive of Primitive_impl.Plain.t
   end
 
   val of_plain : Plain.t -> unit t
@@ -159,35 +159,10 @@ val of_pattern : ('info, 'prim) Pattern.t -> ('info, 'prim) t
 end
 
 module type Convertible_s = sig
-  include Language_object_intf.S
+  type 'info t
 
   val to_nominal : 'info t -> 'info Term.t
   val of_nominal : 'info Term.t -> ('info t, 'info Term.t) Result.t
 end
 
-module type Extended_term_s = sig
-  include Language_object_intf.Extended_s
 
-  (* TODO: to_pattern, of_pattern *)
-
-  val select_path
-    :  path:int list
-    -> 'info t
-    -> ('info t, (string, 'info Term.t) Base.Either.t) Result.t
-
-  val jsonify : _ t Lvca_util.Json.serializer
-  val unjsonify : unit t Lvca_util.Json.deserializer
-
-  (** Encode (using {{:https://cbor.io} CBOR}) as bytes. *)
-  val serialize : _ t -> Bytes.t
-
-  (** Decode from {{:https://cbor.io} CBOR}). *)
-  val deserialize : Bytes.t -> unit t option
-
-  (** The SHA-256 hash of the serialized term. This is useful for content-identifying
-      terms. *)
-  val hash : _ t -> string
-end
-
-module Extend_term (Object : Convertible_s) :
-  Extended_term_s with type 'info t = 'info Object.t

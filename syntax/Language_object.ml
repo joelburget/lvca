@@ -13,6 +13,27 @@ module Extend (Object : Language_object_intf.S) :
 
   let to_string tm = Fmt.to_to_string pp tm
 
+  let select_path ~path tm =
+    match tm |> Object.to_nominal |> Nominal.Term.select_path ~path with
+    | Ok tm ->
+      (match Object.of_nominal tm with
+      | Ok tm -> Ok tm
+      | Error tm -> Error (Either.Second tm))
+    | Error msg -> Error (Either.First msg)
+  ;;
+
+  let jsonify tm = tm |> Object.to_nominal |> Nominal.Term.jsonify
+
+  let unjsonify json =
+    let open Option.Let_syntax in
+    let%bind nom = Nominal.Term.unjsonify json in
+    match Object.of_nominal nom with Ok tm -> Some tm | Error _ -> None
+  ;;
+
+  let serialize tm = tm |> jsonify |> Cbor.encode
+  let deserialize buf = buf |> Cbor.decode |> Option.bind ~f:unjsonify
+  let hash tm = tm |> serialize |> Sha256.hash
+
   module Parse = struct
     include Parse
 

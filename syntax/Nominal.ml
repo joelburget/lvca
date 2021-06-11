@@ -7,7 +7,7 @@ module Types = struct
   type 'info term =
     | Operator of 'info * string * 'info scope list
     | Var of 'info * string
-    | Primitive of 'info Primitive.t
+    | Primitive of 'info Primitive_impl.t
 
   and 'info scope = Scope of 'info Pattern.t list * 'info term
 end
@@ -16,7 +16,7 @@ module Plain = struct
   type term =
     | Operator of string * scope list
     | Var of string
-    | Primitive of Primitive.Plain.t
+    | Primitive of Primitive_impl.Plain.t
 
   and scope = Scope of Pattern.Plain.t list * term
 end
@@ -25,7 +25,7 @@ module ToPlain = struct
   let rec term = function
     | Types.Operator (_, name, scopes) -> Plain.Operator (name, List.map scopes ~f:scope)
     | Var (_, name) -> Var name
-    | Primitive prim -> Primitive (Primitive.to_plain prim)
+    | Primitive prim -> Primitive (Primitive_impl.to_plain prim)
 
   and scope (Types.Scope (pats, tm)) =
     Plain.Scope (List.map pats ~f:Pattern.to_plain, term tm)
@@ -36,7 +36,7 @@ module OfPlain = struct
   let rec term = function
     | Plain.Operator (name, scopes) -> Types.Operator ((), name, List.map scopes ~f:scope)
     | Var name -> Var ((), name)
-    | Primitive prim -> Primitive (Primitive.of_plain prim)
+    | Primitive prim -> Primitive (Primitive_impl.of_plain prim)
 
   and scope (Plain.Scope (pats, tm)) =
     Types.Scope (List.map pats ~f:Pattern.of_plain, term tm)
@@ -45,7 +45,7 @@ end
 
 let info = function
   | Types.Operator (info, _, _) | Var (info, _) -> info
-  | Primitive p -> Primitive.info p
+  | Primitive p -> Primitive_impl.info p
 ;;
 
 module Equal = struct
@@ -55,7 +55,7 @@ module Equal = struct
       info_eq i1 i2
       && String.(name1 = name2)
       && List.equal (scope ~info_eq) scopes1 scopes2
-    | Primitive p1, Primitive p2 -> Primitive.equal ~info_eq p1 p2
+    | Primitive p1, Primitive p2 -> Primitive_impl.equal ~info_eq p1 p2
     | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
     | _, _ -> false
 
@@ -73,7 +73,7 @@ module PpGeneric = struct
       pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi (scope ~open_loc ~close_loc)) subtms
     | Var (_, v) -> string ppf v
     | Primitive p ->
-      Primitive.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p);
+      Primitive_impl.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p);
     close_loc ppf (info tm)
 
   and scope ~open_loc ~close_loc ppf (Scope (bindings, body)) =
@@ -100,7 +100,7 @@ module Jsonify = struct
     | Types.Operator (_, tag, tms) ->
       array [| string "o"; string tag; array_map scope tms |]
     | Var (_, name) -> array [| string "v"; string name |]
-    | Primitive p -> array [| string "p"; Primitive.jsonify p |]
+    | Primitive p -> array [| string "p"; Primitive_impl.jsonify p |]
 
   and scope (Types.Scope (pats, body)) : Json.t =
     array [| array_map Pattern.jsonify pats; term body |]
@@ -117,7 +117,7 @@ module Unjsonify = struct
       Types.Operator ((), tag, scopes')
     | Array [| String "v"; String name |] -> Some (Var ((), name))
     | Array [| String "p"; prim |] ->
-      let%map prim = Primitive.unjsonify prim in
+      let%map prim = Primitive_impl.unjsonify prim in
       Types.Primitive prim
     | _ -> None
 
@@ -137,7 +137,7 @@ module MapInfo = struct
     | Types.Operator (info, name, pats) ->
       Types.Operator (f info, name, List.map pats ~f:(scope ~f))
     | Var (info, name) -> Var (f info, name)
-    | Primitive prim -> Primitive (Primitive.map_info ~f prim)
+    | Primitive prim -> Primitive (Primitive_impl.map_info ~f prim)
 
   and scope ~f (Scope (binders, tm)) =
     let binders = List.map binders ~f:(Pattern.map_info ~f) in
@@ -161,13 +161,13 @@ module Term = struct
   type 'info t = 'info Types.term =
     | Operator of 'info * string * 'info Types.scope list
     | Var of 'info * string
-    | Primitive of 'info Primitive.t
+    | Primitive of 'info Primitive_impl.t
 
   module Plain = struct
     type t = Plain.term =
       | Operator of string * Plain.scope list
       | Var of string
-      | Primitive of Primitive.Plain.t
+      | Primitive of Primitive_impl.Plain.t
   end
 
   let to_plain = ToPlain.term
@@ -203,7 +203,7 @@ module Term = struct
     | Pattern.Ignored _, _ -> Some String.Map.empty
     | Var (_, name), tm -> Some (String.Map.singleton name tm)
     | Primitive p1, Primitive p2 ->
-      if Primitive.equal ~info_eq p1 p2 then Some String.Map.empty else None
+      if Primitive_impl.equal ~info_eq p1 p2 then Some String.Map.empty else None
     | Primitive _, _ -> None
     | Operator (_, name1, pats), Operator (_, name2, scopes) ->
       if String.(name1 = name2)
@@ -287,7 +287,7 @@ module Term = struct
                       Sort.pp
                       expected_sort)))
         | Primitive p ->
-          (match Primitive.check p expected_sort with
+          (match Primitive_impl.check p expected_sort with
           | None -> None
           | Some msg -> Some (Check_failure.err msg))
         | Operator (_, operator_name, op_scopes) ->
@@ -526,74 +526,10 @@ module Scope = struct
 end
 
 module type Convertible_s = sig
-  include Language_object_intf.S
+  type 'info t
 
   val to_nominal : 'info t -> 'info Term.t
   val of_nominal : 'info Term.t -> ('info t, 'info Term.t) Result.t
-end
-
-module type Extended_term_s = sig
-  include Language_object_intf.S
-
-  val erase : _ t -> unit t
-  val pp : _ t Fmt.t
-  val to_string : _ t -> string
-
-  module Parse : sig
-    val t : Opt_range.t t Lvca_parsing.t
-    val whitespace_t : Opt_range.t t Lvca_parsing.t
-  end
-
-  val select_path
-    :  path:int list
-    -> 'info t
-    -> ('info t, (string, 'info Term.t) Either.t) Result.t
-
-  val jsonify : _ t Json.serializer
-  val unjsonify : unit t Json.deserializer
-  val serialize : _ t -> Bytes.t
-  val deserialize : Bytes.t -> unit t option
-  val hash : _ t -> string
-end
-
-module Extend_term (Object : Convertible_s) :
-  Extended_term_s with type 'info t = 'info Object.t = struct
-  include Object
-
-  let erase tm = Object.map_info ~f:(fun _ -> ()) tm
-
-  let pp ppf tm =
-    Object.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
-  ;;
-
-  let to_string tm = Fmt.to_to_string pp tm
-
-  let select_path ~path tm =
-    match tm |> Object.to_nominal |> Term.select_path ~path with
-    | Ok tm ->
-      (match Object.of_nominal tm with
-      | Ok tm -> Ok tm
-      | Error tm -> Error (Either.Second tm))
-    | Error msg -> Error (Either.First msg)
-  ;;
-
-  let jsonify tm = tm |> Object.to_nominal |> Term.jsonify
-
-  let unjsonify json =
-    let open Option.Let_syntax in
-    let%bind nom = Term.unjsonify json in
-    match Object.of_nominal nom with Ok tm -> Some tm | Error _ -> None
-  ;;
-
-  let serialize tm = tm |> jsonify |> Cbor.encode
-  let deserialize buf = buf |> Cbor.decode |> Option.bind ~f:unjsonify
-  let hash tm = tm |> serialize |> Sha256.hash
-
-  module Parse = struct
-    include Object.Parse
-
-    let whitespace_t = Lvca_parsing.(whitespace *> Parse.t)
-  end
 end
 
 let%test_module "Nominal" =

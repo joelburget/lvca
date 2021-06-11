@@ -1,6 +1,7 @@
 (* TODO: potentially add (u)int8, (u)int64, etc via stdint. Downside: "integers
    smaller than the standard integer type are stored in a standard int." Or
    possibly using bitvec? (https://stackoverflow.com/a/65080349) *)
+(*
 module Integer : sig
   module Plain_typedef : sig
     type t = Z.t
@@ -66,9 +67,10 @@ module String : sig
       with type 'info t = 'info * string
        and module Plain = Plain_typedef
 end
+*)
 
 module Plain : sig
-  type t =
+  type t = Primitive_impl.Plain.t =
     | Integer of Z.t
     | String of string
     | Float of float
