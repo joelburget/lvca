@@ -27,7 +27,7 @@ let ( >> ), ( << ) = Util.(( >> ), ( << ))
     We define
 
     {[
-      module Pair (A : Language_object_intf.S) (B : Language_object_intf.S) = struct
+      module Pair (A : Language_object_intf.Extended_s) (B : Language_object_intf.Extended_s) = struct
         type 'info t = Pair of 'info * 'info A.t * 'info B.t
         ...
       end
@@ -68,7 +68,10 @@ diag a := Diag(pair a a)
         let diag f_a = function Plain.Diag x1 -> Types.Diag ((), pair f_a f_a x1)
       end
 
-      module Pair (A : Language_object_intf.S) (B : Language_object_intf.S) = struct
+      module Pair
+          (A : Language_object_intf.Extended_s)
+          (B : Language_object_intf.Extended_s) =
+      struct
         type 'info t = ('info, 'info A.t, 'info B.t) Types.pair =
           | Pair of 'info * 'info A.t * 'info B.t
 
@@ -82,7 +85,7 @@ diag a := Diag(pair a a)
         let of_plain = Of_plain.uses_pair
       end
 
-      module Diag (A : Language_object_intf.S) = struct
+      module Diag (A : Language_object_intf.Extended_s) = struct
         type 'info diag = ('info, 'info A.t) Types.diag =
           | Diag of 'info * ('info, 'info A.t, 'info A.t) pair
 
@@ -478,7 +481,13 @@ module Helpers (Context : Builder_context) = struct
     pexp_fun Nolabel None (ppat_var { txt; loc })
   ;;
 
-  let all_term_s = pmty_ident { txt = unflatten [ "Language_object_intf"; "S" ]; loc }
+  let language_object_s =
+    pmty_ident { txt = unflatten [ "Language_object_intf"; "S" ]; loc }
+  ;;
+
+  let language_object_extended_s =
+    pmty_ident { txt = unflatten [ "Language_object_intf"; "Extended_s" ]; loc }
+  ;;
 
   let mk_exp_tuple = function
     | [] -> [%expr ()]
@@ -1261,6 +1270,8 @@ module Individual_type_module (Context : Builder_context) = struct
       ; "of_plain", "Of_plain"
       ; "equal", "Equal"
       ; "map_info", "Map_info"
+      ; "to_nominal", "To_nominal"
+      ; "of_nominal", "Of_nominal"
       ]
       |> List.map ~f:(fun (fun_name, mod_name) ->
              let wrapper_fun =
@@ -1308,8 +1319,6 @@ module Individual_type_module (Context : Builder_context) = struct
             module Parse = struct
               let t = Lvca_parsing.fail "TODO: parse"
             end]
-        ; [%stri let jsonify _tm = failwith "TODO: jsonify"]
-        ; [%stri let unjsonify _json = failwith "TODO: unjsonify"]
         ]
     in
     let init =
@@ -1321,11 +1330,15 @@ module Individual_type_module (Context : Builder_context) = struct
       match kind_opt with
       | None ->
         (* XXX should do kind inference instead of assuming it's * *)
-        let mod_param = Named ({ txt = Some (module_name name); loc }, all_term_s) in
+        let mod_param =
+          Named ({ txt = Some (module_name name); loc }, language_object_extended_s)
+        in
         pmod_functor mod_param accum
       | Some (Syn.Kind.Kind (info, 1)) ->
         let mod_param =
-          Named ({ txt = Some (module_name name); loc = update_loc info }, all_term_s)
+          Named
+            ( { txt = Some (module_name name); loc = update_loc info }
+            , language_object_extended_s )
         in
         pmod_functor mod_param accum
       | Some kind -> raise_kind_err name kind
@@ -1364,8 +1377,10 @@ module Container_module (Context : Builder_context) = struct
     let mod_param (name, kind) =
       match kind with
       | Some (Syn.Kind.Kind (info, 1)) ->
-        Named ({ txt = Some (module_name name); loc = update_loc info }, all_term_s)
-      | None -> Named ({ txt = Some (module_name name); loc }, all_term_s)
+        Named
+          ( { txt = Some (module_name name); loc = update_loc info }
+          , language_object_extended_s )
+      | None -> Named ({ txt = Some (module_name name); loc }, language_object_extended_s)
       | Some kind -> raise_kind_err name kind
     in
     let mod_param' (name, kind) = mod_param (name, Some kind) in
@@ -1429,7 +1444,7 @@ module Container_module (Context : Builder_context) = struct
                in
                let init =
                  pmty_with
-                   all_term_s
+                   language_object_s
                    [ Pwith_type ({ txt = Lident "t"; loc }, type_decl)
                    ; Pwith_type
                        ({ txt = unflatten [ "Plain"; "t" ]; loc }, plain_type_decl)

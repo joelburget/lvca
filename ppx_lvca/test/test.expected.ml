@@ -52,8 +52,8 @@ let test_language =
                                "integer")))])])))]
     }
 module Lang =
-  (functor (Integer : Language_object_intf.S) -> functor (String :
-    Language_object_intf.S) ->
+  (functor (Integer : Language_object_intf.Extended_s) -> functor (String :
+    Language_object_intf.Extended_s) ->
     struct
       module Wrapper =
         struct
@@ -483,11 +483,11 @@ module Lang =
           let of_plain tm = Wrapper.Of_plain.foo tm
           let equal ~info_eq  tm = Wrapper.Equal.foo ~info_eq tm
           let map_info ~f  tm = Wrapper.Map_info.foo ~f tm
+          let to_nominal tm = Wrapper.To_nominal.foo tm
+          let of_nominal tm = Wrapper.Of_nominal.foo tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
-          let jsonify _tm = failwith "TODO: jsonify"
-          let unjsonify _json = failwith "TODO: unjsonify"
         end
       module Nat =
         struct
@@ -498,13 +498,13 @@ module Lang =
           let of_plain tm = Wrapper.Of_plain.nat tm
           let equal ~info_eq  tm = Wrapper.Equal.nat ~info_eq tm
           let map_info ~f  tm = Wrapper.Map_info.nat ~f tm
+          let to_nominal tm = Wrapper.To_nominal.nat tm
+          let of_nominal tm = Wrapper.Of_nominal.nat tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
-          let jsonify _tm = failwith "TODO: jsonify"
-          let unjsonify _json = failwith "TODO: unjsonify"
         end
-      module List(A:Language_object_intf.S) =
+      module List(A:Language_object_intf.Extended_s) =
         struct
           type 'info t = ('info, 'info A.t) Wrapper.Types.list
           module Plain = struct type t = A.Plain.t Wrapper.Plain.list end
@@ -513,13 +513,13 @@ module Lang =
           let of_plain tm = Wrapper.Of_plain.list A.of_plain tm
           let equal ~info_eq  tm = Wrapper.Equal.list A.equal ~info_eq tm
           let map_info ~f  tm = Wrapper.Map_info.list A.map_info ~f tm
+          let to_nominal tm = Wrapper.To_nominal.list A.to_nominal tm
+          let of_nominal tm = Wrapper.Of_nominal.list A.of_nominal tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
-          let jsonify _tm = failwith "TODO: jsonify"
-          let unjsonify _json = failwith "TODO: unjsonify"
         end
-      module Pair(A:Language_object_intf.S)(B:Language_object_intf.S) =
+      module Pair(A:Language_object_intf.Extended_s)(B:Language_object_intf.Extended_s) =
         struct
           type 'info t = ('info, 'info A.t, 'info B.t) Wrapper.Types.pair
           module Plain =
@@ -531,13 +531,15 @@ module Lang =
             Wrapper.Equal.pair A.equal B.equal ~info_eq tm
           let map_info ~f  tm =
             Wrapper.Map_info.pair A.map_info B.map_info ~f tm
+          let to_nominal tm =
+            Wrapper.To_nominal.pair A.to_nominal B.to_nominal tm
+          let of_nominal tm =
+            Wrapper.Of_nominal.pair A.of_nominal B.of_nominal tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
-          let jsonify _tm = failwith "TODO: jsonify"
-          let unjsonify _json = failwith "TODO: unjsonify"
         end
-      module Pair_plus(A:Language_object_intf.S)(B:Language_object_intf.S) =
+      module Pair_plus(A:Language_object_intf.Extended_s)(B:Language_object_intf.Extended_s) =
         struct
           type 'info t =
             ('info, 'info A.t, 'info B.t) Wrapper.Types.pair_plus
@@ -554,11 +556,13 @@ module Lang =
             Wrapper.Equal.pair_plus A.equal B.equal ~info_eq tm
           let map_info ~f  tm =
             Wrapper.Map_info.pair_plus A.map_info B.map_info ~f tm
+          let to_nominal tm =
+            Wrapper.To_nominal.pair_plus A.to_nominal B.to_nominal tm
+          let of_nominal tm =
+            Wrapper.Of_nominal.pair_plus A.of_nominal B.of_nominal tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
-          let jsonify _tm = failwith "TODO: jsonify"
-          let unjsonify _json = failwith "TODO: unjsonify"
         end
       module Nonempty =
         struct
@@ -569,11 +573,11 @@ module Lang =
           let of_plain tm = Wrapper.Of_plain.nonempty tm
           let equal ~info_eq  tm = Wrapper.Equal.nonempty ~info_eq tm
           let map_info ~f  tm = Wrapper.Map_info.nonempty ~f tm
+          let to_nominal tm = Wrapper.To_nominal.nonempty tm
+          let of_nominal tm = Wrapper.Of_nominal.nonempty tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
-          let jsonify _tm = failwith "TODO: jsonify"
-          let unjsonify _json = failwith "TODO: unjsonify"
         end
       module Term =
         struct
@@ -584,11 +588,11 @@ module Lang =
           let of_plain tm = Wrapper.Of_plain.term tm
           let equal ~info_eq  tm = Wrapper.Equal.term ~info_eq tm
           let map_info ~f  tm = Wrapper.Map_info.term ~f tm
+          let to_nominal tm = Wrapper.To_nominal.term tm
+          let of_nominal tm = Wrapper.Of_nominal.term tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
-          let jsonify _tm = failwith "TODO: jsonify"
-          let unjsonify _json = failwith "TODO: unjsonify"
         end
       module Mut_a =
         struct
@@ -599,11 +603,11 @@ module Lang =
           let of_plain tm = Wrapper.Of_plain.mut_a tm
           let equal ~info_eq  tm = Wrapper.Equal.mut_a ~info_eq tm
           let map_info ~f  tm = Wrapper.Map_info.mut_a ~f tm
+          let to_nominal tm = Wrapper.To_nominal.mut_a tm
+          let of_nominal tm = Wrapper.Of_nominal.mut_a tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
-          let jsonify _tm = failwith "TODO: jsonify"
-          let unjsonify _json = failwith "TODO: unjsonify"
         end
       module Mut_b =
         struct
@@ -614,15 +618,15 @@ module Lang =
           let of_plain tm = Wrapper.Of_plain.mut_b tm
           let equal ~info_eq  tm = Wrapper.Equal.mut_b ~info_eq tm
           let map_info ~f  tm = Wrapper.Map_info.mut_b ~f tm
+          let to_nominal tm = Wrapper.To_nominal.mut_b tm
+          let of_nominal tm = Wrapper.Of_nominal.mut_b tm
           let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
             Fmt.pf ppf "TODO: pp_generic"
           module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
-          let jsonify _tm = failwith "TODO: jsonify"
-          let unjsonify _json = failwith "TODO: unjsonify"
         end
     end :
-    functor (Integer : Language_object_intf.S) ->
-      functor (String : Language_object_intf.S) ->
+    functor (Integer : Language_object_intf.Extended_s) ->
+      functor (String : Language_object_intf.Extended_s) ->
         sig
           module Types :
           sig
@@ -680,19 +684,19 @@ module Lang =
           Language_object_intf.S with type 'info t =  'info Types.nat and
             type  Plain.t =  Plain.nat
           module List :
-          functor (A : Language_object_intf.S) ->
+          functor (A : Language_object_intf.Extended_s) ->
             Language_object_intf.S with type 'info t = 
               ('info, 'info A.t) Types.list and type  Plain.t = 
               A.Plain.t Plain.list
           module Pair :
-          functor (A : Language_object_intf.S) ->
-            functor (B : Language_object_intf.S) ->
+          functor (A : Language_object_intf.Extended_s) ->
+            functor (B : Language_object_intf.Extended_s) ->
               Language_object_intf.S with type 'info t = 
                 ('info, 'info A.t, 'info B.t) Types.pair and type  Plain.t = 
                 (A.Plain.t, B.Plain.t) Plain.pair
           module Pair_plus :
-          functor (A : Language_object_intf.S) ->
-            functor (B : Language_object_intf.S) ->
+          functor (A : Language_object_intf.Extended_s) ->
+            functor (B : Language_object_intf.Extended_s) ->
               Language_object_intf.S with type 'info t = 
                 ('info, 'info A.t, 'info B.t) Types.pair_plus and type
                  Plain.t =  (A.Plain.t, B.Plain.t) Plain.pair_plus
