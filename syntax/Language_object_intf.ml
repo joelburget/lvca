@@ -38,9 +38,6 @@ module type S = sig
   (** {1 Info} *)
   include Has_info with type 'info t := 'info t
 
-  (** {1 Serialization} *)
-  include Json_convertible with type 'info t := 'info t
-
   include Nominal.Convertible_s with type 'info t := 'info t
 
   (** {1 Printing / Parsing} *)
