@@ -427,7 +427,7 @@ module Term = struct
             | Ok binders -> return ~range (Types.Scope (binders, tm))
           in
           choice
-            [ (Primitive.Parse.t >>| fun prim -> Primitive prim)
+            [ (Primitive_impl.Parse.t >>| fun prim -> Primitive prim)
             ; (identifier
               >>== fun Parse_result.{ value = ident; range = ident_range } ->
               choice
