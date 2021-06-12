@@ -1,6 +1,6 @@
 include Primitive_impl
 
-module Integer = struct
+module Integer_kernel = struct
   include Primitive_impl.Integer
 
   let to_nominal (info, z) = Nominal.Term.Primitive (info, Integer z)
@@ -12,7 +12,9 @@ module Integer = struct
   ;;
 end
 
-module Float = struct
+module Integer = Language_object.Extend (Integer_kernel)
+
+module Float_kernel = struct
   include Primitive_impl.Float
 
   let to_nominal (info, f) = Nominal.Term.Primitive (info, Float f)
@@ -22,7 +24,9 @@ module Float = struct
   ;;
 end
 
-module Char = struct
+module Float = Language_object.Extend (Float_kernel)
+
+module Char_kernel = struct
   include Primitive_impl.Char
 
   let to_nominal (info, x) = Nominal.Term.Primitive (info, Char x)
@@ -32,7 +36,9 @@ module Char = struct
   ;;
 end
 
-module String = struct
+module Char = Language_object.Extend (Char_kernel)
+
+module String_kernel = struct
   include Primitive_impl.String
 
   let to_nominal (info, x) = Nominal.Term.Primitive (info, String x)
@@ -43,3 +49,5 @@ module String = struct
     | _ -> Error tm
   ;;
 end
+
+module String = Language_object.Extend (String_kernel)

@@ -1,6 +1,8 @@
 (** Derive helpers (an extended language object) from the basics. *)
 module Extend (Object : Language_object_intf.S) :
-  Language_object_intf.Extended_s with type 'info t = 'info Object.t
+  Language_object_intf.Extended_s
+    with type 'info t = 'info Object.t
+     and module Plain = Object.Plain
 
 (** Properties of parsing and pretty-printing that should hold for any language object. *)
 module Check_parse_pretty (Object : Language_object_intf.S) :

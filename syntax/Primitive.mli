@@ -2,71 +2,71 @@
    smaller than the standard integer type are stored in a standard int." Or
    possibly using bitvec? (https://stackoverflow.com/a/65080349) *)
 module Integer : sig
-  module Plain_typedef : sig
+  module Plain : sig
     type t = Z.t
   end
 
   include
-    Language_object_intf.S
+    Language_object_intf.Extended_s
       with type 'info t = 'info * Z.t
-       and module Plain = Plain_typedef
+       and module Plain := Plain
 end
 
 (* TODO
 module Int : sig
-  module Plain_typedef : sig
+  module Plain : sig
     type t = int
   end
 
   include
-    Language_object_intf.S
+    Language_object_intf.Extended_s
       with type 'info t = 'info * int
-       and module Plain = Plain_typedef
+       and module Plain := Plain
 end
 
 module Int32 : sig
-  module Plain_typedef : sig
+  module Plain : sig
     type t = int32
   end
 
   include
-    Language_object_intf.S
+    Language_object_intf.Extended_s
       with type 'info t = 'info * int32
-       and module Plain = Plain_typedef
+       and module Plain := Plain
 end
 *)
 
 module Float : sig
-  module Plain_typedef : sig
+  module Plain : sig
     type t = float
   end
 
   include
-    Language_object_intf.S
+    Language_object_intf.Extended_s
       with type 'info t = 'info * float
-       and module Plain = Plain_typedef
+       and module Plain := Plain
 end
 
 module Char : sig
-  module Plain_typedef : sig
+  module Plain : sig
     type t = char
   end
 
   include
-    Language_object_intf.S
+    Language_object_intf.Extended_s
       with type 'info t = 'info * char
-       and module Plain = Plain_typedef
+       and module Plain := Plain
 end
 
 module String : sig
-  module Plain_typedef : sig
+  module Plain : sig
     type t = string
   end
 
   include
-    Language_object_intf.S
+    Language_object_intf.Extended_s
       with type 'info t = 'info * string
-       and module Plain = Plain_typedef
+       and module Plain := Plain
 end
 
 module Plain : sig

@@ -1,7 +1,7 @@
 open Base
 open Lvca_util
 
-module type PlainBase_s = sig
+module type Plain_base_s = sig
   type t
 
   val pp : t Fmt.t
@@ -11,32 +11,31 @@ module type PlainBase_s = sig
   val unjsonify : t Json.deserializer
 end
 
-module Make (PlainBase : PlainBase_s) = struct
-  type 'info t = 'info * PlainBase.t
+module Make (Plain_base : Plain_base_s) = struct
+  type 'info t = 'info * Plain_base.t
 
-  module Plain_typedef = PlainBase
-  module Plain = PlainBase
+  module Plain = Plain_base
 
   let info (i, _) = i
   let to_plain (_, x) = x
   let of_plain x = (), x
-  let equal ~info_eq (i1, x1) (i2, x2) = info_eq i1 i2 && PlainBase.(x1 = x2)
+  let equal ~info_eq (i1, x1) (i2, x2) = info_eq i1 i2 && Plain_base.(x1 = x2)
   let map_info ~f (i, z) = f i, z
 
   let pp_generic ~open_loc ~close_loc ppf (i, x) =
     open_loc ppf i;
-    PlainBase.pp ppf x;
+    Plain_base.pp ppf x;
     close_loc ppf i
   ;;
 
-  let jsonify (_, plain) = PlainBase.jsonify plain
-  let unjsonify json = PlainBase.unjsonify json |> Option.map ~f:(fun tm -> (), tm)
+  let jsonify (_, plain) = Plain_base.jsonify plain
+  let unjsonify json = Plain_base.unjsonify json |> Option.map ~f:(fun tm -> (), tm)
 
   module Parse = struct
     open Lvca_parsing
 
     let t =
-      PlainBase.parse
+      Plain_base.parse
       >>|| fun (Parse_result.{ value; range } as parse_result) ->
       { parse_result with value = range, value }
     ;;

@@ -2,7 +2,9 @@ open Base
 open Lvca_util
 
 module Extend (Object : Language_object_intf.S) :
-  Language_object_intf.Extended_s with type 'info t = 'info Object.t = struct
+  Language_object_intf.Extended_s
+    with type 'info t = 'info Object.t
+     and module Plain = Object.Plain = struct
   include Object
 
   let erase tm = Object.map_info ~f:(fun _ -> ()) tm
