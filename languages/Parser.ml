@@ -1064,7 +1064,7 @@ module TestParsers = struct
   let fix3 =
     {|let char = satisfy (c -> {is_alpha c}) in
 let digit = satisfy (c -> {is_digit c}) in
-let name = (chars=char+ -> {{var(chars)}}) in
+let name = (chars=char+ -> {let str = string_of_chars chars in {var(str)} }) in
 let literal = (chars=digit+ -> {{literal(chars)}}) in
 let atom = choice(name | literal) in
 fix (expr -> choice (
@@ -1231,12 +1231,12 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print fix3 "a + 1";
-      [%expect {| failed to parse: choice: no match found |}]
+      [%expect {| <parser:{321,336}>add(<parser:{149,157}>var(<input:{0,1}>"a"</input:{0,1}>)</parser:{149,157}>; <parser:{198,212}>literal(<input:{4,5}>list(<input:{4,5}>'1'</input:{4,5}>)</input:{4,5}>)</parser:{198,212}>)</parser:{321,336}> |}]
     ;;
 
     let%expect_test _ =
       parse_print fix3 "a + b + c";
-      [%expect {| failed to parse: choice: no match found |}]
+      [%expect {| <parser:{321,336}>add(<parser:{149,157}>var(<input:{0,1}>"a"</input:{0,1}>)</parser:{149,157}>; <parser:{321,336}>add(<parser:{149,157}>var(<input:{4,5}>"b"</input:{4,5}>)</parser:{149,157}>; <parser:{149,157}>var(<input:{8,9}>"c"</input:{8,9}>)</parser:{149,157}>)</parser:{321,336}>)</parser:{321,336}> |}]
     ;;
 
     let%expect_test _ =
@@ -1285,7 +1285,7 @@ let%test_module "Parsing" =
         {|let alpha = satisfy (c -> {is_alpha c}) in
         chars=alpha+ -> { let str = string_of_chars chars in {var(str)} }|}
         "ab";
-      [%expect {| failed to parse: many1: empty list |}]
+      [%expect {| <parser:{105,113}>var(<input:{0,2}>"ab"</input:{0,2}>)</parser:{105,113}> |}]
     ;;
 
     let%expect_test _ =
@@ -1313,7 +1313,7 @@ expr)}} | atom=atom -> {atom}))|};
         {|
        let char = satisfy (c -> {is_alpha c}) in
        let digit = satisfy (c -> {is_digit c}) in
-       let name = chars=char+ -> {{var(chars)}} in
+       let name = chars=char+ -> {let str = string_of_chars chars in {var(str)}} in
        let literal = chars=digit+ -> {{literal(chars)}} in
        let atom = choice (name | literal) in
        fix
