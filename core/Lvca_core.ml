@@ -522,6 +522,7 @@ let infer_term type_env tm =
     let name =
       match prim with
       | Integer _ -> "integer"
+      | Int32 _ -> "int32"
       | String _ -> "string"
       | Float _ -> "float"
       | Char _ -> "char"
@@ -743,7 +744,11 @@ and eval_primitive eval_ctx eval_ctx' ctx tm name args =
   | "is_whitespace", [ Term c ] ->
     eval_char_bool_fn eval_ctx' "is_whitespace" Char.is_whitespace ctx tm c
   | _ ->
-    failwith (Printf.sprintf "Unknown function (%s), or wrong number of arguments" name)
+    failwith
+      (Printf.sprintf
+         "Unknown function (%s), or wrong number of arguments (%n)"
+         name
+         (List.length args))
 ;;
 
 let eval : 'a Term.t -> ('a Nominal.Term.t, 'a eval_error) Result.t =

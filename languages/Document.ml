@@ -7,7 +7,7 @@ module Lang =
 [%lvca.abstract_syntax_module
 {|
 char : *
-int : *
+int32 : *
 string : *
 
 maybe a := Nothing() | Just(a)
@@ -25,7 +25,7 @@ list a :=
   | Cons(a; list a)
 
 list_type :=
-  | Ordered(int; char)
+  | Ordered(int32; char)
   | Bullet(char)
 
 list_spacing := Loose() | Tight()
@@ -51,7 +51,7 @@ block_desc :=
   | List(list_type; list_spacing; list block)
   | Blockquote(list block)
   | Thematic_break()
-  | Heading(int; inline)
+  | Heading(int32; inline)
   | Code_block(string; string)
   | Html_block(string)
   | Definition_list(list def_elt)
@@ -72,7 +72,7 @@ let term_of_option : f:('a -> unit Nonbinding.term) -> 'a option -> unit Nonbind
 let term_of_string : string -> unit Nonbinding.term = fun str -> Primitive ((), String str)
 
 module Of_omd = struct
-  module Lang = Lang (Primitive.Char) (Primitive.Int) (Primitive.String)
+  module Lang = Lang (Primitive.Char) (Primitive.Int32) (Primitive.String)
 
   let attribute : string * string -> Lang.Plain.attribute = fun (x, y) -> Attribute (x, y)
 
@@ -87,7 +87,7 @@ module Of_omd = struct
   let attributes : Omd.attributes -> Lang.Plain.attribute Lang.Plain.list = list attribute
 
   let list_type : Omd.list_type -> Lang.Plain.list_type = function
-    | Ordered (i, c) -> Ordered (i, c)
+    | Ordered (i, c) -> Ordered (Int32.of_int_exn i, c)
     | Bullet c -> Bullet c
   ;;
 
@@ -123,7 +123,7 @@ module Of_omd = struct
   let rec block_desc : Omd.block_desc -> Lang.Plain.block_desc = function
     | Paragraph inl -> Paragraph (inline inl)
     | Thematic_break -> Thematic_break
-    | Heading (n, inl) -> Heading (n, inline inl)
+    | Heading (n, inl) -> Heading (Int32.of_int_exn n, inline inl)
     | Code_block (x, y) -> Code_block (x, y)
     | Html_block str -> Html_block str
     | List (t, s, blocks) ->

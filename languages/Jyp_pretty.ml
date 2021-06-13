@@ -5,10 +5,10 @@ TODO: make disjunctionless? https://github.com/jyp/prettiest/pull/10
 open Base
 open Lvca_syntax
 
-module Lang =
+module Mk_lang =
 [%lvca.abstract_syntax_module
 {|
-int : *
+int32 : *
 string : *
 
 doc :=
@@ -17,37 +17,37 @@ doc :=
   | Cat(doc; doc)
   | Text(string)
   | Spacing(string)
-  | Nest(int; doc)
+  | Nest(int32; doc)
   | Align(doc)
   | Alt(doc; doc)
 |}]
 
-module Lang' = Lang (Primitive.Int) (Primitive.String)
-module Doc = Lang'.Doc
+module Lang = Mk_lang (Primitive.Int32) (Primitive.String)
+module Doc = Lang.Doc
 
 (* type doc = Doc.Plain.t *)
 
 let rec of_nonbinding tm =
   let open Result.Let_syntax in
   match tm with
-  | Nonbinding.Operator (_, "line", []) -> Ok Lang'.Plain.Line
+  | Nonbinding.Operator (_, "line", []) -> Ok Lang.Plain.Line
   | Operator (_, "nil", []) -> Ok Nil
   | Operator (_, "cat", [ d1; d2 ]) ->
     let%bind d1 = of_nonbinding d1 in
     let%map d2 = of_nonbinding d2 in
-    Lang'.Plain.Cat (d1, d2)
+    Lang.Plain.Cat (d1, d2)
   | Operator (_, "text", [ Primitive (_, String s) ]) -> Ok (Text s)
   | Operator (_, "spacing", [ Primitive (_, String s) ]) -> Ok (Spacing s)
   | Operator (_, "nest", [ Primitive (_, Integer j); d ]) ->
     let%map d = of_nonbinding d in
-    Lang'.Plain.Nest (Z.to_int j, d)
+    Lang.Plain.Nest (Z.to_int32 j, d)
   | Operator (_, "align", [ d ]) ->
     let%map d = of_nonbinding d in
-    Lang'.Plain.Align d
+    Lang.Plain.Align d
   | Operator (_, "alt", [ d1; d2 ]) ->
     let%bind d1 = of_nonbinding d1 in
     let%map d2 = of_nonbinding d2 in
-    Lang'.Plain.Alt (d1, d2)
+    Lang.Plain.Alt (d1, d2)
   | Primitive _ | Operator _ -> Error ("Couldn't convert term", tm)
 ;;
 
@@ -55,14 +55,14 @@ type semantics = int -> int -> (string * int) list
 
 let rec eval doc i (* current indentation *) c (* current column *) =
   match doc with
-  | Lang'.Plain.Line -> [ String.(of_char '\n' ^ make i ' '), i ]
+  | Lang.Plain.Line -> [ String.(of_char '\n' ^ make i ' '), i ]
   | Nil -> [ "", c ]
   | Cat (d1, d2) ->
     eval d1 i c
     |> List.concat_map ~f:(fun (t1, c1) ->
            eval d2 i c1 |> List.map ~f:(fun (t2, c2) -> t1 ^ t2, c2))
   | Text s | Spacing s -> [ s, c + String.length s ]
-  | Nest (j, d) -> eval d Int.(i + j) c
+  | Nest (j, d) -> eval d Int.(i + of_int32_exn j) c
   | Align d -> eval d c c
   | Alt (d1, d2) -> eval d1 i c @ eval d2 i c
 ;;
@@ -95,7 +95,7 @@ let render_fast : int -> Doc.Plain.t -> string option =
       | [] -> [ First ts ] (* done *)
       | (i, d) :: ds ->
         (match d with
-        | Lang'.Plain.Nil -> rall p ts k ds
+        | Lang.Plain.Nil -> rall p ts k ds
         | Text s -> rall (p + 1) (s :: ts) (k + String.length s) ds
         | Spacing s -> rall p (s :: ts) (k + String.length s) ds
         | Line ->
@@ -107,7 +107,7 @@ let render_fast : int -> Doc.Plain.t -> string option =
               }
           ]
         | Cat (x, y) -> rall p ts k ((i, x) :: (i, y) :: ds)
-        | Nest (j, x) -> rall p ts k ((i + j, x) :: ds)
+        | Nest (j, x) -> rall p ts k ((i + Int.of_int32_exn j, x) :: ds)
         | Alt (x, y) -> rall p ts k ((i, x) :: ds) @ rall p ts k ((i, y) :: ds)
         | Align x -> rall p ts k ((k, x) :: ds)))
   in

@@ -18,6 +18,7 @@ module Exp = struct
 
   let str ~loc str = Ast_builder.Default.estring ~loc str
   let int ~loc i = Ast_builder.Default.eint ~loc i
+  let int32 ~loc i = Ast_builder.Default.eint32 ~loc i
   let float ~loc f = Ast_builder.Default.efloat ~loc (Float.to_string f)
   let char ~loc c = Ast_builder.Default.echar ~loc c
   let bigint ~loc i = [%expr Z.of_string [%e str ~loc (Z.to_string i)]]
@@ -34,6 +35,8 @@ module Exp = struct
     | pos, Lvca_syntax.Primitive.Plain.Integer i ->
       [%expr
         [%e opt_range ~loc pos], Lvca_syntax.Primitive.Plain.Integer [%e bigint ~loc i]]
+    | pos, Lvca_syntax.Primitive.Plain.Int32 i ->
+      [%expr [%e opt_range ~loc pos], Lvca_syntax.Primitive.Plain.Int32 [%e int32 ~loc i]]
     | pos, String s ->
       [%expr [%e opt_range ~loc pos], Lvca_syntax.Primitive.Plain.String [%e str ~loc s]]
     | pos, Float f ->

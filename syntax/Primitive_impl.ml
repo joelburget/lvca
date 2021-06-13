@@ -91,16 +91,6 @@ module Char = Make (struct
   ;;
 end)
 
-module Int = Make (struct
-  type t = int
-
-  let pp = Fmt.int
-  let ( = ) = Int.( = )
-  let parse = Lvca_parsing.(integer_lit >>| Int.of_string <?> "int")
-  let jsonify i = Json.int i
-  let unjsonify = Json.(function Int f -> Some f | _ -> None)
-end)
-
 module Int32 = Make (struct
   type t = int32
 
@@ -126,6 +116,7 @@ end)
 module Plain = struct
   type t =
     | Integer of Z.t
+    | Int32 of int32
     | String of string
     | Float of float
     | Char of char
@@ -140,6 +131,7 @@ let equal ~info_eq (info1, p1) (info2, p2) =
   let same_ps =
     match p1, p2 with
     | Plain.Integer i1, Plain.Integer i2 -> Z.Compare.(i1 = i2) [@warning "-44"]
+    | Int32 i1, Int32 i2 -> Base.Int32.(i1 = i2)
     | String s1, String s2 -> Base.String.(s1 = s2)
     | Float f1, Float f2 -> Base.Float.(f1 = f2)
     | Char c1, Char c2 -> Base.Char.(c1 = c2)
@@ -156,6 +148,7 @@ let erase t = map_info ~f:(Fn.const ()) t
 let pp_generic ~open_loc ~close_loc ppf (info, prim) =
   match prim with
   | Plain.Integer i -> Integer.pp_generic ~open_loc ~close_loc ppf (info, i)
+  | Int32 i -> Int32.pp_generic ~open_loc ~close_loc ppf (info, i)
   | String s -> String.pp_generic ~open_loc ~close_loc ppf (info, s)
   | Float f -> Float.pp_generic ~open_loc ~close_loc ppf (info, f)
   | Char c -> Char.pp_generic ~open_loc ~close_loc ppf (info, c)
@@ -169,7 +162,8 @@ let check prim sort =
   | Plain.String _, Sort.Name (_, "string")
   | Float _, Sort.Name (_, "float")
   | Char _, Sort.Name (_, "char")
-  | Integer _, Sort.Name (_, "integer") ->
+  | Integer _, Sort.Name (_, "integer")
+  | Int32 _, Sort.Name (_, "int32") ->
     None
   | _, _ ->
     Some
@@ -186,6 +180,7 @@ module Parse = struct
     choice
       [ (integer_or_float_lit
         >>| function First i -> Plain.Integer (Z.of_string i) | Second f -> Float f)
+        (* Note: all ints parse to Integer *)
       ; (string_lit >>| fun s -> Plain.String s)
       ; (char_lit >>| fun c -> Plain.Char c)
       ]
@@ -200,6 +195,7 @@ let jsonify (_, p) =
   Json.(
     match p with
     | Plain.Integer i -> array [| string "i"; string (Z.to_string i) |]
+    | Int32 i -> array [| string "i32"; string (Base.Int32.to_string i) |]
     | String s -> array [| string "s"; string s |]
     | Float f -> array [| string "f"; float f |]
     | Char c -> array [| string "c"; string (Base.Char.to_string c) |])
@@ -210,6 +206,8 @@ let unjsonify json =
     match json with
     | Array [| String "i"; String i |] ->
       (try Some ((), Plain.Integer (Z.of_string i)) with Failure _ -> None)
+    | Array [| String "i32"; String i |] ->
+      (try Some ((), Int32 (Base.Int32.of_string i)) with Failure _ -> None)
     | Array [| String "f"; Float f |] -> Some ((), Float f)
     | Array [| String "c"; String c |] ->
       if Base.Int.(Base.String.length c = 1)

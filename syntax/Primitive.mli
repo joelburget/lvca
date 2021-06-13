@@ -12,18 +12,6 @@ module Integer : sig
        and module Plain := Plain
 end
 
-(* TODO
-module Int : sig
-  module Plain : sig
-    type t = int
-  end
-
-  include
-    Language_object_intf.Extended_s
-      with type 'info t = 'info * int
-       and module Plain := Plain
-end
-
 module Int32 : sig
   module Plain : sig
     type t = int32
@@ -34,7 +22,6 @@ module Int32 : sig
       with type 'info t = 'info * int32
        and module Plain := Plain
 end
-*)
 
 module Float : sig
   module Plain : sig
@@ -72,6 +59,7 @@ end
 module Plain : sig
   type t = Primitive_impl.Plain.t =
     | Integer of Z.t
+    | Int32 of int32
     | String of string
     | Float of float
     | Char of char

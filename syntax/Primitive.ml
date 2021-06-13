@@ -14,6 +14,18 @@ end
 
 module Integer = Language_object.Extend (Integer_kernel)
 
+module Int32_kernel = struct
+  include Primitive_impl.Int32
+
+  let to_nominal (info, z) = Nominal.Term.Primitive (info, Int32 z)
+
+  let of_nominal tm =
+    match tm with Nominal.Term.Primitive (info, Int32 z) -> Ok (info, z) | _ -> Error tm
+  ;;
+end
+
+module Int32 = Language_object.Extend (Int32_kernel)
+
 module Float_kernel = struct
   include Primitive_impl.Float
 

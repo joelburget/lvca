@@ -12,7 +12,7 @@ either a b :=
   | Right(b)
 |}]
 
-module Primitive =
+module Primitive_model =
 [%lvca.abstract_syntax_module
 {|
 integer : *
@@ -28,7 +28,7 @@ primitive :=
 |}]
 
 (* TODO: list : * -> * *)
-module NonBinding =
+module Nonbinding_model =
 [%lvca.abstract_syntax_module
 {|
 string : *
@@ -44,7 +44,7 @@ term :=
 |}]
 
 (* TODO: list : * -> * *)
-module Pattern =
+module Pattern_model =
 [%lvca.abstract_syntax_module
 {|
 string : *
@@ -62,7 +62,7 @@ pattern :=
 |}]
 
 (* TODO: list : * -> * *)
-module BindingAwarePattern =
+module Binding_aware_pattern_model =
 [%lvca.abstract_syntax_module
 {|
 string : *
@@ -82,7 +82,7 @@ scope := Scope(list string; t)
 |}]
 
 (* TODO: list : * -> * *)
-module Nominal =
+module Nominal_model =
 [%lvca.abstract_syntax_module
 {|
 string : *
@@ -106,15 +106,15 @@ TODO: list : * -> *
 TODO: either : * -> *
 TODO | Operator(string; list (either scope term))
 *)
-module DeBruijn =
+module DeBruijn_model =
 [%lvca.abstract_syntax_module
 {|
-int : *
+int32 : *
 string : *
 primitive : *
 
 term :=
-  | BoundVar(int)
+  | BoundVar(int32)
   | FreeVar(string)
   | Primitive(primitive)
 
@@ -122,10 +122,10 @@ scope := Scope(string; term)
 |}]
 
 (* TODO: list : * -> * *)
-module DeBruijn2d =
+module DeBruijn_2d_model =
 [%lvca.abstract_syntax_module
 {|
-int : *
+int32 : *
 string : *
 primitive : *
 pattern : *
@@ -136,7 +136,7 @@ list a :=
 
 term :=
   | Operator(string; list scope)
-  | BoundVar(int)
+  | BoundVar(int32)
   | FreeVar(string)
   | Primitive(primitive)
 
