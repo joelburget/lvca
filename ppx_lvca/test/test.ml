@@ -8,14 +8,13 @@ let test_language = [%lvca.abstract_syntax {|
 foo := foo(integer)
 |}]
 
-(* TODO: handle / test * -> * externals
-maybe : * -> *
- *)
 module Lang =
 [%lvca.abstract_syntax_module
 {|
 integer : *
 string : *
+maybe : * -> *
+list : * -> *
 
 foo :=
   | Foo(integer)
@@ -23,7 +22,6 @@ foo :=
 
 nat := Z() | S(nat)
 
-list a := Nil() | Cons(a; list a)
 pair a b := Pair(a; b)
 pair_plus a b := PairPlus(a; b; foo)
 

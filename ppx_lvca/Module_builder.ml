@@ -300,13 +300,33 @@ let conjuntion ~loc exps =
   List.fold_right exps ~init:last ~f:(fun e1 e2 -> [%expr [%e e1] && [%e e2]])
 ;;
 
+let sort_head = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
+
 let rec all_sort_names = function
   | Sort.Name (_, name) -> SSet.singleton name
   | Sort.Ap (_, name, args) ->
     Set.union (SSet.singleton name) (args |> List.map ~f:all_sort_names |> SSet.union_list)
 ;;
 
+(* Returns a mapping from the name of each sort defined in this language to the
+   name of each sort it uses without passing through an external.
+
+   Example: {[
+     list : * -> *
+
+     maybe a := None() | Some(a)
+
+     foo :=
+      | Ctr1(list x)
+      | Ctr2(maybe y)
+  ]}
+
+   Here foo directly uses list, maybe, and y, but not x.
+
+   Why do we want this? That is a good question.
+   *)
 let get_sort_ref_map sort_defs =
+  (* Sorts defined in this language, not externals. *)
   let known_sorts = sort_defs |> List.map ~f:fst |> SSet.of_list in
   sort_defs
   |> List.map ~f:(fun (sort_name, Syn.Sort_def.Sort_def (vars, op_defs)) ->
@@ -316,7 +336,10 @@ let get_sort_ref_map sort_defs =
            |> List.map ~f:(fun (Syn.Operator_def.Operator_def (_name, arity)) ->
                   arity
                   |> List.map ~f:(fun (Syn.Valence.Valence (_sort_slots, body_sort)) ->
-                         all_sort_names body_sort)
+                         let sort_name = sort_head body_sort in
+                         if Set.mem known_sorts sort_name
+                         then all_sort_names body_sort
+                         else SSet.singleton sort_name)
                   |> SSet.union_list)
            |> SSet.union_list
          in
@@ -539,21 +562,6 @@ module Helpers (Context : Builder_context) = struct
   let pvar_allocator name_base =
     let alloc = var_allocator name_base in
     alloc >> fst
-  ;;
-
-  let raise_kind_err name (Syn.Kind.Kind (info, _) as kind) =
-    let loc = update_loc info in
-    Location.Error.(
-      raise
-        (make
-           ~loc
-           ~sub:[]
-           (Fmt.str
-              "Code generation currently only supports external modules of kind * (`%s` \
-               is %a)"
-              name
-              Syn.Kind.pp
-              kind)))
   ;;
 end
 
@@ -1348,14 +1356,13 @@ module Individual_type_module (Context : Builder_context) = struct
           Named ({ txt = Some (module_name name); loc }, language_object_extended_s)
         in
         pmod_functor mod_param accum
-      | Some (Syn.Kind.Kind (info, 1)) ->
+      | Some kind ->
         let mod_param =
           Named
-            ( { txt = Some (module_name name); loc = update_loc info }
+            ( { txt = Some (module_name name); loc = update_loc (Syn.Kind.info kind) }
             , language_object_extended_s )
         in
         pmod_functor mod_param accum
-      | Some kind -> raise_kind_err name kind
     in
     let expr = List.fold_right vars ~init ~f in
     module_binding ~name:{ txt = Some (module_name sort_name); loc } ~expr |> pstr_module
@@ -1390,12 +1397,11 @@ module Container_module (Context : Builder_context) = struct
     (* Turn into a functor over externals *)
     let mod_param (name, kind) =
       match kind with
-      | Some (Syn.Kind.Kind (info, 1)) ->
+      | Some kind ->
         Named
-          ( { txt = Some (module_name name); loc = update_loc info }
+          ( { txt = Some (module_name name); loc = update_loc (Syn.Kind.info kind) }
           , language_object_extended_s )
       | None -> Named ({ txt = Some (module_name name); loc }, language_object_extended_s)
-      | Some kind -> raise_kind_err name kind
     in
     let mod_param' (name, kind) = mod_param (name, Some kind) in
     let expr =
