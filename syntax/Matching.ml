@@ -628,9 +628,9 @@ let%test_module "Matching" =
 
     let%expect_test _ =
       run_list_match "cons(unit(); nil()), cons(unit(); nil())";
-      [%expect "
+      [%expect {|
         {w -> nil(), x -> unit(), y -> nil(),
-        z -> unit()} 3"]
+        z -> unit()} 3|}]
     ;;
 
     let print_check syntax_str sorts_str matrix_str =
@@ -682,9 +682,9 @@ let%test_module "Matching" =
         | f(), t(), _ -> 2
         | _, _, f() -> 3
       |};
-      [%expect "
+      [%expect {|
         t(), t(),
-        t()"]
+        t()|}]
     ;;
 
     let%expect_test _ =
@@ -695,9 +695,9 @@ let%test_module "Matching" =
         | t(), t(), _ -> 2
         | _, _, f() -> 3
       |};
-      [%expect "
+      [%expect {|
         f(), t(),
-        t()"]
+        t()|}]
     ;;
   end)
 ;;

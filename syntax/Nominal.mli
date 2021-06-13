@@ -164,5 +164,3 @@ module type Convertible_s = sig
   val to_nominal : 'info t -> 'info Term.t
   val of_nominal : 'info Term.t -> ('info t, 'info Term.t) Result.t
 end
-
-

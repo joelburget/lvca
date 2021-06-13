@@ -1,7 +1,6 @@
 open Base
 open Brr
 open Brr_note
-open Lvca_core
 open Lvca_provenance
 open Lvca_syntax
 open Lvca_util
@@ -111,7 +110,7 @@ module DebuggerAction = struct
     | ChopStack of int list (** Click on a stack member *)
 end
 
-let parse_parser = Lvca_parsing.parse_string (P.Parse.t Core.Parse.term)
+let parse_parser = Lvca_parsing.parse_string (P.Parse.t Lvca_core.Term.Parse.t)
 
 module Examples = struct
   let any_char = "."
@@ -156,7 +155,9 @@ end
 
 module Prelude = struct
   let parse_parser_exn str =
-    str |> Lvca_parsing.parse_string (P.Parse.t Core.Parse.term) |> Result.ok_or_failwith
+    str
+    |> Lvca_parsing.parse_string (P.Parse.t Lvca_core.Term.Parse.t)
+    |> Result.ok_or_failwith
   ;;
 
   let alpha = parse_parser_exn Examples.satisfy_is_alpha
@@ -244,7 +245,7 @@ let view_term ~highlight_s tm =
 ;;
 
 let view_core ~highlight_s core =
-  let pp_view, tm_selection_e = pp_view ~highlight_s core Core.pp in
+  let pp_view, tm_selection_e = pp_view ~highlight_s core Lvca_core.Term.pp in
   success_msg [ pp_view ], tm_selection_e
 ;;
 

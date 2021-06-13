@@ -92,7 +92,7 @@ module View = struct
   let view_check_frame
       :  ( Opt_range.t
          , ('info Pattern.t, 'info Nominal.Term.t) Base.Either.t )
-         Check_failure.frame
+         Check_failure.Frame.t
       -> El.t
     =
    fun { term; sort } ->
