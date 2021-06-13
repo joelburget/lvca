@@ -118,14 +118,8 @@ type : *
 string : *
 binding_aware_pattern : *
 is_rec : *
-
-list a :=
-  | Nil()
-  | Cons(a; list a)
-
-option a :=
-  | None()
-  | Some(a)
+list : * -> *
+option : * -> *
 
 term :=
   | Term(nominal_term)

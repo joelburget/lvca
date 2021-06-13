@@ -33,10 +33,7 @@ module Nonbinding_model =
 {|
 string : *
 primitive : *
-
-list a :=
-  | Nil()
-  | Cons(a; list a)
+list : * -> *
 
 term :=
   | Operator(string; list term)
@@ -67,10 +64,7 @@ module Binding_aware_pattern_model =
 {|
 string : *
 primitive : *
-
-list a :=
-  | Nil()
-  | Cons(a; list a)
+list : * -> *
 
 t :=
   | Operator(string; list scope)
@@ -88,10 +82,7 @@ module Nominal_model =
 string : *
 primitive : *
 pattern : *
-
-list a :=
-  | Nil()
-  | Cons(a; list a)
+list : * -> *
 
 term :=
   | Operator(string; list scope)
@@ -129,10 +120,7 @@ int32 : *
 string : *
 primitive : *
 pattern : *
-
-list a :=
-  | Nil()
-  | Cons(a; list a)
+list : * -> *
 
 term :=
   | Operator(string; list scope)
