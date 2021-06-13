@@ -1,34 +1,31 @@
 open Lvca_syntax
+module Maybe_model = [%lvca.abstract_syntax_module "maybe a := Nothing() | Just(a)"]
+module List_model = [%lvca.abstract_syntax_module "list a := Nil() | Cons(a; list a)"]
+module Either_model = [%lvca.abstract_syntax_module "either a b := Left(a) | Right(b)"]
 
-module Prelude =
-[%lvca.abstract_syntax_module
-{|
-list a :=
-  | Nil()
-  | Cons(a; list a)
-
-either a b :=
-  | Left(a)
-  | Right(b)
-|}]
-
-module Primitive_model =
+module Mk_primitive_model =
 [%lvca.abstract_syntax_module
 {|
 integer : *
+int32 : *
 string : *
 float : *
 char : *
 
 primitive :=
   | Integer(integer)
+  | Int32(int32)
   | String(string)
   | Float(float)
   | Char(char)
 |}]
 
-(* TODO: list : * -> * *)
-module Nonbinding_model =
+module Primitive_model =
+  Mk_primitive_model (Primitive.Integer) (Primitive.Int32) (Primitive.String)
+    (Primitive.Float)
+    (Primitive.Char)
+
+module Mk_nonbinding_model =
 [%lvca.abstract_syntax_module
 {|
 string : *
@@ -40,8 +37,9 @@ term :=
   | Primitive(primitive)
 |}]
 
-(* TODO: list : * -> * *)
-module Pattern_model =
+(* module Nonbinding_model = Mk_nonbinding_model (Primitive.String) (Primitive) (List) *)
+
+module Mk_pattern_model =
 [%lvca.abstract_syntax_module
 {|
 string : *
@@ -58,8 +56,9 @@ pattern :=
   | Ignored(string)
 |}]
 
-(* TODO: list : * -> * *)
-module Binding_aware_pattern_model =
+(* module Pattern_model = Mk_pattern_model (Primitive.String) (Primitive) *)
+
+module Mk_binding_aware_pattern_model =
 [%lvca.abstract_syntax_module
 {|
 string : *
@@ -75,8 +74,12 @@ t :=
 scope := Scope(list string; t)
 |}]
 
-(* TODO: list : * -> * *)
-module Nominal_model =
+(*
+module Binding_aware_pattern_model =
+  Mk_binding_aware_pattern_model (Primitive.String) (Primitive) (List)
+*)
+
+module Mk_nominal_model =
 [%lvca.abstract_syntax_module
 {|
 string : *
@@ -93,27 +96,35 @@ scope := Scope(list pattern; term)
 |}]
 
 (*
-TODO: list : * -> *
-TODO: either : * -> *
-TODO | Operator(string; list (either scope term))
+module Nominal_model =
+  Mk_nominal_model (Primitive.String) (Primitive) (Pattern) (List_model)
 *)
-module DeBruijn_model =
+
+(* TODO: this should fail if we remove the declaration of either. *)
+module Mk_DeBruijn_model =
 [%lvca.abstract_syntax_module
 {|
 int32 : *
 string : *
 primitive : *
+list : * -> *
+either : * -> * -> *
 
 term :=
   | BoundVar(int32)
   | FreeVar(string)
   | Primitive(primitive)
+  | Operator(string; list (either scope term))
 
 scope := Scope(string; term)
 |}]
 
-(* TODO: list : * -> * *)
-module DeBruijn_2d_model =
+(*
+module DeBruijn_model =
+  Mk_DeBruijn_model (Primitive.Int32) (Primitive.String) (Primitive) (List) (Either)
+*)
+
+module Mk_DeBruijn_2d_model =
 [%lvca.abstract_syntax_module
 {|
 int32 : *
@@ -130,6 +141,11 @@ term :=
 
 scope := Scope(list pattern; term)
 |}]
+
+(*
+module DeBruijn_2d_model =
+  Mk_DeBruijn_2d_model (Primitive.Int32) (Primitive.String) (Primitive) (Pattern) (List)
+*)
 
 module Properties (Lang : Language_object_intf.S) = struct
   (* check all generated functions equivalent *)
