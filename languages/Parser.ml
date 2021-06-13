@@ -331,7 +331,7 @@ module Direct = struct
                   ; scope = Scope (name, core_term)
                   })
             in
-            match Lvca_core.eval_ctx term_ctx tm with
+            match Lvca_core.eval_in_ctx term_ctx tm with
             | Ok (Operator (_, "true", [])) -> pos + 1, [], Ok (mk_char pos c)
             | Ok (Operator (_, "false", [])) | Ok _ ->
               pos, [], err_msg (* TODO: throw harder error? (type error) *)
@@ -342,7 +342,7 @@ module Direct = struct
   let fail c_tm =
     { run =
         (fun ~translate_direct:_ ~term_ctx ~parser_ctx:_ ~pos _str ->
-          match Lvca_core.eval_ctx term_ctx c_tm with
+          match Lvca_core.eval_in_ctx term_ctx c_tm with
           | Ok (Primitive (_, String msg)) -> pos, [], mk_error msg
           | _ -> failwith "TODO: fail")
     }
@@ -415,7 +415,7 @@ module Direct = struct
     in
     { run =
         (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
-          match Lvca_core.eval_ctx term_ctx n_tm with
+          match Lvca_core.eval_in_ctx term_ctx n_tm with
           | Ok (Primitive (_, Integer n)) ->
             let n = Z.to_int n (* TODO: may raise Overflow *) in
             let results = go ~translate_direct ~term_ctx ~parser_ctx ~pos n str in
@@ -575,7 +575,7 @@ module Direct = struct
                        | Some key -> Map.set ctx ~key ~data:tm)
               in
               let result =
-                Lvca_core.eval_ctx term_ctx tm
+                Lvca_core.eval_in_ctx term_ctx tm
                 |> Result.map_error ~f:(map_snd ~f:(fun tm -> Some tm))
               in
               pos, snapshots, result))

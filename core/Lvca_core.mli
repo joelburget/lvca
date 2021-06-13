@@ -180,7 +180,7 @@ val check
 type 'info env = 'info Nominal.Term.t String.Map.t
 type 'info eval_error = string * 'info Term.t
 
-val eval_ctx
+val eval_in_ctx
   :  'info env
   -> 'info Term.t
   -> ('info Nominal.Term.t, 'info eval_error) Base.Result.t

@@ -3,10 +3,9 @@
 open Base
 open Lvca_provenance
 open Lvca_syntax
-module Format = Stdlib.Format
-module Util = Lvca_util
-module SMap = Util.String.Map
 open Result.Let_syntax
+module Format = Stdlib.Format
+module SMap = Lvca_util.String.Map
 
 module Is_rec = struct
   type t =
@@ -100,10 +99,9 @@ module Types = struct
   type 'info term =
     | Term of 'info Nominal.Term.t
     | Core_app of 'info * 'info term * 'info term list
-    | Case of 'info * 'info term * 'info case_scope list (** Cases match patterns *)
+    | Case of 'info * 'info term * 'info case_scope list
     | Lambda of 'info * 'info Type.t * 'info scope
-        (** Lambdas bind variables. Patterns not allowed. *)
-    | Let of 'info let_ (** Lets bind variables. Patterns not allowed. *)
+    | Let of 'info let_
     | Var of 'info * string
 
   and 'info let_ =
@@ -256,7 +254,7 @@ end
 module Parse = struct
   open Lvca_parsing
 
-  let reserved = Util.String.Set.of_list [ "let"; "rec"; "in"; "match"; "with" ]
+  let reserved = Lvca_util.String.Set.of_list [ "let"; "rec"; "in"; "match"; "with" ]
 
   let identifier =
     identifier
@@ -267,7 +265,7 @@ module Parse = struct
   ;;
 
   let make_apps : 'a Types.term list -> 'a Types.term = function
-    | [] -> Util.invariant_violation ~here:[%here] "must be a nonempty list"
+    | [] -> Lvca_util.invariant_violation ~here:[%here] "must be a nonempty list"
     | [ x ] -> x
     | f :: args as xs ->
       let pos = xs |> List.map ~f:Info.term |> Opt_range.list_range in
@@ -593,22 +591,22 @@ and infer ({ type_env; syntax = _ } as env) tm =
     | Some ty' -> Ok ty')
 ;;
 
-let merge_results
+let merge_pattern_context
     : 'a Nominal.Term.t SMap.t option list -> 'a Nominal.Term.t SMap.t option
   =
- fun results ->
-  if List.for_all results ~f:Option.is_some
+ fun ctxs ->
+  if List.for_all ctxs ~f:Option.is_some
   then
     Some
-      (results
+      (ctxs
       |> List.map
            ~f:
-             (Util.Option.get_invariant ~here:[%here] (fun () ->
+             (Lvca_util.Option.get_invariant ~here:[%here] (fun () ->
                   "we just checked all is_some"))
       |> SMap.strict_unions
       |> function
       | `Duplicate_key k ->
-        Util.invariant_violation
+        Lvca_util.invariant_violation
           ~here:[%here]
           (Printf.sprintf "multiple variables with the same name (%s) in one pattern" k)
       | `Ok m -> m)
@@ -622,7 +620,7 @@ let rec match_pattern v pat =
     if String.(tag1 = tag2)
     then (
       match List.map2 pats vals ~f:match_pattern_scope with
-      | Ok results -> merge_results results
+      | Ok results -> merge_pattern_context results
       | Unequal_lengths -> None)
     else None
   | Primitive l1, Primitive l2 ->
@@ -653,40 +651,40 @@ type 'a eval_error = string * 'a Term.t
 let true_tm info = Nominal.Term.Operator (info, "true", [])
 let false_tm info = Nominal.Term.Operator (info, "false", [])
 
-let eval_char_bool_fn eval_ctx' name f ctx tm c =
-  let%bind c_result = eval_ctx' ctx c in
-  match c_result with
-  | Nominal.Term.Primitive (info, Char c') ->
-    Ok (if f c' then true_tm info else false_tm info)
+let eval_char_bool_fn eval_nominal_in_ctx name f ctx tm c =
+  let%bind c = eval_nominal_in_ctx ctx c in
+  match c with
+  | Nominal.Term.Primitive (info, Char c) ->
+    Ok (if f c then true_tm info else false_tm info)
   | _ -> Error (Printf.sprintf "Invalid argument to %s" name, tm)
 ;;
 
-let rec eval_ctx ctx tm =
+let rec eval_in_ctx ctx tm =
   match tm with
   | Term.Var (_, v) ->
     (match Map.find ctx v with
     | Some result -> Ok result
     | None -> Error ("Unbound variable " ^ v, tm))
   | Case (_, tm, branches) ->
-    let%bind tm_val = eval_ctx ctx tm in
+    let%bind tm_val = eval_in_ctx ctx tm in
     (match find_match tm_val branches with
     | None -> Error ("no match found in case", Term tm_val)
     | Some (branch, bindings) ->
-      eval_ctx (Util.Map.union_right_biased ctx bindings) branch)
+      eval_in_ctx (Lvca_util.Map.union_right_biased ctx bindings) branch)
   | Core_app (_, Lambda (_, _ty, Scope (name, body)), [ arg ]) ->
-    let%bind arg_val = eval_ctx ctx arg in
-    eval_ctx (Map.set ctx ~key:name ~data:arg_val) body
+    let%bind arg_val = eval_in_ctx ctx arg in
+    eval_in_ctx (Map.set ctx ~key:name ~data:arg_val) body
   | Core_app (_, Var (_, name), args) ->
     if Map.mem ctx name
     then failwith "TODO"
-    else eval_primitive eval_ctx eval_ctx' ctx tm name args
+    else eval_primitive eval_in_ctx eval_nominal_in_ctx ctx tm name args
   | Term tm -> Ok (Nominal.Term.subst_all ctx tm)
   | Let { tm; scope = Scope (name, body); _ } ->
-    let%bind tm_val = eval_ctx ctx tm in
-    eval_ctx (Map.set ctx ~key:name ~data:tm_val) body
+    let%bind tm_val = eval_in_ctx ctx tm in
+    eval_in_ctx (Map.set ctx ~key:name ~data:tm_val) body
   | _ -> Error ("Found a term we can't evaluate", tm)
 
-and eval_ctx' ctx tm =
+and eval_nominal_in_ctx ctx tm =
   match tm with
   | Nominal.Term.Var (_, v) ->
     (match Map.find ctx v with
@@ -694,27 +692,26 @@ and eval_ctx' ctx tm =
     | None -> Error ("Unbound variable " ^ v, Term.Term tm))
   | _ -> Ok tm
 
-and eval_primitive eval_ctx eval_ctx' ctx tm name args =
+and eval_primitive eval_in_ctx eval_nominal_in_ctx ctx tm name args =
   let open Nominal.Term in
-  let open Types in
+  let%bind args = args |> List.map ~f:(eval_in_ctx ctx) |> Result.all in
   match name, args with
-  | "add", [ Term a; Term b ] ->
-    let%bind a_result = eval_ctx' ctx a in
-    let%bind b_result = eval_ctx' ctx b in
+  | "add", [ a; b ] ->
+    let%bind a_result = eval_nominal_in_ctx ctx a in
+    let%bind b_result = eval_nominal_in_ctx ctx b in
     (match a_result, b_result with
     | Primitive (info, Integer a'), Primitive (_binfo, Integer b') ->
       (* XXX can't reuse info *)
       Ok (Nominal.Term.Primitive (info, Integer Z.(a' + b')))
     | _ -> Error ("Invalid arguments to add", tm))
-  | "sub", [ Term a; Term b ] ->
-    let%bind a_result = eval_ctx' ctx a in
-    let%bind b_result = eval_ctx' ctx b in
+  | "sub", [ a; b ] ->
+    let%bind a_result = eval_nominal_in_ctx ctx a in
+    let%bind b_result = eval_nominal_in_ctx ctx b in
     (match a_result, b_result with
     | Primitive (info, Integer a'), Primitive (_binfo, Integer b') ->
       Ok (Nominal.Term.Primitive (info, Integer Z.(a' - b')))
     | _ -> Error ("Invalid arguments to sub", tm))
   | "string_of_chars", [ char_list ] ->
-    let%bind char_list = eval_ctx ctx char_list in
     (match char_list with
     | Operator (info, "list", chars) ->
       chars
@@ -727,34 +724,31 @@ and eval_primitive eval_ctx eval_ctx' ctx tm name args =
       |> Result.map_error ~f:(fun msg -> msg, tm)
     | _ -> Error ("expected a list of characters", tm))
   | "var", [ str_tm ] ->
-    let%bind str = eval_ctx ctx str_tm in
-    (match str with
+    (match str_tm with
     | Primitive (info, String name) -> Ok (Nominal.Term.Var (info, name))
     | _ -> Error ("expected a string", tm))
-  | "is_digit", [ Term c ] ->
-    eval_char_bool_fn eval_ctx' "is_digit" Char.is_digit ctx tm c
-  | "is_lowercase", [ Term c ] ->
-    eval_char_bool_fn eval_ctx' "is_lowercase" Char.is_lowercase ctx tm c
-  | "is_uppercase", [ Term c ] ->
-    eval_char_bool_fn eval_ctx' "is_uppercase" Char.is_uppercase ctx tm c
-  | "is_alpha", [ Term c ] ->
-    eval_char_bool_fn eval_ctx' "is_alpha" Char.is_alpha ctx tm c
-  | "is_alphanum", [ Term c ] ->
-    eval_char_bool_fn eval_ctx' "is_alphanum" Char.is_alphanum ctx tm c
-  | "is_whitespace", [ Term c ] ->
-    eval_char_bool_fn eval_ctx' "is_whitespace" Char.is_whitespace ctx tm c
+  | "is_digit", [ c ] ->
+    eval_char_bool_fn eval_nominal_in_ctx "is_digit" Char.is_digit ctx tm c
+  | "is_lowercase", [ c ] ->
+    eval_char_bool_fn eval_nominal_in_ctx "is_lowercase" Char.is_lowercase ctx tm c
+  | "is_uppercase", [ c ] ->
+    eval_char_bool_fn eval_nominal_in_ctx "is_uppercase" Char.is_uppercase ctx tm c
+  | "is_alpha", [ c ] ->
+    eval_char_bool_fn eval_nominal_in_ctx "is_alpha" Char.is_alpha ctx tm c
+  | "is_alphanum", [ c ] ->
+    eval_char_bool_fn eval_nominal_in_ctx "is_alphanum" Char.is_alphanum ctx tm c
+  | "is_whitespace", [ c ] ->
+    eval_char_bool_fn eval_nominal_in_ctx "is_whitespace" Char.is_whitespace ctx tm c
   | _ ->
     failwith
       (Fmt.str
          "Unknown function (%s), or wrong number of arguments (got [%a])"
          name
-         Fmt.(list Term.pp)
+         Fmt.(list Nominal.Term.pp)
          args)
 ;;
 
-let eval : 'a Term.t -> ('a Nominal.Term.t, 'a eval_error) Result.t =
- fun core -> eval_ctx SMap.empty core
-;;
+let eval core = eval_in_ctx SMap.empty core
 
 let%test_module "Parsing" =
   (module struct
