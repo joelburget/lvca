@@ -745,10 +745,11 @@ and eval_primitive eval_ctx eval_ctx' ctx tm name args =
     eval_char_bool_fn eval_ctx' "is_whitespace" Char.is_whitespace ctx tm c
   | _ ->
     failwith
-      (Printf.sprintf
-         "Unknown function (%s), or wrong number of arguments (%n)"
+      (Fmt.str
+         "Unknown function (%s), or wrong number of arguments (got [%a])"
          name
-         (List.length args))
+         Fmt.(list Term.pp)
+         args)
 ;;
 
 let eval : 'a Term.t -> ('a Nominal.Term.t, 'a eval_error) Result.t =
