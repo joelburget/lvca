@@ -5,4 +5,4 @@
  (libraries lvca_parsing lvca_syntax)
  (wrapped false)
  (preprocess
-  (pps ppx_jane)))
+  (pps ppx_jane ppx_lvca)))

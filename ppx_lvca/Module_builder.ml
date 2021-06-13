@@ -362,7 +362,21 @@ module Helpers (Context : Builder_context) = struct
     else (
       match Map.find mutual_sorts sort_name with
       | Some (Syn.Sort_def.Sort_def (vars, _op_defs)) ->
-        assert (List.(Int.(length vars = length sort_args)));
+        (if List.(Int.(length vars <> length sort_args))
+        then
+          Location.Error.(
+            raise
+              (make
+                 ~loc
+                 ~sub:[]
+                 Fmt.(
+                   str
+                     "mismatched vars ([%a]) and args ([%a]) to sort %s"
+                     (list ~sep:comma string)
+                     (List.map vars ~f:fst)
+                     (list ~sep:comma Sort.pp)
+                     sort_args
+                     sort_name))));
         Mutual_sort
       | None -> Predefined_sort { prim = Set.mem prim_names sort_name; info })
   ;;
