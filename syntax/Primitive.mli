@@ -56,35 +56,27 @@ module String : sig
        and module Plain := Plain
 end
 
-module Plain : sig
-  type t = Primitive_impl.Plain.t =
-    | Integer of Z.t
-    | Int32 of int32
-    | String of string
-    | Float of float
-    | Char of char
-end
+module All : sig
+  module Plain : sig
+    type t = Primitive_impl.Plain.t
+    (* TODO: would be nice to include this but I can't get the equality to work out.
+      | Integer of Z.t
+      | Int32 of int32
+      | String of string
+      | Float of float
+      | Char of char
+      *)
+  end
 
-type 'info t = 'info * Plain.t
+  include
+    Language_object_intf.Extended_s
+      with type 'info t = 'info * Plain.t
+       and module Plain := Plain
 
-val to_plain : _ t -> Plain.t
-val of_plain : Plain.t -> unit t
-val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
-val info : 'info t -> 'info
-val map_info : f:('a -> 'b) -> 'a t -> 'b t
-val erase : _ t -> unit t
-val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
-val pp : _ t Fmt.t
+  val check : _ t -> 'info Sort.t -> string option
 
-module Parse : sig
-  val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
-end
-
-val check : _ t -> 'info Sort.t -> string option
-val jsonify : _ t -> Lvca_util.Json.t
-val unjsonify : Lvca_util.Json.t -> unit t option
-
-module Properties : sig
-  include Properties_intf.Parse_pretty_s with type 'info t := 'info t
-  include Properties_intf.Json_s with type 'info t := 'info t
+  module Properties : sig
+    include Properties_intf.Parse_pretty_s with type 'info t := 'info t
+    include Properties_intf.Json_s with type 'info t := 'info t
+  end
 end

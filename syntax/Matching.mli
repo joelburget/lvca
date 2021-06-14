@@ -32,7 +32,7 @@ val pp_instruction : binding_instruction Fmt.t
 type ('info, 'rhs) decision_tree =
   | Operator_cases of
       ('info, 'rhs) decision_tree String.Map.t * ('info, 'rhs) decision_tree option
-  | Prim_cases of ('info Primitive.t option * ('info, 'rhs) decision_tree) list
+  | Prim_cases of ('info Primitive.All.t option * ('info, 'rhs) decision_tree) list
   | Matched of binding_instruction list * 'rhs
   | Swap of int * ('info, 'rhs) decision_tree
 

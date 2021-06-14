@@ -662,9 +662,9 @@ let rec match_pattern v pat =
       | Unequal_lengths -> None)
     else None
   | Primitive l1, Primitive l2 ->
-    let l1 = Primitive.erase l1 in
-    let l2 = Primitive.erase l2 in
-    if Primitive.(equal ~info_eq:Unit.( = ) l1 l2) then Some SMap.empty else None
+    let l1 = Primitive.All.erase l1 in
+    let l2 = Primitive.All.erase l2 in
+    if Primitive.All.(equal ~info_eq:Unit.( = ) l1 l2) then Some SMap.empty else None
   | _, Ignored _ -> Some SMap.empty
   | tm, Var (_, v) -> Some (SMap.of_alist_exn [ v, tm ])
   | _ -> None

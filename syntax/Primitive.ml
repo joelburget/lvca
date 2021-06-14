@@ -1,4 +1,17 @@
-include Primitive_impl
+module All_kernel = struct
+  include Primitive_impl
+
+  let to_nominal (info, x) = Nominal.Term.Primitive (info, x)
+
+  let of_nominal tm =
+    match tm with Nominal.Term.Primitive (info, x) -> Ok (info, x) | _ -> Error tm
+  ;;
+end
+
+module All = struct
+  include All_kernel
+  include Language_object.Extend (All_kernel)
+end
 
 module Integer_kernel = struct
   include Primitive_impl.Integer

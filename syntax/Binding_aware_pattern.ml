@@ -43,7 +43,7 @@ end
 
 type 'info t =
   | Operator of 'info * string * 'info scope list
-  | Primitive of 'info Primitive.t
+  | Primitive of 'info Primitive.All.t
   | Var of 'info * string
   | Ignored of 'info * string
 
@@ -61,7 +61,7 @@ let rec equal ~info_eq t1 t2 =
     info_eq i1 i2
     && String.(name1 = name2)
     && List.equal (scope_eq ~info_eq) scopes1 scopes2
-  | Primitive p1, Primitive p2 -> Primitive.equal ~info_eq p1 p2
+  | Primitive p1, Primitive p2 -> Primitive.All.equal ~info_eq p1 p2
   | Var (i1, name1), Var (i2, name2) | Ignored (i1, name1), Ignored (i2, name2) ->
     info_eq i1 i2 && String.(name1 = name2)
   | _, _ -> false
@@ -104,7 +104,7 @@ and list_vars_of_scope (Scope (names, pat)) =
 let rec map_info ~f = function
   | Operator (info, tag, subpats) ->
     Operator (f info, tag, subpats |> List.map ~f:(scope_map_info ~f))
-  | Primitive prim -> Primitive (Primitive.map_info ~f prim)
+  | Primitive prim -> Primitive (Primitive.All.map_info ~f prim)
   | Var (info, name) -> Var (f info, name)
   | Ignored (info, name) -> Ignored (f info, name)
 
@@ -116,7 +116,7 @@ let erase pat = map_info ~f:(fun _ -> ()) pat
 
 let info = function
   | Operator (i, _, _) | Var (i, _) | Ignored (i, _) -> i
-  | Primitive prim -> Primitive.info prim
+  | Primitive prim -> Primitive.All.info prim
 ;;
 
 let any, list, string, semi, pf = Fmt.(any, list, string, semi, pf)
@@ -134,7 +134,7 @@ let rec pp_generic ~open_loc ~close_loc ppf tm =
   | Var (_, v) -> string ppf v
   | Ignored (_, v) -> pf ppf "_%a" string v
   | Primitive p ->
-    Primitive.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p);
+    Primitive.All.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p);
   close_loc ppf (info tm)
 
 and pp_scope_generic ~open_loc ~close_loc ppf (Scope (bindings, body)) =
@@ -166,7 +166,7 @@ let rec match_term ~info_eq pat tm =
   | Ignored _, _ -> Some SMap.empty
   | Var (_, name), tm -> Some (SMap.singleton name (Capture.Term tm))
   | Primitive p1, Term.Primitive p2 ->
-    if Primitive.equal ~info_eq p1 p2 then Some SMap.empty else None
+    if Primitive.All.equal ~info_eq p1 p2 then Some SMap.empty else None
   | Operator (_, name1, pat_scopes), Operator (_, name2, tm_scopes) ->
     if String.(name1 = name2)
     then (
@@ -329,7 +329,7 @@ module Parse = struct
           | Some binders -> return (Scope (binders, pat))
         in
         choice
-          [ (Primitive.Parse.t >>| fun prim -> Primitive prim)
+          [ (Primitive.All.Parse.t >>| fun prim -> Primitive prim)
           ; (identifier
             >>== fun { value = ident; range = ident_range } ->
             choice
@@ -502,7 +502,7 @@ test := foo(term[term]. term)
       let sort = parse_sort sort_str |> Result.ok_or_failwith in
       let pat = parse_pattern pat_str in
       let pp ppf pat = Fmt.pf ppf "pattern: %a" pp pat in
-      match check Primitive.check language sort pat with
+      match check Primitive.All.check language sort pat with
       | Error failure -> Fmt.epr "%a" (Check_failure.pp pp) failure
       | Ok capture_types ->
         capture_types

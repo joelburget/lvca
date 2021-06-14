@@ -29,7 +29,7 @@ let pp_instruction ppf = function
 type ('info, 'rhs) decision_tree =
   | Operator_cases of
       ('info, 'rhs) decision_tree SMap.t * ('info, 'rhs) decision_tree option
-  | Prim_cases of ('info Primitive.t option * ('info, 'rhs) decision_tree) list
+  | Prim_cases of ('info Primitive.All.t option * ('info, 'rhs) decision_tree) list
   | Matched of binding_instruction list * 'rhs
   | Swap of int * ('info, 'rhs) decision_tree
 
@@ -73,7 +73,7 @@ let rec match_pattern tm pat =
       else invariant_violation ~here:[%here] "mismatched subterms / patterns"
     else None
   | Primitive pl, Primitive pr ->
-    if Primitive.equal ~info_eq:(fun _ _ -> true) pl pr then Some SMap.empty else None
+    if Primitive.All.equal ~info_eq:(fun _ _ -> true) pl pr then Some SMap.empty else None
   | _, Ignored _ -> Some SMap.empty
   | _, Var (_, name) -> Some (SMap.singleton name tm)
   | _, _ -> None
@@ -443,7 +443,7 @@ let run_matches tms tree =
         branches
         |> List.find ~f:(fun (prim', _) ->
                match prim' with
-               | Some prim' -> Primitive.equal ~info_eq:(fun _ _ -> true) prim prim'
+               | Some prim' -> Primitive.All.equal ~info_eq:(fun _ _ -> true) prim prim'
                | None -> true)
       in
       (match found with

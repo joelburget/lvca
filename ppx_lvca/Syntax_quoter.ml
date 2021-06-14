@@ -32,17 +32,22 @@ module Exp = struct
   ;;
 
   let prim ~loc = function
-    | pos, Lvca_syntax.Primitive.Plain.Integer i ->
+    | pos, Primitive_impl.Plain.Integer i ->
       [%expr
-        [%e opt_range ~loc pos], Lvca_syntax.Primitive.Plain.Integer [%e bigint ~loc i]]
-    | pos, Lvca_syntax.Primitive.Plain.Int32 i ->
-      [%expr [%e opt_range ~loc pos], Lvca_syntax.Primitive.Plain.Int32 [%e int32 ~loc i]]
+        [%e opt_range ~loc pos]
+        , Lvca_syntax.Primitive_impl.Plain.Integer [%e bigint ~loc i]]
+    | pos, Primitive_impl.Plain.Int32 i ->
+      [%expr
+        [%e opt_range ~loc pos], Lvca_syntax.Primitive_impl.Plain.Int32 [%e int32 ~loc i]]
     | pos, String s ->
-      [%expr [%e opt_range ~loc pos], Lvca_syntax.Primitive.Plain.String [%e str ~loc s]]
+      [%expr
+        [%e opt_range ~loc pos], Lvca_syntax.Primitive_impl.Plain.String [%e str ~loc s]]
     | pos, Float f ->
-      [%expr [%e opt_range ~loc pos], Lvca_syntax.Primitive.Plain.Float [%e float ~loc f]]
+      [%expr
+        [%e opt_range ~loc pos], Lvca_syntax.Primitive_impl.Plain.Float [%e float ~loc f]]
     | pos, Char c ->
-      [%expr [%e opt_range ~loc pos], Lvca_syntax.Primitive.Plain.Char [%e char ~loc c]]
+      [%expr
+        [%e opt_range ~loc pos], Lvca_syntax.Primitive_impl.Plain.Char [%e char ~loc c]]
   ;;
 
   let rec pattern ~loc = function

@@ -6,7 +6,7 @@ type 'info term =
   | Operator of 'info * string * 'info scope list
   | BoundVar of 'info * int * int
   | FreeVar of 'info * string
-  | Primitive of 'info Primitive.t
+  | Primitive of 'info Primitive.All.t
 
 and 'info scope = Scope of 'info Pattern.t list * 'info term
 

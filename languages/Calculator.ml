@@ -22,7 +22,7 @@ module Parse = struct
     >>|| fun { value = lit; range } ->
     let lit =
       match lit with
-      | Either.First str -> range, Primitive.Plain.Integer (Z.of_string str)
+      | Either.First str -> range, Primitive_impl.Plain.Integer (Z.of_string str)
       | Either.Second f -> range, Float f
     in
     let tm = Nonbinding.Operator (range, "lit", [ Primitive lit ]) in

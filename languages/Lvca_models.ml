@@ -37,7 +37,10 @@ term :=
   | Primitive(primitive)
 |}]
 
-(* module Nonbinding_model = Mk_nonbinding_model (Primitive.String) (Primitive) (List) *)
+(*
+module Nonbinding_model =
+  Mk_nonbinding_model (Primitive.String) (Primitive.All) (List_model.List)
+*)
 
 module Mk_pattern_model =
 [%lvca.abstract_syntax_module

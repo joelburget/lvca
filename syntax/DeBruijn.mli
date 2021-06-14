@@ -3,7 +3,7 @@ type 'info term =
   | Operator of 'info * string * ('info scope, 'info term) Base.Either.t list
   | BoundVar of 'info * int
   | FreeVar of 'info * string
-  | Primitive of 'info Primitive.t
+  | Primitive of 'info Primitive.All.t
 
 and 'info scope = Scope of 'info * string * 'info term
 

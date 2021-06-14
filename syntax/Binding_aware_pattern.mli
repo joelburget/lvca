@@ -7,7 +7,7 @@ open Lvca_util
 
 type 'info t =
   | Operator of 'info * string * 'info scope list
-  | Primitive of 'info Primitive.t
+  | Primitive of 'info Primitive.All.t
   | Var of 'info * string
   | Ignored of 'info * string
 
@@ -96,7 +96,7 @@ val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
      }
     } *)
 val check
-  :  ('info Primitive.t -> 'info Sort.t -> string option) (** Primitive checker *)
+  :  ('info Primitive.All.t -> 'info Sort.t -> string option) (** Primitive checker *)
   -> 'info Abstract_syntax.t (** Abstract syntax *)
   -> 'info Sort.t (** Sort to check pattern against *)
   -> 'info t

@@ -7,7 +7,7 @@ module Kernel = struct
     | Operator of 'info * string * ('info scope, 'info term) Either.t list
     | BoundVar of 'info * int
     | FreeVar of 'info * string
-    | Primitive of 'info Primitive.t
+    | Primitive of 'info Primitive.All.t
 
   and 'info scope = Scope of 'info * string * 'info term
 
@@ -22,7 +22,7 @@ module Kernel = struct
       Operator (f i, name, subtms)
     | BoundVar (i, n) -> BoundVar (f i, n)
     | FreeVar (i, n) -> FreeVar (f i, n)
-    | Primitive p -> Primitive (Primitive.map_info ~f p)
+    | Primitive p -> Primitive (Primitive.All.map_info ~f p)
 
   and scope_map_info ~f (Scope (i, name, tm)) = Scope (f i, name, map_info ~f tm)
 
@@ -117,7 +117,10 @@ module Kernel = struct
     | BoundVar (_, i1), BoundVar (_, i2) -> i1 = i2
     | FreeVar (_, name1), FreeVar (_, name2) -> String.(name1 = name2)
     | Primitive p1, Primitive p2 ->
-      Primitive.equal ~info_eq:Unit.( = ) (Primitive.erase p1) (Primitive.erase p2)
+      Primitive.All.equal
+        ~info_eq:Unit.( = )
+        (Primitive.All.erase p1)
+        (Primitive.All.erase p2)
     | _, _ -> false
   ;;
 

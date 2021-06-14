@@ -69,14 +69,14 @@ module View = struct
   let rec view_pat = function
     | Pattern.Var (_, name) -> txt name
     | Ignored (_, name) -> txt ("_" ^ name)
-    | Primitive prim -> txt (Fmt.to_to_string Primitive.pp prim)
+    | Primitive prim -> txt (Fmt.to_to_string Primitive.All.pp prim)
     | Operator (_, name, pats) ->
       div [ txt name; div (List.map pats ~f:(fun pat -> div [ view_pat pat ])) ]
   ;;
 
   let rec view_term = function
     | Nominal.Term.Var (_, name) -> txt name
-    | Primitive prim -> txt (Fmt.to_to_string Primitive.pp prim)
+    | Primitive prim -> txt (Fmt.to_to_string Primitive.All.pp prim)
     | Operator (_, name, scopes) -> div [ txt name; div (List.map scopes ~f:view_scope) ]
 
   and view_scope (Nominal.Scope.Scope (pats, tm)) =

@@ -6,7 +6,7 @@ type 'info term =
   | Operator of 'info * string * 'info scope list
   | BoundVar of 'info * int * int
   | FreeVar of 'info * string
-  | Primitive of 'info Primitive.t
+  | Primitive of 'info Primitive.All.t
 
 and 'info scope = Scope of 'info Pattern.t list * 'info term
 
@@ -83,7 +83,10 @@ let rec alpha_equivalent t1 t2 =
   | BoundVar (_, i1, j1), BoundVar (_, i2, j2) -> Int.(i1 = i2 && j1 = j2)
   | FreeVar (_, name1), FreeVar (_, name2) -> String.(name1 = name2)
   | Primitive p1, Primitive p2 ->
-    Primitive.equal ~info_eq:Unit.( = ) (Primitive.erase p1) (Primitive.erase p2)
+    Primitive.All.equal
+      ~info_eq:Unit.( = )
+      (Primitive.All.erase p1)
+      (Primitive.All.erase p2)
   | _, _ -> false
 ;;
 

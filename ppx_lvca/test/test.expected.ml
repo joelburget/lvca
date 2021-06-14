@@ -24,7 +24,7 @@ let test_nonbinding =
               ((Some
                   ((let open Lvca_provenance.Range in
                       { start = 8; finish = 9 }))),
-                (Lvca_syntax.Primitive.Plain.Integer (Z.of_string "1")))])])
+                (Lvca_syntax.Primitive_impl.Plain.Integer (Z.of_string "1")))])])
 let test_pattern =
   Pattern.Operator
     ((Some (let open Lvca_provenance.Range in { start = 0; finish = 6 })),

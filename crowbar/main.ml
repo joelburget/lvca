@@ -32,15 +32,14 @@ let (lazy json_gen) = json_gen
 
 (* primitive *)
 
-let prim_gen : unit Primitive.t Crowbar.gen =
+let prim_gen : unit Primitive.All.t Crowbar.gen =
   let open Crowbar in
-  let open Primitive in
   let options =
-    [ map [ int ] (fun i -> (), Plain.Integer (Z.of_int i))
+    [ map [ int ] (fun i -> (), Primitive_impl.Plain.Integer (Z.of_int i))
       (* TODO: string and float parsing has a couple issues *)
-    ; map [ str_gen ] (fun str -> (), Plain.String str)
+    ; map [ str_gen ] (fun str -> (), Primitive_impl.Plain.String str)
       (* ; map [float] (fun f -> PrimFloat f) *)
-    ; map [ char ] (fun c -> (), Plain.Char c)
+    ; map [ char ] (fun c -> (), Primitive_impl.Plain.Char c)
     ]
   in
   choose options
@@ -181,22 +180,22 @@ let () =
   add_test
     ~name:"Primitive json_round_trip1"
     ~gen:prim_gen
-    ~f:Primitive.Properties.json_round_trip1;
+    ~f:Primitive.All.Properties.json_round_trip1;
   (* 1 *)
   add_test
     ~name:"Primitive json_round_trip2"
     ~gen:json_gen
-    ~f:Primitive.Properties.json_round_trip2;
+    ~f:Primitive.All.Properties.json_round_trip2;
   (* 2 *)
   add_test
     ~name:"Primitive string_round_trip1"
     ~gen:prim_gen
-    ~f:Primitive.Properties.string_round_trip1;
+    ~f:Primitive.All.Properties.string_round_trip1;
   (* 3 *)
   add_test
     ~name:"Primitive string_round_trip2"
     ~gen:nonempty_str_gen
-    ~f:Primitive.Properties.string_round_trip2;
+    ~f:Primitive.All.Properties.string_round_trip2;
   (* (* 4 *) (* TODO: failing *) add_test ~name:"Nominal json_round_trip1"
      ~gen:nominal_gen ~f:Nominal.Properties.json_round_trip1; *)
 

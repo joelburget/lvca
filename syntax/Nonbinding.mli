@@ -5,7 +5,7 @@ open Lvca_util
     and allows conversion to / from binding types. *)
 type 'info term =
   | Operator of 'info * string * 'info term list
-  | Primitive of 'info Primitive.t
+  | Primitive of 'info Primitive.All.t
 
 val equal : info_eq:('info -> 'info -> bool) -> 'info term -> 'info term -> bool
 
