@@ -178,56 +178,6 @@ module Lang =
                 | Plain.Z -> Types.Z ()
                 | Plain.S x1 -> Types.S ((), (nat x1))
             end
-          module Equal =
-            struct
-              let nonempty ~info_eq  t1 t2 =
-                match (t1, t2) with
-                | (Types.Nonempty (x0, x1, x2), Types.Nonempty (y0, y1, y2))
-                    ->
-                    (info_eq x0 y0) &&
-                      ((String.equal ~info_eq x1 y1) &&
-                         (List.equal ~info_eq x2 y2))
-              let pair f_a f_b ~info_eq  t1 t2 =
-                match (t1, t2) with
-                | (Types.Pair (x0, x1, x2), Types.Pair (y0, y1, y2)) ->
-                    (info_eq x0 y0) &&
-                      ((f_a ~info_eq x1 y1) && (f_b ~info_eq x2 y2))
-              let rec foo ~info_eq  t1 t2 =
-                match (t1, t2) with
-                | (Types.Foo (x0, x1), Types.Foo (y0, y1)) ->
-                    (info_eq x0 y0) && (Integer.equal ~info_eq x1 y1)
-                | (Types.Bar (x0, (x1, x2, x3)), Types.Bar
-                   (y0, (y1, y2, y3))) ->
-                    (info_eq x0 y0) &&
-                      ((Pattern.equal ~info_eq x1 y1) &&
-                         ((Base.String.(=) x2 y2) && (foo ~info_eq x3 y3)))
-                | (_, _) -> false
-              let pair_plus f_a f_b ~info_eq  t1 t2 =
-                match (t1, t2) with
-                | (Types.PairPlus (x0, x1, x2, x3), Types.PairPlus
-                   (y0, y1, y2, y3)) ->
-                    (info_eq x0 y0) &&
-                      ((f_a ~info_eq x1 y1) &&
-                         ((f_b ~info_eq x2 y2) && (foo ~info_eq x3 y3)))
-              let term ~info_eq  t1 t2 =
-                match (t1, t2) with
-                | (Types.Operator (x0, x1), Types.Operator (y0, y1)) ->
-                    (info_eq x0 y0) && (List.equal ~info_eq x1 y1)
-              let rec mut_a ~info_eq  t1 t2 =
-                match (t1, t2) with
-                | (Types.Mut_a (x0, x1), Types.Mut_a (y0, y1)) ->
-                    (info_eq x0 y0) && (mut_b ~info_eq x1 y1)
-              and mut_b ~info_eq  t1 t2 =
-                match (t1, t2) with
-                | (Types.Mut_b (x0, x1), Types.Mut_b (y0, y1)) ->
-                    (info_eq x0 y0) && (mut_a ~info_eq x1 y1)
-              let rec nat ~info_eq  t1 t2 =
-                match (t1, t2) with
-                | (Types.Z x0, Types.Z y0) -> info_eq x0 y0
-                | (Types.S (x0, x1), Types.S (y0, y1)) ->
-                    (info_eq x0 y0) && (nat ~info_eq x1 y1)
-                | (_, _) -> false
-            end
           module Map_info =
             struct
               let nonempty ~f  =
@@ -425,138 +375,146 @@ module Lang =
       module Plain = Wrapper.Plain
       module Foo =
         struct
-          type 'info t = 'info Wrapper.Types.foo
-          module Plain = struct type t = Wrapper.Plain.foo end
-          let info tm = Wrapper.Info.foo tm
-          let to_plain tm = Wrapper.To_plain.foo tm
-          let of_plain tm = Wrapper.Of_plain.foo tm
-          let equal ~info_eq  tm = Wrapper.Equal.foo ~info_eq tm
-          let map_info ~f  tm = Wrapper.Map_info.foo ~f tm
-          let to_nominal tm = Wrapper.To_nominal.foo tm
-          let of_nominal tm = Wrapper.Of_nominal.foo tm
-          let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
-            Fmt.pf ppf "TODO: pp_generic"
-          module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
+          module Kernel =
+            struct
+              type 'info t = 'info Wrapper.Types.foo
+              module Plain = struct type t = Wrapper.Plain.foo end
+              let info tm = Wrapper.Info.foo tm
+              let to_plain tm = Wrapper.To_plain.foo tm
+              let of_plain tm = Wrapper.Of_plain.foo tm
+              let map_info ~f  tm = Wrapper.Map_info.foo ~f tm
+              let to_nominal tm = Wrapper.To_nominal.foo tm
+              let of_nominal tm = Wrapper.Of_nominal.foo tm
+            end
+          include Kernel
+          include (Language_object.Extend)(Kernel)
         end
       module Nat =
         struct
-          type 'info t = 'info Wrapper.Types.nat
-          module Plain = struct type t = Wrapper.Plain.nat end
-          let info tm = Wrapper.Info.nat tm
-          let to_plain tm = Wrapper.To_plain.nat tm
-          let of_plain tm = Wrapper.Of_plain.nat tm
-          let equal ~info_eq  tm = Wrapper.Equal.nat ~info_eq tm
-          let map_info ~f  tm = Wrapper.Map_info.nat ~f tm
-          let to_nominal tm = Wrapper.To_nominal.nat tm
-          let of_nominal tm = Wrapper.Of_nominal.nat tm
-          let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
-            Fmt.pf ppf "TODO: pp_generic"
-          module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
+          module Kernel =
+            struct
+              type 'info t = 'info Wrapper.Types.nat
+              module Plain = struct type t = Wrapper.Plain.nat end
+              let info tm = Wrapper.Info.nat tm
+              let to_plain tm = Wrapper.To_plain.nat tm
+              let of_plain tm = Wrapper.Of_plain.nat tm
+              let map_info ~f  tm = Wrapper.Map_info.nat ~f tm
+              let to_nominal tm = Wrapper.To_nominal.nat tm
+              let of_nominal tm = Wrapper.Of_nominal.nat tm
+            end
+          include Kernel
+          include (Language_object.Extend)(Kernel)
         end
       module Pair(A:Language_object_intf.Extended_s)(B:Language_object_intf.Extended_s) =
         struct
-          type 'info t = ('info, 'info A.t, 'info B.t) Wrapper.Types.pair
-          module Plain =
-            struct type t = (A.Plain.t, B.Plain.t) Wrapper.Plain.pair end
-          let info tm = Wrapper.Info.pair A.info B.info tm
-          let to_plain tm = Wrapper.To_plain.pair A.to_plain B.to_plain tm
-          let of_plain tm = Wrapper.Of_plain.pair A.of_plain B.of_plain tm
-          let equal ~info_eq  tm =
-            Wrapper.Equal.pair A.equal B.equal ~info_eq tm
-          let map_info ~f  tm =
-            Wrapper.Map_info.pair A.map_info B.map_info ~f tm
-          let to_nominal tm =
-            Wrapper.To_nominal.pair A.to_nominal B.to_nominal tm
-          let of_nominal tm =
-            Wrapper.Of_nominal.pair A.of_nominal B.of_nominal tm
-          let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
-            Fmt.pf ppf "TODO: pp_generic"
-          module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
+          module Kernel =
+            struct
+              type 'info t = ('info, 'info A.t, 'info B.t) Wrapper.Types.pair
+              module Plain =
+                struct type t = (A.Plain.t, B.Plain.t) Wrapper.Plain.pair end
+              let info tm = Wrapper.Info.pair A.info B.info tm
+              let to_plain tm =
+                Wrapper.To_plain.pair A.to_plain B.to_plain tm
+              let of_plain tm =
+                Wrapper.Of_plain.pair A.of_plain B.of_plain tm
+              let map_info ~f  tm =
+                Wrapper.Map_info.pair A.map_info B.map_info ~f tm
+              let to_nominal tm =
+                Wrapper.To_nominal.pair A.to_nominal B.to_nominal tm
+              let of_nominal tm =
+                Wrapper.Of_nominal.pair A.of_nominal B.of_nominal tm
+            end
+          include Kernel
+          include (Language_object.Extend)(Kernel)
         end
       module Pair_plus(A:Language_object_intf.Extended_s)(B:Language_object_intf.Extended_s) =
         struct
-          type 'info t =
-            ('info, 'info A.t, 'info B.t) Wrapper.Types.pair_plus
-          module Plain =
+          module Kernel =
             struct
-              type t = (A.Plain.t, B.Plain.t) Wrapper.Plain.pair_plus
+              type 'info t =
+                ('info, 'info A.t, 'info B.t) Wrapper.Types.pair_plus
+              module Plain =
+                struct
+                  type t = (A.Plain.t, B.Plain.t) Wrapper.Plain.pair_plus
+                end
+              let info tm = Wrapper.Info.pair_plus A.info B.info tm
+              let to_plain tm =
+                Wrapper.To_plain.pair_plus A.to_plain B.to_plain tm
+              let of_plain tm =
+                Wrapper.Of_plain.pair_plus A.of_plain B.of_plain tm
+              let map_info ~f  tm =
+                Wrapper.Map_info.pair_plus A.map_info B.map_info ~f tm
+              let to_nominal tm =
+                Wrapper.To_nominal.pair_plus A.to_nominal B.to_nominal tm
+              let of_nominal tm =
+                Wrapper.Of_nominal.pair_plus A.of_nominal B.of_nominal tm
             end
-          let info tm = Wrapper.Info.pair_plus A.info B.info tm
-          let to_plain tm =
-            Wrapper.To_plain.pair_plus A.to_plain B.to_plain tm
-          let of_plain tm =
-            Wrapper.Of_plain.pair_plus A.of_plain B.of_plain tm
-          let equal ~info_eq  tm =
-            Wrapper.Equal.pair_plus A.equal B.equal ~info_eq tm
-          let map_info ~f  tm =
-            Wrapper.Map_info.pair_plus A.map_info B.map_info ~f tm
-          let to_nominal tm =
-            Wrapper.To_nominal.pair_plus A.to_nominal B.to_nominal tm
-          let of_nominal tm =
-            Wrapper.Of_nominal.pair_plus A.of_nominal B.of_nominal tm
-          let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
-            Fmt.pf ppf "TODO: pp_generic"
-          module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
+          include Kernel
+          include (Language_object.Extend)(Kernel)
         end
       module Nonempty =
         struct
-          type 'info t = 'info Wrapper.Types.nonempty
-          module Plain = struct type t = Wrapper.Plain.nonempty end
-          let info tm = Wrapper.Info.nonempty tm
-          let to_plain tm = Wrapper.To_plain.nonempty tm
-          let of_plain tm = Wrapper.Of_plain.nonempty tm
-          let equal ~info_eq  tm = Wrapper.Equal.nonempty ~info_eq tm
-          let map_info ~f  tm = Wrapper.Map_info.nonempty ~f tm
-          let to_nominal tm = Wrapper.To_nominal.nonempty tm
-          let of_nominal tm = Wrapper.Of_nominal.nonempty tm
-          let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
-            Fmt.pf ppf "TODO: pp_generic"
-          module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
+          module Kernel =
+            struct
+              type 'info t = 'info Wrapper.Types.nonempty
+              module Plain = struct type t = Wrapper.Plain.nonempty end
+              let info tm = Wrapper.Info.nonempty tm
+              let to_plain tm = Wrapper.To_plain.nonempty tm
+              let of_plain tm = Wrapper.Of_plain.nonempty tm
+              let map_info ~f  tm = Wrapper.Map_info.nonempty ~f tm
+              let to_nominal tm = Wrapper.To_nominal.nonempty tm
+              let of_nominal tm = Wrapper.Of_nominal.nonempty tm
+            end
+          include Kernel
+          include (Language_object.Extend)(Kernel)
         end
       module Term =
         struct
-          type 'info t = 'info Wrapper.Types.term
-          module Plain = struct type t = Wrapper.Plain.term end
-          let info tm = Wrapper.Info.term tm
-          let to_plain tm = Wrapper.To_plain.term tm
-          let of_plain tm = Wrapper.Of_plain.term tm
-          let equal ~info_eq  tm = Wrapper.Equal.term ~info_eq tm
-          let map_info ~f  tm = Wrapper.Map_info.term ~f tm
-          let to_nominal tm = Wrapper.To_nominal.term tm
-          let of_nominal tm = Wrapper.Of_nominal.term tm
-          let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
-            Fmt.pf ppf "TODO: pp_generic"
-          module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
+          module Kernel =
+            struct
+              type 'info t = 'info Wrapper.Types.term
+              module Plain = struct type t = Wrapper.Plain.term end
+              let info tm = Wrapper.Info.term tm
+              let to_plain tm = Wrapper.To_plain.term tm
+              let of_plain tm = Wrapper.Of_plain.term tm
+              let map_info ~f  tm = Wrapper.Map_info.term ~f tm
+              let to_nominal tm = Wrapper.To_nominal.term tm
+              let of_nominal tm = Wrapper.Of_nominal.term tm
+            end
+          include Kernel
+          include (Language_object.Extend)(Kernel)
         end
       module Mut_a =
         struct
-          type 'info t = 'info Wrapper.Types.mut_a
-          module Plain = struct type t = Wrapper.Plain.mut_a end
-          let info tm = Wrapper.Info.mut_a tm
-          let to_plain tm = Wrapper.To_plain.mut_a tm
-          let of_plain tm = Wrapper.Of_plain.mut_a tm
-          let equal ~info_eq  tm = Wrapper.Equal.mut_a ~info_eq tm
-          let map_info ~f  tm = Wrapper.Map_info.mut_a ~f tm
-          let to_nominal tm = Wrapper.To_nominal.mut_a tm
-          let of_nominal tm = Wrapper.Of_nominal.mut_a tm
-          let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
-            Fmt.pf ppf "TODO: pp_generic"
-          module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
+          module Kernel =
+            struct
+              type 'info t = 'info Wrapper.Types.mut_a
+              module Plain = struct type t = Wrapper.Plain.mut_a end
+              let info tm = Wrapper.Info.mut_a tm
+              let to_plain tm = Wrapper.To_plain.mut_a tm
+              let of_plain tm = Wrapper.Of_plain.mut_a tm
+              let map_info ~f  tm = Wrapper.Map_info.mut_a ~f tm
+              let to_nominal tm = Wrapper.To_nominal.mut_a tm
+              let of_nominal tm = Wrapper.Of_nominal.mut_a tm
+            end
+          include Kernel
+          include (Language_object.Extend)(Kernel)
         end
       module Mut_b =
         struct
-          type 'info t = 'info Wrapper.Types.mut_b
-          module Plain = struct type t = Wrapper.Plain.mut_b end
-          let info tm = Wrapper.Info.mut_b tm
-          let to_plain tm = Wrapper.To_plain.mut_b tm
-          let of_plain tm = Wrapper.Of_plain.mut_b tm
-          let equal ~info_eq  tm = Wrapper.Equal.mut_b ~info_eq tm
-          let map_info ~f  tm = Wrapper.Map_info.mut_b ~f tm
-          let to_nominal tm = Wrapper.To_nominal.mut_b tm
-          let of_nominal tm = Wrapper.Of_nominal.mut_b tm
-          let pp_generic ~open_loc:_  ~close_loc:_  ppf _tm =
-            Fmt.pf ppf "TODO: pp_generic"
-          module Parse = struct let t = Lvca_parsing.fail "TODO: parse" end
+          module Kernel =
+            struct
+              type 'info t = 'info Wrapper.Types.mut_b
+              module Plain = struct type t = Wrapper.Plain.mut_b end
+              let info tm = Wrapper.Info.mut_b tm
+              let to_plain tm = Wrapper.To_plain.mut_b tm
+              let of_plain tm = Wrapper.Of_plain.mut_b tm
+              let map_info ~f  tm = Wrapper.Map_info.mut_b ~f tm
+              let to_nominal tm = Wrapper.To_nominal.mut_b tm
+              let of_nominal tm = Wrapper.Of_nominal.mut_b tm
+            end
+          include Kernel
+          include (Language_object.Extend)(Kernel)
         end
     end :
     functor (Integer : Language_object_intf.Extended_s) ->
@@ -607,33 +565,33 @@ module Lang =
                   | Operator of List.Plain.t 
               end
               module Foo :
-              Language_object_intf.S with type 'info t =  'info Types.foo and
-                type  Plain.t =  Plain.foo
+              Language_object_intf.Extended_s with type 'info t = 
+                'info Types.foo and type  Plain.t =  Plain.foo
               module Nat :
-              Language_object_intf.S with type 'info t =  'info Types.nat and
-                type  Plain.t =  Plain.nat
+              Language_object_intf.Extended_s with type 'info t = 
+                'info Types.nat and type  Plain.t =  Plain.nat
               module Pair :
               functor (A : Language_object_intf.Extended_s) ->
                 functor (B : Language_object_intf.Extended_s) ->
-                  Language_object_intf.S with type 'info t = 
+                  Language_object_intf.Extended_s with type 'info t = 
                     ('info, 'info A.t, 'info B.t) Types.pair and type
                      Plain.t =  (A.Plain.t, B.Plain.t) Plain.pair
               module Pair_plus :
               functor (A : Language_object_intf.Extended_s) ->
                 functor (B : Language_object_intf.Extended_s) ->
-                  Language_object_intf.S with type 'info t = 
+                  Language_object_intf.Extended_s with type 'info t = 
                     ('info, 'info A.t, 'info B.t) Types.pair_plus and type
                      Plain.t =  (A.Plain.t, B.Plain.t) Plain.pair_plus
               module Nonempty :
-              Language_object_intf.S with type 'info t = 
+              Language_object_intf.Extended_s with type 'info t = 
                 'info Types.nonempty and type  Plain.t =  Plain.nonempty
               module Term :
-              Language_object_intf.S with type 'info t =  'info Types.term
-                and type  Plain.t =  Plain.term
+              Language_object_intf.Extended_s with type 'info t = 
+                'info Types.term and type  Plain.t =  Plain.term
               module Mut_a :
-              Language_object_intf.S with type 'info t =  'info Types.mut_a
-                and type  Plain.t =  Plain.mut_a
+              Language_object_intf.Extended_s with type 'info t = 
+                'info Types.mut_a and type  Plain.t =  Plain.mut_a
               module Mut_b :
-              Language_object_intf.S with type 'info t =  'info Types.mut_b
-                and type  Plain.t =  Plain.mut_b
+              Language_object_intf.Extended_s with type 'info t = 
+                'info Types.mut_b and type  Plain.t =  Plain.mut_b
             end)

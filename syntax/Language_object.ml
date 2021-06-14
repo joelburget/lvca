@@ -8,11 +8,13 @@ module Extend (Object : Language_object_intf.S) :
   include Object
 
   let erase tm = Object.map_info ~f:(fun _ -> ()) tm
+  let equal ~info_eq t1 t2 = Nominal.Term.equal ~info_eq (to_nominal t1) (to_nominal t2)
 
-  let pp ppf tm =
-    Object.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
+  let pp_generic ~open_loc ~close_loc ppf tm =
+    Nominal.Term.pp_generic ~open_loc ~close_loc ppf (to_nominal tm)
   ;;
 
+  let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
   let to_string tm = Fmt.to_to_string pp tm
 
   let select_path ~path tm =
@@ -37,7 +39,15 @@ module Extend (Object : Language_object_intf.S) :
   let hash tm = tm |> serialize |> Sha256.hash
 
   module Parse = struct
-    include Parse
+    let t =
+      let open Lvca_parsing in
+      Nominal.Term.Parse.t
+      >>= fun nom ->
+      match of_nominal nom with
+      | Error nom ->
+        fail Fmt.(str "Parse: failed to convert %a from nominal" Nominal.Term.pp nom)
+      | Ok tm -> return tm
+    ;;
 
     let whitespace_t = Lvca_parsing.(whitespace *> t)
   end

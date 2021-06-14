@@ -43,9 +43,6 @@ end
 module type S = sig
   type 'info t
 
-  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
-  (* TODO: should they be comparable as well? *)
-
   (** {1 Plain data} *)
   include Plain_convertible with type 'info t := 'info t
 
@@ -53,18 +50,14 @@ module type S = sig
   include Has_info with type 'info t := 'info t
 
   include Nominal.Convertible_s with type 'info t := 'info t
-
-  (** {1 Printing / Parsing} *)
-  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
-
-  module Parse : sig
-    val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
-  end
 end
 
 (** Helpers derivable from [S] *)
 module type Extended_s = sig
   include S
+
+  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
+  (* TODO: should they be comparable as well? *)
 
   val erase : _ t -> unit t
   val pp : _ t Fmt.t
@@ -77,8 +70,13 @@ module type Extended_s = sig
     -> 'info t
     -> ('info t, (string, 'info Nominal.Term.t) Base.Either.t) Result.t
 
+  (** {1 Serialization} *)
   include Json_convertible with type 'info t := 'info t
+
   include Serializable with type 'info t := 'info t
+
+  (** {1 Printing / Parsing} *)
+  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   module Parse : sig
     val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t

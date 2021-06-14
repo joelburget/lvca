@@ -518,10 +518,6 @@ module Helpers (Context : Builder_context) = struct
     pexp_fun Nolabel None (ppat_var { txt; loc })
   ;;
 
-  let language_object_s =
-    pmty_ident { txt = unflatten [ "Language_object_intf"; "S" ]; loc }
-  ;;
-
   let language_object_extended_s =
     pmty_ident { txt = unflatten [ "Language_object_intf"; "Extended_s" ]; loc }
   ;;
@@ -1150,7 +1146,8 @@ module Wrapper_module (Context : Builder_context) = struct
   module Info = Info (Context)
   module To_plain = To_plain (Context)
   module Of_plain = Of_plain (Context)
-  module Equal = Equal (Context)
+
+  (* module Equal = Equal (Context) *)
   module Map_info = Map_info (Context)
   module To_nominal = To_nominal (Context)
   module Of_nominal = Of_nominal (Context)
@@ -1218,7 +1215,8 @@ module Wrapper_module (Context : Builder_context) = struct
         module Info = [%m pmod_structure (adapt ~definite_rec:Nonrecursive Info.mk)]
         module To_plain = [%m pmod_structure (adapt To_plain.mk)]
         module Of_plain = [%m pmod_structure (adapt Of_plain.mk)]
-        module Equal = [%m pmod_structure (adapt Equal.mk)]
+
+        (* module Equal = [%m pmod_structure (adapt Equal.mk)] *)
         module Map_info = [%m pmod_structure (adapt Map_info.mk)]
         module To_nominal = [%m pmod_structure (adapt To_nominal.mk)]
         module Of_nominal = [%m pmod_structure (adapt Of_nominal.mk)]]
@@ -1289,8 +1287,7 @@ module Individual_type_module (Context : Builder_context) = struct
     let fun_defs =
       [ "info", "Info"
       ; "to_plain", "To_plain"
-      ; "of_plain", "Of_plain"
-      ; "equal", "Equal"
+      ; "of_plain", "Of_plain" (* ; "equal", "Equal" *)
       ; "map_info", "Map_info"
       ; "to_nominal", "To_nominal"
       ; "of_nominal", "Of_nominal"
@@ -1329,26 +1326,12 @@ module Individual_type_module (Context : Builder_context) = struct
              let pat = ppat_var { txt = fun_name; loc } in
              pstr_value Nonrecursive [ value_binding ~pat ~expr ])
     in
-    (* TODO: implement *)
-    let fun_defs =
-      List.append
-        fun_defs
-        [ [%stri
-            let pp_generic ~open_loc:_ ~close_loc:_ ppf _tm =
-              Fmt.pf ppf "TODO: pp_generic"
-            ;;]
-        ; [%stri
-            module Parse = struct
-              let t = Lvca_parsing.fail "TODO: parse"
-            end]
-        ]
-    in
-    let init =
+    let kernel_expr =
       pmod_structure
         (info_type_decl
          :: [%stri module Plain = [%m pmod_structure [ plain_type_decl ]]] :: fun_defs)
     in
-    let f (name, kind_opt) accum =
+    let mk_functor (name, kind_opt) accum =
       match kind_opt with
       | None ->
         (* XXX should do kind inference instead of assuming it's * *)
@@ -1364,8 +1347,27 @@ module Individual_type_module (Context : Builder_context) = struct
         in
         pmod_functor mod_param accum
     in
-    let expr = List.fold_right vars ~init ~f in
-    module_binding ~name:{ txt = Some (module_name sort_name); loc } ~expr |> pstr_module
+    let module_name = module_name sort_name in
+    (*
+      module Foo(A:...) = struct
+        module Foo_kernel = struct ... end
+        include Foo_kernel
+        include Extend (Foo_kernel)
+      end
+    *)
+    let kernel_mod = pmod_ident { txt = Lident "Kernel"; loc } in
+    let extend_mod =
+      pmod_ident { txt = unflatten [ "Language_object"; "Extend" ]; loc }
+    in
+    let init =
+      pmod_structure
+        [ [%stri module Kernel = [%m kernel_expr]]
+        ; pstr_include (include_infos kernel_mod)
+        ; pstr_include (include_infos (pmod_apply extend_mod kernel_mod))
+        ]
+    in
+    let expr = List.fold_right vars ~init ~f:mk_functor in
+    module_binding ~name:{ txt = Some module_name; loc } ~expr |> pstr_module
   ;;
 end
 
@@ -1385,9 +1387,9 @@ module Container_module (Context : Builder_context) = struct
     in
     let sort_def_map = SMap.of_alist_exn sort_defs in
     let type_modules =
-      List.map
-        sort_defs
-        ~f:(Util.Tuple2.uncurry (Individual_type_module.mk ~prim_names ~sort_def_map))
+      sort_defs
+      |> List.map
+           ~f:(Util.Tuple2.uncurry (Individual_type_module.mk ~prim_names ~sort_def_map))
     in
     (* TODO: include language?
   let sort_defs =
@@ -1464,7 +1466,7 @@ module Container_module (Context : Builder_context) = struct
                in
                let init =
                  pmty_with
-                   language_object_s
+                   language_object_extended_s
                    [ Pwith_type ({ txt = Lident "t"; loc }, type_decl)
                    ; Pwith_type
                        ({ txt = unflatten [ "Plain"; "t" ]; loc }, plain_type_decl)
