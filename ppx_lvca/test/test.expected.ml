@@ -1,61 +1,61 @@
 open Lvca_syntax
 let test_nominal =
-  Nominal.Term.Operator
+  Lvca_syntax.Nominal.Term.Operator
     ((Some (let open Lvca_provenance.Range in { start = 0; finish = 9 })),
       "foo",
-      [Nominal.Scope.Scope
-         ([Pattern.Var
+      [Lvca_syntax.Nominal.Scope.Scope
+         ([Lvca_syntax.Pattern.Var
              ((Some
                  ((let open Lvca_provenance.Range in
                      { start = 4; finish = 5 }))), "x")],
-           (Nominal.Term.Var
+           (Lvca_syntax.Nominal.Term.Var
               ((Some
                   ((let open Lvca_provenance.Range in
                       { start = 7; finish = 8 }))), "x")))])
 let test_nonbinding =
-  Nonbinding.Operator
+  Lvca_syntax.Nonbinding.Operator
     ((Some (let open Lvca_provenance.Range in { start = 0; finish = 11 })),
       "foo",
-      [Nonbinding.Operator
+      [Lvca_syntax.Nonbinding.Operator
          ((Some
              ((let open Lvca_provenance.Range in { start = 4; finish = 10 }))),
            "bar",
-           [Nonbinding.Primitive
+           [Lvca_syntax.Nonbinding.Primitive
               ((Some
                   ((let open Lvca_provenance.Range in
                       { start = 8; finish = 9 }))),
                 (Lvca_syntax.Primitive_impl.Plain.Integer (Z.of_string "1")))])])
 let test_pattern =
-  Pattern.Operator
+  Lvca_syntax.Pattern.Operator
     ((Some (let open Lvca_provenance.Range in { start = 0; finish = 6 })),
       "foo",
-      [Pattern.Var
+      [Lvca_syntax.Pattern.Var
          ((Some
              ((let open Lvca_provenance.Range in { start = 4; finish = 5 }))),
            "x")])
 let test_language =
-  let open Abstract_syntax in
+  let open Lvca_syntax.Abstract_syntax in
     {
       externals = [];
       sort_defs =
         [("foo",
-           (Abstract_syntax.Sort_def.Sort_def
+           (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
               ([],
-                [Abstract_syntax.Operator_def.Operator_def
+                [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
                    ("foo",
-                     [Abstract_syntax.Valence.Valence
+                     [Lvca_syntax.Abstract_syntax.Valence.Valence
                         ([],
-                          (Sort.Name
+                          (Lvca_syntax.Sort.Name
                              ((Some
                                  ((let open Lvca_provenance.Range in
                                      { start = 12; finish = 19 }))),
                                "integer")))])])))]
     }
 module Lang =
-  (functor (Integer : Language_object_intf.Extended_s) -> functor (String :
-    Language_object_intf.Extended_s) -> functor (Maybe :
-    Language_object_intf.Extended_s) -> functor (List :
-    Language_object_intf.Extended_s) ->
+  (functor (Integer : Lvca_syntax.Language_object_intf.Extended_s) -> functor
+    (String : Lvca_syntax.Language_object_intf.Extended_s) -> functor (Maybe
+    : Lvca_syntax.Language_object_intf.Extended_s) -> functor (List :
+    Lvca_syntax.Language_object_intf.Extended_s) ->
     struct
       module Wrapper =
         struct
@@ -129,7 +129,8 @@ module Lang =
                 function
                 | Types.Foo (_, x1) -> Plain.Foo (Integer.to_plain x1)
                 | Types.Bar (_, (x1, x2, x3)) ->
-                    Plain.Bar ((Pattern.to_plain x1), x2, (foo x3))
+                    Plain.Bar
+                      ((Lvca_syntax.Pattern.to_plain x1), x2, (foo x3))
               let pair_plus f_a f_b =
                 function
                 | Types.PairPlus (_, x1, x2, x3) ->
@@ -160,7 +161,8 @@ module Lang =
                 function
                 | Plain.Foo x1 -> Types.Foo ((), (Integer.of_plain x1))
                 | Plain.Bar (x1, x2, x3) ->
-                    Types.Bar ((), ((Pattern.of_plain x1), x2, (foo x3)))
+                    Types.Bar
+                      ((), ((Lvca_syntax.Pattern.of_plain x1), x2, (foo x3)))
               let pair_plus f_a f_b =
                 function
                 | Plain.PairPlus (x1, x2, x3) ->
@@ -196,7 +198,9 @@ module Lang =
                     Types.Foo ((f x0), (Integer.map_info ~f x1))
                 | Types.Bar (x0, (x1, x2, x3)) ->
                     Types.Bar
-                      ((f x0), ((Pattern.map_info ~f x1), x2, (foo ~f x3)))
+                      ((f x0),
+                        ((Lvca_syntax.Pattern.map_info ~f x1), x2,
+                          (foo ~f x3)))
               let pair_plus f_a f_b ~f  =
                 function
                 | Types.PairPlus (x0, x1, x2, x3) ->
@@ -222,66 +226,75 @@ module Lang =
               let nonempty =
                 function
                 | Types.Nonempty (x0, x1, x2) ->
-                    Nominal.Term.Operator
+                    Lvca_syntax.Nominal.Term.Operator
                       (x0, "Nonempty",
-                        [Nominal.Scope.Scope ([], (String.to_nominal x1));
-                        Nominal.Scope.Scope ([], (List.to_nominal x2))])
+                        [Lvca_syntax.Nominal.Scope.Scope
+                           ([], (String.to_nominal x1));
+                        Lvca_syntax.Nominal.Scope.Scope
+                          ([], (List.to_nominal x2))])
               let pair f_a f_b =
                 function
                 | Types.Pair (x0, x1, x2) ->
-                    Nominal.Term.Operator
+                    Lvca_syntax.Nominal.Term.Operator
                       (x0, "Pair",
-                        [Nominal.Scope.Scope ([], (f_a x1));
-                        Nominal.Scope.Scope ([], (f_b x2))])
+                        [Lvca_syntax.Nominal.Scope.Scope ([], (f_a x1));
+                        Lvca_syntax.Nominal.Scope.Scope ([], (f_b x2))])
               let rec foo =
                 function
                 | Types.Foo (x0, x1) ->
-                    Nominal.Term.Operator
+                    Lvca_syntax.Nominal.Term.Operator
                       (x0, "Foo",
-                        [Nominal.Scope.Scope ([], (Integer.to_nominal x1))])
+                        [Lvca_syntax.Nominal.Scope.Scope
+                           ([], (Integer.to_nominal x1))])
                 | Types.Bar (x0, (x1, x2, x3)) ->
-                    Nominal.Term.Operator
+                    Lvca_syntax.Nominal.Term.Operator
                       (x0, "Bar",
-                        [Nominal.Scope.Scope
-                           ([x1; Pattern.Var (x0, x2)], (foo x3))])
+                        [Lvca_syntax.Nominal.Scope.Scope
+                           ([x1; Lvca_syntax.Pattern.Var (x0, x2)], (foo x3))])
               let pair_plus f_a f_b =
                 function
                 | Types.PairPlus (x0, x1, x2, x3) ->
-                    Nominal.Term.Operator
+                    Lvca_syntax.Nominal.Term.Operator
                       (x0, "PairPlus",
-                        [Nominal.Scope.Scope ([], (f_a x1));
-                        Nominal.Scope.Scope ([], (f_b x2));
-                        Nominal.Scope.Scope ([], (foo x3))])
+                        [Lvca_syntax.Nominal.Scope.Scope ([], (f_a x1));
+                        Lvca_syntax.Nominal.Scope.Scope ([], (f_b x2));
+                        Lvca_syntax.Nominal.Scope.Scope ([], (foo x3))])
               let term =
                 function
                 | Types.Operator (x0, x1) ->
-                    Nominal.Term.Operator
+                    Lvca_syntax.Nominal.Term.Operator
                       (x0, "Operator",
-                        [Nominal.Scope.Scope ([], (List.to_nominal x1))])
+                        [Lvca_syntax.Nominal.Scope.Scope
+                           ([], (List.to_nominal x1))])
               let rec mut_a =
                 function
                 | Types.Mut_a (x0, x1) ->
-                    Nominal.Term.Operator
-                      (x0, "Mut_a", [Nominal.Scope.Scope ([], (mut_b x1))])
+                    Lvca_syntax.Nominal.Term.Operator
+                      (x0, "Mut_a",
+                        [Lvca_syntax.Nominal.Scope.Scope ([], (mut_b x1))])
               and mut_b =
                 function
                 | Types.Mut_b (x0, x1) ->
-                    Nominal.Term.Operator
-                      (x0, "Mut_b", [Nominal.Scope.Scope ([], (mut_a x1))])
+                    Lvca_syntax.Nominal.Term.Operator
+                      (x0, "Mut_b",
+                        [Lvca_syntax.Nominal.Scope.Scope ([], (mut_a x1))])
               let rec nat =
                 function
-                | Types.Z x0 -> Nominal.Term.Operator (x0, "Z", [])
+                | Types.Z x0 ->
+                    Lvca_syntax.Nominal.Term.Operator (x0, "Z", [])
                 | Types.S (x0, x1) ->
-                    Nominal.Term.Operator
-                      (x0, "S", [Nominal.Scope.Scope ([], (nat x1))])
+                    Lvca_syntax.Nominal.Term.Operator
+                      (x0, "S",
+                        [Lvca_syntax.Nominal.Scope.Scope ([], (nat x1))])
             end
           module Of_nominal =
             struct
               let nonempty =
                 function
-                | Nominal.Term.Operator
-                    (x0, "Nonempty", (Nominal.Scope.Scope
-                     ([], x1))::(Nominal.Scope.Scope ([], x2))::[])
+                | Lvca_syntax.Nominal.Term.Operator
+                    (x0, "Nonempty", (Lvca_syntax.Nominal.Scope.Scope
+                     ([], x1))::(Lvca_syntax.Nominal.Scope.Scope
+                     ([], x2))::[])
                     ->
                     (match String.of_nominal x1 with
                      | Error msg -> Error msg
@@ -292,9 +305,10 @@ module Lang =
                 | tm -> Error tm
               let pair f_a f_b =
                 function
-                | Nominal.Term.Operator
-                    (x0, "Pair", (Nominal.Scope.Scope
-                     ([], x1))::(Nominal.Scope.Scope ([], x2))::[])
+                | Lvca_syntax.Nominal.Term.Operator
+                    (x0, "Pair", (Lvca_syntax.Nominal.Scope.Scope
+                     ([], x1))::(Lvca_syntax.Nominal.Scope.Scope
+                     ([], x2))::[])
                     ->
                     (match f_a x1 with
                      | Error msg -> Error msg
@@ -305,14 +319,16 @@ module Lang =
                 | tm -> Error tm
               let rec foo =
                 function
-                | Nominal.Term.Operator
-                    (x0, "Foo", (Nominal.Scope.Scope ([], x1))::[]) ->
+                | Lvca_syntax.Nominal.Term.Operator
+                    (x0, "Foo", (Lvca_syntax.Nominal.Scope.Scope
+                     ([], x1))::[])
+                    ->
                     (match Integer.of_nominal x1 with
                      | Error msg -> Error msg
                      | Ok x1 -> Ok (Types.Foo (x0, x1)))
-                | Nominal.Term.Operator
-                    (x0, "Bar", (Nominal.Scope.Scope
-                     (x1::(Pattern.Var (_, x2))::[], x3))::[])
+                | Lvca_syntax.Nominal.Term.Operator
+                    (x0, "Bar", (Lvca_syntax.Nominal.Scope.Scope
+                     (x1::(Lvca_syntax.Pattern.Var (_, x2))::[], x3))::[])
                     ->
                     (match foo x3 with
                      | Error msg -> Error msg
@@ -320,10 +336,11 @@ module Lang =
                 | tm -> Error tm
               let pair_plus f_a f_b =
                 function
-                | Nominal.Term.Operator
-                    (x0, "PairPlus", (Nominal.Scope.Scope
-                     ([], x1))::(Nominal.Scope.Scope
-                     ([], x2))::(Nominal.Scope.Scope ([], x3))::[])
+                | Lvca_syntax.Nominal.Term.Operator
+                    (x0, "PairPlus", (Lvca_syntax.Nominal.Scope.Scope
+                     ([], x1))::(Lvca_syntax.Nominal.Scope.Scope
+                     ([], x2))::(Lvca_syntax.Nominal.Scope.Scope
+                     ([], x3))::[])
                     ->
                     (match f_a x1 with
                      | Error msg -> Error msg
@@ -338,33 +355,41 @@ module Lang =
                 | tm -> Error tm
               let term =
                 function
-                | Nominal.Term.Operator
-                    (x0, "Operator", (Nominal.Scope.Scope ([], x1))::[]) ->
+                | Lvca_syntax.Nominal.Term.Operator
+                    (x0, "Operator", (Lvca_syntax.Nominal.Scope.Scope
+                     ([], x1))::[])
+                    ->
                     (match List.of_nominal x1 with
                      | Error msg -> Error msg
                      | Ok x1 -> Ok (Types.Operator (x0, x1)))
                 | tm -> Error tm
               let rec mut_a =
                 function
-                | Nominal.Term.Operator
-                    (x0, "Mut_a", (Nominal.Scope.Scope ([], x1))::[]) ->
+                | Lvca_syntax.Nominal.Term.Operator
+                    (x0, "Mut_a", (Lvca_syntax.Nominal.Scope.Scope
+                     ([], x1))::[])
+                    ->
                     (match mut_b x1 with
                      | Error msg -> Error msg
                      | Ok x1 -> Ok (Types.Mut_a (x0, x1)))
                 | tm -> Error tm
               and mut_b =
                 function
-                | Nominal.Term.Operator
-                    (x0, "Mut_b", (Nominal.Scope.Scope ([], x1))::[]) ->
+                | Lvca_syntax.Nominal.Term.Operator
+                    (x0, "Mut_b", (Lvca_syntax.Nominal.Scope.Scope
+                     ([], x1))::[])
+                    ->
                     (match mut_a x1 with
                      | Error msg -> Error msg
                      | Ok x1 -> Ok (Types.Mut_b (x0, x1)))
                 | tm -> Error tm
               let rec nat =
                 function
-                | Nominal.Term.Operator (x0, "Z", []) -> Ok (Types.Z x0)
-                | Nominal.Term.Operator
-                    (x0, "S", (Nominal.Scope.Scope ([], x1))::[]) ->
+                | Lvca_syntax.Nominal.Term.Operator (x0, "Z", []) ->
+                    Ok (Types.Z x0)
+                | Lvca_syntax.Nominal.Term.Operator
+                    (x0, "S", (Lvca_syntax.Nominal.Scope.Scope ([], x1))::[])
+                    ->
                     (match nat x1 with
                      | Error msg -> Error msg
                      | Ok x1 -> Ok (Types.S (x0, x1)))
@@ -387,7 +412,7 @@ module Lang =
               let of_nominal tm = Wrapper.Of_nominal.foo tm
             end
           include Kernel
-          include (Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Language_object.Extend)(Kernel)
         end
       module Nat =
         struct
@@ -403,9 +428,9 @@ module Lang =
               let of_nominal tm = Wrapper.Of_nominal.nat tm
             end
           include Kernel
-          include (Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Language_object.Extend)(Kernel)
         end
-      module Pair(A:Language_object_intf.Extended_s)(B:Language_object_intf.Extended_s) =
+      module Pair(A:Lvca_syntax.Language_object_intf.Extended_s)(B:Lvca_syntax.Language_object_intf.Extended_s) =
         struct
           module Kernel =
             struct
@@ -425,9 +450,9 @@ module Lang =
                 Wrapper.Of_nominal.pair A.of_nominal B.of_nominal tm
             end
           include Kernel
-          include (Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Language_object.Extend)(Kernel)
         end
-      module Pair_plus(A:Language_object_intf.Extended_s)(B:Language_object_intf.Extended_s) =
+      module Pair_plus(A:Lvca_syntax.Language_object_intf.Extended_s)(B:Lvca_syntax.Language_object_intf.Extended_s) =
         struct
           module Kernel =
             struct
@@ -450,7 +475,7 @@ module Lang =
                 Wrapper.Of_nominal.pair_plus A.of_nominal B.of_nominal tm
             end
           include Kernel
-          include (Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Language_object.Extend)(Kernel)
         end
       module Nonempty =
         struct
@@ -466,7 +491,7 @@ module Lang =
               let of_nominal tm = Wrapper.Of_nominal.nonempty tm
             end
           include Kernel
-          include (Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Language_object.Extend)(Kernel)
         end
       module Term =
         struct
@@ -482,7 +507,7 @@ module Lang =
               let of_nominal tm = Wrapper.Of_nominal.term tm
             end
           include Kernel
-          include (Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Language_object.Extend)(Kernel)
         end
       module Mut_a =
         struct
@@ -498,7 +523,7 @@ module Lang =
               let of_nominal tm = Wrapper.Of_nominal.mut_a tm
             end
           include Kernel
-          include (Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Language_object.Extend)(Kernel)
         end
       module Mut_b =
         struct
@@ -514,13 +539,13 @@ module Lang =
               let of_nominal tm = Wrapper.Of_nominal.mut_b tm
             end
           include Kernel
-          include (Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Language_object.Extend)(Kernel)
         end
     end :
-    functor (Integer : Language_object_intf.Extended_s) ->
-      functor (String : Language_object_intf.Extended_s) ->
-        functor (Maybe : Language_object_intf.Extended_s) ->
-          functor (List : Language_object_intf.Extended_s) ->
+    functor (Integer : Lvca_syntax.Language_object_intf.Extended_s) ->
+      functor (String : Lvca_syntax.Language_object_intf.Extended_s) ->
+        functor (Maybe : Lvca_syntax.Language_object_intf.Extended_s) ->
+          functor (List : Lvca_syntax.Language_object_intf.Extended_s) ->
             sig
               module Types :
               sig
@@ -565,33 +590,34 @@ module Lang =
                   | Operator of List.Plain.t 
               end
               module Foo :
-              Language_object_intf.Extended_s with type 'info t = 
-                'info Types.foo and type  Plain.t =  Plain.foo
+              Lvca_syntax.Language_object_intf.Extended_s with type 'info t =
+                 'info Types.foo and type  Plain.t =  Plain.foo
               module Nat :
-              Language_object_intf.Extended_s with type 'info t = 
-                'info Types.nat and type  Plain.t =  Plain.nat
+              Lvca_syntax.Language_object_intf.Extended_s with type 'info t =
+                 'info Types.nat and type  Plain.t =  Plain.nat
               module Pair :
-              functor (A : Language_object_intf.Extended_s) ->
-                functor (B : Language_object_intf.Extended_s) ->
-                  Language_object_intf.Extended_s with type 'info t = 
-                    ('info, 'info A.t, 'info B.t) Types.pair and type
-                     Plain.t =  (A.Plain.t, B.Plain.t) Plain.pair
+              functor (A : Lvca_syntax.Language_object_intf.Extended_s) ->
+                functor (B : Lvca_syntax.Language_object_intf.Extended_s) ->
+                  Lvca_syntax.Language_object_intf.Extended_s with type
+                    'info t =  ('info, 'info A.t, 'info B.t) Types.pair and
+                    type  Plain.t =  (A.Plain.t, B.Plain.t) Plain.pair
               module Pair_plus :
-              functor (A : Language_object_intf.Extended_s) ->
-                functor (B : Language_object_intf.Extended_s) ->
-                  Language_object_intf.Extended_s with type 'info t = 
-                    ('info, 'info A.t, 'info B.t) Types.pair_plus and type
-                     Plain.t =  (A.Plain.t, B.Plain.t) Plain.pair_plus
+              functor (A : Lvca_syntax.Language_object_intf.Extended_s) ->
+                functor (B : Lvca_syntax.Language_object_intf.Extended_s) ->
+                  Lvca_syntax.Language_object_intf.Extended_s with type
+                    'info t =  ('info, 'info A.t, 'info B.t) Types.pair_plus
+                    and type  Plain.t = 
+                    (A.Plain.t, B.Plain.t) Plain.pair_plus
               module Nonempty :
-              Language_object_intf.Extended_s with type 'info t = 
-                'info Types.nonempty and type  Plain.t =  Plain.nonempty
+              Lvca_syntax.Language_object_intf.Extended_s with type 'info t =
+                 'info Types.nonempty and type  Plain.t =  Plain.nonempty
               module Term :
-              Language_object_intf.Extended_s with type 'info t = 
-                'info Types.term and type  Plain.t =  Plain.term
+              Lvca_syntax.Language_object_intf.Extended_s with type 'info t =
+                 'info Types.term and type  Plain.t =  Plain.term
               module Mut_a :
-              Language_object_intf.Extended_s with type 'info t = 
-                'info Types.mut_a and type  Plain.t =  Plain.mut_a
+              Lvca_syntax.Language_object_intf.Extended_s with type 'info t =
+                 'info Types.mut_a and type  Plain.t =  Plain.mut_a
               module Mut_b :
-              Language_object_intf.Extended_s with type 'info t = 
-                'info Types.mut_b and type  Plain.t =  Plain.mut_b
+              Lvca_syntax.Language_object_intf.Extended_s with type 'info t =
+                 'info Types.mut_b and type  Plain.t =  Plain.mut_b
             end)

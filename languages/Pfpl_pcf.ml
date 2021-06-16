@@ -1,5 +1,3 @@
-open Lvca_syntax
-
 let abstract_syntax =
   [%lvca.abstract_syntax
     {|

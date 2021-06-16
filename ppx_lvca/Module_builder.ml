@@ -519,7 +519,8 @@ module Helpers (Context : Builder_context) = struct
   ;;
 
   let language_object_extended_s =
-    pmty_ident { txt = unflatten [ "Language_object_intf"; "Extended_s" ]; loc }
+    pmty_ident
+      { txt = unflatten [ "Lvca_syntax"; "Language_object_intf"; "Extended_s" ]; loc }
   ;;
 
   let mk_exp_tuple = function
@@ -713,7 +714,9 @@ module Operator_exp (Context : Builder_context) = struct
       (Syn.Operator_def.Operator_def (op_name, arity))
     =
     let v = evar_allocator name_base in
-    let pattern_converter = pexp_ident { txt = unflatten [ "Pattern"; fun_name ]; loc } in
+    let pattern_converter =
+      pexp_ident { txt = unflatten [ "Lvca_syntax"; "Pattern"; fun_name ]; loc }
+    in
     let body_arg sort =
       mk_sort_app
         ~var_names
@@ -842,7 +845,7 @@ module To_nominal (Context : Builder_context) = struct
   module Operator_pat = Operator_pat (Context)
   module Operator_exp = Operator_exp (Context)
 
-  let operator = unflatten [ "Nominal"; "Term"; "Operator" ]
+  let operator = unflatten [ "Lvca_syntax"; "Nominal"; "Term"; "Operator" ]
 
   (* Eg:
 
@@ -888,11 +891,12 @@ module To_nominal (Context : Builder_context) = struct
     let mk_scope (Syn.Valence.Valence (slots, body_sort)) =
       let args =
         List.map slots ~f:(function
-            | Syn.Sort_slot.Sort_binding _ -> [%expr Pattern.Var (x0, [%e v ()])]
+            | Syn.Sort_slot.Sort_binding _ ->
+              [%expr Lvca_syntax.Pattern.Var (x0, [%e v ()])]
             | Sort_pattern _ -> v ())
         |> Syntax_quoter.Exp.list ~loc
       in
-      [%expr Nominal.Scope.Scope ([%e args], [%e body_arg body_sort])]
+      [%expr Lvca_syntax.Nominal.Scope.Scope ([%e args], [%e body_arg body_sort])]
     in
     let children = List.map arity ~f:mk_scope |> Syntax_quoter.Exp.list ~loc in
     let body = mk_exp_tuple' [ info; estring op_name; children ] in
@@ -919,7 +923,7 @@ module Of_nominal (Context : Builder_context) = struct
   module Operator_pat = Operator_pat (Context)
   module Operator_exp = Operator_exp (Context)
 
-  let operator = unflatten [ "Nominal"; "Term"; "Operator" ]
+  let operator = unflatten [ "Lvca_syntax"; "Nominal"; "Term"; "Operator" ]
 
   (* Eg:
 
@@ -959,11 +963,12 @@ module Of_nominal (Context : Builder_context) = struct
     let mk_scope (Syn.Valence.Valence (slots, _body_sort)) =
       let args =
         List.map slots ~f:(function
-            | Syn.Sort_slot.Sort_binding _ -> [%pat? Pattern.Var (_, [%p v ()])]
+            | Syn.Sort_slot.Sort_binding _ ->
+              [%pat? Lvca_syntax.Pattern.Var (_, [%p v ()])]
             | Sort_pattern _ -> v ())
         |> Syntax_quoter.Pat.list ~loc
       in
-      [%pat? Nominal.Scope.Scope ([%p args], [%p v ()])]
+      [%pat? Lvca_syntax.Nominal.Scope.Scope ([%p args], [%p v ()])]
     in
     let children = List.map arity ~f:mk_scope |> Syntax_quoter.Pat.list ~loc in
     let body = mk_pat_tuple' [ info; pstring op_name; children ] in
@@ -1074,7 +1079,8 @@ module Equal (Context : Builder_context) = struct
                           match slot with
                           | Syn.Sort_slot.Sort_binding _sort ->
                             [%expr Base.String.( = ) [%e x] [%e y]]
-                          | Sort_pattern _ -> [%expr Pattern.equal ~info_eq [%e x] [%e y]])
+                          | Sort_pattern _ ->
+                            [%expr Lvca_syntax.Pattern.equal ~info_eq [%e x] [%e y]])
                  in
                  let body_check =
                    Int.incr var_ix;
@@ -1357,7 +1363,7 @@ module Individual_type_module (Context : Builder_context) = struct
     *)
     let kernel_mod = pmod_ident { txt = Lident "Kernel"; loc } in
     let extend_mod =
-      pmod_ident { txt = unflatten [ "Language_object"; "Extend" ]; loc }
+      pmod_ident { txt = unflatten [ "Lvca_syntax"; "Language_object"; "Extend" ]; loc }
     in
     let init =
       pmod_structure
