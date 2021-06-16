@@ -1,14 +1,13 @@
-let abstract_syntax =
-  [%lvca.abstract_syntax
-    {|
-typ := nat() | parr(typ; typ)
+module Lang =
+[%lvca.abstract_syntax_module
+{|
+typ := Nat() | Parr(typ; typ)
 
 exp :=
-  | z()
-  | s(exp)
-  | ifz(exp; exp. exp; exp)
-  | lam(typ; exp. exp)
-  | ap(exp; exp)
-  | fix(typ; exp. exp)
+  | Z()
+  | S(exp)
+  | Ifz(exp; exp. exp; exp)
+  | Lam(typ; exp. exp)
+  | Ap(exp; exp)
+  | Fix(typ; exp. exp)
 |}]
-;;

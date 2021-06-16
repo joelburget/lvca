@@ -1,13 +1,11 @@
-let abstract_syntax =
-  [%lvca.abstract_syntax
-    {|
+module Lang =
+[%lvca.abstract_syntax_module
+{|
 exp :=
-  | num(integer)
-  | zero()
-  | succ(exp)
-  | ifz(exp; exp. exp; exp)
-  | fun(exp. exp)
-  | ap(exp; exp)
-  | fix(exp. exp)
+  | Zero()
+  | Succ(exp)
+  | Ifz(exp; exp. exp; exp)
+  | Fun(exp. exp)
+  | Ap(exp; exp)
+  | Fix(exp. exp)
 |}]
-;;
