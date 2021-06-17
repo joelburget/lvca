@@ -293,6 +293,7 @@ let unflatten names =
 (* TODO: more sophisticated naming rules? *)
 let ctor_name = String.capitalize
 let module_name = String.capitalize
+let var_ctor_name sort_name = String.capitalize sort_name ^ "_var"
 let guard = None
 
 let conjuntion ~loc exps =
@@ -619,13 +620,21 @@ module Type_decls (Context : Builder_context) = struct
            let mk_var name = ptyp_var name, (NoVariance, NoInjectivity) in
            let params = vars |> List.map ~f:fst |> List.map ~f:mk_var in
            let params = params0 @ params in
-           let kind =
-             Ptype_variant
-               (List.map
-                  op_defs
-                  ~f:
-                    (Ctor_decl.mk ~info ~var_names ~mutual_sorts:sort_def_map ~prim_names))
+           let op_ctors =
+             List.map
+               op_defs
+               ~f:(Ctor_decl.mk ~info ~var_names ~mutual_sorts:sort_def_map ~prim_names)
            in
+           let args =
+             if info then [ [%type: 'info]; [%type: string] ] else [ [%type: string] ]
+           in
+           let var_ctor =
+             constructor_declaration
+               ~name:{ txt = var_ctor_name sort_name; loc }
+               ~args:(Pcstr_tuple args)
+               ~res:None
+           in
+           let kind = Ptype_variant (op_ctors @ [ var_ctor ]) in
            type_declaration
              ~name:{ txt = sort_name; loc }
              ~params
@@ -775,7 +784,20 @@ module To_plain (Context : Builder_context) = struct
       in
       case ~lhs ~guard ~rhs
     in
-    let init = op_defs |> List.map ~f |> pexp_function in
+    let op_defs = List.map op_defs ~f in
+    let var_case =
+      case
+        ~lhs:
+          (ppat_construct
+             { txt = unflatten [ "Types"; var_ctor_name sort_name ]; loc }
+             (Some [%pat? _, name]))
+        ~guard
+        ~rhs:
+          (pexp_construct
+             { txt = unflatten [ "Plain"; var_ctor_name sort_name ]; loc }
+             (Some [%expr name]))
+    in
+    let init = pexp_function (op_defs @ [ var_case ]) in
     let expr = List.fold_right vars ~init ~f:f_fun in
     value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
   ;;
@@ -803,7 +825,20 @@ module Of_plain (Context : Builder_context) = struct
       in
       case ~lhs ~guard ~rhs
     in
-    let init = op_defs |> List.map ~f |> pexp_function in
+    let op_defs = List.map op_defs ~f in
+    let var_case =
+      case
+        ~lhs:
+          (ppat_construct
+             { txt = unflatten [ "Plain"; var_ctor_name sort_name ]; loc }
+             (Some [%pat? name]))
+        ~guard
+        ~rhs:
+          (pexp_construct
+             { txt = unflatten [ "Types"; var_ctor_name sort_name ]; loc }
+             (Some [%expr (), name]))
+    in
+    let init = pexp_function (op_defs @ [ var_case ]) in
     let expr = List.fold_right vars ~init ~f:f_fun in
     value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
   ;;
@@ -832,7 +867,20 @@ module Map_info (Context : Builder_context) = struct
       in
       case ~lhs ~guard ~rhs
     in
-    let init = op_defs |> List.map ~f |> pexp_function |> labelled_fun "f" in
+    let op_defs = List.map op_defs ~f in
+    let var_case =
+      case
+        ~lhs:
+          (ppat_construct
+             { txt = unflatten [ "Types"; var_ctor_name sort_name ]; loc }
+             (Some [%pat? info, name]))
+        ~guard
+        ~rhs:
+          (pexp_construct
+             { txt = unflatten [ "Types"; var_ctor_name sort_name ]; loc }
+             (Some [%expr f info, name]))
+    in
+    let init = op_defs @ [ var_case ] |> pexp_function |> labelled_fun "f" in
     let expr = List.fold_right vars ~init ~f:f_fun in
     value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
   ;;
@@ -910,7 +958,17 @@ module To_nominal (Context : Builder_context) = struct
       let rhs = mk_nominal_exp ~var_names ~prim_names sort_defs op_def in
       case ~lhs ~guard ~rhs
     in
-    let init = op_defs |> List.map ~f |> pexp_function in
+    let var_case =
+      case
+        ~lhs:
+          (ppat_construct
+             { txt = Lident (var_ctor_name sort_name); loc }
+             (Some [%pat? info, name]))
+        ~guard
+        ~rhs:[%expr Lvca_syntax.Nominal.Term.Var (info, name)]
+    in
+    let op_defs = List.map op_defs ~f in
+    let init = pexp_function (op_defs @ [ var_case ]) in
     let expr = List.fold_right vars ~init ~f:f_fun in
     value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
   ;;
@@ -1035,10 +1093,22 @@ module Of_nominal (Context : Builder_context) = struct
       case ~lhs ~guard ~rhs
     in
     let matching_cases = List.map op_defs ~f in
+    let var_case =
+      case
+        ~lhs:[%pat? Lvca_syntax.Nominal.Term.Var (info, name)]
+        ~guard
+        ~rhs:
+          [%expr
+            Ok
+              [%e
+                pexp_construct
+                  { txt = Lident (var_ctor_name sort_name); loc }
+                  (Some [%expr info, name])]]
+    in
     let fallthrough =
       case ~lhs:(ppat_var { txt = "tm"; loc }) ~guard ~rhs:[%expr Error tm]
     in
-    let init = Util.List.snoc matching_cases fallthrough |> pexp_function in
+    let init = matching_cases @ [ var_case; fallthrough ] |> pexp_function in
     let expr = List.fold_right vars ~init ~f:f_fun in
     value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
   ;;
@@ -1136,7 +1206,17 @@ module Info (Context : Builder_context) = struct
       case ~lhs ~guard ~rhs:[%expr x0]
     in
     let expr =
-      let init = op_defs |> List.map ~f:mk_case |> pexp_function in
+      let op_defs = List.map op_defs ~f:mk_case in
+      let var_case =
+        case
+          ~lhs:
+            (ppat_construct
+               { txt = unflatten [ "Types"; var_ctor_name sort_name ]; loc }
+               (Some [%pat? info, _]))
+          ~guard
+          ~rhs:[%expr info]
+      in
+      let init = pexp_function (op_defs @ [ var_case ]) in
       List.fold_right vars ~init ~f:(f_fun ~used:false)
     in
     value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr

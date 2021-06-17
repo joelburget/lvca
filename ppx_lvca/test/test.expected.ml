@@ -64,57 +64,95 @@ module Lang =
               type 'info foo =
                 | Foo of 'info * 'info Integer.t 
                 | Bar of 'info * ('info Pattern.t * string * 'info foo) 
+                | Foo_var of 'info * string 
               and 'info mut_a =
                 | Mut_a of 'info * 'info mut_b 
+                | Mut_a_var of 'info * string 
               and 'info mut_b =
                 | Mut_b of 'info * 'info mut_a 
+                | Mut_b_var of 'info * string 
               and 'info nat =
                 | Z of 'info 
                 | S of 'info * 'info nat 
+                | Nat_var of 'info * string 
               and 'info nonempty =
                 | Nonempty of 'info * 'info String.t * 'info List.t 
+                | Nonempty_var of 'info * string 
               and ('info, 'a, 'b) pair =
                 | Pair of 'info * 'a * 'b 
+                | Pair_var of 'info * string 
               and ('info, 'a, 'b) pair_plus =
                 | PairPlus of 'info * 'a * 'b * 'info foo 
+                | Pair_plus_var of 'info * string 
               and 'info term =
                 | Operator of 'info * 'info List.t 
+                | Term_var of 'info * string 
             end
           module Plain =
             struct
               type foo =
                 | Foo of Integer.Plain.t 
                 | Bar of (Pattern.Plain.t * string * foo) 
+                | Foo_var of string 
               and mut_a =
                 | Mut_a of mut_b 
+                | Mut_a_var of string 
               and mut_b =
                 | Mut_b of mut_a 
+                | Mut_b_var of string 
               and nat =
                 | Z 
                 | S of nat 
+                | Nat_var of string 
               and nonempty =
                 | Nonempty of String.Plain.t * List.Plain.t 
+                | Nonempty_var of string 
               and ('a, 'b) pair =
                 | Pair of 'a * 'b 
+                | Pair_var of string 
               and ('a, 'b) pair_plus =
                 | PairPlus of 'a * 'b * foo 
+                | Pair_plus_var of string 
               and term =
                 | Operator of List.Plain.t 
+                | Term_var of string 
             end
           module Info =
             struct
-              let nonempty = function | Types.Nonempty (x0, _, _) -> x0
-              let pair _f_a _f_b = function | Types.Pair (x0, _, _) -> x0
+              let nonempty =
+                function
+                | Types.Nonempty (x0, _, _) -> x0
+                | Types.Nonempty_var (info, _) -> info
+              let pair _f_a _f_b =
+                function
+                | Types.Pair (x0, _, _) -> x0
+                | Types.Pair_var (info, _) -> info
               let foo =
                 function
                 | Types.Foo (x0, _) -> x0
                 | Types.Bar (x0, (_, _, _)) -> x0
+                | Types.Foo_var (info, _) -> info
               let pair_plus _f_a _f_b =
-                function | Types.PairPlus (x0, _, _, _) -> x0
-              let term = function | Types.Operator (x0, _) -> x0
-              let mut_a = function | Types.Mut_a (x0, _) -> x0
-              and mut_b = function | Types.Mut_b (x0, _) -> x0
-              let nat = function | Types.Z x0 -> x0 | Types.S (x0, _) -> x0
+                function
+                | Types.PairPlus (x0, _, _, _) -> x0
+                | Types.Pair_plus_var (info, _) -> info
+              let term =
+                function
+                | Types.Operator (x0, _) -> x0
+                | Types.Term_var (info, _) -> info
+              let mut_a =
+                function
+                | Types.Mut_a (x0, _) -> x0
+                | Types.Mut_a_var (info, _) -> info
+              and mut_b =
+                function
+                | Types.Mut_b (x0, _) -> x0
+                | Types.Mut_b_var (info, _) -> info
+              let nat =
+                function
+                | Types.Z x0 -> x0
+                | Types.S (x0, _) -> x0
+                | Types.Nat_var (info, _) -> info
             end
           module To_plain =
             struct
@@ -122,30 +160,40 @@ module Lang =
                 function
                 | Types.Nonempty (_, x1, x2) ->
                     Plain.Nonempty ((String.to_plain x1), (List.to_plain x2))
+                | Types.Nonempty_var (_, name) -> Plain.Nonempty_var name
               let pair f_a f_b =
                 function
                 | Types.Pair (_, x1, x2) -> Plain.Pair ((f_a x1), (f_b x2))
+                | Types.Pair_var (_, name) -> Plain.Pair_var name
               let rec foo =
                 function
                 | Types.Foo (_, x1) -> Plain.Foo (Integer.to_plain x1)
                 | Types.Bar (_, (x1, x2, x3)) ->
                     Plain.Bar
                       ((Lvca_syntax.Pattern.to_plain x1), x2, (foo x3))
+                | Types.Foo_var (_, name) -> Plain.Foo_var name
               let pair_plus f_a f_b =
                 function
                 | Types.PairPlus (_, x1, x2, x3) ->
                     Plain.PairPlus ((f_a x1), (f_b x2), (foo x3))
+                | Types.Pair_plus_var (_, name) -> Plain.Pair_plus_var name
               let term =
                 function
                 | Types.Operator (_, x1) -> Plain.Operator (List.to_plain x1)
+                | Types.Term_var (_, name) -> Plain.Term_var name
               let rec mut_a =
-                function | Types.Mut_a (_, x1) -> Plain.Mut_a (mut_b x1)
+                function
+                | Types.Mut_a (_, x1) -> Plain.Mut_a (mut_b x1)
+                | Types.Mut_a_var (_, name) -> Plain.Mut_a_var name
               and mut_b =
-                function | Types.Mut_b (_, x1) -> Plain.Mut_b (mut_a x1)
+                function
+                | Types.Mut_b (_, x1) -> Plain.Mut_b (mut_a x1)
+                | Types.Mut_b_var (_, name) -> Plain.Mut_b_var name
               let rec nat =
                 function
                 | Types.Z _ -> Plain.Z
                 | Types.S (_, x1) -> Plain.S (nat x1)
+                | Types.Nat_var (_, name) -> Plain.Nat_var name
             end
           module Of_plain =
             struct
@@ -154,31 +202,41 @@ module Lang =
                 | Plain.Nonempty (x1, x2) ->
                     Types.Nonempty
                       ((), (String.of_plain x1), (List.of_plain x2))
+                | Plain.Nonempty_var name -> Types.Nonempty_var ((), name)
               let pair f_a f_b =
                 function
                 | Plain.Pair (x1, x2) -> Types.Pair ((), (f_a x1), (f_b x2))
+                | Plain.Pair_var name -> Types.Pair_var ((), name)
               let rec foo =
                 function
                 | Plain.Foo x1 -> Types.Foo ((), (Integer.of_plain x1))
                 | Plain.Bar (x1, x2, x3) ->
                     Types.Bar
                       ((), ((Lvca_syntax.Pattern.of_plain x1), x2, (foo x3)))
+                | Plain.Foo_var name -> Types.Foo_var ((), name)
               let pair_plus f_a f_b =
                 function
                 | Plain.PairPlus (x1, x2, x3) ->
                     Types.PairPlus ((), (f_a x1), (f_b x2), (foo x3))
+                | Plain.Pair_plus_var name -> Types.Pair_plus_var ((), name)
               let term =
                 function
                 | Plain.Operator x1 ->
                     Types.Operator ((), (List.of_plain x1))
+                | Plain.Term_var name -> Types.Term_var ((), name)
               let rec mut_a =
-                function | Plain.Mut_a x1 -> Types.Mut_a ((), (mut_b x1))
+                function
+                | Plain.Mut_a x1 -> Types.Mut_a ((), (mut_b x1))
+                | Plain.Mut_a_var name -> Types.Mut_a_var ((), name)
               and mut_b =
-                function | Plain.Mut_b x1 -> Types.Mut_b ((), (mut_a x1))
+                function
+                | Plain.Mut_b x1 -> Types.Mut_b ((), (mut_a x1))
+                | Plain.Mut_b_var name -> Types.Mut_b_var ((), name)
               let rec nat =
                 function
                 | Plain.Z -> Types.Z ()
                 | Plain.S x1 -> Types.S ((), (nat x1))
+                | Plain.Nat_var name -> Types.Nat_var ((), name)
             end
           module Map_info =
             struct
@@ -188,10 +246,14 @@ module Lang =
                     Types.Nonempty
                       ((f x0), (String.map_info ~f x1),
                         (List.map_info ~f x2))
+                | Types.Nonempty_var (info, name) ->
+                    Types.Nonempty_var ((f info), name)
               let pair f_a f_b ~f  =
                 function
                 | Types.Pair (x0, x1, x2) ->
                     Types.Pair ((f x0), (f_a ~f x1), (f_b ~f x2))
+                | Types.Pair_var (info, name) ->
+                    Types.Pair_var ((f info), name)
               let rec foo ~f  =
                 function
                 | Types.Foo (x0, x1) ->
@@ -201,25 +263,37 @@ module Lang =
                       ((f x0),
                         ((Lvca_syntax.Pattern.map_info ~f x1), x2,
                           (foo ~f x3)))
+                | Types.Foo_var (info, name) ->
+                    Types.Foo_var ((f info), name)
               let pair_plus f_a f_b ~f  =
                 function
                 | Types.PairPlus (x0, x1, x2, x3) ->
                     Types.PairPlus
                       ((f x0), (f_a ~f x1), (f_b ~f x2), (foo ~f x3))
+                | Types.Pair_plus_var (info, name) ->
+                    Types.Pair_plus_var ((f info), name)
               let term ~f  =
                 function
                 | Types.Operator (x0, x1) ->
                     Types.Operator ((f x0), (List.map_info ~f x1))
+                | Types.Term_var (info, name) ->
+                    Types.Term_var ((f info), name)
               let rec mut_a ~f  =
                 function
                 | Types.Mut_a (x0, x1) -> Types.Mut_a ((f x0), (mut_b ~f x1))
+                | Types.Mut_a_var (info, name) ->
+                    Types.Mut_a_var ((f info), name)
               and mut_b ~f  =
                 function
                 | Types.Mut_b (x0, x1) -> Types.Mut_b ((f x0), (mut_a ~f x1))
+                | Types.Mut_b_var (info, name) ->
+                    Types.Mut_b_var ((f info), name)
               let rec nat ~f  =
                 function
                 | Types.Z x0 -> Types.Z (f x0)
                 | Types.S (x0, x1) -> Types.S ((f x0), (nat ~f x1))
+                | Types.Nat_var (info, name) ->
+                    Types.Nat_var ((f info), name)
             end
           module To_nominal =
             struct
@@ -232,6 +306,8 @@ module Lang =
                            ([], (String.to_nominal x1));
                         Lvca_syntax.Nominal.Scope.Scope
                           ([], (List.to_nominal x2))])
+                | Nonempty_var (info, name) ->
+                    Lvca_syntax.Nominal.Term.Var (info, name)
               let pair f_a f_b =
                 function
                 | Types.Pair (x0, x1, x2) ->
@@ -239,6 +315,8 @@ module Lang =
                       (x0, "Pair",
                         [Lvca_syntax.Nominal.Scope.Scope ([], (f_a x1));
                         Lvca_syntax.Nominal.Scope.Scope ([], (f_b x2))])
+                | Pair_var (info, name) ->
+                    Lvca_syntax.Nominal.Term.Var (info, name)
               let rec foo =
                 function
                 | Types.Foo (x0, x1) ->
@@ -251,6 +329,8 @@ module Lang =
                       (x0, "Bar",
                         [Lvca_syntax.Nominal.Scope.Scope
                            ([x1; Lvca_syntax.Pattern.Var (x0, x2)], (foo x3))])
+                | Foo_var (info, name) ->
+                    Lvca_syntax.Nominal.Term.Var (info, name)
               let pair_plus f_a f_b =
                 function
                 | Types.PairPlus (x0, x1, x2, x3) ->
@@ -259,6 +339,8 @@ module Lang =
                         [Lvca_syntax.Nominal.Scope.Scope ([], (f_a x1));
                         Lvca_syntax.Nominal.Scope.Scope ([], (f_b x2));
                         Lvca_syntax.Nominal.Scope.Scope ([], (foo x3))])
+                | Pair_plus_var (info, name) ->
+                    Lvca_syntax.Nominal.Term.Var (info, name)
               let term =
                 function
                 | Types.Operator (x0, x1) ->
@@ -266,18 +348,24 @@ module Lang =
                       (x0, "Operator",
                         [Lvca_syntax.Nominal.Scope.Scope
                            ([], (List.to_nominal x1))])
+                | Term_var (info, name) ->
+                    Lvca_syntax.Nominal.Term.Var (info, name)
               let rec mut_a =
                 function
                 | Types.Mut_a (x0, x1) ->
                     Lvca_syntax.Nominal.Term.Operator
                       (x0, "Mut_a",
                         [Lvca_syntax.Nominal.Scope.Scope ([], (mut_b x1))])
+                | Mut_a_var (info, name) ->
+                    Lvca_syntax.Nominal.Term.Var (info, name)
               and mut_b =
                 function
                 | Types.Mut_b (x0, x1) ->
                     Lvca_syntax.Nominal.Term.Operator
                       (x0, "Mut_b",
                         [Lvca_syntax.Nominal.Scope.Scope ([], (mut_a x1))])
+                | Mut_b_var (info, name) ->
+                    Lvca_syntax.Nominal.Term.Var (info, name)
               let rec nat =
                 function
                 | Types.Z x0 ->
@@ -286,6 +374,8 @@ module Lang =
                     Lvca_syntax.Nominal.Term.Operator
                       (x0, "S",
                         [Lvca_syntax.Nominal.Scope.Scope ([], (nat x1))])
+                | Nat_var (info, name) ->
+                    Lvca_syntax.Nominal.Term.Var (info, name)
             end
           module Of_nominal =
             struct
@@ -302,6 +392,8 @@ module Lang =
                          (match List.of_nominal x2 with
                           | Error msg -> Error msg
                           | Ok x2 -> Ok (Types.Nonempty (x0, x1, x2))))
+                | Lvca_syntax.Nominal.Term.Var (info, name) ->
+                    Ok (Nonempty_var (info, name))
                 | tm -> Error tm
               let pair f_a f_b =
                 function
@@ -316,6 +408,8 @@ module Lang =
                          (match f_b x2 with
                           | Error msg -> Error msg
                           | Ok x2 -> Ok (Types.Pair (x0, x1, x2))))
+                | Lvca_syntax.Nominal.Term.Var (info, name) ->
+                    Ok (Pair_var (info, name))
                 | tm -> Error tm
               let rec foo =
                 function
@@ -333,6 +427,8 @@ module Lang =
                     (match foo x3 with
                      | Error msg -> Error msg
                      | Ok x3 -> Ok (Types.Bar (x0, (x1, x2, x3))))
+                | Lvca_syntax.Nominal.Term.Var (info, name) ->
+                    Ok (Foo_var (info, name))
                 | tm -> Error tm
               let pair_plus f_a f_b =
                 function
@@ -352,6 +448,8 @@ module Lang =
                                | Error msg -> Error msg
                                | Ok x3 ->
                                    Ok (Types.PairPlus (x0, x1, x2, x3)))))
+                | Lvca_syntax.Nominal.Term.Var (info, name) ->
+                    Ok (Pair_plus_var (info, name))
                 | tm -> Error tm
               let term =
                 function
@@ -362,6 +460,8 @@ module Lang =
                     (match List.of_nominal x1 with
                      | Error msg -> Error msg
                      | Ok x1 -> Ok (Types.Operator (x0, x1)))
+                | Lvca_syntax.Nominal.Term.Var (info, name) ->
+                    Ok (Term_var (info, name))
                 | tm -> Error tm
               let rec mut_a =
                 function
@@ -372,6 +472,8 @@ module Lang =
                     (match mut_b x1 with
                      | Error msg -> Error msg
                      | Ok x1 -> Ok (Types.Mut_a (x0, x1)))
+                | Lvca_syntax.Nominal.Term.Var (info, name) ->
+                    Ok (Mut_a_var (info, name))
                 | tm -> Error tm
               and mut_b =
                 function
@@ -382,6 +484,8 @@ module Lang =
                     (match mut_a x1 with
                      | Error msg -> Error msg
                      | Ok x1 -> Ok (Types.Mut_b (x0, x1)))
+                | Lvca_syntax.Nominal.Term.Var (info, name) ->
+                    Ok (Mut_b_var (info, name))
                 | tm -> Error tm
               let rec nat =
                 function
@@ -393,6 +497,8 @@ module Lang =
                     (match nat x1 with
                      | Error msg -> Error msg
                      | Ok x1 -> Ok (Types.S (x0, x1)))
+                | Lvca_syntax.Nominal.Term.Var (info, name) ->
+                    Ok (Nat_var (info, name))
                 | tm -> Error tm
             end
         end
@@ -552,42 +658,58 @@ module Lang =
                 type 'info foo =
                   | Foo of 'info * 'info Integer.t 
                   | Bar of 'info * ('info Pattern.t * string * 'info foo) 
+                  | Foo_var of 'info * string 
                 and 'info mut_a =
                   | Mut_a of 'info * 'info mut_b 
+                  | Mut_a_var of 'info * string 
                 and 'info mut_b =
                   | Mut_b of 'info * 'info mut_a 
+                  | Mut_b_var of 'info * string 
                 and 'info nat =
                   | Z of 'info 
                   | S of 'info * 'info nat 
+                  | Nat_var of 'info * string 
                 and 'info nonempty =
                   | Nonempty of 'info * 'info String.t * 'info List.t 
+                  | Nonempty_var of 'info * string 
                 and ('info, 'a, 'b) pair =
                   | Pair of 'info * 'a * 'b 
+                  | Pair_var of 'info * string 
                 and ('info, 'a, 'b) pair_plus =
                   | PairPlus of 'info * 'a * 'b * 'info foo 
+                  | Pair_plus_var of 'info * string 
                 and 'info term =
                   | Operator of 'info * 'info List.t 
+                  | Term_var of 'info * string 
               end
               module Plain :
               sig
                 type foo =
                   | Foo of Integer.Plain.t 
                   | Bar of (Pattern.Plain.t * string * foo) 
+                  | Foo_var of string 
                 and mut_a =
                   | Mut_a of mut_b 
+                  | Mut_a_var of string 
                 and mut_b =
                   | Mut_b of mut_a 
+                  | Mut_b_var of string 
                 and nat =
                   | Z 
                   | S of nat 
+                  | Nat_var of string 
                 and nonempty =
                   | Nonempty of String.Plain.t * List.Plain.t 
+                  | Nonempty_var of string 
                 and ('a, 'b) pair =
                   | Pair of 'a * 'b 
+                  | Pair_var of string 
                 and ('a, 'b) pair_plus =
                   | PairPlus of 'a * 'b * foo 
+                  | Pair_plus_var of string 
                 and term =
                   | Operator of List.Plain.t 
+                  | Term_var of string 
               end
               module Foo :
               Lvca_syntax.Language_object_intf.Extended_s with type 'info t =
