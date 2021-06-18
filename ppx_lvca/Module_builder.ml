@@ -350,6 +350,31 @@ let get_sort_ref_map sort_defs =
   |> SMap.of_alist_exn
 ;;
 
+(** Is this sort ever bound in the language? *)
+type bound_unbound =
+  | Bound
+  | Unbound
+
+(** Determine whether each sort is ever bound in the language. *)
+let partition_sort_defs sort_defs =
+  let result =
+    sort_defs
+    |> List.map ~f:(fun (name, _def) -> name, Unbound)
+    |> Hashtbl.of_alist_exn (module String)
+  in
+  List.iter sort_defs ~f:(fun (_sort_name, Syn.Sort_def.Sort_def (_vars, op_defs)) ->
+      List.iter op_defs ~f:(fun (Syn.Operator_def.Operator_def (_name, arity)) ->
+          List.iter arity ~f:(fun (Syn.Valence.Valence (sort_slots, _body_sort)) ->
+              List.iter sort_slots ~f:(fun slot ->
+                  let sort =
+                    match slot with
+                    | Sort_binding sort -> sort
+                    | Sort_pattern { var_sort; _ } -> var_sort
+                  in
+                  Hashtbl.set result ~key:(sort_head sort) ~data:Bound))));
+  result
+;;
+
 module Helpers (Context : Builder_context) = struct
   open Context
   open Ast
@@ -611,7 +636,7 @@ module Type_decls (Context : Builder_context) = struct
   open Ast
   module Ctor_decl = Ctor_decl (Context)
 
-  let mk ~info ~sort_def_map ~prim_names =
+  let mk ~info ~sort_def_map ~prim_names ~partitioned_sorts =
     let params0 = if info then [ ptyp_var "info", (NoVariance, NoInjectivity) ] else [] in
     sort_def_map
     |> Map.to_alist
@@ -634,12 +659,16 @@ module Type_decls (Context : Builder_context) = struct
                ~args:(Pcstr_tuple args)
                ~res:None
            in
-           let kind = Ptype_variant (op_ctors @ [ var_ctor ]) in
+           let op_ctors =
+             match Hashtbl.find partitioned_sorts sort_name with
+             | Some Bound -> op_ctors @ [ var_ctor ]
+             | _ -> op_ctors
+           in
            type_declaration
              ~name:{ txt = sort_name; loc }
              ~params
              ~cstrs:[]
-             ~kind
+             ~kind:(Ptype_variant op_ctors)
              ~private_:Public
              ~manifest:None)
   ;;
@@ -769,7 +798,13 @@ module To_plain (Context : Builder_context) = struct
   module Operator_pat = Operator_pat (Context)
   module Operator_exp = Operator_exp (Context)
 
-  let mk ~prim_names sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
+  let mk
+      ~prim_names
+      ~partitioned_sorts
+      sort_defs
+      sort_name
+      (Syn.Sort_def.Sort_def (vars, op_defs))
+    =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let f op_def =
       let lhs = Operator_pat.mk ~ctor_type:With_info op_def in
@@ -797,8 +832,12 @@ module To_plain (Context : Builder_context) = struct
              { txt = unflatten [ "Plain"; var_ctor_name sort_name ]; loc }
              (Some [%expr name]))
     in
-    let init = pexp_function (op_defs @ [ var_case ]) in
-    let expr = List.fold_right vars ~init ~f:f_fun in
+    let op_defs =
+      match Hashtbl.find partitioned_sorts sort_name with
+      | Some Bound -> op_defs @ [ var_case ]
+      | _ -> op_defs
+    in
+    let expr = List.fold_right vars ~init:(pexp_function op_defs) ~f:f_fun in
     value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
   ;;
 end
@@ -810,7 +849,13 @@ module Of_plain (Context : Builder_context) = struct
   module Operator_pat = Operator_pat (Context)
   module Operator_exp = Operator_exp (Context)
 
-  let mk ~prim_names sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
+  let mk
+      ~prim_names
+      ~partitioned_sorts
+      sort_defs
+      sort_name
+      (Syn.Sort_def.Sort_def (vars, op_defs))
+    =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let f op_def =
       let lhs = Operator_pat.mk ~ctor_type:Plain op_def in
@@ -838,8 +883,12 @@ module Of_plain (Context : Builder_context) = struct
              { txt = unflatten [ "Types"; var_ctor_name sort_name ]; loc }
              (Some [%expr (), name]))
     in
-    let init = pexp_function (op_defs @ [ var_case ]) in
-    let expr = List.fold_right vars ~init ~f:f_fun in
+    let op_defs =
+      match Hashtbl.find partitioned_sorts sort_name with
+      | Some Bound -> op_defs @ [ var_case ]
+      | _ -> op_defs
+    in
+    let expr = List.fold_right vars ~init:(pexp_function op_defs) ~f:f_fun in
     value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
   ;;
 end
@@ -851,7 +900,13 @@ module Map_info (Context : Builder_context) = struct
   module Operator_pat = Operator_pat (Context)
   module Operator_exp = Operator_exp (Context)
 
-  let mk ~prim_names sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
+  let mk
+      ~prim_names
+      ~partitioned_sorts
+      sort_defs
+      sort_name
+      (Syn.Sort_def.Sort_def (vars, op_defs))
+    =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let f op_def =
       let lhs = Operator_pat.mk ~ctor_type:With_info ~match_info:true op_def in
@@ -880,7 +935,12 @@ module Map_info (Context : Builder_context) = struct
              { txt = unflatten [ "Types"; var_ctor_name sort_name ]; loc }
              (Some [%expr f info, name]))
     in
-    let init = op_defs @ [ var_case ] |> pexp_function |> labelled_fun "f" in
+    let op_defs =
+      match Hashtbl.find partitioned_sorts sort_name with
+      | Some Bound -> op_defs @ [ var_case ]
+      | _ -> op_defs
+    in
+    let init = op_defs |> pexp_function |> labelled_fun "f" in
     let expr = List.fold_right vars ~init ~f:f_fun in
     value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
   ;;
@@ -951,7 +1011,13 @@ module To_nominal (Context : Builder_context) = struct
     pexp_construct { txt = operator; loc } body
   ;;
 
-  let mk ~prim_names sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
+  let mk
+      ~prim_names
+      ~partitioned_sorts
+      sort_defs
+      sort_name
+      (Syn.Sort_def.Sort_def (vars, op_defs))
+    =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let f op_def =
       let lhs = Operator_pat.mk ~ctor_type:With_info ~match_info:true op_def in
@@ -968,8 +1034,12 @@ module To_nominal (Context : Builder_context) = struct
         ~rhs:[%expr Lvca_syntax.Nominal.Term.Var (info, name)]
     in
     let op_defs = List.map op_defs ~f in
-    let init = pexp_function (op_defs @ [ var_case ]) in
-    let expr = List.fold_right vars ~init ~f:f_fun in
+    let op_defs =
+      match Hashtbl.find partitioned_sorts sort_name with
+      | Some Bound -> op_defs @ [ var_case ]
+      | _ -> op_defs
+    in
+    let expr = List.fold_right vars ~init:(pexp_function op_defs) ~f:f_fun in
     value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
   ;;
 end
@@ -1076,7 +1146,13 @@ module Of_nominal (Context : Builder_context) = struct
     conversions_needed, [%expr Ok [%e type_constr]]
   ;;
 
-  let mk ~prim_names sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
+  let mk
+      ~prim_names
+      ~partitioned_sorts
+      sort_defs
+      sort_name
+      (Syn.Sort_def.Sort_def (vars, op_defs))
+    =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let f op_def =
       let lhs = mk_nominal_pat op_def in
@@ -1108,7 +1184,12 @@ module Of_nominal (Context : Builder_context) = struct
     let fallthrough =
       case ~lhs:(ppat_var { txt = "tm"; loc }) ~guard ~rhs:[%expr Error tm]
     in
-    let init = matching_cases @ [ var_case; fallthrough ] |> pexp_function in
+    let matching_cases =
+      match Hashtbl.find partitioned_sorts sort_name with
+      | Some Bound -> matching_cases @ [ var_case ]
+      | _ -> matching_cases
+    in
+    let init = matching_cases @ [ fallthrough ] |> pexp_function in
     let expr = List.fold_right vars ~init ~f:f_fun in
     value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
   ;;
@@ -1198,7 +1279,13 @@ module Info (Context : Builder_context) = struct
   open Helpers (Context)
   module Operator_pat = Operator_pat (Context)
 
-  let mk ~prim_names:_ _sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
+  let mk
+      ~prim_names:_
+      ~partitioned_sorts
+      _sort_defs
+      sort_name
+      (Syn.Sort_def.Sort_def (vars, op_defs))
+    =
     let mk_case op_def =
       let lhs =
         Operator_pat.mk ~ctor_type:With_info ~match_info:true ~match_non_info:false op_def
@@ -1216,8 +1303,12 @@ module Info (Context : Builder_context) = struct
           ~guard
           ~rhs:[%expr info]
       in
-      let init = pexp_function (op_defs @ [ var_case ]) in
-      List.fold_right vars ~init ~f:(f_fun ~used:false)
+      let op_defs =
+        match Hashtbl.find partitioned_sorts sort_name with
+        | Some Bound -> op_defs @ [ var_case ]
+        | _ -> op_defs
+      in
+      List.fold_right vars ~init:(pexp_function op_defs) ~f:(f_fun ~used:false)
     in
     value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
   ;;
@@ -1241,6 +1332,7 @@ module Wrapper_module (Context : Builder_context) = struct
   let mk ~prim_names sort_defs =
     let sort_def_map = SMap.of_alist_exn sort_defs in
     let sort_ref_map = get_sort_ref_map sort_defs in
+    let partitioned_sorts = partition_sort_defs sort_defs in
     let Graph.Connected_components.{ scc_graph; sccs } =
       Graph.connected_components sort_ref_map
     in
@@ -1258,6 +1350,7 @@ module Wrapper_module (Context : Builder_context) = struct
         ?definite_rec
         (maker :
           prim_names:SSet.t
+          -> partitioned_sorts:(string, bound_unbound) Hashtbl.t
           -> _ Syn.Sort_def.t SMap.t
           -> string
           -> _ Syn.Sort_def.t
@@ -1267,7 +1360,7 @@ module Wrapper_module (Context : Builder_context) = struct
       |> List.map ~f:(fun scc ->
              let value_bindings =
                List.map scc ~f:(fun (sort_name, sort_def) ->
-                   maker ~prim_names sort_def_map sort_name sort_def)
+                   maker ~prim_names ~partitioned_sorts sort_def_map sort_name sort_def)
              in
              let is_rec =
                match definite_rec with
@@ -1285,8 +1378,12 @@ module Wrapper_module (Context : Builder_context) = struct
              in
              pstr_value is_rec value_bindings)
     in
-    let info_decls = Type_decls.mk ~info:true ~sort_def_map ~prim_names in
-    let plain_decls = Type_decls.mk ~info:false ~sort_def_map ~prim_names in
+    let info_decls =
+      Type_decls.mk ~info:true ~sort_def_map ~prim_names ~partitioned_sorts
+    in
+    let plain_decls =
+      Type_decls.mk ~info:false ~sort_def_map ~prim_names ~partitioned_sorts
+    in
     let defs =
       (* Each of these functions is potentially recursive (across multiple types), pre-declare. *)
       [%str

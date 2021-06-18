@@ -40,7 +40,6 @@ end = struct
     | Cons (info, a, lst) ->
       let%map lst = list_to_nat lst in
       Lang.Types.S ((info, Some a), lst)
-    | List_var _ -> failwith "TODO(20)"
   ;;
 
   let rec nat_to_list = function
