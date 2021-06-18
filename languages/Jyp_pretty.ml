@@ -65,6 +65,7 @@ let rec eval doc i (* current indentation *) c (* current column *) =
   | Nest (j, d) -> eval d Int.(i + of_int32_exn j) c
   | Align d -> eval d c c
   | Alt (d1, d2) -> eval d1 i c @ eval d2 i c
+  | Doc_var _ -> failwith "TODO(20)"
 ;;
 
 (* type docs = (int * doc) list *)
@@ -109,7 +110,8 @@ let render_fast : int -> Doc.Plain.t -> string option =
         | Cat (x, y) -> rall p ts k ((i, x) :: (i, y) :: ds)
         | Nest (j, x) -> rall p ts k ((i + Int.of_int32_exn j, x) :: ds)
         | Alt (x, y) -> rall p ts k ((i, x) :: ds) @ rall p ts k ((i, y) :: ds)
-        | Align x -> rall p ts k ((k, x) :: ds)))
+        | Align x -> rall p ts k ((k, x) :: ds)
+        | Doc_var _ -> failwith "TODO(20)"))
   in
   let rec loop : process list -> string list option =
    fun processes ->
