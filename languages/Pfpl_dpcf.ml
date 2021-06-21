@@ -81,7 +81,7 @@ let rec eval tm =
 let%test_module _ =
   (module struct
     let go str =
-      match Lvca_parsing.parse_string Lang.Exp.Parse.t str with
+      match Lvca_parsing.(parse_string (whitespace *> Lang.Exp.Parse.t)) str with
       | Error msg -> Fmt.pr "%s" msg
       | Ok tm ->
         (match eval tm with
@@ -112,6 +112,37 @@ let%test_module _ =
     let%expect_test _ =
       go "Ap(Fun(x. x); Succ(Zero()))";
       [%expect "Num(1)"]
+    ;;
+
+    let add a b =
+      Printf.sprintf
+        {|
+      Ap(
+        Ap(
+          Fun(x.
+            Fix(p.
+              Fun(y.
+                Ifz(x; y'. Succ(Ap(p; y')); y)
+              )
+            )
+          );
+          %s
+        );
+        %s
+      )
+        |}
+        a
+        b
+    ;;
+
+    let%expect_test _ =
+      go (add "Num(2)" "Num(2)");
+      [%expect "Num(4)"]
+    ;;
+
+    let%expect_test _ =
+      go (add (add "Num(1)" "Num(2)") (add "Num(3)" "Num(4)"));
+      [%expect "Num(10)"]
     ;;
   end)
 ;;

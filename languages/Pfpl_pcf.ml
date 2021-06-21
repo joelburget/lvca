@@ -67,7 +67,7 @@ let rec transition ~eager tm =
   | Fix (_info, _typ, (x, e)) -> Ok (subst tm x e)
 ;;
 
-let rec eval ?(eager = true) ?(steps = 3) tm =
+let rec eval ?(eager = true) ?(steps = 50) tm =
   if Int.(steps = 0)
   then Error ("ran out of steps", tm)
   else if is_val' ~eager tm
@@ -80,7 +80,7 @@ let rec eval ?(eager = true) ?(steps = 3) tm =
 let%test_module _ =
   (module struct
     let go ?(eager = true) str =
-      match Lvca_parsing.parse_string Lang.Exp.Parse.t str with
+      match Lvca_parsing.(parse_string (whitespace *> Lang.Exp.Parse.t) str) with
       | Error msg -> Fmt.pr "%s" msg
       | Ok tm ->
         (match eval ~eager tm with
@@ -113,16 +113,41 @@ let%test_module _ =
       [%expect "Succ(Zero())"]
     ;;
 
-    (*
-    let%expect_test _ =
-      go ~eager:true "Fix(x. Ifz(Zero(); pred. pred; x))";
-      [%expect "Zero()"]
+    let add a b =
+      Printf.sprintf
+        {|
+      Ap(
+        Ap(
+          Fun(
+            Parr(Nat(); Nat());
+            x.
+            Fix(
+              Nat();
+              p.
+              Fun(
+                Parr(Nat(); Nat());
+                y.
+                Ifz(x; y'. Succ(Ap(p; y')); y)
+              )
+            )
+          );
+          %s
+        );
+        %s
+      )
+        |}
+        a
+        b
     ;;
 
     let%expect_test _ =
-      go ~eager:false "Fix(x. Ifz(Zero(); pred. pred; x))";
-      [%expect "Zero()"]
+      go (add "Succ(Zero())" "Succ(Zero())");
+      [%expect "Succ(Succ(Zero()))"]
     ;;
-    *)
+
+    let%expect_test _ =
+      go (add (add "Succ(Zero())" "Succ(Zero())") (add "Succ(Zero())" "Succ(Zero())"));
+      [%expect "Succ(Succ(Succ(Succ(Zero()))))"]
+    ;;
   end)
 ;;
