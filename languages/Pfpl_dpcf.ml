@@ -46,10 +46,8 @@ let rec transition tm =
       (* 22.4d *)
       Ok (Lang.Types.Num (info, (info, Z.(z + one))))
     | _ ->
-      (match transition d with
-      (* 22.4b, c *)
-      | Ok d -> Ok (Lang.Types.Succ (info, d))
-      | other -> other))
+      let%map d = transition d in
+      Lang.Types.Succ (info, d))
   | Ifz (info, d0, (x, d1), d) ->
     (* 22.4f-j *)
     (match d with
@@ -58,18 +56,18 @@ let rec transition tm =
       then Ok d0 (* 22.4h *)
       else Ok (subst (Num (info, (info, Z.pred z))) x d1) (* 22.4i *)
     | _ ->
-      (match transition d with Ok d -> Ok (Ifz (info, d0, (x, d1), d)) | other -> other))
+      let%map d = transition d in
+      Lang.Types.Ifz (info, d0, (x, d1), d))
   | Ap (info, d1, d2) ->
     (* 22.4k-n *)
     (match d1 with
     | Fun (_, (x, d)) -> (* 22.4m *) Ok (subst d2 x d)
     | _ ->
-      (match transition d1 with
-      | Ok d1 -> Ok (Lang.Types.Ap (info, d1, d2))
-      | other -> other))
+      let%map d1 = transition d1 in
+      Lang.Types.Ap (info, d1, d2))
   | Fix (_info, (x, d)) -> Ok (subst tm x d) (* 22.4o *)
   | Lang.Types.Num _ -> Ok tm
-  | _ -> Error ("stuck", tm)
+  | Fun _ | Exp_var _ -> Error ("stuck", tm)
 ;;
 
 let rec eval tm =
