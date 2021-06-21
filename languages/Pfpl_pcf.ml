@@ -41,13 +41,13 @@ let rec subst v name exp =
   | Exp_var (_info, name') -> if String.(name = name') then v else exp
 ;;
 
-let rec eval_step ~eager tm =
+let rec transition ~eager tm =
   match tm with
-  | Lang.Types.Zero _ -> Ok tm
+  | Lang.Types.Zero _ | Fun _ | Exp_var _ -> Error ("stuck", tm)
   | Succ (info, tm) ->
     if eager
     then (
-      let%map tm = eval_step ~eager tm in
+      let%map tm = transition ~eager tm in
       Lang.Types.Succ (info, tm))
     else Error ("stuck", tm)
   | Ifz (info, e0, (x, e1), e) ->
@@ -58,15 +58,13 @@ let rec eval_step ~eager tm =
       | Succ (_, e) -> Ok (subst e x e1)
       | _ -> Error ("expected either Zero or Succ(e) in the discriminee", tm))
     else (
-      let%map e = eval_step ~eager e in
+      let%map e = transition ~eager e in
       Lang.Types.Ifz (info, e0, (x, e1), e))
   | Ap (_info, Fun (_, _, (x, e)), e2) -> Ok (subst e2 x e) (* TODO: check e2 is_val *)
   | Ap (info, e1, e2) ->
-    let%map e1 = eval_step ~eager e1 in
+    let%map e1 = transition ~eager e1 in
     Lang.Types.Ap (info, e1, e2)
   | Fix (_info, _typ, (x, e)) -> Ok (subst tm x e)
-  | Fun _ -> Error ("unexpected evaluation request for plain function", tm)
-  | Exp_var _ -> failwith "TODO: eval_step var"
 ;;
 
 let rec eval ?(eager = true) ?(steps = 3) tm =
@@ -75,7 +73,7 @@ let rec eval ?(eager = true) ?(steps = 3) tm =
   else if is_val' ~eager tm
   then Ok tm
   else (
-    let%bind tm' = eval_step ~eager tm in
+    let%bind tm' = transition ~eager tm in
     eval ~steps:(steps - 1) tm')
 ;;
 
