@@ -41,30 +41,37 @@ let rec subst v name exp =
   | Exp_var (_info, name') -> if String.(name = name') then v else exp
 ;;
 
+type 'info provenance =
+  | Root of 'info
+  | Derived of 'info provenance Lang.Exp.t
+
 let rec transition ~eager tm =
+  let info = Derived tm in
+  let set_info = Lang.Exp.map_info ~f:(fun _ -> info) in
   match tm with
   | Lang.Types.Zero _ | Fun _ | Exp_var _ -> Error ("stuck", tm)
-  | Succ (info, tm) ->
+  | Succ (_, tm) ->
     if eager
     then (
       let%map tm = transition ~eager tm in
       Lang.Types.Succ (info, tm))
     else Error ("stuck", tm)
-  | Ifz (info, e0, (x, e1), e) ->
+  | Ifz (_, e0, (x, e1), e) ->
     if is_val' ~eager e
     then (
       match e with
-      | Zero _ -> Ok e0
-      | Succ (_, e) -> Ok (subst e x e1)
+      | Zero _ -> Ok (set_info e0)
+      | Succ (_, e) -> Ok (subst e x e1 |> set_info)
       | _ -> Error ("expected either Zero or Succ(e) in the discriminee", tm))
     else (
       let%map e = transition ~eager e in
       Lang.Types.Ifz (info, e0, (x, e1), e))
-  | Ap (_info, Fun (_, _, (x, e)), e2) -> Ok (subst e2 x e) (* TODO: check e2 is_val *)
-  | Ap (info, e1, e2) ->
+  | Ap (_, Fun (_, _, (x, e)), e2) ->
+    Ok (subst e2 x e |> set_info) (* TODO: check e2 is_val *)
+  | Ap (_, e1, e2) ->
     let%map e1 = transition ~eager e1 in
     Lang.Types.Ap (info, e1, e2)
-  | Fix (_info, _typ, (x, e)) -> Ok (subst tm x e)
+  | Fix (_, _typ, (x, e)) -> Ok (subst tm x e |> set_info)
 ;;
 
 let rec eval ?(eager = true) ?(steps = 50) tm =
@@ -83,6 +90,7 @@ let%test_module _ =
       match Lvca_parsing.(parse_string (whitespace *> Lang.Exp.Parse.t) str) with
       | Error msg -> Fmt.pr "%s" msg
       | Ok tm ->
+        let tm = Lang.Exp.map_info ~f:(fun info -> Root info) tm in
         (match eval ~eager tm with
         | Error (msg, tm) -> Fmt.pr "%s: %a" msg Lang.Exp.pp tm
         | Ok tm -> Lang.Exp.pp Fmt.stdout tm)
