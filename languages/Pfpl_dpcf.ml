@@ -21,15 +21,6 @@ module Lang = Mk_lang (Lvca_syntax.Primitive.Integer)
 (** Values are num and fun *)
 let is_val = function Lang.Types.Num _ | Fun _ -> true | _ -> false
 
-let is_num = function Lang.Types.Num _ -> true | _ -> false
-let is_fun = function Lang.Types.Fun _ -> true | _ -> false
-
-(** A value that isn't a fun, ie a num *)
-let isnt_fun = function Lang.Types.Num _ -> true | _ -> false
-
-(** A value that isn't a num, ie a fun *)
-let isnt_num = function Lang.Types.Fun _ -> true | _ -> false
-
 let rec subst v name exp =
   match exp with
   | Lang.Types.Num _ | Zero _ -> exp
@@ -79,12 +70,6 @@ let rec transition tm =
   | Fix (_info, (x, d)) -> Ok (subst tm x d) (* 22.4o *)
   | Lang.Types.Num _ -> Ok tm
   | _ -> Error ("stuck", tm)
-
-and err = function
-  | Lang.Types.Succ (_, d) -> err d (* 22.4c *) || isnt_num d (* 22.4e *)
-  | Ifz (_, _, _, d) -> isnt_num d (* 22.4j *) || err d (* 22.4g *)
-  | Ap (_, d1, _d2) -> err d1 (* 22.4l *) || isnt_fun d1 (* 22.4n *)
-  | _ -> failwith "TODO"
 ;;
 
 let rec eval tm =
