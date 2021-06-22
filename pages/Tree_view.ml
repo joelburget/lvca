@@ -371,9 +371,7 @@ and render_scope ~render_params ~last:last_slot (Nominal.Scope.Scope (pats, tm))
         let shadowed_var_streams =
           newly_defined_vars
           |> List.filter_map ~f:(fun (_loc, k) ->
-                 match Map.find var_selected_events k with
-                 | None -> None
-                 | Some evt -> Some (k, evt))
+                 Map.find var_selected_events k |> Option.map ~f:(fun evt -> k, evt))
           |> String.Map.of_alist_exn
         in
         let var_selected_events =
