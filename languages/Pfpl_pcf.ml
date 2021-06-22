@@ -41,12 +41,26 @@ let rec subst v name exp =
   | Exp_var (_info, name') -> if String.(name = name') then v else exp
 ;;
 
-type 'info provenance =
-  | Root of 'info
-  | Derived of 'info provenance Lang.Exp.t
+module Provenance = struct
+  type 'info t =
+    | Root of 'info
+    | Derived of 'info t Lang.Exp.t
+
+  let rec equal ~info_eq p1 p2 =
+    match p1, p2 with
+    | Root i1, Root i2 -> info_eq i1 i2
+    | Derived e1, Derived e2 -> Lang.Exp.equal ~info_eq:(equal ~info_eq) e1 e2
+    | _, _ -> false
+  ;;
+
+  let rec get_root_info = function
+    | Root info -> info
+    | Derived tm -> tm |> Lang.Exp.info |> get_root_info
+  ;;
+end
 
 let rec transition ~eager tm =
-  let info = Derived tm in
+  let info = Provenance.Derived tm in
   let set_info = Lang.Exp.map_info ~f:(fun _ -> info) in
   match tm with
   | Lang.Types.Zero _ | Fun _ | Exp_var _ -> Error ("stuck", tm)
@@ -90,7 +104,7 @@ let%test_module _ =
       match Lvca_parsing.(parse_string (whitespace *> Lang.Exp.Parse.t) str) with
       | Error msg -> Fmt.pr "%s" msg
       | Ok tm ->
-        let tm = Lang.Exp.map_info ~f:(fun info -> Root info) tm in
+        let tm = Lang.Exp.map_info ~f:(fun info -> Provenance.Root info) tm in
         (match eval ~eager tm with
         | Error (msg, tm) -> Fmt.pr "%s: %a" msg Lang.Exp.pp tm
         | Ok tm -> Lang.Exp.pp Fmt.stdout tm)
