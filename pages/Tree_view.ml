@@ -332,15 +332,19 @@ let rec render_tm ~render_params ?(suffix = "") : _ Nominal.Term.t -> unit =
     let { signal = expanded_s; set_s = set_expanded } = expanded_signal in
     let button_event, button = Components.chevron_toggle expanded_s in
     let _sink : Logr.t option = E.log button_event set_expanded in
-    (match S.value expanded_s with
-    | false ->
-      let left_col =
-        match scopes with
-        | [] -> [ padded_txt depth (name ^ "()" ^ suffix) ]
-        | _ -> [ padded_txt depth (name ^ "("); button; txt (")" ^ suffix) ]
-      in
-      Queue.enqueue queue (grid_tmpl ~render_params left_col loc)
-    | true ->
+    (match scopes, S.value expanded_s with
+    | [], _ ->
+      Queue.enqueue
+        queue
+        (grid_tmpl ~render_params [ padded_txt depth (name ^ "()" ^ suffix) ] loc)
+    | _, false ->
+      Queue.enqueue
+        queue
+        (grid_tmpl
+           ~render_params
+           [ padded_txt depth (name ^ "("); button; txt (")" ^ suffix) ]
+           loc)
+    | _, true ->
       let open_elem =
         grid_tmpl ~render_params [ padded_txt depth (name ^ "("); button ] loc
       in
