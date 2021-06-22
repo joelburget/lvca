@@ -53,6 +53,8 @@ end
 
 module View = struct
   let view model_s =
+    let open Examples in
+    let div, p, ul, li, code = El.(div, p, ul, li, code) in
     let input_s = S.Pair.fst ~eq:String.( = ) model_s in
     let highlights_s = S.Pair.snd ~eq:Ranges.( = ) model_s in
     let click_example_e =
@@ -72,7 +74,7 @@ module View = struct
         input_s
         |> S.map (fun str ->
                match parse_tm str with
-               | Error msg -> E.never, [ El.div [ txt msg ] ]
+               | Error msg -> E.never, [ div [ txt msg ] ]
                | Ok tm ->
                  let tm =
                    tm |> Nominal.Term.map_info ~f:(Source_ranges.of_opt_range ~buf)
@@ -91,8 +93,6 @@ module View = struct
       in
       S.Pair.fst s, S.Pair.snd s
     in
-    let open Examples in
-    let div, p, ul, li, code = El.(div, p, ul, li, code) in
     let color_defn cls name desc =
       li [ code ~at:[ class' cls ] [ txt name ]; txt (" " ^ desc) ]
     in
