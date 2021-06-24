@@ -32,7 +32,7 @@ val demo_template
   -> Brr.El.t * Brr.Ev.Mouse.t Brr.Ev.t Note.event
 
 type input_event =
-  | InputUpdate of string
+  | EvaluateInput of string
   | InputSelect of Range.t
   | InputUnselect
 

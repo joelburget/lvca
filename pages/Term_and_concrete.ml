@@ -126,7 +126,7 @@ module View = struct
         [ click_evt |> E.map (fun _click -> Action.SwitchInputLang)
         ; input_event
           |> E.map (function
-                 | InputUpdate str -> Action.Evaluate str
+                 | EvaluateInput str -> Action.Evaluate str
                  | InputSelect rng -> InputSelect (Some rng)
                  | InputUnselect -> InputSelect None)
         ; output_selection_e

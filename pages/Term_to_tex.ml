@@ -27,7 +27,7 @@ module View = struct
     let evt : Action.t event =
       input_event
       |> E.filter_map (function
-             | Common.InputUpdate str -> Some (Action.Evaluate str)
+             | Common.EvaluateInput str -> Some (Action.Evaluate str)
              | _ -> None)
     in
     let elem =

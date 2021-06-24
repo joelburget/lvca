@@ -66,7 +66,7 @@ module View = struct
     let enter_input_e =
       input_evt
       |> E.filter_map (function
-             | Common.InputUpdate str -> Some (Action.SetInput str)
+             | Common.EvaluateInput str -> Some (Action.SetInput str)
              | _ -> None)
     in
     let set_highlight_e, output_children =

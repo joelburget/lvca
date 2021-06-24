@@ -54,7 +54,7 @@ let mk ?(autofocus = true) ?(border = true) ?(rows = None) ?(cols = 60) input_s 
       then (
         Ev.prevent_default evt;
         update_input_dirty false;
-        Some (Common.InputUpdate (El.prop El.Prop.value input |> Jstr.to_string)))
+        Some (Common.EvaluateInput (El.prop El.Prop.value input |> Jstr.to_string)))
       else None
     in
     Evr.on_el Ev.keydown handler input |> E.filter_map Fn.id

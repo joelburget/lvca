@@ -596,7 +596,7 @@ module View = struct
     let test_input, test_evt = Single_line_input.mk test_s ~highlights_s:input_hl_s in
     let _sink : Logr.t option =
       E.log test_evt (function
-          | Common.InputUpdate str -> update_test str
+          | Common.EvaluateInput str -> update_test str
           | InputSelect rng -> set_input_hl (Source_ranges.of_range ~buf:"input" rng)
           | InputUnselect -> set_input_hl Source_ranges.empty)
     in
@@ -687,7 +687,7 @@ module View = struct
     in
     let _sink : Logr.t option =
       E.log pg_input_evt (fun evt ->
-          match evt with Common.InputUpdate str -> set_pg_parser_input str | _ -> ())
+          match evt with Common.EvaluateInput str -> set_pg_parser_input str | _ -> ())
     in
     let code_inline content = code ~at:[ class' "code-inline" ] content in
     let code_inline' str = code_inline [ txt str ] in

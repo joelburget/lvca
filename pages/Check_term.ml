@@ -127,7 +127,7 @@ module View = struct
     let language_evt : Action.t event =
       input_event
       |> E.filter_map (function
-             | Common.InputUpdate str -> Some (Action.UpdateLanguage str)
+             | Common.EvaluateInput str -> Some (Action.UpdateLanguage str)
              | _ -> None)
     in
     let term_input, input_event =
@@ -136,7 +136,7 @@ module View = struct
     let term_evt : Action.t event =
       input_event
       |> E.filter_map (function
-             | Common.InputUpdate str -> Some (Action.UpdateTerm str)
+             | Common.EvaluateInput str -> Some (Action.UpdateTerm str)
              | _ -> None)
     in
     let todo_sort = Sort.Ap (None, "term", []) in

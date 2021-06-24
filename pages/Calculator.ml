@@ -212,7 +212,7 @@ module View = struct
       E.select
         [ input_event
           |> E.filter_map (function
-                 | Common.InputUpdate str -> Some (Action.Evaluate str)
+                 | Common.EvaluateInput str -> Some (Action.Evaluate str)
                  | _ -> None)
         ; example_update_es |> E.select |> E.map (fun example -> Action.Evaluate example)
         ; tbody_evts

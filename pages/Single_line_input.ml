@@ -91,7 +91,7 @@ let mk ?(autofocus = false) ?highlights_s:(external_highlights_s = S.const []) i
       then (
         Ev.prevent_default evt;
         update_dirty false;
-        Some (Common.InputUpdate (El.prop El.Prop.value input |> Jstr.to_string)))
+        Some (Common.EvaluateInput (El.prop El.Prop.value input |> Jstr.to_string)))
       else None
     in
     Evr.on_el Ev.keydown handler input |> E.filter_map Fn.id

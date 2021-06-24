@@ -121,7 +121,8 @@ module View = struct
     let enter_input_e =
       input_evt
       |> E.filter_map (function
-             | Common.InputUpdate str -> Some (Action.Evaluate str)
+             (* TODO: clear highlights on typing (not just on enter) *)
+             | Common.EvaluateInput str -> Some (Action.Evaluate str)
              | _ -> None)
     in
     let set_highlight_e1, input_children =
