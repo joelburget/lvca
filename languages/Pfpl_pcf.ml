@@ -88,14 +88,19 @@ let rec transition ~eager tm =
   | Fix (_, _typ, (x, e)) -> Ok (subst tm x e |> set_info)
 ;;
 
-let rec eval ?(eager = true) ?(steps = 50) tm =
-  if Int.(steps = 0)
-  then Error ("ran out of steps", tm)
-  else if is_val' ~eager tm
-  then Ok tm
-  else (
-    let%bind tm' = transition ~eager tm in
-    eval ~steps:(steps - 1) tm')
+let eval ?(eager = true) ?(step_limit = 50) tm =
+  let rec go ~step_limit steps tm =
+    if Int.(step_limit = 0)
+    then steps, Error ("ran out of steps", tm)
+    else if is_val' ~eager tm
+    then steps, Ok tm
+    else (
+      let steps' = tm :: steps in
+      match transition ~eager tm with
+      | Ok tm' -> go ~step_limit:(step_limit - 1) steps' tm'
+      | Error (msg, tm) -> steps', Error (msg, tm))
+  in
+  go ~step_limit [] tm
 ;;
 
 let%test_module _ =
@@ -106,8 +111,8 @@ let%test_module _ =
       | Ok tm ->
         let tm = Lang.Exp.map_info ~f:(fun info -> Provenance.Root info) tm in
         (match eval ~eager tm with
-        | Error (msg, tm) -> Fmt.pr "%s: %a" msg Lang.Exp.pp tm
-        | Ok tm -> Lang.Exp.pp Fmt.stdout tm)
+        | _, Error (msg, tm) -> Fmt.pr "%s: %a" msg Lang.Exp.pp tm
+        | _, Ok tm -> Lang.Exp.pp Fmt.stdout tm)
     ;;
 
     let%expect_test _ =

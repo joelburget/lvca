@@ -54,7 +54,7 @@ module View = struct
     | Check_term_page -> "0x: check term"
     | Ast_operations_page -> "0x: operations on ASTs"
     | List_nat_page -> "0x: List_nat"
-    | Pcf_page -> "Ox: PCF"
+    | Pcf_page -> "0x: PCF"
   ;;
 
   let stateless_view = function
