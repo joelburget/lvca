@@ -598,7 +598,7 @@ module View = struct
       E.log test_evt (function
           | Common.EvaluateInput str -> update_test str
           | InputSelect rng -> set_input_hl (Source_ranges.of_range ~buf:"input" rng)
-          | InputUnselect -> set_input_hl Source_ranges.empty)
+          | InputUnselect | InputUpdate _ -> set_input_hl Source_ranges.empty)
     in
     let trace_cell =
       S.l2

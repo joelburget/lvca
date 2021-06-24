@@ -128,7 +128,7 @@ module View = struct
           |> E.map (function
                  | EvaluateInput str -> Action.Evaluate str
                  | InputSelect rng -> InputSelect (Some rng)
-                 | InputUnselect -> InputSelect None)
+                 | InputUpdate _ | InputUnselect -> InputSelect None)
         ; output_selection_e
           |> E.map (fun rng ->
                  match Map.find rng "input" with

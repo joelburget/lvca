@@ -87,14 +87,15 @@ let mk ?(autofocus = false) ?highlights_s:(external_highlights_s = S.const []) i
   let keydown_evt =
     let handler evt =
       let keyboard_evt = Ev.as_type evt in
+      let str = El.prop El.Prop.value input |> Jstr.to_string in
       if Web_util.is_enter keyboard_evt
       then (
         Ev.prevent_default evt;
         update_dirty false;
-        Some (Common.EvaluateInput (El.prop El.Prop.value input |> Jstr.to_string)))
-      else None
+        Common.EvaluateInput str)
+      else InputUpdate str
     in
-    Evr.on_el Ev.keydown handler input |> E.filter_map Fn.id
+    Evr.on_el Ev.keydown handler input
   in
   let select_evt =
     let handler _evt =

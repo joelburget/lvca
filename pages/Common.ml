@@ -55,6 +55,7 @@ let demo_template input_desc input_elem output_desc output_elem =
 
 type input_event =
   | EvaluateInput of string
+  | InputUpdate of string
   | InputSelect of Range.t
   | InputUnselect
 

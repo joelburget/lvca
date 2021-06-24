@@ -33,6 +33,7 @@ val demo_template
 
 type input_event =
   | EvaluateInput of string
+  | InputUpdate of string
   | InputSelect of Range.t
   | InputUnselect
 
