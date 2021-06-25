@@ -89,18 +89,20 @@ let rec transition ~eager tm =
 ;;
 
 let eval ?(eager = true) ?(step_limit = 50) tm =
-  let rec go ~step_limit steps tm =
+  let steps = Queue.create () in
+  let rec go ~step_limit tm =
     if Int.(step_limit = 0)
-    then steps, Error ("ran out of steps", tm)
+    then Error ("ran out of steps", tm)
     else if is_val' ~eager tm
-    then steps, Ok tm
+    then Ok tm
     else (
-      let steps' = tm :: steps in
+      Queue.enqueue steps tm;
       match transition ~eager tm with
-      | Ok tm' -> go ~step_limit:(step_limit - 1) steps' tm'
-      | Error (msg, tm) -> steps', Error (msg, tm))
+      | Ok tm' -> go ~step_limit:(step_limit - 1) tm'
+      | Error (msg, tm) -> Error (msg, tm))
   in
-  go ~step_limit [] tm
+  let result = go ~step_limit tm in
+  Queue.to_list steps, result
 ;;
 
 let%test_module _ =
