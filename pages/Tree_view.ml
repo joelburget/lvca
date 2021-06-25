@@ -92,11 +92,13 @@ let select_source_range : Source_ranges.t -> Source_range.t option =
   | _ -> None
 ;;
 
-let in_scope_cls = "bg-green-50"
-let reference_cls = "bg-blue-200"
-let definition_cls = "bg-pink-200"
-let upstream_shadow_cls = "bg-yellow-200"
-let downstream_shadow_cls = "bg-yellow-500"
+module Colors = struct
+  let in_scope = "bg-green-50"
+  let reference = "bg-blue-200"
+  let definition = "bg-pink-200"
+  let upstream_shadow = "bg-yellow-200"
+  let downstream_shadow = "bg-yellow-500"
+end
 
 let grid_tmpl ~render_params left loc : El.t * Source_ranges.t event =
   let { var_selected_events; source_column; range_column; _ } = render_params in
@@ -110,7 +112,7 @@ let grid_tmpl ~render_params left loc : El.t * Source_ranges.t event =
     |> S.hold ~eq:Bool.( = ) false
   in
   let fst_col = td ~at:(classes "col-span-2 px-2 py-0") left in
-  Elr.def_class (Jstr.v in_scope_cls) in_scope_cls_s fst_col;
+  Elr.def_class (Jstr.v Colors.in_scope) in_scope_cls_s fst_col;
   let cols =
     match loc with
     | None -> [ fst_col ]
@@ -163,16 +165,14 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
            | Shadowing, Definition _ -> false, false, false, true (* downstream shadow *)
            | _, _ -> false, false, false, false)
   in
-  let reference_cls_s = classes_s |> S.map Tuple4.get1 in
-  let definition_cls_s = classes_s |> S.map Tuple4.get2 in
-  let upstream_shadow_cls_s = classes_s |> S.map Tuple4.get3 in
-  let downstream_shadow_cls_s = classes_s |> S.map Tuple4.get4 in
   let inner_span = span ~at:[ class' "inline-block" ] [ txt name ] in
-  Elr.def_class (Jstr.v reference_cls) reference_cls_s inner_span;
-  Elr.def_class (Jstr.v definition_cls) definition_cls_s inner_span;
-  Elr.def_class (Jstr.v upstream_shadow_cls) upstream_shadow_cls_s inner_span;
-  Elr.def_class (Jstr.v downstream_shadow_cls) downstream_shadow_cls_s inner_span;
-  let indents = List.init depth ~f:indent in
+  let add_active_class color getter =
+    Elr.def_class (Jstr.v color) (classes_s |> S.map getter) inner_span
+  in
+  add_active_class Colors.reference Tuple4.get1;
+  add_active_class Colors.definition Tuple4.get2;
+  add_active_class Colors.upstream_shadow Tuple4.get3;
+  add_active_class Colors.downstream_shadow Tuple4.get4;
   let name_elem = span [ inner_span; txt suffix ] in
   let trigger_upstream_shadow, trigger_downstream_shadow =
     match var_pos with
@@ -194,6 +194,7 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
         trigger_downstream_shadow Unselected;
         trigger_selected Unselected)
   in
+  let indents = List.init depth ~f:indent in
   let left_col = pre (List.snoc indents name_elem) in
   Queue.enqueue queue (grid_tmpl ~render_params [ left_col ] loc)
 ;;
