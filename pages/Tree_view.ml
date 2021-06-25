@@ -146,10 +146,12 @@ let grid_tmpl ~render_params left loc : El.t * Source_ranges.t event =
 
 let indent _ = span ~at:[ class' "border-l-2"; class' "border-dotted" ] [ txt "  " ]
 
-let padded_txt depth text =
+let pad_text depth text =
   let indents = List.init depth ~f:indent in
-  pre ~at:[ class' "inline-block" ] (List.snoc indents (txt text))
+  indents @ [ text ]
 ;;
+
+let padded_text depth text = pre ~at:[ class' "inline-block" ] (pad_text depth (txt text))
 
 let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit =
   let { depth; queue; _ } = render_params in
@@ -194,8 +196,7 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
         trigger_downstream_shadow Unselected;
         trigger_selected Unselected)
   in
-  let indents = List.init depth ~f:indent in
-  let left_col = pre (List.snoc indents name_elem) in
+  let left_col = pre (pad_text depth name_elem) in
   Queue.enqueue queue (grid_tmpl ~render_params [ left_col ] loc)
 ;;
 
@@ -278,7 +279,7 @@ let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
       | _ -> invariant_violation ~here:[%here] "Expected LocIx"
     in
     let str = Fmt.str "%a%s" Primitive.All.pp p suffix in
-    Queue.enqueue queue (grid_tmpl ~render_params [ padded_txt depth str ] loc)
+    Queue.enqueue queue (grid_tmpl ~render_params [ padded_text depth str ] loc)
   | Var (VarDefIx (loc, selected_event), name) ->
     let trigger_upstream_shadow =
       match Map.find shadowed_var_streams name with
@@ -295,22 +296,24 @@ let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
   | Ignored (LocIx loc, name) ->
     Queue.enqueue
       queue
-      (grid_tmpl ~render_params [ padded_txt depth ("_" ^ name ^ suffix) ] loc)
+      (grid_tmpl ~render_params [ padded_text depth ("_" ^ name ^ suffix) ] loc)
   | Operator (LocIx loc, name, slots) ->
     (match slots with
     | [] ->
       Queue.enqueue
         queue
-        (grid_tmpl ~render_params [ padded_txt depth (name ^ "()" ^ suffix) ] loc)
+        (grid_tmpl ~render_params [ padded_text depth (name ^ "()" ^ suffix) ] loc)
     | _ ->
-      let open_elem = grid_tmpl ~render_params [ padded_txt depth (name ^ "(") ] loc in
+      let open_elem = grid_tmpl ~render_params [ padded_text depth (name ^ "(") ] loc in
       Queue.enqueue queue open_elem;
       let num_slots = List.length slots in
       List.iteri slots ~f:(fun i pat ->
           let suffix = get_suffix ~last_slot:(i = num_slots - 1) in
           let render_params = { render_params with depth = Int.succ depth } in
           render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream pat);
-      let close_elem = grid_tmpl ~render_params [ padded_txt depth (")" ^ suffix) ] loc in
+      let close_elem =
+        grid_tmpl ~render_params [ padded_text depth (")" ^ suffix) ] loc
+      in
       Queue.enqueue queue close_elem)
   | _ -> failwith "invariant violation: wrong index"
 ;;
@@ -325,7 +328,7 @@ let rec render_tm ~render_params ?(suffix = "") : _ Nominal.Term.t -> unit =
       | LocIx loc -> loc
       | _ -> invariant_violation ~here:[%here] "Expected LocIx"
     in
-    Queue.enqueue queue (grid_tmpl ~render_params [ padded_txt depth str ] loc)
+    Queue.enqueue queue (grid_tmpl ~render_params [ padded_text depth str ] loc)
   | Var (LocIx loc, name) ->
     let selected_event = Map.find_exn var_selected_events name in
     render_var ~render_params ~var_pos:Reference ~suffix ~selected_event ~loc ~name
@@ -337,22 +340,24 @@ let rec render_tm ~render_params ?(suffix = "") : _ Nominal.Term.t -> unit =
     | [], _ ->
       Queue.enqueue
         queue
-        (grid_tmpl ~render_params [ padded_txt depth (name ^ "()" ^ suffix) ] loc)
+        (grid_tmpl ~render_params [ padded_text depth (name ^ "()" ^ suffix) ] loc)
     | _, false ->
       Queue.enqueue
         queue
         (grid_tmpl
            ~render_params
-           [ padded_txt depth (name ^ "("); button; txt (")" ^ suffix) ]
+           [ padded_text depth (name ^ "("); button; txt (")" ^ suffix) ]
            loc)
     | _, true ->
       let open_elem =
-        grid_tmpl ~render_params [ padded_txt depth (name ^ "("); button ] loc
+        grid_tmpl ~render_params [ padded_text depth (name ^ "("); button ] loc
       in
       Queue.enqueue queue open_elem;
       List.iteri scopes ~f:(fun i ->
           render_scope ~render_params ~last:(i = List.length scopes - 1));
-      let close_elem = grid_tmpl ~render_params [ padded_txt depth (")" ^ suffix) ] loc in
+      let close_elem =
+        grid_tmpl ~render_params [ padded_text depth (")" ^ suffix) ] loc
+      in
       Queue.enqueue queue close_elem)
   | _ -> failwith "invariant violation: wrong index"
 
