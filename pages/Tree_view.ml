@@ -1,3 +1,15 @@
+(** Overview: This works by creating a queue holding rows of rendered text. We traverse
+    the given term, enqueuing one row at a time, which we then render. The result is a
+    single div, but it's reactive, so its children (rows) change as you expand (adding
+    rows) or contract (removing rows) (term) children.
+
+    Rendering rows happens every time a visibility is toggled.
+
+    Only once we index the given term and its descendents, changing its info type from
+    [Opt_range.t] to [term_index]. This is used to highlight variables without
+    re-rendering and to create a signal holding the expansion state for each operator (so
+    even if an enclosing scope is contracted, the signal retains its state). *)
+
 open Base
 open Brr
 open Brr_note
@@ -61,17 +73,21 @@ let create_e () =
 
 type definition_streams =
   { trigger_upstream_shadow : VarStatus.t -> unit
-        (** Alert upstream (a var that we're shadowing) to light up *)
+        (** Alert upstream (in an enclosing scope, a var that we're shadowing) to light up *)
   ; trigger_downstream_shadow : VarStatus.t -> unit
-        (** Alert downstream (a var that shadows us) to light up *)
+        (** Alert downstream (in an enclosed scope, a var that shadows us) to light up *)
   }
 
 type render_params =
   { source_column : bool (** Show the "source" column or not *)
   ; range_column : bool (** Show the "range" column or not *)
   ; depth : int
+        (** How many times we've recursed to a child. Used both when deciding if we should
+            render at this depth and for indentation. *)
   ; var_selected_events : VarStatus.t event' String.Map.t
+        (** Variables that are in scope. Used to light them up (see [render_var]). *)
   ; queue : (El.t * Source_ranges.t event) Queue.t
+        (** Queue of rows that have been rendered. *)
   }
 
 type var_pos =
@@ -100,6 +116,7 @@ module Colors = struct
   let downstream_shadow = "bg-yellow-500"
 end
 
+(** Render a row in the grid. *)
 let grid_tmpl ~render_params left loc : El.t * Source_ranges.t event =
   let { var_selected_events; source_column; range_column; _ } = render_params in
   let in_scope_cls_s =
@@ -153,6 +170,18 @@ let pad_text depth text =
 
 let padded_text depth text = pre ~at:[ class' "inline-block" ] (pad_text depth (txt text))
 
+(** Variables have a lot of states / interactions. States:
+
+    - Reference: this variable references the variable being hovered (blue)
+    - Definition: this is the definition site of the variable being hovered (pink)
+    - Upstream shadow: this variable is shadowed by the variable being hovered (yellow)
+    - Downstream shadow: this variable shadows the one being hovered (orange)
+
+    There are two places a variable can occur: in a pattern (where it's defined) or in a
+    term (where it's used), and this function is used for both.
+
+    - Definition: when hovered, send signals to references and shadow points to light up.
+    - Referenced: when hovered, send signal just to definition and other references. *)
 let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit =
   let { depth; queue; _ } = render_params in
   let { event = selected_event; trigger = trigger_selected } = selected_event in
@@ -213,6 +242,7 @@ let rec index_pat = function
     Operator (LocIx loc, name, slots)
 ;;
 
+(** Index a term so that its info type changes from [Opt_range.t] to [term_index]. *)
 let rec index_tm ~expanded_depth = function
   | Nominal.Term.Primitive p ->
     let p = Primitive.All.map_info ~f:(fun loc -> LocIx loc) p in
@@ -412,7 +442,7 @@ let view_tm
     tm
   =
   let tm = Nominal.Term.map_info ~f:select_source_range tm in
-  (* First, create a stream for all free variables actions on them will work
+  (* First, create a stream for all free variables. Actions on them will work
      like normal. *)
   let free_vars = Nominal.Term.free_vars tm in
   let var_selected_events =
