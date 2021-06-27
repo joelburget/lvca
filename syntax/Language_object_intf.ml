@@ -78,6 +78,8 @@ module type Extended_s = sig
   (** {1 Printing / Parsing} *)
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
+  val pp_opt_range : Lvca_provenance.Opt_range.t t Fmt.t
+
   module Parse : sig
     val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
     val whitespace_t : Lvca_provenance.Opt_range.t t Lvca_parsing.t

@@ -14,6 +14,14 @@ module Extend (Object : Language_object_intf.S) :
     Nominal.Term.pp_generic ~open_loc ~close_loc ppf (to_nominal tm)
   ;;
 
+  let pp_opt_range ppf tm =
+    pp_generic
+      ~open_loc:Lvca_provenance.Opt_range.open_stag
+      ~close_loc:Lvca_provenance.Opt_range.close_stag
+      ppf
+      tm
+  ;;
+
   let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
   let to_string tm = Fmt.to_to_string pp tm
 
