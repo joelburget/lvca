@@ -73,6 +73,8 @@ module PpGeneric = struct
       pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi (scope ~open_loc ~close_loc)) subtms
     | Var (_, v) -> string ppf v
     | Primitive p ->
+      (* Note: open_loc and close_loc intentionally nops because we already
+         show the location here. *)
       Primitive_impl.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p);
     close_loc ppf (info tm)
 
@@ -772,6 +774,16 @@ match(x; match_lines(
         <{1,85}>
         match(<{7,8}>x</{7,8}>;
         <{10,84}>match_lines(<{25,50}>match_line(<{36,41}>foo()</{36,41}>. <{43,49}>true()</{43,49}>)</{25,50}>; <{54,82}>match_line(<{65,78}>bar(<{69,70}>_</{69,70}>; <{72,74}>_x</{72,74}>; <{76,77}>y</{76,77}>)</{65,78}>. <{80,81}>y</{80,81}>)</{54,82}>)</{10,84}>)</{1,85}> |}]
+    ;;
+
+    let%expect_test _ =
+      print_parse {|Succ(Ifz(Zero(); x. x; Zero()))|};
+      (*            01234567890123456789012345678901
+                    0         1         2         3*)
+      [%expect {|
+      Succ(Ifz(Zero(); x. x; Zero()))
+      <{0,31}>Succ(<{5,30}>Ifz(<{9,15}>Zero()</{9,15}>; <{17,18}>x</{17,18}>. <{20,21}>x</{20,21}>; <{23,29}>Zero()</{23,29}>)</{5,30}>)</{0,31}>
+    |}]
     ;;
   end)
 ;;
