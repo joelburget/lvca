@@ -124,9 +124,11 @@ module View = struct
     let set_highlight_e2, intermediate_tree_views =
       let s =
         model_s
+        |> S.map ~eq:phys_equal (fun Model.{ intermediate_results; _ } ->
+               intermediate_results)
         |> S.map
              ~eq:(Lvca_util.Tuple2.equal phys_equal phys_equal)
-             (fun Model.{ intermediate_results; _ } ->
+             (fun intermediate_results ->
                let events, elems =
                  intermediate_results |> List.map ~f:mk_tree_view |> List.unzip
                in
@@ -137,9 +139,8 @@ module View = struct
     let set_highlight_e3, output_tree_view =
       let s =
         model_s
-        |> S.map
-             ~eq:(Lvca_util.Tuple2.equal phys_equal phys_equal)
-             (fun Model.{ result; _ } ->
+        |> S.map ~eq:phys_equal (fun Model.{ result; _ } -> result)
+        |> S.map ~eq:(Lvca_util.Tuple2.equal phys_equal phys_equal) (fun result ->
                match result with
                | Error (msg, _tm_opt) -> E.never, div [ txt msg ]
                | Ok tm -> mk_tree_view tm)
