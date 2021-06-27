@@ -122,7 +122,7 @@ let grid_tmpl ~render_params left loc : El.t * Source_ranges.t event =
   let in_scope_cls_s =
     var_selected_events
     |> Map.to_alist
-    (* Highlight background if any variable in scope is selected *)
+    (* Highlight background if any variable defined in this scope is selected *)
     |> List.map ~f:(fun (_k, { event; _ }) ->
            event |> E.map (function VarStatus.Selected -> true | _ -> false))
     |> E.select
