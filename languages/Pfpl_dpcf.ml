@@ -29,11 +29,13 @@ let rec subst v name exp =
     Ifz
       ( info
       , subst v name e0
-      , (x, if String.(x = name) then e1 else subst v name e1)
+      , (x, if String.(x.name = name) then e1 else subst v name e1)
       , subst v name e )
-  | Fun (info, (x, e)) -> Fun (info, (x, if String.(x = name) then e else subst v name e))
+  | Fun (info, (x, e)) ->
+    Fun (info, (x, if String.(x.name = name) then e else subst v name e))
   | Ap (info, e1, e2) -> Ap (info, subst v name e1, subst v name e2)
-  | Fix (info, (x, e)) -> Fix (info, (x, if String.(x = name) then e else subst v name e))
+  | Fix (info, (x, e)) ->
+    Fix (info, (x, if String.(x.name = name) then e else subst v name e))
   | Exp_var (_info, name') -> if String.(name = name') then v else exp
 ;;
 
@@ -54,18 +56,18 @@ let rec transition tm =
     | Lang.Types.Num (_, (info, z)) ->
       if Z.(equal z zero)
       then Ok d0 (* 22.4h *)
-      else Ok (subst (Num (info, (info, Z.pred z))) x d1) (* 22.4i *)
+      else Ok (subst (Num (info, (info, Z.pred z))) x.name d1) (* 22.4i *)
     | _ ->
       let%map d = transition d in
       Lang.Types.Ifz (info, d0, (x, d1), d))
   | Ap (info, d1, d2) ->
     (* 22.4k-n *)
     (match d1 with
-    | Fun (_, (x, d)) -> (* 22.4m *) Ok (subst d2 x d)
+    | Fun (_, (x, d)) -> (* 22.4m *) Ok (subst d2 x.name d)
     | _ ->
       let%map d1 = transition d1 in
       Lang.Types.Ap (info, d1, d2))
-  | Fix (_info, (x, d)) -> Ok (subst tm x d) (* 22.4o *)
+  | Fix (_info, (x, d)) -> Ok (subst tm x.name d) (* 22.4o *)
   | Lang.Types.Num _ -> Ok tm
   | Fun _ | Exp_var _ -> Error ("stuck", tm)
 ;;

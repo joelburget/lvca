@@ -31,13 +31,13 @@ let rec subst v name exp =
     Ifz
       ( info
       , subst v name e0
-      , (x, if String.(x = name) then e1 else subst v name e1)
+      , (x, if String.(x.name = name) then e1 else subst v name e1)
       , subst v name e )
   | Fun (info, typ, (x, e)) ->
-    Fun (info, typ, (x, if String.(x = name) then e else subst v name e))
+    Fun (info, typ, (x, if String.(x.name = name) then e else subst v name e))
   | Ap (info, e1, e2) -> Ap (info, subst v name e1, subst v name e2)
   | Fix (info, typ, (x, e)) ->
-    Fix (info, typ, (x, if String.(x = name) then e else subst v name e))
+    Fix (info, typ, (x, if String.(x.name = name) then e else subst v name e))
   | Exp_var (_info, name') -> if String.(name = name') then v else exp
 ;;
 
@@ -75,17 +75,17 @@ let rec transition ~eager tm =
     then (
       match e with
       | Zero _ -> Ok (set_info e0)
-      | Succ (_, e) -> Ok (subst e x e1 |> set_info)
+      | Succ (_, e) -> Ok (subst e x.name e1 |> set_info)
       | _ -> Error ("expected either Zero or Succ(e) in the discriminee", tm))
     else (
       let%map e = transition ~eager e in
       Lang.Types.Ifz (info, e0, (x, e1), e))
   | Ap (_, Fun (_, _, (x, e)), e2) ->
-    Ok (subst e2 x e |> set_info) (* TODO: check e2 is_val *)
+    Ok (subst e2 x.name e |> set_info) (* TODO: check e2 is_val *)
   | Ap (_, e1, e2) ->
     let%map e1 = transition ~eager e1 in
     Lang.Types.Ap (info, e1, e2)
-  | Fix (_, _typ, (x, e)) -> Ok (subst tm x e |> set_info)
+  | Fix (_, _typ, (x, e)) -> Ok (subst tm x.name e |> set_info)
 ;;
 
 let eval ?(eager = true) ?(step_limit = 50) tm =

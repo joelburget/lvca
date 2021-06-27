@@ -31,4 +31,5 @@ term := Operator(list term)
 
 mut_a := Mut_a(mut_b)
 mut_b := Mut_b(mut_a)
+ifz := Ifz(ifz; ifz. ifz; ifz)
 |}]

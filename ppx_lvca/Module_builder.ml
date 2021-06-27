@@ -609,7 +609,9 @@ module Ctor_decl (Context : Builder_context) = struct
         List.map binding_sort_slots ~f:(function
             | Syn.Sort_slot.Sort_binding sort ->
               let loc = update_loc (Sort.info sort) in
-              [%type: string]
+              if info
+              then [%type: 'info Lvca_syntax.Single_var.t]
+              else [%type: Lvca_syntax.Single_var.Plain.t]
             | Sort_pattern _sort -> pattern_type)
       in
       let context = { info; var_names; mutual_sorts; prim_names } in
@@ -771,7 +773,16 @@ module Operator_exp (Context : Builder_context) = struct
                slots
                |> List.map ~f:(fun slot ->
                       match slot with
-                      | Syn.Sort_slot.Sort_binding _sort -> v ()
+                      | Syn.Sort_slot.Sort_binding _sort ->
+                        let v = v () in
+                        (match ctor_type with
+                        | With_info expr ->
+                          (* TODO: is this the right info? *)
+                          [%expr
+                            Lvca_syntax.Single_var.
+                              { info = [%e expr]; name = [%e v].name }]
+                        | Plain ->
+                          [%expr Lvca_syntax.Single_var.Plain.{ name = [%e v].name }])
                       | Sort_pattern _ ->
                         pexp_apply pattern_converter (extra_args @ [ Nolabel, v () ]))
              in
@@ -1000,7 +1011,8 @@ module To_nominal (Context : Builder_context) = struct
       let args =
         List.map slots ~f:(function
             | Syn.Sort_slot.Sort_binding _ ->
-              [%expr Lvca_syntax.Pattern.Var (x0, [%e v ()])]
+              let v = v () in
+              [%expr Lvca_syntax.Pattern.Var ([%e v].info, [%e v].name)]
             | Sort_pattern _ -> v ())
         |> Syntax_quoter.Exp.list ~loc
       in
@@ -1092,7 +1104,9 @@ module Of_nominal (Context : Builder_context) = struct
       let args =
         List.map slots ~f:(function
             | Syn.Sort_slot.Sort_binding _ ->
-              [%pat? Lvca_syntax.Pattern.Var (_, [%p v ()])]
+              let info_v = v () in
+              let name_v = v () in
+              [%pat? Lvca_syntax.Pattern.Var ([%p info_v], [%p name_v])]
             | Sort_pattern _ -> v ())
         |> Syntax_quoter.Pat.list ~loc
       in
@@ -1130,7 +1144,12 @@ module Of_nominal (Context : Builder_context) = struct
                slots
                |> List.map ~f:(fun slot ->
                       match slot with
-                      | Syn.Sort_slot.Sort_binding _sort -> ev ()
+                      | Syn.Sort_slot.Sort_binding _sort ->
+                        let info_v = ev () in
+                        let name_v = ev () in
+                        [%expr
+                          Lvca_syntax.Single_var.
+                            { info = [%e info_v]; name = [%e name_v] }]
                       | Sort_pattern _ -> ev ()
                       (* TODO: pattern_converter? *))
              in
