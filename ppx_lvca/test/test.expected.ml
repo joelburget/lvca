@@ -245,7 +245,7 @@ module Lang =
                       ((f x0),
                         ((Lvca_syntax.Pattern.map_info ~f x1),
                           (let open Lvca_syntax.Single_var in
-                             { info = (f x0); name = (x2.name) }),
+                             { info = (f x2.info); name = (x2.name) }),
                           (foo ~f x3)))
                 | Types.Foo_var (info, name) ->
                     Types.Foo_var ((f info), name)
@@ -264,7 +264,7 @@ module Lang =
                     Types.Ifz
                       ((f x0), (ifz ~f x1),
                         ((let open Lvca_syntax.Single_var in
-                            { info = (f x0); name = (x2.name) }),
+                            { info = (f x2.info); name = (x2.name) }),
                           (ifz ~f x3)), (ifz ~f x4))
                 | Types.Ifz_var (info, name) ->
                     Types.Ifz_var ((f info), name)

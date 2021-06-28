@@ -741,7 +741,7 @@ module Operator_exp (Context : Builder_context) = struct
 
   type mapping_rhs_ty =
     | Plain
-    | With_info of expression
+    | With_info
 
   let mk
       ~ctor_type (* Building a plain or with-info data type *)
@@ -774,15 +774,24 @@ module Operator_exp (Context : Builder_context) = struct
                |> List.map ~f:(fun slot ->
                       match slot with
                       | Syn.Sort_slot.Sort_binding _sort ->
-                        let v = v () in
                         (match ctor_type with
-                        | With_info expr ->
-                          (* TODO: is this the right info? *)
+                        | With_info ->
+                          let v = v () in
+                          let info =
+                            match fun_name with
+                            | "of_plain" -> [%expr ()]
+                            | "map_info" -> [%expr f [%e v].info]
+                            | _ ->
+                              failwith
+                                (Printf.sprintf
+                                   "Operator_exp: invalid function name: %s"
+                                   fun_name)
+                          in
                           [%expr
                             Lvca_syntax.Single_var.
-                              { info = [%e expr]; name = [%e v].name }]
+                              { info = [%e info]; name = [%e v].name }]
                         | Plain ->
-                          [%expr Lvca_syntax.Single_var.Plain.{ name = [%e v].name }])
+                          [%expr Lvca_syntax.Single_var.Plain.{ name = [%e v ()].name }])
                       | Sort_pattern _ ->
                         pexp_apply pattern_converter (extra_args @ [ Nolabel, v () ]))
              in
@@ -790,11 +799,21 @@ module Operator_exp (Context : Builder_context) = struct
       |> List.map ~f:mk_exp_tuple
     in
     let contents =
-      match ctor_type with With_info expr -> expr :: contents | Plain -> contents
+      match ctor_type with
+      | With_info ->
+        let expr =
+          match fun_name with
+          | "of_plain" -> [%expr ()]
+          | "map_info" -> [%expr f x0]
+          | _ ->
+            failwith (Printf.sprintf "Operator_exp: invalid function name: %s" fun_name)
+        in
+        expr :: contents
+      | Plain -> contents
     in
     let txt =
       let container_name =
-        match ctor_type with With_info _ -> "Types" | Plain -> "Plain"
+        match ctor_type with With_info -> "Types" | Plain -> "Plain"
       in
       unflatten [ container_name; op_name ]
     in
@@ -874,7 +893,7 @@ module Of_plain (Context : Builder_context) = struct
         Operator_exp.mk
           ~var_names
           ~prim_names
-          ~ctor_type:(With_info [%expr ()])
+          ~ctor_type:With_info
           sort_defs
           "of_plain"
           op_def
@@ -925,7 +944,7 @@ module Map_info (Context : Builder_context) = struct
         Operator_exp.mk
           ~var_names
           ~prim_names
-          ~ctor_type:(With_info [%expr f x0])
+          ~ctor_type:With_info
           ~extra_args:[ labelled_arg "f" ]
           sort_defs
           "map_info"
