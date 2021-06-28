@@ -45,6 +45,8 @@ let is_before x y = x.finish <= y.start
 let is_subset x y = x.start >= y.start && x.finish <= y.finish
 let ( = ) x y = x.start = y.start && x.finish = y.finish
 let pp ppf { start; finish } = Fmt.pf ppf "{%u,%u}" start finish
+let open_stag ppf rng = Format.pp_open_stag ppf (Stag rng)
+let close_stag ppf _ = Format.pp_close_stag ppf ()
 
 let stag_functions =
   Format.

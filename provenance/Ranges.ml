@@ -1,6 +1,7 @@
 open Base
 
 type t = Range.t list
+type Stdlib.Format.stag += Stag of t
 
 let rec invariants = function
   | [] | [ _ ] -> true
@@ -107,7 +108,18 @@ let pp_mark ppf = function
   | Uncovered range -> Fmt.pf ppf "u%a" Range.pp range
 ;;
 
+let open_stag ppf rng = Stdlib.Format.pp_open_stag ppf (Stag rng)
+let close_stag ppf _ = Stdlib.Format.pp_close_stag ppf ()
 let pp_marks = Fmt.box (Fmt.list ~sep:Fmt.sp pp_mark)
+
+let stag_functions =
+  Stdlib.Format.
+    { mark_open_stag = (function Stag rng -> Fmt.str "<%a>" pp rng | _ -> "")
+    ; mark_close_stag = (function Stag rng -> Fmt.str "</%a>" pp rng | _ -> "")
+    ; print_open_stag = (fun _ -> ())
+    ; print_close_stag = (fun _ -> ())
+    }
+;;
 
 let%test_module "Ranges" =
   (module struct

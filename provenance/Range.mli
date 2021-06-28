@@ -42,5 +42,8 @@ val intersect : t -> t -> t option
 (** Pretty-print this range. *)
 val pp : t Fmt.t
 
+val open_stag : Format.formatter -> t -> unit
+val close_stag : Format.formatter -> t -> unit
+
 (** For testing only: used to enable outputting of the [Stag] semantic tag. *)
 val stag_functions : Stdlib.Format.formatter_stag_functions

@@ -34,6 +34,9 @@ let restrict ~buf p =
   | Some ranges -> String.Map.singleton buf ranges
 ;;
 
+let open_stag ppf rng = Stdlib.Format.pp_open_stag ppf (Stag rng)
+let close_stag ppf _ = Stdlib.Format.pp_close_stag ppf ()
+
 let stag_functions =
   Stdlib.Format.
     { mark_open_stag = (function Stag t -> Fmt.str "<%a>" pp t | _ -> "")

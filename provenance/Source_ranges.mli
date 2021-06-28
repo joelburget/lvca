@@ -40,5 +40,8 @@ val intersect : t -> t -> t
 (** Restrict to a given buffer *)
 val restrict : buf:string -> t -> t
 
+val open_stag : Format.formatter -> t -> unit
+val close_stag : Format.formatter -> t -> unit
+
 (** For testing only: used to enable outputting of the [Stag] semantic tag. *)
 val stag_functions : Stdlib.Format.formatter_stag_functions

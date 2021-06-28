@@ -3,6 +3,8 @@
     Invariants: each range must be disjoint, ranges must be ordered. *)
 type t = Range.t list
 
+type Stdlib.Format.stag += Stag of t
+
 (** Test invariants. Returns true on success. *)
 val invariants : t -> bool
 
@@ -33,5 +35,11 @@ type string_status =
   | Covered of Range.t
   | Uncovered of Range.t
 
+val open_stag : Format.formatter -> t -> unit
+val close_stag : Format.formatter -> t -> unit
+
 (** Mark all string segments as either covered or uncovered. *)
 val mark_string : t -> string -> string_status list
+
+(** For testing only: used to enable outputting of the [Stag] semantic tag. *)
+val stag_functions : Stdlib.Format.formatter_stag_functions
