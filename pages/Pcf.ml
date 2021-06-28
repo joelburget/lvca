@@ -121,7 +121,7 @@ module View = struct
              | InputUpdate _ -> Some (SetInputHighlights [])
              | _ -> None)
     in
-    let set_highlight_e2, intermediate_tree_views =
+    let set_highlight_e1, intermediate_tree_views =
       let s =
         model_s
         |> S.map ~eq:phys_equal (fun Model.{ intermediate_results; _ } ->
@@ -136,7 +136,7 @@ module View = struct
       in
       S.Pair.fst ~eq:phys_equal s, S.Pair.snd ~eq:phys_equal s
     in
-    let set_highlight_e3, output_tree_view =
+    let set_highlight_e2, output_tree_view =
       let s =
         model_s
         |> S.map ~eq:phys_equal (fun Model.{ result; _ } -> result)
@@ -148,7 +148,7 @@ module View = struct
       S.Pair.fst ~eq:phys_equal s, S.Pair.snd ~eq:phys_equal s
     in
     let actions =
-      E.select [ E.swap set_highlight_e2; E.swap set_highlight_e3; enter_input_e ]
+      E.select [ E.swap set_highlight_e1; E.swap set_highlight_e2; enter_input_e ]
     in
     let elem =
       div
