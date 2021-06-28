@@ -16,9 +16,9 @@ let parser_of = function
   | Term -> Nominal.Term.Parse.t
 ;;
 
-let term_pretty = Nominal.Term.pp_range
-let lambda_pretty = Lvca_languages.Lambda_calculus.pp_range
-let lambda_ranges_pretty = Lvca_languages.Lambda_calculus.pp_ranges
+let term_pretty = Nominal.Term.pp_opt_range
+let lambda_pretty = Lvca_languages.Lambda_calculus.pp_opt_range
+let lambda_ranges_pretty = Lvca_languages.Lambda_calculus.pp_source_ranges
 let html_eq = Caml.( = )
 let htmls_eq = List.equal Caml.( = )
 

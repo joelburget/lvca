@@ -105,9 +105,11 @@ let pp_generic ~open_loc ~close_loc =
   pp' 0
 ;;
 
-let pp_range = pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag
+let pp_opt_range =
+  pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag
+;;
 
-let pp_ranges =
+let pp_source_ranges =
   pp_generic
     ~open_loc:(fun ppf loc -> Caml.Format.pp_open_stag ppf (Source_ranges.Stag loc))
     ~close_loc:(fun ppf _loc -> Caml.Format.pp_close_stag ppf ())
@@ -117,14 +119,14 @@ let%test_module "Lambda Calculus" =
   (module struct
     let () = Caml.Format.set_tags false
     let parse str = Lvca_parsing.parse_string Parse.whitespace_t str
-    let pretty_parse str = parse str |> Result.ok_or_failwith |> Fmt.pr "%a" pp_range
+    let pretty_parse str = parse str |> Result.ok_or_failwith |> Fmt.pr "%a" pp_opt_range
 
     let pretty_eval_parse str =
       parse str
       |> Result.ok_or_failwith
       |> eval
       |> Result.ok_or_failwith
-      |> Fmt.pr "%a" pp_range
+      |> Fmt.pr "%a" pp_opt_range
     ;;
 
     let%expect_test _ =

@@ -42,7 +42,7 @@ val to_nominal : 'info term -> 'info Nominal.Term.t
 (** {1 Printing} *)
 
 val pp : _ term Fmt.t
-val pp_range : Lvca_provenance.Opt_range.t term Fmt.t
+val pp_opt_range : Lvca_provenance.Opt_range.t term Fmt.t
 
 (** {1 Parsing} *)
 module Parse : sig

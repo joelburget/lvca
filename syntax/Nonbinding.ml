@@ -75,7 +75,7 @@ let rec to_nominal tm =
 ;;
 
 let pp ppf tm = tm |> to_nominal |> Nominal.Term.pp ppf
-let pp_range ppf tm = tm |> to_nominal |> Nominal.Term.pp_range ppf
+let pp_opt_range ppf tm = tm |> to_nominal |> Nominal.Term.pp_opt_range ppf
 let hash tm = tm |> to_nominal |> Nominal.Term.hash
 
 let rec select_path ~path tm =

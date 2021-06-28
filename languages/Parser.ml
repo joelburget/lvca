@@ -1085,7 +1085,7 @@ let%test_module "Parsing" =
         let Direct.{ result; _ } = Direct.parse_direct parser' str in
         (match result with
         | Error (msg, _) -> printf "failed to parse: %s\n" msg
-        | Ok tm -> Fmt.pr "%a\n" Nominal.Term.pp_ranges tm)
+        | Ok tm -> Fmt.pr "%a\n" Nominal.Term.pp_source_ranges tm)
    ;;
 
     open TestParsers

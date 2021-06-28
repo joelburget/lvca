@@ -38,8 +38,11 @@ module Term : sig
   val info : 'info t -> 'info
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val pp : _ t Fmt.t
-  val pp_range : Lvca_provenance.Opt_range.t t Fmt.t
-  val pp_ranges : Lvca_provenance.Source_ranges.t t Fmt.t
+  val pp_range : Lvca_provenance.Range.t t Fmt.t
+  val pp_ranges : Lvca_provenance.Ranges.t t Fmt.t
+  val pp_opt_range : Lvca_provenance.Opt_range.t t Fmt.t
+  val pp_source_range : Lvca_provenance.Source_range.t t Fmt.t
+  val pp_source_ranges : Lvca_provenance.Source_ranges.t t Fmt.t
   val jsonify : _ t Json.serializer
   val unjsonify : unit t Json.deserializer
 
@@ -126,8 +129,11 @@ module Scope : sig
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val pp : _ t Fmt.t
-  val pp_range : Lvca_provenance.Opt_range.t t Fmt.t
-  val pp_ranges : Lvca_provenance.Source_ranges.t t Fmt.t
+  val pp_range : Lvca_provenance.Range.t t Fmt.t
+  val pp_ranges : Lvca_provenance.Ranges.t t Fmt.t
+  val pp_opt_range : Lvca_provenance.Opt_range.t t Fmt.t
+  val pp_source_range : Lvca_provenance.Source_range.t t Fmt.t
+  val pp_source_ranges : Lvca_provenance.Source_ranges.t t Fmt.t
   val jsonify : _ t Json.serializer
   val unjsonify : unit t Json.deserializer
   val map_info : f:('a -> 'b) -> 'a t -> 'b t

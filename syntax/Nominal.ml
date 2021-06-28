@@ -184,13 +184,25 @@ module Term = struct
   let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 
   let pp_range ppf tm =
-    pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag ppf tm
+    pp_generic ~open_loc:Range.open_stag ~close_loc:Range.close_stag ppf tm
   ;;
 
   let pp_ranges ppf tm =
+    pp_generic ~open_loc:Ranges.open_stag ~close_loc:Ranges.close_stag ppf tm
+  ;;
+
+  let pp_opt_range ppf tm =
+    pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag ppf tm
+  ;;
+
+  let pp_source_range ppf tm =
+    pp_generic ~open_loc:Source_range.open_stag ~close_loc:Source_range.close_stag ppf tm
+  ;;
+
+  let pp_source_ranges ppf tm =
     pp_generic
-      ~open_loc:(fun ppf info -> Stdlib.Format.pp_open_stag ppf (Source_ranges.Stag info))
-      ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
+      ~open_loc:Source_ranges.open_stag
+      ~close_loc:Source_ranges.close_stag
       ppf
       tm
   ;;
@@ -513,13 +525,25 @@ module Scope = struct
   let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 
   let pp_range ppf tm =
-    pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag ppf tm
+    pp_generic ~open_loc:Range.open_stag ~close_loc:Range.close_stag ppf tm
   ;;
 
   let pp_ranges ppf tm =
+    pp_generic ~open_loc:Ranges.open_stag ~close_loc:Ranges.close_stag ppf tm
+  ;;
+
+  let pp_opt_range ppf tm =
+    pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag ppf tm
+  ;;
+
+  let pp_source_range ppf tm =
+    pp_generic ~open_loc:Source_range.open_stag ~close_loc:Source_range.close_stag ppf tm
+  ;;
+
+  let pp_source_ranges ppf tm =
     pp_generic
-      ~open_loc:(fun ppf info -> Stdlib.Format.pp_open_stag ppf (Source_ranges.Stag info))
-      ~close_loc:(fun ppf _loc -> Stdlib.Format.pp_close_stag ppf ())
+      ~open_loc:Source_ranges.open_stag
+      ~close_loc:Source_ranges.close_stag
       ppf
       tm
   ;;
@@ -660,7 +684,7 @@ let%test_module "TermParser" =
       | Error msg -> print_string ("failed: " ^ msg)
       | Ok tm ->
         Fmt.pr "%a\n" Term.pp tm;
-        Fmt.pr "%a" Term.pp_range tm
+        Fmt.pr "%a" Term.pp_opt_range tm
     ;;
 
     let%test _ = parse_erase "x" = Ok (Var ((), "x"))
@@ -780,7 +804,8 @@ match(x; match_lines(
       print_parse {|Succ(Ifz(Zero(); x. x; Zero()))|};
       (*            01234567890123456789012345678901
                     0         1         2         3*)
-      [%expect {|
+      [%expect
+        {|
       Succ(Ifz(Zero(); x. x; Zero()))
       <{0,31}>Succ(<{5,30}>Ifz(<{9,15}>Zero()</{9,15}>; <{17,18}>x</{17,18}>. <{20,21}>x</{20,21}>; <{23,29}>Zero()</{23,29}>)</{5,30}>)</{0,31}>
     |}]

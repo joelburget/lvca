@@ -164,7 +164,7 @@ let%test_module "Hutton's Razor" =
       | Error str -> print_string str
       | Ok tm ->
         Fmt.pr "%a\n" Nonbinding.pp tm;
-        Fmt.pr "%a\n" Nonbinding.pp_range tm;
+        Fmt.pr "%a\n" Nonbinding.pp_opt_range tm;
         Fmt.pr "%a" pp tm
     ;;
 

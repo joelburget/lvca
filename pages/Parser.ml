@@ -231,7 +231,7 @@ let pp_view ~highlight_s tm fmt =
 ;;
 
 let view_term ~highlight_s tm =
-  let pp_view, tm_selection_e = pp_view ~highlight_s tm Nominal.Term.pp_ranges in
+  let pp_view, tm_selection_e = pp_view ~highlight_s tm Nominal.Term.pp_source_ranges in
   let tree_view, tree_selection_e = Tree_view.view_tm tm in
   let view =
     div
