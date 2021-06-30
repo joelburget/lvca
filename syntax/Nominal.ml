@@ -441,6 +441,7 @@ module Term = struct
             | Ok binders -> return ~range (Types.Scope (binders, tm))
           in
           choice
+            ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
             [ (Primitive_impl.Parse.t >>| fun prim -> Primitive prim)
             ; (identifier
               >>== fun Parse_result.{ value = ident; range = ident_range } ->

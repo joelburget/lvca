@@ -54,6 +54,7 @@ module Typing_clause = struct
           | RightArr -> Inference_rule { tm; ty })
         pattern
         (choice
+           ~failure_msg:"looking for <= or =>"
            [ (string "<=" >>| fun _ -> LeftArr); (string "=>" >>| fun _ -> RightArr) ])
         pattern
       <?> "typing clause"

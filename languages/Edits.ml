@@ -45,6 +45,7 @@ module Parse = struct
   let t (* : 'lang Lvca_parsing.t -> 'lang t Lvca_parsing.t *) lang_p =
     fix (fun t ->
         choice
+          ~failure_msg:"looking for an expression, brackets, or an identifier"
           [ lang_p >>| (fun core -> Atomic core) <?> "core term"
           ; brackets (sep_by (char ',') t) >>| (fun ts -> List ts) <?> "list"
           ; lift3 (fun name _colon edit -> Labeled (edit, name)) identifier (char ':') t

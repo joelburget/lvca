@@ -366,6 +366,7 @@ module Sort_def = struct
 
     let sort_var_decl =
       choice
+        ~failure_msg:"looking for an identifier or parens"
         [ (identifier >>| fun name -> name, None)
         ; (parens Kind.Parse.decl >>| fun (name, kind) -> name, Some kind)
         ]

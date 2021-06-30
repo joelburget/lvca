@@ -276,6 +276,8 @@ module Parse = struct
     fix (fun term ->
         let atomic_term =
           choice
+            ~failure_msg:
+              "looking for a parenthesized term, identifier, or expression in braces"
             [ parens term
             ; (identifier
               >>|| fun { value; range } -> { value = Types.Var (range, value); range })
@@ -288,6 +290,7 @@ module Parse = struct
           <?> "case line"
         in
         choice
+          ~failure_msg:"looking for a lambda, let, match, or application"
           [ lift4
               (fun (_, lam_loc) ((name, ty), parens_loc) _ body ->
                 let info = Opt_range.union lam_loc parens_loc in

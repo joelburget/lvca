@@ -101,6 +101,7 @@ module Parse = struct
   let term : Opt_range.t term Lvca_parsing.t =
     fix (fun term ->
         choice
+          ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
           [ (Primitive.All.Parse.t >>| fun prim -> Primitive prim)
           ; (identifier
             >>== fun Parse_result.{ value = ident; range = start; _ } ->

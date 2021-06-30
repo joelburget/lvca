@@ -32,7 +32,7 @@ module Parse = struct
   let const =
     constants
     |> List.map ~f:string
-    |> choice
+    |> choice ~failure_msg:"looking for a constant name"
     >>|| fun { value = name; range } ->
     { value = Nonbinding.Operator (range, name, []); range }
   ;;
@@ -44,7 +44,11 @@ module Parse = struct
    *)
   let t : term Lvca_parsing.t =
     fix (fun t ->
-        let atom : term Lvca_parsing.t = choice [ lit; const; parens t ] in
+        let atom : term Lvca_parsing.t =
+          choice
+            ~failure_msg:"looking for a literal, constant, or parenthesized expression"
+            [ lit; const; parens t ]
+        in
         (* TODO: rename negate to - *)
         let unary_op : term Lvca_parsing.t =
           unary_operators
@@ -55,11 +59,11 @@ module Parse = struct
                  >>| fun body ->
                  let pos = Opt_range.union p1 (Nonbinding.info body) in
                  Nonbinding.Operator (pos, name, [ body ]))
-          |> choice
+          |> choice ~failure_msg:"looking for a unary operator expression"
         in
         let application =
           let min_max =
-            choice [ string "min"; string "max" ]
+            choice [ string "min"; string "max" ] ~failure_msg:"looking for min or max"
             >>== fun { value = name; range = p1; _ } ->
             lift2
               (fun atom1 atom2 ->

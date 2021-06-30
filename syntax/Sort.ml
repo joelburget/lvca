@@ -100,6 +100,7 @@ module Parse = struct
     fix (fun sort ->
         let atomic_sort =
           choice
+            ~failure_msg:"looking for parens or an identifier"
             [ parens sort
             ; (identifier
               >>|| fun Parse_result.{ value; range } ->

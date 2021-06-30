@@ -329,6 +329,7 @@ module Parse = struct
           | Some binders -> return (Scope (binders, pat))
         in
         choice
+          ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
           [ (Primitive.All.Parse.t >>| fun prim -> Primitive prim)
           ; (identifier
             >>== fun { value = ident; range = ident_range } ->

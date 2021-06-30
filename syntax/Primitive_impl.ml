@@ -178,6 +178,7 @@ module Parse = struct
 
   let t =
     choice
+      ~failure_msg:"looking for an integer, float, string, or character literal"
       [ (integer_or_float_lit
         >>| function First i -> Plain.Integer (Z.of_string i) | Second f -> Float f)
         (* Note: all ints parse to Integer *)

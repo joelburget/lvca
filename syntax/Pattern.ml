@@ -250,6 +250,7 @@ module Parse = struct
   let t =
     fix (fun pat ->
         choice
+          ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
           [ (Primitive_impl.Parse.t >>| fun prim -> Primitive prim)
           ; (identifier
             >>== fun { value = ident; range } ->
