@@ -1,4 +1,5 @@
 open Base
+open Lvca_syntax
 open Result.Let_syntax
 
 module Lang =
@@ -14,6 +15,102 @@ exp :=
   | Ap(exp; exp)
   | Fix(typ; exp. exp)
 |}]
+
+let rec to_tex = function
+  | Lang.Types.Zero info -> Nominal.Term.Primitive (info, Primitive_impl.Plain.String "Z")
+  | Succ (info, exp) -> Nominal.Term.Operator (info, "S", [ Scope ([], to_tex exp) ])
+  | _ -> failwith "TODO(to_tex)"
+;;
+
+module Doc = Jyp_pretty.Doc
+
+let rec typ_to_pretty = function
+  | Lang.Types.Nat info -> Jyp_pretty.Lang.Types.Text (info, (info, "nat"))
+  | Parr (info, t1, t2) ->
+    Cat (info, typ_to_pretty t1, Cat (info, Text (info, (info, "->")), typ_to_pretty t2))
+;;
+
+let cat ~info docs =
+  match docs with
+  | [] -> failwith "can't cat no docs"
+  | [ doc ] -> doc
+  | d :: ds ->
+    List.fold_right ds ~init:d ~f:(fun d ds -> Jyp_pretty.Lang.Types.Cat (info, d, ds))
+;;
+
+let text ~info str = Jyp_pretty.Lang.Types.Text (info, (info, str))
+
+let rec to_pretty = function
+  | Lang.Types.Zero info -> text ~info "Z"
+  | Succ (info, exp) -> cat ~info [ text ~info "S"; to_pretty exp ]
+  | Ifz (info, e0, (x, e1), e) ->
+    cat
+      ~info
+      [ text ~info "ifz"
+      ; to_pretty e
+      ; text ~info "{"
+      ; text ~info "z -> "
+      ; to_pretty e0
+      ; text ~info "|"
+      ; text ~info "s("
+      ; text ~info:x.info x.name
+      ; text ~info ") -> "
+      ; to_pretty e1
+      ; text ~info "}"
+      ]
+  | Fun (info, t, (x, e)) ->
+    cat
+      ~info
+      [ text ~info "lam"
+      ; text ~info "{"
+      ; typ_to_pretty t
+      ; text ~info "}("
+      ; text ~info:x.info x.name
+      ; text ~info "."
+      ; to_pretty e
+      ; text ~info ")"
+      ]
+  | Ap (info, e1, e2) -> Cat (info, to_pretty e1, to_pretty e2)
+  | Fix (info, t, (x, e)) ->
+    cat
+      ~info
+      [ text ~info "fix"
+      ; text ~info:x.info x.name
+      ; text ~info ":"
+      ; typ_to_pretty t
+      ; text ~info "is"
+      ; to_pretty e
+      ]
+  | Exp_var (info, name) -> text ~info name
+;;
+
+(* TODO:
+  - syntax for substitution: [e/x]e1
+  - should we have to antiquote e1 and e2 in Ap(e1; e2)?
+  *)
+let to_core =
+  [%lvca.core
+    {|
+let rec eval = \(tm : exp) -> match tm with {
+  | Zero() -> {Zero()}
+  | Succ(exp) -> let exp = eval exp in Succ(exp)
+  | Ifz(_ty; e0; x. e1; e) ->
+    let e = eval e in
+    match e with {
+      | Zero() -> e
+      | Succ(e) -> open e x e1
+    }
+  | Ap(Fun(x. e1); e2) ->
+    let e2 = eval e2 in
+    open e x e2
+  | Ap(e1; e2) ->
+    let e1 = eval e1 in
+    eval {Ap(e1; e2)}
+  | Fix(_typ; x. e) -> open e x tm
+}
+in eval
+  |}]
+;;
 
 let rec is_val ~eager = function
   | Lang.Plain.Zero | Fun _ -> true
