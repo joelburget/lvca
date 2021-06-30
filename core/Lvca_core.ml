@@ -7,6 +7,8 @@ open Result.Let_syntax
 module Format = Stdlib.Format
 module SMap = Lvca_util.String.Map
 
+let ( >> ) = Lvca_util.( >> )
+
 module Is_rec = struct
   type t =
     | Rec
@@ -751,13 +753,11 @@ and eval_primitive eval_in_ctx eval_nominal_in_ctx ctx tm name args =
 ;;
 
 let eval core = eval_in_ctx SMap.empty core
+let parse_exn = Lvca_parsing.parse_string Parse.term >> Result.ok_or_failwith
 
 let%test_module "Parsing" =
   (module struct
-    let parse str =
-      Lvca_parsing.parse_string Parse.term str |> Result.ok_or_failwith |> Term.erase
-    ;;
-
+    let parse = parse_exn >> Term.erase
     let ( = ) = Term.equal ~info_eq:Unit.( = )
     let one = Nominal.Term.Primitive ((), Integer (Z.of_int 1))
     let var name = Term.Var ((), name)
@@ -889,11 +889,8 @@ let%test_module "Core parsing" =
     ;;
 
     let%test "dynamics as expected" =
-      let parse_term str =
-        Lvca_parsing.parse_string Parse.term str |> Result.ok_or_failwith
-      in
       let ( = ) = Term.equal ~info_eq:Unit.( = ) in
-      parse_term dynamics_str |> Term.erase = dynamics
+      parse_exn dynamics_str |> Term.erase = dynamics
     ;;
   end)
 ;;
@@ -901,12 +898,8 @@ let%test_module "Core parsing" =
 let%test_module "Core eval" =
   (module struct
     let eval_str str =
-      let parse_term str =
-        Lvca_parsing.parse_string Parse.term str |> Result.ok_or_failwith
-      in
-      let core = parse_term str in
       let result =
-        match eval core with
+        match eval (parse_exn str) with
         | Error (msg, tm) -> Fmt.str "%s: %a" msg Term.pp tm
         | Ok result -> Fmt.to_to_string Nominal.Term.pp result
       in
@@ -1124,11 +1117,8 @@ let%test_module "Core pretty" =
 let%test_module "Core eval in dynamics" =
   (module struct
     let eval_in dynamics_str str =
-      let parse_term str =
-        Lvca_parsing.parse_string Parse.term str |> Result.ok_or_failwith
-      in
-      let defn = parse_term dynamics_str in
-      let core = parse_term str in
+      let defn = parse_exn dynamics_str in
+      let core = parse_exn str in
       match eval (Core_app (None, defn, [ core ])) with
       | Error (msg, tm) -> Fmt.str "%s: %a" msg Term.pp tm
       | Ok result -> Fmt.to_to_string Nominal.Term.pp result
@@ -1169,8 +1159,6 @@ let%test_module "Core eval in dynamics" =
 
 let%test_module "Evaluation / inference" =
   (module struct
-    let parse_term str = Lvca_parsing.parse_string Parse.term str |> Result.ok_or_failwith
-
     let parse_type str =
       Lvca_parsing.parse_string Type.Parse.t str |> Result.ok_or_failwith
     ;;
@@ -1203,7 +1191,7 @@ let%test_module "Evaluation / inference" =
     let syntax = Abstract_syntax.{ externals; sort_defs }
 
     let check ?(type_env = SMap.empty) ty_str tm_str =
-      let tm = parse_term tm_str in
+      let tm = parse_exn tm_str in
       let ty = parse_type ty_str in
       let ctx = { type_env; syntax } in
       match check ctx tm ty with
@@ -1212,7 +1200,7 @@ let%test_module "Evaluation / inference" =
     ;;
 
     let infer ?(type_env = SMap.empty) tm_str =
-      let tm = parse_term tm_str in
+      let tm = parse_exn tm_str in
       let ctx = { type_env; syntax } in
       match infer ctx tm with
       | Error err -> Infer_error.pp Fmt.stdout err
