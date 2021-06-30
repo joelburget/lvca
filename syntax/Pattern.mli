@@ -1,6 +1,8 @@
 (** Patterns for matching non-binding terms. *)
 open Lvca_util
 
+open Lvca_provenance
+
 type 'info t =
   | Operator of 'info * string * 'info t list
   | Primitive of 'info Primitive_impl.t
@@ -31,8 +33,8 @@ val list_vars_of_pattern : 'info t -> ('info * string) list
 
 val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 val pp : _ t Fmt.t
-val pp_range : Lvca_provenance.Opt_range.t t Fmt.t
-val pp_ranges : Lvca_provenance.Source_ranges.t t Fmt.t
+val pp_range : Opt_range.t t Fmt.t
+val pp_ranges : Source_ranges.t t Fmt.t
 
 (** {1 Serialization} *)
 
@@ -83,8 +85,8 @@ val check
 (** {1 Parsing} *)
 
 module Parse : sig
-  val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
-  val whitespace_t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+  val t : Opt_range.t t Lvca_parsing.t
+  val whitespace_t : Opt_range.t t Lvca_parsing.t
 end
 
 module Properties : sig

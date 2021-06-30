@@ -1,4 +1,5 @@
 open Lvca_util
+open Lvca_provenance
 
 (** Lots of interesting domains have no binding. At that point they're not really
     languages, just data types. This module gives a tighter representation for such types
@@ -42,12 +43,12 @@ val to_nominal : 'info term -> 'info Nominal.Term.t
 (** {1 Printing} *)
 
 val pp : _ term Fmt.t
-val pp_opt_range : Lvca_provenance.Opt_range.t term Fmt.t
+val pp_opt_range : Opt_range.t term Fmt.t
 
 (** {1 Parsing} *)
 module Parse : sig
-  val term : Lvca_provenance.Opt_range.t term Lvca_parsing.t
-  val whitespace_term : Lvca_provenance.Opt_range.t term Lvca_parsing.t
+  val term : Opt_range.t term Lvca_parsing.t
+  val whitespace_term : Opt_range.t term Lvca_parsing.t
 end
 
 (** {1 Misc} *)

@@ -1,4 +1,5 @@
 open Lvca_util
+open Lvca_provenance
 
 (** Types for describing the abstract syntax of a language. *)
 
@@ -21,8 +22,8 @@ module Kind : sig
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   module Parse : sig
-    val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
-    val decl : (string * Lvca_provenance.Opt_range.t t) Lvca_parsing.t
+    val t : Opt_range.t t Lvca_parsing.t
+    val decl : (string * Opt_range.t t) Lvca_parsing.t
   end
 end
 
@@ -57,7 +58,7 @@ module Sort_slot : sig
   val instantiate : 'info Sort.t String.Map.t -> 'info t -> 'info t
 
   module Parse : sig
-    val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+    val t : Opt_range.t t Lvca_parsing.t
   end
 end
 
@@ -75,7 +76,7 @@ module Valence : sig
   val instantiate : 'info Sort.t String.Map.t -> 'info t -> 'info t
 
   module Parse : sig
-    val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+    val t : Opt_range.t t Lvca_parsing.t
   end
 end
 
@@ -93,7 +94,7 @@ module Arity : sig
   val instantiate : 'info Sort.t String.Map.t -> 'info t -> 'info t
 
   module Parse : sig
-    val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+    val t : Opt_range.t t Lvca_parsing.t
   end
 end
 
@@ -108,7 +109,7 @@ module Operator_def : sig
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
   module Parse : sig
-    val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+    val t : Opt_range.t t Lvca_parsing.t
   end
 end
 
@@ -131,7 +132,7 @@ module Sort_def : sig
   val kind_check : Int.Set.t String.Map.t -> string -> 'info t -> Int.Set.t String.Map.t
 
   module Parse : sig
-    val t : (string * Lvca_provenance.Opt_range.t t) Lvca_parsing.t
+    val t : (string * Opt_range.t t) Lvca_parsing.t
   end
 end
 
@@ -172,6 +173,6 @@ val pp : _ t Fmt.t
 val kind_check : _ t -> (kind_map, kind_mismap) Result.t
 
 module Parse : sig
-  val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
-  val whitespace_t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+  val t : Opt_range.t t Lvca_parsing.t
+  val whitespace_t : Opt_range.t t Lvca_parsing.t
 end

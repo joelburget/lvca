@@ -2,6 +2,8 @@
 (** Pattern matching. See Maranget's "Compiling pattern matching to good decision trees". *)
 open Lvca_util
 
+open Lvca_provenance
+
 (** The cases in a pattern match (matching one term). *)
 type ('info, 'rhs) cases = ('info Pattern.t * 'rhs) list
 
@@ -96,19 +98,10 @@ val check_matrix
 module Parse : sig
   type 'info matrix_row = 'info matrix_entry list * 'info Nonbinding.term
 
-  val branch
-    : (Lvca_provenance.Opt_range.t Pattern.t
-      * Lvca_provenance.Opt_range.t Nonbinding.term)
-      Lvca_parsing.t
-
-  val branches
-    : (Lvca_provenance.Opt_range.t Pattern.t
-      * Lvca_provenance.Opt_range.t Nonbinding.term)
-      list
-      Lvca_parsing.t
-
-  val matrix_row : Lvca_provenance.Opt_range.t matrix_row Lvca_parsing.t
-  val matrix_rows : Lvca_provenance.Opt_range.t matrix_row list Lvca_parsing.t
+  val branch : (Opt_range.t Pattern.t * Opt_range.t Nonbinding.term) Lvca_parsing.t
+  val branches : (Opt_range.t Pattern.t * Opt_range.t Nonbinding.term) list Lvca_parsing.t
+  val matrix_row : Opt_range.t matrix_row Lvca_parsing.t
+  val matrix_rows : Opt_range.t matrix_row list Lvca_parsing.t
 end
 
 module Properties : sig

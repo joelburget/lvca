@@ -1,6 +1,8 @@
 (** Representation of terms that simply uses variable names to represent scope. *)
 open Lvca_util
 
+open Lvca_provenance
+
 module Types : sig
   type 'info term =
     | Operator of 'info * string * 'info scope list
@@ -38,11 +40,11 @@ module Term : sig
   val info : 'info t -> 'info
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val pp : _ t Fmt.t
-  val pp_range : Lvca_provenance.Range.t t Fmt.t
-  val pp_ranges : Lvca_provenance.Ranges.t t Fmt.t
-  val pp_opt_range : Lvca_provenance.Opt_range.t t Fmt.t
-  val pp_source_range : Lvca_provenance.Source_range.t t Fmt.t
-  val pp_source_ranges : Lvca_provenance.Source_ranges.t t Fmt.t
+  val pp_range : Range.t t Fmt.t
+  val pp_ranges : Ranges.t t Fmt.t
+  val pp_opt_range : Opt_range.t t Fmt.t
+  val pp_source_range : Source_range.t t Fmt.t
+  val pp_source_ranges : Source_ranges.t t Fmt.t
   val jsonify : _ t Json.serializer
   val unjsonify : unit t Json.deserializer
 
@@ -107,8 +109,8 @@ module Term : sig
     -> ('info, ('info Pattern.t, 'info t) Base.Either.t) Check_failure.t option
 
   module Parse : sig
-    val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
-    val whitespace_t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+    val t : Opt_range.t t Lvca_parsing.t
+    val whitespace_t : Opt_range.t t Lvca_parsing.t
   end
 
   module Properties : sig
@@ -129,11 +131,11 @@ module Scope : sig
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val pp : _ t Fmt.t
-  val pp_range : Lvca_provenance.Range.t t Fmt.t
-  val pp_ranges : Lvca_provenance.Ranges.t t Fmt.t
-  val pp_opt_range : Lvca_provenance.Opt_range.t t Fmt.t
-  val pp_source_range : Lvca_provenance.Source_range.t t Fmt.t
-  val pp_source_ranges : Lvca_provenance.Source_ranges.t t Fmt.t
+  val pp_range : Range.t t Fmt.t
+  val pp_ranges : Ranges.t t Fmt.t
+  val pp_opt_range : Opt_range.t t Fmt.t
+  val pp_source_range : Source_range.t t Fmt.t
+  val pp_source_ranges : Source_ranges.t t Fmt.t
   val jsonify : _ t Json.serializer
   val unjsonify : unit t Json.deserializer
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
@@ -156,8 +158,8 @@ val of_pattern : ('info, 'prim) Pattern.t -> ('info, 'prim) t
   val free_vars : (_, _) t -> String.Set.t
 
   module Parse  : sig
-    val t : 'prim Lvca_parsing.t -> Lvca_provenance.Opt_range.t t Lvca_parsing.t
-    val whitespace_t : 'prim Lvca_parsing.t -> Lvca_provenance.Opt_range.t t Lvca_parsing.t
+    val t : 'prim Lvca_parsing.t -> Opt_range.t t Lvca_parsing.t
+    val whitespace_t : 'prim Lvca_parsing.t -> Opt_range.t t Lvca_parsing.t
   end
 
   module Properties : Properties_intf.S with type 'info t := unit t
