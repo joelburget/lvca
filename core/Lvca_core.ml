@@ -464,7 +464,7 @@ module Check_error' = struct
     | Term_isnt_arrow
     | Failed_term_inference of term_failure_inference_reason
     | Failed_check_term of
-        ('info, ('info Pattern.t, 'info Nominal.Term.t) Base.Either.t) Check_failure.t
+        ('info, ('info Pattern.t, 'info Nominal.Term.t) Either.t) Check_failure.t
 
   let pp ppf tm ty_opt = function
     | Cant_infer_case -> Fmt.pf ppf "can't infer cases"
@@ -722,7 +722,7 @@ and eval_primitive eval_in_ctx eval_nominal_in_ctx ctx tm name args =
              | tm -> Error (Fmt.str "string_of_chars `list(%a)`" Nominal.Scope.pp tm))
       |> Result.all
       |> Result.map ~f:(fun cs ->
-             Nominal.Term.Primitive (info, String (Base.String.of_char_list cs)))
+             Nominal.Term.Primitive (info, String (String.of_char_list cs)))
       |> Result.map_error ~f:(fun msg -> msg, tm)
     | _ -> Error ("expected a list of characters", tm))
   | "var", [ str_tm ] ->
@@ -890,7 +890,7 @@ let%test_module "Core parsing" =
 
     let%test "dynamics as expected" =
       let parse_term str =
-        Lvca_parsing.parse_string Parse.term str |> Base.Result.ok_or_failwith
+        Lvca_parsing.parse_string Parse.term str |> Result.ok_or_failwith
       in
       let ( = ) = Term.equal ~info_eq:Unit.( = ) in
       parse_term dynamics_str |> Term.erase = dynamics
@@ -902,7 +902,7 @@ let%test_module "Core eval" =
   (module struct
     let eval_str str =
       let parse_term str =
-        Lvca_parsing.parse_string Parse.term str |> Base.Result.ok_or_failwith
+        Lvca_parsing.parse_string Parse.term str |> Result.ok_or_failwith
       in
       let core = parse_term str in
       let result =
@@ -1125,7 +1125,7 @@ let%test_module "Core eval in dynamics" =
   (module struct
     let eval_in dynamics_str str =
       let parse_term str =
-        Lvca_parsing.parse_string Parse.term str |> Base.Result.ok_or_failwith
+        Lvca_parsing.parse_string Parse.term str |> Result.ok_or_failwith
       in
       let defn = parse_term dynamics_str in
       let core = parse_term str in
@@ -1169,12 +1169,10 @@ let%test_module "Core eval in dynamics" =
 
 let%test_module "Evaluation / inference" =
   (module struct
-    let parse_term str =
-      Lvca_parsing.parse_string Parse.term str |> Base.Result.ok_or_failwith
-    ;;
+    let parse_term str = Lvca_parsing.parse_string Parse.term str |> Result.ok_or_failwith
 
     let parse_type str =
-      Lvca_parsing.parse_string Type.Parse.t str |> Base.Result.ok_or_failwith
+      Lvca_parsing.parse_string Type.Parse.t str |> Result.ok_or_failwith
     ;;
 
     open Abstract_syntax
