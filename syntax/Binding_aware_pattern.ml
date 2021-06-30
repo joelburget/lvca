@@ -173,7 +173,7 @@ let rec match_term ~info_eq pat tm =
 
 and match_scope ~info_eq (Scope (binder_pats, body_pat)) (Scope.Scope (binders, body)) =
   let f (_, name) pat =
-    if Char.(name.[0] = '_') then None else Some (name, Capture.Binder pat)
+    if Lvca_util.String.is_ignore name then None else Some (name, Capture.Binder pat)
   in
   match List.map2 binder_pats binders ~f with
   | List.Or_unequal_lengths.Unequal_lengths -> None

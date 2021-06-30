@@ -128,6 +128,8 @@ module String = struct
     let len = normalize t stop - pos in
     sub t ~pos ~len
  ;;
+
+  let is_ignore : string -> bool = fun name -> Char.(name.[0] = '_')
 end
 
 exception InvariantViolation of Lexing.position * string

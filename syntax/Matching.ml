@@ -303,8 +303,8 @@ let rec compile_matrix lang sorts matrix =
       let instructions =
         List.filter_map row_entries ~f:(fun { term_no; pattern; path } ->
             match pattern with
-            | Pattern.Var (_, name) ->
-              if Char.(name.[0] = '_') then None else Some { term_no; name; path }
+            | Pattern.Var (_, name) when Lvca_util.String.is_ignore name -> None
+            | Pattern.Var (_, name) -> Some { term_no; name; path }
             | _ -> None)
       in
       Ok (Matched (instructions, rhs))

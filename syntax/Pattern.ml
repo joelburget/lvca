@@ -170,10 +170,9 @@ let check lang ~pattern_sort ~var_sort =
   let rec check sort pat =
     let result =
       match pat with
+      | Var (_, name) when Lvca_util.String.is_ignore name -> Ok String.Map.empty
       | Var (_, name) ->
-        if Char.(name.[0] = '_')
-        then Ok String.Map.empty
-        else if Sort.equal Unit.( = ) (Sort.erase_info sort) (Sort.erase_info var_sort)
+        if Sort.equal Unit.( = ) (Sort.erase_info sort) (Sort.erase_info var_sort)
         then Ok (String.Map.singleton name sort)
         else
           Error
