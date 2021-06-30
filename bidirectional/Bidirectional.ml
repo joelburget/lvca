@@ -70,8 +70,6 @@ let instantiate
              pattern_var_name)
       | None -> err (Printf.sprintf "didn't find variable %s in context" pattern_var_name))
     | Primitive p -> Ok (Primitive p)
-    | Ignored (_, name) ->
-      err (Printf.sprintf "Can't instantiate ignored variable _%s" name)
   and go_scope (Scope (binders, body)) =
     let%bind binders =
       binders

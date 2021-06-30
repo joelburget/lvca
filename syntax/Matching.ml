@@ -56,7 +56,7 @@ let rec pp_tree ppf = function
   | Swap (i, tree) -> Fmt.pf ppf "Swap (@[<hv 2>%n, %a@])" i pp_tree tree
 ;;
 
-let is_wildcard = function Pattern.Var _ | Ignored _ -> true | _ -> false
+let is_wildcard = function Pattern.Var _ -> true | _ -> false
 let sort_name = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
 
 let rec match_pattern tm pat =
@@ -74,8 +74,8 @@ let rec match_pattern tm pat =
     else None
   | Primitive pl, Primitive pr ->
     if Primitive.All.equal ~info_eq:(fun _ _ -> true) pl pr then Some SMap.empty else None
-  | _, Ignored _ -> Some SMap.empty
-  | _, Var (_, name) -> Some (SMap.singleton name tm)
+  | _, Var (_, name) ->
+    Some (if Char.(String.get name 0 = '_') then SMap.empty else SMap.singleton name tm)
   | _, _ -> None
 ;;
 
@@ -164,7 +164,7 @@ let specialize_wildcard ctor_sorts info name wildcard =
     | 1 -> [ wildcard ]
     | _ ->
       let ignores =
-        List.init (num_children - 1) ~f:(fun _ -> Pattern.Ignored (info, name))
+        List.init (num_children - 1) ~f:(fun _ -> Pattern.Var (info, "_" ^ name))
       in
       wildcard :: ignores
   in
@@ -196,7 +196,7 @@ let specialize lang ctor_sort tail_sorts ctor_name matrix =
                in
                [ new_entries @ entries, rhs ])
              else []
-           | Var (info, name) | Ignored (info, name) ->
+           | Var (info, name) ->
              let wildcards =
                specialize_wildcard ctor_sorts info name head_entry.pattern
                |> List.map ~f:(fun pattern -> { head_entry with pattern })
@@ -215,7 +215,7 @@ let default matrix =
          let head_entry, entries = List.split_exn entries in
          match head_entry.pattern with
          | Pattern.Operator _ -> []
-         | Var _ | Ignored _ -> [ entries, rhs ]
+         | Var _ -> [ entries, rhs ]
          | Primitive _ -> [])
 ;;
 
@@ -229,6 +229,8 @@ let matrix_transpose matrix =
   let rows, _rhss = List.unzip matrix in
   List.transpose_exn rows
 ;;
+
+let ignore = Pattern.Var ((), "_")
 
 (* Return a pattern vector of size `length sorts` such that all instances are non-matching values *)
 let rec check_matrix lang sorts matrix =
@@ -270,7 +272,6 @@ let rec check_matrix lang sorts matrix =
     else
       check_matrix lang sorts' (default matrix)
       |> Option.map ~f:(fun example ->
-             let ignore = Pattern.Ignored ((), "") in
              let head =
                if Set.is_empty head_ctors
                then ignore
@@ -293,7 +294,6 @@ let rec compile_matrix lang sorts matrix =
   | [] ->
     (* If the matrix has no rows, matching would always fail. Give a list of
        wildcards as an example. *)
-    let ignore = Pattern.Ignored ((), "") in
     let example = List.map sorts ~f:(fun _ -> ignore) in
     Error (Non_exhaustive example)
   | (row_entries, rhs) :: _ ->
@@ -303,7 +303,8 @@ let rec compile_matrix lang sorts matrix =
       let instructions =
         List.filter_map row_entries ~f:(fun { term_no; pattern; path } ->
             match pattern with
-            | Pattern.Var (_, name) -> Some { term_no; name; path }
+            | Pattern.Var (_, name) ->
+              if Char.(name.[0] = '_') then None else Some { term_no; name; path }
             | _ -> None)
       in
       Ok (Matched (instructions, rhs))

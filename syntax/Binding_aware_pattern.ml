@@ -45,15 +45,8 @@ type 'info t =
   | Operator of 'info * string * 'info scope list
   | Primitive of 'info Primitive.All.t
   | Var of 'info * string
-  | Ignored of 'info * string
 
 and 'info scope = Scope of ('info * string) list * 'info t
-
-let mk_var range ident =
-  if Char.(ident.[0] = '_')
-  then Ignored (range, String.subo ident ~pos:1)
-  else Var (range, ident)
-;;
 
 let rec equal ~info_eq t1 t2 =
   match t1, t2 with
@@ -62,8 +55,7 @@ let rec equal ~info_eq t1 t2 =
     && String.(name1 = name2)
     && List.equal (scope_eq ~info_eq) scopes1 scopes2
   | Primitive p1, Primitive p2 -> Primitive.All.equal ~info_eq p1 p2
-  | Var (i1, name1), Var (i2, name2) | Ignored (i1, name1), Ignored (i2, name2) ->
-    info_eq i1 i2 && String.(name1 = name2)
+  | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
   | _, _ -> false
 
 and scope_eq ~info_eq (Scope (names1, t1)) (Scope (names2, t2)) =
@@ -75,7 +67,7 @@ let rec vars_of_pattern = function
   | Operator (_, _, pats) ->
     pats |> List.map ~f:vars_of_scope |> Set.union_list (module String)
   | Var (_, name) -> String.Set.of_list [ name ]
-  | Primitive _ | Ignored _ -> String.Set.empty
+  | Primitive _ -> String.Set.empty
 
 and vars_of_scope (Scope (vars, t)) =
   vars |> List.map ~f:snd |> String.Set.of_list |> Set.union (vars_of_pattern t)
@@ -89,7 +81,7 @@ let rec list_vars_of_pattern = function
     |> List.map ~f:list_vars_of_scope
     |> List.concat_no_order
   | Var (loc, name) -> [ loc, name ]
-  | Primitive _ | Ignored _ -> []
+  | Primitive _ -> []
 
 and list_vars_of_scope (Scope (names, pat)) =
   let names' = List.map names ~f:snd in
@@ -106,7 +98,6 @@ let rec map_info ~f = function
     Operator (f info, tag, subpats |> List.map ~f:(scope_map_info ~f))
   | Primitive prim -> Primitive (Primitive.All.map_info ~f prim)
   | Var (info, name) -> Var (f info, name)
-  | Ignored (info, name) -> Ignored (f info, name)
 
 and scope_map_info ~f (Scope (names, t)) =
   Scope (List.map names ~f:(fun (i, name) -> f i, name), map_info ~f t)
@@ -115,7 +106,7 @@ and scope_map_info ~f (Scope (names, t)) =
 let erase pat = map_info ~f:(fun _ -> ()) pat
 
 let info = function
-  | Operator (i, _, _) | Var (i, _) | Ignored (i, _) -> i
+  | Operator (i, _, _) | Var (i, _) -> i
   | Primitive prim -> Primitive.All.info prim
 ;;
 
@@ -132,7 +123,6 @@ let rec pp_generic ~open_loc ~close_loc ppf tm =
       (list ~sep:semi (pp_scope_generic ~open_loc ~close_loc))
       subtms
   | Var (_, v) -> string ppf v
-  | Ignored (_, v) -> pf ppf "_%a" string v
   | Primitive p ->
     Primitive.All.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p);
   close_loc ppf (info tm)
@@ -154,7 +144,7 @@ let rec select_path ~path pat =
   | [] -> Ok pat
   | i :: path ->
     (match pat with
-    | Var _ | Ignored _ | Primitive _ -> Error "TODO: message"
+    | Var _ | Primitive _ -> Error "TODO: message"
     | Operator (_, _, scopes) ->
       (match List.nth scopes i with
       | None -> Error "TODO: message"
@@ -163,7 +153,6 @@ let rec select_path ~path pat =
 
 let rec match_term ~info_eq pat tm =
   match pat, tm with
-  | Ignored _, _ -> Some SMap.empty
   | Var (_, name), tm -> Some (SMap.singleton name (Capture.Term tm))
   | Primitive p1, Term.Primitive p2 ->
     if Primitive.All.equal ~info_eq p1 p2 then Some SMap.empty else None
@@ -218,7 +207,6 @@ let check check_prim lang sort =
     let result =
       match pat with
       | Var (_, name) -> Ok (SMap.singleton name (Capture_type.Bound_term sort))
-      | Ignored _ -> Ok SMap.empty
       | Primitive prim ->
         (match check_prim prim sort with
         | None -> Ok SMap.empty
@@ -309,11 +297,7 @@ let check check_prim lang sort =
 module Parse = struct
   open Lvca_parsing
 
-  let pat_to_ident = function
-    | Var (_, name) -> Some name
-    | Ignored (_, name) -> Some ("_" ^ name)
-    | _ -> None
-  ;;
+  let pat_to_ident = function Var (_, name) -> Some name | _ -> None
 
   let t =
     fix (fun pat ->
@@ -338,7 +322,7 @@ module Parse = struct
                 >>|| fun { value = slots; range = parens_range } ->
                 let range = Opt_range.union ident_range parens_range in
                 { value = Operator (range, ident, slots); range })
-              ; return ~range:ident_range (mk_var ident_range ident)
+              ; return ~range:ident_range (Var (ident_range, ident))
               ])
           ])
     <?> "binding-aware pattern"

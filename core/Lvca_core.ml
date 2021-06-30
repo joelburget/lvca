@@ -630,7 +630,6 @@ let rec match_pattern v pat =
     let l1 = Primitive.All.erase l1 in
     let l2 = Primitive.All.erase l2 in
     if Primitive.All.(equal ~info_eq:Unit.( = ) l1 l2) then Some SMap.empty else None
-  | _, Ignored _ -> Some SMap.empty
   | tm, Var (_, v) -> Some (SMap.of_alist_exn [ v, tm ])
   | _ -> None
 
@@ -762,7 +761,7 @@ let%test_module "Parsing" =
     let ( = ) = Term.equal ~info_eq:Unit.( = )
     let one = Nominal.Term.Primitive ((), Integer (Z.of_int 1))
     let var name = Term.Var ((), name)
-    let ignored name = Binding_aware_pattern.Ignored ((), name)
+    let ignored = Binding_aware_pattern.Var ((), "_")
     let operator tag children = Nominal.Term.Operator ((), tag, children)
     let app f a = Term.Core_app ((), f, a)
 
@@ -792,14 +791,14 @@ let%test_module "Parsing" =
 
     let%test _ =
       parse {|match x with { _ -> {1} }|}
-      = Case ((), var "x", [ Case_scope (ignored "", Term one) ])
+      = Case ((), var "x", [ Case_scope (ignored, Term one) ])
     ;;
 
     let%test _ = parse {|match empty with { }|} = Case ((), var "empty", [])
 
     let%test _ =
       parse {|match x with { | _ -> {1} }|}
-      = Case ((), var "x", [ Case_scope (ignored "", Term one) ])
+      = Case ((), var "x", [ Case_scope (ignored, Term one) ])
     ;;
 
     let%test _ =

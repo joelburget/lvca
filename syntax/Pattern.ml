@@ -7,28 +7,24 @@ type 'info t =
   | Operator of 'info * string * 'info t list
   | Primitive of 'info Primitive_impl.t
   | Var of 'info * string
-  | Ignored of 'info * string
 
 module Plain = struct
   type t =
     | Operator of string * t list
     | Primitive of Primitive_impl.Plain.t
     | Var of string
-    | Ignored of string
 end
 
 let rec to_plain = function
   | Operator (_, name, pats) -> Plain.Operator (name, List.map ~f:to_plain pats)
   | Primitive prim -> Plain.Primitive (Primitive_impl.to_plain prim)
   | Var (_, name) -> Plain.Var name
-  | Ignored (_, name) -> Plain.Ignored name
 ;;
 
 let rec of_plain = function
   | Plain.Operator (name, pats) -> Operator ((), name, List.map ~f:of_plain pats)
   | Primitive prim -> Primitive (Primitive_impl.of_plain prim)
   | Var name -> Var ((), name)
-  | Ignored name -> Ignored ((), name)
 ;;
 
 let rec equal ~info_eq pat1 pat2 =
@@ -37,7 +33,6 @@ let rec equal ~info_eq pat1 pat2 =
     info_eq i1 i2 && String.(name1 = name2) && List.equal (equal ~info_eq) pats1 pats2
   | Primitive p1, Primitive p2 -> Primitive_impl.equal ~info_eq p1 p2
   | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
-  | Ignored (i1, name1), Ignored (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
   | _, _ -> false
 ;;
 
@@ -46,7 +41,6 @@ let rec vars_of_pattern = function
     pats |> List.map ~f:vars_of_pattern |> Set.union_list (module String)
   | Primitive _ -> String.Set.empty
   | Var (_, name) -> String.Set.of_list [ name ]
-  | Ignored _ -> String.Set.empty
 ;;
 
 let rec list_vars_of_pattern = function
@@ -58,11 +52,10 @@ let rec list_vars_of_pattern = function
     |> List.concat_no_order
   | Primitive _ -> []
   | Var (loc, name) -> [ loc, name ]
-  | Ignored _ -> []
 ;;
 
 let info = function
-  | Operator (loc, _, _) | Var (loc, _) | Ignored (loc, _) -> loc
+  | Operator (loc, _, _) | Var (loc, _) -> loc
   | Primitive p -> Primitive_impl.info p
 ;;
 
@@ -83,8 +76,7 @@ let rec pp_generic ~open_loc ~close_loc ppf pat =
       ~close_loc:(fun _ _ -> ())
       ppf
       prim
-  | Var (_, name) -> Fmt.string ppf name
-  | Ignored (_, name) -> pf ppf "_%s" name);
+  | Var (_, name) -> Fmt.string ppf name);
   close_loc ppf (info pat)
 ;;
 
@@ -109,8 +101,7 @@ let rec jsonify pat =
       array
         [| string "o"; string tag; tms |> List.map ~f:jsonify |> Array.of_list |> array |]
     | Primitive p -> array [| string "p"; Primitive_impl.jsonify p |]
-    | Var (_, name) -> array [| string "v"; string name |]
-    | Ignored (_, name) -> array [| string "_"; string name |])
+    | Var (_, name) -> array [| string "v"; string name |])
 ;;
 
 let rec unjsonify =
@@ -124,7 +115,6 @@ let rec unjsonify =
       let%map prim = Primitive_impl.unjsonify prim in
       Primitive prim
     | Array [| String "v"; String name |] -> Some (Var ((), name))
-    | Array [| String "_"; String name |] -> Some (Ignored ((), name))
     | _ -> None)
 ;;
 
@@ -133,7 +123,6 @@ let rec map_info ~f = function
     Operator (f loc, tag, subpats |> List.map ~f:(map_info ~f))
   | Primitive prim -> Primitive (Primitive_impl.map_info ~f prim)
   | Var (loc, name) -> Var (f loc, name)
-  | Ignored (loc, name) -> Ignored (f loc, name)
 ;;
 
 let erase pat = map_info ~f:(fun _ -> ()) pat
@@ -143,10 +132,26 @@ let rec select_path ~path pat =
   | [] -> Ok pat
   | i :: path ->
     (match pat with
-    | Primitive _ | Var _ | Ignored _ -> Error "TODO: message"
+    | Primitive _ | Var _ ->
+      Error
+        (Fmt.str
+           "select_path: hit a primitive / var (%a) with path remaining %a"
+           pp
+           pat
+           Fmt.(list int)
+           (i :: path))
     | Operator (_, _, pats) ->
-      let pat = List.nth pats i in
-      (match pat with Some pat -> select_path ~path pat | None -> Error "TODO: message"))
+      (match List.nth pats i with
+      | Some pat -> select_path ~path pat
+      | None ->
+        Error
+          (Fmt.str
+             "select_path: out-of-bounds index (%i) (with path %a remaining) at %a"
+             i
+             Fmt.(list int)
+             path
+             pp
+             pat)))
 ;;
 
 let handle_dup_error = function
@@ -166,7 +171,9 @@ let check lang ~pattern_sort ~var_sort =
     let result =
       match pat with
       | Var (_, name) ->
-        if Sort.equal Unit.( = ) (Sort.erase_info sort) (Sort.erase_info var_sort)
+        if Char.(name.[0] = '_')
+        then Ok String.Map.empty
+        else if Sort.equal Unit.( = ) (Sort.erase_info sort) (Sort.erase_info var_sort)
         then Ok (String.Map.singleton name sort)
         else
           Error
@@ -178,7 +185,6 @@ let check lang ~pattern_sort ~var_sort =
                   var_sort
                   Sort.pp
                   sort))
-      | Ignored _ -> Ok String.Map.empty
       | Primitive prim ->
         (match Primitive_impl.check prim sort with
         | None -> Ok String.Map.empty
@@ -238,12 +244,6 @@ let check lang ~pattern_sort ~var_sort =
   check pattern_sort
 ;;
 
-let mk_var range ident =
-  if Char.(ident.[0] = '_')
-  then Ignored (range, String.subo ident ~pos:1)
-  else Var (range, ident)
-;;
-
 module Parse = struct
   open Lvca_parsing
 
@@ -259,7 +259,7 @@ module Parse = struct
                 >>|| fun Parse_result.{ value = children; range = finish } ->
                 let range = Opt_range.union range finish in
                 { value = Operator (range, ident, children); range })
-              ; return ~range (mk_var range ident)
+              ; return ~range (Var (range, ident))
               ]
             <?> "pattern body")
           ])

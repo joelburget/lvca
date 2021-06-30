@@ -54,8 +54,6 @@ module Exp = struct
         Lvca_syntax.Pattern.Operator ([%e opt_range ~loc pos], [%e name_exp], [%e pats])]
     | Var (pos, s) ->
       [%expr Lvca_syntax.Pattern.Var ([%e opt_range ~loc pos], [%e str ~loc s])]
-    | Ignored (pos, s) ->
-      [%expr Lvca_syntax.Pattern.Ignored ([%e opt_range ~loc pos], [%e str ~loc s])]
     | Primitive p -> [%expr Lvca_syntax.Pattern.Primitive [%e prim ~loc p]]
   ;;
 
@@ -162,10 +160,6 @@ module Exp = struct
       | Var (pos, s) ->
         [%expr
           Lvca_syntax.Binding_aware_pattern.Var ([%e opt_range ~loc pos], [%e str ~loc s])]
-      | Ignored (pos, s) ->
-        [%expr
-          Lvca_syntax.Binding_aware_pattern.Ignored
-            ([%e opt_range ~loc pos], [%e str ~loc s])]
       | Primitive p ->
         [%expr Lvca_syntax.Binding_aware_pattern.Primitive [%e prim ~loc p]]
 

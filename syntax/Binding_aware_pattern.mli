@@ -9,7 +9,6 @@ type 'info t =
   | Operator of 'info * string * 'info scope list
   | Primitive of 'info Primitive.All.t
   | Var of 'info * string
-  | Ignored of 'info * string
 
 and 'info scope = Scope of ('info * string) list * 'info t
 

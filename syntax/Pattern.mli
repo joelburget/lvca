@@ -5,14 +5,12 @@ type 'info t =
   | Operator of 'info * string * 'info t list
   | Primitive of 'info Primitive_impl.t
   | Var of 'info * string
-  | Ignored of 'info * string
 
 module Plain : sig
   type t =
     | Operator of string * t list
     | Primitive of Primitive_impl.Plain.t
     | Var of string
-    | Ignored of string
 end
 
 val to_plain : _ t -> Plain.t

@@ -214,8 +214,7 @@ module Term = struct
 
   let rec match_pattern ~info_eq pat tm =
     match pat, tm with
-    | Pattern.Ignored _, _ -> Some String.Map.empty
-    | Var (_, name), tm -> Some (String.Map.singleton name tm)
+    | Pattern.Var (_, name), tm -> Some (String.Map.singleton name tm)
     | Primitive p1, Primitive p2 ->
       if Primitive_impl.equal ~info_eq p1 p2 then Some String.Map.empty else None
     | Primitive _, _ -> None
@@ -395,25 +394,17 @@ module Term = struct
   ;;
 
   let rec to_pattern = function
-    | Var (info, name) ->
-      let v =
-        if String.is_substring_at name ~pos:0 ~substring:"_"
-        then Pattern.Ignored (info, String.slice name 1 0)
-        else Var (info, name)
-      in
-      Ok v
+    | Var (info, name) -> Ok (Pattern.Var (info, name))
     | Operator (info, name, tms) ->
       let open Result.Let_syntax in
-      let%map subtms = tms |> List.map ~f:scope_to_patterns |> Result.all in
+      let%map subtms = tms |> List.map ~f:scope_to_pattern |> Result.all in
       Pattern.Operator (info, name, subtms)
     | Primitive prim -> Ok (Primitive prim)
 
-  and scope_to_patterns = function
+  and scope_to_pattern = function
     | Scope ([], tm) -> to_pattern tm
     | Scope (binders, tm) ->
-      let binders' = List.map binders ~f:Pattern.erase in
-      let tm = erase tm in
-      Error (Types.Scope (binders', tm))
+      Error (Types.Scope (List.map binders ~f:Pattern.erase, erase tm))
   ;;
 
   let rec of_pattern = function
@@ -424,7 +415,6 @@ module Term = struct
         , List.map pats ~f:(fun pat -> Types.Scope ([], of_pattern pat)) )
     | Primitive prim -> Primitive prim
     | Var (info, name) -> Var (info, name)
-    | Ignored (info, name) -> Var (info, "_" ^ name)
   ;;
 
   module Parse = struct
@@ -664,13 +654,13 @@ let%test_module "Nominal" =
     let ( = ) = Pattern.equal ~info_eq:Int.( = )
 
     let%test _ = to_pattern_exn (Var (1, "abc")) = Var (1, "abc")
-    let%test _ = to_pattern_exn (Var (2, "_abc")) = Ignored (2, "abc")
-    let%test _ = to_pattern_exn (Var (3, "_")) = Ignored (3, "")
+    let%test _ = to_pattern_exn (Var (2, "_abc")) = Var (2, "_abc")
+    let%test _ = to_pattern_exn (Var (3, "_")) = Var (3, "_")
 
     let ( = ) = Term.equal ~info_eq:Int.( = )
 
-    let%test _ = Term.of_pattern (Ignored (4, "abc")) = Var (4, "_abc")
-    let%test _ = Term.of_pattern (Ignored (5, "")) = Var (5, "_")
+    let%test _ = Term.of_pattern (Var (4, "_abc")) = Var (4, "_abc")
+    let%test _ = Term.of_pattern (Var (5, "_")) = Var (5, "_")
   end)
 ;;
 
