@@ -542,11 +542,176 @@ module Scope = struct
   let erase (Scope (pats, tm)) = Scope (List.map pats ~f:Pattern.erase, Term.erase tm)
 end
 
-module type Convertible_s = sig
-  type 'info t
+module Convertible = struct
+  module type S = sig
+    include Language_object_intf.S
 
-  val to_nominal : 'info t -> 'info Term.t
-  val of_nominal : 'info Term.t -> ('info t, 'info Term.t) Result.t
+    val to_nominal : 'info t -> 'info Term.t
+    val of_nominal : 'info Term.t -> ('info t, 'info Term.t) Result.t
+  end
+
+  module type Extended_s = sig
+    include S
+
+    val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
+    (* TODO: should they be comparable as well? *)
+
+    val erase : _ t -> unit t
+    val pp : _ t Fmt.t
+    val to_string : _ t -> string
+
+    (* TODO: to_pattern, of_pattern *)
+
+    val select_path
+      :  path:int list
+      -> 'info t
+      -> ('info t, (string, 'info Term.t) Base.Either.t) Result.t
+
+    (** {1 Serialization} *)
+    include Language_object_intf.Json_convertible with type 'info t := 'info t
+
+    include Language_object_intf.Serializable with type 'info t := 'info t
+
+    (** {1 Printing / Parsing} *)
+    val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
+
+    val pp_opt_range : Lvca_provenance.Opt_range.t t Fmt.t
+
+    module Parse : sig
+      val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+      val whitespace_t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+    end
+  end
+
+  module Extend (Object : S) :
+    Extended_s with type 'info t = 'info Object.t and module Plain = Object.Plain = struct
+    include Object
+
+    let erase tm = Object.map_info ~f:(fun _ -> ()) tm
+    let equal ~info_eq t1 t2 = Term.equal ~info_eq (to_nominal t1) (to_nominal t2)
+
+    let pp_generic ~open_loc ~close_loc ppf tm =
+      Term.pp_generic ~open_loc ~close_loc ppf (to_nominal tm)
+    ;;
+
+    let pp_opt_range ppf tm =
+      pp_generic
+        ~open_loc:Lvca_provenance.Opt_range.open_stag
+        ~close_loc:Lvca_provenance.Opt_range.close_stag
+        ppf
+        tm
+    ;;
+
+    let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
+    let to_string tm = Fmt.to_to_string pp tm
+
+    let select_path ~path tm =
+      match tm |> Object.to_nominal |> Term.select_path ~path with
+      | Ok tm ->
+        (match Object.of_nominal tm with
+        | Ok tm -> Ok tm
+        | Error tm -> Error (Either.Second tm))
+      | Error msg -> Error (Either.First msg)
+    ;;
+
+    let jsonify tm = tm |> Object.to_nominal |> Term.jsonify
+
+    let unjsonify json =
+      let open Option.Let_syntax in
+      let%bind nom = Term.unjsonify json in
+      match Object.of_nominal nom with Ok tm -> Some tm | Error _ -> None
+    ;;
+
+    let serialize tm = tm |> jsonify |> Cbor.encode
+    let deserialize buf = buf |> Cbor.decode |> Option.bind ~f:unjsonify
+    let hash tm = tm |> serialize |> Sha256.hash
+
+    module Parse = struct
+      let t =
+        let open Lvca_parsing in
+        Term.Parse.t
+        >>= fun nom ->
+        match of_nominal nom with
+        | Error nom ->
+          fail Fmt.(str "Parse: failed to convert %a from nominal" Term.pp nom)
+        | Ok tm -> return tm
+      ;;
+
+      let whitespace_t = Lvca_parsing.(whitespace *> t)
+    end
+  end
+
+  module Check_parse_pretty (Object : S) :
+    Properties_intf.Parse_pretty_s with type 'info t = 'info Object.t = struct
+    open Property_result
+    module Object = Extend (Object)
+    open Object
+
+    type 'info t = 'info Object.t
+
+    let to_string = Fmt.to_to_string Object.pp
+    let parse = Lvca_parsing.parse_string Parse.t
+
+    let string_round_trip1 t =
+      match t |> to_string |> parse with
+      | Ok t' ->
+        let t'' = Object.erase t' in
+        Property_result.check
+          Object.(equal ~info_eq:Unit.( = ) t'' t)
+          (Fmt.str "%a <> %a" pp t'' pp t)
+      | Error msg -> Failed (Fmt.str {|parse_string "%a": %s|} pp t msg)
+    ;;
+
+    let string_round_trip2 str =
+      match parse str with
+      | Error _ -> Uninteresting
+      | Ok t ->
+        let str' = t |> Object.erase |> to_string in
+        if String.(str' = str)
+        then Ok
+        else (
+          match parse str with
+          | Error msg -> Failed msg
+          | Ok t' ->
+            let str'' = t' |> Object.erase |> to_string in
+            Property_result.check
+              String.(str'' = str')
+              (Fmt.str {|"%s" <> "%s"|} str'' str'))
+    ;;
+  end
+
+  module Check_json (Object : S) :
+    Properties_intf.Json_s with type 'info t = 'info Object.t = struct
+    open Property_result
+    module Object = Extend (Object)
+    open Object
+
+    type 'info t = 'info Object.t
+
+    let json_round_trip1 t =
+      match t |> Object.jsonify |> Object.unjsonify with
+      | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
+      | Some t' ->
+        Property_result.check
+          (Object.equal ~info_eq:Unit.( = ) t t')
+          (Fmt.str "%a <> %a" pp t' pp t)
+    ;;
+
+    let json_round_trip2 json =
+      match json |> Object.unjsonify with
+      | None -> Uninteresting
+      | Some t ->
+        Property_result.check
+          Json.(Object.jsonify t = json)
+          "jsonify t <> json (TODO: print)"
+    ;;
+  end
+
+  module Check_properties (Object : S) :
+    Properties_intf.S with type 'info t = 'info Object.t = struct
+    include Check_parse_pretty (Object)
+    include Check_json (Object)
+  end
 end
 
 let%test_module "Nominal" =

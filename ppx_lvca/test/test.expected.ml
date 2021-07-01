@@ -52,10 +52,10 @@ let test_language =
                                "integer")))])])))]
     }
 module Lang =
-  (functor (Integer : Lvca_syntax.Language_object_intf.Extended_s) -> functor
-    (String : Lvca_syntax.Language_object_intf.Extended_s) -> functor (Maybe
-    : Lvca_syntax.Language_object_intf.Extended_s) -> functor (List :
-    Lvca_syntax.Language_object_intf.Extended_s) ->
+  (functor (Integer : Lvca_syntax.Nominal.Convertible.Extended_s) -> functor
+    (String : Lvca_syntax.Nominal.Convertible.Extended_s) -> functor (Maybe :
+    Lvca_syntax.Nominal.Convertible.Extended_s) -> functor (List :
+    Lvca_syntax.Nominal.Convertible.Extended_s) ->
     struct
       module Wrapper =
         struct
@@ -516,7 +516,7 @@ module Lang =
               let of_nominal tm = Wrapper.Of_nominal.foo tm
             end
           include Kernel
-          include (Lvca_syntax.Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
         end
       module Nat =
         struct
@@ -532,9 +532,9 @@ module Lang =
               let of_nominal tm = Wrapper.Of_nominal.nat tm
             end
           include Kernel
-          include (Lvca_syntax.Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
         end
-      module Pair(A:Lvca_syntax.Language_object_intf.Extended_s)(B:Lvca_syntax.Language_object_intf.Extended_s) =
+      module Pair(A:Lvca_syntax.Nominal.Convertible.Extended_s)(B:Lvca_syntax.Nominal.Convertible.Extended_s) =
         struct
           module Kernel =
             struct
@@ -554,9 +554,9 @@ module Lang =
                 Wrapper.Of_nominal.pair A.of_nominal B.of_nominal tm
             end
           include Kernel
-          include (Lvca_syntax.Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
         end
-      module Pair_plus(A:Lvca_syntax.Language_object_intf.Extended_s)(B:Lvca_syntax.Language_object_intf.Extended_s) =
+      module Pair_plus(A:Lvca_syntax.Nominal.Convertible.Extended_s)(B:Lvca_syntax.Nominal.Convertible.Extended_s) =
         struct
           module Kernel =
             struct
@@ -579,7 +579,7 @@ module Lang =
                 Wrapper.Of_nominal.pair_plus A.of_nominal B.of_nominal tm
             end
           include Kernel
-          include (Lvca_syntax.Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
         end
       module Nonempty =
         struct
@@ -595,7 +595,7 @@ module Lang =
               let of_nominal tm = Wrapper.Of_nominal.nonempty tm
             end
           include Kernel
-          include (Lvca_syntax.Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
         end
       module Term =
         struct
@@ -611,7 +611,7 @@ module Lang =
               let of_nominal tm = Wrapper.Of_nominal.term tm
             end
           include Kernel
-          include (Lvca_syntax.Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
         end
       module Mut_a =
         struct
@@ -627,7 +627,7 @@ module Lang =
               let of_nominal tm = Wrapper.Of_nominal.mut_a tm
             end
           include Kernel
-          include (Lvca_syntax.Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
         end
       module Mut_b =
         struct
@@ -643,7 +643,7 @@ module Lang =
               let of_nominal tm = Wrapper.Of_nominal.mut_b tm
             end
           include Kernel
-          include (Lvca_syntax.Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
         end
       module Ifz =
         struct
@@ -659,13 +659,13 @@ module Lang =
               let of_nominal tm = Wrapper.Of_nominal.ifz tm
             end
           include Kernel
-          include (Lvca_syntax.Language_object.Extend)(Kernel)
+          include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
         end
     end :
-    functor (Integer : Lvca_syntax.Language_object_intf.Extended_s) ->
-      functor (String : Lvca_syntax.Language_object_intf.Extended_s) ->
-        functor (Maybe : Lvca_syntax.Language_object_intf.Extended_s) ->
-          functor (List : Lvca_syntax.Language_object_intf.Extended_s) ->
+    functor (Integer : Lvca_syntax.Nominal.Convertible.Extended_s) ->
+      functor (String : Lvca_syntax.Nominal.Convertible.Extended_s) ->
+        functor (Maybe : Lvca_syntax.Nominal.Convertible.Extended_s) ->
+          functor (List : Lvca_syntax.Nominal.Convertible.Extended_s) ->
             sig
               module Types :
               sig
@@ -722,37 +722,37 @@ module Lang =
                   | Operator of List.Plain.t 
               end
               module Foo :
-              Lvca_syntax.Language_object_intf.Extended_s with type 'info t =
-                 'info Types.foo and type  Plain.t =  Plain.foo
+              Lvca_syntax.Nominal.Convertible.Extended_s with type 'info t = 
+                'info Types.foo and type  Plain.t =  Plain.foo
               module Nat :
-              Lvca_syntax.Language_object_intf.Extended_s with type 'info t =
-                 'info Types.nat and type  Plain.t =  Plain.nat
+              Lvca_syntax.Nominal.Convertible.Extended_s with type 'info t = 
+                'info Types.nat and type  Plain.t =  Plain.nat
               module Pair :
-              functor (A : Lvca_syntax.Language_object_intf.Extended_s) ->
-                functor (B : Lvca_syntax.Language_object_intf.Extended_s) ->
-                  Lvca_syntax.Language_object_intf.Extended_s with type
+              functor (A : Lvca_syntax.Nominal.Convertible.Extended_s) ->
+                functor (B : Lvca_syntax.Nominal.Convertible.Extended_s) ->
+                  Lvca_syntax.Nominal.Convertible.Extended_s with type
                     'info t =  ('info, 'info A.t, 'info B.t) Types.pair and
                     type  Plain.t =  (A.Plain.t, B.Plain.t) Plain.pair
               module Pair_plus :
-              functor (A : Lvca_syntax.Language_object_intf.Extended_s) ->
-                functor (B : Lvca_syntax.Language_object_intf.Extended_s) ->
-                  Lvca_syntax.Language_object_intf.Extended_s with type
+              functor (A : Lvca_syntax.Nominal.Convertible.Extended_s) ->
+                functor (B : Lvca_syntax.Nominal.Convertible.Extended_s) ->
+                  Lvca_syntax.Nominal.Convertible.Extended_s with type
                     'info t =  ('info, 'info A.t, 'info B.t) Types.pair_plus
                     and type  Plain.t = 
                     (A.Plain.t, B.Plain.t) Plain.pair_plus
               module Nonempty :
-              Lvca_syntax.Language_object_intf.Extended_s with type 'info t =
-                 'info Types.nonempty and type  Plain.t =  Plain.nonempty
+              Lvca_syntax.Nominal.Convertible.Extended_s with type 'info t = 
+                'info Types.nonempty and type  Plain.t =  Plain.nonempty
               module Term :
-              Lvca_syntax.Language_object_intf.Extended_s with type 'info t =
-                 'info Types.term and type  Plain.t =  Plain.term
+              Lvca_syntax.Nominal.Convertible.Extended_s with type 'info t = 
+                'info Types.term and type  Plain.t =  Plain.term
               module Mut_a :
-              Lvca_syntax.Language_object_intf.Extended_s with type 'info t =
-                 'info Types.mut_a and type  Plain.t =  Plain.mut_a
+              Lvca_syntax.Nominal.Convertible.Extended_s with type 'info t = 
+                'info Types.mut_a and type  Plain.t =  Plain.mut_a
               module Mut_b :
-              Lvca_syntax.Language_object_intf.Extended_s with type 'info t =
-                 'info Types.mut_b and type  Plain.t =  Plain.mut_b
+              Lvca_syntax.Nominal.Convertible.Extended_s with type 'info t = 
+                'info Types.mut_b and type  Plain.t =  Plain.mut_b
               module Ifz :
-              Lvca_syntax.Language_object_intf.Extended_s with type 'info t =
-                 'info Types.ifz and type  Plain.t =  Plain.ifz
+              Lvca_syntax.Nominal.Convertible.Extended_s with type 'info t = 
+                'info Types.ifz and type  Plain.t =  Plain.ifz
             end)

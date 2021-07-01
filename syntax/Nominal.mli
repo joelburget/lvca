@@ -166,9 +166,62 @@ val of_pattern : ('info, 'prim) Pattern.t -> ('info, 'prim) t
   *)
 end
 
-module type Convertible_s = sig
-  type 'info t
+module Convertible : sig
+  module type S = sig
+    include Language_object_intf.S
 
-  val to_nominal : 'info t -> 'info Term.t
-  val of_nominal : 'info Term.t -> ('info t, 'info Term.t) Result.t
+    val to_nominal : 'info t -> 'info Term.t
+    val of_nominal : 'info Term.t -> ('info t, 'info Term.t) Result.t
+  end
+
+  (** Helpers derivable from [S] *)
+  module type Extended_s = sig
+    include S
+
+    val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
+    (* TODO: should they be comparable as well? *)
+
+    val erase : _ t -> unit t
+    val pp : _ t Fmt.t
+    val to_string : _ t -> string
+
+    (* TODO: to_pattern, of_pattern *)
+
+    val select_path
+      :  path:int list
+      -> 'info t
+      -> ('info t, (string, 'info Term.t) Base.Either.t) Result.t
+
+    (** {1 Serialization} *)
+    include Language_object_intf.Json_convertible with type 'info t := 'info t
+
+    include Language_object_intf.Serializable with type 'info t := 'info t
+
+    (** {1 Printing / Parsing} *)
+    val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
+
+    val pp_opt_range : Lvca_provenance.Opt_range.t t Fmt.t
+
+    module Parse : sig
+      val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+      val whitespace_t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+    end
+  end
+
+  (** Derive helpers (an extended language object) from the basics. *)
+  module Extend (Object : S) :
+    Extended_s with type 'info t = 'info Object.t and module Plain = Object.Plain
+
+  (** Properties of parsing and pretty-printing that should hold for any language object. *)
+  module Check_parse_pretty (Object : S) :
+    Properties_intf.Parse_pretty_s with type 'info t = 'info Object.t
+
+  (** Properties of json serialization / deserialization that should hold for any language
+      object. *)
+  module Check_json (Object : S) :
+    Properties_intf.Json_s with type 'info t = 'info Object.t
+
+  (** Check json serialization / deserialization and parsing / pretty-printing properties *)
+  module Check_properties (Object : S) :
+    Properties_intf.S with type 'info t = 'info Object.t
 end

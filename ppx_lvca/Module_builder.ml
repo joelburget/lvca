@@ -27,7 +27,7 @@ let ( >> ), ( << ) = Util.(( >> ), ( << ))
     We define
 
     {[
-      module Pair (A : Language_object_intf.Extended_s) (B : Language_object_intf.Extended_s) = struct
+      module Pair (A : Nominal.Convertible.Extended_s) (B : Nominal.Convertible.Extended_s) = struct
         type 'info t = Pair of 'info * 'info A.t * 'info B.t
         ...
       end
@@ -69,8 +69,8 @@ diag a := Diag(pair a a)
       end
 
       module Pair
-          (A : Language_object_intf.Extended_s)
-          (B : Language_object_intf.Extended_s) =
+          (A : Nominal.Convertible.Extended_s)
+          (B : Nominal.Convertible.Extended_s) =
       struct
         type 'info t = ('info, 'info A.t, 'info B.t) Types.pair =
           | Pair of 'info * 'info A.t * 'info B.t
@@ -85,7 +85,7 @@ diag a := Diag(pair a a)
         let of_plain = Of_plain.uses_pair
       end
 
-      module Diag (A : Language_object_intf.Extended_s) = struct
+      module Diag (A : Nominal.Convertible.Extended_s) = struct
         type 'info diag = ('info, 'info A.t) Types.diag =
           | Diag of 'info * ('info, 'info A.t, 'info A.t) pair
 
@@ -546,7 +546,7 @@ module Helpers (Context : Builder_context) = struct
 
   let language_object_extended_s =
     pmty_ident
-      { txt = unflatten [ "Lvca_syntax"; "Language_object_intf"; "Extended_s" ]; loc }
+      { txt = unflatten [ "Lvca_syntax"; "Nominal"; "Convertible"; "Extended_s" ]; loc }
   ;;
 
   let mk_exp_tuple = function
@@ -1578,7 +1578,8 @@ module Individual_type_module (Context : Builder_context) = struct
     *)
     let kernel_mod = pmod_ident { txt = Lident "Kernel"; loc } in
     let extend_mod =
-      pmod_ident { txt = unflatten [ "Lvca_syntax"; "Language_object"; "Extend" ]; loc }
+      pmod_ident
+        { txt = unflatten [ "Lvca_syntax"; "Nominal"; "Convertible"; "Extend" ]; loc }
     in
     let init =
       pmod_structure

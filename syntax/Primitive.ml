@@ -10,7 +10,7 @@ end
 
 module All = struct
   include All_kernel
-  include Language_object.Extend (All_kernel)
+  include Nominal.Convertible.Extend (All_kernel)
 end
 
 module Integer_kernel = struct
@@ -25,7 +25,7 @@ module Integer_kernel = struct
   ;;
 end
 
-module Integer = Language_object.Extend (Integer_kernel)
+module Integer = Nominal.Convertible.Extend (Integer_kernel)
 
 module Int32_kernel = struct
   include Primitive_impl.Int32
@@ -37,7 +37,7 @@ module Int32_kernel = struct
   ;;
 end
 
-module Int32 = Language_object.Extend (Int32_kernel)
+module Int32 = Nominal.Convertible.Extend (Int32_kernel)
 
 module Float_kernel = struct
   include Primitive_impl.Float
@@ -49,7 +49,7 @@ module Float_kernel = struct
   ;;
 end
 
-module Float = Language_object.Extend (Float_kernel)
+module Float = Nominal.Convertible.Extend (Float_kernel)
 
 module Char_kernel = struct
   include Primitive_impl.Char
@@ -61,7 +61,7 @@ module Char_kernel = struct
   ;;
 end
 
-module Char = Language_object.Extend (Char_kernel)
+module Char = Nominal.Convertible.Extend (Char_kernel)
 
 module String_kernel = struct
   include Primitive_impl.String
@@ -75,4 +75,4 @@ module String_kernel = struct
   ;;
 end
 
-module String = Language_object.Extend (String_kernel)
+module String = Nominal.Convertible.Extend (String_kernel)

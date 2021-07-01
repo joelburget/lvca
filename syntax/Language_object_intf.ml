@@ -48,40 +48,4 @@ module type S = sig
 
   (** {1 Info} *)
   include Has_info with type 'info t := 'info t
-
-  include Nominal.Convertible_s with type 'info t := 'info t
-end
-
-(** Helpers derivable from [S] *)
-module type Extended_s = sig
-  include S
-
-  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
-  (* TODO: should they be comparable as well? *)
-
-  val erase : _ t -> unit t
-  val pp : _ t Fmt.t
-  val to_string : _ t -> string
-
-  (* TODO: to_pattern, of_pattern *)
-
-  val select_path
-    :  path:int list
-    -> 'info t
-    -> ('info t, (string, 'info Nominal.Term.t) Base.Either.t) Result.t
-
-  (** {1 Serialization} *)
-  include Json_convertible with type 'info t := 'info t
-
-  include Serializable with type 'info t := 'info t
-
-  (** {1 Printing / Parsing} *)
-  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
-
-  val pp_opt_range : Lvca_provenance.Opt_range.t t Fmt.t
-
-  module Parse : sig
-    val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
-    val whitespace_t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
-  end
 end

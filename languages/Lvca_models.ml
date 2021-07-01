@@ -188,6 +188,6 @@ scope := Scope(string; term)
 case_scope := Case_scope(binding_aware_pattern; term)
 |}]
 
-module Properties (Lang : Language_object_intf.S) = struct
-  (* check all generated functions equivalent *)
+module Properties (Lang : Nominal.Convertible.S) = struct
+  (* TODO: check all generated functions equivalent *)
 end

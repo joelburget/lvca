@@ -7,7 +7,7 @@ module Integer : sig
   end
 
   include
-    Language_object_intf.Extended_s
+    Nominal.Convertible.Extended_s
       with type 'info t = 'info * Z.t
        and module Plain := Plain
 end
@@ -18,7 +18,7 @@ module Int32 : sig
   end
 
   include
-    Language_object_intf.Extended_s
+    Nominal.Convertible.Extended_s
       with type 'info t = 'info * int32
        and module Plain := Plain
 end
@@ -29,7 +29,7 @@ module Float : sig
   end
 
   include
-    Language_object_intf.Extended_s
+    Nominal.Convertible.Extended_s
       with type 'info t = 'info * float
        and module Plain := Plain
 end
@@ -40,7 +40,7 @@ module Char : sig
   end
 
   include
-    Language_object_intf.Extended_s
+    Nominal.Convertible.Extended_s
       with type 'info t = 'info * char
        and module Plain := Plain
 end
@@ -51,7 +51,7 @@ module String : sig
   end
 
   include
-    Language_object_intf.Extended_s
+    Nominal.Convertible.Extended_s
       with type 'info t = 'info * string
        and module Plain := Plain
 end
@@ -69,7 +69,7 @@ module All : sig
   end
 
   include
-    Language_object_intf.Extended_s
+    Nominal.Convertible.Extended_s
       with type 'info t = 'info * Plain.t
        and module Plain := Plain
 
