@@ -83,7 +83,7 @@ let rec eval tm =
 let%test_module _ =
   (module struct
     let go str =
-      match Lvca_parsing.(parse_string (whitespace *> Lang.Exp.Parse.t)) str with
+      match Lvca_parsing.(parse_string (whitespace *> Lang.Exp.parse)) str with
       | Error msg -> Fmt.pr "%s" msg
       | Ok tm ->
         (match eval tm with

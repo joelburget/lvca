@@ -44,7 +44,7 @@ module Typing_clause = struct
       | LeftArr
       | RightArr
 
-    let pattern = Binding_aware_pattern.Parse.t <?> "pattern"
+    let pattern = Binding_aware_pattern.parse <?> "pattern"
 
     let t =
       lift3
@@ -61,12 +61,14 @@ module Typing_clause = struct
     ;;
   end
 
+  let parse = Parse.t
+
   let%test_module _ =
     (module struct
       let ( = ) = Result.equal (equal ~info_eq:Unit.( = )) String.( = )
 
       let%test _ =
-        Lvca_parsing.parse_string Parse.t "tm => ty"
+        Lvca_parsing.parse_string parse "tm => ty"
         |> Result.map ~f:erase
         = Ok (Inference_rule { tm = Var ((), "tm"); ty = Var ((), "ty") })
       ;;
@@ -92,7 +94,7 @@ module Hypothesis = struct
     open Lvca_parsing
 
     (* TODO: remove duplication *)
-    let pattern = Binding_aware_pattern.Parse.t <?> "pattern"
+    let pattern = Binding_aware_pattern.parse <?> "pattern"
 
     let typed_term =
       lift3 (fun ident _ tm -> ident, tm) identifier (char ':') pattern
@@ -186,18 +188,13 @@ end
 type 'a t = 'a Rule.t list
 
 let erase = List.map ~f:Rule.erase
-
-module Parse = struct
-  open Lvca_parsing
-
-  let t = many Rule.Parse.t
-end
+let parse = Lvca_parsing.many Rule.Parse.t
 
 let%test_module "Parsing" =
   (module struct
     let print_parse desc =
       let str =
-        Lvca_parsing.(parse_string (whitespace *> Parse.t)) desc
+        Lvca_parsing.(parse_string (whitespace *> parse)) desc
         |> Result.ok_or_failwith
         |> Fn.const "parsed"
       in

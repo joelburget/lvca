@@ -59,7 +59,7 @@ module Type = struct
     let t =
       let t =
         fix (fun t ->
-            let atom = parens t <|> (Sort.Parse.t >>| fun sort -> Sort sort) in
+            let atom = parens t <|> (Sort.parse >>| fun sort -> Sort sort) in
             sep_by1 (string "->") atom >>| function [ t ] -> t | ts -> Arrow ts)
       in
       t >>| normalize <?> "core type"
@@ -95,6 +95,8 @@ module Type = struct
       end)
     ;;
   end
+
+  let parse = Parse.t
 end
 
 module Types = struct
@@ -283,10 +285,10 @@ module Parse = struct
             [ parens term
             ; (identifier
               >>|| fun { value; range } -> { value = Types.Var (range, value); range })
-            ; braces Nominal.Term.Parse.t >>| (fun tm -> Types.Term tm) <?> "quoted term"
+            ; braces Nominal.Term.parse >>| (fun tm -> Types.Term tm) <?> "quoted term"
             ]
         in
-        let pattern = Binding_aware_pattern.Parse.t <?> "pattern" in
+        let pattern = Binding_aware_pattern.parse <?> "pattern" in
         let case_line =
           lift3 (fun pat _ tm -> Types.Case_scope (pat, tm)) pattern (string "->") term
           <?> "case line"
@@ -300,11 +302,7 @@ module Parse = struct
               (attach_pos (char '\\'))
               (attach_pos
                  (parens
-                    (lift3
-                       (fun ident _ ty -> ident, ty)
-                       identifier
-                       (char ':')
-                       Type.Parse.t)))
+                    (lift3 (fun ident _ ty -> ident, ty) identifier (char ':') Type.parse)))
               (string "->")
               term
             <?> "lambda"
@@ -315,7 +313,7 @@ module Parse = struct
               (attach_pos (string "let"))
               Is_rec.(option No_rec (Fn.const Rec <$> string "rec"))
               identifier
-              (option None (char ':' *> Type.Parse.t >>| fun tm -> Some tm))
+              (option None (char ':' *> Type.parse >>| fun tm -> Some tm))
             <*> string "="
             <*> term
             <*> string "in"
@@ -357,10 +355,7 @@ module Term = struct
 
   let erase = map_info ~f:(fun _ -> ())
   let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
-
-  module Parse = struct
-    let t = Parse.term
-  end
+  let parse = Parse.term
 end
 
 module Let = struct
@@ -422,24 +417,19 @@ module Module = struct
 
   let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 
-  module Parse = struct
-    open Lvca_parsing
-
+  let parse =
+    let open Lvca_parsing in
     let external_decl =
       lift4
         (fun ident _ ty _ -> ident, ty)
         identifier
         (string ":")
-        Type.Parse.t
+        Type.parse
         (string ";")
-    ;;
-
-    let def = lift3 (fun ident _ tm -> ident, tm) identifier (string ":=") Term.Parse.t
-
-    let t =
-      lift2 (fun externals defs -> { externals; defs }) (many external_decl) (many1 def)
-    ;;
-  end
+    in
+    let def = lift3 (fun ident _ tm -> ident, tm) identifier (string ":=") Term.parse in
+    lift2 (fun externals defs -> { externals; defs }) (many external_decl) (many1 def)
+  ;;
 end
 
 type 'info env = 'info Nominal.Term.t SMap.t
@@ -1013,9 +1003,9 @@ let%test_module "Core pretty" =
       Stdio.print_string str
     ;;
 
-    let term = mk_test Term.Parse.t Term.pp
-    let ty = mk_test Type.Parse.t Type.pp
-    let module' = mk_test Module.Parse.t Module.pp
+    let term = mk_test Term.parse Term.pp
+    let ty = mk_test Type.parse Type.pp
+    let module' = mk_test Module.parse Module.pp
 
     let%expect_test _ =
       term ~width:22 "match {true()} with { true() -> {false()} | false() -> {true()} }";
@@ -1159,9 +1149,7 @@ let%test_module "Core eval in dynamics" =
 
 let%test_module "Evaluation / inference" =
   (module struct
-    let parse_type str =
-      Lvca_parsing.parse_string Type.Parse.t str |> Result.ok_or_failwith
-    ;;
+    let parse_type str = Lvca_parsing.parse_string Type.parse str |> Result.ok_or_failwith
 
     open Abstract_syntax
 

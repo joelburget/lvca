@@ -417,40 +417,37 @@ module Term = struct
     | Var (info, name) -> Var (info, name)
   ;;
 
-  module Parse = struct
-    open Lvca_parsing
-
-    let t =
-      fix (fun term ->
-          let slot =
-            sep_by1 (char '.') term
-            >>== fun Parse_result.{ value; range } ->
-            let binders, tm = List.unsnoc value in
-            match binders |> List.map ~f:to_pattern |> Result.all with
-            | Error _ -> fail "Unexpectedly found a variable binding in pattern position"
-            | Ok binders -> return ~range (Types.Scope (binders, tm))
-          in
-          choice
-            ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
-            [ (Primitive_impl.Parse.t >>| fun prim -> Primitive prim)
-            ; (identifier
-              >>== fun Parse_result.{ value = ident; range = ident_range } ->
-              choice
-                [ (parens (sep_end_by (char ';') slot)
-                  >>|| fun { value = slots; range = parens_range } ->
-                  let range = Opt_range.union ident_range parens_range in
-                  { value = Operator (range, ident, slots); range })
-                ; return (Var (ident_range, ident))
-                ])
-            ])
-      <?> "term"
-    ;;
-  end
+  let parse =
+    let open Lvca_parsing in
+    fix (fun term ->
+        let slot =
+          sep_by1 (char '.') term
+          >>== fun Parse_result.{ value; range } ->
+          let binders, tm = List.unsnoc value in
+          match binders |> List.map ~f:to_pattern |> Result.all with
+          | Error _ -> fail "Unexpectedly found a variable binding in pattern position"
+          | Ok binders -> return ~range (Types.Scope (binders, tm))
+        in
+        choice
+          ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
+          [ (Primitive_impl.parse >>| fun prim -> Primitive prim)
+          ; (identifier
+            >>== fun Parse_result.{ value = ident; range = ident_range } ->
+            choice
+              [ (parens (sep_end_by (char ';') slot)
+                >>|| fun { value = slots; range = parens_range } ->
+                let range = Opt_range.union ident_range parens_range in
+                { value = Operator (range, ident, slots); range })
+              ; return (Var (ident_range, ident))
+              ])
+          ])
+    <?> "term"
+  ;;
 
   module Properties = struct
     open Property_result
 
-    let parse = Lvca_parsing.parse_string Parse.t
+    let parse = Lvca_parsing.parse_string parse
     let to_string tm = Fmt.to_to_string pp tm
     let ( = ) = equal ~info_eq:Unit.( = )
 
@@ -574,10 +571,7 @@ module Convertible = struct
     val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
     val pp_opt_range : Lvca_provenance.Opt_range.t t Fmt.t
-
-    module Parse : sig
-      val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
-    end
+    val parse : Lvca_provenance.Opt_range.t t Lvca_parsing.t
   end
 
   module Extend (Object : S) :
@@ -623,17 +617,14 @@ module Convertible = struct
     let deserialize buf = buf |> Cbor.decode |> Option.bind ~f:unjsonify
     let hash tm = tm |> serialize |> Sha256.hash
 
-    module Parse = struct
-      let t =
-        let open Lvca_parsing in
-        Term.Parse.t
-        >>= fun nom ->
-        match of_nominal nom with
-        | Error nom ->
-          fail Fmt.(str "Parse: failed to convert %a from nominal" Term.pp nom)
-        | Ok tm -> return tm
-      ;;
-    end
+    let parse =
+      let open Lvca_parsing in
+      Term.parse
+      >>= fun nom ->
+      match of_nominal nom with
+      | Error nom -> fail Fmt.(str "Parse: failed to convert %a from nominal" Term.pp nom)
+      | Ok tm -> return tm
+    ;;
   end
 
   module Check_parse_pretty (Object : S) :
@@ -645,7 +636,7 @@ module Convertible = struct
     type 'info t = 'info Object.t
 
     let to_string = Fmt.to_to_string Object.pp
-    let parse = Lvca_parsing.parse_string Parse.t
+    let parse = Lvca_parsing.parse_string parse
 
     let string_round_trip1 t =
       match t |> to_string |> parse with
@@ -827,7 +818,7 @@ let%test_module "Nominal" =
 let%test_module "TermParser" =
   (module struct
     let ( = ) = Result.equal (Term.equal ~info_eq:Unit.( = )) String.( = )
-    let parse = Lvca_parsing.(parse_string (whitespace *> Term.Parse.t))
+    let parse = Lvca_parsing.(parse_string (whitespace *> Term.parse))
     let parse_erase str = parse str |> Result.map ~f:Term.erase
 
     let print_parse str =
@@ -967,15 +958,15 @@ match(x; match_lines(
 let%test_module "check" =
   (module struct
     let parse_lang lang_str =
-      Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.Parse.t) lang_str)
+      Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.parse) lang_str)
       |> Result.ok_or_failwith
     ;;
 
     let parse_term term_str =
-      Lvca_parsing.parse_string Term.Parse.t term_str |> Result.ok_or_failwith
+      Lvca_parsing.parse_string Term.parse term_str |> Result.ok_or_failwith
     ;;
 
-    let parse_sort str = Lvca_parsing.parse_string Sort.Parse.t str
+    let parse_sort str = Lvca_parsing.parse_string Sort.parse str
 
     let lang_desc =
       {|

@@ -294,47 +294,43 @@ let check check_prim lang sort =
   check sort
 ;;
 
-module Parse = struct
-  open Lvca_parsing
-
-  let pat_to_ident = function Var (_, name) -> Some name | _ -> None
-
-  let t =
-    fix (fun pat ->
-        let slot =
-          sep_by1 (char '.') (attach_pos pat)
-          >>= fun value ->
-          let binders_pats, (pat, _) = Util.List.unsnoc value in
-          let f (pat, pos) = pat_to_ident pat |> Option.map ~f:(fun pat -> pos, pat) in
-          match binders_pats |> List.map ~f |> Option.all with
-          | None ->
-            fail
-              "found an operator pattern where only a variable is allowed (left of a `.`)"
-          | Some binders -> return (Scope (binders, pat))
-        in
-        choice
-          ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
-          [ (Primitive.All.Parse.t >>| fun prim -> Primitive prim)
-          ; (identifier
-            >>== fun { value = ident; range = ident_range } ->
-            choice
-              [ (parens (sep_end_by (char ';') slot)
-                >>|| fun { value = slots; range = parens_range } ->
-                let range = Opt_range.union ident_range parens_range in
-                { value = Operator (range, ident, slots); range })
-              ; return ~range:ident_range (Var (ident_range, ident))
-              ])
-          ])
-    <?> "binding-aware pattern"
-  ;;
-end
+let parse =
+  let open Lvca_parsing in
+  let pat_to_ident = function Var (_, name) -> Some name | _ -> None in
+  fix (fun pat ->
+      let slot =
+        sep_by1 (char '.') (attach_pos pat)
+        >>= fun value ->
+        let binders_pats, (pat, _) = Util.List.unsnoc value in
+        let f (pat, pos) = pat_to_ident pat |> Option.map ~f:(fun pat -> pos, pat) in
+        match binders_pats |> List.map ~f |> Option.all with
+        | None ->
+          fail
+            "found an operator pattern where only a variable is allowed (left of a `.`)"
+        | Some binders -> return (Scope (binders, pat))
+      in
+      choice
+        ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
+        [ (Primitive.All.parse >>| fun prim -> Primitive prim)
+        ; (identifier
+          >>== fun { value = ident; range = ident_range } ->
+          choice
+            [ (parens (sep_end_by (char ';') slot)
+              >>|| fun { value = slots; range = parens_range } ->
+              let range = Opt_range.union ident_range parens_range in
+              { value = Operator (range, ident, slots); range })
+            ; return ~range:ident_range (Var (ident_range, ident))
+            ])
+        ])
+  <?> "binding-aware pattern"
+;;
 
 let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 
 module Properties = struct
   open Property_result
 
-  let parse = Lvca_parsing.parse_string Parse.t
+  let parse = Lvca_parsing.parse_string parse
   let to_string = Fmt.to_to_string pp
 
   let string_round_trip1 t =
@@ -378,7 +374,7 @@ let%test_module "Parsing" =
     ;;
 
     let print_parse tm =
-      match Lvca_parsing.parse_string Parse.t tm with
+      match Lvca_parsing.parse_string parse tm with
       | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range pat
       | Error msg -> Fmt.pr "failed: %s\n" msg
     ;;
@@ -446,7 +442,7 @@ let%test_module "Parsing" =
 
 let%test_module "check" =
   (module struct
-    let parse p str =
+    let parse' p str =
       Lvca_parsing.(parse_string (whitespace *> p) str) |> Result.ok_or_failwith
     ;;
 
@@ -475,11 +471,11 @@ test := foo(term[term]. term)
       |}
     ;;
 
-    let language = parse Abstract_syntax.Parse.t lang_desc
+    let language = parse' Abstract_syntax.parse lang_desc
 
     let print_check_pattern sort_str pat_str =
-      let sort = parse Sort.Parse.t sort_str in
-      let pat = parse Parse.t pat_str in
+      let sort = parse' Sort.parse sort_str in
+      let pat = parse' parse pat_str in
       let pp ppf pat = Fmt.pf ppf "pattern: %a" pp pat in
       match check Primitive.All.check language sort pat with
       | Error failure -> Fmt.epr "%a" (Check_failure.pp pp) failure
@@ -619,10 +615,10 @@ test := foo(term[term]. term)
 
 let%test_module "check" =
   (module struct
-    let parse_pattern str = Lvca_parsing.parse_string Parse.t str |> Result.ok_or_failwith
+    let parse_pattern str = Lvca_parsing.parse_string parse str |> Result.ok_or_failwith
 
     let parse_term str =
-      Lvca_parsing.parse_string Nominal.Term.Parse.t str |> Result.ok_or_failwith
+      Lvca_parsing.parse_string Nominal.Term.parse str |> Result.ok_or_failwith
     ;;
 
     let print_match pat_str tm_str =

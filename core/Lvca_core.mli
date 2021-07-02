@@ -26,10 +26,7 @@ module Type : sig
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
-
-  module Parse : sig
-    val t : Opt_range.t t Lvca_parsing.t
-  end
+  val parse : Opt_range.t t Lvca_parsing.t
 end
 
 module Types : sig
@@ -69,10 +66,7 @@ module Term : sig
   val info : 'info t -> 'info
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val pp : _ t Fmt.t
-
-  module Parse : sig
-    val t : Opt_range.t t Lvca_parsing.t
-  end
+  val parse : Opt_range.t t Lvca_parsing.t
 end
 
 module Let : sig
@@ -115,11 +109,7 @@ module Module : sig
 
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val pp : _ t Fmt.t
-
-  (** {2 Parsing} *)
-  module Parse : sig
-    val t : Opt_range.t t Lvca_parsing.t
-  end
+  val parse : Opt_range.t t Lvca_parsing.t
 end
 
 (** {1 Checking} *)

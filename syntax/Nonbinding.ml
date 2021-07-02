@@ -95,25 +95,22 @@ let rec select_path ~path tm =
       | Some tm -> select_path ~path tm))
 ;;
 
-module Parse = struct
-  open Lvca_parsing
-
-  let term : Opt_range.t term Lvca_parsing.t =
-    fix (fun term ->
-        choice
-          ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
-          [ (Primitive.All.Parse.t >>| fun prim -> Primitive prim)
-          ; (identifier
-            >>== fun Parse_result.{ value = ident; range = start; _ } ->
-            parens (sep_end_by (char ';') term)
-            >>|| (fun Parse_result.{ value = children; range = finish } ->
-                   let pos = Opt_range.union start finish in
-                   Parse_result.{ value = Operator (pos, ident, children); range = pos })
-            <?> "term body")
-          ])
-    <?> "term"
-  ;;
-end
+let parse =
+  let open Lvca_parsing in
+  fix (fun term ->
+      choice
+        ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
+        [ (Primitive.All.parse >>| fun prim -> Primitive prim)
+        ; (identifier
+          >>== fun Parse_result.{ value = ident; range = start; _ } ->
+          parens (sep_end_by (char ';') term)
+          >>|| (fun Parse_result.{ value = children; range = finish } ->
+                 let pos = Opt_range.union start finish in
+                 Parse_result.{ value = Operator (pos, ident, children); range = pos })
+          <?> "term body")
+        ])
+  <?> "term"
+;;
 
 module type Convertible_s = sig
   include Language_object_intf.S with type 'info t = 'info term

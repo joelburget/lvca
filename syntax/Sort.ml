@@ -93,34 +93,31 @@ let erase_info sort = map_info ~f:(fun _ -> ()) sort
 (** Split a sort into a name and its arguments. *)
 let split = function Name (_, name) -> name, [] | Ap (_, name, args) -> name, args
 
-module Parse = struct
-  open Lvca_parsing
-
-  let t =
-    fix (fun sort ->
-        let atomic_sort =
-          choice
-            ~failure_msg:"looking for parens or an identifier"
-            [ parens sort
-            ; (identifier
-              >>|| fun Parse_result.{ value; range } ->
-              { value = Name (range, value); range })
-            ]
-        in
-        many1 atomic_sort
-        >>== fun Parse_result.{ value = atoms; range } ->
-        match atoms with
-        (* A single ap is just parenthesized. An ap applied to things is a problem. *)
-        | [ (Ap _ as atom) ] -> return ~range atom
-        | Ap _ :: _ ->
-          fail
-            "Higher-order sorts are not allowed. The head of a sort application must be \
-             concrete"
-        | [ (Name _ as value) ] -> return ~range value
-        | Name (_, name) :: args -> return ~range (Ap (range, name, args))
-        | [] -> assert false)
-  ;;
-end
+let parse =
+  let open Lvca_parsing in
+  fix (fun sort ->
+      let atomic_sort =
+        choice
+          ~failure_msg:"looking for parens or an identifier"
+          [ parens sort
+          ; (identifier
+            >>|| fun Parse_result.{ value; range } ->
+            { value = Name (range, value); range })
+          ]
+      in
+      many1 atomic_sort
+      >>== fun Parse_result.{ value = atoms; range } ->
+      match atoms with
+      (* A single ap is just parenthesized. An ap applied to things is a problem. *)
+      | [ (Ap _ as atom) ] -> return ~range atom
+      | Ap _ :: _ ->
+        fail
+          "Higher-order sorts are not allowed. The head of a sort application must be \
+           concrete"
+      | [ (Name _ as value) ] -> return ~range value
+      | Name (_, name) :: args -> return ~range (Ap (range, name, args))
+      | [] -> assert false)
+;;
 
 let%test_module "Sort_Parser" =
   (module struct
@@ -135,11 +132,11 @@ let%test_module "Sort_Parser" =
     let abcd = Ap ((), "a", [ Ap ((), "b", [ Name ((), "c") ]); Name ((), "d") ])
     let ( = ) = equal Unit.( = )
 
-    let%test_unit _ = assert (parse_with Parse.t "a" |> erase_info = a)
-    let%test_unit _ = assert (parse_with Parse.t "(a)" |> erase_info = a)
-    let%test_unit _ = assert (parse_with Parse.t "a b c" |> erase_info = abc)
-    let%test_unit _ = assert (parse_with Parse.t "(a b c)" |> erase_info = abc)
-    let%test_unit _ = assert (parse_with Parse.t "a (b c) d" |> erase_info = abcd)
+    let%test_unit _ = assert (parse_with parse "a" |> erase_info = a)
+    let%test_unit _ = assert (parse_with parse "(a)" |> erase_info = a)
+    let%test_unit _ = assert (parse_with parse "a b c" |> erase_info = abc)
+    let%test_unit _ = assert (parse_with parse "(a b c)" |> erase_info = abc)
+    let%test_unit _ = assert (parse_with parse "a (b c) d" |> erase_info = abcd)
 
     let%expect_test _ =
       Fmt.pr "%a" pp a;

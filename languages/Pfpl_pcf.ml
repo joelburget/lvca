@@ -205,7 +205,7 @@ let eval ?(eager = true) ?(step_limit = 50) tm =
 let%test_module _ =
   (module struct
     let go ?(eager = true) str =
-      match Lvca_parsing.(parse_string (whitespace *> Lang.Exp.Parse.t) str) with
+      match Lvca_parsing.(parse_string (whitespace *> Lang.Exp.parse) str) with
       | Error msg -> Fmt.pr "%s" msg
       | Ok tm ->
         let tm = Lang.Exp.map_info ~f:(fun info -> Provenance.Root info) tm in

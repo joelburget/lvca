@@ -31,15 +31,12 @@ module Make (Plain_base : Plain_base_s) = struct
   let jsonify (_, plain) = Plain_base.jsonify plain
   let unjsonify json = Plain_base.unjsonify json |> Option.map ~f:(fun tm -> (), tm)
 
-  module Parse = struct
-    open Lvca_parsing
-
-    let t =
-      Plain_base.parse
-      >>|| fun (Parse_result.{ value; range } as parse_result) ->
-      { parse_result with value = range, value }
-    ;;
-  end
+  let parse =
+    let open Lvca_parsing in
+    Plain_base.parse
+    >>|| fun (Parse_result.{ value; range } as parse_result) ->
+    { parse_result with value = range, value }
+  ;;
 end
 
 module Integer = Make (struct
@@ -173,24 +170,21 @@ let check prim sort =
          (to_string prim))
 ;;
 
-module Parse = struct
-  open Lvca_parsing
-
-  let t =
-    choice
-      ~failure_msg:"looking for an integer, float, string, or character literal"
-      [ (integer_or_float_lit
-        >>| function First i -> Plain.Integer (Z.of_string i) | Second f -> Float f)
-        (* Note: all ints parse to Integer *)
-      ; (string_lit >>| fun s -> Plain.String s)
-      ; (char_lit >>| fun c -> Plain.Char c)
-      ]
-    >>|| (fun parse_result ->
-           let value = parse_result.range, parse_result.value in
-           { parse_result with value })
-    <?> "primitive"
-  ;;
-end
+let parse =
+  let open Lvca_parsing in
+  choice
+    ~failure_msg:"looking for an integer, float, string, or character literal"
+    [ (integer_or_float_lit
+      >>| function First i -> Plain.Integer (Z.of_string i) | Second f -> Float f)
+      (* Note: all ints parse to Integer *)
+    ; (string_lit >>| fun s -> Plain.String s)
+    ; (char_lit >>| fun c -> Plain.Char c)
+    ]
+  >>|| (fun parse_result ->
+         let value = parse_result.range, parse_result.value in
+         { parse_result with value })
+  <?> "primitive"
+;;
 
 let jsonify (_, p) =
   Json.(
@@ -241,7 +235,7 @@ module Properties = struct
 
   let string_round_trip1 : unit t -> Property_result.t =
    fun t ->
-    match t |> to_string |> Lvca_parsing.parse_string Parse.t with
+    match t |> to_string |> Lvca_parsing.parse_string parse with
     | Ok prim -> Property_result.check (erase prim = t) (Fmt.str "%a <> %a" pp prim pp t)
     | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
  ;;
@@ -249,14 +243,14 @@ module Properties = struct
   (* Note: +1 -> 1. If the first round-trip isn't equal, try once more. *)
   let string_round_trip2 : string -> Property_result.t =
    fun str ->
-    match Lvca_parsing.parse_string Parse.t str with
+    match Lvca_parsing.parse_string parse str with
     | Error _ -> Uninteresting
     | Ok prim ->
       let str' = to_string prim in
       if Base.String.(str' = str)
       then Ok
       else (
-        match Lvca_parsing.parse_string Parse.t str with
+        match Lvca_parsing.parse_string parse str with
         | Error msg -> Failed msg
         | Ok prim' ->
           let str'' = to_string prim' in
@@ -273,7 +267,7 @@ let%test_module "Parsing" =
     open Lvca_provenance
 
     let print_parse str =
-      match Lvca_parsing.parse_string_pos Parse.t str with
+      match Lvca_parsing.parse_string_pos parse str with
       | Ok { value = prim; range } -> Fmt.pr "%a %a" pp prim Opt_range.pp range
       | Error msg -> Fmt.pr "%s" msg
     ;;

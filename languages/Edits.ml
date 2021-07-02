@@ -39,28 +39,25 @@ let rec pp : 'lang Fmt.t -> 'lang t Fmt.t =
   | List edits -> Fmt.(brackets (list ~sep:comma pp')) ppf edits
 ;;
 
-module Parse = struct
-  open Lvca_parsing
-
-  let t (* : 'lang Lvca_parsing.t -> 'lang t Lvca_parsing.t *) lang_p =
-    fix (fun t ->
-        choice
-          ~failure_msg:"looking for an expression, brackets, or an identifier"
-          [ lang_p >>| (fun core -> Atomic core) <?> "core term"
-          ; brackets (sep_by (char ',') t) >>| (fun ts -> List ts) <?> "list"
-          ; lift3 (fun name _colon edit -> Labeled (edit, name)) identifier (char ':') t
-            <?> "labeled"
-          ])
-    <?> "edit"
-  ;;
-end
+let parse lang_p =
+  let open Lvca_parsing in
+  fix (fun t ->
+      choice
+        ~failure_msg:"looking for an expression, brackets, or an identifier"
+        [ lang_p >>| (fun core -> Atomic core) <?> "core term"
+        ; brackets (sep_by (char ',') t) >>| (fun ts -> List ts) <?> "list"
+        ; lift3 (fun name _colon edit -> Labeled (edit, name)) identifier (char ':') t
+          <?> "labeled"
+        ])
+  <?> "edit"
+;;
 
 type term = Opt_range.t Nominal.Term.t
 
 let%test_module "Parsing" =
   (module struct
     let parse : string -> (core t, string) Result.t =
-      Lvca_parsing.(parse_string (whitespace *> Parse.t (braces Lvca_core.Term.Parse.t)))
+      Lvca_parsing.(parse_string (whitespace *> parse (braces Lvca_core.Term.parse)))
     ;;
 
     let parse_and_print : string -> unit =
@@ -92,7 +89,7 @@ let%test_module "Parsing" =
       let open Result.Let_syntax in
       match
         let%bind edit = parse edit in
-        let%bind tm = Lvca_parsing.parse_string Nominal.Term.Parse.t tm in
+        let%bind tm = Lvca_parsing.parse_string Nominal.Term.parse tm in
         let%map tm = run tm edit in
         Nominal.Term.pp Caml.Format.std_formatter tm
       with

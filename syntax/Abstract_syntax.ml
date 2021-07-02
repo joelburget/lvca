@@ -109,21 +109,17 @@ module Sort_slot = struct
       [ pattern_sort; var_sort ] |> List.fold ~init:env ~f:Sort.kind_check
   ;;
 
-  module Parse = struct
-    module Sort = Sort.Parse
-    open Lvca_parsing
-
-    let t =
-      Sort.t
-      >>= fun sort ->
-      choice
-        [ (brackets Sort.t
-          >>| fun var_sort -> Sort_pattern { pattern_sort = sort; var_sort })
-        ; return (Sort_binding sort)
-        ]
-      <?> "sort slot"
-    ;;
-  end
+  let parse =
+    let open Lvca_parsing in
+    Sort.parse
+    >>= fun sort ->
+    choice
+      [ (brackets Sort.parse
+        >>| fun var_sort -> Sort_pattern { pattern_sort = sort; var_sort })
+      ; return (Sort_binding sort)
+      ]
+    <?> "sort slot"
+  ;;
 end
 
 module Valence = struct
@@ -165,27 +161,23 @@ module Valence = struct
     Sort.kind_check env value_sort
   ;;
 
-  module Parse = struct
-    module ParseSortSlot = Sort_slot.Parse
-    open Lvca_parsing
-
-    let t =
-      let t' =
-        sep_by1 (char '.') ParseSortSlot.t
-        >>= fun slots ->
-        let binders, body_slot = List.unsnoc slots in
-        match body_slot with
-        | Sort_slot.Sort_binding body_sort -> return (Valence (binders, body_sort))
-        | _ ->
-          fail
-            (Fmt.str
-               "Expected a simple sort, instead found a pattern sort (%a)"
-               Sort_slot.pp
-               body_slot)
-      in
-      t' <?> "valence"
-    ;;
-  end
+  let parse =
+    let open Lvca_parsing in
+    let t' =
+      sep_by1 (char '.') Sort_slot.parse
+      >>= fun slots ->
+      let binders, body_slot = List.unsnoc slots in
+      match body_slot with
+      | Sort_slot.Sort_binding body_sort -> return (Valence (binders, body_sort))
+      | _ ->
+        fail
+          (Fmt.str
+             "Expected a simple sort, instead found a pattern sort (%a)"
+             Sort_slot.pp
+             body_slot)
+    in
+    t' <?> "valence"
+  ;;
 end
 
 module Arity = struct
@@ -200,10 +192,7 @@ module Arity = struct
   let map_info ~f = List.map ~f:(Valence.map_info ~f)
   let erase arity = map_info ~f:(Fn.const ()) arity
   let instantiate env = List.map ~f:(Valence.instantiate env)
-
-  module Parse = struct
-    let t = Lvca_parsing.(parens (sep_by (char ';') Valence.Parse.t) <?> "arity")
-  end
+  let parse = Lvca_parsing.(parens (sep_by (char ';') Valence.parse) <?> "arity")
 
   let%test_module _ =
     (module struct
@@ -213,28 +202,27 @@ module Arity = struct
       let integer_v = Valence.Valence ([], integer)
       let ( = ) = equal ~info_eq:(fun _ _ -> true)
 
-      let%test_unit _ = assert (test_parse_with Parse.t "(integer)" = [ integer_v ])
-      let%test_unit _ = assert (test_parse_with Parse.t "(tm; tm)" = [ tm_v; tm_v ])
+      let%test_unit _ = assert (test_parse_with parse "(integer)" = [ integer_v ])
+      let%test_unit _ = assert (test_parse_with parse "(tm; tm)" = [ tm_v; tm_v ])
 
       let%test_unit _ =
         assert (
-          test_parse_with Parse.t "(tm. tm)"
-          = [ Valence.Valence ([ Sort_binding tm ], tm) ])
+          test_parse_with parse "(tm. tm)" = [ Valence.Valence ([ Sort_binding tm ], tm) ])
       ;;
 
       let%test_unit _ =
-        assert (test_parse_with Parse.t "(tm)" = [ Valence.Valence ([], tm) ])
+        assert (test_parse_with parse "(tm)" = [ Valence.Valence ([], tm) ])
       ;;
 
       let%test_unit _ =
         assert (
-          test_parse_with Parse.t "(tm[tm]. tm)"
+          test_parse_with parse "(tm[tm]. tm)"
           = [ Valence.Valence ([ Sort_pattern { pattern_sort = tm; var_sort = tm } ], tm)
             ])
       ;;
 
       let expect_okay str =
-        match Lvca_parsing.parse_string Parse.t str with
+        match Lvca_parsing.parse_string parse str with
         | Ok _ -> ()
         | Error msg -> Stdio.print_string msg
       ;;
@@ -249,7 +237,7 @@ module Arity = struct
         [%expect]
       ;;
 
-      let%test_unit _ = assert (test_parse_with Parse.t "()" = [])
+      let%test_unit _ = assert (test_parse_with parse "()" = [])
     end)
   ;;
 end
@@ -275,20 +263,17 @@ module Operator_def = struct
 
   let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
-  module Parse = struct
-    open Lvca_parsing
-
-    let t =
-      lift2 (fun ident arity -> Operator_def (ident, arity)) identifier Arity.Parse.t
-      <?> "operator definition"
-    ;;
-  end
+  let parse =
+    let open Lvca_parsing in
+    lift2 (fun ident arity -> Operator_def (ident, arity)) identifier Arity.parse
+    <?> "operator definition"
+  ;;
 
   let%test_module _ =
     (module struct
       let%test_unit _ =
         let ( = ) = equal ~info_eq:(fun _ _ -> true) in
-        assert (test_parse_with Parse.t "foo()" = Operator_def ("foo", []))
+        assert (test_parse_with parse "foo()" = Operator_def ("foo", []))
       ;;
     end)
   ;;
@@ -360,12 +345,10 @@ module Sort_def = struct
     pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ~name ppf t
   ;;
 
-  module Parse = struct
-    open Lvca_parsing
-
-    let assign = string ":="
-    let bar = char '|'
-
+  let parse =
+    let open Lvca_parsing in
+    let assign = string ":=" in
+    let bar = char '|' in
     let sort_var_decl =
       choice
         ~failure_msg:"looking for an identifier or parens"
@@ -373,18 +356,15 @@ module Sort_def = struct
         ; (parens Kind.Parse.decl >>| fun (name, kind) -> name, Some kind)
         ]
       <?> "sort variable declaration"
-    ;;
-
-    let t =
-      lift4
-        (fun name vars _assign op_defs -> name, Sort_def (vars, op_defs))
-        identifier
-        (many sort_var_decl)
-        assign
-        (option '|' bar *> sep_by bar Operator_def.Parse.t)
-      <?> "sort definition"
-    ;;
-  end
+    in
+    lift4
+      (fun name vars _assign op_defs -> name, Sort_def (vars, op_defs))
+      identifier
+      (many sort_var_decl)
+      assign
+      (option '|' bar *> sep_by bar Operator_def.parse)
+    <?> "sort definition"
+  ;;
 
   let%test_module _ =
     (module struct
@@ -392,13 +372,13 @@ module Sort_def = struct
 
       let%test_unit _ =
         assert (
-          test_parse_with Parse.t {|foo := foo()|}
+          test_parse_with parse {|foo := foo()|}
           = ("foo", Sort_def ([], [ Operator_def ("foo", []) ])))
       ;;
 
       let%test_unit _ =
         assert (
-          test_parse_with Parse.t {|foo x := foo()|}
+          test_parse_with parse {|foo x := foo()|}
           = ("foo", Sort_def ([ "x", None ], [ Operator_def ("foo", []) ])))
       ;;
 
@@ -417,11 +397,10 @@ module Sort_def = struct
 
       let%test_unit _ =
         assert (
-          test_parse_with Parse.t {|tm :=
+          test_parse_with parse {|tm :=
   | add(tm; tm)
   | lit(integer)
-      |}
-          = tm_def)
+      |} = tm_def)
       ;;
 
       let%expect_test _ =
@@ -568,17 +547,14 @@ let kind_check { externals; sort_defs } =
   | _ -> Error (String.Map.of_alist_exn mismapped_vars)
 ;;
 
-module Parse = struct
-  open Lvca_parsing
-
-  let t =
-    lift2
-      (fun externals sort_defs -> { externals; sort_defs })
-      (many Kind.Parse.decl)
-      (many1 Sort_def.Parse.t)
-    <?> "abstract syntax"
-  ;;
-end
+let parse =
+  let open Lvca_parsing in
+  lift2
+    (fun externals sort_defs -> { externals; sort_defs })
+    (many Kind.Parse.decl)
+    (many1 Sort_def.parse)
+  <?> "abstract syntax"
+;;
 
 let%test_module _ =
   (module struct
@@ -597,7 +573,7 @@ let%test_module _ =
     let%test_unit _ =
       let parsed =
         test_parse_with
-          Parse.t
+          parse
           {|
 integer : *
 
@@ -618,7 +594,7 @@ empty :=
     ;;
 
     let kind_check str =
-      let lang = test_parse_with Parse.t str in
+      let lang = test_parse_with parse str in
       match kind_check lang with
       | Ok map ->
         Stdio.printf "okay\n";
@@ -664,7 +640,7 @@ let%test_module "Parser" =
   (module struct
     open Lvca_provenance
 
-    let parse = test_parse_with Parse.t
+    let parse = test_parse_with parse
     let ( = ) = equal Opt_range.( = )
     let tm_sort = Sort.Name ((), "tm")
     let tm_valence = Valence.Valence ([], tm_sort)

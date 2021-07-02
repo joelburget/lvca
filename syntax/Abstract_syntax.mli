@@ -57,9 +57,7 @@ module Sort_slot : sig
   (** Instantiate concrete vars in a sort *)
   val instantiate : 'info Sort.t String.Map.t -> 'info t -> 'info t
 
-  module Parse : sig
-    val t : Opt_range.t t Lvca_parsing.t
-  end
+  val parse : Opt_range.t t Lvca_parsing.t
 end
 
 (** A valence represents a sort, as well as the number and sorts of the variables bound
@@ -75,9 +73,7 @@ module Valence : sig
   (** Instantiate concrete vars in a valence *)
   val instantiate : 'info Sort.t String.Map.t -> 'info t -> 'info t
 
-  module Parse : sig
-    val t : Opt_range.t t Lvca_parsing.t
-  end
+  val parse : Opt_range.t t Lvca_parsing.t
 end
 
 (** An arity specifies the arguments to an operator. *)
@@ -93,9 +89,7 @@ module Arity : sig
   (** Instantiate concrete vars in an arity *)
   val instantiate : 'info Sort.t String.Map.t -> 'info t -> 'info t
 
-  module Parse : sig
-    val t : Opt_range.t t Lvca_parsing.t
-  end
+  val parse : Opt_range.t t Lvca_parsing.t
 end
 
 module Operator_def : sig
@@ -107,10 +101,7 @@ module Operator_def : sig
   val map_info : f:('a -> 'b) -> 'a t -> 'b t
   val pp : _ t Fmt.t
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
-
-  module Parse : sig
-    val t : Opt_range.t t Lvca_parsing.t
-  end
+  val parse : Opt_range.t t Lvca_parsing.t
 end
 
 module Sort_def : sig
@@ -130,10 +121,7 @@ module Sort_def : sig
     -> 'info t Fmt.t
 
   val kind_check : Int.Set.t String.Map.t -> string -> 'info t -> Int.Set.t String.Map.t
-
-  module Parse : sig
-    val t : (string * Opt_range.t t) Lvca_parsing.t
-  end
+  val parse : (string * Opt_range.t t) Lvca_parsing.t
 end
 
 (** The abstract syntax of a language is the sorts it defines. Definition order is
@@ -172,6 +160,4 @@ val pp : _ t Fmt.t
 (** Check that each sort in the syntax has a consistent arity. *)
 val kind_check : _ t -> (kind_map, kind_mismap) Result.t
 
-module Parse : sig
-  val t : Opt_range.t t Lvca_parsing.t
-end
+val parse : Opt_range.t t Lvca_parsing.t

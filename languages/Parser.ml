@@ -1015,6 +1015,8 @@ module Parse = struct
  ;;
 end
 
+let parse = Parse.t
+
 module TestParsers = struct
   let dot = {|.|}
   let str = {|"str"|}
@@ -1076,7 +1078,7 @@ let%test_module "Parsing" =
   (module struct
     let parse_print : string -> string -> unit =
      fun parser_str str ->
-      match Lvca_parsing.parse_string (Parse.t Lvca_core.Term.Parse.t) parser_str with
+      match Lvca_parsing.parse_string (Parse.t Lvca_core.Term.parse) parser_str with
       | Error msg -> print_endline ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
         let parser' = map_info ~f:(Source_ranges.of_opt_range ~buf:"parser") parser in
@@ -1255,7 +1257,7 @@ let%test_module "Parsing" =
      fun ?width parser_str ->
       match
         Lvca_parsing.(
-          parse_string (whitespace *> Parse.t Lvca_core.Term.Parse.t) parser_str)
+          parse_string (whitespace *> Parse.t Lvca_core.Term.parse) parser_str)
       with
       | Error msg -> print_string ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
@@ -1456,7 +1458,7 @@ module Properties = struct
   open Property_result
 
   let parse parser_str =
-    Lvca_parsing.parse_string (Parse.t Lvca_core.Term.Parse.t) parser_str
+    Lvca_parsing.parse_string (Parse.t Lvca_core.Term.parse) parser_str
   ;;
 
   let pp_str p = Fmt.to_to_string pp_plain p

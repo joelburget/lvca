@@ -30,8 +30,6 @@ val of_nominal_with_bindings
 (** Are the two terms equivalent up to variable renaming? *)
 val alpha_equivalent : 'a term -> 'b term -> bool
 
-module Parse : sig
-  val t : Lvca_provenance.Opt_range.t term Lvca_parsing.t
-end
+val parse : Lvca_provenance.Opt_range.t term Lvca_parsing.t
 
 (* module Properties : Properties_intf.S with type 'info t := 'info term *)

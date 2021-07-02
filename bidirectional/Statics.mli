@@ -31,10 +31,7 @@ module Typing_clause : sig
 
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val erase : _ t -> unit t
-
-  module Parse : sig
-    val t : Opt_range.t t Lvca_parsing.t
-  end
+  val parse : Opt_range.t t Lvca_parsing.t
 end
 
 exception StaticsParseError of string
@@ -87,7 +84,5 @@ type 'info t = 'info Rule.t list
 
 val erase : _ t -> unit t
 
-module Parse : sig
-  (** @raise StaticsParseError *)
-  val t : Opt_range.t t Lvca_parsing.t
-end
+(** @raise StaticsParseError *)
+val parse : Opt_range.t t Lvca_parsing.t
