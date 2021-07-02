@@ -32,7 +32,6 @@ val alpha_equivalent : 'a term -> 'b term -> bool
 
 module Parse : sig
   val t : Lvca_provenance.Opt_range.t term Lvca_parsing.t
-  val whitespace_t : Lvca_provenance.Opt_range.t term Lvca_parsing.t
 end
 
 (* module Properties : Properties_intf.S with type 'info t := 'info term *)

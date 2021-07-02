@@ -174,5 +174,4 @@ val kind_check : _ t -> (kind_map, kind_mismap) Result.t
 
 module Parse : sig
   val t : Opt_range.t t Lvca_parsing.t
-  val whitespace_t : Opt_range.t t Lvca_parsing.t
 end

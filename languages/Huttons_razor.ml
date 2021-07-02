@@ -48,7 +48,7 @@ module Description = struct
      add(a; b) -> let a' = dynamics a in let b' = dynamics b in {add(a'; b')} | lit(i) ->
      i } in dynamics |}
 
-     let dynamics : Core.term = Lvca_parsing.parse_string ParseDynamics.whitespace_term
+     let dynamics : Core.term = Lvca_parsing.(parse_string (whitespace *> ParseDynamics.term))
      dynamics_str |> Result.ok_or_failwith ;; *)
 end
 
@@ -77,8 +77,6 @@ module Parse = struct
         atom
         >>= fun init -> many (plus *> atom) >>| fun lst -> List.fold lst ~init ~f |> fst)
   ;;
-
-  let whitespace_t = whitespace *> t
 end
 
 let pp =
@@ -118,7 +116,7 @@ let rec eval_tm : _ Nonbinding.term -> (Z.t, string) Result.t = function
 
 let eval_str : string -> (Z.t, string) Result.t =
  fun str ->
-  match Lvca_parsing.parse_string Parse.whitespace_t str with
+  match Lvca_parsing.(parse_string (whitespace *> Parse.t) str) with
   | Error str -> Error str
   | Ok tm -> eval_tm tm
 ;;
@@ -149,7 +147,7 @@ let ident_stag_funs =
 
 let%test_module "Hutton's Razor" =
   (module struct
-    let parse str = Lvca_parsing.parse_string Parse.whitespace_t str
+    let parse str = Lvca_parsing.(parse_string (whitespace *> Parse.t) str)
 
     let () =
       let open Caml.Format in

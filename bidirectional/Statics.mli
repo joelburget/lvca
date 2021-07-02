@@ -90,7 +90,4 @@ val erase : _ t -> unit t
 module Parse : sig
   (** @raise StaticsParseError *)
   val t : Opt_range.t t Lvca_parsing.t
-
-  (** @raise StaticsParseError *)
-  val whitespace_t : Opt_range.t t Lvca_parsing.t
 end

@@ -327,8 +327,6 @@ module Parse = struct
           ])
     <?> "binding-aware pattern"
   ;;
-
-  let whitespace_t = Lvca_parsing.(whitespace *> t)
 end
 
 let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
@@ -448,13 +446,9 @@ let%test_module "Parsing" =
 
 let%test_module "check" =
   (module struct
-    let parse_lang lang_str =
-      Lvca_parsing.parse_string Abstract_syntax.Parse.whitespace_t lang_str
-      |> Result.ok_or_failwith
+    let parse p str =
+      Lvca_parsing.(parse_string (whitespace *> p) str) |> Result.ok_or_failwith
     ;;
-
-    let parse_pattern str = Lvca_parsing.parse_string Parse.t str |> Result.ok_or_failwith
-    let parse_sort str = Lvca_parsing.parse_string Sort.Parse.t str
 
     let lang_desc =
       {|
@@ -481,11 +475,11 @@ test := foo(term[term]. term)
       |}
     ;;
 
-    let language = parse_lang lang_desc
+    let language = parse Abstract_syntax.Parse.t lang_desc
 
     let print_check_pattern sort_str pat_str =
-      let sort = parse_sort sort_str |> Result.ok_or_failwith in
-      let pat = parse_pattern pat_str in
+      let sort = parse Sort.Parse.t sort_str in
+      let pat = parse Parse.t pat_str in
       let pp ppf pat = Fmt.pf ppf "pattern: %a" pp pat in
       match check Primitive.All.check language sort pat with
       | Error failure -> Fmt.epr "%a" (Check_failure.pp pp) failure

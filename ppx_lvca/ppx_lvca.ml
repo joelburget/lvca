@@ -19,44 +19,46 @@ let extract_string loc expr =
   | _ -> Location.raise_errorf ~loc "Expecting string payload"
 ;;
 
+let parse p = Lvca_parsing.(parse_string (whitespace *> p))
+
 let expand_nominal ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match Lvca_parsing.parse_string Nominal.Term.Parse.whitespace_t str with
+  match parse Nominal.Term.Parse.t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> Syntax_quoter.Exp.nominal ~loc tm
 ;;
 
 let expand_nonbinding ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match Lvca_parsing.parse_string Nonbinding.Parse.whitespace_term str with
+  match parse Nonbinding.Parse.term str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> Syntax_quoter.Exp.nonbinding ~loc tm
 ;;
 
 let expand_pattern ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match Lvca_parsing.parse_string Lvca_syntax.Pattern.Parse.whitespace_t str with
+  match parse Lvca_syntax.Pattern.Parse.t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> Syntax_quoter.Exp.pattern ~loc tm
 ;;
 
 let expand_abstract_syntax ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match Lvca_parsing.parse_string Abstract_syntax.Parse.whitespace_t str with
+  match parse Abstract_syntax.Parse.t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax -> Syntax_quoter.Exp.language ~loc syntax
 ;;
 
 let expand_core ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match Lvca_parsing.(parse_string (whitespace *> Lvca_core.Term.Parse.t) str) with
+  match parse Lvca_core.Term.Parse.t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> Syntax_quoter.Exp.Core.term ~loc tm
 ;;
 
 let expand_module ~(loc : Location.t) ~path:_ (expr : expression) : module_expr =
   let str, loc = extract_string loc expr in
-  match Lvca_parsing.parse_string Abstract_syntax.Parse.whitespace_t str with
+  match parse Abstract_syntax.Parse.t str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax ->
     let module Container_module =

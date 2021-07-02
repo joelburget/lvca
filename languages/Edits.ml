@@ -53,8 +53,6 @@ module Parse = struct
           ])
     <?> "edit"
   ;;
-
-  let whitespace_t lang_p = whitespace *> t lang_p
 end
 
 type term = Opt_range.t Nominal.Term.t
@@ -62,7 +60,7 @@ type term = Opt_range.t Nominal.Term.t
 let%test_module "Parsing" =
   (module struct
     let parse : string -> (core t, string) Result.t =
-      Lvca_parsing.(parse_string (Parse.whitespace_t (braces Lvca_core.Term.Parse.t)))
+      Lvca_parsing.(parse_string (whitespace *> Parse.t (braces Lvca_core.Term.Parse.t)))
     ;;
 
     let parse_and_print : string -> unit =

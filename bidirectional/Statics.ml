@@ -191,14 +191,13 @@ module Parse = struct
   open Lvca_parsing
 
   let t = many Rule.Parse.t
-  let whitespace_t = whitespace *> t
 end
 
 let%test_module "Parsing" =
   (module struct
     let print_parse desc =
       let str =
-        Lvca_parsing.parse_string Parse.whitespace_t desc
+        Lvca_parsing.(parse_string (whitespace *> Parse.t)) desc
         |> Result.ok_or_failwith
         |> Fn.const "parsed"
       in

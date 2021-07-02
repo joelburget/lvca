@@ -48,7 +48,6 @@ val pp_opt_range : Opt_range.t term Fmt.t
 (** {1 Parsing} *)
 module Parse : sig
   val term : Opt_range.t term Lvca_parsing.t
-  val whitespace_term : Opt_range.t term Lvca_parsing.t
 end
 
 (** {1 Misc} *)

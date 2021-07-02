@@ -113,8 +113,6 @@ module Parse = struct
           ])
     <?> "term"
   ;;
-
-  let whitespace_term = whitespace *> term
 end
 
 module type Convertible_s = sig

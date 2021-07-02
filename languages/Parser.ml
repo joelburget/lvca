@@ -1013,8 +1013,6 @@ module Parse = struct
         many token >>= tokens_to_parser)
     <?> "parser"
  ;;
-
-  let whitespace_t c_term = Lvca_parsing.whitespace *> t c_term
 end
 
 module TestParsers = struct
@@ -1256,7 +1254,8 @@ let%test_module "Parsing" =
     let parse_print_parser : ?width:int -> string -> unit =
      fun ?width parser_str ->
       match
-        Lvca_parsing.parse_string (Parse.whitespace_t Lvca_core.Term.Parse.t) parser_str
+        Lvca_parsing.(
+          parse_string (whitespace *> Parse.t Lvca_core.Term.Parse.t) parser_str)
       with
       | Error msg -> print_string ("failed to parse parser desc: " ^ msg)
       | Ok parser ->

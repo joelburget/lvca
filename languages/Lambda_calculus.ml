@@ -75,8 +75,6 @@ module Parse = struct
         atom_or_lam
         >>= fun init -> many atom_or_lam >>| fun atoms -> List.fold atoms ~init ~f |> fst)
   ;;
-
-  let whitespace_t = whitespace *> t
 end
 
 let pp_generic ~open_loc ~close_loc =
@@ -118,7 +116,7 @@ let pp_source_ranges =
 let%test_module "Lambda Calculus" =
   (module struct
     let () = Caml.Format.set_tags false
-    let parse str = Lvca_parsing.parse_string Parse.whitespace_t str
+    let parse str = Lvca_parsing.(parse_string (whitespace *> Parse.t) str)
     let pretty_parse str = parse str |> Result.ok_or_failwith |> Fmt.pr "%a" pp_opt_range
 
     let pretty_eval_parse str =

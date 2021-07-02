@@ -6,7 +6,7 @@ open Lvca_provenance
 open Lvca_syntax
 
 let parse_lang lang_str =
-  Lvca_parsing.parse_string Abstract_syntax.Parse.whitespace_t lang_str
+  Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.Parse.t) lang_str)
 ;;
 
 let parse_term term_str = Lvca_parsing.parse_string Nominal.Term.Parse.t term_str

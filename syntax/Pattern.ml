@@ -264,8 +264,6 @@ module Parse = struct
           ])
     <?> "pattern"
   ;;
-
-  let whitespace_t = Lvca_parsing.(whitespace *> t)
 end
 
 let%test_module "Parsing" =
@@ -418,7 +416,7 @@ end
 let%test_module "check" =
   (module struct
     let parse_lang lang_str =
-      Lvca_parsing.parse_string Abstract_syntax.Parse.whitespace_t lang_str
+      Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.Parse.t) lang_str)
       |> Result.ok_or_failwith
     ;;
 

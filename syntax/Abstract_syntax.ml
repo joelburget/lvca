@@ -3,7 +3,9 @@
 open Base
 open Lvca_util
 
-let test_parse_with p str = Lvca_parsing.parse_string p str |> Result.ok_or_failwith
+let test_parse_with p str =
+  Lvca_parsing.(parse_string (whitespace *> p) str) |> Result.ok_or_failwith
+;;
 
 module Kind = struct
   type 'info t = Kind of 'info * int
@@ -576,8 +578,6 @@ module Parse = struct
       (many1 Sort_def.Parse.t)
     <?> "abstract syntax"
   ;;
-
-  let whitespace_t = whitespace *> t
 end
 
 let%test_module _ =
@@ -597,7 +597,7 @@ let%test_module _ =
     let%test_unit _ =
       let parsed =
         test_parse_with
-          Parse.whitespace_t
+          Parse.t
           {|
 integer : *
 
@@ -618,7 +618,7 @@ empty :=
     ;;
 
     let kind_check str =
-      let lang = test_parse_with Parse.whitespace_t str in
+      let lang = test_parse_with Parse.t str in
       match kind_check lang with
       | Ok map ->
         Stdio.printf "okay\n";
@@ -664,10 +664,7 @@ let%test_module "Parser" =
   (module struct
     open Lvca_provenance
 
-    let parse str =
-      Lvca_parsing.parse_string Parse.whitespace_t str |> Base.Result.ok_or_failwith
-    ;;
-
+    let parse = test_parse_with Parse.t
     let ( = ) = equal Opt_range.( = )
     let tm_sort = Sort.Name ((), "tm")
     let tm_valence = Valence.Valence ([], tm_sort)

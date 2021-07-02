@@ -445,8 +445,6 @@ module Term = struct
             ])
       <?> "term"
     ;;
-
-    let whitespace_t = whitespace *> t
   end
 
   module Properties = struct
@@ -579,7 +577,6 @@ module Convertible = struct
 
     module Parse : sig
       val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
-      val whitespace_t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
     end
   end
 
@@ -636,8 +633,6 @@ module Convertible = struct
           fail Fmt.(str "Parse: failed to convert %a from nominal" Term.pp nom)
         | Ok tm -> return tm
       ;;
-
-      let whitespace_t = Lvca_parsing.(whitespace *> t)
     end
   end
 
@@ -832,7 +827,7 @@ let%test_module "Nominal" =
 let%test_module "TermParser" =
   (module struct
     let ( = ) = Result.equal (Term.equal ~info_eq:Unit.( = )) String.( = )
-    let parse = Lvca_parsing.parse_string Term.Parse.whitespace_t
+    let parse = Lvca_parsing.(parse_string (whitespace *> Term.Parse.t))
     let parse_erase str = parse str |> Result.map ~f:Term.erase
 
     let print_parse str =
@@ -972,7 +967,7 @@ match(x; match_lines(
 let%test_module "check" =
   (module struct
     let parse_lang lang_str =
-      Lvca_parsing.parse_string Abstract_syntax.Parse.whitespace_t lang_str
+      Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.Parse.t) lang_str)
       |> Result.ok_or_failwith
     ;;
 

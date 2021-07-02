@@ -110,7 +110,6 @@ module Term : sig
 
   module Parse : sig
     val t : Opt_range.t t Lvca_parsing.t
-    val whitespace_t : Opt_range.t t Lvca_parsing.t
   end
 
   module Properties : sig
@@ -159,7 +158,6 @@ val of_pattern : ('info, 'prim) Pattern.t -> ('info, 'prim) t
 
   module Parse  : sig
     val t : 'prim Lvca_parsing.t -> Opt_range.t t Lvca_parsing.t
-    val whitespace_t : 'prim Lvca_parsing.t -> Opt_range.t t Lvca_parsing.t
   end
 
   module Properties : Properties_intf.S with type 'info t := unit t
@@ -204,7 +202,6 @@ module Convertible : sig
 
     module Parse : sig
       val t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
-      val whitespace_t : Lvca_provenance.Opt_range.t t Lvca_parsing.t
     end
   end
 

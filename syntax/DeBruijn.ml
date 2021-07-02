@@ -140,8 +140,6 @@ module Kernel = struct
       | Ok tm -> return tm
       | Error _scope -> fail "DeBruijn.Parse.t: failed to convert from nominal"
     ;;
-
-    let whitespace_t = whitespace *> t
   end
 end
 
