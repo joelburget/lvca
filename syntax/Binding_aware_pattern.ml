@@ -618,7 +618,7 @@ let%test_module "check" =
     let parse_pattern str = Lvca_parsing.parse_string parse str |> Result.ok_or_failwith
 
     let parse_term str =
-      Lvca_parsing.parse_string Nominal.Term.parse str |> Result.ok_or_failwith
+      Lvca_parsing.parse_string Nominal.Term.parse' str |> Result.ok_or_failwith
     ;;
 
     let print_match pat_str tm_str =

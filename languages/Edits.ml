@@ -89,7 +89,7 @@ let%test_module "Parsing" =
       let open Result.Let_syntax in
       match
         let%bind edit = parse edit in
-        let%bind tm = Lvca_parsing.parse_string Nominal.Term.parse tm in
+        let%bind tm = Lvca_parsing.parse_string Nominal.Term.parse' tm in
         let%map tm = run tm edit in
         Nominal.Term.pp Caml.Format.std_formatter tm
       with

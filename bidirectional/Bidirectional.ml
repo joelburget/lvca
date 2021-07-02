@@ -329,7 +329,7 @@ let%test_module "check / infer" =
   (module struct
     let parse p = Lvca_parsing.(parse_string (whitespace *> p))
     let parse_statics = parse Statics.parse
-    let parse_tm = parse Nominal.Term.parse
+    let parse_tm = parse Nominal.Term.parse'
 
     let rules =
       {|

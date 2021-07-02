@@ -417,7 +417,7 @@ module Term = struct
     | Var (info, name) -> Var (info, name)
   ;;
 
-  let parse =
+  let parse ~parse_prim =
     let open Lvca_parsing in
     fix (fun term ->
         let slot =
@@ -430,7 +430,7 @@ module Term = struct
         in
         choice
           ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
-          [ (Primitive_impl.parse >>| fun prim -> Primitive prim)
+          [ parse_prim
           ; (identifier
             >>== fun Parse_result.{ value = ident; range = ident_range } ->
             choice
@@ -444,10 +444,14 @@ module Term = struct
     <?> "term"
   ;;
 
+  let parse' =
+    parse ~parse_prim:Lvca_parsing.(Primitive_impl.parse >>| fun prim -> Primitive prim)
+  ;;
+
   module Properties = struct
     open Property_result
 
-    let parse = Lvca_parsing.parse_string parse
+    let parse = Lvca_parsing.parse_string parse'
     let to_string tm = Fmt.to_to_string pp tm
     let ( = ) = equal ~info_eq:Unit.( = )
 
@@ -619,7 +623,7 @@ module Convertible = struct
 
     let parse =
       let open Lvca_parsing in
-      Term.parse
+      Term.parse'
       >>= fun nom ->
       match of_nominal nom with
       | Error nom -> fail Fmt.(str "Parse: failed to convert %a from nominal" Term.pp nom)
@@ -818,7 +822,7 @@ let%test_module "Nominal" =
 let%test_module "TermParser" =
   (module struct
     let ( = ) = Result.equal (Term.equal ~info_eq:Unit.( = )) String.( = )
-    let parse = Lvca_parsing.(parse_string (whitespace *> Term.parse))
+    let parse = Lvca_parsing.(parse_string (whitespace *> Term.parse'))
     let parse_erase str = parse str |> Result.map ~f:Term.erase
 
     let print_parse str =
@@ -963,7 +967,7 @@ let%test_module "check" =
     ;;
 
     let parse_term term_str =
-      Lvca_parsing.parse_string Term.parse term_str |> Result.ok_or_failwith
+      Lvca_parsing.parse_string Term.parse' term_str |> Result.ok_or_failwith
     ;;
 
     let parse_sort str = Lvca_parsing.parse_string Sort.parse str

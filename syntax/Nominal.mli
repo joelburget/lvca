@@ -108,7 +108,8 @@ module Term : sig
     -> 'info t
     -> ('info, ('info Pattern.t, 'info t) Base.Either.t) Check_failure.t option
 
-  val parse : Opt_range.t t Lvca_parsing.t
+  val parse : parse_prim:Opt_range.t t Lvca_parsing.t -> Opt_range.t t Lvca_parsing.t
+  val parse' : Opt_range.t t Lvca_parsing.t
 
   module Properties : sig
     include Properties_intf.Parse_pretty_s with type 'info t := 'info t
@@ -154,7 +155,8 @@ val of_pattern : ('info, 'prim) Pattern.t -> ('info, 'prim) t
   (* TODO:
   val free_vars : (_, _) t -> String.Set.t
 
-  val parse : 'prim Lvca_parsing.t -> Opt_range.t t Lvca_parsing.t
+  val parse : parse_prim:Opt_range.t t Lvca_parsing.t -> Opt_range.t t Lvca_parsing.t
+  val parse' : Opt_range.t t Lvca_parsing.t
 
   module Properties : Properties_intf.S with type 'info t := unit t
   *)

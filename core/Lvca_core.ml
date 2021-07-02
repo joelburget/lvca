@@ -285,7 +285,7 @@ module Parse = struct
             [ parens term
             ; (identifier
               >>|| fun { value; range } -> { value = Types.Var (range, value); range })
-            ; braces Nominal.Term.parse >>| (fun tm -> Types.Term tm) <?> "quoted term"
+            ; braces Nominal.Term.parse' >>| (fun tm -> Types.Term tm) <?> "quoted term"
             ]
         in
         let pattern = Binding_aware_pattern.parse <?> "pattern" in

@@ -132,7 +132,7 @@ module Kernel = struct
 
   let parse =
     let open Lvca_parsing in
-    Nominal.Term.parse
+    Nominal.Term.parse'
     >>= fun tm ->
     match of_nominal tm with
     | Ok tm -> return tm

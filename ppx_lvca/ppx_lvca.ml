@@ -23,7 +23,7 @@ let parse p = Lvca_parsing.(parse_string (whitespace *> p))
 
 let expand_nominal ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string loc expr in
-  match parse Nominal.Term.parse str with
+  match parse Nominal.Term.parse' str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> Syntax_quoter.Exp.nominal ~loc tm
 ;;
