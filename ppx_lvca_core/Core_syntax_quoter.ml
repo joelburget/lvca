@@ -1,4 +1,7 @@
-open Ppx_lvca.Syntax_quoter
+open Base
+open Ppxlib
+open Syntax_quoter
+open Exp
 
 module Binding_aware_pattern = struct
   let rec t ~loc = function

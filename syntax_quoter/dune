@@ -1,0 +1,8 @@
+(library
+ (name lvca_syntax_quoter)
+ (public_name lvca.syntax_quoter)
+ (inline_tests)
+ (preprocess
+  (pps ppx_jane ppxlib.metaquot))
+ (wrapped false)
+ (libraries base lvca_syntax lvca_provenance ppxlib))

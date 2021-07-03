@@ -9,6 +9,7 @@
   base
   lvca_core
   lvca_syntax
+  lvca_syntax_quoter
   lvca_parsing
   lvca_provenance
   ppxlib
