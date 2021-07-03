@@ -9,13 +9,9 @@ module SMap = Lvca_util.String.Map
 
 let ( >> ) = Lvca_util.( >> )
 
-module Is_rec = struct
-  type t =
-    | Rec
-    | No_rec
-
-  let ( = ) x y = match x, y with Rec, Rec | No_rec, No_rec -> true | _, _ -> false
-end
+module Is_rec = [%lvca.abstract_syntax_module {|
+is_rec := Rec() | No_rec()
+|}]
 
 module Type = struct
   type 'info t =
@@ -110,7 +106,7 @@ module Types = struct
 
   and 'info let_ =
     { info : 'info
-    ; is_rec : Is_rec.t
+    ; is_rec : 'info Is_rec.Is_rec.t
     ; tm : 'info term
     ; ty : 'info Type.t option
     ; scope : 'info scope
@@ -143,7 +139,7 @@ module Equal = struct
 
   and let_ ~info_eq x y =
     info_eq x.info y.info
-    && Is_rec.(x.is_rec = y.is_rec)
+    && Is_rec.Is_rec.equal ~info_eq x.is_rec y.is_rec
     && term ~info_eq x.tm y.tm
     && Option.equal (Type.equal ~info_eq) x.ty y.ty
     && scope ~info_eq x.scope y.scope
@@ -177,7 +173,7 @@ module Map_info = struct
 
   and let_ ~f { info; is_rec; tm; ty; scope = scope' } =
     { info = f info
-    ; is_rec
+    ; is_rec = Is_rec.Is_rec.map_info ~f is_rec
     ; tm = term ~f tm
     ; ty = Option.map ~f:(Type.map_info ~f) ty
     ; scope = scope ~f scope'
@@ -232,7 +228,7 @@ module Pp_generic = struct
     pf
       ppf
       "@[let %s%s%a =@ %a in@ @[%a@]@]"
-      (match is_rec with Rec -> "rec " | No_rec -> "")
+      (match is_rec with Rec _ -> "rec " | No_rec _ -> "")
       name
       pp_ty
       ty
@@ -311,7 +307,10 @@ module Parse = struct
                 let info = Opt_range.union let_pos body_pos in
                 Types.Let { info; is_rec; ty; tm; scope = Scope (name, body) })
               (attach_pos (string "let"))
-              Is_rec.(option No_rec (Fn.const Rec <$> string "rec"))
+              Is_rec.Types.(
+                option
+                  (No_rec None)
+                  (string "rec" >>|| fun { range; _ } -> { range; value = Rec range }))
               identifier
               (option None (char ':' *> Type.parse >>| fun tm -> Some tm))
             <*> string "="
@@ -361,7 +360,7 @@ end
 module Let = struct
   type 'info t = 'info Types.let_ =
     { info : 'info
-    ; is_rec : Is_rec.t
+    ; is_rec : 'info Is_rec.Is_rec.t
     ; tm : 'info Types.term
     ; ty : 'info Type.t option
     ; scope : 'info Types.scope
@@ -763,7 +762,7 @@ let%test_module "Parsing" =
       parse "let str = string_of_chars chars in {var(str)}"
       = Let
           { info = ()
-          ; is_rec = No_rec
+          ; is_rec = No_rec ()
           ; ty = None
           ; tm = app (var "string_of_chars") [ var "chars" ]
           ; scope =
@@ -805,7 +804,7 @@ let%test_module "Parsing" =
       parse "let x = {true()} in not x"
       = Let
           { info = ()
-          ; is_rec = No_rec
+          ; is_rec = No_rec ()
           ; ty = None
           ; tm = Term (operator "true" [])
           ; scope = Scope ("x", Core_app ((), var "not", [ var "x" ]))

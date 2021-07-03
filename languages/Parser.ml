@@ -325,7 +325,7 @@ module Direct = struct
               Lvca_core.Term.(
                 Let
                   { info = Source_ranges.empty
-                  ; is_rec = Lvca_core.Is_rec.No_rec
+                  ; is_rec = Lvca_core.Is_rec.Types.No_rec Source_ranges.empty
                   ; tm = Term (Primitive (rng, Char c))
                   ; ty = None
                   ; scope = Scope (name, core_term)

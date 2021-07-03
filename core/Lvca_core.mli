@@ -11,11 +11,17 @@ open Lvca_util
 (** {1 Types} *)
 
 module Is_rec : sig
-  type t =
-    | Rec
-    | No_rec
+  module Types : sig
+    type 'info is_rec =
+      | Rec of 'info
+      | No_rec of 'info
+  end
 
-  val ( = ) : t -> t -> bool
+  module Is_rec : sig
+    type 'info t = 'info Types.is_rec
+
+    val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
+  end
 end
 
 module Type : sig
@@ -41,7 +47,7 @@ module Types : sig
 
   and 'info let_ =
     { info : 'info
-    ; is_rec : Is_rec.t
+    ; is_rec : 'info Is_rec.Is_rec.t
     ; tm : 'info term
     ; ty : 'info Type.t option
     ; scope : 'info scope
@@ -72,7 +78,7 @@ end
 module Let : sig
   type 'info t = 'info Types.let_ =
     { info : 'info
-    ; is_rec : Is_rec.t
+    ; is_rec : 'info Is_rec.Is_rec.t
     ; tm : 'info Types.term
     ; ty : 'info Type.t option
     ; scope : 'info Types.scope
