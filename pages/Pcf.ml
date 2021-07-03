@@ -16,7 +16,7 @@ type term = Opt_range.t Provenance.t Exp.t
 let buf = "input"
 
 let parse str =
-  let%map parsed = Lvca_parsing.(parse_string (whitespace *> Exp.Parse.t)) str in
+  let%map parsed = Lvca_parsing.(parse_string (whitespace *> Exp.parse)) str in
   Exp.map_info ~f:(fun info -> Provenance.Root info) parsed
 ;;
 

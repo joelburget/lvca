@@ -1,7 +1,7 @@
 open Lvca_syntax
 open Ppxlib
 
-(* TODO: parser, core, nonbinding / OCaml data mapping *)
+(* TODO: parser, nonbinding / OCaml data mapping *)
 
 let extract_string loc expr =
   (* payload and location of the string contents, inside "" or {||} *)
@@ -47,13 +47,6 @@ let expand_abstract_syntax ~(loc : Location.t) ~path:_ (expr : expression) : exp
   match parse Abstract_syntax.parse str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax -> Syntax_quoter.Exp.language ~loc syntax
-;;
-
-let expand_core ~(loc : Location.t) ~path:_ (expr : expression) : expression =
-  let str, loc = extract_string loc expr in
-  match parse Lvca_core.Term.parse str with
-  | Error msg -> Location.raise_errorf ~loc "%s" msg
-  | Ok tm -> Syntax_quoter.Exp.Core.term ~loc tm
 ;;
 
 let expand_module ~(loc : Location.t) ~path:_ (expr : expression) : module_expr =
@@ -113,14 +106,6 @@ let abstract_syntax_module_extension =
     expand_module
 ;;
 
-let core_extension =
-  Extension.declare
-    "lvca.core"
-    Extension.Context.Expression
-    Ast_pattern.(single_expr_payload __)
-    expand_core
-;;
-
 let () =
   Ppxlib.Driver.register_transformation
     "lvca"
@@ -130,6 +115,5 @@ let () =
       ; Context_free.Rule.extension pattern_extension
       ; Context_free.Rule.extension abstract_syntax_extension
       ; Context_free.Rule.extension abstract_syntax_module_extension
-      ; Context_free.Rule.extension core_extension
       ]
 ;;

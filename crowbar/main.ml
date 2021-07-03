@@ -90,7 +90,6 @@ let pattern_gen =
             ; map [ nonempty_str_gen; list pattern_gen ] (fun name subpats ->
                   Operator ((), name, subpats))
             ; map [ nonempty_str_gen ] (fun name -> Var ((), name))
-            ; map [ str_gen ] (fun name -> Ignored ((), name))
             ])))
 ;;
 

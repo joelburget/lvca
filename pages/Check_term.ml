@@ -6,10 +6,10 @@ open Lvca_provenance
 open Lvca_syntax
 
 let parse_lang lang_str =
-  Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.Parse.t) lang_str)
+  Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.parse) lang_str)
 ;;
 
-let parse_term term_str = Lvca_parsing.parse_string Nominal.Term.Parse.t term_str
+let parse_term term_str = Lvca_parsing.parse_string Nominal.Term.parse' term_str
 
 module Model = struct
   type t =
@@ -68,7 +68,6 @@ module View = struct
 
   let rec view_pat = function
     | Pattern.Var (_, name) -> txt name
-    | Ignored (_, name) -> txt ("_" ^ name)
     | Primitive prim -> txt (Fmt.to_to_string Primitive.All.pp prim)
     | Operator (_, name, pats) ->
       div [ txt name; div (List.map pats ~f:(fun pat -> div [ view_pat pat ])) ]

@@ -236,7 +236,6 @@ let rec index_pat = function
     let p = Primitive.All.map_info ~f:(fun loc -> LocIx loc) p in
     Pattern.Primitive p
   | Var (loc, name) -> Var (VarDefIx (loc, create_e ()), name)
-  | Ignored (loc, name) -> Ignored (LocIx loc, name)
   | Operator (loc, name, slots) ->
     let slots = List.map slots ~f:index_pat in
     Operator (LocIx loc, name, slots)
@@ -323,10 +322,6 @@ let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
     in
     let var_pos = Definition { trigger_upstream_shadow; trigger_downstream_shadow } in
     render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name
-  | Ignored (LocIx loc, name) ->
-    Queue.enqueue
-      queue
-      (grid_tmpl ~render_params [ padded_text depth ("_" ^ name ^ suffix) ] loc)
   | Operator (LocIx loc, name, slots) ->
     (match slots with
     | [] ->
