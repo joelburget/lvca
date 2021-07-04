@@ -350,6 +350,10 @@ let get_sort_ref_map sort_defs =
   |> SMap.of_alist_exn
 ;;
 
+type has_info =
+  | Plain
+  | With_info
+
 (** Is this sort ever bound in the language? *)
 type bound_unbound =
   | Bound
@@ -384,7 +388,7 @@ module Helpers (Context : Builder_context) = struct
 
   (** Context for classifying a sort ([classify_sort]) as [defn_status]. *)
   type context =
-    { info : bool
+    { info : has_info
     ; var_names : SSet.t
     ; mutual_sorts : Opt_range.t Syn.Sort_def.t SMap.t
     ; prim_names : SSet.t
@@ -396,10 +400,8 @@ module Helpers (Context : Builder_context) = struct
   type defn_status =
     | Variable
     | Mutual_sort
-    | Predefined_sort of
-        { prim : bool
-        ; info : bool
-        }
+    | External_sort
+    | Predefined_sort of has_info
 
   let classify_sort context sort =
     let { info; var_names; mutual_sorts; prim_names } = context in
@@ -427,7 +429,8 @@ module Helpers (Context : Builder_context) = struct
                      sort_args
                      sort_name))));
         Mutual_sort
-      | None -> Predefined_sort { prim = Set.mem prim_names sort_name; info })
+      | None ->
+        if Set.mem prim_names sort_name then External_sort else Predefined_sort info)
   ;;
 
   (** Make the type corresponding to a sort in a constructor declaration. Eg:
@@ -443,7 +446,7 @@ module Helpers (Context : Builder_context) = struct
       ]} *)
   let ptyp_of_sort context sort =
     (* let { info; var_names; mutual_sorts; prim_names } = context in *)
-    let args = if context.info then [ [%type: 'info] ] else [] in
+    let args = match context.info with With_info -> [ [%type: 'info] ] | _ -> [] in
     let rec go sort =
       let loc = update_loc (Sort.info sort) in
       let name, sort_args = Sort.split sort in
@@ -452,15 +455,14 @@ module Helpers (Context : Builder_context) = struct
       | Mutual_sort ->
         let extra_args = List.map sort_args ~f:go in
         ptyp_constr { txt = unflatten [ name ]; loc } (args @ extra_args)
-      | Predefined_sort { prim; info } ->
+      | Predefined_sort info ->
         let qualified_name =
-          match prim, info with
-          | true, true -> [ module_name name; "t" ]
-          | true, false -> [ module_name name; "Plain"; "t" ]
-          | false, true -> [ "Wrapper"; "Types"; name ]
-          | false, false -> [ "Wrapper"; "Plain"; name ]
+          match info with
+          | With_info -> [ "Wrapper"; "Types"; name ]
+          | _ -> [ "Wrapper"; "Plain"; name ]
         in
         ptyp_constr { txt = unflatten qualified_name; loc } args
+      | External_sort -> ptyp_var name
     in
     go sort
   ;;
@@ -484,13 +486,12 @@ module Helpers (Context : Builder_context) = struct
         [Sort_name.fun_name ~extra_args] *)
   let mk_sort_app
       ~var_names (* Set of variable names bound by the sort being applied *)
-      ~fun_name (* The name of the function being defined *)
       ~sort_defs
       ~sort
       ~extra_args
       ~prim_names
     =
-    let context = { info = true; var_names; mutual_sorts = sort_defs; prim_names } in
+    let context = { info = With_info; var_names; mutual_sorts = sort_defs; prim_names } in
     let sort_name, sort_args = Sort.split sort in
     (* Make the extra arguments to a function specific to that type, eg in map_info:
 
@@ -512,15 +513,15 @@ module Helpers (Context : Builder_context) = struct
       match classify_sort context sort' with
       | Variable -> evar ("f_" ^ sort_name)
       | Mutual_sort -> evar sort_name (* XXX args? *)
-      | Predefined_sort { prim; info } ->
+      | Predefined_sort info ->
         let qualified_name =
-          match prim, info with
-          | true, true -> [ module_name sort_name; fun_name ]
-          | true, false -> [ module_name sort_name; "Plain"; fun_name ]
-          | false, true -> [ "Wrapper"; "Types"; sort_name ]
-          | false, false -> [ "Wrapper"; "Plain"; sort_name ]
+          match info with
+          | With_info -> [ "Wrapper"; "Types"; sort_name ]
+          | _ -> [ "Wrapper"; "Plain"; sort_name ]
         in
         pexp_ident { txt = unflatten qualified_name; loc = update_loc (Sort.info sort') }
+      | External_sort ->
+        pexp_ident { txt = Lident sort_name; loc = update_loc (Sort.info sort') }
     in
     let txt, var_args =
       match classify_sort context sort with
@@ -528,7 +529,7 @@ module Helpers (Context : Builder_context) = struct
       | Mutual_sort ->
         let sort_args = List.map sort_args ~f:(fun sort -> Nolabel, mk_var_arg sort) in
         Lident sort_name, sort_args
-      | Predefined_sort _ -> unflatten [ module_name sort_name; fun_name ], []
+      | Predefined_sort _ | External_sort -> Lident sort_name, []
     in
     pexp_apply
       (pexp_ident { txt; loc = update_loc (Sort.info sort) })
@@ -602,16 +603,18 @@ module Ctor_decl (Context : Builder_context) = struct
       (Syn.Operator_def.Operator_def (op_name, arity))
     =
     let pattern_type =
-      if info then [%type: 'info Pattern.t] else [%type: Pattern.Plain.t]
+      match info with
+      | With_info -> [%type: 'info Pattern.t]
+      | _ -> [%type: Pattern.Plain.t]
     in
     let args_of_valence (Syn.Valence.Valence (binding_sort_slots, body_sort)) =
       let args =
         List.map binding_sort_slots ~f:(function
             | Syn.Sort_slot.Sort_binding sort ->
               let loc = update_loc (Sort.info sort) in
-              if info
-              then [%type: 'info Lvca_syntax.Single_var.t]
-              else [%type: Lvca_syntax.Single_var.Plain.t]
+              (match info with
+              | With_info -> [%type: 'info Lvca_syntax.Single_var.t]
+              | _ -> [%type: Lvca_syntax.Single_var.Plain.t])
             | Sort_pattern _sort -> pattern_type)
       in
       let context = { info; var_names; mutual_sorts; prim_names } in
@@ -620,7 +623,7 @@ module Ctor_decl (Context : Builder_context) = struct
     let args =
       arity
       |> List.map ~f:args_of_valence
-      |> (if info then List.cons [ [%type: 'info] ] else Fn.id)
+      |> (match info with With_info -> List.cons [ [%type: 'info] ] | _ -> Fn.id)
       |> List.map ~f:(function
              | [] -> [%type: unit]
              | [ ty ] -> ty
@@ -639,7 +642,11 @@ module Type_decls (Context : Builder_context) = struct
   module Ctor_decl = Ctor_decl (Context)
 
   let mk ~info ~sort_def_map ~prim_names ~partitioned_sorts =
-    let params0 = if info then [ ptyp_var "info", (NoVariance, NoInjectivity) ] else [] in
+    let params0 =
+      match info with
+      | With_info -> [ ptyp_var "info", (NoVariance, NoInjectivity) ]
+      | _ -> []
+    in
     sort_def_map
     |> Map.to_alist
     |> List.map ~f:(fun (sort_name, Syn.Sort_def.Sort_def (vars, op_defs)) ->
@@ -653,7 +660,9 @@ module Type_decls (Context : Builder_context) = struct
                ~f:(Ctor_decl.mk ~info ~var_names ~mutual_sorts:sort_def_map ~prim_names)
            in
            let args =
-             if info then [ [%type: 'info]; [%type: string] ] else [ [%type: string] ]
+             match info with
+             | With_info -> [ [%type: 'info]; [%type: string] ]
+             | _ -> [ [%type: string] ]
            in
            let var_ctor =
              constructor_declaration
@@ -681,16 +690,12 @@ module Operator_pat (Context : Builder_context) = struct
   open Ast
   open Helpers (Context)
 
-  type ctor_type =
-    | Plain
-    | With_info
-
   let is_valid_ocaml_constr_name str =
     (not (String.is_empty str)) && Char.is_uppercase str.[0]
   ;;
 
   let mk
-      ~ctor_type
+      ~has_info
       ?(match_info = false)
       ?(match_non_info = true)
       ?(name_base = "x")
@@ -715,7 +720,7 @@ module Operator_pat (Context : Builder_context) = struct
                     else ppat_any))
     in
     let contents =
-      match ctor_type with
+      match has_info with
       | With_info -> [ (if match_info then v 0 else ppat_any) ] :: contents
       | Plain -> contents
     in
@@ -726,7 +731,7 @@ module Operator_pat (Context : Builder_context) = struct
     in
     let txt =
       let container_name =
-        match ctor_type with With_info -> "Types" | Plain -> "Plain"
+        match has_info with With_info -> "Types" | Plain -> "Plain"
       in
       unflatten [ container_name; op_name ]
     in
@@ -744,7 +749,7 @@ module Operator_exp (Context : Builder_context) = struct
     | With_info
 
   let mk
-      ~ctor_type (* Building a plain or with-info data type *)
+      ~has_info (* Building a plain or with-info data type *)
       ~var_names
       ~prim_names
       ?(extra_args = [])
@@ -760,7 +765,6 @@ module Operator_exp (Context : Builder_context) = struct
     let body_arg sort =
       mk_sort_app
         ~var_names
-        ~fun_name
         ~sort_defs
         ~sort
         ~extra_args:(extra_args @ [ Nolabel, v () ])
@@ -774,7 +778,7 @@ module Operator_exp (Context : Builder_context) = struct
                |> List.map ~f:(fun slot ->
                       match slot with
                       | Syn.Sort_slot.Sort_binding _sort ->
-                        (match ctor_type with
+                        (match has_info with
                         | With_info ->
                           let v = v () in
                           let info =
@@ -799,7 +803,7 @@ module Operator_exp (Context : Builder_context) = struct
       |> List.map ~f:mk_exp_tuple
     in
     let contents =
-      match ctor_type with
+      match has_info with
       | With_info ->
         let expr =
           match fun_name with
@@ -813,7 +817,7 @@ module Operator_exp (Context : Builder_context) = struct
     in
     let txt =
       let container_name =
-        match ctor_type with With_info -> "Types" | Plain -> "Plain"
+        match has_info with With_info -> "Types" | Plain -> "Plain"
       in
       unflatten [ container_name; op_name ]
     in
@@ -837,15 +841,9 @@ module To_plain (Context : Builder_context) = struct
     =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let f op_def =
-      let lhs = Operator_pat.mk ~ctor_type:With_info op_def in
+      let lhs = Operator_pat.mk ~has_info:With_info op_def in
       let rhs =
-        Operator_exp.mk
-          ~var_names
-          ~prim_names
-          ~ctor_type:Plain
-          sort_defs
-          "to_plain"
-          op_def
+        Operator_exp.mk ~var_names ~prim_names ~has_info:Plain sort_defs "to_plain" op_def
       in
       case ~lhs ~guard ~rhs
     in
@@ -888,12 +886,12 @@ module Of_plain (Context : Builder_context) = struct
     =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let f op_def =
-      let lhs = Operator_pat.mk ~ctor_type:Plain op_def in
+      let lhs = Operator_pat.mk ~has_info:Plain op_def in
       let rhs =
         Operator_exp.mk
           ~var_names
           ~prim_names
-          ~ctor_type:With_info
+          ~has_info:With_info
           sort_defs
           "of_plain"
           op_def
@@ -939,12 +937,12 @@ module Map_info (Context : Builder_context) = struct
     =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let f op_def =
-      let lhs = Operator_pat.mk ~ctor_type:With_info ~match_info:true op_def in
+      let lhs = Operator_pat.mk ~has_info:With_info ~match_info:true op_def in
       let rhs =
         Operator_exp.mk
           ~var_names
           ~prim_names
-          ~ctor_type:With_info
+          ~has_info:With_info
           ~extra_args:[ labelled_arg "f" ]
           sort_defs
           "map_info"
@@ -1018,13 +1016,7 @@ module To_nominal (Context : Builder_context) = struct
     let info = evar "x0" in
     let v = evar_allocator "x" in
     let body_arg sort =
-      mk_sort_app
-        ~var_names
-        ~fun_name:"to_nominal"
-        ~sort_defs
-        ~sort
-        ~extra_args:[ Nolabel, v () ]
-        ~prim_names
+      mk_sort_app ~var_names ~sort_defs ~sort ~extra_args:[ Nolabel, v () ] ~prim_names
     in
     let mk_scope (Syn.Valence.Valence (slots, body_sort)) =
       let args =
@@ -1051,7 +1043,7 @@ module To_nominal (Context : Builder_context) = struct
     =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let f op_def =
-      let lhs = Operator_pat.mk ~ctor_type:With_info ~match_info:true op_def in
+      let lhs = Operator_pat.mk ~has_info:With_info ~match_info:true op_def in
       let rhs = mk_nominal_exp ~var_names ~prim_names sort_defs op_def in
       case ~lhs ~guard ~rhs
     in
@@ -1148,13 +1140,7 @@ module Of_nominal (Context : Builder_context) = struct
     (* Queue of (variable, conversion to perform) *)
     let conversions_needed = Queue.create () in
     let body_arg sort ev =
-      mk_sort_app
-        ~var_names
-        ~fun_name:"of_nominal"
-        ~sort_defs
-        ~sort
-        ~extra_args:[ Nolabel, ev ]
-        ~prim_names
+      mk_sort_app ~var_names ~sort_defs ~sort ~extra_args:[ Nolabel, ev ] ~prim_names
     in
     let contents =
       arity
@@ -1246,7 +1232,7 @@ module Equal (Context : Builder_context) = struct
         let p1, p2 =
           ("x", "y")
           |> Lvca_util.Tuple2.map ~f:(fun name_base ->
-                 Operator_pat.mk ~ctor_type:With_info ~match_info:true ~name_base op_def)
+                 Operator_pat.mk ~has_info:With_info ~match_info:true ~name_base op_def)
         in
         [%pat? [%p p1], [%p p2]]
       in
@@ -1277,7 +1263,6 @@ module Equal (Context : Builder_context) = struct
                    let extra_args = [ labelled_arg "info_eq"; Nolabel, x; Nolabel, y ] in
                    mk_sort_app
                      ~var_names
-                     ~fun_name:"equal"
                      ~sort_defs
                      ~sort:body_sort
                      ~extra_args
@@ -1326,7 +1311,7 @@ module Info (Context : Builder_context) = struct
     =
     let mk_case op_def =
       let lhs =
-        Operator_pat.mk ~ctor_type:With_info ~match_info:true ~match_non_info:false op_def
+        Operator_pat.mk ~has_info:With_info ~match_info:true ~match_non_info:false op_def
       in
       case ~lhs ~guard ~rhs:[%expr x0]
     in
@@ -1417,10 +1402,10 @@ module Wrapper_module (Context : Builder_context) = struct
              pstr_value is_rec value_bindings)
     in
     let info_decls =
-      Type_decls.mk ~info:true ~sort_def_map ~prim_names ~partitioned_sorts
+      Type_decls.mk ~info:With_info ~sort_def_map ~prim_names ~partitioned_sorts
     in
     let plain_decls =
-      Type_decls.mk ~info:false ~sort_def_map ~prim_names ~partitioned_sorts
+      Type_decls.mk ~info:Plain ~sort_def_map ~prim_names ~partitioned_sorts
     in
     let defs =
       (* Each of these functions is potentially recursive (across multiple types), pre-declare. *)
@@ -1459,22 +1444,20 @@ module Individual_type_module (Context : Builder_context) = struct
 
   let mk ~prim_names:_ ~sort_def_map:_ sort_name (Syn.Sort_def.Sort_def (vars, _op_defs)) =
     let _var_names = vars |> List.map ~f:fst |> SSet.of_list in
+    let type_vars = vars |> List.map ~f:(fun (name, _) -> ptyp_var name) in
+    let params = type_vars |> List.map ~f:(fun v -> v, (NoVariance, NoInjectivity)) in
     let plain_type_decl =
-      let manifest_arg_list =
-        List.map vars ~f:(fun (name, _) ->
-            ptyp_constr { txt = unflatten [ module_name name; "Plain"; "t" ]; loc } [])
-      in
       let manifest =
         Some
           (ptyp_constr
              { txt = unflatten [ "Wrapper"; "Plain"; sort_name ]; loc }
-             manifest_arg_list)
+             type_vars)
       in
       pstr_type
         Recursive
         [ type_declaration
             ~name:{ txt = "t"; loc }
-            ~params:[]
+            ~params
             ~cstrs:[]
             ~kind:Ptype_abstract
             ~private_:Public
@@ -1482,23 +1465,17 @@ module Individual_type_module (Context : Builder_context) = struct
         ]
     in
     let info_type_decl =
-      let manifest_arg_list =
-        List.map vars ~f:(fun (name, _) ->
-            ptyp_constr
-              { txt = unflatten [ module_name name; "t" ]; loc }
-              [ ptyp_var "info" ])
-      in
       let manifest =
         Some
           (ptyp_constr
              { txt = unflatten [ "Wrapper"; "Types"; sort_name ]; loc }
-             (ptyp_var "info" :: manifest_arg_list))
+             (ptyp_var "info" :: type_vars))
       in
       pstr_type
         Recursive
         [ type_declaration
             ~name:{ txt = "t"; loc }
-            ~params:[ ptyp_var "info", (NoVariance, NoInjectivity) ]
+            ~params:((ptyp_var "info", (NoVariance, NoInjectivity)) :: params)
             ~cstrs:[]
             ~kind:Ptype_abstract
             ~private_:Public
@@ -1552,25 +1529,9 @@ module Individual_type_module (Context : Builder_context) = struct
         (info_type_decl
          :: [%stri module Plain = [%m pmod_structure [ plain_type_decl ]]] :: fun_defs)
     in
-    let mk_functor (name, kind_opt) accum =
-      match kind_opt with
-      | None ->
-        (* XXX should do kind inference instead of assuming it's * *)
-        let mod_param =
-          Named ({ txt = Some (module_name name); loc }, language_object_extended_s)
-        in
-        pmod_functor mod_param accum
-      | Some kind ->
-        let mod_param =
-          Named
-            ( { txt = Some (module_name name); loc = update_loc (Syn.Kind.info kind) }
-            , language_object_extended_s )
-        in
-        pmod_functor mod_param accum
-    in
     let module_name = module_name sort_name in
     (*
-      module Foo(A:...) = struct
+      module Foo = struct
         module Foo_kernel = struct ... end
         include Foo_kernel
         include Extend (Foo_kernel)
@@ -1581,19 +1542,18 @@ module Individual_type_module (Context : Builder_context) = struct
       pmod_ident
         { txt = unflatten [ "Lvca_syntax"; "Nominal"; "Convertible"; "Extend" ]; loc }
     in
-    let init =
+    let expr =
       pmod_structure
         [ [%stri module Kernel = [%m kernel_expr]]
         ; pstr_include (include_infos kernel_mod)
         ; pstr_include (include_infos (pmod_apply extend_mod kernel_mod))
         ]
     in
-    let expr = List.fold_right vars ~init ~f:mk_functor in
     module_binding ~name:{ txt = Some module_name; loc } ~expr |> pstr_module
   ;;
 end
 
-(* The top-level container / result (which is really a functor if there are externals). *)
+(* The top-level container / result. *)
 module Container_module (Context : Builder_context) = struct
   open Context
   open Ast
@@ -1618,26 +1578,13 @@ module Container_module (Context : Builder_context) = struct
     [%str let language = [%e Syntax_quoter.mk_language ~loc lang]] @ sort_defs
   in
   *)
-    (* Turn into a functor over externals *)
-    let mod_param (name, kind) =
-      match kind with
-      | Some kind ->
-        Named
-          ( { txt = Some (module_name name); loc = update_loc (Syn.Kind.info kind) }
-          , language_object_extended_s )
-      | None -> Named ({ txt = Some (module_name name); loc }, language_object_extended_s)
-    in
-    let mod_param' (name, kind) = mod_param (name, Some kind) in
     let expr =
-      let init =
-        pmod_structure
-          ([ wrapper_module
-           ; [%stri module Types = Wrapper.Types]
-           ; [%stri module Plain = Wrapper.Plain]
-           ]
-          @ type_modules)
-      in
-      List.fold_right externals ~init ~f:(mod_param' >> pmod_functor)
+      pmod_structure
+        ([ wrapper_module
+         ; [%stri module Types = Wrapper.Types]
+         ; [%stri module Plain = Wrapper.Plain]
+         ]
+        @ type_modules)
     in
     let info = ptyp_var "info" in
     let mod_ty =
@@ -1677,16 +1624,21 @@ module Container_module (Context : Builder_context) = struct
         sort_defs
         |> List.map ~f:(fun (sort_name, Syn.Sort_def.Sort_def (vars, _op_defs)) ->
                let info_args, plain_args = mk_args vars in
+               let params =
+                 vars
+                 |> List.map ~f:(fun (name, _) ->
+                        ptyp_var name, (NoVariance, NoInjectivity))
+               in
                let type_decl =
                  let info_ty = { txt = unflatten [ "Types"; sort_name ]; loc } in
-                 let params = [ info, (NoVariance, NoInjectivity) ] in
+                 let params = (info, (NoVariance, NoInjectivity)) :: params in
                  tdecl ~params ~manifest:(Some (ptyp_constr info_ty info_args))
                in
                let plain_type_decl =
                  let plain_ty = { txt = unflatten [ "Plain"; sort_name ]; loc } in
-                 tdecl ~params:[] ~manifest:(Some (ptyp_constr plain_ty plain_args))
+                 tdecl ~params ~manifest:(Some (ptyp_constr plain_ty plain_args))
                in
-               let init =
+               let type_ =
                  pmty_with
                    language_object_extended_s
                    [ Pwith_type ({ txt = Lident "t"; loc }, type_decl)
@@ -1695,11 +1647,9 @@ module Container_module (Context : Builder_context) = struct
                    ]
                in
                let name = { txt = Some (module_name sort_name); loc } in
-               let type_ = List.fold_right vars ~init ~f:(mod_param >> pmty_functor) in
                psig_module (module_declaration ~name ~type_))
       in
-      let init = pmty_signature (types_sig :: plain_sig :: sort_module_sigs) in
-      List.fold_right externals ~init ~f:(mod_param' >> pmty_functor)
+      pmty_signature (types_sig :: plain_sig :: sort_module_sigs)
     in
     pmod_constraint expr mod_ty
   ;;
