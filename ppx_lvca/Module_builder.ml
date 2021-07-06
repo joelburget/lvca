@@ -742,10 +742,14 @@ module Operator_exp (Context : Builder_context) = struct
                             | "of_plain" -> [%expr ()]
                             | "map_info" -> [%expr f [%e v].info]
                             | _ ->
-                              failwith
-                                (Printf.sprintf
-                                   "Operator_exp: invalid function name: %s"
-                                   fun_name)
+                              Location.Error.(
+                                raise
+                                  (make
+                                     ~loc
+                                     ~sub:[]
+                                     (Printf.sprintf
+                                        "Operator_exp: invalid function name: %s"
+                                        fun_name)))
                           in
                           [%expr
                             Lvca_syntax.Single_var.
@@ -766,7 +770,12 @@ module Operator_exp (Context : Builder_context) = struct
           | "of_plain" -> [%expr ()]
           | "map_info" -> [%expr f x0]
           | _ ->
-            failwith (Printf.sprintf "Operator_exp: invalid function name: %s" fun_name)
+            Location.Error.(
+              raise
+                (make
+                   ~loc
+                   ~sub:[]
+                   (Printf.sprintf "Operator_exp: invalid function name: %s" fun_name)))
         in
         expr :: contents
       | Plain -> contents
