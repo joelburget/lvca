@@ -730,34 +730,31 @@ module Operator_exp (Context : Builder_context) = struct
       arity
       |> List.map ~f:(fun (Syn.Valence.Valence (slots, body_sort)) ->
              let slots_args =
-               slots
-               |> List.map ~f:(fun slot ->
-                      match slot with
-                      | Syn.Sort_slot.Sort_binding _sort ->
-                        (match has_info with
-                        | With_info ->
-                          let v = v () in
-                          let info =
-                            match fun_name with
-                            | "of_plain" -> [%expr ()]
-                            | "map_info" -> [%expr f [%e v].info]
-                            | _ ->
-                              Location.Error.(
-                                raise
-                                  (make
-                                     ~loc
-                                     ~sub:[]
-                                     (Printf.sprintf
-                                        "Operator_exp: invalid function name: %s"
-                                        fun_name)))
-                          in
-                          [%expr
-                            Lvca_syntax.Single_var.
-                              { info = [%e info]; name = [%e v].name }]
-                        | Plain ->
-                          [%expr Lvca_syntax.Single_var.Plain.{ name = [%e v ()].name }])
-                      | Sort_pattern _ ->
-                        pexp_apply pattern_converter (extra_args @ [ Nolabel, v () ]))
+               List.map slots ~f:(function
+                   | Syn.Sort_slot.Sort_binding _sort ->
+                     (match has_info with
+                     | With_info ->
+                       let v = v () in
+                       let info =
+                         match fun_name with
+                         | "of_plain" -> [%expr ()]
+                         | "map_info" -> [%expr f [%e v].info]
+                         | _ ->
+                           Location.Error.(
+                             raise
+                               (make
+                                  ~loc
+                                  ~sub:[]
+                                  (Printf.sprintf
+                                     "Operator_exp: invalid function name: %s"
+                                     fun_name)))
+                       in
+                       [%expr
+                         Lvca_syntax.Single_var.{ info = [%e info]; name = [%e v].name }]
+                     | Plain ->
+                       [%expr Lvca_syntax.Single_var.Plain.{ name = [%e v ()].name }])
+                   | Sort_pattern _ ->
+                     pexp_apply pattern_converter (extra_args @ [ Nolabel, v () ]))
              in
              slots_args @ [ body_arg body_sort ])
       |> List.map ~f:mk_exp_tuple
