@@ -55,155 +55,130 @@ module Lang :
   sig
     module Types :
     sig
-      type 'info foo =
-        | Foo of 'info * 'integer 
-        | Bar of 'info * ('info Pattern.t * 'info Lvca_syntax.Single_var.t *
-        'info foo) 
-        | Foo_var of 'info * string 
+      type 'info mut_a =
+        | Mut_a of 'info * 'info mut_b 
+      and 'info mut_b =
+        | Mut_b of 'info * 'info mut_a 
       and 'info ifz =
         | Ifz of 'info * 'info ifz * ('info Lvca_syntax.Single_var.t * 'info
         ifz) * 'info ifz 
         | Ifz_var of 'info * string 
-      and 'info mut_a =
-        | Mut_a of 'info * 'info mut_b 
-      and 'info mut_b =
-        | Mut_b of 'info * 'info mut_a 
+      and ('info, 'list) term =
+        | Operator of 'info * (('info, 'list) term, 'list) Higher_kinded.t 
+      and ('info, 'a, 'b, 'integer) pair_plus =
+        | PairPlus of 'info * 'a * 'b * ('info, 'integer) foo 
+      and ('info, 'integer) foo =
+        | Foo of 'info * 'integer 
+        | Bar of 'info * ('info Pattern.t * 'info Lvca_syntax.Single_var.t *
+        ('info, 'integer) foo) 
+        | Foo_var of 'info * string 
+      and ('info, 'a, 'b) pair =
+        | Pair of 'info * 'a * 'b 
+      and ('info, 'list, 'string) nonempty =
+        | Nonempty of 'info * 'string * ('string, 'list) Higher_kinded.t 
       and 'info nat =
         | Z of 'info 
         | S of 'info * 'info nat 
-      and 'info nonempty =
-        | Nonempty of 'info * 'string * 'list 
-      and ('info, 'a, 'b) pair =
-        | Pair of 'info * 'a * 'b 
-      and ('info, 'a, 'b) pair_plus =
-        | PairPlus of 'info * 'a * 'b * 'info foo 
-      and 'info term =
-        | Operator of 'info * 'list 
     end
     module Plain :
     sig
-      type foo =
-        | Foo of 'integer 
-        | Bar of (Pattern.Plain.t * Lvca_syntax.Single_var.Plain.t * foo) 
-        | Foo_var of string 
-      and ifz =
-        | Ifz of ifz * (Lvca_syntax.Single_var.Plain.t * ifz) * ifz 
-        | Ifz_var of string 
-      and mut_a =
+      type mut_a =
         | Mut_a of mut_b 
       and mut_b =
         | Mut_b of mut_a 
+      and ifz =
+        | Ifz of ifz * (Lvca_syntax.Single_var.Plain.t * ifz) * ifz 
+        | Ifz_var of string 
+      and 'list term =
+        | Operator of ('list term, 'list) Higher_kinded.t 
+      and ('a, 'b, 'integer) pair_plus =
+        | PairPlus of 'a * 'b * 'integer foo 
+      and 'integer foo =
+        | Foo of 'integer 
+        | Bar of (Pattern.Plain.t * Lvca_syntax.Single_var.Plain.t * 'integer
+        foo) 
+        | Foo_var of string 
+      and ('a, 'b) pair =
+        | Pair of 'a * 'b 
+      and ('list, 'string) nonempty =
+        | Nonempty of 'string * ('string, 'list) Higher_kinded.t 
       and nat =
         | Z 
         | S of nat 
-      and nonempty =
-        | Nonempty of 'string * 'list 
-      and ('a, 'b) pair =
-        | Pair of 'a * 'b 
-      and ('a, 'b) pair_plus =
-        | PairPlus of 'a * 'b * foo 
-      and term =
-        | Operator of 'list 
     end
-    module Foo :
-    Lvca_syntax.Nominal.Convertible.Extended_s with type 'info t = 
-      'info Types.foo and type  Plain.t =  Plain.foo
-    module Nat :
-    Lvca_syntax.Nominal.Convertible.Extended_s with type 'info t = 
-      'info Types.nat and type  Plain.t =  Plain.nat
-    module Pair :
-    Lvca_syntax.Nominal.Convertible.Extended_s with type ('info,'a,'b) t = 
-      ('info, 'info A.t, 'info B.t) Types.pair and type ('a,'b) Plain.t = 
-      (A.Plain.t, B.Plain.t) Plain.pair
-    module Pair_plus :
-    Lvca_syntax.Nominal.Convertible.Extended_s with type ('info,'a,'b) t = 
-      ('info, 'info A.t, 'info B.t) Types.pair_plus and type
-      ('a,'b) Plain.t =  (A.Plain.t, B.Plain.t) Plain.pair_plus
-    module Nonempty :
-    Lvca_syntax.Nominal.Convertible.Extended_s with type 'info t = 
-      'info Types.nonempty and type  Plain.t =  Plain.nonempty
-    module Term :
-    Lvca_syntax.Nominal.Convertible.Extended_s with type 'info t = 
-      'info Types.term and type  Plain.t =  Plain.term
-    module Mut_a :
-    Lvca_syntax.Nominal.Convertible.Extended_s with type 'info t = 
-      'info Types.mut_a and type  Plain.t =  Plain.mut_a
-    module Mut_b :
-    Lvca_syntax.Nominal.Convertible.Extended_s with type 'info t = 
-      'info Types.mut_b and type  Plain.t =  Plain.mut_b
-    module Ifz :
-    Lvca_syntax.Nominal.Convertible.Extended_s with type 'info t = 
-      'info Types.ifz and type  Plain.t =  Plain.ifz
   end =
   struct
     module Wrapper =
       struct
         module Types =
           struct
-            type 'info foo =
-              | Foo of 'info * 'integer 
-              | Bar of 'info * ('info Pattern.t * 'info
-              Lvca_syntax.Single_var.t * 'info foo) 
-              | Foo_var of 'info * string 
+            type 'info mut_a =
+              | Mut_a of 'info * 'info mut_b 
+            and 'info mut_b =
+              | Mut_b of 'info * 'info mut_a 
             and 'info ifz =
               | Ifz of 'info * 'info ifz * ('info Lvca_syntax.Single_var.t *
               'info ifz) * 'info ifz 
               | Ifz_var of 'info * string 
-            and 'info mut_a =
-              | Mut_a of 'info * 'info mut_b 
-            and 'info mut_b =
-              | Mut_b of 'info * 'info mut_a 
+            and ('info, 'list) term =
+              | Operator of 'info * (('info, 'list) term, 'list)
+              Higher_kinded.t 
+            and ('info, 'a, 'b, 'integer) pair_plus =
+              | PairPlus of 'info * 'a * 'b * ('info, 'integer) foo 
+            and ('info, 'integer) foo =
+              | Foo of 'info * 'integer 
+              | Bar of 'info * ('info Pattern.t * 'info
+              Lvca_syntax.Single_var.t * ('info, 'integer) foo) 
+              | Foo_var of 'info * string 
+            and ('info, 'a, 'b) pair =
+              | Pair of 'info * 'a * 'b 
+            and ('info, 'list, 'string) nonempty =
+              | Nonempty of 'info * 'string * ('string, 'list)
+              Higher_kinded.t 
             and 'info nat =
               | Z of 'info 
               | S of 'info * 'info nat 
-            and 'info nonempty =
-              | Nonempty of 'info * 'string * 'list 
-            and ('info, 'a, 'b) pair =
-              | Pair of 'info * 'a * 'b 
-            and ('info, 'a, 'b) pair_plus =
-              | PairPlus of 'info * 'a * 'b * 'info foo 
-            and 'info term =
-              | Operator of 'info * 'list 
           end
         module Plain =
           struct
-            type foo =
-              | Foo of 'integer 
-              | Bar of (Pattern.Plain.t * Lvca_syntax.Single_var.Plain.t *
-              foo) 
-              | Foo_var of string 
-            and ifz =
-              | Ifz of ifz * (Lvca_syntax.Single_var.Plain.t * ifz) * ifz 
-              | Ifz_var of string 
-            and mut_a =
+            type mut_a =
               | Mut_a of mut_b 
             and mut_b =
               | Mut_b of mut_a 
+            and ifz =
+              | Ifz of ifz * (Lvca_syntax.Single_var.Plain.t * ifz) * ifz 
+              | Ifz_var of string 
+            and 'list term =
+              | Operator of ('list term, 'list) Higher_kinded.t 
+            and ('a, 'b, 'integer) pair_plus =
+              | PairPlus of 'a * 'b * 'integer foo 
+            and 'integer foo =
+              | Foo of 'integer 
+              | Bar of (Pattern.Plain.t * Lvca_syntax.Single_var.Plain.t *
+              'integer foo) 
+              | Foo_var of string 
+            and ('a, 'b) pair =
+              | Pair of 'a * 'b 
+            and ('list, 'string) nonempty =
+              | Nonempty of 'string * ('string, 'list) Higher_kinded.t 
             and nat =
               | Z 
               | S of nat 
-            and nonempty =
-              | Nonempty of 'string * 'list 
-            and ('a, 'b) pair =
-              | Pair of 'a * 'b 
-            and ('a, 'b) pair_plus =
-              | PairPlus of 'a * 'b * foo 
-            and term =
-              | Operator of 'list 
           end
         module Info =
           struct
             let nat = function | Types.Z x0 -> x0 | Types.S (x0, _) -> x0
-            let nonempty = function | Types.Nonempty (x0, _, _) -> x0
-            let pair _f_a _f_b = function | Types.Pair (x0, _, _) -> x0
-            let foo =
+            let nonempty _list _string =
+              function | Types.Nonempty (x0, _, _) -> x0
+            let pair _a _b = function | Types.Pair (x0, _, _) -> x0
+            let foo _integer =
               function
               | Types.Foo (x0, _) -> x0
               | Types.Bar (x0, (_, _, _)) -> x0
               | Types.Foo_var (info, _) -> info
-            let pair_plus _f_a _f_b =
+            let pair_plus _a _b _integer =
               function | Types.PairPlus (x0, _, _, _) -> x0
-            let term = function | Types.Operator (x0, _) -> x0
+            let term _list = function | Types.Operator (x0, _) -> x0
             let ifz =
               function
               | Types.Ifz (x0, _, (_, _), _) -> x0
@@ -217,14 +192,14 @@ module Lang :
               function
               | Types.Z _ -> Plain.Z
               | Types.S (_, x1) -> Plain.S (nat x1)
-            let nonempty =
+            let nonempty list string =
               function
               | Types.Nonempty (_, x1, x2) ->
                   Plain.Nonempty ((string x1), (list x2))
-            let pair f_a f_b =
+            let pair a b =
               function
-              | Types.Pair (_, x1, x2) -> Plain.Pair ((f_a x1), (f_b x2))
-            let rec foo =
+              | Types.Pair (_, x1, x2) -> Plain.Pair ((a x1), (b x2))
+            let rec foo integer =
               function
               | Types.Foo (_, x1) -> Plain.Foo (integer x1)
               | Types.Bar (_, (x1, x2, x3)) ->
@@ -233,11 +208,11 @@ module Lang :
                       (let open Lvca_syntax.Single_var.Plain in
                          { name = (x2.name) }), (foo x3))
               | Types.Foo_var (_, name) -> Plain.Foo_var name
-            let pair_plus f_a f_b =
+            let pair_plus a b integer =
               function
               | Types.PairPlus (_, x1, x2, x3) ->
-                  Plain.PairPlus ((f_a x1), (f_b x2), (foo x3))
-            let term =
+                  Plain.PairPlus ((a x1), (b x2), (foo x3))
+            let term list =
               function | Types.Operator (_, x1) -> Plain.Operator (list x1)
             let rec ifz =
               function
@@ -258,14 +233,14 @@ module Lang :
               function
               | Plain.Z -> Types.Z ()
               | Plain.S x1 -> Types.S ((), (nat x1))
-            let nonempty =
+            let nonempty list string =
               function
               | Plain.Nonempty (x1, x2) ->
-                  Types.Nonempty ((), (string x1), (list x2))
-            let pair f_a f_b =
+                  Types.Nonempty ((), (string x1), (list (string x2) x2))
+            let pair a b =
               function
-              | Plain.Pair (x1, x2) -> Types.Pair ((), (f_a x1), (f_b x2))
-            let rec foo =
+              | Plain.Pair (x1, x2) -> Types.Pair ((), (a x1), (b x2))
+            let rec foo integer =
               function
               | Plain.Foo x1 -> Types.Foo ((), (integer x1))
               | Plain.Bar (x1, x2, x3) ->
@@ -275,12 +250,13 @@ module Lang :
                         (let open Lvca_syntax.Single_var in
                            { info = (); name = (x2.name) }), (foo x3)))
               | Plain.Foo_var name -> Types.Foo_var ((), name)
-            let pair_plus f_a f_b =
+            let pair_plus a b integer =
               function
               | Plain.PairPlus (x1, x2, x3) ->
-                  Types.PairPlus ((), (f_a x1), (f_b x2), (foo x3))
-            let term =
-              function | Plain.Operator x1 -> Types.Operator ((), (list x1))
+                  Types.PairPlus ((), (a x1), (b x2), (foo x3))
+            let term list =
+              function
+              | Plain.Operator x1 -> Types.Operator ((), (list (term x1) x1))
             let rec ifz =
               function
               | Plain.Ifz (x1, (x2, x3), x4) ->
@@ -301,15 +277,16 @@ module Lang :
               function
               | Types.Z x0 -> Types.Z (f x0)
               | Types.S (x0, x1) -> Types.S ((f x0), (nat ~f x1))
-            let nonempty ~f  =
+            let nonempty list string ~f  =
               function
               | Types.Nonempty (x0, x1, x2) ->
-                  Types.Nonempty ((f x0), (string ~f x1), (list ~f x2))
-            let pair f_a f_b ~f  =
+                  Types.Nonempty
+                    ((f x0), (string ~f x1), (list (string ~f x2) ~f x2))
+            let pair a b ~f  =
               function
               | Types.Pair (x0, x1, x2) ->
-                  Types.Pair ((f x0), (f_a ~f x1), (f_b ~f x2))
-            let rec foo ~f  =
+                  Types.Pair ((f x0), (a ~f x1), (b ~f x2))
+            let rec foo integer ~f  =
               function
               | Types.Foo (x0, x1) -> Types.Foo ((f x0), (integer ~f x1))
               | Types.Bar (x0, (x1, x2, x3)) ->
@@ -320,15 +297,14 @@ module Lang :
                            { info = (f x2.info); name = (x2.name) }),
                         (foo ~f x3)))
               | Types.Foo_var (info, name) -> Types.Foo_var ((f info), name)
-            let pair_plus f_a f_b ~f  =
+            let pair_plus a b integer ~f  =
               function
               | Types.PairPlus (x0, x1, x2, x3) ->
-                  Types.PairPlus
-                    ((f x0), (f_a ~f x1), (f_b ~f x2), (foo ~f x3))
-            let term ~f  =
+                  Types.PairPlus ((f x0), (a ~f x1), (b ~f x2), (foo ~f x3))
+            let term list ~f  =
               function
               | Types.Operator (x0, x1) ->
-                  Types.Operator ((f x0), (list ~f x1))
+                  Types.Operator ((f x0), (list (term ~f x1) ~f x1))
             let rec ifz ~f  =
               function
               | Types.Ifz (x0, x1, (x2, x3), x4) ->
@@ -354,21 +330,22 @@ module Lang :
                   Lvca_syntax.Nominal.Term.Operator
                     (x0, "S",
                       [Lvca_syntax.Nominal.Scope.Scope ([], (nat x1))])
-            let nonempty =
+            let nonempty list string =
               function
               | Types.Nonempty (x0, x1, x2) ->
                   Lvca_syntax.Nominal.Term.Operator
                     (x0, "Nonempty",
                       [Lvca_syntax.Nominal.Scope.Scope ([], (string x1));
-                      Lvca_syntax.Nominal.Scope.Scope ([], (list x2))])
-            let pair f_a f_b =
+                      Lvca_syntax.Nominal.Scope.Scope
+                        ([], (list (string x2) x2))])
+            let pair a b =
               function
               | Types.Pair (x0, x1, x2) ->
                   Lvca_syntax.Nominal.Term.Operator
                     (x0, "Pair",
-                      [Lvca_syntax.Nominal.Scope.Scope ([], (f_a x1));
-                      Lvca_syntax.Nominal.Scope.Scope ([], (f_b x2))])
-            let rec foo =
+                      [Lvca_syntax.Nominal.Scope.Scope ([], (a x1));
+                      Lvca_syntax.Nominal.Scope.Scope ([], (b x2))])
+            let rec foo integer =
               function
               | Types.Foo (x0, x1) ->
                   Lvca_syntax.Nominal.Term.Operator
@@ -383,20 +360,21 @@ module Lang :
                            (foo x3))])
               | Foo_var (info, name) ->
                   Lvca_syntax.Nominal.Term.Var (info, name)
-            let pair_plus f_a f_b =
+            let pair_plus a b integer =
               function
               | Types.PairPlus (x0, x1, x2, x3) ->
                   Lvca_syntax.Nominal.Term.Operator
                     (x0, "PairPlus",
-                      [Lvca_syntax.Nominal.Scope.Scope ([], (f_a x1));
-                      Lvca_syntax.Nominal.Scope.Scope ([], (f_b x2));
+                      [Lvca_syntax.Nominal.Scope.Scope ([], (a x1));
+                      Lvca_syntax.Nominal.Scope.Scope ([], (b x2));
                       Lvca_syntax.Nominal.Scope.Scope ([], (foo x3))])
-            let term =
+            let term list =
               function
               | Types.Operator (x0, x1) ->
                   Lvca_syntax.Nominal.Term.Operator
                     (x0, "Operator",
-                      [Lvca_syntax.Nominal.Scope.Scope ([], (list x1))])
+                      [Lvca_syntax.Nominal.Scope.Scope
+                         ([], (list (term x1) x1))])
             let rec ifz =
               function
               | Types.Ifz (x0, x1, (x2, x3), x4) ->
@@ -435,7 +413,7 @@ module Lang :
                    | Error msg -> Error msg
                    | Ok x1 -> Ok (Types.S (x0, x1)))
               | tm -> Error tm
-            let nonempty =
+            let nonempty list string =
               function
               | Lvca_syntax.Nominal.Term.Operator
                   (x0, "Nonempty", (Lvca_syntax.Nominal.Scope.Scope
@@ -444,24 +422,24 @@ module Lang :
                   (match string x1 with
                    | Error msg -> Error msg
                    | Ok x1 ->
-                       (match list x2 with
+                       (match list (string x2) x2 with
                         | Error msg -> Error msg
                         | Ok x2 -> Ok (Types.Nonempty (x0, x1, x2))))
               | tm -> Error tm
-            let pair f_a f_b =
+            let pair a b =
               function
               | Lvca_syntax.Nominal.Term.Operator
                   (x0, "Pair", (Lvca_syntax.Nominal.Scope.Scope
                    ([], x1))::(Lvca_syntax.Nominal.Scope.Scope ([], x2))::[])
                   ->
-                  (match f_a x1 with
+                  (match a x1 with
                    | Error msg -> Error msg
                    | Ok x1 ->
-                       (match f_b x2 with
+                       (match b x2 with
                         | Error msg -> Error msg
                         | Ok x2 -> Ok (Types.Pair (x0, x1, x2))))
               | tm -> Error tm
-            let rec foo =
+            let rec foo integer =
               function
               | Lvca_syntax.Nominal.Term.Operator
                   (x0, "Foo", (Lvca_syntax.Nominal.Scope.Scope ([], x1))::[])
@@ -485,30 +463,30 @@ module Lang :
               | Lvca_syntax.Nominal.Term.Var (info, name) ->
                   Ok (Foo_var (info, name))
               | tm -> Error tm
-            let pair_plus f_a f_b =
+            let pair_plus a b integer =
               function
               | Lvca_syntax.Nominal.Term.Operator
                   (x0, "PairPlus", (Lvca_syntax.Nominal.Scope.Scope
                    ([], x1))::(Lvca_syntax.Nominal.Scope.Scope
                    ([], x2))::(Lvca_syntax.Nominal.Scope.Scope ([], x3))::[])
                   ->
-                  (match f_a x1 with
+                  (match a x1 with
                    | Error msg -> Error msg
                    | Ok x1 ->
-                       (match f_b x2 with
+                       (match b x2 with
                         | Error msg -> Error msg
                         | Ok x2 ->
                             (match foo x3 with
                              | Error msg -> Error msg
                              | Ok x3 -> Ok (Types.PairPlus (x0, x1, x2, x3)))))
               | tm -> Error tm
-            let term =
+            let term list =
               function
               | Lvca_syntax.Nominal.Term.Operator
                   (x0, "Operator", (Lvca_syntax.Nominal.Scope.Scope
                    ([], x1))::[])
                   ->
-                  (match list x1 with
+                  (match list (term x1) x1 with
                    | Error msg -> Error msg
                    | Ok x1 -> Ok (Types.Operator (x0, x1)))
               | tm -> Error tm
@@ -566,8 +544,9 @@ module Lang :
       struct
         module Kernel =
           struct
-            type 'info t = 'info Wrapper.Types.foo
-            module Plain = struct type t = Wrapper.Plain.foo end
+            type ('info, 'integer) t = ('info, 'integer) Wrapper.Types.foo
+            module Plain =
+              struct type 'integer t = 'integer Wrapper.Plain.foo end
             let info tm = Wrapper.Info.foo tm
             let to_plain tm = Wrapper.To_plain.foo tm
             let of_plain tm = Wrapper.Of_plain.foo tm
@@ -576,7 +555,6 @@ module Lang :
             let of_nominal tm = Wrapper.Of_nominal.foo tm
           end
         include Kernel
-        include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
       end
     module Nat =
       struct
@@ -592,7 +570,6 @@ module Lang :
             let of_nominal tm = Wrapper.Of_nominal.nat tm
           end
         include Kernel
-        include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
       end
     module Pair =
       struct
@@ -612,15 +589,18 @@ module Lang :
               Wrapper.Of_nominal.pair A.of_nominal B.of_nominal tm
           end
         include Kernel
-        include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
       end
     module Pair_plus =
       struct
         module Kernel =
           struct
-            type ('info, 'a, 'b) t = ('info, 'a, 'b) Wrapper.Types.pair_plus
+            type ('info, 'a, 'b, 'integer) t =
+              ('info, 'a, 'b, 'integer) Wrapper.Types.pair_plus
             module Plain =
-              struct type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair_plus end
+              struct
+                type ('a, 'b, 'integer) t =
+                  ('a, 'b, 'integer) Wrapper.Plain.pair_plus
+              end
             let info tm = Wrapper.Info.pair_plus A.info B.info tm
             let to_plain tm =
               Wrapper.To_plain.pair_plus A.to_plain B.to_plain tm
@@ -634,14 +614,18 @@ module Lang :
               Wrapper.Of_nominal.pair_plus A.of_nominal B.of_nominal tm
           end
         include Kernel
-        include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
       end
     module Nonempty =
       struct
         module Kernel =
           struct
-            type 'info t = 'info Wrapper.Types.nonempty
-            module Plain = struct type t = Wrapper.Plain.nonempty end
+            type ('info, 'list, 'string) t =
+              ('info, 'list, 'string) Wrapper.Types.nonempty
+            module Plain =
+              struct
+                type ('list, 'string) t =
+                  ('list, 'string) Wrapper.Plain.nonempty
+              end
             let info tm = Wrapper.Info.nonempty tm
             let to_plain tm = Wrapper.To_plain.nonempty tm
             let of_plain tm = Wrapper.Of_plain.nonempty tm
@@ -650,14 +634,13 @@ module Lang :
             let of_nominal tm = Wrapper.Of_nominal.nonempty tm
           end
         include Kernel
-        include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
       end
     module Term =
       struct
         module Kernel =
           struct
-            type 'info t = 'info Wrapper.Types.term
-            module Plain = struct type t = Wrapper.Plain.term end
+            type ('info, 'list) t = ('info, 'list) Wrapper.Types.term
+            module Plain = struct type 'list t = 'list Wrapper.Plain.term end
             let info tm = Wrapper.Info.term tm
             let to_plain tm = Wrapper.To_plain.term tm
             let of_plain tm = Wrapper.Of_plain.term tm
@@ -666,7 +649,6 @@ module Lang :
             let of_nominal tm = Wrapper.Of_nominal.term tm
           end
         include Kernel
-        include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
       end
     module Mut_a =
       struct
@@ -682,7 +664,6 @@ module Lang :
             let of_nominal tm = Wrapper.Of_nominal.mut_a tm
           end
         include Kernel
-        include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
       end
     module Mut_b =
       struct
@@ -698,7 +679,6 @@ module Lang :
             let of_nominal tm = Wrapper.Of_nominal.mut_b tm
           end
         include Kernel
-        include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
       end
     module Ifz =
       struct
@@ -714,6 +694,5 @@ module Lang :
             let of_nominal tm = Wrapper.Of_nominal.ifz tm
           end
         include Kernel
-        include (Lvca_syntax.Nominal.Convertible.Extend)(Kernel)
       end
   end 
