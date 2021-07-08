@@ -484,8 +484,19 @@ module Lang =
     module Plain = Wrapper.Plain
     module Foo =
       struct
-        type 'info t = 'info Wrapper.Types.foo
-        module Plain = struct type t = Wrapper.Plain.foo end
+        type 'info t = 'info Wrapper.Types.foo =
+          | Foo of 'info * 'info Lvca_syntax.Nominal.Types.term 
+          | Bar of 'info * ('info Pattern.t * 'info Lvca_syntax.Single_var.t
+          * 'info Wrapper.Types.foo) 
+          | Foo_var of 'info * string 
+        module Plain =
+          struct
+            type t = Wrapper.Plain.foo =
+              | Foo of Lvca_syntax.Nominal.Plain.term 
+              | Bar of (Pattern.Plain.t * Lvca_syntax.Single_var.Plain.t *
+              Wrapper.Plain.foo) 
+              | Foo_var of string 
+          end
         let info tm = Wrapper.Info.foo tm
         let to_plain tm = Wrapper.To_plain.foo tm
         let of_plain tm = Wrapper.Of_plain.foo tm
@@ -495,8 +506,15 @@ module Lang =
       end
     module Nat =
       struct
-        type 'info t = 'info Wrapper.Types.nat
-        module Plain = struct type t = Wrapper.Plain.nat end
+        type 'info t = 'info Wrapper.Types.nat =
+          | Z of 'info 
+          | S of 'info * 'info Wrapper.Types.nat 
+        module Plain =
+          struct
+            type t = Wrapper.Plain.nat =
+              | Z 
+              | S of Wrapper.Plain.nat 
+          end
         let info tm = Wrapper.Info.nat tm
         let to_plain tm = Wrapper.To_plain.nat tm
         let of_plain tm = Wrapper.Of_plain.nat tm
@@ -506,9 +524,13 @@ module Lang =
       end
     module Pair =
       struct
-        type ('info, 'a, 'b) t = ('info, 'a, 'b) Wrapper.Types.pair
+        type ('info, 'a, 'b) t = ('info, 'a, 'b) Wrapper.Types.pair =
+          | Pair of 'info * 'a * 'b 
         module Plain =
-          struct type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair end
+          struct
+            type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair =
+              | Pair of 'a * 'b 
+          end
         let info tm = Wrapper.Info.pair tm
         let to_plain tm = Wrapper.To_plain.pair tm
         let of_plain tm = Wrapper.Of_plain.pair tm
@@ -518,9 +540,13 @@ module Lang =
       end
     module Pair_plus =
       struct
-        type ('info, 'a, 'b) t = ('info, 'a, 'b) Wrapper.Types.pair_plus
+        type ('info, 'a, 'b) t = ('info, 'a, 'b) Wrapper.Types.pair_plus =
+          | PairPlus of 'info * 'a * 'b * 'info Wrapper.Types.foo 
         module Plain =
-          struct type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair_plus end
+          struct
+            type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair_plus =
+              | PairPlus of 'a * 'b * Wrapper.Plain.foo 
+          end
         let info tm = Wrapper.Info.pair_plus tm
         let to_plain tm = Wrapper.To_plain.pair_plus tm
         let of_plain tm = Wrapper.Of_plain.pair_plus tm
@@ -530,8 +556,15 @@ module Lang =
       end
     module Nonempty =
       struct
-        type 'info t = 'info Wrapper.Types.nonempty
-        module Plain = struct type t = Wrapper.Plain.nonempty end
+        type 'info t = 'info Wrapper.Types.nonempty =
+          | Nonempty of 'info * 'info Lvca_syntax.Nominal.Types.term * 'info
+          Lvca_syntax.Nominal.Types.term 
+        module Plain =
+          struct
+            type t = Wrapper.Plain.nonempty =
+              | Nonempty of Lvca_syntax.Nominal.Plain.term *
+              Lvca_syntax.Nominal.Plain.term 
+          end
         let info tm = Wrapper.Info.nonempty tm
         let to_plain tm = Wrapper.To_plain.nonempty tm
         let of_plain tm = Wrapper.Of_plain.nonempty tm
@@ -541,8 +574,13 @@ module Lang =
       end
     module Term =
       struct
-        type 'info t = 'info Wrapper.Types.term
-        module Plain = struct type t = Wrapper.Plain.term end
+        type 'info t = 'info Wrapper.Types.term =
+          | Operator of 'info * 'info Lvca_syntax.Nominal.Types.term 
+        module Plain =
+          struct
+            type t = Wrapper.Plain.term =
+              | Operator of Lvca_syntax.Nominal.Plain.term 
+          end
         let info tm = Wrapper.Info.term tm
         let to_plain tm = Wrapper.To_plain.term tm
         let of_plain tm = Wrapper.Of_plain.term tm
@@ -552,8 +590,13 @@ module Lang =
       end
     module Mut_a =
       struct
-        type 'info t = 'info Wrapper.Types.mut_a
-        module Plain = struct type t = Wrapper.Plain.mut_a end
+        type 'info t = 'info Wrapper.Types.mut_a =
+          | Mut_a of 'info * 'info Wrapper.Types.mut_b 
+        module Plain =
+          struct
+            type t = Wrapper.Plain.mut_a =
+              | Mut_a of Wrapper.Plain.mut_b 
+          end
         let info tm = Wrapper.Info.mut_a tm
         let to_plain tm = Wrapper.To_plain.mut_a tm
         let of_plain tm = Wrapper.Of_plain.mut_a tm
@@ -563,8 +606,13 @@ module Lang =
       end
     module Mut_b =
       struct
-        type 'info t = 'info Wrapper.Types.mut_b
-        module Plain = struct type t = Wrapper.Plain.mut_b end
+        type 'info t = 'info Wrapper.Types.mut_b =
+          | Mut_b of 'info * 'info Wrapper.Types.mut_a 
+        module Plain =
+          struct
+            type t = Wrapper.Plain.mut_b =
+              | Mut_b of Wrapper.Plain.mut_a 
+          end
         let info tm = Wrapper.Info.mut_b tm
         let to_plain tm = Wrapper.To_plain.mut_b tm
         let of_plain tm = Wrapper.Of_plain.mut_b tm
@@ -574,8 +622,18 @@ module Lang =
       end
     module Ifz =
       struct
-        type 'info t = 'info Wrapper.Types.ifz
-        module Plain = struct type t = Wrapper.Plain.ifz end
+        type 'info t = 'info Wrapper.Types.ifz =
+          | Ifz of 'info * 'info Wrapper.Types.ifz * ('info
+          Lvca_syntax.Single_var.t * 'info Wrapper.Types.ifz) * 'info
+          Wrapper.Types.ifz 
+          | Ifz_var of 'info * string 
+        module Plain =
+          struct
+            type t = Wrapper.Plain.ifz =
+              | Ifz of Wrapper.Plain.ifz * (Lvca_syntax.Single_var.Plain.t *
+              Wrapper.Plain.ifz) * Wrapper.Plain.ifz 
+              | Ifz_var of string 
+          end
         let info tm = Wrapper.Info.ifz tm
         let to_plain tm = Wrapper.To_plain.ifz tm
         let of_plain tm = Wrapper.Of_plain.ifz tm

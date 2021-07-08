@@ -41,6 +41,10 @@ module Supported_function = struct
   ;;
 end
 
+type type_decl_context =
+  | Predefinition
+  | Individual_type_module
+
 module type Builder_context = sig
   (** The contents of the source file. *)
   val buf : string
@@ -377,7 +381,7 @@ module Helpers (Context : Builder_context) = struct
            | Nonempty of 'info * 'info Nominal.t * 'info Nominal.t
                                  ^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^
       ]} *)
-  let ptyp_of_sort ~context sort =
+  let ptyp_of_sort ~type_decl_context ~context sort =
     let info_args = match context.info with With_info -> [ [%type: 'info] ] | _ -> [] in
     let rec go sort =
       let loc = update_loc (Sort.info sort) in
@@ -386,7 +390,13 @@ module Helpers (Context : Builder_context) = struct
       | Variable -> ptyp_var name
       | Mutual_sort ->
         let sort_args = List.map sort_args ~f:go in
-        ptyp_constr { txt = unflatten [ name ]; loc } (info_args @ sort_args)
+        let names =
+          match type_decl_context, context.info with
+          | Predefinition, _ -> [ name ]
+          | Individual_type_module, With_info -> [ "Wrapper"; "Types"; name ]
+          | Individual_type_module, Plain -> [ "Wrapper"; "Plain"; name ]
+        in
+        ptyp_constr { txt = unflatten names; loc } (info_args @ sort_args)
       | Predefined_sort info ->
         let mod_name = match info with With_info -> "Types" | _ -> "Plain" in
         ptyp_constr { txt = unflatten [ "Wrapper"; mod_name; name ]; loc } info_args
@@ -500,6 +510,7 @@ module Ctor_decl (Context : Builder_context) = struct
 
   let mk
       ~info
+      ~type_decl_context
       ~var_names
       ~mutual_sorts
       ~prim_names
@@ -521,7 +532,7 @@ module Ctor_decl (Context : Builder_context) = struct
             | Sort_pattern _sort -> pattern_type)
       in
       let context = { info; var_names; mutual_sorts; prim_names } in
-      args @ [ ptyp_of_sort ~context body_sort ]
+      args @ [ ptyp_of_sort ~type_decl_context ~context body_sort ]
     in
     let args =
       arity
@@ -545,6 +556,38 @@ module Type_decls (Context : Builder_context) = struct
   module Ctor_decl = Ctor_decl (Context)
   open Helpers (Context)
 
+  let mk_op_ctors
+      ~type_decl_context
+      ~sort_def_map:mutual_sorts
+      ~prim_names
+      ~info
+      ~sort_name
+      ~partitioned_sorts
+      (Syn.Sort_def.Sort_def (vars, op_defs))
+    =
+    let var_names = vars |> List.map ~f:fst |> SSet.of_list in
+    let op_ctors =
+      List.map
+        op_defs
+        ~f:(Ctor_decl.mk ~info ~type_decl_context ~var_names ~mutual_sorts ~prim_names)
+    in
+    let var_ctor =
+      let args =
+        match info with
+        | With_info -> [ [%type: 'info]; [%type: string] ]
+        | Plain -> [ [%type: string] ]
+      in
+      constructor_declaration
+        ~name:{ txt = var_ctor_name sort_name; loc }
+        ~args:(Pcstr_tuple args)
+        ~res:None
+    in
+    (* If this type is ever bound, add a variable constructor. *)
+    match Hashtbl.find partitioned_sorts sort_name with
+    | Some Bound -> op_ctors @ [ var_ctor ]
+    | _ -> op_ctors
+  ;;
+
   let mk ~info ~sort_def_map ~sorted_scc_graph ~prim_names ~partitioned_sorts =
     let info_params = match info with With_info -> [ plain_typ_var "info" ] | _ -> [] in
     sorted_scc_graph
@@ -552,36 +595,19 @@ module Type_decls (Context : Builder_context) = struct
            sort_name_set
            |> Set.to_list
            |> List.map ~f:(fun sort_name ->
-                  let (Syn.Sort_def.Sort_def (vars, op_defs)) =
-                    Map.find_exn sort_def_map sort_name
-                  in
+                  let sort_def = Map.find_exn sort_def_map sort_name in
+                  let (Syn.Sort_def.Sort_def (vars, _op_defs)) = sort_def in
                   let params = vars |> List.map ~f:fst |> List.map ~f:plain_typ_var in
                   let params = info_params @ params in
                   let op_ctors =
-                    List.map
-                      op_defs
-                      ~f:
-                        (Ctor_decl.mk
-                           ~info
-                           ~var_names:(vars |> List.map ~f:fst |> SSet.of_list)
-                           ~mutual_sorts:sort_def_map
-                           ~prim_names)
-                  in
-                  let var_ctor =
-                    let args =
-                      match info with
-                      | With_info -> [ [%type: 'info]; [%type: string] ]
-                      | _ -> [ [%type: string] ]
-                    in
-                    constructor_declaration
-                      ~name:{ txt = var_ctor_name sort_name; loc }
-                      ~args:(Pcstr_tuple args)
-                      ~res:None
-                  in
-                  let op_ctors =
-                    match Hashtbl.find partitioned_sorts sort_name with
-                    | Some Bound -> op_ctors @ [ var_ctor ]
-                    | _ -> op_ctors
+                    mk_op_ctors
+                      ~sort_def_map
+                      ~type_decl_context:Predefinition
+                      ~prim_names
+                      ~info
+                      ~sort_name
+                      ~partitioned_sorts
+                      sort_def
                   in
                   type_declaration
                     ~name:{ txt = sort_name; loc }
@@ -1277,7 +1303,10 @@ module Info (Context : Builder_context) = struct
   ;;
 end
 
-(* The wrapper module holds TODO *)
+(* The wrapper module holds helper modules:
+  - First, type declarations
+  - Then individual modules for different helper functions: [info], [to_plain], etc.
+  *)
 module Wrapper_module (Context : Builder_context) = struct
   open Context
   open Ast
@@ -1289,8 +1318,7 @@ module Wrapper_module (Context : Builder_context) = struct
   module To_nominal = To_nominal (Context)
   module Of_nominal = Of_nominal (Context)
 
-  let mk ~prim_names ~sort_def_map ~sort_dep_map ~sorted_scc_graph sort_defs =
-    let partitioned_sorts = partition_sort_defs sort_defs in
+  let mk ~prim_names ~sort_def_map ~sort_dep_map ~sorted_scc_graph ~partitioned_sorts =
     let ordered_sccs =
       sorted_scc_graph
       |> List.map ~f:(fun (scc_num, sort_name_set) ->
@@ -1370,8 +1398,10 @@ module Individual_type_module (Context : Builder_context) = struct
   open Context
   open Ast
   open Helpers (Context)
+  module Type_decls = Type_decls (Context)
 
-  let mk ~prim_names:_ ~sort_def_map:_ sort_name (Syn.Sort_def.Sort_def (vars, _op_defs)) =
+  let mk ~prim_names ~sort_def_map ~partitioned_sorts sort_name sort_def =
+    let (Syn.Sort_def.Sort_def (vars, _op_defs)) = sort_def in
     let var_names = List.map vars ~f:fst in
     let type_vars = List.map var_names ~f:ptyp_var in
     let params = List.map var_names ~f:plain_typ_var in
@@ -1382,13 +1412,23 @@ module Individual_type_module (Context : Builder_context) = struct
              { txt = unflatten [ "Wrapper"; "Plain"; sort_name ]; loc }
              type_vars)
       in
+      let op_ctors =
+        Type_decls.mk_op_ctors
+          ~type_decl_context:Individual_type_module
+          ~sort_def_map
+          ~prim_names
+          ~info:Plain
+          ~sort_name
+          ~partitioned_sorts
+          sort_def
+      in
       pstr_type
         Recursive
         [ type_declaration
             ~name:{ txt = "t"; loc }
             ~params
             ~cstrs:[]
-            ~kind:Ptype_abstract
+            ~kind:(Ptype_variant op_ctors)
             ~private_:Public
             ~manifest
         ]
@@ -1400,13 +1440,23 @@ module Individual_type_module (Context : Builder_context) = struct
              { txt = unflatten [ "Wrapper"; "Types"; sort_name ]; loc }
              (ptyp_var "info" :: type_vars))
       in
+      let op_ctors =
+        Type_decls.mk_op_ctors
+          ~type_decl_context:Individual_type_module
+          ~sort_def_map
+          ~prim_names
+          ~info:With_info
+          ~sort_name
+          ~partitioned_sorts
+          sort_def
+      in
       pstr_type
         Recursive
         [ type_declaration
             ~name:{ txt = "t"; loc }
             ~params:(plain_typ_var "info" :: params)
             ~cstrs:[]
-            ~kind:Ptype_abstract
+            ~kind:(Ptype_variant op_ctors)
             ~private_:Public
             ~manifest
         ]
@@ -1472,18 +1522,23 @@ module Container_module (Context : Builder_context) = struct
       |> Directed_graph.Int.topsort_exn
       |> List.map ~f:(fun i -> i, Map.find_exn sccs i)
     in
+    let partitioned_sorts = partition_sort_defs sort_defs in
     let wrapper_module, _info_types_sig, _plain_types_sig =
       Wrapper_module.mk
         ~prim_names
         ~sort_def_map
         ~sort_dep_map
         ~sorted_scc_graph
-        sort_defs
+        ~partitioned_sorts
     in
     let type_modules =
-      sort_defs
-      |> List.map ~f:(fun (sort_name, sort_def) ->
-             Individual_type_module.mk ~prim_names ~sort_def_map sort_name sort_def)
+      List.map sort_defs ~f:(fun (sort_name, sort_def) ->
+          Individual_type_module.mk
+            ~prim_names
+            ~sort_def_map
+            ~partitioned_sorts
+            sort_name
+            sort_def)
     in
     (* TODO: include language?
   let sort_defs =
