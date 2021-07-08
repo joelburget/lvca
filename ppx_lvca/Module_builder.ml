@@ -20,6 +20,27 @@ let ( >> ), ( << ) = Util.(( >> ), ( << ))
 
     {[ let of_plain = function Plain.Pair (x1, x2) -> Types.Pair ((), ???, ???) ]} *)
 
+module Supported_function = struct
+  type t =
+    | Fun_of_nominal
+    | Fun_to_nominal
+    | Fun_map_info
+    | Fun_to_plain
+    | Fun_of_plain
+    | Fun_equal
+    | Fun_info
+
+  let name = function
+    | Fun_of_nominal -> "of_nominal"
+    | Fun_to_nominal -> "to_nominal"
+    | Fun_map_info -> "map_info"
+    | Fun_to_plain -> "to_plain"
+    | Fun_of_plain -> "of_plain"
+    | Fun_equal -> "equal"
+    | Fun_info -> "info"
+  ;;
+end
+
 module type Builder_context = sig
   (** The contents of the source file. *)
   val buf : string
@@ -643,12 +664,15 @@ module Operator_exp (Context : Builder_context) = struct
       ?(extra_args = [])
       ?(name_base = "x")
       sort_defs (* Sorts being defined together *)
-      fun_name (* The name of the function being defined *)
+      fun_defn (* The name of the function being defined *)
       (Syn.Operator_def.Operator_def (op_name, arity))
     =
     let v = evar_allocator name_base in
     let pattern_converter =
-      pexp_ident { txt = unflatten [ "Lvca_syntax"; "Pattern"; fun_name ]; loc }
+      pexp_ident
+        { txt = unflatten [ "Lvca_syntax"; "Pattern"; Supported_function.name fun_defn ]
+        ; loc
+        }
     in
     let body_arg sort =
       match
@@ -657,12 +681,12 @@ module Operator_exp (Context : Builder_context) = struct
           sort
       with
       | External_sort ->
-        (match fun_name with
-        | "to_plain" -> [%expr Lvca_syntax.Nominal.Term.to_plain [%e v ()]]
-        | "of_plain" -> [%expr Lvca_syntax.Nominal.Term.of_plain [%e v ()]]
-        | "map_info" -> [%expr Lvca_syntax.Nominal.Term.map_info ~f [%e v ()]]
-        (* of_nominal / to_nominal *)
-        | _ -> v ())
+        (match fun_defn with
+        | Fun_to_plain -> [%expr Lvca_syntax.Nominal.Term.to_plain [%e v ()]]
+        | Fun_of_plain -> [%expr Lvca_syntax.Nominal.Term.of_plain [%e v ()]]
+        | Fun_map_info -> [%expr Lvca_syntax.Nominal.Term.map_info ~f [%e v ()]]
+        | Fun_of_nominal | Fun_to_nominal | Fun_equal -> v ()
+        | Fun_info -> [%expr Lvca_syntax.Nominal.Term.info [%e v ()]])
       | _ ->
         mk_sort_app
           ~var_names
@@ -681,18 +705,10 @@ module Operator_exp (Context : Builder_context) = struct
                      | With_info ->
                        let v = v () in
                        let info =
-                         match fun_name with
-                         | "of_plain" -> [%expr ()]
-                         | "map_info" -> [%expr f [%e v].info]
-                         | _ ->
-                           Location.Error.(
-                             raise
-                               (make
-                                  ~loc
-                                  ~sub:[]
-                                  (Printf.sprintf
-                                     "Operator_exp: invalid function name: %s"
-                                     fun_name)))
+                         match fun_defn with
+                         | Fun_of_plain -> [%expr ()]
+                         | Fun_map_info -> [%expr f [%e v].info]
+                         | _ -> failwith "Not supported by Operator_exp.mk (With_info)"
                        in
                        [%expr
                          Lvca_syntax.Single_var.{ info = [%e info]; name = [%e v].name }]
@@ -708,16 +724,10 @@ module Operator_exp (Context : Builder_context) = struct
       match has_info with
       | With_info ->
         let expr =
-          match fun_name with
-          | "of_plain" -> [%expr ()]
-          | "map_info" -> [%expr f x0]
-          | _ ->
-            Location.Error.(
-              raise
-                (make
-                   ~loc
-                   ~sub:[]
-                   (Printf.sprintf "Operator_exp: invalid function name: %s" fun_name)))
+          match fun_defn with
+          | Fun_of_plain -> [%expr ()]
+          | Fun_map_info -> [%expr f x0]
+          | _ -> failwith "Not supported by Operator_exp.mk (With_info)"
         in
         expr :: contents
       | Plain -> contents
@@ -751,7 +761,13 @@ module To_plain (Context : Builder_context) = struct
     let f op_def =
       let lhs = Operator_pat.mk ~has_info:With_info op_def in
       let rhs =
-        Operator_exp.mk ~var_names ~prim_names ~has_info:Plain sort_defs "to_plain" op_def
+        Operator_exp.mk
+          ~var_names
+          ~prim_names
+          ~has_info:Plain
+          sort_defs
+          Fun_to_plain
+          op_def
       in
       case ~lhs ~guard ~rhs
     in
@@ -801,7 +817,7 @@ module Of_plain (Context : Builder_context) = struct
           ~prim_names
           ~has_info:With_info
           sort_defs
-          "of_plain"
+          Fun_of_plain
           op_def
       in
       case ~lhs ~guard ~rhs
@@ -855,7 +871,7 @@ module Map_info (Context : Builder_context) = struct
           ~has_info:With_info
           ~extra_args:[ labelled_arg "f" ]
           sort_defs
-          "map_info"
+          Fun_map_info
           op_def
       in
       case ~lhs ~guard ~rhs
@@ -889,7 +905,6 @@ module To_nominal (Context : Builder_context) = struct
   open Ast
   open Helpers (Context)
   module Operator_pat = Operator_pat (Context)
-  module Operator_exp = Operator_exp (Context)
 
   let operator = unflatten [ "Lvca_syntax"; "Nominal"; "Term"; "Operator" ]
 
@@ -991,7 +1006,6 @@ module Of_nominal (Context : Builder_context) = struct
   open Ast
   open Helpers (Context)
   module Operator_pat = Operator_pat (Context)
-  module Operator_exp = Operator_exp (Context)
 
   let operator = unflatten [ "Lvca_syntax"; "Nominal"; "Term"; "Operator" ]
 
@@ -1398,22 +1412,22 @@ module Individual_type_module (Context : Builder_context) = struct
         ]
     in
     let fun_defs =
-      [ "info", "Info"
-      ; "to_plain", "To_plain"
-      ; "of_plain", "Of_plain"
-      ; "map_info", "Map_info"
-      ; "to_nominal", "To_nominal"
-      ; "of_nominal", "Of_nominal"
+      [ Supported_function.Fun_info, "Info"
+      ; Fun_to_plain, "To_plain"
+      ; Fun_of_plain, "Of_plain"
+      ; Fun_map_info, "Map_info"
+      ; Fun_to_nominal, "To_nominal"
+      ; Fun_of_nominal, "Of_nominal"
       ]
-      |> List.map ~f:(fun (fun_name, mod_name) ->
+      |> List.map ~f:(fun (fun_defn, mod_name) ->
              let wrapper_fun =
                pexp_ident { txt = unflatten [ "Wrapper"; mod_name; sort_name ]; loc }
              in
              let expr =
                let labelled_args =
-                 match fun_name with
-                 | "equal" -> [ labelled_arg "info_eq" ]
-                 | "map_info" -> [ labelled_arg "f" ]
+                 match fun_defn with
+                 | Fun_equal -> [ labelled_arg "info_eq" ]
+                 | Fun_map_info -> [ labelled_arg "f" ]
                  | _ -> []
                in
                let tm = pexp_ident { txt = Lident "tm"; loc } in
@@ -1422,12 +1436,12 @@ module Individual_type_module (Context : Builder_context) = struct
              in
              let expr = pexp_fun Nolabel None (ppat_var { txt = "tm"; loc }) expr in
              let expr =
-               match fun_name with
-               | "equal" -> labelled_fun "info_eq" expr
-               | "map_info" -> labelled_fun "f" expr
+               match fun_defn with
+               | Fun_equal -> labelled_fun "info_eq" expr
+               | Fun_map_info -> labelled_fun "f" expr
                | _ -> expr
              in
-             let pat = ppat_var { txt = fun_name; loc } in
+             let pat = ppat_var { txt = Supported_function.name fun_defn; loc } in
              pstr_value Nonrecursive [ value_binding ~pat ~expr ])
     in
     let expr =
