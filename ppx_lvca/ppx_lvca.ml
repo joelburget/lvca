@@ -1,8 +1,6 @@
 open Lvca_syntax
 open Ppxlib
 
-(* TODO: parser, nonbinding / OCaml data mapping *)
-
 let extract_string = Syntax_quoter.extract_string
 let parse p = Lvca_parsing.(parse_string (whitespace *> p))
 
