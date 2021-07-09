@@ -1,18 +1,3 @@
-module All_kernel = struct
-  include Primitive_impl
-
-  let to_nominal (info, x) = Nominal.Term.Primitive (info, x)
-
-  let of_nominal tm =
-    match tm with Nominal.Term.Primitive (info, x) -> Ok (info, x) | _ -> Error tm
-  ;;
-end
-
-module All = struct
-  include All_kernel
-  include Nominal.Convertible.Extend (All_kernel)
-end
-
 module Integer_kernel = struct
   include Primitive_impl.Integer
 
@@ -76,3 +61,20 @@ module String_kernel = struct
 end
 
 module String = Nominal.Convertible.Extend (String_kernel)
+
+module All_kernel = struct
+  include Primitive_impl.All
+
+  let to_nominal (info, x) = Nominal.Term.Primitive (info, x)
+
+  let of_nominal tm =
+    match tm with Nominal.Term.Primitive (info, x) -> Ok (info, x) | _ -> Error tm
+  ;;
+end
+
+module All = struct
+  include Nominal.Convertible.Extend (All_kernel)
+  module Properties = Primitive_impl.All.Properties
+
+  let check = Primitive_impl.All.check
+end

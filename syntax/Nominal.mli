@@ -7,7 +7,7 @@ module Types : sig
   type 'info term =
     | Operator of 'info * string * 'info scope list
     | Var of 'info * string
-    | Primitive of 'info Primitive_impl.t
+    | Primitive of 'info Primitive_impl.All.t
 
   and 'info scope = Scope of 'info Pattern.t list * 'info term
 end
@@ -16,7 +16,7 @@ module Plain : sig
   type term =
     | Operator of string * scope list
     | Var of string
-    | Primitive of Primitive_impl.Plain.t
+    | Primitive of Primitive_impl.All.Plain.t
 
   and scope = Scope of Pattern.Plain.t list * term
 end
@@ -25,13 +25,13 @@ module Term : sig
   type 'info t = 'info Types.term =
     | Operator of 'info * string * 'info Types.scope list
     | Var of 'info * string
-    | Primitive of 'info Primitive_impl.t
+    | Primitive of 'info Primitive_impl.All.t
 
   module Plain : sig
     type t = Plain.term =
       | Operator of string * Plain.scope list
       | Var of string
-      | Primitive of Primitive_impl.Plain.t
+      | Primitive of Primitive_impl.All.Plain.t
   end
 
   val of_plain : Plain.t -> unit t

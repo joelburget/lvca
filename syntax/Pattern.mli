@@ -5,13 +5,13 @@ open Lvca_provenance
 
 type 'info t =
   | Operator of 'info * string * 'info t list
-  | Primitive of 'info Primitive_impl.t
+  | Primitive of 'info Primitive_impl.All.t
   | Var of 'info * string
 
 module Plain : sig
   type t =
     | Operator of string * t list
-    | Primitive of Primitive_impl.Plain.t
+    | Primitive of Primitive_impl.All.Plain.t
     | Var of string
 end
 
