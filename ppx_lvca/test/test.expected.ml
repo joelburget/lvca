@@ -724,10 +724,33 @@ module Lang =
               Wrapper.Plain.foo) 
               | Foo_var of string 
             let (=) x y =
-              let x = to_nominal x in
-              let y = to_nominal y in
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
               let open Lvca_syntax.Nominal.Term in
                 equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
           end
       end
     module Nat =
@@ -747,10 +770,33 @@ module Lang =
               | Z 
               | S of Wrapper.Plain.nat 
             let (=) x y =
-              let x = to_nominal x in
-              let y = to_nominal y in
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
               let open Lvca_syntax.Nominal.Term in
                 equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
           end
       end
     module Pair =
@@ -777,10 +823,33 @@ module Lang =
             type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair =
               | Pair of 'a * 'b 
             let (=) x y =
-              let x = to_nominal x in
-              let y = to_nominal y in
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
               let open Lvca_syntax.Nominal.Term in
                 equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
           end
       end
     module Pair_plus =
@@ -809,10 +878,33 @@ module Lang =
             type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair_plus =
               | PairPlus of 'a * 'b * Wrapper.Plain.foo 
             let (=) x y =
-              let x = to_nominal x in
-              let y = to_nominal y in
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
               let open Lvca_syntax.Nominal.Term in
                 equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
           end
       end
     module Nonempty =
@@ -832,10 +924,33 @@ module Lang =
               | Nonempty of Lvca_syntax.Nominal.Plain.term *
               Lvca_syntax.Nominal.Plain.term 
             let (=) x y =
-              let x = to_nominal x in
-              let y = to_nominal y in
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
               let open Lvca_syntax.Nominal.Term in
                 equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
           end
       end
     module Term =
@@ -853,10 +968,33 @@ module Lang =
             type t = Wrapper.Plain.term =
               | Operator of Lvca_syntax.Nominal.Plain.term 
             let (=) x y =
-              let x = to_nominal x in
-              let y = to_nominal y in
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
               let open Lvca_syntax.Nominal.Term in
                 equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
           end
       end
     module Mut_a =
@@ -874,10 +1012,33 @@ module Lang =
             type t = Wrapper.Plain.mut_a =
               | Mut_a of Wrapper.Plain.mut_b 
             let (=) x y =
-              let x = to_nominal x in
-              let y = to_nominal y in
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
               let open Lvca_syntax.Nominal.Term in
                 equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
           end
       end
     module Mut_b =
@@ -895,10 +1056,33 @@ module Lang =
             type t = Wrapper.Plain.mut_b =
               | Mut_b of Wrapper.Plain.mut_a 
             let (=) x y =
-              let x = to_nominal x in
-              let y = to_nominal y in
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
               let open Lvca_syntax.Nominal.Term in
                 equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
           end
       end
     module Ifz =
@@ -921,10 +1105,33 @@ module Lang =
               Wrapper.Plain.ifz) * Wrapper.Plain.ifz 
               | Ifz_var of string 
             let (=) x y =
-              let x = to_nominal x in
-              let y = to_nominal y in
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
               let open Lvca_syntax.Nominal.Term in
                 equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
           end
       end
   end

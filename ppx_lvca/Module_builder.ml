@@ -1492,9 +1492,36 @@ module Individual_type_module (Context : Builder_context) = struct
           [%%i plain_type_decl]
 
           let ( = ) x y =
-            let x = to_nominal x in
-            let y = to_nominal y in
+            let x = x |> of_plain |> to_nominal in
+            let y = y |> of_plain |> to_nominal in
             Lvca_syntax.Nominal.Term.(equal ~info_eq:Base.Unit.( = ) (erase x) (erase y))
+          ;;
+
+          let jsonify tm =
+            tm |> of_plain |> to_nominal |> Lvca_syntax.Nominal.Term.jsonify
+          ;;
+
+          let unjsonify json =
+            json
+            |> Lvca_syntax.Nominal.Term.unjsonify
+            |> Base.Option.bind ~f:(fun tm ->
+                   match of_nominal tm with
+                   | Ok tm -> Some (to_plain tm)
+                   | Error _ -> None)
+          ;;
+
+          let pp ppf tm = tm |> of_plain |> to_nominal |> Lvca_syntax.Nominal.Term.pp ppf
+
+          let parse =
+            let parse_prim =
+              Lvca_parsing.fail "Generated parser parse_prim always fails"
+            in
+            Lvca_parsing.(
+              Lvca_syntax.Nominal.Term.parse ~parse_prim
+              >>= fun tm ->
+              match of_nominal tm with
+              | Ok tm -> return (to_plain tm)
+              | Error _ -> fail "Generated parser failed nominal conversion")
           ;;
         end]
     in
