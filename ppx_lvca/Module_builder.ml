@@ -1494,11 +1494,19 @@ module Individual_type_module (Context : Builder_context) = struct
              let pat = ppat_var { txt = Supported_function.name fun_defn; loc } in
              pstr_value Nonrecursive [ value_binding ~pat ~expr ])
     in
-    let expr =
-      pmod_structure
-        (info_type_decl
-         :: [%stri module Plain = [%m pmod_structure [ plain_type_decl ]]] :: fun_defs)
+    let plain_mod =
+      [%stri
+        module Plain = struct
+          [%%i plain_type_decl]
+
+          let ( = ) x y =
+            let x = to_nominal x in
+            let y = to_nominal y in
+            Lvca_syntax.Nominal.Term.(equal ~info_eq:Base.Unit.( = ) (erase x) (erase y))
+          ;;
+        end]
     in
+    let expr = pmod_structure (info_type_decl :: fun_defs @ [ plain_mod ]) in
     module_binding ~name:{ txt = Some (module_name sort_name); loc } ~expr |> pstr_module
   ;;
 end
@@ -1511,7 +1519,7 @@ module Container_module (Context : Builder_context) = struct
   module Wrapper_module = Wrapper_module (Context)
   module Individual_type_module = Individual_type_module (Context)
 
-  let mk Syn.{ externals; sort_defs } =
+  let mk (Syn.{ externals; sort_defs } as lang) =
     let prim_names = externals |> List.map ~f:fst |> SSet.of_list in
     let sort_def_map = SMap.of_alist_exn sort_defs in
     let sort_dep_map = get_sort_ref_info sort_defs in
@@ -1540,16 +1548,12 @@ module Container_module (Context : Builder_context) = struct
             sort_name
             sort_def)
     in
-    (* TODO: include language?
-  let sort_defs =
-    [%str let language = [%e Syntax_quoter.mk_language ~loc lang]] @ sort_defs
-  in
-  *)
     let expr =
       pmod_structure
         ([ wrapper_module
          ; [%stri module Types = Wrapper.Types]
          ; [%stri module Plain = Wrapper.Plain]
+         ; [%stri let language = [%e Syntax_quoter.Exp.language ~loc lang]]
          ]
         @ type_modules)
     in

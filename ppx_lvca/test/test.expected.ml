@@ -24,7 +24,8 @@ let test_nonbinding =
               ((Some
                   ((let open Lvca_provenance.Range in
                       { start = 8; finish = 9 }))),
-                (Lvca_syntax.Primitive_impl.Plain.Integer (Z.of_string "1")))])])
+                (Lvca_syntax.Primitive_impl.All_plain.Integer
+                   (Z.of_string "1")))])])
 let test_pattern =
   Lvca_syntax.Pattern.Operator
     ((Some (let open Lvca_provenance.Range in { start = 0; finish = 6 })),
@@ -482,6 +483,226 @@ module Lang =
       end
     module Types = Wrapper.Types
     module Plain = Wrapper.Plain
+    let language =
+      let open Lvca_syntax.Abstract_syntax in
+        {
+          externals =
+            [("integer",
+               (Lvca_syntax.Abstract_syntax.Kind.Kind
+                  ((Some
+                      ((let open Lvca_provenance.Range in
+                          { start = 11; finish = 12 }))), 1)));
+            ("string",
+              (Lvca_syntax.Abstract_syntax.Kind.Kind
+                 ((Some
+                     ((let open Lvca_provenance.Range in
+                         { start = 22; finish = 23 }))), 1)));
+            ("maybe",
+              (Lvca_syntax.Abstract_syntax.Kind.Kind
+                 ((Some
+                     ((let open Lvca_provenance.Range in
+                         { start = 32; finish = 38 }))), 2)));
+            ("list",
+              (Lvca_syntax.Abstract_syntax.Kind.Kind
+                 ((Some
+                     ((let open Lvca_provenance.Range in
+                         { start = 46; finish = 52 }))), 2)))];
+          sort_defs =
+            [("foo",
+               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                  ([],
+                    [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                       ("Foo",
+                         [Lvca_syntax.Abstract_syntax.Valence.Valence
+                            ([],
+                              (Lvca_syntax.Sort.Name
+                                 ((Some
+                                     ((let open Lvca_provenance.Range in
+                                         { start = 69; finish = 76 }))),
+                                   "integer")))]);
+                    Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("Bar",
+                        [Lvca_syntax.Abstract_syntax.Valence.Valence
+                           ([Lvca_syntax.Abstract_syntax.Sort_slot.Sort_pattern
+                               {
+                                 pattern_sort =
+                                   (Lvca_syntax.Sort.Name
+                                      ((Some
+                                          ((let open Lvca_provenance.Range in
+                                              { start = 86; finish = 89 }))),
+                                        "foo"));
+                                 var_sort =
+                                   (Lvca_syntax.Sort.Name
+                                      ((Some
+                                          ((let open Lvca_provenance.Range in
+                                              { start = 90; finish = 93 }))),
+                                        "foo"))
+                               };
+                            Lvca_syntax.Abstract_syntax.Sort_slot.Sort_binding
+                              (Lvca_syntax.Sort.Name
+                                 ((Some
+                                     ((let open Lvca_provenance.Range in
+                                         { start = 96; finish = 99 }))),
+                                   "foo"))],
+                             (Lvca_syntax.Sort.Name
+                                ((Some
+                                    ((let open Lvca_provenance.Range in
+                                        { start = 101; finish = 104 }))),
+                                  "foo")))])])));
+            ("nat",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("Z", []);
+                   Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                     ("S",
+                       [Lvca_syntax.Abstract_syntax.Valence.Valence
+                          ([],
+                            (Lvca_syntax.Sort.Name
+                               ((Some
+                                   ((let open Lvca_provenance.Range in
+                                       { start = 122; finish = 125 }))),
+                                 "nat")))])])));
+            ("pair",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([("a", None); ("b", None)],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("Pair",
+                        [Lvca_syntax.Abstract_syntax.Valence.Valence
+                           ([],
+                             (Lvca_syntax.Sort.Name
+                                ((Some
+                                    ((let open Lvca_provenance.Range in
+                                        { start = 145; finish = 146 }))),
+                                  "a")));
+                        Lvca_syntax.Abstract_syntax.Valence.Valence
+                          ([],
+                            (Lvca_syntax.Sort.Name
+                               ((Some
+                                   ((let open Lvca_provenance.Range in
+                                       { start = 148; finish = 149 }))), "b")))])])));
+            ("pair_plus",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([("a", None); ("b", None)],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("PairPlus",
+                        [Lvca_syntax.Abstract_syntax.Valence.Valence
+                           ([],
+                             (Lvca_syntax.Sort.Name
+                                ((Some
+                                    ((let open Lvca_provenance.Range in
+                                        { start = 177; finish = 178 }))),
+                                  "a")));
+                        Lvca_syntax.Abstract_syntax.Valence.Valence
+                          ([],
+                            (Lvca_syntax.Sort.Name
+                               ((Some
+                                   ((let open Lvca_provenance.Range in
+                                       { start = 180; finish = 181 }))), "b")));
+                        Lvca_syntax.Abstract_syntax.Valence.Valence
+                          ([],
+                            (Lvca_syntax.Sort.Name
+                               ((Some
+                                   ((let open Lvca_provenance.Range in
+                                       { start = 183; finish = 186 }))),
+                                 "foo")))])])));
+            ("nonempty",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("Nonempty",
+                        [Lvca_syntax.Abstract_syntax.Valence.Valence
+                           ([],
+                             (Lvca_syntax.Sort.Name
+                                ((Some
+                                    ((let open Lvca_provenance.Range in
+                                        { start = 210; finish = 216 }))),
+                                  "string")));
+                        Lvca_syntax.Abstract_syntax.Valence.Valence
+                          ([],
+                            (Lvca_syntax.Sort.Ap
+                               ((Some
+                                   ((let open Lvca_provenance.Range in
+                                       { start = 218; finish = 229 }))),
+                                 "list",
+                                 [Lvca_syntax.Sort.Name
+                                    ((Some
+                                        ((let open Lvca_provenance.Range in
+                                            { start = 223; finish = 229 }))),
+                                      "string")])))])])));
+            ("term",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("Operator",
+                        [Lvca_syntax.Abstract_syntax.Valence.Valence
+                           ([],
+                             (Lvca_syntax.Sort.Ap
+                                ((Some
+                                    ((let open Lvca_provenance.Range in
+                                        { start = 249; finish = 258 }))),
+                                  "list",
+                                  [Lvca_syntax.Sort.Name
+                                     ((Some
+                                         ((let open Lvca_provenance.Range in
+                                             { start = 254; finish = 258 }))),
+                                       "term")])))])])));
+            ("mut_a",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("Mut_a",
+                        [Lvca_syntax.Abstract_syntax.Valence.Valence
+                           ([],
+                             (Lvca_syntax.Sort.Name
+                                ((Some
+                                    ((let open Lvca_provenance.Range in
+                                        { start = 276; finish = 281 }))),
+                                  "mut_b")))])])));
+            ("mut_b",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("Mut_b",
+                        [Lvca_syntax.Abstract_syntax.Valence.Valence
+                           ([],
+                             (Lvca_syntax.Sort.Name
+                                ((Some
+                                    ((let open Lvca_provenance.Range in
+                                        { start = 298; finish = 303 }))),
+                                  "mut_a")))])])));
+            ("ifz",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("Ifz",
+                        [Lvca_syntax.Abstract_syntax.Valence.Valence
+                           ([],
+                             (Lvca_syntax.Sort.Name
+                                ((Some
+                                    ((let open Lvca_provenance.Range in
+                                        { start = 316; finish = 319 }))),
+                                  "ifz")));
+                        Lvca_syntax.Abstract_syntax.Valence.Valence
+                          ([Lvca_syntax.Abstract_syntax.Sort_slot.Sort_binding
+                              (Lvca_syntax.Sort.Name
+                                 ((Some
+                                     ((let open Lvca_provenance.Range in
+                                         { start = 321; finish = 324 }))),
+                                   "ifz"))],
+                            (Lvca_syntax.Sort.Name
+                               ((Some
+                                   ((let open Lvca_provenance.Range in
+                                       { start = 326; finish = 329 }))),
+                                 "ifz")));
+                        Lvca_syntax.Abstract_syntax.Valence.Valence
+                          ([],
+                            (Lvca_syntax.Sort.Name
+                               ((Some
+                                   ((let open Lvca_provenance.Range in
+                                       { start = 331; finish = 334 }))),
+                                 "ifz")))])])))]
+        }
     module Foo =
       struct
         type 'info t = 'info Wrapper.Types.foo =
@@ -489,6 +710,12 @@ module Lang =
           | Bar of 'info * ('info Pattern.t * 'info Lvca_syntax.Single_var.t
           * 'info Wrapper.Types.foo) 
           | Foo_var of 'info * string 
+        let info tm = Wrapper.Info.foo tm
+        let to_plain tm = Wrapper.To_plain.foo tm
+        let of_plain tm = Wrapper.Of_plain.foo tm
+        let map_info ~f  tm = Wrapper.Map_info.foo ~f tm
+        let to_nominal tm = Wrapper.To_nominal.foo tm
+        let of_nominal tm = Wrapper.Of_nominal.foo tm
         module Plain =
           struct
             type t = Wrapper.Plain.foo =
@@ -496,129 +723,163 @@ module Lang =
               | Bar of (Pattern.Plain.t * Lvca_syntax.Single_var.Plain.t *
               Wrapper.Plain.foo) 
               | Foo_var of string 
+            let (=) x y =
+              let x = to_nominal x in
+              let y = to_nominal y in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
           end
-        let info tm = Wrapper.Info.foo tm
-        let to_plain tm = Wrapper.To_plain.foo tm
-        let of_plain tm = Wrapper.Of_plain.foo tm
-        let map_info ~f  tm = Wrapper.Map_info.foo ~f tm
-        let to_nominal tm = Wrapper.To_nominal.foo tm
-        let of_nominal tm = Wrapper.Of_nominal.foo tm
       end
     module Nat =
       struct
         type 'info t = 'info Wrapper.Types.nat =
           | Z of 'info 
           | S of 'info * 'info Wrapper.Types.nat 
-        module Plain =
-          struct
-            type t = Wrapper.Plain.nat =
-              | Z 
-              | S of Wrapper.Plain.nat 
-          end
         let info tm = Wrapper.Info.nat tm
         let to_plain tm = Wrapper.To_plain.nat tm
         let of_plain tm = Wrapper.Of_plain.nat tm
         let map_info ~f  tm = Wrapper.Map_info.nat ~f tm
         let to_nominal tm = Wrapper.To_nominal.nat tm
         let of_nominal tm = Wrapper.Of_nominal.nat tm
+        module Plain =
+          struct
+            type t = Wrapper.Plain.nat =
+              | Z 
+              | S of Wrapper.Plain.nat 
+            let (=) x y =
+              let x = to_nominal x in
+              let y = to_nominal y in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+          end
       end
     module Pair =
       struct
         type ('info, 'a, 'b) t = ('info, 'a, 'b) Wrapper.Types.pair =
           | Pair of 'info * 'a * 'b 
-        module Plain =
-          struct
-            type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair =
-              | Pair of 'a * 'b 
-          end
         let info tm = Wrapper.Info.pair tm
         let to_plain tm = Wrapper.To_plain.pair tm
         let of_plain tm = Wrapper.Of_plain.pair tm
         let map_info ~f  tm = Wrapper.Map_info.pair ~f tm
         let to_nominal tm = Wrapper.To_nominal.pair tm
         let of_nominal tm = Wrapper.Of_nominal.pair tm
+        module Plain =
+          struct
+            type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair =
+              | Pair of 'a * 'b 
+            let (=) x y =
+              let x = to_nominal x in
+              let y = to_nominal y in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+          end
       end
     module Pair_plus =
       struct
         type ('info, 'a, 'b) t = ('info, 'a, 'b) Wrapper.Types.pair_plus =
           | PairPlus of 'info * 'a * 'b * 'info Wrapper.Types.foo 
-        module Plain =
-          struct
-            type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair_plus =
-              | PairPlus of 'a * 'b * Wrapper.Plain.foo 
-          end
         let info tm = Wrapper.Info.pair_plus tm
         let to_plain tm = Wrapper.To_plain.pair_plus tm
         let of_plain tm = Wrapper.Of_plain.pair_plus tm
         let map_info ~f  tm = Wrapper.Map_info.pair_plus ~f tm
         let to_nominal tm = Wrapper.To_nominal.pair_plus tm
         let of_nominal tm = Wrapper.Of_nominal.pair_plus tm
+        module Plain =
+          struct
+            type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair_plus =
+              | PairPlus of 'a * 'b * Wrapper.Plain.foo 
+            let (=) x y =
+              let x = to_nominal x in
+              let y = to_nominal y in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+          end
       end
     module Nonempty =
       struct
         type 'info t = 'info Wrapper.Types.nonempty =
           | Nonempty of 'info * 'info Lvca_syntax.Nominal.Types.term * 'info
           Lvca_syntax.Nominal.Types.term 
-        module Plain =
-          struct
-            type t = Wrapper.Plain.nonempty =
-              | Nonempty of Lvca_syntax.Nominal.Plain.term *
-              Lvca_syntax.Nominal.Plain.term 
-          end
         let info tm = Wrapper.Info.nonempty tm
         let to_plain tm = Wrapper.To_plain.nonempty tm
         let of_plain tm = Wrapper.Of_plain.nonempty tm
         let map_info ~f  tm = Wrapper.Map_info.nonempty ~f tm
         let to_nominal tm = Wrapper.To_nominal.nonempty tm
         let of_nominal tm = Wrapper.Of_nominal.nonempty tm
+        module Plain =
+          struct
+            type t = Wrapper.Plain.nonempty =
+              | Nonempty of Lvca_syntax.Nominal.Plain.term *
+              Lvca_syntax.Nominal.Plain.term 
+            let (=) x y =
+              let x = to_nominal x in
+              let y = to_nominal y in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+          end
       end
     module Term =
       struct
         type 'info t = 'info Wrapper.Types.term =
           | Operator of 'info * 'info Lvca_syntax.Nominal.Types.term 
-        module Plain =
-          struct
-            type t = Wrapper.Plain.term =
-              | Operator of Lvca_syntax.Nominal.Plain.term 
-          end
         let info tm = Wrapper.Info.term tm
         let to_plain tm = Wrapper.To_plain.term tm
         let of_plain tm = Wrapper.Of_plain.term tm
         let map_info ~f  tm = Wrapper.Map_info.term ~f tm
         let to_nominal tm = Wrapper.To_nominal.term tm
         let of_nominal tm = Wrapper.Of_nominal.term tm
+        module Plain =
+          struct
+            type t = Wrapper.Plain.term =
+              | Operator of Lvca_syntax.Nominal.Plain.term 
+            let (=) x y =
+              let x = to_nominal x in
+              let y = to_nominal y in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+          end
       end
     module Mut_a =
       struct
         type 'info t = 'info Wrapper.Types.mut_a =
           | Mut_a of 'info * 'info Wrapper.Types.mut_b 
-        module Plain =
-          struct
-            type t = Wrapper.Plain.mut_a =
-              | Mut_a of Wrapper.Plain.mut_b 
-          end
         let info tm = Wrapper.Info.mut_a tm
         let to_plain tm = Wrapper.To_plain.mut_a tm
         let of_plain tm = Wrapper.Of_plain.mut_a tm
         let map_info ~f  tm = Wrapper.Map_info.mut_a ~f tm
         let to_nominal tm = Wrapper.To_nominal.mut_a tm
         let of_nominal tm = Wrapper.Of_nominal.mut_a tm
+        module Plain =
+          struct
+            type t = Wrapper.Plain.mut_a =
+              | Mut_a of Wrapper.Plain.mut_b 
+            let (=) x y =
+              let x = to_nominal x in
+              let y = to_nominal y in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+          end
       end
     module Mut_b =
       struct
         type 'info t = 'info Wrapper.Types.mut_b =
           | Mut_b of 'info * 'info Wrapper.Types.mut_a 
-        module Plain =
-          struct
-            type t = Wrapper.Plain.mut_b =
-              | Mut_b of Wrapper.Plain.mut_a 
-          end
         let info tm = Wrapper.Info.mut_b tm
         let to_plain tm = Wrapper.To_plain.mut_b tm
         let of_plain tm = Wrapper.Of_plain.mut_b tm
         let map_info ~f  tm = Wrapper.Map_info.mut_b ~f tm
         let to_nominal tm = Wrapper.To_nominal.mut_b tm
         let of_nominal tm = Wrapper.Of_nominal.mut_b tm
+        module Plain =
+          struct
+            type t = Wrapper.Plain.mut_b =
+              | Mut_b of Wrapper.Plain.mut_a 
+            let (=) x y =
+              let x = to_nominal x in
+              let y = to_nominal y in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+          end
       end
     module Ifz =
       struct
@@ -627,18 +888,23 @@ module Lang =
           Lvca_syntax.Single_var.t * 'info Wrapper.Types.ifz) * 'info
           Wrapper.Types.ifz 
           | Ifz_var of 'info * string 
-        module Plain =
-          struct
-            type t = Wrapper.Plain.ifz =
-              | Ifz of Wrapper.Plain.ifz * (Lvca_syntax.Single_var.Plain.t *
-              Wrapper.Plain.ifz) * Wrapper.Plain.ifz 
-              | Ifz_var of string 
-          end
         let info tm = Wrapper.Info.ifz tm
         let to_plain tm = Wrapper.To_plain.ifz tm
         let of_plain tm = Wrapper.Of_plain.ifz tm
         let map_info ~f  tm = Wrapper.Map_info.ifz ~f tm
         let to_nominal tm = Wrapper.To_nominal.ifz tm
         let of_nominal tm = Wrapper.Of_nominal.ifz tm
+        module Plain =
+          struct
+            type t = Wrapper.Plain.ifz =
+              | Ifz of Wrapper.Plain.ifz * (Lvca_syntax.Single_var.Plain.t *
+              Wrapper.Plain.ifz) * Wrapper.Plain.ifz 
+              | Ifz_var of string 
+            let (=) x y =
+              let x = to_nominal x in
+              let y = to_nominal y in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+          end
       end
   end
