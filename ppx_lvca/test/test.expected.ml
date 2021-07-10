@@ -757,12 +757,21 @@ module Lang =
       struct
         type ('info, 'a, 'b) t = ('info, 'a, 'b) Wrapper.Types.pair =
           | Pair of 'info * 'a * 'b 
-        let info tm = Wrapper.Info.pair tm
-        let to_plain tm = Wrapper.To_plain.pair tm
-        let of_plain tm = Wrapper.Of_plain.pair tm
-        let map_info ~f  tm = Wrapper.Map_info.pair ~f tm
-        let to_nominal tm = Wrapper.To_nominal.pair tm
-        let of_nominal tm = Wrapper.Of_nominal.pair tm
+        let info tm =
+          Wrapper.Info.pair Lvca_syntax.Nominal.Term.info
+            Lvca_syntax.Nominal.Term.info tm
+        let to_plain tm =
+          Wrapper.To_plain.pair Lvca_syntax.Nominal.Term.to_plain
+            Lvca_syntax.Nominal.Term.to_plain tm
+        let of_plain tm =
+          Wrapper.Of_plain.pair Lvca_syntax.Nominal.Term.of_plain
+            Lvca_syntax.Nominal.Term.of_plain tm
+        let map_info ~f  tm =
+          Wrapper.Map_info.pair ~f Lvca_syntax.Nominal.Term.map_info
+            Lvca_syntax.Nominal.Term.map_info tm
+        let to_nominal tm = Wrapper.To_nominal.pair Base.Fn.id Base.Fn.id tm
+        let of_nominal tm =
+          Wrapper.Of_nominal.pair Base.Result.return Base.Result.return tm
         module Plain =
           struct
             type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair =
@@ -778,12 +787,23 @@ module Lang =
       struct
         type ('info, 'a, 'b) t = ('info, 'a, 'b) Wrapper.Types.pair_plus =
           | PairPlus of 'info * 'a * 'b * 'info Wrapper.Types.foo 
-        let info tm = Wrapper.Info.pair_plus tm
-        let to_plain tm = Wrapper.To_plain.pair_plus tm
-        let of_plain tm = Wrapper.Of_plain.pair_plus tm
-        let map_info ~f  tm = Wrapper.Map_info.pair_plus ~f tm
-        let to_nominal tm = Wrapper.To_nominal.pair_plus tm
-        let of_nominal tm = Wrapper.Of_nominal.pair_plus tm
+        let info tm =
+          Wrapper.Info.pair_plus Lvca_syntax.Nominal.Term.info
+            Lvca_syntax.Nominal.Term.info tm
+        let to_plain tm =
+          Wrapper.To_plain.pair_plus Lvca_syntax.Nominal.Term.to_plain
+            Lvca_syntax.Nominal.Term.to_plain tm
+        let of_plain tm =
+          Wrapper.Of_plain.pair_plus Lvca_syntax.Nominal.Term.of_plain
+            Lvca_syntax.Nominal.Term.of_plain tm
+        let map_info ~f  tm =
+          Wrapper.Map_info.pair_plus ~f Lvca_syntax.Nominal.Term.map_info
+            Lvca_syntax.Nominal.Term.map_info tm
+        let to_nominal tm =
+          Wrapper.To_nominal.pair_plus Base.Fn.id Base.Fn.id tm
+        let of_nominal tm =
+          Wrapper.Of_nominal.pair_plus Base.Result.return Base.Result.return
+            tm
         module Plain =
           struct
             type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair_plus =

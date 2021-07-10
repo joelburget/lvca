@@ -1447,6 +1447,7 @@ module Individual_type_module (Context : Builder_context) = struct
       ; Fun_of_nominal
       ]
       |> List.map ~f:(fun fun_defn ->
+             let fun_name = Supported_function.fun_name fun_defn in
              let wrapper_fun =
                pexp_ident
                  { txt =
@@ -1455,6 +1456,14 @@ module Individual_type_module (Context : Builder_context) = struct
                  ; loc
                  }
              in
+             let nominal_fun =
+               match fun_defn with
+               | Fun_of_nominal -> [%expr Base.Result.return]
+               | Fun_to_nominal -> [%expr Base.Fn.id]
+               | _ ->
+                 pexp_ident
+                   { txt = unflatten [ "Lvca_syntax"; "Nominal"; "Term"; fun_name ]; loc }
+             in
              let expr =
                let labelled_args =
                  match fun_defn with
@@ -1462,8 +1471,9 @@ module Individual_type_module (Context : Builder_context) = struct
                  | Fun_map_info -> [ labelled_arg "f" ]
                  | _ -> []
                in
+               let var_args = List.map vars ~f:(fun _ -> Nolabel, nominal_fun) in
                let tm = pexp_ident { txt = Lident "tm"; loc } in
-               let args = labelled_args @ [ Nolabel, tm ] in
+               let args = labelled_args @ var_args @ [ Nolabel, tm ] in
                pexp_apply wrapper_fun args
              in
              let expr = pexp_fun Nolabel None (ppat_var { txt = "tm"; loc }) expr in
@@ -1473,7 +1483,7 @@ module Individual_type_module (Context : Builder_context) = struct
                | Fun_map_info -> labelled_fun "f" expr
                | _ -> expr
              in
-             let pat = ppat_var { txt = Supported_function.fun_name fun_defn; loc } in
+             let pat = ppat_var { txt = fun_name; loc } in
              pstr_value Nonrecursive [ value_binding ~pat ~expr ])
     in
     let plain_mod =
