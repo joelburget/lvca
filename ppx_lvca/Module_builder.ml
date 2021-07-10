@@ -30,7 +30,7 @@ module Supported_function = struct
     | Fun_equal
     | Fun_info
 
-  let name = function
+  let fun_name = function
     | Fun_of_nominal -> "of_nominal"
     | Fun_to_nominal -> "to_nominal"
     | Fun_map_info -> "map_info"
@@ -39,6 +39,8 @@ module Supported_function = struct
     | Fun_equal -> "equal"
     | Fun_info -> "info"
   ;;
+
+  let mod_name = String.capitalize << fun_name
 end
 
 type type_decl_context =
@@ -423,29 +425,13 @@ module Helpers (Context : Builder_context) = struct
       Three cases:
 
       - the sort is a variable (eg [a] in [list a]): We build an expression like
-        [a ~extra_args].
+        [a ~args].
       - otherwise the sort is an external or defined in this language: We build an
-        expression like [foo ~extra_args] or [list (a ~extra_args) ~extra_args] . *)
-  let rec mk_sort_app
-      ~var_names (* Set of variable names bound by the sort being applied *)
-      ~sort_defs
-      ~extra_args
-      ~prim_names
-      sort
-    =
-    let context = { info = With_info; var_names; mutual_sorts = sort_defs; prim_names } in
-    let sort_name, sort_args = Sort.split sort in
-    let var_args =
-      match classify_sort context sort with
-      | Mutual_sort | Predefined_sort _ ->
-        List.map sort_args ~f:(fun sort ->
-            Nolabel, mk_sort_app ~var_names ~sort_defs ~extra_args ~prim_names sort)
-      | External_sort -> []
-      | Variable -> []
-    in
+        expression like [foo ~args] or [list (a ~args) ~args] . *)
+  let mk_sort_app ~args sort =
     pexp_apply
-      (pexp_ident { txt = Lident sort_name; loc = update_loc (Sort.info sort) })
-      (var_args @ extra_args)
+      (pexp_ident { txt = Lident (sort_head sort); loc = update_loc (Sort.info sort) })
+      args
   ;;
 
   let labelled_fun name = pexp_fun (Labelled name) None (ppat_var { txt = name; loc })
@@ -687,7 +673,7 @@ module Operator_exp (Context : Builder_context) = struct
       ~has_info (* Building a plain or with-info data type *)
       ~var_names
       ~prim_names
-      ?(extra_args = [])
+      ?(args = [])
       ?(name_base = "x")
       sort_defs (* Sorts being defined together *)
       fun_defn (* The name of the function being defined *)
@@ -696,7 +682,8 @@ module Operator_exp (Context : Builder_context) = struct
     let v = evar_allocator name_base in
     let pattern_converter =
       pexp_ident
-        { txt = unflatten [ "Lvca_syntax"; "Pattern"; Supported_function.name fun_defn ]
+        { txt =
+            unflatten [ "Lvca_syntax"; "Pattern"; Supported_function.fun_name fun_defn ]
         ; loc
         }
     in
@@ -713,13 +700,7 @@ module Operator_exp (Context : Builder_context) = struct
         | Fun_map_info -> [%expr Lvca_syntax.Nominal.Term.map_info ~f [%e v ()]]
         | Fun_of_nominal | Fun_to_nominal | Fun_equal -> v ()
         | Fun_info -> [%expr Lvca_syntax.Nominal.Term.info [%e v ()]])
-      | _ ->
-        mk_sort_app
-          ~var_names
-          ~sort_defs
-          ~extra_args:(extra_args @ [ Nolabel, v () ])
-          ~prim_names
-          sort
+      | _ -> mk_sort_app ~args:(args @ [ Nolabel, v () ]) sort
     in
     let contents =
       arity
@@ -741,7 +722,7 @@ module Operator_exp (Context : Builder_context) = struct
                      | Plain ->
                        [%expr Lvca_syntax.Single_var.Plain.{ name = [%e v ()].name }])
                    | Sort_pattern _ ->
-                     pexp_apply pattern_converter (extra_args @ [ Nolabel, v () ]))
+                     pexp_apply pattern_converter (args @ [ Nolabel, v () ]))
              in
              slots_args @ [ body_arg body_sort ])
       |> List.map ~f:mk_exp_tuple
@@ -895,7 +876,7 @@ module Map_info (Context : Builder_context) = struct
           ~var_names
           ~prim_names
           ~has_info:With_info
-          ~extra_args:[ labelled_arg "f" ]
+          ~args:[ labelled_arg "f" ]
           sort_defs
           Fun_map_info
           op_def
@@ -973,8 +954,7 @@ module To_nominal (Context : Builder_context) = struct
           sort
       with
       | External_sort -> v ()
-      | _ ->
-        mk_sort_app ~var_names ~sort_defs ~extra_args:[ Nolabel, v () ] ~prim_names sort
+      | _ -> mk_sort_app ~args:[ Nolabel, v () ] sort
     in
     let mk_scope (Syn.Valence.Valence (slots, body_sort)) =
       let args =
@@ -987,7 +967,7 @@ module To_nominal (Context : Builder_context) = struct
       in
       [%expr Lvca_syntax.Nominal.Scope.Scope ([%e args], [%e body_arg body_sort])]
     in
-    let children = List.map arity ~f:mk_scope |> Syntax_quoter.Exp.list ~loc in
+    let children = arity |> List.map ~f:mk_scope |> Syntax_quoter.Exp.list ~loc in
     let body = mk_exp_tuple' [ info; estring op_name; children ] in
     pexp_construct { txt = operator; loc } body
   ;;
@@ -1105,9 +1085,7 @@ module Of_nominal (Context : Builder_context) = struct
           sort
       with
       | External_sort -> None
-      | _ ->
-        Some
-          (mk_sort_app ~var_names ~sort_defs ~extra_args:[ Nolabel, ev ] ~prim_names sort)
+      | _ -> Some (mk_sort_app ~args:[ Nolabel, ev ] sort)
     in
     let contents =
       arity
@@ -1193,8 +1171,7 @@ module Equal (Context : Builder_context) = struct
   open Helpers (Context)
   module Operator_pat = Operator_pat (Context)
 
-  let mk ~prim_names sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
-    let var_names = vars |> List.map ~f:fst |> SSet.of_list in
+  let mk _sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
     let f (Syn.Operator_def.Operator_def (_op_name, arity) as op_def) =
       let lhs =
         let p1, p2 =
@@ -1228,8 +1205,8 @@ module Equal (Context : Builder_context) = struct
                  let body_check =
                    Int.incr var_ix;
                    let x, y = mk_xy () in
-                   let extra_args = [ labelled_arg "info_eq"; Nolabel, x; Nolabel, y ] in
-                   mk_sort_app ~var_names ~sort_defs ~extra_args ~prim_names body_sort
+                   let args = [ labelled_arg "info_eq"; Nolabel, x; Nolabel, y ] in
+                   mk_sort_app ~args body_sort
                  in
                  slots_checks @ [ body_check ])
           |> List.join
@@ -1462,16 +1439,21 @@ module Individual_type_module (Context : Builder_context) = struct
         ]
     in
     let fun_defs =
-      [ Supported_function.Fun_info, "Info"
-      ; Fun_to_plain, "To_plain"
-      ; Fun_of_plain, "Of_plain"
-      ; Fun_map_info, "Map_info"
-      ; Fun_to_nominal, "To_nominal"
-      ; Fun_of_nominal, "Of_nominal"
+      [ Supported_function.Fun_info
+      ; Fun_to_plain
+      ; Fun_of_plain
+      ; Fun_map_info
+      ; Fun_to_nominal
+      ; Fun_of_nominal
       ]
-      |> List.map ~f:(fun (fun_defn, mod_name) ->
+      |> List.map ~f:(fun fun_defn ->
              let wrapper_fun =
-               pexp_ident { txt = unflatten [ "Wrapper"; mod_name; sort_name ]; loc }
+               pexp_ident
+                 { txt =
+                     unflatten
+                       [ "Wrapper"; Supported_function.mod_name fun_defn; sort_name ]
+                 ; loc
+                 }
              in
              let expr =
                let labelled_args =
@@ -1491,7 +1473,7 @@ module Individual_type_module (Context : Builder_context) = struct
                | Fun_map_info -> labelled_fun "f" expr
                | _ -> expr
              in
-             let pat = ppat_var { txt = Supported_function.name fun_defn; loc } in
+             let pat = ppat_var { txt = Supported_function.fun_name fun_defn; loc } in
              pstr_value Nonrecursive [ value_binding ~pat ~expr ])
     in
     let plain_mod =
@@ -1523,8 +1505,9 @@ module Container_module (Context : Builder_context) = struct
     let prim_names = externals |> List.map ~f:fst |> SSet.of_list in
     let sort_def_map = SMap.of_alist_exn sort_defs in
     let sort_dep_map = get_sort_ref_info sort_defs in
-    let connected_components = Graph.connected_components sort_dep_map in
-    let Graph.Connected_components.{ scc_graph; sccs } = connected_components in
+    let Graph.Connected_components.{ scc_graph; sccs } =
+      Graph.connected_components sort_dep_map
+    in
     let sorted_scc_graph =
       scc_graph
       |> Directed_graph.Int.topsort_exn
@@ -1548,15 +1531,12 @@ module Container_module (Context : Builder_context) = struct
             sort_name
             sort_def)
     in
-    let expr =
-      pmod_structure
-        ([ wrapper_module
-         ; [%stri module Types = Wrapper.Types]
-         ; [%stri module Plain = Wrapper.Plain]
-         ; [%stri let language = [%e Syntax_quoter.Exp.language ~loc lang]]
-         ]
-        @ type_modules)
-    in
-    expr
+    pmod_structure
+      ([ wrapper_module
+       ; [%stri module Types = Wrapper.Types]
+       ; [%stri module Plain = Wrapper.Plain]
+       ; [%stri let language = [%e Syntax_quoter.Exp.language ~loc lang]]
+       ]
+      @ type_modules)
   ;;
 end
