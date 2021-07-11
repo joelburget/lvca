@@ -5,7 +5,7 @@ TODO: make disjunctionless? https://github.com/jyp/prettiest/pull/10
 open Base
 open Lvca_syntax
 
-module Mk_lang =
+module Lang =
 [%lvca.abstract_syntax_module
 {|
 int32 : *
@@ -22,8 +22,7 @@ doc :=
   | Alt(doc; doc)
 |}]
 
-module Lang = Mk_lang (Primitive.Int32) (Primitive.String)
-module Doc = Lang.Doc
+module Doc = Nominal.Convertible.Extend (Lang.Doc)
 
 (* type doc = Doc.Plain.t *)
 

@@ -1,7 +1,8 @@
 open Base
 open Result.Let_syntax
+open Lvca_syntax
 
-module Mk_lang =
+module Lang =
 [%lvca.abstract_syntax_module
 {|
 integer : *
@@ -16,14 +17,14 @@ exp :=
   | Fix(exp. exp)
 |}]
 
-module Lang = Mk_lang (Lvca_syntax.Primitive.Integer)
+module Exp = Nominal.Convertible.Extend (Lang.Exp)
 
 (** Values are num and fun *)
-let is_val = function Lang.Types.Num _ | Fun _ -> true | _ -> false
+let is_val = function Lang.Exp.Num _ | Fun _ -> true | _ -> false
 
 let rec subst v name exp =
   match exp with
-  | Lang.Types.Num _ | Zero _ -> exp
+  | Lang.Exp.Num _ | Zero _ -> exp
   | Succ (info, exp) -> Succ (info, subst v name exp)
   | Ifz (info, e0, (x, e1), e) ->
     Ifz
@@ -39,36 +40,58 @@ let rec subst v name exp =
   | Exp_var (_info, name') -> if String.(name = name') then v else exp
 ;;
 
+let succ = function
+  | Lang.Exp.Num (_, Nominal.Term.Primitive (info, Integer z)) ->
+    Ok (Nominal.Term.Primitive (info, Integer Z.(succ z)))
+  | tm -> Error ("succ: expected an integer", tm)
+;;
+
+let pred = function
+  | Lang.Exp.Num (_, Nominal.Term.Primitive (info, Integer z)) ->
+    Ok (Nominal.Term.Primitive (info, Integer (Z.pred z)))
+  | tm -> Error ("pred: expected an integer", tm)
+;;
+
+let is_zero = function
+  | Lang.Exp.Num (_, Nominal.Term.Primitive (_, Integer z)) -> Ok Z.(equal z zero)
+  | tm -> Error ("is_zero: expected an integer", tm)
+;;
+
 let rec transition tm =
   match tm with
-  | Lang.Types.Zero info -> Ok (Lang.Types.Num (info, (info, Z.zero))) (* 22.4a *)
+  | Lang.Exp.Zero info -> Ok (Lang.Exp.Num (info, [%lvca.nominal "0"])) (* 22.4a *)
   | Succ (info, d) ->
     (match d with
-    | Lang.Types.Num (_, (info, z)) ->
+    | Lang.Exp.Num _ ->
       (* 22.4d *)
-      Ok (Lang.Types.Num (info, (info, Z.(z + one))))
+      let%map z = succ d in
+      Lang.Exp.Num (info, z)
     | _ ->
       let%map d = transition d in
-      Lang.Types.Succ (info, d))
+      Lang.Exp.Succ (info, d))
   | Ifz (info, d0, (x, d1), d) ->
     (* 22.4f-j *)
     (match d with
-    | Lang.Types.Num (_, (info, z)) ->
-      if Z.(equal z zero)
+    | Lang.Exp.Num _ ->
+      let%bind is_zero = is_zero d in
+      if is_zero
       then Ok d0 (* 22.4h *)
-      else Ok (subst (Num (info, (info, Z.pred z))) x.name d1) (* 22.4i *)
+      else (
+        let%map z = pred d in
+        subst (Num (info, z)) x.name d1)
+      (* 22.4i *)
     | _ ->
       let%map d = transition d in
-      Lang.Types.Ifz (info, d0, (x, d1), d))
+      Lang.Exp.Ifz (info, d0, (x, d1), d))
   | Ap (info, d1, d2) ->
     (* 22.4k-n *)
     (match d1 with
     | Fun (_, (x, d)) -> (* 22.4m *) Ok (subst d2 x.name d)
     | _ ->
       let%map d1 = transition d1 in
-      Lang.Types.Ap (info, d1, d2))
+      Lang.Exp.Ap (info, d1, d2))
   | Fix (_info, (x, d)) -> Ok (subst tm x.name d) (* 22.4o *)
-  | Lang.Types.Num _ -> Ok tm
+  | Lang.Exp.Num _ -> Ok tm
   | Fun _ | Exp_var _ -> Error ("stuck", tm)
 ;;
 
@@ -83,12 +106,12 @@ let rec eval tm =
 let%test_module _ =
   (module struct
     let go str =
-      match Lvca_parsing.(parse_string (whitespace *> Lang.Exp.parse)) str with
+      match Lvca_parsing.(parse_string (whitespace *> Exp.parse)) str with
       | Error msg -> Fmt.pr "%s" msg
       | Ok tm ->
         (match eval tm with
-        | Error (msg, tm) -> Fmt.pr "%s: %a" msg Lang.Exp.pp tm
-        | Ok tm -> Lang.Exp.pp Fmt.stdout tm)
+        | Error (msg, tm) -> Fmt.pr "%s: %a" msg Exp.pp tm
+        | Ok tm -> Exp.pp Fmt.stdout tm)
     ;;
 
     let%expect_test _ =

@@ -72,8 +72,6 @@ let term_of_option : f:('a -> unit Nonbinding.term) -> 'a option -> unit Nonbind
 let term_of_string : string -> unit Nonbinding.term = fun str -> Primitive ((), String str)
 
 module Of_omd = struct
-  module Lang = Lang (Primitive.Char) (Primitive.Int32) (Primitive.String)
-
   let attribute : string * string -> Lang.Plain.attribute = fun (x, y) -> Attribute (x, y)
 
   let maybe : ('a -> 'b) -> 'a option -> 'b Lang.Plain.maybe =

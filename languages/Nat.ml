@@ -1,7 +1,7 @@
 open Base
 open Lvca_syntax
 
-module Mk_lang =
+module Lang =
 [%lvca.abstract_syntax_module
 {|
 string : *
@@ -20,9 +20,8 @@ let rec f = function
 |}
 ;;
 
-module Lang = Mk_lang (Primitive.String)
-module List = Lang.List
-module Nat = Lang.Nat
+module List = Nominal.Convertible.Extend (Lang.List)
+module Nat = Nominal.Convertible.Extend (Lang.Nat)
 
 module Foo : sig
   val list_to_nat : 'info List.t -> ('info * 'info Primitive.String.t option) Nat.t option
