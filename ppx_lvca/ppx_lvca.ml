@@ -37,16 +37,33 @@ let expand_module ~(loc : Location.t) ~path:_ (expr : expression) : module_expr 
   match parse Abstract_syntax.parse str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax ->
-    let module Container_module =
-      Module_builder.Container_module (struct
-        let buf = str
+    let module Builder_context = struct
+      let buf = str
 
-        module Ast = Ast_builder.Make (struct
-          let loc = loc
-        end)
+      module Ast = Ast_builder.Make (struct
+        let loc = loc
       end)
+    end
     in
+    let module Container_module = Module_builder.Container_module (Builder_context) in
     Container_module.mk syntax
+;;
+
+let expand_module_sig ~(loc : Location.t) ~path:_ (expr : expression) : module_type =
+  let str, loc = extract_string loc expr in
+  match parse Abstract_syntax.parse str with
+  | Error msg -> Location.raise_errorf ~loc "%s" msg
+  | Ok syntax ->
+    let module Builder_context = struct
+      let buf = str
+
+      module Ast = Ast_builder.Make (struct
+        let loc = loc
+      end)
+    end
+    in
+    let module Sig = Module_builder.Sig (Builder_context) in
+    Sig.mk syntax
 ;;
 
 let term_extension =
@@ -89,6 +106,14 @@ let abstract_syntax_module_extension =
     expand_module
 ;;
 
+let abstract_syntax_module_sig_extension =
+  Extension.declare
+    "lvca.abstract_syntax_module_sig"
+    Extension.Context.Module_type
+    Ast_pattern.(single_expr_payload __)
+    expand_module_sig
+;;
+
 let () =
   Ppxlib.Driver.register_transformation
     "lvca"
@@ -98,5 +123,6 @@ let () =
       ; Context_free.Rule.extension pattern_extension
       ; Context_free.Rule.extension abstract_syntax_extension
       ; Context_free.Rule.extension abstract_syntax_module_extension
+      ; Context_free.Rule.extension abstract_syntax_module_sig_extension
       ]
 ;;

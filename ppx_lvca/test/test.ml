@@ -33,3 +33,5 @@ mut_a := Mut_a(mut_b)
 mut_b := Mut_b(mut_a)
 ifz := Ifz(ifz; ifz. ifz; ifz)
 |}]
+
+module type Is_rec_sig = [%lvca.abstract_syntax_module_sig {|is_rec := Rec() | No_rec()|}]

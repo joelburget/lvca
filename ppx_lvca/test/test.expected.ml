@@ -1135,3 +1135,25 @@ module Lang =
           end
       end
   end
+module type Is_rec_sig  =
+  sig
+    module Is_rec :
+    sig
+      type 'info t =
+        | Rec of 'info 
+        | No_rec of 'info 
+      module Plain :
+      sig
+        type t =
+          | Rec 
+          | No_rec 
+        val pp : t Fmt.t
+        val (=) : t -> t -> bool
+        val parse : t Lvca_parsing.t
+        val jsonify : t Lvca_util.Json.serializer
+        val unjsonify : t Lvca_util.Json.deserializer
+      end
+      val language :
+        Lvca_provenance.Opt_range.t Lvca_syntax.Abstract_syntax.t
+    end
+  end

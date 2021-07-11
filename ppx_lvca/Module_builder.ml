@@ -1363,11 +1363,43 @@ module Wrapper_module (Context : Builder_context) = struct
         module To_nominal = [%m adapt To_nominal.mk]
         module Of_nominal = [%m adapt Of_nominal.mk]]
     in
-    let wrapper_module =
-      module_binding ~name:{ txt = Some "Wrapper"; loc } ~expr:(pmod_structure defs)
-      |> pstr_module
+    module_binding ~name:{ txt = Some "Wrapper"; loc } ~expr:(pmod_structure defs)
+    |> pstr_module
+  ;;
+end
+
+module Individual_type_sig (Context : Builder_context) = struct
+  open Context
+  open Ast
+  open Helpers (Context)
+  module Type_decls = Type_decls (Context)
+
+  let mk ~prim_names ~sort_def_map ~partitioned_sorts ~info sort_name sort_def =
+    let (Syn.Sort_def.Sort_def (vars, _op_defs)) = sort_def in
+    let params = vars |> List.map ~f:(fst >> plain_typ_var) in
+    let op_ctors =
+      Type_decls.mk_op_ctors
+        ~type_decl_context:Individual_type_module
+        ~sort_def_map
+        ~prim_names
+        ~info
+        ~sort_name
+        ~partitioned_sorts
+        sort_def
     in
-    wrapper_module, psig_type Recursive info_decls, psig_type Recursive plain_decls
+    let params =
+      match info with With_info -> plain_typ_var "info" :: params | _ -> params
+    in
+    psig_type
+      Recursive
+      [ type_declaration
+          ~name:{ txt = "t"; loc }
+          ~params
+          ~cstrs:[]
+          ~kind:(Ptype_variant op_ctors)
+          ~private_:Public
+          ~manifest:None
+      ]
   ;;
 end
 
@@ -1551,7 +1583,7 @@ module Container_module (Context : Builder_context) = struct
       |> List.map ~f:(fun i -> i, Map.find_exn sccs i)
     in
     let partitioned_sorts = partition_sort_defs sort_defs in
-    let wrapper_module, _info_types_sig, _plain_types_sig =
+    let wrapper_module =
       Wrapper_module.mk
         ~prim_names
         ~sort_def_map
@@ -1575,5 +1607,51 @@ module Container_module (Context : Builder_context) = struct
        ; [%stri let language = [%e Syntax_quoter.Exp.language ~loc lang]]
        ]
       @ type_modules)
+  ;;
+end
+
+module Sig (Context : Builder_context) = struct
+  open Context
+  open Ast
+  open Helpers (Context)
+  module Individual_type_sig = Individual_type_sig (Context)
+
+  let mk Syn.{ externals; sort_defs } =
+    let prim_names = externals |> List.map ~f:fst |> SSet.of_list in
+    let sort_def_map = SMap.of_alist_exn sort_defs in
+    let partitioned_sorts = partition_sort_defs sort_defs in
+    let type_sigs =
+      List.map sort_defs ~f:(fun (sort_name, sort_def) ->
+          let mk_ty info =
+            Individual_type_sig.mk
+              ~prim_names
+              ~sort_def_map
+              ~partitioned_sorts
+              ~info
+              sort_name
+              sort_def
+          in
+          let type_ =
+            pmty_signature
+              [ mk_ty With_info
+              ; [%sigi:
+                  module Plain : [%m
+                  pmty_signature
+                    [ mk_ty Plain
+                    ; [%sigi: val pp : t Fmt.t]
+                    ; [%sigi: val ( = ) : t -> t -> bool]
+                    ; [%sigi: val parse : t Lvca_parsing.t]
+                    ; [%sigi: val jsonify : t Lvca_util.Json.serializer]
+                    ; [%sigi: val unjsonify : t Lvca_util.Json.deserializer]
+                    ]]]
+              ]
+          in
+          psig_module
+            (module_declaration ~name:{ txt = Some (module_name sort_name); loc } ~type_))
+    in
+    let language =
+      [%sigi: val language : Lvca_provenance.Opt_range.t Lvca_syntax.Abstract_syntax.t]
+    in
+    pmty_signature (language :: type_sigs)
   ;;
 end
