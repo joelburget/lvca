@@ -39,9 +39,9 @@ module Core = struct
   end
 
   let is_rec ~loc = function
-    | Lvca_core.Is_rec.Types.Rec info ->
-      [%expr Lvca_core.Is_rec.Types.Rec [%e opt_range ~loc info]]
-    | No_rec info -> [%expr Lvca_core.Is_rec.Types.No_rec [%e opt_range ~loc info]]
+    | Lvca_core.Lang.Is_rec.Rec info ->
+      [%expr Lvca_core.Is_rec.Rec [%e opt_range ~loc info]]
+    | No_rec info -> [%expr Lvca_core.Lang.Is_rec.No_rec [%e opt_range ~loc info]]
   ;;
 
   let rec term ~loc = function

@@ -9,10 +9,7 @@ module SMap = Lvca_util.String.Map
 
 let ( >> ) = Lvca_util.( >> )
 
-module Lang = [%lvca.abstract_syntax_module {|
-is_rec := Rec() | No_rec()
-|}]
-
+module Lang = [%lvca.abstract_syntax_module {|is_rec := Rec() | No_rec()|}]
 module Is_rec = Nominal.Convertible.Extend (Lang.Is_rec)
 
 module Type = struct
