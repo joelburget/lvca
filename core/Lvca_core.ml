@@ -9,9 +9,11 @@ module SMap = Lvca_util.String.Map
 
 let ( >> ) = Lvca_util.( >> )
 
-module Is_rec = [%lvca.abstract_syntax_module {|
+module Lang = [%lvca.abstract_syntax_module {|
 is_rec := Rec() | No_rec()
 |}]
+
+module Is_rec = Nominal.Convertible.Extend (Lang.Is_rec)
 
 module Type = struct
   type 'info t =
@@ -106,7 +108,7 @@ module Types = struct
 
   and 'info let_ =
     { info : 'info
-    ; is_rec : 'info Is_rec.Is_rec.t
+    ; is_rec : 'info Is_rec.t
     ; tm : 'info term
     ; ty : 'info Type.t option
     ; scope : 'info scope
@@ -139,7 +141,7 @@ module Equal = struct
 
   and let_ ~info_eq x y =
     info_eq x.info y.info
-    && Is_rec.Is_rec.equal ~info_eq x.is_rec y.is_rec
+    && Is_rec.equal ~info_eq x.is_rec y.is_rec
     && term ~info_eq x.tm y.tm
     && Option.equal (Type.equal ~info_eq) x.ty y.ty
     && scope ~info_eq x.scope y.scope
@@ -173,7 +175,7 @@ module Map_info = struct
 
   and let_ ~f { info; is_rec; tm; ty; scope = scope' } =
     { info = f info
-    ; is_rec = Is_rec.Is_rec.map_info ~f is_rec
+    ; is_rec = Is_rec.map_info ~f is_rec
     ; tm = term ~f tm
     ; ty = Option.map ~f:(Type.map_info ~f) ty
     ; scope = scope ~f scope'
@@ -307,7 +309,7 @@ module Parse = struct
                 let info = Opt_range.union let_pos body_pos in
                 Types.Let { info; is_rec; ty; tm; scope = Scope (name, body) })
               (attach_pos (string "let"))
-              Is_rec.Types.(
+              Lang.Is_rec.(
                 option
                   (No_rec None)
                   (string "rec" >>|| fun { range; _ } -> { range; value = Rec range }))
@@ -360,7 +362,7 @@ end
 module Let = struct
   type 'info t = 'info Types.let_ =
     { info : 'info
-    ; is_rec : 'info Is_rec.Is_rec.t
+    ; is_rec : 'info Is_rec.t
     ; tm : 'info Types.term
     ; ty : 'info Type.t option
     ; scope : 'info Types.scope
