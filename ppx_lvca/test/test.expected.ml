@@ -1137,6 +1137,7 @@ module Lang =
   end
 module type Is_rec_sig  =
   sig
+    val language : Lvca_provenance.Opt_range.t Lvca_syntax.Abstract_syntax.t
     module Is_rec :
     sig
       type 'info t =
@@ -1153,7 +1154,5 @@ module type Is_rec_sig  =
         val jsonify : t Lvca_util.Json.serializer
         val unjsonify : t Lvca_util.Json.deserializer
       end
-      val language :
-        Lvca_provenance.Opt_range.t Lvca_syntax.Abstract_syntax.t
     end
   end
