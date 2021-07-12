@@ -4,7 +4,7 @@ open Lvca_syntax
 open Abstract_syntax
 open Ppxlib
 
-let extract_string loc expr =
+let extract_string ~loc expr =
   (* payload and location of the string contents, inside "" or {||} *)
   let adjust shift loc =
     let adjust shift p = { p with Lexing.pos_cnum = p.pos_cnum + shift } in

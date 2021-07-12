@@ -1,7 +1,7 @@
 open Lvca_provenance
 open Lvca_syntax
 
-val extract_string : Ppxlib.location -> Ppxlib.expression -> string * Warnings.loc
+val extract_string : loc:Ppxlib.location -> Ppxlib.expression -> string * Warnings.loc
 
 module Exp : sig
   val str : loc:Ppxlib.location -> string -> Ppxlib.expression
