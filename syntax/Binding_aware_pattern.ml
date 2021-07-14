@@ -9,6 +9,8 @@ module Tuple2 = Util.Tuple2
 module Term = Nominal.Term
 module Scope = Nominal.Scope
 
+let ( >> ) = Lvca_util.(( >> ))
+
 module Capture_type = struct
   type 'info t =
     | Bound_var of 'info Sort.t
@@ -294,15 +296,15 @@ let check check_prim lang sort =
   check sort
 ;;
 
-let parse =
+let parse ~comment =
   let open Lvca_parsing in
-  let pat_to_ident = function Var (_, name) -> Some name | _ -> None in
+  let pat_to_ident = function Var (info, name) -> Some (info, name) | _ -> None in
   fix (fun pat ->
       let slot =
-        sep_by1 (char '.') (attach_pos pat)
-        >>= fun value ->
-        let binders_pats, (pat, _) = Util.List.unsnoc value in
-        let f (pat, pos) = pat_to_ident pat |> Option.map ~f:(fun pat -> pos, pat) in
+        sep_by1 (char '.') pat
+        >>= fun pats ->
+        let binders_pats, pat = Util.List.unsnoc pats in
+        let f = pat_to_ident >> Option.map ~f:(fun (info, name) -> info, name) in
         match binders_pats |> List.map ~f |> Option.all with
         | None ->
           fail
@@ -311,26 +313,30 @@ let parse =
       in
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
-        [ (Primitive.All.parse >>| fun prim -> Primitive prim)
+        [ (Primitive.All.parse ~comment >>| fun prim -> Primitive prim)
         ; (identifier
           >>== fun { value = ident; range = ident_range } ->
           choice
             [ (parens (sep_end_by (char ';') slot)
-              >>|| fun { value = slots; range = parens_range } ->
+              >>== fun { value = slots; range = parens_range } ->
+              option' comment
+              >>|| fun { value = opt_comment; _ } ->
               let range = Opt_range.union ident_range parens_range in
-              { value = Operator (range, ident, slots); range })
-            ; return ~range:ident_range (Var (ident_range, ident))
+              { value = Operator ((range, opt_comment), ident, slots); range })
+            ; (option' comment
+              >>| fun opt_comment -> Var ((ident_range, opt_comment), ident))
             ])
         ])
   <?> "binding-aware pattern"
 ;;
 
+let parse_no_comment = parse ~comment:(Lvca_parsing.fail "no comment")
 let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 
 module Properties = struct
   open Property_result
 
-  let parse = Lvca_parsing.parse_string parse
+  let parse = Lvca_parsing.parse_string parse_no_comment
   let to_string = Fmt.to_to_string pp
 
   let string_round_trip1 t =
@@ -374,8 +380,8 @@ let%test_module "Parsing" =
     ;;
 
     let print_parse tm =
-      match Lvca_parsing.parse_string parse tm with
-      | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range pat
+      match Lvca_parsing.parse_string parse_no_comment tm with
+      | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range (map_info ~f:fst pat)
       | Error msg -> Fmt.pr "failed: %s\n" msg
     ;;
 
@@ -475,7 +481,7 @@ test := foo(term[term]. term)
 
     let print_check_pattern sort_str pat_str =
       let sort = parse' Sort.parse sort_str in
-      let pat = parse' parse pat_str in
+      let pat = parse' parse_no_comment pat_str in
       let pp ppf pat = Fmt.pf ppf "pattern: %a" pp pat in
       match check Primitive.All.check language sort pat with
       | Error failure -> Fmt.epr "%a" (Check_failure.pp pp) failure
@@ -615,15 +621,20 @@ test := foo(term[term]. term)
 
 let%test_module "check" =
   (module struct
-    let parse_pattern str = Lvca_parsing.parse_string parse str |> Result.ok_or_failwith
+    let parse_pattern str =
+      Lvca_parsing.parse_string parse_no_comment str |> Result.ok_or_failwith
+    ;;
 
     let parse_term str =
-      Lvca_parsing.parse_string Nominal.Term.parse' str |> Result.ok_or_failwith
+      Lvca_parsing.parse_string
+        (Nominal.Term.parse' ~comment:(Lvca_parsing.fail "no comment"))
+        str
+      |> Result.ok_or_failwith
     ;;
 
     let print_match pat_str tm_str =
-      let pattern = parse_pattern pat_str in
-      let tm = parse_term tm_str in
+      let pattern = pat_str |> parse_pattern |> map_info ~f:fst in
+      let tm = tm_str |> parse_term |> Term.map_info ~f:fst in
       let info_eq = Opt_range.( = ) in
       match match_term ~info_eq pattern tm with
       | None -> ()

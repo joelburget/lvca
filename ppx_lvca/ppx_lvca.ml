@@ -6,23 +6,23 @@ let parse p = Lvca_parsing.(parse_string (whitespace *> p))
 
 let expand_nominal ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string ~loc expr in
-  match parse Nominal.Term.parse' str with
+  match parse (Nominal.Term.parse' ~comment:(Lvca_parsing.fail "no comment")) str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
-  | Ok tm -> Exp.nominal ~loc tm
+  | Ok tm -> tm |> Nominal.Term.map_info ~f:fst |> Exp.nominal ~loc
 ;;
 
 let expand_nonbinding ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string ~loc expr in
-  match parse Nonbinding.parse str with
+  match parse (Nonbinding.parse ~comment:(Lvca_parsing.fail "no comment")) str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
-  | Ok tm -> Exp.nonbinding ~loc tm
+  | Ok tm -> tm |> Nonbinding.map_info ~f:fst |> Exp.nonbinding ~loc
 ;;
 
 let expand_pattern ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string ~loc expr in
-  match parse Lvca_syntax.Pattern.parse str with
+  match parse (Pattern.parse ~comment:(Lvca_parsing.fail "no comment")) str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
-  | Ok tm -> Exp.pattern ~loc tm
+  | Ok tm -> tm |> Pattern.map_info ~f:fst |> Exp.pattern ~loc
 ;;
 
 let expand_abstract_syntax ~(loc : Location.t) ~path:_ (expr : expression) : expression =

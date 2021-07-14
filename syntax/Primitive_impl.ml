@@ -22,11 +22,12 @@ module Make (Base_plain : Language_object_intf.Base_plain_s) = struct
   let jsonify (_, plain) = Base_plain.jsonify plain
   let unjsonify json = Base_plain.unjsonify json |> Option.map ~f:(fun tm -> (), tm)
 
-  let parse =
+  let parse ~comment =
     let open Lvca_parsing in
     Base_plain.parse
-    >>|| fun (Parse_result.{ value; range } as parse_result) ->
-    { parse_result with value = range, value }
+    >>== fun Parse_result.{ value; range } ->
+    option' comment
+    >>|| fun { value = opt_comment; _ } -> { value = (range, opt_comment), value; range }
   ;;
 end
 
@@ -219,9 +220,11 @@ module All = struct
       | None -> Uninteresting
    ;;
 
+    let parse_no_comment = parse ~comment:(Lvca_parsing.fail "no comment")
+
     let string_round_trip1 : unit t -> Property_result.t =
      fun t ->
-      match t |> to_string |> Lvca_parsing.parse_string parse with
+      match t |> to_string |> Lvca_parsing.parse_string parse_no_comment with
       | Ok prim ->
         Property_result.check (erase prim = t) (Fmt.str "%a <> %a" pp prim pp t)
       | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
@@ -230,14 +233,14 @@ module All = struct
     (* Note: +1 -> 1. If the first round-trip isn't equal, try once more. *)
     let string_round_trip2 : string -> Property_result.t =
      fun str ->
-      match Lvca_parsing.parse_string parse str with
+      match Lvca_parsing.parse_string parse_no_comment str with
       | Error _ -> Uninteresting
       | Ok prim ->
         let str' = to_string prim in
         if Base.String.(str' = str)
         then Ok
         else (
-          match Lvca_parsing.parse_string parse str with
+          match Lvca_parsing.parse_string parse_no_comment str with
           | Error msg -> Failed msg
           | Ok prim' ->
             let str'' = to_string prim' in
@@ -255,8 +258,10 @@ let%test_module "Parsing" =
     open All
     open Lvca_provenance
 
+    let parse_no_comment = parse ~comment:(Lvca_parsing.fail "no comment")
+
     let print_parse str =
-      match Lvca_parsing.parse_string_pos parse str with
+      match Lvca_parsing.parse_string_pos parse_no_comment str with
       | Ok { value = prim; range } -> Fmt.pr "%a %a" pp prim Opt_range.pp range
       | Error msg -> Fmt.pr "%s" msg
     ;;

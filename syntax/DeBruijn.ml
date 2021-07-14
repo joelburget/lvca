@@ -130,9 +130,9 @@ module Kernel = struct
     | Some tm -> Nominal.Term.pp_generic ~open_loc ~close_loc ppf tm
   ;;
 
-  let parse =
+  let parse ~comment =
     let open Lvca_parsing in
-    Nominal.Term.parse'
+    Nominal.Term.parse' ~comment
     >>= fun tm ->
     match of_nominal tm with
     | Ok tm -> return tm

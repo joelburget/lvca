@@ -483,25 +483,31 @@ module Parse = struct
 
   type 'info matrix_row = 'info matrix_entry list * 'info Nonbinding.term
 
-  let branch =
-    lift3 (fun pat _ tm -> pat, tm) Pattern.parse (string "->") Nonbinding.parse
+  let branch ~comment =
+    lift3
+      (fun pat _ tm -> pat, tm)
+      (Pattern.parse ~comment)
+      (string "->")
+      (Nonbinding.parse ~comment)
     <?> "branch"
   ;;
 
-  let branches = option '|' (char '|') *> sep_by1 (char '|') branch <?> "branches"
+  let branches ~comment =
+    option '|' (char '|') *> sep_by1 (char '|') (branch ~comment) <?> "branches"
+  ;;
 
-  let matrix_row =
+  let matrix_row ~comment =
     lift3
       (fun pats _ tm ->
         List.mapi pats ~f:(fun term_no pattern -> { term_no; pattern; path = [] }), tm)
-      (sep_by1 (char ',') Pattern.parse)
+      (sep_by1 (char ',') (Pattern.parse ~comment))
       (string "->")
-      Nonbinding.parse
+      (Nonbinding.parse ~comment)
     <?> "matrix_row"
   ;;
 
-  let matrix_rows =
-    option '|' (char '|') *> sep_by1 (char '|') matrix_row <?> "matrix_rows"
+  let matrix_rows ~comment =
+    option '|' (char '|') *> sep_by1 (char '|') (matrix_row ~comment) <?> "matrix_rows"
   ;;
 end
 
@@ -515,9 +521,13 @@ let%test_module "Matching" =
 
     let pp_result ppf (rhs, env) = Fmt.pf ppf "{%a} %a" pp_env env Nonbinding.pp rhs
     let parse p str = Lvca_parsing.(parse_string (whitespace *> p) str)
+    let comment = Lvca_parsing.fail "no comment"
 
     let run_simple_match branches_str tm_str =
-      match parse Parse.branches branches_str, parse Nonbinding.parse tm_str with
+      match
+        ( parse (Parse.branches ~comment) branches_str
+        , parse (Nonbinding.parse ~comment) tm_str )
+      with
       | Ok branches, Ok tm ->
         (match simple_find_match tm branches with
         | None -> Fmt.pr "no match"
@@ -539,8 +549,8 @@ let%test_module "Matching" =
       match
         ( parse Abstract_syntax.parse syntax_str
         , parse Lvca_parsing.(sep_by (char ',') Sort.parse) sorts_str
-        , parse Parse.matrix_rows matrix_str
-        , parse Lvca_parsing.(sep_by (char ',') Nonbinding.parse) tms_str )
+        , parse (Parse.matrix_rows ~comment) matrix_str
+        , parse Lvca_parsing.(sep_by (char ',') (Nonbinding.parse ~comment)) tms_str )
       with
       | Error syntax_msg, _, _, _ -> failwith ("syntax failed to parse: " ^ syntax_msg)
       | _, Error sorts_msg, _, _ -> failwith ("sorts failed to parse: " ^ sorts_msg)
@@ -632,7 +642,7 @@ let%test_module "Matching" =
       match
         ( parse Abstract_syntax.parse syntax_str
         , parse Lvca_parsing.(sep_by (char ',') Sort.parse) sorts_str
-        , parse Parse.matrix_rows matrix_str )
+        , parse (Parse.matrix_rows ~comment) matrix_str )
       with
       | Ok syntax, Ok sorts, Ok matrix ->
         let syntax =

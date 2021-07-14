@@ -44,7 +44,11 @@ module Typing_clause = struct
       | LeftArr
       | RightArr
 
-    let pattern = Binding_aware_pattern.parse <?> "pattern"
+    let pattern =
+      Binding_aware_pattern.parse ~comment:(Lvca_parsing.fail "no comment")
+      >>| Binding_aware_pattern.map_info ~f:fst
+      <?> "pattern"
+    ;;
 
     let t =
       lift3
@@ -94,7 +98,11 @@ module Hypothesis = struct
     open Lvca_parsing
 
     (* TODO: remove duplication *)
-    let pattern = Binding_aware_pattern.parse <?> "pattern"
+    let pattern =
+      Binding_aware_pattern.parse ~comment:(Lvca_parsing.fail "no comment")
+      >>| Binding_aware_pattern.map_info ~f:fst
+      <?> "pattern"
+    ;;
 
     let typed_term =
       lift3 (fun ident _ tm -> ident, tm) identifier (char ':') pattern

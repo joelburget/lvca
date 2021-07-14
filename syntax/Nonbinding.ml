@@ -95,18 +95,21 @@ let rec select_path ~path tm =
       | Some tm -> select_path ~path tm))
 ;;
 
-let parse =
+let parse ~comment =
   let open Lvca_parsing in
   fix (fun term ->
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
-        [ (Primitive.All.parse >>| fun prim -> Primitive prim)
+        [ (Primitive.All.parse ~comment >>| fun prim -> Primitive prim)
         ; (identifier
           >>== fun Parse_result.{ value = ident; range = start; _ } ->
           parens (sep_end_by (char ';') term)
-          >>|| (fun Parse_result.{ value = children; range = finish } ->
+          >>== (fun { value = children; range = finish } ->
+                 option' comment
+                 >>|| fun { value = opt_comment; _ } ->
                  let pos = Opt_range.union start finish in
-                 Parse_result.{ value = Operator (pos, ident, children); range = pos })
+                 Parse_result.
+                   { value = Operator ((pos, opt_comment), ident, children); range = pos })
           <?> "term body")
         ])
   <?> "term"

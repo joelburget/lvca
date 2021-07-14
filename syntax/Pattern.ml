@@ -243,25 +243,29 @@ let check lang ~pattern_sort ~var_sort =
   check pattern_sort
 ;;
 
-let parse =
+let parse ~comment =
   let open Lvca_parsing in
   fix (fun pat ->
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
-        [ (Primitive_impl.All.parse >>| fun prim -> Primitive prim)
+        [ (Primitive_impl.All.parse ~comment >>| fun prim -> Primitive prim)
         ; (identifier
           >>== fun { value = ident; range } ->
           choice
             [ (parens (sep_end_by (char ';') pat)
-              >>|| fun Parse_result.{ value = children; range = finish } ->
+              >>== fun Parse_result.{ value = children; range = finish } ->
+              option' comment
+              >>|| fun { value = opt_comment; _ } ->
               let range = Opt_range.union range finish in
-              { value = Operator (range, ident, children); range })
-            ; return ~range (Var (range, ident))
+              { value = Operator ((range, opt_comment), ident, children); range })
+            ; (option' comment >>| fun opt_comment -> Var ((range, opt_comment), ident))
             ]
           <?> "pattern body")
         ])
   <?> "pattern"
 ;;
+
+let parse_no_comment = parse ~comment:(Lvca_parsing.fail "no comment")
 
 let%test_module "Parsing" =
   (module struct
@@ -272,8 +276,8 @@ let%test_module "Parsing" =
     ;;
 
     let print_parse tm =
-      match Lvca_parsing.parse_string parse tm with
-      | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range pat
+      match Lvca_parsing.parse_string parse_no_comment tm with
+      | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range (map_info ~f:fst pat)
       | Error msg -> Fmt.pr "failed: %s\n" msg
     ;;
 
@@ -365,7 +369,7 @@ let%test_module "Parsing" =
 module Properties = struct
   open Property_result
 
-  let parse = Lvca_parsing.parse_string parse
+  let parse = Lvca_parsing.parse_string parse_no_comment
   let to_string = Fmt.to_to_string pp
   let ( = ) = equal ~info_eq:Unit.( = )
 
@@ -417,7 +421,10 @@ let%test_module "check" =
       |> Result.ok_or_failwith
     ;;
 
-    let parse_pattern str = Lvca_parsing.parse_string parse str |> Result.ok_or_failwith
+    let parse_pattern str =
+      Lvca_parsing.parse_string parse_no_comment str |> Result.ok_or_failwith
+    ;;
+
     let parse_sort str = Lvca_parsing.parse_string Sort.parse str
 
     let lang_desc =

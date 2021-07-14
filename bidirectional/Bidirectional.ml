@@ -3,6 +3,8 @@ open Lvca_syntax
 open Statics
 module SMap = Lvca_util.String.Map
 
+let ( >> ) = Lvca_util.(( >> ))
+
 type 'info capture = 'info Binding_aware_pattern.Capture.t
 
 type 'a env =
@@ -329,7 +331,11 @@ let%test_module "check / infer" =
   (module struct
     let parse p = Lvca_parsing.(parse_string (whitespace *> p))
     let parse_statics = parse Statics.parse
-    let parse_tm = parse Nominal.Term.parse'
+
+    let parse_tm =
+      parse (Nominal.Term.parse' ~comment:Lvca_parsing.(fail "no comment"))
+      >> Result.map ~f:(Nominal.Term.map_info ~f:fst)
+    ;;
 
     let rules =
       {|

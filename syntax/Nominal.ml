@@ -421,7 +421,7 @@ module Term = struct
     | Var (info, name) -> Var (info, name)
   ;;
 
-  let parse ~parse_prim =
+  let parse ~comment ~parse_prim =
     let open Lvca_parsing in
     fix (fun term ->
         let slot =
@@ -439,24 +439,32 @@ module Term = struct
             >>== fun Parse_result.{ value = ident; range = ident_range } ->
             choice
               [ (parens (sep_end_by (char ';') slot)
-                >>|| fun { value = slots; range = parens_range } ->
+                >>== fun { value = slots; range = parens_range } ->
+                option' comment
+                >>|| fun { value = opt_comment; _ } ->
                 let range = Opt_range.union ident_range parens_range in
-                { value = Operator (range, ident, slots); range })
-              ; return (Var (ident_range, ident))
+                Parse_result.
+                  { value = Operator ((range, opt_comment), ident, slots); range })
+              ; (option' comment
+                >>| fun opt_comment -> Var ((ident_range, opt_comment), ident))
               ])
           ])
     <?> "term"
   ;;
 
-  let parse' =
+  let parse' ~comment =
     parse
-      ~parse_prim:Lvca_parsing.(Primitive_impl.All.parse >>| fun prim -> Primitive prim)
+      ~comment
+      ~parse_prim:
+        Lvca_parsing.(Primitive_impl.All.parse ~comment >>| fun prim -> Primitive prim)
   ;;
+
+  let parse_no_comment = parse' ~comment:(Lvca_parsing.fail "no comment")
 
   module Properties = struct
     open Property_result
 
-    let parse = Lvca_parsing.parse_string parse'
+    let parse = Lvca_parsing.parse_string parse_no_comment
     let to_string tm = Fmt.to_to_string pp tm
     let ( = ) = equal ~info_eq:Unit.( = )
 
@@ -580,7 +588,10 @@ module Convertible = struct
     val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
     val pp_opt_range : Lvca_provenance.Opt_range.t t Fmt.t
-    val parse : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+
+    val parse
+      :  comment:'comment Lvca_parsing.t
+      -> (Opt_range.t * 'comment option) t Lvca_parsing.t
   end
 
   module Extend (Object : S) :
@@ -626,9 +637,9 @@ module Convertible = struct
     let deserialize buf = buf |> Cbor.decode |> Option.bind ~f:unjsonify
     let hash tm = tm |> serialize |> Sha256.hash
 
-    let parse =
+    let parse ~comment =
       let open Lvca_parsing in
-      Term.parse'
+      Term.parse' ~comment
       >>= fun nom ->
       match of_nominal nom with
       | Error nom -> fail Fmt.(str "Parse: failed to convert %a from nominal" Term.pp nom)
@@ -645,7 +656,10 @@ module Convertible = struct
     type 'info t = 'info Object.t
 
     let to_string = Fmt.to_to_string Object.pp
-    let parse = Lvca_parsing.parse_string parse
+
+    let parse =
+      Lvca_parsing.parse_string (parse ~comment:(Lvca_parsing.fail "no comment"))
+    ;;
 
     let string_round_trip1 t =
       match t |> to_string |> parse with
@@ -827,7 +841,7 @@ let%test_module "Nominal" =
 let%test_module "TermParser" =
   (module struct
     let ( = ) = Result.equal (Term.equal ~info_eq:Unit.( = )) String.( = )
-    let parse = Lvca_parsing.(parse_string (whitespace *> Term.parse'))
+    let parse = Lvca_parsing.(parse_string (whitespace *> Term.parse_no_comment))
     let parse_erase str = parse str |> Result.map ~f:Term.erase
 
     let print_parse str =
@@ -835,7 +849,7 @@ let%test_module "TermParser" =
       | Error msg -> print_string ("failed: " ^ msg)
       | Ok tm ->
         Fmt.pr "%a\n" Term.pp tm;
-        Fmt.pr "%a" Term.pp_opt_range tm
+        Fmt.pr "%a" Term.pp_opt_range (Term.map_info ~f:fst tm)
     ;;
 
     let%test _ = parse_erase "x" = Ok (Var ((), "x"))
@@ -972,7 +986,7 @@ let%test_module "check" =
     ;;
 
     let parse_term term_str =
-      Lvca_parsing.parse_string Term.parse' term_str |> Result.ok_or_failwith
+      Lvca_parsing.parse_string Term.parse_no_comment term_str |> Result.ok_or_failwith
     ;;
 
     let parse_sort str = Lvca_parsing.parse_string Sort.parse str
@@ -1013,7 +1027,9 @@ test := foo(term[term]. term)
           | Either.First pat -> Fmt.pf ppf "pattern: %a" Pattern.pp pat
           | Second tm -> Fmt.pf ppf "term: %a" Term.pp tm
         in
-        (match tm_str |> parse_term |> Term.check language sort with
+        (match
+           tm_str |> parse_term |> Term.map_info ~f:fst |> Term.check language sort
+         with
         | Some failure -> Fmt.epr "%a" (Check_failure.pp pp) failure
         | None -> ())
     ;;

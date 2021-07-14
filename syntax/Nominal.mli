@@ -108,8 +108,14 @@ module Term : sig
     -> 'info t
     -> ('info, ('info Pattern.t, 'info t) Base.Either.t) Check_failure.t option
 
-  val parse : parse_prim:Opt_range.t t Lvca_parsing.t -> Opt_range.t t Lvca_parsing.t
-  val parse' : Opt_range.t t Lvca_parsing.t
+  val parse
+    :  comment:'comment Lvca_parsing.t
+    -> parse_prim:(Opt_range.t * 'comment option) t Lvca_parsing.t
+    -> (Opt_range.t * 'comment option) t Lvca_parsing.t
+
+  val parse'
+    :  comment:'comment Lvca_parsing.t
+    -> (Opt_range.t * 'comment option) t Lvca_parsing.t
 
   module Properties : sig
     include Properties_intf.Parse_pretty_s with type 'info t := 'info t
@@ -197,7 +203,10 @@ module Convertible : sig
     val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
     val pp_opt_range : Lvca_provenance.Opt_range.t t Fmt.t
-    val parse : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+
+    val parse
+      :  comment:'comment Lvca_parsing.t
+      -> (Opt_range.t * 'comment option) t Lvca_parsing.t
   end
 
   (** Derive helpers (an extended language object) from the basics. *)
