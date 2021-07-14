@@ -426,6 +426,7 @@ let attach_pos p =
 
 let return ?(range = None) value = return { value; range }
 let option value p = Angstrom.option { value; range = None } p
+let option' p = option None (p >>| Option.return)
 let choice ?failure_msg ps = Angstrom.choice ?failure_msg ps
 
 let handle_list lst =

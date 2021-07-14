@@ -30,6 +30,7 @@ val integer_lit : string t
 val integer_or_float_lit : (string, float) Base.Either.t t
 val string_lit : string t
 val option : 'a -> 'a t -> 'a t
+val option' : 'a t -> 'a option t
 val return : ?range:Opt_range.t -> 'a -> 'a t
 val attach_pos : 'a t -> ('a * Opt_range.t) t (* TODO: remove? *)
 
