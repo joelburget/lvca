@@ -10,16 +10,17 @@ module Binding_aware_pattern = struct
       let scopes = scopes |> List.map ~f:(scope ~loc) |> list ~loc in
       [%expr
         Lvca_syntax.Binding_aware_pattern.Operator
-          ([%e info ~loc pos], [%e name_exp], [%e scopes])]
+          ([%e commented ~loc pos], [%e name_exp], [%e scopes])]
     | Var (pos, s) ->
-      [%expr Lvca_syntax.Binding_aware_pattern.Var ([%e info ~loc pos], [%e str ~loc s])]
+      [%expr
+        Lvca_syntax.Binding_aware_pattern.Var ([%e commented ~loc pos], [%e str ~loc s])]
     | Primitive p -> [%expr Lvca_syntax.Binding_aware_pattern.Primitive [%e prim ~loc p]]
 
   and scope ~loc (Lvca_syntax.Binding_aware_pattern.Scope (vars, body)) =
     let body = t ~loc body in
     let vars =
       vars
-      |> List.map ~f:(fun (i, name) -> [%expr [%e info ~loc i], [%e str ~loc name]])
+      |> List.map ~f:(fun (i, name) -> [%expr [%e commented ~loc i], [%e str ~loc name]])
       |> list ~loc
     in
     [%expr Lvca_syntax.Binding_aware_pattern.Scope ([%e vars], [%e body])]
@@ -37,29 +38,31 @@ module Core = struct
   end
 
   let is_rec ~loc = function
-    | Lvca_core.Lang.Is_rec.Rec i -> [%expr Lvca_core.Is_rec.Rec [%e info ~loc i]]
-    | No_rec i -> [%expr Lvca_core.Lang.Is_rec.No_rec [%e info ~loc i]]
+    | Lvca_core.Lang.Is_rec.Rec i -> [%expr Lvca_core.Is_rec.Rec [%e commented ~loc i]]
+    | No_rec i -> [%expr Lvca_core.Lang.Is_rec.No_rec [%e commented ~loc i]]
   ;;
 
   let rec term ~loc = function
     | Lvca_core.Types.Term tm -> [%expr Lvca_core.Types.Term [%e nominal ~loc tm]]
     | Core_app (i, tm, tms) ->
       let tms = tms |> List.map ~f:(term ~loc) |> list ~loc in
-      [%expr Lvca_core.Types.Core_app ([%e info ~loc i], [%e term ~loc tm], [%e tms])]
+      [%expr
+        Lvca_core.Types.Core_app ([%e commented ~loc i], [%e term ~loc tm], [%e tms])]
     | Case (i, tm, scopes) ->
       let scopes = scopes |> List.map ~f:(case_scope ~loc) |> list ~loc in
-      [%expr Lvca_core.Types.Case ([%e info ~loc i], [%e term ~loc tm], [%e scopes])]
+      [%expr Lvca_core.Types.Case ([%e commented ~loc i], [%e term ~loc tm], [%e scopes])]
     | Lambda (i, ty, scope) ->
       [%expr
         Lvca_core.Types.Lambda
-          ([%e info ~loc i], [%e Type.t ~loc ty], [%e core_scope ~loc scope])]
+          ([%e commented ~loc i], [%e Type.t ~loc ty], [%e core_scope ~loc scope])]
     | Let x -> [%expr Lvca_core.Types.Let [%e let_ ~loc x]]
-    | Var (i, name) -> [%expr Lvca_core.Types.Var ([%e info ~loc i], [%e str ~loc name])]
+    | Var (i, name) ->
+      [%expr Lvca_core.Types.Var ([%e commented ~loc i], [%e str ~loc name])]
 
   and let_ ~loc x =
     [%expr
       Lvca_core.Types.
-        { info = [%e info ~loc x.Lvca_core.Types.info]
+        { info = [%e commented ~loc x.Lvca_core.Types.info]
         ; is_rec = [%e is_rec ~loc x.is_rec]
         ; tm = [%e term ~loc x.tm]
         ; ty = [%e option ~loc Type.t x.ty]

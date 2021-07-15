@@ -322,7 +322,7 @@ module Helpers (Context : Builder_context) = struct
   type context =
     { info : has_info
     ; var_names : SSet.t
-    ; mutual_sorts : (Opt_range.t * string option) Syn.Sort_def.t SMap.t
+    ; mutual_sorts : string Commented.t Syn.Sort_def.t SMap.t
     ; prim_names : SSet.t
     }
 
@@ -386,7 +386,7 @@ module Helpers (Context : Builder_context) = struct
   let ptyp_of_sort ~type_decl_context ~context sort =
     let info_args = match context.info with With_info -> [ [%type: 'info] ] | _ -> [] in
     let rec go sort =
-      let loc = sort |> Sort.info |> fst |> update_loc in
+      let loc = sort |> Sort.info |> Commented.get_range |> update_loc in
       let name, sort_args = Sort.split sort in
       match classify_sort context sort with
       | Variable -> ptyp_var name
@@ -429,7 +429,7 @@ module Helpers (Context : Builder_context) = struct
       - otherwise the sort is an external or defined in this language: We build an
         expression like [foo ~args] or [list (a ~args) ~args] . *)
   let mk_sort_app ~args sort =
-    let loc = sort |> Sort.info |> fst |> update_loc in
+    let loc = sort |> Sort.info |> Commented.get_range |> update_loc in
     pexp_apply (pexp_ident { txt = Lident (sort_head sort); loc }) args
   ;;
 
@@ -510,7 +510,7 @@ module Ctor_decl (Context : Builder_context) = struct
       let args =
         List.map binding_sort_slots ~f:(function
             | Syn.Sort_slot.Sort_binding sort ->
-              let loc = sort |> Sort.info |> fst |> update_loc in
+              let loc = sort |> Sort.info |> Commented.get_range |> update_loc in
               (match info with
               | With_info -> [%type: 'info Lvca_syntax.Single_var.t]
               | _ -> [%type: Lvca_syntax.Single_var.Plain.t])
@@ -1652,8 +1652,7 @@ module Sig (Context : Builder_context) = struct
     in
     let language =
       [%sigi:
-        val language
-          : (Lvca_provenance.Opt_range.t * string option) Lvca_syntax.Abstract_syntax.t]
+        val language : string Lvca_provenance.Commented.t Lvca_syntax.Abstract_syntax.t]
     in
     pmty_signature (language :: type_sigs)
   ;;

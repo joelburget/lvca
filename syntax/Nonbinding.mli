@@ -46,9 +46,7 @@ val pp : _ term Fmt.t
 val pp_opt_range : Opt_range.t term Fmt.t
 
 (** {1 Parsing} *)
-val parse
-  :  comment:'comment Lvca_parsing.t
-  -> (Opt_range.t * 'comment option) term Lvca_parsing.t
+val parse : comment:'a Lvca_parsing.t -> 'a Commented.t term Lvca_parsing.t
 
 (** {1 Misc} *)
 val hash : _ term -> string

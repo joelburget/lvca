@@ -83,9 +83,7 @@ val check
   -> ('info Sort.t String.Map.t, ('info, 'info t) Check_failure.t) Result.t
 
 (** {1 Parsing} *)
-val parse
-  :  comment:'comment Lvca_parsing.t
-  -> (Opt_range.t * 'comment option) t Lvca_parsing.t
+val parse : comment:'a Lvca_parsing.t -> 'a Commented.t t Lvca_parsing.t
 
 module Properties : sig
   include Properties_intf.Parse_pretty_s with type 'info t := 'info t

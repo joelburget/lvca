@@ -27,7 +27,8 @@ module Make (Base_plain : Language_object_intf.Base_plain_s) = struct
     Base_plain.parse
     >>== fun Parse_result.{ value; range } ->
     option' comment
-    >>|| fun { value = opt_comment; _ } -> { value = (range, opt_comment), value; range }
+    >>|| fun { value = comment; _ } ->
+    { value = Lvca_provenance.Commented.{ range; comment }, value; range }
   ;;
 end
 

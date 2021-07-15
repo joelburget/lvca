@@ -320,11 +320,11 @@ let parse ~comment =
             [ (parens (sep_end_by (char ';') slot)
               >>== fun { value = slots; range = parens_range } ->
               option' comment
-              >>|| fun { value = opt_comment; _ } ->
+              >>|| fun { value = comment; _ } ->
               let range = Opt_range.union ident_range parens_range in
-              { value = Operator ((range, opt_comment), ident, slots); range })
+              { value = Operator (Commented.{ range; comment }, ident, slots); range })
             ; (option' comment
-              >>| fun opt_comment -> Var ((ident_range, opt_comment), ident))
+              >>| fun comment -> Var (Commented.{ range = ident_range; comment }, ident))
             ])
         ])
   <?> "binding-aware pattern"
@@ -381,7 +381,7 @@ let%test_module "Parsing" =
 
     let print_parse tm =
       match Lvca_parsing.parse_string parse_no_comment tm with
-      | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range (map_info ~f:fst pat)
+      | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range (map_info ~f:Commented.get_range pat)
       | Error msg -> Fmt.pr "failed: %s\n" msg
     ;;
 
@@ -635,8 +635,8 @@ let%test_module "check" =
     ;;
 
     let print_match pat_str tm_str =
-      let pattern = pat_str |> parse_pattern |> map_info ~f:fst in
-      let tm = tm_str |> parse_term |> Term.map_info ~f:fst in
+      let pattern = pat_str |> parse_pattern |> map_info ~f:Commented.get_range in
+      let tm = tm_str |> parse_term |> Term.map_info ~f:Commented.get_range in
       let info_eq = Opt_range.( = ) in
       match match_term ~info_eq pattern tm with
       | None -> ()

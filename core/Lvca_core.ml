@@ -267,8 +267,10 @@ module Parse = struct
     | [] -> Lvca_util.invariant_violation ~here:[%here] "must be a nonempty list"
     | [ x ] -> x
     | f :: args as xs ->
-      let pos = xs |> List.map ~f:(Info.term >> fst) |> Opt_range.list_range in
-      Core_app ((pos, None), f, args)
+      let pos =
+        xs |> List.map ~f:(Info.term >> Commented.get_range) |> Opt_range.list_range
+      in
+      Core_app (Commented.{ range = pos; comment = None }, f, args)
   ;;
 
   let term ~comment =
@@ -281,8 +283,8 @@ module Parse = struct
             ; (identifier
               >>== fun { value; range } ->
               option' comment
-              >>|| fun { value = opt_comment; _ } ->
-              { value = Types.Var ((range, opt_comment), value); range })
+              >>|| fun { value = comment; _ } ->
+              { value = Types.Var (Commented.{ range; comment }, value); range })
             ; braces (Nominal.Term.parse' ~comment)
               >>| (fun tm -> Types.Term tm)
               <?> "quoted term"
@@ -297,7 +299,9 @@ module Parse = struct
           ~failure_msg:"looking for a lambda, let, match, or application"
           [ lift4
               (fun (_, lam_loc) ((name, ty), parens_loc) _ body ->
-                let info = Opt_range.union lam_loc parens_loc, None in
+                let info =
+                  Commented.{ range = Opt_range.union lam_loc parens_loc; comment = None }
+                in
                 Types.Lambda (info, ty, Scope (name, body)))
               (attach_pos (char '\\'))
               (attach_pos
@@ -313,14 +317,17 @@ module Parse = struct
             <?> "let"
           ; lift4
               (fun (_let, let_pos) is_rec name ty _eq tm _in (body, body_pos) ->
-                let info = Opt_range.union let_pos body_pos, None in
+                let info =
+                  Commented.{ range = Opt_range.union let_pos body_pos; comment = None }
+                in
                 Types.Let { info; is_rec; ty; tm; scope = Scope (name, body) })
               (attach_pos (string "let"))
               Lang.Is_rec.(
                 option
-                  (No_rec (None, None))
+                  (No_rec Commented.none)
                   (string "rec"
-                  >>|| fun { range; _ } -> { range; value = Rec (range, None) }))
+                  >>|| fun { range; _ } ->
+                  { range; value = Rec Commented.{ range; comment = None } }))
               identifier
               (option None (char ':' *> Type.parse ~comment >>| fun tm -> Some tm))
             <*> string "="
@@ -330,7 +337,7 @@ module Parse = struct
           ; lift4
               (fun (_match, match_pos) tm _with (lines, lines_pos) ->
                 let pos = Opt_range.union match_pos lines_pos in
-                Types.Case ((pos, None), tm, lines))
+                Types.Case (Commented.{ range = pos; comment = None }, tm, lines))
               (attach_pos (string "match"))
               term
               (string "with")
@@ -1124,7 +1131,7 @@ let%test_module "Core eval in dynamics" =
     let eval_in dynamics_str str =
       let defn = parse_exn dynamics_str in
       let core = parse_exn str in
-      match eval (Core_app ((None, None), defn, [ core ])) with
+      match eval (Core_app (Commented.none, defn, [ core ])) with
       | Error (msg, tm) -> Fmt.str "%s: %a" msg Term.pp tm
       | Ok result -> Fmt.to_to_string Nominal.Term.pp result
     ;;

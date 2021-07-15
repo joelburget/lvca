@@ -106,10 +106,12 @@ let parse ~comment =
           parens (sep_end_by (char ';') term)
           >>== (fun { value = children; range = finish } ->
                  option' comment
-                 >>|| fun { value = opt_comment; _ } ->
+                 >>|| fun { value = comment; _ } ->
                  let pos = Opt_range.union start finish in
                  Parse_result.
-                   { value = Operator ((pos, opt_comment), ident, children); range = pos })
+                   { value = Operator (Commented.{ range = pos; comment }, ident, children)
+                   ; range = pos
+                   })
           <?> "term body")
         ])
   <?> "term"

@@ -103,8 +103,9 @@ let parse ~comment =
           ; (identifier
             >>== fun Parse_result.{ value; range } ->
             option' comment
-            >>|| fun { value = opt_comment; _ } ->
-            { value = Name ((range, opt_comment), value); range })
+            >>|| fun { value = comment; _ } ->
+            { value = Name (Lvca_provenance.Commented.{ range; comment }, value); range }
+            )
           ]
       in
       many1 atomic_sort

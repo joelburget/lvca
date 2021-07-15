@@ -31,7 +31,7 @@ val of_nominal_with_bindings
 val alpha_equivalent : 'a term -> 'b term -> bool
 
 val parse
-  :  comment:'comment Lvca_parsing.t
-  -> (Lvca_provenance.Opt_range.t * 'comment option) term Lvca_parsing.t
+  :  comment:'a Lvca_parsing.t
+  -> 'a Lvca_provenance.Commented.t term Lvca_parsing.t
 
 (* module Properties : Properties_intf.S with type 'info t := 'info term *)

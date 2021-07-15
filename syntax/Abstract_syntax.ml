@@ -1,6 +1,7 @@
 (** Types for representing languages *)
 
 open Base
+open Lvca_provenance
 open Lvca_util
 
 let test_parse_with p str =
@@ -29,8 +30,8 @@ module Kind = struct
       sep_by1 (string "->") (char '*')
       >>== (fun Parse_result.{ value = stars; range } ->
              option' comment
-             >>|| fun { value = opt_comment; _ } ->
-             { value = Kind ((range, opt_comment), List.length stars); range })
+             >>|| fun { value = comment; _ } ->
+             { value = Kind (Commented.{ range; comment }, List.length stars); range })
       <?> "kind"
     ;;
 
@@ -165,7 +166,7 @@ module Valence = struct
 
   let parse ~comment =
     let open Lvca_parsing in
-    let t' =
+    let t =
       sep_by1 (char '.') (Sort_slot.parse ~comment)
       >>= fun slots ->
       let binders, body_slot = List.unsnoc slots in
@@ -178,7 +179,7 @@ module Valence = struct
              Sort_slot.pp
              body_slot)
     in
-    t' <?> "valence"
+    t <?> "valence"
   ;;
 end
 
@@ -201,9 +202,9 @@ module Arity = struct
 
   let%test_module _ =
     (module struct
-      let tm = Sort.Name ((None, None), "tm")
+      let tm = Sort.Name (Commented.none, "tm")
       let tm_v = Valence.Valence ([], tm)
-      let integer = Sort.Name ((None, None), "integer")
+      let integer = Sort.Name (Commented.none, "integer")
       let integer_v = Valence.Valence ([], integer)
       let ( = ) = equal ~info_eq:(fun _ _ -> true)
       let parse = parse ~comment:(Lvca_parsing.fail "no comment")
@@ -381,7 +382,10 @@ module Sort_def = struct
     (module struct
       let ( = ) = Tuple2.equal String.( = ) (equal ~info_eq:(fun _ _ -> true))
       let parse = parse ~comment:(Lvca_parsing.fail "no comment")
-      let test_parse str = test_parse_with parse str |> Tuple2.map2 ~f:(map_info ~f:fst)
+
+      let test_parse str =
+        test_parse_with parse str |> Tuple2.map2 ~f:(map_info ~f:Commented.get_range)
+      ;;
 
       let%test_unit _ =
         assert (
@@ -655,7 +659,8 @@ let%test_module "Parser" =
     open Lvca_provenance
 
     let parse =
-      test_parse_with (parse ~comment:(Lvca_parsing.fail "no comment")) >> map_info ~f:fst
+      test_parse_with (parse ~comment:(Lvca_parsing.fail "no comment"))
+      >> map_info ~f:Commented.get_range
     ;;
 
     let ( = ) = equal Opt_range.( = )

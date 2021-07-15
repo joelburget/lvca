@@ -99,25 +99,18 @@ module Parse : sig
   type 'info matrix_row = 'info matrix_entry list * 'info Nonbinding.term
 
   val branch
-    :  comment:'comment Lvca_parsing.t
-    -> ((Opt_range.t * 'comment option) Pattern.t
-       * (Opt_range.t * 'comment option) Nonbinding.term)
-       Lvca_parsing.t
+    :  comment:'a Lvca_parsing.t
+    -> ('a Commented.t Pattern.t * 'a Commented.t Nonbinding.term) Lvca_parsing.t
 
   val branches
-    :  comment:'comment Lvca_parsing.t
-    -> ((Opt_range.t * 'comment option) Pattern.t
-       * (Opt_range.t * 'comment option) Nonbinding.term)
-       list
-       Lvca_parsing.t
+    :  comment:'a Lvca_parsing.t
+    -> ('a Commented.t Pattern.t * 'a Commented.t Nonbinding.term) list Lvca_parsing.t
 
-  val matrix_row
-    :  comment:'comment Lvca_parsing.t
-    -> (Opt_range.t * 'comment option) matrix_row Lvca_parsing.t
+  val matrix_row : comment:'a Lvca_parsing.t -> 'a Commented.t matrix_row Lvca_parsing.t
 
   val matrix_rows
-    :  comment:'comment Lvca_parsing.t
-    -> (Opt_range.t * 'comment option) matrix_row list Lvca_parsing.t
+    :  comment:'a Lvca_parsing.t
+    -> 'a Commented.t matrix_row list Lvca_parsing.t
 end
 
 module Properties : sig

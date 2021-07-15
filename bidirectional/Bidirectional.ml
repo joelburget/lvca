@@ -334,7 +334,7 @@ let%test_module "check / infer" =
 
     let parse_tm =
       parse (Nominal.Term.parse' ~comment:Lvca_parsing.(fail "no comment"))
-      >> Result.map ~f:(Nominal.Term.map_info ~f:fst)
+      >> Result.map ~f:(Nominal.Term.map_info ~f:Lvca_provenance.Commented.get_range)
     ;;
 
     let rules =

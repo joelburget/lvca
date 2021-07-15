@@ -4,8 +4,6 @@ open Lvca_syntax
 open Abstract_syntax
 open Ppxlib
 
-type info = Opt_range.t * string option
-
 let extract_string ~loc expr =
   (* payload and location of the string contents, inside "" or {||} *)
   let adjust shift loc =
@@ -51,10 +49,14 @@ module Exp = struct
       [%expr Some Lvca_provenance.Range.{ start = [%e start]; finish = [%e finish] }]
   ;;
 
-  let info ~loc (x, y) = [%expr [%e opt_range ~loc x], [%e option str ~loc y]]
+  let commented ~loc Lvca_provenance.Commented.{ range; comment } =
+    [%expr
+      Lvca_provenance.Commented.
+        { range = [%e opt_range ~loc range]; comment = [%e option str ~loc comment] }]
+  ;;
 
   let prim ~loc (pos, prim) =
-    let pos = info ~loc pos in
+    let pos = commented ~loc pos in
     match prim with
     | Primitive_impl.All_plain.Integer i ->
       [%expr [%e pos], Lvca_syntax.Primitive_impl.All_plain.Integer [%e bigint ~loc i]]
@@ -72,9 +74,10 @@ module Exp = struct
     | Pattern.Operator (pos, name, pats) ->
       let name_exp = str ~loc name in
       let pats = pats |> List.map ~f:(pattern ~loc) |> list ~loc in
-      [%expr Lvca_syntax.Pattern.Operator ([%e info ~loc pos], [%e name_exp], [%e pats])]
+      [%expr
+        Lvca_syntax.Pattern.Operator ([%e commented ~loc pos], [%e name_exp], [%e pats])]
     | Var (pos, s) ->
-      [%expr Lvca_syntax.Pattern.Var ([%e info ~loc pos], [%e str ~loc s])]
+      [%expr Lvca_syntax.Pattern.Var ([%e commented ~loc pos], [%e str ~loc s])]
     | Primitive p -> [%expr Lvca_syntax.Pattern.Primitive [%e prim ~loc p]]
   ;;
 
@@ -83,9 +86,10 @@ module Exp = struct
       let name_exp = str ~loc name in
       let scopes = scopes |> List.map ~f:(scope ~loc) |> list ~loc in
       [%expr
-        Lvca_syntax.Nominal.Term.Operator ([%e info ~loc pos], [%e name_exp], [%e scopes])]
+        Lvca_syntax.Nominal.Term.Operator
+          ([%e commented ~loc pos], [%e name_exp], [%e scopes])]
     | Var (pos, s) ->
-      [%expr Lvca_syntax.Nominal.Term.Var ([%e info ~loc pos], [%e str ~loc s])]
+      [%expr Lvca_syntax.Nominal.Term.Var ([%e commented ~loc pos], [%e str ~loc s])]
     | Primitive p -> [%expr Lvca_syntax.Nominal.Term.Primitive [%e prim ~loc p]]
 
   and scope ~loc (Nominal.Scope.Scope (pats, tm)) =
@@ -99,16 +103,17 @@ module Exp = struct
       let name_exp = str ~loc name in
       let tms = tms |> List.map ~f:(nonbinding ~loc) |> list ~loc in
       [%expr
-        Lvca_syntax.Nonbinding.Operator ([%e info ~loc pos], [%e name_exp], [%e tms])]
+        Lvca_syntax.Nonbinding.Operator ([%e commented ~loc pos], [%e name_exp], [%e tms])]
     | Primitive p -> [%expr Lvca_syntax.Nonbinding.Primitive [%e prim ~loc p]]
   ;;
 
   let rec sort ~loc = function
     | Sort.Ap (pos, name, sorts) ->
       let sorts = sorts |> List.map ~f:(sort ~loc) |> list ~loc in
-      [%expr Lvca_syntax.Sort.Ap ([%e info ~loc pos], [%e str ~loc name], [%e sorts])]
+      [%expr
+        Lvca_syntax.Sort.Ap ([%e commented ~loc pos], [%e str ~loc name], [%e sorts])]
     | Sort.Name (pos, name) ->
-      [%expr Lvca_syntax.Sort.Name ([%e info ~loc pos], [%e str ~loc name])]
+      [%expr Lvca_syntax.Sort.Name ([%e commented ~loc pos], [%e str ~loc name])]
   ;;
 
   let sort_slot ~loc = function
@@ -137,7 +142,8 @@ module Exp = struct
   ;;
 
   let kind ~loc (Kind.Kind (pos, n)) =
-    [%expr Lvca_syntax.Abstract_syntax.Kind.Kind ([%e info ~loc pos], [%e int ~loc n])]
+    [%expr
+      Lvca_syntax.Abstract_syntax.Kind.Kind ([%e commented ~loc pos], [%e int ~loc n])]
   ;;
 
   let sort_def ~loc (Sort_def.Sort_def (vars, op_defs)) =

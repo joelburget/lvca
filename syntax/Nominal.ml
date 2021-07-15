@@ -441,12 +441,14 @@ module Term = struct
               [ (parens (sep_end_by (char ';') slot)
                 >>== fun { value = slots; range = parens_range } ->
                 option' comment
-                >>|| fun { value = opt_comment; _ } ->
+                >>|| fun { value = comment; _ } ->
                 let range = Opt_range.union ident_range parens_range in
                 Parse_result.
-                  { value = Operator ((range, opt_comment), ident, slots); range })
+                  { value = Operator (Commented.{ range; comment }, ident, slots); range }
+                )
               ; (option' comment
-                >>| fun opt_comment -> Var ((ident_range, opt_comment), ident))
+                >>| fun comment -> Var (Commented.{ range = ident_range; comment }, ident)
+                )
               ])
           ])
     <?> "term"
@@ -588,10 +590,7 @@ module Convertible = struct
     val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
     val pp_opt_range : Lvca_provenance.Opt_range.t t Fmt.t
-
-    val parse
-      :  comment:'comment Lvca_parsing.t
-      -> (Opt_range.t * 'comment option) t Lvca_parsing.t
+    val parse : comment:'a Lvca_parsing.t -> 'a Commented.t t Lvca_parsing.t
   end
 
   module Extend (Object : S) :
@@ -849,7 +848,7 @@ let%test_module "TermParser" =
       | Error msg -> print_string ("failed: " ^ msg)
       | Ok tm ->
         Fmt.pr "%a\n" Term.pp tm;
-        Fmt.pr "%a" Term.pp_opt_range (Term.map_info ~f:fst tm)
+        Fmt.pr "%a" Term.pp_opt_range (Term.map_info ~f:Commented.get_range tm)
     ;;
 
     let%test _ = parse_erase "x" = Ok (Var ((), "x"))

@@ -1,4 +1,5 @@
 open Base
+open Lvca_provenance
 open Lvca_syntax
 open Lvca_util
 
@@ -46,7 +47,7 @@ module Typing_clause = struct
 
     let pattern =
       Binding_aware_pattern.parse ~comment:(Lvca_parsing.fail "no comment")
-      >>| Binding_aware_pattern.map_info ~f:fst
+      >>| Binding_aware_pattern.map_info ~f:Commented.get_range
       <?> "pattern"
     ;;
 
@@ -100,7 +101,7 @@ module Hypothesis = struct
     (* TODO: remove duplication *)
     let pattern =
       Binding_aware_pattern.parse ~comment:(Lvca_parsing.fail "no comment")
-      >>| Binding_aware_pattern.map_info ~f:fst
+      >>| Binding_aware_pattern.map_info ~f:Commented.get_range
       <?> "pattern"
     ;;
 

@@ -255,10 +255,12 @@ let parse ~comment =
             [ (parens (sep_end_by (char ';') pat)
               >>== fun Parse_result.{ value = children; range = finish } ->
               option' comment
-              >>|| fun { value = opt_comment; _ } ->
+              >>|| fun { value = comment; _ } ->
               let range = Opt_range.union range finish in
-              { value = Operator ((range, opt_comment), ident, children); range })
-            ; (option' comment >>| fun opt_comment -> Var ((range, opt_comment), ident))
+              { value = Operator (Commented.{ range; comment }, ident, children); range }
+              )
+            ; (option' comment
+              >>| fun comment -> Var (Commented.{ range; comment }, ident))
             ]
           <?> "pattern body")
         ])
@@ -277,7 +279,7 @@ let%test_module "Parsing" =
 
     let print_parse tm =
       match Lvca_parsing.parse_string parse_no_comment tm with
-      | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range (map_info ~f:fst pat)
+      | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range (map_info ~f:Commented.get_range pat)
       | Error msg -> Fmt.pr "failed: %s\n" msg
     ;;
 

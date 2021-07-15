@@ -3,14 +3,17 @@ open Lvca_syntax
 
 val extract_string : loc:Ppxlib.location -> Ppxlib.expression -> string * Warnings.loc
 
-type info = Opt_range.t * string option
-
 module Exp : sig
   val str : loc:Ppxlib.location -> string -> Ppxlib.expression
   val opt_range : loc:Ppxlib.location -> Opt_range.t -> Ppxlib.expression
-  val info : loc:Ppxlib.location -> info -> Ppxlib.expression
-  val prim : loc:Ppxlib.location -> info Primitive.All.t -> Ppxlib.expression
-  val sort : loc:Ppxlib.location -> info Sort.t -> Ppxlib.expression
+  val commented : loc:Ppxlib.location -> string Commented.t -> Ppxlib.expression
+
+  val prim
+    :  loc:Ppxlib.location
+    -> string Commented.t Primitive.All.t
+    -> Ppxlib.expression
+
+  val sort : loc:Ppxlib.location -> string Commented.t Sort.t -> Ppxlib.expression
 
   val option
     :  loc:Warnings.loc
@@ -19,10 +22,22 @@ module Exp : sig
     -> Ppxlib.expression
 
   val list : loc:Ppxlib.location -> Ppxlib.expression list -> Ppxlib.expression
-  val pattern : loc:Ppxlib.location -> info Pattern.t -> Ppxlib.expression
-  val nominal : loc:Ppxlib.location -> info Nominal.Term.t -> Ppxlib.expression
-  val nonbinding : loc:Ppxlib.location -> info Nonbinding.term -> Ppxlib.expression
-  val language : loc:Ppxlib.location -> info Abstract_syntax.t -> Ppxlib.expression
+  val pattern : loc:Ppxlib.location -> string Commented.t Pattern.t -> Ppxlib.expression
+
+  val nominal
+    :  loc:Ppxlib.location
+    -> string Commented.t Nominal.Term.t
+    -> Ppxlib.expression
+
+  val nonbinding
+    :  loc:Ppxlib.location
+    -> string Commented.t Nonbinding.term
+    -> Ppxlib.expression
+
+  val language
+    :  loc:Ppxlib.location
+    -> string Commented.t Abstract_syntax.t
+    -> Ppxlib.expression
 end
 
 module Pat : sig
