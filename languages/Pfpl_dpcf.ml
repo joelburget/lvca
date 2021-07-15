@@ -106,7 +106,8 @@ let rec eval tm =
 let%test_module _ =
   (module struct
     let go str =
-      match Lvca_parsing.(parse_string (whitespace *> Exp.parse)) str with
+      let comment = Lvca_parsing.fail "no comment" in
+      match Lvca_parsing.(parse_string (whitespace *> Exp.parse ~comment)) str with
       | Error msg -> Fmt.pr "%s" msg
       | Ok tm ->
         (match eval tm with

@@ -477,10 +477,12 @@ test := foo(term[term]. term)
       |}
     ;;
 
-    let language = parse' Abstract_syntax.parse lang_desc
+    let language =
+      parse' (Abstract_syntax.parse ~comment:(Lvca_parsing.fail "no comment")) lang_desc
+    ;;
 
     let print_check_pattern sort_str pat_str =
-      let sort = parse' Sort.parse sort_str in
+      let sort = parse' (Sort.parse ~comment:(Lvca_parsing.fail "no comment")) sort_str in
       let pat = parse' parse_no_comment pat_str in
       let pp ppf pat = Fmt.pf ppf "pattern: %a" pp pat in
       match check Primitive.All.check language sort pat with

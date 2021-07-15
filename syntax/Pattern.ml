@@ -416,8 +416,10 @@ end
 
 let%test_module "check" =
   (module struct
+    let comment = Lvca_parsing.fail "no comment"
+
     let parse_lang lang_str =
-      Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.parse) lang_str)
+      Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.parse ~comment) lang_str)
       |> Result.ok_or_failwith
     ;;
 
@@ -425,7 +427,7 @@ let%test_module "check" =
       Lvca_parsing.parse_string parse_no_comment str |> Result.ok_or_failwith
     ;;
 
-    let parse_sort str = Lvca_parsing.parse_string Sort.parse str
+    let parse_sort str = Lvca_parsing.parse_string (Sort.parse ~comment) str
 
     let lang_desc =
       {|

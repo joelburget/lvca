@@ -25,15 +25,17 @@ module Kind = struct
   module Parse = struct
     open Lvca_parsing
 
-    let t =
+    let t ~comment =
       sep_by1 (string "->") (char '*')
-      >>|| (fun (Parse_result.{ value = stars; range } as parse_result) ->
-             { parse_result with value = Kind (range, List.length stars) })
+      >>== (fun Parse_result.{ value = stars; range } ->
+             option' comment
+             >>|| fun { value = opt_comment; _ } ->
+             { value = Kind ((range, opt_comment), List.length stars); range })
       <?> "kind"
     ;;
 
-    let decl =
-      lift3 (fun ident _colon kind -> ident, kind) identifier (char ':') t
+    let decl ~comment =
+      lift3 (fun ident _colon kind -> ident, kind) identifier (char ':') (t ~comment)
       <?> "kind declaration"
     ;;
   end
@@ -109,12 +111,12 @@ module Sort_slot = struct
       [ pattern_sort; var_sort ] |> List.fold ~init:env ~f:Sort.kind_check
   ;;
 
-  let parse =
+  let parse ~comment =
     let open Lvca_parsing in
-    Sort.parse
+    Sort.parse ~comment
     >>= fun sort ->
     choice
-      [ (brackets Sort.parse
+      [ (brackets (Sort.parse ~comment)
         >>| fun var_sort -> Sort_pattern { pattern_sort = sort; var_sort })
       ; return (Sort_binding sort)
       ]
@@ -161,10 +163,10 @@ module Valence = struct
     Sort.kind_check env value_sort
   ;;
 
-  let parse =
+  let parse ~comment =
     let open Lvca_parsing in
     let t' =
-      sep_by1 (char '.') Sort_slot.parse
+      sep_by1 (char '.') (Sort_slot.parse ~comment)
       >>= fun slots ->
       let binders, body_slot = List.unsnoc slots in
       match body_slot with
@@ -192,15 +194,19 @@ module Arity = struct
   let map_info ~f = List.map ~f:(Valence.map_info ~f)
   let erase arity = map_info ~f:(Fn.const ()) arity
   let instantiate env = List.map ~f:(Valence.instantiate env)
-  let parse = Lvca_parsing.(parens (sep_by (char ';') Valence.parse) <?> "arity")
+
+  let parse ~comment =
+    Lvca_parsing.(parens (sep_by (char ';') (Valence.parse ~comment)) <?> "arity")
+  ;;
 
   let%test_module _ =
     (module struct
-      let tm = Sort.Name (None, "tm")
+      let tm = Sort.Name ((None, None), "tm")
       let tm_v = Valence.Valence ([], tm)
-      let integer = Sort.Name (None, "integer")
+      let integer = Sort.Name ((None, None), "integer")
       let integer_v = Valence.Valence ([], integer)
       let ( = ) = equal ~info_eq:(fun _ _ -> true)
+      let parse = parse ~comment:(Lvca_parsing.fail "no comment")
 
       let%test_unit _ = assert (test_parse_with parse "(integer)" = [ integer_v ])
       let%test_unit _ = assert (test_parse_with parse "(tm; tm)" = [ tm_v; tm_v ])
@@ -263,9 +269,12 @@ module Operator_def = struct
 
   let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
-  let parse =
+  let parse ~comment =
     let open Lvca_parsing in
-    lift2 (fun ident arity -> Operator_def (ident, arity)) identifier Arity.parse
+    lift2
+      (fun ident arity -> Operator_def (ident, arity))
+      identifier
+      (Arity.parse ~comment)
     <?> "operator definition"
   ;;
 
@@ -273,7 +282,9 @@ module Operator_def = struct
     (module struct
       let%test_unit _ =
         let ( = ) = equal ~info_eq:(fun _ _ -> true) in
-        assert (test_parse_with parse "foo()" = Operator_def ("foo", []))
+        assert (
+          test_parse_with (parse ~comment:(Lvca_parsing.fail "no comment")) "foo()"
+          = Operator_def ("foo", []))
       ;;
     end)
   ;;
@@ -345,7 +356,7 @@ module Sort_def = struct
     pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ~name ppf t
   ;;
 
-  let parse =
+  let parse ~comment =
     let open Lvca_parsing in
     let assign = string ":=" in
     let bar = char '|' in
@@ -353,7 +364,7 @@ module Sort_def = struct
       choice
         ~failure_msg:"looking for an identifier or parens"
         [ (identifier >>| fun name -> name, None)
-        ; (parens Kind.Parse.decl >>| fun (name, kind) -> name, Some kind)
+        ; (parens (Kind.Parse.decl ~comment) >>| fun (name, kind) -> name, Some kind)
         ]
       <?> "sort variable declaration"
     in
@@ -362,23 +373,25 @@ module Sort_def = struct
       identifier
       (many sort_var_decl)
       assign
-      (option '|' bar *> sep_by bar Operator_def.parse)
+      (option '|' bar *> sep_by bar (Operator_def.parse ~comment))
     <?> "sort definition"
   ;;
 
   let%test_module _ =
     (module struct
       let ( = ) = Tuple2.equal String.( = ) (equal ~info_eq:(fun _ _ -> true))
+      let parse = parse ~comment:(Lvca_parsing.fail "no comment")
+      let test_parse str = test_parse_with parse str |> Tuple2.map2 ~f:(map_info ~f:fst)
 
       let%test_unit _ =
         assert (
-          test_parse_with parse {|foo := foo()|}
+          test_parse {|foo := foo()|}
           = ("foo", Sort_def ([], [ Operator_def ("foo", []) ])))
       ;;
 
       let%test_unit _ =
         assert (
-          test_parse_with parse {|foo x := foo()|}
+          test_parse {|foo x := foo()|}
           = ("foo", Sort_def ([ "x", None ], [ Operator_def ("foo", []) ])))
       ;;
 
@@ -396,8 +409,7 @@ module Sort_def = struct
       ;;
 
       let%test_unit _ =
-        assert (
-          test_parse_with parse {|tm :=
+        assert (test_parse {|tm :=
   | add(tm; tm)
   | lit(integer)
       |} = tm_def)
@@ -547,12 +559,12 @@ let kind_check { externals; sort_defs } =
   | _ -> Error (String.Map.of_alist_exn mismapped_vars)
 ;;
 
-let parse =
+let parse ~comment =
   let open Lvca_parsing in
   lift2
     (fun externals sort_defs -> { externals; sort_defs })
-    (many Kind.Parse.decl)
-    (many1 Sort_def.parse)
+    (many (Kind.Parse.decl ~comment))
+    (many1 (Sort_def.parse ~comment))
   <?> "abstract syntax"
 ;;
 
@@ -569,6 +581,8 @@ let%test_module _ =
           , [ Operator_def ("add", [ tm_v; tm_v ]); Operator_def ("lit", [ integer_v ]) ]
           ) )
     ;;
+
+    let parse = parse ~comment:(Lvca_parsing.fail "no comment")
 
     let%test_unit _ =
       let parsed =
@@ -640,7 +654,10 @@ let%test_module "Parser" =
   (module struct
     open Lvca_provenance
 
-    let parse = test_parse_with parse
+    let parse =
+      test_parse_with (parse ~comment:(Lvca_parsing.fail "no comment")) >> map_info ~f:fst
+    ;;
+
     let ( = ) = equal Opt_range.( = )
     let tm_sort = Sort.Name ((), "tm")
     let tm_valence = Valence.Valence ([], tm_sort)

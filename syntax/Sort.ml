@@ -93,7 +93,7 @@ let erase_info sort = map_info ~f:(fun _ -> ()) sort
 (** Split a sort into a name and its arguments. *)
 let split = function Name (_, name) -> name, [] | Ap (_, name, args) -> name, args
 
-let parse =
+let parse ~comment =
   let open Lvca_parsing in
   fix (fun sort ->
       let atomic_sort =
@@ -101,8 +101,10 @@ let parse =
           ~failure_msg:"looking for parens or an identifier"
           [ parens sort
           ; (identifier
-            >>|| fun Parse_result.{ value; range } ->
-            { value = Name (range, value); range })
+            >>== fun Parse_result.{ value; range } ->
+            option' comment
+            >>|| fun { value = opt_comment; _ } ->
+            { value = Name ((range, opt_comment), value); range })
           ]
       in
       many1 atomic_sort
@@ -115,7 +117,7 @@ let parse =
           "Higher-order sorts are not allowed. The head of a sort application must be \
            concrete"
       | [ (Name _ as value) ] -> return ~range value
-      | Name (_, name) :: args -> return ~range (Ap (range, name, args))
+      | Name (info, name) :: args -> return ~range (Ap (info, name, args))
       | [] -> assert false)
 ;;
 
@@ -131,12 +133,16 @@ let%test_module "Sort_Parser" =
     let abc = Ap ((), "a", [ Name ((), "b"); Name ((), "c") ])
     let abcd = Ap ((), "a", [ Ap ((), "b", [ Name ((), "c") ]); Name ((), "d") ])
     let ( = ) = equal Unit.( = )
+    let parse_no_comment = parse ~comment:(Lvca_parsing.fail "no comment")
 
-    let%test_unit _ = assert (parse_with parse "a" |> erase_info = a)
-    let%test_unit _ = assert (parse_with parse "(a)" |> erase_info = a)
-    let%test_unit _ = assert (parse_with parse "a b c" |> erase_info = abc)
-    let%test_unit _ = assert (parse_with parse "(a b c)" |> erase_info = abc)
-    let%test_unit _ = assert (parse_with parse "a (b c) d" |> erase_info = abcd)
+    let%test_unit _ = assert (parse_with parse_no_comment "a" |> erase_info = a)
+    let%test_unit _ = assert (parse_with parse_no_comment "(a)" |> erase_info = a)
+    let%test_unit _ = assert (parse_with parse_no_comment "a b c" |> erase_info = abc)
+    let%test_unit _ = assert (parse_with parse_no_comment "(a b c)" |> erase_info = abc)
+
+    let%test_unit _ =
+      assert (parse_with parse_no_comment "a (b c) d" |> erase_info = abcd)
+    ;;
 
     let%expect_test _ =
       Fmt.pr "%a" pp a;

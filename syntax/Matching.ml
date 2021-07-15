@@ -547,8 +547,8 @@ let%test_module "Matching" =
 
     let run_compiled_matches syntax_str sorts_str matrix_str tms_str =
       match
-        ( parse Abstract_syntax.parse syntax_str
-        , parse Lvca_parsing.(sep_by (char ',') Sort.parse) sorts_str
+        ( parse (Abstract_syntax.parse ~comment) syntax_str
+        , parse Lvca_parsing.(sep_by (char ',') (Sort.parse ~comment)) sorts_str
         , parse (Parse.matrix_rows ~comment) matrix_str
         , parse Lvca_parsing.(sep_by (char ',') (Nonbinding.parse ~comment)) tms_str )
       with
@@ -640,8 +640,8 @@ let%test_module "Matching" =
 
     let print_check syntax_str sorts_str matrix_str =
       match
-        ( parse Abstract_syntax.parse syntax_str
-        , parse Lvca_parsing.(sep_by (char ',') Sort.parse) sorts_str
+        ( parse (Abstract_syntax.parse ~comment) syntax_str
+        , parse Lvca_parsing.(sep_by (char ',') (Sort.parse ~comment)) sorts_str
         , parse (Parse.matrix_rows ~comment) matrix_str )
       with
       | Ok syntax, Ok sorts, Ok matrix ->

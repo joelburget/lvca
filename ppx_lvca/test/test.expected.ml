@@ -1,39 +1,39 @@
 open Lvca_syntax
 let test_nominal =
   Lvca_syntax.Nominal.Term.Operator
-    ((Some (let open Lvca_provenance.Range in { start = 0; finish = 9 })),
-      "foo",
+    (((Some (let open Lvca_provenance.Range in { start = 0; finish = 9 })),
+       None), "foo",
       [Lvca_syntax.Nominal.Scope.Scope
          ([Lvca_syntax.Pattern.Var
-             ((Some
-                 ((let open Lvca_provenance.Range in
-                     { start = 4; finish = 5 }))), "x")],
-           (Lvca_syntax.Nominal.Term.Var
-              ((Some
+             (((Some
                   ((let open Lvca_provenance.Range in
-                      { start = 7; finish = 8 }))), "x")))])
+                      { start = 4; finish = 5 }))), None), "x")],
+           (Lvca_syntax.Nominal.Term.Var
+              (((Some
+                   ((let open Lvca_provenance.Range in
+                       { start = 7; finish = 8 }))), None), "x")))])
 let test_nonbinding =
   Lvca_syntax.Nonbinding.Operator
-    ((Some (let open Lvca_provenance.Range in { start = 0; finish = 11 })),
-      "foo",
+    (((Some (let open Lvca_provenance.Range in { start = 0; finish = 11 })),
+       None), "foo",
       [Lvca_syntax.Nonbinding.Operator
-         ((Some
-             ((let open Lvca_provenance.Range in { start = 4; finish = 10 }))),
-           "bar",
+         (((Some
+              ((let open Lvca_provenance.Range in { start = 4; finish = 10 }))),
+            None), "bar",
            [Lvca_syntax.Nonbinding.Primitive
-              ((Some
-                  ((let open Lvca_provenance.Range in
-                      { start = 8; finish = 9 }))),
+              (((Some
+                   ((let open Lvca_provenance.Range in
+                       { start = 8; finish = 9 }))), None),
                 (Lvca_syntax.Primitive_impl.All_plain.Integer
                    (Z.of_string "1")))])])
 let test_pattern =
   Lvca_syntax.Pattern.Operator
-    ((Some (let open Lvca_provenance.Range in { start = 0; finish = 6 })),
-      "foo",
+    (((Some (let open Lvca_provenance.Range in { start = 0; finish = 6 })),
+       None), "foo",
       [Lvca_syntax.Pattern.Var
-         ((Some
-             ((let open Lvca_provenance.Range in { start = 4; finish = 5 }))),
-           "x")])
+         (((Some
+              ((let open Lvca_provenance.Range in { start = 4; finish = 5 }))),
+            None), "x")])
 let test_language =
   let open Lvca_syntax.Abstract_syntax in
     {
@@ -47,9 +47,9 @@ let test_language =
                      [Lvca_syntax.Abstract_syntax.Valence.Valence
                         ([],
                           (Lvca_syntax.Sort.Name
-                             ((Some
-                                 ((let open Lvca_provenance.Range in
-                                     { start = 12; finish = 19 }))),
+                             (((Some
+                                  ((let open Lvca_provenance.Range in
+                                      { start = 12; finish = 19 }))), None),
                                "integer")))])])))]
     }
 module Lang =
@@ -489,24 +489,24 @@ module Lang =
           externals =
             [("integer",
                (Lvca_syntax.Abstract_syntax.Kind.Kind
-                  ((Some
-                      ((let open Lvca_provenance.Range in
-                          { start = 11; finish = 12 }))), 1)));
+                  (((Some
+                       ((let open Lvca_provenance.Range in
+                           { start = 11; finish = 12 }))), None), 1)));
             ("string",
               (Lvca_syntax.Abstract_syntax.Kind.Kind
-                 ((Some
-                     ((let open Lvca_provenance.Range in
-                         { start = 22; finish = 23 }))), 1)));
+                 (((Some
+                      ((let open Lvca_provenance.Range in
+                          { start = 22; finish = 23 }))), None), 1)));
             ("maybe",
               (Lvca_syntax.Abstract_syntax.Kind.Kind
-                 ((Some
-                     ((let open Lvca_provenance.Range in
-                         { start = 32; finish = 38 }))), 2)));
+                 (((Some
+                      ((let open Lvca_provenance.Range in
+                          { start = 32; finish = 38 }))), None), 2)));
             ("list",
               (Lvca_syntax.Abstract_syntax.Kind.Kind
-                 ((Some
-                     ((let open Lvca_provenance.Range in
-                         { start = 46; finish = 52 }))), 2)))];
+                 (((Some
+                      ((let open Lvca_provenance.Range in
+                          { start = 46; finish = 52 }))), None), 2)))];
           sort_defs =
             [("foo",
                (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
@@ -516,10 +516,10 @@ module Lang =
                          [Lvca_syntax.Abstract_syntax.Valence.Valence
                             ([],
                               (Lvca_syntax.Sort.Name
-                                 ((Some
-                                     ((let open Lvca_provenance.Range in
-                                         { start = 69; finish = 76 }))),
-                                   "integer")))]);
+                                 (((Some
+                                      ((let open Lvca_provenance.Range in
+                                          { start = 69; finish = 76 }))),
+                                    None), "integer")))]);
                     Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
                       ("Bar",
                         [Lvca_syntax.Abstract_syntax.Valence.Valence
@@ -527,28 +527,28 @@ module Lang =
                                {
                                  pattern_sort =
                                    (Lvca_syntax.Sort.Name
-                                      ((Some
-                                          ((let open Lvca_provenance.Range in
-                                              { start = 86; finish = 89 }))),
-                                        "foo"));
+                                      (((Some
+                                           ((let open Lvca_provenance.Range in
+                                               { start = 86; finish = 89 }))),
+                                         None), "foo"));
                                  var_sort =
                                    (Lvca_syntax.Sort.Name
-                                      ((Some
-                                          ((let open Lvca_provenance.Range in
-                                              { start = 90; finish = 93 }))),
-                                        "foo"))
+                                      (((Some
+                                           ((let open Lvca_provenance.Range in
+                                               { start = 90; finish = 93 }))),
+                                         None), "foo"))
                                };
                             Lvca_syntax.Abstract_syntax.Sort_slot.Sort_binding
                               (Lvca_syntax.Sort.Name
-                                 ((Some
-                                     ((let open Lvca_provenance.Range in
-                                         { start = 96; finish = 99 }))),
-                                   "foo"))],
+                                 (((Some
+                                      ((let open Lvca_provenance.Range in
+                                          { start = 96; finish = 99 }))),
+                                    None), "foo"))],
                              (Lvca_syntax.Sort.Name
-                                ((Some
-                                    ((let open Lvca_provenance.Range in
-                                        { start = 101; finish = 104 }))),
-                                  "foo")))])])));
+                                (((Some
+                                     ((let open Lvca_provenance.Range in
+                                         { start = 101; finish = 104 }))),
+                                   None), "foo")))])])));
             ("nat",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([],
@@ -559,10 +559,10 @@ module Lang =
                        [Lvca_syntax.Abstract_syntax.Valence.Valence
                           ([],
                             (Lvca_syntax.Sort.Name
-                               ((Some
-                                   ((let open Lvca_provenance.Range in
-                                       { start = 122; finish = 125 }))),
-                                 "nat")))])])));
+                               (((Some
+                                    ((let open Lvca_provenance.Range in
+                                        { start = 122; finish = 125 }))),
+                                  None), "nat")))])])));
             ("pair",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([("a", None); ("b", None)],
@@ -571,16 +571,17 @@ module Lang =
                         [Lvca_syntax.Abstract_syntax.Valence.Valence
                            ([],
                              (Lvca_syntax.Sort.Name
-                                ((Some
-                                    ((let open Lvca_provenance.Range in
-                                        { start = 145; finish = 146 }))),
-                                  "a")));
+                                (((Some
+                                     ((let open Lvca_provenance.Range in
+                                         { start = 145; finish = 146 }))),
+                                   None), "a")));
                         Lvca_syntax.Abstract_syntax.Valence.Valence
                           ([],
                             (Lvca_syntax.Sort.Name
-                               ((Some
-                                   ((let open Lvca_provenance.Range in
-                                       { start = 148; finish = 149 }))), "b")))])])));
+                               (((Some
+                                    ((let open Lvca_provenance.Range in
+                                        { start = 148; finish = 149 }))),
+                                  None), "b")))])])));
             ("pair_plus",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([("a", None); ("b", None)],
@@ -589,23 +590,24 @@ module Lang =
                         [Lvca_syntax.Abstract_syntax.Valence.Valence
                            ([],
                              (Lvca_syntax.Sort.Name
-                                ((Some
+                                (((Some
+                                     ((let open Lvca_provenance.Range in
+                                         { start = 177; finish = 178 }))),
+                                   None), "a")));
+                        Lvca_syntax.Abstract_syntax.Valence.Valence
+                          ([],
+                            (Lvca_syntax.Sort.Name
+                               (((Some
                                     ((let open Lvca_provenance.Range in
-                                        { start = 177; finish = 178 }))),
-                                  "a")));
+                                        { start = 180; finish = 181 }))),
+                                  None), "b")));
                         Lvca_syntax.Abstract_syntax.Valence.Valence
                           ([],
                             (Lvca_syntax.Sort.Name
-                               ((Some
-                                   ((let open Lvca_provenance.Range in
-                                       { start = 180; finish = 181 }))), "b")));
-                        Lvca_syntax.Abstract_syntax.Valence.Valence
-                          ([],
-                            (Lvca_syntax.Sort.Name
-                               ((Some
-                                   ((let open Lvca_provenance.Range in
-                                       { start = 183; finish = 186 }))),
-                                 "foo")))])])));
+                               (((Some
+                                    ((let open Lvca_provenance.Range in
+                                        { start = 183; finish = 186 }))),
+                                  None), "foo")))])])));
             ("nonempty",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([],
@@ -614,22 +616,22 @@ module Lang =
                         [Lvca_syntax.Abstract_syntax.Valence.Valence
                            ([],
                              (Lvca_syntax.Sort.Name
-                                ((Some
-                                    ((let open Lvca_provenance.Range in
-                                        { start = 210; finish = 216 }))),
-                                  "string")));
+                                (((Some
+                                     ((let open Lvca_provenance.Range in
+                                         { start = 210; finish = 216 }))),
+                                   None), "string")));
                         Lvca_syntax.Abstract_syntax.Valence.Valence
                           ([],
                             (Lvca_syntax.Sort.Ap
-                               ((Some
-                                   ((let open Lvca_provenance.Range in
-                                       { start = 218; finish = 229 }))),
-                                 "list",
+                               (((Some
+                                    ((let open Lvca_provenance.Range in
+                                        { start = 218; finish = 222 }))),
+                                  None), "list",
                                  [Lvca_syntax.Sort.Name
-                                    ((Some
-                                        ((let open Lvca_provenance.Range in
-                                            { start = 223; finish = 229 }))),
-                                      "string")])))])])));
+                                    (((Some
+                                         ((let open Lvca_provenance.Range in
+                                             { start = 223; finish = 229 }))),
+                                       None), "string")])))])])));
             ("term",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([],
@@ -638,15 +640,15 @@ module Lang =
                         [Lvca_syntax.Abstract_syntax.Valence.Valence
                            ([],
                              (Lvca_syntax.Sort.Ap
-                                ((Some
-                                    ((let open Lvca_provenance.Range in
-                                        { start = 249; finish = 258 }))),
-                                  "list",
+                                (((Some
+                                     ((let open Lvca_provenance.Range in
+                                         { start = 249; finish = 253 }))),
+                                   None), "list",
                                   [Lvca_syntax.Sort.Name
-                                     ((Some
-                                         ((let open Lvca_provenance.Range in
-                                             { start = 254; finish = 258 }))),
-                                       "term")])))])])));
+                                     (((Some
+                                          ((let open Lvca_provenance.Range in
+                                              { start = 254; finish = 258 }))),
+                                        None), "term")])))])])));
             ("mut_a",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([],
@@ -655,10 +657,10 @@ module Lang =
                         [Lvca_syntax.Abstract_syntax.Valence.Valence
                            ([],
                              (Lvca_syntax.Sort.Name
-                                ((Some
-                                    ((let open Lvca_provenance.Range in
-                                        { start = 276; finish = 281 }))),
-                                  "mut_b")))])])));
+                                (((Some
+                                     ((let open Lvca_provenance.Range in
+                                         { start = 276; finish = 281 }))),
+                                   None), "mut_b")))])])));
             ("mut_b",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([],
@@ -667,10 +669,10 @@ module Lang =
                         [Lvca_syntax.Abstract_syntax.Valence.Valence
                            ([],
                              (Lvca_syntax.Sort.Name
-                                ((Some
-                                    ((let open Lvca_provenance.Range in
-                                        { start = 298; finish = 303 }))),
-                                  "mut_a")))])])));
+                                (((Some
+                                     ((let open Lvca_provenance.Range in
+                                         { start = 298; finish = 303 }))),
+                                   None), "mut_a")))])])));
             ("ifz",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([],
@@ -679,29 +681,29 @@ module Lang =
                         [Lvca_syntax.Abstract_syntax.Valence.Valence
                            ([],
                              (Lvca_syntax.Sort.Name
-                                ((Some
-                                    ((let open Lvca_provenance.Range in
-                                        { start = 316; finish = 319 }))),
-                                  "ifz")));
+                                (((Some
+                                     ((let open Lvca_provenance.Range in
+                                         { start = 316; finish = 319 }))),
+                                   None), "ifz")));
                         Lvca_syntax.Abstract_syntax.Valence.Valence
                           ([Lvca_syntax.Abstract_syntax.Sort_slot.Sort_binding
                               (Lvca_syntax.Sort.Name
-                                 ((Some
-                                     ((let open Lvca_provenance.Range in
-                                         { start = 321; finish = 324 }))),
-                                   "ifz"))],
+                                 (((Some
+                                      ((let open Lvca_provenance.Range in
+                                          { start = 321; finish = 324 }))),
+                                    None), "ifz"))],
                             (Lvca_syntax.Sort.Name
-                               ((Some
-                                   ((let open Lvca_provenance.Range in
-                                       { start = 326; finish = 329 }))),
-                                 "ifz")));
+                               (((Some
+                                    ((let open Lvca_provenance.Range in
+                                        { start = 326; finish = 329 }))),
+                                  None), "ifz")));
                         Lvca_syntax.Abstract_syntax.Valence.Valence
                           ([],
                             (Lvca_syntax.Sort.Name
-                               ((Some
-                                   ((let open Lvca_provenance.Range in
-                                       { start = 331; finish = 334 }))),
-                                 "ifz")))])])))]
+                               (((Some
+                                    ((let open Lvca_provenance.Range in
+                                        { start = 331; finish = 334 }))),
+                                  None), "ifz")))])])))]
         }
     module Foo =
       struct
@@ -745,7 +747,9 @@ module Lang =
               let parse_prim =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
                   (fun tm ->
                      match of_nominal tm with
                      | Ok tm -> return (to_plain tm)
@@ -791,7 +795,9 @@ module Lang =
               let parse_prim =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
                   (fun tm ->
                      match of_nominal tm with
                      | Ok tm -> return (to_plain tm)
@@ -844,7 +850,9 @@ module Lang =
               let parse_prim =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
                   (fun tm ->
                      match of_nominal tm with
                      | Ok tm -> return (to_plain tm)
@@ -899,7 +907,9 @@ module Lang =
               let parse_prim =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
                   (fun tm ->
                      match of_nominal tm with
                      | Ok tm -> return (to_plain tm)
@@ -945,7 +955,9 @@ module Lang =
               let parse_prim =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
                   (fun tm ->
                      match of_nominal tm with
                      | Ok tm -> return (to_plain tm)
@@ -989,7 +1001,9 @@ module Lang =
               let parse_prim =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
                   (fun tm ->
                      match of_nominal tm with
                      | Ok tm -> return (to_plain tm)
@@ -1033,7 +1047,9 @@ module Lang =
               let parse_prim =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
                   (fun tm ->
                      match of_nominal tm with
                      | Ok tm -> return (to_plain tm)
@@ -1077,7 +1093,9 @@ module Lang =
               let parse_prim =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
                   (fun tm ->
                      match of_nominal tm with
                      | Ok tm -> return (to_plain tm)
@@ -1126,7 +1144,9 @@ module Lang =
               let parse_prim =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse ~parse_prim) >>=
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
                   (fun tm ->
                      match of_nominal tm with
                      | Ok tm -> return (to_plain tm)
@@ -1137,7 +1157,9 @@ module Lang =
   end
 module type Is_rec_sig  =
   sig
-    val language : Lvca_provenance.Opt_range.t Lvca_syntax.Abstract_syntax.t
+    val language :
+      (Lvca_provenance.Opt_range.t * string option)
+        Lvca_syntax.Abstract_syntax.t
     module Is_rec :
     sig
       type 'info t =

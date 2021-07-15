@@ -980,8 +980,10 @@ match(x; match_lines(
 
 let%test_module "check" =
   (module struct
+    let comment = Lvca_parsing.fail "no comment"
+
     let parse_lang lang_str =
-      Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.parse) lang_str)
+      Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.parse ~comment) lang_str)
       |> Result.ok_or_failwith
     ;;
 
@@ -989,7 +991,7 @@ let%test_module "check" =
       Lvca_parsing.parse_string Term.parse_no_comment term_str |> Result.ok_or_failwith
     ;;
 
-    let parse_sort str = Lvca_parsing.parse_string Sort.parse str
+    let parse_sort str = Lvca_parsing.parse_string (Sort.parse ~comment) str
 
     let lang_desc =
       {|
@@ -1027,9 +1029,7 @@ test := foo(term[term]. term)
           | Either.First pat -> Fmt.pf ppf "pattern: %a" Pattern.pp pat
           | Second tm -> Fmt.pf ppf "term: %a" Term.pp tm
         in
-        (match
-           tm_str |> parse_term |> Term.map_info ~f:fst |> Term.check language sort
-         with
+        (match tm_str |> parse_term |> Term.check language sort with
         | Some failure -> Fmt.epr "%a" (Check_failure.pp pp) failure
         | None -> ())
     ;;

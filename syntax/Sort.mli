@@ -33,4 +33,6 @@ val of_term
   -> ('info t, ('info, 'prim) Nominal.term) Result.t
   *)
 
-val parse : Lvca_provenance.Opt_range.t t Lvca_parsing.t
+val parse
+  :  comment:'comment Lvca_parsing.t
+  -> (Lvca_provenance.Opt_range.t * 'comment option) t Lvca_parsing.t

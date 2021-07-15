@@ -3,38 +3,39 @@ open Ppxlib
 open Syntax_quoter
 
 let parse p = Lvca_parsing.(parse_string (whitespace *> p))
+let comment = Lvca_parsing.fail "no comment"
 
 let expand_nominal ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string ~loc expr in
-  match parse (Nominal.Term.parse' ~comment:(Lvca_parsing.fail "no comment")) str with
+  match parse (Nominal.Term.parse' ~comment) str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
-  | Ok tm -> tm |> Nominal.Term.map_info ~f:fst |> Exp.nominal ~loc
+  | Ok tm -> Exp.nominal ~loc tm
 ;;
 
 let expand_nonbinding ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string ~loc expr in
-  match parse (Nonbinding.parse ~comment:(Lvca_parsing.fail "no comment")) str with
+  match parse (Nonbinding.parse ~comment) str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
-  | Ok tm -> tm |> Nonbinding.map_info ~f:fst |> Exp.nonbinding ~loc
+  | Ok tm -> Exp.nonbinding ~loc tm
 ;;
 
 let expand_pattern ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string ~loc expr in
-  match parse (Pattern.parse ~comment:(Lvca_parsing.fail "no comment")) str with
+  match parse (Pattern.parse ~comment) str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
-  | Ok tm -> tm |> Pattern.map_info ~f:fst |> Exp.pattern ~loc
+  | Ok tm -> Exp.pattern ~loc tm
 ;;
 
 let expand_abstract_syntax ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string ~loc expr in
-  match parse Abstract_syntax.parse str with
+  match parse (Abstract_syntax.parse ~comment) str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax -> Exp.language ~loc syntax
 ;;
 
 let expand_module ~(loc : Location.t) ~path:_ (lang_str_expr : expression) : module_expr =
   let str, loc = extract_string ~loc lang_str_expr in
-  match parse Abstract_syntax.parse str with
+  match parse (Abstract_syntax.parse ~comment) str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax ->
     let module Builder_context = struct
@@ -51,7 +52,7 @@ let expand_module ~(loc : Location.t) ~path:_ (lang_str_expr : expression) : mod
 
 let expand_module_sig ~(loc : Location.t) ~path:_ (expr : expression) : module_type =
   let str, loc = extract_string ~loc expr in
-  match parse Abstract_syntax.parse str with
+  match parse (Abstract_syntax.parse ~comment) str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax ->
     let module Builder_context = struct

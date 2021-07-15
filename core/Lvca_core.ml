@@ -40,7 +40,7 @@ module Type = struct
     go false ppf
   ;;
 
-  let pp = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ())
+  let pp ty = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ty
 
   module Parse = struct
     open Lvca_parsing
@@ -51,10 +51,10 @@ module Type = struct
 
     let normalize ty = match ty with Sort _ -> ty | Arrow tys -> Arrow (go tys)
 
-    let t =
+    let t ~comment =
       let t =
         fix (fun t ->
-            let atom = parens t <|> (Sort.parse >>| fun sort -> Sort sort) in
+            let atom = parens t <|> (Sort.parse ~comment >>| fun sort -> Sort sort) in
             sep_by1 (string "->") atom >>| function [ t ] -> t | ts -> Arrow ts)
       in
       t >>| normalize <?> "core type"
@@ -91,7 +91,7 @@ module Type = struct
     ;;
   end
 
-  let parse = Parse.t
+  let parse ~comment = Parse.t ~comment
 end
 
 module Types = struct
@@ -267,11 +267,11 @@ module Parse = struct
     | [] -> Lvca_util.invariant_violation ~here:[%here] "must be a nonempty list"
     | [ x ] -> x
     | f :: args as xs ->
-      let pos = xs |> List.map ~f:Info.term |> Opt_range.list_range in
-      Core_app (pos, f, args)
+      let pos = xs |> List.map ~f:(Info.term >> fst) |> Opt_range.list_range in
+      Core_app ((pos, None), f, args)
   ;;
 
-  let term =
+  let term ~comment =
     fix (fun term ->
         let atomic_term =
           choice
@@ -279,11 +279,16 @@ module Parse = struct
               "looking for a parenthesized term, identifier, or expression in braces"
             [ parens term
             ; (identifier
-              >>|| fun { value; range } -> { value = Types.Var (range, value); range })
-            ; braces Nominal.Term.parse' >>| (fun tm -> Types.Term tm) <?> "quoted term"
+              >>== fun { value; range } ->
+              option' comment
+              >>|| fun { value = opt_comment; _ } ->
+              { value = Types.Var ((range, opt_comment), value); range })
+            ; braces (Nominal.Term.parse' ~comment)
+              >>| (fun tm -> Types.Term tm)
+              <?> "quoted term"
             ]
         in
-        let pattern = Binding_aware_pattern.parse <?> "pattern" in
+        let pattern = Binding_aware_pattern.parse ~comment <?> "pattern" in
         let case_line =
           lift3 (fun pat _ tm -> Types.Case_scope (pat, tm)) pattern (string "->") term
           <?> "case line"
@@ -292,35 +297,40 @@ module Parse = struct
           ~failure_msg:"looking for a lambda, let, match, or application"
           [ lift4
               (fun (_, lam_loc) ((name, ty), parens_loc) _ body ->
-                let info = Opt_range.union lam_loc parens_loc in
+                let info = Opt_range.union lam_loc parens_loc, None in
                 Types.Lambda (info, ty, Scope (name, body)))
               (attach_pos (char '\\'))
               (attach_pos
                  (parens
-                    (lift3 (fun ident _ ty -> ident, ty) identifier (char ':') Type.parse)))
+                    (lift3
+                       (fun ident _ ty -> ident, ty)
+                       identifier
+                       (char ':')
+                       (Type.parse ~comment))))
               (string "->")
               term
             <?> "lambda"
+            <?> "let"
           ; lift4
               (fun (_let, let_pos) is_rec name ty _eq tm _in (body, body_pos) ->
-                let info = Opt_range.union let_pos body_pos in
+                let info = Opt_range.union let_pos body_pos, None in
                 Types.Let { info; is_rec; ty; tm; scope = Scope (name, body) })
               (attach_pos (string "let"))
               Lang.Is_rec.(
                 option
-                  (No_rec None)
-                  (string "rec" >>|| fun { range; _ } -> { range; value = Rec range }))
+                  (No_rec (None, None))
+                  (string "rec"
+                  >>|| fun { range; _ } -> { range; value = Rec (range, None) }))
               identifier
-              (option None (char ':' *> Type.parse >>| fun tm -> Some tm))
+              (option None (char ':' *> Type.parse ~comment >>| fun tm -> Some tm))
             <*> string "="
             <*> term
             <*> string "in"
             <*> attach_pos term
-            <?> "let"
           ; lift4
               (fun (_match, match_pos) tm _with (lines, lines_pos) ->
                 let pos = Opt_range.union match_pos lines_pos in
-                Types.Case (pos, tm, lines))
+                Types.Case ((pos, None), tm, lines))
               (attach_pos (string "match"))
               term
               (string "with")
@@ -353,7 +363,7 @@ module Term = struct
 
   let erase = map_info ~f:(fun _ -> ())
   let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
-  let parse = Parse.term
+  let parse ~comment = Parse.term ~comment
 end
 
 module Let = struct
@@ -415,17 +425,19 @@ module Module = struct
 
   let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 
-  let parse =
+  let parse ~comment =
     let open Lvca_parsing in
     let external_decl =
       lift4
         (fun ident _ ty _ -> ident, ty)
         identifier
         (string ":")
-        Type.parse
+        (Type.parse ~comment)
         (string ";")
     in
-    let def = lift3 (fun ident _ tm -> ident, tm) identifier (string ":=") Term.parse in
+    let def =
+      lift3 (fun ident _ tm -> ident, tm) identifier (string ":=") (Term.parse ~comment)
+    in
     lift2 (fun externals defs -> { externals; defs }) (many external_decl) (many1 def)
   ;;
 end
@@ -456,7 +468,7 @@ module Check_error' = struct
     | Failed_check_term of
         ('info, ('info Pattern.t, 'info Nominal.Term.t) Either.t) Check_failure.t
 
-  let pp ppf tm ty_opt = function
+  let pp ppf tm (ty_opt : _ option Type.t option) = function
     | Cant_infer_case -> Fmt.pf ppf "can't infer cases"
     | Cant_infer_lambda -> Fmt.pf ppf "can't infer lambdas"
     | Var_not_found ->
@@ -536,7 +548,7 @@ let rec check ({ type_env; syntax } as env) tm ty =
   | Term.Term tm' ->
     (match ty with
     | Type.Arrow _ -> Some Check_error.{ env; tm; ty; error = Term_isnt_arrow }
-    | Type.Sort sort ->
+    | Sort sort ->
       (match Nominal.Term.check syntax sort tm' with
       | None -> None
       | Some err -> Some Check_error.{ env; tm; ty; error = Failed_check_term err }))
@@ -741,7 +753,11 @@ and eval_primitive eval_in_ctx eval_nominal_in_ctx ctx tm name args =
 ;;
 
 let eval core = eval_in_ctx SMap.empty core
-let parse_exn = Lvca_parsing.parse_string Parse.term >> Result.ok_or_failwith
+
+let parse_exn =
+  Lvca_parsing.parse_string (Parse.term ~comment:(Lvca_parsing.fail "no comment"))
+  >> Result.ok_or_failwith
+;;
 
 let%test_module "Parsing" =
   (module struct
@@ -1001,9 +1017,10 @@ let%test_module "Core pretty" =
       Stdio.print_string str
     ;;
 
-    let term = mk_test Term.parse Term.pp
-    let ty = mk_test Type.parse Type.pp
-    let module' = mk_test Module.parse Module.pp
+    let comment = Lvca_parsing.fail "no comment"
+    let term = mk_test (Term.parse ~comment) Term.pp
+    let ty = mk_test (Type.parse ~comment) Type.pp
+    let module' = mk_test (Module.parse ~comment) Module.pp
 
     let%expect_test _ =
       term ~width:22 "match {true()} with { true() -> {false()} | false() -> {true()} }";
@@ -1107,7 +1124,7 @@ let%test_module "Core eval in dynamics" =
     let eval_in dynamics_str str =
       let defn = parse_exn dynamics_str in
       let core = parse_exn str in
-      match eval (Core_app (None, defn, [ core ])) with
+      match eval (Core_app ((None, None), defn, [ core ])) with
       | Error (msg, tm) -> Fmt.str "%s: %a" msg Term.pp tm
       | Ok result -> Fmt.to_to_string Nominal.Term.pp result
     ;;
@@ -1147,7 +1164,10 @@ let%test_module "Core eval in dynamics" =
 
 let%test_module "Evaluation / inference" =
   (module struct
-    let parse_type str = Lvca_parsing.parse_string Type.parse str |> Result.ok_or_failwith
+    let parse_type str =
+      Lvca_parsing.parse_string (Type.parse ~comment:(Lvca_parsing.fail "no comment")) str
+      |> Result.ok_or_failwith
+    ;;
 
     open Abstract_syntax
 
@@ -1177,8 +1197,8 @@ let%test_module "Evaluation / inference" =
     let syntax = Abstract_syntax.{ externals; sort_defs }
 
     let check ?(type_env = SMap.empty) ty_str tm_str =
-      let tm = parse_exn tm_str in
-      let ty = parse_type ty_str in
+      let tm = tm_str |> parse_exn |> Term.map_info ~f:(Fn.const None) in
+      let ty = ty_str |> parse_type |> Type.map_info ~f:(Fn.const None) in
       let ctx = { type_env; syntax } in
       match check ctx tm ty with
       | Some err -> Check_error.pp Fmt.stdout err
@@ -1186,7 +1206,7 @@ let%test_module "Evaluation / inference" =
     ;;
 
     let infer ?(type_env = SMap.empty) tm_str =
-      let tm = parse_exn tm_str in
+      let tm = tm_str |> parse_exn |> Term.map_info ~f:(Fn.const None) in
       let ctx = { type_env; syntax } in
       match infer ctx tm with
       | Error err -> Infer_error.pp Fmt.stdout err

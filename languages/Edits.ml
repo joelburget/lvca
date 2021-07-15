@@ -4,6 +4,8 @@ open Lvca_provenance
 open Lvca_core
 open Stdio
 
+let ( >> ) = Lvca_util.(( >> ))
+
 let abstract_syntax =
   [%lvca.abstract_syntax
     {|
@@ -29,6 +31,12 @@ type 'lang t =
   | Atomic of 'lang
   | Labeled of 'lang t * string (* TODO? string -> core *)
   | List of 'lang t list
+
+let rec map_t ~f = function
+  | Atomic x -> Atomic (f x)
+  | Labeled (x, label) -> Labeled (map_t ~f x, label)
+  | List ts -> List (List.map ~f:(map_t ~f) ts)
+;;
 
 let rec pp : 'lang Fmt.t -> 'lang t Fmt.t =
  fun lang_fmt ppf ->
@@ -56,8 +64,12 @@ type term = Opt_range.t Nominal.Term.t
 
 let%test_module "Parsing" =
   (module struct
-    let parse : string -> (core t, string) Result.t =
-      Lvca_parsing.(parse_string (whitespace *> parse (braces Lvca_core.Term.parse)))
+    let comment = Lvca_parsing.fail "no comment"
+
+    let parse (str : string) : (core t, string) Result.t =
+      Lvca_parsing.(
+        parse_string (whitespace *> parse (braces (Lvca_core.Term.parse ~comment))) str)
+      |> Result.map ~f:(map_t ~f:(Lvca_core.Term.map_info ~f:fst))
     ;;
 
     let parse_and_print : string -> unit =
@@ -89,7 +101,8 @@ let%test_module "Parsing" =
       let open Result.Let_syntax in
       match
         let%bind edit = parse edit in
-        let%bind tm = Lvca_parsing.parse_string Nominal.Term.parse' tm in
+        let%bind tm = Lvca_parsing.parse_string (Nominal.Term.parse' ~comment) tm in
+        let tm = Nominal.Term.map_info ~f:fst tm in
         let%map tm = run tm edit in
         Nominal.Term.pp Caml.Format.std_formatter tm
       with
