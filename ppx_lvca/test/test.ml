@@ -34,4 +34,21 @@ mut_b := Mut_b(mut_a)
 ifz := Ifz(ifz; ifz. ifz; ifz)
 |}]
 
+module List_lang =
+[%lvca.abstract_syntax_module
+{|
+string : *
+
+predefined := Predefined()
+list a := Nil() | Cons(a; list a)
+list_external := List_external(list string)
+list_predefined := List_predefined(list predefined)
+
+list_list_a a := List_list_a(list (list a))
+list_list_string_1 := List_list_string_1(list (list string))
+list_list_string_2 := List_list_string_2(list_list_a string)
+list_list_predefined_1 := List_list_predefined_1(list (list predefined))
+list_list_predefined_2 := List_list_predefined_2(list_list_a predefined)
+|}]
+
 module type Is_rec_sig = [%lvca.abstract_syntax_module_sig {|is_rec := Rec() | No_rec()|}]

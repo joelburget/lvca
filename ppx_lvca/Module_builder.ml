@@ -413,6 +413,24 @@ module Helpers (Context : Builder_context) = struct
     go sort
   ;;
 
+  let external_fun = function
+    | Supported_function.Fun_to_plain -> [%expr Lvca_syntax.Nominal.Term.to_plain]
+    | Fun_of_plain -> [%expr Lvca_syntax.Nominal.Term.of_plain]
+    | Fun_map_info -> [%expr Lvca_syntax.Nominal.Term.map_info]
+    | Fun_of_nominal -> [%expr fun x -> Ok x]
+    | Fun_to_nominal | Fun_equal -> [%expr fun x -> x]
+    | Fun_info -> [%expr Lvca_syntax.Nominal.Term.info]
+  ;;
+
+  let external_fun_defn v = function
+    | Supported_function.Fun_to_plain ->
+      [%expr Lvca_syntax.Nominal.Term.to_plain [%e v ()]]
+    | Fun_of_plain -> [%expr Lvca_syntax.Nominal.Term.of_plain [%e v ()]]
+    | Fun_map_info -> [%expr Lvca_syntax.Nominal.Term.map_info ~f [%e v ()]]
+    | Fun_of_nominal | Fun_to_nominal | Fun_equal -> v ()
+    | Fun_info -> [%expr Lvca_syntax.Nominal.Term.info [%e v ()]]
+  ;;
+
   (** Make a function application for a sort expression, eg in map_info:
 
       {[
@@ -428,9 +446,21 @@ module Helpers (Context : Builder_context) = struct
         [a ~args].
       - otherwise the sort is an external or defined in this language: We build an
         expression like [foo ~args] or [list (a ~args) ~args] . *)
-  let mk_sort_app ~args sort =
-    let loc = sort |> Sort.info |> Commented.get_range |> update_loc in
-    pexp_apply (pexp_ident { txt = Lident (sort_head sort); loc }) args
+  let mk_sort_app ~fun_defn ~classify_sort ~args sort =
+    let rec go sort =
+      let loc = sort |> Sort.info |> Commented.get_range |> update_loc in
+      let txt = Lident (sort_head sort) in
+      match classify_sort sort with
+      | External_sort -> external_fun fun_defn
+      | Variable | Mutual_sort | Predefined_sort _ ->
+        (match sort with
+        | Sort.Ap (_, _, args) ->
+          pexp_apply
+            (pexp_ident { txt; loc })
+            (List.map args ~f:(fun sort -> Nolabel, go sort))
+        | Name _ -> pexp_ident { txt; loc })
+    in
+    pexp_apply (go sort) args
   ;;
 
   let labelled_fun name = pexp_fun (Labelled name) None (ppat_var { txt = name; loc })
@@ -672,13 +702,12 @@ module Operator_exp (Context : Builder_context) = struct
       ~has_info (* Building a plain or with-info data type *)
       ~var_names
       ~prim_names
-      ?(args = [])
-      ?(name_base = "x")
+      ?(f = false)
       sort_defs (* Sorts being defined together *)
       fun_defn (* The name of the function being defined *)
       (Syn.Operator_def.Operator_def (op_name, arity))
     =
-    let v = evar_allocator name_base in
+    let v = evar_allocator "x" in
     let pattern_converter =
       pexp_ident
         { txt =
@@ -686,20 +715,14 @@ module Operator_exp (Context : Builder_context) = struct
         ; loc
         }
     in
+    let f_args = if f then [ labelled_arg "f" ] else [] in
+    let classify_sort =
+      classify_sort { info = With_info; var_names; mutual_sorts = sort_defs; prim_names }
+    in
     let body_arg sort =
-      match
-        classify_sort
-          { info = With_info; var_names; mutual_sorts = sort_defs; prim_names }
-          sort
-      with
-      | External_sort ->
-        (match fun_defn with
-        | Fun_to_plain -> [%expr Lvca_syntax.Nominal.Term.to_plain [%e v ()]]
-        | Fun_of_plain -> [%expr Lvca_syntax.Nominal.Term.of_plain [%e v ()]]
-        | Fun_map_info -> [%expr Lvca_syntax.Nominal.Term.map_info ~f [%e v ()]]
-        | Fun_of_nominal | Fun_to_nominal | Fun_equal -> v ()
-        | Fun_info -> [%expr Lvca_syntax.Nominal.Term.info [%e v ()]])
-      | _ -> mk_sort_app ~args:(args @ [ Nolabel, v () ]) sort
+      match classify_sort sort with
+      | External_sort -> external_fun_defn v fun_defn
+      | _ -> mk_sort_app ~fun_defn ~classify_sort ~args:(f_args @ [ Nolabel, v () ]) sort
     in
     let contents =
       arity
@@ -721,7 +744,7 @@ module Operator_exp (Context : Builder_context) = struct
                      | Plain ->
                        [%expr Lvca_syntax.Single_var.Plain.{ name = [%e v ()].name }])
                    | Sort_pattern _ ->
-                     pexp_apply pattern_converter (args @ [ Nolabel, v () ]))
+                     pexp_apply pattern_converter (f_args @ [ Nolabel, v () ]))
              in
              slots_args @ [ body_arg body_sort ])
       |> List.map ~f:mk_exp_tuple
@@ -875,7 +898,7 @@ module Map_info (Context : Builder_context) = struct
           ~var_names
           ~prim_names
           ~has_info:With_info
-          ~args:[ labelled_arg "f" ]
+          ~f:true
           sort_defs
           Fun_map_info
           op_def
@@ -946,14 +969,14 @@ module To_nominal (Context : Builder_context) = struct
     (* TODO: change to name "info" *)
     let info = evar "x0" in
     let v = evar_allocator "x" in
+    let classify_sort =
+      classify_sort { info = With_info; var_names; mutual_sorts = sort_defs; prim_names }
+    in
     let body_arg sort =
-      match
-        classify_sort
-          { info = With_info; var_names; mutual_sorts = sort_defs; prim_names }
-          sort
-      with
+      match classify_sort sort with
       | External_sort -> v ()
-      | _ -> mk_sort_app ~args:[ Nolabel, v () ] sort
+      | _ ->
+        mk_sort_app ~fun_defn:Fun_to_nominal ~classify_sort ~args:[ Nolabel, v () ] sort
     in
     let mk_scope (Syn.Valence.Valence (slots, body_sort)) =
       let args =
@@ -1077,14 +1100,15 @@ module Of_nominal (Context : Builder_context) = struct
     let info = evar "x0" in
     (* Queue of (variable, conversion to perform) *)
     let conversions_needed = Queue.create () in
+    let classify_sort =
+      classify_sort { info = With_info; var_names; mutual_sorts = sort_defs; prim_names }
+    in
     let body_arg ev sort =
-      match
-        classify_sort
-          { info = With_info; var_names; mutual_sorts = sort_defs; prim_names }
-          sort
-      with
+      match classify_sort sort with
       | External_sort -> None
-      | _ -> Some (mk_sort_app ~args:[ Nolabel, ev ] sort)
+      | _ ->
+        Some
+          (mk_sort_app ~fun_defn:Fun_of_nominal ~classify_sort ~args:[ Nolabel, ev ] sort)
     in
     let contents =
       arity
@@ -1130,8 +1154,6 @@ module Of_nominal (Context : Builder_context) = struct
         let f (v, conversion) accum =
           [%expr
             match [%e conversion] with Error msg -> Error msg | Ok [%p v] -> [%e accum]]
-          (* Can also do this way but I think matching is clearer:
-             [%expr [%e conversion] |> Result.bind ~f:(fun [%p v] -> [%e accum])] *)
         in
         conversions_needed |> Queue.to_list |> List.fold_right ~f ~init
       in
@@ -1170,7 +1192,11 @@ module Equal (Context : Builder_context) = struct
   open Helpers (Context)
   module Operator_pat = Operator_pat (Context)
 
-  let mk _sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
+  let mk ~prim_names sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
+    let var_names = vars |> List.map ~f:fst |> SSet.of_list in
+    let classify_sort =
+      classify_sort { info = With_info; var_names; mutual_sorts = sort_defs; prim_names }
+    in
     let f (Syn.Operator_def.Operator_def (_op_name, arity) as op_def) =
       let lhs =
         let p1, p2 =
@@ -1205,7 +1231,7 @@ module Equal (Context : Builder_context) = struct
                    Int.incr var_ix;
                    let x, y = mk_xy () in
                    let args = [ labelled_arg "info_eq"; Nolabel, x; Nolabel, y ] in
-                   mk_sort_app ~args body_sort
+                   mk_sort_app ~fun_defn:Fun_equal ~classify_sort ~args body_sort
                  in
                  slots_checks @ [ body_check ])
           |> List.join

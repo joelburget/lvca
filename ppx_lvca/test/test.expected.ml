@@ -1319,6 +1319,1099 @@ module Lang =
           end
       end
   end
+module List_lang =
+  struct
+    module Wrapper =
+      struct
+        module Types =
+          struct
+            type 'info list_external =
+              | List_external of 'info * ('info,
+              'info Lvca_syntax.Nominal.Types.term) list 
+            and 'info list_predefined =
+              | List_predefined of 'info * ('info, 'info predefined) list 
+            and 'info list_list_string_2 =
+              | List_list_string_2 of 'info * ('info,
+              'info Lvca_syntax.Nominal.Types.term) list_list_a 
+            and 'info list_list_string_1 =
+              | List_list_string_1 of 'info * ('info,
+              ('info, 'info Lvca_syntax.Nominal.Types.term) list) list 
+            and 'info list_list_predefined_2 =
+              | List_list_predefined_2 of 'info * ('info, 'info predefined)
+              list_list_a 
+            and ('info, 'a) list_list_a =
+              | List_list_a of 'info * ('info, ('info, 'a) list) list 
+            and 'info list_list_predefined_1 =
+              | List_list_predefined_1 of 'info * ('info,
+              ('info, 'info predefined) list) list 
+            and 'info predefined =
+              | Predefined of 'info 
+            and ('info, 'a) list =
+              | Nil of 'info 
+              | Cons of 'info * 'a * ('info, 'a) list 
+          end
+        module Plain =
+          struct
+            type list_external =
+              | List_external of Lvca_syntax.Nominal.Plain.term list 
+            and list_predefined =
+              | List_predefined of predefined list 
+            and list_list_string_2 =
+              | List_list_string_2 of Lvca_syntax.Nominal.Plain.term
+              list_list_a 
+            and list_list_string_1 =
+              | List_list_string_1 of Lvca_syntax.Nominal.Plain.term list
+              list 
+            and list_list_predefined_2 =
+              | List_list_predefined_2 of predefined list_list_a 
+            and 'a list_list_a =
+              | List_list_a of 'a list list 
+            and list_list_predefined_1 =
+              | List_list_predefined_1 of predefined list list 
+            and predefined =
+              | Predefined 
+            and 'a list =
+              | Nil 
+              | Cons of 'a * 'a list 
+          end
+        module Info =
+          struct
+            let list _a =
+              function | Types.Nil x0 -> x0 | Types.Cons (x0, _, _) -> x0
+            let predefined = function | Types.Predefined x0 -> x0
+            let list_list_predefined_1 =
+              function | Types.List_list_predefined_1 (x0, _) -> x0
+            let list_list_a _a = function | Types.List_list_a (x0, _) -> x0
+            let list_list_predefined_2 =
+              function | Types.List_list_predefined_2 (x0, _) -> x0
+            let list_list_string_1 =
+              function | Types.List_list_string_1 (x0, _) -> x0
+            let list_list_string_2 =
+              function | Types.List_list_string_2 (x0, _) -> x0
+            let list_predefined =
+              function | Types.List_predefined (x0, _) -> x0
+            let list_external = function | Types.List_external (x0, _) -> x0
+          end
+        module To_plain =
+          struct
+            let rec list a =
+              function
+              | Types.Nil _ -> Plain.Nil
+              | Types.Cons (_, x1, x2) -> Plain.Cons ((a x1), (list a x2))
+            let predefined =
+              function | Types.Predefined _ -> Plain.Predefined
+            let list_list_predefined_1 =
+              function
+              | Types.List_list_predefined_1 (_, x1) ->
+                  Plain.List_list_predefined_1 (list (list predefined) x1)
+            let list_list_a a =
+              function
+              | Types.List_list_a (_, x1) ->
+                  Plain.List_list_a (list (list a) x1)
+            let list_list_predefined_2 =
+              function
+              | Types.List_list_predefined_2 (_, x1) ->
+                  Plain.List_list_predefined_2 (list_list_a predefined x1)
+            let list_list_string_1 =
+              function
+              | Types.List_list_string_1 (_, x1) ->
+                  Plain.List_list_string_1
+                    (list (list Lvca_syntax.Nominal.Term.to_plain) x1)
+            let list_list_string_2 =
+              function
+              | Types.List_list_string_2 (_, x1) ->
+                  Plain.List_list_string_2
+                    (list_list_a Lvca_syntax.Nominal.Term.to_plain x1)
+            let list_predefined =
+              function
+              | Types.List_predefined (_, x1) ->
+                  Plain.List_predefined (list predefined x1)
+            let list_external =
+              function
+              | Types.List_external (_, x1) ->
+                  Plain.List_external
+                    (list Lvca_syntax.Nominal.Term.to_plain x1)
+          end
+        module Of_plain =
+          struct
+            let rec list a =
+              function
+              | Plain.Nil -> Types.Nil ()
+              | Plain.Cons (x1, x2) -> Types.Cons ((), (a x1), (list a x2))
+            let predefined =
+              function | Plain.Predefined -> Types.Predefined ()
+            let list_list_predefined_1 =
+              function
+              | Plain.List_list_predefined_1 x1 ->
+                  Types.List_list_predefined_1
+                    ((), (list (list predefined) x1))
+            let list_list_a a =
+              function
+              | Plain.List_list_a x1 ->
+                  Types.List_list_a ((), (list (list a) x1))
+            let list_list_predefined_2 =
+              function
+              | Plain.List_list_predefined_2 x1 ->
+                  Types.List_list_predefined_2
+                    ((), (list_list_a predefined x1))
+            let list_list_string_1 =
+              function
+              | Plain.List_list_string_1 x1 ->
+                  Types.List_list_string_1
+                    ((), (list (list Lvca_syntax.Nominal.Term.of_plain) x1))
+            let list_list_string_2 =
+              function
+              | Plain.List_list_string_2 x1 ->
+                  Types.List_list_string_2
+                    ((), (list_list_a Lvca_syntax.Nominal.Term.of_plain x1))
+            let list_predefined =
+              function
+              | Plain.List_predefined x1 ->
+                  Types.List_predefined ((), (list predefined x1))
+            let list_external =
+              function
+              | Plain.List_external x1 ->
+                  Types.List_external
+                    ((), (list Lvca_syntax.Nominal.Term.of_plain x1))
+          end
+        module Map_info =
+          struct
+            let rec list a ~f  =
+              function
+              | Types.Nil x0 -> Types.Nil (f x0)
+              | Types.Cons (x0, x1, x2) ->
+                  Types.Cons ((f x0), (a ~f x1), (list a ~f x2))
+            let predefined ~f  =
+              function | Types.Predefined x0 -> Types.Predefined (f x0)
+            let list_list_predefined_1 ~f  =
+              function
+              | Types.List_list_predefined_1 (x0, x1) ->
+                  Types.List_list_predefined_1
+                    ((f x0), (list (list predefined) ~f x1))
+            let list_list_a a ~f  =
+              function
+              | Types.List_list_a (x0, x1) ->
+                  Types.List_list_a ((f x0), (list (list a) ~f x1))
+            let list_list_predefined_2 ~f  =
+              function
+              | Types.List_list_predefined_2 (x0, x1) ->
+                  Types.List_list_predefined_2
+                    ((f x0), (list_list_a predefined ~f x1))
+            let list_list_string_1 ~f  =
+              function
+              | Types.List_list_string_1 (x0, x1) ->
+                  Types.List_list_string_1
+                    ((f x0),
+                      (list (list Lvca_syntax.Nominal.Term.map_info) ~f x1))
+            let list_list_string_2 ~f  =
+              function
+              | Types.List_list_string_2 (x0, x1) ->
+                  Types.List_list_string_2
+                    ((f x0),
+                      (list_list_a Lvca_syntax.Nominal.Term.map_info ~f x1))
+            let list_predefined ~f  =
+              function
+              | Types.List_predefined (x0, x1) ->
+                  Types.List_predefined ((f x0), (list predefined ~f x1))
+            let list_external ~f  =
+              function
+              | Types.List_external (x0, x1) ->
+                  Types.List_external
+                    ((f x0), (list Lvca_syntax.Nominal.Term.map_info ~f x1))
+          end
+        module To_nominal =
+          struct
+            let rec list a =
+              function
+              | Types.Nil x0 ->
+                  Lvca_syntax.Nominal.Term.Operator (x0, "Nil", [])
+              | Types.Cons (x0, x1, x2) ->
+                  Lvca_syntax.Nominal.Term.Operator
+                    (x0, "Cons",
+                      [Lvca_syntax.Nominal.Scope.Scope ([], (a x1));
+                      Lvca_syntax.Nominal.Scope.Scope ([], (list a x2))])
+            let predefined =
+              function
+              | Types.Predefined x0 ->
+                  Lvca_syntax.Nominal.Term.Operator (x0, "Predefined", [])
+            let list_list_predefined_1 =
+              function
+              | Types.List_list_predefined_1 (x0, x1) ->
+                  Lvca_syntax.Nominal.Term.Operator
+                    (x0, "List_list_predefined_1",
+                      [Lvca_syntax.Nominal.Scope.Scope
+                         ([], (list (list predefined) x1))])
+            let list_list_a a =
+              function
+              | Types.List_list_a (x0, x1) ->
+                  Lvca_syntax.Nominal.Term.Operator
+                    (x0, "List_list_a",
+                      [Lvca_syntax.Nominal.Scope.Scope
+                         ([], (list (list a) x1))])
+            let list_list_predefined_2 =
+              function
+              | Types.List_list_predefined_2 (x0, x1) ->
+                  Lvca_syntax.Nominal.Term.Operator
+                    (x0, "List_list_predefined_2",
+                      [Lvca_syntax.Nominal.Scope.Scope
+                         ([], (list_list_a predefined x1))])
+            let list_list_string_1 =
+              function
+              | Types.List_list_string_1 (x0, x1) ->
+                  Lvca_syntax.Nominal.Term.Operator
+                    (x0, "List_list_string_1",
+                      [Lvca_syntax.Nominal.Scope.Scope
+                         ([], (list (list (fun x -> x)) x1))])
+            let list_list_string_2 =
+              function
+              | Types.List_list_string_2 (x0, x1) ->
+                  Lvca_syntax.Nominal.Term.Operator
+                    (x0, "List_list_string_2",
+                      [Lvca_syntax.Nominal.Scope.Scope
+                         ([], (list_list_a (fun x -> x) x1))])
+            let list_predefined =
+              function
+              | Types.List_predefined (x0, x1) ->
+                  Lvca_syntax.Nominal.Term.Operator
+                    (x0, "List_predefined",
+                      [Lvca_syntax.Nominal.Scope.Scope
+                         ([], (list predefined x1))])
+            let list_external =
+              function
+              | Types.List_external (x0, x1) ->
+                  Lvca_syntax.Nominal.Term.Operator
+                    (x0, "List_external",
+                      [Lvca_syntax.Nominal.Scope.Scope
+                         ([], (list (fun x -> x) x1))])
+          end
+        module Of_nominal =
+          struct
+            let rec list a =
+              function
+              | Lvca_syntax.Nominal.Term.Operator (x0, "Nil", []) ->
+                  Ok (Types.Nil x0)
+              | Lvca_syntax.Nominal.Term.Operator
+                  (x0, "Cons", (Lvca_syntax.Nominal.Scope.Scope
+                   ([], x1))::(Lvca_syntax.Nominal.Scope.Scope ([], x2))::[])
+                  ->
+                  (match a x1 with
+                   | Error msg -> Error msg
+                   | Ok x1 ->
+                       (match list a x2 with
+                        | Error msg -> Error msg
+                        | Ok x2 -> Ok (Types.Cons (x0, x1, x2))))
+              | tm -> Error tm
+            let predefined =
+              function
+              | Lvca_syntax.Nominal.Term.Operator (x0, "Predefined", []) ->
+                  Ok (Types.Predefined x0)
+              | tm -> Error tm
+            let list_list_predefined_1 =
+              function
+              | Lvca_syntax.Nominal.Term.Operator
+                  (x0, "List_list_predefined_1",
+                   (Lvca_syntax.Nominal.Scope.Scope ([], x1))::[])
+                  ->
+                  (match list (list predefined) x1 with
+                   | Error msg -> Error msg
+                   | Ok x1 -> Ok (Types.List_list_predefined_1 (x0, x1)))
+              | tm -> Error tm
+            let list_list_a a =
+              function
+              | Lvca_syntax.Nominal.Term.Operator
+                  (x0, "List_list_a", (Lvca_syntax.Nominal.Scope.Scope
+                   ([], x1))::[])
+                  ->
+                  (match list (list a) x1 with
+                   | Error msg -> Error msg
+                   | Ok x1 -> Ok (Types.List_list_a (x0, x1)))
+              | tm -> Error tm
+            let list_list_predefined_2 =
+              function
+              | Lvca_syntax.Nominal.Term.Operator
+                  (x0, "List_list_predefined_2",
+                   (Lvca_syntax.Nominal.Scope.Scope ([], x1))::[])
+                  ->
+                  (match list_list_a predefined x1 with
+                   | Error msg -> Error msg
+                   | Ok x1 -> Ok (Types.List_list_predefined_2 (x0, x1)))
+              | tm -> Error tm
+            let list_list_string_1 =
+              function
+              | Lvca_syntax.Nominal.Term.Operator
+                  (x0, "List_list_string_1", (Lvca_syntax.Nominal.Scope.Scope
+                   ([], x1))::[])
+                  ->
+                  (match list (list (fun x -> Ok x)) x1 with
+                   | Error msg -> Error msg
+                   | Ok x1 -> Ok (Types.List_list_string_1 (x0, x1)))
+              | tm -> Error tm
+            let list_list_string_2 =
+              function
+              | Lvca_syntax.Nominal.Term.Operator
+                  (x0, "List_list_string_2", (Lvca_syntax.Nominal.Scope.Scope
+                   ([], x1))::[])
+                  ->
+                  (match list_list_a (fun x -> Ok x) x1 with
+                   | Error msg -> Error msg
+                   | Ok x1 -> Ok (Types.List_list_string_2 (x0, x1)))
+              | tm -> Error tm
+            let list_predefined =
+              function
+              | Lvca_syntax.Nominal.Term.Operator
+                  (x0, "List_predefined", (Lvca_syntax.Nominal.Scope.Scope
+                   ([], x1))::[])
+                  ->
+                  (match list predefined x1 with
+                   | Error msg -> Error msg
+                   | Ok x1 -> Ok (Types.List_predefined (x0, x1)))
+              | tm -> Error tm
+            let list_external =
+              function
+              | Lvca_syntax.Nominal.Term.Operator
+                  (x0, "List_external", (Lvca_syntax.Nominal.Scope.Scope
+                   ([], x1))::[])
+                  ->
+                  (match list (fun x -> Ok x) x1 with
+                   | Error msg -> Error msg
+                   | Ok x1 -> Ok (Types.List_external (x0, x1)))
+              | tm -> Error tm
+          end
+      end
+    module Types = Wrapper.Types
+    module Plain = Wrapper.Plain
+    let language =
+      let open Lvca_syntax.Abstract_syntax in
+        {
+          externals =
+            [("string",
+               (Lvca_syntax.Abstract_syntax.Kind.Kind
+                  (((let open Lvca_provenance.Commented in
+                       {
+                         range =
+                           (Some
+                              (let open Lvca_provenance.Range in
+                                 { start = 10; finish = 11 }));
+                         comment = None
+                       })), 1)))];
+          sort_defs =
+            [("predefined",
+               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                  ([],
+                    [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                       ("Predefined", [])])));
+            ("list",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([("a", None)],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("Nil", []);
+                   Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                     ("Cons",
+                       [Lvca_syntax.Abstract_syntax.Valence.Valence
+                          ([],
+                            (Lvca_syntax.Sort.Name
+                               (((let open Lvca_provenance.Commented in
+                                    {
+                                      range =
+                                        (Some
+                                           (let open Lvca_provenance.Range in
+                                              { start = 63; finish = 64 }));
+                                      comment = None
+                                    })), "a")));
+                       Lvca_syntax.Abstract_syntax.Valence.Valence
+                         ([],
+                           (Lvca_syntax.Sort.Ap
+                              (((let open Lvca_provenance.Commented in
+                                   {
+                                     range =
+                                       (Some
+                                          (let open Lvca_provenance.Range in
+                                             { start = 66; finish = 70 }));
+                                     comment = None
+                                   })), "list",
+                                [Lvca_syntax.Sort.Name
+                                   (((let open Lvca_provenance.Commented in
+                                        {
+                                          range =
+                                            (Some
+                                               (let open Lvca_provenance.Range in
+                                                  { start = 71; finish = 72 }));
+                                          comment = None
+                                        })), "a")])))])])));
+            ("list_external",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("List_external",
+                        [Lvca_syntax.Abstract_syntax.Valence.Valence
+                           ([],
+                             (Lvca_syntax.Sort.Ap
+                                (((let open Lvca_provenance.Commented in
+                                     {
+                                       range =
+                                         (Some
+                                            (let open Lvca_provenance.Range in
+                                               { start = 105; finish = 109 }));
+                                       comment = None
+                                     })), "list",
+                                  [Lvca_syntax.Sort.Name
+                                     (((let open Lvca_provenance.Commented in
+                                          {
+                                            range =
+                                              (Some
+                                                 (let open Lvca_provenance.Range in
+                                                    {
+                                                      start = 110;
+                                                      finish = 116
+                                                    }));
+                                            comment = None
+                                          })), "string")])))])])));
+            ("list_predefined",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("List_predefined",
+                        [Lvca_syntax.Abstract_syntax.Valence.Valence
+                           ([],
+                             (Lvca_syntax.Sort.Ap
+                                (((let open Lvca_provenance.Commented in
+                                     {
+                                       range =
+                                         (Some
+                                            (let open Lvca_provenance.Range in
+                                               { start = 153; finish = 157 }));
+                                       comment = None
+                                     })), "list",
+                                  [Lvca_syntax.Sort.Name
+                                     (((let open Lvca_provenance.Commented in
+                                          {
+                                            range =
+                                              (Some
+                                                 (let open Lvca_provenance.Range in
+                                                    {
+                                                      start = 158;
+                                                      finish = 168
+                                                    }));
+                                            comment = None
+                                          })), "predefined")])))])])));
+            ("list_list_a",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([("a", None)],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("List_list_a",
+                        [Lvca_syntax.Abstract_syntax.Valence.Valence
+                           ([],
+                             (Lvca_syntax.Sort.Ap
+                                (((let open Lvca_provenance.Commented in
+                                     {
+                                       range =
+                                         (Some
+                                            (let open Lvca_provenance.Range in
+                                               { start = 200; finish = 204 }));
+                                       comment = None
+                                     })), "list",
+                                  [Lvca_syntax.Sort.Ap
+                                     (((let open Lvca_provenance.Commented in
+                                          {
+                                            range =
+                                              (Some
+                                                 (let open Lvca_provenance.Range in
+                                                    {
+                                                      start = 206;
+                                                      finish = 210
+                                                    }));
+                                            comment = None
+                                          })), "list",
+                                       [Lvca_syntax.Sort.Name
+                                          (((let open Lvca_provenance.Commented in
+                                               {
+                                                 range =
+                                                   (Some
+                                                      (let open Lvca_provenance.Range in
+                                                         {
+                                                           start = 211;
+                                                           finish = 212
+                                                         }));
+                                                 comment = None
+                                               })), "a")])])))])])));
+            ("list_list_string_1",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("List_list_string_1",
+                        [Lvca_syntax.Abstract_syntax.Valence.Valence
+                           ([],
+                             (Lvca_syntax.Sort.Ap
+                                (((let open Lvca_provenance.Commented in
+                                     {
+                                       range =
+                                         (Some
+                                            (let open Lvca_provenance.Range in
+                                               { start = 256; finish = 260 }));
+                                       comment = None
+                                     })), "list",
+                                  [Lvca_syntax.Sort.Ap
+                                     (((let open Lvca_provenance.Commented in
+                                          {
+                                            range =
+                                              (Some
+                                                 (let open Lvca_provenance.Range in
+                                                    {
+                                                      start = 262;
+                                                      finish = 266
+                                                    }));
+                                            comment = None
+                                          })), "list",
+                                       [Lvca_syntax.Sort.Name
+                                          (((let open Lvca_provenance.Commented in
+                                               {
+                                                 range =
+                                                   (Some
+                                                      (let open Lvca_provenance.Range in
+                                                         {
+                                                           start = 267;
+                                                           finish = 273
+                                                         }));
+                                                 comment = None
+                                               })), "string")])])))])])));
+            ("list_list_string_2",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("List_list_string_2",
+                        [Lvca_syntax.Abstract_syntax.Valence.Valence
+                           ([],
+                             (Lvca_syntax.Sort.Ap
+                                (((let open Lvca_provenance.Commented in
+                                     {
+                                       range =
+                                         (Some
+                                            (let open Lvca_provenance.Range in
+                                               { start = 317; finish = 328 }));
+                                       comment = None
+                                     })), "list_list_a",
+                                  [Lvca_syntax.Sort.Name
+                                     (((let open Lvca_provenance.Commented in
+                                          {
+                                            range =
+                                              (Some
+                                                 (let open Lvca_provenance.Range in
+                                                    {
+                                                      start = 329;
+                                                      finish = 335
+                                                    }));
+                                            comment = None
+                                          })), "string")])))])])));
+            ("list_list_predefined_1",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("List_list_predefined_1",
+                        [Lvca_syntax.Abstract_syntax.Valence.Valence
+                           ([],
+                             (Lvca_syntax.Sort.Ap
+                                (((let open Lvca_provenance.Commented in
+                                     {
+                                       range =
+                                         (Some
+                                            (let open Lvca_provenance.Range in
+                                               { start = 386; finish = 390 }));
+                                       comment = None
+                                     })), "list",
+                                  [Lvca_syntax.Sort.Ap
+                                     (((let open Lvca_provenance.Commented in
+                                          {
+                                            range =
+                                              (Some
+                                                 (let open Lvca_provenance.Range in
+                                                    {
+                                                      start = 392;
+                                                      finish = 396
+                                                    }));
+                                            comment = None
+                                          })), "list",
+                                       [Lvca_syntax.Sort.Name
+                                          (((let open Lvca_provenance.Commented in
+                                               {
+                                                 range =
+                                                   (Some
+                                                      (let open Lvca_provenance.Range in
+                                                         {
+                                                           start = 397;
+                                                           finish = 407
+                                                         }));
+                                                 comment = None
+                                               })), "predefined")])])))])])));
+            ("list_list_predefined_2",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ("List_list_predefined_2",
+                        [Lvca_syntax.Abstract_syntax.Valence.Valence
+                           ([],
+                             (Lvca_syntax.Sort.Ap
+                                (((let open Lvca_provenance.Commented in
+                                     {
+                                       range =
+                                         (Some
+                                            (let open Lvca_provenance.Range in
+                                               { start = 459; finish = 470 }));
+                                       comment = None
+                                     })), "list_list_a",
+                                  [Lvca_syntax.Sort.Name
+                                     (((let open Lvca_provenance.Commented in
+                                          {
+                                            range =
+                                              (Some
+                                                 (let open Lvca_provenance.Range in
+                                                    {
+                                                      start = 471;
+                                                      finish = 481
+                                                    }));
+                                            comment = None
+                                          })), "predefined")])))])])))]
+        }
+    module Predefined =
+      struct
+        type 'info t = 'info Wrapper.Types.predefined =
+          | Predefined of 'info 
+        let info tm = Wrapper.Info.predefined tm
+        let to_plain tm = Wrapper.To_plain.predefined tm
+        let of_plain tm = Wrapper.Of_plain.predefined tm
+        let map_info ~f  tm = Wrapper.Map_info.predefined ~f tm
+        let to_nominal tm = Wrapper.To_nominal.predefined tm
+        let of_nominal tm = Wrapper.Of_nominal.predefined tm
+        module Plain =
+          struct
+            type t = Wrapper.Plain.predefined =
+              | Predefined 
+            let (=) x y =
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
+          end
+      end
+    module List =
+      struct
+        type ('info, 'a) t = ('info, 'a) Wrapper.Types.list =
+          | Nil of 'info 
+          | Cons of 'info * 'a * ('info, 'a) Wrapper.Types.list 
+        let info tm = Wrapper.Info.list Lvca_syntax.Nominal.Term.info tm
+        let to_plain tm =
+          Wrapper.To_plain.list Lvca_syntax.Nominal.Term.to_plain tm
+        let of_plain tm =
+          Wrapper.Of_plain.list Lvca_syntax.Nominal.Term.of_plain tm
+        let map_info ~f  tm =
+          Wrapper.Map_info.list ~f Lvca_syntax.Nominal.Term.map_info tm
+        let to_nominal tm = Wrapper.To_nominal.list Base.Fn.id tm
+        let of_nominal tm = Wrapper.Of_nominal.list Base.Result.return tm
+        module Plain =
+          struct
+            type 'a t = 'a Wrapper.Plain.list =
+              | Nil 
+              | Cons of 'a * 'a Wrapper.Plain.list 
+            let (=) x y =
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
+          end
+      end
+    module List_external =
+      struct
+        type 'info t = 'info Wrapper.Types.list_external =
+          | List_external of 'info * ('info,
+          'info Lvca_syntax.Nominal.Types.term) Wrapper.Types.list 
+        let info tm = Wrapper.Info.list_external tm
+        let to_plain tm = Wrapper.To_plain.list_external tm
+        let of_plain tm = Wrapper.Of_plain.list_external tm
+        let map_info ~f  tm = Wrapper.Map_info.list_external ~f tm
+        let to_nominal tm = Wrapper.To_nominal.list_external tm
+        let of_nominal tm = Wrapper.Of_nominal.list_external tm
+        module Plain =
+          struct
+            type t = Wrapper.Plain.list_external =
+              | List_external of Lvca_syntax.Nominal.Plain.term
+              Wrapper.Plain.list 
+            let (=) x y =
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
+          end
+      end
+    module List_predefined =
+      struct
+        type 'info t = 'info Wrapper.Types.list_predefined =
+          | List_predefined of 'info * ('info,
+          'info Wrapper.Types.predefined) Wrapper.Types.list 
+        let info tm = Wrapper.Info.list_predefined tm
+        let to_plain tm = Wrapper.To_plain.list_predefined tm
+        let of_plain tm = Wrapper.Of_plain.list_predefined tm
+        let map_info ~f  tm = Wrapper.Map_info.list_predefined ~f tm
+        let to_nominal tm = Wrapper.To_nominal.list_predefined tm
+        let of_nominal tm = Wrapper.Of_nominal.list_predefined tm
+        module Plain =
+          struct
+            type t = Wrapper.Plain.list_predefined =
+              | List_predefined of Wrapper.Plain.predefined
+              Wrapper.Plain.list 
+            let (=) x y =
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
+          end
+      end
+    module List_list_a =
+      struct
+        type ('info, 'a) t = ('info, 'a) Wrapper.Types.list_list_a =
+          | List_list_a of 'info * ('info, ('info, 'a) Wrapper.Types.list)
+          Wrapper.Types.list 
+        let info tm =
+          Wrapper.Info.list_list_a Lvca_syntax.Nominal.Term.info tm
+        let to_plain tm =
+          Wrapper.To_plain.list_list_a Lvca_syntax.Nominal.Term.to_plain tm
+        let of_plain tm =
+          Wrapper.Of_plain.list_list_a Lvca_syntax.Nominal.Term.of_plain tm
+        let map_info ~f  tm =
+          Wrapper.Map_info.list_list_a ~f Lvca_syntax.Nominal.Term.map_info
+            tm
+        let to_nominal tm = Wrapper.To_nominal.list_list_a Base.Fn.id tm
+        let of_nominal tm =
+          Wrapper.Of_nominal.list_list_a Base.Result.return tm
+        module Plain =
+          struct
+            type 'a t = 'a Wrapper.Plain.list_list_a =
+              | List_list_a of 'a Wrapper.Plain.list Wrapper.Plain.list 
+            let (=) x y =
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
+          end
+      end
+    module List_list_string_1 =
+      struct
+        type 'info t = 'info Wrapper.Types.list_list_string_1 =
+          | List_list_string_1 of 'info * ('info,
+          ('info, 'info Lvca_syntax.Nominal.Types.term) Wrapper.Types.list)
+          Wrapper.Types.list 
+        let info tm = Wrapper.Info.list_list_string_1 tm
+        let to_plain tm = Wrapper.To_plain.list_list_string_1 tm
+        let of_plain tm = Wrapper.Of_plain.list_list_string_1 tm
+        let map_info ~f  tm = Wrapper.Map_info.list_list_string_1 ~f tm
+        let to_nominal tm = Wrapper.To_nominal.list_list_string_1 tm
+        let of_nominal tm = Wrapper.Of_nominal.list_list_string_1 tm
+        module Plain =
+          struct
+            type t = Wrapper.Plain.list_list_string_1 =
+              | List_list_string_1 of Lvca_syntax.Nominal.Plain.term
+              Wrapper.Plain.list Wrapper.Plain.list 
+            let (=) x y =
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
+          end
+      end
+    module List_list_string_2 =
+      struct
+        type 'info t = 'info Wrapper.Types.list_list_string_2 =
+          | List_list_string_2 of 'info * ('info,
+          'info Lvca_syntax.Nominal.Types.term) Wrapper.Types.list_list_a 
+        let info tm = Wrapper.Info.list_list_string_2 tm
+        let to_plain tm = Wrapper.To_plain.list_list_string_2 tm
+        let of_plain tm = Wrapper.Of_plain.list_list_string_2 tm
+        let map_info ~f  tm = Wrapper.Map_info.list_list_string_2 ~f tm
+        let to_nominal tm = Wrapper.To_nominal.list_list_string_2 tm
+        let of_nominal tm = Wrapper.Of_nominal.list_list_string_2 tm
+        module Plain =
+          struct
+            type t = Wrapper.Plain.list_list_string_2 =
+              | List_list_string_2 of Lvca_syntax.Nominal.Plain.term
+              Wrapper.Plain.list_list_a 
+            let (=) x y =
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
+          end
+      end
+    module List_list_predefined_1 =
+      struct
+        type 'info t = 'info Wrapper.Types.list_list_predefined_1 =
+          | List_list_predefined_1 of 'info * ('info,
+          ('info, 'info Wrapper.Types.predefined) Wrapper.Types.list)
+          Wrapper.Types.list 
+        let info tm = Wrapper.Info.list_list_predefined_1 tm
+        let to_plain tm = Wrapper.To_plain.list_list_predefined_1 tm
+        let of_plain tm = Wrapper.Of_plain.list_list_predefined_1 tm
+        let map_info ~f  tm = Wrapper.Map_info.list_list_predefined_1 ~f tm
+        let to_nominal tm = Wrapper.To_nominal.list_list_predefined_1 tm
+        let of_nominal tm = Wrapper.Of_nominal.list_list_predefined_1 tm
+        module Plain =
+          struct
+            type t = Wrapper.Plain.list_list_predefined_1 =
+              | List_list_predefined_1 of Wrapper.Plain.predefined
+              Wrapper.Plain.list Wrapper.Plain.list 
+            let (=) x y =
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
+          end
+      end
+    module List_list_predefined_2 =
+      struct
+        type 'info t = 'info Wrapper.Types.list_list_predefined_2 =
+          | List_list_predefined_2 of 'info * ('info,
+          'info Wrapper.Types.predefined) Wrapper.Types.list_list_a 
+        let info tm = Wrapper.Info.list_list_predefined_2 tm
+        let to_plain tm = Wrapper.To_plain.list_list_predefined_2 tm
+        let of_plain tm = Wrapper.Of_plain.list_list_predefined_2 tm
+        let map_info ~f  tm = Wrapper.Map_info.list_list_predefined_2 ~f tm
+        let to_nominal tm = Wrapper.To_nominal.list_list_predefined_2 tm
+        let of_nominal tm = Wrapper.Of_nominal.list_list_predefined_2 tm
+        module Plain =
+          struct
+            type t = Wrapper.Plain.list_list_predefined_2 =
+              | List_list_predefined_2 of Wrapper.Plain.predefined
+              Wrapper.Plain.list_list_a 
+            let (=) x y =
+              let x = (x |> of_plain) |> to_nominal in
+              let y = (y |> of_plain) |> to_nominal in
+              let open Lvca_syntax.Nominal.Term in
+                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
+            let jsonify tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                Lvca_syntax.Nominal.Term.jsonify
+            let unjsonify json =
+              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
+                (Base.Option.bind
+                   ~f:(fun tm ->
+                         match of_nominal tm with
+                         | Ok tm -> Some (to_plain tm)
+                         | Error _ -> None))
+            let pp ppf tm =
+              ((tm |> of_plain) |> to_nominal) |>
+                (Lvca_syntax.Nominal.Term.pp ppf)
+            let parse =
+              let parse_prim =
+                Lvca_parsing.fail "Generated parser parse_prim always fails" in
+              let open Lvca_parsing in
+                (Lvca_syntax.Nominal.Term.parse
+                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                  >>=
+                  (fun tm ->
+                     match of_nominal tm with
+                     | Ok tm -> return (to_plain tm)
+                     | Error _ ->
+                         fail "Generated parser failed nominal conversion")
+          end
+      end
+  end
 module type Is_rec_sig  =
   sig
     val language :
