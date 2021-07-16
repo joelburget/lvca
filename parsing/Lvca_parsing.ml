@@ -459,6 +459,12 @@ let mk_bracket_parser open_c close_c p =
 let parens p = mk_bracket_parser '(' ')' p
 let braces p = mk_bracket_parser '{' '}' p
 let brackets p = mk_bracket_parser '[' ']' p
+let no_comment = fail "no comment"
+
+let c_comment =
+  let comment = many (satisfy Char.(fun c -> c <> '\n')) >>| String.of_char_list in
+  string "//" *> comment
+;;
 
 let%test_module "Parsing" =
   (module struct
@@ -466,6 +472,12 @@ let%test_module "Parsing" =
       match parse_string_pos p str with
       | Error msg -> Stdio.print_string msg
       | Ok value -> Parse_result.pp pp Fmt.stdout value
+    ;;
+
+    let%expect_test _ =
+      let pp_str ppf str = Fmt.pf ppf "%S" str in
+      parse_print c_comment pp_str {|// comment|};
+      [%expect {|{ value = "comment"; range = {3,10} }|}]
     ;;
 
     let pp_char ppf str = Fmt.pf ppf "%C" str

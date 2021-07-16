@@ -912,7 +912,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -960,7 +960,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -1015,7 +1015,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -1072,7 +1072,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -1120,7 +1120,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -1166,7 +1166,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -1212,7 +1212,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -1258,7 +1258,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -1309,7 +1309,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2008,7 +2008,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2059,7 +2059,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2107,7 +2107,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2155,7 +2155,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2208,7 +2208,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2257,7 +2257,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2305,7 +2305,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2354,7 +2354,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2402,7 +2402,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:(Lvca_parsing.fail "no comment") ~parse_prim)
+                   ~comment:Lvca_parsing.no_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with

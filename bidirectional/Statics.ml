@@ -46,7 +46,7 @@ module Typing_clause = struct
       | RightArr
 
     let pattern =
-      Binding_aware_pattern.parse ~comment:(Lvca_parsing.fail "no comment")
+      Binding_aware_pattern.parse ~comment:Lvca_parsing.no_comment
       >>| Binding_aware_pattern.map_info ~f:Commented.get_range
       <?> "pattern"
     ;;
@@ -100,7 +100,7 @@ module Hypothesis = struct
 
     (* TODO: remove duplication *)
     let pattern =
-      Binding_aware_pattern.parse ~comment:(Lvca_parsing.fail "no comment")
+      Binding_aware_pattern.parse ~comment:Lvca_parsing.no_comment
       >>| Binding_aware_pattern.map_info ~f:Commented.get_range
       <?> "pattern"
     ;;

@@ -3,7 +3,7 @@ open Ppxlib
 open Syntax_quoter
 
 let parse p = Lvca_parsing.(parse_string (whitespace *> p))
-let comment = Lvca_parsing.fail "no comment"
+let comment = Lvca_parsing.c_comment
 
 let expand_nominal ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string ~loc expr in

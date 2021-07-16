@@ -521,7 +521,7 @@ let%test_module "Matching" =
 
     let pp_result ppf (rhs, env) = Fmt.pf ppf "{%a} %a" pp_env env Nonbinding.pp rhs
     let parse p str = Lvca_parsing.(parse_string (whitespace *> p) str)
-    let comment = Lvca_parsing.fail "no comment"
+    let comment = Lvca_parsing.no_comment
 
     let run_simple_match branches_str tm_str =
       match

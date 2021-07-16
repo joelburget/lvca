@@ -461,7 +461,7 @@ module Term = struct
         Lvca_parsing.(Primitive_impl.All.parse ~comment >>| fun prim -> Primitive prim)
   ;;
 
-  let parse_no_comment = parse' ~comment:(Lvca_parsing.fail "no comment")
+  let parse_no_comment = parse' ~comment:Lvca_parsing.no_comment
 
   module Properties = struct
     open Property_result
@@ -655,10 +655,7 @@ module Convertible = struct
     type 'info t = 'info Object.t
 
     let to_string = Fmt.to_to_string Object.pp
-
-    let parse =
-      Lvca_parsing.parse_string (parse ~comment:(Lvca_parsing.fail "no comment"))
-    ;;
+    let parse = Lvca_parsing.parse_string (parse ~comment:Lvca_parsing.no_comment)
 
     let string_round_trip1 t =
       match t |> to_string |> parse with
@@ -979,10 +976,9 @@ match(x; match_lines(
 
 let%test_module "check" =
   (module struct
-    let comment = Lvca_parsing.fail "no comment"
-
     let parse_lang lang_str =
-      Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.parse ~comment) lang_str)
+      Lvca_parsing.(
+        parse_string (whitespace *> Abstract_syntax.parse ~comment:no_comment) lang_str)
       |> Result.ok_or_failwith
     ;;
 
@@ -990,7 +986,7 @@ let%test_module "check" =
       Lvca_parsing.parse_string Term.parse_no_comment term_str |> Result.ok_or_failwith
     ;;
 
-    let parse_sort str = Lvca_parsing.parse_string (Sort.parse ~comment) str
+    let parse_sort str = Lvca_parsing.(parse_string (Sort.parse ~comment:no_comment) str)
 
     let lang_desc =
       {|

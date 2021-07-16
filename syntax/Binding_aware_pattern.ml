@@ -330,7 +330,7 @@ let parse ~comment =
   <?> "binding-aware pattern"
 ;;
 
-let parse_no_comment = parse ~comment:(Lvca_parsing.fail "no comment")
+let parse_no_comment = parse ~comment:Lvca_parsing.no_comment
 let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 
 module Properties = struct
@@ -478,11 +478,11 @@ test := foo(term[term]. term)
     ;;
 
     let language =
-      parse' (Abstract_syntax.parse ~comment:(Lvca_parsing.fail "no comment")) lang_desc
+      parse' (Abstract_syntax.parse ~comment:Lvca_parsing.no_comment) lang_desc
     ;;
 
     let print_check_pattern sort_str pat_str =
-      let sort = parse' (Sort.parse ~comment:(Lvca_parsing.fail "no comment")) sort_str in
+      let sort = parse' (Sort.parse ~comment:Lvca_parsing.no_comment) sort_str in
       let pat = parse' parse_no_comment pat_str in
       let pp ppf pat = Fmt.pf ppf "pattern: %a" pp pat in
       match check Primitive.All.check language sort pat with
@@ -628,9 +628,7 @@ let%test_module "check" =
     ;;
 
     let parse_term str =
-      Lvca_parsing.parse_string
-        (Nominal.Term.parse' ~comment:(Lvca_parsing.fail "no comment"))
-        str
+      Lvca_parsing.parse_string (Nominal.Term.parse' ~comment:Lvca_parsing.no_comment) str
       |> Result.ok_or_failwith
     ;;
 

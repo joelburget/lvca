@@ -221,7 +221,7 @@ module All = struct
       | None -> Uninteresting
    ;;
 
-    let parse_no_comment = parse ~comment:(Lvca_parsing.fail "no comment")
+    let parse_no_comment = parse ~comment:Lvca_parsing.no_comment
 
     let string_round_trip1 : unit t -> Property_result.t =
      fun t ->
@@ -259,7 +259,7 @@ let%test_module "Parsing" =
     open All
     open Lvca_provenance
 
-    let parse_no_comment = parse ~comment:(Lvca_parsing.fail "no comment")
+    let parse_no_comment = parse ~comment:Lvca_parsing.no_comment
 
     let print_parse str =
       match Lvca_parsing.parse_string_pos parse_no_comment str with

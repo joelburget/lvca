@@ -64,7 +64,7 @@ type term = Opt_range.t Nominal.Term.t
 
 let%test_module "Parsing" =
   (module struct
-    let comment = Lvca_parsing.fail "no comment"
+    let comment = Lvca_parsing.no_comment
 
     let parse (str : string) : (core t, string) Result.t =
       Lvca_parsing.(

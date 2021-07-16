@@ -207,7 +207,7 @@ module Arity = struct
       let integer = Sort.Name (Commented.none, "integer")
       let integer_v = Valence.Valence ([], integer)
       let ( = ) = equal ~info_eq:(fun _ _ -> true)
-      let parse = parse ~comment:(Lvca_parsing.fail "no comment")
+      let parse = parse ~comment:Lvca_parsing.no_comment
 
       let%test_unit _ = assert (test_parse_with parse "(integer)" = [ integer_v ])
       let%test_unit _ = assert (test_parse_with parse "(tm; tm)" = [ tm_v; tm_v ])
@@ -284,7 +284,7 @@ module Operator_def = struct
       let%test_unit _ =
         let ( = ) = equal ~info_eq:(fun _ _ -> true) in
         assert (
-          test_parse_with (parse ~comment:(Lvca_parsing.fail "no comment")) "foo()"
+          test_parse_with (parse ~comment:Lvca_parsing.no_comment) "foo()"
           = Operator_def ("foo", []))
       ;;
     end)
@@ -381,7 +381,7 @@ module Sort_def = struct
   let%test_module _ =
     (module struct
       let ( = ) = Tuple2.equal String.( = ) (equal ~info_eq:(fun _ _ -> true))
-      let parse = parse ~comment:(Lvca_parsing.fail "no comment")
+      let parse = parse ~comment:Lvca_parsing.no_comment
 
       let test_parse str =
         test_parse_with parse str |> Tuple2.map2 ~f:(map_info ~f:Commented.get_range)
@@ -586,7 +586,7 @@ let%test_module _ =
           ) )
     ;;
 
-    let parse = parse ~comment:(Lvca_parsing.fail "no comment")
+    let parse = parse ~comment:Lvca_parsing.no_comment
 
     let%test_unit _ =
       let parsed =
@@ -659,7 +659,7 @@ let%test_module "Parser" =
     open Lvca_provenance
 
     let parse =
-      test_parse_with (parse ~comment:(Lvca_parsing.fail "no comment"))
+      test_parse_with (parse ~comment:Lvca_parsing.no_comment)
       >> map_info ~f:Commented.get_range
     ;;
 

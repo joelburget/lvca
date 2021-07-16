@@ -134,7 +134,7 @@ let%test_module "Sort_Parser" =
     let abc = Ap ((), "a", [ Name ((), "b"); Name ((), "c") ])
     let abcd = Ap ((), "a", [ Ap ((), "b", [ Name ((), "c") ]); Name ((), "d") ])
     let ( = ) = equal Unit.( = )
-    let parse_no_comment = parse ~comment:(Lvca_parsing.fail "no comment")
+    let parse_no_comment = parse ~comment:Lvca_parsing.no_comment
 
     let%test_unit _ = assert (parse_with parse_no_comment "a" |> erase_info = a)
     let%test_unit _ = assert (parse_with parse_no_comment "(a)" |> erase_info = a)

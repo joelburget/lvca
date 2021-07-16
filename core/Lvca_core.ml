@@ -762,8 +762,7 @@ and eval_primitive eval_in_ctx eval_nominal_in_ctx ctx tm name args =
 let eval core = eval_in_ctx SMap.empty core
 
 let parse_exn =
-  Lvca_parsing.parse_string (Parse.term ~comment:(Lvca_parsing.fail "no comment"))
-  >> Result.ok_or_failwith
+  Lvca_parsing.(parse_string (Parse.term ~comment:c_comment)) >> Result.ok_or_failwith
 ;;
 
 let%test_module "Parsing" =
@@ -1024,7 +1023,7 @@ let%test_module "Core pretty" =
       Stdio.print_string str
     ;;
 
-    let comment = Lvca_parsing.fail "no comment"
+    let comment = Lvca_parsing.no_comment
     let term = mk_test (Term.parse ~comment) Term.pp
     let ty = mk_test (Type.parse ~comment) Type.pp
     let module' = mk_test (Module.parse ~comment) Module.pp

@@ -1574,9 +1574,7 @@ module Individual_type_module (Context : Builder_context) = struct
               Lvca_parsing.fail "Generated parser parse_prim always fails"
             in
             Lvca_parsing.(
-              Lvca_syntax.Nominal.Term.parse
-                ~comment:(Lvca_parsing.fail "no comment")
-                ~parse_prim
+              Lvca_syntax.Nominal.Term.parse ~comment:Lvca_parsing.c_comment ~parse_prim
               >>= fun tm ->
               match of_nominal tm with
               | Ok tm -> return (to_plain tm)
