@@ -111,19 +111,19 @@ module Lang =
               'info ifz) * 'info ifz 
               | Ifz_var of 'info * string 
             and 'info term =
-              | Operator of 'info * 'info Lvca_syntax.Nominal.Types.term 
+              | Operator of 'info * 'info Lvca_syntax.Nominal.Term.t 
             and ('info, 'a, 'b) pair_plus =
               | PairPlus of 'info * 'a * 'b * 'info foo 
             and 'info foo =
-              | Foo of 'info * 'info Lvca_syntax.Nominal.Types.term 
+              | Foo of 'info * 'info Lvca_syntax.Nominal.Term.t 
               | Bar of 'info * ('info Pattern.t * 'info
               Lvca_syntax.Single_var.t * 'info foo) 
               | Foo_var of 'info * string 
             and ('info, 'a, 'b) pair =
               | Pair of 'info * 'a * 'b 
             and 'info nonempty =
-              | Nonempty of 'info * 'info Lvca_syntax.Nominal.Types.term *
-              'info Lvca_syntax.Nominal.Types.term 
+              | Nonempty of 'info * 'info Primitive.String.t * 'info
+              Lvca_syntax.Nominal.Term.t 
             and 'info nat =
               | Z of 'info 
               | S of 'info * 'info nat 
@@ -138,19 +138,19 @@ module Lang =
               | Ifz of ifz * (Lvca_syntax.Single_var.Plain.t * ifz) * ifz 
               | Ifz_var of string 
             and term =
-              | Operator of Lvca_syntax.Nominal.Plain.term 
+              | Operator of Lvca_syntax.Nominal.Term.Plain.t 
             and ('a, 'b) pair_plus =
               | PairPlus of 'a * 'b * foo 
             and foo =
-              | Foo of Lvca_syntax.Nominal.Plain.term 
+              | Foo of Lvca_syntax.Nominal.Term.Plain.t 
               | Bar of (Pattern.Plain.t * Lvca_syntax.Single_var.Plain.t *
               foo) 
               | Foo_var of string 
             and ('a, 'b) pair =
               | Pair of 'a * 'b 
             and nonempty =
-              | Nonempty of Lvca_syntax.Nominal.Plain.term *
-              Lvca_syntax.Nominal.Plain.term 
+              | Nonempty of Primitive.String.Plain.t *
+              Lvca_syntax.Nominal.Term.Plain.t 
             and nat =
               | Z 
               | S of nat 
@@ -185,7 +185,7 @@ module Lang =
               function
               | Types.Nonempty (_, x1, x2) ->
                   Plain.Nonempty
-                    ((Lvca_syntax.Nominal.Term.to_plain x1),
+                    ((Primitive.String.to_plain x1),
                       (Lvca_syntax.Nominal.Term.to_plain x2))
             let pair a b =
               function
@@ -231,7 +231,7 @@ module Lang =
               function
               | Plain.Nonempty (x1, x2) ->
                   Types.Nonempty
-                    ((), (Lvca_syntax.Nominal.Term.of_plain x1),
+                    ((), (Primitive.String.of_plain x1),
                       (Lvca_syntax.Nominal.Term.of_plain x2))
             let pair a b =
               function
@@ -279,7 +279,7 @@ module Lang =
               function
               | Types.Nonempty (x0, x1, x2) ->
                   Types.Nonempty
-                    ((f x0), (Lvca_syntax.Nominal.Term.map_info ~f x1),
+                    ((f x0), (Primitive.String.map_info ~f x1),
                       (Lvca_syntax.Nominal.Term.map_info ~f x2))
             let pair a b ~f  =
               function
@@ -337,7 +337,8 @@ module Lang =
               | Types.Nonempty (x0, x1, x2) ->
                   Lvca_syntax.Nominal.Term.Operator
                     (x0, "Nonempty",
-                      [Lvca_syntax.Nominal.Scope.Scope ([], x1);
+                      [Lvca_syntax.Nominal.Scope.Scope
+                         ([], (Primitive.String.to_nominal x1));
                       Lvca_syntax.Nominal.Scope.Scope ([], x2)])
             let pair a b =
               function
@@ -417,7 +418,10 @@ module Lang =
               | Lvca_syntax.Nominal.Term.Operator
                   (x0, "Nonempty", (Lvca_syntax.Nominal.Scope.Scope
                    ([], x1))::(Lvca_syntax.Nominal.Scope.Scope ([], x2))::[])
-                  -> Ok (Types.Nonempty (x0, x1, x2))
+                  ->
+                  (match Primitive.String.of_nominal x1 with
+                   | Error msg -> Error msg
+                   | Ok x1 -> Ok (Types.Nonempty (x0, x1, x2)))
               | tm -> Error tm
             let pair a b =
               function
@@ -872,7 +876,7 @@ module Lang =
     module Foo =
       struct
         type 'info t = 'info Wrapper.Types.foo =
-          | Foo of 'info * 'info Lvca_syntax.Nominal.Types.term 
+          | Foo of 'info * 'info Lvca_syntax.Nominal.Term.t 
           | Bar of 'info * ('info Pattern.t * 'info Lvca_syntax.Single_var.t
           * 'info Wrapper.Types.foo) 
           | Foo_var of 'info * string 
@@ -885,7 +889,7 @@ module Lang =
         module Plain =
           struct
             type t = Wrapper.Plain.foo =
-              | Foo of Lvca_syntax.Nominal.Plain.term 
+              | Foo of Lvca_syntax.Nominal.Term.Plain.t 
               | Bar of (Pattern.Plain.t * Lvca_syntax.Single_var.Plain.t *
               Wrapper.Plain.foo) 
               | Foo_var of string 
@@ -1084,8 +1088,8 @@ module Lang =
     module Nonempty =
       struct
         type 'info t = 'info Wrapper.Types.nonempty =
-          | Nonempty of 'info * 'info Lvca_syntax.Nominal.Types.term * 'info
-          Lvca_syntax.Nominal.Types.term 
+          | Nonempty of 'info * 'info Primitive.String.t * 'info
+          Lvca_syntax.Nominal.Term.t 
         let info tm = Wrapper.Info.nonempty tm
         let to_plain tm = Wrapper.To_plain.nonempty tm
         let of_plain tm = Wrapper.Of_plain.nonempty tm
@@ -1095,8 +1099,8 @@ module Lang =
         module Plain =
           struct
             type t = Wrapper.Plain.nonempty =
-              | Nonempty of Lvca_syntax.Nominal.Plain.term *
-              Lvca_syntax.Nominal.Plain.term 
+              | Nonempty of Primitive.String.Plain.t *
+              Lvca_syntax.Nominal.Term.Plain.t 
             let (=) x y =
               let x = (x |> of_plain) |> to_nominal in
               let y = (y |> of_plain) |> to_nominal in
@@ -1132,7 +1136,7 @@ module Lang =
     module Term =
       struct
         type 'info t = 'info Wrapper.Types.term =
-          | Operator of 'info * 'info Lvca_syntax.Nominal.Types.term 
+          | Operator of 'info * 'info Lvca_syntax.Nominal.Term.t 
         let info tm = Wrapper.Info.term tm
         let to_plain tm = Wrapper.To_plain.term tm
         let of_plain tm = Wrapper.Of_plain.term tm
@@ -1142,7 +1146,7 @@ module Lang =
         module Plain =
           struct
             type t = Wrapper.Plain.term =
-              | Operator of Lvca_syntax.Nominal.Plain.term 
+              | Operator of Lvca_syntax.Nominal.Term.Plain.t 
             let (=) x y =
               let x = (x |> of_plain) |> to_nominal in
               let y = (y |> of_plain) |> to_nominal in
@@ -1327,15 +1331,15 @@ module List_lang =
           struct
             type 'info list_external =
               | List_external of 'info * ('info,
-              'info Lvca_syntax.Nominal.Types.term) list 
+              'info Lvca_syntax.Nominal.Term.t) list 
             and 'info list_predefined =
               | List_predefined of 'info * ('info, 'info predefined) list 
             and 'info list_list_string_2 =
               | List_list_string_2 of 'info * ('info,
-              'info Lvca_syntax.Nominal.Types.term) list_list_a 
+              'info Lvca_syntax.Nominal.Term.t) list_list_a 
             and 'info list_list_string_1 =
               | List_list_string_1 of 'info * ('info,
-              ('info, 'info Lvca_syntax.Nominal.Types.term) list) list 
+              ('info, 'info Lvca_syntax.Nominal.Term.t) list) list 
             and 'info list_list_predefined_2 =
               | List_list_predefined_2 of 'info * ('info, 'info predefined)
               list_list_a 
@@ -1353,14 +1357,14 @@ module List_lang =
         module Plain =
           struct
             type list_external =
-              | List_external of Lvca_syntax.Nominal.Plain.term list 
+              | List_external of Lvca_syntax.Nominal.Term.Plain.t list 
             and list_predefined =
               | List_predefined of predefined list 
             and list_list_string_2 =
-              | List_list_string_2 of Lvca_syntax.Nominal.Plain.term
+              | List_list_string_2 of Lvca_syntax.Nominal.Term.Plain.t
               list_list_a 
             and list_list_string_1 =
-              | List_list_string_1 of Lvca_syntax.Nominal.Plain.term list
+              | List_list_string_1 of Lvca_syntax.Nominal.Term.Plain.t list
               list 
             and list_list_predefined_2 =
               | List_list_predefined_2 of predefined list_list_a 
@@ -2072,7 +2076,7 @@ module List_lang =
       struct
         type 'info t = 'info Wrapper.Types.list_external =
           | List_external of 'info * ('info,
-          'info Lvca_syntax.Nominal.Types.term) Wrapper.Types.list 
+          'info Lvca_syntax.Nominal.Term.t) Wrapper.Types.list 
         let info tm = Wrapper.Info.list_external tm
         let to_plain tm = Wrapper.To_plain.list_external tm
         let of_plain tm = Wrapper.Of_plain.list_external tm
@@ -2082,7 +2086,7 @@ module List_lang =
         module Plain =
           struct
             type t = Wrapper.Plain.list_external =
-              | List_external of Lvca_syntax.Nominal.Plain.term
+              | List_external of Lvca_syntax.Nominal.Term.Plain.t
               Wrapper.Plain.list 
             let (=) x y =
               let x = (x |> of_plain) |> to_nominal in
@@ -2221,7 +2225,7 @@ module List_lang =
       struct
         type 'info t = 'info Wrapper.Types.list_list_string_1 =
           | List_list_string_1 of 'info * ('info,
-          ('info, 'info Lvca_syntax.Nominal.Types.term) Wrapper.Types.list)
+          ('info, 'info Lvca_syntax.Nominal.Term.t) Wrapper.Types.list)
           Wrapper.Types.list 
         let info tm = Wrapper.Info.list_list_string_1 tm
         let to_plain tm = Wrapper.To_plain.list_list_string_1 tm
@@ -2232,7 +2236,7 @@ module List_lang =
         module Plain =
           struct
             type t = Wrapper.Plain.list_list_string_1 =
-              | List_list_string_1 of Lvca_syntax.Nominal.Plain.term
+              | List_list_string_1 of Lvca_syntax.Nominal.Term.Plain.t
               Wrapper.Plain.list Wrapper.Plain.list 
             let (=) x y =
               let x = (x |> of_plain) |> to_nominal in
@@ -2270,7 +2274,7 @@ module List_lang =
       struct
         type 'info t = 'info Wrapper.Types.list_list_string_2 =
           | List_list_string_2 of 'info * ('info,
-          'info Lvca_syntax.Nominal.Types.term) Wrapper.Types.list_list_a 
+          'info Lvca_syntax.Nominal.Term.t) Wrapper.Types.list_list_a 
         let info tm = Wrapper.Info.list_list_string_2 tm
         let to_plain tm = Wrapper.To_plain.list_list_string_2 tm
         let of_plain tm = Wrapper.Of_plain.list_list_string_2 tm
@@ -2280,7 +2284,7 @@ module List_lang =
         module Plain =
           struct
             type t = Wrapper.Plain.list_list_string_2 =
-              | List_list_string_2 of Lvca_syntax.Nominal.Plain.term
+              | List_list_string_2 of Lvca_syntax.Nominal.Term.Plain.t
               Wrapper.Plain.list_list_a 
             let (=) x y =
               let x = (x |> of_plain) |> to_nominal in

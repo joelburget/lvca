@@ -323,7 +323,7 @@ module Helpers (Context : Builder_context) = struct
     { info : has_info
     ; var_names : SSet.t
     ; mutual_sorts : string Commented.t Syn.Sort_def.t SMap.t
-    ; prim_names : SSet.t
+    ; prims : string list option SMap.t
     }
 
   (** When using a sort, we treat it differently depending on if it's a variable, defined
@@ -332,11 +332,11 @@ module Helpers (Context : Builder_context) = struct
   type defn_status =
     | Variable
     | Mutual_sort
-    | External_sort
+    | External_sort of string list option
     | Predefined_sort of has_info
 
   let classify_sort context sort =
-    let { info; var_names; mutual_sorts; prim_names } = context in
+    let { info; var_names; mutual_sorts; prims } = context in
     let sort_name, sort_args = Sort.split sort in
     if Set.mem var_names sort_name
     then Variable
@@ -360,7 +360,9 @@ module Helpers (Context : Builder_context) = struct
                      sort_name))));
         Mutual_sort
       | None ->
-        if Set.mem prim_names sort_name then External_sort else Predefined_sort info)
+        (match Map.find prims sort_name with
+        | Some mods_opt -> External_sort mods_opt
+        | None -> Predefined_sort info))
   ;;
 
   (** Make the type corresponding to a sort in a constructor declaration. Eg:
@@ -402,33 +404,79 @@ module Helpers (Context : Builder_context) = struct
       | Predefined_sort info ->
         let mod_name = match info with With_info -> "Types" | _ -> "Plain" in
         ptyp_constr { txt = unflatten [ "Wrapper"; mod_name; name ]; loc } info_args
-      | External_sort ->
+      | External_sort mods_opt ->
+        let mods =
+          match mods_opt with
+          | Some mods -> mods
+          | None -> [ "Lvca_syntax"; "Nominal"; "Term" ]
+        in
         let ty_name =
           match context.info with
-          | With_info -> [ "Lvca_syntax"; "Nominal"; "Types"; "term" ]
-          | _ -> [ "Lvca_syntax"; "Nominal"; "Plain"; "term" ]
+          | With_info -> mods @ [ "t" ]
+          | _ -> mods @ [ "Plain"; "t" ]
         in
         ptyp_constr { txt = unflatten ty_name; loc } info_args
     in
     go sort
   ;;
 
-  let external_fun = function
-    | Supported_function.Fun_to_plain -> [%expr Lvca_syntax.Nominal.Term.to_plain]
-    | Fun_of_plain -> [%expr Lvca_syntax.Nominal.Term.of_plain]
-    | Fun_map_info -> [%expr Lvca_syntax.Nominal.Term.map_info]
-    | Fun_of_nominal -> [%expr fun x -> Ok x]
-    | Fun_to_nominal | Fun_equal -> [%expr fun x -> x]
-    | Fun_info -> [%expr Lvca_syntax.Nominal.Term.info]
+  (** Get an identifier for an external fun. *)
+  let external_fun mods_opt supported_fun =
+    let mods =
+      match mods_opt with
+      | None -> [ "Lvca_syntax"; "Nominal"; "Term" ]
+      | Some mods -> mods
+    in
+    match supported_fun with
+    | Supported_function.Fun_to_plain ->
+      pexp_ident { txt = unflatten (mods @ [ "to_plain" ]); loc }
+    | Fun_of_plain -> pexp_ident { txt = unflatten (mods @ [ "of_plain" ]); loc }
+    | Fun_map_info -> pexp_ident { txt = unflatten (mods @ [ "map_info" ]); loc }
+    | Fun_of_nominal ->
+      (match mods_opt with
+      | None -> [%expr fun x -> Ok x]
+      | Some _ -> pexp_ident { txt = unflatten (mods @ [ "of_nominal" ]); loc })
+    | Fun_to_nominal ->
+      (match mods_opt with
+      | None -> [%expr fun x -> x]
+      | Some _ -> pexp_ident { txt = unflatten (mods @ [ "to_nominal" ]); loc })
+    | Fun_equal -> [%expr fun x -> x]
+    | Fun_info -> pexp_ident { txt = unflatten (mods @ [ "info" ]); loc }
   ;;
 
-  let external_fun_defn v = function
+  (** Apply an external function to variable v *)
+  let external_fun_app mods_opt v supported_fun =
+    let mods =
+      match mods_opt with
+      | None -> [ "Lvca_syntax"; "Nominal"; "Term" ]
+      | Some mods -> mods
+    in
+    match supported_fun with
     | Supported_function.Fun_to_plain ->
-      [%expr Lvca_syntax.Nominal.Term.to_plain [%e v ()]]
-    | Fun_of_plain -> [%expr Lvca_syntax.Nominal.Term.of_plain [%e v ()]]
-    | Fun_map_info -> [%expr Lvca_syntax.Nominal.Term.map_info ~f [%e v ()]]
-    | Fun_of_nominal | Fun_to_nominal | Fun_equal -> v ()
-    | Fun_info -> [%expr Lvca_syntax.Nominal.Term.info [%e v ()]]
+      let f = pexp_ident { txt = unflatten (mods @ [ "to_plain" ]); loc } in
+      [%expr [%e f] [%e v]]
+    | Fun_of_plain ->
+      let f = pexp_ident { txt = unflatten (mods @ [ "of_plain" ]); loc } in
+      [%expr [%e f] [%e v]]
+    | Fun_map_info ->
+      let f = pexp_ident { txt = unflatten (mods @ [ "map_info" ]); loc } in
+      [%expr [%e f] ~f [%e v]]
+    | Fun_of_nominal ->
+      (match mods_opt with
+      | None -> v
+      | Some _ ->
+        let f = pexp_ident { txt = unflatten (mods @ [ "of_nominal" ]); loc } in
+        [%expr [%e f] [%e v]])
+    | Fun_to_nominal ->
+      (match mods_opt with
+      | None -> v
+      | Some _ ->
+        let f = pexp_ident { txt = unflatten (mods @ [ "to_nominal" ]); loc } in
+        [%expr [%e f] [%e v]])
+    | Fun_equal -> v
+    | Fun_info ->
+      let f = pexp_ident { txt = unflatten (mods @ [ "info" ]); loc } in
+      [%expr [%e f] [%e v]]
   ;;
 
   (** Make a function application for a sort expression, eg in map_info:
@@ -451,7 +499,7 @@ module Helpers (Context : Builder_context) = struct
       let loc = sort |> Sort.info |> Commented.get_range |> update_loc in
       let txt = Lident (sort_head sort) in
       match classify_sort sort with
-      | External_sort -> external_fun fun_defn
+      | External_sort mods -> external_fun mods fun_defn
       | Variable | Mutual_sort | Predefined_sort _ ->
         (match sort with
         | Sort.Ap (_, _, args) ->
@@ -515,6 +563,30 @@ module Helpers (Context : Builder_context) = struct
   ;;
 
   let plain_typ_var name = ptyp_var name, (NoVariance, NoInjectivity)
+
+  let parse_external_module =
+    let open Lvca_parsing in
+    whitespace
+    *> Ws.string "module"
+    *> sep_by1
+         (No_ws.char '.')
+         (many1 (Ws.satisfy Char.is_alphanum) >>| String.of_char_list)
+  ;;
+
+  let prims_of_externals externals =
+    externals
+    |> List.map
+         ~f:(fun (name, Abstract_syntax.Kind.Kind (Commented.{ comment; _ }, _kind)) ->
+           let m_opt =
+             comment
+             |> Option.bind ~f:(fun comment ->
+                    match Lvca_parsing.parse_string parse_external_module comment with
+                    | Ok m -> Some m
+                    | Error _ -> None)
+           in
+           name, m_opt)
+    |> SMap.of_alist_exn
+  ;;
 end
 
 (** Helper for declaring a constructor. *)
@@ -528,7 +600,7 @@ module Ctor_decl (Context : Builder_context) = struct
       ~type_decl_context
       ~var_names
       ~mutual_sorts
-      ~prim_names
+      ~prims
       (Syn.Operator_def.Operator_def (op_name, arity))
     =
     let pattern_type =
@@ -546,7 +618,7 @@ module Ctor_decl (Context : Builder_context) = struct
               | _ -> [%type: Lvca_syntax.Single_var.Plain.t])
             | Sort_pattern _sort -> pattern_type)
       in
-      let context = { info; var_names; mutual_sorts; prim_names } in
+      let context = { info; var_names; mutual_sorts; prims } in
       args @ [ ptyp_of_sort ~type_decl_context ~context body_sort ]
     in
     let args =
@@ -574,7 +646,7 @@ module Type_decls (Context : Builder_context) = struct
   let mk_op_ctors
       ~type_decl_context
       ~sort_def_map:mutual_sorts
-      ~prim_names
+      ~prims
       ~info
       ~sort_name
       ~partitioned_sorts
@@ -584,7 +656,7 @@ module Type_decls (Context : Builder_context) = struct
     let op_ctors =
       List.map
         op_defs
-        ~f:(Ctor_decl.mk ~info ~type_decl_context ~var_names ~mutual_sorts ~prim_names)
+        ~f:(Ctor_decl.mk ~info ~type_decl_context ~var_names ~mutual_sorts ~prims)
     in
     let var_ctor =
       let args =
@@ -603,7 +675,7 @@ module Type_decls (Context : Builder_context) = struct
     | _ -> op_ctors
   ;;
 
-  let mk ~info ~sort_def_map ~sorted_scc_graph ~prim_names ~partitioned_sorts =
+  let mk ~info ~sort_def_map ~sorted_scc_graph ~prims ~partitioned_sorts =
     let info_params = match info with With_info -> [ plain_typ_var "info" ] | _ -> [] in
     sorted_scc_graph
     |> List.map ~f:(fun (_scc_num, sort_name_set) ->
@@ -618,7 +690,7 @@ module Type_decls (Context : Builder_context) = struct
                     mk_op_ctors
                       ~sort_def_map
                       ~type_decl_context:Predefinition
-                      ~prim_names
+                      ~prims
                       ~info
                       ~sort_name
                       ~partitioned_sorts
@@ -701,7 +773,7 @@ module Operator_exp (Context : Builder_context) = struct
   let mk
       ~has_info (* Building a plain or with-info data type *)
       ~var_names
-      ~prim_names
+      ~prims
       ?(f = false)
       sort_defs (* Sorts being defined together *)
       fun_defn (* The name of the function being defined *)
@@ -717,12 +789,13 @@ module Operator_exp (Context : Builder_context) = struct
     in
     let f_args = if f then [ labelled_arg "f" ] else [] in
     let classify_sort =
-      classify_sort { info = With_info; var_names; mutual_sorts = sort_defs; prim_names }
+      classify_sort { info = With_info; var_names; mutual_sorts = sort_defs; prims }
     in
     let body_arg sort =
+      let v = v () in
       match classify_sort sort with
-      | External_sort -> external_fun_defn v fun_defn
-      | _ -> mk_sort_app ~fun_defn ~classify_sort ~args:(f_args @ [ Nolabel, v () ]) sort
+      | External_sort mods -> external_fun_app mods v fun_defn
+      | _ -> mk_sort_app ~fun_defn ~classify_sort ~args:(f_args @ [ Nolabel, v ]) sort
     in
     let contents =
       arity
@@ -779,7 +852,7 @@ module To_plain (Context : Builder_context) = struct
   module Operator_exp = Operator_exp (Context)
 
   let mk
-      ~prim_names
+      ~prims
       ~partitioned_sorts
       sort_defs
       sort_name
@@ -790,13 +863,7 @@ module To_plain (Context : Builder_context) = struct
     let f op_def =
       let lhs = Operator_pat.mk ~has_info:With_info op_def in
       let rhs =
-        Operator_exp.mk
-          ~var_names
-          ~prim_names
-          ~has_info:Plain
-          sort_defs
-          Fun_to_plain
-          op_def
+        Operator_exp.mk ~var_names ~prims ~has_info:Plain sort_defs Fun_to_plain op_def
       in
       case ~lhs ~guard ~rhs
     in
@@ -831,7 +898,7 @@ module Of_plain (Context : Builder_context) = struct
   module Operator_exp = Operator_exp (Context)
 
   let mk
-      ~prim_names
+      ~prims
       ~partitioned_sorts
       sort_defs
       sort_name
@@ -843,7 +910,7 @@ module Of_plain (Context : Builder_context) = struct
       let rhs =
         Operator_exp.mk
           ~var_names
-          ~prim_names
+          ~prims
           ~has_info:With_info
           sort_defs
           Fun_of_plain
@@ -884,7 +951,7 @@ module Map_info (Context : Builder_context) = struct
   module Operator_exp = Operator_exp (Context)
 
   let mk
-      ~prim_names
+      ~prims
       ~partitioned_sorts
       sort_defs
       sort_name
@@ -896,7 +963,7 @@ module Map_info (Context : Builder_context) = struct
       let rhs =
         Operator_exp.mk
           ~var_names
-          ~prim_names
+          ~prims
           ~has_info:With_info
           ~f:true
           sort_defs
@@ -962,7 +1029,7 @@ module To_nominal (Context : Builder_context) = struct
   *)
   let mk_nominal_exp
       ~var_names
-      ~prim_names
+      ~prims
       sort_defs
       (Syn.Operator_def.Operator_def (op_name, arity))
     =
@@ -970,13 +1037,13 @@ module To_nominal (Context : Builder_context) = struct
     let info = evar "x0" in
     let v = evar_allocator "x" in
     let classify_sort =
-      classify_sort { info = With_info; var_names; mutual_sorts = sort_defs; prim_names }
+      classify_sort { info = With_info; var_names; mutual_sorts = sort_defs; prims }
     in
     let body_arg sort =
+      let v = v () in
       match classify_sort sort with
-      | External_sort -> v ()
-      | _ ->
-        mk_sort_app ~fun_defn:Fun_to_nominal ~classify_sort ~args:[ Nolabel, v () ] sort
+      | External_sort mods_opt -> external_fun_app mods_opt v Fun_to_nominal
+      | _ -> mk_sort_app ~fun_defn:Fun_to_nominal ~classify_sort ~args:[ Nolabel, v ] sort
     in
     let mk_scope (Syn.Valence.Valence (slots, body_sort)) =
       let args =
@@ -995,7 +1062,7 @@ module To_nominal (Context : Builder_context) = struct
   ;;
 
   let mk
-      ~prim_names
+      ~prims
       ~partitioned_sorts
       sort_defs
       sort_name
@@ -1004,7 +1071,7 @@ module To_nominal (Context : Builder_context) = struct
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let f op_def =
       let lhs = Operator_pat.mk ~has_info:With_info ~match_info:true op_def in
-      let rhs = mk_nominal_exp ~var_names ~prim_names sort_defs op_def in
+      let rhs = mk_nominal_exp ~var_names ~prims sort_defs op_def in
       case ~lhs ~guard ~rhs
     in
     let var_case =
@@ -1089,23 +1156,19 @@ module Of_nominal (Context : Builder_context) = struct
     ppat_construct { txt = operator; loc } body
   ;;
 
-  let mk_exp
-      ~var_names
-      ~prim_names
-      sort_defs
-      (Syn.Operator_def.Operator_def (op_name, arity))
-    =
+  let mk_exp ~var_names ~prims sort_defs (Syn.Operator_def.Operator_def (op_name, arity)) =
     let v = var_allocator "x" in
     let ev = v >> snd in
     let info = evar "x0" in
     (* Queue of (variable, conversion to perform) *)
     let conversions_needed = Queue.create () in
     let classify_sort =
-      classify_sort { info = With_info; var_names; mutual_sorts = sort_defs; prim_names }
+      classify_sort { info = With_info; var_names; mutual_sorts = sort_defs; prims }
     in
     let body_arg ev sort =
       match classify_sort sort with
-      | External_sort -> None
+      | External_sort None -> None
+      | External_sort (Some mods) -> Some (external_fun_app (Some mods) ev Fun_of_nominal)
       | _ ->
         Some
           (mk_sort_app ~fun_defn:Fun_of_nominal ~classify_sort ~args:[ Nolabel, ev ] sort)
@@ -1140,7 +1203,7 @@ module Of_nominal (Context : Builder_context) = struct
   ;;
 
   let mk
-      ~prim_names
+      ~prims
       ~partitioned_sorts
       sort_defs
       sort_name
@@ -1150,7 +1213,7 @@ module Of_nominal (Context : Builder_context) = struct
     let f op_def =
       let lhs = mk_nominal_pat op_def in
       let rhs =
-        let conversions_needed, init = mk_exp ~var_names ~prim_names sort_defs op_def in
+        let conversions_needed, init = mk_exp ~var_names ~prims sort_defs op_def in
         let f (v, conversion) accum =
           [%expr
             match [%e conversion] with Error msg -> Error msg | Ok [%p v] -> [%e accum]]
@@ -1192,10 +1255,10 @@ module Equal (Context : Builder_context) = struct
   open Helpers (Context)
   module Operator_pat = Operator_pat (Context)
 
-  let mk ~prim_names sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
+  let mk ~prims sort_defs sort_name (Syn.Sort_def.Sort_def (vars, op_defs)) =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let classify_sort =
-      classify_sort { info = With_info; var_names; mutual_sorts = sort_defs; prim_names }
+      classify_sort { info = With_info; var_names; mutual_sorts = sort_defs; prims }
     in
     let f (Syn.Operator_def.Operator_def (_op_name, arity) as op_def) =
       let lhs =
@@ -1268,7 +1331,7 @@ module Info (Context : Builder_context) = struct
   module Operator_pat = Operator_pat (Context)
 
   let mk
-      ~prim_names:_
+      ~prims:_
       ~partitioned_sorts
       _sort_defs
       sort_name
@@ -1320,7 +1383,7 @@ module Wrapper_module (Context : Builder_context) = struct
   module To_nominal = To_nominal (Context)
   module Of_nominal = Of_nominal (Context)
 
-  let mk ~prim_names ~sort_def_map ~sort_dep_map ~sorted_scc_graph ~partitioned_sorts =
+  let mk ~prims ~sort_def_map ~sort_dep_map ~sorted_scc_graph ~partitioned_sorts =
     let ordered_sccs =
       sorted_scc_graph
       |> List.map ~f:(fun (scc_num, sort_name_set) ->
@@ -1335,7 +1398,7 @@ module Wrapper_module (Context : Builder_context) = struct
     let adapt
         ?definite_rec
         (maker :
-          prim_names:SSet.t
+          prims:string list option SMap.t
           -> partitioned_sorts:(string, bound_unbound) Hashtbl.t
           -> _ Syn.Sort_def.t SMap.t
           -> string
@@ -1346,7 +1409,7 @@ module Wrapper_module (Context : Builder_context) = struct
       |> List.map ~f:(fun (_scc_num, named_sort) ->
              let value_bindings =
                List.map named_sort ~f:(fun (sort_name, sort_def) ->
-                   maker ~prim_names ~partitioned_sorts sort_def_map sort_name sort_def)
+                   maker ~prims ~partitioned_sorts sort_def_map sort_name sort_def)
              in
              let is_rec =
                match definite_rec with
@@ -1366,7 +1429,7 @@ module Wrapper_module (Context : Builder_context) = struct
       |> pmod_structure
     in
     let type_decls =
-      Type_decls.mk ~sort_def_map ~sorted_scc_graph ~prim_names ~partitioned_sorts
+      Type_decls.mk ~sort_def_map ~sorted_scc_graph ~prims ~partitioned_sorts
     in
     let info_decls = type_decls ~info:With_info in
     let plain_decls = type_decls ~info:Plain in
@@ -1399,14 +1462,14 @@ module Individual_type_sig (Context : Builder_context) = struct
   open Helpers (Context)
   module Type_decls = Type_decls (Context)
 
-  let mk ~prim_names ~sort_def_map ~partitioned_sorts ~info sort_name sort_def =
+  let mk ~prims ~sort_def_map ~partitioned_sorts ~info sort_name sort_def =
     let (Syn.Sort_def.Sort_def (vars, _op_defs)) = sort_def in
     let params = vars |> List.map ~f:(fst >> plain_typ_var) in
     let op_ctors =
       Type_decls.mk_op_ctors
         ~type_decl_context:Individual_type_module
         ~sort_def_map
-        ~prim_names
+        ~prims
         ~info
         ~sort_name
         ~partitioned_sorts
@@ -1434,7 +1497,7 @@ module Individual_type_module (Context : Builder_context) = struct
   open Helpers (Context)
   module Type_decls = Type_decls (Context)
 
-  let mk ~prim_names ~sort_def_map ~partitioned_sorts sort_name sort_def =
+  let mk ~prims ~sort_def_map ~partitioned_sorts sort_name sort_def =
     let (Syn.Sort_def.Sort_def (vars, _op_defs)) = sort_def in
     let var_names = List.map vars ~f:fst in
     let type_vars = List.map var_names ~f:ptyp_var in
@@ -1450,7 +1513,7 @@ module Individual_type_module (Context : Builder_context) = struct
         Type_decls.mk_op_ctors
           ~type_decl_context:Individual_type_module
           ~sort_def_map
-          ~prim_names
+          ~prims
           ~info:Plain
           ~sort_name
           ~partitioned_sorts
@@ -1478,7 +1541,7 @@ module Individual_type_module (Context : Builder_context) = struct
         Type_decls.mk_op_ctors
           ~type_decl_context:Individual_type_module
           ~sort_def_map
-          ~prim_names
+          ~prims
           ~info:With_info
           ~sort_name
           ~partitioned_sorts
@@ -1596,7 +1659,7 @@ module Container_module (Context : Builder_context) = struct
   module Individual_type_module = Individual_type_module (Context)
 
   let mk (Syn.{ externals; sort_defs } as lang) =
-    let prim_names = externals |> List.map ~f:fst |> SSet.of_list in
+    let prims = prims_of_externals externals in
     let sort_def_map = SMap.of_alist_exn sort_defs in
     let sort_dep_map = get_sort_ref_info sort_defs in
     let Graph.Connected_components.{ scc_graph; sccs } =
@@ -1610,7 +1673,7 @@ module Container_module (Context : Builder_context) = struct
     let partitioned_sorts = partition_sort_defs sort_defs in
     let wrapper_module =
       Wrapper_module.mk
-        ~prim_names
+        ~prims
         ~sort_def_map
         ~sort_dep_map
         ~sorted_scc_graph
@@ -1619,7 +1682,7 @@ module Container_module (Context : Builder_context) = struct
     let type_modules =
       List.map sort_defs ~f:(fun (sort_name, sort_def) ->
           Individual_type_module.mk
-            ~prim_names
+            ~prims
             ~sort_def_map
             ~partitioned_sorts
             sort_name
@@ -1642,14 +1705,14 @@ module Sig (Context : Builder_context) = struct
   module Individual_type_sig = Individual_type_sig (Context)
 
   let mk Syn.{ externals; sort_defs } =
-    let prim_names = externals |> List.map ~f:fst |> SSet.of_list in
+    let prims = prims_of_externals externals in
     let sort_def_map = SMap.of_alist_exn sort_defs in
     let partitioned_sorts = partition_sort_defs sort_defs in
     let type_sigs =
       List.map sort_defs ~f:(fun (sort_name, sort_def) ->
           let mk_ty info =
             Individual_type_sig.mk
-              ~prim_names
+              ~prims
               ~sort_def_map
               ~partitioned_sorts
               ~info
