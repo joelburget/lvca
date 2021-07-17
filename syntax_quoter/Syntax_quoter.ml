@@ -33,7 +33,11 @@ module Exp = struct
     | expr :: exprs -> [%expr [%e expr] :: [%e list ~loc exprs]]
   ;;
 
-  let option ~loc maker = function None -> [%expr None] | Some x -> maker ~loc x
+  let option ~loc maker = function
+    | None -> [%expr None]
+    | Some x -> [%expr Some [%e maker ~loc x]]
+  ;;
+
   let str ~loc str = Ast_builder.Default.estring ~loc str
   let int ~loc i = Ast_builder.Default.eint ~loc i
   let int32 ~loc i = Ast_builder.Default.eint32 ~loc i

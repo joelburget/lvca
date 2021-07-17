@@ -46,8 +46,6 @@ val sep_end_by : _ t -> 'a t -> 'a list t
 val fail : string -> 'a t
 val whitespace : unit t
 val whitespace1 : unit t
-val parse_string_pos : 'a t -> string -> ('a Parse_result.t, string) Base.Result.t
-val parse_string : 'a t -> string -> ('a, string) Base.Result.t
 val no_comment : string t
 val c_comment : string t
 
@@ -78,3 +76,6 @@ module No_ws : sig
   val braces : 'a t -> 'a t
   val brackets : 'a t -> 'a t
 end
+
+val parse_string_pos : 'a t -> string -> ('a Parse_result.t, string) Base.Result.t
+val parse_string : 'a t -> string -> ('a, string) Base.Result.t

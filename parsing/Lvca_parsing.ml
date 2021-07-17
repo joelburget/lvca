@@ -477,18 +477,7 @@ end
 let no_comment = fail "no comment"
 
 let c_comment =
-  let comment =
-    many
-      (No_ws.satisfy
-         Char.(
-           fun c ->
-             (* Fmt.pr "c: %c -> %b\n" c (c <> '\n'); *)
-             c <> '\n'))
-    >>| fun chars ->
-    let str = String.of_char_list chars in
-    (* Fmt.pr "c_comment contents: %s\n" str; *)
-    str
-  in
+  let comment = many (No_ws.satisfy Char.(fun c -> c <> '\n')) >>| String.of_char_list in
   No_ws.string "//" *> comment <* whitespace
 ;;
 

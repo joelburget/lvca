@@ -12,7 +12,7 @@ module Lang =
 [%lvca.abstract_syntax_module
 {|
 integer : *
-string : *
+string : * // module Primitive.String
 maybe : * -> *
 list : * -> *
 

@@ -549,7 +549,7 @@ module Lang =
                           (Some
                              (let open Lvca_provenance.Range in
                                 { start = 22; finish = 23 }));
-                        comment = None
+                        comment = (Some " module Primitive.String")
                       })), 1)));
             ("maybe",
               (Lvca_syntax.Abstract_syntax.Kind.Kind
@@ -558,7 +558,7 @@ module Lang =
                         range =
                           (Some
                              (let open Lvca_provenance.Range in
-                                { start = 32; finish = 38 }));
+                                { start = 59; finish = 65 }));
                         comment = None
                       })), 2)));
             ("list",
@@ -568,7 +568,7 @@ module Lang =
                         range =
                           (Some
                              (let open Lvca_provenance.Range in
-                                { start = 46; finish = 52 }));
+                                { start = 73; finish = 79 }));
                         comment = None
                       })), 2)))];
           sort_defs =
@@ -585,7 +585,7 @@ module Lang =
                                         range =
                                           (Some
                                              (let open Lvca_provenance.Range in
-                                                { start = 69; finish = 76 }));
+                                                { start = 96; finish = 103 }));
                                         comment = None
                                       })), "integer")))]);
                     Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
@@ -601,8 +601,8 @@ module Lang =
                                                (Some
                                                   (let open Lvca_provenance.Range in
                                                      {
-                                                       start = 86;
-                                                       finish = 89
+                                                       start = 113;
+                                                       finish = 116
                                                      }));
                                              comment = None
                                            })), "foo"));
@@ -614,8 +614,8 @@ module Lang =
                                                (Some
                                                   (let open Lvca_provenance.Range in
                                                      {
-                                                       start = 90;
-                                                       finish = 93
+                                                       start = 117;
+                                                       finish = 120
                                                      }));
                                              comment = None
                                            })), "foo"))
@@ -627,7 +627,7 @@ module Lang =
                                         range =
                                           (Some
                                              (let open Lvca_provenance.Range in
-                                                { start = 96; finish = 99 }));
+                                                { start = 123; finish = 126 }));
                                         comment = None
                                       })), "foo"))],
                              (Lvca_syntax.Sort.Name
@@ -636,7 +636,7 @@ module Lang =
                                        range =
                                          (Some
                                             (let open Lvca_provenance.Range in
-                                               { start = 101; finish = 104 }));
+                                               { start = 128; finish = 131 }));
                                        comment = None
                                      })), "foo")))])])));
             ("nat",
@@ -654,7 +654,7 @@ module Lang =
                                       range =
                                         (Some
                                            (let open Lvca_provenance.Range in
-                                              { start = 122; finish = 125 }));
+                                              { start = 149; finish = 152 }));
                                       comment = None
                                     })), "nat")))])])));
             ("pair",
@@ -670,7 +670,7 @@ module Lang =
                                        range =
                                          (Some
                                             (let open Lvca_provenance.Range in
-                                               { start = 145; finish = 146 }));
+                                               { start = 172; finish = 173 }));
                                        comment = None
                                      })), "a")));
                         Lvca_syntax.Abstract_syntax.Valence.Valence
@@ -681,7 +681,7 @@ module Lang =
                                       range =
                                         (Some
                                            (let open Lvca_provenance.Range in
-                                              { start = 148; finish = 149 }));
+                                              { start = 175; finish = 176 }));
                                       comment = None
                                     })), "b")))])])));
             ("pair_plus",
@@ -697,7 +697,7 @@ module Lang =
                                        range =
                                          (Some
                                             (let open Lvca_provenance.Range in
-                                               { start = 177; finish = 178 }));
+                                               { start = 204; finish = 205 }));
                                        comment = None
                                      })), "a")));
                         Lvca_syntax.Abstract_syntax.Valence.Valence
@@ -708,7 +708,7 @@ module Lang =
                                       range =
                                         (Some
                                            (let open Lvca_provenance.Range in
-                                              { start = 180; finish = 181 }));
+                                              { start = 207; finish = 208 }));
                                       comment = None
                                     })), "b")));
                         Lvca_syntax.Abstract_syntax.Valence.Valence
@@ -719,7 +719,7 @@ module Lang =
                                       range =
                                         (Some
                                            (let open Lvca_provenance.Range in
-                                              { start = 183; finish = 186 }));
+                                              { start = 210; finish = 213 }));
                                       comment = None
                                     })), "foo")))])])));
             ("nonempty",
@@ -735,7 +735,7 @@ module Lang =
                                        range =
                                          (Some
                                             (let open Lvca_provenance.Range in
-                                               { start = 210; finish = 216 }));
+                                               { start = 237; finish = 243 }));
                                        comment = None
                                      })), "string")));
                         Lvca_syntax.Abstract_syntax.Valence.Valence
@@ -746,7 +746,7 @@ module Lang =
                                       range =
                                         (Some
                                            (let open Lvca_provenance.Range in
-                                              { start = 218; finish = 222 }));
+                                              { start = 245; finish = 249 }));
                                       comment = None
                                     })), "list",
                                  [Lvca_syntax.Sort.Name
@@ -756,8 +756,8 @@ module Lang =
                                              (Some
                                                 (let open Lvca_provenance.Range in
                                                    {
-                                                     start = 223;
-                                                     finish = 229
+                                                     start = 250;
+                                                     finish = 256
                                                    }));
                                            comment = None
                                          })), "string")])))])])));
@@ -774,7 +774,7 @@ module Lang =
                                        range =
                                          (Some
                                             (let open Lvca_provenance.Range in
-                                               { start = 249; finish = 253 }));
+                                               { start = 276; finish = 280 }));
                                        comment = None
                                      })), "list",
                                   [Lvca_syntax.Sort.Name
@@ -784,8 +784,8 @@ module Lang =
                                               (Some
                                                  (let open Lvca_provenance.Range in
                                                     {
-                                                      start = 254;
-                                                      finish = 258
+                                                      start = 281;
+                                                      finish = 285
                                                     }));
                                             comment = None
                                           })), "term")])))])])));
@@ -802,7 +802,7 @@ module Lang =
                                        range =
                                          (Some
                                             (let open Lvca_provenance.Range in
-                                               { start = 276; finish = 281 }));
+                                               { start = 303; finish = 308 }));
                                        comment = None
                                      })), "mut_b")))])])));
             ("mut_b",
@@ -818,7 +818,7 @@ module Lang =
                                        range =
                                          (Some
                                             (let open Lvca_provenance.Range in
-                                               { start = 298; finish = 303 }));
+                                               { start = 325; finish = 330 }));
                                        comment = None
                                      })), "mut_a")))])])));
             ("ifz",
@@ -834,7 +834,7 @@ module Lang =
                                        range =
                                          (Some
                                             (let open Lvca_provenance.Range in
-                                               { start = 316; finish = 319 }));
+                                               { start = 343; finish = 346 }));
                                        comment = None
                                      })), "ifz")));
                         Lvca_syntax.Abstract_syntax.Valence.Valence
@@ -845,7 +845,7 @@ module Lang =
                                         range =
                                           (Some
                                              (let open Lvca_provenance.Range in
-                                                { start = 321; finish = 324 }));
+                                                { start = 348; finish = 351 }));
                                         comment = None
                                       })), "ifz"))],
                             (Lvca_syntax.Sort.Name
@@ -854,7 +854,7 @@ module Lang =
                                       range =
                                         (Some
                                            (let open Lvca_provenance.Range in
-                                              { start = 326; finish = 329 }));
+                                              { start = 353; finish = 356 }));
                                       comment = None
                                     })), "ifz")));
                         Lvca_syntax.Abstract_syntax.Valence.Valence
@@ -865,7 +865,7 @@ module Lang =
                                       range =
                                         (Some
                                            (let open Lvca_provenance.Range in
-                                              { start = 331; finish = 334 }));
+                                              { start = 358; finish = 361 }));
                                       comment = None
                                     })), "ifz")))])])))]
         }
@@ -912,7 +912,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -960,7 +960,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -1015,7 +1015,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -1072,7 +1072,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -1120,7 +1120,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -1166,7 +1166,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -1212,7 +1212,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -1258,7 +1258,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -1309,7 +1309,7 @@ module Lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2008,7 +2008,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2059,7 +2059,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2107,7 +2107,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2155,7 +2155,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2208,7 +2208,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2257,7 +2257,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2305,7 +2305,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2354,7 +2354,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
@@ -2402,7 +2402,7 @@ module List_lang =
                 Lvca_parsing.fail "Generated parser parse_prim always fails" in
               let open Lvca_parsing in
                 (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.no_comment ~parse_prim)
+                   ~comment:Lvca_parsing.c_comment ~parse_prim)
                   >>=
                   (fun tm ->
                      match of_nominal tm with
