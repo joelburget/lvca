@@ -487,27 +487,28 @@ module Parse = struct
     lift3
       (fun pat _ tm -> pat, tm)
       (Pattern.parse ~comment)
-      (string "->")
+      (Ws.string "->")
       (Nonbinding.parse ~comment)
     <?> "branch"
   ;;
 
   let branches ~comment =
-    option '|' (char '|') *> sep_by1 (char '|') (branch ~comment) <?> "branches"
+    option '|' (Ws.char '|') *> sep_by1 (Ws.char '|') (branch ~comment) <?> "branches"
   ;;
 
   let matrix_row ~comment =
     lift3
       (fun pats _ tm ->
         List.mapi pats ~f:(fun term_no pattern -> { term_no; pattern; path = [] }), tm)
-      (sep_by1 (char ',') (Pattern.parse ~comment))
-      (string "->")
+      (sep_by1 (Ws.char ',') (Pattern.parse ~comment))
+      (Ws.string "->")
       (Nonbinding.parse ~comment)
     <?> "matrix_row"
   ;;
 
   let matrix_rows ~comment =
-    option '|' (char '|') *> sep_by1 (char '|') (matrix_row ~comment) <?> "matrix_rows"
+    option '|' (Ws.char '|') *> sep_by1 (Ws.char '|') (matrix_row ~comment)
+    <?> "matrix_rows"
   ;;
 end
 
@@ -548,9 +549,9 @@ let%test_module "Matching" =
     let run_compiled_matches syntax_str sorts_str matrix_str tms_str =
       match
         ( parse (Abstract_syntax.parse ~comment) syntax_str
-        , parse Lvca_parsing.(sep_by (char ',') (Sort.parse ~comment)) sorts_str
+        , parse Lvca_parsing.(sep_by (Ws.char ',') (Sort.parse ~comment)) sorts_str
         , parse (Parse.matrix_rows ~comment) matrix_str
-        , parse Lvca_parsing.(sep_by (char ',') (Nonbinding.parse ~comment)) tms_str )
+        , parse Lvca_parsing.(sep_by (Ws.char ',') (Nonbinding.parse ~comment)) tms_str )
       with
       | Error syntax_msg, _, _, _ -> failwith ("syntax failed to parse: " ^ syntax_msg)
       | _, Error sorts_msg, _, _ -> failwith ("sorts failed to parse: " ^ sorts_msg)
@@ -641,7 +642,7 @@ let%test_module "Matching" =
     let print_check syntax_str sorts_str matrix_str =
       match
         ( parse (Abstract_syntax.parse ~comment) syntax_str
-        , parse Lvca_parsing.(sep_by (char ',') (Sort.parse ~comment)) sorts_str
+        , parse Lvca_parsing.(sep_by (Ws.char ',') (Sort.parse ~comment)) sorts_str
         , parse (Parse.matrix_rows ~comment) matrix_str )
       with
       | Ok syntax, Ok sorts, Ok matrix ->

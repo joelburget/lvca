@@ -425,7 +425,7 @@ module Term = struct
     let open Lvca_parsing in
     fix (fun term ->
         let slot =
-          sep_by1 (char '.') term
+          sep_by1 (Ws.char '.') term
           >>== fun Parse_result.{ value; range } ->
           let binders, tm = List.unsnoc value in
           match binders |> List.map ~f:to_pattern |> Result.all with
@@ -435,10 +435,10 @@ module Term = struct
         choice
           ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
           [ parse_prim
-          ; (identifier
+          ; (Ws.identifier
             >>== fun Parse_result.{ value = ident; range = ident_range } ->
             choice
-              [ (parens (sep_end_by (char ';') slot)
+              [ (Ws.parens (sep_end_by (Ws.char ';') slot)
                 >>== fun { value = slots; range = parens_range } ->
                 option' comment
                 >>|| fun { value = comment; _ } ->

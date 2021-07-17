@@ -101,9 +101,9 @@ let parse ~comment =
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
         [ (Primitive.All.parse ~comment >>| fun prim -> Primitive prim)
-        ; (identifier
+        ; (Ws.identifier
           >>== fun Parse_result.{ value = ident; range = start; _ } ->
-          parens (sep_end_by (char ';') term)
+          Ws.parens (sep_end_by (Ws.char ';') term)
           >>== (fun { value = children; range = finish } ->
                  option' comment
                  >>|| fun { value = comment; _ } ->

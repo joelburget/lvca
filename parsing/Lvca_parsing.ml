@@ -364,22 +364,11 @@ let whitespace1 =
   Angstrom.take_while1 Char.is_whitespace >>|| fun _ -> { value = (); range = None }
 ;;
 
-let adapt_junkless junkless_p =
-  let p =
-    let f (value, range) = return { value; range } in
-    Angstrom.(junkless_p >>= f)
-  in
-  p <* whitespace
+let adapt p =
+  let f (value, range) = return { value; range } in
+  Angstrom.(p >>= f)
 ;;
 
-let char_lit = adapt_junkless Basic.char_lit
-let identifier = adapt_junkless Basic.identifier
-let integer_lit = adapt_junkless Basic.integer_lit
-let integer_or_float_lit = adapt_junkless Basic.integer_or_float_lit
-let string_lit = adapt_junkless Basic.string_lit
-let char c = adapt_junkless (Basic.char c)
-let satisfy f = adapt_junkless (Basic.satisfy f)
-let string str = adapt_junkless (Basic.string str)
 let ( <$> ) f p = p >>| f
 let fail msg = fail msg
 let lift f a = f <$> a
@@ -452,18 +441,55 @@ let sep_end_by s p =
       choice [ seb1; return [] ])
 ;;
 
-let mk_bracket_parser open_c close_c p =
-  lift3 (fun _ v _ -> v) (char open_c) p (char close_c)
-;;
+module No_ws = struct
+  let char_lit = adapt Basic.char_lit
+  let identifier = adapt Basic.identifier
+  let integer_lit = adapt Basic.integer_lit
+  let integer_or_float_lit = adapt Basic.integer_or_float_lit
+  let string_lit = adapt Basic.string_lit
+  let char c = adapt (Basic.char c)
+  let satisfy f = adapt (Basic.satisfy f)
+  let string str = adapt (Basic.string str)
 
-let parens p = mk_bracket_parser '(' ')' p
-let braces p = mk_bracket_parser '{' '}' p
-let brackets p = mk_bracket_parser '[' ']' p
+  let mk_bracket_parser open_c close_c p =
+    lift3 (fun _ v _ -> v) (char open_c <* whitespace) p (whitespace *> char close_c)
+  ;;
+
+  let parens p = mk_bracket_parser '(' ')' p
+  let braces p = mk_bracket_parser '{' '}' p
+  let brackets p = mk_bracket_parser '[' ']' p
+end
+
+module Ws = struct
+  let char_lit = No_ws.char_lit <* whitespace
+  let identifier = No_ws.identifier <* whitespace
+  let integer_lit = No_ws.integer_lit <* whitespace
+  let integer_or_float_lit = No_ws.integer_or_float_lit <* whitespace
+  let string_lit = No_ws.string_lit <* whitespace
+  let char c = No_ws.char c <* whitespace
+  let satisfy f = No_ws.satisfy f <* whitespace
+  let string str = No_ws.string str <* whitespace
+  let parens p = No_ws.parens p <* whitespace
+  let braces p = No_ws.braces p <* whitespace
+  let brackets p = No_ws.brackets p <* whitespace
+end
+
 let no_comment = fail "no comment"
 
 let c_comment =
-  let comment = many (satisfy Char.(fun c -> c <> '\n')) >>| String.of_char_list in
-  string "//" *> comment
+  let comment =
+    many
+      (No_ws.satisfy
+         Char.(
+           fun c ->
+             (* Fmt.pr "c: %c -> %b\n" c (c <> '\n'); *)
+             c <> '\n'))
+    >>| fun chars ->
+    let str = String.of_char_list chars in
+    (* Fmt.pr "c_comment contents: %s\n" str; *)
+    str
+  in
+  No_ws.string "//" *> comment <* whitespace
 ;;
 
 let%test_module "Parsing" =
@@ -481,7 +507,7 @@ let%test_module "Parsing" =
     ;;
 
     let pp_char ppf str = Fmt.pf ppf "%C" str
-    let go = parse_print char_lit pp_char
+    let go = parse_print Ws.char_lit pp_char
 
     let%expect_test _ =
       go {|'x'|};
@@ -534,7 +560,7 @@ let%test_module "Parsing" =
     ;;
 
     let pp_str ppf str = Fmt.pf ppf "%S" str
-    let go = parse_print string_lit pp_str
+    let go = parse_print Ws.string_lit pp_str
 
     let%expect_test _ =
       go {|"abc"|};
@@ -551,7 +577,7 @@ let%test_module "Parsing" =
       [%expect {|{ value = "\\"; range = {0,4} }|}]
     ;;
 
-    let go = parse_print (parens string_lit) pp_str
+    let go = parse_print Ws.(parens string_lit) pp_str
 
     let%expect_test _ =
       go {|("a")|};
@@ -560,7 +586,7 @@ let%test_module "Parsing" =
     ;;
 
     let pp ppf = Fmt.(pf ppf "[%a]" (list ~sep:(any "; ") pp_str))
-    let go = parse_print (parens (sep_by whitespace string_lit)) pp
+    let go = parse_print Ws.(parens (sep_by whitespace string_lit)) pp
 
     let%expect_test _ =
       go {|("a" "b")|};
@@ -573,7 +599,7 @@ let%test_module "Parsing" =
         | Either.First str -> Fmt.pf ppf {|First %S|} str
         | Second fl -> Fmt.pf ppf {|Second %a|} Float.pp fl
       in
-      parse_print integer_or_float_lit pp
+      parse_print Ws.integer_or_float_lit pp
     ;;
 
     let%expect_test _ =
@@ -613,7 +639,7 @@ let%test_module "Parsing" =
 
     let go =
       let pp ppf = Fmt.(pf ppf "[%a]" (list ~sep:(any "; ") pp_str)) in
-      parse_print (sep_end_by (char ';') string_lit) pp
+      parse_print Ws.(sep_end_by (char ';') string_lit) pp
     ;;
 
     let%expect_test _ =
@@ -635,7 +661,7 @@ let%test_module "Parsing" =
       let pp ppf =
         Fmt.(pf ppf "[%a]" (list ~sep:(any "; ") (list ~sep:(any ". ") pp_str)))
       in
-      parse_print (sep_end_by (char ';') (sep_end_by (char '.') string_lit)) pp
+      parse_print Ws.(sep_end_by (char ';') (sep_end_by (char '.') string_lit)) pp
     ;;
 
     let%expect_test _ =
@@ -644,6 +670,7 @@ let%test_module "Parsing" =
     ;;
 
     let go str =
+      let open Ws in
       let parse =
         parse_string_pos
           (sep_by1 (whitespace *> string "->") (whitespace *> char '*')

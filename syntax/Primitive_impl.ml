@@ -37,7 +37,7 @@ module Integer_plain = struct
 
   let pp ppf x = Fmt.string ppf (Z.to_string x)
   let ( = ) x1 x2 = (Z.Compare.(x1 = x2) [@warning "-44"])
-  let parse = Lvca_parsing.(integer_lit >>| Z.of_string <?> "integer")
+  let parse = Lvca_parsing.(Ws.integer_lit >>| Z.of_string <?> "integer")
   let jsonify i = Json.string (Z.to_string i)
 
   let unjsonify =
@@ -57,7 +57,7 @@ module Float_plain = struct
 
   let parse =
     let open Lvca_parsing in
-    integer_or_float_lit
+    Ws.integer_or_float_lit
     >>= (function First _ -> fail "TODO" | Second f -> return f)
     <?> "float"
   ;;
@@ -73,7 +73,7 @@ module Char_plain = struct
 
   let pp = Fmt.quote ~mark:"\'" Fmt.char
   let ( = ) = Char.( = )
-  let parse = Lvca_parsing.(char_lit <?> "char")
+  let parse = Lvca_parsing.(Ws.char_lit <?> "char")
   let jsonify c = Json.string (Char.to_string c)
 
   let unjsonify =
@@ -92,7 +92,7 @@ module Int32_plain = struct
 
   let pp = Fmt.int32
   let ( = ) = Int32.( = )
-  let parse = Lvca_parsing.(integer_lit >>| Int32.of_string <?> "int32")
+  let parse = Lvca_parsing.(Ws.integer_lit >>| Int32.of_string <?> "int32")
 
   (* TODO: remove exns *)
   let jsonify = Int32.to_int_exn >> Json.int
@@ -106,7 +106,7 @@ module String_plain = struct
 
   let pp = Fmt.(quote string)
   let ( = ) = String.( = )
-  let parse = Lvca_parsing.(string_lit <?> "string")
+  let parse = Lvca_parsing.(Ws.string_lit <?> "string")
   let jsonify s = Json.string s
   let unjsonify = Json.(function String s -> Some s | _ -> None)
 end
@@ -143,11 +143,11 @@ module All_plain = struct
     let open Lvca_parsing in
     choice
       ~failure_msg:"looking for an integer, float, string, or character literal"
-      [ (integer_or_float_lit
+      [ (Ws.integer_or_float_lit
         >>| function First i -> Integer (Z.of_string i) | Second f -> Float f)
         (* Note: all ints parse to Integer *)
-      ; (string_lit >>| fun s -> String s)
-      ; (char_lit >>| fun c -> Char c)
+      ; (Ws.string_lit >>| fun s -> String s)
+      ; (Ws.char_lit >>| fun c -> Char c)
       ]
     <?> "primitive"
   ;;

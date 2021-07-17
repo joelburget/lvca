@@ -301,7 +301,7 @@ let parse ~comment =
   let pat_to_ident = function Var (info, name) -> Some (info, name) | _ -> None in
   fix (fun pat ->
       let slot =
-        sep_by1 (char '.') pat
+        sep_by1 (Ws.char '.') pat
         >>= fun pats ->
         let binders_pats, pat = Util.List.unsnoc pats in
         let f = pat_to_ident >> Option.map ~f:(fun (info, name) -> info, name) in
@@ -314,15 +314,16 @@ let parse ~comment =
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
         [ (Primitive.All.parse ~comment >>| fun prim -> Primitive prim)
-        ; (identifier
+        ; (Ws.identifier
           >>== fun { value = ident; range = ident_range } ->
           choice
-            [ (parens (sep_end_by (char ';') slot)
-              >>== fun { value = slots; range = parens_range } ->
-              option' comment
-              >>|| fun { value = comment; _ } ->
-              let range = Opt_range.union ident_range parens_range in
-              { value = Operator (Commented.{ range; comment }, ident, slots); range })
+            [ Ws.(
+                parens (sep_end_by (char ';') slot)
+                >>== fun { value = slots; range = parens_range } ->
+                option' comment
+                >>|| fun { value = comment; _ } ->
+                let range = Opt_range.union ident_range parens_range in
+                { value = Operator (Commented.{ range; comment }, ident, slots); range })
             ; (option' comment
               >>| fun comment -> Var (Commented.{ range = ident_range; comment }, ident))
             ])

@@ -27,7 +27,7 @@ module Kind = struct
     open Lvca_parsing
 
     let t ~comment =
-      sep_by1 (string "->") (char '*')
+      sep_by1 (Ws.string "->") (Ws.char '*')
       >>== (fun Parse_result.{ value = stars; range } ->
              option' comment
              >>|| fun { value = comment; _ } ->
@@ -36,8 +36,70 @@ module Kind = struct
     ;;
 
     let decl ~comment =
-      lift3 (fun ident _colon kind -> ident, kind) identifier (char ':') (t ~comment)
+      lift3
+        (fun ident _colon kind -> ident, kind)
+        Ws.identifier
+        (Ws.char ':')
+        (t ~comment)
       <?> "kind declaration"
+    ;;
+
+    let%test_module _ =
+      (module struct
+        let pp_decl ppf (name, decl) = Fmt.pf ppf "%s: %a" name pp decl
+
+        let%expect_test _ =
+          let x =
+            test_parse_with
+              (decl ~comment:Lvca_parsing.c_comment)
+              "foo: * -> * // comment"
+          in
+          Fmt.pr "%a" pp_decl x;
+          [%expect {|foo: * -> *|}]
+        ;;
+
+        let%expect_test _ =
+          let x =
+            test_parse_with
+              (many (t ~comment:Lvca_parsing.c_comment))
+              {|
+              * -> * // comment 1
+              * // comment 2
+              |}
+          in
+          let pp ppf kind =
+            Fmt.pf
+              ppf
+              "%a //%a"
+              pp
+              kind
+              Fmt.(option string)
+              (kind |> info |> Commented.get_comment)
+          in
+          Fmt.(pr "%a" (list ~sep:cut pp) x);
+          [%expect
+            {|
+            * -> * // comment 1
+            * // comment 2
+            |}]
+        ;;
+
+        let%expect_test _ =
+          let x =
+            test_parse_with
+              (many (decl ~comment:Lvca_parsing.c_comment))
+              {|
+            foo: * -> * // comment 1
+            bar: * -> * // comment 2
+            |}
+          in
+          Fmt.(pr "%a" (list pp_decl) x);
+          [%expect {|
+          foo: * -> *
+          bar: * -> *
+          |}]
+        ;;
+      end)
     ;;
   end
 end
@@ -117,7 +179,7 @@ module Sort_slot = struct
     Sort.parse ~comment
     >>= fun sort ->
     choice
-      [ (brackets (Sort.parse ~comment)
+      [ (Ws.brackets (Sort.parse ~comment)
         >>| fun var_sort -> Sort_pattern { pattern_sort = sort; var_sort })
       ; return (Sort_binding sort)
       ]
@@ -167,7 +229,7 @@ module Valence = struct
   let parse ~comment =
     let open Lvca_parsing in
     let t =
-      sep_by1 (char '.') (Sort_slot.parse ~comment)
+      sep_by1 (Ws.char '.') (Sort_slot.parse ~comment)
       >>= fun slots ->
       let binders, body_slot = List.unsnoc slots in
       match body_slot with
@@ -197,7 +259,7 @@ module Arity = struct
   let instantiate env = List.map ~f:(Valence.instantiate env)
 
   let parse ~comment =
-    Lvca_parsing.(parens (sep_by (char ';') (Valence.parse ~comment)) <?> "arity")
+    Lvca_parsing.(Ws.(parens (sep_by (char ';') (Valence.parse ~comment)) <?> "arity"))
   ;;
 
   let%test_module _ =
@@ -274,7 +336,7 @@ module Operator_def = struct
     let open Lvca_parsing in
     lift2
       (fun ident arity -> Operator_def (ident, arity))
-      identifier
+      Ws.identifier
       (Arity.parse ~comment)
     <?> "operator definition"
   ;;
@@ -359,19 +421,19 @@ module Sort_def = struct
 
   let parse ~comment =
     let open Lvca_parsing in
-    let assign = string ":=" in
-    let bar = char '|' in
+    let assign = Ws.string ":=" in
+    let bar = Ws.char '|' in
     let sort_var_decl =
       choice
         ~failure_msg:"looking for an identifier or parens"
-        [ (identifier >>| fun name -> name, None)
-        ; (parens (Kind.Parse.decl ~comment) >>| fun (name, kind) -> name, Some kind)
+        [ (Ws.identifier >>| fun name -> name, None)
+        ; (Ws.parens (Kind.Parse.decl ~comment) >>| fun (name, kind) -> name, Some kind)
         ]
       <?> "sort variable declaration"
     in
     lift4
       (fun name vars _assign op_defs -> name, Sort_def (vars, op_defs))
-      identifier
+      Ws.identifier
       (many sort_var_decl)
       assign
       (option '|' bar *> sep_by bar (Operator_def.parse ~comment))
@@ -586,7 +648,7 @@ let%test_module _ =
           ) )
     ;;
 
-    let parse = parse ~comment:Lvca_parsing.no_comment
+    let parse = parse ~comment:Lvca_parsing.c_comment
 
     let%test_unit _ =
       let parsed =

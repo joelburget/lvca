@@ -249,16 +249,18 @@ let parse ~comment =
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
         [ (Primitive_impl.All.parse ~comment >>| fun prim -> Primitive prim)
-        ; (identifier
+        ; (Ws.identifier
           >>== fun { value = ident; range } ->
           choice
-            [ (parens (sep_end_by (char ';') pat)
-              >>== fun Parse_result.{ value = children; range = finish } ->
-              option' comment
-              >>|| fun { value = comment; _ } ->
-              let range = Opt_range.union range finish in
-              { value = Operator (Commented.{ range; comment }, ident, children); range }
-              )
+            [ Ws.(
+                parens (sep_end_by (char ';' <* whitespace) pat)
+                >>== fun Parse_result.{ value = children; range = finish } ->
+                option' comment
+                >>|| fun { value = comment; _ } ->
+                let range = Opt_range.union range finish in
+                { value = Operator (Commented.{ range; comment }, ident, children)
+                ; range
+                })
             ; (option' comment
               >>| fun comment -> Var (Commented.{ range; comment }, ident))
             ]

@@ -99,8 +99,8 @@ let parse ~comment =
       let atomic_sort =
         choice
           ~failure_msg:"looking for parens or an identifier"
-          [ parens sort
-          ; (identifier
+          [ Ws.parens sort
+          ; (Ws.identifier
             >>== fun Parse_result.{ value; range } ->
             option' comment
             >>|| fun { value = comment; _ } ->
