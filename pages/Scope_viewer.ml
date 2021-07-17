@@ -6,7 +6,13 @@ open Lvca_syntax
 open Note
 open Prelude
 
-let parse_tm = Lvca_parsing.(parse_string (whitespace *> Nominal.Term.parse'))
+let parse_tm =
+  Lvca_parsing.(
+    parse_string
+      Nominal.Term.(
+        whitespace *> parse' ~comment:c_comment >>| map_info ~f:Commented.get_range))
+;;
+
 let buf = "input"
 let initial_input = "fun(x. app(fun(x. app(f; x)); x))"
 

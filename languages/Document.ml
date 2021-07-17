@@ -6,9 +6,9 @@ open Stdio
 module Lang =
 [%lvca.abstract_syntax_module
 {|
-char : *
-int32 : *
-string : *
+char : *  // module Primitive.Char
+int32 : *  // module Primitive.Int32
+string : *  // module Primitive.String
 
 maybe a := Nothing() | Just(a)
 

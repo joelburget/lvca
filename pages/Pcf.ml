@@ -3,9 +3,7 @@ open Brr
 open Lvca_provenance
 open Lvca_syntax
 open Note
-module Pfpl_pcf = Lvca_languages.Pfpl_pcf
-module Provenance = Pfpl_pcf.Provenance
-open Pfpl_pcf.Lang
+open Lvca_languages.Pfpl_pcf
 open Result.Let_syntax
 open Prelude
 
@@ -16,13 +14,19 @@ type term = Opt_range.t Provenance.t Exp.t
 let buf = "input"
 
 let parse str =
-  let%map parsed = Lvca_parsing.(parse_string (whitespace *> Exp.parse)) str in
+  let%map parsed =
+    Lvca_parsing.(
+      parse_string
+        (whitespace *> Exp.parse ~comment:c_comment
+        >>| Exp.map_info ~f:Commented.get_range))
+      str
+  in
   Exp.map_info ~f:(fun info -> Provenance.Root info) parsed
 ;;
 
 let parsed_to_result = function
   | Ok tm ->
-    let steps, result = Pfpl_pcf.eval tm in
+    let steps, result = eval tm in
     steps, Result.map_error result ~f:(fun (msg, tm) -> msg, Some tm)
   | Error msg -> [], Error (msg, None)
 ;;

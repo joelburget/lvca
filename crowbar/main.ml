@@ -35,11 +35,11 @@ let (lazy json_gen) = json_gen
 let prim_gen : unit Primitive.All.t Crowbar.gen =
   let open Crowbar in
   let options =
-    [ map [ int ] (fun i -> (), Primitive_impl.Plain.Integer (Z.of_int i))
+    [ map [ int ] (fun i -> (), Primitive_impl.All_plain.Integer (Z.of_int i))
       (* TODO: string and float parsing has a couple issues *)
-    ; map [ str_gen ] (fun str -> (), Primitive_impl.Plain.String str)
+    ; map [ str_gen ] (fun str -> (), Primitive_impl.All_plain.String str)
       (* ; map [float] (fun f -> PrimFloat f) *)
-    ; map [ char ] (fun c -> (), Primitive_impl.Plain.Char c)
+    ; map [ char ] (fun c -> (), Primitive_impl.All_plain.Char c)
     ]
   in
   choose options

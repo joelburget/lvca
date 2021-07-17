@@ -38,12 +38,12 @@ module Parse = struct
   let info = Nominal.Term.info
 
   let t_var : Opt_range.t Nominal.Term.t Lvca_parsing.t =
-    Lvca_parsing.identifier
+    Lvca_parsing.Ws.identifier
     >>|| fun { range; value = name } -> { value = Nominal.Term.Var (range, name); range }
   ;;
 
   let p_var : Opt_range.t Pattern.t Lvca_parsing.t =
-    Lvca_parsing.identifier
+    Lvca_parsing.Ws.identifier
     >>|| fun { range; value = name } -> { value = Pattern.Var (range, name); range }
   ;;
 
@@ -51,7 +51,7 @@ module Parse = struct
 
   let t : Opt_range.t Nominal.Term.t Lvca_parsing.t =
     fix (fun t ->
-        let atom = t_var <|> parens t in
+        let atom = t_var <|> Ws.parens t in
         let lam : Opt_range.t Nominal.Term.t Lvca_parsing.t =
           lift4
             (fun _lam var _arr body ->
@@ -59,9 +59,9 @@ module Parse = struct
               let range = info body in
               let tm = Nominal.Term.Operator (range, "lam", [ Scope ([ var ], body) ]) in
               tm)
-            (char '\\')
+            (Ws.char '\\')
             p_var
-            (string "->")
+            (Ws.string "->")
             t
         in
         let f (x, rng1) (y, rng2) =

@@ -16,8 +16,11 @@ exp :=
   | Fix(typ; exp. exp)
 |}]
 
+module Exp = Nominal.Convertible.Extend (Lang.Exp)
+
 let rec to_tex = function
-  | Lang.Types.Zero info -> Nominal.Term.Primitive (info, Primitive_impl.Plain.String "Z")
+  | Lang.Exp.Zero info ->
+    Nominal.Term.Primitive (info, Primitive_impl.All_plain.String "Z")
   | Succ (info, exp) -> Nominal.Term.Operator (info, "S", [ Scope ([], to_tex exp) ])
   | _ -> failwith "TODO(to_tex)"
 ;;
@@ -25,7 +28,7 @@ let rec to_tex = function
 module Doc = Jyp_pretty.Doc
 
 let rec typ_to_pretty = function
-  | Lang.Types.Nat info -> Jyp_pretty.Lang.Types.Text (info, (info, "nat"))
+  | Lang.Typ.Nat info -> Jyp_pretty.Lang.Doc.Text (info, (info, "nat"))
   | Parr (info, t1, t2) ->
     Cat (info, typ_to_pretty t1, Cat (info, Text (info, (info, "->")), typ_to_pretty t2))
 ;;
@@ -35,13 +38,13 @@ let cat ~info docs =
   | [] -> failwith "can't cat no docs"
   | [ doc ] -> doc
   | d :: ds ->
-    List.fold_right ds ~init:d ~f:(fun d ds -> Jyp_pretty.Lang.Types.Cat (info, d, ds))
+    List.fold_right ds ~init:d ~f:(fun d ds -> Jyp_pretty.Lang.Doc.Cat (info, d, ds))
 ;;
 
-let text ~info str = Jyp_pretty.Lang.Types.Text (info, (info, str))
+let text ~info str = Jyp_pretty.Lang.Doc.Text (info, (info, str))
 
 let rec to_pretty = function
-  | Lang.Types.Zero info -> text ~info "Z"
+  | Lang.Exp.Zero info -> text ~info "Z"
   | Succ (info, exp) -> cat ~info [ text ~info "S"; to_pretty exp ]
   | Ifz (info, e0, (x, e1), e) ->
     cat
@@ -122,7 +125,7 @@ let is_val' ~eager tm = tm |> Lang.Exp.to_plain |> is_val ~eager
 
 let rec subst v name exp =
   match exp with
-  | Lang.Types.Zero _ -> exp
+  | Lang.Exp.Zero _ -> exp
   | Succ (info, exp) -> Succ (info, subst v name exp)
   | Ifz (info, e0, (x, e1), e) ->
     Ifz
@@ -146,7 +149,7 @@ module Provenance = struct
   let rec equal ~info_eq p1 p2 =
     match p1, p2 with
     | Root i1, Root i2 -> info_eq i1 i2
-    | Derived e1, Derived e2 -> Lang.Exp.equal ~info_eq:(equal ~info_eq) e1 e2
+    | Derived e1, Derived e2 -> Exp.equal ~info_eq:(equal ~info_eq) e1 e2
     | _, _ -> false
   ;;
 
@@ -160,12 +163,12 @@ let rec transition ~eager tm =
   let info = Provenance.Derived tm in
   let set_info = Lang.Exp.map_info ~f:(fun _ -> info) in
   match tm with
-  | Lang.Types.Zero _ | Fun _ | Exp_var _ -> Error ("stuck", tm)
+  | Lang.Exp.Zero _ | Fun _ | Exp_var _ -> Error ("stuck", tm)
   | Succ (_, tm) ->
     if eager
     then (
       let%map tm = transition ~eager tm in
-      Lang.Types.Succ (info, tm))
+      Lang.Exp.Succ (info, tm))
     else Error ("stuck", tm)
   | Ifz (_, e0, (x, e1), e) ->
     if is_val' ~eager e
@@ -176,12 +179,12 @@ let rec transition ~eager tm =
       | _ -> Error ("expected either Zero or Succ(e) in the discriminee", tm))
     else (
       let%map e = transition ~eager e in
-      Lang.Types.Ifz (info, e0, (x, e1), e))
+      Lang.Exp.Ifz (info, e0, (x, e1), e))
   | Ap (_, Fun (_, _, (x, e)), e2) ->
     Ok (subst e2 x.name e |> set_info) (* TODO: check e2 is_val *)
   | Ap (_, e1, e2) ->
     let%map e1 = transition ~eager e1 in
-    Lang.Types.Ap (info, e1, e2)
+    Lang.Exp.Ap (info, e1, e2)
   | Fix (_, _typ, (x, e)) -> Ok (subst tm x.name e |> set_info)
 ;;
 
@@ -205,13 +208,15 @@ let eval ?(eager = true) ?(step_limit = 50) tm =
 let%test_module _ =
   (module struct
     let go ?(eager = true) str =
-      match Lvca_parsing.(parse_string (whitespace *> Lang.Exp.parse) str) with
+      match
+        Lvca_parsing.(parse_string (whitespace *> Exp.parse ~comment:c_comment) str)
+      with
       | Error msg -> Fmt.pr "%s" msg
       | Ok tm ->
         let tm = Lang.Exp.map_info ~f:(fun info -> Provenance.Root info) tm in
         (match eval ~eager tm with
-        | _, Error (msg, tm) -> Fmt.pr "%s: %a" msg Lang.Exp.pp tm
-        | _, Ok tm -> Lang.Exp.pp Fmt.stdout tm)
+        | _, Error (msg, tm) -> Fmt.pr "%s: %a" msg Exp.pp tm
+        | _, Ok tm -> Exp.pp Fmt.stdout tm)
     ;;
 
     let%expect_test _ =

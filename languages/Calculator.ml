@@ -18,7 +18,7 @@ module Parse = struct
 
   let lit : Opt_range.t Nonbinding.term Lvca_parsing.t =
     (* TODO: this fails on too-large float lits *)
-    integer_or_float_lit
+    Ws.integer_or_float_lit
     >>|| fun { value = lit; range } ->
     let lit =
       match lit with
@@ -31,7 +31,7 @@ module Parse = struct
 
   let const =
     constants
-    |> List.map ~f:string
+    |> List.map ~f:Ws.string
     |> choice ~failure_msg:"looking for a constant name"
     >>|| fun { value = name; range } ->
     { value = Nonbinding.Operator (range, name, []); range }
@@ -47,13 +47,13 @@ module Parse = struct
         let atom : term Lvca_parsing.t =
           choice
             ~failure_msg:"looking for a literal, constant, or parenthesized expression"
-            [ lit; const; parens t ]
+            [ lit; const; Ws.parens t ]
         in
         (* TODO: rename negate to - *)
         let unary_op : term Lvca_parsing.t =
           unary_operators
           |> List.map ~f:(fun name ->
-                 string name
+                 Ws.string name
                  >>== fun { value = name; range = p1; _ } ->
                  atom
                  >>| fun body ->
@@ -63,7 +63,9 @@ module Parse = struct
         in
         let application =
           let min_max =
-            choice [ string "min"; string "max" ] ~failure_msg:"looking for min or max"
+            choice
+              [ Ws.string "min"; Ws.string "max" ]
+              ~failure_msg:"looking for min or max"
             >>== fun { value = name; range = p1; _ } ->
             lift2
               (fun atom1 atom2 ->
@@ -76,7 +78,7 @@ module Parse = struct
         in
         let pair p1 p2 = lift2 (fun x y -> x, y) p1 p2 in
         let mul_div : term Lvca_parsing.t =
-          let op = char '*' <|> char '/' in
+          let op = Ws.char '*' <|> Ws.char '/' in
           let f l (op, r) =
             let rng = Opt_range.union (Nonbinding.info l) (Nonbinding.info r) in
             match op with
@@ -87,7 +89,7 @@ module Parse = struct
           application >>= fun init -> many (pair op application) >>| List.fold ~init ~f
         in
         let add_sub : term Lvca_parsing.t =
-          let op = char '+' <|> char '-' in
+          let op = Ws.char '+' <|> Ws.char '-' in
           let f l (op, r) =
             let rng = Opt_range.union (Nonbinding.info l) (Nonbinding.info r) in
             match op with

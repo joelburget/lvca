@@ -325,7 +325,7 @@ module Direct = struct
               Lvca_core.Term.(
                 Let
                   { info = Source_ranges.empty
-                  ; is_rec = Lvca_core.Is_rec.Types.No_rec Source_ranges.empty
+                  ; is_rec = Lvca_core.Lang.Is_rec.No_rec Source_ranges.empty
                   ; tm = Term (Primitive (rng, Char c))
                   ; ty = None
                   ; scope = Scope (name, core_term)
@@ -655,9 +655,9 @@ module Parse = struct
   open Lvca_parsing
 
   let keywords : string list = [ (* "satisfy"; *) "let"; "in" (* "fail"; "fix" *) ]
-  let keyword : string Lvca_parsing.t = keywords |> List.map ~f:string |> choice
+  let keyword : string Lvca_parsing.t = keywords |> List.map ~f:Ws.string |> choice
   let operators : string list = [ "?"; "*"; "+"; "|"; "="; "->" ]
-  let operator : string Lvca_parsing.t = operators |> List.map ~f:string |> choice
+  let operator : string Lvca_parsing.t = operators |> List.map ~f:Ws.string |> choice
 
   type atom =
     | CharAtom of char
@@ -950,50 +950,50 @@ module Parse = struct
 
   let t : Opt_range.t Lvca_core.Term.t Lvca_parsing.t -> term Lvca_parsing.t =
    fun c_term ->
-    let arrow = string "->" in
+    let arrow = Ws.string "->" in
     fix (fun parser ->
         let token =
           fix (fun token ->
               choice
-                [ char_lit >>|| go (fun c range -> Atom (CharAtom c, range))
-                ; integer_lit
+                [ Ws.char_lit >>|| go (fun c range -> Atom (CharAtom c, range))
+                ; Ws.integer_lit
                   >>|| go (fun i range -> Atom (IntAtom (Int.of_string i), range))
-                ; string_lit >>|| go (fun str range -> Atom (StrAtom str, range))
-                ; char '.' >>|| go (fun _ range -> Atom (Dot, range))
+                ; Ws.string_lit >>|| go (fun str range -> Atom (StrAtom str, range))
+                ; Ws.char '.' >>|| go (fun _ range -> Atom (Dot, range))
                 ; operator >>|| go (fun op range -> Operator (op, range))
                 ; keyword >>|| go (fun kw range -> Keyword (kw, range))
-                ; (string "fail"
+                ; (Ws.string "fail"
                   >>== fun { range = p1; _ } ->
                   choice
-                    [ braces c_term
+                    [ Ws.braces c_term
                       >>|| go (fun tm p2 ->
                                let range = Opt_range.union p1 p2 in
                                FailTok (tm, range))
-                    ; string_lit
+                    ; Ws.string_lit
                       >>|| go (fun str p2 ->
                                let range = Opt_range.union p1 p2 in
                                FailTok
                                  (Lvca_core.Term.Term (Primitive (p2, String str)), range))
                     ])
-                ; (string "satisfy"
+                ; (Ws.string "satisfy"
                   >>== fun { range = sat_pos; _ } ->
-                  parens
+                  Ws.parens
                     (lift3
                        (fun name _arr (tm, tm_pos) ->
                          let range = Opt_range.union sat_pos tm_pos in
                          SatisfyTok (name, tm, range))
-                       identifier
+                       Ws.identifier
                        arrow
-                       (attach_pos (braces c_term))))
-                ; (string "choice"
+                       (attach_pos (Ws.braces c_term))))
+                ; (Ws.string "choice"
                   >>== fun { range = choice_pos; _ } ->
-                  parens (many token)
+                  Ws.parens (many token)
                   >>|| go (fun toks toks_pos ->
                            let range = Opt_range.union choice_pos toks_pos in
                            ChoiceTok (toks, range)))
-                ; (string "fix"
+                ; (Ws.string "fix"
                   >>== fun { range = fix_pos; _ } ->
-                  parens
+                  Ws.parens
                     (lift3
                        (fun name _arr toks ->
                          let toks_pos =
@@ -1001,12 +1001,12 @@ module Parse = struct
                          in
                          let range = Opt_range.union fix_pos toks_pos in
                          FixTok (name, toks, range))
-                       identifier
+                       Ws.identifier
                        arrow
                        (many1 token)))
-                ; identifier >>|| go (fun ident range -> Ident (ident, range))
-                ; braces c_term >>|| go (fun tm range -> Core (tm, range))
-                ; parens parser >>|| go (fun p range -> Parenthesized (p, range))
+                ; Ws.identifier >>|| go (fun ident range -> Ident (ident, range))
+                ; Ws.braces c_term >>|| go (fun tm range -> Core (tm, range))
+                ; Ws.parens parser >>|| go (fun p range -> Parenthesized (p, range))
                 ])
           <?> "token"
         in
@@ -1074,15 +1074,21 @@ fix (expr -> choice (
   ;;
 end
 
+let parse_core =
+  let ( >>| ) = Lvca_parsing.(( >>| )) in
+  Lvca_core.Term.parse ~comment:Lvca_parsing.c_comment
+  >>| Lvca_core.Term.map_info ~f:Commented.get_range
+;;
+
 let%test_module "Parsing" =
   (module struct
     let parse_print : string -> string -> unit =
      fun parser_str str ->
-      match Lvca_parsing.parse_string (Parse.t Lvca_core.Term.parse) parser_str with
+      match Lvca_parsing.parse_string (Parse.t parse_core) parser_str with
       | Error msg -> print_endline ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
-        let parser' = map_info ~f:(Source_ranges.of_opt_range ~buf:"parser") parser in
-        let Direct.{ result; _ } = Direct.parse_direct parser' str in
+        let parser = map_info ~f:(Source_ranges.of_opt_range ~buf:"parser") parser in
+        let Direct.{ result; _ } = Direct.parse_direct parser str in
         (match result with
         | Error (msg, _) -> printf "failed to parse: %s\n" msg
         | Ok tm -> Fmt.pr "%a\n" Nominal.Term.pp_source_ranges tm)
@@ -1255,10 +1261,7 @@ let%test_module "Parsing" =
 
     let parse_print_parser : ?width:int -> string -> unit =
      fun ?width parser_str ->
-      match
-        Lvca_parsing.(
-          parse_string (whitespace *> Parse.t Lvca_core.Term.parse) parser_str)
-      with
+      match Lvca_parsing.(parse_string (whitespace *> Parse.t parse_core) parser_str) with
       | Error msg -> print_string ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
         let pre_geom =
@@ -1457,10 +1460,7 @@ fix (expr -> choice (
 module Properties = struct
   open Property_result
 
-  let parse parser_str =
-    Lvca_parsing.parse_string (Parse.t Lvca_core.Term.parse) parser_str
-  ;;
-
+  let parse parser_str = Lvca_parsing.parse_string (Parse.t parse_core) parser_str
   let pp_str p = Fmt.to_to_string pp_plain p
 
   let string_round_trip1 t =

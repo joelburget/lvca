@@ -6,10 +6,20 @@ open Lvca_provenance
 open Lvca_syntax
 
 let parse_lang lang_str =
-  Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.parse) lang_str)
+  Lvca_parsing.(
+    parse_string
+      (whitespace *> Abstract_syntax.parse ~comment:c_comment
+      >>| Abstract_syntax.map_info ~f:Commented.get_range)
+      lang_str)
 ;;
 
-let parse_term term_str = Lvca_parsing.parse_string Nominal.Term.parse' term_str
+let parse_term term_str =
+  Lvca_parsing.(
+    parse_string
+      (Nominal.Term.parse' ~comment:c_comment
+      >>| Nominal.Term.map_info ~f:Commented.get_range)
+      term_str)
+;;
 
 module Model = struct
   type t =

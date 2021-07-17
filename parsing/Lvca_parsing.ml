@@ -492,7 +492,7 @@ let%test_module "Parsing" =
     let%expect_test _ =
       let pp_str ppf str = Fmt.pf ppf "%S" str in
       parse_print c_comment pp_str {|// comment|};
-      [%expect {|{ value = "comment"; range = {3,10} }|}]
+      [%expect {|{ value = " comment"; range = {2,10} }|}]
     ;;
 
     let pp_char ppf str = Fmt.pf ppf "%C" str

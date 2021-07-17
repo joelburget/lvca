@@ -54,8 +54,8 @@ module Type = struct
     let t ~comment =
       let t =
         fix (fun t ->
-            let atom = parens t <|> (Sort.parse ~comment >>| fun sort -> Sort sort) in
-            sep_by1 (string "->") atom >>| function [ t ] -> t | ts -> Arrow ts)
+            let atom = Ws.parens t <|> (Sort.parse ~comment >>| fun sort -> Sort sort) in
+            sep_by1 (Ws.string "->") atom >>| function [ t ] -> t | ts -> Arrow ts)
       in
       t >>| normalize <?> "core type"
     ;;
@@ -256,7 +256,7 @@ module Parse = struct
   let reserved = Lvca_util.String.Set.of_list [ "let"; "rec"; "in"; "match"; "with" ]
 
   let identifier =
-    identifier
+    Ws.identifier
     >>= fun ident ->
     if Set.mem reserved ident
     then fail (Printf.sprintf "identifier: reserved word (%s)" ident)
@@ -279,20 +279,20 @@ module Parse = struct
           choice
             ~failure_msg:
               "looking for a parenthesized term, identifier, or expression in braces"
-            [ parens term
+            [ Ws.parens term
             ; (identifier
               >>== fun { value; range } ->
               option' comment
               >>|| fun { value = comment; _ } ->
               { value = Types.Var (Commented.{ range; comment }, value); range })
-            ; braces (Nominal.Term.parse' ~comment)
+            ; Ws.braces (Nominal.Term.parse' ~comment)
               >>| (fun tm -> Types.Term tm)
               <?> "quoted term"
             ]
         in
         let pattern = Binding_aware_pattern.parse ~comment <?> "pattern" in
         let case_line =
-          lift3 (fun pat _ tm -> Types.Case_scope (pat, tm)) pattern (string "->") term
+          lift3 (fun pat _ tm -> Types.Case_scope (pat, tm)) pattern (Ws.string "->") term
           <?> "case line"
         in
         choice
@@ -303,15 +303,15 @@ module Parse = struct
                   Commented.{ range = Opt_range.union lam_loc parens_loc; comment = None }
                 in
                 Types.Lambda (info, ty, Scope (name, body)))
-              (attach_pos (char '\\'))
+              (attach_pos (Ws.char '\\'))
               (attach_pos
-                 (parens
+                 (Ws.parens
                     (lift3
                        (fun ident _ ty -> ident, ty)
                        identifier
-                       (char ':')
+                       (Ws.char ':')
                        (Type.parse ~comment))))
-              (string "->")
+              (Ws.string "->")
               term
             <?> "lambda"
             <?> "let"
@@ -321,27 +321,28 @@ module Parse = struct
                   Commented.{ range = Opt_range.union let_pos body_pos; comment = None }
                 in
                 Types.Let { info; is_rec; ty; tm; scope = Scope (name, body) })
-              (attach_pos (string "let"))
+              (attach_pos (Ws.string "let"))
               Lang.Is_rec.(
                 option
                   (No_rec Commented.none)
-                  (string "rec"
+                  (Ws.string "rec"
                   >>|| fun { range; _ } ->
                   { range; value = Rec Commented.{ range; comment = None } }))
               identifier
-              (option None (char ':' *> Type.parse ~comment >>| fun tm -> Some tm))
-            <*> string "="
+              (option None (Ws.char ':' *> Type.parse ~comment >>| fun tm -> Some tm))
+            <*> Ws.string "="
             <*> term
-            <*> string "in"
+            <*> Ws.string "in"
             <*> attach_pos term
           ; lift4
               (fun (_match, match_pos) tm _with (lines, lines_pos) ->
                 let pos = Opt_range.union match_pos lines_pos in
                 Types.Case (Commented.{ range = pos; comment = None }, tm, lines))
-              (attach_pos (string "match"))
+              (attach_pos (Ws.string "match"))
               term
-              (string "with")
-              (attach_pos (braces (option '|' (char '|') *> sep_by (char '|') case_line)))
+              (Ws.string "with")
+              (attach_pos
+                 (Ws.braces (option '|' (Ws.char '|') *> sep_by (Ws.char '|') case_line)))
             <?> "match"
           ; many1 atomic_term >>| make_apps <?> "application"
           ])
@@ -437,13 +438,17 @@ module Module = struct
     let external_decl =
       lift4
         (fun ident _ ty _ -> ident, ty)
-        identifier
-        (string ":")
+        Ws.identifier
+        (Ws.string ":")
         (Type.parse ~comment)
-        (string ";")
+        (Ws.string ";")
     in
     let def =
-      lift3 (fun ident _ tm -> ident, tm) identifier (string ":=") (Term.parse ~comment)
+      lift3
+        (fun ident _ tm -> ident, tm)
+        Ws.identifier
+        (Ws.string ":=")
+        (Term.parse ~comment)
     in
     lift2 (fun externals defs -> { externals; defs }) (many external_decl) (many1 def)
   ;;

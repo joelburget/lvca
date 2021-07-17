@@ -38,7 +38,8 @@ module Core = struct
   end
 
   let is_rec ~loc = function
-    | Lvca_core.Lang.Is_rec.Rec i -> [%expr Lvca_core.Is_rec.Rec [%e commented ~loc i]]
+    | Lvca_core.Lang.Is_rec.Rec i ->
+      [%expr Lvca_core.Lang.Is_rec.Rec [%e commented ~loc i]]
     | No_rec i -> [%expr Lvca_core.Lang.Is_rec.No_rec [%e commented ~loc i]]
   ;;
 

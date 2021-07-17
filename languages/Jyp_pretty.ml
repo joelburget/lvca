@@ -8,8 +8,8 @@ open Lvca_syntax
 module Lang =
 [%lvca.abstract_syntax_module
 {|
-int32 : *
-string : *
+int32 : *  // module Primitive.Int32
+string : *  // module Primitive.String
 
 doc :=
   | Line()
@@ -185,11 +185,12 @@ let%test_module _ =
   abcdefghi |}]
     ;;
 
+    let none = Lvca_provenance.Commented.none
     let space = [%lvca.nonbinding {|spacing(" ")|}]
     let line = [%lvca.nonbinding {|line()|}]
-    let text str = Nonbinding.Operator (None, "text", [ Primitive (None, String str) ])
-    let cat l r = Nonbinding.Operator (None, "cat", [ l; r ])
-    let alt l r = Nonbinding.Operator (None, "alt", [ l; r ])
+    let text str = Nonbinding.Operator (none, "text", [ Primitive (none, String str) ])
+    let cat l r = Nonbinding.Operator (none, "cat", [ l; r ])
+    let alt l r = Nonbinding.Operator (none, "alt", [ l; r ])
 
     let cats lst =
       let init = List.last_exn lst in
@@ -202,7 +203,7 @@ let%test_module _ =
     let vsep = sep_list ~sep:line
     let hsep = sep_list ~sep:space
     let counting_list n = List.init n ~f:(fun i -> i |> Int.to_string |> text)
-    let align docs = Nonbinding.Operator (None, "align", [ docs ])
+    let align docs = Nonbinding.Operator (none, "align", [ docs ])
 
     let%expect_test _ =
       let tm =

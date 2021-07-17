@@ -53,8 +53,12 @@ let parse lang_p =
       choice
         ~failure_msg:"looking for an expression, brackets, or an identifier"
         [ lang_p >>| (fun core -> Atomic core) <?> "core term"
-        ; brackets (sep_by (char ',') t) >>| (fun ts -> List ts) <?> "list"
-        ; lift3 (fun name _colon edit -> Labeled (edit, name)) identifier (char ':') t
+        ; Ws.brackets (sep_by (Ws.char ',') t) >>| (fun ts -> List ts) <?> "list"
+        ; lift3
+            (fun name _colon edit -> Labeled (edit, name))
+            Ws.identifier
+            (Ws.char ':')
+            t
           <?> "labeled"
         ])
   <?> "edit"
@@ -68,7 +72,7 @@ let%test_module "Parsing" =
 
     let parse (str : string) : (core t, string) Result.t =
       Lvca_parsing.(
-        parse_string (whitespace *> parse (braces (Lvca_core.Term.parse ~comment))) str)
+        parse_string (whitespace *> parse (Ws.braces (Lvca_core.Term.parse ~comment))) str)
       |> Result.map ~f:(map_t ~f:(Lvca_core.Term.map_info ~f:Commented.get_range))
     ;;
 

@@ -110,7 +110,13 @@ module DebuggerAction = struct
     | ChopStack of int list (** Click on a stack member *)
 end
 
-let parse_parser = Lvca_parsing.parse_string (P.Parse.t Lvca_core.Term.parse)
+let parser =
+  Lvca_parsing.(
+    P.Parse.t
+      Lvca_core.Term.(parse ~comment:c_comment >>| map_info ~f:Commented.get_range))
+;;
+
+let parse_parser = Lvca_parsing.parse_string parser
 
 module Examples = struct
   let any_char = "."
@@ -155,9 +161,7 @@ end
 
 module Prelude = struct
   let parse_parser_exn str =
-    str
-    |> Lvca_parsing.parse_string (P.Parse.t Lvca_core.Term.parse)
-    |> Result.ok_or_failwith
+    str |> Lvca_parsing.(parse_string parser) |> Result.ok_or_failwith
   ;;
 
   let alpha = parse_parser_exn Examples.satisfy_is_alpha

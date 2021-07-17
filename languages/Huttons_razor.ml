@@ -57,7 +57,7 @@ module Parse = struct
   open Lvca_parsing
 
   let lit : Opt_range.t Nonbinding.term Lvca_parsing.t =
-    integer_lit
+    Ws.integer_lit
     >>|| fun { value = str; range } ->
     let tm =
       Nonbinding.(
@@ -68,8 +68,8 @@ module Parse = struct
 
   let t : Opt_range.t Nonbinding.term Lvca_parsing.t =
     fix (fun t ->
-        let atom = attach_pos (lit <|> parens t) in
-        let plus = char '+' in
+        let atom = attach_pos (lit <|> Ws.parens t) in
+        let plus = Ws.char '+' in
         let f (l, rng1) (r, rng2) =
           let rng = Opt_range.union rng1 rng2 in
           Nonbinding.Operator (rng, "add", [ l; r ]), rng

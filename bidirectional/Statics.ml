@@ -60,7 +60,9 @@ module Typing_clause = struct
         pattern
         (choice
            ~failure_msg:"looking for <= or =>"
-           [ (string "<=" >>| fun _ -> LeftArr); (string "=>" >>| fun _ -> RightArr) ])
+           [ (Ws.string "<=" >>| fun _ -> LeftArr)
+           ; (Ws.string "=>" >>| fun _ -> RightArr)
+           ])
         pattern
       <?> "typing clause"
     ;;
@@ -106,16 +108,16 @@ module Hypothesis = struct
     ;;
 
     let typed_term =
-      lift3 (fun ident _ tm -> ident, tm) identifier (char ':') pattern
+      lift3 (fun ident _ tm -> ident, tm) Ws.identifier (Ws.char ':') pattern
       <?> "typed pattern"
     ;;
 
     let context =
-      string "ctx"
+      Ws.string "ctx"
       *> choice
-           [ (char ','
+           [ (Ws.char ','
              >>= fun _ ->
-             sep_by1 (char ',') typed_term
+             sep_by1 (Ws.char ',') typed_term
              >>= fun ctx_entries ->
              match String.Map.of_alist ctx_entries with
              | `Ok context -> return context
@@ -129,7 +131,11 @@ module Hypothesis = struct
     ;;
 
     let t =
-      lift3 (fun ctx _ clause -> ctx, clause) context (string ">>") Typing_clause.Parse.t
+      lift3
+        (fun ctx _ clause -> ctx, clause)
+        context
+        (Ws.string ">>")
+        Typing_clause.Parse.t
       <?> "hypothesis"
     ;;
   end
@@ -171,9 +177,9 @@ module Rule = struct
     let line : string option Lvca_parsing.t =
       lift3
         (fun _ _ ident -> ident)
-        (string "--")
-        (many (char '-'))
-        (option None ((fun ident -> Some ident) <$> parens identifier))
+        (Ws.string "--")
+        (many (Ws.char '-'))
+        (option None ((fun ident -> Some ident) <$> Ws.parens Ws.identifier))
       <?> "line"
     ;;
 

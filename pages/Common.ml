@@ -13,7 +13,10 @@ type lang =
 
 let parser_of = function
   | Lambda -> Lvca_languages.Lambda_calculus.Parse.t
-  | Term -> Nominal.Term.parse'
+  | Term ->
+    Lvca_parsing.(
+      Nominal.Term.parse' ~comment:c_comment
+      >>| Nominal.Term.map_info ~f:Commented.get_range)
 ;;
 
 let term_pretty = Nominal.Term.pp_opt_range

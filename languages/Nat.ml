@@ -4,7 +4,7 @@ open Lvca_syntax
 module Lang =
 [%lvca.abstract_syntax_module
 {|
-string : *
+string : *  // module Primitive.String
 
 nat := Z() | S(nat)
 
