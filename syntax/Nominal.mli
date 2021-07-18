@@ -36,6 +36,8 @@ module Term : sig
 
   val of_plain : Plain.t -> unit t
   val to_plain : _ t -> Plain.t
+  val to_nominal : 'info t -> 'info t
+  val of_nominal : 'info t -> ('info t, 'info t) Result.t
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val info : 'info t -> 'info
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t

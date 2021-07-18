@@ -178,6 +178,8 @@ module Term = struct
 
   let to_plain = ToPlain.term
   let of_plain = OfPlain.term
+  let to_nominal x = x
+  let of_nominal x = Ok x
   let equal = Equal.term
   let map_info = MapInfo.term
   let subst_all = SubstAll.term
@@ -289,7 +291,7 @@ module Term = struct
               (Check_failure.err (Printf.sprintf "Unknown variable %s (is it bound?)" v))
           | Some var_sort ->
             if Sort.equal
-                 Unit.( = )
+                 ~info_eq:Unit.( = )
                  (Sort.erase_info var_sort)
                  (Sort.erase_info expected_sort)
             then None
