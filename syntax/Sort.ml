@@ -1,36 +1,63 @@
-open Base
 module ISet = Lvca_util.Int.Set
 
+let ( >> ) = Lvca_util.(( >> ))
+
 type 'info t =
-  | Ap of 'info * string * 'info t list
+  | Ap of 'info * string * ('info, 'info t) List_model.t
   | Name of 'info * string
 
 module Plain = struct
   type t =
-    | Ap of string * t list
+    | Ap of string * t List_model.Plain.t
     | Name of string
 end
 
-let rec of_plain plain =
-  match plain with
-  | Plain.Ap (name, ts) -> Ap (plain, name, List.map ts ~f:of_plain)
-  | Plain.Name name -> Name (plain, name)
-;;
-
-let rec to_plain = function
-  | Ap (_, name, ts) -> Plain.Ap (name, List.map ts ~f:to_plain)
-  | Name (_, name) -> Plain.Name name
-;;
-
-let rec equal info_eq s1 s2 =
+let rec equal ~info_eq s1 s2 =
   match s1, s2 with
   | Ap (i1, name1, s1), Ap (i2, name2, s2) ->
-    info_eq i1 i2 && String.(name1 = name2) && List.equal (equal info_eq) s1 s2
+    info_eq i1 i2
+    && String.(name1 = name2)
+    && List_model.equal ~info_eq (equal ~info_eq) s1 s2
   | Name (i1, name1), Name (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
   | _, _ -> false
 ;;
 
-let info = function Ap (i, _, _) | Name (i, _) -> i
+let rec map_info ~f = function
+  | Name (info, name) -> Name (f info, name)
+  | Ap (info, name, args) -> Ap (f info, name, List_model.map args ~f:(map_info ~f))
+;;
+
+let erase_info sort = map_info ~f:(fun _ -> ()) sort
+
+let rec of_plain plain =
+  match plain with
+  | Plain.Ap (name, ts) -> Ap ((), name, List_model.of_plain ts)
+  | Plain.Name name -> Name ((), name)
+;;
+
+let rec to_plain = function
+  | Ap (_, name, ts) -> Plain.Ap (name, List_model.map ts ~f:to_plain)
+  | Name (_, name) -> Plain.Name name
+;;
+
+let rec to_nominal = function
+  | Ap (info, name, ts) ->
+    Nominal.Term.Operator
+      ( info
+      , "Ap"
+      , [ Scope ([], Primitive (info, Primitive_impl.All_plain.String name))
+        ; Scope
+            ( []
+            , ts
+              |> List_model.map ~f:(to_nominal >> Nominal.Term.map_info ~f:Option.return)
+              |> List_model.to_nominal )
+        ] )
+  | Name (info, name) ->
+    Operator
+      ( info
+      , "Name"
+      , [ Scope ([], Primitive (info, Primitive_impl.All_plain.String name)) ] )
+;;
 
 let pp ppf sort =
   let rec pp need_parens ppf = function
@@ -55,7 +82,8 @@ let rec instantiate arg_mapping = function
     (match Map.find arg_mapping name with
     | None -> Name (info, name)
     | Some sort' -> sort')
-  | Ap (info, name, args) -> Ap (info, name, List.map args ~f:(instantiate arg_mapping))
+  | Ap (info, name, args) ->
+    Ap (info, name, List_model.map args ~f:(instantiate arg_mapping))
 ;;
 
 let update_env env name n =
@@ -66,29 +94,9 @@ let rec kind_check env sort =
   match sort with
   | Name (_, name) -> update_env env name 0
   | Ap (_, name, args) ->
-    let env = List.fold args ~init:env ~f:kind_check in
-    update_env env name (List.length args)
+    let env = List_model.fold args ~init:env ~f:kind_check in
+    update_env env name (List_model.length args)
 ;;
-
-(*
-let rec of_term tm =
-  match tm with
-  | Nominal.Var (info, name) -> Ok (Name (info, name))
-  | Operator (info, name, args) ->
-    args
-    |> List.map ~f:(function Scope ([], arg) -> of_term arg | _ -> Error tm)
-    |> Result.all
-    |> Result.map ~f:(fun args' -> Ap (info, name, args'))
-  | _ -> Error tm
-;;
-*)
-
-let rec map_info ~f = function
-  | Name (info, name) -> Name (f info, name)
-  | Ap (info, name, args) -> Ap (f info, name, List.map args ~f:(map_info ~f))
-;;
-
-let erase_info sort = map_info ~f:(fun _ -> ()) sort
 
 (** Split a sort into a name and its arguments. *)
 let split = function Name (_, name) -> name, [] | Ap (_, name, args) -> name, args

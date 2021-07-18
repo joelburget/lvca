@@ -111,8 +111,8 @@ module Pattern_sort = struct
     }
 
   let equal ~info_eq ps1 ps2 =
-    Sort.equal info_eq ps1.pattern_sort ps2.pattern_sort
-    && Sort.equal info_eq ps1.var_sort ps2.var_sort
+    Sort.equal ~info_eq ps1.pattern_sort ps2.pattern_sort
+    && Sort.equal ~info_eq ps1.var_sort ps2.var_sort
   ;;
 
   let map_info ~f { pattern_sort; var_sort } =
@@ -151,7 +151,7 @@ module Sort_slot = struct
 
   let equal ~info_eq slot1 slot2 =
     match slot1, slot2 with
-    | Sort_binding s1, Sort_binding s2 -> Sort.equal info_eq s1 s2
+    | Sort_binding s1, Sort_binding s2 -> Sort.equal ~info_eq s1 s2
     | Sort_pattern ps1, Sort_pattern ps2 -> Pattern_sort.equal ~info_eq ps1 ps2
     | _, _ -> false
   ;;
@@ -191,7 +191,7 @@ module Valence = struct
   type 'info t = Valence of 'info Sort_slot.t list * 'info Sort.t
 
   let equal ~info_eq (Valence (slots1, sort1)) (Valence (slots2, sort2)) =
-    List.equal (Sort_slot.equal ~info_eq) slots1 slots2 && Sort.equal info_eq sort1 sort2
+    List.equal (Sort_slot.equal ~info_eq) slots1 slots2 && Sort.equal ~info_eq sort1 sort2
   ;;
 
   let map_info ~f (Valence (slots, sort)) =
