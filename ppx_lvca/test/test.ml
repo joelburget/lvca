@@ -51,4 +51,11 @@ list_list_predefined_1 := List_list_predefined_1(list (list predefined))
 list_list_predefined_2 := List_list_predefined_2(list_list_a predefined)
 |}]
 
-module type Is_rec_sig = [%lvca.abstract_syntax_module_sig {|is_rec := Rec() | No_rec()|}]
+module type Is_rec_sig = [%lvca.abstract_syntax_module_sig
+{|
+sort : *
+is_rec := Rec() | No_rec()
+ty := Sort(sort) | Arrow(ty; ty)
+mut_a := Mut_a(mut_b)
+mut_b := Mut_b(mut_a)
+|}]

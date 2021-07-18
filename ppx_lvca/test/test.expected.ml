@@ -2420,6 +2420,35 @@ module type Is_rec_sig  =
   sig
     val language :
       string Lvca_provenance.Commented.t Lvca_syntax.Abstract_syntax.t
+    module Wrapper :
+    sig
+      module Types :
+      sig
+        type 'info ty =
+          | Sort of 'info * 'info Lvca_syntax.Nominal.Term.t 
+          | Arrow of 'info * 'info ty * 'info ty 
+        and 'info mut_a =
+          | Mut_a of 'info * 'info mut_b 
+        and 'info mut_b =
+          | Mut_b of 'info * 'info mut_a 
+        and 'info is_rec =
+          | Rec of 'info 
+          | No_rec of 'info 
+      end
+      module Plain :
+      sig
+        type ty =
+          | Sort of Lvca_syntax.Nominal.Term.Plain.t 
+          | Arrow of ty * ty 
+        and mut_a =
+          | Mut_a of mut_b 
+        and mut_b =
+          | Mut_b of mut_a 
+        and is_rec =
+          | Rec 
+          | No_rec 
+      end
+    end
     module Is_rec :
     sig
       type 'info t =
@@ -2430,6 +2459,53 @@ module type Is_rec_sig  =
         type t =
           | Rec 
           | No_rec 
+        val pp : t Fmt.t
+        val (=) : t -> t -> bool
+        val parse : t Lvca_parsing.t
+        val jsonify : t Lvca_util.Json.serializer
+        val unjsonify : t Lvca_util.Json.deserializer
+      end
+    end
+    module Ty :
+    sig
+      type 'info t =
+        | Sort of 'info * 'info Lvca_syntax.Nominal.Term.t 
+        | Arrow of 'info * 'info Wrapper.Types.ty * 'info Wrapper.Types.ty 
+      module Plain :
+      sig
+        type t =
+          | Sort of Lvca_syntax.Nominal.Term.Plain.t 
+          | Arrow of Wrapper.Plain.ty * Wrapper.Plain.ty 
+        val pp : t Fmt.t
+        val (=) : t -> t -> bool
+        val parse : t Lvca_parsing.t
+        val jsonify : t Lvca_util.Json.serializer
+        val unjsonify : t Lvca_util.Json.deserializer
+      end
+    end
+    module Mut_a :
+    sig
+      type 'info t =
+        | Mut_a of 'info * 'info Wrapper.Types.mut_b 
+      module Plain :
+      sig
+        type t =
+          | Mut_a of Wrapper.Plain.mut_b 
+        val pp : t Fmt.t
+        val (=) : t -> t -> bool
+        val parse : t Lvca_parsing.t
+        val jsonify : t Lvca_util.Json.serializer
+        val unjsonify : t Lvca_util.Json.deserializer
+      end
+    end
+    module Mut_b :
+    sig
+      type 'info t =
+        | Mut_b of 'info * 'info Wrapper.Types.mut_a 
+      module Plain :
+      sig
+        type t =
+          | Mut_b of Wrapper.Plain.mut_a 
         val pp : t Fmt.t
         val (=) : t -> t -> bool
         val parse : t Lvca_parsing.t

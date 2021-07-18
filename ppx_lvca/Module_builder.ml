@@ -1454,6 +1454,24 @@ module Wrapper_module (Context : Builder_context) = struct
     module_binding ~name:{ txt = Some "Wrapper"; loc } ~expr:(pmod_structure defs)
     |> pstr_module
   ;;
+
+  let mk_sigs ~prims ~sort_def_map ~sorted_scc_graph ~partitioned_sorts =
+    let type_decls =
+      Type_decls.mk ~sort_def_map ~sorted_scc_graph ~prims ~partitioned_sorts
+    in
+    let info_decls = type_decls ~info:With_info in
+    let plain_decls = type_decls ~info:Plain in
+    [%sig:
+      module Wrapper : sig
+        module Types : sig
+          [%%i psig_type Recursive info_decls]
+        end
+
+        module Plain : sig
+          [%%i psig_type Recursive plain_decls]
+        end
+      end]
+  ;;
 end
 
 module Individual_type_sig (Context : Builder_context) = struct
@@ -1703,10 +1721,20 @@ module Sig (Context : Builder_context) = struct
   open Ast
   open Helpers (Context)
   module Individual_type_sig = Individual_type_sig (Context)
+  module Wrapper_module = Wrapper_module (Context)
 
   let mk Syn.{ externals; sort_defs } =
     let prims = prims_of_externals externals in
     let sort_def_map = SMap.of_alist_exn sort_defs in
+    let sort_dep_map = get_sort_ref_info sort_defs in
+    let Graph.Connected_components.{ scc_graph; sccs } =
+      Graph.connected_components sort_dep_map
+    in
+    let sorted_scc_graph =
+      scc_graph
+      |> Directed_graph.Int.topsort_exn
+      |> List.map ~f:(fun i -> i, Map.find_exn sccs i)
+    in
     let partitioned_sorts = partition_sort_defs sort_defs in
     let type_sigs =
       List.map sort_defs ~f:(fun (sort_name, sort_def) ->
@@ -1741,6 +1769,9 @@ module Sig (Context : Builder_context) = struct
       [%sigi:
         val language : string Lvca_provenance.Commented.t Lvca_syntax.Abstract_syntax.t]
     in
-    pmty_signature (language :: type_sigs)
+    pmty_signature
+      (language
+       :: Wrapper_module.mk_sigs ~prims ~sort_def_map ~sorted_scc_graph ~partitioned_sorts
+      @ type_sigs)
   ;;
 end
