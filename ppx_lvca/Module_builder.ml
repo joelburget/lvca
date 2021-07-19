@@ -1762,6 +1762,10 @@ module Sig (Context : Builder_context) = struct
                     ; [%sigi: val jsonify : t Lvca_util.Json.serializer]
                     ; [%sigi: val unjsonify : t Lvca_util.Json.deserializer]
                     ]]]
+              ; [%sigi: val to_plain : _ t -> Plain.t]
+              ; [%sigi: val of_plain : Plain.t -> unit t]
+              ; [%sigi: val info : 'info t -> 'info]
+              ; [%sigi: val map_info : f:('a -> 'b) -> 'a t -> 'b t]
               ]
           in
           psig_module

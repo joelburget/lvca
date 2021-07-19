@@ -2789,6 +2789,10 @@ module type Is_rec_sig  =
         val jsonify : t Lvca_util.Json.serializer
         val unjsonify : t Lvca_util.Json.deserializer
       end
+      val to_plain : _ t -> Plain.t
+      val of_plain : Plain.t -> unit t
+      val info : 'info t -> 'info
+      val map_info : f:('a -> 'b) -> 'a t -> 'b t
     end
     module Ty :
     sig
@@ -2806,6 +2810,10 @@ module type Is_rec_sig  =
         val jsonify : t Lvca_util.Json.serializer
         val unjsonify : t Lvca_util.Json.deserializer
       end
+      val to_plain : _ t -> Plain.t
+      val of_plain : Plain.t -> unit t
+      val info : 'info t -> 'info
+      val map_info : f:('a -> 'b) -> 'a t -> 'b t
     end
     module Mut_a :
     sig
@@ -2821,6 +2829,10 @@ module type Is_rec_sig  =
         val jsonify : t Lvca_util.Json.serializer
         val unjsonify : t Lvca_util.Json.deserializer
       end
+      val to_plain : _ t -> Plain.t
+      val of_plain : Plain.t -> unit t
+      val info : 'info t -> 'info
+      val map_info : f:('a -> 'b) -> 'a t -> 'b t
     end
     module Mut_b :
     sig
@@ -2836,5 +2848,9 @@ module type Is_rec_sig  =
         val jsonify : t Lvca_util.Json.serializer
         val unjsonify : t Lvca_util.Json.deserializer
       end
+      val to_plain : _ t -> Plain.t
+      val of_plain : Plain.t -> unit t
+      val info : 'info t -> 'info
+      val map_info : f:('a -> 'b) -> 'a t -> 'b t
     end
   end
